@@ -527,7 +527,7 @@ typedef struct {
   SL_CSI_Report_t sched_csi_report;
   // To hold the CSI report values received from different users
   nr_sl_csi_report_t rx_csi_report;
-
+  bool print_csi_report;
   /// UE-estimated maximum MCS (from CSI-RS)
   uint8_t sl_max_mcs;
 
@@ -551,6 +551,7 @@ typedef struct {
 
   NR_SL_UE_info_t *list[MAX_SL_UE_CONNECTIONS+1];
   uid_allocator_t ue_allocator;
+  pthread_mutex_t mutex;
 } NR_SL_UEs_t;
 
 /*!\brief Top level UE MAC structure */
@@ -679,7 +680,6 @@ typedef struct {
   uint8_t slsch_payload[16384];
   time_stats_t rlc_data_req;
   int src_id;
-  int dest_id;
   pthread_mutex_t sl_sched_lock;
   bool is_synced;
 } NR_UE_MAC_INST_t;

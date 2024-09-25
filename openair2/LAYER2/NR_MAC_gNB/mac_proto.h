@@ -417,12 +417,6 @@ bool nr_find_nb_rb(uint16_t Qm,
                    uint32_t *tbs,
                    uint16_t *nb_rb);
 
-int get_mcs_from_bler(const NR_bler_options_t *bler_options,
-                      const NR_mac_dir_stats_t *stats,
-                      NR_bler_stats_t *bler_stats,
-                      int max_mcs,
-                      frame_t frame);
-
 int ul_buffer_index(int frame, int slot, int scs, int size);
 
 void UL_tti_req_ahead_initialization(gNB_MAC_INST * gNB, NR_ServingCellConfigCommon_t *scc, int n, int CCid, frame_t frameP, int slotP, int scs);

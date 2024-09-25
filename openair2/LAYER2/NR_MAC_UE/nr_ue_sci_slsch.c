@@ -347,8 +347,9 @@ void fill_pssch_pscch_pdu(sl_nr_ue_mac_params_t *sl_mac_params,
   nr_sl_pssch_pscch_pdu->mcs = sci_pdu->mcs;
   int nohPRB    = (sl_res_pool->sl_X_Overhead_r16) ? 3*(*sl_res_pool->sl_X_Overhead_r16) : 0;
   int nREDMRS   = get_nREDMRS(sl_res_pool);
-  int num_RECSI_RS= sci2_pdu->csi_req ? get_nRECSI_RS(sl_mac_params->freq_density, sl_mac_params->nr_of_rbs) : 0;
-  int N_REprime = 12 * nr_sl_pssch_pscch_pdu->pssch_numsym - nohPRB - nREDMRS - (num_RECSI_RS / sl_mac_params->nr_of_rbs);
+  int num_CSI_REs= sci2_pdu->csi_req ? get_nRECSI_RS(sl_mac_params->freq_density, sl_mac_params->nr_of_rbs) : 0;
+  int num_CSI_REs_per_RB = sci2_pdu->csi_req ? (num_CSI_REs/sl_mac_params->nr_of_rbs) : 0;
+  int N_REprime = 12 * nr_sl_pssch_pscch_pdu->pssch_numsym - nohPRB - nREDMRS - num_CSI_REs_per_RB;
   int N_REsci1  = 12*nr_sl_pssch_pscch_pdu->pscch_numrbs*nr_sl_pssch_pscch_pdu->pscch_numsym;
   AssertFatal(*sl_res_pool->sl_PSSCH_Config_r16->choice.setup->sl_Scaling_r16 < 4, "Illegal index %d to alpha table\n",(int)*sl_res_pool->sl_PSSCH_Config_r16->choice.setup->sl_Scaling_r16);
   int N_REsci2  = get_NREsci2(nr_sl_pssch_pscch_pdu->sci2_alpha_times_100,
@@ -361,7 +362,7 @@ void fill_pssch_pscch_pdu(sl_nr_ue_mac_params_t *sl_mac_params,
                               nr_sl_pssch_pscch_pdu->subchannel_size,
                               get_softmodem_params()->sl_mode ? 1 : nr_sl_pssch_pscch_pdu->mcs,
                               mcs_tb_ind);
-  LOG_D(NR_MAC, "nREDMRS %d, num_RECSI_RS %d, N_REprime %d, N_REsci1 %d, N_REsci2 %d\n", nREDMRS, num_RECSI_RS, N_REprime, N_REsci1, N_REsci2);
+  LOG_D(NR_MAC, "nREDMRS %d, num_CSI_REs %d, N_REprime %d, N_REsci1 %d, N_REsci2 %d\n", nREDMRS, num_CSI_REs, N_REprime, N_REsci1, N_REsci2);
   int N_RE      = N_REprime*nr_sl_pssch_pscch_pdu->l_subch*nr_sl_pssch_pscch_pdu->subchannel_size - N_REsci1 - N_REsci2;
 
   nr_sl_pssch_pscch_pdu->mod_order = nr_get_Qm_ul(sci_pdu->mcs,mcs_tb_ind);
@@ -686,11 +687,11 @@ void config_pssch_slsch_pdu_rx(sl_nr_rx_config_pssch_pdu_t *nr_sl_pssch_pdu,
   int subchannel_size=subch_to_rb[*sl_res_pool->sl_SubchannelSize_r16];
   int nohPRB    = (sl_res_pool->sl_X_Overhead_r16) ? 3*(*sl_res_pool->sl_X_Overhead_r16) : 0;
   int nREDMRS   = get_nREDMRS(sl_res_pool);  
-  int num_RECSI_RS= sci_pdu->csi_req ? get_nRECSI_RS(sl_mac_params->freq_density, sl_mac_params->nr_of_rbs) : 0;
-  LOG_D(NR_MAC, "num_RECSI_RS %d\n", num_RECSI_RS);
   int pscch_numsym = pscch_tda[*sl_res_pool->sl_PSCCH_Config_r16->choice.setup->sl_TimeResourcePSCCH_r16];
   int pscch_numrbs = pscch_rb_table[*sl_res_pool->sl_PSCCH_Config_r16->choice.setup->sl_FreqResourcePSCCH_r16];
-  int N_REprime = 12 * pssch_numsym - nohPRB - nREDMRS - (num_RECSI_RS / sl_mac_params->nr_of_rbs);
+  int num_CSI_REs= sci_pdu->csi_req ? get_nRECSI_RS(sl_mac_params->freq_density, sl_mac_params->nr_of_rbs) : 0;
+  int num_CSI_REs_per_RB = sci_pdu->csi_req ? (num_CSI_REs/sl_mac_params->nr_of_rbs) : 0;
+  int N_REprime = 12 * pssch_numsym - nohPRB - nREDMRS - num_CSI_REs_per_RB;
   int N_REsci1  = 12*pscch_numrbs*pscch_numsym;
   AssertFatal(*sl_res_pool->sl_PSSCH_Config_r16->choice.setup->sl_Scaling_r16 < 4, "Illegal index %d to alpha table\n",(int)*sl_res_pool->sl_PSSCH_Config_r16->choice.setup->sl_Scaling_r16);
   int sci2_beta_offset = *sl_res_pool->sl_PSSCH_Config_r16->choice.setup->sl_BetaOffsets2ndSCI_r16->list.array[sci_pdu->beta_offset_indicator];

@@ -166,7 +166,10 @@ int nr_slsch_procedures(PHY_VARS_NR_UE *ue, int frame_rx, int slot_rx, int SLSCH
                               pssch_pdu->subchannel_size,
                               pssch_pdu->targetCodeRate,
                               0);
-  uint16_t csi_rs_re = is_csi_rs_slot ? nr_of_rbs/freq_density : 0;
+
+  uint8_t nr_rbs_w_csi_rs = nr_of_rbs / freq_density;
+  uint8_t subcarriers_used = get_nrUE_params()->nb_antennas_tx > 2 ? 2 : get_nrUE_params()->nb_antennas_tx;
+  int num_CSI_REs = is_csi_rs_slot ? nr_rbs_w_csi_rs * subcarriers_used : 0;
   uint16_t sci1_re = pssch_pdu->pscch_numsym * pssch_pdu->pscch_numrbs * NR_NB_SC_PER_RB;
   uint32_t G = nr_get_G_SL(rb_size,
                            number_symbols,
@@ -176,7 +179,7 @@ int nr_slsch_procedures(PHY_VARS_NR_UE *ue, int frame_rx, int slot_rx, int SLSCH
                            sci1_re,
                            pssch_pdu->pscch_numrbs,
                            sci2_re,
-                           csi_rs_re,
+                           num_CSI_REs,
                            pssch_pdu->mod_order,
                            pssch_pdu->num_layers);
 
@@ -772,8 +775,8 @@ int phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue,
   else if (phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH ||
            phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_CSI_RS ||
            phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_PSFCH) {
-    if (phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_CSI_RS && get_nrUE_params()->sync_ref)
-      LOG_I(NR_PHY, "Sending %s (%d.%d)\n", sl_tx_actions[phy_data->sl_tx_action - SL_NR_CONFIG_TYPE_TX_PSBCH], frame_tx, slot_tx);
+    if (phy_data->sl_tx_action >= SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH && phy_data->sl_tx_action <= SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_CSI_RS)
+      LOG_D(NR_PHY, "(%d.%d) Sending %s\n", frame_tx, slot_tx, sl_tx_actions[phy_data->sl_tx_action - SL_NR_CONFIG_TYPE_TX_PSBCH]);
     phy_data->pscch_Nid = nr_generate_sci1(ue, txdataF[0], fp, AMP, slot_tx, &phy_data->nr_sl_pssch_pscch_pdu) &0xFFFF;
     nfapi_nr_dl_tti_csi_rs_pdu_rel15_t *csi_params = (nfapi_nr_dl_tti_csi_rs_pdu_rel15_t *)&phy_data->nr_sl_pssch_pscch_pdu.nr_sl_csi_rs_pdu;
     csi_params->scramb_id = phy_data->pscch_Nid % (1 << 10);

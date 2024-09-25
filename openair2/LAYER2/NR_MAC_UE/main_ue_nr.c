@@ -102,3 +102,85 @@ NR_UE_MAC_INST_t* nr_l2_init_ue(NR_UE_RRC_INST_t* rrc_inst, ueinfo_t* ueinfo) {
 NR_UE_MAC_INST_t *get_mac_inst(module_id_t module_id){
     return &nr_ue_mac_inst[(int)module_id];
 }
+
+size_t dump_mac_stats_sl(NR_UE_MAC_INST_t *mac, char *output, size_t strlen, bool reset_rsrp)
+{
+  int num = 1;
+  const char *begin = output;
+  const char *end = output + strlen;
+  sl_nr_ue_mac_params_t *sl_mac = mac->SL_MAC_PARAMS;
+
+  /* this function is called from gNB_dlsch_ulsch_scheduler(), so assumes the
+   * scheduler to be locked*/
+  // NR_UE_SL_SCHED_ENSURE_LOCKED(&mac->sl_sched_lock);
+
+  NR_UE_SL_SCHED_LOCK(&mac->sl_info.mutex);
+  UE_iterator(mac->sl_info.list, UE) {
+    NR_SL_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
+    NR_UE_sl_mac_stats_t *stats = &UE->mac_sl_stats;
+
+    if(sched_ctrl->print_csi_report) {
+      output += snprintf(output,
+                         end - output,
+                         "UE %04x: CQI %d, RI %d\n",
+                         UE->uid,
+                         sched_ctrl->rx_csi_report.CQI,
+                         sched_ctrl->rx_csi_report.RI + 1);
+      sched_ctrl->print_csi_report = false;
+    }
+
+    output += snprintf(output, end - output, "%"PRIu64, stats->sl.rounds[0]);
+    for (int i = 1; i < sl_mac->sl_bler.harq_round_max; i++)
+      output += snprintf(output, end - output, "/%"PRIu64, stats->sl.rounds[i]);
+
+    output += snprintf(output,
+                       end - output,
+                       ", slsch_errors %"PRIu64", BLER %.5f MCS %d\n",
+                       stats->sl.errors,
+                       sched_ctrl->sl_bler_stats.bler,
+                       sched_ctrl->sl_bler_stats.mcs);
+
+    output += snprintf(output,
+                       end - output,
+                       "UE %04x: slsch_total_bytes %"PRIu64"\n",
+                       UE->uid, stats->sl.total_bytes);
+    output += snprintf(output,
+                       end - output,
+                       "UE %04x: slsch_rounds ", UE->uid);
+    output += snprintf(output, end - output, "%"PRIu64, stats->sl.rounds[0]);
+    for (int i = 1; i < sl_mac->sl_bler.harq_round_max; i++)
+      output += snprintf(output, end - output, "/%"PRIu64, stats->sl.rounds[i]);
+
+    output += snprintf(output,
+                       end - output,
+                       ", slsch_DTX %d, slsch_errors %"PRIu64", BLER %.5f MCS %d\n",
+                       stats->slsch_DTX,
+                       stats->sl.errors,
+                       sched_ctrl->sl_bler_stats.bler,
+                       sched_ctrl->sl_bler_stats.mcs);
+    output += snprintf(output,
+                       end - output,
+                       "UE %04x: slsch_total_bytes_scheduled %"PRIu64", slsch_total_bytes_received %"PRIu64"\n",
+                       UE->uid,
+                       stats->slsch_total_bytes_scheduled, stats->sl.total_bytes);
+
+    for (int lc_id = 0; lc_id < 63; lc_id++) {
+      if (stats->sl.lc_bytes[lc_id] > 0)
+        output += snprintf(output,
+                           end - output,
+                           "UE %04x: LCID %d: %"PRIu64" bytes TX\n",
+                           UE->uid,
+                           lc_id,
+                           stats->sl.lc_bytes[lc_id]);
+      if (stats->sl.lc_bytes[lc_id] > 0)
+        output += snprintf(output,
+                           end - output,
+                           "UE %04x: LCID %d: %"PRIu64" bytes RX\n",
+                           UE->uid,
+                           lc_id,
+                           stats->sl.lc_bytes[lc_id]);
+    }
+  }
+  NR_UE_SL_SCHED_UNLOCK(&mac->sl_info.mutex);
+  return output - begin;
+}

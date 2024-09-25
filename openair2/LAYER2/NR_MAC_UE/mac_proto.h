@@ -526,11 +526,10 @@ void nr_mac_rrc_sl_mib_ind(const module_id_t module_id,
 void nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP, int slotP, nr_sci_pdu_t *sci_pdu,
                        nr_sci_pdu_t *sci2_pdu,
                        nr_sci_format_t format2,
-                       NR_SL_UE_sched_ctrl_t *sched_ctrl,
+                       NR_SL_UE_info_t *UE,
                        uint16_t *slsch_pdu_length,
                        NR_UE_sl_harq_t *cur_harq,
-                       mac_rlc_status_resp_t *rlc_status,
-                       uid_t dest_id);
+                       mac_rlc_status_resp_t *rlc_status);
 
 SL_CSI_Report_t* set_nr_ue_sl_csi_meas_periodicity(const NR_TDD_UL_DL_Pattern_t *tdd,
                                                    NR_SL_UE_sched_ctrl_t *sched_ctrl,
