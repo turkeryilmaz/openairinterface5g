@@ -683,7 +683,7 @@ static void pf_dl(module_id_t module_id,
       if (bo->harq_round_max == 1)
         sched_pdsch->mcs = max_mcs;
       else
-        sched_pdsch->mcs = get_mcs_from_bler(bo, stats, &sched_ctrl->dl_bler_stats, max_mcs, frame);
+        sched_pdsch->mcs = get_mcs_from_bler(bo, stats, &sched_ctrl->dl_bler_stats, max_mcs_table, frame);
       sched_pdsch->nrOfLayers = get_dl_nrOfLayers(sched_ctrl, current_BWP->dci_format);
       sched_pdsch->pm_index =
           get_pm_index(mac, UE, current_BWP->dci_format, sched_pdsch->nrOfLayers, mac->radio_config.pdsch_AntennaPorts.XP);
@@ -1026,7 +1026,7 @@ void nr_schedule_ue_spec(module_id_t module_id,
     }
     UE->mac_stats.dl.rounds[harq->round]++;
     LOG_D(NR_MAC,
-          "%4d.%2d [DLSCH/PDSCH/PUCCH] RNTI %04x DCI L %d start %3d RBs %3d startSymbol %2d nb_symbol %2d dmrspos %x MCS %2d nrOfLayers %d TBS %4d HARQ PID %2d round %d RV %d NDI %d dl_data_to_ULACK %d (%d.%d) PUCCH allocation %d TPC %d\n",
+          "%4d.%2d [DLSCH/PDSCH/PUCCH] RNTI %04x DCI L %d start %3d RBs %3d startSymbol %2d nb_symbol %2d dmrspos %x MCS %2d pm_index %d nrOfLayers %d TBS %4d HARQ PID %2d round %d RV %d NDI %d dl_data_to_ULACK %d (%d.%d) PUCCH allocation %d TPC %d\n",
           frame,
           slot,
           rnti,
@@ -1037,6 +1037,7 @@ void nr_schedule_ue_spec(module_id_t module_id,
           tda_info->nrOfSymbols,
           dmrs_parms->dl_dmrs_symb_pos,
           sched_pdsch->mcs,
+          sched_pdsch->pm_index,
           nrOfLayers,
           TBS,
           current_harq_pid,

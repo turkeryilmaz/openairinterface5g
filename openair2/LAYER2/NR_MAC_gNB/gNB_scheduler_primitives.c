@@ -191,7 +191,7 @@ uint16_t get_pm_index(const gNB_MAC_INST *nrmac,
 
   int x1 = sched_ctrl->CSI_report.cri_ri_li_pmi_cqi_report.pmi_x1;
   const int x2 = sched_ctrl->CSI_report.cri_ri_li_pmi_cqi_report.pmi_x2;
-  LOG_D(NR_MAC,"PMI report: x1 %d x2 %d layers: %d\n", x1, x2, layers);
+  LOG_D(NR_MAC,"PMI report: antenna_ports %d x1 %d x2 %d layers: %d\n", antenna_ports, x1, x2, layers);
 
   int prev_layers_size = 0;
   for (int i = 1; i < layers; i++)
@@ -215,12 +215,15 @@ uint16_t get_pm_index(const gNB_MAC_INST *nrmac,
       return 0;
     }
     const int i13 = x1 & ((1 << bitlen) - 1);
+    LOG_D(NR_MAC,"get_pm_index: i13_bitlen %d, i13 %d\n",bitlen,i13);
     x1 >>= bitlen;
     bitlen = csi_report->csi_meas_bitlen.pmi_i12_bitlen[idx];
     const int i12 = x1 & ((1 << bitlen) - 1);
+    LOG_D(NR_MAC,"get_pm_index: i12_bitlen %d, i12 %d\n",bitlen,i12);
     x1 >>= bitlen;
     bitlen = csi_report->csi_meas_bitlen.pmi_i11_bitlen[idx];
     const int i11 = x1 & ((1 << bitlen) - 1);
+    LOG_D(NR_MAC,"get_pm_index: i11_bitlen %d, i11 %d\n",bitlen,i11);
     const int i2 = x2;
     int k1, k2;
     get_k1_k2_indices(layers, N1, N2, i13, &k1, &k2); // get indices k1 and k2 for PHY matrix (not actual k1 and k2 values)
@@ -233,6 +236,7 @@ uint16_t get_pm_index(const gNB_MAC_INST *nrmac,
     get_K1_K2(N1, N2, &K1, &K2, layers);
     // computing precoding matrix index according to rule set in allocation function init_codebook_gNB
     lay_index = i2 + (i11 * max_i2) + (i12 * max_i2 * N1 * O1) + (k1 * max_i2 * N1 * O1 * N2 * O2) + (k2 * max_i2 * N1 * O1 * N2 * O2 * K1);
+    LOG_D(NR_MAC,"PMI Report: pm_index %d (1+%d+%d) (%d,%d,%d,%d,%d) \n",1+ prev_layers_size + lay_index,prev_layers_size,lay_index,i11,i12,i2,k1,k2);
     return 1 + prev_layers_size + lay_index;
   }
 }

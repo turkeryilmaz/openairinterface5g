@@ -828,18 +828,16 @@ static uint8_t evaluate_pmi_report(uint8_t *payload,
 {
   int x1_bitlen = csi_report->csi_meas_bitlen.pmi_x1_bitlen[ri];
   int x2_bitlen = csi_report->csi_meas_bitlen.pmi_x2_bitlen[ri];
-  int tot_bitlen = x1_bitlen + x2_bitlen;
-
-  //in case of 2 port CSI configuration x1 is empty and the information bits are in x2
-  int temp_pmi = pickandreverse_bits(payload, tot_bitlen, cumul_bits);
-
-  sched_ctrl->CSI_report.cri_ri_li_pmi_cqi_report.pmi_x1 = temp_pmi & ((1 << x1_bitlen) - 1);
-  sched_ctrl->CSI_report.cri_ri_li_pmi_cqi_report.pmi_x2 = (temp_pmi >> x1_bitlen) & ((1 << x2_bitlen) - 1);
-  LOG_D(MAC,"PMI Report: X1 %d X2 %d\n",
+  int starting_bit = cumul_bits;
+  sched_ctrl->CSI_report.cri_ri_li_pmi_cqi_report.pmi_x1 = pickandreverse_bits(payload, x1_bitlen, starting_bit);
+  starting_bit += x1_bitlen;
+  sched_ctrl->CSI_report.cri_ri_li_pmi_cqi_report.pmi_x2 = pickandreverse_bits(payload, x2_bitlen, starting_bit);
+  LOG_D(NR_MAC,
+        "PMI Report: X1 %d X2 %d\n",
         sched_ctrl->CSI_report.cri_ri_li_pmi_cqi_report.pmi_x1,
         sched_ctrl->CSI_report.cri_ri_li_pmi_cqi_report.pmi_x2);
 
-  return tot_bitlen;
+  return x1_bitlen + x2_bitlen;
 }
 
 static int evaluate_li_report(uint8_t *payload,
@@ -945,6 +943,7 @@ static void extract_pucch_csi_report(NR_CSI_MeasConfig_t *csi_MeasConfig,
           sched_ctrl->CSI_report.cri_ri_li_pmi_cqi_report.csi_report_id = csi_report_id;
           cumul_bits += pmi_bitlen;
           evaluate_cqi_report(payload,csi_report,cumul_bits,r_index,UE,cqi_table);
+          LOG_D(NR_MAC,"Evaluating CRI_RI_PMI_CQI length %d : CRI length %d, RI length %d, PMI length %d CQI length %d payload %x.%x\n",bitlen,cri_bitlen,ri_bitlen,pmi_bitlen,bitlen-cri_bitlen-ri_bitlen-pmi_bitlen,payload[0],payload[1]);
           break;
         case NR_CSI_ReportConfig__reportQuantity_PR_cri_RI_LI_PMI_CQI:
           sched_ctrl->CSI_report.cri_ri_li_pmi_cqi_report.print_report = true;

@@ -541,6 +541,7 @@ void set_dl_maxmimolayers(NR_PDSCH_ServingCellConfig_t *pdsch_servingcellconfig,
           *pdsch_servingcellconfig->ext1->maxMIMO_Layers = NR_MAX_SUPPORTED_DL_LAYERS < ue_supported_layers ? NR_MAX_SUPPORTED_DL_LAYERS : ue_supported_layers;
         else 
           *pdsch_servingcellconfig->ext1->maxMIMO_Layers = maxMIMO_layers < ue_supported_layers ? maxMIMO_layers : ue_supported_layers;
+        LOG_I(NR_RRC,"Set DL maxMIMO_Layers to %d\n",*pdsch_servingcellconfig->ext1->maxMIMO_Layers);
         return;
       }
     }

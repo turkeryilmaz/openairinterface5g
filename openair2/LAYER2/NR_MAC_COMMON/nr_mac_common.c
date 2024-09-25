@@ -5241,27 +5241,27 @@ bool supported_bw_comparison(int bw_mhz, NR_SupportedBandwidth_t *supported_BW, 
     case NR_SupportedBandwidth_PR_fr1 :
       switch (supported_BW->choice.fr1) {
         case NR_SupportedBandwidth__fr1_mhz5 :
-          return bw_mhz == 5;
+          return bw_mhz <= 5;
         case NR_SupportedBandwidth__fr1_mhz10 :
-          return bw_mhz == 10;
+          return bw_mhz <= 10;
         case NR_SupportedBandwidth__fr1_mhz15 :
-          return bw_mhz == 15;
+          return bw_mhz <= 15;
         case NR_SupportedBandwidth__fr1_mhz20 :
-          return bw_mhz == 20;
+          return bw_mhz <= 20;
         case NR_SupportedBandwidth__fr1_mhz25 :
-          return bw_mhz == 25;
+          return bw_mhz <= 25;
         case NR_SupportedBandwidth__fr1_mhz30 :
-          return bw_mhz == 30;
+          return bw_mhz <= 30;
         case NR_SupportedBandwidth__fr1_mhz40 :
-          return bw_mhz == 40;
+          return bw_mhz <= 40;
         case NR_SupportedBandwidth__fr1_mhz50 :
-          return bw_mhz == 50;
+          return bw_mhz <= 50;
         case NR_SupportedBandwidth__fr1_mhz60 :
-          return bw_mhz == 60;
+          return bw_mhz <= 60;
         case NR_SupportedBandwidth__fr1_mhz80 :
-          return bw_mhz == 80;
+          return bw_mhz <= 80;
         case NR_SupportedBandwidth__fr1_mhz100 :
-          return bw_mhz == 100;
+          return bw_mhz <= 100;
         default :
           AssertFatal(false, "Invalid FR1 supported band\n");
       }
@@ -5269,13 +5269,13 @@ bool supported_bw_comparison(int bw_mhz, NR_SupportedBandwidth_t *supported_BW, 
     case NR_SupportedBandwidth_PR_fr2 :
       switch (supported_BW->choice.fr2) {
         case NR_SupportedBandwidth__fr2_mhz50 :
-          return bw_mhz == 50;
+          return bw_mhz <= 50;
         case NR_SupportedBandwidth__fr2_mhz100 :
-          return bw_mhz == 100;
+          return bw_mhz <= 100;
         case NR_SupportedBandwidth__fr2_mhz200 :
-          return bw_mhz == 200;
+          return bw_mhz <= 200;
         case NR_SupportedBandwidth__fr2_mhz400 :
-          return bw_mhz == 400;
+          return bw_mhz <= 400;
         default :
           AssertFatal(false, "Invalid FR2 supported band\n");
       }
