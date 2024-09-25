@@ -1086,7 +1086,6 @@ void nr_ue_csi_rs_procedures(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, c16_t 
     if (csirs_config_pdu->measurement_bitmap & 16) {
       if (get_softmodem_params()->sl_mode == 2) {
         nr_csi_rs_cqi_estimation_sl(sl_sinr_dB, &cqi);
-        get_nrUE_params()->snr = sl_sinr_dB;
         LOG_D(NR_PHY, "Rx CSI-RS %4d.%2d sl_sinr %i rsrp %d dBm cqi %d\n",
               proc->frame_rx, proc->nr_slot_rx, sl_sinr_dB, rsrp_dBm, cqi);
       } else {

@@ -3697,7 +3697,6 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
       sl_mac_stats->current_bytes = sched_pssch->tb_size;
       sl_mac_stats->current_rbs = sched_pssch->rbSize;
       sl_mac_stats->total_bytes += pscch_pssch_pdu->tb_size;
-      sl_mac_stats->total_rbs += sched_pssch->rbSize;
       sl_mac_stats->num_mac_sdu += num_sdus;
       sl_mac_stats->total_sdu_bytes += sdu_length_total;
 
