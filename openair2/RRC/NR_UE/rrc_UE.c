@@ -188,7 +188,7 @@ static void nr_rrc_ue_process_rrcReconfiguration(NR_UE_RRC_INST_t *rrc,
         if (ie->nonCriticalExtension->dedicatedNAS_MessageList) {
           struct NR_RRCReconfiguration_v1530_IEs__dedicatedNAS_MessageList *tmp = ext->dedicatedNAS_MessageList;
           for (int i = 0; i < tmp->list.count; i++) {
-            MessageDef *ittiMsg = itti_alloc_new_message(TASK_RRC_NRUE, 0, NAS_CONN_ESTABLI_CNF);
+            MessageDef *ittiMsg = itti_alloc_new_message(TASK_RRC_NRUE, rrc->ue_id, NAS_CONN_ESTABLI_CNF);
             NasConnEstabCnf *msg = &NAS_CONN_ESTABLI_CNF(ittiMsg);
             msg->errCode = AS_SUCCESS;
             msg->nasMsg.length = tmp->list.array[i]->size;
@@ -479,7 +479,7 @@ static void nr_rrc_ue_decode_NR_BCCH_BCH_Message(NR_UE_RRC_INST_t *rrc,
   
   // Actions following cell selection while T311 is running
   NR_UE_Timers_Constants_t *timers = &rrc->timers_and_constants;
-  if (is_nr_timer_active(timers->T311)) {
+  if (nr_timer_is_active(&timers->T311)) {
     nr_timer_stop(&timers->T311);
     rrc->ra_trigger = RRC_CONNECTION_REESTABLISHMENT;
 
@@ -700,8 +700,7 @@ static void nr_rrc_ue_prepare_RRCSetupRequest(NR_UE_RRC_INST_t *rrc)
   nr_rlc_srb_recv_sdu(rrc->ue_id, 0, buf, len);
 }
 
-void nr_rrc_configure_default_SI(NR_UE_RRC_SI_INFO *SI_info,
-                                 NR_SIB1_t *sib1)
+static void nr_rrc_configure_default_SI(NR_UE_RRC_SI_INFO *SI_info, NR_SIB1_t *sib1)
 {
   struct NR_SI_SchedulingInfo *si_SchedulingInfo = sib1->si_SchedulingInfo;
   if (!si_SchedulingInfo)
@@ -751,13 +750,9 @@ static int8_t nr_rrc_ue_decode_NR_BCCH_DL_SCH_Message(NR_UE_RRC_INST_t *rrc,
     switch (bcch_message->message.choice.c1->present) {
       case NR_BCCH_DL_SCH_MessageType__c1_PR_systemInformationBlockType1:
         LOG_D(NR_RRC, "[UE %ld] Decoding SIB1\n", rrc->ue_id);
-        asn1cFreeStruc(asn_DEF_NR_SIB1, SI_info->sib1);
-        NR_SIB1_t *sib1 = bcch_message->message.choice.c1->choice.systemInformationBlockType1;
-        if(!SI_info->sib1)
-          SI_info->sib1 = calloc(1, sizeof(*SI_info->sib1));
-        memcpy(SI_info->sib1, sib1, sizeof(NR_SIB1_t));
-        // if(g_log->log_component[NR_RRC].level >= OAILOG_DEBUG)
-        xer_fprint(stdout, &asn_DEF_NR_SIB1, (const void *)SI_info->sib1);
+        UPDATE_IE(SI_info->sib1, bcch_message->message.choice.c1->choice.systemInformationBlockType1, NR_SIB1_t);
+        if(g_log->log_component[NR_RRC].level >= OAILOG_DEBUG)
+          xer_fprint(stdout, &asn_DEF_NR_SIB1, (const void *) SI_info->sib1);
         LOG_A(NR_RRC, "SIB1 decoded\n");
         nr_timer_start(&SI_info->sib1_timer);
         if (rrc->nrRrcState == RRC_STATE_IDLE_NR) {
@@ -766,10 +761,10 @@ static int8_t nr_rrc_ue_decode_NR_BCCH_DL_SCH_Message(NR_UE_RRC_INST_t *rrc,
           nr_rrc_ue_prepare_RRCSetupRequest(rrc);
         }
         // configure default SI
-        nr_rrc_configure_default_SI(SI_info, sib1);
+        nr_rrc_configure_default_SI(SI_info, SI_info->sib1);
         // configure timers and constant
-        nr_rrc_set_sib1_timers_and_constants(&rrc->timers_and_constants, sib1);
-        nr_rrc_mac_config_req_sib1(rrc->ue_id, 0, sib1->si_SchedulingInfo, sib1->servingCellConfigCommon);
+        nr_rrc_set_sib1_timers_and_constants(&rrc->timers_and_constants, SI_info->sib1);
+        nr_rrc_mac_config_req_sib1(rrc->ue_id, 0, SI_info->sib1->si_SchedulingInfo, SI_info->sib1->servingCellConfigCommon);
         break;
       case NR_BCCH_DL_SCH_MessageType__c1_PR_systemInformation:
         LOG_I(NR_RRC, "[UE %ld] Decoding SI\n", rrc->ue_id);
@@ -1663,7 +1658,7 @@ static int nr_rrc_ue_decode_dcch(NR_UE_RRC_INST_t *rrc,
             NR_DedicatedNAS_Message_t *dedicatedNAS_Message =
                 dlInformationTransfer->criticalExtensions.choice.dlInformationTransfer->dedicatedNAS_Message;
 
-            MessageDef *ittiMsg = itti_alloc_new_message(TASK_RRC_NRUE, 0, NAS_DOWNLINK_DATA_IND);
+            MessageDef *ittiMsg = itti_alloc_new_message(TASK_RRC_NRUE, rrc->ue_id, NAS_DOWNLINK_DATA_IND);
             NasDlDataInd *msg = &NAS_DOWNLINK_DATA_IND(ittiMsg);
             msg->UEid = rrc->ue_id;
             msg->nasMsg.length = dedicatedNAS_Message->size;
@@ -1700,7 +1695,7 @@ static int nr_rrc_ue_decode_dcch(NR_UE_RRC_INST_t *rrc,
 void nr_rrc_handle_ra_indication(NR_UE_RRC_INST_t *rrc, bool ra_succeeded)
 {
   NR_UE_Timers_Constants_t *timers = &rrc->timers_and_constants;
-  if (ra_succeeded && is_nr_timer_active(timers->T304)) {
+  if (ra_succeeded && nr_timer_is_active(&timers->T304)) {
     // successful Random Access procedure triggered by reconfigurationWithSync
     nr_timer_stop(&timers->T304);
     // TODO handle the rest of procedures as described in 5.3.5.3 for when
@@ -1828,6 +1823,7 @@ void *rrc_nrue(void *notUsed)
     // error: the remote gNB is hardcoded here
     rb_id_t srb_id = rrc->Srb[2] == RB_ESTABLISHED ? 2 : 1;
     nr_pdcp_data_req_srb(rrc->ue_id, srb_id, 0, length, buffer, deliver_pdu_srb_rlc, NULL);
+    free(req->nasMsg.data);
     free(buffer);
     break;
   }
@@ -2135,7 +2131,7 @@ static void process_lte_nsa_msg(NR_UE_RRC_INST_t *rrc, nsa_msg_t *msg, int msg_l
       process_nsa_message(NR_UE_rrc_inst, nr_SecondaryCellGroupConfig_r15, nr_SecondaryCellGroup_buffer, nr_SecondaryCellGroup_size);
       process_nsa_message(NR_UE_rrc_inst, nr_RadioBearerConfigX_r15, nr_RadioBearer_buffer, nr_RadioBearer_size);
       LOG_I(NR_RRC, "Calling do_NR_RRCReconfigurationComplete. t_id %ld \n", t_id);
-      uint8_t buffer[RRC_BUF_SIZE];
+      uint8_t buffer[NR_RRC_BUF_SIZE];
       size_t size = do_NR_RRCReconfigurationComplete_for_nsa(buffer, sizeof(buffer), t_id);
       nsa_sendmsg_to_lte_ue(buffer, size, NR_RRC_CONFIG_COMPLETE_REQ);
       break;
@@ -2143,7 +2139,7 @@ static void process_lte_nsa_msg(NR_UE_RRC_INST_t *rrc, nsa_msg_t *msg, int msg_l
 
     case OAI_TUN_IFACE_NSA: {
       LOG_I(NR_RRC, "We got an OAI_TUN_IFACE_NSA!!\n");
-      char cmd_line[RRC_BUF_SIZE];
+      char cmd_line[NR_RRC_BUF_SIZE];
       memcpy(cmd_line, msg_buffer, sizeof(cmd_line));
       LOG_D(NR_RRC, "Command line: %s\n", cmd_line);
       if (background_system(cmd_line) != 0)
@@ -2223,14 +2219,14 @@ void nr_rrc_going_to_IDLE(NR_UE_RRC_INST_t *rrc,
     }
   }
   if (!waitTime) {
-    if (is_nr_timer_active(tac->T302)) {
+    if (nr_timer_is_active(&tac->T302)) {
       nr_timer_stop(&tac->T302);
       // TODO barring alleviation as in 5.3.14.4
       // not implemented
       LOG_E(NR_RRC,"Go to IDLE. Barring alleviation not implemented\n");
     }
   }
-  if (is_nr_timer_active(tac->T390)) {
+  if (nr_timer_is_active(&tac->T390)) {
     nr_timer_stop(&tac->T390);
     // TODO barring alleviation as in 5.3.14.4
     // not implemented
@@ -2315,7 +2311,7 @@ void nr_rrc_going_to_IDLE(NR_UE_RRC_INST_t *rrc,
   rrc->rnti = 0;
 
   // Indicate the release of the RRC connection to upper layers
-  MessageDef *msg_p = itti_alloc_new_message(TASK_RRC_NRUE, 0, NR_NAS_CONN_RELEASE_IND);
+  MessageDef *msg_p = itti_alloc_new_message(TASK_RRC_NRUE, rrc->ue_id, NR_NAS_CONN_RELEASE_IND);
   NR_NAS_CONN_RELEASE_IND(msg_p).cause = release_cause;
   itti_send_msg_to_task(TASK_NAS_NRUE, rrc->ue_id, msg_p);
 }

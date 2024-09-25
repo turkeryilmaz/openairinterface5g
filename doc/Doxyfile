@@ -38,7 +38,7 @@ PROJECT_NAME           = OpenAirInterface
 # could be handy for archiving the generated documentation or if some version
 # control system is used.
 
-PROJECT_NUMBER         =
+PROJECT_NUMBER         = @GIT_COMMIT_HASH@ (@GIT_BRANCH@)
 
 # Using the PROJECT_BRIEF tag one can provide an optional one line description
 # for a project that appears at the top of each page and should give viewer a
@@ -2256,7 +2256,6 @@ INPUT                  = \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair1/PHY/NR_UE_TRANSPORT/pucch_nr.h \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair1/PHY/NR_UE_TRANSPORT/sss_nr.c \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair1/PHY/NR_UE_TRANSPORT/dci_nr.c \
-@CMAKE_CURRENT_SOURCE_DIR@/../openair1/PHY/NR_UE_TRANSPORT/nr_dlsch_llr_computation.c \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair1/PHY/NR_UE_TRANSPORT/nr_prach.c \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair1/PHY/NR_UE_TRANSPORT/nr_transport_proto_ue.h \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair1/PHY/NR_UE_TRANSPORT/nr_ue_rf_helpers.c \

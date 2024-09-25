@@ -574,12 +574,12 @@ long rrc_get_max_nr_csrs(const int max_rbs, const long b_SRS) {
   return c_srs;
 }
 
-int get_first_ul_slot_new(const struct NR_TDD_UL_DL_ConfigCommon *tdd, bool pattern)
+int get_first_ul_slot_new(const struct NR_TDD_UL_DL_ConfigCommon *tdd, bool is_pattern2)
 {
   const NR_TDD_UL_DL_Pattern_t *p1 = &tdd->pattern1;
   const NR_TDD_UL_DL_Pattern_t *p2 = tdd->pattern2;
 
-  if (pattern == false) {
+  if (is_pattern2 == false) {
     return (p1->nrofDownlinkSlots + (p1->nrofDownlinkSymbols != 0 && p1->nrofUplinkSymbols == 0));
   } else {
     return (p1->nrofDownlinkSlots + (p1->nrofDownlinkSymbols != 0 || p1->nrofUplinkSlots != 0) + p1->nrofUplinkSlots
@@ -597,7 +597,7 @@ static struct NR_SRS_Resource__resourceType__periodic *configure_periodic_srs(co
   const int n_slots_period = tdd_config.tdd_numb_slots_period;
   int first_ul_slot_period = 0;
   int offset = 0;
-  if (tdd_config.is_tdd == true) {
+  if (tdd_config.is_tdd) {
     int ULslot_pattern1 = scc->tdd_UL_DL_ConfigurationCommon->pattern1.nrofUplinkSlots
                           + (scc->tdd_UL_DL_ConfigurationCommon->pattern1.nrofUplinkSlots > 0);
     if (ULslot_pattern1 && ((uid % n_ul_slots_period) <= ULslot_pattern1)) {
@@ -908,33 +908,19 @@ static int get_tdd_period(NR_TDD_UL_DL_ConfigCommon_t *tdd, tdd_bitmap_t *tdd_bm
   NR_TDD_UL_DL_Pattern_t pattern = tdd->pattern1;
 
   if (pattern.ext1 == NULL) {
-    LOG_D(NR_MAC, "Setting TDD configuration period to dl_UL_TransmissionPeriodicity %ld\n", pattern.dl_UL_TransmissionPeriodicity);
     pattern1_ms = tdd_ms_period_pattern[pattern.dl_UL_TransmissionPeriodicity];
   } else {
-    AssertFatal(pattern.ext1->dl_UL_TransmissionPeriodicity_v1530 != NULL,
-                "In %s: scc->tdd_UL_DL_ConfigurationCommon->pattern1.ext1->dl_UL_TransmissionPeriodicity_v1530 is null\n",
-                __FUNCTION__);
-    LOG_D(NR_MAC,
-          "Setting TDD configuration period to dl_UL_TransmissionPeriodicity_v1530 %ld\n",
-          *pattern.ext1->dl_UL_TransmissionPeriodicity_v1530);
+    DevAssert(pattern.ext1->dl_UL_TransmissionPeriodicity_v1530 != NULL);
     pattern1_ms = tdd_ms_period_ext[*pattern.ext1->dl_UL_TransmissionPeriodicity_v1530];
   }
 
   if (tdd->pattern2) {
     pattern = *tdd->pattern2;
     if (pattern.ext1 == NULL) {
-      LOG_D(NR_MAC,
-            "Setting TDD Pattern2 configuration period to dl_UL_TransmissionPeriodicity %ld\n",
-            pattern.dl_UL_TransmissionPeriodicity);
       pattern2_ms = tdd_ms_period_pattern[pattern.dl_UL_TransmissionPeriodicity];
 
     } else {
-      AssertFatal(pattern.ext1->dl_UL_TransmissionPeriodicity_v1530 != NULL,
-                  "In %s: scc->tdd_UL_DL_ConfigurationCommon->pattern1.ext1->dl_UL_TransmissionPeriodicity_v1530 is null\n",
-                  __FUNCTION__);
-      LOG_D(NR_MAC,
-            "Setting TDD Pattern2 configuration period to dl_UL_TransmissionPeriodicity_v1530 %p\n",
-            pattern.ext1->dl_UL_TransmissionPeriodicity_v1530);
+      DevAssert(pattern.ext1->dl_UL_TransmissionPeriodicity_v1530 != NULL);
       pattern2_ms = tdd_ms_period_ext[*pattern.ext1->dl_UL_TransmissionPeriodicity_v1530];
     }
   }
@@ -1620,7 +1606,7 @@ static void set_csi_meas_periodicity(const NR_ServingCellConfigCommon_t *scc, NR
   const int idx = (uid << 1) + is_rsrp;
   int offset = 0;
 
-  if (tdd == true) {
+  if (tdd) {
     int ULslot_pattern1 = scc->tdd_UL_DL_ConfigurationCommon->pattern1.nrofUplinkSlots
                           + (scc->tdd_UL_DL_ConfigurationCommon->pattern1.nrofUplinkSlots > 0);
     if (ULslot_pattern1 && ((idx % n_ul_slots_period) <= ULslot_pattern1)) {
@@ -1637,8 +1623,7 @@ static void set_csi_meas_periodicity(const NR_ServingCellConfigCommon_t *scc, NR
   }
 
   LOG_I(NR_MAC,
-        "%s: idx=%d, offset=%d, ideal_period=%d, first_ul_slot_period %d",
-        __FUNCTION__,
+        "idx=%d, offset=%d, ideal_period=%d, first_ul_slot_period %d",
         idx,
         offset,
         ideal_period,
@@ -2931,6 +2916,8 @@ static NR_SpCellConfig_t *get_initial_SpCellConfig(int uid,
       && servingcellconfigdedicated->downlinkBWP_ToAddModList->list.count > 0) {
     n_dl_bwp = servingcellconfigdedicated->downlinkBWP_ToAddModList->list.count;
   }
+  int default_dl_bwp = 0;
+  int first_active_dl_bwp = 0;
   if (n_dl_bwp > 0) {
     SpCellConfig->spCellConfigDedicated->downlinkBWP_ToAddModList =
         calloc(1, sizeof(*SpCellConfig->spCellConfigDedicated->downlinkBWP_ToAddModList));
@@ -2939,15 +2926,13 @@ static NR_SpCellConfig_t *get_initial_SpCellConfig(int uid,
       config_downlinkBWP(bwp, scc, servingcellconfigdedicated, NULL, 0, false, bwp_loop, true);
       asn1cSeqAdd(&SpCellConfig->spCellConfigDedicated->downlinkBWP_ToAddModList->list, bwp);
     }
-    SpCellConfig->spCellConfigDedicated->firstActiveDownlinkBWP_Id =
-        calloc(1, sizeof(*SpCellConfig->spCellConfigDedicated->firstActiveDownlinkBWP_Id));
-    *SpCellConfig->spCellConfigDedicated->firstActiveDownlinkBWP_Id =
-        servingcellconfigdedicated->firstActiveDownlinkBWP_Id ? *servingcellconfigdedicated->firstActiveDownlinkBWP_Id : 1;
-    SpCellConfig->spCellConfigDedicated->defaultDownlinkBWP_Id =
-        calloc(1, sizeof(*SpCellConfig->spCellConfigDedicated->defaultDownlinkBWP_Id));
-    *SpCellConfig->spCellConfigDedicated->defaultDownlinkBWP_Id =
-        servingcellconfigdedicated->defaultDownlinkBWP_Id ? *servingcellconfigdedicated->defaultDownlinkBWP_Id : 1;
+    const NR_BWP_Id_t *firstActiveDownlinkBWP_Id = servingcellconfigdedicated->firstActiveDownlinkBWP_Id;
+    first_active_dl_bwp = firstActiveDownlinkBWP_Id ? *firstActiveDownlinkBWP_Id : 1;
+    const NR_BWP_Id_t	*defaultDownlinkBWP_Id = servingcellconfigdedicated->defaultDownlinkBWP_Id;
+    default_dl_bwp = defaultDownlinkBWP_Id ? *defaultDownlinkBWP_Id : 1;
   }
+  asn1cCallocOne(SpCellConfig->spCellConfigDedicated->firstActiveDownlinkBWP_Id, first_active_dl_bwp);
+  asn1cCallocOne(SpCellConfig->spCellConfigDedicated->defaultDownlinkBWP_Id, default_dl_bwp);
 
   // Uplink BWPs
   int n_ul_bwp = 0;
@@ -2956,6 +2941,7 @@ static NR_SpCellConfig_t *get_initial_SpCellConfig(int uid,
       && servingcellconfigdedicated->uplinkConfig->uplinkBWP_ToAddModList->list.count > 0) {
     n_ul_bwp = servingcellconfigdedicated->uplinkConfig->uplinkBWP_ToAddModList->list.count;
   }
+  int first_active_ul_bwp = 0;
   if (n_ul_bwp > 0) {
     uplinkConfig->uplinkBWP_ToAddModList = calloc(1, sizeof(*uplinkConfig->uplinkBWP_ToAddModList));
     for (int bwp_loop = 0; bwp_loop < n_ul_bwp; bwp_loop++) {
@@ -2963,11 +2949,10 @@ static NR_SpCellConfig_t *get_initial_SpCellConfig(int uid,
       config_uplinkBWP(ubwp, bwp_loop, true, uid, configuration, servingcellconfigdedicated, scc, NULL);
       asn1cSeqAdd(&uplinkConfig->uplinkBWP_ToAddModList->list, ubwp);
     }
-    uplinkConfig->firstActiveUplinkBWP_Id = calloc(1, sizeof(*uplinkConfig->firstActiveUplinkBWP_Id));
-    *uplinkConfig->firstActiveUplinkBWP_Id = servingcellconfigdedicated->uplinkConfig->firstActiveUplinkBWP_Id
-                                                 ? *servingcellconfigdedicated->uplinkConfig->firstActiveUplinkBWP_Id
-                                                 : 1;
+    const NR_BWP_Id_t *firstActiveUplinkBWP_Id = servingcellconfigdedicated->uplinkConfig->firstActiveUplinkBWP_Id;
+    first_active_ul_bwp = firstActiveUplinkBWP_Id ? *firstActiveUplinkBWP_Id : 1;
   }
+  asn1cCallocOne(uplinkConfig->firstActiveUplinkBWP_Id, first_active_ul_bwp);
 
   SpCellConfig->spCellConfigDedicated->csi_MeasConfig = calloc(1, sizeof(*SpCellConfig->spCellConfigDedicated->csi_MeasConfig));
   SpCellConfig->spCellConfigDedicated->csi_MeasConfig->present = NR_SetupRelease_CSI_MeasConfig_PR_setup;

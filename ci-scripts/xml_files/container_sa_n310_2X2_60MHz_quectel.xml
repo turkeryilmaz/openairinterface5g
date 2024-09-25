@@ -29,6 +29,7 @@
     100000
     111111
     010010
+    800813
     030101
     010001
     050001
@@ -74,13 +75,18 @@
     <desc>Detach UE</desc>
     <id>up2</id>
   </testCase>
-
+  <testCase id="800813">
+      <class>Create_Workspace</class>
+      <desc>Creating new Workspace</desc>
+      <eNB_instance>0</eNB_instance>
+      <eNB_serverId>0</eNB_serverId>
+  </testCase>
   <testCase id="030101">
-    <class>Deploy_Object</class>
-    <desc>Deploy gNB (TDD/Band77/60MHz/N310) in a container</desc>
-    <yaml_path>ci-scripts/yaml_files/5g_sa_n310_2x2_60MHz</yaml_path>
-    <eNB_instance>0</eNB_instance>
-    <eNB_serverId>0</eNB_serverId>
+      <class>Deploy_Object</class>
+      <desc>Deploy gNB (TDD/Band77/60MHz/N310) in a container</desc>
+      <yaml_path>ci-scripts/yaml_files/5g_sa_n310_2x2_60MHz</yaml_path>
+      <eNB_instance>0</eNB_instance>
+      <eNB_serverId>0</eNB_serverId>
   </testCase>
 
   <testCase id="000001">
@@ -116,8 +122,8 @@
 
   <testCase id="071001">
     <class>Iperf</class>
-    <desc>iperf (UL/130Mbps/UDP)(30 sec)(single-ue profile)</desc>
-    <iperf_args>-u -b 130M -t 30</iperf_args>
+    <desc>iperf (UL/180Mbps/UDP)(30 sec)(single-ue profile)</desc>
+    <iperf_args>-u -b 180M -t 30</iperf_args>
     <svr_id>matix-cn5g</svr_id>
     <id>up2</id>
     <iperf_packetloss_threshold>10</iperf_packetloss_threshold>
