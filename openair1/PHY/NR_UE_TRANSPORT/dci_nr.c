@@ -657,6 +657,7 @@ void nr_dci_decoding_procedure(PHY_VARS_NR_UE *ue,
                                fapi_nr_dl_config_dci_dl_pdu_rel15_t *rel15)
 {
   uint64_t a = rdtsc_oai();
+  int nb=0;
   int e_rx_cand_idx = 0;
   *dci_ind = (fapi_nr_dci_indication_t){.SFN = proc->frame_rx, .slot = proc->nr_slot_rx};
 
@@ -700,7 +701,7 @@ void nr_dci_decoding_procedure(PHY_VARS_NR_UE *ue,
                             tmp_e);
 
       const uint32_t crc = polar_decoder_int16(tmp_e, dci_estimation, 1, NR_POLAR_DCI_MESSAGE_TYPE, dci_length, L);
-
+      nb++;
       rnti_t n_rnti = rel15->rnti;
       if (crc == n_rnti) {
         LOG_D(NR_PHY_DCI,
