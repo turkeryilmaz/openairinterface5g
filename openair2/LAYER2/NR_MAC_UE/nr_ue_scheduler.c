@@ -156,8 +156,8 @@ void handle_time_alignment_timer_expired(NR_UE_MAC_INST_t *mac)
 {
   // flush all HARQ buffers for all Serving Cells
   for (int k = 0; k < NR_MAX_HARQ_PROCESSES; k++) {
-    memset(&mac->dl_harq_info[k], 0, sizeof(NR_UE_HARQ_STATUS_t));
-    memset(&mac->ul_harq_info[k], 0, sizeof(NR_UL_HARQ_INFO_t));
+    memset(&mac->dl_harq_info[k], 0, sizeof(*mac->dl_harq_info));
+    memset(&mac->ul_harq_info[k], 0, sizeof(*mac->ul_harq_info));
     mac->dl_harq_info[k].last_ndi = -1; // initialize to invalid value
     mac->ul_harq_info[k].last_ndi = -1; // initialize to invalid value
   }
@@ -694,6 +694,7 @@ int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
                                                        0,
                                                        f_alloc) < 0) {
       LOG_E(NR_MAC, "can't nr_ue_process_dci_freq_dom_resource_assignment()\n");
+      mac->stats.ul.bad_dci++;
       return -1;
     }
 
@@ -703,7 +704,6 @@ int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
     // Time domain allocation
     pusch_config_pdu->start_symbol_index = tda_info->startSymbolIndex;
     pusch_config_pdu->nr_of_symbols = tda_info->nrOfSymbols;
-
     l_prime_mask = get_l_prime(tda_info->nrOfSymbols,
                                tda_info->mapping_type,
                                add_pos,
@@ -807,11 +807,13 @@ int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
       ul_ports_config(mac, &dmrslength, pusch_config_pdu, dci, dci_format);
     } else {
       LOG_E(NR_MAC, "UL grant from DCI format %d is not handled...\n", dci_format);
+      mac->stats.ul.bad_dci++;
       return -1;
     }
 
     if (pusch_config_pdu->nrOfLayers < 1) {
       LOG_E(NR_MAC, "Invalid UL number of layers %d from DCI\n", pusch_config_pdu->nrOfLayers);
+      mac->stats.ul.bad_dci++;
       return -1;
     }
 
@@ -882,6 +884,7 @@ int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
                                                        0,
                                                        dci->frequency_domain_assignment) < 0) {
       LOG_E(NR_MAC, "can't nr_ue_process_dci_freq_dom_resource_assignment()\n");
+      mac->stats.ul.bad_dci++;
       return -1;
     }
 
@@ -900,18 +903,20 @@ int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
     pusch_config_pdu->mcs_table = get_pusch_mcs_table(mcs_table_config, tp_enabled, dci_format, rnti_type, ss_type, false);
 
     /* NDI */
-    NR_UL_HARQ_INFO_t *harq = &mac->ul_harq_info[dci->harq_pid.val];
+    const int pid = dci->harq_pid.val;
+    NR_UE_UL_HARQ_INFO_t *harq = &mac->ul_harq_info[pid];
     pusch_config_pdu->pusch_data.new_data_indicator = false;
     if (dci->ndi != harq->last_ndi) {
       pusch_config_pdu->pusch_data.new_data_indicator = true;
       // if new data reset harq structure
       memset(harq, 0, sizeof(*harq));
-    }
+    } else
+      harq->round++;
     harq->last_ndi = dci->ndi;
     /* RV */
     pusch_config_pdu->pusch_data.rv_index = dci->rv;
     /* HARQ_PROCESS_NUMBER */
-    pusch_config_pdu->pusch_data.harq_process_id = dci->harq_pid.val;
+    pusch_config_pdu->pusch_data.harq_process_id = pid;
 
     if (NR_DMRS_ulconfig != NULL)
       add_pos = (NR_DMRS_ulconfig->dmrs_AdditionalPosition == NULL) ? 2 : *NR_DMRS_ulconfig->dmrs_AdditionalPosition;
@@ -984,6 +989,7 @@ int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
   pusch_config_pdu->qam_mod_order = nr_get_Qm_ul(pusch_config_pdu->mcs_index, pusch_config_pdu->mcs_table);
   if (pusch_config_pdu->qam_mod_order == 0) {
     LOG_W(NR_MAC, "Invalid Mod order, likely due to unexpected UL DCI. Ignoring DCI! \n");
+    mac->stats.ul.bad_dci++;
     return -1;
   }
 
@@ -991,15 +997,16 @@ int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
   int number_of_symbols = pusch_config_pdu->nr_of_symbols;
   int number_dmrs_symbols = 0;
   for (int i = start_symbol; i < start_symbol + number_of_symbols; i++) {
-    if((pusch_config_pdu->ul_dmrs_symb_pos >> i) & 0x01)
+    if ((pusch_config_pdu->ul_dmrs_symb_pos >> i) & 0x01)
       number_dmrs_symbols += 1;
   }
 
-  int nb_dmrs_re_per_rb = ((pusch_config_pdu->dmrs_config_type == pusch_dmrs_type1) ? 6 : 4) * pusch_config_pdu->num_dmrs_cdm_grps_no_data;
+  int nb_dmrs_re_per_rb =
+      ((pusch_config_pdu->dmrs_config_type == pusch_dmrs_type1) ? 6 : 4) * pusch_config_pdu->num_dmrs_cdm_grps_no_data;
 
   // Compute TBS
   uint16_t R = nr_get_code_rate_ul(pusch_config_pdu->mcs_index, pusch_config_pdu->mcs_table);
-  int pid = pusch_config_pdu->pusch_data.harq_process_id;
+  const int pid = pusch_config_pdu->pusch_data.harq_process_id;
   if (R > 0) {
     pusch_config_pdu->target_code_rate = R;
     pusch_config_pdu->pusch_data.tb_size = nr_compute_tbs(pusch_config_pdu->qam_mod_order,
@@ -1012,8 +1019,7 @@ int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
                                                           pusch_config_pdu->nrOfLayers) >> 3;
     mac->ul_harq_info[pid].TBS = pusch_config_pdu->pusch_data.tb_size;
     mac->ul_harq_info[pid].R = R;
-  }
-  else {
+  } else {
     pusch_config_pdu->target_code_rate = mac->ul_harq_info[pid].R;
     pusch_config_pdu->pusch_data.tb_size = mac->ul_harq_info[pid].TBS;
   }
@@ -1042,7 +1048,7 @@ int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
                                                      pusch_config_pdu->rb_start,
                                                      pusch_config_pdu->nr_of_symbols,
                                                      nb_dmrs_re_per_rb * number_dmrs_symbols,
-                                                     0, //TODO: count PTRS per RB
+                                                     0, // TODO: count PTRS per RB
                                                      pusch_config_pdu->qam_mod_order,
                                                      pusch_config_pdu->target_code_rate,
                                                      pusch_config_pdu->pusch_uci.beta_offset_csi1,
@@ -1053,12 +1059,13 @@ int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
 
   pusch_config_pdu->ldpcBaseGraph = get_BG(pusch_config_pdu->pusch_data.tb_size << 3, pusch_config_pdu->target_code_rate);
 
-  //The MAC entity shall restart retxBSR-Timer upon reception of a grant for transmission of new data on any UL-SCH
+  // The MAC entity shall restart retxBSR-Timer upon reception of a grant for transmission of new data on any UL-SCH
   if (pusch_config_pdu->pusch_data.new_data_indicator && dci && dci->ulsch_indicator)
     nr_timer_start(&mac->scheduling_info.retxBSR_Timer);
 
   if (pusch_config_pdu->pusch_data.tb_size == 0) {
     LOG_E(MAC, "Invalid TBS = 0. Probably caused by missed detection of DCI\n");
+    mac->stats.ul.bad_dci++;
     return -1;
   }
 
@@ -1071,6 +1078,14 @@ int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
       nr_timer_start(&mac->scheduling_info.phr_info.periodicPHR_Timer);
     }
   }
+  if (mac->ul_harq_info[pid].round < sizeofArray(mac->stats.ul.rounds))
+    mac->stats.ul.rounds[mac->ul_harq_info[pid].round]++;
+  int bits = pusch_config_pdu->pusch_data.tb_size;
+  mac->stats.ul.total_bits += bits;
+  mac->stats.ul.target_code_rate += pusch_config_pdu->target_code_rate * bits;
+  mac->stats.ul.total_symbols += bits / pusch_config_pdu->qam_mod_order;
+  mac->stats.ul.rb_size += pusch_config_pdu->rb_size;
+  mac->stats.ul.nr_of_symbols += pusch_config_pdu->nr_of_symbols;
 
   return 0;
 }
@@ -2115,9 +2130,9 @@ static void map_ssb_to_ro(NR_UE_MAC_INST_t *mac)
                         tx_ssb->nb_mapped_ro);
                   // If all the required SSBs are mapped to this RO, exit the loop of SSBs
                   if (ro_p->nb_mapped_ssb == ssb_rach_ratio) {
-                      idx++;
-                      break;
-                    }
+                    idx++;
+                    break;
+                  }
                 }
                 done = MAX_NB_SSB == idx;
               }
@@ -2335,27 +2350,27 @@ static bool schedule_uci_on_pusch(NR_UE_MAC_INST_t *mac, frame_t frame_tx, int s
       int nr_of_symbols = 0;
       int start_symbol_index = 0;
       switch(pucchres->format.present) {
-        case NR_PUCCH_Resource__format_PR_format0 :
+        case NR_PUCCH_Resource__format_PR_format0:
           nr_of_symbols = pucchres->format.choice.format0->nrofSymbols;
           start_symbol_index = pucchres->format.choice.format0->startingSymbolIndex;
           break;
-        case NR_PUCCH_Resource__format_PR_format1 :
+        case NR_PUCCH_Resource__format_PR_format1:
           nr_of_symbols = pucchres->format.choice.format1->nrofSymbols;
           start_symbol_index = pucchres->format.choice.format1->startingSymbolIndex;
           break;
-        case NR_PUCCH_Resource__format_PR_format2 :
+        case NR_PUCCH_Resource__format_PR_format2:
           nr_of_symbols = pucchres->format.choice.format2->nrofSymbols;
           start_symbol_index = pucchres->format.choice.format2->startingSymbolIndex;
           break;
-        case NR_PUCCH_Resource__format_PR_format3 :
+        case NR_PUCCH_Resource__format_PR_format3:
           nr_of_symbols = pucchres->format.choice.format3->nrofSymbols;
           start_symbol_index = pucchres->format.choice.format3->startingSymbolIndex;
           break;
-        case NR_PUCCH_Resource__format_PR_format4 :
+        case NR_PUCCH_Resource__format_PR_format4:
           nr_of_symbols = pucchres->format.choice.format4->nrofSymbols;
           start_symbol_index = pucchres->format.choice.format4->startingSymbolIndex;
           break;
-        default :
+        default:
           AssertFatal(false, "Undefined PUCCH format \n");
       }
       int final_symbol = nr_of_symbols + start_symbol_index;
