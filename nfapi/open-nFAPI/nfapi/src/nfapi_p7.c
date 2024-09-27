@@ -2571,7 +2571,7 @@ static uint8_t pack_nr_srs_report_tlv(nfapi_srs_report_tlv_t *report_tlv, uint8_
     return 0;
   }
 
-  for(int i = 0; i < report_tlv->length; i++) {
+  for (int i = 0; i < (report_tlv->length + 3) / 4; i++) {
     if (!push32(report_tlv->value[i], ppWritePackedMsg, end)) {
       return 0;
     }
@@ -4539,7 +4539,7 @@ static uint8_t unpack_nr_srs_report_tlv(nfapi_srs_report_tlv_t *report_tlv, uint
     return 0;
   }
 
-  for(int i = 0; i < report_tlv->length; i++) {
+  for (int i = 0; i < (report_tlv->length + 3) / 4; i++) {
     if (!pull32(ppReadPackedMsg, &report_tlv->value[i], end)) {
       return 0;
     }
