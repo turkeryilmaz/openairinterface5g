@@ -332,6 +332,7 @@ int main(int argc, char **argv)
   if ((uniqCfg = load_configmodule(argc, argv, CONFIG_ENABLECMDLINEONLY)) == 0) {
     exit_fun("[NR_DLSIM] Error, configuration module init failed\n");
   }
+  int tx_amp=30;
 
   randominit(0);
 
@@ -339,7 +340,7 @@ int main(int argc, char **argv)
 
   FILE *scg_fd=NULL;
 
-  while ((c = getopt(argc, argv, "--:O:f:hA:p:f:g:i:n:s:S:t:v:x:y:z:o:M:N:F:GR:d:PI:L:a:b:e:m:w:T:U:q:X:Y:Z:c")) != -1) {
+  while ((c = getopt(argc, argv, "--:O:f:hA:p:f:g:i:n:s:S:t:v:x:y:z:o:M:N:F:GR:d:PI:L:a:b:e:m:w:T:U:q:X:Y:Z:cQ:")) != -1) {
 
     /* ignore long options starting with '--', option '-O' and their arguments that are handled by configmodule */
     /* with this opstring getopt returns 1 for non-option arguments, refer to 'man 3 getopt' */
@@ -536,7 +537,9 @@ int main(int argc, char **argv)
     case 'o':
       delay = atoi(optarg);
       break;
-
+    case 'Q':
+      tx_amp = atoi(optarg);
+      break;
     default:
     case 'h':
       printf("%s -h(elp) -p(extended_prefix) -N cell_id -f output_filename -F input_filename -g channel_model -n n_frames -s snr0 -S snr1 -x transmission_mode -y TXant -z RXant -i Intefrence0 -j Interference1 -A interpolation_file -C(alibration offset dB) -N CellId\n",
@@ -621,6 +624,7 @@ int main(int argc, char **argv)
   gNB->ofdm_offset_divisor = UINT_MAX;
   gNB->ldpc_offload_flag = ldpc_offload_flag;
   gNB->phase_comp = true; // we need to perform phase compensation, otherwise everything will fail
+  gNB->TX_AMP = (int16_t)(32767.0 / pow(10.0, .05 * (double)(tx_amp)));
   frame_parms = &gNB->frame_parms; //to be initialized I suppose (maybe not necessary for PBCH)
   frame_parms->nb_antennas_tx = n_tx;
   frame_parms->nb_antennas_rx = n_rx;
