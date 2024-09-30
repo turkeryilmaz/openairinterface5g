@@ -962,16 +962,10 @@ void prepare_msg4_feedback(NR_UE_MAC_INST_t *mac, int pid, int ack_nack)
                          .n_harq = 1};
   current_harq->active = false;
   current_harq->ack_received = false;
-  if (get_softmodem_params()->emulate_l1) {
-    mac->nr_ue_emul_l1.harq[pid].active = true;
-    mac->nr_ue_emul_l1.harq[pid].active_dl_harq_sfn = sched_frame;
-    mac->nr_ue_emul_l1.harq[pid].active_dl_harq_slot = sched_slot;
-  }
-  fapi_nr_ul_config_request_pdu_t *pdu = lockGet_ul_config(mac, sched_frame, sched_slot, FAPI_NR_UL_CONFIG_TYPE_PUCCH);
-  if (!pdu)
-    return;
-  int ret = nr_ue_configure_pucch(mac, sched_slot, sched_frame, mac->ra.t_crnti, &pucch, &pdu->pucch_config_pdu);
-  if (ret != 0)
-    remove_ul_config_last_item(pdu);
-  release_ul_config(pdu, false);
+
+  RA_config_t *ra = &mac->ra;
+  ra->ra_pucch = calloc(1, sizeof(*ra->ra_pucch));
+  ra->ra_pucch->pucch_sched = pucch;
+  ra->ra_pucch->sched_frame = sched_frame;
+  ra->ra_pucch->sched_slot = sched_slot;
 }
