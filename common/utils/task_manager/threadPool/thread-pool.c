@@ -27,7 +27,7 @@
 #include <fcntl.h>
 #include <string.h>
 #include <ctype.h>
-#include <threadPool/thread-pool.h>
+#include "thread-pool.h"
 
 
 static inline  notifiedFIFO_elt_t *pullNotifiedFifoRemember( notifiedFIFO_t *nf, struct one_thread *thr) {

@@ -39,8 +39,8 @@
 #include "time_meas.h"
 #include "defs_common.h"
 #include "nfapi_nr_interface_scf.h"
-#include <common/utils/threadPool/thread-pool.h>
 #include <executables/rt_profiling.h>
+#include "common/utils/task_manager/task_manager_gen.h"
 
 #define MAX_BANDS_PER_RRU 4
 #define MAX_RRU_CONFIG_SIZE 1024
@@ -175,7 +175,8 @@ typedef struct {
  struct RU_t_s *ru;
  int startSymbol;
  int endSymbol;
- int slot; 
+ int slot;
+ task_ans_t *ans;
 } feprx_cmd_t;
 
 typedef struct {
@@ -184,6 +185,7 @@ typedef struct {
  int slot; 
  int startSymbol;
  int numSymbols;
+ task_ans_t *ans;
 } feptx_cmd_t;
 
 typedef struct {
@@ -426,8 +428,7 @@ typedef enum {
 
 
 typedef struct RU_t_s {
-  /// ThreadPool for RU	
-  tpool_t *threadPool;
+  task_manager_t thread_pool;
   /// index of this ru
   uint32_t idx;
   /// pointer to first RU

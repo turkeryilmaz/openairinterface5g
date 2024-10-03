@@ -74,7 +74,7 @@ unsigned short config_frames[4] = {2,9,11,13};
 #include "common/utils/LOG/vcd_signal_dumper.h"
 #include "UTIL/OPT/opt.h"
 #include "enb_config.h"
-
+#include "common/utils/task_manager/task_manager_gen.h"
 
 #include "create_tasks.h"
 
@@ -539,16 +539,25 @@ int main ( int argc, char **argv )
   for (int x=0; x < RC.nb_L1_inst; x++)
     for (int CC_id=0; CC_id<RC.nb_L1_CC[x]; CC_id++) {
       L1_rxtx_proc_t *L1proc= &RC.eNB[x][CC_id]->proc.L1_proc;
-      L1_rxtx_proc_t *L1proctx= &RC.eNB[x][CC_id]->proc.L1_proc_tx;
-      L1proc->threadPool = (tpool_t *)malloc(sizeof(tpool_t));
+      L1_rxtx_proc_t *L1proctx = &RC.eNB[x][CC_id]->proc.L1_proc_tx;
       L1proc->respDecode=(notifiedFIFO_t*) malloc(sizeof(notifiedFIFO_t));
-      if ( strlen(get_softmodem_params()->threadPoolConfig) > 0 )
-       initTpool(get_softmodem_params()->threadPoolConfig, L1proc->threadPool, true);
-      else
-        initTpool("n", L1proc->threadPool, true);
+      if (strlen(get_softmodem_params()->threadPoolConfig) > 0) {
+        L1proc->thread_pool = calloc(1, sizeof(task_manager_t));
+        AssertFatal(L1proc->thread_pool != NULL, "Memory exhausted");
+
+        int core_id[128] = {0};
+        span_core_id_t out = {.cap = 128, .core_id = core_id};
+        parse_num_threads(get_softmodem_params()->threadPoolConfig, &out);
+        init_task_manager(L1proc->thread_pool, out.core_id, out.sz);
+      } else {
+        L1proc->thread_pool = calloc(1, sizeof(task_manager_t));
+        AssertFatal(L1proc->thread_pool != NULL, "Memory exhausted");
+        int lst_core_id = -1;
+        init_task_manager(L1proc->thread_pool, &lst_core_id, 1);
+      }
       initNotifiedFIFO(L1proc->respDecode);
-      L1proctx->threadPool = L1proc->threadPool;
-  }
+      L1proctx->thread_pool = L1proc->thread_pool;
+    }
 
   printf("wait_eNBs()\n");
   wait_eNBs();
