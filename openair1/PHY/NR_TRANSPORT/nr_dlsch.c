@@ -66,9 +66,9 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
 
   for (int dlsch_id=0; dlsch_id<msgTx->num_pdsch_slot; dlsch_id++) {
     NR_gNB_DLSCH_t *dlsch = msgTx->dlsch[dlsch_id];
-
     NR_DL_gNB_HARQ_t *harq = &dlsch->harq_process;
     nfapi_nr_dl_tti_pdsch_pdu_rel15_t *rel15 = &harq->pdsch_pdu.pdsch_pdu_rel15;
+    const int16_t amp_dmrs = rel15->numDmrsCdmGrpsNoData == 2 ? (int16_t)((double)amp * sqrt(2)) : amp;
     const int layerSz = frame_parms->N_RB_DL * NR_SYMBOLS_PER_SLOT * NR_NB_SC_PER_RB;
     const int dmrs_Type = rel15->dmrsConfigType;
     const int nb_re_dmrs = rel15->numDmrsCdmGrpsNoData * (rel15->dmrsConfigType == NFAPI_NR_DMRS_TYPE1 ? 6 : 4);
@@ -296,7 +296,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
             /* Map DMRS Symbol */
             if ((dmrs_symbol_map & (1 << l_symbol))
                 && (k == ((start_sc + get_dmrs_freq_idx(n, k_prime, delta, dmrs_Type)) % (frame_parms->ofdm_symbol_size)))) {
-              txdataF_precoding[layer][l_symbol][k] = c16mulRealShift(mod_dmrs[dmrs_idx], Wt[l_prime] * Wf[k_prime] * amp, 15);
+              txdataF_precoding[layer][l_symbol][k] = c16mulRealShift(mod_dmrs[dmrs_idx], Wt[l_prime] * Wf[k_prime] * amp_dmrs, 15);
 #ifdef DEBUG_DLSCH_MAPPING
               printf("dmrs_idx %u\t l %d \t k %d \t k_prime %d \t n %d \t txdataF: %d %d\n",
                      dmrs_idx,

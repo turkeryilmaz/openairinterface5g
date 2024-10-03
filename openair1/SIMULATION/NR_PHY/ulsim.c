@@ -1195,6 +1195,9 @@ int main(int argc, char *argv[])
           }
         } else
           n_trials = 1;
+double scale=2.8;
+
+        txlev_sum=(int32_t)((double)txlev_sum*scale);
 
         if (input_fd == NULL) {
           // Justification of division by precod_nbr_layers:
@@ -1207,8 +1210,8 @@ int main(int argc, char *argv[])
 
           for (i = 0; i < slot_length; i++) {
             for (int aa = 0; aa < UE->frame_parms.nb_antennas_tx; aa++) {
-              s_re[aa][i] = (double)UE->common_vars.txData[aa][slot_offset + i].r;
-              s_im[aa][i] = (double)UE->common_vars.txData[aa][slot_offset + i].i;
+              s_re[aa][i] = sqrt(scale)*(double)UE->common_vars.txData[aa][slot_offset + i].r;
+              s_im[aa][i] = sqrt(scale)*(double)UE->common_vars.txData[aa][slot_offset + i].i;
             }
           }
 
