@@ -40,8 +40,6 @@
 #include "openair1/PHY/TOOLS/phy_scope_interface.h"
 #include "position_interface.h"
 
-extern unsigned int NTN_UE_Koffset;
-
 /*
  *  NR SLOT PROCESSING SEQUENCE
  *
@@ -825,12 +823,13 @@ void *UE_thread(void *arg)
       readFrame(UE, &tmp, true);
   }
 
-  double ntn_ta_common = (mac->ntn_ta.N_common_ta_adj + mac->ntn_ta.N_UE_TA_adj) * 2;
-  int ntn_koffset = mac->ntn_ta.cell_specific_k_offset;
+  double ntn_ta_common = GET_COMPLETE_TIME_ADVANCE_MS(mac);
+  int ntn_koffset = GET_NTN_UE_K_OFFSET(mac, 0);
 
-  int duration_rx_to_tx = DURATION_RX_TO_TX;
+  int duration_rx_to_tx = GET_DURATION_RX_TO_TX(mac);
   int nr_slot_tx_offset = 0;
   bool update_ntn_system_information = false;
+  bool apply_duration_next_run = false;
 
   while (!oai_exit) {
     nr_slot_tx_offset = 0;
@@ -903,7 +902,7 @@ void *UE_thread(void *arg)
       openair0_write_reorder_clear_context(&UE->rfdevice);
       if (get_nrUE_params()->time_sync_I)
         // ntn_ta_commondrift is in µs/s, max_pos_acc * time_sync_I is in samples/frame
-        UE->max_pos_acc = get_nrUE_params()->ntn_ta_commondrift * 1e-6 * fp->samples_per_frame / get_nrUE_params()->time_sync_I;
+        UE->max_pos_acc = mac->ntn_ta.ntn_ta_commondrift * 1e-6 * fp->samples_per_frame / get_nrUE_params()->time_sync_I;
       else
         UE->max_pos_acc = 0;
       shiftForNextFrame = -(UE->init_sync_frame + trashed_frames + 2) * UE->max_pos_acc * get_nrUE_params()->time_sync_I; // compensate for the time drift that happened during initial sync
@@ -943,17 +942,15 @@ void *UE_thread(void *arg)
 
     if (update_ntn_system_information) {
       update_ntn_system_information = false;
-      int ta_offset =
-          UE->frame_parms.samples_per_subframe * 2 * (mac->ntn_ta.N_common_ta_adj + mac->ntn_ta.N_UE_TA_adj - ntn_ta_common);
+      int ta_offset = UE->frame_parms.samples_per_subframe * (GET_COMPLETE_TIME_ADVANCE_MS(mac) - ntn_ta_common);
 
       UE->timing_advance += ta_offset;
-      timing_advance = ntn_koffset * 7680;
-      ntn_ta_common = mac->ntn_ta.N_common_ta_adj + mac->ntn_ta.N_UE_TA_adj;
+      ntn_ta_common = GET_COMPLETE_TIME_ADVANCE_MS(mac);
+      ntn_koffset = GET_NTN_UE_K_OFFSET(mac, 0);
+      timing_advance = ntn_koffset * (UE->frame_parms.samples_per_subframe >> mac->current_UL_BWP->scs);
     }
 
-    if (ntn_koffset != mac->ntn_ta.cell_specific_k_offset && ntn_ta_common != mac->ntn_ta.N_common_ta_adj) {
-      ntn_koffset = mac->ntn_ta.cell_specific_k_offset;
-      NTN_UE_Koffset = ntn_koffset;
+    if (ntn_koffset != (GET_NTN_UE_K_OFFSET(mac, 0)) && ntn_ta_common != GET_COMPLETE_TIME_ADVANCE_MS(mac)) {
       update_ntn_system_information = true;
       nr_slot_tx_offset = mac->ntn_ta.cell_specific_k_offset % nb_slot_frame;
     }
@@ -1055,8 +1052,14 @@ void *UE_thread(void *arg)
     curMsgTx->proc.nr_slot_tx_offset = nr_slot_tx_offset;
     pushTpool(&(get_nrUE_params()->Tpool), newTx);
 
-    if (duration_rx_to_tx != DURATION_RX_TO_TX) {
-      duration_rx_to_tx = DURATION_RX_TO_TX;
+    // apply new duration next run to avoid thread dead lock
+    if (apply_duration_next_run) {
+      duration_rx_to_tx = GET_DURATION_RX_TO_TX(mac);
+      apply_duration_next_run = false;
+    }
+
+    if (duration_rx_to_tx != GET_DURATION_RX_TO_TX(mac)) {
+      apply_duration_next_run = true;
     }
   }
 

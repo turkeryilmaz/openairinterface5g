@@ -33,7 +33,7 @@
 #define _GNU_SOURCE
 #define SPEED_OF_LIGHT 299792458
 
-//#include "mac_defs.h"
+#include "mac_defs.h"
 #include <NR_MAC_gNB/mac_proto.h>
 #include "NR_MAC_UE/mac_proto.h"
 #include "NR_MAC-CellGroupConfig.h"
@@ -43,6 +43,7 @@
 #include "SCHED_NR/phy_frame_config_nr.h"
 #include "oai_asn1.h"
 #include "executables/position_interface.h"
+
 
 void set_tdd_config_nr_ue(fapi_nr_tdd_table_t *tdd_table,
                           int mu,
@@ -254,7 +255,7 @@ static void config_common_ue(NR_UE_MAC_INST_t *mac,
 
   mac->phy_config.Mod_id = mac->ue_id;
   mac->phy_config.CC_id = cc_idP;
-  
+
   // carrier config
   LOG_D(MAC, "[UE %d] Entering UE Config Common\n", mac->ue_id);
 
@@ -1743,20 +1744,24 @@ void nr_rrc_mac_config_req_sib19_r17(module_id_t module_id, NR_SIB19_r17_t *sib1
   // if ephemerisInfo_r17 present in SIB19
   struct NR_EphemerisInfo_r17 *ephemeris_info = mac->sc_info.ntn_Config_r17->ephemerisInfo_r17;
   struct NR_PositionVelocity_r17 *position_velocity = mac->sc_info.ntn_Config_r17->ephemerisInfo_r17->choice.positionVelocity_r17;
+  struct NR_NTN_Config_r17 *ntn_Config_r17 = mac->sc_info.ntn_Config_r17;
 
   if (ephemeris_info && position_velocity
       && (position_velocity->positionX_r17 != 0 || position_velocity->positionY_r17 != 0
           || position_velocity->positionZ_r17 != 0)) {
     mac->ntn_ta.N_UE_TA_adj =
-        calculate_ue_sat_ta(get_position(module_id), mac->sc_info.ntn_Config_r17->ephemerisInfo_r17->choice.positionVelocity_r17);
+        calculate_ue_sat_ta(get_position_coordinates(module_id), position_velocity);
   }
   // if cellSpecificKoffset_r17 is present
-  if (sib19_r17->ntn_Config_r17->cellSpecificKoffset_r17) {
-    mac->ntn_ta.cell_specific_k_offset = *sib19_r17->ntn_Config_r17->cellSpecificKoffset_r17;
+  if (ntn_Config_r17->cellSpecificKoffset_r17) {
+    mac->ntn_ta.cell_specific_k_offset = *ntn_Config_r17->cellSpecificKoffset_r17;
   }
-  // Check if ta_Info_r17 is present and convert directly ta_Common_r17 (is in units of 4.072e-3 µs)
+  // Check if ta_Info_r17 is present and convert directly ta_Common_r17 (is in units of 4.072e-3 µs) 
   if (sib19_r17->ntn_Config_r17->ta_Info_r17) {
-    mac->ntn_ta.N_common_ta_adj = sib19_r17->ntn_Config_r17->ta_Info_r17->ta_Common_r17 * 4.072e-6;
+    mac->ntn_ta.N_common_ta_adj = ntn_Config_r17->ta_Info_r17->ta_Common_r17 * 4.072e-6;
+    // ta_CommonDrift_r17 (is in units of 0.2e-3 µs/s)
+    if (sib19_r17->ntn_Config_r17->ta_Info_r17->ta_CommonDrift_r17)
+      mac->ntn_ta.ntn_ta_commondrift = *ntn_Config_r17->ta_Info_r17->ta_CommonDrift_r17 * 0.2e-3;
   }
 }
 
