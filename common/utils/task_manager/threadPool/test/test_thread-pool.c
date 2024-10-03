@@ -27,7 +27,7 @@
 #include <unistd.h>
 #include <ctype.h>
 #include <sys/sysinfo.h>
-#include <threadPool/thread-pool.h>
+#include "thread-pool.h"
 #include "log.h"
 
 void displayList(notifiedFIFO_t *nf)

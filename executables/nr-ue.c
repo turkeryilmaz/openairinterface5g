@@ -37,6 +37,7 @@
 #include "LAYER2/nr_pdcp/nr_pdcp_oai_api.h"
 #include "LAYER2/nr_rlc/nr_rlc_oai_api.h"
 #include "RRC/NR/MESSAGES/asn1_msg.h"
+#include "common/utils/task_manager/task_manager_gen.h"
 
 /*
  *  NR SLOT PROCESSING SEQUENCE
@@ -344,6 +345,7 @@ typedef struct {
   nr_gscn_info_t gscnInfo[MAX_GSCN_BAND];
   int numGscn;
   int rx_offset;
+  notifiedFIFO_elt_t *elt;
 } syncData_t;
 
 static int nr_ue_adjust_rx_gain(PHY_VARS_NR_UE *UE, openair0_config_t *cfg0, int gain_change)
@@ -666,6 +668,8 @@ void UE_dl_processing(void *arg) {
 
   if (!UE->sl_mode)
     pdsch_processing(UE, proc, phy_data);
+
+  free(rxtxD);
 }
 
 void dummyWrite(PHY_VARS_NR_UE *UE,openair0_timestamp timestamp, int writeBlockSize) {
@@ -816,7 +820,7 @@ void *UE_thread(void *arg)
 
   while (!oai_exit) {
     if (syncRunning) {
-      notifiedFIFO_elt_t *res=tryPullTpool(&nf,&(get_nrUE_params()->Tpool));
+      notifiedFIFO_elt_t *res = pollNotifiedFIFO(&nf);
 
       if (res) {
         syncRunning = false;
@@ -873,7 +877,10 @@ void *UE_thread(void *arg)
       }
       syncMsg->UE = UE;
       memset(&syncMsg->proc, 0, sizeof(syncMsg->proc));
-      pushTpool(&(get_nrUE_params()->Tpool), Msg);
+      syncMsg->elt = Msg;
+      task_t t = {.func = UE_synch, .args = syncMsg};
+      async_task_manager(&(get_nrUE_params()->thread_pool), t);
+
       trashed_frames = 0;
       syncRunning = true;
       continue;
@@ -996,13 +1003,15 @@ void *UE_thread(void *arg)
       nr_ue_rrc_timer_trigger(UE->Mod_id, curMsg.proc.frame_tx, curMsg.proc.gNB_id);
 
     // RX slot processing. We launch and forget.
-    notifiedFIFO_elt_t *newRx = newNotifiedFIFO_elt(sizeof(nr_rxtx_thread_data_t), curMsg.proc.nr_slot_rx, NULL, UE_dl_processing);
-    nr_rxtx_thread_data_t *curMsgRx = (nr_rxtx_thread_data_t *)NotifiedFifoData(newRx);
+    // Memory ownership is transferred to the function UE_dl_processing
+    nr_rxtx_thread_data_t *curMsgRx = calloc(1, sizeof(nr_rxtx_thread_data_t));
+    AssertFatal(curMsgRx != NULL, "Memory exhausted");
     *curMsgRx = (nr_rxtx_thread_data_t){.proc = curMsg.proc, .UE = UE};
     int ret = UE_dl_preprocessing(UE, &curMsgRx->proc, tx_wait_for_dlsch, &curMsgRx->phy_data);
     if (ret != INT_MAX)
       shiftForNextFrame = ret;
-    pushTpool(&(get_nrUE_params()->Tpool), newRx);
+    task_t t = {.func = UE_dl_processing, .args = curMsgRx};
+    async_task_manager(&(get_nrUE_params()->thread_pool), t);
 
     // Start TX slot processing here. It runs in parallel with RX slot processing
     // in current code, DURATION_RX_TO_TX constant is the limit to get UL data to encode from a RX slot
@@ -1016,7 +1025,9 @@ void *UE_thread(void *arg)
     curMsgTx->stream_status = stream_status;
     stream_status = STREAM_STATUS_SYNCED;
     tx_wait_for_dlsch[curMsgTx->proc.nr_slot_tx] = 0;
-    pushTpool(&(get_nrUE_params()->Tpool), newTx);
+    curMsgTx->elt = newTx;
+    t = (task_t){.func = processSlotTX, .args = curMsgTx};
+    async_task_manager(&(get_nrUE_params()->thread_pool), t);
   }
 
   return NULL;
