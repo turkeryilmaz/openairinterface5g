@@ -570,7 +570,7 @@ typedef struct PHY_VARS_gNB_s {
   struct processingData_L1tx *msgDataTx;
   void *scopeData;
   /// structure for analyzing high-level RT measurements
-  rt_L1_profiling_t rt_L1_profiling; 
+  rt_L1_profiling_t rt_L1_profiling;
 } PHY_VARS_gNB;
 
 struct puschSymbolReqId {
@@ -605,6 +605,7 @@ typedef struct LDPCDecode_s {
   int offset;
   int decodeIterations;
   uint32_t tbslbrm;
+  task_ans_t *ans;
 } ldpcDecode_t;
 
 struct ldpcReqId {
@@ -625,6 +626,7 @@ typedef struct processingData_L1 {
   int slot_rx;
   openair0_timestamp timestamp_tx;
   PHY_VARS_gNB *gNB;
+  notifiedFIFO_elt_t *elt;
 } processingData_L1_t;
 
 typedef struct processingData_L1tx {
