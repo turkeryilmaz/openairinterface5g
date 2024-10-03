@@ -1,0 +1,5 @@
+add_subdirectory(thread_pool)
+add_subdirectory(threadPool)
+add_library(task_manager task_ans.c task.c)
+target_include_directories(task_manager PUBLIC ./)
+target_link_libraries(task_manager PUBLIC ws-thread-pool)

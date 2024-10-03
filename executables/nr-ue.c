@@ -39,6 +39,7 @@
 #include "RRC/NR/MESSAGES/asn1_msg.h"
 #include "openair1/PHY/TOOLS/phy_scope_interface.h"
 #include "PHY/MODULATION/nr_modulation.h"
+#include "common/utils/task_manager/task_manager_gen.h"
 
 /*
  *  NR SLOT PROCESSING SEQUENCE
@@ -791,7 +792,7 @@ void *UE_thread(void *arg)
 
   while (!oai_exit) {
     if (syncRunning) {
-      notifiedFIFO_elt_t *res=tryPullTpool(&nf,&(get_nrUE_params()->Tpool));
+      notifiedFIFO_elt_t *res = pollNotifiedFIFO(&nf);
 
       if (res) {
         syncRunning = false;
@@ -970,7 +971,7 @@ void *UE_thread(void *arg)
       nr_ue_rrc_timer_trigger(UE->Mod_id, curMsg.proc.frame_tx, curMsg.proc.gNB_id);
 
     // RX slot processing. We launch and forget.
-    notifiedFIFO_elt_t *newRx = newNotifiedFIFO_elt(sizeof(nr_rxtx_thread_data_t), curMsg.proc.nr_slot_rx, NULL, UE_dl_processing);
+    notifiedFIFO_elt_t *newRx = newNotifiedFIFO_elt(sizeof(nr_rxtx_thread_data_t), curMsg.proc.nr_slot_tx, NULL, UE_dl_processing);
     nr_rxtx_thread_data_t *curMsgRx = (nr_rxtx_thread_data_t *)NotifiedFifoData(newRx);
     *curMsgRx = (nr_rxtx_thread_data_t){.proc = curMsg.proc, .UE = UE};
     int ret = UE_dl_preprocessing(UE, &curMsgRx->proc, tx_wait_for_dlsch, &curMsgRx->phy_data);

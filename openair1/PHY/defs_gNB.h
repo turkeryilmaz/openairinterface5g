@@ -43,6 +43,7 @@
 #include "PHY/CODING/nrLDPC_decoder/nrLDPC_types.h"
 #include "executables/rt_profiling.h"
 #include "nfapi_nr_interface_scf.h"
+#include "common/utils/task_manager/thread_pool/task_manager.h"
 
 #define MAX_NUM_RU_PER_gNB 8
 #define MAX_PUCCH0_NID 8
@@ -561,7 +562,6 @@ typedef struct PHY_VARS_gNB_s {
   notifiedFIFO_t L1_tx_out;
   notifiedFIFO_t L1_rx_out;
   notifiedFIFO_t resp_RU_tx;
-  tpool_t threadPool;
   int num_pusch_symbols_per_thread;
   pthread_t L1_rx_thread;
   int L1_rx_thread_core;
@@ -570,7 +570,9 @@ typedef struct PHY_VARS_gNB_s {
   struct processingData_L1tx *msgDataTx;
   void *scopeData;
   /// structure for analyzing high-level RT measurements
-  rt_L1_profiling_t rt_L1_profiling; 
+  rt_L1_profiling_t rt_L1_profiling;
+
+  task_manager_t thread_pool;
 } PHY_VARS_gNB;
 
 struct puschSymbolReqId {
@@ -605,6 +607,7 @@ typedef struct LDPCDecode_s {
   int offset;
   int decodeIterations;
   uint32_t tbslbrm;
+  task_ans_t *ans;
 } ldpcDecode_t;
 
 struct ldpcReqId {
@@ -625,6 +628,7 @@ typedef struct processingData_L1 {
   int slot_rx;
   openair0_timestamp timestamp_tx;
   PHY_VARS_gNB *gNB;
+  notifiedFIFO_elt_t *elt;
 } processingData_L1_t;
 
 typedef struct processingData_L1tx {

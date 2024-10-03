@@ -636,7 +636,7 @@ if (cap_FOUND)
   target_link_libraries(UTIL PRIVATE cap)
   target_compile_definitions(UTIL PRIVATE HAVE_LIB_CAP)
 endif()
-target_link_libraries(UTIL PUBLIC ${T_LIB} pthread LOG thread-pool utils barrier actor)
+target_link_libraries(UTIL PUBLIC ${T_LIB} pthread LOG thread-pool utils barrier actor task_manager)
 
 set(SECURITY_SRC
   ${OPENAIR3_DIR}/SECU/secu_defs.c
@@ -1896,7 +1896,7 @@ add_executable(nfapi_test
   )
 
 add_executable(measurement_display
-  ${OPENAIR_DIR}/common/utils/threadPool/measurement_display.c)
+  ${OPENAIR_DIR}/common/utils/task_manager/threadPool/measurement_display.c)
 target_link_libraries (measurement_display minimal_lib)
 
 add_executable(test5Gnas
