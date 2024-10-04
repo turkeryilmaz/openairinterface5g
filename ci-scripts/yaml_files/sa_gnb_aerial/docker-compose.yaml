@@ -56,7 +56,6 @@ services:
     stdin_open: true
     tty: true
     volumes:
-    volumes:
       - ../../../targets/PROJECTS/GENERIC-NR-5GC/CONF/gnb-vnf.sa.band78.273prb.aerial.conf:/opt/oai-gnb/etc/gnb.conf
       - /var/log/aerial:/var/log/aerial
     command: bash -c "chrt -f 99 /opt/oai-gnb/bin/nr-softmodem -O /opt/oai-gnb/etc/gnb.conf | tee /var/log/aerial/oai.log"
