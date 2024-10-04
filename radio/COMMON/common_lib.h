@@ -393,6 +393,7 @@ typedef struct {
   pthread_mutex_t mutex_write;
   pthread_mutex_t mutex_store;
   openair0_timestamp nextTS;
+  uint max_gap;
   struct {
     bool active;
     openair0_timestamp timestamp;
