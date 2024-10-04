@@ -459,9 +459,7 @@ static void nr_configure_srs(nfapi_nr_srs_pdu_t *srs_pdu,
 
   // TODO: This should be completed
   srs_pdu->srs_parameters_v4.srs_bandwidth_size = m_SRS[srs_pdu->config_index];
-  // HACK: overwrite usage for localization
-  srs_pdu->srs_parameters_v4.usage = 1<<NFAPI_NR_SRS_LOCALIZATION;
-  //srs_pdu->srs_parameters_v4.usage = 1<<srs_resource_set->usage;
+  srs_pdu->srs_parameters_v4.usage = 1<<srs_resource_set->usage;
   srs_pdu->srs_parameters_v4.report_type[0] = 1;
   srs_pdu->srs_parameters_v4.iq_representation = 1;
   srs_pdu->srs_parameters_v4.prg_size = 1;

@@ -286,10 +286,8 @@ void gNB_dlsch_ulsch_scheduler(module_id_t module_idP, frame_t frame, sub_frame_
   // Schedule CSI measurement reporting
   nr_csi_meas_reporting(module_idP, frame, slot);
 
-  nr_schedule_srs(module_idP, frame, slot);
+  //nr_schedule_srs(module_idP, frame, slot);
   
-  nr_schedule_srs_secondary(module_idP,frame,slot);
-
   nr_schedule_srs_secondary(module_idP,frame,slot);
   
   // This schedule RA procedure if not in phy_test mode
