@@ -42,6 +42,7 @@
 #include <unistd.h>
 
 #include <ctype.h> // toupper
+#include "system.h"
 
 // #define POLL_AND_SLEEP
 
@@ -514,30 +515,9 @@ void init_ws_task_manager(ws_task_manager_t* man, int* core_id, size_t num_threa
     args->idx = i;
     args->man = man;
     args->core_id = core_id[i];
-
-    pthread_attr_t attr = {0};
-
-    int ret = pthread_attr_init(&attr);
-    DevAssert(ret == 0);
-    ret = pthread_attr_setinheritsched(&attr, PTHREAD_EXPLICIT_SCHED);
-    DevAssert(ret == 0);
-    ret = pthread_attr_setschedpolicy(&attr, SCHED_RR);
-    DevAssert(ret == 0);
-    struct sched_param sparam = {0};
-    sparam.sched_priority = 97;
-    ret = pthread_attr_setschedparam(&attr, &sparam);
-
-    int rc = pthread_create(&man->t_arr[i], &attr, worker_thread, args);
-    if (rc != 0) {
-      printf("[TASK_MAN]: %s \n", strerror(rc));
-      printf("[TASK_MAN]: Could not create the pthread with attributtes, trying without attributes\n");
-      rc = pthread_create(&man->t_arr[i], NULL, worker_thread, args);
-      AssertFatal(rc == 0, "Error creating a thread");
-    }
-
     char name[64];
     sprintf(name, "Tpool%ld_%d", i, core_id[i]);
-    pthread_setname_np(man->t_arr[i], name);
+    threadCreate(&man->t_arr[i], worker_thread, args, name, args->core_id, OAI_PRIORITY_RT_MAX);
   }
 
   // Syncronize thread pool threads. All the threads started
