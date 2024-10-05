@@ -68,10 +68,10 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
     NR_gNB_DLSCH_t *dlsch = msgTx->dlsch[dlsch_id];
     NR_DL_gNB_HARQ_t *harq = &dlsch->harq_process;
     nfapi_nr_dl_tti_pdsch_pdu_rel15_t *rel15 = &harq->pdsch_pdu.pdsch_pdu_rel15;
-    const int16_t amp_dmrs = rel15->numDmrsCdmGrpsNoData == 2 ? (int16_t)((double)amp * sqrt(2)) : amp;
     const int layerSz = frame_parms->N_RB_DL * NR_SYMBOLS_PER_SLOT * NR_NB_SC_PER_RB;
     const int dmrs_Type = rel15->dmrsConfigType;
     const int nb_re_dmrs = rel15->numDmrsCdmGrpsNoData * (rel15->dmrsConfigType == NFAPI_NR_DMRS_TYPE1 ? 6 : 4);
+    const int amp_dmrs = (int)((double)amp * sqrt(rel15->numDmrsCdmGrpsNoData)); // 3GPP TS 38.214 Section 4.1: Table 4.1-1
     LOG_D(PHY,"pdsch: BWPStart %d, BWPSize %d, rbStart %d, rbsize %d\n",
           rel15->BWPStart,rel15->BWPSize,rel15->rbStart,rel15->rbSize);
     const int n_dmrs = (rel15->BWPStart + rel15->rbStart + rel15->rbSize) * nb_re_dmrs;
