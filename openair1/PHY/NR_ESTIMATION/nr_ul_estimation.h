@@ -62,9 +62,9 @@ void nr_gnb_measurements(PHY_VARS_gNB *gNB,
                          unsigned char symbol,
                          uint8_t nrOfLayers);
 
-int nr_est_timing_advance_srs(const NR_DL_FRAME_PARMS *frame_parms,
+int nr_est_timing_advance_srs(uint16_t ofdm_symbol_size,
                               uint8_t N_ap,
-                              const int32_t srs_estimated_channel_time[N_ap][frame_parms->ofdm_symbol_size]);
+                              const int32_t srs_estimated_channel_time[N_ap][ofdm_symbol_size]);
 
 int nr_est_toa_ns_srs(NR_DL_FRAME_PARMS *frame_parms,
                       uint8_t N_arx,
