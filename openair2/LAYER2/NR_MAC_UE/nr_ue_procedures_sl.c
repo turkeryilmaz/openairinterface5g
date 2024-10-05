@@ -870,6 +870,33 @@ int find_current_slot_harqs(frame_t frame, sub_frame_t slot, NR_SL_UE_sched_ctrl
   return k;
 }
 
+/*
+Following function is used to remove the harq_pids from the feedback list;
+Adds back to available list or retransmission list based on round value.
+*/
+
+void update_harq_lists(NR_UE_MAC_INST_t *mac, frame_t frame, sub_frame_t slot, NR_SL_UE_info_t* UE)
+{
+  NR_SL_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
+  int cur = sched_ctrl->feedback_sl_harq.head;
+  while (cur != -1) {
+    NR_UE_sl_harq_t *harq = &sched_ctrl->sl_harq_processes[cur];
+    if ((harq->feedback_frame < frame
+         || (harq->feedback_frame == frame && harq->feedback_slot < slot))) {
+      remove_nr_list(&sched_ctrl->feedback_sl_harq, cur);
+      harq->feedback_slot = -1;
+      harq->is_waiting = false;
+      if (harq->round >= HARQ_ROUND_MAX - 1) {
+        abort_nr_ue_sl_harq(mac, cur, UE);
+      } else {
+        add_tail_nr_list(&sched_ctrl->retrans_sl_harq, cur);
+        harq->round++;
+      }
+    }
+    cur = sched_ctrl->feedback_sl_harq.next[cur];
+  }
+}
+
 void configure_psfch_params_rx(int module_idP,
                             NR_UE_MAC_INST_t *mac,
                             sl_nr_rx_config_request_t *rx_config)

@@ -3376,6 +3376,7 @@ void preprocess(NR_UE_MAC_INST_t *mac,
       if (continue_flag == -1)
         continue;
       uint8_t k = find_current_slot_harqs(feedback_frame, feedback_slot, sched_ctrl, NULL);
+      update_harq_lists(mac, frame, slot, UE);
       if (k == psfch_max_size)
         continue;
       break;

@@ -627,6 +627,8 @@ void fill_psfch_pdu(SL_sched_feedback_t *mac_psfch_pdu,
                     sl_nr_tx_rx_config_psfch_pdu_t *tx_psfch_pdu,
                     int num_psfch_symbols);
 
+void update_harq_lists(NR_UE_MAC_INST_t *mac, frame_t frame, sub_frame_t slot, NR_SL_UE_info_t* UE);
+
 int find_current_slot_harqs(frame_t frame, sub_frame_t slot, NR_SL_UE_sched_ctrl_t * sched_ctrl, NR_UE_sl_harq_t **matched_harqs);
 
 uint8_t sl_num_slsch_feedbacks(NR_UE_MAC_INST_t *mac);
