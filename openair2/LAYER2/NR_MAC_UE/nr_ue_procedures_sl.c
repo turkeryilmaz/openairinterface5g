@@ -368,7 +368,6 @@ uint16_t sl_get_subchannel_size(NR_SL_ResourcePool_r16_t *rpool)
 
   uint16_t subch_size = 0;
   const uint8_t subchsizes[8] = {10, 12, 15, 20, 25, 50, 75, 100};
-
   subch_size = (rpool->sl_SubchannelSize_r16)
                    ? subchsizes[*rpool->sl_SubchannelSize_r16] : 0;
 
@@ -1222,7 +1221,6 @@ int get_csi_reporting_frame_slot(NR_UE_MAC_INST_t *mac,
                                  uint32_t slot,
                                  uint32_t *csi_report_frame,
                                  uint32_t *csi_report_slot) {
-  sl_nr_ue_mac_params_t *sl_mac = mac->SL_MAC_PARAMS;
   AssertFatal(tdd != NULL, "Expecting valid tdd configurations");
   const int first_ul_slot_period = tdd ? get_first_ul_slot(tdd->nrofDownlinkSlots, tdd->nrofDownlinkSymbols, tdd->nrofUplinkSymbols) : 0;
   const int nr_slots_period = tdd ? nr_slots_frame / get_nb_periods_per_frame(tdd->dl_UL_TransmissionPeriodicity) : nr_slots_frame;

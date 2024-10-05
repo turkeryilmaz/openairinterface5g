@@ -891,7 +891,6 @@ void add_drb_am(int is_gnb, ue_id_t rntiMaybeUEid, ue_id_t reestablish_ue_id, st
 void add_drb_sl(ue_id_t srcid, NR_SL_RadioBearerConfig_r16_t *s, int ciphering_algorithm, int integrity_algorithm, unsigned char *ciphering_key, unsigned char *integrity_key)
 {
   nr_pdcp_entity_t *pdcp_drb;
-  nr_pdcp_ue_t *ue;
 
   AssertFatal(s->sl_PDCP_Config_r16 != NULL, "SL PDCP config is not there!\n");
   int slrb_id = s->slrb_Uu_ConfigIndex_r16;
@@ -899,24 +898,18 @@ void add_drb_sl(ue_id_t srcid, NR_SL_RadioBearerConfig_r16_t *s, int ciphering_a
   int discard_timer = decode_discard_timer_sl(*s->sl_PDCP_Config_r16->sl_DiscardTimer_r16);
 
   // these 3 are configured differently in Sidelink 
-  int has_integrity=0;
-  int has_ciphering=0;
-  int has_rohc=0;
+  int has_integrity = 0;
+  int has_ciphering = 0;
+  // int has_rohc = 0;
 
   int t_reordering = 20;
-
-
-
-  bool has_sdap = false;
-  bool is_sdap_DefaultDRB = false;
-  has_sdap = s->sl_SDAP_Config_r16 && s->sl_SDAP_Config_r16->sl_SDAP_Header_r16 == NR_SL_SDAP_Config_r16__sl_SDAP_Header_r16_present;
-
-  int is_sdap_DefaultRB = s->sl_SDAP_Config_r16 && s->sl_SDAP_Config_r16->sl_DefaultRB_r16 == true ? 1 : 0;
+  bool has_sdap = s->sl_SDAP_Config_r16 && s->sl_SDAP_Config_r16->sl_SDAP_Header_r16 == NR_SL_SDAP_Config_r16__sl_SDAP_Header_r16_present;
+  bool is_sdap_DefaultRB = s->sl_SDAP_Config_r16 && s->sl_SDAP_Config_r16->sl_DefaultRB_r16 == true ? true : false;
   /* TODO(?): accept different UL and DL SN sizes? */
 
 
   nr_pdcp_manager_lock(nr_pdcp_ue_manager);
-  ue = nr_pdcp_manager_get_ue(nr_pdcp_ue_manager, srcid);
+  nr_pdcp_ue_t *ue = nr_pdcp_manager_get_ue(nr_pdcp_ue_manager, srcid);
   if (ue->drb[slrb_id-1] != NULL) {
     LOG_W(PDCP, "%s:%d:%s: warning DRB %d already exist for UE ID/RNTI %ld, do nothing\n", __FILE__, __LINE__, __FUNCTION__, slrb_id, srcid);
   } else {

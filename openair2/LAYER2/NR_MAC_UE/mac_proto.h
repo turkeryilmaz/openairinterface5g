@@ -116,6 +116,8 @@ void nr_rrc_mac_config_req_sib1(module_id_t module_id,
 /**\brief initialization NR UE MAC instance(s), total number of MAC instance based on NB_NR_UE_MAC_INST*/
 NR_UE_MAC_INST_t * nr_l2_init_ue(NR_UE_RRC_INST_t* rrc_inst, ueinfo_t* ueinfo);
 
+size_t dump_mac_stats_sl(NR_UE_MAC_INST_t *mac, char *output, size_t strlen, bool reset_rsrp);
+
 /**\brief fetch MAC instance by module_id, within 0 - (NB_NR_UE_MAC_INST-1)
    \param module_id index of MAC instance(s)*/
 NR_UE_MAC_INST_t *get_mac_inst(
@@ -646,6 +648,8 @@ void configure_psfch_params_rx(int module_idP, NR_UE_MAC_INST_t *mac, sl_nr_rx_c
 void reset_sched_psfch(NR_UE_MAC_INST_t *mac, int frameP,int slotP);
 
 void handle_nr_ue_sl_harq(module_id_t mod_id, frame_t frame, sub_frame_t slot, sl_nr_slsch_pdu_t *rx_slsch_pdu, uint16_t src_id);
+
+void abort_nr_ue_sl_harq(NR_UE_MAC_INST_t *mac, int8_t harq_pid, NR_SL_UE_info_t *UE_info);
 
 int nr_ue_sl_acknack_scheduling(NR_UE_MAC_INST_t *mac, sl_nr_rx_indication_t *rx_ind,
                                 long psfch_period, uint16_t frame, uint16_t slot, const int nr_slots_frame);

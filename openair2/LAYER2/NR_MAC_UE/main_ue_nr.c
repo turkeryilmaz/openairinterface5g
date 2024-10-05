@@ -105,7 +105,6 @@ NR_UE_MAC_INST_t *get_mac_inst(module_id_t module_id){
 
 size_t dump_mac_stats_sl(NR_UE_MAC_INST_t *mac, char *output, size_t strlen, bool reset_rsrp)
 {
-  int num = 1;
   const char *begin = output;
   const char *end = output + strlen;
   sl_nr_ue_mac_params_t *sl_mac = mac->SL_MAC_PARAMS;
