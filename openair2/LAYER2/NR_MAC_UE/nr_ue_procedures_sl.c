@@ -917,7 +917,7 @@ void configure_psfch_params_rx(int module_idP,
 
   psfch_params_t *psfch_params = calloc(1, sizeof(psfch_params_t));
   compute_params(module_idP, psfch_params);
-  UE_iterator(UE_info->list, UE) {
+  SL_UE_iterator(UE_info->list, UE) {
     NR_SL_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
     NR_UE_sl_harq_t **matched_harqs = (NR_UE_sl_harq_t **) calloc(sched_ctrl->feedback_sl_harq.len, sizeof(NR_UE_sl_harq_t *));
     int matched_sz = find_current_slot_harqs(frame, slot, sched_ctrl, matched_harqs);
@@ -1204,7 +1204,7 @@ NR_SL_UE_info_t* find_UE(NR_UE_MAC_INST_t *mac,
     return NULL;
   }
 
-  UE_iterator(UE_info->list, UE) {
+  SL_UE_iterator(UE_info->list, UE) {
     LOG_D(NR_MAC, "%s: dest_id %d nearby id %d\n", __FUNCTION__, UE->uid, nearby_ue_id);
     if((UE->uid == nearby_ue_id)) {
       return UE;

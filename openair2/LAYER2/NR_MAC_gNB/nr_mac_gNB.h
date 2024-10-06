@@ -660,6 +660,8 @@ typedef struct {
   uid_allocator_t uid_allocator;
 } NR_UEs_t;
 
+#define UE_iterator(BaSe, VaR) NR_UE_info_t ** VaR##pptr=BaSe, *VaR; while ((VaR=*(VaR##pptr++)))
+
 typedef void (*nr_pp_impl_dl)(module_id_t mod_id,
                               frame_t frame,
                               sub_frame_t slot);

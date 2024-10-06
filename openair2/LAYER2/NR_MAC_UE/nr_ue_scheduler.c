@@ -3251,7 +3251,7 @@ uint8_t sl_determine_if_SSB_slot(uint16_t frame, uint16_t slot, uint16_t slots_p
 static void nr_store_slsch_buffer(NR_UE_MAC_INST_t *mac, frame_t frame, sub_frame_t slot) {
 
   NR_SL_UEs_t *UE_info = &mac->sl_info;
-  UE_iterator(UE_info->list, UE) {
+  SL_UE_iterator(UE_info->list, UE) {
     NR_SL_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
     sched_ctrl->num_total_bytes = 0;
     sched_ctrl->sl_pdus_total = 0;
@@ -3317,7 +3317,7 @@ void preprocess(NR_UE_MAC_INST_t *mac,
   const int nr_slots_frame = nr_slots_per_frame[scs];
 
   NR_SL_UEs_t *UE_info = &mac->sl_info;
-  UE_iterator(UE_info->list, UE) {
+  SL_UE_iterator(UE_info->list, UE) {
     NR_SL_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
     UE->mac_sl_stats.sl.current_bytes = 0;
     UE->mac_sl_stats.sl.current_rbs = 0;
@@ -3434,7 +3434,7 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
 
   preprocess(mac, frame, slot, &feedback_frame, &feedback_slot, sl_bwp);
 
-  UE_iterator(UE_info->list, UE) {
+  SL_UE_iterator(UE_info->list, UE) {
     NR_mac_dir_stats_t *sl_mac_stats = &UE->mac_sl_stats.sl;
     NR_SL_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
     sl_mac_stats->current_bytes = 0;
