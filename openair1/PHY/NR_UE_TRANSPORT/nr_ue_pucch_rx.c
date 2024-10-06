@@ -122,13 +122,8 @@ int8_t nr_ue_decode_pucch0(PHY_VARS_NR_UE *ue,
                           nfapi_nr_pucch_pdu_t *pucch_pdu)
 {
   NR_DL_FRAME_PARMS *frame_parms = get_softmodem_params()->sl_mode ? &ue->SL_UE_PHY_PARAMS.sl_frame_params : &ue->frame_parms;
-  sl_nr_rx_indication_t sl_rx_indication;
-  nr_sidelink_indication_t sl_indication;
 
   int soffset = 0;
-  AssertFatal(pucch_pdu->bit_len_harq > 0 || pucch_pdu->sr_flag > 0,
-              "Either bit_len_harq (%d) or sr_flag (%d) must be > 0\n",
-              pucch_pdu->bit_len_harq, pucch_pdu->sr_flag);
   int nr_sequences;
   const uint8_t *mcs;
   if(pucch_pdu->bit_len_harq == 0){
@@ -144,9 +139,9 @@ int8_t nr_ue_decode_pucch0(PHY_VARS_NR_UE *ue,
     mcs = table2_mcs;
     nr_sequences = 8>>(1-pucch_pdu->sr_flag);
   }
-  AssertFatal(nr_sequences <= 4, "nr_sequences must be less than 4\n");
+  AssertFatal(nr_sequences <= 2, "nr_sequences must be less than 2\n");
 
-  LOG_D(PHY, "%s pucch0: nr_symbols %d, start_symbol %d, prb_start %d, second_hop_prb %d, group_hop_flag %d, sequence_hop_flag %d, O_ACK %d, O_SR %d, mcs %d initial_cyclic_shift %d\n",
+  LOG_D(PHY, "%s pucch0: nr_symbols %d, start_symbol %d, prb_start %d, second_hop_prb %d, group_hop_flag %d, sequence_hop_flag %d, O_ACK %d, O_SR %d, mcs %d, initial_cyclic_shift %d, subcarrier_spacing %d\n",
         __FUNCTION__,
         pucch_pdu->nr_of_symbols,
         pucch_pdu->start_symbol_index,
@@ -330,19 +325,15 @@ int8_t nr_ue_decode_pucch0(PHY_VARS_NR_UE *ue,
       xrtmag_next = temp;
   }
 
-  int xrtmag_dBtimes10 = 10*(int)dB_fixed64(xrtmag / (12*pucch_pdu->nr_of_symbols));
-  int xrtmag_next_dBtimes10 = 10*(int)dB_fixed64(xrtmag_next / (12*pucch_pdu->nr_of_symbols));
 #ifdef DEBUG_NR_PUCCH_RX
   LOG_D(NR_PHY, "PUCCH 0 : maxpos %d\n", maxpos);
 #endif
   index = maxpos;
-  if (pucch_pdu->bit_len_harq == 1) {
-    uint8_t ack_nack = !(index&0x01);
-    LOG_D(PHY,
-          "[PSFCH RX] %d.%d HARQ %s\n",
-          frame,
-          slot,
-          ack_nack == 0 ? "ACK" : "NACK");
-    return ack_nack;
-  }
+  uint8_t ack_nack = !(index&0x01);
+  LOG_D(PHY,
+        "[PSFCH RX] %d.%d HARQ %s\n",
+        frame,
+        slot,
+        ack_nack == 0 ? "ACK" : "NACK");
+  return ack_nack;
 }

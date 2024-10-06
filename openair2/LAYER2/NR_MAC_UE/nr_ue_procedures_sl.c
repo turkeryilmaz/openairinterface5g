@@ -817,8 +817,8 @@ void fill_psfch_params_tx(NR_UE_MAC_INST_t *mac, sl_nr_rx_indication_t *rx_ind,
     sched_psfch->mcs = sequence_cyclic_shift_harq_ack_or_ack_or_only_nack[ack_nack];
     LOG_D(NR_MAC, "mcs %i, ack_nack: %i, sched_psfch->initial_cyclic_shift %i\n",
           sched_psfch->mcs, ack_nack, sched_psfch->initial_cyclic_shift);
-  } else if (mac->sci1_pdu.second_stage_sci_format == 1 ||
-            (mac->sci1_pdu.second_stage_sci_format == 1 && mac->sci_pdu_rx.cast_type == 3)) {
+  } else if ((mac->sci1_pdu.second_stage_sci_format == 0 ||
+              mac->sci1_pdu.second_stage_sci_format == 1) && mac->sci_pdu_rx.cast_type == 3) {
     sched_psfch->mcs = sequence_cyclic_shift_harq_ack_or_ack_or_only_nack[0];
   }
   const uint8_t values[] = {7, 8, 9, 10, 11, 12, 13, 14};
