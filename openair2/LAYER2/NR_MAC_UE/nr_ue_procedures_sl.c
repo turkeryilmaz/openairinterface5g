@@ -663,7 +663,7 @@ void configure_psfch_params_tx(int module_idP,
   uint16_t tx_frame = (rx_ind->sfn + (rx_ind->slot + DURATION_RX_TO_TX) / nr_slots_per_frame[scs]) % 1024;
 
   uint8_t ack_nack = (rx_ind->rx_indication_body + pdu_id)->rx_slsch_pdu.ack_nack;
-  LOG_D(NR_MAC, "tx_frame %4u.%2u, ack_nack %d\n", tx_frame, tx_slot, ack_nack);
+  LOG_I(NR_MAC, "tx_frame %4u.%2u, ack_nack %d rx: %4u.%2u\n", tx_frame, tx_slot, ack_nack, rx_ind->sfn, rx_ind->slot);
   psfch_params_t *psfch_params = calloc(1, sizeof(psfch_params_t));
   compute_params(module_idP, psfch_params);
   const int nr_slots_frame = nr_slots_per_frame[scs];
@@ -732,6 +732,79 @@ int get_feedback_frame_slot(NR_UE_MAC_INST_t *mac, NR_TDD_UL_DL_Pattern_t *tdd,
   return 0;
 }
 
+int16_t get_feedback_slot(long psfch_period, uint16_t slot) {
+  int16_t feedback_slot;
+  if (psfch_period == 1) {
+    switch(slot) {
+      case 0:
+        feedback_slot = 6;
+      break;
+      case 1:
+        feedback_slot = 7;
+      break;
+      case 2:
+        feedback_slot = 8;
+      break;
+      case 3:
+        feedback_slot = 9;
+      break;
+      case 10:
+        feedback_slot = 16;
+      break;
+      case 11:
+        feedback_slot = 17;
+      break;
+      case 12:
+        feedback_slot = 18;
+      break;
+      case 13:
+        feedback_slot = 19;
+      break;
+      default:
+        feedback_slot = -1;
+    }
+  } else if (psfch_period == 2) {
+    switch(slot) {
+      case 0:
+      case 1:
+        feedback_slot = 6;
+      break;
+      case 2:
+      case 3:
+        feedback_slot = 8;
+      break;
+      case 10:
+      case 11:
+        feedback_slot = 16;
+      break;
+      case 12:
+      case 13:
+        feedback_slot = 18;
+      break;
+      default:
+        feedback_slot = -1;
+    }
+  } else if (psfch_period == 4) {
+    switch(slot) {
+      case 0:
+      case 1:
+      case 2:
+      case 3:
+        feedback_slot = 6;
+      break;
+      case 10:
+      case 11:
+      case 12:
+      case 13:
+        feedback_slot = 16;
+      break;
+      default:
+        feedback_slot = -1;
+    }
+  }
+  return feedback_slot;
+}
+
 int nr_ue_sl_acknack_scheduling(NR_UE_MAC_INST_t *mac, sl_nr_rx_indication_t *rx_ind,
                                 long psfch_period, uint16_t frame, uint16_t slot, const int nr_slots_frame) {
   // TODO: needs to be updated for multi-subchannels
@@ -770,7 +843,8 @@ int nr_ue_sl_acknack_scheduling(NR_UE_MAC_INST_t *mac, sl_nr_rx_indication_t *rx
                                                  nr_slots_frame, frame, slot,
                                                  psfch_period,
                                                  &psfch_frame, &psfch_slot);
-
+    int  psfch_slot = get_feedback_slot(psfch_period, slot);
+    LOG_I(NR_MAC, "tx_frame %4u.%2u, feedback: %4u.%2u\n", frame, slot, psfch_frame, psfch_slot);
     if (continue_flag == -1) {
       continue;
     }
