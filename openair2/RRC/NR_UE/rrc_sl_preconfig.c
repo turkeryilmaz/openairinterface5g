@@ -32,6 +32,8 @@
 #include "LAYER2/NR_MAC_UE/mac_proto.h"
 #include "RRC/NAS/nas_config.h"
 #include "executables/nr-uesoftmodem.h"
+#include "LAYER2/nr_rlc/nr_rlc_oai_api.h"
+#include "LAYER2/nr_pdcp/nr_pdcp_oai_api.h"
 
 #define GNSS_SUPPORT 0
 

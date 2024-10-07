@@ -31,7 +31,7 @@ typedef struct ueinfo {
 #define CALIBPRACH_OPT    "calib-prach-tx"
 #define DUMPFRAME_OPT     "ue-dump-frame"
 
-#define UE_iterator(BaSe, VaR) NR_SL_UE_info_t ** VaR##pptr=BaSe, *VaR; while ((VaR=*(VaR##pptr++)))
+#define SL_UE_iterator(BaSe, VaR) NR_SL_UE_info_t ** VaR##pptr=BaSe, *VaR; while ((VaR=*(VaR##pptr++)))
 /*------------------------------------------------------------------------------------------------------------------------------------------*/
 /*                                            command line parameters defining UE running mode                                              */
 /*   optname                     helpstr                paramflags                      XXXptr        defXXXval         type       numelt   */

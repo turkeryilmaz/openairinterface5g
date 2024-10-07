@@ -68,7 +68,7 @@ void reset_sl_harq_list(NR_SL_UE_sched_ctrl_t *sched_ctrl) {
   }
 }
 
-static void abort_nr_ue_sl_harq(NR_UE_MAC_INST_t *mac, int8_t harq_pid, NR_SL_UE_info_t *UE_info)
+void abort_nr_ue_sl_harq(NR_UE_MAC_INST_t *mac, int8_t harq_pid, NR_SL_UE_info_t *UE_info)
 {
   NR_SL_UE_sched_ctrl_t *sched_ctrl = &UE_info->UE_sched_ctrl;
   NR_UE_sl_harq_t *harq = &sched_ctrl->sl_harq_processes[harq_pid];
@@ -91,7 +91,7 @@ void handle_nr_ue_sl_harq(module_id_t mod_id,
 {
   NR_UE_MAC_INST_t *mac = get_mac_inst(mod_id);
   NR_UE_SL_SCHED_LOCK(&mac->sl_sched_lock);
-  NR_SL_UE_info_t **UE_SL_temp = (NR_SL_UE_info_t *)&mac->sl_info.list, *UE;
+  NR_SL_UE_info_t **UE_SL_temp = (NR_SL_UE_info_t **)&mac->sl_info.list, *UE;
   // TODO: update for multiple UEs
   UE=*(UE_SL_temp);
   uint8_t num_ack_rcvd = rx_slsch_pdu->num_acks_rcvd;

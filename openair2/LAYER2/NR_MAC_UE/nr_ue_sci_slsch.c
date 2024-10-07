@@ -142,7 +142,6 @@ uint32_t nr_sci_size(const NR_SL_ResourcePool_r16_t *sl_res_pool,
 	    sci_pdu->conflict_information_receiver.nbits=0;
             size+=sci_pdu->conflict_information_receiver.nbits;
 	    break;
-    case format2:
     case NR_SL_SCI_FORMAT_2A:
     case NR_SL_SCI_FORMAT_2B:
     case NR_SL_SCI_FORMAT_2C:

@@ -105,7 +105,6 @@ NR_UE_MAC_INST_t *get_mac_inst(module_id_t module_id){
 
 size_t dump_mac_stats_sl(NR_UE_MAC_INST_t *mac, char *output, size_t strlen, bool reset_rsrp)
 {
-  int num = 1;
   const char *begin = output;
   const char *end = output + strlen;
   sl_nr_ue_mac_params_t *sl_mac = mac->SL_MAC_PARAMS;
@@ -115,7 +114,7 @@ size_t dump_mac_stats_sl(NR_UE_MAC_INST_t *mac, char *output, size_t strlen, boo
   // NR_UE_SL_SCHED_ENSURE_LOCKED(&mac->sl_sched_lock);
 
   NR_UE_SL_SCHED_LOCK(&mac->sl_info.mutex);
-  UE_iterator(mac->sl_info.list, UE) {
+  SL_UE_iterator(mac->sl_info.list, UE) {
     NR_SL_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
     NR_UE_sl_mac_stats_t *stats = &UE->mac_sl_stats;
 

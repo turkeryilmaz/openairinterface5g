@@ -34,6 +34,7 @@
 #include "assertions.h"
 #include "nr_common.h"
 #include "executables/nr-uesoftmodem.h"
+#include "openair2/LAYER2/NR_MAC_COMMON/nr_mac_common.h"
 
 const char *duplex_mode[]={"FDD","TDD"};
 
@@ -782,7 +783,7 @@ int get_NREsci2(const int sci2_alpha,
                 const int pscch_numrbs,
                 const int l_subch,
                 const int subchannel_size,
-                const int mcs,                
+                const int mcs,
                 const int mcs_tb_ind) {
 
   float Osci2 = (float)sci2_payload_len;
