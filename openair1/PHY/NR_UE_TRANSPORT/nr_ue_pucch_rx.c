@@ -126,20 +126,18 @@ int8_t nr_ue_decode_pucch0(PHY_VARS_NR_UE *ue,
   int soffset = 0;
   int nr_sequences;
   const uint8_t *mcs;
+  AssertFatal(pucch_pdu->sr_flag == 0, "SR flag MUST be 0 in SL\n");
+  AssertFatal(pucch_pdu->bit_len_harq == 0 ||  pucch_pdu->bit_len_harq == 1, "Invalid value for bit_len_harq %d\n", pucch_pdu->bit_len_harq);
   if(pucch_pdu->bit_len_harq == 0){
     mcs = table1_mcs;
     nr_sequences = 1;
   }
   else if(pucch_pdu->bit_len_harq == 1){
     mcs = table1_mcs;
-    AssertFatal(pucch_pdu->sr_flag == 0, "SR flag MUST be 0 in SL\n");
-    nr_sequences = 4>>(1-pucch_pdu->sr_flag);
+    nr_sequences = 4 >> 1;
   }
-  else{
-    mcs = table2_mcs;
-    nr_sequences = 8>>(1-pucch_pdu->sr_flag);
-  }
-  AssertFatal(nr_sequences <= 2, "nr_sequences must be less than 2\n");
+
+  AssertFatal(nr_sequences == 1 || nr_sequences == 2, "nr_sequences must be either 1 or 2, nr_sequences %d\n", nr_sequences);
 
   LOG_D(PHY, "%s pucch0: nr_symbols %d, start_symbol %d, prb_start %d, second_hop_prb %d, group_hop_flag %d, sequence_hop_flag %d, O_ACK %d, O_SR %d, mcs %d, initial_cyclic_shift %d, subcarrier_spacing %d\n",
         __FUNCTION__,
