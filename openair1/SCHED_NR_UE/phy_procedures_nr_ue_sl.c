@@ -639,7 +639,9 @@ void psbch_pscch_pssch_processing(PHY_VARS_NR_UE *ue,
                                 phy_data->nr_sl_pssch_sci_pdu.subchannel_size,
                                 phy_data->nr_sl_pssch_sci_pdu.targetCodeRate,
                                 0);
-    LOG_D(NR_PHY,"Starting slot FEP for SLSCH (symbol %d to %d) pscch_numsym %d pssch_numsym %d\n",1+phy_data->nr_sl_pssch_sci_pdu.pscch_numsym,phy_data->nr_sl_pssch_sci_pdu.pssch_numsym,phy_data->nr_sl_pssch_sci_pdu.pscch_numsym,phy_data->nr_sl_pssch_sci_pdu.pssch_numsym); 
+    LOG_D(NR_PHY,"Starting slot FEP for SLSCH (symbol %d to %d) pscch_numsym %d pssch_numsym %d REs with SCI2 %d\n",
+          1 + phy_data->nr_sl_pssch_sci_pdu.pscch_numsym, phy_data->nr_sl_pssch_sci_pdu.pssch_numsym,
+          phy_data->nr_sl_pssch_sci_pdu.pscch_numsym, phy_data->nr_sl_pssch_sci_pdu.pssch_numsym, sci2_re);
     for (int sym=1+phy_data->nr_sl_pssch_sci_pdu.pscch_numsym; sym<=phy_data->nr_sl_pssch_sci_pdu.pssch_numsym;sym++) {
       nr_slot_fep(ue,
                   fp,
@@ -715,16 +717,16 @@ void psbch_pscch_pssch_processing(PHY_VARS_NR_UE *ue,
       //pssch_DTX++;
       //  continue;
     } else {
+      pssch_vars->DTX = 0;
+      int totalDecode = nr_slsch_procedures(ue, frame_rx, nr_slot_rx, 0, proc, phy_data, is_csi_rs_slot, ack_nack_rcvd, phy_data->num_psfch_pdus);
       LOG_D(NR_PHY,
-            "PSSCH detected in %d.%d (%d,%d,%d)\n",
+            "Total %d decoded PSSCH detected in %d.%d (%d,%d,%d)\n",
+            totalDecode,
             frame_rx,
             nr_slot_rx,
             dB_fixed_x10(pssch_vars->ulsch_power_tot),
             dB_fixed_x10(pssch_vars->ulsch_noise_power_tot),
             ue->pssch_thres);
-
-      pssch_vars->DTX = 0;
-      int totalDecode = nr_slsch_procedures(ue, frame_rx, nr_slot_rx, 0, proc, phy_data, is_csi_rs_slot, ack_nack_rcvd, phy_data->num_psfch_pdus);
     }
   }
   LOG_D(PHY,"****** end Sidelink RX-Chain for AbsSubframe %d.%d ******\n",

@@ -368,7 +368,6 @@ uint16_t sl_get_subchannel_size(NR_SL_ResourcePool_r16_t *rpool)
 
   uint16_t subch_size = 0;
   const uint8_t subchsizes[8] = {10, 12, 15, 20, 25, 50, 75, 100};
-
   subch_size = (rpool->sl_SubchannelSize_r16)
                    ? subchsizes[*rpool->sl_SubchannelSize_r16] : 0;
 
@@ -812,15 +811,16 @@ void fill_psfch_params_tx(NR_UE_MAC_INST_t *mac, sl_nr_rx_indication_t *rx_ind,
         mac->sci_pdu_rx.harq_feedback,
         psfch_index);
   sched_psfch->initial_cyclic_shift = psfch_params->m0;
-  if (mac->sci1_pdu.second_stage_sci_format == 2 ||
-      mac->sci_pdu_rx.cast_type == 1 ||
-      mac->sci_pdu_rx.cast_type == 2) {
+  if ((mac->sci1_pdu.second_stage_sci_format == 0 && (mac->sci_pdu_rx.cast_type == 1 ||
+      mac->sci_pdu_rx.cast_type == 2)) || mac->sci1_pdu.second_stage_sci_format == 2) {
     sched_psfch->mcs = sequence_cyclic_shift_harq_ack_or_ack_or_only_nack[ack_nack];
+    sched_psfch->bit_len_harq = 1;
     LOG_D(NR_MAC, "mcs %i, ack_nack: %i, sched_psfch->initial_cyclic_shift %i\n",
           sched_psfch->mcs, ack_nack, sched_psfch->initial_cyclic_shift);
   } else if (mac->sci1_pdu.second_stage_sci_format == 1 ||
-            (mac->sci1_pdu.second_stage_sci_format == 1 && mac->sci_pdu_rx.cast_type == 3)) {
+            (mac->sci1_pdu.second_stage_sci_format == 0 && mac->sci_pdu_rx.cast_type == 3)) {
     sched_psfch->mcs = sequence_cyclic_shift_harq_ack_or_ack_or_only_nack[0];
+    sched_psfch->bit_len_harq = 0;
   }
   const uint8_t values[] = {7, 8, 9, 10, 11, 12, 13, 14};
   uint8_t sl_num_symbols = *sl_bwp->sl_LengthSymbols_r16 ? values[*sl_bwp->sl_LengthSymbols_r16] : 0;
@@ -840,7 +840,6 @@ void fill_psfch_params_tx(NR_UE_MAC_INST_t *mac, sl_nr_rx_indication_t *rx_ind,
   sched_psfch->group_hop_flag = 0;
   sched_psfch->second_hop_prb = 0;
   sched_psfch->sequence_hop_flag = 0;
-  sched_psfch->bit_len_harq = 1;
   sched_psfch->harq_feedback = mac->sci_pdu_rx.harq_feedback;
   LOG_D(NR_MAC, "Filled psfch pdu\n");
 }
@@ -918,7 +917,7 @@ void configure_psfch_params_rx(int module_idP,
 
   psfch_params_t *psfch_params = calloc(1, sizeof(psfch_params_t));
   compute_params(module_idP, psfch_params);
-  UE_iterator(UE_info->list, UE) {
+  SL_UE_iterator(UE_info->list, UE) {
     NR_SL_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
     NR_UE_sl_harq_t **matched_harqs = (NR_UE_sl_harq_t **) calloc(sched_ctrl->feedback_sl_harq.len, sizeof(NR_UE_sl_harq_t *));
     int matched_sz = find_current_slot_harqs(frame, slot, sched_ctrl, matched_harqs);
@@ -1205,7 +1204,7 @@ NR_SL_UE_info_t* find_UE(NR_UE_MAC_INST_t *mac,
     return NULL;
   }
 
-  UE_iterator(UE_info->list, UE) {
+  SL_UE_iterator(UE_info->list, UE) {
     LOG_D(NR_MAC, "%s: dest_id %d nearby id %d\n", __FUNCTION__, UE->uid, nearby_ue_id);
     if((UE->uid == nearby_ue_id)) {
       return UE;
@@ -1222,7 +1221,6 @@ int get_csi_reporting_frame_slot(NR_UE_MAC_INST_t *mac,
                                  uint32_t slot,
                                  uint32_t *csi_report_frame,
                                  uint32_t *csi_report_slot) {
-  sl_nr_ue_mac_params_t *sl_mac = mac->SL_MAC_PARAMS;
   AssertFatal(tdd != NULL, "Expecting valid tdd configurations");
   const int first_ul_slot_period = tdd ? get_first_ul_slot(tdd->nrofDownlinkSlots, tdd->nrofDownlinkSymbols, tdd->nrofUplinkSymbols) : 0;
   const int nr_slots_period = tdd ? nr_slots_frame / get_nb_periods_per_frame(tdd->dl_UL_TransmissionPeriodicity) : nr_slots_frame;
