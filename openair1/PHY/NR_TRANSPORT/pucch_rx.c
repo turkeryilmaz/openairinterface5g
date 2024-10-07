@@ -1089,10 +1089,11 @@ void nr_decode_pucch2(PHY_VARS_gNB *gNB,
     scaling = 2;
   else if (pucch2_levdB > 54)
     scaling = 1;
-  else if (pucch2_levdB < 35)
-    decoderState=2;
+
+  if (pucch2_levdB < gNB->measurements.n0_subband_power_avg_dB + (gNB->pucch0_thres/10))
+    decoderState=1;
   LOG_D(PHY,
-        "%d.%d Decoding pucch2 for %d symbols, %d PRB, nb_harq %d, nb_sr %d, nb_csi %d/%d, pucch2_lev %d dB (scaling %d)\n",
+        "%d.%d Decoding pucch2 for %d symbols, %d PRB, nb_harq %d, nb_sr %d, nb_csi %d/%d, pucch2_lev %d dB (scaling %d), n0+thres %d decoderState %d\n",
         frame,
         slot,
         pucch_pdu->nr_of_symbols,
@@ -1102,7 +1103,9 @@ void nr_decode_pucch2(PHY_VARS_gNB *gNB,
         pucch_pdu->bit_len_csi_part1,
         pucch_pdu->bit_len_csi_part2,
         pucch2_levdB,
-        scaling);
+        scaling,
+        gNB->measurements.n0_subband_power_avg_dB+(gNB->pucch0_thres/10),
+        decoderState);
 
   int nc_group_size=1; // 2 PRB
   int ngroup = prb_size_ext/nc_group_size/2;
