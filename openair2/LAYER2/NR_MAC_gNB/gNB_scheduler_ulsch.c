@@ -446,20 +446,23 @@ static int nr_process_mac_pdu(instance_t module_idP,
           mac_len = 6;
         }
 
-        LOG_D(MAC, "[RAPROC] Received SDU for CCCH length %d for UE %04x\n", mac_len, UE->rnti);
+        LOG_I(MAC, "[RAPROC] Received SDU for CCCH length %d for UE %04x\n", mac_len, UE->rnti);
 
-        prepare_initial_ul_rrc_message(RC.nrmac[module_idP], UE);
-        mac_rlc_data_ind(module_idP,
-                         UE->rnti,
-                         module_idP,
-                         frameP,
-                         ENB_FLAG_YES,
-                         MBMS_FLAG_NO,
-                         0,
-                         (char *) (pduP + mac_subheader_len),
-                         mac_len,
-                         1,
-                         NULL);
+        if (prepare_initial_ul_rrc_message(RC.nrmac[module_idP], UE)) {
+          mac_rlc_data_ind(module_idP,
+                          UE->rnti,
+                          module_idP,
+                          frameP,
+                          ENB_FLAG_YES,
+                          MBMS_FLAG_NO,
+                          0,
+                          (char *) (pduP + mac_subheader_len),
+                          mac_len,
+                          1,
+                          NULL);
+        } else {
+          LOG_E(NR_MAC, "prepare_initial_ul_rrc_message() returned false, cannot forward CCCH message\n");
+        }
         break;
 
       case UL_SCH_LCID_DTCH ... (UL_SCH_LCID_DTCH + 28):
@@ -500,7 +503,7 @@ static int nr_process_mac_pdu(instance_t module_idP,
         break;
 
       default:
-        LOG_E(NR_MAC, "Received unknown MAC header (LCID = 0x%02x)\n", rx_lcid);
+        LOG_E(NR_MAC, "RNTI %0x, received unknown MAC header (LCID = 0x%02x)\n", UE->rnti, rx_lcid);
         return -1;
         break;
       }
@@ -1881,9 +1884,10 @@ static void pf_ul(module_id_t module_id,
     const NR_bler_options_t *bo = &nrmac->ul_bler;
     const int max_mcs_table = (current_BWP->mcs_table == 0 || current_BWP->mcs_table == 2) ? 28 : 27;
     const int max_mcs = min(bo->max_mcs, max_mcs_table); /* no per-user maximum MCS yet */
-    if (bo->harq_round_max == 1)
+    if (bo->harq_round_max == 1) {
       sched_pusch->mcs = max_mcs;
-    else {
+      sched_ctrl->ul_bler_stats.mcs = sched_pusch->mcs;
+    } else {
       sched_pusch->mcs = get_mcs_from_bler(bo, stats, &sched_ctrl->ul_bler_stats, max_mcs, frame);
       LOG_D(NR_MAC,"%d.%d starting mcs %d bleri %f\n",frame,slot,sched_pusch->mcs,sched_ctrl->ul_bler_stats.bler);
     }
@@ -2591,7 +2595,7 @@ void nr_schedule_ulsch(module_id_t module_id, frame_t frame, sub_frame_t slot, n
       ul_dci_request_pdu->PDUSize = (uint8_t)(4+sizeof(nfapi_nr_dl_tti_pdcch_pdu));
       pdcch_pdu = &ul_dci_request_pdu->pdcch_pdu.pdcch_pdu_rel15;
       ul_dci_req->numPdus += 1;
-      nr_configure_pdcch(pdcch_pdu, coreset, &sched_ctrl->sched_pdcch);
+      nr_configure_pdcch(pdcch_pdu, coreset, &sched_ctrl->sched_pdcch, false);
       pdcch_pdu_coreset[coresetid] = pdcch_pdu;
     }
 

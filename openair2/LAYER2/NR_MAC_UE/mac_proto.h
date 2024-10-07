@@ -88,6 +88,7 @@ void nr_rrc_mac_config_req_mib(module_id_t module_id,
 void nr_rrc_mac_config_req_sib1(module_id_t module_id,
                                 int cc_idP,
                                 NR_SI_SchedulingInfo_t *si_SchedulingInfo,
+                                NR_SI_SchedulingInfo_v1700_t *si_SchedulingInfo_v1700,
                                 NR_ServingCellConfigCommonSIB_t *scc);
 
 void nr_rrc_mac_config_req_sib19_r17(module_id_t module_id,
@@ -239,6 +240,12 @@ int get_pusch_tx_power_ue(
   bool is_rar_tx_retx,
   bool transform_precoding);
 
+int get_srs_tx_power_ue(NR_UE_MAC_INST_t *mac,
+                        NR_SRS_Resource_t *srs_resource,
+                        NR_SRS_ResourceSet_t *srs_resource_set,
+                        int delta_srs,
+                        bool is_configured_for_pusch_on_current_bwp);
+
 int nr_ue_configure_pucch(NR_UE_MAC_INST_t *mac,
                            int slot,
                            frame_t frame,
@@ -348,8 +355,9 @@ void free_rach_structures(NR_UE_MAC_INST_t *nr_mac, int bwp_id);
 void schedule_RA_after_SR_failure(NR_UE_MAC_INST_t *mac);
 void nr_Msg1_transmitted(NR_UE_MAC_INST_t *mac);
 void nr_Msg3_transmitted(NR_UE_MAC_INST_t *mac, uint8_t CC_id, frame_t frameP, slot_t slotP, uint8_t gNB_id);
+void trigger_MAC_UE_RA(NR_UE_MAC_INST_t *mac);
 void nr_get_msg3_payload(NR_UE_MAC_INST_t *mac, uint8_t *buf, int TBS_max);
-
+void handle_time_alignment_timer_expired(NR_UE_MAC_INST_t *mac);
 int8_t nr_ue_process_dci_freq_dom_resource_assignment(nfapi_nr_ue_pusch_pdu_t *pusch_config_pdu,
                                                       fapi_nr_dl_config_dlsch_pdu_rel15_t *dlsch_config_pdu,
                                                       NR_PDSCH_Config_t *pdsch_Config,
@@ -375,7 +383,7 @@ int16_t compute_nr_SSB_PL(NR_UE_MAC_INST_t *mac, short ssb_rsrp_dBm);
 // PUSCH scheduler:
 // - Calculate the slot in which ULSCH should be scheduled. This is current slot + K2,
 // - where K2 is the offset between the slot in which UL DCI is received and the slot
-// - in which ULSCH should be scheduled. K2 is configured in RRC configuration.  
+// - in which ULSCH should be scheduled. K2 is configured in RRC configuration.
 // PUSCH Msg3 scheduler:
 // - scheduled by RAR UL grant according to 8.3 of TS 38.213
 int nr_ue_pusch_scheduler(const NR_UE_MAC_INST_t *mac,

@@ -26,7 +26,12 @@ The hardware on which we have tried this tutorial:
 |Intel(R) Xeon(R) Gold 6354 36-Core, 128GB|Ubuntu 22.04.3 LTS (5.15.0-1033-realtime)       |Intel X710, i40e, 9.00 0x8000cfeb 21.5.9 |
 |AMD EPYC 9374F 32-Core Processor, 128GB  |Ubuntu 22.04.2 LTS (5.15.0-1038-realtime)       |Intel E810 ,ice, 4.00 0x8001184e 1.3236.0|
 
-**NOTE**: These are not minimum hardware requirements. This is the configuration of our servers. The NIC card should support hardware PTP time stamping.
+**NOTE**: 
+
+- These are not minimum hardware requirements. This is the configuration of our servers. 
+- The NIC card should support hardware PTP time stamping. 
+- If you are using Intel servers then use only Ice Lake or newer generations. In case of AMD use only 4th generation, Genoa or newer. 
+- If you try on any other server apart from the above listed, then choose a desktop/server with clock speed higher than 3.0 GHz and `avx512` capabilities. 
 
 NICs we have tested so far:
 
@@ -783,6 +788,12 @@ Edit the sample OAI gNB configuration file and check following parameters:
   * `ru_addr`: RU C- and U-plane MAC-addresses (format `UU:VV:WW:XX:YY:ZZ`,
     hexadecimal numbers)
   * `mtu`: Maximum Transmission Unit for the RU, specified by RU vendor
+  * `dpdk_mem_size`: the huge page size that should be pre-allocated by DPDK
+    _for NUMA node 0_; by default, this is 8192 MiB (corresponding to 8 huge
+    pages à 1024 MiB each, see above). In the current implementation, you
+    cannot preallocate memory on NUMA nodes other than 0; in this case, set
+    this to 0 (no pre-allocation) and so that DPDK will allocate it on-demand
+    on the right NUMA node.
   * `fh_config`: parameters that need to match RU parameters
     * timing parameters (starting with `T`) depend on the RU: `Tadv_cp_dl` is a
       single number, the rest pairs of numbers `(x, y)` specifying minimum and

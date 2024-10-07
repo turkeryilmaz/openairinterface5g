@@ -959,43 +959,10 @@ int setup_RU_buffers(RU_t *ru) {
   int mu = config->ssb_config.scs_common.value;
   int N_RB = config->carrier_config.dl_grid_size[config->ssb_config.scs_common.value].value;
 
-  if (config->cell_config.frame_duplex_type.value == TDD) {
-    int N_TA_offset =  config->carrier_config.uplink_frequency.value < 6000000 ? 400 : 431; // reference samples  for 25600Tc @ 30.72 Ms/s for FR1, same @ 61.44 Ms/s for FR2
-    double factor=1;
-
-    switch (mu) {
-      case 0: //15 kHz scs
-        AssertFatal(N_TA_offset == 400, "scs_common 15kHz only for FR1\n");
-        factor = fp->samples_per_subframe / 30720.0;
-        break;
-
-      case 1: //30 kHz sc
-        AssertFatal(N_TA_offset == 400, "scs_common 30kHz only for FR1\n");
-        factor = fp->samples_per_subframe / 30720.0;
-        break;
-
-      case 2: //60 kHz scs
-        AssertFatal(1==0, "scs_common should not be 60 kHz\n");
-        break;
-
-      case 3: //120 kHz scs
-        AssertFatal(N_TA_offset == 431, "scs_common 120kHz only for FR2\n");
-        factor = fp->samples_per_subframe / 61440.0;
-        break;
-
-      case 4: //240 kHz scs
-        AssertFatal(N_TA_offset == 431, "scs_common 240kHz only for FR2\n");
-        factor = fp->samples_per_subframe / 61440.0;
-        break;
-
-      default:
-        AssertFatal(1==0, "Invalid scs_common!\n");
-    }
-
-    ru->N_TA_offset = (int)(N_TA_offset * factor);
-    LOG_I(PHY,"RU %d Setting N_TA_offset to %d samples (factor %f, UL Freq %d, N_RB %d, mu %d)\n",ru->idx,ru->N_TA_offset,factor,
-          config->carrier_config.uplink_frequency.value, N_RB, mu);
-  } else ru->N_TA_offset = 0;
+  ru->N_TA_offset = set_default_nta_offset(fp->freq_range, fp->samples_per_subframe);
+  LOG_I(PHY,
+        "RU %d Setting N_TA_offset to %d samples (UL Freq %d, N_RB %d, mu %d)\n",
+        ru->idx, ru->N_TA_offset, config->carrier_config.uplink_frequency.value, N_RB, mu);
 
   if (ru->openair0_cfg.mmapped_dma == 1) {
     // replace RX signal buffers with mmaped HW versions
@@ -1040,7 +1007,7 @@ void *ru_stats_thread(void *param) {
   while (!oai_exit) {
     sleep(1);
 
-    if (opp_enabled == 1) {
+    if (cpu_meas_enabled) {
       if (ru->feprx) print_meas(&ru->ofdm_demod_stats,"feprx (all ports)",NULL,NULL);
 
       if (ru->feptx_ofdm) {
@@ -1142,8 +1109,7 @@ void *ru_thread( void *param ) {
   int                slot     = fp->slots_per_frame-1;
   int                frame    = 1023;
   char               threadname[40];
-  int                initial_wait=0;
-  int                opp_enabled0 = opp_enabled;
+  int initial_wait = 0;
 
 #ifndef OAI_FHI72
   bool rx_tti_busy[RU_RX_SLOT_DEPTH] = {false};
@@ -1231,7 +1197,7 @@ void *ru_thread( void *param ) {
       else LOG_I(PHY,"RU %d rf device ready\n",ru->idx);
     } else LOG_I(PHY,"RU %d no rf device\n",ru->idx);
 
-    LOG_I(PHY,"RU %d RF started opp_enabled %d\n",ru->idx,opp_enabled);
+    LOG_I(PHY, "RU %d RF started cpu_meas_enabled %d\n", ru->idx, cpu_meas_enabled);
     // start trx write thread
     if(usrp_tx_thread == 1) {
       if (ru->start_write_thread) {
@@ -1294,8 +1260,7 @@ void *ru_thread( void *param ) {
       continue;
     }
     if (proc->frame_rx>=300)  {
-      initial_wait=0;
-      opp_enabled = opp_enabled0;
+      initial_wait = 0;
     }
     if (initial_wait == 0 && ru->rx_fhaul.trials > 1000) {
         reset_meas(&ru->rx_fhaul);
@@ -1460,7 +1425,7 @@ void init_RU_proc(RU_t *ru) {
 
   if(emulate_rf)
     threadCreate( &proc->pthread_emulateRF, emulatedRF_thread, (void *)proc, "emulateRF", -1, OAI_PRIORITY_RT );
-  if (opp_enabled == 1)
+  if (cpu_meas_enabled)
     threadCreate(&ru->ru_stats_thread, ru_stats_thread, (void *)ru, "ru_stats", -1, OAI_PRIORITY_RT);
   LOG_I(PHY, "Initialized RU proc %d (%s,%s),\n", ru->idx, NB_functions[ru->function], NB_timing[ru->if_timing]);
 }
@@ -1485,7 +1450,7 @@ void kill_NR_RU_proc(int inst) {
   pthread_mutex_unlock( &proc->mutex_fep[0] );
   pthread_join(proc->pthread_FH, NULL);
 
-  if (opp_enabled) {
+  if (cpu_meas_enabled) {
     LOG_D(PHY, "Joining ru_stats_thread\n");
     pthread_join(ru->ru_stats_thread, NULL);
   }

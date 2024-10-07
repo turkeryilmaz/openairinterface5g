@@ -177,7 +177,7 @@ bool nr_timer_is_active(const NR_timer_t *timer);
  */
 uint32_t nr_timer_elapsed_time(const NR_timer_t *timer);
 
-
+int set_default_nta_offset(frequency_range_t freq_range, uint32_t samples_per_subframe);
 extern const nr_bandentry_t nr_bandtable[];
 
 static inline int get_num_dmrs(uint16_t dmrs_mask )
@@ -250,6 +250,8 @@ int get_scan_ssb_first_sc(const double fc,
 
 void check_ssb_raster(uint64_t freq, int band, int scs);
 int get_smallest_supported_bandwidth_index(int scs, frequency_range_t frequency_range, int n_rbs);
+unsigned short get_m_srs(int c_srs, int b_srs);
+unsigned short get_N_b_srs(int c_srs, int b_srs);
 
 #define CEILIDIV(a,b) ((a+b-1)/b)
 #define ROUNDIDIV(a,b) (((a<<1)+b)/(b<<1))
