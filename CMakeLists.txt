@@ -1692,7 +1692,7 @@ add_library(oai_iqplayer MODULE
 add_library(minimal_lib
   ${OPENAIR_DIR}/common/utils/minimal_stub.c
   )
-target_link_libraries(minimal_lib PUBLIC pthread dl ${T_LIB} LOG)
+target_link_libraries(minimal_lib PUBLIC UTIL dl)
 
 add_executable(measurement_display
   ${OPENAIR_DIR}/common/utils/threadPool/measurement_display.c)
@@ -1920,7 +1920,7 @@ add_executable(rftest
   ${OPENAIR_DIR}/radio/COMMON/common_lib.c
   ${OPENAIR_DIR}/executables/softmodem-common.c
 )
-target_link_libraries(rftest PRIVATE minimal_lib PHY_NR_COMMON UTIL forms pthread dl m ${T_LIB} shlib_loader)
+target_link_libraries(rftest PRIVATE minimal_lib PHY_NR_COMMON forms m shlib_loader)
 target_link_libraries(rftest PRIVATE asn1_lte_rrc_hdrs asn1_nr_rrc_hdrs)
 
 add_executable(polartest
@@ -1928,7 +1928,7 @@ add_executable(polartest
   )
 target_link_libraries(polartest PRIVATE
   -Wl,--start-group UTIL SIMU PHY_COMMON PHY_NR PHY_NR_COMMON PHY_NR_UE CONFIG_LIB -Wl,--end-group
-  m pthread dl ${T_LIB}
+  m dl
   )
 
 add_executable(smallblocktest
@@ -1937,7 +1937,7 @@ add_executable(smallblocktest
 
 target_link_libraries(smallblocktest PRIVATE
   -Wl,--start-group UTIL SIMU PHY_NR PHY_COMMON PHY_NR_COMMON -Wl,--end-group
-  m pthread dl shlib_loader ${T_LIB}
+  m dl shlib_loader
 )
 
 
@@ -1947,7 +1947,7 @@ add_executable(ldpctest
 )
 target_link_libraries(ldpctest PRIVATE
   -Wl,--start-group UTIL SIMU PHY_COMMON PHY_NR_COMMON -Wl,--end-group
-  m pthread dl shlib_loader ${T_LIB}
+  m dl shlib_loader
   # link 'check_crc' to make it resolved in the LDPC coding libraries
   # 'check_crc' is not used in ldpctest so it is not linked in the executable by default
   # --whole-archive links 'check_crc' in the executable even though it is note used, see 'man ld'
@@ -1960,14 +1960,14 @@ target_link_libraries(physim_common PRIVATE UTIL)
 add_executable(nr_dlschsim ${OPENAIR1_DIR}/SIMULATION/NR_PHY/dlschsim.c)
 target_link_libraries(nr_dlschsim PRIVATE
   -Wl,--start-group UTIL SIMU PHY_COMMON PHY_NR_COMMON PHY_NR PHY_NR_UE SCHED_NR_LIB CONFIG_LIB MAC_NR_COMMON -Wl,--end-group
-  m pthread ${T_LIB} ITTI dl shlib_loader physim_common
+  m ITTI dl shlib_loader physim_common
   )
 target_link_libraries(nr_dlschsim PRIVATE asn1_nr_rrc_hdrs)
 
 add_executable(nr_pbchsim ${OPENAIR1_DIR}/SIMULATION/NR_PHY/pbchsim.c)
 target_link_libraries(nr_pbchsim PRIVATE
   -Wl,--start-group UTIL SIMU PHY_COMMON PHY_NR_COMMON PHY_NR PHY_NR_UE SCHED_NR_LIB CONFIG_LIB MAC_NR_COMMON -Wl,--end-group
-  m pthread ${T_LIB} ITTI dl shlib_loader physim_common
+  m ITTI dl shlib_loader physim_common
 )
 target_link_libraries(nr_pbchsim PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
 
@@ -1981,14 +1981,14 @@ add_executable(nr_psbchsim
   )
 target_link_libraries(nr_psbchsim PRIVATE
   -Wl,--start-group UTIL SIMU PHY_COMMON PHY_NR_COMMON PHY_NR PHY_NR_UE SCHED_NR_LIB SCHED_NR_UE_LIB MAC_UE_NR MAC_NR_COMMON CONFIG_LIB L2_NR -lz -Wl,--end-group
-  m pthread ${T_LIB} ITTI dl shlib_loader physim_common
+  m ITTI dl shlib_loader physim_common
   )
 target_link_libraries(nr_psbchsim PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
 
 add_executable(nr_pucchsim ${OPENAIR1_DIR}/SIMULATION/NR_PHY/pucchsim.c)
 target_link_libraries(nr_pucchsim PRIVATE
   -Wl,--start-group UTIL SIMU PHY_COMMON PHY_NR_COMMON PHY_NR PHY_NR_UE SCHED_NR_LIB CONFIG_LIB MAC_NR_COMMON -Wl,--end-group
-  m pthread ${T_LIB} ITTI dl shlib_loader physim_common
+  m ITTI dl shlib_loader physim_common
 )
 target_link_libraries(nr_pucchsim PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
 
@@ -2002,7 +2002,7 @@ add_executable(nr_dlsim
   )
 target_link_libraries(nr_dlsim PRIVATE
   -Wl,--start-group UTIL SIMU PHY_COMMON PHY_NR_COMMON PHY_NR PHY_NR_UE SCHED_NR_LIB SCHED_NR_UE_LIB MAC_UE_NR MAC_NR_COMMON nr_rrc CONFIG_LIB L2_NR HASHTABLE x2ap SECURITY ngap -lz -Wl,--end-group
-  m pthread ${T_LIB} ITTI dl shlib_loader nr_ue_phy_meas physim_common
+  m ITTI dl shlib_loader nr_ue_phy_meas physim_common
   )
 target_link_libraries(nr_dlsim PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
 
@@ -2033,7 +2033,7 @@ add_executable(nr_ulsim
 
 target_link_libraries(nr_ulsim PRIVATE
   -Wl,--start-group UTIL SIMU PHY_COMMON PHY_NR_COMMON PHY_NR PHY_NR_UE SCHED_NR_LIB SCHED_NR_UE_LIB MAC_UE_NR MAC_NR_COMMON nr_rrc CONFIG_LIB L2_NR HASHTABLE x2ap SECURITY ngap -lz -Wl,--end-group
-  m pthread ${T_LIB} ITTI dl shlib_loader nr_ue_phy_meas physim_common
+  m ITTI dl shlib_loader nr_ue_phy_meas physim_common
   )
 target_link_libraries(nr_ulsim PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
 
@@ -2050,7 +2050,7 @@ foreach(myExe dlsim ulsim)
     )
   target_link_libraries (${myExe} PRIVATE
     -Wl,--start-group SIMU UTIL SCHED_LIB SCHED_RU_LIB SCHED_UE_LIB PHY_COMMON PHY_NR_COMMON PHY PHY_UE PHY_RU ITTI -Wl,--end-group
-    pthread m rt CONFIG_LIB ${T_LIB} dl shlib_loader
+    m rt CONFIG_LIB dl shlib_loader
     )
   target_link_libraries(${myExe} PRIVATE asn1_lte_rrc_hdrs)
   add_dependencies(${myExe} coding)
@@ -2080,11 +2080,6 @@ endforeach(myExe)
 #ensure that the T header files are generated before targets depending on them
 if (${T_TRACER})
   foreach(i
-        #all "add_executable" definitions (except tests, updatefw)
-        dlsim dlsim_tm7
-        ulsim pbchsim scansim mbmssim pdcchsim pucchsim prachsim
-        syncsim nr_ulsim nr_dlsim nr_dlschsim nr_pbchsim nr_pucchsim
-        ldpctest polartest smallblocktest
         #all "add_library" definitions
         ITTI lte_rrc nr_rrc s1ap x2ap m2ap m3ap f1ap
         oai_bladerfdevif oai_lmssdrdevif oai_iqplayer
