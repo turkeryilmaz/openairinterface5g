@@ -101,7 +101,8 @@ static void *NRUE_phy_stub_standalone_pnf_task(void *arg);
 
 static void start_process_slot_tx(void* arg) {
   notifiedFIFO_elt_t *newTx = arg;
-  pushTpool(&(get_nrUE_params()->Tpool), newTx);
+  nr_rxtx_thread_data_t *curMsgTx = (nr_rxtx_thread_data_t *)NotifiedFifoData(newTx);
+  pushNotifiedFIFO(&curMsgTx->UE->ul_actor.fifo, newTx);
 }
 
 static size_t dump_L1_UE_meas_stats(PHY_VARS_NR_UE *ue, char *output, size_t max_len)
@@ -542,11 +543,6 @@ void processSlotTX(void *arg)
       phy_procedures_nrUE_TX(UE, proc, &phy_data);
     }
   }
-
-  int slots_per_frame = (UE->sl_mode == 2) ? UE->SL_UE_PHY_PARAMS.sl_frame_params.slots_per_frame
-                                           : UE->frame_parms.slots_per_frame;
-  int next_slot = (proc->nr_slot_tx + 1) % slots_per_frame;
-  dynamic_barrier_join(&UE->process_slot_tx_barriers[next_slot]);
   RU_write(rxtxD, sl_tx_action);
 }
 
@@ -990,14 +986,9 @@ void *UE_thread(void *arg)
     curMsgTx->writeBlockSize = writeBlockSize;
     curMsgTx->proc.timestamp_tx = writeTimestamp;
     curMsgTx->UE = UE;
-    curMsgTx->stream_status = stream_status;
 
-    int sync_to_previous_thread = stream_status == STREAM_STATUS_SYNCED ? 1 : 0;
     int slot = curMsgTx->proc.nr_slot_tx;
-    dynamic_barrier_update(&UE->process_slot_tx_barriers[slot],
-                                 tx_wait_for_dlsch[slot] + sync_to_previous_thread,
-                                 start_process_slot_tx,
-                                 newTx);
+    dynamic_barrier_update(&UE->process_slot_tx_barriers[slot], tx_wait_for_dlsch[slot], start_process_slot_tx, newTx);
     stream_status = STREAM_STATUS_SYNCED;
     tx_wait_for_dlsch[slot] = 0;
   }
