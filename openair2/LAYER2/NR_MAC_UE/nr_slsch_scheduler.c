@@ -131,6 +131,7 @@ void handle_nr_ue_sl_harq(module_id_t mod_id,
     remove_front_nr_list(&sched_ctrl->feedback_sl_harq);
     NR_UE_sl_harq_t *harq = &sched_ctrl->sl_harq_processes[harq_pid];
     DevAssert(harq->is_waiting);
+    LOG_I(NR_MAC, "In %s, %4d.%2d Setting to feedback_slot to -1\n", __FUNCTION__, frame, slot);
     harq->feedback_slot = -1;
     harq->is_waiting = false;
     if (!ack_nack) {
@@ -259,19 +260,22 @@ void nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP, int slotP, nr_sci_pdu_
     if (slotP == sched_psfch->feedback_slot) {
         LOG_D(NR_MAC, "%4d.%2d i = %d sched_psfch %p feedback slot %d\n", frameP, slotP, i, sched_psfch, sched_psfch->feedback_slot);
         is_feedback_slot = true;
+        sched_psfch->harq_feedback = cur_harq->is_waiting;
         break;
     }
   }
-  if ((slotP % psfch_period == 0) && (psfch_period == 2 || psfch_period == 4)) {
+  if ((psfch_period == 2 || psfch_period == 4) && (slotP % psfch_period == 0)) {
       if (is_feedback_slot) {
         sci_pdu->psfch_overhead.val =  1;
-        LOG_D(NR_MAC, "%4d.%2d Setting psfch_overhead 1\n", frameP, slotP);
+        LOG_I(NR_MAC, "%4d.%2d Setting psfch_overhead 1\n", frameP, slotP);
       } else {
           sci_pdu->psfch_overhead.val = 0;
-          LOG_D(NR_MAC, "%4d.%2d Setting psfch_overhead 0\n", frameP, slotP);
+          LOG_I(NR_MAC, "%4d.%2d Setting psfch_overhead 0\n", frameP, slotP);
       }
-  } else if ((slotP % psfch_period != 0) && (psfch_period == 2 || psfch_period == 4))
+  } else if ((psfch_period == 2 || psfch_period == 4) && (slotP % psfch_period != 0)) {
     sci_pdu->psfch_overhead.val = 0;
+    LOG_I(NR_MAC, "%4d.%2d Setting psfch_overhead 0\n", frameP, slotP);
+  }
 
   sci_pdu->reserved.val = mac->is_synced ? 1 : 0;
   sci_pdu->conflict_information_receiver.val = 0;
@@ -282,7 +286,7 @@ void nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP, int slotP, nr_sci_pdu_
   sci2_pdu->source_id = mac->src_id;
   sci2_pdu->dest_id = dest_id;
   sci2_pdu->harq_feedback = cur_harq->is_waiting;
-  LOG_D(NR_MAC, "%4d.%2d Comparing Setting harq_feedback %d bytes_in_buffer %d sl_harq_pid %d\n", frameP, slotP, sci2_pdu->harq_feedback, rlc_status->bytes_in_buffer, cur_harq ? cur_harq->sl_harq_pid : 0);
+  LOG_I(NR_MAC, "%4d.%2d Comparing Setting harq_feedback %d bytes_in_buffer %d sl_harq_pid %d\n", frameP, slotP, sci2_pdu->harq_feedback, rlc_status->bytes_in_buffer, cur_harq ? cur_harq->sl_harq_pid : 0);
   sci2_pdu->cast_type = 1;
   if (format2 == NR_SL_SCI_FORMAT_2C || format2 == NR_SL_SCI_FORMAT_2A) {
     sci2_pdu->csi_req = (csi_acq && csi_req_slot) ? 1 : 0;
