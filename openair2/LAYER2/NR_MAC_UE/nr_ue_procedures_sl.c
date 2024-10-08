@@ -668,13 +668,14 @@ void configure_psfch_params_tx(int module_idP,
   compute_params(module_idP, psfch_params);
   const int nr_slots_frame = nr_slots_per_frame[scs];
   int psfch_index = nr_ue_sl_acknack_scheduling(mac, rx_ind, psfch_period, tx_frame, tx_slot, nr_slots_frame);
+  LOG_I(NR_MAC, "psfch_index %d\n", psfch_index);
   if (psfch_index != -1)
     fill_psfch_params_tx(mac, rx_ind, psfch_period, tx_frame, tx_slot, ack_nack, psfch_params, nr_slots_frame, psfch_index);
   free(psfch_params);
   psfch_params = NULL;
 }
 
-static int get_psfch_index(int frame, int slot, int n_slots_frame, const NR_TDD_UL_DL_Pattern_t *tdd, int sched_psfch_max_size)
+int get_psfch_index(int frame, int slot, int n_slots_frame, const NR_TDD_UL_DL_Pattern_t *tdd, int sched_psfch_max_size)
 {
   // PUCCH structures are indexed by slot in the PUCCH period determined by sched_psfch_max_size number of UL slots
   // this functions return the index to the structure for slot passed to the function

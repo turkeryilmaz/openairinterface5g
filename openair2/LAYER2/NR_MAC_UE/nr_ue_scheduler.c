@@ -3361,6 +3361,7 @@ void preprocess(NR_UE_MAC_INST_t *mac,
       NR_SL_PSFCH_Config_r16_t *sl_psfch_config = mac->sl_tx_res_pool->sl_PSFCH_Config_r16->choice.setup;
       long psfch_period = (sl_psfch_config->sl_PSFCH_Period_r16)
                             ? psfch_periods[*sl_psfch_config->sl_PSFCH_Period_r16] : 0;
+#if 0
       uint8_t psfch_min_time_gap = time_gap[*sl_psfch_config->sl_MinTimeGapPSFCH_r16];
 
       uint8_t pssch_to_harq_feedback[8];
@@ -3386,6 +3387,33 @@ void preprocess(NR_UE_MAC_INST_t *mac,
       }
       *fb_frame = feedback_frame;
       *fb_slot = feedback_slot;
+#endif
+
+#if 1
+      // sl_nr_ue_mac_params_t *sl_mac =  mac->SL_MAC_PARAMS;
+      // NR_TDD_UL_DL_Pattern_t *tdd = &sl_mac->sl_TDD_config->pattern1;
+      // const int n_ul_slots_period = tdd ? tdd->nrofUplinkSlots + (tdd->nrofUplinkSymbols > 0 ? 1 : 0) : nr_slots_frame;
+      int rcv_tx_frame = (frame + ((slot + DURATION_RX_TO_TX) / nr_slots_frame)) % 1024;
+      int rcv_tx_slot = (slot + DURATION_RX_TO_TX) % nr_slots_frame;
+      // uint16_t num_subch = sl_get_num_subch(mac->sl_tx_res_pool);
+      // int n_ul_buf_max_size = n_ul_slots_period * num_subch;
+      int psfch_slot = get_feedback_slot(psfch_period, rcv_tx_slot);
+      // const int psfch_index = get_psfch_index(frame, slot, nr_slots_frame, tdd, n_ul_buf_max_size);
+      // NR_SL_UE_sched_ctrl_t  *sched_ctrl = &mac->sl_info.list[0]->UE_sched_ctrl;
+      // SL_sched_feedback_t  *curr_psfch = &sched_ctrl->sched_psfch[psfch_index];
+      // psfch_frame = frame;
+      // curr_psfch->feedback_frame = psfch_frame;
+      // curr_psfch->feedback_slot = psfch_slot;
+      // curr_psfch->dai_c = psfch_index;
+      *fb_frame = rcv_tx_frame;
+      *fb_slot = psfch_slot;
+      LOG_I(NR_MAC, "Tx SLSCH %4d.%2d, Expected Feedback: %4d.%2d in current PSFCH: psfch_period %d\n",
+            frame,
+            slot,
+            *fb_frame,
+            *fb_slot,
+            psfch_period);
+#endif
     }
     int locbw = sl_bwp->sl_BWP_Generic_r16->sl_BWP_r16->locationAndBandwidth;
     sched_pssch->mu = mac->SL_MAC_PARAMS->sl_phy_config.sl_config_req.sl_bwp_config.sl_scs;
