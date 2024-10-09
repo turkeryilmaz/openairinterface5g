@@ -19,7 +19,7 @@
  *      contact@openairinterface.org
  */
 
-/*! \file PHY/defs.h
+/*! \file defs_UE.h
  \brief Top-level defines and structure definitions
  \author R. Knopp, F. Kaltenberger
  \date 2011
@@ -55,19 +55,26 @@
 #include <string.h>
 #include <math.h>
 #include "common_lib.h"
-#include "msc.h"
 
 #include "defs_common.h"
 #include "impl_defs_top.h"
 
-#include "PHY/TOOLS/time_meas.h"
+#include "time_meas.h"
 #include "PHY/CODING/coding_defs.h"
 #include "PHY/TOOLS/tools_defs.h"
-#include "platform_types.h"
+#include "common/platform_types.h"
 #include "PHY/LTE_UE_TRANSPORT/transport_ue.h"
 #include "PHY/LTE_TRANSPORT/transport_eNB.h" // for SIC
 #include <pthread.h>
 #include "assertions.h"
+
+#if UE_TIMING_TRACE
+#define start_UE_TIMING(a) start_meas(&(a))
+#define stop_UE_TIMING(a) stop_meas(&(a))
+#else
+#define start_UE_TIMING(a)
+#define stop_UE_TIMING(a)
+#endif
 
 #ifdef MEX
   #include "mex.h"
@@ -87,7 +94,6 @@
   #define LOG_W(x, ...) mexPrintf(__VA_ARGS__)
   #define LOG_M(x, ...) mexPrintf(__VA_ARGS__)
 #else
-  #ifdef OPENAIR2
     #if ENABLE_RAL
       #include "collection/hashtable/hashtable.h"
       #include "COMMON/ral_messages_types.h"
@@ -95,9 +101,6 @@
     #endif
     #include "common/utils/LOG/log.h"
     #define msg(aRGS...) LOG_D(PHY, ##aRGS)
-  #else
-    #define msg printf
-  #endif
 #endif
 
 
@@ -159,7 +162,6 @@ typedef struct {
 
   int sub_frame_start;
   int sub_frame_step;
-  unsigned long long gotIQs;
 } UE_rxtx_proc_t;
 
 /// Context data structure for eNB subframe processing
@@ -719,8 +721,7 @@ typedef struct {
   int              rx_offset; /// Timing offset
   int              rx_offset_diff; /// Timing adjustment for ofdm symbol0 on HW USRP
   int              time_sync_cell;
-  int              timing_advance; ///timing advance signalled from eNB
-  int              hw_timing_advance;
+  int timing_advance; /// timing advance signalled from eNB
   int              N_TA_offset; ///timing offset used in TDD
   /// Flag to tell if UE is secondary user (cognitive mode)
   unsigned char    is_secondary_ue;
@@ -736,10 +737,6 @@ typedef struct {
 
   /// Flag to initialize averaging of PHY measurements
   int init_averaging;
-
-  /// \brief sinr for all subcarriers of the current link (used only for abstraction).
-  /// - first index: ? [0..12*N_RB_DL[
-  double *sinr_dB;
 
   /// \brief sinr for all subcarriers of first symbol for the CQI Calculation.
   /// - first index: ? [0..12*N_RB_DL[
@@ -839,10 +836,10 @@ typedef struct {
   pthread_mutex_t timer_mutex;
   pthread_cond_t timer_cond;
   int instance_cnt_timer;
-
   /// RF and Interface devices per CC
 
   openair0_device rfdevice;
+  void *scopeData;
 } PHY_VARS_UE;
 
 /* this structure is used to pass both UE phy vars and

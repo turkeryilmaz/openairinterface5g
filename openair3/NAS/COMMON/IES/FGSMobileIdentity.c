@@ -37,13 +37,13 @@
 #include "TLVDecoder.h"
 #include "FGSMobileIdentity.h"
 
-static int decode_guti_5gs_mobile_identity(Guti5GSMobileIdentity_t *guti, uint8_t *buffer);
+static int decode_guti_5gs_mobile_identity(Guti5GSMobileIdentity_t *guti, const uint8_t *buffer);
 
 static int encode_guti_5gs_mobile_identity(Guti5GSMobileIdentity_t *guti, uint8_t *buffer);
 static int encode_suci_5gs_mobile_identity(Suci5GSMobileIdentity_t *suci, uint8_t *buffer);
 static int encode_imeisv_5gs_mobile_identity(Imeisv5GSMobileIdentity_t *imeisv, uint8_t *buffer);
 
-int decode_5gs_mobile_identity(FGSMobileIdentity *fgsmobileidentity, uint8_t iei, uint8_t *buffer, uint32_t len)
+int decode_5gs_mobile_identity(FGSMobileIdentity *fgsmobileidentity, uint8_t iei, const uint8_t *buffer, uint32_t len)
 {
   int decoded_rc = TLV_DECODE_VALUE_DOESNT_MATCH;
   int decoded = 0;
@@ -53,9 +53,10 @@ int decode_5gs_mobile_identity(FGSMobileIdentity *fgsmobileidentity, uint8_t iei
     CHECK_IEI_DECODER(iei, *buffer);
     decoded++;
   }
-
-  ielen = *(buffer + decoded);
-  decoded++;
+  uint16_t tmp;
+  memcpy(&tmp, buffer + decoded, sizeof(tmp));
+  ielen = (uint8_t)tmp;
+  decoded += 2;
   CHECK_LENGTH_DECODER(len - decoded, ielen);
 
   uint8_t typeofidentity = *(buffer + decoded) & 0x7;
@@ -63,6 +64,8 @@ int decode_5gs_mobile_identity(FGSMobileIdentity *fgsmobileidentity, uint8_t iei
   if (typeofidentity == FGS_MOBILE_IDENTITY_5G_GUTI) {
     decoded_rc = decode_guti_5gs_mobile_identity(&fgsmobileidentity->guti,
                  buffer + decoded);
+  } else {
+    AssertFatal(false, "Mobile Identity encoding of type %d not implemented\n", typeofidentity);
   }
 
   if (decoded_rc < 0) {
@@ -104,15 +107,17 @@ int encode_5gs_mobile_identity(FGSMobileIdentity *fgsmobileidentity, uint8_t iei
   }
 
   if(iei > 0){
-    *(uint16_t*) (buffer+1) = htons(encoded  + encoded_rc - 3);
+    uint16_t tmp = htons(encoded + encoded_rc - 3);
+    memcpy(buffer + 1, &tmp, sizeof(tmp));
   } else {
-    *(uint16_t*) buffer = htons(encoded  + encoded_rc - 2);
+    uint16_t tmp = htons(encoded + encoded_rc - 2);
+    memcpy(buffer, &tmp, sizeof(tmp));
   }
 
   return (encoded + encoded_rc);
 }
 
-static int decode_guti_5gs_mobile_identity(Guti5GSMobileIdentity_t *guti, uint8_t *buffer)
+static int decode_guti_5gs_mobile_identity(Guti5GSMobileIdentity_t *guti, const uint8_t *buffer)
 {
   int decoded = 0;
   uint16_t temp;
@@ -194,23 +199,23 @@ static int encode_guti_5gs_mobile_identity(Guti5GSMobileIdentity_t *guti, uint8_
 static int encode_suci_5gs_mobile_identity(Suci5GSMobileIdentity_t *suci, uint8_t *buffer)
 {
   uint32_t encoded = 0;
-  *(buffer + encoded) = 0x00 | (suci->supiformat << 4) | (suci->typeofidentity);
+  *(buffer + encoded) = (suci->supiformat << 4) | (suci->typeofidentity);
   encoded++;
-  *(buffer + encoded) = 0x00 | ((suci->mccdigit2 & 0xf) << 4) |
+  *(buffer + encoded) = ((suci->mccdigit2 & 0xf) << 4) |
                         (suci->mccdigit1 & 0xf);
   encoded++;
-  *(buffer + encoded) = 0x00 | ((suci->mncdigit3 & 0xf) << 4) |
+  *(buffer + encoded) = ((suci->mncdigit3 & 0xf) << 4) |
                         (suci->mccdigit3 & 0xf);
   encoded++;
-  *(buffer + encoded) = 0x00 | ((suci->mncdigit2 & 0xf) << 4) |
+  *(buffer + encoded) = ((suci->mncdigit2 & 0xf) << 4) |
                         (suci->mncdigit1 & 0xf);
   encoded++;
 
-  *(buffer + encoded) = 0x00 | ((suci->routingindicatordigit2 & 0xf) << 4) |
+  *(buffer + encoded) = ((suci->routingindicatordigit2 & 0xf) << 4) |
                         (suci->routingindicatordigit1 & 0xf);
   encoded++;
 
-  *(buffer + encoded) = 0x00 | ((suci->routingindicatordigit4 & 0xf) << 4) |
+  *(buffer + encoded) = ((suci->routingindicatordigit4 & 0xf) << 4) |
                         (suci->routingindicatordigit3 & 0xf);
   encoded++;
 
@@ -220,18 +225,38 @@ static int encode_suci_5gs_mobile_identity(Suci5GSMobileIdentity_t *suci, uint8_
   *(buffer + encoded) = suci->homenetworkpki;
   encoded++;
 
-  IES_ENCODE_U32(buffer, encoded, suci->schemeoutput);
+  char *ptr=suci->schemeoutput;
+  while ( ptr < suci->schemeoutput+strlen(suci->schemeoutput) ) {
+    buffer[encoded]=((*(ptr+1)-'0')<<4) | (*(ptr) -'0');
+    encoded++;
+    ptr+=2;
+  }
 
+  if (strlen(suci->schemeoutput)%2 == 1)
+    buffer[encoded++]=((*(ptr-1)-'0')) | 0xF0;
   return encoded;
 }
 
 static int encode_imeisv_5gs_mobile_identity(Imeisv5GSMobileIdentity_t *imeisv, uint8_t *buffer)
 {
   uint32_t encoded = 0;
-  *(buffer + encoded) = 0x00 | (imeisv->digit1 << 4) | (imeisv->oddeven << 3) | (imeisv->typeofidentity);
+  *(buffer + encoded) = 0x00 | (imeisv->digittac01 << 4) | (imeisv->oddeven << 3) | (imeisv->typeofidentity);
   encoded++;
-
-  *(buffer + encoded) = 0x00 | (imeisv->digitp1 << 4) | (imeisv->digitp);
+  *(buffer + encoded) = 0x00 | (imeisv->digittac03 << 4) | (imeisv->digittac02);
+  encoded++;
+  *(buffer + encoded) = 0x00 | (imeisv->digittac05 << 4) | (imeisv->digittac04);
+  encoded++;
+  *(buffer + encoded) = 0x00 | (imeisv->digittac07 << 4) | (imeisv->digittac06);
+  encoded++;
+  *(buffer + encoded) = 0x00 | (imeisv->digit09    << 4) | (imeisv->digittac08);
+  encoded++;
+  *(buffer + encoded) = 0x00 | (imeisv->digit11    << 4) | (imeisv->digit10);
+  encoded++;
+  *(buffer + encoded) = 0x00 | (imeisv->digit13    << 4) | (imeisv->digit12);
+  encoded++;
+  *(buffer + encoded) = 0x00 | (imeisv->digitsv1   << 4) | (imeisv->digit14);
+  encoded++;
+  *(buffer + encoded) = 0x00 | (imeisv->spare      << 4) | (imeisv->digitsv2);
   encoded++;
 
   return encoded;

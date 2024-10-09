@@ -32,58 +32,320 @@
 
 //#include "defs.h"
 #include "mac_proto.h"
-#include "../../ARCH/COMMON/common_lib.h"
+#include "radio/COMMON/common_lib.h"
 //#undef MALLOC
 #include "assertions.h"
-#include "PHY/types.h"
-#include "PHY/defs_UE.h"
-#include "openair2/LAYER2/nr_pdcp/nr_pdcp_entity.h"
-#include "executables/softmodem-common.h"
-#include "openair2/LAYER2/nr_pdcp/nr_pdcp.h"
-
+#include "executables/nr-uesoftmodem.h"
+#include "nr_rlc/nr_rlc_oai_api.h"
+#include "RRC/NR_UE/rrc_proto.h"
+#include <pthread.h>
+#include "openair2/LAYER2/RLC/rlc.h"
 static NR_UE_MAC_INST_t *nr_ue_mac_inst; 
 
-NR_UE_MAC_INST_t * nr_l2_init_ue(NR_UE_RRC_INST_t* rrc_inst)
+void send_srb0_rrc(int ue_id, const uint8_t *sdu, sdu_size_t sdu_len, void *data)
 {
-    //LOG_I(MAC, "[MAIN] MAC_INIT_GLOBAL_PARAM IN...\n");
+  AssertFatal(sdu_len > 0 && sdu_len < CCCH_SDU_SIZE, "invalid CCCH SDU size %d\n", sdu_len);
 
-    //LOG_I(MAC, "[MAIN] init UE MAC functions \n");
-    
-    //init mac here
-    nr_ue_mac_inst = (NR_UE_MAC_INST_t *)calloc(sizeof(NR_UE_MAC_INST_t),NB_NR_UE_MAC_INST);
-    for (int j=0;j<NB_NR_UE_MAC_INST;j++)
-	for (int i=0;i<NR_MAX_HARQ_PROCESSES;i++) nr_ue_mac_inst[j].first_ul_tx[i]=1;
-
-    if (rrc_inst && rrc_inst->scell_group_config) {
-      nr_rrc_mac_config_req_ue(0,0,0,NULL,NULL,NULL,rrc_inst->scell_group_config);
-      
-      // if (IS_SOFTMODEM_NOS1){
-      //if (1) {
-      //  AssertFatal(rlc_module_init(0) == 0, "%s: Could not initialize RLC layer\n", __FUNCTION__);
-      //  nr_pdcp_layer_init();
-        //nr_DRB_preconfiguration(nr_ue_mac_inst->crnti);
-      //}
-
-      // Allocate memory for ul_config_request in the mac instance. This is now a pointer and will
-      // point to a list of structures (one for each UL slot) to store PUSCH scheduling parameters
-      // received from UL DCI.
-      if (nr_ue_mac_inst->scc) {
-        int num_slots_ul = nr_ue_mac_inst->scc->tdd_UL_DL_ConfigurationCommon->pattern1.nrofUplinkSlots;
-        if (nr_ue_mac_inst->scc->tdd_UL_DL_ConfigurationCommon->pattern1.nrofUplinkSymbols>0)
-          num_slots_ul++;
-        LOG_D(MAC, "Initializing ul_config_request. num_slots_ul = %d\n", num_slots_ul);
-        nr_ue_mac_inst->ul_config_request = (fapi_nr_ul_config_request_t *)calloc(num_slots_ul, sizeof(fapi_nr_ul_config_request_t));
-      }
-    }
-    else {
-      LOG_I(MAC,"Running without CellGroupConfig\n");
-      nr_rrc_mac_config_req_ue(0,0,0,NULL,NULL,NULL,NULL);
-      AssertFatal(rlc_module_init(0) == 0, "%s: Could not initialize RLC layer\n", __FUNCTION__);
-    }      
-
-    return (nr_ue_mac_inst);
+  MessageDef *message_p = itti_alloc_new_message(TASK_MAC_UE, 0, NR_RRC_MAC_CCCH_DATA_IND);
+  memset(NR_RRC_MAC_CCCH_DATA_IND(message_p).sdu, 0, sdu_len);
+  memcpy(NR_RRC_MAC_CCCH_DATA_IND(message_p).sdu, sdu, sdu_len);
+  NR_RRC_MAC_CCCH_DATA_IND(message_p).sdu_size = sdu_len;
+  itti_send_msg_to_task(TASK_RRC_NRUE, ue_id, message_p);
 }
 
-NR_UE_MAC_INST_t *get_mac_inst(module_id_t module_id){
-    return &nr_ue_mac_inst[(int)module_id];
+void nr_ue_init_mac(NR_UE_MAC_INST_t *mac)
+{
+  LOG_I(NR_MAC, "[UE%d] Initializing MAC\n", mac->ue_id);
+  nr_ue_reset_sync_state(mac);
+  mac->get_sib1 = false;
+  mac->get_otherSI = false;
+  memset(&mac->phy_config, 0, sizeof(mac->phy_config));
+  mac->si_window_start = -1;
+  mac->servCellIndex = 0;
+  mac->harq_ACK_SpatialBundlingPUCCH = false;
+  mac->harq_ACK_SpatialBundlingPUSCH = false;
+  mac->uecap_maxMIMO_PDSCH_layers = 0;
+  mac->uecap_maxMIMO_PUSCH_layers_cb = 0;
+  mac->uecap_maxMIMO_PUSCH_layers_nocb = 0;
+  mac->p_Max = INT_MIN;
+  mac->p_Max_alt = INT_MIN;
+  mac->n_ta_offset = -1;
+  reset_mac_inst(mac);
+
+  // need to inizialize because might not been setup (optional timer)
+  nr_timer_stop(&mac->scheduling_info.sr_DelayTimer);
+
+  memset(&mac->ssb_measurements, 0, sizeof(mac->ssb_measurements));
+  memset(&mac->ul_time_alignment, 0, sizeof(mac->ul_time_alignment));
+  memset(mac->ssb_list, 0, sizeof(mac->ssb_list));
+  memset(mac->prach_assoc_pattern, 0, sizeof(mac->prach_assoc_pattern));
+
+  for (int i = 0; i < NR_MAX_SR_ID; i++)
+    memset(&mac->scheduling_info.sr_info[i], 0, sizeof(mac->scheduling_info.sr_info[i]));
+
+  mac->pucch_power_control_initialized = false;
+  mac->pusch_power_control_initialized = false;
+
+  // Fake SIB19 reception for NTN
+  // TODO: remove this and implement the actual SIB19 reception instead!
+  if (get_nrUE_params()->ntn_koffset || get_nrUE_params()->ntn_ta_common || get_nrUE_params()->ntn_ta_commondrift) {
+    NR_SIB19_r17_t *sib19_r17 = calloc(1, sizeof(*sib19_r17));
+    sib19_r17->ntn_Config_r17 = calloc(1, sizeof(*sib19_r17->ntn_Config_r17));
+
+    // NTN cellSpecificKoffset-r17
+    if (get_nrUE_params()->ntn_koffset) {
+      asn1cCallocOne(sib19_r17->ntn_Config_r17->cellSpecificKoffset_r17, get_nrUE_params()->ntn_koffset);
+    }
+
+    // NTN ta-Common-r17
+    if (get_nrUE_params()->ntn_ta_common || get_nrUE_params()->ntn_ta_commondrift) {
+      sib19_r17->ntn_Config_r17->ta_Info_r17 = calloc(1, sizeof(*sib19_r17->ntn_Config_r17->ta_Info_r17));
+      sib19_r17->ntn_Config_r17->ta_Info_r17->ta_Common_r17 = get_nrUE_params()->ntn_ta_common / 4.072e-6; // ta-Common-r17 is in units of 4.072e-3 µs, ntn_ta_common is in ms
+      if (get_nrUE_params()->ntn_ta_commondrift)
+        asn1cCallocOne(sib19_r17->ntn_Config_r17->ta_Info_r17->ta_CommonDrift_r17, get_nrUE_params()->ntn_ta_commondrift / 0.2e-3); // is in units of 0.2e-3 µs/s, ntn_ta_commondrift is in µs/s
+    }
+
+    nr_rrc_mac_config_req_sib19_r17(mac->ue_id, sib19_r17);
+    asn1cFreeStruc(asn_DEF_NR_SIB19_r17, sib19_r17);
+  }
+}
+
+void nr_ue_mac_default_configs(NR_UE_MAC_INST_t *mac)
+{
+  // default values as defined in 38.331 sec 9.2.2
+
+  // sf80 default for retxBSR_Timer sf10 for periodicBSR_Timer
+  int mu = mac->current_UL_BWP ? mac->current_UL_BWP->scs : get_softmodem_params()->numerology;
+  int subframes_per_slot = nr_slots_per_frame[mu] / 10;
+  nr_timer_setup(&mac->scheduling_info.retxBSR_Timer, 80 * subframes_per_slot, 1); // 1 slot update rate
+  nr_timer_setup(&mac->scheduling_info.periodicBSR_Timer, 10 * subframes_per_slot, 1); // 1 slot update rate
+
+  mac->scheduling_info.phr_info.is_configured = true;
+  mac->scheduling_info.phr_info.PathlossChange_db = 1;
+  nr_timer_setup(&mac->scheduling_info.phr_info.periodicPHR_Timer, 10 * subframes_per_slot, 1);
+  nr_timer_setup(&mac->scheduling_info.phr_info.prohibitPHR_Timer, 10 * subframes_per_slot, 1);
+}
+
+void nr_ue_send_synch_request(NR_UE_MAC_INST_t *mac, module_id_t module_id, int cc_id, const fapi_nr_synch_request_t *sync_req)
+{
+  // Sending to PHY a request to resync
+  mac->synch_request.Mod_id = module_id;
+  mac->synch_request.CC_id = cc_id;
+  mac->synch_request.synch_req = *sync_req;
+  mac->if_module->synch_request(&mac->synch_request);
+}
+
+void nr_ue_reset_sync_state(NR_UE_MAC_INST_t *mac)
+{
+  // reset synchornization status
+  mac->first_sync_frame = -1;
+  mac->state = UE_NOT_SYNC;
+  mac->ra.ra_state = nrRA_UE_IDLE;
+}
+
+NR_UE_L2_STATE_t nr_ue_get_sync_state(module_id_t mod_id)
+{
+  NR_UE_MAC_INST_t *mac = get_mac_inst(mod_id);
+  return mac->state;
+}
+
+NR_UE_MAC_INST_t *nr_l2_init_ue(int nb_inst)
+{
+  //init mac here
+  nr_ue_mac_inst = (NR_UE_MAC_INST_t *)calloc(nb_inst, sizeof(NR_UE_MAC_INST_t));
+  AssertFatal(nr_ue_mac_inst, "Couldn't allocate %d instances of MAC module\n", nb_inst);
+
+  for (int j = 0; j < nb_inst; j++) {
+    NR_UE_MAC_INST_t *mac = &nr_ue_mac_inst[j];
+    mac->ue_id = j;
+    nr_ue_init_mac(mac);
+    nr_ue_mac_default_configs(mac);
+    if (get_softmodem_params()->sa)
+      ue_init_config_request(mac, get_softmodem_params()->numerology);
+  }
+
+  int rc = rlc_module_init(0);
+  AssertFatal(rc == 0, "Could not initialize RLC layer\n");
+
+  for (int j = 0; j < nb_inst; j++) {
+    nr_rlc_activate_srb0(j, NULL, send_srb0_rrc);
+  }
+
+  return (nr_ue_mac_inst);
+}
+
+NR_UE_MAC_INST_t *get_mac_inst(module_id_t module_id)
+{
+  NR_UE_MAC_INST_t *mac = &nr_ue_mac_inst[(int)module_id];
+  AssertFatal(mac, "Couldn't get MAC inst %d\n", module_id);
+  AssertFatal(mac->ue_id == module_id, "MAC ID %d doesn't match with input %d\n", mac->ue_id, module_id);
+  return mac;
+}
+
+void reset_mac_inst(NR_UE_MAC_INST_t *nr_mac)
+{
+  // MAC reset according to 38.321 Section 5.12
+
+  // initialize Bj for each logical channel to zero
+  // TODO reset also other status variables of LC, is this ok?
+  for (int i = 0; i < NR_MAX_NUM_LCID; i++) {
+    LOG_D(NR_MAC, "Applying default logical channel config for LCID %d\n", i);
+    nr_mac->scheduling_info.lc_sched_info[i].Bj = 0;
+    nr_mac->scheduling_info.lc_sched_info[i].LCID_buffer_with_data = false;
+    nr_mac->scheduling_info.lc_sched_info[i].LCID_buffer_remain = 0;
+  }
+
+  // TODO stop all running timers
+  for (int i = 0; i < NR_MAX_NUM_LCID; i++) {
+    nr_mac->scheduling_info.lc_sched_info[i].Bj = 0;
+    nr_timer_stop(&nr_mac->scheduling_info.lc_sched_info[i].Bj_timer);
+  }
+  if (nr_mac->data_inactivity_timer)
+    nr_timer_stop(nr_mac->data_inactivity_timer);
+  nr_timer_stop(&nr_mac->time_alignment_timer);
+  nr_timer_stop(&nr_mac->ra.contention_resolution_timer);
+  nr_timer_stop(&nr_mac->scheduling_info.sr_DelayTimer);
+  nr_timer_stop(&nr_mac->scheduling_info.retxBSR_Timer);
+  for (int i = 0; i < NR_MAX_SR_ID; i++)
+    nr_timer_stop(&nr_mac->scheduling_info.sr_info[i].prohibitTimer);
+
+  // consider all timeAlignmentTimers as expired and perform the corresponding actions in clause 5.2
+  handle_time_alignment_timer_expired(nr_mac);
+
+  // set the NDIs for all uplink HARQ processes to the value 0
+  for (int k = 0; k < NR_MAX_HARQ_PROCESSES; k++)
+    nr_mac->ul_harq_info[k].last_ndi = -1; // initialize to invalid value
+
+  // stop any ongoing RACH procedure
+  if (nr_mac->ra.ra_state < nrRA_SUCCEEDED)
+    nr_mac->ra.ra_state = nrRA_UE_IDLE;
+
+  // discard explicitly signalled contention-free Random Access Resources
+  // TODO not sure what needs to be done here
+
+  // flush Msg3 buffer
+  free_and_zero(nr_mac->ra.Msg3_buffer);
+
+  // cancel any triggered Scheduling Request procedure
+  for (int i = 0; i < NR_MAX_SR_ID; i++) {
+    nr_mac->scheduling_info.sr_info[i].pending = false;
+    nr_mac->scheduling_info.sr_info[i].counter = 0;
+  }
+
+  // cancel any triggered Buffer Status Reporting procedure
+  nr_mac->scheduling_info.BSR_reporting_active = NR_BSR_TRIGGER_NONE;
+
+  // cancel any triggered Power Headroom Reporting procedure
+  nr_mac->scheduling_info.phr_info.phr_reporting = 0;
+  nr_mac->scheduling_info.phr_info.was_mac_reset = true;
+
+  // flush the soft buffers for all DL HARQ processes
+  for (int k = 0; k < NR_MAX_HARQ_PROCESSES; k++)
+    memset(&nr_mac->dl_harq_info[k], 0, sizeof(NR_UE_HARQ_STATUS_t));
+
+  // for each DL HARQ process, consider the next received transmission for a TB as the very first transmission
+  for (int k = 0; k < NR_MAX_HARQ_PROCESSES; k++)
+    nr_mac->dl_harq_info[k].last_ndi = -1; // initialize to invalid value
+
+  // release, if any, Temporary C-RNTI
+  nr_mac->ra.t_crnti = 0;
+
+  // reset BFI_COUNTER
+  // TODO beam failure procedure not implemented
+}
+
+void release_mac_configuration(NR_UE_MAC_INST_t *mac, NR_UE_MAC_reset_cause_t cause)
+{
+  NR_UE_ServingCell_Info_t *sc = &mac->sc_info;
+  // if cause is Re-establishment, release spCellConfig only
+  if (cause == GO_TO_IDLE) {
+    asn1cFreeStruc(asn_DEF_NR_MIB, mac->mib);
+    asn1cFreeStruc(asn_DEF_NR_SearchSpace, mac->search_space_zero);
+    asn1cFreeStruc(asn_DEF_NR_ControlResourceSet, mac->coreset0);
+    asn1cFreeStruc(asn_DEF_NR_SI_SchedulingInfo, mac->si_SchedulingInfo);
+    asn1cFreeStruc(asn_DEF_NR_TDD_UL_DL_ConfigCommon, mac->tdd_UL_DL_ConfigurationCommon);
+    for (int i = mac->lc_ordered_list.count; i > 0 ; i--)
+      asn_sequence_del(&mac->lc_ordered_list, i - 1, 1);
+  }
+
+  asn1cFreeStruc(asn_DEF_NR_CrossCarrierSchedulingConfig, sc->crossCarrierSchedulingConfig);
+  asn1cFreeStruc(asn_DEF_NR_SRS_CarrierSwitching, sc->carrierSwitching);
+  asn1cFreeStruc(asn_DEF_NR_UplinkConfig, sc->supplementaryUplink);
+  asn1cFreeStruc(asn_DEF_NR_PDSCH_CodeBlockGroupTransmission, sc->pdsch_CGB_Transmission);
+  asn1cFreeStruc(asn_DEF_NR_PUSCH_CodeBlockGroupTransmission, sc->pusch_CGB_Transmission);
+  asn1cFreeStruc(asn_DEF_NR_CSI_MeasConfig, sc->csi_MeasConfig);
+  asn1cFreeStruc(asn_DEF_NR_CSI_AperiodicTriggerStateList, sc->aperiodicTriggerStateList);
+  asn1cFreeStruc(asn_DEF_NR_NTN_Config_r17, sc->ntn_Config_r17);
+  asn1cFreeStruc(asn_DEF_NR_DownlinkHARQ_FeedbackDisabled_r17, sc->downlinkHARQ_FeedbackDisabled_r17);
+  free(sc->xOverhead_PDSCH);
+  free(sc->nrofHARQ_ProcessesForPDSCH);
+  free(sc->nrofHARQ_ProcessesForPDSCH_v1700);
+  free(sc->nrofHARQ_ProcessesForPUSCH_r17);
+  free(sc->rateMatching_PUSCH);
+  free(sc->xOverhead_PUSCH);
+  free(sc->maxMIMO_Layers_PDSCH);
+  free(sc->maxMIMO_Layers_PUSCH);
+  memset(&mac->sc_info, 0, sizeof(mac->sc_info));
+
+  mac->current_DL_BWP = NULL;
+  mac->current_UL_BWP = NULL;
+
+  // in case of re-establishment we don't need to release initial BWP config common
+  int first_bwp_rel = 0; // first BWP to release
+  if (cause == RE_ESTABLISHMENT) {
+    first_bwp_rel = 1;
+    // release dedicated BWP0 config
+    NR_UE_DL_BWP_t *bwp = mac->dl_BWPs.array[0];
+    NR_BWP_PDCCH_t *pdcch = &mac->config_BWP_PDCCH[0];
+    for (int i = pdcch->list_Coreset.count; i > 0 ; i--)
+      asn_sequence_del(&pdcch->list_Coreset, i - 1, 1);
+    for (int i = pdcch->list_SS.count; i > 0 ; i--)
+      asn_sequence_del(&pdcch->list_SS, i - 1, 1);
+    asn1cFreeStruc(asn_DEF_NR_PDSCH_Config, bwp->pdsch_Config);
+    NR_UE_UL_BWP_t *ubwp = mac->ul_BWPs.array[0];
+    asn1cFreeStruc(asn_DEF_NR_PUCCH_Config, ubwp->pucch_Config);
+    asn1cFreeStruc(asn_DEF_NR_SRS_Config, ubwp->srs_Config);
+    asn1cFreeStruc(asn_DEF_NR_PUSCH_Config, ubwp->pusch_Config);
+    mac->current_DL_BWP = bwp;
+    mac->current_UL_BWP = ubwp;
+    mac->sc_info.initial_dl_BWPSize = bwp->BWPSize;
+    mac->sc_info.initial_dl_BWPStart = bwp->BWPStart;
+    mac->sc_info.initial_ul_BWPSize = ubwp->BWPSize;
+    mac->sc_info.initial_ul_BWPStart = ubwp->BWPStart;
+  }
+
+  for (int i = first_bwp_rel; i < mac->dl_BWPs.count; i++)
+    release_dl_BWP(mac, i);
+  for (int i = first_bwp_rel; i < mac->ul_BWPs.count; i++)
+    release_ul_BWP(mac, i);
+
+  memset(&mac->ssb_measurements, 0, sizeof(mac->ssb_measurements));
+  memset(&mac->csirs_measurements, 0, sizeof(mac->csirs_measurements));
+  memset(&mac->ul_time_alignment, 0, sizeof(mac->ul_time_alignment));
+  for (int i = mac->TAG_list.count; i > 0 ; i--)
+    asn_sequence_del(&mac->TAG_list, i - 1, 1);
+}
+
+void free_rach_structures(NR_UE_MAC_INST_t *nr_mac, int bwp_id)
+{
+  for (int j = 0; j < MAX_NB_PRACH_CONF_PERIOD_IN_ASSOCIATION_PATTERN_PERIOD; j++)
+    for (int k = 0; k < MAX_NB_FRAME_IN_PRACH_CONF_PERIOD; k++)
+      for (int l = 0; l < MAX_NB_SLOT_IN_FRAME; l++)
+        free(nr_mac->prach_assoc_pattern[bwp_id].prach_conf_period_list[j].prach_occasion_slot_map[k][l].prach_occasion);
+
+  free(nr_mac->ssb_list[bwp_id].tx_ssb);
+}
+
+void reset_ra(NR_UE_MAC_INST_t *nr_mac, bool free_prach)
+{
+  RA_config_t *ra = &nr_mac->ra;
+  if(ra->rach_ConfigDedicated)
+    asn1cFreeStruc(asn_DEF_NR_RACH_ConfigDedicated, ra->rach_ConfigDedicated);
+  memset(ra, 0, sizeof(RA_config_t));
+
+  if (!free_prach)
+    return;
+
+  for (int i = 0; i < MAX_NUM_BWP_UE; i++)
+    free_rach_structures(nr_mac, i);
 }

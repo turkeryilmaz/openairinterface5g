@@ -12,21 +12,13 @@
   </tr>
 </table>
 
-## Table of Contents ##
+**2022/03/08: CAUTION, THIS TUTORIAL IS NO LONGER VALID on the `develop` branch after the `2022.w01` tag.**
 
-1.   [Environment](#1-environment)
-2.   [Prepare the EPC](#2-prepare-the-epc)
-3.   [Retrieve the OAI eNB-UE source code](#3-retrieve-the-oai-enb-ue-source-code)
-4.   [Setup of the USIM information in UE folder](#4-setup-of-the-usim-information-in-ue-folder)
-5.   [Setup of the Configuration files](#5-setup-of-the-configuration-files)
-     1.   [The eNB Configuration file](#51-the-enb-configuration-file)
-     2.   [The UE Configuration file](#52-the-ue-configuration-file)
-6.   [Build OAI UE and eNodeB](#6-build-oai-ue-and-enodeb)
-7.   [Start EPC](#7-start-epc)
-8.   [Start the eNB](#8-start-the-enb)
-9.   [Start the UE](#9-start-the-ue)
-10.   [Test with ping](#10-test-with-ping)
-11.   [Limitations](#11-limitations)
+**2022/03/08: CAUTION, THE LAST VALID TAG on `develop` branch is `2021.w51_c`.**
+
+**Table of Contents**
+
+[[_TOC_]]
 
 # 1. Environment #
 
@@ -144,7 +136,6 @@ First verify the nFAPI interface setup on the physical ethernet interface of mac
 MACRLCs = (
         {
         num_cc = 1;
-        local_s_if_name  = "ens3";             // <-- HERE
         remote_s_address = "192.168.122.169";  // <-- HERE
         local_s_address  = "192.168.122.31";   // <-- HERE
         local_s_portc    = 50001;
@@ -179,18 +170,11 @@ Last, the S1 interface shall be properly set.
 
 ```
     ////////// MME parameters:
-    mme_ip_address      = ( { ipv4       = "CI_MME_IP_ADDR"; // replace with 192.168.122.195
-                              ipv6       = "192:168:30::17";
-                              active     = "yes";
-                              preference = "ipv4";
-                            }
-                          );
+    mme_ip_address = ({ ipv4 = "CI_MME_IP_ADDR"; }); // replace with 192.168.122.195
 
     NETWORK_INTERFACES :
     {
-        ENB_INTERFACE_NAME_FOR_S1_MME            = "ens3";            // replace with the proper interface name
         ENB_IPV4_ADDRESS_FOR_S1_MME              = "CI_ENB_IP_ADDR";  // replace with 192.168.122.31
-        ENB_INTERFACE_NAME_FOR_S1U               = "ens3";            // replace with the proper interface name
         ENB_IPV4_ADDRESS_FOR_S1U                 = "CI_ENB_IP_ADDR";  // replace with 192.168.122.31
         ENB_PORT_FOR_S1U                         = 2152; # Spec 2152
         ENB_IPV4_ADDRESS_FOR_X2C                 = "CI_ENB_IP_ADDR";  // replace with 192.168.122.31
@@ -204,7 +188,7 @@ Last, the S1 interface shall be properly set.
 ```bash
 $ ssh sudousername@machineB
 cd ue_folder
-# Edit ci-scripts/conf_files/ue.nfapi.conf with your preferred editor
+# Edit ci-scripts/conf_files/nrue.uicc.conf with your preferred editor
 ```
 
 Verify the nFAPI interface setup on the loopback interface.
@@ -214,7 +198,6 @@ L1s = (
         {
         num_cc = 1;
         tr_n_preference = "nfapi";
-        local_n_if_name  = "ens3";            // <- HERE
         remote_n_address = "192.168.122.31";  // <- HERE
         local_n_address  = "192.168.122.169"; // <- HERE
         local_n_portc    = 50000;
@@ -260,16 +243,15 @@ In the second terminal (the one you used to build the UE):
 $ ssh sudousername@machineC
 cd ue_folder/cmake_targets
 # Test 64 UEs, 1 thread in FDD mode
-sudo -E ./ran_build/build/lte-uesoftmodem -O ../ci-scripts/conf_files/ue.nfapi.conf --L2-emul 3 --num-ues 64 --nums_ue_thread 1 --nokrnmod 1 > ue.log 2>&1
+sudo -E ./ran_build/build/lte-uesoftmodem -O ../ci-scripts/conf_files/nrue.uicc.conf --L2-emul 3 --num-ues 64 --nums_ue_thread 1 > ue.log 2>&1
 # Test 64 UEs, 1 thread in TDD mode
-sudo -E ./ran_build/build/lte-uesoftmodem -O ../ci-scripts/conf_files/ue.nfapi.conf --L2-emul 3 --num-ues 64 --nums_ue_thread 1 --nokrnmod 1 -T 1 > ue.log 2>&1
+sudo -E ./ran_build/build/lte-uesoftmodem -O ../ci-scripts/conf_files/nrue.uicc.conf --L2-emul 3 --num-ues 64 --nums_ue_thread 1 -T 1 > ue.log 2>&1
 # The "-T 1" option means TDD config
 ```
 
 -   The number of UEs can set by using `--num-ues` option and the maximum UE number is 255 (with the `--mu*` options, otherwise 16).
 -   The number of threads can set with the `--nums-ue-thread`. This number **SHALL NOT** be greater than the number of UEs.
     * At the time of writing, it seems to be enough to run on a single thread.
--   The `--nokrnmod 1` option makes use of the preferred and supported tunnel interface.
 -   How many UE that can be tested depends on hardware (server , PC, etc) performance in your environment.
 
 For example, running with 4 UEs:
@@ -277,7 +259,7 @@ For example, running with 4 UEs:
 ```bash
 $ ssh sudousername@machineC
 cd ue_folder/cmake_targets
-sudo -E ./ran_build/build/lte-uesoftmodem -O ../ci-scripts/conf_files/ue.nfapi.conf --L2-emul 3 --num-ues 64 --nums_ue_thread 1 --nokrnmod 1 > ue.log 2>&1
+sudo -E ./ran_build/build/lte-uesoftmodem -O ../ci-scripts/conf_files/nrue.uicc.conf --L2-emul 3 --num-ues 64 --nums_ue_thread 1 > ue.log 2>&1
 sleep 10
 ifconfig
 ens3      Link encap:Ethernet  HWaddr XX:XX:XX:XX:XX:XX

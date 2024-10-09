@@ -43,53 +43,122 @@
 #include <string.h>
 #include <linux/prctl.h>
 #include "common/config/config_userapi.h"
+#include <time.h>
+#include <sys/time.h>
+#include <stdatomic.h>
+#include "common/utils/LOG/log.h"
+
+#define LOG_MEM_SIZE 100*1024*1024
 
 // main log variables
 
-log_mem_cnt_t log_mem_d[2];
-int log_mem_flag=0;
-int log_mem_multi=1;
+// Fixme: a better place to be shure it is called 
+void read_cpu_hardware (void) __attribute__ ((constructor));
+#if !defined(__arm__) && !defined(__aarch64__) 
+  void read_cpu_hardware (void) {__builtin_cpu_init(); }
+#else 
+  void read_cpu_hardware (void) {}
+#endif
+
+  
+typedef struct {
+  char* buf_p;
+  int buf_index;
+  int enable_flag;
+} log_mem_cnt_t;
+
+static log_mem_cnt_t log_mem_d[2];
+static int log_mem_flag = 0;
 volatile int log_mem_side=0;
-pthread_mutex_t log_mem_lock;
-pthread_cond_t log_mem_notify;
-pthread_t log_mem_thread;
-int log_mem_file_cnt=0;
+static pthread_mutex_t log_mem_lock;
+static pthread_cond_t log_mem_notify;
+static pthread_t log_mem_thread;
+static int log_mem_file_cnt=0;
 volatile int log_mem_write_flag=0;
 volatile int log_mem_write_side=0;
-char __log_mem_filename[1024]={0};
-char * log_mem_filename = &__log_mem_filename[0];
-char logmem_filename[1024] = {0};
+static char * log_mem_filename;
 
-mapping log_level_names[] = {
-  {"error",  OAILOG_ERR},
-  {"warn",   OAILOG_WARNING},
-  {"info",   OAILOG_INFO},
-  {"debug",  OAILOG_DEBUG},
-  {"trace",  OAILOG_TRACE},
-  {NULL, -1}
-};
-
-mapping log_options[] = {
-  {"nocolor", FLAG_NOCOLOR  },
-  {"level",   FLAG_LEVEL  },
-  {"thread",  FLAG_THREAD },
-  {NULL,-1}
-};
+static mapping log_level_names[] = {{"error", OAILOG_ERR},
+                                   {"warn", OAILOG_WARNING},
+                                   {"analysis", OAILOG_ANALYSIS},
+                                   {"info", OAILOG_INFO},
+                                   {"debug", OAILOG_DEBUG},
+                                   {"trace", OAILOG_TRACE},
+                                   {NULL, -1}};
+mapping * log_level_names_ptr(void)
+{
+  return log_level_names;
+}
 
 
-mapping log_maskmap[] = LOG_MASKMAP_INIT;
+/** @defgroup _log_format Defined log format
+ *  @ingroup _macro
+ *  @brief Macro of log formats defined by LOG
+ * @{*/
+static const unsigned int FLAG_NOCOLOR = 1; /*!< \brief use colors in log messages, depending on level */
+static const unsigned int FLAG_THREAD = 1 << 1; /*!< \brief display thread name in log messages */
+static const unsigned int FLAG_LEVEL = 1 << 2; /*!< \brief display log level in log messages */
+static const unsigned int FLAG_FUNCT = 1 << 3;
+static const unsigned int FLAG_FILE_LINE = 1 << 4;
+static const unsigned int FLAG_TIME = 1 << 5;
+static const unsigned int FLAG_THREAD_ID = 1 << 6;
+static const unsigned int FLAG_REAL_TIME = 1 << 7;
+static const unsigned int FLAG_INITIALIZED = 1 << 8;
 
-char *log_level_highlight_start[] = {LOG_RED, LOG_ORANGE, "", LOG_BLUE, LOG_CYBL};  /*!< \brief Optional start-format strings for highlighting */
-char *log_level_highlight_end[]   = {LOG_RESET,LOG_RESET,LOG_RESET, LOG_RESET,LOG_RESET};   /*!< \brief Optional end-format strings for highlighting */
+/** @}*/
+static mapping log_options[] = {{"nocolor", FLAG_NOCOLOR},
+                                      {"level", FLAG_LEVEL},
+                                      {"thread", FLAG_THREAD},
+                                      {"line_num", FLAG_FILE_LINE},
+                                      {"function", FLAG_FUNCT},
+                                      {"time", FLAG_TIME},
+                                      {"thread_id", FLAG_THREAD_ID},
+                                      {"wall_clock", FLAG_REAL_TIME},
+                                      {NULL, -1}};
+mapping * log_option_names_ptr(void)
+{
+  return log_options;
+}
 
+static mapping log_maskmap[] = {{"PRACH", DEBUG_PRACH},
+                               {"RU", DEBUG_RU},
+                               {"UE_PHYPROC", DEBUG_UE_PHYPROC},
+                               {"LTEESTIM", DEBUG_LTEESTIM},
+                               {"DLCELLSPEC", DEBUG_DLCELLSPEC},
+                               {"ULSCH", DEBUG_ULSCH},
+                               {"RRC", DEBUG_RRC},
+                               {"PDCP", DEBUG_PDCP},
+                               {"DFT", DEBUG_DFT},
+                               {"ASN1", DEBUG_ASN1},
+                               {"CTRLSOCKET", DEBUG_CTRLSOCKET},
+                               {"SECURITY", DEBUG_SECURITY},
+                               {"NAS", DEBUG_NAS},
+                               {"RLC", DEBUG_RLC},
+                               {"DLSCH_DECOD", DEBUG_DLSCH_DECOD},
+                               {"UE_TIMING", UE_TIMING},
+                               {NULL, -1}};
+mapping * log_maskmap_ptr(void)
+{
+  return log_maskmap;
+}
 
-int write_file_matlab(const char *fname,
-		              const char *vname,
-					  void *data,
-					  int length,
-					  int dec,
-					  unsigned int format,
-            int multiVec)
+/* .log_format = 0x13 uncolored standard messages
+ * .log_format = 0x93 colored standard messages */
+/* keep white space in first position; switching it to 0 allows colors to be disabled*/
+static const char *const LOG_RED = "\033[1;31m"; /*!< \brief VT100 sequence for bold red foreground */
+static const char *const LOG_GREEN = "\033[32m"; /*!< \brief VT100 sequence for green foreground */
+static const char *const LOG_ORANGE = "\033[93m"; /*!< \brief VT100 sequence for orange foreground */
+static const char *const LOG_BLUE = "\033[34m"; /*!< \brief VT100 sequence for blue foreground */
+static const char *const LOG_CYBL = "\033[40;36m"; /*!< \brief VT100 sequence for cyan foreground on black background */
+static const char *const LOG_RESET = "\033[0m"; /*!< \brief VT100 sequence for reset (black) foreground */
+static const char *const log_level_highlight_start[] =
+    {LOG_RED, LOG_ORANGE, LOG_GREEN, "", LOG_BLUE, LOG_CYBL}; /*!< \brief Optional start-format strings for highlighting */
+
+static const char *const log_level_highlight_end[] =
+    {LOG_RESET, LOG_RESET, LOG_RESET, LOG_RESET, LOG_RESET, LOG_RESET}; /*!< \brief Optional end-format strings for highlighting */
+static void log_output_memory(log_component_t *c, const char *file, const char *func, int line, int comp, int level, const char* format,va_list args);
+
+int write_file_matlab(const char *fname, const char *vname, void *data, int length, int dec, unsigned int format, int multiVec)
 {
   FILE *fp=NULL;
   int i;
@@ -259,19 +328,19 @@ int write_file_matlab(const char *fname,
 }
 
 /* get log parameters from configuration file */
-void  log_getconfig(log_t *g_log)
+void log_getconfig(log_t *g_log)
 {
   char *gloglevel = NULL;
   int consolelog = 0;
   paramdef_t logparams_defaults[] = LOG_GLOBALPARAMS_DESC;
   paramdef_t logparams_level[MAX_LOG_PREDEF_COMPONENTS];
   paramdef_t logparams_logfile[MAX_LOG_PREDEF_COMPONENTS];
-  paramdef_t logparams_debug[sizeof(log_maskmap)/sizeof(mapping)];
-  paramdef_t logparams_dump[sizeof(log_maskmap)/sizeof(mapping)];
-  int ret = config_get( logparams_defaults,sizeof(logparams_defaults)/sizeof(paramdef_t),CONFIG_STRING_LOG_PREFIX);
+  paramdef_t logparams_debug[sizeofArray(log_maskmap)];
+  paramdef_t logparams_dump[sizeofArray(log_maskmap)];
+  int ret = config_get(config_get_if(), logparams_defaults, sizeofArray(logparams_defaults), CONFIG_STRING_LOG_PREFIX);
 
   if (ret <0) {
-    fprintf(stderr,"[LOG] init aborted, configuration couldn't be performed");
+    fprintf(stderr,"[LOG] init aborted, configuration couldn't be performed\n");
     return;
   }
 
@@ -289,12 +358,12 @@ void  log_getconfig(log_t *g_log)
   }
 
   /* build the parameter array for setting per component log level and infile options */
-  memset(logparams_level,    0, sizeof(paramdef_t)*MAX_LOG_PREDEF_COMPONENTS);
-  memset(logparams_logfile,  0, sizeof(paramdef_t)*MAX_LOG_PREDEF_COMPONENTS);
+  memset(logparams_level, 0, sizeof(logparams_level));
+  memset(logparams_logfile, 0, sizeof(logparams_logfile));
 
-  for (int i=MIN_LOG_COMPONENTS; i < MAX_LOG_PREDEF_COMPONENTS; i++) {
+  for (int i = 0; i < MAX_LOG_PREDEF_COMPONENTS; i++) {
     if(g_log->log_component[i].name == NULL) {
-      g_log->log_component[i].name = malloc(16);
+      g_log->log_component[i].name = malloc(17);
       sprintf((char *)g_log->log_component[i].name,"comp%i?",i);
       logparams_logfile[i].paramflags = PARAMFLAG_DONOTREAD;
       logparams_level[i].paramflags = PARAMFLAG_DONOTREAD;
@@ -322,15 +391,15 @@ void  log_getconfig(log_t *g_log)
   }
 
   /* read the per component parameters */
-  config_get( logparams_level,    MAX_LOG_PREDEF_COMPONENTS,CONFIG_STRING_LOG_PREFIX);
-  config_get( logparams_logfile,  MAX_LOG_PREDEF_COMPONENTS,CONFIG_STRING_LOG_PREFIX);
+  config_get(config_get_if(), logparams_level, MAX_LOG_PREDEF_COMPONENTS, CONFIG_STRING_LOG_PREFIX);
+  config_get(config_get_if(), logparams_logfile, MAX_LOG_PREDEF_COMPONENTS, CONFIG_STRING_LOG_PREFIX);
 
   /* now set the log levels and infile option, according to what we read */
-  for (int i=MIN_LOG_COMPONENTS; i < MAX_LOG_PREDEF_COMPONENTS; i++) {
-    g_log->log_component[i].level = map_str_to_int(log_level_names,    *(logparams_level[i].strptr));
+  for (int i = 0; i < MAX_LOG_PREDEF_COMPONENTS; i++) {
+    g_log->log_component[i].level = map_str_to_int(log_level_names, *logparams_level[i].strptr);
     set_log(i, g_log->log_component[i].level);
 
-    if (*(logparams_logfile[i].uptr) == 1)
+    if (*logparams_logfile[i].uptr == 1)
       set_component_filelog(i);
   }
 
@@ -352,10 +421,10 @@ void  log_getconfig(log_t *g_log)
     logparams_dump[i].numelt      = 0;
   }
 
-  config_get( logparams_debug,(sizeof(log_maskmap)/sizeof(mapping)) - 1,CONFIG_STRING_LOG_PREFIX);
-  config_get( logparams_dump,(sizeof(log_maskmap)/sizeof(mapping)) - 1,CONFIG_STRING_LOG_PREFIX);
+  config_get(config_get_if(), logparams_debug, sizeofArray(log_maskmap) - 1, CONFIG_STRING_LOG_PREFIX);
+  config_get(config_get_if(), logparams_dump, sizeofArray(log_maskmap) - 1, CONFIG_STRING_LOG_PREFIX);
 
-  if (config_check_unknown_cmdlineopt(CONFIG_STRING_LOG_PREFIX) > 0)
+  if (config_check_unknown_cmdlineopt(config_get_if(), CONFIG_STRING_LOG_PREFIX) > 0)
     exit(1);
 
   /* set the debug mask according to the debug parameters values */
@@ -371,15 +440,9 @@ void  log_getconfig(log_t *g_log)
   set_glog_onlinelog(consolelog);
 }
 
-int register_log_component(char *name,
-		                   char *fext,
-						   int compidx)
+int register_log_component(const char *name, const char *fext, int compidx)
 {
   int computed_compidx=compidx;
-
-  if (strlen(fext) > 3) {
-    fext[3]=0;  /* limit log file extension to 3 chars */
-  }
 
   if (compidx < 0) { /* this is not a pre-defined component */
     for (int i = MAX_LOG_PREDEF_COMPONENTS; i< MAX_LOG_COMPONENTS; i++) {
@@ -394,13 +457,26 @@ int register_log_component(char *name,
     g_log->log_component[computed_compidx].name = strdup(name);
     g_log->log_component[computed_compidx].stream = stdout;
     g_log->log_component[computed_compidx].filelog = 0;
-    g_log->log_component[computed_compidx].filelog_name = malloc(strlen(name)+16);/* /tmp/<name>.%s  */
-    sprintf(g_log->log_component[computed_compidx].filelog_name,"/tmp/%s.%s",name,fext);
+    g_log->log_rarely_used[computed_compidx].filelog_name = calloc(1, strlen(name) + 16); /* /tmp/<name>.%s  */
+    sprintf(g_log->log_rarely_used[computed_compidx].filelog_name, "/tmp/%s.", name);
+    strncat(g_log->log_rarely_used[computed_compidx].filelog_name, fext, 3);
   } else {
     fprintf(stderr,"{LOG} %s %d Couldn't register component %s\n",__FILE__,__LINE__,name);
   }
 
   return computed_compidx;
+}
+
+static void unregister_all_log_components(void)
+{
+  log_component_t *lc = g_log->log_component;
+  log_component_back_t *lb = g_log->log_rarely_used;
+  while (lc->name) {
+    free((char *)lc->name); // defined as const, but assigned through strdup()
+    free(lb->filelog_name);
+    lc++;
+    lb++;
+  }
 }
 
 int isLogInitDone (void)
@@ -416,7 +492,6 @@ int isLogInitDone (void)
 
 int logInit (void)
 {
-  int i;
   g_log = calloc(1, sizeof(log_t));
 
   if (g_log == NULL) {
@@ -424,152 +499,153 @@ int logInit (void)
     exit(EXIT_FAILURE);
   }
 
-  memset(g_log,0,sizeof(log_t));
-  register_log_component("PHY","log",PHY);
-  register_log_component("MAC","log",MAC);
-  register_log_component("OPT","log",OPT);
-  register_log_component("RLC","log",RLC);
-  register_log_component("PDCP","log",PDCP);
-  register_log_component("RRC","log",RRC);
-  register_log_component("OMG","csv",OMG);
-  register_log_component("OTG","log",OTG);
-  register_log_component("OTG_LATENCY","dat",OTG_LATENCY);
-  register_log_component("OTG_LATENCY_BG","dat",OTG_LATENCY_BG);
-  register_log_component("OTG_GP","dat",OTG_GP);
-  register_log_component("OTG_GP_BG","dat",OTG_GP_BG);
-  register_log_component("OTG_JITTER","dat",OTG_JITTER);
-  register_log_component("OCG","",OCG);
-  register_log_component("PERF","",PERF);
-  register_log_component("OIP","",OIP);
-  register_log_component("MSC","log",MSC);
-  register_log_component("OCM","log",OCM);
-  register_log_component("HW","",HW);
-  register_log_component("OSA","",OSA);
-  register_log_component("eRAL","",RAL_ENB);
-  register_log_component("mRAL","",RAL_UE);
-  register_log_component("ENB_APP","log",ENB_APP);
-  register_log_component("MCE_APP","log",MCE_APP);
-  register_log_component("MME_APP","log",MME_APP);
-  register_log_component("FLEXRAN_AGENT","log",FLEXRAN_AGENT);
-  register_log_component("PROTO_AGENT","log",PROTO_AGENT);
-  register_log_component("TMR","",TMR);
-  register_log_component("EMU","log",EMU);
-  register_log_component("USIM","txt",USIM);
-  register_log_component("SIM","txt",SIM);
-  /* following log component are used for the localization*/
-  register_log_component("LOCALIZE","log",LOCALIZE);
-  register_log_component("NAS","log",NAS);
-  register_log_component("UDP","",UDP_);
-  register_log_component("GTPU","",GTPU);
-  register_log_component("S1AP","",S1AP);
-  register_log_component("F1AP","",F1AP);
-  register_log_component("M2AP","",M2AP);
-  register_log_component("M3AP","",M3AP);
-  register_log_component("SCTP","",SCTP);
-  register_log_component("X2AP","",X2AP);
-  register_log_component("LOADER","log",LOADER);
-  register_log_component("ASN","log",ASN);
-  register_log_component("NFAPI_VNF","log",NFAPI_VNF);
-  register_log_component("NFAPI_PNF","log",NFAPI_PNF);
-  register_log_component("GNB_APP","log",GNB_APP);
-  register_log_component("NR_RRC","log",NR_RRC);
-  register_log_component("NR_MAC","log",NR_MAC);
-  register_log_component("NR_PHY","log",NR_PHY);
-  register_log_component("NGAP","",NGAP);
+  for (int i = 0; i < MAX_LOG_PREDEF_COMPONENTS; i++)
+    register_log_component(comp_name[i], comp_extension[i], i);
 
   for (int i=0 ; log_level_names[i].name != NULL ; i++)
-    g_log->level2string[i]           = toupper(log_level_names[i].name[0]); // uppercased first letter of level name
-
+    g_log->level2string[i] = toupper(log_level_names[i].name[0]); // uppercased first letter of level name
+  
   g_log->filelog_name = "/tmp/openair.log";
   log_getconfig(g_log);
 
   // set all unused component items to 0, they are for non predefined components
-  for (i=MAX_LOG_PREDEF_COMPONENTS; i < MAX_LOG_COMPONENTS; i++) {
+  for (int i=MAX_LOG_PREDEF_COMPONENTS; i < MAX_LOG_COMPONENTS; i++) {
     memset(&(g_log->log_component[i]),0,sizeof(log_component_t));
   }
+
+  AssertFatal(!((g_log->flag & FLAG_TIME) && (g_log->flag & FLAG_REAL_TIME)),
+		   "Invalid log options: time and wall_clock both set but are mutually exclusive\n");
 
   g_log->flag =  g_log->flag | FLAG_INITIALIZED;
   printf("log init done\n");
   return 0;
 }
 
-
-char *log_getthreadname(char *threadname,
-		                int bufsize)
+void logTerm(void)
 {
-  int rt =   pthread_getname_np(pthread_self(), threadname,bufsize) ;
-
-  if (rt == 0) {
-    return threadname;
-  } else {
-    return "thread?";
-  }
+  unregister_all_log_components();
+  free_and_zero(g_log);
 }
 
-static int log_header(char *log_buffer,
-		              int buffsize,
-					  int comp,
-					  int level,
-					  const char *format)
+#include <sys/syscall.h>
+static inline int log_header(log_component_t *c,
+			     char *log_buffer,
+			     int buffsize,
+			     const char *file,
+			     const char *func,
+			     int line,
+			     int level)
 {
-  char threadname[PR_SET_NAME];
-  return  snprintf(log_buffer, buffsize, "%s%s[%s]%c %s %s%s",
-                   log_level_highlight_end[level],
-                   ( (g_log->flag & FLAG_NOCOLOR)?"":log_level_highlight_start[level]),
-                   g_log->log_component[comp].name,
-                   ( (g_log->flag & FLAG_LEVEL)?g_log->level2string[level]:' '),
-                   ( (g_log->flag & FLAG_THREAD)?log_getthreadname(threadname,PR_SET_NAME+1):""),
-                   format,
-                   log_level_highlight_end[level]);
+  int flag = g_log->flag;
+
+  char threadname[64];
+  if (flag & FLAG_THREAD ) {
+    threadname[0]='{';
+    if (pthread_getname_np(pthread_self(), threadname + 1, sizeof(threadname) - 3) != 0)
+      strcpy(threadname+1, "?thread?");
+    strcat(threadname,"} ");
+  } else {
+    threadname[0]=0;
+  }
+
+  char l[32];
+  if (flag & FLAG_FILE_LINE && flag & FLAG_FUNCT )
+    snprintf(l, sizeof l, "(%.23s:%d) ", func, line);
+  else if (flag & FLAG_FILE_LINE)
+    snprintf(l, sizeof l, "(%d) ", line);
+  else if (flag & FLAG_FUNCT)
+    snprintf(l, sizeof l, "(%.28s) ", func);
+  else
+    l[0] = 0;
+
+  // output time information
+  char timeString[32];
+  if ((flag & FLAG_TIME) || (flag & FLAG_REAL_TIME)) {
+    struct timespec t;
+    const clockid_t clock = flag & FLAG_TIME ? CLOCK_MONOTONIC : CLOCK_REALTIME;
+    if (clock_gettime(clock, &t) == -1)
+        abort();
+    snprintf(timeString, sizeof(timeString), "%lu.%06lu ",
+             t.tv_sec,
+             t.tv_nsec / 1000);
+  } else {
+    timeString[0] = 0;
+  }
+
+  char threadIdString[32];
+  if (flag & FLAG_THREAD_ID) {
+    snprintf(threadIdString, sizeof(threadIdString), "%08lx ", syscall(__NR_gettid));
+  } else {
+    threadIdString[0] = 0;
+  }
+  return snprintf(log_buffer, buffsize, "%s%s%s[%s] %c %s%s",
+		   flag & FLAG_NOCOLOR ? "" : log_level_highlight_start[level],
+		   timeString,
+		   threadIdString,
+		   c->name,
+		   flag & FLAG_LEVEL ? g_log->level2string[level] : ' ',
+		   l,
+		   threadname
+		   );
 }
 
 void logRecord_mt(const char *file,
-		          const char *func,
-				  int line,
-				  int comp,
-				  int level,
-				  const char *format,
-				  ... )
+		  const char *func,
+		  int line,
+		  int comp,
+		  int level,
+		  const char *format,
+		  ... )
 {
-  char log_buffer[MAX_LOG_TOTAL]= {0};
+  log_component_t *c = &g_log->log_component[comp];
   va_list args;
   va_start(args,format);
-  if (log_mem_flag == 1) {
-    log_output_memory(file,func,line,comp,level,format,args);
-  } else {
-  log_header(log_buffer,MAX_LOG_TOTAL,comp,level,format);
-  g_log->log_component[comp].vprint(g_log->log_component[comp].stream,log_buffer,args);
-  fflush(g_log->log_component[comp].stream);
-  }
+  log_output_memory(c, file,func,line,comp,level,format,args);
   va_end(args);
 }
+#if ENABLE_LTTNG
+void logRecord_lttng(const char *file, const char *func, int line, int comp, int level, const char *format, ...)
+{
+  log_component_t *c = &g_log->log_component[comp];
+  char header[48];
+  char buf[MAX_LOG_TOTAL];
+  va_list args;
+  va_start(args, format);
+  vsnprintf(buf, sizeof(buf) - 1, format, args);
+  va_end(args);
+
+  if (map_int_to_str(log_level_names, level) != NULL)
+    snprintf(header, sizeof(header), "OAI-%s %s", c->name, map_int_to_str(log_level_names, level));
+  else
+    snprintf(header, sizeof(header), "OAI-%s", c->name);
+
+  LOG_FC(header, func, line, buf);
+}
+#endif
 
 void vlogRecord_mt(const char *file,
-		           const char *func,
-				   int line,
-				   int comp,
-				   int level,
-				   const char *format,
-				   va_list args )
+		   const char *func,
+		   int line,
+		   int comp,
+		   int level,
+		   const char *format,
+		   va_list args )
 {
-  char log_buffer[MAX_LOG_TOTAL];
-  if (log_mem_flag == 1) {
-    log_output_memory(file,func,line,comp,level, format,args);
-  } else {
-  log_header(log_buffer,MAX_LOG_TOTAL,comp, level,format);
-  g_log->log_component[comp].vprint(g_log->log_component[comp].stream,log_buffer, args);
-  }
+  log_component_t *c = &g_log->log_component[comp];
+  log_output_memory(c, file,func,line,comp,level, format,args);
 }
 
 void log_dump(int component,
-		      void *buffer,
-			  int buffsize,
-			  int datatype,
-			  const char *format,
-			  ... )
+	      void *buffer,
+	      int buffsize,
+	      int datatype,
+	      const char *format,
+	      ... )
 {
   va_list args;
   char *wbuf;
+  log_component_t *c = &g_log->log_component[component];
+  int flag = g_log->flag;
 
   switch(datatype) {
     case LOG_DUMP_DOUBLE:
@@ -584,9 +660,8 @@ void log_dump(int component,
 
   if (wbuf != NULL) {
     va_start(args, format);
-    int pos=log_header(wbuf,MAX_LOG_TOTAL,component, OAILOG_INFO,"");
-    int pos2=vsprintf(wbuf+pos,format, args);
-    pos=pos+pos2;
+    int pos=log_header(c, wbuf,MAX_LOG_TOTAL,"noFile","noFunc",0, OAILOG_INFO);
+    pos+=vsprintf(wbuf+pos,format, args);
     va_end(args);
 
     for (int i=0; i<buffsize; i++) {
@@ -601,9 +676,11 @@ void log_dump(int component,
           break;
       }
     }
-
-    sprintf(wbuf+pos,"\n");
-    g_log->log_component[component].print(g_log->log_component[component].stream,wbuf);
+    if ( flag & FLAG_NOCOLOR )
+      sprintf(wbuf+pos,"\n");
+    else
+      sprintf(wbuf+pos,"%s\n",log_level_highlight_end[OAILOG_INFO]);
+    c->print(c->stream,wbuf);
     free(wbuf);
   }
 }
@@ -612,19 +689,16 @@ int set_log(int component,
 		    int level)
 {
   /* Checking parameters */
-  DevCheck((component >= MIN_LOG_COMPONENTS) && (component < MAX_LOG_COMPONENTS),
-           component, MIN_LOG_COMPONENTS, MAX_LOG_COMPONENTS);
+  DevCheck((component >= 0) && (component < MAX_LOG_COMPONENTS), component, 0, MAX_LOG_COMPONENTS);
   DevCheck((level < NUM_LOG_LEVEL) && (level >= OAILOG_DISABLE), level, NUM_LOG_LEVEL,
            OAILOG_ERR);
 
   if ( g_log->log_component[component].level != OAILOG_DISABLE )
-    g_log->log_component[component].savedlevel = g_log->log_component[component].level;
+    g_log->log_rarely_used[component].savedlevel = g_log->log_component[component].level;
 
   g_log->log_component[component].level = level;
   return 0;
 }
-
-
 
 void set_glog(int level)
 {
@@ -637,7 +711,7 @@ void set_glog_onlinelog(int enable)
 {
   for (int c=0; c< MAX_LOG_COMPONENTS; c++ ) {
     if ( enable ) {
-      g_log->log_component[c].level = g_log->log_component[c].savedlevel;
+      g_log->log_component[c].level = g_log->log_rarely_used[c].savedlevel;
       g_log->log_component[c].vprint = vfprintf;
       g_log->log_component[c].print = fprintf;
       g_log->log_component[c].stream = stdout;
@@ -646,6 +720,7 @@ void set_glog_onlinelog(int enable)
     }
   }
 }
+
 void set_glog_filelog(int enable)
 {
   static FILE *fptr;
@@ -674,13 +749,14 @@ void set_glog_filelog(int enable)
 void set_component_filelog(int comp)
 {
   if (g_log->log_component[comp].stream == NULL || g_log->log_component[comp].stream == stdout) {
-    g_log->log_component[comp].stream = fopen(g_log->log_component[comp].filelog_name,"w");
+    g_log->log_component[comp].stream = fopen(g_log->log_rarely_used[comp].filelog_name, "w");
   }
 
   g_log->log_component[comp].vprint = vfprintf;
   g_log->log_component[comp].print = fprintf;
   g_log->log_component[comp].filelog =  1;
 }
+
 void close_component_filelog(int comp)
 {
   g_log->log_component[comp].filelog =  0;
@@ -699,8 +775,7 @@ void close_component_filelog(int comp)
  * with string value NULL
  */
 /* map a string to an int. Takes a mapping array and a string as arg */
-int map_str_to_int(mapping *map,
-		           const char *str)
+int map_str_to_int(const mapping *map, const char *str)
 {
   while (1) {
     if (map->name == NULL) {
@@ -716,51 +791,27 @@ int map_str_to_int(mapping *map,
 }
 
 /* map an int to a string. Takes a mapping array and a value */
-char *map_int_to_str(mapping *map,
-		             int val)
+char *map_int_to_str(const mapping *map, const int val)
 {
-  while (1) {
-    if (map->name == NULL) {
-      return NULL;
-    }
-
+  while (map->name) {
     if (map->value == val) {
       return map->name;
     }
-
     map++;
   }
-}
-
-int is_newline(char *str,
-		       int size)
-{
-  int i;
-
-  for (  i = 0; i < size; i++ ) {
-    if ( str[i] == '\n' ) {
-      return 1;
-    }
-  }
-
-  /* if we get all the way to here, there must not have been a newline! */
-  return 0;
+  return NULL;
 }
 
 void logClean (void)
 {
-  int i;
-
   if(isLogInitDone()) {
-    LOG_UI(PHY,"\n");
-
-    for (i=MIN_LOG_COMPONENTS; i < MAX_LOG_COMPONENTS; i++) {
+    for (int i = 0; i < MAX_LOG_COMPONENTS; i++) {
       close_component_filelog(i);
     }
   }
 }
 
-extern volatile int oai_exit;//extern int oai_exit;
+static atomic_bool stop_flush_mem_to_file = false;
 void flush_mem_to_file(void)
 {
   int fp;
@@ -771,7 +822,7 @@ void flush_mem_to_file(void)
   
   pthread_setname_np( pthread_self(), "flush_mem_to_file");
 
-  while (!oai_exit) {
+  while (!atomic_load(&stop_flush_mem_to_file)) {
     pthread_mutex_lock(&log_mem_lock);
     log_mem_write_flag=0;
     pthread_cond_wait(&log_mem_notify, &log_mem_lock);
@@ -801,15 +852,10 @@ void flush_mem_to_file(void)
   }
 }
 
-char logmem_log_level[NUM_LOG_LEVEL]={'E','W','I','D','T'};
-
-void log_output_memory(const char *file, const char *func, int line, int comp, int level, const char* format,va_list args)
+static void log_output_memory(log_component_t *c, const char *file, const char *func, int line, int comp, int level, const char* format,va_list args)
 {
   //logRecord_mt(file,func,line, pthread_self(), comp, level, format, ##args)
   int len = 0;
-  log_component_t *c;
-  char *log_start;
-  char *log_end;
   /* The main difference with the version above is the use of this local log_buffer.
    * The other difference is the return value of snprintf which was not used
    * correctly. It was not a big problem because in practice MAX_LOG_TOTAL is
@@ -817,92 +863,37 @@ void log_output_memory(const char *file, const char *func, int line, int comp, i
    */
   char log_buffer[MAX_LOG_TOTAL];
 
-  /* for no gcc warnings */
-  (void)log_start;
-  (void)log_end;
-
-
-  c = &g_log->log_component[comp];
-
-  //VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_LOG_RECORD, VCD_FUNCTION_IN);
-
   // make sure that for log trace the extra info is only printed once, reset when the level changes
-  if (level == OAILOG_TRACE) {
-    log_start = log_buffer;
-    len = vsnprintf(log_buffer, MAX_LOG_TOTAL, format, args);
-    if (len > MAX_LOG_TOTAL) len = MAX_LOG_TOTAL;
-    log_end = log_buffer + len;
-  } else {
-    if ( (g_log->flag & 0x001) || (c->flag & 0x001) ) {
-      len += snprintf(&log_buffer[len], MAX_LOG_TOTAL - len, "%s",
-                      log_level_highlight_start[level]);
-      if (len > MAX_LOG_TOTAL) len = MAX_LOG_TOTAL;
-    }
-
-    log_start = log_buffer + len;
-
-//    if ( (g_log->flag & 0x004) || (c->flag & 0x004) ) {
-      len += snprintf(&log_buffer[len], MAX_LOG_TOTAL - len, "[%s]",
-                      g_log->log_component[comp].name);
-      if (len > MAX_LOG_TOTAL) len = MAX_LOG_TOTAL;
-//    }
-
-    if ( (level >= OAILOG_ERR) && (level <= OAILOG_TRACE) ) {
-      len += snprintf(&log_buffer[len], MAX_LOG_TOTAL - len, "[%c]",
-                      logmem_log_level[level]);
-      if (len > MAX_LOG_TOTAL) len = MAX_LOG_TOTAL;
-    }
-
-    if ( (g_log->flag & FLAG_THREAD) || (c->flag & FLAG_THREAD) ) {
-#     define THREAD_NAME_LEN 128
-      char threadname[THREAD_NAME_LEN];
-      if (pthread_getname_np(pthread_self(), threadname, THREAD_NAME_LEN) != 0)
-      {
-        perror("pthread_getname_np : ");
-      } else {
-        len += snprintf(&log_buffer[len], MAX_LOG_TOTAL - len, "[%s]", threadname);
-        if (len > MAX_LOG_TOTAL) len = MAX_LOG_TOTAL;
+  if (level < OAILOG_TRACE) {
+    int n = log_header(c, log_buffer+len, MAX_LOG_TOTAL, file, func, line, level);
+    if (n > 0) {
+      len += n;
+      if (len > MAX_LOG_TOTAL) {
+        len = MAX_LOG_TOTAL;
       }
-#     undef THREAD_NAME_LEN
     }
-
-    if ( (g_log->flag & FLAG_FUNCT) || (c->flag & FLAG_FUNCT) ) {
-      len += snprintf(&log_buffer[len], MAX_LOG_TOTAL - len, "[%s] ",
-                      func);
-      if (len > MAX_LOG_TOTAL) len = MAX_LOG_TOTAL;
+  }
+  int n = vsnprintf(log_buffer+len, MAX_LOG_TOTAL-len, format, args);
+  if (n > 0) {
+    len += n;
+    if (len > MAX_LOG_TOTAL) {
+      len = MAX_LOG_TOTAL;
     }
-
-    if ( (g_log->flag & FLAG_FILE_LINE) || (c->flag & FLAG_FILE_LINE) ) {
-      len += snprintf(&log_buffer[len], MAX_LOG_TOTAL - len, "[%s:%d]",
-                      file, line);
-      if (len > MAX_LOG_TOTAL) len = MAX_LOG_TOTAL;
+  }
+  if (!((g_log->flag) & FLAG_NOCOLOR)) {
+    int n = snprintf(log_buffer+len, MAX_LOG_TOTAL-len, "%s", log_level_highlight_end[level]);
+    if (n > 0) {
+      len += n;
+      if (len > MAX_LOG_TOTAL) {
+        len = MAX_LOG_TOTAL;
+      }
     }
-
-/*    len += snprintf(&log_buffer[len], MAX_LOG_TOTAL - len, "[%08lx]", thread_id);
-    if (len > MAX_LOG_TOTAL) len = MAX_LOG_TOTAL;
-
-    struct timeval gettime;
-    gettimeofday(&gettime,NULL);
-    len += snprintf(&log_buffer[len], MAX_LOG_TOTAL - len, "[%ld.%06ld]", gettime.tv_sec, gettime.tv_usec);
-    if (len > MAX_LOG_TOTAL) len = MAX_LOG_TOTAL;
-*/
-    if ( (g_log->flag & FLAG_NOCOLOR) || (c->flag & FLAG_NOCOLOR) ) {
-      len += snprintf(&log_buffer[len], MAX_LOG_TOTAL - len, "%s",
-          log_level_highlight_end[level]);
-      if (len > MAX_LOG_TOTAL) len = MAX_LOG_TOTAL;
-    }
-
-    len += vsnprintf(&log_buffer[len], MAX_LOG_TOTAL - len, format, args);
-    if (len > MAX_LOG_TOTAL) len = MAX_LOG_TOTAL;
-    log_end = log_buffer + len;
   }
 
-  //va_end(args);
-
   // OAI printf compatibility
-    if(log_mem_flag==1){
-      if(log_mem_d[log_mem_side].enable_flag==1){
-        int temp_index;
+  if(log_mem_flag==1){
+    if(log_mem_d[log_mem_side].enable_flag==1){
+      int temp_index;
         temp_index=log_mem_d[log_mem_side].buf_index;
         if(temp_index+len+1 < LOG_MEM_SIZE){
           log_mem_d[log_mem_side].buf_index+=len;
@@ -933,44 +924,28 @@ void log_output_memory(const char *file, const char *func, int line, int comp, i
           }
         }
       }
-    }else{
-      fwrite(log_buffer, len, 1, stdout);
-    }
+  }else{
+    AssertFatal(len >= 0 && len <= MAX_LOG_TOTAL, "Bad len %d\n", len);
+    if (write(fileno(c->stream), log_buffer, len)) {};
+  }
 }
 
-int logInit_log_mem (void)
+int logInit_log_mem (char * filename)
 {
-  if(log_mem_flag==1){
-    if(log_mem_multi==1){
-      printf("log-mem multi!!!\n");
-      log_mem_d[0].buf_p = malloc(LOG_MEM_SIZE);
-      log_mem_d[0].buf_index=0;
-      log_mem_d[0].enable_flag=1;
-      log_mem_d[1].buf_p = malloc(LOG_MEM_SIZE);
-      log_mem_d[1].buf_index=0;
-      log_mem_d[1].enable_flag=1;
-      log_mem_side=0;
-      if ((pthread_mutex_init (&log_mem_lock, NULL) != 0)
-          || (pthread_cond_init (&log_mem_notify, NULL) != 0)) {
-        log_mem_d[1].enable_flag=0;
-        return -1;
-      }
-      pthread_create(&log_mem_thread, NULL, (void *(*)(void *))flush_mem_to_file, (void*)NULL);
-    }else{
-      printf("log-mem single!!!\n");
-      log_mem_d[0].buf_p = malloc(LOG_MEM_SIZE);
-      log_mem_d[0].buf_index=0;
-      log_mem_d[0].enable_flag=1;
-      log_mem_d[1].enable_flag=0;
-      log_mem_side=0;
-    }
-  }else{
-    log_mem_d[0].buf_p=NULL;
-    log_mem_d[1].buf_p=NULL;
-    log_mem_d[0].enable_flag=0;
+  log_mem_flag = 1;
+  log_mem_filename = filename; // in present code, the parameter is safe permanent pointer
+  for (log_mem_cnt_t *ptr = log_mem_d; ptr < log_mem_d + sizeofArray(log_mem_d); ptr++)
+    *ptr = (log_mem_cnt_t){
+        .buf_p = malloc(LOG_MEM_SIZE),
+        .buf_index = 0,
+        .enable_flag = 1,
+    };
+  log_mem_side = 0;
+  if ((pthread_mutex_init(&log_mem_lock, NULL) != 0) || (pthread_cond_init(&log_mem_notify, NULL) != 0)) {
     log_mem_d[1].enable_flag=0;
+    return -1;
   }
-
+  pthread_create(&log_mem_thread, NULL, (void *(*)(void *))flush_mem_to_file, (void *)NULL);
   printf("log init done\n");
   
   return 0;
@@ -981,13 +956,13 @@ void close_log_mem(void){
   char f_name[1024];
 
   if(log_mem_flag==1){
+    atomic_store(&stop_flush_mem_to_file, false);
     log_mem_d[0].enable_flag=0;
     log_mem_d[1].enable_flag=0;
     usleep(10); // wait for log writing
     while(log_mem_write_flag==1){
       usleep(100);
     }
-    if(log_mem_multi==1){
       snprintf(f_name,1024, "%s_%d.log",log_mem_filename,log_mem_file_cnt);
       fp=open(f_name, O_WRONLY | O_CREAT, 0666);
       int ret = write(fp, log_mem_d[0].buf_p, log_mem_d[0].buf_index);
@@ -1007,16 +982,6 @@ void close_log_mem(void){
       }
       close(fp);
       free(log_mem_d[1].buf_p);
-    }else{
-      fp=open(log_mem_filename, O_WRONLY | O_CREAT, 0666);
-      int ret = write(fp, log_mem_d[0].buf_p, log_mem_d[0].buf_index);
-      if ( ret < 0) {
-          fprintf(stderr,"{LOG} %s %d Couldn't write in %s \n",__FILE__,__LINE__,log_mem_filename);
-          exit(EXIT_FAILURE);
-       }
-      close(fp);
-      free(log_mem_d[0].buf_p);
-    }
   }
  }
 

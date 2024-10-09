@@ -31,29 +31,8 @@
 #define __RRC_ENB_UE_CONTEXT_H__
 
 #include "collection/tree.h"
-#include "COMMON/platform_types.h"
+#include "common/platform_types.h"
 #include "rrc_defs.h"
-
-
-void
-uid_linear_allocator_init(
-  uid_allocator_t* const uid_pP
-);
-
-uid_t
-uid_linear_allocator_new(
-  eNB_RRC_INST* rrc_instance_pP
-);
-
-
-void
-uid_linear_allocator_free(
-  eNB_RRC_INST* rrc_instance_pP,
-  uid_t uidP
-);
-
-
-
 
 int rrc_eNB_compare_ue_rnti_id(
   struct rrc_eNB_ue_context_s* c1_pP,

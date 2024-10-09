@@ -26,9 +26,8 @@
 #include <stdint.h>
 #include <sys/epoll.h>
 
-#include <mem_block.h>
 #include <assertions.h>
-
+#include "common/utils/mem/oai_memory.h"
 
 typedef enum timer_type_s {
   TIMER_PERIODIC,
@@ -62,8 +61,10 @@ typedef struct itti_lte_time_s {
   uint8_t slot;
 } itti_lte_time_t;
 
-
 typedef struct IttiMsgEmpty_s {
+  // This dummy element is to avoid CLANG warning: empty struct has size 0 in C, size 1 in C++
+  // To be removed if the structure is filled
+  uint32_t dummy;
 } IttiMsgEmpty;
 
 typedef struct IttiMsgText_s {
@@ -79,6 +80,7 @@ typedef struct IttiMsgText_s {
 #include <openair2/COMMON/as_message.h>
 #include <openair2/RRC/LTE/rrc_types.h>
 #include <openair2/COMMON/rrc_messages_types.h>
+#include <openair2/COMMON/e1ap_messages_types.h>
 
 #include <openair3/NAS/COMMON/UTIL/OctetString.h>
 #include <openair3/NAS/COMMON/IES/AccessPointName.h>
@@ -256,15 +258,9 @@ typedef struct IttiMsgText_s {
 #include <openair3/MME_APP/mme_app.h>
 //#include <proto.h>
 
-#include <openair3/GTPV1-U/gtpv1u_eNB_task.h>
-#include <openair3/GTPV1-U/gtpv1u_gNB_task.h>
 void *rrc_enb_process_itti_msg(void *);
 #include <openair3/SCTP/sctp_eNB_task.h>
 #include <openair3/NGAP/ngap_gNB.h>
-
-#ifdef ITTI_SIM
-  #include <openair2/COMMON/itti_sim_messages_types.h>
-#endif
 
 /*
   static const char *const messages_definition_xml = {
@@ -277,91 +273,76 @@ typedef uint32_t itti_message_types_t;
 typedef unsigned long message_number_t;
 #define MESSAGE_NUMBER_SIZE (sizeof(unsigned long))
 
-typedef enum task_priorities_e {
-  TASK_PRIORITY_MAX       = 100,
-  TASK_PRIORITY_MAX_LEAST = 85,
-  TASK_PRIORITY_MED_PLUS  = 70,
-  TASK_PRIORITY_MED       = 55,
-  TASK_PRIORITY_MED_LEAST = 40,
-  TASK_PRIORITY_MIN_PLUS  = 25,
-  TASK_PRIORITY_MIN       = 10,
-} task_priorities_t;
-
 typedef struct {
-  task_priorities_t priority;
   unsigned int queue_size;
   /* Printable name */
   char name[256];
-  void *(*func)(void *) ;
-  void *(*threadFunc)(void *) ;
 } task_info_t;
-//
-//TASK_DEF(TASK_RRC_ENB,  TASK_PRIORITY_MED,  200, NULL,NULL)
-//TASK_DEF(TASK_RRC_ENB,  TASK_PRIORITY_MED,  200, NULL, NULL)
-//TASK_DEF(TASK_GTPV1_U,  TASK_PRIORITY_MED,  1000,NULL, NULL)
-//TASK_DEF(TASK_UDP,      TASK_PRIORITY_MED,  1000, NULL, NULL)
-void *rrc_enb_process_msg(void *);
-#define FOREACH_TASK(TASK_DEF) \
-  TASK_DEF(TASK_UNKNOWN,  TASK_PRIORITY_MED, 50, NULL, NULL)  \
-  TASK_DEF(TASK_TIMER,    TASK_PRIORITY_MED, 10, NULL, NULL)   \
-  TASK_DEF(TASK_L2L1,     TASK_PRIORITY_MAX, 200, NULL, NULL)   \
-  TASK_DEF(TASK_BM,       TASK_PRIORITY_MED, 200, NULL, NULL)   \
-  TASK_DEF(TASK_PHY_ENB,  TASK_PRIORITY_MED, 200, NULL, NULL)   \
-  TASK_DEF(TASK_MAC_ENB,  TASK_PRIORITY_MED, 200, NULL, NULL)   \
-  TASK_DEF(TASK_RLC_ENB,  TASK_PRIORITY_MED, 200, NULL, NULL)   \
-  TASK_DEF(TASK_RRC_ENB_NB_IoT,  TASK_PRIORITY_MED, 200, NULL, NULL) \
-  TASK_DEF(TASK_PDCP_ENB, TASK_PRIORITY_MED, 200, NULL, NULL)   \
-  TASK_DEF(TASK_DATA_FORWARDING, TASK_PRIORITY_MED, 200, NULL, NULL)   \
-  TASK_DEF(TASK_END_MARKER, TASK_PRIORITY_MED, 200, NULL, NULL)   \
-  TASK_DEF(TASK_RRC_ENB,  TASK_PRIORITY_MED,  200, NULL,NULL)\
-  TASK_DEF(TASK_RRC_GNB,  TASK_PRIORITY_MED,  200, NULL,NULL)\
-  TASK_DEF(TASK_RAL_ENB,  TASK_PRIORITY_MED,  200, NULL, NULL)  \
-  TASK_DEF(TASK_S1AP,     TASK_PRIORITY_MED,  200, NULL, NULL)  \
-  TASK_DEF(TASK_NGAP,     TASK_PRIORITY_MED,  200, NULL, NULL)  \
-  TASK_DEF(TASK_X2AP,     TASK_PRIORITY_MED,  200, NULL, NULL)  \
-  TASK_DEF(TASK_M2AP_ENB,     TASK_PRIORITY_MED,  200, NULL, NULL)  \
-  TASK_DEF(TASK_M2AP_MCE,     TASK_PRIORITY_MED,  200, NULL, NULL)  \
-  TASK_DEF(TASK_M3AP,     TASK_PRIORITY_MED,  200, NULL, NULL)  \
-  TASK_DEF(TASK_M3AP_MME,     TASK_PRIORITY_MED,  200, NULL, NULL)  \
-  TASK_DEF(TASK_M3AP_MCE,     TASK_PRIORITY_MED,  200, NULL, NULL)  \
-  TASK_DEF(TASK_SCTP,     TASK_PRIORITY_MED,  200, NULL, NULL)  \
-  TASK_DEF(TASK_ENB_APP,  TASK_PRIORITY_MED,  200, NULL, NULL)  \
-  TASK_DEF(TASK_GNB_APP,  TASK_PRIORITY_MED,  200, NULL, NULL)  \
-  TASK_DEF(TASK_MCE_APP,  TASK_PRIORITY_MED,  200, NULL, NULL)  \
-  TASK_DEF(TASK_MME_APP,  TASK_PRIORITY_MED,  200, NULL, NULL)  \
-  TASK_DEF(TASK_FLEXRAN_AGENT,TASK_PRIORITY_MED, 200, NULL, NULL) \
-  TASK_DEF(TASK_PHY_UE,   TASK_PRIORITY_MED,  200, NULL, NULL)  \
-  TASK_DEF(TASK_MAC_UE,   TASK_PRIORITY_MED,  200, NULL, NULL)  \
-  TASK_DEF(TASK_RLC_UE,   TASK_PRIORITY_MED,  200, NULL, NULL)  \
-  TASK_DEF(TASK_PDCP_UE,  TASK_PRIORITY_MED,  200, NULL, NULL)  \
-  TASK_DEF(TASK_RRC_UE,   TASK_PRIORITY_MED,  200, NULL, NULL)  \
-  TASK_DEF(TASK_RRC_NRUE, TASK_PRIORITY_MED,  200, NULL, NULL)  \
-  TASK_DEF(TASK_NAS_UE,   TASK_PRIORITY_MED,  200, NULL, NULL)  \
-  TASK_DEF(TASK_RAL_UE,   TASK_PRIORITY_MED,  200, NULL, NULL)  \
-  TASK_DEF(TASK_MSC,      TASK_PRIORITY_MED,  200, NULL, NULL)\
-  TASK_DEF(TASK_GTPV1_U,  TASK_PRIORITY_MED,  1000,NULL, NULL)\
-  TASK_DEF(OCP_GTPV1_U,  TASK_PRIORITY_MED,  1000,NULL, NULL)\
-  TASK_DEF(TASK_UDP,      TASK_PRIORITY_MED,  1000, NULL, NULL)\
-  TASK_DEF(TASK_CU_F1,    TASK_PRIORITY_MED,  200, NULL, NULL) \
-  TASK_DEF(TASK_DU_F1,    TASK_PRIORITY_MED,  200, NULL, NULL) \
-  TASK_DEF(TASK_RRC_UE_SIM,   TASK_PRIORITY_MED,  200, NULL, NULL)  \
-  TASK_DEF(TASK_RRC_GNB_SIM,  TASK_PRIORITY_MED,  200, NULL, NULL)  \
-  TASK_DEF(TASK_NAS_NRUE,     TASK_PRIORITY_MED,  200, NULL, NULL)  \
-  TASK_DEF(TASK_MAX,      TASK_PRIORITY_MED,  200, NULL, NULL)
 
-#define TASK_DEF(TaskID, pRIO, qUEUEsIZE, FuNc, ThreadFunc)          { pRIO, qUEUEsIZE, #TaskID, FuNc, ThreadFunc },
+#define FOREACH_TASK(TASK_DEF)        \
+  TASK_DEF(TASK_UNKNOWN, 50)          \
+  TASK_DEF(TASK_TIMER, 10)            \
+  TASK_DEF(TASK_L2L1, 200)            \
+  TASK_DEF(TASK_BM, 200)              \
+  TASK_DEF(TASK_PHY_ENB, 200)         \
+  TASK_DEF(TASK_MAC_GNB, 200)         \
+  TASK_DEF(TASK_RLC_ENB, 200)         \
+  TASK_DEF(TASK_RRC_ENB_NB_IoT, 200)  \
+  TASK_DEF(TASK_PDCP_ENB, 200)        \
+  TASK_DEF(TASK_PDCP_GNB, 200)        \
+  TASK_DEF(TASK_DATA_FORWARDING, 200) \
+  TASK_DEF(TASK_END_MARKER, 200)      \
+  TASK_DEF(TASK_RRC_ENB, 200)         \
+  TASK_DEF(TASK_RRC_GNB, 200)         \
+  TASK_DEF(TASK_RAL_ENB, 200)         \
+  TASK_DEF(TASK_S1AP, 200)            \
+  TASK_DEF(TASK_NGAP, 200)            \
+  TASK_DEF(TASK_X2AP, 200)            \
+  TASK_DEF(TASK_M2AP_ENB, 200)        \
+  TASK_DEF(TASK_M2AP_MCE, 200)        \
+  TASK_DEF(TASK_M3AP, 200)            \
+  TASK_DEF(TASK_M3AP_MME, 200)        \
+  TASK_DEF(TASK_M3AP_MCE, 200)        \
+  TASK_DEF(TASK_SCTP, 200)            \
+  TASK_DEF(TASK_ENB_APP, 200)         \
+  TASK_DEF(TASK_GNB_APP, 200)         \
+  TASK_DEF(TASK_MCE_APP, 200)         \
+  TASK_DEF(TASK_MME_APP, 200)         \
+  TASK_DEF(TASK_PHY_UE, 200)          \
+  TASK_DEF(TASK_MAC_UE, 200)          \
+  TASK_DEF(TASK_RLC_UE, 200)          \
+  TASK_DEF(TASK_PDCP_UE, 200)         \
+  TASK_DEF(TASK_RRC_UE, 200)          \
+  TASK_DEF(TASK_RRC_NRUE, 200)        \
+  TASK_DEF(TASK_NAS_UE, 200)          \
+  TASK_DEF(TASK_RAL_UE, 200)          \
+  TASK_DEF(TASK_GTPV1_U, 1000)        \
+  TASK_DEF(TASK_CU_F1, 200)           \
+  TASK_DEF(TASK_DU_F1, 200)           \
+  TASK_DEF(TASK_CUCP_E1, 200)         \
+  TASK_DEF(TASK_CUUP_E1, 200)         \
+  TASK_DEF(TASK_RRC_UE_SIM, 200)      \
+  TASK_DEF(TASK_RRC_GNB_SIM, 200)     \
+  TASK_DEF(TASK_RRC_NSA_UE, 200)      \
+  TASK_DEF(TASK_RRC_NSA_NRUE, 200)    \
+  TASK_DEF(TASK_NAS_NRUE, 200)        \
+  TASK_DEF(TASK_MAX, 200)
+
+#define TASK_DEF(TaskID, qUEUEsIZE) {qUEUEsIZE, #TaskID},
 
 /* Map task id to printable name. */
 static const task_info_t tasks_info[] = {
   FOREACH_TASK(TASK_DEF)
 };
 
-#define TASK_ENUM(TaskID, pRIO, qUEUEsIZE, FuNc,ThreadFunc ) TaskID,
+#define TASK_ENUM(TaskID, qUEUEsIZE) TaskID,
 //! Tasks id of each task
 typedef enum {
   FOREACH_TASK(TASK_ENUM)
 } task_id_t;
 
+extern uint16_t ue_idx_standalone;
+extern uint16_t node_number;
 
 typedef task_id_t thread_id_t;
 
@@ -411,7 +392,7 @@ typedef struct MessageHeader_s {
 } MessageHeader;
 
 typedef struct message_info_s {
-  int id;
+  MessagesIds id;
   message_priorities_t priority;
   /* Message payload size */
   MessageHeaderSize size;
@@ -480,7 +461,7 @@ void itti_unsubscribe_event_fd(task_id_t task_id, int fd);
     \param events events list
     @returns number of events to handle
  **/
-int itti_get_events(task_id_t task_id, struct epoll_event **events);
+  int itti_get_events(task_id_t task_id, struct epoll_event *events, int nb_max_evts);
 
 /** \brief Retrieves a message in the queue associated to task_id.
    If the queue is empty, the thread is blocked till a new message arrives.
@@ -501,9 +482,11 @@ void itti_poll_msg(task_id_t task_id, MessageDef **received_msg);
    \param args_p Optional argument to pass to the start routine
    @returns -1 on failure, 0 otherwise
  **/
-int itti_create_task(task_id_t task_id,
-                     void *(*start_routine) (void *),
-                     void *args_p);
+typedef struct {
+  void *args_to_start_routine;
+  void *(*shortcut_func)(void *);
+} ittiTask_parms_t;
+int itti_create_task(const task_id_t task_id, void *(*start_routine)(void *), const ittiTask_parms_t *args_p);
 
 int itti_create_queue(const task_info_t *task_info);
 
@@ -552,11 +535,13 @@ MessageDef *itti_alloc_new_message_sized(
   MessagesIds       message_id,
   MessageHeaderSize size);
 
-/** \brief handle signals and wait for all threads to join when the process complete.
-   This function should be called from the main thread after having created all ITTI tasks.
+/** \brief Wait for SIGINT/SIGTERM signals to unblock ITTI.
+   This function should be called from the main thread after having created all ITTI tasks. If handler is NULL, a default handler is installed.
+    \param handler a custom signal handler. To unblock, it should call itti_wait_tasks_unblock()
  **/
-void itti_wait_tasks_end(void);
-#define  ADDED_QUEUES_MAX 10 // Fix me: MSC component too hard to understand, we keep room for 10 queues created dynamically
+void itti_wait_tasks_end(void (*handler)(int));
+/** \brif unblocks ITTI waiting in itti_wait_tasks_end(). **/
+void itti_wait_tasks_unblock(void);
 void itti_set_task_real_time(task_id_t task_id);
 
 /** \brief Send a termination message to all tasks.
@@ -565,9 +550,6 @@ void itti_set_task_real_time(task_id_t task_id);
 void itti_send_terminate_message(task_id_t task_id);
 
 void *itti_malloc(task_id_t origin_task_id, task_id_t destination_task_id, ssize_t size);
-void *calloc_or_fail(size_t size);
-void *malloc_or_fail(size_t size);
-int memory_read(const char *datafile, void *data, size_t size);
 int itti_free(task_id_t task_id, void *ptr);
 
 int itti_init(task_id_t task_max, const task_info_t *tasks_info);
@@ -586,6 +568,7 @@ int timer_remove(long timer_id);
 int signal_handle(int *end);
 int signal_mask(void);
 
+void log_scheduler(const char *label);
 #ifdef __cplusplus
 }
 #endif

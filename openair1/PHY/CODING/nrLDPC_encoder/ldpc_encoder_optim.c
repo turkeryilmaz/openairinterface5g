@@ -19,7 +19,7 @@
  *      contact@openairinterface.org
  */
 
-/*!\file ldpc_encoder2.c
+/*! \file ldpc_encoder_optim.c
  * \brief Defines the optimized LDPC encoder
  * \author Florian Kaltenberger, Raymond Knopp, Kien le Trung (Eurecom)
  * \email openair_tech@eurecom.fr
@@ -33,24 +33,22 @@
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
-#include <types.h>
 #include "assertions.h"
 #include "common/utils/LOG/log.h"
-#include "PHY/TOOLS/time_meas.h"
+#include "time_meas.h"
 #include "openair1/PHY/CODING/nrLDPC_defs.h"
+#include "openair1/PHY/CODING/nrLDPC_extern.h"
 #include "ldpc_encode_parity_check.c"
 #include "ldpc_generate_coefficient.c"
-//#define DEBUG_LDPC
 
-
-
-
-
-int nrLDPC_encod(unsigned char **test_input,unsigned char **channel_input,int Zc,int Kb,short block_length, short BG, encoder_implemparams_t *impp)
+int LDPCencoder(uint8_t **test_input, uint8_t **channel_input, encoder_implemparams_t *impp)
 {
-
-  short nrows=0,ncols=0;
-  int i,i1,rate=3;
+  int Zc = impp->Zc;
+  int Kb = impp->Kb;
+  int block_length = impp->K;
+  int BG = impp->BG;
+  int nrows=0,ncols=0;
+  int rate=3;
   int no_punctured_columns,removed_bit;
 
   int simd_size;
@@ -83,49 +81,33 @@ int nrLDPC_encod(unsigned char **test_input,unsigned char **channel_input,int Zc
   if ((Zc&31) > 0) simd_size = 16;
   else simd_size = 32;
 
-  unsigned char c[22*Zc] __attribute__((aligned(32))); //padded input, unpacked, max size
-  unsigned char d[46*Zc] __attribute__((aligned(32))); //coded parity part output, unpacked, max size
-
-  unsigned char c_extension[2*22*Zc*simd_size] __attribute__((aligned(32)));      //double size matrix of c
+  uint8_t c[22*Zc] __attribute__((aligned(32))); //padded input, unpacked, max size
+  uint8_t d[46*Zc] __attribute__((aligned(32))); //coded parity part output, unpacked, max size
 
   // calculate number of punctured bits
   no_punctured_columns=(int)((nrows-2)*Zc+block_length-block_length*rate)/Zc;
-  removed_bit=(nrows-no_punctured_columns-2) * Zc+block_length-(int)(block_length*rate);
+  removed_bit = (nrows - no_punctured_columns - 2) * Zc + block_length - block_length * rate;
   // printf("%d\n",no_punctured_columns);
   // printf("%d\n",removed_bit);
   // unpack input
-  memset(c,0,sizeof(unsigned char) * ncols * Zc);
-  memset(d,0,sizeof(unsigned char) * nrows * Zc);
+  memset(c, 0, sizeof(c));
+  memset(d, 0, sizeof(d));
 
   if(impp->tinput != NULL) start_meas(impp->tinput);
-  for (i=0; i<block_length; i++) {
+  for (int i=0; i<block_length; i++) {
     c[i] = (test_input[0][i/8]&(128>>(i&7)))>>(7-(i&7));
       //printf("c(%d,%d)=%d\n",j,i,temp);
     }
 
   if(impp->tinput != NULL) stop_meas(impp->tinput);
 
-  if ((BG==1 && Zc>176) || (BG==2 && Zc>64)) { 
+  if ((BG==1 && Zc>=176) || (BG==2 && Zc>=72)) {
     // extend matrix
     if(impp->tprep != NULL) start_meas(impp->tprep);
-    for (i1=0; i1 < ncols; i1++)
-      {
-	memcpy(&c_extension[2*i1*Zc], &c[i1*Zc], Zc*sizeof(unsigned char));
-	memcpy(&c_extension[(2*i1+1)*Zc], &c[i1*Zc], Zc*sizeof(unsigned char));
-      }
-    for (i1=1;i1<simd_size;i1++) {
-      memcpy(&c_extension[(2*ncols*Zc*i1)], &c_extension[i1], (2*ncols*Zc*sizeof(unsigned char))-i1);
-      //    memset(&c_extension[(2*ncols*Zc*i1)],0,i1);
-      /*
-	printf("shift %d: ",i1);
-	for (int j=0;j<64;j++) printf("%d ",c_extension[(2*ncols*Zc*i1)+j]);
-	printf("\n");
-      */
-    }
     if(impp->tprep != NULL) stop_meas(impp->tprep);
     //parity check part
     if(impp->tparity != NULL) start_meas(impp->tparity);
-    encode_parity_check_part_optim(c_extension, d, BG, Zc, Kb);
+    encode_parity_check_part_optim(c, d, BG, Zc, Kb,simd_size, ncols);
     if(impp->tparity != NULL) stop_meas(impp->tparity);
   }
   else {

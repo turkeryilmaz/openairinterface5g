@@ -38,9 +38,8 @@
 #include "nfapi/oai_integration/vendor_ext.h"
 #include "common/utils/LOG/vcd_signal_dumper.h"
 #include "UTIL/OPT/opt.h"
-#include "OCG.h"
-#include "OCG_extern.h"
 #include "PHY/LTE_TRANSPORT/transport_common_proto.h"
+#include "PHY/defs_eNB.h"
 
 #include "RRC/LTE/rrc_extern.h"
 #include "RRC/L2_INTERFACE/openair_rrc_L2_interface.h"
@@ -58,6 +57,7 @@
 #include <dlfcn.h>
 
 #include "T.h"
+#include "openair2/LAYER2/MAC/mac_extern.h"
 
 #define ENABLE_MAC_PAYLOAD_DEBUG
 //#define DEBUG_eNB_SCHEDULER 1
@@ -65,26 +65,7 @@
 #include "common/ran_context.h"
 extern RAN_CONTEXT_t RC;
 
-
-//------------------------------------------------------------------------------
-void
-add_ue_dlsch_info(module_id_t module_idP,
-                  int CC_id,
-                  int UE_id,
-                  sub_frame_t subframeP,
-                  UE_DLSCH_STATUS status,
-                  rnti_t rnti)
-//------------------------------------------------------------------------------
-{
-  eNB_DLSCH_INFO *info = &eNB_dlsch_info[module_idP][CC_id][UE_id];
-  // LOG_D(MAC, "%s(module_idP:%d, CC_id:%d, UE_id:%d, subframeP:%d, status:%d) serving_num:%d rnti:%x\n", __FUNCTION__, module_idP, CC_id, UE_id, subframeP, status, eNB_dlsch_info[module_idP][CC_id][UE_id].serving_num, UE_RNTI(module_idP,UE_id));
-  info->rnti = rnti;
-  //  info->weight = weight;
-  info->subframe = subframeP;
-  info->status = status;
-  info->serving_num++;
-  return;
-}
+mac_rlc_am_muilist_t rlc_am_mui;
 
 //------------------------------------------------------------------------------
 int
@@ -447,11 +428,11 @@ void check_ra_rnti_mui(module_id_t mod_id, int CC_id, frame_t f, sub_frame_t sf,
   int harq_pid = frame_subframe2_dl_harq_pid(tdd_config, f, sf);
   RA_t *ra = &RC.mac[mod_id]->common_channels[CC_id].ra[0];
   for (uint8_t ra_ii = 0; ra_ii < NB_RA_PROC_MAX; ra_ii++, ra++) {
-    if ((ra->rnti == rnti) && (ra->state == MSGCRNTI)) {
+    if ((ra->rnti == rnti) && (ra->eRA_state == MSGCRNTI)) {
       for (uint16_t mui_num = 0; mui_num < rlc_am_mui.rrc_mui_num; mui_num++) {
         if (ra->crnti_rrc_mui == rlc_am_mui.rrc_mui[mui_num]) {
           ra->crnti_harq_pid = harq_pid;
-          ra->state = MSGCRNTI_ACK;
+          ra->eRA_state = MSGCRNTI_ACK;
           break;
         }
       }
@@ -651,7 +632,7 @@ schedule_ue_spec(module_id_t module_idP,
     eNB_UE_stats->rrc_status = mac_eNB_get_rrc_status(module_idP, rnti);
     eNB_UE_stats->harq_pid = harq_pid;
     eNB_UE_stats->harq_round = round_DL;
-
+    eNB_UE_stats->dlsch_rounds[round_DL&7]++;
     if (eNB_UE_stats->rrc_status < RRC_RECONFIGURED) {
       ue_sched_ctrl->uplane_inactivity_timer = 0;
     }
@@ -792,7 +773,6 @@ schedule_ue_spec(module_id_t module_idP,
           // No TX request for retransmission (check if null request for FAPI)
       }
 
-      //eNB_UE_stats->dlsch_trials[round]++;
       eNB_UE_stats->num_retransmission += 1;
       eNB_UE_stats->rbs_used_retx = nb_rb;
       eNB_UE_stats->total_rbs_used_retx += nb_rb;
@@ -1003,18 +983,16 @@ schedule_ue_spec(module_id_t module_idP,
         for (int j = 0; j < TBS - sdu_length_total - offset; j++) {
           dlsch_pdu->payload[0][offset + sdu_length_total + j] = 0;
         }
-
-        trace_pdu(DIRECTION_DOWNLINK,
-                  (uint8_t *) dlsch_pdu->payload[0],
-                  TBS,
-                  module_idP,
-                  WS_C_RNTI,
-                  UE_RNTI(module_idP,
-                          UE_id),
-                  eNB->frame,
-                  eNB->subframe,
-                  0,
-                  0);
+        ws_trace_t tmp = {.direction = DIRECTION_DOWNLINK,
+                          .pdu_buffer = (uint8_t *)dlsch_pdu->payload,
+                          .pdu_buffer_size = TBS,
+                          .ueid = module_idP,
+                          .rntiType = WS_C_RNTI,
+                          .rnti = UE_RNTI(module_idP, UE_id),
+                          .sysFrame = eNB->frame,
+                          .subframe = eNB->subframe,
+                          .harq_pid = harq_pid};
+        trace_pdu(&tmp);
         T(T_ENB_MAC_UE_DL_PDU_WITH_DATA,
           T_INT(module_idP),
           T_INT(CC_id),
@@ -1065,20 +1043,23 @@ schedule_ue_spec(module_id_t module_idP,
             ue_template->pucch_tpc_tx_frame = frameP;
             ue_template->pucch_tpc_tx_subframe = subframeP;
 
-            if (snr > target_snr + 4) {
+            if (snr > target_snr + PUCCH_PCHYST) {
               tpc = 0;  //-1
-            } else if (snr < target_snr - 4) {
+	      ue_sched_ctrl->pucch_tpc_accumulated[CC_id]--;
+            } else if (snr < target_snr - PUCCH_PCHYST) {
               tpc = 2;  //+1
+              ue_sched_ctrl->pucch_tpc_accumulated[CC_id]--;
             } else {
               tpc = 1;  //0
             }
 
-            LOG_D(MAC, "[eNB %d] DLSCH scheduler: frame %d, subframe %d, harq_pid %d, tpc %d, snr/target snr %d/%d (normal case)\n",
+            LOG_D(MAC, "[eNB %d] DLSCH scheduler: frame %d, subframe %d, harq_pid %d, tpc %d (accumulated %d), snr/target snr %d/%d (normal case)\n",
                   module_idP,
                   frameP,
                   subframeP,
                   harq_pid,
                   tpc,
+		  ue_sched_ctrl->pucch_tpc_accumulated[CC_id],
                   snr,
                   target_snr);
           } // Po_PUCCH has been updated
@@ -1665,16 +1646,16 @@ schedule_ue_spec_br(module_id_t module_idP,
             UE_info->DLSCH_pdu[CC_id][0][UE_id].payload[0][offset + sdu_length_total + j] = (char)(taus()&0xff);
           }
 
-          trace_pdu(DIRECTION_DOWNLINK,
-                    (uint8_t *)UE_info->DLSCH_pdu[CC_id][0][UE_id].payload[0],
-                    TBS,
-                    module_idP,
-                    3,
-                    UE_RNTI(module_idP,UE_id),
-                    mac->frame,
-                    mac->subframe,
-                    0,
-                    0);
+          ws_trace_t tmp = {.direction = DIRECTION_DOWNLINK,
+                            .pdu_buffer = UE_info->DLSCH_pdu[CC_id][0][UE_id].payload[0],
+                            .pdu_buffer_size = TBS,
+                            .ueid = module_idP,
+                            .rntiType = 3,
+                            .rnti = UE_RNTI(module_idP, UE_id),
+                            .sysFrame = mac->frame,
+                            .subframe = mac->subframe,
+                            .harq_pid = harq_pid};
+          trace_pdu(&tmp);
           T(T_ENB_MAC_UE_DL_PDU_WITH_DATA,
             T_INT(module_idP),
             T_INT(CC_id),
@@ -1700,9 +1681,9 @@ schedule_ue_spec_br(module_id_t module_idP,
               UE_info->UE_template[CC_id][UE_id].pucch_tpc_tx_frame = frameP;
               UE_info->UE_template[CC_id][UE_id].pucch_tpc_tx_subframe = subframeP;
 
-              if (snr > target_snr + 4) {
+              if (snr > target_snr + PUCCH_PCHYST) {
                 tpc = 0; //-1
-              } else if (snr < target_snr - 4) {
+              } else if (snr < target_snr - PUCCH_PCHYST) {
                 tpc = 2; //+1
               } else {
                 tpc = 1; //0
@@ -1867,16 +1848,15 @@ schedule_ue_spec_br(module_id_t module_idP,
         T_INT (subframeP),
         T_INT (0 /* harq_pid always 0? */ ),
         T_BUFFER (&mac->UE_info.DLSCH_pdu[CC_id][0][UE_id].payload[0], TX_req->pdu_length));
-      trace_pdu(1,
-                (uint8_t *) mac->UE_info.DLSCH_pdu[CC_id][0][(unsigned char) UE_id].payload[0],
-                TX_req->pdu_length,
-                UE_id,
-                3,
-                rnti,
-                frameP,
-                subframeP,
-                0,
-                0);
+      ws_trace_t tmp = {.direction = 1,
+                        .pdu_buffer = mac->UE_info.DLSCH_pdu[CC_id][0][UE_id].payload[0],
+                        .pdu_buffer_size = TX_req->pdu_length,
+                        .ueid = UE_id,
+                        .rntiType = 3,
+                        .rnti = rnti,
+                        .sysFrame = frameP,
+                        .subframe = subframeP};
+      trace_pdu(&tmp);
     } // end else if ((subframeP == 7) && (round_DL < 8))
   } // end loop on UE_id
 }
@@ -2073,7 +2053,7 @@ schedule_PCH(module_id_t module_idP,
     for (uint16_t i = 0; i < MAX_MOBILES_PER_ENB; i++) {
       ue_pf_po = &UE_PF_PO[CC_id][i];
 
-      if (ue_pf_po->enable_flag != TRUE) {
+      if (ue_pf_po->enable_flag != true) {
         continue;
       }
 
@@ -2377,17 +2357,15 @@ schedule_PCH(module_id_t module_idP,
                 subframeP);
           continue;
         }
-
-        trace_pdu(DIRECTION_DOWNLINK,
-                  &eNB->common_channels[CC_id].PCCH_pdu.payload[0],
-                  pcch_sdu_length,
-                  0xffff,
-                  PCCH,
-                  P_RNTI,
-                  eNB->frame,
-                  eNB->subframe,
-                  0,
-                  0);
+        ws_trace_t tmp = {.direction = DIRECTION_DOWNLINK,
+                          .pdu_buffer = eNB->common_channels[CC_id].PCCH_pdu.payload,
+                          .pdu_buffer_size = pcch_sdu_length,
+                          .ueid = 0xffff,
+                          .rntiType = PCCH,
+                          .rnti = P_RNTI,
+                          .sysFrame = eNB->frame,
+                          .subframe = eNB->subframe};
+        trace_pdu(&tmp);
         eNB->eNB_stats[CC_id].total_num_pcch_pdu++;
         eNB->eNB_stats[CC_id].pcch_buffer = pcch_sdu_length;
         eNB->eNB_stats[CC_id].total_pcch_buffer += pcch_sdu_length;

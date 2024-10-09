@@ -26,7 +26,9 @@
 #include "PHY/LTE_ESTIMATION/lte_estimation.h"
 #include "PHY/LTE_REFSIG/lte_refsig.h"
 #include "PHY/LTE_TRANSPORT/transport_common_proto.h"
+#include "openair1/PHY/LTE_TRANSPORT/transport_vars.h"
 
+int qam64_table[8], qam16_table[4], qpsk_table[2];
 void init_sss(void);
 
 void generate_64qam_table(void) {
@@ -73,7 +75,6 @@ void init_lte_top(LTE_DL_FRAME_PARMS *frame_parms) {
   init_unscrambling_lut();
   init_scrambling_lut();
   //set_taus_seed(1328);
-  init_sss();
 }
 
 void free_lte_top(void) {

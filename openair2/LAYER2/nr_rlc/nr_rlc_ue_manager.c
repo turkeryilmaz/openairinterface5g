@@ -75,17 +75,17 @@ void nr_rlc_manager_unlock(nr_rlc_ue_manager_t *_m)
 }
 
 /* must be called with lock acquired */
-nr_rlc_ue_t *nr_rlc_manager_get_ue(nr_rlc_ue_manager_t *_m, int rnti)
+nr_rlc_ue_t *nr_rlc_manager_get_ue(nr_rlc_ue_manager_t *_m, int ue_id)
 {
   /* TODO: optimze */
   nr_rlc_ue_manager_internal_t *m = _m;
   int i;
 
   for (i = 0; i < m->ue_count; i++)
-    if (m->ue_list[i]->rnti == rnti)
+    if (m->ue_list[i]->ue_id == ue_id)
       return m->ue_list[i];
 
-  LOG_D(RLC, "%s:%d:%s: new UE with RNTI 0x%x\n", __FILE__, __LINE__, __FUNCTION__, rnti);
+  LOG_D(RLC, "New UE with ID %d\n", ue_id);
 
   m->ue_count++;
   m->ue_list = realloc(m->ue_list, sizeof(nr_rlc_ue_t *) * m->ue_count);
@@ -99,13 +99,13 @@ nr_rlc_ue_t *nr_rlc_manager_get_ue(nr_rlc_ue_manager_t *_m, int rnti)
     exit(1);
   }
 
-  m->ue_list[m->ue_count-1]->rnti = rnti;
+  m->ue_list[m->ue_count-1]->ue_id = ue_id;
 
   return m->ue_list[m->ue_count-1];
 }
 
 /* must be called with lock acquired */
-void nr_rlc_manager_remove_ue(nr_rlc_ue_manager_t *_m, int rnti)
+void nr_rlc_manager_remove_ue(nr_rlc_ue_manager_t *_m, int ue_id)
 {
   nr_rlc_ue_manager_internal_t *m = _m;
   nr_rlc_ue_t *ue;
@@ -113,25 +113,29 @@ void nr_rlc_manager_remove_ue(nr_rlc_ue_manager_t *_m, int rnti)
   int j;
 
   for (i = 0; i < m->ue_count; i++)
-    if (m->ue_list[i]->rnti == rnti)
+    if (m->ue_list[i]->ue_id == ue_id)
       break;
 
   if (i == m->ue_count) {
-    LOG_W(RLC, "%s:%d:%s: warning: ue %d not found\n",
-          __FILE__, __LINE__, __FUNCTION__,
-          rnti);
+    LOG_W(RLC, "Warning: ue %d not found\n", ue_id);
     return;
   }
 
   ue = m->ue_list[i];
 
-  for (j = 0; j < 2; j++)
-    if (ue->srb[j] != NULL)
-      ue->srb[j]->delete(ue->srb[j]);
+  if (ue->srb0 != NULL) {
+    /* deliver_sdu_data for srb0 is allocated, needs a free() */
+    free(ue->srb0->deliver_sdu_data);
+    ue->srb0->delete_entity(ue->srb0);
+  }
 
-  for (j = 0; j < 5; j++)
+  for (j = 0; j < 3; j++)
+    if (ue->srb[j] != NULL)
+      ue->srb[j]->delete_entity(ue->srb[j]);
+
+  for (j = 0; j < MAX_DRBS_PER_UE; j++)
     if (ue->drb[j] != NULL)
-      ue->drb[j]->delete(ue->drb[j]);
+      ue->drb[j]->delete_entity(ue->drb[j]);
 
   free(ue);
 
@@ -154,9 +158,21 @@ void nr_rlc_manager_remove_ue(nr_rlc_ue_manager_t *_m, int rnti)
 /* must be called with lock acquired */
 void nr_rlc_ue_add_srb_rlc_entity(nr_rlc_ue_t *ue, int srb_id, nr_rlc_entity_t *entity)
 {
-  if (srb_id < 1 || srb_id > 2) {
+  if (srb_id < 0 || srb_id > 3) {
     LOG_E(RLC, "%s:%d:%s: fatal, bad srb id\n", __FILE__, __LINE__, __FUNCTION__);
     exit(1);
+  }
+
+  /* special case: srb0 */
+  if (srb_id == 0) {
+    if (ue->srb0 != NULL) {
+      LOG_E(RLC, "fatal, srb0 already present\n");
+      exit(1);
+    }
+
+    ue->srb0 = entity;
+
+    return;
   }
 
   srb_id--;
@@ -173,7 +189,7 @@ void nr_rlc_ue_add_srb_rlc_entity(nr_rlc_ue_t *ue, int srb_id, nr_rlc_entity_t *
 /* must be called with lock acquired */
 void nr_rlc_ue_add_drb_rlc_entity(nr_rlc_ue_t *ue, int drb_id, nr_rlc_entity_t *entity)
 {
-  if (drb_id < 1 || drb_id > 5) {
+  if (drb_id < 1 || drb_id > MAX_DRBS_PER_UE) {
     LOG_E(RLC, "%s:%d:%s: fatal, bad drb id\n", __FILE__, __LINE__, __FUNCTION__);
     exit(1);
   }

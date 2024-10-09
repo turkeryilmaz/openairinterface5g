@@ -36,129 +36,118 @@
 
 //#define DEBUG_NEW_IMPL 1
 
-void updateLLR(double ***llr,
-			   uint8_t **llrU,
-			   uint8_t ***bit,
-			   uint8_t **bitU,
-			   uint8_t listSize,
-			   uint16_t row,
-			   uint16_t col,
-			   uint16_t xlen,
-			   uint8_t ylen)
+static inline void updateBit(uint8_t listSize,
+			     uint16_t row,
+			     uint16_t col,
+			     uint16_t xlen,
+			     uint8_t ylen,
+			     int zlen,
+			     uint8_t bit[xlen][ylen][zlen],
+			     uint8_t bitU[xlen][ylen])
 {
-	uint16_t offset = (xlen/(pow(2,(ylen-col-1))));
-	for (uint8_t i=0; i<listSize; i++) {
-		if (( (row) % (2*offset) ) >= offset ) {
-			if(bitU[row-offset][col]==0) updateBit(bit, bitU, listSize, (row-offset), col, xlen, ylen);
-			if(llrU[row-offset][col+1]==0) updateLLR(llr, llrU, bit, bitU, listSize, (row-offset), (col+1), xlen, ylen);
-			if(llrU[row][col+1]==0) updateLLR(llr, llrU, bit, bitU, listSize, row, (col+1), xlen, ylen);
-			llr[row][col][i] = (pow((-1),bit[row-offset][col][i])*llr[row-offset][col+1][i]) + llr[row][col+1][i];
-		} else {
-			if(llrU[row][col+1]==0) updateLLR(llr, llrU, bit, bitU, listSize, row, (col+1), xlen, ylen);
-			if(llrU[row+offset][col+1]==0) updateLLR(llr, llrU, bit, bitU, listSize, (row+offset), (col+1), xlen, ylen);
-			computeLLR(llr, row, col, i, offset);
-		}
-	}
-	llrU[row][col]=1;
+  const uint offset = (xlen / (pow(2, (ylen - col))));
 
-	//	printf("LLR (a %f, b %f): llr[%d][%d] %f\n",32*a,32*b,col,row,32*llr[col][row]);
+  for (uint i = 0; i < listSize; i++) {
+    if (((row) % (2 * offset)) >= offset) {
+      if (bitU[row][col - 1] == 0)
+        updateBit(listSize, row, (col - 1), xlen, ylen, zlen, bit, bitU);
+      bit[row][col][i] = bit[row][col - 1][i];
+    } else {
+      if (bitU[row][col - 1] == 0)
+        updateBit(listSize, row, (col - 1), xlen, ylen, zlen, bit, bitU);
+      if (bitU[row + offset][col - 1] == 0)
+        updateBit(listSize, (row + offset), (col - 1), xlen, ylen, zlen, bit, bitU);
+      bit[row][col][i] = ((bit[row][col - 1][i] + bit[row + offset][col - 1][i]) % 2);
+    }
+  }
+
+  bitU[row][col] = 1;
 }
 
-void updateBit(uint8_t ***bit,
-			   uint8_t **bitU,
-			   uint8_t listSize,
-			   uint16_t row,
-			   uint16_t col,
-			   uint16_t xlen,
-			   uint8_t ylen)
+static inline void computeLLR(uint16_t row,
+			      uint16_t col,
+			      uint8_t i,
+			      uint16_t offset,
+			      int xlen,
+			      int ylen,
+			      int zlen,
+			      double llr[xlen][ylen][zlen])
 {
-	uint16_t offset = ( xlen/(pow(2,(ylen-col))) );
+  double a = llr[row][col + 1][i];
+  double b = llr[row + offset][col + 1][i];
+  llr[row][col][i] = log((exp(a + b) + 1) / (exp(a) + exp(b))); //eq. (8a)
+}
 
-	for (uint8_t i=0; i<listSize; i++) {
-		if (( (row) % (2*offset) ) >= offset ) {
-			if (bitU[row][col-1]==0) updateBit(bit, bitU, listSize, row, (col-1), xlen, ylen);
-			bit[row][col][i] = bit[row][col-1][i];
-		} else {
-			if (bitU[row][col-1]==0) updateBit(bit, bitU, listSize, row, (col-1), xlen, ylen);
-			if (bitU[row+offset][col-1]==0) updateBit(bit, bitU, listSize, (row+offset), (col-1), xlen, ylen);
-			bit[row][col][i] = ( (bit[row][col-1][i]+bit[row+offset][col-1][i]) % 2);
-		}
-	}
+void updateLLR(uint8_t listSize,
+               uint16_t row,
+               uint16_t col,
+               uint16_t xlen,
+               uint8_t ylen,
+               int zlen,
+               double llr[xlen][ylen][zlen],
+               uint8_t llrU[xlen][ylen],
+               uint8_t bit[xlen][ylen][zlen],
+               uint8_t bitU[xlen][ylen])
+{
+  const uint offset = (xlen / (pow(2, (ylen - col - 1))));
+  for (uint i = 0; i < listSize; i++) {
+    if ((row % (2 * offset)) >= offset) {
+      if (bitU[row - offset][col] == 0)
+        updateBit(listSize, (row - offset), col, xlen, ylen, zlen, bit, bitU);
+      if (llrU[row - offset][col + 1] == 0)
+        updateLLR(listSize, (row - offset), (col + 1), xlen, ylen, zlen, llr, llrU, bit, bitU);
+      if (llrU[row][col + 1] == 0)
+        updateLLR(listSize, row, (col + 1), xlen, ylen, zlen, llr, llrU, bit, bitU);
+      llr[row][col][i] = (pow((-1), bit[row - offset][col][i]) * llr[row - offset][col + 1][i]) + llr[row][col + 1][i];
+    } else {
+      if (llrU[row][col + 1] == 0)
+        updateLLR(listSize, row, (col + 1), xlen, ylen, zlen, llr, llrU, bit, bitU);
+      if (llrU[row + offset][col + 1] == 0)
+        updateLLR(listSize, (row + offset), (col + 1), xlen, ylen, zlen, llr, llrU, bit, bitU);
+      computeLLR(row, col, i, offset, xlen, ylen, zlen, llr);
+    }
+  }
+  llrU[row][col] = 1;
 
-	bitU[row][col]=1;
+  //	printf("LLR (a %f, b %f): llr[%d][%d] %f\n",32*a,32*b,col,row,32*llr[col][row]);
 }
 
 void updatePathMetric(double *pathMetric,
-		              double ***llr,
-					  uint8_t listSize,
-					  uint8_t bitValue,
-					  uint16_t row)
+		      uint8_t listSize,
+		      uint8_t bitValue,
+		      uint16_t row,
+		      int xlen,
+		      int ylen,
+		      int zlen,
+		      double llr[xlen][ylen][zlen]
+		      )
 {
-	int8_t multiplier = (2*bitValue) - 1;
-	for (uint8_t i=0; i<listSize; i++)
-		pathMetric[i] += log ( 1 + exp(multiplier*llr[row][0][i]) ) ; //eq. (11b)
-
+  const int multiplier = (2 * bitValue) - 1;
+  for (uint i = 0; i < listSize; i++)
+    pathMetric[i] += log(1 + exp(multiplier * llr[row][0][i])); // eq. (11b)
 }
 
 void updatePathMetric2(double *pathMetric,
-					   double ***llr,
-					   uint8_t listSize,
-					   uint16_t row)
+		       uint8_t listSize,
+		       uint16_t row,
+		       int xlen,
+		       int ylen,
+		       int zlen,
+		       double llr[xlen][ylen][zlen])
 {
-	double *tempPM = malloc(sizeof(double) * listSize);
-	memcpy(tempPM, pathMetric, (sizeof(double) * listSize));
+  double tempPM[listSize];
+  memcpy(tempPM, pathMetric, (sizeof(double) * listSize));
 
-	uint8_t bitValue = 0;
-	int8_t multiplier = (2 * bitValue) - 1;
-	for (uint8_t i = 0; i < listSize; i++)
-		pathMetric[i] += log(1 + exp(multiplier * llr[row][0][i])); //eq. (11b)
+  uint bitValue = 0;
+  int multiplier = (2 * bitValue) - 1;
+  for (uint i = 0; i < listSize; i++)
+    pathMetric[i] += log(1 + exp(multiplier * llr[row][0][i])); // eq. (11b)
 
-	bitValue = 1;
-	multiplier = (2 * bitValue) - 1;
-	for (uint8_t i = listSize; i < 2*listSize; i++)
-		pathMetric[i] = tempPM[(i-listSize)] + log(1 + exp(multiplier * llr[row][0][(i-listSize)])); //eq. (11b)
-
-	free(tempPM);
+  bitValue = 1;
+  multiplier = (2 * bitValue) - 1;
+  for (uint i = listSize; i < 2 * listSize; i++)
+    pathMetric[i] = tempPM[(i - listSize)] + log(1 + exp(multiplier * llr[row][0][(i - listSize)])); // eq. (11b)
 }
-
-void computeLLR(double ***llr,
-				uint16_t row,
-				uint16_t col,
-				uint8_t i,
-				uint16_t offset)
-{
-	double a = llr[row][col + 1][i];
-	double b = llr[row + offset][col + 1][i];
-	llr[row][col][i] = log((exp(a + b) + 1) / (exp(a) + exp(b))); //eq. (8a)
-}
-
-void updateCrcChecksum(uint8_t **crcChecksum,
-					   uint8_t **crcGen,
-					   uint8_t listSize,
-					   uint32_t i2,
-					   uint8_t len)
-{
-	for (uint8_t i = 0; i < listSize; i++) {
-		for (uint8_t j = 0; j < len; j++) {
-			crcChecksum[j][i] = ( (crcChecksum[j][i] + crcGen[i2][j]) % 2 );
-		}
-	}
-}
-
-void updateCrcChecksum2(uint8_t **crcChecksum,
-						uint8_t **crcGen,
-						uint8_t listSize,
-						uint32_t i2,
-						uint8_t len)
-{
-	for (uint8_t i = 0; i < listSize; i++) {
-		for (uint8_t j = 0; j < len; j++) {
-			crcChecksum[j][i+listSize] = ( (crcChecksum[j][i] + crcGen[i2][j]) % 2 );
-		}
-	}
-}
-
-
 
 decoder_node_t *new_decoder_node(int first_leaf_index, int level) {
 
@@ -198,13 +187,13 @@ decoder_node_t *add_nodes(int level, int first_leaf_index, t_nrPolar_params *pol
 
   for (int i=0;i<Nv;i++) {
     if (polarParams->information_bit_pattern[i+first_leaf_index]>0) {
-    	  all_frozen_below=0;
-        break;
+      all_frozen_below = 0;
+      break;
     }
   }
 
   if (all_frozen_below==0)
-	  new_node->left=add_nodes(level-1, first_leaf_index, polarParams);
+    new_node->left = add_nodes(level - 1, first_leaf_index, polarParams);
   else {
 #ifdef DEBUG_NEW_IMPL
     printf("aggregating frozen bits %d ... %d at level %d (%s)\n",first_leaf_index,first_leaf_index+Nv-1,level,((first_leaf_index/Nv)&1)==0?"left":"right");
@@ -213,13 +202,30 @@ decoder_node_t *add_nodes(int level, int first_leaf_index, t_nrPolar_params *pol
     new_node->all_frozen=1;
   }
   if (all_frozen_below==0)
-	  new_node->right=add_nodes(level-1,first_leaf_index+(Nv/2),polarParams);
+    new_node->right = add_nodes(level - 1, first_leaf_index + (Nv / 2), polarParams);
 
 #ifdef DEBUG_NEW_IMPL
   printf("new_node (%d): first_leaf_index %d, left %p, right %p\n",Nv,first_leaf_index,new_node->left,new_node->right);
 #endif
 
   return(new_node);
+}
+
+void delete_nodes(decoder_node_t * n) {
+  if (n) {
+    if(n->left)
+      delete_nodes(n->left);
+    if(n->right)
+      delete_nodes(n->right);
+    free(n->alpha);
+    free(n->beta);
+    free(n);
+  }
+}
+
+void delete_decoder_tree(t_nrPolar_params *polarParams) {
+  if (polarParams->tree.root)
+    delete_nodes(polarParams->tree.root);
 }
 
 void build_decoder_tree(t_nrPolar_params *polarParams)
@@ -231,19 +237,8 @@ void build_decoder_tree(t_nrPolar_params *polarParams)
 #endif
 }
 
-#if defined(__arm__) || defined(__aarch64__)
-// translate 1-1 SIMD functions from SSE to NEON
-#define __m128i int16x8_t
-#define __m64 int8x8_t
-#define _mm_abs_epi16(a) vabsq_s16(a)
-#define _mm_min_epi16(a,b) vminq_s16(a,b)
-#define _mm_subs_epi16(a,b) vsubq_s16(a,b)
-#define _mm_abs_pi16(a) vabs_s16(a)
-#define _mm_min_pi16(a,b) vmin_s16(a,b)
-#define _mm_subs_pi16(a,b) vsub_s16(a,b)
-#endif
-
-void applyFtoleft(const t_nrPolar_params *pp, decoder_node_t *node) {
+static void applyFtoleft(const t_nrPolar_params *pp, decoder_node_t *node, uint8_t *output)
+{
   int16_t *alpha_v=node->alpha;
   int16_t *alpha_l=node->left->alpha;
   int16_t *betal = node->left->beta;
@@ -252,94 +247,45 @@ void applyFtoleft(const t_nrPolar_params *pp, decoder_node_t *node) {
 #ifdef DEBUG_NEW_IMPL
   printf("applyFtoleft %d, Nv %d (level %d,node->left (leaf %d, AF %d))\n",node->first_leaf_index,node->Nv,node->level,node->left->leaf,node->left->all_frozen);
 
-
-  for (int i=0;i<node->Nv;i++) printf("i%d (frozen %d): alpha_v[i] = %d\n",i,1-pp->information_bit_pattern[node->first_leaf_index+i],alpha_v[i]);
+  for (int i = 0; i < node->Nv; i++)
+    printf("i%d (frozen %d): alpha_v[i] = %d\n", i, 1 - pp->information_bit_pattern[node->first_leaf_index + i], alpha_v[i]);
 #endif
 
- 
-
   if (node->left->all_frozen == 0) {
-#if defined(__AVX2__)
     int avx2mod = (node->Nv/2)&15;
     if (avx2mod == 0) {
-      __m256i a256,b256,absa256,absb256,minabs256;
+      simde__m256i a256,b256,absa256,absb256,minabs256;
       int avx2len = node->Nv/2/16;
 
       //      printf("avx2len %d\n",avx2len);
       for (int i=0;i<avx2len;i++) {
-	a256       =((__m256i*)alpha_v)[i];
-	b256       =((__m256i*)alpha_v)[i+avx2len];
-	absa256    =_mm256_abs_epi16(a256);
-	absb256    =_mm256_abs_epi16(b256);
-	minabs256  =_mm256_min_epi16(absa256,absb256);
-	((__m256i*)alpha_l)[i] =_mm256_sign_epi16(minabs256,_mm256_sign_epi16(a256,b256));
+	a256       =((simde__m256i*)alpha_v)[i];
+	b256       =((simde__m256i*)alpha_v)[i+avx2len];
+	absa256    =simde_mm256_abs_epi16(a256);
+	absb256    =simde_mm256_abs_epi16(b256);
+	minabs256  =simde_mm256_min_epi16(absa256,absb256);
+	((simde__m256i*)alpha_l)[i] =simde_mm256_sign_epi16(minabs256,simde_mm256_sign_epi16(a256,b256));
       }
     }
     else if (avx2mod == 8) {
-      __m128i a128,b128,absa128,absb128,minabs128;
-      a128       =*((__m128i*)alpha_v);
-      b128       =((__m128i*)alpha_v)[1];
-      absa128    =_mm_abs_epi16(a128);
-      absb128    =_mm_abs_epi16(b128);
-      minabs128  =_mm_min_epi16(absa128,absb128);
-      *((__m128i*)alpha_l) =_mm_sign_epi16(minabs128,_mm_sign_epi16(a128,b128));
+      simde__m128i a128,b128,absa128,absb128,minabs128;
+      a128       =*((simde__m128i*)alpha_v);
+      b128       =((simde__m128i*)alpha_v)[1];
+      absa128    =simde_mm_abs_epi16(a128);
+      absb128    =simde_mm_abs_epi16(b128);
+      minabs128  =simde_mm_min_epi16(absa128,absb128);
+      *((simde__m128i*)alpha_l) =simde_mm_sign_epi16(minabs128,simde_mm_sign_epi16(a128,b128));
     }
     else if (avx2mod == 4) {
-      __m64 a64,b64,absa64,absb64,minabs64;
-      a64       =*((__m64*)alpha_v);
-      b64       =((__m64*)alpha_v)[1];
-      absa64    =_mm_abs_pi16(a64);
-      absb64    =_mm_abs_pi16(b64);
-      minabs64  =_mm_min_pi16(absa64,absb64);
-      *((__m64*)alpha_l) =_mm_sign_pi16(minabs64,_mm_sign_pi16(a64,b64));
+      simde__m64 a64,b64,absa64,absb64,minabs64;
+      a64       =*((simde__m64*)alpha_v);
+      b64       =((simde__m64*)alpha_v)[1];
+      absa64    =simde_mm_abs_pi16(a64);
+      absb64    =simde_mm_abs_pi16(b64);
+      minabs64  =simde_mm_min_pi16(absa64,absb64);
+      *((simde__m64*)alpha_l) =simde_mm_sign_pi16(minabs64,simde_mm_sign_pi16(a64,b64));
     }
     else
-#else
-    int sse4mod = (node->Nv/2)&7;
-    int sse4len = node->Nv/2/8;
-#if defined(__arm__) || defined(__aarch64__)
-    int16x8_t signatimesb,comp1,comp2,negminabs128;
-    int16x8_t zero=vdupq_n_s16(0);
-#endif
-
-    if (sse4mod == 0) {
-      for (int i=0;i<sse4len;i++) {
-	__m128i a128,b128,absa128,absb128,minabs128;
-	int sse4len = node->Nv/2/8;
-	
-	a128       =*((__m128i*)alpha_v);
-	b128       =((__m128i*)alpha_v)[1];
-	absa128    =_mm_abs_epi16(a128);
-	absb128    =_mm_abs_epi16(b128);
-	minabs128  =_mm_min_epi16(absa128,absb128);
-#if defined(__arm__) || defined(__aarch64__)
-	// unfortunately no direct equivalent to _mm_sign_epi16
-	signatimesb=vxorrq_s16(a128,b128);
-	comp1=vcltq_s16(signatimesb,zero);
-	comp2=vcgeq_s16(signatimesb,zero);
-	negminabs128=vnegq_s16(minabs128);
-	*((__m128i*)alpha_l) =vorrq_s16(vandq_s16(minabs128,comp0),vandq_s16(negminabs128,comp1));
-#else
-	*((__m128i*)alpha_l) =_mm_sign_epi16(minabs128,_mm_sign_epi16(a128,b128));
-#endif
-      }
-    }
-    else if (sse4mod == 4) {
-      __m64 a64,b64,absa64,absb64,minabs64;
-      a64       =*((__m64*)alpha_v);
-      b64       =((__m64*)alpha_v)[1];
-      absa64    =_mm_abs_pi16(a64);
-      absb64    =_mm_abs_pi16(b64);
-      minabs64  =_mm_min_pi16(absa64,absb64);
-#if defined(__arm__) || defined(__aarch64__)
-	AssertFatal(1==0,"Need to do this still for ARM\n");
-#else
-      *((__m64*)alpha_l) =_mm_sign_pi16(minabs64,_mm_sign_epi16(a64,b64));
-#endif
-    }
-
-    else
-#endif
     { // equivalent scalar code to above, activated only on non x86/ARM architectures
       for (int i=0;i<node->Nv/2;i++) {
     	  a=alpha_v[i];
@@ -358,7 +304,7 @@ void applyFtoleft(const t_nrPolar_params *pp, decoder_node_t *node) {
 #ifdef DEBUG_NEW_IMPL
       printf("betal[0] %d (%p)\n",betal[0],&betal[0]);
 #endif
-      pp->nr_polar_U[node->first_leaf_index] = (1+betal[0])>>1; 
+      output[node->first_leaf_index] = (1 + betal[0]) >> 1;
 #ifdef DEBUG_NEW_IMPL
       printf("Setting bit %d to %d (LLR %d)\n",node->first_leaf_index,(betal[0]+1)>>1,alpha_l[0]);
 #endif
@@ -366,8 +312,8 @@ void applyFtoleft(const t_nrPolar_params *pp, decoder_node_t *node) {
   }
 }
 
-void applyGtoright(const t_nrPolar_params *pp,decoder_node_t *node) {
-
+static void applyGtoright(const t_nrPolar_params *pp, decoder_node_t *node, uint8_t *output)
+{
   int16_t *alpha_v=node->alpha;
   int16_t *alpha_r=node->right->alpha;
   int16_t *betal = node->left->beta;
@@ -378,56 +324,39 @@ void applyGtoright(const t_nrPolar_params *pp,decoder_node_t *node) {
 #endif
   
   if (node->right->all_frozen == 0) {  
-#if defined(__AVX2__) 
     int avx2mod = (node->Nv/2)&15;
     if (avx2mod == 0) {
       int avx2len = node->Nv/2/16;
       
       for (int i=0;i<avx2len;i++) {
-	((__m256i *)alpha_r)[i] = 
-	  _mm256_subs_epi16(((__m256i *)alpha_v)[i+avx2len],
-			    _mm256_sign_epi16(((__m256i *)alpha_v)[i],
-					      ((__m256i *)betal)[i]));	
+        ((simde__m256i *)alpha_r)[i] =
+            simde_mm256_subs_epi16(((simde__m256i *)alpha_v)[i + avx2len],
+                                   simde_mm256_sign_epi16(((simde__m256i *)alpha_v)[i], ((simde__m256i *)betal)[i]));
       }
     }
     else if (avx2mod == 8) {
-      ((__m128i *)alpha_r)[0] = _mm_subs_epi16(((__m128i *)alpha_v)[1],_mm_sign_epi16(((__m128i *)alpha_v)[0],((__m128i *)betal)[0]));	
+      ((simde__m128i *)alpha_r)[0] = simde_mm_subs_epi16(((simde__m128i *)alpha_v)[1],simde_mm_sign_epi16(((simde__m128i *)alpha_v)[0],((simde__m128i *)betal)[0]));	
     }
     else if (avx2mod == 4) {
-      ((__m64 *)alpha_r)[0] = _mm_subs_pi16(((__m64 *)alpha_v)[1],_mm_sign_pi16(((__m64 *)alpha_v)[0],((__m64 *)betal)[0]));	
+      ((simde__m64 *)alpha_r)[0] = simde_mm_subs_pi16(((simde__m64 *)alpha_v)[1],simde_mm_sign_pi16(((simde__m64 *)alpha_v)[0],((simde__m64 *)betal)[0]));	
     }
     else
-#else
-    int sse4mod = (node->Nv/2)&7;
-
-    if (sse4mod == 0) {
-      int sse4len = node->Nv/2/8;
-      
-      for (int i=0;i<sse4len;i++) {
-#if defined(__arm__) || defined(__aarch64__)
-	((int16x8_t *)alpha_r)[0] = vsubq_s16(((int16x8_t *)alpha_v)[1],vmulq_epi16(((int16x8_t *)alpha_v)[0],((int16x8_t *)betal)[0]));
-#else
-	((__m128i *)alpha_r)[0] = _mm_subs_epi16(((__m128i *)alpha_v)[1],_mm_sign_epi16(((__m128i *)alpha_v)[0],((__m128i *)betal)[0]));
-#endif	
-      }
-    }
-    else if (sse4mod == 4) {
-#if defined(__arm__) || defined(__aarch64__)
-      ((int16x4_t *)alpha_r)[0] = vsub_s16(((int16x4_t *)alpha_v)[1],vmul_epi16(((int16x4_t *)alpha_v)[0],((int16x4_t *)betal)[0]));
-#else
-      ((__m64 *)alpha_r)[0] = _mm_subs_pi16(((__m64 *)alpha_v)[1],_mm_sign_pi16(((__64 *)alpha_v)[0],((__m64 *)betal)[0]));	
-#endif
-    }
-    else 
-#endif
-      {// equivalent scalar code to above, activated only on non x86/ARM architectures or Nv=1,2
-	for (int i=0;i<node->Nv/2;i++) {
-	  alpha_r[i] = alpha_v[i+(node->Nv/2)] - (betal[i]*alpha_v[i]);
+      {
+        int temp_alpha_r;
+	for (int i = 0; i < node->Nv / 2; i++) {
+	  temp_alpha_r = alpha_v[i + (node->Nv / 2)] - (betal[i] * alpha_v[i]);
+          if (temp_alpha_r > SHRT_MAX) {
+            alpha_r[i] = SHRT_MAX;
+          } else if (temp_alpha_r < -SHRT_MAX) {
+            alpha_r[i] = -SHRT_MAX;
+          } else {
+            alpha_r[i] = temp_alpha_r;
+          }
 	}
       }
     if (node->Nv == 2) { // apply hard decision on right node
       betar[0] = (alpha_r[0]>0) ? -1 : 1;
-      pp->nr_polar_U[node->first_leaf_index+1] = (1+betar[0])>>1;
+      output[node->first_leaf_index + 1] = (1 + betar[0]) >> 1;
 #ifdef DEBUG_NEW_IMPL
       printf("Setting bit %d to %d (LLR %d)\n",node->first_leaf_index+1,(betar[0]+1)>>1,alpha_r[0]);
 #endif
@@ -435,7 +364,7 @@ void applyGtoright(const t_nrPolar_params *pp,decoder_node_t *node) {
   }
 }
 
-int16_t all1[16] = {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1};
+static const int16_t all1[16] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
 
 void computeBeta(const t_nrPolar_params *pp,decoder_node_t *node) {
 
@@ -446,40 +375,24 @@ void computeBeta(const t_nrPolar_params *pp,decoder_node_t *node) {
   printf("Computing beta @ level %d first_leaf_index %d (all_frozen %d)\n",node->level,node->first_leaf_index,node->left->all_frozen);
 #endif
   if (node->left->all_frozen==0) { // if left node is not aggregation of frozen bits
-#if defined(__AVX2__) 
     int avx2mod = (node->Nv/2)&15;
-    register __m256i allones=*((__m256i*)all1);
+    register simde__m256i allones=*((simde__m256i*)all1);
     if (avx2mod == 0) {
       int avx2len = node->Nv/2/16;
       for (int i=0;i<avx2len;i++) {
-	((__m256i*)betav)[i] = _mm256_or_si256(_mm256_cmpeq_epi16(((__m256i*)betar)[i],
-								  ((__m256i*)betal)[i]),allones);
+	((simde__m256i*)betav)[i] = simde_mm256_or_si256(simde_mm256_cmpeq_epi16(((simde__m256i*)betar)[i],
+								  ((simde__m256i*)betal)[i]),allones);
       }
     }
     else if (avx2mod == 8) {
-      ((__m128i*)betav)[0] = _mm_or_si128(_mm_cmpeq_epi16(((__m128i*)betar)[0],
-							  ((__m128i*)betal)[0]),*((__m128i*)all1));
+      ((simde__m128i*)betav)[0] = simde_mm_or_si128(simde_mm_cmpeq_epi16(((simde__m128i*)betar)[0],
+							  ((simde__m128i*)betal)[0]),*((simde__m128i*)all1));
     }
     else if (avx2mod == 4) {
-      ((__m64*)betav)[0] = _mm_or_si64(_mm_cmpeq_pi16(((__m64*)betar)[0],
-						      ((__m64*)betal)[0]),*((__m64*)all1));
+      ((simde__m64*)betav)[0] = simde_mm_or_si64(simde_mm_cmpeq_pi16(((simde__m64*)betar)[0],
+						      ((simde__m64*)betal)[0]),*((simde__m64*)all1));
     }
     else
-#else
-    int avx2mod = (node->Nv/2)&15;
-
-    if (ssr4mod == 0) {
-      int ssr4len = node->Nv/2/8;
-      register __m128i allones=*((__m128i*)all1);
-      for (int i=0;i<sse4len;i++) {
-      ((__m256i*)betav)[i] = _mm_or_si128(_mm_cmpeq_epi16(((__m128i*)betar)[i], ((__m128i*)betal)[i]),allones);
-      }
-    }
-    else if (sse4mod == 4) {
-      ((__m64*)betav)[0] = _mm_or_si64(_mm_cmpeq_pi16(((__m64*)betar)[0], ((__m64*)betal)[0]),*((__m64*)all1));
-    }
-    else
-#endif
       {
 	for (int i=0;i<node->Nv/2;i++) {
 		betav[i] = (betal[i] != betar[i]) ? 1 : -1;
@@ -490,19 +403,17 @@ void computeBeta(const t_nrPolar_params *pp,decoder_node_t *node) {
   memcpy((void*)&betav[node->Nv/2],betar,(node->Nv/2)*sizeof(int16_t));
 }
 
-void generic_polar_decoder(const t_nrPolar_params *pp,decoder_node_t *node) {
-
-
+void generic_polar_decoder(const t_nrPolar_params *pp, decoder_node_t *node, uint8_t *nr_polar_U)
+{
   // Apply F to left
-  applyFtoleft(pp, node);
+  applyFtoleft(pp, node, nr_polar_U);
   // if left is not a leaf recurse down to the left
   if (node->left->leaf==0)
-    generic_polar_decoder(pp, node->left);
+    generic_polar_decoder(pp, node->left, nr_polar_U);
 
-  applyGtoright(pp, node);
-  if (node->right->leaf==0) generic_polar_decoder(pp, node->right);
+  applyGtoright(pp, node, nr_polar_U);
+  if (node->right->leaf == 0)
+    generic_polar_decoder(pp, node->right, nr_polar_U);
 
   computeBeta(pp, node);
-
-} 
-
+}

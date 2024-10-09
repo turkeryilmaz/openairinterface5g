@@ -33,15 +33,12 @@
 #include "mac_extern.h"
 #include "SIMULATION/TOOLS/sim.h"
 #include "common/utils/LOG/log.h"
-#include "OCG.h"
-#include "OCG_extern.h"
 #include "UTIL/OPT/opt.h"
 #include "common/ran_context.h"
 
 #define DEBUG_RAR
 
 extern unsigned int localRIV2alloc_LUT25[512];
-extern unsigned int distRIV2alloc_LUT25[512];
 extern unsigned short RIV2nb_rb_LUT25[512];
 extern unsigned short RIV2first_rb_LUT25[512];
 extern RAN_CONTEXT_t RC;
@@ -67,8 +64,10 @@ fill_rar(const module_id_t module_idP,
   rar[5] = (uint8_t) (ra->rnti & 0xff);
   //ra->timing_offset = 0;
   ra->timing_offset /= 16;  //T_A = N_TA/16, where N_TA should be on a 30.72Msps
-  rar[0] = (uint8_t) (ra->timing_offset >> (2 + 4));  // 7 MSBs of timing advance + divide by 4
-  rar[1] = (uint8_t) (ra->timing_offset << (4 - 2)) & 0xf0; // 4 LSBs of timing advance + divide by 4
+  //rar[0] = (uint8_t) (ra->timing_offset >> (2 + 4));  // 7 MSBs of timing advance + divide by 4
+  //rar[1] = (uint8_t) (ra->timing_offset << (4 - 2)) & 0xf0; // 4 LSBs of timing advance + divide by 4
+  rar[0] = (uint8_t) (ra->timing_offset >> (4));  // 7 MSBs of timing advance + divide by 4
+  rar[1] = (uint8_t) (ra->timing_offset << (4)) & 0xf0; // 4 LSBs of timing advance + divide by 4
   COMMON_channels_t *cc = &RC.mac[module_idP]->common_channels[CC_id];
 
   if(N_RB_UL == 25) {
@@ -94,9 +93,15 @@ fill_rar(const module_id_t module_idP,
   rar[3] =
     (((ra->msg3_mcs & 0x7) << 5)) | ((ra->msg3_TPC & 7) << 2) |
     ((ra->msg3_ULdelay & 1) << 1) | (ra->msg3_cqireq & 1);
-  trace_pdu(DIRECTION_DOWNLINK, dlsch_buffer, input_buffer_length, module_idP,  WS_RA_RNTI, 1,
-            RC.mac[module_idP]->frame, RC.mac[module_idP]->subframe,
-            0, 0);
+  ws_trace_t tmp = {.direction = DIRECTION_DOWNLINK,
+                    .pdu_buffer = dlsch_buffer,
+                    .pdu_buffer_size = input_buffer_length,
+                    .ueid = module_idP,
+                    .rntiType = WS_RA_RNTI,
+                    .rnti = 1,
+                    .sysFrame = RC.mac[module_idP]->frame,
+                    .subframe = RC.mac[module_idP]->subframe};
+  trace_pdu(&tmp);
 
   return (ra->rnti);
 }
@@ -187,17 +192,15 @@ unsigned short fill_rar_br(eNB_MAC_INST *eNB,
         rarh->RAPID,
         ra->preamble_index,
         ra->timing_offset);
-
-  trace_pdu(DIRECTION_DOWNLINK,
-            dlsch_buffer,
-            input_buffer_length,
-            eNB->Mod_id,
-            WS_RA_RNTI,
-            1,
-            eNB->frame,
-            eNB->subframe,
-            0,
-            0);
+  ws_trace_t tmp = {.direction = DIRECTION_DOWNLINK,
+                    .pdu_buffer = dlsch_buffer,
+                    .pdu_buffer_size = input_buffer_length,
+                    .ueid = eNB->Mod_id,
+                    .rntiType = WS_RA_RNTI,
+                    .rnti = 1,
+                    .sysFrame = eNB->frame,
+                    .subframe = eNB->subframe};
+  trace_pdu(&tmp);
 
   return (ra->rnti);
 }

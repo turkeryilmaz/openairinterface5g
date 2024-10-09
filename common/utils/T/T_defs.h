@@ -36,24 +36,11 @@
 /* comment (and recompile everything) to not send time in events */
 #define T_SEND_TIME
 
-/* maximum number of arguments for the T macro */
-#define T_MAX_ARGS 16
-
 /* maximum size of a message - increase if needed */
-#if BASIC_SIMULATOR
-   /* let's have 100 RBs functional for the basic simulator */
-#  define T_BUFFER_MAX (1024*64*4)
-#else
-#  define T_BUFFER_MAX (1024*64*4)
-#endif
+#define T_BUFFER_MAX (1024*64*4)
 
 /* size of the local cache for messages (must be pow(2,something)) */
-#if BASIC_SIMULATOR
-   /* we don't need much space for the basic simulator */
-#  define T_CACHE_SIZE 1024
-#else
-#  define T_CACHE_SIZE (8192)
-#endif
+#define T_CACHE_SIZE (8192)
 
 /* maximum number of bytes a message can contain */
 #ifdef T_SEND_TIME

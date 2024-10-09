@@ -20,10 +20,10 @@
  */
 
 #include "phy_init.h"
-#include "SCHED/sched_eNB.h"
 #include "PHY/phy_extern.h"
+#include "SCHED/sched_eNB.h"
 #include "PHY/LTE_REFSIG/lte_refsig.h"
-#include "SIMULATION/TOOLS/sim.h"
+//#include "SIMULATION/TOOLS/sim.h"
 #include "LTE_RadioResourceConfigCommonSIB.h"
 #include "LTE_RadioResourceConfigDedicated.h"
 #include "LTE_TDD-Config.h"
@@ -44,6 +44,7 @@ int phy_init_RU(RU_t *ru) {
   if (ru->is_slave == 1) {
     generate_ul_ref_sigs_rx();
   }
+  else generate_ul_ref_sigs();
 
   if (ru->if_south <= REMOTE_IF5) { // this means REMOTE_IF5 or LOCAL_RF, so allocate memory for time-domain signals
     // Time-domain signals
@@ -135,14 +136,14 @@ int phy_init_RU(RU_t *ru) {
       }
     }
 
-    AssertFatal(RC.nb_L1_inst <= NUMBER_OF_eNB_MAX,"eNB instances %d > %d\n",
-                RC.nb_L1_inst,NUMBER_OF_eNB_MAX);
-    LOG_D(PHY,"[INIT] %s() RC.nb_L1_inst:%d \n", __FUNCTION__, RC.nb_L1_inst);
+    AssertFatal(ru->num_eNB <= NUMBER_OF_eNB_MAX,"eNB instances %d > %d\n",
+                ru->num_eNB,NUMBER_OF_eNB_MAX);
+    LOG_D(PHY,"[INIT] %s() ru->num_eNB:%d \n", __FUNCTION__, ru->num_eNB);
     int starting_antenna_index=0;
 
     for (i=0; i<ru->idx; i++) starting_antenna_index+=ru->nb_tx;
 
-    for (i=0; i<RC.nb_L1_inst; i++) {
+    for (i=0; i<ru->num_eNB; i++) {
       for (p=0; p<15; p++) {
         LOG_D(PHY,"[INIT] %s() nb_antenna_ports_eNB:%d \n", __FUNCTION__, ru->eNB_list[i]->frame_parms.nb_antenna_ports_eNB);
 
@@ -185,7 +186,7 @@ int phy_init_RU(RU_t *ru) {
 void phy_free_RU(RU_t *ru) {
   int i,j,p;
   RU_CALIBRATION *calibration = &ru->calibration;
-  LOG_I(PHY, "Feeing RU signal buffers (if_south %s) nb_tx %d\n", ru_if_types[ru->if_south], ru->nb_tx);
+  LOG_I(PHY, "Freeing RU signal buffers (if_south %s) nb_tx %d\n", ru_if_types[ru->if_south], ru->nb_tx);
 
   if (ru->if_south <= REMOTE_IF5) { // this means REMOTE_IF5 or LOCAL_RF, so free memory for time-domain signals
     for (i = 0; i < ru->nb_tx; i++) free_and_zero(ru->common.txdata[i]);
@@ -240,7 +241,7 @@ void phy_free_RU(RU_t *ru) {
     free_and_zero(ru->prach_rxsigF[0]);
     /* ru->prach_rxsigF_br is not allocated -> don't free */
 
-    for (i = 0; i < RC.nb_L1_inst; i++) {
+    for (i = 0; i < ru->num_eNB; i++) {
       for (p = 0; p < 15; p++) {
         if (p < ru->eNB_list[i]->frame_parms.nb_antenna_ports_eNB || p == 5) {
           for (j=0; j<ru->nb_tx; j++) free_and_zero(ru->beam_weights[i][p][j]);

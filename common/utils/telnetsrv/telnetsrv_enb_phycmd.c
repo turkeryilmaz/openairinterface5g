@@ -19,7 +19,7 @@
  *      contact@openairinterface.org
  */
 
-/*! \file common/utils/telnetsrv/telnetsrv_phycmd.c
+/*! \file telnetsrv_enb_phycmd.c
  * \brief: implementation of telnet commands related to softmodem linux process
  * \author Francois TABURET
  * \date 2017
@@ -38,6 +38,10 @@
 #include "telnetsrv.h"
 #define TELNETSRV_PHYCMD_MAIN
 #include "telnetsrv_phycmd.h"
+
+#include "PHY/defs_eNB.h"
+#include "LAYER2/MAC/mac_proto.h"
+
 char *prnbuff;
 extern int dump_eNB_stats(PHY_VARS_eNB *eNB, char *buffer, int length);
 

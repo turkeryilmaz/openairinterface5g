@@ -1,49 +1,35 @@
 #!/bin/bash
 
-set -euo pipefail
+set -uo pipefail
 
-# Based another env var, pick one template to use
-if [[ -v USE_FDD_CU ]]; then ln -s /opt/oai-enb/etc/cu.fdd.conf /opt/oai-enb/etc/enb.conf; fi
-if [[ -v USE_FDD_DU ]]; then ln -s /opt/oai-enb/etc/du.fdd.conf /opt/oai-enb/etc/enb.conf; fi
-if [[ -v USE_FDD_MONO ]]; then ln -s /opt/oai-enb/etc/enb.fdd.conf /opt/oai-enb/etc/enb.conf; fi
-if [[ -v USE_TDD_MONO ]]; then ln -s /opt/oai-enb/etc/enb.tdd.conf /opt/oai-enb/etc/enb.conf; fi
-if [[ -v USE_FDD_RCC ]]; then ln -s /opt/oai-enb/etc/rcc.if4p5.enb.fdd.conf /opt/oai-enb/etc/enb.conf; fi
-if [[ -v USE_FDD_RRU ]]; then ln -s /opt/oai-enb/etc/rru.fdd.conf /opt/oai-enb/etc/enb.conf; fi
-if [[ -v USE_TDD_RRU ]]; then ln -s /opt/oai-enb/etc/rru.tdd.conf /opt/oai-enb/etc/enb.conf; fi
+PREFIX=/opt/oai-enb
+CONFIGFILE=$PREFIX/etc/enb.conf
 
-# Only this template will be manipulated
-CONFIG_FILES=`ls /opt/oai-enb/etc/enb.conf`
+echo "=================================="
+echo "/proc/sys/kernel/core_pattern=$(cat /proc/sys/kernel/core_pattern)"
 
-for c in ${CONFIG_FILES}; do
-    # grep variable names (format: ${VAR}) from template to be rendered
-    VARS=$(grep -oP '@[a-zA-Z0-9_]+@' ${c} | sort | uniq | xargs)
+if [ ! -f $CONFIGFILE ]; then
+  echo "No configuration file found: please mount at $CONFIGFILE"
+  exit 255
+fi
 
-    # create sed expressions for substituting each occurrence of ${VAR}
-    # with the value of the environment variable "VAR"
-    EXPRESSIONS=""
-    for v in ${VARS}; do
-        NEW_VAR=`echo $v | sed -e "s#@##g"`
-        if [[ "${!NEW_VAR}x" == "x" ]]; then
-            echo "Error: Environment variable '${NEW_VAR}' is not set." \
-                "Config file '$(basename $c)' requires all of $VARS."
-            exit 1
-        fi
-        EXPRESSIONS="${EXPRESSIONS};s|${v}|${!NEW_VAR}|g"
-    done
-    EXPRESSIONS="${EXPRESSIONS#';'}"
-
-    # render template and inline replace config file
-    sed -i "${EXPRESSIONS}" ${c}
-done
+echo "=================================="
+echo "== Configuration file:"
+cat $CONFIGFILE
 
 # Load the USRP binaries
+echo "=================================="
+echo "== Load USRP binaries"
 if [[ -v USE_B2XX ]]; then
-    /usr/lib/uhd/utils/uhd_images_downloader.py -t b2xx
+    $PREFIX/bin/uhd_images_downloader.py -t b2xx
 elif [[ -v USE_X3XX ]]; then
-    /usr/lib/uhd/utils/uhd_images_downloader.py -t x3xx
+    $PREFIX/bin/uhd_images_downloader.py -t x3xx
 elif [[ -v USE_N3XX ]]; then
-    /usr/lib/uhd/utils/uhd_images_downloader.py -t n3xx
+    $PREFIX/bin/uhd_images_downloader.py -t n3xx
 fi
+
+# enable printing of stack traces on assert
+export OAI_GDBSTACKS=1
 
 echo "=================================="
 echo "== Starting eNB soft modem"

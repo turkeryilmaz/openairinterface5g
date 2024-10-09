@@ -30,9 +30,25 @@
 
 #ifndef __NR_LDPC_TYPES__H__
 #define __NR_LDPC_TYPES__H__
-
-#include "PHY/TOOLS/time_meas.h"
+#ifndef CODEGEN
+#include "time_meas.h"
+#endif
 #include "nrLDPCdecoder_defs.h"
+typedef struct {
+  uint8_t* d;
+  int dim1;
+  int dim2;
+} arr8_t;
+typedef struct {
+  uint16_t* d;
+  int dim1;
+  int dim2;
+} arr16_t;
+typedef struct {
+  uint32_t* d;
+  int dim1;
+  int dim2;
+} arr32_t;
 // ==============================================================================
 // TYPES
 
@@ -45,12 +61,12 @@ typedef struct nrLDPC_lut {
     const uint8_t*  numBnInBnGroups; /**< Number of CNs in every BN group */
     const uint32_t* startAddrBnGroups; /**< Start addresses for BN groups in BN processing buffer  */
     const uint16_t* startAddrBnGroupsLlr; /**< Start addresses for BN groups in LLR processing buffer  */
-    const uint16_t** circShift[NR_LDPC_NUM_CN_GROUPS_BG1]; /**< LUT for circular shift values for all CN groups and Zs */
-    const uint32_t** startAddrBnProcBuf[NR_LDPC_NUM_CN_GROUPS_BG1]; /**< LUT of start addresses of CN groups in BN proc buffer */
-    const uint8_t**  bnPosBnProcBuf[NR_LDPC_NUM_CN_GROUPS_BG1]; /**< LUT of BN positions in BG for CN groups */
+    arr16_t circShift[NR_LDPC_NUM_CN_GROUPS_BG1]; /**< LUT for circular shift values for all CN groups and Zs */
+    arr32_t startAddrBnProcBuf[NR_LDPC_NUM_CN_GROUPS_BG1]; /**< LUT of start addresses of CN groups in BN proc buffer */
+    arr8_t bnPosBnProcBuf[NR_LDPC_NUM_CN_GROUPS_BG1]; /**< LUT of BN positions in BG for CN groups */
     const uint16_t* llr2llrProcBufAddr; /**< LUT for transferring input LLRs to LLR processing buffer */
     const uint8_t*  llr2llrProcBufBnPos; /**< LUT BN position in BG */
-    const uint8_t** posBnInCnProcBuf[NR_LDPC_NUM_CN_GROUPS_BG1]; /**< LUT for llr2cnProcBuf */
+    arr8_t posBnInCnProcBuf[NR_LDPC_NUM_CN_GROUPS_BG1]; /**< LUT for llr2cnProcBuf */
 } t_nrLDPC_lut;
 
 /**
@@ -63,19 +79,54 @@ typedef enum nrLDPC_outMode {
 } e_nrLDPC_outMode;
 
 /**
+   Structure containing LDPC parameters per CB
+*/
+typedef struct nrLDPC_params_per_cb {
+  uint32_t E_cb;
+  uint8_t status_cb;
+  uint8_t* p_status_cb;
+} nrLDPC_params_per_cb_t;
+
+/**
    Structure containing LDPC decoder parameters.
  */
 typedef struct nrLDPC_dec_params {
     uint8_t BG; /**< Base graph */
     uint16_t Z; /**< Lifting size */
     uint8_t R; /**< Decoding rate: Format 15,13,... for code rates 1/5, 1/3,... */
+    uint16_t F; /**< Filler bits */
+    uint8_t Qm; /**< Modulation */
+    uint8_t rv;
     uint8_t numMaxIter; /**< Maximum number of iterations */
+    int E;
     e_nrLDPC_outMode outMode; /**< Output format */
+    int crc_type;
+    int (*check_crc)(uint8_t* decoded_bytes, uint32_t n, uint8_t crc_type);
+    uint8_t setCombIn;
+    nrLDPC_params_per_cb_t perCB[NR_LDPC_MAX_NUM_CB];
 } t_nrLDPC_dec_params;
+
+/**
+   Structure containing LDPC offload parameters.
+ */
+typedef struct nrLDPCoffload_params {
+    uint8_t BG; /**< Base graph */
+    uint16_t Z;
+    uint16_t Kr;
+    uint8_t rv;
+    uint16_t n_cb;
+    uint16_t F; /**< Filler bits */
+    uint8_t Qm; /**< Modulation */
+    uint8_t C;
+    uint8_t numMaxIter;
+    uint8_t setCombIn;
+    nrLDPC_params_per_cb_t perCB[NR_LDPC_MAX_NUM_CB];
+} t_nrLDPCoffload_params;
 
 /**
    Structure containing LDPC decoder processing time statistics.
  */
+#ifndef CODEGEN
 typedef struct nrLDPC_time_stats {
     time_stats_t llr2llrProcBuf; /**< Statistics for function llr2llrProcBuf */
     time_stats_t llr2CnProcBuf; /**< Statistics for function llr2CnProcBuf */
@@ -89,7 +140,7 @@ typedef struct nrLDPC_time_stats {
     time_stats_t llr2bit; /**< Statistics for function llr2bit */
     time_stats_t total; /**< Statistics for total processing time */
 } t_nrLDPC_time_stats;
-
+#endif
 /**
    Structure containing the processing buffers
  */

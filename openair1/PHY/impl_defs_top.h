@@ -37,6 +37,7 @@
  * @{
 
  * @defgroup _PHY_RF_INTERFACE_ PHY - RF Interface
+ * @{
  * @ingroup _PHY_RF_INTERFACE_
  * @{
  * @defgroup _GENERIC_PHY_RF_INTERFACE_ Generic PHY - RF Interface
@@ -44,13 +45,13 @@
  * @defgroup _BLADERF_PHY_RF_INTERFACE_    PHY - BLADERF RF Interface
  * @defgroup _LMSSDR_PHY_RF_INTERFACE_    PHY - LMSSDR RF Interface
  * @}
- *
+ * @}
  * @ingroup _ref_implementation_
  * @{
  * This module is responsible for defining the generic interface between PHY and RF Target
  * @}
- 
- * @defgroup _openair1_ openair1 Reference Implementation 
+
+ * @defgroup _openair1_ openair1 Reference Implementation
  * @ingroup _ref_implementation_
  * @{
 
@@ -107,10 +108,10 @@
  * @}
  */
 
+#include <common/utils/nr/nr_common.h>
+#include <common/utils/utils.h>
 #include "defs_eNB.h"
 #include "types.h"
-
-
 
 /** @addtogroup _PHY_STRUCTURES_
  * @{
@@ -176,15 +177,12 @@
 
 #define NB_ANTENNA_PORTS_ENB  6                                         // total number of eNB antenna ports
 
-#ifdef EXMIMO
-#define TARGET_RX_POWER 55    // Target digital power for the AGC
-#define TARGET_RX_POWER_MAX 55    // Maximum digital power, such that signal does not saturate (value found by simulation)
-#define TARGET_RX_POWER_MIN 50    // Minimum digital power, anything below will be discarded (value found by simulation)
-#else
 #define TARGET_RX_POWER 50    // Target digital power for the AGC
 #define TARGET_RX_POWER_MAX 65    // Maximum digital power, such that signal does not saturate (value found by simulation)
 #define TARGET_RX_POWER_MIN 35    // Minimum digital power, anything below will be discarded (value found by simulation)
-#endif
+
+// Increase USRP rx gain in steps of 3dB during Initial search
+#define INCREASE_IN_RXGAIN 3
 
 //the min and max gains have to match the calibrated gain table
 //#define MAX_RF_GAIN 160
@@ -272,17 +270,26 @@
 #define NB_NUMEROLOGIES_NR                       (5)
 #define TDD_CONFIG_NB_FRAMES                     (2)
 #define NR_MAX_SLOTS_PER_FRAME                   (160)                    /* number of slots per frame */
-#define NR_UE_CAPABILITY_SLOT_RX_TO_TX           (6)                      /* FFS_NR_TODO it defines ue capability which is the number of slots */
-                                                                          /* - between reception of pdsch and tarnsmission of its acknowlegment */
-                                                                          /* - between reception of un uplink grant and its related transmission */
-#ifndef NO_RAT_NR
-  #define DURATION_RX_TO_TX           (NR_UE_CAPABILITY_SLOT_RX_TO_TX)  /* for NR this will certainly depends to such UE capability which is not yet defined */
-#else
-  #define DURATION_RX_TO_TX           (6)   /* For LTE, this duration is fixed to 4 and it is linked to LTE standard for both modes FDD/TDD */
-#endif
 
+/* FFS_NR_TODO it defines ue capability which is the number of slots        */
+/* - between reception of pdsch and transmission of its acknowlegment  (k1) */
+/* - between reception of un uplink grant and its related transmission (k2) */
+#define NR_UE_CAPABILITY_SLOT_RX_TO_TX (3)
 
-#define NR_MAX_HARQ_PROCESSES                    (16)
+/* When the OAI UE receives RX slot N, it starts sending TX slot N+DURATION_RX_TO_TX.
+ * Therefore DURATION_RX_TO_TX must not be larger than the minimum k1 and k2 values (NR_UE_CAPABILITY_SLOT_RX_TO_TX).
+ * In case of NTN, the propagation delay is so large, that the TX slot needs to be transmitted far in advance.
+ * Therefore, the NTN_UE_Koffset is added to DURATION_RX_TO_TX.
+ *
+ * Note: currently, the UE requires this to be a constant.
+ * But in case of NTN, Koffset is only known after receiving SIB19.
+ * Therefore, support should be added to allow changing DURATION_RX_TO_TX on reception of SIB19 (via FAPI-like interface).
+ * E.g. no transmission before successful reception of SIB19, and re-sync with disabled transmission if Koffset changes.
+ * When this has been implemented, the global variable NTN_UE_Koffset should be removed, too.
+ */
+extern unsigned int NTN_UE_Koffset;
+#define DURATION_RX_TO_TX (NR_UE_CAPABILITY_SLOT_RX_TO_TX + NTN_UE_Koffset)
+
 #define NR_MAX_ULSCH_HARQ_PROCESSES              (NR_MAX_HARQ_PROCESSES)  /* cf 38.214 6.1 UE procedure for receiving the physical uplink shared channel */
 #define NR_MAX_DLSCH_HARQ_PROCESSES              (NR_MAX_HARQ_PROCESSES)  /* cf 38.214 5.1 UE procedure for receiving the physical downlink shared channel */
 #endif
@@ -307,52 +314,8 @@ typedef struct {
 #define NUMBER_OF_HARQ_PID_MAX 8
 
 #define MAX_FRAME_NUMBER 0x400
-#include "openairinterface5g_limits.h"
+#include "common/openairinterface5g_limits.h"
 #include "assertions.h"
-
-#define cmax(a,b)  ((a>b) ? (a) : (b))
-#define cmax3(a,b,c) ((cmax(a,b)>c) ? (cmax(a,b)) : (c))
-#define cmin(a,b)  ((a<b) ? (a) : (b))
-
-#ifdef __cplusplus
-#ifdef min
-#undef min
-#undef max
-#endif
-#else
-#define max(a,b) cmax(a,b)
-#define min(a,b) cmin(a,b)
-#endif
-
-#ifndef malloc16
-#  ifdef __AVX2__
-#    define malloc16(x) memalign(32,x+32)
-#  else
-#    define malloc16(x) memalign(16,x+16)
-#  endif
-#endif
-#define free16(y,x) free(y)
-#define bigmalloc malloc
-#define bigmalloc16 malloc16
-#define openair_free(y,x) free((y))
-#define PAGE_SIZE 4096
-#define free_and_zero(PtR) do { \
-      if (PtR) {           \
-        free(PtR);         \
-        PtR = NULL;        \
-      }                    \
-    } while (0)
-static inline void* malloc16_clear( size_t size )
-{
-#ifdef __AVX2__
-  void* ptr = memalign(32, size+32);
-#else
-  void* ptr = memalign(16, size+16);
-#endif
-  DevAssert(ptr);
-  memset( ptr, 0, size );
-  return ptr;
-}
 
 #endif //__PHY_IMPLEMENTATION_DEFS_H__ 
 /**@} 

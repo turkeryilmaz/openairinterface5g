@@ -22,75 +22,80 @@
 #ifndef SECU_DEFS_H_
 #define SECU_DEFS_H_
 
-#include "security_types.h"
 #include <stdbool.h>
-
-#define EIA0_ALG_ID     0x00
-#define EIA1_128_ALG_ID 0x01
-#define EIA2_128_ALG_ID 0x02
-
-#define EEA0_ALG_ID     0x00
-#define EEA1_128_ALG_ID 0x01
-#define EEA2_128_ALG_ID 0x02
+#include <stdint.h>
 
 #define SECU_DIRECTION_UPLINK   0
 #define SECU_DIRECTION_DOWNLINK 1
 
-void kdf(const uint8_t *key,
-         uint16_t key_len,
-         uint8_t *s,
-         uint16_t s_len,
-         uint8_t *out,
-         uint16_t out_len);
+/* stream_security_context_t is an opaque structure.
+ * It is different for each integrity and ciphering algorithm in use.
+ * Defined as a struct to have compilation time type checking
+ * (the "context" field is never actually used).
+ */
+typedef struct {
+  void *context;
+} stream_security_context_t;
 
-int derive_keNB(const uint8_t kasme[32], const uint32_t nas_count, uint8_t *keNB);
-
-int derive_keNB_star(const uint8_t *kenb_32, const uint16_t pci, const uint32_t earfcn_dl,
-                      const bool is_rel8_only, uint8_t * kenb_star);
-
-int derive_key_nas(algorithm_type_dist_t nas_alg_type, uint8_t nas_enc_alg_id,
-                   const uint8_t kasme[32], uint8_t *knas);
-
-#define derive_key_nas_enc(aLGiD, kASME, kNAS)  \
-    derive_key_nas(NAS_ENC_ALG, aLGiD, kASME, kNAS)
-
-#define derive_key_nas_int(aLGiD, kASME, kNAS)  \
-    derive_key_nas(NAS_INT_ALG, aLGiD, kASME, kNAS)
-
-#define derive_key_rrc_enc(aLGiD, kASME, kNAS)  \
-    derive_key_nas(RRC_ENC_ALG, aLGiD, kASME, kNAS)
-
-#define derive_key_rrc_int(aLGiD, kASME, kNAS)  \
-    derive_key_nas(RRC_INT_ALG, aLGiD, kASME, kNAS)
-
-#define derive_key_up_enc(aLGiD, kASME, kNAS)  \
-    derive_key_nas(UP_ENC_ALG, aLGiD, kASME, kNAS)
-
-#define derive_key_up_int(aLGiD, kASME, kNAS)  \
-    derive_key_nas(UP_INT_ALG, aLGiD, kASME, kNAS)
-
-#define SECU_DIRECTION_UPLINK   0
-#define SECU_DIRECTION_DOWNLINK 1
+/* stream_security_container_t contains the current configuration
+ * of integrity and ciphering. It is used by PDCP and NAS.
+ */
+typedef struct {
+  int integrity_algorithm;
+  int ciphering_algorithm;
+  stream_security_context_t *ciphering_context;
+  stream_security_context_t *integrity_context;
+} stream_security_container_t;
 
 typedef struct {
-  uint8_t *key;
-  uint32_t key_length;
+  stream_security_context_t *context;
   uint32_t count;
   uint8_t  bearer;
   uint8_t  direction;
   uint8_t  *message;
   /* length in bits */
-  uint32_t  blength;
+  uint32_t blength;
 } nas_stream_cipher_t;
 
-int nas_stream_encrypt_eea1(nas_stream_cipher_t *stream_cipher, uint8_t *out);
+stream_security_context_t *stream_integrity_init(int integrity_algorithm, const uint8_t *integrity_key);
+stream_security_context_t *stream_ciphering_init(int ciphering_algorithm, const uint8_t *ciphering_key);
+void stream_integrity_free(int integrity_algorithm, stream_security_context_t *integrity_context);
+void stream_ciphering_free(int ciphering_algorithm, stream_security_context_t *ciphering_context);
 
-int nas_stream_encrypt_eia1(nas_stream_cipher_t *stream_cipher, uint8_t out[4]);
+stream_security_container_t *stream_security_container_init(int ciphering_algorithm,
+                                                            int integrity_algorithm,
+                                                            const uint8_t *ciphering_key,
+                                                            const uint8_t *integrity_key);
+void stream_security_container_delete(stream_security_container_t *container);
 
-int nas_stream_encrypt_eea2(nas_stream_cipher_t *stream_cipher, uint8_t *out);
+/*!
+ * @brief Encrypt/Decrypt a block of data based on the provided algorithm
+ * @param[in] algorithm Algorithm used to encrypt the data
+ *      Possible values are:
+ *      - EIA0_ALG_ID for NULL encryption
+ *      - EIA1_128_ALG_ID for SNOW-3G encryption (not avalaible right now)
+ *      - EIA2_128_ALG_ID for 128 bits AES LTE encryption
+ * @param[in] stream_cipher All parameters used to compute the encrypted block of data
+ * @param[out] out The encrypted block of data
+ */
 
-int nas_stream_encrypt_eia2(nas_stream_cipher_t *stream_cipher, uint8_t out[4]);
+typedef enum {
+  EIA0_ALG_ID = 0x00,
+  EIA1_128_ALG_ID = 0x01,
+  EIA2_128_ALG_ID = 0x02,
+  END_EIA0_ALG_ID,
+} eia_alg_id_e;
 
-#undef SECU_DEBUG
+void stream_compute_integrity(eia_alg_id_e alg, nas_stream_cipher_t const *stream_cipher, uint8_t out[4]);
+
+typedef enum {
+  EEA0_ALG_ID = 0x00,
+  EEA1_128_ALG_ID = 0x01,
+  EEA2_128_ALG_ID = 0x02,
+
+  END_EEA_ALG_ID
+} eea_alg_id_e;
+
+void stream_compute_encrypt(eea_alg_id_e alg, nas_stream_cipher_t const *stream_cipher, uint8_t *out);
 
 #endif /* SECU_DEFS_H_ */

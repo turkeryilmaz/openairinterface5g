@@ -39,7 +39,7 @@ Description NAS procedure functions triggered by the user
 
 #include "user_defs.h"
 #include "nas_log.h"
-#include "memory.h"
+#include "common/utils/mem/oai_memory.h"
 
 #include "at_command.h"
 #include "at_response.h"
@@ -91,29 +91,29 @@ static int _nas_user_proc_clac    (nas_user_t *user, const at_command_t *data);
 /* NAS procedures applicable to AT commands */
 typedef int (*_nas_user_procedure_t) (nas_user_t *, const at_command_t *);
 
-static _nas_user_procedure_t _nas_user_procedure[AT_COMMAND_ID_MAX] = {
-  NULL,
-  _nas_user_proc_cgsn,    /* CGSN    */
-  _nas_user_proc_cgmi,    /* CGMI    */
-  _nas_user_proc_cgmm,    /* CGMM    */
-  _nas_user_proc_cgmr,    /* CGMR    */
-  _nas_user_proc_cimi,    /* CIMI    */
-  _nas_user_proc_cfun,    /* CFUN    */
-  _nas_user_proc_cpin,    /* CPIN    */
-  _nas_user_proc_csq,     /* CSQ     */
-  _nas_user_proc_cesq,    /* CESQ    */
-  _nas_user_proc_clac,    /* CLAC    */
-  _nas_user_proc_cmee,    /* CMEE    */
-  _nas_user_proc_cnum,    /* CNUM    */
-  _nas_user_proc_clck,    /* CLCK    */
-  _nas_user_proc_cops,    /* COPS    */
-  _nas_user_proc_creg,    /* CREG    */
-  _nas_user_proc_cgatt,   /* CGATT   */
-  _nas_user_proc_cgreg,   /* CGREG   */
-  _nas_user_proc_cereg,   /* CEREG   */
-  _nas_user_proc_cgdcont, /* CGDCONT */
-  _nas_user_proc_cgact,   /* CGACT   */
-  _nas_user_proc_cgpaddr, /* CGPADDR */
+static const _nas_user_procedure_t _nas_user_procedure[AT_COMMAND_ID_MAX] = {
+    NULL,
+    _nas_user_proc_cgsn, /* CGSN    */
+    _nas_user_proc_cgmi, /* CGMI    */
+    _nas_user_proc_cgmm, /* CGMM    */
+    _nas_user_proc_cgmr, /* CGMR    */
+    _nas_user_proc_cimi, /* CIMI    */
+    _nas_user_proc_cfun, /* CFUN    */
+    _nas_user_proc_cpin, /* CPIN    */
+    _nas_user_proc_csq, /* CSQ     */
+    _nas_user_proc_cesq, /* CESQ    */
+    _nas_user_proc_clac, /* CLAC    */
+    _nas_user_proc_cmee, /* CMEE    */
+    _nas_user_proc_cnum, /* CNUM    */
+    _nas_user_proc_clck, /* CLCK    */
+    _nas_user_proc_cops, /* COPS    */
+    _nas_user_proc_creg, /* CREG    */
+    _nas_user_proc_cgatt, /* CGATT   */
+    _nas_user_proc_cgreg, /* CGREG   */
+    _nas_user_proc_cereg, /* CEREG   */
+    _nas_user_proc_cgdcont, /* CGDCONT */
+    _nas_user_proc_cgact, /* CGACT   */
+    _nas_user_proc_cgpaddr, /* CGPADDR */
 };
 
 /*
@@ -122,12 +122,7 @@ static _nas_user_procedure_t _nas_user_procedure[AT_COMMAND_ID_MAX] = {
  * ---------------------------------------------------------------------
  */
 
-static const char *_nas_user_sim_status_str[] = {
-  "READY",
-  "SIM PIN",
-  "SIM PUK",
-  "PH-SIM PIN"
-};
+static const char *const _nas_user_sim_status_str[] = {"READY", "SIM PIN", "SIM PUK", "PH-SIM PIN"};
 
 /****************************************************************************/
 /******************  E X P O R T E D    F U N C T I O N S  ******************/
@@ -159,7 +154,7 @@ void nas_user_initialize(nas_user_t *user, emm_indication_callback_t emm_cb,
 {
   LOG_FUNC_IN;
 
-  user->nas_user_nvdata = calloc_or_fail(sizeof(user_nvdata_t));
+  user->nas_user_nvdata = calloc_or_fail(1, sizeof(user_nvdata_t));
 
   /* Get UE data stored in the non-volatile memory device */
   int rc = memory_read(user->user_nvdata_store, user->nas_user_nvdata, sizeof(user_nvdata_t));
@@ -168,7 +163,7 @@ void nas_user_initialize(nas_user_t *user, emm_indication_callback_t emm_cb,
     abort();
   }
 
-  user->nas_user_context = calloc_or_fail(sizeof(nas_user_context_t));
+  user->nas_user_context = calloc_or_fail(1, sizeof(nas_user_context_t));
   _nas_user_context_initialize(user->nas_user_context, version);
 
   /* Initialize the internal NAS processing data */
@@ -187,10 +182,10 @@ void nas_user_initialize(nas_user_t *user, emm_indication_callback_t emm_cb,
  **                             from which data have been received         **
  **              Others:        None                                       **
  **                                                                        **
- ** Outputs:     Return:        FALSE, TRUE                                **
+ ** Outputs:     Return:        false, true                                **
  **                                                                        **
  ***************************************************************************/
-int nas_user_receive_and_process(nas_user_t *user, char *message)
+bool nas_user_receive_and_process(nas_user_t *user, char *message)
 {
   LOG_FUNC_IN;
 
@@ -212,13 +207,13 @@ int nas_user_receive_and_process(nas_user_t *user, char *message)
        * exit from the receiving loop */
       LOG_TRACE (ERROR, "UE-MAIN   - "
                  "Failed to read data from the user application layer");
-      LOG_FUNC_RETURN(TRUE);
+      LOG_FUNC_RETURN(true);
     }
   }
 
   if (bytes == 0) {
     /* A signal was caught before any data were available */
-    LOG_FUNC_RETURN(FALSE);
+    LOG_FUNC_RETURN(false);
   }
 
   /* Decode the user data message */
@@ -268,12 +263,12 @@ int nas_user_receive_and_process(nas_user_t *user, char *message)
          * exit from the receiving loop */
         LOG_TRACE (ERROR, "UE-MAIN   - "
                    "Failed to send data to the user application layer");
-        LOG_FUNC_RETURN(TRUE);
+        LOG_FUNC_RETURN(true);
       }
     }
   }
 
-  LOG_FUNC_RETURN(FALSE);
+  LOG_FUNC_RETURN(false);
 }
 
 /****************************************************************************
@@ -989,7 +984,7 @@ static int _nas_user_proc_cops(nas_user_t *user, const at_command_t *data)
   char oper_buffer[NET_FORMAT_MAX_SIZE], *oper = oper_buffer;
   memset(oper, 0, NET_FORMAT_MAX_SIZE);
 
-  int oper_is_selected;
+  bool oper_is_selected;
 
   at_response->id = data->id;
   at_response->type = data->type;
@@ -1266,7 +1261,7 @@ static int _nas_user_proc_cgatt(nas_user_t *user, const at_command_t *data)
       if (data->command.cgatt.state == AT_CGATT_ATTACHED) {
         ret_code = nas_proc_attach(user);
       } else if (data->command.cgatt.state == AT_CGATT_DETACHED) {
-        ret_code = nas_proc_detach(user, FALSE);
+        ret_code = nas_proc_detach(user, false);
       }
 
       if (ret_code != RETURNok) {
@@ -1284,7 +1279,7 @@ static int _nas_user_proc_cgatt(nas_user_t *user, const at_command_t *data)
     /*
      * Read command returns the current EPS service state.
      */
-    if (nas_proc_get_attach_status(user) != TRUE) {
+    if (nas_proc_get_attach_status(user) != true) {
       cgatt->state = AT_CGATT_DETACHED;
     } else {
       cgatt->state = AT_CGATT_ATTACHED;
@@ -1821,7 +1816,7 @@ static int _nas_user_proc_cgdcont(nas_user_t *user, const at_command_t *data)
   int emergency = AT_CGDCONT_EBS_DEFAULT;
   int p_cscf = AT_CGDCONT_PCSCF_DEFAULT;
   int im_cn_signalling = AT_CGDCONT_IM_CM_DEFAULT;
-  int reset_pdn = TRUE;
+  bool reset_pdn = true;
 
   at_response->id = data->id;
   at_response->type = data->type;
@@ -1870,7 +1865,7 @@ static int _nas_user_proc_cgdcont(nas_user_t *user, const at_command_t *data)
         break;
       }
 
-      reset_pdn = FALSE;
+      reset_pdn = false;
     }
 
     if (data->mask & AT_CGDCONT_APN_MASK) {

@@ -31,11 +31,8 @@
 #define MCE_APP_H_
 
 #include <stdint.h>
-#include "platform_types.h"
-
+#include "common/platform_types.h"
 
 void *MCE_app_task(void *args_p);
-
-//void handle_reconfiguration(module_id_t mod_id);
 
 #endif /* ENB_APP_H_ */

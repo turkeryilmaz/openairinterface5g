@@ -37,15 +37,12 @@
 
 #include "COMMON/s1ap_messages_types.h"
 #include "COMMON/rrc_messages_types.h"
-#if ITTI_SIM
-#include "COMMON/itti_sim_messages_types.h"
-#endif
 
 #include "collection/tree.h"
 #include "rrc_types_NB_IoT.h"
-#include "COMMON/platform_constants.h"
-#include "COMMON/platform_types.h"
-#include "openairinterface5g_limits.h"
+#include "common/platform_constants.h"
+#include "common/platform_types.h"
+#include "common/openairinterface5g_limits.h"
 
 #include "COMMON/mac_rrc_primitives.h"
 
@@ -148,7 +145,7 @@ typedef struct UE_RRC_INFO_NB_IoT_s {
 //Measurement Report not supported in NB-IoT
 
 #define PAYLOAD_SIZE_MAX 1024
-#define RRC_BUF_SIZE 8192
+#define RRC_BUF_SIZE 1024
 #define UNDEF_SECURITY_MODE 0xff
 #define NO_SECURITY_MODE 0x20
 
@@ -156,7 +153,7 @@ typedef struct UE_RRC_INFO_NB_IoT_s {
 #define RRC_TRANSACTION_IDENTIFIER_NUMBER  3
 
 typedef struct UE_S_TMSI_NB_IoT_s {
-  boolean_t  presence;
+  bool       presence;
   mme_code_t mme_code;
   m_tmsi_t   m_tmsi;
 } __attribute__ ((__packed__)) UE_S_TMSI_NB_IoT;
@@ -185,7 +182,7 @@ typedef struct e_rab_param_NB_IoT_s {
 typedef struct {
   char Payload[RRC_BUFFER_SIZE_MAX];
   char Header[RRC_HEADER_SIZE_MAX];
-  char payload_size;
+  int payload_size;
 } RRC_BUFFER_NB_IoT;
 
 #define RRC_BUFFER_SIZE_NB_IoT sizeof(RRC_BUFFER_NB_IoT)
@@ -211,13 +208,13 @@ typedef struct RB_INFO_TABLE_ENTRY_NB_IoT_s {
   RB_INFO_NB_IoT Rb_info;
   uint8_t Active;
   uint32_t Next_check_frame;
-  uint8_t Status;
+  uint8_t status;
 } RB_INFO_TABLE_ENTRY_NB_IoT;
 
 typedef struct SRB_INFO_TABLE_ENTRY_NB_IoT_s {
   SRB_INFO_NB_IoT Srb_info;
   uint8_t Active;
-  uint8_t Status;
+  uint8_t status;
   uint32_t Next_check_frame;
 } SRB_INFO_TABLE_ENTRY_NB_IoT;
 
@@ -269,7 +266,7 @@ typedef struct eNB_RRC_UE_NB_IoT_s {
   e_LTE_CipheringAlgorithm_r12     ciphering_algorithm; //Specs. TS 36.331 V14.1.0 pag 432 Change position of chipering enumerative w.r.t previous version
   e_LTE_SecurityAlgorithmConfig__integrityProtAlgorithm integrity_algorithm;
 
-  uint8_t                            Status;
+  uint8_t                            status;
   rnti_t                             rnti;
   uint64_t                           random_ue_identity;
 
@@ -291,9 +288,9 @@ typedef struct eNB_RRC_UE_NB_IoT_s {
   security_capabilities_t            security_capabilities;
 
   /* Total number of e_rab already setup in the list */ //NAS list?
-  uint8_t                           setup_e_rabs;
+  int                               setup_e_rabs;
   /* Number of e_rab to be setup in the list */ //NAS list?
-  uint8_t                            nb_of_e_rabs;
+  int                                nb_of_e_rabs;
   /* list of e_rab to be setup by RRC layers */
   e_rab_param_NB_IoT_t                      e_rab[NB_RB_MAX_NB_IOT];//[S1AP_MAX_E_RAB];
 
@@ -340,31 +337,31 @@ typedef struct {
 
   // buffer that contains the encoded messages
   uint8_t             *MIB_NB_IoT;
-  uint8_t             sizeof_MIB_NB_IoT;
+  int                 sizeof_MIB_NB_IoT;
 
   uint8_t                           *SIB1_NB_IoT;
-  uint8_t                           sizeof_SIB1_NB_IoT;
+  int                               sizeof_SIB1_NB_IoT;
   uint8_t                           *SIB23_NB_IoT;
-  uint8_t                         sizeof_SIB23_NB_IoT;
+  int                               sizeof_SIB23_NB_IoT;
 
 
   //not actually implemented in OAI
   uint8_t                           *SIB4_NB_IoT;
-  uint8_t                           sizeof_SIB4_NB_IoT;
+  int                               sizeof_SIB4_NB_IoT;
   uint8_t                           *SIB5_NB_IoT;
-  uint8_t                           sizeof_SIB5_NB_IoT;
+  int                               sizeof_SIB5_NB_IoT;
   uint8_t                           *SIB14_NB_IoT;
-  uint8_t                           sizeof_SIB14_NB_IoT;
+  int                               sizeof_SIB14_NB_IoT;
   uint8_t                           *SIB16_NB_IoT;
-  uint8_t                           sizeof_SIB16_NB_IoT;
+  int                               sizeof_SIB16_NB_IoT;
 
   //TS 36.331 V14.2.1
   //  uint8_t                           *SIB15_NB;
-  //  uint8_t                           sizeof_SIB15_NB;
+  //  int                               sizeof_SIB15_NB;
   //  uint8_t                           *SIB20_NB;
-  //  uint8_t                           sizeof_SIB20_NB;
+  //  int                               sizeof_SIB20_NB;
   //  uint8_t                           *SIB22_NB;
-  //  uint8_t                           sizeof_SIB22_NB;
+  //  int                               sizeof_SIB22_NB;
 
   //implicit parameters needed
   int                               Ncp; //cyclic prefix for DL
@@ -394,7 +391,7 @@ typedef struct {
   SRB_INFO_NB_IoT                          Srb0;
 
   uint8_t                           **MCCH_MESSAGE; //  probably not needed , but added to remove errors
-  uint8_t                           sizeof_MCCH_MESSAGE[8];// but added to remove errors
+  int                               sizeof_MCCH_MESSAGE[8];// but added to remove errors
   SRB_INFO_NB_IoT                          MCCH_MESS[8];// MAX_MBSFN_AREA
   /*future implementation TS 36.331 V14.2.1
   SystemInformationBlockType15_NB_r14_t     *sib15;
@@ -402,7 +399,7 @@ typedef struct {
   SystemInformationBlockType22_NB_r14_t     *sib22;
 
   uint8_t             SCPTM_flag;
-  uint8_t             sizeof_SC_MCHH_MESS[];
+  int                 sizeof_SC_MCHH_MESS[];
   SC_MCCH_Message_NB_t        scptm;*/
 
 
@@ -451,7 +448,7 @@ typedef struct eNB_RRC_INST_NB_IoT_s {
 //not needed for the moment
 typedef struct OAI_UECapability_NB_IoT_s {
   uint8_t sdu[MAX_UE_CAPABILITY_SIZE_NB_IoT];
-  uint8_t sdu_size;
+  int     sdu_size;
   ////NB-IoT------
   LTE_UE_Capability_NB_r13_t  UE_Capability_NB_IoT; //replace the UE_EUTRA_Capability of LTE
 } OAI_UECapability_NB_IoT_t;
@@ -468,7 +465,7 @@ typedef struct UE_RRC_INST_NB_IoT_s {
   as_nas_info_t   initialNasMsg;
   OAI_UECapability_NB_IoT_t *UECap;
   uint8_t *UECapability;
-  uint8_t UECapability_size;
+  int     UECapability_size;
 
   UE_RRC_INFO_NB_IoT Info[NB_SIG_CNX_UE];
 

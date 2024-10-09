@@ -19,7 +19,7 @@
  *      contact@openairinterface.org
  */
 
-/*! \file openair1/PHY/CODING/coding_nr_load.c
+/*! \file nrLDPC_load.c
  * \brief: load library implementing coding/decoding algorithms
  * \author Francois TABURET
  * \date 2020
@@ -35,42 +35,42 @@
 #include <malloc.h>
 #include "assertions.h"
 #include "common/utils/LOG/log.h"
-#define LDPC_LOADER
 #include "PHY/CODING/nrLDPC_extern.h"
-#include "common/config/config_userapi.h" 
-#include "common/utils/load_module_shlib.h" 
+#include "common/config/config_userapi.h"
+#include "common/utils/load_module_shlib.h"
 
+/* arguments used when called from phy simulators exec's which do not use the config module */
+/* arg is used to initialize the config module so that the loader works as expected */
+char *arg[64]={"ldpctest",NULL};
 
-/* function description array, to be used when loading the encoding/decoding shared lib */
-static loader_shlibfunc_t shlib_fdesc[2];
+int load_LDPClib(char *version, ldpc_interface_t *itf)
+{
+  char *ptr = (char *)config_get_if();
+  char libname[64] = "ldpc";
 
-char *arg[64]={"ldpctest","-O","cmdlineonly::dbgl0"};
+  if (ptr == NULL) { // phy simulators, config module possibly not loaded
+    uniqCfg = load_configmodule(1, arg, CONFIG_ENABLECMDLINEONLY);
+    logInit();
+  }
+  /* function description array, to be used when loading the encoding/decoding shared lib */
+  loader_shlibfunc_t shlib_fdesc[] = {{.fname = "LDPCinit"},
+                                      {.fname = "LDPCshutdown"},
+                                      {.fname = "LDPCdecoder"},
+                                      {.fname = "LDPCencoder"}};
+  int ret;
+  ret = load_module_version_shlib(libname, version, shlib_fdesc, sizeofArray(shlib_fdesc), NULL);
+  AssertFatal((ret >= 0), "Error loading ldpc decoder");
+  itf->LDPCinit = (LDPC_initfunc_t *)shlib_fdesc[0].fptr;
+  itf->LDPCshutdown = (LDPC_shutdownfunc_t *)shlib_fdesc[1].fptr;
+  itf->LDPCdecoder = (LDPC_decoderfunc_t *)shlib_fdesc[2].fptr;
+  itf->LDPCencoder = (LDPC_encoderfunc_t *)shlib_fdesc[3].fptr;
 
-int load_nrLDPClib(void) {
-	 char *ptr = (char*)config_get_if();
-     if ( ptr==NULL )  {// phy simulators, config module possibly not loaded
-     	 load_configmodule(3,(char **)arg,CONFIG_ENABLECMDLINEONLY) ;
-     	 logInit();
-     }	 
-     shlib_fdesc[0].fname = "nrLDPC_decod";
-     shlib_fdesc[1].fname = "nrLDPC_encod";
-     int ret=load_module_shlib("ldpc",shlib_fdesc,sizeof(shlib_fdesc)/sizeof(loader_shlibfunc_t),NULL);
-     AssertFatal( (ret >= 0),"Error loading ldpc decoder");
-     nrLDPC_decoder = (nrLDPC_decoderfunc_t)shlib_fdesc[0].fptr;
-     nrLDPC_encoder = (nrLDPC_encoderfunc_t)shlib_fdesc[1].fptr;
-return 0;
+  AssertFatal(itf->LDPCinit() == 0, "error starting LDPC library %s %s\n", libname, version);
+
+  return 0;
 }
 
-int load_nrLDPClib_ref(char *libversion, nrLDPC_encoderfunc_t * nrLDPC_encoder_ptr) {
-	loader_shlibfunc_t shlib_encoder_fdesc;
-
-     shlib_encoder_fdesc.fname = "nrLDPC_encod";
-     char libpath[64];
-     sprintf(libpath,"ldpc%s",libversion);
-     int ret=load_module_shlib(libpath,&shlib_encoder_fdesc,1,NULL);
-     AssertFatal( (ret >= 0),"Error loading ldpc encoder %s\n",libpath);
-     *nrLDPC_encoder_ptr = (nrLDPC_encoderfunc_t)shlib_encoder_fdesc.fptr;
-return 0;
+int free_LDPClib(ldpc_interface_t *ldpc_interface)
+{
+  return ldpc_interface->LDPCshutdown();
 }
-
-

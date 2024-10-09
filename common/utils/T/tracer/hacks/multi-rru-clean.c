@@ -145,14 +145,14 @@ int main(int n, char **v)
 
   clear_cache(number_of_tags, cache);
 
-  OBUF ebuf = { osize: 0, omaxsize: 0, obuf: NULL };
+  OBUF ebuf = {.osize = 0, .omaxsize = 0, .obuf = NULL};
 
   while (1) {
     int type;
     int32_t length;
     char *v;
     int vpos = 0;
-    struct timespec t;
+    struct timespec t = {0};
     char *buf;
 
     /* read event from file */

@@ -19,7 +19,7 @@
  *      contact@openairinterface.org
  */
 
-/*! \file l2_interface.c
+/*! \file L2_interface.c
  * \brief layer 2 interface, used to support different RRC sublayer
  * \author Raymond Knopp and Navid Nikaein
  * \date 2010-2014
@@ -28,30 +28,25 @@
  * \email: raymond.knopp@eurecom.fr
  */
 
-/*! \file l2_interface.c
- * \brief layer 2 interface, added support for FeMBMS RRC sublayer 
+/*! \file L2_interface.c
+ * \brief layer 2 interface, added support for FeMBMS RRC sublayer
  * \author Javier Morgade
  * \date 2020
  * \version 1.0
  * \email: javier.morgade@ieee.org
  */
 
-
-#include "platform_types.h"
+#include "common/platform_types.h"
 #include "rrc_defs.h"
 #include "rrc_extern.h"
 #include "common/utils/LOG/log.h"
 #include "rrc_eNB_UE_context.h"
 #include "pdcp.h"
-#include "msc.h"
 #include "common/ran_context.h"
+#include "uper_encoder.h"
 
 #include "intertask_interface.h"
 
-#include "flexran_agent_extern.h"
-#undef C_RNTI // C_RNTI is used in F1AP generated code, prevent preprocessor replace
-//#include "f1ap_du_rrc_message_transfer.h"
-#include "openair2/F1AP/f1ap_du_rrc_message_transfer.h"
 
 extern RAN_CONTEXT_t RC;
 
@@ -302,27 +297,10 @@ mac_rrc_data_ind(
   const uint8_t        *sduP,
   const sdu_size_t      sdu_lenP,
   const uint8_t         mbsfn_sync_areaP,
-  const boolean_t   brOption
+  const bool            brOption
 )
 //--------------------------------------------------------------------------
 {
-  if (NODE_IS_DU(RC.rrc[module_idP]->node_type)) {
-    LOG_W(RRC,"[DU %d][RAPROC] Received SDU for CCCH on SRB %ld length %d for UE id %d RNTI %x \n",
-          module_idP, srb_idP, sdu_lenP, UE_id, rntiP);
-    /* do ITTI message */
-    DU_send_INITIAL_UL_RRC_MESSAGE_TRANSFER(
-      module_idP,
-      CC_id,
-      UE_id,
-      rntiP,
-      sduP,
-      sdu_lenP,
-      NULL,
-      0
-    );
-    return(0);
-  }
-
   //SRB_INFO *Srb_info;
   protocol_ctxt_t ctxt;
   sdu_size_t      sdu_size = 0;
@@ -351,12 +329,12 @@ mac_rrc_data_ind(
     ue_context_p = rrc_eNB_get_ue_context(RC.rrc[ctxt.module_id],rntiP);
 
     if(ue_context_p) {
-      if (ue_context_p->ue_context.Status != RRC_RECONFIGURED) {
-        LOG_E(RRC,"[eNB %d] Received C-RNTI ,but UE %x status(%d) not RRC_RECONFIGURED\n",module_idP,rntiP,ue_context_p->ue_context.Status);
+      if (ue_context_p->ue_context.StatusRrc != RRC_RECONFIGURED) {
+        LOG_E(RRC,"[eNB %d] Received C-RNTI ,but UE %x status(%d) not RRC_RECONFIGURED\n",module_idP,rntiP,ue_context_p->ue_context.StatusRrc);
         return (-1);
       } 
       rrc_eNB_generate_defaultRRCConnectionReconfiguration(&ctxt,ue_context_p,0);
-      ue_context_p->ue_context.Status = RRC_RECONFIGURED;
+      ue_context_p->ue_context.StatusRrc = RRC_RECONFIGURED;
     }
   }
 
@@ -378,7 +356,7 @@ mac_eNB_get_rrc_status(
   ue_context_p = rrc_eNB_get_ue_context(RC.rrc[Mod_idP], rntiP);
 
   if (ue_context_p != NULL) {
-    return(ue_context_p->ue_context.Status);
+    return(ue_context_p->ue_context.StatusRrc);
   } else {
     return RRC_INACTIVE;
   }
@@ -401,11 +379,6 @@ void mac_eNB_rrc_ul_failure(const module_id_t Mod_instP,
       ue_context_p->ue_context.ul_failure_timer=1;
   } else {
     LOG_W(RRC,"Frame %d, Subframe %d: UL failure: UE %x unknown \n",frameP,subframeP,rntiP);
-  }
-
-  if (flexran_agent_get_rrc_xface(Mod_instP)) {
-    flexran_agent_get_rrc_xface(Mod_instP)->flexran_agent_notify_ue_state_change(Mod_instP,
-        rntiP, PROTOCOL__FLEX_UE_STATE_CHANGE_TYPE__FLUESC_DEACTIVATED);
   }
 
   //rrc_mac_remove_ue(Mod_instP,rntiP);

@@ -31,10 +31,7 @@
 
 
 #include "cli.h"
-#include "OCG.h"
-#include "OCG_extern.h"
 #include "log.h"
-#include "log_extern.h"
 
 extern cli_config *cli_cfg;
 

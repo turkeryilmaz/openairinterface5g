@@ -45,12 +45,14 @@ Description Defines functions used to handle EPS bearer contexts.
 #include "esm_ebr.h"
 
 #include "esm_ebr_context.h"
+#include "common/utils/tun_if.h"
 
 #include "emm_sap.h"
 #include "system.h"
 #include "assertions.h"
 #include "pdcp.h"
 #include "nfapi/oai_integration/vendor_ext.h"
+#include "executables/softmodem-common.h"
 
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -83,7 +85,7 @@ static int _esm_ebr_context_check_precedence(const network_tft_t *,
  ** Inputs: **
  **      pid:       PDN connection identifier                  **
  **      ebi:       EPS bearer identity                        **
- **      is_default:    TRUE if the new bearer is a default EPS    **
+ **      is_default:    true if the new bearer is a default EPS    **
  **             bearer context                             **
  **      esm_qos:   EPS bearer level QoS parameters            **
  **      tft:       Traffic flow template parameters           **
@@ -97,7 +99,7 @@ static int _esm_ebr_context_check_precedence(const network_tft_t *,
  ***************************************************************************/
 int esm_ebr_context_create(
   esm_data_t *esm_data, int ueid,
-  int pid, int ebi, int is_default,
+  int pid, int ebi, bool is_default,
   const network_qos_t *qos, const network_tft_t *tft) {
   int                 bid     = 0;
   esm_data_context_t *esm_ctx = NULL;
@@ -184,24 +186,15 @@ int esm_ebr_context_create(
 
       if (is_default) {
         /* Set the PDN connection activation indicator */
-        esm_ctx->pdn[pid].is_active = TRUE;
+        esm_ctx->pdn[pid].is_active = true;
 
         /* Update the emergency bearer services indicator */
         if (pdn->is_emergency) {
-          esm_ctx->emergency = TRUE;
+          esm_ctx->emergency = true;
         }
 
         // LG ADD TEMP
         {
-          char          *tmp          = NULL;
-          char           ipv4_addr[INET_ADDRSTRLEN];
-          //char           ipv6_addr[INET6_ADDRSTRLEN];
-          int            netmask      = 32;
-          char           broadcast[INET_ADDRSTRLEN];
-          struct in_addr in_addr;
-          char           command_line[500];
-          int            res = -1;
-
           switch (pdn->type) {
             case NET_PDN_TYPE_IPV4V6:
 
@@ -209,95 +202,14 @@ int esm_ebr_context_create(
             /* TODO? */
 
             // etc
-            case NET_PDN_TYPE_IPV4:
-              // in_addr is in network byte order
-              in_addr.s_addr  = pdn->ip_addr[0] << 24                 |
-                                ((pdn->ip_addr[1] << 16) & 0x00FF0000) |
-                                ((pdn->ip_addr[2] <<  8) & 0x0000FF00) |
-                                ( pdn->ip_addr[3]        & 0x000000FF);
-              in_addr.s_addr = htonl(in_addr.s_addr);
-              tmp = inet_ntoa(in_addr);
-              //AssertFatal(tmp ,
-              //            "error in PDN IPv4 address %x",
-              //            in_addr.s_addr);
-              strcpy(ipv4_addr, tmp);
-
-              if (IN_CLASSA(ntohl(in_addr.s_addr))) {
-                netmask = 8;
-                in_addr.s_addr = pdn->ip_addr[0] << 24 |
-                                 ((255  << 16) & 0x00FF0000) |
-                                 ((255 <<  8)  & 0x0000FF00) |
-                                 ( 255         & 0x000000FF);
-                in_addr.s_addr = htonl(in_addr.s_addr);
-                tmp = inet_ntoa(in_addr);
-                //                                AssertFatal(tmp ,
-                //                                        "error in PDN IPv4 address %x",
-                //                                        in_addr.s_addr);
-                strcpy(broadcast, tmp);
-              } else if (IN_CLASSB(ntohl(in_addr.s_addr))) {
-                netmask = 16;
-                in_addr.s_addr =  pdn->ip_addr[0] << 24 |
-                                  ((pdn->ip_addr[1] << 16) & 0x00FF0000) |
-                                  ((255 <<  8)  & 0x0000FF00) |
-                                  ( 255         & 0x000000FF);
-                in_addr.s_addr = htonl(in_addr.s_addr);
-                tmp = inet_ntoa(in_addr);
-                //                                AssertFatal(tmp ,
-                //                                        "error in PDN IPv4 address %x",
-                //                                        in_addr.s_addr);
-                strcpy(broadcast, tmp);
-              } else if (IN_CLASSC(ntohl(in_addr.s_addr))) {
-                netmask = 24;
-                in_addr.s_addr = pdn->ip_addr[0] << 24 |
-                                 ((pdn->ip_addr[1] << 16) & 0x00FF0000) |
-                                 ((pdn->ip_addr[2] <<  8) & 0x0000FF00) |
-                                 ( 255         & 0x000000FF);
-                in_addr.s_addr = htonl(in_addr.s_addr);
-                tmp = inet_ntoa(in_addr);
-                //                                AssertFatal(tmp ,
-                //                                        "error in PDN IPv4 address %x",
-                //                                        in_addr.s_addr);
-                strcpy(broadcast, tmp);
-              } else {
-                netmask = 32;
-                strcpy(broadcast, ipv4_addr);
-              }
-
-              res = sprintf(command_line,
-                            "ip address add %s/%d broadcast %s dev %s%d && "
-                            "ip link set %s%d up && "
-                            "ip rule add from %s/32 table %d && "
-                            "ip rule add to %s/32 table %d && "
-                            "ip route add default dev %s%d table %d",
-                            ipv4_addr, netmask, broadcast,
-                            UE_NAS_USE_TUN ? "oaitun_ue" : "oip", ueid + 1,
-                            UE_NAS_USE_TUN ? "oaitun_ue" : "oip", ueid + 1,
-                            ipv4_addr, ueid + 10000,
-                            ipv4_addr, ueid + 10000,
-                            UE_NAS_USE_TUN ? "oaitun_ue" : "oip",
-                            ueid + 1, ueid + 10000);
-
-              if ( res<0 ) {
-                LOG_TRACE(WARNING, "ESM-PROC  - Failed to system command string");
-              }
-
-              LOG_TRACE(INFO, "ESM-PROC  - executing %s ",
-                        command_line);
-
-              /* Calling system() here disrupts UE's realtime processing in some cases.
-               * This may be because of the call to fork(), which, for some
-               * unidentified reason, interacts badly with other (realtime) threads.
-               * background_system() is a replacement mechanism relying on a
-               * background process that does the system() and reports result to
-               * the parent process (lte-softmodem, oaisim, ...). The background
-               * process is created very early in the life of the parent process.
-               * The processes interact through standard pipes. See
-               * common/utils/system.c for details.
-               */
-              if (background_system(command_line) != 0)
-                LOG_TRACE(ERROR, "ESM-PROC - failed command '%s'", command_line);
-
-              break;
+            case NET_PDN_TYPE_IPV4: {
+              char ip[20];
+              char *ip_addr = pdn->ip_addr;
+              snprintf(ip, sizeof(ip), "%d.%d.%d.%d", ip_addr[0], ip_addr[1], ip_addr[2], ip_addr[3]);
+              const char *ifn = get_softmodem_params()->nsa ? "oaitun_nru" : "oaitun_ue";
+              tun_config(1, ip, NULL, ifn);
+              setup_ue_ipv4_route(1, ip, ifn);
+            } break;
 
             case NET_PDN_TYPE_IPV6:
               break;
@@ -342,7 +254,7 @@ int esm_ebr_context_create(
  ***************************************************************************/
 int esm_ebr_context_release(nas_user_t *user,
                             int ebi, int *pid, int *bid) {
-  int found = FALSE;
+  bool found = false;
   esm_pdn_t *pdn = NULL;
   esm_data_context_t *esm_ctx;
   esm_ebr_data_t *esm_ebr_data = user->esm_ebr_data;
@@ -375,7 +287,7 @@ int esm_ebr_context_release(nas_user_t *user,
             }
 
             /* The EPS bearer context entry is found */
-            found = TRUE;
+            found = true;
             break;
           }
         }
@@ -409,7 +321,7 @@ int esm_ebr_context_release(nas_user_t *user,
 
         if (pdn->bearer[*bid] != NULL) {
           ebi = pdn->bearer[*bid]->ebi;
-          found = TRUE;
+          found = true;
         }
       }
     }
@@ -462,7 +374,7 @@ int esm_ebr_context_release(nas_user_t *user,
 
           /* Set the EPS bearer context state to INACTIVE */
           esm_ebr_set_status(user_api_id, esm_ebr_data, pdn->bearer[i]->ebi,
-                             ESM_EBR_INACTIVE, TRUE);
+                             ESM_EBR_INACTIVE, true);
           /* Release EPS bearer data */
           esm_ebr_release(esm_ebr_data, pdn->bearer[i]->ebi);
           // esm_ebr_release()
@@ -478,11 +390,11 @@ int esm_ebr_context_release(nas_user_t *user,
       }
 
       /* Reset the PDN connection activation indicator */
-      esm_ctx->pdn[*pid].is_active = FALSE;
+      esm_ctx->pdn[*pid].is_active = false;
 
       /* Update the emergency bearer services indicator */
       if (pdn->is_emergency) {
-        esm_ctx->emergency = FALSE;
+        esm_ctx->emergency = false;
       }
     }
 
@@ -493,7 +405,7 @@ int esm_ebr_context_release(nas_user_t *user,
     if (esm_ctx->n_ebrs == 0) {
       emm_sap_t emm_sap;
       emm_sap.primitive = EMMESM_ESTABLISH_CNF;
-      emm_sap.u.emm_esm.u.establish.is_attached = FALSE;
+      emm_sap.u.emm_esm.u.establish.is_attached = false;
       (void) emm_sap_send(user, &emm_sap);
     }
     /* 3GPP TS 24.301, section 6.4.4.3, 6.4.4.6
@@ -505,8 +417,8 @@ int esm_ebr_context_release(nas_user_t *user,
     else if (esm_ctx->emergency && (esm_ctx->n_ebrs == 1) ) {
       emm_sap_t emm_sap;
       emm_sap.primitive = EMMESM_ESTABLISH_CNF;
-      emm_sap.u.emm_esm.u.establish.is_attached = TRUE;
-      emm_sap.u.emm_esm.u.establish.is_emergency = TRUE;
+      emm_sap.u.emm_esm.u.establish.is_attached = true;
+      emm_sap.u.emm_esm.u.establish.is_emergency = true;
       (void) emm_sap_send(user, &emm_sap);
     }
 

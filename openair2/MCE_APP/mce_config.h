@@ -35,12 +35,11 @@
 #include <libconfig.h>
 
 #include "commonDef.h"
-#include "platform_types.h"
-#include "platform_constants.h"
+#include "common/platform_types.h"
+#include "common/platform_constants.h"
 #include "PHY/impl_defs_top.h"
 #include "PHY/defs_eNB.h"
 #include "s1ap_messages_types.h"
-#include "f1ap_messages_types.h"
 #include "LTE_SystemInformationBlockType2.h"
 #include "rrc_messages_types.h"
 #include "RRC/LTE/rrc_defs.h"
@@ -66,6 +65,4 @@ int RCconfig_m2_mcch(m2ap_setup_resp_t * m2ap_setup_resp, uint32_t i);
 int RCconfig_M2_SCHEDULING(MessageDef *msg_p, uint32_t i);
 int RCconfig_m2_scheduling(m2ap_mbms_scheduling_information_t *m2ap_mbms_scheduling_information, uint32_t i);
 
-
 #endif /* MCE_CONFIG_H_ */
-/** @} */

@@ -17,13 +17,73 @@ body {
 
 </style>
 
+```mermaid
+flowchart TB
+    A[ru_thread] --> RFin>block rx_rf] --> feprx
+    feprx --> half-slot --> end_feprx
+    feprx --> second-thread -- block_end_feprx --> end_feprx>feprx]
+    end_feprx --> rx_nr_prach_ru
+rx_nr_prach_ru -- block_queue --> resp_L1>resp L1]
+resp_L1 -- async launch --> rx_func
+resp_L1 -- immediate return --> RFin
+
+subgraph rxfunc
+rx_func_implem[rx_func] 
+    subgraph rxfuncbeg
+      handle_nr_slot_ind
+      --> rnti_to_remove-mgmt
+      --> L1_nr_prach_procedures
+      --> apply_nr_rotation_RX
+    end 
+    subgraph phy_procedures_gNB_uespec_RX
+      fill_ul_rb_mask
+      --> pucch(decode each gNB->pucch)
+      -->nr_fill_ul_indication
+      --> nr_ulsch_procedures
+      --> nr_ulsch_decoding
+      --> segInParallel[[all segments decode in parallel]]
+      --> barrier_end_of_ulsch_decoding
+    end 
+    subgraph NR_UL_indication
+      handle_nr_rach
+      --> handle_nr_uci
+      --> handle_nr_ulsch
+      --> gNB_dlsch_ulsch_scheduler
+      --> NR_Schedule_response
+    end 
+    rx_func_implem --> rxfuncbeg
+    rxfuncbeg --> phy_procedures_gNB_uespec_RX
+phy_procedures_gNB_uespec_RX --> NR_UL_indication
+-- block_queue --> L1_tx_free2>L1 tx free]
+-- async launch --> tx_func
+L1_tx_free2 -- send_msg --> rsp((resp_L1))
+end 
+rx_func --> rxfunc
+
+
+subgraph tx
+    direction LR
+    subgraph tx_func2
+       phy_procedures_gNB_TX
+       --> dcitop[nr_generate dci top]
+       --> nr_generate_csi_rs
+       --> apply_nr_rotation_TX
+       -- send_msg --> end_tx_func((L1_tx_out))
+    end
+    subgraph tx_reorder_thread
+        L1_tx_out>L1_tx_out]
+        --> reorder{re order} --> reorder
+        reorder --> ru_tx_func
+        reorder --> L1_tx_free((L1_tx_free))
+        ru_tx_func --> feptx_prec
+        --> feptx_ofdm
+    end 
+    tx_func2 --> tx_reorder_thread
+end
+```
 
 This tuto for 5G gNB design, with Open Cells main
 {: .text-center}
-
-# Top file: executables/ocp-gnb.c
-
-the function main() initializes the data from configuration file
 
 # The main thread is in ru_thread()
 The infinite loop:
@@ -38,13 +98,6 @@ The infinite loop:
 raw incoming data is in buffer called "rxdata"  
     We derivate frame number, slot number, ... from the RX timestamp
 {: .func2}
-## nr_fep_full()
-"front end processing" of uplink signal  
-performs DFT on the signal  
-same function (duplicates): phy_procedures_gNB_common_RX()  
-it computes the buffer rxdataF (for frequency) from rxdata (samples over time)  
-rxdataF is the rxdata in frequency domain, phase aligned
-{: .func3}
 ## gNB_top()
 only compute frame numbre, slot number, ...
 {: .func3}
@@ -152,7 +205,7 @@ The scheduler also calls "run_pdcp()", as this is not a autonomous thread, it ne
 After calling run_pdcp, it updates "rlc" time data but it doesn't actually process rlc 
 it sends a iiti message to activate the thread for RRC, the answer will be asynchronous in ????  
 
-Calls schedule_nr_mib() that calls mac_rrc_nr_data_req() to fill MIB,  
+Calls schedule_nr_mib() that fills MIB,
 
 Calls schedule_nr_prach() which schedules the (fixed) PRACH region one frame in
 advance.
@@ -171,24 +224,31 @@ NR_sched_pusch_t (for values changing every TTI, e.g., frequency domain
 allocation) and NR_sched_pusch_save_t (for values changing less frequently, at
 least in FR1 [to my understanding], e.g., DMRS fields when the time domain
 allocation stays between TTIs) structures. Furthermore, the preprocessor is an
-exchangeable module that might schedule differently, e.g., one user for
-phytest, multiple users in FR1, or maybe FR2: phytest is in
-nr_ul_preprocessor_phytest(), for FR1 is nr_simple_ulsch_preprocessor() [under
-development], for FR2 does not exist yet.
+exchangeable module that schedules differently based on a particular
+use-case/deployment type, e.g., one user for phytest [in
+nr_ul_preprocessor_phytest()], multiple users in FR1
+[nr_fr1_ulsch_preprocessor()], or maybe FR2 [does not exist yet]:
 * calls preprocessor via pre_processor_ul(): the preprocessor is responsible
-  for allocating CCEs (using allocate_nr_CCEs()). Note that we do not yet have
-  scheduling requests or buffer status reports, and only one UE. E.g.,
-  nr_simple_ulsch_preprocessor():
+  for allocating CCEs (using allocate_nr_CCEs()) and deciding on resource
+  allocation for the UEs including TB size. Note that we do not yet have
+  scheduling requests. What it typically does:
   1)  check whether the current frame/slot plus K2 is an UL slot, and return if
       not.
   2)  Find first free start RB in vrb_map_UL, and as many free consecutive RBs
       as possible.
-  3)  allocate a CCE for the UE (and return if it is not possible)
-  4)  Calculate DMRS stuff (nr_save_pusch_fields()) and the TBS.
-  5)  Mark used resources in vrb_map_UL.
-* loop through all users: get a free HARQ PID and
-  update statistics. Fill nFAPI structures directly for PUSCH, and call
-  config_uldci() and fill_dci_pdu_rel15() for DCI filling and PDCCH messages.
+  3)  Either set up resource allocation directly (e.g., for a single UE,
+      phytest), or call into a function to perform actual resource allocation.
+      Currently, this is done using pf_ul() which implements a basic
+      proportional fair scheduler:
+      * for every UE, check for retransmission and allocate as necessary
+      * Calculate DMRS stuff (nr_set_pusch_semi_static())
+      * Calculate the PF coefficient and put eligible UEs into a list
+      * Allocate resources to the UE(s) with the highest coefficient
+  4)  Mark used resources in vrb_map_UL.
+* loop through all users: get a HARQ process as indicated through the
+  preprocessor, update statistics, fill nFAPI structures directly for PUSCH,
+  and call config_uldci() and fill_dci_pdu_rel15() for DCI filling and PDCCH
+  messages.
 
 Calls nr_schedule_ue_spec(). It is divided into the "preprocessor" and the
 "postprocessor": the first makes the scheduling decisions, the second fills
@@ -196,29 +256,28 @@ nFAPI structures to indicate to the PHY what it is supposed to do. To signal
 which users have how many resources, the preprocessor populates the
 NR_UE_sched_ctrl_t structure of affected users. In particular, the field rbSize
 decides whether a user is to be allocated. Furthermore, the preprocessor is an
-exchangeable module that might schedule differently, e.g., one user for
-phytest, multiple users in FR1, or maybe FR2: phytest is in
-nr_preprocessor_phytest(), for FR1 is nr_simple_dlsch_preprocessor() [under
-development], for FR2 does not exist yet.
+exchangeable module that schedules differently based on a particular
+use-case/deployment type, e.g., one user for phytest [in
+nr_preprocessor_phytest()], multiple users in FR1
+[nr_fr1_dlsch_preprocessor()], or maybe FR2 [does not exist yet].
 * calls preprocessor via pre_processor_dl(): the preprocessor is responsible
   for allocating CCEs and PUCCH (using allocate_nr_CCEs() and
   nr_acknack_scheduling()) and deciding on the frequency/time domain
-  allocation. E.g., nr_simple_dlsch_preprocessor():
-  1)  mac_rlc_status_ind() locks and checks directly inside rlc data the
-      quantity of waiting data.
-  2)  return from the preprocessor if there is no data and no timing advance to
-      send,
-  3)  otherwise, allocate a CCE for the UE (and return if it is not possible)
-  4)  find a PUCCH occasion for HARQ
-  5a) check if there is a retransmission: if yes, find free resources to
-      transmit using the same resources, else
-  5b) calculate the necessary RBs needed to get a TBS large enough to hold all
-      data, or until no more resources are available
-  6)  Mark taken resources in the vrb_map
+  allocation including the TB size. What it typically does:
+  1)  Check available resources in the vrb_map
+  2)  Checks the quantity of waiting data in RLC
+  3)  Either set up resource allocation directly (e.g., for a single UE,
+      phytest), or call into a function to perform actual resource allocation.
+      Currently, this is done using pf_dl() which implements a basic
+      proportional fair scheduler:
+      * for every UE, check for retransmission and allocate as necessary
+      * Calculate the PF coefficient and put eligible UEs into a list
+      * Allocate resources to the UE(s) with the highest coefficient
+  4)  Mark taken resources in the vrb_map
 * loop through all users: check if a new TA is necessary. Then, if a user has
-  allocated resources, compute its TBS, and fill nFAPI structures
-  (nr_fill_nfapi_dl_pdu() to populate what should be done by the lower layers
-  to make the Tx subframe). Update statistics (round, sent bytes).
+  allocated resources, update statistics (round, sent bytes), update HARQ
+  process information, and fill nFAPI structures (allocate a DCI and PDCCH
+  messages, TX_req, ...)
 
 # RRC
 RRC is a regular thread with itti loop on queue: TASK_RRC_GNB
@@ -241,45 +300,140 @@ but it returns void.
 It could return the initialized pointer (as FILE* fopen() for example), then the RLC layer could have multiple instances in one process.
 Even, a future evolution could remove this global rlc layer: rlc can be only a library that we create a instance for each UE because it doesn't shareany data between UEs.
 
-For DL (respectively from UL in UE), the scheduler need to know the quantity of data waitin to be sent: it calls mac_rlc_status_ind()
-That "peek" the size of the waiting data for a UE.
-The scheduler then push orders to lower layers. The transport layer will actually pull data from RLC with: mac_rlc_data_req()  
-the low layer push data into rlc by: mac_rlc_data_ind()  
-Still on DL (gNB side), PDCP push incoming data into RLC by calling: rlc_data_req()
-
-For UL, the low layer push data into rlc by: mac_rlc_data_ind()  
-Then, rlc push it to pdcp by calling pdcp_data_ind() from a complex rlc internal call back (deliver_sdu())  
-
-When adding a UE, external code have to call nr_rrc_rlc_config_asn1_req(), to remove it: rrc_rlc_remove_ue()  
+When adding a UE, external code have to call `add_rlc_srb()` and/or `add_rlc_drb()`, to remove it: `rrc_rlc_remove_ue()`
 Inside UE, channels called drd or srb can be created: ??? and deleted: rrc_rlc_config_req()
 
 nr_rlc_tick() must be called periodically to manage the internal timers 
 
 successful_delivery() and max_retx_reached(): in ??? trigger, the RLC sends a itti message to RRC: RLC_SDU_INDICATION (neutralized by #if 0 right now)
 
-#PDCP
+## RLC data flow
 
-The PDCP implementation is also protected through a general mutex.  
-The design is very similar to rlc layer. The pdcp data is isolated and encapsulated.
+### TX Flow
 
-pdcp_layer_init(): same as rlc init  
-we have to call a second init function: pdcp_module_init() 
+Incoming data to be transmitted is forwarded to RLC by PDCP via `rlc_data_req()`.
 
-At Tx side (DL in gNB), pdcp_data_req() is the entry function that the upper layer calls.  
-The upper layer can be GTP or a PDCP internal thread enb_tun_read_thread() that read directly from Linux socket in case we skip 3GPP core implementation.
-PDCP internals for  pdcp_data_req() is thread safe: inside pdcp_data_req_drb(), the pdcp manager protects with the mutex the access to the SDU receiving function of PDCP (recv_sdu() callback, corresponding to nr_pdcp_entity_drb_am_recv_sdu() for DRBs). When it needs, the pdcp layer push this data to rlc by calling : rlc_data_req()  
+At the transport layer, in downlink (DL) at the gNB and uplink (UL) at UE, the scheduler relies on knowing the quantity of data awaiting transmissionis, therefore is using the following MAC/RLC interface functions:
 
-Also, incoming downlink sdu can comme from internal RRC: in this case, pdcp_run() reads a itti queue, for message RRC_DCCH_DATA_REQ, to0 only call 'pdcp_data_req()'
+* `mac_rlc_data_req()` to retrieve data bytes to be transmitted by RLC and to fill the MAC SDU
+* `mac_rlc_status_ind()` to request and set the number of bytes scheduled for transmission by the RLC
 
-At Rx side, pdcp_data_ind() is the entry point that receives the data from RLC.
-- Inside pdcp_data_ind(), the pdcp manager mutex protects the access to the PDU receiving function of PDCP (recv_pdu() callback corresponding to nr_pdcp_entity_drb_am_recv_pdu() for DRBs)
-- Then deliver_sdu_drb() function sends the received data to GTP thread through an ITTI message (GTPV1U_ENB_TUNNEL_DATA_REQ).
+Subsequently, the scheduler issues commands to lower layers.
 
-pdcp_config_set_security(): not yet developped
+### RX Flow
 
-nr_DRB_preconfiguration(): the mac layer calls this for ???
+In the RX chain, in downlink (DL) at the UE and uplink (UL) at gNB, the transport layer pushes data into RLC through `mac_rlc_data_ind()`. Following this, RLC forwards the data to PDCP by invoking `pdcp_data_ind()` via a complex internal callback mechanism (`deliver_sdu()`).
 
-nr_rrc_pdcp_config_asn1_req() adds a UE in pdcp, pdcp_remove_UE() removes it
+# PDCP
+
+The PDCP implementation is secured by a general mutex, akin to the design of the RLC layer. This setup ensures that PDCP data remains isolated and encapsulated.
+
+Initialization of the PDCP layer follows a structure similar to that of the RLC layer. The function `nr_pdcp_layer_init()` initializes PDCP, while a second initialization function, `pdcp_module_init()`, must also be invoked.
+
+To manage UE connections, `nr_pdcp_add_srbs()` is employed for adding UE SRBs in PDCP, while `nr_pdcp_remove_UE()` is used for their removal. Similarly, `nr_pdcp_add_drbs()` adds UE DRBs in PDCP, with `nr_pdcp_remove_UE()` handling their removal.
+
+## PDCP Tx flow
+
+On the Tx side (downlink in gNB), the entry functions `nr_pdcp_data_req_drb()` and `nr_pdcp_data_req_srb()` are called by the upper layer. The upper layer could be GTP or a PDCP internal thread like `enb_tun_read_thread()`, which reads directly from the Linux socket if the 3GPP core implementation is skipped. The PDCP internals for `nr_pdcp_data_req_srb()` and `nr_pdcp_data_req_drb()` are thread-safe. Within these functions, the PDCP manager protects access to the SDU receiving function of PDCP (`recv_sdu()` callback, corresponding to `nr_pdcp_entity_recv_pdu()` for DRBs) using mutex. When necessary, the PDCP layer pushes this data to RLC by calling `rlc_data_req()`.
+
+## PDCP Rx flow
+
+At the Rx side, `pdcp_data_ind()` serves as the entry point for receiving data from RLC. Within `pdcp_data_ind()`, the PDCP manager mutex protects access to the PDU receiving function of PDCP (`recv_pdu()` callback corresponding to `nr_pdcp_entity_recv_pdu()` for DRBs). Following this, the `deliver_sdu_drb()` function dispatches the received data to the GTP thread via an ITTI message (`GTPV1U_TUNNEL_DATA_REQ`).
+
+## PDCP security
+
+nr_pdcp_config_set_security(): sets the keys for AS security of a UE
+
+# AM DRB traffic flow in OAI
+
+A sequence diagram of the traffic flow across PDCP and RLC layers. By default, data traffic is directed towards AM DRBs.
+
+This is the flow for downlink, involving MAC and upper layers:
+
+```mermaid
+ sequenceDiagram
+    title Downlink AM DRB traffic flow
+    box Purple gNB
+    participant GG as GTP / TUN
+    participant SG as SDAP
+    participant PG as PDCP
+    participant RG as RLC
+    participant MG as MAC
+    end
+    GG->>SG: sdap_data_req
+    note over SG: nr_sdap_tx_entity
+    SG->>PG: nr_pdcp_data_req_drb
+    note over PG: deliver_pdu_drb_gnb
+    note over PG: nr_pdcp_entity_process_sdu
+    note over PG: enqueue_rlc_data_req
+    PG->>RG: rlc_data_req via rlc_data_req_thread
+    note over RG: nr_rlc_entity_am_recv_sdu
+    MG-->>RG: mac_rlc_data_req
+    note over RG: nr_rlc_entity_am_generate_pdu
+    note over RG: generate_tx_pdu
+    note over RG: serialize_sdu
+    RG-->>MG: PDU to MAC
+    MG-->MUE: UL TX / RX procedures
+    box Blue UE
+    participant MUE as MAC
+    participant RUE as RLC
+    participant PUE as PDCP
+    participant SUE as SDAP
+    participant GUE as GTP / TUN
+    end
+    MUE-->>RUE: SDU to RLC
+    RUE->>PUE: pdcp_data_ind
+    note over PUE: nr_pdcp_entity_recv_pdu
+    note over PUE: deliver_sdu_drb
+    PUE->>SUE: sdap_data_ind
+    note over SUE: nr_sdap_rx_entity
+    SUE->>GUE: send to GTP-U
+```
+and for uplink:
+
+```mermaid
+ sequenceDiagram
+    title Uplink AM DRB traffic flow
+    box Blue UE
+    participant GUE as GTP / TUN
+    participant SUE as SDAP
+    participant PUE as PDCP
+    participant RUE as RLC
+    participant MUE as MAC
+    end
+    GUE->>SUE: sdap_data_req
+    note over SUE: nr_sdap_tx_entity
+    SUE->>PUE: nr_pdcp_data_req_drb
+    note over PUE: process_sdu
+    note over PUE: deliver_pdu_drb_ue
+    note over PUE: enqueue_rlc_data_req
+    note over PUE: signal to rlc_data_req_thread
+    PUE->>RUE: rlc_data_req
+    note over RUE: nr_rlc_entity_am_recv_sdu
+    RUE-->>MUE: PDU to MAC
+    note over MUE: nr_ue_get_sdu
+    MUE-->MG: UL TX / RX procedures
+    box Purple gNB
+    participant MG as MAC
+    participant RG as RLC
+    participant PG as PDCP
+    participant SG as SDAP
+    participant GG as GTP / TUN
+    end
+    MG->>RG: mac_rlc_data_ind
+    note over RG: nr_rlc_entity_am_recv_pdu
+    note over RG: reception_actions
+    note over RG: reassemble_and_deliver
+    note over RG: deliver_sdu
+    RG->>PG: pdcp_data_ind
+    note over PG: enqueue_pdcp_data_ind
+    note over PG: do_pdcp_data_ind via pdcp_data_ind_thread
+    note over PG: nr_pdcp_entity_recv_pdu
+    note over PG: deliver_sdu_drb
+    PG->>SG: sdap_data_ind
+    note over SG: nr_sdap_rx_entity
+    SG->>GG: send to GTP-U
+```
 
 # GTP
 Gtp + UDP are two twin threads performing the data plane interface to the core network
@@ -291,32 +445,43 @@ PDCP layer push to the GTP queue (outside UDP thread that do almost nothing and 
 
 
 ## GTP thread running code from other layers
-gtp thread calls directly pdcp_data_req(), so it runs inside it's context internal pdcp structures updates
+gtp thread calls directly nr_pdcp_data_req_drb(), so it runs inside it's context internal pdcp structures updates
 
 ## inside other threads
 gtpv1u_create_s1u_tunnel(), delete tunnel, ... functions are called inside the other threads, without mutex.
 
 # New GTP
 ## initialization
+
+gtpv1uTask(): this creates only the thread, doesn't configure anything
+gtpv1Init(): creates a listening socket to Linux for a given reception and select a local IP address
+
+## newGtpuCreateTunnel()   
+this function will replace the xxx_create_tunnel_xxx() for various cases  
+The parameters are: 
+1. outgoing TEid, associated with outpoing pair(rnti, id)
+2. incoming packets callback, incoming pair(rnti,id) and a callback function for incoming data 
+
+## outgoing packets 
+
+Each call to newGtpuCreateTunnel() creates a outgoing context for a teid (given as function input), a pair(rnti,outgoing id).  
+ Each outgoing packet received on GTP-U ITTI queue must match one pair(rnti,id), so the gtp-u thread can lookup the related TEid and use it to encode the outpoing GTP-U tunneled packet.  
+
+## incoming packets   
+
+newGtpuCreateTunnel() computes and return the incoming teid that will be used for incoming packets.
+When a incoming packet arrives on this incoming teid, the GTP-U thread calls the defined callback, with the associated pair(rnti, incoming id).  
+
+stuff like enb_flag, mui and more important data are not given explicitly by any legacy function (gtpv1u_create_s1u_tunnel), but the legacy and the new interface to lower layer (like pdcp) require this data. We hardcode it in first version.
+
+## remaining work 
+These teids and "instance", so in a Linux socket: same teid can co-exist for different sockets
+ Remain here a lack to fill: the information given in the legacy funtions is not enough to fullfil the data needed by the callback  
+
 Coexistance until full merge with legacy GTP
 cmake new option: NEW_GTPU to use the new implementation (it changes for the entire executable)
 It is possible to use both old and new GTP in same executable because the itti task and all functions names are different 
 Current status of new implementation: not tested, X2 not developped, 5G new GTP option not developped, remain issues on data coming from void: muid, enb_flag, ...
-
-ocp_gtpv1uTask(): this creates only the thread, doesn't configure anything
-gtpv1Init(): creates a listening socket to Linux for a given reception and select a local IP address
-
-newGtpuCreateTunnel() this function will replace the xxx_create_tunnel_xxx() for various cases
-This creates a outgoing context for a teid (in input), it computes and return the incoming teid that will be used for incoming packets
-These teids and in a "instance", so in a Linux socket: same teid can co-exist for different sockets
- Remain here a lack to fill: the information given in the legacy funtions is not enough to fullfil the data needed by the callback
-stuff like enb_flag, but also mui and more important data are not given explicitly by any legacy function (gtpv1u_create_s1u_tunnel), but the legacy and the new interface to lower layer (like pdcp) require this data.
-The datamodel is still not fully understood, so this data source remain unknown
-A new parameter is the callback function: will be pdpcp_data_req() and gtpv_data_req() (x2 case) for existing implementation and later other call backs like the F1-U implementation.
-
-incoming packets
-the gtp layer retrieves the data, the teid, find out the related data: rnti, bearer and quite a lot of other parameters (not clear why, because it looks like all is statefull, so the lower layer should have the context) 
-if lower layers can be stateless, it is a good idea to keep the context in the gtp layer and pass it to the callback, but the design remain obfuscated.
 
 # NGAP
 NGAP would be a itti thread as is S1AP (+twin thread SCTP that is almost void processing)?  

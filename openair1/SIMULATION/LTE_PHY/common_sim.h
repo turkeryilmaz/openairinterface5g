@@ -62,18 +62,20 @@ void printDistribution(time_stats_t *ptr, varArray_t *sortedList, char *txt) {
 }
 
 void printStatIndent(time_stats_t *ptr, char *txt) {
-  printf("|__ %-38s %6.2f us (%3d trials)\n",
+  printf("|__ %-38s %6.2f us (%3d trials)\t\t(%6.2f total [ms])\n",
          txt,
          ptr->trials?inMicroS(ptr->diff/ptr->trials):0,
-         ptr->trials);
+         ptr->trials,
+         ptr->trials?inMicroS(ptr->diff)/1000:0);
 }
 
 void printStatIndent2(time_stats_t *ptr, char *txt) {
   double timeBase=1/(1000*get_cpu_freq_GHz());
-  printf("    |__ %-34s %6.2f us (%3d trials)\n",
+  printf("    |__ %-34s %6.2f us (%3d trials)\t\t(%6.2f total [ms])\n",
          txt,
          ptr->trials?((double)ptr->diff)/ptr->trials*timeBase:0,
-	 ptr->trials);
+         ptr->trials,
+         ptr->trials?inMicroS(ptr->diff)/1000:0);
 }
 
 void printStatIndent3(time_stats_t *ptr, char *txt) {
@@ -134,16 +136,16 @@ struct option * parse_oai_options(paramdef_t *options) {
 
 void display_options_values(paramdef_t *options, int verbose) {
   for(paramdef_t * ptr=options; ptr->optname[0]!=0; ptr++) {
-    char varText[256]="need specific display";
+    char varText[256]={0};
 
     if (ptr->voidptr != NULL) {
       if ( (ptr->paramflags & PARAMFLAG_BOOL) )
         strcpy(varText, *(bool *)ptr->iptr ? "True": "False" );
       else  switch (ptr->type) {
-          case TYPE_INT:
-            sprintf(varText,"%d",*ptr->iptr);
-            break;
-
+  	 case TYPE_INT:
+	   sprintf(varText,"%d",*ptr->iptr);
+	  break;
+	  
           case TYPE_DOUBLE:
             sprintf(varText,"%.2f",*ptr->dblptr);
             break;
@@ -157,6 +159,7 @@ void display_options_values(paramdef_t *options, int verbose) {
 	  break;
 
 	default:
+	  strcpy(varText,"Need specific display");
 	  printf("not decoded type\n");
 	  exit(1);
         }

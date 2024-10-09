@@ -48,16 +48,14 @@ int slot_fep(PHY_VARS_UE *phy_vars_ue,
              int no_prefix,
 	     int reset_freq_est);
 
-int nr_slot_fep(PHY_VARS_NR_UE *phy_vars_ue,
-                UE_nr_rxtx_proc_t *proc,
-                unsigned char l,
-                unsigned char Ns);
-
-int nr_slot_fep_init_sync(PHY_VARS_NR_UE *ue,
-                          UE_nr_rxtx_proc_t *proc,
-                          unsigned char symbol,
-                          unsigned char Ns,
-                          int sample_offset);
+int nr_slot_fep(PHY_VARS_NR_UE *ue,
+                const NR_DL_FRAME_PARMS *frame_parms,
+                unsigned int slot,
+                unsigned int symbol,
+                c16_t rxdataF[][frame_parms->samples_per_slot_wCP],
+                enum nr_Link linktype,
+                uint32_t sample_offset,
+                c16_t **rxdata);
 
 int slot_fep_mbsfn(PHY_VARS_UE *phy_vars_ue,
                    unsigned char l,

@@ -33,13 +33,6 @@
 #define SYNCH_HYST 2
 
 /*!
-\brief This function is used for time-frequency scanning prior to complete cell search.  It scans
-over the entire LTE band for maximum correlation and keeps the 10 best scores and the correspoding frequency offset (5 kHz granularity) for each of the 3 PSS sequences.
-\param ue Pointer to UE variables
-\param band index of lte band
-\param DL_freq Central RF Frequency in Hz
-*/
-/*!
 \brief This function allocates memory needed for the synchronization.
 \param frame_parms LTE DL frame parameter structure
 
@@ -74,28 +67,6 @@ The algorithm uses a frequency-domain correlation.  It scans over 20 MHz/10ms si
 void lte_sync_timefreq(PHY_VARS_UE *ue,
                        int band,
                        unsigned int DL_freq);
-
-
-/*!
-\brief This function performs detection of the PRACH (=SRS) at the eNb to estimate the timing advance
-The algorithm uses a time domain correlation with a downsampled version of the received signal.
-\param rxdata Received time domain data for all rx antennas
-\param frame_parms LTE DL frame parameter structure
-\param length Length for correlation
-\param peak_val pointer to value of returned peak
-\param sync_corr_eNb pointer to correlation buffer
-\return sync_pos Position of the sync within the frame (downsampled) if successfull and -1 if there was an error or no peak was detected.
- */
-int lte_sync_time_eNB(int32_t **rxdata,
-                      LTE_DL_FRAME_PARMS *frame_parms,
-                      uint32_t length,
-                      uint32_t *peak_val,
-                      uint32_t *sync_corr_eNb);
-
-int lte_sync_time_eNB_emul(PHY_VARS_eNB *phy_vars_eNb,
-                           uint8_t sect_id,
-                           int32_t *sync_val);
-
 
 int ru_sync_time_init(RU_t *ru);
 
@@ -173,6 +144,7 @@ This function computes the time domain channel response, finds the peak and adju
 \param frame_parms LTE DL frame parameter structure
 \param phy_vars_ue Pointer to UE PHY data structure
 \param eNb_id
+\param subframe
 \param clear If clear==1 moving average filter is reset
 \param coef Coefficient of the moving average filter (Q1.15)
  */
@@ -203,6 +175,7 @@ void lte_ue_measurements_emul(PHY_VARS_UE *phy_vars_ue,
 
 /*! \brief Function to return the path-loss based on the UE cell-specific reference signal strength and transmission power of eNB
 @param Mod_id Module ID for UE
+@param CC_id
 @param eNB_index Index of eNB on which to act
 @returns Path loss in dB
  */
@@ -288,6 +261,8 @@ void freq_equalization(LTE_DL_FRAME_PARMS *frame_parms,
                        unsigned short Msc_RS,
                        unsigned char Qm);
 
+void init_fde(void);
 
+void dump_I0_stats(FILE *fd,PHY_VARS_eNB *eNB);
 /** @} */
 #endif

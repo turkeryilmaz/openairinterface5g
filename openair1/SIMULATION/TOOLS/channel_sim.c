@@ -21,26 +21,13 @@
 
 #include <string.h>
 #include <math.h>
-#include <unistd.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <time.h>
 
 #include "SIMULATION/TOOLS/sim.h"
 #include "SIMULATION/RF/rf.h"
-#include "PHY/types.h"
-#include "PHY/defs_eNB.h"
-#include "PHY/phy_extern.h"
 #include "PHY/phy_extern_ue.h"
-
-#include "LAYER2/MAC/mac.h"
-#include "LAYER2/MAC/mac_extern.h"
-#include "common/utils/LOG/log.h"
-#include "RRC/LTE/rrc_extern.h"
-#include "PHY_INTERFACE/phy_interface_extern.h"
-#include "UTIL/OCG/OCG.h"
-#include "UTIL/OPT/opt.h" // to test OPT
-#include "UTIL/FIFO/types.h"
+#include "common/ran_context.h"
 
 #define RF
 
@@ -70,16 +57,16 @@ void do_DL_sig(sim_t *sim,
 
   double s_re0[30720];
   double s_re1[30720];
-  double *s_re[2];
+  double *s_re[NB_ANTENNAS_TX];
   double s_im0[30720];
   double s_im1[30720];
-  double *s_im[2];
+  double *s_im[NB_ANTENNAS_TX];
   double r_re00[30720];
   double r_re01[30720];
-  double *r_re0[2];
+  double *r_re0[NB_ANTENNAS_RX];
   double r_im00[30720];
   double r_im01[30720];
-  double *r_im0[2];
+  double *r_im0[NB_ANTENNAS_RX];
   LTE_DL_FRAME_PARMS *frame_parms;
 
   s_re[0] = s_re0;
@@ -296,14 +283,7 @@ void do_DL_sig(sim_t *sim,
   
 }
 
-
-void do_UL_sig(sim_t *sim,
-               uint16_t subframe,
-               uint8_t abstraction_flag,
-               LTE_DL_FRAME_PARMS *frame_parms,
-               uint32_t frame,
-               int ru_id,
-               uint8_t CC_id)
+void do_UL_sig(sim_t *sim, uint16_t subframe, uint8_t abstraction_flag, LTE_DL_FRAME_PARMS *frame_parms, uint32_t frame, int ru_id, uint8_t CC_id, int NB_UE_INST)
 {
   int32_t **txdata,**rxdata;
   uint8_t UE_id=0;
@@ -320,16 +300,16 @@ void do_UL_sig(sim_t *sim,
 
   double s_re0[30720];
   double s_re1[30720];
-  double *s_re[2];
+  double *s_re[NB_ANTENNAS_TX];
   double s_im0[30720];
   double s_im1[30720];
-  double *s_im[2];
+  double *s_im[NB_ANTENNAS_TX];
   double r_re00[30720];
   double r_re01[30720];
-  double *r_re0[2];
+  double *r_re0[NB_ANTENNAS_RX];
   double r_im00[30720];
   double r_im01[30720];
-  double *r_im0[2];
+  double *r_im0[NB_ANTENNAS_RX];
 
   s_re[0] = s_re0;
   s_im[0] = s_im0;
@@ -355,7 +335,7 @@ void do_UL_sig(sim_t *sim,
   for (UE_id=0; UE_id<NB_UE_INST; UE_id++) {
     
     txdata = PHY_vars_UE_g[UE_id][CC_id]->common_vars.txdata;
-    AssertFatal(txdata != NULL,"txdata is null\n");
+    AssertFatal(txdata,"txdata is null\n");
 
     sf_offset = subframe*frame_parms->samples_per_tti;
     if (subframe>0) sf_offset_tdd = sf_offset - PHY_vars_UE_g[UE_id][CC_id]->N_TA_offset;

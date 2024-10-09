@@ -48,7 +48,6 @@
 #ifdef MEX
   #define msg mexPrintf
 #else
-  #ifdef OPENAIR2
     #if ENABLE_RAL
       #include "collection/hashtable/hashtable.h"
       #include "COMMON/ral_messages_types.h"
@@ -56,19 +55,12 @@
     #endif
     #include "common/utils/LOG/log.h"
     #define msg(aRGS...) LOG_D(PHY, ##aRGS)
-  #else
-    #define msg printf
-  #endif
 #endif
 //use msg in the real-time thread context
 #define msg_nrt printf
 //use msg_nrt in the non real-time context (for initialization, ...)
 #ifndef malloc16
-  #ifdef __AVX2__
     #define malloc16(x) memalign(32,x)
-  #else
-    #define malloc16(x) memalign(16,x)
-  #endif
 #endif
 #define free16(y,x) free(y)
 #define bigmalloc malloc
@@ -89,11 +81,7 @@
 /*
 static inline void* malloc16_clear( size_t size )
 {
-#ifdef __AVX2__
   void* ptr = memalign(32, size);
-#else
-  void* ptr = memalign(16, size);
-#endif
   DevAssert(ptr);
   memset( ptr, 0, size );
   return ptr;
@@ -126,12 +114,12 @@ static inline void* malloc16_clear( size_t size )
 #include "PHY/impl_defs_top_NB_IoT.h"
 #include "PHY/impl_defs_lte_NB_IoT.h"
 
-#include "PHY/TOOLS/time_meas.h"
+#include "time_meas.h"
 //#include "PHY/CODING/defs.h"
 #include "PHY/CODING/defs_NB_IoT.h"
 #include "openair2/PHY_INTERFACE/IF_Module_NB_IoT.h"
 //#include "PHY/TOOLS/defs.h"
-//#include "platform_types.h"
+#include "common/platform_types.h"
 ///#include "openair1/PHY/LTE_TRANSPORT/defs_nb_iot.h"
 
 ////////////////////////////////////////////////////////////////////#ifdef OPENAIR_LTE    (check if this is required)
@@ -140,8 +128,8 @@ static inline void* malloc16_clear( size_t size )
 #include "PHY/LTE_TRANSPORT/defs_NB_IoT.h"
 #include <pthread.h>
 
-#include "targets/ARCH/COMMON/common_lib.h"
-#include "openairinterface5g_limits.h"
+#include "radio/COMMON/common_lib.h"
+#include "common/openairinterface5g_limits.h"
 
 #define NUM_DCI_MAX_NB_IoT 32
 
@@ -196,19 +184,6 @@ typedef struct {
   NB_IoT_UE_DLSCH_t   *dlsch_rn_MCH[10];
 
 } PHY_VARS_RN_NB_IoT;
-/*
-#ifdef OCP_FRAMEWORK
-#include <enums.h>
-#else
-//typedef enum {normal_txrx=0,rx_calib_ue=1,rx_calib_ue_med=2,rx_calib_ue_byp=3,debug_prach=4,no_L2_connect=5,calib_prach_tx=6,rx_dump_frame=7,loop_through_memory=8} runmode_t;
-*/
-// enum transmission_access_mode {
-//   NO_ACCESS=0,
-//   POSTPONED_ACCESS,
-//   CANCELED_ACCESS,
-//   UNKNOWN_ACCESS,
-//   SCHEDULED_ACCESS,
-//   CBA_ACCESS};
 
 typedef enum  {
   eNodeB_3GPP_NB_IoT=0,   // classical eNodeB function
@@ -469,9 +444,6 @@ typedef struct {
   int                   sub_frame_start;
   ///
   int                   sub_frame_step;
-  ///
-  unsigned long long    gotIQs;
-
 } UE_rxtx_proc_NB_IoT_t;
 
 /// Context data structure for eNB subframe processing
@@ -516,7 +488,6 @@ typedef struct PHY_VARS_eNB_NB_IoT_s {
   eth_params_t         eth_params_n;
   /// Ethernet parameters for fronthaul interface (upper L1 to Radio head)
   eth_params_t         eth_params;
-  int                           single_thread_flag;
   openair0_rf_map               rf_map;
   int                           abstraction_flag;
   openair0_timestamp            ts_offset;
@@ -579,9 +550,6 @@ typedef struct PHY_VARS_eNB_NB_IoT_s {
   int                           max_eNB_id, max_sync_pos;
   ///
   int                           N_TA_offset;                        ///timing offset used in TDD
-  /// \brief sinr for all subcarriers of the current link (used only for abstraction).
-  /// first index: ? [0..N_RB_DL*12[
-  double                        *sinr_dB;
   /// N0 (used for abstraction)
   double                        N0;
   ///
@@ -664,8 +632,6 @@ typedef struct PHY_VARS_eNB_NB_IoT_s {
   uint32_t                                  total_transmitted_bits;
   ///
   uint32_t                                  total_system_throughput;
-  ///
-  int                                       hw_timing_advance;
   ///
   time_stats_t                       phy_proc;
   time_stats_t                       phy_proc_tx;
@@ -901,7 +867,6 @@ typedef struct {
     int              rx_offset; /// Timing offset
     int              rx_offset_diff; /// Timing adjustment for ofdm symbol0 on HW USRP
     int              timing_advance; ///timing advance signalled from eNB
-    int              hw_timing_advance;
     int              N_TA_offset; ///timing offset used in TDD
     /// Flag to tell if UE is secondary user (cognitive mode)
     unsigned char    is_secondary_ue;
@@ -916,9 +881,6 @@ typedef struct {
   int              mac_enabled;
   /// Flag to initialize averaging of PHY measurements
   int              init_averaging;
-  /// \brief sinr for all subcarriers of the current link (used only for abstraction).
-  /// - first index: ? [0..12*N_RB_DL[
-  double           *sinr_dB;
   /// \brief sinr for all subcarriers of first symbol for the CQI Calculation.
   /// - first index: ? [0..12*N_RB_DL[
   double           *sinr_CQI_dB;

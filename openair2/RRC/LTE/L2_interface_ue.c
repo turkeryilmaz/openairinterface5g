@@ -19,7 +19,7 @@
  *      contact@openairinterface.org
  */
 
-/*! \file l2_interface_ue.c
+/*! \file L2_interface_ue.c
  * \brief layer 2 interface, used to support different RRC sublayer
  * \author Raymond Knopp and Navid Nikaein
  * \date 2010-2014
@@ -28,8 +28,7 @@
  * \email: raymond.knopp@eurecom.fr
  */
 
-
-/*! \file l2_interface_ue.c
+/*! \file L2_interface_ue.c
  * \brief layer 2 interface, added support for FeMBMS RRC sublayer
  * \author J. Morgade
  * \date 2020
@@ -37,15 +36,13 @@
  * \email: javier.morgade@ieee.org
  */
 
-
-#include "platform_types.h"
+#include "common/platform_types.h"
 #include "rrc_defs.h"
 #include "rrc_extern.h"
 #include "common/utils/LOG/log.h"
 #include "rrc_eNB_UE_context.h"
 #include "pdcp.h"
-#include "msc.h"
-
+#include "common/ran_context.h"
 
 #include "intertask_interface.h"
 
@@ -274,16 +271,6 @@ rrc_data_req_ue(
 )
 //------------------------------------------------------------------------------
 {
-  MSC_LOG_TX_MESSAGE(
-    ctxt_pP->enb_flag ? MSC_RRC_ENB : MSC_RRC_UE,
-    ctxt_pP->enb_flag ? MSC_PDCP_ENB : MSC_PDCP_UE,
-    buffer_pP,
-    sdu_sizeP,
-    MSC_AS_TIME_FMT"RRC_DCCH_DATA_REQ UE %x MUI %d size %u",
-    MSC_AS_TIME_ARGS(ctxt_pP),
-    ctxt_pP->rnti,
-    muiP,
-    sdu_sizeP);
   {
     MessageDef *message_p;
     // Uses a new buffer to avoid issue with PDCP buffer content that could be changed by PDCP (asynchronous message handling).
@@ -303,13 +290,13 @@ rrc_data_req_ue(
     RRC_DCCH_DATA_REQ (message_p).sdu_p     = message_buffer;
     RRC_DCCH_DATA_REQ (message_p).mode      = modeP;
     RRC_DCCH_DATA_REQ (message_p).module_id = ctxt_pP->module_id;
-    RRC_DCCH_DATA_REQ (message_p).rnti      = ctxt_pP->rnti;
+    RRC_DCCH_DATA_REQ(message_p).rnti = ctxt_pP->rntiMaybeUEid;
     RRC_DCCH_DATA_REQ (message_p).eNB_index = ctxt_pP->eNB_index;
     itti_send_msg_to_task (
       TASK_PDCP_UE,
       ctxt_pP->instance,
       message_p);
-    return TRUE; // TODO should be changed to a CNF message later, currently RRC lite does not used the returned value anyway.
+    return true; // TODO should be changed to a CNF message later, currently RRC lite does not used the returned value anyway.
   }
 }
 
@@ -337,7 +324,7 @@ rrc_data_ind_ue(
     RRC_DCCH_DATA_IND (message_p).dcch_index = DCCH_index;
     RRC_DCCH_DATA_IND (message_p).sdu_size   = sdu_sizeP;
     RRC_DCCH_DATA_IND (message_p).sdu_p      = message_buffer;
-    RRC_DCCH_DATA_IND (message_p).rnti       = ctxt_pP->rnti;
+    RRC_DCCH_DATA_IND(message_p).rnti = ctxt_pP->rntiMaybeUEid;
     RRC_DCCH_DATA_IND (message_p).module_id  = ctxt_pP->module_id;
     RRC_DCCH_DATA_IND (message_p).eNB_index  = ctxt_pP->eNB_index;
     itti_send_msg_to_task (TASK_RRC_UE, ctxt_pP->instance, message_p);

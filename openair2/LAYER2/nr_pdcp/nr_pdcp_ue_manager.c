@@ -24,6 +24,7 @@
 #include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
+#include <inttypes.h>
 
 #include "LOG/log.h"
 
@@ -44,7 +45,13 @@ nr_pdcp_ue_manager_t *new_nr_pdcp_ue_manager(int enb_flag)
     exit(1);
   }
 
-  if (pthread_mutex_init(&ret->lock, NULL)) abort();
+  pthread_mutexattr_t Attr;
+  pthread_mutexattr_init(&Attr);
+  // We need to be recursive because pdcp locks before forwarding, and calls in same thread,
+  // so, if same thread wants to send something back, and there is no itti intermediate thread, we deadlock on ourselves
+  pthread_mutexattr_settype(&Attr, PTHREAD_MUTEX_RECURSIVE);
+  if (pthread_mutex_init(&ret->lock, &Attr))
+    abort();
   ret->enb_flag = enb_flag;
 
   return ret;
@@ -75,17 +82,17 @@ void nr_pdcp_manager_unlock(nr_pdcp_ue_manager_t *_m)
 }
 
 /* must be called with lock acquired */
-nr_pdcp_ue_t *nr_pdcp_manager_get_ue(nr_pdcp_ue_manager_t *_m, int rnti)
+nr_pdcp_ue_t *nr_pdcp_manager_get_ue(nr_pdcp_ue_manager_t *_m, ue_id_t UEid)
 {
   /* TODO: optimze */
   nr_pdcp_ue_manager_internal_t *m = _m;
   int i;
 
   for (i = 0; i < m->ue_count; i++)
-    if (m->ue_list[i]->rnti == rnti)
+    if (m->ue_list[i]->ue_id == UEid)
       return m->ue_list[i];
 
-  LOG_D(PDCP, "%s:%d:%s: new UE 0x%x\n", __FILE__, __LINE__, __FUNCTION__, rnti);
+  LOG_D(PDCP, "%s:%d:%s: new UE ID/RNTI 0x%" PRIx64 "\n", __FILE__, __LINE__, __FUNCTION__, UEid);
 
   m->ue_count++;
   m->ue_list = realloc(m->ue_list, sizeof(nr_pdcp_ue_t *) * m->ue_count);
@@ -99,13 +106,13 @@ nr_pdcp_ue_t *nr_pdcp_manager_get_ue(nr_pdcp_ue_manager_t *_m, int rnti)
     exit(1);
   }
 
-  m->ue_list[m->ue_count-1]->rnti = rnti;
+  m->ue_list[m->ue_count - 1]->ue_id = UEid;
 
   return m->ue_list[m->ue_count-1];
 }
 
 /* must be called with lock acquired */
-void nr_pdcp_manager_remove_ue(nr_pdcp_ue_manager_t *_m, int rnti)
+void nr_pdcp_manager_remove_ue(nr_pdcp_ue_manager_t *_m, ue_id_t UEid)
 {
   nr_pdcp_ue_manager_internal_t *m = _m;
   nr_pdcp_ue_t *ue;
@@ -113,13 +120,11 @@ void nr_pdcp_manager_remove_ue(nr_pdcp_ue_manager_t *_m, int rnti)
   int j;
 
   for (i = 0; i < m->ue_count; i++)
-    if (m->ue_list[i]->rnti == rnti)
+    if (m->ue_list[i]->ue_id == UEid)
       break;
 
   if (i == m->ue_count) {
-    LOG_D(PDCP, "%s:%d:%s: warning: ue %d not found\n",
-          __FILE__, __LINE__, __FUNCTION__,
-          rnti);
+    LOG_W(PDCP, "%s:%d:%s: warning: UE ID/RNTI 0x%" PRIx64 " not found\n", __FILE__, __LINE__, __FUNCTION__, UEid);
     return;
   }
 
@@ -127,11 +132,11 @@ void nr_pdcp_manager_remove_ue(nr_pdcp_ue_manager_t *_m, int rnti)
 
   for (j = 0; j < 2; j++)
     if (ue->srb[j] != NULL)
-      ue->srb[j]->delete(ue->srb[j]);
+      ue->srb[j]->delete_entity(ue->srb[j]);
 
   for (j = 0; j < 5; j++)
     if (ue->drb[j] != NULL)
-      ue->drb[j]->delete(ue->drb[j]);
+      ue->drb[j]->delete_entity(ue->drb[j]);
 
   free(ue);
 
@@ -203,10 +208,11 @@ int nr_pdcp_manager_get_ue_count(nr_pdcp_ue_manager_t *_m)
   return m->ue_count;
 }
 
-int nr_pdcp_get_first_rnti(nr_pdcp_ue_manager_t *_m)
+bool nr_pdcp_get_first_ue_id(nr_pdcp_ue_manager_t *_m, ue_id_t *ret)
 {
   nr_pdcp_ue_manager_internal_t *m = _m;
   if (m->ue_count == 0)
-    return -1;
-  return m->ue_list[0]->rnti;
+    return false;
+  *ret = m->ue_list[0]->ue_id;
+  return true;
 }

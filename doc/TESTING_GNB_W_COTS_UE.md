@@ -1,20 +1,8 @@
 STATUS 2020/10/15 : added External Resources section and links  
 
+**Table of Contents**
 
-## Table of Contents ##
-
-1.   [External Resources](#external-resources) 
-2.   [Configuration Overview](#configuration-overview)
-3.   [SW Repository / Branch](#repository)
-4.   [Architecture Setup](#architecture-setup)
-5.   [Build / Install](#build-and-install)
-6.   [Run / Test](#run-and-test)
-7.   [Test case](#test-case)
-8.   [Log file monitoring](#log-file-monitoring)
-9.   [Required tools for debug](#required-tools-for-debug)
-10.   [Status of interoperability](#status-of-interoperability) 
-11.   [CI integration](#ci-integration)  
-
+[[_TOC_]]
 
 ## External Resources
 
@@ -44,6 +32,7 @@ Our code might not work with all 5G phones yet, but we are constantly improving 
 
 *  Oppo Reno 5G
 *  Samsung A90 5G
+*  Samsung A42 5G
 *  Google Pixel 5G (note1)
 *  Simcom SIMCOM8200EA 
 *  Quectel RM500Q-GL
@@ -118,12 +107,7 @@ whether the clock is internal or external is defined in the configuration files 
 - look for MME IP address, and update the **ipv4 field** with the IP address of the **EPC** server
 ```
     ////////// MME parameters:
-    mme_ip_address      = ( { ipv4       = "**YOUR_EPC_IP_ADDR**";
-                              ipv6       = "192:168:30::17";
-                              active     = "yes";
-                              preference = "ipv4";
-                            }
-                          );
+    mme_ip_address = ({ ipv4 = "**YOUR_EPC_IP_ADDR**"; });
 
 ```
 
@@ -131,9 +115,7 @@ whether the clock is internal or external is defined in the configuration files 
 ```
     NETWORK_INTERFACES :
     {
-        ENB_INTERFACE_NAME_FOR_S1_MME            = "eth0";
         ENB_IPV4_ADDRESS_FOR_S1_MME              = "**YOUR_ENB_IP_ADDR**";
-        ENB_INTERFACE_NAME_FOR_S1U               = "eth0";
         ENB_IPV4_ADDRESS_FOR_S1U                 = "**YOUR_ENB_IP_ADDR**";
         ENB_PORT_FOR_S1U                         = 2152; # Spec 2152
         ENB_IPV4_ADDRESS_FOR_X2C                 = "**YOUR_ENB_IP_ADDR**";
@@ -146,12 +128,7 @@ whether the clock is internal or external is defined in the configuration files 
 - look for MME IP address, and update the **ipv4 field** with the IP address of the **EPC** server
 ```
     ////////// MME parameters:
-    mme_ip_address      = ( { ipv4       = "**YOUR_EPC_IP_ADDR**";
-                              ipv6       = "192:168:30::17";
-                              active     = "yes";
-                              preference = "ipv4";
-                            }
-                          );
+    mme_ip_address = ({ ipv4 = "**YOUR_EPC_IP_ADDR**"; });
 ```
 - look for X2 IP address, and update the **4 fields** with the IP address of the **eNB** server / **gNB** server as below  (notice : even if -in principle- S1 MME is not required for gNB setting)
 ```
@@ -160,19 +137,12 @@ whether the clock is internal or external is defined in the configuration files 
     enable_x2 = "yes";
     t_reloc_prep      = 1000;      /* unit: millisecond */
     tx2_reloc_overall = 2000;      /* unit: millisecond */
-    target_enb_x2_ip_address      = (
-                                     { ipv4       = "**YOUR_ENB_IP_ADDR**";
-                                       ipv6       = "192:168:30::17";
-                                       preference = "ipv4";
-                                     }
-                                    );
+    target_enb_x2_ip_address = ({ ipv4 = "**YOUR_ENB_IP_ADDR**"; });
 
     NETWORK_INTERFACES :
     {
 
-        GNB_INTERFACE_NAME_FOR_S1_MME            = "eth0";
         GNB_IPV4_ADDRESS_FOR_S1_MME              = "**YOUR_GNB_IP_ADDR**";
-        GNB_INTERFACE_NAME_FOR_S1U               = "eth0";
         GNB_IPV4_ADDRESS_FOR_S1U                 = "**YOUR_GNB_IP_ADDR**";
         GNB_PORT_FOR_S1U                         = 2152; # Spec 2152
         GNB_IPV4_ADDRESS_FOR_X2C                 = "**YOUR_GNB_IP_ADDR**";
@@ -406,18 +376,3 @@ The following parts have been validated with FR1 COTS UE:
     DL traffic : 3Mbps  
     UL traffic : 1Mbps  
     some packet losses might still occur even in ideal channel conditions  
-
-
-## CI integration  
-The automation scripts are available on ILIADE.  
-The end-to-end test is integrated in the CI flow in a semi-automated manner, comprising 3 steps:  
-- update a YAML file comprising the IT resources definition, branch and commit number the test has to run on   
-- run the python script that generates the test from the YAML file  
-```
-python3 obj_build_from_yaml.py py_params_template.yaml fr1.sh
-```
-- run the test (fr1.sh)
-
-At the date of writing, the test comprises the deployment of the components (epc, eNB, gNB, cots ue) and the execution of 2 pings procedures (20 pings in 20sec, then 5 pings in 1sec)  
-
-This automation is run for every integration branch to be merged into develop.

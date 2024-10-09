@@ -19,7 +19,7 @@
 *      contact@openairinterface.org
 */
 
-/*! \file LAYER2/MAC/defs.h
+/*! \file mac.h
 * \brief MAC data structures, constant, and function prototype
 * \author Navid Nikaein and Raymond Knopp
 * \date 2011
@@ -32,7 +32,7 @@
  * @{
  */
 
-/*@}*/
+/**@}*/
 
 #ifndef __LAYER2_MAC_DEFS_H__
 #define __LAYER2_MAC_DEFS_H__
@@ -43,7 +43,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "COMMON/platform_constants.h"
+#include "common/platform_constants.h"
 #include "LTE_BCCH-BCH-Message.h"
 #include "LTE_RadioResourceConfigCommon.h"
 #include "LTE_RadioResourceConfigCommonSIB.h"
@@ -69,12 +69,12 @@
 #include "nfapi_interface.h"
 #include "PHY_INTERFACE/IF_Module.h"
 
-#include "PHY/TOOLS/time_meas.h"
+#include "time_meas.h"
 
 #include "PHY/defs_common.h" // for PRACH_RESOURCES_t
 #include "PHY/LTE_TRANSPORT/transport_common.h"
 
-#include "targets/ARCH/COMMON/common_lib.h"
+#include "radio/COMMON/common_lib.h"
 
 /** @defgroup _mac  MAC
  * @ingroup _oai2
@@ -83,7 +83,7 @@
 
 #define MAX_MAC_INST 16
 #define BCCH_PAYLOAD_SIZE_MAX 128
-#define CCCH_PAYLOAD_SIZE_MAX 128
+#define CCCH_PAYLOAD_SIZE_MAX 512 
 #define PCCH_PAYLOAD_SIZE_MAX 128
 #define RAR_PAYLOAD_SIZE_MAX 128
 
@@ -139,11 +139,14 @@
 #define MIN_CQI_VALUE  0
 /*!\brief maximum value for channel quality indicator */
 #define MAX_CQI_VALUE  15
-/*!\briefmaximum number of supported bandwidth (1.4, 5, 10, 20 MHz) */
+/*!\brief maximum number of supported bandwidth (1.4, 5, 10, 20 MHz) */
 #define MAX_SUPPORTED_BW  4
 /*!\brief CQI values range from 1 to 15 (4 bits) */
 #define CQI_VALUE_RANGE 16
-
+/*!\brief Hysteresis of PUSCH power control loop */
+#define PUSCH_PCHYST 1
+/*!\brief Hysteresis of PUCCH power control loop */
+#define PUCCH_PCHYST 1
 /*!\brief value for indicating BSR Timer is not running */
 #define MAC_UE_BSR_TIMER_NOT_RUNNING   (0xFFFF)
 
@@ -158,6 +161,8 @@
 
 
 #define U_PLANE_INACTIVITY_VALUE 0   /* defined 10ms order (zero means infinity) */
+
+static const int cqi_to_mcs[16]= {0, 0, 1, 2, 4, 6, 8, 11, 13, 16, 18, 20, 23, 25, 27, 28};
 
 /*
  * eNB part
@@ -462,7 +467,6 @@ typedef struct {
 #define SHORT_BSR 29
 /*!\brief LCID of long BSR for ULSCH */
 #define LONG_BSR 30
-/*!\bitmaps for BSR Triggers */
 #define BSR_TRIGGER_NONE    (0) /* No BSR Trigger */
 #define BSR_TRIGGER_REGULAR   (1) /* For Regular and ReTxBSR Expiry Triggers */
 #define BSR_TRIGGER_PERIODIC  (2) /* For BSR Periodic Timer Expiry Trigger */
@@ -501,66 +505,20 @@ typedef struct {
 } __attribute__ ((__packed__)) ULDCH_PDU;
 
 /*!\brief RA process state*/
-typedef enum {
-  IDLE = 0,
-  MSG2,
-  WAITMSG3,
-  MSG4,
-  WAITMSG4ACK,
-  MSGCRNTI,
-  MSGCRNTI_ACK
-} RA_state;
-
-/*!\brief  UE ULSCH scheduling states*/
-typedef enum {
-  S_UL_NONE = 0,
-  S_UL_WAITING,
-  S_UL_SCHEDULED,
-  S_UL_BUFFERED,
-  S_UL_NUM_STATUS
-} UE_ULSCH_STATUS;
+typedef enum { IDLE = 0, MSG2, WAITMSG3, MSG4, WAITMSG4ACK, MSGCRNTI, MSGCRNTI_ACK } eRA_state;
+static const char *const era_text[] = {"IDLE", "Ms2", "WAITMSG3", "WAITMSG4ACK", "MSGCRNTI", "MSGCRNTIACK"};
 
 /*!\brief  UE DLSCH scheduling states*/
-typedef enum {
-  S_DL_NONE = 0,
-  S_DL_WAITING,
-  S_DL_SCHEDULED,
-  S_DL_BUFFERED,
-  S_DL_NUM_STATUS
-} UE_DLSCH_STATUS;
-
-/*!\brief  scheduling policy for the contention-based access */
-typedef enum {
-  CBA_ES = 0,     /// equal share of RB among groups w
-  CBA_ES_S,     /// equal share of RB among groups with small allocation
-  CBA_PF,     /// proportional fair (kind of)
-  CBA_PF_S,     /// proportional fair (kind of) with small RB allocation
-  CBA_RS      /// random allocation
-} CBA_POLICY;
-
+typedef enum { S_DL_NONE = 0, S_DL_SCHEDULED } UE_DLSCH_STATUS;
 /*!\brief  scheduler mode */
 typedef enum {
-  SCHED_MODE_DEFAULT = 0,     /// default cheduler
-  SCHED_MODE_FAIR_RR      /// fair raund robin
+  SCHED_MODE_DEFAULT = 0, /// default cheduler
+  SCHED_MODE_FAIR_RR /// fair raund robin
 } SCHEDULER_MODES;
-
-/*! \brief temporary struct for ULSCH sched */
-typedef struct {
-  rnti_t rnti;
-  uint16_t subframe;
-  uint16_t serving_num;
-  UE_ULSCH_STATUS status;
-} eNB_ULSCH_INFO;
-
 /*! \brief temp struct for DLSCH sched */
 typedef struct {
-  rnti_t rnti;
-  uint16_t weight;
-  uint16_t subframe;
-  uint16_t serving_num;
   UE_DLSCH_STATUS status;
 } eNB_DLSCH_INFO;
-
 /*! \brief eNB overall statistics */
 typedef struct {
   /// num BCCH PDU per CC
@@ -615,6 +573,8 @@ typedef struct {
 
   // here for RX
   //
+
+  uint32_t ulsch_rounds[4];
   uint32_t ulsch_bitrate;
   //
   uint32_t ulsch_bytes_rx;
@@ -683,6 +643,17 @@ typedef struct {
   unsigned char lcid_sdu[NB_RB_MAX];
   // Length of SDU Got from LC DL
   uint32_t sdu_length_tx[NB_RB_MAX];
+
+  int lc_bytes_tx[64];
+  int dlsch_rounds[8];
+  int dlsch_errors;
+  int dlsch_total_bytes;
+
+  int lc_bytes_rx[64];
+  int ulsch_rounds[8];
+  int ulsch_errors;
+  int ulsch_total_bytes_scheduled;
+  int ulsch_total_bytes_rx;
 
 
   /// overall
@@ -776,7 +747,6 @@ typedef struct {
   uint32_t num_mac_sdu_rx;
   // Length of SDU Got from LC UL - Size array can be refined
   uint32_t      sdu_length_rx[NB_RB_MAX];
-
 } eNB_UE_STATS;
 /*! \brief eNB template for UE context information  */
 
@@ -796,9 +766,9 @@ typedef struct {
   /// TBS from last UL scheduling
   int TBS_UL[8];
   /// Flag to indicate UL has been scheduled at least once
-  boolean_t ul_active;
+  bool ul_active;
   /// Flag to indicate UE has been configured (ACK from RRCConnectionSetup received)
-  boolean_t configured;
+  bool configured;
 
   /// MCS from last scheduling
   uint8_t mcs[8];
@@ -982,7 +952,8 @@ typedef struct {
   uint16_t feedback_cnt[NFAPI_CC_MAX];
   uint16_t timing_advance;
   uint16_t timing_advance_r9;
-  uint8_t tpc_accumulated[NFAPI_CC_MAX];
+  int8_t pusch_tpc_accumulated[NFAPI_CC_MAX];
+  int8_t pucch_tpc_accumulated[NFAPI_CC_MAX];
   uint8_t periodic_wideband_cqi[NFAPI_CC_MAX];
   uint8_t periodic_wideband_spatial_diffcqi[NFAPI_CC_MAX];
   uint8_t periodic_wideband_pmi[NFAPI_CC_MAX];
@@ -1010,16 +981,16 @@ typedef struct {
 
   /* C-DRX related timers */
   /* Note: only valid for FDD and LTE UE when this comment is written (11-01-19)*/
-  /// is TRUE if the cqi mask feature is activated by RRC configuration
-  boolean_t cqi_mask_boolean;
-  /// is TRUE if the following drx parameters are configured for UE
-  boolean_t cdrx_configured;
+  /// is true if the cqi mask feature is activated by RRC configuration
+  bool cqi_mask_boolean;
+  /// is true if the following drx parameters are configured for UE
+  bool cdrx_configured;
   /*
-   * if TRUE, the eNB has configured the CDRX locally, but is waiting for the UE to acknowledge
+   * if true, the eNB has configured the CDRX locally, but is waiting for the UE to acknowledge
    * the activation. This is needed, during the RRC configuration process, when the context is
    * configured on the eNB side, but not yet on the UE side...
    */
-  boolean_t cdrx_waiting_ack;
+  bool cdrx_waiting_ack;
   /*
    * Is set when a ULSCH scheduling is done and run until the first corresponding transmission is done (4 subframes).
    * When set, SR cannot be set for the UE. This allows OAI to avoid concidering a SR as uncompleted if the UE sends
@@ -1027,16 +998,16 @@ typedef struct {
    * create a lost in timers synchronization.
    */
   uint8_t dci0_ongoing_timer;
-  /// is TRUE if the UE is in "Active Time", hence listening to PDCCH
-  boolean_t in_active_time;
+  /// is true if the UE is in "Active Time", hence listening to PDCCH
+  bool in_active_time;
   /// OnDurationTimer
   uint16_t  on_duration_timer;
   uint16_t  on_duration_timer_thres;
   /// drx-InactivityTimer
   uint16_t  drx_inactivity_timer;
   uint16_t  drx_inactivity_timer_thres;
-  /// is TRUE if UE is currently in short DRX cycle
-  boolean_t in_short_drx_cycle;
+  /// is true if UE is currently in short DRX cycle
+  bool in_short_drx_cycle;
   /// drxShortCycleTimer int (1..16) (number of short DRX cycles duration before long DRX cycles)
   uint8_t  drx_shortCycle_timer_value;
   /// shortDRX-Cycle (duration of one short DRX cycle)
@@ -1044,8 +1015,8 @@ typedef struct {
   /// DRX short cycle timer before switching to long DRX cycle = drx_shortCycle_timer_value * short_drx_cycle_duration
   uint16_t  drx_shortCycle_timer;
   uint16_t  drx_shortCycle_timer_thres;
-  /// is TRUE if UE is currently in long DRX cycle
-  boolean_t in_long_drx_cycle;
+  /// is true if UE is currently in long DRX cycle
+  bool in_long_drx_cycle;
   /// longDRX-CycleStartOffset (long DRX cycle timer)
   uint16_t  drx_longCycle_timer;
   uint16_t  drx_longCycle_timer_thres;
@@ -1063,7 +1034,7 @@ typedef struct {
 /*! \brief eNB template for the Random access information */
 typedef struct {
   /// Flag to indicate this process is active
-  RA_state state;
+  eRA_state eRA_state;
   /// Subframe where preamble was received
   uint8_t preamble_subframe;
   /// Subframe where Msg2 is to be sent
@@ -1126,16 +1097,6 @@ typedef struct {
   int8_t   crnti_harq_pid;
 } RA_t;
 
-
-/*! \brief subband bitmap confguration (for ALU icic algo purpose), in test phase */
-typedef struct {
-  uint8_t sbmap[13];  //13 = number of SB MAX for 100 PRB
-  uint8_t periodicity;
-  uint8_t first_subframe;
-  uint8_t sb_size;
-  uint8_t nb_active_sb;
-} SBMAP_CONF;
-
 /*! \brief UE_list_t is a "list" of users within UE_info_t. Especial useful in
  * the scheduler and to keep "classes" of users. */
 typedef struct {
@@ -1167,7 +1128,7 @@ typedef struct {
   UE_sched_ctrl_t UE_sched_ctrl[MAX_MOBILES_PER_ENB];
   UE_list_t list;
   int num_UEs;
-  boolean_t active[MAX_MOBILES_PER_ENB];
+  bool active[MAX_MOBILES_PER_ENB];
 } UE_info_t;
 
 /*! \brief deleting control information*/
@@ -1175,16 +1136,10 @@ typedef struct {
   ///rnti of UE
   rnti_t rnti;
   ///remove UE context flag
-  boolean_t removeContextFlg;
+  bool removeContextFlg;
+  ///remove RA flag
+  bool raFlag;
 } UE_free_ctrl_t;
-/*! \brief REMOVE UE list used by eNB to order UEs/CC for deleting*/
-typedef struct {
-  /// deleting control info
-  UE_free_ctrl_t UE_free_ctrl[NUMBER_OF_UE_MAX+1];
-  int num_UEs;
-  int head_freelist; ///the head position of the delete list
-  int tail_freelist; ///the tail position of the delete list
-} UE_free_list_t;
 
 /**
  * describes contiguous RBs
@@ -1342,9 +1297,8 @@ typedef struct {
   uint8_t FeMBMS_flag;
 } COMMON_channels_t;
 /*! \brief top level eNB MAC structure */
+
 typedef struct eNB_MAC_INST_s {
-  /// Ethernet parameters for northbound midhaul interface
-  eth_params_t eth_params_n;
   /// Ethernet parameters for fronthaul interface
   eth_params_t eth_params_s;
   ///
@@ -1392,9 +1346,6 @@ typedef struct eNB_MAC_INST_s {
   /// UL handle
   uint32_t ul_handle;
   UE_info_t UE_info;
-
-  ///subband bitmap configuration
-  SBMAP_CONF sbmap_conf;
   /// CCE table used to build DCI scheduling information
   int CCE_table[NFAPI_CC_MAX][800];
   ///  active flag for Other lcid
@@ -1424,7 +1375,7 @@ typedef struct eNB_MAC_INST_s {
   /// processing time of eNB PCH scheduler
   time_stats_t schedule_pch;
 
-  UE_free_list_t UE_free_list;
+  UE_free_ctrl_t UE_free_ctrl[NUMBER_OF_UE_MAX+1];
   /// for scheduling selection
   SCHEDULER_MODES scheduler_mode;
   /// Default scheduler: Pre-processor implementation. Algorithms for UL/DL
@@ -1435,6 +1386,17 @@ typedef struct eNB_MAC_INST_s {
 
   int32_t puSch10xSnr;
   int32_t puCch10xSnr;
+
+  int max_ul_rb_index;
+
+  int ue_multiple_max;
+
+  int use_mcs_offset;
+
+  double bler_lower;
+
+  double bler_upper;
+  pthread_t mac_stats_thread;
 } eNB_MAC_INST;
 
 /*
@@ -1699,14 +1661,7 @@ typedef struct {
   int ra_frame;   // This variable keeps the frame in which the RA started for the specific UE. It is used in order
   // to make sure that different UEs RA starts within a number of frames difference.
 
-  eth_params_t         eth_params_n;
-
 } UE_MAC_INST;
-/*! \brief ID of the neighboring cells used for HO*/
-typedef struct {
-  uint16_t cell_ids[6];
-  uint8_t n_adj_cells;
-} neigh_cell_id_t;
 
 typedef struct {
   volatile uint8_t flag;
@@ -1726,5 +1681,5 @@ typedef  struct {
 
 #include "mac_proto.h"
 
-/*@}*/
+/**@}*/
 #endif /*__LAYER2_MAC_DEFS_H__ */

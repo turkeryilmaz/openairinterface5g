@@ -43,8 +43,9 @@ extern m2ap_setup_req_t *m2ap_mce_data_from_enb;
 /*
  * MBMS Session start
  */
-int MCE_send_MBMS_SESSION_START_REQUEST(instance_t instance/*, uint32_t assoc_id*/,m2ap_session_start_req_t* m2ap_session_start_req){
-
+int MCE_send_MBMS_SESSION_START_REQUEST(instance_t instance /*, sctp_assoc_t assoc_id*/,
+                                        m2ap_session_start_req_t *m2ap_session_start_req)
+{
   //AssertFatal(1==0,"Not implemented yet\n");
     
   //module_id_t enb_mod_idP=0;
@@ -75,8 +76,8 @@ int MCE_send_MBMS_SESSION_START_REQUEST(instance_t instance/*, uint32_t assoc_id
   ie->id                        = M2AP_ProtocolIE_ID_id_MCE_MBMS_M2AP_ID;
   ie->criticality               = M2AP_Criticality_reject;
   ie->value.present             = M2AP_SessionStartRequest_Ies__value_PR_MCE_MBMS_M2AP_ID;
-  //ie->value.choice.MCE_MBMS_M2AP_ID = /*F1AP_get_next_transaction_identifier(enb_mod_idP, du_mod_idP);*/ //?
-  ASN_SEQUENCE_ADD(&out->protocolIEs.list, ie);
+  //ie->value.choice.MCE_MBMS_M2AP_ID = 0;
+  asn1cSeqAdd(&out->protocolIEs.list, ie);
 
   /* mandatory */
   /* c2. TMGI (integrer value) */
@@ -90,7 +91,7 @@ int MCE_send_MBMS_SESSION_START_REQUEST(instance_t instance/*, uint32_t assoc_id
  
                        //&ie->choice.TMGI.pLMN_Identity);
   //INT16_TO_OCTET_STRING(0,&ie->choice.TMGI.serviceId);
-  ASN_SEQUENCE_ADD(&out->protocolIEs.list, ie);
+  asn1cSeqAdd(&out->protocolIEs.list, ie);
 
   /* mandatory */
   /* c3. MBMS_Session_ID (integrer value) */ //OCTET_STRING
@@ -100,7 +101,7 @@ int MCE_send_MBMS_SESSION_START_REQUEST(instance_t instance/*, uint32_t assoc_id
 	  ie->criticality               = M2AP_Criticality_reject;
 	  ie->value.present             = M2AP_SessionStartRequest_Ies__value_PR_MBMS_Session_ID;
   	  //INT16_TO_OCTET_STRING(0,&ie->choice.MBMS_Session_ID);
-	  ASN_SEQUENCE_ADD(&out->protocolIEs.list, ie);
+	  asn1cSeqAdd(&out->protocolIEs.list, ie);
   }
 
   /* mandatory */
@@ -113,7 +114,7 @@ int MCE_send_MBMS_SESSION_START_REQUEST(instance_t instance/*, uint32_t assoc_id
                          //strlen(m2ap_setup_resp->MCEname));
   //INT16_TO_OCTET_STRING(0,&ie->choice.TMGI.serviceId);
   ie->value.choice.MBMS_Service_Area.buf = calloc(3,sizeof(uint8_t));
-  ASN_SEQUENCE_ADD(&out->protocolIEs.list, ie);
+  asn1cSeqAdd(&out->protocolIEs.list, ie);
 
 
   /* mandatory */
@@ -131,7 +132,7 @@ int MCE_send_MBMS_SESSION_START_REQUEST(instance_t instance/*, uint32_t assoc_id
   OCTET_STRING_fromBuf(&ie->value.choice.TNL_Information.iPMCAddress, "1204",strlen("1234"));
   OCTET_STRING_fromBuf(&ie->value.choice.TNL_Information.iPSourceAddress, "1204",strlen("1234"));
   
-  ASN_SEQUENCE_ADD(&out->protocolIEs.list, ie);
+  asn1cSeqAdd(&out->protocolIEs.list, ie);
 
   if(0){
 	 // /* optional */
@@ -140,8 +141,8 @@ int MCE_send_MBMS_SESSION_START_REQUEST(instance_t instance/*, uint32_t assoc_id
 	 // ie->id                        = M2AP_ProtocolIE_ID_id_TNL_Information_1; 
 	 // ie->criticality               = M2AP_Criticality_reject;
 	 // ie->value.present             = M2AP_SessionStartRequest_Ies__value_PR_TNL_Information_1;
-	 // //asn_int642INTEGER(&ie->value.choice.MBMS_Session_ID, f1ap_du_data->MBMS_Session_ID); //?
-	 // ASN_SEQUENCE_ADD(&out->protocolIEs.list, ie);
+	 // //asn_int642INTEGER(&ie->value.choice.MBMS_Session_ID, 0);
+	 // asn1cSeqAdd(&out->protocolIEs.list, ie);
   }
    
 
@@ -153,13 +154,10 @@ int MCE_send_MBMS_SESSION_START_REQUEST(instance_t instance/*, uint32_t assoc_id
   //MCE_m2ap_itti_send_sctp_data_req(instance, m2ap_mce_data_from_mce->assoid,buffer,len,0); 
   m2ap_MCE_itti_send_sctp_data_req(instance,m2ap_mce_data_from_enb->assoc_id,buffer,len,0);
   return 0;
-
 }
 
-int MCE_handle_MBMS_SESSION_START_RESPONSE(instance_t instance,
-                                uint32_t assoc_id,
-                                uint32_t stream,
-                                M2AP_M2AP_PDU_t *pdu){
+int MCE_handle_MBMS_SESSION_START_RESPONSE(instance_t instance, sctp_assoc_t assoc_id, uint32_t stream, M2AP_M2AP_PDU_t *pdu)
+{
   //AssertFatal(1==0,"Not implemented yet\n");
   LOG_D(M2AP, "MCE_handle_MBMS_SESSION_START_RESPONSE\n");
 
@@ -210,27 +208,15 @@ int MCE_handle_MBMS_SESSION_START_RESPONSE(instance_t instance,
   AssertFatal(MCE_MBMS_M2AP_ID!=-1,"MCE_MBMS_M2AP_ID was not sent\n");
   AssertFatal(ENB_MBMS_M2AP_ID!=-1,"ENB_MBMS_M2AP_ID was not sent\n");
   //M2AP_SESSION_START_RESP(msg_p).
-//  MSC_LOG_RX_MESSAGE(
-//    MSC_M2AP_MCE,
-//    MSC_M2AP_ENB,
-	//return 0;
-//    0,
-//    0,
-//    MSC_AS_TIME_FMT" MCE_handle_M2_SESSION_START_RESPONSE successfulOutcome assoc_id %d",
-//    0,0,//MSC_AS_TIME_ARGS(ctxt_pP),
-//    assoc_id);
-//
+
    LOG_D(M2AP, "Sending M2AP_SESSION_START_RESP ITTI message to ENB_APP with assoc_id (%d->%d)\n",
          assoc_id,ENB_MODULE_ID_TO_INSTANCE(assoc_id));
    itti_send_msg_to_task(TASK_MCE_APP, ENB_MODULE_ID_TO_INSTANCE(assoc_id), msg_g);
    return 0;
-
 }
-int MCE_handle_MBMS_SESSION_START_FAILURE(instance_t instance,
-                                uint32_t assoc_id,
-                                uint32_t stream,
-                                M2AP_M2AP_PDU_t *pdu){
-  AssertFatal(1==0,"Not implemented yet\n");
+int MCE_handle_MBMS_SESSION_START_FAILURE(instance_t instance, sctp_assoc_t assoc_id, uint32_t stream, M2AP_M2AP_PDU_t *pdu)
+{
+   AssertFatal(1 == 0, "Not implemented yet\n");
 }
 
 /*
@@ -267,8 +253,8 @@ int MCE_send_MBMS_SESSION_STOP_REQUEST(instance_t instance, m2ap_session_stop_re
   ie->id                        = M2AP_ProtocolIE_ID_id_MCE_MBMS_M2AP_ID;
   ie->criticality               = M2AP_Criticality_reject;
   ie->value.present             = M2AP_SessionStopRequest_Ies__value_PR_MCE_MBMS_M2AP_ID;
-  ie->value.choice.MCE_MBMS_M2AP_ID = /*F1AP_get_next_transaction_identifier(enb_mod_idP, du_mod_idP);*/ //?
-  ASN_SEQUENCE_ADD(&out->protocolIEs.list, ie);
+  ie->value.choice.MCE_MBMS_M2AP_ID = 0;
+  asn1cSeqAdd(&out->protocolIEs.list, ie);
 
   /* mandatory */
   /* c2. ENB_MBMS_M2AP_ID (integer value) */ //long
@@ -276,9 +262,9 @@ int MCE_send_MBMS_SESSION_STOP_REQUEST(instance_t instance, m2ap_session_stop_re
   ie->id                        = M2AP_ProtocolIE_ID_id_ENB_MBMS_M2AP_ID;
   ie->criticality               = M2AP_Criticality_reject;
   ie->value.present             = M2AP_SessionStopRequest_Ies__value_PR_ENB_MBMS_M2AP_ID;
-  ie->value.choice.ENB_MBMS_M2AP_ID = /*F1AP_get_next_transaction_identifier(enb_mod_idP, du_mod_idP);*/ //?
+  ie->value.choice.ENB_MBMS_M2AP_ID = 0;
 
-  ASN_SEQUENCE_ADD(&out->protocolIEs.list, ie);
+  asn1cSeqAdd(&out->protocolIEs.list, ie);
 
 
   /* encode */
@@ -294,10 +280,8 @@ int MCE_send_MBMS_SESSION_STOP_REQUEST(instance_t instance, m2ap_session_stop_re
                         
 }
 
-int MCE_handle_MBMS_SESSION_STOP_RESPONSE(instance_t instance,
-                                uint32_t assoc_id,
-                                uint32_t stream,
-                                M2AP_M2AP_PDU_t *pdu){
+int MCE_handle_MBMS_SESSION_STOP_RESPONSE(instance_t instance, sctp_assoc_t assoc_id, uint32_t stream, M2AP_M2AP_PDU_t *pdu)
+{
   //AssertFatal(1==0,"Not implemented yet\n");
   LOG_D(M2AP, "MCE_handle_MBMS_SESSION_STOP_RESPONSE\n");
 
@@ -348,14 +332,6 @@ int MCE_handle_MBMS_SESSION_STOP_RESPONSE(instance_t instance,
   AssertFatal(MCE_MBMS_M2AP_ID!=-1,"MCE_MBMS_M2AP_ID was not sent\n");
   AssertFatal(ENB_MBMS_M2AP_ID!=-1,"ENB_MBMS_M2AP_ID was not sent\n");
  // M2AP_SESSION_STOP_RESP(msg_p).
- // MSC_LOG_RX_MESSAGE(
- //   MSC_M2AP_MCE,
- //   MSC_M2AP_ENB,
- //   0,
- //   0,
- //   MSC_AS_TIME_FMT" MCE_handle_M2_SESSION_STOP_RESPONSE successfulOutcome assoc_id %d",
- //   0,0,//MSC_AS_TIME_ARGS(ctxt_pP),
- //   assoc_id);
 
  //  LOG_D(M2AP, "Sending M2AP_SESSION_START_RESP ITTI message to ENB_APP with assoc_id (%d->%d)\n",
  //        assoc_id,ENB_MODULE_ID_TO_INSTANCE(assoc_id));
@@ -364,14 +340,9 @@ int MCE_handle_MBMS_SESSION_STOP_RESPONSE(instance_t instance,
 	return 0;
 }
 
-
-
-int MCE_handle_MBMS_SESSION_STOP_FAILURE(instance_t instance,
-                                uint32_t assoc_id,
-                                uint32_t stream,
-                                M2AP_M2AP_PDU_t *pdu){
+int MCE_handle_MBMS_SESSION_STOP_FAILURE(instance_t instance, sctp_assoc_t assoc_id, uint32_t stream, M2AP_M2AP_PDU_t *pdu)
+{
   AssertFatal(1==0,"Not implemented yet\n");
-                      
 }
  typedef struct M2AP_MBSFN_Area_Configuration{
 	M2AP_PMCH_Configuration_List_t   PMCH_Configuration_List;
@@ -392,8 +363,8 @@ int MCE_handle_MBMS_SESSION_STOP_FAILURE(instance_t instance,
                             0x00, 0x18, 0x00, 0x01, 0x80, 0x00, 0x1d, 0x00, 0x01, 0x01};
 
 
-int MCE_send_MBMS_SCHEDULING_INFORMATION(instance_t instance, /*uint32_t assoc_id,*/m2ap_mbms_scheduling_information_t * m2ap_mbms_scheduling_information){
-   
+int MCE_send_MBMS_SCHEDULING_INFORMATION(instance_t instance, /*sctp_assoc_t assoc_id,*/ m2ap_mbms_scheduling_information_t * m2ap_mbms_scheduling_information)
+{
   //module_id_t enb_mod_idP=0;
   //module_id_t du_mod_idP=0;
 
@@ -428,7 +399,7 @@ int MCE_send_MBMS_SCHEDULING_INFORMATION(instance_t instance, /*uint32_t assoc_i
   //ie->value.choice.MCCH_Update_Time =  ; 
   ie->value.choice.MCCH_Update_Time = m2ap_mbms_scheduling_information->mcch_update_time;
 
-  ASN_SEQUENCE_ADD(&out->protocolIEs.list, ie);  
+  asn1cSeqAdd(&out->protocolIEs.list, ie);  
 
   /* mandatory */
   /* c2. MBSFN_Area_Configuration_List */ //long
@@ -488,7 +459,7 @@ int MCE_send_MBMS_SCHEDULING_INFORMATION(instance_t instance, /*uint32_t assoc_i
                 member->lcid = m2ap_mbms_scheduling_information->mbms_area_config_list[i].pmch_config_list[j].mbms_session_list[k].lcid;
 		//member->lcid = (M2AP_LCID_t*)calloc(1,sizeof(M2AP_LCID_t));
 		
-            	ASN_SEQUENCE_ADD(&pmch_configuration_item->mbms_Session_List.list,member);
+            	asn1cSeqAdd(&pmch_configuration_item->mbms_Session_List.list,member);
             }
       
       	}
@@ -496,11 +467,11 @@ int MCE_send_MBMS_SCHEDULING_INFORMATION(instance_t instance, /*uint32_t assoc_i
       // M2AP_MBSFN_Area_Configuration_Item_t *mbsfn_area_configuration_item_ie2;
       //(mbsfn_area_configuration_item_ie+1) =(M2AP_MBSFN_Area_Configuration_Item_t*)calloc(1,sizeof(M2AP_MBSFN_Area_Configuration_Item_t)); 
 
-      	ASN_SEQUENCE_ADD(&mbsfn_area_configuration_item_ie->value.choice.PMCH_Configuration_List.list,pmch_configuration_item_ies);
+      	asn1cSeqAdd(&mbsfn_area_configuration_item_ie->value.choice.PMCH_Configuration_List.list,pmch_configuration_item_ies);
 
       }
 
-      ASN_SEQUENCE_ADD(m2ap_mbsfn_area_configuration_list,mbsfn_area_configuration_item_ie);
+      asn1cSeqAdd(m2ap_mbsfn_area_configuration_list,mbsfn_area_configuration_item_ie);
 
       /*M2AP_MBSFN_Area_Configuration_Item_t*/
       M2AP_MBSFN_Area_Configuration_Item_t *mbsfn_area_configuration_item_ie_1;
@@ -540,11 +511,11 @@ int MCE_send_MBMS_SCHEDULING_INFORMATION(instance_t instance, /*uint32_t assoc_i
 			   mbsfn_subframe_configuration->subframeAllocation.choice.oneFrame.buf[0] = (m2ap_mbms_scheduling_information->mbms_area_config_list[i].mbms_sf_config_list[j].subframe_allocation & 0x3F)<<2;
 		   }
 
-		   ASN_SEQUENCE_ADD(&(mbsfn_area_configuration_item_ie_1)->value.choice.MBSFN_Subframe_ConfigurationList.list,mbsfn_subframe_configuration_item_ies);
+		   asn1cSeqAdd(&(mbsfn_area_configuration_item_ie_1)->value.choice.MBSFN_Subframe_ConfigurationList.list,mbsfn_subframe_configuration_item_ies);
 	   }
        }
 
-       ASN_SEQUENCE_ADD(m2ap_mbsfn_area_configuration_list,mbsfn_area_configuration_item_ie_1);
+       asn1cSeqAdd(m2ap_mbsfn_area_configuration_list,mbsfn_area_configuration_item_ie_1);
 
 
       /*M2AP_MBSFN_Area_Configuration_Item_t*/
@@ -555,7 +526,7 @@ int MCE_send_MBMS_SCHEDULING_INFORMATION(instance_t instance, /*uint32_t assoc_i
       (mbsfn_area_configuration_item_ie_2)->value.present = M2AP_MBSFN_Area_Configuration_Item__value_PR_Common_Subframe_Allocation_Period;
       (mbsfn_area_configuration_item_ie_2)->value.choice.Common_Subframe_Allocation_Period=m2ap_mbms_scheduling_information->mbms_area_config_list[i].common_sf_allocation_period;
 
-       ASN_SEQUENCE_ADD(m2ap_mbsfn_area_configuration_list,mbsfn_area_configuration_item_ie_2);
+       asn1cSeqAdd(m2ap_mbsfn_area_configuration_list,mbsfn_area_configuration_item_ie_2);
 
 
       /*M2AP_MBSFN_Area_Configuration_Item_t*/
@@ -566,7 +537,7 @@ int MCE_send_MBMS_SCHEDULING_INFORMATION(instance_t instance, /*uint32_t assoc_i
       (mbsfn_area_configuration_item_ie_3)->value.present = M2AP_MBSFN_Area_Configuration_Item__value_PR_MBSFN_Area_ID;
       (mbsfn_area_configuration_item_ie_3)->value.choice.MBSFN_Area_ID = m2ap_mbms_scheduling_information->mbms_area_config_list[i].mbms_area_id;
 
-      ASN_SEQUENCE_ADD(m2ap_mbsfn_area_configuration_list,mbsfn_area_configuration_item_ie_3);
+      asn1cSeqAdd(m2ap_mbsfn_area_configuration_list,mbsfn_area_configuration_item_ie_3);
 
 
 ASN_SET_ADD(&ie->value.choice.MBSFN_Area_Configuration_List,m2ap_mbsfn_area_configuration_list);
@@ -580,7 +551,7 @@ ASN_SET_ADD(&ie->value.choice.MBSFN_Area_Configuration_List,m2ap_mbsfn_area_conf
   }
 
 
- ASN_SEQUENCE_ADD(&out->protocolIEs.list, ie);  
+ asn1cSeqAdd(&out->protocolIEs.list, ie);  
 
  
  
@@ -590,14 +561,13 @@ ASN_SET_ADD(&ie->value.choice.MBSFN_Area_Configuration_List,m2ap_mbsfn_area_conf
  }
   m2ap_MCE_itti_send_sctp_data_req(instance,m2ap_mce_data_from_enb->assoc_id,buffer,len,0);
   return 0;
-                        
-}
+ }
 
-int MCE_handle_MBMS_SCHEDULING_INFORMATION_RESPONSE(instance_t instance,
-                                uint32_t assoc_id,
-                                uint32_t stream,
-                                M2AP_M2AP_PDU_t *pdu){
-
+ int MCE_handle_MBMS_SCHEDULING_INFORMATION_RESPONSE(instance_t instance,
+                                                     sctp_assoc_t assoc_id,
+                                                     uint32_t stream,
+                                                     M2AP_M2AP_PDU_t *pdu)
+ {
   LOG_D(M2AP, "MCE_handle_MBMS_SCHEDULING_INFORMATION_RESPONSE\n");
 
    AssertFatal(pdu->present == M2AP_M2AP_PDU_PR_successfulOutcome,
@@ -645,14 +615,6 @@ int MCE_handle_MBMS_SCHEDULING_INFORMATION_RESPONSE(instance_t instance,
 //  }
 //
 //  M2AP_SESSION_STOP_RESP(msg_p).
-//  MSC_LOG_RX_MESSAGE(
-//    MSC_M2AP_MCE,
-//    MSC_M2AP_ENB,
-//    0,
-//    0,
-//    MSC_AS_TIME_FMT" MCE_handle_M2_SCHEDULING_INFORMATION_RESPONSE successfulOutcome assoc_id %d",
-//    0,0,//MSC_AS_TIME_ARGS(ctxt_pP),
-//    assoc_id);
 //
 //   LOG_D(M2AP, "Sending M2AP_SCHEDULING_INFO_RESP ITTI message to ENB_APP with assoc_id (%d->%d)\n",
 //         assoc_id,ENB_MODULE_ID_TO_INSTANCE(assoc_id));
@@ -661,8 +623,7 @@ int MCE_handle_MBMS_SCHEDULING_INFORMATION_RESPONSE(instance_t instance,
     itti_send_msg_to_task(TASK_MCE_APP, ENB_MODULE_ID_TO_INSTANCE(instance), msg_g);
 //
    return 0;
-                       
-}
+ }
 
 /*
  * Reset
@@ -674,19 +635,13 @@ int MCE_send_RESET(instance_t instance, m2ap_reset_t * m2ap_reset) {
                         
 }
 
-
-int MCE_handle_RESET_ACKKNOWLEDGE(instance_t instance,
-                                  uint32_t assoc_id,
-                                  uint32_t stream,
-                                  M2AP_M2AP_PDU_t *pdu) {
+int MCE_handle_RESET_ACKKNOWLEDGE(instance_t instance, sctp_assoc_t assoc_id, uint32_t stream, M2AP_M2AP_PDU_t *pdu)
+{
   AssertFatal(1==0,"Not implemented yet\n");
-
 }
 
-int MCE_handle_RESET(instance_t instance,
-                     uint32_t assoc_id,
-                     uint32_t stream,
-                     M2AP_M2AP_PDU_t *pdu) {
+int MCE_handle_RESET(instance_t instance, sctp_assoc_t assoc_id, uint32_t stream, M2AP_M2AP_PDU_t *pdu)
+{
   AssertFatal(1==0,"Not implemented yet\n");
 }
 
@@ -697,10 +652,7 @@ int MCE_send_RESET_ACKNOWLEDGE(instance_t instance, M2AP_ResetAcknowledge_t *Res
 /*
  *    M2 Setup
  */
-int MCE_handle_M2_SETUP_REQUEST(instance_t instance,
-                               uint32_t assoc_id,
-                               uint32_t stream,
-                               M2AP_M2AP_PDU_t *pdu)
+int MCE_handle_M2_SETUP_REQUEST(instance_t instance, sctp_assoc_t assoc_id, uint32_t stream, M2AP_M2AP_PDU_t *pdu)
 {
   LOG_D(M2AP, "MCE_handle_M2_SETUP_REQUEST assoc_id %d\n",assoc_id);
 
@@ -836,15 +788,6 @@ int MCE_handle_M2_SETUP_REQUEST(instance_t instance,
   *m2ap_mce_data_from_enb = M2AP_SETUP_REQ(message_p);
   //printf("m2ap_mce_data_from_enb->assoc_id %d %d\n",m2ap_mce_data_from_enb->assoc_id,assoc_id);
 
-//  MSC_LOG_TX_MESSAGE(
-//  MSC_M2AP_MCE,
-//  MSC_RRC_ENB,
-//  0,
-//  0,
-//  MSC_AS_TIME_FMT" MCE_handle_M2_SETUP_REQUEST",
-//  0,0//MSC_AS_TIME_ARGS(ctxt_pP),
-//  );
-//
   if (num_mbms_available > 0) {
     itti_send_msg_to_task(TASK_MCE_APP, ENB_MODULE_ID_TO_INSTANCE(instance), message_p);
   } else {
@@ -866,7 +809,7 @@ int MCE_handle_M2_SETUP_REQUEST(instance_t instance,
     return 0;
 }
 
-int MCE_send_M2_SETUP_RESPONSE(instance_t instance, /*uint32_t assoc_id,*/
+int MCE_send_M2_SETUP_RESPONSE(instance_t instance, /*sctp_assoc_t assoc_id,*/
                                m2ap_setup_resp_t *m2ap_setup_resp) {
   
   //module_id_t mce_mod_idP;
@@ -913,7 +856,7 @@ int MCE_send_M2_SETUP_RESPONSE(instance_t instance, /*uint32_t assoc_id,*/
   ie->value.choice.GlobalMCE_ID.mCE_ID.size=2;
   //ie->value.choice.GlobalMCE_ID.mCE_ID.bits_unused=0;
 
-  ASN_SEQUENCE_ADD(&out->protocolIEs.list, ie);
+  asn1cSeqAdd(&out->protocolIEs.list, ie);
  
   /* optional */
   /* c2. MCEname */
@@ -924,7 +867,7 @@ int MCE_send_M2_SETUP_RESPONSE(instance_t instance, /*uint32_t assoc_id,*/
     ie->value.present             = M2AP_M2SetupResponse_Ies__value_PR_MCEname;
     OCTET_STRING_fromBuf(&ie->value.choice.MCEname, m2ap_setup_resp->MCE_name,
                          strlen(m2ap_setup_resp->MCE_name));
-    ASN_SEQUENCE_ADD(&out->protocolIEs.list, ie);
+    asn1cSeqAdd(&out->protocolIEs.list, ie);
   }
 
   /* mandatory */
@@ -968,12 +911,12 @@ int MCE_send_M2_SETUP_RESPONSE(instance_t instance, /*uint32_t assoc_id,*/
 		//memset(&config_per_mbsfn_area_item->subframeAllocationInfo,0,sizeof(BIT_STRING_t));
 		
 		config_per_mbsfn_area_item->modulationAndCodingScheme = m2ap_setup_resp->mcch_config_per_mbsfn[i].mcs;//M2AP_MCCHrelatedBCCH_ConfigPerMBSFNArea_Item__modulationAndCodingScheme_n2;
-		ASN_SEQUENCE_ADD(&ie->value.choice.MCCHrelatedBCCH_ConfigPerMBSFNArea.list,mcch_related_bcch_config_per_mbsfn_area_item_ies);
+		asn1cSeqAdd(&ie->value.choice.MCCHrelatedBCCH_ConfigPerMBSFNArea.list,mcch_related_bcch_config_per_mbsfn_area_item_ies);
 	  }
 
   }
  
-  ASN_SEQUENCE_ADD(&out->protocolIEs.list, ie);
+  asn1cSeqAdd(&out->protocolIEs.list, ie);
   
 
   /* encode */
@@ -1020,7 +963,7 @@ int MCE_send_M2_SETUP_FAILURE(instance_t instance,m2ap_setup_failure_t* m2ap_set
  // ie->criticality               = M2AP_Criticality_reject;
  // ie->value.present             = M2AP_M2SetupFailure_Ies__value_PR_GlobalENB_ID;
  // ie->value.choice.GlobalENB_ID = M2AP_get_next_transaction_identifier(enb_mod_idP, mce_mod_idP);
- // ASN_SEQUENCE_ADD(&out->protocolIEs.list, ie);
+ // asn1cSeqAdd(&out->protocolIEs.list, ie);
 
   /* mandatory */
   /* c2. Cause */
@@ -1030,7 +973,7 @@ int MCE_send_M2_SETUP_FAILURE(instance_t instance,m2ap_setup_failure_t* m2ap_set
   ie->value.present             = M2AP_M2SetupFailure_Ies__value_PR_Cause;
   ie->value.choice.Cause.present = M2AP_Cause_PR_radioNetwork;
   ie->value.choice.Cause.choice.radioNetwork = M2AP_CauseRadioNetwork_unspecified;
-  ASN_SEQUENCE_ADD(&out->protocolIEs.list, ie);
+  asn1cSeqAdd(&out->protocolIEs.list, ie);
 
   /* optional */
   /* c3. TimeToWait */
@@ -1040,7 +983,7 @@ int MCE_send_M2_SETUP_FAILURE(instance_t instance,m2ap_setup_failure_t* m2ap_set
     ie->criticality               = M2AP_Criticality_ignore;
     ie->value.present             = M2AP_M2SetupFailure_Ies__value_PR_TimeToWait;
     ie->value.choice.TimeToWait = M2AP_TimeToWait_v10s;
-    ASN_SEQUENCE_ADD(&out->protocolIEs.list, ie);
+    asn1cSeqAdd(&out->protocolIEs.list, ie);
   }
 
   /* optional */
@@ -1058,7 +1001,7 @@ int MCE_send_M2_SETUP_FAILURE(instance_t instance,m2ap_setup_failure_t* m2ap_set
     *ie->value.choice.CriticalityDiagnostics.procedureCriticality = M2AP_Criticality_reject;
     //ie->value.choice.CriticalityDiagnostics.transactionID = (M2AP_TransactionID_t *)calloc(1, sizeof(M2AP_TransactionID_t));
     //*ie->value.choice.CriticalityDiagnostics.transactionID = 0;
-    ASN_SEQUENCE_ADD(&out->protocolIEs.list, ie);
+    asn1cSeqAdd(&out->protocolIEs.list, ie);
   }
 
   /* encode */
@@ -1114,7 +1057,7 @@ int MCE_send_MCE_CONFIGURATION_UPDATE(instance_t instance, module_id_t du_mod_id
   ie->value.choice.GlobalMCE_ID.mCE_ID.size=2;
   //ie->value.choice.GlobalMCE_ID.mCE_ID.bits_unused=6;
 
-  ASN_SEQUENCE_ADD(&out->protocolIEs.list, ie);
+  asn1cSeqAdd(&out->protocolIEs.list, ie);
  
   /* optional */
   /* c2. MCEname */
@@ -1125,7 +1068,7 @@ int MCE_send_MCE_CONFIGURATION_UPDATE(instance_t instance, module_id_t du_mod_id
   //  ie->value.present             = M2AP_MCEConfigurationUpdate_Ies__value_PR_MCEname;
   //  OCTET_STRING_fromBuf(&ie->value.choice.MCEname, m2ap_setup_resp->MCEname,
   //                       strlen(m2ap_setup_resp->MCEname));
-  //  ASN_SEQUENCE_ADD(&out->protocolIEs.list, ie);
+  //  asn1cSeqAdd(&out->protocolIEs.list, ie);
   //}
 
   /* mandatory */
@@ -1156,10 +1099,10 @@ int MCE_send_MCE_CONFIGURATION_UPDATE(instance_t instance, module_id_t du_mod_id
 	//memset(&config_per_mbsfn_area_item->subframeAllocationInfo,0,sizeof(BIT_STRING_t));
 	
         config_per_mbsfn_area_item->modulationAndCodingScheme = M2AP_MCCHrelatedBCCH_ConfigPerMBSFNArea_Item__modulationAndCodingScheme_n2;
-	ASN_SEQUENCE_ADD(&ie->value.choice.MCCHrelatedBCCH_ConfigPerMBSFNArea.list,mcch_related_bcch_config_per_mbsfn_area_item_ies);
+	asn1cSeqAdd(&ie->value.choice.MCCHrelatedBCCH_ConfigPerMBSFNArea.list,mcch_related_bcch_config_per_mbsfn_area_item_ies);
   }
   
-  ASN_SEQUENCE_ADD(&out->protocolIEs.list, ie);
+  asn1cSeqAdd(&out->protocolIEs.list, ie);
   
 
   /* encode */
@@ -1178,11 +1121,8 @@ int MCE_send_MCE_CONFIGURATION_UPDATE(instance_t instance, module_id_t du_mod_id
   
 }
 
-
-int MCE_handle_MCE_CONFIGURATION_UPDATE_FAILURE(instance_t instance,
-                                                  uint32_t assoc_id,
-                                                  uint32_t stream,
-                                                  M2AP_M2AP_PDU_t *pdu){
+int MCE_handle_MCE_CONFIGURATION_UPDATE_FAILURE(instance_t instance, sctp_assoc_t assoc_id, uint32_t stream, M2AP_M2AP_PDU_t *pdu)
+{
   AssertFatal(1==0,"Not implemented yet\n");
 
     LOG_D(M2AP, "MCE_handle_MCE_CONFIGURATION_UPDATE_FAILURE\n");
@@ -1217,15 +1157,6 @@ int MCE_handle_MCE_CONFIGURATION_UPDATE_FAILURE(instance_t instance,
    //for (int i=0;i<num_cells_to_activate;i++)
    //  AssertFatal(M2AP_SETUP_RESP (msg_p).num_SI[i] > 0, "System Information %d is missing",i);
 
-   //MSC_LOG_RX_MESSAGE(
-   // MSC_M2AP_eNB,
-   // MSC_M2AP_CU,
-   // 0,
-   // 0,
-   // MSC_AS_TIME_FMT" eNB_handle_M2_SETUP_RESPONSE successfulOutcome assoc_id %d",
-   // 0,0,//MSC_AS_TIME_ARGS(ctxt_pP),
-   // assoc_id);
-
    //LOG_D(M2AP, "Sending M2AP_SETUP_RESP ITTI message to ENB_APP with assoc_id (%d->%d)\n",
    //      assoc_id,ENB_MOeNBLE_ID_TO_INSTANCE(assoc_id));
 
@@ -1235,11 +1166,12 @@ int MCE_handle_MCE_CONFIGURATION_UPDATE_FAILURE(instance_t instance,
 
 }
 
-
 int MCE_handle_MCE_CONFIGURATION_UPDATE_ACKNOWLEDGE(instance_t instance,
-                                                      uint32_t assoc_id,
-                                                      uint32_t stream,
-                                                      M2AP_M2AP_PDU_t *pdu){
+                                                    sctp_assoc_t assoc_id,
+                                                    uint32_t stream,
+                                                    M2AP_M2AP_PDU_t *pdu)
+{
+
   AssertFatal(1==0,"Not implemented yet\n");
   LOG_D(M2AP, "MCE_handle_MCE_CONFIGURATION_UPDATE_ACKNOWLEDGE assoc_id %d\n",assoc_id);
 
@@ -1264,19 +1196,14 @@ int MCE_handle_MCE_CONFIGURATION_UPDATE_ACKNOWLEDGE(instance_t instance,
   itti_send_msg_to_task(TASK_MCE_APP, ENB_MODULE_ID_TO_INSTANCE(instance), message_p);
 
   return 0;
-
 }
-
 
 /*
  * ENB Configuration Update
  */
 
-
-int MCE_handle_ENB_CONFIGURATION_UPDATE(instance_t instance,
-                                          uint32_t assoc_id,
-                                          uint32_t stream,
-                                          M2AP_M2AP_PDU_t *pdu){
+int MCE_handle_ENB_CONFIGURATION_UPDATE(instance_t instance, sctp_assoc_t assoc_id, uint32_t stream, M2AP_M2AP_PDU_t *pdu)
+{
   AssertFatal(1==0,"Not implemented yet\n");
   LOG_D(M2AP, "MCE_handle_MCE_CONFIGURATION_UPDATE_ACKNOWLEDGE assoc_id %d\n",assoc_id);
 
@@ -1323,13 +1250,9 @@ int MCE_send_ENB_CONFIGURATION_UPDATE_ACKNOWLEDGE(instance_t instance,
  * Error Indication
  */
 
-int MCE_handle_ERROR_INDICATION(instance_t instance,
-                                uint32_t assoc_id,
-                                uint32_t stream,
-                                M2AP_M2AP_PDU_t *pdu) {
+int MCE_handle_ERROR_INDICATION(instance_t instance, sctp_assoc_t assoc_id, uint32_t stream, M2AP_M2AP_PDU_t *pdu)
+{
   AssertFatal(1==0,"Not implemented yet\n");
-
-
 }
 
 int MCE_send_ERROR_INDICATION(instance_t instance, M2AP_ErrorIndication_t *ErrorIndication) {
@@ -1347,17 +1270,10 @@ int MCE_send_MBMS_SESSION_UPDATE_REQUEST(instance_t instance, m2ap_mbms_session_
   //M2AP_SessionUpdateRequest_t      SessionUpdateRequest;
 }
 
-
-
-int MCE_handle_MBMS_SESSION_UPDATE_RESPONSE(instance_t instance,
-                                                  uint32_t assoc_id,
-                                                  uint32_t stream,
-                                                  M2AP_M2AP_PDU_t *pdu){
+int MCE_handle_MBMS_SESSION_UPDATE_RESPONSE(instance_t instance, sctp_assoc_t assoc_id, uint32_t stream, M2AP_M2AP_PDU_t *pdu)
+{
   AssertFatal(1==0,"Not implemented yet\n");
-
 }
-
-
 
 int MCE_handle_MBMS_SESSION_UPDATE_FAILURE(instance_t instance,module_id_t du_mod_idP){
 
@@ -1373,12 +1289,8 @@ int MCE_send_MBMS_SERVICE_COUNTING_REQUEST(instance_t instance, module_id_t du_m
   //M2AP_MbmsServiceCountingRequest_t        MbmsServiceCountingRequest;
 }
 
-
-
-int MCE_handle_MBMS_SERVICE_COUNTING_RESPONSE(instance_t instance,
-                                                  uint32_t assoc_id,
-                                                  uint32_t stream,
-                                                  M2AP_M2AP_PDU_t *pdu){
+int MCE_handle_MBMS_SERVICE_COUNTING_RESPONSE(instance_t instance, sctp_assoc_t assoc_id, uint32_t stream, M2AP_M2AP_PDU_t *pdu)
+{
   //int i;
   //AssertFatal(1==0,"Not implemented yet\n");
   LOG_D(M2AP, "MCE_handle_MBMS_SERVICE_COUNTING_RESPONSE\n");
@@ -1430,16 +1342,7 @@ int MCE_handle_MBMS_SERVICE_COUNTING_RESPONSE(instance_t instance,
   //AssertFatal(MCE_MBMS_M2AP_ID!=-1,"MCE_MBMS_M2AP_ID was not sent\n");
   //AssertFatal(ENB_MBMS_M2AP_ID!=-1,"ENB_MBMS_M2AP_ID was not sent\n");
   //M2AP_SESSION_START_RESP(msg_p).
-//  MSC_LOG_RX_MESSAGE(
-//    MSC_M2AP_MCE,
-//    MSC_M2AP_ENB,
-	//return 0;
-//    0,
-//    0,
-//    MSC_AS_TIME_FMT" MCE_handle_M2_SESSION_START_RESPONSE successfulOutcome assoc_id %d",
-//    0,0,//MSC_AS_TIME_ARGS(ctxt_pP),
-//    assoc_id);
-//
+
    //LOG_D(M2AP, "Sending  ITTI message to ENB_APP with assoc_id (%d->%d)\n",
          //assoc_id,ENB_MODULE_ID_TO_INSTANCE(assoc_id));
 
@@ -1480,7 +1383,7 @@ int MCE_handle_MBMS_SESSION_COUNTING_FAILURE(instance_t instance,  module_id_t d
   //ie->value.choice.MCCH_Update_Time =  ; 
   //ie->value.choice.MCCH_Update_Time = m2ap_mbms_scheduling_information->mcch_update_time;
 
-  ASN_SEQUENCE_ADD(&out->protocolIEs.list, ie);  
+  asn1cSeqAdd(&out->protocolIEs.list, ie);  
 
 
   /* mandatory */
@@ -1489,8 +1392,8 @@ int MCE_handle_MBMS_SESSION_COUNTING_FAILURE(instance_t instance,  module_id_t d
   ie->id                        = M2AP_ProtocolIE_ID_id_MBSFN_Area_ID;
   ie->criticality               = M2AP_Criticality_reject;
   ie->value.present             = M2AP_MbmsServiceCountingRequest_Ies__value_PR_MBSFN_Area_ID;
-  //ie->value.choice.MCE_MBMS_M2AP_ID = /*F1AP_get_next_transaction_identifier(enb_mod_idP, du_mod_idP);*/ //?
-  ASN_SEQUENCE_ADD(&out->protocolIEs.list, ie);
+  //ie->value.choice.MCE_MBMS_M2AP_ID = 0;
+  asn1cSeqAdd(&out->protocolIEs.list, ie);
 
   /* mandatory */
   /* c2. TMGI (integrer value) */
@@ -1503,7 +1406,7 @@ int MCE_handle_MBMS_SESSION_COUNTING_FAILURE(instance_t instance,  module_id_t d
 
                         //&ie->choice.TMGI.pLMN_Identity);
   //INT16_TO_OCTET_STRING(0,&ie->choice.TMGI.serviceId);
-  ASN_SEQUENCE_ADD(&out->protocolIEs.list, ie);
+  asn1cSeqAdd(&out->protocolIEs.list, ie);
 
   if (m2ap_encode_pdu(&pdu, &buffer, &len) < 0) {
     LOG_E(M2AP, "Failed to encode MBMS Service Counting Results Report\n");
@@ -1520,9 +1423,10 @@ int MCE_handle_MBMS_SESSION_COUNTING_FAILURE(instance_t instance,  module_id_t d
  */
 
 int MCE_handle_MBMS_SESSION_COUNTING_RESULTS_REPORT(instance_t instance,
-                                                      uint32_t assoc_id,
-                                                      uint32_t stream,
-                                                      M2AP_M2AP_PDU_t *pdu){
+                                                    sctp_assoc_t assoc_id,
+                                                    uint32_t stream,
+                                                    M2AP_M2AP_PDU_t *pdu)
+{
   AssertFatal(1==0,"Not implemented yet\n");
 
 }
@@ -1531,10 +1435,8 @@ int MCE_handle_MBMS_SESSION_COUNTING_RESULTS_REPORT(instance_t instance,
 /*
  * Overload Notification
  */
-int MCE_handle_MBMS_OVERLOAD_NOTIFICATION(instance_t instance,
-                                                      uint32_t assoc_id,
-                                                      uint32_t stream,
-                                                      M2AP_M2AP_PDU_t *pdu){
+int MCE_handle_MBMS_OVERLOAD_NOTIFICATION(instance_t instance, sctp_assoc_t assoc_id, uint32_t stream, M2AP_M2AP_PDU_t *pdu)
+{
   AssertFatal(1==0,"Not implemented yet\n");
  
 }

@@ -19,15 +19,13 @@
  *      contact@openairinterface.org
  */
 
-#include "pdcp.h"
+#include "common/utils/LOG/log.h"
+#include "nr_pdcp_entity.h"
 
 int decode_t_reordering(int v)
 {
-  static int tab[36] = {
-    0, 1, 2, 4, 5, 8, 10, 15, 20, 30, 40, 50, 60, 80, 100, 120, 140, 160, 180,
-    200, 220, 240, 260, 280, 300, 500, 750, 1000, 1250, 1500, 1750, 2000,
-    2250, 2500, 2750, 3000
-  };
+  static const int tab[36] = {0,   1,   2,   4,   5,   8,   10,  15,  20,  30,   40,   50,   60,   80,   100,  120,  140,  160,
+                              180, 200, 220, 240, 260, 280, 300, 500, 750, 1000, 1250, 1500, 1750, 2000, 2250, 2500, 2750, 3000};
 
   if (v < 0 || v > 35) {
     LOG_E(RLC, "%s:%d:%s: fatal\n", __FILE__, __LINE__, __FUNCTION__);
@@ -39,24 +37,39 @@ int decode_t_reordering(int v)
 
 int decode_sn_size_ul(long s)
 {
-  if (s == 0) return 12;
-  if (s == 1) return 18;
+  if (s == 0) return SHORT_SN_SIZE;
+  if (s == 1) return LONG_SN_SIZE;
   LOG_E(RLC, "%s:%d:%s: fatal\n", __FILE__, __LINE__, __FUNCTION__);
   exit(1);
 }
 
 int decode_sn_size_dl(long s)
 {
-  if (s == 0) return 12;
-  if (s == 1) return 18;
+  if (s == 0) return SHORT_SN_SIZE;
+  if (s == 1) return LONG_SN_SIZE;
   LOG_E(RLC, "%s:%d:%s: fatal\n", __FILE__, __LINE__, __FUNCTION__);
   exit(1);
 }
 
 int decode_discard_timer(long v)
 {
-  static int tab[16] = {
-    10, 20, 30, 40, 50, 60, 75, 100, 150, 200, 250, 300, 500, 750, 1500, -1,
+  static const int tab[16] = {
+      10,
+      20,
+      30,
+      40,
+      50,
+      60,
+      75,
+      100,
+      150,
+      200,
+      250,
+      300,
+      500,
+      750,
+      1500,
+      -1,
   };
 
   if (v < 0 || v > 15) {

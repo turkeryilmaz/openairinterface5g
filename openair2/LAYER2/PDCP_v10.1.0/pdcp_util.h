@@ -29,7 +29,7 @@
 #define PDCP_UTIL_H
 
 #include "common/utils/LOG/log.h"
-#include "../../COMMON/platform_types.h"
+#include "common/platform_types.h"
 #include "pdcp.h"
 
 /*
@@ -66,8 +66,8 @@ void util_print_binary_representation(unsigned char* message, uint8_t octet);
  *
  * @param octet Octet
  * @param index Index
- * @return TRUE on success, FALSE otherwise
+ * @return true on success, false otherwise
  */
-boolean_t util_mark_nth_bit_of_octet(uint8_t* octet, uint8_t index);
+bool util_mark_nth_bit_of_octet(uint8_t* octet, uint8_t index);
 
 #endif // PDCP_UTIL_H

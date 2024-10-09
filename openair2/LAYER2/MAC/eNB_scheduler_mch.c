@@ -37,8 +37,6 @@
 #include "nfapi/oai_integration/vendor_ext.h"
 #include "common/utils/LOG/vcd_signal_dumper.h"
 #include "UTIL/OPT/opt.h"
-#include "OCG.h"
-#include "OCG_extern.h"
 #include "PHY/LTE_TRANSPORT/transport_common_proto.h"
 
 #include "RRC/LTE/rrc_extern.h"
@@ -136,7 +134,7 @@ schedule_MBMS_NFAPI(module_id_t module_idP, uint8_t CC_id, frame_t frameP,
     int ii = 0, msi_pos = -1;
     int mcch_mcs = -1;
     int shifted_sf = 0;
-    uint16_t TBS, j = -1, padding = 0, post_padding = 0;
+    uint16_t TBS, padding = 0, post_padding = 0;
     mac_rlc_status_resp_t rlc_status;
     int num_mtch=0;
     int msi_length=0, i, k;
@@ -144,6 +142,7 @@ schedule_MBMS_NFAPI(module_id_t module_idP, uint8_t CC_id, frame_t frameP,
     unsigned char sdu_lcids[11], num_sdus = 0, offset = 0;
     uint16_t sdu_lengths[11], sdu_length_total = 0;
     unsigned char mch_buffer[MAX_DLSCH_PAYLOAD_BYTES];	// check the max value, this is for dlsch only
+    int16_t j = -1;
 
     COMMON_channels_t *cc = &RC.mac[module_idP]->common_channels[CC_id];
 
@@ -213,7 +212,7 @@ schedule_MBMS_NFAPI(module_id_t module_idP, uint8_t CC_id, frame_t frameP,
 			msi_pos++;
 		   mbms_mch_i=0;
 
-		   if((subframeP==0)){
+		   if (subframeP==0) {
 		   	x=0;
 		   	mbms_mch_i=0;
 		   }
@@ -459,7 +458,7 @@ schedule_MBMS_NFAPI(module_id_t module_idP, uint8_t CC_id, frame_t frameP,
             	     	  module_idP, CC_id, frameP, subframeP, i, j,
             	     	  cc->mbsfn_SubframeConfig[j]->subframeAllocation.choice.oneFrame.buf[0],
             	     	  msi_pos);
-	 	         if((subframeP==1)){
+	 	         if (subframeP==1) {
 		        	x=0;
 		        	mbms_mch_i=0;
 	      	     	LOG_D(MAC,"MSP, frameP %d subframeP %d msi_pos(%d) mbms_mch_i %d\n",frameP, subframeP, msi_pos,mbms_mch_i);
@@ -708,12 +707,12 @@ schedule_MBMS_NFAPI(module_id_t module_idP, uint8_t CC_id, frame_t frameP,
     uint16_t msi_control_element[29], *msi_ptr;
     // MSI buffer pointer
     char *buffer_pointer=NULL;
-    if (msi_flag == 1) {
-	// Create MSI here
-	msi_ptr = &msi_control_element[0];
+    if (msi_flag == 1 && cc->mbms_SessionList[mbms_mch_i]) {
+      // Create MSI here
+      msi_ptr = &msi_control_element[0];
 
-	//Header for MTCHs
-	num_mtch = cc->mbms_SessionList[mbms_mch_i]->list.count;
+      // Header for MTCHs
+      num_mtch = cc->mbms_SessionList[mbms_mch_i]->list.count;
 
     	TBS =
 	get_TBS_DL(cc->MCH_pdu.mcs, to_prb(cc->mib->message.dl_Bandwidth));
@@ -867,52 +866,63 @@ schedule_MBMS_NFAPI(module_id_t module_idP, uint8_t CC_id, frame_t frameP,
     //if ((i == 0) && ((RC.mac[module_idP]->MBMS_flag != multicast_relay) || (RC.mac[module_idP]->mcch_active==0))) {
 
     // there is MTCHs, loop if there are more than 1
-    if (mtch_flag == 1 ) {
-	// Calculate TBS
-	// get MTCH data from RLC (like for DTCH)
-	LOG_D(MAC,"[eNB %d] CC_id %d Frame %d subframeP %d: Schedule MTCH (area %d, sfAlloc %d)\n",
-	      module_idP, CC_id, frameP, subframeP, i, j);
+    // BAd race condition: all this struct is filled by another thread, no mutex or any code to make it coherent
+    if (mtch_flag == 1 && cc->mbms_SessionList[0] && cc->mbms_SessionList[0]->list.array[0]) {
+      // Calculate TBS
+      // get MTCH data from RLC (like for DTCH)
+      LOG_D(MAC, "[eNB %d] CC_id %d Frame %d subframeP %d: Schedule MTCH (area %d, sfAlloc %d)\n", module_idP, CC_id, frameP, subframeP, i, j);
 
-	header_len_mtch = 3;
-	LOG_D(MAC,"[eNB %d], CC_id %d, Frame %d, MTCH->MCH, Checking RLC status (rab %d, tbs %d, len %d)\n",
-	      module_idP, CC_id, frameP, MTCH, TBS,
-	      TBS - header_len_mcch - header_len_msi - sdu_length_total -
-	      header_len_mtch);
+      header_len_mtch = 3;
+      LOG_D(MAC,
+            "[eNB %d], CC_id %d, Frame %d, MTCH->MCH, Checking RLC status (rab %d, tbs %d, len %d)\n",
+            module_idP,
+            CC_id,
+            frameP,
+            MTCH,
+            TBS,
+            TBS - header_len_mcch - header_len_msi - sdu_length_total - header_len_mtch);
 
-	//TODO
-	mbms_rab_id = cc->mbms_SessionList[0/*mbms_mch_i*/]->list.array[0]->logicalChannelIdentity_r9;
+      // TODO
+      mbms_rab_id = cc->mbms_SessionList[0 /*mbms_mch_i*/]->list.array[0]->logicalChannelIdentity_r9;
 
-	rlc_status =
-	    mac_rlc_status_ind(module_idP, 0xfffd, frameP, subframeP,
-			       module_idP, ENB_FLAG_YES, MBMS_FLAG_YES,
-				cc->mbms_SessionList[mbms_mch_i]->list.array[0]->logicalChannelIdentity_r9,
-			       //MTCH,
-                                     0, 0
-                                    );
+      rlc_status = mac_rlc_status_ind(module_idP,
+                                      0xfffd,
+                                      frameP,
+                                      subframeP,
+                                      module_idP,
+                                      ENB_FLAG_YES,
+                                      MBMS_FLAG_YES,
+                                      cc->mbms_SessionList[mbms_mch_i]->list.array[0]->logicalChannelIdentity_r9,
+                                      // MTCH,
+                                      0,
+                                      0);
 
-	bytes_in_buffer = rlc_status.bytes_in_buffer;
+      bytes_in_buffer = rlc_status.bytes_in_buffer;
 
-	//TOCHECK is this really neede?
-	if( !(mcch_flag==1 || msi_flag==1) )
-		msi_sfs = rlc_status.bytes_in_buffer/(TBS- header_len_mcch - header_len_msi -sdu_length_total - header_len_mtch)+(rlc_status.bytes_in_buffer%(TBS- header_len_mcch - header_len_msi -sdu_length_total - header_len_mtch)?1:0);
+      // TOCHECK is this really neede?
+      if (!(mcch_flag == 1 || msi_flag == 1))
+        msi_sfs = rlc_status.bytes_in_buffer / (TBS - header_len_mcch - header_len_msi - sdu_length_total - header_len_mtch)
+                  + (rlc_status.bytes_in_buffer % (TBS - header_len_mcch - header_len_msi - sdu_length_total - header_len_mtch) ? 1 : 0);
 
-        uint16_t TBS_MTCH =
-	get_TBS_DL(cc->pmch_Config[mbms_mch_i]->dataMCS_r9, to_prb(cc->mib->message.dl_Bandwidth));
+      uint16_t TBS_MTCH = get_TBS_DL(cc->pmch_Config[mbms_mch_i]->dataMCS_r9, to_prb(cc->mib->message.dl_Bandwidth));
 
-	if(msi_flag==1 && buffer_pointer!=NULL){
-	//	msi_ptr = &msi_control_element[0];
+      if (msi_flag == 1 && buffer_pointer != NULL) {
+        //	msi_ptr = &msi_control_element[0];
 
-	    msi_pmch_stop = (rlc_status.bytes_in_buffer - header_len_mcch - header_len_msi -sdu_length_total - header_len_mtch)/(TBS_MTCH/*- header_len_mcch - header_len_msi -sdu_length_total*/ - header_len_mtch)+((rlc_status.bytes_in_buffer-TBS-header_len_mcch - header_len_msi -sdu_length_total)%(TBS_MTCH/*- header_len_mcch - header_len_msi -sdu_length_total*/ - header_len_mtch)?0:0);
+        msi_pmch_stop =
+            (rlc_status.bytes_in_buffer - header_len_mcch - header_len_msi - sdu_length_total - header_len_mtch) / (TBS_MTCH /*- header_len_mcch - header_len_msi -sdu_length_total*/ - header_len_mtch)
+            + ((rlc_status.bytes_in_buffer - TBS - header_len_mcch - header_len_msi - sdu_length_total) % (TBS_MTCH /*- header_len_mcch - header_len_msi -sdu_length_total*/ - header_len_mtch) ? 0
+                                                                                                                                                                                                : 0);
 
-	    for (k = 0; k < num_mtch; k++) {	// loop for all session in this MCH (MCH[0]) at this moment
-	      msi_ptr = &msi_control_element[k];
+        for (k = 0; k < num_mtch; k++) { // loop for all session in this MCH (MCH[0]) at this moment
+          msi_ptr = &msi_control_element[k];
 
-	      ((MSI_ELEMENT *) msi_ptr)->lcid = cc->mbms_SessionList[mbms_mch_i]->list.array[k]->logicalChannelIdentity_r9;	//mtch_lcid;
+          ((MSI_ELEMENT *)msi_ptr)->lcid = cc->mbms_SessionList[mbms_mch_i]->list.array[k]->logicalChannelIdentity_r9; // mtch_lcid;
 
-	      if( msi_pmch_stop > cc->pmch_Config[mbms_mch_i]->sf_AllocEnd_r9)
-	             LOG_E(MAC,"e-MBMS Buffer Overflow\n"); 
+          if (msi_pmch_stop > cc->pmch_Config[mbms_mch_i]->sf_AllocEnd_r9)
+            LOG_E(MAC, "e-MBMS Buffer Overflow\n");
 
-	      if(msi_pmch_stop>=num_sf_alloc /*&& msi_pmch_stop <=cc->pmch_Config[0]->sf_AllocEnd_r9*/)  {
+          if (msi_pmch_stop >= num_sf_alloc /*&& msi_pmch_stop <=cc->pmch_Config[0]->sf_AllocEnd_r9*/) {
 	          ((MSI_ELEMENT *) msi_ptr)->stop_sf_MSB = (((msi_pmch_stop <=cc->pmch_Config[mbms_mch_i]->sf_AllocEnd_r9 ? msi_pmch_stop: cc->pmch_Config[mbms_mch_i]->sf_AllocEnd_r9) >> 8) & 0x7f);
 	      	((MSI_ELEMENT *) msi_ptr)->stop_sf_LSB = ((msi_pmch_stop <=cc->pmch_Config[mbms_mch_i]->sf_AllocEnd_r9 ? msi_pmch_stop: cc->pmch_Config[mbms_mch_i]->sf_AllocEnd_r9) & 0xff);
 	          msi_pmch_stop = (msi_pmch_stop <=cc->pmch_Config[mbms_mch_i]->sf_AllocEnd_r9 ? msi_pmch_stop: cc->pmch_Config[mbms_mch_i]->sf_AllocEnd_r9);
@@ -1045,16 +1055,22 @@ schedule_MBMS_NFAPI(module_id_t module_idP, uint8_t CC_id, frame_t frameP,
 
 	/* Tracing of PDU is done on UE side */
 	//if (opt_enabled == 1) {
-	trace_pdu(DIRECTION_DOWNLINK, (uint8_t *) cc->MCH_pdu.payload, TBS, module_idP, WS_M_RNTI , 0xfffd,	// M_RNTI = 6 in wirehsark
-	          RC.mac[module_idP]->frame,
-	          RC.mac[module_idP]->subframe, 0, 0);
-	LOG_D(OPT, "[eNB %d][MCH] CC_id %d Frame %d : MAC PDU with size %d\n",
-		  module_idP, CC_id, frameP, TBS);
-	//}
+  ws_trace_t tmp = {.direction = DIRECTION_DOWNLINK,
+                    .pdu_buffer = (uint8_t *)cc->MCH_pdu.payload,
+                    .pdu_buffer_size = TBS,
+                    .ueid = module_idP,
+                    .rntiType = WS_M_RNTI,
+                    .rnti = 0xfffd, // M_RNTI = 6 in wireshark
+                    .sysFrame = RC.mac[module_idP]->frame,
+                    .subframe = RC.mac[module_idP]->subframe};
+  trace_pdu(&tmp);
 
-       	eNB_MAC_INST *eNB = RC.mac[module_idP];
-    	dl_req = &eNB->DL_req[CC_id].dl_config_request_body;
-	dl_req->tl.tag = NFAPI_DL_CONFIG_REQUEST_BODY_TAG;
+  LOG_D(OPT, "[eNB %d][MCH] CC_id %d Frame %d : MAC PDU with size %d\n", module_idP, CC_id, frameP, TBS);
+  //}
+
+  eNB_MAC_INST *eNB = RC.mac[module_idP];
+  dl_req = &eNB->DL_req[CC_id].dl_config_request_body;
+  dl_req->tl.tag = NFAPI_DL_CONFIG_REQUEST_BODY_TAG;
     	fill_nfapi_mch_config(
 			dl_req,
 			TBS,
@@ -1105,7 +1121,7 @@ schedule_MBMS(module_id_t module_idP, uint8_t CC_id, frame_t frameP,
 	0, header_len_mcch_temp = 0, header_len_msi_temp = 0;
     int ii = 0, msi_pos = 0;
     int mcch_mcs = -1;
-    uint16_t TBS, j = -1, padding = 0, post_padding = 0;
+    uint16_t TBS, padding = 0, post_padding = 0;
     mac_rlc_status_resp_t rlc_status;
     int num_mtch;
     int msi_length, i, k;
@@ -1113,6 +1129,7 @@ schedule_MBMS(module_id_t module_idP, uint8_t CC_id, frame_t frameP,
     unsigned char sdu_lcids[11], num_sdus = 0, offset = 0;
     uint16_t sdu_lengths[11], sdu_length_total = 0;
     unsigned char mch_buffer[MAX_DLSCH_PAYLOAD_BYTES];	// check the max value, this is for dlsch only
+    int16_t j = -1;
 
     COMMON_channels_t *cc = &RC.mac[module_idP]->common_channels[CC_id];
 
@@ -1819,19 +1836,23 @@ schedule_MBMS(module_id_t module_idP, uint8_t CC_id, frame_t frameP,
 
 	/* Tracing of PDU is done on UE side */
 	//if (opt_enabled == 1) {
-	    trace_pdu(DIRECTION_DOWNLINK, (uint8_t *) cc->MCH_pdu.payload, TBS, module_idP, WS_M_RNTI , 0xffff,	// M_RNTI = 6 in wirehsark
-		      RC.mac[module_idP]->frame,
-		      RC.mac[module_idP]->subframe, 0, 0);
-	    LOG_D(OPT,
-		  "[eNB %d][MCH] CC_id %d Frame %d : MAC PDU with size %d\n",
-		  module_idP, CC_id, frameP, TBS);
-	//}
+  ws_trace_t tmp = {.direction = DIRECTION_DOWNLINK,
+                    .pdu_buffer = (uint8_t *)cc->MCH_pdu.payload,
+                    .pdu_buffer_size = TBS,
+                    .ueid = module_idP,
+                    .rntiType = WS_M_RNTI,
+                    .rnti = 0xffff, // M_RNTI = 6 in wireshark
+                    .sysFrame = RC.mac[module_idP]->frame,
+                    .subframe = RC.mac[module_idP]->subframe};
+  trace_pdu(&tmp);
+  LOG_D(OPT, "[eNB %d][MCH] CC_id %d Frame %d : MAC PDU with size %d\n", module_idP, CC_id, frameP, TBS);
+  //}
 
-	/*
-	   for (j=0;j<sdu_length_total;j++)
-	   printf("%2x.",RC.mac[module_idP]->MCH_pdu.payload[j+offset]);
-	   printf(" \n"); */
-	return 1;
+  /*
+     for (j=0;j<sdu_length_total;j++)
+     printf("%2x.",RC.mac[module_idP]->MCH_pdu.payload[j+offset]);
+     printf(" \n"); */
+  return 1;
     } else {
 	cc->MCH_pdu.Pdu_size = 0;
 	cc->MCH_pdu.sync_area = 0;

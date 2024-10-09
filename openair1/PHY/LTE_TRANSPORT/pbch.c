@@ -72,6 +72,7 @@ int allocate_pbch_REs_in_RB(LTE_DL_FRAME_PARMS *frame_parms,
   first_re=0;
   last_re=12;
 
+
   for (re=first_re; re<last_re; re++) {
 
     tti_offset = symbol_offset + re_off + re;
@@ -145,7 +146,7 @@ void pbch_scrambling_fembms(LTE_DL_FRAME_PARMS *frame_parms,
 {
   int i;
   uint8_t reset;
-  uint32_t x1, x2, s=0;
+  uint32_t x1 = 0, x2 = 0, s = 0;
 
   reset = 1;
   // x1 is set in lte_gold_generic
@@ -424,7 +425,7 @@ void pbch_scrambling(LTE_DL_FRAME_PARMS *frame_parms,
 {
   int i;
   uint8_t reset;
-  uint32_t x1, x2, s=0;
+  uint32_t x1 = 0, x2 = 0, s = 0;
 
   reset = 1;
   // x1 is set in lte_gold_generic

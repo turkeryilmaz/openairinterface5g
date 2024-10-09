@@ -70,8 +70,7 @@ void x2ap_eNB_register_eNB(x2ap_eNB_instance_t *instance_p,
                            net_ip_address_t    *local_ip_addr,
                            uint16_t             in_streams,
                            uint16_t             out_streams,
-                           uint32_t             enb_port_for_X2C,
-                           int                  multi_sd);
+                           uint32_t             enb_port_for_X2C);
 
 static
 void x2ap_eNB_handle_handover_req(instance_t instance,
@@ -115,7 +114,12 @@ void x2ap_eNB_handle_sctp_association_resp(instance_t instance, sctp_new_associa
     if (x2ap_enb_data_p != NULL) {
       /* some sanity check - to be refined at some point */
       if (sctp_new_association_resp->sctp_state != SCTP_STATE_ESTABLISHED) {
-        X2AP_ERROR("x2ap_enb_data_p not NULL and sctp state not SCTP_STATE_ESTABLISHED, what to do?\n");
+        X2AP_ERROR("x2ap_enb_data_p not NULL and sctp state not SCTP_STATE_ESTABLISHED?\n");
+        if (sctp_new_association_resp->sctp_state == SCTP_STATE_SHUTDOWN){
+          RB_REMOVE(x2ap_enb_map, &instance_p->x2ap_enb_head, x2ap_enb_data_p);
+          return;
+        }
+
         exit(1);
       }
 
@@ -129,6 +133,18 @@ void x2ap_eNB_handle_sctp_association_resp(instance_t instance, sctp_new_associa
                                  sctp_new_association_resp->ulp_cnx_id);
   DevAssert(x2ap_enb_data_p != NULL);
   dump_trees();
+
+  /* gNB: exit if connection to eNB failed - to be modified if needed.
+   * We may want to try to connect over and over again until we succeed
+   * but the modifications to the code to get this behavior are complex.
+   * Exit on error is a simple solution that can be caught by a script
+   * for example.
+   */
+  if (instance_p->cell_type == CELL_MACRO_GNB
+      && sctp_new_association_resp->sctp_state == SCTP_STATE_UNREACHABLE) {
+    X2AP_ERROR("association with eNB failed, is it running? If no, run it first. If yes, check IP addresses in your configuration file.\n");
+    exit(1);
+  }
 
   if (sctp_new_association_resp->sctp_state != SCTP_STATE_ESTABLISHED) {
     X2AP_WARN("Received unsuccessful result for SCTP association (%u), instance %ld, cnx_id %u\n",
@@ -201,29 +217,16 @@ int x2ap_eNB_init_sctp (x2ap_eNB_instance_t *instance_p,
                         net_ip_address_t    *local_ip_addr,
                         uint32_t enb_port_for_X2C) {
   // Create and alloc new message
-  MessageDef                             *message;
-  sctp_init_t                            *sctp_init  = NULL;
   DevAssert(instance_p != NULL);
   DevAssert(local_ip_addr != NULL);
-  message = itti_alloc_new_message (TASK_X2AP, 0, SCTP_INIT_MSG_MULTI_REQ);
-  sctp_init = &message->ittiMsg.sctp_init_multi;
+  size_t addr_len = strlen(local_ip_addr->ipv4_address) + 1;
+  MessageDef *message = itti_alloc_new_message_sized(TASK_X2AP, 0, SCTP_INIT_MSG_MULTI_REQ, sizeof(sctp_init_t) + addr_len);
+  sctp_init_t *sctp_init = &message->ittiMsg.sctp_init_multi;
   sctp_init->port = enb_port_for_X2C;
   sctp_init->ppid = X2AP_SCTP_PPID;
-  sctp_init->ipv4 = 1;
-  sctp_init->ipv6 = 0;
-  sctp_init->nb_ipv4_addr = 1;
-#if 0
-  memcpy(&sctp_init->ipv4_address,
-         local_ip_addr,
-         sizeof(*local_ip_addr));
-#endif
-  sctp_init->ipv4_address[0] = inet_addr(local_ip_addr->ipv4_address);
-  /*
-   * SR WARNING: ipv6 multi-homing fails sometimes for localhost.
-   * * * * Disable it for now.
-   */
-  sctp_init->nb_ipv6_addr = 0;
-  sctp_init->ipv6_address[0] = "0:0:0:0:0:0:0:1";
+  char *addr_buf = (char *) (sctp_init + 1);
+  sctp_init->bind_address = addr_buf;
+  memcpy(addr_buf, local_ip_addr->ipv4_address, addr_len);
   return itti_send_msg_to_task (TASK_SCTP, instance_p->instance, message);
 }
 
@@ -232,20 +235,17 @@ static void x2ap_eNB_register_eNB(x2ap_eNB_instance_t *instance_p,
                                   net_ip_address_t    *local_ip_addr,
                                   uint16_t             in_streams,
                                   uint16_t             out_streams,
-                                  uint32_t         enb_port_for_X2C,
-                                  int                  multi_sd) {
+                                  uint32_t         enb_port_for_X2C) {
   MessageDef                       *message                   = NULL;
-  sctp_new_association_req_multi_t *sctp_new_association_req  = NULL;
   x2ap_eNB_data_t                  *x2ap_enb_data             = NULL;
   DevAssert(instance_p != NULL);
   DevAssert(target_eNB_ip_address != NULL);
-  message = itti_alloc_new_message(TASK_X2AP, 0, SCTP_NEW_ASSOCIATION_REQ_MULTI);
-  sctp_new_association_req = &message->ittiMsg.sctp_new_association_req_multi;
+  message = itti_alloc_new_message(TASK_X2AP, 0, SCTP_NEW_ASSOCIATION_REQ);
+   sctp_new_association_req_t *sctp_new_association_req = &message->ittiMsg.sctp_new_association_req;
   sctp_new_association_req->port = enb_port_for_X2C;
   sctp_new_association_req->ppid = X2AP_SCTP_PPID;
   sctp_new_association_req->in_streams  = in_streams;
   sctp_new_association_req->out_streams = out_streams;
-  sctp_new_association_req->multi_sd = multi_sd;
   memcpy(&sctp_new_association_req->remote_address,
          target_eNB_ip_address,
          sizeof(*target_eNB_ip_address));
@@ -382,8 +382,7 @@ void x2ap_eNB_handle_sctp_init_msg_multi_cnf(
                           &instance->enb_x2_ip_address,
                           instance->sctp_in_streams,
                           instance->sctp_out_streams,
-                          instance->enb_port_for_X2C,
-                          instance->multi_sd);
+                          instance->enb_port_for_X2C);
   }
 }
 
@@ -536,9 +535,10 @@ void x2ap_gNB_trigger_sgNB_add_req_ack(instance_t instance,
 }
 
 /**
- * @fn	: Function triggers sgnb reconfiguration complete
+ * @fn x2ap_eNB_trigger_sgnb_reconfiguration_complete
+ *\brief:  Function triggers sgnb reconfiguration complete
  * @param	: IN instance, IN x2ap_reconf_complete
-**/ 
+ **/
 static
 void x2ap_eNB_trigger_sgnb_reconfiguration_complete(instance_t instance,
     x2ap_ENDC_reconf_complete_t *x2ap_reconf_complete)
@@ -604,7 +604,12 @@ void x2ap_eNB_handle_sgNB_release_request(instance_t instance,
   }
 
   target = x2ap_get_eNB(NULL, x2ap_release_req->assoc_id, 0);
-  DevAssert(target != NULL);
+  if (target == NULL) {
+    X2AP_ERROR("no X2AP target eNB on assoc_id %d, dropping sgNB release request\n", x2ap_release_req->assoc_id);
+    /* x2ap_gNB_handle_ENDC_sGNB_release_request_acknowledge() would handle the
+     * ack, but does not do anything */
+    return;
+  }
 
   /* id_source is not used by oai's gNB so it's not big deal. For
    * interoperability with other gNBs things may need to be refined.
@@ -623,7 +628,8 @@ void *x2ap_task(void *arg) {
 
   while (1) {
     itti_receive_msg(TASK_X2AP, &received_msg);
-
+    LOG_D(X2AP, "Received message %d:%s\n",
+	       ITTI_MSG_ID(received_msg), ITTI_MSG_NAME(received_msg));
     switch (ITTI_MSG_ID(received_msg)) {
       case TERMINATE_MESSAGE:
         X2AP_WARN(" *** Exiting X2AP thread\n");
@@ -662,7 +668,6 @@ void *x2ap_task(void *arg) {
       case X2AP_ENDC_SGNB_ADDITION_REQ_ACK:
     	  x2ap_gNB_trigger_sgNB_add_req_ack(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
     			  &X2AP_ENDC_SGNB_ADDITION_REQ_ACK(received_msg));
-    	LOG_I(X2AP, "Received elements for X2AP_ENDC_SGNB_ADDITION_REQ_ACK \n");
     	break;
 
       case X2AP_ENDC_SGNB_RECONF_COMPLETE:
@@ -725,21 +730,21 @@ int is_x2ap_enabled(void)
 
   char *enable_x2 = NULL;
   paramdef_t p[] = {
-   { "enable_x2", "yes/no", 0, strptr:&enable_x2, defstrval:"", TYPE_STRING, 0 }
+   { "enable_x2", "yes/no", 0, .strptr=&enable_x2, .defstrval="", TYPE_STRING, 0 }
   };
 
   /* TODO: do it per module - we check only first eNB */
-  config_get(p, sizeof(p)/sizeof(paramdef_t), "eNBs.[0]");
+  config_get(config_get_if(), p, sizeofArray(p), "eNBs.[0]");
   if (enable_x2 != NULL && strcmp(enable_x2, "yes") == 0){
 	  enabled = 1;
   }
 
   /*Consider also the case of enabling X2AP for a gNB by parsing a gNB configuration file*/
 
-  config_get(p, sizeof(p)/sizeof(paramdef_t), "gNBs.[0]");
-    if (enable_x2 != NULL && strcmp(enable_x2, "yes") == 0){
-  	  enabled = 1;
-    }
+  config_get(config_get_if(), p, sizeofArray(p), "gNBs.[0]");
+  if (enable_x2 != NULL && strcmp(enable_x2, "yes") == 0) {
+    enabled = 1;
+  }
 
   config_loaded = 1;
 
@@ -749,4 +754,10 @@ int is_x2ap_enabled(void)
 mutex_error:
   LOG_E(X2AP, "mutex error\n");
   exit(1);
+}
+
+void x2ap_trigger(void)
+{
+  MessageDef *msg = itti_alloc_new_message(TASK_X2AP, 0, X2AP_SUBFRAME_PROCESS);
+  itti_send_msg_to_task(TASK_X2AP, 0, msg);
 }

@@ -1,7 +1,7 @@
 #include "event.h"
 #include "database.h"
 #include "utils.h"
-#include "config.h"
+#include "configuration.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -49,7 +49,7 @@ again:
 #endif
 
 read_error:
-  return (event){type: -1};
+  return (event){.type = -1};
 }
 
 #ifdef T_SEND_TIME
@@ -71,6 +71,12 @@ event new_event(int type, int length, char *buffer, void *database)
   e.buffer = buffer;
 
   f = get_format(database, type);
+  if (f.count > T_MAX_ARGS) {
+    printf("fatal: the T trace %s is defined to take %d arguments, but T_MAX_ARGS is %d. "
+           "Increase T_MAX_ARGS in event.h and recompile all the tracers (make clean; make).\n",
+           event_name_from_id(database, type), f.count, T_MAX_ARGS);
+    exit(1);
+  }
 
   e.ecount = f.count;
 

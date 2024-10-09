@@ -36,9 +36,12 @@
 #include "FGSIdentityResponse.h"
 #include "FGSAuthenticationResponse.h"
 #include "FGSNASSecurityModeComplete.h"
+#include "FGSDeregistrationRequestUEOriginating.h"
 #include "RegistrationComplete.h"
 #include "as_message.h"
 #include "FGSUplinkNasTransport.h"
+#include <openair3/UICC/usim_interface.h>
+#include "secu_defs.h"
 
 #define PLAIN_5GS_MSG                                      0b0000
 #define INTEGRITY_PROTECTED                                0b0001
@@ -49,6 +52,8 @@
 #define REGISTRATION_REQUEST                               0b01000001 /* 65 = 0x41 */
 #define REGISTRATION_ACCEPT                                0b01000010 /* 66 = 0x42 */
 #define REGISTRATION_COMPLETE                              0b01000011 /* 67 = 0x43 */
+#define FGS_DEREGISTRATION_REQUEST_UE_ORIGINATING          0b01000101
+#define FGS_DEREGISTRATION_ACCEPT                          0b01000110
 #define FGS_AUTHENTICATION_REQUEST                         0b01010110 /* 86 = 0x56 */
 #define FGS_AUTHENTICATION_RESPONSE                        0b01010111 /* 87 = 0x57 */
 #define FGS_IDENTITY_REQUEST                               0b01011011 /* 91 = 0x5b */
@@ -56,12 +61,52 @@
 #define FGS_SECURITY_MODE_COMMAND                          0b01011101 /* 93 = 0x5d */
 #define FGS_SECURITY_MODE_COMPLETE                         0b01011110 /* 94 = 0x5e */
 #define FGS_UPLINK_NAS_TRANSPORT                           0b01100111 /* 103= 0x67 */
+#define FGS_DOWNLINK_NAS_TRANSPORT                         0b01101000 /* 104= 0x68 */
 
 // message type for 5GS session management
 #define FGS_PDU_SESSION_ESTABLISHMENT_REQ                  0b11000001 /* 193= 0xc1 */
+#define FGS_PDU_SESSION_ESTABLISHMENT_ACC                  0b11000010 /* 194= 0xc2 */
+#define FGS_PDU_SESSION_ESTABLISHMENT_REJ                  0b11000011 /* 195= 0xc3 */
 
 #define INITIAL_REGISTRATION                               0b001
 
+#define PLAIN_5GS_NAS_MESSAGE_HEADER_LENGTH                3
+#define SECURITY_PROTECTED_5GS_NAS_MESSAGE_HEADER_LENGTH   7
+#define PAYLOAD_CONTAINER_LENGTH_MIN                       3
+#define PAYLOAD_CONTAINER_LENGTH_MAX                       65537
+
+/* List of allowed NSSAI from NAS messaging. */
+typedef struct {
+  int sst;
+  int hplmn_sst;
+  int sd;
+  int hplmn_sd;
+} nr_nas_msg_snssai_t;
+
+/* Security Key for SA UE */
+typedef struct {
+  uint8_t kausf[32];
+  uint8_t kseaf[32];
+  uint8_t kamf[32];
+  uint8_t knas_int[16];
+  uint8_t knas_enc[16];
+  uint8_t res[16];
+  uint8_t rand[16];
+  uint8_t kgnb[32];
+  uint32_t nas_count_ul;
+  uint32_t nas_count_dl;
+} ue_sa_security_key_t;
+
+typedef struct {
+  uicc_t *uicc;
+  ue_sa_security_key_t security;
+  stream_security_container_t *security_container;
+  Guti5GSMobileIdentity_t *guti;
+  bool termination_procedure;
+  uint8_t  *registration_request_buf;
+  uint32_t  registration_request_len;
+  instance_t UE_id;
+} nr_ue_nas_t;
 
 typedef enum fgs_protocol_discriminator_e {
   /* Protocol discriminator identifier for 5GS Mobility Management */
@@ -91,6 +136,7 @@ typedef union {
   registration_request_msg               registration_request;
   fgs_identiy_response_msg               fgs_identity_response;
   fgs_authentication_response_msg        fgs_auth_response;
+  fgs_deregistration_request_ue_originating_msg fgs_deregistration_request_ue_originating;
   fgs_security_mode_complete_msg         fgs_security_mode_complete;
   registration_complete_msg              registration_complete;
   fgs_uplink_nas_transport_msg           uplink_nas_transport;
@@ -114,13 +160,37 @@ typedef union {
   fgs_nas_message_plain_t plain;
 } fgs_nas_message_t;
 
-void generateRegistrationRequest(as_nas_info_t *initialNasMsg);
-void generateIdentityResponse(as_nas_info_t *initialNasMsg, uint8_t identitytype);
-void generateAuthenticationResp(as_nas_info_t *initialNasMsg, uint8_t *buf);
-void generateSecurityModeComplete(as_nas_info_t *initialNasMsg);
-void generateRegistrationComplete(as_nas_info_t *initialNasMsg, SORTransparentContainer *sortransparentcontainer);
-void generatePduSessionEstablishRequest(as_nas_info_t *initialNasMsg);
+typedef struct {
+  union {
+    mm_msg_header_t plain_nas_msg_header;
+    struct security_protected_nas_msg_header_s {
+      uint8_t  ex_protocol_discriminator;
+      uint8_t  security_header_type;
+      uint16_t message_authentication_code1;
+      uint16_t message_authentication_code2;
+      uint8_t  sequence_number;
+    } security_protected_nas_msg_header_t;
+  } choice;
+} nas_msg_header_t;
+
+typedef struct {
+  uint8_t ex_protocol_discriminator;
+  uint8_t pdu_session_id;
+  uint8_t PTI;
+  uint8_t message_type;
+} fgs_sm_nas_msg_header_t;
+
+typedef struct {
+    mm_msg_header_t         plain_nas_msg_header;
+    uint8_t                 payload_container_type;
+    uint16_t                payload_container_length;
+    fgs_sm_nas_msg_header_t sm_nas_msg_header;
+} dl_nas_transport_t;
+
+nr_ue_nas_t *get_ue_nas_info(module_id_t module_id);
+void generateRegistrationRequest(as_nas_info_t *initialNasMsg, nr_ue_nas_t *nas);
 void *nas_nrue_task(void *args_p);
+void *nas_nrue(void *args_p);
 
 #endif /* __NR_NAS_MSG_SIM_H__*/
 

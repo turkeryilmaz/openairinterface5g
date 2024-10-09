@@ -20,18 +20,14 @@
  */
 
 #include "phy_init.h"
-#include "SCHED/sched_common.h"
 #include "PHY/phy_extern.h"
-#include "PHY/NR_TRANSPORT/nr_transport_proto.h"
-#include "SIMULATION/TOOLS/sim.h"
-/*#include "RadioResourceConfigCommonSIB.h"
-#include "RadioResourceConfigDedicated.h"
-#include "TDD-Config.h"
-#include "MBSFN-SubframeConfigList.h"*/
+#include "SCHED/sched_common.h"
 #include "common/utils/LOG/vcd_signal_dumper.h"
 #include "assertions.h"
 #include <math.h>
 #include "openair1/PHY/defs_RU.h"
+
+void init_prach_ru_list(RU_t *ru);
 
 int nr_phy_init_RU(RU_t *ru) {
 
@@ -40,11 +36,11 @@ int nr_phy_init_RU(RU_t *ru) {
   int p;
   int re;
 
-  LOG_I(PHY,"Initializing RU signal buffers (if_south %s) nb_tx %d\n",ru_if_types[ru->if_south],ru->nb_tx);
+  LOG_I(PHY,"Initializing RU signal buffers (if_south %s) nb_tx %d, nb_rx %d\n",ru_if_types[ru->if_south],ru->nb_tx, ru->nb_rx);
 
   nfapi_nr_config_request_scf_t *cfg;
   ru->nb_log_antennas=0;
-  for (int n=0;n<RC.nb_nr_L1_inst;n++) {
+  for (int n=0;n<ru->num_gNB;n++) {
     cfg = &ru->config;
     if (cfg->carrier_config.num_tx_ant.value > ru->nb_log_antennas) ru->nb_log_antennas = cfg->carrier_config.num_tx_ant.value;   
   }
@@ -59,10 +55,12 @@ int nr_phy_init_RU(RU_t *ru) {
 
     for (i=0; i<ru->nb_tx; i++) {
       // Allocate 10 subframes of I/Q TX signal data (time) if not
-      ru->common.txdata[i]  = (int32_t*)malloc16_clear( fp->samples_per_frame*sizeof(int32_t) );
+      ru->common.txdata[i]  = (int32_t*)malloc16_clear((ru->sf_extension + fp->samples_per_frame)*sizeof(int32_t));
+      LOG_I(PHY,"[INIT] common.txdata[%d] = %p (%lu bytes,sf_extension %d)\n",i,ru->common.txdata[i],
+	     (ru->sf_extension + fp->samples_per_frame)*sizeof(int32_t),ru->sf_extension);
+      ru->common.txdata[i] =  &ru->common.txdata[i][ru->sf_extension];
 
-      LOG_I(PHY,"[INIT] common.txdata[%d] = %p (%lu bytes)\n",i,ru->common.txdata[i],
-	     fp->samples_per_frame*sizeof(int32_t));
+      LOG_I(PHY,"[INIT] common.txdata[%d] = %p \n",i,ru->common.txdata[i]);
 
     }
     for (i=0;i<ru->nb_rx;i++) {
@@ -99,8 +97,8 @@ int nr_phy_init_RU(RU_t *ru) {
     // allocate FFT output buffers (RX)
     ru->common.rxdataF     = (int32_t**)malloc16(ru->nb_rx*sizeof(int32_t*) );
     for (i=0; i<ru->nb_rx; i++) {    
-      // allocate 2 subframes of I/Q signal data (frequency)
-      ru->common.rxdataF[i] = (int32_t*)malloc16_clear(sizeof(int32_t)*(2*fp->samples_per_subframe_wCP) ); 
+      // allocate 4 slots of I/Q signal data (frequency)
+      ru->common.rxdataF[i] = (int32_t*)malloc16_clear(sizeof(**ru->common.rxdataF)*(RU_RX_SLOT_DEPTH*fp->symbols_per_slot*fp->ofdm_symbol_size) ); 
       LOG_I(PHY,"rxdataF[%d] %p for RU %d\n",i,ru->common.rxdataF[i],ru->idx);
     }
 
@@ -117,40 +115,44 @@ int nr_phy_init_RU(RU_t *ru) {
       }
     }
     
-    AssertFatal(RC.nb_nr_L1_inst <= NUMBER_OF_eNB_MAX,"gNB instances %d > %d\n",
-		RC.nb_nr_L1_inst,NUMBER_OF_gNB_MAX);
+    AssertFatal(ru->num_gNB <= NUMBER_OF_gNB_MAX,"gNB instances %d > %d\n",
+		ru->num_gNB,NUMBER_OF_gNB_MAX);
 
-    LOG_E(PHY,"[INIT] %s() RC.nb_nr_L1_inst:%d \n", __FUNCTION__, RC.nb_nr_L1_inst);
-    
-    int beam_count = 0;
-    if (ru->nb_tx>1) {//Enable beamforming when nb_tx > 1
-      for (p=0;p<ru->nb_log_antennas;p++) {
-        //if ((fp->L_ssb >> (63-p)) & 0x01)//64 bit-map with the MSB @2⁶³ corresponds to SSB ssb_index 0
-          beam_count++;
-      }
-      AssertFatal(ru->nb_bfw==(beam_count*ru->nb_tx),"Number of beam weights from config file is %d while the expected number is %d",ru->nb_bfw,(beam_count*ru->nb_tx));
-    
-      int l_ind = 0;
-      for (i=0; i<RC.nb_nr_L1_inst; i++) {
+    LOG_I(PHY,"[INIT] %s() ru->num_gNB:%d \n", __FUNCTION__, ru->num_gNB);
+
+    if (ru->do_precoding == 1) {
+      int beam_count = 0;
+      if (ru->nb_tx>1) { //Enable beamforming when nb_tx > 1
+
         for (p=0;p<ru->nb_log_antennas;p++) {
+          //if ((fp->L_ssb >> (63-p)) & 0x01)//64 bit-map with the MSB @2⁶³ corresponds to SSB ssb_index 0
+            beam_count++;
+        }
+        AssertFatal(ru->nb_bfw==(beam_count*ru->nb_tx),"Number of beam weights from config file is %d while the expected number is %d",ru->nb_bfw,(beam_count*ru->nb_tx));
+    
+        for (i=0; i<ru->num_gNB; i++) {
+          int l_ind = 0;
+          for (p=0;p<ru->nb_log_antennas;p++) {
           //if ((fp->L_ssb >> (63-p)) & 0x01)  {
-	    ru->beam_weights[i][p] = (int32_t **)malloc16_clear(ru->nb_tx*sizeof(int32_t*));
-	    for (j=0; j<ru->nb_tx; j++) {
-	      ru->beam_weights[i][p][j] = (int32_t *)malloc16_clear(fp->ofdm_symbol_size*sizeof(int32_t));
-              for (re=0; re<fp->ofdm_symbol_size; re++) 
-		ru->beam_weights[i][p][j][re] = ru->bw_list[j][l_ind];
+            ru->beam_weights[i][p] = (int32_t **)malloc16_clear(ru->nb_tx*sizeof(int32_t*));
+            for (j=0; j<ru->nb_tx; j++) {
+              ru->beam_weights[i][p][j] = (int32_t *)malloc16_clear(fp->ofdm_symbol_size*sizeof(int32_t));
+              AssertFatal(ru->bw_list[i],"ru->bw_list[%d] is null\n",i);
+              for (re=0; re<fp->ofdm_symbol_size; re++)
+                ru->beam_weights[i][p][j][re] = ru->bw_list[i][l_ind];
               //printf("Beam Weight %08x for beam %d and tx %d\n",ru->bw_list[i][l_ind],p,j);
-              l_ind++; 
-  	    } // for j
-	  //}
-        } // for p
-      } //for i
-    }
+              l_ind++;
+            } // for j
+          //}
+          } // for p
+        } // for i
+      }
 
-    ru->common.beam_id = (uint8_t**)malloc16_clear(ru->nb_tx*sizeof(uint8_t*));
-    for(i=0; i< ru->nb_tx; ++i) {
-      ru->common.beam_id[i] = (uint8_t*)malloc16_clear(fp->symbols_per_slot*fp->slots_per_frame*sizeof(uint8_t));
-      memset(ru->common.beam_id[i],255,fp->symbols_per_slot*fp->slots_per_frame);
+      ru->common.beam_id = (uint8_t**)malloc16_clear(ru->nb_tx*sizeof(uint8_t*));
+      for(i=0; i< ru->nb_tx; ++i) {
+        ru->common.beam_id[i] = (uint8_t*)malloc16_clear(fp->symbols_per_slot*fp->slots_per_frame*sizeof(uint8_t));
+        memset(ru->common.beam_id[i],255,fp->symbols_per_slot*fp->slots_per_frame);
+      }
     }
   } // !=IF5
 
@@ -166,15 +168,18 @@ void nr_phy_free_RU(RU_t *ru)
   int i,j;
   int p;
 
-  LOG_I(PHY, "Feeing RU signal buffers (if_south %s) nb_tx %d\n", ru_if_types[ru->if_south], ru->nb_tx);
-
-  free_and_zero(ru->nr_frame_parms);
-  free_and_zero(ru->frame_parms);
+  LOG_I(PHY, "Freeing RU signal buffers (if_south %s) nb_tx %d\n", ru_if_types[ru->if_south], ru->nb_tx);
 
   if (ru->if_south <= REMOTE_IF5) { // this means REMOTE_IF5 or LOCAL_RF, so free memory for time-domain signals
-    for (i = 0; i < ru->nb_tx; i++) free_and_zero(ru->common.txdata[i]);
-    for (i = 0; i < ru->nb_rx; i++) free_and_zero(ru->common.rxdata[i]);
+    // Hack: undo what is done at allocation
+    for (i = 0; i < ru->nb_tx; i++) {
+      int32_t *p = &ru->common.txdata[i][-ru->sf_extension];
+      free_and_zero(p);
+    }
     free_and_zero(ru->common.txdata);
+
+    for (i = 0; i < ru->nb_rx; i++)
+      free_and_zero(ru->common.rxdata[i]);
     free_and_zero(ru->common.rxdata);
   } // else: IF5 or local RF -> nothing to free()
 
@@ -183,7 +188,7 @@ void nr_phy_free_RU(RU_t *ru)
     free_and_zero(ru->common.rxdata_7_5kHz);
 
     // free beamforming input buffers (TX)
-    for (i = 0; i < 15; i++) free_and_zero(ru->common.txdataF[i]);
+    for (i = 0; i < ru->nb_tx; i++) free_and_zero(ru->common.txdataF[i]);
     free_and_zero(ru->common.txdataF);
 
     // free IFFT input buffers (TX)
@@ -192,19 +197,23 @@ void nr_phy_free_RU(RU_t *ru)
 
     // free FFT output buffers (RX)
     for (i = 0; i < ru->nb_rx; i++) free_and_zero(ru->common.rxdataF[i]);
-    free_and_zero(ru->common.rxdataF);
+      free_and_zero(ru->common.rxdataF);
 
     for (j=0;j<NUMBER_OF_NR_RU_PRACH_OCCASIONS_MAX;j++) {
-      for (i = 0; i < ru->nb_rx; i++) {
+      for (i = 0; i < ru->nb_rx; i++)
 	free_and_zero(ru->prach_rxsigF[j][i]);
-      }
+      free_and_zero(ru->prach_rxsigF[j]);
     }
-    
-    for (i = 0; i < RC.nb_nr_L1_inst; i++) {
-      for (p = 0; p < 15; p++) {
-	  for (j=0; j<ru->nb_tx; j++) free_and_zero(ru->beam_weights[i][p][j]);
-	  free_and_zero(ru->beam_weights[i][p]);
+    if (ru->do_precoding == 1) {
+      for (i = 0; i < ru->num_gNB; i++) {
+        for (p = 0; p < ru->nb_log_antennas; p++) {
+          for (j=0; j<ru->nb_tx; j++) free_and_zero(ru->beam_weights[i][p][j]);
+          free_and_zero(ru->beam_weights[i][p]);
+        }
       }
+      for(i=0; i< ru->nb_tx; ++i)
+        free_and_zero(ru->common.beam_id[i]);
+      free_and_zero(ru->common.beam_id);
     }
   }
   free_and_zero(ru->common.sync_corr);

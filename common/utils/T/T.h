@@ -15,11 +15,11 @@
 #include "T_IDs.h"
 
 #define T_ACTIVE_STDOUT  2
-/* known type - this is where you add new types */
 
+/* known type - this is where you add new types */
 #define T_INT(x) int, (x)
 #define T_FLOAT(x) float, (x)
-#define T_BUFFER(x, len) buffer, ((T_buffer){addr:(x), length:(len)})
+#define T_BUFFER(x, len) buffer, ((T_buffer){.addr=(x), .length=(len)})
 #define T_STRING(x) string, (x)
 #define T_PRINTF(...) printf, (__VA_ARGS__)
 
@@ -96,11 +96,13 @@ struct T_header;
 
 /* T macro tricks */
 extern int T_stdout;
-#define TN(...) TN_N(__VA_ARGS__,33,32,31,30,29,28,27,26,25,24,23,22,21,\
-                     20,19,18,17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1,0)(__VA_ARGS__)
-#define TN_N(n0,n1,n2,n3,n4,n5,n6,n7,n8,n9,n10,n11,n12,n13,n14,n15,n16,n17,\
-             n18,n19,n20,n21,n22,n23,n24,n25,n26,n27,n28,n29,n30,n31,n32,n,...) T##n
-#define T(...) do { if (T_stdout == 0) TN(__VA_ARGS__); } while (0)
+#define TN(...) TN_N(__VA_ARGS__,39,38,37,36,35,34,33,32,31,30,29,28,27,26, \
+                     25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10,9,8,7, \
+                     6,5,4,3,2,1,0)(__VA_ARGS__)
+#define TN_N(n0,n1,n2,n3,n4,n5,n6,n7,n8,n9,n10,n11,n12,n13,n14,n15,n16,n17, \
+             n18,n19,n20,n21,n22,n23,n24,n25,n26,n27,n28,n29,n30,n31,n32, \
+             n33,n34,n35,n36,n37,n38,n,...) T##n
+#define T(...) do { if (T_stdout == 0 || T_stdout == 2) TN(__VA_ARGS__); } while (0)
 
 /* type used to send arbitrary buffer data */
 typedef struct {
@@ -111,39 +113,9 @@ typedef struct {
 extern volatile int *T_freelist_head;
 extern T_cache_t *T_cache;
 extern int *T_active;
-/* When running the basic simulator, we may fill the T cache too fast.
- * Let's serialize write accesses to the T cache. For that, we use a
- * 'ticket' mechanism. To acquire a T slot the caller needs to own the
- * current active ticket. We also wait for the slot to be free if
- * it is already in use.
- */
-#if BASIC_SIMULATOR
-#  define T_GET_SLOT \
-  do { \
-    extern volatile uint64_t T_next_id; \
-    extern volatile uint64_t T_active_id; \
-    uint64_t id; \
-    /* get a ticket */ \
-    id = __sync_fetch_and_add(&T_next_id, 1); \
-    /* wait for our turn */ \
-    while (id != __sync_fetch_and_add(&T_active_id, 0)) /* busy wait */; \
-    /* this is our turn, try to acquire the slot until it's free */ \
-    do { \
-      T_LOCAL_busy = __sync_fetch_and_or(&T_cache[T_LOCAL_slot].busy, 0x01); \
-      if (T_LOCAL_busy & 0x01) usleep(100); \
-    } while (T_LOCAL_busy & 0x01); \
-    /* check that there are still some tickets */ \
-    if (__sync_fetch_and_add(&T_active_id, 0) == 0xffffffffffffffff) { \
-      printf("T: reached the end of times, bye...\n"); \
-      abort(); \
-    } \
-    /* free our ticket, which signals the next waiter that it's its turn */ \
-    (void)__sync_fetch_and_add(&T_active_id, 1); \
-  } while (0)
-#else
-#  define T_GET_SLOT \
+
+#define T_GET_SLOT \
   T_LOCAL_busy = __sync_fetch_and_or(&T_cache[T_LOCAL_slot].busy, 0x01);
-#endif
 
 /* used at header of Tn, allocates buffer */
 #define T_LOCAL_DATA \
@@ -400,7 +372,8 @@ extern int *T_active;
     } \
   } while (0)
 
-#define T23(t,t0,x0,t1,x1,t2,x2,t3,x3,t4,x4,t5,x5,t6,x6,t7,x7,t8,x8,t9,x9,t10,x10) \
+#define T23(t,t0,x0,t1,x1,t2,x2,t3,x3,t4,x4,t5,x5,t6,x6,t7,x7,t8,x8,t9,x9, \
+            t10,x10) \
   do { \
     if (T_ACTIVE(t)) { \
       T_LOCAL_DATA \
@@ -420,7 +393,8 @@ extern int *T_active;
     } \
   } while (0)
 
-#define T25(t,t0,x0,t1,x1,t2,x2,t3,x3,t4,x4,t5,x5,t6,x6,t7,x7,t8,x8,t9,x9,t10,x10,t11,x11) \
+#define T25(t,t0,x0,t1,x1,t2,x2,t3,x3,t4,x4,t5,x5,t6,x6,t7,x7,t8,x8,t9,x9, \
+            t10,x10,t11,x11) \
   do { \
     if (T_ACTIVE(t)) { \
       T_LOCAL_DATA \
@@ -441,7 +415,8 @@ extern int *T_active;
     } \
   } while (0)
 
-#define T27(t,t0,x0,t1,x1,t2,x2,t3,x3,t4,x4,t5,x5,t6,x6,t7,x7,t8,x8,t9,x9,t10,x10,t11,x11,t12,x12) \
+#define T27(t,t0,x0,t1,x1,t2,x2,t3,x3,t4,x4,t5,x5,t6,x6,t7,x7,t8,x8,t9,x9, \
+            t10,x10,t11,x11,t12,x12) \
   do { \
     if (T_ACTIVE(t)) { \
       T_LOCAL_DATA \
@@ -463,7 +438,8 @@ extern int *T_active;
     } \
   } while (0)
 
-#define T29(t,t0,x0,t1,x1,t2,x2,t3,x3,t4,x4,t5,x5,t6,x6,t7,x7,t8,x8,t9,x9,t10,x10,t11,x11,t12,x12,t13,x13) \
+#define T29(t,t0,x0,t1,x1,t2,x2,t3,x3,t4,x4,t5,x5,t6,x6,t7,x7,t8,x8,t9,x9, \
+            t10,x10,t11,x11,t12,x12,t13,x13) \
   do { \
     if (T_ACTIVE(t)) { \
       T_LOCAL_DATA \
@@ -486,7 +462,8 @@ extern int *T_active;
     } \
   } while (0)
 
-#define T31(t,t0,x0,t1,x1,t2,x2,t3,x3,t4,x4,t5,x5,t6,x6,t7,x7,t8,x8,t9,x9,t10,x10,t11,x11,t12,x12,t13,x13,t14,x14) \
+#define T31(t,t0,x0,t1,x1,t2,x2,t3,x3,t4,x4,t5,x5,t6,x6,t7,x7,t8,x8,t9,x9, \
+            t10,x10,t11,x11,t12,x12,t13,x13,t14,x14) \
   do { \
     if (T_ACTIVE(t)) { \
       T_LOCAL_DATA \
@@ -510,7 +487,8 @@ extern int *T_active;
     } \
   } while (0)
 
-#define T33(t,t0,x0,t1,x1,t2,x2,t3,x3,t4,x4,t5,x5,t6,x6,t7,x7,t8,x8,t9,x9,t10,x10,t11,x11,t12,x12,t13,x13,t14,x14,t15,x15) \
+#define T33(t,t0,x0,t1,x1,t2,x2,t3,x3,t4,x4,t5,x5,t6,x6,t7,x7,t8,x8,t9,x9, \
+            t10,x10,t11,x11,t12,x12,t13,x13,t14,x14,t15,x15) \
   do { \
     if (T_ACTIVE(t)) { \
       T_LOCAL_DATA \
@@ -531,6 +509,91 @@ extern int *T_active;
       T_PUT_##t13(15, x13); \
       T_PUT_##t14(16, x14); \
       T_PUT_##t15(17, x15); \
+      T_COMMIT(); \
+    } \
+  } while (0)
+
+#define T35(t,t0,x0,t1,x1,t2,x2,t3,x3,t4,x4,t5,x5,t6,x6,t7,x7,t8,x8,t9,x9, \
+            t10,x10,t11,x11,t12,x12,t13,x13,t14,x14,t15,x15,t16,x16) \
+  do { \
+    if (T_ACTIVE(t)) { \
+      T_LOCAL_DATA \
+      T_HEADER(t); \
+      T_PUT_##t0(2, x0); \
+      T_PUT_##t1(3, x1); \
+      T_PUT_##t2(4, x2); \
+      T_PUT_##t3(5, x3); \
+      T_PUT_##t4(6, x4); \
+      T_PUT_##t5(7, x5); \
+      T_PUT_##t6(8, x6); \
+      T_PUT_##t7(9, x7); \
+      T_PUT_##t8(10, x8); \
+      T_PUT_##t9(11, x9); \
+      T_PUT_##t10(12, x10); \
+      T_PUT_##t11(13, x11); \
+      T_PUT_##t12(14, x12); \
+      T_PUT_##t13(15, x13); \
+      T_PUT_##t14(16, x14); \
+      T_PUT_##t15(17, x15); \
+      T_PUT_##t16(18, x16); \
+      T_COMMIT(); \
+    } \
+  } while (0)
+
+#define T37(t,t0,x0,t1,x1,t2,x2,t3,x3,t4,x4,t5,x5,t6,x6,t7,x7,t8,x8,t9,x9, \
+            t10,x10,t11,x11,t12,x12,t13,x13,t14,x14,t15,x15,t16,x16,t17,x17) \
+  do { \
+    if (T_ACTIVE(t)) { \
+      T_LOCAL_DATA \
+      T_HEADER(t); \
+      T_PUT_##t0(2, x0); \
+      T_PUT_##t1(3, x1); \
+      T_PUT_##t2(4, x2); \
+      T_PUT_##t3(5, x3); \
+      T_PUT_##t4(6, x4); \
+      T_PUT_##t5(7, x5); \
+      T_PUT_##t6(8, x6); \
+      T_PUT_##t7(9, x7); \
+      T_PUT_##t8(10, x8); \
+      T_PUT_##t9(11, x9); \
+      T_PUT_##t10(12, x10); \
+      T_PUT_##t11(13, x11); \
+      T_PUT_##t12(14, x12); \
+      T_PUT_##t13(15, x13); \
+      T_PUT_##t14(16, x14); \
+      T_PUT_##t15(17, x15); \
+      T_PUT_##t16(18, x16); \
+      T_PUT_##t17(19, x17); \
+      T_COMMIT(); \
+    } \
+  } while (0)
+
+#define T39(t,t0,x0,t1,x1,t2,x2,t3,x3,t4,x4,t5,x5,t6,x6,t7,x7,t8,x8,t9,x9, \
+            t10,x10,t11,x11,t12,x12,t13,x13,t14,x14,t15,x15,t16,x16,t17,x17, \
+            t18,x18) \
+  do { \
+    if (T_ACTIVE(t)) { \
+      T_LOCAL_DATA \
+      T_HEADER(t); \
+      T_PUT_##t0(2, x0); \
+      T_PUT_##t1(3, x1); \
+      T_PUT_##t2(4, x2); \
+      T_PUT_##t3(5, x3); \
+      T_PUT_##t4(6, x4); \
+      T_PUT_##t5(7, x5); \
+      T_PUT_##t6(8, x6); \
+      T_PUT_##t7(9, x7); \
+      T_PUT_##t8(10, x8); \
+      T_PUT_##t9(11, x9); \
+      T_PUT_##t10(12, x10); \
+      T_PUT_##t11(13, x11); \
+      T_PUT_##t12(14, x12); \
+      T_PUT_##t13(15, x13); \
+      T_PUT_##t14(16, x14); \
+      T_PUT_##t15(17, x15); \
+      T_PUT_##t16(18, x16); \
+      T_PUT_##t17(19, x17); \
+      T_PUT_##t18(20, x18); \
       T_COMMIT(); \
     } \
   } while (0)
@@ -557,6 +620,9 @@ extern int *T_active;
 #define T28(...) T_CALL_ERROR
 #define T30(...) T_CALL_ERROR
 #define T32(...) T_CALL_ERROR
+#define T34(...) T_CALL_ERROR
+#define T36(...) T_CALL_ERROR
+#define T38(...) T_CALL_ERROR
 
 /* special cases for VCD logs */
 
@@ -590,31 +656,28 @@ extern int *T_active;
     } \
   } while (0)
 
-
 #define CONFIG_HLP_TPORT         "tracer port\n"
 #define CONFIG_HLP_NOTWAIT       "don't wait for tracer, start immediately\n"
-#define CONFIG_HLP_TNOFORK       "to ease debugging with gdb\n"
 #define CONFIG_HLP_STDOUT        "print log messges on console\n"
 
-
 #define TTRACER_CONFIG_PREFIX   "TTracer"
+
 /*-------------------------------------------------------------------------------------------------------------------------------------------------*/
 /*                                            configuration parameters for TTRACE utility                                                          */
 /*   optname                     helpstr                paramflags           XXXptr           defXXXval                         type       numelt  */
 /*-------------------------------------------------------------------------------------------------------------------------------------------------*/
 #define TTRACER_DEFAULT_PORTNUM 2021
+// clang-format off
 #define CMDLINE_TTRACEPARAMS_DESC {  \
-    {"T_port",                     CONFIG_HLP_TPORT,      0,                iptr:&T_port,        defintval:TTRACER_DEFAULT_PORTNUM, TYPE_INT,   0},\
-    {"T_nowait",                   CONFIG_HLP_NOTWAIT,    PARAMFLAG_BOOL,   iptr:&T_nowait,      defintval:0,                       TYPE_INT,   0},\
-    {"T_dont_fork",                CONFIG_HLP_TNOFORK,    PARAMFLAG_BOOL,   iptr:&T_dont_fork,   defintval:0,                       TYPE_INT,   0},\
-    {"T_stdout",                   CONFIG_HLP_STDOUT,     PARAMFLAG_BOOL,   iptr:&T_stdout,      defintval:1,                       TYPE_INT,   0},\
+    {"T_port",                     CONFIG_HLP_TPORT,      0,                .iptr=&T_port,        .defintval=TTRACER_DEFAULT_PORTNUM, TYPE_INT,   0},\
+    {"T_nowait",                   CONFIG_HLP_NOTWAIT,    PARAMFLAG_BOOL,   .iptr=&T_nowait,      .defintval=0,                       TYPE_INT,   0},\
+    {"T_stdout",                   CONFIG_HLP_STDOUT,     0,                .iptr=&T_stdout,      .defintval=1,                       TYPE_INT,   0},\
   }
+// clang-format on
 
-
-
-/* log on stdout */
-void T_init(int remote_port, int wait_for_tracer, int dont_fork);
+void T_init(int remote_port, int wait_for_tracer);
 void T_Config_Init(void);
+
 #else /* T_TRACER */
 
 /* if T_TRACER is not defined or is 0, the T is deactivated */

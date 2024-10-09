@@ -42,8 +42,6 @@
 #include "common/utils/LOG/log.h"
 #include "nfapi/oai_integration/vendor_ext.h"
 #include "UTIL/OPT/opt.h"
-#include "OCG.h"
-#include "OCG_extern.h"
 #include "SIMULATION/TOOLS/sim.h" // for taus
 #include "PHY/LTE_TRANSPORT/transport_common_proto.h"
 #include "PHY/LTE_ESTIMATION/lte_estimation.h"
@@ -255,11 +253,17 @@ Msg1_transmitted(module_id_t module_idP, uint8_t CC_id,
               "Transmission on secondary CCs is not supported yet\n");
   // start contention resolution timer
   UE_mac_inst[module_idP].RA_attempt_number++;
-  trace_pdu(DIRECTION_UPLINK, NULL, 0, module_idP, WS_NO_RNTI,
-            UE_mac_inst[module_idP].RA_prach_resources.
-            ra_PreambleIndex, UE_mac_inst[module_idP].txFrame,
-            UE_mac_inst[module_idP].txSubframe, 0,
-            UE_mac_inst[module_idP].RA_attempt_number);
+  ws_trace_t tmp = {.direction = DIRECTION_UPLINK,
+                    .pdu_buffer = NULL,
+                    .pdu_buffer_size = 0,
+                    .ueid = module_idP,
+                    .rntiType = WS_NO_RNTI,
+                    .rnti = UE_mac_inst[module_idP].RA_prach_resources.ra_PreambleIndex,
+                    .sysFrame = UE_mac_inst[module_idP].txFrame,
+                    .subframe = UE_mac_inst[module_idP].txSubframe,
+                    .oob_event = 0,
+                    .oob_event_value = UE_mac_inst[module_idP].RA_attempt_number};
+  trace_pdu(&tmp);
 }
 
 
@@ -274,11 +278,15 @@ Msg3_transmitted(module_id_t module_idP, uint8_t CC_id,
         module_idP, frameP);
   UE_mac_inst[module_idP].RA_contention_resolution_cnt = 0;
   UE_mac_inst[module_idP].RA_contention_resolution_timer_active = 1;
-  trace_pdu(DIRECTION_UPLINK, &UE_mac_inst[module_idP].CCCH_pdu.payload[0],
-            UE_mac_inst[module_idP].RA_Msg3_size, module_idP, WS_C_RNTI,
-            UE_mac_inst[module_idP].crnti,
-            UE_mac_inst[module_idP].txFrame,
-            UE_mac_inst[module_idP].txSubframe, 0, 0);
+  ws_trace_t tmp = {.direction = DIRECTION_UPLINK,
+                    .pdu_buffer = UE_mac_inst[module_idP].CCCH_pdu.payload,
+                    .pdu_buffer_size = UE_mac_inst[module_idP].RA_Msg3_size,
+                    .ueid = module_idP,
+                    .rntiType = WS_C_RNTI,
+                    .rnti = UE_mac_inst[module_idP].crnti,
+                    .sysFrame = UE_mac_inst[module_idP].txFrame,
+                    .subframe = UE_mac_inst[module_idP].txSubframe};
+  trace_pdu(&tmp);
 }
 
 
@@ -287,9 +295,12 @@ PRACH_RESOURCES_t *ue_get_rach(module_id_t module_idP, int CC_id,
                                sub_frame_t subframeP) {
   uint8_t Size = 0;
   UE_MODE_t UE_mode;
-
+  protocol_ctxt_t ctxt;
+  PROTOCOL_CTXT_SET_BY_MODULE_ID(&ctxt, module_idP, ENB_FLAG_NO,
+                                 UE_mac_inst[module_idP].crnti, frameP,
+                                 subframeP, eNB_indexP);
   // Modification for phy_stub_ue operation
-  if(NFAPI_MODE == NFAPI_UE_STUB_PNF) { // phy_stub_ue mode
+  if(NFAPI_MODE == NFAPI_UE_STUB_PNF || NFAPI_MODE == NFAPI_MODE_STANDALONE_PNF) { // phy_stub_ue mode
     UE_mode = UE_mac_inst[module_idP].UE_mode[0];
     LOG_D(MAC, "ue_get_rach , UE_mode: %d", UE_mode);
   } else { // Full stack mode
@@ -320,6 +331,18 @@ PRACH_RESOURCES_t *ue_get_rach(module_id_t module_idP, int CC_id,
 
     if (UE_mac_inst[module_idP].RA_active == 0) {
       LOG_I(MAC, "RA not active\n");
+      if (UE_rrc_inst[module_idP].Info[eNB_indexP].T300_cnt
+          != T300[UE_rrc_inst[module_idP].sib2[eNB_indexP]->ue_TimersAndConstants.t300]) {
+            /* Calling rrc_ue_generate_RRCConnectionRequest here to ensure that
+               every time we fill the UE_mac_inst context we generate new random
+               values in msg3. When the T300 timer has expired, rrc_common.c will
+               call rrc_ue_generate_RRCConnectionRequest, so we do not want to call
+               when UE_rrc_inst[module_idP].Info[eNB_indexP].T300_cnt ==
+               T300[UE_rrc_inst[module_idP].sib2[eNB_indexP]->ue_TimersAndConstants.t300. */
+            UE_rrc_inst[module_idP].Srb0[eNB_indexP].Tx_buffer.payload_size = 0;
+            rrc_ue_generate_RRCConnectionRequest(&ctxt, eNB_indexP);
+      }
+
       // check if RRC is ready to initiate the RA procedure
       Size = mac_rrc_data_req_ue(module_idP,
                                  CC_id,
@@ -333,7 +356,7 @@ PRACH_RESOURCES_t *ue_get_rach(module_id_t module_idP, int CC_id,
       Size16 = (uint16_t) Size;
       //  LOG_D(MAC,"[UE %d] Frame %d: Requested RRCConnectionRequest, got %d bytes\n",module_idP,frameP,Size);
       LOG_I(RRC,
-            "[MSC_MSG][FRAME %05d][RRC_UE][MOD %02d][][--- MAC_DATA_REQ (RRCConnectionRequest eNB %d) --->][MAC_UE][MOD %02d][]\n",
+            "[FRAME %05d][RRC_UE][MOD %02d][][--- MAC_DATA_REQ (RRCConnectionRequest eNB %d) --->][MAC_UE][MOD %02d][]\n",
             frameP, module_idP, eNB_indexP, module_idP);
       LOG_I(MAC,
             "[UE %d] Frame %d: Requested RRCConnectionRequest, got %d bytes\n",

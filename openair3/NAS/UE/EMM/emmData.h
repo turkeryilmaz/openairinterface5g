@@ -42,6 +42,7 @@ Description Defines internal private data handled by EPS Mobility
 #include "commonDef.h"
 #include "networkDef.h"
 #include "securityDef.h"
+#include "openair3/SECU/secu_defs.h"
 
 #include "OctetString.h"
 #include "nas_timer.h"
@@ -112,7 +113,7 @@ typedef struct {
 #define EMM_DETACH_COUNTER_MAX  5
   unsigned int count;      /* Counter used to limit the number of
                   * subsequently detach attempts    */
-  int switch_off;      /* UE switch-off indicator     */
+  bool switch_off;      /* UE switch-off indicator     */
   emm_proc_detach_type_t type; /* Type of the detach procedure
                   * currently in progress       */
 } emm_detach_data_t;
@@ -138,6 +139,7 @@ typedef struct emm_security_context_s {
   //OctetString ksgsn;    /* SGSN security key (mapped context)      */
   OctetString knas_enc;   /* NAS cyphering key               */
   OctetString knas_int;   /* NAS integrity key               */
+  stream_security_container_t *security_container; /* container for NAS security */
   struct count_s{
     uint32_t spare:8;
     uint32_t overflow:16;
@@ -249,8 +251,8 @@ typedef struct emm_data_s {
 
   emm_eps_update_t    status;    /* The current EPS update status           */
   emm_ecm_state_t     ecm_status; /* The EPS Connection Management status   */
-  int                 is_attached;    /* Network attachment indicator       */
-  int                 is_emergency;   /* Emergency bearer services indicator*/
+  bool                is_attached;    /* Network attachment indicator       */
+  bool                is_emergency;   /* Emergency bearer services indicator*/
 
   /* Tracking Areas list the UE is registered to
    * Contains the list of TAIs that identify the tracking areas that

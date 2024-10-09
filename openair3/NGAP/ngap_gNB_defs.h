@@ -31,6 +31,7 @@
 
 #include "queue.h"
 #include "tree.h"
+#include "openair2/COMMON/ngap_messages_types.h"
 
 #ifndef NGAP_GNB_DEFS_H_
 #define NGAP_GNB_DEFS_H_
@@ -203,7 +204,7 @@ typedef struct ngap_gNB_amf_data_s {
   uint16_t cnx_id;
 
   /* SCTP association id */
-  int32_t  assoc_id;
+  sctp_assoc_t assoc_id;
 
   /* This is served PLMN IDs communicated to the AMF via an index over the
    * MCC/MNC array in ngap_gNB_instance */
@@ -214,12 +215,6 @@ typedef struct ngap_gNB_amf_data_s {
   /* Only meaningfull in virtual mode */
   struct ngap_gNB_instance_s *ngap_gNB_instance;
 } ngap_gNB_amf_data_t;
-
-typedef struct ngap_gNB_NSSAI_s{
-  uint8_t sST;
-  uint8_t sD_flag;
-  uint8_t sD[3];
-}ngap_gNB_NSSAI_t;
 
 typedef struct ngap_gNB_instance_s {
   /* Next ngap gNB association.
@@ -235,11 +230,6 @@ typedef struct ngap_gNB_instance_s {
   uint32_t ngap_amf_associated_nb;
   /* Tree of NGAP AMF associations ordered by association ID */
   RB_HEAD(ngap_amf_map, ngap_gNB_amf_data_s) ngap_amf_head;
-
-  /* TODO: add a map ordered by relative AMF capacity */
-
-  /* Tree of UE ordered by gNB_ue_ngap_id's */
-  RB_HEAD(ngap_ue_map, ngap_gNB_ue_context_s) ngap_ue_head;
 
   /* For virtual mode, mod_id as defined in the rest of the L1/L2 stack */
   instance_t instance;
@@ -264,14 +254,9 @@ typedef struct ngap_gNB_instance_s {
   /* Mobile Country Code
    * Mobile Network Code
    */
-  uint16_t  mcc[PLMN_LIST_MAX_SIZE];
-  uint16_t  mnc[PLMN_LIST_MAX_SIZE];
-  uint8_t   mnc_digit_length[PLMN_LIST_MAX_SIZE];
-  uint8_t   num_plmn;
+  uint8_t num_plmn;
+  ngap_plmn_t plmn[PLMN_LIST_MAX_SIZE];
 
-  uint16_t   num_nssai[PLMN_LIST_MAX_SIZE];
-  ngap_gNB_NSSAI_t s_nssai[PLMN_LIST_MAX_SIZE][8];
-  
   /* Default Paging DRX of the gNB as defined in TS 38.304 */
   ngap_paging_drx_t default_drx;
 } ngap_gNB_instance_t;

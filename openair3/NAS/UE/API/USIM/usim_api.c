@@ -38,16 +38,14 @@ Description Implements the API used by the NAS layer to read/write
 
 *****************************************************************************/
 
-
+#include <stdio.h>
+#include <string.h> // memcpy, memset
+#include <stdlib.h> // malloc, free
 #include "usim_api.h"
 #include "nas_log.h"
 #include "utils.h"
-#include "memory.h"
-#include <stdio.h>
+#include "common/utils/mem/oai_memory.h"
 #include "aka_functions.h"
-#include <string.h> // memcpy, memset
-#include <stdlib.h> // malloc, free
-#include <stdio.h>
 
 /****************************************************************************/
 /****************  E X T E R N A L    D E F I N I T I O N S  ****************/
@@ -249,7 +247,9 @@ int usim_api_authenticate_test(usim_data_t *usim_data,
     LOG_TRACE(INFO,
               "USIM-API  - Comparing the XMAC with the MAC included in AUTN Succeeded");
     /* Verify that the received sequence number SQN is in the correct range */
-    rc = _usim_api_check_sqn(*(uint32_t*)(sqn), sqn[USIM_API_SQN_SIZE - 1]);
+    uint32_t v;
+    memcpy(&v, sqn, sizeof(v));
+    rc = _usim_api_check_sqn(v, sqn[USIM_API_SQN_SIZE - 1]);
   }
 
 
@@ -392,7 +392,9 @@ int usim_api_authenticate(usim_data_t *usim_data, const OctetString* rand_pP, co
     LOG_TRACE(INFO,
               "USIM-API  - Comparing the XMAC with the MAC included in AUTN Succeeded");
     /* Verify that the received sequence number SQN is in the correct range */
-    rc = _usim_api_check_sqn(*(uint32_t*)(sqn), sqn[USIM_API_SQN_SIZE - 1]);
+    uint32_t v;
+    memcpy(&v, sqn, sizeof(v));
+    rc = _usim_api_check_sqn(v, sqn[USIM_API_SQN_SIZE - 1]);
   }
 
 

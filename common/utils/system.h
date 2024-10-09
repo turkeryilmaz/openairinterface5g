@@ -23,6 +23,7 @@
 #define _SYSTEM_H_OAI_
 #include <stdint.h>
 #include <pthread.h>
+#include <stdbool.h>
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -42,11 +43,11 @@ int background_system(char *command);
 
 void start_background_system(void);
 
-void set_latency_target(void);
-void configure_linux(void);
+void lock_memory_to_ram(void);
 
-void threadCreate(pthread_t* t, void * (*func)(void*), void * param, char* name, int affinity, int priority);
- 
+bool has_cap_sys_nice(void);
+void threadCreate(pthread_t *t, void *(*func)(void *), void *param, char *name, int affinity, int priority);
+
 #define SCHED_OAI SCHED_RR
 #define OAI_PRIORITY_RT_LOW sched_get_priority_min(SCHED_OAI)
 #define OAI_PRIORITY_RT ((sched_get_priority_min(SCHED_OAI)+sched_get_priority_max(SCHED_OAI))/2)
@@ -58,6 +59,11 @@ void thread_top_init(char *thread_name,
                      uint64_t deadline,
                      uint64_t period);
 
+/****************************************************
+ * Functions to check system at runtime.
+ ****************************************************/
+
+int rt_sleep_ns (uint64_t x);
 #ifdef __cplusplus
 }
 #endif

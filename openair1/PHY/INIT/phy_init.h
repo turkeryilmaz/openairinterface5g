@@ -42,7 +42,7 @@
  */
 
 /*!
-\fn int l1_top_init_eNB(void)
+\fn l1_north_init_eNB
 \brief Initialize north interface for L1
 @returns 0 on success
  */
@@ -55,8 +55,6 @@ int l1_north_init_eNB(void);
 @returns 0 on success
  */
 int phy_init_top(LTE_DL_FRAME_PARMS *frame_parms);
-
-void phy_init_nr_top(PHY_VARS_NR_UE *ue);
 
 
 /*!
@@ -76,9 +74,9 @@ int init_lte_ue_signal(PHY_VARS_UE *phy_vars_ue,
 /*!
 \brief Allocate and initialize the PHY variables releated to the transport channel buffers (UL/DL)
 @param ue Pointer to UE L1 context
-@param abstraction flag Indicates that abstraction is used in L1
+@param abstraction_flag Indicates that abstraction is used in L1
 */
-void init_lte_ue_transport(PHY_VARS_UE *ue,int absraction_flag);
+void init_lte_ue_transport(PHY_VARS_UE *ue, int abstraction_flag);
 
 /*!
 \brief Allocate and initialize the PHY variables relevant to the LTE implementation (eNB).
@@ -101,14 +99,20 @@ int phy_init_lte_eNB(PHY_VARS_eNB *phy_vars_eNb,
  */
 void phy_free_lte_eNB(PHY_VARS_eNB *phy_vars_eNb);
 
-/** \brief Configure LTE_DL_FRAME_PARMS with components derived after initial synchronization (MIB decoding + primary/secondary synch).
-\details The basically allows configuration of \f$N_{\mathrm{RB}}^{\mathrm{DL}}\f$, the cell id  \f$N_{\mathrm{ID}}^{\mathrm{cell}}\f$, the normal/extended prefix mode, the frame type (FDD/TDD), \f$N_{\mathrm{cp}}\f$, the number of TX antennas at eNB (\f$p\f$) and the number of PHICH groups, \f$N_{\mathrm{group}}^{\mathrm{PHICH}}\f$
-@param lte_frame_parms pointer to LTE parameter structure
+/** \brief Configure LTE_DL_FRAME_PARMS with components derived after initial synchronization (MIB decoding + primary/secondary
+synch). \details The basically allows configuration of \f$N_{\mathrm{RB}}^{\mathrm{DL}}\f$, the cell id
+\f$N_{\mathrm{ID}}^{\mathrm{cell}}\f$, the normal/extended prefix mode, the frame type (FDD/TDD), \f$N_{\mathrm{cp}}\f$, the number
+of TX antennas at eNB (\f$p\f$) and the number of PHICH groups, \f$N_{\mathrm{group}}^{\mathrm{PHICH}}\f$
+@param Mod_id
+@param CC_id
+@param eutra_band
 @param N_RB_DL Number of DL resource blocks
 @param Nid_cell Cell ID
 @param Ncp Normal/Extended Prefix flag
 @param p_eNB Number of eNB TX antennas
 @param phich_config Pointer to PHICH_CONFIG_COMMON
+@param dl_CarrierFreq
+@param ul_CarrierFreq
  */
 void phy_config_mib_eNB(int                    Mod_id,
                         int                    CC_id,
@@ -298,6 +302,7 @@ void phy_config_sib13_eNB(module_id_t Mod_id,
 @param index index of the node
 @param cba_rnti rnti for the cba transmission
 @param num_active_cba_groups num active cba group
+@param cba_group_id
  */
 void  phy_config_cba_rnti (module_id_t Mod_id,int CC_id,eNB_flag_t eNB_flag, uint8_t index, rnti_t cba_rnti, uint8_t cba_group_id, uint8_t num_active_cba_groups);
 
@@ -389,26 +394,9 @@ void phy_config_request(PHY_Config_t *phy_config);
 void phy_config_update_sib2_request(PHY_Config_t *phy_config);
 void phy_config_update_sib13_request(PHY_Config_t *phy_config);
 
-
 int init_frame_parms(LTE_DL_FRAME_PARMS *frame_parms,uint8_t osf);
 void dump_frame_parms(LTE_DL_FRAME_PARMS *frame_parms);
-int nr_get_ssb_start_symbol(NR_DL_FRAME_PARMS *fp,uint8_t i_ssb);
-int nr_init_frame_parms(nfapi_nr_config_request_scf_t *config, NR_DL_FRAME_PARMS *frame_parms);
-int nr_init_frame_parms_ue(NR_DL_FRAME_PARMS *frame_parms, fapi_nr_config_request_t *config, uint16_t nr_band);
-int init_nr_ue_signal(PHY_VARS_NR_UE *ue,int nb_connected_eNB,uint8_t abstraction_flag);
-void init_nr_ue_transport(PHY_VARS_NR_UE *ue,int abstraction_flag);
-void init_N_TA_offset(PHY_VARS_NR_UE *ue);
-void nr_dump_frame_parms(NR_DL_FRAME_PARMS *frame_parms);
-int phy_init_nr_gNB(PHY_VARS_gNB *gNB, unsigned char is_secondary_gNB, unsigned char abstraction_flag);
-void nr_phy_config_request(NR_PHY_Config_t *gNB);
-void nr_phy_config_request_sim(PHY_VARS_gNB *gNB,int N_RB_DL,int N_RB_UL,int mu,int Nid_cell,uint64_t position_in_burst);
-void phy_free_nr_gNB(PHY_VARS_gNB *gNB);
-int l1_north_init_gNB(void);
-void init_nr_transport(PHY_VARS_gNB *gNB);
+void fill_subframe_mask(PHY_VARS_eNB *eNB);
+/** @}*/
 
-void init_dfts(void);
-
-
-/** @} */
 #endif
-

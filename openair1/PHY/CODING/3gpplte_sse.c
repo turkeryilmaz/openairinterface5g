@@ -33,6 +33,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include "common/oai_version.h"
 
 #include "PHY/sse_intrin.h"
 
@@ -45,33 +46,17 @@
 //#define DEBUG_TURBO_ENCODER 1
 //#define CALLGRIND 1
 
-#if defined(__x86_64__) || defined(__i386__)
 struct treillis {
   union {
-    __m64 systematic_andp1_64[3];
+    simde__m64 systematic_andp1_64[3];
     uint8_t systematic_andp1_8[24];
   };
   union {
-    __m64 parity2_64[3];
+    simde__m64 parity2_64[3];
     uint8_t parity2_8[24];
   };
   int exit_state;
 }  __attribute__ ((aligned(64)));
-
-#elif defined(__arm__)
-
-struct treillis {
-  union {
-    uint8x8_t systematic_andp1_64[3];
-    char systematic_andp1_8[24];
-  } __attribute__((aligned(64)));
-  union {
-    uint8x8_t parity2_64[3];
-    char parity2_8[24];
-  } __attribute__((aligned(64)));
-  int exit_state;
-};
-#endif
 
 struct treillis all_treillis[8][256];
 
@@ -125,364 +110,168 @@ static void treillis_table_init(void) {
 
 char interleave_compact_byte(short *base_interleaver,unsigned char *input, unsigned char *output, int n) {
   char expandInput[768*8] __attribute__((aligned(32)));
-  int i,loop=n>>4;
-#if defined(__x86_64__) || defined(__i386__)
-#ifndef __AVX2__
-  __m128i *i_128=(__m128i *)input, *o_128=(__m128i *)expandInput;
-  __m128i tmp1, tmp2, tmp3, tmp4;
-  __m128i BIT_MASK = _mm_set_epi8(  0b00000001,
-                                    0b00000010,
-                                    0b00000100,
-                                    0b00001000,
-                                    0b00010000,
-                                    0b00100000,
-                                    0b01000000,
-                                    0b10000000,
-                                    0b00000001,
-                                    0b00000010,
-                                    0b00000100,
-                                    0b00001000,
-                                    0b00010000,
-                                    0b00100000,
-                                    0b01000000,
-                                    0b10000000);
-#else
-  __m256i *i_256=(__m256i *)input, *o_256=(__m256i *)expandInput;
-  __m256i tmp1, tmp2, tmp3, tmp4, tmp5, tmp6, tmp7;
-  __m256i BIT_MASK = _mm256_set_epi8(  0b00000001,
-                                       0b00000010,
-                                       0b00000100,
-                                       0b00001000,
-                                       0b00010000,
-                                       0b00100000,
-                                       0b01000000,
-                                       0b10000000,
-                                       0b00000001,
-                                       0b00000010,
-                                       0b00000100,
-                                       0b00001000,
-                                       0b00010000,
-                                       0b00100000,
-                                       0b01000000,
-                                       0b10000000,
-                                       0b00000001,
-                                       0b00000010,
-                                       0b00000100,
-                                       0b00001000,
-                                       0b00010000,
-                                       0b00100000,
-                                       0b01000000,
-                                       0b10000000,
-                                       0b00000001,
-                                       0b00000010,
-                                       0b00000100,
-                                       0b00001000,
-                                       0b00010000,
-                                       0b00100000,
-                                       0b01000000,
-                                       0b10000000);
-#endif
-#elif defined(__arm__)
-  uint8x16_t *i_128=(uint8x16_t *)input, *o_128=(uint8x16_t *)expandInput;
-  uint8x16_t tmp1,tmp2;
-  uint16x8_t tmp3;
-  uint32x4_t tmp4;
-  uint8x16_t and_tmp;
-  uint8x16_t BIT_MASK = {       0b10000000,
-                                0b01000000,
-                                0b00100000,
-                                0b00010000,
-                                0b00001000,
-                                0b00000100,
-                                0b00000010,
-                                0b00000001,
-                                0b10000000,
-                                0b01000000,
-                                0b00100000,
-                                0b00010000,
-                                0b00001000,
-                                0b00000100,
-                                0b00000010,
-                                0b00000001
-                        };
-#endif
-#ifndef __AVX2__
-
-  if ((n&15) > 0)
-    loop++;
-
-#else
+  int i, loop = n >> 4;
+  simde__m256i *i_256 = (simde__m256i *)input, *o_256 = (simde__m256i *)expandInput;
+  simde__m256i tmp1, tmp2, tmp3, tmp4, tmp5, tmp6, tmp7;
+  simde__m256i BIT_MASK = simde_mm256_set_epi8(0b00000001,
+                                               0b00000010,
+                                               0b00000100,
+                                               0b00001000,
+                                               0b00010000,
+                                               0b00100000,
+                                               0b01000000,
+                                               0b10000000,
+                                               0b00000001,
+                                               0b00000010,
+                                               0b00000100,
+                                               0b00001000,
+                                               0b00010000,
+                                               0b00100000,
+                                               0b01000000,
+                                               0b10000000,
+                                               0b00000001,
+                                               0b00000010,
+                                               0b00000100,
+                                               0b00001000,
+                                               0b00010000,
+                                               0b00100000,
+                                               0b01000000,
+                                               0b10000000,
+                                               0b00000001,
+                                               0b00000010,
+                                               0b00000100,
+                                               0b00001000,
+                                               0b00010000,
+                                               0b00100000,
+                                               0b01000000,
+                                               0b10000000);
   loop=n>>5;
 
   if ((n&31) > 0)
     loop++;
 
-#endif
-
   for (i=0; i<loop ; i++ ) {
     // int cur_byte=i<<3;
     // for (b=0;b<8;b++)
     //   expandInput[cur_byte+b] = (input[i]&(1<<(7-b)))>>(7-b);
-#if defined(__x86_64__) || defined(__i386__)
-#ifndef __AVX2__
-    tmp1=_mm_load_si128(i_128++);       // tmp1 = B0,B1,...,B15
-    tmp2=_mm_unpacklo_epi8(tmp1,tmp1);  // tmp2 = B0,B0,B1,B1,...,B7,B7
-    tmp3=_mm_unpacklo_epi16(tmp2,tmp2); // tmp3 = B0,B0,B0,B0,B1,B1,B1,B1,B2,B2,B2,B2,B3,B3,B3,B3
-    tmp4=_mm_unpacklo_epi32(tmp3,tmp3); // tmp4 - B0,B0,B0,B0,B0,B0,B0,B0,B1,B1,B1,B1,B1,B1,B1,B1
-    *o_128++=_mm_cmpeq_epi8(_mm_and_si128(tmp4,BIT_MASK),BIT_MASK);
-    tmp4=_mm_unpackhi_epi32(tmp3,tmp3); // tmp4 - B2,B2,B2,B2,B2,B2,B2,B2,B3,B3,B3,B3,B3,B3,B3,B3
-    *o_128++=_mm_cmpeq_epi8(_mm_and_si128(tmp4,BIT_MASK),BIT_MASK);;
-    tmp3=_mm_unpackhi_epi16(tmp2,tmp2); // tmp3 = B4,B4,B4,B4,B5,B5,B5,B5,B6,B6,B6,B6,B7,B7,B7,B7
-    tmp4=_mm_unpacklo_epi32(tmp3,tmp3); // tmp4 - B4,B4,B4,B4,B4,B4,B4,B4,B5,B5,B5,B5,B5,B5,B5,B5
-    *o_128++=_mm_cmpeq_epi8(_mm_and_si128(tmp4,BIT_MASK),BIT_MASK);;
-    tmp4=_mm_unpackhi_epi32(tmp3,tmp3); // tmp4 - B6,B6,B6,B6,B6,B6,B6,B6,B7,B7,B7,B7,B7,B7,B7,B7
-    *o_128++=_mm_cmpeq_epi8(_mm_and_si128(tmp4,BIT_MASK),BIT_MASK);;
-    tmp2=_mm_unpackhi_epi8(tmp1,tmp1);  // tmp2 = B8,B8,B9,B9,...,B15,B15
-    tmp3=_mm_unpacklo_epi16(tmp2,tmp2); // tmp3 = B8,B8,B8,B8,B9,B9,B9,B9,B10,B10,B10,B10,B11,B11,B11,B11
-    tmp4=_mm_unpacklo_epi32(tmp3,tmp3); // tmp4 = B8,B8,B8,B8,B8,B8,B8,B8,B9,B9,B9,B9,B9,B9,B9,B9
-    *o_128++=_mm_cmpeq_epi8(_mm_and_si128(tmp4,BIT_MASK),BIT_MASK);;
-    tmp4=_mm_unpackhi_epi32(tmp3,tmp3); // tmp4 = B10,B10,B10,B10,B10,B10,B10,B10,B11,B11,B11,B11,B11,B11,B11,B11
-    *o_128++=_mm_cmpeq_epi8(_mm_and_si128(tmp4,BIT_MASK),BIT_MASK);;
-    tmp3=_mm_unpackhi_epi16(tmp2,tmp2); // tmp3 = B12,B12,B12,B12,B13,B13,B13,B13,B14,B14,B14,B14,B15,B15,B15,B15
-    tmp4=_mm_unpacklo_epi32(tmp3,tmp3); // tmp4 = B12,B12,B12,B12,B12,B12,B12,B12,B13,B13,B13,B13,B13,B13,B13,B13
-    *o_128++=_mm_cmpeq_epi8(_mm_and_si128(tmp4,BIT_MASK),BIT_MASK);;
-    tmp4=_mm_unpackhi_epi32(tmp3,tmp3); // tmp4 = B14,B14,B14,B14,B14,B14,B14,B14,B15,B15,B15,B15,B15,B15,B15,B15
-    *o_128++=_mm_cmpeq_epi8(_mm_and_si128(tmp4,BIT_MASK),BIT_MASK);;
-#else
-    tmp1=_mm256_load_si256(i_256++);       // tmp1 = B0,B1,...,B15,...,B31
+    tmp1=simde_mm256_load_si256(i_256++);       // tmp1 = B0,B1,...,B15,...,B31
     //print_bytes2("in",(uint8_t*)&tmp1);
-    tmp2=_mm256_unpacklo_epi8(tmp1,tmp1);  // tmp2 = B0,B0,B1,B1,...,B7,B7,B16,B16,B17,B17,...,B23,B23
-    tmp3=_mm256_unpacklo_epi16(tmp2,tmp2); // tmp3 = B0,B0,B0,B0,B1,B1,B1,B1,B2,B2,B2,B2,B3,B3,B3,B3,B16,B16,B16,B16,...,B19,B19,B19,B19
-    tmp4=_mm256_unpacklo_epi32(tmp3,tmp3); // tmp4 - B0,B0,B0,B0,B0,B0,B0,B0,B1,B1,B1,B1,B1,B1,B1,B1,B16,B16...,B17..,B17
-    tmp5=_mm256_unpackhi_epi32(tmp3,tmp3); // tmp5 - B2,B2,B2,B2,B2,B2,B2,B2,B3,B3,B3,B3,B3,B3,B3,B3,B18...,B18,B19,...,B19
-    tmp6=_mm256_insertf128_si256(tmp4,_mm256_extracti128_si256(tmp5,0),1);  // tmp6 = B0 B1 B2 B3
-    tmp7=_mm256_insertf128_si256(tmp5,_mm256_extracti128_si256(tmp4,1),0);  // tmp7 = B16 B17 B18 B19
+    tmp2=simde_mm256_unpacklo_epi8(tmp1,tmp1);  // tmp2 = B0,B0,B1,B1,...,B7,B7,B16,B16,B17,B17,...,B23,B23
+    tmp3=simde_mm256_unpacklo_epi16(tmp2,tmp2); // tmp3 = B0,B0,B0,B0,B1,B1,B1,B1,B2,B2,B2,B2,B3,B3,B3,B3,B16,B16,B16,B16,...,B19,B19,B19,B19
+    tmp4=simde_mm256_unpacklo_epi32(tmp3,tmp3); // tmp4 - B0,B0,B0,B0,B0,B0,B0,B0,B1,B1,B1,B1,B1,B1,B1,B1,B16,B16...,B17..,B17
+    tmp5=simde_mm256_unpackhi_epi32(tmp3,tmp3); // tmp5 - B2,B2,B2,B2,B2,B2,B2,B2,B3,B3,B3,B3,B3,B3,B3,B3,B18...,B18,B19,...,B19
+    tmp6=simde_mm256_insertf128_si256(tmp4,simde_mm256_extracti128_si256(tmp5,0),1);  // tmp6 = B0 B1 B2 B3
+    tmp7=simde_mm256_insertf128_si256(tmp5,simde_mm256_extracti128_si256(tmp4,1),0);  // tmp7 = B16 B17 B18 B19
     //print_bytes2("tmp2",(uint8_t*)&tmp2);
     //print_bytes2("tmp3",(uint8_t*)&tmp3);
     //print_bytes2("tmp4",(uint8_t*)&tmp4);
     //print_bytes2("tmp5",(uint8_t*)&tmp4);
     //print_bytes2("tmp6",(uint8_t*)&tmp6);
     //print_bytes2("tmp7",(uint8_t*)&tmp7);
-    o_256[0]=_mm256_cmpeq_epi8(_mm256_and_si256(tmp6,BIT_MASK),BIT_MASK);
+    o_256[0]=simde_mm256_cmpeq_epi8(simde_mm256_and_si256(tmp6,BIT_MASK),BIT_MASK);
     //print_bytes2("out",(uint8_t*)o_256);
-    o_256[4]=_mm256_cmpeq_epi8(_mm256_and_si256(tmp7,BIT_MASK),BIT_MASK);;
+    o_256[4]=simde_mm256_cmpeq_epi8(simde_mm256_and_si256(tmp7,BIT_MASK),BIT_MASK);;
     //print_bytes2("out",(uint8_t*)(o_256+4));
-    tmp3=_mm256_unpackhi_epi16(tmp2,tmp2); // tmp3 = B4,B4,B4,B4,B5,B5,B5,B5,B6,B6,B6,B6,B7,B7,B7,B7,B20,B20,B20,B20,...,B23,B23,B23,B23
-    tmp4=_mm256_unpacklo_epi32(tmp3,tmp3); // tmp4 - B4,B4,B4,B4,B4,B4,B4,B4,B5,B5,B5,B5,B5,B5,B5,B5,B20,B20...,B21..,B21
-    tmp5=_mm256_unpackhi_epi32(tmp3,tmp3); // tmp5 - B6,B6,B6,B6,B6,B6,B6,B6,B7,B7,B7,B7,B7,B7,B7,B7,B22...,B22,B23,...,B23
-    tmp6=_mm256_insertf128_si256(tmp4,_mm256_extracti128_si256(tmp5,0),1);  // tmp6 = B4 B5 B6 B7
-    tmp7=_mm256_insertf128_si256(tmp5,_mm256_extracti128_si256(tmp4,1),0);  // tmp7 = B20 B21 B22 B23
+    tmp3=simde_mm256_unpackhi_epi16(tmp2,tmp2); // tmp3 = B4,B4,B4,B4,B5,B5,B5,B5,B6,B6,B6,B6,B7,B7,B7,B7,B20,B20,B20,B20,...,B23,B23,B23,B23
+    tmp4=simde_mm256_unpacklo_epi32(tmp3,tmp3); // tmp4 - B4,B4,B4,B4,B4,B4,B4,B4,B5,B5,B5,B5,B5,B5,B5,B5,B20,B20...,B21..,B21
+    tmp5=simde_mm256_unpackhi_epi32(tmp3,tmp3); // tmp5 - B6,B6,B6,B6,B6,B6,B6,B6,B7,B7,B7,B7,B7,B7,B7,B7,B22...,B22,B23,...,B23
+    tmp6=simde_mm256_insertf128_si256(tmp4,simde_mm256_extracti128_si256(tmp5,0),1);  // tmp6 = B4 B5 B6 B7
+    tmp7=simde_mm256_insertf128_si256(tmp5,simde_mm256_extracti128_si256(tmp4,1),0);  // tmp7 = B20 B21 B22 B23
     //print_bytes2("tmp2",(uint8_t*)&tmp2);
     //print_bytes2("tmp3",(uint8_t*)&tmp3);
     //print_bytes2("tmp4",(uint8_t*)&tmp4);
     //print_bytes2("tmp5",(uint8_t*)&tmp4);
     //print_bytes2("tmp6",(uint8_t*)&tmp6);
     //print_bytes2("tmp7",(uint8_t*)&tmp7);
-    o_256[1]=_mm256_cmpeq_epi8(_mm256_and_si256(tmp6,BIT_MASK),BIT_MASK);
+    o_256[1]=simde_mm256_cmpeq_epi8(simde_mm256_and_si256(tmp6,BIT_MASK),BIT_MASK);
     //print_bytes2("out",(uint8_t*)(o_256+1));
-    o_256[5]=_mm256_cmpeq_epi8(_mm256_and_si256(tmp7,BIT_MASK),BIT_MASK);;
+    o_256[5]=simde_mm256_cmpeq_epi8(simde_mm256_and_si256(tmp7,BIT_MASK),BIT_MASK);;
     //print_bytes2("out",(uint8_t*)(o_256+4));
-    tmp2=_mm256_unpackhi_epi8(tmp1,tmp1);  // tmp2 = B8 B9 B10 B11 B12 B13 B14 B15 B25 B26 B27 B28 B29 B30 B31
-    tmp3=_mm256_unpacklo_epi16(tmp2,tmp2); // tmp3 = B8,B9,B10,B11,B26,B27,B28,B29
-    tmp4=_mm256_unpacklo_epi32(tmp3,tmp3); // tmp4 - B8,B9,B26,B27
-    tmp5=_mm256_unpackhi_epi32(tmp3,tmp3); // tmp5 - B10,B11,B28,B29
-    tmp6=_mm256_insertf128_si256(tmp4,_mm256_extracti128_si256(tmp5,0),1);  // tmp6 = B8 B9 B10 B11
-    tmp7=_mm256_insertf128_si256(tmp5,_mm256_extracti128_si256(tmp4,1),0);  // tmp7 = B26 B27 B28 B29
+    tmp2=simde_mm256_unpackhi_epi8(tmp1,tmp1);  // tmp2 = B8 B9 B10 B11 B12 B13 B14 B15 B25 B26 B27 B28 B29 B30 B31
+    tmp3=simde_mm256_unpacklo_epi16(tmp2,tmp2); // tmp3 = B8,B9,B10,B11,B26,B27,B28,B29
+    tmp4=simde_mm256_unpacklo_epi32(tmp3,tmp3); // tmp4 - B8,B9,B26,B27
+    tmp5=simde_mm256_unpackhi_epi32(tmp3,tmp3); // tmp5 - B10,B11,B28,B29
+    tmp6=simde_mm256_insertf128_si256(tmp4,simde_mm256_extracti128_si256(tmp5,0),1);  // tmp6 = B8 B9 B10 B11
+    tmp7=simde_mm256_insertf128_si256(tmp5,simde_mm256_extracti128_si256(tmp4,1),0);  // tmp7 = B26 B27 B28 B29
     //print_bytes2("tmp2",(uint8_t*)&tmp2);
     //print_bytes2("tmp3",(uint8_t*)&tmp3);
     //print_bytes2("tmp4",(uint8_t*)&tmp4);
     //print_bytes2("tmp5",(uint8_t*)&tmp4);
     //print_bytes2("tmp6",(uint8_t*)&tmp6);
     //print_bytes2("tmp7",(uint8_t*)&tmp7);
-    o_256[2]=_mm256_cmpeq_epi8(_mm256_and_si256(tmp6,BIT_MASK),BIT_MASK);
+    o_256[2]=simde_mm256_cmpeq_epi8(simde_mm256_and_si256(tmp6,BIT_MASK),BIT_MASK);
     //print_bytes2("out",(uint8_t*)(o_256+2));
-    o_256[6]=_mm256_cmpeq_epi8(_mm256_and_si256(tmp7,BIT_MASK),BIT_MASK);;
+    o_256[6]=simde_mm256_cmpeq_epi8(simde_mm256_and_si256(tmp7,BIT_MASK),BIT_MASK);;
     //print_bytes2("out",(uint8_t*)(o_256+4));
-    tmp3=_mm256_unpackhi_epi16(tmp2,tmp2); // tmp3 = B12 B13 B14 B15 B28 B29 B30 B31
-    tmp4=_mm256_unpacklo_epi32(tmp3,tmp3); // tmp4 = B12 B13 B28 B29
-    tmp5=_mm256_unpackhi_epi32(tmp3,tmp3); // tmp5 = B14 B15 B30 B31
-    tmp6=_mm256_insertf128_si256(tmp4,_mm256_extracti128_si256(tmp5,0),1);  // tmp6 = B12 B13 B14 B15
-    tmp7=_mm256_insertf128_si256(tmp5,_mm256_extracti128_si256(tmp4,1),0);  // tmp7 = B28 B29 B30 B31
+    tmp3=simde_mm256_unpackhi_epi16(tmp2,tmp2); // tmp3 = B12 B13 B14 B15 B28 B29 B30 B31
+    tmp4=simde_mm256_unpacklo_epi32(tmp3,tmp3); // tmp4 = B12 B13 B28 B29
+    tmp5=simde_mm256_unpackhi_epi32(tmp3,tmp3); // tmp5 = B14 B15 B30 B31
+    tmp6=simde_mm256_insertf128_si256(tmp4,simde_mm256_extracti128_si256(tmp5,0),1);  // tmp6 = B12 B13 B14 B15
+    tmp7=simde_mm256_insertf128_si256(tmp5,simde_mm256_extracti128_si256(tmp4,1),0);  // tmp7 = B28 B29 B30 B31
     //print_bytes2("tmp2",(uint8_t*)&tmp2);
     //print_bytes2("tmp3",(uint8_t*)&tmp3);
     //print_bytes2("tmp4",(uint8_t*)&tmp4);
     //print_bytes2("tmp5",(uint8_t*)&tmp4);
     //print_bytes2("tmp6",(uint8_t*)&tmp6);
     //print_bytes2("tmp7",(uint8_t*)&tmp7);
-    o_256[3]=_mm256_cmpeq_epi8(_mm256_and_si256(tmp6,BIT_MASK),BIT_MASK);
+    o_256[3]=simde_mm256_cmpeq_epi8(simde_mm256_and_si256(tmp6,BIT_MASK),BIT_MASK);
     //print_bytes2("out",(uint8_t*)(o_256+3));
-    o_256[7]=_mm256_cmpeq_epi8(_mm256_and_si256(tmp7,BIT_MASK),BIT_MASK);;
+    o_256[7]=simde_mm256_cmpeq_epi8(simde_mm256_and_si256(tmp7,BIT_MASK),BIT_MASK);;
     //print_bytes2("out",(uint8_t*)(o_256+7));
-    o_256+=8;
-#endif
-#elif defined(__arm__)
-    tmp1=vld1q_u8((uint8_t *)i_128);
-    //print_bytes("tmp1:",(uint8_t*)&tmp1);
-    uint8x16x2_t temp1 =  vzipq_u8(tmp1,tmp1);
-    tmp2 = temp1.val[0];
-    uint16x8x2_t temp2 =  vzipq_u16((uint16x8_t)tmp2,(uint16x8_t)tmp2);
-    tmp3 = temp2.val[0];
-    uint32x4x2_t temp3 =  vzipq_u32((uint32x4_t)tmp3,(uint32x4_t)tmp3);
-    tmp4 = temp3.val[0];
-    //print_bytes("tmp4:",(uint8_t*)&tmp4);
-    *o_128++=vceqq_u8(vandq_u8((uint8x16_t)tmp4,BIT_MASK),BIT_MASK);    //1
-    //print_bytes("o:",(uint8_t*)(o_128-1));
-    tmp4 = temp3.val[1];
-    //print_bytes("tmp4:",(uint8_t*)&tmp4);
-    *o_128++=vceqq_u8(vandq_u8((uint8x16_t)tmp4,BIT_MASK),BIT_MASK);    //2
-    //print_bytes("o:",(uint8_t*)(o_128-1));
-    tmp3 = temp2.val[1];
-    temp3 =  vzipq_u32((uint32x4_t)tmp3,(uint32x4_t)tmp3);
-    tmp4 = temp3.val[0];
-    //print_bytes("tmp4:",(uint8_t*)&tmp4);
-    *o_128++=vceqq_u8(vandq_u8((uint8x16_t)tmp4,BIT_MASK),BIT_MASK);    //3
-    //print_bytes("o:",(uint8_t*)(o_128-1));
-    tmp4 = temp3.val[1];
-    //print_bytes("tmp4:",(uint8_t*)&tmp4);
-    *o_128++=vceqq_u8(vandq_u8((uint8x16_t)tmp4,BIT_MASK),BIT_MASK);    //4
-    //and_tmp = vandq_u8((uint8x16_t)tmp4,BIT_MASK); print_bytes("and:",and_tmp);
-    //print_bytes("o:",(uint8_t*)(o_128-1));
-    temp1 =  vzipq_u8(tmp1,tmp1);
-    tmp2 = temp1.val[1];
-    temp2 =  vzipq_u16((uint16x8_t)tmp2,(uint16x8_t)tmp2);
-    tmp3 = temp2.val[0];
-    temp3 =  vzipq_u32((uint32x4_t)tmp3,(uint32x4_t)tmp3);
-    tmp4 = temp3.val[0];
-    //print_bytes("tmp4:",(uint8_t*)&tmp4);
-    *o_128++=vceqq_u8(vandq_u8((uint8x16_t)tmp4,BIT_MASK),BIT_MASK);    //5
-    //print_bytes("o:",(uint8_t*)(o_128-1));
-    tmp4 = temp3.val[1];
-    //print_bytes("tmp4:",(uint8_t*)&tmp4);
-    *o_128++=vceqq_u8(vandq_u8((uint8x16_t)tmp4,BIT_MASK),BIT_MASK);    //6
-    //print_bytes("o:",(uint8_t*)(o_128-1));
-    temp2 =  vzipq_u16((uint16x8_t)tmp2,(uint16x8_t)tmp2);
-    tmp3 = temp2.val[1];
-    temp3 =  vzipq_u32((uint32x4_t)tmp3,(uint32x4_t)tmp3);
-    tmp4 = temp3.val[0];
-    //print_bytes("tmp4:",(uint8_t*)&tmp4);
-    *o_128++=vceqq_u8(vandq_u8((uint8x16_t)tmp4,BIT_MASK),BIT_MASK);    //7
-    //print_bytes("o:",(uint8_t*)(o_128-1));
-    tmp4 = temp3.val[1];
-    //print_bytes("tmp4:",(uint8_t*)&tmp4);
-    *o_128++=vceqq_u8(vandq_u8((uint8x16_t)tmp4,BIT_MASK),BIT_MASK);    //7
-    //print_bytes("o:",(uint8_t*)(o_128-1));
-    i_128++;
-#endif
+    o_256 += 8;
   }
 
-  short *ptr_intl=base_interleaver;
-#if defined(__x86_64) || defined(__i386__)
-#ifndef __AVX2__
-  __m128i tmp;
-  uint16_t *systematic2_ptr=(uint16_t *) output;
-#else
-  __m256i tmp;
-  uint32_t *systematic2_ptr=(uint32_t *) output;
-#endif
-#elif defined(__arm__)
-  uint8x16_t tmp;
-  const uint8_t __attribute__ ((aligned (16))) _Powers[16]=
-  { 1, 2, 4, 8, 16, 32, 64, 128, 1, 2, 4, 8, 16, 32, 64, 128 };
-  // Set the powers of 2 (do it once for all, if applicable)
-  uint8x16_t Powers= vld1q_u8(_Powers);
-  uint8_t *systematic2_ptr=(uint8_t *) output;
-#endif
-#ifndef __AVX2__
-  int input_length_words=1+((n-1)>>1);
-#else
+  short *ptr_intl = base_interleaver;
+  simde__m256i tmp = {0};
+  uint32_t *systematic2_ptr = (uint32_t *)output;
   int input_length_words=1+((n-1)>>2);
-#endif
 
-  for ( i=0; i<  input_length_words ; i ++ ) {
-#if defined(__x86_64__) || defined(__i386__)
-#ifndef __AVX2__
-    tmp=_mm_insert_epi8(tmp,expandInput[*ptr_intl++],7);
-    tmp=_mm_insert_epi8(tmp,expandInput[*ptr_intl++],6);
-    tmp=_mm_insert_epi8(tmp,expandInput[*ptr_intl++],5);
-    tmp=_mm_insert_epi8(tmp,expandInput[*ptr_intl++],4);
-    tmp=_mm_insert_epi8(tmp,expandInput[*ptr_intl++],3);
-    tmp=_mm_insert_epi8(tmp,expandInput[*ptr_intl++],2);
-    tmp=_mm_insert_epi8(tmp,expandInput[*ptr_intl++],1);
-    tmp=_mm_insert_epi8(tmp,expandInput[*ptr_intl++],0);
-    tmp=_mm_insert_epi8(tmp,expandInput[*ptr_intl++],8+7);
-    tmp=_mm_insert_epi8(tmp,expandInput[*ptr_intl++],8+6);
-    tmp=_mm_insert_epi8(tmp,expandInput[*ptr_intl++],8+5);
-    tmp=_mm_insert_epi8(tmp,expandInput[*ptr_intl++],8+4);
-    tmp=_mm_insert_epi8(tmp,expandInput[*ptr_intl++],8+3);
-    tmp=_mm_insert_epi8(tmp,expandInput[*ptr_intl++],8+2);
-    tmp=_mm_insert_epi8(tmp,expandInput[*ptr_intl++],8+1);
-    tmp=_mm_insert_epi8(tmp,expandInput[*ptr_intl++],8+0);
-    *systematic2_ptr++=(unsigned short)_mm_movemask_epi8(tmp);
-#else
-    tmp=_mm256_insert_epi8(tmp,expandInput[*ptr_intl++],7);
-    tmp=_mm256_insert_epi8(tmp,expandInput[*ptr_intl++],6);
-    tmp=_mm256_insert_epi8(tmp,expandInput[*ptr_intl++],5);
-    tmp=_mm256_insert_epi8(tmp,expandInput[*ptr_intl++],4);
-    tmp=_mm256_insert_epi8(tmp,expandInput[*ptr_intl++],3);
-    tmp=_mm256_insert_epi8(tmp,expandInput[*ptr_intl++],2);
-    tmp=_mm256_insert_epi8(tmp,expandInput[*ptr_intl++],1);
-    tmp=_mm256_insert_epi8(tmp,expandInput[*ptr_intl++],0);
-    tmp=_mm256_insert_epi8(tmp,expandInput[*ptr_intl++],8+7);
-    tmp=_mm256_insert_epi8(tmp,expandInput[*ptr_intl++],8+6);
-    tmp=_mm256_insert_epi8(tmp,expandInput[*ptr_intl++],8+5);
-    tmp=_mm256_insert_epi8(tmp,expandInput[*ptr_intl++],8+4);
-    tmp=_mm256_insert_epi8(tmp,expandInput[*ptr_intl++],8+3);
-    tmp=_mm256_insert_epi8(tmp,expandInput[*ptr_intl++],8+2);
-    tmp=_mm256_insert_epi8(tmp,expandInput[*ptr_intl++],8+1);
-    tmp=_mm256_insert_epi8(tmp,expandInput[*ptr_intl++],8+0);
-    tmp=_mm256_insert_epi8(tmp,expandInput[*ptr_intl++],16+7);
-    tmp=_mm256_insert_epi8(tmp,expandInput[*ptr_intl++],16+6);
-    tmp=_mm256_insert_epi8(tmp,expandInput[*ptr_intl++],16+5);
-    tmp=_mm256_insert_epi8(tmp,expandInput[*ptr_intl++],16+4);
-    tmp=_mm256_insert_epi8(tmp,expandInput[*ptr_intl++],16+3);
-    tmp=_mm256_insert_epi8(tmp,expandInput[*ptr_intl++],16+2);
-    tmp=_mm256_insert_epi8(tmp,expandInput[*ptr_intl++],16+1);
-    tmp=_mm256_insert_epi8(tmp,expandInput[*ptr_intl++],16+0);
-    tmp=_mm256_insert_epi8(tmp,expandInput[*ptr_intl++],24+7);
-    tmp=_mm256_insert_epi8(tmp,expandInput[*ptr_intl++],24+6);
-    tmp=_mm256_insert_epi8(tmp,expandInput[*ptr_intl++],24+5);
-    tmp=_mm256_insert_epi8(tmp,expandInput[*ptr_intl++],24+4);
-    tmp=_mm256_insert_epi8(tmp,expandInput[*ptr_intl++],24+3);
-    tmp=_mm256_insert_epi8(tmp,expandInput[*ptr_intl++],24+2);
-    tmp=_mm256_insert_epi8(tmp,expandInput[*ptr_intl++],24+1);
-    tmp=_mm256_insert_epi8(tmp,expandInput[*ptr_intl++],24+0);
-    *systematic2_ptr++=(unsigned int)_mm256_movemask_epi8(tmp);
-#endif
-#elif defined(__arm__)
-    tmp=vsetq_lane_u8(expandInput[*ptr_intl++],tmp,7);
-    tmp=vsetq_lane_u8(expandInput[*ptr_intl++],tmp,6);
-    tmp=vsetq_lane_u8(expandInput[*ptr_intl++],tmp,5);
-    tmp=vsetq_lane_u8(expandInput[*ptr_intl++],tmp,4);
-    tmp=vsetq_lane_u8(expandInput[*ptr_intl++],tmp,3);
-    tmp=vsetq_lane_u8(expandInput[*ptr_intl++],tmp,2);
-    tmp=vsetq_lane_u8(expandInput[*ptr_intl++],tmp,1);
-    tmp=vsetq_lane_u8(expandInput[*ptr_intl++],tmp,0);
-    tmp=vsetq_lane_u8(expandInput[*ptr_intl++],tmp,8+7);
-    tmp=vsetq_lane_u8(expandInput[*ptr_intl++],tmp,8+6);
-    tmp=vsetq_lane_u8(expandInput[*ptr_intl++],tmp,8+5);
-    tmp=vsetq_lane_u8(expandInput[*ptr_intl++],tmp,8+4);
-    tmp=vsetq_lane_u8(expandInput[*ptr_intl++],tmp,8+3);
-    tmp=vsetq_lane_u8(expandInput[*ptr_intl++],tmp,8+2);
-    tmp=vsetq_lane_u8(expandInput[*ptr_intl++],tmp,8+1);
-    tmp=vsetq_lane_u8(expandInput[*ptr_intl++],tmp,8+0);
-    // Compute the mask from the input
-    uint64x2_t Mask= vpaddlq_u32(vpaddlq_u16(vpaddlq_u8(vandq_u8(tmp, Powers))));
-    vst1q_lane_u8(systematic2_ptr++, (uint8x16_t)Mask, 0);
-    vst1q_lane_u8(systematic2_ptr++, (uint8x16_t)Mask, 8);
-#endif
+  for (i = 0; i < input_length_words; i++) {
+    tmp=simde_mm256_insert_epi8(tmp,expandInput[*ptr_intl++],7);
+    tmp=simde_mm256_insert_epi8(tmp,expandInput[*ptr_intl++],6);
+    tmp=simde_mm256_insert_epi8(tmp,expandInput[*ptr_intl++],5);
+    tmp=simde_mm256_insert_epi8(tmp,expandInput[*ptr_intl++],4);
+    tmp=simde_mm256_insert_epi8(tmp,expandInput[*ptr_intl++],3);
+    tmp=simde_mm256_insert_epi8(tmp,expandInput[*ptr_intl++],2);
+    tmp=simde_mm256_insert_epi8(tmp,expandInput[*ptr_intl++],1);
+    tmp=simde_mm256_insert_epi8(tmp,expandInput[*ptr_intl++],0);
+    tmp=simde_mm256_insert_epi8(tmp,expandInput[*ptr_intl++],8+7);
+    tmp=simde_mm256_insert_epi8(tmp,expandInput[*ptr_intl++],8+6);
+    tmp=simde_mm256_insert_epi8(tmp,expandInput[*ptr_intl++],8+5);
+    tmp=simde_mm256_insert_epi8(tmp,expandInput[*ptr_intl++],8+4);
+    tmp=simde_mm256_insert_epi8(tmp,expandInput[*ptr_intl++],8+3);
+    tmp=simde_mm256_insert_epi8(tmp,expandInput[*ptr_intl++],8+2);
+    tmp=simde_mm256_insert_epi8(tmp,expandInput[*ptr_intl++],8+1);
+    tmp=simde_mm256_insert_epi8(tmp,expandInput[*ptr_intl++],8+0);
+    tmp=simde_mm256_insert_epi8(tmp,expandInput[*ptr_intl++],16+7);
+    tmp=simde_mm256_insert_epi8(tmp,expandInput[*ptr_intl++],16+6);
+    tmp=simde_mm256_insert_epi8(tmp,expandInput[*ptr_intl++],16+5);
+    tmp=simde_mm256_insert_epi8(tmp,expandInput[*ptr_intl++],16+4);
+    tmp=simde_mm256_insert_epi8(tmp,expandInput[*ptr_intl++],16+3);
+    tmp=simde_mm256_insert_epi8(tmp,expandInput[*ptr_intl++],16+2);
+    tmp=simde_mm256_insert_epi8(tmp,expandInput[*ptr_intl++],16+1);
+    tmp=simde_mm256_insert_epi8(tmp,expandInput[*ptr_intl++],16+0);
+    tmp=simde_mm256_insert_epi8(tmp,expandInput[*ptr_intl++],24+7);
+    tmp=simde_mm256_insert_epi8(tmp,expandInput[*ptr_intl++],24+6);
+    tmp=simde_mm256_insert_epi8(tmp,expandInput[*ptr_intl++],24+5);
+    tmp=simde_mm256_insert_epi8(tmp,expandInput[*ptr_intl++],24+4);
+    tmp=simde_mm256_insert_epi8(tmp,expandInput[*ptr_intl++],24+3);
+    tmp=simde_mm256_insert_epi8(tmp,expandInput[*ptr_intl++],24+2);
+    tmp=simde_mm256_insert_epi8(tmp,expandInput[*ptr_intl++],24+1);
+    tmp=simde_mm256_insert_epi8(tmp,expandInput[*ptr_intl++],24+0);
+    *systematic2_ptr++ = (unsigned int)simde_mm256_movemask_epi8(tmp);
   }
 
   return n;
 }
 
-
 /*
-#define _mm_expand_si128(xmmx, out, bit_mask)   \
+#define simde_mm_expand_si128(xmmx, out, bit_mask)   \
   {             \
-   __m128i loc_mm;          \
+   simde__m128i loc_mm;          \
    loc_mm=(xmmx);         \
-   loc_mm=_mm_and_si128(loc_mm,bit_mask);   \
-   out=_mm_cmpeq_epi8(loc_mm,bit_mask);   \
+   loc_mm=simde_mm_and_si128(loc_mm,bit_mask);   \
+   out=simde_mm_cmpeq_epi8(loc_mm,bit_mask);   \
   }
 */
 
@@ -511,12 +300,8 @@ void threegpplte_turbo_encoder_sse(unsigned char *input,
   }
 
   unsigned char systematic2[768] __attribute__((aligned(32)));
-  interleave_compact_byte(base_interleaver,input,systematic2,input_length_bytes);
-#if defined(__x86_64__) || defined(__i386__)
-  __m64 *ptr_output=(__m64 *) output;
-#elif defined(__arm__)
-  uint8x8_t *ptr_output=(uint8x8_t *)output;
-#endif
+  interleave_compact_byte(base_interleaver, input, systematic2, input_length_bytes);
+  simde__m64 *ptr_output = (simde__m64 *)output;
   unsigned char cur_s1, cur_s2;
   int code_rate;
 
@@ -524,19 +309,14 @@ void threegpplte_turbo_encoder_sse(unsigned char *input,
     cur_s1=input[i];
     cur_s2=systematic2[i];
 
-    for ( code_rate=0; code_rate<3; code_rate++) {
-#if defined(__x86_64__) || defined(__i386__)
+    for (code_rate = 0; code_rate < 3; code_rate++) {
       /*
-       *ptr_output++ = _mm_add_pi8(all_treillis[state0][cur_s1].systematic_64[code_rate],
-       _mm_add_pi8(all_treillis[state0][cur_s1].parity1_64[code_rate],
+       *ptr_output++ = simde_mm_add_pi8(all_treillis[state0][cur_s1].systematic_64[code_rate],
+       simde_mm_add_pi8(all_treillis[state0][cur_s1].parity1_64[code_rate],
       all_treillis[state1][cur_s2].parity2_64[code_rate]));
       */
-      *ptr_output++ = _mm_add_pi8(all_treillis[state0][cur_s1].systematic_andp1_64[code_rate],
-                                  all_treillis[state1][cur_s2].parity2_64[code_rate]);
-#elif defined(__arm__)
-      *ptr_output++ = vadd_u8(all_treillis[state0][cur_s1].systematic_andp1_64[code_rate],
-                              all_treillis[state0][cur_s1].parity2_64[code_rate]);
-#endif
+      *ptr_output++ = simde_mm_add_pi8(all_treillis[state0][cur_s1].systematic_andp1_64[code_rate],
+                                       all_treillis[state1][cur_s2].parity2_64[code_rate]);
     }
 
     state0=all_treillis[state0][cur_s1].exit_state;
@@ -568,11 +348,9 @@ void threegpplte_turbo_encoder_sse(unsigned char *input,
   threegpplte_rsc_termination(&x[10],&x[11],&state1);
 #ifdef DEBUG_TURBO_ENCODER
   printf("term: x0 %u, x1 %u, state1 %d\n",x[10],x[11],state1);
-#endif //DEBUG_TURBO_ENCODER
-#if defined(__x86_64__) || defined(__i386__)
-  _mm_empty();
-  _m_empty();
-#endif
+#endif // DEBUG_TURBO_ENCODER
+  simde_mm_empty();
+  simde_m_empty();
 }
 
 void init_encoder_sse (void) {
@@ -582,10 +360,7 @@ void init_encoder_sse (void) {
    against main exec version. version mismatch no considered as fatal (interfaces not supposed to change)
 */
 int  coding_checkbuildver(char *mainexec_buildversion, char **shlib_buildversion) {
-#ifndef PACKAGE_VERSION
-#define PACKAGE_VERSION "standalone built: " __DATE__ __TIME__
-#endif
-  *shlib_buildversion = PACKAGE_VERSION;
+  *shlib_buildversion = OAI_PACKAGE_VERSION;
 
   if (strcmp(mainexec_buildversion, *shlib_buildversion) != 0) {
     fprintf(stderr,"[CODING] shared lib version %s, doesn't match main version %s, compatibility should be checked\n",

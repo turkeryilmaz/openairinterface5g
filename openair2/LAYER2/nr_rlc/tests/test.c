@@ -10,6 +10,10 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#ifndef _STANDALONE_TESTING_
+#include "common/utils/LOG/log.h"
+#endif
+
 /*
  * GNB_AM <rx_maxsize> <tx_maxsize> <t_poll_retransmit> <t_reassembly>
  *       <t_status_prohibit> <poll_pdu> <poll_byte> <max_retx_threshold>
@@ -22,13 +26,13 @@
  *       create the UE RLC AM entity with given parameters
  *
  * GNB_UM <rx_maxsize> <tx_maxsize> <t_reassembly> <sn_field_length>
- *     create the eNB RLC UM entity with given parameters
+ *     create the gNB RLC UM entity with given parameters
  *
  * UE_UM <rx_maxsize> <tx_maxsize> <t_reassembly> <sn_field_length>
  *     create the UE RLC UM entity with given parameters
  *
  * GNB_TM <tx_maxsize>
- *     create the eNB RLC TM entity with given parameters
+ *     create the gNB RLC TM entity with given parameters
  *
  * UE_UM <tx_maxsize>
  *     create the UE RLC TM entity with given parameters
@@ -39,7 +43,7 @@
  *     You must end your test definition with a line 'TIME, -1'.
  *
  * GNB_SDU <id> <size>
- *     send an SDU to eNB with id <i> and size <size>
+ *     send an SDU to gNB with id <i> and size <size>
  *     the SDU is [00 01 ... ff 01 ...]
  *     (ie. start byte is 00 then we increment for each byte, loop if needed)
  *
@@ -47,10 +51,10 @@
  *     same as GNB_SDU but the SDU is sent to the UE
  *
  * GNB_PDU <size> <'size' bytes>
- *     send a custom PDU from eNB to UE (eNB does not see this PDU at all)
+ *     send a custom PDU from gNB to UE (gNB does not see this PDU at all)
  *
  * UE_PDU <size> <'size' bytes>
- *     send a custom PDU from UE to eNB (UE does not see this PDU at all)
+ *     send a custom PDU from UE to gNB (UE does not see this PDU at all)
  *
  * GNB_PDU_SIZE <size>
  *     set 'gnb_pdu_size'
@@ -70,7 +74,7 @@
  *     that the test must fail (ie. exit with non zero, crash not allowed)
  *
  * GNB_BUFFER_STATUS
- *     call buffer_status for eNB and print result
+ *     call buffer_status for gNB and print result
  *
  * UE_BUFFER_STATUS
  *     call buffer_status for UE and print result
@@ -82,7 +86,7 @@
  *     discards given SDU
  *
  * RE_ESTABLISH
- *     re-establish both eNB and UE
+ *     re-establish both gNB and UE
  */
 
 enum action {
@@ -203,6 +207,15 @@ void max_retx_reached_ue(void *max_retx_reached_data,
   exit(1);
 }
 
+#ifdef _STANDALONE_TESTING_
+
+void exit_function(const char *file, const char *function, const int line, const char *s, const int assert)
+{
+  exit(1);
+}
+
+#endif
+
 int test_main(void)
 {
   nr_rlc_entity_t *gnb = NULL;
@@ -222,6 +235,10 @@ int test_main(void)
   int ue_recv_fails = 0;
   int gnb_pdu_size = 1000;
   int ue_pdu_size = 1000;
+
+#ifndef _STANDALONE_TESTING_
+  logInit();
+#endif
 
   printf("TEST: start\n");
 
@@ -368,7 +385,7 @@ int test_main(void)
           pos += 2;
           break;
         case RE_ESTABLISH:
-          printf("TEST: %d: re-establish eNB and UE\n", i);
+          printf("TEST: %d: re-establish gNB and UE\n", i);
           gnb->reestablishment(gnb);
           ue->reestablishment(ue);
           pos++;
@@ -418,8 +435,8 @@ int test_main(void)
     }
   }
 
-  gnb->delete(gnb);
-  ue->delete(ue);
+  gnb->delete_entity(gnb);
+  ue->delete_entity(ue);
 
   free(sdu);
   free(pdu);

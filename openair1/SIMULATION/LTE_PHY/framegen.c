@@ -28,7 +28,6 @@
 #include "PHY/defs.h"
 #include "PHY/vars.h"
 #include "SCHED/extern.h"
-#include "OCG_vars.h"
 #include "MAC_INTERFACE/vars.h"
 #ifdef IFFT_FPGA
 #include "PHY/LTE_REFSIG/mod_table.h"
@@ -36,12 +35,11 @@
 
 #include "SCHED/defs.h"
 #include "SCHED/vars.h"
-#include "ARCH/CBMIMO1/DEVICE_DRIVER/vars.h"
 
 #include "LAYER2/MAC/defs.h"
 #include "PHY_INTERFACE/defs.h"
 #include "LAYER2/MAC/vars.h"
-#include "UTIL/LOG/log_extern.h"
+#include "UTIL/LOG/log.h"
 
 uint16_t n_rnti = 0x1235;
 int n_users = 1;
@@ -333,7 +331,6 @@ void do_OFDM_mod(mod_sym_t **txdataF, int32_t **txdata, uint16_t next_slot, LTE_
   slot_offset = (next_slot)*(frame_parms->samples_per_tti>>1);
 
   for (aa=0; aa<frame_parms->nb_antennas_tx; aa++) {
-    //    printf("Thread %d starting ... aa %d (%llu)\n",omp_get_thread_num(),aa,rdtsc());
 
     if (frame_parms->Ncp == 1)
       PHY_ofdm_mod(&txdataF[aa][slot_offset_F],        // input

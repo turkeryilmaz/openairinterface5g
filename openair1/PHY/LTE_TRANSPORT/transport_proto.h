@@ -72,21 +72,6 @@ void free_eNB_ulsch(LTE_eNB_ULSCH_t *ulsch);
 
 LTE_eNB_ULSCH_t *new_eNB_ulsch(uint8_t max_turbo_iterations,uint8_t N_RB_UL, uint8_t abstraction_flag);
 
-int dlsch_encoding_all(PHY_VARS_eNB *eNB,
-                      L1_rxtx_proc_t *proc,
-		       unsigned char *a,
-		       uint8_t num_pdcch_symbols,
-		       LTE_eNB_DLSCH_t *dlsch,
-		       int frame,
-		       uint8_t subframe,
-		       time_stats_t *rm_stats,
-		       time_stats_t *te_stats,
-		       time_stats_t *te_wait_stats,
-		       time_stats_t *te_main_stats,
-		       time_stats_t *te_wakeup_stats0,
-		       time_stats_t *te_wakeup_stats1,
-		       time_stats_t *i_stats);
-
 /** \fn dlsch_encoding(PHY_VARS_eNB *eNB,
     uint8_t *input_buffer,
     LTE_DL_FRAME_PARMS *frame_parms,
@@ -237,6 +222,8 @@ int32_t dlsch_encoding_2threads(PHY_VARS_eNB *eNB,
     \param frame_parms Frame parameter descriptor
 */
 
+void init_modulation_LUTs(void);
+
 int32_t allocate_REs_in_RB(PHY_VARS_eNB *phy_vars_eNB,
                            int32_t **txdataF,
                            uint32_t *jj,
@@ -319,38 +306,28 @@ int mch_modulation_khz_1dot25(int32_t **txdataF,
                    LTE_DL_FRAME_PARMS *frame_parms,
                    LTE_eNB_DLSCH_t *dlsch);
 
-
 /** \brief Top-level generation function for eNB TX of MBSFN
     @param phy_vars_eNB Pointer to eNB variables
+@param proc
     @param a Pointer to transport block
-    @param abstraction_flag
 
 */
 void generate_mch_khz_1dot25(PHY_VARS_eNB *phy_vars_eNB,L1_rxtx_proc_t *proc,uint8_t *a);
 
-
 /** \brief Top-level generation function for eNB TX of MBSFN
     @param phy_vars_eNB Pointer to eNB variables
+@param proc
     @param a Pointer to transport block
-    @param abstraction_flag
-
 */
 void generate_mch(PHY_VARS_eNB *phy_vars_eNB,L1_rxtx_proc_t *proc,uint8_t *a);
 
 /** \brief This function generates the frequency-domain pilots (cell-specific downlink reference signals)
     @param phy_vars_eNB Pointer to eNB variables
-    @param proc Pointer to RXn-TXnp4 proc information
     @param mcs MCS for MBSFN
     @param ndi new data indicator
-    @param rdvix
+    @param rvidx
 */
 void fill_eNB_dlsch_MCH(PHY_VARS_eNB *phy_vars_eNB,int mcs,int ndi,int rvidx);
-
-/** \brief This function generates the frequency-domain pilots (cell-specific downlink reference signals)
-    @param phy_vars_ue Pointer to UE variables
-    @param mcs MCS for MBSFN
-    @param eNB_id index of eNB in ue variables
-*/
 
 /** \brief This function generates the frequency-domain pilots (cell-specific downlink reference signals)
     for N subframes.
@@ -439,7 +416,7 @@ void dci_encoding(uint8_t *a,
                   uint16_t rnti);
 
 /*! \brief Top-level DCI entry point. This routine codes an set of DCI PDUs and performs PDCCH modulation, interleaving and mapping.
-  \param num_dci  Number of pdcch symbols
+  \param num_pdcch_symbols
   \param num_dci  Number of DCI pdus to encode
   \param dci_alloc Allocation vectors for each DCI pdu
   \param n_rnti n_RNTI (see )
@@ -520,15 +497,8 @@ int generate_eNB_ulsch_params_from_dci(PHY_VARS_eNB *PHY_vars_eNB,
 
 void dump_ulsch(PHY_VARS_eNB *phy_vars_eNB,int frame, int subframe, uint8_t UE_id,int round);
 
-
-
-
-
-void pcfich_scrambling(LTE_DL_FRAME_PARMS *frame_parms,
-                       uint8_t subframe,
-                       uint8_t *b,
-                       uint8_t *bt);
-
+void dump_ulsch_stats(FILE *fd,PHY_VARS_eNB *eNB,int frame);
+void dump_uci_stats(FILE *fd,PHY_VARS_eNB *eNB,int frame);
 
 void generate_pcfich(uint8_t num_pdcch_symbols,
                      int16_t amp,
@@ -540,21 +510,11 @@ void rx_ulsch(PHY_VARS_eNB *eNB,
               L1_rxtx_proc_t *proc,
               uint8_t UE_id);
 
-
-int ulsch_decoding_data_all(PHY_VARS_eNB *eNB,
-
-                        L1_rxtx_proc_t *proc,
-                        int UE_id,
-                        int harq_pid,
-                        int llr8_flag);
-
-
 /*!
   \brief Decoding of PUSCH/ACK/RI/ACK from 36-212.
   @param phy_vars_eNB Pointer to eNB top-level descriptor
   @param proc Pointer to RXTX proc variables
   @param UE_id ID of UE transmitting this PUSCH
-  @param subframe Index of subframe for PUSCH
   @param control_only_flag Receive PUSCH with control information only
   @param Nbundled Nbundled parameter for ACK/NAK scrambling from 36-212/36-213
   @param llr8_flag If 1, indicate that the 8-bit turbo decoder should be used
@@ -566,33 +526,6 @@ unsigned int  ulsch_decoding(PHY_VARS_eNB *phy_vars_eNB,
                              uint8_t control_only_flag,
                              uint8_t Nbundled,
                              uint8_t llr8_flag);
-
-/*!
-  \brief Decoding of ULSCH data component from 36-212. This one spawns 1 worker thread in parallel,half of the segments in each thread.
-  @param phy_vars_eNB Pointer to eNB top-level descriptor
-  @param UE_id ID of UE transmitting this PUSCH
-  @param harq_pid HARQ process ID
-  @param llr8_flag If 1, indicate that the 8-bit turbo decoder should be used
-  @returns 0 on success
-*/
-int ulsch_decoding_data_2thread(PHY_VARS_eNB *eNB,
-                                int UE_id,
-                                int harq_pid,
-                                int llr8_flag);
-
-/*!
-  \brief Decoding of ULSCH data component from 36-212. This one is single thread.
-  @param phy_vars_eNB Pointer to eNB top-level descriptor
-  @param UE_id ID of UE transmitting this PUSCH
-  @param harq_pid HARQ process ID
-  @param llr8_flag If 1, indicate that the 8-bit turbo decoder should be used
-  @returns 0 on success
-*/
-int ulsch_decoding_data(PHY_VARS_eNB *eNB,
-                        L1_rxtx_proc_t *proc,
-                        int UE_id,
-                        int harq_pid,
-                        int llr8_flag);
 
 void generate_phich_top(PHY_VARS_eNB *phy_vars_eNB,
                         L1_rxtx_proc_t *proc,
@@ -640,7 +573,6 @@ uint32_t rx_pucch(PHY_VARS_eNB *phy_vars_eNB,
                   int     br_flag
                  );
 
-
 /*!
   \brief Process PRACH waveform
   @param phy_vars_eNB Pointer to eNB top-level descriptor. If NULL, then this is an RRU
@@ -648,6 +580,7 @@ uint32_t rx_pucch(PHY_VARS_eNB *phy_vars_eNB,
   @param max_preamble most likely preamble
   @param max_preamble_energy Estimated Energy of most likely preamble
   @param max_preamble_delay Estimated Delay of most likely preamble
+  @param avg_preamble_energy
   @param Nf System frame number
   @param tdd_mapindex Index of PRACH resource in Table 5.7.1-4 (TDD)
   @param br_flag indicator to act on eMTC PRACH
@@ -691,15 +624,57 @@ void conv_eMTC_rballoc(uint16_t resource_block_coding,
                        uint32_t N_RB_DL,
                        uint32_t *rb_alloc);
 
-int16_t find_dlsch(uint16_t rnti, PHY_VARS_eNB *eNB,find_type_t type);
+int find_dlsch(uint16_t rnti, PHY_VARS_eNB *eNB,find_type_t type);
 
-int16_t find_ulsch(uint16_t rnti, PHY_VARS_eNB *eNB,find_type_t type);
+int find_ulsch(uint16_t rnti, PHY_VARS_eNB *eNB,find_type_t type);
 
-int16_t find_uci(uint16_t rnti, int frame, int subframe, PHY_VARS_eNB *eNB,find_type_t type);
+int find_uci(uint16_t rnti, int frame, int subframe, PHY_VARS_eNB *eNB,find_type_t type);
 
-uint8_t get_prach_fmt(uint8_t prach_ConfigIndex,lte_frame_type_t frame_type);
+static inline  uint32_t lte_gold_generic(uint32_t *x1, uint32_t *x2, uint8_t reset)
+{
+  int32_t n;
 
-uint32_t lte_gold_generic(uint32_t *x1, uint32_t *x2, uint8_t reset);
+  // 3GPP 3x.211
+  // Nc = 1600
+  // c(n)     = [x1(n+Nc) + x2(n+Nc)]mod2
+  // x1(n+31) = [x1(n+3)                     + x1(n)]mod2
+  // x2(n+31) = [x2(n+3) + x2(n+2) + x2(n+1) + x2(n)]mod2
+  if (reset)
+  {
+      // Init value for x1: x1(0) = 1, x1(n) = 0, n=1,2,...,30
+      // x1(31) = [x1(3) + x1(0)]mod2 = 1
+      *x1 = 1 + (1U<<31);
+      // Init value for x2: cinit = sum_{i=0}^30 x2*2^i
+      // x2(31) = [x2(3)    + x2(2)    + x2(1)    + x2(0)]mod2
+      //        =  (*x2>>3) ^ (*x2>>2) + (*x2>>1) + *x2
+      *x2 = *x2 ^ ((*x2 ^ (*x2>>1) ^ (*x2>>2) ^ (*x2>>3))<<31);
+
+      // x1 and x2 contain bits n = 0,1,...,31
+
+      // Nc = 1600 bits are skipped at the beginning
+      // i.e., 1600 / 32 = 50 32bit words
+
+      for (n = 1; n < 50; n++)
+      {
+          // Compute x1(0),...,x1(27)
+          *x1 = (*x1>>1) ^ (*x1>>4);
+          // Compute x1(28),..,x1(31) and xor
+          *x1 = *x1 ^ (*x1<<31) ^ (*x1<<28);
+          // Compute x2(0),...,x2(27)
+          *x2 = (*x2>>1) ^ (*x2>>2) ^ (*x2>>3) ^ (*x2>>4);
+          // Compute x2(28),..,x2(31) and xor
+          *x2 = *x2 ^ (*x2<<31) ^ (*x2<<30) ^ (*x2<<29) ^ (*x2<<28);
+      }
+  }
+
+  *x1 = (*x1>>1) ^ (*x1>>4);
+  *x1 = *x1 ^ (*x1<<31) ^ (*x1<<28);
+  *x2 = (*x2>>1) ^ (*x2>>2) ^ (*x2>>3) ^ (*x2>>4);
+  *x2 = *x2 ^ (*x2<<31) ^ (*x2<<30) ^ (*x2<<29) ^ (*x2<<28);
+
+  // c(n) = [x1(n+Nc) + x2(n+Nc)]mod2
+  return(*x1^*x2);
+}
 
 
 /**@}*/

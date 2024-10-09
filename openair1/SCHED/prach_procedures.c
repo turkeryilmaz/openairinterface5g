@@ -19,7 +19,7 @@
  *      contact@openairinterface.org
  */
 
-/*! \file phy_procedures_lte_eNB.c
+/*! \file prach_procedures.c
  * \brief Implementation of eNB procedures from 36.213 LTE specifications
  * \author R. Knopp, F. Kaltenberger, N. Nikaein, X. Foukas
  * \date 2011
@@ -31,8 +31,6 @@
  */
 
 #include "PHY/defs_eNB.h"
-#include "PHY/phy_extern.h"
-#include "SCHED/sched_eNB.h"
 #include "nfapi_interface.h"
 #include "fapi_l1.h"
 #include "nfapi_pnf.h"
@@ -42,18 +40,16 @@
 
 
 #include "assertions.h"
-#include "msc.h"
 
 #include <time.h>
 
-#include "intertask_interface.h"
 
 
 extern int oai_nfapi_rach_ind(nfapi_rach_indication_t *rach_ind);
 
 void prach_procedures(PHY_VARS_eNB *eNB,
                       int br_flag ) {
-  uint16_t max_preamble[4],max_preamble_energy[4],max_preamble_delay[4],avg_preamble_energy[4];
+  uint16_t max_preamble[4]={0},max_preamble_energy[4]={0},max_preamble_delay[4]={0},avg_preamble_energy[4]={0}; 
   uint16_t i;
   int frame,subframe;
 
@@ -188,7 +184,7 @@ void prach_procedures(PHY_VARS_eNB *eNB,
     else {
       eNB->measurements.prach_I0 = ((eNB->measurements.prach_I0*900)>>10) + ((avg_preamble_energy[0]*124)>>10);
 
-      if (frame==0) LOG_I(PHY,"prach_I0 = %d.%d dB\n",eNB->measurements.prach_I0/10,eNB->measurements.prach_I0%10);
+      if (frame==0) LOG_D(PHY,"prach_I0 = %d.%d dB\n",eNB->measurements.prach_I0/10,eNB->measurements.prach_I0%10);
 
       if (eNB->prach_energy_counter < 100) eNB->prach_energy_counter++;
     }

@@ -88,7 +88,7 @@ static int _esm_pt_get_available_entry(esm_pt_data_t *esm_pt_data);
 esm_pt_data_t *esm_pt_initialize(void)
 {
   LOG_FUNC_IN;
-  esm_pt_data_t *esm_pt_data = calloc_or_fail(sizeof(esm_pt_data_t));
+  esm_pt_data_t *esm_pt_data = calloc_or_fail(1, sizeof(esm_pt_data_t));
   int i;
 
   esm_pt_data->index = 0;
@@ -482,11 +482,11 @@ int esm_pt_get_pending_pti(esm_pt_data_t *esm_pt_data, esm_pt_state status)
  ** Inputs:  pti:       The identity of the procedure transaction  **
  **                                                                        **
  ** Outputs:     None                                                      **
- **      Return:    TRUE, FALSE                                **
+ **      Return:    true, false                                **
  **      Others:    None                                       **
  **                                                                        **
  ***************************************************************************/
-int esm_pt_is_not_in_use(esm_pt_data_t *esm_pt_data, int pti)
+bool esm_pt_is_not_in_use(esm_pt_data_t *esm_pt_data, int pti)
 {
   return ( (pti == ESM_PT_UNASSIGNED) ||
            (esm_pt_data->context[pti - ESM_PTI_MIN] == NULL) ||
@@ -504,11 +504,11 @@ int esm_pt_is_not_in_use(esm_pt_data_t *esm_pt_data, int pti)
  **      Others:    None                                       **
  **                                                                        **
  ** Outputs:     None                                                      **
- **      Return:    TRUE, FALSE                                **
+ **      Return:    true, false                                **
  **      Others:    None                                       **
  **                                                                        **
  ***************************************************************************/
-int esm_pt_is_reserved(int pti)
+bool esm_pt_is_reserved(int pti)
 {
   return ( (pti != ESM_PT_UNASSIGNED) && (pti > ESM_PTI_MAX) );
 }

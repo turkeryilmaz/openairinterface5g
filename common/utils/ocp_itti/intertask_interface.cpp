@@ -24,61 +24,40 @@
 #include <vector>
 #include <map>
 #include <sys/eventfd.h>
+#include <semaphore.h>
 
 
 extern "C" {
 #include <intertask_interface.h>
 #include <common/utils/system.h>
+#include "executables/softmodem-common.h"
 
-  typedef struct timer_elm_s {
-    timer_type_t type;     ///< Timer type
-    long instance;
-    long duration;
-    uint64_t timeout;
-    void *timer_arg; ///< Optional argument that will be passed when timer expires
-  } timer_elm_t ;
+typedef struct timer_elm_s {
+  timer_type_t type; ///< Timer type
+  long instance;
+  long duration;
+  uint64_t timeout;
+  void *timer_arg; ///< Optional argument that will be passed when timer expires
+} timer_elm_t;
 
   typedef struct task_list_s {
     task_info_t admin;
+    ittiTask_parms_t task_parms;
     pthread_t thread;
     pthread_mutex_t queue_cond_lock;
     std::vector<MessageDef *> message_queue;
     std::map<long,timer_elm_t> timer_map;
     uint64_t next_timer=UINT64_MAX;
-    struct epoll_event *events =NULL;
     int nb_fd_epoll=0;
-    int nb_events=0;
     int epoll_fd=-1;
     int sem_fd=-1;
+    size_t last_log_size = 0;
   } task_list_t;
 
   int timer_expired(int fd);
   static task_list_t **tasks=NULL;
   static int nb_queues=0;
   static pthread_mutex_t lock_nb_queues;
-
-  void *pool_buffer_init (void) {
-    return 0;
-  }
-
-  void *pool_buffer_clean (void *arg) {
-    //-----------------------------------------------------------------------------
-    return 0;
-  }
-
-  void free_mem_block (mem_block_t *leP, const char *caller) {
-    AssertFatal(leP!=NULL,"");
-    free(leP);
-  }
-
-  mem_block_t *get_free_mem_block (uint32_t sizeP, const char *caller) {
-    mem_block_t *ptr=(mem_block_t *)malloc(sizeP+sizeof(mem_block_t));
-    ptr->next = NULL;
-    ptr->previous = NULL;
-    ptr->data=((unsigned char *)ptr)+sizeof(mem_block_t);
-    ptr->size=sizeP;
-    return ptr;
-  }
 
   void *itti_malloc(task_id_t origin_task_id, task_id_t destination_task_id, ssize_t size) {
     void *ptr = NULL;
@@ -132,16 +111,28 @@ extern "C" {
     int message_id = message->ittiMsgHeader.messageId;
     size_t s=t->message_queue.size();
 
-    if ( s > t->admin.queue_size )
-      LOG_E(TMR,"Queue for %s task contains %ld messages\n", itti_get_task_name(destination_task_id), s );
-
-    if ( s > 50 )
-      LOG_I(TMR,"Queue for %s task size: %ld\n",itti_get_task_name(destination_task_id), s+1);
+    // to reduce the number of logs, we give a message each increase of 25%
+    if ((s > t->last_log_size * 1.25) && (s > t->admin.queue_size / 10)) {
+      if (s > t->admin.queue_size) {
+        LOG_E(TMR, "Queue for %s task contains %ld messages\n", itti_get_task_name(destination_task_id), s);
+      } else {
+        LOG_I(ITTI,
+              "Queue for %s task size: %ld (last message %s)\n",
+              itti_get_task_name(destination_task_id),
+              s + 1,
+              ITTI_MSG_NAME(message));
+      }
+      t->last_log_size = s;
+    } else if (t->last_log_size && s < t->admin.queue_size / 10) {
+      // Inform when the queue decreases
+      LOG_I(ITTI, "Queue for %s task size is back under 10%% of max size\n", itti_get_task_name(destination_task_id));
+      t->last_log_size = 0;
+    }
 
     t->message_queue.insert(t->message_queue.begin(), message);
     eventfd_t sem_counter = 1;
     AssertFatal ( sizeof(sem_counter) == write(t->sem_fd, &sem_counter, sizeof(sem_counter)), "");
-    LOG_D(TMR,"sent messages id=%d to %s\n",message_id, t->admin.name);
+    LOG_D(ITTI, "sent messages id=%s messages_info to %s\n", messages_info[message_id].name, t->admin.name);
     return 0;
   }
 
@@ -150,12 +141,12 @@ extern "C" {
     pthread_mutex_lock (&t->queue_cond_lock);
     int ret=itti_send_msg_to_task_locked(destination_task_id, destinationInstance, message);
 
-    while ( t->message_queue.size()>0 && t->admin.func != NULL ) {
+    while (t->message_queue.size() > 0 && t->task_parms.shortcut_func != NULL) {
       if (t->message_queue.size()>1)
-        LOG_W(TMR,"queue in no thread mode is %ld\n", t->message_queue.size());
+        LOG_W(ITTI,"queue in no thread mode is %ld\n", t->message_queue.size());
 
       pthread_mutex_unlock (&t->queue_cond_lock);
-      t->admin.func(NULL);
+      t->task_parms.shortcut_func(NULL);
       pthread_mutex_lock (&t->queue_cond_lock);
     }
 
@@ -167,14 +158,14 @@ extern "C" {
     struct epoll_event event;
     task_list_t *t=tasks[task_id];
     t->nb_fd_epoll++;
-    t->events = (struct epoll_event *)realloc((void *)t->events,
-                t->nb_fd_epoll * sizeof(struct epoll_event));
     event.events  = EPOLLIN | EPOLLERR;
     event.data.u64 = 0;
     event.data.fd  = fd;
     AssertFatal(epoll_ctl(t->epoll_fd, EPOLL_CTL_ADD, fd, &event) == 0,
                 "epoll_ctl (EPOLL_CTL_ADD) failed for task %s, fd %d: %s!\n",
                 itti_get_task_name(task_id), fd, strerror(errno));
+    eventfd_t sem_counter = 1;
+    AssertFatal ( sizeof(sem_counter) == write(t->sem_fd, &sem_counter, sizeof(sem_counter)), "");
   }
 
   void itti_unsubscribe_event_fd(task_id_t task_id, int fd) {
@@ -185,10 +176,10 @@ extern "C" {
     t->nb_fd_epoll--;
   }
 
-  static inline int itti_get_events_locked(task_id_t task_id, struct epoll_event **events) {
+  static inline int itti_get_events_locked(task_id_t task_id, struct epoll_event *events, int max_events) {
     task_list_t *t=tasks[task_id];
     uint64_t current_time=0;
-
+    int nb_events;
     do {
       if ( t->next_timer != UINT64_MAX ) {
         struct timespec tp;
@@ -208,7 +199,7 @@ extern "C" {
               message->ittiMsg.timer_has_expired.arg=it->second.timer_arg;
 
               if (itti_send_msg_to_task_locked(task_id, it->second.instance, message) < 0) {
-                LOG_W(TMR,"Failed to send msg TIMER_HAS_EXPIRED to task %u\n", task_id);
+                LOG_W(ITTI,"Failed to send msg TIMER_HAS_EXPIRED to task %u\n", task_id);
                 free(message);
                 t->timer_map.erase(it);
                 return -1;
@@ -233,41 +224,42 @@ extern "C" {
         epoll_timeout = t->next_timer-current_time;
 
       pthread_mutex_unlock(&t->queue_cond_lock);
-      LOG_D(TMR,"enter blocking wait for %s\n", itti_get_task_name(task_id));
-      t->nb_events = epoll_wait(t->epoll_fd,t->events,t->nb_fd_epoll, epoll_timeout);
+      LOG_D(ITTI,"enter blocking wait for %s, timeout: %d ms\n", itti_get_task_name(task_id),  epoll_timeout);
+      nb_events = epoll_wait(t->epoll_fd, events, max_events, epoll_timeout);
 
-      if ( t->nb_events  < 0 && (errno == EINTR || errno == EAGAIN ) )
+      if ( nb_events  < 0 && (errno == EINTR || errno == EAGAIN ) )
         pthread_mutex_lock(&t->queue_cond_lock);
-    } while (t->nb_events  < 0 && (errno == EINTR || errno == EAGAIN ) );
+    } while (nb_events  < 0 && (errno == EINTR || errno == EAGAIN ) );
 
-    AssertFatal (t->nb_events >=0,
+    AssertFatal (nb_events >=0,
                  "epoll_wait failed for task %s, nb fds %d, timeout %lu: %s!\n",
-                 itti_get_task_name(task_id), t->nb_fd_epoll, t->next_timer != UINT64_MAX ? t->next_timer-current_time : -1, strerror(errno));
-    LOG_D(TMR,"receive on %d descriptors for %s\n", t->nb_events, itti_get_task_name(task_id));
+                 itti_get_task_name(task_id), t->nb_fd_epoll, 
+                 t->next_timer != UINT64_MAX ? t->next_timer-current_time : -1, 
+                 strerror(errno));
+    LOG_D(ITTI,"receive on %d descriptors for %s\n", nb_events, itti_get_task_name(task_id));
 
-    if (t->nb_events == 0)
+    if (nb_events == 0)
       /* No data to read -> return */
       return 0;
 
-    for (int i = 0; i < t->nb_events; i++) {
+    for (int i = 0; i < nb_events; i++) {
       /* Check if there is an event for ITTI for the event fd */
-      if ((t->events[i].events & EPOLLIN) &&
-          (t->events[i].data.fd == t->sem_fd)) {
+      if ((events[i].events & EPOLLIN) &&
+          (events[i].data.fd == t->sem_fd)) {
         eventfd_t   sem_counter;
         /* Read will always return 1 */
         AssertFatal( sizeof(sem_counter) == read (t->sem_fd, &sem_counter, sizeof(sem_counter)), "");
         /* Mark that the event has been processed */
-        t->events[i].events &= ~EPOLLIN;
+        events[i].events &= ~EPOLLIN;
       }
     }
 
-    *events = t->events;
-    return t->nb_events;
+    return nb_events;
   }
 
-  int itti_get_events(task_id_t task_id, struct epoll_event **events) {
+  int itti_get_events(task_id_t task_id, struct epoll_event *events, int nb_evts) {
     pthread_mutex_lock(&tasks[task_id]->queue_cond_lock);
-    return itti_get_events_locked(task_id, events);
+    return itti_get_events_locked(task_id, events, nb_evts);
   }
 
   void itti_receive_msg(task_id_t task_id, MessageDef **received_msg) {
@@ -275,28 +267,25 @@ extern "C" {
     task_list_t *t=tasks[task_id];
     pthread_mutex_lock(&t->queue_cond_lock);
 
+    struct epoll_event events[t->nb_fd_epoll];
     // Weird condition to deal with crap legacy itti interface
-    if ( t->nb_fd_epoll == 1 ) {
-      while (t->message_queue.empty()) {
-        itti_get_events_locked(task_id, &t->events);
+    if (t->message_queue.empty()) {
+      do {
+        itti_get_events_locked(task_id, events, t->nb_fd_epoll);
         pthread_mutex_lock(&t->queue_cond_lock);
       }
-    } else {
-      if (t->message_queue.empty()) {
-        itti_get_events_locked(task_id, &t->events);
-        pthread_mutex_lock(&t->queue_cond_lock);
-      }
+      while (t->message_queue.empty() && t->nb_fd_epoll == 1);
     }
 
     // Legacy design: we return even if we have no message
     // in this case, *received_msg is NULL
     if (t->message_queue.empty()) {
       *received_msg=NULL;
-      LOG_D(TMR,"task %s received even from other fd (total fds: %d), returning msg NULL\n",t->admin.name, t->nb_fd_epoll);
+      LOG_D(ITTI,"task %s received even from other fd (total fds: %d), returning msg NULL\n",t->admin.name, t->nb_fd_epoll);
     } else {
       *received_msg=t->message_queue.back();
       t->message_queue.pop_back();
-      LOG_D(TMR,"task %s received a message\n",t->admin.name);
+      LOG_D(ITTI,"task %s received a message\n",t->admin.name);
     }
 
     pthread_mutex_unlock (&t->queue_cond_lock);
@@ -308,7 +297,7 @@ extern "C" {
     pthread_mutex_lock(&t->queue_cond_lock);
 
     if (!t->message_queue.empty()) {
-      LOG_D(TMR,"task %s received a message in polling mode\n",t->admin.name);
+      LOG_D(ITTI,"task %s received a message in polling mode\n",t->admin.name);
       *received_msg=t->message_queue.back();
       t->message_queue.pop_back();
     } else
@@ -317,12 +306,21 @@ extern "C" {
     pthread_mutex_unlock (&t->queue_cond_lock);
   }
 
-  int itti_create_task(task_id_t task_id,
-                       void *(*start_routine)(void *),
-                       void *args_p) {
+  int itti_create_task(const task_id_t task_id, void *(*start_routine)(void *), const ittiTask_parms_t *parms)
+  {
     task_list_t *t=tasks[task_id];
-    threadCreate (&t->thread, start_routine, args_p, (char *)itti_get_task_name(task_id),-1,OAI_PRIORITY_RT);
-    LOG_I(TMR,"Created Posix thread %s\n",  itti_get_task_name(task_id) );
+    if (get_softmodem_params()->no_itti && task_id < sizeofArray(tasks_info) && parms && parms->shortcut_func) {
+      LOG_W(ITTI, "not starting the thread for %s, the msg processing will be done in place\n", tasks_info[task_id].name);
+      t->task_parms.shortcut_func = parms->shortcut_func;
+      return 0;
+    }
+    threadCreate(&t->thread,
+                 start_routine,
+                 parms ? parms->args_to_start_routine : NULL,
+                 (char *)itti_get_task_name(task_id),
+                 -1,
+                 OAI_PRIORITY_RT);
+    LOG_D(ITTI,"Created Posix thread %s\n",  itti_get_task_name(task_id) );
     return 0;
   }
 
@@ -343,16 +341,14 @@ extern "C" {
     AssertFatal(new_tasks != NULL, "could not realloc() tasks list");
     tasks = new_tasks;
     tasks[newQueue]= new task_list_t;
+    tasks[newQueue]->task_parms = {0};
     pthread_mutex_unlock (&lock_nb_queues);
-    LOG_I(TMR,"Starting itti queue: %s as task %d\n", taskInfo->name, newQueue);
+    LOG_D(ITTI, "Starting itti queue: %s as task %d\n", taskInfo->name, newQueue);
     pthread_mutex_init(&tasks[newQueue]->queue_cond_lock, NULL);
     memcpy(&tasks[newQueue]->admin, taskInfo, sizeof(task_info_t));
     AssertFatal( ( tasks[newQueue]->epoll_fd = epoll_create1(0) ) >=0, "");
     AssertFatal( ( tasks[newQueue]->sem_fd = eventfd(0, EFD_SEMAPHORE) ) >=0, "");
     itti_subscribe_event_fd((task_id_t)newQueue, tasks[newQueue]->sem_fd);
-
-    if (tasks[newQueue]->admin.threadFunc != NULL)
-      itti_create_task((task_id_t)newQueue, tasks[newQueue]->admin.threadFunc, NULL);
 
     return newQueue;
   }
@@ -392,7 +388,7 @@ extern "C" {
     clock_gettime(CLOCK_MONOTONIC, &tp);
 
     if (interval_us%1000 != 0)
-      LOG_W(TMR, "Can't set timer precision below 1ms, rounding it\n");
+      LOG_W(ITTI, "Can't set timer precision below 1ms, rounding it\n");
 
     timer.duration  = interval_sec*1000+interval_us/1000;
     timer.timeout= ((uint64_t)tp.tv_sec*1000+tp.tv_nsec/(1000*1000)+timer.duration);
@@ -421,7 +417,7 @@ extern "C" {
     if (ret==1)
       return 0;
     else {
-      LOG_W(TMR, "tried to remove a non existing timer\n");
+      LOG_W(ITTI, "tried to remove a non existing timer\n");
       return 1;
     }
   }
@@ -438,9 +434,32 @@ extern "C" {
   void itti_send_terminate_message(task_id_t task_id) {
   }
 
-  void itti_wait_tasks_end(void) {
-    while(1)
-      sleep(24*3600);
+  sem_t itti_sem_block;
+  void itti_wait_tasks_unblock()
+  {
+    int rc = sem_post(&itti_sem_block);
+    AssertFatal(rc == 0, "error in sem_post(): %d %s\n", errno, strerror(errno));
+  }
+
+  static void catch_sigterm(int) {
+    static const char msg[] = "\n** Caught SIGTERM, shutting down\n";
+    __attribute__((unused))
+    int unused = write(STDOUT_FILENO, msg, sizeof(msg) - 1);
+    itti_wait_tasks_unblock();
+  }
+
+  void itti_wait_tasks_end(void (*handler)(int))
+  {
+    int rc = sem_init(&itti_sem_block, 0, 0);
+    AssertFatal(rc == 0, "error in sem_init(): %d %s\n", errno, strerror(errno));
+
+    if (handler == NULL) /* no handler given: install default */
+      handler = catch_sigterm;
+    signal(SIGTERM, handler);
+    signal(SIGINT, handler);
+
+    rc = sem_wait(&itti_sem_block);
+    AssertFatal(rc == 0, "error in sem_wait(): %d %s\n", errno, strerror(errno));
   }
 
   void itti_update_lte_time(uint32_t frame, uint8_t slot) {}
@@ -455,4 +474,42 @@ extern "C" {
   int signal_mask(void) {
     return 0;
   }
+
+void log_scheduler(const char* label)
+{
+    int policy = sched_getscheduler(0);
+    struct sched_param param;
+    if (sched_getparam(0, &param) == -1)
+    {
+        LOG_E(HW, "sched_getparam: %s\n", strerror(errno));
+        abort();
+    }
+
+    cpu_set_t cpu_set;
+    if (sched_getaffinity(0, sizeof(cpu_set), &cpu_set) == -1)
+    {
+        LOG_E(HW, "sched_getaffinity: %s\n", strerror(errno));
+        abort();
+    }
+    int num_cpus = sysconf(_SC_NPROCESSORS_ONLN);
+    if (num_cpus < 1)
+    {
+        LOG_E(HW, "sysconf(_SC_NPROCESSORS_ONLN): %s\n", strerror(errno));
+        abort();
+    }
+    char buffer[num_cpus];
+    for (int i = 0; i < num_cpus; i++)
+    {
+        buffer[i] = CPU_ISSET(i, &cpu_set) ? 'Y' : '-';
+    }
+
+    LOG_A(HW, "Scheduler policy=%d priority=%d affinity=[%d]%.*s label=%s\n",
+          policy,
+          param.sched_priority,
+          num_cpus,
+          num_cpus,
+          buffer,
+          label);
 }
+} // extern "C"
+

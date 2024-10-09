@@ -27,12 +27,15 @@
  */
 
 #include <stdint.h>
+#include <netinet/in.h>
+#include <netinet/sctp.h>
 
 #include "queue.h"
 #include "tree.h"
 
 #include "sctp_eNB_defs.h"
 
+#include "m2ap_default_values.h"
 #include "m2ap_ids.h" //looks X2AP specific for HO
 #include "m2ap_timers.h"
 
@@ -114,7 +117,7 @@ typedef struct m2ap_eNB_data_s {
   uint16_t cnx_id;
 
   /* SCTP association id */
-  int32_t  assoc_id;
+  sctp_assoc_t assoc_id;
 
   /* Nid cells */
   uint32_t                Nid_cell[MAX_NUM_CCs];
@@ -181,7 +184,7 @@ typedef struct m2ap_eNB_instance_s {
   int32_t                 uplink_frequency_offset[MAX_NUM_CCs];
   uint32_t                Nid_cell[MAX_NUM_CCs];
   int16_t                 N_RB_DL[MAX_NUM_CCs];
-  lte_frame_type_t        frame_type[MAX_NUM_CCs];
+  frame_type_t            frame_type[MAX_NUM_CCs];
   uint32_t                fdd_earfcn_DL[MAX_NUM_CCs];
   uint32_t                fdd_earfcn_UL[MAX_NUM_CCs];
   int                     num_cc;

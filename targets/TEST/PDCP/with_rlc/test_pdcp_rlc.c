@@ -32,13 +32,10 @@
 
 #include "LAYER2/MAC/defs.h"
 #include "LAYER2/MAC/vars.h"
-#include "UTIL/LOG/log_if.h"
-#include "UTIL/LOG/log_extern.h"
+#include "UTIL/LOG/log.h"
 #include "RRC/LTE/vars.h"
 #include "PHY_INTERFACE/vars.h"
-#include "UTIL/OCG/OCG.h"
 #include "LAYER2/PDCP_v10.1.0/pdcp.h"
-#include "OCG_vars.h"
 #include "rlc.h"
 #include "pdcp.h"
 
@@ -109,13 +106,13 @@ int pdcp_fifo_flush_sdus () {}
 int pdcp_fifo_read_input_sdus_remaining_bytes () {}
 int pdcp_fifo_read_input_sdus () {}
 
-BOOL init_pdcp_entity(pdcp_t *pdcp_entity);
+bool init_pdcp_entity(pdcp_t *pdcp_entity);
 
 //-----------------------------------------------------------------------------
 void pdcp_rlc_test_mac_rlc_loop (struct mac_data_ind *data_indP,  struct mac_data_req *data_requestP, int* drop_countP, int *tx_packetsP, int* dropped_tx_packetsP) //-----------------------------------------------------------------------------
 {
-  mem_block_t* tb_src;
-  mem_block_t* tb_dst;
+  uint8_t *tb_src;
+  uint8_t *tb_dst;
   unsigned int tb_size;
 
   data_indP->no_tb = 0;
@@ -132,7 +129,7 @@ void pdcp_rlc_test_mac_rlc_loop (struct mac_data_ind *data_indP,  struct mac_dat
       *tx_packetsP = *tx_packetsP + 1;
 
       if (*drop_countP == 0) {
-        tb_dst  = get_free_mem_block(sizeof (mac_rlc_max_rx_header_size_t) + tb_size, __func__);
+        tb_dst = malloc16(sizeof(mac_rlc_max_rx_header_size_t) + tb_size);
 
         if (tb_dst != NULL) {
           ((struct mac_tb_ind *) (tb_dst->data))->first_bit        = 0;
@@ -156,7 +153,7 @@ void pdcp_rlc_test_mac_rlc_loop (struct mac_data_ind *data_indP,  struct mac_dat
         *dropped_tx_packetsP = *dropped_tx_packetsP + 1;
       }
 
-      free_mem_block(tb_src, __func__);
+      free(tb_src);
 
       if (data_indP->no_tb > 0) {
         printf("[RLC-LOOP] Exchange %d TBs\n",data_indP->no_tb);
@@ -224,13 +221,12 @@ int main(int argc, char **argv)
   char * g_log_level = "trace"; // by default global log level is set to trace
 
   mac_xface = malloc(sizeof(MAC_xface));
-  Mac_rlc_xface = (MAC_RLC_XFACE*)malloc16(sizeof(MAC_RLC_XFACE));
 
   rlc_module_init (1);
   pdcp_module_init();
   logInit();
 
-  if (init_pdcp_entity(&pdcp_array[0][1]) == TRUE && init_pdcp_entity(&pdcp_array[1][1]) == TRUE)
+  if (init_pdcp_entity(&pdcp_array[0][1]) == true && init_pdcp_entity(&pdcp_array[1][1]) == true)
     msg("PDCP entity initialization OK\n");
   else {
     msg("Cannot initialize PDCP entities!\n");
@@ -239,7 +235,7 @@ int main(int argc, char **argv)
 
   /* Initialize PDCP state variables */
   for (index = 0; index < 2; ++index) {
-    if (pdcp_init_seq_numbers(&pdcp_array[index][1]) == FALSE) {
+    if (pdcp_init_seq_numbers(&pdcp_array[index][1]) == false) {
       msg("Cannot initialize %s PDCP entity!\n", ((index == 0) ? "first" : "second"));
       exit(1);
     }
@@ -275,11 +271,11 @@ int main(int argc, char **argv)
 }
 
 //-----------------------------------------------------------------------------
-BOOL init_pdcp_entity(pdcp_t *pdcp_entity)
+bool init_pdcp_entity(pdcp_t *pdcp_entity)
 //-----------------------------------------------------------------------------
 {
   if (pdcp_entity == NULL)
-    return FALSE;
+    return false;
 
   /*
    * Initialize sequence number state variables of relevant PDCP entity
@@ -292,6 +288,6 @@ BOOL init_pdcp_entity(pdcp_t *pdcp_entity)
   pdcp_entity->last_submitted_pdcp_rx_sn = 4095;
   pdcp_entity->seq_num_size = 12;
 
-  return TRUE;
+  return true;
 }
 

@@ -31,25 +31,13 @@
 #include <stdio.h>
 #include <stdint.h>
 
-/** @defgroup _ngap_impl_ NGAP Layer Reference Implementation for gNB
+/** @defgroup _ngap_impl_ NGAP Layer Reference Implementation
  * @ingroup _ref_implementation_
  * @{
  */
 
 #ifndef NGAP_GNB_H_
 #define NGAP_GNB_H_
-
-typedef struct ngap_gNB_config_s {
-  // MME related params
-  unsigned char amf_enabled;          ///< AMF enabled ?
-  unsigned char ngap_enabled;          ///< NGAP enabled ?
-} ngap_gNB_config_t;
-
-extern ngap_gNB_config_t ngap_config;
-
-#define AMF_MODE_ENABLED       ngap_config.amf_enabled
-#define NGAP_CONF_MODE         ngap_config.ngap_enabled
-
 
 void *ngap_gNB_process_itti_msg(void*);
 void  ngap_gNB_init(void);

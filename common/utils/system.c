@@ -32,6 +32,7 @@
 #include "system.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <unistd.h>
 #include <pthread.h>
 #include <string.h>
@@ -161,6 +162,10 @@ int background_system(char *command) {
 void start_background_system(void) {
   int p[2];
   pid_t son;
+
+  if (module_initialized == 1)
+    return;
+
   module_initialized = 1;
 
   if (pipe(p) == -1) {
@@ -196,71 +201,169 @@ void start_background_system(void) {
   background_system_process();
 }
 
-
-void threadCreate(pthread_t* t, void * (*func)(void*), void * param, char* name, int affinity, int priority){
-  pthread_attr_t attr;
-  int ret;
-  ret=pthread_attr_init(&attr);
-  AssertFatal(ret==0,"ret: %d, errno: %d\n",ret, errno);
-  ret=pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-  AssertFatal(ret==0,"ret: %d, errno: %d\n",ret, errno);
-  ret=pthread_attr_setinheritsched(&attr, PTHREAD_EXPLICIT_SCHED);
-  AssertFatal(ret==0,"ret: %d, errno: %d\n",ret, errno);
-  ret=pthread_attr_setschedpolicy(&attr, SCHED_OAI);
-  AssertFatal(ret==0,"ret: %d, errno: %d\n",ret, errno);
-  if(priority<sched_get_priority_min(SCHED_OAI) || priority>sched_get_priority_max(SCHED_FIFO)) {
-    LOG_E(TMR,"Prio not possible: %d, min is %d, max: %d, forced in the range\n", 
-              priority, 
-              sched_get_priority_min(SCHED_OAI),
-              sched_get_priority_max(SCHED_OAI));
-    if(priority<sched_get_priority_min(SCHED_OAI))
-      priority=sched_get_priority_min(SCHED_OAI);
-    if(priority>sched_get_priority_max(SCHED_OAI))
-      priority=sched_get_priority_max(SCHED_OAI);
+int rt_sleep_ns (uint64_t x)
+{
+  struct timespec myTime;
+  clock_gettime(CLOCK_MONOTONIC, &myTime);
+  myTime.tv_sec += x/1000000000ULL;
+  myTime.tv_nsec = x%1000000000ULL;
+  if (myTime.tv_nsec>=1000000000) {
+    myTime.tv_nsec -= 1000000000;
+    myTime.tv_sec++;
   }
-  AssertFatal(priority<=sched_get_priority_max(SCHED_OAI),"");
-  struct sched_param sparam={0};
-  sparam.sched_priority = priority;
-  ret=pthread_attr_setschedparam(&attr, &sparam);
-  AssertFatal(ret==0,"ret: %d, errno: %d\n",ret, errno);
-  ret=pthread_create(t, &attr, func, param);
-  AssertFatal(ret==0,"ret: %d, errno: %d\n",ret, errno);
 
+  return clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &myTime, NULL);
+}
+
+#ifdef HAVE_LIB_CAP
+#include <sys/capability.h>
+/* \brief reports if the current thread has capability CAP_SYS_NICE, i.e. */
+bool has_cap_sys_nice(void)
+{
+  /* get capabilities of calling PID */
+  cap_t cap = cap_get_pid(0);
+  cap_flag_value_t val;
+  /* check to what CAP_SYS_NICE is currently ("effective capability") set */
+  int ret = cap_get_flag(cap, CAP_SYS_NICE, CAP_EFFECTIVE, &val);
+  AssertFatal(ret == 0, "Error in cap_get_flag(): ret %d errno %d\n", ret, errno);
+  cap_free(cap);
+  /* return true if CAP_SYS_NICE is currently set */
+  return val == CAP_SET;
+}
+#else
+/* libcap has not been detected on this system. We do not need to require it --
+ * we can try to read directly via a syscall. This is discouraged, though; from
+ * the man page: "The portable interfaces are cap_set_proc(3) and
+ * cap_get_proc(3); if possible, you should use those interfaces in
+ * applications". */
+#include <sys/syscall.h>      /* Definition of SYS_* constants */
+#include <linux/capability.h> /* capabilities used below */
+/* \brief reports if the current thread has capability CAP_SYS_NICE, i.e. */
+bool has_cap_sys_nice(void)
+{
+  struct __user_cap_header_struct hdr = {.version = _LINUX_CAPABILITY_VERSION_3};
+  struct __user_cap_data_struct cap[2];
+  if (syscall(SYS_capget, &hdr, cap) == -1)
+    return false;
+  return (cap[0].effective & (1 << CAP_SYS_NICE)) != 0;
+}
+#endif
+
+void threadCreate(pthread_t* t, void * (*func)(void*), void * param, char* name, int affinity, int priority)
+{
+  int ret;
+  bool set_prio = has_cap_sys_nice();
+
+  pthread_attr_t attr;
+  ret=pthread_attr_init(&attr);
+  AssertFatal(ret == 0, "Error in pthread_attr_init(): ret: %d, errno: %d\n", ret, errno);
+
+  if (set_prio) {
+    ret = pthread_attr_setinheritsched(&attr, PTHREAD_EXPLICIT_SCHED);
+    AssertFatal(ret == 0, "Error in pthread_attr_setinheritsched(): ret: %d, errno: %d\n", ret, errno);
+    ret = pthread_attr_setschedpolicy(&attr, SCHED_OAI);
+    AssertFatal(ret == 0, "Error in pthread_attr_setschedpolicy(): ret: %d, errno: %d\n", ret, errno);
+    AssertFatal(priority >= sched_get_priority_min(SCHED_OAI) && priority <= sched_get_priority_max(SCHED_OAI),
+                "Scheduling priority %d not possible: must be within [%d, %d]\n",
+                priority,
+                sched_get_priority_min(SCHED_OAI),
+                sched_get_priority_max(SCHED_OAI));
+    AssertFatal(priority <= sched_get_priority_max(SCHED_OAI), "");
+    struct sched_param sparam = {0};
+    sparam.sched_priority = priority;
+    ret = pthread_attr_setschedparam(&attr, &sparam);
+    AssertFatal(ret == 0, "Error in pthread_attr_setschedparam(): ret: %d errno: %d\n", ret, errno);
+    LOG_I(UTIL, "%s() for %s: creating thread with affinity %x, priority %d\n", __func__, name, affinity, priority);
+  } else {
+    affinity = -1;
+    priority = -1;
+    LOG_I(UTIL, "%s() for %s: creating thread (no affinity, default priority)\n", __func__, name);
+  }
+
+  ret=pthread_create(t, &attr, func, param);
+  AssertFatal(ret == 0, "Error in pthread_create(): ret: %d, errno: %d\n", ret, errno);
+  
   pthread_setname_np(*t, name);
   if (affinity != -1 ) {
     cpu_set_t cpuset;
     CPU_ZERO(&cpuset);
     CPU_SET(affinity, &cpuset);
-    AssertFatal( pthread_setaffinity_np(*t, sizeof(cpu_set_t), &cpuset) == 0, "Error setting processor affinity");
+    ret = pthread_setaffinity_np(*t, sizeof(cpu_set_t), &cpuset);
+    AssertFatal(ret == 0, "Error in pthread_getaffinity_np(): ret: %d, errno: %d", ret, errno);
   }
   pthread_attr_destroy(&attr);
 }
 
-// Block CPU C-states deep sleep
-void configure_linux(void) {
-  int ret;
-  static int latency_target_fd=-1;
-  uint32_t latency_target_value=10; // in microseconds
-  if (latency_target_fd == -1) {
-    if ( (latency_target_fd = open("/dev/cpu_dma_latency", O_RDWR)) != -1 ) {
-      ret = write(latency_target_fd, &latency_target_value, sizeof(latency_target_value));
-      if (ret == 0) {
-	printf("# error setting cpu_dma_latency to %u!: %s\n", latency_target_value, strerror(errno));
-	close(latency_target_fd);
-	latency_target_fd=-1;
-	return;
-      }
+// Legacy, pthread_create + thread_top_init() should be replaced by threadCreate
+// threadCreate encapsulates the posix pthread api
+void thread_top_init(char *thread_name,
+		     int affinity,
+		     uint64_t runtime,
+		     uint64_t deadline,
+		     uint64_t period) {
+  
+  int policy, s, j;
+  struct sched_param sparam;
+  char cpu_affinity[1024];
+  cpu_set_t cpuset;
+  int settingPriority = 1;
+
+  /* Set affinity mask to include CPUs 2 to MAX_CPUS */
+  /* CPU 0 is reserved for UHD threads */
+  /* CPU 1 is reserved for all RX_TX threads */
+  /* Enable CPU Affinity only if number of CPUs > 2 */
+  CPU_ZERO(&cpuset);
+
+  /* Check the actual affinity mask assigned to the thread */
+  s = pthread_getaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
+  if (s != 0)
+  {
+    perror( "pthread_getaffinity_np");
+    exit_fun("Error getting processor affinity ");
+  }
+  memset(cpu_affinity,0,sizeof(cpu_affinity));
+  for (j = 0; j < 1024; j++)
+  {
+    if (CPU_ISSET(j, &cpuset))
+    {  
+      char temp[1024];
+      sprintf (temp, " CPU_%d", j);
+      strcat(cpu_affinity, temp);
     }
   }
-  if (latency_target_fd != -1) 
-    LOG_I(HW,"# /dev/cpu_dma_latency set to %u us\n", latency_target_value);
-  else
-    LOG_E(HW,"Can't set /dev/cpu_dma_latency to %u us\n", latency_target_value);
 
-  // Set CPU frequency to it's maximum
-  if ( 0 != system("for d in /sys/devices/system/cpu/cpu[0-9]*; do cat $d/cpufreq/cpuinfo_max_freq > $d/cpufreq/scaling_min_freq; done"))
-	  LOG_E(HW,"Can't set cpu frequency\n");
+  if (settingPriority) {
+    memset(&sparam, 0, sizeof(sparam));
+    sparam.sched_priority = sched_get_priority_max(SCHED_FIFO);
+    policy = SCHED_FIFO;
+  
+    s = pthread_setschedparam(pthread_self(), policy, &sparam);
+    if (s != 0) {
+      perror("pthread_setschedparam : ");
+      exit_fun("Error setting thread priority");
+    }
+  
+    s = pthread_getschedparam(pthread_self(), &policy, &sparam);
+    if (s != 0) {
+      perror("pthread_getschedparam : ");
+      exit_fun("Error getting thread priority");
+    }
 
-  mlockall(MCL_CURRENT | MCL_FUTURE);
+    pthread_setname_np(pthread_self(), thread_name);
 
+    LOG_I(HW, "[SCHED][eNB] %s started on CPU %d, sched_policy = %s , priority = %d, CPU Affinity=%s \n",thread_name,sched_getcpu(),
+                     (policy == SCHED_FIFO)  ? "SCHED_FIFO" :
+                     (policy == SCHED_RR)    ? "SCHED_RR" :
+                     (policy == SCHED_OTHER) ? "SCHED_OTHER" :
+                     "???",
+                     sparam.sched_priority, cpu_affinity );
+  }
+}
+
+/* \brief lock memory to RAM to avoid delays */
+void lock_memory_to_ram(void)
+{
+  int rc = mlockall(MCL_CURRENT | MCL_FUTURE);
+  if (rc != 0)
+    LOG_W(UTIL, "mlockall() failed: %d, %s\n", errno, strerror(errno));
 }

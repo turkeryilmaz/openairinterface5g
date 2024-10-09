@@ -35,8 +35,6 @@
 #include "common/utils/LOG/log.h"
 #include "common/utils/LOG/vcd_signal_dumper.h"
 #include "UTIL/OPT/opt.h"
-#include "OCG.h"
-#include "OCG_extern.h"
 
 #include "RRC/LTE/rrc_extern.h"
 #include "RRC/L2_INTERFACE/openair_rrc_L2_interface.h"
@@ -58,18 +56,18 @@ extern RAN_CONTEXT_t RC;
 
 
 #define size_Sj25 2
-int Sj25[size_Sj25] = { 0, 3 };
+static const int Sj25[size_Sj25] = {0, 3};
 
 #define size_Sj50 6
-int Sj50[size_Sj50] = { 0, 1, 2, 5, 6, 7 };
+static const int Sj50[size_Sj50] = {0, 1, 2, 5, 6, 7};
 
 #define size_Sj75 10
-int Sj75[size_Sj75] = { 0, 1, 2, 3, 4, 7, 8, 9, 10, 11 };
+static const int Sj75[size_Sj75] = {0, 1, 2, 3, 4, 7, 8, 9, 10, 11};
 
 #define size_Sj100 14
-int Sj100[size_Sj100] = { 0, 1, 2, 3, 4, 5, 6, 9, 10, 11, 12, 13, 14, 15 };
+static const int Sj100[size_Sj100] = {0, 1, 2, 3, 4, 5, 6, 9, 10, 11, 12, 13, 14, 15};
 
-int SIB1_BR_TBS_table[6] = { 208, 256, 328, 504, 712, 936 };
+static const int SIB1_BR_TBS_table[6] = {208, 256, 328, 504, 712, 936};
 
 //------------------------------------------------------------------------------
 void
@@ -89,7 +87,7 @@ schedule_SIB1_MBMS(module_id_t module_idP,
   nfapi_tx_request_pdu_t *TX_req;
   nfapi_dl_config_request_body_t *dl_req;
   int m, i, N_S_NB;
-  int *Sj;
+  const int *Sj;
   int n_NB = 0;
   int TBS;
   int k = 0, rvidx;
@@ -276,10 +274,15 @@ schedule_SIB1_MBMS(module_id_t module_idP,
     eNB->TX_req[CC_id].tx_request_body.tl.tag = NFAPI_TX_REQUEST_BODY_TAG;
     eNB->TX_req[CC_id].tx_request_body.number_of_pdus++;
     eNB->TX_req[CC_id].header.message_id = NFAPI_TX_REQUEST;
-    trace_pdu(DIRECTION_DOWNLINK,
-              &cc->BCCH_BR_pdu[0].payload[0],
-              bcch_sdu_length,
-              0xffff, WS_SI_RNTI, 0xffff, eNB->frame, eNB->subframe, 0, 0);
+    ws_trace_t tmp = {.direction = DIRECTION_DOWNLINK,
+                      .pdu_buffer = cc->BCCH_BR_pdu[0].payload,
+                      .pdu_buffer_size = bcch_sdu_length,
+                      .ueid = 0xffff,
+                      .rntiType = WS_SI_RNTI,
+                      .rnti = 0xffff,
+                      .sysFrame = eNB->frame,
+                      .subframe = eNB->subframe};
+    trace_pdu(&tmp);
 
     if (cc->tdd_Config != NULL) { //TDD
       LOG_D(MAC,
@@ -313,7 +316,7 @@ schedule_SIB1_BR(module_id_t module_idP,
   nfapi_tx_request_pdu_t *TX_req;
   nfapi_dl_config_request_body_t *dl_req;
   int m, i, N_S_NB;
-  int *Sj;
+  const int *Sj;
   int n_NB = 0;
   int TBS;
   int k = 0, rvidx;
@@ -362,7 +365,7 @@ schedule_SIB1_BR(module_id_t module_idP,
                       N_RB_DL);
 
           if ((sfoffset == 1)
-              && ((subframeP != 0) || (subframeP != 5)))
+              && ((subframeP != 0) && (subframeP != 5)))
             continue;
           else if ((sfoffset == 0) && (foffset == 0)
                    && (subframeP != 4) && (subframeP != 9))
@@ -500,10 +503,15 @@ schedule_SIB1_BR(module_id_t module_idP,
     eNB->TX_req[CC_id].tx_request_body.tl.tag = NFAPI_TX_REQUEST_BODY_TAG;
     eNB->TX_req[CC_id].tx_request_body.number_of_pdus++;
     eNB->TX_req[CC_id].header.message_id = NFAPI_TX_REQUEST;
-    trace_pdu(DIRECTION_DOWNLINK,
-              &cc->BCCH_BR_pdu[0].payload[0],
-              bcch_sdu_length,
-              0xffff, WS_SI_RNTI, 0xffff, eNB->frame, eNB->subframe, 0, 0);
+    ws_trace_t tmp = {.direction = DIRECTION_DOWNLINK,
+                      .pdu_buffer = cc->BCCH_BR_pdu[0].payload,
+                      .pdu_buffer_size = bcch_sdu_length,
+                      .ueid = 0xffff,
+                      .rntiType = WS_SI_RNTI,
+                      .rnti = 0xffff,
+                      .sysFrame = eNB->frame,
+                      .subframe = eNB->subframe};
+    trace_pdu(&tmp);
 
     if (cc->tdd_Config != NULL) { //TDD
       LOG_D(MAC,
@@ -517,10 +525,10 @@ schedule_SIB1_BR(module_id_t module_idP,
   }
 }
 
-int si_WindowLength_BR_r13tab[LTE_SystemInformationBlockType1_v1310_IEs__bandwidthReducedAccessRelatedInfo_r13__si_WindowLength_BR_r13_spare] = { 20, 40, 60, 80, 120, 160, 200 };
-int si_TBS_r13tab[LTE_SchedulingInfo_BR_r13__si_TBS_r13_b936 + 1] = { 152, 208, 256, 328, 408, 504, 600, 712, 808, 936 };
-
-int si_WindowLength_MBMS_r14tab[8] = { 1, 2, 5, 10, 15, 20, 40, 80 };
+static const int si_WindowLength_BR_r13tab
+    [LTE_SystemInformationBlockType1_v1310_IEs__bandwidthReducedAccessRelatedInfo_r13__si_WindowLength_BR_r13_spare] =
+        {20, 40, 60, 80, 120, 160, 200};
+static const int si_TBS_r13tab[LTE_SchedulingInfo_BR_r13__si_TBS_r13_b936 + 1] = {152, 208, 256, 328, 408, 504, 600, 712, 808, 936};
 
 //------------------------------------------------------------------------------
 void
@@ -681,13 +689,15 @@ schedule_SI_BR(module_id_t module_idP, frame_t frameP,
             TX_req->segments[0].segment_length                                    = bcch_sdu_length;
             TX_req->segments[0].segment_data                                      = cc->BCCH_BR_pdu[i+1].payload;
             eNB->TX_req[CC_id].tx_request_body.number_of_pdus++;
-            trace_pdu(DIRECTION_DOWNLINK,
-                      &cc->BCCH_BR_pdu[i + 1].payload[0],
-                      bcch_sdu_length,
-                      0xffff,
-                      WS_SI_RNTI,
-                      0xffff, eNB->frame, eNB->subframe, 0,
-                      0);
+            ws_trace_t tmp = {.direction = DIRECTION_DOWNLINK,
+                              .pdu_buffer = cc->BCCH_BR_pdu[i + 1].payload,
+                              .pdu_buffer_size = bcch_sdu_length,
+                              .ueid = 0xffff,
+                              .rntiType = WS_SI_RNTI,
+                              .rnti = 0xffff,
+                              .sysFrame = eNB->frame,
+                              .subframe = eNB->subframe};
+            trace_pdu(&tmp);
 
             if (cc->tdd_Config != NULL) { //TDD
               LOG_D(MAC, "[eNB] Frame %d : Scheduling BCCH-BR %d->DLSCH (TDD) for CC_id %d SI-BR %d bytes\n",
@@ -882,11 +892,15 @@ schedule_SI_MBMS(module_id_t module_idP, frame_t frameP,
 
         T(T_ENB_MAC_UE_DL_PDU_WITH_DATA, T_INT(module_idP), T_INT(CC_id), T_INT(0xffff),
           T_INT(frameP), T_INT(subframeP), T_INT(0), T_BUFFER(cc->BCCH_MBMS_pdu.payload, bcch_sdu_length));
-        trace_pdu(DIRECTION_DOWNLINK,
-                  &cc->BCCH_MBMS_pdu.payload[0],
-                  bcch_sdu_length,
-                  0xffff,
-                  WS_SI_RNTI, 0xffff, eNB->frame, eNB->subframe, 0, 0);
+        ws_trace_t tmp = {.direction = DIRECTION_DOWNLINK,
+                          .pdu_buffer = cc->BCCH_MBMS_pdu.payload,
+                          .pdu_buffer_size = bcch_sdu_length,
+                          .ueid = 0xffff,
+                          .rntiType = WS_SI_RNTI,
+                          .rnti = 0xffff,
+                          .sysFrame = eNB->frame,
+                          .subframe = eNB->subframe};
+        trace_pdu(&tmp);
 
         if (0/*cc->tdd_Config != NULL*/) {  //TDD not for FeMBMS
           LOG_D(MAC,
@@ -1209,11 +1223,15 @@ schedule_SI(module_id_t module_idP, frame_t frameP, sub_frame_t subframeP)
 
         T(T_ENB_MAC_UE_DL_PDU_WITH_DATA, T_INT(module_idP), T_INT(CC_id), T_INT(0xffff),
           T_INT(frameP), T_INT(subframeP), T_INT(0), T_BUFFER(cc->BCCH_pdu.payload, bcch_sdu_length));
-        trace_pdu(DIRECTION_DOWNLINK,
-                  &cc->BCCH_pdu.payload[0],
-                  bcch_sdu_length,
-                  0xffff,
-                  WS_SI_RNTI, 0xffff, eNB->frame, eNB->subframe, 0, 0);
+        ws_trace_t tmp = {.direction = DIRECTION_DOWNLINK,
+                          .pdu_buffer = cc->BCCH_pdu.payload,
+                          .pdu_buffer_size = bcch_sdu_length,
+                          .ueid = 0xffff,
+                          .rntiType = WS_SI_RNTI,
+                          .rnti = 0xffff,
+                          .sysFrame = eNB->frame,
+                          .subframe = eNB->subframe};
+        trace_pdu(&tmp);
 
         if (cc->tdd_Config != NULL) { //TDD
           LOG_D(MAC,

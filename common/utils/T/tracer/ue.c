@@ -14,7 +14,7 @@
 #include "utils.h"
 #include "event_selector.h"
 #include "openair_logo.h"
-#include "config.h"
+#include "configuration.h"
 
 typedef struct {
   view *phyview;
@@ -758,7 +758,7 @@ int main(int n, char **v)
   if (pthread_mutex_init(&ue_data.lock, NULL)) abort();
   setup_event_selector(g, database, is_on, is_on_changed, &ue_data);
 
-  OBUF ebuf = { osize: 0, omaxsize: 0, obuf: NULL };
+  OBUF ebuf = {.osize = 0, .omaxsize = 0, .obuf = NULL};
 
 restart:
   clear_remote_config();
