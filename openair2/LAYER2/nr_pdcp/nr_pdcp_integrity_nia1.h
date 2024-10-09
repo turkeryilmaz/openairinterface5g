@@ -22,7 +22,7 @@
 #ifndef _NR_PDCP_INTEGRITY_NIA1_H_
 #define _NR_PDCP_INTEGRITY_NIA1_H_
 
-#include "openair3/SECU/secu_defs.h"
+#include "../../../openair3/SECU/secu_defs.h"
 
 stream_security_context_t *nr_pdcp_integrity_nia1_init(unsigned char *integrity_key);
 

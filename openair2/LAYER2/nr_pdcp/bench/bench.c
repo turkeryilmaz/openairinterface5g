@@ -2,29 +2,32 @@
 
 #include <stdio.h>
 #include <stdint.h>
+#include <string.h>
 #include <inttypes.h>
 #include <time.h>
 
 void deliver_sdu_ue(void *deliver_sdu_data, nr_pdcp_entity_t *entity,
-                    char *buf, int size)
+                    char *buf, int size,
+                    const nr_pdcp_integrity_data_t *msg_integrity)
 {
   int *count = deliver_sdu_data;
   (*count)++;
 }
 
-void deliver_pdu_ue(void *deliver_pdu_data, nr_pdcp_entity_t *entity,
+void deliver_pdu_ue(void *deliver_pdu_data, ue_id_t ue_id, int rb_id,
                     char *buf, int size, int sdu_id)
 {
   printf("deliver_pdu_ue %d id %d\n", size, sdu_id);
 }
 
 void deliver_sdu_gnb(void *deliver_sdu_data, nr_pdcp_entity_t *entity,
-                     char *buf, int size)
+                     char *buf, int size,
+                     const nr_pdcp_integrity_data_t *msg_integrity)
 {
   printf("deliver_sdu_gnb %d\n", size);
 }
 
-void deliver_pdu_gnb(void *deliver_pdu_data, nr_pdcp_entity_t *entity,
+void deliver_pdu_gnb(void *deliver_pdu_data, ue_id_t ue_id, int rb_id,
                      char *buf, int size, int sdu_id)
 {
   nr_pdcp_entity_t *ue = deliver_pdu_data;
@@ -49,8 +52,12 @@ void run_test(int bytes, nr_pdcp_entity_t *gnb, char *sdu, int N, int *count)
 
   start_time = get_time();
   *count = 0;
-  for (i = 0; i < N; i++)
-    gnb->recv_sdu(gnb, sdu, bytes, i);
+  for (i = 0; i < N; i++) {
+    int max_size = bytes + 3 + 4; // 3: max header, 4: max integrity
+    char pdu_buf[max_size];
+    int pdu_size = gnb->process_sdu(gnb, sdu, bytes, i, pdu_buf, max_size);
+    gnb->deliver_pdu(gnb->deliver_pdu_data, 0 /* ue_id */, 0 /* rb_id */, pdu_buf, pdu_size, i);
+  }
   if (*count != N)
     printf("error, only %d SDUs successfully transmitted instead of %d\n",
            *count, N);
@@ -77,27 +84,27 @@ int main(void)
   nr_pdcp_entity_t *ue;
   nr_pdcp_entity_t *gnb;
 
-  ue = new_nr_pdcp_entity(NR_PDCP_DRB_AM, 0 /* is_gnb */, 1, 1, 0, 0, 0,
+  nr_pdcp_entity_security_keys_and_algos_t security_parameters;
+  security_parameters.integrity_algorithm = 2; /* NIA2 */
+  security_parameters.ciphering_algorithm = 2; /* NEA2 */
+  memcpy(security_parameters.integrity_key, integrity_key, 16);
+  memcpy(security_parameters.ciphering_key, ciphering_key, 16);
+
+  ue = new_nr_pdcp_entity(NR_PDCP_DRB_AM, 0 /* is_gnb */, 1, 1, 0, 0,
                           deliver_sdu_ue, &count,
                           deliver_pdu_ue, NULL,
                           18, /* sn size */
                           -1, /* t-reordering */
                           -1, /* discard timer */
-                          2,  /* ciphering algorithm, 2 = NEA2 */
-                          2,  /* integrity algorithm, 2 = NIA2 */
-                          ciphering_key,
-                          integrity_key);
+                          &security_parameters);
 
-  gnb = new_nr_pdcp_entity(NR_PDCP_DRB_AM, 1 /* is_gnb */, 1, 1, 0, 0, 0,
+  gnb = new_nr_pdcp_entity(NR_PDCP_DRB_AM, 1 /* is_gnb */, 1, 1, 0, 0,
                            deliver_sdu_gnb, NULL,
                            deliver_pdu_gnb, ue,
                            18, /* sn size */
                            -1, /* t-reordering */
                            -1, /* discard timer */
-                           2,  /* ciphering algorithm, 2 = NEA2 */
-                           2,  /* integrity algorithm, 2 = NIA2 */
-                           ciphering_key,
-                           integrity_key);
+                          &security_parameters);
 
   for (i = 0; i < 9000; i++) sdu[i] = i & 255;
 

@@ -19,12 +19,14 @@
  *      contact@openairinterface.org
  */
 
+#define DevAssert(...) do { if (!(__VA_ARGS__)) abort(); } while (0)
+#define AssertFatal(a, ...) do { if (!(a)) abort(); } while (0)
+
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 #include "aes_128_cbc_cmac.h"
 
-#include "common/utils/assertions.h"
 #include <openssl/cmac.h>
 
 #if OPENSSL_VERSION_MAJOR >= 3

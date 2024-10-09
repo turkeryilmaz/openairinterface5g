@@ -19,8 +19,10 @@
  *      contact@openairinterface.org
  */
 
-#include "openair3/SECU/aes_128_ctr.h"
-#include "common/utils/assertions.h"
+#define DevAssert(...) do { if (!(__VA_ARGS__)) abort(); } while (0)
+#define AssertFatal(a, ...) do { if (!(a)) abort(); } while (0)
+
+#include "../../../openair3/SECU/aes_128_ctr.h"
 
 #include "nr_pdcp_security_nea2.h"
 

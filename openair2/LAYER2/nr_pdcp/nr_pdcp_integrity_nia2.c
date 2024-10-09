@@ -19,6 +19,9 @@
  *      contact@openairinterface.org
  */
 
+#define DevAssert(...) do { if (!(__VA_ARGS__)) abort(); } while (0)
+#define AssertFatal(a, ...) do { if (!(a)) abort(); } while (0)
+
 #include "nr_pdcp_integrity_nia2.h"
 
 #include <arpa/inet.h>
@@ -26,9 +29,8 @@
 #include <string.h>
 #include <stdint.h>
 
-#include "common/utils/assertions.h"
-#include "openair3/SECU/aes_128.h"
-#include "openair3/SECU/aes_128_cbc_cmac.h"
+#include "../../../openair3/SECU/aes_128.h"
+#include "../../../openair3/SECU/aes_128_cbc_cmac.h"
 
 stream_security_context_t *nr_pdcp_integrity_nia2_init(uint8_t integrity_key[16])
 {

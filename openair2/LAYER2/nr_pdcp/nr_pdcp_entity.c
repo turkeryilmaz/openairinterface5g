@@ -19,6 +19,8 @@
  *      contact@openairinterface.org
  */
 
+#define DevAssert(...) do { if (!(__VA_ARGS__)) abort(); } while(0)
+
 #include "nr_pdcp_entity.h"
 
 #include <stdio.h>
@@ -357,9 +359,12 @@ static void nr_pdcp_entity_set_security(struct nr_pdcp_entity_t *entity,
       entity->integrity = nr_pdcp_integrity_nia2_integrity;
       entity->free_integrity = nr_pdcp_integrity_nia2_free_integrity;
     } else if (parameters->integrity_algorithm == 1) {
+#if 0
       entity->integrity_context = nr_pdcp_integrity_nia1_init(entity->security_keys_and_algos.integrity_key);
       entity->integrity = nr_pdcp_integrity_nia1_integrity;
       entity->free_integrity = nr_pdcp_integrity_nia1_free_integrity;
+#endif
+      abort();
     } else {
       LOG_E(PDCP, "FATAL: only nia1 and nia2 supported for the moment\n");
       exit(1);
@@ -382,9 +387,12 @@ static void nr_pdcp_entity_set_security(struct nr_pdcp_entity_t *entity,
       entity->cipher = nr_pdcp_security_nea2_cipher;
       entity->free_security = nr_pdcp_security_nea2_free_security;
     } else if (parameters->ciphering_algorithm == 1) {
+#if 0
       entity->security_context = nr_pdcp_security_nea1_init(entity->security_keys_and_algos.ciphering_key);
       entity->cipher = nr_pdcp_security_nea1_cipher;
       entity->free_security = nr_pdcp_security_nea1_free_security;
+#endif
+      abort();
     } else {
       LOG_E(PDCP, "FATAL: only nea1 and nea2 supported for the moment\n");
       exit(1);

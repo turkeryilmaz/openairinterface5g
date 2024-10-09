@@ -24,11 +24,13 @@
 
 #include <stdbool.h>
 #include <stdint.h>
-#include "common/platform_types.h"
+
+#define NR_K_KEY_SIZE 16
+typedef uint64_t ue_id_t;
+typedef int32_t sdu_size_t;
 
 #include "nr_pdcp_sdu.h"
-#include "openair2/RRC/NR/rrc_gNB_radio_bearers.h"
-#include "openair3/SECU/secu_defs.h"
+#include "../../../openair3/SECU/secu_defs.h"
 
 /* PDCP Formats according to clause 6.2 of 3GPP TS 38.323 */
 /* SN Size applicable to SRBs, UM DRBs and AM DRBs */

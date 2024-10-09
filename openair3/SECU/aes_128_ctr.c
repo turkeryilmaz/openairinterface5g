@@ -21,8 +21,10 @@
 
 // TS 133 401 pag. 88
 
+#define DevAssert(...) do { if (!(__VA_ARGS__)) abort(); } while (0)
+#define AssertFatal(a, ...) do { if (!(a)) abort(); } while (0)
+
 #include "aes_128_ctr.h"
-#include "common/utils/assertions.h"
 #include <openssl/aes.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>

@@ -24,7 +24,7 @@
 
 #include <stdint.h>
 
-#include "openair3/SECU/secu_defs.h"
+#include "../../../openair3/SECU/secu_defs.h"
 
 stream_security_context_t *nr_pdcp_integrity_nia2_init(uint8_t integrity_key[16]);
 

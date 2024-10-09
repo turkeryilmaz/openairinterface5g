@@ -24,7 +24,7 @@
 #define AES_128_CBC_CMAC_H 
 
 #include "aes_128.h"
-#include "common/utils/ds/byte_array.h"
+#include "../../common/utils/ds/byte_array.h"
 
 
 #include <stdint.h>
