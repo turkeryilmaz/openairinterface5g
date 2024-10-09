@@ -42,6 +42,8 @@
 #include "common/ran_context.h"
 #include "executables/softmodem-common.h"
 
+#include <openair1/E3AP/e3_agent.h>
+
 extern RAN_CONTEXT_t RC;
 
 
@@ -77,16 +79,82 @@ void *nrmac_stats_thread(void *arg) {
   return NULL;
 }
 
+// This code may be integrated later with common/utils/T/tracer/utils.c
+int create_listen_uds_socket(char *path)
+{
+  struct sockaddr_un a;
+  int s;
+  int v;
+  s = socket(AF_UNIX, SOCK_STREAM, 0);
+
+  if (s == -1) {
+    perror("socket");
+    exit(1);
+  }
+
+  v = 1;
+
+  if (setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &v, sizeof(int))) {
+    perror("setsockopt");
+    exit(1);
+  }
+
+  // Bind the socket to a file path
+  memset(&a, 0, sizeof(struct sockaddr_un));
+  a.sun_family = AF_UNIX;
+  strncpy(a.sun_path, path, sizeof(a.sun_path) - 1);
+
+  // Remove any existing socket file
+  unlink(path);
+
+  if (bind(s, (struct sockaddr *)&a, sizeof(a)) == -1) {
+    perror("Bind failed");
+    close(s);
+    exit(1);
+  }
+
+    // Set permissions to 770 (rwxrwx---) to make sure groups can access
+    if (chmod(path, 0770) == -1) {
+        perror("Failed to change permissions");
+        close(s);
+        exit(1);
+    }
+
+  // Listen for incoming connections
+  if (listen(s, 5) == -1) {
+    perror("Listen failed");
+    close(s);
+    exit(1);
+  }
+
+  return s;
+}
+
+int get_uds_connection(char *path)
+{
+  int s, t;
+  printf("waiting for connection on %s\n", path);
+  s = create_listen_uds_socket(path);
+  t = socket_accept(s);
+
+  if (t == -1) {
+    perror("accept");
+    exit(1);
+  }
+
+  close(s);
+  printf("connected\n");
+  return t;
+}
+
 void *prb_update_thread(void *arg) {
 
   gNB_MAC_INST *gNB = (gNB_MAC_INST *)arg;
-  char *addr = "127.0.0.1";
-  int port = 9999;
   int s;
   pthread_mutex_t lock;
 
-  printf("connecting to %s:%d\n", addr, port);
-  s=get_connection(addr,port);
+  printf("connecting to %s\n", DAPP_SOCKET_PATH);
+  s=get_uds_connection(DAPP_SOCKET_PATH);
   gNB->prb_thread_listen_sock = s;
 
   char buf[2],l,*buffer;
