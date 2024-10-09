@@ -3457,7 +3457,7 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
 
   if (slot < 10 && !get_nrUE_params()->sync_ref) return is_resource_allocated;
 
-  LOG_D(NR_MAC,"[UE%d] SL-PSSCH SCHEDULER: Frame:SLOT %d:%d, slot_type:%d\n",
+  LOG_I(NR_MAC,"[UE%d] SL-PSSCH SCHEDULER: Frame:SLOT %d:%d, slot_type:%d\n",
         sl_ind->module_id, frame, slot,sl_ind->slot_type);
 
   uint16_t slsch_pdu_length_max;
@@ -3502,7 +3502,7 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
         remove_nr_list(&sched_ctrl->retrans_sl_harq, harq_id);
     }
     cur_harq = &sched_ctrl->sl_harq_processes[harq_id];
-    LOG_D(NR_MAC, "is_waiting %d configured_PSFCH %p, (cur_harq->round != 0) ? %d, (sched_ctrl->num_total_bytes > 0) ? %d\n",
+    LOG_I(NR_MAC, "is_waiting %d configured_PSFCH %p, (cur_harq->round != 0) ? %d, (sched_ctrl->num_total_bytes > 0) ? %d\n",
           cur_harq->is_waiting,
           configured_PSFCH,
           (cur_harq->round != 0),
@@ -3958,19 +3958,19 @@ void nr_ue_sidelink_scheduler(nr_sidelink_indication_t *sl_ind) {
       (get_nrUE_params()->sync_ref && (slot == 6 || slot == 7 || slot == 8 || slot == 9)))) {
     //Check if reserved slot or a sidelink resource configured in Rx/Tx resource pool timeresource bitmap
     bool is_resource_allocated = nr_ue_sl_pssch_scheduler(mac, sl_ind, mac->sl_bwp, mac->sl_tx_res_pool, &tx_config, &tti_action);
-    LOG_D(NR_MAC, "%4d.%2d is_resource_allocated %d\n", frame, slot, is_resource_allocated);
+    LOG_I(NR_MAC, "%4d.%2d is_resource_allocated %d\n", frame, slot, is_resource_allocated);
     if (is_resource_allocated && mac->sci2_pdu.csi_req) {
       nr_ue_sl_csi_rs_scheduler(mac, mu, mac->sl_bwp, &tx_config, NULL, &tti_action);
       LOG_D(NR_MAC, "%4d.%2d Scheduling CSI-RS\n", frame, slot);
     }
-    bool is_fb_slot = mac->sl_tx_res_pool->sl_PSFCH_Config_r16 ? is_feedback_scheduled(mac, frame, slot) : false;
-    LOG_D(NR_MAC, "%4d.%2d is_fb_slot %d\n", frame, slot, is_fb_slot);
-    if (is_resource_allocated && is_fb_slot && mac->sl_tx_res_pool->sl_PSFCH_Config_r16->choice.setup) {
+    bool is_feedback_slot = mac->sl_tx_res_pool->sl_PSFCH_Config_r16 ? is_feedback_scheduled(mac, frame, slot) : false;
+    LOG_D(NR_MAC, "%4d.%2d is_fb_slot %d\n", frame, slot, is_feedback_slot);
+    if (is_resource_allocated && is_feedback_slot && mac->sl_tx_res_pool->sl_PSFCH_Config_r16->choice.setup) {
       NR_SL_PSFCH_Config_r16_t *sl_psfch_config = mac->sl_tx_res_pool->sl_PSFCH_Config_r16->choice.setup;
       const uint8_t psfch_periods[] = {0,1,2,4};
       long psfch_period = (sl_psfch_config->sl_PSFCH_Period_r16)
                           ? psfch_periods[*sl_psfch_config->sl_PSFCH_Period_r16] : 0;
-      if (is_fb_slot) {
+      if (is_feedback_slot) {
         nr_ue_sl_psfch_scheduler(mac, frame, slot, psfch_period, sl_ind, mac->sl_bwp, &tx_config, &tti_action);
         reset_sched_psfch(mac, frame, slot);
       }
@@ -4040,7 +4040,7 @@ void nr_ue_sl_psfch_scheduler(NR_UE_MAC_INST_t *mac,
       *config_type = SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_PSFCH;
       tx_config->number_pdus = 1;
       tx_config->tx_config_list[0].pdu_type = *config_type;
-      LOG_I(NR_MAC,"SL-PSFCH SCHEDULER: frame.slot (%d.%d), slot_type:%d\n",
+      LOG_D(NR_MAC,"SL-PSFCH SCHEDULER: frame.slot (%d.%d), slot_type:%d\n",
             frame, slot, sl_ind->slot_type);
       LOG_D(NR_MAC, "In %s, %4d.%2d Setting to sched_psfch feedback_slot to -1\n", __FUNCTION__, frame, slot);
       sched_psfch->feedback_slot = -1;

@@ -663,12 +663,12 @@ void configure_psfch_params_tx(int module_idP,
   uint16_t tx_frame = (rx_ind->sfn + (rx_ind->slot + DURATION_RX_TO_TX) / nr_slots_per_frame[scs]) % 1024;
 
   uint8_t ack_nack = (rx_ind->rx_indication_body + pdu_id)->rx_slsch_pdu.ack_nack;
-  LOG_I(NR_MAC, "tx_frame %4u.%2u, ack_nack %d rx: %4u.%2u\n", tx_frame, tx_slot, ack_nack, rx_ind->sfn, rx_ind->slot);
+  LOG_D(NR_MAC, "tx_frame %4u.%2u, ack_nack %d rx: %4u.%2u\n", tx_frame, tx_slot, ack_nack, rx_ind->sfn, rx_ind->slot);
   psfch_params_t *psfch_params = calloc(1, sizeof(psfch_params_t));
   compute_params(module_idP, psfch_params);
   const int nr_slots_frame = nr_slots_per_frame[scs];
   int psfch_index = nr_ue_sl_acknack_scheduling(mac, rx_ind, psfch_period, tx_frame, tx_slot, nr_slots_frame);
-  LOG_I(NR_MAC, "psfch_index %d\n", psfch_index);
+  LOG_D(NR_MAC, "psfch_index %d\n", psfch_index);
   if (psfch_index != -1)
     fill_psfch_params_tx(mac, rx_ind, psfch_period, tx_frame, tx_slot, ack_nack, psfch_params, nr_slots_frame, psfch_index);
   free(psfch_params);
@@ -791,7 +791,7 @@ int16_t get_feedback_slot(long psfch_period, uint16_t slot) {
       case 1:
       case 2:
       case 3:
-        feedback_slot = 6;
+        feedback_slot = 8;
       break;
       case 10:
       case 11:
@@ -957,7 +957,7 @@ int find_current_slot_harqs(frame_t frame, sub_frame_t slot, NR_SL_UE_sched_ctrl
     if (harq->feedback_frame == frame && harq->feedback_slot == slot) {
       if (matched_harqs) {
         matched_harqs[k] = harq;
-        LOG_D(NR_MAC, "%s matched_harqs[%d] %4d.%2d %d slot %d\n",
+        LOG_I(NR_MAC, "%s matched_harqs[%d] %4d.%2d %d tx slot %d\n",
               __FUNCTION__,
               k,
               matched_harqs[k]->feedback_frame,
@@ -1032,7 +1032,7 @@ void configure_psfch_params_rx(int module_idP,
     NR_SL_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
     NR_UE_sl_harq_t **matched_harqs = (NR_UE_sl_harq_t **) calloc(sched_ctrl->feedback_sl_harq.len, sizeof(NR_UE_sl_harq_t *));
     int matched_sz = find_current_slot_harqs(frame, slot, sched_ctrl, matched_harqs);
-    LOG_D(NR_MAC, "%s matched_sz %d\n", __FUNCTION__, matched_sz);
+    LOG_I(NR_MAC, "%s matched_sz %d\n", __FUNCTION__, matched_sz);
     rx_config->sl_rx_config_list[0].num_psfch_pdus = 0;
     for (int i = 0; i < matched_sz; i++) {
       AssertFatal(i < UE->UE_sched_ctrl.feedback_sl_harq.len, "k MUST be smaller than feedback_sl_harq length\n");

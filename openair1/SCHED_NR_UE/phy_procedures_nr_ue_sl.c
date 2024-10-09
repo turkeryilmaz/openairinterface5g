@@ -284,7 +284,7 @@ void nr_postDecode_slsch(PHY_VARS_NR_UE *UE, notifiedFIFO_elt_t *req,UE_nr_rxtx_
             rdata->decodeIterations);
       slsch->active = false;
       slsch_harq->round = 0;
-      LOG_I(NR_PHY, "%4d.%2d SLSCH received ok \n", proc->frame_rx, proc->nr_slot_rx);
+      LOG_D(NR_PHY, "%4d.%2d SLSCH received ok \n", proc->frame_rx, proc->nr_slot_rx);
       slsch_status.rdata = rdata;
       slsch_status.rxok = true;
       //dumpsig=1;
@@ -304,7 +304,7 @@ void nr_postDecode_slsch(PHY_VARS_NR_UE *UE, notifiedFIFO_elt_t *req,UE_nr_rxtx_
             slsch_harq->TBS,
             r);
       slsch->handled = 1;
-      LOG_I(NR_PHY, "%4d.%2d SLSCH %d in error\n", proc->frame_rx, proc->nr_slot_rx, rdata->ulsch_id);
+      LOG_D(NR_PHY, "%4d.%2d SLSCH %d in error\n", proc->frame_rx, proc->nr_slot_rx, rdata->ulsch_id);
       slsch_status.rdata = rdata;
       slsch_status.rxok = false;
       //      dumpsig=1;
