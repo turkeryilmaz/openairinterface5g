@@ -19,16 +19,8 @@
  *      contact@openairinterface.org
  */
 
-/*! \file PHY/NR_UE_TRANSPORT/nr_ulsch_coding.c
-* \brief Top-level routines for coding the ULSCH transport channel as described in 38.212 V15.4 2018-12
-* \author Khalid Ahmed
-* \date 2019
-* \version 0.1
-* \company Fraunhofer IIS
-* \email: khalid.ahmed@iis.fraunhofer.de
-* \note
-* \warning
-*/
+/*! \file PHY/NR_UE_TRANSPORT/nr_ulsch_coding_slot.c
+ */
 
 #include "PHY/defs_UE.h"
 #include "PHY/NR_UE_TRANSPORT/nr_transport_proto_ue.h"
@@ -36,54 +28,69 @@
 #include "PHY/CODING/coding_extern.h"
 #include "PHY/CODING/lte_interleaver_inline.h"
 #include "PHY/CODING/nrLDPC_extern.h"
+#include "PHY/CODING/nrLDPC_coding/nrLDPC_coding_interface.h"
 #include "PHY/NR_UE_TRANSPORT/nr_transport_ue.h"
+#include "executables/nr-uesoftmodem.h"
 #include "common/utils/LOG/vcd_signal_dumper.h"
-
-//#define DEBUG_ULSCH_CODING
 
 int nr_ulsch_encoding(PHY_VARS_NR_UE *ue,
                       NR_UE_ULSCH_t *ulsch,
-                      NR_DL_FRAME_PARMS* frame_parms,
-                      uint8_t harq_pid,
-                      uint32_t tb_size,
-                      unsigned int G)
+                      const uint32_t frame,
+                      const uint8_t slot,
+                      unsigned int *G,
+                      int nb_ulsch,
+                      uint8_t *ULSCH_ids)
 {
   start_meas_nr_ue_phy(ue, ULSCH_ENCODING_STATS);
-
-  /////////////////////////parameters and variables initialization/////////////////////////
-
-  unsigned int crc = 1;
-  NR_UL_UE_HARQ_t *harq_process = &ue->ul_harq_processes[harq_pid];
-  uint16_t nb_rb = ulsch->pusch_pdu.rb_size;
-  uint32_t A = tb_size << 3;
-  uint32_t r_offset = 0;
-  // target_code_rate is in 0.1 units
-  float Coderate = (float) ulsch->pusch_pdu.target_code_rate / 10240.0f;
-  encoder_implemparams_t impp = {.n_segments = harq_process->C,
-                                 .macro_num = 0,
-                                 .K = harq_process->K,
-                                 .Kr = harq_process->K,
-                                 .Zc = harq_process->Z,
-                                 .BG = harq_process->BG,
-                                 .F = harq_process->F,
-                                 .rv = ulsch->pusch_pdu.pusch_data.rv_index,
-                                 .Qm = ulsch->pusch_pdu.qam_mod_order,
-                                 .tinput = NULL,
-                                 .tprep = NULL,
-                                 .tparity = NULL,
-                                 .toutput = NULL};
-  /////////////////////////////////////////////////////////////////////////////////////////
-
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_NR_UE_ULSCH_ENCODING, VCD_FUNCTION_IN);
-  LOG_D(NR_PHY, "ulsch coding nb_rb %d, Nl = %d\n", nb_rb, ulsch->pusch_pdu.nrOfLayers);
-  LOG_D(NR_PHY, "ulsch coding A %d G %d mod_order %d Coderate %f\n", A, G, impp.Qm, Coderate);
-  LOG_D(NR_PHY, "harq_pid %d, pusch_data.new_data_indicator %d\n", harq_pid, ulsch->pusch_pdu.pusch_data.new_data_indicator);
-  if (ulsch->pusch_pdu.pusch_data.new_data_indicator) {  // this is a new packet
-#ifdef DEBUG_ULSCH_CODING
-    printf("encoding thinks this is a new packet \n");
-#endif
+
+  notifiedFIFO_t nf;
+  initNotifiedFIFO(&nf);
+
+  nrLDPC_slot_encoding_parameters_t slot_encoding_params;
+  slot_encoding_params.frame = frame;
+  slot_encoding_params.slot = slot;
+  slot_encoding_params.nb_TBs = nb_ulsch;
+  slot_encoding_params.respEncode = &nf;
+  slot_encoding_params.threadPool = &get_nrUE_params()->Tpool;
+  slot_encoding_params.tinput = NULL;
+  slot_encoding_params.tprep = NULL;
+  slot_encoding_params.tparity = NULL;
+  slot_encoding_params.toutput = NULL;
+  nrLDPC_TB_encoding_parameters_t TBs[nb_ulsch];
+  slot_encoding_params.TBs = TBs;
+
+  int max_num_segments = 0;
+
+  for (uint8_t pusch_id = 0; pusch_id < nb_ulsch; pusch_id++) {
+    uint8_t ULSCH_id = ULSCH_ids[pusch_id];
+    uint8_t harq_pid = ulsch[ULSCH_id].pusch_pdu.pusch_data.harq_process_id;
+    nrLDPC_TB_encoding_parameters_t *TB_encoding_params = &TBs[pusch_id];
+    /* Neither harq_pid nor ULSCH_id are unique in the instance
+     * but their combination is.
+     * Since ULSCH_id < 2
+     * then 2 * harq_pid + ULSCH_id is unique.
+     */
+    TB_encoding_params->harq_unique_pid = 2 * harq_pid + ULSCH_id;
+
+    /////////////////////////parameters and variables initialization/////////////////////////
+
+    unsigned int crc = 1;
+    NR_UL_UE_HARQ_t *harq_process = &ue->ul_harq_processes[harq_pid];
+    const nfapi_nr_ue_pusch_pdu_t *pusch_pdu = &ulsch->pusch_pdu;
+    uint16_t nb_rb = pusch_pdu->rb_size;
+    uint32_t A = pusch_pdu->pusch_data.tb_size << 3;
+    uint8_t Qm = pusch_pdu->qam_mod_order;
+    // target_code_rate is in 0.1 units
+    float Coderate = (float)pusch_pdu->target_code_rate / 10240.0f;
+
+    LOG_D(NR_PHY, "ulsch coding nb_rb %d, Nl = %d\n", nb_rb, pusch_pdu->nrOfLayers);
+    LOG_D(NR_PHY, "ulsch coding A %d G %d mod_order %d Coderate %f\n", A, G[pusch_id], Qm, Coderate);
+    LOG_D(NR_PHY, "harq_pid %d, pusch_data.new_data_indicator %d\n", harq_pid, pusch_pdu->pusch_data.new_data_indicator);
+
     ///////////////////////// a---->| add CRC |---->b /////////////////////////
-    int max_payload_bytes = MAX_NUM_NR_ULSCH_SEGMENTS_PER_LAYER*ulsch->pusch_pdu.nrOfLayers*1056;
+
+    int max_payload_bytes = MAX_NUM_NR_ULSCH_SEGMENTS_PER_LAYER * pusch_pdu->nrOfLayers * 1056;
     int B;
     if (A > NR_MAX_PDSCH_TBS) {
       // Add 24-bit crc (polynomial A) to payload
@@ -104,137 +111,97 @@ int nr_ulsch_encoding(PHY_VARS_NR_UE *ue,
 
     ///////////////////////// b---->| block segmentation |---->c /////////////////////////
 
-    harq_process->BG = ulsch->pusch_pdu.ldpcBaseGraph;
+    harq_process->BG = pusch_pdu->ldpcBaseGraph;
 
     VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_NR_SEGMENTATION, VCD_FUNCTION_IN);
     start_meas_nr_ue_phy(ue, ULSCH_SEGMENTATION_STATS);
-    impp.Kb = nr_segmentation(harq_process->payload_AB,
-                              harq_process->c,
-                              B,
-                              &harq_process->C,
-                              &harq_process->K,
-                              &harq_process->Z,
-                              &harq_process->F,
-                              harq_process->BG);
+    TB_encoding_params->Kb = nr_segmentation(harq_process->payload_AB,
+                                             harq_process->c,
+                                             B,
+                                             &harq_process->C,
+                                             &harq_process->K,
+                                             &harq_process->Z,
+                                             &harq_process->F,
+                                             harq_process->BG);
+    TB_encoding_params->C = harq_process->C;
+    TB_encoding_params->K = harq_process->K;
+    TB_encoding_params->Z = harq_process->Z;
+    TB_encoding_params->F = harq_process->F;
+    TB_encoding_params->BG = harq_process->BG;
+    if (TB_encoding_params->C > MAX_NUM_NR_DLSCH_SEGMENTS_PER_LAYER * pusch_pdu->nrOfLayers) {
+      LOG_E(PHY, "nr_segmentation.c: too many segments %d, B %d\n", TB_encoding_params->C, B);
+      return (-1);
+    }
     stop_meas_nr_ue_phy(ue, ULSCH_SEGMENTATION_STATS);
-    impp.n_segments = harq_process->C;
-    impp.K = harq_process->K;
-    impp.Kr = impp.K;
-    impp.Zc = harq_process->Z;
-    impp.F = harq_process->F;
-    impp.BG = harq_process->BG;
-    if (impp.n_segments > MAX_NUM_NR_DLSCH_SEGMENTS_PER_LAYER * ulsch->pusch_pdu.nrOfLayers) {
-      LOG_E(PHY, "nr_segmentation.c: too many segments %d, B %d\n", impp.n_segments, B);
-      return(-1);
-    }
     VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_NR_SEGMENTATION, VCD_FUNCTION_OUT);
+    max_num_segments = max(max_num_segments, TB_encoding_params->C);
 
-#ifdef DEBUG_ULSCH_CODING
-    uint16_t Kr_bytes;
-    Kr_bytes = impp.Kr >> 3;
-#endif
+    TB_encoding_params->rnti = pusch_pdu->rnti;
+    TB_encoding_params->nb_rb = nb_rb;
+    TB_encoding_params->Qm = Qm;
+    TB_encoding_params->mcs = pusch_pdu->mcs_index;
+    TB_encoding_params->nb_layers = pusch_pdu->nrOfLayers;
+    TB_encoding_params->rv_index = pusch_pdu->pusch_data.rv_index;
+    TB_encoding_params->G = G[pusch_id];
+    TB_encoding_params->tbslbrm = pusch_pdu->tbslbrm;
+    TB_encoding_params->A = A;
+  } // pusch_id
 
-    ///////////////////////// c---->| LDCP coding |---->d ////////////////////////////////////
-    for (int r = 0; r < impp.n_segments; r++) {
-#ifdef DEBUG_ULSCH_CODING
-      printf("Encoder: B %d F %d \n", B, impp.F);
-      printf("start ldpc encoder segment %d/%d\n", r, impp.n_segments);
-      printf("input %d %d %d %d %d \n", harq_process->c[r][0], harq_process->c[r][1], harq_process->c[r][2],harq_process->c[r][3], harq_process->c[r][4]);
-      for (int cnt = 0; cnt < 22 * impp.Zc / 8; cnt++) {
-        printf("%d ", harq_process->c[r][cnt]);
-      }
-      printf("\n");
-#endif
-    }
-    VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_LDPC_ENCODER_OPTIM, VCD_FUNCTION_IN);
+  nrLDPC_segment_encoding_parameters_t segments[nb_ulsch][max_num_segments];
+
+  for (uint8_t pusch_id = 0; pusch_id < nb_ulsch; pusch_id++) {
+    uint8_t ULSCH_id = ULSCH_ids[pusch_id];
+    uint8_t harq_pid = ulsch[ULSCH_id].pusch_pdu.pusch_data.harq_process_id;
+    nrLDPC_TB_encoding_parameters_t *TB_encoding_params = &TBs[pusch_id];
+    NR_UL_UE_HARQ_t *harq_process = &ue->ul_harq_processes[harq_pid];
+    TB_encoding_params->segments = segments[pusch_id];
+
+    int r_offset = 0;
+    for (int r = 0; r < TB_encoding_params->C; r++) {
+      nrLDPC_segment_encoding_parameters_t *segment_encoding_params = &TB_encoding_params->segments[r];
+      segment_encoding_params->c = harq_process->c[r];
+      segment_encoding_params->E =
+          nr_get_E(TB_encoding_params->G, TB_encoding_params->C, TB_encoding_params->Qm, TB_encoding_params->nb_layers, r);
+      segment_encoding_params->output = harq_process->f + r_offset;
+      r_offset += segment_encoding_params->E;
+
+      reset_meas(&segment_encoding_params->ts_interleave);
+      reset_meas(&segment_encoding_params->ts_rate_match);
+      reset_meas(&segment_encoding_params->ts_ldpc_encode);
+
+    } // TB_encoding_params->C
+  } // pusch_id
+
+  ///////////////////////// | LDCP coding | ////////////////////////////////////
+
+  VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_LDPC_ENCODER_OPTIM, VCD_FUNCTION_IN);
+
+  int nbJobs = 0;
+  nbJobs = ue->nrLDPC_coding_interface.nrLDPC_coding_encoder(&slot_encoding_params);
+
+  if (nbJobs < 0)
+    return -1;
+  while (nbJobs) {
+    notifiedFIFO_elt_t *req = pullTpool(&nf, &get_nrUE_params()->Tpool);
+    if (req == NULL)
+      break; // Tpool has been stopped
+    delNotifiedFIFO_elt(req);
+    nbJobs--;
   }
 
-  if (ldpc_interface_offload.LDPCencoder) {
-    for (int j = 0; j < impp.n_segments; j++) {
-      impp.perCB[j].E_cb = nr_get_E(G, impp.n_segments, impp.Qm, ulsch->pusch_pdu.nrOfLayers, j);
-    }
-    start_meas_nr_ue_phy(ue, ULSCH_LDPC_ENCODING_STATS);
-    ldpc_interface_offload.LDPCencoder(harq_process->c, &harq_process->f, &impp);
-    stop_meas_nr_ue_phy(ue, ULSCH_LDPC_ENCODING_STATS);
-  } else {
-    if (ulsch->pusch_pdu.pusch_data.new_data_indicator) {
-      start_meas_nr_ue_phy(ue, ULSCH_LDPC_ENCODING_STATS);
-      for (int j = 0; j < (impp.n_segments / 8 + 1); j++) {
-        impp.macro_num = j;
-        impp.Kr = impp.K;
-        ldpc_interface.LDPCencoder(harq_process->c, harq_process->d, &impp);
-      }
-      stop_meas_nr_ue_phy(ue, ULSCH_LDPC_ENCODING_STATS);
-      VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_LDPC_ENCODER_OPTIM, VCD_FUNCTION_OUT);
-
-#ifdef DEBUG_ULSCH_CODING
-      write_output("ulsch_enc_input0.m", "enc_in0", &harq_process->c[0][0], Kr_bytes, 1, 4);
-      write_output("ulsch_enc_output0.m", "enc0", &harq_process->d[0][0], (3 * 8 * Kr_bytes) + 12, 1, 4);
-#endif
-    }
-///////////////////////////////////////////////////////////////////////////////
-    for (int r = 0; r < impp.n_segments; r++) { // looping over C segments
-      if (impp.F > 0) {
-        for (int k = impp.Kr - impp.F - 2 * impp.Zc; k < impp.Kr - 2 * impp.Zc; k++) {
-          harq_process->d[r][k] = NR_NULL;
-        }
-      }
-
-      LOG_D(PHY,
-            "Rate Matching, Code segment %d (coded bits (G) %u, unpunctured/repeated bits per code segment %d, mod_order %d, nb_rb "
-            "%d, "
-            "rvidx %d)...\n",
-            r,
-            G,
-            impp.Kr * 3,
-            impp.Qm,
-            nb_rb,
-            ulsch->pusch_pdu.pusch_data.rv_index);
-
-      ///////////////////////// d---->| Rate matching bit selection |---->e /////////////////////////
-      impp.perCB[r].E_cb = nr_get_E(G, impp.n_segments, impp.Qm, ulsch->pusch_pdu.nrOfLayers, r);
-
-      VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_NR_RATE_MATCHING_LDPC, VCD_FUNCTION_IN);
-      start_meas(&ue->phy_cpu_stats.cpu_time_stats[ULSCH_RATE_MATCHING_STATS]);
-      if (nr_rate_matching_ldpc(ulsch->pusch_pdu.tbslbrm,
-                                impp.BG,
-                                impp.Zc,
-                                harq_process->d[r],
-                                harq_process->e + r_offset,
-                                impp.n_segments,
-                                impp.F,
-                                impp.Kr - impp.F - 2 * impp.Zc,
-                                impp.rv,
-                                impp.perCB[r].E_cb)
-          == -1)
-        return -1;
-
-      stop_meas(&ue->phy_cpu_stats.cpu_time_stats[ULSCH_RATE_MATCHING_STATS]);
-      VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_NR_RATE_MATCHING_LDPC, VCD_FUNCTION_OUT);
-
-#ifdef DEBUG_ULSCH_CODING
-      for (int i = 0; i < 16; i++)
-        printf("output ratematching e[%d]= %d r_offset %u\n", i, harq_process->e[i + r_offset], r_offset);
-#endif
-
-///////////////////////// e---->| Rate matching bit interleaving |---->f /////////////////////////
-      VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_NR_INTERLEAVING_LDPC, VCD_FUNCTION_IN);
-      start_meas_nr_ue_phy(ue, ULSCH_INTERLEAVING_STATS);
-      nr_interleaving_ldpc(impp.perCB[r].E_cb, impp.Qm, harq_process->e + r_offset, harq_process->f + r_offset);
-      stop_meas_nr_ue_phy(ue, ULSCH_INTERLEAVING_STATS);
-    
-      VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_NR_INTERLEAVING_LDPC, VCD_FUNCTION_OUT);
-#ifdef DEBUG_ULSCH_CODING
-      for (int i = 0; i < 16; i++)
-        printf("output interleaving f[%d]= %d r_offset %u\n", i, harq_process->f[i+r_offset], r_offset);
-      if (r == impp.n_segments - 1)
-        write_output("enc_output.m","enc", harq_process->f, G, 1, 4);
-#endif
-      r_offset += impp.perCB[r].E_cb;
+  for (uint8_t pusch_id = 0; pusch_id < nb_ulsch; pusch_id++) {
+    nrLDPC_TB_encoding_parameters_t *TB_encoding_params = &TBs[pusch_id];
+    for (int r = 0; r < TB_encoding_params->C; r++) {
+      nrLDPC_segment_encoding_parameters_t *segment_encoding_params = &TB_encoding_params->segments[r];
+      merge_meas(&ue->phy_cpu_stats.cpu_time_stats[ULSCH_INTERLEAVING_STATS], &segment_encoding_params->ts_interleave);
+      merge_meas(&ue->phy_cpu_stats.cpu_time_stats[ULSCH_RATE_MATCHING_STATS], &segment_encoding_params->ts_rate_match);
+      merge_meas(&ue->phy_cpu_stats.cpu_time_stats[ULSCH_LDPC_ENCODING_STATS], &segment_encoding_params->ts_ldpc_encode);
     }
   }
-  ///////////////////////////////////////////////////////////////////////////////////////////////
+
+  VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_LDPC_ENCODER_OPTIM, VCD_FUNCTION_OUT);
+
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_NR_UE_ULSCH_ENCODING, VCD_FUNCTION_OUT);
   stop_meas_nr_ue_phy(ue, ULSCH_ENCODING_STATS);
-  return(0);
+  return 0;
 }
