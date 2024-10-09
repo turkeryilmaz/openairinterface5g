@@ -35,6 +35,7 @@
 #include "PHY/defs_nr_UE.h"
 #include "PHY/phy_vars_nr_ue.h"
 #include "PHY/types.h"
+#include "PHY/CODING/nrLDPC_coding/nrLDPC_coding_interface.h"
 #include "PHY/INIT/nr_phy_init.h"
 #include "PHY/MODULATION/modulation_UE.h"
 #include "PHY/MODULATION/nr_modulation.h"
@@ -704,6 +705,8 @@ int main(int argc, char *argv[])
 
   init_nr_ue_transport(UE);
 
+  UE->nrLDPC_coding_interface_flag = gNB->nrLDPC_coding_interface_flag;
+
   //Configure UE
   nr_l2_init_ue(1);
   NR_UE_MAC_INST_t* UE_mac = get_mac_inst(0);
@@ -717,6 +720,10 @@ int main(int argc, char *argv[])
   UE->if_inst->ul_indication = nr_ue_ul_indication;
   
   UE_mac->if_module = nr_ue_if_module_init(0);
+
+  if (UE->nrLDPC_coding_interface_flag) {
+    initFloatingCoresTpool(threadCnt, &nrUE_params.Tpool, false, "UE-tpool");
+  }
 
   nr_ue_phy_config_request(&UE_mac->phy_config);
 
@@ -1563,6 +1570,9 @@ int main(int argc, char *argv[])
   free_MIB_NR(mib);
   if (gNB->ldpc_offload_flag)
     free_LDPClib(&ldpc_interface_offload);
+
+  if (gNB->nrLDPC_coding_interface_flag)
+    free_nrLDPC_coding_interface(&nrLDPC_coding_interface);
 
   if (output_fd)
     fclose(output_fd);

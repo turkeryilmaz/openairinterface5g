@@ -38,6 +38,7 @@
 #include "PHY/defs_nr_UE.h"
 #include "PHY/phy_vars_nr_ue.h"
 #include "PHY/types.h"
+#include "PHY/CODING/nrLDPC_coding/nrLDPC_coding_interface.h"
 #include "PHY/INIT/nr_phy_init.h"
 #include "PHY/MODULATION/modulation_eNB.h"
 #include "PHY/MODULATION/nr_modulation.h"
@@ -843,6 +844,8 @@ int main(int argc, char **argv)
 
   init_nr_ue_transport(UE);
 
+  UE->nrLDPC_coding_interface_flag = gNB->nrLDPC_coding_interface_flag;
+
   nr_l2_init_ue(1);
   UE_mac = get_mac_inst(0);
   ue_init_config_request(UE_mac, mu);
@@ -1301,6 +1304,9 @@ int main(int argc, char **argv)
 
   if (gNB->ldpc_offload_flag)
     free_LDPClib(&ldpc_interface_offload);
+
+  if (gNB->nrLDPC_coding_interface_flag)
+    free_nrLDPC_coding_interface(&nrLDPC_coding_interface);
 
   if (output_fd)
     fclose(output_fd);
