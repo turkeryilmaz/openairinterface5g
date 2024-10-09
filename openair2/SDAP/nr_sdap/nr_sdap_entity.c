@@ -301,6 +301,10 @@ static void nr_sdap_rx_entity(nr_sdap_entity_t *entity,
      */
     extern int nas_sock_fd[];
     int len = write(nas_sock_fd[0], &buf[offset], size-offset);
+#if 1
+    len = size-offset;
+    LOG_W(SDAP, "RX buf ============> %s\n", buf+offset);
+#endif
     LOG_D(SDAP, "RX Entity len : %d\n", len);
     LOG_D(SDAP, "RX Entity size : %d\n", size);
     LOG_D(SDAP, "RX Entity offset : %d\n", offset);

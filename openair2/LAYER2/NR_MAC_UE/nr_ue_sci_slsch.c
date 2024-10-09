@@ -844,9 +844,9 @@ int nr_ue_process_sci2_indication_pdu(NR_UE_MAC_INST_t *mac, module_id_t mod_id,
 
   uint8_t psfch_period = 0;
   const uint8_t psfch_periods[] = {0,1,2,4};
-  psfch_period = (mac->sl_tx_res_pool->sl_PSFCH_Config_r16 &&
-                  mac->sl_tx_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16)
-                  ? psfch_periods[*mac->sl_tx_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16] : 0;
+  psfch_period = (mac->sl_rx_res_pool->sl_PSFCH_Config_r16 &&
+                  mac->sl_rx_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16)
+                  ? psfch_periods[*mac->sl_rx_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16] : 0;
 
   if ((psfch_period == 2 || psfch_period == 4) && mac->sci_pdu_rx.psfch_overhead.nbits && mac->sci_pdu_rx.psfch_overhead.val) {
     configure_psfch_params_rx(mod_id,

@@ -875,7 +875,7 @@ int nr_ue_sl_acknack_scheduling(NR_UE_MAC_INST_t *mac, sl_nr_rx_indication_t *rx
   uint16_t num_subch = sl_get_num_subch(mac->sl_tx_res_pool);
   int n_ul_buf_max_size = n_ul_slots_period * num_subch;
   psfch_slot = get_feedback_slot(psfch_period, slot);
-  LOG_I(NR_MAC, "Scheduling psfch_period %d, slot %2d feedback slot %d\n", psfch_period, slot, psfch_slot);
+  LOG_D(NR_MAC, "Scheduling psfch_period %d, slot %2d feedback slot %d\n", psfch_period, slot, psfch_slot);
   const int psfch_index = get_psfch_index(rx_ind->sfn, rx_ind->slot, nr_slots_frame, tdd, n_ul_buf_max_size);
   NR_SL_UE_sched_ctrl_t  *sched_ctrl = &mac->sl_info.list[0]->UE_sched_ctrl;
   SL_sched_feedback_t  *curr_psfch = &sched_ctrl->sched_psfch[psfch_index];
@@ -893,7 +893,8 @@ int nr_ue_sl_acknack_scheduling(NR_UE_MAC_INST_t *mac, sl_nr_rx_indication_t *rx
         curr_psfch->dai_c,
         curr_psfch);
   LOG_D(NR_MAC, "SL %4d.%2d, Couldn't find scheduling occasion for this HARQ process\n", rx_ind->sfn, rx_ind->slot);
-  return -1;
+  return psfch_index;
+  // return -1;
 }
 
 void fill_psfch_params_tx(NR_UE_MAC_INST_t *mac, sl_nr_rx_indication_t *rx_ind,
@@ -984,7 +985,14 @@ void update_harq_lists(NR_UE_MAC_INST_t *mac, frame_t frame, sub_frame_t slot, N
     NR_UE_sl_harq_t *harq = &sched_ctrl->sl_harq_processes[cur];
     if ((harq->feedback_frame < frame
          || (harq->feedback_frame == frame && harq->feedback_slot < slot))) {
-      LOG_I(NR_MAC, "In %s, %4d.%2d Setting to feedback_slot to -1\n", __FUNCTION__, frame, slot);
+
+      LOG_D(NR_MAC, " first condition %d, second condition %d\n",
+           harq->feedback_frame < frame,
+           (harq->feedback_frame == frame && harq->feedback_slot < slot));
+
+      LOG_D(NR_MAC, "In %s, %4d.%2d Setting to harq feedback_slot to -1  Feedback %4d.%2d\n",
+            __FUNCTION__, frame, slot, harq->feedback_frame, harq->feedback_slot);
+
       remove_nr_list(&sched_ctrl->feedback_sl_harq, cur);
       harq->feedback_slot = -1;
       harq->is_waiting = false;
@@ -1096,8 +1104,9 @@ uint8_t sl_num_slsch_feedbacks(NR_UE_MAC_INST_t *mac) {
 bool is_feedback_scheduled(NR_UE_MAC_INST_t *mac, int frameP,int slotP) {
   for (int i = 0; i < sl_num_slsch_feedbacks(mac); i++) {
     SL_sched_feedback_t  *sched_psfch = &mac->sl_info.list[0]->UE_sched_ctrl.sched_psfch[i];
-    LOG_I(NR_MAC, "frame.slot %4d.%2d, i %d, Feedback %4d.%2d harq_feedback %d\n", frameP, slotP, i, sched_psfch->feedback_frame, sched_psfch->feedback_slot, sched_psfch->harq_feedback);
     if (frameP == sched_psfch->feedback_frame && slotP == sched_psfch->feedback_slot && sched_psfch->harq_feedback) {
+      LOG_D(NR_MAC, "%s SAME frame.slot %4d.%2d, i %d, Feedback %4d.%2d harq_feedback %d\n",
+            __FUNCTION__, frameP, slotP, i, sched_psfch->feedback_frame, sched_psfch->feedback_slot, sched_psfch->harq_feedback);
       return true;
     }
   }
@@ -1109,7 +1118,7 @@ void reset_sched_psfch(NR_UE_MAC_INST_t *mac, int frameP,int slotP) {
   for (int i = 0; i < sl_num_slsch_feedbacks(mac); i++) {
     SL_sched_feedback_t  *sched_psfch = &mac->sl_info.list[0]->UE_sched_ctrl.sched_psfch[i];
     if (frameP == sched_psfch->feedback_frame && slotP == sched_psfch->feedback_slot) {
-      LOG_I(NR_MAC, "In %s, %4d.%2d Setting to feedback_slot to -1\n", __FUNCTION__, frameP, slotP);
+      LOG_D(NR_MAC, "In %s, %4d.%2d Setting to sched_psfch feedback_slot to -1\n", __FUNCTION__, frameP, slotP);
       sched_psfch->feedback_frame = -1;
       sched_psfch->feedback_slot = -1;
       sched_psfch->harq_feedback = 0;
@@ -1139,6 +1148,7 @@ void nr_ue_process_mac_sl_pdu(int module_idP,
       mac->sl_tx_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16)
     psfch_period = *mac->sl_tx_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16;
   if (psfch_period && mac->sci_pdu_rx.harq_feedback) {
+    LOG_D(NR_MAC, "%4d.%2d EEE harq_feedback %d\n", frame, slot, mac->sci_pdu_rx.harq_feedback);
     configure_psfch_params_tx(module_idP, mac, rx_ind, pdu_id);
   }
 

@@ -3298,7 +3298,7 @@ static bool get_control_info(NR_UE_MAC_INST_t *mac,
                                   (sched_ctrl->sched_csi_report.slot == slot));
   bool control_info = (is_harq_feedback || (csi_acq && csi_req_slot) || is_csi_report_sched_slot);
 
-  LOG_I(NR_MAC, "frame.slot %4d.%2d harq_feedback %d, (csi_acq && csi_req_slot) %d, is_csi_report_sched_slot %d\n",
+  LOG_D(NR_MAC, "frame.slot %4d.%2d harq_feedback %d, (csi_acq && csi_req_slot) %d, is_csi_report_sched_slot %d\n",
         frame, slot, is_harq_feedback, (csi_acq && csi_req_slot), is_csi_report_sched_slot);
 
   return control_info;
@@ -3344,6 +3344,8 @@ void preprocess(NR_UE_MAC_INST_t *mac,
         continue;
       }
       bool control_info = get_control_info(mac, sched_ctrl, nr_slots_frame, frame, slot, UE->uid, configured_PSFCH);
+
+      LOG_D(NR_MAC, "%4d.%2d control_info %d, num_total_bytes %d\n", frame, slot, control_info, sched_ctrl->num_total_bytes);
       /* Check SL buffer and control info, skip this UE if no bytes and no control info */
       if (sched_ctrl->num_total_bytes == 0) {
         if (!control_info)
@@ -3390,6 +3392,7 @@ void preprocess(NR_UE_MAC_INST_t *mac,
 #endif
 
 #if 1
+    // if (get_nrUE_params()->sync_ref) {
       // sl_nr_ue_mac_params_t *sl_mac =  mac->SL_MAC_PARAMS;
       // NR_TDD_UL_DL_Pattern_t *tdd = &sl_mac->sl_TDD_config->pattern1;
       // const int n_ul_slots_period = tdd ? tdd->nrofUplinkSlots + (tdd->nrofUplinkSymbols > 0 ? 1 : 0) : nr_slots_frame;
@@ -3398,6 +3401,7 @@ void preprocess(NR_UE_MAC_INST_t *mac,
       // uint16_t num_subch = sl_get_num_subch(mac->sl_tx_res_pool);
       // int n_ul_buf_max_size = n_ul_slots_period * num_subch;
       int psfch_slot = get_feedback_slot(psfch_period, rcv_tx_slot);
+      update_harq_lists(mac, frame, slot, UE);
       // const int psfch_index = get_psfch_index(frame, slot, nr_slots_frame, tdd, n_ul_buf_max_size);
       // NR_SL_UE_sched_ctrl_t  *sched_ctrl = &mac->sl_info.list[0]->UE_sched_ctrl;
       // SL_sched_feedback_t  *curr_psfch = &sched_ctrl->sched_psfch[psfch_index];
@@ -3407,12 +3411,13 @@ void preprocess(NR_UE_MAC_INST_t *mac,
       // curr_psfch->dai_c = psfch_index;
       *fb_frame = rcv_tx_frame;
       *fb_slot = psfch_slot;
-      LOG_I(NR_MAC, "Tx SLSCH %4d.%2d, Expected Feedback: %4d.%2d in current PSFCH: psfch_period %d\n",
+      LOG_D(NR_MAC, "Tx SLSCH %4d.%2d, Expected Feedback: %4d.%2d in current PSFCH: psfch_period %d\n",
             frame,
             slot,
             *fb_frame,
             *fb_slot,
             psfch_period);
+    // }
 #endif
     }
     int locbw = sl_bwp->sl_BWP_Generic_r16->sl_BWP_r16->locationAndBandwidth;
@@ -3497,6 +3502,11 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
         remove_nr_list(&sched_ctrl->retrans_sl_harq, harq_id);
     }
     cur_harq = &sched_ctrl->sl_harq_processes[harq_id];
+    LOG_D(NR_MAC, "is_waiting %d configured_PSFCH %p, (cur_harq->round != 0) ? %d, (sched_ctrl->num_total_bytes > 0) ? %d\n",
+          cur_harq->is_waiting,
+          configured_PSFCH,
+          (cur_harq->round != 0),
+          (sched_ctrl->num_total_bytes > 0));
     DevAssert(!cur_harq->is_waiting);
     /* retransmission or bytes to send */
     if (configured_PSFCH && ((cur_harq->round != 0) || (sched_ctrl->num_total_bytes > 0))) {
@@ -3504,7 +3514,7 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
       cur_harq->feedback_frame = feedback_frame;
       add_tail_nr_list(&sched_ctrl->feedback_sl_harq, harq_id);
       cur_harq->is_waiting = true;
-      LOG_I(NR_MAC, "feedback_frame %4d, feedback_slot %2d\n", feedback_frame, feedback_slot);
+      LOG_I(NR_MAC, "%4d.%2d Sending Data; Expecting feedback %4d.%2d\n", frame, slot, feedback_frame, feedback_slot);
     }
     else
       add_tail_nr_list(&sched_ctrl->available_sl_harq, harq_id);
@@ -3948,12 +3958,13 @@ void nr_ue_sidelink_scheduler(nr_sidelink_indication_t *sl_ind) {
       (get_nrUE_params()->sync_ref && (slot == 6 || slot == 7 || slot == 8 || slot == 9)))) {
     //Check if reserved slot or a sidelink resource configured in Rx/Tx resource pool timeresource bitmap
     bool is_resource_allocated = nr_ue_sl_pssch_scheduler(mac, sl_ind, mac->sl_bwp, mac->sl_tx_res_pool, &tx_config, &tti_action);
-    LOG_I(NR_MAC, "%4d.%2d is_resource_allocated %d\n", frame, slot, is_resource_allocated);
+    LOG_D(NR_MAC, "%4d.%2d is_resource_allocated %d\n", frame, slot, is_resource_allocated);
     if (is_resource_allocated && mac->sci2_pdu.csi_req) {
       nr_ue_sl_csi_rs_scheduler(mac, mu, mac->sl_bwp, &tx_config, NULL, &tti_action);
       LOG_D(NR_MAC, "%4d.%2d Scheduling CSI-RS\n", frame, slot);
     }
     bool is_fb_slot = mac->sl_tx_res_pool->sl_PSFCH_Config_r16 ? is_feedback_scheduled(mac, frame, slot) : false;
+    LOG_D(NR_MAC, "%4d.%2d is_fb_slot %d\n", frame, slot, is_fb_slot);
     if (is_resource_allocated && is_fb_slot && mac->sl_tx_res_pool->sl_PSFCH_Config_r16->choice.setup) {
       NR_SL_PSFCH_Config_r16_t *sl_psfch_config = mac->sl_tx_res_pool->sl_PSFCH_Config_r16->choice.setup;
       const uint8_t psfch_periods[] = {0,1,2,4};
@@ -4018,7 +4029,7 @@ void nr_ue_sl_psfch_scheduler(NR_UE_MAC_INST_t *mac,
   int k = 0;
   for (int i = 0; i < (n_ul_slots_period * num_subch); i++) {
     SL_sched_feedback_t  *sched_psfch = &mac->sl_info.list[0]->UE_sched_ctrl.sched_psfch[i];
-    LOG_I(NR_MAC,"frame.slot: feedback %4d.%2d, current (%4d.%2d)\n",
+    LOG_D(NR_MAC,"Tx frame.slot: feedback %4d.%2d, current (%4d.%2d)\n",
           sched_psfch->feedback_frame, sched_psfch->feedback_slot, frame, slot);
     if (sched_psfch->feedback_slot == slot && sched_psfch->feedback_frame == frame) {
       sl_ind->slot_tx = sched_psfch->feedback_slot;
@@ -4031,10 +4042,11 @@ void nr_ue_sl_psfch_scheduler(NR_UE_MAC_INST_t *mac,
       tx_config->tx_config_list[0].pdu_type = *config_type;
       LOG_I(NR_MAC,"SL-PSFCH SCHEDULER: frame.slot (%d.%d), slot_type:%d\n",
             frame, slot, sl_ind->slot_type);
-      LOG_I(NR_MAC, "In %s, %4d.%2d Setting to feedback_slot to -1\n", __FUNCTION__, frame, slot);
+      LOG_D(NR_MAC, "In %s, %4d.%2d Setting to sched_psfch feedback_slot to -1\n", __FUNCTION__, frame, slot);
       sched_psfch->feedback_slot = -1;
       sched_psfch->feedback_frame = -1;
       sched_psfch->dai_c = 0;
+      sched_psfch->harq_feedback = -1;
       k++;
     }
   }
