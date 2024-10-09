@@ -339,6 +339,36 @@ The function implemented is : \f$\mathbf{y} = y + \alpha\mathbf{x}\f$
     }
   }
 
+  static __attribute__((always_inline)) inline void complex_mult_simd(simde__m128i a_re,
+                                                                      simde__m128i a_im,
+                                                                      simde__m128i b_re,
+                                                                      simde__m128i b_im,
+                                                                      simde__m128i *res_re,
+                                                                      simde__m128i *res_im,
+                                                                      int a_shift,
+                                                                      int b_shift,
+                                                                      int res_shift)
+  {
+    if (a_shift > 0) {
+      a_re = simde_mm_srai_epi16(a_re, a_shift);
+      a_im = simde_mm_srai_epi16(a_im, a_shift);
+    }
+    if (b_shift > 0) {
+      b_re = simde_mm_srai_epi16(b_re, b_shift);
+      b_im = simde_mm_srai_epi16(b_im, b_shift);
+    }
+    simde__m128i a_re_x_b_re = simde_mm_mullo_epi16(a_re, b_re); // a_re x b_re
+    simde__m128i a_im_x_b_im = simde_mm_mullo_epi16(a_im, b_im); // a_im x b_im
+    simde__m128i a_re_x_b_im = simde_mm_mullo_epi16(a_re, b_im); // a_re x b_im
+    simde__m128i a_im_x_b_re = simde_mm_mullo_epi16(a_im, b_re); // a_im x b_re
+    *res_re = simde_mm_sub_epi16(a_re_x_b_re, a_im_x_b_im); // a_re x b_re - a_im x b_im
+    *res_im = simde_mm_add_epi16(a_re_x_b_im, a_im_x_b_re); // a_re x b_im + a_im x b_re
+    if (res_shift > 0) {
+      *res_re = simde_mm_srai_epi16(*res_re, res_shift);
+      *res_im = simde_mm_srai_epi16(*res_im, res_shift);
+    }
+  }
+
 static __attribute__((always_inline)) inline void multadd_real_four_symbols_vector_complex_scalar(const int16_t *x,
                                                                                            c16_t *alpha,
                                                                                            c16_t *y)
