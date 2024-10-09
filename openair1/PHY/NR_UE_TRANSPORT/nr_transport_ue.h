@@ -126,6 +126,8 @@ typedef struct {
   /// Last index of LLR buffer that contains information.
   /// Used for computing LDPC decoder R
   int llrLen;
+  /// Number of segments processed so far
+  uint32_t processedSegments;
   decode_abort_t abort_decode;
 } NR_DL_UE_HARQ_t;
 
