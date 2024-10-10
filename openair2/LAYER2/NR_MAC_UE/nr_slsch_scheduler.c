@@ -131,7 +131,6 @@ void handle_nr_ue_sl_harq(module_id_t mod_id,
     remove_front_nr_list(&sched_ctrl->feedback_sl_harq);
     NR_UE_sl_harq_t *harq = &sched_ctrl->sl_harq_processes[harq_pid];
     DevAssert(harq->is_waiting);
-    LOG_D(NR_MAC, "In %s, %4d.%2d Setting to harq feedback_slot to -1\n", __FUNCTION__, frame, slot);
     harq->feedback_slot = -1;
     harq->is_waiting = false;
     if (!ack_nack) {
@@ -241,11 +240,10 @@ void nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP, int slotP, nr_sci_pdu_
   sci_pdu->second_stage_sci_format = 0;
   sci_pdu->number_of_dmrs_port = ri;
   // we are using as a flag to indicate if csi report was received
-  // sci_pdu->mcs = sched_pssch->mcs;
-  sci_pdu->mcs = get_nrUE_params()->mcs;
+  sci_pdu->mcs = sched_pssch->mcs;
   sci_pdu->additional_mcs.val = 0;
   if (frameP % 5 == 0)
-    LOG_I(NR_MAC, "cqi ---> %d Tx %4d.%2d dest: %d mcs %i\n",
+    LOG_D(NR_MAC, "cqi ---> %d Tx %4d.%2d dest: %d mcs %i\n",
           cqi, frameP, slotP, dest_id, sci_pdu->mcs);
   /*Following code will check whether SLSCH was received before and
   its feedback has scheduled for current slot
@@ -258,28 +256,25 @@ void nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP, int slotP, nr_sci_pdu_
   bool is_feedback_slot = false;
   for (int i = 0; i < (n_ul_slots_period * num_subch); i++) {
     SL_sched_feedback_t  *sched_psfch = &mac->sl_info.list[0]->UE_sched_ctrl.sched_psfch[i];
-    LOG_D(NR_MAC, "%4d.%2d Tx i = %d sched_psfch %p feedback slot %d\n", frameP, slotP, i, sched_psfch, sched_psfch->feedback_slot);
     if (slotP == sched_psfch->feedback_slot) {
-        LOG_D(NR_MAC, "%4d.%2d Tx i = %d sched_psfch %p feedback slot %d\n", frameP, slotP, i, sched_psfch, sched_psfch->feedback_slot);
+        LOG_D(NR_MAC, "%4d.%2d i = %d sched_psfch %p feedback slot %d\n", frameP, slotP, i, sched_psfch, sched_psfch->feedback_slot);
         is_feedback_slot = true;
         AssertFatal((slotP % psfch_period == 0), "slot mod psfch_period MUST be 0 !!!\n");
         break;
     }
   }
-  LOG_I(NR_MAC, "%4d.%2d Tx psfch_period %d, is_feedback_slot %d\n", frameP, slotP, psfch_period, is_feedback_slot);
+
   if ((psfch_period == 2 || psfch_period == 4) && (slotP % psfch_period == 0)) {
       if (is_feedback_slot) {
         sci_pdu->psfch_overhead.val =  1;
-        LOG_I(NR_MAC, "%4d.%2d Setting psfch_overhead 1\n", frameP, slotP);
+        LOG_D(NR_MAC, "%4d.%2d Setting psfch_overhead 1\n", frameP, slotP);
       } else {
           sci_pdu->psfch_overhead.val = 0;
-          LOG_I(NR_MAC, "%4d.%2d Setting psfch_overhead 0\n", frameP, slotP);
+          LOG_D(NR_MAC, "%4d.%2d Setting psfch_overhead 0\n", frameP, slotP);
       }
-  } else if ((psfch_period == 2 || psfch_period == 4) && (slotP % psfch_period != 0)) {
+  } else if ((psfch_period == 2 || psfch_period == 4) && (slotP % psfch_period != 0))
     sci_pdu->psfch_overhead.val = 0;
-    LOG_I(NR_MAC, "%4d.%2d Setting psfch_overhead 0 line %d\n", frameP, slotP, __LINE__);
-  }
-  LOG_D(NR_MAC, "%4d.%2d psfch_overhead %d\n", frameP, slotP, sci_pdu->psfch_overhead.nbits);
+
   sci_pdu->reserved.val = mac->is_synced ? 1 : 0;
   sci_pdu->conflict_information_receiver.val = 0;
   sci_pdu->beta_offset_indicator = 0;
