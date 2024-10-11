@@ -46,6 +46,13 @@ typedef struct {
 } csi_mapping_parms_t;
 csi_mapping_parms_t get_csi_mapping_parms(int row, int b, int l0, int l1);
 int get_cdm_group_size(int cdm_type);
+void nr_xlsch_channel_level(int size_est,
+                            int ch_estimates_ext[][size_est],
+                            int nb_antennas_rx,
+                            int32_t avg[][nb_antennas_rx],
+                            uint8_t symbol,
+                            uint32_t len,
+                            uint8_t nrOfLayers);
 void nr_qpsk_llr(int32_t *rxdataF_comp, int16_t *llr, uint32_t nb_re);
 void nr_16qam_llr(int32_t *rxdataF_comp, c16_t *ch_mag_in, int16_t *llr, uint32_t nb_re);
 void nr_64qam_llr(int32_t *rxdataF_comp, c16_t *ch_mag, c16_t *ch_mag2, int16_t *llr, uint32_t nb_re);
