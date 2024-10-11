@@ -616,7 +616,7 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
   const int sz = available_bits / mod_order / Nl;
   c16_t ulsch_mod[Nl][sz];
 
-  nr_ue_layer_mapping(d_mod, Nl, sz, ulsch_mod);
+  nr_ue_layer_mapping(d_mod, Nl, sz, AMP, ulsch_mod);
 
   //////////////////////// ULSCH transform precoding ////////////////////////
 

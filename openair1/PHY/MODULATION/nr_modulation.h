@@ -67,9 +67,15 @@ void nr_layer_mapping(int nbCodes,
   @param[in] ulsch_ue, double Pointer to NR_UE_ULSCH_t struct
   @param[in] n_layers, number of layers
   @param[in] n_symbs, number of modulated symbols
+  @param[in] amplitude, amplitude of the generated signal
   @param[out] tx_layers, modulated symbols for each layer
 */
-void nr_ue_layer_mapping(const c16_t *mod_symbs, const int n_layers, const int n_symbs, c16_t tx_layers[][n_symbs]);
+void nr_ue_layer_mapping(const c16_t *mod_symbs,
+                         const int n_layers,
+                         const int n_symbs,
+                         uint16_t amplitude,
+                         c16_t tx_layers[][n_symbs]);
+
 /*!
 \brief This function implements the OFDM front end processor on reception (FEP)
 \param frame_parms Pointer to frame parameters
