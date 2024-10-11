@@ -70,6 +70,7 @@ static int DEFRUTPCORES[] = {-1,-1,-1,-1};
 #include "nfapi_interface.h"
 #include <nfapi/oai_integration/vendor_ext.h>
 #include "executables/nr-softmodem-common.h"
+#include "power_reference.h"
 
 uint16_t sl_ahead;
 static void NRRCconfig_RU(configmodule_interface_t *cfg);
@@ -1179,6 +1180,16 @@ void *ru_thread(void *param)
       ret = openair0_device_load(&ru->rfdevice,&ru->openair0_cfg);
       AssertFatal(ret==0,"Cannot connect to local radio\n");
     }
+  }
+
+  if (get_softmodem_params()->calibrated_radio) {
+    double tx_power_at_0dBFS = ru->config.ssb_config.ss_pbch_power.value + gNB->tx_amp_backoff_dB;
+    openair0_config_t config;
+    config.rx_power_reference = gNB->rx_power_reference_dBm;
+    config.tx_power_reference = tx_power_at_0dBFS;
+    ru->rfdevice.set_tx_power_reference_func(&ru->rfdevice, &config);
+    ru->rfdevice.set_rx_power_reference_func(&ru->rfdevice, &config);
+    LOG_I(PHY, "Selected TX power referece %f, RX power reference %f\n", config.tx_power_reference, config.rx_power_reference);
   }
 
   if (setup_RU_buffers(ru)!=0) {

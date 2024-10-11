@@ -479,6 +479,8 @@ typedef struct PHY_VARS_gNB_s {
 
   // reference amplitude for TX
   int16_t TX_AMP;
+  uint16_t tx_amp_backoff_dB;
+  int16_t rx_power_reference_dBm;
 
   // flag to activate 3GPP phase symbolwise rotation
   bool phase_comp;

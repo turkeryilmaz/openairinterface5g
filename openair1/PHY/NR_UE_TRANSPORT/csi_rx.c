@@ -39,6 +39,8 @@
 #include "PHY/NR_REFSIG/nr_refsig.h"
 #include "common/utils/nr/nr_common.h"
 #include "PHY/NR_UE_ESTIMATION/filt16a_32.h"
+#include "softmodem-common.h"
+#include "power_reference.h"
 
 // Additional memory allocation, because of applying the filter and the memory offset to ensure memory alignment
 #define FILTER_MARGIN 32
@@ -177,7 +179,7 @@ bool is_csi_rs_in_symbol(const fapi_nr_dl_config_csirs_pdu_rel15_t csirs_config_
   return ret;
 }
 
-static int nr_get_csi_rs_signal(const PHY_VARS_NR_UE *ue,
+static int nr_get_csi_rs_signal(PHY_VARS_NR_UE *ue,
                                 const UE_nr_rxtx_proc_t *proc,
                                 const fapi_nr_dl_config_csirs_pdu_rel15_t *csirs_config_pdu,
                                 const nr_csi_info_t *nr_csi_info,
@@ -247,8 +249,14 @@ static int nr_get_csi_rs_signal(const PHY_VARS_NR_UE *ue,
 
 
   *rsrp = rsrp_sum/meas_count;
-  *rsrp_dBm = dB_fixed(*rsrp) + 30 - SQ15_SQUARED_NORM_FACTOR_DB
-      - ((int)openair0_cfg[0].rx_gain[0] - (int)openair0_cfg[0].rx_gain_offset[0]) - dB_fixed(ue->frame_parms.ofdm_symbol_size);
+
+  if (get_softmodem_params()->calibrated_radio) {
+    float rx_power_reference = ue->rfdevice.get_rx_power_reference_func(&ue->rfdevice);
+    *rsrp_dBm = (int)calculate_average_rx_power(*rsrp, rx_power_reference);
+  } else {
+    *rsrp_dBm = dB_fixed(*rsrp) + 30 - SQ15_SQUARED_NORM_FACTOR_DB
+        - ((int)openair0_cfg[0].rx_gain[0] - (int)openair0_cfg[0].rx_gain_offset[0]) - dB_fixed(ue->frame_parms.ofdm_symbol_size);
+  }
 
 #ifdef NR_CSIRS_DEBUG
   LOG_I(NR_PHY, "RSRP = %i (%i dBm)\n", *rsrp, *rsrp_dBm);
