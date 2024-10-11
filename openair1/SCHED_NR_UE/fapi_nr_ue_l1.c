@@ -795,7 +795,7 @@ int8_t sl_handle_scheduled_response(nr_scheduled_response_t *scheduled_response)
 
     LOG_D(PHY, "[UE%d] TTI %d:%d, SL-TX action:%s slss_id:%d, sl-mib:%x, psbch pwr:%d\n",
                                                        module_id,frame,slot,
-                                                       sl_tx_action[phy_data_tx->sl_tx_action - 6],
+                                                       sl_tx_action[phy_data_tx->sl_tx_action - SL_NR_CONFIG_TYPE_TX_PSBCH],
                                                        phy_data_tx->psbch_vars.tx_slss_id,
                                                        *((uint32_t *)phy_data_tx->psbch_vars.psbch_payload),
                                                        phy_data_tx->psbch_vars.psbch_tx_power);
