@@ -282,9 +282,9 @@ void nr_scan_ssb(void *arg)
                                                          &ssbInfo->pbchResult,
                                                          rxdataF); // start pbch detection at first symbol after pss
       if (ssbInfo->syncRes.cell_detected) {
-        int rsrp_db_per_re = nr_ue_calculate_ssb_rsrp(ssbInfo->fp, ssbInfo->proc, rxdataF, 0, ssbInfo->gscnInfo.ssbFirstSC);
-        ssbInfo->adjust_rxgain = TARGET_RX_POWER - rsrp_db_per_re;
-        LOG_I(PHY, "pbch rx ok. rsrp:%d dB/RE, adjust_rxgain:%d dB\n", rsrp_db_per_re, ssbInfo->adjust_rxgain);
+        int rsrp = nr_ue_calculate_ssb_rsrp(ssbInfo->fp, ssbInfo->proc, rxdataF, 0, ssbInfo->gscnInfo.ssbFirstSC);
+        ssbInfo->adjust_rxgain = TARGET_RX_POWER - 10 * log10(rsrp);
+        LOG_I(PHY, "pbch rx ok. rsrp:%d dB/RE, adjust_rxgain:%d dB\n", (int)(10 * log10(rsrp)), ssbInfo->adjust_rxgain);
       }
     }
   }
