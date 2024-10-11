@@ -47,7 +47,9 @@ void rxAddInput(const c16_t *input_sig,
                 channel_desc_t *channelDesc,
                 int nbSamples,
                 uint64_t TS,
-                uint32_t CirSize)
+                uint32_t CirSize,
+                int16_t tx_power_reference,
+                int16_t rx_power_reference)
 {
   if ((channelDesc->sat_height > 0) && (channelDesc->enable_dynamic_delay || channelDesc->enable_dynamic_Doppler)) { // model for transparent satellite on circular orbit
     /* assumptions:
@@ -124,7 +126,7 @@ void rxAddInput(const c16_t *input_sig,
   // so, in actual RF: tx gain + path loss + rx gain (+antenna gain, ...)
   // UE and NB gain control to be added
   // Fixme: not sure when it is "volts" so dB is 20*log10(...) or "power", so dB is 10*log10(...)
-  const double pathLossLinear = pow(10,channelDesc->path_loss_dB/20.0);
+  const double pathLossLinear = pow(10, (channelDesc->path_loss_dB + (tx_power_reference - rx_power_reference)) / 20.0);
   // Energy in one sample to calibrate input noise
   // the normalized OAI value seems to be 256 as average amplitude (numerical amplification = 1)
   const double noise_per_sample = pow(10,channelDesc->noise_power_dB/10.0) * 256;
