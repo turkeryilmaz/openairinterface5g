@@ -384,6 +384,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
             }
           }
           else {
+#if 0            
             simde__m128i *txF = (simde__m128i *)&txdataF_precoding[layer][l_symbol][start_sc];
 
             simde__m128i *txl = (simde__m128i *)&tx_layer[cur_re];
@@ -453,6 +454,77 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
                 }
               }
             } // remaining_re > 0
+#else
+            simde__m256i *txF = (simde__m256i *)&txdataF_precoding[layer][l_symbol][start_sc];
+
+            simde__m256i *txl = (simde__m256i *)&tx_layer[cur_re];
+            simde__m256i amp64 = simde_mm256_set1_epi16(amp);
+            int i;
+            for (i = 0; i < (upper_limit >> 3); i++) {
+              const simde__m256i txL = simde_mm256_loadu_si256(txl + i);
+              simde_mm256_storeu_si256(txF + i, simde_mm256_mulhrs_epi16(amp64, txL));
+#ifdef DEBUG_DLSCH_MAPPING
+              for (int j = 0; j < 8; j++)
+                printf("re %u\t l %d \t k %d \t txdataF: %d %d\n",
+                       cur_re + 8 * i + j,
+                       l_symbol,
+                       start_sc + 8 * i + j,
+                       txdataF_precoding[layer][l_symbol][start_sc + 8 * i + j].r,
+                       txdataF_precoding[layer][l_symbol][start_sc + 8 * i + j].i);
+#endif
+              /* handle this, mute RE */
+              /*else {
+                txdataF_precoding[layer][((l*frame_parms->ofdm_symbol_size + k)<<1) ] = 0;
+                txdataF_precoding[layer][((l*frame_parms->ofdm_symbol_size + k)<<1) + 1] = 0;
+                }*/
+            }
+            if (i * 8 != upper_limit) {
+              c16_t *txFc = &txdataF_precoding[layer][l_symbol][start_sc];
+              c16_t *txlc = &tx_layer[cur_re];
+              for (i = (upper_limit >> 3) << 3; i < upper_limit; i++) {
+                txFc[i].r = (((txlc[i].r * amp) >> 14) + 1) >> 1;
+                txFc[i].i = (((txlc[i].i * amp) >> 14) + 1) >> 1;
+#ifdef DEBUG_DLSCH_MAPPING
+                printf("re %u\t l %d \t k %d \t txdataF: %d %d\n", cur_re + i, l_symbol, start_sc + i, txFc[i].r, txFc[i].i);
+#endif
+              }
+            }
+            cur_re += upper_limit;
+            if (remaining_re > 0) {
+              txF = (simde__m256i *)&txdataF_precoding[layer][l_symbol];
+              txl = (simde__m256i *)&tx_layer[cur_re];
+              int i;
+              for (i = 0; i < (remaining_re >> 3); i++) {
+                const simde__m256i txL = simde_mm256_loadu_si256(txl + i);
+                simde_mm256_storeu_si256(txF + i, simde_mm256_mulhrs_epi16(amp64, txL));
+#ifdef DEBUG_DLSCH_MAPPING
+                for (int j = 0; j < 4; j++)
+                  printf("re %u\t l %d \t k %d \t txdataF: %d %d\n",
+                         cur_re + 4 * i + j,
+                         l_symbol,
+                         4 * i + j,
+                         txdataF_precoding[layer][l_symbol][4 * i + j].r,
+                         txdataF_precoding[layer][l_symbol][4 * i + j].i);
+#endif
+                /* handle this, mute RE */
+                 /*else {
+                   txdataF_precoding[layer][((l*frame_parms->ofdm_symbol_size + k)<<1)    ] = 0;
+                   txdataF_precoding[layer][((l*frame_parms->ofdm_symbol_size + k)<<1) + 1] = 0;
+                   }*/
+              } // RE loop, second part
+              if (i * 8 != remaining_re) {
+                c16_t *txFc = txdataF_precoding[layer][l_symbol];
+                c16_t *txlc = &tx_layer[cur_re];
+                for (i = (remaining_re >> 3) << 3; i < remaining_re; i++) {
+                  txFc[i].r = (((txlc[i].r * amp) >> 14) + 1) >> 1;
+                  txFc[i].i = (((txlc[i].i * amp) >> 14) + 1) >> 1;
+#ifdef DEBUG_DLSCH_MAPPING
+                  printf("re %u\t l %d \t k %d \t txdataF: %d %d\n", cur_re + i, l_symbol, i, txFc[i].r, txFc[i].i);
+#endif
+                }
+              }
+            } // remaining_re > 0
+#endif
             cur_re += remaining_re;
           } // N_RB_DL even
         } // no DMRS/PTRS in symbol
