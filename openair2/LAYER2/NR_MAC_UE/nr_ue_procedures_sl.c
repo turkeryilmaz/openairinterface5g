@@ -1107,7 +1107,7 @@ void nr_ue_process_mac_sl_pdu(int module_idP,
                                                       );
     }
 
-    return;
+    //return;
   }
 
   LOG_D(NR_MAC, "%4d.%2d ack_nack %d pdu_type %d mac->sci_pdu_rx.csi_req %d\n",
@@ -1161,12 +1161,12 @@ void nr_ue_process_mac_sl_pdu(int module_idP,
       case SL_SCH_LCID_SL_CSI_REPORT:
         {
           NR_MAC_SUBHEADER_FIXED* sub_pdu_header = (NR_MAC_SUBHEADER_FIXED*) pduP;
-          if (frame % 20 == 0)
+          // if (frame % 20 == 0)
             LOG_D(NR_MAC, "\tLCID: %i, R: %i\n", sub_pdu_header->LCID, sub_pdu_header->R);
           mac_len = sizeof(*sub_pdu_header);
           nr_sl_csi_report_t* nr_sl_csi_report = (nr_sl_csi_report_t *) (pduP + mac_len);
-          if (frame % 20 == 0)
-            LOG_D(NR_MAC, "\tCQI: %i RI: %i\n", nr_sl_csi_report->CQI, nr_sl_csi_report->RI);
+          // if (frame % 20 == 0)
+            LOG_I(NR_MAC, "\tCQI: %i RI: %i\n", nr_sl_csi_report->CQI, nr_sl_csi_report->RI);
           sched_ctrl->rx_csi_report.CQI = nr_sl_csi_report->CQI;
           sched_ctrl->rx_csi_report.RI = nr_sl_csi_report->RI;
           LOG_D(NR_MAC, "Setting to CQI %i\n", sched_ctrl->rx_csi_report.CQI);

@@ -3344,7 +3344,7 @@ void preprocess(NR_UE_MAC_INST_t *mac,
         continue;
       }
       bool control_info = get_control_info(mac, sched_ctrl, nr_slots_frame, frame, slot, UE->uid, configured_PSFCH);
-
+      LOG_D(NR_MAC, "sched_ctrl->num_total_bytes %d, control_info %d\n", sched_ctrl->num_total_bytes, control_info);
       /* Check SL buffer and control info, skip this UE if no bytes and no control info */
       if (sched_ctrl->num_total_bytes == 0) {
         if (!control_info)
@@ -3662,7 +3662,7 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
           ((nr_sl_csi_report_t *) pdu)->CQI = sched_ctrl->sched_csi_report.cqi;
           ((nr_sl_csi_report_t *) pdu)->R = 0;
           if (!get_nrUE_params()->sync_ref)
-            LOG_D(NR_MAC, "%4d.%2d Sending sl_csi_report with CQI %i, RI %i\n",
+            LOG_I(NR_MAC, "%4d.%2d Sending sl_csi_report with CQI %i, RI %i\n",
                  frame,
                  slot,
                  ((nr_sl_csi_report_t *) pdu)->CQI,
@@ -3911,7 +3911,7 @@ void nr_ue_sidelink_scheduler(nr_sidelink_indication_t *sl_ind) {
     bool is_resource_allocated = nr_ue_sl_pssch_scheduler(mac, sl_ind, mac->sl_bwp, mac->sl_tx_res_pool, &tx_config, &tti_action);
     if (is_resource_allocated && mac->sci2_pdu.csi_req) {
       nr_ue_sl_csi_rs_scheduler(mac, mu, mac->sl_bwp, &tx_config, NULL, &tti_action);
-      LOG_D(NR_MAC, "%4d.%2d Scheduling CSI-RS\n", frame, slot);
+      LOG_I(NR_MAC, "%4d.%2d Scheduling CSI-RS\n", frame, slot);
     }
     bool is_feedback_slot = mac->sl_tx_res_pool->sl_PSFCH_Config_r16 ? is_feedback_scheduled(mac, frame, slot) : false;
     if (is_resource_allocated && is_feedback_slot && mac->sl_tx_res_pool->sl_PSFCH_Config_r16->choice.setup) {
