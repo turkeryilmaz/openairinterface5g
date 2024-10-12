@@ -249,7 +249,7 @@ static void prepare_NR_SL_ResourcePool(NR_SL_ResourcePool_r16_t *sl_res_pool,
   if (*nr_sl_psfch_config->sl_PSFCH_Period_r16 > 0) {
     const uint8_t psfch_periods[] = {0,1,2,4};
     AssertFatal(*nr_sl_psfch_config->sl_PSFCH_Period_r16 < 4, "sl_PSFCH_Period_r16 index must be less than 4\n");
-    LOG_I(NR_PHY, "Configuring PSFCH Period %ld\n", psfch_periods[*nr_sl_psfch_config->sl_PSFCH_Period_r16]);
+    LOG_D(NR_PHY, "Configuring PSFCH Period %ld\n", psfch_periods[*nr_sl_psfch_config->sl_PSFCH_Period_r16]);
     uint8_t psfch_period = psfch_periods[*nr_sl_psfch_config->sl_PSFCH_Period_r16];
     uint16_t prod_numCh_period = *sl_res_pool->sl_NumSubchannel_r16*psfch_period;
     uint16_t num_prbs = (*sl_res_pool->sl_RB_Number_r16 / prod_numCh_period) * prod_numCh_period;

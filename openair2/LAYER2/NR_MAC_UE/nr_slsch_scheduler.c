@@ -243,7 +243,7 @@ void nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP, int slotP, nr_sci_pdu_
   sci_pdu->mcs = sched_pssch->mcs;
   sci_pdu->additional_mcs.val = 0;
   if (frameP % 5 == 0)
-    LOG_I(NR_MAC, "cqi ---> %d Tx %4d.%2d dest: %d mcs %i\n",
+    LOG_D(NR_MAC, "cqi ---> %d Tx %4d.%2d dest: %d mcs %i\n",
           cqi, frameP, slotP, dest_id, sci_pdu->mcs);
   /*Following code will check whether SLSCH was received before and
   its feedback has scheduled for current slot
@@ -289,7 +289,7 @@ void nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP, int slotP, nr_sci_pdu_
   if (format2 == NR_SL_SCI_FORMAT_2C || format2 == NR_SL_SCI_FORMAT_2A) {
     sci2_pdu->csi_req = (csi_acq && csi_req_slot) ? 1 : 0;
     sci2_pdu->csi_req = (cur_harq->round > 0 || is_feedback_slot) ? 0 : sci2_pdu->csi_req;
-    LOG_I(NR_MAC, "%4d.%2d Setting sci2_pdu->csi_req %d\n", frameP, slotP, sci2_pdu->csi_req);
+    LOG_D(NR_MAC, "%4d.%2d Setting sci2_pdu->csi_req %d\n", frameP, slotP, sci2_pdu->csi_req);
   }
   if (format2 == NR_SL_SCI_FORMAT_2B)
     sci2_pdu->zone_id = 0;
