@@ -3465,7 +3465,7 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
       cur_harq->feedback_frame = feedback_frame;
       add_tail_nr_list(&sched_ctrl->feedback_sl_harq, harq_id);
       cur_harq->is_waiting = true;
-      LOG_D(NR_MAC, "%4d.%2d Sending Data; Expecting feedback %4d.%2d\n", frame, slot, feedback_frame, feedback_slot);
+      LOG_D(NR_MAC, "%4d.%2d Sending Data; Expecting feedback at %4d.%2d\n", frame, slot, feedback_frame, feedback_slot);
     }
     else
       add_tail_nr_list(&sched_ctrl->available_sl_harq, harq_id);
