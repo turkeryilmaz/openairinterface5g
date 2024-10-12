@@ -217,6 +217,12 @@ void nr_fill_sl_rx_indication(sl_nr_rx_indication_t *rx_ind,
                               void *typeSpecific,
                               uint16_t rx_slss_id);
 
+void nr_postDecode_slsch(PHY_VARS_NR_UE *UE, notifiedFIFO_elt_t *req,
+                         UE_nr_rxtx_proc_t *proc,
+                         nr_phy_data_t *phy_data,
+                         int8_t *ack_nack_rcvd,
+                         uint8_t num_acks);
+
 typedef struct {
   ldpcDecode_t *rdata;
   bool rxok;

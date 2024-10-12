@@ -44,7 +44,7 @@
 #include "PHY/NR_TRANSPORT/nr_dlsch.h"
 #include "SCHED_NR/sched_nr.h"
 #include "SCHED_NR/fapi_nr_l1.h"
-#include "defs.h"
+#include "openair1/SCHED_NR_UE/defs.h"
 #include "common/utils/LOG/vcd_signal_dumper.h"
 #include "common/utils/LOG/log.h"
 #include <syscall.h>
@@ -538,7 +538,6 @@ int nr_ulsch_decoding(PHY_VARS_gNB *phy_vars_gNB,
       //////////////////////////////////////////////////////////////////////////////////////////
     }
     if (UE) {
-      int num_seg_ok = 0;
       int nbDecode = harq_process->C;
       while (nbDecode) {
          notifiedFIFO_elt_t *req=pullTpool(&nf,  &get_nrUE_params()->Tpool);

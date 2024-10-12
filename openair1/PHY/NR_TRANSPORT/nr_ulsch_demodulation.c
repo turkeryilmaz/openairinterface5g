@@ -12,6 +12,7 @@
 #include "PHY/NR_REFSIG/refsig_defs_ue.h"
 #include "executables/nr-uesoftmodem.h"
 #include "SCHED_NR_UE/defs.h"
+#include "openair1/PHY/MODULATION/modulation_UE.h"
 
 //#define DEBUG_CH_COMP
 //#define DEBUG_RB_EXT
