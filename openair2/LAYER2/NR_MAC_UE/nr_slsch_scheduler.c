@@ -259,10 +259,12 @@ void nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP, int slotP, nr_sci_pdu_
     if (slotP == sched_psfch->feedback_slot) {
         LOG_D(NR_MAC, "%4d.%2d i = %d sched_psfch %p feedback slot %d\n", frameP, slotP, i, sched_psfch, sched_psfch->feedback_slot);
         is_feedback_slot = true;
+        AssertFatal((slotP % psfch_period == 0), "slot mod psfch_period MUST be 0 !!!\n");
         break;
     }
   }
-  if ((slotP % psfch_period == 0) && (psfch_period == 2 || psfch_period == 4)) {
+
+  if ((psfch_period == 2 || psfch_period == 4) && (slotP % psfch_period == 0)) {
       if (is_feedback_slot) {
         sci_pdu->psfch_overhead.val =  1;
         LOG_D(NR_MAC, "%4d.%2d Setting psfch_overhead 1\n", frameP, slotP);
@@ -270,7 +272,7 @@ void nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP, int slotP, nr_sci_pdu_
           sci_pdu->psfch_overhead.val = 0;
           LOG_D(NR_MAC, "%4d.%2d Setting psfch_overhead 0\n", frameP, slotP);
       }
-  } else if ((slotP % psfch_period != 0) && (psfch_period == 2 || psfch_period == 4))
+  } else if ((psfch_period == 2 || psfch_period == 4) && (slotP % psfch_period != 0))
     sci_pdu->psfch_overhead.val = 0;
 
   sci_pdu->reserved.val = mac->is_synced ? 1 : 0;
@@ -319,7 +321,7 @@ SL_CSI_Report_t* set_nr_ue_sl_csi_meas_periodicity(const NR_TDD_UL_DL_Pattern_t 
   uint8_t n_slots_frame = nr_slots_per_frame[mu];
   const int n_ul_slots_period = tdd ? tdd->nrofUplinkSlots + (tdd->nrofUplinkSymbols > 0 ? 1 : 0) : n_slots_frame;
   const int nr_slots_period = tdd ? n_slots_frame / get_nb_periods_per_frame(tdd->dl_UL_TransmissionPeriodicity) : n_slots_frame;
-  const int ideal_period = (MAX_SL_UE_CONNECTIONS * nr_slots_period) / n_ul_slots_period;
+  const int ideal_period = (CUR_SL_UE_CONNECTIONS * nr_slots_period) / n_ul_slots_period;
   const int first_ul_slot_period = tdd ? get_first_ul_slot(tdd->nrofDownlinkSlots, tdd->nrofDownlinkSymbols, tdd->nrofUplinkSymbols) : 0;
   const int idx = (uid << 1) + is_rsrp;
   SL_CSI_Report_t *csi_report = &sched_ctrl->sched_csi_report;

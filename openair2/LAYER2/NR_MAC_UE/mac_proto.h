@@ -664,5 +664,7 @@ int get_pssch_to_harq_feedback(uint8_t *pssch_to_harq_feedback,
                                NR_TDD_UL_DL_Pattern_t *tdd,
                                const int nr_slots_frame);
 
+int get_psfch_index(int frame, int slot, int n_slots_frame, const NR_TDD_UL_DL_Pattern_t *tdd, int sched_psfch_max_size);
+
 #endif
 /** @}*/

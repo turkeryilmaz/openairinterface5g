@@ -663,7 +663,7 @@ void configure_psfch_params_tx(int module_idP,
   uint16_t tx_frame = (rx_ind->sfn + (rx_ind->slot + DURATION_RX_TO_TX) / nr_slots_per_frame[scs]) % 1024;
 
   uint8_t ack_nack = (rx_ind->rx_indication_body + pdu_id)->rx_slsch_pdu.ack_nack;
-  LOG_D(NR_MAC, "tx_frame %4u.%2u, ack_nack %d\n", tx_frame, tx_slot, ack_nack);
+  LOG_D(NR_MAC, "tx_frame %4u.%2u, ack_nack %d rx: %4u.%2u\n", tx_frame, tx_slot, ack_nack, rx_ind->sfn, rx_ind->slot);
   psfch_params_t *psfch_params = calloc(1, sizeof(psfch_params_t));
   compute_params(module_idP, psfch_params);
   const int nr_slots_frame = nr_slots_per_frame[scs];
@@ -674,7 +674,7 @@ void configure_psfch_params_tx(int module_idP,
   psfch_params = NULL;
 }
 
-static int get_psfch_index(int frame, int slot, int n_slots_frame, const NR_TDD_UL_DL_Pattern_t *tdd, int sched_psfch_max_size)
+int get_psfch_index(int frame, int slot, int n_slots_frame, const NR_TDD_UL_DL_Pattern_t *tdd, int sched_psfch_max_size)
 {
   // PUCCH structures are indexed by slot in the PUCCH period determined by sched_psfch_max_size number of UL slots
   // this functions return the index to the structure for slot passed to the function
@@ -732,66 +732,109 @@ int get_feedback_frame_slot(NR_UE_MAC_INST_t *mac, NR_TDD_UL_DL_Pattern_t *tdd,
   return 0;
 }
 
+int16_t get_feedback_slot(long psfch_period, uint16_t slot) {
+  int16_t feedback_slot = -1;
+  if (psfch_period == 1) {
+    switch(slot) {
+      case 0:
+        feedback_slot = 6;
+      break;
+      case 1:
+        feedback_slot = 7;
+      break;
+      case 2:
+        feedback_slot = 8;
+      break;
+      case 3:
+        feedback_slot = 9;
+      break;
+      case 10:
+        feedback_slot = 16;
+      break;
+      case 11:
+        feedback_slot = 17;
+      break;
+      case 12:
+        feedback_slot = 18;
+      break;
+      case 13:
+        feedback_slot = 19;
+      break;
+      default:
+        AssertFatal(1 == 0, "Invalid slot %d\n", slot);
+    }
+  } else if (psfch_period == 2) {
+    switch(slot) {
+      case 0:
+      case 1:
+        feedback_slot = 6;
+      break;
+      case 2:
+      case 3:
+        feedback_slot = 8;
+      break;
+      case 10:
+      case 11:
+        feedback_slot = 16;
+      break;
+      case 12:
+      case 13:
+        feedback_slot = 18;
+      break;
+      default:
+        AssertFatal(1 == 0, "Invalid slot %d\n", slot);
+    }
+  } else if (psfch_period == 4) {
+    switch(slot) {
+      case 0:
+      case 1:
+      case 2:
+      case 3:
+        feedback_slot = 8;
+      break;
+      case 10:
+      case 11:
+      case 12:
+      case 13:
+        feedback_slot = 16;
+      break;
+      default:
+        AssertFatal(1 == 0, "Invalid slot %d\n", slot);
+    }
+  }
+  return feedback_slot;
+}
+
 int nr_ue_sl_acknack_scheduling(NR_UE_MAC_INST_t *mac, sl_nr_rx_indication_t *rx_ind,
                                 long psfch_period, uint16_t frame, uint16_t slot, const int nr_slots_frame) {
   // TODO: needs to be updated for multi-subchannels
   int psfch_frame, psfch_slot;
-  const uint8_t time_gap[] = {2, 3};
-
-  NR_SL_PSFCH_Config_r16_t *sl_psfch_config = mac->sl_tx_res_pool->sl_PSFCH_Config_r16->choice.setup;
-  uint8_t psfch_min_time_gap = time_gap[*sl_psfch_config->sl_MinTimeGapPSFCH_r16];
-
-  uint16_t num_subch = sl_get_num_subch(mac->sl_tx_res_pool);
   sl_nr_ue_mac_params_t *sl_mac =  mac->SL_MAC_PARAMS;
   NR_TDD_UL_DL_Pattern_t *tdd = &sl_mac->sl_TDD_config->pattern1;
   const int n_ul_slots_period = tdd ? tdd->nrofUplinkSlots + (tdd->nrofUplinkSymbols > 0 ? 1 : 0) : nr_slots_frame;
 
-  NR_SL_UE_sched_ctrl_t  *sched_ctrl = &mac->sl_info.list[0]->UE_sched_ctrl;
-  int psfch_max_size = psfch_period * num_subch;
+  uint16_t num_subch = sl_get_num_subch(mac->sl_tx_res_pool);
   int n_ul_buf_max_size = n_ul_slots_period * num_subch;
-  uint8_t pssch_to_harq_feedback[8];
-  int fb_size = get_pssch_to_harq_feedback(pssch_to_harq_feedback, psfch_min_time_gap, tdd, nr_slots_frame);
-  int pre_slot = (rx_ind->slot + nr_slots_frame - 1) % nr_slots_frame;
-  int pre_sfn = (rx_ind->sfn + (rx_ind->slot + nr_slots_frame - 1) / nr_slots_frame) % 1023;
-  const int pre_index = get_psfch_index(pre_sfn, pre_slot, nr_slots_frame, tdd, n_ul_buf_max_size);
-  uint8_t cnt = 0;
-  SL_sched_feedback_t  *pre_psfch = NULL;
-  if (pre_index >= 0) {
-    pre_psfch = &sched_ctrl->sched_psfch[pre_index];
-    cnt = pre_psfch->dai_c;
-  }
-  LOG_D(NR_MAC, "Comparing %4d.%2d pre_psfch %p pre_index %d cnt %d\n",
-        rx_ind->sfn, rx_ind->slot, pre_psfch, pre_index, cnt);
-  // we store PSFCH resources according to slot, TDD configuration and size of the vector containing PSFCH structures
+
+  psfch_slot = get_feedback_slot(psfch_period, slot);
   const int psfch_index = get_psfch_index(rx_ind->sfn, rx_ind->slot, nr_slots_frame, tdd, n_ul_buf_max_size);
-  for (int f = 0; f < fb_size; f++) {
-    int  continue_flag = get_feedback_frame_slot(mac, tdd, pssch_to_harq_feedback[f],
-                                                 psfch_min_time_gap,
-                                                 nr_slots_frame, frame, slot,
-                                                 psfch_period,
-                                                 &psfch_frame, &psfch_slot);
-
-    if (continue_flag == -1) {
-      continue;
-    }
-    LOG_D(NR_MAC, "flag %d, f %d, offset %d, psfch_slot %d\n", continue_flag, f, pssch_to_harq_feedback[f], psfch_slot);
-    if (cnt == psfch_max_size && psfch_frame == pre_psfch->feedback_frame && psfch_slot == pre_psfch->feedback_slot) {
-      cnt = 0;
-    }
-    else {
-      SL_sched_feedback_t  *curr_psfch = &sched_ctrl->sched_psfch[psfch_index];
-      curr_psfch->feedback_frame = psfch_frame;
-      curr_psfch->feedback_slot = psfch_slot;
-      curr_psfch->dai_c = cnt + 1;
-
-      LOG_D(NR_MAC, "psfch_acknack SL %4d.%2d, SL_ACK %4d.%2d in current PSFCH: psfch_index %d, f %d dai_c %u curr_psfch %p\n",
-            rx_ind->sfn, rx_ind->slot, psfch_frame, psfch_slot, psfch_index, f, curr_psfch->dai_c, curr_psfch);
-
-      return psfch_index; // index of current PUCCH structure
-    }
-  }
+  NR_SL_UE_sched_ctrl_t  *sched_ctrl = &mac->sl_info.list[0]->UE_sched_ctrl;
+  SL_sched_feedback_t  *curr_psfch = &sched_ctrl->sched_psfch[psfch_index];
+  psfch_frame = frame;
+  curr_psfch->feedback_frame = psfch_frame;
+  curr_psfch->feedback_slot = psfch_slot;
+  curr_psfch->dai_c = psfch_index;
+  LOG_D(NR_MAC, "Rx SLSCH %4d.%2d, SL_ACK %4d.%2d in current PSFCH: psfch_index %d, n_ul_slots_period %d dai_c %u curr_psfch %p\n",
+        rx_ind->sfn,
+        rx_ind->slot,
+        psfch_frame,
+        psfch_slot,
+        psfch_index,
+        n_ul_slots_period,
+        curr_psfch->dai_c,
+        curr_psfch);
   LOG_D(NR_MAC, "SL %4d.%2d, Couldn't find scheduling occasion for this HARQ process\n", rx_ind->sfn, rx_ind->slot);
-  return -1;
+  return psfch_index;
 }
 
 void fill_psfch_params_tx(NR_UE_MAC_INST_t *mac, sl_nr_rx_indication_t *rx_ind,
@@ -1064,7 +1107,6 @@ void nr_ue_process_mac_sl_pdu(int module_idP,
                                                       );
     }
 
-    return;
   }
 
   LOG_D(NR_MAC, "%4d.%2d ack_nack %d pdu_type %d mac->sci_pdu_rx.csi_req %d\n",
@@ -1120,8 +1162,9 @@ void nr_ue_process_mac_sl_pdu(int module_idP,
           NR_MAC_SUBHEADER_FIXED* sub_pdu_header = (NR_MAC_SUBHEADER_FIXED*) pduP;
           if (frame % 20 == 0)
             LOG_D(NR_MAC, "\tLCID: %i, R: %i\n", sub_pdu_header->LCID, sub_pdu_header->R);
-          mac_len = sizeof(*sub_pdu_header);
+          mac_subheader_len = sizeof(*sub_pdu_header);
           nr_sl_csi_report_t* nr_sl_csi_report = (nr_sl_csi_report_t *) (pduP + mac_len);
+          mac_len = sizeof(*nr_sl_csi_report);
           if (frame % 20 == 0)
             LOG_D(NR_MAC, "\tCQI: %i RI: %i\n", nr_sl_csi_report->CQI, nr_sl_csi_report->RI);
           sched_ctrl->rx_csi_report.CQI = nr_sl_csi_report->CQI;
@@ -1130,9 +1173,14 @@ void nr_ue_process_mac_sl_pdu(int module_idP,
           break;
         }
       case SL_SCH_LCID_SL_PADDING:
-	      LOG_D(NR_MAC, "Received padding\n");
-	      done = 1;
-	      break;
+        {
+          NR_MAC_SUBHEADER_FIXED* sub_pdu_header = (NR_MAC_SUBHEADER_FIXED*) pduP;
+          mac_subheader_len = sizeof(*sub_pdu_header);
+          mac_len = pdu_len - mac_subheader_len;
+          LOG_D(NR_MAC, "%4d.%2d Received padding %d\n", frame, slot, pdu_len);
+          done = 1;
+          break;
+        }
       case SL_SCH_LCID_SCCH_PC5_NOT_PROT:
       case SL_SCH_LCID_SCCH_PC5_DSMC:
       case SL_SCH_LCID_SCCH_PC5_PROT:

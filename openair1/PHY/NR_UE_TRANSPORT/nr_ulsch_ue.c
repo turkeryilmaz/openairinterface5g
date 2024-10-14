@@ -178,7 +178,8 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
   if (phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_CSI_RS)
     is_csi_rs_slot = true;
   nfapi_nr_dl_tti_csi_rs_pdu_rel15_t *csi_params = (nfapi_nr_dl_tti_csi_rs_pdu_rel15_t *)&phy_data->nr_sl_pssch_pscch_pdu.nr_sl_csi_rs_pdu;
-  LOG_D(NR_PHY, "Tx start_rb %i, cdm_type %i, csi_type %i, freq_density %i, nr_of_rbs %i, row %i\n", csi_params->start_rb, csi_params->cdm_type, csi_params->csi_type, csi_params->freq_density, csi_params->nr_of_rbs, csi_params->row);
+  LOG_D(NR_PHY, "Tx start_rb %i, cdm_type %i, csi_type %i, freq_density %i, nr_of_rbs %i, row %i symb_l0 %i is_csi_rs_slot %i\n",
+        csi_params->start_rb, csi_params->cdm_type, csi_params->csi_type, csi_params->freq_density, csi_params->nr_of_rbs, csi_params->row, csi_params->symb_l0, is_csi_rs_slot);
   int      N_PRB_oh = 0; // higher layer (RRC) parameter xOverhead in PUSCH-ServingCellConfig
   uint16_t number_dmrs_symbols = 0;
 
@@ -214,12 +215,12 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
         is_first_dmrs_symbol = false;
       }
       if (csi_params->symb_l0 != 0)
-        AssertFatal(i != csi_params->symb_l0, "CSI-RS MUST not be sent in DMRS symbol\n");
+        AssertFatal(i != csi_params->symb_l0, "CSI-RS  (symb_l0 %d) MUST not be sent in DMRS symbol (%d)\n", csi_params->symb_l0, i);
     }
   }
 
   if (csi_params->symb_l0 != 0)
-    AssertFatal(csi_params->symb_l0 > pscch_pssch_pdu->pscch_numsym, "CSI-RS MUST not be sent in PSCCH symbol\n");
+    AssertFatal(csi_params->symb_l0 > pscch_pssch_pdu->pscch_numsym, "CSI-RS (symb_l0 %d) MUST not be sent in PSCCH symbol (%d)\n", csi_params->symb_l0, pscch_pssch_pdu->pscch_numsym);
   nb_dmrs_re_per_rb = ((dmrs_type == pusch_dmrs_type1) ? 6:4)*cdm_grps_no_data;
 
   //LOG_I(NR_PHY,"%s TX %x : start_rb %d nb_rb %d mod_order %d Nl %d Tpmi %d bwp_start %d start_sc %d start_symbol %d num_symbols %d cdmgrpsnodata %d num_dmrs %d dmrs_re_per_rb %d\n",pscch_pssch_pdu==NULL?"PUSCH":"PSSCH",
