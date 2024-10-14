@@ -1162,8 +1162,9 @@ void nr_ue_process_mac_sl_pdu(int module_idP,
           NR_MAC_SUBHEADER_FIXED* sub_pdu_header = (NR_MAC_SUBHEADER_FIXED*) pduP;
           if (frame % 20 == 0)
             LOG_D(NR_MAC, "\tLCID: %i, R: %i\n", sub_pdu_header->LCID, sub_pdu_header->R);
-          mac_len = sizeof(*sub_pdu_header);
+          mac_subheader_len = sizeof(*sub_pdu_header);
           nr_sl_csi_report_t* nr_sl_csi_report = (nr_sl_csi_report_t *) (pduP + mac_len);
+          mac_len = sizeof(*nr_sl_csi_report);
           if (frame % 20 == 0)
             LOG_D(NR_MAC, "\tCQI: %i RI: %i\n", nr_sl_csi_report->CQI, nr_sl_csi_report->RI);
           sched_ctrl->rx_csi_report.CQI = nr_sl_csi_report->CQI;
@@ -1172,9 +1173,14 @@ void nr_ue_process_mac_sl_pdu(int module_idP,
           break;
         }
       case SL_SCH_LCID_SL_PADDING:
-	      LOG_D(NR_MAC, "Received padding\n");
-	      done = 1;
-	      break;
+        {
+          NR_MAC_SUBHEADER_FIXED* sub_pdu_header = (NR_MAC_SUBHEADER_FIXED*) pduP;
+          mac_subheader_len = sizeof(*sub_pdu_header);
+          mac_len = pdu_len - mac_subheader_len;
+          LOG_D(NR_MAC, "%4d.%2d Received padding %d\n", frame, slot, pdu_len);
+          done = 1;
+          break;
+        }
       case SL_SCH_LCID_SCCH_PC5_NOT_PROT:
       case SL_SCH_LCID_SCCH_PC5_DSMC:
       case SL_SCH_LCID_SCCH_PC5_PROT:
