@@ -2,8 +2,9 @@ add_library(rfsimulator MODULE
             simulator.c
             apply_channelmod.c
             ../../openair1/PHY/TOOLS/signal_energy.c
+            simulator_rest_api.cpp
 )
-target_link_libraries(rfsimulator PRIVATE SIMU HASHTABLE)
+target_link_libraries(rfsimulator PRIVATE SIMU HASHTABLE Crow::Crow)
 set_target_properties(rfsimulator PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 
 add_executable(replay_node stored_node.c)

@@ -26,20 +26,34 @@
 void api_run(void);
 
 extern "C" {
+#include "common/utils/load_module_shlib.h"
 void nr_ue_rest_api_thread(void* arg)
 {
   api_run();
 }
 }
 
+typedef void (*regsiter_routes_ftype)(crow::Blueprint* bp);
+
 void api_run(void)
 {
   crow::SimpleApp ue_rest_api;
+  ue_rest_api.loglevel(crow::LogLevel::Warning);
 
   CROW_ROUTE(ue_rest_api, "/healthcheck")([]() { return "OK"; });
 
-  crow::Blueprint bp = nr_ue::rest_api::phy::register_routes("phy");
-  ue_rest_api.register_blueprint(bp);
+  crow::Blueprint phy_bp("phy");
+  nr_ue::rest_api::phy::register_routes(&phy_bp);
+  ue_rest_api.register_blueprint(phy_bp);
+
+  char rfsim[] = "rfsimulator";
+  char register_routes[] = "register_routes";
+  regsiter_routes_ftype rfsim_register_routes = (regsiter_routes_ftype)get_shlibmodule_fptr(rfsim, register_routes);
+  crow::Blueprint rfsim_bp("rfsimulator");
+  if (rfsim_register_routes) {
+    rfsim_register_routes(&rfsim_bp);
+    ue_rest_api.register_blueprint(rfsim_bp);
+  }
 
   ue_rest_api.port(PORT).run();
 }

@@ -27,7 +27,7 @@
 
 namespace nr_ue::rest_api::phy
 {
-  crow::Blueprint register_routes(const std::string &prefix);
+  void register_routes(crow::Blueprint* bp);
 }
 
 #endif
