@@ -21,6 +21,27 @@
                 "SANITIZE_ADDRESS": "ON",
                 "CMAKE_BUILD_TYPE": "RelWithDebInfo"
             }
+        },
+        {
+            "name": "container-config",
+            "displayName": "Profile for building docker images",
+            "binaryDir": "/oai-bin/",
+            "inherits": "default",
+            "cacheVariables": {
+                "ENABLE_TELNETSRV": "ON",
+                "ENABLE_ENBSCOPE": "ON",
+                "ENABLE_UESCOPE": "ON",
+                "ENABLE_NRSCOPE": "ON",
+                "OAI_USRP": "ON",
+                "OAI_ETHERNET": "ON",
+                "E2_AGENT": "ON",
+                "XAPP_MULTILANGUAGE": "OFF",
+                "KPM_VERSION": "KPM_V3_00",
+                "E2AP_VERSION": "E2AP_V3",
+                "AVX512": "OFF",
+                "CMAKE_C_FLAGS": "-Werror",
+                "CMAKE_CXX_FLAGS": "-Werror"
+            }
         }
     ],
     "buildPresets": [
@@ -58,6 +79,29 @@
             "configurePreset": "tests",
             "targets": [
                 "tests"
+            ]
+        },
+        {
+            "name": "container-build",
+            "configurePreset": "container-config",
+            "targets": [
+                "lte-softmodem",
+                "nr-softmodem",
+                "nr-cuup",
+                "oairu",
+                "lte-uesoftmodem",
+                "nr-uesoftmodem",
+                "telnetsrv",
+                "enbscope",
+                "uescope",
+                "nrscope",
+                "oai_usrpdevif",
+                "oai_eth_transpro",
+                "params_libconfig",
+                "coding",
+                "rfsimulator",
+                "dfts",
+                "params_yaml"
             ]
         }
     ]

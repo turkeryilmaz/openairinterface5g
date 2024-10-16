@@ -31,30 +31,32 @@ ARG BUILD_OPTION
 ARG E2AP_VERSION=E2AP_V3
 ARG KPM_VERSION=KPM_V3_00
 
-RUN rm -Rf /oai-ran
-WORKDIR /oai-ran
-COPY . .
-
 # build all targets so final targets can be created afterwards
-RUN /bin/sh oaienv && \
-    cd cmake_targets && \
-    mkdir -p log && \
-    ./build_oai -c --ninja \
-      --eNB --gNB --RU --UE --nrUE \
-      --build-lib "telnetsrv enbscope uescope nrscope" \
-      -w USRP -t Ethernet \
-      --build-e2 --cmake-opt -DXAPP_MULTILANGUAGE=OFF --cmake-opt -DKPM_VERSION=$KPM_VERSION --cmake-opt -DE2AP_VERSION=$E2AP_VERSION \
-      --noavx512 \
-      --cmake-opt -DCMAKE_C_FLAGS="-Werror" --cmake-opt -DCMAKE_CXX_FLAGS="-Werror" $BUILD_OPTION && \
+RUN --mount=type=cache,target=/root/.cache/ccache/ \
+    --mount=type=cache,target=/oai-bin/ \
+    --mount=type=cache,target=/root/.cache/cpm/ \
+    --mount=type=bind,source=../,target=/oai-ran/,rw \
+    cd /oai-ran/ && \
+    /bin/sh oaienv && \
+    cmake --preset container-config -DKPM_VERSION=$KPM_VERSION -DE2AP_VERSION=$E2AP_VERSION $BUILD_OPTION && \
+    cmake --build --preset container-build && \
     # Mainly to see if the sanitize option was perfectly executed
+    cd /oai-bin/ && \
     echo "---- ldd on executables ----" && \
-    ldd ran_build/build/*softmodem* ran_build/build/nr-cuup ran_build/build/oairu && \
+    ldd *softmodem* nr-cuup oairu && \
     echo "---- ldd on shared libraries ----" && \
-    ldd ran_build/build/*.so
+    ldd *.so && \
+    # copy the binaries into a directory on the container - build directory is part fo the cache
+    mkdir -p /oai-ran/cmake_targets/ran_build/build/ && \
+    cp *.so /oai-ran/cmake_targets/ran_build/build/ && \
+    cp *softmodem* /oai-ran/cmake_targets/ran_build/build/ && \
+    cp nr-cuup /oai-ran/cmake_targets/ran_build/build/ && \
+    cp oairu /oai-ran/cmake_targets/ran_build/build/
 
 ## Build FlexRIC for SM Models
-RUN mkdir -p openair2/E2AP/flexric/build && \
-    cd openair2/E2AP/flexric/build && \
+RUN --mount=type=cache,target=/oai-ran/openair2/E2AP/flexric/build/ \
+    --mount=type=bind,source=../,target=/oai-ran/,rw \
+    cd /oai-ran/openair2/E2AP/flexric/build && \
     cmake -GNinja -DCMAKE_BUILD_TYPE=Release \
           -DXAPP_MULTILANGUAGE=OFF \
           -DKPM_VERSION=$KPM_VERSION \
