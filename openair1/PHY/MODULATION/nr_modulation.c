@@ -265,9 +265,14 @@ void nr_layer_mapping(int nbCodes,
     case 2:
     case 3:
     case 4:
+    c16_t *l=&mod_symbs[0][layer];
     for (int i = 0; i < n_symbs / n_layers; i++) {
+	   /* 
       const c16_t *base = mod_symbs[0] + n_layers * i;
       tx_layer[i] = base[layer];
+      */
+      tx_layer[i] = *l;
+      l+=n_layers;
     }
       break;
 
