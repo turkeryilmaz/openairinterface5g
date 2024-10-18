@@ -2076,7 +2076,7 @@ target_link_libraries(nr-softmodem PRIVATE
   UTIL HASHTABLE SCTP_CLIENT SCHED_LIB SCHED_RU_LIB SCHED_NR_LIB PHY_NR PHY PHY_COMMON PHY_NR_COMMON PHY_RU GTPV1U SECURITY
   ITTI ${NAS_UE_LIB} lte_rrc nr_rrc
   ngap s1ap L2_LTE_NR L2_NR MAC_NR_COMMON NFAPI_COMMON_LIB NFAPI_LIB NFAPI_VNF_LIB NFAPI_PNF_LIB NFAPI_USER_LIB SIMU SIMU_ETH
-  x2ap f1ap m2ap m3ap e1ap shlib_loader e3ap
+  x2ap f1ap m2ap m3ap e1ap shlib_loader 
   -Wl,--end-group z dl)
 
 target_link_libraries(nr-softmodem PRIVATE pthread m CONFIG_LIB rt sctp)
@@ -2088,7 +2088,7 @@ if(E2_AGENT)
 endif()
 
 if (E3_AGENT)
-    message(STATUS "E3_Agent status is ${E3_AGENT}")
+    target_link_libraries(nr-softmodem PRIVATE e3ap)
     target_compile_definitions(nr-softmodem PRIVATE E3_AGENT)
     # Here realistically you can add e3ap, at the moment is not linked correctly
 endif()

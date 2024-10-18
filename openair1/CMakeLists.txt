@@ -1,4 +1,5 @@
 add_subdirectory(PHY)
 if(E3_AGENT)
+    message(STATUS "Add E3 Agent capabilities")
     add_subdirectory(E3AP)
 endif()
