@@ -100,10 +100,8 @@ t_nrPolar_params *nr_polar_params(int8_t messageType, uint16_t messageLength, ui
   *newPolarInitNode = (t_nrPolar_params){.busy = true, .nextPtr = PolarList, .tree_linearization.is_initialized = false};
   PolarList = newPolarInitNode;
   pthread_mutex_unlock(&PolarListMutex);
-  //   LOG_D(PHY,"Setting new polarParams index %d, messageType %d, messageLength %d, aggregation_prime %d\n",(messageType * messageLength * aggregation_prime),messageType,messageLength,aggregation_prime);
+  LOG_A(PHY,"Setting new polarParams key %d, messageType %d, messageLength %d, aggregation_level %d\n", PolarKey,messageType,messageLength,aggregation_level);
   newPolarInitNode->idx = PolarKey;
-  //printf("newPolarInitNode->idx %d, (%d,%d,%d:%d)\n",newPolarInitNode->idx,messageType,messageLength,aggregation_prime,aggregation_level);
-
   if (messageType == NR_POLAR_PBCH_MESSAGE_TYPE) {
     newPolarInitNode->n_max = NR_POLAR_PBCH_N_MAX;
     newPolarInitNode->i_il = NR_POLAR_PBCH_I_IL;
