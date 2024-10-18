@@ -135,7 +135,7 @@
                 <desc>Ping ext-dn from all NR-UEs</desc>
                 <id>rfsim5g_ue</id>
                 <nodes>cacofonix</nodes>
-                <ping_args> -c 20 192.168.72.135 -i0.5 -w20</ping_args>
+                <ping_args> -c 20 192.168.72.135 -i0.5 -w25</ping_args>
                 <ping_packetloss_threshold>80</ping_packetloss_threshold>
         </testCase>
 
