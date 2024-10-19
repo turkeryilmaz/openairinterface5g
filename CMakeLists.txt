@@ -1470,6 +1470,13 @@ if(E2_AGENT)
   target_compile_definitions(L2_NR PRIVATE ${E2AP_VERSION} ${KPM_VERSION} E2_AGENT)
 endif()
 
+if(E3_AGENT)
+  target_compile_definitions(L2_NR PRIVATE PRIVATE E3_AGENT)
+  if(USE_E3_UDS)
+      target_compile_definitions(L2_NR PRIVATE USE_E3_UDS)
+  endif()
+endif()
+
 add_library(L2_LTE_NR
   ${L2_RRC_SRC}
   ${MAC_SRC}
