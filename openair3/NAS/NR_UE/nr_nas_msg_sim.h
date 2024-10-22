@@ -38,6 +38,7 @@
 #include "FGSNASSecurityModeComplete.h"
 #include "FGSDeregistrationRequestUEOriginating.h"
 #include "RegistrationComplete.h"
+#include "FGMM/fgs_service_request.h"
 #include "as_message.h"
 #include "FGSUplinkNasTransport.h"
 #include <openair3/UICC/usim_interface.h>
@@ -54,6 +55,7 @@
 #define REGISTRATION_COMPLETE                              0b01000011 /* 67 = 0x43 */
 #define FGS_DEREGISTRATION_REQUEST_UE_ORIGINATING          0b01000101
 #define FGS_DEREGISTRATION_ACCEPT                          0b01000110
+#define FGS_SERVICE_REQUEST                                0b01001100 /* 76 = 0x4c */
 #define FGS_AUTHENTICATION_REQUEST                         0b01010110 /* 86 = 0x56 */
 #define FGS_AUTHENTICATION_RESPONSE                        0b01010111 /* 87 = 0x57 */
 #define FGS_IDENTITY_REQUEST                               0b01011011 /* 91 = 0x5b */
@@ -68,12 +70,19 @@
 #define FGS_PDU_SESSION_ESTABLISHMENT_ACC                  0b11000010 /* 194= 0xc2 */
 #define FGS_PDU_SESSION_ESTABLISHMENT_REJ                  0b11000011 /* 195= 0xc3 */
 
+/* 3GPP TS 24.501 Table 9.11.3.7.1: 5GS registration type IE */
 #define INITIAL_REGISTRATION                               0b001
+#define MOBILITY_REGISTRATION_UPDATING                     0b010
+
+/* 3GPP TS 24.501: 9.11.3.50 Service type */
+#define SERVICE_TYPE_DATA                                  0b0001
 
 #define PLAIN_5GS_NAS_MESSAGE_HEADER_LENGTH                3
 #define SECURITY_PROTECTED_5GS_NAS_MESSAGE_HEADER_LENGTH   7
 #define PAYLOAD_CONTAINER_LENGTH_MIN                       3
 #define PAYLOAD_CONTAINER_LENGTH_MAX                       65537
+
+#define MAC_INTEGRITY_SIZE 4
 
 /* List of allowed NSSAI from NAS messaging. */
 typedef struct {
@@ -82,6 +91,27 @@ typedef struct {
   int sd;
   int hplmn_sd;
 } nr_nas_msg_snssai_t;
+
+/*
+ * 5GS mobility management (5GMM) states
+ * 5.1.3.2.1.1 of TS 24.501
+ */
+typedef enum fgs_mm_state_e {
+  FGS_DEREGISTERED = 0,
+  FGS_DEREGISTERED_INITIATED,
+  FGS_REGISTERED_INITIATED,
+  FGS_REGISTERED,
+  FGS_SERVICE_REQUEST_INITIATED,
+} fgs_mm_state_t;
+
+/*
+ * 5GS mobility management (5GMM) modes
+ * 5.1.3.2.1.1 of TS 24.501
+ */
+typedef enum fgs_mm_mode_e {
+  FGS_IDLE = 0,
+  FGS_CONNECTED,
+} fgs_mm_mode_t;
 
 /* Security Key for SA UE */
 typedef struct {
@@ -98,6 +128,10 @@ typedef struct {
 } ue_sa_security_key_t;
 
 typedef struct {
+  /* 5GS Mobility Management state (5.1.3.2.1 of 3GPP TS 24.501) */
+  fgs_mm_state_t fiveGMM_state;
+  /* 5GS Mobility Management mode */
+  fgs_mm_mode_t fiveGMM_mode;
   uicc_t *uicc;
   ue_sa_security_key_t security;
   stream_security_container_t *security_container;
@@ -116,24 +150,25 @@ typedef enum fgs_protocol_discriminator_e {
   FGS_SESSION_MANAGEMENT_MESSAGE =    0x2E,
 } fgs_protocol_discriminator_t;
 
-
+/* Plain 5GS NAS message header (9.1.1. of 3GPP TS 24.501) */
 typedef struct {
   uint8_t ex_protocol_discriminator;
   uint8_t security_header_type;
   uint8_t message_type;
 } mm_msg_header_t;
 
-/* Structure of security protected header */
+/* Security protected header (9.1.1. of 3GPP TS 24.501) */
 typedef struct {
-  fgs_protocol_discriminator_t    protocol_discriminator;
-  uint8_t                         security_header_type;
-  uint32_t                        message_authentication_code;
-  uint8_t                         sequence_number;
-} fgs_nas_message_security_header_t;
+  uint32_t message_authentication_code;
+  uint8_t protocol_discriminator;
+  uint8_t security_header_type;
+  uint8_t sequence_number;
+} __attribute__((__packed__)) fgs_nas_message_security_header_t;
 
 typedef union {
   mm_msg_header_t                        header;
   registration_request_msg               registration_request;
+  fgs_service_request_msg                service_request;
   fgs_identiy_response_msg               fgs_identity_response;
   fgs_authentication_response_msg        fgs_auth_response;
   fgs_deregistration_request_ue_originating_msg fgs_deregistration_request_ue_originating;
@@ -188,7 +223,6 @@ typedef struct {
 } dl_nas_transport_t;
 
 nr_ue_nas_t *get_ue_nas_info(module_id_t module_id);
-void generateRegistrationRequest(as_nas_info_t *initialNasMsg, nr_ue_nas_t *nas);
 void *nas_nrue_task(void *args_p);
 void *nas_nrue(void *args_p);
 

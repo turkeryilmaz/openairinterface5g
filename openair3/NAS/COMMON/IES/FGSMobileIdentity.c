@@ -43,6 +43,22 @@ static int encode_guti_5gs_mobile_identity(Guti5GSMobileIdentity_t *guti, uint8_
 static int encode_suci_5gs_mobile_identity(Suci5GSMobileIdentity_t *suci, uint8_t *buffer);
 static int encode_imeisv_5gs_mobile_identity(Imeisv5GSMobileIdentity_t *imeisv, uint8_t *buffer);
 
+static int encode_stmsi_5gs_mobile_identity(Stmsi5GSMobileIdentity_t *stmsi, uint8_t *buffer)
+{
+  uint32_t encoded = 0;
+  // octet 4
+  *(buffer + encoded) = 0xf0 | ((stmsi->spare & 0x1) << 3) | (stmsi->typeofidentity & 0x7);
+  encoded++;
+  // octet 5-6
+  uint16_t temp = 0x00 | ((stmsi->amfsetid) << 6) | (stmsi->amfpointer & 0x3f);
+  IES_ENCODE_U16(buffer, encoded, temp);
+  // octet 7
+  IES_ENCODE_U32(buffer, encoded, stmsi->tmsi);
+  printf("encode_stmsi_5gs_mobile_identity: size %d\n", encoded); //  7B
+  fflush(stdout);
+  return encoded;
+}
+
 int decode_5gs_mobile_identity(FGSMobileIdentity *fgsmobileidentity, uint8_t iei, const uint8_t *buffer, uint32_t len)
 {
   int decoded_rc = TLV_DECODE_VALUE_DOESNT_MATCH;
@@ -100,6 +116,10 @@ int encode_5gs_mobile_identity(FGSMobileIdentity *fgsmobileidentity, uint8_t iei
   if (fgsmobileidentity->imeisv.typeofidentity == FGS_MOBILE_IDENTITY_IMEISV) {
     encoded_rc = encode_imeisv_5gs_mobile_identity(&fgsmobileidentity->imeisv,
                  buffer + encoded);
+  }
+
+  if (fgsmobileidentity->stmsi.typeofidentity == FGS_MOBILE_IDENTITY_5GS_TMSI) {
+    encoded_rc = encode_stmsi_5gs_mobile_identity(&fgsmobileidentity->stmsi, buffer + encoded);
   }
 
   if (encoded_rc < 0) {
@@ -160,8 +180,8 @@ static int decode_guti_5gs_mobile_identity(Guti5GSMobileIdentity_t *guti, const 
   guti->amfregionid = *(buffer+decoded);
   decoded++;
   IES_DECODE_U16(buffer, decoded, temp);
-  guti->amfsetid = temp>>3;
-  guti->amfpointer = temp&0x3f;
+  guti->amfsetid = (temp >> 6) & 0x3FF;
+  guti->amfpointer = temp & 0x3f;
 
   IES_DECODE_U32(buffer, decoded, guti->tmsi);
   return decoded;

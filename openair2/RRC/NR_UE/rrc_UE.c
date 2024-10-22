@@ -328,6 +328,8 @@ NR_UE_RRC_INST_t* nr_rrc_init_ue(char* uecap_file, int nb_inst, int num_ant_tx)
     rrc->ul_bwp_id = 0;
     rrc->as_security_activated = false;
     rrc->detach_after_release = false;
+    /* 5G-S-TMSI */
+    rrc->fiveG_S_TMSI = UINT64_MAX;
 
     FILE *f = NULL;
     if (uecap_file)
@@ -556,14 +558,16 @@ static void nr_rrc_ue_decode_NR_BCCH_BCH_Message(NR_UE_RRC_INST_t *rrc,
   }
 
   int get_sib = 0;
-  if (get_softmodem_params()->sa &&
-      bcch_message->message.choice.mib->cellBarred == NR_MIB__cellBarred_notBarred &&
-      rrc->nrRrcState != RRC_STATE_DETACH_NR) {
+  if (get_softmodem_params()->sa && bcch_message->message.present == NR_BCCH_BCH_MessageType_PR_mib
+      && bcch_message->message.choice.mib->cellBarred == NR_MIB__cellBarred_notBarred && rrc->nrRrcState != RRC_STATE_DETACH_NR) {
     NR_UE_RRC_SI_INFO *SI_info = &rrc->perNB[gNB_index].SInfo;
     // to schedule MAC to get SI if required
     get_sib = check_si_status(SI_info);
   }
-  nr_rrc_mac_config_req_mib(rrc->ue_id, 0, bcch_message->message.choice.mib, get_sib);
+  if (bcch_message->message.present == NR_BCCH_BCH_MessageType_PR_mib)
+    nr_rrc_mac_config_req_mib(rrc->ue_id, 0, bcch_message->message.choice.mib, get_sib);
+  else
+    LOG_E(NR_RRC, "RRC-received BCCH message is not a MIB\n");
   ASN_STRUCT_FREE(asn_DEF_NR_BCCH_BCH_Message, bcch_message);
   return;
 }
@@ -575,17 +579,18 @@ static int nr_decode_SI(NR_UE_RRC_SI_INFO *SI_info, NR_SystemInformation_t *si)
   // Dump contents
   if (si->criticalExtensions.present == NR_SystemInformation__criticalExtensions_PR_systemInformation ||
       si->criticalExtensions.present == NR_SystemInformation__criticalExtensions_PR_criticalExtensionsFuture_r16) {
-    LOG_D( RRC, "[UE] si->criticalExtensions.choice.NR_SystemInformation_t->sib_TypeAndInfo.list.count %d\n",
-           si->criticalExtensions.choice.systemInformation->sib_TypeAndInfo.list.count );
+    LOG_D(NR_RRC,
+          "[UE] si->criticalExtensions.choice.NR_SystemInformation_t->sib_TypeAndInfo.list.count %d\n",
+          si->criticalExtensions.choice.systemInformation->sib_TypeAndInfo.list.count);
   } else {
-    LOG_D( RRC, "[UE] Unknown criticalExtension version (not Rel16)\n" );
+    LOG_D(NR_RRC, "[UE] Unknown criticalExtension version (not Rel16)\n");
     return -1;
   }
 
   for (int i = 0; i < si->criticalExtensions.choice.systemInformation->sib_TypeAndInfo.list.count; i++) {
     SystemInformation_IEs__sib_TypeAndInfo__Member *typeandinfo;
     typeandinfo = si->criticalExtensions.choice.systemInformation->sib_TypeAndInfo.list.array[i];
-    LOG_I(RRC, "Found SIB%d\n", typeandinfo->present + 1);
+    LOG_I(NR_RRC, "Found SIB%d\n", typeandinfo->present + 1);
     switch(typeandinfo->present) {
       case NR_SystemInformation_IEs__sib_TypeAndInfo__Member_PR_sib2:
         if(!SI_info->sib2)
@@ -682,6 +687,8 @@ static int nr_decode_SI(NR_UE_RRC_SI_INFO *SI_info, NR_SystemInformation_t *si)
         if(!SI_info->SInfo_r17.sib19)
           SI_info->SInfo_r17.sib19 = calloc(1, sizeof(*SI_info->SInfo_r17.sib19));
         asn_copy(&asn_DEF_NR_SIB19_r17, (void **) &SI_info->SInfo_r17.sib19, typeandinfo->choice.sib19_v1700);
+        if (g_log->log_component[NR_RRC].level >= OAILOG_DEBUG)
+          xer_fprint(stdout, &asn_DEF_NR_SIB19_r17, (const void *)SI_info->SInfo_r17.sib19);
         nr_timer_start(&SI_info->SInfo_r17.sib19_timer);
         break;
       default:
@@ -756,10 +763,8 @@ static void nr_rrc_ue_prepare_RRCSetupRequest(NR_UE_RRC_INST_t *rrc)
     rv[i] = taus() & 0xff;
 #endif
   }
-
   uint8_t buf[1024];
-  int len = do_RRCSetupRequest(buf, sizeof(buf), rv);
-
+  int len = do_RRCSetupRequest(buf, sizeof(buf), rv, rrc->fiveG_S_TMSI);
   nr_rlc_srb_recv_sdu(rrc->ue_id, 0, buf, len);
 }
 
@@ -1001,24 +1006,37 @@ static void rrc_ue_generate_RRCSetupComplete(const NR_UE_RRC_INST_t *rrc, const 
 {
   uint8_t buffer[100];
   const char *nas_msg;
-  int   nas_msg_length;
+  int nas_msg_length;
 
   if (get_softmodem_params()->sa) {
-    as_nas_info_t initialNasMsg;
-    nr_ue_nas_t *nas = get_ue_nas_info(rrc->ue_id);
-    generateRegistrationRequest(&initialNasMsg, nas);
-    nas_msg = (char*)initialNasMsg.data;
-    nas_msg_length = initialNasMsg.length;
+    if (rrc->nasInitialUEMsg.data) {
+      nas_msg = (char *)rrc->nasInitialUEMsg.data;
+      nas_msg_length = rrc->nasInitialUEMsg.length;
+      LOG_D(NR_RRC, "NAS InitialUEMessage with length %d \n", nas_msg_length);
+    } else {
+      LOG_E(NR_RRC, "Failed to complete RRCSetup. NAS InitialUEMessage message not found. \n");
+      return;
+    }
   } else {
     nas_msg = nr_nas_attach_req_imsi_dummy_NSA_case;
     nas_msg_length = sizeof(nr_nas_attach_req_imsi_dummy_NSA_case);
   }
 
-  int size = do_RRCSetupComplete(buffer, sizeof(buffer), Transaction_id, rrc->selected_plmn_identity, nas_msg_length, nas_msg);
+  /* ng-5G-S-TMSI-Part2: The leftmost 9 bits of 5G-S-TMSI. */
+  if (rrc->fiveG_S_TMSI == UINT64_MAX)
+    LOG_D(NR_RRC, "5G-S-TMSI is not available!\n");
+  int size = do_RRCSetupComplete(buffer,
+                                 sizeof(buffer),
+                                 Transaction_id,
+                                 rrc->selected_plmn_identity,
+                                 rrc->ra_trigger == RRC_CONNECTION_SETUP,
+                                 rrc->fiveG_S_TMSI,
+                                 nas_msg_length,
+                                 nas_msg);
+  free(rrc->nasInitialUEMsg.data);
   LOG_I(NR_RRC, "[UE %ld][RAPROC] Logical Channel UL-DCCH (SRB1), Generating RRCSetupComplete (bytes%d)\n", rrc->ue_id, size);
   int srb_id = 1; // RRC setup complete on SRB1
   LOG_D(NR_RRC, "[RRC_UE %ld] PDCP_DATA_REQ/%d Bytes RRCSetupComplete ---> %d\n", rrc->ue_id, size, srb_id);
-
   nr_pdcp_data_req_srb(rrc->ue_id, srb_id, 0, size, buffer, deliver_pdu_srb_rlc, NULL);
 }
 
@@ -1042,6 +1060,9 @@ static void nr_rrc_process_rrcsetup(NR_UE_RRC_INST_t *rrc,
   nr_rrc_ue_process_RadioBearerConfig(rrc,
                                       &rrcSetup->criticalExtensions.choice.rrcSetup->radioBearerConfig);
 
+  if (LOG_DEBUGFLAG(DEBUG_ASN1))
+    xer_fprint(stdout, &asn_DEF_NR_RadioBearerConfig, (const void *)&rrcSetup->criticalExtensions.choice.rrcSetup->radioBearerConfig);
+
   // TODO (not handled) if stored, discard the cell reselection priority information provided by
   // the cellReselectionPriorities or inherited from another RAT
 
@@ -1057,6 +1078,10 @@ static void nr_rrc_process_rrcsetup(NR_UE_RRC_INST_t *rrc,
   // if the RRCSetup is received in response to an RRCResumeRequest, RRCResumeRequest1 or RRCSetupRequest
   // enter RRC_CONNECTED
   rrc->nrRrcState = RRC_STATE_CONNECTED_NR;
+
+  // Indicate to NAS that the RRC connection has been established (5.3.1.3 of 3GPP TS 24.501)
+  MessageDef *msg_p = itti_alloc_new_message(TASK_RRC_NRUE, 0, NR_NAS_CONN_ESTABLISH_IND);
+  itti_send_msg_to_task(TASK_NAS_NRUE, rrc->ue_id, msg_p);
 
   // set the content of RRCSetupComplete message
   // TODO procedues described in 5.3.3.4 seems more complex than what we actualy do
@@ -1171,9 +1196,7 @@ static void nr_rrc_ue_process_securityModeCommand(NR_UE_RRC_INST_t *ue_rrc,
       nr_pdcp_config_set_security(ue_rrc->ue_id, i, true, &security_parameters);
   }
 
-  NR_UL_DCCH_Message_t ul_dcch_msg = {0};
-
-  ul_dcch_msg.message.present = NR_UL_DCCH_MessageType_PR_c1;
+  NR_UL_DCCH_Message_t ul_dcch_msg = {.message.present = NR_UL_DCCH_MessageType_PR_c1};
   asn1cCalloc(ul_dcch_msg.message.choice.c1, c1);
 
   // the SecurityModeCommand message needs to pass the integrity protection check
@@ -1938,6 +1961,19 @@ void *rrc_nrue(void *notUsed)
     break;
   }
 
+  case NAS_5GMM_IND: {
+    Nas5GMMInd *req = &NAS_5GMM_IND(msg_p);
+    rrc->fiveG_S_TMSI = req->fiveG_STMSI;
+    break;
+  }
+
+  case NAS_INITIAL_UE_MSG_IND:
+    LOG_I(NR_RRC, "Received InitialUEMessage indication from NAS\n");
+    NasInitialUEMsgInd *ind = &NAS_INITIAL_UE_MSG_IND(msg_p);
+    rrc->nasInitialUEMsg.length = ind->nasMsg.length;
+    rrc->nasInitialUEMsg.data = calloc(ind->nasMsg.length, sizeof(*ind->nasMsg.data));
+    memcpy(rrc->nasInitialUEMsg.data, ind->nasMsg.data, rrc->nasInitialUEMsg.length);
+    break;
   default:
     LOG_E(NR_RRC, "[UE %ld] Received unexpected message %s\n", rrc->ue_id, ITTI_MSG_NAME(msg_p));
     break;
@@ -2383,6 +2419,8 @@ void nr_rrc_going_to_IDLE(NR_UE_RRC_INST_t *rrc,
 
   // discard the keys (only kgnb is stored)
   memset(rrc->kgnb, 0, sizeof(rrc->kgnb));
+  rrc->integrityProtAlgorithm = 0;
+  rrc->cipheringAlgorithm = 0;
 
   // release all radio resources, including release of the RLC entity,
   // the MAC configuration and the associated PDCP entity

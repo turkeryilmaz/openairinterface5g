@@ -154,17 +154,10 @@ static inline uint16_t BIT_STRING_to_uint16(const BIT_STRING_t *asn) {
 
   DevCheck ((asn->size > 0) && (asn->size <= 2), asn->size, 0, 0);
 
-  switch (asn->size) {
-    case 2:
-      result |= asn->buf[index++] << (8 - asn->bits_unused);
-
-    case 1:
-      result |= asn->buf[index] >> asn->bits_unused;
-      break;
-
-    default:
-      break;
+  if (asn->size == 2) {
+    result |= asn->buf[index++] << (8 - asn->bits_unused);
   }
+  result |= asn->buf[index] >> asn->bits_unused;
 
   return result;
 }
@@ -202,9 +195,12 @@ static inline uint64_t BIT_STRING_to_uint64(const BIT_STRING_t *asn) {
   int shift;
 
   DevCheck ((asn->size > 0) && (asn->size <= 8), asn->size, 0, 0);
-
   shift = ((asn->size - 1) * 8) - asn->bits_unused;
   for (index = 0; index < (asn->size - 1); index++) {
+#ifdef DEBUG_BITSTRING
+    printf("asn->buf[%ld]: 0x%02x\n", index, asn->buf[index]);
+    fflush(stdout);
+#endif
     result |= ((uint64_t)asn->buf[index]) << shift;
     shift -= 8;
   }

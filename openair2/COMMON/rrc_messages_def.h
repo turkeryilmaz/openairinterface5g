@@ -63,6 +63,7 @@ MESSAGE_DEF(NAS_CONN_ESTABLI_REQ,       MESSAGE_PRIORITY_MED,       NasConnEstab
 MESSAGE_DEF(NAS_UPLINK_DATA_REQ,        MESSAGE_PRIORITY_MED,       NasUlDataReq,               nas_ul_data_req)
 MESSAGE_DEF(NAS_DETACH_REQ,             MESSAGE_PRIORITY_MED,       NasDetachReq,               nas_detach_req)
 MESSAGE_DEF(NAS_DEREGISTRATION_REQ,     MESSAGE_PRIORITY_MED,       NasDeregistrationReq,       nas_deregistration_req)
+MESSAGE_DEF(NAS_5GMM_IND,               MESSAGE_PRIORITY_MED,       Nas5GMMInd,                 nas_5gmm_ind)
 
 MESSAGE_DEF(NAS_RAB_ESTABLI_RSP,        MESSAGE_PRIORITY_MED,       NasRabEstRsp,               nas_rab_est_rsp)
 
@@ -74,9 +75,12 @@ MESSAGE_DEF(NAS_CELL_SELECTION_IND,     MESSAGE_PRIORITY_MED,       NasCellSelec
 MESSAGE_DEF(NAS_PAGING_IND,             MESSAGE_PRIORITY_MED,       NasPagingInd,               nas_paging_ind)
 MESSAGE_DEF(NAS_CONN_ESTABLI_CNF,       MESSAGE_PRIORITY_MED,       NasConnEstabCnf,            nas_conn_establi_cnf)
 MESSAGE_DEF(NAS_CONN_RELEASE_IND,       MESSAGE_PRIORITY_MED,       NasConnReleaseInd,          nas_conn_release_ind)
+MESSAGE_DEF(NR_NAS_CONN_ESTABLISH_IND,  MESSAGE_PRIORITY_MED,       NasConnEstabInd,            nr_nas_conn_establish_ind)
 MESSAGE_DEF(NR_NAS_CONN_RELEASE_IND,    MESSAGE_PRIORITY_MED,       NRNasConnReleaseInd,        nr_nas_conn_release_ind)
 MESSAGE_DEF(NAS_UPLINK_DATA_CNF,        MESSAGE_PRIORITY_MED,       NasUlDataCnf,               nas_ul_data_cnf)
 MESSAGE_DEF(NAS_DOWNLINK_DATA_IND,      MESSAGE_PRIORITY_MED,       NasDlDataInd,               nas_dl_data_ind)
+MESSAGE_DEF(NAS_REGISTRATION_REQ,       MESSAGE_PRIORITY_MED,       NasRegistrationReq,         nas_registration_req)
+MESSAGE_DEF(NAS_INITIAL_UE_MSG_IND,     MESSAGE_PRIORITY_MED,       NasInitialUEMsgInd,         nas_initial_ue_msg_ind)
 
 // xNB: realtime -> RRC messages
 MESSAGE_DEF(RRC_SUBFRAME_PROCESS,       MESSAGE_PRIORITY_MED,       RrcSubframeProcess,         rrc_subframe_process)

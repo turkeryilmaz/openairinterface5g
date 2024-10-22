@@ -31,8 +31,9 @@
 #define NGAP_MESSAGES_TYPES_H_
 #include "common/platform_constants.h"
 #include "common/platform_types.h"
-#include "common/ngran_types.h"
+#include "common/5g_platform_types.h"
 #include "LTE_asn_constant.h"
+#include "s1ap_messages_types.h"
 //-------------------------------------------------------------------------------------------//
 // Defines to access message fields.
 
@@ -196,27 +197,13 @@ typedef enum ngap_rrc_establishment_cause_e {
   NGAP_RRC_CAUSE_LAST
 } ngap_rrc_establishment_cause_t;
 
-typedef struct nssai_s {
-  uint8_t sst;
-  uint32_t sd;
-} nssai_t;
-
 typedef struct pdusession_level_qos_parameter_s {
   uint8_t qfi;
   uint64_t fiveQI;
   uint64_t qos_priority;
-  fiveQI_type_t fiveQI_type;
+  fiveQI_t fiveQI_type;
   ngap_allocation_retention_priority_t allocation_retention_priority;
 } pdusession_level_qos_parameter_t;
-
-typedef struct ngap_guami_s {
-  uint16_t mcc;
-  uint16_t mnc;
-  uint8_t  mnc_len;
-  uint8_t  amf_region_id;
-  uint16_t amf_set_id;
-  uint8_t  amf_pointer;
-} ngap_guami_t;
 
 typedef struct fiveg_s_tmsi_s {
   uint16_t amf_set_id;
@@ -243,7 +230,7 @@ typedef enum ngap_ue_identities_presenceMask_e {
 typedef struct ngap_ue_identity_s {
   ngap_ue_identities_presenceMask_t presenceMask;
   fiveg_s_tmsi_t  s_tmsi;
-  ngap_guami_t    guami;
+  guami_t guami;
 } ngap_ue_identity_t;
 
 typedef struct ngap_nas_pdu_s {
@@ -618,7 +605,7 @@ typedef struct ngap_initial_context_setup_req_s {
   ngap_ambr_t ue_ambr;
 
   /* guami */
-  ngap_guami_t guami;
+  guami_t guami;
 
   /* allowed nssai */
   uint8_t nb_allowed_nssais;
@@ -724,7 +711,7 @@ typedef struct ngap_path_switch_req_s {
   /* AMF UE id  */
   uint64_t amf_ue_ngap_id;
 
-  ngap_guami_t ue_guami;
+  guami_t ue_guami;
 
   uint16_t ue_initial_id;
   /* Security algorithms */

@@ -293,7 +293,7 @@ set_property(CACHE KPM_VERSION PROPERTY STRINGS "KPM_V2_03" "KPM_V3_00")
 message(STATUS "Selected KPM Version: ${KPM_VERSION}")
 
 
-add_boolean_option(ENABLE_IMSCOPE OFF "Enable phy scope based on imgui" ON)
+add_boolean_option(ENABLE_IMSCOPE OFF "Enable phy scope based on imgui" OFF)
 
 ##################################################
 # ASN.1 grammar C code generation & dependencies #
@@ -435,20 +435,18 @@ add_library(f1ap
             ${F1AP_DIR}/f1ap_cu_rrc_message_transfer.c
             ${F1AP_DIR}/f1ap_cu_task.c
             ${F1AP_DIR}/f1ap_cu_ue_context_management.c
-            ${F1AP_DIR}/f1ap_cu_warning_message_transmission.c
             ${F1AP_DIR}/f1ap_du_interface_management.c
             ${F1AP_DIR}/f1ap_du_paging.c
             ${F1AP_DIR}/f1ap_du_rrc_message_transfer.c
-            ${F1AP_DIR}/f1ap_du_system_information.c
             ${F1AP_DIR}/f1ap_du_task.c
             ${F1AP_DIR}/f1ap_du_ue_context_management.c
-            ${F1AP_DIR}/f1ap_du_warning_message_transmission.c
             ${F1AP_DIR}/f1ap_encoder.c
             ${F1AP_DIR}/f1ap_handlers.c
             ${F1AP_DIR}/f1ap_itti_messaging.c)
 target_include_directories(f1ap PUBLIC F1AP_DIR)
 target_link_libraries(f1ap PUBLIC asn1_f1ap L2_NR)
-target_link_libraries(f1ap PRIVATE ngap nr_rrc HASHTABLE)
+target_link_libraries(f1ap PRIVATE ngap nr_rrc HASHTABLE f1ap_lib)
+target_include_directories(f1ap PRIVATE ${F1AP_DIR}/lib)
 
 # LPP
 ##############
@@ -577,6 +575,7 @@ include_directories("${OPENAIR_DIR}/common/utils/ocp_itti")
 include_directories("${OPENAIR3_DIR}/NAS/COMMON")
 include_directories("${OPENAIR3_DIR}/NAS/COMMON/API/NETWORK")
 include_directories("${OPENAIR3_DIR}/NAS/COMMON/EMM/MSG")
+include_directories("${OPENAIR3_DIR}/NAS/COMMON/FGMM")
 include_directories("${OPENAIR3_DIR}/NAS/COMMON/ESM/MSG")
 include_directories("${OPENAIR3_DIR}/NAS/UE/ESM")
 include_directories("${OPENAIR3_DIR}/NAS/UE/EMM")
@@ -1003,7 +1002,7 @@ set(PHY_SRC_UE
 
   set(PHY_NR_SRC_COMMON
   ${OPENAIR1_DIR}/PHY/NR_TRANSPORT/nr_prach_common.c
-  ${OPENAIR1_DIR}/PHY/NR_TRANSPORT/nr_csi_rs.c
+  ${OPENAIR1_DIR}/PHY/nr_phy_common/src/nr_phy_common_csirs.c
   ${OPENAIR1_DIR}/PHY/NR_TRANSPORT/nr_scrambling.c
   ${OPENAIR1_DIR}/PHY/NR_REFSIG/scrambling_luts.c
   ${OPENAIR1_DIR}/PHY/NR_REFSIG/refsig.c
@@ -1035,12 +1034,12 @@ set(PHY_SRC_UE
   ${OPENAIR1_DIR}/PHY/NR_REFSIG/nr_gen_mod_table.c
   ${OPENAIR1_DIR}/PHY/NR_REFSIG/dmrs_nr.c
   ${OPENAIR1_DIR}/PHY/NR_REFSIG/ptrs_nr.c
+  ${OPENAIR1_DIR}/PHY/NR_TRANSPORT/nr_csi_rs.c
   ${OPENAIR1_DIR}/PHY/NR_ESTIMATION/nr_ul_channel_estimation.c
   ${OPENAIR1_DIR}/PHY/NR_ESTIMATION/nr_freq_equalization.c
   ${OPENAIR1_DIR}/PHY/NR_ESTIMATION/nr_measurements_gNB.c
   ${OPENAIR1_DIR}/PHY/TOOLS/file_output.c
   ${OPENAIR1_DIR}/PHY/TOOLS/cadd_vv.c
-  #${OPENAIR1_DIR}/PHY/TOOLS/lte_dfts.c
   ${OPENAIR1_DIR}/PHY/TOOLS/log2_approx.c
   ${OPENAIR1_DIR}/PHY/TOOLS/cmult_sv.c
   ${OPENAIR1_DIR}/PHY/TOOLS/cmult_vv.c
@@ -1095,7 +1094,6 @@ set(PHY_SRC_UE
   ${OPENAIR1_DIR}/PHY/NR_UE_ESTIMATION/nr_adjust_gain.c
   ${OPENAIR1_DIR}/PHY/TOOLS/file_output.c
   ${OPENAIR1_DIR}/PHY/TOOLS/cadd_vv.c
- # ${OPENAIR1_DIR}/PHY/TOOLS/lte_dfts.c
   ${OPENAIR1_DIR}/PHY/TOOLS/log2_approx.c
   ${OPENAIR1_DIR}/PHY/TOOLS/cmult_sv.c
   ${OPENAIR1_DIR}/PHY/TOOLS/cmult_vv.c
@@ -1106,7 +1104,6 @@ set(PHY_SRC_UE
   ${OPENAIR1_DIR}/PHY/TOOLS/lut.c
   ${OPENAIR1_DIR}/PHY/TOOLS/simde_operations.c
   ${OPENAIR1_DIR}/PHY/INIT/nr_init_ue.c
-  #  ${OPENAIR1_DIR}/SIMULATION/NR_UE_PHY/unit_tests/src/pucch_uci_test.c
   ${PHY_POLARSRC}
   ${PHY_SMALLBLOCKSRC}
   ${PHY_NR_CODINGIF}
@@ -1264,7 +1261,6 @@ set(L2_NR_SRC
   ${NR_PDCP_SRC}
   ${NR_SDAP_SRC}
   ${NR_RRC_DIR}/rrc_gNB.c
-  ${NR_RRC_DIR}/nr_rrc_common.c
   ${NR_RRC_DIR}/mac_rrc_dl_direct.c
   ${NR_RRC_DIR}/mac_rrc_dl_f1ap.c
   ${NR_RRC_DIR}/nr_rrc_config.c
@@ -1438,6 +1434,8 @@ add_library(L2_NR
   ${GNB_APP_SRC}
   )
 target_link_libraries(L2_NR PRIVATE ds alg)
+target_link_libraries(L2_NR PRIVATE f1ap_lib)
+target_include_directories(L2_NR PRIVATE ${F1AP_DIR}/lib)
 
 add_library(e1_if
   ${NR_RRC_DIR}/cucp_cuup_direct.c
@@ -1562,6 +1560,10 @@ set(libnas_emm_msg_OBJS
   ${NAS_SRC}COMMON/EMM/MSG/TrackingAreaUpdateReject.c
   ${NAS_SRC}COMMON/EMM/MSG/TrackingAreaUpdateRequest.c
   ${NAS_SRC}COMMON/EMM/MSG/UplinkNasTransport.c
+)
+
+set(libnas_fgs_msg_OBJS
+  ${NAS_SRC}COMMON/FGMM/fgs_service_request.c
 )
 
 set(libnas_esm_msg_OBJS
@@ -1788,6 +1790,7 @@ add_library(LIB_NAS_SIMUE
   ${libnas_api_OBJS}
   ${libnas_ue_api_OBJS}
   ${libnas_emm_msg_OBJS}
+  ${libnas_fgs_msg_OBJS}
   ${libnas_esm_msg_OBJS}
   ${libnas_ies_OBJS}
   ${libnas_utils_OBJS}

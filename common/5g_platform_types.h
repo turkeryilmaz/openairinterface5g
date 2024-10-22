@@ -19,13 +19,26 @@
  *      contact@openairinterface.org
  */
 
-/*! \file f1ap_du_interface_management.h
- * \brief f1ap interface management for DU
- * \author EURECOM/NTUST
- * \date 2018
- * \version 0.1
- * \company Eurecom
- * \email: navid.nikaein@eurecom.fr, bing-kai.hong@eurecom.fr
- * \note
- * \warning
- */
+#ifndef FIVEG_PLATFORM_TYPES_H__
+#define FIVEG_PLATFORM_TYPES_H__
+
+#include <stdint.h>
+
+typedef struct nssai_s {
+  uint8_t sst;
+  uint32_t sd;
+} nssai_t;
+
+// Globally Unique AMF Identifier
+typedef struct guami_s {
+  uint16_t mcc;
+  uint16_t mnc;
+  uint8_t mnc_len;
+  uint8_t amf_region_id;
+  uint16_t amf_set_id;
+  uint8_t amf_pointer;
+} guami_t;
+
+typedef enum { NON_DYNAMIC, DYNAMIC } fiveQI_t;
+
+#endif
