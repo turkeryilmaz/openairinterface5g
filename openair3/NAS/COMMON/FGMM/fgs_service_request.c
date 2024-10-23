@@ -32,7 +32,7 @@
 #include "NasKeySetIdentifier.h"
 #include "ServiceType.h"
 
-int decode_fgs_service_request(fgs_service_request_msg *service_request, uint8_t *buffer, uint32_t len)
+int decode_fgs_service_request(fgs_service_request_msg_t *service_request, uint8_t *buffer, uint32_t len)
 {
   uint32_t decoded = 0;
   int decoded_result = 0;
@@ -77,23 +77,43 @@ int encode_5gs_service_type(ServiceType serviceType)
   return bufferReturn;
 }
 
-int encode_fgs_service_request(fgs_service_request_msg *service_request, uint8_t *buffer, uint32_t len)
+int encode_fgs_service_request(fgs_service_request_msg_t *service_request, uint8_t *buffer, uint32_t len)
 {
   int encoded = 0;
-  int encode_result = 0;
+  int encoded_rc = 0;
   // ngKSI + Service type
   *(buffer + encoded) = ((encode_u8_nas_key_set_identifier(&service_request->naskeysetidentifier) & 0x0f) << 4)
                         | (encode_5gs_service_type(service_request->serviceType) & 0x0f);
   encoded++;
   // 5G-S-TMSI
-  if ((encode_result = encode_5gs_mobile_identity(&service_request->fiveg_s_tmsi,
-                                                  0,
-                                                  buffer + encoded,
-                                                  len - encoded))
-      < 0) // Return in case of error
-    return encode_result;
-  else
-    encoded += encode_result;
+  // FGSMobileIdentity fgsmobileidentity = {0};
+  // memset(&fgsmobileidentity, 0, sizeof(FGSMobileIdentity));
+  // fgsmobileidentity.stmsi = service_request->fiveg_s_tmsi;
+
+  // skip IEI and Length of 5GS mobile identity contents
+  encoded = encoded + 2;
+  encoded_rc = encode_stmsi_5gs_mobile_identity(&service_request->fiveg_s_tmsi, buffer + encoded);
+  if (encoded_rc < 0) {
+    printf("FAILED TO encode_stmsi_5gs_mobile_identity: encoded_rc %d\n", encoded_rc);
+    fflush(stdout);
+    return encoded_rc;
+  }
+  uint16_t tmp = htons(encoded + encoded_rc - 2);
+  memcpy(buffer, &tmp, sizeof(tmp));
+  encoded += encoded_rc;
+
+// if ((encode_result = encode_5gs_mobile_identity(&fgsmobileidentity,
+//                                                 0,
+//                                                 buffer + encoded,
+//                                                 len - encoded))
+//     < 0) {
+//       // Return in case of error
+//   printf("FAILED TO encode_fgs_service_request: encode_5gs_mobile_identity: encode_result %d\n", encode_result);
+//   fflush(stdout);
+//   return encode_result;
+// }
+// else
+//   encoded += encode_result;
 
 
   // TODO, Encoding optional fields

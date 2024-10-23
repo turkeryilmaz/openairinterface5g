@@ -103,9 +103,11 @@ int encode_registration_request(registration_request_msg *registration_request, 
   int encoded = 0;
   int encode_result = 0;
 
-  *(buffer + encoded) = ((encode_u8_nas_key_set_identifier(&registration_request->naskeysetidentifier) & 0x0f) << 4) | (encode_5gs_registration_type(&registration_request->fgsregistrationtype) & 0x0f);
+  *(buffer + encoded) = ((encode_u8_nas_key_set_identifier(&registration_request->naskeysetidentifier) & 0x0f) << 4)
+                        | (encode_5gs_registration_type(&registration_request->fgsregistrationtype) & 0x0f);
   encoded++;
 
+  printf("CALLING encode_5gs_mobile_identity IN %s\n", __func__);
   if ((encode_result =
          encode_5gs_mobile_identity(&registration_request->fgsmobileidentity, 0, buffer +
                                     encoded, len - encoded)) < 0)        //Return in case of error
@@ -163,6 +165,8 @@ int encode_registration_request(registration_request_msg *registration_request, 
 
   if ((registration_request->presencemask & REGISTRATION_REQUEST_NAS_MESSAGE_CONTAINER_PRESENT)
       == REGISTRATION_REQUEST_NAS_MESSAGE_CONTAINER_PRESENT) {
+    printf("DO REGISTRATION_REQUEST_NAS_MESSAGE_CONTAINER_PRESENT\n");
+    fflush(stdout);
     if ((encode_result = encode_fgc_nas_message_container(&registration_request->fgsnasmessagecontainer,
                                                           REGISTRATION_REQUEST_NAS_MESSAGE_CONTAINER_IEI,
                                                           buffer + encoded,
@@ -172,7 +176,7 @@ int encode_registration_request(registration_request_msg *registration_request, 
       return encode_result;
     else
       encoded += encode_result;
-  }
+    }
 
   // TODO, Encoding optional fields
   return encoded;

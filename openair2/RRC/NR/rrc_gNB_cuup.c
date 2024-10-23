@@ -81,6 +81,7 @@ bool ue_associated_to_cuup(const gNB_RRC_INST *rrc, const gNB_RRC_UE_t *ue)
   return ue_data.e1_assoc_id != 0;
 }
 
+// TODO improve
 sctp_assoc_t get_existing_cuup_for_ue(const gNB_RRC_INST *rrc, const gNB_RRC_UE_t *ue)
 {
   f1_ue_data_t ue_data = cu_get_f1_ue_data(ue->rrc_ue_id);

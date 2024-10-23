@@ -43,6 +43,7 @@ int encode_identiy_response(fgs_identiy_response_msg *fgs_identity_reps, uint8_t
   int encoded = 0;
   int encode_result = 0;
 
+  printf("CALLING encode_5gs_mobile_identity IN %s\n", __func__);
   if ((encode_result =
          encode_5gs_mobile_identity(&fgs_identity_reps->fgsmobileidentity, 0, buffer +
                                     encoded, len - encoded)) < 0)        //Return in case of error

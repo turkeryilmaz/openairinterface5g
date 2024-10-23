@@ -147,6 +147,8 @@ typedef union FGSMobileIdentity_tag {
   Macaddr5GSMobileIdentity_t      macaddress;
 } FGSMobileIdentity;
 
+int encode_stmsi_5gs_mobile_identity(Stmsi5GSMobileIdentity_t *stmsi, uint8_t *buffer);
+
 int encode_5gs_mobile_identity(FGSMobileIdentity *fgsmobileidentity, uint8_t iei, uint8_t *buffer, uint32_t len);
 
 int decode_5gs_mobile_identity(FGSMobileIdentity *fgsmobileidentity, uint8_t iei, const uint8_t *buffer, uint32_t len);

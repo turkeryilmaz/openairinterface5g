@@ -55,23 +55,23 @@
  * Direction: UE to network
  */
 
-typedef struct fgs_service_request_msg_tag {
+typedef struct {
   /* Mandatory fields */
-  ExtendedProtocolDiscriminator protocoldiscriminator;
-  SecurityHeaderType securityheadertype:4;
-  SpareHalfOctet sparehalfoctet:4;
+  //ExtendedProtocolDiscriminator protocoldiscriminator;
+  //SecurityHeaderType securityheadertype:4;
+  //SpareHalfOctet sparehalfoctet:4;
   MessageType messagetype;
   NasKeySetIdentifier naskeysetidentifier;
   ServiceType serviceType:4;
-  FGSMobileIdentity fiveg_s_tmsi;
+  Stmsi5GSMobileIdentity_t fiveg_s_tmsi;
   /* Optional fields */
-  FGCNasMessageContainer fgsnasmessagecontainer;
+  FGCNasMessageContainer *fgsnasmessagecontainer;
   //PDUSessionStatus pdusessionstatus;
-} fgs_service_request_msg;
+} fgs_service_request_msg_t;
 
-int decode_fgs_service_request(fgs_service_request_msg *servicerequest, uint8_t *buffer, uint32_t len);
+int decode_fgs_service_request(fgs_service_request_msg_t *servicerequest, uint8_t *buffer, uint32_t len);
 
-int encode_fgs_service_request(fgs_service_request_msg *servicerequest, uint8_t *buffer, uint32_t len);
+int encode_fgs_service_request(fgs_service_request_msg_t *servicerequest, uint8_t *buffer, uint32_t len);
 
 #endif /* ! defined(FGS_SERVICE_REQUEST_H_) */
 

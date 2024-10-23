@@ -795,6 +795,7 @@ static void cuup_notify_reestablishment(gNB_RRC_INST *rrc, gNB_RRC_UE_t *ue_p)
   nr_derive_key(UP_INT_ALG, req.integrityProtectionAlgorithm, ue_p->kgnb, (uint8_t *)req.integrityProtectionKey);
 
   /* Send E1 Bearer Context Modification Request (3GPP TS 38.463) */
+  LOG_W(NR_RRC, "DEBUG calling get_existing_cuup_for_ue\n");
   sctp_assoc_t assoc_id = get_existing_cuup_for_ue(rrc, ue_p);
   rrc->cucp_cuup.bearer_context_mod(assoc_id, &req);
 }
@@ -992,10 +993,11 @@ static void rrc_handle_RRCSetupRequest(gNB_RRC_INST *rrc,
     memcpy(((uint8_t *)&random_value) + 3,
            rrcSetupRequest->ue_Identity.choice.randomValue.buf,
            rrcSetupRequest->ue_Identity.choice.randomValue.size);
+    LOG_I(NR_RRC, "DEBUG Received random_value %ld DEBUG msg->gNB_DU_ue_id %d\n", random_value, msg->gNB_DU_ue_id);
 
     ue_context_p = rrc_gNB_create_ue_context(assoc_id, msg->crnti, rrc, random_value, msg->gNB_DU_ue_id);
   } else if (NR_InitialUE_Identity_PR_ng_5G_S_TMSI_Part1 == rrcSetupRequest->ue_Identity.present) {
-    /* <5G-S-TMSI> = <AMF Set ID><AMF Pointer><5G-TMSI> 48-bit */
+    /* <5G-S-TMSI> = <AMF Set ID> 10 bits <AMF Pointer> 6 bits <5G-TMSI> 32 bits = 48-bit */
     /* ng-5G-S-TMSI-Part1                  BIT STRING (SIZE (39)) */
     if (rrcSetupRequest->ue_Identity.choice.ng_5G_S_TMSI_Part1.size != 5) {
       LOG_E(NR_RRC,
@@ -1005,8 +1007,8 @@ static void rrc_handle_RRCSetupRequest(gNB_RRC_INST *rrc,
     }
 
     uint64_t s_tmsi_part1 = BIT_STRING_to_uint64(&rrcSetupRequest->ue_Identity.choice.ng_5G_S_TMSI_Part1);
-    LOG_I(NR_RRC, "Received UE 5G-S-TMSI-Part1 %ld\n", s_tmsi_part1);
-
+    LOG_I(NR_RRC, "DEBUG Received UE 5G-S-TMSI-Part1 %ld DEBUG msg->gNB_DU_ue_id %d\n", s_tmsi_part1, msg->gNB_DU_ue_id);
+    rrc_gNB_ue_context_5g_s_tmsi_exist(rrc, s_tmsi_part1);
     ue_context_p = rrc_gNB_create_ue_context(assoc_id, msg->crnti, rrc, s_tmsi_part1, msg->gNB_DU_ue_id);
     AssertFatal(ue_context_p != NULL, "out of memory\n");
     gNB_RRC_UE_t *UE = &ue_context_p->ue_context;
@@ -1447,11 +1449,14 @@ static void handle_rrcSetupComplete(gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE, const N
   NR_RRCSetupComplete_IEs_t *setup_complete_ies = setup_complete->criticalExtensions.choice.rrcSetupComplete;
 
   if (setup_complete_ies->ng_5G_S_TMSI_Value != NULL) {
+    LOG_I(NR_RRC, "DEBUG Extracting ng_5G_S_TMSI_Value\n");
     uint64_t fiveg_s_TMSI = 0;
     /* Extract UE identity */
     if (setup_complete_ies->ng_5G_S_TMSI_Value->present == NR_RRCSetupComplete_IEs__ng_5G_S_TMSI_Value_PR_ng_5G_S_TMSI_Part2) {
       /* 5G-S-TMSI Part 2 */
       const BIT_STRING_t *part2 = &setup_complete_ies->ng_5G_S_TMSI_Value->choice.ng_5G_S_TMSI_Part2;
+      uint16_t stmsi_part2 = BIT_STRING_to_uint16(part2);
+      LOG_I(NR_RRC, "DEBUG Extracting 5G-S-TMSI Part 2 %d\n", stmsi_part2);
       if (part2->size != 2) {
         LOG_E(NR_RRC, "wrong ng_5G_S_TMSI_Part2 size, expected 2, provided %lu", part2->size);
         return;
@@ -1467,6 +1472,7 @@ static void handle_rrcSetupComplete(gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE, const N
         UE->Initialue_identity_5g_s_TMSI.presence = false;
       }
     } else if (setup_complete_ies->ng_5G_S_TMSI_Value->present == NR_RRCSetupComplete_IEs__ng_5G_S_TMSI_Value_PR_ng_5G_S_TMSI) {
+      LOG_I(NR_RRC, "DEBUG Extracting 5G-S-TMSI\n");
       /* 5G-S-TMSI */
       const NR_NG_5G_S_TMSI_t *bs_stmsi = &setup_complete_ies->ng_5G_S_TMSI_Value->choice.ng_5G_S_TMSI;
       if (bs_stmsi->size != 6) {
@@ -1807,6 +1813,7 @@ static void e1_send_bearer_updates(gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE, int n, f
   nr_derive_key(UP_INT_ALG, req.integrityProtectionAlgorithm, UE->kgnb, (uint8_t *)req.integrityProtectionKey);
 
   // send the E1 bearer modification request message to update F1-U tunnel info
+  LOG_W(NR_RRC, "DEBUG calling get_existing_cuup_for_ue\n");
   sctp_assoc_t assoc_id = get_existing_cuup_for_ue(rrc, UE);
   rrc->cucp_cuup.bearer_context_mod(assoc_id, &req);
 }

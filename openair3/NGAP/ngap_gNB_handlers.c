@@ -889,7 +889,11 @@ static int ngap_gNB_handle_ue_context_release_command(sctp_assoc_t assoc_id, uin
             gnb_ue_ngap_id);
         return -1;
       } else {
-        message_p = itti_alloc_new_message(TASK_NGAP, 0, NGAP_UE_CONTEXT_RELEASE_COMMAND);
+        LOG_W(NR_RRC, "send NGAP_UE_CONTEXT_RELEASE_COMMAND\n");
+        message_p =
+            itti_alloc_new_message(TASK_NGAP,
+                                   0,
+                                   NGAP_UE_CONTEXT_RELEASE_COMMAND); // TODO make function (used in ngap_ue_context_release_req)
 
         if (ue_desc_p->amf_ue_ngap_id == 0) { // case of Detach Request and switch off from RRC_IDLE mode
           ue_desc_p->amf_ue_ngap_id = amf_ue_ngap_id;

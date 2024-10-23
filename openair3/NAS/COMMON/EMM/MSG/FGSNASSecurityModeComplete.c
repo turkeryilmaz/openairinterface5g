@@ -44,6 +44,7 @@ int encode_fgs_security_mode_complete(fgs_security_mode_complete_msg *fgs_securi
     int encoded = 0;
     int encode_result = 0;
 
+  printf("CALLING encode_5gs_mobile_identity IN %s\n", __func__);
     if ((encode_result =
           encode_5gs_mobile_identity(&fgs_security_mode_comp->fgsmobileidentity, 0x77, buffer +
                                      encoded, len - encoded)) < 0) { //Return in case of error

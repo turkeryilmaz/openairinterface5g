@@ -74,6 +74,7 @@ int encode_registration_accept(registration_accept_msg *registration_accept, uin
   *(buffer + encoded) = encode_fgs_registration_result(&registration_accept->fgsregistrationresult);
   encoded = encoded + 2;
 
+  printf("CALLING encode_5gs_mobile_identity IN %s\n", __func__);
   if (registration_accept->guti) {
     int mi_enc = encode_5gs_mobile_identity(registration_accept->guti, 0x77, buffer + encoded, len - encoded);
     if (mi_enc < 0)

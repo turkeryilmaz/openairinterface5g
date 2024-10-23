@@ -151,11 +151,52 @@ int force_ue_release(char *buf, int debug, telnet_printfunc_t prnt)
   return 0;
 }
 
+extern void rrc_gNB_send_NGAP_UE_CONTEXT_RELEASE_REQ(const module_id_t gnb_mod_idP,
+                                                    const rrc_gNB_ue_context_t *const ue_context_pP,
+                                                    const ngap_Cause_t causeP, const long cause_valueP);
+
+int force_ue_context_release_request(char *buf, int debug, telnet_printfunc_t prnt)
+{
+  if (!RC.nrrrc)
+    ERROR_MSG_RET("no RRC present, cannot list counts\n");
+  rrc_gNB_ue_context_t *ue = NULL;
+  int rnti = -1;
+  if (!buf) {
+    rrc_gNB_ue_context_t *l = NULL;
+    int n = 0;
+    RB_FOREACH(l, rrc_nr_ue_tree_s, &RC.nrrrc[0]->rrc_ue_head) {
+      if (ue == NULL) ue = l;
+      n++;
+    }
+    if (!ue)
+      ERROR_MSG_RET("could not find any UE in RRC\n");
+    if (n > 1)
+      ERROR_MSG_RET("more than one UE in RRC present\n");
+  } else {
+    rnti = strtol(buf, NULL, 16);
+    if (rnti < 1 || rnti >= 0xfffe)
+      ERROR_MSG_RET("RNTI needs to be [1,0xfffe]\n");
+    ue = rrc_gNB_get_ue_context_by_rnti_any_du(RC.nrrrc[0], rnti);
+    if (!ue)
+      ERROR_MSG_RET("could not find UE with RNTI %04x in RRC\n");
+  }
+  if (!ue) {
+    ERROR_MSG_RET("could not find UE context for CU UE ID %u, aborting transaction\n", rnti);
+  }
+  prnt("received UE Context Release Request for UE %u, forwarding to AMF\n", rnti);
+  rrc_gNB_send_NGAP_UE_CONTEXT_RELEASE_REQ(0,
+                                           ue,
+                                           NGAP_CAUSE_RADIO_NETWORK,
+                                           NGAP_CAUSE_RADIO_NETWORK_RADIO_CONNECTION_WITH_UE_LOST);
+  return 0;
+}
+
 static telnetshell_cmddef_t cicmds[] = {
   {"get_single_rnti", "", get_single_rnti},
   {"force_reestab", "[rnti(hex,opt)]", trigger_reestab},
   {"force_ue_release", "[rnti(hex,opt)]", force_ue_release},
   {"get_reestab_count", "[rnti(hex,opt)]", get_reestab_count},
+  {"ue_context_release", "[rnti(hex,opt)]", force_ue_context_release_request},
   {"", "", NULL},
 };
 

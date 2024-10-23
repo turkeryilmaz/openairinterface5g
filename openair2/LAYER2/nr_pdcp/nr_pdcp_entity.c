@@ -303,6 +303,16 @@ static int nr_pdcp_entity_process_sdu(nr_pdcp_entity_t *entity,
   return header_size + size + integrity_size;
 }
 
+// Function to print memory content in hexadecimal
+void print_memory(const uint8_t *mem, size_t size, const char *label) {
+    printf("%s: ", label);
+    for (size_t i = 0; i < size; i++) {
+        printf("%02x ", mem[i]);  // Print each byte in hex format
+    }
+    printf("\n");
+    fflush(stdout);
+}
+
 static bool nr_pdcp_entity_check_integrity(struct nr_pdcp_entity_t *entity,
                                            const uint8_t *buffer,
                                            int buffer_size,
@@ -324,6 +334,9 @@ static bool nr_pdcp_entity_check_integrity(struct nr_pdcp_entity_t *entity,
   entity->integrity(entity->integrity_context, mac,
                     b, buffer_size + header_size,
                     entity->rb_id, msg_integrity->count, entity->is_gnb ? 0 : 1);
+
+  print_memory(mac, PDCP_INTEGRITY_SIZE, "mac");
+  print_memory(msg_integrity->mac, PDCP_INTEGRITY_SIZE, "msg_integrity->mac");
 
   return memcmp(mac, msg_integrity->mac, PDCP_INTEGRITY_SIZE) == 0;
 }

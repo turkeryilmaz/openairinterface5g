@@ -43,7 +43,7 @@ static int encode_guti_5gs_mobile_identity(Guti5GSMobileIdentity_t *guti, uint8_
 static int encode_suci_5gs_mobile_identity(Suci5GSMobileIdentity_t *suci, uint8_t *buffer);
 static int encode_imeisv_5gs_mobile_identity(Imeisv5GSMobileIdentity_t *imeisv, uint8_t *buffer);
 
-static int encode_stmsi_5gs_mobile_identity(Stmsi5GSMobileIdentity_t *stmsi, uint8_t *buffer)
+int encode_stmsi_5gs_mobile_identity(Stmsi5GSMobileIdentity_t *stmsi, uint8_t *buffer)
 {
   uint32_t encoded = 0;
   // octet 4
@@ -101,28 +101,48 @@ int encode_5gs_mobile_identity(FGSMobileIdentity *fgsmobileidentity, uint8_t iei
     encoded++;
   }
 
+  // skip IEI and Length of 5GS mobile identity contents
   encoded = encoded + 2;
 
+  printf("encode_5gs_mobile_identity: 5G-S TMSI Mobile Identity:\n");
+  printf("  Digit 1: %d\n", fgsmobileidentity->stmsi.digit1);
+  printf("  Spare: %d\n", fgsmobileidentity->stmsi.spare);
+  printf("  Type of identity: %d\n", fgsmobileidentity->stmsi.typeofidentity);
+  printf("  AMF set ID: %d\n", fgsmobileidentity->stmsi.amfsetid);
+  printf("  AMF pointer: %d\n", fgsmobileidentity->stmsi.amfpointer);
+  printf("  TMSI: %u\n", fgsmobileidentity->stmsi.tmsi);
+  fflush(stdout);  // Flush the output to ensure all data is printed
+
   if (fgsmobileidentity->guti.typeofidentity == FGS_MOBILE_IDENTITY_5G_GUTI) {
+    printf("DO FGS_MOBILE_IDENTITY_5G_GUTI\n");
+    fflush(stdout);
     encoded_rc = encode_guti_5gs_mobile_identity(&fgsmobileidentity->guti,
                  buffer + encoded);
   }
 
   if (fgsmobileidentity->suci.typeofidentity == FGS_MOBILE_IDENTITY_SUCI) {
+    printf("DO FGS_MOBILE_IDENTITY_SUCI\n");
+    fflush(stdout);
     encoded_rc = encode_suci_5gs_mobile_identity(&fgsmobileidentity->suci,
                  buffer + encoded);
   }
 
   if (fgsmobileidentity->imeisv.typeofidentity == FGS_MOBILE_IDENTITY_IMEISV) {
+    printf("DO FGS_MOBILE_IDENTITY_IMEISV\n");
+    fflush(stdout);
     encoded_rc = encode_imeisv_5gs_mobile_identity(&fgsmobileidentity->imeisv,
                  buffer + encoded);
   }
 
   if (fgsmobileidentity->stmsi.typeofidentity == FGS_MOBILE_IDENTITY_5GS_TMSI) {
+    printf("DO FGS_MOBILE_IDENTITY_5GS_TMSI\n");
+    fflush(stdout);
     encoded_rc = encode_stmsi_5gs_mobile_identity(&fgsmobileidentity->stmsi, buffer + encoded);
   }
 
   if (encoded_rc < 0) {
+    printf("FAILED TO encode_5gs_mobile_identity: encoded_rc %d\n", encoded_rc);
+    fflush(stdout);
     return encoded_rc;
   }
 
@@ -134,6 +154,8 @@ int encode_5gs_mobile_identity(FGSMobileIdentity *fgsmobileidentity, uint8_t iei
     memcpy(buffer, &tmp, sizeof(tmp));
   }
 
+  printf("encode_5gs_mobile_identity: encoded + encoded_rc = %d \n", encoded + encoded_rc);
+  fflush(stdout);
   return (encoded + encoded_rc);
 }
 

@@ -154,6 +154,7 @@ int ngap_ue_context_release_req(instance_t instance,
               ue_release_req_p->gNB_ue_ngap_id);
     /* send response to free the UE: we don't know it, but it should be
      * released since RRC seems to know it (e.g., there is no AMF) */
+    LOG_W(NR_RRC, "send NGAP_UE_CONTEXT_RELEASE_COMMAND\n");
     MessageDef *msg = itti_alloc_new_message(TASK_NGAP, 0, NGAP_UE_CONTEXT_RELEASE_COMMAND);
     NGAP_UE_CONTEXT_RELEASE_COMMAND(msg).gNB_ue_ngap_id = ue_release_req_p->gNB_ue_ngap_id;
     itti_send_msg_to_task(TASK_RRC_GNB, ngap_gNB_instance_p->instance, msg);

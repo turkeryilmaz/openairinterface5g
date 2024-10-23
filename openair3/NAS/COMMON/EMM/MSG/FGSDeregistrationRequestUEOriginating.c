@@ -50,6 +50,10 @@ int encode_fgs_deregistration_request_ue_originating(fgs_deregistration_request_
 
   encoded++;
 
+
+  printf("CALLING encode_5gs_mobile_identity IN %s\n", __func__);
+  fflush(stdout);  // Flush the output to ensure all data is printed
+
   if ((encode_result = encode_5gs_mobile_identity(&drr->fgsmobileidentity, 0, buffer + encoded, len - encoded)) < 0)
     return encode_result;
   else

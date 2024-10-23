@@ -1025,6 +1025,15 @@ static void rrc_ue_generate_RRCSetupComplete(const NR_UE_RRC_INST_t *rrc, const 
   /* ng-5G-S-TMSI-Part2: The leftmost 9 bits of 5G-S-TMSI. */
   if (rrc->fiveG_S_TMSI == UINT64_MAX)
     LOG_D(NR_RRC, "5G-S-TMSI is not available!\n");
+
+  LOG_I(NR_RRC,
+        "DEBUG AVAILABLE rrc->plmnID %d%d%d%d%d%d!\n",
+        rrc->plmnID.MCCdigit2,
+        rrc->plmnID.MCCdigit1,
+        rrc->plmnID.MNCdigit3,
+        rrc->plmnID.MCCdigit3,
+        rrc->plmnID.MNCdigit2,
+        rrc->plmnID.MNCdigit1);
   int size = do_RRCSetupComplete(buffer,
                                  sizeof(buffer),
                                  Transaction_id,

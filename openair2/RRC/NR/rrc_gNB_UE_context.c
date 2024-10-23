@@ -107,6 +107,23 @@ rrc_gNB_ue_context_t *rrc_gNB_get_ue_context_by_rnti(gNB_RRC_INST *rrc_instance_
   return NULL;
 }
 
+static rrc_gNB_ue_context_t *rrc_gNB_get_ue_context_by_amf_ue_ngap_id(gNB_RRC_INST *rrc_instance_pP,
+                                                                      sctp_assoc_t assoc_id,
+                                                                      uint64_t amf_ue_ngap_id)
+{
+  rrc_gNB_ue_context_t *ue_context_p;
+  RB_FOREACH (ue_context_p, rrc_nr_ue_tree_s, &(rrc_instance_pP->rrc_ue_head)) {
+    f1_ue_data_t ue_data = cu_get_f1_ue_data(ue_context_p->ue_context.rrc_ue_id);
+    if (ue_data.du_assoc_id == assoc_id && ue_context_p->ue_context.amf_ue_ngap_id == amf_ue_ngap_id) {
+      rrc_gNB_ue_context_update_time(ue_context_p);
+      LOG_I(NR_RRC, "Found context with AMF UE NGAP ID %ld and assoc_id %d\n", amf_ue_ngap_id, assoc_id);
+      return ue_context_p;
+    }
+  }
+  LOG_W(NR_RRC, "search by AMF UE NGAP ID %ld and assoc_id %d: no UE found\n", amf_ue_ngap_id, assoc_id);
+  return NULL;
+}
+
 rrc_gNB_ue_context_t *rrc_gNB_get_ue_context_by_rnti_any_du(gNB_RRC_INST *rrc_instance_pP, rnti_t rntiP)
 {
   rrc_gNB_ue_context_t *ue_context_p;
@@ -164,6 +181,18 @@ rrc_gNB_ue_context_t *rrc_gNB_ue_context_random_exist(gNB_RRC_INST *rrc_instance
   return NULL;
 }
 
+static uint64_t build_5g_s_tmsi(uint32_t fiveg_tmsi, uint16_t amf_set_id, uint8_t amf_pointer)
+{
+  amf_set_id &= 0x03FF; // Mask to ensure 10 bits for AMF Set ID
+  amf_pointer &= 0x3F; // Mask to ensure 6 bits for AMF Pointer
+
+  // Combine the fields into the 5G-S-TMSI format
+  uint64_t tmsi = ((uint64_t)amf_set_id << 38) // Shift AMF Set ID by 38 bits
+                  | ((uint64_t)amf_pointer << 32) // Shift AMF Pointer by 32 bits
+                  | fiveg_tmsi; // 5G-TMSI is already 32 bits
+
+  return tmsi;
+}
 //-----------------------------------------------------------------------------
 // return the ue context if there is already an UE with the same S-TMSI, NULL otherwise
 rrc_gNB_ue_context_t *rrc_gNB_ue_context_5g_s_tmsi_exist(gNB_RRC_INST *rrc_instance_pP, const uint64_t s_TMSI)
@@ -172,8 +201,11 @@ rrc_gNB_ue_context_t *rrc_gNB_ue_context_5g_s_tmsi_exist(gNB_RRC_INST *rrc_insta
   rrc_gNB_ue_context_t *ue_context_p = NULL;
   RB_FOREACH(ue_context_p, rrc_nr_ue_tree_s, &rrc_instance_pP->rrc_ue_head)
   {
-    LOG_I(NR_RRC, "Checking for UE 5G S-TMSI %ld: RNTI %04x\n", s_TMSI, ue_context_p->ue_context.rnti);
-    if (ue_context_p->ue_context.ng_5G_S_TMSI_Part1 == s_TMSI) {
+    uint64_t s_tmsi = build_5g_s_tmsi(ue_context_p->ue_context.Initialue_identity_5g_s_TMSI.fiveg_tmsi,
+                                      ue_context_p->ue_context.Initialue_identity_5g_s_TMSI.amf_set_id,
+                                      ue_context_p->ue_context.Initialue_identity_5g_s_TMSI.amf_pointer);
+    LOG_I(NR_RRC, "Checking for UE 5G S-TMSI %ld vs %ld: RNTI %04x\n", s_TMSI, s_tmsi, ue_context_p->ue_context.rnti);
+    if (s_tmsi == s_TMSI) {
       rrc_gNB_ue_context_update_time(ue_context_p);
       return ue_context_p;
     }

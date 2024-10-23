@@ -56,7 +56,8 @@ int encode_5gs_registration_type(FGSRegistrationType *fgsregistrationtype)
   uint8_t *buffer = &bufferReturn;
   uint8_t encoded = 0;
   uint8_t iei = 0;
-  *(buffer + encoded) = 0x00 | (iei & 0xf0) | 0x8|
+  uint8_t foR = 0x0; // 0x8; //0x0;
+  *(buffer + encoded) = 0x00 | (iei & 0xf0) | foR |
                         (*fgsregistrationtype & 0x7);
   encoded++;
 

@@ -32,6 +32,7 @@
 #ifndef __NR_NAS_MSG_SIM_H__
 #define __NR_NAS_MSG_SIM_H__
 
+#include "common/utils/nr/nr_common.h"
 #include "RegistrationRequest.h"
 #include "FGSIdentityResponse.h"
 #include "FGSAuthenticationResponse.h"
@@ -73,6 +74,8 @@
 /* 3GPP TS 24.501 Table 9.11.3.7.1: 5GS registration type IE */
 #define INITIAL_REGISTRATION                               0b001
 #define MOBILITY_REGISTRATION_UPDATING                     0b010
+#define PERIODIC_REGISTRATION_UPDATING                     0b011
+#define REG_TYPE_RESERVED                                  0b111
 
 /* 3GPP TS 24.501: 9.11.3.50 Service type */
 #define SERVICE_TYPE_DATA                                  0b0001
@@ -140,6 +143,10 @@ typedef struct {
   uint8_t  *registration_request_buf;
   uint32_t  registration_request_len;
   instance_t UE_id;
+  /* RRC Inactive Indication */
+  bool is_rrc_inactive;
+  /* Timer T3512 */
+  NR_timer_t t3512;
 } nr_ue_nas_t;
 
 typedef enum fgs_protocol_discriminator_e {
@@ -166,18 +173,20 @@ typedef struct {
 } __attribute__((__packed__)) fgs_nas_message_security_header_t;
 
 typedef union {
-  mm_msg_header_t                        header;
   registration_request_msg               registration_request;
-  fgs_service_request_msg                service_request;
+  fgs_service_request_msg_t              service_request;
   fgs_identiy_response_msg               fgs_identity_response;
   fgs_authentication_response_msg        fgs_auth_response;
   fgs_deregistration_request_ue_originating_msg fgs_deregistration_request_ue_originating;
   fgs_security_mode_complete_msg         fgs_security_mode_complete;
   registration_complete_msg              registration_complete;
   fgs_uplink_nas_transport_msg           uplink_nas_transport;
+} MM_msg_payload;
+
+typedef struct {
+  mm_msg_header_t                        header;
+  MM_msg_payload                         payload;
 } MM_msg;
-
-
 
 typedef struct {
   MM_msg mm_msg;    /* 5GS Mobility Management messages */

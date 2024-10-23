@@ -182,6 +182,7 @@ void rrc_gNB_send_NGAP_NAS_FIRST_REQ(gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE, NR_RRC
 
   /* Fill UE identities with available information */
   if (UE->Initialue_identity_5g_s_TMSI.presence) {
+    LOG_A(NGAP, "DEBUG ##### UE->Initialue_identity_5g_s_TMSI.presence\n");
     /* Fill s-TMSI */
     req->ue_identity.presenceMask = NGAP_UE_IDENTITIES_FiveG_s_tmsi;
     req->ue_identity.s_tmsi.amf_set_id = UE->Initialue_identity_5g_s_TMSI.amf_set_id;
@@ -1114,6 +1115,7 @@ int rrc_gNB_process_NGAP_UE_CONTEXT_RELEASE_COMMAND(MessageDef *msg_p, instance_
   /* a UE might not be associated to a CU-UP if it never requested a PDU
    * session (intentionally, or because of erros) */
   if (ue_associated_to_cuup(rrc, UE)) {
+    LOG_W(NR_RRC, "DEBUG calling get_existing_cuup_for_ue\n");
     sctp_assoc_t assoc_id = get_existing_cuup_for_ue(rrc, UE);
     e1ap_bearer_release_cmd_t cmd = {
       .gNB_cu_cp_ue_id = UE->rrc_ue_id,
