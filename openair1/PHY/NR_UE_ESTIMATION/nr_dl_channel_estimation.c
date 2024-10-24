@@ -44,6 +44,9 @@
 #define CH_INTERP 0
 #define NO_INTERP 1
 
+// 10*log10(pow(2,30))
+#define pow_2_30_dB 90
+extern openair0_config_t openair0_cfg[];
 /* Generic function to find the peak of channel estimation buffer */
 void peak_estimator(int32_t *buffer, int32_t buf_len, int32_t *peak_idx, int32_t *peak_val)
 {
@@ -1044,7 +1047,9 @@ void nr_pdcch_channel_estimation(PHY_VARS_NR_UE *ue,
                                  uint16_t BWPStart,
                                  int32_t pdcch_est_size,
                                  int32_t pdcch_dl_ch_estimates[][pdcch_est_size],
-                                 c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP])
+                                 c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP],
+                                 int *rsrp,
+                                 int16_t *rsrp_dBm)
 {
 
   int Ns = proc->nr_slot_rx;
@@ -1054,6 +1059,8 @@ void nr_pdcch_channel_estimation(PHY_VARS_NR_UE *ue,
   unsigned int pilot_cnt;
   int16_t ch[2],*pil,*rxF,*dl_ch;
   int ch_offset,symbol_offset;
+  uint16_t meas_count = 0;
+  int32_t rsrp_sum = 0;
 
   ch_offset     = ue->frame_parms.ofdm_symbol_size*symbol;
 
@@ -1251,6 +1258,8 @@ void nr_pdcch_channel_estimation(PHY_VARS_NR_UE *ue,
   #else //ELSE CH_INTERP
     int ch_sum[2] = {0, 0};
 
+    c16_t rx_signal = rxdataF[aarx][(symbol_offset + k + 1)];
+
     for (pilot_cnt = 0; pilot_cnt < 3*nb_rb_coreset; pilot_cnt++) {
       if (k >= ue->frame_parms.ofdm_symbol_size) {
         k  -= ue->frame_parms.ofdm_symbol_size;
@@ -1259,11 +1268,15 @@ void nr_pdcch_channel_estimation(PHY_VARS_NR_UE *ue,
 #ifdef DEBUG_PDCCH
       printf("pilot[%u] = (%d, %d)\trxF[%d] = (%d, %d)\n", pilot_cnt, pil[0], pil[1], k+1, rxF[0], rxF[1]);
 #endif
+      rsrp_sum += (((int32_t)(rx_signal.r) * rx_signal.r) + ((int32_t)(rx_signal.i) * rx_signal.i));
+      LOG_D(NR_PHY, "r: %d, i: %d, k %d, offset %d\n", rx_signal.r, rx_signal.i, k, (symbol_offset + k + 1));
+      meas_count++;
       ch_sum[0] += (int16_t)(((int32_t)pil[0]*rxF[0] - (int32_t)pil[1]*rxF[1])>>15);
       ch_sum[1] += (int16_t)(((int32_t)pil[0]*rxF[1] + (int32_t)pil[1]*rxF[0])>>15);
       pil += 2;
       rxF += 8;
       k   += 4;
+      rx_signal = rxdataF[aarx][(symbol_offset + k + 1)];
 
       if (pilot_cnt % 3 == 2) {
         ch[0] = ch_sum[0] / 3;
@@ -1283,6 +1296,12 @@ void nr_pdcch_channel_estimation(PHY_VARS_NR_UE *ue,
 
     //}
 
+  }
+  if (rsrp) {
+    *rsrp = rsrp_sum / meas_count;
+    *rsrp_dBm = dB_fixed(*rsrp) + 30 - pow_2_30_dB
+      - ((int)openair0_cfg[0].rx_gain[0] - (int)openair0_cfg[0].rx_gain_offset[0]) - dB_fixed(ue->frame_parms.ofdm_symbol_size);
+    LOG_I(NR_PHY, "%4d.%2d rsrp %d, rsrp_dBm %d, rsrp_sum %d, meas_count %d\n", proc->frame_rx, proc->nr_slot_rx, *rsrp, *rsrp_dBm, rsrp_sum, meas_count);
   }
 }
 

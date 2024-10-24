@@ -374,7 +374,8 @@ uint8_t nr_dci_decoding_procedure(PHY_VARS_NR_UE *ue,
                                   int pscch_flag,
                                   int16_t *pdcch_e_rx,
                                   void *ind,
-                                  fapi_nr_dl_config_dci_dl_pdu_rel15_t *rel15);
+                                  fapi_nr_dl_config_dci_dl_pdu_rel15_t *rel15,
+                                  int16_t *rsrp);
 
 
 /** \brief This function is the top-level entry point to PDSCH demodulation, after frequency-domain transformation and channel estimation.  It performs
