@@ -50,6 +50,7 @@ queue_t nr_rx_ind_queue;
 queue_t nr_crc_ind_queue;
 queue_t nr_uci_ind_queue;
 queue_t nr_rach_ind_queue;
+queue_t ntn_messages_queue;
 
 static void fill_uci_2_3_4(nfapi_nr_uci_pucch_pdu_format_2_3_4_t *pdu_2_3_4,
                            fapi_nr_ul_config_pucch_pdu *pucch_pdu)

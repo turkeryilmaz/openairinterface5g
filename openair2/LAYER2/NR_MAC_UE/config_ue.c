@@ -1763,6 +1763,20 @@ void nr_rrc_mac_config_req_sib19_r17(module_id_t module_id, NR_SIB19_r17_t *sib1
     if (sib19_r17->ntn_Config_r17->ta_Info_r17->ta_CommonDrift_r17)
       mac->ntn_ta.ntn_ta_commondrift = *ntn_Config_r17->ta_Info_r17->ta_CommonDrift_r17 * 0.2e-3;
   }
+  
+  if (mac->ntn_ta.ntn_total_time_advance_ms != (mac->ntn_ta.N_common_ta_adj + mac->ntn_ta.N_UE_TA_adj)) {
+    mac->ntn_ta.ntn_total_time_advance_ms = (mac->ntn_ta.N_common_ta_adj + mac->ntn_ta.N_UE_TA_adj) * 2;
+  } 
+
+  ntn_data_message_t *ntn_message = CALLOC(1, sizeof(ntn_data_message_t));
+  ntn_message->cell_specific_k_offset = mac->ntn_ta.cell_specific_k_offset;
+  ntn_message->N_common_ta_adj = ntn_message->N_common_ta_adj;
+  ntn_message->N_UE_TA_adj = mac->ntn_ta.N_UE_TA_adj;
+  ntn_message->ntn_total_time_advance_ms = mac->ntn_ta.ntn_total_time_advance_ms;
+  // populate ntn_messages_queue with current message
+  if (!put_queue(&ntn_messages_queue, ntn_message)) {
+    LOG_I(NR_MAC, "put_queue for ntn_messages_queue failed!\n");
+  }
 }
 
 static void handle_reconfiguration_with_sync(NR_UE_MAC_INST_t *mac,

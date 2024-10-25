@@ -38,6 +38,22 @@
   typedef signed char		   int8_t;
 */
 
+typedef struct 
+{
+  // N_common_ta_adj represents common propagation delay received in SIB19 (ms)
+double N_common_ta_adj;
+// N_UE_TA_adj calculated propagation delay from UE and SAT (ms)
+double N_UE_TA_adj;
+// drift rate of common ta in µs/s
+double ntn_ta_commondrift;
+// cell scheduling offset expressed in terms of 15kHz SCS
+long cell_specific_k_offset;
+
+double ntn_total_time_advance_ms;
+  /* data */
+} ntn_data_message_t;
+
+
 typedef enum {
  RLM_no_monitoring = 0,
  RLM_out_of_sync = 1,

@@ -243,6 +243,7 @@ static void *NRUE_phy_stub_standalone_pnf_task(void *arg)
   reset_queue(&nr_tx_req_queue);
   reset_queue(&nr_ul_dci_req_queue);
   reset_queue(&nr_ul_tti_req_queue);
+  reset_queue(&ntn_messages_queue);
 
   int last_sfn_slot = -1;
   uint16_t sfn_slot = 0;
@@ -770,6 +771,8 @@ static inline int get_readBlockSize(uint16_t slot, NR_DL_FRAME_PARMS *fp) {
   return rem_samples + next_slot_first_symbol;
 }
 
+ntn_data_message_t *saved_msg;
+
 void *UE_thread(void *arg)
 {
   //this thread should be over the processing thread to keep in real time
@@ -942,17 +945,27 @@ void *UE_thread(void *arg)
 
     if (update_ntn_system_information) {
       update_ntn_system_information = false;
-      int ta_offset = UE->frame_parms.samples_per_subframe * (GET_COMPLETE_TIME_ADVANCE_MS(mac) - ntn_ta_common);
+      int ta_offset = UE->frame_parms.samples_per_subframe * (saved_msg->ntn_total_time_advance_ms - ntn_ta_common);
+      LOG_I(PHY, "before: ta_offset=[%d]\n", ta_offset);
+      LOG_I(PHY, "before: ntn_ta_common=[%.3f] ntn_koffset=[%d] UE->timing_advance=[%d] timing_advance=[%d]\n", ntn_ta_common, ntn_koffset, UE->timing_advance, timing_advance);
 
       UE->timing_advance += ta_offset;
-      ntn_ta_common = GET_COMPLETE_TIME_ADVANCE_MS(mac);
-      ntn_koffset = GET_NTN_UE_K_OFFSET(mac, 0);
+      ntn_ta_common = saved_msg->ntn_total_time_advance_ms;
+      ntn_koffset = saved_msg->cell_specific_k_offset;
       timing_advance = ntn_koffset * (UE->frame_parms.samples_per_subframe >> mac->current_UL_BWP->scs);
+      LOG_I(NR_RRC, "after: ntn_ta_common=[%.3f] ntn_koffset=[%d] UE->timing_advance=[%d] timing_advance=[%d]\n", ntn_ta_common, ntn_koffset, UE->timing_advance, timing_advance);
     }
 
-    if (ntn_koffset != (GET_NTN_UE_K_OFFSET(mac, 0)) && ntn_ta_common != GET_COMPLETE_TIME_ADVANCE_MS(mac)) {
+    ntn_data_message_t *ntn_message = unqueue(&ntn_messages_queue);
+    if (ntn_message) {
       update_ntn_system_information = true;
-      nr_slot_tx_offset = mac->ntn_ta.cell_specific_k_offset % nb_slot_frame;
+      nr_slot_tx_offset = ntn_message->cell_specific_k_offset % nb_slot_frame;
+      saved_msg = CALLOC(1, sizeof(*saved_msg));
+      saved_msg->cell_specific_k_offset = ntn_message->cell_specific_k_offset;
+      saved_msg->N_common_ta_adj = ntn_message->N_common_ta_adj;
+      saved_msg->N_UE_TA_adj = ntn_message->N_UE_TA_adj;
+      saved_msg->ntn_total_time_advance_ms = ntn_message->ntn_total_time_advance_ms;
+      // saved_msg = ntn_message;
     }
 
     int slot_nr = absolute_slot % nb_slot_frame;

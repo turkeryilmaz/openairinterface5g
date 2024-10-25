@@ -521,6 +521,8 @@ double N_UE_TA_adj;
 double ntn_ta_commondrift;
 // cell scheduling offset expressed in terms of 15kHz SCS
 long cell_specific_k_offset;
+
+double ntn_total_time_advance_ms;
 } ntn_timing_advance_componets_t;
 
 /*!\brief Top level UE MAC structure */
@@ -632,8 +634,23 @@ typedef struct NR_UE_MAC_INST_s {
 } NR_UE_MAC_INST_t;
 
 #define GET_NTN_UE_K_OFFSET(mac, scs) (mac->ntn_ta.cell_specific_k_offset << scs)
-#define GET_COMPLETE_TIME_ADVANCE_MS(mac) ((mac)->ntn_ta.N_common_ta_adj + (mac)->ntn_ta.N_UE_TA_adj * 2)
+#define GET_COMPLETE_TIME_ADVANCE_MS(mac) (mac->ntn_ta.ntn_total_time_advance_ms * 2)
 #define GET_DURATION_RX_TO_TX(mac) (NR_UE_CAPABILITY_SLOT_RX_TO_TX + (mac)->ntn_ta.cell_specific_k_offset)
+
+// static inline int GET_NTN_UE_K_OFFSET(const NR_UE_MAC_INST_t *mac, int scs)
+// {
+//   return (int)mac->ntn_ta.cell_specific_k_offset << scs;
+// }
+
+// static inline double GET_COMPLETE_TIME_ADVANCE_MS(const NR_UE_MAC_INST_t *mac)
+// {
+//   return (mac->ntn_ta.N_common_ta_adj + mac->ntn_ta.N_UE_TA_adj) * 2;
+// }
+
+// static inline long GET_DURATION_RX_TO_TX(const NR_UE_MAC_INST_t *mac)
+// {
+//   return NR_UE_CAPABILITY_SLOT_RX_TO_TX + mac->ntn_ta.cell_specific_k_offset;
+// }
 
 /*@}*/
 #endif /*__LAYER2_MAC_DEFS_H__ */
