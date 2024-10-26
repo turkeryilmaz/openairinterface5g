@@ -1052,8 +1052,8 @@ void handle_nr_uci_pucch_0_1(module_id_t mod_id,
       remove_front_nr_list(&sched_ctrl->feedback_dl_harq);
       LOG_D(NR_MAC,"%4d.%2d bit %d pid %d ack/nack %d\n",frame, slot, harq_bit,pid,harq_value);
       handle_dl_harq(UE, pid, harq_value == 0 && harq_confidence == 0, nrmac->dl_bler.harq_round_max);
-      if (!UE->Msg4_ACKed && harq_value == 0 && harq_confidence == 0)
-        UE->Msg4_ACKed = true;
+      if (!UE->Msg4_MsgB_ACKed && harq_value == 0 && harq_confidence == 0)
+        UE->Msg4_MsgB_ACKed = true;
       if (harq_confidence == 1)  UE->mac_stats.pucch0_DTX++;
     }
 
@@ -1130,6 +1130,7 @@ void handle_nr_uci_pucch_2_3_4(module_id_t mod_id,
   }
   /* phy-test has hardcoded allocation, so no use to handle CSI reports */
   if ((uci_234->pduBitmap >> 2) & 0x01 && !get_softmodem_params()->phy_test) {
+    LOG_D(NR_MAC, "CSI CRC %d\n", uci_234->csi_part1.csi_part1_crc);
     if (uci_234->csi_part1.csi_part1_crc != 1) {
       // API to parse the csi report and store it into sched_ctrl
       extract_pucch_csi_report(csi_MeasConfig, uci_234, frame, slot, UE, nrmac->common_channels->ServingCellConfigCommon);
