@@ -65,7 +65,7 @@ Legacy unmaintained files:
 
 - General software architecture notes: [SW_archi.md](./SW_archi.md)
 - [Information on E1](./E1AP/E1-design.md)
-- [Information on F1](./F1-design.md)
+- [Information on F1](./F1AP/F1-design.md)
 - [Information on how NR nFAPI works](./NR_NFAPI_archi.md)
 - [Flow graph of the L1 in gNB](SW-archi-graph.md)
 - [L1 threads in NR-UE](./nr-ue-design.md)
@@ -115,3 +115,8 @@ The other SDRs (AW2S, LimeSDR, ...) have no READMEs.
 
 - [UnitTests.md](./UnitTests.md) explains the unit testing setup
 - [TESTBenches.md](./TESTBenches.md) lists the CI setup and links to pipelines
+
+# Developer tools
+
+- [formatting](../tools/formatting/README.md) is a clang-format error detection tool
+- [iwyu](../tools/iwyu/README.md) is a tool to detect `#include` errors
