@@ -31,7 +31,6 @@
 #include "common/utils/LOG/log.h"
 #include "common/utils/LOG/vcd_signal_dumper.h"
 #include "openair1/PHY/defs_gNB.h"
-#include "common/utils/threadPool/thread-pool.h"
 #include "oaioran.h"
 
 // include the following file for VERSIONX, version of xran lib, to print it during

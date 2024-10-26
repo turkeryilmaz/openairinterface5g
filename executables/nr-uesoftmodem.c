@@ -33,7 +33,7 @@
 #include "SCHED_NR_UE/defs.h"
 #include "common/ran_context.h"
 #include "common/config/config_userapi.h"
-//#include "common/utils/threadPool/thread-pool.h"
+#include "common/utils/task_manager/task_manager_gen.h"
 #include "common/utils/load_module_shlib.h"
 //#undef FRAME_LENGTH_COMPLEX_SAMPLES //there are two conflicting definitions, so we better make sure we don't use it at all
 #include "common/utils/nr/nr_common.h"
@@ -87,6 +87,7 @@ unsigned short config_frames[4] = {2,9,11,13};
 #include "nr_nas_msg_sim.h"
 #include <openair1/PHY/MODULATION/nr_modulation.h>
 #include "openair2/GNB_APP/gnb_paramdef.h"
+#include "actor.h"
 
 extern const char *duplex_mode[];
 THREAD_STRUCT thread_struct;
@@ -410,7 +411,11 @@ int main(int argc, char **argv)
 #if T_TRACER
   T_Config_Init();
 #endif
-  initTpool(get_softmodem_params()->threadPoolConfig, &(nrUE_params.Tpool), cpumeas(CPUMEAS_GETSTATE));
+
+  int core_id[128] = {0};
+  span_core_id_t out = {.cap = 128, .core_id = core_id};
+  parse_num_threads(get_softmodem_params()->threadPoolConfig, &out);
+  init_task_manager(&nrUE_params.thread_pool, out.core_id, out.sz);
   //randominit (0);
   set_taus_seed (0);
 
@@ -496,6 +501,11 @@ int main(int argc, char **argv)
         }
 
         UE[CC_id]->sl_mode = get_softmodem_params()->sl_mode;
+        init_actor(&UE[CC_id]->sync_actor, "SYNC_", -1);
+        for (int i = 0; i < NUM_DL_ACTORS; i++) {
+          init_actor(&UE[CC_id]->dl_actors[i], "DL_", -1);
+        }
+        init_actor(&UE[CC_id]->ul_actor, "UL_", -1);
         init_nr_ue_vars(UE[CC_id], inst);
 
         if (UE[CC_id]->sl_mode) {

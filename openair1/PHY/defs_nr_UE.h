@@ -50,6 +50,8 @@
 #include "common_lib.h"
 #include "fapi_nr_ue_interface.h"
 #include "assertions.h"
+#include "barrier.h"
+#include "actor.h"
 //#include "openair1/SCHED_NR_UE/defs.h"
 
 #ifdef MEX
@@ -74,16 +76,6 @@
 #define openair_free(y,x) free((y))
 #define PAGE_SIZE 4096
 
-#ifdef NR_UNIT_TEST
-  #define FILE_NAME                " "
-  #define LINE_FILE                (0)
-  #define NR_TST_PHY_PRINTF(...)   printf(__VA_ARGS__)
-#else
-  #define FILE_NAME                (__FILE__)
-  #define LINE_FILE                (__LINE__)
-  #define NR_TST_PHY_PRINTF(...)
-#endif
-
 #define PAGE_MASK 0xfffff000
 #define virt_to_phys(x) (x)
 #define openair_sched_exit() exit(-1)
@@ -91,6 +83,7 @@
 #define bzero(s,n) (memset((s),0,(n)))
 /// suppress compiler warning for unused arguments
 #define UNUSED(x) (void)x;
+#define NUM_DL_ACTORS 4
 
 #include "impl_defs_top.h"
 #include "impl_defs_nr.h"
@@ -534,7 +527,7 @@ typedef struct PHY_VARS_NR_UE_s {
   void *phy_sim_pdsch_dl_ch_estimates_ext;
   uint8_t *phy_sim_dlsch_b;
 
-  notifiedFIFO_t tx_resume_ind_fifo[NR_MAX_SLOTS_PER_FRAME];
+  dynamic_barrier_t process_slot_tx_barriers[NR_MAX_SLOTS_PER_FRAME];
 
   // Gain change required for automation RX gain change
   int adjust_rxgain;
@@ -542,6 +535,9 @@ typedef struct PHY_VARS_NR_UE_s {
   // Sidelink parameters
   sl_nr_sidelink_mode_t sl_mode;
   sl_nr_ue_phy_params_t SL_UE_PHY_PARAMS;
+  Actor_t sync_actor;
+  Actor_t dl_actors[NUM_DL_ACTORS];
+  Actor_t ul_actor;
 } PHY_VARS_NR_UE;
 
 typedef struct {
@@ -585,6 +581,7 @@ typedef struct {
   int pssCorrPeakPower;
   int pssCorrAvgPower;
   int adjust_rxgain;
+  task_ans_t *ans;
 } nr_ue_ssb_scan_t;
 
 typedef struct nr_phy_data_tx_s {
@@ -617,7 +614,6 @@ typedef struct nr_rxtx_thread_data_s {
   nr_phy_data_t phy_data;
   int tx_wait_for_dlsch;
   int rx_offset;
-  enum stream_status_e stream_status;
 } nr_rxtx_thread_data_t;
 
 typedef struct LDPCDecode_ue_s {
@@ -640,6 +636,7 @@ typedef struct LDPCDecode_ue_s {
   time_stats_t ts_deinterleave;
   time_stats_t ts_rate_unmatch;
   time_stats_t ts_ldpc_decode;
+  task_ans_t *ans;
 } ldpcDecode_ue_t;
 
 static inline void start_meas_nr_ue_phy(PHY_VARS_NR_UE *ue, int meas_index) {
