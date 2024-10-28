@@ -13,8 +13,8 @@ typedef struct bhch_t{
   rlc_mode_t rlc_mode;
   long lcid;
   long priority;
-  uint32_t donor_bap_address;
-  uint32_t node_bap_address[30];
+  uint16_t donor_bap_address;
+  uint16_t node_bap_address[30];
   uint32_t number_of_nodes;
 }bhch_t;
 
