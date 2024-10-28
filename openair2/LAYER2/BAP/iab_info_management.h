@@ -46,7 +46,7 @@ typedef struct iab_cu_t {
   // max 30 for now
   iab_node_t iab_node[30];
   int number_of_iab_nodes;
-  int last_given_bap_address;
+  uint16_t last_given_bap_address;
   bhch_t *bhch_list;
   int number_of_bhchs;
 } iab_cu_t;
