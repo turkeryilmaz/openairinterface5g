@@ -10,7 +10,7 @@
 
 typedef struct bhch_t{
   uint16_t bhch_id;
-  rlc_mode_t rlc_mode;
+  nr_rlc_mode_t rlc_mode;
   long lcid;
   long priority;
   uint16_t donor_bap_address;
