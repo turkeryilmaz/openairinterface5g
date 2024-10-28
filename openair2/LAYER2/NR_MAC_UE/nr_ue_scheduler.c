@@ -3314,7 +3314,6 @@ void preprocess(NR_UE_MAC_INST_t *mac,
 
   nr_store_slsch_buffer(mac, frame, slot);
   sl_nr_ue_mac_params_t *sl_mac = mac->SL_MAC_PARAMS;
-  NR_TDD_UL_DL_Pattern_t *tdd = &sl_mac->sl_TDD_config->pattern1;
   int scs = get_softmodem_params()->numerology;
   const int nr_slots_frame = nr_slots_per_frame[scs];
 
@@ -3357,7 +3356,6 @@ void preprocess(NR_UE_MAC_INST_t *mac,
     * Transmitter of SLSCH stores the feedback frame and slot in harq process to use those in retreiving the feedback.
     */
     if (configured_PSFCH) {
-      const uint8_t time_gap[] = {2, 3};
       const uint8_t psfch_periods[] = {0, 1, 2, 4};
       NR_SL_PSFCH_Config_r16_t *sl_psfch_config = mac->sl_tx_res_pool->sl_PSFCH_Config_r16->choice.setup;
       long psfch_period = (sl_psfch_config->sl_PSFCH_Period_r16)
@@ -3369,7 +3367,7 @@ void preprocess(NR_UE_MAC_INST_t *mac,
       update_harq_lists(mac, frame, slot, UE);
       *fb_frame = rcv_tx_frame;
       *fb_slot = psfch_slot;
-      LOG_D(NR_MAC, "Tx SLSCH %4d.%2d, Expected Feedback: %4d.%2d in current PSFCH: psfch_period %d\n",
+      LOG_D(NR_MAC, "Tx SLSCH %4d.%2d, Expected Feedback: %4d.%2d in current PSFCH: psfch_period %ld\n",
             frame,
             slot,
             *fb_frame,
