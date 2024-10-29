@@ -269,6 +269,14 @@ void config_dci_pdu(NR_UE_MAC_INST_t *mac,
     case TYPE_P_RNTI_:
       break;
     case TYPE_CS_RNTI_:
+      // we use DL BWP dedicated
+      sps = current_DL_BWP->cyclicprefix ? 12 : 14;
+      // for SPS=14 8 MSBs in positions 13 down to 6
+      monitoringSymbolsWithinSlot = (ss->monitoringSymbolsWithinSlot->buf[0]<<(sps-8)) | (ss->monitoringSymbolsWithinSlot->buf[1]>>(16-sps));
+      rel15->cs_rnti = calloc(1, sizeof(*rel15->cs_rnti));
+      rel15->cs_rnti = (uint16_t*)&mac->cs_rnti;
+      rel15->rnti = mac->crnti;
+      rel15->SubcarrierSpacing = current_DL_BWP->scs;
       break;
     case TYPE_TC_RNTI_:
       // we use the initial DL BWP
@@ -524,13 +532,21 @@ void ue_dci_configuration(NR_UE_MAC_INST_t *mac, fapi_nr_dl_config_request_t *dl
     // if RA is ongoing use RA search space
     if (is_ss_monitor_occasion(frame, slot, slots_per_frame, pdcch_config->ra_SS)) {
       int rnti_type = mac->ra.ra_state == nrRA_WAIT_RAR ? TYPE_RA_RNTI_ : TYPE_TC_RNTI_;
+      LOG_D(NR_MAC_DCI, "Monitoring DCI for RA in frame %d slot %d\n", frame, slot);
       config_dci_pdu(mac, dl_config, rnti_type, slot, pdcch_config->ra_SS);
     }
   } else if (mac->state == UE_CONNECTED) {
     for (int i = 0; i < pdcch_config->list_SS.count; i++) {
       NR_SearchSpace_t *ss = pdcch_config->list_SS.array[i];
-      if (is_ss_monitor_occasion(frame, slot, slots_per_frame, ss))
-        config_dci_pdu(mac, dl_config, TYPE_C_RNTI_, slot, ss);
+      if (is_ss_monitor_occasion(frame, slot, slots_per_frame, ss)) {
+          LOG_D(NR_MAC, "(%d.%d)Configuring DCI with C-RNTI %x\n", frame, slot, mac->crnti);
+          config_dci_pdu(mac, dl_config, TYPE_C_RNTI_, slot, ss);
+
+          if (mac->CS_RNTI_present) {
+            LOG_D(NR_MAC, "(%d.%d)Configuring DCI for CG with CS-RNTI %x\n", frame, slot, (uint16_t)mac->cs_rnti);
+            config_dci_pdu(mac, dl_config, TYPE_CS_RNTI_, slot, ss);
+          }
+        }
     }
     if (pdcch_config->list_SS.count == 0 && pdcch_config->ra_SS) {
       // If the UE has not been provided a Type3-PDCCH CSS set or a USS set and

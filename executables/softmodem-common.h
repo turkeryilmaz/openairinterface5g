@@ -110,6 +110,7 @@ extern "C"
 #define CONFIG_HLP_NOITTI        "Do not start itti threads, call queue processing in place, inside the caller thread"
 #define CONFIG_HLP_LDPC_OFFLOAD  "Enable LDPC offload to AMD Xilinx T2 telco card\n"
 #define CONFIG_HLP_SYNC_REF      "UE acts a Sync Reference in Sidelink. 0-none 1-GNB 2-GNSS 4-localtiming\n"
+#define CONFIG_HLP_DOCG          "Configured grant type 2 is activated if UE supports that\n"
 #define CONFIG_HLP_TADV                                                                                                      \
   "Set RF board timing_advance to compensate fix delay inside the RF board between Rx and Tx timestamps (RF board internal " \
   "issues)\n"
@@ -146,6 +147,7 @@ extern "C"
 #define CONTINUOUS_TX       softmodem_params.continuous_tx
 #define SYNC_REF            softmodem_params.sync_ref
 #define LDPC_OFFLOAD_FLAG   softmodem_params.ldpc_offload_flag
+#define CG_ACTIVATE         softmodem_params.cg_activate
 
 #define DEFAULT_RFCONFIG_FILE    "/usr/local/etc/syriq/ue.band7.tm1.PRB100.NR40.dat";
 
@@ -194,6 +196,7 @@ extern int usrp_tx_thread;
   {"sync-ref",              CONFIG_HLP_SYNC_REF,      0,              .uptr=&SYNC_REF,                        .defintval=0,             TYPE_UINT,   0},  \
   {"A" ,                    CONFIG_HLP_TADV,          0,             .iptr=&softmodem_params.command_line_sample_advance,.defintval=0,            TYPE_INT,   0},  \
   {"E" ,                    CONFIG_HLP_TQFS,          PARAMFLAG_BOOL, .iptr=&softmodem_params.threequarter_fs, .defintval=0,            TYPE_INT,    0}, \
+  {"activate-cg",           CONFIG_HLP_DOCG,          PARAMFLAG_BOOL, .iptr=&CG_ACTIVATE,                      .defintval=0,            TYPE_INT,    0}, \
 }
 // clang-format on
 
@@ -235,6 +238,7 @@ extern int usrp_tx_thread;
                {"MONOLITHIC", "PNF", "VNF", "AERIAL","UE_STUB_PNF","UE_STUB_OFFNET","STANDALONE_PNF"}, \
                {NFAPI_MONOLITHIC, NFAPI_MODE_PNF, NFAPI_MODE_VNF, NFAPI_MODE_AERIAL,NFAPI_UE_STUB_PNF,NFAPI_UE_STUB_OFFNET,NFAPI_MODE_STANDALONE_PNF}, \
                7 } }, \
+    { .s5 = { NULL } },                     \
     { .s5 = { NULL } },                     \
     { .s5 = { NULL } },                     \
     { .s5 = { NULL } },                     \
@@ -354,6 +358,7 @@ typedef struct {
   uint32_t       sync_ref;
   int no_itti;
   int ldpc_offload_flag;
+  int cg_activate;
   int threequarter_fs;
 } softmodem_params_t;
 

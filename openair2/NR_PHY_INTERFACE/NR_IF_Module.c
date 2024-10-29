@@ -185,14 +185,17 @@ void handle_nr_ulsch(NR_UL_IND_t *UL_info)
     for (int i = 0; i < UL_info->rx_ind.number_of_pdus; i++) {
       const nfapi_nr_rx_data_pdu_t *rx = &UL_info->rx_ind.pdu_list[i];
       const nfapi_nr_crc_t *crc = &UL_info->crc_ind.crc_list[i];
-      LOG_D(NR_PHY, "UL_info->crc_ind.pdu_list[%d].rnti:%04x "
+      LOG_I(NR_PHY, "UL_info->crc_ind.pdu_list[%d].rnti:%04x "
                     "UL_info->rx_ind.pdu_list[%d].rnti:%04x\n",
                     i, crc->rnti, i, rx->rnti);
 
       AssertFatal(crc->rnti == rx->rnti, "mis-match between CRC RNTI %04x and RX RNTI %04x\n",
                   crc->rnti, rx->rnti);
+      if (crc->rnti == 0x3456) {
+        LOG_E(NR_MAC, "Debugging currently\n");
+      }
 
-      LOG_D(NR_MAC,
+      LOG_I(NR_MAC,
             "%4d.%2d Calling rx_sdu (CRC %s/tb_crc_status %d)\n",
             UL_info->frame,
             UL_info->slot,
@@ -427,7 +430,7 @@ void NR_UL_indication(NR_UL_IND_t *UL_info) {
   module_id_t module_id = UL_info->module_id;
   int CC_id = UL_info->CC_id;
 
-  LOG_D(NR_PHY,"SFN/SLOT:%d.%d module_id:%d CC_id:%d UL_info[rach_pdus:%zu rx_ind:%zu crcs:%zu]\n",
+  LOG_E(NR_PHY,"SFN/SLOT:%d.%d module_id:%d CC_id:%d UL_info[rach_pdus:%zu rx_ind:%zu crcs:%zu]\n",
         UL_info->frame, UL_info->slot,
         module_id, CC_id,
         gnb_rach_ind_queue.num_items,

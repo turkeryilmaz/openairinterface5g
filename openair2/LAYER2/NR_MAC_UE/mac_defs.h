@@ -244,6 +244,8 @@ typedef struct {
   uint16_t periodicPHR_Timer;
   ///timer before triggering a prohibit PHR
   uint16_t prohibitPHR_Timer;
+  // configured grant timer
+  NR_timer_t configuredGrant_Timer[NR_MAX_HARQ_PROCESSES];
   ///DL Pathloss change value
   uint16_t PathlossChange;
   ///number of subframe before triggering a periodic PHR
@@ -371,9 +373,18 @@ typedef struct {
 } NR_UE_HARQ_STATUS_t;
 
 typedef struct {
+  bool is_first_cg_ocassion;
+  nr_cgtimer_status_t cg_timer;
+  bool is_cg_ocassion_retx;  //DCI received for retransmission
+  uint32_t cg_config_index;
+  bool active;
+} NR_UL_CG_HARQ_INFO_t;
+
+typedef struct {
   uint32_t R;
   uint32_t TBS;
   int last_ndi;
+  NR_UL_CG_HARQ_INFO_t cg_harq_info;
 } NR_UL_HARQ_INFO_t;
 
 typedef struct {
@@ -482,6 +493,32 @@ typedef struct {
   A_SEQUENCE_OF(NR_SearchSpace_t) list_SS;
 } NR_BWP_PDCCH_t;
 
+typedef struct nr_sps_dci_params {
+  uint8_t dai[2];
+  uint8_t dci_format;
+  int n_CCE;
+  int N_CCE;
+
+  /* DL DCI */
+  uint8_t pdsch_to_harq_feedback_timing_indicator;
+  uint8_t pucch_resource_indicator;
+} nr_cs_dci_params_t;
+
+typedef struct {
+  uint8_t config_index;
+  bool cg_confirmation_apply;
+  nr_cg_indication_status_t cg_act_deact_receive_status;
+  nr_cg_indication_status_t cg_act_deact_valid_status;
+  bool cg_to_retrx;  // retransmission of previous CG TO
+  nr_cg_start_info_t allocation_info;
+  nr_configured_grant_state_t initial_ul_config_status;
+  fapi_nr_ul_config_request_pdu_t *inital_ul_config;
+  dci_pdu_rel15_t *initial_dci_pdu;
+  fapi_nr_dci_indication_pdu_t *initial_dci_indication;
+  nr_configured_grant_state_t cg_status;
+  uint64_t cg_occasion_counter;   // this counts the TO occasions(PUSCH durations) without retransmissions once the configured grant is activated 
+} NR_UE_UL_CG_INFO_t;
+
 /*!\brief Top level UE MAC structure */
 typedef struct NR_UE_MAC_INST_s {
   module_id_t ue_id;
@@ -578,6 +615,10 @@ typedef struct NR_UE_MAC_INST_s {
 
   //SIDELINK MAC PARAMETERS
   sl_nr_ue_mac_params_t *SL_MAC_PARAMS;
+
+  A_SEQUENCE_OF(NR_UE_UL_CG_INFO_t) configured_sched;
+  long cs_rnti;
+  bool CS_RNTI_present;
 
 } NR_UE_MAC_INST_t;
 

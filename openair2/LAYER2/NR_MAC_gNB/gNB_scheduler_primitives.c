@@ -1161,6 +1161,44 @@ void set_r_pucch_parms(int rsetindex,
   *start_symbol_index = default_pucch_firstsymb[rsetindex];
 }
 
+static bool nr_prepare_cg_dci(dci_pdu_rel15_t *dci_pdu_rel15, 
+                              const NR_UE_UL_BWP_t *current_UL_BWP, 
+                              NR_UE_CG_t *config_sched, 
+                              int round) {
+  nr_cg_indication_status_t *cg_ind_status = &config_sched->cg_act_deact_transmit_status;
+  NR_ConfiguredGrantConfig_t *cg_config = NULL;
+  uint8_t cg_id = 0;
+  bool cg_status = false;
+  
+  cg_config = current_UL_BWP->configuredGrantConfig ? current_UL_BWP->configuredGrantConfig : current_UL_BWP->configuredGrantConfigList->list.array[cg_id];
+
+  if (cg_config) {  // cg is configured by RRC
+    cg_status = true;
+    if (cg_ind_status->status_cg_activation == TO_BE_SENT && round == 0) {
+      LOG_E(NR_MAC, "[CG Type 2]Configure the pdcch dci with CS-RNTI to send CG Type2 activation\n");
+      dci_pdu_rel15->ndi = 0;
+      dci_pdu_rel15->harq_pid = cg_id;
+      dci_pdu_rel15->rv = 0;
+      cg_ind_status->status_cg_activation = SENT; 
+    }
+    
+    if (cg_ind_status->status_cg_deactivation == TO_BE_SENT) {
+      if (cg_ind_status->status_cg_activation == NOT_SEND) 
+        AssertFatal(0, "[CG Type2]CG Deactivation is not possible with out an CG activation\n");
+      LOG_E(NR_MAC, "[CG Type2]Configure the pdcch dci with CS-RNTI to send CG de-activation\n");
+      memset(dci_pdu_rel15, 0, sizeof(*dci_pdu_rel15));
+      dci_pdu_rel15->ndi = 0;
+      dci_pdu_rel15->harq_pid = 0;
+      dci_pdu_rel15->rv = 0;
+      dci_pdu_rel15->frequency_domain_assignment.val = (1 << dci_pdu_rel15->frequency_domain_assignment.nbits)-1;
+      dci_pdu_rel15->mcs = (1<<5) - 1;
+      cg_ind_status->status_cg_deactivation = SENT;
+    }
+  }
+  return cg_status;
+}
+
+
 void prepare_dci(const NR_UE_ServingCell_Info_t *servingCellInfo,
                  const NR_UE_DL_BWP_t *current_BWP,
                  const NR_ControlResourceSet_t *coreset,
@@ -1245,7 +1283,9 @@ void fill_dci_pdu_rel15(const NR_UE_ServingCell_Info_t *servingCellInfo,
                         NR_SearchSpace_t *ss,
                         NR_ControlResourceSet_t *coreset,
                         long pdsch_HARQ_ACK_Codebook,
-                        uint16_t cset0_bwp_size)
+                        uint16_t cset0_bwp_size,
+                        NR_UE_CG_t *config_sched,
+                        int harq_round)
 {
   uint8_t fsize = 0, pos = 0;
   uint64_t *dci_pdu = (uint64_t *)pdcch_dci_pdu->Payload;
@@ -1575,8 +1615,13 @@ void fill_dci_pdu_rel15(const NR_UE_ServingCell_Info_t *servingCellInfo,
   case NR_UL_DCI_FORMAT_0_0:
     switch (rnti_type) {
       case TYPE_C_RNTI_:
+      case TYPE_CS_RNTI_:
+        // modify the dci fields for sending cg activation or release, scrambled with cs-rnti, if it is supported and activated
+        bool cg_status = rnti_type == TYPE_CS_RNTI_? nr_prepare_cg_dci(dci_pdu_rel15, current_UL_BWP, config_sched, harq_round) : false;
+
         LOG_D(NR_MAC,
-              "Filling format 0_0 DCI for CRNTI (size %d bits, format ind %d)\n",
+              "Filling format 0_0 DCI for %s (size %d bits, format ind %d)\n",
+              cg_status ? "CS-RNTI" : "C-RNTI",
               dci_size,
               dci_pdu_rel15->format_indicator);
         // indicating a UL DCI format 1bit
@@ -1686,7 +1731,14 @@ void fill_dci_pdu_rel15(const NR_UE_ServingCell_Info_t *servingCellInfo,
   case NR_UL_DCI_FORMAT_0_1:
     switch (rnti_type) {
       case TYPE_C_RNTI_:
-        LOG_D(NR_MAC, "Filling NR_UL_DCI_FORMAT_0_1 size %d format indicator %d\n", dci_size, dci_pdu_rel15->format_indicator);
+      case TYPE_CS_RNTI_:
+        // modify the dci fields for sending cg activation or release, scrambled with cs-rnti, if it is supported and activated
+        bool cg_status = rnti_type == TYPE_CS_RNTI_? nr_prepare_cg_dci(dci_pdu_rel15, current_UL_BWP, config_sched, harq_round) : false;
+        
+        LOG_D(NR_MAC, "Filling NR_UL_DCI_FORMAT_0_1 for %s (size %d format indicator %d)\n", 
+              cg_status ? "CS-RNTI" : "C-RNTI",
+              dci_size, 
+              dci_pdu_rel15->format_indicator);
         // Indicating a DL DCI format 1bit
         pos = 1;
         *dci_pdu |= ((uint64_t)dci_pdu_rel15->format_indicator & 0x1) << (dci_size - pos);
@@ -2067,6 +2119,12 @@ NR_UE_info_t *find_nr_UE(NR_UEs_t *UEs, rnti_t rntiP)
       LOG_D(NR_MAC,"Search and found rnti: %04x\n", rntiP);
       return UE;
     }
+    else if (UE->cs_rnti && *UE->cs_rnti == rntiP)
+    {
+      LOG_E(NR_MAC,"Search and found rnti: %04x\n", rntiP);
+      return UE;
+    }
+    
   }
   return NULL;
 }
@@ -2266,6 +2324,25 @@ void configure_UE_BWP(gNB_MAC_INST *nr_mac,
     UL_BWP->pusch_Config = ubwpd->pusch_Config->choice.setup;
     UL_BWP->pucch_Config = ubwpd->pucch_Config->choice.setup;
     UL_BWP->srs_Config = ubwpd->srs_Config->choice.setup;
+
+    // configured scheduling
+    bool cs_RNTI_Config = CellGroup && CellGroup->physicalCellGroupConfig && CellGroup->physicalCellGroupConfig->cs_RNTI ? true : false;
+    LOG_E(NR_MAC, "Configured grant is %s\n", cs_RNTI_Config ? "activated" : "not-activated");
+    if(ubwpd->configuredGrantConfig){
+      NR_UE_CG_t *cg_sched = calloc(1, sizeof(*cg_sched));
+      cg_sched->cg_act_deact_transmit_status.status_cg_activation = ubwpd->configuredGrantConfig && cs_RNTI_Config && get_softmodem_params()->cg_activate ? TO_BE_SENT : NOT_SEND;
+      cg_sched->cg_act_deact_transmit_status.status_cg_deactivation = NOT_SEND;
+      ASN_SEQUENCE_ADD(&sched_ctrl->configured_sched, cg_sched);
+    }
+    else if (ubwpd->ext1 && ubwpd->ext1->configuredGrantConfigToAddModList_r16){
+      NR_ConfiguredGrantConfigToAddModList_r16_t *cg_list = ubwpd->ext1->configuredGrantConfigToAddModList_r16;
+      for(int i = 0; i < cg_list->list.count; i++){
+        NR_UE_CG_t *cg_sched = calloc(1, sizeof(*cg_sched));
+        cg_sched->cg_act_deact_transmit_status.status_cg_activation = cg_list->list.array[i] && cs_RNTI_Config && get_softmodem_params()->cg_activate ? TO_BE_SENT : NOT_SEND;
+        cg_sched->cg_act_deact_transmit_status.status_cg_deactivation = NOT_SEND;
+        ASN_SEQUENCE_ADD(&sched_ctrl->configured_sched, cg_sched);
+      }
+    }
   }
   else {
     DL_BWP->bwp_id = 0;
@@ -2275,6 +2352,7 @@ void configure_UE_BWP(gNB_MAC_INST *nr_mac,
     UL_BWP->pusch_Config = NULL;
     UL_BWP->pucch_Config = NULL;
     UL_BWP->configuredGrantConfig = NULL;
+    UL_BWP->configuredGrantConfigList = NULL;
   }
 
   if (old_dl_bwp_id != DL_BWP->bwp_id)
@@ -2365,8 +2443,13 @@ void configure_UE_BWP(gNB_MAC_INST *nr_mac,
       }
     }
 
-    if (CellGroup && CellGroup->physicalCellGroupConfig)
+    if (CellGroup && CellGroup->physicalCellGroupConfig) {
       UE->pdsch_HARQ_ACK_Codebook = CellGroup->physicalCellGroupConfig->pdsch_HARQ_ACK_Codebook;
+      if (CellGroup->physicalCellGroupConfig->cs_RNTI) {
+        LOG_E(NR_MAC, "Added CS_RNTI\n");
+        UE->cs_rnti = (rnti_t*)&CellGroup->physicalCellGroupConfig->cs_RNTI->choice.setup;
+      }
+    }
 
     // Reset required fields in sched_ctrl (e.g. ul_ri and tpmi)
     reset_sched_ctrl(sched_ctrl);

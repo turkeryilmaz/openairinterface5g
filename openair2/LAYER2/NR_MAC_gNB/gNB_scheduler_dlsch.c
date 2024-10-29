@@ -1229,7 +1229,9 @@ void nr_schedule_ue_spec(module_id_t module_id,
                        sched_ctrl->search_space,
                        sched_ctrl->coreset,
                        UE->pdsch_HARQ_ACK_Codebook,
-                       gNB_mac->cset0_bwp_size);
+                       gNB_mac->cset0_bwp_size,
+                       NULL,
+                       -1);
 
     LOG_D(NR_MAC,
           "coreset params: FreqDomainResource %llx, start_symbol %d  n_symb %d\n",

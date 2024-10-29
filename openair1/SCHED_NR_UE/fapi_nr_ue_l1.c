@@ -455,14 +455,14 @@ static void nr_ue_scheduled_response_ul(PHY_VARS_NR_UE *phy, fapi_nr_ul_config_r
         int current_harq_pid = pdu->pusch_config_pdu.pusch_data.harq_process_id;
         NR_UL_UE_HARQ_t *harq_process_ul_ue = &phy->ul_harq_processes[current_harq_pid];
         nfapi_nr_ue_pusch_pdu_t *pusch_pdu = &phy_data->ulsch.pusch_pdu;
-        LOG_D(PHY,
+        LOG_E(PHY,
               "copy pusch_config_pdu nrOfLayers:%d, num_dmrs_cdm_grps_no_data:%d \n",
               pdu->pusch_config_pdu.nrOfLayers,
               pdu->pusch_config_pdu.num_dmrs_cdm_grps_no_data);
 
         memcpy(pusch_pdu, &pdu->pusch_config_pdu, sizeof(*pusch_pdu));
         if (pdu->pusch_config_pdu.tx_request_body.pdu) {
-          LOG_D(PHY,
+          LOG_E(PHY,
                 "%d.%d Copying %d bytes to harq_process_ul_ue->a (harq_pid %d)\n",
                 ul_config->frame,
                 ul_config->slot,

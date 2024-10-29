@@ -963,6 +963,21 @@ static void setup_puschconfig(NR_PUSCH_Config_t *source, NR_PUSCH_Config_t *targ
   }
 }
 
+void setup_CGtimers(NR_UE_MAC_INST_t *mac, NR_UE_UL_BWP_t *bwp){
+  NR_UE_SCHEDULING_INFO *si = &mac->scheduling_info;
+  int scs = mac->current_UL_BWP->scs;
+
+  //int slots_per_subframe = nr_slots_per_frame[scs] / 10;
+  bool is_normal_cp = bwp->cyclicprefix ? false : true;
+  uint8_t num_sym_slot = is_normal_cp ? 14 : 12;
+  uint32_t periodic_symbols = nr_get_cg_periodicity(bwp->configuredGrantConfig->periodicity, scs);
+  uint32_t cg_timer = *bwp->configuredGrantConfig->configuredGrantTimer * periodic_symbols;
+  uint32_t target = periodic_symbols < UINT_MAX ? ceil(cg_timer / num_sym_slot) : periodic_symbols;
+  for (int i = 0; i < NR_MAX_HARQ_PROCESSES; i++) {
+    nr_timer_setup(&si->configuredGrant_Timer[i], target, 1); // 1 slot update rate
+  }
+}
+
 static void setup_CGconfig(NR_ConfiguredGrantConfig_t *source, NR_ConfiguredGrantConfig_t *target)
 {
   UPDATE_IE(target->frequencyHopping, source->frequencyHopping, long);
@@ -1296,6 +1311,24 @@ static NR_UE_DL_BWP_t *get_dl_bwp_structure(NR_UE_MAC_INST_t *mac, int bwp_id, b
   return bwp;
 }
 
+NR_UE_UL_CG_INFO_t *get_cg_info_default(NR_UE_UL_CG_INFO_t *info){
+  
+  NR_UE_UL_CG_INFO_t *cg_info = NULL;
+  if(!info) 
+    cg_info = calloc(1, sizeof(*cg_info));
+  else
+    cg_info = info;
+
+  cg_info->cg_act_deact_receive_status.status_cg_activation = NOT_RECEIVED;
+  cg_info->cg_act_deact_receive_status.status_cg_deactivation = NOT_RECEIVED;
+  cg_info->cg_act_deact_valid_status.status_cg_activation = NOT_VALID;
+  cg_info->cg_act_deact_valid_status.status_cg_deactivation = NOT_VALID;
+  cg_info->initial_ul_config_status = NOT_STORED;
+  cg_info->cg_confirmation_apply = false;
+
+  return cg_info;
+}
+
 static NR_UE_UL_BWP_t *get_ul_bwp_structure(NR_UE_MAC_INST_t *mac, int bwp_id, bool setup)
 {
   NR_UE_UL_BWP_t *bwp = NULL;
@@ -1351,6 +1384,7 @@ static void configure_dedicated_BWP_dl(NR_UE_MAC_INST_t *mac, int bwp_id, NR_BWP
 static void configure_dedicated_BWP_ul(NR_UE_MAC_INST_t *mac, int bwp_id, NR_BWP_UplinkDedicated_t *ul_dedicated)
 {
   if (ul_dedicated) {
+    //NR_UE_SCHEDULING_INFO *si = &mac->scheduling_info;
     NR_UE_UL_BWP_t *bwp = get_ul_bwp_structure(mac, bwp_id, true);
     bwp->bwp_id = bwp_id;
     if(ul_dedicated->pucch_Config) {
@@ -1380,7 +1414,8 @@ static void configure_dedicated_BWP_ul(NR_UE_MAC_INST_t *mac, int bwp_id, NR_BWP
         setup_srsconfig(ul_dedicated->srs_Config->choice.setup, bwp->srs_Config);
       }
     }
-
+    
+    NR_UE_UL_CG_INFO_t *cg_info = NULL;
     if(ul_dedicated->configuredGrantConfig){
       if(ul_dedicated->configuredGrantConfig->present == NR_SetupRelease_ConfiguredGrantConfig_PR_release)
         asn1cFreeStruc(asn_DEF_NR_ConfiguredGrantConfig, bwp->configuredGrantConfig);
@@ -1388,9 +1423,24 @@ static void configure_dedicated_BWP_ul(NR_UE_MAC_INST_t *mac, int bwp_id, NR_BWP
         if(!bwp->configuredGrantConfig)
           bwp->configuredGrantConfig = calloc(1, sizeof(*bwp->configuredGrantConfig));
         setup_CGconfig(ul_dedicated->configuredGrantConfig->choice.setup, bwp->configuredGrantConfig);
+        cg_info = get_cg_info_default(NULL);
+        setup_CGtimers(mac, bwp);
+        ASN_SEQUENCE_ADD(&mac->configured_sched, cg_info);
         LOG_E(NR_RRC, "Setting up the configured grant at UE\n");
       }
-      
+    }
+    else{
+      if(ul_dedicated->ext1 && ul_dedicated->ext1->configuredGrantConfigToAddModList_r16){
+        NR_ConfiguredGrantConfigToAddModList_r16_t *cg_config_list = ul_dedicated->ext1->configuredGrantConfigToAddModList_r16;
+        if(!bwp->configuredGrantConfigList)
+          bwp->configuredGrantConfigList = calloc(cg_config_list->list.count, sizeof(*bwp->configuredGrantConfigList));
+        for(int i = 0; i < NR_MAX_CG_BWP; i++){
+          setup_CGconfig(cg_config_list->list.array[i], bwp->configuredGrantConfigList->list.array[i]);
+          cg_info = get_cg_info_default(NULL);
+          setup_CGtimers(mac, bwp);
+          ASN_SEQUENCE_ADD(&mac->configured_sched, cg_info);
+        }
+      }
     }
   }
 }
@@ -1595,6 +1645,7 @@ static void configure_physicalcellgroup(NR_UE_MAC_INST_t *mac,
   mac->pdsch_HARQ_ACK_Codebook = phyConfig->pdsch_HARQ_ACK_Codebook;
   mac->harq_ACK_SpatialBundlingPUCCH = phyConfig->harq_ACK_SpatialBundlingPUCCH ? true : false;
   mac->harq_ACK_SpatialBundlingPUSCH = phyConfig->harq_ACK_SpatialBundlingPUSCH ? true : false;
+  mac->CS_RNTI_present = phyConfig->cs_RNTI ? true : false;
 
   NR_P_Max_t *p_NR_FR1 = phyConfig->p_NR_FR1;
   NR_P_Max_t *p_UE_FR1 = phyConfig->ext1 ?
@@ -1606,6 +1657,8 @@ static void configure_physicalcellgroup(NR_UE_MAC_INST_t *mac,
     mac->p_Max_alt = p_UE_FR1 == NULL ? *p_NR_FR1 :
                                         (*p_UE_FR1 < *p_NR_FR1 ?
                                         *p_UE_FR1 : *p_NR_FR1);
+
+  mac->cs_rnti = mac->CS_RNTI_present ? phyConfig->cs_RNTI->choice.setup : -1;
 }
 
 static uint32_t get_sr_DelayTimer(long logicalChannelSR_DelayTimer)

@@ -435,6 +435,7 @@ typedef struct {
   uint8_t dci_length_options[2];
   nfapi_nr_dci_formats_e dci_format_options[2];
   uint8_t ss_type_options[2];
+  uint16_t *cs_rnti;
 } fapi_nr_dl_config_dci_dl_pdu_rel15_t;
 
 typedef struct {

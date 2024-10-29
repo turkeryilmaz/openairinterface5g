@@ -509,6 +509,7 @@ typedef struct NR_UE_ul_harq {
   uint8_t ndi;
   uint8_t round;
   uint16_t feedback_slot;
+  bool is_ul_semistatic_transmission;
 
   /// sched_pusch keeps information on MCS etc used for the initial transmission
   NR_sched_pusch_t sched_pusch;
@@ -518,6 +519,14 @@ typedef struct NR_QoS_config_s {
   uint64_t fiveQI;
   uint64_t priority;
 } NR_QoS_config_t;
+
+typedef struct NR_UE_CG_s {
+  nr_cg_indication_status_t cg_act_deact_transmit_status;
+  nr_cg_start_info_t allocation_info;
+  NR_sched_pusch_t *initial_sched_pusch;
+  NR_sched_pucch_t *initial_pucch;
+  bool is_cg_conrec;                 // status of whether MAC CE that specifies whether UE received activation signal or not ?
+} NR_UE_CG_t;
 
 /*! \brief scheduling control information set through an API */
 #define MAX_CSI_REPORTS 48
@@ -619,6 +628,9 @@ typedef struct {
   nr_srs_feedback_t srs_feedback;
   nssai_t dl_lc_nssai[NR_MAX_NUM_LCID];
 
+  // configured scheduling
+  A_SEQUENCE_OF(NR_UE_CG_t) configured_sched;
+
   // Information about the QoS configuration for each LCID/DRB
   NR_QoS_config_t qos_config[NR_MAX_NUM_LCID - 4][NR_MAX_NUM_QFI]; // 0 -CCCH and 1- 3 SRBs(0,1,2)
 } NR_UE_sched_ctrl_t;
@@ -672,6 +684,7 @@ typedef struct nr_mac_rrc_ul_if_s {
 /*! \brief UE list used by gNB to order UEs/CC for scheduling*/
 typedef struct {
   rnti_t rnti;
+  rnti_t* cs_rnti;
   uid_t uid; // unique ID of this UE
   /// scheduling control info
   nr_csi_report_t csi_report_template[MAX_CSI_REPORTCONFIG];

@@ -730,12 +730,16 @@ void nr_dci_decoding_procedure(PHY_VARS_NR_UE *ue,
 
       const uint32_t crc = polar_decoder_int16(tmp_e, dci_estimation, 1, NR_POLAR_DCI_MESSAGE_TYPE, dci_length, L);
 
-      rnti_t n_rnti = rel15->rnti;
+      bool is_configured_scheduling = rel15->cs_rnti ? true : false;
+      LOG_D(NR_PHY_DCI, "Debug: is configured sched: %d, cs rnti: %p\n", is_configured_scheduling, rel15->cs_rnti);
+      rnti_t n_rnti = is_configured_scheduling ? *rel15->cs_rnti : rel15->rnti;
+
       if (crc == n_rnti) {
-        LOG_D(NR_PHY_DCI,
-              "(%i.%i) Received dci indication (rnti %x,dci format %d,n_CCE %d,payloadSize %d,payload %llx)\n",
+        LOG_E(NR_PHY_DCI,
+              "(%i.%i) Received dci indication for %s scheduling (rnti %x,dci format %d,n_CCE %d,payloadSize %d,payload %llx)\n",
               proc->frame_rx,
               proc->nr_slot_rx,
+              is_configured_scheduling ? "configured" : "dynamic",
               n_rnti,
               rel15->dci_format_options[k],
               CCEind,

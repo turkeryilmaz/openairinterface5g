@@ -136,7 +136,27 @@ void nr_feptx0(RU_t *ru,int tti_tx,int first_symbol, int num_symbols, int aa) {
   }
 
   if (aa==0 && first_symbol==0) stop_meas(&ru->ofdm_mod_stats);
-        
+
+  #ifdef DEBUG_TX
+  if (ru->proc.frame_tx == 100) {
+    LOG_E(PHY, "The slot is %d\n", slot);
+    LOG_E(PHY, "Number of samples per slot is %d\n", fp->samples_per_slot_wCP);
+    LOG_E(PHY, "Number of samples per frame with CP is %d\n", fp->samples_per_frame_wCP);
+    LOG_E(PHY, "OFDM symbol size is %d\n", fp->ofdm_symbol_size);
+    LOG_E(PHY, "slot offset is %d\n", slot_offset);
+    LOG_E(PHY, "slot offsetF is %d\n", slot_offsetF);
+    char filename[100];
+    sprintf(filename, "gNBdataT_frame%d_sl%d.m", ru->proc.frame_tx, slot);
+    char filename_update1[300] = "/home/korada/work_oai_urllc/openairinterface5g/mat/";
+    strcat(filename_update1, filename);
+    LOG_M(filename_update1, "txdataT_frame", &ru->common.txdata[0][slot_offset], fp->get_samples_per_slot(slot, fp), 1, 1);
+
+    sprintf(filename, "gNBdataF_frame%d_sl%d.m", ru->proc.frame_tx, slot);
+    char filename_update2[300] = "/home/korada/work_oai_urllc/openairinterface5g/mat/";
+    strcat(filename_update2, filename);
+    LOG_M(filename_update2, "txdataF_frame", &ru->common.txdataF[0][slot_offsetF], fp->samples_per_subframe, 1, 1);
+  }
+#endif
   //VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PHY_PROCEDURES_RU_FEPTX_OFDM+(first_symbol!=0?1:0), 0);
 }
 

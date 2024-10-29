@@ -716,7 +716,9 @@ static void nr_generate_Msg3_retransmission(module_id_t module_idP,
                        ss,
                        coreset,
                        0, // parameter not needed for DCI 0_0
-                       nr_mac->cset0_bwp_size);
+                       nr_mac->cset0_bwp_size,
+                       NULL,
+                       -1);
 
     // Mark the corresponding RBs as used
 
@@ -1450,7 +1452,9 @@ static void nr_generate_Msg2(module_id_t module_idP,
                      ss,
                      coreset,
                      0, // parameter not needed for DCI 1_0
-                     nr_mac->cset0_bwp_size);
+                     nr_mac->cset0_bwp_size,
+                     NULL,
+                     -1);
 
   // DL TX request
   nfapi_nr_pdu_t *tx_req = &TX_req->pdu_list[TX_req->Number_of_PDUs];
@@ -1687,7 +1691,9 @@ static void prepare_dl_pdus(gNB_MAC_INST *nr_mac,
                      ss,
                      coreset,
                      0, // parameter not needed for DCI 1_0
-                     nr_mac->cset0_bwp_size);
+                     nr_mac->cset0_bwp_size,
+                     NULL,
+                     -1);
 
   LOG_D(NR_MAC, "BWPSize: %i\n", pdcch_pdu_rel15->BWPSize);
   LOG_D(NR_MAC, "BWPStart: %i\n", pdcch_pdu_rel15->BWPStart);

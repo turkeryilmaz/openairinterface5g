@@ -735,7 +735,7 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx)
 
   const int soffset = (slot_rx & 3) * gNB->frame_parms.symbols_per_slot * gNB->frame_parms.ofdm_symbol_size;
   int offset = 10 * gNB->frame_parms.ofdm_symbol_size + gNB->frame_parms.first_carrier_offset;
-  LOG_D(PHY,
+  LOG_E(PHY,
         "frame %d, slot %d: UL signal energy %d\n",
         frame_rx,
         slot_rx,
@@ -814,7 +814,7 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx)
     NR_UL_gNB_HARQ_t *ulsch_harq = ulsch->harq_process;
     AssertFatal(ulsch_harq != NULL, "harq_pid %d is not allocated\n", ulsch->harq_pid);
     if ((ulsch->active == true) && (ulsch->frame == frame_rx) && (ulsch->slot == slot_rx) && (ulsch->handled == 0)) {
-      LOG_D(PHY, "PUSCH ID %d with RNTI %x detection started in frame %d slot %d\n", ULSCH_id, ulsch->rnti, frame_rx, slot_rx);
+      LOG_E(PHY, "PUSCH ID %d with RNTI %x detection started in frame %d slot %d with harq id %d\n", ULSCH_id, ulsch->rnti, frame_rx, slot_rx, ulsch->harq_pid);
   
       int num_dmrs = 0;
       for (int s = 0; s < NR_NUMBER_OF_SYMBOLS_PER_SLOT; s++)
@@ -871,7 +871,7 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx)
       if (dB_fixed_x10(pusch_vars->ulsch_power_tot) < dB_fixed_x10(pusch_vars->ulsch_noise_power_tot) + gNB->pusch_thres) {
         NR_gNB_PHY_STATS_t *stats = get_phy_stats(gNB, ulsch->rnti);
 
-        LOG_D(PHY,
+        LOG_E(PHY,
               "PUSCH not detected in %d.%d (%d,%d,%d)\n",
               frame_rx,
               slot_rx,

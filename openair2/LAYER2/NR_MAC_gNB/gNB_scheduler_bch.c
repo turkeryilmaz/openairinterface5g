@@ -523,7 +523,9 @@ static void nr_fill_nfapi_dl_sib1_pdu(int Mod_idP,
                      gNB_mac->sched_ctrlCommon->search_space,
                      gNB_mac->sched_ctrlCommon->coreset,
                      0, // parameter not needed for DCI 1_0
-                     gNB_mac->cset0_bwp_size);
+                     gNB_mac->cset0_bwp_size,
+                     NULL,
+                     -1);
 
   LOG_D(MAC,"BWPSize: %i\n", pdcch_pdu_rel15->BWPSize);
   LOG_D(MAC,"BWPStart: %i\n", pdcch_pdu_rel15->BWPStart);

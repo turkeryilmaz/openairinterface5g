@@ -93,6 +93,9 @@ void nr_ue_mac_default_configs(NR_UE_MAC_INST_t *mac)
   int subframes_per_slot = nr_slots_per_frame[mu] / 10;
   nr_timer_setup(&mac->scheduling_info.retxBSR_Timer, 80 * subframes_per_slot, 1); // 1 slot update rate
   nr_timer_setup(&mac->scheduling_info.periodicBSR_Timer, 10 * subframes_per_slot, 1); // 1 slot update rate
+  for(int i = 0; i < 16; i++){
+    nr_timer_setup(&mac->scheduling_info.configuredGrant_Timer[i], 10 * subframes_per_slot, 1);
+  }
 
   mac->scheduling_info.periodicPHR_Timer = NR_PHR_Config__phr_PeriodicTimer_sf10;
   mac->scheduling_info.prohibitPHR_Timer = NR_PHR_Config__phr_ProhibitTimer_sf10;
@@ -132,8 +135,10 @@ NR_UE_MAC_INST_t *nr_l2_init_ue(int nb_inst)
     mac->ue_id = j;
     nr_ue_init_mac(mac);
     nr_ue_mac_default_configs(mac);
-    if (get_softmodem_params()->sa)
+    if (get_softmodem_params()->sa){
       ue_init_config_request(mac, get_softmodem_params()->numerology);
+      LOG_E(NR_MAC, "Test\n");
+    }
   }
 
   int rc = rlc_module_init(0);
@@ -177,6 +182,9 @@ void reset_mac_inst(NR_UE_MAC_INST_t *nr_mac)
   nr_timer_stop(&nr_mac->scheduling_info.retxBSR_Timer);
   for (int i = 0; i < NR_MAX_SR_ID; i++)
     nr_timer_stop(&nr_mac->scheduling_info.sr_info[i].prohibitTimer);
+
+  for (int i = 0; i < NR_MAX_HARQ_PROCESSES; i++)
+    nr_timer_stop(&nr_mac->scheduling_info.configuredGrant_Timer[i]);
 
   // consider all timeAlignmentTimers as expired and perform the corresponding actions in clause 5.2
   // TODO
@@ -235,6 +243,8 @@ void release_mac_configuration(NR_UE_MAC_INST_t *mac,
     asn1cFreeStruc(asn_DEF_NR_TDD_UL_DL_ConfigCommon, mac->tdd_UL_DL_ConfigurationCommon);
     for (int i = mac->lc_ordered_list.count; i > 0 ; i--)
       asn_sequence_del(&mac->lc_ordered_list, i - 1, 1);
+    for (int i = mac->configured_sched.count; i > 0 ; i--)
+      asn_sequence_del(&mac->configured_sched, i - 1, 1);
   }
 
   asn1cFreeStruc(asn_DEF_NR_CrossCarrierSchedulingConfig, sc->crossCarrierSchedulingConfig);

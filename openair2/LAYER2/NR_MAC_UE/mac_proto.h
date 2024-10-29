@@ -85,6 +85,8 @@ void nr_rrc_mac_config_req_mib(module_id_t module_id,
                                NR_MIB_t *mibP,
                                int sched_sib1);
 
+void setup_CGtimers(NR_UE_MAC_INST_t *mac, NR_UE_UL_BWP_t *bwp);
+
 void nr_rrc_mac_config_req_sib1(module_id_t module_id,
                                 int cc_idP,
                                 NR_SI_SchedulingInfo_t *si_SchedulingInfo,
@@ -370,7 +372,12 @@ int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
                         RAR_grant_t *rar_grant,
                         uint16_t rnti,
                         int ss_type,
-                        const nr_dci_format_t dci_format);
+                        const nr_dci_format_t dci_format,
+                        NR_UL_CG_HARQ_INFO_t *cg_harq_info);
+
+NR_UE_UL_CG_INFO_t *get_cg_info_default(NR_UE_UL_CG_INFO_t *info);
+
+int get_cg_occasion_index(NR_UE_MAC_INST_t *mac, int cg_config_index);
 
 int nr_rrc_mac_config_req_sl_preconfig(module_id_t module_id,
                                        NR_SL_PreconfigurationNR_r16_t *sl_preconfiguration,

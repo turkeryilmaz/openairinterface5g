@@ -45,6 +45,7 @@
 #define NR_NB_SC_PER_RB 12
 #define NR_MAX_NUM_LCID 32
 #define NR_MAX_NUM_QFI 64
+#define NR_MAX_CG_BWP 12
 #define RNTI_NAMES /* see 38.321  Table 7.1-2  RNTI usage */      \
   R(TYPE_C_RNTI_) /* Cell RNTI */                                  \
   R(TYPE_CS_RNTI_) /* Configured Scheduling RNTI */                \
@@ -103,6 +104,28 @@ typedef enum frequency_range_e {
   FR2
 } frequency_range_t;
 
+typedef enum nr_scheduling_type_e {
+  CONFIGURED = 0,
+  DYNAMIC
+} nr_scheduling_type_t;
+
+typedef enum nr_configured_grant_state_e{
+  TO_BE_SENT = 0,
+  SENT,
+  NOT_SEND,
+  TO_BE_RECEIVED,
+  RECEIVED,
+  NOT_RECEIVED,
+  VALID,
+  NOT_VALID,
+  CG_ACTIVE,
+  CG_INACTIVE,
+  RETRANSMISSION,
+  NOT_RETRANSMISSION,
+  STORED,
+  NOT_STORED
+} nr_configured_grant_state_t;
+
 typedef struct {
   /// Time shift in number of samples estimated based on DMRS-PDSCH/PUSCH
   int est_delay;
@@ -124,6 +147,13 @@ typedef struct {
  * @param timer Timer to be started
  */
 void nr_timer_start(NR_timer_t *timer);
+
+/**
+ * @brief To restart a timer
+ * @param timer Timer to be restarted
+ */
+void nr_timer_restart(NR_timer_t *timer);
+
 /**
  * @brief To stop a timer
  * @param timer Timer to stopped

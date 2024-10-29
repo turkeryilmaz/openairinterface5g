@@ -1015,3 +1015,9 @@ void nr_timer_setup(NR_timer_t *timer, const uint32_t target, const uint32_t ste
   timer->step = step;
   nr_timer_stop(timer);
 }
+
+void nr_timer_restart(NR_timer_t *timer)
+{ 
+  nr_timer_stop(timer);
+  nr_timer_start(timer);
+}

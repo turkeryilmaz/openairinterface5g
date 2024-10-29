@@ -3477,6 +3477,88 @@ int ul_ant_bits(NR_DMRS_UplinkConfig_t *NR_DMRS_UplinkConfig, long transformPrec
 
 static const int tdd_period_to_num[8] = {500, 625, 1000, 1250, 2000, 2500, 5000, 10000};
 
+int nr_get_CG_alloc(frame_t frame, 
+                    slot_t slot, 
+                    const NR_UE_UL_BWP_t *ul_bwp, 
+                    const NR_ConfiguredGrantConfig_t *cg_config,
+                    int start_sym,
+                    nr_cg_start_info_t *cg_start_info, 
+                    NR_TDD_UL_DL_ConfigCommon_t *tdd, 
+                    frame_type_t frame_type) {
+  const int mu = ul_bwp->scs;
+  const uint16_t num_slots_frame = nr_slots_per_frame[mu];
+  const bool is_normal_cp = ul_bwp->cyclicprefix ? false : true;
+  const bool is_ul_slot = is_nr_UL_slot(tdd, slot, frame_type);
+  const uint8_t num_sym_slot = is_normal_cp ? 14 : 12;
+  // const NR_ConfiguredGrantConfig_t *cg_config = ul_bwp->configuredGrantConfig;
+  int alloc_cg = -1;
+  bool is_alloc_cg = false;
+
+  if((!(cg_config && cg_start_info)) || (start_sym >= num_sym_slot))
+    return alloc_cg;
+
+  if (!is_ul_slot){return alloc_cg;}
+
+  // Calculate initial TX slot and frame of CG transmission
+  int initial_slot_tx = (cg_start_info->slot + cg_start_info->tda_info->k2) % nr_slots_per_frame[mu];
+  int initial_frame_tx = ((cg_start_info->slot + cg_start_info->tda_info->k2) > (nr_slots_per_frame[mu]-1)) ? (cg_start_info->frame + 1) % 1024 : cg_start_info->frame;
+  
+   LOG_D(NR_MAC, "Initial frame : %d, curr frame: %d, Initial slot: %d, curr slot: %d\n", initial_frame_tx, frame, initial_slot_tx, slot);
+  if((frame < initial_frame_tx) || (frame == initial_frame_tx && slot < initial_slot_tx)){return alloc_cg;}
+
+  /* perodicity in symbols  */
+  int16_t period_symbols = nr_get_cg_periodicity(cg_config->periodicity, ul_bwp->scs);
+  AssertFatal(period_symbols > 0, "The period between CG resource allocation must be positive\n");
+
+  for (int sym_index = start_sym; sym_index < num_sym_slot; sym_index++){
+    int current_symbol = (num_slots_frame * frame * num_sym_slot + slot * num_sym_slot + sym_index) % (1024 * num_slots_frame * num_sym_slot);
+
+    int start_sym = (num_slots_frame * num_sym_slot * initial_frame_tx + 
+                   initial_slot_tx * num_sym_slot + cg_start_info->tda_info->startSymbolIndex) % (1024 * num_slots_frame * num_sym_slot);
+
+    int sym_diff = (current_symbol - start_sym < 0) ? current_symbol - start_sym + (1024 * num_slots_frame * num_sym_slot) : current_symbol - start_sym;
+    is_alloc_cg = (sym_diff % period_symbols) == 0;
+    LOG_D(NR_MAC, "[CG Allocation]start symbol : %d, current symbol : %d \n", start_sym, current_symbol);
+    LOG_D(NR_MAC, "[CG Allocation][%d.%d]Symbol %d is start of transmission occasion for UL grant with status %d(sym_diff: %d, per_sym: %d)\n", frame, slot, sym_index, is_alloc_cg, sym_diff, period_symbols);
+    
+    if(is_alloc_cg){
+      alloc_cg = sym_index;
+      break;
+    }
+  }
+
+  return alloc_cg;
+}
+
+/*
+In the case of dynamic resource allocations, the HARQ process identity is specified within the DCI associated with each individual
+resource allocation. A UE does not receive DCI for each individual transmission when using configured grant scheduling so 3GPP 
+(TS 38.321) has specified a calculation to determine the HARQ Process Identity
+*/
+int get_cg_harq_processid(frame_t frame, slot_t slot, uint16_t symbol, const NR_UE_UL_BWP_t *ul_bwp, NR_ConfiguredGrantConfig_t *cg_config) {
+  const uint16_t num_slots_frame = nr_slots_per_frame[ul_bwp->scs];
+  const bool is_normal_cp = ul_bwp->cyclicprefix ? false : true;
+  const uint8_t num_sym_slot = is_normal_cp ? 14 : 12;
+  // const NR_ConfiguredGrantConfig_t *cg_config = ul_bwp->configuredGrantConfig;
+  int harq_processid = 0;
+
+  int current_symbol = (num_slots_frame * frame * num_sym_slot + slot * num_sym_slot + symbol) % (1024 * num_slots_frame * num_sym_slot);
+
+  /* perodicity in symbols  */
+  int16_t period_symbols = nr_get_cg_periodicity(cg_config->periodicity, ul_bwp->scs);
+  AssertFatal(period_symbols > 0, "The period between CG resource allocation must be positive\n");
+  
+  if (cg_config->ext1 == NULL)
+    harq_processid = (int)floor(current_symbol/period_symbols) % (int)cg_config->nrofHARQ_Processes;
+  else if (cg_config->ext1 && cg_config->ext1->harq_ProcID_Offset2_r16)
+    harq_processid = (int)floor(current_symbol/period_symbols) % (int)cg_config->nrofHARQ_Processes + *cg_config->ext1->harq_ProcID_Offset2_r16;
+  else if (cg_config->ext1 && cg_config->ext1->cg_RetransmissionTimer_r16)
+    AssertFatal(1 == 0, "Retransmission timer in CG is still not implemented\n");
+  
+  return harq_processid;
+}
+
+
 bool is_nr_DL_slot(NR_TDD_UL_DL_ConfigCommon_t *tdd_UL_DL_ConfigurationCommon, slot_t slot)
 {
   if (tdd_UL_DL_ConfigurationCommon == NULL)
@@ -5233,4 +5315,60 @@ rnti_t nr_get_ra_rnti(uint8_t s_id, uint8_t t_id, uint8_t f_id, uint8_t ul_carri
   LOG_D(MAC, "f_id %d t_id %d s_id %d ul_carrier_id %d Computed RA_RNTI is 0x%04X\n", f_id, t_id, s_id, ul_carrier_id, ra_rnti);
 
   return ra_rnti;
+}
+
+float nr_get_cg_periodicity(long periodicity, int scs) {
+  /* return periodicity (in symbols) */
+  if (periodicity == NR_ConfiguredGrantConfig__periodicity_sym2)
+    AssertFatal(1 == 0, "2 symbol periodicity is not supported\n");
+  else if (periodicity == NR_ConfiguredGrantConfig__periodicity_sym7)
+    AssertFatal(1 == 0, "7 symbol periodicity is not supported\n");
+  else if (periodicity == NR_ConfiguredGrantConfig__periodicity_sym6)
+    AssertFatal(1 == 0, "6 symbol periodicity is not supported\n");
+  else if (periodicity == NR_ConfiguredGrantConfig__periodicity_sym1x14 || periodicity == NR_ConfiguredGrantConfig__periodicity_sym1x12)
+    return periodicity == NR_ConfiguredGrantConfig__periodicity_sym1x14 ? 14 : 12;
+  else if (periodicity == NR_ConfiguredGrantConfig__periodicity_sym2x14 || periodicity == NR_ConfiguredGrantConfig__periodicity_sym2x12)
+    return periodicity == NR_ConfiguredGrantConfig__periodicity_sym2x14 ? 2*14 : 2*12;
+  else if (periodicity == NR_ConfiguredGrantConfig__periodicity_sym4x14 || periodicity == NR_ConfiguredGrantConfig__periodicity_sym4x12)
+    return periodicity == NR_ConfiguredGrantConfig__periodicity_sym4x14 ? 4*14 : 4*12;
+  else if (periodicity == NR_ConfiguredGrantConfig__periodicity_sym5x14 || periodicity == NR_ConfiguredGrantConfig__periodicity_sym5x12)
+    return periodicity == NR_ConfiguredGrantConfig__periodicity_sym5x14 ? 5*14 : 5*12;
+  else if (periodicity == NR_ConfiguredGrantConfig__periodicity_sym8x14 || periodicity == NR_ConfiguredGrantConfig__periodicity_sym8x12)
+    return periodicity == NR_ConfiguredGrantConfig__periodicity_sym8x14 ? 8*14 : 8*12;
+  else if (periodicity == NR_ConfiguredGrantConfig__periodicity_sym10x14 || periodicity == NR_ConfiguredGrantConfig__periodicity_sym10x12)
+    return periodicity == NR_ConfiguredGrantConfig__periodicity_sym10x14 ? 10*14 : 10*12;
+  else if (periodicity == NR_ConfiguredGrantConfig__periodicity_sym16x14 || periodicity == NR_ConfiguredGrantConfig__periodicity_sym16x12)
+    return periodicity == NR_ConfiguredGrantConfig__periodicity_sym16x14 ? 16*14 : 16*12;
+  else if (periodicity == NR_ConfiguredGrantConfig__periodicity_sym20x14 || periodicity == NR_ConfiguredGrantConfig__periodicity_sym20x12)
+    return periodicity == NR_ConfiguredGrantConfig__periodicity_sym20x14 ? 20*14 : 20*12;
+  else if (periodicity == NR_ConfiguredGrantConfig__periodicity_sym32x14 || periodicity == NR_ConfiguredGrantConfig__periodicity_sym32x12)
+    return periodicity == NR_ConfiguredGrantConfig__periodicity_sym32x14 ? 32*14 : 32*12;
+  else if (periodicity == NR_ConfiguredGrantConfig__periodicity_sym40x14 || periodicity == NR_ConfiguredGrantConfig__periodicity_sym40x12)
+    return periodicity == NR_ConfiguredGrantConfig__periodicity_sym40x14 ? 40*14 : 40*12;
+  else if (periodicity == NR_ConfiguredGrantConfig__periodicity_sym64x14 || periodicity == NR_ConfiguredGrantConfig__periodicity_sym64x12)
+    return periodicity == NR_ConfiguredGrantConfig__periodicity_sym64x14 ? 64*14 : 64*12;
+  else if (periodicity == NR_ConfiguredGrantConfig__periodicity_sym80x14 || periodicity == NR_ConfiguredGrantConfig__periodicity_sym80x12)
+    return periodicity == NR_ConfiguredGrantConfig__periodicity_sym80x14 ? 80*14 : 80*12;
+  else if (periodicity == NR_ConfiguredGrantConfig__periodicity_sym128x14 || periodicity == NR_ConfiguredGrantConfig__periodicity_sym128x12)
+    return periodicity == NR_ConfiguredGrantConfig__periodicity_sym128x14 ? 128*14 : 128*12;
+  else if (periodicity == NR_ConfiguredGrantConfig__periodicity_sym160x14 || periodicity == NR_ConfiguredGrantConfig__periodicity_sym160x12)
+    return periodicity == NR_ConfiguredGrantConfig__periodicity_sym160x14 ? 160*14 : 160*12;
+  else if (periodicity == NR_ConfiguredGrantConfig__periodicity_sym320x14 || periodicity == NR_ConfiguredGrantConfig__periodicity_sym320x12)
+    return periodicity == NR_ConfiguredGrantConfig__periodicity_sym320x14 ? 320*14 : 320*12;
+  else if (periodicity == NR_ConfiguredGrantConfig__periodicity_sym640x14 || periodicity == NR_ConfiguredGrantConfig__periodicity_sym640x12)
+    return periodicity == NR_ConfiguredGrantConfig__periodicity_sym640x14 ? 640*14 : 640*12;
+  else if ((periodicity == NR_ConfiguredGrantConfig__periodicity_sym256x14 || periodicity == NR_ConfiguredGrantConfig__periodicity_sym256x12) && scs != 0)
+    return periodicity == NR_ConfiguredGrantConfig__periodicity_sym256x14 ? 256*14 : 256*12;
+  else if ((periodicity == NR_ConfiguredGrantConfig__periodicity_sym512x14 || periodicity == NR_ConfiguredGrantConfig__periodicity_sym512x12) && scs != 0 && scs != 1)
+    return periodicity == NR_ConfiguredGrantConfig__periodicity_sym512x14 ? 512*14 : 512*12;
+  else if ((periodicity == NR_ConfiguredGrantConfig__periodicity_sym1280x14 || periodicity == NR_ConfiguredGrantConfig__periodicity_sym1280x12) && scs != 0)
+    return periodicity == NR_ConfiguredGrantConfig__periodicity_sym1280x14 ? 1280*14 : 1280*12;
+  else if ((periodicity == NR_ConfiguredGrantConfig__periodicity_sym2560x14 || periodicity == NR_ConfiguredGrantConfig__periodicity_sym2560x12) && scs != 0 && scs != 1)
+    return periodicity == NR_ConfiguredGrantConfig__periodicity_sym2560x14 ? 2560*14 : 2560*12;
+  else if (periodicity == NR_ConfiguredGrantConfig__periodicity_sym1024x14 && scs == 3)
+    return 1024*14;
+  else if (periodicity == NR_ConfiguredGrantConfig__periodicity_sym2560x14 && scs == 3)
+    return 5120*14;
+  else 
+    AssertFatal(1==0, "Undefined SPS Periodicity\n");
 }

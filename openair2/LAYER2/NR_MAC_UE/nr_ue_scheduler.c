@@ -98,7 +98,7 @@ fapi_nr_ul_config_request_pdu_t *lockGet_ul_config(NR_UE_MAC_INST_t *mac, frame_
   AssertFatal(!pdu->lock, "no lock in fapi_nr_ul_config_request_pdu_t, aborting");
   pdu->lock = &ul_config->mutex_ul_config;
   pdu->privateNBpdus = &ul_config->number_pdus;
-  LOG_D(NR_MAC, "Added ul pdu for %d.%d, type %d\n", frame_tx, slot_tx, pdu_type);
+  LOG_E(NR_MAC, "Added ul pdu for %d.%d, type %d\n", frame_tx, slot_tx, pdu_type);
   return pdu;
 }
 
@@ -172,6 +172,16 @@ void update_mac_timers(NR_UE_MAC_INST_t *mac)
     AssertFatal(!nr_timer_tick(&mac->scheduling_info.lc_sched_info[i].Bj_timer),
                 "Bj timer for LCID %d expired! That should never happen\n",
                 i);
+  
+  for(int k = 0; k < NR_MAX_HARQ_PROCESSES; k++){
+    bool retxtimer_expired = nr_timer_tick(&mac->scheduling_info.configuredGrant_Timer[k]);
+
+    if(retxtimer_expired) {
+      NR_UL_HARQ_INFO_t *harq  =  &mac->ul_harq_info[k];
+      memset(harq, 0, sizeof(*harq));
+      harq->last_ndi = -1;
+    }
+  }
 }
 
 void remove_ul_config_last_item(fapi_nr_ul_config_request_pdu_t *pdu)
@@ -501,6 +511,21 @@ void ul_ports_config(NR_UE_MAC_INST_t *mac, int *n_front_load_symb, nfapi_nr_ue_
   LOG_D(NR_MAC,"num_dmrs_cdm_grps_no_data %d, dmrs_ports %d\n",pusch_config_pdu->num_dmrs_cdm_grps_no_data,pusch_config_pdu->dmrs_ports);
 }
 
+int get_cg_occasion_index(NR_UE_MAC_INST_t *mac, int cg_config_index) {
+  //NR_UE_UL_BWP_t *current_UL_BWP = mac->current_UL_BWP;
+  int count = mac->configured_sched.count;
+  int occasion_index = -1;
+
+  for(int i = 0; i < count; i++){
+    NR_UE_UL_CG_INFO_t *ue_cg_info = mac->configured_sched.array[i];
+    if(ue_cg_info->cg_status && ue_cg_info->config_index == cg_config_index){
+      occasion_index = ue_cg_info->cg_occasion_counter;
+      break;
+    }
+  }
+  return occasion_index;
+}
+
 // Configuration of Msg3 PDU according to clauses:
 // - 8.3 of 3GPP TS 38.213 version 16.3.0 Release 16
 // - 6.1.2.2 of TS 38.214
@@ -516,7 +541,8 @@ int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
                         RAR_grant_t *rar_grant,
                         uint16_t rnti,
                         int ss_type,
-                        const nr_dci_format_t dci_format)
+                        const nr_dci_format_t dci_format,
+                        NR_UL_CG_HARQ_INFO_t *cg_harq_info)
 {
   uint16_t l_prime_mask = 0;
   int N_PRB_oh  = 0;
@@ -666,7 +692,7 @@ int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
     pusch_config_pdu->data_scrambling_id = mac->physCellId;
     if (pusch_Config
         && pusch_Config->dataScramblingIdentityPUSCH
-        && rnti_type == TYPE_C_RNTI_
+        && (rnti_type == TYPE_C_RNTI_ || rnti_type == TYPE_CS_RNTI_)
         && !(dci_format == NR_UL_DCI_FORMAT_0_0 && ss_type == NR_SearchSpace__searchSpaceType_PR_common))
       pusch_config_pdu->data_scrambling_id = *pusch_Config->dataScramblingIdentityPUSCH;
 
@@ -741,16 +767,55 @@ int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
                                                       rnti_type,
                                                       ss_type,
                                                       false);
-
+    
+    /* HARQ ID Selection */
     /* NDI */
     NR_UL_HARQ_INFO_t *harq = &mac->ul_harq_info[dci->harq_pid];
     pusch_config_pdu->pusch_data.new_data_indicator = false;
-    if (dci->ndi != harq->last_ndi) {
-      pusch_config_pdu->pusch_data.new_data_indicator = true;
-      // if new data reset harq structure
-      memset(harq, 0, sizeof(*harq));
+
+    if(rnti_type == TYPE_CS_RNTI_){
+      NR_UL_CG_HARQ_INFO_t *cg_hinfo =  &harq->cg_harq_info;
+      LOG_E(NR_MAC, "The harq process id for CG Occasion is %d\n", dci->harq_pid);
+      if(dci->ndi == 0){        // new transmissions
+        int cg_to_index = get_cg_occasion_index(mac, cg_harq_info->cg_config_index);
+        if(cg_to_index == -1)
+          AssertFatal(NR_MAC, "No Configured Grant TO in the current time\n");
+        
+        int prev_ndi = harq->last_ndi;
+        memset(harq, 0, sizeof(*harq));
+        if(cg_to_index == 0) {    // first PUSCH occasion after receiving activation signal
+          if(prev_ndi != -1)    // HARQ PROCESS in use
+            cg_hinfo->cg_timer = NR_CG_TIMER_RESTART;
+          cg_hinfo->is_first_cg_ocassion = true;
+        }
+        else {                 // recurring PUSCH transmissons as per CG periodicity
+          if(prev_ndi != -1)      // HARQ process in use, so stop the current pusch occasions for tx
+            return -1;
+          cg_hinfo->is_first_cg_ocassion = false;
+          cg_hinfo->cg_timer = NR_CG_TIMER_START;
+        }
+        pusch_config_pdu->pusch_data.new_data_indicator = true;
+
+        cg_hinfo->cg_config_index = cg_harq_info->cg_config_index;
+        cg_hinfo->active = true;
+        harq->last_ndi = dci->ndi;
+      }
+      else{               //retransmissions
+        cg_hinfo->cg_timer = NR_CG_TIMER_RESTART;
+        cg_hinfo->is_first_cg_ocassion = false;
+        cg_hinfo->is_cg_ocassion_retx = true;
+        harq->last_ndi = dci->ndi;
+        cg_hinfo->active = true;
+      }
+    } else {
+      if (dci->ndi != harq->last_ndi) {
+        pusch_config_pdu->pusch_data.new_data_indicator = true;
+        // if new data reset harq structure
+        memset(harq, 0, sizeof(*harq));
+      }
+      harq->last_ndi = dci->ndi;
     }
-    harq->last_ndi = dci->ndi;
+
     /* RV */
     pusch_config_pdu->pusch_data.rv_index = dci->rv;
     /* HARQ_PROCESS_NUMBER */
@@ -885,7 +950,25 @@ int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
     LOG_E(MAC, "Invalid TBS = 0. Probably caused by missed detection of DCI\n");
     return -1;
   }
-
+  
+  /* 
+     Store the PUSCH resource allocations that is received by DCI activation at start and
+     use the same resources at periodic CG TO as per the periodicity 
+     TODO: check if there are any value selection as per rnti type 
+  */
+  if(rnti_type == TYPE_CS_RNTI_ && 
+     mac->configured_sched.count > 0 &&
+     mac->configured_sched.array[cg_harq_info->cg_config_index]->cg_act_deact_receive_status.status_cg_activation == RECEIVED &&
+     mac->configured_sched.array[cg_harq_info->cg_config_index]->cg_act_deact_valid_status.status_cg_activation == VALID &&
+     mac->configured_sched.array[cg_harq_info->cg_config_index]->initial_ul_config_status == NOT_STORED
+    ) {
+      NR_UE_UL_CG_INFO_t* cg_sched = mac->configured_sched.array[cg_harq_info->cg_config_index];
+      memcpy(&cg_sched->inital_ul_config->pusch_config_pdu,
+             pusch_config_pdu,
+             sizeof(*pusch_config_pdu));
+      cg_sched->allocation_info.tda_info = tda_info;
+      mac->configured_sched.array[cg_harq_info->cg_config_index]->initial_ul_config_status = STORED;
+  }
   return 0;
 }
 
@@ -1080,6 +1163,141 @@ static bool nr_ue_periodic_srs_scheduling(NR_UE_MAC_INST_t *mac, frame_t frame, 
     }
   }
   return srs_scheduled;
+}
+
+int get_configured_grant_config_index(NR_UE_MAC_INST_t *mac,
+                                      const NR_UE_UL_BWP_t *ul_bwp,
+                                      NR_UE_UL_CG_INFO_t *ue_cg_info,
+                                      NR_TDD_UL_DL_ConfigCommon_t *tdd,
+                                      frame_type_t frame_type,
+                                      int frame,
+                                      int slot,
+                                      int symbol,
+                                      bool is_dci_received)
+{
+  const int mu = ul_bwp->scs;
+  const uint16_t num_slots_frame = nr_slots_per_frame[mu];
+  const bool is_normal_cp = ul_bwp->cyclicprefix ? false : true;
+  //const bool is_ul_slot = is_nr_UL_slot(tdd, slot, frame_type);
+  const uint8_t num_sym_slot = is_normal_cp ? 14 : 12;
+  int index = -1;
+  const NR_ConfiguredGrantConfig_t *cg_config = NULL;
+  int count = 1;
+
+  if(is_dci_received){return index;}
+
+  int current_symbol =
+      (num_slots_frame * frame * num_sym_slot + slot * num_sym_slot + symbol) % (1024 * num_slots_frame * num_sym_slot);
+
+  if (ul_bwp->configuredGrantConfig) {
+    cg_config = ul_bwp->configuredGrantConfig;
+  } else {
+    cg_config = ul_bwp->configuredGrantConfigList->list.array[0];
+    count = ul_bwp->configuredGrantConfigList->list.count;
+  }
+
+  for (int i = 0; i < count; i++) {
+    NR_UE_UL_CG_INFO_t *ue_cg_info = mac->configured_sched.array[i];
+    nr_cg_start_info_t *cg_start_info = &ue_cg_info->allocation_info;
+
+    if (ue_cg_info->cg_act_deact_receive_status.status_cg_activation == NOT_RECEIVED)
+      continue;
+
+    int16_t period_symbols = nr_get_cg_periodicity(cg_config->periodicity, ul_bwp->scs);
+    AssertFatal(period_symbols > 0, "The period between CG resource allocation must be positive\n");
+
+    int start_sym = (num_slots_frame * num_sym_slot * cg_start_info->frame + cg_start_info->slot * num_sym_slot
+                     + cg_start_info->tda_info->startSymbolIndex)
+                    % (1024 * num_slots_frame * num_sym_slot);
+
+    int sym_diff = current_symbol - start_sym < 0 ? current_symbol - start_sym + (1024 * num_slots_frame * num_sym_slot)
+                                                  : current_symbol - start_sym;
+
+    if (sym_diff % period_symbols == 0) {
+      index = ue_cg_info->config_index;
+      break;
+    }
+  }
+  return index;
+}
+
+// Periodic configured grant scheduling
+static bool nr_ue_periodic_cg_scheduling(NR_UE_MAC_INST_t *mac, frame_t frame, slot_t slot)
+{
+  bool cg_scheduled = false;
+
+  NR_UE_UL_BWP_t *current_UL_BWP = mac->current_UL_BWP;
+  NR_ConfiguredGrantConfig_t *cg_resource = NULL;
+  //bool is_normal_cp = current_UL_BWP->cyclicprefix ? false : true;
+  //uint8_t num_sym_slot = is_normal_cp ? 14 : 12;
+
+  for (int i = 0; i < mac->configured_sched.count; i++) {
+    NR_UE_UL_CG_INFO_t *ue_cg_info = mac->configured_sched.array[i];
+
+    if (ue_cg_info->cg_occasion_counter == 0)
+      continue;
+
+    if (ue_cg_info->cg_to_retrx) {
+      ue_cg_info->cg_to_retrx = false;
+      continue;
+    }
+
+    cg_resource = current_UL_BWP ? (current_UL_BWP->configuredGrantConfig ? current_UL_BWP->configuredGrantConfig : current_UL_BWP->configuredGrantConfigList->list.array[i]) : NULL;
+    AssertFatal(cg_resource != NULL, "Configuration index of CG IE is not received by UE for the activated CG\n");
+
+    /* check if UE should transmit PUSCH in this slot*/
+    int period = nr_get_cg_periodicity(cg_resource->periodicity, current_UL_BWP->scs);
+    AssertFatal(period > 0, "The period between CG resource allocation must be positive\n");
+
+    int cg_start = ue_cg_info->allocation_info.tda_info->startSymbolIndex;
+
+    cg_start = nr_get_CG_alloc(frame,
+                               slot,
+                               current_UL_BWP,
+                               cg_resource,
+                               0, // ue_cg_info->allocation_info.tda_info->startSymbolIndex + period,
+                               &ue_cg_info->allocation_info,
+                               mac->tdd_UL_DL_ConfigurationCommon,
+                               mac->frame_type);
+
+    if (cg_start != -1) {
+      fapi_nr_ul_config_request_pdu_t *pdu = lockGet_ul_config(mac, frame, slot, FAPI_NR_UL_CONFIG_TYPE_PUSCH);
+
+      if (!pdu)
+        return cg_scheduled;
+
+      // update the harq id for the cg
+      int harq_pid = get_cg_harq_processid(frame, slot, cg_start, current_UL_BWP, cg_resource);
+      ue_cg_info->initial_dci_pdu->harq_pid = harq_pid;
+
+      /* time domain allocation for CG TO*/
+      NR_tda_info_t *cg_tda_info = calloc(1, sizeof(NR_tda_info_t));
+      memcpy(cg_tda_info, &ue_cg_info->allocation_info.tda_info, sizeof(NR_tda_info_t));
+      cg_tda_info->startSymbolIndex = cg_start;
+
+      NR_UL_CG_HARQ_INFO_t *cg_harq_info = NULL;
+      cg_harq_info->cg_config_index = i;
+
+      int ret = nr_config_pusch_pdu(mac,
+                                    cg_tda_info,
+                                    &pdu->pusch_config_pdu,
+                                    ue_cg_info->initial_dci_pdu,
+                                    NULL,
+                                    ue_cg_info->initial_dci_indication->rnti,
+                                    ue_cg_info->initial_dci_indication->ss_type,
+                                    ue_cg_info->initial_dci_indication->dci_format ? NR_UL_DCI_FORMAT_0_1 : NR_UL_DCI_FORMAT_0_0,
+                                    cg_harq_info);
+      if (ret != 0)
+        remove_ul_config_last_item(pdu);
+      else {
+        cg_scheduled = true;
+        ue_cg_info->cg_occasion_counter++;
+      }
+
+      release_ul_config(pdu, false);
+    }
+  }
+  return cg_scheduled;
 }
 
 // Performs :
@@ -1283,6 +1501,10 @@ void nr_ue_ul_scheduler(NR_UE_MAC_INST_t *mac, nr_uplink_indication_t *ul_info)
   if(mac->state == UE_CONNECTED)
     nr_ue_periodic_srs_scheduling(mac, frame_tx, slot_tx);
 
+  /* Periodic Configured grant scheduling with out DCI except for indication in Type2 */
+  if (mac->configured_sched.count > 0)
+    nr_ue_periodic_cg_scheduling(mac, frame_tx, slot_tx);
+
   // Call BSR procedure as described in Section 5.4.5 in 38.321
   // Check whether BSR is triggered before scheduling ULSCH
   if(mac->state == UE_CONNECTED)
@@ -1296,7 +1518,7 @@ void nr_ue_ul_scheduler(NR_UE_MAC_INST_t *mac, nr_uplink_indication_t *ul_info)
   fapi_nr_ul_config_request_pdu_t *ulcfg_pdu = lockGet_ul_iterator(mac, frame_tx, slot_tx);
   if (!ulcfg_pdu)
     return;
-  LOG_D(NR_MAC, "number of UL PDUs: %d with UL transmission in sfn [%d.%d]\n", *ulcfg_pdu->privateNBpdus, frame_tx, slot_tx);
+  LOG_E(NR_MAC, "number of UL PDUs: %d with UL transmission in sfn [%d.%d]\n", *ulcfg_pdu->privateNBpdus, frame_tx, slot_tx);
 
   while (ulcfg_pdu->pdu_type != FAPI_NR_END) {
     uint8_t *ulsch_input_buffer = ulsch_input_buffer_array[number_of_pdus];
@@ -2491,6 +2713,9 @@ static void nr_ue_prach_scheduler(NR_UE_MAC_INST_t *mac, frame_t frameP, sub_fra
 }
 
 typedef struct {
+  uint8_t cg_len;
+  uint8_t cg_ce_len;
+  uint8_t cg_header_len;
   uint8_t bsr_len;
   uint8_t bsr_ce_len;
   uint8_t bsr_header_len;
@@ -2530,12 +2755,24 @@ static int nr_ue_get_sdu_mac_ce_pre(NR_UE_MAC_INST_t *mac,
   // Preparing the MAC CEs sub-PDUs and get the total size
   mac_ce_p->bsr_header_len = 0;
   mac_ce_p->phr_header_len = 0;   //sizeof(SCH_SUBHEADER_FIXED);
+  mac_ce_p->cg_header_len = 0;
   int lcg_id = 0;
   while (lcg_id != NR_INVALID_LCGID) {
     if (mac->scheduling_info.lcg_sched_info[lcg_id].BSR_bytes) {
       num_lcg_id_with_data++;
     }
     lcg_id++;
+  }
+
+  /* Update Configured grant confirmation MAC CE if confirmation mac ce is activated */
+  if(mac->configured_sched.count > 0 && mac->configured_sched.array[0]->cg_confirmation_apply) {
+    LOG_E(NR_MAC, "Send MAC CE for confirmation of configured grant from UE\n");
+    mac_ce_p->cg_ce_len = 0; // fixed size of zero bytes
+    if(buflen >= sizeof(NR_MAC_SUBHEADER_FIXED))
+      mac_ce_p->cg_header_len = sizeof(NR_MAC_SUBHEADER_FIXED); // 1 byte
+    mac_ce_p->cg_len = mac_ce_p->cg_ce_len + mac_ce_p->cg_header_len;
+    buflen = buflen - mac_ce_p->cg_len;
+    LOG_E(NR_MAC, "The MAC CG header length is %d and CE length is %d and total length is %d\n", mac_ce_p->cg_header_len, mac_ce_p->cg_ce_len, mac_ce_p->cg_len);
   }
 
   // Compute BSR Length if Regular or Periodic BSR is triggered
@@ -2562,7 +2799,7 @@ static int nr_ue_get_sdu_mac_ce_pre(NR_UE_MAC_INST_t *mac,
   }
 
   mac_ce_p->bsr_len = mac_ce_p->bsr_ce_len + mac_ce_p->bsr_header_len;
-  return (mac_ce_p->bsr_len + mac_ce_p->phr_len);
+  return (mac_ce_p->cg_len + mac_ce_p->bsr_len + mac_ce_p->phr_len);
 }
 
 /*
@@ -2754,6 +2991,21 @@ static void nr_ue_get_sdu_mac_ce_post(NR_UE_MAC_INST_t *mac,
     // Reset BSR Trigger flags
     sched_info->BSR_reporting_active = NR_BSR_TRIGGER_NONE;
     sched_info->regularBSR_trigger_lcid = 0;
+  }
+
+  /*Actions for configured grant timers */
+  NR_UL_HARQ_INFO_t *harq = mac->ul_harq_info;
+  for (int i = 0; i < NR_MAX_HARQ_PROCESSES; i++){
+    NR_UL_CG_HARQ_INFO_t *cg_harq = &(harq + i)->cg_harq_info;
+    if(!cg_harq->active)
+      continue;
+
+    if(cg_harq->cg_timer == NR_CG_TIMER_STOP)
+      nr_timer_stop(&sched_info->configuredGrant_Timer[i]);
+    else if(cg_harq->cg_timer == NR_CG_TIMER_RESTART)
+      nr_timer_restart(&sched_info->configuredGrant_Timer[i]);
+    else if(cg_harq->cg_timer == NR_CG_TIMER_START)
+      nr_timer_start(&sched_info->configuredGrant_Timer[i]);
   }
 }
 
@@ -3146,10 +3398,10 @@ uint8_t nr_ue_get_sdu(NR_UE_MAC_INST_t *mac,
       LOG_E(NR_MAC, "MAC CE size computed by nr_write_ce_ulsch_pdu is %d while the one assumed before is %d\n", size, mac_ce_p->tot_mac_ce_len);
     pdu += (unsigned char) mac_ce_p->tot_mac_ce_len;
 
-#ifdef ENABLE_MAC_PAYLOAD_DEBUG
-    LOG_I(NR_MAC, "In %s: dumping MAC CE with length tot_mac_ce_len %d: \n", __FUNCTION__, mac_ce_p->tot_mac_ce_len);
-    log_dump(NR_MAC, mac_header_control_elements, mac_ce_p->tot_mac_ce_len, LOG_DUMP_CHAR, "\n");
-#endif
+//#ifdef ENABLE_MAC_PAYLOAD_DEBUG
+  LOG_I(NR_MAC, "In %s: dumping MAC CE with length tot_mac_ce_len %d: \n", __FUNCTION__, mac_ce_p->tot_mac_ce_len);
+  //log_dump(NR_MAC, mac_header_control_elements, mac_ce_p->tot_mac_ce_len, LOG_DUMP_CHAR, "\n");
+//#endif
   }
 
   buflen_remain = buflen - (mac_ce_p->total_mac_pdu_header_len + mac_ce_p->sdu_length_total);

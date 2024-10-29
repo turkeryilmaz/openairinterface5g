@@ -234,7 +234,9 @@ void fill_dci_pdu_rel15(const NR_UE_ServingCell_Info_t *servingCellInfo,
                         NR_SearchSpace_t *ss,
                         NR_ControlResourceSet_t *coreset,
                         long pdsch_HARQ_ACK_Codebook,
-                        uint16_t cset0_bwp_size);
+                        uint16_t cset0_bwp_size,
+                        NR_UE_CG_t *config_sched,
+                        int harq_round);
 
 void prepare_dci(const NR_UE_ServingCell_Info_t *servingCellInfo,
                  const NR_UE_DL_BWP_t *current_BWP,

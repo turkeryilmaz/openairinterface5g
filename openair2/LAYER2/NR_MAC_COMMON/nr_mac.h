@@ -559,7 +559,8 @@ typedef struct NR_UE_UL_BWP {
   uint16_t BWPStart;
   NR_RACH_ConfigCommon_t *rach_ConfigCommon;
   NR_PUSCH_TimeDomainResourceAllocationList_t *tdaList_Common;
-  NR_ConfiguredGrantConfig_t *configuredGrantConfig;
+  NR_ConfiguredGrantConfig_t *configuredGrantConfig;    // each BWP can have max of 12 CGs
+  NR_ConfiguredGrantConfigToAddModList_r16_t *configuredGrantConfigList;
   NR_PUSCH_Config_t *pusch_Config;
   NR_PUCCH_Config_t *pucch_Config;
   NR_PUCCH_ConfigCommon_t *pucch_ConfigCommon;
@@ -613,6 +614,41 @@ typedef struct NR_tda_info {
   int nrOfSymbols;
   long k2;
 } NR_tda_info_t;
+
+/*
+typedef struct nr_cg_ctrl {
+  bool send_cg_activation;
+  bool send_cg_deactivation; 
+  bool cg_active;
+  bool avoid_cg_pdcch_pdu;  // for cg once pdcch is received for activation, no need to receive any UL DCI for UL resources
+  bool valid_activate_ind_rec;
+  bool valid_deactivate_ind_rec;
+} nr_cg_ctrl_t;
+
+typedef struct NR_Configured_Scheduling{
+  nr_cg_ctrl_t cg;
+} NR_Configured_Scheduling_t;
+*/
+
+typedef enum{
+  NR_CG_TIMER_START = 0,
+  NR_CG_TIMER_RESTART,
+  NR_CG_TIMER_STOP,
+} nr_cgtimer_status_t;
+
+typedef struct nr_cg_indication_status {
+  nr_configured_grant_state_t status_cg_activation;
+  nr_configured_grant_state_t status_cg_deactivation;
+} nr_cg_indication_status_t;
+
+typedef struct nr_cg_start_info {
+  int frame;
+  int slot;
+  NR_tda_info_t *tda_info;
+  //int index;   
+  bool is_mixed_slot;   
+  //bool is_repetition;
+} nr_cg_start_info_t;
 
 #endif /*__LAYER2_MAC_H__ */
 

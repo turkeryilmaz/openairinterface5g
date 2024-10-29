@@ -68,6 +68,19 @@ bool is_nr_DL_slot(NR_TDD_UL_DL_ConfigCommon_t *tdd_UL_DL_ConfigurationCommon, s
 
 bool is_nr_UL_slot(NR_TDD_UL_DL_ConfigCommon_t *tdd_UL_DL_ConfigurationCommon, slot_t slotP, frame_type_t frame_type);
 
+float nr_get_cg_periodicity(long periodicity, int scs);
+
+int nr_get_CG_alloc(frame_t frame, 
+                    slot_t slot, 
+                    const NR_UE_UL_BWP_t *ul_bwp, 
+                    const NR_ConfiguredGrantConfig_t *cg_config,
+                    int start_sym,
+                    nr_cg_start_info_t *cg_start_info, 
+                    NR_TDD_UL_DL_ConfigCommon_t *tdd, 
+                    frame_type_t frame_type);
+
+int get_cg_harq_processid(frame_t frame, slot_t slot, uint16_t symbol, const NR_UE_UL_BWP_t *ul_bwp, NR_ConfiguredGrantConfig_t *cg_config);
+
 uint8_t compute_srs_resource_indicator(long *maxMIMO_Layers,
                                        NR_PUSCH_Config_t *pusch_Config,
                                        NR_SRS_Config_t *srs_config,
