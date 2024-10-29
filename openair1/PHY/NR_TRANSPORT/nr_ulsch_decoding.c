@@ -119,7 +119,8 @@ int nr_ulsch_decoding(PHY_VARS_gNB *phy_vars_gNB,
                       uint8_t nr_tti_rx,
                       uint32_t *G,
                       uint8_t *ULSCH_ids,
-                      int nb_pusch)
+                      int nb_pusch,
+                      NR_UL_IND_t *UL_INFO)
 {
 
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PHY_gNB_ULSCH_DECODING, 1);

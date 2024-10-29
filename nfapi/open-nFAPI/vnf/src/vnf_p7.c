@@ -2202,7 +2202,7 @@ void vnf_dispatch_p7_message(void *pRecvMsg, int recvMsgLen, vnf_p7_t* vnf_p7)
 	}
 }
 
-void vnf_nr_dispatch_p7_message(void *pRecvMsg, int recvMsgLen, vnf_p7_t* vnf_p7)
+void vnf_nr_dispatch_p7_message(void* pRecvMsg, int recvMsgLen, vnf_p7_t* vnf_p7)
 {
 	nfapi_nr_p7_message_header_t header;
 
@@ -2254,11 +2254,11 @@ void vnf_nr_dispatch_p7_message(void *pRecvMsg, int recvMsgLen, vnf_p7_t* vnf_p7
 			break;
 	
 		case NFAPI_NR_PHY_MSG_TYPE_SRS_INDICATION:
-			vnf_handle_nr_srs_indication(pRecvMsg, recvMsgLen, vnf_p7);
-			break;
-	
-		case NFAPI_NR_PHY_MSG_TYPE_RACH_INDICATION:
-			vnf_handle_nr_rach_indication(pRecvMsg, recvMsgLen, vnf_p7);
+      vnf_handle_nr_srs_indication(pRecvMsg, recvMsgLen, vnf_p7);
+      break;
+
+    case NFAPI_NR_PHY_MSG_TYPE_RACH_INDICATION:
+      vnf_handle_nr_rach_indication(pRecvMsg, recvMsgLen, vnf_p7);
 			break;
 
 		case NFAPI_UE_RELEASE_RESPONSE:
@@ -2562,14 +2562,12 @@ int vnf_nr_p7_read_dispatch_message(vnf_p7_t* vnf_p7)
 					break;
 				}
 				NFAPI_TRACE(NFAPI_TRACE_DEBUG, "Calling vnf_nr_handle_p7_message from %d\n", __LINE__);
-				vnf_nr_handle_p7_message(vnf_p7->rx_message_buffer, recvfrom_result, vnf_p7);
-				return 0;
-			}
-			else
-			{
-				NFAPI_TRACE(NFAPI_TRACE_ERROR, "recvfrom failed %d %d\n", recvfrom_result, errno);
-			}
-		}
+        vnf_nr_handle_p7_message(vnf_p7->rx_message_buffer, recvfrom_result, vnf_p7);
+        return 0;
+      } else {
+        NFAPI_TRACE(NFAPI_TRACE_ERROR, "recvfrom failed %d %d\n", recvfrom_result, errno);
+      }
+    }
 
 		if(recvfrom_result == -1)
 		{

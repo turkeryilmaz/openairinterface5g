@@ -98,22 +98,20 @@ uint8_t get_nr_prach_duration(uint8_t prach_format){
   }
 }
 
-void L1_nr_prach_procedures(PHY_VARS_gNB *gNB,int frame,int slot) {
-
+void L1_nr_prach_procedures(PHY_VARS_gNB *gNB, int frame, int slot, NR_UL_IND_t *UL_INFO)
+{
   uint16_t max_preamble[4]={0},max_preamble_energy[4]={0},max_preamble_delay[4]={0};
 
-
-  uint8_t pdu_index = 0;
   RU_t *ru;
   int aa=0;
   int ru_aa;
 
  
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PHY_ENB_PRACH_RX,1);
-  gNB->UL_INFO.rach_ind.sfn             = frame;
-  gNB->UL_INFO.rach_ind.slot            = slot;
-  gNB->UL_INFO.rach_ind.pdu_list        = gNB->prach_pdu_indication_list;
-  gNB->UL_INFO.rach_ind.number_of_pdus  = 0;
+  UL_INFO->rach_ind.sfn = frame;
+  UL_INFO->rach_ind.slot = slot;
+  UL_INFO->rach_ind.pdu_list = UL_INFO->prach_pdu_indication_list;
+  UL_INFO->rach_ind.number_of_pdus = 0;
 
   ru=gNB->RU_list[0];
 
@@ -152,7 +150,7 @@ void L1_nr_prach_procedures(PHY_VARS_gNB *gNB,int frame,int slot) {
 	    gNB->prach_energy_counter);
 
       if ((gNB->prach_energy_counter == 100) && (max_preamble_energy[0] > gNB->measurements.prach_I0 + gNB->prach_thres)
-          && (pdu_index < MAX_NUM_NR_RX_RACH_PDUS)) {
+          && (UL_INFO->rach_ind.number_of_pdus < MAX_NUM_NR_RX_RACH_PDUS)) {
         LOG_A(NR_PHY,
               "[RAPROC] %d.%d Initiating RA procedure with preamble %d, energy %d.%d dB (I0 %d, thres %d), delay %d start symbol "
               "%u freq index %u\n",
@@ -175,9 +173,7 @@ void L1_nr_prach_procedures(PHY_VARS_gNB *gNB,int frame,int slot) {
           T_INT(max_preamble_energy[0]),
           T_INT(max_preamble_delay[0]));
 
-        gNB->UL_INFO.rach_ind.number_of_pdus += 1;
-
-        nfapi_nr_prach_indication_pdu_t *ind = &gNB->prach_pdu_indication_list[pdu_index];
+        nfapi_nr_prach_indication_pdu_t *ind = UL_INFO->prach_pdu_indication_list + UL_INFO->rach_ind.number_of_pdus;
         ind->phy_cell_id = gNB->gNB_config.cell_config.phy_cell_id.value;
         ind->symbol_index = prachStartSymbol;
         ind->slot_index = slot;
@@ -189,7 +185,7 @@ void L1_nr_prach_procedures(PHY_VARS_gNB *gNB,int frame,int slot) {
         ind->preamble_list[0].preamble_index = max_preamble[0];
         ind->preamble_list[0].timing_advance = max_preamble_delay[0];
         ind->preamble_list[0].preamble_pwr = 0xffffffff;
-        pdu_index++;
+        UL_INFO->rach_ind.number_of_pdus++;
       }
       gNB->measurements.prach_I0 = ((gNB->measurements.prach_I0*900)>>10) + ((max_preamble_energy[0]*124)>>10); 
       if (frame==0) LOG_I(PHY,"prach_I0 = %d.%d dB\n",gNB->measurements.prach_I0/10,gNB->measurements.prach_I0%10);
@@ -198,4 +194,3 @@ void L1_nr_prach_procedures(PHY_VARS_gNB *gNB,int frame,int slot) {
   } //for NUMBER_OF_NR_PRACH_OCCASION_MAX
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PHY_ENB_PRACH_RX,0);
 }
-
