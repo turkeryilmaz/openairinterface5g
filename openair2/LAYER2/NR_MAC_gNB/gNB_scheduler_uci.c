@@ -223,7 +223,7 @@ void nr_csi_meas_reporting(int Mod_idP,
     NR_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
     NR_UE_UL_BWP_t *ul_bwp = &UE->current_UL_BWP;
     const int n_slots_frame = nr_slots_per_frame[ul_bwp->scs];
-    if ((sched_ctrl->rrc_processing_timer > 0) || (sched_ctrl->ul_failure && !get_softmodem_params()->phy_test)) {
+    if (nr_timer_is_active(&sched_ctrl->transm_interrupt) || (sched_ctrl->ul_failure && !get_softmodem_params()->phy_test)) {
       continue;
     }
     const NR_CSI_MeasConfig_t *csi_measconfig = UE->sc_info.csi_MeasConfig;
@@ -1041,8 +1041,8 @@ void handle_nr_uci_pucch_0_1(module_id_t mod_id,
       remove_front_nr_list(&sched_ctrl->feedback_dl_harq);
       LOG_D(NR_MAC,"%4d.%2d bit %d pid %d ack/nack %d\n",frame, slot, harq_bit,pid,harq_value);
       handle_dl_harq(UE, pid, harq_value == 0 && harq_confidence == 0, nrmac->dl_bler.harq_round_max);
-      if (!UE->Msg4_ACKed && harq_value == 0 && harq_confidence == 0)
-        UE->Msg4_ACKed = true;
+      if (!UE->Msg4_MsgB_ACKed && harq_value == 0 && harq_confidence == 0)
+        UE->Msg4_MsgB_ACKed = true;
       if (harq_confidence == 1)  UE->mac_stats.pucch0_DTX++;
     }
 
@@ -1119,6 +1119,7 @@ void handle_nr_uci_pucch_2_3_4(module_id_t mod_id,
   }
   /* phy-test has hardcoded allocation, so no use to handle CSI reports */
   if ((uci_234->pduBitmap >> 2) & 0x01 && !get_softmodem_params()->phy_test) {
+    LOG_D(NR_MAC, "CSI CRC %d\n", uci_234->csi_part1.csi_part1_crc);
     if (uci_234->csi_part1.csi_part1_crc != 1) {
       // API to parse the csi report and store it into sched_ctrl
       extract_pucch_csi_report(csi_MeasConfig, uci_234, frame, slot, UE, nrmac->common_channels->ServingCellConfigCommon);
@@ -1388,7 +1389,7 @@ void nr_sr_reporting(gNB_MAC_INST *nrmac, frame_t SFN, sub_frame_t slot)
     NR_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
     NR_UE_UL_BWP_t *ul_bwp = &UE->current_UL_BWP;
     const int n_slots_frame = nr_slots_per_frame[ul_bwp->scs];
-    if (sched_ctrl->ul_failure || sched_ctrl->rrc_processing_timer > 0)
+    if (sched_ctrl->ul_failure || nr_timer_is_active(&sched_ctrl->transm_interrupt))
       continue;
     NR_PUCCH_Config_t *pucch_Config = ul_bwp->pucch_Config;
 

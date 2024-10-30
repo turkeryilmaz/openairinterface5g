@@ -53,6 +53,8 @@
 #include "uper_encoder.h"
 #include "uper_decoder.h"
 
+#include "SIMULATION/TOOLS/sim.h" // for taus
+
 #define ENABLE_MAC_PAYLOAD_DEBUG
 #define DEBUG_gNB_SCHEDULER 1
 
@@ -797,10 +799,12 @@ void config_uldci(const NR_UE_ServingCell_Info_t *sc_info,
   dci_pdu_rel15->rv = pusch_pdu->pusch_data.rv_index;
   dci_pdu_rel15->harq_pid.val = pusch_pdu->pusch_data.harq_process_id;
   dci_pdu_rel15->tpc = tpc;
-  NR_PUSCH_Config_t *pusch_Config = ul_bwp->pusch_Config;
 
-  if (pusch_Config) AssertFatal(pusch_Config->resourceAllocation == NR_PUSCH_Config__resourceAllocation_resourceAllocationType1,
-			"Only frequency resource allocation type 1 is currently supported\n");
+  NR_PUSCH_Config_t *pusch_Config = ul_bwp->pusch_Config;
+  if (pusch_Config)
+    AssertFatal(pusch_Config->resourceAllocation == NR_PUSCH_Config__resourceAllocation_resourceAllocationType1,
+                "Only frequency resource allocation type 1 is currently supported\n");
+
   switch (dci_format) {
     case NR_UL_DCI_FORMAT_0_0:
       dci_pdu_rel15->format_indicator = 0;
@@ -1126,18 +1130,7 @@ void nr_configure_pucch(nfapi_nr_pucch_pdu_t *pucch_pdu,
   pucch_pdu->beamforming.num_prgs = 0;
   pucch_pdu->beamforming.prg_size = 0; // pucch_pdu->prb_size;
   pucch_pdu->beamforming.dig_bf_interface = 0;
-  if (pucch_pdu->beamforming.num_prgs > 0) {
-    if (pucch_pdu->beamforming.prgs_list == NULL) {
-      pucch_pdu->beamforming.prgs_list = calloc(pucch_pdu->beamforming.num_prgs, sizeof(*pucch_pdu->beamforming.prgs_list));
-    }
-    if (pucch_pdu->beamforming.dig_bf_interface > 0) {
-      if (pucch_pdu->beamforming.prgs_list[0].dig_bf_interface_list == NULL) {
-        pucch_pdu->beamforming.prgs_list[0].dig_bf_interface_list =
-            calloc(pucch_pdu->beamforming.dig_bf_interface, sizeof(*pucch_pdu->beamforming.prgs_list[0].dig_bf_interface_list));
-      }
-    }
-    pucch_pdu->beamforming.prgs_list[0].dig_bf_interface_list[0].beam_idx = 0;
-  }
+  pucch_pdu->beamforming.prgs_list[0].dig_bf_interface_list[0].beam_idx = UE->UE_beam_index;
 }
 
 void set_r_pucch_parms(int rsetindex,
@@ -2423,12 +2416,14 @@ void configure_UE_BWP(gNB_MAC_INST *nr_mac,
     AssertFatal(ra->ra_ss!=NULL,"SearchSpace cannot be null for RA\n");
 
     ra->coreset = get_coreset(nr_mac, scc, dl_bwp, ra->ra_ss, NR_SearchSpace__searchSpaceType_PR_common);
+    NR_COMMON_channels_t *cc = &nr_mac->common_channels[0];
+    int ssb_index = cc->ssb_index[ra->beam_id];
     ra->sched_pdcch = set_pdcch_structure(nr_mac,
                                           ra->ra_ss,
                                           ra->coreset,
                                           scc,
                                           &dl_genericParameters,
-                                          &nr_mac->type0_PDCCH_CSS_config[ra->beam_id]);
+                                          &nr_mac->type0_PDCCH_CSS_config[ssb_index]);
 
     UL_BWP->dci_format = NR_UL_DCI_FORMAT_0_0;
     DL_BWP->dci_format = NR_DL_DCI_FORMAT_1_0;
@@ -2476,10 +2471,7 @@ NR_UE_info_t *add_new_nr_ue(gNB_MAC_INST *nr_mac, rnti_t rntiP, NR_CellGroupConf
   UE->uid = uid_linear_allocator_new(&UE_info->uid_allocator);
   UE->CellGroup = CellGroup;
 
-  if (CellGroup)
-    UE->Msg4_ACKed = true;
-  else
-    UE->Msg4_ACKed = false;
+  UE->Msg4_MsgB_ACKed = CellGroup != NULL;
 
   NR_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
   memset(sched_ctrl, 0, sizeof(*sched_ctrl));
@@ -2683,6 +2675,16 @@ void mac_remove_nr_ue(gNB_MAC_INST *nr_mac, rnti_t rnti)
   memcpy(UE_info->list, newUEs, sizeof(UE_info->list));
   NR_SCHED_UNLOCK(&UE_info->mutex);
 
+  const int CC_id = 0;
+  NR_COMMON_channels_t *cc = &nr_mac->common_channels[CC_id];
+  for (int i = 0; i < NR_NB_RA_PROC_MAX; i++) {
+    NR_RA_t *ra = &cc->ra[i];
+    if (ra->rnti == UE->rnti) {
+      nr_clear_ra_proc(ra);
+      ra->cfra = 0;
+    }
+  }
+
   delete_nr_ue_data(UE, nr_mac->common_channels, &UE_info->uid_allocator);
 }
 
@@ -2743,9 +2745,8 @@ void nr_csirs_scheduling(int Mod_idP, frame_t frame, sub_frame_t slot, int n_slo
     if (UE_info->sched_csirs & (1 << dl_bwp->bwp_id))
       continue;
     NR_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
-    if (sched_ctrl->rrc_processing_timer > 0) {
+    if (nr_timer_is_active(&sched_ctrl->transm_interrupt))
       continue;
-    }
 
     if (!UE->sc_info.csi_MeasConfig)
       continue;
@@ -2959,28 +2960,41 @@ void nr_csirs_scheduling(int Mod_idP, frame_t frame, sub_frame_t slot, int n_slo
   }
 }
 
+static void nr_mac_clean_cellgroup(NR_CellGroupConfig_t *cell_group)
+{
+  /* remove a reconfigurationWithSync, we don't need it anymore */
+  if (cell_group->spCellConfig->reconfigurationWithSync != NULL) {
+    ASN_STRUCT_FREE(asn_DEF_NR_ReconfigurationWithSync, cell_group->spCellConfig->reconfigurationWithSync);
+    cell_group->spCellConfig->reconfigurationWithSync = NULL;
+  }
+  /* remove the rlc_BearerToReleaseList, we don't need it anymore */
+  if (cell_group->rlc_BearerToReleaseList != NULL) {
+    struct NR_CellGroupConfig__rlc_BearerToReleaseList *l = cell_group->rlc_BearerToReleaseList;
+    asn_sequence_del(&l->list, l->list.count, /* free */ 1);
+    free(cell_group->rlc_BearerToReleaseList);
+    cell_group->rlc_BearerToReleaseList = NULL;
+  }
+  /* remove reestablishRLC, we don't need it anymore */
+  for (int i = 0; i < cell_group->rlc_BearerToAddModList->list.count; ++i)
+    free_and_zero(cell_group->rlc_BearerToAddModList->list.array[i]->reestablishRLC);
+}
+
 static void nr_mac_apply_cellgroup(gNB_MAC_INST *mac, NR_UE_info_t *UE, frame_t frame, sub_frame_t slot)
 {
-  LOG_D(NR_MAC, "%4d.%2d RNTI %04x: RRC processing timer expired\n", frame, slot, UE->rnti);
+  LOG_D(NR_MAC, "%4d.%2d RNTI %04x: UE inactivity timer expired\n", frame, slot, UE->rnti);
 
   /* check if there is a new CellGroupConfig to be applied */
-  if (UE->apply_cellgroup && UE->reconfigCellGroup != NULL) {
-    LOG_D(NR_MAC, "%4d.%2d RNTI %04x: Apply CellGroupConfig after RRC processing timer expiry\n", frame, slot, UE->rnti);
+  if (UE->interrupt_action == FOLLOW_INSYNC_RECONFIG && UE->reconfigCellGroup != NULL) {
+    LOG_D(NR_MAC, "%4d.%2d RNTI %04x: Apply CellGroupConfig after UE inactivity\n", frame, slot, UE->rnti);
     ASN_STRUCT_FREE(asn_DEF_NR_CellGroupConfig, UE->CellGroup);
     UE->CellGroup = UE->reconfigCellGroup;
     UE->reconfigCellGroup = NULL;
-    UE->apply_cellgroup = false;
+    UE->interrupt_action = FOLLOW_INSYNC;
 
     if (LOG_DEBUGFLAG(DEBUG_ASN1))
       xer_fprint(stdout, &asn_DEF_NR_CellGroupConfig, (const void *)UE->CellGroup);
 
-    /* remove the rlc_BearerToReleaseList, we don't need it anymore */
-    if (UE->CellGroup->rlc_BearerToReleaseList != NULL) {
-      struct NR_CellGroupConfig__rlc_BearerToReleaseList *l = UE->CellGroup->rlc_BearerToReleaseList;
-      asn_sequence_del(&l->list, l->list.count, /* free */1);
-      free(UE->CellGroup->rlc_BearerToReleaseList);
-      UE->CellGroup->rlc_BearerToReleaseList = NULL;
-    }
+    nr_mac_clean_cellgroup(UE->CellGroup);
   }
 
   NR_ServingCellConfigCommon_t *scc = mac->common_channels[0].ServingCellConfigCommon;
@@ -2997,31 +3011,42 @@ static void nr_mac_apply_cellgroup(gNB_MAC_INST *mac, NR_UE_info_t *UE, frame_t 
   }
 }
 
-int nr_mac_enable_ue_rrc_processing_timer(gNB_MAC_INST *mac, NR_UE_info_t *UE, bool apply_cellgroup)
+int nr_mac_get_reconfig_delay_slots(NR_SubcarrierSpacing_t scs)
+{
+  /* we previously assumed a specific "slot ahead" value for the PHY processing
+   * time. However, we cannot always know it (e.g., third-party PHY), so simply
+   * assume a tentative worst-case slot processing time */
+  const uint16_t sl_ahead = 10;
+  /* 16ms seems to be the most common: See 38.331 Tab 12.1-1 */
+  int delay_ms = NR_RRC_RECONFIGURATION_DELAY_MS + NR_RRC_BWP_SWITCHING_DELAY_MS;
+  return (delay_ms << scs) + sl_ahead;
+}
+
+int nr_mac_interrupt_ue_transmission(gNB_MAC_INST *mac, NR_UE_info_t *UE, interrupt_followup_action_t action, int slots)
 {
   DevAssert(mac != NULL);
   DevAssert(UE != NULL);
   NR_SCHED_ENSURE_LOCKED(&mac->sched_lock);
 
-  const uint16_t sl_ahead = mac->if_inst->sl_ahead;
-  // TODO: account for BWP switch with NR_RRC_BWP_SWITCHING_DELAY_MS
-  int delay = NR_RRC_RECONFIGURATION_DELAY_MS;
-  NR_SubcarrierSpacing_t scs = UE->current_UL_BWP.scs;
+  nr_timer_setup(&UE->UE_sched_ctrl.transm_interrupt, slots, 1);
+  nr_timer_start(&UE->UE_sched_ctrl.transm_interrupt);
+  UE->interrupt_action = action;
 
-  UE->UE_sched_ctrl.rrc_processing_timer = (delay << scs) + sl_ahead;
-  UE->apply_cellgroup = apply_cellgroup;
-  AssertFatal(!UE->apply_cellgroup || (UE->apply_cellgroup && UE->reconfigCellGroup),
-              "logic bug: apply_cellgroup %d and UE->reconfigCellGroup %p: did you try to apply a cellGroup, while none is deposited?\n",
-              UE->apply_cellgroup,
-              UE->reconfigCellGroup);
-
-  // it might happen that timing advance command should be sent during the RRC
-  // processing timer. To prevent this, set a variable as if we would have just
+  // it might happen that timing advance command should be sent during the UE
+  // inactivity time. To prevent this, set a variable as if we would have just
   // sent it. This way, another TA command will for sure be sent in some
-  // frames, after RRC processing timer.
+  // frames, after the inactivity of the UE.
   UE->UE_sched_ctrl.ta_frame = (mac->frame - 1 + 1024) % 1024;
 
-  LOG_D(NR_MAC, "UE %04x: Activate RRC processing timer (%d ms)\n", UE->rnti, delay);
+  LOG_D(NR_MAC, "UE %04x: Interrupt UE transmission (%d slots) action %d reconfigCellGroup %p\n", UE->rnti, slots, UE->interrupt_action, UE->reconfigCellGroup);
+  return 0;
+}
+
+int nr_transmission_action_indicator_stop(gNB_MAC_INST *mac, NR_UE_info_t *UE_info)
+{
+  int delay = nr_mac_get_reconfig_delay_slots(UE_info->current_DL_BWP.scs);
+  nr_mac_interrupt_ue_transmission(mac, UE_info, FOLLOW_OUTOFSYNC, delay);
+  LOG_I(NR_MAC, "gNB-DU received the TransmissionActionIndicator with Stop value for UE %04x\n", UE_info->rnti);
   return 0;
 }
 
@@ -3083,9 +3108,12 @@ void nr_mac_update_timers(module_id_t module_id,
     /* check if UL failure and trigger release request if necessary */
     nr_mac_check_ul_failure(mac, UE->rnti, sched_ctrl);
 
-    if (sched_ctrl->rrc_processing_timer > 0) {
-      sched_ctrl->rrc_processing_timer--;
-      if (sched_ctrl->rrc_processing_timer == 0)
+    if (nr_timer_tick(&sched_ctrl->transm_interrupt)) {
+      /* expired */
+      nr_timer_stop(&sched_ctrl->transm_interrupt);
+      if (UE->interrupt_action == FOLLOW_OUTOFSYNC)
+        nr_mac_trigger_ul_failure(sched_ctrl, UE->current_DL_BWP.scs);
+      else
         nr_mac_apply_cellgroup(mac, UE, frame, slot);
     }
   }
@@ -3111,6 +3139,44 @@ void UL_tti_req_ahead_initialization(gNB_MAC_INST *gNB, int n, int CCid, frame_t
     nfapi_nr_ul_tti_request_t *req = &gNB->UL_tti_req_ahead[CCid][abs_slot % gNB->UL_tti_req_ahead_size];
     req->SFN = (abs_slot / n) % MAX_FRAME_NUMBER;
     req->Slot = abs_slot % n;
+  }
+}
+
+int get_fapi_beamforming_index(gNB_MAC_INST *mac, int ssb_idx)
+{
+  int beam_idx = mac->fapi_beam_index[ssb_idx];
+  AssertFatal(beam_idx >= 0, "Invalid beamforming index %d\n", beam_idx);
+  return beam_idx;
+}
+
+// TODO this is a placeholder for a possibly more complex function
+// for now the fapi beam index is the number of SSBs transmitted before ssb_index i
+void fapi_beam_index_allocation(NR_ServingCellConfigCommon_t *scc, gNB_MAC_INST *mac)
+{
+  int len = 0;
+  uint8_t* buf = NULL;
+  switch (scc->ssb_PositionsInBurst->present) {
+    case NR_ServingCellConfigCommon__ssb_PositionsInBurst_PR_shortBitmap:
+      len = 4;
+      buf = scc->ssb_PositionsInBurst->choice.shortBitmap.buf;
+      break;
+    case NR_ServingCellConfigCommon__ssb_PositionsInBurst_PR_mediumBitmap:
+      len = 8;
+      buf = scc->ssb_PositionsInBurst->choice.mediumBitmap.buf;
+      break;
+    case NR_ServingCellConfigCommon__ssb_PositionsInBurst_PR_longBitmap:
+      len = 64;
+      buf = scc->ssb_PositionsInBurst->choice.longBitmap.buf;
+      break;
+    default :
+      AssertFatal(false, "Invalid configuration\n");
+  }
+  int fapi_index = 0;
+  for (int i = 0; i < len; ++i) {
+    if ((buf[i / 8] >> (7 - i % 8)) & 0x1)
+      mac->fapi_beam_index[i] = fapi_index++;
+    else
+      mac->fapi_beam_index[i] = -1;
   }
 }
 
@@ -3236,7 +3302,27 @@ void nr_mac_reset_ul_failure(NR_UE_sched_ctrl_t *sched_ctrl)
   sched_ctrl->pusch_consecutive_dtx_cnt = 0;
 }
 
-void nr_mac_check_ul_failure(const gNB_MAC_INST *nrmac, int rnti, NR_UE_sched_ctrl_t *sched_ctrl)
+/* \brief trigger a release request towards the CU.
+ * \returns true if release was requested, else false (in which case the CU
+ * does not know the UE, and we can safely remove it). */
+bool nr_mac_request_release_ue(const gNB_MAC_INST *nrmac, int rnti)
+{
+  if (!du_exists_f1_ue_data(rnti)) {
+    LOG_W(NR_MAC, "UE %04x: no CU-UE ID stored, cannot request release\n", rnti);
+    return false;
+  }
+  f1_ue_data_t ue_data = du_get_f1_ue_data(rnti);
+  f1ap_ue_context_release_req_t request = {
+    .gNB_CU_ue_id = ue_data.secondary_ue,
+    .gNB_DU_ue_id = rnti,
+    .cause = F1AP_CAUSE_RADIO_NETWORK,
+    .cause_value = F1AP_CauseRadioNetwork_rl_failure_others,
+  };
+  nrmac->mac_rrc.ue_context_release_request(&request);
+  return true;
+}
+
+void nr_mac_check_ul_failure(gNB_MAC_INST *nrmac, int rnti, NR_UE_sched_ctrl_t *sched_ctrl)
 {
   if (!sched_ctrl->ul_failure)
     return;
@@ -3246,14 +3332,9 @@ void nr_mac_check_ul_failure(const gNB_MAC_INST *nrmac, int rnti, NR_UE_sched_ct
    * stop at 0 and we wait for a UE release command from upper layers */
   if (sched_ctrl->ul_failure_timer == 1) {
     LOG_W(MAC, "UE %04x: request release after UL failure timer expiry\n", rnti);
-    f1_ue_data_t ue_data = du_get_f1_ue_data(rnti);
-    f1ap_ue_context_release_req_t request = {
-      .gNB_CU_ue_id = ue_data.secondary_ue,
-      .gNB_DU_ue_id = rnti,
-      .cause = F1AP_CAUSE_RADIO_NETWORK,
-      .cause_value = F1AP_CauseRadioNetwork_rl_failure_others,
-    };
-    nrmac->mac_rrc.ue_context_release_request(&request);
+    bool requested = nr_mac_request_release_ue(nrmac, rnti);
+    if (!requested)
+      nr_mac_release_ue(nrmac, rnti);
   }
 }
 
@@ -3353,4 +3434,27 @@ bool nr_mac_remove_lcid(NR_UE_sched_ctrl_t *sched_ctrl, long lcid)
 
   seq_arr_erase(&sched_ctrl->lc_config, elm.it);
   return true;
+}
+
+static const NR_RA_t *find_nr_RA_rnti(const NR_RA_t *ra_base, int ra_count, rnti_t rnti)
+{
+  for (int i = 0; i < ra_count; ++i) {
+    const NR_RA_t *ra = &ra_base[i];
+    if (ra->ra_state != nrRA_gNB_IDLE && ra->rnti == rnti)
+      return ra;
+  }
+  return NULL;
+}
+
+bool nr_mac_get_new_rnti(NR_UEs_t *UEs, const NR_RA_t *ra_base, int ra_count, rnti_t *rnti)
+{
+  int loop = 0;
+  bool exist_connected_ue, exist_in_pending_ra_ue;
+  do {
+    *rnti = (taus() % 0xffef) + 1;
+    exist_connected_ue = find_nr_UE(UEs, *rnti) != NULL;
+    exist_in_pending_ra_ue = find_nr_RA_rnti(ra_base, ra_count, *rnti) != NULL;
+    loop++;
+  } while (loop < 100 && (exist_connected_ue || exist_in_pending_ra_ue));
+  return loop < 100; // nothing found: loop count 100
 }

@@ -71,6 +71,25 @@ static NR_SetupRelease_RACH_ConfigCommon_t *clone_rach_configcommon(const NR_Set
   return clone;
 }
 
+static NR_SetupRelease_MsgA_ConfigCommon_r16_t *clone_msga_configcommon(const NR_SetupRelease_MsgA_ConfigCommon_r16_t *mcc)
+{
+  if (mcc == NULL || mcc->present == NR_SetupRelease_MsgA_ConfigCommon_r16_PR_NOTHING)
+    return NULL;
+  NR_SetupRelease_MsgA_ConfigCommon_r16_t *clone = calloc_or_fail(1, sizeof(*clone));
+  clone->present = mcc->present;
+  if (clone->present == NR_SetupRelease_MsgA_ConfigCommon_r16_PR_release)
+    return clone;
+  uint8_t buf[1024];
+  asn_enc_rval_t enc_rval = uper_encode_to_buffer(&asn_DEF_NR_MsgA_ConfigCommon_r16, NULL, mcc->choice.setup, buf, sizeof(buf));
+  AssertFatal(enc_rval.encoded > 0 && enc_rval.encoded < sizeof(buf),
+              "could not clone NR_MsgA_ConfigCommon_r16: problem while encoding\n");
+  asn_dec_rval_t dec_rval =
+      uper_decode(NULL, &asn_DEF_NR_MsgA_ConfigCommon_r16, (void **)&clone->choice.setup, buf, enc_rval.encoded, 0, 0);
+  AssertFatal(dec_rval.code == RC_OK && dec_rval.consumed == enc_rval.encoded,
+              "could not clone NR_MsgA_ConfigCommon_r16:: problem while decoding\n");
+  return clone;
+}
+
 static NR_SetupRelease_PUSCH_ConfigCommon_t *clone_pusch_configcommon(const NR_SetupRelease_PUSCH_ConfigCommon_t *pcc)
 {
   if (pcc == NULL || pcc->present == NR_SetupRelease_PUSCH_ConfigCommon_PR_NOTHING)
@@ -2351,6 +2370,17 @@ NR_BCCH_DL_SCH_Message_t *get_SIB1_NR(const NR_ServingCellConfigCommon_t *scc,
 
   UL->initialUplinkBWP.genericParameters = clone_generic_parameters(&scc->uplinkConfigCommon->initialUplinkBWP->genericParameters);
   UL->initialUplinkBWP.rach_ConfigCommon = clone_rach_configcommon(scc->uplinkConfigCommon->initialUplinkBWP->rach_ConfigCommon);
+
+  if (scc->uplinkConfigCommon->initialUplinkBWP->ext1) {
+    NR_SetupRelease_MsgA_ConfigCommon_r16_t *msgA_configcommon =
+        clone_msga_configcommon(scc->uplinkConfigCommon->initialUplinkBWP->ext1->msgA_ConfigCommon_r16);
+    if (msgA_configcommon) {
+      // Add the struct ext1
+      UL->initialUplinkBWP.ext1 = calloc(1, sizeof(*UL->initialUplinkBWP.ext1));
+      UL->initialUplinkBWP.ext1->msgA_ConfigCommon_r16 = msgA_configcommon;
+    }
+  }
+
   UL->initialUplinkBWP.pusch_ConfigCommon = clone_pusch_configcommon(scc->uplinkConfigCommon->initialUplinkBWP->pusch_ConfigCommon);
   free(UL->initialUplinkBWP.pusch_ConfigCommon->choice.setup->groupHoppingEnabledTransformPrecoding);
   UL->initialUplinkBWP.pusch_ConfigCommon->choice.setup->groupHoppingEnabledTransformPrecoding = NULL;
@@ -3263,46 +3293,8 @@ NR_CellGroupConfig_t *get_default_secondaryCellGroup(const NR_ServingCellConfigC
   secondaryCellGroup->spCellConfig->reconfigurationWithSync =
       calloc(1, sizeof(*secondaryCellGroup->spCellConfig->reconfigurationWithSync));
 
-  NR_ReconfigurationWithSync_t *reconfigurationWithSync = secondaryCellGroup->spCellConfig->reconfigurationWithSync;
-  reconfigurationWithSync->spCellConfigCommon = clone_ServingCellConfigCommon(servingcellconfigcommon);
-  reconfigurationWithSync->newUE_Identity =
-      (get_softmodem_params()->phy_test == 1) ? 0x1234 : (taus() & 0xffff);
-  reconfigurationWithSync->t304 = NR_ReconfigurationWithSync__t304_ms2000;
-  reconfigurationWithSync->rach_ConfigDedicated = NULL;
-  reconfigurationWithSync->ext1 = NULL;
-
-  // For 2-step contention-free random access procedure
-  reconfigurationWithSync->rach_ConfigDedicated = calloc(1, sizeof(*reconfigurationWithSync->rach_ConfigDedicated));
-  reconfigurationWithSync->rach_ConfigDedicated->present = NR_ReconfigurationWithSync__rach_ConfigDedicated_PR_uplink;
-  reconfigurationWithSync->rach_ConfigDedicated->choice.uplink = calloc(1, sizeof(struct NR_RACH_ConfigDedicated));
-  reconfigurationWithSync->rach_ConfigDedicated->choice.uplink->cfra = calloc(1, sizeof(struct NR_CFRA));
-  reconfigurationWithSync->rach_ConfigDedicated->choice.uplink->ra_Prioritization = NULL;
-  reconfigurationWithSync->rach_ConfigDedicated->choice.uplink->cfra->occasions = calloc(1, sizeof(struct NR_CFRA__occasions));
-  memcpy(&reconfigurationWithSync->rach_ConfigDedicated->choice.uplink->cfra->occasions->rach_ConfigGeneric,
-         &servingcellconfigcommon->uplinkConfigCommon->initialUplinkBWP->rach_ConfigCommon->choice.setup->rach_ConfigGeneric,
-         sizeof(NR_RACH_ConfigGeneric_t));
-  asn1cCallocOne(reconfigurationWithSync->rach_ConfigDedicated->choice.uplink->cfra->occasions->ssb_perRACH_Occasion,
-                 NR_CFRA__occasions__ssb_perRACH_Occasion_one);
-  reconfigurationWithSync->rach_ConfigDedicated->choice.uplink->cfra->resources.present = NR_CFRA__resources_PR_ssb;
-  reconfigurationWithSync->rach_ConfigDedicated->choice.uplink->cfra->resources.choice.ssb =
-      calloc(1, sizeof(struct NR_CFRA__resources__ssb));
-  reconfigurationWithSync->rach_ConfigDedicated->choice.uplink->cfra->resources.choice.ssb->ra_ssb_OccasionMaskIndex = 0;
-
-  int n_ssb = 0;
-  struct NR_CFRA_SSB_Resource *ssbElem[64];
-  for (int i = 0; i < 64; i++) {
-    if ((bitmap >> (63 - i)) & 0x01) {
-      ssbElem[n_ssb] = calloc(1, sizeof(struct NR_CFRA_SSB_Resource));
-      ssbElem[n_ssb]->ssb = i;
-      ssbElem[n_ssb]->ra_PreambleIndex = 63 - (uid % 64);
-      asn1cSeqAdd(&secondaryCellGroup->spCellConfig->reconfigurationWithSync->rach_ConfigDedicated->choice.uplink->cfra->resources
-                       .choice.ssb->ssb_ResourceList.list,
-                  ssbElem[n_ssb]);
-      n_ssb++;
-    }
-  }
-
-  secondaryCellGroup->spCellConfig->reconfigurationWithSync->rach_ConfigDedicated->choice.uplink->cfra->ext1 = NULL;
+  rnti_t rnti = get_softmodem_params()->phy_test == 1 ? 0x1234 : (taus() & 0xffff);
+  secondaryCellGroup->spCellConfig->reconfigurationWithSync = get_reconfiguration_with_sync(rnti, uid, servingcellconfigcommon);
 
   secondaryCellGroup->spCellConfig->rlf_TimersAndConstants =
       calloc(1, sizeof(*secondaryCellGroup->spCellConfig->rlf_TimersAndConstants));
@@ -3571,4 +3563,44 @@ NR_CellGroupConfig_t *get_default_secondaryCellGroup(const NR_ServingCellConfigC
     xer_fprint(stdout, &asn_DEF_NR_SpCellConfig, (void *)secondaryCellGroup->spCellConfig);
   }
   return secondaryCellGroup;
+}
+
+NR_ReconfigurationWithSync_t *get_reconfiguration_with_sync(rnti_t rnti, uid_t uid, const NR_ServingCellConfigCommon_t *scc)
+{
+  NR_ReconfigurationWithSync_t *reconfigurationWithSync = calloc(1, sizeof(*reconfigurationWithSync));
+  reconfigurationWithSync->newUE_Identity = rnti;
+  reconfigurationWithSync->t304 = NR_ReconfigurationWithSync__t304_ms2000;
+  reconfigurationWithSync->rach_ConfigDedicated = NULL;
+  reconfigurationWithSync->ext1 = NULL;
+
+  reconfigurationWithSync->spCellConfigCommon = clone_ServingCellConfigCommon(scc);
+
+  reconfigurationWithSync->rach_ConfigDedicated = calloc(1, sizeof(*reconfigurationWithSync->rach_ConfigDedicated));
+  reconfigurationWithSync->rach_ConfigDedicated->present = NR_ReconfigurationWithSync__rach_ConfigDedicated_PR_uplink;
+  NR_RACH_ConfigDedicated_t *uplink = calloc(1, sizeof(*uplink));
+  reconfigurationWithSync->rach_ConfigDedicated->choice.uplink = uplink;
+  uplink->ra_Prioritization = NULL;
+  uplink->cfra = calloc(1, sizeof(struct NR_CFRA));
+  uplink->cfra->ext1 = NULL;
+  uplink->cfra->occasions = calloc(1, sizeof(struct NR_CFRA__occasions));
+  memcpy(&uplink->cfra->occasions->rach_ConfigGeneric,
+         &scc->uplinkConfigCommon->initialUplinkBWP->rach_ConfigCommon->choice.setup->rach_ConfigGeneric,
+         sizeof(NR_RACH_ConfigGeneric_t));
+  asn1cCallocOne(uplink->cfra->occasions->ssb_perRACH_Occasion, NR_CFRA__occasions__ssb_perRACH_Occasion_one);
+  uplink->cfra->resources.present = NR_CFRA__resources_PR_ssb;
+  uplink->cfra->resources.choice.ssb = calloc(1, sizeof(struct NR_CFRA__resources__ssb));
+  uplink->cfra->resources.choice.ssb->ra_ssb_OccasionMaskIndex = 0;
+
+  uint64_t bitmap = get_ssb_bitmap(scc);
+  for (int i = 0; i < 64; i++) {
+    if (((bitmap >> (63 - i)) & 0x01) == 0)
+      continue;
+
+    NR_CFRA_SSB_Resource_t *ssbElem = calloc(1, sizeof(*ssbElem));
+    ssbElem->ssb = i;
+    ssbElem->ra_PreambleIndex = 63 - (uid % 64);
+    asn1cSeqAdd(&uplink->cfra->resources.choice.ssb->ssb_ResourceList.list, ssbElem);
+  }
+
+  return reconfigurationWithSync;
 }

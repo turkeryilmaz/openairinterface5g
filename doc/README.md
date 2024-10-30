@@ -53,6 +53,7 @@ There is some general information in the [OpenAirInterface Gitlab Wiki](https://
 - [How to run with E2 agent](../openair2/E2AP/README.md)
 - [How to run the physical simulators](./physical-simulators.md)
 - [How to setup OAI with Nvidia Aerial and Foxconn](./Aerial_FAPI_Split_Tutorial.md)
+- [How to do a handover](./handover-tutorial.md)
 
 Legacy unmaintained files:
 - [`L2NFAPI_NOS1.md`](./L2NFAPI_NOS1.md), [`L2NFAPI_S1.md`](./L2NFAPI_S1.md):
@@ -115,3 +116,8 @@ The other SDRs (AW2S, LimeSDR, ...) have no READMEs.
 
 - [UnitTests.md](./UnitTests.md) explains the unit testing setup
 - [TESTBenches.md](./TESTBenches.md) lists the CI setup and links to pipelines
+
+# Developer tools
+
+- [formatting](../tools/formatting/README.md) is a clang-format error detection tool
+- [iwyu](../tools/iwyu/README.md) is a tool to detect `#include` errors

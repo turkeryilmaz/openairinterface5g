@@ -105,10 +105,18 @@ These modes of operation are supported:
 - MAC <-> PHY data interface using FAPI P7 interface for BCH PDU, DCI PDU, PDSCH PDU
 - Scheduler procedures for SIB1
 - Scheduler procedures for RA
-  - Contention Free RA procedure
-  - Contention Based RA procedure
-    - Msg3 can transfer uplink CCCH, DTCH or DCCH messages
-    - CBRA can be performed using MAC CE or C-RNTI
+    - 4-Step RA
+        - Contention Free RA procedure
+        - Contention Based RA procedure
+            - Msg3 can transfer uplink CCCH, DTCH or DCCH messages
+            - CBRA can be performed using MAC CE for C-RNTI
+            - Is not possible to use 2-Step RA and 4-Step RA at the same time
+    - 2-Step RA
+        - Contention Based RA procedure
+            - MsgA can transfer uplink CCCH, DTCH or DCCH messages
+            - CBRA can be performed using MAC CE for C-RNTI
+            - Is not possible to use 2-Step RA and 4-Step RA at the same time
+            - Fallback not supported
 - Scheduler procedures for CSI-RS
 - MAC downlink scheduler
   - phy-test scheduler (fixed allocation and usable also without UE)
@@ -129,6 +137,7 @@ These modes of operation are supported:
   - evaluation of CQI report
 - MAC scheduling of SR reception
 - Support of up to 16 UEs (can be increased to 32)
+- Intra-frequency handover
 
 ## gNB RLC
 
@@ -213,6 +222,7 @@ These modes of operation are supported:
 - Interface with RRC
 - Interface with GTP-u (tunnel creation/handling for F1-U interface)
 - One CU(-CP) can handle multiple DUs
+- Support for intra-CU mobility (across DUs)
 
 ## gNB E1AP
 
@@ -310,9 +320,15 @@ These modes of operation are supported:
 * Random access procedure (needs improvement, there is still not a clear separation between MAC and PHY)
    - Mapping SSBs to multiple ROs
    - Scheduling of PRACH
-   - Processing of RAR
-   - Transmission and re-transmission of Msg3
-   - Msg4 and contention resolution
+  - 4-Step RA
+      - Processing of RAR
+      - Transmission and re-transmission of Msg3
+      - Msg4 and contention resolution
+  - 2-Step RA
+      - Transmission of MsgA-PUSCH
+      - Reception of MsgB
+      - Processing of SuccessRAR
+      - Fallback not supported
 * DCI processing
    - format 10 (RA-RNTI, C-RNTI, SI-RNTI, TC-RNTI)
    - format 00 (C-RNTI, TC-RNTI)

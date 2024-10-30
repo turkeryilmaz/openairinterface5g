@@ -136,7 +136,7 @@ int precoding_weigths_generation(nfapi_nr_pm_list_t *mat,
               double complex res_code;
               for (int i_rows = 0; i_rows < N1 * N2; i_rows++) {
                 nfapi_nr_pm_weights_t *weights = &mat->pmi_pdu[pmiq].weights[j_col][i_rows];
-                res_code = sqrt(1 / (double)(L * num_antenna_ports)) * v_lm[llc][mmc][i_rows];
+                res_code = sqrt(1 / (double)L) * v_lm[llc][mmc][i_rows];
                 c16_t precoder_weight = convert_precoder_weight(res_code);
                 weights->precoder_weight_Re = precoder_weight.r;
                 weights->precoder_weight_Im = precoder_weight.i;
@@ -153,7 +153,7 @@ int precoding_weigths_generation(nfapi_nr_pm_list_t *mat,
               }
               for (int i_rows = N1 * N2; i_rows < 2 * N1 * N2; i_rows++) {
                 nfapi_nr_pm_weights_t *weights = &mat->pmi_pdu[pmiq].weights[j_col][i_rows];
-                res_code = sqrt(1 / (double)(L * num_antenna_ports)) * (phase_sign)*theta_n[nn] * v_lm[llc][mmc][i_rows - N1 * N2];
+                res_code = sqrt(1 / (double)L) * (phase_sign)*theta_n[nn] * v_lm[llc][mmc][i_rows - N1 * N2];
                 c16_t precoder_weight = convert_precoder_weight(res_code);
                 weights->precoder_weight_Re = precoder_weight.r;
                 weights->precoder_weight_Im = precoder_weight.i;
@@ -272,7 +272,9 @@ nfapi_nr_pm_list_t init_DL_MIMO_codebook(gNB_MAC_INST *gNB, nr_pdsch_AntennaPort
   return mat;
 }
 
-static void config_common(gNB_MAC_INST *nrmac, nr_pdsch_AntennaPorts_t pdsch_AntennaPorts, int pusch_AntennaPorts, NR_ServingCellConfigCommon_t *scc)
+static void config_common(gNB_MAC_INST *nrmac,
+                          const nr_mac_config_t *config,
+                          NR_ServingCellConfigCommon_t *scc)
 {
   nfapi_nr_config_request_scf_t *cfg = &nrmac->config[0];
   nrmac->common_channels[0].ServingCellConfigCommon = scc;
@@ -527,6 +529,7 @@ static void config_common(gNB_MAC_INST *nrmac, nr_pdsch_AntennaPorts_t pdsch_Ant
   cfg->num_tlv += 2;
 
   // logical antenna ports
+  nr_pdsch_AntennaPorts_t pdsch_AntennaPorts = config->pdsch_AntennaPorts;
   int num_pdsch_antenna_ports = pdsch_AntennaPorts.N1 * pdsch_AntennaPorts.N2 * pdsch_AntennaPorts.XP;
   cfg->carrier_config.num_tx_ant.value = num_pdsch_antenna_ports;
   AssertFatal(num_pdsch_antenna_ports > 0 && num_pdsch_antenna_ports < 33, "pdsch_AntennaPorts in 1...32\n");
@@ -550,18 +553,19 @@ static void config_common(gNB_MAC_INST *nrmac, nr_pdsch_AntennaPorts_t pdsch_Ant
     cfg->num_tlv++;
   }
 
+  int pusch_AntennaPorts = config->pusch_AntennaPorts;
   cfg->carrier_config.num_rx_ant.value = pusch_AntennaPorts;
   AssertFatal(pusch_AntennaPorts > 0 && pusch_AntennaPorts < 13, "pusch_AntennaPorts in 1...12\n");
   cfg->carrier_config.num_rx_ant.tl.tag = NFAPI_NR_CONFIG_NUM_RX_ANT_TAG;
   LOG_I(NR_MAC,
-        "Set RX antenna number to %d, Set TX antenna number to %d (num ssb %d: %x,%x)\n",
+        "Set TX antenna number to %d, Set RX antenna number to %d (num ssb %d: %x,%x)\n",
         cfg->carrier_config.num_tx_ant.value,
         cfg->carrier_config.num_rx_ant.value,
         num_ssb,
         cfg->ssb_table.ssb_mask_list[0].ssb_mask.value,
         cfg->ssb_table.ssb_mask_list[1].ssb_mask.value);
   AssertFatal(cfg->carrier_config.num_tx_ant.value > 0,
-              "carrier_config.num_tx_ant.value %d !\n",
+              "carrier_config.num_tx_ant.value %d!\n",
               cfg->carrier_config.num_tx_ant.value);
   cfg->num_tlv++;
   cfg->num_tlv++;
@@ -589,13 +593,42 @@ static void config_common(gNB_MAC_INST *nrmac, nr_pdsch_AntennaPorts_t pdsch_Ant
     AssertFatal(periods_per_frame > 0, "TDD configuration cannot be configured\n");
   }
 
+  int nb_tx = config->nb_bfw[0]; // number of tx antennas
+  int nb_beams = config->nb_bfw[1]; // number of beams
   // precoding matrix configuration (to be improved)
   cfg->pmi_list = init_DL_MIMO_codebook(nrmac, pdsch_AntennaPorts);
+  // beamforming matrix configuration
+  cfg->dbt_config.num_dig_beams = nb_beams;
+  if (nb_beams > 0) {
+    cfg->dbt_config.num_txrus = nb_tx;
+    cfg->dbt_config.dig_beam_list = malloc16(nb_beams * sizeof(*cfg->dbt_config.dig_beam_list));
+    AssertFatal(cfg->dbt_config.dig_beam_list, "out of memory\n");
+    for (int i = 0; i < nb_beams; i++) {
+      nfapi_nr_dig_beam_t *beam = &cfg->dbt_config.dig_beam_list[i];
+      beam->beam_idx = i;
+      beam->txru_list = malloc16(nb_tx * sizeof(*beam->txru_list));
+      for (int j = 0; j < nb_tx; j++) {
+        nfapi_nr_txru_t *txru = &beam->txru_list[j];
+        txru->dig_beam_weight_Re = config->bw_list[j + i * nb_tx] & 0xffff;
+        txru->dig_beam_weight_Im = (config->bw_list[j + i * nb_tx] >> 16) & 0xffff;
+        LOG_D(NR_MAC, "Beam %d Tx %d Weight (%d, %d)\n", i, j, txru->dig_beam_weight_Re, txru->dig_beam_weight_Im);
+      }
+    }
+  }
+
+  if (nrmac->beam_info.beam_allocation) {
+    cfg->analog_beamforming_ve.num_beams_period_vendor_ext.tl.tag = NFAPI_NR_FAPI_NUM_BEAMS_PERIOD_VENDOR_EXTENSION_TAG;
+    cfg->analog_beamforming_ve.num_beams_period_vendor_ext.value = nrmac->beam_info.beams_per_period;
+    cfg->num_tlv++;
+    cfg->analog_beamforming_ve.analog_bf_vendor_ext.tl.tag = NFAPI_NR_FAPI_ANALOG_BF_VENDOR_EXTENSION_TAG;
+    cfg->analog_beamforming_ve.analog_bf_vendor_ext.value = 1;  // analog BF enabled
+    cfg->num_tlv++;
+  }
 }
 
 static void initialize_beam_information(NR_beam_info_t *beam_info, int mu, int slots_per_frame)
 {
-  if(!beam_info->beam_allocation)
+  if (!beam_info->beam_allocation)
     return;
 
   int size = mu == 0 ? slots_per_frame << 1 : slots_per_frame;
@@ -644,7 +677,8 @@ void nr_mac_config_scc(gNB_MAC_INST *nrmac, NR_ServingCellConfigCommon_t *scc, c
 
   LOG_I(NR_MAC, "Configuring common parameters from NR ServingCellConfig\n");
 
-  config_common(nrmac, config->pdsch_AntennaPorts, config->pusch_AntennaPorts, scc);
+  config_common(nrmac, config, scc);
+  fapi_beam_index_allocation(scc, nrmac);
 
   if (NFAPI_MODE == NFAPI_MONOLITHIC) {
     // nothing to be sent in the other cases
@@ -810,9 +844,9 @@ bool nr_mac_prepare_ra_ue(gNB_MAC_INST *nrmac, uint32_t rnti, NR_CellGroupConfig
 /* Prepare a new CellGroupConfig to be applied for this UE. We cannot
  * immediatly apply it, as we have to wait for the reconfiguration through RRC.
  * This function sets up everything to apply the reconfiguration. Later, we
- * will trigger the timer with nr_mac_enable_ue_rrc_processing_timer(); upon
- * expiry nr_mac_apply_cellgroup() will apply the CellGroupConfig (radio config
- * etc). */
+ * will trigger the UE inactivity with nr_mac_interrupt_ue_transmission(); upon
+ * expiry, nr_mac_apply_cellgroup() will apply the CellGroupConfig (radio
+ * config etc). */
 bool nr_mac_prepare_cellgroup_update(gNB_MAC_INST *nrmac, NR_UE_info_t *UE, NR_CellGroupConfig_t *CellGroup)
 {
   DevAssert(nrmac != NULL);
