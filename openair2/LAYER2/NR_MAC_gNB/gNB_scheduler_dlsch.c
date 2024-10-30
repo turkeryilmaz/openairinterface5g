@@ -36,6 +36,7 @@
 #include "NR_MAC_COMMON/nr_mac_extern.h"
 #include "LAYER2/NR_MAC_gNB/mac_proto.h"
 #include "LAYER2/RLC/rlc.h"
+#include "LAYER2/NR_MAC_gNB/gNB_qos_aware_scheduler_dlsch.h"
 
 /*TAG*/
 #include "NR_TAG-Id.h"
@@ -389,12 +390,7 @@ void abort_nr_dl_harq(NR_UE_info_t* UE, int8_t harq_pid)
   UE->mac_stats.dl.errors++;
 }
 
-typedef struct {
-  int bwpStart;
-  int bwpSize;
-} dl_bwp_info_t;
-
-static dl_bwp_info_t get_bwp_start_size(gNB_MAC_INST *mac, NR_UE_info_t *UE)
+dl_bwp_info_t get_bwp_start_size(gNB_MAC_INST *mac, NR_UE_info_t *UE)
 {
   NR_UE_DL_BWP_t *dl_bwp = &UE->current_DL_BWP;
   NR_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
@@ -422,12 +418,12 @@ static dl_bwp_info_t get_bwp_start_size(gNB_MAC_INST *mac, NR_UE_info_t *UE)
   return bwp_info;
 }
 
-static bool allocate_dl_retransmission(module_id_t module_id,
-                                       frame_t frame,
-                                       sub_frame_t slot,
-                                       int *n_rb_sched,
-                                       NR_UE_info_t *UE,
-                                       int current_harq_pid)
+bool allocate_dl_retransmission(module_id_t module_id,
+                                frame_t frame,
+                                sub_frame_t slot,
+                                int *n_rb_sched,
+                                NR_UE_info_t *UE,
+                                int current_harq_pid)
 {
 
   int CC_id = 0;
@@ -594,10 +590,6 @@ static bool allocate_dl_retransmission(module_id_t module_id,
 }
 
 uint32_t pf_tbs[3][29]; // pre-computed, approximate TBS values for PF coefficient
-typedef struct UEsched_s {
-  float coef;
-  NR_UE_info_t * UE;
-} UEsched_t;
 
 static int comparator(const void *p, const void *q) {
   return ((UEsched_t*)p)->coef < ((UEsched_t*)q)->coef;
@@ -880,13 +872,15 @@ static void nr_fr1_dlsch_preprocessor(module_id_t module_id, frame_t frame, sub_
   // FAPI cannot handle more than MAX_DCI_CORESET DCIs
   max_sched_ues = min(max_sched_ues, MAX_DCI_CORESET);
 
-  /* proportional fair scheduling algorithm */
-  pf_dl(module_id,
-        frame,
-        slot,
-        UE_info->list,
-        max_sched_ues,
-        bw);  // we set the whole BW as max number
+  /* scheduling algorithm */
+  if (get_softmodem_params()->use_qos_aware_scheduler == 0) {
+    LOG_D(NR_MAC, "Using Proportional Fair scheduler\n");
+    pf_dl(module_id, frame, slot, UE_info->list, max_sched_ues, bw); // we set the whole BW as max number
+
+  } else {
+    LOG_D(NR_MAC, "Using QoS aware scheduler\n");
+    qos_aware_scheduler_dl(module_id, frame, slot, UE_info->list, max_sched_ues, bw); // we set the whole BW as max number
+  }
 }
 
 nr_pp_impl_dl nr_init_fr1_dlsch_preprocessor(int CC_id) {
@@ -947,6 +941,7 @@ void nr_schedule_ue_spec(module_id_t module_id,
 
     NR_sched_pdsch_t *sched_pdsch = &sched_ctrl->sched_pdsch;
     UE->mac_stats.dl.current_bytes = 0;
+    memset(UE->mac_stats.dl.current_bytes_lc, 0, 32*sizeof(uint32_t));
     UE->mac_stats.dl.current_rbs = 0;
 
     /* update TA and set ta_apply every 100 frames.
@@ -1286,8 +1281,19 @@ void nr_schedule_ue_spec(module_id_t module_id,
             NR_MAC_SUBHEADER_LONG *header = (NR_MAC_SUBHEADER_LONG *) buf;
             /* limit requested number of bytes to what preprocessor specified, or
              * such that TBS is full */
-            const rlc_buffer_occupancy_t ndata = min(sched_ctrl->rlc_status[lcid].bytes_in_buffer,
-                                                     bufEnd-buf-sizeof(NR_MAC_SUBHEADER_LONG));
+            uint32_t bytes_in_buffer;
+            if (get_softmodem_params()->use_qos_aware_scheduler == 0) {
+              bytes_in_buffer = sched_ctrl->rlc_status[lcid].bytes_in_buffer;
+            } else {
+              AssertFatal(sched_ctrl->rlc_status[lcid].prioritized_bytes_in_buffer <= sched_ctrl->rlc_status[lcid].bytes_in_buffer,
+                          "prioritized bytes are %d which should be less than total bytes %d for lcid %d\n",
+                          sched_ctrl->rlc_status[lcid].prioritized_bytes_in_buffer,
+                          sched_ctrl->rlc_status[lcid].bytes_in_buffer,
+                          lcid);
+              bytes_in_buffer = sched_ctrl->rlc_status[lcid].prioritized_bytes_in_buffer;
+              LOG_D(NR_MAC, "number of prioritized bytes requested from buffer for lcid %d is %d and actual number of bytes in buffer are %d\n", lcid, bytes_in_buffer, sched_ctrl->rlc_status[lcid].bytes_in_buffer);
+            }
+            const rlc_buffer_occupancy_t ndata = min(bytes_in_buffer, bufEnd - buf - sizeof(NR_MAC_SUBHEADER_LONG));
             tbs_size_t len = mac_rlc_data_req(module_id,
                                               rnti,
                                               module_id,
@@ -1324,6 +1330,11 @@ void nr_schedule_ue_spec(module_id_t module_id,
           }
 
           UE->mac_stats.dl.lc_bytes[lcid] += lcid_bytes;
+          if (get_softmodem_params()->use_qos_aware_scheduler == 1) {
+            UE->mac_stats.dl.current_bytes_lc[lcid] = sched_pdsch->lc_data_thru[lcid];
+            LOG_D(NR_MAC, "[%d.%d]data throughput of lc %d is %d\n", frame, slot, lcid, sched_pdsch->lc_data_thru[lcid]);
+          }
+          
         }
       } else if (get_softmodem_params()->phy_test || get_softmodem_params()->do_ra) {
         /* we will need the large header, phy-test typically allocates all

@@ -30,6 +30,7 @@
 
  */
 
+#define _GNU_SOURCE
 #include "common/platform_types.h"
 #include "common/platform_constants.h"
 #include "common/ran_context.h"

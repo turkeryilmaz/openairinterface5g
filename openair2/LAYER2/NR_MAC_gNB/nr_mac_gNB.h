@@ -132,6 +132,11 @@ typedef struct {
   bool new_beam;
 } NR_beam_alloc_t;
 
+typedef struct {
+  int bwpStart;
+  int bwpSize;
+} dl_bwp_info_t;
+
 typedef struct nr_pdsch_AntennaPorts_t {
   int N1;
   int N2;
@@ -470,6 +475,9 @@ typedef struct NR_sched_pdsch {
   // time_domain_allocation is the index of a list of tda
   int time_domain_allocation;
   NR_tda_info_t tda_info;
+
+  /* lc related info */
+  uint32_t lc_data_thru[32];
 } NR_sched_pdsch_t;
 
 typedef struct NR_UE_harq {
@@ -571,8 +579,14 @@ typedef struct nr_lc_config {
   nssai_t nssai;
   uint64_t max_bitrate;
   uint64_t guaranteed_bitrate;
+  uint64_t prioritized_bitrate;
   /// QoS config for DRB
   NR_QoS_config_t qos_config[NR_MAX_NUM_QFI];
+  
+  //
+  uint64_t bucket_size;        // Bucket size per lcid
+  uint32_t bucket_size_duration;
+  int64_t Bj;
 } nr_lc_config_t;
 
 /*! \brief scheduling control information set through an API */
@@ -700,6 +714,7 @@ typedef struct NR_mac_dir_stats {
   uint64_t errors;
   uint64_t total_bytes;
   uint32_t current_bytes;
+  uint32_t current_bytes_lc[32];
   uint64_t total_sdu_bytes;
   uint32_t total_rbs;
   uint32_t total_rbs_retx;
@@ -768,6 +783,7 @@ typedef struct {
   bool Msg4_MsgB_ACKed;
   float ul_thr_ue;
   float dl_thr_ue;
+  float dl_thr_lc[32];
   long pdsch_HARQ_ACK_Codebook;
 } NR_UE_info_t;
 

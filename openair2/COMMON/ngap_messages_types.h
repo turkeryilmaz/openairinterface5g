@@ -35,6 +35,7 @@
 #include "qos_flow_messages_types.h"
 #include "LTE_asn_constant.h"
 #include "s1ap_messages_types.h"
+#include "common/5g_platform_types.h"
 //-------------------------------------------------------------------------------------------//
 // Defines to access message fields.
 

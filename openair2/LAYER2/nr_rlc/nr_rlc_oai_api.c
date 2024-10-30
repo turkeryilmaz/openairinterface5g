@@ -267,6 +267,8 @@ mac_rlc_status_resp_t mac_rlc_status_ind(const module_id_t module_idP,
     ret.bytes_in_buffer = buf_stat.status_size
                         + buf_stat.retx_size
                         + buf_stat.tx_size;
+    rb->get_stats(rb, &rb->stats);
+    ret.hol_delay = rb->stats.txsdu_wt_us;
   } else {
     if (!(frameP%128) || channel_idP == 0) //to suppress this warning message
       LOG_W(RLC, "Radio Bearer (channel ID %d) is NULL for UE %d\n", channel_idP, ue_id);
@@ -276,6 +278,7 @@ mac_rlc_status_resp_t mac_rlc_status_ind(const module_id_t module_idP,
   nr_rlc_manager_unlock(nr_rlc_ue_manager);
 
   ret.pdus_in_buffer = 0;
+  ret.prioritized_bytes_in_buffer = 0;
   /* TODO: creation time may be important (unit: frame, as it seems) */
   ret.head_sdu_creation_time = 0;
   ret.head_sdu_remaining_size_to_send = 0;

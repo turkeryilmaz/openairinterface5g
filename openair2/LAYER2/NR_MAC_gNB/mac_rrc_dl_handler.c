@@ -226,7 +226,9 @@ static int handle_ue_context_srbs_setup(NR_UE_info_t *UE,
     nr_rlc_add_srb(UE->rnti, srb->srb_id, rlc_BearerConfig);
 
     int priority = rlc_BearerConfig->mac_LogicalChannelConfig->ul_SpecificParameters->priority;
-    nr_lc_config_t c = {.lcid = rlc_BearerConfig->logicalChannelIdentity, .priority = priority};
+    uint64_t bucket_size = rlc_BearerConfig->mac_LogicalChannelConfig->ul_SpecificParameters->prioritisedBitRate;
+    nr_lc_config_t c = {.lcid = rlc_BearerConfig->logicalChannelIdentity, .priority = priority, 
+                        .bucket_size_duration = 1, .bucket_size = bucket_size, .Bj = 0};
     nr_mac_add_lcid(&UE->UE_sched_ctrl, &c);
 
     (*resp_srbs)[i].srb_id = srb->srb_id;
@@ -301,6 +303,7 @@ static nr_lc_config_t nr_prepare_lcconfig(long lcid, const f1ap_drb_to_be_setup_
 
   c.guaranteed_bitrate = g_bitrate;
   c.max_bitrate = m_bitrate;
+  c.bucket_size = c.guaranteed_bitrate * c.bucket_size_duration;
 
   return c;
 }
