@@ -256,6 +256,7 @@ void nr_layer_mapping(int nbCodes,
 {
   LOG_D(PHY,"Doing layer mapping for %d layers, %d symbols\n",n_layers,n_symbs);
 
+  c16_t *l=&mod_symbs[0][layer];
   switch (n_layers) {
 
     case 1:
@@ -265,7 +266,6 @@ void nr_layer_mapping(int nbCodes,
     case 2:
     case 3:
     case 4:
-    c16_t *l=&mod_symbs[0][layer];
     for (int i = 0; i < n_symbs / n_layers; i++) {
 	   /* 
       const c16_t *base = mod_symbs[0] + n_layers * i;
