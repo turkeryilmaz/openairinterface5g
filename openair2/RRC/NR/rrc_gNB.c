@@ -27,6 +27,14 @@
  * \company Eurecom, NTUST
  * \email: navid.nikaein@eurecom.fr and raymond.knopp@eurecom.fr, kroempa@gmail.com
  */
+ /*
+  31  * Modified by Surajit Dey, Danny Nsouli, Michael Bundas
+  32  * MITRE Corporation
+  33  * Add BAP layer code
+  34  * November 2023
+  35  * sdey@mitre.org, dnsouli@mitre.org, mbundas@mitre.org
+  36 */
+
 #define RRC_GNB_C
 #define RRC_GNB_C
 
@@ -122,10 +130,44 @@ bool DURecvCb(protocol_ctxt_t  *ctxt_pP,
               const pdcp_transmission_mode_t modeP,
               const uint32_t *sourceL2Id,
               const uint32_t *destinationL2Id) {
+  
+  struct bap_data bapd;
+  unsigned short dest;
+  unsigned short path;
+  int octets;
+  ngran_node_t node_type = get_node_type();
+
+  // Add BAP header (3 bytes)
+  if (getenv("BAP") != NULL && strcmp(getenv("BAP"),"yes") == 0)
+  {
+        if (node_type == -1) {   // UE
+
+          dest = 0x03AB;
+        }
+        else // gNB
+        {
+          dest = 0x03AA;
+        }
+        path = 0x03CD;
+        octets = bap_pdu_func(dest, path);
+
+        bapd.oct1 = octets & 0xFF;
+        bapd.oct2 = (octets >> 8) & 0xFF;
+        bapd.oct3 = (octets >> 16) & 0xFF;
+
+        // The buffer comes from the stack in gtp-u thread, we have a make a separate buffer to enqueue in a inter-thread message queue
+        mem_block_t *sdu=get_free_mem_block(sdu_buffer_sizeP+3, __func__);
+        memcpy(sdu->data,  sdu_buffer_pP,  sdu_buffer_sizeP);
+        memcpy(sdu->data+sdu_buffer_sizeP, (unsigned char *) &bapd, sizeof(bapd));
+        du_rlc_data_req(ctxt_pP,srb_flagP, false,  rb_idP,muiP, confirmP,  sdu_buffer_sizeP+3, sdu);
+        LOG_I(NR_RRC, "BAP node %d %s(): (srb %d) size %d  bap2 hdr %x\n", node_type, __func__, rb_idP, sdu_buffer_sizeP, bapd.oct2);
+  }
+  else {
   // The buffer comes from the stack in gtp-u thread, we have a make a separate buffer to enqueue in a inter-thread message queue
   mem_block_t *sdu=get_free_mem_block(sdu_buffer_sizeP, __func__);
   memcpy(sdu->data,  sdu_buffer_pP,  sdu_buffer_sizeP);
   du_rlc_data_req(ctxt_pP,srb_flagP, false,  rb_idP,muiP, confirmP,  sdu_buffer_sizeP, sdu);
+  }
   return true;
 }
 
@@ -2535,6 +2577,10 @@ static void rrc_DU_process_ue_context_setup_request(MessageDef *msg_p, instance_
   message_p = itti_alloc_new_message (TASK_RRC_GNB, 0, F1AP_UE_CONTEXT_SETUP_RESP);
   f1ap_ue_context_setup_t * resp=&F1AP_UE_CONTEXT_SETUP_RESP(message_p);
   uint32_t incoming_teid = 0;
+  struct bap_data bapd;
+  unsigned short dest;
+  unsigned short path;
+  int octets;
 
   if(req->cu_to_du_rrc_information!=NULL){
     if(req->cu_to_du_rrc_information->uE_CapabilityRAT_ContainerList!=NULL){
@@ -2686,11 +2732,41 @@ static void rrc_DU_process_ue_context_setup_request(MessageDef *msg_p, instance_
     fill_mastercellGroupConfig(cellGroupConfig, UE->masterCellGroup, rrc->um_on_default_drb, SRB2_config ? 1 : 0, drb_id_to_setup_start, nb_drb_to_setup, drb_priority);
   protocol_ctxt_t ctxt = {.rntiMaybeUEid = req->rnti, .module_id = instance, .instance = instance, .enb_flag = 1, .eNB_index = instance};
   apply_macrlc_config(rrc, ue_context_p, &ctxt);
-  
+
+  ngran_node_t node_type = get_node_type();
+  mem_block_t *pdcp_pdu_p;
+
   if(req->rrc_container_length > 0){
-    mem_block_t *pdcp_pdu_p = get_free_mem_block(req->rrc_container_length, __func__);
+// Add BAP header (3 bytes)
+    if (getenv("BAP") != NULL && strcmp(getenv("BAP"),"yes") == 0)
+    {
+      if (node_type == -1) {   // UE
+
+        dest = 0x03AB;
+      }
+      else // gNB
+      {
+        dest = 0x03AA;
+      }
+      path = 0x03CD;
+      octets = bap_pdu_func(dest, path);
+
+      bapd.oct1 = octets & 0xFF;
+      bapd.oct2 = (octets >> 8) & 0xFF;
+      bapd.oct3 = (octets >> 16) & 0xFF;
+
+      pdcp_pdu_p = get_free_mem_block(req->rrc_container_length+3, __func__);
+      memcpy(&pdcp_pdu_p->data[0], req->rrc_container, req->rrc_container_length);
+      memcpy(&pdcp_pdu_p->data[0]+req->rrc_container_length, (unsigned char *) &bapd, sizeof(bapd));
+      du_rlc_data_req(&ctxt, 1, 0x00, 1, 1, 0, req->rrc_container_length+3, pdcp_pdu_p);
+      LOG_I(NR_RRC, "BAP node %d %s(): size %d  bap2 hdr %x\n", node_type, __func__, req->rrc_container_length, bapd.oct2);
+    }
+    else {
+    *pdcp_pdu_p = get_free_mem_block(req->rrc_container_length, __func__);
     memcpy(&pdcp_pdu_p->data[0], req->rrc_container, req->rrc_container_length);
     du_rlc_data_req(&ctxt, 1, 0x00, 1, 1, 0, req->rrc_container_length, pdcp_pdu_p);
+    }
+    
     LOG_I(F1AP, "Printing RRC Container of UE context setup request: \n");
     for (int j=0; j<req->rrc_container_length; j++){
       printf("%02x ", pdcp_pdu_p->data[j]);
