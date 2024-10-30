@@ -406,6 +406,144 @@ static void nr_postDecode(PHY_VARS_gNB *gNB, notifiedFIFO_elt_t *req)
   }
 }
 
+static int nr_ulsch_procedures_slot(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx, uint8_t *ulsch_to_decode)
+{
+  NR_DL_FRAME_PARMS *frame_parms = &gNB->frame_parms;
+
+  int nb_pusch = 0;
+  for (uint8_t ULSCH_id = 0; ULSCH_id < gNB->max_nb_pusch; ULSCH_id++) {
+    if (ulsch_to_decode[ULSCH_id] == 1) {
+      nb_pusch++;
+    }
+  }
+
+  if (nb_pusch == 0) {
+    return 0;
+  }
+
+  uint8_t ULSCH_ids[nb_pusch];
+  uint32_t G[nb_pusch];
+  int pusch_id = 0;
+  for (uint8_t ULSCH_id = 0; ULSCH_id < gNB->max_nb_pusch; ULSCH_id++) {
+
+    if (ulsch_to_decode[ULSCH_id] == 1) {
+
+      ULSCH_ids[pusch_id] = ULSCH_id;
+
+      nfapi_nr_pusch_pdu_t *pusch_pdu = &gNB->ulsch[ULSCH_id].harq_process->ulsch_pdu;
+
+      uint16_t nb_re_dmrs;
+      uint16_t start_symbol = pusch_pdu->start_symbol_index;
+      uint16_t number_symbols = pusch_pdu->nr_of_symbols;
+  
+      uint8_t number_dmrs_symbols = 0;
+      for (int l = start_symbol; l < start_symbol + number_symbols; l++)
+        number_dmrs_symbols += ((pusch_pdu->ul_dmrs_symb_pos)>>l)&0x01;
+  
+      if (pusch_pdu->dmrs_config_type==pusch_dmrs_type1)
+        nb_re_dmrs = 6*pusch_pdu->num_dmrs_cdm_grps_no_data;
+      else
+        nb_re_dmrs = 4*pusch_pdu->num_dmrs_cdm_grps_no_data;
+  
+      G[pusch_id] = nr_get_G(pusch_pdu->rb_size,
+                            number_symbols,
+                            nb_re_dmrs,
+                            number_dmrs_symbols, // number of dmrs symbols irrespective of single or double symbol dmrs
+                            gNB->ulsch[ULSCH_id].unav_res,
+                            pusch_pdu->qam_mod_order,
+                            pusch_pdu->nrOfLayers);
+      AssertFatal(G[pusch_id]>0,"G is 0 : rb_size %u, number_symbols %d, nb_re_dmrs %d, number_dmrs_symbols %d, qam_mod_order %u, nrOfLayer %u\n",
+                  pusch_pdu->rb_size,
+                  number_symbols,
+                  nb_re_dmrs,
+                  number_dmrs_symbols, // number of dmrs symbols irrespective of single or double symbol dmrs
+                  pusch_pdu->qam_mod_order,
+                  pusch_pdu->nrOfLayers);
+      LOG_D(PHY,"rb_size %d, number_symbols %d, nb_re_dmrs %d, dmrs symbol positions %d, number_dmrs_symbols %d, qam_mod_order %d, nrOfLayer %d\n",
+            pusch_pdu->rb_size,
+            number_symbols,
+            nb_re_dmrs,
+            pusch_pdu->ul_dmrs_symb_pos,
+            number_dmrs_symbols, // number of dmrs symbols irrespective of single or double symbol dmrs
+            pusch_pdu->qam_mod_order,
+            pusch_pdu->nrOfLayers);
+      pusch_id++;
+    }
+  }
+  
+  //----------------------------------------------------------
+  //--------------------- ULSCH decoding ---------------------
+  //----------------------------------------------------------
+
+  int ret_nr_ulsch_decoding_slot =
+      nr_ulsch_decoding_slot(gNB, frame_parms, frame_rx, slot_rx, G, ULSCH_ids, nb_pusch);
+
+  // CRC check per uplink shared channel
+  for (pusch_id = 0; pusch_id < nb_pusch; pusch_id++) {
+    uint8_t ULSCH_id = ULSCH_ids[pusch_id];
+    NR_gNB_ULSCH_t *ulsch = &gNB->ulsch[ULSCH_id];
+    NR_gNB_PUSCH *pusch = &gNB->pusch_vars[ULSCH_id];
+    NR_UL_gNB_HARQ_t *ulsch_harq = ulsch->harq_process;
+    nfapi_nr_pusch_pdu_t *pusch_pdu = &ulsch_harq->ulsch_pdu;
+
+    bool crc_valid = false;
+
+    // if all segments are done
+    if (ulsch_harq->processedSegments == ulsch_harq->C) {
+      if (ulsch_harq->C > 1) {
+        crc_valid = check_crc(ulsch_harq->b, lenWithCrc(1, (ulsch_harq->TBS) << 3), crcType(1, (ulsch_harq->TBS) << 3));
+      } else {
+        // When the number of code blocks is 1 (C = 1) and ulsch_harq->processedSegments = 1, we can assume a good TB because of the
+        // CRC check made by the LDPC for early termination, so, no need to perform CRC check twice for a single code block
+        crc_valid = true;
+      }
+    }
+
+    if (crc_valid && !check_abort(&ulsch_harq->abort_decode) && !pusch->DTX) {
+      LOG_D(NR_PHY,
+            "[gNB %d] ULSCH %d: Setting ACK for SFN/SF %d.%d (rnti %x, pid %d, ndi %d, status %d, round %d, TBS %d, Max interation "
+            "(all seg) %d)\n",
+            gNB->Mod_id,
+            ULSCH_id,
+            ulsch->frame,
+            ulsch->slot,
+            ulsch->rnti,
+            ulsch->harq_pid,
+            pusch_pdu->pusch_data.new_data_indicator,
+            ulsch->active,
+            ulsch_harq->round,
+            ulsch_harq->TBS,
+            ulsch->max_ldpc_iterations);
+      nr_fill_indication(gNB, ulsch->frame, ulsch->slot, ULSCH_id, ulsch->harq_pid, 0, 0);
+      LOG_D(PHY, "ULSCH received ok \n");
+      ulsch->active = false;
+      ulsch_harq->round = 0;
+      ulsch->last_iteration_cnt = ulsch->max_ldpc_iterations; // Setting to max_ldpc_iterations is sufficient given that this variable is only used for checking for failure
+    } else {
+      LOG_D(PHY,
+            "[gNB %d] ULSCH: Setting NAK for SFN/SF %d/%d (pid %d, ndi %d, status %d, round %d, RV %d, prb_start %d, prb_size %d, "
+            "TBS %d)\n",
+            gNB->Mod_id,
+            ulsch->frame,
+            ulsch->slot,
+            ulsch->harq_pid,
+            pusch_pdu->pusch_data.new_data_indicator,
+            ulsch->active,
+            ulsch_harq->round,
+            ulsch_harq->ulsch_pdu.pusch_data.rv_index,
+            ulsch_harq->ulsch_pdu.rb_start,
+            ulsch_harq->ulsch_pdu.rb_size,
+            ulsch_harq->TBS);
+      nr_fill_indication(gNB, ulsch->frame, ulsch->slot, ULSCH_id, ulsch->harq_pid, 1, 0);
+      ulsch->handled = 1;
+      LOG_D(PHY, "ULSCH %d in error\n",ULSCH_id);
+      ulsch->last_iteration_cnt = ulsch->max_ldpc_iterations + 1; // Setting to max_ldpc_iterations + 1 is sufficient given that this variable is only used for checking for failure
+    }
+  }
+
+  return ret_nr_ulsch_decoding_slot;
+}
+
 static int nr_ulsch_procedures(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx, int ULSCH_id, uint8_t harq_pid)
 {
   NR_DL_FRAME_PARMS *frame_parms = &gNB->frame_parms;
@@ -451,12 +589,6 @@ static int nr_ulsch_procedures(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx, int
   //----------------------------------------------------------
   //--------------------- ULSCH decoding ---------------------
   //----------------------------------------------------------
-  /* Do ULSCH decoding time measurement only when number of PUSCH is limited to 1
-   * (valid for unitary physical simulators). ULSCH processing lopp is then executed
-   * only once, which ensures exactly one start and stop of the ULSCH decoding time
-   * measurement per processed TB.*/
-  if (gNB->max_nb_pusch == 1)
-    start_meas(&gNB->ulsch_decoding_stats);
   int nbDecode =
       nr_ulsch_decoding(gNB, ULSCH_id, gNB->pusch_vars[ULSCH_id].llr, frame_parms, pusch_pdu, frame_rx, slot_rx, harq_pid, G);
 
@@ -819,7 +951,8 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx)
     }
   }
 
-  int totalDecode = 0;
+  uint8_t ulsch_to_decode[gNB->max_nb_pusch];
+  bzero((void *)ulsch_to_decode, gNB->max_nb_pusch);
   for (int ULSCH_id = 0; ULSCH_id < gNB->max_nb_pusch; ULSCH_id++) {
     NR_gNB_ULSCH_t *ulsch = &gNB->ulsch[ULSCH_id];
     NR_UL_gNB_HARQ_t *ulsch_harq = ulsch->harq_process;
@@ -911,18 +1044,43 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx)
 
         pusch_vars->DTX = 0;
       }
+      ulsch_to_decode[ULSCH_id] = 1;
       stop_meas(&gNB->rx_pusch_stats);
       VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_NR_RX_PUSCH, 0);
       // LOG_M("rxdataF_comp.m","rxF_comp",gNB->pusch_vars[0]->rxdataF_comp[0],6900,1,1);
       // LOG_M("rxdataF_ext.m","rxF_ext",gNB->pusch_vars[0]->rxdataF_ext[0],6900,1,1);
-      VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_NR_ULSCH_PROCEDURES_RX, 1);
-      int const tasks_added = nr_ulsch_procedures(gNB, frame_rx, slot_rx, ULSCH_id, ulsch->harq_pid);
-      if (tasks_added > 0)
-        totalDecode += tasks_added; 
-
-      VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_NR_ULSCH_PROCEDURES_RX, 0);
     }
   }
+
+  /* Do ULSCH decoding time measurement only when number of PUSCH is limited to 1
+   * (valid for unitary physical simulators). ULSCH processing lopp is then executed
+   * only once, which ensures exactly one start and stop of the ULSCH decoding time
+   * measurement per processed TB.*/
+  if (gNB->max_nb_pusch == 1)
+    start_meas(&gNB->ulsch_decoding_stats);
+
+  if(gNB->nrLDPC_coding_interface_flag){
+    int const ret_nr_ulsch_procedures_slot = nr_ulsch_procedures_slot(gNB, frame_rx, slot_rx, ulsch_to_decode);
+    if (ret_nr_ulsch_procedures_slot != 0) {
+      LOG_E(PHY,"Error in nr_ulsch_procedures_slot, returned %d\n",ret_nr_ulsch_procedures_slot);
+    }
+
+  }
+  else
+  {
+    int totalDecode = 0;
+    for (int ULSCH_id = 0; ULSCH_id < gNB->max_nb_pusch; ULSCH_id++) {
+      NR_gNB_ULSCH_t *ulsch = &gNB->ulsch[ULSCH_id];
+  
+      if (ulsch_to_decode[ULSCH_id] == 1) {
+        VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_NR_ULSCH_PROCEDURES_RX, 1);
+        int const tasks_added = nr_ulsch_procedures(gNB, frame_rx, slot_rx, ULSCH_id, ulsch->harq_pid);
+        if (tasks_added > 0)
+          totalDecode += tasks_added; 
+
+        VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_NR_ULSCH_PROCEDURES_RX, 0);
+      }
+    }
     while (totalDecode > 0) {
       notifiedFIFO_elt_t *req = pullTpool(&gNB->respDecode, &gNB->threadPool);
       if (req == NULL)
@@ -931,6 +1089,7 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx)
       delNotifiedFIFO_elt(req);
       totalDecode--;
     }
+  }
   /* Do ULSCH decoding time measurement only when number of PUSCH is limited to 1
    * (valid for unitary physical simulators). ULSCH processing loop is then executed
    * only once, which ensures exactly one start and stop of the ULSCH decoding time
