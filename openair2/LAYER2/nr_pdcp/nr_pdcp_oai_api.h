@@ -18,6 +18,13 @@
  * For more information about the OpenAirInterface (OAI) Software Alliance:
  *      contact@openairinterface.org
  */
+/*
+ * Modified by Surajit Dey, Danny Nsouli, Michael Bundas
+ * MITRE Corporation
+ * Add BAP layer code
+ * November 2023
+ * sdey@mitre.org, dnsouli@mitre.org, mbundas@mitre.org
+*/
 
 #ifndef NR_PDCP_OAI_API_H
 #define NR_PDCP_OAI_API_H
@@ -107,5 +114,15 @@ void nr_pdcp_tick(int frame, int subframe);
 nr_pdcp_ue_manager_t *nr_pdcp_sdap_get_ue_manager();
 
 const bool nr_pdcp_get_statistics(ue_id_t ue_id, int srb_flag, int rb_id, nr_pdcp_statistics_t *out);
+
+struct bap_data
+{
+    unsigned char oct1;
+    unsigned char oct2;
+    unsigned char oct3;
+    // void *data;
+};
+
+int bap_pdu_func(unsigned short dest, unsigned short path);
 
 #endif /* NR_PDCP_OAI_API_H */
