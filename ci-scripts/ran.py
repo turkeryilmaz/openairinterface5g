@@ -324,6 +324,7 @@ class RANManagement():
 		mySSH.command('echo ' + lPassWord + ' | sudo -S killall --signal SIGKILL tshark', '\$', 5)
 		time.sleep(1)
 		mySSH.close()
+        # is used?
 		if EPC.IPAddress != "none" and EPC.IPAddress != '':
 			localEpcIpAddr = EPC.IPAddress
 			localEpcUserName = EPC.UserName
@@ -340,6 +341,7 @@ class RANManagement():
 			mySSH.close()
 		# if T tracer was run with option 0 (no logs), analyze logs
 		# from textlog, otherwise do normal analysis (e.g., option 2)
+        # is used?
 		result = re.search('T_stdout 0', str(self.Initialize_eNB_args))
 		if (result is not None):
 			logging.debug('\u001B[1m Replaying RAW record file\u001B[0m')
