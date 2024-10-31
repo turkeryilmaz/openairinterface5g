@@ -135,14 +135,6 @@ class RANManagement():
 		extIdx = full_config_file.find('.conf')
 		if (extIdx > 0):
 			extra_options = full_config_file[extIdx + 5:]
-			# if tracer options is on, compiling and running T Tracer
-			result = re.search('T_stdout', str(extra_options))
-			if result is not None:
-				logging.debug('\u001B[1m Compiling and launching T Tracer\u001B[0m')
-				mySSH.command('cd common/utils/T/tracer', '\$', 5)
-				mySSH.command('make', '\$', 10)
-				mySSH.command('echo $USER; nohup ./record -d ../T_messages.txt -o ' + lSourcePath + '/cmake_targets/enb_' + self.testCase_id + '_record.raw -ON -off VCD -off HEAVY -off LEGACY_GROUP_TRACE -off LEGACY_GROUP_DEBUG > ' + lSourcePath + '/cmake_targets/enb_' + self.testCase_id + '_record.log 2>&1 &', lUserName, 5)
-				mySSH.command('cd ' + lSourcePath, '\$', 5)
 			full_config_file = full_config_file[:extIdx + 5]
 			config_path, config_file = os.path.split(full_config_file)
 		else:
@@ -203,10 +195,6 @@ class RANManagement():
 		while (doLoop):
 			loopCounter = loopCounter - 1
 			if (loopCounter == 0):
-				# In case of T tracer recording, we may need to kill it
-				result = re.search('T_stdout', str(self.Initialize_eNB_args))
-				if result is not None:
-					mySSH.command('killall --signal SIGKILL record', '\$', 5)
 				mySSH.close()
 				doLoop = False
 				logging.error('\u001B[1;37;41m eNB/gNB logging system did not show got sync! \u001B[0m')
@@ -293,68 +281,44 @@ class RANManagement():
 		mySSH.command('rm -f my-lte-softmodem-run' + str(self.eNB_instance) + '.sh', '\$', 5)
 		time.sleep(1)
 		mySSH.close()
-		# if T tracer was run with option 0 (no logs), analyze logs
-		# from textlog, otherwise do normal analysis (e.g., option 2)
-        # is used?
-		result = re.search('T_stdout 0', str(self.Initialize_eNB_args))
-		if (result is not None):
-			logging.debug('\u001B[1m Replaying RAW record file\u001B[0m')
-			mySSH.open(lIpAddr, lUserName, lPassWord)
-			mySSH.command('cd ' + lSourcePath + '/common/utils/T/tracer/', '\$', 5)
-			enbLogFile = self.eNBLogFiles[int(self.eNB_instance)]
-			raw_record_file = enbLogFile.replace('.log', '_record.raw')
-			replay_log_file = enbLogFile.replace('.log', '_replay.log')
-			extracted_txt_file = enbLogFile.replace('.log', '_extracted_messages.txt')
-			extracted_log_file = enbLogFile.replace('.log', '_extracted_messages.log')
-			mySSH.command('./extract_config -i ' + lSourcePath + '/cmake_targets/' + raw_record_file + ' > ' + lSourcePath + '/cmake_targets/' + extracted_txt_file, '\$', 5)
-			mySSH.command('echo $USER; nohup ./replay -i ' + lSourcePath + '/cmake_targets/' + raw_record_file + ' > ' + lSourcePath + '/cmake_targets/' + replay_log_file + ' 2>&1 &', lUserName, 5)
-			mySSH.command('./textlog -d ' +  lSourcePath + '/cmake_targets/' + extracted_txt_file + ' -no-gui -ON -full > ' + lSourcePath + '/cmake_targets/' + extracted_log_file, '\$', 5)
-			mySSH.close()
-			mySSH.copyin(lIpAddr, lUserName, lPassWord, lSourcePath + '/cmake_targets/' + extracted_log_file, '.')
-			logging.debug('\u001B[1m Analyzing eNB replay logfile \u001B[0m')
-			logStatus = self.AnalyzeLogFile_eNB(extracted_log_file, HTML, self.ran_checkers)
-			HTML.CreateHtmlTestRow(self.runtime_stats, 'OK', CONST.ALL_PROCESSES_OK)
+		analyzeFile = False
+		if self.eNBLogFiles[int(self.eNB_instance)] != '':
+			analyzeFile = True
+			fileToAnalyze = self.eNBLogFiles[int(self.eNB_instance)]
 			self.eNBLogFiles[int(self.eNB_instance)] = ''
-			return True
-		else:
-			analyzeFile = False
-			if self.eNBLogFiles[int(self.eNB_instance)] != '':
-				analyzeFile = True
-				fileToAnalyze = self.eNBLogFiles[int(self.eNB_instance)]
-				self.eNBLogFiles[int(self.eNB_instance)] = ''
-			if analyzeFile:
+		if analyzeFile:
+			#*stats.log files + pickle + png
+			mySSH.copyin(lIpAddr, lUserName, lPassWord, lSourcePath + '/cmake_targets/*stats.log', '.')
+			mySSH.copyin(lIpAddr, lUserName, lPassWord, lSourcePath + '/cmake_targets/*.pickle', '.')
+			mySSH.copyin(lIpAddr, lUserName, lPassWord, lSourcePath + '/cmake_targets/*.png', '.')
+			#
+			copyin_res = mySSH.copyin(lIpAddr, lUserName, lPassWord, lSourcePath + '/cmake_targets/' + fileToAnalyze, '.')
+			if (copyin_res == -1):
+				logging.debug('\u001B[1;37;41m Could not copy ' + nodeB_prefix + 'NB logfile to analyze it! \u001B[0m')
+				HTML.htmleNBFailureMsg='Could not copy ' + nodeB_prefix + 'NB logfile to analyze it!'
+				HTML.CreateHtmlTestRow('N/A', 'KO', CONST.ENB_PROCESS_NOLOGFILE_TO_ANALYZE)
+				self.eNBmbmsEnables[int(self.eNB_instance)] = False
+				return False
+			if self.eNB_serverId[self.eNB_instance] != '0':
 				#*stats.log files + pickle + png
-				mySSH.copyin(lIpAddr, lUserName, lPassWord, lSourcePath + '/cmake_targets/*stats.log', '.')
-				mySSH.copyin(lIpAddr, lUserName, lPassWord, lSourcePath + '/cmake_targets/*.pickle', '.')
-				mySSH.copyin(lIpAddr, lUserName, lPassWord, lSourcePath + '/cmake_targets/*.png', '.')
-				#
-				copyin_res = mySSH.copyin(lIpAddr, lUserName, lPassWord, lSourcePath + '/cmake_targets/' + fileToAnalyze, '.')
-				if (copyin_res == -1):
-					logging.debug('\u001B[1;37;41m Could not copy ' + nodeB_prefix + 'NB logfile to analyze it! \u001B[0m')
-					HTML.htmleNBFailureMsg='Could not copy ' + nodeB_prefix + 'NB logfile to analyze it!'
-					HTML.CreateHtmlTestRow('N/A', 'KO', CONST.ENB_PROCESS_NOLOGFILE_TO_ANALYZE)
-					self.eNBmbmsEnables[int(self.eNB_instance)] = False
-					return False
-				if self.eNB_serverId[self.eNB_instance] != '0':
-					#*stats.log files + pickle + png
 
-					#debug / tentative
-					mySSH.copyout(self.eNBIPAddress, self.eNBUserName, self.eNBPassword, './nrL1_stats.log', self.eNBSourceCodePath + '/cmake_targets/')
-					mySSH.copyout(self.eNBIPAddress, self.eNBUserName, self.eNBPassword, './nrMAC_stats.log', self.eNBSourceCodePath + '/cmake_targets/')
-					mySSH.copyout(self.eNBIPAddress, self.eNBUserName, self.eNBPassword, './' + fileToAnalyze, self.eNBSourceCodePath + '/cmake_targets/')
-				logging.debug('\u001B[1m Analyzing ' + nodeB_prefix + 'NB logfile \u001B[0m ' + fileToAnalyze)
-				logStatus = self.AnalyzeLogFile_eNB(fileToAnalyze, HTML, self.ran_checkers)
-				if (logStatus < 0):
-					HTML.CreateHtmlTestRow('N/A', 'KO', logStatus)
-					#display rt stats for gNB only
-					if len(self.datalog_rt_stats)!=0 and nodeB_prefix == 'g':
-						HTML.CreateHtmlDataLogTable(self.datalog_rt_stats)
-					self.eNBmbmsEnables[int(self.eNB_instance)] = False
-					return False
-				else:
-					HTML.CreateHtmlTestRow(self.runtime_stats, 'OK', CONST.ALL_PROCESSES_OK)
+				#debug / tentative
+				mySSH.copyout(self.eNBIPAddress, self.eNBUserName, self.eNBPassword, './nrL1_stats.log', self.eNBSourceCodePath + '/cmake_targets/')
+				mySSH.copyout(self.eNBIPAddress, self.eNBUserName, self.eNBPassword, './nrMAC_stats.log', self.eNBSourceCodePath + '/cmake_targets/')
+				mySSH.copyout(self.eNBIPAddress, self.eNBUserName, self.eNBPassword, './' + fileToAnalyze, self.eNBSourceCodePath + '/cmake_targets/')
+			logging.debug('\u001B[1m Analyzing ' + nodeB_prefix + 'NB logfile \u001B[0m ' + fileToAnalyze)
+			logStatus = self.AnalyzeLogFile_eNB(fileToAnalyze, HTML, self.ran_checkers)
+			if (logStatus < 0):
+				HTML.CreateHtmlTestRow('N/A', 'KO', logStatus)
+				#display rt stats for gNB only
+				if len(self.datalog_rt_stats)!=0 and nodeB_prefix == 'g':
+					HTML.CreateHtmlDataLogTable(self.datalog_rt_stats)
+				self.eNBmbmsEnables[int(self.eNB_instance)] = False
+				return False
 			else:
 				HTML.CreateHtmlTestRow(self.runtime_stats, 'OK', CONST.ALL_PROCESSES_OK)
+		else:
+			HTML.CreateHtmlTestRow(self.runtime_stats, 'OK', CONST.ALL_PROCESSES_OK)
 		#display rt stats for gNB only
 		if len(self.datalog_rt_stats)!=0 and nodeB_prefix == 'g':
 			HTML.CreateHtmlDataLogTable(self.datalog_rt_stats)
