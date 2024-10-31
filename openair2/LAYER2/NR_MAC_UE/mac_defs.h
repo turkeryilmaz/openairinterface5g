@@ -554,6 +554,33 @@ typedef struct {
   pthread_mutex_t mutex;
 } NR_SL_UEs_t;
 
+typedef struct {
+  int16_t frame;
+  int16_t slot;
+} FrameSlot_t;
+
+typedef struct {
+  FrameSlot_t frame_slot;
+  uint16_t rsvp; // The resource reservation period in ms
+  uint8_t sbChLength; // The total number of the sub-channel allocated
+  uint8_t sbChStart; // The index of the starting sub-channel allocated
+  uint8_t prio; // The priority
+  double slRsrp; // The measured RSRP value over the used resource blocks
+  uint8_t gapReTx1; // Gap for a first retransmission in absolute slots
+  uint8_t sbChStartReTx1; // The index of the starting sub-channel allocated
+                          // to first retransmission
+  uint8_t gapReTx2; // Gap for a second retransmission in absolute slots
+  uint8_t sbChStartReTx2; // The index of the starting sub-channel allocated
+                          // to second retransmission
+} SensingData_t;
+
+typedef struct {
+  void* data;
+  size_t element_size;
+  size_t size;
+  size_t capacity;
+} List_t;
+
 /*!\brief Top level UE MAC structure */
 typedef struct {
   NR_UE_L2_STATE_t state;
@@ -682,6 +709,15 @@ typedef struct {
   int src_id;
   pthread_mutex_t sl_sched_lock;
   bool is_synced;
+  List_t sl_sensing_data; // List to store sensing data
+  int sl_thresh_rsrp; // A threshold in dBm used for sensing based UE autonomous resource selection
+  uint8_t sl_res_percentage; /* The percentage threshold to indicate the
+                                 minimum number of candidate single-slot
+                                 resources to be selected using sensing procedure.
+                               */
+  uint8_t sl_resel_counter;  // The resource selection counter
+  uint16_t sl_c_resel;       // The C_resel counter
+  List_t sl_transmit_history; // History of slots used for transmission
 } NR_UE_MAC_INST_t;
 
 /*@}*/

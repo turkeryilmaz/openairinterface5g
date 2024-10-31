@@ -231,9 +231,14 @@ void nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP, int slotP, nr_sci_pdu_
   else {
     sched_pssch->mcs = get_mcs_from_bler(sl_bo, stats, &sched_ctrl->sl_bler_stats, max_mcs, frameP);
   }
+  int locbw = mac->sl_bwp->sl_BWP_Generic_r16->sl_BWP_r16->locationAndBandwidth;
+  uint16_t BWPSize = NRRIV2BW(locbw, MAX_BWP_SIZE);
+  LOG_I(NR_MAC, "rbSize %d, rbStart %d BWPSize %d\n", sched_pssch->rbSize, sched_pssch->rbStart, BWPSize);
   // Fill SCI1A
   sci_pdu->priority = 0;
-  sci_pdu->frequency_resource_assignment.val = 0;
+  sci_pdu->frequency_resource_assignment.val = 0;//PRBalloc_to_locationandbandwidth0(sched_pssch->rbSize,
+                                                                                    // sched_pssch->rbStart,
+                                                                                    // sched_pssch->BWPSize);;
   sci_pdu->time_resource_assignment.val = 0;
   sci_pdu->resource_reservation_period.val = 0;
   sci_pdu->dmrs_pattern.val = 0;
@@ -399,4 +404,18 @@ void nr_ue_sl_csi_period_offset(SL_CSI_Report_t *sl_csi_report,
     default:
       AssertFatal(1 == 0, "No periodicity and offset found in CSI resource");
   }
+}
+
+uint8_t get_FRIV(NR_SL_ResourcePool_r16_t *sl_tx_res_pool) {
+  long sl_NumSubChan = *sl_tx_res_pool->sl_NumSubchannel_r16;
+  long startRB = *sl_tx_res_pool->sl_StartRB_Subchannel_r16;
+
+  //  = sl_get_num_subch(sl_tx_res_pool);
+	//     long Nsc = *sl_res_pool->sl_NumSubchannel_r16;
+  //           if (sl_res_pool->sl_UE_SelectedConfigRP_r16 && 
+  //               sl_res_pool->sl_UE_SelectedConfigRP_r16->sl_MaxNumPerReserve_r16 &&
+  //               *sl_res_pool->sl_UE_SelectedConfigRP_r16->sl_MaxNumPerReserve_r16 == NR_SL_UE_SelectedConfigRP_r16__sl_MaxNumPerReserve_r16_n2)
+	//       sci_pdu->frequency_resource_assignment.nbits =  (uint8_t)ceil(log2((Nsc * (Nsc + 1)) >>1));  
+	//     else
+	//       sci_pdu->frequency_resource_assignment.nbits =  (uint8_t)ceil(log2((Nsc * (Nsc + 1) * (2*Nsc + 1)) /6)); 
 }

@@ -581,7 +581,7 @@ uint32_t sl_determine_num_sidelink_slots(uint8_t mod_id, uint16_t *N_SSB_16frame
   //Determine total number of Valid Sidelink slots which can be used for Respool in a SFN cycle (1024 frames)
   N_SL_SLOTS = (*N_SL_SLOTS_perframe * SL_FRAME_NUMBER_CYCLE) - N_SSB_1024frames;
 
-  LOG_D(MAC, "[UE%d]SL-MAC:SSB slots in 1024 frames:%d, N_SL_SLOTS_perframe:%d, N_SL_SLOTs in 1024 frames:%d, SL SLOT bitmap:%x\n",
+  LOG_I(MAC, "[UE%d]SL-MAC:SSB slots in 1024 frames:%d, N_SL_SLOTS_perframe:%d, N_SL_SLOTs in 1024 frames:%d, SL SLOT bitmap:%x\n",
                                                                   mod_id,N_SSB_1024frames, *N_SL_SLOTS_perframe,
                                                                   N_SL_SLOTS, sl_mac->sl_slot_bitmap);
 
@@ -689,6 +689,8 @@ int get_psfch_index(int frame, int slot, int n_slots_frame, const NR_TDD_UL_DL_P
   const int ul_period_start  = (slot / nr_slots_period) * n_ul_slots_period;
   // ((slot % nr_slots_period) - first_ul_slot_period) gives the progressive number of the slot in this TDD period
   const int ul_period_slot   = (slot % nr_slots_period) - first_ul_slot_period;
+  LOG_I(NR_MAC, "ul_period_slot %d, ul_period_start %d, n_ul_slots_frame %d, nr_slots_period %d, n_ul_slots_frame %d, first_ul_slot_period %d\n",
+        ul_period_slot, ul_period_start, n_ul_slots_frame, nr_slots_period, n_ul_slots_frame, first_ul_slot_period);
   // the sum gives the index of current UL slot in the frame which is normalized wrt sched_psfch_max_size
   return (frame_start + ul_period_start + ul_period_slot) % sched_psfch_max_size;
 
@@ -1282,4 +1284,45 @@ int get_csi_reporting_frame_slot(NR_UE_MAC_INST_t *mac,
   *csi_report_frame = (frame + ((slot + csi_offset) / nr_slots_frame)) & 1023;
 
   return 0;
+}
+
+void init_list(List_t* list, size_t element_size, size_t initial_capacity) {
+  list->data = calloc(1, element_size * initial_capacity);
+  list->element_size = element_size;
+  list->size = 0;
+  list->capacity = initial_capacity;
+}
+
+void push_back(List_t* list, void* element) {
+  if (list->size == list->capacity) {
+    list->capacity *= 2;
+    list->data = realloc(list->data, list->element_size * list->capacity);
+  }
+  void* target = (int8_t*)list->data + (list->size * list->element_size);
+  memcpy(target, element, list->element_size);
+  list->size++;
+}
+
+void update_sensing_data(List_t* updatedSensingData, int slot) {
+  while(updatedSensingData->size > 0) {
+    SensingData_t* last_elem = (SensingData_t*)((uint8_t*)updatedSensingData->data + (updatedSensingData->size -1) * updatedSensingData->element_size);
+
+    if ()
+  }
+}
+
+int64_t normalize(FrameSlot_t *frame_slot, sl_nr_ue_mac_params_t *sl_mac) {
+  int64_t num_slots = 0;
+  uint8_t mu = sl_mac->sl_phy_config.sl_config_req.sl_bwp_config.sl_scs;
+  uint8_t slots_per_frame = nr_slots_per_frame[mu];
+  num_slots += frame_slot->slot;
+  num_slots += frame_slot->frame * slots_per_frame;
+  return num_slots;
+}
+
+void free_rsel_list(List_t* list) {
+  free(list->data);
+  list->data = NULL;
+  list->size = 0;
+  list->capacity = 0;
 }
