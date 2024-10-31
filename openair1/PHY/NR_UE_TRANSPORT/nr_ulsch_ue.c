@@ -177,9 +177,10 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
   bool is_csi_rs_slot = false;
   if (phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_CSI_RS)
     is_csi_rs_slot = true;
-  nfapi_nr_dl_tti_csi_rs_pdu_rel15_t *csi_params = (nfapi_nr_dl_tti_csi_rs_pdu_rel15_t *)&phy_data->nr_sl_pssch_pscch_pdu.nr_sl_csi_rs_pdu;
-  LOG_D(NR_PHY, "Tx start_rb %i, cdm_type %i, csi_type %i, freq_density %i, nr_of_rbs %i, row %i symb_l0 %i is_csi_rs_slot %i\n",
-        csi_params->start_rb, csi_params->cdm_type, csi_params->csi_type, csi_params->freq_density, csi_params->nr_of_rbs, csi_params->row, csi_params->symb_l0, is_csi_rs_slot);
+  nfapi_nr_dl_tti_csi_rs_pdu_rel15_t *csi_params = is_csi_rs_slot ? (nfapi_nr_dl_tti_csi_rs_pdu_rel15_t *)&phy_data->nr_sl_pssch_pscch_pdu.nr_sl_csi_rs_pdu : NULL;
+  if (csi_params)
+    LOG_D(NR_PHY, "Tx start_rb %i, cdm_type %i, csi_type %i, freq_density %i, nr_of_rbs %i, row %i symb_l0 %i is_csi_rs_slot %i\n",
+          csi_params->start_rb, csi_params->cdm_type, csi_params->csi_type, csi_params->freq_density, csi_params->nr_of_rbs, csi_params->row, csi_params->symb_l0, is_csi_rs_slot);
   int      N_PRB_oh = 0; // higher layer (RRC) parameter xOverhead in PUSCH-ServingCellConfig
   uint16_t number_dmrs_symbols = 0;
 
@@ -214,12 +215,12 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
         first_dmrs_symbol = i;
         is_first_dmrs_symbol = false;
       }
-      if (csi_params->symb_l0 != 0)
+      if (csi_params && csi_params->symb_l0 != 0)
         AssertFatal(i != csi_params->symb_l0, "CSI-RS  (symb_l0 %d) MUST not be sent in DMRS symbol (%d)\n", csi_params->symb_l0, i);
     }
   }
 
-  if (csi_params->symb_l0 != 0)
+  if (csi_params && csi_params->symb_l0 != 0)
     AssertFatal(csi_params->symb_l0 > pscch_pssch_pdu->pscch_numsym, "CSI-RS (symb_l0 %d) MUST not be sent in PSCCH symbol (%d)\n", csi_params->symb_l0, pscch_pssch_pdu->pscch_numsym);
   nb_dmrs_re_per_rb = ((dmrs_type == pusch_dmrs_type1) ? 6:4)*cdm_grps_no_data;
 
@@ -254,7 +255,7 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
 
   // Following code checks, after PSCCH symbols and DMRS symbols, whether PSSCH symbols are used by SCI2 or not,
   // If true, then CSI-RS MUST not be sent in those PSSCH symbols containing SCI2.
-  if (csi_params->symb_l0 != 0) {
+  if (csi_params && csi_params->symb_l0 != 0) {
     int32_t next_symbs_sci2_re = 0;
     int32_t sci1_re = 12 * pscch_pssch_pdu->pscch_numrbs;
     int32_t non_sci1_re = 12 * nb_rb - sci1_re;
@@ -509,7 +510,7 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
       uint8_t is_csi_rs_sym = 0;
       uint8_t is_ptrs_sym = 0;
       uint16_t dmrs_idx = 0, ptrs_idx = 0;
-      int16_t csi_rs_rb = csi_params->start_rb;
+      int16_t csi_rs_rb = 0;
       int is_pscch_sym = 0;
       if (pscch_pssch_pdu && l<(start_symbol + pscch_pssch_pdu->pscch_numsym)) { 
         is_pscch_sym = 1; 
@@ -517,6 +518,7 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
 
       if (is_csi_rs_slot && l == csi_params->symb_l0) {
         is_csi_rs_sym = 1;
+        csi_rs_rb = csi_params->start_rb;
       }
 
       if ((ul_dmrs_symb_pos >> l) & 0x01) {

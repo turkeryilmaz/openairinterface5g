@@ -266,7 +266,7 @@ static void prepare_NR_SL_ResourcePool(NR_SL_ResourcePool_r16_t *sl_res_pool,
   if (*nr_sl_psfch_config->sl_PSFCH_Period_r16 > 0) {
     const uint8_t psfch_periods[] = {0,1,2,4};
     AssertFatal(*nr_sl_psfch_config->sl_PSFCH_Period_r16 < 4, "sl_PSFCH_Period_r16 index must be less than 4\n");
-    LOG_D(NR_PHY, "Configuring PSFCH Period %ld\n", psfch_periods[*nr_sl_psfch_config->sl_PSFCH_Period_r16]);
+    LOG_D(NR_PHY, "Configuring PSFCH Period %d\n", psfch_periods[*nr_sl_psfch_config->sl_PSFCH_Period_r16]);
     uint8_t psfch_period = psfch_periods[*nr_sl_psfch_config->sl_PSFCH_Period_r16];
     uint16_t prod_numCh_period = *sl_res_pool->sl_NumSubchannel_r16*psfch_period;
     uint16_t num_prbs = (*sl_res_pool->sl_RB_Number_r16 / prod_numCh_period) * prod_numCh_period;
@@ -454,7 +454,23 @@ NR_SL_PreconfigurationNR_r16_t *prepare_NR_SL_PRECONFIGURATION(uint16_t num_tx_p
   struct NR_SL_RadioBearerConfig_r16 *sl_RadioBearerConfig_r16 = calloc(1,sizeof(*sl_RadioBearerConfig_r16));
 
   sl_RadioBearerConfig_r16->slrb_Uu_ConfigIndex_r16 = 1;
-  sl_RadioBearerConfig_r16->sl_SDAP_Config_r16 = NULL;
+  sl_RadioBearerConfig_r16->sl_SDAP_Config_r16 = calloc(1, sizeof(*sl_RadioBearerConfig_r16->sl_SDAP_Config_r16));
+  struct NR_SL_SDAP_Config_r16* sl_SDAP_Config = sl_RadioBearerConfig_r16->sl_SDAP_Config_r16;
+  sl_SDAP_Config->sl_SDAP_Header_r16 = NR_SL_SDAP_Config_r16__sl_SDAP_Header_r16_present;
+  sl_SDAP_Config->sl_DefaultRB_r16 = true;
+  sl_SDAP_Config->sl_CastType_r16 = calloc(1, sizeof(*sl_SDAP_Config->sl_CastType_r16));
+  *sl_SDAP_Config->sl_CastType_r16 = NR_SL_SDAP_Config_r16__sl_CastType_r16_unicast;
+  sl_SDAP_Config->sl_MappedQoS_Flows_r16 = calloc(1, sizeof(*sl_SDAP_Config->sl_MappedQoS_Flows_r16));
+  sl_SDAP_Config->sl_MappedQoS_Flows_r16->choice.sl_MappedQoS_FlowsList_r16 = calloc(1, sizeof(*sl_SDAP_Config->sl_MappedQoS_Flows_r16->choice.sl_MappedQoS_FlowsList_r16));
+  struct NR_SL_SDAP_Config_r16__sl_MappedQoS_Flows_r16__sl_MappedQoS_FlowsList_r16* sl_MappedQoS_FlowList = sl_SDAP_Config->sl_MappedQoS_Flows_r16->choice.sl_MappedQoS_FlowsList_r16;
+
+  NR_SL_QoS_Profile_r16_t *sl_QoS_Profile_r16_f1 = calloc(1, sizeof(*sl_QoS_Profile_r16_f1));
+  sl_QoS_Profile_r16_f1->sl_PQI_r16 = calloc(1, sizeof(*sl_QoS_Profile_r16_f1->sl_PQI_r16));
+  struct NR_SL_PQI_r16 *sl_PQI = sl_QoS_Profile_r16_f1->sl_PQI_r16;
+  sl_PQI->choice.sl_StandardizedPQI_r16 = 55;
+
+  ASN_SEQUENCE_ADD(&sl_MappedQoS_FlowList->list, sl_QoS_Profile_r16_f1);
+
   sl_RadioBearerConfig_r16->sl_TransRange_r16 = NULL;
   sl_RadioBearerConfig_r16->sl_PDCP_Config_r16 = calloc(1,sizeof(*sl_RadioBearerConfig_r16));
   sl_RadioBearerConfig_r16->sl_PDCP_Config_r16->sl_DiscardTimer_r16 = calloc(1,sizeof(*sl_RadioBearerConfig_r16->sl_PDCP_Config_r16->sl_DiscardTimer_r16));

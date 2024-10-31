@@ -151,7 +151,7 @@ int netlink_init_tun(char *ifprefix, int num_if, int id) {//for UE, id = 1, 2, .
     }
 
     LOG_I(PDCP, "TUN: Opened socket %s with fd nas_sock_fd[%d]=%d\n",
-           ifname, i, nas_sock_fd[index]);
+           ifname, index, nas_sock_fd[index]);
     ret = fcntl(nas_sock_fd[index], F_SETFL, O_NONBLOCK);
 
     if (ret == -1) {
