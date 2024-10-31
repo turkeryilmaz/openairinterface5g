@@ -589,20 +589,21 @@ int nr_rx_pdsch(PHY_VARS_NR_UE *ue,
                            symbol,
                            nb_re_pdsch);
     if (nl >= 2) // Apply MMSE for 2, 3, and 4 Tx layers
-      nr_dlsch_mmse(rx_size_symbol,
-                    n_rx,
-                    nl,
-                    rxdataF_comp,
-                    dl_ch_mag,
-                    dl_ch_magb,
-                    dl_ch_magr,
-                    dl_ch_estimates_ext,
-                    nb_rb_pdsch,
-                    dlsch_config->qamModOrder,
-                    *log2_maxh,
-                    symbol,
-                    nb_re_pdsch,
-                    nvar);
+      if (nb_re_pdsch)
+        nr_dlsch_mmse(rx_size_symbol,
+                      n_rx,
+                      nl,
+                      rxdataF_comp,
+                      dl_ch_mag,
+                      dl_ch_magb,
+                      dl_ch_magr,
+                      dl_ch_estimates_ext,
+                      nb_rb_pdsch,
+                      dlsch_config->qamModOrder,
+                      *log2_maxh,
+                      symbol,
+                      nb_re_pdsch,
+                      nvar);
   }
   stop_meas_nr_ue_phy(ue, DLSCH_MRC_MMSE_STATS);
 
@@ -1330,50 +1331,6 @@ void nr_a_sum_b(c16_t *input_x, c16_t *input_y, unsigned short nb_rb)
     x[2] = simde_mm_adds_epi16(x[2], y[2]);
     x += 3;
     y += 3;
-  }
-}
-
-/* Zero Forcing Rx function: nr_a_mult_b()
- * Compute the complex Multiplication c=a*b
- *
- * */
-void nr_a_mult_b(c16_t *a, c16_t *b, c16_t *c, unsigned short nb_rb, unsigned char output_shift0)
-{
-  //This function is used to compute complex multiplications
-  short nr_conjugate[8]__attribute__((aligned(16))) = {1,-1,1,-1,1,-1,1,-1};
-  unsigned short rb;
-  simde__m128i *a_128,*b_128, *c_128, mmtmpD0,mmtmpD1,mmtmpD2,mmtmpD3;
-
-  a_128 = (simde__m128i *)a;
-  b_128 = (simde__m128i *)b;
-
-  c_128 = (simde__m128i *)c;
-
-  for (rb=0; rb<3*nb_rb; rb++) {
-    // the real part
-    mmtmpD0 = simde_mm_sign_epi16(a_128[0],*(simde__m128i*)&nr_conjugate[0]);
-    mmtmpD0 = simde_mm_madd_epi16(mmtmpD0,b_128[0]); //Re: (a_re*b_re - a_im*b_im)
-
-    // the imag part
-    mmtmpD1 = simde_mm_shufflelo_epi16(a_128[0],SIMDE_MM_SHUFFLE(2,3,0,1));
-    mmtmpD1 = simde_mm_shufflehi_epi16(mmtmpD1,SIMDE_MM_SHUFFLE(2,3,0,1));
-    mmtmpD1 = simde_mm_madd_epi16(mmtmpD1,b_128[0]);//Im: (x_im*y_re + x_re*y_im)
-
-    mmtmpD0 = simde_mm_srai_epi32(mmtmpD0,output_shift0);
-    mmtmpD1 = simde_mm_srai_epi32(mmtmpD1,output_shift0);
-    mmtmpD2 = simde_mm_unpacklo_epi32(mmtmpD0,mmtmpD1);
-    mmtmpD3 = simde_mm_unpackhi_epi32(mmtmpD0,mmtmpD1);
-
-    c_128[0] = simde_mm_packs_epi32(mmtmpD2,mmtmpD3);
-
-    /*printf("\n Computing mult \n");
-    print_shorts("a:",(int16_t*)&a_128[0]);
-    print_shorts("b:",(int16_t*)&b_128[0]);
-    print_shorts("pack:",(int16_t*)&c_128[0]);*/
-
-    a_128+=1;
-    b_128+=1;
-    c_128+=1;
   }
 }
 
