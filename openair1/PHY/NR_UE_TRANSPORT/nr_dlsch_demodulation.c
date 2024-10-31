@@ -1448,7 +1448,7 @@ static void nr_determin(int size,
                   nb_rb,
                   ((rtx & 1) == 1 ? -1 : 1) * ((ctx & 1) == 1 ? -1 : 1) * sign,
                   shift0);
-      nr_a_mult_b(a44[ctx][rtx], outtemp, rtx == 0 ? ad_bc : outtemp1, nb_rb, shift0);
+      mult_complex_vectors(a44[ctx][rtx], outtemp, rtx == 0 ? ad_bc : outtemp1, nb_rb, shift0);
 
       if (rtx != 0)
         nr_a_sum_b(ad_bc, outtemp1, nb_rb);
@@ -1759,11 +1759,11 @@ static void nr_dlsch_mmse(uint32_t rx_size_symbol,
       // printf("Computing r_%d c_%d\n",rtx,ctx);
       // print_shorts(" H_h_H=",(int16_t*)&conjH_H_elements[ctx*nl+rtx][0][0]);
       // print_shorts(" Inv_H_h_H=",(int16_t*)&inv_H_h_H[ctx*nl+rtx][0]);
-      nr_a_mult_b(inv_H_h_H[ctx][rtx],
-                  (c16_t *)(rxdataF_comp[ctx][0] + symbol * rx_size_symbol),
-                  outtemp,
-                  nb_rb_0,
-                  shift - (fp_flag == 1 ? 2 : 0));
+      mult_complex_vectors(inv_H_h_H[ctx][rtx],
+                           (c16_t *)(rxdataF_comp[ctx][0] + symbol * rx_size_symbol),
+                           outtemp,
+                           nb_rb_0,
+                           shift - (fp_flag == 1 ? 2 : 0));
       nr_a_sum_b(rxdataF_zforcing[rtx], outtemp, nb_rb_0); // a = a + b
     }
 #ifdef DEBUG_DLSCH_DEMOD
