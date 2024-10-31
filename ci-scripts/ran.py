@@ -81,7 +81,6 @@ class RANManagement():
 		self.eNB_instance = 0
 		self.eNB_serverId = ['', '', '']
 		self.eNBLogFiles = ['', '', '']
-		self.eNBOptions = ['', '', '']
 		self.eNBmbmsEnables = [False, False, False]
 		self.eNBstatuses = [-1, -1, -1]
 		self.testCase_id = ''
@@ -186,8 +185,6 @@ class RANManagement():
 		mySSH.command('echo $USER; nohup sudo -E stdbuf -o0 ./my-lte-softmodem-run' + str(self.eNB_instance) + '.sh > ' + lSourcePath + '/cmake_targets/enb_' + self.testCase_id + '.log 2>&1 &', lUserName, 10)
 
 		self.eNBLogFiles[int(self.eNB_instance)] = 'enb_' + self.testCase_id + '.log'
-		if extra_options != '':
-			self.eNBOptions[int(self.eNB_instance)] = extra_options
 		time.sleep(6)
 		doLoop = True
 		loopCounter = 20
@@ -496,16 +493,6 @@ class RANManagement():
 					X2HO_state = CONST.X2_HO_REQ_STATE__IDLE
 					X2HO_outNbProcedures += 1
 
-			if self.eNBOptions[int(self.eNB_instance)] != '':
-				res1 = re.search('max_rxgain (?P<requested_option>[0-9]+)', self.eNBOptions[int(self.eNB_instance)])
-				res2 = re.search('max_rxgain (?P<applied_option>[0-9]+)',  str(line))
-				if res1 is not None and res2 is not None:
-					requested_option = int(res1.group('requested_option'))
-					applied_option = int(res2.group('applied_option'))
-					if requested_option == applied_option:
-						htmleNBFailureMsg += '<span class="glyphicon glyphicon-ok-circle"></span> Command line option(s) correctly applied <span class="glyphicon glyphicon-arrow-right"></span> ' + self.eNBOptions[int(self.eNB_instance)] + '\n\n'
-					else:
-						htmleNBFailureMsg += '<span class="glyphicon glyphicon-ban-circle"></span> Command line option(s) NOT applied <span class="glyphicon glyphicon-arrow-right"></span> ' + self.eNBOptions[int(self.eNB_instance)] + '\n\n'
 			result = re.search('Exiting OAI softmodem|Caught SIGTERM, shutting down', str(line))
 			if result is not None:
 				exitSignalReceived = True
@@ -913,17 +900,6 @@ class RANManagement():
 			rrcMsg = 'eNB completed ' + str(X2HO_outNbProcedures) + ' X2 Handover Release procedure(s)'
 			logging.debug('\u001B[1;30;43m ' + rrcMsg + ' \u001B[0m')
 			htmleNBFailureMsg += rrcMsg + '\n'
-		if self.eNBOptions[int(self.eNB_instance)] != '':
-			res1 = re.search('drx_Config_present prSetup', self.eNBOptions[int(self.eNB_instance)])
-			if res1 is not None:
-				if cdrxActivationMessageCount > 0:
-					rrcMsg = 'eNB activated the CDRX Configuration for ' + str(cdrxActivationMessageCount) + ' time(s)'
-					logging.debug('\u001B[1;30;43m ' + rrcMsg + ' \u001B[0m')
-					htmleNBFailureMsg += rrcMsg + '\n'
-				else:
-					rrcMsg = 'eNB did NOT ACTIVATE the CDRX Configuration'
-					logging.debug('\u001B[1;37;43m ' + rrcMsg + ' \u001B[0m')
-					htmleNBFailureMsg += rrcMsg + '\n'
 		if rachCanceledProcedure > 0:
 			rachMsg = nodeB_prefix + 'NB cancelled ' + str(rachCanceledProcedure) + ' RA procedure(s)'
 			logging.debug('\u001B[1;30;43m ' + rachMsg + ' \u001B[0m')
