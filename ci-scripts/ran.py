@@ -81,7 +81,6 @@ class RANManagement():
 		self.eNB_instance = 0
 		self.eNB_serverId = ['', '', '']
 		self.eNBLogFiles = ['', '', '']
-		self.eNBmbmsEnables = [False, False, False]
 		self.eNBstatuses = [-1, -1, -1]
 		self.testCase_id = ''
 		self.epcPcapFile = ''
@@ -152,12 +151,7 @@ class RANManagement():
 		mySSH.command('sed -i -e \'s/CI_RRU1_IP_ADDR/' + self.eNB1IPAddress + '/\' ' + ci_full_config_file, '\$', 2);
 		mySSH.command('sed -i -e \'s/CI_RRU2_IP_ADDR/' + self.eNB2IPAddress + '/\' ' + ci_full_config_file, '\$', 2);
 		mySSH.command('sed -i -e \'s/CI_FR1_CTL_ENB_IP_ADDR/' + self.eNBIPAddress + '/\' ' + ci_full_config_file, '\$', 2);
-		self.eNBmbmsEnables[int(self.eNB_instance)] = False
 		mySSH.command('grep --colour=never enable_enb_m2 ' + ci_full_config_file, '\$', 2);
-		result = re.search('yes', mySSH.getBefore())
-		if result is not None:
-			self.eNBmbmsEnables[int(self.eNB_instance)] = True
-			logging.debug('\u001B[1m MBMS is enabled on this eNB\u001B[0m')
 		result = re.search('noS1', str(self.Initialize_eNB_args))
 		eNBinNoS1 = False
 		if result is not None:
@@ -221,13 +215,6 @@ class RANManagement():
 				logging.debug('\u001B[1m oaitun_enb1 interface is mounted and configured\u001B[0m')
 			else:
 				logging.error('\u001B[1m oaitun_enb1 interface is either NOT mounted or NOT configured\u001B[0m')
-			if self.eNBmbmsEnables[int(self.eNB_instance)]:
-				mySSH.command('ifconfig oaitun_enm1', '\$', 4)
-				result = re.search('inet addr', mySSH.getBefore())
-				if result is not None:
-					logging.debug('\u001B[1m oaitun_enm1 interface is mounted and configured\u001B[0m')
-				else:
-					logging.error('\u001B[1m oaitun_enm1 interface is either NOT mounted or NOT configured\u001B[0m')
 		if enbDidSync:
 			self.eNBstatuses[int(self.eNB_instance)] = int(self.eNB_serverId[self.eNB_instance])
 
@@ -293,7 +280,6 @@ class RANManagement():
 				logging.debug('\u001B[1;37;41m Could not copy ' + nodeB_prefix + 'NB logfile to analyze it! \u001B[0m')
 				HTML.htmleNBFailureMsg='Could not copy ' + nodeB_prefix + 'NB logfile to analyze it!'
 				HTML.CreateHtmlTestRow('N/A', 'KO', CONST.ENB_PROCESS_NOLOGFILE_TO_ANALYZE)
-				self.eNBmbmsEnables[int(self.eNB_instance)] = False
 				return False
 			if self.eNB_serverId[self.eNB_instance] != '0':
 				#*stats.log files + pickle + png
@@ -309,7 +295,6 @@ class RANManagement():
 				#display rt stats for gNB only
 				if len(self.datalog_rt_stats)!=0 and nodeB_prefix == 'g':
 					HTML.CreateHtmlDataLogTable(self.datalog_rt_stats)
-				self.eNBmbmsEnables[int(self.eNB_instance)] = False
 				return False
 			else:
 				HTML.CreateHtmlTestRow(self.runtime_stats, 'OK', CONST.ALL_PROCESSES_OK)
@@ -318,7 +303,6 @@ class RANManagement():
 		#display rt stats for gNB only
 		if len(self.datalog_rt_stats)!=0 and nodeB_prefix == 'g':
 			HTML.CreateHtmlDataLogTable(self.datalog_rt_stats)
-		self.eNBmbmsEnables[int(self.eNB_instance)] = False
 		self.eNBstatuses[int(self.eNB_instance)] = -1
 		return True
 
@@ -550,10 +534,6 @@ class RANManagement():
 			result = re.search('dropping, not enough RBs', str(line))
 			if result is not None:
 				dropNotEnoughRBs += 1
-			if self.eNBmbmsEnables[int(self.eNB_instance)]:
-				result = re.search('MBMS USER-PLANE.*Requesting.*bytes from RLC', str(line))
-				if result is not None:
-					mbmsRequestMsg += 1
 			#FR1 NSA test : add new markers to make sure gNB is used
 			result = re.search('\[gNB [0-9]+\]\[RAPROC\] PUSCH with TC_RNTI 0x[0-9a-fA-F]+ received correctly, adding UE MAC Context RNTI 0x[0-9a-fA-F]+', str(line))
 			if result is not None:
@@ -858,11 +838,6 @@ class RANManagement():
 			rrcMsg = ' -- ' + str(rrcReestablishReject) + ' were rejected'
 			logging.debug('\u001B[1;30;43m ' + rrcMsg + ' \u001B[0m')
 			htmleNBFailureMsg += rrcMsg + '\n'
-		if self.eNBmbmsEnables[int(self.eNB_instance)]:
-			if mbmsRequestMsg > 0:
-				rrcMsg = 'eNB requested ' + str(mbmsRequestMsg) + ' times the RLC for MBMS USER-PLANE'
-				logging.debug('\u001B[1;30;43m ' + rrcMsg + ' \u001B[0m')
-				htmleNBFailureMsg += rrcMsg + '\n'
 		if rachCanceledProcedure > 0:
 			rachMsg = nodeB_prefix + 'NB cancelled ' + str(rachCanceledProcedure) + ' RA procedure(s)'
 			logging.debug('\u001B[1;30;43m ' + rachMsg + ' \u001B[0m')
