@@ -164,11 +164,6 @@ def ExecuteActionWithParam(action):
 			RAN.datalog_rt_stats_file=datalog_rt_stats_file
 		RAN.Initialize_eNB_args=test.findtext('Initialize_eNB_args')
 		eNB_instance=test.findtext('eNB_instance')
-		USRPIPAddress=test.findtext('USRP_IPAddress')
-		if USRPIPAddress is None:
-			RAN.USRPIPAddress=''
-		else:
-			RAN.USRPIPAddress=USRPIPAddress
 		if (eNB_instance is None):
 			RAN.eNB_instance=0
 		else:
