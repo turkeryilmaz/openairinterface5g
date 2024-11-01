@@ -562,15 +562,15 @@ typedef struct {
 typedef struct {
   FrameSlot_t frame_slot;
   uint16_t rsvp; // The resource reservation period in ms
-  uint8_t sbChLength; // The total number of the sub-channel allocated
-  uint8_t sbChStart; // The index of the starting sub-channel allocated
+  uint8_t subch_len; // The total number of the sub-channel allocated
+  uint8_t subch_start; // The index of the starting sub-channel allocated
   uint8_t prio; // The priority
-  double slRsrp; // The measured RSRP value over the used resource blocks
-  uint8_t gapReTx1; // Gap for a first retransmission in absolute slots
-  uint8_t sbChStartReTx1; // The index of the starting sub-channel allocated
+  double sl_rsrp; // The measured RSRP value over the used resource blocks
+  uint8_t gap_re_tx1; // Gap for a first retransmission in absolute slots
+  uint8_t subch_startre_tx1; // The index of the starting sub-channel allocated
                           // to first retransmission
-  uint8_t gapReTx2; // Gap for a second retransmission in absolute slots
-  uint8_t sbChStartReTx2; // The index of the starting sub-channel allocated
+  uint8_t gap_re_tx2; // Gap for a second retransmission in absolute slots
+  uint8_t subch_startre_tx2; // The index of the starting sub-channel allocated
                           // to second retransmission
 } SensingData_t;
 

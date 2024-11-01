@@ -225,9 +225,9 @@ int8_t nr_ue_decode_pucch0(PHY_VARS_NR_UE *ue,
       re_offset[l] -= frame_parms->ofdm_symbol_size;
 
     for (int aa = 0; aa < frame_parms->nb_antennas_rx; aa++) {
-      LOG_D(NR_PHY, "soffset %i, soffset + l2 * frame_parms->ofdm_symbol_size %i %i re_offset[%d] %i, prb_offset %d\n",
-           soffset, soffset + l2 * frame_parms->ofdm_symbol_size,
-           (soffset + l2 * frame_parms->ofdm_symbol_size + nb_re_pucch), l, re_offset[l], prb_offset[l]);
+      LOG_D(NR_PHY, "soffset %i, soffset + l2*frame_parms->ofdm_symbol_size %i %i re_offset[%d] %i\n",
+           soffset, soffset + l2*frame_parms->ofdm_symbol_size,
+           (soffset + l2*frame_parms->ofdm_symbol_size + nb_re_pucch), l, re_offset[l]);
       for (int z = soffset + l2*frame_parms->ofdm_symbol_size + re_offset[l]; z < (soffset + l2*frame_parms->ofdm_symbol_size + re_offset[l] + nb_re_pucch); z++)
         LOG_D(NR_PHY, "%4d.%2d z %d rxdataF (%d,%d)\n", frame, slot, z, rxdataF[aa][z].r, rxdataF[aa][z].i);
       tmp_rp = (int32_t *)&rxdataF[aa][soffset + l2 * frame_parms->ofdm_symbol_size];

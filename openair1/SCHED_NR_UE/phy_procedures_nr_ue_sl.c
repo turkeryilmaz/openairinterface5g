@@ -606,7 +606,7 @@ void psbch_pscch_pssch_processing(PHY_VARS_NR_UE *ue,
                                   &rsrp_dBm);
     }
 
-    nr_ue_pdcch_procedures(ue, proc, 1, pscch_est_size, pscch_dl_ch_estimates, phy_data, 0, rxdataF, &rsrp_dBm); 
+    nr_ue_pdcch_procedures(ue, proc, 1, pscch_est_size, pscch_dl_ch_estimates, phy_data, 0, rxdataF, &rsrp_dBm);
     LOG_D(NR_PHY,"returned from nr_ue_pdcch_procedures\n");
   }
 

@@ -3900,11 +3900,12 @@ void nr_ue_sidelink_scheduler(nr_sidelink_indication_t *sl_ind) {
       nr_ue_sl_pscch_rx_scheduler(sl_ind, mac->sl_bwp, mac->sl_rx_res_pool, &rx_config, &tti_action);
       prev_slot = slot;
   }
+
   if (mac->enable_sensing) {
     FrameSlot_t frame_slot;
     frame_slot.frame = frame;
     frame_slot.slot = slot;
-    remove_old_sensing_data(&frame_slot, sl_mac->sl_TxPool[0]->t0, &mac->sl_sensing_data);
+    //remove_old_sensing_data(&frame_slot, sl_mac->sl_TxPool[0]->t0, &mac->sl_sensing_data);
   }
   if (mac->is_synced && !is_psbch_slot && tx_allowed && sl_ind->slot_type == SIDELINK_SLOT_TYPE_TX &&
       ((!get_nrUE_params()->sync_ref && (slot == 16 || slot == 17 || slot == 18 || slot == 18 || slot == 19)) ||

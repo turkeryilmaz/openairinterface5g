@@ -617,15 +617,6 @@ static void RU_write(nr_rxtx_thread_data_t *rxtxD, int sl_tx_action) {
 
 }
 
-uint16_t get_sensing_window_in_slots(sl_nr_ue_mac_params_t *sl_mac) {
-  long sensing_window_ms = *sl_mac->sl_RxPool[0]->respool->sl_UE_SelectedConfigRP_r16->sl_SensingWindow_r16;
-  uint8_t mu = sl_mac->sl_phy_config.sl_config_req.sl_bwp_config.sl_scs;
-  uint8_t slots_per_frame = nr_slots_per_frame[mu];
-  uint8_t frame_duration_ms = 10;
-  uint16_t num_slots = (sensing_window_ms / frame_duration_ms) * slots_per_frame;
-  return num_slots;
-}
-
 void processSlotTX(void *arg) {
 
   nr_rxtx_thread_data_t *rxtxD = (nr_rxtx_thread_data_t *) arg;
@@ -693,6 +684,7 @@ void processSlotTX(void *arg) {
       phy_procedures_nrUE_TX(UE, proc, &phy_data);
     }
   }
+
   NR_UE_MAC_INST_t *mac = get_mac_inst(0);
   sl_nr_ue_mac_params_t *sl_mac = mac->SL_MAC_PARAMS;
   uint16_t sensing_window_ms = (uint16_t)*sl_mac->sl_RxPool[0]->respool->sl_UE_SelectedConfigRP_r16->sl_SensingWindow_r16;

@@ -534,26 +534,7 @@ int nr_rrc_mac_config_req_sl_preconfig(module_id_t module_id,
   sl_prepare_phy_config(module_id, &sl_phy_cfg->sl_config_req,
                         freqcfg, sync_source, sl_OffsetDFN, sl_mac->sl_TDD_config);
 
-  // uint8_t mu = sl_mac->sl_phy_config.sl_config_req.sl_bwp_config.sl_scs;
-
-  //PQI:Priority: PDP
-  //21: 3 : 20ms   = 40 slots
-  //22: 4 : 50ms   = 100 slots
-  //23: 3 : 100ms  = 200 slots
-  //55: 3 : 10ms   = 20 slots
-  //56: 6 : 20ms   = 40 slots
-  //57: 5 : 25ms   = 50 slots
-  //58: 4 : 100ms  = 200 slots
-  //59: 6 : 500ms  = 1000 slots
-  // 2, 10, 20, 40
-  // 20, 40, 50, 100, 200, 1000
-
-  // PDB: 10ms, 20ms, 25ms, 50ms, 100ms, 500ms // 23.287 Table 5.4.4-1
   sl_mac->mac_tx_params.packet_delay_budget = 20; // 20 ms
-  // sl_mac->mac_tx_params.m_cResel = ;
-  // sl_mac->mac_tx_params.m_lSubch = ;
-  // sl_mac->mac_tx_params.m_priority = sl_res_pool->sl_UE_SelectedConfigRP_r16->sl_SelectionWindowList_r16->list.array[0]->sl_Priority_r16,;
-  // sl_mac->mac_tx_params.m_pRsvpTx = sl_res_pool->sl_UE_SelectedConfigRP_r16->sl_Thres_RSRP_List_r16;
   return 0;
 }
 
@@ -777,10 +758,7 @@ void nr_sl_params_read_conf(module_id_t module_id) {
 
   uint16_t* resource_selection_cfg = (uint16_t *)malloc16_clear(sizeof(*resource_selection_cfg));
   paramdef_t SL_CONFIG_RSR_INFO[] = SL_CONFIG_RESOURCE_SELECTION(resource_selection_cfg);
-  // paramlist_def_t SL_CRI_RS_List = {SL_CONFIG_STRING_SL_CSI_RS_LIST, NULL, 0};
-  // config_getlist(SL_CONFIG_RSR_INFO, NULL, 0, aprefix);
-  // sprintf(aprefix, "%s.[%i].%s.[%i]", SL_CONFIG_STRING_SL_PRECONFIGURATION, 0, SL_CONFIG_STRING_SL_CSI_RS_LIST, 0);
-  config_get(SL_CONFIG_RSR_INFO, sizeof(SL_CONFIG_RSR_INFO)/sizeof(paramdef_t), aprefix_rsc);
+  config_get(SL_CONFIG_RSR_INFO, sizeof(SL_CONFIG_RSR_INFO) / sizeof(paramdef_t), aprefix_rsc);
 
   if (*resource_selection_cfg == 0 || *resource_selection_cfg == 3 || *resource_selection_cfg == 4 || *resource_selection_cfg == 6) {
     mac->enable_sensing = 1;

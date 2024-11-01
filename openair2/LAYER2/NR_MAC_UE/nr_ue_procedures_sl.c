@@ -581,7 +581,7 @@ uint32_t sl_determine_num_sidelink_slots(uint8_t mod_id, uint16_t *N_SSB_16frame
   //Determine total number of Valid Sidelink slots which can be used for Respool in a SFN cycle (1024 frames)
   N_SL_SLOTS = (*N_SL_SLOTS_perframe * SL_FRAME_NUMBER_CYCLE) - N_SSB_1024frames;
 
-  LOG_I(MAC, "[UE%d]SL-MAC:SSB slots in 1024 frames:%d, N_SL_SLOTS_perframe:%d, N_SL_SLOTs in 1024 frames:%d, SL SLOT bitmap:%x\n",
+  LOG_D(MAC, "[UE%d]SL-MAC:SSB slots in 1024 frames:%d, N_SL_SLOTS_perframe:%d, N_SL_SLOTs in 1024 frames:%d, SL SLOT bitmap:%x\n",
                                                                   mod_id,N_SSB_1024frames, *N_SL_SLOTS_perframe,
                                                                   N_SL_SLOTS, sl_mac->sl_slot_bitmap);
 
@@ -689,8 +689,6 @@ int get_psfch_index(int frame, int slot, int n_slots_frame, const NR_TDD_UL_DL_P
   const int ul_period_start  = (slot / nr_slots_period) * n_ul_slots_period;
   // ((slot % nr_slots_period) - first_ul_slot_period) gives the progressive number of the slot in this TDD period
   const int ul_period_slot   = (slot % nr_slots_period) - first_ul_slot_period;
-  LOG_I(NR_MAC, "ul_period_slot %d, ul_period_start %d, n_ul_slots_frame %d, nr_slots_period %d, n_ul_slots_frame %d, first_ul_slot_period %d\n",
-        ul_period_slot, ul_period_start, n_ul_slots_frame, nr_slots_period, n_ul_slots_frame, first_ul_slot_period);
   // the sum gives the index of current UL slot in the frame which is normalized wrt sched_psfch_max_size
   return (frame_start + ul_period_start + ul_period_slot) % sched_psfch_max_size;
 

@@ -408,15 +408,4 @@ void nr_ue_sl_csi_period_offset(SL_CSI_Report_t *sl_csi_report,
 
 uint8_t get_FRIV(NR_SL_ResourcePool_r16_t *sl_tx_res_pool) {
   return 0;
-  // long sl_NumSubChan = *sl_tx_res_pool->sl_NumSubchannel_r16;
-  // long startRB = *sl_tx_res_pool->sl_StartRB_Subchannel_r16;
-
-  //  = sl_get_num_subch(sl_tx_res_pool);
-	//     long Nsc = *sl_res_pool->sl_NumSubchannel_r16;
-  //           if (sl_res_pool->sl_UE_SelectedConfigRP_r16 && 
-  //               sl_res_pool->sl_UE_SelectedConfigRP_r16->sl_MaxNumPerReserve_r16 &&
-  //               *sl_res_pool->sl_UE_SelectedConfigRP_r16->sl_MaxNumPerReserve_r16 == NR_SL_UE_SelectedConfigRP_r16__sl_MaxNumPerReserve_r16_n2)
-	//       sci_pdu->frequency_resource_assignment.nbits =  (uint8_t)ceil(log2((Nsc * (Nsc + 1)) >>1));  
-	//     else
-	//       sci_pdu->frequency_resource_assignment.nbits =  (uint8_t)ceil(log2((Nsc * (Nsc + 1) * (2*Nsc + 1)) /6)); 
 }

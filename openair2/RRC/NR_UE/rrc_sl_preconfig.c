@@ -255,7 +255,7 @@ static void prepare_NR_SL_ResourcePool(NR_SL_ResourcePool_r16_t *sl_res_pool,
 
   config_get(SL_POOLPARAMS,sizeof(SL_POOLPARAMS)/sizeof(paramdef_t),aprefix);
 
-  LOG_I(RRC, "sl_MaxNumPerReserve %ld, sl_SensingWindow %ld, sl_Priority %ld, sl_SelectionWindow %ld, sl_ResourceReservePeriod1 %ld\n",
+  LOG_D(RRC, "sl_MaxNumPerReserve %ld, sl_SensingWindow %ld, sl_Priority %ld, sl_SelectionWindow %ld, sl_ResourceReservePeriod1 %ld\n",
         *sl_res_pool->sl_UE_SelectedConfigRP_r16->sl_MaxNumPerReserve_r16,
         *sl_res_pool->sl_UE_SelectedConfigRP_r16->sl_SensingWindow_r16,
         sl_res_pool->sl_UE_SelectedConfigRP_r16->sl_SelectionWindowList_r16->list.array[0]->sl_Priority_r16,

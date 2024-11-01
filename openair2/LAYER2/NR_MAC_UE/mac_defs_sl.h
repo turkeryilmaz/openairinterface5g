@@ -238,25 +238,4 @@ typedef struct sl_nr_ue_mac_params {
 } sl_nr_ue_mac_params_t;
 
 
-    /**
-     * Structure to pass trace information about the execution of the
-     * mode 2 sensing algorithm.
-     */
-    // struct SensingTraceReport
-    // {
-    //     SfnSf m_sfn;                                 //!< Sfn
-    //     uint16_t m_t0;                               //!< T0
-    //     uint8_t m_tProc0;                            //!< T_proc0
-    //     uint8_t m_t1;                                //!< T1
-    //     uint16_t m_t2;                               //!< T2
-    //     uint16_t m_subchannels;                      //!< Subchannels in the pool
-    //     uint16_t m_lSubch;                           //!< Requested number of subchannels
-    //     uint8_t m_resourcePercentage;                //!< Resource percentage value
-    //     uint16_t m_initialCandidateSlotsSize;        //!< size of initial candidate slots
-    //     uint16_t m_initialCandidateResourcesSize;    //!< S_A at step 4
-    //     uint16_t m_candidateResourcesSizeAfterStep5; //!< S_A after step 5
-    //     int m_initialRsrpThreshold;                  //!< Initial RSRP threshold
-    //     int m_finalRsrpThreshold;                    //!< Final RSRP threshold used in algorithm
-    // };
-
 #endif
