@@ -18,7 +18,13 @@
  * For more information about the OpenAirInterface (OAI) Software Alliance:
  *      contact@openairinterface.org
  */
-
+/*
+ * Modified by Surajit Dey, Danny Nsouli, Michael Bundas
+ * MITRE Corporation
+ * Add BAP layer code
+ * November 2023
+ * sdey@mitre.org, dnsouli@mitre.org, mbundas@mitre.org
+*/
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
 #endif
@@ -117,6 +123,10 @@ static void *rlc_data_req_thread(void *_)
       if (pthread_cond_wait(&q.c, &q.m) != 0) abort();
     i = q.start;
     if (pthread_mutex_unlock(&q.m) != 0) abort();
+
+    if (getenv("BAP") != NULL && strcmp(getenv("BAP"),"yes") == 0) {
+        LOG_I(PDCP, "BAP rlc_data_req_thread: count %d len %d\n", i, q.q[i].sdu_sizeP);
+    }
 
     rlc_data_req(&q.q[i].ctxt_pP,
                  q.q[i].srb_flagP,
@@ -276,13 +286,25 @@ static void do_pdcp_data_ind(
   }
 
   if (rb != NULL) {
-    rb->recv_pdu(rb, (char *)sdu_buffer->data, sdu_buffer_size);
+    // Remove BAP data PDU header - 3 bytes if it matches known pattern 1st octet=0x8e, 3rd octet=0xcd
+    if (getenv("BAP") != NULL && strcmp(getenv("BAP"),"yes") == 0 &&
+      *(sdu_buffer->data+sdu_buffer_size-3) == 0x8e && *(sdu_buffer->data+sdu_buffer_size-1) == 0xcd) {
+      rb->recv_pdu(rb, (char *)sdu_buffer->data, sdu_buffer_size-3);
+    }
+    else {
+      rb->recv_pdu(rb, (char *)sdu_buffer->data, sdu_buffer_size);
+    }
   } else {
     LOG_E(PDCP, "%s:%d:%s: no RB found (rb_id %ld, srb_flag %d)\n",
           __FILE__, __LINE__, __FUNCTION__, rb_id, srb_flagP);
   }
 
   nr_pdcp_manager_unlock(nr_pdcp_ue_manager);
+
+  if (getenv("BAP") != NULL && strcmp(getenv("BAP"),"yes") == 0 &&
+      *(sdu_buffer->data+sdu_buffer_size-3) == 0x8e && *(sdu_buffer->data+sdu_buffer_size-1) == 0xcd) {
+        LOG_I(PDCP, "BAP PDU rcvd at PDCP, removing BAP hdr\n");
+  }
 
   free_mem_block(sdu_buffer, __FUNCTION__);
 }
@@ -298,6 +320,10 @@ static void *pdcp_data_ind_thread(void *_)
       if (pthread_cond_wait(&pq.c, &pq.m) != 0) abort();
     i = pq.start;
     if (pthread_mutex_unlock(&pq.m) != 0) abort();
+
+    if (getenv("BAP") != NULL && strcmp(getenv("BAP"),"yes") == 0) {
+        LOG_I(PDCP, "BAP pdcp_data_ind_thread count %d len %d\n", i, pq.q[i].sdu_buffer_size);
+    }
 
     do_pdcp_data_ind(&pq.q[i].ctxt_pP,
                      pq.q[i].srb_flagP,
@@ -623,6 +649,51 @@ uint64_t nr_pdcp_module_init(uint64_t _pdcp_optmask, int id)
   return pdcp_optmask ;
 }
 
+// Function to construct BAP data PDU header
+// Inputs: BAP data PDU destination (10 bits) and path (10 bits)
+// Output: BAP data PDU header (lower 3 bytes)
+int bap_pdu_func(unsigned short dest, unsigned short path)
+{
+    struct bap_data bapd;
+    unsigned short dest_high, dest_low;
+    unsigned char dest_high_char, dest_low_char;
+    unsigned short path_high, path_low;
+    unsigned char path_high_char, path_low_char;
+
+    /* Prepare BAP data PDU header */
+
+    /* 1st octet */
+    bapd.oct1 = 0;
+    bapd.oct1 |= 0x80;  /* D/C bit 7=1 for data, 3 R bits 4-6 = 0 */
+    dest_high = dest & 0x03C0;  /* bits 6-9 of destination=dest high */
+    dest_high = dest_high >> 6;
+    dest_high_char = (unsigned char) dest_high;
+    bapd.oct1 |= (dest_high_char & 0x0F);   /* bits 0-3 of oct 1 = dest high */
+
+    /* 2nd octet */
+    bapd.oct2 = 0;
+    dest_low = dest & 0x003F;   /* bits 0-5 of destination=dest low */
+    dest_low = dest_low << 2;
+    dest_low_char = (unsigned char) dest_low;
+    bapd.oct2 |= (dest_low_char & 0xFC);  /* bits 2-7 of oct 2 = dest low */
+
+    path_high = path & 0x0300;  /* bits 8,9 of path = path high */
+    path_high = path_high >> 8;
+    path_high_char = (unsigned char) path_high;
+    bapd.oct2 |= (path_high_char & 0x03);  /* bits 0-1 of oct 2 = path high */
+
+    /* 3rd octet */
+    path_low = path & 0x00FF;   /* bits 0-7 of oct 3 = path low */
+    path_low_char = (unsigned char) path_low;
+    bapd.oct3 = path_low_char;
+
+    // Copy 3 octets in lower 3 bytes of the (int) octets
+    int octets = 0;
+    octets = (bapd.oct3 << 16) | (bapd.oct2 << 8) | bapd.oct1;
+
+    return octets;
+}
+
 static void deliver_sdu_drb(void *_ue, nr_pdcp_entity_t *entity,
                             char *buf, int size)
 {
@@ -656,6 +727,10 @@ static void deliver_sdu_drb(void *_ue, nr_pdcp_entity_t *entity,
 static void deliver_pdu_drb(void *deliver_pdu_data, ue_id_t ue_id, int rb_id,
                             char *buf, int size, int sdu_id)
 {
+  struct bap_data bapd;
+  unsigned short dest;
+  unsigned short path;
+  int octets;
   DevAssert(deliver_pdu_data == NULL);
   protocol_ctxt_t ctxt = { .enb_flag = 1, .rntiMaybeUEid = ue_id };
 
@@ -679,6 +754,52 @@ static void deliver_pdu_drb(void *deliver_pdu_data, ue_id_t ue_id, int rb_id,
 	  __func__, rb_id, size);
     extern instance_t CUuniqInstance;
     itti_send_msg_to_task(TASK_GTPV1_U, CUuniqInstance, message_p);
+  } 
+  else if (node_type == -1) {   // UE
+    if (getenv("BAP") != NULL && strcmp(getenv("BAP"),"yes") == 0)
+    {
+    // Add BAP data pdu here for IAB-MT data plane Tx side.
+    // BAP data pdu: hdr 3 octets, data variable.
+    // BAP hdr = 0x8eafcd
+    //bapd.oct1=0x8e;   // dest=0x03AB, path=0x03CD
+    //bapd.oct2=0xaf;
+    //bapd.oct3=0xcd;
+    dest = 0x03AB;
+    path = 0x03CD;
+    octets = bap_pdu_func(dest, path);
+
+    bapd.oct1 = octets & 0xFF;
+    bapd.oct2 = (octets >> 8) & 0xFF;
+    bapd.oct3 = (octets >> 16) & 0xFF;
+
+    mem_block_t *memblock = get_free_mem_block(size+3, __FUNCTION__);
+    memcpy(memblock->data, buf, size);
+    memcpy(memblock->data+size, (unsigned char *) &bapd, sizeof(bapd));
+    LOG_I(PDCP, "BAP UE %s(): (drb %d) calling rlc_data_req size %d  bap2 hdr %x\n", __func__, rb_id, size, bapd.oct2);
+    enqueue_rlc_data_req(&ctxt, 0, MBMS_FLAG_NO, rb_id, sdu_id, 0, size+3, memblock);
+    }
+  }
+    else {   // DU
+    if (getenv("BAP") != NULL && strcmp(getenv("BAP"),"yes") == 0)
+    {
+    // Add BAP data pdu here for IAB-DU data plane Tx side.
+    //bapd.oct1=0x8e;   // dest=0x03AA, path=0x03CD
+    //bapd.oct2=0xab;   // Note: path same as UE/IAB-MT
+    //bapd.oct3=0xcd;
+    dest = 0x03AA;
+    path = 0x03CD;
+    octets = bap_pdu_func(dest, path);
+
+    bapd.oct1 = octets & 0xFF;
+    bapd.oct2 = (octets >> 8) & 0xFF;
+    bapd.oct3 = (octets >> 16) & 0xFF;
+
+    mem_block_t *memblock = get_free_mem_block(size+3, __FUNCTION__);
+    memcpy(memblock->data, buf, size);
+    memcpy(memblock->data+size, (unsigned char *) &bapd, sizeof(bapd));
+    LOG_I(PDCP, "BAP DU %s(): (drb %d) calling rlc_data_req size %d bap2 hdr %x\n", __func__, rb_id, size, bapd.oct2);
+    enqueue_rlc_data_req(&ctxt, 0, MBMS_FLAG_NO, rb_id, sdu_id, 0, size+3, memblock);
+    }
   } else {
     mem_block_t *memblock = get_free_mem_block(size, __FUNCTION__);
     memcpy(memblock->data, buf, size);
@@ -711,6 +832,16 @@ srb_found:
     MessageDef *message_p = itti_alloc_new_message(TASK_PDCP_GNB, 0, F1AP_UL_RRC_MESSAGE);
     AssertFatal(message_p != NULL, "OUT OF MEMORY\n");
     f1ap_ul_rrc_message_t *ul_rrc = &F1AP_UL_RRC_MESSAGE(message_p);
+
+    // Code to remove BAP data PDU header in control plane of gNB Rx side
+    // if it matches known pattern - 1st octet=0x8e, 3rd octet=0xcd
+    if (getenv("BAP") != NULL && strcmp(getenv("BAP"),"yes") == 0) {
+      if(*(buf+size-3) == 0x8e && *(buf+size-1) == 0xcd) {
+        LOG_I(PDCP, "gNB BAP PDU rcvd at PDCP, removing BAP hdr\n");
+        size -= 3;
+      }
+    }
+
     ul_rrc->rnti = ue->rntiMaybeUEid;
     ul_rrc->srb_id = srb_id;
     ul_rrc->rrc_container = malloc(size);
@@ -719,6 +850,14 @@ srb_found:
     ul_rrc->rrc_container_length = size;
     itti_send_msg_to_task(TASK_RRC_GNB, 0, message_p);
   } else {
+    // Code to remove BAP data PDU header in control plane of UE Rx side
+      // if it matches known pattern - 1st octet=0x8e, 3rd octet=0xcd
+      if (getenv("BAP") != NULL && strcmp(getenv("BAP"),"yes") == 0) {
+      if(*(buf+size-3) == 0x8e && *(buf+size-1) == 0xcd) {
+      LOG_I(PDCP, "UE BAP PDU rcvd at PDCP, removing BAP hdr\n");
+      size -= 3;
+      }
+    }
     uint8_t *rrc_buffer_p = itti_malloc(TASK_PDCP_UE, TASK_RRC_NRUE, size);
     AssertFatal(rrc_buffer_p != NULL, "OUT OF MEMORY\n");
     memcpy(rrc_buffer_p, buf, size);
@@ -735,10 +874,40 @@ srb_found:
 void deliver_pdu_srb_rlc(void *deliver_pdu_data, ue_id_t ue_id, int srb_id,
                          char *buf, int size, int sdu_id)
 {
+  struct bap_data bapd;
+  unsigned short dest;
+  unsigned short path;
+  int octets;
+
   protocol_ctxt_t ctxt = { .enb_flag = 1, .rntiMaybeUEid = ue_id };
-  mem_block_t *memblock = get_free_mem_block(size, __FUNCTION__);
-  memcpy(memblock->data, buf, size);
-  enqueue_rlc_data_req(&ctxt, 1, MBMS_FLAG_NO, srb_id, sdu_id, 0, size, memblock);
+  // Add BAP data PDU header in control plane - Tx side
+  if (getenv("BAP") != NULL && strcmp(getenv("BAP"),"yes") == 0)
+  {
+    if (node_type == -1) {   // UE
+
+      dest = 0x03AB;
+    }
+    else // gNB
+    {
+      dest = 0x03AA;
+    }
+    path = 0x03CD;
+    octets = bap_pdu_func(dest, path);
+
+    bapd.oct1 = octets & 0xFF;
+    bapd.oct2 = (octets >> 8) & 0xFF;
+    bapd.oct3 = (octets >> 16) & 0xFF;
+    LOG_I(PDCP, "BAP node %d %s(): (srb %d) size %d  bap2 hdr %x\n", node_type, __func__, srb_id, size, bapd.oct2);
+    mem_block_t *memblock = get_free_mem_block(size+3, __FUNCTION__);
+    memcpy(memblock->data, buf, size);
+    memcpy(memblock->data+size, (unsigned char *) &bapd, sizeof(bapd));
+    enqueue_rlc_data_req(&ctxt, 1, MBMS_FLAG_NO, srb_id, sdu_id, 0, size+3, memblock);
+  }
+  else {
+    mem_block_t *memblock = get_free_mem_block(size, __FUNCTION__);
+    memcpy(memblock->data, buf, size);
+    enqueue_rlc_data_req(&ctxt, 1, MBMS_FLAG_NO, srb_id, sdu_id, 0, size, memblock);
+  }
 }
 
 void deliver_pdu_srb_f1(void *deliver_pdu_data, ue_id_t ue_id, int srb_id,
