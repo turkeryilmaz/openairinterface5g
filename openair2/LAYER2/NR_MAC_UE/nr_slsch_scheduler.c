@@ -231,7 +231,6 @@ void nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP, int slotP, nr_sci_pdu_
   else {
     sched_pssch->mcs = get_mcs_from_bler(sl_bo, stats, &sched_ctrl->sl_bler_stats, max_mcs, frameP);
   }
-
   // Fill SCI1A
   sci_pdu->priority = 0;
   sci_pdu->frequency_resource_assignment.val = 0;

@@ -165,7 +165,7 @@ typedef struct sl_bch_params {
  */
 typedef struct {
     uint8_t priority;         // L1 priority prio_TX
-    uint16_t packet_delay_budget;   // remaining packet delay budget
+    uint16_t packet_delay_budget_ms;   // remaining packet delay budget
     uint16_t l_subch;       // L_subCH; number of subchannels to be used
     uint16_t rri;          // resource reservation interval
     uint16_t resel_counter;       // C_resel counter

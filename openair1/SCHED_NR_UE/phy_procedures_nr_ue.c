@@ -428,7 +428,7 @@ int nr_ue_pdcch_procedures(PHY_VARS_NR_UE *ue,
                            nr_phy_data_t *phy_data,
                            int n_ss,
                            c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP],
-                           int16_t *rsrp)
+                           int16_t *rsrp_dBm)
 {
   int frame_rx = proc->frame_rx;
   int nr_slot_rx = proc->nr_slot_rx;
@@ -460,7 +460,7 @@ int nr_ue_pdcch_procedures(PHY_VARS_NR_UE *ue,
 	 n_ss);
 #endif
 
-  dci_cnt = nr_dci_decoding_procedure(ue, proc, pscch_flag, pdcch_e_rx, pscch_flag==0 ? (void*)&dci_ind : (void*)&sci_ind, rel15, rsrp);
+  dci_cnt = nr_dci_decoding_procedure(ue, proc, pscch_flag, pdcch_e_rx, pscch_flag==0 ? (void*)&dci_ind : (void*)&sci_ind, rel15, rsrp_dBm);
 
 #ifdef NR_PDCCH_SCHED_DEBUG
   LOG_I(PHY,"<-NR_PDCCH_PHY_PROCEDURES_LTE_UE (nr_ue_pdcch_procedures)-> Ending function nr_dci_decoding_procedure() -> dci_cnt=%u\n",dci_cnt);
@@ -1031,7 +1031,6 @@ void pbch_pdcch_processing(PHY_VARS_NR_UE *ue,
                                   pdcch_est_size,
                                   pdcch_dl_ch_estimates,
                                   rxdataF,
-                                  NULL,
                                   NULL);
 
       stop_meas(&ue->ofdm_demod_stats);

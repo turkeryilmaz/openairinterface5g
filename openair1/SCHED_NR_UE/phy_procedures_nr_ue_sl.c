@@ -583,7 +583,6 @@ void psbch_pscch_pssch_processing(PHY_VARS_NR_UE *ue,
     int32_t pscch_est_size = ((((fp->symbols_per_slot*(fp->ofdm_symbol_size+LTE_CE_FILTER_LENGTH))+15)/16)*16);
      __attribute__ ((aligned(16))) int32_t pscch_dl_ch_estimates[4*fp->nb_antennas_rx][pscch_est_size];
     //
-    int rsrp = 0;
     int16_t rsrp_dBm = 0;
     for (int sym=0; sym<rel15->coreset.duration;sym++) {
       nr_slot_fep(ue,
@@ -602,7 +601,6 @@ void psbch_pscch_pssch_processing(PHY_VARS_NR_UE *ue,
                                   pscch_est_size,
                                   pscch_dl_ch_estimates,
                                   rxdataF,
-                                  &rsrp,
                                   &rsrp_dBm);
     }
 

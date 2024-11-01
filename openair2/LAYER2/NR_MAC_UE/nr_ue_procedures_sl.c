@@ -1342,9 +1342,9 @@ uint16_t get_T2_min(uint16_t pool_id, sl_nr_ue_mac_params_t *sl_mac, uint8_t mu)
 
 uint16_t get_t2(uint16_t pool_id, uint8_t mu, nr_sl_transmission_params_t* sl_tx_params, sl_nr_ue_mac_params_t *sl_mac) {
   uint16_t t2;
-  if (!(sl_tx_params->packet_delay_budget == 0)) {
+  if (!(sl_tx_params->packet_delay_budget_ms == 0)) {
     // Packet delay budget is known, so use it
-    uint16_t t2pdb = time_to_slots(mu, sl_tx_params->packet_delay_budget);
+    uint16_t t2pdb = time_to_slots(mu, sl_tx_params->packet_delay_budget_ms);
     t2 = min(t2pdb, sl_mac->sl_TxPool[pool_id]->t2);
   } else {
     // Packet delay budget is not known, so use max(NrSlUeMac::T2, T2min)

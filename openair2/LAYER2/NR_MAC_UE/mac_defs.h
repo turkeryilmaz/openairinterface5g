@@ -581,6 +581,9 @@ typedef struct {
   size_t capacity;
 } List_t;
 
+typedef enum {
+  c1, c2, c3, c4, c5, c6, c7
+} allowed_rsc_selection_t;
 /*!\brief Top level UE MAC structure */
 typedef struct {
   NR_UE_L2_STATE_t state;
@@ -710,8 +713,8 @@ typedef struct {
   pthread_mutex_t sl_sched_lock;
   bool is_synced;
 
-  bool enable_sensing; // Flag to enable NR Sidelink resource selection based on
-                      // sensing; otherwise, use random selection
+  allowed_rsc_selection_t rsc_selection_method; // Flag to enable NR Sidelink resource selection based on
+                                                // sensing; otherwise, use random selection
   double m_slProbResourceKeep; // Sidelink probability of keeping a resource after resource
                                    // re-selection counter reaches zero
   List_t sl_sensing_data; // List to store sensing data

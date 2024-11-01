@@ -60,7 +60,6 @@ void nr_pdcch_channel_estimation(PHY_VARS_NR_UE *ue,
                                  int32_t pdcch_est_size,
                                  int32_t pdcch_dl_ch_estimates[][pdcch_est_size],
                                  c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP],
-                                 int *rsrp,
                                  int16_t* rsrp_dBm);
 
 int nr_pbch_dmrs_correlation(PHY_VARS_NR_UE *ue,

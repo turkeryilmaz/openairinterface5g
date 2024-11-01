@@ -62,7 +62,7 @@
 {SL_CONFIG_STRING_SL_CONFIGUREDGRANT_HARQ_PERIODIC_RRI, NULL, 0, .u16ptr=&sl_harq_info->sl_Periodic_RRI, .defuintval=0, TYPE_UINT16, 0}}
 
 #define SL_CONFIG_RESOURCE_SELECTION(resource_selection_cfg) { \
-{SL_CONFIG_STRING_SL_CONFIGUREDGRANT_HARQ_PERIODIC_RRI, NULL, 0, .u16ptr=resource_selection_cfg, .defuintval=3, TYPE_UINT16, 0}}
+{SL_CONFIG_STRING_SL_ALLOWED_RESOURCE_SELECTION_CONFIG, NULL, 0, .u16ptr=resource_selection_cfg, .defuintval=3, TYPE_UINT16, 0}}
 
 typedef struct sl_csi_info {
   uint8_t symb_l0;
@@ -534,7 +534,7 @@ int nr_rrc_mac_config_req_sl_preconfig(module_id_t module_id,
   sl_prepare_phy_config(module_id, &sl_phy_cfg->sl_config_req,
                         freqcfg, sync_source, sl_OffsetDFN, sl_mac->sl_TDD_config);
 
-  sl_mac->mac_tx_params.packet_delay_budget = 20; // 20 ms
+  sl_mac->mac_tx_params.packet_delay_budget_ms = 20;
   return 0;
 }
 
@@ -760,10 +760,21 @@ void nr_sl_params_read_conf(module_id_t module_id) {
   paramdef_t SL_CONFIG_RSR_INFO[] = SL_CONFIG_RESOURCE_SELECTION(resource_selection_cfg);
   config_get(SL_CONFIG_RSR_INFO, sizeof(SL_CONFIG_RSR_INFO) / sizeof(paramdef_t), aprefix_rsc);
 
-  if (*resource_selection_cfg == 0 || *resource_selection_cfg == 3 || *resource_selection_cfg == 4 || *resource_selection_cfg == 6) {
-    mac->enable_sensing = 1;
-  } else {
-    mac->enable_sensing = 0;
+  switch(*resource_selection_cfg) {
+    case 0:
+      mac->rsc_selection_method = c1;
+      break;
+    case 3:
+      mac->rsc_selection_method = c4;
+      break;
+    case 4:
+      mac->rsc_selection_method = c5;
+      break;
+    case 6:
+      mac->rsc_selection_method = c7;
+      break;
+    default:
+      LOG_D(NR_MAC, "Provided resource selection mechanism is not supported!!!\n");
+      break;
   }
-  LOG_I(NR_MAC, "enableSensing %d\n", mac->enable_sensing);
 }

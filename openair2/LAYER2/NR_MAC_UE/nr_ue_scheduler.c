@@ -3901,7 +3901,10 @@ void nr_ue_sidelink_scheduler(nr_sidelink_indication_t *sl_ind) {
       prev_slot = slot;
   }
 
-  if (mac->enable_sensing) {
+  if (mac->rsc_selection_method == c1 ||
+      mac->rsc_selection_method == c4 ||
+      mac->rsc_selection_method == c5 ||
+      mac->rsc_selection_method == c7) {
     FrameSlot_t frame_slot;
     frame_slot.frame = frame;
     frame_slot.slot = slot;

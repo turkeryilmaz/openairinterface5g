@@ -83,7 +83,7 @@
 #define SL_CONFIG_STRING_RESPOOL_SL_PRIORITY                  "sl_Priority"
 #define SL_CONFIG_STRING_RESPOOL_SL_SELECTION_WINDOW          "sl_SelectionWindow"
 #define SL_CONFIG_STRING_RESPOOL_SL_SENSING_WINDOW            "sl_SensingWindow"
-// #define SL_CONFIG_STRING_RESPOOL_SL_TRESHOLD_RSRP             "sl_Thres_RSRP"
+#define SL_CONFIG_STRING_RESPOOL_SL_TRESHOLD_RSRP             "sl_Thres_RSRP"
 #define SL_CONFIG_STRING_RESPOOL_SL_MAXNUM_PER_RESERVE        "sl_MaxNumPerReserve"
 #define SL_CONFIG_STRING_RESPOOL_SL_RESOURCE_RESERVED_PERIOD  "sl_ResourceReservePeriod"
 #define SL_CONFIG_STRING_RESPOOL_SL_RS_FOR_SENSING            "sl_RS_ForSensing"

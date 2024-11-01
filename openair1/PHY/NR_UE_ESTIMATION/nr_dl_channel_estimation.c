@@ -1048,7 +1048,6 @@ void nr_pdcch_channel_estimation(PHY_VARS_NR_UE *ue,
                                  int32_t pdcch_est_size,
                                  int32_t pdcch_dl_ch_estimates[][pdcch_est_size],
                                  c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP],
-                                 int *rsrp,
                                  int16_t *rsrp_dBm)
 {
 
@@ -1061,6 +1060,7 @@ void nr_pdcch_channel_estimation(PHY_VARS_NR_UE *ue,
   int ch_offset,symbol_offset;
   uint16_t meas_count = 0;
   int32_t rsrp_sum = 0;
+  int rsrp = 0;
 
   ch_offset     = ue->frame_parms.ofdm_symbol_size*symbol;
 
@@ -1297,12 +1297,11 @@ void nr_pdcch_channel_estimation(PHY_VARS_NR_UE *ue,
     //}
 
   }
-  if (rsrp) {
-    *rsrp = rsrp_sum / meas_count;
-    *rsrp_dBm = dB_fixed(*rsrp) + 30 - pow_2_30_dB
-      - ((int)openair0_cfg[0].rx_gain[0] - (int)openair0_cfg[0].rx_gain_offset[0]) - dB_fixed(ue->frame_parms.ofdm_symbol_size);
-    LOG_I(NR_PHY, "%4d.%2d rsrp %d, rsrp_dBm %d, rsrp_sum %d, meas_count %d\n", proc->frame_rx, proc->nr_slot_rx, *rsrp, *rsrp_dBm, rsrp_sum, meas_count);
-  }
+
+  rsrp = rsrp_sum / meas_count;
+  *rsrp_dBm = dB_fixed(rsrp) + 30 - pow_2_30_dB
+    - ((int)openair0_cfg[0].rx_gain[0] - (int)openair0_cfg[0].rx_gain_offset[0]) - dB_fixed(ue->frame_parms.ofdm_symbol_size);
+  LOG_D(NR_PHY, "%4d.%2d rsrp %d, rsrp_dBm %d, rsrp_sum %d, meas_count %d\n", proc->frame_rx, proc->nr_slot_rx, rsrp, *rsrp_dBm, rsrp_sum, meas_count);
 }
 
 void NFAPI_NR_DMRS_TYPE1_linear_interp(NR_DL_FRAME_PARMS *frame_parms,

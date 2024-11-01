@@ -117,7 +117,7 @@ int nr_ue_pdcch_procedures(PHY_VARS_NR_UE *ue,
          nr_phy_data_t *phy_data,
          int n_ss,
          c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP],
-         int *rsrp) {
+         int *rsrp_dBm) {
   return 0;
 }
 
