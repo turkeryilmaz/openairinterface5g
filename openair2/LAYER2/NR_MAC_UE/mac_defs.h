@@ -709,12 +709,17 @@ typedef struct {
   int src_id;
   pthread_mutex_t sl_sched_lock;
   bool is_synced;
+
+  bool enable_sensing; // Flag to enable NR Sidelink resource selection based on
+                      // sensing; otherwise, use random selection
+  double m_slProbResourceKeep; // Sidelink probability of keeping a resource after resource
+                                   // re-selection counter reaches zero
   List_t sl_sensing_data; // List to store sensing data
-  int sl_thresh_rsrp; // A threshold in dBm used for sensing based UE autonomous resource selection
-  uint8_t sl_res_percentage; /* The percentage threshold to indicate the
+  int sl_thresh_rsrp;     // A threshold in dBm used for sensing based UE autonomous resource selection
+  uint8_t sl_res_percentage;  /* The percentage threshold to indicate the
                                  minimum number of candidate single-slot
                                  resources to be selected using sensing procedure.
-                               */
+                              */
   uint8_t sl_resel_counter;  // The resource selection counter
   uint16_t sl_c_resel;       // The C_resel counter
   List_t sl_transmit_history; // History of slots used for transmission

@@ -712,8 +712,26 @@ void init_list(List_t* list, size_t element_size, size_t initial_capacity);
 
 void push_back(List_t* list, void* element);
 
+void update_sensing_data(List_t* sensing_data, FrameSlot_t *frame_slot, sl_nr_ue_mac_params_t *sl_mac, uint16_t pool_id);
+
+void pop_back(List_t* sensing_data);
+
 void free_rsel_list(List_t* list);
 
 uint16_t get_sensing_window_in_slots(sl_nr_ue_mac_params_t *sl_mac);
+
+int64_t normalize(FrameSlot_t *frame_slot, sl_nr_ue_mac_params_t *sl_mac);
+
+uint16_t get_T2_min(uint16_t pool_id, sl_nr_ue_mac_params_t *sl_mac, uint8_t mu);
+
+uint16_t get_t2(uint16_t pool_id, uint8_t mu, nr_sl_transmission_params_t* sl_tx_params, sl_nr_ue_mac_params_t *sl_mac);
+
+uint16_t time_to_slots(uint8_t mu, uint16_t time);
+
+uint8_t get_tproc0(sl_nr_ue_mac_params_t *sl_mac, uint16_t pool_id);
+
+int remove_old_sensing_data(FrameSlot_t *frame_slot,
+                            uint16_t sensingWindow,
+                            List_t* sensing_data);
 #endif
 /** @}*/

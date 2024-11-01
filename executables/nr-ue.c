@@ -694,12 +694,11 @@ void processSlotTX(void *arg) {
     }
   }
   NR_UE_MAC_INST_t *mac = get_mac_inst(0);
-  NR_DL_FRAME_PARMS *fp = &UE->frame_parms;
-  if (UE->sl_mode == 2)
-    fp = &UE->SL_UE_PHY_PARAMS.sl_frame_params;
   sl_nr_ue_mac_params_t *sl_mac = mac->SL_MAC_PARAMS;
-  uint16_t slots_in_sensing_win = get_sensing_window_in_slots(sl_mac);
-  LOG_I(PHY, "sl_SensingWindow_r16 %d, slots_in_sensing_win %u\n", *mac->SL_MAC_PARAMS->sl_RxPool[0]->respool->sl_UE_SelectedConfigRP_r16->sl_SensingWindow_r16, slots_in_sensing_win);
+  uint16_t sensing_window_ms = (uint16_t)*sl_mac->sl_RxPool[0]->respool->sl_UE_SelectedConfigRP_r16->sl_SensingWindow_r16;
+  uint8_t mu = sl_mac->sl_phy_config.sl_config_req.sl_bwp_config.sl_scs;
+  uint16_t slots_in_sensing_win = time_to_slots(mu, sensing_window_ms);
+  LOG_I(PHY, "sl_SensingWindow_r16 %u, slots_in_sensing_win %u\n", sensing_window_ms, slots_in_sensing_win);
   RU_write(rxtxD, sl_tx_action);
 }
 

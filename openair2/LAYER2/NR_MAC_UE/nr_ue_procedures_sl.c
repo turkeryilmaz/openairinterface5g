@@ -1303,14 +1303,6 @@ void push_back(List_t* list, void* element) {
   list->size++;
 }
 
-void update_sensing_data(List_t* updatedSensingData, int slot) {
-  while(updatedSensingData->size > 0) {
-    SensingData_t* last_elem = (SensingData_t*)((uint8_t*)updatedSensingData->data + (updatedSensingData->size -1) * updatedSensingData->element_size);
-
-    if ()
-  }
-}
-
 int64_t normalize(FrameSlot_t *frame_slot, sl_nr_ue_mac_params_t *sl_mac) {
   int64_t num_slots = 0;
   uint8_t mu = sl_mac->sl_phy_config.sl_config_req.sl_bwp_config.sl_scs;
@@ -1320,9 +1312,57 @@ int64_t normalize(FrameSlot_t *frame_slot, sl_nr_ue_mac_params_t *sl_mac) {
   return num_slots;
 }
 
+void update_sensing_data(List_t* sensing_data, FrameSlot_t *frame_slot, sl_nr_ue_mac_params_t *sl_mac, uint16_t pool_id) {
+  while(sensing_data->size > 0) {
+    SensingData_t* last_elem = (SensingData_t*)((uint8_t*)sensing_data->data + (sensing_data->size - 1) * sensing_data->element_size);
+
+    if (normalize(frame_slot, sl_mac), normalize(&last_elem->frame_slot, sl_mac) <= get_tproc0(sl_mac, pool_id)) {
+      pop_back(sensing_data);
+    } else {
+      break;
+    }
+  }
+}
+
+void pop_back(List_t* sensing_data) {
+  if(sensing_data->size > 0) {
+    sensing_data->size--;
+  }
+}
+
 void free_rsel_list(List_t* list) {
   free(list->data);
   list->data = NULL;
   list->size = 0;
   list->capacity = 0;
 }
+
+uint16_t get_T2_min(uint16_t pool_id, sl_nr_ue_mac_params_t *sl_mac, uint8_t mu) {
+  uint16_t t2min = sl_mac->sl_TxPool[pool_id]->t2min * pow(2, mu);
+  return t2min;
+}
+
+uint16_t get_t2(uint16_t pool_id, uint8_t mu, nr_sl_transmission_params_t* sl_tx_params, sl_nr_ue_mac_params_t *sl_mac) {
+  uint16_t t2;
+  if (!(sl_tx_params->packet_delay_budget == 0)) {
+    // Packet delay budget is known, so use it
+    uint16_t t2pdb = time_to_slots(mu, sl_tx_params->packet_delay_budget);
+    t2 = min(t2pdb, sl_mac->sl_TxPool[pool_id]->t2);
+  } else {
+    // Packet delay budget is not known, so use max(NrSlUeMac::T2, T2min)
+    uint16_t t2min = get_T2_min(pool_id, sl_mac, mu);
+    t2 = max(t2min, sl_mac->sl_TxPool[pool_id]->t2);
+  }
+  return t2;
+}
+
+uint16_t time_to_slots(uint8_t mu, uint16_t time) {
+  uint8_t slots_per_ms = (uint8_t)pow(2, mu); // subframe is of 1 ms
+  uint16_t time_in_slots = time * slots_per_ms;
+  return time_in_slots;
+}
+
+uint8_t get_tproc0(sl_nr_ue_mac_params_t *sl_mac, uint16_t pool_id) {
+  return sl_mac->sl_TxPool[pool_id]->tproc0;
+}
+

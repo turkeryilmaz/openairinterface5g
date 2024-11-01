@@ -126,6 +126,13 @@ typedef struct SL_ResourcePool_params {
   //SCI-1A configuration according to RESPOOL configured.
   sidelink_sci_format_1a_fields_t sci_1a;
 
+  uint8_t tproc0;  // T_proc0 in slots
+  uint8_t tproc1;  // T_proc1 in slots
+  uint16_t t0;      // T0 - Sensing window
+  uint8_t t1; // T1 - The offset in number of slots between the slot in which the resource
+              // selection is triggered and the start of the selection window
+  uint16_t t2;  // T2 - The configured value of T2 (end of selection window)
+  uint8_t t2min; // t2min
 } SL_ResourcePool_params_t;
 
 typedef struct sl_ssb_timealloc {
@@ -152,6 +159,18 @@ typedef struct sl_bch_params {
 
 } sl_bch_params_t;
 
+/**
+ * \brief Structure to pass parameters to trigger the selection of candidate
+ * resources as per TR 38.214 Section 8.1.4
+ */
+typedef struct {
+    uint8_t priority;         // L1 priority prio_TX
+    uint16_t packet_delay_budget;   // remaining packet delay budget
+    uint16_t l_subch;       // L_subCH; number of subchannels to be used
+    uint16_t rri;          // resource reservation interval
+    uint16_t resel_counter;       // C_resel counter
+} nr_sl_transmission_params_t;
+
 typedef struct sl_nr_ue_mac_params {
 
   //Holds the RX resource pool from RRC and its related parameters
@@ -162,6 +181,7 @@ typedef struct sl_nr_ue_mac_params {
   //Holds either the TDD config from RRC
   //or TDD config decoded from SL-MIB
   NR_TDD_UL_DL_ConfigCommon_t *sl_TDD_config;
+  nr_sl_transmission_params_t  mac_tx_params;
 
   // CSI params configured locally
   uint8_t symb_l0;
@@ -217,17 +237,6 @@ typedef struct sl_nr_ue_mac_params {
 
 } sl_nr_ue_mac_params_t;
 
-    /**
-     * \brief Structure to pass parameters to trigger the selection of candidate
-     * resources as per TR 38.214 Section 8.1.4
-     */
-// typedef struct NrSlTransmissionParams {
-//     uint8_t m_priority;         //!< L1 priority prio_TX
-//     Time m_packetDelayBudget;   //!< remaining packet delay budget
-//     uint16_t m_lSubch;       //!< L_subCH; number of subchannels to be used
-//     Time m_pRsvpTx;          //!< resource reservation interval
-//     uint16_t m_cResel;       //!< C_resel counter
-// };
 
     /**
      * Structure to pass trace information about the execution of the

@@ -407,8 +407,9 @@ void nr_ue_sl_csi_period_offset(SL_CSI_Report_t *sl_csi_report,
 }
 
 uint8_t get_FRIV(NR_SL_ResourcePool_r16_t *sl_tx_res_pool) {
-  long sl_NumSubChan = *sl_tx_res_pool->sl_NumSubchannel_r16;
-  long startRB = *sl_tx_res_pool->sl_StartRB_Subchannel_r16;
+  return 0;
+  // long sl_NumSubChan = *sl_tx_res_pool->sl_NumSubchannel_r16;
+  // long startRB = *sl_tx_res_pool->sl_StartRB_Subchannel_r16;
 
   //  = sl_get_num_subch(sl_tx_res_pool);
 	//     long Nsc = *sl_res_pool->sl_NumSubchannel_r16;
