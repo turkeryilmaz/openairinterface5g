@@ -668,5 +668,28 @@ int get_pssch_to_harq_feedback(uint8_t *pssch_to_harq_feedback,
 
 int get_psfch_index(int frame, int slot, int n_slots_frame, const NR_TDD_UL_DL_Pattern_t *tdd, int sched_psfch_max_size);
 
+void init_list(List_t* list, size_t element_size, size_t initial_capacity);
+
+void push_back(List_t* list, void* element);
+
+void update_sensing_data(List_t* sensing_data, FrameSlot_t *frame_slot, sl_nr_ue_mac_params_t *sl_mac, uint16_t pool_id);
+
+void pop_back(List_t* sensing_data);
+
+void free_rsel_list(List_t* list);
+
+int64_t normalize(FrameSlot_t *frame_slot, sl_nr_ue_mac_params_t *sl_mac);
+
+uint16_t get_T2_min(uint16_t pool_id, sl_nr_ue_mac_params_t *sl_mac, uint8_t mu);
+
+uint16_t get_t2(uint16_t pool_id, uint8_t mu, nr_sl_transmission_params_t* sl_tx_params, sl_nr_ue_mac_params_t *sl_mac);
+
+uint16_t time_to_slots(uint8_t mu, uint16_t time);
+
+uint8_t get_tproc0(sl_nr_ue_mac_params_t *sl_mac, uint16_t pool_id);
+
+void remove_old_sensing_data(FrameSlot_t *frame_slot,
+                             uint16_t sensingWindow,
+                             List_t* sensing_data);
 #endif
 /** @}*/

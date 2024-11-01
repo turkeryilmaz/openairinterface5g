@@ -39,6 +39,8 @@
 #define SL_CONFIG_STRING_SL_CSI_RS_SL_CSI_ACQUISITION               "sl_CSI_Acquisition"
 #define SL_CONFIG_STRING_SL_CSI_RS_SL_LATENCYBOUNDCSI_REPORT        "sl_LatencyBoundCSI_Report"
 
+#define SL_CONFIG_STRING_SL_ALLOWED_RESOURCE_SELECTION_CONFIG       "sl_AllowedResourceSelectionConfig"
+
 #define SL_CSI_RS_DESC(sl_csi_info) { \
 {SL_CONFIG_STRING_SL_CSI_RS_SYMB_L0,NULL,0,.u8ptr=&sl_csi_info->symb_l0,.defuintval=1,TYPE_UINT8,0}, \
 {SL_CONFIG_STRING_SL_CSI_RS_CSI_TYPE,NULL,0,.u8ptr=&sl_csi_info->csi_type,.defuintval=1,TYPE_UINT8,0}, \
@@ -58,6 +60,9 @@
 {SL_CONFIG_STRING_SL_CONFIGUREDGRANT_NROFHARQ_PROCESSES, NULL, 0, .u16ptr=&sl_harq_info->sl_Num_HARQ_Processes, .defuintval=0, TYPE_UINT16, 0}, \
 {SL_CONFIG_STRING_SL_CONFIGUREDGRANT_HARQ_PROCID_OFFSET, NULL, 0, .u16ptr=&sl_harq_info->sl_HARQ_ProcID_offset, .defuintval=0, TYPE_UINT16, 0}, \
 {SL_CONFIG_STRING_SL_CONFIGUREDGRANT_HARQ_PERIODIC_RRI, NULL, 0, .u16ptr=&sl_harq_info->sl_Periodic_RRI, .defuintval=0, TYPE_UINT16, 0}}
+
+#define SL_CONFIG_RESOURCE_SELECTION(resource_selection_cfg) { \
+{SL_CONFIG_STRING_SL_ALLOWED_RESOURCE_SELECTION_CONFIG, NULL, 0, .u16ptr=resource_selection_cfg, .defuintval=3, TYPE_UINT16, 0}}
 
 typedef struct sl_csi_info {
   uint8_t symb_l0;
@@ -459,6 +464,16 @@ int nr_rrc_mac_config_req_sl_preconfig(module_id_t module_id,
           if (sl_mac->sl_TxPool[i] == NULL)
             sl_mac->sl_TxPool[i] = malloc16_clear(sizeof(SL_ResourcePool_params_t));
           sl_mac->sl_TxPool[i]->respool = txpool;
+          uint8_t tproc1_valaues[] = {3, 5, 9, 17};
+          uint8_t mu = sl_mac->sl_phy_config.sl_config_req.sl_bwp_config.sl_scs;
+          struct NR_SL_UE_SelectedConfigRP_r16 *sl_ue_selected_config = sl_mac->sl_TxPool[i]->respool->sl_UE_SelectedConfigRP_r16;
+          uint16_t sensing_window_ms = (uint16_t)*sl_ue_selected_config->sl_SensingWindow_r16;
+          uint16_t selection_window = (uint16_t)sl_ue_selected_config->sl_SelectionWindowList_r16->list.array[0]->sl_SelectionWindow_r16;
+          sl_mac->sl_TxPool[i]->t2min = selection_window;
+          sl_mac->sl_TxPool[i]->t0 = time_to_slots(mu, sensing_window_ms);
+          sl_mac->sl_TxPool[i]->tproc0 = 1;
+          sl_mac->sl_TxPool[i]->tproc1 = tproc1_valaues[mu];
+          sl_mac->sl_TxPool[i]->t1 = sl_mac->sl_TxPool[i]->tproc1;
 
           uint16_t sci_1a_len = 0, num_subch = 0;
           sci_1a_len = sl_determine_sci_1a_len(&num_subch,
@@ -519,6 +534,7 @@ int nr_rrc_mac_config_req_sl_preconfig(module_id_t module_id,
   sl_prepare_phy_config(module_id, &sl_phy_cfg->sl_config_req,
                         freqcfg, sync_source, sl_OffsetDFN, sl_mac->sl_TDD_config);
 
+  sl_mac->mac_tx_params.packet_delay_budget_ms = 20;
   return 0;
 }
 
@@ -693,7 +709,7 @@ void nr_sl_params_read_conf(module_id_t module_id) {
   sl_nr_ue_mac_params_t *sl_mac = mac->SL_MAC_PARAMS;
 
   char aprefix[MAX_OPTNAME_SIZE*2 + 8];
-  sl_csi_info_t *sl_csi_rs_info = (sl_csi_info_t *)malloc(sizeof(sl_csi_info_t));
+  sl_csi_info_t *sl_csi_rs_info = (sl_csi_info_t *)malloc16_clear(sizeof(sl_csi_info_t));
   paramdef_t SL_CRI_RS_INFO[] = SL_CSI_RS_DESC(sl_csi_rs_info);
   paramlist_def_t SL_CRI_RS_List = {SL_CONFIG_STRING_SL_CSI_RS_LIST, NULL, 0};
   sprintf(aprefix, "%s.[%d]", SL_CONFIG_STRING_SL_PRECONFIGURATION, 0);
@@ -702,7 +718,7 @@ void nr_sl_params_read_conf(module_id_t module_id) {
   config_get(SL_CRI_RS_INFO, sizeof(SL_CRI_RS_INFO)/sizeof(paramdef_t), aprefix);
 
   char aprefix1[MAX_OPTNAME_SIZE*2 + 8];
-  sl_harq_info_t *sl_harq_info = (sl_harq_info_t*)malloc(sizeof(sl_harq_info_t));
+  sl_harq_info_t *sl_harq_info = (sl_harq_info_t*)malloc16_clear(sizeof(sl_harq_info_t));
   paramdef_t SL_HARQ_INFO[] = SL_CONFIGUREDGRANT_DESC(sl_harq_info);
   sprintf(aprefix1, "%s.[%i].%s.[%i]", SL_CONFIG_STRING_SL_PRECONFIGURATION, 0, SL_CONFIG_STRING_SL_CONFIGUREDGRANT_LIST, 0);
   config_get(SL_HARQ_INFO, sizeof(SL_HARQ_INFO)/sizeof(paramdef_t), aprefix1);
@@ -736,4 +752,29 @@ void nr_sl_params_read_conf(module_id_t module_id) {
   sl_mac->nr_of_rbs = min(24, max_allowable_num_rbs);
 
   LOG_D(NR_MAC, "loc_bw %i, start_rb %i, nr_of_rbs %i, max_allowable_num_rbs %i\n", loc_bw, sl_mac->start_rb, sl_mac->nr_of_rbs, max_allowable_num_rbs);
+
+  char aprefix_rsc[MAX_OPTNAME_SIZE*2 + 8];
+  sprintf(aprefix_rsc, "%s.[%d]", SL_CONFIG_STRING_SL_PRECONFIGURATION, 0);
+
+  uint16_t* resource_selection_cfg = (uint16_t *)malloc16_clear(sizeof(*resource_selection_cfg));
+  paramdef_t SL_CONFIG_RSR_INFO[] = SL_CONFIG_RESOURCE_SELECTION(resource_selection_cfg);
+  config_get(SL_CONFIG_RSR_INFO, sizeof(SL_CONFIG_RSR_INFO) / sizeof(paramdef_t), aprefix_rsc);
+
+  switch(*resource_selection_cfg) {
+    case 0:
+      mac->rsc_selection_method = c1;
+      break;
+    case 3:
+      mac->rsc_selection_method = c4;
+      break;
+    case 4:
+      mac->rsc_selection_method = c5;
+      break;
+    case 6:
+      mac->rsc_selection_method = c7;
+      break;
+    default:
+      LOG_D(NR_MAC, "Provided resource selection mechanism is not supported!!!\n");
+      break;
+  }
 }

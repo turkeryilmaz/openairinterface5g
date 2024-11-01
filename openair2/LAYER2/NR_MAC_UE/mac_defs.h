@@ -554,6 +554,36 @@ typedef struct {
   pthread_mutex_t mutex;
 } NR_SL_UEs_t;
 
+typedef struct {
+  int16_t frame;
+  int16_t slot;
+} FrameSlot_t;
+
+typedef struct {
+  FrameSlot_t frame_slot;
+  uint16_t rsvp; // The resource reservation period in ms
+  uint8_t subch_len; // The total number of the sub-channel allocated
+  uint8_t subch_start; // The index of the starting sub-channel allocated
+  uint8_t prio; // The priority
+  double sl_rsrp; // The measured RSRP value over the used resource blocks
+  uint8_t gap_re_tx1; // Gap for a first retransmission in absolute slots
+  uint8_t subch_startre_tx1; // The index of the starting sub-channel allocated
+                          // to first retransmission
+  uint8_t gap_re_tx2; // Gap for a second retransmission in absolute slots
+  uint8_t subch_startre_tx2; // The index of the starting sub-channel allocated
+                          // to second retransmission
+} SensingData_t;
+
+typedef struct {
+  void* data;
+  size_t element_size;
+  size_t size;
+  size_t capacity;
+} List_t;
+
+typedef enum {
+  c1, c2, c3, c4, c5, c6, c7
+} allowed_rsc_selection_t;
 /*!\brief Top level UE MAC structure */
 typedef struct {
   NR_UE_L2_STATE_t state;
@@ -682,6 +712,20 @@ typedef struct {
   int src_id;
   pthread_mutex_t sl_sched_lock;
   bool is_synced;
+
+  allowed_rsc_selection_t rsc_selection_method; // Flag to enable NR Sidelink resource selection based on
+                                                // sensing; otherwise, use random selection
+  double m_slProbResourceKeep; // Sidelink probability of keeping a resource after resource
+                                   // re-selection counter reaches zero
+  List_t sl_sensing_data; // List to store sensing data
+  int sl_thresh_rsrp;     // A threshold in dBm used for sensing based UE autonomous resource selection
+  uint8_t sl_res_percentage;  /* The percentage threshold to indicate the
+                                 minimum number of candidate single-slot
+                                 resources to be selected using sensing procedure.
+                              */
+  uint8_t sl_resel_counter;  // The resource selection counter
+  uint16_t sl_c_resel;       // The C_resel counter
+  List_t sl_transmit_history; // History of slots used for transmission
 } NR_UE_MAC_INST_t;
 
 /*@}*/

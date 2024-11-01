@@ -880,7 +880,8 @@ uint8_t nr_dci_decoding_procedure(PHY_VARS_NR_UE *ue,
                                   int pscch_flag,
                                   int16_t *pdcch_e_rx,
                                   void *ind,
-                                  fapi_nr_dl_config_dci_dl_pdu_rel15_t *rel15) {
+                                  fapi_nr_dl_config_dci_dl_pdu_rel15_t *rel15,
+                                  int16_t *rsrp_dBm) {
 
   //int gNB_id = 0;
   int16_t tmp_e[16*108];
@@ -978,7 +979,7 @@ uint8_t nr_dci_decoding_procedure(PHY_VARS_NR_UE *ue,
             sci_ind->pssch_rsrp = 0; // need to get this from the inner receiver
             sci_ind->sci_pdu[sci_ind->number_of_SCIs].sci_format_type = SL_SCI_FORMAT_1A_ON_PSCCH;
             sci_ind->sci_pdu[sci_ind->number_of_SCIs].subch_index = 0;
-            sci_ind->sci_pdu[sci_ind->number_of_SCIs].pscch_rsrp = 0; // need to get from inner rx
+            sci_ind->sci_pdu[sci_ind->number_of_SCIs].pscch_rsrp = *rsrp_dBm; // need to get from inner rx
             sci_ind->sci_pdu[sci_ind->number_of_SCIs].sci_payloadlen =  dci_length;
             sci_ind->sci_pdu[sci_ind->number_of_SCIs].Nid = Nid;
 

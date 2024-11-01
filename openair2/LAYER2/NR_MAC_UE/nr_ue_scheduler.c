@@ -3313,7 +3313,6 @@ void preprocess(NR_UE_MAC_INST_t *mac,
                 NR_SetupRelease_SL_PSFCH_Config_r16_t *configured_PSFCH) {
 
   nr_store_slsch_buffer(mac, frame, slot);
-  sl_nr_ue_mac_params_t *sl_mac = mac->SL_MAC_PARAMS;
   int scs = get_softmodem_params()->numerology;
   const int nr_slots_frame = nr_slots_per_frame[scs];
 
@@ -3902,6 +3901,15 @@ void nr_ue_sidelink_scheduler(nr_sidelink_indication_t *sl_ind) {
       prev_slot = slot;
   }
 
+  if (mac->rsc_selection_method == c1 ||
+      mac->rsc_selection_method == c4 ||
+      mac->rsc_selection_method == c5 ||
+      mac->rsc_selection_method == c7) {
+    FrameSlot_t frame_slot;
+    frame_slot.frame = frame;
+    frame_slot.slot = slot;
+    //remove_old_sensing_data(&frame_slot, sl_mac->sl_TxPool[0]->t0, &mac->sl_sensing_data);
+  }
   if (mac->is_synced && !is_psbch_slot && tx_allowed && sl_ind->slot_type == SIDELINK_SLOT_TYPE_TX &&
       ((!get_nrUE_params()->sync_ref && (slot == 16 || slot == 17 || slot == 18 || slot == 18 || slot == 19)) ||
       (get_nrUE_params()->sync_ref && (slot == 6 || slot == 7 || slot == 8 || slot == 9)))) {

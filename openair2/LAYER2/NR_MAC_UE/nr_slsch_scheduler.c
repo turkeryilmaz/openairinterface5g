@@ -400,3 +400,7 @@ void nr_ue_sl_csi_period_offset(SL_CSI_Report_t *sl_csi_report,
       AssertFatal(1 == 0, "No periodicity and offset found in CSI resource");
   }
 }
+
+uint8_t get_FRIV(NR_SL_ResourcePool_r16_t *sl_tx_res_pool) {
+  return 0;
+}

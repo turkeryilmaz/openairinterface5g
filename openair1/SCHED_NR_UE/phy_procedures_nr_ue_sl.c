@@ -583,6 +583,7 @@ void psbch_pscch_pssch_processing(PHY_VARS_NR_UE *ue,
     int32_t pscch_est_size = ((((fp->symbols_per_slot*(fp->ofdm_symbol_size+LTE_CE_FILTER_LENGTH))+15)/16)*16);
      __attribute__ ((aligned(16))) int32_t pscch_dl_ch_estimates[4*fp->nb_antennas_rx][pscch_est_size];
     //
+    int16_t rsrp_dBm = 0;
     for (int sym=0; sym<rel15->coreset.duration;sym++) {
       nr_slot_fep(ue,
                   fp,
@@ -599,10 +600,11 @@ void psbch_pscch_pssch_processing(PHY_VARS_NR_UE *ue,
                                   rel15->BWPStart,
                                   pscch_est_size,
                                   pscch_dl_ch_estimates,
-                                  rxdataF);
+                                  rxdataF,
+                                  &rsrp_dBm);
     }
 
-    nr_ue_pdcch_procedures(ue, proc, 1, pscch_est_size, pscch_dl_ch_estimates, phy_data, 0, rxdataF); 
+    nr_ue_pdcch_procedures(ue, proc, 1, pscch_est_size, pscch_dl_ch_estimates, phy_data, 0, rxdataF, &rsrp_dBm);
     LOG_D(NR_PHY,"returned from nr_ue_pdcch_procedures\n");
   }
 
