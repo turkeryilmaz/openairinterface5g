@@ -689,7 +689,7 @@ uint16_t time_to_slots(uint8_t mu, uint16_t time);
 uint8_t get_tproc0(sl_nr_ue_mac_params_t *sl_mac, uint16_t pool_id);
 
 void remove_old_sensing_data(FrameSlot_t *frame_slot,
-                            uint16_t sensingWindow,
-                            List_t* sensing_data);
+                             uint16_t sensingWindow,
+                             List_t* sensing_data);
 #endif
 /** @}*/
