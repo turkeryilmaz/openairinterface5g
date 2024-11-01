@@ -668,46 +668,6 @@ int get_pssch_to_harq_feedback(uint8_t *pssch_to_harq_feedback,
 
 int get_psfch_index(int frame, int slot, int n_slots_frame, const NR_TDD_UL_DL_Pattern_t *tdd, int sched_psfch_max_size);
 
-
-// static S_Data_Element_t* create_SData_Element(SensingData_t* sensing_data) {
-//   S_Data_Element_t* new_element = (S_Data_Element_t*)calloc(1, sizeof(*new_element));
-//   if (!new_element) {
-//     LOG_I(NR_MAC, "Memory allocation failed.\n");
-//     exit(1);
-//   }
-//   new_element->sensing_data = *sensing_data;
-//   new_element->next = NULL;
-//   LOG_I(NR_MAC, "frame %d, slot %d, prio %d, rsvp %d, sbChStart %hhu, sbChLength %hhu, sbChStartReTx1 %hhu, sbChStartReTx2 %hhu, slRsrp %hhu, gapReTx1 %hhu, gapReTx2 %hhu \n",
-//         new_element->sensing_data.frame_slot.frame,
-//         new_element->sensing_data.frame_slot.slot,
-//         new_element->sensing_data.prio,
-//         new_element->sensing_data.rsvp,
-//         new_element->sensing_data.sbChStart,
-//         new_element->sensing_data.sbChLength,
-//         new_element->sensing_data.sbChStartReTx1,
-//         new_element->sensing_data.sbChStartReTx2,
-//         new_element->sensing_data.slRsrp,
-//         new_element->sensing_data.gapReTx1,
-//         new_element->sensing_data.gapReTx2);
-//   return new_element;
-// }
-
-// static void push_back(S_Data_Element_t** head, SensingData_t* sensing_data) {
-//   S_Data_Element_t* new_element = create_SData_Element(sensing_data);
-
-//   if (*head == NULL) {
-//     *head = new_element;
-//     return;
-//   }
-
-//   S_Data_Element_t* current = *head;
-//   while (current->next != NULL) {
-//     current = current->next;
-//   }
-//   current->next = new_element;
-// }
-
-
 void init_list(List_t* list, size_t element_size, size_t initial_capacity);
 
 void push_back(List_t* list, void* element);
