@@ -1,4 +1,4 @@
-# BAP TODO List:
+# BAP TODO List
 
 NOTICE
 
