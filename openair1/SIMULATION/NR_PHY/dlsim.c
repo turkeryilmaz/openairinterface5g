@@ -858,13 +858,12 @@ int main(int argc, char **argv)
   UE_mac->if_module = nr_ue_if_module_init(0);
 
   unsigned int available_bits=0;
-  unsigned char *estimated_output_bit;
-  unsigned char *test_input_bit;
+  unsigned char *estimated_output_bit=NULL;
+  unsigned char *test_input_bit=NULL;
   unsigned int errors_bit = 0;
 
   initFloatingCoresTpool(dlsch_threads, &nrUE_params.Tpool, false, "UE-tpool");
 
-  
   // generate signal
   AssertFatal(input_fd==NULL,"Not ready for input signal file\n");
 
@@ -904,7 +903,8 @@ int main(int argc, char **argv)
 
   // Buffers to store internal memory of slot process
   int rx_size = (((14 * UE->frame_parms.N_RB_DL * 12 * sizeof(int32_t)) + 15) >> 4) << 4;
-  UE->phy_sim_rxdataF = calloc(sizeof(int32_t *) * UE->frame_parms.nb_antennas_rx * g_nrOfLayers, UE->frame_parms.samples_per_slot_wCP * sizeof(int32_t));
+  UE->phy_sim_rxdataF = calloc(sizeof(int32_t *) * UE->frame_parms.nb_antennas_rx * g_nrOfLayers,
+                               UE->frame_parms.samples_per_slot_wCP * sizeof(int32_t));
   UE->phy_sim_pdsch_llr = calloc(1, (8 * (3 * 8 * 8448)) * sizeof(int16_t)); // Max length
   UE->phy_sim_pdsch_rxdataF_ext = calloc(sizeof(int32_t *) * UE->frame_parms.nb_antennas_rx * g_nrOfLayers, rx_size);
   UE->phy_sim_pdsch_rxdataF_comp = calloc(sizeof(int32_t *) * UE->frame_parms.nb_antennas_rx * g_nrOfLayers, rx_size);
@@ -1116,7 +1116,17 @@ int main(int argc, char **argv)
 
         // Apply MIMO Channel
         multipath_channel(gNB2UE, s_re, s_im, r_re, r_im, slot_length, 0, (n_trials == 1) ? 1 : 0);
-        add_noise(UE->common_vars.rxdata, (const double **) r_re, (const double **) r_im, sigma2, slot_length, slot_offset, ts, delay, pdu_bit_map, 0x1, UE->frame_parms.nb_antennas_rx);
+        add_noise(UE->common_vars.rxdata,
+                  (const double **)r_re,
+                  (const double **)r_im,
+                  sigma2,
+                  slot_length,
+                  slot_offset,
+                  ts,
+                  delay,
+                  pdu_bit_map,
+                  0x1,
+                  UE->frame_parms.nb_antennas_rx);
         dl_config.sfn = frame;
         dl_config.slot = slot;
         ue_dci_configuration(UE_mac, &dl_config, frame, slot);
@@ -1166,9 +1176,9 @@ int main(int argc, char **argv)
         round++;
       } // round
 
-      if (test_input_bit==NULL) {
-        test_input_bit = (unsigned char *) malloc16(sizeof(unsigned char) * TBS);
-        estimated_output_bit = (unsigned char *) malloc16(sizeof(unsigned char) * TBS);
+      if (test_input_bit == NULL) {
+        test_input_bit = (unsigned char *)malloc16(sizeof(unsigned char) * TBS);
+        estimated_output_bit = (unsigned char *)malloc16(sizeof(unsigned char) * TBS);
       }
       for (i = 0; i < TBS; i++) {
 
@@ -1232,7 +1242,7 @@ int main(int argc, char **argv)
              1000 >> *scc->ssbSubcarrierSpacing,
              g_rbSize,
              g_mcsIndex,
-	     UE->dl_harq_processes[0][slot].C,
+             UE->dl_harq_processes[0][slot].C,
              msgDataTx->dlsch[0][0].harq_process.pdsch_pdu.pdsch_pdu_rel15.TBSize[0] << 3);
       printDistribution(&gNB->phy_proc_tx,table_tx,"PHY proc tx");
       printStatIndent2(&gNB->dlsch_encoding_stats,"DLSCH encoding time");
