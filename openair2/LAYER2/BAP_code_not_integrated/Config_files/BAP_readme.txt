@@ -60,7 +60,7 @@ The following files were tested with various edge cases in a local environment s
 `bap_control_recov.c`
 - Assembles Figure 6.2.3.5-1: BAP Control PDU format for BH RLF recovery indication
 
-Each of these c files resides in: openair2/LAYER2/BAP_code_not_integrated/BAP_files_not_integrated/
+Each of these c files resides in: openair2/LAYER2/BAP_code_not_integrated/bap_files_not_integrated/
 
 
 Backhaul Adaptation Protocol (BAP) layer code has been added using 2023.w16 tag of the OAI develop branch.
