@@ -60,12 +60,12 @@ The following files were tested with various edge cases in a local environment s
 `bap_control_recov.c`
 - Assembles Figure 6.2.3.5-1: BAP Control PDU format for BH RLF recovery indication
 
-Each of these c files resides in: `oai5g/bap_and_oai_modified_files_NOV2023/bap_files_not_integrated/
+Each of these c files resides in: openair2/LAYER2/BAP_code_not_integrated/BAP_files_not_integrated/
 
 
 Backhaul Adaptation Protocol (BAP) layer code has been added using 2023.w16 tag of the OAI develop branch.
 
-BAP data PDU is added in the control plane and user plane of gNB and UE.
+BAP data PDU is added in the control plane and user plane of gNB/IAB-DU and UE.
 Packet structure of BAP data PDU is taken from 3GPP spec TS 38.340 section 6.2.2.
 Verified BAP data PDU header insertion and removal in gNB & UE using RF simulation feature of Open Air Interface. UE, gNB and core all were simulated in one Ubuntu host machine running 20.04 Ubuntu.
 Verified BAP layer functionality with CU-DU split architecture of gNB (using RF simulator).
@@ -96,12 +96,12 @@ sudo RFSIMULATOR=IAB-DU_IP_addr BAP=yes ./nr-uesoftmodem -r 106 --numerology 1 -
 
 Note: The "BAP" environment variable was used for testing the BAP functionality in UE/IAB-MT and DU.
 
-Example configuration files for CU, DU and UE can be found in this directory.
+Example configuration files for CU, DU and UE can be found in Config-files directory.
 
 Use ping or iperf in UE and rfsim5g-oai-ext-dn for end to end data test.
 Monitor traffic with wireshark on rfsim5g-public interface with filters set to "udp or sctp".
 
-Pcap files from lab test are available in this directory. A png file shows how BAP header (3 bytes with known pattern 0x8eafcd) are added in the uplink direction.
+Pcap files from lab test are available in this website (TBD). A png file shows how BAP header (3 bytes with known pattern 0x8eafcd) are added in the uplink direction.
 
 Note 1: MITRE did end to end test with moderate amount of traffic. Stress test or performance test was not done under full bandwidth scenarios.
 
