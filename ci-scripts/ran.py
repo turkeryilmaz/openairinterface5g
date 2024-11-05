@@ -84,7 +84,6 @@ class RANManagement():
 		self.eNBstatuses = [-1, -1, -1]
 		self.testCase_id = ''
 		self.epcPcapFile = ''
-		self.runtime_stats= ''
 		self.datalog_rt_stats={}
 		self.datalog_rt_stats_file='datalog_rt_stats.default.yaml'
 		#checkers from xml
@@ -297,9 +296,9 @@ class RANManagement():
 					HTML.CreateHtmlDataLogTable(self.datalog_rt_stats)
 				return False
 			else:
-				HTML.CreateHtmlTestRow(self.runtime_stats, 'OK', CONST.ALL_PROCESSES_OK)
+				HTML.CreateHtmlTestRow('', 'OK', CONST.ALL_PROCESSES_OK)
 		else:
-			HTML.CreateHtmlTestRow(self.runtime_stats, 'OK', CONST.ALL_PROCESSES_OK)
+			HTML.CreateHtmlTestRow('', 'OK', CONST.ALL_PROCESSES_OK)
 		#display rt stats for gNB only
 		if len(self.datalog_rt_stats)!=0 and nodeB_prefix == 'g':
 			HTML.CreateHtmlDataLogTable(self.datalog_rt_stats)
@@ -386,12 +385,6 @@ class RANManagement():
 		isSlave = False
 		slaveReceivesFrameResyncCmd = False
 		global_status = CONST.ALL_PROCESSES_OK
-		# Runtime statistics
-		runTime = ''
-		userTime = ''
-		systemTime = ''
-		maxPhyMemUsage = ''
-		nbContextSwitches = ''
 		#NSA FR1 check
 		NSA_RAPROC_PUSCH_check = 0
 		#dlsch and ulsch statistics (dictionary)
@@ -425,29 +418,6 @@ class RANManagement():
 			if result is not None:
 				nodeB_prefix_found = True
 				nodeB_prefix = 'g'
-			result = re.search('Run time:' ,str(line))
-			# Runtime statistics
-			result = re.search('Run time:' ,str(line))
-			if result is not None:
-				runTime = str(line).strip()
-			if runTime != '':
-				result = re.search('Time executing user inst', str(line))
-				if result is not None:
-					fields=line.split(':')
-					userTime = 'userTime : ' + fields[1].replace('\n','')
-				result = re.search('Time executing system inst', str(line))
-				if result is not None:
-					fields=line.split(':')
-					systemTime = 'systemTime : ' + fields[1].replace('\n','')
-				result = re.search('Max. Phy. memory usage:', str(line))
-				if result is not None:
-					fields=line.split(':')
-					maxPhyMemUsage = 'maxPhyMemUsage : ' + fields[1].replace('\n','')
-				result = re.search('Number of context switch.*process origin', str(line))
-				if result is not None:
-					fields=line.split(':')
-					nbContextSwitches = 'nbContextSwitches : ' + fields[1].replace('\n','')
-
 			result = re.search('Exiting OAI softmodem|Caught SIGTERM, shutting down', str(line))
 			if result is not None:
 				exitSignalReceived = True
@@ -869,12 +839,4 @@ class RANManagement():
 			htmleNBFailureMsg += rlcMsg + '\n'
 			global_status = CONST.ENB_PROCESS_REALTIME_ISSUE
 		HTML.htmleNBFailureMsg=htmleNBFailureMsg
-		# Runtime statistics for console output and HTML
-		if runTime != '':
-			logging.debug(runTime)
-			logging.debug(userTime)
-			logging.debug(systemTime)
-			logging.debug(maxPhyMemUsage)
-			logging.debug(nbContextSwitches)
-			self.runtime_stats='<pre>'+runTime + '\n'+ userTime + '\n' + systemTime + '\n' + maxPhyMemUsage + '\n' + nbContextSwitches+'</pre>'
 		return global_status
