@@ -1477,11 +1477,11 @@ void handle_nr_srs_measurements(const module_id_t module_id,
 
     memset(nrmac->meas_pos_info.toa_ns, 0, sizeof(nrmac->meas_pos_info.toa_ns));
     nrmac->meas_pos_info.NumberofTRPs= srs_ind->report_tlv.length/2;
-    LOG_I(NR_MAC, "Number of TRPs for ToA %d \n",nrmac->meas_pos_info.NumberofTRPs);
+    //LOG_I(NR_MAC, "Number of TRPs for ToA %d \n",nrmac->meas_pos_info.NumberofTRPs);
 
     for (int p_index = 0; p_index < srs_ind->report_tlv.length/2; p_index++) {
       bytesRead += pull16(&pReadPackedMessage, &nrmac->meas_pos_info.toa_ns[p_index], endReadPackedMessage);
-      LOG_I(NR_MAC, "TRP %d: ToA: %d\n", p_index, nrmac->meas_pos_info.toa_ns[p_index]);
+      //LOG_I(NR_MAC, "TRP %d: ToA: %d\n", p_index, nrmac->meas_pos_info.toa_ns[p_index]);
     }
 
     if (RC.nrmac[module_id]->do_srs_meas==1) {

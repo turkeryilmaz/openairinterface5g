@@ -258,7 +258,7 @@ static void trp_information_request_f1ap(const f1ap_trp_information_req_t *req)
   AssertFatal(false, "trp_information_request_f1ap() Not Implemented \n");
 }
 /* handlers of measurement Information Transfer related NRPPA DL messages */
-static void positioning_measurement_request_f1ap(const f1ap_measurement_req_t *req)
+static void positioning_measurement_request_f1ap(const f1ap_measurement_req_t *req, uint8_t serving_gNB_ind)
 {
   AssertFatal(false, "measurement_request_f1ap() Not Implemented \n");
 }

@@ -821,10 +821,11 @@ void RCconfig_nr_positioning(void)
       }
       for (int l = 0; l < POSITIONING_ParamList.paramarray[j][POSITIONING_TRP_Y_AXIS_LIST].numelt; l++){
         positioning_config->TRPyAxis[l]      = POSITIONING_ParamList.paramarray[j][POSITIONING_TRP_Y_AXIS_LIST].uptr[l];
-        }
+      }
       for (int l = 0; l < POSITIONING_ParamList.paramarray[j][POSITIONING_TRP_Z_AXIS_LIST].numelt; l++){
         positioning_config->TRPzAxis[l]      = POSITIONING_ParamList.paramarray[j][POSITIONING_TRP_Z_AXIS_LIST].uptr[l];
-        }
+      }
+      positioning_config->isServinggNB =*(POSITIONING_ParamList.paramarray[j][POSITIONING_IS_SERVING_GNB].uptr);
       LOG_I(PHY, "-----------------------------------------\n");
       LOG_I(PHY, "Positioning Config for gNB_id %d\n", j);
       LOG_I(PHY, "-----------------------------------------\n");
@@ -834,6 +835,7 @@ void RCconfig_nr_positioning(void)
         LOG_I(PHY, "Y-axis of TRP %d TRPs \t\t%d\n", positioning_config->TRPIDs[i], positioning_config->TRPyAxis[i]);
         LOG_I(PHY, "Z-axis of TRP %d TRPs \t\t%d\n", positioning_config->TRPIDs[i], positioning_config->TRPzAxis[i]);
       }
+      LOG_I(PHY, "is Serving gNB \t\t%d\n", positioning_config->isServinggNB);
       LOG_I(PHY, "-----------------------------------------\n");
     } // for j
   }
@@ -1920,6 +1922,7 @@ void RCconfig_NRRRC(gNB_RRC_INST *rrc)
     for (int l = 0; l < POSITIONING_ParamList.paramarray[0][POSITIONING_TRP_Z_AXIS_LIST].numelt; l++){
       positioning_config->TRPzAxis[l]      = POSITIONING_ParamList.paramarray[0][POSITIONING_TRP_Z_AXIS_LIST].uptr[l];
     }
+    positioning_config->isServinggNB =*(POSITIONING_ParamList.paramarray[0][POSITIONING_IS_SERVING_GNB].uptr);
     
     LOG_I(RRC, "-----------------------------------------\n");
     LOG_I(RRC, "Positioning Config for gNB_id %d\n", 0);
@@ -1930,6 +1933,7 @@ void RCconfig_NRRRC(gNB_RRC_INST *rrc)
       LOG_I(RRC, "Y-axis of TRP %d TRPs \t\t%d\n", positioning_config->TRPIDs[i], positioning_config->TRPyAxis[i]);
       LOG_I(RRC, "Z-axis of TRP %d TRPs \t\t%d\n", positioning_config->TRPIDs[i], positioning_config->TRPzAxis[i]);
     }
+    LOG_I(RRC, "is Serving gNB \t\t%d\n", positioning_config->isServinggNB);
     LOG_I(RRC, "-----------------------------------------\n");
   }
   else

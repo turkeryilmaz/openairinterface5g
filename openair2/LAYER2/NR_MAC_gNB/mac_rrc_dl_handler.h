@@ -49,7 +49,7 @@ void positioning_deactivation(const f1ap_positioning_deactivation_t *req);
 void trp_information_request(const f1ap_trp_information_req_t *req);
 
 /* handlers of Measurement Information Transfer related NRPPA DL messages */
-void positioning_measurement_request(const f1ap_measurement_req_t *req);
+void positioning_measurement_request(const f1ap_measurement_req_t *req, uint8_t serving_gNB_ind);
 void positioning_measurement_update(const f1ap_measurement_update_t *update);
 void positioning_measurement_abort(const f1ap_measurement_abort_t *abort);
 

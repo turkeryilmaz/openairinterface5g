@@ -868,13 +868,14 @@ void trp_information_request(const f1ap_trp_information_req_t *req)
 }
 
 /* handlers of Measurement Information Transfer related NRPPA DL messages */
-void positioning_measurement_request(const f1ap_measurement_req_t *req)
+void positioning_measurement_request(const f1ap_measurement_req_t *req, uint8_t serving_gNB_ind)
 {
   LOG_I(MAC,
         "DL Processing Received measurement_Request transaction_id=%d, lmf_measurement_id=%d, ran_measurement_id=%d \n",
         req->transaction_id,
         req->lmf_measurement_id,
         req->ran_measurement_id);
+  LOG_I(MAC, "Serving gNB ind is =%d\n",serving_gNB_ind);
 
   if (req->pos_report_characteristics != 0) {
     LOG_W(MAC, "periodic positioning measurements not yet supported\n");

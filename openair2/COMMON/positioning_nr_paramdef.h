@@ -47,6 +47,7 @@
 #define CONFIG_STRING_POSITIONING_TRP_X_AXIS_LIST              "TRPxAxis"
 #define CONFIG_STRING_POSITIONING_TRP_Y_AXIS_LIST              "TRPyAxis"
 #define CONFIG_STRING_POSITIONING_TRP_Z_AXIS_LIST              "TRPzAxis"
+#define CONFIG_STRING_POSITIONING_IS_SERVING_GNB               "isServinggNB"
 
 /* Help string for Positioning parameters */
 #define HELP_STRING_POSITIONING_NUM_TRPS                       "Number of TRPs connected with gNB(max 4)\n"
@@ -54,6 +55,7 @@
 #define HELP_STRING_POSITIONING_TRP_X_AXIS_LIST                "x-axis value of each TRP \n"
 #define HELP_STRING_POSITIONING_TRP_Y_AXIS_LIST                "y-axis value of each TRP \n"
 #define HELP_STRING_POSITIONING_TRP_Z_AXIS_LIST                "z-axis value of each TRP \n"
+#define HELP_STRING_POSITIONING_IS_SERVING_GNB                 "Serving gNB indicator 1=yes, 0=no  \n"
 
 /*----------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 /*                                            PRS configuration                parameters                                                                         */
@@ -66,14 +68,16 @@
   {CONFIG_STRING_POSITIONING_TRP_X_AXIS_LIST,      HELP_STRING_POSITIONING_TRP_X_AXIS_LIST,     0,  .uptr=NULL,         .defintarrayval=0,          TYPE_UINTARRAY,  0},  \
   {CONFIG_STRING_POSITIONING_TRP_Y_AXIS_LIST,      HELP_STRING_POSITIONING_TRP_Y_AXIS_LIST,     0,  .uptr=NULL,         .defintarrayval=0,          TYPE_UINTARRAY,  0},  \
   {CONFIG_STRING_POSITIONING_TRP_Z_AXIS_LIST,      HELP_STRING_POSITIONING_TRP_Z_AXIS_LIST,     0,  .uptr=NULL,         .defintarrayval=0,          TYPE_UINTARRAY,  0},  \
+  {CONFIG_STRING_POSITIONING_IS_SERVING_GNB,       HELP_STRING_POSITIONING_IS_SERVING_GNB,      0,  .uptr=NULL,         .defuintval=0,              TYPE_UINT,       0},  \
 }
 // clang-format on
 
 #define POSITIONING_NUM_TRPS                         0
-#define POSITIONING_TRP_IDS_LIST                      1
+#define POSITIONING_TRP_IDS_LIST                     1
 #define POSITIONING_TRP_X_AXIS_LIST                  2
 #define POSITIONING_TRP_Y_AXIS_LIST                  3
 #define POSITIONING_TRP_Z_AXIS_LIST                  4
+#define POSITIONING_IS_SERVING_GNB                   5
 /*----------------------------------------------------------------------------------------------------------------------------------------------------*/
 
 #endif

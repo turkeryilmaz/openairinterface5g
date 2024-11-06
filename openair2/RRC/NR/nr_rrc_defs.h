@@ -448,6 +448,7 @@ typedef struct {
     uint32_t TRPyAxis[8];  //  y-axis values of each TRP
     uint32_t TRPzAxis[8];  //  z-axis values of each TRP
     uint8_t  NumTRPs;    // number of TRPs max to 8
+    uint8_t  isServinggNB; // Serving gNB indicator 1=yes, 0=no 
 }positioning_config_rrc_t;
 
 

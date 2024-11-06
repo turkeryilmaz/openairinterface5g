@@ -2355,6 +2355,7 @@ static void rrc_CU_process_positioning_information_request(f1ap_positioning_info
   req->gNB_CU_ue_id = UE->rrc_ue_id;
 
   gNB_RRC_INST *rrc = RC.nrrrc[req->nrppa_msg_info.instance];
+  rrc->positioning_config.isServinggNB=1;
   LOG_I(RRC,
         "Processing Received PositioningInformationRequest gNB_CU_ue_id=%d, gNB_DU_ue_id=%d,  rnti= %04x\n",
         req->gNB_CU_ue_id,
@@ -2430,11 +2431,12 @@ static void rrc_CU_process_measurement_request(f1ap_measurement_req_t *req)
   // req->gNB_DU_ue_id = ue_data.secondary_ue;
   // req->gNB_CU_ue_id = UE->rrc_ue_id;
 
+  LOG_I(RRC, "Serving gNB indicator is=%d \n", rrc->positioning_config.isServinggNB);
   LOG_I(RRC,
         "Processing Received MeasurementRequest lmf_measurement_id=%d, ran_measurement_id=%d \n",
         req->lmf_measurement_id,
         req->ran_measurement_id);
-  rrc->mac_rrc.positioning_measurement_request(req);
+  rrc->mac_rrc.positioning_measurement_request(req, rrc->positioning_config.isServinggNB);
 }
 
 static void rrc_CU_process_measurement_update(f1ap_measurement_update_t *req)
@@ -2665,6 +2667,10 @@ static void rrc_CU_process_measurement_response(MessageDef *msg_p, instance_t in
     if (i < nb_meas_TRPs - 1) {
       meas_item++;
     }
+  }
+  if (rrc->positioning_config.isServinggNB){
+  rrc->positioning_config.isServinggNB=0;
+  LOG_I(RRC, "assigning serving gNB indicator back to %d \n", rrc->positioning_config.isServinggNB);
   }
   itti_send_msg_to_task(TASK_NRPPA, instance, msg);
 }

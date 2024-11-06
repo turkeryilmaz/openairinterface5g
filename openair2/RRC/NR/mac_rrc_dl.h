@@ -50,7 +50,7 @@ typedef void (*positioning_deactivation_func_t)(const f1ap_positioning_deactivat
 typedef void (*trp_information_request_func_t)(const f1ap_trp_information_req_t *trp_req);
 
 /* handlers of Measurement Information Transfer related NRPPA DL messages */
-typedef void (*positioning_measurement_request_func_t)(const f1ap_measurement_req_t *meas_req);
+typedef void (*positioning_measurement_request_func_t)(const f1ap_measurement_req_t *meas_req, uint8_t serving_gNB_ind);
 typedef void (*positioning_measurement_update_func_t)(const f1ap_measurement_update_t *meas_update);
 typedef void (*positioning_measurement_abort_func_t)(const f1ap_measurement_abort_t *meas_abort);
 
