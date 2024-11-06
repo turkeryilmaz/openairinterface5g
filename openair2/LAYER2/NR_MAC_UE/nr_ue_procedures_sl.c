@@ -26,6 +26,7 @@
 #include "executables/nr-uesoftmodem.h"
 
 #define SL_DEBUG
+const uint8_t maxnum_values[] = {2,3};
 
 static const int sequence_cyclic_shift_harq_ack_or_ack_or_only_nack[2]
 /* Sequence cyclic shift */ = {  0, 6 };
@@ -413,7 +414,6 @@ uint8_t sl_determine_sci_1a_len(uint16_t *num_subchannels,
                                                            *num_subchannels, sci_1a_len);
 
   NR_SL_UE_SelectedConfigRP_r16_t *selectedconfigRP = rpool->sl_UE_SelectedConfigRP_r16;
-  const uint8_t maxnum_values[] = {2,3};
   uint8_t sl_MaxNumPerReserve =   (selectedconfigRP &&
                                    selectedconfigRP->sl_MaxNumPerReserve_r16)
                                    ? maxnum_values[*selectedconfigRP->sl_MaxNumPerReserve_r16]
@@ -1301,21 +1301,53 @@ void push_back(List_t* list, void* element) {
   list->size++;
 }
 
-int64_t normalize(FrameSlot_t *frame_slot, sl_nr_ue_mac_params_t *sl_mac) {
+void* get_front(const List_t* list) {
+  if (list->size == 0) {
+    return NULL;
+  }
+  return list->data; // pointer to first element
+}
+
+void* get_back(const List_t* list) {
+  if (list->size == 0) {
+    return NULL;
+  }
+  return (char*)list->data + (list->size - 1) * list->element_size; // pointer to last element
+}
+
+int64_t normalize(frameslot_t *frame_slot, uint8_t mu) {
   int64_t num_slots = 0;
-  uint8_t mu = sl_mac->sl_phy_config.sl_config_req.sl_bwp_config.sl_scs;
   uint8_t slots_per_frame = nr_slots_per_frame[mu];
   num_slots += frame_slot->slot;
   num_slots += frame_slot->frame * slots_per_frame;
   return num_slots;
 }
 
-void update_sensing_data(List_t* sensing_data, FrameSlot_t *frame_slot, sl_nr_ue_mac_params_t *sl_mac, uint16_t pool_id) {
-  while(sensing_data->size > 0) {
-    SensingData_t* last_elem = (SensingData_t*)((uint8_t*)sensing_data->data + (sensing_data->size - 1) * sensing_data->element_size);
+void de_normalize(int64_t abs_slot_idx, uint8_t mu, frameslot_t *frame_slot) {
+  uint8_t slots_per_frame = nr_slots_per_frame[mu];
+  frame_slot->frame = (abs_slot_idx / slots_per_frame) & 1023;
+  frame_slot->slot = (abs_slot_idx % slots_per_frame);
+}
 
-    if (normalize(frame_slot, sl_mac), normalize(&last_elem->frame_slot, sl_mac) <= get_tproc0(sl_mac, pool_id)) {
+void update_sensing_data(List_t* sensing_data, frameslot_t *frame_slot, sl_nr_ue_mac_params_t *sl_mac, uint16_t pool_id) {
+  uint8_t mu = get_softmodem_params()->numerology;
+  while(sensing_data->size > 0) {
+    sensing_data_t* last_elem = (sensing_data_t*)((uint8_t*)sensing_data->data + (sensing_data->size - 1) * sensing_data->element_size);
+
+    if (normalize(frame_slot, mu), normalize(&last_elem->frame_slot, mu) <= get_tproc0(sl_mac, pool_id)) {
       pop_back(sensing_data);
+    } else {
+      break;
+    }
+  }
+}
+
+void update_transmit_history(List_t* transmit_history, frameslot_t *frame_slot, sl_nr_ue_mac_params_t *sl_mac, uint16_t pool_id) {
+  uint8_t mu = get_softmodem_params()->numerology;
+  while(transmit_history->size > 0) {
+    frameslot_t* last_elem = (frameslot_t*)((uint8_t*)transmit_history->data + (transmit_history->size - 1) * transmit_history->element_size);
+    if (normalize(frame_slot, mu), normalize(&last_elem, mu) <= get_tproc0(sl_mac, pool_id)) {
+      pop_back(transmit_history);
     } else {
       break;
     }
@@ -1342,14 +1374,17 @@ uint16_t get_T2_min(uint16_t pool_id, sl_nr_ue_mac_params_t *sl_mac, uint8_t mu)
 
 uint16_t get_t2(uint16_t pool_id, uint8_t mu, nr_sl_transmission_params_t* sl_tx_params, sl_nr_ue_mac_params_t *sl_mac) {
   uint16_t t2;
+  LOG_I(NR_MAC, "sl_tx_params->packet_delay_budget_ms %d\n", sl_tx_params->packet_delay_budget_ms);
   if (!(sl_tx_params->packet_delay_budget_ms == 0)) {
     // Packet delay budget is known, so use it
     uint16_t t2pdb = time_to_slots(mu, sl_tx_params->packet_delay_budget_ms);
     t2 = min(t2pdb, sl_mac->sl_TxPool[pool_id]->t2);
+    LOG_I(NR_MAC, "t2 %d, t2pdb %d, sl_mac->sl_TxPool[pool_id]->t2 %d\n", t2, t2pdb, sl_mac->sl_TxPool[pool_id]->t2);
   } else {
     // Packet delay budget is not known, so use max(NrSlUeMac::T2, T2min)
     uint16_t t2min = get_T2_min(pool_id, sl_mac, mu);
     t2 = max(t2min, sl_mac->sl_TxPool[pool_id]->t2);
+    LOG_I(NR_MAC, "t2 %d, t2pdb %d, sl_mac->sl_TxPool[pool_id]->t2 %d\n", t2, t2min, sl_mac->sl_TxPool[pool_id]->t2);
   }
   return t2;
 }
@@ -1363,4 +1398,3 @@ uint16_t time_to_slots(uint8_t mu, uint16_t time) {
 uint8_t get_tproc0(sl_nr_ue_mac_params_t *sl_mac, uint16_t pool_id) {
   return sl_mac->sl_TxPool[pool_id]->tproc0;
 }
-

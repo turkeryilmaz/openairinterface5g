@@ -465,7 +465,7 @@ int nr_rrc_mac_config_req_sl_preconfig(module_id_t module_id,
             sl_mac->sl_TxPool[i] = malloc16_clear(sizeof(SL_ResourcePool_params_t));
           sl_mac->sl_TxPool[i]->respool = txpool;
           uint8_t tproc1_valaues[] = {3, 5, 9, 17};
-          uint8_t mu = sl_mac->sl_phy_config.sl_config_req.sl_bwp_config.sl_scs;
+          uint8_t mu = get_softmodem_params()->numerology;
           struct NR_SL_UE_SelectedConfigRP_r16 *sl_ue_selected_config = sl_mac->sl_TxPool[i]->respool->sl_UE_SelectedConfigRP_r16;
           uint16_t sensing_window_ms = (uint16_t)*sl_ue_selected_config->sl_SensingWindow_r16;
           uint16_t selection_window = (uint16_t)sl_ue_selected_config->sl_SelectionWindowList_r16->list.array[0]->sl_SelectionWindow_r16;
@@ -474,7 +474,8 @@ int nr_rrc_mac_config_req_sl_preconfig(module_id_t module_id,
           sl_mac->sl_TxPool[i]->tproc0 = 1;
           sl_mac->sl_TxPool[i]->tproc1 = tproc1_valaues[mu];
           sl_mac->sl_TxPool[i]->t1 = sl_mac->sl_TxPool[i]->tproc1;
-
+          sl_mac->sl_TxPool[i]->t2 = 33;
+          sl_mac->mac_tx_params.rri = (uint16_t)sl_ue_selected_config->sl_ResourceReservePeriodList_r16->list.array[0]->choice.sl_ResourceReservePeriod1_r16;
           uint16_t sci_1a_len = 0, num_subch = 0;
           sci_1a_len = sl_determine_sci_1a_len(&num_subch,
                                                sl_mac->sl_TxPool[i]->respool,
@@ -523,6 +524,36 @@ int nr_rrc_mac_config_req_sl_preconfig(module_id_t module_id,
     mac->sl_info.list[0]->UE_sched_ctrl.sched_psfch = calloc(n_ul_slots_period * num_subch, sizeof(SL_sched_feedback_t));
     mac->sl_info.list[0]->UE_sched_ctrl.sched_psfch->feedback_frame = -1;
     mac->sl_info.list[0]->UE_sched_ctrl.sched_psfch->feedback_slot = -1;
+
+    int nr_slots_period = nr_slots_frame;
+    int nr_ulstart_slot = 0;
+    if (tdd) {
+      nr_ulstart_slot = get_first_ul_slot(tdd->nrofDownlinkSlots, tdd->nrofDownlinkSymbols, tdd->nrofUplinkSymbols);
+      nr_slots_period /= get_nb_periods_per_frame(tdd->dl_UL_TransmissionPeriodicity);
+    }
+
+    for (int slot = 0; slot < nr_slots_frame; ++slot) {
+      mac->ulsch_slot_bitmap[slot / 64] |= (uint64_t)((slot % nr_slots_period) >= nr_ulstart_slot) << (slot % 64);
+      LOG_D(NR_MAC,
+            "slot %d UL %d\n",
+            slot,
+            (mac->ulsch_slot_bitmap[slot / 64] & ((uint64_t)1 << (slot % 64))) != 0);
+    }
+
+    int total_downlink_slots = mac->sl_bitmap.size / n_ul_slots_period * (nr_slots_period - n_ul_slots_period);
+    int phy_sl_size = mac->sl_bitmap.size * total_downlink_slots;
+    size_t byte_capacity = (phy_sl_size + 7) / 8;
+    mac->phy_sl_bitmap = (uint8_t*)malloc16_clear(byte_capacity);
+
+    LOG_I(NR_MAC, "phy_sl_bitmap %p, sl_TimeResource_r16->size %d\n", mac->phy_sl_bitmap, mac->sl_tx_res_pool->ext1->sl_TimeResource_r16->size);
+    if (mac->sl_tx_res_pool && mac->sl_tx_res_pool->ext1 && mac->sl_tx_res_pool->ext1->sl_TimeResource_r16) {
+      int sl_tx_period = 8*mac->sl_tx_res_pool->ext1->sl_TimeResource_r16->size - mac->sl_tx_res_pool->ext1->sl_TimeResource_r16->bits_unused;
+      mac->sl_bitmap.size = mac->sl_tx_res_pool->ext1->sl_TimeResource_r16->size;
+      LOG_I(NR_MAC, "TimeResource size %d\n", mac->sl_tx_res_pool->ext1->sl_TimeResource_r16->size);
+      mac->sl_bitmap.buf = (uint8_t*) malloc16_clear(mac->sl_bitmap.size);
+      memcpy(mac->sl_bitmap.buf, mac->sl_tx_res_pool->ext1->sl_TimeResource_r16->buf, mac->sl_bitmap.size);
+      mac->sl_bitmap.bits_unused = mac->sl_tx_res_pool->ext1->sl_TimeResource_r16->bits_unused;
+    }
   }
   // Configuring CSI-RS parameters locally at MAC.
   nr_sl_params_read_conf(module_id);
@@ -697,6 +728,36 @@ void nr_rrc_mac_config_req_sl_mib(module_id_t module_id,
                             sl_config->tdd_table.tdd_period, sl_mac->sl_TDD_config->referenceSubcarrierSpacing,
                             sl_mac->sl_TDD_config->pattern1.nrofDownlinkSlots, sl_mac->sl_TDD_config->pattern1.nrofUplinkSlots,
                             sl_mac->sl_TDD_config->pattern1.nrofDownlinkSymbols,sl_mac->sl_TDD_config->pattern1.nrofUplinkSymbols);
+
+
+    int nr_slots_period = nr_slots_frame;
+    int nr_ulstart_slot = 0;
+    if (tdd) {
+      nr_ulstart_slot = get_first_ul_slot(tdd->nrofDownlinkSlots, tdd->nrofDownlinkSymbols, tdd->nrofUplinkSymbols);
+      nr_slots_period /= get_nb_periods_per_frame(tdd->dl_UL_TransmissionPeriodicity);
+    }
+
+    for (int slot = 0; slot < nr_slots_frame; ++slot) {
+      mac->ulsch_slot_bitmap[slot / 64] |= (uint64_t)((slot % nr_slots_period) >= nr_ulstart_slot) << (slot % 64);
+      LOG_D(NR_MAC,
+            "slot %d UL %d\n",
+            slot,
+            (mac->ulsch_slot_bitmap[slot / 64] & ((uint64_t)1 << (slot % 64))) != 0);
+    }
+
+    int total_downlink_slots = mac->sl_bitmap.size / n_ul_slots_period * (nr_slots_period - n_ul_slots_period);
+    int phy_sl_size = mac->sl_bitmap.size * total_downlink_slots;
+    size_t byte_capacity = (phy_sl_size + 7) / 8;
+    mac->phy_sl_bitmap = (uint8_t*)malloc16_clear(byte_capacity);
+
+    LOG_I(NR_MAC, "phy_sl_bitmap %p, sl_TimeResource_r16->size %d\n", mac->phy_sl_bitmap, mac->sl_tx_res_pool->ext1->sl_TimeResource_r16->size);
+    if (mac->sl_tx_res_pool && mac->sl_tx_res_pool->ext1 && mac->sl_tx_res_pool->ext1->sl_TimeResource_r16) {
+      int sl_tx_period = 8*mac->sl_tx_res_pool->ext1->sl_TimeResource_r16->size - mac->sl_tx_res_pool->ext1->sl_TimeResource_r16->bits_unused;
+      mac->sl_bitmap.size = mac->sl_tx_res_pool->ext1->sl_TimeResource_r16->size;
+      LOG_I(NR_MAC, "TimeResource size %d\n", mac->sl_tx_res_pool->ext1->sl_TimeResource_r16->size);
+      memcpy(mac->sl_bitmap.buf, mac->sl_tx_res_pool->ext1->sl_TimeResource_r16, mac->sl_bitmap.size);
+      mac->sl_bitmap.bits_unused = mac->sl_tx_res_pool->ext1->sl_TimeResource_r16->bits_unused;
+    }
 
     DevAssert(mac->if_module != NULL && mac->if_module->sl_phy_config_request != NULL);
     mac->if_module->sl_phy_config_request(&sl_mac->sl_phy_config);

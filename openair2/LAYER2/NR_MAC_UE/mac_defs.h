@@ -160,6 +160,8 @@
 #define PRACH_MASK_INDEX                54
 #define RESERVED_NR_DCI                 55
 
+#define NUM_RSC_POOL                    1
+#define NUM_BWP                         1
 /*!\brief UE layer 2 status */
 typedef enum {
   UE_NOT_SYNC = 0,
@@ -496,6 +498,7 @@ typedef struct SL_sched_feedback {
   uint8_t mcs;
   uint8_t bit_len_harq;
 } SL_sched_feedback_t;
+
 typedef struct {
 
   // sidelink bytes that are currently scheduled
@@ -557,22 +560,22 @@ typedef struct {
 typedef struct {
   int16_t frame;
   int16_t slot;
-} FrameSlot_t;
+} frameslot_t;
 
 typedef struct {
-  FrameSlot_t frame_slot;
+  frameslot_t frame_slot;
   uint16_t rsvp; // The resource reservation period in ms
   uint8_t subch_len; // The total number of the sub-channel allocated
   uint8_t subch_start; // The index of the starting sub-channel allocated
   uint8_t prio; // The priority
-  double sl_rsrp; // The measured RSRP value over the used resource blocks
+  uint16_t sl_rsrp; // The measured RSRP value over the used resource blocks
   uint8_t gap_re_tx1; // Gap for a first retransmission in absolute slots
   uint8_t subch_startre_tx1; // The index of the starting sub-channel allocated
                           // to first retransmission
   uint8_t gap_re_tx2; // Gap for a second retransmission in absolute slots
   uint8_t subch_startre_tx2; // The index of the starting sub-channel allocated
                           // to second retransmission
-} SensingData_t;
+} sensing_data_t;
 
 typedef struct {
   void* data;
@@ -584,6 +587,59 @@ typedef struct {
 typedef enum {
   c1, c2, c3, c4, c5, c6, c7
 } allowed_rsc_selection_t;
+
+typedef struct {
+  uint16_t num_sl_pscch_rbs;
+  uint16_t sl_pscch_sym_start;
+  uint16_t sl_pscch_sym_len;
+  uint16_t sl_pssch_sym_start;
+  uint16_t sl_pssch_sym_len;
+  uint16_t sl_subchan_size;
+  uint16_t sl_max_num_per_reserve;
+  uint8_t sl_psfch_period;
+  uint8_t sl_min_time_gap_psfch;
+  uint8_t sl_min_time_gap_processing;
+  frameslot_t sfn;
+  uint8_t sl_subchan_start;
+  uint8_t sl_subchan_len;
+  bool slot_busy;
+} sl_resource_info_t;
+
+typedef struct {
+  // PSCCH
+  uint16_t num_sl_pscch_rbs; // Indicates the number of PRBs for PSCCH in a resource pool where it is not
+                             // greater than the number PRBs of the subchannel.
+  uint16_t sl_pscch_sym_start; // Indicates the starting symbol used for sidelink PSCCH in a slot
+  uint16_t sl_pscch_sym_len; // Indicates the total number of symbols available for sidelink PSCCH
+  // PSSCH
+  uint16_t sl_pssch_sym_start; // Indicates the starting symbol used for sidelink PSSCH in a slot
+  uint16_t sl_pssch_sym_len; // Indicates the total number of symbols available for sidelink PSSCH
+  bool sl_has_psfch; // Indicates whether PSFCH is present in the slot
+                     // subchannel size in RBs
+  uint16_t sl_sub_chan_size; // Indicates the subchannel size in number of RBs
+  uint16_t sl_max_num_per_reserve; // The maximum number of reserved PSCCH/PSSCH resources
+                                   // that can be indicated by an SCI.
+  uint64_t abs_slot_index; // Indicates the the absolute slot index
+  uint32_t slot_offset; // Indicates the positive offset between two slots
+} slot_info_t;
+
+typedef struct {
+  uint8_t *data;
+  size_t size;
+  size_t capacity;
+} bit_vector_t;
+
+typedef struct {
+  uint16_t key;
+  bit_vector_t vector;
+} unordered_map_t;
+
+typedef struct {
+  uint8_t key;
+  unordered_map_t *inner_maps;
+  size_t inner_count;
+} outer_map;
+
 /*!\brief Top level UE MAC structure */
 typedef struct {
   NR_UE_L2_STATE_t state;
@@ -726,6 +782,13 @@ typedef struct {
   uint8_t sl_resel_counter;  // The resource selection counter
   uint16_t sl_c_resel;       // The C_resel counter
   List_t sl_transmit_history; // History of slots used for transmission
+  outer_map map_per_bwp;
+
+  /// bitmap of ULSCH slots, can hold up to 160 slots
+  uint64_t ulsch_slot_bitmap[3];
+  BIT_STRING_t sl_bitmap;
+  uint8_t* phy_sl_bitmap;
+
 } NR_UE_MAC_INST_t;
 
 /*@}*/

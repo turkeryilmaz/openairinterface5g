@@ -55,7 +55,11 @@
 #include "LAYER2/NR_MAC_COMMON/nr_mac_extern.h"
 #include "LAYER2/RLC/rlc.h"
 
+extern const int pscch_tda[2];
+extern const int pscch_rb_table[5];
+extern const uint8_t maxnum_values[2];
 //#define SRS_DEBUG
+// #define RESOURCE_POOL_DEBUG
 
 static prach_association_pattern_t prach_assoc_pattern;
 static void nr_ue_prach_scheduler(module_id_t module_idP, frame_t frameP, sub_frame_t slotP);
@@ -3881,6 +3885,7 @@ void nr_ue_sidelink_scheduler(nr_sidelink_indication_t *sl_ind) {
   if (mac->sl_tx_res_pool && mac->sl_tx_res_pool->ext1 && mac->sl_tx_res_pool->ext1->sl_TimeResource_r16) {
      int sl_tx_period = 8*mac->sl_tx_res_pool->ext1->sl_TimeResource_r16->size - mac->sl_tx_res_pool->ext1->sl_TimeResource_r16->bits_unused;
      int slot_mod_period = sl_ind->slot_tx%sl_tx_period;
+     LOG_D(NR_MAC, "sl_tx_period %d, slot_mod_period %d\n", sl_tx_period, slot_mod_period);
      uint8_t mask = mac->sl_tx_res_pool->ext1->sl_TimeResource_r16->buf[slot_mod_period>>3];
      if (((1<<slot_mod_period) % mask) == 0) tx_allowed=0;
   }
@@ -3905,11 +3910,25 @@ void nr_ue_sidelink_scheduler(nr_sidelink_indication_t *sl_ind) {
       mac->rsc_selection_method == c4 ||
       mac->rsc_selection_method == c5 ||
       mac->rsc_selection_method == c7) {
-    FrameSlot_t frame_slot;
+    frameslot_t frame_slot;
     frame_slot.frame = frame;
     frame_slot.slot = slot;
-    //remove_old_sensing_data(&frame_slot, sl_mac->sl_TxPool[0]->t0, &mac->sl_sensing_data);
+    sensing_data_t sensing_data;
+    sensing_data.frame_slot.frame = frame;
+    sensing_data.frame_slot.slot = slot;
+    srand(time(NULL));
+    sensing_data.sl_rsrp = -128 + rand() % 9;
+    sensing_data.prio = rand() % 8;
+    push_back(&mac->sl_sensing_data, &sensing_data);
+    LOG_I(NR_MAC, "Size: sensing_data %d, transmit_history %d\n", mac->sl_sensing_data.size, mac->sl_transmit_history.size);
+    // if (mac->sl_sensing_data.size > 0)
+    //   remove_old_sensing_data(&frame_slot, sl_mac->sl_TxPool[0]->t0, &mac->sl_sensing_data, sl_mac);
+    // if (mac->sl_transmit_history.size > 0)
+      // remove_old_transmit_history(&frame_slot, sl_mac->sl_TxPool[0]->t0, &mac->sl_transmit_history, sl_mac);
+    get_candidate_resources(&frame_slot, mac, &mac->sl_sensing_data, &mac->sl_transmit_history);
   }
+
+
   if (mac->is_synced && !is_psbch_slot && tx_allowed && sl_ind->slot_type == SIDELINK_SLOT_TYPE_TX &&
       ((!get_nrUE_params()->sync_ref && (slot == 16 || slot == 17 || slot == 18 || slot == 18 || slot == 19)) ||
       (get_nrUE_params()->sync_ref && (slot == 6 || slot == 7 || slot == 8 || slot == 9)))) {
@@ -4078,4 +4097,515 @@ void fill_csi_rs_pdu(sl_nr_ue_mac_params_t *sl_mac, sl_nr_tti_csi_rs_pdu_t *csi_
   csi_rs_pdu->freq_density = sl_mac->freq_density;
   csi_rs_pdu->power_control_offset = sl_mac->power_control_offset;
   csi_rs_pdu->power_control_offset_ss = sl_mac->power_control_offset_ss;
+}
+
+
+// uint8_t* init_buf(size_t bit_capacity) {
+//   size_t byte_capacity = (bit_capacity + 7) / 8;
+//   uint8_t *buf = (uint8_t*)malloc16_clear(byte_capacity);
+//   LOG_I(NR_MAC, "phy_sl_bitmap buf %p\n", buf);
+//   return buf;
+// }
+
+int get_bit_from_map(const uint8_t *buf, size_t bit_pos) {
+  size_t byte_index = bit_pos / 8;
+  uint8_t bit_index = bit_pos % 8;
+  return (buf[byte_index] >> (7 - bit_index)) & 1;
+}
+
+void append_bit(uint8_t *buf, size_t bit_pos, int bit_value) {
+  size_t byte_index = bit_pos / 8;
+  uint8_t bit_index = bit_pos % 8;
+  LOG_D(NR_MAC, "Appending bit_value %d at byte_index %d bit index %d\n", bit_value, byte_index, bit_index);
+  if (bit_value) {
+    buf[byte_index] |= (1 << (7 - bit_index));
+  } else {
+    buf[byte_index] &= ~(1 << (7 - bit_index));
+  }
+}
+void init_outer_map(outer_map *o_map, uint8_t key) {
+  o_map->key = key;
+  o_map->inner_maps = (unordered_map_t*) malloc16_clear(NUM_RSC_POOL * sizeof(unordered_map_t));
+  o_map->inner_count = 0;
+}
+
+// void add_inner_map(outer_map *o_map, uint16_t inner_key) {
+//   unordered_map_t *i_map = &o_map->inner_maps[o_map->inner_count++];
+//   i_map->key = inner_key;
+//   init_bit_vector(&i_map->vector, 4);
+// }
+
+
+void remove_old_sensing_data(frameslot_t *frame_slot,
+                             uint16_t sensing_window,
+                             List_t* sensing_data,
+                             sl_nr_ue_mac_params_t *sl_mac) {
+  LOG_I(NR_MAC, "%4d.%2d: sensing window %d, sensing data size %ld\n", frame_slot->frame, frame_slot->slot, sensing_window, sensing_data->size);
+
+  size_t new_size = 0;
+  uint8_t mu = sl_mac->sl_phy_config.sl_config_req.sl_bwp_config.sl_scs;
+  for (int i = 0; i < sensing_data->size; i++) {
+    sensing_data_t *data = (sensing_data_t*)((char*)sensing_data->data + i * sensing_data->element_size);
+    LOG_I(NR_MAC, "Sensing data: %4d.%2d\n", data->frame_slot.frame, data->frame_slot.slot);
+    LOG_I(NR_MAC, " i %d, old (%4d.%2d) %ld >=  current (%4d.%2d) %ld\n",
+           i,
+           data->frame_slot.frame,
+           data->frame_slot.slot,
+           normalize(&data->frame_slot, mu),
+           frame_slot->frame,
+           frame_slot->slot,
+           normalize(frame_slot, mu) - sensing_window);
+    if (normalize(frame_slot, mu) - sensing_window > 0) {
+      if (normalize(&data->frame_slot, mu) >= normalize(frame_slot, mu) - sensing_window) {
+        break;
+      }
+    } else {
+      int sensed_data_size = sensing_data->size;
+      int prev_frame_data_size = sensed_data_size - normalize(frame_slot, mu);
+      LOG_I(NR_MAC, "prev_frame_data_size %d, sensed_data_size %d, normalize(frame_slot, mu) %ld (normalize(frame_slot, mu) - sensing_window) %ld\n",
+            prev_frame_data_size, sensed_data_size, normalize(frame_slot, mu), (normalize(frame_slot, mu) - sensing_window));
+      new_size += prev_frame_data_size - (abs(normalize(frame_slot, mu) - sensing_window));
+      break;
+    }
+    new_size ++;
+  }
+  LOG_I(NR_MAC, "new_size %ld\n", new_size);
+  if (new_size > 0) {
+    memmove(sensing_data->data, (char*)sensing_data->data + new_size * sensing_data->element_size, (sensing_data->size - new_size) * sensing_data->element_size);
+    sensing_data->size -= new_size;
+#if 0
+    for (int i = 0; i < sensing_data->size; i++) {
+      sensing_data_t* data1 = (sensing_data_t*)sensing_data->data;
+      LOG_I(NR_MAC, "i %d, frame %4d.%2d\n", i, data1[i].frame_slot.frame, data1[i].frame_slot.slot);
+    }
+#endif
+    LOG_I(NR_MAC, "Subtracting %ld from %ld\n", new_size, sensing_data->size);
+  }
+}
+
+void remove_old_transmit_history(frameslot_t *frame_slot,
+                                uint16_t sensing_window,
+                                List_t* transmit_history,
+                                sl_nr_ue_mac_params_t *sl_mac) {
+  LOG_I(NR_MAC, "%4d.%2d: sensing window %d, transmit history size %ld\n",
+        frame_slot->frame, frame_slot->slot, sensing_window, transmit_history->size);
+
+  size_t new_size = 0;
+  uint8_t mu = sl_mac->sl_phy_config.sl_config_req.sl_bwp_config.sl_scs;
+  for (int i = 0; i < transmit_history->size; i++) {
+    frameslot_t *tr_his_frame_slot = (frameslot_t*)((char*)transmit_history->data + i * transmit_history->element_size);
+    LOG_I(NR_MAC, "Transmit history data: %4d.%2d\n", tr_his_frame_slot->frame, tr_his_frame_slot->slot);
+    LOG_I(NR_MAC, " i %d, old (%4d.%2d) %ld >=  current (%4d.%2d) %ld\n",
+           i,
+           tr_his_frame_slot->frame,
+           tr_his_frame_slot->slot,
+           normalize(tr_his_frame_slot, mu),
+           frame_slot->frame,
+           frame_slot->slot,
+           normalize(frame_slot, mu) - sensing_window);
+    if (normalize(frame_slot, mu) - sensing_window > 0) {
+      if (normalize(tr_his_frame_slot, mu) >= normalize(frame_slot, mu) - sensing_window) {
+        break;
+      }
+    } else {
+      int sensed_data_size = transmit_history->size;
+      int prev_frame_data_size = sensed_data_size - normalize(frame_slot, mu);
+      LOG_I(NR_MAC, "prev_frame_data_size %d, sensed_data_size %d, normalize(frame_slot, mu) %ld (normalize(frame_slot, mu) - sensing_window) %ld\n",
+             prev_frame_data_size, sensed_data_size, normalize(frame_slot, mu), (normalize(frame_slot, mu) - sensing_window));
+      new_size += prev_frame_data_size - (abs(normalize(frame_slot, mu) - sensing_window));
+      break;
+    }
+    new_size ++;
+  }
+  LOG_I(NR_MAC, "new_size %ld\n", new_size);
+  if (new_size > 0) {
+    memmove(transmit_history->data, (char*)transmit_history->data + new_size * transmit_history->element_size, (transmit_history->size - new_size) * transmit_history->element_size);
+    transmit_history->size -= new_size;
+#if 0
+    for (int i = 0; i < transmit_history->size; i++) {
+      frameslot_t * tr_his_frame_slot = (frameslot_t *)transmit_history->data;
+      LOG_I(NR_MAC, "i %d, frame %4d.%2d\n", i, tr_his_frame_slot[i].frame, tr_his_frame_slot[i].slot);
+    }
+#endif
+    LOG_I(NR_MAC, "Subtracting %ld from %ld\n", new_size, transmit_history->size);
+  }
+}
+
+bool check_t1_within_tproc1(uint8_t mu, uint16_t t1_slots) {
+    if ((mu == 0 && t1_slots <= 3) || (mu == 1 && t1_slots <= 5) ||
+        (mu == 2 && t1_slots <= 9) || (mu == 3 && t1_slots <= 17))
+    {
+        return true;
+    }
+    return false;
+}
+
+NR_SL_ResourcePool_r16_t* get_resource_pool(NR_UE_MAC_INST_t *mac, uint16_t pool_id) {
+  return mac->sl_tx_res_pool;
+}
+
+List_t* get_nr_sl_comm_opportunities(NR_UE_MAC_INST_t *mac,
+                                     uint64_t abs_idx_cur_slot,
+                                     uint8_t bwp_id,
+                                     uint16_t mu,
+                                     uint16_t pool_id,
+                                     uint8_t t1,
+                                     uint16_t t2) {
+  frameslot_t frame_slot;
+  LOG_I(NR_MAC, "\n\nabs_idx_cur_slot %ld, bwp_id %d, mu %d, pool_id %d, t1 %d, t2 %d\n", abs_idx_cur_slot, bwp_id, mu, pool_id, t1, t2);
+  de_normalize(abs_idx_cur_slot, mu, &frame_slot);
+  LOG_I(NR_MAC, "abs_idx_cur_slot %ld, %4d.%2d\n", abs_idx_cur_slot, frame_slot.frame, frame_slot.slot);
+  sl_nr_ue_mac_params_t *sl_mac = mac->SL_MAC_PARAMS;
+  uint16_t phy_map_sz = get_physical_sl_pool(mac);
+  NR_SL_ResourcePool_r16_t* resource_pool = get_resource_pool(mac, pool_id);
+  List_t* list = NULL;
+  uint16_t t2min = get_T2_min(pool_id, sl_mac, mu);
+  uint64_t first_abs_slot_ind = abs_idx_cur_slot + t1;
+  uint64_t last_abs_slot_ind = abs_idx_cur_slot + t2;
+
+  de_normalize(first_abs_slot_ind, mu, &frame_slot);
+  LOG_I(NR_MAC, "first_abs_slot_ind %ld, %4d.%2d\n", first_abs_slot_ind, frame_slot.frame, frame_slot.slot);
+  de_normalize(last_abs_slot_ind, mu, &frame_slot);
+  LOG_I(NR_MAC, "last_abs_slot_ind %ld, %4d.%2d\n", last_abs_slot_ind, frame_slot.frame, frame_slot.slot);
+
+  List_t slot_info_list;
+  init_list(&slot_info_list, sizeof(slot_info_t), 1);
+  uint16_t abs_pool_index = first_abs_slot_ind % phy_map_sz;
+  int8_t is_sl_slot = get_bit_from_map(mac->phy_sl_bitmap, abs_pool_index);
+  de_normalize(abs_pool_index, mu, &frame_slot);
+  LOG_I(NR_MAC, "is_sl_slot %d, first_abs_slot_ind %ld, abs_pool_index %ld, %4d.%2d\n", is_sl_slot, first_abs_slot_ind, abs_pool_index, frame_slot.frame, frame_slot.slot);
+
+  for (uint64_t i = first_abs_slot_ind; i <= last_abs_slot_ind; ++i)
+  {
+    int8_t is_sl_slot = get_bit_from_map(mac->phy_sl_bitmap, abs_pool_index);
+    if (is_sl_slot) // slot is a sidelink slot
+    {
+      // PSCCH
+      // Number of  RBS used for PSCCH
+      uint8_t num_sl_pscch_rbs = pscch_rb_table[*resource_pool->sl_PSCCH_Config_r16->choice.setup->sl_FreqResourcePSCCH_r16];
+
+      // Starting RE of the lowest subchannel in a resource where PSCCH
+      // freq domain allocation starts
+      uint8_t pscch_startrb = *resource_pool->sl_StartRB_Subchannel_r16;
+      // Number of symbols used for PSCCH
+      uint16_t num_sl_pscch_sym = pscch_tda[*resource_pool->sl_PSCCH_Config_r16->choice.setup->sl_TimeResourcePSCCH_r16];
+
+      LOG_D(NR_MAC, "pscch_startrb %d, num_sl_pscch_sym %d, pscch_numrbs %d\n",
+            pscch_startrb,
+            num_sl_pscch_sym,
+            num_sl_pscch_rbs);
+      // PSSCH
+      // uint16_t slPsschSymStart = slPscchSymStart + slPscchSymLength;
+      // bool slHasPsfch = SlotHasPsfch(i, phyPool, psfchPeriod);
+      // uint16_t slPsschSymLength;
+      // if (slHasPsfch)
+      // {
+          // PSFCH requires an additional 3 symbols
+      //     slPsschSymLength = (totalSlSymbols - slPscchSymLength) - 1 - 3;
+      // }
+      // else
+      // {
+      //     slPsschSymLength = (totalSlSymbols - slPscchSymLength) - 1;
+      // }
+      uint16_t sl_subchannel_size = sl_get_subchannel_size(resource_pool);
+      uint16_t sl_max_num_reserve = maxnum_values[*resource_pool->sl_UE_SelectedConfigRP_r16->sl_MaxNumPerReserve_r16];
+      uint64_t abs_slot_idx = i;
+      uint64_t st_offset = (i - abs_idx_cur_slot);
+
+      slot_info_t slot_info = {.sl_pscch_sym_start = 1,
+                                .sl_pscch_sym_len = num_sl_pscch_sym,
+                                .num_sl_pscch_rbs = num_sl_pscch_rbs,
+                                .slot_offset = st_offset,
+                                .abs_slot_index = abs_slot_idx,
+                                .sl_max_num_per_reserve = sl_max_num_reserve,
+                                .sl_sub_chan_size = sl_subchannel_size};
+
+      push_back(&slot_info_list, &slot_info);
+    }
+    abs_pool_index = (abs_pool_index + 1) % phy_map_sz;
+  }
+
+  LOG_I(NR_MAC, "Total number of slots available for Sidelink in the selection window = %d\n", slot_info_list.size);
+#if 1
+  for (size_t i = 0; i < slot_info_list.size; i++) {
+    slot_info_t* slot_inf = (slot_info_t*)((char*)slot_info_list.data + i * slot_info_list.element_size);
+    LOG_I(NR_MAC, "sl_pscch_sym_start %d, sl_pscch_sym_len %d, num_sl_pscch_rbs %d, slot_offset %d, abs_slot_index %d\n",
+          slot_inf->sl_pscch_sym_start,
+          slot_inf->sl_pscch_sym_len,
+          slot_inf->num_sl_pscch_rbs,
+          slot_inf->slot_offset,
+          slot_inf->abs_slot_index,
+          slot_inf->sl_max_num_per_reserve,
+          slot_inf->sl_sub_chan_size
+          );
+  }
+#endif
+  return &slot_info_list;
+}
+
+int get_physical_sl_pool(NR_UE_MAC_INST_t *mac) {
+  // (mac->ulsch_slot_bitmap[slot / 64] & ((uint64_t)1 << (slot % 64)));
+  // int count_UL = 0;
+  int index = 0;
+  sl_nr_ue_mac_params_t *sl_mac = mac->SL_MAC_PARAMS;
+  uint64_t ul_slot_bitmap = mac->ulsch_slot_bitmap[0]; //tdd pattern
+  uint8_t mu = sl_mac->sl_phy_config.sl_config_req.sl_bwp_config.sl_scs;
+  NR_TDD_UL_DL_Pattern_t *tdd = &sl_mac->sl_TDD_config->pattern1;
+  int n_slots_frame = nr_slots_per_frame[mu]; // tdd pattern len
+  int ul_slots_period = tdd ? tdd->nrofUplinkSlots + (tdd->nrofUplinkSymbols > 0 ? 1 : 0) : n_slots_frame;
+  const int nr_slots_period = tdd ? n_slots_frame / get_nb_periods_per_frame(tdd->dl_UL_TransmissionPeriodicity) : n_slots_frame;
+
+  int tdd_pattern_len = nr_slots_period;
+  int8_t sl_bitmap_num_bits = ((mac->sl_bitmap.size << 3) - mac->sl_bitmap.bits_unused);
+  int total_downlink_slots = sl_bitmap_num_bits / ul_slots_period * (nr_slots_period - ul_slots_period);
+  int phy_sl_size = sl_bitmap_num_bits * total_downlink_slots;
+  AssertFatal(ul_slots_period > 0, "No UL slot found in the given TDD pattern");
+  AssertFatal(sl_bitmap_num_bits % ul_slots_period == 0, "SL bit map size should be multiple of number of UL slots in the TDD pattern");
+  AssertFatal(sl_bitmap_num_bits > tdd_pattern_len, "SL bit map size %d should be greater than or equal to the TDD pattern size %d", mac->sl_bitmap.size, tdd_pattern_len);
+
+#if RESOURCE_POOL_DEBUG
+  for (int k = 0; k < mac->sl_bitmap.size; k++) {
+    LOG_I(NR_MAC, "mac->sl_bitmap.buf %2x\n", mac->sl_bitmap.buf[k]);
+  }
+#endif
+  int tdd_bit_idx = 0;
+  int is_UL = 0;
+  int phy_sl_bit_pos = 0;
+  int sl_bitmap_pos = 0;
+  do {
+    is_UL = (mac->ulsch_slot_bitmap[tdd_bit_idx / 64] & ((uint64_t)1 << (tdd_bit_idx % 64)));
+    if (is_UL == 0) {
+      append_bit(mac->phy_sl_bitmap, phy_sl_bit_pos, 0);
+      phy_sl_bit_pos++;
+    } else if (get_bit_from_map(mac->sl_bitmap.buf, sl_bitmap_pos)) {
+      LOG_I(NR_MAC, "is_SL %d phy_sl_bit_pos %d\n", get_bit_from_map(mac->sl_bitmap.buf, sl_bitmap_pos), phy_sl_bit_pos);
+      append_bit(mac->phy_sl_bitmap, phy_sl_bit_pos, 1);
+      phy_sl_bit_pos++;
+      sl_bitmap_pos++;
+    } else {
+        append_bit(mac->phy_sl_bitmap, phy_sl_bit_pos, 0);
+        phy_sl_bit_pos++;
+        sl_bitmap_pos++;
+    }
+    if (tdd_bit_idx == (tdd_pattern_len - 1)) {
+      LOG_D(NR_MAC, "tdd_bit_idx %d/%d, sl_bitmap pos: %d/%d\n", tdd_bit_idx, tdd_pattern_len - 1, sl_bitmap_pos, sl_bitmap_num_bits);
+      if (sl_bitmap_pos == sl_bitmap_num_bits) {
+        break;
+      } else {
+        LOG_D(NR_MAC, "tdd_bit_idx %d, sl_bitmap pos: %d/%d\n", tdd_bit_idx, sl_bitmap_pos, sl_bitmap_num_bits - 1);
+        tdd_bit_idx = 0;
+      }
+    } else {
+      tdd_bit_idx++;
+    }
+  } while (tdd_bit_idx != (tdd_pattern_len));
+
+#if RESOURCE_POOL_DEBUG
+  for (int i = 0; i < phy_sl_bit_pos>>3; i++) {
+    LOG_D(NR_MAC, "phy_sl_bitmap[%d] %2x\n", i, mac->phy_sl_bitmap[i]);
+  }
+#endif
+  return phy_sl_bit_pos;
+}
+
+
+void init_bit_vector(bit_vector_t* vec, size_t initial_capacity) {
+  vec->data = (uint8_t*)malloc16_clear(initial_capacity * sizeof(uint8_t));
+  vec->size = 0;
+  vec->capacity = initial_capacity;
+}
+
+List_t* get_candidate_resources_from_slots(const frameslot_t *sfn,
+                                           uint8_t psfch_period,
+                                           uint8_t min_time_gap_psfch,
+                                           uint16_t l_subch,
+                                           uint16_t total_subch,
+                                           List_t* slot_info,
+                                           uint8_t mu) {
+    LOG_I(NR_MAC, "%4d.%2d, psfch_period %d,  min_time_gap_psfch %d, l_subch %d, total_subch %d\n", sfn->frame, sfn->slot, psfch_period,  min_time_gap_psfch, l_subch, total_subch);
+
+    List_t nr_resource_list;
+    init_list(&nr_resource_list, sizeof(slot_info_t), 1);
+    for (int s = 0; s < slot_info->size; s++) {
+        for (uint16_t i = 0; i + l_subch <= total_subch; i++) {
+            slot_info_t *s_info = (slot_info_t *)&slot_info->data[s];
+            frameslot_t frame_slot;
+            de_normalize(normalize(sfn, mu) + s_info->slot_offset, mu, &frame_slot);
+            sl_resource_info_t rsrc_info = {.num_sl_pscch_rbs = s_info->num_sl_pscch_rbs,
+                                            .sl_pscch_sym_start = s_info->sl_pscch_sym_start,
+                                            .sl_pscch_sym_len = s_info->sl_pscch_sym_len,
+                                            .sl_pssch_sym_start = s_info->sl_pssch_sym_start,
+                                            .sl_pssch_sym_len = s_info->sl_pssch_sym_len,
+                                            .sl_subchan_size = s_info->sl_sub_chan_size,
+                                            .sl_max_num_per_reserve = s_info->sl_max_num_per_reserve,
+                                            .sfn = frame_slot};
+            push_back(&nr_resource_list, &rsrc_info);
+        }
+    }
+
+    return &nr_resource_list;
+}
+
+void exclude_resources_based_on_history(frameslot_t frame_slot,
+                                        List_t* transmit_history,
+                                        List_t* candidate_resources,
+                                        List_t* sl_rsrc_rsrv_period_list) {
+  LOG_I(NR_MAC, "abs_slot %d, transmit_history size %d, candidate_resources size: %d, sl_rsrc_rsrv_period size: %d\n",
+        normalize(&frame_slot, 1), transmit_history->size, candidate_resources->size, sl_rsrc_rsrv_period_list->size);
+  List_t sfn_to_exclude; // SFN slot numbers (normalized) to exclude
+  init_list(&sfn_to_exclude, sizeof(uint64_t), 1);
+  sl_resource_info_t* sl_rsrc_info = (sl_resource_info_t*) get_front(candidate_resources);
+  uint64_t first_sfn_norm = normalize(&sl_rsrc_info->sfn, 1); // lowest candidate SFN slot number
+
+  sl_resource_info_t* sl_rsrc_info = (sl_resource_info_t*) get_back(candidate_resources);
+  uint64_t last_sfn_norm =   normalize(&sl_rsrc_info->sfn, 1); // highest candidate SFN slot number
+  LOG_I(NR_MAC, "Excluding resources between normalized SFNs (%d, %d)\n", first_sfn_norm, last_sfn_norm);
+
+    // Iterate the resource reserve period list and the transmit history to
+    // find all slot numbers such that multiples of the reserve period, when
+    // added to the history's slot number, are within the candidate resource
+    // slots lowest and highest numbers
+    for (int k = 0; k < sl_rsrc_rsrv_period_list->size; k++) {
+        uint16_t* rsrv_period = (uint16_t*)&sl_rsrc_rsrv_period_list->data[k];
+        if (*rsrv_period == 0) {
+            continue; // 0ms value is ignored
+        }
+        *rsrv_period = *rsrv_period * (1 << get_softmodem_params()->numerology); // Convert from ms to slots
+        for (int j = 0; j < transmit_history->size; j++) {
+          uint16_t i = 1;
+          frameslot_t* sfn = (frameslot_t*)&transmit_history->data[j];
+          uint64_t sfn_to_check = normalize(sfn, 1) + (*rsrv_period);
+          while (sfn_to_check <= last_sfn_norm)
+            {
+                if (sfn_to_check >= first_sfn_norm)
+                {
+                  push_back(&sfn_to_exclude, &sfn_to_check);
+                }
+                i++;
+                sfn_to_check = normalize(sfn, 1) + (i) * (*rsrv_period);
+            }
+        }
+    }
+    // sfnToExclude is a set of SFN normalized slot numbers for which we need
+    // to exclude (erase) any candidate resources that match
+    for (int k = 0; k < sfn_to_exclude.size; k++) {
+        uint64_t *norm_sfn = (uint64_t*)&sfn_to_exclude.data[k];
+        for (int j = 0; j < candidate_resources->size; j++) {
+            sl_resource_info_t* rsrc_info = (sl_resource_info_t*)&candidate_resources->data[j];
+            uint64_t * norm_rsrc_info_sfn = normalize(&rsrc_info->sfn, 1);
+            if (*norm_rsrc_info_sfn == *norm_sfn)
+            {
+              LOG_I(NR_MAC, "Erasing candidate resource at %u\n", *norm_sfn);
+              itCand = candidateList.erase(itCand);
+            }
+            else
+            {
+                itCand++;
+            }
+        }
+    }
+}
+
+List_t* get_candidate_resources(frameslot_t *frame_slot, NR_UE_MAC_INST_t *mac, List_t *sensing_data, List_t *transmit_history) {
+
+  uint16_t pool_id = 0;
+  uint8_t bwp_id = 0;
+  sl_nr_ue_mac_params_t *sl_mac = mac->SL_MAC_PARAMS;
+  uint8_t mu = sl_mac->sl_phy_config.sl_config_req.sl_bwp_config.sl_scs;
+  // NR_SL_ResourcePool_r16_t *sl_tx_res_pool = sl_mac->sl_TxPool[pool_id]->respool;
+  nr_sl_transmission_params_t *sl_tx_params = &sl_mac->mac_tx_params;
+  uint8_t t1 = sl_mac->sl_TxPool[pool_id]->t1;
+  uint8_t tproc1 = sl_mac->sl_TxPool[pool_id]->tproc1;
+  uint16_t t2 = get_t2(pool_id, mu, sl_tx_params, sl_mac);
+
+  AssertFatal(check_t1_within_tproc1(mu, t1), "Configured t1 %d is greater than tproc1 %d for this numerology", t1, tproc1);
+
+  LOG_I(NR_MAC, "Transmit  size: %ld; sensing data size: %ld\n", transmit_history->size, sensing_data->size);
+
+  List_t* candidate_slots;
+  List_t* candidate_resources;
+
+  uint64_t abs_slot_ind = normalize(frame_slot, mu);
+
+  // Check the validity of the resource selection window configuration (t1 and t2)
+  // and the following parameters: numerology and reservation period.
+  uint16_t num_slots_mul_s_dur = (t2 - t1 + 1) * (1 / pow(2, mu)); // number of slots multiplied by the slot duration in ms
+
+  uint16_t rsvpMs = sl_tx_params->rri;
+  LOG_I(NR_MAC, "rsvpMs %d, num_slots_mul_s_dur %d, t2 %d, t1 %d, (t2 - t1 + 1) %d, tproc1 %d\n", rsvpMs, num_slots_mul_s_dur, t2, t1, (t2 - t1 + 1), tproc1);
+  AssertFatal(rsvpMs != 0 && num_slots_mul_s_dur <= rsvpMs, "An error may be generated due to the fact that the resource selection window" \
+                    "size is higher than the resource reservation period value. Make sure that " \
+                    "(T2-T1+1) x (1/(2^numerology)) < reservation period. Modify the values of T1, " \
+                    "T2, numerology, and reservation period accordingly.");
+
+  // step 4 as per TS 38.214 sec 8.1.4
+  candidate_slots = get_nr_sl_comm_opportunities(mac,
+                                                 abs_slot_ind,
+                                                 bwp_id,
+                                                 mu,
+                                                 pool_id,
+                                                 t1,
+                                                 t2);
+
+
+  if (candidate_slots->size == 0 ) {
+    return NULL;
+  }
+
+  uint16_t l_subch = 1;
+  uint16_t total_subch = 1;
+  uint8_t min_time_gap_psfch = 3;
+  uint8_t psfch_period = 2;
+  candidate_resources = get_candidate_resources_from_slots(frame_slot,
+                                                           psfch_period,
+                                                           min_time_gap_psfch,
+                                                           l_subch,
+                                                           total_subch,
+                                                           candidate_slots,
+                                                           mu);
+
+    uint32_t m_total = candidate_resources->size; // total number of candidate single-slot resources
+    // report.m_initialCandidateResourcesSize = m_total;
+    // if (!m_enableSensing)
+    // {
+    //     NS_LOG_DEBUG("No sensing: Total slots selected " << mTotal);
+    //     return candidateResources;
+    // }
+
+    // // This is an optimization to skip further null processing below
+    // if (m_enableSensing && sensingData.empty() && transmitHistory.empty())
+    // {
+    //     NS_LOG_DEBUG("No sensing or data found: Total slots selected " << mTotal);
+    //     m_tracedSensingAlgorithm(report, candidateResources, sensingData, transmitHistory);
+    //     return candidateResources;
+    // }
+
+    // Copy the buffer so we can trim the buffer as per Tproc0.
+    // Note, we do not need to delete the latest measurement
+    // from the original buffer because it will be deleted
+    // by RemoveOldSensingData method once it is outdated.
+
+    List_t *updated_sensing_data = sensing_data;
+
+    // latest sensing data is at the end of the list
+    // now remove the latest sensing data as per the value of Tproc0. This would
+    // keep the size of the buffer equal to [n – T0 , n – Tproc0)
+
+    update_sensing_data(updated_sensing_data, frame_slot, sl_mac, pool_id);
+
+    // Perform a similar operation on the transmit history.
+    // latest is at the end of the list
+    // keep the size of the buffer equal to [n – T0 , n – Tproc0)
+    List_t *updated_history = transmit_history;
+
+    update_transmit_history(updated_history, frame_slot, sl_mac, pool_id);
+    // step 5: filter candidateResources based on transmit history, if threshold
+    // defined in step 5a) is met
+    List_t *remaining_candidates = candidate_resources;
+    List_t rsrc_rsrvation_period_list;
+    init_list(&rsrc_rsrvation_period_list, sizeof(long), 1);
+    push_back(&rsrc_rsrvation_period_list, &sl_mac->mac_tx_params.rri);
+    exclude_resources_based_on_history(*frame_slot, updated_history, remaining_candidates, &rsrc_rsrvation_period_list);
+
+  return candidate_slots;
 }

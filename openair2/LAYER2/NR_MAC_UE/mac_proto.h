@@ -672,13 +672,15 @@ void init_list(List_t* list, size_t element_size, size_t initial_capacity);
 
 void push_back(List_t* list, void* element);
 
-void update_sensing_data(List_t* sensing_data, FrameSlot_t *frame_slot, sl_nr_ue_mac_params_t *sl_mac, uint16_t pool_id);
+void update_sensing_data(List_t* sensing_data, frameslot_t *frame_slot, sl_nr_ue_mac_params_t *sl_mac, uint16_t pool_id);
+
+void update_transmit_history(List_t* transmit_history, frameslot_t *frame_slot, sl_nr_ue_mac_params_t *sl_mac, uint16_t pool_id);
 
 void pop_back(List_t* sensing_data);
 
 void free_rsel_list(List_t* list);
 
-int64_t normalize(FrameSlot_t *frame_slot, sl_nr_ue_mac_params_t *sl_mac);
+int64_t normalize(frameslot_t *frame_slot, uint8_t mu);
 
 uint16_t get_T2_min(uint16_t pool_id, sl_nr_ue_mac_params_t *sl_mac, uint8_t mu);
 
@@ -688,8 +690,35 @@ uint16_t time_to_slots(uint8_t mu, uint16_t time);
 
 uint8_t get_tproc0(sl_nr_ue_mac_params_t *sl_mac, uint16_t pool_id);
 
-void remove_old_sensing_data(FrameSlot_t *frame_slot,
-                             uint16_t sensingWindow,
-                             List_t* sensing_data);
+void remove_old_sensing_data(frameslot_t *frame_slot,
+                             uint16_t sensing_window,
+                             List_t* sensing_data,
+                             sl_nr_ue_mac_params_t *sl_mac);
+
+void remove_old_transmit_history(frameslot_t *frame_slot,
+                                uint16_t sensing_window,
+                                List_t* transmit_history,
+                                sl_nr_ue_mac_params_t *sl_mac);
+
+List_t* get_candidate_resources(frameslot_t *frame_slot, NR_UE_MAC_INST_t *mac, List_t *sensing_data, List_t *transmission_history);
+
+List_t* get_nr_sl_comm_opportunities(NR_UE_MAC_INST_t *mac,
+                                     uint64_t abs_idx_cur_slot,
+                                     uint8_t bwp_id,
+                                     uint16_t mu,
+                                     uint16_t pool_id,
+                                     uint8_t t1,
+                                     uint16_t t2);
+
+void init_bit_vector(bit_vector_t* vec, size_t initial_capacity);
+
+// void append_bit(bit_vector_t *vec, uint8_t bit);
+
+void init_outer_map(outer_map *o_map, uint8_t key);
+
+void append_bit(uint8_t *buf, size_t bit_pos, int bit_value);
+// void add_inner_map(outer_map *o_map, uint16_t inner_key);
+
+int get_bit_from_map(const uint8_t *buf, size_t bit_pos);
 #endif
 /** @}*/

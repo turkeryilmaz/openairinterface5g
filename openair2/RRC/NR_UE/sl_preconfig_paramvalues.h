@@ -80,13 +80,15 @@
 #define SL_CONFIG_STRING_RESPOOL_PSFCH_MINTIMEGAP             "sl_MinTimeGapPSFCH"
 #define SL_CONFIG_STRING_RESPOOL_PSFCH_HOPID                  "sl_PSFCH_HopID"
 #define SL_CONFIG_STRING_RESPOOL_PSFCH_CANDIDATERESOURCETYPE  "sl_PSFCH_CandidateResourceType"
-#define SL_CONFIG_STRING_RESPOOL_SL_PRIORITY                  "sl_Priority"
-#define SL_CONFIG_STRING_RESPOOL_SL_SELECTION_WINDOW          "sl_SelectionWindow"
-#define SL_CONFIG_STRING_RESPOOL_SL_SENSING_WINDOW            "sl_SensingWindow"
-#define SL_CONFIG_STRING_RESPOOL_SL_TRESHOLD_RSRP             "sl_Thres_RSRP"
-#define SL_CONFIG_STRING_RESPOOL_SL_MAXNUM_PER_RESERVE        "sl_MaxNumPerReserve"
-#define SL_CONFIG_STRING_RESPOOL_SL_RESOURCE_RESERVED_PERIOD  "sl_ResourceReservePeriod"
-#define SL_CONFIG_STRING_RESPOOL_SL_RS_FOR_SENSING            "sl_RS_ForSensing"
+
+#define SL_CONFIG_STRING_RSC_SELECTION_PARAMS_LIST                         "rsrc_selection_params"
+#define SL_CONFIG_STRING_RSC_SELECTION_PARAMS_SL_PRIORITY                  "sl_Priority"
+#define SL_CONFIG_STRING_RSC_SELECTION_PARAMS_SL_SELECTION_WINDOW          "sl_SelectionWindow"
+#define SL_CONFIG_STRING_RSC_SELECTION_PARAMS_SL_SENSING_WINDOW            "sl_SensingWindow"
+#define SL_CONFIG_STRING_RSC_SELECTION_PARAMS_SL_TRESHOLD_RSRP             "sl_Thres_RSRP"
+#define SL_CONFIG_STRING_RSC_SELECTION_PARAMS_SL_MAXNUM_PER_RESERVE        "sl_MaxNumPerReserve"
+#define SL_CONFIG_STRING_RSC_SELECTION_PARAMS_SL_RESOURCE_RESERVED_PERIOD  "sl_ResourceReservePeriod"
+#define SL_CONFIG_STRING_RSC_SELECTION_PARAMS_SL_RS_FOR_SENSING            "sl_RS_ForSensing"
 
 #define SL_CONFIG_STRING_UEINFO                               "sl_UEINFO"
 #define SL_CONFIG_STRING_UEINFO_SRCID                         "srcid"
@@ -172,15 +174,14 @@
 {SL_CONFIG_STRING_RESPOOL_PSFCH_NUMMUXCS_PAIR,NULL,0,.i64ptr=sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_NumMuxCS_Pair_r16,.defint64val=1,TYPE_INT64,0},\
 {SL_CONFIG_STRING_RESPOOL_PSFCH_MINTIMEGAP,NULL,0,.i64ptr=sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_MinTimeGapPSFCH_r16,.defint64val=1,TYPE_INT64,0},\
 {SL_CONFIG_STRING_RESPOOL_PSFCH_HOPID,NULL,0,.i64ptr=sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_HopID_r16,.defint64val=1,TYPE_INT64,0},\
-{SL_CONFIG_STRING_RESPOOL_PSFCH_CANDIDATERESOURCETYPE,NULL,0,.i64ptr=sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_CandidateResourceType_r16,.defint64val=0,TYPE_INT64,0},\
-{SL_CONFIG_STRING_RESPOOL_SL_MAXNUM_PER_RESERVE,NULL,0,.i64ptr=sl_res_pool->sl_UE_SelectedConfigRP_r16->sl_MaxNumPerReserve_r16,.defint64val=1,TYPE_INT64,0},\
-{SL_CONFIG_STRING_RESPOOL_SL_SENSING_WINDOW,NULL,0,.i64ptr=sl_res_pool->sl_UE_SelectedConfigRP_r16->sl_SensingWindow_r16,.defint64val=1,TYPE_INT64,0},\
-{SL_CONFIG_STRING_RESPOOL_SL_PRIORITY,NULL,0,.i64ptr=&sl_res_pool->sl_UE_SelectedConfigRP_r16->sl_SelectionWindowList_r16->list.array[0]->sl_Priority_r16,.defint64val=1,TYPE_INT64,0},\
-{SL_CONFIG_STRING_RESPOOL_SL_SELECTION_WINDOW,NULL,0,.i64ptr=&sl_res_pool->sl_UE_SelectedConfigRP_r16->sl_SelectionWindowList_r16->list.array[0]->sl_SelectionWindow_r16,.defint64val=1,TYPE_INT64,0}}
-/*
-{SL_CONFIG_STRING_RESPOOL_SL_RESOURCE_RESERVED_PERIOD,NULL,0,.i64ptr=&sl_res_pool->sl_UE_SelectedConfigRP_r16->sl_ResourceReservePeriodList_r16->list.array[0]->choice.sl_ResourceReservePeriod1_r16,.defint64val=1,TYPE_INT64,0}}
-{SL_CONFIG_STRING_RESPOOL_SL_TRESHOLD_RSRP,NULL,0,.i64ptr=sl_res_pool->sl_UE_SelectedConfigRP_r16->sl_Thres_RSRP_List_r16,.defint64val=1,TYPE_INT64,0},
-*/
+{SL_CONFIG_STRING_RESPOOL_PSFCH_CANDIDATERESOURCETYPE,NULL,0,.i64ptr=sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_CandidateResourceType_r16,.defint64val=0,TYPE_INT64,0}}
+
+#define SL_RSRC_SELECTION_DESC(sl_res_pool) { \
+{SL_CONFIG_STRING_RSC_SELECTION_PARAMS_SL_MAXNUM_PER_RESERVE,NULL,0,.i64ptr=sl_res_pool->sl_UE_SelectedConfigRP_r16->sl_MaxNumPerReserve_r16,.defint64val=1,TYPE_INT64,0}, \
+{SL_CONFIG_STRING_RSC_SELECTION_PARAMS_SL_SENSING_WINDOW,NULL,0,.i64ptr=sl_res_pool->sl_UE_SelectedConfigRP_r16->sl_SensingWindow_r16,.defint64val=1,TYPE_INT64,0}}
+// {SL_CONFIG_STRING_RSC_SELECTION_PARAMS_SL_PRIORITY,NULL,0,.i64ptr=&sl_res_pool->sl_UE_SelectedConfigRP_r16->sl_SelectionWindowList_r16->list.array[0]->sl_Priority_r16,.defint64val=1,TYPE_INT64,0}}
+// {SL_CONFIG_STRING_RSC_SELECTION_PARAMS_SL_SELECTION_WINDOW,NULL,0,.i64ptr=&sl_res_pool->sl_UE_SelectedConfigRP_r16->sl_SelectionWindowList_r16->list.array[0]->sl_SelectionWindow_r16,.defint64val=1,TYPE_INT64,0}}
+// {SL_CONFIG_STRING_RESPOOL_SL_TRESHOLD_RSRP,NULL,0,.i64ptr=sl_res_pool->sl_UE_SelectedConfigRP_r16->sl_Thres_RSRP_List_r16->list.array[0].,.defint64val=1,TYPE_INT64,0}
 /*-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 /*             Sidelink Top-Level UE Info                                                                                                     */
 /*-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
