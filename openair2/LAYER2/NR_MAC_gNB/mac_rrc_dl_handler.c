@@ -917,8 +917,14 @@ void positioning_measurement_request(const f1ap_measurement_req_t *req, uint8_t 
   mac->nrppa_msg_info.routing_id_buffer = req->nrppa_msg_info.routing_id_buffer;
   mac->nrppa_msg_info.routing_id_length = req->nrppa_msg_info.routing_id_length;
 
-  //FK 3.9.24 temporarily disabling non-ue-associated SRS measurements
-  //mac->secondary_srs_configured = 1; //this is never reset
+  LOG_I(MAC, "Serving gNB ind is =%d\n",serving_gNB_ind);
+  /* //Try following to enable secondary_srs_configured if serving_gNB_ind==0 means non serving gNB  
+  mac->secondary_srs_configured = 0; //enable only is non serving gNB
+  if (serving_gNB_ind==0){
+    LOG_I(MAC, "Serving gNB ind is =%d\n",serving_gNB_ind);
+    mac->secondary_srs_configured = 1; //secondary srs enabled for non serving gNB
+  }*/
+  mac->secondary_srs_configured = 1;
   mac->do_srs_meas = 1;         //this is reset once the NRPPA measurement response is set
 }
 

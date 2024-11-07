@@ -917,8 +917,8 @@ static void positioning_measurement_response(const f1ap_measurement_resp_t *resp
 
   uint32_t Tc_inv = 4096 * 480000;
   uint16_t k = 1;
-  uint32_t T_inv = Tc_inv / (1 << k);
-  uint32_t T_ns_inv = 1000000000;
+  uint64_t T_inv = Tc_inv / (1 << k);
+  uint64_t T_ns_inv = 1000000000;
   for (int trp_i=0; trp_i < noOfTRPs; trp_i++){
     meas_res_list_item->tRPID =trp_i; // TODO: needs to be added to config file
     f1ap_pos_measurement_result_t *posMeasRes= &meas_res_list_item->posMeasurementResult;

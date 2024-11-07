@@ -1031,7 +1031,7 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx)
           case 1 << NFAPI_NR_SRS_ANTENNASWITCH:
             srs_indication->srs_usage = NFAPI_NR_SRS_ANTENNASWITCH;
             break;
-	  case 1 << NFAPI_NR_SRS_LOCALIZATION: // standard extension (bit 4 is reserved in the standard)
+          case 1 << NFAPI_NR_SRS_LOCALIZATION: // standard extension (bit 4 is reserved in the standard)
             srs_indication->srs_usage = NFAPI_NR_SRS_LOCALIZATION;
             break;
           default:
@@ -1138,19 +1138,19 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx)
             LOG_W(NR_PHY, "PHY procedures for this SRS usage are not implemented yet!\n");
             break;
 
-	  case NFAPI_NR_SRS_LOCALIZATION: {
-	    // this is a custom usage not in the standard
-	    // we send Timing advance offset in nanoseconds for each TRP (= RX antenna)
+          case NFAPI_NR_SRS_LOCALIZATION: {
+            // this is a custom usage not in the standard
+            // we send Timing advance offset in nanoseconds for each TRP (= RX antenna)
 
-	    uint8_t *pWritePackedMessage = (uint8_t*) report_tlv->value;
-	    uint8_t *end = (uint8_t*) report_tlv->value + sizeof(report_tlv->value);
+            uint8_t *pWritePackedMessage = (uint8_t*) report_tlv->value;
+            uint8_t *end = (uint8_t*) report_tlv->value + sizeof(report_tlv->value);
 
-	    for (int arx_index = 0; arx_index < N_ant_rx; arx_index++) {
-	      report_tlv->length += push16(srs_toa_ns[arx_index],&pWritePackedMessage,end);
-        LOG_D(NR_PHY, "[second] srs_toa_ns[%d] = %d\n",arx_index,srs_toa_ns[arx_index]);
-	    }
-	    break;
-	  }  
+            for (int arx_index = 0; arx_index < N_ant_rx; arx_index++) {
+              report_tlv->length += push16(srs_toa_ns[arx_index],&pWritePackedMessage,end);
+              LOG_D(NR_PHY, "[second] srs_toa_ns[%d] = %d\n",arx_index,srs_toa_ns[arx_index]);
+            }
+            break;
+          }  
           default:
             AssertFatal(1 == 0, "Invalid SRS usage\n");
         }
