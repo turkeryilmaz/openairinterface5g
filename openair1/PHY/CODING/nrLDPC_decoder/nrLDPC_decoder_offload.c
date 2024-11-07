@@ -601,19 +601,30 @@ static int retrieve_ldpc_enc_op(struct rte_bbdev_enc_op **ops, const uint16_t n,
   char *data;
   uint8_t *out;
   int offset = 0;
+
   for (i = 0; i < n; ++i) {
     output = &ops[i]->ldpc_enc.output;
     m = output->data;
     uint16_t data_len = rte_pktmbuf_data_len(m) - output->offset;
     out = &p_out[offset];
-    data = m->buf_addr;
-    for (int byte = 0; byte < data_len; byte++)
-      for (int bit = 0; bit < 8; bit++)
-        out[byte * 8 + bit] = (data[m->data_off + byte] >> (7 - bit)) & 1;
+    data = m->buf_addr + m->data_off; // Adjust pointer once
+    for (int byte = 0; byte < data_len; byte++) {
+        uint8_t byte_data = data[byte];
+        // Handle bits in byte as an array of 8 values
+        out[byte * 8 + 0] = (byte_data >> 7) & 1;
+        out[byte * 8 + 1] = (byte_data >> 6) & 1;
+        out[byte * 8 + 2] = (byte_data >> 5) & 1;
+        out[byte * 8 + 3] = (byte_data >> 4) & 1;
+        out[byte * 8 + 4] = (byte_data >> 3) & 1;
+        out[byte * 8 + 5] = (byte_data >> 2) & 1;
+        out[byte * 8 + 6] = (byte_data >> 1) & 1;
+        out[byte * 8 + 7] = byte_data & 1;
+    }
     offset += perCB[i].E_cb;
-    rte_pktmbuf_free(ops[i]->ldpc_enc.output.data);
+    rte_pktmbuf_free(m);
     rte_pktmbuf_free(ops[i]->ldpc_enc.input.data);
   }
+
   return 0;
 }
 
