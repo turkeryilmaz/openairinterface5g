@@ -1296,7 +1296,7 @@ void push_back(List_t* list, void* element) {
     list->capacity *= 2;
     list->data = realloc(list->data, list->element_size * list->capacity);
   }
-  void* target = (int8_t*)list->data + (list->size * list->element_size);
+  void* target = (char*)list->data + (list->size * list->element_size);
   memcpy(target, element, list->element_size);
   list->size++;
 }
@@ -1315,6 +1315,20 @@ void* get_back(const List_t* list) {
   return (char*)list->data + (list->size - 1) * list->element_size; // pointer to last element
 }
 
+void delete_at(List_t* list, size_t index) {
+
+  if (index >= list->size) {
+    LOG_E(NR_MAC, "Index of bound\n");
+    return;
+  }
+
+  char* element_ptr = (char*)list->data + index * list->element_size;
+
+  memmove(element_ptr, element_ptr + list->element_size, (list->size - index - 1) * list->element_size);
+
+  list->size--;
+}
+
 int64_t normalize(frameslot_t *frame_slot, uint8_t mu) {
   int64_t num_slots = 0;
   uint8_t slots_per_frame = nr_slots_per_frame[mu];
@@ -1328,6 +1342,20 @@ void de_normalize(int64_t abs_slot_idx, uint8_t mu, frameslot_t *frame_slot) {
   frame_slot->frame = (abs_slot_idx / slots_per_frame) & 1023;
   frame_slot->slot = (abs_slot_idx % slots_per_frame);
 }
+
+frameslot_t get_future_sfn(frameslot_t* sfn, uint32_t slot_n) {
+    frameslot_t future_sfn = add_to_sfn(sfn, slot_n);
+    return future_sfn;
+}
+
+frameslot_t add_to_sfn(frameslot_t* sfn, uint32_t slot_n) {
+ frameslot_t temp_sfn;
+ int mu = get_softmodem_params()->numerology;
+ temp_sfn.frame = (sfn->frame + ((sfn->slot + slot_n) / nr_slots_per_frame[mu])) % 1024;
+ temp_sfn.slot = (sfn->slot + slot_n) % nr_slots_per_frame[mu];
+ return temp_sfn;
+}
+
 
 void update_sensing_data(List_t* sensing_data, frameslot_t *frame_slot, sl_nr_ue_mac_params_t *sl_mac, uint16_t pool_id) {
   uint8_t mu = get_softmodem_params()->numerology;
@@ -1346,7 +1374,7 @@ void update_transmit_history(List_t* transmit_history, frameslot_t *frame_slot, 
   uint8_t mu = get_softmodem_params()->numerology;
   while(transmit_history->size > 0) {
     frameslot_t* last_elem = (frameslot_t*)((uint8_t*)transmit_history->data + (transmit_history->size - 1) * transmit_history->element_size);
-    if (normalize(frame_slot, mu), normalize(&last_elem, mu) <= get_tproc0(sl_mac, pool_id)) {
+    if (normalize(frame_slot, mu), normalize(last_elem, mu) <= get_tproc0(sl_mac, pool_id)) {
       pop_back(transmit_history);
     } else {
       break;
@@ -1360,7 +1388,7 @@ void pop_back(List_t* sensing_data) {
   }
 }
 
-void free_rsel_list(List_t* list) {
+void free_list_mem(List_t* list) {
   free(list->data);
   list->data = NULL;
   list->size = 0;
@@ -1397,4 +1425,59 @@ uint16_t time_to_slots(uint8_t mu, uint16_t time) {
 
 uint8_t get_tproc0(sl_nr_ue_mac_params_t *sl_mac, uint16_t pool_id) {
   return sl_mac->sl_TxPool[pool_id]->tproc0;
+}
+
+void init_vector(vec_of_list_t* vec, size_t initial_capacity) {
+  vec->size = 0;
+  vec->capacity = initial_capacity;
+  vec->lists = (List_t*)malloc16_clear(initial_capacity * sizeof(List_t));
+
+  if (!vec->lists) {
+    LOG_E(NR_MAC, "Memory allocation failed\n");
+    exit(EXIT_FAILURE);
+  }
+}
+
+void add_list(vec_of_list_t* vec, size_t element_size, size_t initial_list_capacity) {
+  if (vec->size == vec->capacity) {
+    vec->capacity *= 2;
+    vec->lists = realloc(vec->lists, vec->capacity * sizeof(List_t));
+    if (!vec->lists) {
+      LOG_E(NR_MAC, "Memory allocation failed\n");
+      exit(EXIT_FAILURE);
+    }
+  }
+  init_list(&vec->lists[vec->size], element_size, initial_list_capacity);
+  vec->size++;
+}
+
+void push_back_list(vec_of_list_t* vec, List_t* new_list) {
+  if (vec->size == vec->capacity) {
+    vec->capacity *= 2;
+    vec->lists = realloc(vec->lists, vec->capacity * sizeof(List_t));
+    if (!vec->lists) {
+      LOG_E(NR_MAC, "Memory allocation failed\n");
+      exit(EXIT_FAILURE);
+    }
+  }
+  vec->lists[vec->size] = *new_list;
+  vec->size++;
+}
+
+List_t* get_list(vec_of_list_t *vec, size_t index) {
+  if (index >= vec->size) {
+    LOG_E(NR_MAC, "Index out of bounds\n");
+    return NULL;
+  }
+  return &vec->lists[index];
+}
+
+void free_vector(vec_of_list_t* vec) {
+  for (size_t i = 0; i < vec->size; i++) {
+    free_list_mem(&vec->lists[i]);
+  }
+  free(vec->lists);
+  vec->lists = NULL;
+  vec->size = 0;
+  vec->capacity = 0;
 }

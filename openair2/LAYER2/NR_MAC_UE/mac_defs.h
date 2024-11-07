@@ -584,6 +584,12 @@ typedef struct {
   size_t capacity;
 } List_t;
 
+typedef struct {
+  List_t* lists;
+  size_t size;
+  size_t capacity;
+} vec_of_list_t;
+
 typedef enum {
   c1, c2, c3, c4, c5, c6, c7
 } allowed_rsc_selection_t;
@@ -604,6 +610,22 @@ typedef struct {
   uint8_t sl_subchan_len;
   bool slot_busy;
 } sl_resource_info_t;
+
+
+/**
+ * \brief Structure to denote a future resource reserved by another UE
+ *
+ * This data structure represents resources excluded by step 6c) of the
+ * TS 38.214 Sec. 8.1.4 sensing algorithm.
+ */
+typedef struct {
+  frameslot_t sfn; // The SfnSf
+  uint16_t rsvp; // The resource reservation period in ms
+  uint8_t sb_ch_length; // The total number of the sub-channel allocated
+  uint8_t sb_ch_start; // The index of the starting sub-channel allocated
+  uint8_t prio; // The priority
+  double sl_rsrp; // The measured RSRP value over the used resource blocks
+} reserved_resource_t;
 
 typedef struct {
   // PSCCH
