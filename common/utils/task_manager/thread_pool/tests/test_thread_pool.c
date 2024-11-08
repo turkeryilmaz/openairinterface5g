@@ -29,8 +29,8 @@
 #include "assertions.h"
 #include "log.h"
 
-#define NUM_THREADS 4
-#define NUM_JOBS 1024
+#define NUM_THREADS 8
+#define NUM_JOBS 1024 * 100
 
 int64_t time_now_us(void)
 {
