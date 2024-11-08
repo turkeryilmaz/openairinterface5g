@@ -329,6 +329,8 @@ void *nrL1_stats_thread(void *param) {
   reset_meas(&gNB->dlsch_modulation_stats);
   reset_meas(&gNB->dlsch_resource_mapping_stats);
   reset_meas(&gNB->dlsch_precoding_stats);
+  reset_meas(&gNB->ulsch_tpool_response_latency);
+  reset_meas(&gNB->ulsch_tpool_sched_latency);
   while (!oai_exit) {
     sleep(1);
     dump_nr_I0_stats(fd,gNB);

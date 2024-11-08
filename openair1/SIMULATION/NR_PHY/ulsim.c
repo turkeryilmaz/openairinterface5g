@@ -960,6 +960,8 @@ int main(int argc, char *argv[])
     reset_meas(&gNB->srs_report_tlv_stats);
     reset_meas(&gNB->srs_beam_report_stats);
     reset_meas(&gNB->srs_iq_matrix_stats);
+    reset_meas(&gNB->ulsch_tpool_response_latency);
+    reset_meas(&gNB->ulsch_tpool_sched_latency);
     init_nr_ue_phy_cpu_stats(&UE->phy_cpu_stats);
 
     uint32_t errors_scrambling[16] = {0};
@@ -1514,6 +1516,10 @@ int main(int argc, char *argv[])
       printStatIndent2(&gNB->ulsch_channel_estimation_stats, "ULSCH channel estimation time");
       printStatIndent2(&gNB->rx_pusch_init_stats, "RX PUSCH Initialization time");
       printStatIndent2(&gNB->rx_pusch_symbol_processing_stats, "RX PUSCH Symbol Processing time");
+      if (gNB->threadPool.measurePerf) {
+        printStatIndent3(&gNB->ulsch_tpool_response_latency, "Tpool response overhead");
+        printStatIndent3(&gNB->ulsch_tpool_sched_latency, "Tpool sched overhead");
+      }
       printStatIndent(&gNB->ulsch_decoding_stats,"ULSCH total decoding time");
 
       printf("\nUE TX\n");

@@ -1523,10 +1523,23 @@ int nr_rx_pusch_tp(PHY_VARS_gNB *gNB,
     }
   } // symbol loop
 
+  oai_cputime_t max_return_time = 0;
   while (nbSymb) {
     notifiedFIFO_elt_t *req = pullTpool(&gNB->respPuschSymb, &gNB->threadPool);
+    if (gNB->threadPool.measurePerf) {
+      oai_cputime_t diff = req->returnTime - req->endProcessingTime;
+      if (diff > max_return_time) {
+        max_return_time = diff;
+      }
+      gNB->ulsch_tpool_sched_latency.diff += req->startProcessingTime - req->creationTime;
+      gNB->ulsch_tpool_sched_latency.trials++;
+    }
     nbSymb--;
     delNotifiedFIFO_elt(req);
+  }
+  if (gNB->threadPool.measurePerf) {
+    gNB->ulsch_tpool_response_latency.diff += max_return_time;
+    gNB->ulsch_tpool_response_latency.trials++;
   }
 
   stop_meas(&gNB->rx_pusch_symbol_processing_stats);

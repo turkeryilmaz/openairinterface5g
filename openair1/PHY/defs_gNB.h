@@ -543,6 +543,8 @@ typedef struct PHY_VARS_gNB_s {
   time_stats_t ulsch_decoding_stats;
   time_stats_t ulsch_deinterleaving_stats;
   time_stats_t ulsch_channel_estimation_stats;
+  time_stats_t ulsch_tpool_sched_latency;
+  time_stats_t ulsch_tpool_response_latency;
   time_stats_t ulsch_llr_stats;
   time_stats_t rx_srs_stats;
   time_stats_t generate_srs_stats;
