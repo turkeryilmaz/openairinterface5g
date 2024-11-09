@@ -28,31 +28,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <threadPool/thread-pool.h>
-
-
-static inline  notifiedFIFO_elt_t *pullNotifiedFifoRemember( notifiedFIFO_t *nf, struct one_thread *thr) {
-  mutexlock(nf->lockF);
-
-  while(!nf->outF && !thr->terminate)
-    condwait(nf->notifF, nf->lockF);
-
-  if (thr->terminate) {
-    mutexunlock(nf->lockF);
-    return NULL;
-  }
-
-  notifiedFIFO_elt_t *ret=nf->outF;
-  nf->outF=nf->outF->next;
-
-  if (nf->outF==NULL)
-    nf->inF=NULL;
-
-  // For abort feature
-  thr->runningOnKey=ret->key;
-  thr->dropJob = false;
-  mutexunlock(nf->lockF);
-  return ret;
-}
+#include "mpmc_if.h"
 
 void *one_thread(void *arg) {
   struct  one_thread *myThread=(struct  one_thread *) arg;
@@ -60,9 +36,10 @@ void *one_thread(void *arg) {
 
   // Infinite loop to process requests
   do {
-    notifiedFIFO_elt_t *elt=pullNotifiedFifoRemember(&tp->incomingFifo, myThread);
+    notifiedFIFO_elt_t *elt=mpmc_queue_pop(tp->mpmc_queue);
     if (elt == NULL) {
-      AssertFatal(myThread->terminate, "pullNotifiedFifoRemember() returned NULL although thread not aborted\n");
+      // special null element, end loop and propagate terminate command.
+      mpmc_queue_push(tp->mpmc_queue, NULL);
       break;
     }
 
@@ -74,18 +51,11 @@ void *one_thread(void *arg) {
 
     if (elt->reponseFifo) {
       // Check if the job is still alive, else it has been aborted
-      mutexlock(tp->incomingFifo.lockF);
-
-      if (myThread->dropJob)
-        delNotifiedFIFO_elt(elt);
-      else
-        pushNotifiedFIFO(elt->reponseFifo, elt);
-      myThread->runningOnKey=-1;
-      mutexunlock(tp->incomingFifo.lockF);
+      pushNotifiedFIFO(elt->reponseFifo, elt);
     }
     else
       delNotifiedFIFO_elt(elt);
-  } while (!myThread->terminate);
+  } while (true);
   return NULL;
 }
 
@@ -106,13 +76,13 @@ void initNamedTpool(char *params,tpool_t *pool, bool performanceMeas, char *name
     pool->traceFd=-1;
 
   pool->activated=true;
-  initNotifiedFIFO(&pool->incomingFifo);
   char *saveptr, * curptr;
   char *parms_cpy=strdup(params);
   pool->nbThreads=0;
   curptr=strtok_r(parms_cpy,",",&saveptr);
   struct one_thread * ptr;
   char *tname = (name == NULL ? "Tpool" : name);
+  pool->mpmc_queue = mpmc_queue_init(32 * 4);
   while ( curptr!=NULL ) {
     int c=toupper(curptr[0]);
 
@@ -129,8 +99,6 @@ void initNamedTpool(char *params,tpool_t *pool, bool performanceMeas, char *name
         pool->allthreads->coreID=atoi(curptr);
         pool->allthreads->id=pool->nbThreads;
         pool->allthreads->pool=pool;
-        pool->allthreads->dropJob = false;
-        pool->allthreads->terminate = false;
         //Configure the thread scheduler policy for Linux
         // set the thread name for debugging
         sprintf(pool->allthreads->name,"%s%d_%d",tname,pool->nbThreads,pool->allthreads->coreID);

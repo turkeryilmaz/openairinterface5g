@@ -30,10 +30,12 @@
 #include <stdalign.h>
 #include <pthread.h>
 #include <unistd.h>
+#include <string.h>
 #include <sys/syscall.h>
 #include "assertions.h"
 #include "common/utils/time_meas.h"
 #include "common/utils/system.h"
+#include "mpmc_if.h"
 
 #ifdef DEBUG
   #define THREADINIT   PTHREAD_ERRORCHECK_MUTEX_INITIALIZER_NP
@@ -226,9 +228,6 @@ struct one_thread {
   int id;
   int coreID;
   char name[256];
-  uint64_t runningOnKey;
-  bool dropJob;
-  bool terminate;
   struct thread_pool *pool;
   struct one_thread *next;
 };
@@ -240,15 +239,15 @@ typedef struct thread_pool {
   int dummyKeepReadingTraceFd;
   uint64_t cpuCyclesMicroSec;
   int nbThreads;
-  notifiedFIFO_t incomingFifo;
   struct one_thread *allthreads;
+  void *mpmc_queue;
 } tpool_t;
 
 static inline void pushTpool(tpool_t *t, notifiedFIFO_elt_t *msg) {
   if (t->measurePerf) msg->creationTime=rdtsc_oai();
 
   if ( t->activated)
-    pushNotifiedFIFO(&t->incomingFifo, msg);
+    mpmc_queue_push(t->mpmc_queue, msg);
   else {
     if (t->measurePerf)
       msg->startProcessingTime=rdtsc_oai();
@@ -303,43 +302,20 @@ static inline int abortTpool(tpool_t *t) {
   /* disables threading: if a message comes in now, we cannot have a race below
    * as each thread will simply execute the message itself */
   t->activated = false;
-  notifiedFIFO_t *nf=&t->incomingFifo;
-  mutexlock(nf->lockF);
-  nf->abortFIFO = true;
-  notifiedFIFO_elt_t **start=&nf->outF;
 
-  /* mark threads to abort them */
-  struct one_thread *thread = t->allthreads;
-  while (thread != NULL) {
-    thread->dropJob = true;
-    thread->terminate = true;
-    nbRemoved++;
-    thread = thread->next;
-  }
-
-  /* clear FIFOs */
-  while(*start!=NULL) {
-    notifiedFIFO_elt_t **request=start;
-    *start=(*start)->next;
-    delNotifiedFIFO_elt(*request);
-    *request = NULL;
-    nbRemoved++;
-  }
-
-  if (t->incomingFifo.outF==NULL)
-    t->incomingFifo.inF=NULL;
-
-  condbroadcast(t->incomingFifo.notifF);
-  mutexunlock(nf->lockF);
+  // send special kill command to threads
+  mpmc_queue_push(t->mpmc_queue, NULL);
 
   /* join threads that are still runing */
-  thread = t->allthreads;
+  struct one_thread *thread = t->allthreads;
   while (thread != NULL) {
     pthread_cancel(thread->threadID);
     struct one_thread *next = thread->next;
     free(thread);
     thread = next;
   }
+
+  mpmc_queue_destroy(t->mpmc_queue);
 
   return nbRemoved;
 }
