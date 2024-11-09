@@ -1478,7 +1478,7 @@ int main(int argc, char *argv[])
     for (int r = 1; r < max_rounds; r++)
       printf(",%e", berStats[r]);
 
-    printf(") Avg round %.2f, Eff Rate %.4f bits/slot, Eff Throughput %.2f, TBS %u bits/slot\n", roundStats,effRate,effTP,TBS);
+    printf(") Avg round %.2f, Eff Rate %.4f bits/slot, Eff Throughput %.2f, TBS %u bits/slot, C %d\n", roundStats,effRate,effTP,TBS,UE->ul_harq_processes[harq_pid].C);
 
     double av_delay = (double)sum_pusch_delay / (2 * delay_pusch_est_count);
     printf("DMRS-PUSCH delay estimation: min %i, max %i, average %2.1f\n", min_pusch_delay >> 1, max_pusch_delay >> 1, av_delay);
