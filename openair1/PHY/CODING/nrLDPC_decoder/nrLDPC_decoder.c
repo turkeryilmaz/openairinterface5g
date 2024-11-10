@@ -133,8 +133,9 @@
 #include "bnProc128/nrLDPC_bnProc_BG2_R23_128.h"
 #endif
 
-//#define NR_LDPC_PROFILER_DETAIL(a) a
-#define NR_LDPC_PROFILER_DETAIL(a)
+#define NR_LDPC_PROFILER_DETAIL(a) a
+//#define NR_LDPC_PROFILER_DETAIL(a)
+
 
 #include "openair1/PHY/CODING/nrLDPC_extern.h"
 
