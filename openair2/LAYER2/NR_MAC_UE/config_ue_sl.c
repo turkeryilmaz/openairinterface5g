@@ -475,9 +475,11 @@ int nr_rrc_mac_config_req_sl_preconfig(module_id_t module_id,
           sl_mac->sl_TxPool[i]->tproc1 = tproc1_valaues[mu];
           sl_mac->sl_TxPool[i]->t1 = sl_mac->sl_TxPool[i]->tproc1;
           sl_mac->sl_TxPool[i]->t2 = 33;
-          sl_mac->mac_tx_params.rri = (uint16_t)sl_ue_selected_config->sl_ResourceReservePeriodList_r16->list.array[0]->choice.sl_ResourceReservePeriod1_r16;
+          //FIXIT: sl_ResourceReservePeriod1_r16 is not being read correctly from RRC.
+          sl_mac->mac_tx_params.rri = 100; //sl_ue_selected_config->sl_ResourceReservePeriodList_r16->list.array[0]->choice.sl_ResourceReservePeriod1_r16;
+          sl_mac->mac_tx_params.resel_counter = get_random_reselection_counter(sl_mac->mac_tx_params.rri);
           mac->sl_thresh_rsrp = -128;
-          LOG_I(NR_MAC, "EEEE mac->sl_thresh_rsrp %d\n", mac->sl_thresh_rsrp);
+          LOG_I(NR_MAC, "EEEE mac->sl_thresh_rsrp %d rri %i sl_ResourceReservePeriod1 %ld, i %d, sensing_window_ms %d, selection_window %d\n", mac->sl_thresh_rsrp, sl_mac->mac_tx_params.rri, sl_ue_selected_config->sl_ResourceReservePeriodList_r16->list.array[0]->choice.sl_ResourceReservePeriod1_r16, i, sensing_window_ms, selection_window);
           uint16_t sci_1a_len = 0, num_subch = 0;
           sci_1a_len = sl_determine_sci_1a_len(&num_subch,
                                                sl_mac->sl_TxPool[i]->respool,
@@ -547,11 +549,9 @@ int nr_rrc_mac_config_req_sl_preconfig(module_id_t module_id,
     size_t byte_capacity = (phy_sl_size + 7) / 8;
     mac->phy_sl_bitmap = (uint8_t*)malloc16_clear(byte_capacity);
 
-    LOG_I(NR_MAC, "phy_sl_bitmap %p, sl_TimeResource_r16->size %ld\n", mac->phy_sl_bitmap, mac->sl_tx_res_pool->ext1->sl_TimeResource_r16->size);
     if (mac->sl_tx_res_pool && mac->sl_tx_res_pool->ext1 && mac->sl_tx_res_pool->ext1->sl_TimeResource_r16) {
       mac->sl_bitmap.size = mac->sl_tx_res_pool->ext1->sl_TimeResource_r16->size;
-      LOG_I(NR_MAC, "TimeResource size %ld\n", mac->sl_tx_res_pool->ext1->sl_TimeResource_r16->size);
-      mac->sl_bitmap.buf = (uint8_t*) malloc16_clear(mac->sl_bitmap.size);
+      mac->sl_bitmap.buf = (uint8_t*)malloc16_clear(mac->sl_bitmap.size);
       memcpy(mac->sl_bitmap.buf, mac->sl_tx_res_pool->ext1->sl_TimeResource_r16->buf, mac->sl_bitmap.size);
       mac->sl_bitmap.bits_unused = mac->sl_tx_res_pool->ext1->sl_TimeResource_r16->bits_unused;
     }
@@ -751,15 +751,12 @@ void nr_rrc_mac_config_req_sl_mib(module_id_t module_id,
     size_t byte_capacity = (phy_sl_size + 7) / 8;
     mac->phy_sl_bitmap = (uint8_t*)malloc16_clear(byte_capacity);
 
-    LOG_I(NR_MAC, "phy_sl_bitmap %p, sl_TimeResource_r16->size %ld\n", mac->phy_sl_bitmap, mac->sl_tx_res_pool->ext1->sl_TimeResource_r16->size);
     if (mac->sl_tx_res_pool && mac->sl_tx_res_pool->ext1 && mac->sl_tx_res_pool->ext1->sl_TimeResource_r16) {
       mac->sl_bitmap.size = mac->sl_tx_res_pool->ext1->sl_TimeResource_r16->size;
-      LOG_I(NR_MAC, "TimeResource size %ld\n", mac->sl_tx_res_pool->ext1->sl_TimeResource_r16->size);
       mac->sl_bitmap.buf = (uint8_t*)malloc16_clear(mac->sl_bitmap.size);
-      memcpy(mac->sl_bitmap.buf, mac->sl_tx_res_pool->ext1->sl_TimeResource_r16, mac->sl_bitmap.size);
+      memcpy(mac->sl_bitmap.buf, mac->sl_tx_res_pool->ext1->sl_TimeResource_r16->buf, mac->sl_bitmap.size);
       mac->sl_bitmap.bits_unused = mac->sl_tx_res_pool->ext1->sl_TimeResource_r16->bits_unused;
     }
-
     DevAssert(mac->if_module != NULL && mac->if_module->sl_phy_config_request != NULL);
     mac->if_module->sl_phy_config_request(&sl_mac->sl_phy_config);
   }

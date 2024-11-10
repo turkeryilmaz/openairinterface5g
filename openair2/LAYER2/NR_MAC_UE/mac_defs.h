@@ -568,7 +568,7 @@ typedef struct {
   uint8_t subch_len; // The total number of the sub-channel allocated
   uint8_t subch_start; // The index of the starting sub-channel allocated
   uint8_t prio; // The priority
-  uint16_t sl_rsrp; // The measured RSRP value over the used resource blocks
+  int16_t sl_rsrp; // The measured RSRP value over the used resource blocks
   uint8_t gap_re_tx1; // Gap for a first retransmission in absolute slots
   uint8_t subch_startre_tx1; // The index of the starting sub-channel allocated
                           // to first retransmission
@@ -797,7 +797,7 @@ typedef struct {
                                    // re-selection counter reaches zero
   List_t sl_sensing_data; // List to store sensing data
   int sl_thresh_rsrp;     // A threshold in dBm used for sensing based UE autonomous resource selection
-  uint8_t sl_res_percentage;  /* The percentage threshold to indicate the
+  float sl_res_percentage;  /* The percentage threshold to indicate the
                                  minimum number of candidate single-slot
                                  resources to be selected using sensing procedure.
                               */

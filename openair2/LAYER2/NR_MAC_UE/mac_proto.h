@@ -722,7 +722,12 @@ List_t get_nr_sl_comm_opportunities(NR_UE_MAC_INST_t *mac,
                                     uint16_t mu,
                                     uint16_t pool_id,
                                     uint8_t t1,
-                                    uint16_t t2);
+                                    uint16_t t2,
+                                    uint8_t psfch_period);
+
+NR_SL_ResourcePool_r16_t* get_resource_pool(NR_UE_MAC_INST_t *mac, uint16_t pool_id);
+
+bool slot_has_psfch(NR_UE_MAC_INST_t *mac, uint64_t abs_index_cur_slot, uint8_t psfch_period, uint8_t phy_sl_map_size);
 
 void init_bit_vector(bit_vector_t* vec, size_t initial_capacity);
 
@@ -750,7 +755,7 @@ int get_physical_sl_pool(NR_UE_MAC_INST_t *mac);
 
 void push_back_list(vec_of_list_t* vec, List_t* new_list);
 
-List_t get_candidate_resources_from_slots(frameslot_t *sfn,
+List_t* get_candidate_resources_from_slots(frameslot_t *sfn,
                                           uint8_t psfch_period,
                                           uint8_t min_time_gap_psfch,
                                           uint16_t l_subch,
@@ -759,7 +764,7 @@ List_t get_candidate_resources_from_slots(frameslot_t *sfn,
                                           uint8_t mu);
 
 List_t exclude_reserved_resources(sensing_data_t *sensed_data,
-                                  uint16_t slot_period_ms,
+                                  float slot_period_ms,
                                   uint16_t resv_period_slots,
                                   uint16_t t1,
                                   uint16_t t2,
@@ -774,5 +779,15 @@ bool overlapped_resource(uint8_t first_start,
                          uint8_t first_length,
                          uint8_t second_start,
                          uint8_t second_length);
+
+uint8_t get_random_reselection_counter(uint16_t rri);
+
+uint32_t compute_TRIV(uint8_t N, uint8_t t1, uint8_t t2);
+
+uint32_t compute_FRIV(uint8_t sl_max_num_per_reserve,
+                      uint8_t L_sub_chan,
+                      uint8_t n_start_subch1,
+                      uint8_t n_start_subch2,
+                      uint8_t N_sl_subch);
 #endif
 /** @}*/

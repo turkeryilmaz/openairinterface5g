@@ -260,8 +260,6 @@ static void prepare_NR_SL_ResourcePool(NR_SL_ResourcePool_r16_t *sl_res_pool,
   }
 
   if (is_txpool) {
-    sl_res_pool->sl_UE_SelectedConfigRP_r16->sl_SensingWindow_r16 = calloc(1, sizeof(*sl_res_pool->sl_UE_SelectedConfigRP_r16->sl_SensingWindow_r16));
-
     sl_res_pool->sl_UE_SelectedConfigRP_r16->sl_SelectionWindowList_r16 = calloc(1, sizeof(*sl_res_pool->sl_UE_SelectedConfigRP_r16->sl_SelectionWindowList_r16));
     NR_SL_SelectionWindowConfig_r16_t p;
     p.sl_SelectionWindow_r16 = 5;

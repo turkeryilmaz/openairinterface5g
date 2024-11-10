@@ -1291,12 +1291,12 @@ void init_list(List_t* list, size_t element_size, size_t initial_capacity) {
   list->capacity = initial_capacity;
 }
 
-void push_back(List_t* list, void* element) {
+void push_back(List_t* list, void *element) {
   if (list->size == list->capacity) {
     list->capacity *= 2;
     list->data = realloc(list->data, list->element_size * list->capacity);
   }
-  void* target = (char*)list->data + (list->size * list->element_size);
+  void *target = (char*)list->data + (list->size * list->element_size);
   memcpy(target, element, list->element_size);
   list->size++;
 }
@@ -1332,7 +1332,7 @@ void delete_at(List_t* list, size_t index) {
 int64_t normalize(frameslot_t *frame_slot, uint8_t mu) {
   int64_t num_slots = 0;
   uint8_t slots_per_frame = nr_slots_per_frame[mu];
-  num_slots += frame_slot->slot;
+  num_slots  = frame_slot->slot;
   num_slots += frame_slot->frame * slots_per_frame;
   return num_slots;
 }
@@ -1360,9 +1360,9 @@ frameslot_t add_to_sfn(frameslot_t* sfn, uint32_t slot_n) {
 void update_sensing_data(List_t* sensing_data, frameslot_t *frame_slot, sl_nr_ue_mac_params_t *sl_mac, uint16_t pool_id) {
   uint8_t mu = get_softmodem_params()->numerology;
   while(sensing_data->size > 0) {
-    sensing_data_t* last_elem = (sensing_data_t*)((uint8_t*)sensing_data->data + (sensing_data->size - 1) * sensing_data->element_size);
+    sensing_data_t* last_elem = (sensing_data_t*)((char*)sensing_data->data + (sensing_data->size - 1) * sensing_data->element_size);
 
-    if (normalize(frame_slot, mu), normalize(&last_elem->frame_slot, mu) <= get_tproc0(sl_mac, pool_id)) {
+    if (normalize(frame_slot, mu) - normalize(&last_elem->frame_slot, mu) <= get_tproc0(sl_mac, pool_id)) {
       pop_back(sensing_data);
     } else {
       break;
@@ -1374,7 +1374,8 @@ void update_transmit_history(List_t* transmit_history, frameslot_t *frame_slot, 
   uint8_t mu = get_softmodem_params()->numerology;
   while(transmit_history->size > 0) {
     frameslot_t* last_elem = (frameslot_t*)((uint8_t*)transmit_history->data + (transmit_history->size - 1) * transmit_history->element_size);
-    if (normalize(frame_slot, mu), normalize(last_elem, mu) <= get_tproc0(sl_mac, pool_id)) {
+
+    if (normalize(frame_slot, mu) - normalize(last_elem, mu) <= get_tproc0(sl_mac, pool_id)) {
       pop_back(transmit_history);
     } else {
       break;
@@ -1405,14 +1406,14 @@ uint16_t get_t2(uint16_t pool_id, uint8_t mu, nr_sl_transmission_params_t* sl_tx
   LOG_I(NR_MAC, "sl_tx_params->packet_delay_budget_ms %d\n", sl_tx_params->packet_delay_budget_ms);
   if (!(sl_tx_params->packet_delay_budget_ms == 0)) {
     // Packet delay budget is known, so use it
-    uint16_t t2pdb = time_to_slots(mu, sl_tx_params->packet_delay_budget_ms);
-    t2 = min(t2pdb, sl_mac->sl_TxPool[pool_id]->t2);
-    LOG_I(NR_MAC, "t2 %d, t2pdb %d, sl_mac->sl_TxPool[pool_id]->t2 %d\n", t2, t2pdb, sl_mac->sl_TxPool[pool_id]->t2);
+    uint16_t pdb_slots = time_to_slots(mu, sl_tx_params->packet_delay_budget_ms);
+    t2 = min(pdb_slots, sl_mac->sl_TxPool[pool_id]->t2);
+    LOG_I(NR_MAC, "t2 %d, pdb_slots %d, sl_mac->sl_TxPool[%d]->t2 %d\n", t2, pdb_slots, pool_id, sl_mac->sl_TxPool[pool_id]->t2);
   } else {
     // Packet delay budget is not known, so use max(NrSlUeMac::T2, T2min)
     uint16_t t2min = get_T2_min(pool_id, sl_mac, mu);
     t2 = max(t2min, sl_mac->sl_TxPool[pool_id]->t2);
-    LOG_I(NR_MAC, "t2 %d, t2pdb %d, sl_mac->sl_TxPool[pool_id]->t2 %d\n", t2, t2min, sl_mac->sl_TxPool[pool_id]->t2);
+    LOG_I(NR_MAC, "t2 %d, t2min %d, sl_mac->sl_TxPool[%d]->t2 %d\n", t2, t2min, pool_id, sl_mac->sl_TxPool[pool_id]->t2);
   }
   return t2;
 }

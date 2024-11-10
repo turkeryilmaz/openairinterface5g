@@ -171,6 +171,10 @@ void nr_ue_init_mac(module_id_t module_idP, ueinfo_t* ueinfo)
   mac->si_window_start = -1;
   mac->SL_MAC_PARAMS = CALLOC(1, sizeof(sl_nr_ue_mac_params_t));
   mac->SL_MAC_PARAMS->sl_bler.harq_round_max = HARQ_ROUND_MAX;
+  LOG_D(NR_MAC, "initializing sl_sensing_data\n");
+  init_list(&mac->sl_sensing_data, sizeof(sensing_data_t), 1);
+  LOG_I(NR_MAC, "initializing sl_transmit_history\n");
+  init_list(&mac->sl_transmit_history, sizeof(frameslot_t), 1);
 
   if (ueinfo != NULL)  {
     mac->src_id = ueinfo->srcid;
