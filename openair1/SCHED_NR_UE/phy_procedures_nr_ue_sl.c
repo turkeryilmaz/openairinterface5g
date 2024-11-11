@@ -773,7 +773,7 @@ int phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue,
     sl_nr_tx_config_psbch_pdu_t *psbch_vars = &phy_data->psbch_vars;
     nr_tx_psbch(ue, frame_tx, slot_tx, psbch_vars, txdataF);
     sl_phy_params->psbch.num_psbch_tx ++;
-
+    LOG_I(NR_PHY, "(%d.%d) Sending %s\n", frame_tx, slot_tx, sl_tx_actions[phy_data->sl_tx_action - SL_NR_CONFIG_TYPE_TX_PSBCH]);
     tx_action = 1;
   }
   else if (phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH ||
