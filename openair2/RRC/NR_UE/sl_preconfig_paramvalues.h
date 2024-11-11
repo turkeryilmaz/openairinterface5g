@@ -179,9 +179,6 @@
 #define SL_RSRC_SELECTION_DESC(sl_res_pool) { \
 {SL_CONFIG_STRING_RSC_SELECTION_PARAMS_SL_MAXNUM_PER_RESERVE,NULL,0,.i64ptr=sl_res_pool->sl_UE_SelectedConfigRP_r16->sl_MaxNumPerReserve_r16,.defint64val=1,TYPE_INT64,0}, \
 {SL_CONFIG_STRING_RSC_SELECTION_PARAMS_SL_SENSING_WINDOW,NULL,0,.i64ptr=sl_res_pool->sl_UE_SelectedConfigRP_r16->sl_SensingWindow_r16,.defint64val=1,TYPE_INT64,0}}
-// {SL_CONFIG_STRING_RSC_SELECTION_PARAMS_SL_PRIORITY,NULL,0,.i64ptr=&sl_res_pool->sl_UE_SelectedConfigRP_r16->sl_SelectionWindowList_r16->list.array[0]->sl_Priority_r16,.defint64val=1,TYPE_INT64,0}}
-// {SL_CONFIG_STRING_RSC_SELECTION_PARAMS_SL_SELECTION_WINDOW,NULL,0,.i64ptr=&sl_res_pool->sl_UE_SelectedConfigRP_r16->sl_SelectionWindowList_r16->list.array[0]->sl_SelectionWindow_r16,.defint64val=1,TYPE_INT64,0}}
-// {SL_CONFIG_STRING_RESPOOL_SL_TRESHOLD_RSRP,NULL,0,.i64ptr=sl_res_pool->sl_UE_SelectedConfigRP_r16->sl_Thres_RSRP_List_r16->list.array[0].,.defint64val=1,TYPE_INT64,0}
 /*-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 /*             Sidelink Top-Level UE Info                                                                                                     */
 /*-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/

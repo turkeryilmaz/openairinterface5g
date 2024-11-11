@@ -611,7 +611,6 @@ typedef struct {
   bool slot_busy;
 } sl_resource_info_t;
 
-
 /**
  * \brief Structure to denote a future resource reserved by another UE
  *
@@ -644,23 +643,6 @@ typedef struct {
   uint64_t abs_slot_index; // Indicates the the absolute slot index
   uint32_t slot_offset; // Indicates the positive offset between two slots
 } slot_info_t;
-
-typedef struct {
-  uint8_t *data;
-  size_t size;
-  size_t capacity;
-} bit_vector_t;
-
-typedef struct {
-  uint16_t key;
-  bit_vector_t vector;
-} unordered_map_t;
-
-typedef struct {
-  uint8_t key;
-  unordered_map_t *inner_maps;
-  size_t inner_count;
-} outer_map;
 
 /*!\brief Top level UE MAC structure */
 typedef struct {
@@ -804,7 +786,6 @@ typedef struct {
   uint8_t sl_resel_counter;  // The resource selection counter
   uint16_t sl_c_resel;       // The C_resel counter
   List_t sl_transmit_history; // History of slots used for transmission
-  outer_map map_per_bwp;
 
   /// bitmap of ULSCH slots, can hold up to 160 slots
   uint64_t ulsch_slot_bitmap[3];

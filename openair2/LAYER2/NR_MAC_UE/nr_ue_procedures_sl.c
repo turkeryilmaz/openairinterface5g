@@ -1343,11 +1343,6 @@ void de_normalize(int64_t abs_slot_idx, uint8_t mu, frameslot_t *frame_slot) {
   frame_slot->slot = (abs_slot_idx % slots_per_frame);
 }
 
-frameslot_t get_future_sfn(frameslot_t* sfn, uint32_t slot_n) {
-    frameslot_t future_sfn = add_to_sfn(sfn, slot_n);
-    return future_sfn;
-}
-
 frameslot_t add_to_sfn(frameslot_t* sfn, uint32_t slot_n) {
  frameslot_t temp_sfn;
  int mu = get_softmodem_params()->numerology;
@@ -1403,17 +1398,14 @@ uint16_t get_T2_min(uint16_t pool_id, sl_nr_ue_mac_params_t *sl_mac, uint8_t mu)
 
 uint16_t get_t2(uint16_t pool_id, uint8_t mu, nr_sl_transmission_params_t* sl_tx_params, sl_nr_ue_mac_params_t *sl_mac) {
   uint16_t t2;
-  LOG_I(NR_MAC, "sl_tx_params->packet_delay_budget_ms %d\n", sl_tx_params->packet_delay_budget_ms);
   if (!(sl_tx_params->packet_delay_budget_ms == 0)) {
     // Packet delay budget is known, so use it
     uint16_t pdb_slots = time_to_slots(mu, sl_tx_params->packet_delay_budget_ms);
     t2 = min(pdb_slots, sl_mac->sl_TxPool[pool_id]->t2);
-    LOG_I(NR_MAC, "t2 %d, pdb_slots %d, sl_mac->sl_TxPool[%d]->t2 %d\n", t2, pdb_slots, pool_id, sl_mac->sl_TxPool[pool_id]->t2);
   } else {
     // Packet delay budget is not known, so use max(NrSlUeMac::T2, T2min)
     uint16_t t2min = get_T2_min(pool_id, sl_mac, mu);
     t2 = max(t2min, sl_mac->sl_TxPool[pool_id]->t2);
-    LOG_I(NR_MAC, "t2 %d, t2min %d, sl_mac->sl_TxPool[%d]->t2 %d\n", t2, t2min, pool_id, sl_mac->sl_TxPool[pool_id]->t2);
   }
   return t2;
 }

@@ -167,7 +167,6 @@ void handle_nr_ue_sl_harq(module_id_t mod_id,
   NR_UE_SL_SCHED_UNLOCK(&mac->sl_sched_lock);
 }
 
-
 uint32_t compute_TRIV(uint8_t N, uint8_t t1, uint8_t t2) {
   int32_t triv = 0;
   if (N == 1) {
@@ -288,7 +287,7 @@ void nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP, int slotP, nr_sci_pdu_
   sci_pdu->priority = 0;
   sci_pdu->frequency_resource_assignment.val = compute_FRIV(sl_max_num_reserve, l_subch, n_start_subch1, n_start_subch2, sl_num_subch);
   sci_pdu->time_resource_assignment.val = compute_TRIV(N, t1, t2);
-  sci_pdu->resource_reservation_period.val = 100;
+  sci_pdu->resource_reservation_period.val = mac->SL_MAC_PARAMS->mac_tx_params.rri;
   sci_pdu->dmrs_pattern.val = 0;
   sci_pdu->second_stage_sci_format = 0;
   sci_pdu->number_of_dmrs_port = ri;

@@ -686,8 +686,6 @@ int64_t normalize(frameslot_t *frame_slot, uint8_t mu);
 
 void de_normalize(int64_t abs_slot_idx, uint8_t mu, frameslot_t *frame_slot);
 
-frameslot_t get_future_sfn(frameslot_t* sfn, uint32_t slot_n);
-
 frameslot_t add_to_sfn(frameslot_t* sfn, uint32_t slot_n);
 
 uint16_t get_T2_min(uint16_t pool_id, sl_nr_ue_mac_params_t *sl_mac, uint8_t mu);
@@ -725,13 +723,11 @@ List_t get_nr_sl_comm_opportunities(NR_UE_MAC_INST_t *mac,
                                     uint16_t t2,
                                     uint8_t psfch_period);
 
+bool check_t1_within_tproc1(uint8_t mu, uint16_t t1_slots);
+
 NR_SL_ResourcePool_r16_t* get_resource_pool(NR_UE_MAC_INST_t *mac, uint16_t pool_id);
 
 bool slot_has_psfch(NR_UE_MAC_INST_t *mac, uint64_t abs_index_cur_slot, uint8_t psfch_period, uint8_t phy_sl_map_size);
-
-void init_bit_vector(bit_vector_t* vec, size_t initial_capacity);
-
-void init_outer_map(outer_map *o_map, uint8_t key);
 
 void append_bit(uint8_t *buf, size_t bit_pos, int bit_value);
 

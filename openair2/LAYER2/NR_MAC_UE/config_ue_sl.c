@@ -475,11 +475,13 @@ int nr_rrc_mac_config_req_sl_preconfig(module_id_t module_id,
           sl_mac->sl_TxPool[i]->tproc1 = tproc1_valaues[mu];
           sl_mac->sl_TxPool[i]->t1 = sl_mac->sl_TxPool[i]->tproc1;
           sl_mac->sl_TxPool[i]->t2 = 33;
-          //FIXIT: sl_ResourceReservePeriod1_r16 is not being read correctly from RRC.
-          sl_mac->mac_tx_params.rri = 100; //sl_ue_selected_config->sl_ResourceReservePeriodList_r16->list.array[0]->choice.sl_ResourceReservePeriod1_r16;
+          sl_mac->mac_tx_params.rri = sl_ue_selected_config->sl_ResourceReservePeriodList_r16->list.array[0]->choice.sl_ResourceReservePeriod1_r16;
           sl_mac->mac_tx_params.resel_counter = get_random_reselection_counter(sl_mac->mac_tx_params.rri);
-          mac->sl_thresh_rsrp = -128;
-          LOG_I(NR_MAC, "EEEE mac->sl_thresh_rsrp %d rri %i sl_ResourceReservePeriod1 %ld, i %d, sensing_window_ms %d, selection_window %d\n", mac->sl_thresh_rsrp, sl_mac->mac_tx_params.rri, sl_ue_selected_config->sl_ResourceReservePeriodList_r16->list.array[0]->choice.sl_ResourceReservePeriod1_r16, i, sensing_window_ms, selection_window);
+          mac->sl_thresh_rsrp = *sl_ue_selected_config->sl_Thres_RSRP_List_r16->list.array[0];
+          LOG_D(NR_MAC, "sl_thresh_rsrp %d rri %i sl_ResourceReservePeriod1 %ld, i %d, sensing_window_ms %d, selection_window %d\n",
+                mac->sl_thresh_rsrp, sl_mac->mac_tx_params.rri,
+                sl_ue_selected_config->sl_ResourceReservePeriodList_r16->list.array[0]->choice.sl_ResourceReservePeriod1_r16,
+                i, sensing_window_ms, selection_window);
           uint16_t sci_1a_len = 0, num_subch = 0;
           sci_1a_len = sl_determine_sci_1a_len(&num_subch,
                                                sl_mac->sl_TxPool[i]->respool,

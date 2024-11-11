@@ -630,7 +630,6 @@ int nr_ue_process_sci1_indication_pdu(NR_UE_MAC_INST_t *mac,module_id_t mod_id,f
   sensing_data_t sensing_data;
   sensing_data.frame_slot.frame = frame;
   sensing_data.frame_slot.slot = slot;
-  LOG_I(NR_MAC,"%4d.%2d EEEE Received sl_rsrp %d\n", frame, slot, sci->pscch_rsrp);
   sensing_data.sl_rsrp = sci->pscch_rsrp;
   sensing_data.rsvp = sl_mac->mac_tx_params.rri;
   sensing_data.subch_startre_tx1 = 0;
