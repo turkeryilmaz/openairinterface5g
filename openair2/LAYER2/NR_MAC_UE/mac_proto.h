@@ -686,7 +686,7 @@ int64_t normalize(frameslot_t *frame_slot, uint8_t mu);
 
 void de_normalize(int64_t abs_slot_idx, uint8_t mu, frameslot_t *frame_slot);
 
-frameslot_t add_to_sfn(frameslot_t* sfn, uint32_t slot_n);
+frameslot_t add_to_sfn(frameslot_t* sfn, uint16_t slot_n, uint8_t mu);
 
 uint16_t get_T2_min(uint16_t pool_id, sl_nr_ue_mac_params_t *sl_mac, uint8_t mu);
 
@@ -769,7 +769,8 @@ List_t exclude_reserved_resources(sensing_data_t *sensed_data,
 void exclude_resources_based_on_history(frameslot_t frame_slot,
                                         List_t* transmit_history,
                                         List_t* candidate_resources,
-                                        List_t* sl_rsrc_rsrv_period_list);
+                                        List_t* sl_rsrc_rsrv_period_list,
+                                        uint8_t mu);
 
 bool overlapped_resource(uint8_t first_start,
                          uint8_t first_length,

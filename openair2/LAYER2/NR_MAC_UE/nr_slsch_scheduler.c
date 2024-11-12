@@ -48,7 +48,6 @@
 #define MAX_MCS 28
 
 const uint8_t nr_rv_round_map[4] = {0, 2, 3, 1};
-extern const uint8_t maxnum_values[2];
 
 void reset_sl_harq_list(NR_SL_UE_sched_ctrl_t *sched_ctrl) {
   int harq;
@@ -190,17 +189,20 @@ uint32_t compute_FRIV(uint8_t sl_max_num_per_reserve,
                       uint8_t N_sl_subch) {
   uint32_t friv = 0;
   int sum = 0;
-  if (sl_max_num_per_reserve == 2) {
+  if (sl_max_num_per_reserve == NR_SL_UE_SelectedConfigRP_r16__sl_MaxNumPerReserve_r16_n2) {
     for (int i = 1; i < L_sub_chan; i++) {
       sum += N_sl_subch + 1 - i;
     }
     friv = n_start_subch1 + sum;
-  } else if (sl_max_num_per_reserve == 3) {
+  } else if (sl_max_num_per_reserve == NR_SL_UE_SelectedConfigRP_r16__sl_MaxNumPerReserve_r16_n3) {
     for (int i = 1; i < L_sub_chan; i++) {
       sum += (N_sl_subch + 1 - i) * (N_sl_subch + 1 - i);
     }
     friv = n_start_subch1 + n_start_subch2 * (N_sl_subch + 1 - L_sub_chan) + sum;
+  } else {
+    AssertFatal(1 == 0, "sl_MaxNumPerReserve is configured with incorrect value");
   }
+
   return friv;
 }
 
@@ -271,18 +273,18 @@ void nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP, int slotP, nr_sci_pdu_
   }
 
   uint16_t sl_max_num_reserve = *mac->sl_tx_res_pool->sl_UE_SelectedConfigRP_r16->sl_MaxNumPerReserve_r16;
-  int N = 0;
-  uint8_t t1 = 2, t2 = 20;
-  if (sl_max_num_reserve == NR_SL_UE_SelectedConfigRP_r16__sl_MaxNumPerReserve_r16_n2) {
-    N = 1;
-  } else if (sl_max_num_reserve == NR_SL_UE_SelectedConfigRP_r16__sl_MaxNumPerReserve_r16_n3) {
-    N = 2;
-  }
+  /*
+  Following values are based on spec. 38214 section 8.1.5, N = 1 or 2 actual resources when sl-
+  MaxNumPerReserve is 2, and N = 1 or 2 or 3 actual resources when sl-MaxNumPerReserve is 3.
+  For N = 2, 1 <= t1 <= 31; and for N = 3, 1 <= t1 <= 30, t1 < t2 <= 31, We are taking N = 1; it represents only 1 reserved resource.
+  */
+  int N = 1;
+  uint8_t t1 = 0, t2 = 0;
 
   long sl_num_subch = *mac->sl_tx_res_pool->sl_NumSubchannel_r16;
-  uint8_t l_subch = 1;
-  uint8_t n_start_subch1 = 0;
-  uint8_t n_start_subch2 = 0;
+  uint8_t l_subch = 1; // number of used sub channels; as in current setting, we have only 1 subchannel so l_subch is set to 1
+  uint8_t n_start_subch1 = 0, n_start_subch2 = 0; // represent starting sub-channel index for the second resource and third resource;
+                                                  // as we are considering only 1 subchannel, so we have initialized these variables with zeros.
   // Fill SCI1A
   sci_pdu->priority = 0;
   sci_pdu->frequency_resource_assignment.val = compute_FRIV(sl_max_num_reserve, l_subch, n_start_subch1, n_start_subch2, sl_num_subch);
@@ -300,7 +302,7 @@ void nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP, int slotP, nr_sci_pdu_
   /*Following code will check whether SLSCH was received before and
   its feedback has scheduled for current slot
   */
-  int scs = get_softmodem_params()->numerology;
+  int scs = sl_mac->sl_phy_config.sl_config_req.sl_bwp_config.sl_scs;
   const int nr_slots_frame = nr_slots_per_frame[scs];
   const int n_ul_slots_period = tdd ? tdd->nrofUplinkSlots + (tdd->nrofUplinkSymbols > 0 ? 1 : 0) : nr_slots_frame;
 

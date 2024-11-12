@@ -241,12 +241,12 @@ int NRRIV2BW(int locationAndBandwidth,int N_RB) {
  * This is only done for sl_MaxNumPerReserve = 2
  * */
 void convNRFRIV(int FRIV,
-                int N_subch, 
+                int N_subch,
                 long sl_MaxNumPerReserve,
                 uint16_t *Lsc,
                 uint16_t *startsc,
                 uint16_t *startsc2) {
-  if (sl_MaxNumPerReserve == 2) {
+  if (sl_MaxNumPerReserve == NR_SL_UE_SelectedConfigRP_r16__sl_MaxNumPerReserve_r16_n2) {
     *Lsc=1;
     int prevN=0;
     int N=N_subch;
@@ -256,7 +256,7 @@ void convNRFRIV(int FRIV,
       N += (N_subch - *Lsc + 1);
     }
     if (startsc) *startsc = FRIV-prevN;
-  } else {
+  } else if (sl_MaxNumPerReserve == NR_SL_UE_SelectedConfigRP_r16__sl_MaxNumPerReserve_r16_n3) {
     *Lsc=1;
     int prevN=0;
     int N=N_subch;
@@ -268,8 +268,11 @@ void convNRFRIV(int FRIV,
     int tmp1 = FRIV - prevN; // This holds startsc1 + startsc2*(N_subch - *Lsc + 1)
     if (startsc2) *startsc2 = tmp1 / (N_subch - *Lsc + 1);
     if (startsc) *startsc = tmp1 % (N_subch - *Lsc + 1);
+  } else {
+    AssertFatal(1 == 0, "sl_MaxNumPerReserve is configured with incorrect value");
   }
-}  
+}
+
 int NRRIV2PRBOFFSET(int locationAndBandwidth,int N_RB) {
   int tmp = locationAndBandwidth/N_RB;
   int tmp2 = locationAndBandwidth%N_RB;
