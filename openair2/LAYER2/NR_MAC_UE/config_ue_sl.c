@@ -477,7 +477,7 @@ int nr_rrc_mac_config_req_sl_preconfig(module_id_t module_id,
           sl_mac->sl_TxPool[i]->t2 = 33; // According to 38214 sec. 8.1.4: T2min <= t2 <= PDB, where T2min  = {1,5,10,20}*2^μ, u = 1, PDB = 20ms = 40 slots
           sl_mac->mac_tx_params.rri = sl_ue_selected_config->sl_ResourceReservePeriodList_r16->list.array[0]->choice.sl_ResourceReservePeriod1_r16;
           sl_mac->mac_tx_params.resel_counter = get_random_reselection_counter(sl_mac->mac_tx_params.rri);
-          mac->sl_thresh_rsrp = *sl_ue_selected_config->sl_Thres_RSRP_List_r16->list.array[0];
+          mac->sl_thresh_rsrp = (-128 + (*sl_ue_selected_config->sl_Thres_RSRP_List_r16->list.array[0] - 1) * 2);
           LOG_D(NR_MAC, "sl_thresh_rsrp %d rri %i sl_ResourceReservePeriod1 %ld, i %d, sensing_window_ms %d, selection_window %d\n",
                 mac->sl_thresh_rsrp, sl_mac->mac_tx_params.rri,
                 sl_ue_selected_config->sl_ResourceReservePeriodList_r16->list.array[0]->choice.sl_ResourceReservePeriod1_r16,
