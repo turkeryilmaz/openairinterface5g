@@ -43,7 +43,8 @@ Description Defines the messages supported by the Access Stratum sublayer
 
 #include "commonDef.h"
 #include "networkDef.h"
-
+#include "openair2/RRC/NR_UE/rrc_defs.h"
+#include "NR_BCCH-DL-SCH-Message.h"
 /****************************************************************************/
 /*********************  G L O B A L    C O N S T A N T S  *******************/
 /****************************************************************************/
@@ -582,6 +583,24 @@ typedef struct as_message_s {
   } __attribute__((__packed__)) msg;
 } as_message_t;
 
+typedef struct {
+  instance_t ue_id;
+  NR_ReestablishmentCause_t cause;
+} nr_mac_rrc_config_reset_t;
+typedef struct {
+  instance_t ue_id;
+  NR_CellGroupConfig_t* cellGroupConfig;
+  NR_UE_NR_Capability_t* UE_NR_Capability;
+} nr_mac_rrc_config_cg_t;
+typedef struct {
+  instance_t ue_id;
+  NR_BCCH_BCH_Message_t* bcch;
+  int get_sib;
+} nr_mac_rrc_config_mib_t;
+typedef struct {
+  instance_t ue_id;
+  NR_BCCH_DL_SCH_Message_t* bcch;
+} nr_mac_rrc_config_sib1_t;
 /****************************************************************************/
 /********************  G L O B A L    V A R I A B L E S  ********************/
 /****************************************************************************/

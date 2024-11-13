@@ -224,8 +224,11 @@ static void nr_rrc_ue_process_rrcReconfiguration(NR_UE_RRC_INST_t *rrc,
         nr_rrc_cellgroup_configuration(rrc, cellGroupConfig);
 
         AssertFatal(!IS_SA_MODE(get_softmodem_params()), "secondaryCellGroup only used in NSA for now\n");
-        nr_rrc_mac_config_req_cg(rrc->ue_id, 0, cellGroupConfig, rrc->UECap.UE_NR_Capability);
-        asn1cFreeStruc(asn_DEF_NR_CellGroupConfig, cellGroupConfig);
+        MessageDef *msg = itti_alloc_new_message(TASK_RRC_NRUE, 0, NR_MAC_RRC_CONFIG_CG);
+        NR_MAC_RRC_CONFIG_CG(msg).ue_id = rrc->ue_id;
+        NR_MAC_RRC_CONFIG_CG(msg).cellGroupConfig = cellGroupConfig;
+        NR_MAC_RRC_CONFIG_CG(msg).UE_NR_Capability = rrc->UECap.UE_NR_Capability;
+        itti_send_msg_to_task(TASK_MAC_UE, GNB_MODULE_ID_TO_INSTANCE(0), msg);
       }
       if (ie->measConfig != NULL) {
         LOG_I(NR_RRC, "Measurement Configuration is present\n");
@@ -557,11 +560,16 @@ static void nr_rrc_ue_decode_NR_BCCH_BCH_Message(NR_UE_RRC_INST_t *rrc,
     // to schedule MAC to get SI if required
     get_sib = check_si_status(SI_info);
   }
-  if (bcch_message->message.present == NR_BCCH_BCH_MessageType_PR_mib)
-    nr_rrc_mac_config_req_mib(rrc->ue_id, 0, bcch_message->message.choice.mib, get_sib);
-  else
+  if (bcch_message->message.present == NR_BCCH_BCH_MessageType_PR_mib) {
+    MessageDef *msg = itti_alloc_new_message(TASK_RRC_NRUE, 0, NR_MAC_RRC_CONFIG_MIB);
+    NR_MAC_RRC_CONFIG_MIB(msg).ue_id = rrc->ue_id;
+    NR_MAC_RRC_CONFIG_MIB(msg).bcch = bcch_message;
+    NR_MAC_RRC_CONFIG_MIB(msg).get_sib = get_sib;
+    itti_send_msg_to_task(TASK_MAC_UE, GNB_MODULE_ID_TO_INSTANCE(0), msg);
+  } else {
     LOG_E(NR_RRC, "RRC-received BCCH message is not a MIB\n");
-  ASN_STRUCT_FREE(asn_DEF_NR_BCCH_BCH_Message, bcch_message);
+    ASN_STRUCT_FREE(asn_DEF_NR_BCCH_BCH_Message, bcch_message);
+  }
   return;
 }
 
@@ -848,14 +856,22 @@ static int8_t nr_rrc_ue_decode_NR_BCCH_DL_SCH_Message(NR_UE_RRC_INST_t *rrc,
         nr_rrc_configure_default_SI(SI_info, SI_info->sib1);
         // configure timers and constant
         nr_rrc_set_sib1_timers_and_constants(&rrc->timers_and_constants, SI_info->sib1);
-
-        NR_SI_SchedulingInfo_v1700_t *si_SchedulingInfo_v1700 = NULL;
-        if (SI_info->sib1->nonCriticalExtension && SI_info->sib1->nonCriticalExtension->nonCriticalExtension
-            && SI_info->sib1->nonCriticalExtension->nonCriticalExtension->nonCriticalExtension) {
-          si_SchedulingInfo_v1700 = SI_info->sib1->nonCriticalExtension->nonCriticalExtension->nonCriticalExtension->si_SchedulingInfo_v1700;
+        // Need to re-decode because the aboce code have stolen the sib1 data
+        // we need to find a asn1c way to copy sub trees in a more efficient method
+        NR_BCCH_DL_SCH_Message_t *bcch_message_second_decode = NULL;
+        asn_dec_rval_t dec_rval2 = uper_decode_complete(NULL,
+                                                        &asn_DEF_NR_BCCH_DL_SCH_Message,
+                                                        (void **)&bcch_message_second_decode,
+                                                        (const void *)Sdu,
+                                                        Sdu_len);
+        if ((dec_rval2.code != RC_OK) && (dec_rval2.consumed == 0))
+          LOG_E(NR_RRC, "Failed to decode BCCH_DLSCH_MESSAGE second time, impossible\n");
+        else {
+          MessageDef *msg = itti_alloc_new_message(TASK_RRC_NRUE, 0, NR_MAC_RRC_CONFIG_SIB1);
+          NR_MAC_RRC_CONFIG_SIB1(msg).ue_id = rrc->ue_id;
+          NR_MAC_RRC_CONFIG_SIB1(msg).bcch = bcch_message_second_decode;
+          itti_send_msg_to_task(TASK_MAC_UE, GNB_MODULE_ID_TO_INSTANCE(0), msg);
         }
-
-        nr_rrc_mac_config_req_sib1(rrc->ue_id, 0, SI_info->sib1->si_SchedulingInfo, si_SchedulingInfo_v1700, SI_info->sib1->servingCellConfigCommon);
         break;
 
       case NR_BCCH_DL_SCH_MessageType__c1_PR_systemInformation:
@@ -984,8 +1000,11 @@ static void nr_rrc_ue_process_masterCellGroup(NR_UE_RRC_INST_t *rrc,
   nr_rrc_cellgroup_configuration(rrc, cellGroupConfig);
 
   LOG_D(RRC,"Sending CellGroupConfig to MAC\n");
-  nr_rrc_mac_config_req_cg(rrc->ue_id, 0, cellGroupConfig, rrc->UECap.UE_NR_Capability);
-  asn1cFreeStruc(asn_DEF_NR_CellGroupConfig, cellGroupConfig);
+  MessageDef *msg = itti_alloc_new_message(TASK_RRC_NRUE, 0, NR_MAC_RRC_CONFIG_CG);
+  NR_MAC_RRC_CONFIG_CG(msg).ue_id = rrc->ue_id;
+  NR_MAC_RRC_CONFIG_CG(msg).cellGroupConfig = cellGroupConfig;
+  NR_MAC_RRC_CONFIG_CG(msg).UE_NR_Capability = rrc->UECap.UE_NR_Capability;
+  itti_send_msg_to_task(TASK_MAC_UE, GNB_MODULE_ID_TO_INSTANCE(0), msg);
 }
 
 static void rrc_ue_generate_RRCSetupComplete(const NR_UE_RRC_INST_t *rrc, const uint8_t Transaction_id)
@@ -2054,7 +2073,10 @@ void nr_rrc_initiate_rrcReestablishment(NR_UE_RRC_INST_t *rrc,
   // reset MAC
   // release spCellConfig, if configured
   // perform cell selection in accordance with the cell selection process
-  nr_rrc_mac_config_req_reset(rrc->ue_id, RE_ESTABLISHMENT);
+  MessageDef *msg = itti_alloc_new_message(TASK_RRC_NRUE, 0, NR_MAC_RRC_CONFIG_RESET);
+  NR_MAC_RRC_CONFIG_RESET(msg).ue_id = rrc->ue_id;
+  NR_MAC_RRC_CONFIG_RESET(msg).cause = RE_ESTABLISHMENT;
+  itti_send_msg_to_task(TASK_MAC_UE, GNB_MODULE_ID_TO_INSTANCE(0), msg);
 }
 
 static void nr_rrc_ue_generate_rrcReestablishmentComplete(const NR_UE_RRC_INST_t *rrc,
@@ -2394,7 +2416,10 @@ void nr_rrc_going_to_IDLE(NR_UE_RRC_INST_t *rrc,
 
   // reset MAC
   NR_UE_MAC_reset_cause_t cause = (rrc->nrRrcState == RRC_STATE_DETACH_NR) ? DETACH : GO_TO_IDLE;
-  nr_rrc_mac_config_req_reset(rrc->ue_id, cause);
+  MessageDef *msg = itti_alloc_new_message(TASK_RRC_NRUE, 0, NR_MAC_RRC_CONFIG_RESET);
+  NR_MAC_RRC_CONFIG_RESET(msg).ue_id = rrc->ue_id;
+  NR_MAC_RRC_CONFIG_RESET(msg).cause = cause;
+  itti_send_msg_to_task(TASK_MAC_UE, GNB_MODULE_ID_TO_INSTANCE(0), msg);
 
   // enter RRC_IDLE
   LOG_I(NR_RRC, "RRC moved into IDLE state\n");
@@ -2416,7 +2441,10 @@ void handle_t300_expiry(NR_UE_RRC_INST_t *rrc)
 
   // reset MAC, release the MAC configuration
   NR_UE_MAC_reset_cause_t cause = T300_EXPIRY;
-  nr_rrc_mac_config_req_reset(rrc->ue_id, cause);
+  MessageDef *msg = itti_alloc_new_message(TASK_RRC_NRUE, 0, NR_MAC_RRC_CONFIG_RESET);
+  NR_MAC_RRC_CONFIG_RESET(msg).ue_id = rrc->ue_id;
+  NR_MAC_RRC_CONFIG_RESET(msg).cause = cause;
+  itti_send_msg_to_task(TASK_MAC_UE, GNB_MODULE_ID_TO_INSTANCE(0), msg);
   // TODO handle connEstFailureControl
   // TODO inform upper layers about the failure to establish the RRC connection
 }

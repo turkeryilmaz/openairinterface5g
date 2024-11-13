@@ -607,6 +607,14 @@ static int nr_ue_process_dci_ul_01(NR_UE_MAC_INST_t *mac,
   fapi_nr_ul_config_request_pdu_t *pdu = lockGet_ul_config(mac, frame_tx, slot_tx, FAPI_NR_UL_CONFIG_TYPE_PUSCH);
   if (!pdu)
     return -1;
+  LOG_D(NR_MAC_DCI,
+        "add ul dci harq %d for %d.%d %d.%d round %d\n",
+        pdu->pusch_config_pdu.pusch_data.harq_process_id,
+        frame,
+        slot,
+        frame_tx,
+        slot_tx,
+        0);
   int ret = nr_config_pusch_pdu(mac,
                                 &tda_info,
                                 &pdu->pusch_config_pdu,
