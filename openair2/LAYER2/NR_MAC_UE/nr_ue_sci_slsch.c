@@ -611,6 +611,7 @@ void extract_pscch_pdu(uint64_t *sci1_payload, int len,
 int nr_ue_process_sci1_indication_pdu(NR_UE_MAC_INST_t *mac,module_id_t mod_id,frame_t frame, int slot, sl_nr_sci_indication_pdu_t *sci,void *phy_data) {
 
   nr_sci_pdu_t *sci_pdu = &mac->sci_pdu_rx;  //&mac->def_sci_pdu[slot][sci->sci_format_type];
+  sl_nr_ue_mac_params_t *sl_mac = mac->SL_MAC_PARAMS;
   memset(sci_pdu,0,sizeof(*sci_pdu));
   const NR_SL_BWP_ConfigCommon_r16_t *sl_bwp = mac->sl_bwp;
   const NR_SL_ResourcePool_r16_t *sl_res_pool = mac->sl_rx_res_pool; 
@@ -619,6 +620,26 @@ int nr_ue_process_sci1_indication_pdu(NR_UE_MAC_INST_t *mac,module_id_t mod_id,f
         frame, slot, sci->sci_format_type,sci->Nid,sci->subch_index,sci->sci_payloadlen,*(unsigned long long*)sci->sci_payloadBits, sci->pscch_rsrp);
   AssertFatal(sci->sci_format_type == SL_SCI_FORMAT_1A_ON_PSCCH, "need to have format 1A here only\n");
   extract_pscch_pdu((uint64_t *)sci->sci_payloadBits, sci->sci_payloadlen,sl_bwp, sl_res_pool, sci_pdu);
+
+  uint16_t l_subch;
+  convNRFRIV(sci_pdu->frequency_resource_assignment.val,
+	          *sl_res_pool->sl_NumSubchannel_r16,
+	          *sl_res_pool->sl_UE_SelectedConfigRP_r16->sl_MaxNumPerReserve_r16,
+	          &l_subch,
+	          NULL,NULL);
+  sensing_data_t sensing_data;
+  sensing_data.frame_slot.frame = frame;
+  sensing_data.frame_slot.slot = slot;
+  sensing_data.sl_rsrp = sci->pscch_rsrp;
+  sensing_data.rsvp = sl_mac->mac_tx_params.rri;
+  sensing_data.subch_startre_tx1 = 0;
+  sensing_data.subch_startre_tx2 = 0;
+  sensing_data.subch_start = *mac->sl_tx_res_pool->sl_StartRB_Subchannel_r16;
+  sensing_data.subch_len = l_subch;
+  push_back(&mac->sl_sensing_data, &sensing_data);
+  if (mac->sl_sensing_data.size > 1)
+    remove_old_sensing_data(&sensing_data.frame_slot, sl_mac->sl_TxPool[0]->t0, &mac->sl_sensing_data, sl_mac);
+
   if (sci_pdu->reserved.val && !mac->is_synced) {
     mac->is_synced = true;
     LOG_D(NR_PHY, "Nearby UE is synced now!!!\n");

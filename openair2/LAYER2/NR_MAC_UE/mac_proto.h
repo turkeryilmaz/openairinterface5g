@@ -502,6 +502,8 @@ int get_csi_reporting_frame_slot(NR_UE_MAC_INST_t *mac,
                                  uint32_t *csi_report_frame,
                                  uint32_t *csi_report_slot);
 
+uint16_t sl_get_subchannel_size(NR_SL_ResourcePool_r16_t *rpool);
+
 /** \brief This function checks nr UE slot for Sidelink direction : Sidelink
  *  @param cfg      : Sidelink config request
  *  @param nr_frame : frame number
@@ -672,24 +674,117 @@ void init_list(List_t* list, size_t element_size, size_t initial_capacity);
 
 void push_back(List_t* list, void* element);
 
-void update_sensing_data(List_t* sensing_data, FrameSlot_t *frame_slot, sl_nr_ue_mac_params_t *sl_mac, uint16_t pool_id);
+void update_sensing_data(List_t* sensing_data, frameslot_t *frame_slot, sl_nr_ue_mac_params_t *sl_mac, uint16_t pool_id);
+
+void update_transmit_history(List_t* transmit_history, frameslot_t *frame_slot, sl_nr_ue_mac_params_t *sl_mac, uint16_t pool_id);
 
 void pop_back(List_t* sensing_data);
 
-void free_rsel_list(List_t* list);
+void free_list_mem(List_t* list);
 
-int64_t normalize(FrameSlot_t *frame_slot, sl_nr_ue_mac_params_t *sl_mac);
+int64_t normalize(frameslot_t *frame_slot, uint8_t mu);
+
+void de_normalize(int64_t abs_slot_idx, uint8_t mu, frameslot_t *frame_slot);
+
+frameslot_t add_to_sfn(frameslot_t* sfn, uint16_t slot_n, uint8_t mu);
 
 uint16_t get_T2_min(uint16_t pool_id, sl_nr_ue_mac_params_t *sl_mac, uint8_t mu);
 
-uint16_t get_t2(uint16_t pool_id, uint8_t mu, nr_sl_transmission_params_t* sl_tx_params, sl_nr_ue_mac_params_t *sl_mac);
+uint16_t get_t2(uint16_t pool_id,
+                uint8_t mu,
+                nr_sl_transmission_params_t* sl_tx_params,
+                sl_nr_ue_mac_params_t *sl_mac);
 
 uint16_t time_to_slots(uint8_t mu, uint16_t time);
 
 uint8_t get_tproc0(sl_nr_ue_mac_params_t *sl_mac, uint16_t pool_id);
 
-void remove_old_sensing_data(FrameSlot_t *frame_slot,
-                             uint16_t sensingWindow,
-                             List_t* sensing_data);
+void remove_old_sensing_data(frameslot_t *frame_slot,
+                             uint16_t sensing_window,
+                             List_t* sensing_data,
+                             sl_nr_ue_mac_params_t *sl_mac);
+
+void remove_old_transmit_history(frameslot_t *frame_slot,
+                                 uint16_t sensing_window,
+                                 List_t* transmit_history,
+                                 sl_nr_ue_mac_params_t *sl_mac);
+
+List_t* get_candidate_resources(frameslot_t *frame_slot,
+                                NR_UE_MAC_INST_t *mac,
+                                List_t *sensing_data,
+                                List_t *transmission_history);
+
+List_t get_nr_sl_comm_opportunities(NR_UE_MAC_INST_t *mac,
+                                    uint64_t abs_idx_cur_slot,
+                                    uint8_t bwp_id,
+                                    uint16_t mu,
+                                    uint16_t pool_id,
+                                    uint8_t t1,
+                                    uint16_t t2,
+                                    uint8_t psfch_period);
+
+bool check_t1_within_tproc1(uint8_t mu, uint16_t t1_slots);
+
+NR_SL_ResourcePool_r16_t* get_resource_pool(NR_UE_MAC_INST_t *mac, uint16_t pool_id);
+
+bool slot_has_psfch(NR_UE_MAC_INST_t *mac, uint64_t abs_index_cur_slot, uint8_t psfch_period, uint8_t phy_sl_map_size);
+
+void append_bit(uint8_t *buf, size_t bit_pos, int bit_value);
+
+int get_bit_from_map(const uint8_t *buf, size_t bit_pos);
+
+void init_vector(vec_of_list_t* vec, size_t initial_capacity);
+
+void add_list(vec_of_list_t* vec, size_t element_size, size_t initial_list_capacity);
+
+List_t* get_list(vec_of_list_t *vec, size_t index);
+
+void* get_front(const List_t* list);
+
+void* get_back(const List_t* list);
+
+void delete_at(List_t* list, size_t index);
+
+void free_vector(vec_of_list_t* vec);
+
+int get_physical_sl_pool(NR_UE_MAC_INST_t *mac);
+
+void push_back_list(vec_of_list_t* vec, List_t* new_list);
+
+List_t* get_candidate_resources_from_slots(frameslot_t *sfn,
+                                          uint8_t psfch_period,
+                                          uint8_t min_time_gap_psfch,
+                                          uint16_t l_subch,
+                                          uint16_t total_subch,
+                                          List_t* slot_info,
+                                          uint8_t mu);
+
+List_t exclude_reserved_resources(sensing_data_t *sensed_data,
+                                  float slot_period_ms,
+                                  uint16_t resv_period_slots,
+                                  uint16_t t1,
+                                  uint16_t t2,
+                                  uint8_t mu);
+
+void exclude_resources_based_on_history(frameslot_t frame_slot,
+                                        List_t* transmit_history,
+                                        List_t* candidate_resources,
+                                        List_t* sl_rsrc_rsrv_period_list,
+                                        uint8_t mu);
+
+bool overlapped_resource(uint8_t first_start,
+                         uint8_t first_length,
+                         uint8_t second_start,
+                         uint8_t second_length);
+
+uint8_t get_random_reselection_counter(uint16_t rri);
+
+uint32_t compute_TRIV(uint8_t N, uint8_t t1, uint8_t t2);
+
+uint32_t compute_FRIV(uint8_t sl_max_num_per_reserve,
+                      uint8_t L_sub_chan,
+                      uint8_t n_start_subch1,
+                      uint8_t n_start_subch2,
+                      uint8_t N_sl_subch);
 #endif
 /** @}*/

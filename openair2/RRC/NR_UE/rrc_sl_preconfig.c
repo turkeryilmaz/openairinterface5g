@@ -197,17 +197,6 @@ static void prepare_NR_SL_ResourcePool(NR_SL_ResourcePool_r16_t *sl_res_pool,
   sl_res_pool->sl_PTRS_Config_r16 = NULL;
   sl_res_pool->sl_UE_SelectedConfigRP_r16 = calloc(1,sizeof(*sl_res_pool->sl_UE_SelectedConfigRP_r16));
   sl_res_pool->sl_UE_SelectedConfigRP_r16->sl_MaxNumPerReserve_r16 = calloc(1,sizeof(*sl_res_pool->sl_UE_SelectedConfigRP_r16->sl_MaxNumPerReserve_r16));
-  *sl_res_pool->sl_UE_SelectedConfigRP_r16->sl_MaxNumPerReserve_r16 = NR_SL_UE_SelectedConfigRP_r16__sl_MaxNumPerReserve_r16_n2;
-  sl_res_pool->sl_UE_SelectedConfigRP_r16->sl_SensingWindow_r16 = calloc(1, sizeof(*sl_res_pool->sl_UE_SelectedConfigRP_r16->sl_SensingWindow_r16));
-
-  sl_res_pool->sl_UE_SelectedConfigRP_r16->sl_SelectionWindowList_r16 = calloc(1, sizeof(*sl_res_pool->sl_UE_SelectedConfigRP_r16->sl_SelectionWindowList_r16));
-  NR_SL_SelectionWindowConfig_r16_t p;
-  ASN_SEQUENCE_ADD(&sl_res_pool->sl_UE_SelectedConfigRP_r16->sl_SelectionWindowList_r16->list, &p);
-
-  sl_res_pool->sl_UE_SelectedConfigRP_r16->sl_ResourceReservePeriodList_r16 = calloc(1, sizeof(*sl_res_pool->sl_UE_SelectedConfigRP_r16->sl_ResourceReservePeriodList_r16));
-  NR_SL_ResourceReservePeriod_r16_t rp;
-  rp.choice.sl_ResourceReservePeriod1_r16 = 100;
-  ASN_SEQUENCE_ADD(&sl_res_pool->sl_UE_SelectedConfigRP_r16->sl_ResourceReservePeriodList_r16->list, &rp);
 
   sl_res_pool->sl_RxParametersNcell_r16 = NULL;
   sl_res_pool->sl_ZoneConfigMCR_List_r16 = NULL;
@@ -255,13 +244,34 @@ static void prepare_NR_SL_ResourcePool(NR_SL_ResourcePool_r16_t *sl_res_pool,
 
   config_get(SL_POOLPARAMS,sizeof(SL_POOLPARAMS)/sizeof(paramdef_t),aprefix);
 
-  LOG_D(RRC, "sl_MaxNumPerReserve %ld, sl_SensingWindow %ld, sl_Priority %ld, sl_SelectionWindow %ld, sl_ResourceReservePeriod1 %ld\n",
+
+  sl_res_pool->sl_UE_SelectedConfigRP_r16->sl_SelectionWindowList_r16 = calloc(1, sizeof(*sl_res_pool->sl_UE_SelectedConfigRP_r16->sl_SelectionWindowList_r16));
+  struct NR_SL_UE_SelectedConfigRP_r16 *nr_sl_ue_Selected_config = sl_res_pool->sl_UE_SelectedConfigRP_r16;
+  nr_sl_ue_Selected_config->sl_SelectionWindowList_r16->list.array = (NR_SL_SelectionWindowConfig_r16_t**)malloc16_clear(sizeof(NR_SL_SelectionWindowConfig_r16_t*));
+  nr_sl_ue_Selected_config->sl_SelectionWindowList_r16->list.array[0] = (NR_SL_SelectionWindowConfig_r16_t*)malloc16_clear(sizeof(NR_SL_SelectionWindowConfig_r16_t));
+
+  nr_sl_ue_Selected_config->sl_SensingWindow_r16 = calloc(1, sizeof(*nr_sl_ue_Selected_config->sl_SensingWindow_r16));
+
+  nr_sl_ue_Selected_config->sl_Thres_RSRP_List_r16 = calloc(1, sizeof(*nr_sl_ue_Selected_config->sl_Thres_RSRP_List_r16));
+  nr_sl_ue_Selected_config->sl_Thres_RSRP_List_r16->list.array = (NR_SL_Thres_RSRP_r16_t**)malloc16_clear(sizeof(NR_SL_Thres_RSRP_r16_t*));
+  nr_sl_ue_Selected_config->sl_Thres_RSRP_List_r16->list.array[0] = (NR_SL_Thres_RSRP_r16_t*)malloc16_clear(sizeof(NR_SL_Thres_RSRP_r16_t));
+
+  nr_sl_ue_Selected_config->sl_MaxNumPerReserve_r16 = calloc(1, sizeof(*nr_sl_ue_Selected_config->sl_MaxNumPerReserve_r16));
+
+  nr_sl_ue_Selected_config->sl_ResourceReservePeriodList_r16 = calloc(1, sizeof(*nr_sl_ue_Selected_config->sl_ResourceReservePeriodList_r16));
+  nr_sl_ue_Selected_config->sl_ResourceReservePeriodList_r16->list.array = (NR_SL_ResourceReservePeriod_r16_t**)malloc16_clear(sizeof(NR_SL_ResourceReservePeriod_r16_t*));
+  nr_sl_ue_Selected_config->sl_ResourceReservePeriodList_r16->list.array[0] = (NR_SL_ResourceReservePeriod_r16_t*)malloc16_clear(sizeof(NR_SL_ResourceReservePeriod_r16_t));
+
+  char aprefix_rsc_sel[MAX_OPTNAME_SIZE*2 + 8];
+  paramdef_t SL_RSCSELECTIONPARAMS[] = SL_RSRCSELPARAMS_DESC(sl_res_pool);
+  sprintf(aprefix_rsc_sel, "%s.[%i].%s.[%i]", SL_CONFIG_STRING_SL_PRECONFIGURATION, 0,SL_CONFIG_STRING_RSRC_SEL_PARAMS_LIST, 0);
+  config_get(SL_RSCSELECTIONPARAMS,sizeof(SL_RSCSELECTIONPARAMS)/sizeof(paramdef_t),aprefix_rsc_sel);
+  LOG_D(NR_RRC, "sl_MaxNumPerReserve %ld, sl_SensingWindow %ld, sl_Priority %ld, sl_SelectionWindow %ld, sl_ResourceReservePeriod1 %ld\n",
         *sl_res_pool->sl_UE_SelectedConfigRP_r16->sl_MaxNumPerReserve_r16,
         *sl_res_pool->sl_UE_SelectedConfigRP_r16->sl_SensingWindow_r16,
         sl_res_pool->sl_UE_SelectedConfigRP_r16->sl_SelectionWindowList_r16->list.array[0]->sl_Priority_r16,
         sl_res_pool->sl_UE_SelectedConfigRP_r16->sl_SelectionWindowList_r16->list.array[0]->sl_SelectionWindow_r16,
         sl_res_pool->sl_UE_SelectedConfigRP_r16->sl_ResourceReservePeriodList_r16->list.array[0]->choice.sl_ResourceReservePeriod1_r16);
-
   struct NR_SL_PSFCH_Config_r16 *nr_sl_psfch_config = sl_res_pool->sl_PSFCH_Config_r16->choice.setup;
   if (*nr_sl_psfch_config->sl_PSFCH_Period_r16 > 0) {
     const uint8_t psfch_periods[] = {0,1,2,4};
