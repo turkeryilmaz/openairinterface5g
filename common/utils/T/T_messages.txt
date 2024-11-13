@@ -328,6 +328,24 @@ ID = ENB_RRC_UNKNOW_MESSAGE
     GROUP = ALL:RRC:ENB
     FORMAT = int,eNB_ID : int,frame : int,subframe : int,rnti
 
+#jitter measurement
+ID = JITTER_GTP_IN
+    DESC = log when a GTP packet comes in
+    GROUP = ALL:JITTER
+    FORMAT = int,socket : buffer,data : int,data_len
+ID = JITTER_PDCP_IN
+    DESC = log when a PDCP packet comes in
+    GROUP = ALL:JITTER
+    #type: 0: DRB AM, 1: DRB UM, 2: SRB
+    #entity_id is actually lower 4 bytes of the rlc entity address in memory
+    FORMAT = int,entity_id : int,type : int,rb_id : int,pdu_session_id : buffer,data : int,data_len
+ID = JITTER_RLC_IN
+    DESC = log when a RLC packet comes in
+    GROUP = ALL:JITTER
+    #entity_id is actually lower 4 bytes of the rlc entity address in memory
+    #mode: 0: AM, 1: UM, 2:TM
+    FORMAT = int,entity_id : int,mode : int,sdu_id : buffer,data : int,data_len
+
 #legacy logs
 ID = LEGACY_MAC_INFO
     DESC = MAC legacy logs - info level

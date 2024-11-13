@@ -230,6 +230,8 @@ static int nr_pdcp_entity_process_sdu(nr_pdcp_entity_t *entity,
   DevAssert(nr_max_pdcp_pdu_size(size) <= pdu_max_size);
   int      dc_bit;
 
+  T(T_JITTER_PDCP_IN, T_INT((int)(intptr_t)entity), T_INT(entity->type), T_INT(entity->rb_id), T_INT(entity->pdusession_id), T_BUFFER(buffer, size > 128 ? 128 : size), T_INT(size));
+
   if (entity->entity_suspended) {
     LOG_W(PDCP,
           "PDCP entity (%s) %d is suspended. Quit SDU processing.\n",

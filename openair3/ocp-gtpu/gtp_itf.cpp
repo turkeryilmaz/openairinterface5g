@@ -1237,6 +1237,7 @@ void gtpv1uReceiver(int h) {
       return;
     }
     LOG_D(GTPU, "[%d] Received GTP data, msg type: %x\n", h, msg->msgType);
+    T(T_JITTER_GTP_IN, T_INT(h), T_BUFFER(udpData, udpDataLen > 128 ? 128 : udpDataLen), T_INT(udpDataLen));
     switch(msg->msgType) {
       case GTP_ECHO_RSP:
         break;

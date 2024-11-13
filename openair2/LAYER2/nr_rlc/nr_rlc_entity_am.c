@@ -1814,6 +1814,8 @@ void nr_rlc_entity_am_recv_sdu(nr_rlc_entity_t *_entity,
     return;
   }
 
+  T(T_JITTER_RLC_IN, T_INT((int)(intptr_t)entity), T_INT(NR_RLC_AM), T_INT(sdu_id), T_BUFFER(buffer, size > 128 ? 128 : size), T_INT(size));
+
   entity->tx_size += size;
   // SDU received: Count as arrival bytes
   entity->common.stats.rxsdu_bytes += size;
