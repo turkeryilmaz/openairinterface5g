@@ -562,7 +562,7 @@ int main(int argc, char *argv[])
   gNB->RU_list[0] = calloc(1, sizeof(**gNB->RU_list));
   gNB->RU_list[0]->rfdevice.openair0_cfg = openair0_cfg;
 
-  initFloatingCoresTpool(threadCnt, &gNB->threadPool, false, "gNB-tpool");
+  initFloatingCoresTpool(threadCnt, &gNB->threadPool, true, "gNB-tpool");
   initNotifiedFIFO(&gNB->respDecode);
 
   initNotifiedFIFO(&gNB->respPuschSymb);
