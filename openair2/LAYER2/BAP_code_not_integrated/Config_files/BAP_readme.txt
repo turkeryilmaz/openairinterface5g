@@ -101,7 +101,9 @@ Example configuration files for CU, DU and UE can be found in Config-files direc
 Use ping or iperf in UE and rfsim5g-oai-ext-dn for end to end data test.
 Monitor traffic with wireshark on rfsim5g-public interface with filters set to "udp or sctp".
 
-Pcap files from lab test are available in this website (TBD). A png file shows how BAP header (3 bytes with known pattern 0x8eafcd) are added in the uplink direction.
+Pcap files from lab test are available in this website.
+https://dnsouli.wixsite.com/mitre-oai-docs/file-share/9cbba17c-8b7f-46d2-9dbc-3a06e2b3ab8d
+A png file is also available at the same site which shows how BAP header (3 bytes with known pattern 0x8eafcd) are added in the uplink direction.
 
 Note 1: MITRE did end to end test with moderate amount of traffic. Stress test or performance test was not done under full bandwidth scenarios.
 
