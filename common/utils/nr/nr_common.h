@@ -175,6 +175,23 @@ typedef struct {
   uint32_t step;
 } NR_timer_t;
 
+typedef struct meas_s {
+  uint16_t Nid_cell;
+  int ss_rsrp_dBm;
+  bool ss_rsrp_dBm_initialized;
+  int csi_rsrp_dBm;
+  bool csi_rsrp_dBm_initialized;
+} meas_t;
+
+typedef struct l3_measurements_s {
+  double ssb_filter_coeff_rsrp;
+  double csi_RS_filter_coeff_rsrp;
+  meas_t active_cell;
+  long trigger_to_measid;
+  long trigger_quantity;
+  long rs_type;
+} l3_measurements_t;
+
 /**
  * @brief To start a timer
  * @param timer Timer to be started
