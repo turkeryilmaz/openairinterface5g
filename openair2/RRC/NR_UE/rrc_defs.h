@@ -201,6 +201,7 @@ typedef struct rrcPerNB {
   NR_MeasGapConfig_t *measGapConfig;
   NR_UE_RRC_SI_INFO SInfo;
   NR_RSRP_Range_t s_measure;
+  l3_measurements_t l3_measurements;
 } rrcPerNB_t;
 
 typedef struct NR_UE_RRC_INST_s {
