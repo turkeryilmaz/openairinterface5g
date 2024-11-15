@@ -349,6 +349,8 @@ static void nr_store_dlsch_buffer(module_id_t module_id, frame_t frame, sub_fram
                                                         0);
       stop_meas(&RC.nrmac[module_id]->rlc_status_ind);
 
+      T(T_GNB_MAC_SCHED_RLC_BUFFER_SIZE, T_INT(rnti), T_INT(frame), T_INT(slot), T_INT(lcid), T_INT(sched_ctrl->rlc_status[lcid].pdus_in_buffer), T_INT(sched_ctrl->rlc_status[lcid].bytes_in_buffer));
+
       if (sched_ctrl->rlc_status[lcid].bytes_in_buffer == 0)
         continue;
 
@@ -646,6 +648,8 @@ static void pf_dl(module_id_t module_id,
       /* Allocate retransmission */
       bool r = allocate_dl_retransmission(module_id, frame, slot, &n_rb_sched, UE, sched_pdsch->dl_harq_pid);
 
+      T(T_GNB_MAC_SCHED_PF_DL_RETRANSMIT, T_INT(UE->rnti), T_INT(frame), T_INT(slot), T_INT(sched_pdsch->dl_harq_pid), T_INT(b));
+
       if (!r) {
         LOG_D(NR_MAC, "[UE %04x][%4d.%2d] DL retransmission could not be allocated\n",
               UE->rnti,
@@ -660,6 +664,7 @@ static void pf_dl(module_id_t module_id,
       /* skip this UE if there are no free HARQ processes. This can happen e.g.
        * if the UE disconnected in L2sim, in which case the gNB is not notified
        * (this can be considered a design flaw) */
+      T(T_GNB_MAC_SCHED_PF_DL_HAS_FREE_HARQ, T_INT(UE->rnti), T_INT(frame), T_INT(slot), T_INT(sched_ctrl->available_dl_harq.head), T_INT(sched_ctrl->available_dl_harq.head >= 0));
       if (sched_ctrl->available_dl_harq.head < 0) {
         LOG_D(NR_MAC, "[UE %04x][%4d.%2d] UE has no free DL HARQ process, skipping\n",
               UE->rnti,
@@ -669,6 +674,7 @@ static void pf_dl(module_id_t module_id,
       }
 
       /* Check DL buffer and skip this UE if no bytes and no TA necessary */
+      T(T_GNB_MAC_SCHED_PF_DL_SKIP_UE, T_INT(UE->rnti), T_INT(frame), T_INT(slot), T_INT(sched_ctrl->num_total_bytes), T_INT(sched_ctrl->num_total_bytes == 0 && frame != (sched_ctrl->ta_frame + 100) % 1024));
       if (sched_ctrl->num_total_bytes == 0 && frame != (sched_ctrl->ta_frame + 100) % 1024)
         continue;
 
@@ -706,6 +712,7 @@ static void pf_dl(module_id_t module_id,
       /* Create UE_sched list for UEs eligible for new transmission*/
       UE_sched[curUE].coef=coeff_ue;
       UE_sched[curUE].UE=UE;
+      T(T_GNB_MAC_SCHED_PF_DL_COEFF, T_INT(UE->rnti), T_INT(frame), T_INT(slot), T_INT(sched_pdsch->mcs), T_INT(sched_pdsch->nrOfLayers), T_INT(sched_pdsch->pm_index), T_INT(Qm), T_INT(R), T_INT(tbs), T_FLOAT(UE->dl_thr_ue), T_FLOAT(coeff_ue));
       curUE++;
     }
   }
@@ -724,6 +731,7 @@ static void pf_dl(module_id_t module_id,
     NR_UE_DL_BWP_t *dl_bwp = &iterator->UE->current_DL_BWP;
     NR_UE_UL_BWP_t *ul_bwp = &iterator->UE->current_UL_BWP;
 
+    T(T_GNB_MAC_SCHED_PF_DL_SKIP_UE_NO_HARQ, T_INT(rnti), T_INT(frame), T_INT(slot), T_INT(sched_ctrl->available_dl_harq.head), T_INT(sched_ctrl->available_dl_harq.head < 0));
     if (sched_ctrl->available_dl_harq.head < 0) {
       LOG_D(NR_MAC, "[UE %04x][%4d.%2d] UE has no free DL HARQ process, skipping\n",
             iterator->UE->rnti,
@@ -753,6 +761,7 @@ static void pf_dl(module_id_t module_id,
     NR_tda_info_t *tda_info = &sched_pdsch->tda_info;
 
     const uint16_t slbitmap = SL_to_bitmap(tda_info->startSymbolIndex, tda_info->nrOfSymbols);
+    T(T_GNB_MAC_SCHED_PF_DL_SLBITMAP, T_INT(rnti), T_INT(frame), T_INT(slot), T_INT(slbitmap));
 
     // TODO assuming beam 0 for now
     uint16_t *rballoc_mask = mac->common_channels[CC_id].vrb_map[0];
@@ -769,6 +778,7 @@ static void pf_dl(module_id_t module_id,
     while (rbStart + max_rbSize <= rbStop && !(rballoc_mask[rbStart + max_rbSize + bwp_start] & slbitmap))
       max_rbSize++;
 
+    T(T_GNB_MAC_SCHED_PF_DL_SKIP_RBSIZE, T_INT(rnti), T_INT(frame), T_INT(slot), T_INT(rbStart), T_INT(min_rbSize), T_INT(max_rbSize), T_INT(max_rbSize < min_rbSize));
     if (max_rbSize < min_rbSize) {
       LOG_D(NR_MAC,
             "(%d.%d) Cannot schedule RNTI %04x, rbStart %d, rbSize %d, rbStop %d\n",
@@ -795,6 +805,7 @@ static void pf_dl(module_id_t module_id,
                                  sched_ctrl->coreset,
                                  &sched_ctrl->sched_pdcch,
                                  false);
+    T(T_GNB_MAC_SCHED_PF_DL_SKIP_CCEINDEX, T_INT(rnti), T_INT(frame), T_INT(slot), T_INT(CCEIndex), T_INT(CCEIndex < 0));
     if (CCEIndex<0) {
       LOG_D(NR_MAC, "[UE %04x][%4d.%2d] could not find free CCE for DL DCI\n",
             rnti,
@@ -811,6 +822,7 @@ static void pf_dl(module_id_t module_id,
     if (!get_FeedbackDisabled(iterator->UE->sc_info.downlinkHARQ_FeedbackDisabled_r17, sched_pdsch->dl_harq_pid)) {
       int r_pucch = nr_get_pucch_resource(sched_ctrl->coreset, ul_bwp->pucch_Config, CCEIndex);
       alloc = nr_acknack_scheduling(mac, iterator->UE, frame, slot, beam, r_pucch, 0);
+      T(T_GNB_MAC_SCHED_PF_DL_SKIP_PUCCH_ALLOC, T_INT(rnti), T_INT(frame), T_INT(slot), T_INT(r_pucch), T_INT(alloc), T_INT(alloc < 0));
       if (alloc < 0) {
         LOG_D(NR_MAC, "[UE %04x][%4d.%2d] could not find PUCCH for DL DCI\n",
               rnti,
@@ -852,6 +864,7 @@ static void pf_dl(module_id_t module_id,
     sched_pdsch->tb_size = TBS;
     /* transmissions: directly allocate */
     n_rb_sched -= sched_pdsch->rbSize;
+    T(T_GNB_MAC_SCHED_PF_DL_SCHEDULE, T_INT(rnti), T_INT(frame), T_INT(slot), T_INT(sched_pdsch->mcs), T_INT(sched_pdsch->Qm), T_INT(sched_pdsch->R), T_INT(sched_pdsch->nrOfLayers), T_INT(tda_info->nrOfSymbols), T_INT(sched_ctrl->num_total_bytes), T_INT(oh), T_INT(rbStart), T_INT(rbSize), T_INT(TBS));
 
     for (int rb = bwp_start; rb < sched_pdsch->rbSize; rb++)
       rballoc_mask[rb + sched_pdsch->rbStart] |= slbitmap;
@@ -1251,6 +1264,7 @@ void nr_schedule_ue_spec(module_id_t module_id,
                   current_harq_pid);
       T(T_GNB_MAC_RETRANSMISSION_DL_PDU_WITH_DATA, T_INT(module_id), T_INT(CC_id), T_INT(rnti),
         T_INT(frame), T_INT(slot), T_INT(current_harq_pid), T_INT(harq->round), T_BUFFER(harq->transportBlock, TBS));
+      T(T_GNB_MAC_SCHED_RETRANSMIT, T_INT(rnti), T_INT(frame), T_INT(slot), T_INT(current_harq_pid), T_INT(harq->round), T_INT(TBS));
       UE->mac_stats.dl.total_rbs_retx += sched_pdsch->rbSize;
     } else { /* initial transmission */
       LOG_D(NR_MAC, "Initial HARQ transmission in %d.%d\n", frame, slot);
@@ -1268,6 +1282,8 @@ void nr_schedule_ue_spec(module_id_t module_id,
       /* next, get RLC data */
       start_meas(&gNB_mac->rlc_data_req);
       int sdus = 0;
+
+      T(T_GNB_MAC_SCHED_NUM_TOTAL_BYTES, T_INT(rnti), T_INT(frame), T_INT(slot), T_INT(current_harq_pid), T_INT(sched_ctrl->num_total_bytes));
 
       if (sched_ctrl->num_total_bytes > 0) {
         /* loop over all activated logical channels */
@@ -1309,6 +1325,8 @@ void nr_schedule_ue_spec(module_id_t module_id,
                   lcid,
                   ndata,
                   bufEnd-buf-sizeof(NR_MAC_SUBHEADER_LONG));
+
+            T(T_GNB_MAC_SCHED_RLC_FILL_BUFFER, T_INT(rnti), T_INT(frame), T_INT(slot), T_INT(lcid), T_INT(ndata), T_INT(len));
 
             if (len == 0)
               break;

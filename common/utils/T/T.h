@@ -1,6 +1,8 @@
 #ifndef _T_T_T_
 #define _T_T_T_
 
+#define CHECK_T_TYPE
+
 #if T_TRACER
 
 #include <stdint.h>

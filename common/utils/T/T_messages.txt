@@ -346,6 +346,78 @@ ID = JITTER_RLC_IN
     #mode: 0: AM, 1: UM, 2:TM
     FORMAT = int,entity_id : int,mode : int,sdu_id : buffer,data : int,data_len
 
+#gNB mac scheduler decision making
+
+ID = GNB_MAC_SCHED_RETRANSMIT
+    DESC = retransmission of a transport block
+    GROUP = ALL:MAC_SCHED
+    FORMAT = int,rnti : int,frame : int,slot : int,harq_pid : int,harq_round : int,tbs
+
+ID = GNB_MAC_SCHED_NUM_TOTAL_BYTES
+    DESC = value of sched_ctrl->num_total_bytes
+    GROUP = ALL:MAC_SCHED
+    FORMAT = int,rnti : int,frame : int,slot : int,harq_pid : int,num_total_bytes
+
+ID = GNB_MAC_SCHED_RLC_BUFFER_SIZE
+    DESC = available data from an RLC entity
+    GROUP = ALL:MAC_SCHED
+    FORMAT = int,rnti : int,frame : int,slot : int,lcid : int,pdus_in_buffer : int,bytes_in_buffer
+
+ID = GNB_MAC_SCHED_RLC_FILL_BUFFER
+    DESC = fill RLC buffer by RLC module (limited to 'max_size_requested')
+    GROUP = ALL:MAC_SCHED
+    FORMAT = int,rnti : int,frame : int,slot : int,lcid : int,max_size_allowed : int,size_filled
+
+ID = GNB_MAC_SCHED_PF_DL_RETRANSMIT
+    DESC = pf dl algo decision to schedule a retransmission
+    GROUP = ALL:MAC_SCHED
+    FORMAT = int,rnti : int,frame : int,slot : int,harq_pid : int,do_retransmit
+
+ID = GNB_MAC_SCHED_PF_DL_HAS_FREE_HARQ
+    DESC = pf dl algo check on free harq available for initial transmission
+    GROUP = ALL:MAC_SCHED
+    FORMAT = int,rnti : int,frame : int,slot : int,harq_pid : int,has_free_harq
+
+ID = GNB_MAC_SCHED_PF_DL_SKIP_UE
+    DESC = pf dl algo decision to skip the UE for initial transmission
+    GROUP = ALL:MAC_SCHED
+    FORMAT = int,rnti : int,frame : int,slot : int,num_total_bytes : int,do_skip
+
+ID = GNB_MAC_SCHED_PF_DL_COEFF
+    DESC = pf dl algo coeff computation
+    GROUP = ALL:MAC_SCHED
+    FORMAT = int,rnti : int,frame : int,slot : int,mcs : int,number_of_layers : int,pm_index : int,Qm : int,code_rate : int,tbs : float,dl_thr_ue : float,coeff_ue
+
+ID = GNB_MAC_SCHED_PF_DL_SKIP_UE_NO_HARQ
+    DESC = pf dl algo decision to skip the UE for initial transmission if no available harq
+    GROUP = ALL:MAC_SCHED
+    FORMAT = int,rnti : int,frame : int,slot : int,harq_pid : int,do_skip
+
+ID = GNB_MAC_SCHED_PF_DL_SLBITMAP
+    DESC = pf dl algo slbitmap
+    GROUP = ALL:MAC_SCHED
+    FORMAT = int,rnti : int,frame : int,slot : int,slbitmap
+
+ID = GNB_MAC_SCHED_PF_DL_SKIP_RBSIZE
+    DESC = pf dl algo rbsize (and do we skip if not enough rb)
+    GROUP = ALL:MAC_SCHED
+    FORMAT = int,rnti : int,frame : int,slot : int,rbStart : int,min_rbSize : int,max_rbSize : int,do_skip
+
+ID = GNB_MAC_SCHED_PF_DL_SKIP_CCEINDEX
+    DESC = pf dl algo cce index (and do we skip if no free cce index)
+    GROUP = ALL:MAC_SCHED
+    FORMAT = int,rnti : int,frame : int,slot : int,cce_index : int,do_skip
+
+ID = GNB_MAC_SCHED_PF_DL_SKIP_PUCCH_ALLOC
+    DESC = pf dl algo pucch allocation (and do we skip if no pucch allocation)
+    GROUP = ALL:MAC_SCHED
+    FORMAT = int,rnti : int,frame : int,slot : int,r_pucch : int,alloc : int,do_skip
+
+ID = GNB_MAC_SCHED_PF_DL_SCHEDULE
+    DESC = pf dl algo schedule decision
+    GROUP = ALL:MAC_SCHED
+    FORMAT = int,rnti : int,frame : int,slot : int,mcs : int,Qm : int,R : int,nrOfLayers : int,nrOfSymbols : int,num_total_bytes : int,header_bytes : int,rb_start : int,rb_size : int,tbs
+
 #legacy logs
 ID = LEGACY_MAC_INFO
     DESC = MAC legacy logs - info level
