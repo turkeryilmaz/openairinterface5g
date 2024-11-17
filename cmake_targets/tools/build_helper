@@ -107,6 +107,7 @@ check_supported_distribution() {
         "ubuntu22.04") return 0 ;;
         "ubuntu20.04") return 0 ;;
         "debian11")    return 0 ;;
+        "fedora41")    return 0 ;;
         "fedora40")    return 0 ;;
         "rhel8.2")     return 0 ;;
         "rhel8.3")     return 0 ;;
@@ -121,6 +122,7 @@ check_supported_distribution() {
         "rhel9.2")     return 0 ;;
         "rhel9.3")     return 0 ;;
         "rhel9.4")     return 0 ;;
+        "rhel9.5")     return 0 ;;
         "centos9")     return 0 ;; # CentOS stream
         "rocky8.7")    return 0 ;;
         "rocky8.8")    return 0 ;;
@@ -612,13 +614,11 @@ check_install_oai_software() {
       git \
       pkgconfig \
       libconfig-devel \
-      libffi-devel \
       lksctp-tools \
       lksctp-tools-devel \
       libtool \
       ninja-build \
       make \
-      openssl \
       openssl-devel \
       patch \
       readline-devel \

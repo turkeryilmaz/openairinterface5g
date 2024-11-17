@@ -728,7 +728,7 @@ void nr_initiate_ra_proc(module_id_t module_idP,
   }
 
   int index = ra - cc->ra;
-  LOG_I(NR_MAC, "%d.%d UE RA-RNTI %04x TC-RNTI %04x: Activating RA process index %d\n", frameP, slotP, ra->RA_rnti, ra->rnti, index);
+  LOG_A(NR_MAC, "%d.%d UE RA-RNTI %04x TC-RNTI %04x: Activating RA process index %d\n", frameP, slotP, ra->RA_rnti, ra->rnti, index);
 
   // Configure RA BWP
   configure_UE_BWP(nr_mac, scc, NULL, ra, NULL, -1, -1);
@@ -1692,6 +1692,8 @@ static void nr_generate_Msg2(module_id_t module_idP,
         ra->Msg3_frame,
         ra->Msg3_slot);
 
+  LOG_A(NR_MAC, "%d.%d Send RAR to RA-RNTI %04x\n", frameP, slotP, ra->RA_rnti);
+
   T(T_GNB_MAC_DL_RAR_PDU_WITH_DATA,
     T_INT(module_idP),
     T_INT(CC_id),
@@ -2289,7 +2291,7 @@ void nr_clear_ra_proc(NR_RA_t *ra)
   NR_SCHED_ENSURE_LOCKED(&RC.nrmac[0]->sched_lock);
   memset(ra, 0, sizeof(*ra));
   ra->ra_state = nrRA_gNB_IDLE;
-  if (get_softmodem_params()->sa) { // in SA, prefill with allowed preambles
+  if (IS_SA_MODE(get_softmodem_params())) { // in SA, prefill with allowed preambles
     ra->preambles.num_preambles = MAX_NUM_NR_PRACH_PREAMBLES;
     for (int i = 0; i < MAX_NUM_NR_PRACH_PREAMBLES; i++)
       ra->preambles.preamble_list[i] = i;

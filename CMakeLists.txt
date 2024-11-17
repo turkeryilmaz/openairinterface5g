@@ -175,9 +175,9 @@ if(CMAKE_C_COMPILER_ID STREQUAL "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang
 endif()
 
 set(CMAKE_C_FLAGS
-  "${CMAKE_C_FLAGS} ${C_FLAGS_PROCESSOR} ${commonOpts} -std=gnu11 -funroll-loops")
+  "${C_FLAGS_PROCESSOR} ${commonOpts} -std=gnu11 -funroll-loops ${CMAKE_C_FLAGS}")
 set(CMAKE_CXX_FLAGS
-  "${CMAKE_CXX_FLAGS} ${C_FLAGS_PROCESSOR}  ${commonOpts} -std=c++11")
+  "${C_FLAGS_PROCESSOR}  ${commonOpts} -std=c++11 ${CMAKE_CXX_FLAGS}")
 
 
 add_boolean_option(SANITIZE_ADDRESS False "enable the address sanitizer (ASan)" ON)
@@ -772,7 +772,7 @@ set(PHY_TURBOSRC
   ${OPENAIR1_DIR}/PHY/CODING/3gpplte_turbo_decoder.c
 )
 set(PHY_POLARSRC
-  ${OPENAIR1_DIR}/PHY/CODING/nr_polar_init.c
+  ${OPENAIR1_DIR}/PHY/CODING/nrPolar_tools/nr_polar_init.c
   ${OPENAIR1_DIR}/PHY/CODING/nrPolar_tools/nr_bitwise_operations.c
   ${OPENAIR1_DIR}/PHY/CODING/nrPolar_tools/nr_crc_byte.c
   ${OPENAIR1_DIR}/PHY/CODING/nrPolar_tools/nr_polar_decoder.c

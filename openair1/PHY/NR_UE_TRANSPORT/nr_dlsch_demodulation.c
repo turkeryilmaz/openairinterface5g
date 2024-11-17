@@ -1405,7 +1405,7 @@ static void nr_determin(int size,
                   nb_rb,
                   ((rtx & 1) == 1 ? -1 : 1) * ((ctx & 1) == 1 ? -1 : 1) * sign,
                   shift0);
-      mult_complex_vectors(a44[ctx][rtx], outtemp, rtx == 0 ? ad_bc : outtemp1, nb_rb, shift0);
+      mult_complex_vectors(a44[ctx][rtx], outtemp, rtx == 0 ? ad_bc : outtemp1, sizeofArray(outtemp1), shift0);
 
       if (rtx != 0)
         nr_a_sum_b(ad_bc, outtemp1, nb_rb);
@@ -1719,7 +1719,7 @@ static void nr_dlsch_mmse(uint32_t rx_size_symbol,
       mult_complex_vectors(inv_H_h_H[ctx][rtx],
                            (c16_t *)(rxdataF_comp[ctx][0] + symbol * rx_size_symbol),
                            outtemp,
-                           nb_rb_0,
+                           sizeofArray(outtemp),
                            shift - (fp_flag == 1 ? 2 : 0));
       nr_a_sum_b(rxdataF_zforcing[rtx], outtemp, nb_rb_0); // a = a + b
     }
