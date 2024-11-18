@@ -188,15 +188,6 @@ typedef struct meas_s {
   val_init_t csi_rsrp_dBm;
 } meas_t;
 
-typedef struct l3_measurements_s {
-  float ssb_filter_coeff_rsrp;
-  float csi_RS_filter_coeff_rsrp;
-  meas_t serving_cell;
-  long trigger_to_measid;
-  long trigger_quantity;
-  long rs_type;
-} l3_measurements_t;
-
 /**
  * @brief To start a timer
  * @param timer Timer to be started
