@@ -564,21 +564,11 @@ bool set_fh_init(struct xran_fh_init *fh_init)
 {
   memset(fh_init, 0, sizeof(*fh_init));
 
-  // verify oran section is present: we don't have a list but the below returns
-  // numelt > 0 if the block is there
-  paramlist_def_t pl = {0};
-  strncpy(pl.listname, CONFIG_STRING_ORAN, sizeof(pl.listname) - 1);
-  config_getlist(config_get_if(), &pl, NULL, 0, /* prefix */ NULL);
-  if (pl.numelt == 0) {
-    printf("Configuration section \"%s\" not present: cannot initialize fhi_lib!\n", CONFIG_STRING_ORAN);
-    return false;
-  }
-
   paramdef_t fhip[] = ORAN_GLOBALPARAMS_DESC;
   int nump = sizeofArray(fhip);
   int ret = config_get(config_get_if(), fhip, nump, CONFIG_STRING_ORAN);
-  if (ret <= 0) {
-    printf("problem reading section \"%s\"\n", CONFIG_STRING_ORAN);
+  if (ret < 0) {
+    printf("Problem reading section \"%s\", cannot initialize fhi_lib!\n", CONFIG_STRING_ORAN);
     return false;
   }
 
