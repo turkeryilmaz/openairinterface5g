@@ -183,6 +183,7 @@ typedef struct NR_UE_Timers_Constants_s {
   uint32_t N310_k;
   uint32_t N311_k;
   NR_UE_TimersAndConstants_t *sib1_TimersAndConstants;
+  NR_timer_t TA2;
 } NR_UE_Timers_Constants_t;
 
 typedef enum {
@@ -191,6 +192,15 @@ typedef enum {
 } nr_sync_msg_t;
 
 typedef enum { RB_NOT_PRESENT, RB_ESTABLISHED, RB_SUSPENDED } NR_RB_status_t;
+
+typedef struct l3_measurements_s {
+  float ssb_filter_coeff_rsrp;
+  float csi_RS_filter_coeff_rsrp;
+  meas_t serving_cell;
+  long trigger_to_measid;
+  long trigger_quantity;
+  long rs_type;
+} l3_measurements_t;
 
 typedef struct rrcPerNB {
   NR_MeasObjectToAddMod_t *MeasObj[MAX_MEAS_OBJ];
