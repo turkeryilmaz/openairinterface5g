@@ -264,16 +264,55 @@ void nr_layer_mapping(int nbCodes,
       break;
 
     case 2:
+      __m256i perm2 = simde_mm256_set_epi32(7,5,3,1,6,4,2,0);
+      if (layer==0) 
+        for (int i = 0; i < n_symbs>>3 ; i++) {
+          ((simde__m128i*)tx_layer)[i] = simde_mm256_extractf128_si256(simde_mm256_permutevar8x32_epi32(((simde__m256i*)mod_symbs[0])[i], perm2),0);
+        } 
+      else
+        for (int i = 0; i < n_symbs>>3 ; i++) {
+          ((simde__m128i*)tx_layer)[i] = simde_mm256_extractf128_si256(simde_mm256_permutevar8x32_epi32(((simde__m256i*)mod_symbs[0])[i], perm2),1);
+        } 
+      break;
     case 3:
+      simde__m256i d0,d1,d2,d3;
+      simde__m256i perm3 = simde_mm256_set_epi32(5+layer,2+layer,7+layer,4+layer,1+layer,6+layer,3+layer,0+layer);
+      for (int i = 0; i < n_symbs>>3 ; i+=3) {
+	  d0=simde_mm256_permutevar8x32_epi32(((simde__m256i*)mod_symbs[0])[i], perm3);
+	  d1=simde_mm256_permutevar8x32_epi32(((simde__m256i*)mod_symbs[0])[i], perm3);
+	  d2=simde_mm256_permutevar8x32_epi32(((simde__m256i*)mod_symbs[0])[i], perm3);
+	  d3=simde_mm256_blend_epi32(d0,d1,0x38); // 00111000
+          ((simde__m256i *)tx_layer)[i] = simde_mm256_blend_epi32(d3,d2,0xc0); // 11000000
+      }
+    break;  
+
     case 4:
+      __m256i perm4 = simde_mm256_set_epi32(7,3,6,2,5,1,4,0);
+      if (layer == 0) 
+        for (int i = 0; i < n_symbs>>3 ; i++) {
+          ((uint64_t *)tx_layer)[i] = simde_mm256_extract_epi64(simde_mm256_permutevar8x32_epi32(((simde__m256i*)mod_symbs[0])[i], perm4),0);
+        }
+      else if (layer == 1) 
+        for (int i = 0; i < n_symbs>>3 ; i++) {
+          ((uint64_t *)tx_layer)[i] = simde_mm256_extract_epi64(simde_mm256_permutevar8x32_epi32(((simde__m256i*)mod_symbs[0])[i], perm4),1);
+        }
+      else if (layer == 2) 
+        for (int i = 0; i < n_symbs>>3 ; i++) {
+          ((uint64_t *)tx_layer)[i] = simde_mm256_extract_epi64(simde_mm256_permutevar8x32_epi32(((simde__m256i*)mod_symbs[0])[i], perm4),2);
+        }
+      else if (layer == 3) 
+        for (int i = 0; i < n_symbs>>3 ; i++) {
+          ((uint64_t *)tx_layer)[i] = simde_mm256_extract_epi64(simde_mm256_permutevar8x32_epi32(((simde__m256i*)mod_symbs[0])[i], perm4),3);
+        }
+      /*
     for (int i = 0; i < n_symbs / n_layers; i++) {
-	   /* 
-      const c16_t *base = mod_symbs[0] + n_layers * i;
-      tx_layer[i] = base[layer];
-      */
+ 
+      //const c16_t *base = mod_symbs[0] + n_layers * i;
+      //tx_layer[i] = base[layer];
+      
       tx_layer[i] = *l;
       l+=n_layers;
-    }
+    }*/
       break;
 
     case 5:
