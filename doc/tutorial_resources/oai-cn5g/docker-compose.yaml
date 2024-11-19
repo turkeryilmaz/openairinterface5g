@@ -113,8 +113,8 @@ services:
                 ipv4_address: 192.168.70.132
     oai-lmf:
         container_name: "oai-lmf"
-        #image: oaisoftwarealliance/oai-lmf:develop
-        image: oai-lmf:fixmultigNB
+        image: oaisoftwarealliance/oai-lmf:develop
+        #image: oai-lmf:fixmultigNB
         expose:
             - 80/tcp
             - 8080/tcp
