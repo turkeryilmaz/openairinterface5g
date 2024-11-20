@@ -251,41 +251,91 @@ void nr_layer_mapping(int nbCodes,
                       uint8_t n_layers,
                       int layerSz,
                       uint32_t n_symbs,
-                      c16_t tx_layer[layerSz],
-                      int layer)
+                      c16_t tx_layers[][layerSz])
 {
   LOG_D(PHY,"Doing layer mapping for %d layers, %d symbols\n",n_layers,n_symbs);
 
-  c16_t *l=&mod_symbs[0][layer];
   switch (n_layers) {
 
     case 1:
-      memcpy(tx_layer, mod_symbs[0], n_symbs * sizeof(**mod_symbs));
+      memcpy(tx_layers[0], mod_symbs[0], n_symbs * sizeof(**mod_symbs));
       break;
 
     case 2:
+      simde__m256i perm2 = simde_mm256_set_epi32(7,5,3,1,6,4,2,0);
+      simde__m256i d;
+      for (int i = 0; i < n_symbs>>3 ; i++) {
+	  d = simde_mm256_permutevar8x32_epi32(((simde__m256i*)mod_symbs[0])[i], perm2);	
+          ((simde__m128i*)tx_layers[0])[i] = simde_mm256_extractf128_si256(d,0);
+          ((simde__m128i*)tx_layers[1])[i] = simde_mm256_extractf128_si256(d,1);
+      } 
+      break;
     case 3:
+      simde__m256i i0,i1,i2,d0,d1,d2,d3;
+      simde__m256i perm3_0 = simde_mm256_set_epi32(5,2,7,4,1,6,3,0);
+      simde__m256i perm3_1 = simde_mm256_set_epi32(6,3,0,5,2,7,4,1);
+      simde__m256i perm3_2 = simde_mm256_set_epi32(7,4,1,6,3,0,5,2);
+      for (int i = 0; i < n_symbs>>3 ; i+=3) {
+	  i0 = ((simde__m256i*)mod_symbs[0])[i];
+	  i1 = ((simde__m256i*)mod_symbs[0])[i+1];
+	  i2 = ((simde__m256i*)mod_symbs[0])[i+2];
+	  d0=simde_mm256_permutevar8x32_epi32(i0, perm3_0);
+	  d1=simde_mm256_permutevar8x32_epi32(i1, perm3_0);
+	  d2=simde_mm256_permutevar8x32_epi32(i2, perm3_0);
+	  d3=simde_mm256_blend_epi32(d0,d1,0x38); // 00111000
+          ((simde__m256i *)tx_layers[0])[i] = simde_mm256_blend_epi32(d3,d2,0xc0); // 11000000
+	  d0=simde_mm256_permutevar8x32_epi32(i0, perm3_1);
+	  d1=simde_mm256_permutevar8x32_epi32(i1, perm3_1);
+	  d2=simde_mm256_permutevar8x32_epi32(i2, perm3_1);
+	  d3=simde_mm256_blend_epi32(d0,d1,0x18); // 00011000
+          ((simde__m256i *)tx_layers[1])[i] = simde_mm256_blend_epi32(d3,d2,0xe0); // 11100000
+	  d0=simde_mm256_permutevar8x32_epi32(i0, perm3_2);
+	  d1=simde_mm256_permutevar8x32_epi32(i1, perm3_2);
+	  d2=simde_mm256_permutevar8x32_epi32(i2, perm3_2);
+	  d3=simde_mm256_blend_epi32(d0,d1,0x1c); // 00011100
+          ((simde__m256i *)tx_layers[2])[i] = simde_mm256_blend_epi32(d3,d2,0xe0); // 11100000
+      }
+    break;  
+
     case 4:
+      simde__m256i perm4 = simde_mm256_set_epi32(7,3,6,2,5,1,4,0);
+      simde__m256i e;
+      for (int i = 0; i < n_symbs>>3 ; i++) {
+	  e=simde_mm256_permutevar8x32_epi32(((simde__m256i*)mod_symbs[0])[i], perm4);
+          ((uint64_t *)tx_layers[0])[i] = simde_mm256_extract_epi64(e,0);
+          ((uint64_t *)tx_layers[1])[i] = simde_mm256_extract_epi64(e,1);
+          ((uint64_t *)tx_layers[2])[i] = simde_mm256_extract_epi64(e,2);
+          ((uint64_t *)tx_layers[3])[i] = simde_mm256_extract_epi64(e,3);
+      }
+      /*
     for (int i = 0; i < n_symbs / n_layers; i++) {
-	   /* 
-      const c16_t *base = mod_symbs[0] + n_layers * i;
-      tx_layer[i] = base[layer];
-      */
+ 
+      //const c16_t *base = mod_symbs[0] + n_layers * i;
+      //tx_layer[i] = base[layer];
+      
       tx_layer[i] = *l;
       l+=n_layers;
-    }
+    }*/
       break;
 
     case 5:
-      if (layer < 2)
-        for (int i = 0; i < n_symbs; i += 2) {
+    case 6:
+    case 7:
+    case 8:
+      /*
+      // Layer 0,1
+      for (int i = 0; i < n_symbs; i += 2) {
           const int txIdx = i / 2;
-          tx_layer[txIdx] = mod_symbs[0][i + layer];
-        }
+          tx_layer[0][txIdx] = mod_symbs[0][i];
+          tx_layer[1][txIdx] = mod_symbs[0][i + 1];
+      }
+      // layers 2,3,4
       else
         for (int i = 0; i < n_symbs; i += 3) {
           const int txIdx = i / 3;
-          tx_layer[txIdx] = mod_symbs[1][i + layer];
+          tx_layer[2][txIdx] = mod_symbs[1][i + 2];
+          tx_layer[3][txIdx] = mod_symbs[1][i + 3];
+          tx_layer[4][txIdx] = mod_symbs[1][i + 4];
         }
       break;
 
@@ -293,7 +343,12 @@ void nr_layer_mapping(int nbCodes,
       for (int q=0; q<2; q++)
         for (int i = 0; i < n_symbs; i += 3) {
           const int txIdx = i / 3;
-          tx_layer[txIdx] = mod_symbs[q][i + layer];
+          tx_layer[0][txIdx] = mod_symbs[q][i + layer];
+          tx_layer[1][txIdx] = mod_symbs[q][i + layer];
+          tx_layer[2][txIdx] = mod_symbs[q][i + layer];
+          tx_layer[3][txIdx] = mod_symbs[q][i + layer];
+          tx_layer[4][txIdx] = mod_symbs[q][i + layer];
+          tx_layer[5][txIdx] = mod_symbs[q][i + layer];
         }
       break;
 
@@ -317,7 +372,7 @@ void nr_layer_mapping(int nbCodes,
         tx_layer[txIdx] = mod_symbs[q][i + layer];
       }
       break;
-
+*/
     default:
       AssertFatal(0, "Invalid number of layers %d\n", n_layers);
   }

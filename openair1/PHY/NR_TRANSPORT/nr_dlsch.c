@@ -237,7 +237,8 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
       }
  
     uint32_t cur_re=cur_re0;
-    c16_t tx_layer[rel15->nrOfLayers][layerSz] __attribute__((aligned(64)));
+    c16_t tx_layers[rel15->nrOfLayers][layerSz] __attribute__((aligned(64)));
+    if (l_symbol == rel15->StartSymbolIndex) nr_layer_mapping(rel15->NrOfCodewords, encoded_length, mod_symbs, rel15->nrOfLayers, layerSz, nb_re, tx_layers);
     for (int layer = 0; layer < rel15->nrOfLayers; layer++) {
       uint8_t k_prime = 0;
       uint16_t n = 0;
@@ -246,7 +247,6 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
         dmrs_idx += rel15->BWPStart;
       dmrs_idx *= dmrs_Type == NFAPI_NR_DMRS_TYPE1 ? 6 : 4;
       cur_re = cur_re0; 
-      if (l_symbol == rel15->StartSymbolIndex) nr_layer_mapping(rel15->NrOfCodewords, encoded_length, mod_symbs, rel15->nrOfLayers, layerSz, nb_re, tx_layer[layer], layer);
 
 
 
@@ -298,7 +298,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
                    ptrs_idx++;
                 }
 		else {
-                  txdataF_precoding[layer][l_symbol][k] = c16mulRealShift(tx_layer[layer][cur_re], amp, 15);
+                  txdataF_precoding[layer][l_symbol][k] = c16mulRealShift(tx_layers[layer][cur_re], amp, 15);
 #ifdef DEBUG_DLSCH_MAPPING
                   printf("re %u\t l %d\t layer %d\t k %d \t txdataF: %d %d\n",
                          cur_re,
@@ -505,7 +505,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
 		   printf("doing DMRS pattern for port 0 : d0 X0 d1 X1 ... dNm2 XNm2 dNm1 XNm1\n");
 #endif 
 		   simde__m256i d0,d1,d2,d3,amp_dmrs256=simde_mm256_set1_epi16(amp_dmrs),amp256=simde_mm256_set1_epi16(amp);
-                   c16_t *txlc = &tx_layer[layer][cur_re];
+                   c16_t *txlc = &tx_layers[layer][cur_re];
 		   int i,j;
 		   for (i=0,j=0;i<(rel15->rbSize*NR_NB_SC_PER_RB)>>4;i++) {
 		      d0 = simde_mm256_mulhrs_epi16(((simde__m256i *)mod_dmrs)[i],amp_dmrs256);
@@ -553,7 +553,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
                    printf("doing DMRS pattern for port 1 : d0 X0 -d1 X1 ...dNm2 XNm2 -dNm1 XNm1\n");  
 #endif
 		   simde__m256i d0,d1,d2,d3,amp_dmrs256=simde_mm256_set_epi16(-amp_dmrs,-amp_dmrs,amp_dmrs,amp_dmrs,-amp_dmrs,-amp_dmrs,amp_dmrs,amp_dmrs,-amp_dmrs,-amp_dmrs,amp_dmrs,amp_dmrs,-amp_dmrs,-amp_dmrs,amp_dmrs,amp_dmrs),amp256=simde_mm256_set1_epi16(amp);
-                   c16_t *txlc = &tx_layer[layer][cur_re];
+                   c16_t *txlc = &tx_layers[layer][cur_re];
 		   int i,j;
 		   for (i=0,j=0;i<(rel15->rbSize*NR_NB_SC_PER_RB)>>4;i++) {
 		      d0 = simde_mm256_mulhrs_epi16(((simde__m256i *)mod_dmrs)[i],amp_dmrs256);
@@ -605,7 +605,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
                    printf("doing DMRS pattern for port 2 : X0 d0 X1 d1 ... XNm2 dNm2 XNm1 dNm1\n");
 #endif  
 		   simde__m256i d0,d1,d2,d3,amp_dmrs256=simde_mm256_set1_epi16(amp_dmrs),amp256=simde_mm256_set1_epi16(amp);
-                   c16_t *txlc = &tx_layer[layer][cur_re];
+                   c16_t *txlc = &tx_layers[layer][cur_re];
 		   int i,j;
 		   for (i=0,j=0;i<(rel15->rbSize*NR_NB_SC_PER_RB)>>4;i++) {
 		      d1 = simde_mm256_mulhrs_epi16(((simde__m256i *)mod_dmrs)[i],amp_dmrs256);
@@ -653,7 +653,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
                    printf("doing DMRS pattern for port 3 : X0 d0 X1 -d1 ... XNm2 dNm2 XNm1 -dNm1\n");
 #endif  
 		   simde__m256i d0,d1,d2,d3,amp_dmrs256=simde_mm256_set_epi16(-amp_dmrs,-amp_dmrs,amp_dmrs,amp_dmrs,-amp_dmrs,-amp_dmrs,amp_dmrs,amp_dmrs,-amp_dmrs,-amp_dmrs,amp_dmrs,amp_dmrs,-amp_dmrs,-amp_dmrs,amp_dmrs,amp_dmrs),amp256=simde_mm256_set1_epi16(amp);
-                   c16_t *txlc = &tx_layer[layer][cur_re];
+                   c16_t *txlc = &tx_layers[layer][cur_re];
 		   int i,j;
 		   for (i=0,j=0;i<(rel15->rbSize*NR_NB_SC_PER_RB)>>4;i++) {
 		      d1 = simde_mm256_mulhrs_epi16(((simde__m256i *)mod_dmrs)[i],amp_dmrs256);
@@ -732,7 +732,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
                                                              frame_parms->ofdm_symbol_size,
                                                              rel15->numDmrsCdmGrpsNoData,
                                                              dmrs_Type)) {
-		      txdataF_precoding[layer][l_symbol][k] = c16mulRealShift(tx_layer[layer][cur_re], amp, 15);
+		      txdataF_precoding[layer][l_symbol][k] = c16mulRealShift(tx_layers[layer][cur_re], amp, 15);
 #ifdef DEBUG_DLSCH_MAPPING
 		      printf("re %u\t l %d \t k %d \t txdataF: %d %d\n",
 		              cur_re,
@@ -833,7 +833,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
 #else
             simde__m256i *txF = (simde__m256i *)&txdataF_precoding[layer][l_symbol][start_sc];
 
-            simde__m256i *txl = (simde__m256i *)&tx_layer[layer][cur_re];
+            simde__m256i *txl = (simde__m256i *)&tx_layers[layer][cur_re];
             simde__m256i amp64 = simde_mm256_set1_epi16(amp);
             int i;
             for (i = 0; i < (upper_limit >> 3); i++) {
@@ -856,7 +856,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
             }
             if (i * 8 != upper_limit) {
               c16_t *txFc = &txdataF_precoding[layer][l_symbol][start_sc];
-              c16_t *txlc = &tx_layer[layer][cur_re];
+              c16_t *txlc = &tx_layers[layer][cur_re];
               for (i = (upper_limit >> 3) << 3; i < upper_limit; i++) {
                 txFc[i].r = (((txlc[i].r * amp) >> 14) + 1) >> 1;
                 txFc[i].i = (((txlc[i].i * amp) >> 14) + 1) >> 1;
@@ -868,7 +868,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
             cur_re += upper_limit;
             if (remaining_re > 0) {
               txF = (simde__m256i *)&txdataF_precoding[layer][l_symbol];
-              txl = (simde__m256i *)&tx_layer[layer][cur_re];
+              txl = (simde__m256i *)&tx_layers[layer][cur_re];
               int i;
               for (i = 0; i < (remaining_re >> 3); i++) {
                 const simde__m256i txL = simde_mm256_loadu_si256(txl + i);
@@ -890,7 +890,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
               } // RE loop, second part
               if (i * 8 != remaining_re) {
                 c16_t *txFc = txdataF_precoding[layer][l_symbol];
-                c16_t *txlc = &tx_layer[layer][cur_re];
+                c16_t *txlc = &tx_layers[layer][cur_re];
                 for (i = (remaining_re >> 3) << 3; i < remaining_re; i++) {
                   txFc[i].r = (((txlc[i].r * amp) >> 14) + 1) >> 1;
                   txFc[i].i = (((txlc[i].i * amp) >> 14) + 1) >> 1;
