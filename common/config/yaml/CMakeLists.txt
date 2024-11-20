@@ -1,4 +1,4 @@
-find_package(yaml-cpp)
+find_package(yaml-cpp 0.7.0)
 if (NOT yaml-cpp_FOUND)
   CPMAddPackage("gh:jbeder/yaml-cpp#yaml-cpp-0.7.0@0.7.0")
 else()
