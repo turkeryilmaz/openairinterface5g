@@ -173,6 +173,9 @@ void nr_ue_init_mac(module_id_t module_idP, ueinfo_t* ueinfo)
   mac->SL_MAC_PARAMS->sl_bler.harq_round_max = HARQ_ROUND_MAX;
   init_list(&mac->sl_sensing_data, sizeof(sensing_data_t), 1);
   init_list(&mac->sl_transmit_history, sizeof(frameslot_t), 1);
+  mac->sl_candidate_resources = (List_t*)malloc16_clear(sizeof(List_t*));
+  init_list(mac->sl_candidate_resources, sizeof(sl_resource_info_t), 1);
+  mac->reselection_timer = 0;
 
   if (ueinfo != NULL)  {
     mac->src_id = ueinfo->srcid;

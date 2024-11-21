@@ -80,7 +80,7 @@
 #define SL_CONFIG_STRING_RESPOOL_PSFCH_MINTIMEGAP             "sl_MinTimeGapPSFCH"
 #define SL_CONFIG_STRING_RESPOOL_PSFCH_HOPID                  "sl_PSFCH_HopID"
 #define SL_CONFIG_STRING_RESPOOL_PSFCH_CANDIDATERESOURCETYPE  "sl_PSFCH_CandidateResourceType"
-#define SL_CONFIG_STRING_RSRC_SEL_PRIORITY                     "sl_Priority"
+#define SL_CONFIG_STRING_RSRC_SEL_PRIORITY                    "sl_Priority"
 
 #define SL_CONFIG_STRING_RSRC_SEL_PARAMS_LIST                  "rsrc_selection_params"
 #define SL_CONFIG_STRING_RSRC_SEL_SELECTION_WINDOW             "sl_SelectionWindow"

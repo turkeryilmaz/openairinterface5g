@@ -85,6 +85,18 @@ static void print_sensing_data_list(List_t *sensing_data, int line) {
   }
 }
 
+sl_resource_info_t* get_resource_element(List_t* resource_list, frameslot_t sfn) {
+  for (int i = 0; i < resource_list->size; i++) {
+    sl_resource_info_t *itr_rsrc = (sl_resource_info_t*)((char*)resource_list->data + i * resource_list->element_size);
+    LOG_I(NR_MAC, "%s %4d.%2d, %ld, sl_subchan_len %d, current sfn %4d.%2d\n",
+          __FUNCTION__, itr_rsrc->sfn.frame, itr_rsrc->sfn.slot, normalize(&itr_rsrc->sfn, 1), itr_rsrc->sl_subchan_len, sfn.frame, sfn.slot);
+    if (itr_rsrc->sfn.frame == sfn.frame && itr_rsrc->sfn.slot == sfn.slot) {
+      return itr_rsrc;
+    }
+  }
+  return NULL;
+}
+
 void fill_ul_config(fapi_nr_ul_config_request_t *ul_config, frame_t frame_tx, int slot_tx, uint8_t pdu_type){
 
   AssertFatal(ul_config->number_pdus < sizeof(ul_config->ul_config_list) / sizeof(ul_config->ul_config_list[0]),
@@ -95,7 +107,7 @@ void fill_ul_config(fapi_nr_ul_config_request_t *ul_config, frame_t frame_tx, in
       !get_softmodem_params()->emulate_l1) {
     LOG_D(MAC, "%d.%d %d.%d f clear ul_config %p t %d pdu %d\n", frame_tx, slot_tx, ul_config->sfn, ul_config->slot, ul_config, pdu_type, ul_config->number_pdus);
     ul_config->number_pdus = 0;
-    memset(ul_config->ul_config_list, 0, sizeof(ul_config->ul_config_list)); 
+    memset(ul_config->ul_config_list, 0, sizeof(ul_config->ul_config_list));
   }
   ul_config->ul_config_list[ul_config->number_pdus].pdu_type = pdu_type;
   //ul_config->slot = slot_tx;
@@ -1428,7 +1440,7 @@ int nr_get_sf_retxBSRTimer(uint8_t sf_offset) {
 // PUSCH scheduler:
 // - Calculate the slot in which ULSCH should be scheduled. This is current slot + K2,
 // - where K2 is the offset between the slot in which UL DCI is received and the slot
-// - in which ULSCH should be scheduled. K2 is configured in RRC configuration.  
+// - in which ULSCH should be scheduled. K2 is configured in RRC configuration.
 // PUSCH Msg3 scheduler:
 // - scheduled by RAR UL grant according to 8.3 of TS 38.213
 // Note: Msg3 tx in the uplink symbols of mixed slot
@@ -4128,6 +4140,8 @@ void fill_csi_rs_pdu(sl_nr_ue_mac_params_t *sl_mac, sl_nr_tti_csi_rs_pdu_t *csi_
 int get_bit_from_map(const uint8_t *buf, size_t bit_pos) {
   size_t byte_index = bit_pos / 8;
   uint8_t bit_index = bit_pos % 8;
+  LOG_D(NR_MAC, "buf[%ld] = %d, ((7 - %d)) & 1), (buf[byte_index] >> %d) = %d  %d\n",
+        byte_index, buf[byte_index], bit_index, (7 - bit_index), buf[byte_index] >> (7 - bit_index), (buf[byte_index] >> (7 - bit_index)) & 1);
   return (buf[byte_index] >> (7 - bit_index)) & 1;
 }
 
@@ -4147,7 +4161,7 @@ void remove_old_sensing_data(frameslot_t *frame_slot,
                              List_t* sensing_data,
                              sl_nr_ue_mac_params_t *sl_mac) {
 
-  size_t new_size = 0;
+  int new_size = 0;
   int mu = sl_mac->sl_phy_config.sl_config_req.sl_bwp_config.sl_scs;
   for (int i = 0; i < sensing_data->size; i++) {
     sensing_data_t *data = (sensing_data_t*)((char*)sensing_data->data + i * sensing_data->element_size);
@@ -4187,8 +4201,9 @@ void remove_old_sensing_data(frameslot_t *frame_slot,
     new_size ++;
   }
   if (new_size > 0) {
+    LOG_D(NR_MAC, "sensing data: size %ld, element_size %ld new_size %d\n", sensing_data->size, sensing_data->element_size, new_size);
     memmove(sensing_data->data, (char*)sensing_data->data + new_size * sensing_data->element_size, (sensing_data->size - new_size) * sensing_data->element_size);
-    LOG_D(NR_MAC, "Subtracting %ld from %ld\n", new_size, sensing_data->size);
+    LOG_D(NR_MAC, "Subtracting %d from %ld\n", new_size, sensing_data->size);
     sensing_data->size -= new_size;
   }
 }
@@ -4256,47 +4271,108 @@ NR_SL_ResourcePool_r16_t* get_resource_pool(NR_UE_MAC_INST_t *mac, uint16_t pool
   return mac->SL_MAC_PARAMS->sl_TxPool[pool_id]->respool;
 }
 
-bool slot_has_psfch(NR_UE_MAC_INST_t *mac, uint64_t abs_index_cur_slot, uint8_t psfch_period, uint8_t phy_sl_map_size) {
+bool slot_has_psfch(BIT_STRING_t *phy_sl_bitmap, uint64_t abs_index_cur_slot, uint8_t psfch_period, size_t phy_sl_map_size) {
 
-  if (!psfch_period) {
+  if (psfch_period == 0) {
     return false;
   }
 
-  // Determine number of SL slots from absIndexCurrentSlot, and if the slot
+  // Determine number of SL slots from abs_index_cur_slot, and if the slot
   // is a SL slot, we should return true if the number of SL slots is a
-  // multiple of PsfchPeriod slots.
+  // multiple of psfch_period slots.
   // The size of phyPool (calculated elsewhere) is large enough to repeat the
   // SL pattern (i.e., the overall SL pattern is repeated each phyPool slots).
-  // The PSFCH pattern repeats at least every (psfchPeriod * phyPool.size ())
-  // slots (i.e., psfchPeriod * phyPool.size () is the modulus).  We'll
+  // The PSFCH pattern repeats at least every (psfch_period * phy_sl_map_size)
+  // slots (i.e., psfch_period * phy_sl_map_size is the modulus).  We'll
   // call this modulus value the 'period' below.
 
-  uint64_t num_sl_slots = 0; // number of SL slots before absIndexCurrentSlot
-  uint16_t period = psfch_period * phy_sl_map_size;
+  uint64_t num_sl_slots = 0; // number of SL slots before abs_index_cur_slot
+  size_t period = psfch_period * phy_sl_map_size;
 
   // The number of periods before the current period is
-  // absIndexCurrentSlot / modulus.  We do not need to count SL slots in
+  // abs_index_cur_slot / modulus.  We do not need to count SL slots in
   // these earlier periods because the number of SL slots will always be
-  // a multiple of psfchPeriod.  We only need to look at the remainder
-  // (modulus) of the division absIndexCurrentSlot / period;
+  // a multiple of psfch_period.  We only need to look at the remainder
+  // (modulus) of the division abs_index_cur_slot / period;
 
   uint64_t num_slots_into_current_period = abs_index_cur_slot % period;
+  LOG_D(NR_MAC, "num_slots_into_current_period %ld period %ld phy_sl_map_size %ld\n", num_slots_into_current_period, period, phy_sl_map_size);
   bool reached_limit = false; // Used to break out of outer for loop
   bool current_slot_is_sl_slot = false;
-
-  for (uint16_t i = 0; i < psfch_period && !reached_limit; i++) {
-    for (uint32_t j = 0; j < phy_sl_map_size; j++) {
-      num_sl_slots += (get_bit_from_map(mac->phy_sl_bitmap, j) == 1 ? 1 : 0);
-      current_slot_is_sl_slot = (get_bit_from_map(mac->phy_sl_bitmap, j) == 1);
+  for (uint8_t i = 0; i < psfch_period && !reached_limit; i++) {
+    for (size_t j = 0; j < phy_sl_map_size; j++) {
+      current_slot_is_sl_slot = (get_bit_from_map(phy_sl_bitmap->buf, j) == 1);
+      num_sl_slots += current_slot_is_sl_slot;
+      LOG_D(NR_MAC, "current_slot_is_sl_slot %d num_sl_slots %ld\n", current_slot_is_sl_slot, num_sl_slots);
       if ((i * phy_sl_map_size) + j == num_slots_into_current_period)
       {
+        LOG_D(NR_MAC, "i %d j %ld %ld\n", i, j, (i * phy_sl_map_size) + j);
         reached_limit = true;
         break;
       }
     }
   }
   bool has_psfch = current_slot_is_sl_slot && ((num_sl_slots % psfch_period) == 0);
+  LOG_D(NR_MAC, "current_slot_is_sl_slot %d num_sl_slots %ld has_psfch %d\n", current_slot_is_sl_slot, num_sl_slots, has_psfch);
   return has_psfch;
+}
+
+void validate_selected_sl_slot(bool tx, bool rx, NR_TDD_UL_DL_ConfigCommon_t *conf, frameslot_t frame_slot) {
+  AssertFatal(conf->pattern1.nrofUplinkSlots == 4 && conf->pattern1.nrofDownlinkSlots == 6,
+              "Invalid configuration set. Please update the nrofUplinkSlots to 4 and nrofDownlinkSlots to 6.\n");
+  if (get_nrUE_params()->sync_ref) {
+    if (tx) {
+      AssertFatal((frame_slot.slot == 6 || frame_slot.slot == 7 || frame_slot.slot == 8 || frame_slot.slot == 9),
+                  "As a transmitting syncref UE, based on the current configuration of uplink slots = %ld and downlink = %ld, "
+                  "you should be selecting resources with slot 6, 7, 8, or 9 only.\n",
+                  conf->pattern1.nrofUplinkSlots, conf->pattern1.nrofDownlinkSlots);
+    } else if (rx) {
+      AssertFatal((frame_slot.slot == 16 || frame_slot.slot == 17 || frame_slot.slot == 18 || frame_slot.slot == 19),
+                  "As a receiving syncref UE, based on the current configuration of uplink slots = %ld and downlink = %ld, "
+                  "you should be selecting resources with slot 16, 17, 18, or 19 only.\n",
+                  conf->pattern1.nrofUplinkSlots, conf->pattern1.nrofDownlinkSlots);
+    }
+  } else if (!get_nrUE_params()->sync_ref) {
+    if (tx) {
+      AssertFatal((frame_slot.slot == 16 || frame_slot.slot == 17 || frame_slot.slot == 18 || frame_slot.slot == 19),
+                  "As a transmitting nearby UE, based on the current configuration of uplink slots = %ld and downlink = %ld, "
+                  "you should be selecting resources with slot 16, 17,1 8, or 19 only.\n",
+                  conf->pattern1.nrofUplinkSlots, conf->pattern1.nrofDownlinkSlots);
+    } else if (rx) {
+      AssertFatal((frame_slot.slot == 6 || frame_slot.slot == 7 || frame_slot.slot == 8 || frame_slot.slot == 9),
+                  "As a receiving nearby UE, based on the current configuration of uplink slots = %ld and downlink = %ld, "
+                  "you should be selecting resources with slot 6, 7, 8, or 9 only.\n",
+                  conf->pattern1.nrofUplinkSlots, conf->pattern1.nrofDownlinkSlots);
+    }
+  }
+}
+
+bool is_sl_slot(NR_UE_MAC_INST_t *mac, BIT_STRING_t *phy_sl_bitmap, uint16_t phy_map_sz, uint64_t abs_slot) {
+  /* The purpose of normalizing the abs_slot value is to ensure that we can handle the cases
+    when we wrap beyond the phy_bit_map size. For example, with an uplink and downlink
+    slot configuration of 4 and 6 respectively, we have a phy_bit_map size of 150. When
+    abs_slot (frame.slot absolute value) exceeds 150, we are not able to proeprly map the bits
+    to the resource bitmap. In order to do this, we need to map the abs_slot > 150 value to a
+    value within 150. Since (in this particular configuration) the slots in the last frame (7)
+    are split in half (since 150 is not divisible by 20 slots/frame) so we have to shift the
+    normalization factor by the split (which is ten in this case). In the cases when the original
+    abs_slot value is an even multiple of the phy_map_sz (150) we do not need to shift by 10, only
+    in the odd cases. */
+  int multiple_of_bitmap = floor(abs_slot/phy_map_sz);
+  int val_to_normalize_abs_slot = phy_map_sz * multiple_of_bitmap;
+  LOG_D(NR_MAC, "This is original abs_slot %ld, multiple_of_bitmap %d, val_to_normalize_abs_slot %d, subtract amount %d\n",
+        abs_slot, multiple_of_bitmap, val_to_normalize_abs_slot, (phy_map_sz % nr_slots_per_frame[get_softmodem_params()->numerology]));
+  if (multiple_of_bitmap >= 1 && multiple_of_bitmap % 2 == 1) {
+    val_to_normalize_abs_slot -= (phy_map_sz % nr_slots_per_frame[get_softmodem_params()->numerology]);
+    if ((abs_slot - val_to_normalize_abs_slot < 0) || (abs_slot - val_to_normalize_abs_slot >= phy_map_sz)) {
+      val_to_normalize_abs_slot += 2 * (phy_map_sz % nr_slots_per_frame[get_softmodem_params()->numerology]);
+    }
+  }
+  if (val_to_normalize_abs_slot > abs_slot) {
+    abs_slot += phy_map_sz;
+  }
+  bool sl_slot = get_bit_from_map(phy_sl_bitmap->buf, abs_slot - val_to_normalize_abs_slot) ? true : false;
+  return sl_slot;
 }
 
 List_t get_nr_sl_comm_opportunities(NR_UE_MAC_INST_t *mac,
@@ -4310,20 +4386,27 @@ List_t get_nr_sl_comm_opportunities(NR_UE_MAC_INST_t *mac,
   frameslot_t frame_slot;
   List_t slot_info_list;
   init_list(&slot_info_list, sizeof(slot_info_t), 1);
-  uint16_t phy_map_sz = get_physical_sl_pool(mac);
+  SL_ResourcePool_params_t *sl_tx_rsrc_pool = mac->SL_MAC_PARAMS->sl_TxPool[pool_id];
+  uint16_t phy_map_sz = (sl_tx_rsrc_pool->phy_sl_bitmap.size << 3) - sl_tx_rsrc_pool->phy_sl_bitmap.bits_unused;
+  LOG_D(NR_MAC, "phy_map_sz %d\n", phy_map_sz);
   NR_SL_ResourcePool_r16_t* resource_pool = get_resource_pool(mac, pool_id);
 
   uint64_t first_abs_slot_ind = abs_idx_cur_slot + t1;
   uint64_t last_abs_slot_ind = abs_idx_cur_slot + t2;
   uint16_t abs_pool_index = first_abs_slot_ind % phy_map_sz;
-  int8_t is_sl_slot = get_bit_from_map(mac->phy_sl_bitmap, abs_pool_index);
 
-  LOG_D(NR_MAC, "first_abs_slot_ind %ld, last_abs_slot_ind %ld, is_sl_slot %d, abs_pool_index %d\n",
-        first_abs_slot_ind, last_abs_slot_ind, is_sl_slot, abs_pool_index);
+  frameslot_t fs0;
+  de_normalize(abs_idx_cur_slot, mu, &fs0);
+
+  frameslot_t fs1;
+  de_normalize(first_abs_slot_ind, mu, &fs1);
+
+  frameslot_t fs2;
+  de_normalize(last_abs_slot_ind, mu, &fs2);
+
   bool sl_has_psfch = false;
   for (uint64_t i = first_abs_slot_ind; i <= last_abs_slot_ind; i++) {
-    int8_t is_sl_slot = get_bit_from_map(mac->phy_sl_bitmap, abs_pool_index);
-    if (is_sl_slot) // slot is a sidelink slot
+    if (is_sl_slot(mac, &sl_tx_rsrc_pool->phy_sl_bitmap, phy_map_sz, i)) // slot is a sidelink slot
     {
       // PSCCH
       // Number of  RBs used for PSCCH
@@ -4340,7 +4423,7 @@ List_t get_nr_sl_comm_opportunities(NR_UE_MAC_INST_t *mac,
       uint8_t start_sl_pscch_sym = 1;
       // PSSCH
       uint16_t sl_pssch_sym_start = *mac->sl_bwp->sl_BWP_Generic_r16->sl_StartSymbol_r16;
-      sl_has_psfch = slot_has_psfch(mac, i, psfch_period, phy_map_sz);
+      sl_has_psfch = false; //slot_has_psfch(&sl_tx_rsrc_pool->phy_sl_bitmap, i, psfch_period, phy_map_sz);
       int num_psfch_symbols = 0;
       if (sl_has_psfch && resource_pool->sl_PSFCH_Config_r16 && resource_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16
           && *resource_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16 > 0) {
@@ -4350,6 +4433,7 @@ List_t get_nr_sl_comm_opportunities(NR_UE_MAC_INST_t *mac,
 
       // PSFCH requires an additional 3 symbols
       uint16_t sl_pssch_sym_len = 7 + *mac->sl_bwp->sl_BWP_Generic_r16->sl_LengthSymbols_r16 - num_psfch_symbols - 2;
+      LOG_D(NR_MAC, "Tx sl_has_psfch %d, %4d.%2d sl_pssch_sym_len %d\n", sl_has_psfch, frame_slot.frame, frame_slot.slot, sl_pssch_sym_len);
 
       uint16_t sl_subchannel_size = sl_get_subchannel_size(resource_pool);
       uint16_t sl_max_num_reserve = *resource_pool->sl_UE_SelectedConfigRP_r16->sl_MaxNumPerReserve_r16;
@@ -4368,12 +4452,13 @@ List_t get_nr_sl_comm_opportunities(NR_UE_MAC_INST_t *mac,
                                .sl_has_psfch           = sl_has_psfch};
       de_normalize(slot_info.abs_slot_index, mu, &frame_slot);
       LOG_D(NR_MAC, "Pushing %4d.%2d\n", frame_slot.frame, frame_slot.slot);
+      validate_selected_sl_slot(true , false, mac->SL_MAC_PARAMS->sl_TDD_config, frame_slot);
       push_back(&slot_info_list, &slot_info);
     }
     abs_pool_index = (abs_pool_index + 1) % phy_map_sz;
   }
 
-  LOG_D(NR_MAC, "Total number of slots available for Sidelink in the selection window = %ld, psfch slot %d\n", slot_info_list.size, sl_has_psfch);
+  LOG_D(NR_MAC, "Total number of slots available for Sidelink in the selection window = %ld\n", slot_info_list.size);
 
 #ifdef SLOT_INFO_DEBUG
   for (size_t i = 0; i < slot_info_list.size; i++) {
@@ -4391,50 +4476,55 @@ List_t get_nr_sl_comm_opportunities(NR_UE_MAC_INST_t *mac,
   return slot_info_list;
 }
 
-int get_physical_sl_pool(NR_UE_MAC_INST_t *mac) {
+int get_physical_sl_pool(NR_UE_MAC_INST_t *mac, BIT_STRING_t *sl_time_rsrc, BIT_STRING_t *phy_sl_bitmap) {
   /*
     Following code is to create physical sidelink bitmap as mentioned in this paper:
     Ali, Z., Lagén, S., Giupponi, L., & Rouil, R. (2021). 3GPP NR V2X mode 2: Overview, models and system-level evaluation. IEEE Access, 9, 89554-89579.
   */
   sl_nr_ue_mac_params_t *sl_mac = mac->SL_MAC_PARAMS;
-  uint8_t mu = sl_mac->sl_phy_config.sl_config_req.sl_bwp_config.sl_scs;
+  uint8_t mu = get_softmodem_params()->numerology;
   int n_slots_frame = nr_slots_per_frame[mu]; // tdd pattern len
   NR_TDD_UL_DL_Pattern_t *tdd = &sl_mac->sl_TDD_config->pattern1;
   int ul_slots_period = tdd ? tdd->nrofUplinkSlots + (tdd->nrofUplinkSymbols > 0 ? 1 : 0) : n_slots_frame;
+  LOG_D(NR_MAC, "n_slots_frame %d, get_nb_periods_per_frame(tdd->dl_UL_TransmissionPeriodicity) %d\n", n_slots_frame, get_nb_periods_per_frame(tdd->dl_UL_TransmissionPeriodicity));
   const int nr_slots_period = tdd ? n_slots_frame / get_nb_periods_per_frame(tdd->dl_UL_TransmissionPeriodicity) : n_slots_frame;
+  LOG_D(NR_RRC, "This is the nr_slots_period %d, ul_slots_period %d, mac->sl_bitmap.bits_unused %d size %ld, phy_bitmap size %ld\n",
+        nr_slots_period, ul_slots_period, sl_time_rsrc->bits_unused, sl_time_rsrc->size, phy_sl_bitmap->size);
 
   int tdd_pattern_len = nr_slots_period;
-  int8_t sl_bitmap_num_bits = ((mac->sl_bitmap.size << 3) - mac->sl_bitmap.bits_unused);
+  int8_t sl_bitmap_num_bits = ((sl_time_rsrc->size << 3) - sl_time_rsrc->bits_unused);
   int phy_sl_bits = sl_bitmap_num_bits + (sl_bitmap_num_bits / ul_slots_period * (nr_slots_period - ul_slots_period));
   AssertFatal(ul_slots_period > 0, "No UL slot found in the given TDD pattern");
   AssertFatal(sl_bitmap_num_bits % ul_slots_period == 0, "SL bit map size should be multiple of number of UL slots in the TDD pattern");
-  AssertFatal(sl_bitmap_num_bits > tdd_pattern_len, "SL bit map size %ld should be greater than or equal to the TDD pattern size %d", mac->sl_bitmap.size, tdd_pattern_len);
+  AssertFatal(sl_bitmap_num_bits > tdd_pattern_len, "SL bit map size %ld should be greater than or equal to the TDD pattern size %d", sl_time_rsrc->size, tdd_pattern_len);
 
 #ifdef BITMAP_DEBUG
-  for (int k = 0; k < mac->sl_bitmap.size; k++) {
-    LOG_D(NR_MAC, "sl_bitmap %2x\n", mac->sl_bitmap.buf[k]);
+  for (int k = 0; k < sl_time_rsrc->size; k++) {
+    LOG_D(NR_MAC, "sl_bitmap %2x\n", sl_time_rsrc->buf[k]);
   }
 #endif
 
   int tdd_bit_idx = 0;
-  int is_UL = 0;
+  bool is_UL = 0;
   int phy_sl_bit_pos = 0;
   int sl_bitmap_pos = 0;
+  bool is_sidelink_slot;
   do {
+    is_sidelink_slot = get_bit_from_map(sl_time_rsrc->buf, sl_bitmap_pos);
     is_UL = (mac->ulsch_slot_bitmap[tdd_bit_idx / 64] & ((uint64_t)1 << (tdd_bit_idx % 64)));
-    if (is_UL == 0) {
-      append_bit(mac->phy_sl_bitmap, phy_sl_bit_pos, 0);
+    if (is_UL == false) {
+      append_bit(phy_sl_bitmap->buf, phy_sl_bit_pos, 0);
       phy_sl_bit_pos++;
-    } else if (get_bit_from_map(mac->sl_bitmap.buf, sl_bitmap_pos)) {
+    } else if (is_sidelink_slot) {
       LOG_D(NR_MAC, "is_SL %d phy_sl_bit_pos %d sl_bitmap_pos %d\n",
-            get_bit_from_map(mac->sl_bitmap.buf, sl_bitmap_pos),
+            is_sidelink_slot,
             phy_sl_bit_pos,
             sl_bitmap_pos);
-      append_bit(mac->phy_sl_bitmap, phy_sl_bit_pos, 1);
+      append_bit(phy_sl_bitmap->buf, phy_sl_bit_pos, 1);
       phy_sl_bit_pos++;
       sl_bitmap_pos++;
     } else {
-        append_bit(mac->phy_sl_bitmap, phy_sl_bit_pos, 0);
+        append_bit(phy_sl_bitmap->buf, phy_sl_bit_pos, 0);
         phy_sl_bit_pos++;
         sl_bitmap_pos++;
     }
@@ -4456,8 +4546,8 @@ int get_physical_sl_pool(NR_UE_MAC_INST_t *mac) {
   AssertFatal(phy_sl_bit_pos == phy_sl_bits,  "Physical bitmap length and increment counter are not matching!!!");
 
 #ifdef BITMAP_DEBUG
-  for (int i = 0; i < phy_sl_bit_pos>>3; i++) {
-    LOG_D(NR_MAC, "phy_sl_bitmap[%d] %2x\n", i, mac->phy_sl_bitmap[i]);
+  for (int i = 0; i < (phy_sl_bit_pos + 7) >> 3; i++) {
+    LOG_D(NR_MAC, "phy_sl_bitmap[%d] %2x\n", i, phy_sl_bitmap->buf[i]);
   }
 #endif
 
@@ -4723,7 +4813,7 @@ List_t* get_candidate_resources(frameslot_t *frame_slot, NR_UE_MAC_INST_t *mac, 
   uint16_t l_subch = 1;
   uint16_t total_subch = *mac->sl_tx_res_pool->sl_NumSubchannel_r16;
   uint8_t psfch_time_gaps[] = {2, 3};
-  uint8_t min_time_gap_psfch = psfch_time_gaps[*mac->sl_tx_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_MinTimeGapPSFCH_r16];
+  uint8_t min_time_gap_psfch = mac->sl_tx_res_pool->sl_PSFCH_Config_r16 ? psfch_time_gaps[*mac->sl_tx_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_MinTimeGapPSFCH_r16] : 0;
 
   uint8_t psfch_period = 0;
   const uint8_t psfch_periods[] = {0,1,2,4};
@@ -4732,7 +4822,7 @@ List_t* get_candidate_resources(frameslot_t *frame_slot, NR_UE_MAC_INST_t *mac, 
                   ? psfch_periods[*mac->sl_tx_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16] : 0;
 
   // step 4 as per TS 38.214 sec 8.1.4
-  // Find sidelink slots from phy_sl_bitmap
+  // Find sidelink slots from tx_phy_sl_bitmap
   candidate_slots = get_nr_sl_comm_opportunities(mac,
                                                  abs_slot_ind,
                                                  bwp_id,

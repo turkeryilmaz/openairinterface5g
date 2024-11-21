@@ -474,7 +474,7 @@ int nr_rrc_mac_config_req_sl_preconfig(module_id_t module_id,
           sl_mac->sl_TxPool[i]->tproc0 = 1;
           sl_mac->sl_TxPool[i]->tproc1 = tproc1_valaues[mu];
           sl_mac->sl_TxPool[i]->t1 = sl_mac->sl_TxPool[i]->tproc1;
-          sl_mac->sl_TxPool[i]->t2 = 33; // According to 38214 sec. 8.1.4: T2min <= t2 <= PDB, where T2min  = {1,5,10,20}*2^μ, u = 1, PDB = 20ms = 40 slots
+          sl_mac->sl_TxPool[i]->t2 = 25; // According to 38214 sec. 8.1.4: T2min <= t2 <= PDB, where T2min  = {1,5,10,20}*2^μ, u = 1, PDB = 20ms = 40 slots
           sl_mac->mac_tx_params.rri = sl_ue_selected_config->sl_ResourceReservePeriodList_r16->list.array[0]->choice.sl_ResourceReservePeriod1_r16;
           sl_mac->mac_tx_params.resel_counter = get_random_reselection_counter(sl_mac->mac_tx_params.rri);
           mac->sl_thresh_rsrp = (-128 + (*sl_ue_selected_config->sl_Thres_RSRP_List_r16->list.array[0] - 1) * 2);
@@ -546,17 +546,37 @@ int nr_rrc_mac_config_req_sl_preconfig(module_id_t module_id,
             (mac->ulsch_slot_bitmap[slot / 64] & ((uint64_t)1 << (slot % 64))) != 0);
     }
 
-    int total_downlink_slots = mac->sl_bitmap.size / n_ul_slots_period * (nr_slots_period - n_ul_slots_period);
-    int phy_sl_size = mac->sl_bitmap.size * total_downlink_slots;
-    size_t byte_capacity = (phy_sl_size + 7) / 8;
-    mac->phy_sl_bitmap = (uint8_t*)malloc16_clear(byte_capacity);
+    BIT_STRING_t *sl_tx_time_rsrc = mac->sl_tx_res_pool->ext1->sl_TimeResource_r16;
+    int total_downlink_slots_in_bitmap = (((sl_tx_time_rsrc->size << 3) - sl_tx_time_rsrc->bits_unused) / n_ul_slots_period) * (nr_slots_period - n_ul_slots_period);
+    int total_uplink_slots_in_bitmap = (((sl_tx_time_rsrc->size << 3) - sl_tx_time_rsrc->bits_unused) / n_ul_slots_period) * (n_ul_slots_period);
+    AssertFatal(((sl_tx_time_rsrc->size << 3) - sl_tx_time_rsrc->bits_unused) == total_uplink_slots_in_bitmap, "The computation for total uplink slots is invalid. %ld != %d\n",
+                ((sl_tx_time_rsrc->size << 3) - sl_tx_time_rsrc->bits_unused), total_uplink_slots_in_bitmap);
+    int phy_sl_size = ((sl_tx_time_rsrc->size << 3) - sl_tx_time_rsrc->bits_unused) + total_downlink_slots_in_bitmap;
+    AssertFatal(total_downlink_slots_in_bitmap + total_uplink_slots_in_bitmap == phy_sl_size, "The total number of uplink and downlink slots must equal the total bitmap size!");
+    LOG_D(NR_MAC, "size of phy_sl_map  %d total_downlink_slots %d, sl_tx_time_rsrc.size %ld, n_ul_slots_period %d, (nr_slots_period - n_ul_slots_period) %d\n",
+          phy_sl_size, total_downlink_slots_in_bitmap, ((sl_tx_time_rsrc->size << 3) - sl_tx_time_rsrc->bits_unused), n_ul_slots_period, (nr_slots_period - n_ul_slots_period));
 
-    if (mac->sl_tx_res_pool && mac->sl_tx_res_pool->ext1 && mac->sl_tx_res_pool->ext1->sl_TimeResource_r16) {
-      mac->sl_bitmap.size = mac->sl_tx_res_pool->ext1->sl_TimeResource_r16->size;
-      mac->sl_bitmap.buf = (uint8_t*)malloc16_clear(mac->sl_bitmap.size);
-      memcpy(mac->sl_bitmap.buf, mac->sl_tx_res_pool->ext1->sl_TimeResource_r16->buf, mac->sl_bitmap.size);
-      mac->sl_bitmap.bits_unused = mac->sl_tx_res_pool->ext1->sl_TimeResource_r16->bits_unused;
-    }
+    uint8_t pool_id = 0;
+    size_t byte_capacity = (phy_sl_size + 7) / 8;
+
+    SL_ResourcePool_params_t *sl_tx_rsrc_pool = sl_mac->sl_TxPool[pool_id];
+    BIT_STRING_t *phy_sl_tx_bitmap = &sl_tx_rsrc_pool->phy_sl_bitmap;
+    phy_sl_tx_bitmap->buf = (uint8_t*)malloc16_clear(byte_capacity);
+    phy_sl_tx_bitmap->size = byte_capacity;
+    phy_sl_tx_bitmap->bits_unused = ((phy_sl_tx_bitmap->size << 3) - phy_sl_size) % 8;
+    uint16_t tx_phy_map_sz = get_physical_sl_pool(mac, sl_tx_time_rsrc, phy_sl_tx_bitmap);
+
+
+    SL_ResourcePool_params_t *sl_rx_rsrc_pool = sl_mac->sl_RxPool[pool_id];
+    BIT_STRING_t *phy_sl_rx_bitmap = &sl_rx_rsrc_pool->phy_sl_bitmap;
+    phy_sl_rx_bitmap->buf = (uint8_t*)malloc16_clear(byte_capacity);
+    phy_sl_rx_bitmap->size = byte_capacity;
+    phy_sl_rx_bitmap->bits_unused = ((phy_sl_rx_bitmap->size << 3) - phy_sl_size) % 8;
+    BIT_STRING_t *sl_rx_time_rsrc = mac->sl_rx_res_pool->ext1->sl_TimeResource_r16;
+    uint16_t rx_phy_map_sz = get_physical_sl_pool(mac, sl_rx_time_rsrc, phy_sl_rx_bitmap);
+
+    AssertFatal(tx_phy_map_sz == rx_phy_map_sz, "Transmit %d and receive %d phy_map_sz is different.\n",
+                tx_phy_map_sz, rx_phy_map_sz);
     mac->sl_res_percentage = 0.5;
   }
   // Configuring CSI-RS parameters locally at MAC.
@@ -748,17 +768,33 @@ void nr_rrc_mac_config_req_sl_mib(module_id_t module_id,
             (mac->ulsch_slot_bitmap[slot / 64] & ((uint64_t)1 << (slot % 64))) != 0);
     }
 
-    int total_downlink_slots = mac->sl_bitmap.size / n_ul_slots_period * (nr_slots_period - n_ul_slots_period);
-    int phy_sl_size = mac->sl_bitmap.size * total_downlink_slots;
-    size_t byte_capacity = (phy_sl_size + 7) / 8;
-    mac->phy_sl_bitmap = (uint8_t*)malloc16_clear(byte_capacity);
+    BIT_STRING_t *sl_time_rsrc = mac->sl_tx_res_pool->ext1->sl_TimeResource_r16;
+    int total_downlink_slots = ((sl_time_rsrc->size << 3) - sl_time_rsrc->bits_unused) / n_ul_slots_period * (nr_slots_period - n_ul_slots_period);
+    int phy_sl_size = ((sl_time_rsrc->size << 3) - sl_time_rsrc->bits_unused) + total_downlink_slots;
+    LOG_D(NR_MAC, "size of phy_sl_map  %d total_downlink_slots %d, sl_time_rsrc->size %ld, n_ul_slots_period %d, (nr_slots_period - n_ul_slots_period) %d\n", phy_sl_size, total_downlink_slots, ((sl_time_rsrc->size << 3) - sl_time_rsrc->bits_unused), n_ul_slots_period, (nr_slots_period - n_ul_slots_period));
 
-    if (mac->sl_tx_res_pool && mac->sl_tx_res_pool->ext1 && mac->sl_tx_res_pool->ext1->sl_TimeResource_r16) {
-      mac->sl_bitmap.size = mac->sl_tx_res_pool->ext1->sl_TimeResource_r16->size;
-      mac->sl_bitmap.buf = (uint8_t*)malloc16_clear(mac->sl_bitmap.size);
-      memcpy(mac->sl_bitmap.buf, mac->sl_tx_res_pool->ext1->sl_TimeResource_r16->buf, mac->sl_bitmap.size);
-      mac->sl_bitmap.bits_unused = mac->sl_tx_res_pool->ext1->sl_TimeResource_r16->bits_unused;
-    }
+    size_t byte_capacity = (phy_sl_size + 7) / 8;
+    uint8_t pool_id = 0;
+    SL_ResourcePool_params_t *sl_tx_rsrc_pool = sl_mac->sl_TxPool[pool_id];
+    SL_ResourcePool_params_t *sl_rx_rsrc_pool = sl_mac->sl_RxPool[pool_id];
+
+    sl_tx_rsrc_pool->phy_sl_bitmap.buf = (uint8_t*)malloc16_clear(byte_capacity);
+    sl_rx_rsrc_pool->phy_sl_bitmap.buf = (uint8_t*)malloc16_clear(byte_capacity);
+    sl_tx_rsrc_pool->phy_sl_bitmap.size = (phy_sl_size + 7) >> 3;
+    sl_tx_rsrc_pool->phy_sl_bitmap.bits_unused = ((sl_tx_rsrc_pool->phy_sl_bitmap.size << 3) - phy_sl_size) % 8;
+
+    BIT_STRING_t *phy_sl_bitmap = &sl_tx_rsrc_pool->phy_sl_bitmap;
+    uint16_t tx_phy_map_sz = get_physical_sl_pool(mac, sl_time_rsrc, phy_sl_bitmap);
+
+    sl_time_rsrc = mac->sl_rx_res_pool->ext1->sl_TimeResource_r16;
+    phy_sl_bitmap = &sl_rx_rsrc_pool->phy_sl_bitmap;
+    sl_rx_rsrc_pool->phy_sl_bitmap.size = (phy_sl_size + 7) >> 3;
+    sl_rx_rsrc_pool->phy_sl_bitmap.bits_unused = ((sl_rx_rsrc_pool->phy_sl_bitmap.size << 3) - phy_sl_size) % 8;
+
+    uint16_t rx_phy_map_sz = get_physical_sl_pool(mac, sl_time_rsrc, phy_sl_bitmap);
+
+    AssertFatal(tx_phy_map_sz == rx_phy_map_sz, "Transmit and Receive physical sidelink bitmap does not have same length!!!");
+
     DevAssert(mac->if_module != NULL && mac->if_module->sl_phy_config_request != NULL);
     mac->if_module->sl_phy_config_request(&sl_mac->sl_phy_config);
   }

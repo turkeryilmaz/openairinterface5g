@@ -98,7 +98,8 @@ SystemInformationBlockType1_nr_t;
 #define NR_DOWNLINK_SLOT                   (0x01)
 #define NR_UPLINK_SLOT                     (0x02)
 #define NR_MIXED_SLOT                      (0x03)
-#define NR_SIDELINK_SLOT                    NR_UPLINK_SLOT
+#define NR_SIDELINK_SLOT                   (0x04)
+#define NON_NR_SIDELINK_SLOT               (0x05)
 
 #define FRAME_DURATION_MICRO_SEC           (10000)  /* frame duration in microsecond */
 

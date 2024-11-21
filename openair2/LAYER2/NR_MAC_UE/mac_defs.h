@@ -789,9 +789,8 @@ typedef struct {
 
   /// bitmap of ULSCH slots, can hold up to 160 slots
   uint64_t ulsch_slot_bitmap[3];
-  BIT_STRING_t sl_bitmap;
-  uint8_t* phy_sl_bitmap;
-
+  List_t *sl_candidate_resources;
+  uint16_t reselection_timer;
 } NR_UE_MAC_INST_t;
 
 /*@}*/
