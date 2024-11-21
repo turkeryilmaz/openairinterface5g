@@ -650,7 +650,7 @@ int main(int argc, char **argv){
                        ue_prach_config->num_prach_fd_occasions_list[fd_occasion].prach_root_sequence_index,
                        UE->X_u);
 
-  generate_nr_prach(UE, 0, frame, slot);
+  generate_nr_prach(UE, 0, frame, slot, txdata);
 
   /* tx_lev_dB not used later, no need to set */
   //tx_lev_dB = (unsigned int) dB_fixed(tx_lev);

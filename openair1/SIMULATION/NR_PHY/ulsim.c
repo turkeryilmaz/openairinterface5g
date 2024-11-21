@@ -1172,7 +1172,7 @@ int main(int argc, char *argv[])
           /////////////////////////phy_procedures_nr_ue_TX///////////////////////
           ///////////
 
-          phy_procedures_nrUE_TX(UE, &UE_proc, &phy_data);
+          phy_procedures_nrUE_TX(UE, &UE_proc, &phy_data, UE->common_vars.txData);
 
           if (n_trials == 1) {
             LOG_M("txsig0.m", "txs0", &UE->common_vars.txData[0][slot_offset], slot_length, 1, 1);

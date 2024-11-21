@@ -584,7 +584,7 @@ int main(int argc, char **argv)
          proc.nr_slot_rx,
          sl_uerx->sl_config.sl_sync_source.rx_slss_id);
 
-  phy_procedures_nrUE_SL_TX(UE_TX, &proc, &phy_data_tx);
+  phy_procedures_nrUE_SL_TX(UE_TX, &proc, &phy_data_tx, UE_TX->common_vars.txData);
 
   for (SNR = snr0; SNR >= snr1; SNR -= 1) {
     for (int trial = 0; trial < n_trials; trial++) {

@@ -436,7 +436,7 @@ static void UE_synch(void *arg) {
   }
 }
 
-static void RU_write(nr_rxtx_thread_data_t *rxtxD, bool sl_tx_action)
+static void RU_write(nr_rxtx_thread_data_t *rxtxD, bool sl_tx_action, c16_t **txp)
 {
   PHY_VARS_NR_UE *UE = rxtxD->UE;
   const UE_nr_rxtx_proc_t *proc = &rxtxD->proc;
@@ -445,10 +445,7 @@ static void RU_write(nr_rxtx_thread_data_t *rxtxD, bool sl_tx_action)
   if (UE->sl_mode == 2)
     fp = &UE->SL_UE_PHY_PARAMS.sl_frame_params;
 
-  void *txp[NB_ANTENNAS_TX];
   int slot = proc->nr_slot_tx;
-  for (int i = 0; i < fp->nb_antennas_tx; i++)
-    txp[i] = (void *)&UE->common_vars.txData[i][fp->get_samples_slot_timestamp(slot, fp, 0)];
 
   radio_tx_burst_flag_t flags = TX_BURST_INVALID;
 
@@ -476,11 +473,9 @@ static void RU_write(nr_rxtx_thread_data_t *rxtxD, bool sl_tx_action)
     }
   }
 
-  int tmp = openair0_write_reorder(&UE->rfdevice, proc->timestamp_tx, txp, rxtxD->writeBlockSize, fp->nb_antennas_tx, flags);
+  int tmp =
+      openair0_write_reorder(&UE->rfdevice, proc->timestamp_tx, (void **)txp, rxtxD->writeBlockSize, fp->nb_antennas_tx, flags);
   AssertFatal(tmp == rxtxD->writeBlockSize, "");
-
-  for (int i = 0; i < fp->nb_antennas_tx; i++)
-    memset(txp[i], 0, rxtxD->writeBlockSize);
 }
 
 void processSlotTX(void *arg)
@@ -490,10 +485,17 @@ void processSlotTX(void *arg)
   PHY_VARS_NR_UE *UE = rxtxD->UE;
   nr_phy_data_tx_t phy_data = {0};
   bool sl_tx_action = false;
-
+  NR_DL_FRAME_PARMS *fp = &UE->frame_parms;
+  //  LOG_E(PHY,"enter process slot tx %d.%d\n", proc->frame_tx, proc->nr_slot_tx);
   if (UE->if_inst)
     UE->if_inst->slot_indication(UE->Mod_id);
-
+  c16_t *txp[fp->nb_antennas_tx];
+  for (int i = 0; i < fp->nb_antennas_tx; i++) {
+    txp[i] = UE->common_vars.txData[i] + fp->get_samples_slot_timestamp(proc->nr_slot_tx, fp, 0);
+    // We should not need to set it to 0
+    // but in mixed slots, in TDD continuous tx (should not exist), ... we don't know the parts to ignore
+    memset(txp[i], 0, fp->get_samples_per_slot(proc->nr_slot_tx, fp) * sizeof(**txp));
+  }
   if (proc->tx_slot_type == NR_UPLINK_SLOT || proc->tx_slot_type == NR_MIXED_SLOT) {
     if (UE->sl_mode == 2 && proc->tx_slot_type == NR_SIDELINK_SLOT) {
       // trigger L2 to run ue_sidelink_scheduler thru IF module
@@ -518,7 +520,7 @@ void processSlotTX(void *arg)
         AssertFatal((phy_data.sl_tx_action >= SL_NR_CONFIG_TYPE_TX_PSBCH &&
                      phy_data.sl_tx_action < SL_NR_CONFIG_TYPE_TX_MAXIMUM), "Incorrect SL TX Action Scheduled\n");
 
-        phy_procedures_nrUE_SL_TX(UE, proc, &phy_data);
+        phy_procedures_nrUE_SL_TX(UE, proc, &phy_data, txp);
 
         sl_tx_action = true;
       }
@@ -539,15 +541,14 @@ void processSlotTX(void *arg)
         stop_meas(&UE->ue_ul_indication_stats);
       }
 
-      phy_procedures_nrUE_TX(UE, proc, &phy_data);
+      phy_procedures_nrUE_TX(UE, proc, &phy_data, txp);
     }
   }
 
-  int slots_per_frame = (UE->sl_mode == 2) ? UE->SL_UE_PHY_PARAMS.sl_frame_params.slots_per_frame
-                                           : UE->frame_parms.slots_per_frame;
+  int slots_per_frame = (UE->sl_mode == 2) ? UE->SL_UE_PHY_PARAMS.sl_frame_params.slots_per_frame : fp->slots_per_frame;
   int next_slot = (proc->nr_slot_tx + 1) % slots_per_frame;
   dynamic_barrier_join(&UE->process_slot_tx_barriers[next_slot]);
-  RU_write(rxtxD, sl_tx_action);
+  RU_write(rxtxD, sl_tx_action, txp);
 }
 
 static int UE_dl_preprocessing(PHY_VARS_NR_UE *UE, const UE_nr_rxtx_proc_t *proc, int *tx_wait_for_dlsch, nr_phy_data_t *phy_data)
@@ -616,7 +617,7 @@ static int UE_dl_preprocessing(PHY_VARS_NR_UE *UE, const UE_nr_rxtx_proc_t *proc
     sampleShift = pbch_pdcch_processing(UE, proc, phy_data);
     if (phy_data->dlsch[0].active && phy_data->dlsch[0].rnti_type == TYPE_C_RNTI_) {
       // indicate to tx thread to wait for DLSCH decoding
-      const int ack_nack_slot = (proc->nr_slot_rx + phy_data->dlsch[0].dlsch_config.k1_feedback) % UE->frame_parms.slots_per_frame;
+      const int ack_nack_slot = (proc->nr_slot_rx + phy_data->dlsch[0].dlsch_config.k1_feedback) % fp->slots_per_frame;
       tx_wait_for_dlsch[ack_nack_slot]++;
     }
   }
@@ -861,7 +862,6 @@ void *UE_thread(void *arg)
       notifiedFIFO_elt_t *Msg = newNotifiedFIFO_elt(sizeof(syncData_t), 0, &nf, UE_synch);
       syncData_t *syncMsg = (syncData_t *)NotifiedFifoData(Msg);
       *syncMsg = (syncData_t){0};
-      NR_DL_FRAME_PARMS *fp = &UE->frame_parms;
       if (UE->UE_scan_carrier) {
         // Get list of GSCN in this band for UE's bandwidth and center frequency.
         LOG_W(PHY, "UE set to scan all GSCN in current bandwidth\n");
