@@ -117,6 +117,7 @@ typedef struct SL_ResourcePool_params {
   //This holds the structure from RRC
   NR_SL_ResourcePool_r16_t *respool;
 
+  BIT_STRING_t phy_sl_bitmap;
   //NUM Subchannels in this resource pool
   uint16_t num_subch;
 

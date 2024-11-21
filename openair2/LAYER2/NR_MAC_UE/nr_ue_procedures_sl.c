@@ -537,59 +537,6 @@ uint8_t sl_determine_sci_1a_len(uint16_t *num_subchannels,
   return sci_1a_len;
 }
 
-/* This function determines the number of sidelink slots in 1024 frames - DFN cycle
-* which can be used for determining reserved slots and REsource pool slots according to bitmap.
-* Sidelink slots are the uplink and mixed slots with sidelink support except the SSB slots.
-*/
-uint32_t sl_determine_num_sidelink_slots(uint8_t mod_id, uint16_t *N_SSB_16frames, uint16_t *N_SL_SLOTS_perframe)
-{
-
-  NR_UE_MAC_INST_t *mac = get_mac_inst(mod_id);
-  sl_nr_ue_mac_params_t *sl_mac = mac->SL_MAC_PARAMS;
-  uint32_t N_SSB_1024frames = 0;
-  uint32_t N_SL_SLOTS = 0;
-  *N_SL_SLOTS_perframe = 0;
-  *N_SSB_16frames = 0;
-
-  if (sl_mac->rx_sl_bch.status) {
-    sl_ssb_timealloc_t *ssb_timealloc = &sl_mac->rx_sl_bch.ssb_time_alloc;
-    *N_SSB_16frames += ssb_timealloc->sl_NumSSB_WithinPeriod;
-    LOG_D(MAC, "RX SSB Slots:%d\n", *N_SSB_16frames);
-  }
-
-  if (sl_mac->tx_sl_bch.status) {
-    sl_ssb_timealloc_t *ssb_timealloc = &sl_mac->tx_sl_bch.ssb_time_alloc;
-    *N_SSB_16frames += ssb_timealloc->sl_NumSSB_WithinPeriod;
-    LOG_D(MAC, "TX SSB Slots:%d\n", *N_SSB_16frames);
-  }
-
-  //Total SSB slots in SFN cycle (1024 frames)
-  N_SSB_1024frames = SL_FRAME_NUMBER_CYCLE/SL_NR_SSB_REPETITION_IN_FRAMES * (*N_SSB_16frames);
-
-  sl_nr_phy_config_request_t *sl_cfg = &sl_mac->sl_phy_config.sl_config_req;
-  uint8_t sl_scs = sl_cfg->sl_bwp_config.sl_scs;
-  uint8_t num_slots_per_frame = 10*(1<<sl_scs);
-  uint8_t slot_type = 0;
-  for (int i = 0; i < num_slots_per_frame; i++) {
-    slot_type = sl_nr_ue_slot_select(sl_cfg, 0, i, TDD);
-    if (slot_type == NR_SIDELINK_SLOT) {
-      *N_SL_SLOTS_perframe = *N_SL_SLOTS_perframe + 1;
-      sl_mac->sl_slot_bitmap |= (1<<i);
-    }
-  }
-
-  //Determine total number of Valid Sidelink slots which can be used for Respool in a SFN cycle (1024 frames)
-  N_SL_SLOTS = (*N_SL_SLOTS_perframe * SL_FRAME_NUMBER_CYCLE) - N_SSB_1024frames;
-
-  LOG_D(MAC, "[UE%d]SL-MAC:SSB slots in 1024 frames:%d, N_SL_SLOTS_perframe:%d, N_SL_SLOTs in 1024 frames:%d, SL SLOT bitmap:%x\n",
-                                                                  mod_id,N_SSB_1024frames, *N_SL_SLOTS_perframe,
-                                                                  N_SL_SLOTS, sl_mac->sl_slot_bitmap);
-
-
-  return N_SL_SLOTS;
-}
-
-
 uint8_t count_on_bits(uint8_t* buf, size_t size) {
   uint8_t count = 0;
   uint8_t byte;

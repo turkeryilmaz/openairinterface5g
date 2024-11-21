@@ -434,7 +434,7 @@ int16_t compute_nr_SSB_PL(NR_UE_MAC_INST_t *mac, short ssb_rsrp_dBm);
 // PUSCH scheduler:
 // - Calculate the slot in which ULSCH should be scheduled. This is current slot + K2,
 // - where K2 is the offset between the slot in which UL DCI is received and the slot
-// - in which ULSCH should be scheduled. K2 is configured in RRC configuration.  
+// - in which ULSCH should be scheduled. K2 is configured in RRC configuration.
 // PUSCH Msg3 scheduler:
 // - scheduled by RAR UL grant according to 8.3 of TS 38.213
 int nr_ue_pusch_scheduler(NR_UE_MAC_INST_t *mac, uint8_t is_Msg3, frame_t current_frame, int current_slot, frame_t *frame_tx, int *slot_tx, long k2);
@@ -503,16 +503,6 @@ int get_csi_reporting_frame_slot(NR_UE_MAC_INST_t *mac,
                                  uint32_t *csi_report_slot);
 
 uint16_t sl_get_subchannel_size(NR_SL_ResourcePool_r16_t *rpool);
-
-/** \brief This function checks nr UE slot for Sidelink direction : Sidelink
- *  @param cfg      : Sidelink config request
- *  @param nr_frame : frame number
- *  @param nr_slot  : slot number
- *  @param frame duplex type  : Frame type
-    @returns int : 0 or Sidelink slot type */
-int sl_nr_ue_slot_select(sl_nr_phy_config_request_t *cfg,
-                         int nr_frame, int nr_slot,
-                         uint8_t frame_duplex_type);
 
 int nr_ue_process_sci1_indication_pdu(NR_UE_MAC_INST_t *mac,module_id_t mod_id,frame_t frame, int slot, sl_nr_sci_indication_pdu_t *sci,void *phy_data);
 
@@ -601,6 +591,8 @@ int config_pssch_sci_pdu_rx(sl_nr_rx_config_pssch_sci_pdu_t *nr_sl_pssch_sci_pdu
                              int pscch_subchannel_index,
                              const NR_SL_BWP_ConfigCommon_r16_t *sl_bwp,
                              const NR_SL_ResourcePool_r16_t *sl_res_pool);
+
+sl_resource_info_t* get_resource_element(List_t* resource_list, frameslot_t sfn);
 
 int nr_ue_process_sci2_indication_pdu(NR_UE_MAC_INST_t *mac,
                                       module_id_t mod_id,
@@ -723,11 +715,15 @@ List_t get_nr_sl_comm_opportunities(NR_UE_MAC_INST_t *mac,
                                     uint16_t t2,
                                     uint8_t psfch_period);
 
+bool is_sl_slot(NR_UE_MAC_INST_t *mac, BIT_STRING_t *phy_sl_bitmap, uint16_t phy_map_sz, uint64_t abs_slot);
+
+void validate_selected_sl_slot(bool tx, bool rx, NR_TDD_UL_DL_ConfigCommon_t *conf, frameslot_t frame_slot);
+
 bool check_t1_within_tproc1(uint8_t mu, uint16_t t1_slots);
 
 NR_SL_ResourcePool_r16_t* get_resource_pool(NR_UE_MAC_INST_t *mac, uint16_t pool_id);
 
-bool slot_has_psfch(NR_UE_MAC_INST_t *mac, uint64_t abs_index_cur_slot, uint8_t psfch_period, uint8_t phy_sl_map_size);
+bool slot_has_psfch(BIT_STRING_t *phy_sl_bitmap, uint64_t abs_index_cur_slot, uint8_t psfch_period, size_t phy_sl_map_size);
 
 void append_bit(uint8_t *buf, size_t bit_pos, int bit_value);
 
@@ -747,7 +743,7 @@ void delete_at(List_t* list, size_t index);
 
 void free_vector(vec_of_list_t* vec);
 
-int get_physical_sl_pool(NR_UE_MAC_INST_t *mac);
+int get_physical_sl_pool(NR_UE_MAC_INST_t *mac, BIT_STRING_t *sl_time_rsrc, BIT_STRING_t *phy_sl_bitmap);
 
 void push_back_list(vec_of_list_t* vec, List_t* new_list);
 

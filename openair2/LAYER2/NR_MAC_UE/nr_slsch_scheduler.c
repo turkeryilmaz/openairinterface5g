@@ -21,11 +21,11 @@
 
 /* \file        nr_slsch_scheduler.c
  * \brief       Routines for UE SLSCH scheduling
- * \author      R. Knopp 
+ * \author      R. Knopp
  * \date        Aug. 2023
  * \version     0.1
- * \company     EURECOM 
- * \email       raymond.knopp@eurecom.fr 
+ * \company     EURECOM
+ * \email       raymond.knopp@eurecom.fr
  */
 
 #include <stdio.h>
@@ -311,23 +311,21 @@ void nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP, int slotP, nr_sci_pdu_
   for (int i = 0; i < (n_ul_slots_period * num_subch); i++) {
     SL_sched_feedback_t  *sched_psfch = &mac->sl_info.list[0]->UE_sched_ctrl.sched_psfch[i];
     if (slotP == sched_psfch->feedback_slot) {
-        LOG_D(NR_MAC, "%4d.%2d i = %d sched_psfch %p feedback slot %d\n", frameP, slotP, i, sched_psfch, sched_psfch->feedback_slot);
+        LOG_I(NR_MAC, "%4d.%2d i = %d sched_psfch %p feedback slot %d\n", frameP, slotP, i, sched_psfch, sched_psfch->feedback_slot);
         is_feedback_slot = true;
-        AssertFatal((slotP % psfch_period == 0), "slot mod psfch_period MUST be 0 !!!\n");
+        frameslot_t frame_slot;
+        frame_slot.frame = frameP;
+        frame_slot.slot = slotP;
+        validate_selected_sl_slot(true, false, mac->SL_MAC_PARAMS->sl_TDD_config, frame_slot);
         break;
     }
   }
 
-  if ((psfch_period == 2 || psfch_period == 4) && (slotP % psfch_period == 0)) {
-      if (is_feedback_slot) {
+  if ((psfch_period == 2 || psfch_period == 4) && is_feedback_slot) {
         sci_pdu->psfch_overhead.val =  1;
-        LOG_D(NR_MAC, "%4d.%2d Setting psfch_overhead 1\n", frameP, slotP);
-      } else {
-          sci_pdu->psfch_overhead.val = 0;
-          LOG_D(NR_MAC, "%4d.%2d Setting psfch_overhead 0\n", frameP, slotP);
-      }
-  } else if ((psfch_period == 2 || psfch_period == 4) && (slotP % psfch_period != 0))
+  } else if ((psfch_period == 2 || psfch_period == 4) && !is_feedback_slot) {
     sci_pdu->psfch_overhead.val = 0;
+  }
 
   sci_pdu->reserved.val = mac->is_synced ? 1 : 0;
   sci_pdu->conflict_information_receiver.val = 0;
