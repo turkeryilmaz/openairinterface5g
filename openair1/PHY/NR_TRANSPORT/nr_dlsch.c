@@ -42,7 +42,7 @@
 #include "SCHED_NR/sched_nr.h"
 
 //#define DEBUG_DLSCH
-//#define DEBUG_DLSCH_MAPPING
+#define DEBUG_DLSCH_MAPPING
 
 
 static void nr_pdsch_codeword_scrambling(uint8_t *in, uint32_t size, uint8_t q, uint32_t Nid, uint32_t n_RNTI, uint32_t *out)
@@ -220,7 +220,10 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
         }
         /// DMRS QPSK modulation
         NR_DL_FRAME_PARMS *fp = &gNB->frame_parms;
-        const uint32_t *gold =
+#ifdef DLSCH_MAPPING
+        LOG_I(NR_PHY,"dlDmrsScramblingId %d, SCID %d slot %d l_symbol %d\n", rel15->dlDmrsScramblingId, rel15->SCID, slot, l_symbol);
+#endif
+            const uint32_t *gold =
             nr_gold_pdsch(fp->N_RB_DL, fp->symbols_per_slot, rel15->dlDmrsScramblingId, rel15->SCID, slot, l_symbol);
         // Qm = 1 as DMRS is QPSK modulated
         nr_modulation(gold, n_dmrs * DMRS_MOD_ORDER, DMRS_MOD_ORDER, (int16_t *)mod_dmrs);
@@ -350,7 +353,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
 
             if (rel15->numDmrsCdmGrpsNoData==2 && dmrs_Type == 0 && (dmrs_port&3) == 0 && l_prime == 0) {
 #ifdef DEBUG_DLSCH_MAPPING
-		   printf("doing DMRS pattern for port 0 : d0 0 d1 0 ... dNm2 0 dNm1 0\n");
+		   printf("doing DMRS pattern for port 0 : d0 0 d1 0 ... dNm2 0 dNm1 0 (ul %d, rr %d)\n",upper_limit,remaining_re);
 #endif 
 		   simde__m256i d0,d2,d3,zeros=simde_mm256_xor_si256(d0,d0),amp_dmrs256=simde_mm256_set1_epi16(amp_dmrs);
 		   int i,j;
@@ -380,8 +383,8 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
                                 (re+start_sc)%frame_parms->ofdm_symbol_size,
                                 k_prime,
                                 re,
-                                txdataF_precoding[layer][l_symbol][re+start_sc].r,
-                                txdataF_precoding[layer][l_symbol][re+start_sc].i);
+                                txdataF_precoding[layer][l_symbol][(re+start_sc)%frame_parms->ofdm_symbol_size].r,
+                                txdataF_precoding[layer][l_symbol][(re+start_sc)%frame_parms->ofdm_symbol_size].i);
 #endif
             }
             else if (rel15->numDmrsCdmGrpsNoData==2 && dmrs_Type == 0 && (dmrs_port&3) == 1 && l_prime == 0) {
