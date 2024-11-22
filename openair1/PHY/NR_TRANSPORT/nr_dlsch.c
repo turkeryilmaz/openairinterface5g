@@ -228,7 +228,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
         // Qm = 1 as DMRS is QPSK modulated
         nr_modulation(gold, n_dmrs * DMRS_MOD_ORDER, DMRS_MOD_ORDER, (int16_t *)mod_dmrs);
 
-#ifdef DEBUG_DLSCH
+#ifdef DEBUG_DLSCH_MAPPING
         printf("DMRS modulation (symbol %d, %d symbols, type %d):\n", l_symbol, n_dmrs, dmrs_Type);
         for (int i = 0; i < n_dmrs / 2; i += 8) {
           for (int j = 0; j < 8; j++) {
