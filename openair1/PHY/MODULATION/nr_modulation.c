@@ -24,6 +24,7 @@
 #include "executables/softmodem-common.h"
 
 // #define DEBUG_DLSCH_PRECODING_PRINT_WITH_TRIVIAL // TODO: For debug, to be removed if want to merge to develop
+//#define DEBUG_LAYER_MAPPING
 
 //Table 6.3.1.5-1 Precoding Matrix W 1 layer 2 antenna ports 'n' = -1 and 'o' = -j
 const char nr_W_1l_2p[6][2][1] = {
@@ -294,6 +295,33 @@ void nr_layer_mapping(int nbCodes,
 	  d2=simde_mm256_permutevar8x32_epi32(i2, perm3_2);
 	  d3=simde_mm256_blend_epi32(d0,d1,0x1c); // 00011100
           ((simde__m256i *)tx_layers[2])[i] = simde_mm256_blend_epi32(d3,d2,0xe0); // 11100000
+#ifdef DEBUG_LAYER_MAPPING
+	  printf("\nsymb %d/%d\n",i<<3,n_symbs);
+	  printf(" layer 0:\t");
+          for (int j=0;j<8*6;j+=6) {
+              printf("%d %d ",((int16_t *)&mod_symbs[0][i<<3])[j],((int16_t *)&mod_symbs[0][i<<3])[j+1]);
+	  }
+	  printf("\n layer 1:\t");
+          for (int j=2;j<8*6;j+=6) {
+              printf("%d %d ",((int16_t *)&mod_symbs[0][i<<3])[j],((int16_t *)&mod_symbs[0][i<<3])[j+1]);
+	  }
+	  printf("\n layer 2:\t");
+          for (int j=4;j<8*6;j+=6) {
+              printf("%d %d ",((int16_t *)&mod_symbs[0][i<<3])[j],((int16_t *)&mod_symbs[0][i<<3])[j+1]);
+	  }
+	  printf("\n Mapping layer 0:\t");
+          for (int j=0;j<16;j++) {
+              printf("%d ",((int16_t *)&tx_layers[0][i<<3])[j]);
+	  }
+	  printf("\n Mapping layer 1:\t");
+          for (int j=0;j<16;j++) {
+              printf("%d ",((int16_t *)&tx_layers[1][i<<3])[j]);
+	  }
+	  printf("\n Mapping layer 2:\t");
+          for (int j=0;j<16;j++) {
+              printf("%d ",((int16_t *)&tx_layers[2][i<<3])[j]);
+	  }
+#endif
       }
     break;  
 
