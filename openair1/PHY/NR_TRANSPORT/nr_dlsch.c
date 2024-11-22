@@ -221,7 +221,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
         /// DMRS QPSK modulation
         NR_DL_FRAME_PARMS *fp = &gNB->frame_parms;
 #ifdef DLSCH_MAPPING
-        LOG_I(NR_PHY,"dlDmrsScramblingId %d, SCID %d slot %d l_symbol %d\n", rel15->dlDmrsScramblingId, rel15->SCID, slot, l_symbol);
+        printf("dlDmrsScramblingId %d, SCID %d slot %d l_symbol %d\n", rel15->dlDmrsScramblingId, rel15->SCID, slot, l_symbol);
 #endif
             const uint32_t *gold =
             nr_gold_pdsch(fp->N_RB_DL, fp->symbols_per_slot, rel15->dlDmrsScramblingId, rel15->SCID, slot, l_symbol);
