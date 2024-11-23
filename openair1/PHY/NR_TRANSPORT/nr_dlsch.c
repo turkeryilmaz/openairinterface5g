@@ -42,7 +42,7 @@
 #include "SCHED_NR/sched_nr.h"
 
 //#define DEBUG_DLSCH
-#define DEBUG_DLSCH_MAPPING
+//#define DEBUG_DLSCH_MAPPING
 
 
 static void nr_pdsch_codeword_scrambling(uint8_t *in, uint32_t size, uint8_t q, uint32_t Nid, uint32_t n_RNTI, uint32_t *out)
@@ -242,13 +242,14 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
     uint32_t cur_re=cur_re0;
     c16_t tx_layers[rel15->nrOfLayers][layerSz] __attribute__((aligned(64)));
     if (l_symbol == rel15->StartSymbolIndex) nr_layer_mapping(rel15->NrOfCodewords, encoded_length, mod_symbs, rel15->nrOfLayers, layerSz, nb_re, tx_layers);
+    dmrs_idx = rel15->rbStart;
+    if (rel15->rnti != SI_RNTI)
+    dmrs_idx += rel15->BWPStart;
+    dmrs_idx *= dmrs_Type == NFAPI_NR_DMRS_TYPE1 ? 6 : 4;
+    if (dmrs_idx>0) memmove(mod_dmrs,mod_dmrs+dmrs_idx,rel15->rbSize*(NFAPI_NR_DMRS_TYPE1 ? 6 : 4)*sizeof(c16_t));
     for (int layer = 0; layer < rel15->nrOfLayers; layer++) {
       uint8_t k_prime = 0;
       uint16_t n = 0;
-      dmrs_idx = rel15->rbStart;
-      if (rel15->rnti != SI_RNTI)
-        dmrs_idx += rel15->BWPStart;
-      dmrs_idx *= dmrs_Type == NFAPI_NR_DMRS_TYPE1 ? 6 : 4;
       cur_re = cur_re0; 
 
 
@@ -350,7 +351,6 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
             }
 	    c16_t *txF = txdataF_precoding[layer][l_symbol];
 
-
             if (rel15->numDmrsCdmGrpsNoData==2 && dmrs_Type == 0 && (dmrs_port&3) == 0 && l_prime == 0) {
 #ifdef DEBUG_DLSCH_MAPPING
 		   printf("doing DMRS pattern for port 0 : d0 0 d1 0 ... dNm2 0 dNm1 0 (ul %d, rr %d)\n",upper_limit,remaining_re);
@@ -363,6 +363,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
 		      d3 = simde_mm256_unpackhi_epi32(d0,zeros);  
                       ((simde__m256i *)dmrs_mux)[j++] = _mm256_permute2x128_si256(d2,d3,32) ; 
                       ((simde__m256i *)dmrs_mux)[j++] = _mm256_permute2x128_si256(d2,d3,49) ; 
+                     
 		   }
 		   if ((i<<4) != (rel15->rbSize*NR_NB_SC_PER_RB)) {
                        for (int i2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>4)<<3),j2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>4)<<4) ; i2< (rel15->rbSize*NR_NB_SC_PER_RB)>>1 ;i2++) {
@@ -377,8 +378,8 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
 #ifdef DEBUG_DLSCH_MAPPING
                    for (int re=0;re<rel15->rbSize*NR_NB_SC_PER_RB;re+=2)
 
-                         printf("dmrs_idx %u \t l %d \t layer %d \t k %d \t k_prime %d \t n %d \t txdataF: %d %d\n", 
-                                re>>1,
+                         printf("dmrs_idx %u  (%d %d)*%d\t l %d \t layer %d \t k %d \t k_prime %d \t n %d \t txdataF: %d %d\n", 
+                                re>>1,mod_dmrs[re>>1].r,mod_dmrs[re>>1].i,amp_dmrs,
                                 l_symbol,layer,
                                 (re+start_sc)%frame_parms->ofdm_symbol_size,
                                 k_prime,
