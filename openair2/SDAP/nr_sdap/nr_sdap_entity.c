@@ -24,10 +24,41 @@
 #include <openair2/LAYER2/nr_pdcp/nr_pdcp_oai_api.h>
 #include <openair3/ocp-gtpu/gtp_itf.h>
 #include "openair2/LAYER2/nr_pdcp/nr_pdcp_ue_manager.h"
+#include "openair2/COMMON/qos_flow_messages_types.h"
 
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
+
+/* Standarized 5QI values and Default Priority levels as mentioned in 3GPP TS 23.501 Table 5.7.4-1 */
+const standard_5QI_characteristics_t params_5QI[] = {
+    {FIVEQI_1, PRIORITY_20, GBR},
+    {FIVEQI_2, PRIORITY_40, GBR},
+    {FIVEQI_3, PRIORITY_30, GBR},
+    {FIVEQI_4, PRIORITY_50, GBR},
+    {FIVEQI_65, PRIORITY_7, GBR},
+    {FIVEQI_66, PRIORITY_20, GBR},
+    {FIVEQI_67, PRIORITY_15, GBR},
+    {FIVEQI_71, PRIORITY_56, GBR},
+    {FIVEQI_72, PRIORITY_56, GBR},
+    {FIVEQI_73, PRIORITY_56, GBR},
+    {FIVEQI_74, PRIORITY_56, GBR},
+    {FIVEQI_76, PRIORITY_56, GBR},
+    {FIVEQI_5, PRIORITY_10, GBR},
+    {FIVEQI_6, PRIORITY_60, NON_GBR},
+    {FIVEQI_7, PRIORITY_70, NON_GBR},
+    {FIVEQI_8, PRIORITY_80, NON_GBR},
+    {FIVEQI_9, PRIORITY_90, NON_GBR},
+    {FIVEQI_69, PRIORITY_5, NON_GBR},
+    {FIVEQI_70, PRIORITY_55, NON_GBR},
+    {FIVEQI_79, PRIORITY_65, NON_GBR},
+    {FIVEQI_80, PRIORITY_68, NON_GBR},
+    {FIVEQI_82, PRIORITY_19, NON_GBR},
+    {FIVEQI_83, PRIORITY_22, DELAY_CRITICAL_GBR},
+    {FIVEQI_84, PRIORITY_24, DELAY_CRITICAL_GBR},
+    {FIVEQI_85, PRIORITY_21, DELAY_CRITICAL_GBR},
+    {FIVEQI_86, PRIORITY_18, DELAY_CRITICAL_GBR},
+};
 
 typedef struct {
   nr_sdap_entity_t *sdap_entity_llist;

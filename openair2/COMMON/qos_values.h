@@ -9,6 +9,8 @@
  *
  *      http://www.openairinterface.org/?page_id=698
  *
+ * Author and copyright: Laurent Thomas, open-cells.com
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -19,16 +21,16 @@
  *      contact@openairinterface.org
  */
 
-#ifndef FIVEG_PLATFORM_TYPES_H__
-#define FIVEG_PLATFORM_TYPES_H__
+#ifndef QOS_VALUES_H_
+#define QOS_VALUES_H_
 
-#include <stdint.h>
+void get_drb_characteristics(qos_flow_to_setup_t *qos_flows_in, int num_qos_flows, qos_flow_level_qos_parameters_t *dRB_QoS);
 
-typedef struct nssai_s {
-  uint8_t sst;
-  uint32_t sd;
-} nssai_t;
+// based on the 5QI value, its corresponding parameters are searched from the standarized table of 5QI to QoS mapping
+uint64_t get_5QI_id(uint64_t fiveqi);
 
-// typedef enum { NON_DYNAMIC, DYNAMIC } fiveQI_t;
+int get_non_dynamic_priority(int fiveqi);
 
-#endif
+extern const standard_5QI_characteristics_t params_5QI[];
+
+#endif /* E1AP_COMMON_H_ */

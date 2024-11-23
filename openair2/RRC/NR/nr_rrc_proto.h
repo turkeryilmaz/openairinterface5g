@@ -131,6 +131,6 @@ void rrc_gNB_generate_UeContextModificationRequest(const gNB_RRC_INST *rrc,
                                                    const f1ap_drb_to_be_released_t *rel_drbs);
 
 pdusession_level_qos_parameter_t *get_qos_characteristics(const int qfi, rrc_pdu_session_param_t *pduSession);
-f1ap_qos_characteristics_t get_qos_char_from_qos_flow_param(const pdusession_level_qos_parameter_t *qos_param);
+qos_characteristics_t get_qos_char_from_qos_flow_param(const pdusession_level_qos_parameter_t *qos_param);
 
 #endif
