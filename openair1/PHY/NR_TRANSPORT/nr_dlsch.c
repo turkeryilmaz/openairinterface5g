@@ -42,7 +42,7 @@
 #include "SCHED_NR/sched_nr.h"
 
 //#define DEBUG_DLSCH
-//#define DEBUG_DLSCH_MAPPING
+#define DEBUG_DLSCH_MAPPING
 
 
 static void nr_pdsch_codeword_scrambling(uint8_t *in, uint32_t size, uint8_t q, uint32_t Nid, uint32_t n_RNTI, uint32_t *out)
@@ -436,8 +436,8 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
 		   int i,j;
 		   for (i=0,j=0;i<(rel15->rbSize*NR_NB_SC_PER_RB)>>4;i++) {
 		      d0 = simde_mm256_mulhrs_epi16(((simde__m256i *)mod_dmrs)[i],amp_dmrs256);
-		      d2 = simde_mm256_unpacklo_epi32(d0,zeros);
-		      d3 = simde_mm256_unpackhi_epi32(d0,zeros);  
+		      d2 = simde_mm256_unpacklo_epi32(zeros,d0);
+		      d3 = simde_mm256_unpackhi_epi32(zeros,d0);  
                       ((simde__m256i *)dmrs_mux)[j++] = _mm256_permute2x128_si256(d2,d3,32) ; 
                       ((simde__m256i *)dmrs_mux)[j++] = _mm256_permute2x128_si256(d2,d3,49) ; 
 		   }
@@ -472,8 +472,8 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
 		   int i,j;
 		   for (i=0,j=0;i<(rel15->rbSize*NR_NB_SC_PER_RB)>>4;i++) {
 		      d0 = simde_mm256_mulhrs_epi16(((simde__m256i *)mod_dmrs)[i],amp_dmrs256);
-		      d2 = simde_mm256_unpacklo_epi32(d0,zeros);
-		      d3 = simde_mm256_unpackhi_epi32(d0,zeros);  
+		      d2 = simde_mm256_unpacklo_epi32(zeros,d0);
+		      d3 = simde_mm256_unpackhi_epi32(zeros,d0);  
                       ((simde__m256i *)dmrs_mux)[j++] = _mm256_permute2x128_si256(d2,d3,32) ; 
                       ((simde__m256i *)dmrs_mux)[j++] = _mm256_permute2x128_si256(d2,d3,49) ; 
 		   }
