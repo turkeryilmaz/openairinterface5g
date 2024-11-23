@@ -42,7 +42,7 @@
 #include "SCHED_NR/sched_nr.h"
 
 //#define DEBUG_DLSCH
-#define DEBUG_DLSCH_MAPPING
+//#define DEBUG_DLSCH_MAPPING
 
 
 static void nr_pdsch_codeword_scrambling(uint8_t *in, uint32_t size, uint8_t q, uint32_t Nid, uint32_t n_RNTI, uint32_t *out)
