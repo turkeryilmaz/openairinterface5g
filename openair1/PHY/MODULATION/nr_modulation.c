@@ -24,7 +24,7 @@
 #include "executables/softmodem-common.h"
 
 // #define DEBUG_DLSCH_PRECODING_PRINT_WITH_TRIVIAL // TODO: For debug, to be removed if want to merge to develop
-//#define DEBUG_LAYER_MAPPING
+#define DEBUG_LAYER_MAPPING
 
 //Table 6.3.1.5-1 Precoding Matrix W 1 layer 2 antenna ports 'n' = -1 and 'o' = -j
 const char nr_W_1l_2p[6][2][1] = {
@@ -256,6 +256,7 @@ void nr_layer_mapping(int nbCodes,
 {
   LOG_D(PHY,"Doing layer mapping for %d layers, %d symbols\n",n_layers,n_symbs);
 
+  int i;
   switch (n_layers) {
 
     case 1:
@@ -265,18 +266,25 @@ void nr_layer_mapping(int nbCodes,
     case 2:
       simde__m256i perm2 = simde_mm256_set_epi32(7,5,3,1,6,4,2,0);
       simde__m256i d;
-      for (int i = 0; i < n_symbs>>3 ; i++) {
+      for (i = 0; i < n_symbs>>3 ; i++) {
 	  d = simde_mm256_permutevar8x32_epi32(((simde__m256i*)mod_symbs[0])[i], perm2);	
           ((simde__m128i*)tx_layers[0])[i] = simde_mm256_extractf128_si256(d,0);
           ((simde__m128i*)tx_layers[1])[i] = simde_mm256_extractf128_si256(d,1);
       } 
+      if (i<<3 != n_symbs) {
+         for (int i2=((n_symbs>>3)<<3) ; i2< n_symbs; i2+=2) {
+             tx_layers[0][i2>>1] = mod_symbs[0][i2];
+             tx_layers[1][i2>>1] = mod_symbs[0][i2+1];
+	 }
+      }
       break;
     case 3:
       simde__m256i i0,i1,i2,d0,d1,d2,d3;
       simde__m256i perm3_0 = simde_mm256_set_epi32(5,2,7,4,1,6,3,0);
       simde__m256i perm3_1 = simde_mm256_set_epi32(6,3,0,5,2,7,4,1);
       simde__m256i perm3_2 = simde_mm256_set_epi32(7,4,1,6,3,0,5,2);
-      for (int i = 0; i < n_symbs>>3 ; i+=3) {
+      int n;
+      for (i = 0,n=0; i < n_symbs>>3 ; i+=3,n++) {
 	  i0 = ((simde__m256i*)mod_symbs[0])[i];
 	  i1 = ((simde__m256i*)mod_symbs[0])[i+1];
 	  i2 = ((simde__m256i*)mod_symbs[0])[i+2];
@@ -284,17 +292,17 @@ void nr_layer_mapping(int nbCodes,
 	  d1=simde_mm256_permutevar8x32_epi32(i1, perm3_0);
 	  d2=simde_mm256_permutevar8x32_epi32(i2, perm3_0);
 	  d3=simde_mm256_blend_epi32(d0,d1,0x38); // 00111000
-          ((simde__m256i *)tx_layers[0])[i] = simde_mm256_blend_epi32(d3,d2,0xc0); // 11000000
+          ((simde__m256i *)tx_layers[0])[n] = simde_mm256_blend_epi32(d3,d2,0xc0); // 11000000
 	  d0=simde_mm256_permutevar8x32_epi32(i0, perm3_1);
 	  d1=simde_mm256_permutevar8x32_epi32(i1, perm3_1);
 	  d2=simde_mm256_permutevar8x32_epi32(i2, perm3_1);
 	  d3=simde_mm256_blend_epi32(d0,d1,0x18); // 00011000
-          ((simde__m256i *)tx_layers[1])[i] = simde_mm256_blend_epi32(d3,d2,0xe0); // 11100000
+          ((simde__m256i *)tx_layers[1])[n] = simde_mm256_blend_epi32(d3,d2,0xe0); // 11100000
 	  d0=simde_mm256_permutevar8x32_epi32(i0, perm3_2);
 	  d1=simde_mm256_permutevar8x32_epi32(i1, perm3_2);
 	  d2=simde_mm256_permutevar8x32_epi32(i2, perm3_2);
 	  d3=simde_mm256_blend_epi32(d0,d1,0x1c); // 00011100
-          ((simde__m256i *)tx_layers[2])[i] = simde_mm256_blend_epi32(d3,d2,0xe0); // 11100000
+          ((simde__m256i *)tx_layers[2])[n] = simde_mm256_blend_epi32(d3,d2,0xe0); // 11100000
 #ifdef DEBUG_LAYER_MAPPING
 	  printf("\nsymb %d/%d\n",i<<3,n_symbs);
 	  printf(" layer 0:\t");
@@ -311,29 +319,44 @@ void nr_layer_mapping(int nbCodes,
 	  }
 	  printf("\n Mapping layer 0:\t");
           for (int j=0;j<16;j++) {
-              printf("%d ",((int16_t *)&tx_layers[0][i<<3])[j]);
+              printf("%d ",((int16_t *)&tx_layers[0][n<<3])[j]);
 	  }
 	  printf("\n Mapping layer 1:\t");
           for (int j=0;j<16;j++) {
-              printf("%d ",((int16_t *)&tx_layers[1][i<<3])[j]);
+              printf("%d ",((int16_t *)&tx_layers[1][n<<3])[j]);
 	  }
 	  printf("\n Mapping layer 2:\t");
           for (int j=0;j<16;j++) {
-              printf("%d ",((int16_t *)&tx_layers[2][i<<3])[j]);
+              printf("%d ",((int16_t *)&tx_layers[2][n<<3])[j]);
 	  }
 #endif
+      }
+      if (i<<3 != n_symbs) {
+         for (int i2=((n_symbs>>3)<<3) ; i2< n_symbs; i2+=4) {
+             tx_layers[0][i2>>2] = mod_symbs[0][i2];
+             tx_layers[1][i2>>2] = mod_symbs[0][i2+1];
+             tx_layers[2][i2>>2] = mod_symbs[0][i2+2];
+             tx_layers[3][i2>>2] = mod_symbs[0][i2+3];
+	 }
       }
     break;  
 
     case 4:
       simde__m256i perm4 = simde_mm256_set_epi32(7,3,6,2,5,1,4,0);
       simde__m256i e;
-      for (int i = 0; i < n_symbs>>3 ; i++) {
+      for (i = 0; i < n_symbs>>3 ; i++) {
 	  e=simde_mm256_permutevar8x32_epi32(((simde__m256i*)mod_symbs[0])[i], perm4);
           ((uint64_t *)tx_layers[0])[i] = simde_mm256_extract_epi64(e,0);
           ((uint64_t *)tx_layers[1])[i] = simde_mm256_extract_epi64(e,1);
           ((uint64_t *)tx_layers[2])[i] = simde_mm256_extract_epi64(e,2);
           ((uint64_t *)tx_layers[3])[i] = simde_mm256_extract_epi64(e,3);
+      }
+      if (i<<3 != n_symbs) {
+         for (int i2=((n_symbs>>3)<<3) ; i2< n_symbs; i2+=3) {
+             tx_layers[0][i2/3] = mod_symbs[0][i2];
+             tx_layers[1][i2/3] = mod_symbs[0][i2+1];
+             tx_layers[2][i2/3] = mod_symbs[0][i2+2];
+	 }
       }
       /*
     for (int i = 0; i < n_symbs / n_layers; i++) {
