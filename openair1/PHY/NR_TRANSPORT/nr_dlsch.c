@@ -43,7 +43,9 @@
 
 //#define DEBUG_DLSCH
 //#define DEBUG_DLSCH_MAPPING
-
+#ifdef __aarch64__
+#define USE128BIT
+#endif
 
 static void nr_pdsch_codeword_scrambling(uint8_t *in, uint32_t size, uint8_t q, uint32_t Nid, uint32_t n_RNTI, uint32_t *out)
 {
@@ -355,17 +357,18 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
 #ifdef DEBUG_DLSCH_MAPPING
 		   printf("doing DMRS pattern for port 0 : d0 0 d1 0 ... dNm2 0 dNm1 0 (ul %d, rr %d)\n",upper_limit,remaining_re);
 #endif 
-		   simde__m256i d0,d2,d3,zeros=simde_mm256_xor_si256(d0,d0),amp_dmrs256=simde_mm256_set1_epi16(amp_dmrs);
+#ifdef USE128BIT
+
+		   simde__m128i d0,d2,d3,zeros=simde_mm_xor_si128(d0,d0),amp_dmrs128=simde_mm_set1_epi16(amp_dmrs);
 		   int i,j;
-		   for (i=0,j=0;i<(rel15->rbSize*NR_NB_SC_PER_RB)>>4;i++) {
-		      d0 = simde_mm256_mulhrs_epi16(((simde__m256i *)mod_dmrs)[i],amp_dmrs256);
-		      d2 = simde_mm256_unpacklo_epi32(d0,zeros);
-		      d3 = simde_mm256_unpackhi_epi32(d0,zeros);  
-                      ((simde__m256i *)dmrs_mux)[j++] = _mm256_permute2x128_si256(d2,d3,32) ; 
-                      ((simde__m256i *)dmrs_mux)[j++] = _mm256_permute2x128_si256(d2,d3,49) ; 
-                     
+		   for (i=0,j=0;i<(rel15->rbSize*NR_NB_SC_PER_RB)>>3;i++) {
+		      d0 = simde_mm_mulhrs_epi16(((simde__m128i *)mod_dmrs)[i],amp_dmrs128);
+		      d2 = simde_mm_unpacklo_epi32(d0,zeros);
+		      d3 = simde_mm_unpackhi_epi32(d0,zeros);  
+                      ((simde__m128i *)dmrs_mux)[j++] = d2; 
+                      ((simde__m128i *)dmrs_mux)[j++] = d3; 
 		   }
-		   if ((i<<4) != (rel15->rbSize*NR_NB_SC_PER_RB)) {
+		   if ((i<<3) != (rel15->rbSize*NR_NB_SC_PER_RB)) {
                        for (int i2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>4)<<3),j2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>4)<<4) ; i2< (rel15->rbSize*NR_NB_SC_PER_RB)>>1 ;i2++) {
                           dmrs_mux[j2].r = (((mod_dmrs[i2].r * amp_dmrs) >> 14) + 1) >> 1;
                           dmrs_mux[j2].i = (((mod_dmrs[i2].i * amp_dmrs) >> 14) + 1) >> 1;j2++;
@@ -373,6 +376,26 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
                           dmrs_mux[j2].i = 0;j2++;
 		       }
 		   }
+#else
+		   simde__m256i d0,d2,d3,zeros=simde_mm256_xor_si256(d0,d0),amp_dmrs256=simde_mm256_set1_epi16(amp_dmrs);
+		   int i,j;
+		   for (i=0,j=0;i<(rel15->rbSize*NR_NB_SC_PER_RB)>>4;i++) {
+		      d0 = simde_mm256_mulhrs_epi16(((simde__m256i *)mod_dmrs)[i],amp_dmrs256);
+		      d2 = simde_mm256_unpacklo_epi32(d0,zeros);
+		      d3 = simde_mm256_unpackhi_epi32(d0,zeros);  
+                      ((simde__m256i *)dmrs_mux)[j++] = simde_mm256_permute2x128_si256(d2,d3,32) ; 
+                      ((simde__m256i *)dmrs_mux)[j++] = simde_mm256_permute2x128_si256(d2,d3,49) ; 
+                     
+		   }
+		   if ((i<<4) != (rel15->rbSize*NR_NB_SC_PER_RB)) {
+                       for (int i2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>3)<<3),j2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>3)<<3) ; i2< (rel15->rbSize*NR_NB_SC_PER_RB)>>1 ;i2++) {
+                          dmrs_mux[j2].r = (((mod_dmrs[i2].r * amp_dmrs) >> 14) + 1) >> 1;
+                          dmrs_mux[j2].i = (((mod_dmrs[i2].i * amp_dmrs) >> 14) + 1) >> 1;j2++;
+                          dmrs_mux[j2].r = 0;
+                          dmrs_mux[j2].i = 0;j2++;
+		       }
+		   }
+#endif
 		   memcpy(&txF[start_sc],dmrs_mux,sizeof(c16_t)*upper_limit);
 		   if (remaining_re) memcpy(&txF[0],&dmrs_mux[upper_limit],sizeof(c16_t)*remaining_re);   
 #ifdef DEBUG_DLSCH_MAPPING
@@ -392,14 +415,37 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
 #ifdef DEBUG_DLSCH_MAPPING
                    printf("doing DMRS pattern for port 1 : d0 0 -d1 0 ...dNm2 0 -dNm1 0\n");  
 #endif
+#ifdef USE128BIT
+		   simde__m128i d0,d2,d3,zeros=simde_mm_xor_si128(d0,d0),amp_dmrs128=simde_mm_set_epi16(-amp_dmrs,-amp_dmrs,amp_dmrs,amp_dmrs,-amp_dmrs,-amp_dmrs,amp_dmrs,amp_dmrs);
+		   int i,j;
+		   for (i=0,j=0;i<(rel15->rbSize*NR_NB_SC_PER_RB)>>3;i++) {
+		      d0 = simde_mm_mulhrs_epi16(((simde__m128i *)mod_dmrs)[i],amp_dmrs128);
+		      d2 = simde_mm_unpacklo_epi32(d0,zeros);
+		      d3 = simde_mm_unpackhi_epi32(d0,zeros);  
+                      ((simde__m128i *)dmrs_mux)[j++] = d2; 
+                      ((simde__m128i *)dmrs_mux)[j++] = d3; 
+		   }
+		   if ((i<<3) != (rel15->rbSize*NR_NB_SC_PER_RB)) {
+                       for (int i2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>3)<<3),j2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>3)<<3) ; i2< (rel15->rbSize*NR_NB_SC_PER_RB)>>1 ;i2+=2) {
+                          dmrs_mux[j2].r = (((mod_dmrs[i2].r * amp_dmrs) >> 14) + 1) >> 1;
+                          dmrs_mux[j2].i = (((mod_dmrs[i2].i * amp_dmrs) >> 14) + 1) >> 1;j2++;
+                          dmrs_mux[j2].r = 0;
+                          dmrs_mux[j2].i = 0;j2++;
+                          dmrs_mux[j2].r = -(((mod_dmrs[i2+1].r * amp_dmrs) >> 14) + 1) >> 1;
+                          dmrs_mux[j2].i = -(((mod_dmrs[i2+1].i * amp_dmrs) >> 14) + 1) >> 1;j2++;
+                          dmrs_mux[j2].r = 0;
+                          dmrs_mux[j2].i = 0;j2++;
+		       }
+		   }
+#else
 		   simde__m256i d0,d2,d3,zeros=simde_mm256_xor_si256(d0,d0),amp_dmrs256=simde_mm256_set_epi16(-amp_dmrs,-amp_dmrs,amp_dmrs,amp_dmrs,-amp_dmrs,-amp_dmrs,amp_dmrs,amp_dmrs,-amp_dmrs,-amp_dmrs,amp_dmrs,amp_dmrs,-amp_dmrs,-amp_dmrs,amp_dmrs,amp_dmrs);
 		   int i,j;
 		   for (i=0,j=0;i<(rel15->rbSize*NR_NB_SC_PER_RB)>>4;i++) {
 		      d0 = simde_mm256_mulhrs_epi16(((simde__m256i *)mod_dmrs)[i],amp_dmrs256);
 		      d2 = simde_mm256_unpacklo_epi32(d0,zeros);
 		      d3 = simde_mm256_unpackhi_epi32(d0,zeros);  
-                      ((simde__m256i *)dmrs_mux)[j++] = _mm256_permute2x128_si256(d2,d3,32) ; 
-                      ((simde__m256i *)dmrs_mux)[j++] = _mm256_permute2x128_si256(d2,d3,49) ; 
+                      ((simde__m256i *)dmrs_mux)[j++] = simde_mm256_permute2x128_si256(d2,d3,32) ; 
+                      ((simde__m256i *)dmrs_mux)[j++] = simde_mm256_permute2x128_si256(d2,d3,49) ; 
 		   }
 		   if ((i<<4) != (rel15->rbSize*NR_NB_SC_PER_RB)) {
                        for (int i2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>4)<<3),j2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>4)<<4) ; i2< (rel15->rbSize*NR_NB_SC_PER_RB)>>1 ;i2+=2) {
@@ -413,6 +459,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
                           dmrs_mux[j2].i = 0;j2++;
 		       }
 		   }
+#endif
 		   memcpy(&txF[start_sc],dmrs_mux,sizeof(c16_t)*upper_limit);
 		   if (remaining_re) memcpy(&txF[0],&dmrs_mux[upper_limit],sizeof(c16_t)*remaining_re);   
 #ifdef DEBUG_DLSCH_MAPPING
@@ -432,14 +479,33 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
 #ifdef DEBUG_DLSCH_MAPPING
                    printf("doing DMRS pattern for port 2 : 0 d0 0 d1 ... 0 dNm2 0 dNm1\n");
 #endif  
+#ifdef USE128BIT
+		   simde__m128i d0,d2,d3,zeros=simde_mm_xor_si128(d0,d0),amp_dmrs128=simde_mm_set1_epi16(amp_dmrs);
+		   int i,j;
+		   for (i=0,j=0;i<(rel15->rbSize*NR_NB_SC_PER_RB)>>3;i++) {
+		      d0 = simde_mm_mulhrs_epi16(((simde__m128i *)mod_dmrs)[i],amp_dmrs128);
+		      d2 = simde_mm_unpacklo_epi32(zeros,d0);
+		      d3 = simde_mm_unpackhi_epi32(zeros,d0);  
+                      ((simde__m128i *)dmrs_mux)[j++] = d2; 
+                      ((simde__m128i *)dmrs_mux)[j++] = d3; 
+		   }
+		   if ((i<<3) != (rel15->rbSize*NR_NB_SC_PER_RB)) {
+                       for (int i2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>3)<<2),j2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>3)<<3) ; i2< (rel15->rbSize*NR_NB_SC_PER_RB)>>1 ;i2++) {
+                          dmrs_mux[j2].r = 0;
+                          dmrs_mux[j2].i = 0;j2++;
+                          dmrs_mux[j2].r = (((mod_dmrs[i2].r * amp_dmrs) >> 14) + 1) >> 1;
+                          dmrs_mux[j2].i = (((mod_dmrs[i2].i * amp_dmrs) >> 14) + 1) >> 1;j2++;
+		       }
+		   }
+#else
 		   simde__m256i d0,d2,d3,zeros=simde_mm256_xor_si256(d0,d0),amp_dmrs256=simde_mm256_set1_epi16(amp_dmrs);
 		   int i,j;
 		   for (i=0,j=0;i<(rel15->rbSize*NR_NB_SC_PER_RB)>>4;i++) {
 		      d0 = simde_mm256_mulhrs_epi16(((simde__m256i *)mod_dmrs)[i],amp_dmrs256);
 		      d2 = simde_mm256_unpacklo_epi32(zeros,d0);
 		      d3 = simde_mm256_unpackhi_epi32(zeros,d0);  
-                      ((simde__m256i *)dmrs_mux)[j++] = _mm256_permute2x128_si256(d2,d3,32) ; 
-                      ((simde__m256i *)dmrs_mux)[j++] = _mm256_permute2x128_si256(d2,d3,49) ; 
+                      ((simde__m256i *)dmrs_mux)[j++] = simde_mm256_permute2x128_si256(d2,d3,32) ; 
+                      ((simde__m256i *)dmrs_mux)[j++] = simde_mm256_permute2x128_si256(d2,d3,49) ; 
 		   }
 		   if ((i<<4) != (rel15->rbSize*NR_NB_SC_PER_RB)) {
                        for (int i2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>4)<<3),j2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>4)<<4) ; i2< (rel15->rbSize*NR_NB_SC_PER_RB)>>1 ;i2++) {
@@ -449,6 +515,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
                           dmrs_mux[j2].i = (((mod_dmrs[i2].i * amp_dmrs) >> 14) + 1) >> 1;j2++;
 		       }
 		   }
+#endif
 		   memcpy(&txF[start_sc],dmrs_mux,sizeof(c16_t)*upper_limit);
 	  	   if (remaining_re) memcpy(&txF[0],&dmrs_mux[upper_limit],sizeof(c16_t)*remaining_re);   
 #ifdef DEBUG_DLSCH_MAPPING
@@ -468,14 +535,37 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
 #ifdef DEBUG_DLSCH_MAPPING
                    printf("doing DMRS pattern for port 3 : 0 d0 0 -d1 ... 0 dNm2 0 -dNm1\n");
 #endif  
+#ifdef USE128BIT
+		   simde__m128i d0,d2,d3,zeros=simde_mm_xor_si128(d0,d0),amp_dmrs128=simde_mm_set_epi16(-amp_dmrs,-amp_dmrs,amp_dmrs,amp_dmrs,-amp_dmrs,-amp_dmrs,amp_dmrs,amp_dmrs);
+		   int i,j;
+		   for (i=0,j=0;i<(rel15->rbSize*NR_NB_SC_PER_RB)>>3;i++) {
+		      d0 = simde_mm_mulhrs_epi16(((simde__m128i *)mod_dmrs)[i],amp_dmrs128);
+		      d2 = simde_mm_unpacklo_epi32(zeros,d0);
+		      d3 = simde_mm_unpackhi_epi32(zeros,d0);  
+                      ((simde__m128i *)dmrs_mux)[j++] = d2; 
+                      ((simde__m128i *)dmrs_mux)[j++] = d3; 
+		   }
+		   if ((i<<3) != (rel15->rbSize*NR_NB_SC_PER_RB)) {
+                       for (int i2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>3)<<2),j2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>3)<<3) ; i2< (rel15->rbSize*NR_NB_SC_PER_RB)>>1 ;i2+=2) {
+                          dmrs_mux[j2].r = 0;
+                          dmrs_mux[j2].i = 0;j2++;
+                          dmrs_mux[j2].r = (((mod_dmrs[i2].r * amp_dmrs) >> 14) + 1) >> 1;;
+                          dmrs_mux[j2].i = (((mod_dmrs[i2].i * amp_dmrs) >> 14) + 1) >> 1;j2++;
+                          dmrs_mux[j2].r = 0;
+                          dmrs_mux[j2].i = 0;j2++;
+                          dmrs_mux[j2].r = -(((mod_dmrs[i2+1].r * amp_dmrs) >> 14) + 1) >> 1;;
+                          dmrs_mux[j2].i = -(((mod_dmrs[i2+1].i * amp_dmrs) >> 14) + 1) >> 1;j2++;
+		       }
+		   }
+#else
 		   simde__m256i d0,d2,d3,zeros=simde_mm256_xor_si256(d0,d0),amp_dmrs256=simde_mm256_set_epi16(-amp_dmrs,-amp_dmrs,amp_dmrs,amp_dmrs,-amp_dmrs,-amp_dmrs,amp_dmrs,amp_dmrs,-amp_dmrs,-amp_dmrs,amp_dmrs,amp_dmrs,-amp_dmrs,-amp_dmrs,amp_dmrs,amp_dmrs);
 		   int i,j;
 		   for (i=0,j=0;i<(rel15->rbSize*NR_NB_SC_PER_RB)>>4;i++) {
 		      d0 = simde_mm256_mulhrs_epi16(((simde__m256i *)mod_dmrs)[i],amp_dmrs256);
 		      d2 = simde_mm256_unpacklo_epi32(zeros,d0);
 		      d3 = simde_mm256_unpackhi_epi32(zeros,d0);  
-                      ((simde__m256i *)dmrs_mux)[j++] = _mm256_permute2x128_si256(d2,d3,32) ; 
-                      ((simde__m256i *)dmrs_mux)[j++] = _mm256_permute2x128_si256(d2,d3,49) ; 
+                      ((simde__m256i *)dmrs_mux)[j++] = simde_mm256_permute2x128_si256(d2,d3,32) ; 
+                      ((simde__m256i *)dmrs_mux)[j++] = simde_mm256_permute2x128_si256(d2,d3,49) ; 
 		   }
 		   if ((i<<4) != (rel15->rbSize*NR_NB_SC_PER_RB)) {
                        for (int i2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>4)<<3),j2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>4)<<4) ; i2< (rel15->rbSize*NR_NB_SC_PER_RB)>>1 ;i2+=2) {
@@ -489,6 +579,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
                           dmrs_mux[j2].i = -(((mod_dmrs[i2+1].i * amp_dmrs) >> 14) + 1) >> 1;j2++;
 		       }
 		   }
+#endif
 		   memcpy(&txF[start_sc],dmrs_mux,sizeof(c16_t)*upper_limit);
 		   if (remaining_re) memcpy(&txF[0],&dmrs_mux[upper_limit],sizeof(c16_t)*remaining_re);   
 #ifdef DEBUG_DLSCH_MAPPING
@@ -508,6 +599,27 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
 #ifdef DEBUG_DLSCH_MAPPING
 		   printf("doing DMRS pattern for port 0 : d0 X0 d1 X1 ... dNm2 XNm2 dNm1 XNm1\n");
 #endif 
+#ifdef USE128BIT
+		   simde__m128i d0,d1,d2,d3,amp_dmrs128=simde_mm_set1_epi16(amp_dmrs),amp128=simde_mm_set1_epi16(amp);
+                   c16_t *txlc = &tx_layers[layer][cur_re];
+		   int i,j;
+		   for (i=0,j=0;i<(rel15->rbSize*NR_NB_SC_PER_RB)>>3;i++) {
+		      d0 = simde_mm_mulhrs_epi16(((simde__m128i *)mod_dmrs)[i],amp_dmrs128);
+		      d1 = simde_mm_mulhrs_epi16(((simde__m128i *)txlc)[i],amp128);
+		      d2 = simde_mm_unpacklo_epi32(d0,d1);
+		      d3 = simde_mm_unpackhi_epi32(d0,d1);  
+                      ((simde__m128i *)dmrs_mux)[j++] = d2; 
+                      ((simde__m128i *)dmrs_mux)[j++] = d3; 
+		   }
+		   if ((i<<3) != (rel15->rbSize*NR_NB_SC_PER_RB)) {
+                       for (int i2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>3)<<2),j2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>3)<<3) ; i2< (rel15->rbSize*NR_NB_SC_PER_RB)>>1 ;i2++) {
+                          dmrs_mux[j2].r = (((mod_dmrs[i2].r * amp_dmrs) >> 14) + 1) >> 1;
+                          dmrs_mux[j2].i = (((mod_dmrs[i2].i * amp_dmrs) >> 14) + 1) >> 1;j2++;
+                          dmrs_mux[j2].r = (((txlc[i2].r * amp) >> 14) + 1) >> 1;
+                          dmrs_mux[j2].i = (((txlc[i2].i * amp) >> 14) + 1) >> 1;j2++;
+		       }
+		   }
+#else
 		   simde__m256i d0,d1,d2,d3,amp_dmrs256=simde_mm256_set1_epi16(amp_dmrs),amp256=simde_mm256_set1_epi16(amp);
                    c16_t *txlc = &tx_layers[layer][cur_re];
 		   int i,j;
@@ -516,8 +628,8 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
 		      d1 = simde_mm256_mulhrs_epi16(((simde__m256i *)txlc)[i],amp256);
 		      d2 = simde_mm256_unpacklo_epi32(d0,d1);
 		      d3 = simde_mm256_unpackhi_epi32(d0,d1);  
-                      ((simde__m256i *)dmrs_mux)[j++] = _mm256_permute2x128_si256(d2,d3,32) ; 
-                      ((simde__m256i *)dmrs_mux)[j++] = _mm256_permute2x128_si256(d2,d3,49) ; 
+                      ((simde__m256i *)dmrs_mux)[j++] = simde_mm256_permute2x128_si256(d2,d3,32) ; 
+                      ((simde__m256i *)dmrs_mux)[j++] = simde_mm256_permute2x128_si256(d2,d3,49) ; 
 		   }
 		   if ((i<<4) != (rel15->rbSize*NR_NB_SC_PER_RB)) {
                        for (int i2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>4)<<3),j2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>4)<<4) ; i2< (rel15->rbSize*NR_NB_SC_PER_RB)>>1 ;i2++) {
@@ -527,6 +639,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
                           dmrs_mux[j2].i = (((txlc[i2].i * amp) >> 14) + 1) >> 1;j2++;
 		       }
 		   }
+#endif
 		   memcpy(&txF[start_sc],dmrs_mux,sizeof(c16_t)*upper_limit);
 		   if (remaining_re) memcpy(&txF[0],&dmrs_mux[upper_limit],sizeof(c16_t)*remaining_re);   
 		   cur_re+=(rel15->rbSize*NR_NB_SC_PER_RB)>>1;
@@ -556,6 +669,32 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
 #ifdef DEBUG_DLSCH_MAPPING
                    printf("doing DMRS pattern for port 1 : d0 X0 -d1 X1 ...dNm2 XNm2 -dNm1 XNm1\n");  
 #endif
+#ifdef USE128BIT
+		   simde__m128i d0,d1,d2,d3,amp_dmrs128=simde_mm_set_epi16(-amp_dmrs,-amp_dmrs,amp_dmrs,amp_dmrs,-amp_dmrs,-amp_dmrs,amp_dmrs,amp_dmrs),amp128=simde_mm_set1_epi16(amp);
+                   c16_t *txlc = &tx_layers[layer][cur_re];
+		   int i,j;
+		   for (i=0,j=0;i<(rel15->rbSize*NR_NB_SC_PER_RB)>>3;i++) {
+		      d0 = simde_mm_mulhrs_epi16(((simde__m128i *)mod_dmrs)[i],amp_dmrs128);
+		      d1 = simde_mm_mulhrs_epi16(((simde__m128i *)txlc)[i],amp128);
+		      d2 = simde_mm_unpacklo_epi32(d0,d1);
+		      d3 = simde_mm_unpackhi_epi32(d0,d1);  
+                      ((simde__m128i *)dmrs_mux)[j++] = d2; 
+                      ((simde__m128i *)dmrs_mux)[j++] = d3; 
+		   }
+		   if ((i<<4) != (rel15->rbSize*NR_NB_SC_PER_RB)) {
+                       for (int i2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>3)<<2),j2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>3)<<3) ; i2< (rel15->rbSize*NR_NB_SC_PER_RB)>>1 ;i2+=2) {
+                          dmrs_mux[j2].r = (((mod_dmrs[i2].r * amp_dmrs) >> 14) + 1) >> 1;
+                          dmrs_mux[j2].i = (((mod_dmrs[i2].i * amp_dmrs) >> 14) + 1) >> 1;j2++;
+                          dmrs_mux[j2].r = (((txlc[i2].r * amp) >> 14) + 1) >> 1;
+                          dmrs_mux[j2].i = (((txlc[i2].i * amp) >> 14) + 1) >> 1;j2++;
+                          dmrs_mux[j2].r = -(((mod_dmrs[i2+1].r * amp_dmrs) >> 14) + 1) >> 1;
+                          dmrs_mux[j2].i = -(((mod_dmrs[i2+1].i * amp_dmrs) >> 14) + 1) >> 1;j2++;
+                          dmrs_mux[j2].r = (((txlc[i2+1].r * amp) >> 14) + 1) >> 1;
+                          dmrs_mux[j2].i = (((txlc[i2+1].i * amp) >> 14) + 1) >> 1;;j2++;
+		       }
+		   }
+
+#else
 		   simde__m256i d0,d1,d2,d3,amp_dmrs256=simde_mm256_set_epi16(-amp_dmrs,-amp_dmrs,amp_dmrs,amp_dmrs,-amp_dmrs,-amp_dmrs,amp_dmrs,amp_dmrs,-amp_dmrs,-amp_dmrs,amp_dmrs,amp_dmrs,-amp_dmrs,-amp_dmrs,amp_dmrs,amp_dmrs),amp256=simde_mm256_set1_epi16(amp);
                    c16_t *txlc = &tx_layers[layer][cur_re];
 		   int i,j;
@@ -564,8 +703,8 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
 		      d1 = simde_mm256_mulhrs_epi16(((simde__m256i *)txlc)[i],amp256);
 		      d2 = simde_mm256_unpacklo_epi32(d0,d1);
 		      d3 = simde_mm256_unpackhi_epi32(d0,d1);  
-                      ((simde__m256i *)dmrs_mux)[j++] = _mm256_permute2x128_si256(d2,d3,32) ; 
-                      ((simde__m256i *)dmrs_mux)[j++] = _mm256_permute2x128_si256(d2,d3,49) ; 
+                      ((simde__m256i *)dmrs_mux)[j++] = simde_mm256_permute2x128_si256(d2,d3,32) ; 
+                      ((simde__m256i *)dmrs_mux)[j++] = simde_mm256_permute2x128_si256(d2,d3,49) ; 
 		   }
 		   if ((i<<4) != (rel15->rbSize*NR_NB_SC_PER_RB)) {
                        for (int i2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>4)<<3),j2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>4)<<4) ; i2< (rel15->rbSize*NR_NB_SC_PER_RB)>>1 ;i2+=2) {
@@ -579,6 +718,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
                           dmrs_mux[j2].i = (((txlc[i2+1].i * amp) >> 14) + 1) >> 1;;j2++;
 		       }
 		   }
+#endif
 		   memcpy(&txF[start_sc],dmrs_mux,sizeof(c16_t)*upper_limit);
 		   if (remaining_re) memcpy(&txF[0],&dmrs_mux[upper_limit],sizeof(c16_t)*remaining_re);   
 		   cur_re+=(rel15->rbSize*NR_NB_SC_PER_RB)>>1;
@@ -608,6 +748,27 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
 #ifdef DEBUG_DLSCH_MAPPING
                    printf("doing DMRS pattern for port 2 : X0 d0 X1 d1 ... XNm2 dNm2 XNm1 dNm1\n");
 #endif  
+#ifdef USE128BIT
+		   simde__m128i d0,d1,d2,d3,amp_dmrs128=simde_mm_set1_epi16(amp_dmrs),amp128=simde_mm_set1_epi16(amp);
+                   c16_t *txlc = &tx_layers[layer][cur_re];
+		   int i,j;
+		   for (i=0,j=0;i<(rel15->rbSize*NR_NB_SC_PER_RB)>>3;i++) {
+		      d1 = simde_mm_mulhrs_epi16(((simde__m128i *)mod_dmrs)[i],amp_dmrs128);
+		      d0 = simde_mm_mulhrs_epi16(((simde__m128i *)txlc)[i],amp128);
+		      d2 = simde_mm_unpacklo_epi32(d0,d1);
+		      d3 = simde_mm_unpackhi_epi32(d0,d1);  
+                      ((simde__m128i *)dmrs_mux)[j++] = d2; 
+                      ((simde__m128i *)dmrs_mux)[j++] = d3; 
+		   }
+		   if ((i<<3) != (rel15->rbSize*NR_NB_SC_PER_RB)) {
+                       for (int i2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>3)<<2),j2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>3)<<3) ; i2< (rel15->rbSize*NR_NB_SC_PER_RB)>>1 ;i2++) {
+                          dmrs_mux[j2].r = (((txlc[i2].r * amp) >> 14) + 1) >> 1;
+                          dmrs_mux[j2].i = (((txlc[i2].i * amp) >> 14) + 1) >> 1;j2++;
+                          dmrs_mux[j2].r = (((mod_dmrs[i2].r * amp_dmrs) >> 14) + 1) >> 1;
+                          dmrs_mux[j2].i = (((mod_dmrs[i2].i * amp_dmrs) >> 14) + 1) >> 1;j2++;
+		       }
+		   }
+#else
 		   simde__m256i d0,d1,d2,d3,amp_dmrs256=simde_mm256_set1_epi16(amp_dmrs),amp256=simde_mm256_set1_epi16(amp);
                    c16_t *txlc = &tx_layers[layer][cur_re];
 		   int i,j;
@@ -616,8 +777,8 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
 		      d0 = simde_mm256_mulhrs_epi16(((simde__m256i *)txlc)[i],amp256);
 		      d2 = simde_mm256_unpacklo_epi32(d0,d1);
 		      d3 = simde_mm256_unpackhi_epi32(d0,d1);  
-                      ((simde__m256i *)dmrs_mux)[j++] = _mm256_permute2x128_si256(d2,d3,32) ; 
-                      ((simde__m256i *)dmrs_mux)[j++] = _mm256_permute2x128_si256(d2,d3,49) ; 
+                      ((simde__m256i *)dmrs_mux)[j++] = simde_mm256_permute2x128_si256(d2,d3,32) ; 
+                      ((simde__m256i *)dmrs_mux)[j++] = simde_mm256_permute2x128_si256(d2,d3,49) ; 
 		   }
 		   if ((i<<4) != (rel15->rbSize*NR_NB_SC_PER_RB)) {
                        for (int i2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>4)<<3),j2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>4)<<4) ; i2< (rel15->rbSize*NR_NB_SC_PER_RB)>>1 ;i2++) {
@@ -627,6 +788,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
                           dmrs_mux[j2].i = (((mod_dmrs[i2].i * amp_dmrs) >> 14) + 1) >> 1;j2++;
 		       }
 		   }
+#endif
 		   memcpy(&txF[start_sc],dmrs_mux,sizeof(c16_t)*upper_limit);
 		   if (remaining_re) memcpy(&txF[0],&dmrs_mux[upper_limit],sizeof(c16_t)*remaining_re);   
 		   cur_re+=(rel15->rbSize*NR_NB_SC_PER_RB)>>1;
@@ -656,6 +818,31 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
 #ifdef DEBUG_DLSCH_MAPPING
                    printf("doing DMRS pattern for port 3 : X0 d0 X1 -d1 ... XNm2 dNm2 XNm1 -dNm1\n");
 #endif  
+#ifdef USE128BIT
+		   simde__m128i d0,d1,d2,d3,amp_dmrs128=simde_mm_set_epi16(-amp_dmrs,-amp_dmrs,amp_dmrs,amp_dmrs,-amp_dmrs,-amp_dmrs,amp_dmrs,amp_dmrs),amp128=simde_mm_set1_epi16(amp);
+                   c16_t *txlc = &tx_layers[layer][cur_re];
+		   int i,j;
+		   for (i=0,j=0;i<(rel15->rbSize*NR_NB_SC_PER_RB)>>3;i++) {
+		      d1 = simde_mm_mulhrs_epi16(((simde__m128i *)mod_dmrs)[i],amp_dmrs128);
+		      d0 = simde_mm_mulhrs_epi16(((simde__m128i *)txlc)[i],amp128);
+		      d2 = simde_mm_unpacklo_epi32(d0,d1);
+		      d3 = simde_mm_unpackhi_epi32(d0,d1);  
+                      ((simde__m128i *)dmrs_mux)[j++] = d2; 
+                      ((simde__m128i *)dmrs_mux)[j++] = d3; 
+		   }
+		   if ((i<<3) != (rel15->rbSize*NR_NB_SC_PER_RB)) {
+                       for (int i2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>3)<<2),j2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>3)<<3) ; i2< (rel15->rbSize*NR_NB_SC_PER_RB)>>1 ;i2+=2) {
+                          dmrs_mux[j2].r = (((txlc[i2].r * amp) >> 14) + 1) >> 1;
+                          dmrs_mux[j2].i = (((txlc[i2].i * amp) >> 14) + 1) >> 1;j2++;
+                          dmrs_mux[j2].r = (((mod_dmrs[i2].r * amp_dmrs) >> 14) + 1) >> 1;
+                          dmrs_mux[j2].i = (((mod_dmrs[i2].i * amp_dmrs) >> 14) + 1) >> 1;j2++;
+                          dmrs_mux[j2].r = (((txlc[i2+1].r * amp) >> 14) + 1) >> 1;
+                          dmrs_mux[j2].i = (((txlc[i2+1].i * amp) >> 14) + 1) >> 1;j2++;
+                          dmrs_mux[j2].r = -(((mod_dmrs[i2+1].r * amp_dmrs) >> 14) + 1) >> 1;
+                          dmrs_mux[j2].i = -(((mod_dmrs[i2+1].i * amp_dmrs) >> 14) + 1) >> 1;j2++;
+		       }
+		   }
+#else
 		   simde__m256i d0,d1,d2,d3,amp_dmrs256=simde_mm256_set_epi16(-amp_dmrs,-amp_dmrs,amp_dmrs,amp_dmrs,-amp_dmrs,-amp_dmrs,amp_dmrs,amp_dmrs,-amp_dmrs,-amp_dmrs,amp_dmrs,amp_dmrs,-amp_dmrs,-amp_dmrs,amp_dmrs,amp_dmrs),amp256=simde_mm256_set1_epi16(amp);
                    c16_t *txlc = &tx_layers[layer][cur_re];
 		   int i,j;
@@ -664,8 +851,8 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
 		      d0 = simde_mm256_mulhrs_epi16(((simde__m256i *)txlc)[i],amp256);
 		      d2 = simde_mm256_unpacklo_epi32(d0,d1);
 		      d3 = simde_mm256_unpackhi_epi32(d0,d1);  
-                      ((simde__m256i *)dmrs_mux)[j++] = _mm256_permute2x128_si256(d2,d3,32) ; 
-                      ((simde__m256i *)dmrs_mux)[j++] = _mm256_permute2x128_si256(d2,d3,49) ; 
+                      ((simde__m256i *)dmrs_mux)[j++] = simde_mm256_permute2x128_si256(d2,d3,32) ; 
+                      ((simde__m256i *)dmrs_mux)[j++] = simde_mm256_permute2x128_si256(d2,d3,49) ; 
 		   }
 		   if ((i<<4) != (rel15->rbSize*NR_NB_SC_PER_RB)) {
                        for (int i2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>4)<<3),j2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>4)<<4) ; i2< (rel15->rbSize*NR_NB_SC_PER_RB)>>1 ;i2+=2) {
@@ -679,6 +866,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
                           dmrs_mux[j2].i = -(((mod_dmrs[i2+1].i * amp_dmrs) >> 14) + 1) >> 1;j2++;
 		       }
 		   }
+#endif
 		   memcpy(&txF[start_sc],dmrs_mux,sizeof(c16_t)*upper_limit);
 		   if (remaining_re) memcpy(&txF[0],&dmrs_mux[upper_limit],sizeof(c16_t)*remaining_re);   
 		   cur_re+=(rel15->rbSize*NR_NB_SC_PER_RB)>>1;
@@ -767,7 +955,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
 #ifdef USE128BIT            
             simde__m128i *txF = (simde__m128i *)&txdataF_precoding[layer][l_symbol][start_sc];
 
-            simde__m128i *txl = (simde__m128i *)&tx_layer[cur_re];
+            simde__m128i *txl = (simde__m128i *)&tx_layers[layer][cur_re];
             simde__m128i amp64 = simde_mm_set1_epi16(amp);
             int i;
             for (i = 0; i < (upper_limit >> 2); i++) {
@@ -790,7 +978,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
             }
             if (i * 4 != upper_limit) {
               c16_t *txFc = &txdataF_precoding[layer][l_symbol][start_sc];
-              c16_t *txlc = &tx_layer[cur_re];
+              c16_t *txlc = &tx_layers[layer][cur_re];
               for (i = (upper_limit >> 2) << 2; i < upper_limit; i++) {
                 txFc[i].r = (((txlc[i].r * amp) >> 14) + 1) >> 1;
                 txFc[i].i = (((txlc[i].i * amp) >> 14) + 1) >> 1;
@@ -802,7 +990,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
             cur_re += upper_limit;
             if (remaining_re > 0) {
               txF = (simde__m128i *)&txdataF_precoding[layer][l_symbol];
-              txl = (simde__m128i *)&tx_layer[cur_re];
+              txl = (simde__m128i *)&tx_layers[layer][cur_re];
               int i;
               for (i = 0; i < (remaining_re >> 2); i++) {
                 const simde__m128i txL = simde_mm_loadu_si128(txl + i);
@@ -824,7 +1012,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
               } // RE loop, second part
               if (i * 4 != remaining_re) {
                 c16_t *txFc = txdataF_precoding[layer][l_symbol];
-                c16_t *txlc = &tx_layer[cur_re];
+                c16_t *txlc = &tx_layers[layer][cur_re];
                 for (i = (remaining_re >> 2) << 2; i < remaining_re; i++) {
                   txFc[i].r = (((txlc[i].r * amp) >> 14) + 1) >> 1;
                   txFc[i].i = (((txlc[i].i * amp) >> 14) + 1) >> 1;
