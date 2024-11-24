@@ -764,7 +764,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
             upper_limit = frame_parms->ofdm_symbol_size - start_sc;
           }
 
-#if 0            
+#ifdef USE128BIT            
             simde__m128i *txF = (simde__m128i *)&txdataF_precoding[layer][l_symbol][start_sc];
 
             simde__m128i *txl = (simde__m128i *)&tx_layer[cur_re];
@@ -845,10 +845,12 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
               simde_mm256_storeu_si256(txF + i, simde_mm256_mulhrs_epi16(amp64, txL));
 #ifdef DEBUG_DLSCH_MAPPING
               for (int j = 0; j < 8; j++)
-                printf("re %u\t l %d\t layer %d\t k %d \t txdataF: %d %d\n",
+                printf("re %u\t l %d\t layer %d\t k %d \t txL %d %d txdataF: %d %d\n",
                        cur_re + 8 * i + j,
                        l_symbol,layer,
                        start_sc + 8 * i + j,
+                       ((c16_t*)&txL)[j].r,
+                       ((c16_t*)&txL)[j].i,
                        txdataF_precoding[layer][l_symbol][start_sc + 8 * i + j].r,
                        txdataF_precoding[layer][l_symbol][start_sc + 8 * i + j].i);
 #endif
@@ -865,7 +867,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
                 txFc[i].r = (((txlc[i].r * amp) >> 14) + 1) >> 1;
                 txFc[i].i = (((txlc[i].i * amp) >> 14) + 1) >> 1;
 #ifdef DEBUG_DLSCH_MAPPING
-                printf("re %u\t l %d\t layer %d \t k %d \t txdataF: %d %d\n", cur_re + i, l_symbol, layer, start_sc + i, txFc[i].r, txFc[i].i);
+                printf("re %u\t l %d\t layer %d \t k %d \t txL %d %d txdataF: %d %d\n", cur_re + i, l_symbol, layer, start_sc + i, txlc[i].r,txlc[i].i,txFc[i].r, txFc[i].i);
 #endif
               }
             }
