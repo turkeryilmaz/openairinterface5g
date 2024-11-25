@@ -605,8 +605,10 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
             int i, j;
             for (i = 0, j = 0; i < (rel15->rbSize * NR_NB_SC_PER_RB) >> 3; i++) {
               d0 = simde_mm_mulhrs_epi16(((simde__m128i *)mod_dmrs)[i], amp_dmrs128);
-              ((__m512i *)dmrs_mux)[j++] = _mm512_permutex2var_epi32(zeros, perml, d0); //
-              ((__m512i *)dmrs_mux)[j++] = _mm512_permutex2var_epi32(zeros, permh, d0);
+              d2 = simde_mm_unpacklo_epi32(zeros,d0);
+              d3 = simde_mm_unpackhi_epi32(zeros,d0);
+              ((simde__m128i *)dmrs_mux)[j++] = d2;
+              ((simde__m128i *)dmrs_mux)[j++] = d3;
             }
             if ((i << 3) != (rel15->rbSize * NR_NB_SC_PER_RB)) {
               for (int i2 = i << 2, j2 = j << 2; i2 < (rel15->rbSize * NR_NB_SC_PER_RB) >> 1; i2++) {
