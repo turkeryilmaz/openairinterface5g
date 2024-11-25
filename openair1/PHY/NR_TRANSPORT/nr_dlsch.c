@@ -243,7 +243,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
  
     uint32_t cur_re=cur_re0;
     int layerSz2=layerSz;
-    //if ((layerSz*sizeof(c16_t)&63)>0) layerSz2+=(layerSz*sizeof(c16_t) - (((layerSz*sizeof(c16_t))>>6)<<6))/sizeof(c16_t);
+    if ((layerSz*sizeof(c16_t)&63)>0) layerSz2+=(layerSz*sizeof(c16_t) - (((layerSz*sizeof(c16_t))>>6)<<6))/sizeof(c16_t);
     c16_t tx_layers[rel15->nrOfLayers][layerSz2] __attribute__((aligned(64)));
     if (l_symbol == rel15->StartSymbolIndex) nr_layer_mapping(rel15->NrOfCodewords, encoded_length, mod_symbs, rel15->nrOfLayers, layerSz2, nb_re, tx_layers);
     dmrs_idx = rel15->rbStart;
@@ -371,7 +371,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
                       ((simde__m128i *)dmrs_mux)[j++] = d3; 
 		   }
 		   if ((i<<3) != (rel15->rbSize*NR_NB_SC_PER_RB)) {
-          for (int i2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>3)<<2),j2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>3)<<3) ; i2< (rel15->rbSize*NR_NB_SC_PER_RB)>>1 ;i2++) {
+          for (int i2=i<<2,j2=j<<2 ; i2< (rel15->rbSize*NR_NB_SC_PER_RB)>>1 ;i2++) {
                           dmrs_mux[j2].r = (((mod_dmrs[i2].r * amp_dmrs) >> 14) + 1) >> 1;
                           dmrs_mux[j2].i = (((mod_dmrs[i2].i * amp_dmrs) >> 14) + 1) >> 1;j2++;
                           dmrs_mux[j2].r = 0;
@@ -389,7 +389,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
           ((__m512i *)dmrs_mux)[j++] = _mm512_permutex2var_epi32(d0,permh,zeros) ; 
 		   }
 		   if ((i<<5) != (rel15->rbSize*NR_NB_SC_PER_RB)) {
-          for (int i2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>5)<<4),j2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>4)<<4) ; i2< (rel15->rbSize*NR_NB_SC_PER_RB)>>1 ;i2++) {
+          for (int i2=i<<4,j2=j<<4; i2< (rel15->rbSize*NR_NB_SC_PER_RB)>>1 ;i2++) {
                           dmrs_mux[j2].r = (((mod_dmrs[i2].r * amp_dmrs) >> 14) + 1) >> 1;
                           dmrs_mux[j2].i = (((mod_dmrs[i2].i * amp_dmrs) >> 14) + 1) >> 1;j2++;
                           dmrs_mux[j2].r = 0;
@@ -407,7 +407,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
           ((simde__m256i *)dmrs_mux)[j++] = simde_mm256_permute2x128_si256(d2,d3,49) ; 
 		   }
 		   if ((i<<4) != (rel15->rbSize*NR_NB_SC_PER_RB)) {
-           for (int i2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>4)<<3),j2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>3)<<3) ; i2< (rel15->rbSize*NR_NB_SC_PER_RB)>>1 ;i2++) {
+           for (int i2=i<<3,j2=j<<3 ; i2< (rel15->rbSize*NR_NB_SC_PER_RB)>>1 ;i2++) {
                           dmrs_mux[j2].r = (((mod_dmrs[i2].r * amp_dmrs) >> 14) + 1) >> 1;
                           dmrs_mux[j2].i = (((mod_dmrs[i2].i * amp_dmrs) >> 14) + 1) >> 1;j2++;
                           dmrs_mux[j2].r = 0;
@@ -445,7 +445,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
           ((simde__m128i *)dmrs_mux)[j++] = d3; 
 		   }
 		   if ((i<<3) != (rel15->rbSize*NR_NB_SC_PER_RB)) {
-          for (int i2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>3)<<2),j2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>2)<<2) ; i2< (rel15->rbSize*NR_NB_SC_PER_RB)>>1 ;i2+=2) {
+          for (int i2=i<<2,j2=j<<2 ; i2< (rel15->rbSize*NR_NB_SC_PER_RB)>>1 ;i2+=2) {
                           dmrs_mux[j2].r = (((mod_dmrs[i2].r * amp_dmrs) >> 14) + 1) >> 1;
                           dmrs_mux[j2].i = (((mod_dmrs[i2].i * amp_dmrs) >> 14) + 1) >> 1;j2++;
                           dmrs_mux[j2].r = 0;
@@ -467,7 +467,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
           ((__m512i *)dmrs_mux)[j++] = _mm512_permutex2var_epi32(d0,permh,zeros) ; 
 		   }
 		   if ((i<<5) != (rel15->rbSize*NR_NB_SC_PER_RB)) {
-          for (int i2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>5)<<4),j2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>4)<<4) ; i2< (rel15->rbSize*NR_NB_SC_PER_RB)>>1 ;i2++) {
+          for (int i2=i<<4,j2=j<<4 ; i2< (rel15->rbSize*NR_NB_SC_PER_RB)>>1 ;i2++) {
                           dmrs_mux[j2].r = (((mod_dmrs[i2].r * amp_dmrs) >> 14) + 1) >> 1;
                           dmrs_mux[j2].i = (((mod_dmrs[i2].i * amp_dmrs) >> 14) + 1) >> 1;j2++;
                           dmrs_mux[j2].r = 0;
@@ -486,7 +486,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
           ((simde__m256i *)dmrs_mux)[j++] = simde_mm256_permute2x128_si256(d2,d3,49) ; 
 		   }
 		   if ((i<<4) != (rel15->rbSize*NR_NB_SC_PER_RB)) {
-           for (int i2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>4)<<3),j2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>3)<<3) ; i2< (rel15->rbSize*NR_NB_SC_PER_RB)>>1 ;i2+=2) {
+           for (int i2=i<<3,j2=j<<3 ; i2< (rel15->rbSize*NR_NB_SC_PER_RB)>>1 ;i2+=2) {
                           dmrs_mux[j2].r = (((mod_dmrs[i2].r * amp_dmrs) >> 14) + 1) >> 1;
                           dmrs_mux[j2].i = (((mod_dmrs[i2].i * amp_dmrs) >> 14) + 1) >> 1;j2++;
                           dmrs_mux[j2].r = 0;
@@ -526,7 +526,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
           ((__m512i *)dmrs_mux)[j++] = _mm512_permutex2var_epi32(zeros,permh,d0) ; 
 		   }
 		   if ((i<<3) != (rel15->rbSize*NR_NB_SC_PER_RB)) {
-           for (int i2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>3)<<2),j2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>2)<<2) ; i2< (rel15->rbSize*NR_NB_SC_PER_RB)>>1 ;i2++) {
+           for (int i2=i<<2,j2=j<<2 ; i2< (rel15->rbSize*NR_NB_SC_PER_RB)>>1 ;i2++) {
                           dmrs_mux[j2].r = 0;
                           dmrs_mux[j2].i = 0;j2++;
                           dmrs_mux[j2].r = (((mod_dmrs[i2].r * amp_dmrs) >> 14) + 1) >> 1;
@@ -546,7 +546,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
           ((__m512i *)dmrs_mux)[j++] = _mm512_permutex2var_epi32(d2,permh,d3) ; 
 		   }
 		   if ((i<<5) != (rel15->rbSize*NR_NB_SC_PER_RB)) {
-          for (int i2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>5)<<4),j2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>4)<<4) ; i2< (rel15->rbSize*NR_NB_SC_PER_RB)>>1 ;i2++) {
+          for (int i2=i<<4,j2=j<<4 ; i2< (rel15->rbSize*NR_NB_SC_PER_RB)>>1 ;i2++) {
                           dmrs_mux[j2].r = 0;
                           dmrs_mux[j2].i = 0;j2++;
                           dmrs_mux[j2].r = (((mod_dmrs[i2].r * amp_dmrs) >> 14) + 1) >> 1;
@@ -565,7 +565,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
                       ((simde__m256i *)dmrs_mux)[j++] = simde_mm256_permute2x128_si256(d2,d3,49) ; 
 		   }
 		   if ((i<<4) != (rel15->rbSize*NR_NB_SC_PER_RB)) {
-           for (int i2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>4)<<3),j2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>3)<<3) ; i2< (rel15->rbSize*NR_NB_SC_PER_RB)>>1 ;i2++) {
+           for (int i2=i<<3,j2=j<<3 ; i2< (rel15->rbSize*NR_NB_SC_PER_RB)>>1 ;i2++) {
                           dmrs_mux[j2].r = 0;
                           dmrs_mux[j2].i = 0;j2++;
                           dmrs_mux[j2].r = (((mod_dmrs[i2].r * amp_dmrs) >> 14) + 1) >> 1;
@@ -574,7 +574,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
 		   }
 #endif
 		   memcpy(&txF[start_sc],dmrs_mux,sizeof(c16_t)*upper_limit);
-	  	   if (remaining_re) memcpy(&txF[0],&dmrs_mux[upper_limit],sizeof(c16_t)*remaining_re);   
+	  	 if (remaining_re) memcpy(&txF[0],&dmrs_mux[upper_limit],sizeof(c16_t)*remaining_re);   
 #ifdef DEBUG_DLSCH_MAPPING
                    for (int re=0;re<rel15->rbSize*NR_NB_SC_PER_RB;re+=2)
 
@@ -603,7 +603,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
                       ((simde__m128i *)dmrs_mux)[j++] = d3; 
 		   }
 		   if ((i<<3) != (rel15->rbSize*NR_NB_SC_PER_RB)) {
-                       for (int i2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>3)<<2),j2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>2)<<2) ; i2< (rel15->rbSize*NR_NB_SC_PER_RB)>>1 ;i2+=2) {
+                       for (int i2=i<<2,j2=j<<2 ; i2< (rel15->rbSize*NR_NB_SC_PER_RB)>>1 ;i2+=2) {
                           dmrs_mux[j2].r = 0;
                           dmrs_mux[j2].i = 0;j2++;
                           dmrs_mux[j2].r = (((mod_dmrs[i2].r * amp_dmrs) >> 14) + 1) >> 1;;
@@ -614,8 +614,8 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
                           dmrs_mux[j2].i = -(((mod_dmrs[i2+1].i * amp_dmrs) >> 14) + 1) >> 1;j2++;
 		       }
 		   }
-#elif defined(__AVX512__)
-		   __m512i d0,d2,d3,zeros=_mm512_xor_si512(d0,d0),amp_dmrs512=_mm512_set_epi16(-amp_dmrs,-amp_dmrs,amp_dmrs,amp_dmrs,-amp_dmrs,-amp_dmrs,amp_dmrs,amp_dmrs,-amp_dmrs,-amp_dmrs,amp_dmrs,amp_dmrs,-amp_dmrs,-amp_dmrs,amp_dmrs,amp_dmrs,-amp_dmrs,-amp_dmrs,amp_dmrs,amp_dmrs,-amp_dmrs,-amp_dmrs,amp_dmrs,     amp_dmrs,-amp_dmrs,-amp_dmrs,amp_dmrs,amp_dmrs,-amp_dmrs,-amp_dmrs,amp_dmrs,amp_dmrs);
+#elif defined(__AVX512BW__)
+		   __m512i d0,zeros=_mm512_xor_si512(d0,d0),amp_dmrs512=_mm512_set_epi16(-amp_dmrs,-amp_dmrs,amp_dmrs,amp_dmrs,-amp_dmrs,-amp_dmrs,amp_dmrs,amp_dmrs,-amp_dmrs,-amp_dmrs,amp_dmrs,amp_dmrs,-amp_dmrs,-amp_dmrs,amp_dmrs,amp_dmrs,-amp_dmrs,-amp_dmrs,amp_dmrs,amp_dmrs,-amp_dmrs,-amp_dmrs,amp_dmrs,     amp_dmrs,-amp_dmrs,-amp_dmrs,amp_dmrs,amp_dmrs,-amp_dmrs,-amp_dmrs,amp_dmrs,amp_dmrs);
        __m512i perml=_mm512_set_epi32(23,7,22,6,21,5,20,4,19,3,18,2,17,1,16,0);
        __m512i permh=_mm512_set_epi32(31,15,30,14,29,13,28,12,27,11,26,10,25,9,24,8); 
 		   int i,j;
@@ -625,7 +625,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
           ((__m512i *)dmrs_mux)[j++] = _mm512_permutex2var_epi32(zeros,permh,d0) ; 
        }
        if ((i<<5) != (rel15->rbSize*NR_NB_SC_PER_RB)) {
-         for (int i2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>5)<<4),j2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>4)<<4) ; i2< (rel15->rbSize*NR_NB_SC_PER_RB)>>1 ;i2+=2) {
+         for (int i2=i<<4,j2=j<<4 ; i2< (rel15->rbSize*NR_NB_SC_PER_RB)>>1 ;i2+=2) {
            dmrs_mux[j2].r = 0;
            dmrs_mux[j2].i = 0;j2++;
            dmrs_mux[j2].r = (((mod_dmrs[i2].r * amp_dmrs) >> 14) + 1) >> 1;
@@ -647,7 +647,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
          ((simde__m256i *)dmrs_mux)[j++] = simde_mm256_permute2x128_si256(d2,d3,49) ; 
        }
        if ((i<<4) != (rel15->rbSize*NR_NB_SC_PER_RB)) {
-         for (int i2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>4)<<3),j2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>3)<<3) ; i2< (rel15->rbSize*NR_NB_SC_PER_RB)>>1 ;i2+=2) {
+         for (int i2=i<<3,j2=j<<3 ; i2< (rel15->rbSize*NR_NB_SC_PER_RB)>>1 ;i2+=2) {
            dmrs_mux[j2].r = 0;
            dmrs_mux[j2].i = 0;j2++;
            dmrs_mux[j2].r = (((mod_dmrs[i2].r * amp_dmrs) >> 14) + 1) >> 1;;
@@ -691,15 +691,15 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
           ((simde__m128i *)dmrs_mux)[j++] = d3; 
         }
         if ((i<<3) != (rel15->rbSize*NR_NB_SC_PER_RB)) {
-          for (int i2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>3)<<2),j2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>2)<<2) ; i2< (rel15->rbSize*NR_NB_SC_PER_RB)>>1 ;i2++) {
+          for (int i2=i<<2,j2=j<<2 ; i2< (rel15->rbSize*NR_NB_SC_PER_RB)>>1 ;i2++) {
             dmrs_mux[j2].r = (((mod_dmrs[i2].r * amp_dmrs) >> 14) + 1) >> 1;
             dmrs_mux[j2].i = (((mod_dmrs[i2].i * amp_dmrs) >> 14) + 1) >> 1;j2++;
             dmrs_mux[j2].r = (((txlc[i2].r * amp) >> 14) + 1) >> 1;
             dmrs_mux[j2].i = (((txlc[i2].i * amp) >> 14) + 1) >> 1;j2++;
           }
         }
-#elif defined(__AVX512__)
-       __m512i d0,d2,d3,zeros=_mm512_xor_si512(d0,d0),amp_dmrs512=_mm512_set1_epi16(amp_dmrs),amp512=_mm512_set1_epi16(amp);
+#elif defined(__AVX512BW__)
+       __m512i d0,d1,amp_dmrs512=_mm512_set1_epi16(amp_dmrs),amp512=_mm512_set1_epi16(amp);
        __m512i perml=_mm512_set_epi32(23,7,22,6,21,5,20,4,19,3,18,2,17,1,16,0); 
        __m512i permh=_mm512_set_epi32(31,15,30,14,29,13,28,12,27,11,26,10,25,9,24,8); 
        c16_t *txlc = &tx_layers[layer][cur_re];
@@ -711,7 +711,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
           ((__m512i *)dmrs_mux)[j++] = _mm512_permutex2var_epi32(d0,permh,d1) ; 
 		   }
 		   if ((i<<5) != (rel15->rbSize*NR_NB_SC_PER_RB)) {
-          for (int i2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>5)<<4),j2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>4)<<4) ; i2< (rel15->rbSize*NR_NB_SC_PER_RB)>>1 ;i2++) {
+          for (int i2=i<<4,j2=j<<4 ; i2< (rel15->rbSize*NR_NB_SC_PER_RB)>>1 ;i2++) {
                           dmrs_mux[j2].r = (((mod_dmrs[i2].r * amp_dmrs) >> 14) + 1) >> 1;
                           dmrs_mux[j2].i = (((mod_dmrs[i2].i * amp_dmrs) >> 14) + 1) >> 1;j2++;
                           dmrs_mux[j2].r = (((txlc[i2].r * amp) >> 14) + 1) >> 1;
@@ -731,7 +731,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
           ((simde__m256i *)dmrs_mux)[j++] = simde_mm256_permute2x128_si256(d2,d3,49) ; 
 		   }
 		   if ((i<<4) != (rel15->rbSize*NR_NB_SC_PER_RB)) {
-           for (int i2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>4)<<3),j2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>3)<<3) ; i2< (rel15->rbSize*NR_NB_SC_PER_RB)>>1 ;i2++) {
+           for (int i2=i<<3,j2=j<<3 ; i2< (rel15->rbSize*NR_NB_SC_PER_RB)>>1 ;i2++) {
                           dmrs_mux[j2].r = (((mod_dmrs[i2].r * amp_dmrs) >> 14) + 1) >> 1;
                           dmrs_mux[j2].i = (((mod_dmrs[i2].i * amp_dmrs) >> 14) + 1) >> 1;j2++;
                           dmrs_mux[j2].r = (((txlc[i2].r * amp) >> 14) + 1) >> 1;
@@ -781,7 +781,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
                       ((simde__m128i *)dmrs_mux)[j++] = d3; 
 		   }
 		   if ((i<<4) != (rel15->rbSize*NR_NB_SC_PER_RB)) {
-                       for (int i2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>3)<<2),j2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>3)<<3) ; i2< (rel15->rbSize*NR_NB_SC_PER_RB)>>1 ;i2+=2) {
+                       for (int i2=i<<2,j2=j<<2 ; i2< (rel15->rbSize*NR_NB_SC_PER_RB)>>1 ;i2+=2) {
                           dmrs_mux[j2].r = (((mod_dmrs[i2].r * amp_dmrs) >> 14) + 1) >> 1;
                           dmrs_mux[j2].i = (((mod_dmrs[i2].i * amp_dmrs) >> 14) + 1) >> 1;j2++;
                           dmrs_mux[j2].r = (((txlc[i2].r * amp) >> 14) + 1) >> 1;
@@ -792,8 +792,8 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
                           dmrs_mux[j2].i = (((txlc[i2+1].i * amp) >> 14) + 1) >> 1;;j2++;
 		       }
 		   }
-#elif defined(__AVX512__)
-		   __m512i d0,d2,d3,zeros=_mm512_xor_si512(d0,d0),amp_dmrs512=simde_mm256_set_epi16(-amp_dmrs,-amp_dmrs,amp_dmrs,amp_dmrs,-amp_dmrs,-        amp_dmrs,amp_dmrs,amp_dmrs,-amp_dmrs,-amp_dmrs,amp_dmrs,amp_dmrs,-amp_dmrs,-amp_dmrs,amp_dmrs,amp_dmrs),amp512=_mm512_set1_epi16(amp);
+#elif defined(__AVX512BW__)
+		   __m512i d0,d1,amp_dmrs512=_mm512_set_epi16(-amp_dmrs,-amp_dmrs,amp_dmrs,amp_dmrs,-amp_dmrs,-amp_dmrs,amp_dmrs,amp_dmrs,-amp_dmrs,-amp_dmrs,amp_dmrs,amp_dmrs,-amp_dmrs,-amp_dmrs,amp_dmrs,amp_dmrs,-amp_dmrs,-amp_dmrs,amp_dmrs,amp_dmrs,-amp_dmrs,-amp_dmrs,amp_dmrs,amp_dmrs,-amp_dmrs,-amp_dmrs,amp_dmrs,amp_dmrs,-amp_dmrs,-amp_dmrs,amp_dmrs,amp_dmrs),amp512=_mm512_set1_epi16(amp);
        __m512i perml=_mm512_set_epi32(23,7,22,6,21,5,20,4,19,3,18,2,17,1,16,0);
        __m512i permh=_mm512_set_epi32(31,15,30,14,29,13,28,12,27,11,26,10,25,9,24,8);
        c16_t *txlc = &tx_layers[layer][cur_re];
@@ -805,7 +805,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
           ((__m512i *)dmrs_mux)[j++] = _mm512_permutex2var_epi32(d0,permh,d1) ; 
 		   }
 		   if ((i<<5) != (rel15->rbSize*NR_NB_SC_PER_RB)) {
-          for (int i2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>5)<<4),j2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>4)<<4) ; i2< (rel15->rbSize*NR_NB_SC_PER_RB)>>1 ;i2+=2) {
+          for (int i2=i<<4,j2=j<<4 ; i2< (rel15->rbSize*NR_NB_SC_PER_RB)>>1 ;i2+=2) {
                           dmrs_mux[j2].r = (((mod_dmrs[i2].r * amp_dmrs) >> 14) + 1) >> 1;
                           dmrs_mux[j2].i = (((mod_dmrs[i2].i * amp_dmrs) >> 14) + 1) >> 1;j2++;
                           dmrs_mux[j2].r = (((txlc[i2].r * amp) >> 14) + 1) >> 1;
@@ -829,7 +829,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
                       ((simde__m256i *)dmrs_mux)[j++] = simde_mm256_permute2x128_si256(d2,d3,49) ; 
 		   }
 		   if ((i<<4) != (rel15->rbSize*NR_NB_SC_PER_RB)) {
-                       for (int i2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>4)<<3),j2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>4)<<4) ; i2< (rel15->rbSize*NR_NB_SC_PER_RB)>>1 ;i2+=2) {
+                       for (int i2=i<<3,j2=j<<3 ; i2< (rel15->rbSize*NR_NB_SC_PER_RB)>>1 ;i2+=2) {
                           dmrs_mux[j2].r = (((mod_dmrs[i2].r * amp_dmrs) >> 14) + 1) >> 1;
                           dmrs_mux[j2].i = (((mod_dmrs[i2].i * amp_dmrs) >> 14) + 1) >> 1;j2++;
                           dmrs_mux[j2].r = (((txlc[i2].r * amp) >> 14) + 1) >> 1;
@@ -883,15 +883,15 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
           ((simde__m128i *)dmrs_mux)[j++] = d3; 
 		   }
 		   if ((i<<3) != (rel15->rbSize*NR_NB_SC_PER_RB)) {
-                       for (int i2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>3)<<2),j2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>3)<<3) ; i2< (rel15->rbSize*NR_NB_SC_PER_RB)>>1 ;i2++) {
+                       for (int i2=i<<2,j2=j<<3 ; i2< (rel15->rbSize*NR_NB_SC_PER_RB)>>1 ;i2++) {
                           dmrs_mux[j2].r = (((txlc[i2].r * amp) >> 14) + 1) >> 1;
                           dmrs_mux[j2].i = (((txlc[i2].i * amp) >> 14) + 1) >> 1;j2++;
                           dmrs_mux[j2].r = (((mod_dmrs[i2].r * amp_dmrs) >> 14) + 1) >> 1;
                           dmrs_mux[j2].i = (((mod_dmrs[i2].i * amp_dmrs) >> 14) + 1) >> 1;j2++;
 		       }
 		   }
-#elif defined(__AVX512__)
-		   __m512i d0,d2,d3,zeros=_mm512_xor_si512(d0,d0),amp_dmrs512=_mm512_set1_epi16(amp_dmrs),amp512=_mm512_set1_epi16(amp);
+#elif defined(__AVX512BW__)
+		   __m512i d0,d1,amp_dmrs512=_mm512_set1_epi16(amp_dmrs),amp512=_mm512_set1_epi16(amp);
        __m512i perml=_mm512_set_epi32(23,7,22,6,21,5,20,4,19,3,18,2,17,1,16,0); 
        __m512i permh=_mm512_set_epi32(31,15,30,14,29,13,28,12,27,11,26,10,25,9,24,8); 
        c16_t *txlc = &tx_layers[layer][cur_re];
@@ -903,7 +903,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
           ((__m512i *)dmrs_mux)[j++] = _mm512_permutex2var_epi32(d1,permh,d0) ; 
 		   }
 		   if ((i<<5) != (rel15->rbSize*NR_NB_SC_PER_RB)) {
-          for (int i2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>5)<<4),j2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>4)<<4) ; i2< (rel15->rbSize*NR_NB_SC_PER_RB)>>1 ;i2++) {
+          for (int i2=i<<4,j2=j<<4 ; i2< (rel15->rbSize*NR_NB_SC_PER_RB)>>1 ;i2++) {
                           dmrs_mux[j2].r = (((mod_dmrs[i2].r * amp_dmrs) >> 14) + 1) >> 1;
                           dmrs_mux[j2].i = (((mod_dmrs[i2].i * amp_dmrs) >> 14) + 1) >> 1;j2++;
                           dmrs_mux[j2].r = (((txlc[i2].r * amp) >> 14) + 1) >> 1;
@@ -923,7 +923,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
           ((simde__m256i *)dmrs_mux)[j++] = simde_mm256_permute2x128_si256(d2,d3,49) ; 
 		   }
 		   if ((i<<4) != (rel15->rbSize*NR_NB_SC_PER_RB)) {
-                       for (int i2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>4)<<3),j2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>4)<<4) ; i2< (rel15->rbSize*NR_NB_SC_PER_RB)>>1 ;i2++) {
+                       for (int i2=i<<3,j2=j<<3 ; i2< (rel15->rbSize*NR_NB_SC_PER_RB)>>1 ;i2++) {
                           dmrs_mux[j2].r = (((txlc[i2].r * amp) >> 14) + 1) >> 1;
                           dmrs_mux[j2].i = (((txlc[i2].i * amp) >> 14) + 1) >> 1;j2++;
                           dmrs_mux[j2].r = (((mod_dmrs[i2].r * amp_dmrs) >> 14) + 1) >> 1;
@@ -973,7 +973,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
                       ((simde__m128i *)dmrs_mux)[j++] = d3; 
 		   }
 		   if ((i<<3) != (rel15->rbSize*NR_NB_SC_PER_RB)) {
-                       for (int i2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>3)<<2),j2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>3)<<3) ; i2< (rel15->rbSize*NR_NB_SC_PER_RB)>>1 ;i2+=2) {
+                       for (int i2=i<<2,j2=j<<3 ; i2< (rel15->rbSize*NR_NB_SC_PER_RB)>>1 ;i2+=2) {
                           dmrs_mux[j2].r = (((txlc[i2].r * amp) >> 14) + 1) >> 1;
                           dmrs_mux[j2].i = (((txlc[i2].i * amp) >> 14) + 1) >> 1;j2++;
                           dmrs_mux[j2].r = (((mod_dmrs[i2].r * amp_dmrs) >> 14) + 1) >> 1;
@@ -984,8 +984,8 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
                           dmrs_mux[j2].i = -(((mod_dmrs[i2+1].i * amp_dmrs) >> 14) + 1) >> 1;j2++;
 		       }
 		   }
-#elif defined(__AVX512__)
-		   __m512i d0,d2,d3,zeros=_mm512_xor_si512(d0,d0),amp_dmrs512=simde_mm256_set_epi16(-amp_dmrs,-amp_dmrs,amp_dmrs,amp_dmrs,-amp_dmrs,-amp_dmrs,amp_dmrs,amp_dmrs,-amp_dmrs,-amp_dmrs,amp_dmrs,amp_dmrs,-amp_dmrs,-amp_dmrs,amp_dmrs,amp_dmrs),amp512=_mm512_set1_epi16(amp);
+#elif defined(__AVX512BW__)
+		   __m512i d0,d1,amp_dmrs512=_mm512_set_epi16(-amp_dmrs,-amp_dmrs,amp_dmrs,amp_dmrs,-amp_dmrs,-amp_dmrs,amp_dmrs,amp_dmrs,-amp_dmrs,-amp_dmrs,amp_dmrs,amp_dmrs,-amp_dmrs,-amp_dmrs,amp_dmrs,amp_dmrs,-amp_dmrs,-amp_dmrs,amp_dmrs,amp_dmrs,-amp_dmrs,-amp_dmrs,amp_dmrs,amp_dmrs,-amp_dmrs,-amp_dmrs,amp_dmrs,amp_dmrs,-amp_dmrs,-amp_dmrs,amp_dmrs,amp_dmrs),amp512=_mm512_set1_epi16(amp);
        __m512i perml=_mm512_set_epi32(23,7,22,6,21,5,20,4,19,3,18,2,17,1,16,0); 
        __m512i permh=_mm512_set_epi32(31,15,30,14,29,13,28,12,27,11,26,10,25,9,24,8); 
        c16_t *txlc = &tx_layers[layer][cur_re];
@@ -997,7 +997,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
           ((__m512i *)dmrs_mux)[j++] = _mm512_permutex2var_epi32(d1,permh,d0) ; 
 		   }
 		   if ((i<<5) != (rel15->rbSize*NR_NB_SC_PER_RB)) {
-          for (int i2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>5)<<4),j2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>4)<<4) ; i2< (rel15->rbSize*NR_NB_SC_PER_RB)>>1 ;i2+=2) {
+          for (int i2=i<<4,j2=j<<4 ; i2< (rel15->rbSize*NR_NB_SC_PER_RB)>>1 ;i2+=2) {
                           dmrs_mux[j2].r = (((txlc[i2].r * amp) >> 14) + 1) >> 1;
                           dmrs_mux[j2].i = (((txlc[i2].i * amp) >> 14) + 1) >> 1;j2++;
                           dmrs_mux[j2].r = (((mod_dmrs[i2].r * amp_dmrs) >> 14) + 1) >> 1;
@@ -1022,7 +1022,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
                       ((simde__m256i *)dmrs_mux)[j++] = simde_mm256_permute2x128_si256(d2,d3,49) ; 
 		   }
 		   if ((i<<4) != (rel15->rbSize*NR_NB_SC_PER_RB)) {
-                       for (int i2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>4)<<3),j2=(((rel15->rbSize*NR_NB_SC_PER_RB)>>4)<<4) ; i2< (rel15->rbSize*NR_NB_SC_PER_RB)>>1 ;i2+=2) {
+                       for (int i2=i<<3,j2=j<<3 ; i2< (rel15->rbSize*NR_NB_SC_PER_RB)>>1 ;i2+=2) {
                           dmrs_mux[j2].r = (((txlc[i2].r * amp) >> 14) + 1) >> 1;
                           dmrs_mux[j2].i = (((txlc[i2].i * amp) >> 14) + 1) >> 1;j2++;
                           dmrs_mux[j2].r = (((mod_dmrs[i2].r * amp_dmrs) >> 14) + 1) >> 1;
