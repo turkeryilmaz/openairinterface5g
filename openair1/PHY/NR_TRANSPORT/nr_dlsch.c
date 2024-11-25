@@ -243,7 +243,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
  
     uint32_t cur_re=cur_re0;
     int layerSz2=layerSz;
-    if ((layerSz*sizeof(c16_t)&63)>0) layerSz2+=(layerSz*sizeof(c16_t) - (((layerSz*sizeof(c16_t))>>6)<<6))/sizeof(c16_t);
+    //if ((layerSz*sizeof(c16_t)&63)>0) layerSz2+=(layerSz*sizeof(c16_t) - (((layerSz*sizeof(c16_t))>>6)<<6))/sizeof(c16_t);
     c16_t tx_layers[rel15->nrOfLayers][layerSz2] __attribute__((aligned(64)));
     if (l_symbol == rel15->StartSymbolIndex) nr_layer_mapping(rel15->NrOfCodewords, encoded_length, mod_symbs, rel15->nrOfLayers, layerSz2, nb_re, tx_layers);
     dmrs_idx = rel15->rbStart;
