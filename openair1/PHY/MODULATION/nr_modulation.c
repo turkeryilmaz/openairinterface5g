@@ -25,6 +25,7 @@
 
 // #define DEBUG_DLSCH_PRECODING_PRINT_WITH_TRIVIAL // TODO: For debug, to be removed if want to merge to develop
 //#define DEBUG_LAYER_MAPPING
+#define USE_NEON
 
 //Table 6.3.1.5-1 Precoding Matrix W 1 layer 2 antenna ports 'n' = -1 and 'o' = -j
 const char nr_W_1l_2p[6][2][1] = {
@@ -246,7 +247,6 @@ void nr_modulation(const uint32_t *in,
   AssertFatal(false,"Invalid or unsupported modulation order %d\n",mod_order);
 }
 
-#define USE_NEON
 void nr_layer_mapping(int nbCodes,
                       int encoded_len,
                       c16_t mod_symbs[nbCodes][encoded_len],
@@ -265,13 +265,13 @@ void nr_layer_mapping(int nbCodes,
       break;
 
     case 2:
-#if defined(__AVX512__)
+#if defined(__AVX512BW__)
       __m512i perm2 = _mm512_set_epi32(15,13,11,9,7,5,3,1,14,12,10,8,6,4,2,0);
       __m512i d;
       for (i = 0; i < n_symbs>>4 ; i++) {
-	  d = _mm512_permutexvar_epi32(perm2,((__m512i*)mod_symbs[0])[i], perm2);	
-          ((__m256i*)tx_layers[0])[i] = _mm512_extract32x8_epi32(d,0);
-          ((__m256i*)tx_layers[1])[i] = _mm512_extract32x8_epi32(d,1);
+	        d = _mm512_permutexvar_epi32(perm2,((__m512i*)mod_symbs[0])[i]);	
+          ((__m256i*)tx_layers[0])[i] = _mm512_extracti32x8_epi32(d,0);
+          ((__m256i*)tx_layers[1])[i] = _mm512_extracti32x8_epi32(d,1);
       } 
       if (i<<4 != n_symbs) {
          for (int i2=((n_symbs>>4)<<4) ; i2< n_symbs; i2+=2) {
@@ -286,7 +286,7 @@ void nr_layer_mapping(int nbCodes,
       uint8x16_t perm = vld1q_u8(perm0);
       uint8x16_t d;
       for (i = 0; i < n_symbs>>2 ; i++) {
-	  d =vqtbl1q_u8(((uint8x16_t*)mod_symbs[0])[i],perm);
+      	  d =vqtbl1q_u8(((uint8x16_t*)mod_symbs[0])[i],perm);
           ((int64_t*)tx_layers[0])[i] = vgetq_lane_u64((uint64x2_t)d,0);
           ((int64_t*)tx_layers[1])[i] = vgetq_lane_u64((uint64x2_t)d,1);
       } 
@@ -294,19 +294,19 @@ void nr_layer_mapping(int nbCodes,
          for (int i2=((n_symbs>>3)<<3) ; i2< n_symbs; i2+=2) {
              tx_layers[0][i2>>1] = mod_symbs[0][i2];
              tx_layers[1][i2>>1] = mod_symbs[0][i2+1];
-	 }
+	       }
       }
- #else
+#else
       for (i=0;i<n_symbs;i+=2) {
          tx_layers[0][i>>1] = mod_symbs[0][i];
-	 tx_layers[1][i>>1] = mod_symbs[0][i+1];
+      	 tx_layers[1][i>>1] = mod_symbs[0][i+1];
       }
 #endif
 #else
       simde__m256i perm2 = simde_mm256_set_epi32(7,5,3,1,6,4,2,0);
       simde__m256i d;
       for (i = 0; i < n_symbs>>3 ; i++) {
-	  d = simde_mm256_permutevar8x32_epi32(((simde__m256i*)mod_symbs[0])[i], perm2);	
+	        d = simde_mm256_permutevar8x32_epi32(((simde__m256i*)mod_symbs[0])[i], perm2);	
           ((simde__m128i*)tx_layers[0])[i] = simde_mm256_extractf128_si256(d,0);
           ((simde__m128i*)tx_layers[1])[i] = simde_mm256_extractf128_si256(d,1);
       } 
@@ -314,13 +314,30 @@ void nr_layer_mapping(int nbCodes,
          for (int i2=((n_symbs>>3)<<3) ; i2< n_symbs; i2+=2) {
              tx_layers[0][i2>>1] = mod_symbs[0][i2];
              tx_layers[1][i2>>1] = mod_symbs[0][i2+1];
-	 }
-      }
+	    }
 #endif
       break;
     case 3:
-#if defined(__AVX512__)
-
+#if defined(__AVX512BW__)
+    __m512i i0,i1,i2,d0;
+    __m512i perm3_0  = _mm512_set_epi32(13+16,10+16, 7+16, 4+16, 1+16,14+16,11+16, 8+16, 5+16, 2+16,15,12, 9, 6, 3, 0);
+    __m512i perm3_0b = _mm512_set_epi32(13+16,10+16, 7+16, 4+16, 1+16,10,9,8,7,6,5,4,3,2,1,0);
+    __m512i perm3_1  = _mm512_set_epi32(14+16,11+16, 8+16, 5+16, 2+16,15+16,12+16, 9+16, 6+16, 3+16, 0+16,13,10, 7, 4, 1);
+    __m512i perm3_1b = _mm512_set_epi32(14+16,11+16, 8+16, 5+16, 2+16,10,9,8,7,6,5,4,3,2,1,0);
+    __m512i perm3_2  = _mm512_set_epi32(15+16,12+16, 9+16, 6+16, 3+16, 0+16,13+16,10+16, 7+16, 4+16, 1+16,14,11, 8, 5, 2);
+    __m512i perm3_2b = _mm512_set_epi32(15+16,12+16, 9+16, 6+16, 3+16, 0+16,9,8,7,6,5,4,3,2,1,0);
+    int n;
+    for (i = 0,n=0; i < n_symbs>>4 ; i+=3,n++) {
+	     i0 = ((__m512i*)mod_symbs[0])[i];
+	     i1 = ((__m512i*)mod_symbs[0])[i+1];
+	     i2 = ((__m512i*)mod_symbs[0])[i+2];
+	     d0=_mm512_permutex2var_epi32(i0, perm3_0,i1);
+       ((__m512i *)tx_layers[0])[n] = _mm512_permutex2var_epi32(d0,perm3_0b,i2); // 11000000
+	     d0=_mm512_permutex2var_epi32(i0, perm3_1,i1);
+       ((__m512i *)tx_layers[1])[n] = _mm512_permutex2var_epi32(d0,perm3_1b,i2); // 11000000
+	     d0=_mm512_permutex2var_epi32(i0, perm3_2,i1);
+       ((__m512i *)tx_layers[2])[n] = _mm512_permutex2var_epi32(d0,perm3_2b,i2); // 11000000
+    }
 #elif defined(__aarch64__)
       for (int i=0 ; i< n_symbs; i+=3) {
            tx_layers[0][i/3] = mod_symbs[0][i];
@@ -352,7 +369,7 @@ void nr_layer_mapping(int nbCodes,
 	  d1=simde_mm256_permutevar8x32_epi32(i1, perm3_2);
 	  d2=simde_mm256_permutevar8x32_epi32(i2, perm3_2);
 	  d3=simde_mm256_blend_epi32(d0,d1,0x1c); // 00011100
-          ((simde__m256i *)tx_layers[2])[n] = simde_mm256_blend_epi32(d3,d2,0xe0); // 11100000
+    ((simde__m256i *)tx_layers[2])[n] = simde_mm256_blend_epi32(d3,d2,0xe0); // 11100000
 #ifdef DEBUG_LAYER_MAPPING
 	  printf("\nsymb %d/%d\n",i<<3,n_symbs);
 	  printf(" layer 0:\t");
@@ -392,13 +409,30 @@ void nr_layer_mapping(int nbCodes,
     break;  
 
     case 4:
-#if defined(__AVX512__)
+#if defined(__AVX512BW__)
+    __m512i perm4 = _mm512_set_epi32(15,11,7,3,14,10,6,2,13,9,5,1,12,8,4,0);
+    __m512i e;
+    for (i = 0; i < n_symbs>>3 ; i++) {
+	        e=_mm512_permutexvar_epi32(perm4,((__m512i*)mod_symbs[0])[i]);
+          ((__m128i *)tx_layers[0])[i] = _mm512_extracti64x2_epi64(e,0);
+          ((__m128i *)tx_layers[1])[i] = _mm512_extracti64x2_epi64(e,1);
+          ((__m128i *)tx_layers[2])[i] = _mm512_extracti64x2_epi64(e,2);
+          ((__m128i *)tx_layers[3])[i] = _mm512_extracti64x2_epi64(e,3);
+      }
+      if (i<<3 != n_symbs) {
+         for (int i2=((n_symbs>>3)<<3) ; i2< n_symbs; i2+=3) {
+             tx_layers[0][i2>>1] = mod_symbs[0][i2];
+             tx_layers[1][i2>>1] = mod_symbs[0][i2+1];
+             tx_layers[2][i2>>1] = mod_symbs[0][i2+2];
+             tx_layers[3][i2>>1] = mod_symbs[0][i2+2];
+	    }
+    }
 #elif defined(__aarch64__)
 #ifdef USE_NEON
       // SIMDe doesn't handle this properly, gcc up to 14.2 neither
       uint32x4_t d4;
       for (i = 0; i < n_symbs>>2 ; i++) {
-	  d4 =((uint32x4_t*)mod_symbs[0])[i];
+	        d4 =((uint32x4_t*)mod_symbs[0])[i];
           ((uint32_t*)tx_layers[0])[i] = vgetq_lane_u32(d4,0);
           ((uint32_t*)tx_layers[1])[i] = vgetq_lane_u32(d4,1);
           ((uint32_t*)tx_layers[2])[i] = vgetq_lane_u32(d4,0);
