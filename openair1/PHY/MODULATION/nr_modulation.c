@@ -265,14 +265,17 @@ void nr_layer_mapping(int nbCodes,
       break;
 
     case 2:
-#if defined(__AVX512BW_)
+      {
+#if defined(__AVX512BW__)
+	      /*
       __m512i perm2 = _mm512_set_epi32(15,13,11,9,7,5,3,1,14,12,10,8,6,4,2,0);
       __m512i d;
       for (i = 0; i < n_symbs>>4 ; i++) {
          d = _mm512_permutexvar_epi32(perm2,((__m512i*)mod_symbs[0])[i]);
          ((__m256i*)tx_layers[0])[i] = _mm512_extracti32x8_epi32(d,0);
          ((__m256i*)tx_layers[1])[i] = _mm512_extracti32x8_epi32(d,1);
-      /*__m512i perm2a = _mm512_set_epi32(30,28,26,24,22,20,18,16,14,12,10,8,6,4,2,0);
+      */
+      __m512i perm2a = _mm512_set_epi32(30,28,26,24,22,20,18,16,14,12,10,8,6,4,2,0);
       __m512i perm2b = _mm512_set_epi32(31,29,27,25,23,21,19,17,15,13,11,9,7,5,3,1);
       __m512i a,b;
       for (i = 0,j=0; i < n_symbs>>4 ; i+=2,j++) {
@@ -280,7 +283,6 @@ void nr_layer_mapping(int nbCodes,
           b = ((__m512i*)mod_symbs[0])[i+1];
 	        ((__m512i*)tx_layers[0])[j] = _mm512_permutex2var_epi32(a,perm2a,b);	
 	        ((__m512i*)tx_layers[1])[j] = _mm512_permutex2var_epi32(a,perm2b,b);	
-          */
       } 
       if (i<<4 != n_symbs) {
          for (int i2=((n_symbs>>4)<<4) ; i2< n_symbs; i2+=2) {
@@ -327,8 +329,10 @@ void nr_layer_mapping(int nbCodes,
          }
       }
 #endif
+      }
       break;
     case 3:
+      {
 #if defined(__AVX512BW__)
     __m512i i0,i1,i2,d0;
     __m512i perm3_0  = _mm512_set_epi32(13+16,10+16, 7+16, 4+16, 1+16,14+16,11+16, 8+16, 5+16, 2+16,15,12, 9, 6, 3, 0);
@@ -417,9 +421,11 @@ void nr_layer_mapping(int nbCodes,
 	 }
       }
 #endif
+      }
     break;  
 
     case 4:
+    {
 #if defined(__AVX512BW__)
     __m512i perm4 = _mm512_set_epi32(15,11,7,3,14,10,6,2,13,9,5,1,12,8,4,0);
     __m512i e;
@@ -484,6 +490,7 @@ void nr_layer_mapping(int nbCodes,
 	 }
       }
 #endif
+    }
       break;
 
     case 5:
