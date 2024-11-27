@@ -477,16 +477,17 @@ int nr_ulsch_decoding(PHY_VARS_gNB *phy_vars_gNB,
     VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PHY_gNB_ULSCH_DECODING, 0);
 
     if (harq_process->processedSegments == harq_process->C) {
-      LOG_I(NR_PHY, "[%s %d] ULSCH: Setting ACK for slot %d TBS %d\n", phy_vars_gNB ? "gNB" : "UE", phy_vars_gNB ? phy_vars_gNB->Mod_id : 0, ulsch->slot, harq_process->TBS);
+      LOG_D(NR_PHY, "[%s %d] ULSCH: Setting ACK for slot %d TBS %d\n", phy_vars_gNB ? "gNB" : "UE", phy_vars_gNB ? phy_vars_gNB->Mod_id : 0, ulsch->slot, harq_process->TBS);
       ulsch->active = false;
       harq_process->round = 0;
 
       nr_fill_indication(phy_vars_gNB, ulsch->frame, ulsch->slot, ULSCH_id, harq_pid, 0, 0);
 
     } else {
-      LOG_D(PHY,
-            "[%s %d] ULSCH: Setting NAK for SFN/SF %d/%d (pid %d, status %d, round %d, TBS %d)\n",
+      LOG_E(PHY,
+            "[%s %d] ULSCH %d in error: Setting NAK for SFN/SF %d/%d (pid %d, status %d, round %d, TBS %d)\n",
             phy_vars_gNB ? "gNB" : "UE", phy_vars_gNB ? phy_vars_gNB->Mod_id : 0,
+            ULSCH_id,
             ulsch->frame,
             ulsch->slot,
             harq_pid,
@@ -495,7 +496,6 @@ int nr_ulsch_decoding(PHY_VARS_gNB *phy_vars_gNB,
             harq_process->TBS);
       ulsch->handled = 1;
       decodeIterations = ulsch->max_ldpc_iterations + 1;
-      LOG_D(PHY, "ULSCH %d in error\n", ULSCH_id);
       nr_fill_indication(phy_vars_gNB, ulsch->frame, ulsch->slot, ULSCH_id, harq_pid, 1, 0);
     }
     ulsch->last_iteration_cnt = decodeIterations;

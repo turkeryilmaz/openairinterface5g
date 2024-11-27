@@ -473,8 +473,8 @@ int nr_rrc_mac_config_req_sl_preconfig(module_id_t module_id,
           sl_mac->sl_TxPool[i]->t0 = time_to_slots(mu, sensing_window_ms);
           sl_mac->sl_TxPool[i]->tproc0 = 1;
           sl_mac->sl_TxPool[i]->tproc1 = tproc1_valaues[mu];
-          sl_mac->sl_TxPool[i]->t1 = sl_mac->sl_TxPool[i]->tproc1;
-          sl_mac->sl_TxPool[i]->t2 = 25; // According to 38214 sec. 8.1.4: T2min <= t2 <= PDB, where T2min  = {1,5,10,20}*2^μ, u = 1, PDB = 20ms = 40 slots
+          sl_mac->sl_TxPool[i]->t1 = 1;
+          sl_mac->sl_TxPool[i]->t2 = 60; // According to 38214 sec. 8.1.4: T2min <= t2 <= PDB, where T2min  = {1,5,10,20}*2^μ, u = 1, PDB = 20ms = 40 slots
           sl_mac->mac_tx_params.rri = sl_ue_selected_config->sl_ResourceReservePeriodList_r16->list.array[0]->choice.sl_ResourceReservePeriod1_r16;
           sl_mac->mac_tx_params.resel_counter = get_random_reselection_counter(sl_mac->mac_tx_params.rri);
           mac->sl_thresh_rsrp = (-128 + (*sl_ue_selected_config->sl_Thres_RSRP_List_r16->list.array[0] - 1) * 2);
@@ -589,7 +589,7 @@ int nr_rrc_mac_config_req_sl_preconfig(module_id_t module_id,
   sl_prepare_phy_config(module_id, &sl_phy_cfg->sl_config_req,
                         freqcfg, sync_source, sl_OffsetDFN, sl_mac->sl_TDD_config);
 
-  sl_mac->mac_tx_params.packet_delay_budget_ms = 20;
+  sl_mac->mac_tx_params.packet_delay_budget_ms = 30;
   return 0;
 }
 

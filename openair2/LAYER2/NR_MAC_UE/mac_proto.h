@@ -523,7 +523,8 @@ void nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP, int slotP, nr_sci_pdu_
                        NR_SL_UE_info_t *UE,
                        uint16_t *slsch_pdu_length,
                        NR_UE_sl_harq_t *cur_harq,
-                       mac_rlc_status_resp_t *rlc_status);
+                       mac_rlc_status_resp_t *rlc_status,
+                       sl_resource_info_t *resource);
 
 SL_CSI_Report_t* set_nr_ue_sl_csi_meas_periodicity(const NR_TDD_UL_DL_Pattern_t *tdd,
                                                    NR_SL_UE_sched_ctrl_t *sched_ctrl,
@@ -546,13 +547,15 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
                               const NR_SL_BWP_ConfigCommon_r16_t *sl_bwp,
                               const NR_SL_ResourcePool_r16_t *sl_res_pool,
                               sl_nr_tx_config_request_t *tx_config,
+                              sl_resource_info_t *resource,
                               uint8_t *config_type);
 
 void nr_ue_sl_pscch_rx_scheduler(nr_sidelink_indication_t *sl_ind,
                                  const NR_SL_BWP_ConfigCommon_r16_t *sl_bwp,
                                  const NR_SL_ResourcePool_r16_t *sl_res_pool,
                                  sl_nr_rx_config_request_t *rx_config,
-                                 uint8_t *config_type);
+                                 uint8_t *config_type,
+                                 bool sl_has_psfch);
 
 void nr_ue_sl_csi_rs_scheduler(NR_UE_MAC_INST_t *mac,
                                uint8_t scs,
@@ -582,7 +585,8 @@ void nr_ue_sl_psfch_scheduler(NR_UE_MAC_INST_t *mac,
 
 void config_pscch_pdu_rx(sl_nr_rx_config_pscch_pdu_t *nr_sl_pscch_pdu,
                          const NR_SL_BWP_ConfigCommon_r16_t *sl_bwp,
-                         const NR_SL_ResourcePool_r16_t *sl_res_pool);
+                         const NR_SL_ResourcePool_r16_t *sl_res_pool,
+                         bool sl_has_psfch);
 
 int config_pssch_sci_pdu_rx(sl_nr_rx_config_pssch_sci_pdu_t *nr_sl_pssch_sci_pdu,
                              nr_sci_format_t sci2_format,
@@ -590,7 +594,8 @@ int config_pssch_sci_pdu_rx(sl_nr_rx_config_pssch_sci_pdu_t *nr_sl_pssch_sci_pdu
                              uint32_t pscch_Nid,
                              int pscch_subchannel_index,
                              const NR_SL_BWP_ConfigCommon_r16_t *sl_bwp,
-                             const NR_SL_ResourcePool_r16_t *sl_res_pool);
+                             const NR_SL_ResourcePool_r16_t *sl_res_pool,
+                             bool sl_has_psfch);
 
 sl_resource_info_t* get_resource_element(List_t* resource_list, frameslot_t sfn);
 
@@ -617,7 +622,8 @@ void fill_pssch_pscch_pdu(sl_nr_ue_mac_params_t *sl_mac_params,
                           uint16_t slsch_pdu_length,
                           const nr_sci_format_t format1,
                           const nr_sci_format_t format2,
-                          uint16_t slot);
+                          uint16_t slot,
+                          sl_resource_info_t *selected_resource);
 
 void fill_psfch_pdu(SL_sched_feedback_t *mac_psfch_pdu,
                     sl_nr_tx_rx_config_psfch_pdu_t *tx_psfch_pdu,
@@ -723,7 +729,7 @@ bool check_t1_within_tproc1(uint8_t mu, uint16_t t1_slots);
 
 NR_SL_ResourcePool_r16_t* get_resource_pool(NR_UE_MAC_INST_t *mac, uint16_t pool_id);
 
-bool slot_has_psfch(BIT_STRING_t *phy_sl_bitmap, uint64_t abs_index_cur_slot, uint8_t psfch_period, size_t phy_sl_map_size);
+bool slot_has_psfch(NR_UE_MAC_INST_t *mac, BIT_STRING_t *phy_sl_bitmap, uint64_t abs_index_cur_slot, uint8_t psfch_period, size_t phy_sl_map_size, NR_TDD_UL_DL_ConfigCommon_t *conf);
 
 void append_bit(uint8_t *buf, size_t bit_pos, int bit_value);
 

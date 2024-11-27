@@ -213,7 +213,8 @@ void fill_pssch_pscch_pdu(sl_nr_ue_mac_params_t *sl_mac_params,
                           uint16_t slsch_pdu_length,
                           const nr_sci_format_t format1,
                           const nr_sci_format_t format2,
-                          uint16_t slot)  {
+                          uint16_t slot,
+                          sl_resource_info_t *selected_resource)  {
   int pos = 0, fsize;
   uint64_t *sci_payload = (uint64_t *)nr_sl_pssch_pscch_pdu->pscch_sci_payload;
   uint64_t *sci2_payload = (uint64_t *)nr_sl_pssch_pscch_pdu->sci2_payload;
@@ -229,15 +230,15 @@ void fill_pssch_pscch_pdu(sl_nr_ue_mac_params_t *sl_mac_params,
   // freq domain allocation starts
   nr_sl_pssch_pscch_pdu->startrb= *sl_res_pool->sl_StartRB_Subchannel_r16;
   // Number of symbols used for PSCCH
-  nr_sl_pssch_pscch_pdu->pscch_numsym = pscch_tda[*sl_res_pool->sl_PSCCH_Config_r16->choice.setup->sl_TimeResourcePSCCH_r16];
+  nr_sl_pssch_pscch_pdu->pscch_numsym = selected_resource ? selected_resource->sl_pscch_sym_len : pscch_tda[*sl_res_pool->sl_PSCCH_Config_r16->choice.setup->sl_TimeResourcePSCCH_r16];
   // Number of  RBS used for PSCCH
-  nr_sl_pssch_pscch_pdu->pscch_numrbs = pscch_rb_table[*sl_res_pool->sl_PSCCH_Config_r16->choice.setup->sl_FreqResourcePSCCH_r16];
+  nr_sl_pssch_pscch_pdu->pscch_numrbs = selected_resource ? selected_resource->num_sl_pscch_rbs : pscch_rb_table[*sl_res_pool->sl_PSCCH_Config_r16->choice.setup->sl_FreqResourcePSCCH_r16];
   // Scrambling Id used for Generation of PSCCH DMRS Symbols
   nr_sl_pssch_pscch_pdu->pscch_dmrs_scrambling_id = *sl_res_pool->sl_PSCCH_Config_r16->choice.setup->sl_DMRS_ScrambleID_r16;
   // num subchannels in a resource pool
   nr_sl_pssch_pscch_pdu->num_subch = *sl_res_pool->sl_NumSubchannel_r16;
   // Size of subchannels in RBs
-  nr_sl_pssch_pscch_pdu->subchannel_size = subch_to_rb[*sl_res_pool->sl_SubchannelSize_r16];
+  nr_sl_pssch_pscch_pdu->subchannel_size = selected_resource ? selected_resource->sl_subchan_size : subch_to_rb[*sl_res_pool->sl_SubchannelSize_r16];
   //_PSCCH PSSCH TX: Size of subchannels in a PSSCH resource (l_subch)
   AssertFatal(sci_pdu->time_resource_assignment.val == 0, "need to handle a non-zero time_resource_assignment (2 or 3 time hops, N=2,3)\n");
   convNRFRIV(sci_pdu->frequency_resource_assignment.val,
@@ -261,8 +262,8 @@ void fill_pssch_pscch_pdu(sl_nr_ue_mac_params_t *sl_mac_params,
      // As per 38214 8.1.3.2, num_psfch_symbols can be 3 if psfch_overhead_indication.nbits is 1; FYI psfch_overhead_indication.nbits is set to 1 in case of PSFCH period 2 or 4 in sl_determine_sci_1a_len()
      num_psfch_symbols = 3;
   }
-  nr_sl_pssch_pscch_pdu->pssch_numsym = 7 + *sl_bwp->sl_BWP_Generic_r16->sl_LengthSymbols_r16 - num_psfch_symbols - 2;
-  nr_sl_pssch_pscch_pdu->pssch_startsym = *sl_bwp->sl_BWP_Generic_r16->sl_StartSymbol_r16;
+  nr_sl_pssch_pscch_pdu->pssch_numsym = selected_resource ? selected_resource->sl_pssch_sym_len : 7 + *sl_bwp->sl_BWP_Generic_r16->sl_LengthSymbols_r16 - num_psfch_symbols - 2;
+  nr_sl_pssch_pscch_pdu->pssch_startsym = selected_resource ? selected_resource->sl_pssch_sym_start : *sl_bwp->sl_BWP_Generic_r16->sl_StartSymbol_r16;
 
   nr_sl_pssch_pscch_pdu->sci2_beta_offset = *sl_res_pool->sl_PSSCH_Config_r16->choice.setup->sl_BetaOffsets2ndSCI_r16->list.array[sci_pdu->beta_offset_indicator];
   if (sl_res_pool->sl_PowerControl_r16) {
@@ -481,7 +482,8 @@ void fill_pssch_pscch_pdu(sl_nr_ue_mac_params_t *sl_mac_params,
 
 void config_pscch_pdu_rx(sl_nr_rx_config_pscch_pdu_t *nr_sl_pscch_pdu,
                          const NR_SL_BWP_ConfigCommon_r16_t *sl_bwp,
-                         const NR_SL_ResourcePool_r16_t *sl_res_pool) {
+                         const NR_SL_ResourcePool_r16_t *sl_res_pool,
+                         bool sl_has_psfch) {
 
   nr_sci_pdu_t dummy_sci;
   // Starting RE of the lowest subchannel in a resource where PSCCH
@@ -507,7 +509,7 @@ void config_pscch_pdu_rx(sl_nr_rx_config_pscch_pdu_t *nr_sl_pscch_pdu,
   //Guard symbol + AGC symbol are also excluded
   //Indicates the number of symbols for PSCCH+PSSCH txn
   int num_psfch_symbols = 0;
-  if (sl_res_pool->sl_PSFCH_Config_r16 && sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16 &&
+  if (sl_has_psfch && sl_res_pool->sl_PSFCH_Config_r16 && sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16 &&
       *sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16 > 0) {
      // As per 38214 8.1.3.2, num_psfch_symbols can be 3 if psfch_overhead_indication.nbits is 1; FYI psfch_overhead_indication.nbits is set to 1 in case of PSFCH period 2 or 4 in sl_determine_sci_1a_len()
      num_psfch_symbols = 3;
@@ -639,7 +641,7 @@ int nr_ue_process_sci1_indication_pdu(NR_UE_MAC_INST_t *mac,module_id_t mod_id,f
   sensing_data.subch_len = l_subch;
   push_back(&mac->sl_sensing_data, &sensing_data);
   if (mac->sl_sensing_data.size > 1)
-    remove_old_sensing_data(&sensing_data.frame_slot, sl_mac->sl_TxPool[0]->t0, &mac->sl_sensing_data, sl_mac);
+    remove_old_sensing_data(&sensing_data.frame_slot, sl_mac->sl_RxPool[0]->t0, &mac->sl_sensing_data, sl_mac);
 
   if (sci_pdu->reserved.val && !mac->is_synced) {
     mac->is_synced = true;
@@ -653,13 +655,30 @@ int nr_ue_process_sci1_indication_pdu(NR_UE_MAC_INST_t *mac,module_id_t mod_id,f
   rx_config.number_pdus = 1;
   rx_config.sfn = frame;
   rx_config.slot = slot;
+
+  uint8_t psfch_period = 0;
+  const uint8_t psfch_periods[] = {0,1,2,4};
+  psfch_period = (mac->sl_tx_res_pool->sl_PSFCH_Config_r16 &&
+                  mac->sl_tx_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16)
+                  ? psfch_periods[*mac->sl_tx_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16] : 0;
+  frameslot_t fs;
+  fs.frame = frame;
+  fs.slot = slot;
+  uint8_t pool_id = 0;
+  SL_ResourcePool_params_t *sl_rx_rsrc_pool = mac->SL_MAC_PARAMS->sl_RxPool[pool_id];
+  uint8_t mu = sl_mac->sl_phy_config.sl_config_req.sl_bwp_config.sl_scs;
+  uint64_t rx_abs_slot = normalize(&fs, mu);
+  uint16_t phy_map_sz = ((sl_rx_rsrc_pool->phy_sl_bitmap.size << 3) - sl_rx_rsrc_pool->phy_sl_bitmap.bits_unused);
+  uint8_t sl_has_psfch = slot_has_psfch(mac, &sl_rx_rsrc_pool->phy_sl_bitmap, rx_abs_slot, psfch_period, phy_map_sz, mac->SL_MAC_PARAMS->sl_TDD_config);
+
   int ret = config_pssch_sci_pdu_rx(&rx_config.sl_rx_config_list[0].rx_sci2_config_pdu,
                           NR_SL_SCI_FORMAT_2A,
                           sci_pdu,
                           sci->Nid,
                           sci->subch_index,
                           sl_bwp,
-                          sl_res_pool);
+                          sl_res_pool,
+                          sl_has_psfch);
   if (ret<0) return(ret);
   rx_config.sl_rx_config_list[0].pdu_type =  SL_NR_CONFIG_TYPE_RX_PSSCH_SCI;
 
@@ -679,7 +698,8 @@ void config_pssch_slsch_pdu_rx(sl_nr_rx_config_pssch_pdu_t *nr_sl_pssch_pdu,
                                nr_sci_pdu_t *sci_pdu,
                                const NR_SL_BWP_ConfigCommon_r16_t *sl_bwp,
                                const NR_SL_ResourcePool_r16_t *sl_res_pool,
-                               sl_nr_ue_mac_params_t *sl_mac_params) {
+                               sl_nr_ue_mac_params_t *sl_mac_params,
+                               bool sl_has_psfch) {
 
 
   nr_sl_pssch_pdu->target_coderate = nr_get_code_rate_ul(sci_pdu->mcs,sci_pdu->additional_mcs.val);
@@ -694,7 +714,7 @@ void config_pssch_slsch_pdu_rx(sl_nr_rx_config_pssch_pdu_t *nr_sl_pssch_pdu,
 		                                NRRIV2BW(sl_bwp->sl_BWP_Generic_r16->sl_BWP_r16->locationAndBandwidth,273),
 						nr_sl_pssch_pdu->num_layers);
   int num_psfch_symbols = 0;
-  if (sl_res_pool->sl_PSFCH_Config_r16 && sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16 && *sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16>0) {
+  if (sl_has_psfch && sl_res_pool->sl_PSFCH_Config_r16 && sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16 && *sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16>0) {
      // As per 38214 8.1.3.2, num_psfch_symbols can be 3 if psfch_overhead_indication.nbits is 1; FYI psfch_overhead_indication.nbits is set to 1 in case of PSFCH period 2 or 4 in sl_determine_sci_1a_len()
      num_psfch_symbols = 3;
   }
@@ -744,7 +764,8 @@ int config_pssch_sci_pdu_rx(sl_nr_rx_config_pssch_sci_pdu_t *nr_sl_pssch_sci_pdu
                             uint32_t pscch_Nid,
                             int pscch_subchannel_index,
                             const NR_SL_BWP_ConfigCommon_r16_t *sl_bwp,
-                            const NR_SL_ResourcePool_r16_t *sl_res_pool) {
+                            const NR_SL_ResourcePool_r16_t *sl_res_pool,
+                            bool sl_has_psfch) {
 
   AssertFatal(sci2_format>NR_SL_SCI_FORMAT_1A,"cannot use format 1A with this function\n");
   // Expected Length of SCI2 in bits
@@ -790,7 +811,7 @@ int config_pssch_sci_pdu_rx(sl_nr_rx_config_pssch_sci_pdu_t *nr_sl_pssch_sci_pdu
   //Guard symbol + AGC symbol are also excluded
   //Indicates the number of symbols for PSCCH+PSSCH txn
   int num_psfch_symbols = 0;
-  if (sl_res_pool->sl_PSFCH_Config_r16 && sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16 && *sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16>0) {
+  if (sl_has_psfch && sl_res_pool->sl_PSFCH_Config_r16 && sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16 && *sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16>0) {
      // As per 38214 8.1.3.2, num_psfch_symbols can be 3 if psfch_overhead_indication.nbits is 1; FYI psfch_overhead_indication.nbits is set to 1 in case of PSFCH period 2 or 4 in sl_determine_sci_1a_len()
      num_psfch_symbols = 3;
   }
@@ -850,11 +871,28 @@ int nr_ue_process_sci2_indication_pdu(NR_UE_MAC_INST_t *mac, module_id_t mod_id,
   rx_config.number_pdus = 1;
   rx_config.sfn = frame;
   rx_config.slot = slot;
+
+  uint8_t psfch_period = 0;
+  const uint8_t psfch_periods[] = {0,1,2,4};
+  psfch_period = (mac->sl_rx_res_pool->sl_PSFCH_Config_r16 &&
+                  mac->sl_rx_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16)
+                  ? psfch_periods[*mac->sl_rx_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16] : 0;
+  frameslot_t fs;
+  fs.frame = frame;
+  fs.slot = slot;
+  uint8_t mu = sl_mac_params->sl_phy_config.sl_config_req.sl_bwp_config.sl_scs;
+  uint64_t tx_abs_slot = normalize(&fs, mu);
+  uint8_t pool_id = 0;
+  SL_ResourcePool_params_t *sl_rx_rsrc_pool = sl_mac_params->sl_RxPool[pool_id];
+  uint16_t phy_map_sz = ((sl_rx_rsrc_pool->phy_sl_bitmap.size << 3) - sl_rx_rsrc_pool->phy_sl_bitmap.bits_unused);
+  uint8_t sl_has_psfch = slot_has_psfch(mac, &sl_rx_rsrc_pool->phy_sl_bitmap, tx_abs_slot, psfch_period, phy_map_sz, mac->SL_MAC_PARAMS->sl_TDD_config);
+
   config_pssch_slsch_pdu_rx(&rx_config.sl_rx_config_list[0].rx_pssch_config_pdu,
                             sci_pdu,
                             sl_bwp,
                             sl_res_pool,
-                            sl_mac_params);
+                            sl_mac_params,
+                            sl_has_psfch);
   rx_config.sl_rx_config_list[0].pdu_type =  SL_NR_CONFIG_TYPE_RX_PSSCH_SLSCH;
   if ((!mac->SL_MAC_PARAMS->sl_CSI_Acquisition) && sci_pdu->csi_req) {
     sl_nr_phy_config_request_t *sl_cfg = &sl_mac_params->sl_phy_config.sl_config_req;
@@ -863,12 +901,6 @@ int nr_ue_process_sci2_indication_pdu(NR_UE_MAC_INST_t *mac, module_id_t mod_id,
   }
 
   LOG_D(NR_MAC, "%4d.%2d psfch_overhead %d harq_feedback %d action %d\n", frame, slot, mac->sci_pdu_rx.psfch_overhead.val, sci_pdu->harq_feedback, SL_NR_CONFIG_TYPE_RX_PSSCH_SLSCH);
-
-  uint8_t psfch_period = 0;
-  const uint8_t psfch_periods[] = {0,1,2,4};
-  psfch_period = (mac->sl_rx_res_pool->sl_PSFCH_Config_r16 &&
-                  mac->sl_rx_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16)
-                  ? psfch_periods[*mac->sl_rx_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16] : 0;
   LOG_D(NR_MAC, "%4d.%2d psfch_period %d, psfch_overhead %d nbits %d\n", frame, slot, psfch_period, mac->sci_pdu_rx.psfch_overhead.val, mac->sci_pdu_rx.psfch_overhead.nbits);
   if ((psfch_period == 2 || psfch_period == 4) && mac->sci_pdu_rx.psfch_overhead.nbits && mac->sci_pdu_rx.psfch_overhead.val) {
     configure_psfch_params_rx(mod_id,

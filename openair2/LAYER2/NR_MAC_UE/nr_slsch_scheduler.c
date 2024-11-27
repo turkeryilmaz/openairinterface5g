@@ -210,7 +210,8 @@ void nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP, int slotP, nr_sci_pdu_
                        nr_sci_pdu_t *sci2_pdu, nr_sci_format_t format2,
                        NR_SL_UE_info_t *UE,
                        uint16_t *slsch_pdu_length_max, NR_UE_sl_harq_t *cur_harq,
-                       mac_rlc_status_resp_t *rlc_status) {
+                       mac_rlc_status_resp_t *rlc_status,
+                       sl_resource_info_t *resource) {
   uid_t dest_id = UE->uid;
   NR_SL_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
   const NR_mac_dir_stats_t *stats = &UE->mac_sl_stats.sl;
@@ -282,7 +283,7 @@ void nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP, int slotP, nr_sci_pdu_
   uint8_t t1 = 0, t2 = 0;
 
   long sl_num_subch = *mac->sl_tx_res_pool->sl_NumSubchannel_r16;
-  uint8_t l_subch = 1; // number of used sub channels; as in current setting, we have only 1 subchannel so l_subch is set to 1
+  uint8_t l_subch = resource->sl_subchan_len; // number of used sub channels; as in current setting, we have only 1 subchannel so l_subch is set to 1
   uint8_t n_start_subch1 = 0, n_start_subch2 = 0; // represent starting sub-channel index for the second resource and third resource;
                                                   // as we are considering only 1 subchannel, so we have initialized these variables with zeros.
   // Fill SCI1A
@@ -321,10 +322,24 @@ void nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP, int slotP, nr_sci_pdu_
     }
   }
 
-  if ((psfch_period == 2 || psfch_period == 4) && is_feedback_slot) {
-        sci_pdu->psfch_overhead.val =  1;
-  } else if ((psfch_period == 2 || psfch_period == 4) && !is_feedback_slot) {
-    sci_pdu->psfch_overhead.val = 0;
+  frameslot_t fs;
+  fs.frame = frameP;
+  fs.slot = slotP;
+  uint8_t pool_id = 0;
+  uint64_t tx_abs_slot = normalize(&fs, mu);
+  SL_ResourcePool_params_t *sl_tx_rsrc_pool = sl_mac->sl_TxPool[pool_id];
+  size_t phy_map_sz = ((sl_tx_rsrc_pool->phy_sl_bitmap.size << 3) - sl_tx_rsrc_pool->phy_sl_bitmap.bits_unused);
+  bool sl_has_psfch = slot_has_psfch(mac, &sl_tx_rsrc_pool->phy_sl_bitmap, tx_abs_slot, psfch_period, phy_map_sz, mac->SL_MAC_PARAMS->sl_TDD_config);
+  if ((psfch_period == 2 || psfch_period == 4) && (sl_has_psfch)) {
+    if (is_feedback_slot) {
+      sci_pdu->psfch_overhead.val =  1;
+      LOG_D(NR_MAC, "%4d.%2d Setting psfch_overhead 1\n", frameP, slotP);
+    } else {
+        sci_pdu->psfch_overhead.val = 0;
+        LOG_D(NR_MAC, "%4d.%2d Setting psfch_overhead 0\n", frameP, slotP);
+    }
+  } else if ((psfch_period == 2 || psfch_period == 4) && (!sl_has_psfch)) {
+      sci_pdu->psfch_overhead.val = 0;
   }
 
   sci_pdu->reserved.val = mac->is_synced ? 1 : 0;
