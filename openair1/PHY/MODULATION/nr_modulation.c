@@ -261,14 +261,7 @@ void nr_layer_mapping(int nbCodes,
 
     case 2: {
 #if defined(__AVX512BW__)
-      /*
-    __m512i perm2 = _mm512_set_epi32(15,13,11,9,7,5,3,1,14,12,10,8,6,4,2,0);
-    __m512i d;
-    for (i = 0; i < n_symbs>>4 ; i++) {
-       d = _mm512_permutexvar_epi32(perm2,((__m512i*)mod_symbs[0])[i]);
-       ((__m256i*)tx_layers[0])[i] = _mm512_extracti32x8_epi32(d,0);
-       ((__m256i*)tx_layers[1])[i] = _mm512_extracti32x8_epi32(d,1);
-    */
+      int i,j;
       __m512i perm2a = _mm512_set_epi32(30, 28, 26, 24, 22, 20, 18, 16, 14, 12, 10, 8, 6, 4, 2, 0);
       __m512i perm2b = _mm512_set_epi32(31, 29, 27, 25, 23, 21, 19, 17, 15, 13, 11, 9, 7, 5, 3, 1);
       __m512i a, b;
@@ -285,6 +278,7 @@ void nr_layer_mapping(int nbCodes,
         }
       }
 #elif defined(__aarch64__)
+      int i;
 #ifdef USE_NEON
       // SIMDe doesn't handle this properly, gcc up to 14.2 neither
       uint8_t const perm0[16] = {0, 1, 2, 3, 8, 9, 10, 11, 4, 5, 6, 7, 12, 13, 14, 15};
@@ -308,6 +302,7 @@ void nr_layer_mapping(int nbCodes,
       }
 #endif
 #else
+      int i;
       simde__m256i perm2 = simde_mm256_set_epi32(7, 5, 3, 1, 6, 4, 2, 0);
       simde__m256i d;
       for (i = 0; i < n_symbs >> 3; i++) {
