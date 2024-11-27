@@ -253,7 +253,6 @@ void nr_layer_mapping(int nbCodes,
 {
   LOG_D(PHY, "Doing layer mapping for %d layers, %d symbols\n", n_layers, n_symbs);
 
-  int i, j;
   switch (n_layers) {
     case 1:
       memcpy(tx_layers[0], mod_symbs[0], n_symbs * sizeof(**mod_symbs));
@@ -358,7 +357,7 @@ void nr_layer_mapping(int nbCodes,
                                          5,
                                          2);
       __m512i perm3_2b = _mm512_set_epi32(15 + 16, 12 + 16, 9 + 16, 6 + 16, 3 + 16, 0 + 16, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
-      int n;
+      int i,n;
       for (i = 0, n = 0; i < n_symbs >> 4; i += 3, n++) {
         i0 = ((__m512i *)mod_symbs[0])[i];
         i1 = ((__m512i *)mod_symbs[0])[i + 1];
@@ -444,6 +443,7 @@ void nr_layer_mapping(int nbCodes,
 #if defined(__AVX512BW__)
       __m512i perm4 = _mm512_set_epi32(15, 11, 7, 3, 14, 10, 6, 2, 13, 9, 5, 1, 12, 8, 4, 0);
       __m512i e;
+      int i;
       for (i = 0; i < n_symbs >> 3; i++) {
         e = _mm512_permutexvar_epi32(perm4, ((__m512i *)mod_symbs[0])[i]);
         ((__m128i *)tx_layers[0])[i] = _mm512_extracti64x2_epi64(e, 0);
