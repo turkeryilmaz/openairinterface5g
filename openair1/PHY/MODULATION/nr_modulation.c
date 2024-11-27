@@ -460,6 +460,7 @@ void nr_layer_mapping(int nbCodes,
         }
       }
 #elif defined(__aarch64__)
+      int i;
 #ifdef USE_NEON
       // SIMDe doesn't handle this properly, gcc up to 14.2 neither
       uint32x4_t d4;
