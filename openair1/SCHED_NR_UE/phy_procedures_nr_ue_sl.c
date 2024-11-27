@@ -291,7 +291,7 @@ void nr_postDecode_slsch(PHY_VARS_NR_UE *UE, notifiedFIFO_elt_t *req,UE_nr_rxtx_
       //dumpsig=1;
     } else {
       LOG_E(NR_PHY,
-            "[UE] SLSCH %d: Setting NAK for SFN/SF %d/%d (pid %d, ndi %d, status %d, round %d, RV %d, prb_start %d, prb_size %d, "
+            "[UE] SLSCH %d in error: Setting NAK for SFN/SF %d/%d (pid %d, ndi %d, status %d, round %d, RV %d, prb_start %d, prb_size %d, "
             "TBS %d) r %d\n",
             rdata->ulsch_id,
             slsch->frame,

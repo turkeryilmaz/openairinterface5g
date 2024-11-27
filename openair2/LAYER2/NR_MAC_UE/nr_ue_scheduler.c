@@ -4783,7 +4783,7 @@ uint8_t get_random_reselection_counter(uint16_t rri) {
     }
 
     LOG_D(NR_MAC, "Range to choose random reselection counter. min: %d max: %d\n", min_res_cntr, max_res_cntr);
-    return (rand() % (max_res_cntr - min_res_cntr + 1)) + min_res_cntr;
+    return min_res_cntr;
 }
 
 List_t* get_candidate_resources(frameslot_t *frame_slot, NR_UE_MAC_INST_t *mac, List_t *sensing_data, List_t *transmit_history) {
