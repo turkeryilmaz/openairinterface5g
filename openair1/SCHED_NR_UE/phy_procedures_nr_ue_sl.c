@@ -190,7 +190,8 @@ int nr_slsch_procedures(PHY_VARS_NR_UE *ue, int frame_rx, int slot_rx, int SLSCH
 	      number_dmrs_symbols, // number of dmrs symbols irrespective of single or double symbol dmrs
 	      pssch_pdu->mod_order,
 	      pssch_pdu->num_layers);
-  LOG_D(NR_PHY,"rb_size %d, number_symbols %d, nb_re_dmrs %d, dmrs symbol positions %d, number_dmrs_symbols %d, qam_mod_order %d, nrOfLayer %d\n",
+  LOG_D(NR_PHY,"slot %d rb_size %d, number_symbols %d, nb_re_dmrs %d, dmrs symbol positions %d, number_dmrs_symbols %d, qam_mod_order %d, nrOfLayer %d\n",
+        slot_rx,
         rb_size,
         number_symbols,
         nb_re_dmrs,
@@ -289,9 +290,10 @@ void nr_postDecode_slsch(PHY_VARS_NR_UE *UE, notifiedFIFO_elt_t *req,UE_nr_rxtx_
       slsch_status.rxok = true;
       //dumpsig=1;
     } else {
-      LOG_D(NR_PHY,
-            "[UE] SLSCH: Setting NAK for SFN/SF %d/%d (pid %d, ndi %d, status %d, round %d, RV %d, prb_start %d, prb_size %d, "
+      LOG_E(NR_PHY,
+            "[UE] SLSCH %d: Setting NAK for SFN/SF %d/%d (pid %d, ndi %d, status %d, round %d, RV %d, prb_start %d, prb_size %d, "
             "TBS %d) r %d\n",
+            rdata->ulsch_id,
             slsch->frame,
             slsch->slot,
             rdata->harq_pid,
@@ -439,7 +441,7 @@ void psbch_pscch_pssch_processing(PHY_VARS_NR_UE *ue,
   const uint32_t rxdataF_sz = fp->samples_per_slot_wCP;
   __attribute__ ((aligned(32))) c16_t rxdataF[fp->nb_antennas_rx][rxdataF_sz];
 
-  if ((frame_rx&127) == 0  && nr_slot_rx==19) {
+  if ((frame_rx&127) == 0) {
       LOG_I(NR_PHY,"============================================\n");
 
       LOG_I(NR_PHY,"%s[UE%d] %d:%d PSBCH Stats: TX %u, RX ok %u, RX not ok %u\n",KGRN,

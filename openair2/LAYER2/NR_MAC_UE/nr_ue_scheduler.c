@@ -88,7 +88,7 @@ static void print_sensing_data_list(List_t *sensing_data, int line) {
 sl_resource_info_t* get_resource_element(List_t* resource_list, frameslot_t sfn) {
   for (int i = 0; i < resource_list->size; i++) {
     sl_resource_info_t *itr_rsrc = (sl_resource_info_t*)((char*)resource_list->data + i * resource_list->element_size);
-    LOG_I(NR_MAC, "%s %4d.%2d, %ld, sl_subchan_len %d, current sfn %4d.%2d\n",
+    LOG_D(NR_MAC, "%s %4d.%2d, %ld, sl_subchan_len %d, current sfn %4d.%2d\n",
           __FUNCTION__, itr_rsrc->sfn.frame, itr_rsrc->sfn.slot, normalize(&itr_rsrc->sfn, 1), itr_rsrc->sl_subchan_len, sfn.frame, sfn.slot);
     if (itr_rsrc->sfn.frame == sfn.frame && itr_rsrc->sfn.slot == sfn.slot) {
       return itr_rsrc;
@@ -3425,6 +3425,7 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
                               const NR_SL_BWP_ConfigCommon_r16_t *sl_bwp,
                               const NR_SL_ResourcePool_r16_t *sl_res_pool,
                               sl_nr_tx_config_request_t *tx_config,
+                              sl_resource_info_t *resource,
                               uint8_t *config_type) {
 
   uint16_t slot = sl_ind->slot_tx;
@@ -3512,7 +3513,7 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
     cur_harq->ndi ^= 1;
 
     nr_schedule_slsch(mac, frame, slot, &mac->sci1_pdu, &mac->sci2_pdu, NR_SL_SCI_FORMAT_2A,
-                      UE, &slsch_pdu_length_max, cur_harq, &sched_ctrl->rlc_status[lcid]);
+                      UE, &slsch_pdu_length_max, cur_harq, &sched_ctrl->rlc_status[lcid], resource);
 
     *config_type = SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH;
     tx_config->number_pdus = 1;
@@ -3528,7 +3529,8 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
                         slsch_pdu_length_max,
                         NR_SL_SCI_FORMAT_1A,
                         NR_SL_SCI_FORMAT_2A,
-                        slot);
+                        slot,
+                        resource);
     sl_nr_tx_config_pscch_pssch_pdu_t *pscch_pssch_pdu = &tx_config->tx_config_list[0].tx_pscch_pssch_config_pdu;
     sched_pssch->R = pscch_pssch_pdu->target_coderate;
     sched_pssch->tb_size = pscch_pssch_pdu->tb_size;
@@ -3537,8 +3539,7 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
     sched_pssch->mcs = pscch_pssch_pdu->mcs;
     sched_pssch->Qm = pscch_pssch_pdu->mod_order;
 
-    LOG_D(NR_MAC,
-          "PSSCH: %4d.%2d SL sched %4d.%2d start %2d RBS %3d MCS %2d nrOfLayers %2d TBS %4d HARQ PID %2d round %d NDI %d sched %6d\n",
+    LOG_D(NR_MAC, "PSSCH: %4d.%2d SL sched %4d.%2d start %2d RBS %3d MCS %2d nrOfLayers %2d TBS %4d HARQ PID %2d round %d NDI %d sched %6d\n",
           frame,
           slot,
           sched_pssch->frame,
@@ -3748,7 +3749,8 @@ void nr_ue_sl_pscch_rx_scheduler(nr_sidelink_indication_t *sl_ind,
                               const NR_SL_BWP_ConfigCommon_r16_t *sl_bwp,
                               const NR_SL_ResourcePool_r16_t *sl_res_pool,
                               sl_nr_rx_config_request_t *rx_config,
-                              uint8_t *config_type) {
+                              uint8_t *config_type,
+                              bool sl_has_psfch) {
 
   *config_type = SL_NR_CONFIG_TYPE_RX_PSCCH;
   rx_config->number_pdus = 1;
@@ -3757,7 +3759,8 @@ void nr_ue_sl_pscch_rx_scheduler(nr_sidelink_indication_t *sl_ind,
   rx_config->sl_rx_config_list[0].pdu_type = *config_type;
   config_pscch_pdu_rx(&rx_config->sl_rx_config_list[0].rx_pscch_config_pdu,
                        sl_bwp,
-                       sl_res_pool);
+                       sl_res_pool,
+                       sl_has_psfch);
 
 
    LOG_D(NR_MAC, "[UE%d] TTI-%d:%d RX PSCCH REQ \n", sl_ind->module_id,sl_ind->frame_rx, sl_ind->slot_rx);
@@ -3922,7 +3925,60 @@ void nr_ue_sidelink_scheduler(nr_sidelink_indication_t *sl_ind) {
      uint8_t mask = mac->sl_tx_res_pool->ext1->sl_TimeResource_r16->buf[slot_mod_period>>3];
      if (((1<<slot_mod_period) % mask) == 0) tx_allowed=0;
   }
-  if (mac->sl_rx_res_pool && mac->sl_rx_res_pool->ext1 && mac->sl_tx_res_pool->ext1->sl_TimeResource_r16) {
+
+  frameslot_t frame_slot;
+  frame_slot.frame = frame;
+  frame_slot.slot = slot;
+
+  sl_resource_info_t *resource = NULL;
+  if (mac->sl_candidate_resources && mac->sl_candidate_resources->size > 0 && sl_ind->slot_type == SIDELINK_SLOT_TYPE_TX) {
+    LOG_D(NR_MAC, "%4d.%2d sl_candidate_resources %p size %ld, capacity %ld slot_type %d\n", frame, slot, mac->sl_candidate_resources, mac->sl_candidate_resources->size, mac->sl_candidate_resources->capacity, sl_ind->slot_type);
+    resource = get_resource_element(mac->sl_candidate_resources, frame_slot);
+    if (resource) {
+      LOG_D(NR_MAC, "SELECTED_RESOURCE %4d.%2d slot_type %d, num_sl_pscch_rbs %d, sl_max_num_per_reserve %d, sl_min_time_gap_psfch %d, sl_pscch_sym_start %d, \
+            sl_pscch_sym_len %d, sl_psfch_period %d, sl_pssch_sym_start %d, sl_pssch_sym_len %d, sl_subchan_len %d, sl_subchan_size %d\n",
+            resource->sfn.frame, resource->sfn.slot, sl_ind->slot_type,
+            resource->num_sl_pscch_rbs,
+            resource->sl_max_num_per_reserve,
+            resource->sl_min_time_gap_psfch,
+            resource->sl_pscch_sym_start,
+            resource->sl_pscch_sym_len,
+            resource->sl_psfch_period,
+            resource->sl_pssch_sym_start,
+            resource->sl_pssch_sym_len,
+            resource->sl_subchan_len,
+            resource->sl_subchan_size);
+    }
+  }
+
+  nr_sl_transmission_params_t *sl_tx_params = &sl_mac->mac_tx_params;
+  uint16_t p_prime_rsvp_tx = time_to_slots(mu, sl_tx_params->resel_counter);
+  static int8_t is_rsrc_selected = false;
+
+  if (mac->rsc_selection_method == c1 ||
+      mac->rsc_selection_method == c4 ||
+      mac->rsc_selection_method == c5 ||
+      mac->rsc_selection_method == c7) {
+    LOG_D(NR_MAC, "%4d.%2d is_rsrc_selected %d, reselection_timer %d, p_prime_rsvp_tx %d, slot_type %d\n",
+          frame, slot, is_rsrc_selected, mac->reselection_timer, p_prime_rsvp_tx, sl_ind->slot_type);
+    if(is_rsrc_selected && (sl_ind->slot_type == 2) && (mac->reselection_timer < p_prime_rsvp_tx)) {
+      mac->reselection_timer++;
+    } else if (sl_ind->slot_type == 2) {
+      if (mac->reselection_timer < p_prime_rsvp_tx) {
+        mac->sl_candidate_resources = get_candidate_resources(&frame_slot, mac, &mac->sl_sensing_data, &mac->sl_transmit_history);
+        if (mac->sl_candidate_resources) {
+          LOG_D(NR_MAC, "%4d.%2d Returned resources %p\n", frame, slot, mac->sl_candidate_resources);
+          print_candidate_list(mac->sl_candidate_resources, __LINE__);
+        }
+        is_rsrc_selected = true;
+      } else {
+        mac->reselection_timer = 0;
+        is_rsrc_selected = false;
+      }
+    }
+  }
+
+  if (mac->sl_rx_res_pool && mac->sl_rx_res_pool->ext1 && mac->sl_rx_res_pool->ext1->sl_TimeResource_r16) {
      int sl_rx_period = 8*mac->sl_rx_res_pool->ext1->sl_TimeResource_r16->size - mac->sl_rx_res_pool->ext1->sl_TimeResource_r16->bits_unused;
      int slot_mod_period = sl_ind->slot_rx%sl_rx_period;
      uint8_t mask = mac->sl_rx_res_pool->ext1->sl_TimeResource_r16->buf[slot_mod_period>>3];
@@ -3930,49 +3986,34 @@ void nr_ue_sidelink_scheduler(nr_sidelink_indication_t *sl_ind) {
   }
   if (sl_ind->slot_type==SIDELINK_SLOT_TYPE_TX || sl_ind->phy_data==NULL) rx_allowed=false;
   static uint16_t prev_slot = 0;
-  if (((get_nrUE_params()->sync_ref && (sl_ind->slot_rx == 16 || sl_ind->slot_rx == 17
-     || sl_ind->slot_rx == 18 || sl_ind->slot_rx == 19)) ||
-     (!get_nrUE_params()->sync_ref && (sl_ind->slot_rx == 6 || sl_ind->slot_rx == 7 ||
-      sl_ind->slot_rx == 8 || sl_ind->slot_rx == 9)))
-      && (prev_slot != slot) && rx_allowed && !is_psbch_slot) {
-      nr_ue_sl_pscch_rx_scheduler(sl_ind, mac->sl_bwp, mac->sl_rx_res_pool, &rx_config, &tti_action);
+  NR_SL_PSFCH_Config_r16_t *sl_psfch_config = mac->sl_tx_res_pool->sl_PSFCH_Config_r16 ? mac->sl_tx_res_pool->sl_PSFCH_Config_r16->choice.setup : NULL;
+  const uint8_t psfch_periods[] = {0,1,2,4};
+  long psfch_period = (sl_psfch_config && sl_psfch_config->sl_PSFCH_Period_r16)
+                      ? psfch_periods[*sl_psfch_config->sl_PSFCH_Period_r16] : 0;
+
+  if ((prev_slot != slot) && rx_allowed && !is_psbch_slot) {
+      frameslot_t fs;
+      fs.frame = frame;
+      fs.slot = slot;
+      uint64_t rx_abs_slot = normalize(&fs, mu);
+      uint8_t pool_id = 0;
+      SL_ResourcePool_params_t *sl_rx_rsrc_pool = sl_mac->sl_RxPool[pool_id];
+      uint16_t phy_map_sz = ((sl_rx_rsrc_pool->phy_sl_bitmap.size << 3) - sl_rx_rsrc_pool->phy_sl_bitmap.bits_unused);
+      bool sl_has_psfch = slot_has_psfch(mac, &sl_rx_rsrc_pool->phy_sl_bitmap, rx_abs_slot, psfch_period, phy_map_sz, mac->SL_MAC_PARAMS->sl_TDD_config);
+      LOG_D(NR_MAC, "%4d.%2d RX sl_has_psfch %d, psfch_period %ld\n", frame, slot, sl_has_psfch, psfch_period);
+      nr_ue_sl_pscch_rx_scheduler(sl_ind, mac->sl_bwp, mac->sl_rx_res_pool, &rx_config, &tti_action, sl_has_psfch);
       prev_slot = slot;
   }
 
-  if (mac->rsc_selection_method == c1 ||
-      mac->rsc_selection_method == c4 ||
-      mac->rsc_selection_method == c5 ||
-      mac->rsc_selection_method == c7) {
-    frameslot_t frame_slot;
-    frame_slot.frame = frame;
-    frame_slot.slot = slot;
-    if (sl_ind->slot_type == SIDELINK_SLOT_TYPE_TX) {
-      LOG_D(NR_MAC, "\n\n");
-      LOG_D(NR_MAC, "size: sensing_data %ld, transmit_history %ld, capacity: sensing_data %ld, transmit_history %ld\n",
-            mac->sl_sensing_data.size, mac->sl_transmit_history.size,
-            mac->sl_sensing_data.capacity, mac->sl_transmit_history.capacity);
-      print_sensing_data_list(&mac->sl_sensing_data, __LINE__);
-      List_t *candidate_resources = get_candidate_resources(&frame_slot, mac, &mac->sl_sensing_data, &mac->sl_transmit_history);
-      LOG_D(NR_MAC, "Final resources at %4d.%2d\n", frame, slot);
-      print_candidate_list(candidate_resources, __LINE__);
-    }
-  }
-
-  if (mac->is_synced && !is_psbch_slot && tx_allowed && sl_ind->slot_type == SIDELINK_SLOT_TYPE_TX &&
-      ((!get_nrUE_params()->sync_ref && (slot == 16 || slot == 17 || slot == 18 || slot == 18 || slot == 19)) ||
-      (get_nrUE_params()->sync_ref && (slot == 6 || slot == 7 || slot == 8 || slot == 9)))) {
+  if (resource && mac->is_synced && !is_psbch_slot && tx_allowed && sl_ind->slot_type == SIDELINK_SLOT_TYPE_TX) {
     //Check if reserved slot or a sidelink resource configured in Rx/Tx resource pool timeresource bitmap
-    bool is_resource_allocated = nr_ue_sl_pssch_scheduler(mac, sl_ind, mac->sl_bwp, mac->sl_tx_res_pool, &tx_config, &tti_action);
+    bool is_resource_allocated = nr_ue_sl_pssch_scheduler(mac, sl_ind, mac->sl_bwp, mac->sl_tx_res_pool, &tx_config, resource, &tti_action);
     if (is_resource_allocated && mac->sci2_pdu.csi_req) {
       nr_ue_sl_csi_rs_scheduler(mac, mu, mac->sl_bwp, &tx_config, NULL, &tti_action);
       LOG_D(NR_MAC, "%4d.%2d Scheduling CSI-RS\n", frame, slot);
     }
     bool is_feedback_slot = mac->sl_tx_res_pool->sl_PSFCH_Config_r16 ? is_feedback_scheduled(mac, frame, slot) : false;
     if (is_resource_allocated && is_feedback_slot && mac->sl_tx_res_pool->sl_PSFCH_Config_r16->choice.setup) {
-      NR_SL_PSFCH_Config_r16_t *sl_psfch_config = mac->sl_tx_res_pool->sl_PSFCH_Config_r16->choice.setup;
-      const uint8_t psfch_periods[] = {0,1,2,4};
-      long psfch_period = (sl_psfch_config->sl_PSFCH_Period_r16)
-                          ? psfch_periods[*sl_psfch_config->sl_PSFCH_Period_r16] : 0;
       if (is_feedback_slot) {
         nr_ue_sl_psfch_scheduler(mac, frame, slot, psfch_period, sl_ind, mac->sl_bwp, &tx_config, &tti_action);
         reset_sched_psfch(mac, frame, slot);
@@ -4027,7 +4068,7 @@ void nr_ue_sl_psfch_scheduler(NR_UE_MAC_INST_t *mac,
   int num_psfch_symbols = 0;
   if (psfch_period == 1) num_psfch_symbols = 3;
   else if (psfch_period == 2 || psfch_period == 4) {
-    num_psfch_symbols = mac->SL_MAC_PARAMS->sl_RxPool[0]->sci_1a.psfch_overhead_indication.nbits ? 3 : 0;
+    num_psfch_symbols = mac->SL_MAC_PARAMS->sl_TxPool[0]->sci_1a.psfch_overhead_indication.nbits ? 3 : 0;
   }
 
   sl_nr_ue_mac_params_t *sl_mac = mac->SL_MAC_PARAMS;
@@ -4271,49 +4312,17 @@ NR_SL_ResourcePool_r16_t* get_resource_pool(NR_UE_MAC_INST_t *mac, uint16_t pool
   return mac->SL_MAC_PARAMS->sl_TxPool[pool_id]->respool;
 }
 
-bool slot_has_psfch(BIT_STRING_t *phy_sl_bitmap, uint64_t abs_index_cur_slot, uint8_t psfch_period, size_t phy_sl_map_size) {
+bool slot_has_psfch(NR_UE_MAC_INST_t *mac, BIT_STRING_t *phy_sl_bitmap, uint64_t abs_index_cur_slot, uint8_t psfch_period, size_t phy_sl_map_size, NR_TDD_UL_DL_ConfigCommon_t *conf) {
 
   if (psfch_period == 0) {
     return false;
   }
-
-  // Determine number of SL slots from abs_index_cur_slot, and if the slot
-  // is a SL slot, we should return true if the number of SL slots is a
-  // multiple of psfch_period slots.
-  // The size of phyPool (calculated elsewhere) is large enough to repeat the
-  // SL pattern (i.e., the overall SL pattern is repeated each phyPool slots).
-  // The PSFCH pattern repeats at least every (psfch_period * phy_sl_map_size)
-  // slots (i.e., psfch_period * phy_sl_map_size is the modulus).  We'll
-  // call this modulus value the 'period' below.
-
-  uint64_t num_sl_slots = 0; // number of SL slots before abs_index_cur_slot
-  size_t period = psfch_period * phy_sl_map_size;
-
-  // The number of periods before the current period is
-  // abs_index_cur_slot / modulus.  We do not need to count SL slots in
-  // these earlier periods because the number of SL slots will always be
-  // a multiple of psfch_period.  We only need to look at the remainder
-  // (modulus) of the division abs_index_cur_slot / period;
-
-  uint64_t num_slots_into_current_period = abs_index_cur_slot % period;
-  LOG_D(NR_MAC, "num_slots_into_current_period %ld period %ld phy_sl_map_size %ld\n", num_slots_into_current_period, period, phy_sl_map_size);
-  bool reached_limit = false; // Used to break out of outer for loop
-  bool current_slot_is_sl_slot = false;
-  for (uint8_t i = 0; i < psfch_period && !reached_limit; i++) {
-    for (size_t j = 0; j < phy_sl_map_size; j++) {
-      current_slot_is_sl_slot = (get_bit_from_map(phy_sl_bitmap->buf, j) == 1);
-      num_sl_slots += current_slot_is_sl_slot;
-      LOG_D(NR_MAC, "current_slot_is_sl_slot %d num_sl_slots %ld\n", current_slot_is_sl_slot, num_sl_slots);
-      if ((i * phy_sl_map_size) + j == num_slots_into_current_period)
-      {
-        LOG_D(NR_MAC, "i %d j %ld %ld\n", i, j, (i * phy_sl_map_size) + j);
-        reached_limit = true;
-        break;
-      }
-    }
-  }
-  bool has_psfch = current_slot_is_sl_slot && ((num_sl_slots % psfch_period) == 0);
-  LOG_D(NR_MAC, "current_slot_is_sl_slot %d num_sl_slots %ld has_psfch %d\n", current_slot_is_sl_slot, num_sl_slots, has_psfch);
+  AssertFatal(conf->pattern1.nrofUplinkSlots == 4 && conf->pattern1.nrofDownlinkSlots == 6,
+              "Invalid configuration set. Please update the nrofUplinkSlots to 4 and nrofDownlinkSlots to 6.\n");
+  bool sl_slot = is_sl_slot(mac, phy_sl_bitmap, phy_sl_map_size, abs_index_cur_slot);
+  bool has_psfch = sl_slot && ((conf->pattern1.nrofUplinkSlots % psfch_period) == 0);
+  LOG_D(NR_MAC, "num_sl_slots %ld has_psfch %d, abs slot %ld, is_sl_slot %d\n",
+        conf->pattern1.nrofUplinkSlots, has_psfch, abs_index_cur_slot, sl_slot);
   return has_psfch;
 }
 
@@ -4423,7 +4432,7 @@ List_t get_nr_sl_comm_opportunities(NR_UE_MAC_INST_t *mac,
       uint8_t start_sl_pscch_sym = 1;
       // PSSCH
       uint16_t sl_pssch_sym_start = *mac->sl_bwp->sl_BWP_Generic_r16->sl_StartSymbol_r16;
-      sl_has_psfch = false; //slot_has_psfch(&sl_tx_rsrc_pool->phy_sl_bitmap, i, psfch_period, phy_map_sz);
+      sl_has_psfch = slot_has_psfch(mac, &sl_tx_rsrc_pool->phy_sl_bitmap, i, psfch_period, phy_map_sz, mac->SL_MAC_PARAMS->sl_TDD_config);
       int num_psfch_symbols = 0;
       if (sl_has_psfch && resource_pool->sl_PSFCH_Config_r16 && resource_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16
           && *resource_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16 > 0) {

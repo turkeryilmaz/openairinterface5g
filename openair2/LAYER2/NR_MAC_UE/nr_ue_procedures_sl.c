@@ -714,19 +714,19 @@ int16_t get_feedback_slot(long psfch_period, uint16_t slot) {
     switch(slot) {
       case 0:
       case 1:
-        feedback_slot = 6;
+        feedback_slot = 7;
       break;
       case 2:
       case 3:
-        feedback_slot = 8;
+        feedback_slot = 9;
       break;
       case 10:
       case 11:
-        feedback_slot = 16;
+        feedback_slot = 17;
       break;
       case 12:
       case 13:
-        feedback_slot = 18;
+        feedback_slot = 19;
       break;
       default:
         AssertFatal(1 == 0, "Invalid slot %d\n", slot);
@@ -737,13 +737,13 @@ int16_t get_feedback_slot(long psfch_period, uint16_t slot) {
       case 1:
       case 2:
       case 3:
-        feedback_slot = 8;
+        feedback_slot = 9;
       break;
       case 10:
       case 11:
       case 12:
       case 13:
-        feedback_slot = 16;
+        feedback_slot = 19;
       break;
       default:
         AssertFatal(1 == 0, "Invalid slot %d\n", slot);
@@ -768,6 +768,15 @@ int nr_ue_sl_acknack_scheduling(NR_UE_MAC_INST_t *mac, sl_nr_rx_indication_t *rx
   NR_SL_UE_sched_ctrl_t  *sched_ctrl = &mac->sl_info.list[0]->UE_sched_ctrl;
   SL_sched_feedback_t  *curr_psfch = &sched_ctrl->sched_psfch[psfch_index];
   psfch_frame = frame;
+  frameslot_t fs;
+  fs.frame = psfch_frame;
+  fs.slot = psfch_slot;
+  uint8_t pool_id = 0;
+  uint64_t tx_abs_slot = normalize(&fs, get_softmodem_params()->numerology);
+  SL_ResourcePool_params_t *sl_tx_rsrc_pool = sl_mac->sl_TxPool[pool_id];
+  size_t phy_map_sz = (sl_tx_rsrc_pool->phy_sl_bitmap.size << 3) - sl_tx_rsrc_pool->phy_sl_bitmap.bits_unused;
+  bool sl_has_psfch = slot_has_psfch(mac, &sl_tx_rsrc_pool->phy_sl_bitmap, tx_abs_slot, psfch_period, phy_map_sz, mac->SL_MAC_PARAMS->sl_TDD_config);
+  LOG_D(NR_MAC, "%s %4d.%2d sl_has_psfch %d\n", __FUNCTION__, psfch_frame, psfch_slot, sl_has_psfch);
   curr_psfch->feedback_frame = psfch_frame;
   curr_psfch->feedback_slot = psfch_slot;
   curr_psfch->dai_c = psfch_index;
