@@ -381,7 +381,7 @@ void nr_layer_mapping(int nbCodes,
       simde__m256i perm3_0 = simde_mm256_set_epi32(5, 2, 7, 4, 1, 6, 3, 0);
       simde__m256i perm3_1 = simde_mm256_set_epi32(6, 3, 0, 5, 2, 7, 4, 1);
       simde__m256i perm3_2 = simde_mm256_set_epi32(7, 4, 1, 6, 3, 0, 5, 2);
-      int n;
+      int i,n;
       for (i = 0, n = 0; i < n_symbs >> 3; i += 3, n++) {
         i0 = ((simde__m256i *)mod_symbs[0])[i];
         i1 = ((simde__m256i *)mod_symbs[0])[i + 1];
@@ -463,6 +463,7 @@ void nr_layer_mapping(int nbCodes,
 #ifdef USE_NEON
       // SIMDe doesn't handle this properly, gcc up to 14.2 neither
       uint32x4_t d4;
+      int i;
       for (i = 0; i < n_symbs >> 2; i++) {
         d4 = ((uint32x4_t *)mod_symbs[0])[i];
         ((uint32_t *)tx_layers[0])[i] = vgetq_lane_u32(d4, 0);
@@ -479,7 +480,7 @@ void nr_layer_mapping(int nbCodes,
         }
       }
 #else
-      for (i = 0; i < n_symbs; i += 4) {
+      for (int i = 0; i < n_symbs; i += 4) {
         tx_layers[0][i >> 2] = mod_symbs[0][i];
         tx_layers[1][i >> 2] = mod_symbs[0][i + 1];
         tx_layers[2][i >> 2] = mod_symbs[0][i + 2];
@@ -489,6 +490,7 @@ void nr_layer_mapping(int nbCodes,
 #else
       simde__m256i perm4 = simde_mm256_set_epi32(7, 3, 6, 2, 5, 1, 4, 0);
       simde__m256i e;
+      int i;
       for (i = 0; i < n_symbs >> 3; i++) {
         e = simde_mm256_permutevar8x32_epi32(((simde__m256i *)mod_symbs[0])[i], perm4);
         ((uint64_t *)tx_layers[0])[i] = simde_mm256_extract_epi64(e, 0);
