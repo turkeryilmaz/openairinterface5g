@@ -220,7 +220,7 @@ int nr_ulsch_encoding(PHY_VARS_NR_UE *ue,
 ///////////////////////// e---->| Rate matching bit interleaving |---->f /////////////////////////
       VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_NR_INTERLEAVING_LDPC, VCD_FUNCTION_IN);
       start_meas_nr_ue_phy(ue, ULSCH_INTERLEAVING_STATS);
-      nr_interleaving_ldpc(impp.perCB[r].E_cb, impp.Qm, harq_process->e + r_offset, harq_process->f + r_offset);
+      nr_interleaving_ldpc(impp.perCB[r].E_cb, impp.Qm, harq_process->e + r_offset, harq_process->f, r_offset);
       stop_meas_nr_ue_phy(ue, ULSCH_INTERLEAVING_STATS);
     
       VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_NR_INTERLEAVING_LDPC, VCD_FUNCTION_OUT);

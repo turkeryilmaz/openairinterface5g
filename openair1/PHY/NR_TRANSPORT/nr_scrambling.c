@@ -25,23 +25,6 @@
 #define DEBUG_SCRAMBLING(a)
 //#define DEBUG_SCRAMBLING(a) a
 
-void nr_codeword_scrambling_cpu(uint8_t *in,
-                            uint32_t size,
-                            uint8_t q,
-                            uint32_t Nid,
-                            uint32_t n_RNTI,
-                            uint32_t* out)
-{
-  const int roundedSz = (size + 31) / 32;
-  uint32_t *seq = gold_cache((n_RNTI << 15) + (q << 14) + Nid, roundedSz);
-  for (int i = 0; i < roundedSz; i++) {
-    simde__m256i c = ((simde__m256i*)in)[i];
-    uint32_t in32 = simde_mm256_movemask_epi8(simde_mm256_slli_epi16(c, 7));
-    out[i] = in32 ^ seq[i];
-    DEBUG_SCRAMBLING(LOG_D(PHY, "in[%d] %x => %x\n", i, in32, out[i]));
-  }
-}
-
 void nr_codeword_scrambling(uint8_t *in,
                              uint32_t size,
                              uint8_t q,
@@ -52,16 +35,13 @@ void nr_codeword_scrambling(uint8_t *in,
   int numBytes = (size + 7) / 8;
   const int roundedSz = (numBytes + 3) / 4;
   uint32_t *seq = gold_cache((n_RNTI << 15) + (q << 14) + Nid, roundedSz);  // Gold sequence for scrambling
-  uint8_t reversed[numBytes];
-  reverse_bits_u8(in, numBytes, reversed);
-  uint8_t *reversed_p = &reversed[0];
   for (int i = 0; i < roundedSz; i++) {
     uint32_t in32 = 0;
-    in32 |= (uint32_t)(*reversed_p++ << (0 * 8));
-    in32 |= (uint32_t)(*reversed_p++ << (1 * 8));
-    in32 |= (uint32_t)(*reversed_p++ << (2 * 8));
-    in32 |= (uint32_t)(*reversed_p++ << (3 * 8));
-    *out++ = in32 ^ *seq++;
+    in32 |= ((uint32_t)*in++ << (0 * 8));
+    in32 |= ((uint32_t)*in++ << (1 * 8));
+    in32 |= ((uint32_t)*in++ << (2 * 8));
+    in32 |= ((uint32_t)*in++ << (3 * 8));
+    out[i] = in32 ^ *seq++;
   }
 }
 

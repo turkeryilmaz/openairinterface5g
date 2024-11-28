@@ -621,6 +621,7 @@ static int retrieve_ldpc_enc_op(struct rte_bbdev_enc_op **ops, const uint16_t n,
     rte_pktmbuf_free(m);
     rte_pktmbuf_free(ops[i]->ldpc_enc.input.data);
   }
+  reverse_bits_u8(p_out, offset, p_out);
   return 0;
 }
 

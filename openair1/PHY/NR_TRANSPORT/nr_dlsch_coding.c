@@ -220,7 +220,8 @@ static void ldpc8blocks(void *p)
     nr_interleaving_ldpc(E,
                          mod_order,
                          e,
-                         impp->output+r_offset);
+                         impp->output,
+                         r_offset);
 #ifdef DEBUG_DLSCH_CODING
 
     for (int i =0; i<16; i++)
