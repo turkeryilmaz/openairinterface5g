@@ -1010,7 +1010,7 @@ int main(int argc, char **argv)
       UE_harq_process->DLround = round;
       UE_harq_process->first_rx = 1;
 
-      Sched_INFO = malloc(sizeof(*Sched_INFO));
+      Sched_INFO = aligned_alloc(32, sizeof(*Sched_INFO));
       if (Sched_INFO == NULL) {
         LOG_E(PHY, "out of memory\n");
         exit(1);
