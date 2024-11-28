@@ -1375,7 +1375,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
             const int8_t delta = get_delta(dmrs_port, dmrs_Type);
 
             for (int i = 0; i < rel15->rbSize * NR_NB_SC_PER_RB; i++) {
-              if ((k == ((start_sc + get_dmrs_freq_idx(n, k_prime, delta, dmrs_Type)) % (frame_parms->ofdm_symbol_size)))) {
+              if (k == ((start_sc + get_dmrs_freq_idx(n, k_prime, delta, dmrs_Type)) % (frame_parms->ofdm_symbol_size))) {
                 txdataF_precoding[layer][l_symbol][k] =
                     c16mulRealShift(mod_dmrs[dmrs_idx], Wt[l_prime] * Wf[k_prime] * amp_dmrs, 15);
 #ifdef DEBUG_DLSCH_MAPPING
