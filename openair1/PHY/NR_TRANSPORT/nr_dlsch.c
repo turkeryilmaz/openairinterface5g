@@ -372,7 +372,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
 #endif
 #if defined(USE128BIT)
 
-            simde__m128i d0, d2, d3, zeros = simde_mm_xor_si128(d0, d0), amp_dmrs128 = simde_mm_set1_epi16(amp_dmrs);
+            simde__m128i d0, d2, d3, zeros = simde_mm_setzero_si128(), amp_dmrs128 = simde_mm_set1_epi16(amp_dmrs);
             int i, j;
             for (i = 0, j = 0; i < (rel15->rbSize * NR_NB_SC_PER_RB) >> 3; i++) {
               d0 = simde_mm_mulhrs_epi16(((simde__m128i *)mod_dmrs)[i], amp_dmrs128);
@@ -392,7 +392,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
               }
             }
 #elif defined(__AVX512BW__)
-            __m512i d0, zeros = _mm512_xor_si512(d0, d0), amp_dmrs512 = _mm512_set1_epi16(amp_dmrs);
+            __m512i d0, zeros = _mm512_setzero_si512(), amp_dmrs512 = _mm512_set1_epi16(amp_dmrs);
             __m512i perml = _mm512_set_epi32(23, 7, 22, 6, 21, 5, 20, 4, 19, 3, 18, 2, 17, 1, 16, 0);
             __m512i permh = _mm512_set_epi32(31, 15, 30, 14, 29, 13, 28, 12, 27, 11, 26, 10, 25, 9, 24, 8);
             int i, j;
@@ -412,7 +412,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
               }
             }
 #else
-            simde__m256i d0, d2, d3, zeros = simde_mm256_xor_si256(d0, d0), amp_dmrs256 = simde_mm256_set1_epi16(amp_dmrs);
+            simde__m256i d0, d2, d3, zeros = simde_mm256_setzero_si256(), amp_dmrs256 = simde_mm256_set1_epi16(amp_dmrs);
             int i, j;
             for (i = 0, j = 0; i < (rel15->rbSize * NR_NB_SC_PER_RB) >> 4; i++) {
               d0 = simde_mm256_mulhrs_epi16(((simde__m256i *)mod_dmrs)[i], amp_dmrs256);
@@ -457,7 +457,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
 #endif
 #if defined(USE128BIT)
             simde__m128i d0, d2, d3,
-                zeros = simde_mm_xor_si128(d0, d0),
+                zeros = simde_mm_setzero_si128(),
                 amp_dmrs128 =
                     simde_mm_set_epi16(-amp_dmrs, -amp_dmrs, amp_dmrs, amp_dmrs, -amp_dmrs, -amp_dmrs, amp_dmrs, amp_dmrs);
             int i, j;
@@ -485,7 +485,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
               }
             }
 #elif defined(__AVX512BW__)
-            __m512i d0, zeros = _mm512_xor_si512(d0, d0),
+            __m512i d0, zeros = _mm512_setzero_si512(),
                         amp_dmrs512 = _mm512_set_epi16(-amp_dmrs,
                                                        -amp_dmrs,
                                                        amp_dmrs,
@@ -538,7 +538,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
             }
 
 #else
-            simde__m256i d0, d2, d3, zeros = simde_mm256_xor_si256(d0, d0),
+            simde__m256i d0, d2, d3, zeros = simde_mm256_setzero_si256(),
                                      amp_dmrs256 = simde_mm256_set_epi16(-amp_dmrs,
                                                                          -amp_dmrs,
                                                                          amp_dmrs,
@@ -601,7 +601,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
             printf("doing DMRS pattern for port 2 : 0 d0 0 d1 ... 0 dNm2 0 dNm1\n");
 #endif
 #if defined(USE128BIT)
-            simde__m128i d0, d2, d3, zeros = simde_mm_xor_si128(d0, d0), amp_dmrs128 = simde_mm_set1_epi16(amp_dmrs);
+            simde__m128i d0, d2, d3, zeros = simde_mm_setzero_si128(), amp_dmrs128 = simde_mm_set1_epi16(amp_dmrs);
             int i, j;
             for (i = 0, j = 0; i < (rel15->rbSize * NR_NB_SC_PER_RB) >> 3; i++) {
               d0 = simde_mm_mulhrs_epi16(((simde__m128i *)mod_dmrs)[i], amp_dmrs128);
@@ -621,7 +621,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
               }
             }
 #elif defined(__AVX512BW__)
-            __m512i d0, d2, d3, zeros = _mm512_xor_si512(d0, d0), amp_dmrs512 = _mm512_set1_epi16(amp_dmrs);
+            __m512i d0, d2, d3, zeros = _mm512_setzero_si512(), amp_dmrs512 = _mm512_set1_epi16(amp_dmrs);
             __m512i perml = _mm512_set_epi32(23, 7, 22, 6, 21, 5, 20, 4, 19, 3, 18, 2, 17, 1, 16, 0);
             __m512i permh = _mm512_set_epi32(31, 15, 30, 14, 29, 13, 28, 12, 27, 11, 26, 10, 25, 9, 24, 8);
             int i, j;
@@ -644,7 +644,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
             }
 
 #else
-            simde__m256i d0, d2, d3, zeros = simde_mm256_xor_si256(d0, d0), amp_dmrs256 = simde_mm256_set1_epi16(amp_dmrs);
+            simde__m256i d0, d2, d3, zeros = simde_mm256_setzero_si256(), amp_dmrs256 = simde_mm256_set1_epi16(amp_dmrs);
             int i, j;
             for (i = 0, j = 0; i < (rel15->rbSize * NR_NB_SC_PER_RB) >> 4; i++) {
               d0 = simde_mm256_mulhrs_epi16(((simde__m256i *)mod_dmrs)[i], amp_dmrs256);
@@ -686,7 +686,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
 #endif
 #if defined(USE128BIT)
             simde__m128i d0, d2, d3,
-                zeros = simde_mm_xor_si128(d0, d0),
+                zeros = simde_mm_setzero_si128(),
                 amp_dmrs128 =
                     simde_mm_set_epi16(-amp_dmrs, -amp_dmrs, amp_dmrs, amp_dmrs, -amp_dmrs, -amp_dmrs, amp_dmrs, amp_dmrs);
             int i, j;
@@ -716,7 +716,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
               }
             }
 #elif defined(__AVX512BW__)
-            __m512i d0, zeros = _mm512_xor_si512(d0, d0),
+            __m512i d0, zeros = _mm512_setzero_si512(),
                         amp_dmrs512 = _mm512_set_epi16(-amp_dmrs,
                                                        -amp_dmrs,
                                                        amp_dmrs,
@@ -774,7 +774,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
               }
             }
 #else
-            simde__m256i d0, d2, d3, zeros = simde_mm256_xor_si256(d0, d0),
+            simde__m256i d0, d2, d3, zeros = simde_mm256_setzero_si256(),
                                      amp_dmrs256 = simde_mm256_set_epi16(-amp_dmrs,
                                                                          -amp_dmrs,
                                                                          amp_dmrs,
