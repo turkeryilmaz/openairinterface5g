@@ -418,10 +418,10 @@ bool compare_relative_ul_channel_bw(int nr_band, int scs, int channel_bandwidth,
   return rel_bw > limit;
 }
 
-uint16_t get_band(uint64_t downlink_frequency, int32_t delta_duplex)
+uint16_t get_band(uint64_t downlink_frequency, int64_t delta_duplex)
 {
   const int64_t dl_freq_khz = downlink_frequency / 1000;
-  const int32_t  delta_duplex_khz = delta_duplex / 1000;
+  const int64_t delta_duplex_khz = delta_duplex / 1000;
 
   uint64_t center_freq_diff_khz = UINT64_MAX; // 2^64
   uint16_t current_band = 0;
@@ -431,7 +431,7 @@ uint16_t get_band(uint64_t downlink_frequency, int32_t delta_duplex)
     if (dl_freq_khz < nr_bandtable[ind].dl_min || dl_freq_khz > nr_bandtable[ind].dl_max)
       continue;
 
-    int32_t current_offset_khz = nr_bandtable[ind].ul_min - nr_bandtable[ind].dl_min;
+    int64_t current_offset_khz = nr_bandtable[ind].ul_min - nr_bandtable[ind].dl_min;
 
     if (current_offset_khz != delta_duplex_khz)
       continue;
@@ -448,7 +448,7 @@ uint16_t get_band(uint64_t downlink_frequency, int32_t delta_duplex)
         downlink_frequency, current_band, downlink_frequency+delta_duplex);
 
   AssertFatal(current_band != 0,
-              "Can't find EUTRA band for frequency %" PRIu64 " and duplex_spacing %d\n",
+              "Can't find EUTRA band for frequency %" PRIu64 " and duplex_spacing %ld\n",
               downlink_frequency,
               delta_duplex);
 
