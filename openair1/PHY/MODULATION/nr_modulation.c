@@ -464,7 +464,6 @@ void nr_layer_mapping(int nbCodes,
 #ifdef USE_NEON
       // SIMDe doesn't handle this properly, gcc up to 14.2 neither
       uint32x4_t d4;
-      int i;
       for (i = 0; i < n_symbs >> 2; i++) {
         d4 = ((uint32x4_t *)mod_symbs[0])[i];
         ((uint32_t *)tx_layers[0])[i] = vgetq_lane_u32(d4, 0);
