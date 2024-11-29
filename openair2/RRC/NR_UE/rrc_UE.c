@@ -799,7 +799,7 @@ static void nr_rrc_ue_decode_NR_BCCH_BCH_Message(NR_UE_RRC_INST_t *rrc,
     get_sib = check_si_status(SI_info);
   }
   if (bcch_message->message.present == NR_BCCH_BCH_MessageType_PR_mib)
-    nr_rrc_mac_config_req_mib(rrc->ue_id, 0, bcch_message->message.choice.mib, get_sib);
+    nr_rrc_mac_config_req_mib(rrc->ue_id, 0, bcch_message->message.choice.mib, ssb_arfcn, get_sib);
   else
     LOG_E(NR_RRC, "RRC-received BCCH message is not a MIB\n");
   ASN_STRUCT_FREE(asn_DEF_NR_BCCH_BCH_Message, bcch_message);
