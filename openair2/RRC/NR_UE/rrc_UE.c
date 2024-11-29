@@ -999,6 +999,7 @@ static void nr_rrc_ue_decode_NR_BCCH_BCH_Message(NR_UE_RRC_INST_t *rrc,
     config_mib->bcch = bcch_message;
     config_mib->get_sib = get_sib;
     config_mib->access_barred = barred;
+    config_mib->ssb_arfcn = ssb_arfcn;
     nr_rrc_send_msg_to_mac(rrc, &rrc_msg);
   } else {
     LOG_E(NR_RRC, "RRC-received BCCH message is not a MIB\n");

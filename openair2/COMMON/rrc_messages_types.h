@@ -481,6 +481,7 @@ typedef struct {
   NR_BCCH_BCH_Message_t *bcch;
   int get_sib;
   bool access_barred;
+  int ssb_arfcn;
 } nr_mac_rrc_config_mib_t;
 typedef struct {
   NR_SIB1_t *sib1;
