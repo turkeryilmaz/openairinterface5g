@@ -137,7 +137,8 @@ void process_msg_rcc_to_mac(MessageDef *msg)
                                 0,
                                 NR_MAC_RRC_CONFIG_MIB(msg).bcch->message.choice.mib,
                                 NR_MAC_RRC_CONFIG_MIB(msg).get_sib,
-                                NR_MAC_RRC_CONFIG_MIB(msg).access_barred);
+                                NR_MAC_RRC_CONFIG_MIB(msg).access_barred,
+                                NR_MAC_RRC_CONFIG_MIB(msg).ssb_arfcn);
       ASN_STRUCT_FREE(asn_DEF_NR_BCCH_BCH_Message, NR_MAC_RRC_CONFIG_MIB(msg).bcch);
       break;
     case NR_MAC_RRC_CONFIG_SIB1: {
