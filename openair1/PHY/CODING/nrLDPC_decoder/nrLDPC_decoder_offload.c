@@ -602,18 +602,24 @@ static int retrieve_ldpc_enc_op(struct rte_bbdev_enc_op **ops, const uint16_t n,
     struct rte_mbuf *m = output->data;
     uint16_t data_len = rte_pktmbuf_data_len(m) - output->offset;
     const char *data = m->buf_addr + m->data_off;
+    size_t simd_width = 16;
     if (bit_offset == 0) {
-      memcpy(&p_out[offset], data, data_len);
+      for (size_t i = 0; i <= data_len; i += simd_width) {
+        simde__m128i current = simde_mm_loadu_si128((simde__m128i*)(&data[i]));
+        simde_mm_storeu_si128((simde__m128i*)(&p_out[offset + i]), current);
+      }
     } else {
-      uint8_t carry = 0;
       p_out[offset - 1] |= data[0] >> bit_offset;
-      for (size_t i = 0; i < data_len; i++) {
-        uint8_t current = *data++;
-        p_out[offset + i] = (current << (8 - bit_offset));
-        if (i != 0) {
-          carry = current >> bit_offset;
-          p_out[offset + i - 1] |= carry;
-        }
+      for (size_t i = 0; i <= data_len; i += simd_width) {
+        simde__m128i current = simde_mm_loadu_si128((simde__m128i*)(&data[i]));
+        simde__m128i next = simde_mm_loadu_si128((simde__m128i*)(&data[i + 1]));
+        simde__m128i right_shifted = simde_mm_srli_epi16(next, bit_offset);
+        simde__m128i left_shifted = simde_mm_slli_epi16(current, 8 - bit_offset);
+        simde__m128i combined = simde_mm_or_si128(
+          simde_mm_and_si128(right_shifted, simde_mm_set1_epi8(0xFF >> (bit_offset))),
+          simde_mm_and_si128(left_shifted, simde_mm_set1_epi8(0xFF << (8 - bit_offset)))
+        );
+        simde_mm_storeu_si128((simde__m128i*)(&p_out[offset + i]), combined);
       }
     }
     bit_offset = (perCB[i].E_cb - 8 + bit_offset) % 8;
