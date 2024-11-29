@@ -609,14 +609,14 @@ static int retrieve_ldpc_enc_op(struct rte_bbdev_enc_op **ops, const uint16_t n,
       p_out[offset - 1] |= data[0] >> bit_offset;
       for (size_t i = 0; i < data_len; i++) {
         uint8_t current = *data++;
-        p_out[offset + i] = (current << bit_offset);
+        p_out[offset + i] = (current << (8 - bit_offset));
         if (i != 0) {
-          carry = current >> (8 - bit_offset);
+          carry = current >> bit_offset;
           p_out[offset + i - 1] |= carry;
         }
       }
     }
-    bit_offset = perCB[i].E_cb % 8 - bit_offset;
+    bit_offset = (perCB[i].E_cb - 8 + bit_offset) % 8;
     offset += (perCB[i].E_cb + bit_offset) / 8;
     rte_pktmbuf_free(m);
     rte_pktmbuf_free(ops[i]->ldpc_enc.input.data);
