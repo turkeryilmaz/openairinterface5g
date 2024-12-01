@@ -844,7 +844,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
             int i, j;
             for (i = 0, j = 0; i < (rel15->rbSize * NR_NB_SC_PER_RB) >> 3; i++) {
               d0 = simde_mm_mulhrs_epi16(((simde__m128i *)mod_dmrs)[i], amp_dmrs128);
-              d1 = simde_mm_mulhrs_epi16(simde_mm_loadu(txlc+i)), amp128);
+              d1 = simde_mm_mulhrs_epi16(simde_mm_loadu(((simde__m128i*)txlc)+i), amp128);
               d2 = simde_mm_unpacklo_epi32(d0, d1);
               d3 = simde_mm_unpackhi_epi32(d0, d1);
               ((simde__m128i *)dmrs_mux)[j++] = d2;
@@ -868,7 +868,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
             int i, j;
             for (i = 0, j = 0; i < (rel15->rbSize * NR_NB_SC_PER_RB) >> 5; i++) {
               d0 = _mm512_mulhrs_epi16(((__m512i *)mod_dmrs)[i], amp_dmrs512);
-              d1 = _mm512_mulhrs_epi16((_mm512_loadu_si512(txlc+i)), amp512);
+              d1 = _mm512_mulhrs_epi16(_mm512_loadu_si512(((__m512i*)txlc)+i), amp512);
               ((__m512i *)dmrs_mux)[j++] = _mm512_permutex2var_epi32(d0, perml, d1); //
               ((__m512i *)dmrs_mux)[j++] = _mm512_permutex2var_epi32(d0, permh, d1);
             }
@@ -885,11 +885,10 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
 #else
             simde__m256i d0, d1, d2, d3, amp_dmrs256 = simde_mm256_set1_epi16(amp_dmrs), amp256 = simde_mm256_set1_epi16(amp);
             c16_t *txlc = &tx_layers[layer][cur_re];
-            if (((uintptr_t)txlc & 63)>0) LOG_E(NR_PHY,"txlc is not aligned layer %d, cur_re %d\n",layer,cur_re);
             int i, j;
             for (i = 0, j = 0; i < (rel15->rbSize * NR_NB_SC_PER_RB) >> 4; i++) {
               d0 = simde_mm256_mulhrs_epi16(((simde__m256i *)mod_dmrs)[i], amp_dmrs256);
-              d1 = simde_mm256_mulhrs_epi16(simde_mm256_loadu_si256(txlc+i), amp256);
+              d1 = simde_mm256_mulhrs_epi16(simde_mm256_loadu_si256(((simde__m256i *)txlc)+i), amp256);
               d2 = simde_mm256_unpacklo_epi32(d0, d1);
               d3 = simde_mm256_unpackhi_epi32(d0, d1);
               ((simde__m256i *)dmrs_mux)[j++] = simde_mm256_permute2x128_si256(d2, d3, 32);
@@ -945,7 +944,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
             int i, j;
             for (i = 0, j = 0; i < (rel15->rbSize * NR_NB_SC_PER_RB) >> 3; i++) {
               d0 = simde_mm_mulhrs_epi16(((simde__m128i *)mod_dmrs)[i], amp_dmrs128);
-              d1 = simde_mm_mulhrs_epi16(simde_mm_loadu_si128(txlc+i), amp128);
+              d1 = simde_mm_mulhrs_epi16(simde_mm_loadu_si128(((simde__m128i *)txlc)+i), amp128);
               d2 = simde_mm_unpacklo_epi32(d0, d1);
               d3 = simde_mm_unpackhi_epi32(d0, d1);
               ((simde__m128i *)dmrs_mux)[j++] = d2;
@@ -1009,7 +1008,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
             int i, j;
             for (i = 0, j = 0; i < (rel15->rbSize * NR_NB_SC_PER_RB) >> 5; i++) {
               d0 = _mm512_mulhrs_epi16(((__m512i *)mod_dmrs)[i], amp_dmrs512);
-              d1 = _mm512_mulhrs_epi16(_mm512_loadu_si512(txlc+i), amp512);
+              d1 = _mm512_mulhrs_epi16(_mm512_loadu_si512(((__m512i *)txlc)+i), amp512);
               ((__m512i *)dmrs_mux)[j++] = _mm512_permutex2var_epi32(d0, perml, d1); //
               ((__m512i *)dmrs_mux)[j++] = _mm512_permutex2var_epi32(d0, permh, d1);
             }
@@ -1052,7 +1051,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
             int i, j;
             for (i = 0, j = 0; i < (rel15->rbSize * NR_NB_SC_PER_RB) >> 4; i++) {
               d0 = simde_mm256_mulhrs_epi16(((simde__m256i *)mod_dmrs)[i], amp_dmrs256);
-              d1 = simde_mm256_mulhrs_epi16(simde_mm256_loadu(txlc+i), amp256);
+              d1 = simde_mm256_mulhrs_epi16(simde_mm256_loadu_si256(((simde__m256i *)txlc)+i), amp256);
               d2 = simde_mm256_unpacklo_epi32(d0, d1);
               d3 = simde_mm256_unpackhi_epi32(d0, d1);
               ((simde__m256i *)dmrs_mux)[j++] = simde_mm256_permute2x128_si256(d2, d3, 32);
@@ -1112,7 +1111,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
             int i, j;
             for (i = 0, j = 0; i < (rel15->rbSize * NR_NB_SC_PER_RB) >> 3; i++) {
               d1 = simde_mm_mulhrs_epi16(((simde__m128i *)mod_dmrs)[i], amp_dmrs128);
-              d0 = simde_mm_mulhrs_epi16(simde_mm_loadu_si128(txlc+i), amp128);
+              d0 = simde_mm_mulhrs_epi16(simde_mm_loadu_si128(((simde__m128i *)txlc)+i), amp128);
               d2 = simde_mm_unpacklo_epi32(d0, d1);
               d3 = simde_mm_unpackhi_epi32(d0, d1);
               ((simde__m128i *)dmrs_mux)[j++] = d2;
@@ -1136,7 +1135,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
             int i, j;
             for (i = 0, j = 0; i < (rel15->rbSize * NR_NB_SC_PER_RB) >> 5; i++) {
               d0 = _mm512_mulhrs_epi16(((__m512i *)mod_dmrs)[i], amp_dmrs512);
-              d1 = _mm512_mulhrs_epi16(_mm512_loadu_si512(txlc+i), amp512);
+              d1 = _mm512_mulhrs_epi16(_mm512_loadu_si512(((__m512i *)txlc)+i), amp512);
               ((__m512i *)dmrs_mux)[j++] = _mm512_permutex2var_epi32(d1, perml, d0); //
               ((__m512i *)dmrs_mux)[j++] = _mm512_permutex2var_epi32(d1, permh, d0);
             }
@@ -1156,7 +1155,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
             int i, j;
             for (i = 0, j = 0; i < (rel15->rbSize * NR_NB_SC_PER_RB) >> 4; i++) {
               d1 = simde_mm256_mulhrs_epi16(((simde__m256i *)mod_dmrs)[i], amp_dmrs256);
-              d0 = simde_mm256_mulhrs_epi16(simde_mm256_loadu_si256(txlc+i), amp256);
+              d0 = simde_mm256_mulhrs_epi16(simde_mm256_loadu_si256(((simde__m256i *)txlc)+i), amp256);
               d2 = simde_mm256_unpacklo_epi32(d0, d1);
               d3 = simde_mm256_unpackhi_epi32(d0, d1);
               ((simde__m256i *)dmrs_mux)[j++] = simde_mm256_permute2x128_si256(d2, d3, 32);
@@ -1212,7 +1211,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
             int i, j;
             for (i = 0, j = 0; i < (rel15->rbSize * NR_NB_SC_PER_RB) >> 3; i++) {
               d1 = simde_mm_mulhrs_epi16(((simde__m128i *)mod_dmrs)[i], amp_dmrs128);
-              d0 = simde_mm_mulhrs_epi16(simde_mm_loadu_si128(txlc+i), amp128);
+              d0 = simde_mm_mulhrs_epi16(simde_mm_loadu_si128(((simde__m128i *txlc)+i), amp128);
               d2 = simde_mm_unpacklo_epi32(d0, d1);
               d3 = simde_mm_unpackhi_epi32(d0, d1);
               ((simde__m128i *)dmrs_mux)[j++] = d2;
@@ -1275,7 +1274,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
             int i, j;
             for (i = 0, j = 0; i < (rel15->rbSize * NR_NB_SC_PER_RB) >> 5; i++) {
               d0 = _mm512_mulhrs_epi16(((__m512i *)mod_dmrs)[i], amp_dmrs512);
-              d1 = _mm512_mulhrs_epi16(_mm512_loadu_si512(txlc+i), amp512);
+              d1 = _mm512_mulhrs_epi16(_mm512_loadu_si512(((__m512i *)txlc)+i), amp512);
               ((__m512i *)dmrs_mux)[j++] = _mm512_permutex2var_epi32(d1, perml, d0); //
               ((__m512i *)dmrs_mux)[j++] = _mm512_permutex2var_epi32(d1, permh, d0);
             }
@@ -1319,7 +1318,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
             int i, j;
             for (i = 0, j = 0; i < (rel15->rbSize * NR_NB_SC_PER_RB) >> 4; i++) {
               d1 = simde_mm256_mulhrs_epi16(((simde__m256i *)mod_dmrs)[i], amp_dmrs256);
-              d0 = simde_mm256_mulhrs_epi16(simde_mm256_loadu_si256(txlc+i), amp256);
+              d0 = simde_mm256_mulhrs_epi16(simde_mm256_loadu_si256(((simde__m256i *)txlc)+i), amp256);
               d2 = simde_mm256_unpacklo_epi32(d0, d1);
               d3 = simde_mm256_unpackhi_epi32(d0, d1);
               ((simde__m256i *)dmrs_mux)[j++] = simde_mm256_permute2x128_si256(d2, d3, 32);
