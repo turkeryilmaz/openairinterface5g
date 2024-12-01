@@ -844,7 +844,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
             int i, j;
             for (i = 0, j = 0; i < (rel15->rbSize * NR_NB_SC_PER_RB) >> 3; i++) {
               d0 = simde_mm_mulhrs_epi16(((simde__m128i *)mod_dmrs)[i], amp_dmrs128);
-              d1 = simde_mm_mulhrs_epi16(simde_mm_loadu_si128(((simde__m128i*)txlc)+i), amp128);
+              d1 = simde_mm_mulhrs_epi16(simde_mm_loadu_si128(((simde__m128i *)txlc)+i), amp128);
               d2 = simde_mm_unpacklo_epi32(d0, d1);
               d3 = simde_mm_unpackhi_epi32(d0, d1);
               ((simde__m128i *)dmrs_mux)[j++] = d2;
@@ -1211,7 +1211,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
             int i, j;
             for (i = 0, j = 0; i < (rel15->rbSize * NR_NB_SC_PER_RB) >> 3; i++) {
               d1 = simde_mm_mulhrs_epi16(((simde__m128i *)mod_dmrs)[i], amp_dmrs128);
-              d0 = simde_mm_mulhrs_epi16(simde_mm_loadu_si128(((simde__m128i*)txlc)+i), amp128);
+              d0 = simde_mm_mulhrs_epi16(simde_mm_loadu_si128(((simde__m128i *)txlc)+i), amp128);
               d2 = simde_mm_unpacklo_epi32(d0, d1);
               d3 = simde_mm_unpackhi_epi32(d0, d1);
               ((simde__m128i *)dmrs_mux)[j++] = d2;
