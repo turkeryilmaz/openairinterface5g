@@ -1187,8 +1187,11 @@ int main(int argc, char **argv)
         }
 
         for (i = 0; i < available_bits; i++) {
-          if(((gNB_dlsch->harq_process.f[i] == 0) && (UE_llr[i] <= 0)) ||
-             ((gNB_dlsch->harq_process.f[i] == 1) && (UE_llr[i] >= 0)))
+          uint32_t word_index = i / 32;
+          uint32_t bit_offset = i % 32;
+          uint32_t f_bit = (gNB_dlsch->harq_process.f[word_index] >> bit_offset) & 0x01;
+          if(((f_bit == 0) && (UE_llr[i] <= 0)) ||
+             ((f_bit == 1) && (UE_llr[i] >= 0)))
           {
             if (errors_scrambling[round] == 0) {
               LOG_D(PHY,"First bit in error in unscrambling = %d\n",i);

@@ -122,6 +122,7 @@ struct thread_params {
   struct nrLDPCoffload_params *p_offloadParams;
   uint8_t iter_count;
   uint8_t *p_out;
+  uint32_t *p_out_enc;
   uint8_t ulsch_id;
   rte_atomic16_t nb_dequeued;
   rte_atomic16_t processing_status;
@@ -593,23 +594,24 @@ static int retrieve_ldpc_dec_op(struct rte_bbdev_dec_op **ops, const uint16_t n,
   return 0;
 }
 
-static int retrieve_ldpc_enc_op(struct rte_bbdev_enc_op **ops, const uint16_t n, uint8_t *p_out, nrLDPC_params_per_cb_t *perCB)
+static int retrieve_ldpc_enc_op(struct rte_bbdev_enc_op **ops, const uint16_t n, uint32_t *p_out, nrLDPC_params_per_cb_t *perCB)
 {
   int offset = 0;
   int bit_offset = 0;
+  uint8_t p_out_tmp[n * 32768];
   for (int i = 0; i < n; ++i) {
     struct rte_bbdev_op_data *output = &ops[i]->ldpc_enc.output;
     struct rte_mbuf *m = output->data;
     uint16_t data_len = rte_pktmbuf_data_len(m) - output->offset;
-    const char *data = m->buf_addr + m->data_off;
+    uint8_t *data = m->buf_addr + m->data_off;
     size_t simd_width = 16;
     if (bit_offset == 0) {
       for (size_t i = 0; i <= data_len; i += simd_width) {
         simde__m128i current = simde_mm_loadu_si128((simde__m128i*)(&data[i]));
-        simde_mm_storeu_si128((simde__m128i*)(&p_out[offset + i]), current);
+        simde_mm_storeu_si128((simde__m128i*)(&p_out_tmp[(offset + i)]), current);
       }
     } else {
-      p_out[offset - 1] |= data[0] >> bit_offset;
+      p_out_tmp[offset - 1] |= data[0] >> bit_offset;
       for (size_t i = 0; i <= data_len; i += simd_width) {
         simde__m128i current = simde_mm_loadu_si128((simde__m128i*)(&data[i]));
         simde__m128i next = simde_mm_loadu_si128((simde__m128i*)(&data[i + 1]));
@@ -619,7 +621,7 @@ static int retrieve_ldpc_enc_op(struct rte_bbdev_enc_op **ops, const uint16_t n,
           simde_mm_and_si128(right_shifted, simde_mm_set1_epi8(0xFF >> (bit_offset))),
           simde_mm_and_si128(left_shifted, simde_mm_set1_epi8(0xFF << (8 - bit_offset)))
         );
-        simde_mm_storeu_si128((simde__m128i*)(&p_out[offset + i]), combined);
+        simde_mm_storeu_si128((simde__m128i*)(&p_out_tmp[(offset + i)]), combined);
       }
     }
     bit_offset = (perCB[i].E_cb - 8 + bit_offset) % 8;
@@ -627,9 +629,17 @@ static int retrieve_ldpc_enc_op(struct rte_bbdev_enc_op **ops, const uint16_t n,
     rte_pktmbuf_free(m);
     rte_pktmbuf_free(ops[i]->ldpc_enc.input.data);
   }
-  reverse_bits_u8(p_out, offset, p_out);
+  reverse_bits_u8(p_out_tmp, offset, p_out_tmp);
+  const int roundedSz = (offset + 3) / 4;
+  for (int i = 0; i < roundedSz; i++) {
+    p_out[i] |= ((uint32_t)p_out_tmp[(i * 4)] << (0 * 8));
+    p_out[i] |= ((uint32_t)p_out_tmp[(i * 4) + 1] << (1 * 8));
+    p_out[i] |= ((uint32_t)p_out_tmp[(i * 4)  + 2] << (2 * 8));
+    p_out[i] |= ((uint32_t)p_out_tmp[(i * 4)  + 3] << (3 * 8));
+  }
   return 0;
 }
+
 
 // based on DPDK BBDEV init_test_op_params
 static int init_test_op_params(struct test_op_params *op_params,
@@ -732,7 +742,7 @@ static int pmd_lcore_ldpc_enc(void *arg)
   int ret;
   struct data_buffers *bufs = NULL;
   uint16_t num_to_enq;
-  uint8_t *p_out = tp->p_out;
+  uint32_t *p_out = tp->p_out_enc;
   t_nrLDPCoffload_params *p_offloadParams = tp->p_offloadParams;
 
   AssertFatal((num_segments < MAX_BURST), "BURST_SIZE should be <= %u", MAX_BURST);
@@ -820,7 +830,7 @@ int start_pmd_dec(struct active_device *ad,
 int32_t start_pmd_enc(struct active_device *ad,
                       struct test_op_params *op_params,
                       t_nrLDPCoffload_params *p_offloadParams,
-                      uint8_t *p_out)
+                      uint32_t *p_out)
 {
   unsigned int lcore_id, used_cores = 0;
   uint16_t num_lcores;
@@ -833,7 +843,7 @@ int32_t start_pmd_enc(struct active_device *ad,
   t_params[0].op_params = op_params;
   t_params[0].queue_id = ad->enc_queue;
   t_params[0].iter_count = 0;
-  t_params[0].p_out = p_out;
+  t_params[0].p_out_enc = p_out;
   t_params[0].p_offloadParams = p_offloadParams;
   used_cores++;
   // For now, we never enter here, we don't use the DPDK thread pool
@@ -1013,6 +1023,7 @@ int32_t LDPCencoder(unsigned char **input, unsigned char **output, encoder_imple
                                           .F = impp->F,
                                           .Qm = impp->Qm,
                                           .C = impp->n_segments,
+                                          .p_out = impp->output,
                                           .Kr = (impp->K - impp->F + 7) / 8};
   for (int r = 0; r < impp->n_segments; r++) {
     offloadParams.perCB[r].E_cb = impp->perCB[r].E_cb;
@@ -1050,7 +1061,7 @@ int32_t LDPCencoder(unsigned char **input, unsigned char **output, encoder_imple
                                 info.drv.min_alignment);
     AssertFatal(ret == 0, "Couldn't init rte_bbdev_op_data structs");
   }
-  ret = start_pmd_enc(ad, op_params, &offloadParams, *output);
+  ret = start_pmd_enc(ad, op_params, &offloadParams, offloadParams.p_out);
   pthread_mutex_unlock(&encode_mutex);
   return ret;
 }

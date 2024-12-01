@@ -55,7 +55,7 @@
 
 //extern int32_t uplink_counter;
 
-void nr_pusch_codeword_scrambling_uci(uint8_t *in, uint32_t size, uint32_t Nid, uint32_t n_RNTI, uint32_t* out)
+void nr_pusch_codeword_scrambling_uci(uint32_t *in, uint32_t size, uint32_t Nid, uint32_t n_RNTI, uint32_t* out)
 {
   uint32_t *seq = gold_cache((n_RNTI << 15) + Nid, (size + 31) / 32);
   for (int i=0; i<size; i++) {
@@ -77,7 +77,7 @@ void nr_pusch_codeword_scrambling_uci(uint8_t *in, uint32_t size, uint32_t Nid, 
   }
 }
 
-void nr_pusch_codeword_scrambling(uint8_t *in, uint32_t size, uint32_t Nid, uint32_t n_RNTI, bool uci_on_pusch, uint32_t* out)
+void nr_pusch_codeword_scrambling(uint32_t *in, uint32_t size, uint32_t Nid, uint32_t n_RNTI, bool uci_on_pusch, uint32_t* out)
 {
   if (uci_on_pusch)
     nr_pusch_codeword_scrambling_uci(in, size, Nid, n_RNTI, out);

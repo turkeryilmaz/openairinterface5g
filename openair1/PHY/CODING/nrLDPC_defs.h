@@ -52,7 +52,7 @@ typedef struct {
   /// Encoder BG
   uint8_t BG;
   /// Interleaver outputs
-  unsigned char *output;
+  uint32_t *output;
   /// Number of bits in "small" code segments
   uint32_t K;
   /// Number of "Filler" bits

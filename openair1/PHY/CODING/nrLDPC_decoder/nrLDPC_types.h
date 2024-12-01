@@ -120,6 +120,7 @@ typedef struct nrLDPCoffload_params {
     uint8_t C;
     uint8_t numMaxIter;
     uint8_t setCombIn;
+    uint32_t* p_out;
     nrLDPC_params_per_cb_t perCB[NR_LDPC_MAX_NUM_CB];
 } t_nrLDPCoffload_params;
 

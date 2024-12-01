@@ -44,7 +44,7 @@
 //#define DEBUG_DLSCH
 //#define DEBUG_DLSCH_MAPPING
 
-static void nr_pdsch_codeword_scrambling(uint8_t *in, uint32_t size, uint8_t q, uint32_t Nid, uint32_t n_RNTI, uint32_t *out)
+static void nr_pdsch_codeword_scrambling(uint32_t *in, uint32_t size, uint8_t q, uint32_t Nid, uint32_t n_RNTI, uint32_t *out)
 {
   nr_codeword_scrambling(in, size, q, Nid, n_RNTI, out);
 }
@@ -102,8 +102,8 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
 
     /// CRC, coding, interleaving and rate matching
     AssertFatal(harq->pdu!=NULL,"harq->pdu is null\n");
-    unsigned char output[rel15->rbSize * NR_SYMBOLS_PER_SLOT * NR_NB_SC_PER_RB * Qm * rel15->nrOfLayers] __attribute__((aligned(64)));
-    bzero(output,rel15->rbSize * NR_SYMBOLS_PER_SLOT * NR_NB_SC_PER_RB * Qm * rel15->nrOfLayers);
+    uint32_t output[((rel15->rbSize * NR_SYMBOLS_PER_SLOT * NR_NB_SC_PER_RB * Qm * rel15->nrOfLayers) + 7) / 8] __attribute__((aligned(64)));
+    bzero(output,((rel15->rbSize * NR_SYMBOLS_PER_SLOT * NR_NB_SC_PER_RB * Qm * rel15->nrOfLayers) + 7) / 8);
     start_meas(dlsch_encoding_stats);
 
     if (nr_dlsch_encoding(gNB,
@@ -138,7 +138,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
 #endif
 
     if (IS_SOFTMODEM_DLSIM)
-      memcpy(harq->f, output, encoded_length);
+      memcpy(harq->f, output, (encoded_length + 7) / 8);
 
     c16_t mod_symbs[rel15->NrOfCodewords][encoded_length];
     for (int codeWord = 0; codeWord < rel15->NrOfCodewords; codeWord++) {

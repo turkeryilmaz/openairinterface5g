@@ -33,23 +33,81 @@
 
 static const uint8_t index_k0[2][4] = {{0, 17, 33, 56}, {0, 13, 25, 43}};
 
-void nr_interleaving_ldpc(uint32_t E, uint8_t Qm, uint8_t *e,uint8_t *f, int start_idx) {
+void nr_interleaving_ldpc(uint32_t E, uint8_t Qm, uint8_t *e, uint32_t *f, int start_idx) {
   uint32_t EQm = (E + Qm - 1) / Qm;
-  uint32_t bit_pos = start_idx;
-  uint32_t byte_idx = bit_pos / 8;
-  uint32_t bit_idx = bit_pos % 8;
-  uint8_t *fp = &f[byte_idx];
-  for (uint32_t i = 0; i < EQm; i++) {
-    for (uint32_t j = 0; j < Qm; j++) {
-      uint32_t e_idx = j * EQm + i;
-      uint8_t value = e[e_idx] & 0x01;
-      *fp |= (value << bit_idx);
-      bit_idx++;
-      if (bit_idx == 8) {
-        bit_idx = 0;
+  uint32_t byte_idx = start_idx / 32;
+  uint8_t bit_idx = start_idx % 32;
+  uint32_t *fp = &f[byte_idx];
+  switch(Qm) {
+  case 2:
+    for (uint32_t i = 0; i < EQm; i++) {
+      uint32_t packed_bits = ((e[i] & 0x01) << 0) |
+                             ((e[i + EQm] & 0x01) << 1);
+      *fp |= (packed_bits << bit_idx);
+      bit_idx += 2;
+      if (bit_idx >= 32) {
         fp++;
+        bit_idx -= 32;
+        if (bit_idx > 0)
+          *fp |= (packed_bits >> (2 - bit_idx));
       }
     }
+    break;
+  case 4:
+    for (uint32_t i = 0; i < EQm; i++) {
+      uint32_t packed_bits = ((e[i] & 0x01) << 0) |
+                             ((e[i + EQm] & 0x01) << 1) |
+                             ((e[i + 2 * EQm] & 0x01) << 2) |
+                            ((e[i + 3 * EQm] & 0x01) << 3);
+      *fp |= (packed_bits << bit_idx);
+      bit_idx += 4;
+      if (bit_idx >= 32) {
+        fp++;
+        bit_idx -= 32;
+        if (bit_idx > 0)
+          *fp |= (packed_bits >> (4 - bit_idx));
+      }
+    }
+    break;
+  case 6:
+    for (uint32_t i = 0; i < EQm; i++) {
+      uint32_t packed_bits = ((e[i] & 0x01) << 0) |
+                             ((e[i + EQm] & 0x01) << 1) |
+                             ((e[i + 2 * EQm] & 0x01) << 2) |
+                             ((e[i + 3 * EQm] & 0x01) << 3) |
+                             ((e[i + 4 * EQm] & 0x01) << 4) |
+                             ((e[i + 5 * EQm] & 0x01) << 5);
+      *fp |= (packed_bits << bit_idx);
+      bit_idx += 6;
+      if (bit_idx >= 32) {
+        fp++;
+        bit_idx -= 32;
+        if (bit_idx > 0)
+          *fp |= (packed_bits >> (6 - bit_idx));
+      }
+    }
+    break;
+  case 8:
+    for (uint32_t i = 0; i < EQm; i++) {
+      uint32_t packed_bits = ((e[i] & 0x01) << 0) |
+                             ((e[i + EQm] & 0x01) << 1) |
+                             ((e[i + 2 * EQm] & 0x01) << 2) |
+                             ((e[i + 3 * EQm] & 0x01) << 3) |
+                             ((e[i + 4 * EQm] & 0x01) << 4) |
+                             ((e[i + 5 * EQm] & 0x01) << 5) |
+                             ((e[i + 6 * EQm] & 0x01) << 6) |
+                             ((e[i + 7 * EQm] & 0x01) << 7);
+      *fp |= (packed_bits << bit_idx);
+      bit_idx += 8;
+      if (bit_idx >= 32) {
+        fp++;
+        bit_idx -= 32;
+        if (bit_idx > 0)
+          *fp |= (packed_bits >> (8 - bit_idx));
+      }
+    }
+    break;
+  default: AssertFatal(1==0,"Should never be here! Qm = %d\n", Qm);
   }
 }
 

@@ -71,7 +71,7 @@ void nr_fill_du(uint16_t N_ZC, const uint16_t *prach_root_sequence_map);
 
 void init_nr_prach_tables(int N_ZC);
 
-void nr_codeword_scrambling(uint8_t *in,
+void nr_codeword_scrambling(uint32_t *in,
                             uint32_t size,
                             uint8_t q,
                             uint32_t Nid,

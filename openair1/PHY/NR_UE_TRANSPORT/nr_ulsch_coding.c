@@ -154,7 +154,8 @@ int nr_ulsch_encoding(PHY_VARS_NR_UE *ue,
       impp.perCB[j].E_cb = nr_get_E(G, impp.n_segments, impp.Qm, ulsch->pusch_pdu.nrOfLayers, j);
     }
     start_meas_nr_ue_phy(ue, ULSCH_LDPC_ENCODING_STATS);
-    ldpc_interface_offload.LDPCencoder(harq_process->c, &harq_process->f, &impp);
+    impp.output = harq_process->f;
+    ldpc_interface_offload.LDPCencoder(harq_process->c, harq_process->d, &impp);
     stop_meas_nr_ue_phy(ue, ULSCH_LDPC_ENCODING_STATS);
   } else {
     if (ulsch->pusch_pdu.pusch_data.new_data_indicator) {

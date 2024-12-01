@@ -243,7 +243,7 @@ int nr_dlsch_encoding(PHY_VARS_gNB *gNB,
                       uint8_t slot,
                       NR_DL_gNB_HARQ_t *harq,
                       NR_DL_FRAME_PARMS *frame_parms,
-                      unsigned char *output,
+                      uint32_t *output,
                       time_stats_t *tinput,
                       time_stats_t *tprep,
                       time_stats_t *tparity,
@@ -371,7 +371,8 @@ int nr_dlsch_encoding(PHY_VARS_gNB *gNB,
     for (int r = 0; r < impp.n_segments; r++) {
       impp.perCB[r].E_cb = nr_get_E(impp.G, impp.n_segments, impp.Qm, rel15->nrOfLayers, r);
     }
-    ldpc_interface_offload.LDPCencoder(harq->c, &impp.output, &impp);
+    uint8_t *d;
+    ldpc_interface_offload.LDPCencoder(harq->c, &d, &impp);
   } else {
     size_t const n_seg = (impp.n_segments / 8 + ((impp.n_segments & 7) == 0 ? 0 : 1));
 

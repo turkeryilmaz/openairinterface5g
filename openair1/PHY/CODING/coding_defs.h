@@ -467,7 +467,7 @@ int32_t nr_segmentation(unsigned char *input_buffer,
                      unsigned int *F,
                      uint8_t BG);
 
-void nr_interleaving_ldpc(uint32_t E, uint8_t Qm, uint8_t *e,uint8_t *f, int start_idx);
+void nr_interleaving_ldpc(uint32_t E, uint8_t Qm, uint8_t *e,uint32_t *f, int start_idx);
 
 void nr_deinterleaving_ldpc(uint32_t E, uint8_t Qm, int16_t *e,int16_t *f);
 

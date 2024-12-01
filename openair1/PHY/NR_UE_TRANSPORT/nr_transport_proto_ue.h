@@ -118,7 +118,7 @@ int nr_ulsch_encoding(PHY_VARS_NR_UE *ue,
   @param[in] uci_on_pusch whether UCI placeholder bits need to be scrambled (true -> no optimized scrambling)
   @param[out] out the scrambled bits
 */
-void nr_pusch_codeword_scrambling(uint8_t *in,
+void nr_pusch_codeword_scrambling(uint32_t *in,
                                   uint32_t size,
                                   uint32_t Nid,
                                   uint32_t n_RNTI,
