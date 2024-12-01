@@ -444,19 +444,19 @@ void nr_layer_mapping(int nbCodes,
       __m512i perm4 = _mm512_set_epi32(15, 11, 7, 3, 14, 10, 6, 2, 13, 9, 5, 1, 12, 8, 4, 0);
       __m512i e;
       int i;
-      for (i = 0; i < n_symbs >> 3; i++) {
+      for (i = 0; i < n_symbs >> 4; i++) {
         e = _mm512_permutexvar_epi32(perm4, ((__m512i *)mod_symbs[0])[i]);
         ((__m128i *)tx_layers[0])[i] = _mm512_extracti64x2_epi64(e, 0);
         ((__m128i *)tx_layers[1])[i] = _mm512_extracti64x2_epi64(e, 1);
         ((__m128i *)tx_layers[2])[i] = _mm512_extracti64x2_epi64(e, 2);
         ((__m128i *)tx_layers[3])[i] = _mm512_extracti64x2_epi64(e, 3);
       }
-      if (i << 3 != n_symbs) {
-        for (int i2 = ((n_symbs >> 3) << 3); i2 < n_symbs; i2 += 3) {
-          tx_layers[0][i2 >> 1] = mod_symbs[0][i2];
-          tx_layers[1][i2 >> 1] = mod_symbs[0][i2 + 1];
-          tx_layers[2][i2 >> 1] = mod_symbs[0][i2 + 2];
-          tx_layers[3][i2 >> 1] = mod_symbs[0][i2 + 2];
+      if (i << 4 != n_symbs) {
+        for (int i2 = ((n_symbs >> 4) << 4); i2 < n_symbs; i2 += 4) {
+          tx_layers[0][i2 >> 2] = mod_symbs[0][i2];
+          tx_layers[1][i2 >> 2] = mod_symbs[0][i2 + 1];
+          tx_layers[2][i2 >> 2] = mod_symbs[0][i2 + 2];
+          tx_layers[3][i2 >> 2] = mod_symbs[0][i2 + 3];
         }
       }
 #elif defined(__aarch64__)
