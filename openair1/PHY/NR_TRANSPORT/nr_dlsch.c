@@ -885,6 +885,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
 #else
             simde__m256i d0, d1, d2, d3, amp_dmrs256 = simde_mm256_set1_epi16(amp_dmrs), amp256 = simde_mm256_set1_epi16(amp);
             c16_t *txlc = &tx_layers[layer][cur_re];
+            if (((uintptr_t)txlc & 63)>0) LOG_E(NR_PHY,"txlc is not aligned layer %d, cur_re %d\n",layer,cur_re);
             int i, j;
             for (i = 0, j = 0; i < (rel15->rbSize * NR_NB_SC_PER_RB) >> 4; i++) {
               d0 = simde_mm256_mulhrs_epi16(((simde__m256i *)mod_dmrs)[i], amp_dmrs256);
