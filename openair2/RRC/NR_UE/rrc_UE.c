@@ -505,6 +505,7 @@ static void nr_rrc_process_sib1(NR_UE_RRC_INST_t *rrc, NR_UE_RRC_SI_INFO *SI_inf
   MessageDef *msg = itti_alloc_new_message(TASK_RRC_NRUE, 0, NR_MAC_RRC_CONFIG_SIB1);
   NR_MAC_RRC_CONFIG_SIB1(msg).sib1 = sib1;
   NR_MAC_RRC_CONFIG_SIB1(msg).can_start_ra = !rrc->is_NTN_UE;
+  NR_MAC_RRC_CONFIG_SIB1(msg).ssb_arfcn = rrc->arfcn_ssb;
   itti_send_msg_to_task(TASK_MAC_UE, rrc->ue_id, msg);
 }
 
