@@ -327,7 +327,12 @@ static void nr_rrc_process_sib1(NR_UE_RRC_INST_t *rrc, NR_UE_RRC_SI_INFO *SI_inf
   // RRC storage of SIB1 timers and constants (eg needed in re-establishment)
   UPDATE_IE(rrc->timers_and_constants.sib1_TimersAndConstants, sib1->ue_TimersAndConstants, NR_UE_TimersAndConstants_t);
 
-  nr_rrc_mac_config_req_sib1(rrc->ue_id, 0, sib1->si_SchedulingInfo, si_SchedInfo_v1700, sib1->servingCellConfigCommon);
+  nr_rrc_mac_config_req_sib1(rrc->ue_id,
+                             0,
+                             sib1->si_SchedulingInfo,
+                             si_SchedInfo_v1700,
+                             sib1->servingCellConfigCommon,
+                             rrc->arfcn_ssb);
 }
 
 static void nr_rrc_process_reconfiguration_v1530(NR_UE_RRC_INST_t *rrc, NR_RRCReconfiguration_v1530_IEs_t *rec_1530, int gNB_index)
