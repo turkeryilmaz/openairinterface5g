@@ -21,7 +21,7 @@
 
 #ifndef TASK_ANSWER_THREAD_POOL_H
 #define TASK_ANSWER_THREAD_POOL_H
-
+#include "pthread_utils.h"
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -37,6 +37,7 @@ extern "C" {
 
 #include <stddef.h>
 #include <stdint.h>
+#include <semaphore.h>
 
 #if defined(__i386__) || defined(__x86_64__)
 #define LEVEL1_DCACHE_LINESIZE 64
@@ -51,8 +52,8 @@ extern "C" {
 #endif
 
 typedef struct {
-  // Avoid false sharing
-  _Alignas(LEVEL1_DCACHE_LINESIZE) _Atomic(int) status;
+  sem_t sem;
+  _Alignas(LEVEL1_DCACHE_LINESIZE) _Atomic(int) counter;
 } task_ans_t;
 
 typedef struct {
@@ -62,8 +63,11 @@ typedef struct {
   task_ans_t* ans;
 } thread_info_tm_t;
 
+void init_task_ans(task_ans_t* ans, unsigned int num_jobs);
 
-void join_task_ans(task_ans_t* arr, size_t len);
+void join_task_ans(task_ans_t* arr);
+
+void completed_many_task_ans(task_ans_t* ans, uint num_completed_jobs);
 
 void completed_task_ans(task_ans_t* task);
 

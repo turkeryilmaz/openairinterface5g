@@ -26,37 +26,33 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <time.h>
+#include "pthread_utils.h"
 
-void completed_task_ans(task_ans_t* task)
-{
-  DevAssert(task != NULL);
-
-  if (atomic_load_explicit(&task->status, memory_order_acquire) != 0)
-    AssertFatal(0, "Task already finished?");
-
-  atomic_store_explicit(&task->status, 1, memory_order_release);
+void init_task_ans(task_ans_t* ans, uint num_jobs) {
+  ans->counter = num_jobs;
+  sem_init(&ans->sem, 0, 0);
 }
 
-void join_task_ans(task_ans_t* arr, size_t len)
+void completed_task_ans(task_ans_t* ans)
 {
-  DevAssert(len < INT_MAX);
-  DevAssert(arr != NULL);
-
-  // Spin lock inspired by:
-  // The Art of Writing Efficient Programs:
-  // An advanced programmer's guide to efficient hardware utilization
-  // and compiler optimizations using C++ examples
-  const struct timespec ns = {0, 1};
-  uint64_t i = 0;
-  int j = len - 1;
-  for (; j != -1; i++) {
-    for (; j != -1; --j) {
-      int const task_completed = 1;
-      if (atomic_load_explicit(&arr[j].status, memory_order_acquire) != task_completed)
-        break;
-    }
-    if (i % 8 == 0) {
-      nanosleep(&ns, NULL);
-    }
+  DevAssert(ans != NULL);
+  int num_jobs = atomic_fetch_sub_explicit(&ans->counter, 1, memory_order_relaxed);
+  if (num_jobs == 1) {
+    sem_post(&ans->sem);
   }
+}
+
+void completed_many_task_ans(task_ans_t* ans, uint num_completed_jobs)
+{
+  DevAssert(ans != NULL);
+  int num_jobs = atomic_fetch_sub_explicit(&ans->counter, num_completed_jobs, memory_order_relaxed);
+  if (num_jobs == num_completed_jobs) {
+    sem_post(&ans->sem);
+  }
+}
+
+void join_task_ans(task_ans_t* ans)
+{
+  sem_wait(&ans->sem);
+  sem_destroy(&ans->sem);
 }
