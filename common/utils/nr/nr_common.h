@@ -100,6 +100,14 @@ typedef struct {
   int SIB_type;
 } nr_SIBs_t;
 
+typedef enum {
+  PHY_CONFIG_BIT_MASK_CARRIER = 0,
+  PHY_CONFIG_BIT_MASK_CELL,
+  PHY_CONFIG_BIT_MASK_SSB,
+  PHY_CONFIG_BIT_MASK_TDD,
+  PHY_CONFIG_BIT_MASK_PRACH
+} nr_phy_config_mask_t;
+
 typedef struct nr_bandentry_s {
   int16_t band;
   uint64_t ul_min;
@@ -334,6 +342,12 @@ float get_beta_dmrs(int num_cdm_groups_no_data, bool is_type2);
 #define ROUNDIDIV(a,b) (((a<<1)+b)/(b<<1))
 
 static const char *const duplex_mode_txt[] = {"FDD", "TDD"};
+
+#define SETBIT(a, b) ((a) |= (1 << (b)))
+#define GETBIT(a, b) (((a) >> (b)) & 1)
+
+// Align up to a multiple of 16
+#define ALIGN_UP_16(a) ((a + 15) & ~15)
 
 #ifdef __cplusplus
 #ifdef min

@@ -142,6 +142,7 @@ static void config_common_ue_sa(NR_UE_MAC_INST_t *mac, NR_ServingCellConfigCommo
   int bw_index = get_supported_band_index(frequencyInfoDL->scs_SpecificCarrierList.list.array[0]->subcarrierSpacing,
                                           mac->frequency_range,
                                           frequencyInfoDL->scs_SpecificCarrierList.list.array[0]->carrierBandwidth);
+  SETBIT(cfg->config_mask, PHY_CONFIG_BIT_MASK_CARRIER);
   cfg->carrier_config.dl_bandwidth = get_supported_bw_mhz(mac->frequency_range, bw_index);
 
   uint64_t dl_bw_khz = (12 * frequencyInfoDL->scs_SpecificCarrierList.list.array[0]->carrierBandwidth) *
@@ -185,11 +186,13 @@ static void config_common_ue_sa(NR_UE_MAC_INST_t *mac, NR_ServingCellConfigCommo
 
   frame_type_t frame_type = get_frame_type(mac->nr_band, get_softmodem_params()->numerology);
   // cell config
+  SETBIT(cfg->config_mask, PHY_CONFIG_BIT_MASK_CELL);
   cfg->cell_config.phy_cell_id = mac->physCellId;
   cfg->cell_config.frame_duplex_type = frame_type;
   cfg->cell_config.N_TA_offset = get_ta_offset(scc->n_TimingAdvanceOffset);
 
   // SSB config
+  SETBIT(cfg->config_mask, PHY_CONFIG_BIT_MASK_SSB);
   cfg->ssb_config.ss_pbch_power = scc->ss_PBCH_BlockPower;
   cfg->ssb_config.scs_common = get_softmodem_params()->numerology;
 
@@ -217,10 +220,12 @@ static void config_common_ue_sa(NR_UE_MAC_INST_t *mac, NR_ServingCellConfigCommo
                          &mac->frame_structure);
 
   // TDD Table Configuration
+  SETBIT(cfg->config_mask, PHY_CONFIG_BIT_MASK_TDD);
   if (cfg->cell_config.frame_duplex_type == TDD)
     set_tdd_config_nr_ue(&cfg->tdd_table, &mac->frame_structure);
 
   // PRACH configuration
+  SETBIT(cfg->config_mask, PHY_CONFIG_BIT_MASK_PRACH);
   uint8_t nb_preambles = 64;
   NR_RACH_ConfigCommon_t *rach_ConfigCommon = scc->uplinkConfigCommon->initialUplinkBWP.rach_ConfigCommon->choice.setup;
   if(rach_ConfigCommon->totalNumberOfRA_Preambles != NULL)
@@ -393,6 +398,7 @@ static void config_common_ue(NR_UE_MAC_INST_t *mac, NR_ServingCellConfigCommon_t
 
   AssertFatal(scc->downlinkConfigCommon, "Not expecting downlinkConfigCommon to be NULL here\n");
   NR_FrequencyInfoDL_t *frequencyInfoDL = scc->downlinkConfigCommon->frequencyInfoDL;
+  SETBIT(cfg->config_mask, PHY_CONFIG_BIT_MASK_CARRIER);
   if (frequencyInfoDL) { // NeedM for inter-freq handover
     mac->nr_band = *frequencyInfoDL->frequencyBandList.list.array[0];
     frame_type = get_frame_type(mac->nr_band, get_softmodem_params()->numerology);
@@ -452,11 +458,13 @@ static void config_common_ue(NR_UE_MAC_INST_t *mac, NR_ServingCellConfigCommon_t
   }
 
   // cell config
+  SETBIT(cfg->config_mask, PHY_CONFIG_BIT_MASK_CELL);
   cfg->cell_config.phy_cell_id = *scc->physCellId;
   cfg->cell_config.frame_duplex_type = frame_type;
   cfg->cell_config.N_TA_offset = get_ta_offset(scc->n_TimingAdvanceOffset);
 
   // SSB config
+  SETBIT(cfg->config_mask, PHY_CONFIG_BIT_MASK_SSB);
   cfg->ssb_config.ss_pbch_power = scc->ss_PBCH_BlockPower;
   cfg->ssb_config.scs_common = *scc->ssbSubcarrierSpacing;
 
@@ -503,10 +511,12 @@ static void config_common_ue(NR_UE_MAC_INST_t *mac, NR_ServingCellConfigCommon_t
                          &mac->frame_structure);
 
   // TDD Table Configuration
+  SETBIT(cfg->config_mask, PHY_CONFIG_BIT_MASK_TDD);
   if (cfg->cell_config.frame_duplex_type == TDD)
     set_tdd_config_nr_ue(&cfg->tdd_table, &mac->frame_structure);
 
   // PRACH configuration
+  SETBIT(cfg->config_mask, PHY_CONFIG_BIT_MASK_PRACH);
   uint8_t nb_preambles = 64;
   if (scc->uplinkConfigCommon && scc->uplinkConfigCommon->initialUplinkBWP
       && scc->uplinkConfigCommon->initialUplinkBWP->rach_ConfigCommon) { // all NeedM
