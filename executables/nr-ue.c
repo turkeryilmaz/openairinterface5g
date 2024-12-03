@@ -449,30 +449,34 @@ static void UE_synch(void *arg) {
         if(UE->target_Nid_cell != -1)
           UE->ho_flag = 2;
         freq_offset = UE->common_vars.freq_offset; // frequency offset computed with pss in initial sync
-        hw_slot_offset = ((UE->rx_offset<<1) / UE->frame_parms.samples_per_subframe * UE->frame_parms.slots_per_subframe) +
-                         round((float)((UE->rx_offset<<1) % UE->frame_parms.samples_per_subframe)/UE->frame_parms.samples_per_slot0);
 
-        // rerun with new cell parameters and frequency-offset
-        // todo: the freq_offset computed on DL shall be scaled before being applied to UL
-        nr_rf_card_config_freq(&openair0_cfg[UE->rf_map.card],
-                               (uint64_t)openair0_cfg[UE->rf_map.card].tx_freq[0],
-                               (uint64_t)openair0_cfg[UE->rf_map.card].rx_freq[0],
-                               freq_offset);
+        extern int fdopplerComp;
+        if (fdopplerComp == 0) {
+          hw_slot_offset = ((UE->rx_offset<<1) / UE->frame_parms.samples_per_subframe * UE->frame_parms.slots_per_subframe) +
+                           round((float)((UE->rx_offset<<1) % UE->frame_parms.samples_per_subframe)/UE->frame_parms.samples_per_slot0);
 
-        LOG_I(PHY,
-              "Got synch: hw_slot_offset %d, carrier off %d Hz, rxgain %f (DL %f Hz, UL %f Hz)\n",
-              hw_slot_offset,
-              freq_offset,
-              openair0_cfg[UE->rf_map.card].rx_gain[0],
-              openair0_cfg[UE->rf_map.card].rx_freq[0],
-              openair0_cfg[UE->rf_map.card].tx_freq[0]);
+          // rerun with new cell parameters and frequency-offset
+          // todo: the freq_offset computed on DL shall be scaled before being applied to UL
+          nr_rf_card_config_freq(&openair0_cfg[UE->rf_map.card],
+                                 (uint64_t)openair0_cfg[UE->rf_map.card].tx_freq[0],
+                                 (uint64_t)openair0_cfg[UE->rf_map.card].rx_freq[0],
+                                 freq_offset);
 
-        UE->rfdevice.trx_set_freq_func(&UE->rfdevice, &openair0_cfg[0]);
+          LOG_I(PHY,
+                "Got synch: hw_slot_offset %d, carrier off %d Hz, rxgain %f (DL %f Hz, UL %f Hz)\n",
+                hw_slot_offset,
+                freq_offset,
+                openair0_cfg[UE->rf_map.card].rx_gain[0],
+                openair0_cfg[UE->rf_map.card].rx_freq[0],
+                openair0_cfg[UE->rf_map.card].tx_freq[0]);
 
-        LOG_A(PHY,
-              "Adjusting hardware frequency offset to %d Hz (computed SSB offset %d Hz)\n",
-              (int)((double)dl_carrier - openair0_cfg[UE->rf_map.card].rx_freq[0]),
-              UE->common_vars.freq_offset);
+          UE->rfdevice.trx_set_freq_func(&UE->rfdevice, &openair0_cfg[0]);
+
+          LOG_A(PHY,
+                "Adjusting hardware frequency offset to %d Hz (computed SSB offset %d Hz)\n",
+                (int)((double)dl_carrier - openair0_cfg[UE->rf_map.card].rx_freq[0]),
+                UE->common_vars.freq_offset);
+        }
 
         if (abs(UE->common_vars.freq_offset) > abs(UE->frame_parms.subcarrier_spacing / 100)) {
           LOG_W(PHY,
@@ -483,6 +487,9 @@ static void UE_synch(void *arg) {
           UE->common_vars.freq_offset = 0;
           return;
         }
+
+        if (fdopplerComp == 1)
+          UE->DopplerEst = UE->common_vars.freq_offset;
 
         // Reset frequency offset after applying new frequency with nr_rf_card_config_freq
         UE->common_vars.freq_offset = 0;
