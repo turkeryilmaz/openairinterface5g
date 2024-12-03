@@ -457,7 +457,7 @@ static void RU_write(nr_rxtx_thread_data_t *rxtxD, bool sl_tx_action)
 
   radio_tx_burst_flag_t flags = TX_BURST_INVALID;
 
-  if (UE->received_config_request) {
+  if (GETBIT(cfg->config_mask, PHY_CONFIG_BIT_MASK_TDD)) {
     if (openair0_cfg[0].duplex_mode == duplex_mode_FDD || get_softmodem_params()->continuous_tx) {
       flags = TX_BURST_MIDDLE;
     // In case of Sidelink, USRP write needed only in case transmission
@@ -956,16 +956,13 @@ void *UE_thread(void *arg)
     curMsg.proc.nr_slot_tx  = (absolute_slot + DURATION_RX_TO_TX) % nb_slot_frame;
     curMsg.proc.frame_rx    = (absolute_slot / nb_slot_frame) % MAX_FRAME_NUMBER;
     curMsg.proc.frame_tx    = ((absolute_slot + DURATION_RX_TO_TX) / nb_slot_frame) % MAX_FRAME_NUMBER;
-    if (UE->received_config_request) {
-      if (UE->sl_mode) {
-        curMsg.proc.rx_slot_type = sl_nr_ue_slot_select(sl_cfg, curMsg.proc.nr_slot_rx, TDD);
-        curMsg.proc.tx_slot_type = sl_nr_ue_slot_select(sl_cfg, curMsg.proc.nr_slot_tx, TDD);
-      } else {
-        curMsg.proc.rx_slot_type = nr_ue_slot_select(cfg, curMsg.proc.nr_slot_rx);
-        curMsg.proc.tx_slot_type = nr_ue_slot_select(cfg, curMsg.proc.nr_slot_tx);
-      }
-    }
-    else {
+    if (cfg->config_mask == 0xf && UE->sl_mode) {
+      curMsg.proc.rx_slot_type = sl_nr_ue_slot_select(sl_cfg, curMsg.proc.nr_slot_rx, TDD);
+      curMsg.proc.tx_slot_type = sl_nr_ue_slot_select(sl_cfg, curMsg.proc.nr_slot_tx, TDD);
+    } else if (GETBIT(cfg->config_mask, PHY_CONFIG_BIT_MASK_TDD)) {
+      curMsg.proc.rx_slot_type = nr_ue_slot_select(cfg, curMsg.proc.nr_slot_rx);
+      curMsg.proc.tx_slot_type = nr_ue_slot_select(cfg, curMsg.proc.nr_slot_tx);
+    } else {
       curMsg.proc.rx_slot_type = NR_DOWNLINK_SLOT;
       curMsg.proc.tx_slot_type = NR_DOWNLINK_SLOT;
     }
