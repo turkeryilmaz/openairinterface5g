@@ -415,7 +415,6 @@ unsigned char sign(int8_t x) {
 const uint8_t pbch_deinterleaving_pattern[32] = {28, 0, 31, 30, 7,  29, 25, 27, 5,  8,  24, 9,  10, 11, 12, 13,
                                                  1,  4, 3,  14, 15, 16, 17, 2,  26, 18, 19, 20, 21, 22, 6,  23};
 
-static int DopplerEstTot = 0;
 int nr_rx_pbch(PHY_VARS_NR_UE *ue,
                UE_nr_rxtx_proc_t *proc,
                int estimateSz,
@@ -501,7 +500,6 @@ int nr_rx_pbch(PHY_VARS_NR_UE *ue,
     if (symbol == 3){
       //For the PI controller
       static int64_t Doppler_I_Ctrl = 0; //Integral controller for Doppler
-      static int64_t DopplerErrLast = (int64_t)1<<60; //Doppler from last estimation
       int64_t DopplerErr = 0;
 
       c16_t *dlChEstSymb1 = &dl_ch_estimates_dmrs_symb1[0][0];
@@ -521,24 +519,18 @@ int nr_rx_pbch(PHY_VARS_NR_UE *ue,
 
       if(!ue->is_synchronized)         // this might  be as a handover process is being executed, then reset the static variables
       {
-        DopplerEstTot = 0;
         Doppler_I_Ctrl = 0;
-        DopplerErrLast = (int64_t)1<<60;
       }
 
       if ((ue->is_synchronized) && (DopplerEst > 35 || DopplerEst < -35 ))
       { 
         // PI Controller
         DopplerErr = (int64_t)DopplerEst;
-        if ( DopplerErrLast == (int64_t)1<<60 ) //Initialization of DopplerErrLast
-          DopplerErrLast = DopplerErr;
         Doppler_I_Ctrl += DopplerErr;
-        // ue->DopplerEst = (int32_t)(DopplerErr*P_ScalingFN/P_ScalingFD + Doppler_I_Ctrl*I_ScalingFN/I_ScalingFD +
-        //   (DopplerErr-DopplerErrLast)*D_ScalingFN/D_ScalingFD); //PID controller
-        ue->DopplerEst = (int32_t)( (DopplerErr * FO_PScaling) + (Doppler_I_Ctrl * FO_IScaling) ); //PI controller
-        DopplerErrLast = DopplerErr;
-        ue->DopplerEstTot += (float)ue->DopplerEst;
-        DopplerEstTot += ue->DopplerEst;
+        ue->DopplerEst += (int32_t)( (DopplerErr * FO_PScaling) + (Doppler_I_Ctrl * FO_IScaling) ); //PI controller
+        extern int commonDoppler;
+        ue->DopplerEstTot = (float)(commonDoppler + ue->DopplerEst);
+        LOG_D(PHY, "Estimated DL Doppler %d Hz, current estimated Doppler error %ld Hz, accumulated Doppler Error %ld Hz\n", commonDoppler + ue->DopplerEst, DopplerErr, Doppler_I_Ctrl);
       } 
 	  
 #ifdef DEBUG_PBCH
@@ -548,7 +540,7 @@ int nr_rx_pbch(PHY_VARS_NR_UE *ue,
             DopplerEst, ue->DopplerEst, channelLevel, channelLevelLog, outputShift, Dot_Prod_Res.r, Dot_Prod_Res.i, Res_phase, rx_gain);
       LOG_I(PHY, "DopplerEstMax: %f, PScaling: %f, IScaling: %f\n", DopplerEstMax, PScaling, IScaling);
 	    extern int commonDoppler;
-	    LOG_I(PHY, "commonDoppler: %d, DopplerEst: %f, ue->DopplerEst: %d, DopplerEstTot: %d\n", commonDoppler, DopplerEst, ue->DopplerEst, DopplerEstTot);
+	    LOG_I(PHY, "commonDoppler: %d, DopplerEst: %f, ue->DopplerEst: %d, DopplerEstTot: %d\n", commonDoppler, DopplerEst, ue->DopplerEst, ue->DopplerEstTot);
 #endif
     }
 
