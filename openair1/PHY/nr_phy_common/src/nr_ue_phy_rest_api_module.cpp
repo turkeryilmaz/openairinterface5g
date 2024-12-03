@@ -19,6 +19,7 @@
  *      contact@openairinterface.org
  */
 
+#include "nlohmann/json.hpp"
 #include <crow.h>
 #include <vector>
 #include "nr_ue_phy_rest_api_module.h"
@@ -26,59 +27,51 @@
 #include "PHY/defs_nr_UE.h"
 #include "time_meas.h"
 
-
 extern "C" {
-extern PHY_VARS_NR_UE*** PHY_vars_UE_g;
+extern PHY_VARS_NR_UE ***PHY_vars_UE_g;
 }
 namespace nr_ue::rest_api::phy {
-crow::json::wvalue generate_meas_json(time_stats_t *stat)
+nlohmann::json generate_meas_json(time_stats_t *stat)
 {
-  return crow::json::wvalue({{"name", std::string(stat->meas_name)},
-                             {"count", std::uint64_t(stat->trials)},
-                             {"uS", (float)(stat->diff / (cpu_freq_GHz * 1000))}});
+  return nlohmann::json({{"name", std::string(stat->meas_name)},
+                         {"count", std::uint64_t(stat->trials)},
+                         {"uS", (float)(stat->diff / (cpu_freq_GHz * 1000))}});
 }
 
 void register_routes(crow::Blueprint *bp)
 {
-  bp->new_rule_dynamic("/healthcheck")
-  ([](){
-    return crow::response(std::string("OK"));
-  });
-  bp->new_rule_dynamic("/cpumeas/<int>")
-  ([](int ue_index){
+  bp->new_rule_dynamic("/healthcheck")([]() { return crow::response(crow::status::OK, std::string("OK")); });
+  bp->new_rule_dynamic("/cpumeas/<int>")([](int ue_index) {
     if (ue_index != 0) {
       return crow::response(crow::status::BAD_REQUEST);
     }
-    std::vector<crow::json::wvalue> response_data;
+    nlohmann::json response_data = nlohmann::json::array();
     PHY_VARS_NR_UE *phy_vars_nr_ue = PHY_vars_UE_g[ue_index][0];
-    nr_ue_phy_cpu_stat_t* phy_cpu_stats = &phy_vars_nr_ue->phy_cpu_stats;
+    nr_ue_phy_cpu_stat_t *phy_cpu_stats = &phy_vars_nr_ue->phy_cpu_stats;
     for (auto meas_index = 0; meas_index < MAX_CPU_STAT_TYPE; meas_index++) {
       response_data.push_back(generate_meas_json(&phy_cpu_stats->cpu_time_stats[meas_index]));
     }
-    return crow::response(crow::json::wvalue(response_data));
+    return crow::response(crow::status::OK, response_data.dump());
   });
 
-  bp->new_rule_dynamic("/cpumeas/<int>/<int>")
-  ([](int ue_index, int meas_index) {
+  bp->new_rule_dynamic("/cpumeas/<int>/<int>")([](int ue_index, int meas_index) {
     if (ue_index != 0) {
       return crow::response(crow::status::BAD_REQUEST);
     }
     if (meas_index < 0 || meas_index >= MAX_CPU_STAT_TYPE) {
-        return crow::response(crow::status::BAD_REQUEST);
+      return crow::response(crow::status::BAD_REQUEST);
     }
     PHY_VARS_NR_UE *phy_vars_nr_ue = PHY_vars_UE_g[ue_index][0];
-    nr_ue_phy_cpu_stat_t* phy_cpu_stats = &phy_vars_nr_ue->phy_cpu_stats;
-    return crow::response(generate_meas_json(&phy_cpu_stats->cpu_time_stats[meas_index]));
+    nr_ue_phy_cpu_stat_t *phy_cpu_stats = &phy_vars_nr_ue->phy_cpu_stats;
+    return crow::response(generate_meas_json(&phy_cpu_stats->cpu_time_stats[meas_index]).dump());
   });
 
-  bp->new_rule_dynamic("/cpumeas/enable")
-  ([]() {
+  bp->new_rule_dynamic("/cpumeas/enable")([]() {
     cpumeas(CPUMEAS_ENABLE);
     return crow::response(crow::status::OK, std::string("OK"));
   });
 
-  bp->new_rule_dynamic("/cpumeas/disable")
-  ([]() {
+  bp->new_rule_dynamic("/cpumeas/disable")([]() {
     cpumeas(CPUMEAS_DISABLE);
     return crow::response(crow::status::OK, std::string("OK"));
   });

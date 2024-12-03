@@ -2371,6 +2371,21 @@ if(ENABLE_TESTS)
   endif()
 endif()
 
+
+find_package(nlohmann_json)
+if (NOT nlohmann_json_FOUND)
+  message(STATUS "nlohmann_json is not found, will be downloaded automatically. To prevent that install nlohmann_json on your system (nlohmann-json3-dev)")
+  CPMAddPackage("gh:nlohmann/json@3.11.3")
+else()
+  if (NOT TARGET nlohmann_json::nlohmann_json)
+    if (TARGET nlohman_json)
+      add_library(nlohmann_json::nlohmann_json ALIAS nlohmann_json)
+    else()
+      message(FATAL_ERROR "Your nlohmann_json installation is faulty as it doesn't define any of the expected targets")
+    endif()
+  endif()
+endif()
+
 add_subdirectory(common)
 add_subdirectory(doc)
 add_subdirectory(nfapi)
@@ -2379,19 +2394,3 @@ add_subdirectory(openair2)
 add_subdirectory(openair3)
 add_subdirectory(radio)
 
-CPMAddPackage("gh:chriskohlhoff/asio#asio-1-18-1@1.18.1")
-if (asio_ADDED)
-  # asio has no CMake support, so we create our own target
-  add_library(asio INTERFACE)
-  add_library(asio::asio ALIAS asio)
-  target_include_directories(asio SYSTEM INTERFACE ${asio_SOURCE_DIR}/asio/include)
-  target_compile_definitions(asio INTERFACE ASIO_STANDALONE)
-endif()
-
-CPMAddPackage(
-  NAME Crow
-  GIT_REPOSITORY https://github.com/CrowCpp/Crow.git
-  GIT_TAG v1.2.0
-  OPTIONS
-    "CROW_INSTALL OFF"
-)

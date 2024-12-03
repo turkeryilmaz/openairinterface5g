@@ -4,7 +4,7 @@ add_library(rfsimulator MODULE
             ../../openair1/PHY/TOOLS/signal_energy.c
             simulator_rest_api.cpp
 )
-target_link_libraries(rfsimulator PRIVATE SIMU HASHTABLE Crow::Crow)
+target_link_libraries(rfsimulator PRIVATE SIMU HASHTABLE Crow::Crow nlohmann_json::nlohmann_json)
 set_target_properties(rfsimulator PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 
 add_executable(replay_node stored_node.c)
