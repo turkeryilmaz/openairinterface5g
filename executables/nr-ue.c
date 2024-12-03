@@ -40,7 +40,6 @@
 #include "openair1/PHY/TOOLS/phy_scope_interface.h"
 #include "PHY/MODULATION/nr_modulation.h"
 #include "instrumentation.h"
-#include "nr_ue_rest_api_c.h"
 
 /*
  *  NR SLOT PROCESSING SEQUENCE
@@ -1064,6 +1063,4 @@ void init_NR_UE_threads(PHY_VARS_NR_UE *UE) {
     sprintf(thread_name, "L1_UE_stats_%d", UE->Mod_id);
     threadCreate(&stat_pthread, nrL1_UE_stats_thread, UE, thread_name, -1, OAI_PRIORITY_RT_LOW);
   }
-  pthread_t rest_api_thread;
-  threadCreate(&rest_api_thread, nr_ue_rest_api_thread, NULL, "nr_ue_rest_api", -1, OAI_PRIORITY_RT_LOW);
 }

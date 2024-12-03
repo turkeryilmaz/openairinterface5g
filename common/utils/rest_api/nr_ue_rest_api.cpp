@@ -21,21 +21,24 @@
 
 #include <crow.h>
 #include "nr_ue_phy_rest_api_module.h"
+#include "system.h"
 #define PORT 11101
 
-void api_run(void);
+void* api_run(void*);
 
 extern "C" {
 #include "common/utils/load_module_shlib.h"
-void nr_ue_rest_api_thread(void* arg)
+void nr_ue_rest_api_autoinit(void* arg)
 {
-  api_run();
+  char thread_name[] = "nr_ue_rest_api";
+  pthread_t rest_api_thread;
+  threadCreate(&rest_api_thread, api_run, arg, thread_name, -1, OAI_PRIORITY_RT_LOW);
 }
 }
 
 typedef void (*regsiter_routes_ftype)(crow::Blueprint* bp);
 
-void api_run(void)
+void* api_run(void*)
 {
   crow::SimpleApp ue_rest_api;
   ue_rest_api.loglevel(crow::LogLevel::Warning);
@@ -56,4 +59,5 @@ void api_run(void)
   }
 
   ue_rest_api.port(PORT).run();
+  return NULL;
 }

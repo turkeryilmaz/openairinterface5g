@@ -539,6 +539,10 @@ int main(int argc, char **argv)
     printf("UE threads created by %ld\n", gettid());
   }
 
+  if (IS_SOFTMODEM_RESTAPI_ENABLED) {
+    load_module_shlib("nr_ue_rest_api",NULL,0,NULL);
+  }
+
   // wait for end of program
   printf("TYPE <CTRL-C> TO TERMINATE\n");
 

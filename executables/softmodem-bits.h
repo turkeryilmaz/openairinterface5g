@@ -39,6 +39,7 @@
 #define BIT_23       (1 << 23)
 #define BIT_24       (1 << 24)
 #define BIT_25       (1 << 25)
+#define BIT_26       (1 << 26)
 
 #define SOFTMODEM_NOS1_BIT                  BIT_0
 #define SOFTMODEM_NOKRNMOD_BIT              BIT_1
@@ -56,6 +57,7 @@
 #define SOFTMODEM_5GUE_BIT                  BIT_23
 #define SOFTMODEM_NOSTATS_BIT               BIT_24
 #define SOFTMODEM_IMSCOPE_BIT               BIT_25
+#define SOFTMODEM_RESTAPI_BIT               BIT_26
 // clang-format on
 
 #endif // SOFTMODEM_BITS_H

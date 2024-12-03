@@ -2094,7 +2094,7 @@ target_link_libraries(nr-uesoftmodem PRIVATE
   nr_rrc SECURITY UTIL HASHTABLE SCHED_RU_LIB SCHED_NR_UE_LIB
   PHY_COMMON PHY_NR_COMMON PHY_NR_UE NR_L2_UE L2_UE_LTE_NR MAC_NR_COMMON NFAPI_LIB NFAPI_PNF_LIB
   NFAPI_USER_LIB MISC_NFAPI_NR_LIB
-  ITTI LIB_5GNAS_GNB LIB_NAS_SIMUE ${NAS_SIM_LIB} SIMU  nr_ue_rest_api shlib_loader
+  ITTI LIB_5GNAS_GNB LIB_NAS_SIMUE ${NAS_SIM_LIB} SIMU shlib_loader
   -Wl,--end-group z dl)
 
 target_link_libraries(nr-uesoftmodem PRIVATE pthread m CONFIG_LIB rt nr_ue_phy_meas)
@@ -2379,8 +2379,6 @@ add_subdirectory(openair2)
 add_subdirectory(openair3)
 add_subdirectory(radio)
 
-
-#CPMAddPackage("gh:chriskohlhoff/asio#asio-1.31.0")
 CPMAddPackage("gh:chriskohlhoff/asio#asio-1-18-1@1.18.1")
 if (asio_ADDED)
   # asio has no CMake support, so we create our own target
@@ -2390,9 +2388,6 @@ if (asio_ADDED)
   target_compile_definitions(asio INTERFACE ASIO_STANDALONE)
 endif()
 
-
-#CPMAddPackage("gh:CrowCpp/Crow#v1.2.0")
-
 CPMAddPackage(
   NAME Crow
   GIT_REPOSITORY https://github.com/CrowCpp/Crow.git
@@ -2400,4 +2395,3 @@ CPMAddPackage(
   OPTIONS
     "CROW_INSTALL OFF"
 )
-add_subdirectory(executables)
