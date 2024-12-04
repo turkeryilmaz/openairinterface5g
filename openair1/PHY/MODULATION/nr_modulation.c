@@ -26,7 +26,7 @@
 // #define DEBUG_DLSCH_PRECODING_PRINT_WITH_TRIVIAL // TODO: For debug, to be removed if want to merge to develop
 //#define DEBUG_LAYER_MAPPING
 #define USE_NEON
-
+//#define USE_GATHER
 // Table 6.3.1.5-1 Precoding Matrix W 1 layer 2 antenna ports 'n' = -1 and 'o' = -j
 const char nr_W_1l_2p[6][2][1] = {
     {{'1'}, {'0'}}, // pmi 0
@@ -260,10 +260,12 @@ void nr_layer_mapping(int nbCodes,
 
     case 2: {
 #if defined(__AVX512BW__)
-      int i,j;
+      int i=0;
       __m512i perm2a = _mm512_set_epi32(30, 28, 26, 24, 22, 20, 18, 16, 14, 12, 10, 8, 6, 4, 2, 0);
       __m512i perm2b = _mm512_set_epi32(31, 29, 27, 25, 23, 21, 19, 17, 15, 13, 11, 9, 7, 5, 3, 1);
+#ifndef USE_GATHER
       __m512i a, b;
+      int j;
       for (i = 0, j = 0; i < n_symbs >> 4; i += 2, j++) {
         a = ((__m512i *)mod_symbs[0])[i];
         b = ((__m512i *)mod_symbs[0])[i + 1];
@@ -276,6 +278,16 @@ void nr_layer_mapping(int nbCodes,
           tx_layers[1][i2 >> 1] = mod_symbs[0][i2 + 1];
         }
       }
+#else
+  for (i=0; i <n_symbs; i+=32) {
+    *(__m512i *)(tx_layers[0]+i/2)=_mm512_i32gather_epi32(perm2a, mod_symbs[0]+i, 4);
+    *(__m512i *)(tx_layers[1]+i/2)=_mm512_i32gather_epi32(perm2b, mod_symbs[0]+i, 4);
+  }
+  for (; i < n_symbs; i += 2) {
+    tx_layers[0][i >> 1] = mod_symbs[0][i];
+    tx_layers[1][i >> 1] = mod_symbs[0][i + 1];
+  }
+#endif
 #elif defined(__aarch64__)
       int i;
 #ifdef USE_NEON
