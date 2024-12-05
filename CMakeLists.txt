@@ -299,6 +299,7 @@ message(STATUS "Selected KPM Version: ${KPM_VERSION}")
 
 
 add_boolean_option(ENABLE_IMSCOPE OFF "Enable phy scope based on imgui" OFF)
+add_boolean_option(ENABLE_RESTAPI OFF "Build the REST API modules" OFF)
 
 ##################################################
 # ASN.1 grammar C code generation & dependencies #
@@ -2372,16 +2373,19 @@ if(ENABLE_TESTS)
 endif()
 
 
-find_package(nlohmann_json)
-if (NOT nlohmann_json_FOUND)
-  message(STATUS "nlohmann_json is not found, will be downloaded automatically. To prevent that install nlohmann_json on your system (nlohmann-json3-dev)")
-  CPMAddPackage("gh:nlohmann/json@3.11.3")
-else()
-  if (NOT TARGET nlohmann_json::nlohmann_json)
-    if (TARGET nlohman_json)
-      add_library(nlohmann_json::nlohmann_json ALIAS nlohmann_json)
-    else()
-      message(FATAL_ERROR "Your nlohmann_json installation is faulty as it doesn't define any of the expected targets")
+if (ENABLE_RESTAPI)
+  # Find package defined here as the order of execution of cmake commands matters: this needs to happen before any
+  find_package(nlohmann_json)
+  if (NOT nlohmann_json_FOUND)
+    message(STATUS "nlohmann_json is not found, will be downloaded automatically. To prevent that install nlohmann_json on your system (nlohmann-json3-dev)")
+    CPMAddPackage("gh:nlohmann/json@3.11.3")
+  else()
+    if (NOT TARGET nlohmann_json::nlohmann_json)
+      if (TARGET nlohman_json)
+        add_library(nlohmann_json::nlohmann_json ALIAS nlohmann_json)
+      else()
+        message(FATAL_ERROR "Your nlohmann_json installation is faulty as it doesn't define any of the expected targets")
+      endif()
     endif()
   endif()
 endif()
