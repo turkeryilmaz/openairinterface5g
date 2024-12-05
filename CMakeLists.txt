@@ -2378,3 +2378,7 @@ add_subdirectory(openair1)
 add_subdirectory(openair2)
 add_subdirectory(openair3)
 add_subdirectory(radio)
+
+CPMAddPackage("gh:fastfloat/fast_float#v7.0.0")
+set(CMAKE_INCLUDE_PATH ${fast_float_SOURCE_DIR}/include)
+CPMAddPackage("gh:facebook/folly#v2024.12.02.00")
