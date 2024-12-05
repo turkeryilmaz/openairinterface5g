@@ -45,8 +45,9 @@ extern "C" void register_routes(crow::Blueprint *bp)
   bp->new_rule_dynamic("/channel/")([]() {
     nlohmann::json response_data = nlohmann::json::array();
     for (auto buffer_index = 0; buffer_index < MAX_FD_RFSIMU; buffer_index++) {
-      if (rfsimulator_state->buf[buffer_index].conn_sock != -1 && rfsimulator_state->buf[buffer_index].channel_model != nullptr) {
-        response_data.push_back(generate_channel_json(rfsimulator_state->buf[buffer_index].channel_model, buffer_index));
+      auto buf = &rfsimulator_state->buf[buffer_index];
+      if (buf->conn_sock != -1 && buf->channel_model != nullptr) {
+        response_data.push_back(generate_channel_json(buf->channel_model, buffer_index));
       }
     }
     return crow::response(crow::status::OK, response_data.dump());
@@ -63,17 +64,15 @@ extern "C" void register_routes(crow::Blueprint *bp)
         }
 
         for (auto buffer_index = 0; buffer_index < MAX_FD_RFSIMU; buffer_index++) {
-          if (rfsimulator_state->buf[buffer_index].conn_sock != -1
-              && rfsimulator_state->buf[buffer_index].channel_model != nullptr) {
-            if (channel_name.compare(rfsimulator_state->buf[buffer_index].channel_model->model_name) == 0) {
+          auto buf = &rfsimulator_state->buf[buffer_index];
+          if (buf->conn_sock != -1 && buf->channel_model != nullptr) {
+            if (channel_name.compare(buf->channel_model->model_name) == 0) {
               if (req.method == crow::HTTPMethod::GET) {
-                return crow::response(generate_channel_json(rfsimulator_state->buf[buffer_index].channel_model,
-                                                            rfsimulator_state->buf[buffer_index].conn_sock)
-                                          .dump());
+                return crow::response(generate_channel_json(buf->channel_model, buf->conn_sock).dump());
               } else {
                 const char path_loss_db[] = "path_loss_dB";
                 if (req_json.contains(path_loss_db)) {
-                  rfsimulator_state->buf[buffer_index].channel_model->path_loss_dB = req_json[path_loss_db];
+                  buf->channel_model->path_loss_dB = req_json[path_loss_db];
                 }
                 return crow::response(crow::status::OK, std::string("OK"));
               }
