@@ -1378,7 +1378,7 @@ add_library (GTPV1U
   ${OPENAIR3_DIR}/ocp-gtpu/gtp_itf.cpp
   )
 target_link_libraries(GTPV1U PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
-target_link_libraries(GTPV1U PRIVATE SIMU)
+target_link_libraries(GTPV1U PRIVATE SIMU UTIL)
 include_directories(${OPENAIR3_DIR}/ocp-gtp)
 
 set (MME_APP_SRC
