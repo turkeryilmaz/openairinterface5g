@@ -485,8 +485,8 @@ int get_pusch_tx_power_ue(NR_UE_MAC_INST_t *mac,
   AssertFatal(!has_pusch_power_control_config || pusch_Config->pusch_PowerControl->sri_PUSCH_MappingToAddModList == NULL,
               "SRI-PUSCH-PowerControl handling not implemented\n");
   */
-if (has_pusch_power_control_config && pusch_Config->pusch_PowerControl->sri_PUSCH_MappingToAddModList)
-  LOG_E(PHY,"SRI-PUSCH-PowerControl handling not implemented\n")
+  if (has_pusch_power_control_config && pusch_Config->pusch_PowerControl->sri_PUSCH_MappingToAddModList)
+    LOG_E(PHY,"SRI-PUSCH-PowerControl handling not implemented\n");
   int P_O_NOMINAL_PUSCH;
   float alpha;
   const float alpha_factor_table[8] = {0.0f, 0.4f, 0.5f, 0.6f, 0.7f, 0.8f, 0.9f, 1.0f};
