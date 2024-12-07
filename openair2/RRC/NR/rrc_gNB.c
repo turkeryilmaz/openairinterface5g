@@ -1768,6 +1768,7 @@ void rrc_gNB_process_initial_ul_rrc_message(sctp_assoc_t assoc_id, const f1ap_in
     LOG_E(NR_RRC, " FATAL Error in receiving CCCH\n");
     return;
   }
+  xer_fprint(stdout, &asn_DEF_NR_UL_CCCH_Message, ul_ccch_msg);
 
   if (ul_ccch_msg->message.present == NR_UL_CCCH_MessageType_PR_c1) {
     switch (ul_ccch_msg->message.choice.c1->present) {
