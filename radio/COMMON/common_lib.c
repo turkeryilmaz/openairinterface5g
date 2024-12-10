@@ -94,12 +94,12 @@ int load_lib(openair0_device *device,
              eth_params_t *cfg,
              uint8_t flag)
 {
-  loader_shlibfunc_t shlib_fdesc[1];
+  loader_shlibfunc_t shlib_fdesc[2];
+  int num_fdesc = 1;
   int ret=0;
   char *deflibname=OAI_RF_LIBNAME;
   openair0_cfg->command_line_sample_advance = get_softmodem_params()->command_line_sample_advance;
   openair0_cfg->recplay_mode = read_recplayconfig(&(openair0_cfg->recplay_conf),&(device->recplay_state));
-
   if (openair0_cfg->recplay_mode == RECPLAY_RECORDMODE) {
   	  set_softmodem_optmask(SOFTMODEM_RECRECORD_BIT);  // softmodem has to know we use the iqrecorder to workaround randomized algorithms
   }
@@ -110,6 +110,8 @@ int load_lib(openair0_device *device,
   } else if (IS_SOFTMODEM_RFSIM && flag == RAU_LOCAL_RADIO_HEAD) {
 	  deflibname=OAI_RFSIM_LIBNAME;
 	  shlib_fdesc[0].fname="device_init";
+    shlib_fdesc[1].fname = "register_routes";
+    num_fdesc = 2;
   } else if (flag == RAU_LOCAL_RADIO_HEAD) {
 	  if (IS_SOFTMODEM_RFSIM)
 		  deflibname="rfsimulator";
@@ -132,7 +134,7 @@ int load_lib(openair0_device *device,
 
   config_get(config_get_if(), device_params, numparams, DEVICE_SECTION);
 
-  ret=load_module_shlib(devname,shlib_fdesc,1,NULL);
+  ret=load_module_shlib(devname,shlib_fdesc,num_fdesc,NULL);
   AssertFatal( (ret >= 0),
   	           "Library %s couldn't be loaded\n",devname);
 
