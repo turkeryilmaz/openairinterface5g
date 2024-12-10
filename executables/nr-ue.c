@@ -547,8 +547,8 @@ void processSlotTX(void *arg)
 
   int slots_per_frame = (UE->sl_mode == 2) ? UE->SL_UE_PHY_PARAMS.sl_frame_params.slots_per_frame
                                            : UE->frame_parms.slots_per_frame;
-  int next_slot = (proc->nr_slot_tx + 1) % slots_per_frame;
-  dynamic_barrier_join(&UE->process_slot_tx_barriers[next_slot]);
+  int next_slot_and_frame = proc->nr_slot_tx + 1 + proc->frame_tx * slots_per_frame;
+  dynamic_barrier_join(&UE->process_slot_tx_barriers[next_slot_and_frame % NUM_PROCESS_SLOT_TX_BARRIERS]);
   RU_write(rxtxD, sl_tx_action);
   TracyCZoneEnd(ctx);
 }
@@ -803,8 +803,7 @@ void *UE_thread(void *arg)
   int absolute_slot = 0, decoded_frame_rx = MAX_FRAME_NUMBER - 1, trashed_frames = 0;
   int tx_wait_for_dlsch[NR_MAX_SLOTS_PER_FRAME];
 
-  int num_ind_fifo = nb_slot_frame;
-  for(int i = 0; i < num_ind_fifo; i++) {
+  for(int i = 0; i < NUM_PROCESS_SLOT_TX_BARRIERS; i++) {
     dynamic_barrier_init(&UE->process_slot_tx_barriers[i]);
   }
   int shiftForNextFrame = 0;
@@ -919,7 +918,7 @@ void *UE_thread(void *arg)
       }
       // We have resynchronized, maybe after RF loss so we need to purge any existing context
       memset(tx_wait_for_dlsch, 0, sizeof(tx_wait_for_dlsch));
-      for (int i = 0; i < num_ind_fifo; i++) {
+      for (int i = 0; i < NUM_PROCESS_SLOT_TX_BARRIERS; i++) {
         dynamic_barrier_reset(&UE->process_slot_tx_barriers[i]);
       }
       continue;
@@ -1023,7 +1022,8 @@ void *UE_thread(void *arg)
 
     int sync_to_previous_thread = stream_status == STREAM_STATUS_SYNCED ? 1 : 0;
     int slot = curMsgTx->proc.nr_slot_tx;
-    dynamic_barrier_update(&UE->process_slot_tx_barriers[slot],
+    int slot_and_frame = slot + curMsgTx->proc.frame_tx * UE->frame_parms.slots_per_frame;
+    dynamic_barrier_update(&UE->process_slot_tx_barriers[slot_and_frame % NUM_PROCESS_SLOT_TX_BARRIERS],
                            tx_wait_for_dlsch[slot] + sync_to_previous_thread,
                            start_process_slot_tx,
                            newTx);
