@@ -3588,8 +3588,9 @@ void nr_ue_process_mac_pdu(NR_UE_MAC_INST_t *mac, nr_downlink_indication_t *dl_i
 {
   frame_t frameP = dl_info->frame;
   int slot = dl_info->slot;
-  uint8_t *pduP = (dl_info->rx_ind->rx_indication_body + pdu_id)->pdsch_pdu.pdu;
-  int32_t pdu_len = (int32_t)(dl_info->rx_ind->rx_indication_body + pdu_id)->pdsch_pdu.pdu_length;
+  fapi_nr_pdsch_pdu_t *pdsch_pdu = &(dl_info->rx_ind->rx_indication_body + pdu_id)->pdsch_pdu;
+  uint8_t *pduP = pdsch_pdu->pdu;
+  int32_t pdu_len = (int32_t)pdsch_pdu->pdu_length;
   uint8_t gNB_index = dl_info->gNB_index;
   uint8_t CC_id = dl_info->cc_id;
   uint8_t done = 0;
@@ -3598,6 +3599,7 @@ void nr_ue_process_mac_pdu(NR_UE_MAC_INST_t *mac, nr_downlink_indication_t *dl_i
   if (!pduP) {
     return;
   }
+  T(T_GNB_MAC_DL_PDU_WITH_DATA, T_INT(0), T_INT(0), T_INT(mac->crnti), T_INT(frameP), T_INT(slot), T_INT(pdsch_pdu->harq_pid), T_BUFFER(pduP, pdu_len));
 
   LOG_D(MAC,
         "[%d.%d]: processing PDU %d (with length %d) of %d total number of PDUs...\n",
