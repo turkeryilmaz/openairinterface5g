@@ -21,6 +21,7 @@
 
 #include "PHY/defs_gNB.h"
 #include "sched_nr.h"
+#include "PHY/CODING/nrLDPC_decoder/nrLDPCdecoder_defs.h"
 #include "PHY/NR_TRANSPORT/nr_transport_proto.h"
 #include "PHY/NR_TRANSPORT/nr_dlsch.h"
 #include "PHY/NR_TRANSPORT/nr_ulsch.h"
@@ -840,9 +841,14 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx)
     }
   }
 
-  ldpcDecode_t arr[64];
-  task_ans_t ans[64] = {0};
-  thread_info_tm_t t_info = {.buf = (uint8_t *)arr, .len = 0, .cap = 64, .ans = ans};
+  /* 
+   * the capacity of the thread info buffer is the maximum number of segments per transport block
+   * as defined in openair1/PHY/CODING/nrLDPC_decoder/nrLDPCdecoder_defs.h
+   * if you ever encounter "Assertion (t_info->len < t_info->cap) failed!" you may have to increase this size
+   */
+  ldpcDecode_t arr[NR_LDPC_MAX_NUM_CB];
+  task_ans_t ans[NR_LDPC_MAX_NUM_CB] = {0};
+  thread_info_tm_t t_info = {.buf = (uint8_t *)arr, .len = 0, .cap = NR_LDPC_MAX_NUM_CB, .ans = ans};
 
   // int64_t const t0 = time_now_ns();
   int totalDecode = 0;
