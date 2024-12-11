@@ -935,7 +935,7 @@ static void positioning_measurement_response(const f1ap_measurement_resp_t *resp
     // we assume we use UL_RTOA for now with k=1 (i.e. 8 times oversampling from 122.88e6 Msps)
     f1ap_measured_results_value_t *MeasResVal= &posMeasRes->pos_measurement_result_item->measuredResultsValue;
     MeasResVal->present = f1ap_measured_results_value_pr_ul_rtoa;
-    if (mac->meas_pos_info.toa_ns[trp_i] != 0xffff) {
+    if (mac->meas_pos_info.toa_ns[trp_i] != 0x8000) {
       //int32_t k1 =  ((mac->meas_pos_info.toa_ns[trp_i] * T_inv) / T_ns_inv ) + 492512;
       //int32_t k1 = (int32_t)(((int64_t)mac->meas_pos_info.toa_ns[trp_i] * (int64_t)T_inv) / (int64_t)T_ns_inv) + 492512;
       int64_t toa = (int64_t)(mac->meas_pos_info.toa_ns[trp_i]);
@@ -948,7 +948,7 @@ static void positioning_measurement_response(const f1ap_measurement_resp_t *resp
     
 
       if (k1<0) k1=0;
-      //if (k1>985025) k1=985025;
+      if (k1>985025) k1=985025;
       LOG_I(MAC,"k1[%d] = %d\n",trp_i,k1);
       
       MeasResVal->choice.uL_RTOA.uL_RTOA_MeasurementItem.present = f1ap_ulrtoameas_pr_k1;
@@ -961,7 +961,7 @@ static void positioning_measurement_response(const f1ap_measurement_resp_t *resp
 	LOG_I(MAC,"ul_RTOA invalid, MeasurementResponse set to NOTHING\n");
 	MeasResVal->choice.uL_RTOA.uL_RTOA_MeasurementItem.present = f1ap_ulrtoameas_pr_NOTHING;
     }
-  LOG_I(MAC,"reported val[%d] = %d\n",trp_i,MeasResVal->choice.uL_RTOA.uL_RTOA_MeasurementItem.choice.k1);
+    LOG_I(MAC,"reported val[%d] = %d\n",trp_i,MeasResVal->choice.uL_RTOA.uL_RTOA_MeasurementItem.choice.k1);
   
     // IE timeStamp.measurementTime
     posMeasRes->pos_measurement_result_item->timeStamp.systemFrameNumber = mac->meas_pos_info.frame;// mac->frame;

@@ -1358,7 +1358,7 @@ void handle_nr_srs_measurements(const module_id_t module_id,
       LOG_I(NR_MAC, "Number of TRPs for ToA %d \n",nrmac->meas_pos_info.NumberofTRPs);
 
       for (int p_index = 0; p_index < srs_ind->report_tlv.length/2; p_index++) {
-        bytesRead += pull16(&pReadPackedMessage, &nrmac->meas_pos_info.toa_ns[p_index], endReadPackedMessage);
+        bytesRead += pulls16(&pReadPackedMessage, &nrmac->meas_pos_info.toa_ns[p_index], endReadPackedMessage);
         LOG_I(NR_MAC, "TRP %d: ToA: %d\n", p_index, nrmac->meas_pos_info.toa_ns[p_index]);
       }
     }

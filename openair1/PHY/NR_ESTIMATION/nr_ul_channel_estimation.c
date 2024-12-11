@@ -46,11 +46,11 @@
 
 /* Generic function to find the peak of channel estimation buffer */
 int nr_est_toa_ns_srs(NR_DL_FRAME_PARMS *frame_parms,
-		          uint8_t N_arx,
-		          uint8_t N_ap,
-              uint8_t N_symb_srs,
-			        int32_t srs_estimated_channel_freq[N_arx][N_ap][frame_parms->ofdm_symbol_size * N_symb_srs],
-			        int32_t *srs_toa_ns)
+		      uint8_t N_arx,
+		      uint8_t N_ap,
+		      uint8_t N_symb_srs,
+		      int32_t srs_estimated_channel_freq[N_arx][N_ap][frame_parms->ofdm_symbol_size * N_symb_srs],
+		      int16_t *srs_toa_ns)
 {
 
   int32_t chF_interpol[N_ap][NR_SRS_IDFT_OVERSAMP_FACTOR*frame_parms->ofdm_symbol_size] __attribute__((aligned(32)));
@@ -113,7 +113,7 @@ int nr_est_toa_ns_srs(NR_DL_FRAME_PARMS *frame_parms,
     if ((mean_val != 0) && (max_val / mean_val > 100)) {
       srs_toa_ns[arx_index] = (max_idx*1e9)/(NR_SRS_IDFT_OVERSAMP_FACTOR*frame_parms->samples_per_frame*100);
     } else {
-      srs_toa_ns[arx_index] = 0xFFFF;
+      srs_toa_ns[arx_index] = 0x8000;
     }
     //LOG_I(PHY, "SRS ToA estimator (RX ant %d): toa %d ns\n",arx_index,srs_toa_ns[arx_index]);
   } // Antenna loop

@@ -1000,14 +1000,19 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx)
 
 	uint8_t N_ap = 1<<srs_pdu->num_ant_ports;
 	uint8_t N_ant_rx = gNB->frame_parms.nb_antennas_rx;
-	int32_t srs_toa_ns[N_ant_rx];
+	int16_t srs_toa_ns[N_ant_rx];
 	
         start_meas(&gNB->srs_timing_advance_stats);
         srs_indication->timing_advance_offset = srs_est >= 0 ? nr_est_timing_advance_srs(frame_parms, N_ap, srs_estimated_channel_time[0]) : 0xFFFF;
         stop_meas(&gNB->srs_timing_advance_stats);
         
-        nr_est_toa_ns_srs(frame_parms, N_ant_rx, N_ap ,N_symb_SRS, srs_estimated_channel_freq, srs_toa_ns);
-
+        if (srs_est>=0) {
+	  nr_est_toa_ns_srs(frame_parms, N_ant_rx, N_ap ,N_symb_SRS, srs_estimated_channel_freq, srs_toa_ns);
+	}
+	else {
+	  for (int ant=0;ant<N_ant_rx;ant++) srs_toa_ns[ant] = 0x8000;
+	}
+	
         for (int ant=0;ant<N_ant_rx;ant++)
           LOG_D(NR_PHY,"[first] srs_toa_ns[%d] = %d\n",ant,srs_toa_ns[ant]);
 
@@ -1146,8 +1151,8 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx)
 	    uint8_t *end = (uint8_t*) report_tlv->value + sizeof(report_tlv->value);
 
 	    for (int arx_index = 0; arx_index < N_ant_rx; arx_index++) {
-	      report_tlv->length += push16(srs_toa_ns[arx_index],&pWritePackedMessage,end);
-        LOG_D(NR_PHY, "[second] srs_toa_ns[%d] = %d\n",arx_index,srs_toa_ns[arx_index]);
+	      report_tlv->length += pushs16(srs_toa_ns[arx_index],&pWritePackedMessage,end);
+	      LOG_D(NR_PHY, "[second] srs_toa_ns[%d] = %d\n",arx_index,srs_toa_ns[arx_index]);
 	    }
 	    break;
 	  }  
