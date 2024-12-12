@@ -598,13 +598,13 @@ static int retrieve_ldpc_enc_op(struct rte_bbdev_enc_op **ops, const uint16_t n,
 {
   int offset = 0;
   int bit_offset = 0;
+  size_t simd_width = 16;
   uint8_t p_out_tmp[n * 32768];
   for (int i = 0; i < n; ++i) {
     struct rte_bbdev_op_data *output = &ops[i]->ldpc_enc.output;
     struct rte_mbuf *m = output->data;
     uint16_t data_len = rte_pktmbuf_data_len(m) - output->offset;
     uint8_t *data = m->buf_addr + m->data_off;
-    size_t simd_width = 16;
     if (bit_offset == 0) {
       for (size_t i = 0; i <= data_len; i += simd_width) {
         simde__m128i current = simde_mm_loadu_si128((simde__m128i*)(&data[i]));
@@ -631,11 +631,9 @@ static int retrieve_ldpc_enc_op(struct rte_bbdev_enc_op **ops, const uint16_t n,
   }
   reverse_bits_u8(p_out_tmp, offset, p_out_tmp);
   const int roundedSz = (offset + 3) / 4;
-  for (int i = 0; i < roundedSz; i++) {
-    p_out[i] |= ((uint32_t)p_out_tmp[(i * 4)] << (0 * 8));
-    p_out[i] |= ((uint32_t)p_out_tmp[(i * 4) + 1] << (1 * 8));
-    p_out[i] |= ((uint32_t)p_out_tmp[(i * 4)  + 2] << (2 * 8));
-    p_out[i] |= ((uint32_t)p_out_tmp[(i * 4)  + 3] << (3 * 8));
+  for (int i = 0; i < roundedSz; i += simd_width / sizeof(uint32_t)) {
+    simde__m128i data = simde_mm_loadu_si128((simde__m128i*)&p_out_tmp[i * 4]);
+    simde_mm_storeu_si128((simde__m128i*)&p_out[i], data);
   }
   return 0;
 }
