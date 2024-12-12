@@ -32,11 +32,10 @@ void nr_codeword_scrambling(uint32_t *in,
                              uint32_t n_RNTI,
                              uint32_t* out)
 {
-  const int roundedSz = (size + 31) / 32;
+  int roundedSz = (size + 31) / 32;
   uint32_t *seq = gold_cache((n_RNTI << 15) + (q << 14) + Nid, roundedSz);  // Gold sequence for scrambling
-  for (int i = 0; i < roundedSz; i++) {
-    out[i] = in[i] ^ *seq++;
-  }
+  while (roundedSz--)
+    *out++ = *in++ ^ *seq++;
 }
 
 void nr_codeword_unscrambling(int16_t* llr, uint32_t size, uint8_t q, uint32_t Nid, uint32_t n_RNTI)
