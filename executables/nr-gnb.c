@@ -377,7 +377,8 @@ void init_gNB_Tpool(int inst) {
   gNB->msgDataTx = msgDataTx;
 
   if ((!get_softmodem_params()->emulate_l1) && (!IS_SOFTMODEM_NOSTATS_BIT) && (NFAPI_MODE!=NFAPI_MODE_VNF) && (NFAPI_MODE != NFAPI_MODE_AERIAL))
-     threadCreate(&proc->L1_stats_thread,nrL1_stats_thread,(void*)gNB,"L1_stats",-1,OAI_PRIORITY_RT_LOW);
+    cpumeas(CPUMEAS_ENABLE);
+    threadCreate(&proc->L1_stats_thread,nrL1_stats_thread,(void*)gNB,"L1_stats",-1,OAI_PRIORITY_RT_LOW);
 
 }
 
