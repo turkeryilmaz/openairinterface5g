@@ -6,7 +6,7 @@ services:
               max-file: "1"
         network_mode: host
         container_name: oai-nr-ue
-        command: "numactl --membind=1 /opt/oai-nr-ue/bin/nr-uesoftmodem"
+        command: "numactl --cpunodebind=0 --membind=0 /opt/oai-nr-ue/bin/nr-uesoftmodem"
         privileged: true
         cpuset: 2,4,6,8,10,12,14,16
         cap_drop:
@@ -26,24 +26,24 @@ services:
             TZ: Europe/Paris
             DISPLAY: $DISPLAY
             USE_ADDITIONAL_OPTIONS: |
-               --usrp-args type=x4xx,addr=192.168.20.2,mgmt_addr=10.31.66.112,clock_source=internal,time_source=internal --ue-rxgain 35
                --thread-pool 2,4,6,8,10,12
+               --usrp-args type=x4xx,addr=192.168.10.2,mgmt_addr=10.31.66.220,clock_source=external,time_source=external --ue-rxgain 25
+               --ue-nb-ant-tx 1
+               --ue-nb-ant-rx 1
                --log_config.global_log_options level,wall_clock,nocolor
                --ssb 1478 -r 273 --numerology 1 --band 78 -C 3750000000
                --ue-txgain 0
                --uicc0.imsi 001010000000003
                --ue-fo-compensation -A 90
+               --usrp-tx-thread-config 1
            # Unused options: 
               #--T_stdout 2
            #   --usrp-tx-thread-config 1
            # --log_config.mac_log_level debug
            #  --log_config.nr_mac_log_level debug
            # --usrp-tx-thread-config 1 -d
-           # --ue-fo-compensation
            # --ssb 1478 -r 273 --numerology 1 --band 78 -C 3750000000 --sa
            # --ssb 1528 -r 273 --numerology 1 --band 48 -C 3649140000 --sa
-           # --usrp-args type=x4xx,addr=192.168.10.2,mgmt_addr=10.31.66.220,clock_source=external,time_source=external --ue-rxgain 25
-           # --usrp-args type=x4xx,addr=192.168.20.2,mgmt_addr=10.31.66.112,clock_source=external,time_source=external
         volumes:
             - ../../conf_files/ue.sa.conf:/opt/oai-nr-ue/etc/nr-ue.conf
             - ${HOME}/.Xauthority:/root/.Xauthority:rw
