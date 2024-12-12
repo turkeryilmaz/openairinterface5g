@@ -38,35 +38,29 @@ int32_t nr_segmentation(unsigned char *input_buffer,
                         unsigned int *F,
                         uint8_t BG)
 {
-
-  unsigned int L,Bprime,Z,r,Kcb,Kb,k,s,crc,Kprime;
-
-  if (BG==1)
-    Kcb=8448;
+  unsigned int L, Bprime, Z, Kcb, Kb, crc, Kprime;
+  if (BG == 1)
+    Kcb = 8448;
   else
-    Kcb=3840;
-
-  if (B<=Kcb) {
-    L=0;
-    *C=1;
-    Bprime=B;
+    Kcb = 3840;
+  if (B <= Kcb) {
+    L = 0;
+    *C = 1;
+    Bprime = B;
   } else {
-    L=24;
-    *C = B/(Kcb-L);
-
-    if ((Kcb-L)*(*C) < B)
-      *C=*C+1;
-
-    Bprime = B+((*C)*L);
+    L = 24;
+    *C = ceil(B / (Kcb - L));
+    if ((Kcb - L) * (*C) < B)
+      *C = *C + 1;
+    Bprime = B + ((*C) * L);
 #ifdef DEBUG_SEGMENTATION
     printf("Bprime %u\n",Bprime);
 #endif
   }
-
   // Find K+
-  Kprime = Bprime/(*C);
+  Kprime = Bprime / (*C);
 
-  if (BG==1)
+  if (BG == 1)
     Kb = 22;
   else {
     if (B > 640) {
@@ -75,107 +69,87 @@ int32_t nr_segmentation(unsigned char *input_buffer,
       Kb = 9;
     } else if (B > 192) {
       Kb = 8;
-    }
-    else {
+    } else {
       Kb = 6;
     }
   }
 
+  if ((Kprime % Kb) > 0)
+    Z  = (Kprime / Kb) + 1;
+  else
+    Z = Kprime / Kb;
 
-if ((Kprime%Kb) > 0)
-  Z  = (Kprime/Kb)+1;
-else
-  Z = (Kprime/Kb);
-
- LOG_D(PHY,"nr segmentation B %u Bprime %u Kprime %u z %u \n", B, Bprime, Kprime, Z);
+  LOG_D(PHY,"nr segmentation B %u Bprime %u Kprime %u z %u \n", B, Bprime, Kprime, Z);
 	  
   if (Z <= 2) {
     *K = 2;
-  } else if (Z<=16) { // increase by 1 byte til here
-    *K = Z;
-  } else if (Z <=32) { // increase by 2 bytes til here
-    *K = (Z>>1)<<1;
 
+  } else if (Z <= 16) { // increase by 1 byte til here
+    *K = Z;
+
+  } else if (Z <= 32) { // increase by 2 bytes til here
+    *K = (Z >> 1) << 1;
     if (*K < Z)
       *K = *K + 2;
 
   } else if (Z <= 64) { // increase by 4 bytes til here
-    *K = (Z>>2)<<2;
-
+    *K = (Z >> 2) << 2;
     if (*K < Z)
       *K = *K + 4;
 
   } else if (Z <=128 ) { // increase by 8 bytes til here
-
-    *K = (Z>>3)<<3;
-
+    *K = (Z >> 3) << 3;
     if (*K < Z)
       *K = *K + 8;
-
 #ifdef DEBUG_SEGMENTATION
     printf("Z_by_C %u , K2 %u\n",Z,*K);
 #endif
+
   } else if (Z <= 256) { // increase by 4 bytes til here
       *K = (Z>>4)<<4;
-
       if (*K < Z)
         *K = *K + 16;
 
   } else if (Z <= 384) { // increase by 4 bytes til here
       *K = (Z>>5)<<5;
-
       if (*K < Z)
         *K = *K + 32;
 
   } else {
-    //msg("nr_segmentation.c: Illegal codeword size !!!\n");
+    LOG_E(PHY, "nr_segmentation.c: Illegal codeword size !!!\n");
     return -1;
   }
 
   *Zout = *K;
 
-  if(BG==1)
-    *K = *K*22;
+  if (BG == 1)
+    *K = *K * 22;
   else
-    *K = *K*10;
+    *K = *K * 10;
 
   *F = ((*K) - Kprime);
 
   LOG_D(PHY,"final nr seg output Z %u K %u F %u \n", *Zout, *K, *F);
   LOG_D(PHY,"C %u, K %u, Bprime_bytes %u, Bprime %u, F %u\n",*C,*K,Bprime>>3,Bprime,*F);
+  uint16_t Kprime_bytes = Kprime >> 3;
+  uint16_t Kprime_withoutCRC_bytes = (Kprime - L) >> 3;
 
   if ((input_buffer) && (output_buffers)) {
-
-    s = 0;
-
-    for (r=0; r<*C; r++) {
-
-      k = 0;
-
-      while (k<((Kprime - L)>>3)) {
-        output_buffers[r][k] = input_buffer[s];
-		//printf("encoding segment %d : byte %d (%d) => %d\n",r,k,(Kprime-L)>>3,input_buffer[s]);
-        k++;
-        s++;
-      }
-
+    int s = 0;
+    for (int r = 0; r < *C; r++) {
+      memcpy(output_buffers[r], &input_buffer[s], Kprime_withoutCRC_bytes * sizeof(uint8_t));
       if (*C > 1) { // add CRC
-        crc = crc24b(output_buffers[r],Kprime-L)>>8;
-        output_buffers[r][(Kprime-L)>>3] = ((uint8_t*)&crc)[2];
-        output_buffers[r][1+((Kprime-L)>>3)] = ((uint8_t*)&crc)[1];
-        output_buffers[r][2+((Kprime-L)>>3)] = ((uint8_t*)&crc)[0];
+        crc = crc24b(output_buffers[r], Kprime - L) >> 8;
+        output_buffers[r][Kprime_withoutCRC_bytes + 0] = ((uint8_t*)&crc)[2];
+        output_buffers[r][Kprime_withoutCRC_bytes + 1] = ((uint8_t*)&crc)[1];
+        output_buffers[r][Kprime_withoutCRC_bytes + 2] = ((uint8_t*)&crc)[0];
       }
-
-      if (*F>0) {
-        for (k=Kprime>>3; k<(*K)>>3; k++) {
-          output_buffers[r][k] = 0;
-          //printf("r %d filler bits [%d] = %d Kprime %d \n", r,k, output_buffers[r][k], Kprime);
-        }
+      if (*F > 0) {
+        memset(&output_buffers[r][Kprime_bytes], 0, *F * sizeof(uint8_t));
       }
-
+    s += Kprime_withoutCRC_bytes;
     }
   }
-
   return Kb;
 }
 
