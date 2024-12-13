@@ -41,7 +41,7 @@ void nr_interleaving_ldpc(uint32_t E, uint8_t Qm, uint8_t *e,uint8_t *f)
   memset(f,0,E*sizeof(uint8_t));
   uint8_t *e0,*e1,*e2,*e3,*e4,*e5,*e6,*e7;
   uint8_t *fp;
-#if 0 //def __WASAVX2__
+#if 1 //def __WASAVX2__
   simde__m256i tmp0,tmp1,tmp2,tmp0b,tmp1b,tmp3,tmp4,tmp5;
   simde__m256i *e0_256,*e1_256,*e2_256,*e3_256,*e4_256,*e5_256,*e6_256,*e7_256;
 
@@ -71,12 +71,12 @@ void nr_interleaving_ldpc(uint32_t E, uint8_t Qm, uint8_t *e,uint8_t *f)
     for (int k=0,j=0;j<EQm>>5;j++,k+=4) {
       tmp0   = simde_mm256_unpacklo_epi8(e0_256[j],e1_256[j]); // e0(i) e1(i) e0(i+1) e1(i+1) .... e0(i+15) e1(i+15)
       tmp1   = simde_mm256_unpacklo_epi8(e2_256[j],e3_256[j]); // e2(i) e3(i) e2(i+1) e3(i+1) .... e2(i+15) e3(i+15)
-      f_256[k]   = simde_mm256_unpacklo_epi8(tmp0,tmp1);   // e0(i) e1(i) e2(i) e3(i) ... e0(i+7) e1(i+7) e2(i+7) e3(i+7)
-      f_256[k+1] = simde_mm256_unpackhi_epi8(tmp0,tmp1);   // e0(i+8) e1(i+8) e2(i+8) e3(i+8) ... e0(i+15) e1(i+15) e2(i+15) e3(i+15)
+      f_256[k]   = simde_mm256_unpacklo_epi16(tmp0,tmp1);   // e0(i) e1(i) e2(i) e3(i) ... e0(i+7) e1(i+7) e2(i+7) e3(i+7)
+      f_256[k+1] = simde_mm256_unpackhi_epi16(tmp0,tmp1);   // e0(i+8) e1(i+8) e2(i+8) e3(i+8) ... e0(i+15) e1(i+15) e2(i+15) e3(i+15)
       tmp0   = simde_mm256_unpackhi_epi8(e0_256[j],e1_256[j]); // e0(i+16) e1(i+16) e0(i+17) e1(i+17) .... e0(i+31) e1(i+31)
       tmp1   = simde_mm256_unpackhi_epi8(e2_256[j],e3_256[j]); // e2(i+16) e3(i+16) e2(i+17) e3(i+17) .... e2(i+31) e3(i+31)
-      f_256[k+2] = simde_mm256_unpacklo_epi8(tmp0,tmp1);
-      f_256[k+3] = simde_mm256_unpackhi_epi8(tmp0,tmp1); 
+      f_256[k+2] = simde_mm256_unpacklo_epi16(tmp0,tmp1);
+      f_256[k+3] = simde_mm256_unpackhi_epi16(tmp0,tmp1); 
     }
     break;
   case 6:
