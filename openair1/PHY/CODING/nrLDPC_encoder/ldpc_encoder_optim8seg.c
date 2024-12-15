@@ -97,10 +97,13 @@ int LDPCencoder(uint8_t **test_input, uint8_t **channel_input, encoder_implempar
   AssertFatal(Zc>0,"no valid Zc found for block length %d\n",block_length);
 
   if ((Zc&31) > 0) simd_size = 16;
-  else          simd_size = 32;
+#ifdef __AVX512F__
+  else if ((BG==1) && (Zc==384))   simd_size = 64;
+#endif
+  else simd_size = 32;
 
-  unsigned char c[22*Zc] __attribute__((aligned(32))); //padded input, unpacked, max size
-  unsigned char d[46*Zc] __attribute__((aligned(32))); //coded parity part output, unpacked, max size
+  unsigned char c[22*Zc] __attribute__((aligned(64))); //padded input, unpacked, max size
+  unsigned char d[46*Zc] __attribute__((aligned(64))); //coded parity part output, unpacked, max size
 
 
   // calculate number of punctured bits
@@ -130,6 +133,7 @@ int LDPCencoder(uint8_t **test_input, uint8_t **channel_input, encoder_implempar
     }
     ((simde__m256i *)c)[i] = c256;
   }
+
 
   for (i=(block_length>>5)<<5;i<block_length;i++) {
     for (j=0; j<impp->n_segments; j++) {
