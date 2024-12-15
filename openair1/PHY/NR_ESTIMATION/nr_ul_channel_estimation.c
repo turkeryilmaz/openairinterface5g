@@ -409,6 +409,7 @@ static void nr_pusch_antenna_processing(void *arg)
     *(rdata->noise_amp2) = noise_amp2;
     *(rdata->nest_count) = nest_count;
   }
+  completed_task_ans(rdata->ans);
 }
 
 
@@ -480,7 +481,6 @@ int nr_pusch_channel_estimation(PHY_VARS_gNB *gNB,
 
 #endif
 
-  int nbAarx = 0;
   int nest_count = 0;
   uint64_t noise_amp2 = 0;
   delay_t *delay = &gNB->ulsch[ul_id].delay;
@@ -503,21 +503,21 @@ int nr_pusch_channel_estimation(PHY_VARS_gNB *gNB,
   initNotifiedFIFO(&respPuschAarx);
   start_meas(&gNB->pusch_channel_estimation_antenna_processing_stats);
   int numAntennas = gNB->dmrs_num_antennas_per_thread;
-  for (int aarx = 0; aarx < gNB->frame_parms.nb_antennas_rx; aarx += numAntennas) {
-    union puschAntennaReqUnion id = {.s = {ul_id, 0}};
-    id.p = 1 + aarx;
-    notifiedFIFO_elt_t *req = newNotifiedFIFO_elt(sizeof(puschAntennaProc_t),
-                                                  id.p,
-                                                  &respPuschAarx,
-                                                  &nr_pusch_antenna_processing); // create a job for Tpool
-    puschAntennaProc_t *rdata = (puschAntennaProc_t *)NotifiedFifoData(req); // data for the job
+  int num_jobs = CEILIDIV(gNB->frame_parms.nb_antennas_rx, numAntennas);
+  puschAntennaProc_t rdatas[num_jobs];
+  memset(rdatas, 0, sizeof(rdatas));
+  task_ans_t ans[num_jobs];
+  memset(ans, 0, sizeof(ans));
+  for (int job_id = 0; job_id < num_jobs; job_id++) {
+    puschAntennaProc_t *rdata = &rdatas[job_id];
+    task_t task = {.func = nr_pusch_antenna_processing, .args = rdata};
 
     // Local init in the current loop
     rdata->Ns = Ns;
     rdata->nl = nl;
     rdata->p = p;
     rdata->symbol = symbol;
-    rdata->aarx = aarx;
+    rdata->aarx = job_id * numAntennas;
     rdata->numAntennas = numAntennas;
     rdata->bwp_start_subcarrier = bwp_start_subcarrier;
     rdata->pusch_pdu = pusch_pdu;
@@ -531,18 +531,18 @@ int nr_pusch_channel_estimation(PHY_VARS_gNB *gNB,
     rdata->pusch_vars = &gNB->pusch_vars[ul_id];
     rdata->chest_freq = gNB->chest_freq;
     rdata->rxdataF = gNB->common_vars.rxdataF;
+    rdata->ans = &ans[job_id];
     // Call the nr_pusch_antenna_processing function
-    pushTpool(&gNB->threadPool, req);
-    nbAarx++;
-
-    LOG_D(PHY, "Added Antenna (count %d) to process, in pipe\n", nbAarx);
+    if (job_id == num_jobs - 1) {
+      // Run the last job inline
+      nr_pusch_antenna_processing(rdata);
+    } else {
+      pushTpool(&gNB->threadPool, task);
+    }
+    LOG_D(PHY, "Added Antenna (count %d/%d) to process, in pipe\n", job_id, num_jobs);
   } // Antenna Loop
 
-  while (nbAarx > 0) {
-    notifiedFIFO_elt_t *req = pullTpool(&respPuschAarx, &gNB->threadPool);
-    nbAarx--;
-    delNotifiedFIFO_elt(req);
-  }
+  join_task_ans(ans, num_jobs - 1);
 
   stop_meas(&gNB->pusch_channel_estimation_antenna_processing_stats);
   for (int aarx = 0; aarx < gNB->frame_parms.nb_antennas_rx; aarx++) {
