@@ -170,23 +170,24 @@ int LDPCencoder(uint8_t **test_input, uint8_t **channel_input, encoder_implempar
   if ((((2*Zc)&63) == 0) && (((block_length-(2*Zc))&63) == 0)) {
     __m512i *c512p = (__m512i *)&c[2*Zc];
     __m512i *d512p = (__m512i *)&d[0];
-    __m512i mask0 = simde_mm512_set1_epi8(0x1);
+    __m512i mask0 = _mm512_set1_epi8(0x1);
     
     for (i=0;i<l1>>6;i++)
       for (j=0;j<impp->n_segments;j++) 
-        ((__m512i *)channel_input[j])[i] = _mm512_and_s512(_mm512_srai_epi16(c512p[i],j),mask0);
+        ((__m512i *)channel_input[j])[i] = _mm512_and_si512(_mm512_srai_epi16(c512p[i],j),mask0);
     
     for (i1=0;i1<l2>>6;i1++,i++)
       for (j=0;j<impp->n_segments;j++) 
         ((__m512i *)channel_input[j])[i] = _mm512_and_si512(_mm512_srai_epi16(d512p[i1],j),mask0);
+  } 
   else if ((((2*Zc)&31) == 0) && (((block_length-(2*Zc))&31) == 0)) {
-    __m256i *c512p = (__m256i *)&c[2*Zc];
-    __m256i *d512p = (__m256i *)&d[0];
-    __m256i mask0 = simde_mm256_set1_epi8(0x1);
+    __m256i *c256p = (__m256i *)&c[2*Zc];
+    __m256i *d256p = (__m256i *)&d[0];
+    __m256i mask0 = _mm256_set1_epi8(0x1);
     
     for (i=0;i<l1>>6;i++)
       for (j=0;j<impp->n_segments;j++) 
-        ((__m256i *)channel_input[j])[i] = _mm256_and_s256(_mm256_srai_epi16(c256p[i],j),mask0);
+        ((__m256i *)channel_input[j])[i] = _mm256_and_si256(_mm256_srai_epi16(c256p[i],j),mask0);
     
     for (i1=0;i1<l2>>6;i1++,i++)
       for (j=0;j<impp->n_segments;j++) 
