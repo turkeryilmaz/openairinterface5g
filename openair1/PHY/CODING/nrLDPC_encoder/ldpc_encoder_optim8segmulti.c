@@ -105,9 +105,8 @@ int LDPCencoder(uint8_t **input, uint8_t **output, encoder_implemparams_t *impp)
   if ((Zc&31) > 0) simd_size = 16;
 #ifdef __AVX512F__
   else if ((BG==1) && Zc==384) simd_size =64;
-#else
-  else simd_size=32;
 #endif
+  else simd_size=32;
   unsigned char cc[22*Zc] __attribute__((aligned(64))); //padded input, unpacked, max size
   unsigned char dd[46*Zc] __attribute__((aligned(64))); //coded parity part output, unpacked, max size
 
