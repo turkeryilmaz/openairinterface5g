@@ -20,17 +20,37 @@
  */
 
 #include "rrc_gNB_du.h"
-#include "rrc_gNB_NGAP.h"
+#include <stdbool.h>
+#include <stdlib.h>
+#include <string.h>
+#include "F1AP_CauseMisc.h"
+#include "F1AP_CauseProtocol.h"
+#include "F1AP_CauseRadioNetwork.h"
+#include "PHY/defs_common.h"
+#include "T.h"
+#include "asn_codecs.h"
+#include "assertions.h"
 #include "common/ran_context.h"
+#include "common/utils/T/T.h"
+#include "common/utils/alg/foreach.h"
+#include "common/utils/ds/seq_arr.h"
+#include "constr_TYPE.h"
+#include "executables/softmodem-common.h"
+#include "f1ap_messages_types.h"
+#include "ngap_messages_types.h"
 #include "nr_rrc_defs.h"
-#include "rrc_gNB_UE_context.h"
 #include "rrc_gNB_mobility.h"
 #include "openair2/F1AP/f1ap_common.h"
 #include "openair2/F1AP/f1ap_ids.h"
-#include "executables/softmodem-common.h"
-#include "common/utils/ds/seq_arr.h"
-#include "common/utils/alg/foreach.h"
 #include "lib/f1ap_interface_management.h"
+#include "rrc_gNB_NGAP.h"
+#include "rrc_gNB_UE_context.h"
+#include "rrc_messages_types.h"
+#include "s1ap_messages_types.h"
+#include "tree.h"
+#include "uper_decoder.h"
+#include "utils.h"
+#include "xer_encoder.h"
 
 int get_dl_band(const struct f1ap_served_cell_info_t *cell_info)
 {
@@ -426,19 +446,9 @@ static void update_cell_info(nr_rrc_du_container_t *du, const f1ap_served_cell_i
 
   AssertFatal(du->setup_req->num_cells_available == 1, "expected 1 cell for DU, but has %d\n", du->setup_req->num_cells_available);
   f1ap_served_cell_info_t *ci = &du->setup_req->cell[0].info;
-
-  ci->nr_cellid = new_ci->nr_cellid;
-  ci->nr_pci = new_ci->nr_pci;
-  if (new_ci->tac != NULL)
-    *ci->tac = *new_ci->tac;
-  ci->num_ssi = new_ci->num_ssi;
-  for (int s = 0; s < new_ci->num_ssi; ++s)
-    ci->nssai[s] = new_ci->nssai[s];
-  ci->mode = new_ci->mode;
-  if (ci->mode == F1AP_MODE_TDD)
-    ci->tdd = new_ci->tdd;
-  else
-    ci->fdd = new_ci->fdd;
+  // make sure no memory is allocated
+  free_f1ap_cell(ci, NULL);
+  copy_f1ap_served_cell_info(ci, new_ci);
 
   NR_MeasurementTimingConfiguration_t *new_mtc =
       extract_mtc(new_ci->measurement_timing_config, new_ci->measurement_timing_config_len);

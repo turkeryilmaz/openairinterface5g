@@ -70,6 +70,8 @@ def CreateWorkspace(host, sourcePath, ranRepository, ranCommitID, ranTargetBranc
 	return ret.returncode == 0
 
 def CreateTag(ranCommitID, ranBranch, ranAllowMerge):
+	if ranCommitID == 'develop':
+		return 'develop'
 	shortCommit = ranCommitID[0:8]
 	if ranAllowMerge:
 		# Allowing contributor to have a name/branchName format
@@ -143,10 +145,6 @@ def AnalyzeBuildLogs(buildRoot, images, globalStatus):
 		collectInfo[image] = files
 	return collectInfo
 
-def GetContainerName(ssh, svcName, file):
-	ret = ssh.run(f"docker compose -f {file} config --format json {svcName}  | jq -r '.services.\"{svcName}\".container_name'", silent=True)
-	return ret.stdout
-
 def GetImageName(ssh, svcName, file):
 	ret = ssh.run(f"docker compose -f {file} config --format json {svcName}  | jq -r '.services.\"{svcName}\".image'", silent=True)
 	if ret.returncode != 0:
@@ -154,31 +152,31 @@ def GetImageName(ssh, svcName, file):
 	else:
 		return ret.stdout.strip()
 
-def GetContainerHealth(ssh, containerName):
-	if containerName is None:
-		return False
-	if 'db_init' in containerName or 'db-init' in containerName: # exits with 0, there cannot be healthy
-		return True
-	time.sleep(5)
-	for _ in range(3):
-		result = ssh.run(f'docker inspect --format="{{{{.State.Health.Status}}}}" {containerName}', silent=True)
+def GetServiceHealth(ssh, svcName, file):
+	if svcName is None:
+		return False, f"Service {svcName} not found in {file}"
+	image = GetImageName(ssh, svcName, file)
+	if 'db_init' in svcName or 'db-init' in svcName: # exits with 0, there cannot be healthy
+		return True, f"Service {svcName} healthy, image {image}"
+	for _ in range(8):
+		result = ssh.run(f"docker compose -f {file} ps --format json {svcName}  | jq -r 'if type==\"array\" then .[0].Health else .Health end'", silent=True)
 		if result.stdout == 'healthy':
-			return True
-		time.sleep(10)
-	return False
+			return True, f"Service {svcName} healthy, image {image}"
+		time.sleep(5)
+	return False, f"Failed to deploy: service {svcName}"
 
 def ExistEnvFilePrint(ssh, wd, prompt='env vars in existing'):
-	ret = ssh.run(f'cat {wd}/.env', silent=True)
+	ret = ssh.run(f'cat {wd}/.env', silent=True, reportNonZero=False)
 	if ret.returncode != 0:
 		return False
 	env_vars = ret.stdout.strip().splitlines()
 	logging.info(f'{prompt} {wd}/.env: {env_vars}')
 	return True
 
-def WriteEnvFile(ssh, services, wd, tag):
-	ret = ssh.run(f'cat {wd}/.env', silent=True)
+def WriteEnvFile(ssh, services, wd, tag, flexric_tag):
+	ret = ssh.run(f'cat {wd}/.env', silent=True, reportNonZero=False)
 	registry = "oai-ci" # pull_images() gives us this registry path
-	envs = {"REGISTRY":registry, "TAG": tag}
+	envs = {"REGISTRY":registry, "TAG": tag, "FLEXRIC_TAG": flexric_tag}
 	if ret.returncode == 0: # it exists, we have to update
 		# transforms env file to dictionary
 		old_envs = {}
@@ -217,11 +215,10 @@ def GetServices(ssh, requested, file):
     else:
         return requested
 
-def CopyinContainerLog(ssh, lSourcePath, yaml, containerName, filename):
+def CopyinServiceLog(ssh, lSourcePath, yaml, svcName, wd_yaml, filename):
 	remote_filename = f"{lSourcePath}/cmake_targets/log/{filename}"
-	ssh.run(f'docker logs {containerName} &> {remote_filename}')
+	ssh.run(f'docker compose -f {wd_yaml} logs {svcName} --no-log-prefix &> {remote_filename}')
 	local_dir = f"{os.getcwd()}/../cmake_targets/log/{yaml}"
-	os.system(f'mkdir -p {local_dir}')
 	local_filename = f"{local_dir}/{filename}"
 	return ssh.copyin(remote_filename, local_filename)
 
@@ -334,11 +331,11 @@ class Containerize():
 		self.cliOptions = ''
 
 		self.imageToCopy = ''
-		self.registrySvrId = ''
-		self.testSvrId = ''
-		self.imageToPull = []
 		#checkers from xml
 		self.ran_checkers={}
+		self.num_attempts = 1
+
+		self.flexricTag = ''
 
 #-----------------------------------------------------------
 # Container management functions
@@ -723,8 +720,8 @@ class Containerize():
 			HTML.CreateHtmlTabFooter(False)
 			return False
 
-	def Push_Image_to_Local_Registry(self, HTML):
-		lIpAddr, lSourcePath = self.GetCredentials(self.registrySvrId)
+	def Push_Image_to_Local_Registry(self, HTML, svr_id):
+		lIpAddr, lSourcePath = self.GetCredentials(svr_id)
 		logging.debug('Pushing images from server: ' + lIpAddr)
 		ssh = cls_cmd.getConnection(lIpAddr)
 		imagePrefix = 'porcepix.sboai.cs.eurecom.fr'
@@ -771,64 +768,66 @@ class Containerize():
 		HTML.CreateHtmlTestRow('N/A', 'OK', CONST.ALL_PROCESSES_OK)
 		return True
 
-	def Pull_Image_from_Local_Registry(self, HTML):
-		lIpAddr, lSourcePath = self.GetCredentials(self.testSvrId)
-		logging.debug('\u001B[1m Pulling image(s) on server: ' + lIpAddr + '\u001B[0m')
-		myCmd = cls_cmd.getConnection(lIpAddr)
-		imagePrefix = 'porcepix.sboai.cs.eurecom.fr'
-		response = myCmd.run(f'docker login -u oaicicd -p oaicicd {imagePrefix}')
-		if response.returncode != 0:
-			msg = 'Could not log into local registry'
-			logging.error(msg)
-			myCmd.close()
-			HTML.CreateHtmlTestRow(msg, 'KO', CONST.ALL_PROCESSES_OK)
-			return False
-		pulled_images = []
-		for image in self.imageToPull:
-			tagToUse = CreateTag(self.ranCommitID, self.ranBranch, self.ranAllowMerge)
-			imageTag = f"{image}:{tagToUse}"
-			cmd = f'docker pull {imagePrefix}/{imageTag}'
-			response = myCmd.run(cmd, timeout=120)
+	def Pull_Image(cmd, images, tag, registry, username, password):
+		if username is not None and password is not None:
+			logging.info(f"logging into registry {username}@{registry}")
+			response = cmd.run(f'docker login -u {username} -p {password} {registry}', silent=True, reportNonZero=False)
 			if response.returncode != 0:
-				logging.debug(response)
-				msg = f'Could not pull {image} from local registry : {imageTag}'
+				msg = f'Could not log into registry {username}@{registry}'
 				logging.error(msg)
-				myCmd.close()
-				HTML.CreateHtmlTestRow('msg', 'KO', CONST.ALL_PROCESSES_OK)
-				return False
-			myCmd.run(f'docker tag {imagePrefix}/{imageTag} oai-ci/{imageTag}')
-			myCmd.run(f'docker rmi {imagePrefix}/{imageTag}')
-			pulled_images += [f"oai-ci/{imageTag}"]
-		response = myCmd.run(f'docker logout {imagePrefix}')
-		if response.returncode != 0:
-			msg = 'Could not log off from local registry'
-			logging.error(msg)
-			myCmd.close()
-			HTML.CreateHtmlTestRow(msg, 'KO', CONST.ALL_PROCESSES_OK)
-			return False
-		myCmd.close()
-		msg = "Pulled Images:\n" + '\n'.join(pulled_images)
-		HTML.CreateHtmlTestRowQueue('N/A', 'OK', [msg])
-		return True
-
-	def Clean_Test_Server_Images(self, HTML):
-		lIpAddr, lSourcePath = self.GetCredentials(self.testSvrId)
-		if lIpAddr != 'none':
-			logging.debug('Removing test images from server: ' + lIpAddr)
-			myCmd = cls_cmd.RemoteCmd(lIpAddr)
-		else:
-			logging.debug('Removing test images locally')
-			myCmd = cls_cmd.LocalCmd()
-
-		for image in IMAGES:
-			tag = CreateTag(self.ranCommitID, self.ranBranch, self.ranAllowMerge)
+				return False, msg
+		pulled_images = []
+		for image in images:
 			imageTag = f"{image}:{tag}"
-			cmd = f'docker rmi oai-ci/{imageTag}'
-			myCmd.run(cmd, reportNonZero=False)
+			response = cmd.run(f'docker pull {registry}/{imageTag}')
+			if response.returncode != 0:
+				msg = f'Could not pull {image} from local registry: {imageTag}'
+				logging.error(msg)
+				return False, msg
+			cmd.run(f'docker tag {registry}/{imageTag} oai-ci/{imageTag}')
+			cmd.run(f'docker rmi {registry}/{imageTag}')
+			pulled_images += [f"oai-ci/{imageTag}"]
+		if username is not None and password is not None:
+			response = cmd.run(f'docker logout {registry}')
+			# we have the images, if logout fails it's no problem
+		msg = "Pulled Images:\n" + '\n'.join(pulled_images)
+		return True, msg
 
-		myCmd.close()
-		HTML.CreateHtmlTestRow('N/A', 'OK', CONST.ALL_PROCESSES_OK)
-		return True
+	def Pull_Image_from_Registry(self, HTML, svr_id, images, tag=None, registry="porcepix.sboai.cs.eurecom.fr", username="oaicicd", password="oaicicd"):
+		lIpAddr, lSourcePath = self.GetCredentials(svr_id)
+		logging.debug('\u001B[1m Pulling image(s) on server: ' + lIpAddr + '\u001B[0m')
+		if not tag:
+			tag = CreateTag(self.ranCommitID, self.ranBranch, self.ranAllowMerge)
+		with cls_cmd.getConnection(lIpAddr) as cmd:
+			success, msg = Containerize.Pull_Image(cmd, images, tag, registry, username, password)
+		param = f"on node {lIpAddr}"
+		if success:
+			HTML.CreateHtmlTestRowQueue(param, 'OK', [msg])
+		else:
+			HTML.CreateHtmlTestRowQueue(param, 'KO', [msg])
+		return success
+
+	def Clean_Test_Server_Images(self, HTML, svr_id, images, tag=None):
+		lIpAddr, lSourcePath = self.GetCredentials(svr_id)
+		logging.debug(f'\u001B[1m Cleaning image(s) from server: {lIpAddr}\u001B[0m')
+		if not tag:
+			tag = CreateTag(self.ranCommitID, self.ranBranch, self.ranAllowMerge)
+
+		status = True
+		with cls_cmd.getConnection(lIpAddr) as myCmd:
+			removed_images = []
+			for image in images:
+				fullImage = f"oai-ci/{image}:{tag}"
+				cmd = f'docker rmi {fullImage}'
+				if myCmd.run(cmd).returncode != 0:
+					status = False
+				removed_images += [fullImage]
+
+		msg = "Removed Images:\n" + '\n'.join(removed_images)
+		s = 'OK' if status else 'KO'
+		param = f"on node {lIpAddr}"
+		HTML.CreateHtmlTestRowQueue(param, s, [msg])
+		return status
 
 	def Create_Workspace(self,HTML):
 		svr = self.eNB_serverId[self.eNB_instance]
@@ -842,47 +841,55 @@ class Containerize():
 
 	def DeployObject(self, HTML):
 		svr = self.eNB_serverId[self.eNB_instance]
+		num_attempts = self.num_attempts
 		lIpAddr, lSourcePath = self.GetCredentials(svr)
-		logging.debug('\u001B[1m Deploying OAI Object on server: ' + lIpAddr + '\u001B[0m')
+		logging.debug(f'Deploying OAI Object on server: {lIpAddr}')
 		yaml = self.yamlPath[self.eNB_instance].strip('/')
+		# creating the log folder by default
+		local_dir = f"{os.getcwd()}/../cmake_targets/log/{yaml.split('/')[-1]}"
+		os.system(f'mkdir -p {local_dir}')
 		wd = f'{lSourcePath}/{yaml}'
-
+		wd_yaml = f'{wd}/docker-compose.y*ml'
+		yaml_dir = yaml.split('/')[-1]
 		with cls_cmd.getConnection(lIpAddr) as ssh:
-			services = GetServices(ssh, self.services[self.eNB_instance], f"{wd}/docker-compose.y*ml")
+			services = GetServices(ssh, self.services[self.eNB_instance], wd_yaml)
 			if services == [] or services == ' ' or services == None:
-				msg = "Cannot determine services to start"
+				msg = 'Cannot determine services to start'
 				logging.error(msg)
 				HTML.CreateHtmlTestRowQueue('N/A', 'KO', [msg])
 				return False
-
 			ExistEnvFilePrint(ssh, wd)
-			WriteEnvFile(ssh, services, wd, self.deploymentTag)
-
-			logging.info(f"will start services {services}")
-			status = ssh.run(f'docker compose -f {wd}/docker-compose.y*ml up -d -- {services}')
-			if status.returncode != 0:
-				msg = f"cannot deploy services {services}: {status.stdout}"
-				logging.error(msg)
-				HTML.CreateHtmlTestRowQueue('N/A', 'KO', [msg])
-				return False
-
-			imagesInfo = []
-			fstatus = True
-			for svc in services.split():
-				containerName = GetContainerName(ssh, svc, f"{wd}/docker-compose.y*ml")
-				healthy = GetContainerHealth(ssh, containerName)
-				if not healthy:
-					imagesInfo += [f"Failed to deploy: service {svc}"]
-					fstatus = False
-				else:
-					image = GetImageName(ssh, svc, f"{wd}/docker-compose.y*ml")
-					logging.info(f"service {svc} healthy, container {containerName}, image {image}")
-					imagesInfo += [f"service {svc} healthy, image {image}"]
-		if fstatus:
+			WriteEnvFile(ssh, services, wd, self.deploymentTag, self.flexricTag)
+			if num_attempts <= 0:
+				raise ValueError(f'Invalid value for num_attempts: {num_attempts}, must be greater than 0')
+			for attempt in range(num_attempts):
+				imagesInfo = []
+				healthInfo = []
+				logging.info(f'will start services {services}')
+				status = ssh.run(f'docker compose -f {wd_yaml} up -d -- {services}')
+				if status.returncode != 0:
+					msg = f'cannot deploy services {services}: {status.stdout}'
+					logging.error(msg)
+					HTML.CreateHtmlTestRowQueue('N/A', 'NOK', [msg])
+					return False
+				for svc in services.split():
+					health, msg = GetServiceHealth(ssh, svc, f'{wd_yaml}')
+					logging.info(msg)
+					imagesInfo.append(msg)
+					healthInfo.append(health)
+				deployed = all(healthInfo)
+				if deployed:
+					break
+				elif (attempt < num_attempts - 1):
+					logging.warning(f'Failed to deploy on attempt {attempt}, restart services {services}')
+					for svc in services.split():
+						CopyinServiceLog(ssh, lSourcePath, yaml_dir, svc, wd_yaml, f'{svc}-{HTML.testCase_id}-attempt{attempt}.log')
+					ssh.run(f'docker compose -f {wd_yaml} down -- {services}')
+		if deployed:
 			HTML.CreateHtmlTestRowQueue('N/A', 'OK', ['\n'.join(imagesInfo)])
 		else:
 			HTML.CreateHtmlTestRowQueue('N/A', 'KO', ['\n'.join(imagesInfo)])
-		return fstatus
+		return deployed
 
 	def UndeployObject(self, HTML, RAN):
 		svr = self.eNB_serverId[self.eNB_instance]
@@ -898,7 +905,7 @@ class Containerize():
 			if services is not None:
 				all_serv = " ".join([s for s, _ in services])
 				ssh.run(f'docker compose -f {wd}/docker-compose.y*ml stop -- {all_serv}')
-				copyin_res = all(CopyinContainerLog(ssh, lSourcePath, yaml_dir, c, f'{s}-{HTML.testCase_id}.log') for s, c in services)
+				copyin_res = all(CopyinServiceLog(ssh, lSourcePath, yaml_dir, s, f"{wd}/docker-compose.y*ml", f'{s}-{HTML.testCase_id}.log') for s, c in services)
 			else:
 				logging.warning('could not identify services to stop => no log file')
 			ssh.run(f'docker compose -f {wd}/docker-compose.y*ml down -v')

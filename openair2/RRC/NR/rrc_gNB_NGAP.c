@@ -29,55 +29,63 @@
  */
 
 #include "rrc_gNB_NGAP.h"
-#include "RRC/L2_INTERFACE/openair_rrc_L2_interface.h"
-#include "rrc_eNB_S1AP.h"
-#include "gnb_config.h"
-#include "common/ran_context.h"
-
-#include "oai_asn1.h"
-#include "intertask_interface.h"
-#include "nr_pdcp/nr_pdcp_oai_api.h"
-#include "pdcp_primitives.h"
-#include "SDAP/nr_sdap/nr_sdap.h"
-
-#include "openair3/ocp-gtpu/gtp_itf.h"
+#include <netinet/in.h>
+#include <netinet/sctp.h>
 #include <openair3/ocp-gtpu/gtp_itf.h>
-#include "RRC/LTE/rrc_eNB_GTPV1U.h"
-#include "RRC/NR/rrc_gNB_GTPV1U.h"
-
-#include "S1AP_NAS-PDU.h"
-#include "executables/softmodem-common.h"
-#include "openair3/SECU/key_nas_deriver.h"
-
-#include "ngap_gNB_defs.h"
-#include "ngap_gNB_ue_context.h"
-#include "ngap_gNB_management_procedures.h"
-#include "NR_ULInformationTransfer.h"
-#include "RRC/NR/MESSAGES/asn1_msg.h"
-#include "NR_UERadioAccessCapabilityInformation.h"
-#include "NR_UE-CapabilityRAT-ContainerList.h"
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "E1AP_ConfidentialityProtectionIndication.h"
+#include "E1AP_IntegrityProtectionIndication.h"
 #include "NGAP_CauseRadioNetwork.h"
-#include "f1ap_messages_types.h"
-#include "openair2/F1AP/f1ap_ids.h"
-#include "openair2/E1AP/e1ap_asnc.h"
-#include "openair2/E1AP/e1ap.h"
-#include "NGAP_asn_constant.h"
-#include "NGAP_PDUSessionResourceSetupRequestTransfer.h"
-#include "NGAP_PDUSessionResourceModifyRequestTransfer.h"
-#include "NGAP_ProtocolIE-Field.h"
-#include "NGAP_GTPTunnel.h"
-#include "NGAP_QosFlowSetupRequestItem.h"
-#include "NGAP_QosFlowAddOrModifyRequestItem.h"
-#include "NGAP_NonDynamic5QIDescriptor.h"
 #include "NGAP_Dynamic5QIDescriptor.h"
-#include "conversions.h"
+#include "NGAP_GTPTunnel.h"
+#include "NGAP_NonDynamic5QIDescriptor.h"
+#include "NGAP_PDUSessionResourceModifyRequestTransfer.h"
+#include "NGAP_PDUSessionResourceSetupRequestTransfer.h"
+#include "NGAP_QosFlowAddOrModifyRequestItem.h"
+#include "NGAP_QosFlowSetupRequestItem.h"
+#include "NGAP_asn_constant.h"
+#include "NGAP_ProtocolIE-Field.h"
+#include "NR_UE-NR-Capability.h"
+#include "NR_UERadioAccessCapabilityInformation.h"
+#include "MAC/mac.h"
+#include "OCTET_STRING.h"
+#include "PHY/defs_common.h"
+#include "RRC/NR/MESSAGES/asn1_msg.h"
+#include "RRC/NR/nr_rrc_common.h"
+#include "RRC/NR/nr_rrc_defs.h"
+#include "RRC/NR/nr_rrc_proto.h"
+#include "RRC/NR/rrc_gNB_UE_context.h"
 #include "RRC/NR/rrc_gNB_radio_bearers.h"
+#include "openair2/LAYER2/NR_MAC_COMMON/nr_mac.h"
+#include "T.h"
+#include "aper_decoder.h"
+#include "asn_codecs.h"
+#include "assertions.h"
+#include "common/ngran_types.h"
+#include "common/platform_constants.h"
+#include "common/ran_context.h"
+#include "common/utils/T/T.h"
+#include "constr_TYPE.h"
+#include "conversions.h"
+#include "e1ap_messages_types.h"
+#include "f1ap_messages_types.h"
+#include "gtpv1_u_messages_types.h"
+#include "intertask_interface.h"
+#include "nr_pdcp/nr_pdcp_entity.h"
+#include "nr_pdcp/nr_pdcp_oai_api.h"
+#include "oai_asn1.h"
+#include "openair2/F1AP/f1ap_ids.h"
+#include "openair3/SECU/key_nas_deriver.h"
+#include "rrc_messages_types.h"
+#include "s1ap_messages_types.h"
+#include "uper_encoder.h"
 
 #ifdef E2_AGENT
 #include "openair2/E2AP/RAN_FUNCTION/O-RAN/ran_func_rc_extern.h"
 #endif
-
-#include "uper_encoder.h"
 
 extern RAN_CONTEXT_t RC;
 
@@ -140,7 +148,7 @@ void nr_rrc_pdcp_config_security(gNB_RRC_UE_t *UE, bool enable_ciphering)
     }
   }
 
-  nr_pdcp_config_set_security(UE->rrc_ue_id, DCCH, true, &security_parameters);
+  nr_pdcp_config_set_security(UE->rrc_ue_id, DL_SCH_LCID_DCCH, true, &security_parameters);
 }
 
 //------------------------------------------------------------------------------
@@ -341,11 +349,13 @@ void trigger_bearer_setup(gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE, int n, pdusession
     if (cuup_nssai.sst == 0)
       cuup_nssai = pdu->nssai; /* for CU-UP selection below */
 
-    pdu->integrityProtectionIndication = rrc->security.do_drb_integrity ? E1AP_IntegrityProtectionIndication_required : E1AP_IntegrityProtectionIndication_not_needed;
-
-    pdu->confidentialityProtectionIndication = rrc->security.do_drb_ciphering ? E1AP_ConfidentialityProtectionIndication_required : E1AP_ConfidentialityProtectionIndication_not_needed;
-    pdu->teId = session->gtp_teid;
-    memcpy(&pdu->tlAddress, session->upf_addr.buffer, 4); // Fixme: dirty IPv4 target
+    security_indication_t *sec = &pdu->securityIndication;
+    sec->integrityProtectionIndication = rrc->security.do_drb_integrity ? SECURITY_REQUIRED
+                                                                        : SECURITY_NOT_NEEDED;
+    sec->confidentialityProtectionIndication = rrc->security.do_drb_ciphering ? SECURITY_REQUIRED
+                                                                              : SECURITY_NOT_NEEDED;
+    pdu->UP_TL_information.teId = session->gtp_teid;
+    memcpy(&pdu->UP_TL_information.tlAddress, session->upf_addr.buffer, sizeof(in_addr_t));
 
     /* we assume for the moment one DRB per PDU session. Activate the bearer,
      * and configure in RRC. */
@@ -372,9 +382,10 @@ void trigger_bearer_setup(gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE, int n, pdusession
 
       drb->numCellGroups = 1; // assume one cell group associated with a DRB
 
+      // Set all Cell Group IDs to MCG
       for (int k=0; k < drb->numCellGroups; k++) {
-        cell_group_t *cellGroup = drb->cellGroupList + k;
-        cellGroup->id = 0; // MCG
+        cell_group_id_t *cellGroup = drb->cellGroupList + k;
+        *cellGroup = MCG;
       }
 
       drb->numQosFlow2Setup = session->nb_qos;
