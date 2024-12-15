@@ -164,6 +164,35 @@ int LDPCencoder(uint8_t **test_input, uint8_t **channel_input, encoder_implempar
   memcpy(&channel_input[0], &c[2*Zc], (block_length-2*Zc)*sizeof(unsigned char));
   memcpy(&channel_input[block_length-2*Zc], &d[0], ((nrows-no_punctured_columns) * Zc-removed_bit)*sizeof(unsigned char));
   */
+#ifdef __AVX512F__
+  uint32_t l1 = (block_length-(2*Zc));
+  uint32_t l2 = ((nrows-no_punctured_columns) * Zc-removed_bit);
+  if ((((2*Zc)&63) == 0) && (((block_length-(2*Zc))&63) == 0)) {
+    __m512i *c512p = (__m512i *)&c[2*Zc];
+    __m512i *d512p = (__m512i *)&d[0];
+    __m512i mask0 = simde_mm512_set1_epi8(0x1);
+    
+    for (i=0;i<l1>>6;i++)
+      for (j=0;j<impp->n_segments;j++) 
+        ((__m512i *)channel_input[j])[i] = _mm512_and_s512(_mm512_srai_epi16(c512p[i],j),mask0);
+    
+    for (i1=0;i1<l2>>6;i1++,i++)
+      for (j=0;j<impp->n_segments;j++) 
+        ((__m512i *)channel_input[j])[i] = _mm512_and_si512(_mm512_srai_epi16(d512p[i1],j),mask0);
+  else if ((((2*Zc)&31) == 0) && (((block_length-(2*Zc))&31) == 0)) {
+    __m256i *c512p = (__m256i *)&c[2*Zc];
+    __m256i *d512p = (__m256i *)&d[0];
+    __m256i mask0 = simde_mm256_set1_epi8(0x1);
+    
+    for (i=0;i<l1>>6;i++)
+      for (j=0;j<impp->n_segments;j++) 
+        ((__m256i *)channel_input[j])[i] = _mm256_and_s256(_mm256_srai_epi16(c256p[i],j),mask0);
+    
+    for (i1=0;i1<l2>>6;i1++,i++)
+      for (j=0;j<impp->n_segments;j++) 
+        ((__m256i *)channel_input[j])[i] = _mm256_and_si256(_mm256_srai_epi16(d256p[i1],j),mask0);
+  }
+#else
   if ((((2*Zc)&31) == 0) && (((block_length-(2*Zc))&31) == 0)) {
     //AssertFatal(((2*Zc)&31) == 0,"2*Zc needs to be a multiple of 32 for now\n");
     //AssertFatal(((block_length-(2*Zc))&31) == 0,"block_length-(2*Zc) needs to be a multiple of 32 for now\n");
@@ -181,6 +210,7 @@ int LDPCencoder(uint8_t **test_input, uint8_t **channel_input, encoder_implempar
     for (i1=0;i1<l2;i1++,i++)
       for (j=0;j<impp->n_segments;j++) ((simde__m256i *)channel_input[j])[i] = simde_mm256_and_si256(simde_mm256_srai_epi16(d256p[i1],j),masks[0]);
   }
+#endif
   else {
 #ifdef DEBUG_LDPC
   LOG_W(PHY,"using non-optimized version\n");
@@ -193,6 +223,7 @@ int LDPCencoder(uint8_t **test_input, uint8_t **channel_input, encoder_implempar
       for (j=0; j<impp->n_segments; j++)
 	channel_input[j][block_length-2*Zc+i] = (d[i]>>j)&1;
     }
+
 
   if(impp->toutput != NULL) stop_meas(impp->toutput);
   return 0;
