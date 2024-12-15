@@ -381,7 +381,8 @@ int nr_dlsch_encoding(PHY_VARS_gNB *gNB,
     encoder_implemparams_t arr[n_seg];
     task_ans_t ans[n_seg];
     memset(ans, 0, n_seg * sizeof(task_ans_t));
-
+    impp.dlsch_rate_matching_stats = dlsch_rate_matching_stats;
+    impp.dlsch_interleaving_stats = dlsch_interleaving_stats;
     for (int j = 0; j < n_seg; j++) {
       encoder_implemparams_t *perJobImpp = &arr[j];
       *perJobImpp = impp;
