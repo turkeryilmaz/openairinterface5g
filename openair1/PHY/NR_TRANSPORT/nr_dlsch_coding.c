@@ -176,6 +176,7 @@ void ldpc8blocks(void *p)
 
     uint8_t e[E];
     bzero (e, E);
+    start_meas(impp->dlsch_rate_matching_stats);
     nr_rate_matching_ldpc(Tbslbrm,
                           impp->BG,
                           impp->Zc,
@@ -186,6 +187,7 @@ void ldpc8blocks(void *p)
                           impp->K - impp->F - 2 * impp->Zc,
                           rel15->rvIndex[0],
                           E);
+    stop_meas(impp->dlsch_rate_matching_stats);
     if (impp->K - impp->F - 2 * impp->Zc > E) {
       LOG_E(PHY,
             "dlsch coding A %d  Kr %d G %d (nb_rb %d, nb_symb_sch %d, nb_re_dmrs %d, length_dmrs %d, mod_order %d)\n",
@@ -217,10 +219,12 @@ void ldpc8blocks(void *p)
       printf("output ratematching e[%d]= %d r_offset %u\n", i,e[i], r_offset);
 
 #endif
+    start_meas(impp->dlsch_interleaving_stats);
     nr_interleaving_ldpc(E,
                          mod_order,
                          e,
                          impp->output+r_offset);
+    stop_meas(impp->dlsch_interleaving_stats);
 #ifdef DEBUG_DLSCH_CODING
 
     for (int i =0; i<16; i++)
