@@ -260,7 +260,7 @@ one_measurement_t test_ldpc(short max_iterations,
   printf("number of undecoded bits: %d\n", (Kb + nrows - no_punctured_columns - 2) * Zc - removed_bit);
 
   encoder_implemparams_t impp = {.Zc = Zc, .Kb = Kb, .BG = BG, .Kr = block_length, .K = block_length};
-  impp.gen_code = 2;
+  impp.gen_code = 1;
 
   if (ntrials==0)
     ldpc_orig.LDPCencoder(test_input, channel_input, &impp);
