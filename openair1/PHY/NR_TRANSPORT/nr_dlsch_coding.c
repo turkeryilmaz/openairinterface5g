@@ -139,7 +139,7 @@ static void ldpc8blocks(void *p)
         A,impp->K,G, nb_rb,nb_symb_sch,nb_re_dmrs,length_dmrs,(int)mod_order);
   // nrLDPC_encoder output is in "d"
   // let's make this interface happy!
-  uint8_t tmp[8][68 * 384]__attribute__((aligned(32)));
+  uint8_t tmp[8][68 * 384]__attribute__((aligned(64)));
   uint8_t *d[impp->n_segments];
   for (int rr=impp->macro_num*8, i=0; rr < impp->n_segments && rr < (impp->macro_num+1)*8; rr++,i++ )
     d[rr] = tmp[i];
@@ -174,6 +174,7 @@ static void ldpc8blocks(void *p)
 
     uint32_t Tbslbrm = rel15->maintenance_parms_v3.tbSizeLbrmBytes;
 
+    start_meas(impp->dlsch_rate_matching_stats);
     uint8_t e[E];
     bzero (e, E);
     nr_rate_matching_ldpc(Tbslbrm,
@@ -186,6 +187,7 @@ static void ldpc8blocks(void *p)
                           impp->K - impp->F - 2 * impp->Zc,
                           rel15->rvIndex[0],
                           E);
+    stop_meas(impp->dlsch_rate_matching_stats);
     if (impp->K - impp->F - 2 * impp->Zc > E) {
       LOG_E(PHY,
             "dlsch coding A %d  Kr %d G %d (nb_rb %d, nb_symb_sch %d, nb_re_dmrs %d, length_dmrs %d, mod_order %d)\n",
@@ -217,10 +219,12 @@ static void ldpc8blocks(void *p)
       printf("output ratematching e[%d]= %d r_offset %u\n", i,e[i], r_offset);
 
 #endif
+    start_meas(impp->dlsch_interleaving_stats);
     nr_interleaving_ldpc(E,
                          mod_order,
                          e,
                          impp->output+r_offset);
+    stop_meas(impp->dlsch_interleaving_stats);
 #ifdef DEBUG_DLSCH_CODING
 
     for (int i =0; i<16; i++)
@@ -377,7 +381,8 @@ int nr_dlsch_encoding(PHY_VARS_gNB *gNB,
     encoder_implemparams_t arr[n_seg];
     task_ans_t ans[n_seg];
     memset(ans, 0, n_seg * sizeof(task_ans_t));
-
+    impp.dlsch_rate_matching_stats = dlsch_rate_matching_stats;
+    impp.dlsch_interleaving_stats = dlsch_interleaving_stats;
     for (int j = 0; j < n_seg; j++) {
       encoder_implemparams_t *perJobImpp = &arr[j];
       *perJobImpp = impp;
