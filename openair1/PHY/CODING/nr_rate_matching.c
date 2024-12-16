@@ -38,34 +38,37 @@ void nr_interleaving_ldpc(uint32_t E, uint8_t Qm, uint8_t *e, uint32_t *f, int s
   uint32_t byte_idx = start_idx / 32;
   uint8_t bit_idx = start_idx % 32;
   uint32_t *fp = &f[byte_idx];
+
   switch(Qm) {
   case 2:
-    for (uint32_t i = 0; i < EQm; i++) {
-      uint32_t packed_bits = ((e[i] & 0x01) << 0) |
-                             ((e[i + EQm] & 0x01) << 1);
-      *fp |= (packed_bits << bit_idx);
-      bit_idx += 2;
-      if (bit_idx >= 32) {
-        fp++;
-        bit_idx -= 32;
-        if (bit_idx > 0)
-          *fp |= (packed_bits >> (2 - bit_idx));
-      }
-    }
-    break;
   case 4:
-    for (uint32_t i = 0; i < EQm; i++) {
-      uint32_t packed_bits = ((e[i] & 0x01) << 0) |
-                             ((e[i + EQm] & 0x01) << 1) |
-                             ((e[i + 2 * EQm] & 0x01) << 2) |
-                            ((e[i + 3 * EQm] & 0x01) << 3);
-      *fp |= (packed_bits << bit_idx);
-      bit_idx += 4;
-      if (bit_idx >= 32) {
-        fp++;
-        bit_idx -= 32;
-        if (bit_idx > 0)
-          *fp |= (packed_bits >> (4 - bit_idx));
+  case 8:
+    uint32_t i = 0;
+    if (bit_idx > 0) {
+      for (; i < EQm && bit_idx< 32; i++) {
+        for (uint8_t j = 0; j < Qm; j++, bit_idx++) {
+          uint32_t extracted_bit = e[j * EQm + i] & 0x01;
+          *fp |= (extracted_bit << bit_idx);
+        }
+      }
+      fp++;
+      bit_idx = 0;
+    }
+    for (; i < EQm; i += 16) {
+      simde__m128i combined = simde_mm_setzero_si128();
+      for (uint8_t k = 0; k < Qm; k++) {
+        simde__m128i load = simde_mm_loadu_si128((simde__m128i*)(&e[k * EQm + i]));
+        simde__m128i shifted = simde_mm_slli_epi16(load, k);
+        combined = simde_mm_or_si128(shifted, combined);
+      }
+      for (uint8_t k = 0; k < 16; ++k) {
+        uint32_t extracted_bits = simde_mm_extract_epi8(combined, k);
+        *fp |= (extracted_bits << (bit_idx));
+        bit_idx += Qm;
+        if (bit_idx >= 32) {
+          bit_idx = 0;
+          fp++;
+        }
       }
     }
     break;
@@ -84,26 +87,6 @@ void nr_interleaving_ldpc(uint32_t E, uint8_t Qm, uint8_t *e, uint32_t *f, int s
         bit_idx -= 32;
         if (bit_idx > 0)
           *fp |= (packed_bits >> (6 - bit_idx));
-      }
-    }
-    break;
-  case 8:
-    for (uint32_t i = 0; i < EQm; i++) {
-      uint32_t packed_bits = ((e[i] & 0x01) << 0) |
-                             ((e[i + EQm] & 0x01) << 1) |
-                             ((e[i + 2 * EQm] & 0x01) << 2) |
-                             ((e[i + 3 * EQm] & 0x01) << 3) |
-                             ((e[i + 4 * EQm] & 0x01) << 4) |
-                             ((e[i + 5 * EQm] & 0x01) << 5) |
-                             ((e[i + 6 * EQm] & 0x01) << 6) |
-                             ((e[i + 7 * EQm] & 0x01) << 7);
-      *fp |= (packed_bits << bit_idx);
-      bit_idx += 8;
-      if (bit_idx >= 32) {
-        fp++;
-        bit_idx -= 32;
-        if (bit_idx > 0)
-          *fp |= (packed_bits >> (8 - bit_idx));
       }
     }
     break;
