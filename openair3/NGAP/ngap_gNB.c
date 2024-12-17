@@ -114,11 +114,14 @@ static void ngap_gNB_register_amf(ngap_gNB_instance_t *instance_p,
   memcpy(&sctp_new_association_req_p->local_address,
          local_ip_addr,
          sizeof(*local_ip_addr));
-  NGAP_INFO("[gNB %ld] check the amf registration state\n",instance_p->instance);
+
+  NGAP_INFO("Registering AMF: IP=%s, in_streams=%d, out_streams=%d\n",
+            amf_ip_address->ipv4_address,
+            in_streams,
+            out_streams);
 
   /* Create new AMF descriptor */
-  ngap_amf_data_p = calloc(1, sizeof(*ngap_amf_data_p));
-  DevAssert(ngap_amf_data_p != NULL);
+  ngap_amf_data_p = calloc_or_fail(1, sizeof(*ngap_amf_data_p));
   ngap_amf_data_p->cnx_id                = ngap_gNB_fetch_add_global_cnx_id();
   sctp_new_association_req_p->ulp_cnx_id = ngap_amf_data_p->cnx_id;
   ngap_amf_data_p->assoc_id          = -1;
@@ -126,8 +129,12 @@ static void ngap_gNB_register_amf(ngap_gNB_instance_t *instance_p,
   memcpy(&ngap_amf_data_p->amf_s1_ip,
         amf_ip_address,
         sizeof(*amf_ip_address));
-  for (int i = 0; i < broadcast_plmn_num; ++i)
-    ngap_amf_data_p->broadcast_plmn_index[i] = broadcast_plmn_index[i];
+  for (int i = 0; i < broadcast_plmn_num; ++i) {
+    if (i < sizeofArray(ngap_amf_data_p->broadcast_plmn_index))
+      ngap_amf_data_p->broadcast_plmn_index[i] = broadcast_plmn_index[i];
+    else
+      NGAP_WARN("Broadcast PLMN index %d out of bounds, ignoring\n", i);
+  }
 
   ngap_amf_data_p->ngap_gNB_instance = instance_p;
   STAILQ_INIT(&ngap_amf_data_p->served_guami);
