@@ -19,36 +19,31 @@
  *      contact@openairinterface.org
  */
 
-/*! \file ngap_gNB_overload.h
- * \brief ngap procedures for overload messages within gNB
- * \author Yoshio INOUE, Masayuki HARADA
- * \date 2020
- * \version 0.1
- * \email: yoshio.inoue@fujitsu.com,masayuki.harada@fujitsu.com (yoshio.inoue%40fujitsu.com%2cmasayuki.harada%40fujitsu.com)
- */
-
-#ifndef NGAP_GNB_OVERLOAD_H_
-#define NGAP_GNB_OVERLOAD_H_
+#ifndef NGAP_GNB_INTERFACE_MANAGEMENT_H_
+#define NGAP_GNB_INTERFACE_MANAGEMENT_H_
 
 #include <netinet/in.h>
 #include <netinet/sctp.h>
 #include <stdint.h>
-#include "NGAP_NGAP-PDU.h"
+#include "ngap_gNB_defs.h"
+#include "ngap_msg_includes.h"
 
-/**
- * \brief Handle an overload start message
- **/
-// int ngap_gNB_handle_overload_start(gNB_amf_desc_t *gNB_desc_p,
-//                                    sctp_queue_item_t *packet_p,
-//                                    struct ngap_message_s *message_p);
-int ngap_gNB_handle_overload_start(sctp_assoc_t assoc_id, uint32_t stream, NGAP_NGAP_PDU_t *pdu);
+#define MAX_NUM_SERVED_GUAMI 256
+#define MAX_NUM_PLMN 12
 
-/**
- * \brief Handle an overload stop message
- **/
-// int ngap_gNB_handle_overload_stop(gNB_amf_desc_t *gNB_desc_p,
-//                                   sctp_queue_item_t *packet_p,
-//                                   struct ngap_message_s *message_p);
+typedef struct {
+  struct served_guami_s guami[MAX_NUM_SERVED_GUAMI];
+  int num_guami;
+  struct plmn_support_s plmn[MAX_NUM_PLMN];
+  int num_plmn;
+  long relative_amf_capacity;
+  char *amf_name;
+} ng_setup_response_t;
+
+int encode_ng_setup_request(ngap_gNB_instance_t *instance_p, ngap_gNB_amf_data_t *amf);
+
+int decode_ng_setup_response(ng_setup_response_t *out, const NGAP_NGSetupResponse_t *container);
+
 int ngap_gNB_handle_overload_stop(sctp_assoc_t assoc_id, uint32_t stream, NGAP_NGAP_PDU_t *pdu);
 
-#endif /* NGAP_GNB_OVERLOAD_H_ */
+#endif /* NGAP_GNB_INTERFACE_MANAGEMENT_H_ */

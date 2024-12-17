@@ -48,6 +48,7 @@
 #include "ngap_common.h"
 #include "ngap_gNB.h"
 #include "ngap_gNB_context_management_procedures.h"
+#include "ngap_gNB_interface_management.h"
 #include "ngap_gNB_default_values.h"
 #include "ngap_gNB_defs.h"
 #include "ngap_gNB_encoder.h"
@@ -66,9 +67,6 @@
 #if defined(TEST_S1C_AMF)
   #include "oaisim_amf_test_s1c.h"
 #endif
-
-static int ngap_gNB_generate_ng_setup_request(
-  ngap_gNB_instance_t *instance_p, ngap_gNB_amf_data_t *ngap_amf_data_p);
 
 void ngap_gNB_handle_register_gNB(instance_t instance, ngap_register_gnb_req_t *ngap_register_gNB);
 
@@ -258,7 +256,7 @@ void ngap_gNB_handle_sctp_association_resp(instance_t instance, sctp_new_associa
   ngap_amf_data_p->out_streams = sctp_new_association_resp->out_streams;
   /* Prepare new NG Setup Request */
   LOG_A(NGAP, "Send NGSetupRequest to AMF\n");
-  ngap_gNB_generate_ng_setup_request(instance_p, ngap_amf_data_p);
+  encode_ng_setup_request(instance_p, ngap_amf_data_p);
 }
 
 static
@@ -385,125 +383,3 @@ void *ngap_gNB_task(void *arg) {
 
   return NULL;
 }
-
-//-----------------------------------------------------------------------------
-/*
-* gNB generate a NG setup request towards AMF
-*/
-static int ngap_gNB_generate_ng_setup_request(
-  ngap_gNB_instance_t *instance_p,
-  ngap_gNB_amf_data_t *ngap_amf_data_p)
-//-----------------------------------------------------------------------------
-{
-  NGAP_NGAP_PDU_t            pdu;
-  NGAP_NGSetupRequest_t      *out = NULL;
-  NGAP_NGSetupRequestIEs_t   *ie = NULL;
-  NGAP_SupportedTAItem_t     *ta = NULL;
-  NGAP_BroadcastPLMNItem_t   *plmn = NULL;
-  NGAP_SliceSupportItem_t    *ssi = NULL;
-  uint8_t  *buffer = NULL;
-  uint32_t  len = 0;
-  int       ret = 0;
-  DevAssert(instance_p != NULL);
-  DevAssert(ngap_amf_data_p != NULL);
-  ngap_amf_data_p->state = NGAP_GNB_STATE_WAITING;
-  /* Prepare the NGAP message to encode */
-  memset(&pdu, 0, sizeof(pdu));
-  pdu.present = NGAP_NGAP_PDU_PR_initiatingMessage;
-  pdu.choice.initiatingMessage = CALLOC(1, sizeof(struct NGAP_InitiatingMessage));
-  pdu.choice.initiatingMessage->procedureCode = NGAP_ProcedureCode_id_NGSetup;
-  pdu.choice.initiatingMessage->criticality = NGAP_Criticality_reject;
-  pdu.choice.initiatingMessage->value.present = NGAP_InitiatingMessage__value_PR_NGSetupRequest;
-  out = &pdu.choice.initiatingMessage->value.choice.NGSetupRequest;
-  /* mandatory */
-  ie = (NGAP_NGSetupRequestIEs_t *)calloc(1, sizeof(NGAP_NGSetupRequestIEs_t));
-  ie->id = NGAP_ProtocolIE_ID_id_GlobalRANNodeID;
-  ie->criticality = NGAP_Criticality_reject;
-  ie->value.present = NGAP_NGSetupRequestIEs__value_PR_GlobalRANNodeID;
-  ie->value.choice.GlobalRANNodeID.present = NGAP_GlobalRANNodeID_PR_globalGNB_ID;
-  ie->value.choice.GlobalRANNodeID.choice.globalGNB_ID = CALLOC(1, sizeof(struct NGAP_GlobalGNB_ID));
-  MCC_MNC_TO_PLMNID(instance_p->plmn[ngap_amf_data_p->broadcast_plmn_index[0]].mcc,
-                    instance_p->plmn[ngap_amf_data_p->broadcast_plmn_index[0]].mnc,
-                    instance_p->plmn[ngap_amf_data_p->broadcast_plmn_index[0]].mnc_digit_length,
-                    &(ie->value.choice.GlobalRANNodeID.choice.globalGNB_ID->pLMNIdentity));
-  ie->value.choice.GlobalRANNodeID.choice.globalGNB_ID->gNB_ID.present = NGAP_GNB_ID_PR_gNB_ID;
-  MACRO_GNB_ID_TO_BIT_STRING(instance_p->gNB_id,
-                             &ie->value.choice.GlobalRANNodeID.choice.globalGNB_ID->gNB_ID.choice.gNB_ID);
-  NGAP_INFO("%u -> %02x%02x%02x%02x\n", instance_p->gNB_id,
-            ie->value.choice.GlobalRANNodeID.choice.globalGNB_ID->gNB_ID.choice.gNB_ID.buf[0],
-            ie->value.choice.GlobalRANNodeID.choice.globalGNB_ID->gNB_ID.choice.gNB_ID.buf[1],
-            ie->value.choice.GlobalRANNodeID.choice.globalGNB_ID->gNB_ID.choice.gNB_ID.buf[2],
-            ie->value.choice.GlobalRANNodeID.choice.globalGNB_ID->gNB_ID.choice.gNB_ID.buf[3]);
-  asn1cSeqAdd(&out->protocolIEs.list, ie);
-
-  /* optional */
-  if (instance_p->gNB_name) {
-    ie = (NGAP_NGSetupRequestIEs_t *)calloc(1, sizeof(NGAP_NGSetupRequestIEs_t));
-    ie->id = NGAP_ProtocolIE_ID_id_RANNodeName;
-    ie->criticality = NGAP_Criticality_ignore;
-    ie->value.present = NGAP_NGSetupRequestIEs__value_PR_RANNodeName;
-    OCTET_STRING_fromBuf(&ie->value.choice.RANNodeName, instance_p->gNB_name,
-                         strlen(instance_p->gNB_name));
-    asn1cSeqAdd(&out->protocolIEs.list, ie);
-  }
-
-  /* mandatory */
-  ie = (NGAP_NGSetupRequestIEs_t *)calloc(1, sizeof(NGAP_NGSetupRequestIEs_t));
-  ie->id = NGAP_ProtocolIE_ID_id_SupportedTAList;
-  ie->criticality = NGAP_Criticality_reject;
-  ie->value.present = NGAP_NGSetupRequestIEs__value_PR_SupportedTAList;
-  {
-    ta = (NGAP_SupportedTAItem_t *)calloc(1, sizeof(NGAP_SupportedTAItem_t));
-    INT24_TO_OCTET_STRING(instance_p->tac, &ta->tAC);
-    {
-      for (int i = 0; i < ngap_amf_data_p->broadcast_plmn_num; ++i) {
-        plmn = (NGAP_BroadcastPLMNItem_t *)calloc(1, sizeof(NGAP_BroadcastPLMNItem_t));
-        ngap_plmn_t *plmn_req = &instance_p->plmn[ngap_amf_data_p->broadcast_plmn_index[i]];
-        MCC_MNC_TO_TBCD(plmn_req->mcc, plmn_req->mnc, plmn_req->mnc_digit_length, &plmn->pLMNIdentity);
-
-        for (int si = 0; si < plmn_req->num_nssai; si++) {
-          ssi = (NGAP_SliceSupportItem_t *)calloc(1, sizeof(NGAP_SliceSupportItem_t));
-          INT8_TO_OCTET_STRING(plmn_req->s_nssai[si].sst, &ssi->s_NSSAI.sST);
-
-          const uint32_t sd = plmn_req->s_nssai[si].sd;
-          if (sd != 0xffffff) {
-            ssi->s_NSSAI.sD = calloc(1, sizeof(NGAP_SD_t));
-            ssi->s_NSSAI.sD->buf = calloc(3, sizeof(uint8_t));
-            ssi->s_NSSAI.sD->size = 3;
-            ssi->s_NSSAI.sD->buf[0] = (sd & 0xff0000) >> 16;
-            ssi->s_NSSAI.sD->buf[1] = (sd & 0x00ff00) >> 8;
-            ssi->s_NSSAI.sD->buf[2] = (sd & 0x0000ff);
-          }
-
-          asn1cSeqAdd(&plmn->tAISliceSupportList.list, ssi);
-        }
-
-        asn1cSeqAdd(&ta->broadcastPLMNList.list, plmn);
-      }
-    }
-    asn1cSeqAdd(&ie->value.choice.SupportedTAList.list, ta);
-  }
-  asn1cSeqAdd(&out->protocolIEs.list, ie);
-  
-  /* mandatory */
-  ie = (NGAP_NGSetupRequestIEs_t *)calloc(1, sizeof(NGAP_NGSetupRequestIEs_t));
-  ie->id = NGAP_ProtocolIE_ID_id_DefaultPagingDRX;
-  ie->criticality = NGAP_Criticality_ignore;
-  ie->value.present = NGAP_NGSetupRequestIEs__value_PR_PagingDRX;
-  ie->value.choice.PagingDRX = instance_p->default_drx;
-  asn1cSeqAdd(&out->protocolIEs.list, ie);
-
-
-  if (ngap_gNB_encode_pdu(&pdu, &buffer, &len) < 0) {
-    NGAP_ERROR("Failed to encode NG setup request\n");
-    return -1;
-  }
-
-  /* Non UE-Associated signalling -> stream = 0 */
-  ngap_gNB_itti_send_sctp_data_req(instance_p->instance, ngap_amf_data_p->assoc_id, buffer, len, 0);
-  return ret;
-}
-
-
-
-

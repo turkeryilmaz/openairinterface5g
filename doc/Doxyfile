@@ -1045,7 +1045,7 @@ INPUT                  = \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair3/NGAP/ngap_gNB_utils.h \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair3/NGAP/ngap_gNB_context_management_procedures.h \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair3/NGAP/ngap_gNB_nas_procedures.h \
-@CMAKE_CURRENT_SOURCE_DIR@/../openair3/NGAP/ngap_gNB_overload.h \
+@CMAKE_CURRENT_SOURCE_DIR@/../openair3/NGAP/ngap_gNB_interface_management.h \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair3/NGAP/ngap_gNB_ue_context.h \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair3/NGAP/ngap_gNB_handlers.c \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair3/NGAP/ngap_gNB.c \
@@ -1064,7 +1064,7 @@ INPUT                  = \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair3/NGAP/ngap_gNB_nas_procedures.c \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair3/NGAP/ngap_gNB_decoder.h \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair3/NGAP/ngap_gNB_ue_context.c \
-@CMAKE_CURRENT_SOURCE_DIR@/../openair3/NGAP/ngap_gNB_overload.c \
+@CMAKE_CURRENT_SOURCE_DIR@/../openair3/NGAP/ngap_gNB_interface_management.c \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair3/NGAP/ngap_gNB_default_values.h \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair3/SECU/secu_defs.c \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair3/SECU/sha_256_hmac.h \

@@ -82,6 +82,7 @@
 #include "rrc_messages_types.h"
 #include "s1ap_messages_types.h"
 #include "uper_encoder.h"
+#include "ngap_gNB_interface_management.h"
 
 #ifdef E2_AGENT
 #include "openair2/E2AP/RAN_FUNCTION/O-RAN/ran_func_rc_extern.h"

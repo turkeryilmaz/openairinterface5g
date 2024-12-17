@@ -355,7 +355,7 @@ add_library(ngap
   ${NGAP_DIR}/ngap_gNB_utils.c
   ${NGAP_DIR}/ngap_gNB_nas_procedures.c
   ${NGAP_DIR}/ngap_gNB_nnsf.c
-  ${NGAP_DIR}/ngap_gNB_overload.c
+  ${NGAP_DIR}/ngap_gNB_interface_management.c
   ${NGAP_DIR}/ngap_gNB_trace.c
   )
 target_link_libraries(ngap PUBLIC asn1_ngap)
