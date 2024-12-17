@@ -568,16 +568,9 @@ static int ngap_gNB_handle_error_indication(sctp_assoc_t assoc_id, uint32_t stre
     }
   }
 
-
   NGAP_FIND_PROTOCOLIE_BY_ID(NGAP_ErrorIndicationIEs_t, ie, container,
                              NGAP_ProtocolIE_ID_id_CriticalityDiagnostics, false);
 
-  if (ie) {
-    // TODO continue
-  }
-
-
-  // TODO continue
   return 0;
 }
 
