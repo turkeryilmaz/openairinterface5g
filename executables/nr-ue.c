@@ -444,7 +444,7 @@ static void RU_write(nr_rxtx_thread_data_t *rxtxD, bool sl_tx_action)
 {
   PHY_VARS_NR_UE *UE = rxtxD->UE;
   const fapi_nr_config_request_t *cfg = &UE->nrUE_config;
-  const UE_nr_rxtx_proc_t *proc = &rxtxD->proc;
+  UE_nr_rxtx_proc_t *proc = &rxtxD->proc;
 
   NR_DL_FRAME_PARMS *fp = &UE->frame_parms;
   if (UE->sl_mode == 2)
@@ -452,8 +452,18 @@ static void RU_write(nr_rxtx_thread_data_t *rxtxD, bool sl_tx_action)
 
   void *txp[NB_ANTENNAS_TX];
   int slot = proc->nr_slot_tx;
+
+  // send only guard and UL symbols in mixed slot
+  int first_guard_ul_symbol = -1;
+  if (GETBIT(cfg->config_mask, PHY_CONFIG_BIT_MASK_TDD))
+    first_guard_ul_symbol = get_first_guard_ul_symbol(cfg, slot);
+  if (first_guard_ul_symbol == -1 || IS_SOFTMODEM_RFSIM) // if DL slot, send full slot. necessary for continuous_tx and rfsim mode
+    first_guard_ul_symbol = 0;
+  const uint32_t first_guard_ul_symbol_ts = fp->get_samples_symbol_timestamp(slot, fp, first_guard_ul_symbol);
+  proc->timestamp_tx += first_guard_ul_symbol_ts;
+  rxtxD->writeBlockSize -= first_guard_ul_symbol_ts;
   for (int i = 0; i < fp->nb_antennas_tx; i++)
-    txp[i] = (void *)&UE->common_vars.txData[i][fp->get_samples_slot_timestamp(slot, fp, 0)];
+    txp[i] = (void *)&UE->common_vars.txData[i][fp->get_samples_slot_timestamp(slot, fp, 0) + first_guard_ul_symbol_ts];
 
   radio_tx_burst_flag_t flags = TX_BURST_INVALID;
 

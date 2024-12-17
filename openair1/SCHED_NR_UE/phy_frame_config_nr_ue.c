@@ -78,6 +78,29 @@ int nr_ue_slot_select(const fapi_nr_config_request_t *cfg, int nr_slot)
 }
 
 /*
+ * This function returns number of Guard + UL symbols in a slot
+ */
+int8_t get_first_guard_ul_symbol(const fapi_nr_config_request_t *cfg, const int slot)
+{
+  const int period = cfg->tdd_table_1.tdd_period_in_slots + (cfg->tdd_table_2 ? cfg->tdd_table_2->tdd_period_in_slots : 0);
+  int rel_slot = slot % period;
+  const fapi_nr_tdd_table_t *tdd_table = &cfg->tdd_table_1;
+  if (cfg->tdd_table_2 && rel_slot >= tdd_table->tdd_period_in_slots) {
+    rel_slot -= tdd_table->tdd_period_in_slots;
+    tdd_table = cfg->tdd_table_2;
+  }
+
+  const fapi_nr_max_tdd_periodicity_t *current_slot = &tdd_table->max_tdd_periodicity_list[rel_slot];
+  for (int i = 0; i < NR_NUMBER_OF_SYMBOLS_PER_SLOT; i++) {
+    if (current_slot->max_num_of_symbol_per_slot_list[i].slot_config != 0)
+      return i;
+  }
+
+  // if DL slot
+  return -1;
+}
+
+/*
  * This function determines if the mixed slot is a Sidelink slot
  */
 uint8_t sl_determine_if_sidelink_slot(uint8_t sl_startsym, uint8_t sl_lensym, uint8_t num_ulsym)

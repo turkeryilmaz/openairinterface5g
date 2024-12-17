@@ -86,5 +86,7 @@ void free_tdd_configuration_nr(NR_DL_FRAME_PARMS *frame_parms);
 
 void free_tdd_configuration_dedicated_nr(NR_DL_FRAME_PARMS *frame_parms);
 
+int8_t get_first_guard_ul_symbol(const fapi_nr_config_request_t *cfg, const int slot);
+
 #endif  /* PHY_FRAME_CONFIG_NR_H */
 

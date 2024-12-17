@@ -281,6 +281,23 @@ uint32_t get_samples_slot_timestamp(int slot, const NR_DL_FRAME_PARMS *fp, unsig
   return samp_count;
 }
 
+/* Returns number of samples to this symbol from start of the slot */
+uint32_t get_samples_symbol_timestamp(int slot, const NR_DL_FRAME_PARMS *fp, unsigned int symbol)
+{
+  const int ofdm_symbol_size = fp->ofdm_symbol_size;
+  const int prefix0 = fp->nb_prefix_samples0;
+  const int prefix = fp->nb_prefix_samples;
+  const int start_symb = slot * fp->symbols_per_slot;
+  const int end_symb = start_symb + symbol;
+
+  uint32_t num_samples = 0;
+  for (int i = start_symb; i < end_symb; i++)
+    num_samples += (i % (0x7 << fp->numerology_index)) ? prefix : prefix0;
+  num_samples += ofdm_symbol_size * symbol;
+
+  return num_samples;
+}
+
 void nr_init_frame_parms(nfapi_nr_config_request_scf_t* cfg, NR_DL_FRAME_PARMS *fp)
 {
 
@@ -319,6 +336,7 @@ void nr_init_frame_parms(nfapi_nr_config_request_scf_t* cfg, NR_DL_FRAME_PARMS *
                              (fp->nb_prefix_samples + fp->ofdm_symbol_size) * (fp->symbols_per_slot * fp->slots_per_subframe - 2); 
   fp->get_samples_per_slot = &get_samples_per_slot;
   fp->get_samples_slot_timestamp = &get_samples_slot_timestamp;
+  fp->get_samples_symbol_timestamp = &get_samples_symbol_timestamp;
   fp->get_slot_from_timestamp = &get_slot_from_timestamp;
   fp->samples_per_frame = 10 * fp->samples_per_subframe;
   fp->freq_range = (fp->dl_CarrierFreq < 6e9) ? FR1 : FR2;
@@ -404,6 +422,7 @@ int nr_init_frame_parms_ue(NR_DL_FRAME_PARMS *fp,
                              (fp->nb_prefix_samples + fp->ofdm_symbol_size) * (fp->symbols_per_slot * fp->slots_per_subframe - 2); 
   fp->get_samples_per_slot = &get_samples_per_slot;
   fp->get_samples_slot_timestamp = &get_samples_slot_timestamp;
+  fp->get_samples_symbol_timestamp = &get_samples_symbol_timestamp;
   fp->samples_per_frame = 10 * fp->samples_per_subframe;
   fp->freq_range = (fp->dl_CarrierFreq < 6e9) ? FR1 : FR2;
 
@@ -460,6 +479,7 @@ void nr_init_frame_parms_ue_sa(NR_DL_FRAME_PARMS *frame_parms, uint64_t downlink
                              (frame_parms->nb_prefix_samples + frame_parms->ofdm_symbol_size) * (frame_parms->symbols_per_slot * frame_parms->slots_per_subframe - 2);
   frame_parms->get_samples_per_slot = &get_samples_per_slot;
   frame_parms->get_samples_slot_timestamp = &get_samples_slot_timestamp;
+  frame_parms->get_samples_symbol_timestamp = &get_samples_symbol_timestamp;
   frame_parms->samples_per_frame = 10 * frame_parms->samples_per_subframe;
 
   LOG_W(PHY, "samples_per_subframe %d/per second %d, wCP %d\n", frame_parms->samples_per_subframe, 1000*frame_parms->samples_per_subframe, frame_parms->samples_per_subframe_wCP);

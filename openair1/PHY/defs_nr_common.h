@@ -187,6 +187,8 @@ struct NR_DL_FRAME_PARMS {
   get_slot_from_timestamp_t get_slot_from_timestamp;
   /// Number of samples before slot
   get_samples_slot_timestamp_t get_samples_slot_timestamp;
+  /// Number of samples from slot start to symbol
+  get_samples_slot_timestamp_t get_samples_symbol_timestamp;
   /// Number of samples in 0th and center slot of a subframe
   uint32_t samples_per_slot0;
   /// Number of samples in other slots of the subframe
