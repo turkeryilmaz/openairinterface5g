@@ -491,8 +491,10 @@ static void RU_write(nr_rxtx_thread_data_t *rxtxD, bool sl_tx_action)
     }
   }
 
-  int tmp = openair0_write_reorder(&UE->rfdevice, proc->timestamp_tx, txp, rxtxD->writeBlockSize, fp->nb_antennas_tx, flags);
-  AssertFatal(tmp == rxtxD->writeBlockSize, "");
+  if (flags || IS_SOFTMODEM_RFSIM) {
+    int tmp = UE->rfdevice.trx_write_func(&UE->rfdevice, proc->timestamp_tx, txp, rxtxD->writeBlockSize, fp->nb_antennas_tx, flags);
+    AssertFatal(tmp == rxtxD->writeBlockSize, "");
+  }
 
   for (int i = 0; i < fp->nb_antennas_tx; i++)
     memset(txp[i], 0, rxtxD->writeBlockSize);
@@ -562,8 +564,8 @@ void processSlotTX(void *arg)
   int slots_per_frame = (UE->sl_mode == 2) ? UE->SL_UE_PHY_PARAMS.sl_frame_params.slots_per_frame
                                            : UE->frame_parms.slots_per_frame;
   int next_slot = (proc->nr_slot_tx + 1) % slots_per_frame;
-  dynamic_barrier_join(&UE->process_slot_tx_barriers[next_slot]);
   RU_write(rxtxD, sl_tx_action);
+  dynamic_barrier_join(&UE->process_slot_tx_barriers[next_slot]);
   free(rxtxD);
   TracyCZoneEnd(ctx);
 }
