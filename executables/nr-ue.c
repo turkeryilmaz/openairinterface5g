@@ -858,6 +858,8 @@ void *UE_thread(void *arg)
     for (int i = 0; i < 50; i++)
       readFrame(UE, &tmp, true);
   }
+  polarReturn(nr_polar_params(1,39,8));
+  polarReturn(nr_polar_params(1,39,4));
 
   double ntn_ta_common = 0;
   int ntn_koffset = 0;

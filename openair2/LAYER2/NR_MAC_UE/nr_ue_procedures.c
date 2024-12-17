@@ -1353,7 +1353,7 @@ static int nr_ue_process_dci_dl_11(NR_UE_MAC_INST_t *mac,
     max_mimo_layers = *sc_info->maxMIMO_Layers_PDSCH;
   else
     max_mimo_layers = mac->uecap_maxMIMO_PDSCH_layers;
-  AssertFatal(max_mimo_layers > 0, "Invalid number of max MIMO layers for PDSCH\n");
+  AssertFatal(max_mimo_layers > 0, "Invalid number of max MIMO layers for PDSCH%d %d\n", max_mimo_layers, mac->uecap_maxMIMO_PDSCH_layers);
   int nl_tbslbrm = max_mimo_layers < 4 ? max_mimo_layers : 4;
   dlsch_pdu->tbslbrm = nr_compute_tbslbrm(dlsch_pdu->mcs_table, sc_info->dl_bw_tbslbrm, nl_tbslbrm);
   /*PTRS configuration */

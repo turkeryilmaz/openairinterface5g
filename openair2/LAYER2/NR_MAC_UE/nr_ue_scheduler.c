@@ -2304,8 +2304,11 @@ static int get_nr_prach_info_from_ssb_index(prach_association_pattern_t *prach_a
 
     // Choose a random SSB nb
     uint8_t random_ssb_nb = 0;
-
-    random_ssb_nb = ((taus()) % nb_mapped_ssb);
+    if (! nb_mapped_ssb) {
+      LOG_E(PHY,"nb_mapped_ssb is 0\n");
+      random_ssb_nb=1;
+    } else 
+      random_ssb_nb = ((taus()) % nb_mapped_ssb);
 
     // Select the RO according to the chosen random SSB nb
     nb_mapped_ssb=0;
