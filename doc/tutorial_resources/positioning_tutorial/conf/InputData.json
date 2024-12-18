@@ -12,7 +12,7 @@
         "POINT",
         "POINT_UNCERTAINTY_CIRCLE"
     ],
-    "supi": "imsi-001010000000001",
+    "supi": "imsi-001010000059449",
     "ncgi": {
         "plmnId": {
             "mcc": "001",
@@ -25,7 +25,7 @@
     "velocityRequested": "VELOCITY_IS_NOT_REQUESTED",
     "lcsServiceType": 127,
     "ldrType": "UE_AVAILABLE",
-    "hgmlcCallBackURI": "198.168.70.129",
+    "hgmlcCallBackURI": "192.168.89.129",
     "ldrReference": "11",
     "lirReference": "1",
     "periodicEventInfo": {
