@@ -1675,10 +1675,6 @@ include_directories(${NAS_SRC}UE/EMM/SAP)
 include_directories(${NAS_SRC}UE/ESM)
 include_directories(${NAS_SRC}UE/ESM/SAP)
 
-# nbiot
-add_library(NB_IoT MODULE openair2/ENB_APP/NB_IoT_config.c)
-target_link_libraries(NB_IoT PRIVATE log_headers asn1_lte_rrc asn1_nr_rrc)
-
 # Simulation library
 ##########################
 set (SIMUSRC
