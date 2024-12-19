@@ -332,7 +332,7 @@ nr_initial_sync_t nr_initial_sync(UE_nr_rxtx_proc_t *proc,
       memset(ssbInfo->rxdata[ant] + fp->samples_per_frame * 2, 0, fp->ofdm_symbol_size * sizeof(c16_t));
     }
     LOG_I(NR_PHY,
-          "Scanning GSCN: %d, with SSB offset: %d, SSB Freq: %lf\n",
+          "Scanning GSCN: %d, with SSB offset: %d, SSB Freq: %u kHz\n",
           ssbInfo->gscnInfo.gscn,
           ssbInfo->gscnInfo.ssbFirstSC,
           ssbInfo->gscnInfo.ssRef);
@@ -342,38 +342,38 @@ nr_initial_sync_t nr_initial_sync(UE_nr_rxtx_proc_t *proc,
   }
 
   // Collect the scan results
-  nr_ue_ssb_scan_t *res = NULL;
-  join_task_ans(&ans);
-  for (int i = 0; i < numGscn; i++) {
-    nr_ue_ssb_scan_t *ssbInfo = &ssb_info[i];
-    if (ssbInfo->syncRes.cell_detected) {
-      LOG_I(NR_PHY,
-            "Cell Detected with GSCN: %d, SSB SC offset: %d, SSB Ref: %lf, PSS Corr peak: %d dB, PSS Corr Average: %d\n",
-            ssbInfo->gscnInfo.gscn,
-            ssbInfo->gscnInfo.ssbFirstSC,
-            ssbInfo->gscnInfo.ssRef,
-            ssbInfo->pssCorrPeakPower,
-            ssbInfo->pssCorrAvgPower);
-      // take the first cell detected
-      if (!res)
-        res = ssbInfo;
+  nr_ue_ssb_scan_t res = {0};
+  if (numGscn > 0) {
+    join_task_ans(&ans);
+    for (int i = 0; i < numGscn; i++) {
+      nr_ue_ssb_scan_t *ssbInfo = &ssb_info[i];
+      if (ssbInfo->syncRes.cell_detected) {
+        LOG_I(NR_PHY,
+              "Cell Detected with GSCN: %d, SSB SC offset: %d, SSB Ref: %u kHz, PSS Corr peak: %d dB, PSS Corr Average: %d\n",
+              ssbInfo->gscnInfo.gscn,
+              ssbInfo->gscnInfo.ssbFirstSC,
+              ssbInfo->gscnInfo.ssRef,
+              ssbInfo->pssCorrPeakPower,
+              ssbInfo->pssCorrAvgPower);
+        res = *ssbInfo;
+      }
+      for (int ant = 0; ant < fp->nb_antennas_rx; ant++) {
+        free(ssbInfo->rxdata[ant]);
+      }
+      free(ssbInfo->rxdata);
+      ssbInfo->rxdata = NULL;
     }
-    for (int ant = 0; ant < fp->nb_antennas_rx; ant++) {
-      free(ssbInfo->rxdata[ant]);
-    }
-    free(ssbInfo->rxdata);
-    ssbInfo->rxdata = NULL;
   }
 
   // Set globals based on detected cell
-  if (res) {
-    fp->Nid_cell = res->nidCell;
-    fp->ssb_start_subcarrier = res->gscnInfo.ssbFirstSC;
-    fp->half_frame_bit = res->halfFrameBit;
-    fp->ssb_index = res->ssbIndex;
-    ue->symbol_offset = res->symbolOffset;
-    ue->common_vars.freq_offset = res->freqOffset;
-    ue->adjust_rxgain = res->adjust_rxgain;
+  if (res.syncRes.cell_detected) {
+    fp->Nid_cell = res.nidCell;
+    fp->ssb_start_subcarrier = res.gscnInfo.ssbFirstSC;
+    fp->half_frame_bit = res.halfFrameBit;
+    fp->ssb_index = res.ssbIndex;
+    ue->symbol_offset = res.symbolOffset;
+    ue->common_vars.freq_offset = res.freqOffset;
+    ue->adjust_rxgain = res.adjust_rxgain;
   }
 
   // In initial sync, we indicate PBCH to MAC after the scan is complete.
@@ -388,7 +388,7 @@ nr_initial_sync_t nr_initial_sync(UE_nr_rxtx_proc_t *proc,
                         NULL,
                         number_pdus,
                         proc,
-                        res ? (void *)&res->pbchResult : NULL,
+                        res.syncRes.cell_detected ? (void *)&res.pbchResult : NULL,
                         NULL);
 
   if (ue->if_inst && ue->if_inst->dl_indication)
@@ -397,36 +397,36 @@ nr_initial_sync_t nr_initial_sync(UE_nr_rxtx_proc_t *proc,
 
   LOG_D(PHY, "nr_initial sync ue RB_DL %d\n", fp->N_RB_DL);
 
-  if (res) {
+  if (res.syncRes.cell_detected) {
     // digital compensation of FFO for SSB symbols
-    if (res->freqOffset && ue->UE_fo_compensation) {
+    if (res.freqOffset && ue->UE_fo_compensation) {
       // In SA we need to perform frequency offset correction until the end of buffer because we need to decode SIB1
       // and we do not know yet in which slot it goes.
-      compensate_freq_offset(ue->common_vars.rxdata, fp, res->freqOffset, res->syncRes.frame_id);
+      compensate_freq_offset(ue->common_vars.rxdata, fp, res.freqOffset, res.syncRes.frame_id);
     }
     // sync at symbol ue->symbol_offset
     // computing the offset wrt the beginning of the frame
     int mu = fp->numerology_index;
     // number of symbols with different prefix length
     // every 7*(1<<mu) symbols there is a different prefix length (38.211 5.3.1)
-    int n_symb_prefix0 = (res->symbolOffset / (7 * (1 << mu))) + 1;
+    int n_symb_prefix0 = (res.symbolOffset / (7 * (1 << mu))) + 1;
     const int sync_pos_frame = n_symb_prefix0 * (fp->ofdm_symbol_size + fp->nb_prefix_samples0)
-                               + (res->symbolOffset - n_symb_prefix0) * (fp->ofdm_symbol_size + fp->nb_prefix_samples);
+                               + (res.symbolOffset - n_symb_prefix0) * (fp->ofdm_symbol_size + fp->nb_prefix_samples);
     // for a correct computation of frame number to sync with the one decoded at MIB we need to take into account in which of
     // the n_frames we got sync
-    ue->init_sync_frame = n_frames - 1 - res->syncRes.frame_id;
+    ue->init_sync_frame = n_frames - 1 - res.syncRes.frame_id;
 
     // we also need to take into account the shift by samples_per_frame in case the if is true
-    if (res->ssbOffset < sync_pos_frame) {
-      res->syncRes.rx_offset = fp->samples_per_frame - sync_pos_frame + res->ssbOffset;
+    if (res.ssbOffset < sync_pos_frame) {
+      res.syncRes.rx_offset = fp->samples_per_frame - sync_pos_frame + res.ssbOffset;
       ue->init_sync_frame += 1;
     } else
-      res->syncRes.rx_offset = res->ssbOffset - sync_pos_frame;
+      res.syncRes.rx_offset = res.ssbOffset - sync_pos_frame;
   }
 
-  if (res) {
-    LOG_I(PHY, "[UE%d] In synch, rx_offset %d samples\n", ue->Mod_id, res->syncRes.rx_offset);
-    LOG_I(PHY, "[UE %d] Measured Carrier Frequency offset %d Hz\n", ue->Mod_id, res->freqOffset);
+  if (res.syncRes.cell_detected) {
+    LOG_I(PHY, "[UE%d] In synch, rx_offset %d samples\n", ue->Mod_id, res.syncRes.rx_offset);
+    LOG_I(PHY, "[UE %d] Measured Carrier Frequency offset %d Hz\n", ue->Mod_id, res.freqOffset);
   } else {
 #ifdef DEBUG_INITIAL_SYNC
     LOG_I(PHY,"[UE%d] Initial sync : PBCH not ok\n",ue->Mod_id);
@@ -437,7 +437,7 @@ nr_initial_sync_t nr_initial_sync(UE_nr_rxtx_proc_t *proc,
   }
 
   // gain control
-  if (!res) { // we are not synched, so we cannot use rssi measurement (which is based on channel estimates)
+  if (!res.syncRes.cell_detected) { // we are not synched, so we cannot use rssi measurement (which is based on channel estimates)
     int rx_power = 0;
 
     // do a measurement on the best guess of the PSS
@@ -465,8 +465,8 @@ nr_initial_sync_t nr_initial_sync(UE_nr_rxtx_proc_t *proc,
   }
   //  exit_fun("debug exit");
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_NR_INITIAL_UE_SYNC, VCD_FUNCTION_OUT);
-  if (res)
-    return res->syncRes;
+  if (res.syncRes.cell_detected)
+    return res.syncRes;
   else
     return (nr_initial_sync_t){.cell_detected = false};
 }
