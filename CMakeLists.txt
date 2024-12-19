@@ -1761,12 +1761,6 @@ include_directories(${NAS_SRC}UE/EMM/SAP)
 include_directories(${NAS_SRC}UE/ESM)
 include_directories(${NAS_SRC}UE/ESM/SAP)
 
-# nbiot
-set (NBIOT_SOURCES
-  ${OPENAIR2_DIR}/ENB_APP/NB_IoT_config.c
-  )
-add_library(NB_IoT MODULE ${NBIOT_SOURCES} )
-
 add_library(LIB_5GNAS_GNB
   ${NAS_SRC}/COMMON/nr_common.c
   ${OPENAIR3_DIR}//UICC/usim_interface.c
