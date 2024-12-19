@@ -7,6 +7,7 @@ add_library(coding MODULE
             3gpplte_turbo_decoder.c
 )
 set_target_properties(coding PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+target_link_libraries(coding PRIVATE log_headers)
 
 add_library(ldpc_orig MODULE
             nrLDPC_decoder/nrLDPC_decoder.c

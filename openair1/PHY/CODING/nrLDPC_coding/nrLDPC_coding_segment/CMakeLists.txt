@@ -4,6 +4,7 @@ add_library(ldpc MODULE
   ${PHY_NR_CODINGIF}
 )
 set_target_properties(ldpc PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+target_link_libraries(ldpc PUBLIC T_headers)
 
 add_dependencies(nr-softmodem ldpc)
 add_dependencies(nr-uesoftmodem ldpc)
