@@ -36,18 +36,22 @@ add_library(ldpc_optim8segmulti MODULE
 set_target_properties(ldpc_optim8segmulti PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 target_link_libraries(ldpc_optim8segmulti PRIVATE ldpc_gen_HEADERS)
 
-add_custom_target(nrLDPC_decoder_kernels_CL
-                  COMMAND gcc nrLDPC_decoder/nrLDPC_decoder_CL.c -dD -DNRLDPC_KERNEL_SOURCE -E -o ${CMAKE_CURRENT_BINARY_DIR}/nrLDPC_decoder_kernels_CL.clc
-                  SOURCES nrLDPC_decoder/nrLDPC_decoder_CL.c
-                  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-)
-add_library(ldpc_cl MODULE
-            nrLDPC_decoder/nrLDPC_decoder_CL.c
-            nrLDPC_encoder/ldpc_encoder_optim8segmulti.c
-)
-set_target_properties(ldpc_cl PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
-target_link_libraries(ldpc_cl PRIVATE OpenCL)
-add_dependencies(ldpc_cl nrLDPC_decoder_kernels_CL)
+add_boolean_option(ENABLE_LDPC_CL OFF "Build support for LDPC through CL" OFF)
+if (ENABLE_LDPC_CL)
+  message(FATAL_ERROR "check for CL")
+  add_custom_target(nrLDPC_decoder_kernels_CL
+                    COMMAND gcc nrLDPC_decoder/nrLDPC_decoder_CL.c -dD -DNRLDPC_KERNEL_SOURCE -E -o ${CMAKE_CURRENT_BINARY_DIR}/nrLDPC_decoder_kernels_CL.clc
+                    SOURCES nrLDPC_decoder/nrLDPC_decoder_CL.c
+                    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+  )
+  add_library(ldpc_cl MODULE
+              nrLDPC_decoder/nrLDPC_decoder_CL.c
+              nrLDPC_encoder/ldpc_encoder_optim8segmulti.c
+  )
+  set_target_properties(ldpc_cl PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+  target_link_libraries(ldpc_cl PRIVATE OpenCL)
+  add_dependencies(ldpc_cl nrLDPC_decoder_kernels_CL)
+endif()
 
 ##############################################
 # Base CUDA setting
