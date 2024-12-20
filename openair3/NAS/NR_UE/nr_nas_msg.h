@@ -74,7 +74,8 @@ typedef enum fgs_mm_state_e {
  * 5.1.3.2.1.1 of TS 24.501
  */
 typedef enum fgs_mm_mode_e {
-  FGS_IDLE = 0,
+  FGS_NOT_CONNECTED = 0,
+  FGS_IDLE,
   FGS_CONNECTED,
 } fgs_mm_mode_t;
 

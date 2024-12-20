@@ -41,11 +41,29 @@
 typedef struct {
   uint8_t iei;
   uint8_t length;
-  uint8_t value;
+  uint8_t sgc: 1;
+  uint8_t iphc_cp_cIoT: 1;
+  uint8_t n3_data: 1;
+  uint8_t cp_cIoT: 1;
+  uint8_t restrict_ec: 1;
+  uint8_t lpp: 1;
+  uint8_t ho_attach: 1;
+  uint8_t s1_mode: 1;
+  uint8_t racs: 1;
+  uint8_t nssaa: 1;
+  uint8_t lcs: 1;
+  uint8_t v2x_cnpc5: 1;
+  uint8_t v2x_cepc5: 1;
+  uint8_t v2x: 1;
+  uint8_t up_cIoT: 1;
+  uint8_t srvcc: 1;
+  uint8_t ehc_CP_ciot: 1;
+  uint8_t multiple_eUP: 1;
+  uint8_t wusa: 1;
+  uint8_t cag: 1;
 } FGMMCapability;
 
-
-int encode_5gmm_capability(FGMMCapability *fgmmcapability, uint8_t iei, uint8_t *buffer, uint32_t len);
+int encode_5gmm_capability(uint8_t *buffer, FGMMCapability *fgmmcapability, uint32_t len);
 
 #endif /* FGMM_CAPABILITY_H_ */
 
