@@ -773,7 +773,7 @@ static int trx_usrp_read(openair0_device *device, openair0_timestamp *ptimestamp
       break;
 
     if ((s->wait_for_first_pps == 1) && (samples_received != nsamps)) {
-      printf("sleep...\n"); //usleep(100);
+      printf("sleep...\n"); usleep(100);
     }
   }
   if (samples_received == nsamps) s->wait_for_first_pps=0;
