@@ -489,7 +489,7 @@ int start_L1L2(module_id_t gnb_id)
 
   init_NR_RU(config_get_if(), NULL);
 
-  start_NR_RU();
+  start_NR_RU(&RC.ru[0]);
   wait_RUs();
   init_eNB_afterRU();
   LOG_I(GNB_APP, "Sending sync to all threads\n");

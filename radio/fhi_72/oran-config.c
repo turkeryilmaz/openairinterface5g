@@ -180,7 +180,8 @@ void print_fh_init(const struct xran_fh_init *fh_init)
       fh_init->filePrefix,
       fh_init->mtu,
       fh_init->p_o_du_addr);
-  print_ether_addr("  p_o_ru_addr", fh_init->xran_ports * fh_init->io_cfg.num_vfs, (struct rte_ether_addr *)fh_init->p_o_ru_addr);
+  if (fh_init->p_o_ru_addr) print_ether_addr("  p_o_ru_addr", fh_init->xran_ports * fh_init->io_cfg.num_vfs, (struct rte_ether_addr *)fh_init->p_o_ru_addr);
+  else if (fh_init->p_o_du_addr) print_ether_addr("  p_o_du_addr", fh_init->xran_ports * fh_init->io_cfg.num_vfs, (struct rte_ether_addr *)fh_init->p_o_du_addr);
   printf("\
   totalBfWeights %d\n",
       fh_init->totalBfWeights);
@@ -457,14 +458,14 @@ static uint64_t get_u64_mask(const paramdef_t *pd)
   return mask;
 }
 
-static bool set_fh_io_cfg(struct xran_io_cfg *io_cfg, const paramdef_t *fhip, int nump, const int num_rus)
+static bool set_fh_io_cfg(struct xran_io_cfg *io_cfg, const paramdef_t *fhip, int nump, const int num_rus,const int is_du)
 {
   DevAssert(fhip != NULL);
   int num_dev = gpd(fhip, nump, ORAN_CONFIG_DPDK_DEVICES)->numelt;
   AssertFatal(num_dev > 0, "need to provide DPDK devices for O-RAN 7.2 Fronthaul\n");
   AssertFatal(num_dev < 17, "too many DPDK devices for O-RAN 7.2 Fronthaul\n");
 
-  io_cfg->id = 0; // 0 -> xran as O-DU; 1 -> xran as O-RU
+  io_cfg->id = 1-is_du; // 0 -> xran as O-DU; 1 -> xran as O-RU
   io_cfg->num_vfs = num_dev; // number of VFs for C-plane and U-plane (should be even); max = XRAN_VF_MAX
   io_cfg->num_rxq = 1; // number of RX queues per VF
   for (int i = 0; i < num_dev; ++i) {
@@ -601,8 +602,15 @@ static bool set_fh_init(struct xran_fh_init *fh_init, enum xran_category xran_ca
   config_getlist(config_get_if(), &FH_ConfigList, FHconfigs, nfh, aprefix);
 
   int num_rus = FH_ConfigList.numelt; // based on the number of fh_config sections -> number of RUs
+  int is_du=0;
 
-  if (!set_fh_io_cfg(&fh_init->io_cfg, fhip, nump, num_rus))
+  int num_ru_addr = gpd(fhip, nump, ORAN_CONFIG_RU_ADDR)->numelt;
+  int num_du_addr = gpd(fhip, nump, ORAN_CONFIG_DU_ADDR)->numelt;
+  if (num_ru_addr > 0 && num_du_addr == 0) is_du = 1;
+  else if (num_du_addr > 0 && num_ru_addr == 0) is_du =0;
+  else AssertFatal(1==0,"Illegal node configuration, num_du_addr %d, num_ru_addr %d\n",num_du_addr,num_ru_addr);
+
+  if (!set_fh_io_cfg(&fh_init->io_cfg, fhip, nump, num_rus,is_du))
     return false;
   if (!set_fh_eaxcid_conf(&fh_init->eAxCId_conf, xran_cat))
     return false;
@@ -620,16 +628,31 @@ static bool set_fh_init(struct xran_fh_init *fh_init, enum xran_category xran_ca
 
   fh_init->p_o_du_addr = NULL; // DPDK retreives DU MAC address within the xran library with rte_eth_macaddr_get() function
 
-  int num_ru_addr = gpd(fhip, nump, ORAN_CONFIG_RU_ADDR)->numelt;
-  fh_init->p_o_ru_addr = calloc(num_ru_addr, sizeof(struct rte_ether_addr));
-  char **ru_addrs = gpd(fhip, nump, ORAN_CONFIG_RU_ADDR)->strlistptr;
-  AssertFatal(fh_init->p_o_ru_addr != NULL, "out of memory\n");
-  for (int i = 0; i < num_ru_addr; ++i) {
-    struct rte_ether_addr *ea = (struct rte_ether_addr *)fh_init->p_o_ru_addr;
-    if (get_ether_addr(ru_addrs[i], &ea[i]) == NULL) {
-      printf("could not read ethernet address '%s' for RU!\n", ru_addrs[i]);
-      return false;
-    }
+  char **ru_addrs,**du_addrs;
+
+  if (is_du > 0) {
+     fh_init->p_o_ru_addr = calloc(num_ru_addr, sizeof(struct rte_ether_addr));
+     ru_addrs = gpd(fhip, nump, ORAN_CONFIG_RU_ADDR)->strlistptr;
+     AssertFatal(fh_init->p_o_ru_addr != NULL, "out of memory\n");
+     for (int i = 0; i < num_ru_addr; ++i) {
+         struct rte_ether_addr *ea = (struct rte_ether_addr *)fh_init->p_o_ru_addr;
+         if (get_ether_addr(ru_addrs[i], &ea[i]) == NULL) {
+            printf("could not read ethernet address '%s' for RU!\n", ru_addrs[i]);
+            return false;
+         }
+     }
+  }
+  else {
+     fh_init->p_o_du_addr = calloc(num_du_addr, sizeof(struct rte_ether_addr));
+     du_addrs = gpd(fhip, nump, ORAN_CONFIG_DU_ADDR)->strlistptr;
+     AssertFatal(fh_init->p_o_du_addr != NULL, "out of memory\n");
+     for (int i = 0; i < num_du_addr; ++i) {
+         struct rte_ether_addr *ea = (struct rte_ether_addr *)fh_init->p_o_du_addr;
+         if (get_ether_addr(du_addrs[i], &ea[i]) == NULL) {
+            printf("could not read ethernet address '%s' for DU!\n", du_addrs[i]);
+            return false;
+         }
+     }
   }
 
   fh_init->totalBfWeights = 0; // only used if id = O_RU (for emulation); C-plane extension types; section 5.4.6 of CUS spec

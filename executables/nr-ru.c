@@ -58,6 +58,8 @@ static int DEFBANDS[] = {7};
 static int DEFENBS[] = {0};
 static int DEFBFW[] = {0x00007fff};
 static int DEFRUTPCORES[] = {-1,-1,-1,-1};
+static int DEFBW[] = {273};
+static int DEFCARRIER[] = {3430560};
 
 #include "ENB_APP/enb_paramdef.h"
 #include "GNB_APP/gnb_paramdef.h"
@@ -190,7 +192,7 @@ int connect_rau(RU_t *ru) {
       break;
 
     default:
-      AssertFatal(1==0,"RU_function is unknown %d\n",RC.ru[0]->function);
+      AssertFatal(1==0,"RU_function is unknown %d\n",ru->function);
       break;
   }
 
@@ -241,7 +243,7 @@ int connect_rau(RU_t *ru) {
 
 // southbound IF5 fronthaul for 16-bit OAI format
 void fh_if5_south_out(RU_t *ru, int frame, int slot, uint64_t timestamp) {
-  if (ru == RC.ru[0]) VCD_SIGNAL_DUMPER_DUMP_VARIABLE_BY_NAME( VCD_SIGNAL_DUMPER_VARIABLES_TRX_TST, ru->proc.timestamp_tx&0xffffffff );
+  if (ru->idx == 0) VCD_SIGNAL_DUMPER_DUMP_VARIABLE_BY_NAME( VCD_SIGNAL_DUMPER_VARIABLES_TRX_TST, ru->proc.timestamp_tx&0xffffffff );
   int offset = ru->nr_frame_parms->get_samples_slot_timestamp(slot,ru->nr_frame_parms,0);
   void *buffs[ru->nb_tx]; 
   for (int aid=0;aid<ru->nb_tx;aid++) buffs[aid] = (void*)&ru->common.txdata[aid][offset]; 
@@ -263,7 +265,7 @@ void fh_if5_south_out(RU_t *ru, int frame, int slot, uint64_t timestamp) {
 void fh_if4p5_south_out(RU_t *ru, int frame, int slot, uint64_t timestamp) {
   nfapi_nr_config_request_scf_t *cfg = &ru->config;
 
-  if (ru == RC.ru[0]) VCD_SIGNAL_DUMPER_DUMP_VARIABLE_BY_NAME( VCD_SIGNAL_DUMPER_VARIABLES_TRX_TST, ru->proc.timestamp_tx&0xffffffff );
+  if (ru->idx == 0) VCD_SIGNAL_DUMPER_DUMP_VARIABLE_BY_NAME( VCD_SIGNAL_DUMPER_VARIABLES_TRX_TST, ru->proc.timestamp_tx&0xffffffff );
 
   LOG_D(PHY,"Sending IF4p5 for frame %d subframe %d\n",ru->proc.frame_tx,ru->proc.tti_tx);
 
@@ -380,7 +382,7 @@ void fh_if4p5_south_in(RU_t *ru,
     *slot = proc->tti_rx;
   }
 
-  if (ru == RC.ru[0]) {
+  if (ru->idx == 0) {
     VCD_SIGNAL_DUMPER_DUMP_VARIABLE_BY_NAME( VCD_SIGNAL_DUMPER_VARIABLES_FRAME_NUMBER_RX0_RU, f );
     VCD_SIGNAL_DUMPER_DUMP_VARIABLE_BY_NAME( VCD_SIGNAL_DUMPER_VARIABLES_TTI_NUMBER_RX0_RU,  sl);
     VCD_SIGNAL_DUMPER_DUMP_VARIABLE_BY_NAME( VCD_SIGNAL_DUMPER_VARIABLES_FRAME_NUMBER_TX0_RU, proc->frame_tx );
@@ -456,7 +458,7 @@ void fh_if4p5_north_in(RU_t *ru,int *frame,int *slot) {
   } while (symbol_mask != symbol_mask_full);
 
   // dump VCD output for first RU in list
-  if (ru == RC.ru[0]) {
+  if (ru->idx == 0) {
     VCD_SIGNAL_DUMPER_DUMP_VARIABLE_BY_NAME( VCD_SIGNAL_DUMPER_VARIABLES_FRAME_NUMBER_TX0_RU, *frame );
     VCD_SIGNAL_DUMPER_DUMP_VARIABLE_BY_NAME( VCD_SIGNAL_DUMPER_VARIABLES_TTI_NUMBER_TX0_RU, *slot );
   }
@@ -532,7 +534,7 @@ void fh_if4p5_north_asynch_in(RU_t *ru,int *frame,int *slot) {
   LOG_D(PHY,"RU %d/%d TST %llu, frame %d, subframe %d\n",ru->idx,0,(long long unsigned int)proc->timestamp_tx,frame_tx,slot_tx);
 
   // dump VCD output for first RU in list
-  if (ru == RC.ru[0]) {
+  if (ru->idx == 0) {
     VCD_SIGNAL_DUMPER_DUMP_VARIABLE_BY_NAME( VCD_SIGNAL_DUMPER_VARIABLES_FRAME_NUMBER_TX0_RU, frame_tx );
     VCD_SIGNAL_DUMPER_DUMP_VARIABLE_BY_NAME( VCD_SIGNAL_DUMPER_VARIABLES_TTI_NUMBER_TX0_RU, slot_tx );
   }
@@ -575,7 +577,7 @@ void *emulatedRF_thread(void *param) {
   int microsec = 500; // length of time to sleep, in miliseconds
   struct timespec req = {0};
   req.tv_sec = 0;
-  req.tv_nsec = (numerology>0)? ((microsec * 1000L)/numerology):(microsec * 1000L)*2;
+  req.tv_nsec = (proc->ru->numerology>0)? ((microsec * 1000L)/proc->ru->numerology):(microsec * 1000L)*2;
   wait_sync("emulatedRF_thread");
 
   while(!oai_exit) {
@@ -610,7 +612,7 @@ static void rx_rf(RU_t *ru, int *frame, int *slot)
   old_ts = proc->timestamp_rx;
   LOG_D(PHY,"Reading %d samples for slot %d (%p)\n",samples_per_slot,*slot,rxp[0]);
 
-  if(emulate_rf) {
+  if(ru->emulate_rf) {
     wait_on_condition(&proc->mutex_emulateRF,&proc->cond_emulateRF,&proc->instance_cnt_emulateRF,"emulatedRF_thread");
     release_thread(&proc->mutex_emulateRF,&proc->instance_cnt_emulateRF,"emulatedRF_thread");
     rxs = samples_per_slot;
@@ -663,7 +665,7 @@ static void rx_rf(RU_t *ru, int *frame, int *slot)
         proc->frame_rx,proc->tti_rx,proc->tti_tx,fp->slots_per_frame);
 
   // dump VCD output for first RU in list
-  if (ru == RC.ru[0]) {
+  if (ru->idx == 0) {
     VCD_SIGNAL_DUMPER_DUMP_VARIABLE_BY_NAME( VCD_SIGNAL_DUMPER_VARIABLES_FRAME_NUMBER_RX0_RU, proc->frame_rx );
     VCD_SIGNAL_DUMPER_DUMP_VARIABLE_BY_NAME( VCD_SIGNAL_DUMPER_VARIABLES_TTI_NUMBER_RX0_RU, proc->tti_rx );
   }
@@ -691,7 +693,7 @@ static void rx_rf(RU_t *ru, int *frame, int *slot)
     *slot  = proc->tti_rx;
   }
 
-  if (!emulate_rf) {
+  if (!ru->emulate_rf) {
     metadata mt = {.slot = *slot, .frame = *frame};
     gNBscopeCopyWithMetadata(ru, gNbTimeDomainSamples, rxp[0], sizeof(c16_t), 1, samples_per_slot, 0, &mt);
   }
@@ -1057,7 +1059,7 @@ void ru_tx_func(void *param)
   if ((ru->fh_north_asynch_in == NULL) && (ru->feptx_ofdm))
     ru->feptx_ofdm(ru, frame_tx, slot_tx);
 
-  if(!emulate_rf) {
+  if(!ru->emulate_rf) {
     // do outgoing fronthaul (south) if needed
     if ((ru->fh_north_asynch_in == NULL) && (ru->fh_south_out))
       ru->fh_south_out(ru, frame_tx, slot_tx, info->timestamp_tx);
@@ -1108,7 +1110,7 @@ void *ru_thread(void *param)
   RU_t               *ru      = (RU_t *)param;
   RU_proc_t          *proc    = &ru->proc;
   NR_DL_FRAME_PARMS  *fp      = ru->nr_frame_parms;
-  PHY_VARS_gNB       *gNB     = RC.gNB[0];
+  PHY_VARS_gNB       *gNB     = (RC.nb_L1_inst > 0) ? RC.gNB[0] : NULL;
   int                ret;
   int                slot     = fp->slots_per_frame-1;
   int                frame    = 1023;
@@ -1123,15 +1125,16 @@ void *ru_thread(void *param)
   // set default return value
   sprintf(threadname,"ru_thread %u",ru->idx);
   LOG_I(PHY,"Starting RU %d (%s,%s) on cpu %d\n",ru->idx,NB_functions[ru->function],NB_timing[ru->if_timing],sched_getcpu());
-  memcpy((void *)&ru->config,(void *)&RC.gNB[0]->gNB_config,sizeof(ru->config));
-
-  nr_init_frame_parms(&ru->config, fp);
-  nr_dump_frame_parms(fp);
+  if (gNB) {
+    memcpy((void *)&ru->config,(void *)&RC.gNB[0]->gNB_config,sizeof(ru->config));
+    nr_init_frame_parms(&ru->config, fp);
+    nr_dump_frame_parms(fp);
+  }
   nr_phy_init_RU(ru);
   fill_rf_config(ru, ru->rf_config_file);
   fill_split7_2_config(&ru->openair0_cfg.split7, &ru->config, fp->slots_per_frame, fp->ofdm_symbol_size);
 
-  if(!emulate_rf) {
+  if(!ru->emulate_rf) {
     // Start IF device if any
     if (ru->nr_start_if) {
       LOG_I(PHY, "starting transport\n");
@@ -1193,7 +1196,7 @@ void *ru_thread(void *param)
   pthread_mutex_unlock(&RC.ru_mutex);
   wait_sync("ru_thread");
 
-  if(!emulate_rf) {
+  if(!ru->emulate_rf) {
     // Start RF device if any
     if (ru->start_rf) {
       if (ru->start_rf(ru) != 0)
@@ -1426,7 +1429,7 @@ void init_RU_proc(RU_t *ru) {
   pthread_mutex_init( &proc->mutex_emulateRF,NULL);
   pthread_cond_init( &proc->cond_emulateRF, NULL);
 
-  if(emulate_rf)
+  if(ru->emulate_rf)
     threadCreate( &proc->pthread_emulateRF, emulatedRF_thread, (void *)proc, "emulateRF", -1, OAI_PRIORITY_RT );
   if (cpu_meas_enabled)
     threadCreate(&ru->ru_stats_thread, ru_stats_thread, (void *)ru, "ru_stats", -1, OAI_PRIORITY_RT);
@@ -1648,6 +1651,7 @@ void set_function_spec_param(RU_t *ru)
         reset_meas(&ru->tx_fhaul);
         reset_meas(&ru->compression);
         reset_meas(&ru->transport);
+        LOG_I(NR_PHY,"Setting IF4p5 (7.2 split)\n");
       } else if (ru->function == gNodeB_3GPP) {
         ru->do_prach             = 0;                       // no prach processing in RU
         ru->feprx                = nr_fep_tp;     // this is frequency-shift + DFTs
@@ -1755,9 +1759,10 @@ void init_NR_RU(configmodule_interface_t *cfg, char *rf_config_file)
         ru->num_gNB=1;
       }
     }
-
-    gNB_RC = RC.gNB[0];
-    gNB0 = ru->gNB_list[0];
+    if (RC.nb_L1_inst > 0) {
+      gNB_RC = RC.gNB[0];
+      gNB0 = ru->gNB_list[0];
+    }
     fp = ru->nr_frame_parms;
     LOG_D(PHY, "RU FUnction:%d ru->if_south:%d\n", ru->function, ru->if_south);
 
@@ -1777,6 +1782,9 @@ void init_NR_RU(configmodule_interface_t *cfg, char *rf_config_file)
           gNB0->RU_list[gNB0->num_RU++] = ru;
         }
       }
+    }
+    else {
+       nr_ru_init_frame_parms(ru);
     }
     set_function_spec_param(ru);
     init_RU_proc(ru);
@@ -1805,9 +1813,8 @@ void init_NR_RU(configmodule_interface_t *cfg, char *rf_config_file)
   LOG_D(HW,"[nr-softmodem.c] RU threads created\n");
 }
 
-void start_NR_RU()
+void start_NR_RU(RU_t *ru)
 {
-  RU_t *ru = RC.ru[0];
   start_RU_proc(ru);
 }
 
@@ -1917,7 +1924,7 @@ static void NRRCconfig_RU(configmodule_interface_t *cfg)
         if (!(config_isparamset(RUParamList.paramarray[j],RU_LOCAL_IF_NAME_IDX))) {
           RC.ru[j]->if_south                        = LOCAL_RF;
           RC.ru[j]->function                        = gNodeB_3GPP;
-          LOG_D(PHY, "Setting function for RU %d to gNodeB_3GPP\n", j);
+          LOG_I(NR_PHY, "Setting function for RU %d to gNodeB_3GPP\n", j);
         } else {
           RC.ru[j]->eth_params.local_if_name           = strdup(*(RUParamList.paramarray[j][RU_LOCAL_IF_NAME_IDX].strptr));
           RC.ru[j]->eth_params.my_addr                 = strdup(*(RUParamList.paramarray[j][RU_LOCAL_ADDRESS_IDX].strptr));
@@ -1931,22 +1938,22 @@ static void NRRCconfig_RU(configmodule_interface_t *cfg)
             RC.ru[j]->if_south                        = LOCAL_RF;
             RC.ru[j]->function                        = NGFI_RRU_IF5;
             RC.ru[j]->eth_params.transp_preference    = ETH_UDP_MODE;
-            LOG_D(PHY, "Setting function for RU %d to NGFI_RRU_IF5 (udp)\n", j);
+            LOG_I(NR_PHY, "Setting function for RU %d to NGFI_RRU_IF5 (udp)\n", j);
           } else if (strcmp(*(RUParamList.paramarray[j][RU_TRANSPORT_PREFERENCE_IDX].strptr), "raw") == 0) {
             RC.ru[j]->if_south                        = LOCAL_RF;
             RC.ru[j]->function                        = NGFI_RRU_IF5;
             RC.ru[j]->eth_params.transp_preference    = ETH_RAW_MODE;
-            LOG_D(PHY, "Setting function for RU %d to NGFI_RRU_IF5 (raw)\n", j);
+            LOG_I(NR_PHY, "Setting function for RU %d to NGFI_RRU_IF5 (raw)\n", j);
           } else if (strcmp(*(RUParamList.paramarray[j][RU_TRANSPORT_PREFERENCE_IDX].strptr), "udp_if4p5") == 0) {
             RC.ru[j]->if_south                        = LOCAL_RF;
             RC.ru[j]->function                        = NGFI_RRU_IF4p5;
             RC.ru[j]->eth_params.transp_preference    = ETH_UDP_IF4p5_MODE;
-            LOG_D(PHY, "Setting function for RU %d to NGFI_RRU_IF4p5 (udp)\n", j);
+            LOG_I(NR_PHY, "Setting function for RU %d to NGFI_RRU_IF4p5 (udp)\n", j);
           } else if (strcmp(*(RUParamList.paramarray[j][RU_TRANSPORT_PREFERENCE_IDX].strptr), "raw_if4p5") == 0) {
             RC.ru[j]->if_south                        = LOCAL_RF;
             RC.ru[j]->function                        = NGFI_RRU_IF4p5;
             RC.ru[j]->eth_params.transp_preference    = ETH_RAW_IF4p5_MODE;
-            LOG_D(PHY, "Setting function for RU %d to NGFI_RRU_IF4p5 (raw)\n", j);
+            LOG_I(NR_PHY, "Setting function for RU %d to NGFI_RRU_IF4p5 (raw)\n", j);
           }
         }
 
@@ -1995,8 +2002,23 @@ static void NRRCconfig_RU(configmodule_interface_t *cfg)
       RC.ru[j]->if_freq_offset                    = *(RUParamList.paramarray[j][RU_IF_FREQ_OFFSET].iptr);
       RC.ru[j]->sl_ahead                          = *(RUParamList.paramarray[j][RU_SL_AHEAD].iptr);
       RC.ru[j]->num_bands                         = RUParamList.paramarray[j][RU_BAND_LIST_IDX].numelt;
-      for (int i = 0; i < RC.ru[j]->num_bands; i++)
+      for (int i = 0; i < RC.ru[j]->num_bands; i++) {
         RC.ru[j]->band[i] = RUParamList.paramarray[j][RU_BAND_LIST_IDX].iptr[i];
+        RC.ru[j]->bw_tx[i] = RUParamList.paramarray[j][RU_TX_BW_LIST_IDX].iptr[i];
+        RC.ru[j]->bw_rx[i] = RUParamList.paramarray[j][RU_RX_BW_LIST_IDX].iptr[i]; 
+        RC.ru[j]->carrier_freq_tx[i] = RUParamList.paramarray[j][RU_TX_CARRIER_LIST_IDX].iptr[i]; 
+        RC.ru[j]->carrier_freq_rx[i] = RUParamList.paramarray[j][RU_RX_CARRIER_LIST_IDX].iptr[i]; 
+      }
+      RC.ru[j]->frame_type = *(RUParamList.paramarray[j][RU_FRAME_TYPE_IDX].iptr);
+      RC.ru[j]->prach_config_index = *(RUParamList.paramarray[j][RU_PRACH_CONFIGID_IDX].iptr);
+      RC.ru[j]->prach_msg1_freq = *(RUParamList.paramarray[j][RU_PRACH_MSG1FREQ_IDX].iptr);
+      RC.ru[j]->numerology = *(RUParamList.paramarray[j][RU_NUMEROLOGY_IDX].iptr);
+      RC.ru[j]->tdd_period = *(RUParamList.paramarray[j][RU_TDD_PERIOD_IDX].iptr);
+      RC.ru[j]->num_DL_slots = *(RUParamList.paramarray[j][RU_NUM_DL_SLOTS_IDX].iptr);
+      RC.ru[j]->num_UL_slots = *(RUParamList.paramarray[j][RU_NUM_UL_SLOTS_IDX].iptr);
+      RC.ru[j]->num_DL_symbols = *(RUParamList.paramarray[j][RU_NUM_DL_SYMBOLS_IDX].iptr);
+      RC.ru[j]->num_UL_symbols = *(RUParamList.paramarray[j][RU_NUM_UL_SYMBOLS_IDX].iptr);
+
       RC.ru[j]->openair0_cfg.nr_flag              = *(RUParamList.paramarray[j][RU_NR_FLAG].iptr);
       RC.ru[j]->openair0_cfg.nr_band              = RC.ru[j]->band[0];
       RC.ru[j]->openair0_cfg.nr_scs_for_raster    = *(RUParamList.paramarray[j][RU_NR_SCS_FOR_RASTER].iptr);

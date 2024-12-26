@@ -596,6 +596,11 @@ include_directories("${OPENAIR_DIR}")
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/common/utils/T
                     ${CMAKE_CURRENT_BINARY_DIR}/common/utils/T)
 
+include_directories(${OPENAIR_DIR}/common/utils/barrier)
+include_directories(${OPENAIR_DIR}/common/utils/actor)
+include_directories(${OPENAIR_DIR}/common/utils/threadPool)
+
+
 # set the T_LIB name to T if the target exists, otherwise leave empty
 set(T_LIB $<TARGET_NAME_IF_EXISTS:T>)
 
@@ -1876,9 +1881,6 @@ target_link_libraries(oairu PRIVATE
   SCHED_RU_LIB PHY_COMMON PHY_RU UTIL shlib_loader
   -Wl,--end-group z dl)
 
-target_link_libraries(oairu PRIVATE pthread m CONFIG_LIB rt ${T_LIB})
-target_link_libraries(oairu PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
-
 # force the generation of ASN.1 so that we don't need to wait during the build
 target_link_libraries(lte-softmodem PRIVATE
                       asn1_lte_rrc asn1_s1ap asn1_m2ap asn1_m3ap asn1_x2ap)
@@ -1916,6 +1918,29 @@ target_link_libraries(lte-uesoftmodem PRIVATE ${blas_LIBRARIES} ${cblas_LIBRARIE
 # force the generation of ASN.1 so that we don't need to wait during the build
 target_link_libraries(lte-uesoftmodem PRIVATE
                       asn1_lte_rrc asn1_s1ap asn1_m2ap asn1_m3ap asn1_x2ap)
+
+# nr RRU
+add_executable(oainr_ru
+  ${OPENAIR_DIR}/executables/nr-ru.c
+  ${OPENAIR_DIR}/openair1/PHY/INIT/nr_parms.c
+  ${OPENAIR_DIR}/openair1/SCHED_NR/phy_frame_config_nr.c
+  ${OPENAIR_DIR}/openair1/PHY/INIT/nr_parms.c
+  ${OPENAIR_DIR}/openair1/SCHED_NR/nr_prach_procedures.c
+  ${OPENAIR_DIR}/openair1/SCHED/phy_procedures_lte_common.c
+  ${OPENAIR1_DIR}/PHY/NR_TRANSPORT/nr_prach.c
+  ${OPENAIR_DIR}/common/utils/nr/nr_common.c
+  ${OPENAIR_DIR}/radio/COMMON/common_lib.c
+  ${OPENAIR_DIR}/radio/COMMON/record_player.c
+  ${OPENAIR_DIR}/executables/softmodem-common.c
+  ${OPENAIR_DIR}/executables/main_nr_ru.c
+)
+target_link_libraries(oainr_ru PRIVATE
+  -Wl,--start-group
+  UTIL SCHED_RU_LIB PHY_COMMON PHY_RU shlib_loader
+  -Wl,--end-group z dl)
+target_link_libraries(oainr_ru PRIVATE pthread m CONFIG_LIB rt ${T_LIB} utils
+  barrier actor)
+target_link_libraries(oainr_ru PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
 
 # nr-softmodem
 ###################################################
