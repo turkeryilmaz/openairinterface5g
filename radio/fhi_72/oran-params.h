@@ -37,6 +37,9 @@
 #define ORAN_CONFIG_RU_ADDR "ru_addr" // not needed if M-plane used
 #define ORAN_CONFIG_RU_IP_ADDR "ru_ip_addr" // only needed for M-plane
 #define ORAN_CONFIG_MTU "mtu" // not needed if M-plane used
+#define ORAN_CONFIG_DU_ADDR "du_addr"
+#define ORAN_CONFIG_RU_ADDR "ru_addr"
+#define ORAN_CONFIG_MTU "mtu"
 #define ORAN_CONFIG_FILE_PREFIX "file_prefix"
 #define ORAN_CONFIG_NETHPERPORT "eth_lines"
 #define ORAN_CONFIG_NETHSPEED "eth_speed"
@@ -57,6 +60,8 @@
   {ORAN_CONFIG_VLAN_TAG,        "VLAN tag\n",                               PARAMFLAG_MANDATORY, .iptr=NULL,       .defintarrayval=0,   TYPE_INTARRAY,   0}, \
   {ORAN_CONFIG_RU_ADDR,         "Ether addr of RU\n",                       PARAMFLAG_MANDATORY, .strlistptr=NULL, .defstrlistval=NULL, TYPE_STRINGLIST, 0}, \
   {ORAN_CONFIG_RU_IP_ADDR,      "IP addr of RU\n",                          PARAMFLAG_MANDATORY, .strlistptr=NULL, .defstrlistval=NULL, TYPE_STRINGLIST, 0}, \
+  {ORAN_CONFIG_DU_ADDR,         "Ether addr of DU\n",                                         0, .strlistptr=NULL, .defstrlistval=NULL, TYPE_STRINGLIST, 0}, \
+  {ORAN_CONFIG_RU_ADDR,         "Ether addr of RU\n",                                         0, .strlistptr=NULL, .defstrlistval=NULL, TYPE_STRINGLIST, 0}, \
   {ORAN_CONFIG_MTU,             "MTU of Eth interface\n",                   0,                   .uptr=NULL,       .defuintval=1500,    TYPE_UINT,       0}, \
   {ORAN_CONFIG_FILE_PREFIX,     "DPDK file-prefix\n",                       0,                   .strptr=NULL,     .defstrval="wls_0",  TYPE_STRING,     0}, \
   {ORAN_CONFIG_NETHPERPORT,     "number of links per port\n",               0,                   .uptr=NULL,       .defuintval=1,       TYPE_UINT,       0}, \
@@ -68,6 +73,8 @@
 
 // clang-format off
 #define ORAN_GLOBALPARAMS_CHECK_DESC {           \
+    { .s5 = { NULL } },                          \
+    { .s5 = { NULL } },                          \
     { .s5 = { NULL } },                          \
     { .s5 = { NULL } },                          \
     { .s5 = { NULL } },                          \
