@@ -22,12 +22,11 @@
 #ifndef _RRC_GNB_DRBS_H_
 #define _RRC_GNB_DRBS_H_
 
-#include "nr_rrc_defs.h"
-#include "NR_SDAP-Config.h"
+#include <stdbool.h>
+#include <stdint.h>
 #include "NR_DRB-ToAddMod.h"
-#include "NR_SRB-ToAddMod.h"
-
-#include "common/platform_constants.h"
+#include "e1ap_messages_types.h"
+#include "nr_rrc_defs.h"
 
 #define DRB_ACTIVE_NONGBR       (2)   /* DRB is used for Non-GBR Flows */
 #define DRB_ACTIVE              (1)
@@ -60,6 +59,9 @@ drb_t *generateDRB(gNB_RRC_UE_t *ue,
 
 /// @brief return the next available (inactive) DRB ID of UE ue
 uint8_t get_next_available_drb_id(gNB_RRC_UE_t *ue);
+
+/// @brief returns the number of active DRBs for this UE
+int get_number_active_drbs(gNB_RRC_UE_t *ue);
 
 /// @brief check if DRB with ID drb_id of UE ue is active
 bool drb_is_active(gNB_RRC_UE_t *ue, uint8_t drb_id);

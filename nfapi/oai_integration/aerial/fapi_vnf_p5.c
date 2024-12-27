@@ -29,7 +29,7 @@
 * \note
 * \warning
  */
-#ifdef ENABLE_AERIAL
+
 #include "fapi_vnf_p5.h"
 #include "fapi_vnf_p7.h"
 #include "nfapi/open-nFAPI/vnf/inc/vnf_p7.h"
@@ -38,43 +38,13 @@
 
 extern RAN_CONTEXT_t RC;
 extern UL_RCC_IND_t UL_RCC_INFO;
-extern int single_thread_flag;
 extern uint16_t sf_ahead;
 extern uint16_t slot_ahead;
 
 
-static pthread_t vnf_aerial_p7_start_pthread;
-void *aerial_vnf_nr_aerial_p7_start_thread(void *ptr)
+void *aerial_vnf_nr_p7_config_init(void *ptr)
 {
-  NFAPI_TRACE(NFAPI_TRACE_INFO, "%s()\n", __FUNCTION__);
-  pthread_setname_np(pthread_self(), "VNF_P7_AERIAL");
-  nfapi_vnf_p7_config_t *config = (nfapi_vnf_p7_config_t *)ptr;
-  aerial_nfapi_nr_vnf_p7_start(config);
-  return config;
-}
-
-void *aerial_vnf_nr_p7_thread_start(void *ptr)
-{
-  int s;
-  cpu_set_t cpuset;
-
-//  CPU_SET(8, &cpuset);
-//  s = pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
-//  if (s != 0)
-//    printf("failed to set afinity\n");
-
-  pthread_attr_t ptAttr;
-  if (pthread_attr_setschedpolicy(&ptAttr, SCHED_RR) != 0) {
-    printf("Failed to set pthread sched policy SCHED_RR\n");
-  }
-
-  pthread_attr_setinheritsched(&ptAttr, PTHREAD_EXPLICIT_SCHED);
-  struct sched_param thread_params;
-  thread_params.sched_priority = 20;
-
-  if (pthread_attr_setschedparam(&ptAttr, &thread_params) != 0) {
-    printf("failed to set sched param\n");
-  }
+  vnf_p7_info *p7_vnf = (vnf_p7_info *)ptr;
 
   init_queue(&gnb_rach_ind_queue);
   init_queue(&gnb_rx_ind_queue);
@@ -82,21 +52,20 @@ void *aerial_vnf_nr_p7_thread_start(void *ptr)
   init_queue(&gnb_uci_ind_queue);
   init_queue(&gnb_slot_ind_queue);
 
-  vnf_p7_info *p7_vnf = (vnf_p7_info *)ptr;
   p7_vnf->config->port = p7_vnf->local_port;
-  p7_vnf->config->sync_indication = &aerial_phy_sync_indication;
-  p7_vnf->config->slot_indication = &aerial_phy_slot_indication;
-  p7_vnf->config->harq_indication = &aerial_phy_harq_indication;
+  p7_vnf->config->sync_indication = NULL;
+  p7_vnf->config->slot_indication = NULL;
+  p7_vnf->config->harq_indication = NULL;
   p7_vnf->config->nr_crc_indication = &aerial_phy_nr_crc_indication;
   p7_vnf->config->nr_rx_data_indication = &aerial_phy_nr_rx_data_indication;
   p7_vnf->config->nr_rach_indication = &aerial_phy_nr_rach_indication;
   p7_vnf->config->nr_uci_indication = &aerial_phy_nr_uci_indication;
-  p7_vnf->config->srs_indication = &aerial_phy_srs_indication;
-  p7_vnf->config->sr_indication = &aerial_phy_sr_indication;
-  p7_vnf->config->cqi_indication = &aerial_phy_cqi_indication;
-  p7_vnf->config->lbt_dl_indication = &aerial_phy_lbt_dl_indication;
-  p7_vnf->config->nb_harq_indication = &aerial_phy_nb_harq_indication;
-  p7_vnf->config->nrach_indication = &aerial_phy_nrach_indication;
+  p7_vnf->config->srs_indication = NULL;
+  p7_vnf->config->sr_indication = NULL;
+  p7_vnf->config->cqi_indication = NULL;
+  p7_vnf->config->lbt_dl_indication = NULL;
+  p7_vnf->config->nb_harq_indication = NULL;
+  p7_vnf->config->nrach_indication = NULL;
   p7_vnf->config->nr_slot_indication = &aerial_phy_nr_slot_indication;
   p7_vnf->config->nr_srs_indication = &aerial_phy_nr_srs_indication;
   p7_vnf->config->malloc = &aerial_vnf_allocate;
@@ -112,8 +81,7 @@ void *aerial_vnf_nr_p7_thread_start(void *ptr)
   p7_vnf->config->codec_config.deallocate = &aerial_vnf_deallocate;
   p7_vnf->config->allocate_p7_vendor_ext = &aerial_phy_allocate_p7_vendor_ext;
   p7_vnf->config->deallocate_p7_vendor_ext = &aerial_phy_deallocate_p7_vendor_ext;
-  NFAPI_TRACE(NFAPI_TRACE_INFO, "[VNF] Creating VNF NFAPI P7 start thread %s\n", __FUNCTION__);
-  threadCreate(&vnf_aerial_p7_start_pthread, &aerial_vnf_nr_aerial_p7_start_thread, p7_vnf->config, "aerial_p7_start", -1, OAI_PRIORITY_RT);
+
   return 0;
 }
 
@@ -223,13 +191,7 @@ int aerial_pnf_nr_start_resp_cb(nfapi_vnf_config_t *config, int p5_idx, nfapi_nr
               vnf->p7_vnfs[0].config,
               vnf->p7_vnfs[0].thread_started);
 
-  if (p7_vnf->thread_started == 0) {
-    pthread_t vnf_p7_thread;
-    threadCreate(&vnf_p7_thread, &aerial_vnf_nr_p7_thread_start, p7_vnf, "aerial_p7_thread", -1, OAI_PRIORITY_RT);
-    p7_vnf->thread_started = 1;
-  } else {
-    // P7 thread already running.
-  }
+  aerial_vnf_nr_p7_config_init(p7_vnf);
 
   // start all the phys in the pnf.
   NFAPI_TRACE(NFAPI_TRACE_INFO, "[VNF] Sending NFAPI_VNF_PARAM_REQUEST phy_id:%d\n", pnf->phys[0].id);
@@ -321,7 +283,7 @@ int aerial_nr_send_config_request(nfapi_vnf_config_t *config, int p5_idx)
   pnf_info *pnf = vnf->pnfs;
   phy_info *phy = pnf->phys;
 
-  nfapi_nr_config_request_scf_t *req = &RC.nrmac[0]->config[0]; //&RC.gNB[0]->gNB_config; // check
+  nfapi_nr_config_request_scf_t *req = &RC.nrmac[0]->config[0];
 
   NFAPI_TRACE(NFAPI_TRACE_INFO,
               "[VNF] %d.%d pnf p7 %s:%d timing %u %u %u %u\n",
@@ -337,7 +299,6 @@ int aerial_nr_send_config_request(nfapi_vnf_config_t *config, int p5_idx)
   req->header.phy_id = phy->id;
   NFAPI_TRACE(NFAPI_TRACE_INFO, "[VNF] Send NFAPI_CONFIG_REQUEST\n");
 
-
   vnf_t *_this = (vnf_t *)(config);
 
   nfapi_vnf_phy_info_t *vnf_phy = nfapi_vnf_phy_info_list_find(config, req->header.phy_id);
@@ -347,7 +308,7 @@ int aerial_nr_send_config_request(nfapi_vnf_config_t *config, int p5_idx)
     return -1;
   }
 
-  nfapi_p4_p5_message_header_t *msg = &req->header;
+  nfapi_nr_p4_p5_message_header_t *msg = &req->header;
   uint16_t msg_len = sizeof(nfapi_nr_config_request_scf_t);
   uint8_t tx_messagebufferFAPI[sizeof(_this->tx_message_buffer)];
   int packedMessageLengthFAPI = -1;
@@ -384,19 +345,19 @@ int aerial_nr_start_resp_cb(nfapi_vnf_config_t *config, int p5_idx, nfapi_nr_sta
   return 0;
 }
 
-int aerial_vendor_ext_cb(nfapi_vnf_config_t *config, int p5_idx, nfapi_p4_p5_message_header_t *msg)
+int aerial_vendor_ext_cb(nfapi_vnf_config_t *config, int p5_idx, void *msg)
 {
   NFAPI_TRACE(NFAPI_TRACE_INFO, "[VNF] %s\n", __FUNCTION__);
 
-  switch (msg->message_id) {
+  switch (((nfapi_nr_p4_p5_message_header_t *)msg)->message_id) {
     case P5_VENDOR_EXT_RSP: {
       vendor_ext_p5_rsp *rsp = (vendor_ext_p5_rsp *)msg;
       NFAPI_TRACE(NFAPI_TRACE_INFO, "[VNF] P5_VENDOR_EXT_RSP error_code:%d\n", rsp->error_code);
       // send the start request
-      nfapi_pnf_start_request_t req;
+      nfapi_nr_pnf_start_request_t req;
       memset(&req, 0, sizeof(req));
       req.header.message_id = NFAPI_PNF_START_REQUEST;
-      nfapi_vnf_pnf_start_req(config, p5_idx, &req);
+      nfapi_nr_vnf_pnf_start_req(config, p5_idx, &req);
     } break;
   }
 
@@ -430,12 +391,12 @@ int aerial_vnf_pack_vendor_extension_tlv(void *vext, uint8_t **ppWritePackedMsg,
   return -1;
 }
 
-int aerial_vnf_unpack_p4_p5_vendor_extension(nfapi_p4_p5_message_header_t *header,
+int aerial_vnf_unpack_p4_p5_vendor_extension(void *header,
                                              uint8_t **ppReadPackedMessage,
                                              uint8_t *end,
                                              nfapi_p4_p5_codec_config_t *codec)
 {
-  if (header->message_id == P5_VENDOR_EXT_RSP) {
+  if (((nfapi_nr_p4_p5_message_header_t *)header)->message_id == P5_VENDOR_EXT_RSP) {
     vendor_ext_p5_rsp *req = (vendor_ext_p5_rsp *)(header);
     return (!pull16(ppReadPackedMessage, &req->error_code, end));
   }
@@ -443,12 +404,12 @@ int aerial_vnf_unpack_p4_p5_vendor_extension(nfapi_p4_p5_message_header_t *heade
   return 0;
 }
 
-int aerial_vnf_pack_p4_p5_vendor_extension(nfapi_p4_p5_message_header_t *header,
+int aerial_vnf_pack_p4_p5_vendor_extension(void *header,
                                            uint8_t **ppWritePackedMsg,
                                            uint8_t *end,
                                            nfapi_p4_p5_codec_config_t *codec)
 {
-  if (header->message_id == P5_VENDOR_EXT_REQ) {
+  if (((nfapi_nr_p4_p5_message_header_t *)header)->message_id == P5_VENDOR_EXT_REQ) {
     vendor_ext_p5_req *req = (vendor_ext_p5_req *)(header);
     return (!(push16(req->dummy1, ppWritePackedMsg, end) && push16(req->dummy2, ppWritePackedMsg, end)));
   }
@@ -456,17 +417,17 @@ int aerial_vnf_pack_p4_p5_vendor_extension(nfapi_p4_p5_message_header_t *header,
   return 0;
 }
 
-nfapi_p4_p5_message_header_t *aerial_vnf_allocate_p4_p5_vendor_ext(uint16_t message_id, uint16_t *msg_size)
+void *aerial_vnf_allocate_p4_p5_vendor_ext(uint16_t message_id, uint16_t *msg_size)
 {
   if (message_id == P5_VENDOR_EXT_RSP) {
     *msg_size = sizeof(vendor_ext_p5_rsp);
-    return (nfapi_p4_p5_message_header_t *)malloc(sizeof(vendor_ext_p5_rsp));
+    return malloc(sizeof(vendor_ext_p5_rsp));
   }
 
   return 0;
 }
 
-void aerial_vnf_deallocate_p4_p5_vendor_ext(nfapi_p4_p5_message_header_t *header)
+void aerial_vnf_deallocate_p4_p5_vendor_ext(void *header)
 {
   free(header);
 }
@@ -566,13 +527,7 @@ void aerial_configure_nr_fapi_vnf()
               vnf->p7_vnfs[0].config,
               vnf->p7_vnfs[0].thread_started);
 
-  if (p7_vnf->thread_started == 0) {
-    pthread_t vnf_p7_thread;
-    threadCreate(&vnf_p7_thread, &aerial_vnf_nr_p7_thread_start, p7_vnf, "aerial_p7_thread", -1, OAI_PRIORITY_RT);
-    p7_vnf->thread_started = 1;
-  } else {
-    // P7 thread already running.
-  }
+  aerial_vnf_nr_p7_config_init(p7_vnf);
 }
 uint8_t aerial_unpack_nr_param_response(uint8_t **ppReadPackedMsg, uint8_t *end, void *msg, nfapi_p4_p5_codec_config_t *config)
 {
@@ -581,45 +536,6 @@ uint8_t aerial_unpack_nr_param_response(uint8_t **ppReadPackedMsg, uint8_t *end,
 uint8_t aerial_unpack_nr_config_response(uint8_t **ppReadPackedMsg, uint8_t *end, void *msg, nfapi_p4_p5_codec_config_t *config)
 {
   return unpack_nr_config_response(ppReadPackedMsg, end, msg, config);
-}
-
-// monitor the p7 endpoints and the timing loop and
-// send indications to mac
-int aerial_nfapi_nr_vnf_p7_start(nfapi_vnf_p7_config_t *config)
-{
-  if (config == 0)
-    return -1;
-
-  NFAPI_TRACE(NFAPI_TRACE_INFO, "%s()\n", __FUNCTION__);
-
-  vnf_p7_t *vnf_p7 = (vnf_p7_t *)config;
-
-  // Create p7 receive udp port
-  // todo : this needs updating for Ipv6
-
-  NFAPI_TRACE(NFAPI_TRACE_INFO, "Initialising VNF P7 port:%u\n", config->port);
-
-
-  struct timespec ref_time;
-  clock_gettime(CLOCK_MONOTONIC, &ref_time);
-  uint8_t setup_done = 0;
-  while (vnf_p7->terminate == 0) {
-    if (setup_done == 0) {
-      struct timespec curr_time;
-      clock_gettime(CLOCK_MONOTONIC, &curr_time);
-      uint8_t setup_time = curr_time.tv_sec - ref_time.tv_sec;
-      if (setup_time > 3) {
-        setup_done = 1;
-      }
-    }
-
-  }
-  NFAPI_TRACE(NFAPI_TRACE_INFO, "Closing p7 socket\n");
-  close(vnf_p7->socket);
-
-  NFAPI_TRACE(NFAPI_TRACE_INFO, "%s() returning\n", __FUNCTION__);
-
-  return 0;
 }
 
 int oai_fapi_ul_tti_req(nfapi_nr_ul_tti_request_t *ul_tti_req)
@@ -700,4 +616,3 @@ int oai_fapi_send_end_request(int cell, uint32_t frame, uint32_t slot){
   }
   return retval;
 }
-#endif

@@ -20,20 +20,33 @@
  */
 
 #include "cucp_cuup_handler.h"
-
+#include <netinet/in.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
+#include "NR_DRB-ToAddMod.h"
 #include "NR_DRB-ToAddModList.h"
-
-#include "common/platform_types.h"
-#include "intertask_interface.h"
-#include "openair2/COMMON/e1ap_messages_types.h"
-#include "openair3/ocp-gtpu/gtp_itf.h"
-#include "openair2/F1AP/f1ap_ids.h"
-#include "nr_pdcp_oai_api.h"
-#include "cuup_cucp_if.h"
+#include "NR_PDCP-Config.h"
+#include "NR_QFI.h"
+#include "NR_SDAP-Config.h"
+#include "PHY/defs_common.h"
+#include "RRC/NR/nr_rrc_common.h"
+#include "SDAP/nr_sdap/nr_sdap_entity.h"
+#include "asn_internal.h"
+#include "assertions.h"
+#include "common/utils/T/T.h"
 #include "common/utils/oai_asn1.h"
-#include "openair2/SDAP/nr_sdap/nr_sdap.h"
+#include "constr_TYPE.h"
+#include "cuup_cucp_if.h"
+#include "gtpv1_u_messages_types.h"
+#include "nr_pdcp/nr_pdcp_entity.h"
+#include "nr_pdcp_oai_api.h"
+#include "openair2/COMMON/e1ap_messages_types.h"
 #include "openair2/E1AP/e1ap_common.h"
 #include "openair2/F1AP/f1ap_common.h"
+#include "openair2/F1AP/f1ap_ids.h"
+#include "openair2/SDAP/nr_sdap/nr_sdap.h"
+#include "openair3/ocp-gtpu/gtp_itf.h"
 
 static void fill_DRB_configList_e1(NR_DRB_ToAddModList_t *DRB_configList, const pdu_session_to_setup_t *pdu)
 {
@@ -75,11 +88,12 @@ static void fill_DRB_configList_e1(NR_DRB_ToAddModList_t *DRB_configList, const 
     pdcp_config->t_Reordering = calloc(1, sizeof(*pdcp_config->t_Reordering));
     *pdcp_config->t_Reordering = drb->pdcp_config.reorderingTimer;
     pdcp_config->ext1 = NULL;
-    if (pdu->integrityProtectionIndication == 0 || // Required
-        pdu->integrityProtectionIndication == 1) { // Preferred
-        asn1cCallocOne(drbCfg->integrityProtection, NR_PDCP_Config__drb__integrityProtection_enabled);
+    const security_indication_t *sec = &pdu->securityIndication;
+    if (sec->integrityProtectionIndication == SECURITY_REQUIRED ||
+        sec->integrityProtectionIndication == SECURITY_PREFERRED) {
+      asn1cCallocOne(drbCfg->integrityProtection, NR_PDCP_Config__drb__integrityProtection_enabled);
     }
-    if (pdu->confidentialityProtectionIndication == 2) { // Not Needed
+    if (sec->confidentialityProtectionIndication == SECURITY_NOT_NEEDED) {
       asn1cCalloc(pdcp_config->ext1, ext1);
       asn1cCallocOne(ext1->cipheringDisabled, NR_PDCP_Config__ext1__cipheringDisabled_true);
     }
@@ -157,6 +171,7 @@ void e1_bearer_context_setup(const e1ap_bearer_setup_req_t *req)
     AssertFatal(req_pdu->numDRB2Setup == 1, "can only handle one DRB per PDU session\n");
     resp_pdu->numDRBSetup = req_pdu->numDRB2Setup;
     const DRB_nGRAN_to_setup_t *req_drb = &req_pdu->DRBnGRanList[0];
+    AssertFatal(req_drb->numQosFlow2Setup == 1, "can only handle one QoS Flow per DRB\n");
     DRB_nGRAN_setup_t *resp_drb = &resp_pdu->DRBnGRanList[0];
     resp_drb->id = req_drb->id;
     resp_drb->numQosFlowSetup = req_drb->numQosFlow2Setup;
@@ -168,14 +183,14 @@ void e1_bearer_context_setup(const e1ap_bearer_setup_req_t *req)
 
     // GTP tunnel for N3/to core
     gtpv1u_gnb_create_tunnel_resp_t resp_n3 = {0};
-    int qfi = 0; // put PDU session marker
+    int qfi = req_drb->qosFlows[0].qfi;
     int ret = drb_gtpu_create(n3inst,
                               cu_up_ue_id,
                               req_drb->id,
                               req_pdu->sessionId,
                               qfi,
-                              req_pdu->tlAddress,
-                              req_pdu->teId,
+                              req_pdu->UP_TL_information.tlAddress,
+                              req_pdu->UP_TL_information.teId,
                               nr_pdcp_data_req_drb,
                               sdap_data_req,
                               &resp_n3);
@@ -196,6 +211,7 @@ void e1_bearer_context_setup(const e1ap_bearer_setup_req_t *req)
                      cu_up_ue_id,
                      &DRB_configList,
                      &security_parameters);
+    ASN_STRUCT_RESET(asn_DEF_NR_DRB_ToAddModList, &DRB_configList.list);
     if (f1inst >= 0) { /* we have F1(-U) */
       teid_t dummy_teid = 0xffff; // we will update later with answer from DU
       in_addr_t dummy_address = {0}; // IPv4, updated later with answer from DU

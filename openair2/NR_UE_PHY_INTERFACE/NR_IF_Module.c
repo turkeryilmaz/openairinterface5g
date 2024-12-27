@@ -41,7 +41,7 @@
 #include "NR_MAC_UE/mac_extern.h"
 #include "SCHED_NR_UE/fapi_nr_ue_l1.h"
 #include "executables/softmodem-common.h"
-#include "openair2/RRC/NR_UE/rrc_proto.h"
+#include "openair2/RRC/NR_UE/L2_interface_ue.h"
 #include "openair2/GNB_APP/L1_nr_paramdef.h"
 #include "openair2/GNB_APP/gnb_paramdef.h"
 #include "radio/ETHERNET/if_defs.h"
@@ -65,8 +65,58 @@ queue_t nr_dl_tti_req_queue;
 queue_t nr_tx_req_queue;
 queue_t nr_ul_dci_req_queue;
 queue_t nr_ul_tti_req_queue;
-pthread_mutex_t mac_IF_mutex;
 static void save_pdsch_pdu_for_crnti(nfapi_nr_dl_tti_request_t *dl_tti_request);
+
+void print_ue_mac_stats(const module_id_t mod, const int frame_rx, const int slot_rx)
+{
+  NR_UE_MAC_INST_t *mac = get_mac_inst(mod);
+  int ret = pthread_mutex_lock(&mac->if_mutex);
+  AssertFatal(!ret, "mutex failed %d\n", ret);
+
+  char txt[1024];
+  char *end = txt + sizeof(txt);
+  char *cur = txt;
+
+  float nbul = 0;
+  for (uint64_t *p = mac->stats.ul.rounds; p < mac->stats.ul.rounds + NR_MAX_HARQ_ROUNDS_FOR_STATS; p++)
+    nbul += *p;
+  if (nbul < 1)
+    nbul = 1;
+
+  float nbdl = 0;
+  for (uint64_t *p = mac->stats.dl.rounds; p < mac->stats.dl.rounds + NR_MAX_HARQ_ROUNDS_FOR_STATS; p++)
+    nbdl += *p;
+  if (nbdl < 1)
+    nbdl = 1;
+
+  cur += snprintf(cur, end - cur, "UE %d stats sfn: %d.%d, cumulated bad DCI %d\n", mod, frame_rx, slot_rx, mac->stats.bad_dci);
+
+  cur += snprintf(cur, end - cur, "    DL harq: %lu", mac->stats.dl.rounds[0]);
+  int nb;
+  for (nb = NR_MAX_HARQ_ROUNDS_FOR_STATS - 1; nb > 1; nb--)
+    if (mac->stats.ul.rounds[nb])
+      break;
+  for (int i = 1; i < nb + 1; i++)
+    cur += snprintf(cur, end - cur, "/%lu", mac->stats.dl.rounds[i]);
+
+  cur += snprintf(cur, end - cur, "\n    Ul harq: %lu", mac->stats.ul.rounds[0]);
+  for (nb = NR_MAX_HARQ_ROUNDS_FOR_STATS - 1; nb > 1; nb--)
+    if (mac->stats.ul.rounds[nb])
+      break;
+  for (int i = 1; i < nb + 1; i++)
+    cur += snprintf(cur, end - cur, "/%lu", mac->stats.ul.rounds[i]);
+  snprintf(cur,
+           end - cur,
+           " avg code rate %.01f, avg bit/symbol %.01f, avg per TB: "
+           "(nb RBs %.01f, nb symbols %.01f)\n",
+           (double)mac->stats.ul.target_code_rate / (mac->stats.ul.total_bits * 1024 * 10), // See const Table_51311 definition
+           (double)mac->stats.ul.total_bits / mac->stats.ul.total_symbols,
+           mac->stats.ul.rb_size / nbul,
+           mac->stats.ul.nr_of_symbols / nbul);
+  LOG_I(NR_MAC, "%s", txt);
+  ret = pthread_mutex_unlock(&mac->if_mutex);
+  AssertFatal(!ret, "mutex failed %d\n", ret);
+}
 
 void nrue_init_standalone_socket(int tx_port, int rx_port)
 {
@@ -343,10 +393,10 @@ static bool is_my_dci(NR_UE_MAC_INST_t *mac, nfapi_nr_dl_dci_pdu_t *received_pdu
         (received_pdu->RNTI != mac->ra.ra_rnti || mac->ra.RA_RAPID_found))
       return false;
   }
-  if (get_softmodem_params()->sa) {
+  if (IS_SA_MODE(get_softmodem_params())) {
     if (mac->state == UE_NOT_SYNC)
       return false;
-    if (received_pdu->RNTI == 0xFFFF && mac->phy_config_request_sent)
+    if (received_pdu->RNTI == 0xFFFF)
       return false;
     if (received_pdu->RNTI != mac->crnti && mac->ra.ra_state == nrRA_SUCCEEDED)
       return false;
@@ -1092,9 +1142,10 @@ static int8_t handle_dlsch(NR_UE_MAC_INST_t *mac, nr_downlink_indication_t *dl_i
   if (get_softmodem_params()->emulate_l1)
     dl_info->rx_ind->rx_indication_body[pdu_id].pdsch_pdu.harq_pid = g_harq_pid;
 
-  update_harq_status(mac,
-                     dl_info->rx_ind->rx_indication_body[pdu_id].pdsch_pdu.harq_pid,
-                     dl_info->rx_ind->rx_indication_body[pdu_id].pdsch_pdu.ack_nack);
+  if (mac->ra.ra_state != nrRA_WAIT_RAR) // no HARQ for MSG2
+    update_harq_status(mac,
+                       dl_info->rx_ind->rx_indication_body[pdu_id].pdsch_pdu.harq_pid,
+                       dl_info->rx_ind->rx_indication_body[pdu_id].pdsch_pdu.ack_nack);
   if(dl_info->rx_ind->rx_indication_body[pdu_id].pdsch_pdu.ack_nack)
     nr_ue_send_sdu(mac, dl_info, pdu_id);
 
@@ -1120,13 +1171,13 @@ static int8_t handle_csirs_measurements(NR_UE_MAC_INST_t *mac,
 
 void update_harq_status(NR_UE_MAC_INST_t *mac, uint8_t harq_pid, uint8_t ack_nack)
 {
-  NR_UE_HARQ_STATUS_t *current_harq = &mac->dl_harq_info[harq_pid];
+  NR_UE_DL_HARQ_STATUS_t *current_harq = &mac->dl_harq_info[harq_pid];
 
   if (current_harq->active) {
     LOG_D(PHY,"Updating harq_status for harq_id %d, ack/nak %d\n", harq_pid, current_harq->ack);
     // we can prepare feedback for MSG4 in advance
     if (mac->ra.ra_state == nrRA_WAIT_CONTENTION_RESOLUTION)
-      prepare_msg4_feedback(mac, harq_pid, ack_nack);
+      prepare_msg4_msgb_feedback(mac, harq_pid, ack_nack);
     else {
       current_harq->ack = ack_nack;
       current_harq->ack_received = true;
@@ -1140,19 +1191,18 @@ void update_harq_status(NR_UE_MAC_INST_t *mac, uint8_t harq_pid, uint8_t ack_nac
 
 int nr_ue_ul_indication(nr_uplink_indication_t *ul_info)
 {
-  int ret = pthread_mutex_lock(&mac_IF_mutex);
+  module_id_t module_id = ul_info->module_id;
+  NR_UE_MAC_INST_t *mac = get_mac_inst(module_id);
+  int ret = pthread_mutex_lock(&mac->if_mutex);
   AssertFatal(!ret, "mutex failed %d\n", ret);
   LOG_D(PHY, "Locked in ul, slot %d\n", ul_info->slot);
 
-  module_id_t module_id = ul_info->module_id;
-  NR_UE_MAC_INST_t *mac = get_mac_inst(module_id);
-
   LOG_T(NR_MAC, "Not calling scheduler mac->ra.ra_state = %d\n", mac->ra.ra_state);
 
-  if (mac->phy_config_request_sent && is_nr_UL_slot(mac->tdd_UL_DL_ConfigurationCommon, ul_info->slot, mac->frame_type))
+  if (is_nr_UL_slot(mac->tdd_UL_DL_ConfigurationCommon, ul_info->slot, mac->frame_type))
     nr_ue_ul_scheduler(mac, ul_info);
-  pthread_mutex_unlock(&mac_IF_mutex);
-
+  ret = pthread_mutex_unlock(&mac->if_mutex);
+  AssertFatal(!ret, "mutex failed %d\n", ret);
   return 0;
 }
 
@@ -1179,7 +1229,7 @@ static uint32_t nr_ue_dl_processing(nr_downlink_indication_t *dl_info)
         continue;
       }
       dci_pdu_rel15_t *def_dci_pdu_rel15 = &mac->def_dci_pdu_rel15[dl_info->slot][dci_format];
-      g_harq_pid = def_dci_pdu_rel15->harq_pid;
+      g_harq_pid = def_dci_pdu_rel15->harq_pid.val;
       LOG_T(NR_MAC, "Setting harq_pid = %d and dci_index = %d (based on format)\n", g_harq_pid, dci_format);
 
       ret_mask |= (1 << FAPI_NR_DCI_IND);
@@ -1263,26 +1313,29 @@ static uint32_t nr_ue_dl_processing(nr_downlink_indication_t *dl_info)
 
 int nr_ue_dl_indication(nr_downlink_indication_t *dl_info)
 {
-  int ret = pthread_mutex_lock(&mac_IF_mutex);
-  AssertFatal(!ret, "mutex failed %d\n", ret);
   uint32_t ret2 = 0;
   NR_UE_MAC_INST_t *mac = get_mac_inst(dl_info->module_id);
+  int ret = pthread_mutex_lock(&mac->if_mutex);
+  AssertFatal(!ret, "mutex failed %d\n", ret);
   if (!dl_info->dci_ind && !dl_info->rx_ind)
     // DL indication to process DCI reception
     nr_ue_dl_scheduler(mac, dl_info);
   else
     // DL indication to process data channels
     ret2 = nr_ue_dl_processing(dl_info);
-  pthread_mutex_unlock(&mac_IF_mutex);
+  ret = pthread_mutex_unlock(&mac->if_mutex);
+  AssertFatal(!ret, "mutex failed %d\n", ret);
   return ret2;
 }
 
 void nr_ue_slot_indication(uint8_t mod_id)
 {
-  pthread_mutex_lock(&mac_IF_mutex);
   NR_UE_MAC_INST_t *mac = get_mac_inst(mod_id);
+  int ret = pthread_mutex_lock(&mac->if_mutex);
+  AssertFatal(!ret, "mutex failed %d\n", ret);
   update_mac_timers(mac);
-  pthread_mutex_unlock(&mac_IF_mutex);
+  ret = pthread_mutex_unlock(&mac->if_mutex);
+  AssertFatal(!ret, "mutex failed %d\n", ret);
 }
 
 nr_ue_if_module_t *nr_ue_if_module_init(uint32_t module_id)
@@ -1308,7 +1361,6 @@ nr_ue_if_module_t *nr_ue_if_module_init(uint32_t module_id)
     nr_ue_if_module_inst[module_id]->ul_indication = nr_ue_ul_indication;
     nr_ue_if_module_inst[module_id]->slot_indication = nr_ue_slot_indication;
   }
-  pthread_mutex_init(&mac_IF_mutex, NULL);
 
   return nr_ue_if_module_inst[module_id];
 }

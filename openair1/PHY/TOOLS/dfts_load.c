@@ -89,6 +89,8 @@ uint32_t IDFT_SCALING_98304[7] = {1,1,0,0,1,3,3};
 /* function description array, to be used when loading the dfts/idfts lib */
 static loader_shlibfunc_t shlib_fdesc[2];
 static char *arg[64] = {"phytest", "-O", "cmdlineonly::dbgl0"};
+dftfunc_t dft;
+idftfunc_t idft;
 int load_dftslib(void)
 {
   char *ptr = (char *)config_get_if();
@@ -96,8 +98,8 @@ int load_dftslib(void)
     uniqCfg = load_configmodule(3, (char **)arg, CONFIG_ENABLECMDLINEONLY);
     logInit();
   }
-  shlib_fdesc[0].fname = "dft";
-  shlib_fdesc[1].fname = "idft";
+  shlib_fdesc[0].fname = "dft_implementation";
+  shlib_fdesc[1].fname = "idft_implementation";
   int ret = load_module_shlib("dfts", shlib_fdesc, sizeof(shlib_fdesc) / sizeof(loader_shlibfunc_t), NULL);
   AssertFatal((ret >= 0), "Error loading dftsc decoder");
   dft = (dftfunc_t)shlib_fdesc[0].fptr;

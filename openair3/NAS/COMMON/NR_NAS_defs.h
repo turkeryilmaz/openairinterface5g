@@ -25,7 +25,6 @@
 
 #include <common/utils/LOG/log.h>
 #include <openair3/UICC/usim_interface.h>
-#include <openair2/LAYER2/NR_MAC_gNB/nr_mac_gNB.h>
 
 /* TS 24.007 possible L3 formats:
    Table 11.1: Formats of information elements
@@ -63,55 +62,55 @@ typedef enum {
   SGSmobilitymanagementmessages=0x7e,
 } Extendedprotocoldiscriminator_t;
 
-#define FOREACH_TYPE(TYPE_DEF) \
-  TYPE_DEF(  Registrationrequest,0x41 )\
-TYPE_DEF(  Registrationaccept,0x42 )\
-TYPE_DEF(  Registrationcomplete,0x43 )\
-TYPE_DEF(  Registrationreject,0x44 )\
-TYPE_DEF(  DeregistrationrequestUEoriginating,0x45 )\
-TYPE_DEF(  DeregistrationacceptUEoriginating,0x46 )\
-TYPE_DEF(  DeregistrationrequestUEterminated,0x47 )\
-TYPE_DEF(  DeregistrationacceptUEterminated,0x48 )\
-TYPE_DEF(  Servicerequest,0x4c )\
-TYPE_DEF(  Servicereject,0x4d )\
-TYPE_DEF(  Serviceaccept,0x4e )\
-TYPE_DEF(  Controlplaneservicerequest,0x4f )\
-TYPE_DEF(  Networkslicespecificauthenticationcommand,0x50 )\
-TYPE_DEF(  Networkslicespecificauthenticationcomplete,0x51 )\
-TYPE_DEF(  Networkslicespecificauthenticationresult,0x52 )\
-TYPE_DEF(  Configurationupdatecommand,0x54 )\
-TYPE_DEF(  Configurationupdatecomplete,0x55 )\
-TYPE_DEF(  Authenticationrequest,0x56 )\
-TYPE_DEF(  Authenticationresponse,0x57 )\
-TYPE_DEF(  Authenticationreject,0x58 )\
-TYPE_DEF(  Authenticationfailure,0x59 )\
-TYPE_DEF(  Authenticationresult,0x5a )\
-TYPE_DEF(  Identityrequest,0x5b )\
-TYPE_DEF(  Identityresponse,0x5c )\
-TYPE_DEF(  Securitymodecommand,0x5d )\
-TYPE_DEF(  Securitymodecomplete,0x5e )\
-TYPE_DEF(  Securitymodereject,0x5f )\
-TYPE_DEF(  SGMMstatus,0x64 )\
-TYPE_DEF(  Notification,0x65 )\
-TYPE_DEF(  Notificationresponse,0x66 )\
-TYPE_DEF(  ULNAStransport,0x67 )\
-TYPE_DEF(  DLNAStransport,0x68 )\
-TYPE_DEF(  PDUsessionestablishmentrequest,0xc1 )\
-TYPE_DEF(  PDUsessionestablishmentaccept,0xc2 )\
-TYPE_DEF(  PDUsessionestablishmentreject,0xc3 )\
-TYPE_DEF(  PDUsessionauthenticationcommand,0xc5 )\
-TYPE_DEF(  PDUsessionauthenticationcomplete,0xc6 )\
-TYPE_DEF(  PDUsessionauthenticationresult,0xc7 )\
-TYPE_DEF(  PDUsessionmodificationrequest,0xc9 )\
-TYPE_DEF(  PDUsessionmodificationreject,0xca )\
-TYPE_DEF(  PDUsessionmodificationcommand,0xcb )\
-TYPE_DEF(  PDUsessionmodificationcomplete,0xcc )\
-TYPE_DEF(  PDUsessionmodificationcommandreject,0xcd )\
-TYPE_DEF(  PDUsessionreleaserequest,0xd1 )\
-TYPE_DEF(  PDUsessionreleasereject,0xd2 )\
-TYPE_DEF(  PDUsessionreleasecommand,0xd3 )\
-TYPE_DEF(  PDUsessionreleasecomplete,0xd4 )\
-TYPE_DEF(  SGSMstatus,0xd6 )\
+#define FOREACH_TYPE(TYPE_DEF)                               \
+  TYPE_DEF(REGISTRATION_REQUEST, 0x41)                       \
+  TYPE_DEF(REGISTRATION_ACCEPT, 0x42)                        \
+  TYPE_DEF(REGISTRATION_COMPLETE, 0x43)                      \
+  TYPE_DEF(REGISTRATION_REJECT, 0x44)                        \
+  TYPE_DEF(FGS_DEREGISTRATION_REQUEST_UE_ORIGINATING, 0x45)  \
+  TYPE_DEF(FGS_DEREGISTRATION_ACCEPT_UE_ORIGINATING, 0x46)   \
+  TYPE_DEF(DeregistrationrequestUEterminated, 0x47)          \
+  TYPE_DEF(DeregistrationacceptUEterminated, 0x48)           \
+  TYPE_DEF(FGS_SERVICE_REQUEST, 0x4c)                        \
+  TYPE_DEF(FGS_SERVICE_REJECT, 0x4d)                         \
+  TYPE_DEF(FGS_SERVICE_ACCEPT, 0x4e)                         \
+  TYPE_DEF(Controlplaneservicerequest, 0x4f)                 \
+  TYPE_DEF(Networkslicespecificauthenticationcommand, 0x50)  \
+  TYPE_DEF(Networkslicespecificauthenticationcomplete, 0x51) \
+  TYPE_DEF(Networkslicespecificauthenticationresult, 0x52)   \
+  TYPE_DEF(Configurationupdatecommand, 0x54)                 \
+  TYPE_DEF(Configurationupdatecomplete, 0x55)                \
+  TYPE_DEF(FGS_AUTHENTICATION_REQUEST, 0x56)                 \
+  TYPE_DEF(FGS_AUTHENTICATION_RESPONSE, 0x57)                \
+  TYPE_DEF(Authenticationreject, 0x58)                       \
+  TYPE_DEF(Authenticationfailure, 0x59)                      \
+  TYPE_DEF(Authenticationresult, 0x5a)                       \
+  TYPE_DEF(FGS_IDENTITY_REQUEST, 0x5b)                       \
+  TYPE_DEF(FGS_IDENTITY_RESPONSE, 0x5c)                      \
+  TYPE_DEF(FGS_SECURITY_MODE_COMMAND, 0x5d)                  \
+  TYPE_DEF(FGS_SECURITY_MODE_COMPLETE, 0x5e)                 \
+  TYPE_DEF(Securitymodereject, 0x5f)                         \
+  TYPE_DEF(SGMMstatus, 0x64)                                 \
+  TYPE_DEF(Notification, 0x65)                               \
+  TYPE_DEF(Notificationresponse, 0x66)                       \
+  TYPE_DEF(FGS_UPLINK_NAS_TRANSPORT, 0x67)                   \
+  TYPE_DEF(FGS_DOWNLINK_NAS_TRANSPORT, 0x68)                 \
+  TYPE_DEF(FGS_PDU_SESSION_ESTABLISHMENT_REQ, 0xc1)          \
+  TYPE_DEF(FGS_PDU_SESSION_ESTABLISHMENT_ACC, 0xc2)          \
+  TYPE_DEF(FGS_PDU_SESSION_ESTABLISHMENT_REJ, 0xc3)          \
+  TYPE_DEF(PDUsessionauthenticationcommand, 0xc5)            \
+  TYPE_DEF(PDUsessionauthenticationcomplete, 0xc6)           \
+  TYPE_DEF(PDUsessionauthenticationresult, 0xc7)             \
+  TYPE_DEF(PDUsessionmodificationrequest, 0xc9)              \
+  TYPE_DEF(PDUsessionmodificationreject, 0xca)               \
+  TYPE_DEF(PDUsessionmodificationcommand, 0xcb)              \
+  TYPE_DEF(PDUsessionmodificationcomplete, 0xcc)             \
+  TYPE_DEF(PDUsessionmodificationcommandreject, 0xcd)        \
+  TYPE_DEF(PDUsessionreleaserequest, 0xd1)                   \
+  TYPE_DEF(PDUsessionreleasereject, 0xd2)                    \
+  TYPE_DEF(PDUsessionreleasecommand, 0xd3)                   \
+  TYPE_DEF(PDUsessionreleasecomplete, 0xd4)                  \
+  TYPE_DEF(SGSMstatus, 0xd6)
 
 static const text_info_t message_text_info[] = {
   FOREACH_TYPE(TO_TEXT)
@@ -124,11 +123,11 @@ typedef enum {
 
 // TS 24.501
 typedef enum {
-  notsecurityprotected=0,
-  Integrityprotected=1,
-  Integrityprotectedandciphered=2,
-  Integrityprotectedwithnew5GNASsecuritycontext=3,
-  Integrityprotectedandcipheredwithnew5GNASsecuritycontext=4,
+  PLAIN_5GS_MSG = 0,
+  INTEGRITY_PROTECTED = 1,
+  INTEGRITY_PROTECTED_AND_CIPHERED = 2,
+  INTEGRITY_PROTECTED_WITH_NEW_SECU_CTX = 3,
+  INTEGRITY_PROTECTED_AND_CIPHERED_WITH_NEW_SECU_CTX = 4,
 } Security_header_t;
 
 typedef enum {
@@ -257,6 +256,7 @@ typedef enum {
 } cause_secu_id_t;
 								
 // IEI (information element identifier) are spread in each message definition
+#define IEI_NULL 0x00
 #define IEI_RAND 0x21
 #define IEI_AUTN 0x20
 #define IEI_EAP  0x78
@@ -381,18 +381,6 @@ int resToresStar(uint8_t *msg, const uicc_t* uicc);
 
 int identityResponse(void **msg, nr_user_nas_t *UE);
 int authenticationResponse(void **msg, nr_user_nas_t *UE);
-void UEprocessNAS(void *msg,nr_user_nas_t *UE);
-void SGSabortUE(void *msg, NRUEcontext_t *UE) ;
-void SGSregistrationReq(void *msg, NRUEcontext_t *UE);
-void SGSderegistrationUEReq(void *msg, NRUEcontext_t *UE);
-void SGSauthenticationResp(void *msg, NRUEcontext_t *UE);
-void SGSidentityResp(void *msg, NRUEcontext_t *UE);
-void SGSsecurityModeComplete(void *msg, NRUEcontext_t *UE);
-void SGSregistrationComplete(void *msg, NRUEcontext_t *UE);
-void processNAS(void *msg, NRUEcontext_t *UE);
-int identityRequest(void **msg, NRUEcontext_t *UE);
-int authenticationRequest(void **msg, NRUEcontext_t *UE);
-int securityModeCommand(void **msg, NRUEcontext_t *UE);
 void servingNetworkName(uint8_t *msg, char * imsiStr, int nmc_size);
 
 #endif

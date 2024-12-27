@@ -19,47 +19,59 @@
  *      contact@openairinterface.org
  */
 
-#include <string.h>
+
 #include <math.h>
-#include <unistd.h>
-#include <pthread.h>
-
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "common/utils/assertions.h"
+#include "executables/softmodem-common.h"
+#include "common/platform_types.h"
+#include "openair2/LAYER2/NR_MAC_COMMON/nr_mac_common.h"
+#include "NR_PHY_INTERFACE/NR_IF_Module.h"
 #include "common/config/config_userapi.h"
-#include "common/utils/load_module_shlib.h"
-#include "common/utils/LOG/log.h"
-#include "common/ran_context.h" 
-
-#include "SIMULATION/TOOLS/sim.h"
-#include "SIMULATION/RF/rf.h"
-#include "PHY/types.h"
-#include "PHY/defs_gNB.h"
 #include "PHY/defs_nr_UE.h"
-#include "SCHED_NR/sched_nr.h"
-#include "SCHED_NR_UE/phy_frame_config_nr.h"
-#include "PHY/phy_vars_nr_ue.h"
-#include "PHY/NR_REFSIG/refsig_defs_ue.h"
-#include "PHY/MODULATION/nr_modulation.h"
-#include "PHY/MODULATION/modulation_eNB.h"
-#include "PHY/MODULATION/modulation_UE.h"
 #include "PHY/INIT/nr_phy_init.h"
-#include "PHY/NR_TRANSPORT/nr_transport_proto.h"
+#include "PHY/MODULATION/nr_modulation.h"
 #include "PHY/NR_TRANSPORT/nr_transport_common_proto.h"
+#include "PHY/NR_TRANSPORT/nr_transport_proto.h"
 #include "PHY/NR_UE_TRANSPORT/nr_transport_proto_ue.h"
 #include "nr_unitary_defs.h"
-#include <openair2/LAYER2/NR_MAC_COMMON/nr_mac_common.h>
-#include <openair2/RRC/LTE/rrc_vars.h>
-#include <executables/softmodem-common.h>
-#include <openair2/RRC/NR_UE/rrc_defs.h>
-#include <openair3/ocp-gtpu/gtp_itf.h>
+#include "openair2/RRC/LTE/rrc_vars.h"
+#include "PHY/NR_UE_TRANSPORT/nr_transport_ue.h"
+#include "PHY/TOOLS/tools_defs.h"
+#include "PHY/defs_RU.h"
+#include "PHY/defs_common.h"
+#include "PHY/defs_gNB.h"
+#include "PHY/defs_nr_UE.h"
+#include "PHY/defs_nr_common.h"
+#include "PHY/impl_defs_nr.h"
+#include "PHY/phy_vars_nr_ue.h"
+#include "SCHED_NR/phy_frame_config_nr.h"
+#include "SCHED_NR/sched_nr.h"
+#include "SIMULATION/TOOLS/sim.h"
+#include "T.h"
+#include "assertions.h"
+#include "common/config/config_load_configmodule.h"
+#include "common/ran_context.h"
+#include "common/utils/LOG/log.h"
+#include "common/utils/T/T.h"
+#include "common/utils/load_module_shlib.h"
+#include "common_lib.h"
+#include "defs.h"
 #include "executables/nr-uesoftmodem.h"
+#include "fapi_nr_ue_interface.h"
 #include "nfapi/oai_integration/vendor_ext.h"
+#include "nfapi_interface.h"
+#include "nfapi_nr_interface_scf.h"
+#include "nr_common.h"
+#include "time_meas.h"
 
 #define NR_PRACH_DEBUG 1
 #define PRACH_WRITE_OUTPUT_DEBUG 1
 
 THREAD_STRUCT thread_struct;
-char *parallel_config = NULL;
-char *worker_config = NULL;
 
 char *uecap_file;
 PHY_VARS_gNB *gNB;
@@ -114,14 +126,11 @@ nrUE_params_t *get_nrUE_params(void) {
   return &nrUE_params;
 }
 
-nr_bler_struct nr_bler_data[NR_NUM_MCS];
-
 void processSlotTX(void *arg) {}
 int NB_UE_INST = 1;
 configmodule_interface_t *uniqCfg = NULL;
 int main(int argc, char **argv){
 
-  char c;
   get_softmodem_params()->sl_mode = 0;
   double sigma2, sigma2_dB = 0, SNR, snr0 = -2.0, snr1 = 0.0, ue_speed0 = 0.0, ue_speed1 = 0.0;
   double **s_re, **s_im, **r_re, **r_im, iqim = 0.0, delay_avg = 0, ue_speed = 0, fs=-1, bw;
@@ -139,11 +148,6 @@ int main(int argc, char **argv){
   int prachOccasion = 0;
   double DS_TDL = .03;
 
-  //  int8_t interf1=-19,interf2=-19;
-  //  uint8_t abstraction_flag=0,calibration_flag=0;
-  //  double prach_sinr;
-  //  uint32_t nsymb;
-  //  uint16_t preamble_max, preamble_energy_max;
   FILE *input_fd=NULL;
   char* input_file=NULL;
   int n_bytes=0;
@@ -164,6 +168,7 @@ int main(int argc, char **argv){
 
   randominit(0);
 
+  int c;
   while ((c = getopt (argc, argv, "--:O:hHaA:Cc:l:r:p:g:m:n:s:S:t:x:y:v:V:z:N:F:d:Z:L:R:E")) != -1) {
 
     /* ignore long options starting with '--', option '-O' and their arguments that are handled by configmodule */
@@ -462,6 +467,7 @@ int main(int argc, char **argv){
   ru->nb_rx          = n_rx;
   ru->num_gNB        = 1;
   ru->gNB_list[0]    = gNB;
+  gNB->num_RU = 1;
   gNB->gNB_config.carrier_config.num_tx_ant.value = 1;
   gNB->gNB_config.carrier_config.num_rx_ant.value = 1;
   if (mu == 0)
@@ -671,9 +677,6 @@ int main(int argc, char **argv){
     LOG_M("txsig0_frame.m","txs0", txdata[0],frame_parms->samples_per_frame,1,1);
   #endif
 
-  // multipath channel
-  // dump_nr_prach_config(&gNB->frame_parms,subframe);
-
   for (i = 0; i < frame_parms->samples_per_subframe; i++) {
     for (aa=0; aa<1; aa++) {
       if (awgn_flag == 0) {
@@ -788,22 +791,21 @@ int main(int argc, char **argv){
 
         if (n_frames==1) {
           printf("preamble %d (tx %d) : energy %d, delay %d\n",preamble_rx,preamble_tx,preamble_energy,preamble_delay);
-          #ifdef NR_PRACH_DEBUG
-	  LOG_M("prach0.m","prach0", &txdata[0][prach_start], frame_parms->samples_per_subframe, 1, 1);
-            LOG_M("prachF0.m","prachF0", &gNB->prach_vars.prachF[0], N_ZC, 1, 1);
-            LOG_M("rxsig0.m","rxs0", &ru->common.rxdata[0][subframe*frame_parms->samples_per_subframe], frame_parms->samples_per_subframe, 1, 1);
-            LOG_M("ru_rxsig0.m","rxs0", &ru->common.rxdata[0][subframe*frame_parms->samples_per_subframe], frame_parms->samples_per_subframe, 1, 1);
-            LOG_M("ru_rxsigF0.m","rxsF0", ru->common.rxdataF[0], frame_parms->ofdm_symbol_size*frame_parms->symbols_per_slot, 1, 1);
-            LOG_M("ru_prach_rxsigF0.m","rxsF0", ru->prach_rxsigF[0][0], N_ZC, 1, 1);
-            LOG_M("prach_preamble.m","prachp", &gNB->X_u[0], N_ZC, 1, 1);
-            LOG_M("ue_prach_preamble.m","prachp", &UE->X_u[0], N_ZC, 1, 1);
-          #endif
+#ifdef NR_PRACH_DEBUG
+          LOG_M("prach0.m","prach0", &txdata[0][prach_start], frame_parms->samples_per_subframe, 1, 1);
+          LOG_M("rxsig0.m","rxs0", &ru->common.rxdata[0][subframe*frame_parms->samples_per_subframe], frame_parms->samples_per_subframe, 1, 1);
+          LOG_M("ru_rxsig0.m","rxs0", &ru->common.rxdata[0][subframe*frame_parms->samples_per_subframe], frame_parms->samples_per_subframe, 1, 1);
+          LOG_M("ru_rxsigF0.m","rxsF0", ru->common.rxdataF[0], frame_parms->ofdm_symbol_size*frame_parms->symbols_per_slot, 1, 1);
+          LOG_M("ru_prach_rxsigF0.m","rxsF0", ru->prach_rxsigF[0][0], N_ZC, 1, 1);
+          LOG_M("prach_preamble.m","prachp", &gNB->X_u[0], N_ZC, 1, 1);
+          LOG_M("ue_prach_preamble.m","prachp", &UE->X_u[0], N_ZC, 1, 1);
+#endif
         }
       }
 
       printf("SNR %f dB, UE Speed %f km/h: errors %u/%d (delay %f)\n", SNR, ue_speed, prach_errors, n_frames, delay_avg/(double)(n_frames-prach_errors));
       if (input_fd)
-	break;
+        break;
       if (prach_errors)
         break;
 

@@ -30,17 +30,47 @@
 
  */
 
+#include <errno.h>
+#include <inttypes.h>
+#include <pthread.h>
+#include <sched.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <strings.h>
+#include <unistd.h>
+#include "NR_DRB-ToAddMod.h"
+#include "NR_DRB-ToAddModList.h"
+#include "NR_MAC_COMMON/nr_mac.h"
+#include "NR_MAC_COMMON/nr_mac_common.h"
 #include "NR_MAC_gNB/mac_proto.h"
-#include "NR_MAC_COMMON/nr_mac_extern.h"
+#include "NR_MAC_gNB/mac_rrc_ul.h"
+#include "NR_MAC_gNB/nr_mac_gNB.h"
+#include "NR_PHY_INTERFACE/NR_IF_Module.h"
+#include "NR_RLC-BearerConfig.h"
+#include "NR_RadioBearerConfig.h"
+#include "NR_ServingCellConfig.h"
+#include "NR_ServingCellConfigCommon.h"
+#include "NR_TAG.h"
+#include "PHY/defs_common.h"
+#include "RRC/NR/MESSAGES/asn1_msg.h"
+#include "RRC/NR/nr_rrc_config.h"
 #include "assertions.h"
+#include "common/ngran_types.h"
+#include "common/ran_context.h"
+#include "common/utils/T/T.h"
+#include "executables/softmodem-common.h"
+#include "linear_alloc.h"
+#include "nr_pdcp/nr_pdcp_entity.h"
 #include "nr_pdcp/nr_pdcp_oai_api.h"
-
-#include "common/utils/LOG/log.h"
 #include "nr_rlc/nr_rlc_oai_api.h"
 #include "openair2/F1AP/f1ap_ids.h"
-
-#include "common/ran_context.h"
-#include "executables/softmodem-common.h"
+#include "rlc.h"
+#include "seq_arr.h"
+#include "system.h"
+#include "time_meas.h"
+#include "utils.h"
 
 extern RAN_CONTEXT_t RC;
 
@@ -156,21 +186,16 @@ size_t dump_mac_stats(gNB_MAC_INST *gNB, char *output, size_t strlen, bool reset
     for (int i = 1; i < gNB->ul_bler.harq_round_max; i++)
       output += snprintf(output, end - output, "/%"PRIu64, stats->ul.rounds[i]);
 
-    char deltaMCS_str[100]="\0";
-
-    if (UE->current_UL_BWP.pusch_Config && UE->current_UL_BWP.pusch_Config->pusch_PowerControl->deltaMCS) {
-        sprintf(deltaMCS_str,"deltaMCS %d\n",UE->mac_stats.deltaMCS);
-    }
     output += snprintf(output,
                        end - output,
-                       ", ulsch_errors %"PRIu64", ulsch_DTX %d, BLER %.5f MCS (%d) %d (Qm %d %s dB) NPRB %d  SNR %d.%d dB\n",
+                       ", ulsch_errors %"PRIu64", ulsch_DTX %d, BLER %.5f MCS (%d) %d (Qm %d deltaMCS %d dB) NPRB %d  SNR %d.%d dB\n",
                        stats->ul.errors,
                        stats->ulsch_DTX,
                        sched_ctrl->ul_bler_stats.bler,
                        UE->current_UL_BWP.mcs_table,
                        sched_ctrl->ul_bler_stats.mcs,
                        nr_get_Qm_ul(sched_ctrl->ul_bler_stats.mcs,UE->current_UL_BWP.mcs_table),
-                       deltaMCS_str,
+                       UE->mac_stats.deltaMCS,
                        UE->mac_stats.NPRB,
                        sched_ctrl->pusch_snrx10 / 10,
                        sched_ctrl->pusch_snrx10 % 10);
@@ -221,8 +246,6 @@ void mac_top_init_gNB(ngran_node_t node_type,
   gNB_MAC_INST    *nrmac;
 
   AssertFatal(RC.nb_nr_macrlc_inst == 1, "what is the point of calling %s() if you don't need exactly one MAC?\n", __func__);
-
-  LOG_I(MAC, "[MAIN] Init function start:nb_nr_macrlc_inst=%d\n",RC.nb_nr_macrlc_inst);
 
   if (RC.nb_nr_macrlc_inst > 0) {
 
@@ -282,7 +305,7 @@ void mac_top_init_gNB(ngran_node_t node_type,
     AssertFatal(rlc_module_init(1) == 0,"Could not initialize RLC layer\n");
 
     // These should be out of here later
-    if (get_softmodem_params()->usim_test == 0 ) nr_pdcp_layer_init(false);
+    if (get_softmodem_params()->usim_test == 0 ) nr_pdcp_layer_init();
 
     if(IS_SOFTMODEM_NOS1 && get_softmodem_params()->phy_test) {
       // get default noS1 configuration
@@ -320,9 +343,6 @@ void mac_top_init_gNB(ngran_node_t node_type,
   du_init_f1_ue_data();
 
   srand48(0);
-
-  // triggers also PYH initialization in case we have L1 via FAPI
-  nr_mac_config_scc(RC.nrmac[0], scc, config);
 }
 
 void nr_mac_send_f1_setup_req(void)

@@ -1186,6 +1186,9 @@ static inline void dft16(int16_t *x,int16_t *y) __attribute__((always_inline)
 }
 #endif
 
+//#define USE_PERMUTE __AVX512F__
+#define USE_DFT16_SHIFT
+
 // Does two 16-point DFTS (x[0 .. 15] is 128 LSBs of input vector, x[16..31] is in 128 MSBs)
 __attribute__((always_inline)) static inline void dft16_simd256(int16_t *x, int16_t *y)
 {
@@ -1226,7 +1229,10 @@ __attribute__((always_inline)) static inline void dft16_simd256(int16_t *x, int1
                                                             0,
                                                             3,
                                                             2);
-
+#ifdef USE_PERMUTE
+  const __m256i outputshufa = _mm256_set_epi64x(5,4,1,0);
+  const __m256i outputshufb = _mm256_set_epi64x(7,6,3,2);
+#endif
   // First stage : 4 Radix-4 butterflies without input twiddles
 
   x02t    = simde_mm256_adds_epi16(x256[0],x256[2]);
@@ -1268,28 +1274,42 @@ __attribute__((always_inline)) static inline void dft16_simd256(int16_t *x, int1
 
   x02t    = simde_mm256_adds_epi16(xtmp0,xtmp2);
   x13t    = simde_mm256_adds_epi16(xtmp1,xtmp3);
-  ytmp0   = simde_mm256_adds_epi16(x02t,x13t);
-  ytmp2   = simde_mm256_subs_epi16(x02t,x13t);
+#ifdef USE_DFT16_SHIFT
+  ytmp0 = simde_mm256_srai_epi16(simde_mm256_adds_epi16(x02t, x13t), 2);
+  ytmp2 = simde_mm256_srai_epi16(simde_mm256_subs_epi16(x02t, x13t), 2);
+#else
+  ytmp0 = simde_mm256_adds_epi16(x02t, x13t);
+  ytmp2 = simde_mm256_subs_epi16(x02t, x13t);
+#endif
   x1_flip = simde_mm256_sign_epi16(xtmp1, *(simde__m256i *)conjugatedft);
   x1_flip = simde_mm256_shuffle_epi8(x1_flip,complex_shuffle);
   x3_flip = simde_mm256_sign_epi16(xtmp3, *(simde__m256i *)conjugatedft);
   x3_flip = simde_mm256_shuffle_epi8(x3_flip,complex_shuffle);
   x02t    = simde_mm256_subs_epi16(xtmp0,xtmp2);
   x13t    = simde_mm256_subs_epi16(x1_flip,x3_flip);
-  ytmp1   = simde_mm256_adds_epi16(x02t,x13t);  // x0 + x1f - x2 - x3f
-  ytmp3   = simde_mm256_subs_epi16(x02t,x13t);  // x0 - x1f - x2 + x3f
- 
+#ifdef USE_DFT16_SHIFT
+  ytmp1 = simde_mm256_srai_epi16(simde_mm256_adds_epi16(x02t, x13t), 2); // x0 + x1f - x2 - x3f
+  ytmp3 = simde_mm256_srai_epi16(simde_mm256_subs_epi16(x02t, x13t), 2); // x0 - x1f - x2 + x3f
+#else
+  ytmp1 = simde_mm256_adds_epi16(x02t, x13t); // x0 + x1f - x2 - x3f
+  ytmp3 = simde_mm256_subs_epi16(x02t, x13t); // x0 - x1f - x2 + x3f
+#endif
 
   // [y0  y1  y2  y3  y16 y17 y18 y19]
   // [y4  y5  y6  y7  y20 y21 y22 y23]
   // [y8  y9  y10 y11 y24 y25 y26 y27]
   // [y12 y13 y14 y15 y28 y29 y30 y31]
-
+#ifndef USE_PERMUTE 
   y256[0] = simde_mm256_insertf128_si256(ytmp0,simde_mm256_extracti128_si256(ytmp1,0),1);
   y256[1] = simde_mm256_insertf128_si256(ytmp2,simde_mm256_extracti128_si256(ytmp3,0),1);
   y256[2] = simde_mm256_insertf128_si256(ytmp1,simde_mm256_extracti128_si256(ytmp0,1),0);
   y256[3] = simde_mm256_insertf128_si256(ytmp3,simde_mm256_extracti128_si256(ytmp2,1),0);
-
+#else
+  y256[0] = _mm256_permutex2var_epi64(ytmp0,outputshufa,ytmp1);
+  y256[1] = _mm256_permutex2var_epi64(ytmp2,outputshufa,ytmp3);
+  y256[2] = _mm256_permutex2var_epi64(ytmp0,outputshufb,ytmp1);
+  y256[3] = _mm256_permutex2var_epi64(ytmp2,outputshufb,ytmp3);
+#endif
   // [y0  y1  y2  y3  y4  y5  y6  y7]
   // [y8  y9  y10 y11 y12 y13 y14 y15]
   // [y16 y17 y18 y19 y20 y21 y22 y23]
@@ -1402,6 +1422,10 @@ __attribute__((always_inline)) static inline void idft16_simd256(int16_t *x, int
                                                             3,
                                                             2);
 
+#ifdef USE_PERMUTE
+  const __m256i outputshufa = _mm256_set_epi64x(5,4,1,0);
+  const __m256i outputshufb = _mm256_set_epi64x(7,6,3,2);
+#endif
   // First stage : 4 Radix-4 butterflies without input twiddles
 
   x02t    = simde_mm256_adds_epi16(x256[0],x256[2]);
@@ -1449,11 +1473,17 @@ __attribute__((always_inline)) static inline void idft16_simd256(int16_t *x, int
   // [y8  y9  y10 y11 y24 y25 y26 y27]
   // [y12 y13 y14 y15 y28 y29 y30 y31]
 
+#ifndef USE_PERMUTE
   y256[0] = simde_mm256_insertf128_si256(ytmp0,simde_mm256_extracti128_si256(ytmp1,0),1);
   y256[1] = simde_mm256_insertf128_si256(ytmp2,simde_mm256_extracti128_si256(ytmp3,0),1);
   y256[2] = simde_mm256_insertf128_si256(ytmp1,simde_mm256_extracti128_si256(ytmp0,1),0);
   y256[3] = simde_mm256_insertf128_si256(ytmp3,simde_mm256_extracti128_si256(ytmp2,1),0);
-
+#else
+  y256[0] = _mm256_permutex2var_epi64(ytmp0,outputshufa,ytmp1);
+  y256[1] = _mm256_permutex2var_epi64(ytmp2,outputshufa,ytmp3);
+  y256[2] = _mm256_permutex2var_epi64(ytmp0,outputshufb,ytmp1);
+  y256[3] = _mm256_permutex2var_epi64(ytmp2,outputshufb,ytmp3);
+#endif
 }
 // 64-point optimized DFT
 
@@ -4775,43 +4805,41 @@ __attribute__((always_inline)) static inline void dft12f_simd256(simd256_q15_t *
 
   simd256_q15_t tmp_dft12[12];
 
-  simd256_q15_t *tmp_dft12_ptr = &tmp_dft12[0];
-
   // msg("dft12\n");
 
   bfly4_tw1_256(x0,
 		x3,
 		x6,
 		x9,
-		tmp_dft12_ptr,
-		tmp_dft12_ptr+3,
-		tmp_dft12_ptr+6,
-		tmp_dft12_ptr+9);
+		tmp_dft12,
+		tmp_dft12+3,
+		tmp_dft12+6,
+		tmp_dft12+9);
 
 
   bfly4_tw1_256(x1,
 		x4,
 		x7,
 		x10,
-		tmp_dft12_ptr+1,
-		tmp_dft12_ptr+4,
-		tmp_dft12_ptr+7,
-		tmp_dft12_ptr+10);
+		tmp_dft12+1,
+		tmp_dft12+4,
+		tmp_dft12+7,
+		tmp_dft12+10);
   
 
   bfly4_tw1_256(x2,
 		x5,
 		x8,
 		x11,
-		tmp_dft12_ptr+2,
-		tmp_dft12_ptr+5,
-		tmp_dft12_ptr+8,
-		tmp_dft12_ptr+11);
+		tmp_dft12+2,
+		tmp_dft12+5,
+		tmp_dft12+8,
+		tmp_dft12+11);
   
   //  k2=0;
-  bfly3_tw1_256(tmp_dft12_ptr,
-		tmp_dft12_ptr+1,
-		tmp_dft12_ptr+2,
+  bfly3_tw1_256(tmp_dft12,
+		tmp_dft12+1,
+		tmp_dft12+2,
 		y0,
 		y4,
 		y8);
@@ -4819,9 +4847,9 @@ __attribute__((always_inline)) static inline void dft12f_simd256(simd256_q15_t *
   
   
   //  k2=1;
-  bfly3_256(tmp_dft12_ptr+3,
-	    tmp_dft12_ptr+4,
-	    tmp_dft12_ptr+5,
+  bfly3_256(tmp_dft12+3,
+	    tmp_dft12+4,
+	    tmp_dft12+5,
 	    y1,
 	    y5,
 	    y9,
@@ -4831,9 +4859,9 @@ __attribute__((always_inline)) static inline void dft12f_simd256(simd256_q15_t *
   
   
   //  k2=2;
-  bfly3_256(tmp_dft12_ptr+6,
-	    tmp_dft12_ptr+7,
-	    tmp_dft12_ptr+8,
+  bfly3_256(tmp_dft12+6,
+	    tmp_dft12+7,
+	    tmp_dft12+8,
 	    y2,
 	    y6,
 	    y10,
@@ -4841,9 +4869,9 @@ __attribute__((always_inline)) static inline void dft12f_simd256(simd256_q15_t *
 	    W4_12_256);
   
   //  k2=3;
-  bfly3_256(tmp_dft12_ptr+9,
-	    tmp_dft12_ptr+10,
-	    tmp_dft12_ptr+11,
+  bfly3_256(tmp_dft12+9,
+	    tmp_dft12+10,
+	    tmp_dft12+11,
 	    y3,
 	    y7,
 	    y11,
@@ -8121,8 +8149,9 @@ int dfts_autoinit(void)
 
 #ifndef MR_MAIN
 
-void dft(uint8_t sizeidx, int16_t *input,int16_t *output,unsigned int *scale_flag){
-	AssertFatal((sizeidx >= 0 && sizeidx<DFT_SIZE_IDXTABLESIZE),"Invalid dft size index %i\n",sizeidx);
+void dft_implementation(uint8_t sizeidx, int16_t *input,int16_t *output,unsigned int *scale_flag)
+{
+  AssertFatal((sizeidx >= 0 && sizeidx<DFT_SIZE_IDXTABLESIZE),"Invalid dft size index %i\n",sizeidx);
         int algn=0xF;
         if ( (dft_ftab[sizeidx].size%3) != 0 ) // there is no AVX2 implementation for multiples of 3 DFTs
           algn=0x1F;
@@ -8139,8 +8168,9 @@ void dft(uint8_t sizeidx, int16_t *input,int16_t *output,unsigned int *scale_fla
           dft_ftab[sizeidx].func(input,output,scale_flag);
 };
 
-void idft(uint8_t sizeidx, int16_t *input,int16_t *output,unsigned int *scale_flag){
-	AssertFatal((sizeidx>=0 && sizeidx<DFT_SIZE_IDXTABLESIZE),"Invalid idft size index %i\n",sizeidx);
+void idft_implementation(uint8_t sizeidx, int16_t *input,int16_t *output,unsigned int *scale_flag)
+{
+  AssertFatal((sizeidx>=0 && sizeidx<DFT_SIZE_IDXTABLESIZE),"Invalid idft size index %i\n",sizeidx);
         int algn=0xF;
 	algn=0x1F;
         AssertFatal( ((intptr_t)output&algn)==0,"Buffers should be 16 bytes aligned %p",output);
@@ -8370,47 +8400,47 @@ int main(int argc, char**argv)
   init_bitrev();
 
   set_taus_seed(0);
-  opp_enabled = 1;
- /* 
-    ((int16_t *)&tw0)[0] = 32767;
-    ((int16_t *)&tw0)[1] = 0;
-    ((int16_t *)&tw0)[2] = 32767;
-    ((int16_t *)&tw0)[3] = 0;
-    ((int16_t *)&tw0)[4] = 32767;
-    ((int16_t *)&tw0)[5] = 0;
-    ((int16_t *)&tw0)[6] = 32767;
-    ((int16_t *)&tw0)[7] = 0;
+  cpu_meas_enabled = 1;
+  /*
+     ((int16_t *)&tw0)[0] = 32767;
+     ((int16_t *)&tw0)[1] = 0;
+     ((int16_t *)&tw0)[2] = 32767;
+     ((int16_t *)&tw0)[3] = 0;
+     ((int16_t *)&tw0)[4] = 32767;
+     ((int16_t *)&tw0)[5] = 0;
+     ((int16_t *)&tw0)[6] = 32767;
+     ((int16_t *)&tw0)[7] = 0;
 
-    ((int16_t *)&tw1)[0] = 32767;
-    ((int16_t *)&tw1)[1] = 0;
-    ((int16_t *)&tw1)[2] = 32767;
-    ((int16_t *)&tw1)[3] = 0;
-    ((int16_t *)&tw1)[4] = 32767;
-    ((int16_t *)&tw1)[5] = 0;
-    ((int16_t *)&tw1)[6] = 32767;
-    ((int16_t *)&tw1)[7] = 0;
+     ((int16_t *)&tw1)[0] = 32767;
+     ((int16_t *)&tw1)[1] = 0;
+     ((int16_t *)&tw1)[2] = 32767;
+     ((int16_t *)&tw1)[3] = 0;
+     ((int16_t *)&tw1)[4] = 32767;
+     ((int16_t *)&tw1)[5] = 0;
+     ((int16_t *)&tw1)[6] = 32767;
+     ((int16_t *)&tw1)[7] = 0;
 
-    ((int16_t *)&tw2)[0] = 32767;
-    ((int16_t *)&tw2)[1] = 0;
-    ((int16_t *)&tw2)[2] = 32767;
-    ((int16_t *)&tw2)[3] = 0;
-    ((int16_t *)&tw2)[4] = 32767;
-    ((int16_t *)&tw2)[5] = 0;
-    ((int16_t *)&tw2)[6] = 32767;
-    ((int16_t *)&tw2)[7] = 0;
+     ((int16_t *)&tw2)[0] = 32767;
+     ((int16_t *)&tw2)[1] = 0;
+     ((int16_t *)&tw2)[2] = 32767;
+     ((int16_t *)&tw2)[3] = 0;
+     ((int16_t *)&tw2)[4] = 32767;
+     ((int16_t *)&tw2)[5] = 0;
+     ((int16_t *)&tw2)[6] = 32767;
+     ((int16_t *)&tw2)[7] = 0;
 
-    ((int16_t *)&tw3)[0] = 32767;
-    ((int16_t *)&tw3)[1] = 0;
-    ((int16_t *)&tw3)[2] = 32767;
-    ((int16_t *)&tw3)[3] = 0;
-    ((int16_t *)&tw3)[4] = 32767;
-    ((int16_t *)&tw3)[5] = 0;
-    ((int16_t *)&tw3)[6] = 32767;
-    ((int16_t *)&tw3)[7] = 0;
- */
-    for (i=0;i<300;i++) {
-      x[i] = simde_mm256_set1_epi32(taus());
-      x[i] = simde_mm256_srai_epi16(x[i],4);
+     ((int16_t *)&tw3)[0] = 32767;
+     ((int16_t *)&tw3)[1] = 0;
+     ((int16_t *)&tw3)[2] = 32767;
+     ((int16_t *)&tw3)[3] = 0;
+     ((int16_t *)&tw3)[4] = 32767;
+     ((int16_t *)&tw3)[5] = 0;
+     ((int16_t *)&tw3)[6] = 32767;
+     ((int16_t *)&tw3)[7] = 0;
+  */
+  for (i = 0; i < 300; i++) {
+    x[i] = simde_mm256_set1_epi32(taus());
+    x[i] = simde_mm256_srai_epi16(x[i], 4);
     }
       /*
     bfly2_tw1(x,x+1,y,y+1);
@@ -9113,7 +9143,11 @@ int main(int argc, char**argv)
     ((int16_t*)x)[i<<1] = (int16_t)(364 * cos(2*M_PI*3*i/128));
     ((int16_t*)x)[1+(i<<1)] = (int16_t)(364 * sin(2*M_PI*3*i/128));
   } 
+#ifdef USE_DFT16_SHIFT
+  uint32_t scale128_rx[3]={2,0};
+#else
   uint32_t scale128_rx[3]={2,2};
+#endif
   dft128((int16_t*)x,(int16_t*)y,scale128_rx);
   LOG_M("x128_exp.m","x128_exp",x,128,1,1); 
   LOG_M("y128_exp.m","y128_exp",y,128,1,1); 
@@ -9126,7 +9160,11 @@ int main(int argc, char**argv)
     ((int16_t*)x)[i<<1] = (int16_t)(364 * cos(2*M_PI*3*i/256));
     ((int16_t*)x)[1+(i<<1)] = (int16_t)(364 * sin(2*M_PI*3*i/256));
   } 
+#ifdef USE_DFT16_SHIFT
+  uint32_t scale256_rx[3]={2,0};
+#else
   uint32_t scale256_rx[3]={2,2};
+#endif
   dft256((int16_t*)x,(int16_t*)y,scale256_rx);
   LOG_M("x256_exp.m","x256_exp",x,256,1,1); 
   LOG_M("y256_exp.m","y256_exp",y,256,1,1); 
@@ -9140,7 +9178,11 @@ int main(int argc, char**argv)
     ((int16_t*)x)[i<<1] = (int16_t)(364 * cos(2*M_PI*3*i/512));
     ((int16_t*)x)[1+(i<<1)] = (int16_t)(364 * sin(2*M_PI*3*i/512));
   } 
+#ifdef USE_DFT16_SHIFT
+  uint32_t scale512_rx[3]={1,2,0};
+#else
   uint32_t scale512_rx[3]={1,2,2};
+#endif
   dft512((int16_t*)x,(int16_t*)y,scale512_rx);
   LOG_M("x512_exp.m","x512_exp",x,512,1,1); 
   LOG_M("y512_exp.m","y512_exp",y,512,1,1); 
@@ -9149,7 +9191,11 @@ int main(int argc, char**argv)
 
   printf("512 point DFT SQNR (cplx sinusoid) : %f dB\n",10*log10(sqnr));
   memset((void*)x,0,1024*sizeof(int32_t));
+#ifdef USE_DFT16_SHIFT
+  uint32_t scale1024_rx[3]={1,2,0};
+#else
   uint32_t scale1024_rx[3]={1,2,2};
+#endif
   for (i=0;i<1024;i++) {
     ((int16_t*)x)[i<<1] = (int16_t)(364 * cos(2*M_PI*3*i/1024));
     ((int16_t*)x)[1+(i<<1)] = (int16_t)(364 * sin(2*M_PI*3*i/1024));
@@ -9175,7 +9221,12 @@ int main(int argc, char**argv)
     ((int16_t*)x)[i<<1] = (int16_t)(384 * cos(2*M_PI*3*i/2048));
     ((int16_t*)x)[1+(i<<1)] = (int16_t)(384 * sin(2*M_PI*3*i/2048));
   } 
+#ifdef USE_DFT16_SHIFT
+  uint32_t scale2048_rx[4]={1,0,3,0};
+#else
   uint32_t scale2048_rx[4]={1,0,3,2};
+#endif
+
   dft2048((int16_t*)x,(int16_t*)y,scale2048_rx);
   LOG_M("x2048_exp.m","x2048_exp",x,2048,1,1); 
   LOG_M("y2048_exp.m","y2048_exp",y,2048,1,1); 
@@ -9197,7 +9248,11 @@ int main(int argc, char**argv)
     ((int16_t*)x)[i<<1] = (int16_t)(384 * cos(2*M_PI*331*i/4096));
     ((int16_t*)x)[1+(i<<1)] = (int16_t)(384 * sin(2*M_PI*331*i/4096));
   } 
+#ifndef USE_DFT16_SHIFT
   uint32_t scale4096_rx[4]={0,0,3,3};
+#else
+  uint32_t scale4096_rx[4]={0,0,3,1};
+#endif
   dft4096((int16_t*)x,(int16_t*)y,scale4096_rx);
   LOG_M("x4096_exp.m","x4096_exp",x,4096,1,1); 
   LOG_M("y4096_exp.m","y4096_exp",y,4096,1,1); 
