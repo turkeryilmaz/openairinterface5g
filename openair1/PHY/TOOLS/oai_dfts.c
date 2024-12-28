@@ -1038,45 +1038,81 @@ __attribute__((always_inline)) static inline void bfly5_tw1(simde__m128i *x0,
   *(y4) = simde_mm_adds_epi16(*(x0), *(y4));
 }
 
-// performs 4x4 transpose of input x (complex interleaved) using 128bit SIMD intrinsics
+// performs 8x4 transpose of input x (complex interleaved) using 256bit SIMD intrinsics
 // i.e. x = [x0r x0i x1r x1i ... x15r x15i], y = [x0r x0i x4r x4i x8r x8i x12r x12i x1r x1i x5r x5i x9r x9i x13r x13i x2r x2i ... x15r x15i]
 __attribute__((always_inline)) static inline void transpose16_ooff_simd256(simde__m256i *x, simde__m256i *y, int off)
 {
+  // x[0] = [x0 x1 x2 x3 x4 x5 x6 x7]
+  // x[1] = [x8 x9 x10 x11 x12 x13 x14 x15]
+  // x[2] = [x16 x17 x18 x19 x20 x21 x22 x23]
+  // x[3] = [x24 x25 x26 x27 x28 x29 x30 x31]
+  // y[0] = [x0 x4 x8 x12 x16 x20 x24 x28]
+  // y[off] = [x1 x5 x9 x13 x17 x21 x25 x29]
+  // y[2*off] = [x2 x6 x10 x14 x18 x22 x26 x30]
+  // y[3*off] = [x3 x7 x11 x15 x19 x23 x27 x31]
   register simde__m256i ytmp0, ytmp1, ytmp2, ytmp3, ytmp4, ytmp5, ytmp6, ytmp7;
   simde__m256i *y2 = y;
+#ifndef USE_SKYLAKE_PERMUTE
   simde__m256i const perm_mask = simde_mm256_set_epi32(7, 3, 5, 1, 6, 2, 4, 0);
 
-  ytmp0 = simde_mm256_permutevar8x32_epi32(x[0],perm_mask);  // x00 x10 x01 x11 x02 x12 x03 x13
-  ytmp1 = simde_mm256_permutevar8x32_epi32(x[1],perm_mask);  // x20 x30 x21 x31 x22 x32 x23 x33
-  ytmp2 = simde_mm256_permutevar8x32_epi32(x[2],perm_mask);  // x40 x50 x41 x51 x42 x52 x43 x53
-  ytmp3 = simde_mm256_permutevar8x32_epi32(x[3],perm_mask);  // x60 x70 x61 x71 x62 x72 x63 x73
-  ytmp4 = simde_mm256_unpacklo_epi64(ytmp0,ytmp1);           // x00 x10 x20 x30 x01 x11 x21 x31
-  ytmp5 = simde_mm256_unpackhi_epi64(ytmp0,ytmp1);           // x02 x12 x22 x32 x03 x13 x23 x33
-  ytmp6 = simde_mm256_unpacklo_epi64(ytmp2,ytmp3);           // x40 x50 x60 x70 x41 x51 x61 x71
-  ytmp7 = simde_mm256_unpackhi_epi64(ytmp2,ytmp3);           // x42 x52 x62 x72 x43 x53 x63 x73
+  ytmp0 = simde_mm256_permutevar8x32_epi32(x[0],perm_mask); // x0 x4  x2  x6  x1 x5  x3  x7 
+  ytmp1 = simde_mm256_permutevar8x32_epi32(x[1],perm_mask); // x8 x12 x10 x14 x9 x13 x11 x18 
+  ytmp2 = simde_mm256_permutevar8x32_epi32(x[2],perm_mask); // x16 x20 x18 x22 x17 x21 x19 x23 
 
-  *y2    = simde_mm256_insertf128_si256(ytmp4,simde_mm256_extracti128_si256(ytmp6,0),1);  //x00 x10 x20 x30 x40 x50 x60 x70
+  ytmp3 = simde_mm256_permutevar8x32_epi32(x[3],perm_mask); // x24 x28 x26 x30 x25 x29 x27 x31
+                                                            
+  ytmp4 = simde_mm256_unpacklo_epi64(ytmp0,ytmp1);          // x0  x4  x8  x12 x1  x5  x9  x13 
+  ytmp5 = simde_mm256_unpackhi_epi64(ytmp0,ytmp1);          // x2  x6  x10 x14 x3  x7  x11 x18 
+  ytmp6 = simde_mm256_unpacklo_epi64(ytmp2,ytmp3);          // x16 x20 x24 x28 x17 x21 x25 x29 
+  ytmp7 = simde_mm256_unpackhi_epi64(ytmp2,ytmp3);          // x18 x22 x26 x30 x19 x23 x27 x31 
+
+  *y2    = simde_mm256_insertf128_si256(ytmp4,simde_mm256_extracti128_si256(ytmp6,0),1);  // x0 x4 x8 x12 x16 x20 x24 x28
   y2+=off;  
-  *y2    = simde_mm256_insertf128_si256(ytmp6,simde_mm256_extracti128_si256(ytmp4,1),0);  //x01 x11 x21 x31 x41 x51 x61 x71
+  *y2    = simde_mm256_insertf128_si256(ytmp6,simde_mm256_extracti128_si256(ytmp4,1),0);  // x1 x5 x9 x13 x17 x21 x25 x29
   y2+=off;  
-  *y2    = simde_mm256_insertf128_si256(ytmp5,simde_mm256_extracti128_si256(ytmp7,0),1);  //x00 x10 x20 x30 x40 x50 x60 x70
+  *y2    = simde_mm256_insertf128_si256(ytmp5,simde_mm256_extracti128_si256(ytmp7,0),1);  // x2 x6 x10 x14 x18 x22 x26 x30
   y2+=off;  
-  *y2    = simde_mm256_insertf128_si256(ytmp7,simde_mm256_extracti128_si256(ytmp5,1),0);  //x01 x11 x21 x31 x41 x51 x61 x71
+  *y2    = simde_mm256_insertf128_si256(ytmp7,simde_mm256_extracti128_si256(ytmp5,1),0);  // x3 x7 x11 x15 x19 x23 x27 x31
+#else
+  simde__m256i const perm_mask1 = simde_mm256_set_epi32(13, 9, 5, 1, 12, 8, 4, 0);
+  simde__m256i const perm_mask2 = simde_mm256_set_epi32(15, 11, 7, 3, 14, 10, 6, 2);
+
+  simde__m256i const perm_mask3 = simde_mm256_set_epi32(5, 4, 1, 0);
+  simde__m256i const perm_mask4 = simde_mm256_set_epi32(7, 6, 3, 2);
+  ytmp0 = _mm256_permutex2var_epi32(x[0],perm_mask1,x[1]); // x0 x4  x8  x12  x1 x5  x9  x13 
+  ytmp1 = _mm256_permutex2var_epi32(x[2],perm_mask1,x[3]); // x16 x20 x24 x28 x17 x21 x25 x29 
+  ytmp2 = _mm256_permutex2var_epi32(x[0],perm_mask2,x[1]); // x2 x6  x10  x14  x3 x7  x11  x15 
+  ytmp3 = _mm256_permutex2var_epi32(x[2],perm_mask2,x[3]); // x18 x22 x26 x30 x19 x23 x27 x31
+  *y2 = _mm256_permutex2var_epi64(ytmp0,perm_mask3,ytmp1);
+  y2+=off;
+  *y2 = _mm256_permutex2var_epi64(ytmp0,perm_mask4,ytmp1);
+  y2+=off;
+  *y2 = _mm256_permutex2var_epi64(ytmp2,perm_mask3,ytmp3);
+  y2+=off;
+  *y2 = _mm256_permutex2var_epi64(ytmp2,perm_mask4,ytmp3);
+#endif
 }
 
 __attribute__((always_inline)) static inline void transpose4_ooff_simd256(simde__m256i *x, simde__m256i *y, int off)
 {
-  simde__m256i const perm_mask = simde_mm256_set_epi32(7, 5, 3, 1, 6, 4, 2, 0);
-  simde__m256i perm_tmp0, perm_tmp1;
-
   // x[0] = [x0 x1 x2 x3 x4 x5 x6 x7]
   // x[1] = [x8 x9 x10 x11 x12 x13 x14]
   // y[0] = [x0 x2 x4 x6 x8 x10 x12 x14]
   // y[off] = [x1 x3 x5 x7 x9 x11 x13 x15]
+#ifndef USE_SKYLAKE_PERMUTE
+  simde__m256i const perm_mask = simde_mm256_set_epi32(7, 5, 3, 1, 6, 4, 2, 0);
+  simde__m256i perm_tmp0, perm_tmp1;
+
   perm_tmp0 = simde_mm256_permutevar8x32_epi32(x[0],perm_mask);
   perm_tmp1 = simde_mm256_permutevar8x32_epi32(x[1],perm_mask);
   y[0]   = simde_mm256_insertf128_si256(perm_tmp0,simde_mm256_extracti128_si256(perm_tmp1,0),1);
   y[off] = simde_mm256_insertf128_si256(perm_tmp1,simde_mm256_extracti128_si256(perm_tmp0,1),0);
+#else
+  simde__m256i const perm_mask1 = simde_mm256_set_epi32(14,12,10,8,6,4,2,0);
+  simde__m256i const perm_mask2 = simde_mm256_set_epi32(15,13,11,9,7,5,3,1);
+  y[0]   = simde_mm256_permutex2var_epi32(x[0],perm_mask1,x[1]);
+  y[off] = simde_mm256_permutex2var_epi32(x[0],perm_mask2,x[1]);
+#endif
 }
 
 // 16-point optimized DFT kernel
@@ -1186,7 +1222,7 @@ static inline void dft16(int16_t *x,int16_t *y) __attribute__((always_inline)
 }
 #endif
 
-//#define USE_PERMUTE __AVX512F__
+#define USE_SKYLAKE_PERMUTE __AVX512F__
 #define USE_DFT16_SHIFT
 
 // Does two 16-point DFTS (x[0 .. 15] is 128 LSBs of input vector, x[16..31] is in 128 MSBs)
@@ -1229,7 +1265,7 @@ __attribute__((always_inline)) static inline void dft16_simd256(int16_t *x, int1
                                                             0,
                                                             3,
                                                             2);
-#ifdef USE_PERMUTE
+#ifdef USE_SKYLAKE_PERMUTE
   const __m256i outputshufa = _mm256_set_epi64x(5,4,1,0);
   const __m256i outputshufb = _mm256_set_epi64x(7,6,3,2);
 #endif
@@ -1253,14 +1289,18 @@ __attribute__((always_inline)) static inline void dft16_simd256(int16_t *x, int1
   print_shorts256("xtmp2",(int16_t*)&xtmp2);
   print_shorts256("xtmp3",(int16_t*)&xtmp3);*/
 
-  ytmp0   = simde_mm256_unpacklo_epi32(xtmp0,xtmp1);  
-  ytmp1   = simde_mm256_unpackhi_epi32(xtmp0,xtmp1);
-  ytmp2   = simde_mm256_unpacklo_epi32(xtmp2,xtmp3);
-  ytmp3   = simde_mm256_unpackhi_epi32(xtmp2,xtmp3);
-  xtmp0   = simde_mm256_unpacklo_epi64(ytmp0,ytmp2);
-  xtmp1   = simde_mm256_unpackhi_epi64(ytmp0,ytmp2);
-  xtmp2   = simde_mm256_unpacklo_epi64(ytmp1,ytmp3);
-  xtmp3   = simde_mm256_unpackhi_epi64(ytmp1,ytmp3);
+  // x0  x1  x2  x3  x4  x5  x6  x7
+  // x8  x9  x10 x11 x12 x13 x14 x15
+  // x16 x17 x18 x19 x20 x21 x22 x23
+  // x24 x25 x26 x27 x28 x29 x30 x31
+  ytmp0   = simde_mm256_unpacklo_epi32(xtmp0,xtmp1); // x0 x8 x1 x9  x4 x12 x5 x13  
+  ytmp1   = simde_mm256_unpackhi_epi32(xtmp0,xtmp1); // x2 x10 x3 x11 x6 x14 x7 x15
+  ytmp2   = simde_mm256_unpacklo_epi32(xtmp2,xtmp3); // x16 x24 x17 x25 x20 x28 x21 x29
+  ytmp3   = simde_mm256_unpackhi_epi32(xtmp2,xtmp3); // x18 x26 x19 x27 x22 x30 x23 x31
+  xtmp0   = simde_mm256_unpacklo_epi64(ytmp0,ytmp2); // x0 x8 x16 x24 x4 x12 x20 x28
+  xtmp1   = simde_mm256_unpackhi_epi64(ytmp0,ytmp2); // x1 x9 x17 x25 x5 x13 x21 x29
+  xtmp2   = simde_mm256_unpacklo_epi64(ytmp1,ytmp3); // x2 x10 x18 x26 x6 x14 x22 x30
+  xtmp3   = simde_mm256_unpackhi_epi64(ytmp1,ytmp3); // x3 x11 x19 x27 x7 x15 x23 x31
 
   // Second stage : 4 Radix-4 butterflies with input twiddles
   xtmp1 = packed_cmult2_256(xtmp1,tw16a_256[0],tw16b_256[0]);
@@ -1299,7 +1339,7 @@ __attribute__((always_inline)) static inline void dft16_simd256(int16_t *x, int1
   // [y4  y5  y6  y7  y20 y21 y22 y23]
   // [y8  y9  y10 y11 y24 y25 y26 y27]
   // [y12 y13 y14 y15 y28 y29 y30 y31]
-#ifndef USE_PERMUTE 
+#ifndef USE_SKYLAKE_PERMUTE 
   y256[0] = simde_mm256_insertf128_si256(ytmp0,simde_mm256_extracti128_si256(ytmp1,0),1);
   y256[1] = simde_mm256_insertf128_si256(ytmp2,simde_mm256_extracti128_si256(ytmp3,0),1);
   y256[2] = simde_mm256_insertf128_si256(ytmp1,simde_mm256_extracti128_si256(ytmp0,1),0);
@@ -1422,7 +1462,7 @@ __attribute__((always_inline)) static inline void idft16_simd256(int16_t *x, int
                                                             3,
                                                             2);
 
-#ifdef USE_PERMUTE
+#ifdef USE_SKYLAKE_PERMUTE
   const __m256i outputshufa = _mm256_set_epi64x(5,4,1,0);
   const __m256i outputshufb = _mm256_set_epi64x(7,6,3,2);
 #endif
@@ -1473,7 +1513,7 @@ __attribute__((always_inline)) static inline void idft16_simd256(int16_t *x, int
   // [y8  y9  y10 y11 y24 y25 y26 y27]
   // [y12 y13 y14 y15 y28 y29 y30 y31]
 
-#ifndef USE_PERMUTE
+#ifndef USE_SKYLAKE_PERMUTE
   y256[0] = simde_mm256_insertf128_si256(ytmp0,simde_mm256_extracti128_si256(ytmp1,0),1);
   y256[1] = simde_mm256_insertf128_si256(ytmp2,simde_mm256_extracti128_si256(ytmp3,0),1);
   y256[2] = simde_mm256_insertf128_si256(ytmp1,simde_mm256_extracti128_si256(ytmp0,1),0);
@@ -1556,8 +1596,6 @@ void dft64(int16_t *x,int16_t *y,unsigned int *scale)
 {
 
   simd256_q15_t xtmp[16],ytmp[16],*tw64a_256=(simd256_q15_t *)tw64a,*tw64b_256=(simd256_q15_t *)tw64b,*x256=(simd256_q15_t *)x,*y256=(simd256_q15_t *)y;
-  simd256_q15_t xintl0,xintl1,xintl2,xintl3,xintl4,xintl5,xintl6,xintl7;
-  simd256_q15_t const perm_mask = simde_mm256_set_epi32(7, 3, 5, 1, 6, 2, 4, 0);
 
 
 #ifdef D64STATS
@@ -1573,52 +1611,37 @@ void dft64(int16_t *x,int16_t *y,unsigned int *scale)
   stop_meas(&ts_t);
   start_meas(&ts_d);
 #endif
-  /*  
-  print_shorts256("x2560",(int16_t*)x256);
-  print_shorts256("x2561",(int16_t*)(x256+1));
-  print_shorts256("x2562",(int16_t*)(x256+2));
-  print_shorts256("x2563",(int16_t*)(x256+3));
-  print_shorts256("x2564",(int16_t*)(x256+4));
-  print_shorts256("x2565",(int16_t*)(x256+5));
-  print_shorts256("x2566",(int16_t*)(x256+6));
-  print_shorts256("x2567",(int16_t*)(x256+7));
-  */
-  xintl0 = simde_mm256_permutevar8x32_epi32(x256[0],perm_mask);  // x0  x4  x1  x5  x2  x6  x3  x7
-  xintl1 = simde_mm256_permutevar8x32_epi32(x256[1],perm_mask);  // x8  x12 x9  x13 x10 x14 x11 x15
-  xintl2 = simde_mm256_permutevar8x32_epi32(x256[2],perm_mask);  // x16 x20 x17 x21 x18 x22 x19 x23
-  xintl3 = simde_mm256_permutevar8x32_epi32(x256[3],perm_mask);  // x24 x28 x25 x29 x26 x30 x27 x31
-  xintl4 = simde_mm256_permutevar8x32_epi32(x256[4],perm_mask);  // x32 x28 x25 x29 x26 x30 x27 x31
-  xintl5 = simde_mm256_permutevar8x32_epi32(x256[5],perm_mask);  // x40 x28 x25 x29 x26 x30 x27 x31
-  xintl6 = simde_mm256_permutevar8x32_epi32(x256[6],perm_mask);  // x48 x28 x25 x29 x26 x30 x27 x31
-  xintl7 = simde_mm256_permutevar8x32_epi32(x256[7],perm_mask);  // x56 x28 x25 x29 x26 x30 x27 x31
-  /*
-  print_shorts256("xintl0",(int16_t*)&xintl0);
-  print_shorts256("xintl1",(int16_t*)&xintl1);
-  print_shorts256("xintl2",(int16_t*)&xintl2);
-  print_shorts256("xintl3",(int16_t*)&xintl3);
-  print_shorts256("xintl4",(int16_t*)&xintl4);
-  print_shorts256("xintl5",(int16_t*)&xintl5);
-  print_shorts256("xintl6",(int16_t*)&xintl6);
-  print_shorts256("xintl7",(int16_t*)&xintl7);
-  */
+#ifndef USE_SKYLAKE_PERMUTE
+  simd256_q15_t xintl0,xintl1,xintl2,xintl3,xintl4,xintl5,xintl6,xintl7;
+  simd256_q15_t const perm_mask = simde_mm256_set_epi32(7, 3, 5, 1, 6, 2, 4, 0);
+  xintl0 = simde_mm256_permutevar8x32_epi32(x256[0],perm_mask);  // x0  x4  x2  x6  x1  x5  x3  x7
+  xintl1 = simde_mm256_permutevar8x32_epi32(x256[1],perm_mask);  // x8  x12 x10  x14 x9 x13 x11 x15
+  xintl2 = simde_mm256_permutevar8x32_epi32(x256[2],perm_mask);  // x16 x20 x18 x22 x17 x21 x19 x23
+  xintl3 = simde_mm256_permutevar8x32_epi32(x256[3],perm_mask);  // x24 x28 x26 x30 x25 x29 x27 x31
+  xintl4 = simde_mm256_permutevar8x32_epi32(x256[4],perm_mask);  // x32 x28 x34 x38 x33 x37 x35 x39
+  xintl5 = simde_mm256_permutevar8x32_epi32(x256[5],perm_mask);  
+  xintl6 = simde_mm256_permutevar8x32_epi32(x256[6],perm_mask);  
+  xintl7 = simde_mm256_permutevar8x32_epi32(x256[7],perm_mask);  
   xtmp[0] = simde_mm256_unpacklo_epi64(xintl0,xintl1);        // x0  x4  x8  x12 x1  x5  x9  x13
   xtmp[4] = simde_mm256_unpackhi_epi64(xintl0,xintl1);        // x2  x6  x10 x14 x3  x7  x11 x15
-  xtmp[1] = simde_mm256_unpacklo_epi64(xintl2,xintl3);        // x16 x20 x24 x28 x17 x21 x25 x29
-  xtmp[5] = simde_mm256_unpackhi_epi64(xintl2,xintl3);        // x18 x22 x26 x30 x19 x23 x27 x31
-  xtmp[2] = simde_mm256_unpacklo_epi64(xintl4,xintl5);        // x32 x36 x40 x44 x33 x37 x41 x45
-  xtmp[6] = simde_mm256_unpackhi_epi64(xintl4,xintl5);        // x34 x38 x42 x46 x35 x39 x43 x47
-  xtmp[3] = simde_mm256_unpacklo_epi64(xintl6,xintl7);        // x48 x52 x56 x60 x49 x53 x57 x61
-  xtmp[7] = simde_mm256_unpackhi_epi64(xintl6,xintl7);        // x50 x54 x58 x62 x51 x55 x59 x63
-  /*
-  print_shorts256("xtmp0",(int16_t*)xtmp);
-  print_shorts256("xtmp1",(int16_t*)(xtmp+1));
-  print_shorts256("xtmp2",(int16_t*)(xtmp+2));
-  print_shorts256("xtmp3",(int16_t*)(xtmp+3));
-  print_shorts256("xtmp4",(int16_t*)(xtmp+4));
-  print_shorts256("xtmp5",(int16_t*)(xtmp+5));
-  print_shorts256("xtmp6",(int16_t*)(xtmp+6));
-  print_shorts256("xtmp7",(int16_t*)(xtmp+7));
-  */
+  xtmp[1] = simde_mm256_unpacklo_epi64(xintl2,xintl3);        
+  xtmp[5] = simde_mm256_unpackhi_epi64(xintl2,xintl3);        
+  xtmp[2] = simde_mm256_unpacklo_epi64(xintl4,xintl5);        
+  xtmp[6] = simde_mm256_unpackhi_epi64(xintl4,xintl5);        
+  xtmp[3] = simde_mm256_unpacklo_epi64(xintl6,xintl7);        
+  xtmp[7] = simde_mm256_unpackhi_epi64(xintl6,xintl7);        
+#else
+  __m256i const perm_mask1 = _mm256_set_epi32(13, 9, 5, 1, 12, 8, 4, 0);
+  __m256i const perm_mask2 = _mm256_set_epi32(15, 11, 7, 3, 14, 10, 6, 2);
+  xtmp[0] = _mm256_permutex2var_epi32(x256[0],perm_mask1,x256[1]); // x0 x4  x8  x12  x2 x6  x10  x14 
+  xtmp[1] = _mm256_permutex2var_epi32(x256[2],perm_mask1,x256[3]); // x16 x20 x24 x28 x18 x22 x26 x30 
+  xtmp[2] = _mm256_permutex2var_epi32(x256[4],perm_mask1,x256[5]); // x32 x36 x40 x44 x34 x38 x42 x46 
+  xtmp[3] = _mm256_permutex2var_epi32(x256[6],perm_mask1,x256[7]); // x48 x52 x56 x60 x50 x54 x58 x62 
+  xtmp[4] = _mm256_permutex2var_epi32(x256[0],perm_mask2,x256[1]); // x1 x5  x9  x13  x3 x7  x11  x15 
+  xtmp[5] = _mm256_permutex2var_epi32(x256[2],perm_mask2,x256[3]); // x17 x21 x25 x29 x19 x23 x27 x31 
+  xtmp[6] = _mm256_permutex2var_epi32(x256[4],perm_mask2,x256[5]); // x33 x37 x41 x45 x35 x39 x43 x46 
+  xtmp[7] = _mm256_permutex2var_epi32(x256[6],perm_mask2,x256[7]); // x49 x53 x57 x61 x51 x55 x59 x63 
+#endif
   dft16_simd256((int16_t*)(xtmp),(int16_t*)ytmp);
   // [y0  y1  y2  y3  y4  y5  y6  y7]
   // [y8  y9  y10 y11 y12 y13 y14 y15]
@@ -1682,7 +1705,7 @@ void dft64(int16_t *x,int16_t *y,unsigned int *scale)
 
 
   if (scale && *scale>0) {
- scalec=*scale;
+    unsigned int scalec=*scale;
     y256[0]  = shiftright_int16_simd256(y256[0],scalec);
     y256[1]  = shiftright_int16_simd256(y256[1],scalec);
     y256[2]  = shiftright_int16_simd256(y256[2],scalec);
@@ -1701,8 +1724,6 @@ void idft64(int16_t *x,int16_t *y,unsigned int *scale)
 {
 
   simd256_q15_t xtmp[16],ytmp[16],*tw64a_256=(simd256_q15_t *)tw64,*tw64b_256=(simd256_q15_t *)tw64c,*x256=(simd256_q15_t *)x,*y256=(simd256_q15_t *)y;
-  register simd256_q15_t xintl0,xintl1,xintl2,xintl3,xintl4,xintl5,xintl6,xintl7;
-  simd256_q15_t const perm_mask = simde_mm256_set_epi32(7, 3, 5, 1, 6, 2, 4, 0);
 
 
 #ifdef D64STATS
@@ -1719,24 +1740,37 @@ void idft64(int16_t *x,int16_t *y,unsigned int *scale)
   start_meas(&ts_d);
 #endif
 
-  xintl0 = simde_mm256_permutevar8x32_epi32(x256[0],perm_mask);  // x0  x4  x1  x5  x2  x6  x3  x7
-  xintl1 = simde_mm256_permutevar8x32_epi32(x256[1],perm_mask);  // x8  x12 x9  x13 x10 x14 x11 x15
-  xintl2 = simde_mm256_permutevar8x32_epi32(x256[2],perm_mask);  // x16 x20 x17 x21 x18 x22 x19 x23
-  xintl3 = simde_mm256_permutevar8x32_epi32(x256[3],perm_mask);  // x24 x28 x25 x29 x26 x30 x27 x31
-  xintl4 = simde_mm256_permutevar8x32_epi32(x256[4],perm_mask);  // x24 x28 x25 x29 x26 x30 x27 x31
-  xintl5 = simde_mm256_permutevar8x32_epi32(x256[5],perm_mask);  // x24 x28 x25 x29 x26 x30 x27 x31
-  xintl6 = simde_mm256_permutevar8x32_epi32(x256[6],perm_mask);  // x24 x28 x25 x29 x26 x30 x27 x31
-  xintl7 = simde_mm256_permutevar8x32_epi32(x256[7],perm_mask);  // x24 x28 x25 x29 x26 x30 x27 x31
-
+#ifndef USE_SKYLAKE_PERMUTE
+  simd256_q15_t xintl0,xintl1,xintl2,xintl3,xintl4,xintl5,xintl6,xintl7;
+  simd256_q15_t const perm_mask = simde_mm256_set_epi32(7, 3, 5, 1, 6, 2, 4, 0);
+  xintl0 = simde_mm256_permutevar8x32_epi32(x256[0],perm_mask);  // x0  x4  x2  x6  x1  x5  x3  x7
+  xintl1 = simde_mm256_permutevar8x32_epi32(x256[1],perm_mask);  // x8  x12 x10  x14 x9 x13 x11 x15
+  xintl2 = simde_mm256_permutevar8x32_epi32(x256[2],perm_mask);  // x16 x20 x18 x22 x17 x21 x19 x23
+  xintl3 = simde_mm256_permutevar8x32_epi32(x256[3],perm_mask);  // x24 x28 x26 x30 x25 x29 x27 x31
+  xintl4 = simde_mm256_permutevar8x32_epi32(x256[4],perm_mask);  // x32 x28 x34 x38 x33 x37 x35 x39
+  xintl5 = simde_mm256_permutevar8x32_epi32(x256[5],perm_mask);  
+  xintl6 = simde_mm256_permutevar8x32_epi32(x256[6],perm_mask);  
+  xintl7 = simde_mm256_permutevar8x32_epi32(x256[7],perm_mask);  
   xtmp[0] = simde_mm256_unpacklo_epi64(xintl0,xintl1);        // x0  x4  x8  x12 x1  x5  x9  x13
   xtmp[4] = simde_mm256_unpackhi_epi64(xintl0,xintl1);        // x2  x6  x10 x14 x3  x7  x11 x15
-  xtmp[1] = simde_mm256_unpacklo_epi64(xintl2,xintl3);        // x16 x20 x24 x28 x17 x21 x25 x29
-  xtmp[5] = simde_mm256_unpackhi_epi64(xintl2,xintl3);        // x18 x22 x26 x30 x19 x23 x27 x31
-  xtmp[2] = simde_mm256_unpacklo_epi64(xintl4,xintl5);        // x32 x36 x40 x44 x33 x37 x41 x45
-  xtmp[6] = simde_mm256_unpackhi_epi64(xintl4,xintl5);        // x34 x38 x42 x46 x35 x39 x43 x47
-  xtmp[3] = simde_mm256_unpacklo_epi64(xintl6,xintl7);        // x48 x52 x56 x60 x49 x53 x57 x61
-  xtmp[7] = simde_mm256_unpackhi_epi64(xintl6,xintl7);        // x50 x54 x58 x62 x51 x55 x59 x63
-
+  xtmp[1] = simde_mm256_unpacklo_epi64(xintl2,xintl3);        
+  xtmp[5] = simde_mm256_unpackhi_epi64(xintl2,xintl3);        
+  xtmp[2] = simde_mm256_unpacklo_epi64(xintl4,xintl5);        
+  xtmp[6] = simde_mm256_unpackhi_epi64(xintl4,xintl5);        
+  xtmp[3] = simde_mm256_unpacklo_epi64(xintl6,xintl7);        
+  xtmp[7] = simde_mm256_unpackhi_epi64(xintl6,xintl7);        
+#else
+  __m256i const perm_mask1 = _mm256_set_epi32(13, 9, 5, 1, 12, 8, 4, 0);
+  __m256i const perm_mask2 = _mm256_set_epi32(15, 11, 7, 3, 14, 10, 6, 2);
+  xtmp[0] = _mm256_permutex2var_epi32(x256[0],perm_mask1,x256[1]); // x0 x4  x8  x12  x2 x6  x10  x14 
+  xtmp[1] = _mm256_permutex2var_epi32(x256[2],perm_mask1,x256[3]); // x16 x20 x24 x28 x18 x22 x26 x30 
+  xtmp[2] = _mm256_permutex2var_epi32(x256[4],perm_mask1,x256[5]); // x32 x36 x40 x44 x34 x38 x42 x46 
+  xtmp[3] = _mm256_permutex2var_epi32(x256[6],perm_mask1,x256[7]); // x48 x52 x56 x60 x50 x54 x58 x62 
+  xtmp[4] = _mm256_permutex2var_epi32(x256[0],perm_mask2,x256[1]); // x1 x5  x9  x13  x3 x7  x11  x15 
+  xtmp[5] = _mm256_permutex2var_epi32(x256[2],perm_mask2,x256[3]); // x17 x21 x25 x29 x19 x23 x27 x31 
+  xtmp[6] = _mm256_permutex2var_epi32(x256[4],perm_mask2,x256[5]); // x33 x37 x41 x45 x35 x39 x43 x46 
+  xtmp[7] = _mm256_permutex2var_epi32(x256[6],perm_mask2,x256[7]); // x49 x53 x57 x61 x51 x55 x59 x63 
+#endif
 
   idft16_simd256((int16_t*)(xtmp),(int16_t*)ytmp);
   // [y0  y1  y2  y3  y16 y17 y18 y19]
@@ -2938,6 +2972,7 @@ void dft8192(int16_t *x,int16_t *y,unsigned int *scale)
         y256p[15]  = mulhi_int16_simd256(shiftright_int16_simd256(y256p[15],scale2),ONE_OVER_SQRT2_Q15_128);
         y256p+=16;
       }
+    }
     else {
       for (i=0; i<64; i++) {
         y256p[0]  = mulhi_int16_simd256(y256p[0],ONE_OVER_SQRT2_Q15_128);
@@ -3791,7 +3826,7 @@ void idft6144(int16_t *input, int16_t *output,unsigned int *scale)
     tmp[2][i] = ((uint32_t *)input)[j++];
   }
 
-  unsigned int *scale2048=null;
+  unsigned int *scale2048=NULL;
   if (scale) scale2048=scale+1;
   idft2048((int16_t*)(tmp[0]),(int16_t*)(tmpo[0]),scale2048);
   idft2048((int16_t*)(tmp[1]),(int16_t*)(tmpo[1]),scale2048);
