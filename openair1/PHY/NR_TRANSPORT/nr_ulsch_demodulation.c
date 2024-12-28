@@ -2354,14 +2354,14 @@ void nr_rx_pusch(PHY_VARS_gNB *gNB,
 	  //     for (int i=0;i<sci2_re;i++) LOG_I(NR_PHY,"sci2_llrs [%d] %d,%d\n",i,unscrambled_sci2_llrs[i<<1],unscrambled_sci2_llrs[1+(i<<1)]);
 
 	       uint64_t sci_estimation[2]={0};
-	       uint16_t dummy; 
-               uint16_t crc=polar_decoder_int16(unscrambled_sci2_llrs,
-			                        sci_estimation,
-						&dummy,
-						1,
-						NR_POLAR_SCI2_MESSAGE_TYPE, 
-						pssch_pdu->sci2_len,
-						sci2_re);
+         uint16_t dummy;
+         uint16_t crc = polar_decoder_int16(unscrambled_sci2_llrs,
+                                            sci_estimation,
+                                            &dummy,
+                                            1,
+                                            NR_POLAR_SCI2_MESSAGE_TYPE,
+                                            pssch_pdu->sci2_len,
+                                            sci2_re);
 	       // send SCI indication with SCI2 payload and get SLSCH information if CRC is OK
 	       LOG_D(NR_PHY,"SCI indication (crc %x)\n",crc);
 	       if (crc==0) ue->SL_UE_PHY_PARAMS.pssch.rx_sci2_ok++;   
@@ -2370,10 +2370,10 @@ void nr_rx_pusch(PHY_VARS_gNB *gNB,
                sci_ind.sfn = frame;
                sci_ind.slot = slot;
                sci_ind.sensing_result = 0;
-               sci_ind.pssch_rsrp = 0; // need to get this from the inner receiver
+               sci_ind.pssch_rsrp = 0; // setting this flag to zero; measuring from sci1
                sci_ind.sci_pdu[sci_ind.number_of_SCIs].sci_format_type = SL_SCI_FORMAT_2_ON_PSSCH;
                sci_ind.sci_pdu[sci_ind.number_of_SCIs].subch_index = 0;
-               sci_ind.sci_pdu[sci_ind.number_of_SCIs].pscch_rsrp = 0; // need to get from inner rx
+               sci_ind.sci_pdu[sci_ind.number_of_SCIs].pscch_rsrp = 0; // setting this flag to zero; measuring from sci1
                sci_ind.sci_pdu[sci_ind.number_of_SCIs].sci_payloadlen = pssch_pdu->sci2_len;
                sci_ind.sci_pdu[sci_ind.number_of_SCIs].Nid = dummy&65535;
  

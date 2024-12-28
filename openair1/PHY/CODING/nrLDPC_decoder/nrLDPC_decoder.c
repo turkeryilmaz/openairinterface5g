@@ -713,6 +713,7 @@ static inline uint32_t nrLDPC_decoder_core(int8_t* p_llr,
             nrLDPC_llr2bit(p_out, p_llrOut, numLLR);
           if (check_crc((uint8_t*)p_out, p_decParams->block_length, p_decParams->crc_type)) {
             LOG_D(PHY, "Segment CRC OK, exiting LDPC decoder\n");
+            numIter = 2;
             break;
           }
         }
