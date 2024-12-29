@@ -1222,7 +1222,7 @@ static inline void dft16(int16_t *x,int16_t *y) __attribute__((always_inline)
 }
 #endif
 
-#define USE_SKYLAKE_PERMUTE __AVX512F__
+#define USE_SKYLAKE_PERMUTE __AVX512VL__
 #define USE_DFT16_SHIFT
 
 // Does two 16-point DFTS (x[0 .. 15] is 128 LSBs of input vector, x[16..31] is in 128 MSBs)
