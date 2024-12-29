@@ -58,6 +58,7 @@
 
 #define print_ints(s,x) printf("%s %d %d %d %d\n",s,(x)[0],(x)[1],(x)[2],(x)[3])
 
+#define USE_SKYLAKE_PERMUTE  __AVX512VBMI__
 
 const static int16_t conjugatedft[32] __attribute__((aligned(32))) = {-1,1,-1,1,-1,1,-1,1,-1,1,-1,1,-1,1,-1,1,-1,1};
 
@@ -1050,9 +1051,9 @@ __attribute__((always_inline)) static inline void transpose16_ooff_simd256(simde
   // y[off] = [x1 x5 x9 x13 x17 x21 x25 x29]
   // y[2*off] = [x2 x6 x10 x14 x18 x22 x26 x30]
   // y[3*off] = [x3 x7 x11 x15 x19 x23 x27 x31]
-  register simde__m256i ytmp0, ytmp1, ytmp2, ytmp3, ytmp4, ytmp5, ytmp6, ytmp7;
   simde__m256i *y2 = y;
 #ifndef USE_SKYLAKE_PERMUTE
+  register simde__m256i ytmp0, ytmp1, ytmp2, ytmp3, ytmp4, ytmp5, ytmp6, ytmp7;
   simde__m256i const perm_mask = simde_mm256_set_epi32(7, 3, 5, 1, 6, 2, 4, 0);
 
   ytmp0 = simde_mm256_permutevar8x32_epi32(x[0],perm_mask); // x0 x4  x2  x6  x1 x5  x3  x7 
@@ -1074,11 +1075,12 @@ __attribute__((always_inline)) static inline void transpose16_ooff_simd256(simde
   y2+=off;  
   *y2    = simde_mm256_insertf128_si256(ytmp7,simde_mm256_extracti128_si256(ytmp5,1),0);  // x3 x7 x11 x15 x19 x23 x27 x31
 #else
+  register simde__m256i ytmp0, ytmp1, ytmp2, ytmp3;
   simde__m256i const perm_mask1 = simde_mm256_set_epi32(13, 9, 5, 1, 12, 8, 4, 0);
   simde__m256i const perm_mask2 = simde_mm256_set_epi32(15, 11, 7, 3, 14, 10, 6, 2);
 
-  simde__m256i const perm_mask3 = simde_mm256_set_epi32(5, 4, 1, 0);
-  simde__m256i const perm_mask4 = simde_mm256_set_epi32(7, 6, 3, 2);
+  simde__m256i const perm_mask3 = simde_mm256_set_epi64x(5, 4, 1, 0);
+  simde__m256i const perm_mask4 = simde_mm256_set_epi64x(7, 6, 3, 2);
   ytmp0 = _mm256_permutex2var_epi32(x[0],perm_mask1,x[1]); // x0 x4  x8  x12  x1 x5  x9  x13 
   ytmp1 = _mm256_permutex2var_epi32(x[2],perm_mask1,x[3]); // x16 x20 x24 x28 x17 x21 x25 x29 
   ytmp2 = _mm256_permutex2var_epi32(x[0],perm_mask2,x[1]); // x2 x6  x10  x14  x3 x7  x11  x15 
@@ -1108,10 +1110,10 @@ __attribute__((always_inline)) static inline void transpose4_ooff_simd256(simde_
   y[0]   = simde_mm256_insertf128_si256(perm_tmp0,simde_mm256_extracti128_si256(perm_tmp1,0),1);
   y[off] = simde_mm256_insertf128_si256(perm_tmp1,simde_mm256_extracti128_si256(perm_tmp0,1),0);
 #else
-  simde__m256i const perm_mask1 = simde_mm256_set_epi32(14,12,10,8,6,4,2,0);
-  simde__m256i const perm_mask2 = simde_mm256_set_epi32(15,13,11,9,7,5,3,1);
-  y[0]   = simde_mm256_permutex2var_epi32(x[0],perm_mask1,x[1]);
-  y[off] = simde_mm256_permutex2var_epi32(x[0],perm_mask2,x[1]);
+  __m256i const perm_mask1 = _mm256_set_epi32(14,12,10,8,6,4,2,0);
+  __m256i const perm_mask2 = _mm256_set_epi32(15,13,11,9,7,5,3,1);
+  y[0]   = _mm256_permutex2var_epi32(x[0],perm_mask1,x[1]);
+  y[off] = _mm256_permutex2var_epi32(x[0],perm_mask2,x[1]);
 #endif
 }
 
@@ -1222,7 +1224,6 @@ static inline void dft16(int16_t *x,int16_t *y) __attribute__((always_inline)
 }
 #endif
 
-#define USE_SKYLAKE_PERMUTE __AVX512VL__
 #define USE_DFT16_SHIFT
 
 // Does two 16-point DFTS (x[0 .. 15] is 128 LSBs of input vector, x[16..31] is in 128 MSBs)
