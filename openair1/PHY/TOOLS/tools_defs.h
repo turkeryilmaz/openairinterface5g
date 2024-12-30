@@ -416,7 +416,7 @@ static __attribute__((always_inline)) inline void mult_complex_vectors(const c16
     const simde__m128i i1 = simde_mm_loadu_epi32((simde__m128i *)(in1 + i));
     const simde__m128i i2 = simde_mm_loadu_epi32((simde__m128i *)(in2 + i));
     const simde__m128i i2swap = simde_mm_shuffle_epi8(i2, *(simde__m128i *)&complex_shuffle256);
-    const simde__m128i i2conj = simde_mm_sign_epi16(i2, *(simde__m128i *)&conj256);
+    const simde__m128i i2conj = oai_mm_sign_epi16(i2, *(simde__m128i *)&conj256);
     const simde__m128i re = simde_mm_madd_epi16(i1, i2conj);
     const simde__m128i im = simde_mm_madd_epi16(i1, i2swap);
     simde_mm_storeu_si128((simde__m128i *)(out + i),

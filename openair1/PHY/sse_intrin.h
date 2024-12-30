@@ -74,6 +74,13 @@
  * OAI specific
  */
 
+#ifdef __aarch64__
+#define oai_mm_sign_epi8(a,b) (simde__m128i)vbslq_s8(vcltzq_s8((int8x16_t) (b)), vnegq_s8((int8x16_t) (a)), (int8x16_t)(a))
+#define oai_mm_sign_epi16(a,b) (simde__m128i)vbslq_s16(vcltzq_s16((int16x8_t) (b)), vnegq_s16((int16x8_t) (a)), (int16x8_t)(a))
+#else
+#define oai_mm_sign_epi8 simde_mm_sign_epi8
+#define oai_mm_sign_epi16 simde_mm_sign_epi16
+#endif
 static const short minusConjug128[8] __attribute__((aligned(16))) = {-1, 1, -1, 1, -1, 1, -1, 1};
 static inline simde__m128i mulByConjugate128(simde__m128i *a, simde__m128i *b, int8_t output_shift)
 {

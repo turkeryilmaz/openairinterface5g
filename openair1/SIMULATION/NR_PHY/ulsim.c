@@ -239,6 +239,7 @@ int main(int argc, char *argv[])
   int threadCnt=0;
   int max_ldpc_iterations = 5;
   int num_antennas_per_thread = 1;
+  char gNBthreads[128]="n";
   if ((uniqCfg = load_configmodule(argc, argv, CONFIG_ENABLECMDLINEONLY)) == 0) {
     exit_fun("[NR_ULSIM] Error, configuration module init failed\n");
   }
@@ -250,7 +251,7 @@ int main(int argc, char *argv[])
   InitSinLUT();
 
   int c;
-  while ((c = getopt(argc, argv, "--:O:a:b:c:d:ef:g:h:i:k:m:n:p:q:r:s:t:u:v:w:y:z:A:C:F:G:H:I:M:N:PR:S:T:U:L:ZW:E:X:")) != -1) {
+  while ((c = getopt(argc, argv, "--:O:a:b:c:d:ef:g:h:i:k:m:n:p:q:r:s:t:u:v:w:y:z:A:C:F:G:H:I:M:N:PQR:S:T:U:L:ZW:E:X:Y:")) != -1) {
 
     /* ignore long options starting with '--', option '-O' and their arguments that are handled by configmodule */
     /* with this opstring getopt returns 1 for non-option arguments, refer to 'man 3 getopt' */
@@ -382,6 +383,11 @@ int main(int argc, char *argv[])
 
     case 'C':
       threadCnt = atoi(optarg);
+      break;
+
+    case 'Y':
+      strncpy(gNBthreads,optarg, sizeof(gNBthreads)-1);
+      gNBthreads[sizeof(gNBthreads)-1]=0;
       break;
 
     case 'u':
@@ -589,7 +595,9 @@ int main(int argc, char *argv[])
   gNB->RU_list[0] = calloc(1, sizeof(**gNB->RU_list));
   gNB->RU_list[0]->rfdevice.openair0_cfg = openair0_cfg;
 
-  initFloatingCoresTpool(threadCnt, &gNB->threadPool, false, "gNB-tpool");
+  if (gNBthreads[0]=='n') initFloatingCoresTpool(threadCnt, &gNB->threadPool, false, "gNB-tpool");
+  else initNamedTpool(gNBthreads, &gNB->threadPool, true, "gNB-tpool");
+
   initNotifiedFIFO(&gNB->respDecode);
 
   initNotifiedFIFO(&gNB->respPuschSymb);
