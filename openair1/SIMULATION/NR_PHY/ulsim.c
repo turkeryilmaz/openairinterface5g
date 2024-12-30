@@ -45,7 +45,7 @@
 #include "NR_ReconfigurationWithSync.h"
 #include "NR_ServingCellConfig.h"
 #include "NR_UE-NR-Capability.h"
-#include "PHY/CODING/nrLDPC_extern.h"
+#include "PHY/CODING/nrLDPC_coding/nrLDPC_coding_interface.h"
 #include "PHY/INIT/nr_phy_init.h"
 #include "PHY/MODULATION/nr_modulation.h"
 #include "PHY/NR_REFSIG/dmrs_nr.h"
@@ -212,7 +212,6 @@ int main(int argc, char *argv[])
   double effRate;
   double effTP;
   float eff_tp_check = 100;
-  int ldpc_offload_flag = 0;
   uint8_t max_rounds = 4;
   int chest_type[2] = {0};
   int enable_ptrs = 0;
@@ -240,6 +239,7 @@ int main(int argc, char *argv[])
   int threadCnt=0;
   int max_ldpc_iterations = 5;
   int num_antennas_per_thread = 1;
+  char gNBthreads[128]="n";
   if ((uniqCfg = load_configmodule(argc, argv, CONFIG_ENABLECMDLINEONLY)) == 0) {
     exit_fun("[NR_ULSIM] Error, configuration module init failed\n");
   }
@@ -251,7 +251,7 @@ int main(int argc, char *argv[])
   InitSinLUT();
 
   int c;
-  while ((c = getopt(argc, argv, "--:O:a:b:c:d:ef:g:h:i:k:m:n:op:q:r:s:t:u:v:w:y:z:A:C:F:G:H:I:M:N:PR:S:T:U:L:ZW:E:X:")) != -1) {
+  while ((c = getopt(argc, argv, "--:O:a:b:c:d:ef:g:h:i:k:m:n:p:q:r:s:t:u:v:w:y:z:A:C:F:G:H:I:M:N:PQR:S:T:U:L:ZW:E:X:Y:")) != -1) {
 
     /* ignore long options starting with '--', option '-O' and their arguments that are handled by configmodule */
     /* with this opstring getopt returns 1 for non-option arguments, refer to 'man 3 getopt' */
@@ -364,10 +364,6 @@ int main(int argc, char *argv[])
       n_trials = atoi(optarg);
       break;
 
-    case 'o':
-      ldpc_offload_flag = 1;
-      break;
-
     case 'p':
       extended_prefix_flag = 1;
       break;
@@ -387,6 +383,11 @@ int main(int argc, char *argv[])
 
     case 'C':
       threadCnt = atoi(optarg);
+      break;
+
+    case 'Y':
+      strncpy(gNBthreads,optarg, sizeof(gNBthreads)-1);
+      gNBthreads[sizeof(gNBthreads)-1]=0;
       break;
 
     case 'u':
@@ -531,7 +532,6 @@ int main(int argc, char *argv[])
       printf("-k 3/4 sampling\n");
       printf("-m MCS value\n");
       printf("-n Number of trials to simulate\n");
-      printf("-o ldpc offload flag\n");
       printf("-p Use extended prefix mode\n");
       printf("-q MCS table\n");
       printf("-r Number of allocated resource blocks for PUSCH\n");
@@ -595,7 +595,9 @@ int main(int argc, char *argv[])
   gNB->RU_list[0] = calloc(1, sizeof(**gNB->RU_list));
   gNB->RU_list[0]->rfdevice.openair0_cfg = openair0_cfg;
 
-  initFloatingCoresTpool(threadCnt, &gNB->threadPool, false, "gNB-tpool");
+  if (gNBthreads[0]=='n') initFloatingCoresTpool(threadCnt, &gNB->threadPool, false, "gNB-tpool");
+  else initNamedTpool(gNBthreads, &gNB->threadPool, true, "gNB-tpool");
+
   initNotifiedFIFO(&gNB->respDecode);
 
   initNotifiedFIFO(&gNB->respPuschSymb);
@@ -682,7 +684,6 @@ int main(int argc, char *argv[])
   cfg->carrier_config.num_rx_ant.value = n_rx;
 
 //  nr_phy_config_request_sim(gNB,N_RB_DL,N_RB_DL,mu,0,0x01);
-  gNB->ldpc_offload_flag = ldpc_offload_flag;
   gNB->chest_freq = chest_type[0];
   gNB->chest_time = chest_type[1];
 
@@ -729,6 +730,7 @@ int main(int argc, char *argv[])
   memcpy(&UE->frame_parms, frame_parms, sizeof(NR_DL_FRAME_PARMS));
   UE->frame_parms.nb_antennas_tx = n_tx;
   UE->frame_parms.nb_antennas_rx = 0;
+  UE->nrLDPC_coding_interface = gNB->nrLDPC_coding_interface;
 
   if (init_nr_ue_signal(UE, 1) != 0) {
     printf("Error at UE NR initialisation\n");
@@ -750,6 +752,8 @@ int main(int argc, char *argv[])
   UE->if_inst->ul_indication = nr_ue_ul_indication;
   
   UE_mac->if_module = nr_ue_if_module_init(0);
+
+  initFloatingCoresTpool(threadCnt, &nrUE_params.Tpool, false, "UE-tpool");
 
   nr_ue_phy_config_request(&UE_mac->phy_config);
 
@@ -1596,8 +1600,8 @@ int main(int argc, char *argv[])
           num_dmrs_cdm_grps_no_data);
 
   free_MIB_NR(mib);
-  if (gNB->ldpc_offload_flag)
-    free_LDPClib(&ldpc_interface_offload);
+
+  free_nrLDPC_coding_interface(&gNB->nrLDPC_coding_interface);
 
   if (output_fd)
     fclose(output_fd);

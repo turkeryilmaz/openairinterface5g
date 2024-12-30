@@ -62,6 +62,8 @@
 
 /* x86 processors */
 
+#define oai_mm_sign_epi8(a,b) simde_mm_sign_epi8(a,b)
+
 #if defined(__AVX512BW__) || defined(__AVX512F__)
 #include <immintrin.h>
 #endif
@@ -73,6 +75,7 @@
 #include <simde/x86/clmul.h>
 
 #include <simde/arm/neon.h>
+#define oai_mm_sign_epi8(a,b) (simde__m128i)vbslq_s8(vcltzq_s8((int8x16_t) (b)), vnegq_s8((int8x16_t) (a)), (int8x16_t)(a))
 #endif // x86_64 || i386
 #include <stdbool.h>
 #include "assertions.h"

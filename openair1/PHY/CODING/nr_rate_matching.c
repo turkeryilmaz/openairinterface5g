@@ -43,7 +43,7 @@ void nr_interleaving_ldpc(uint32_t E, uint8_t Qm, uint8_t *e,uint8_t *f)
   uint8_t *fp;
   int j,k;
 #if 1 //def __WASAVX2__
-#ifdef __AVX512F__
+#ifdef __AVX512VBMI__
   __m512i tmp0,tmp1,tmp2,tmp3,tmp4,tmp5;
   __m512i *e0_512,*e1_512,*e2_512,*e3_512,*e4_512,*e5_512,*e6_512,*e7_512;
 
@@ -58,7 +58,7 @@ void nr_interleaving_ldpc(uint32_t E, uint8_t Qm, uint8_t *e,uint8_t *f)
   case 2:
     e0=e;
     e1=e0+EQm;
-#ifdef __AVX512F__
+#ifdef __AVX512VBMI__
     e0_512=(__m512i *)e0;
     e1_512=(__m512i *)e1;
     __m512i p8a = _mm512_set_epi8(95,31,94,30,93,29,92,28,91,27,90,26,89,25,88,24,87,23,86,22,85,21,84,20,83,19,82,18,81,17,80,16,79,15,78,14,77,13,76,12,75,11,74,10,73,9,72,8,71,7,70,6,69,5,68,4,67,3,66,2,65,1,64,0);
@@ -82,9 +82,12 @@ void nr_interleaving_ldpc(uint32_t E, uint8_t Qm, uint8_t *e,uint8_t *f)
 #else
     e0_128=(simde__m128i *)e0;
     e1_128=(simde__m128i *)e1;
+    simde__m128i e0j,e1j;
     for (k=0,j=0;j<EQm>>4;j++,k+=2) {
-      f_128[k]   = simde_mm_unpacklo_epi8(e0_128[j],e1_128[j]);
-      f_128[k+1] = simde_mm_unpackhi_epi8(e0_128[j],e1_128[j]); 
+      e0j=simde_mm_loadu_si128(e0_128+j);
+      e1j=simde_mm_loadu_si128(e1_128+j);
+      simde_mm_storeu_si128(f_128+k,simde_mm_unpacklo_epi8(e0j,e1j));
+      simde_mm_storeu_si128(f_128+k+1,simde_mm_unpackhi_epi8(e0j,e1j)); 
     }
     if ((j<<4) != EQm) {
       int k2=k<<4;
@@ -101,7 +104,7 @@ void nr_interleaving_ldpc(uint32_t E, uint8_t Qm, uint8_t *e,uint8_t *f)
     e1=e0+EQm;
     e2=e1+EQm;
     e3=e2+EQm;
-#ifdef __AVX512F__
+#ifdef __AVX512VBMI__
     e0_512=(__m512i *)e0;
     e1_512=(__m512i *)e1;
     e2_512=(__m512i *)e2;
@@ -145,15 +148,20 @@ void nr_interleaving_ldpc(uint32_t E, uint8_t Qm, uint8_t *e,uint8_t *f)
     e1_128=(simde__m128i *)e1;
     e2_128=(simde__m128i *)e2;
     e3_128=(simde__m128i *)e3;
+    simde__m128i e2j,e3j;
     for (k=0,j=0;j<EQm>>4;j++,k+=4) {
-      tmp0   = simde_mm_unpacklo_epi8(e0_128[j],e1_128[j]); // e0(i) e1(i) e0(i+1) e1(i+1) .... e0(i+7) e1(i+7)
-      tmp1   = simde_mm_unpacklo_epi8(e2_128[j],e3_128[j]); // e2(i) e3(i) e2(i+1) e3(i+1) .... e2(i+7) e3(i+7)
-      f_128[k]   = simde_mm_unpacklo_epi16(tmp0,tmp1);   // e0(i) e1(i) e2(i) e3(i) ... e0(i+3) e1(i+3) e2(i+3) e3(i+3)
-      f_128[k+1] = simde_mm_unpackhi_epi16(tmp0,tmp1);   // e0(i+4) e1(i+4) e2(i+4) e3(i+4) ... e0(i+7) e1(i+7) e2(i+7) e3(i+7)
-      tmp0   = simde_mm_unpackhi_epi8(e0_128[j],e1_128[j]); // e0(i+8) e1(i+8) e0(i+9) e1(i+9) .... e0(i+15) e1(i+15)
-      tmp1   = simde_mm_unpackhi_epi8(e2_128[j],e3_128[j]); // e2(i+8) e3(i+9) e2(i+10) e3(i+10) .... e2(i+31) e3(i+31)
-      f_128[k+2] = simde_mm_unpacklo_epi16(tmp0,tmp1);
-      f_128[k+3] = simde_mm_unpackhi_epi16(tmp0,tmp1); 
+      e0j    = simde_mm_loadu_si128(e0_128+j);	    
+      e1j    = simde_mm_loadu_si128(e1_128+j);	    
+      e2j    = simde_mm_loadu_si128(e2_128+j);	    
+      e3j    = simde_mm_loadu_si128(e3_128+j);	    
+      tmp0   = simde_mm_unpacklo_epi8(e0j,e1j); // e0(i) e1(i) e0(i+1) e1(i+1) .... e0(i+7) e1(i+7)
+      tmp1   = simde_mm_unpacklo_epi8(e2j,e3j); // e2(i) e3(i) e2(i+1) e3(i+1) .... e2(i+7) e3(i+7)
+      simde_mm_storeu_si128(f_128+k,simde_mm_unpacklo_epi16(tmp0,tmp1));   // e0(i) e1(i) e2(i) e3(i) ... e0(i+3) e1(i+3) e2(i+3) e3(i+3)
+      simde_mm_storeu_si128(f_128+k+1,simde_mm_unpackhi_epi16(tmp0,tmp1));   // e0(i+4) e1(i+4) e2(i+4) e3(i+4) ... e0(i+7) e1(i+7) e2(i+7) e3(i+7)
+      tmp0   = simde_mm_unpackhi_epi8(e0j,e1j); // e0(i+8) e1(i+8) e0(i+9) e1(i+9) .... e0(i+15) e1(i+15)
+      tmp1   = simde_mm_unpackhi_epi8(e2j,e3j); // e2(i+8) e3(i+9) e2(i+10) e3(i+10) .... e2(i+31) e3(i+31)
+      simde_mm_storeu_si128(f_128+k+2,simde_mm_unpacklo_epi16(tmp0,tmp1));
+      simde_mm_storeu_si128(f_128+k+3,simde_mm_unpackhi_epi16(tmp0,tmp1)); 
     }
     if ((j<<4) != EQm) {
       int k2=k<<4;
@@ -174,7 +182,7 @@ void nr_interleaving_ldpc(uint32_t E, uint8_t Qm, uint8_t *e,uint8_t *f)
     e3=e2+EQm;
     e4=e3+EQm;
     e5=e4+EQm;
-#ifdef __AVX512F__
+#ifdef __AVX512VBMI__
     e0_512=(__m512i *)e0;
     e1_512=(__m512i *)e1;
     e2_512=(__m512i *)e2;
@@ -256,7 +264,7 @@ void nr_interleaving_ldpc(uint32_t E, uint8_t Qm, uint8_t *e,uint8_t *f)
     e6=e5+EQm;
     e7=e6+EQm;
 
-#ifdef __AVX512F__
+#ifdef __AVX512VBMI__
     e0_512=(__m512i *)e0;
     e1_512=(__m512i *)e1;
     e2_512=(__m512i *)e2;
@@ -334,7 +342,7 @@ void nr_interleaving_ldpc(uint32_t E, uint8_t Qm, uint8_t *e,uint8_t *f)
     e5_128=(simde__m128i *)e5;
     e6_128=(simde__m128i *)e6;
     e7_128=(simde__m128i *)e7;
-    simde__m128i e0j,e1j,e2j,e3j,e4j,e5j,e6j,e7j;
+    simde__m128i e4j,e5j,e6j,e7j;
     
     for (k=0,j=0;j<EQm>>4;j++,k+=8) {
       e0j    = simde_mm_loadu_si128(e0_128+j);	    
@@ -382,6 +390,8 @@ void nr_interleaving_ldpc(uint32_t E, uint8_t Qm, uint8_t *e,uint8_t *f)
          *fp++ = e3[j2];
          *fp++ = e4[j2];
          *fp++ = e5[j2];
+         *fp++ = e6[j2];
+         *fp++ = e7[j2];
       }
     }
 #endif
