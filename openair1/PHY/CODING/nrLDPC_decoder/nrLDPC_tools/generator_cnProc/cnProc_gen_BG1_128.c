@@ -45,6 +45,7 @@ void nrLDPC_cnProc_BG1_generator_128(const char* dir, int R)
 
   fprintf(fd,"#include <stdint.h>\n");
   fprintf(fd,"#include \"PHY/sse_intrin.h\"\n");
+  fprintf(fd,"#ifdef __aarch64__\n#define USE_XOR\n#endif\n");
 
 
   fprintf(fd,"static inline void nrLDPC_cnProc_BG1_R%s_128(int8_t* cnProcBuf, int8_t* cnProcBufRes, uint16_t Z) {\n",ratestr[R]);
@@ -88,11 +89,14 @@ void nrLDPC_cnProc_BG1_generator_128(const char* dir, int R)
   // Offsets are in units of bitOffsetInGroup (1*384/32)
   const uint8_t lut_idxCnProcG3[3][2] = {{12,24}, {0,24}, {0,12}};
 #ifndef DROP_MAXLLR
-  fprintf(fd,"                simde__m128i ymm0, min, sgn,ones,maxLLR;\n");
+  fprintf(fd,"                simde__m128i ymm0, min, sgn,maxLLR;\n");
 #else
-  fprintf(fd,"                simde__m128i ymm0, min, sgn,ones;\n");
-#endif  
+  fprintf(fd,"                simde__m128i ymm0, min, sgn;\n");
+#endif
+  fprintf(fd,"#ifndef USE_XOR\n");
+  fprintf(fd,"                simde__m128i ones;\n");
   fprintf(fd,"                ones   = simde_mm_set1_epi8((int8_t)1);\n");
+  fprintf(fd,"#endif\n");
 
   fprintf(fd,"                uint32_t  M;\n");
 
@@ -125,8 +129,16 @@ void nrLDPC_cnProc_BG1_generator_128(const char* dir, int R)
 	  // Abs and sign of 16 CNs (first BN)
 	  //                ymm0 = p_cnProcBuf[lut_idxCnProcG3[j][0] + i];
 	  fprintf(fd,"                ymm0 = ((simde__m128i*)cnProcBuf)[%d+i];\n",(lut_startAddrCnGroups[0]>>4)+lut_idxCnProcG3[j][0]*2);
+	  //            #ifdef USE_XOR
+	  fprintf(fd,"  #ifdef USE_XOR\n");
+	  //                sgn = ymm0;
+	  fprintf(fd,"      sgn = ymm0;\n");
+	  //            #else
+	  fprintf(fd,"  #else\n");
 	  //                sgn  = simde_mm_sign_epi8(ones, ymm0);
 	  fprintf(fd,"                sgn  = oai_mm_sign_epi8(ones, ymm0);\n");
+	  //            #endif
+	  fprintf(fd,"  #endif\n");
 	  //                min  = simde_mm_abs_epi8(ymm0);
 	  fprintf(fd,"                min  = simde_mm_abs_epi8(ymm0);\n");
 	  
@@ -136,9 +148,16 @@ void nrLDPC_cnProc_BG1_generator_128(const char* dir, int R)
 	  
 	  //                min  = simde_mm_min_epu8(min, simde_mm_abs_epi8(ymm0));
 	  fprintf(fd,"                min  = simde_mm_min_epu8(min, simde_mm_abs_epi8(ymm0));\n");
-	  
+          //            #ifdef USE_XOR
+	  fprintf(fd,"  #ifdef USE_XOR\n");
+	  //                sgn  = simde_mm_xor_si128(sgn,ymm0);
+	  fprintf(fd,"      sgn  = simde_mm_xor_si128(sgn,ymm0);\n");
+          //            #else
+	  fprintf(fd,"  #else\n");
 	  //                sgn  = simde_mm_sign_epi8(sgn, ymm0);
 	  fprintf(fd,"                sgn  = oai_mm_sign_epi8(sgn, ymm0);\n");
+	  //            #endif
+	  fprintf(fd,"  #endif\n");
 	  // Store result
 	  //                min = simde_mm_min_epu8(min, maxLLR); // 128 in epi8 is -127
 #ifndef DROP_MAXLLR
@@ -170,6 +189,7 @@ void nrLDPC_cnProc_BG1_generator_128(const char* dir, int R)
       //p_cnProcBuf    = (simde__m128i*) &cnProcBuf   [lut_startAddrCnGroups[1]];
       //p_cnProcBufRes = (simde__m128i*) &cnProcBufRes[lut_startAddrCnGroups[1]];
 
+      // fdef USE_XOR\n");
       // Loop over every BN
       
       for (j=0; j<4; j++)
@@ -184,8 +204,16 @@ void nrLDPC_cnProc_BG1_generator_128(const char* dir, int R)
 	  // Abs and sign of 16 CNs (first BN)
 	  //                ymm0 = p_cnProcBuf[lut_idxCnProcG3[j][0] + i];
 	  fprintf(fd,"                ymm0 = ((simde__m128i*)cnProcBuf)[%d+i];\n",(lut_startAddrCnGroups[1]>>4)+lut_idxCnProcG4[j][0]*2);
-	  //                sgn  = simde_mm_sign_epi8(ones, ymm0);
+	  //            #ifdef USE_XOR
+	  fprintf(fd,"  #ifdef USE_XOR\n");
+	  //                sgn = ymm0;
+	  fprintf(fd,"      sgn = ymm0;\n");
+	  //            #else
+	  fprintf(fd,"  #else\n");
+	  //                sgn  = simde_mm_sign_epi8(ones, ymm0i;
 	  fprintf(fd,"                sgn  = oai_mm_sign_epi8(ones, ymm0);\n");
+	  //            #endif
+	  fprintf(fd,"  #endif\n");
 	  //                min  = simde_mm_abs_epi8(ymm0);
 	  fprintf(fd,"                min  = simde_mm_abs_epi8(ymm0);\n");
 	  
@@ -198,8 +226,16 @@ void nrLDPC_cnProc_BG1_generator_128(const char* dir, int R)
 	      //                min  = simde_mm_min_epu8(min, simde_mm_abs_epi8(ymm0));
 	      fprintf(fd,"                min  = simde_mm_min_epu8(min, simde_mm_abs_epi8(ymm0));\n");
 	      
+              //            #ifdef USE_XOR
+	      fprintf(fd,"  #ifdef USE_XOR\n");
+	      //                sgn  = simde_mm_xor_si128(sgn,ymm0);
+	      fprintf(fd,"      sgn  = simde_mm_xor_si128(sgn,ymm0);\n");
+              //            #else
+	      fprintf(fd,"  #else\n");
 	      //                sgn  = simde_mm_sign_epi8(sgn, ymm0);
-  	      fprintf(fd,"                sgn  = oai_mm_sign_epi8(sgn, ymm0);\n");
+	      fprintf(fd,"                sgn  = oai_mm_sign_epi8(sgn, ymm0);\n");
+	      //            #endif
+	      fprintf(fd,"  #endif\n");
 	    }
 	  
 	  // Store result
@@ -251,8 +287,16 @@ void nrLDPC_cnProc_BG1_generator_128(const char* dir, int R)
 	  // Abs and sign of 16 CNs (first BN)
 	  //                ymm0 = p_cnProcBuf[lut_idxCnProcG3[j][0] + i];
 	  fprintf(fd,"                ymm0 = ((simde__m128i*)cnProcBuf)[%d+i];\n",(lut_startAddrCnGroups[2]>>4)+lut_idxCnProcG5[j][0]*2);
+	  //            #ifdef USE_XOR
+	  fprintf(fd,"  #ifdef USE_XOR\n");
+	  //                sgn = ymm0;
+	  fprintf(fd,"      sgn = ymm0;\n");
+	  //            #else
+	  fprintf(fd,"  #else\n");
 	  //                sgn  = simde_mm_sign_epi8(ones, ymm0);
 	  fprintf(fd,"                sgn  = oai_mm_sign_epi8(ones, ymm0);\n");
+	  //            #endif
+	  fprintf(fd,"  #endif\n");
 	  //                min  = simde_mm_abs_epi8(ymm0);
 	  fprintf(fd,"                min  = simde_mm_abs_epi8(ymm0);\n");
 	  
@@ -265,8 +309,16 @@ void nrLDPC_cnProc_BG1_generator_128(const char* dir, int R)
 	      //                min  = simde_mm_min_epu8(min, simde_mm_abs_epi8(ymm0));
 	      fprintf(fd,"                min  = simde_mm_min_epu8(min, simde_mm_abs_epi8(ymm0));\n");
 	      
+              //            #ifdef USE_XOR
+	      fprintf(fd,"  #ifdef USE_XOR\n");
+	      //                sgn  = simde_mm_xor_si128(sgn,ymm0);
+	      fprintf(fd,"      sgn  = simde_mm_xor_si128(sgn,ymm0);\n");
+              //            #else
+	      fprintf(fd,"  #else\n");
 	      //                sgn  = simde_mm_sign_epi8(sgn, ymm0);
-  	      fprintf(fd,"                sgn  = oai_mm_sign_epi8(sgn, ymm0);\n");
+	      fprintf(fd,"                sgn  = oai_mm_sign_epi8(sgn, ymm0);\n");
+	      //            #endif
+	      fprintf(fd,"  #endif\n");
 	    }
 	  
 	  // Store result
@@ -318,8 +370,16 @@ void nrLDPC_cnProc_BG1_generator_128(const char* dir, int R)
 	  // Abs and sign of 16 CNs (first BN)
 	  //                ymm0 = p_cnProcBuf[lut_idxCnProcG3[j][0] + i];
 	  fprintf(fd,"                ymm0 = ((simde__m128i*)cnProcBuf)[%d+i];\n",(lut_startAddrCnGroups[3]>>4)+lut_idxCnProcG6[j][0]*2);
+	  //            #ifdef USE_XOR
+	  fprintf(fd,"  #ifdef USE_XOR\n");
+	  //                sgn = ymm0;
+	  fprintf(fd,"      sgn = ymm0;\n");
+	  //            #else
+	  fprintf(fd,"  #else\n");
 	  //                sgn  = simde_mm_sign_epi8(ones, ymm0);
 	  fprintf(fd,"                sgn  = oai_mm_sign_epi8(ones, ymm0);\n");
+	  //            #endif
+	  fprintf(fd,"  #endif\n");
 	  //                min  = simde_mm_abs_epi8(ymm0);
 	  fprintf(fd,"                min  = simde_mm_abs_epi8(ymm0);\n");
 	  
@@ -332,8 +392,16 @@ void nrLDPC_cnProc_BG1_generator_128(const char* dir, int R)
 	      //                min  = simde_mm_min_epu8(min, simde_mm_abs_epi8(ymm0));
 	      fprintf(fd,"                min  = simde_mm_min_epu8(min, simde_mm_abs_epi8(ymm0));\n");
 	      
+              //            #ifdef USE_XOR
+	      fprintf(fd,"  #ifdef USE_XOR\n");
+	      //                sgn  = simde_mm_xor_si128(sgn,ymm0);
+	      fprintf(fd,"      sgn  = simde_mm_xor_si128(sgn,ymm0);\n");
+              //            #else
+	      fprintf(fd,"  #else\n");
 	      //                sgn  = simde_mm_sign_epi8(sgn, ymm0);
-  	      fprintf(fd,"                sgn  = oai_mm_sign_epi8(sgn, ymm0);\n");
+	      fprintf(fd,"                sgn  = oai_mm_sign_epi8(sgn, ymm0);\n");
+	      //            #endif
+	      fprintf(fd,"  #endif\n");
 	    }
 	  
 	  // Store result
@@ -388,8 +456,16 @@ void nrLDPC_cnProc_BG1_generator_128(const char* dir, int R)
 	  // Abs and sign of 16 CNs (first BN)
 	  //                ymm0 = p_cnProcBuf[lut_idxCnProcG3[j][0] + i];
 	  fprintf(fd,"                ymm0 = ((simde__m128i*)cnProcBuf)[%d+i];\n",(lut_startAddrCnGroups[4]>>4)+lut_idxCnProcG7[j][0]*2);
+	  //            #ifdef USE_XOR
+	  fprintf(fd,"  #ifdef USE_XOR\n");
+	  //                sgn = ymm0;
+	  fprintf(fd,"      sgn = ymm0;\n");
+	  //            #else
+	  fprintf(fd,"  #else\n");
 	  //                sgn  = simde_mm_sign_epi8(ones, ymm0);
 	  fprintf(fd,"                sgn  = oai_mm_sign_epi8(ones, ymm0);\n");
+	  //            #endif
+	  fprintf(fd,"  #endif\n");
 	  //                min  = simde_mm_abs_epi8(ymm0);
 	  fprintf(fd,"                min  = simde_mm_abs_epi8(ymm0);\n");
 	  
@@ -402,8 +478,16 @@ void nrLDPC_cnProc_BG1_generator_128(const char* dir, int R)
 	      //                min  = simde_mm_min_epu8(min, simde_mm_abs_epi8(ymm0));
 	      fprintf(fd,"                min  = simde_mm_min_epu8(min, simde_mm_abs_epi8(ymm0));\n");
 	      
+              //            #ifdef USE_XOR
+	      fprintf(fd,"  #ifdef USE_XOR\n");
+	      //                sgn  = simde_mm_xor_si128(sgn,ymm0);
+	      fprintf(fd,"      sgn  = simde_mm_xor_si128(sgn,ymm0);\n");
+              //            #else
+	      fprintf(fd,"  #else\n");
 	      //                sgn  = simde_mm_sign_epi8(sgn, ymm0);
-  	      fprintf(fd,"                sgn  = oai_mm_sign_epi8(sgn, ymm0);\n");
+	      fprintf(fd,"                sgn  = oai_mm_sign_epi8(sgn, ymm0);\n");
+	      //            #endif
+	      fprintf(fd,"  #endif\n");
 	    }
 	  
 	  // Store result
@@ -459,8 +543,16 @@ void nrLDPC_cnProc_BG1_generator_128(const char* dir, int R)
 	  // Abs and sign of 16 CNs (first BN)
 	  //                ymm0 = p_cnProcBuf[lut_idxCnProcG3[j][0] + i];
 	  fprintf(fd,"                ymm0 = ((simde__m128i*)cnProcBuf)[%d+i];\n",(lut_startAddrCnGroups[5]>>4)+lut_idxCnProcG8[j][0]*2);
+	  //            #ifdef USE_XOR
+	  fprintf(fd,"  #ifdef USE_XOR\n");
+	  //                sgn = ymm0;
+	  fprintf(fd,"      sgn = ymm0;\n");
+	  //            #else
+	  fprintf(fd,"  #else\n");
 	  //                sgn  = simde_mm_sign_epi8(ones, ymm0);
 	  fprintf(fd,"                sgn  = oai_mm_sign_epi8(ones, ymm0);\n");
+	  //            #endif
+	  fprintf(fd,"  #endif\n");
 	  //                min  = simde_mm_abs_epi8(ymm0);
 	  fprintf(fd,"                min  = simde_mm_abs_epi8(ymm0);\n");
 	  
@@ -473,8 +565,16 @@ void nrLDPC_cnProc_BG1_generator_128(const char* dir, int R)
 	      //                min  = simde_mm_min_epu8(min, simde_mm_abs_epi8(ymm0));
 	      fprintf(fd,"                min  = simde_mm_min_epu8(min, simde_mm_abs_epi8(ymm0));\n");
 	      
+              //            #ifdef USE_XOR
+	      fprintf(fd,"  #ifdef USE_XOR\n");
+	      //                sgn  = simde_mm_xor_si128(sgn,ymm0);
+	      fprintf(fd,"      sgn  = simde_mm_xor_si128(sgn,ymm0);\n");
+              //            #else
+	      fprintf(fd,"  #else\n");
 	      //                sgn  = simde_mm_sign_epi8(sgn, ymm0);
-  	      fprintf(fd,"                sgn  = oai_mm_sign_epi8(sgn, ymm0);\n");
+	      fprintf(fd,"                sgn  = oai_mm_sign_epi8(sgn, ymm0);\n");
+	      //            #endif
+	      fprintf(fd,"  #endif\n");
 	    }
 	  
 	  // Store result
@@ -530,8 +630,16 @@ void nrLDPC_cnProc_BG1_generator_128(const char* dir, int R)
 	  // Abs and sign of 16 CNs (first BN)
 	  //                ymm0 = p_cnProcBuf[lut_idxCnProcG3[j][0] + i];
 	  fprintf(fd,"                ymm0 = ((simde__m128i*)cnProcBuf)[%d+i];\n",(lut_startAddrCnGroups[6]>>4)+lut_idxCnProcG9[j][0]*2);
+	  //            #ifdef USE_XOR
+	  fprintf(fd,"  #ifdef USE_XOR\n");
+	  //                sgn = ymm0;
+	  fprintf(fd,"      sgn = ymm0;\n");
+	  //            #else
+	  fprintf(fd,"  #else\n");
 	  //                sgn  = simde_mm_sign_epi8(ones, ymm0);
 	  fprintf(fd,"                sgn  = oai_mm_sign_epi8(ones, ymm0);\n");
+	  //            #endif
+	  fprintf(fd,"  #endif\n");
 	  //                min  = simde_mm_abs_epi8(ymm0);
 	  fprintf(fd,"                min  = simde_mm_abs_epi8(ymm0);\n");
 	  
@@ -544,8 +652,16 @@ void nrLDPC_cnProc_BG1_generator_128(const char* dir, int R)
 	      //                min  = simde_mm_min_epu8(min, simde_mm_abs_epi8(ymm0));
 	      fprintf(fd,"                min  = simde_mm_min_epu8(min, simde_mm_abs_epi8(ymm0));\n");
 	      
+              //            #ifdef USE_XOR
+	      fprintf(fd,"  #ifdef USE_XOR\n");
+	      //                sgn  = simde_mm_xor_si128(sgn,ymm0);
+	      fprintf(fd,"      sgn  = simde_mm_xor_si128(sgn,ymm0);\n");
+              //            #else
+	      fprintf(fd,"  #else\n");
 	      //                sgn  = simde_mm_sign_epi8(sgn, ymm0);
-  	      fprintf(fd,"                sgn  = oai_mm_sign_epi8(sgn, ymm0);\n");
+	      fprintf(fd,"                sgn  = oai_mm_sign_epi8(sgn, ymm0);\n");
+	      //            #endif
+	      fprintf(fd,"  #endif\n");
 	    }
 	  
 	  // Store result
@@ -602,8 +718,16 @@ void nrLDPC_cnProc_BG1_generator_128(const char* dir, int R)
 	  // Abs and sign of 16 CNs (first BN)
 	  //                ymm0 = p_cnProcBuf[lut_idxCnProcG3[j][0] + i];
 	  fprintf(fd,"                ymm0 = ((simde__m128i*)cnProcBuf)[%d+i];\n",(lut_startAddrCnGroups[7]>>4)+lut_idxCnProcG10[j][0]*2);
+	  //            #ifdef USE_XOR
+	  fprintf(fd,"  #ifdef USE_XOR\n");
+	  //                sgn = ymm0;
+	  fprintf(fd,"      sgn = ymm0;\n");
+	  //            #else
+	  fprintf(fd,"  #else\n");
 	  //                sgn  = simde_mm_sign_epi8(ones, ymm0);
 	  fprintf(fd,"                sgn  = oai_mm_sign_epi8(ones, ymm0);\n");
+	  //            #endif
+	  fprintf(fd,"  #endif\n");
 	  //                min  = simde_mm_abs_epi8(ymm0);
 	  fprintf(fd,"                min  = simde_mm_abs_epi8(ymm0);\n");
 	  
@@ -616,8 +740,16 @@ void nrLDPC_cnProc_BG1_generator_128(const char* dir, int R)
 	      //                min  = simde_mm_min_epu8(min, simde_mm_abs_epi8(ymm0));
 	      fprintf(fd,"                min  = simde_mm_min_epu8(min, simde_mm_abs_epi8(ymm0));\n");
 	      
+              //            #ifdef USE_XOR
+	      fprintf(fd,"  #ifdef USE_XOR\n");
+	      //                sgn  = simde_mm_xor_si128(sgn,ymm0);
+	      fprintf(fd,"      sgn  = simde_mm_xor_si128(sgn,ymm0);\n");
+              //            #else
+	      fprintf(fd,"  #else\n");
 	      //                sgn  = simde_mm_sign_epi8(sgn, ymm0);
-  	      fprintf(fd,"                sgn  = oai_mm_sign_epi8(sgn, ymm0);\n");
+	      fprintf(fd,"                sgn  = oai_mm_sign_epi8(sgn, ymm0);\n");
+	      //            #endif
+	      fprintf(fd,"  #endif\n");
 	    }
 	  
 	  // Store result
@@ -677,8 +809,16 @@ void nrLDPC_cnProc_BG1_generator_128(const char* dir, int R)
 	  // Abs and sign of 16 CNs (first BN)
 	  //                ymm0 = p_cnProcBuf[lut_idxCnProcG3[j][0] + i];
 	  fprintf(fd,"                ymm0 = ((simde__m128i*)cnProcBuf)[%d+i];\n",(lut_startAddrCnGroups[8]>>4)+lut_idxCnProcG19[j][0]*2);
+	  //            #ifdef USE_XOR
+	  fprintf(fd,"  #ifdef USE_XOR\n");
+	  //                sgn = ymm0;
+	  fprintf(fd,"      sgn = ymm0;\n");
+	  //            #else
+	  fprintf(fd,"  #else\n");
 	  //                sgn  = simde_mm_sign_epi8(ones, ymm0);
 	  fprintf(fd,"                sgn  = oai_mm_sign_epi8(ones, ymm0);\n");
+	  //            #endif
+	  fprintf(fd,"  #endif\n");
 	  //                min  = simde_mm_abs_epi8(ymm0);
 	  fprintf(fd,"                min  = simde_mm_abs_epi8(ymm0);\n");
 	  
@@ -691,8 +831,16 @@ void nrLDPC_cnProc_BG1_generator_128(const char* dir, int R)
 	      //                min  = simde_mm_min_epu8(min, simde_mm_abs_epi8(ymm0));
 	      fprintf(fd,"                min  = simde_mm_min_epu8(min, simde_mm_abs_epi8(ymm0));\n");
 	      
+              //            #ifdef USE_XOR
+	      fprintf(fd,"  #ifdef USE_XOR\n");
+	      //                sgn  = simde_mm_xor_si128(sgn,ymm0);
+	      fprintf(fd,"      sgn  = simde_mm_xor_si128(sgn,ymm0);\n");
+              //            #else
+	      fprintf(fd,"  #else\n");
 	      //                sgn  = simde_mm_sign_epi8(sgn, ymm0);
-  	      fprintf(fd,"                sgn  = oai_mm_sign_epi8(sgn, ymm0);\n");
+	      fprintf(fd,"                sgn  = oai_mm_sign_epi8(sgn, ymm0);\n");
+	      //            #endif
+	      fprintf(fd,"  #endif\n");
 	    }
 	  
 	  // Store result

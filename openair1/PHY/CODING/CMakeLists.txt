@@ -53,13 +53,13 @@ add_dependencies(ldpc_cl nrLDPC_decoder_kernels_CL)
 # Base CUDA setting
 ##############################################
 
-add_boolean_option(ENABLE_LDPC_CUDA OFF "Build support for CUDA" OFF)
+add_boolean_option(ENABLE_LDPC_CUDA ON "Build support for CUDA" ON)
 if (ENABLE_LDPC_CUDA)
   find_package(CUDA REQUIRED)
   if (NOT CUDA_FOUND)
     message(FATAL_ERROR "no CUDA found")
   endif()
-  SET(CUDA_NVCC_FLAG "${CUDA_NVCC_FLAGS};-arch=sm_60;")
+  SET(CUDA_NVCC_FLAG "${CUDA_NVCC_FLAGS};-gencode arch=compute_53,code=sm_53 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_70,code=sm_70 -gencode arch=compute_72,code=sm_72 -gencode arch=compute_75,code=sm_75 -gencode arch=compute_80,code=sm_80 -gencode arch=compute_86,code=sm_86 -gencode arch=compute_87,code=sm_87 -gencode arch=compute_90,code=sm_90 -gencode arch=compute_90,code=compute_90;")
   SET(CUDA_VERBOSE_BUILD ON)
   cuda_add_library(ldpc_cuda MODULE
                    nrLDPC_decoder_LYC/nrLDPC_decoder_LYC.cu
