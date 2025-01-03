@@ -976,10 +976,10 @@ uint8_t nr_dci_decoding_procedure(PHY_VARS_NR_UE *ue,
             sci_ind->sfn = proc->frame_rx;
             sci_ind->slot = proc->nr_slot_rx;
             sci_ind->sensing_result = 0;
-            sci_ind->pssch_rsrp = 0; // need to get this from the inner receiver
+            sci_ind->pssch_rsrp = 0; // measuring from pscch below; setting this flag to zero
             sci_ind->sci_pdu[sci_ind->number_of_SCIs].sci_format_type = SL_SCI_FORMAT_1A_ON_PSCCH;
             sci_ind->sci_pdu[sci_ind->number_of_SCIs].subch_index = 0;
-            sci_ind->sci_pdu[sci_ind->number_of_SCIs].pscch_rsrp = *rsrp_dBm; // need to get from inner rx
+            sci_ind->sci_pdu[sci_ind->number_of_SCIs].pscch_rsrp = *rsrp_dBm;
             sci_ind->sci_pdu[sci_ind->number_of_SCIs].sci_payloadlen =  dci_length;
             sci_ind->sci_pdu[sci_ind->number_of_SCIs].Nid = Nid;
 

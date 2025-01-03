@@ -2370,10 +2370,10 @@ void nr_rx_pusch(PHY_VARS_gNB *gNB,
                sci_ind.sfn = frame;
                sci_ind.slot = slot;
                sci_ind.sensing_result = 0;
-               sci_ind.pssch_rsrp = 0; // need to get this from the inner receiver
+               sci_ind.pssch_rsrp = 0; // setting this flag to zero; measuring from sci1
                sci_ind.sci_pdu[sci_ind.number_of_SCIs].sci_format_type = SL_SCI_FORMAT_2_ON_PSSCH;
                sci_ind.sci_pdu[sci_ind.number_of_SCIs].subch_index = 0;
-               sci_ind.sci_pdu[sci_ind.number_of_SCIs].pscch_rsrp = 0; // need to get from inner rx
+               sci_ind.sci_pdu[sci_ind.number_of_SCIs].pscch_rsrp = 0; // setting this flag to zero; measuring from sci1
                sci_ind.sci_pdu[sci_ind.number_of_SCIs].sci_payloadlen = pssch_pdu->sci2_len;
                sci_ind.sci_pdu[sci_ind.number_of_SCIs].Nid = dummy&65535;
  
