@@ -324,7 +324,7 @@ void init_openair0(bool is_sidelink) {
     uint64_t dl_carrier, ul_carrier;
     openair0_cfg[card].configFilename    = NULL;
     openair0_cfg[card].threequarter_fs   = frame_parms->threequarter_fs;
-    openair0_cfg[card].sample_rate       = IS_SOFTMODEM_RFSIM ? frame_parms->samples_per_subframe * 1e3 : 46080000;
+    openair0_cfg[card].sample_rate       = IS_SOFTMODEM_RFSIM ? frame_parms->samples_per_subframe * 1e3 : 30720000;
     openair0_cfg[card].samples_per_frame = frame_parms->samples_per_frame;
 
     if (frame_parms->frame_type==TDD)
