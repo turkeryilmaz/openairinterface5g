@@ -155,11 +155,10 @@ static void ldpc8blocks_coding_segment(void *p)
                          e,
                          impp->output+r_offset);
     stop_meas(&nrLDPC_TB_encoding_parameters->segments[rr].ts_interleave);
+
 #ifdef DEBUG_LDPC_ENCODING
-
     for (int i =0; i<16; i++)
-      printf("output interleaving f[%d]= %d r_offset %u\n", i,impp->output[i+r_offset], r_offset);
-
+      printf("output interleaving segment %d f[%d]= %d r_offset %u\n", rr,i,impp->output[i+r_offset], r_offset);
     if (r==impp->n_segments-1)
       write_output("enc_output.m","enc",impp->output,G,1,4);
 
