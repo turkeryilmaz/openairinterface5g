@@ -909,7 +909,7 @@ void configure_psfch_params_rx(int module_idP,
   rx_config->sl_rx_config_list[0].rx_psfch_pdu_list = calloc(psfch_period*num_subch, sizeof(sl_nr_tx_rx_config_psfch_pdu_t));
   NR_SL_UEs_t *UE_info = &mac->sl_info;
 
-  if (UE_info->list == NULL) {
+  if (*(UE_info->list) == NULL) {
     LOG_D(NR_MAC, "UE list is empty\n");
     return;
   }
@@ -1203,7 +1203,7 @@ NR_SL_UE_info_t* find_UE(NR_UE_MAC_INST_t *mac,
                          uint16_t nearby_ue_id) {
   NR_SL_UEs_t *UE_info = &mac->sl_info;
 
-  if (UE_info->list == NULL) {
+  if (*(UE_info->list) == NULL) {
     LOG_D(NR_MAC, "UE list is empty\n");
     return NULL;
   }

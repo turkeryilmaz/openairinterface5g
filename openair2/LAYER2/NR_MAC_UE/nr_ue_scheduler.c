@@ -3457,7 +3457,7 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
 
   NR_SL_UEs_t *UE_info = &mac->sl_info;
 
-  if (UE_info->list == NULL) {
+  if (*(UE_info->list) == NULL) {
     LOG_D(NR_MAC, "UE list is empty\n");
     return is_resource_allocated;
   }

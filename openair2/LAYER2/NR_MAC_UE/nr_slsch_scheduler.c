@@ -295,7 +295,7 @@ void nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP, int slotP, nr_sci_pdu_
   sci_pdu->second_stage_sci_format = 0;
   sci_pdu->number_of_dmrs_port = ri;
   // we are using as a flag to indicate if csi report was received
-  sci_pdu->mcs = get_nrUE_params()->mcs;
+  sci_pdu->mcs = sched_pssch->mcs;
   sci_pdu->additional_mcs.val = 0;
   if (frameP % 5 == 0)
     LOG_D(NR_MAC, "cqi ---> %d Tx %4d.%2d dest: %d mcs %i\n",
