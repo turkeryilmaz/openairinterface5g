@@ -156,9 +156,8 @@ void rotate_cpx_vector(const c16_t *const x, const c16_t *const alpha, c16_t *y,
     // log2_amp - increase the output amplitude by a factor 2^log2_amp (default is 0)
     //            WARNING: log2_amp>0 can cause overflow!!
 
-    uint32_t i;                 // loop counter
 
-
+#if 0
     simd_q15_t *y_128,alpha_128;
     int32_t *xd=(int32_t *)x; 
 
@@ -194,6 +193,39 @@ void rotate_cpx_vector(const c16_t *const x, const c16_t *const alpha, c16_t *y,
       );
       //print_ints("y_128[0]=", &y_128[0]);
     }
+#else
+
+    const c16_t for_re = {alpha->r, -alpha->i};
+    const simde__m128i alpha_for_real = simde_mm_set1_epi32(*(uint32_t *)&for_re);
+    const c16_t for_im = {alpha->i, alpha->r};
+    const simde__m128i alpha_for_im = simde_mm_set1_epi32(*(uint32_t *)&for_im);
+    const simde__m128i perm_mask = simde_mm_set_epi8( 15,
+                                                      14,
+                                                      7,
+                                                      6,
+                                                      13,
+                                                      12,
+                                                      5,
+                                                      4,
+                                                      11,
+                                                      10,
+                                                      3,
+                                                      2,
+                                                      9,
+                                                      8,
+                                                      1,
+                                                      0);
+    simde__m128i *xd = (simde__m128i *)x;
+    const simde__m128i *end = xd + N / 8;
+    for (simde__m128i *yd = (simde__m128i *)y; xd < end; yd++, xd++) {
+      const simde__m128i y128 = simde_mm_lddqu_si128(xd);
+      const simde__m128i xre = simde_mm_srai_epi32(simde_mm_madd_epi16(y128, alpha_for_real), output_shift);
+      const simde__m128i xim = simde_mm_srai_epi32(simde_mm_madd_epi16(y128, alpha_for_im), output_shift);
+      // a bit faster than unpacklo+unpackhi+packs
+      const simde__m128i tmp = simde_mm_packs_epi32(xre, xim);
+      simde_mm_storeu_si128(yd, simde_mm_shuffle_epi8(tmp, perm_mask));
+    }
+#endif
 #if defined(__x86__) || defined(__x86_64__)
   }
 #endif
