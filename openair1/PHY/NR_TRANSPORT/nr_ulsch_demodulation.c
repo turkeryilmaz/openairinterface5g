@@ -2354,14 +2354,14 @@ void nr_rx_pusch(PHY_VARS_gNB *gNB,
 	  //     for (int i=0;i<sci2_re;i++) LOG_I(NR_PHY,"sci2_llrs [%d] %d,%d\n",i,unscrambled_sci2_llrs[i<<1],unscrambled_sci2_llrs[1+(i<<1)]);
 
 	       uint64_t sci_estimation[2]={0};
-	       uint16_t dummy; 
-               uint16_t crc=polar_decoder_int16(unscrambled_sci2_llrs,
-			                        sci_estimation,
-						&dummy,
-						1,
-						NR_POLAR_SCI2_MESSAGE_TYPE, 
-						pssch_pdu->sci2_len,
-						sci2_re);
+         uint16_t dummy;
+         uint16_t crc = polar_decoder_int16(unscrambled_sci2_llrs,
+                                            sci_estimation,
+                                            &dummy,
+                                            1,
+                                            NR_POLAR_SCI2_MESSAGE_TYPE,
+                                            pssch_pdu->sci2_len,
+                                            sci2_re);
 	       // send SCI indication with SCI2 payload and get SLSCH information if CRC is OK
 	       LOG_D(NR_PHY,"SCI indication (crc %x)\n",crc);
 	       if (crc==0) ue->SL_UE_PHY_PARAMS.pssch.rx_sci2_ok++;   

@@ -451,11 +451,15 @@ static inline uint32_t nrLDPC_decoder_core(int8_t* p_llr,
     // Parity Check not necessary here since it will fail
     // because first 2 cols/BNs in BG are punctured and cannot be
     // estimated after only one iteration
+    // Added 2 to numMaxIter to execute ldpc process five times (max. iterations);
+    // it is skipping first two iterations so, previously, it was iterating only three times
+    // In case of check_crc() pass, we subtracted 2 to consider upto 7 iterations (worst case) only; in case of iteration 8,
+    // it will still consider the ldpc decoding as abort
 
     // First iteration finished
     uint32_t numIter = 1;
     int32_t pcRes = 1; // pcRes is 0 if the ldpc decoder is succesful
-    while ((numIter <= numMaxIter) && (pcRes != 0)) {
+    while ((numIter <= numMaxIter + 2) && (pcRes != 0)) {
       // Increase iteration counter
       numIter++;
       if (check_abort(ab)) {
@@ -713,6 +717,7 @@ static inline uint32_t nrLDPC_decoder_core(int8_t* p_llr,
             nrLDPC_llr2bit(p_out, p_llrOut, numLLR);
           if (check_crc((uint8_t*)p_out, p_decParams->block_length, p_decParams->crc_type)) {
             LOG_D(PHY, "Segment CRC OK, exiting LDPC decoder\n");
+            numIter -= 2;
             break;
           }
         }
