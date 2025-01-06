@@ -85,6 +85,7 @@ int main(void)
     }
     math_dft(data, out, n);
     double evm[sizeofArray(coeffs)] = {0};
+    double sqnr[sizeofArray(coeffs)] = {0};
     double samples[sizeofArray(coeffs)] = {0};
     for (int coeff = 0; coeff < sizeofArray(coeffs); coeff++) {
       double expand = coeffs[coeff] * SHRT_MAX / sqrt(n);
@@ -111,6 +112,8 @@ int main(void)
         for (int i = 0; i < n; i++) {
           cd_t error2 = {.r = o16[i].r / expand - out[i].r, .i = o16[i].i / expand - out[i].i};
           evm[coeff] += sqrt(squaredMod(error2)) / sqrt(squaredMod(out[i]));
+          sqnr[coeff] += squaredMod(out[i]) / (squaredMod(error2));
+          if (n==64) printf("sqnr[%d] %e (%e,%e)\n",coeff,sqnr[coeff],squaredMod(out[i]),squaredMod(error2));
           samples[coeff] += sqrt(squaredMod(d16[i]));
       /*    if (n==64){ 
             if (error(o16[i], out[i], 5))
@@ -119,9 +122,9 @@ int main(void)
         }
       }
     }
-    printf("done DFT size %d (evm (%%), avg samples amplitude) = ", n);
+    printf("done DFT size %d (evm (%%), SQNRdB, avg samples amplitude) = ", n);
     for (int coeff = 0; coeff < sizeofArray(coeffs); coeff++)
-      printf("(%.2f, %.0f) ", (evm[coeff] / n) * 100, samples[coeff] / n);
+      printf("dBFS %f (%.2f, %f, %.0f) ", 20*log10(coeffs[coeff] / sqrt(n)),(evm[coeff] / n) * 100, 10*log10(sqnr[coeff]/n),samples[coeff] / n);
     printf("\n");
     int i;
     for (i = 0; i < sizeofArray(coeffs); i++)
