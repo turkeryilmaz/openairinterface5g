@@ -592,28 +592,29 @@ void init_fft(uint16_t size,
   SZ_DEF(65536)                \
   SZ_DEF(98304)
 
-extern uint32_t DFT_SCALING_128[2];
-extern uint32_t DFT_SCALING_256[2];
-extern uint32_t DFT_SCALING_512[3];
-extern uint32_t DFT_SCALING_768[3];
-extern uint32_t DFT_SCALING_1024[3];
-extern uint32_t DFT_SCALING_1536[3];
-extern uint32_t DFT_SCALING_2048[4];
-extern uint32_t DFT_SCALING_3072[4];
-extern uint32_t DFT_SCALING_4096[4];
-extern uint32_t DFT_SCALING_6144[5];
-extern uint32_t DFT_SCALING_8192[5];
-extern uint32_t DFT_SCALING_9216[5];
-extern uint32_t DFT_SCALING_12288[5];
-extern uint32_t DFT_SCALING_16384[5];
-extern uint32_t DFT_SCALING_18432[6];
-extern uint32_t DFT_SCALING_24576[6];
-extern uint32_t DFT_SCALING_32768[6];
-extern uint32_t DFT_SCALING_36864[6];
-extern uint32_t DFT_SCALING_49152[6];
-extern uint32_t DFT_SCALING_65536[6];
-extern uint32_t DFT_SCALING_73728[7];
-extern uint32_t DFT_SCALING_98304[7];
+extern uint32_t DFT_SCALING_64[5][2];
+extern uint32_t DFT_SCALING_128[5][3];
+extern uint32_t DFT_SCALING_256[5][3];
+extern uint32_t DFT_SCALING_512[5][4];
+extern uint32_t DFT_SCALING_768[5][4];
+extern uint32_t DFT_SCALING_1024[5][4];
+extern uint32_t DFT_SCALING_1536[5][5];
+extern uint32_t DFT_SCALING_2048[5][5];
+extern uint32_t DFT_SCALING_3072[5][5];
+extern uint32_t DFT_SCALING_4096[5][5];
+extern uint32_t DFT_SCALING_6144[5][6];
+extern uint32_t DFT_SCALING_8192[5][6];
+extern uint32_t DFT_SCALING_9216[5][6];
+extern uint32_t DFT_SCALING_12288[5][6];
+extern uint32_t DFT_SCALING_16384[5][6];
+extern uint32_t DFT_SCALING_18432[5][7];
+extern uint32_t DFT_SCALING_24576[5][7];
+extern uint32_t DFT_SCALING_32768[5][7];
+extern uint32_t DFT_SCALING_36864[5][7];
+extern uint32_t DFT_SCALING_49152[5][7];
+extern uint32_t DFT_SCALING_65536[5][7];
+extern uint32_t DFT_SCALING_73728[5][8];
+extern uint32_t DFT_SCALING_98304[5][8];
 
 extern uint32_t IDFT_SCALING_128[2];
 extern uint32_t IDFT_SCALING_256[2];
@@ -688,50 +689,53 @@ static inline dft_size_idx_t get_dft(int size)
 *
 *********************************************************************/
 static inline
-uint32_t *get_dft_scaling(int ofdm_symbol_size)
+uint32_t *get_dft_scaling(int ofdm_symbol_size,int offset)
 {
+  if (offset < 0) offset = 0;
+  if (offset > 4) offset = 4;
   switch (ofdm_symbol_size) {
+    case 64:
+      return DFT_SCALING_64[offset];
     case 128:
-      return DFT_SCALING_128;
+      return DFT_SCALING_128[offset];
     case 256:
-      return DFT_SCALING_256;
+      return DFT_SCALING_256[offset];
     case 512:
-      return DFT_SCALING_512;
+      return DFT_SCALING_512[offset];
     case 768:
-      return DFT_SCALING_768;
+      return DFT_SCALING_768[offset];
     case 1024:
-      return DFT_SCALING_1024;
+      return DFT_SCALING_1024[offset];
     case 1536:
-      return DFT_SCALING_1536;
+      return DFT_SCALING_1536[offset];
     case 2048:
-      return DFT_SCALING_2048;
+      return DFT_SCALING_2048[offset];
     case 3072:
-      return DFT_SCALING_3072;
+      return DFT_SCALING_3072[offset];
     case 4096:
-      return DFT_SCALING_4096;
+      return DFT_SCALING_4096[offset];
     case 6144:
-      return DFT_SCALING_6144;
+      return DFT_SCALING_6144[offset];
     case 8192:
-      return DFT_SCALING_8192;
+      return DFT_SCALING_8192[offset];
     case 9216:
-      return DFT_SCALING_9216;
+      return DFT_SCALING_9216[offset];
     case 12288:
-      return DFT_SCALING_12288;
+      return DFT_SCALING_12288[offset];
     case 18432:
-      return DFT_SCALING_18432;
+      return DFT_SCALING_18432[offset];
     case 24576:
-      return DFT_SCALING_24576;
+      return DFT_SCALING_24576[offset];
     case 36864:
-      return DFT_SCALING_36864;
+      return DFT_SCALING_36864[offset];
     case 49152:
-      return DFT_SCALING_49152;
+      return DFT_SCALING_49152[offset];
     case 73728:
-      return DFT_SCALING_73728;
+      return DFT_SCALING_73728[offset];
     case 98304:
-      return DFT_SCALING_98304;
+      return DFT_SCALING_98304[offset];
     default:
-      printf("function get_dft : unsupported ofdm symbol size \n");
-      assert(0);
+      return (uint32_t*)1;
       break;
   }
   return NULL;

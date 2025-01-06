@@ -1222,10 +1222,10 @@ static inline void dft16(int16_t *x,int16_t *y) __attribute__((always_inline)
 }
 #endif
 
-#define USE_DFT16_SHIFT
+//#define USE_DFT16_SHIFT
 
 // Does two 16-point DFTS (x[0 .. 15] is 128 LSBs of input vector, x[16..31] is in 128 MSBs)
-__attribute__((always_inline)) static inline void dft16_simd256(int16_t *x, int16_t *y)
+__attribute__((always_inline)) static inline void dft16_simd256(int16_t *x, int16_t *y,int scale)
 {
   simde__m256i *tw16a_256 = (simde__m256i *)tw16arep, *tw16b_256 = (simde__m256i *)tw16brep, *x256 = (simde__m256i *)x,
                *y256 = (simde__m256i *)y;
@@ -1313,26 +1313,16 @@ __attribute__((always_inline)) static inline void dft16_simd256(int16_t *x, int1
 
   x02t    = simde_mm256_adds_epi16(xtmp0,xtmp2);
   x13t    = simde_mm256_adds_epi16(xtmp1,xtmp3);
-#ifdef USE_DFT16_SHIFT
-  ytmp0 = simde_mm256_srai_epi16(simde_mm256_adds_epi16(x02t, x13t), 2);
-  ytmp2 = simde_mm256_srai_epi16(simde_mm256_subs_epi16(x02t, x13t), 2);
-#else
-  ytmp0 = simde_mm256_adds_epi16(x02t, x13t);
-  ytmp2 = simde_mm256_subs_epi16(x02t, x13t);
-#endif
+  ytmp0   = simde_mm256_srai_epi16(simde_mm256_adds_epi16(x02t, x13t), scale);
+  ytmp2   = simde_mm256_srai_epi16(simde_mm256_subs_epi16(x02t, x13t), scale);
   x1_flip = simde_mm256_sign_epi16(xtmp1, *(simde__m256i *)conjugatedft);
   x1_flip = simde_mm256_shuffle_epi8(x1_flip,complex_shuffle);
   x3_flip = simde_mm256_sign_epi16(xtmp3, *(simde__m256i *)conjugatedft);
   x3_flip = simde_mm256_shuffle_epi8(x3_flip,complex_shuffle);
   x02t    = simde_mm256_subs_epi16(xtmp0,xtmp2);
   x13t    = simde_mm256_subs_epi16(x1_flip,x3_flip);
-#ifdef USE_DFT16_SHIFT
-  ytmp1 = simde_mm256_srai_epi16(simde_mm256_adds_epi16(x02t, x13t), 2); // x0 + x1f - x2 - x3f
-  ytmp3 = simde_mm256_srai_epi16(simde_mm256_subs_epi16(x02t, x13t), 2); // x0 - x1f - x2 + x3f
-#else
-  ytmp1 = simde_mm256_adds_epi16(x02t, x13t); // x0 + x1f - x2 - x3f
-  ytmp3 = simde_mm256_subs_epi16(x02t, x13t); // x0 - x1f - x2 + x3f
-#endif
+  ytmp1 = simde_mm256_srai_epi16(simde_mm256_adds_epi16(x02t, x13t), scale); // x0 + x1f - x2 - x3f
+  ytmp3 = simde_mm256_srai_epi16(simde_mm256_subs_epi16(x02t, x13t), scale); // x0 - x1f - x2 + x3f
 
   // [y0  y1  y2  y3  y16 y17 y18 y19]
   // [y4  y5  y6  y7  y20 y21 y22 y23]
@@ -1596,7 +1586,8 @@ void dft64(int16_t *x,int16_t *y,unsigned int *scale)
 
   simd256_q15_t xtmp[16],ytmp[16],*tw64a_256=(simd256_q15_t *)tw64a,*tw64b_256=(simd256_q15_t *)tw64b,*x256=(simd256_q15_t *)x,*y256=(simd256_q15_t *)y;
 
-
+  int scale16;
+  if (scale) scale16 = scale[1];
 #ifdef D64STATS
   time_stats_t ts_t,ts_d,ts_b;
 
@@ -1641,7 +1632,7 @@ void dft64(int16_t *x,int16_t *y,unsigned int *scale)
   xtmp[6] = _mm256_permutex2var_epi32(x256[4],perm_mask2,x256[5]); // x33 x37 x41 x45 x35 x39 x43 x46 
   xtmp[7] = _mm256_permutex2var_epi32(x256[6],perm_mask2,x256[7]); // x49 x53 x57 x61 x51 x55 x59 x63 
 #endif
-  dft16_simd256((int16_t*)(xtmp),(int16_t*)ytmp);
+  dft16_simd256((int16_t*)(xtmp),(int16_t*)ytmp,scale16);
   // [y0  y1  y2  y3  y4  y5  y6  y7]
   // [y8  y9  y10 y11 y12 y13 y14 y15]
   // [y16 y17 y18 y19 y20 y21 y22 y23]
@@ -1652,7 +1643,7 @@ void dft64(int16_t *x,int16_t *y,unsigned int *scale)
   print_shorts256("ytmp2",(int16_t*)(ytmp+2));
   print_shorts256("ytmp3",(int16_t*)(ytmp+3));
   */
-  dft16_simd256((int16_t*)(xtmp+4),(int16_t*)(ytmp+4));
+  dft16_simd256((int16_t*)(xtmp+4),(int16_t*)(ytmp+4),scale16);
   // [y32 y33 y34 y35 y36 y37 y38 y39]
   // [y40 y41 y42 y43 y44 y45 y46 y47]
   // [y48 y49 y50 y51 y52 y53 y54 y55]

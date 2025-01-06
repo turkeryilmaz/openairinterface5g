@@ -77,6 +77,7 @@ int main(void)
     const int n = dftFtab[sz].size;
     cd_t data[n];
     double coeffs[] = {0.25, 0.5, 1, 1.5, 2, 2.5, 3};
+    printf("Testing size %d\n",n);
     cd_t out[n];
     for (int i = 0; i < n; i++) {
       data[i].r = gaussZiggurat(0, 1.0); // gaussZiggurat not used paramters, to fix
@@ -99,7 +100,7 @@ int main(void)
           d16[i].i = expand * data[i].i;
         }
       }
-      dft(get_dft(n), (int16_t *)d16, (int16_t *)o16, 1);
+      dft(get_dft(n), (int16_t *)d16, (int16_t *)o16,get_dft_scaling(n,coeff));
       if (n == 12) {
         for (int i = 0; i < n; i++) {
           cd_t error = {.r = o16[i * 4].r / (expand * sqrt(n)) - out[i].r, .i = o16[i * 4].i / (expand * sqrt(n)) - out[i].i};
@@ -108,13 +109,13 @@ int main(void)
         }
       } else {
         for (int i = 0; i < n; i++) {
-          cd_t error = {.r = o16[i].r / expand - out[i].r, .i = o16[i].i / expand - out[i].i};
-          evm[coeff] += sqrt(squaredMod(error)) / sqrt(squaredMod(out[i]));
+          cd_t error2 = {.r = o16[i].r / expand - out[i].r, .i = o16[i].i / expand - out[i].i};
+          evm[coeff] += sqrt(squaredMod(error2)) / sqrt(squaredMod(out[i]));
           samples[coeff] += sqrt(squaredMod(d16[i]));
-          /*
+      /*    if (n==64){ 
             if (error(o16[i], out[i], 5))
-            printf("Error in dft %d at %d, (%d, %d) != %f, %f)\n", n, i, o16[i].r, o16[i].i, gslout[i].r, gslout[i].i);
-          */
+            printf("Error in dft %d at %d, coeff %d, expand %f, (%f, %f) != %f, %f)\n", n, i, coeff, expand,o16[i].r/expand, o16[i].i/expand, out[i].r, out[i].i);
+          }*/
         }
       }
     }
