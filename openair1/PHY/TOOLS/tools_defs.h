@@ -621,7 +621,7 @@ extern uint32_t IDFT_SCALING_256[2];
 extern uint32_t IDFT_SCALING_512[3];
 extern uint32_t IDFT_SCALING_768[3];
 extern uint32_t IDFT_SCALING_1024[3];
-extern uint32_t IDFT_SCALING_1536[3];
+extern uint32_t IDFT_SCALING_1536[4];
 extern uint32_t IDFT_SCALING_2048[4];
 extern uint32_t IDFT_SCALING_3072[4];
 extern uint32_t IDFT_SCALING_4096[4];

@@ -201,7 +201,7 @@ void generate_pss_nr_time(const NR_DL_FRAME_PARMS *fp, const int N_ID_2, int ssb
     dft((int16_t)get_dft(length),
     	synchro_tmp,           /* complex input */
         synchroF_tmp,          /* complex output */
-        get_dft_scaling(length)); /* scaling factor */
+        get_dft_scaling(length,0)); /* scaling factor */
 
     if ((N_ID_2 == 0) && (length == 256)) {
       LOG_M("pss_f_0.m","pss_f_0",synchroF_tmp,length,1,1);

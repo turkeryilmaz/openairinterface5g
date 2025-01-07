@@ -91,11 +91,11 @@ int slot_fep(PHY_VARS_UE *ue,
                (void *)&common_vars->rxdata[aa][rx_offset % frame_length_samples],
                frame_parms->ofdm_symbol_size*sizeof(int));
         dft(dftsizeidx,(int16_t *)tmp_dft_in,
-            (int16_t *)&common_vars->common_vars_rx_data_per_thread[ue->current_thread_id[Ns>>1]].rxdataF[aa][frame_parms->ofdm_symbol_size*symbol],get_dft_scaling(s));
+            (int16_t *)&common_vars->common_vars_rx_data_per_thread[ue->current_thread_id[Ns>>1]].rxdataF[aa][frame_parms->ofdm_symbol_size*symbol],get_dft_scaling(s,0));
       } else { // use dft input from RX buffer directly
         start_UE_TIMING(ue->rx_dft_stats);
         dft(dftsizeidx,(int16_t *)&common_vars->rxdata[aa][(rx_offset) % frame_length_samples],
-            (int16_t *)&common_vars->common_vars_rx_data_per_thread[ue->current_thread_id[Ns>>1]].rxdataF[aa][frame_parms->ofdm_symbol_size*symbol],get_dft_scaling(s));
+            (int16_t *)&common_vars->common_vars_rx_data_per_thread[ue->current_thread_id[Ns>>1]].rxdataF[aa][frame_parms->ofdm_symbol_size*symbol],get_dft_scaling(s,0));
         stop_UE_TIMING(ue->rx_dft_stats);
       }
     } else {
@@ -120,10 +120,10 @@ int slot_fep(PHY_VARS_UE *ue,
                (void *)&common_vars->rxdata[aa][(rx_offset) % frame_length_samples],
                frame_parms->ofdm_symbol_size*sizeof(int));
         dft(dftsizeidx,(int16_t *)tmp_dft_in,
-            (int16_t *)&common_vars->common_vars_rx_data_per_thread[ue->current_thread_id[Ns>>1]].rxdataF[aa][frame_parms->ofdm_symbol_size*symbol],get_dft_scaling(s));
+            (int16_t *)&common_vars->common_vars_rx_data_per_thread[ue->current_thread_id[Ns>>1]].rxdataF[aa][frame_parms->ofdm_symbol_size*symbol],get_dft_scaling(s,0));
       } else { // use dft input from RX buffer directly
         dft(dftsizeidx,(int16_t *)&common_vars->rxdata[aa][(rx_offset) % frame_length_samples],
-            (int16_t *)&common_vars->common_vars_rx_data_per_thread[ue->current_thread_id[Ns>>1]].rxdataF[aa][frame_parms->ofdm_symbol_size*symbol],get_dft_scaling(s));
+            (int16_t *)&common_vars->common_vars_rx_data_per_thread[ue->current_thread_id[Ns>>1]].rxdataF[aa][frame_parms->ofdm_symbol_size*symbol],get_dft_scaling(s,0));
       }
 
       stop_UE_TIMING(ue->rx_dft_stats);
@@ -249,11 +249,11 @@ int front_end_fft(PHY_VARS_UE *ue,
                (void *)&common_vars->rxdata[aa][rx_offset % frame_length_samples],
                frame_parms->ofdm_symbol_size*sizeof(int));
         dft(dftsizeidx,(int16_t *)tmp_dft_in,
-            (int16_t *)&common_vars->common_vars_rx_data_per_thread[threadId].rxdataF[aa][frame_parms->ofdm_symbol_size*symbol],get_dft_scaling(s));
+            (int16_t *)&common_vars->common_vars_rx_data_per_thread[threadId].rxdataF[aa][frame_parms->ofdm_symbol_size*symbol],get_dft_scaling(s,0));
       } else { // use dft input from RX buffer directly
         start_meas(&ue->rx_dft_stats);
         dft(dftsizeidx,(int16_t *)&common_vars->rxdata[aa][(rx_offset) % frame_length_samples],
-            (int16_t *)&common_vars->common_vars_rx_data_per_thread[threadId].rxdataF[aa][frame_parms->ofdm_symbol_size*symbol],get_dft_scaling(s));
+            (int16_t *)&common_vars->common_vars_rx_data_per_thread[threadId].rxdataF[aa][frame_parms->ofdm_symbol_size*symbol],get_dft_scaling(s,0));
         stop_meas(&ue->rx_dft_stats);
       }
     } else {
@@ -279,10 +279,10 @@ int front_end_fft(PHY_VARS_UE *ue,
                (void *)&common_vars->rxdata[aa][(rx_offset) % frame_length_samples],
                frame_parms->ofdm_symbol_size*sizeof(int));
         dft(dftsizeidx,(int16_t *)tmp_dft_in,
-            (int16_t *)&common_vars->common_vars_rx_data_per_thread[threadId].rxdataF[aa][frame_parms->ofdm_symbol_size*symbol],get_dft_scaling(s));
+            (int16_t *)&common_vars->common_vars_rx_data_per_thread[threadId].rxdataF[aa][frame_parms->ofdm_symbol_size*symbol],get_dft_scaling(s,0));
       } else { // use dft input from RX buffer directly
         dft(dftsizeidx,(int16_t *)&common_vars->rxdata[aa][(rx_offset) % frame_length_samples],
-            (int16_t *)&common_vars->common_vars_rx_data_per_thread[threadId].rxdataF[aa][frame_parms->ofdm_symbol_size*symbol],get_dft_scaling(s));
+            (int16_t *)&common_vars->common_vars_rx_data_per_thread[threadId].rxdataF[aa][frame_parms->ofdm_symbol_size*symbol],get_dft_scaling(s,0));
       }
 
       stop_meas(&ue->rx_dft_stats);

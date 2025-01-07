@@ -15,6 +15,7 @@
   SZ_DEF(1024)                        \
   SZ_DEF(1536)                        \
   SZ_DEF(2048)                        \
+  SZ_DEF(3072)                        \
   SZ_DEF(4096)                        \
   SZ_DEF(6144)                        \
   SZ_DEF(8192)                        \
@@ -44,14 +45,15 @@ bool error(c16_t v16, cd_t vd, double percent)
   return false;
 }
 
-void math_dft(cd_t *in, cd_t *out, int len)
+void math_dft(cd_t *in, cd_t *out, int len,int dir)
 {
   for (int k = 0; k < len; k++) {
     cd_t tmp = {0};
     // wrote this way to help gcc to generate SIMD
     double phi[len], sint[len], cost[len];
     for (int n = 0; n < len; n++)
-      phi[n] = -2 * M_PI * ((double)k / len) * n;
+      if (dir ==0) phi[n] = -2 * M_PI * ((double)k / len) * n;
+      else         phi[n] =  2* M_PI * ((double)k/len)*n;
     for (int n = 0; n < len; n++)
       sint[n] = sin(phi[n]);
     for (int n = 0; n < len; n++)
@@ -66,6 +68,57 @@ void math_dft(cd_t *in, cd_t *out, int len)
     out[k].i = tmp.i / sqrt(len);
   }
 }
+
+void fill_qam(int n, cd_t *x, int mod) {
+  int size;
+  if (mod < 0 || mod >1) {
+    printf("Illegal modulation %d\n",mod);
+    exit(-1);
+  }
+  double sqrt170 = 1.0/sqrt(170);
+  memset((void*)&x[0],0,n*sizeof(cd_t));
+  switch (n) {
+    case 128:  size=72;   break;
+    case 256:  size=180;  break;
+    case 512:  size=300;  break;
+    case 768:  size=612;  break;
+    case 1024: size=612;  break;
+    case 1536: size=900;  break;
+    case 2048: size=1596; break;
+    case 3072: size=2556; break;
+    case 4096: size=3276; break;
+    default:   printf("Illegal FFT length %d\n",n); exit(-1);;
+  }
+  for (int i=0;i<size/2;i++) {
+    if (mod==0) {
+      int rv=taus()&1;
+      x[i].r = (1/sqrt(2.0)) * ((rv<<1) - 1); 
+      rv=taus()&1;
+      x[i].i = (1/sqrt(2.0)) * ((rv<<1) - 1);
+    }
+    else {
+      int rvi=taus()&15;
+      int rvq=taus()&15;
+      x[i].r   = ((1-2*(rvi&1))*(8-(1-2*((rvi>>1)&1))*(4-(1-2*((rvi>>2)&1))*(2-(1-2*((rvi>>3)&1))))))*sqrt170;
+      x[i].i   = ((1-2*(rvq&1))*(8-(1-2*((rvq>>1)&1))*(4-(1-2*((rvq>>2)&1))*(2-(1-2*((rvq>>3)&1))))))*sqrt170;
+    }
+  } 
+  for (int i=n-(size/2);i<n;i++) {
+    if (mod==0) {
+      int rv=taus()&1;
+      x[i].r = (1/sqrt(2.0)) * ((rv<<1) - 1); 
+      rv=taus()&1;
+      x[i].i = (1/sqrt(2.0)) * ((rv<<1) - 1);
+    }
+    else {
+      int rvi=taus()&15;
+      int rvq=taus()&15;
+      x[i].r   = ((1-2*(rvi&1))*(8-(1-2*((rvi>>1)&1))*(4-(1-2*((rvi>>2)&1))*(2-(1-2*((rvi>>3)&1))))))*sqrt170;
+      x[i].i   = ((1-2*(rvq&1))*(8-(1-2*((rvq>>1)&1))*(4-(1-2*((rvq>>2)&1))*(2-(1-2*((rvq>>3)&1))))))*sqrt170;
+    }
+  }
+}
+
 
 int main(void)
 {
@@ -83,7 +136,7 @@ int main(void)
       data[i].r = gaussZiggurat(0, 1.0); // gaussZiggurat not used paramters, to fix
       data[i].i = gaussZiggurat(0, 1.0);
     }
-    math_dft(data, out, n);
+    math_dft(data, out, n,0);
     double evm[sizeofArray(coeffs)] = {0};
     double sqnr[sizeofArray(coeffs)] = {0};
     double samples[sizeofArray(coeffs)] = {0};
@@ -110,10 +163,9 @@ int main(void)
         }
       } else {
         for (int i = 0; i < n; i++) {
-          cd_t error2 = {.r = o16[i].r / expand - out[i].r, .i = o16[i].i / expand - out[i].i};
+          cd_t error2 = {.r = o16[i].r / expand - out[i].r , .i = o16[i].i / expand - out[i].i};
           evm[coeff] += sqrt(squaredMod(error2)) / sqrt(squaredMod(out[i]));
           sqnr[coeff] += squaredMod(out[i]) / (squaredMod(error2));
-          if (n==64) printf("sqnr[%d] %e (%e,%e)\n",coeff,sqnr[coeff],squaredMod(out[i]),squaredMod(error2));
           samples[coeff] += sqrt(squaredMod(d16[i]));
       /*    if (n==64){ 
             if (error(o16[i], out[i], 5))
@@ -133,6 +185,52 @@ int main(void)
     if (i == sizeofArray(coeffs)) {
       printf("DFT size: %d, minimum error is more than 1%%, setting the test as failed\n", n);
       ret = 1;
+    }
+    fflush(stdout);
+  }
+
+  for (int sz = 0; sz < sizeofArray(dftFtab); sz++) {
+    const int n = dftFtab[sz].size;
+    cd_t data[n];
+    cd_t in[n];
+    if (n > 4096) break;
+    if (n < 128) continue;
+    printf("Testing IDFT size %d\n",n);
+    cd_t out[n];
+    for (int mod=0;mod<2;mod++) {
+      fill_qam(n,data,mod);
+      int16_t amp=512;
+      for (int i = 0; i < n; i++) {
+        d16[i].r = amp*data[i].r; 
+        d16[i].i = amp*data[i].i;
+      }
+      idft(get_idft(n), (int16_t *)d16, (int16_t *)o16,get_idft_scaling(n));
+      for (int i =0; i < n; i++) {
+        in[i].r = (double)o16[i].r; 
+        in[i].i = (double)o16[i].i;
+      }
+      math_dft(in, out, n,0);
+      double evm = 0;
+      double sqnr = 0;
+      double samples = 0;
+      int nz=0;
+      for (int i = 0; i < n; i++) {
+        if (data[i].r != 0) {
+            cd_t error2 = {.r = d16[i].r - out[i].r, .i = d16[i].i - out[i].i};
+            evm += sqrt(squaredMod(error2)) / sqrt(squaredMod(out[i]));
+            sqnr += squaredMod(out[i]) / (squaredMod(error2));
+            samples += sqrt(squaredMod(d16[i]));
+            nz++;
+        }
+      }
+      printf("done IDFT size %d nz %d mod %s (evm (%%), SQNRdB, avg samples amplitude) = ", n,nz, mod==0?"QPSK":"256QAM");
+      printf("(%.2f, %f, %.0f) ", (evm / n) * 100, 10*log10(sqnr/nz),samples/ nz);
+      printf("\n");
+      if (evm / nz > 0.01){
+        printf("IDFT size: %d/ mod %s, minimum error is more than 1%%, setting the test as failed\n", n, mod==0?"QPSK":"256QAM");
+        ret = 1;
+        break;
+      }
     }
     fflush(stdout);
   }
