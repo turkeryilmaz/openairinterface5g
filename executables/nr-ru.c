@@ -1307,16 +1307,16 @@ void *ru_thread(void *param)
       } // end if (ru->feprx)
     } // end if (slot_type == NR_UPLINK_SLOT || slot_type == NR_MIXED_SLOT) {
 
-    notifiedFIFO_elt_t *resTx = newNotifiedFIFO_elt(sizeof(processingData_L1tx_t), 0, &gNB->L1_tx_out, NULL);
-    processingData_L1tx_t *syncMsgTx = NotifiedFifoData(resTx);
-    syncMsgTx->gNB = gNB;
-    syncMsgTx->frame = proc->frame_tx;
-    syncMsgTx->slot = proc->tti_tx;
-    syncMsgTx->frame_rx = proc->frame_rx;
-    syncMsgTx->slot_rx = proc->tti_rx;
-    syncMsgTx->timestamp_tx = proc->timestamp_tx;
-    resTx->key = proc->tti_tx;
-    pushNotifiedFIFO(&gNB->L1_tx_out, resTx);
+//    notifiedFIFO_elt_t *resTx = newNotifiedFIFO_elt(sizeof(processingData_L1tx_t), 0, &gNB->L1_tx_out, NULL);
+//    processingData_L1tx_t *syncMsgTx = NotifiedFifoData(resTx);
+//    syncMsgTx->gNB = gNB;
+//    syncMsgTx->frame = proc->frame_tx;
+//    syncMsgTx->slot = proc->tti_tx;
+//    syncMsgTx->frame_rx = proc->frame_rx;
+//    syncMsgTx->slot_rx = proc->tti_rx;
+//    syncMsgTx->timestamp_tx = proc->timestamp_tx;
+//    resTx->key = proc->tti_tx;
+//    pushNotifiedFIFO(&gNB->L1_tx_out, resTx);
   }
 
   ru_thread_status = 0;

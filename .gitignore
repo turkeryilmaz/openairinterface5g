@@ -14,6 +14,8 @@ lte_build_oai/
 .cproject
 .project
 .settings
+.idea
+cmake-build-debug/
 
 # Tags for vim/global
 GPATH
