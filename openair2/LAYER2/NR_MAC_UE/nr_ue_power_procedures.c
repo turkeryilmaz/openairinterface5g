@@ -677,3 +677,129 @@ int get_srs_tx_power_ue(NR_UE_MAC_INST_t *mac,
 
   return min(P_CMAX, srs_power_without_h_b_f_c + h_b_f_c);
 }
+
+/* TS 38.321 subclause 7.3 - return DELTA_PREAMBLE values in dB */
+static int8_t nr_get_DELTA_PREAMBLE(NR_UE_MAC_INST_t *mac, int CC_id, uint16_t prach_format)
+{
+  NR_RACH_ConfigCommon_t *nr_rach_ConfigCommon = mac->current_UL_BWP->rach_ConfigCommon;
+  NR_SubcarrierSpacing_t scs = *nr_rach_ConfigCommon->msg1_SubcarrierSpacing;
+  int prach_sequence_length = nr_rach_ConfigCommon->prach_RootSequenceIndex.present - 1;
+  uint8_t prachConfigIndex, mu;
+
+  AssertFatal(CC_id == 0, "Transmission on secondary CCs is not supported yet\n");
+
+  // SCS configuration from msg1_SubcarrierSpacing and table 4.2-1 in TS 38.211
+
+  switch (scs) {
+    case NR_SubcarrierSpacing_kHz15:
+      mu = 0;
+      break;
+
+    case NR_SubcarrierSpacing_kHz30:
+      mu = 1;
+      break;
+
+    case NR_SubcarrierSpacing_kHz60:
+      mu = 2;
+      break;
+
+    case NR_SubcarrierSpacing_kHz120:
+      mu = 3;
+      break;
+
+    case NR_SubcarrierSpacing_kHz240:
+      mu = 4;
+      break;
+
+    case NR_SubcarrierSpacing_kHz480_v1700:
+      mu = 5;
+      break;
+
+    case NR_SubcarrierSpacing_kHz960_v1700:
+      mu = 6;
+      break;
+
+    case NR_SubcarrierSpacing_spare1:
+      mu = 7;
+      break;
+
+    default:
+      AssertFatal(1 == 0, "Unknown msg1_SubcarrierSpacing %lu\n", scs);
+  }
+
+  // Preamble formats given by prach_ConfigurationIndex and tables 6.3.3.2-2 and 6.3.3.2-2 in TS 38.211
+
+  prachConfigIndex = nr_rach_ConfigCommon->rach_ConfigGeneric.prach_ConfigurationIndex;
+
+  if (prach_sequence_length == 0) {
+    AssertFatal(prach_format < 4, "Illegal PRACH format %d for sequence length 839\n", prach_format);
+    switch (prach_format) {
+      // long preamble formats
+      case 0:
+      case 3:
+        return 0;
+
+      case 1:
+        return -3;
+
+      case 2:
+        return -6;
+    }
+  } else {
+    switch (prach_format) { // short preamble formats
+      case 0:
+      case 3:
+        return 8 + 3 * mu;
+
+      case 1:
+      case 4:
+      case 8:
+        return 5 + 3 * mu;
+
+      case 2:
+      case 5:
+        return 3 + 3 * mu;
+
+      case 6:
+        return 3 * mu;
+
+      case 7:
+        return 5 + 3 * mu;
+
+      default:
+        AssertFatal(1 == 0,
+                    "[UE %d] ue_procedures.c: FATAL, Illegal preambleFormat %d, prachConfigIndex %d\n",
+                    mac->ue_id,
+                    prach_format,
+                    prachConfigIndex);
+    }
+  }
+  return 0;
+}
+
+// TS 38.321 subclause 5.1.3 - RA preamble transmission - ra_PREAMBLE_RECEIVED_TARGET_POWER configuration
+// Measurement units:
+// - preambleReceivedTargetPower      dBm (-202..-60, 2 dBm granularity)
+// - delta_preamble                   dB
+// - RA_PREAMBLE_POWER_RAMPING_STEP   dB
+// - POWER_OFFSET_2STEP_RA            dB
+// returns receivedTargerPower in dBm
+int nr_get_Po_NOMINAL_PUSCH(NR_UE_MAC_INST_t *mac, NR_PRACH_RESOURCES_t *prach_resources, uint8_t CC_id)
+{
+  int8_t receivedTargerPower;
+  int8_t delta_preamble;
+
+  NR_RACH_ConfigCommon_t *nr_rach_ConfigCommon = mac->current_UL_BWP->rach_ConfigCommon;
+  long preambleReceivedTargetPower = nr_rach_ConfigCommon->rach_ConfigGeneric.preambleReceivedTargetPower;
+  delta_preamble = nr_get_DELTA_PREAMBLE(mac, CC_id, prach_resources->prach_format);
+
+  receivedTargerPower = preambleReceivedTargetPower + delta_preamble
+                        + (prach_resources->RA_PREAMBLE_POWER_RAMPING_COUNTER - 1) * prach_resources->RA_PREAMBLE_POWER_RAMPING_STEP
+                        + prach_resources->POWER_OFFSET_2STEP_RA;
+
+  LOG_I(MAC,
+        "ReceivedTargerPower is %d dBm counter %d \n",
+        receivedTargerPower,
+        prach_resources->RA_PREAMBLE_POWER_RAMPING_COUNTER);
+  return receivedTargerPower;
+}
