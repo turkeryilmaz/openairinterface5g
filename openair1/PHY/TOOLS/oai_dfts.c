@@ -1586,7 +1586,7 @@ void dft64(int16_t *x,int16_t *y,unsigned int *scale)
 
   simd256_q15_t xtmp[16],ytmp[16],*tw64a_256=(simd256_q15_t *)tw64a,*tw64b_256=(simd256_q15_t *)tw64b,*x256=(simd256_q15_t *)x,*y256=(simd256_q15_t *)y;
 
-  int scale16;
+  int scale16=0;
   if (scale) scale16 = scale[1];
 #ifdef D64STATS
   time_stats_t ts_t,ts_d,ts_b;
