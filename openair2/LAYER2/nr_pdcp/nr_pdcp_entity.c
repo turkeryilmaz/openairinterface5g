@@ -214,7 +214,7 @@ static void nr_pdcp_entity_recv_pdu(nr_pdcp_entity_t *entity,
 }
 
 static int nr_pdcp_entity_process_sdu(nr_pdcp_entity_t *entity,
-                                      uint8_t *buffer,
+                                      const uint8_t *buffer,
                                       int size,
                                       int sdu_id,
                                       uint8_t *pdu_buffer,

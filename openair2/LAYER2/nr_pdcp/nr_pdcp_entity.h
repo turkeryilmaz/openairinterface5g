@@ -93,7 +93,7 @@ typedef struct nr_pdcp_entity_t {
 
   /* functions provided by the PDCP module */
   void (*recv_pdu)(struct nr_pdcp_entity_t *entity, uint8_t *buffer, int size);
-  int (*process_sdu)(struct nr_pdcp_entity_t *entity, uint8_t *buffer, int size,
+  int (*process_sdu)(struct nr_pdcp_entity_t *entity, const uint8_t *buffer, int size,
                      int sdu_id, uint8_t *pdu_buffer, int pdu_max_size);
   void (*delete_entity)(struct nr_pdcp_entity_t *entity);
   void (*release_entity)(struct nr_pdcp_entity_t *entity);
