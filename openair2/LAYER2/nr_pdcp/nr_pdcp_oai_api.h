@@ -111,9 +111,9 @@ bool cu_f1u_data_req(protocol_ctxt_t  *ctxt_pP,
                      const uint32_t *const destinationL2Id);
 
 typedef void (*deliver_pdu)(void *data, ue_id_t ue_id, int srb_id,
-                            char *buf, int size, int sdu_id);
+                            uint8_t *buf, int size, int sdu_id);
 /* default implementation of deliver_pdu */
-void deliver_pdu_srb_rlc(void *data, ue_id_t ue_id, int srb_id, char *buf, int size, int sdu_id);
+void deliver_pdu_srb_rlc(void *data, ue_id_t ue_id, int srb_id, uint8_t *buf, int size, int sdu_id);
 bool nr_pdcp_data_req_srb(ue_id_t ue_id,
                           const rb_id_t rb_id,
                           const mui_t muiP,

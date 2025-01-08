@@ -305,7 +305,7 @@ static void do_pdcp_data_ind(const protocol_ctxt_t *const ctxt_pP,
   rb = nr_pdcp_get_rb(ue, rb_id, srb_flagP);
 
   if (rb != NULL) {
-    rb->recv_pdu(rb, (char *)sdu_buffer, sdu_buffer_size);
+    rb->recv_pdu(rb, sdu_buffer, sdu_buffer_size);
   } else {
     LOG_E(PDCP, "pdcp_data_ind: no RB found (rb_id %ld, srb_flag %d)\n", rb_id, srb_flagP);
   }
@@ -433,7 +433,7 @@ static void reblock_tun_socket(void)
 static void *enb_tun_read_thread(void *_)
 {
   extern int nas_sock_fd[];
-  char rx_buf[NL_MAX_PAYLOAD];
+  uint8_t rx_buf[NL_MAX_PAYLOAD];
   int len;
   protocol_ctxt_t ctxt;
   ue_id_t UEid;
@@ -476,7 +476,7 @@ static void *enb_tun_read_thread(void *_)
                   RLC_MUI_UNDEFINED,
                   RLC_SDU_CONFIRM_NO,
                   len,
-                  (unsigned char *)rx_buf,
+                  rx_buf,
                   PDCP_TRANSMISSION_MODE_DATA,
                   NULL,
                   NULL,
@@ -491,7 +491,7 @@ static void *enb_tun_read_thread(void *_)
 static void *ue_tun_read_thread(void *_)
 {
   extern int nas_sock_fd[];
-  char rx_buf[NL_MAX_PAYLOAD];
+  uint8_t rx_buf[NL_MAX_PAYLOAD];
   int len;
   protocol_ctxt_t ctxt;
   ue_id_t UEid;
@@ -534,7 +534,7 @@ static void *ue_tun_read_thread(void *_)
                   RLC_MUI_UNDEFINED,
                   RLC_SDU_CONFIRM_NO,
                   len,
-                  (unsigned char *)rx_buf,
+                  rx_buf,
                   PDCP_TRANSMISSION_MODE_DATA,
                   NULL,
                   NULL,
@@ -660,7 +660,7 @@ uint64_t nr_pdcp_module_init(uint64_t _pdcp_optmask, int id)
 }
 
 static void deliver_sdu_drb(void *_ue, nr_pdcp_entity_t *entity,
-                            char *buf, int size,
+                            uint8_t *buf, int size,
                             const nr_pdcp_integrity_data_t *msg_integrity)
 {
   nr_pdcp_ue_t *ue = _ue;
@@ -699,7 +699,7 @@ static void deliver_sdu_drb(void *_ue, nr_pdcp_entity_t *entity,
 }
 
 static void deliver_pdu_drb_ue(void *deliver_pdu_data, ue_id_t ue_id, int rb_id,
-                               char *buf, int size, int sdu_id)
+                               uint8_t *buf, int size, int sdu_id)
 {
   DevAssert(deliver_pdu_data == NULL);
   protocol_ctxt_t ctxt = { .enb_flag = 0, .rntiMaybeUEid = ue_id };
@@ -711,7 +711,7 @@ static void deliver_pdu_drb_ue(void *deliver_pdu_data, ue_id_t ue_id, int rb_id,
 }
 
 static void deliver_pdu_drb_gnb(void *deliver_pdu_data, ue_id_t ue_id, int rb_id,
-                                char *buf, int size, int sdu_id)
+                                uint8_t *buf, int size, int sdu_id)
 {
   DevAssert(deliver_pdu_data == NULL);
   f1_ue_data_t ue_data = cu_get_f1_ue_data(ue_id);
@@ -720,7 +720,7 @@ static void deliver_pdu_drb_gnb(void *deliver_pdu_data, ue_id_t ue_id, int rb_id
   if (NODE_IS_CU(node_type)) {
     LOG_D(PDCP, "%s() (drb %d) sending message to gtp size %d\n", __func__, rb_id, size);
     extern instance_t CUuniqInstance;
-    gtpv1uSendDirect(CUuniqInstance, ue_id, rb_id, (uint8_t *)buf, size, false, false);
+    gtpv1uSendDirect(CUuniqInstance, ue_id, rb_id, buf, size, false, false);
   } else {
     uint8_t *memblock = malloc16(size);
     memcpy(memblock, buf, size);
@@ -730,7 +730,7 @@ static void deliver_pdu_drb_gnb(void *deliver_pdu_data, ue_id_t ue_id, int rb_id
 }
 
 static void deliver_sdu_srb(void *_ue, nr_pdcp_entity_t *entity,
-                            char *buf, int size,
+                            uint8_t *buf, int size,
                             const nr_pdcp_integrity_data_t *msg_integrity)
 {
   nr_pdcp_ue_t *ue = _ue;
@@ -779,7 +779,7 @@ srb_found:
 }
 
 void deliver_pdu_srb_rlc(void *deliver_pdu_data, ue_id_t ue_id, int srb_id,
-                         char *buf, int size, int sdu_id)
+                         uint8_t *buf, int size, int sdu_id)
 {
   protocol_ctxt_t ctxt = { .enb_flag = 1, .rntiMaybeUEid = ue_id };
   uint8_t *memblock = malloc16(size);
@@ -1079,8 +1079,8 @@ bool nr_pdcp_data_req_srb(ue_id_t ue_id,
   }
 
   int max_size = nr_max_pdcp_pdu_size(sdu_buffer_size);
-  char pdu_buf[max_size];
-  int pdu_size = rb->process_sdu(rb, (char *)sdu_buffer, sdu_buffer_size, muiP, pdu_buf, max_size);
+  uint8_t pdu_buf[max_size];
+  int pdu_size = rb->process_sdu(rb, sdu_buffer, sdu_buffer_size, muiP, pdu_buf, max_size);
   if (pdu_size == -1) {
     nr_pdcp_manager_unlock(nr_pdcp_ue_manager);
     return 0;
@@ -1271,8 +1271,8 @@ bool nr_pdcp_data_req_drb(protocol_ctxt_t *ctxt_pP,
   }
 
   int max_size = nr_max_pdcp_pdu_size(sdu_buffer_size);
-  char pdu_buf[max_size];
-  int pdu_size = rb->process_sdu(rb, (char *)sdu_buffer, sdu_buffer_size, muiP, pdu_buf, max_size);
+  uint8_t pdu_buf[max_size];
+  int pdu_size = rb->process_sdu(rb, sdu_buffer, sdu_buffer_size, muiP, pdu_buf, max_size);
   if (pdu_size == -1) {
     nr_pdcp_manager_unlock(nr_pdcp_ue_manager);
     return 0;

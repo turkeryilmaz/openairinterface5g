@@ -24,7 +24,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-nr_pdcp_sdu_t *nr_pdcp_new_sdu(uint32_t count, char *buffer, int size,
+nr_pdcp_sdu_t *nr_pdcp_new_sdu(uint32_t count, uint8_t *buffer, int size,
                                const nr_pdcp_integrity_data_t *msg_integrity)
 {
   nr_pdcp_sdu_t *ret = calloc(1, sizeof(nr_pdcp_sdu_t));

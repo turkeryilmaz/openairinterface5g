@@ -92,9 +92,9 @@ typedef struct nr_pdcp_entity_t {
   nr_pdcp_entity_type_t type;
 
   /* functions provided by the PDCP module */
-  void (*recv_pdu)(struct nr_pdcp_entity_t *entity, char *buffer, int size);
-  int (*process_sdu)(struct nr_pdcp_entity_t *entity, char *buffer, int size,
-                     int sdu_id, char *pdu_buffer, int pdu_max_size);
+  void (*recv_pdu)(struct nr_pdcp_entity_t *entity, uint8_t *buffer, int size);
+  int (*process_sdu)(struct nr_pdcp_entity_t *entity, uint8_t *buffer, int size,
+                     int sdu_id, uint8_t *pdu_buffer, int pdu_max_size);
   void (*delete_entity)(struct nr_pdcp_entity_t *entity);
   void (*release_entity)(struct nr_pdcp_entity_t *entity);
   void (*suspend_entity)(struct nr_pdcp_entity_t *entity);
@@ -117,11 +117,11 @@ typedef struct nr_pdcp_entity_t {
 
   /* callbacks provided to the PDCP module */
   void (*deliver_sdu)(void *deliver_sdu_data, struct nr_pdcp_entity_t *entity,
-                      char *buf, int size,
+                      uint8_t *buf, int size,
                       const nr_pdcp_integrity_data_t *msg_integrity);
   void *deliver_sdu_data;
   void (*deliver_pdu)(void *deliver_pdu_data, ue_id_t ue_id, int rb_id,
-                      char *buf, int size, int sdu_id);
+                      uint8_t *buf, int size, int sdu_id);
   void *deliver_pdu_data;
 
   /* configuration variables */
@@ -154,13 +154,13 @@ typedef struct nr_pdcp_entity_t {
   nr_pdcp_entity_security_keys_and_algos_t security_keys_and_algos;
   stream_security_context_t *security_context;
   void (*cipher)(stream_security_context_t *security_context,
-                 unsigned char *buffer, int length,
+                 uint8_t *buffer, int length,
                  int bearer, int count, int direction);
   void (*free_security)(stream_security_context_t *security_context);
   stream_security_context_t *integrity_context;
   void (*integrity)(stream_security_context_t *integrity_context,
-                 unsigned char *out,
-                 unsigned char *buffer, int length,
+                 uint8_t *out,
+                 uint8_t *buffer, int length,
                  int bearer, int count, int direction);
   void (*free_integrity)(stream_security_context_t *integrity_context);
   /* security/integrity algorithms need to know uplink/downlink information
@@ -187,11 +187,11 @@ nr_pdcp_entity_t *new_nr_pdcp_entity(
     bool has_sdap_rx,
     bool has_sdap_tx,
     void (*deliver_sdu)(void *deliver_sdu_data, struct nr_pdcp_entity_t *entity,
-                        char *buf, int size,
+                        uint8_t *buf, int size,
                         const nr_pdcp_integrity_data_t *msg_integrity),
     void *deliver_sdu_data,
     void (*deliver_pdu)(void *deliver_pdu_data, ue_id_t ue_id, int rb_id,
-                        char *buf, int size, int sdu_id),
+                        uint8_t *buf, int size, int sdu_id),
     void *deliver_pdu_data,
     int sn_size,
     int t_reordering,

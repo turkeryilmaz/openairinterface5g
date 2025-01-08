@@ -44,9 +44,8 @@ int nr_max_pdcp_pdu_size(sdu_size_t sdu_size)
 }
 
 static void nr_pdcp_entity_recv_pdu(nr_pdcp_entity_t *entity,
-                                    char *_buffer, int size)
+                                    uint8_t *buffer, int size)
 {
-  unsigned char    *buffer = (unsigned char *)_buffer;
   nr_pdcp_sdu_t    *sdu;
   int              rcvd_sn;
   uint32_t         rcvd_hfn;
@@ -142,7 +141,7 @@ static void nr_pdcp_entity_recv_pdu(nr_pdcp_entity_t *entity,
                    entity->rb_id, rcvd_count, entity->is_gnb ? 0 : 1);
 
   if (entity->has_integrity) {
-    unsigned char integrity[PDCP_INTEGRITY_SIZE] = {0};
+    uint8_t integrity[PDCP_INTEGRITY_SIZE] = {0};
     entity->integrity(entity->integrity_context, integrity,
                       buffer, size - integrity_size,
                       entity->rb_id, rcvd_count, entity->is_gnb ? 0 : 1);
@@ -165,7 +164,7 @@ static void nr_pdcp_entity_recv_pdu(nr_pdcp_entity_t *entity,
   }
 
   sdu = nr_pdcp_new_sdu(rcvd_count,
-                        (char *)buffer + header_size,
+                        buffer + header_size,
                         size - header_size - integrity_size,
                         &msg_integrity);
   entity->rx_list = nr_pdcp_sdu_list_add(entity->rx_list, sdu);
@@ -215,10 +214,10 @@ static void nr_pdcp_entity_recv_pdu(nr_pdcp_entity_t *entity,
 }
 
 static int nr_pdcp_entity_process_sdu(nr_pdcp_entity_t *entity,
-                                      char *buffer,
+                                      uint8_t *buffer,
                                       int size,
                                       int sdu_id,
-                                      char *pdu_buffer,
+                                      uint8_t *pdu_buffer,
                                       int pdu_max_size)
 {
   uint32_t count;
@@ -226,7 +225,6 @@ static int nr_pdcp_entity_process_sdu(nr_pdcp_entity_t *entity,
   int      header_size;
   int      integrity_size;
   int      sdap_header_size = 0;
-  char    *buf = pdu_buffer;
   DevAssert(nr_max_pdcp_pdu_size(size) <= pdu_max_size);
   int      dc_bit;
 
@@ -255,13 +253,13 @@ static int nr_pdcp_entity_process_sdu(nr_pdcp_entity_t *entity,
   }
 
   if (entity->sn_size == SHORT_SN_SIZE) {
-    buf[0] = dc_bit | ((sn >> 8) & 0xf);
-    buf[1] = sn & 0xff;
+    pdu_buffer[0] = dc_bit | ((sn >> 8) & 0xf);
+    pdu_buffer[1] = sn & 0xff;
     header_size = SHORT_PDCP_HEADER_SIZE;
   } else {
-    buf[0] = dc_bit | ((sn >> 16) & 0x3);
-    buf[1] = (sn >> 8) & 0xff;
-    buf[2] = sn & 0xff;
+    pdu_buffer[0] = dc_bit | ((sn >> 16) & 0x3);
+    pdu_buffer[1] = (sn >> 8) & 0xff;
+    pdu_buffer[2] = sn & 0xff;
     header_size = LONG_PDCP_HEADER_SIZE;
   }
 
@@ -272,24 +270,24 @@ static int nr_pdcp_entity_process_sdu(nr_pdcp_entity_t *entity,
     integrity_size = 0;
   }
 
-  memcpy(buf + header_size, buffer, size);
+  memcpy(pdu_buffer + header_size, buffer, size);
 
   if (entity->has_integrity) {
     uint8_t integrity[PDCP_INTEGRITY_SIZE] = {0};
     entity->integrity(entity->integrity_context,
                       integrity,
-                      (unsigned char *)buf, header_size + size,
+                      pdu_buffer, header_size + size,
                       entity->rb_id, count, entity->is_gnb ? 1 : 0);
 
-    memcpy((unsigned char *)buf + header_size + size, integrity, PDCP_INTEGRITY_SIZE);
+    memcpy(pdu_buffer + header_size + size, integrity, PDCP_INTEGRITY_SIZE);
   } else if (integrity_size == PDCP_INTEGRITY_SIZE) {
     // set MAC-I to 0 for SRBs with integrity not active
-    memset(buf + header_size + size, 0, PDCP_INTEGRITY_SIZE);
+    memset(pdu_buffer + header_size + size, 0, PDCP_INTEGRITY_SIZE);
   }
 
   if (entity->has_ciphering) {
     entity->cipher(entity->security_context,
-                   (unsigned char *)buf + header_size + sdap_header_size,
+                   pdu_buffer + header_size + sdap_header_size,
                    size + integrity_size - sdap_header_size,
                    entity->rb_id, count, entity->is_gnb ? 1 : 0);
   }
@@ -320,7 +318,7 @@ static bool nr_pdcp_entity_check_integrity(struct nr_pdcp_entity_t *entity,
 
   memcpy(b + header_size, buffer, buffer_size);
 
-  unsigned char mac[4];
+  uint8_t mac[4];
   entity->integrity(entity->integrity_context, mac,
                     b, buffer_size + header_size,
                     entity->rb_id, msg_integrity->count, entity->is_gnb ? 0 : 1);
@@ -608,11 +606,11 @@ nr_pdcp_entity_t *new_nr_pdcp_entity(
     bool has_sdap_rx,
     bool has_sdap_tx,
     void (*deliver_sdu)(void *deliver_sdu_data, struct nr_pdcp_entity_t *entity,
-                        char *buf, int size,
+                        uint8_t *buf, int size,
                         const nr_pdcp_integrity_data_t *msg_integrity),
     void *deliver_sdu_data,
     void (*deliver_pdu)(void *deliver_pdu_data, ue_id_t ue_id, int rb_id,
-                        char *buf, int size, int sdu_id),
+                        uint8_t *buf, int size, int sdu_id),
     void *deliver_pdu_data,
     int sn_size,
     int t_reordering,

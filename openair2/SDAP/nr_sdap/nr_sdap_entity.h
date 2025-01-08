@@ -111,7 +111,7 @@ typedef struct nr_sdap_entity_s {
                     bool has_sdap_rx,
                     int pdusession_id,
                     ue_id_t ue_id,
-                    char *buf,
+                    uint8_t *buf,
                     int size);
 
   /* List of entities */

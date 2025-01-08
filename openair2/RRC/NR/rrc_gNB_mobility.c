@@ -212,11 +212,11 @@ typedef struct deliver_ue_ctxt_modification_data_t {
   f1ap_ue_context_modif_req_t *modification_req;
   sctp_assoc_t assoc_id;
 } deliver_ue_ctxt_modification_data_t;
-static void rrc_deliver_ue_ctxt_modif_req(void *deliver_pdu_data, ue_id_t ue_id, int srb_id, char *buf, int size, int sdu_id)
+static void rrc_deliver_ue_ctxt_modif_req(void *deliver_pdu_data, ue_id_t ue_id, int srb_id, uint8_t *buf, int size, int sdu_id)
 {
   DevAssert(deliver_pdu_data != NULL);
   deliver_ue_ctxt_modification_data_t *data = deliver_pdu_data;
-  data->modification_req->rrc_container = (uint8_t*)buf;
+  data->modification_req->rrc_container = buf;
   data->modification_req->rrc_container_length = size;
   data->rrc->mac_rrc.ue_context_modification_request(data->assoc_id, data->modification_req);
 }

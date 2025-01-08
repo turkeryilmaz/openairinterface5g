@@ -112,11 +112,11 @@ typedef struct deliver_ue_ctxt_release_data_t {
   sctp_assoc_t assoc_id;
 } deliver_ue_ctxt_release_data_t;
 
-static void rrc_deliver_ue_ctxt_release_cmd(void *deliver_pdu_data, ue_id_t ue_id, int srb_id, char *buf, int size, int sdu_id)
+static void rrc_deliver_ue_ctxt_release_cmd(void *deliver_pdu_data, ue_id_t ue_id, int srb_id, uint8_t *buf, int size, int sdu_id)
 {
   DevAssert(deliver_pdu_data != NULL);
   deliver_ue_ctxt_release_data_t *data = deliver_pdu_data;
-  data->release_cmd->rrc_container = (uint8_t*) buf;
+  data->release_cmd->rrc_container = buf;
   data->release_cmd->rrc_container_length = size;
   data->rrc->mac_rrc.ue_context_release_command(data->assoc_id, data->release_cmd);
 }
@@ -179,11 +179,11 @@ typedef struct deliver_dl_rrc_message_data_s {
   f1ap_dl_rrc_message_t *dl_rrc;
   sctp_assoc_t assoc_id;
 } deliver_dl_rrc_message_data_t;
-static void rrc_deliver_dl_rrc_message(void *deliver_pdu_data, ue_id_t ue_id, int srb_id, char *buf, int size, int sdu_id)
+static void rrc_deliver_dl_rrc_message(void *deliver_pdu_data, ue_id_t ue_id, int srb_id, uint8_t *buf, int size, int sdu_id)
 {
   DevAssert(deliver_pdu_data != NULL);
   deliver_dl_rrc_message_data_t *data = (deliver_dl_rrc_message_data_t *)deliver_pdu_data;
-  data->dl_rrc->rrc_container = (uint8_t *)buf;
+  data->dl_rrc->rrc_container = buf;
   data->dl_rrc->rrc_container_length = size;
   DevAssert(data->dl_rrc->srb_id == srb_id);
   data->rrc->mac_rrc.dl_rrc_message_transfer(data->assoc_id, data->dl_rrc);

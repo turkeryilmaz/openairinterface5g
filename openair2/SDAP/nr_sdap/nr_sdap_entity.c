@@ -215,7 +215,7 @@ static void nr_sdap_rx_entity(nr_sdap_entity_t *entity,
                               bool has_sdap_rx,
                               int pdusession_id,
                               ue_id_t ue_id,
-                              char *buf,
+                              uint8_t *buf,
                               int size)
 {
   /* The offset of the SDAP header, it might be 0 if has_sdap_rx is not true in the pdcp entity. */
@@ -240,7 +240,7 @@ static void nr_sdap_rx_entity(nr_sdap_entity_t *entity,
       }
     }
 
-    uint8_t *gtp_buf = (uint8_t *)(buf + offset);
+    uint8_t *gtp_buf = buf + offset;
     size_t gtp_len = size - offset;
 
     // Pushing SDAP SDU to GTP-U Layer

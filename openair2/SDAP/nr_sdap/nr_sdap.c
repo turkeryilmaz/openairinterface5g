@@ -71,7 +71,7 @@ void sdap_data_ind(rb_id_t pdcp_entity,
                    bool has_sdap_rx,
                    int pdusession_id,
                    ue_id_t ue_id,
-                   char *buf,
+                   uint8_t *buf,
                    int size) {
   nr_sdap_entity_t *sdap_entity;
   sdap_entity = nr_sdap_get_entity(ue_id, pdusession_id);
