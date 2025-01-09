@@ -12,6 +12,7 @@
 #include "PHY/NR_REFSIG/refsig_defs_ue.h"
 #include "executables/nr-uesoftmodem.h"
 #include "SCHED_NR_UE/defs.h"
+#include "openair1/PHY/MODULATION/modulation_UE.h"
 
 //#define DEBUG_CH_COMP
 //#define DEBUG_RB_EXT
@@ -2146,8 +2147,9 @@ void nr_rx_pusch(PHY_VARS_gNB *gNB,
             csi_params->start_rb,
             csi_params->nr_of_rbs);
       if (phy_data->sl_rx_action == SL_NR_CONFIG_TYPE_RX_PSSCH_SLSCH_CSI_RS) {
+        // FIXIT: Reconsider index of csirs_vars[0] for multiple connected UEs case
         if (ue->csirs_vars[0]->active == 1) {
-          LOG_D(NR_PHY, "%d.%d CSI-RS Received\n", proc->frame_rx, proc->nr_slot_rx);
+          LOG_D(NR_PHY, "%d.%d Received CSI-RS\n", proc->frame_rx, proc->nr_slot_rx);
           nr_slot_fep(ue, frame_parms, proc, symbol, rxdataF, link_type_sl);
           nr_ue_csi_rs_procedures(ue, proc, rxdataF);
           ue->csirs_vars[0]->active = 0;
@@ -2352,14 +2354,14 @@ void nr_rx_pusch(PHY_VARS_gNB *gNB,
 	  //     for (int i=0;i<sci2_re;i++) LOG_I(NR_PHY,"sci2_llrs [%d] %d,%d\n",i,unscrambled_sci2_llrs[i<<1],unscrambled_sci2_llrs[1+(i<<1)]);
 
 	       uint64_t sci_estimation[2]={0};
-	       uint16_t dummy; 
-               uint16_t crc=polar_decoder_int16(unscrambled_sci2_llrs,
-			                        sci_estimation,
-						&dummy,
-						1,
-						NR_POLAR_SCI2_MESSAGE_TYPE, 
-						pssch_pdu->sci2_len,
-						sci2_re);
+         uint16_t dummy;
+         uint16_t crc = polar_decoder_int16(unscrambled_sci2_llrs,
+                                            sci_estimation,
+                                            &dummy,
+                                            1,
+                                            NR_POLAR_SCI2_MESSAGE_TYPE,
+                                            pssch_pdu->sci2_len,
+                                            sci2_re);
 	       // send SCI indication with SCI2 payload and get SLSCH information if CRC is OK
 	       LOG_D(NR_PHY,"SCI indication (crc %x)\n",crc);
 	       if (crc==0) ue->SL_UE_PHY_PARAMS.pssch.rx_sci2_ok++;   
@@ -2368,10 +2370,10 @@ void nr_rx_pusch(PHY_VARS_gNB *gNB,
                sci_ind.sfn = frame;
                sci_ind.slot = slot;
                sci_ind.sensing_result = 0;
-               sci_ind.pssch_rsrp = 0; // need to get this from the inner receiver
+               sci_ind.pssch_rsrp = 0; // setting this flag to zero; measuring from sci1
                sci_ind.sci_pdu[sci_ind.number_of_SCIs].sci_format_type = SL_SCI_FORMAT_2_ON_PSSCH;
                sci_ind.sci_pdu[sci_ind.number_of_SCIs].subch_index = 0;
-               sci_ind.sci_pdu[sci_ind.number_of_SCIs].pscch_rsrp = 0; // need to get from inner rx
+               sci_ind.sci_pdu[sci_ind.number_of_SCIs].pscch_rsrp = 0; // setting this flag to zero; measuring from sci1
                sci_ind.sci_pdu[sci_ind.number_of_SCIs].sci_payloadlen = pssch_pdu->sci2_len;
                sci_ind.sci_pdu[sci_ind.number_of_SCIs].Nid = dummy&65535;
  
@@ -2401,8 +2403,8 @@ void nr_rx_pusch(PHY_VARS_gNB *gNB,
                                  symbol,
                                  qam_mod_order);
             memcpy(&pusch_vars->llr_layers[aatx][rxdataF_ext_offset * qam_mod_order],
-                   temp_llr + (sci1_offset + sci2_cnt_thissymb) * sizeof(int32_t),
-                   (rb_size * NR_NB_SC_PER_RB - (sci1_offset + sci2_cnt_thissymb)) * sizeof(int32_t));
+                   temp_llr + (sci1_offset + sci2_cnt_thissymb) * qam_mod_order,
+                   (rb_size * NR_NB_SC_PER_RB - (sci1_offset + sci2_cnt_thissymb)) * 2 * qam_mod_order);
           } else {
             nr_ulsch_compute_llr(&pusch_vars->rxdataF_comp[aatx * frame_parms->nb_antennas_rx][symbol * (off + rb_size * NR_NB_SC_PER_RB) + sci1_offset + sci2_cnt_thissymb],
                                 pusch_vars->ul_ch_mag0[aatx * frame_parms->nb_antennas_rx],

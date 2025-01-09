@@ -1009,7 +1009,6 @@ void sl_ue_phy_init(PHY_VARS_NR_UE *UE) {
   }
 
   int Prx=sl_fp->nb_antennas_rx;
-  int Ptx=sl_fp->nb_antennas_tx;
   int N_RB_UL = sl_fp->N_RB_UL;
   int n_buf = 2*Prx;
 

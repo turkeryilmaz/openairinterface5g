@@ -158,7 +158,7 @@ static uint8_t nr_extract_dci_info(NR_UE_MAC_INST_t *mac,
                                    dci_pdu_rel15_t *dci_pdu_rel15,
                                    int slot);
 
-void nr_ue_init_mac(module_id_t module_idP)
+void nr_ue_init_mac(module_id_t module_idP, ueinfo_t* ueinfo)
 {
   LOG_I(NR_MAC, "[UE%d] Applying default macMainConfig\n", module_idP);
   NR_UE_MAC_INST_t *mac = get_mac_inst(module_idP);
@@ -171,20 +171,34 @@ void nr_ue_init_mac(module_id_t module_idP)
   mac->si_window_start = -1;
   mac->SL_MAC_PARAMS = CALLOC(1, sizeof(sl_nr_ue_mac_params_t));
   mac->SL_MAC_PARAMS->sl_bler.harq_round_max = HARQ_ROUND_MAX;
-  for (int i = 0; i < CURRENT_NUM_UE_CONNECTIONS; i++) {
-    mac->sl_info.list[i] = calloc(1, sizeof(NR_SL_UE_info_t));
-    mac->sl_info.list[i]->uid = 0;
-    mac->sl_info.list[i]->dest_id = 0;
-    mac->sl_info.list[i]->UE_sched_ctrl.csi_report.ri = 0;
-    mac->sl_info.list[i]->UE_sched_ctrl.csi_report.cqi = -1;
-    mac->sl_info.list[i]->UE_sched_ctrl.sl_max_mcs = get_nrUE_params()->mcs;
-    NR_SL_UE_sched_ctrl_t *UE_sched_ctrl = &mac->sl_info.list[i]->UE_sched_ctrl;
+  init_list(&mac->sl_sensing_data, sizeof(sensing_data_t), 1);
+  init_list(&mac->sl_transmit_history, sizeof(frameslot_t), 1);
+  mac->sl_candidate_resources = (List_t*)malloc16_clear(sizeof(List_t*));
+  init_list(mac->sl_candidate_resources, sizeof(sl_resource_info_t), 1);
+  mac->reselection_timer = 0;
+
+  if (ueinfo != NULL)  {
+    mac->src_id = ueinfo->srcid;
+    LOG_D(NR_MAC, "srcid %d\n", ueinfo->srcid);
+  }
+
+  AssertFatal((get_nrUE_params()->mcs >= 0 && get_nrUE_params()->mcs <= 28), "MCS must be 1 to 28!!!");
+  int k = 0;
+  for (int i = 0; i < CUR_SL_UE_CONNECTIONS + 1; i++) {
+    if (mac->src_id == i)
+	  continue;
+    mac->sl_info.list[k] = calloc(1, sizeof(NR_SL_UE_info_t));
+    mac->sl_info.list[k]->uid = i;
+    NR_SL_UE_sched_ctrl_t *UE_sched_ctrl = &mac->sl_info.list[k]->UE_sched_ctrl;
+    UE_sched_ctrl->rx_csi_report.RI = 0;
+    UE_sched_ctrl->rx_csi_report.CQI = 0;
+    UE_sched_ctrl->sl_max_mcs = get_nrUE_params()->mcs;
     create_nr_list(&UE_sched_ctrl->available_sl_harq, 16);
     for (int harq = 0; harq < 16; harq++)
       add_tail_nr_list(&UE_sched_ctrl->available_sl_harq, harq);
     create_nr_list(&UE_sched_ctrl->feedback_sl_harq, 16);
     create_nr_list(&UE_sched_ctrl->retrans_sl_harq, 16);
-    mac->dest_id = -1;
+    k++;
   }
 }
 

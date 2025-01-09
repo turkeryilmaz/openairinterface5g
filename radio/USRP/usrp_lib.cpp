@@ -49,6 +49,7 @@
 #include "common/utils/LOG/log.h"
 #include "common_lib.h"
 #include "assertions.h"
+#include "system.h"
 
 #include "common/utils/LOG/vcd_signal_dumper.h"
 
@@ -261,19 +262,14 @@ static int sync_to_gps(openair0_device *device) {
 }
 
 #define ATR_MASK 0x7f //pins controlled by ATR
-#define ATR_RX   0x70 //data[4],data[5] and data[6]
-#define ATR_XX   0x08 //data[3]
+#define ATR_RX   0x50 //data[4] and data[6]
+#define ATR_XX   0x20 //data[5]
 #define MAN_MASK ATR_MASK ^ 0xFFF // manually controlled pins
 
 static void trx_usrp_start_interdigital_gpio(openair0_device *device, usrp_state_t *s)
 {
   AssertFatal(device->type == USRP_X400_DEV,
               "interdigital frontend device for beam management can only be used together with an X400\n");
-
-  // s->gpio_bank="GPIO0";
-  std::vector<std::string> sxx{12, "DB0_RF0"};
-  // set every pin on GPIO0 to be ocntrolled by DB1_RF0
-  s->usrp->set_gpio_src(s->gpio_bank, sxx);
   // set data direction register (DDR) to output
   s->usrp->set_gpio_attr(s->gpio_bank, "DDR", 0xfff, 0xfff);
   // set lower GPIO#1 to be controlled automatically by ATR (the rest  bits are controlled manually)
@@ -286,7 +282,6 @@ static void trx_usrp_start_interdigital_gpio(openair0_device *device, usrp_state
 
 static void trx_usrp_start_generic_gpio(openair0_device *device, usrp_state_t *s)
 {
-  LOG_I(HW,"Setting Generic GPIO\n");	
   // setup GPIO for TDD, GPIO(4) = ATR_RX
   // set data direction register (DDR) to output
   s->usrp->set_gpio_attr(s->gpio_bank, "DDR", 0xfff, 0xfff);
@@ -434,6 +429,8 @@ static int trx_usrp_write(openair0_device *device,
 			  int flags) {
   int ret=0;
   usrp_state_t *s = (usrp_state_t *)device->priv;
+  // TODO: Temporarily commented following line; Needs to uncomment and investigate the issue
+  // timestamp -= device->openair0_cfg->tx_sample_advance;
   int nsamps2;  // aligned to upper 32 or 16 byte boundary
 
   radio_tx_burst_flag_t flags_burst = (radio_tx_burst_flag_t) (flags & 0xf);
@@ -476,33 +473,20 @@ static int trx_usrp_write(openair0_device *device,
      last_packet_state  = true;
     }
 
-  if(usrp_tx_thread == 0){
-#if defined(__x86_64) || defined(__i386__)
+    if (usrp_tx_thread == 0) {
       nsamps2 = (nsamps+7)>>3;
-      __m256i buff_tx[cc<2?2:cc][nsamps2];
-#elif defined(__arm__) || defined(__aarch64__)
-    nsamps2 = (nsamps+3)>>2;
-    int16x8_t buff_tx[cc<2?2:cc][nsamps2];
-#else
-#error Unsupported CPU architecture, USRP device cannot be built
-#endif
+      simde__m256i buff_tx[cc < 2 ? 2 : cc][nsamps2];
 
-    // bring RX data into 12 LSBs for softmodem RX
-    for (int i=0; i<cc; i++) {
-      for (int j=0; j<nsamps2; j++) {
-#if defined(__x86_64__) || defined(__i386__)
-        if ((((uintptr_t) buff[i])&0x1F)==0) {
-          buff_tx[i][j] = simde_mm256_slli_epi16(((__m256i *)buff[i])[j],4);
+      // bring RX data into 12 LSBs for softmodem RX
+      for (int i = 0; i < cc; i++) {
+        for (int j = 0; j < nsamps2; j++) {
+          if ((((uintptr_t)buff[i]) & 0x1F) == 0) {
+            buff_tx[i][j] = simde_mm256_slli_epi16(((simde__m256i *)buff[i])[j], 4);
+          } else {
+            simde__m256i tmp = simde_mm256_loadu_si256(((simde__m256i *)buff[i]) + j);
+            buff_tx[i][j] = simde_mm256_slli_epi16(tmp, 4);
+          }
         }
-        else 
-        {
-          __m256i tmp = simde_mm256_loadu_si256(((__m256i *)buff[i])+j);
-          buff_tx[i][j] = simde_mm256_slli_epi16(tmp,4);
-        }
-#elif defined(__arm__) || defined(__aarch64__)
-        buff_tx[i][j] = vshlq_n_s16(((int16x8_t *)buff[i])[j],4);
-#endif
-      }
     }
 
     s->tx_md.has_time_spec  = true;
@@ -535,33 +519,35 @@ VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_BEAM_SWITCHI
 
     if (ret != nsamps) LOG_E(HW,"[xmit] tx samples %d != %d\n",ret,nsamps);
     return ret;
-  }
-  else{
-    pthread_mutex_lock(&write_thread->mutex_write);
+    } else {
+      pthread_mutex_lock(&write_thread->mutex_write);
 
-    if(write_thread->count_write >= MAX_WRITE_THREAD_PACKAGE){
-      LOG_W(HW,"Buffer overflow, count_write = %d, start = %d end = %d, resetting write package\n", write_thread->count_write, write_thread->start, write_thread->end);
-      write_thread->end = write_thread->start;
-      write_thread->count_write = 0;
+      if (write_thread->count_write >= MAX_WRITE_THREAD_PACKAGE) {
+        LOG_W(HW,
+              "Buffer overflow, count_write = %d, start = %d end = %d, resetting write package\n",
+              write_thread->count_write,
+              write_thread->start,
+              write_thread->end);
+        write_thread->end = write_thread->start;
+        write_thread->count_write = 0;
+      }
+
+      end = write_thread->end;
+      write_package[end].timestamp = timestamp;
+      write_package[end].nsamps = nsamps;
+      write_package[end].cc = cc;
+      write_package[end].first_packet = first_packet_state;
+      write_package[end].last_packet = last_packet_state;
+      write_package[end].flags_gpio = flags_gpio;
+      for (int i = 0; i < cc; i++)
+        write_package[end].buff[i] = buff[i];
+      write_thread->count_write++;
+      write_thread->end = (write_thread->end + 1) % MAX_WRITE_THREAD_PACKAGE;
+      LOG_D(HW, "Signaling TX TS %llu\n", (unsigned long long)timestamp);
+      pthread_cond_signal(&write_thread->cond_write);
+      pthread_mutex_unlock(&write_thread->mutex_write);
+      return 0;
     }
-
-    end = write_thread->end;
-    write_package[end].timestamp    = timestamp;
-    write_package[end].nsamps       = nsamps;
-    write_package[end].cc           = cc;
-    write_package[end].first_packet = first_packet_state;
-    write_package[end].last_packet  = last_packet_state;
-    write_package[end].flags_gpio    = flags_gpio;
-    for (int i = 0; i < cc; i++)
-      write_package[end].buff[i]    = buff[i];
-    write_thread->count_write++;
-    write_thread->end = (write_thread->end + 1)% MAX_WRITE_THREAD_PACKAGE;
-    LOG_D(HW,"Signaling TX TS %llu\n",(unsigned long long)timestamp);
-    pthread_cond_signal(&write_thread->cond_write);
-    pthread_mutex_unlock(&write_thread->mutex_write);
-    return 0;
-  }
-
 }
 
 //-----------------------start--------------------------
@@ -615,34 +601,22 @@ void *trx_usrp_write_thread(void * arg){
       LOG_W(HW,"count write = %d, start = %d, end = %d\n", write_thread->count_write, write_thread->start, write_thread->end);
     }*/
 
-    #if defined(__x86_64) || defined(__i386__)
         nsamps2 = (nsamps+7)>>3;
-        __m256i buff_tx[cc<2?2:cc][nsamps2];
-    #elif defined(__arm__) || defined(__aarch64__)
-      nsamps2 = (nsamps+3)>>2;
-      int16x8_t buff_tx[cc<2?2:cc][nsamps2];
-    #else
-    #error Unsupported CPU architecture, USRP device cannot be built
-    #endif
+        simde__m256i buff_tx[cc < 2 ? 2 : cc][nsamps2];
 
-    // bring RX data into 12 LSBs for softmodem RX
-    for (int i=0; i<cc; i++) {
-      for (int j=0; j<nsamps2; j++) {
-        #if defined(__x86_64__) || defined(__i386__)
+        // bring RX data into 12 LSBs for softmodem RX
+        for (int i = 0; i < cc; i++) {
+          for (int j = 0; j < nsamps2; j++) {
             if ((((uintptr_t) buff[i])&0x1F)==0) {
-              buff_tx[i][j] = simde_mm256_slli_epi16(((__m256i *)buff[i])[j],4);
+              buff_tx[i][j] = simde_mm256_slli_epi16(((simde__m256i *)buff[i])[j], 4);
             }
             else
             {
-              __m256i tmp = simde_mm256_loadu_si256(((__m256i *)buff[i])+j);
+              simde__m256i tmp = simde_mm256_loadu_si256(((simde__m256i *)buff[i]) + j);
               buff_tx[i][j] = simde_mm256_slli_epi16(tmp,4);
             }
-        #elif defined(__arm__) || defined(__aarch64__)
-          buff_tx[i][j] = vshlq_n_s16(((int16x8_t *)buff[i])[j],4);
-        #endif
-      }
-    }
-
+          }
+        }
 
     s->tx_md.has_time_spec  = true;
     s->tx_md.start_of_burst = (s->tx_count==0) ? true : first_packet;
@@ -670,6 +644,10 @@ void *trx_usrp_write_thread(void * arg){
     else {
       ret = (int)s->tx_stream->send(&(((int16_t *)buff_tx[0])[0]), nsamps, s->tx_md);
     }
+
+#ifdef T_USRP_TX_ANT0
+    T(T_USRP_TX_ANT0, T_INT(timestamp), T_BUFFER(buff_tx[0], nsamps*4));
+#endif
 
     if (ret != nsamps) LOG_E(HW,"[xmit] tx samples %d != %d\n",ret,nsamps);
     VCD_SIGNAL_DUMPER_DUMP_VARIABLE_BY_NAME( VCD_SIGNAL_DUMPER_VARIABLES_USRP_SEND_RETURN, ret );
@@ -729,14 +707,9 @@ static void trx_usrp_write_reset(openair0_thread_t *wt) {
 static int trx_usrp_read(openair0_device *device, openair0_timestamp *ptimestamp, void **buff, int nsamps, int cc) {
   usrp_state_t *s = (usrp_state_t *)device->priv;
   int samples_received=0;
-  int nsamps2;  // aligned to upper 32 or 16 byte boundary
-#if defined(__x86_64) || defined(__i386__)
+  int nsamps2; // aligned to upper 32 or 16 byte boundary
   nsamps2 = (nsamps+7)>>3;
-  __m256i buff_tmp[cc<2 ? 2 : cc][nsamps2];
-#elif defined(__arm__) || defined(__aarch64__)
-  nsamps2 = (nsamps+3)>>2;
-  int16x8_t buff_tmp[cc<2 ? 2 : cc][nsamps2];
-#endif
+  simde__m256i buff_tmp[cc < 2 ? 2 : cc][nsamps2];
   static int read_count = 0;
   int rxshift;
   switch (device->type) {
@@ -760,7 +733,7 @@ static int trx_usrp_read(openair0_device *device, openair0_timestamp *ptimestamp
       std::vector<void *> buff_ptrs;
 
       for (int i=0; i<cc; i++) buff_ptrs.push_back(buff_tmp[i]+samples_received);
-      samples_received += s->rx_stream->recv(buff_ptrs, nsamps, s->rx_md);
+      samples_received += s->rx_stream->recv(buff_ptrs, nsamps-samples_received, s->rx_md);
     } else {
       // receive a single channel (e.g. from connector RF A)
 
@@ -771,28 +744,23 @@ static int trx_usrp_read(openair0_device *device, openair0_timestamp *ptimestamp
       break;
 
     if ((s->wait_for_first_pps == 1) && (samples_received != nsamps)) {
-      printf("sleep...\n"); //usleep(100);
+      printf("sleep...\n"); // usleep(100);
     }
   }
   if (samples_received == nsamps) s->wait_for_first_pps=0;
 
   // bring RX data into 12 LSBs for softmodem RX
   for (int i=0; i<cc; i++) {
-    for (int j=0; j<nsamps2; j++) {
-#if defined(__x86_64__) || defined(__i386__)
+    for (int j = 0; j < nsamps2; j++) {
       // FK: in some cases the buffer might not be 32 byte aligned, so we cannot use avx2
 
       if ((((uintptr_t) buff[i])&0x1F)==0) {
-        ((__m256i *)buff[i])[j] = simde_mm256_srai_epi16(buff_tmp[i][j],rxshift);
+        ((simde__m256i *)buff[i])[j] = simde_mm256_srai_epi16(buff_tmp[i][j], rxshift);
       } else {
-        __m256i tmp = simde_mm256_srai_epi16(buff_tmp[i][j],rxshift);
-        simde_mm256_storeu_si256(((__m256i *)buff[i])+j, tmp);
+        simde__m256i tmp = simde_mm256_srai_epi16(buff_tmp[i][j], rxshift);
+        simde_mm256_storeu_si256(((simde__m256i *)buff[i]) + j, tmp);
       }
     }
-#elif defined(__arm__) || defined(__aarch64__)
-      for (int j=0; j<nsamps2; j++) 
-        ((int16x8_t *)buff[i])[j] = vshrq_n_s16(buff_tmp[i][j],rxshift);
-#endif
   }
 
   if (samples_received < nsamps) {
@@ -805,6 +773,10 @@ static int trx_usrp_read(openair0_device *device, openair0_timestamp *ptimestamp
   s->rx_count += nsamps;
   s->rx_timestamp = s->rx_md.time_spec.to_ticks(s->sample_rate);
   *ptimestamp = s->rx_timestamp;
+
+#ifdef T_USRP_RX_ANT0
+  T(T_USRP_RX_ANT0, T_INT(s->rx_timestamp), T_BUFFER(buff[0], samples_received*4));
+#endif
 
   recplay_state_t *recPlay=device->recplay_state;
 
@@ -905,7 +877,8 @@ int trx_usrp_set_gains(openair0_device *device,
   if (openair0_cfg[0].rx_gain[0]-openair0_cfg[0].rx_gain_offset[0] > gain_range.stop()) {
     LOG_E(HW,"RX Gain 0 too high, reduce by %f dB\n",
           openair0_cfg[0].rx_gain[0]-openair0_cfg[0].rx_gain_offset[0] - gain_range.stop());
-    exit(-1);
+    int gain_diff = gain_range.stop() - (openair0_cfg[0].rx_gain[0] - openair0_cfg[0].rx_gain_offset[0]);
+    return gain_diff;
   }
 
   s->usrp->set_rx_gain(openair0_cfg[0].rx_gain[0]-openair0_cfg[0].rx_gain_offset[0]);
@@ -1048,6 +1021,28 @@ int trx_usrp_get_stats(openair0_device *device) {
  */
 int trx_usrp_reset_stats(openair0_device *device) {
   return(0);
+}
+
+/*! \brief synch the USRP time accross devices using the host clock (ideally syched with PTP, but also NTP works) and assuming all
+ * devices are synched by octoclock */
+static void usrp_sync_pps(usrp_state_t *s)
+{
+  // First, wait for PPS.
+  uhd::time_spec_t time_last_pps = s->usrp->get_time_last_pps();
+
+  while (time_last_pps == s->usrp->get_time_last_pps()) {
+    boost::this_thread::sleep(boost::posix_time::milliseconds(1));
+  }
+
+  // get host time
+  struct timespec tp;
+  if (clock_gettime(CLOCK_TAI, &tp) != 0)
+    LOG_W(PHY, "error getting system time\n");
+  double tai_sec = (double)tp.tv_sec;
+
+  // set USRP time to host time at next pps
+  s->usrp->set_time_next_pps(uhd::time_spec_t(tai_sec));
+  LOG_I(HW, "USRP clock set to %f sec\n", tai_sec);
 }
 
 extern "C" {
@@ -1226,8 +1221,12 @@ extern "C" {
       exit(EXIT_FAILURE);
     }
   } else {
-    s->usrp->set_time_next_pps(uhd::time_spec_t(0.0));
- 
+    if (s->usrp->get_time_source(0) == "external") {
+      usrp_sync_pps(s);
+    } else {
+      s->usrp->set_time_next_pps(uhd::time_spec_t(0.0));
+    }
+
     if (s->usrp->get_clock_source(0) == "external") {
       if (check_ref_locked(s,0)) {
 	LOG_I(HW,"USRP locked to external reference!\n");
@@ -1258,12 +1257,20 @@ extern "C" {
     LOG_I(HW,"%s() sample_rate:%u\n", __FUNCTION__, (int)openair0_cfg[0].sample_rate);
 
     switch ((int)openair0_cfg[0].sample_rate) {
+      case 245760000:
+        // from usrp_time_offset
+        // openair0_cfg[0].samples_per_packet    = 2048;
+        openair0_cfg[0].tx_sample_advance = 15; // to be checked
+        openair0_cfg[0].tx_bw = 200e6;
+        openair0_cfg[0].rx_bw = 200e6;
+        break;
+
       case 184320000:
         // from usrp_time_offset
-        //openair0_cfg[0].samples_per_packet    = 2048;
-        openair0_cfg[0].tx_sample_advance     = 15; //to be checked
-	openair0_cfg[0].tx_bw                 = 100e6;
-        openair0_cfg[0].rx_bw                 = 100e6;
+        // openair0_cfg[0].samples_per_packet    = 2048;
+        openair0_cfg[0].tx_sample_advance = 15; // to be checked
+        openair0_cfg[0].tx_bw = 100e6;
+        openair0_cfg[0].rx_bw = 100e6;
         break;
 
       case 122880000:
@@ -1355,7 +1362,7 @@ extern "C" {
       case 46080000:
         s->usrp->set_master_clock_rate(46.08e6);
         //openair0_cfg[0].samples_per_packet    = 1024;
-        openair0_cfg[0].tx_sample_advance     = 115;
+        openair0_cfg[0].tx_sample_advance     = 164;
         openair0_cfg[0].tx_bw                 = 40e6;
         openair0_cfg[0].rx_bw                 = 40e6;
         break;
@@ -1426,25 +1433,27 @@ extern "C" {
   }
 
   for(int i=0; i<((int) s->usrp->get_rx_num_channels()); i++) {
-    if (i<openair0_cfg[0].rx_num_channels) {
-      s->usrp->set_rx_rate(openair0_cfg[0].sample_rate,i+choffset);
-      uhd::tune_request_t rx_tune_req(openair0_cfg[0].rx_freq[i],
-                                      openair0_cfg[0].tune_offset);
+    openair0_config_t *cfg = &openair0_cfg[0];
+    if (i < cfg->rx_num_channels) {
+      s->usrp->set_rx_rate(cfg->sample_rate, i + choffset);
+      uhd::tune_request_t rx_tune_req(cfg->rx_freq[i], cfg->tune_offset);
       s->usrp->set_rx_freq(rx_tune_req, i+choffset);
-      set_rx_gain_offset(&openair0_cfg[0],i,bw_gain_adjust);
+      set_rx_gain_offset(cfg, i, bw_gain_adjust);
       ::uhd::gain_range_t gain_range = s->usrp->get_rx_gain_range(i+choffset);
       // limit to maximum gain
-      double gain=openair0_cfg[0].rx_gain[i]-openair0_cfg[0].rx_gain_offset[i];
+      double gain = cfg->rx_gain[i] - cfg->rx_gain_offset[i];
       if ( gain > gain_range.stop())  {
-                   LOG_E(HW,"RX Gain too high, lower by %f dB\n",
-                   gain - gain_range.stop());
-               gain=gain_range.stop();
+        LOG_E(HW, "RX Gain too high, lower by %f dB\n", gain - gain_range.stop());
+        gain = gain_range.stop();
       }
-
       s->usrp->set_rx_gain(gain,i+choffset);
-      LOG_I(HW,"RX Gain %d %f (%f) => %f (max %f)\n",i,
-            openair0_cfg[0].rx_gain[i],openair0_cfg[0].rx_gain_offset[i],
-            openair0_cfg[0].rx_gain[i]-openair0_cfg[0].rx_gain_offset[i],gain_range.stop());
+      LOG_I(HW,
+            "RX Gain %d %f (%f) => %f (max %f)\n",
+            i,
+            cfg->rx_gain[i],
+            cfg->rx_gain_offset[i],
+            cfg->rx_gain[i] - cfg->rx_gain_offset[i],
+            gain_range.stop());
     }
   }
 

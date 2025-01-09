@@ -18,6 +18,7 @@ typedef struct ueinfo {
 #define  CONFIG_HLP_MAX_LDPC_ITERATIONS    "Maximum LDPC decoder iterations\n"
 #define  CONFIG_HLP_SL_SYNCSOURCEUE        "Sidelink UE acts as SYNC REF UE"
 #define  CONFIG_HLP_SL_MAX_MCS             "Sidelink initial max mcs value"
+#define  CONFIG_HLP_SL_SNR                 "Sets sidelink SNR value"
 /***************************************************************************************************************************************/
 /* command line options definitions, CMDLINE_XXXX_DESC macros are used to initialize paramdef_t arrays which are then used as argument
    when calling config_get or config_getlist functions                                                                                 */
@@ -30,6 +31,7 @@ typedef struct ueinfo {
 #define CALIBPRACH_OPT    "calib-prach-tx"
 #define DUMPFRAME_OPT     "ue-dump-frame"
 
+#define SL_UE_iterator(BaSe, VaR) NR_SL_UE_info_t ** VaR##pptr=BaSe, *VaR; while ((VaR=*(VaR##pptr++)))
 /*------------------------------------------------------------------------------------------------------------------------------------------*/
 /*                                            command line parameters defining UE running mode                                              */
 /*   optname                     helpstr                paramflags                      XXXptr        defXXXval         type       numelt   */
@@ -68,7 +70,8 @@ typedef struct ueinfo {
   {"ue-timing-correction-disable", CONFIG_HLP_DISABLETIMECORR, PARAMFLAG_BOOL,  .iptr=&(nrUE_params.no_timing_correction),   .defintval=0,      TYPE_INT,      0}, \
   {"SLC",                          CONFIG_HLP_SLF,             0,               .u64ptr=&(sidelink_frequency[0][0]),         .defuintval=2600000000,TYPE_UINT64,0}, \
   {"sync-ref",                     CONFIG_HLP_SL_SYNCSOURCEUE, PARAMFLAG_BOOL,  .uptr=&(nrUE_params.sync_ref),               .defuintval=0,     TYPE_UINT32,   0}, \
-  {"mcs",                          CONFIG_HLP_SL_MAX_MCS,      0,               .u8ptr=&(nrUE_params.mcs),                   .defintval=1,      TYPE_UINT8,     0}, \
+  {"mcs",                          CONFIG_HLP_SL_MAX_MCS,      0,               .u8ptr=&(nrUE_params.mcs),                   .defintval=9,      TYPE_UINT8,    0}, \
+  {"snr",                          CONFIG_HLP_SL_SNR,          0,               .dblptr=&(nrUE_params.snr),                  .defdblval=0.0,                TYPE_DOUBLE,   0}, \
 }
 // clang-format on
 
@@ -92,6 +95,7 @@ typedef struct {
   int            ssb_start_subcarrier;
   uint32_t       sync_ref;
   uint8_t        mcs;
+  double         snr;
 } nrUE_params_t;
 extern uint64_t get_nrUE_optmask(void);
 extern uint64_t set_nrUE_optmask(uint64_t bitmask);
@@ -101,7 +105,7 @@ extern nrUE_params_t *get_nrUE_params(void);
 // In nr-ue.c
 extern int setup_nr_ue_buffers(PHY_VARS_NR_UE **phy_vars_ue, openair0_config_t *openair0_cfg);
 extern void fill_ue_band_info(void);
-extern void init_NR_UE(int, char*, char*);
+extern void init_NR_UE(int, char*, char*, ueinfo_t*);
 extern void init_NR_UE_threads(int);
 extern void reset_opp_meas(void);
 extern void print_opp_meas(void);

@@ -368,7 +368,6 @@ uint16_t sl_get_subchannel_size(NR_SL_ResourcePool_r16_t *rpool)
 
   uint16_t subch_size = 0;
   const uint8_t subchsizes[8] = {10, 12, 15, 20, 25, 50, 75, 100};
-
   subch_size = (rpool->sl_SubchannelSize_r16)
                    ? subchsizes[*rpool->sl_SubchannelSize_r16] : 0;
 
@@ -538,59 +537,6 @@ uint8_t sl_determine_sci_1a_len(uint16_t *num_subchannels,
   return sci_1a_len;
 }
 
-/* This function determines the number of sidelink slots in 1024 frames - DFN cycle
-* which can be used for determining reserved slots and REsource pool slots according to bitmap.
-* Sidelink slots are the uplink and mixed slots with sidelink support except the SSB slots.
-*/
-uint32_t sl_determine_num_sidelink_slots(uint8_t mod_id, uint16_t *N_SSB_16frames, uint16_t *N_SL_SLOTS_perframe)
-{
-
-  NR_UE_MAC_INST_t *mac = get_mac_inst(mod_id);
-  sl_nr_ue_mac_params_t *sl_mac = mac->SL_MAC_PARAMS;
-  uint32_t N_SSB_1024frames = 0;
-  uint32_t N_SL_SLOTS = 0;
-  *N_SL_SLOTS_perframe = 0;
-  *N_SSB_16frames = 0;
-
-  if (sl_mac->rx_sl_bch.status) {
-    sl_ssb_timealloc_t *ssb_timealloc = &sl_mac->rx_sl_bch.ssb_time_alloc;
-    *N_SSB_16frames += ssb_timealloc->sl_NumSSB_WithinPeriod;
-    LOG_D(MAC, "RX SSB Slots:%d\n", *N_SSB_16frames);
-  }
-
-  if (sl_mac->tx_sl_bch.status) {
-    sl_ssb_timealloc_t *ssb_timealloc = &sl_mac->tx_sl_bch.ssb_time_alloc;
-    *N_SSB_16frames += ssb_timealloc->sl_NumSSB_WithinPeriod;
-    LOG_D(MAC, "TX SSB Slots:%d\n", *N_SSB_16frames);
-  }
-
-  //Total SSB slots in SFN cycle (1024 frames)
-  N_SSB_1024frames = SL_FRAME_NUMBER_CYCLE/SL_NR_SSB_REPETITION_IN_FRAMES * (*N_SSB_16frames);
-
-  sl_nr_phy_config_request_t *sl_cfg = &sl_mac->sl_phy_config.sl_config_req;
-  uint8_t sl_scs = sl_cfg->sl_bwp_config.sl_scs;
-  uint8_t num_slots_per_frame = 10*(1<<sl_scs);
-  uint8_t slot_type = 0;
-  for (int i = 0; i < num_slots_per_frame; i++) {
-    slot_type = sl_nr_ue_slot_select(sl_cfg, 0, i, TDD);
-    if (slot_type == NR_SIDELINK_SLOT) {
-      *N_SL_SLOTS_perframe = *N_SL_SLOTS_perframe + 1;
-      sl_mac->sl_slot_bitmap |= (1<<i);
-    }
-  }
-
-  //Determine total number of Valid Sidelink slots which can be used for Respool in a SFN cycle (1024 frames)
-  N_SL_SLOTS = (*N_SL_SLOTS_perframe * SL_FRAME_NUMBER_CYCLE) - N_SSB_1024frames;
-
-  LOG_D(MAC, "[UE%d]SL-MAC:SSB slots in 1024 frames:%d, N_SL_SLOTS_perframe:%d, N_SL_SLOTs in 1024 frames:%d, SL SLOT bitmap:%x\n",
-                                                                  mod_id,N_SSB_1024frames, *N_SL_SLOTS_perframe,
-                                                                  N_SL_SLOTS, sl_mac->sl_slot_bitmap);
-
-
-  return N_SL_SLOTS;
-}
-
-
 uint8_t count_on_bits(uint8_t* buf, size_t size) {
   uint8_t count = 0;
   uint8_t byte;
@@ -664,17 +610,18 @@ void configure_psfch_params_tx(int module_idP,
   uint16_t tx_frame = (rx_ind->sfn + (rx_ind->slot + DURATION_RX_TO_TX) / nr_slots_per_frame[scs]) % 1024;
 
   uint8_t ack_nack = (rx_ind->rx_indication_body + pdu_id)->rx_slsch_pdu.ack_nack;
-  LOG_D(NR_MAC, "tx_frame %4u.%2u, ack_nack %d\n", tx_frame, tx_slot, ack_nack);
+  LOG_D(NR_MAC, "tx_frame %4u.%2u, ack_nack %d rx: %4u.%2u\n", tx_frame, tx_slot, ack_nack, rx_ind->sfn, rx_ind->slot);
   psfch_params_t *psfch_params = calloc(1, sizeof(psfch_params_t));
   compute_params(module_idP, psfch_params);
   const int nr_slots_frame = nr_slots_per_frame[scs];
   int psfch_index = nr_ue_sl_acknack_scheduling(mac, rx_ind, psfch_period, tx_frame, tx_slot, nr_slots_frame);
-  fill_psfch_params_tx(mac, rx_ind, psfch_period, tx_frame, tx_slot, ack_nack, psfch_params, nr_slots_frame, psfch_index);
+  if (psfch_index != -1)
+    fill_psfch_params_tx(mac, rx_ind, psfch_period, tx_frame, tx_slot, ack_nack, psfch_params, nr_slots_frame, psfch_index);
   free(psfch_params);
   psfch_params = NULL;
 }
 
-static int get_psfch_index(int frame, int slot, int n_slots_frame, const NR_TDD_UL_DL_Pattern_t *tdd, int sched_psfch_max_size)
+int get_psfch_index(int frame, int slot, int n_slots_frame, const NR_TDD_UL_DL_Pattern_t *tdd, int sched_psfch_max_size)
 {
   // PUCCH structures are indexed by slot in the PUCCH period determined by sched_psfch_max_size number of UL slots
   // this functions return the index to the structure for slot passed to the function
@@ -702,6 +649,11 @@ int get_pssch_to_harq_feedback(uint8_t *pssch_to_harq_feedback, uint8_t psfch_mi
   return n_ul_slots_period;
 }
 
+void get_csirs_to_csi_report(uint8_t *csirs_to_csi_report, uint8_t sl_latencyboundcsi_report, const int nr_slots_frame) {
+  for (int i = 0; i < sl_latencyboundcsi_report; i++)
+    csirs_to_csi_report[i] = i + 1;
+}
+
 int get_feedback_frame_slot(NR_UE_MAC_INST_t *mac, NR_TDD_UL_DL_Pattern_t *tdd,
                             uint8_t feedback_offset, uint8_t psfch_min_time_gap,
                             const int nr_slots_frame, uint16_t frame, uint16_t slot,
@@ -727,66 +679,118 @@ int get_feedback_frame_slot(NR_UE_MAC_INST_t *mac, NR_TDD_UL_DL_Pattern_t *tdd,
   return 0;
 }
 
+int16_t get_feedback_slot(long psfch_period, uint16_t slot) {
+  int16_t feedback_slot = -1;
+  if (psfch_period == 1) {
+    switch(slot) {
+      case 0:
+        feedback_slot = 6;
+      break;
+      case 1:
+        feedback_slot = 7;
+      break;
+      case 2:
+        feedback_slot = 8;
+      break;
+      case 3:
+        feedback_slot = 9;
+      break;
+      case 10:
+        feedback_slot = 16;
+      break;
+      case 11:
+        feedback_slot = 17;
+      break;
+      case 12:
+        feedback_slot = 18;
+      break;
+      case 13:
+        feedback_slot = 19;
+      break;
+      default:
+        AssertFatal(1 == 0, "Invalid slot %d\n", slot);
+    }
+  } else if (psfch_period == 2) {
+    switch(slot) {
+      case 0:
+      case 1:
+        feedback_slot = 7;
+      break;
+      case 2:
+      case 3:
+        feedback_slot = 9;
+      break;
+      case 10:
+      case 11:
+        feedback_slot = 17;
+      break;
+      case 12:
+      case 13:
+        feedback_slot = 19;
+      break;
+      default:
+        AssertFatal(1 == 0, "Invalid slot %d\n", slot);
+    }
+  } else if (psfch_period == 4) {
+    switch(slot) {
+      case 0:
+      case 1:
+      case 2:
+      case 3:
+        feedback_slot = 9;
+      break;
+      case 10:
+      case 11:
+      case 12:
+      case 13:
+        feedback_slot = 19;
+      break;
+      default:
+        AssertFatal(1 == 0, "Invalid slot %d\n", slot);
+    }
+  }
+  return feedback_slot;
+}
+
 int nr_ue_sl_acknack_scheduling(NR_UE_MAC_INST_t *mac, sl_nr_rx_indication_t *rx_ind,
                                 long psfch_period, uint16_t frame, uint16_t slot, const int nr_slots_frame) {
   // TODO: needs to be updated for multi-subchannels
   int psfch_frame, psfch_slot;
-  const uint8_t time_gap[] = {2, 3};
-
-  NR_SL_PSFCH_Config_r16_t *sl_psfch_config = mac->sl_tx_res_pool->sl_PSFCH_Config_r16->choice.setup;
-  uint8_t psfch_min_time_gap = time_gap[*sl_psfch_config->sl_MinTimeGapPSFCH_r16];
-
-  uint16_t num_subch = sl_get_num_subch(mac->sl_tx_res_pool);
   sl_nr_ue_mac_params_t *sl_mac =  mac->SL_MAC_PARAMS;
   NR_TDD_UL_DL_Pattern_t *tdd = &sl_mac->sl_TDD_config->pattern1;
   const int n_ul_slots_period = tdd ? tdd->nrofUplinkSlots + (tdd->nrofUplinkSymbols > 0 ? 1 : 0) : nr_slots_frame;
 
-  NR_SL_UE_sched_ctrl_t  *sched_ctrl = &mac->sl_info.list[0]->UE_sched_ctrl;
-  int psfch_max_size = psfch_period * num_subch;
+  uint16_t num_subch = sl_get_num_subch(mac->sl_tx_res_pool);
   int n_ul_buf_max_size = n_ul_slots_period * num_subch;
-  uint8_t pssch_to_harq_feedback[8];
-  int fb_size = get_pssch_to_harq_feedback(pssch_to_harq_feedback, psfch_min_time_gap, tdd, nr_slots_frame);
-  int pre_slot = (rx_ind->slot + nr_slots_frame - 1) % nr_slots_frame;
-  int pre_sfn = (rx_ind->sfn + (rx_ind->slot + nr_slots_frame - 1) / nr_slots_frame) % 1023;
-  const int pre_index = get_psfch_index(pre_sfn, pre_slot, nr_slots_frame, tdd, n_ul_buf_max_size);
-  uint8_t cnt = 0;
-  SL_sched_feedback_t  *pre_psfch = NULL;
-  if (pre_index >= 0) {
-    pre_psfch = &sched_ctrl->sched_psfch[pre_index];
-    cnt = pre_psfch->dai_c;
-  }
-  LOG_D(NR_MAC, "Comparing %4d.%2d pre_psfch %p pre_index %d cnt %d\n",
-        rx_ind->sfn, rx_ind->slot, pre_psfch, pre_index, cnt);
-  // we store PSFCH resources according to slot, TDD configuration and size of the vector containing PSFCH structures
+
+  psfch_slot = get_feedback_slot(psfch_period, slot);
   const int psfch_index = get_psfch_index(rx_ind->sfn, rx_ind->slot, nr_slots_frame, tdd, n_ul_buf_max_size);
-  for (int f = 0; f < fb_size; f++) {
-    int  continue_flag = get_feedback_frame_slot(mac, tdd, pssch_to_harq_feedback[f],
-                                                 psfch_min_time_gap,
-                                                 nr_slots_frame, frame, slot,
-                                                 psfch_period,
-                                                 &psfch_frame, &psfch_slot);
-
-    if (continue_flag == -1) {
-      continue;
-    }
-    LOG_D(NR_MAC, "flag %d, f %d, offset %d, psfch_slot %d\n", continue_flag, f, pssch_to_harq_feedback[f], psfch_slot);
-    if (cnt == psfch_max_size && psfch_frame == pre_psfch->feedback_frame && psfch_slot == pre_psfch->feedback_slot) {
-      cnt = 0;
-    }
-    else {
-      SL_sched_feedback_t  *curr_psfch = &sched_ctrl->sched_psfch[psfch_index];
-      curr_psfch->feedback_frame = psfch_frame;
-      curr_psfch->feedback_slot = psfch_slot;
-      curr_psfch->dai_c = cnt + 1;
-
-      LOG_D(NR_MAC, "psfch_acknack SL %4d.%2d, SL_ACK %4d.%2d in current PSFCH: psfch_index %d, f %d dai_c %u curr_psfch %p\n",
-            rx_ind->sfn, rx_ind->slot, psfch_frame, psfch_slot, psfch_index, f, curr_psfch->dai_c, curr_psfch);
-
-      return psfch_index; // index of current PUCCH structure
-    }
-  }
+  NR_SL_UE_sched_ctrl_t  *sched_ctrl = &mac->sl_info.list[0]->UE_sched_ctrl;
+  SL_sched_feedback_t  *curr_psfch = &sched_ctrl->sched_psfch[psfch_index];
+  psfch_frame = frame;
+  frameslot_t fs;
+  fs.frame = psfch_frame;
+  fs.slot = psfch_slot;
+  uint8_t pool_id = 0;
+  uint64_t tx_abs_slot = normalize(&fs, get_softmodem_params()->numerology);
+  SL_ResourcePool_params_t *sl_tx_rsrc_pool = sl_mac->sl_TxPool[pool_id];
+  size_t phy_map_sz = (sl_tx_rsrc_pool->phy_sl_bitmap.size << 3) - sl_tx_rsrc_pool->phy_sl_bitmap.bits_unused;
+  bool sl_has_psfch = slot_has_psfch(mac, &sl_tx_rsrc_pool->phy_sl_bitmap, tx_abs_slot, psfch_period, phy_map_sz, mac->SL_MAC_PARAMS->sl_TDD_config);
+  LOG_D(NR_MAC, "%s %4d.%2d sl_has_psfch %d\n", __FUNCTION__, psfch_frame, psfch_slot, sl_has_psfch);
+  curr_psfch->feedback_frame = psfch_frame;
+  curr_psfch->feedback_slot = psfch_slot;
+  curr_psfch->dai_c = psfch_index;
+  LOG_D(NR_MAC, "Rx SLSCH %4d.%2d, SL_ACK %4d.%2d in current PSFCH: psfch_index %d, n_ul_slots_period %d dai_c %u curr_psfch %p\n",
+        rx_ind->sfn,
+        rx_ind->slot,
+        psfch_frame,
+        psfch_slot,
+        psfch_index,
+        n_ul_slots_period,
+        curr_psfch->dai_c,
+        curr_psfch);
   LOG_D(NR_MAC, "SL %4d.%2d, Couldn't find scheduling occasion for this HARQ process\n", rx_ind->sfn, rx_ind->slot);
-  return -1;
+  return psfch_index;
 }
 
 void fill_psfch_params_tx(NR_UE_MAC_INST_t *mac, sl_nr_rx_indication_t *rx_ind,
@@ -806,15 +810,16 @@ void fill_psfch_params_tx(NR_UE_MAC_INST_t *mac, sl_nr_rx_indication_t *rx_ind,
         mac->sci_pdu_rx.harq_feedback,
         psfch_index);
   sched_psfch->initial_cyclic_shift = psfch_params->m0;
-  if (mac->sci1_pdu.second_stage_sci_format == 2 ||
-      mac->sci_pdu_rx.cast_type == 1 ||
-      mac->sci_pdu_rx.cast_type == 2) {
+  if ((mac->sci1_pdu.second_stage_sci_format == 0 && (mac->sci_pdu_rx.cast_type == 1 ||
+      mac->sci_pdu_rx.cast_type == 2)) || mac->sci1_pdu.second_stage_sci_format == 2) {
     sched_psfch->mcs = sequence_cyclic_shift_harq_ack_or_ack_or_only_nack[ack_nack];
+    sched_psfch->bit_len_harq = 1;
     LOG_D(NR_MAC, "mcs %i, ack_nack: %i, sched_psfch->initial_cyclic_shift %i\n",
           sched_psfch->mcs, ack_nack, sched_psfch->initial_cyclic_shift);
   } else if (mac->sci1_pdu.second_stage_sci_format == 1 ||
-            (mac->sci1_pdu.second_stage_sci_format == 1 && mac->sci_pdu_rx.cast_type == 3)) {
+            (mac->sci1_pdu.second_stage_sci_format == 0 && mac->sci_pdu_rx.cast_type == 3)) {
     sched_psfch->mcs = sequence_cyclic_shift_harq_ack_or_ack_or_only_nack[0];
+    sched_psfch->bit_len_harq = 0;
   }
   const uint8_t values[] = {7, 8, 9, 10, 11, 12, 13, 14};
   uint8_t sl_num_symbols = *sl_bwp->sl_LengthSymbols_r16 ? values[*sl_bwp->sl_LengthSymbols_r16] : 0;
@@ -834,7 +839,6 @@ void fill_psfch_params_tx(NR_UE_MAC_INST_t *mac, sl_nr_rx_indication_t *rx_ind,
   sched_psfch->group_hop_flag = 0;
   sched_psfch->second_hop_prb = 0;
   sched_psfch->sequence_hop_flag = 0;
-  sched_psfch->bit_len_harq = 1;
   sched_psfch->harq_feedback = mac->sci_pdu_rx.harq_feedback;
   LOG_D(NR_MAC, "Filled psfch pdu\n");
 }
@@ -864,6 +868,33 @@ int find_current_slot_harqs(frame_t frame, sub_frame_t slot, NR_SL_UE_sched_ctrl
   return k;
 }
 
+/*
+Following function is used to remove the harq_pids from the feedback list;
+Adds back to available list or retransmission list based on round value.
+*/
+
+void update_harq_lists(NR_UE_MAC_INST_t *mac, frame_t frame, sub_frame_t slot, NR_SL_UE_info_t* UE)
+{
+  NR_SL_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
+  int cur = sched_ctrl->feedback_sl_harq.head;
+  while (cur != -1) {
+    NR_UE_sl_harq_t *harq = &sched_ctrl->sl_harq_processes[cur];
+    if ((harq->feedback_frame < frame
+         || (harq->feedback_frame == frame && harq->feedback_slot < slot))) {
+      remove_nr_list(&sched_ctrl->feedback_sl_harq, cur);
+      harq->feedback_slot = -1;
+      harq->is_waiting = false;
+      if (harq->round >= HARQ_ROUND_MAX - 1) {
+        abort_nr_ue_sl_harq(mac, cur, UE);
+      } else {
+        add_tail_nr_list(&sched_ctrl->retrans_sl_harq, cur);
+        harq->round++;
+      }
+    }
+    cur = sched_ctrl->feedback_sl_harq.next[cur];
+  }
+}
+
 void configure_psfch_params_rx(int module_idP,
                             NR_UE_MAC_INST_t *mac,
                             sl_nr_rx_config_request_t *rx_config)
@@ -877,17 +908,15 @@ void configure_psfch_params_rx(int module_idP,
   uint16_t num_subch = sl_get_num_subch(mac->sl_rx_res_pool);
   rx_config->sl_rx_config_list[0].rx_psfch_pdu_list = calloc(psfch_period*num_subch, sizeof(sl_nr_tx_rx_config_psfch_pdu_t));
   NR_SL_UEs_t *UE_info = &mac->sl_info;
-  AssertFatal(UE_info->list[1] == NULL,
-              "cannot handle more than one UE\n");
-  if (UE_info->list == NULL) {
+
+  if (*(UE_info->list) == NULL) {
     LOG_D(NR_MAC, "UE list is empty\n");
     return;
   }
 
   psfch_params_t *psfch_params = calloc(1, sizeof(psfch_params_t));
   compute_params(module_idP, psfch_params);
-  NR_SL_UE_info_t **UE_SL_temp = UE_info->list, *UE;
-  while((UE=*(UE_SL_temp++))) {
+  SL_UE_iterator(UE_info->list, UE) {
     NR_SL_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
     NR_UE_sl_harq_t **matched_harqs = (NR_UE_sl_harq_t **) calloc(sched_ctrl->feedback_sl_harq.len, sizeof(NR_UE_sl_harq_t *));
     int matched_sz = find_current_slot_harqs(frame, slot, sched_ctrl, matched_harqs);
@@ -936,7 +965,7 @@ void fill_psfch_params_rx(sl_nr_rx_config_request_t *rx_config, sl_nr_tx_rx_conf
   rx_config->sl_rx_config_list[0].pdu_type = SL_NR_CONFIG_TYPE_RX_PSSCH_SLSCH_PSFCH;
   LOG_D(NR_PHY, "%s start_symbol_index %d, sl_bwp_start %d, sequence_hop_flag %d, \
         second_hop_prb %d, prb %d, nr_of_symbols %d, initial_cyclic_shift %d, hopping_id %d, \
-        group_hop_flag %d, freq_hop_flag %d, bit_len_harq %d\n",
+        group_hop_flag %d, freq_hop_flag %d, bit_len_harq %d----> Setting pdu type SL_NR_CONFIG_TYPE_RX_PSSCH_SLSCH_PSFCH  \n",
         __FUNCTION__,
         psfch_pdu->start_symbol_index, psfch_pdu->sl_bwp_start,
         psfch_pdu->sequence_hop_flag, psfch_pdu->second_hop_prb, psfch_pdu->prb,
@@ -944,17 +973,16 @@ void fill_psfch_params_rx(sl_nr_rx_config_request_t *rx_config, sl_nr_tx_rx_conf
         psfch_pdu->group_hop_flag, psfch_pdu->freq_hop_flag, psfch_pdu->bit_len_harq);
 }
 
-void configure_csi_report_params(NR_UE_MAC_INST_t* mac) {
-  mac->sl_csi_report = (nr_sl_csi_report_t *) malloc(sizeof(nr_sl_csi_report_t));
-  mac->sl_csi_report->CQI = mac->csirs_measurements.cqi;
-  mac->sl_csi_report->RI = mac->csirs_measurements.rank_indicator;
-  mac->sl_csi_report->R = 0;
+void set_csi_report_params(NR_UE_MAC_INST_t* mac, NR_SL_UE_sched_ctrl_t *sched_ctrl) {
+  SL_CSI_Report_t *csi_report = &sched_ctrl->sched_csi_report;
+  csi_report->cqi = mac->csirs_measurements.cqi;
+  csi_report->ri = mac->csirs_measurements.rank_indicator;
 }
 
 uint8_t sl_num_slsch_feedbacks(NR_UE_MAC_INST_t *mac) {
   sl_nr_ue_mac_params_t *sl_mac =  mac->SL_MAC_PARAMS;
   NR_TDD_UL_DL_Pattern_t *tdd = &sl_mac->sl_TDD_config->pattern1;
-  int scs = get_softmodem_params()->numerology;
+  uint8_t scs = sl_mac->sl_phy_config.sl_config_req.sl_bwp_config.sl_scs;
   const int nr_slots_frame = nr_slots_per_frame[scs];
   const int n_ul_slots_period = tdd ? tdd->nrofUplinkSlots + (tdd->nrofUplinkSymbols > 0 ? 1 : 0) : nr_slots_frame;
   uint16_t num_subch = sl_get_num_subch(mac->sl_tx_res_pool);
@@ -1002,30 +1030,65 @@ void nr_ue_process_mac_sl_pdu(int module_idP,
 
   NR_SLSCH_MAC_SUBHEADER_FIXED *sl_sch_subheader = (NR_SLSCH_MAC_SUBHEADER_FIXED *) pduP;
   uint8_t psfch_period = 0;
-  if (mac->sl_tx_res_pool->sl_PSFCH_Config_r16 && mac->sl_tx_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16)
+  if (mac->sl_tx_res_pool->sl_PSFCH_Config_r16 &&
+      mac->sl_tx_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16)
     psfch_period = *mac->sl_tx_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16;
   if (psfch_period && mac->sci_pdu_rx.harq_feedback) {
     configure_psfch_params_tx(module_idP, mac, rx_ind, pdu_id);
   }
 
+  NR_SL_UE_info_t *UE = find_UE(mac, sl_sch_subheader->SRC);
+
+  if (UE == NULL)
+    return;
+
   if (pdu_type == SL_NR_RX_PDU_TYPE_SLSCH_PSFCH) {
     handle_nr_ue_sl_harq(module_idP, frame, slot, rx_slsch_pdu, sl_sch_subheader->SRC);
-    return;
+    int r0 = UE->mac_sl_stats.cumul_round[0];
+    int r1 = UE->mac_sl_stats.cumul_round[1];
+    int r2 = UE->mac_sl_stats.cumul_round[2];
+    int r3 = UE->mac_sl_stats.cumul_round[3];
+    int r4 = UE->mac_sl_stats.cumul_round[4];
+    int round_sum = r1 + 2 * r2 + 3 * r3 + 4 * r4;
+    int total_tx = r0 + round_sum;
+    if (total_tx % 20 == 0 || (total_tx > 299 && total_tx < 305)) {
+      LOG_I(NR_PHY, "[UE] %d:%d PSFCH Stats: RX round (%u %u %u %u %u), SumRetx %u TotalTx %u\n",
+                                                      frame, slot,
+                                                      UE->mac_sl_stats.cumul_round[0],
+                                                      UE->mac_sl_stats.cumul_round[1],
+                                                      UE->mac_sl_stats.cumul_round[2],
+                                                      UE->mac_sl_stats.cumul_round[3],
+                                                      UE->mac_sl_stats.cumul_round[4],
+                                                      round_sum, total_tx
+                                                      );
+    }
+
   }
 
+  LOG_D(NR_MAC, "%4d.%2d ack_nack %d pdu_type %d mac->sci_pdu_rx.csi_req %d\n",
+        frame, slot, rx_slsch_pdu->ack_nack, pdu_type, mac->sci_pdu_rx.csi_req);
   if (rx_slsch_pdu->ack_nack == 0)
     return;
 
+  NR_SL_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
   if (mac->sci_pdu_rx.csi_req) {
     LOG_D(NR_MAC, "%4d.%2d Configuring sl_csi_report parameters\n", frame, slot);
-    configure_csi_report_params(mac);
+    int scs = get_softmodem_params()->numerology;
+    uint16_t tx_slot = (rx_ind->slot + DURATION_RX_TO_TX) % nr_slots_per_frame[scs];
+    uint16_t tx_frame = (rx_ind->sfn + (rx_ind->slot + DURATION_RX_TO_TX) / nr_slots_per_frame[scs]) % 1024;
+    set_csi_report_params(mac, sched_ctrl);
+    nr_ue_sl_csi_report_scheduling(module_idP,
+                                   sched_ctrl,
+                                   tx_frame,
+                                   tx_slot);
   }
 
   LOG_D(NR_MAC, "In %s : processing PDU %d (with length %d) of %d total number of PDUs...\n", __FUNCTION__, pdu_id, pdu_len, rx_ind->number_pdus);
   LOG_D(NR_PHY, "%4d.%2d Rx V %d R %d SRC %d DST %d\n", frame, slot, sl_sch_subheader->V, sl_sch_subheader->R, sl_sch_subheader->SRC, sl_sch_subheader->DST);
-  mac->dest_id = sl_sch_subheader->SRC;
   pduP += sizeof(*sl_sch_subheader);
   pdu_len -= sizeof(*sl_sch_subheader);
+  if (frame % 20 == 0)
+    LOG_D(NR_PHY, "%4d.%2d Rx V %d R %d SRC %d DST %d\n", frame, slot, sl_sch_subheader->V, sl_sch_subheader->R, sl_sch_subheader->SRC, sl_sch_subheader->DST);
   while (!done && pdu_len > 0) {
     uint16_t mac_len = 0x0000;
     uint16_t mac_subheader_len = 0x0001; //  default to fixed-length subheader = 1-oct
@@ -1053,21 +1116,27 @@ void nr_ue_process_mac_sl_pdu(int module_idP,
       case SL_SCH_LCID_SL_CSI_REPORT:
         {
           NR_MAC_SUBHEADER_FIXED* sub_pdu_header = (NR_MAC_SUBHEADER_FIXED*) pduP;
-          LOG_D(NR_MAC, "LCID %i, R %i\n", sub_pdu_header->LCID, sub_pdu_header->R);
-          mac_len = sizeof(*sub_pdu_header);
+          if (frame % 20 == 0)
+            LOG_D(NR_MAC, "\tLCID: %i, R: %i\n", sub_pdu_header->LCID, sub_pdu_header->R);
+          mac_subheader_len = sizeof(*sub_pdu_header);
           nr_sl_csi_report_t* nr_sl_csi_report = (nr_sl_csi_report_t *) (pduP + mac_len);
-          LOG_D(NR_MAC, "%4d.%2d: CQI: %i RI: %i\n", frame, slot, nr_sl_csi_report->CQI, nr_sl_csi_report->RI);
-          int indx = sl_sch_subheader->SRC%CURRENT_NUM_UE_CONNECTIONS;
-          mac->sl_info.list[indx]->uid = mac->src_id;
-          mac->sl_info.list[indx]->dest_id = sl_sch_subheader->SRC;
-          mac->sl_info.list[indx]->UE_sched_ctrl.csi_report.cqi = nr_sl_csi_report->CQI;
-          mac->sl_info.list[indx]->UE_sched_ctrl.csi_report.ri = nr_sl_csi_report->RI;
+          mac_len = sizeof(*nr_sl_csi_report);
+          if (frame % 20 == 0)
+            LOG_D(NR_MAC, "\tCQI: %i RI: %i\n", nr_sl_csi_report->CQI, nr_sl_csi_report->RI);
+          sched_ctrl->rx_csi_report.CQI = nr_sl_csi_report->CQI;
+          sched_ctrl->rx_csi_report.RI = nr_sl_csi_report->RI;
+          LOG_D(NR_MAC, "Setting to CQI %i\n", sched_ctrl->rx_csi_report.CQI);
           break;
         }
       case SL_SCH_LCID_SL_PADDING:
-	      LOG_D(NR_MAC, "Received padding\n");
-	      done = 1;
-	      break;
+        {
+          NR_MAC_SUBHEADER_FIXED* sub_pdu_header = (NR_MAC_SUBHEADER_FIXED*) pduP;
+          mac_subheader_len = sizeof(*sub_pdu_header);
+          mac_len = pdu_len - mac_subheader_len;
+          LOG_D(NR_MAC, "%4d.%2d Received padding %d\n", frame, slot, pdu_len);
+          done = 1;
+          break;
+        }
       case SL_SCH_LCID_SCCH_PC5_NOT_PROT:
       case SL_SCH_LCID_SCCH_PC5_DSMC:
       case SL_SCH_LCID_SCCH_PC5_PROT:
@@ -1090,4 +1159,273 @@ void nr_ue_process_mac_sl_pdu(int module_idP,
     if (pdu_len < 0)
       LOG_E(NR_MAC, "[UE %d][%d.%d] nr_ue_process_mac_pdu_sl, residual mac pdu length %d < 0!\n", module_idP, frame, slot, pdu_len);
   }
+}
+
+void nr_ue_sl_csi_report_scheduling(int mod_id,
+                                    NR_SL_UE_sched_ctrl_t *sched_ctrl,
+                                    uint32_t frame,
+                                    uint32_t slot) {
+  uint32_t sched_slot, sched_frame;
+  NR_UE_MAC_INST_t *mac = get_mac_inst(mod_id);
+  sl_nr_ue_mac_params_t *sl_mac = mac->SL_MAC_PARAMS;
+
+  NR_TDD_UL_DL_Pattern_t *tdd = &sl_mac->sl_TDD_config->pattern1;
+  if (sched_ctrl->sched_csi_report.active == false) {
+    uint8_t scs = sl_mac->sl_phy_config.sl_config_req.sl_bwp_config.sl_scs;
+    const int nr_slots_frame = nr_slots_per_frame[scs];
+    uint8_t csirs_to_csi_report[sl_mac->sl_LatencyBoundCSI_Report];
+
+    get_csirs_to_csi_report(csirs_to_csi_report, sl_mac->sl_LatencyBoundCSI_Report, nr_slots_frame);
+    int continue_flag = 0;
+    for (int f = 0; f < sl_mac->sl_LatencyBoundCSI_Report; f++) {
+      continue_flag = get_csi_reporting_frame_slot(mac,
+                                                   tdd,
+                                                   csirs_to_csi_report[f],
+                                                   nr_slots_frame,
+                                                   frame,
+                                                   slot,
+                                                   &sched_frame,
+                                                   &sched_slot);
+      if (continue_flag == -1)
+        continue;
+      else
+        break;
+    }
+    LOG_D(NR_MAC, "%4d.%2d Scheduling csi_report\n", sched_frame, sched_slot);
+    SL_CSI_Report_t *csi_report = &sched_ctrl->sched_csi_report;
+    csi_report->frame = sched_frame;
+    csi_report->slot = sched_slot;
+    csi_report->active = true;
+  }
+}
+
+NR_SL_UE_info_t* find_UE(NR_UE_MAC_INST_t *mac,
+                         uint16_t nearby_ue_id) {
+  NR_SL_UEs_t *UE_info = &mac->sl_info;
+
+  if (*(UE_info->list) == NULL) {
+    LOG_D(NR_MAC, "UE list is empty\n");
+    return NULL;
+  }
+
+  SL_UE_iterator(UE_info->list, UE) {
+    LOG_D(NR_MAC, "%s: dest_id %d nearby id %d\n", __FUNCTION__, UE->uid, nearby_ue_id);
+    if((UE->uid == nearby_ue_id)) {
+      return UE;
+    }
+  }
+  return NULL;
+}
+
+int get_csi_reporting_frame_slot(NR_UE_MAC_INST_t *mac,
+                                 NR_TDD_UL_DL_Pattern_t *tdd,
+                                 uint8_t csi_offset,
+                                 const int nr_slots_frame,
+                                 uint32_t frame,
+                                 uint32_t slot,
+                                 uint32_t *csi_report_frame,
+                                 uint32_t *csi_report_slot) {
+  AssertFatal(tdd != NULL, "Expecting valid tdd configurations");
+  const int first_ul_slot_period = tdd ? get_first_ul_slot(tdd->nrofDownlinkSlots, tdd->nrofDownlinkSymbols, tdd->nrofUplinkSymbols) : 0;
+  const int nr_slots_period = tdd ? nr_slots_frame / get_nb_periods_per_frame(tdd->dl_UL_TransmissionPeriodicity) : nr_slots_frame;
+
+  *csi_report_slot = (slot + csi_offset) % nr_slots_frame;
+
+  // check if the slot is UL
+  if(*csi_report_slot % nr_slots_period < first_ul_slot_period)
+    return -1;
+
+  *csi_report_frame = (frame + ((slot + csi_offset) / nr_slots_frame)) & 1023;
+
+  return 0;
+}
+
+void init_list(List_t* list, size_t element_size, size_t initial_capacity) {
+  list->data = calloc(1, element_size * initial_capacity);
+  list->element_size = element_size;
+  list->size = 0;
+  list->capacity = initial_capacity;
+}
+
+void push_back(List_t* list, void *element) {
+  if (list->size == list->capacity) {
+    list->capacity *= 2;
+    list->data = realloc(list->data, list->element_size * list->capacity);
+  }
+  void *target = (char*)list->data + (list->size * list->element_size);
+  memcpy(target, element, list->element_size);
+  list->size++;
+}
+
+void* get_front(const List_t* list) {
+  if (list->size == 0) {
+    return NULL;
+  }
+  return list->data; // pointer to first element
+}
+
+void* get_back(const List_t* list) {
+  if (list->size == 0) {
+    return NULL;
+  }
+  return (char*)list->data + (list->size - 1) * list->element_size; // pointer to last element
+}
+
+void delete_at(List_t* list, size_t index) {
+
+  if (index >= list->size) {
+    LOG_E(NR_MAC, "Index of bound\n");
+    return;
+  }
+
+  char* element_ptr = (char*)list->data + index * list->element_size;
+
+  memmove(element_ptr, element_ptr + list->element_size, (list->size - index - 1) * list->element_size);
+
+  list->size--;
+}
+
+int64_t normalize(frameslot_t *frame_slot, uint8_t mu) {
+  int64_t num_slots = 0;
+  uint8_t slots_per_frame = nr_slots_per_frame[mu];
+  num_slots  = frame_slot->slot;
+  num_slots += frame_slot->frame * slots_per_frame;
+  return num_slots;
+}
+
+void de_normalize(int64_t abs_slot_idx, uint8_t mu, frameslot_t *frame_slot) {
+  uint8_t slots_per_frame = nr_slots_per_frame[mu];
+  frame_slot->frame = (abs_slot_idx / slots_per_frame) & 1023;
+  frame_slot->slot = (abs_slot_idx % slots_per_frame);
+}
+
+frameslot_t add_to_sfn(frameslot_t* sfn, uint16_t slot_n, uint8_t mu) {
+ frameslot_t temp_sfn;
+ temp_sfn.frame = (sfn->frame + ((sfn->slot + slot_n) / nr_slots_per_frame[mu])) % 1024;
+ temp_sfn.slot = (sfn->slot + slot_n) % nr_slots_per_frame[mu];
+ return temp_sfn;
+}
+
+
+void update_sensing_data(List_t* sensing_data, frameslot_t *frame_slot, sl_nr_ue_mac_params_t *sl_mac, uint16_t pool_id) {
+  uint8_t mu = sl_mac->sl_phy_config.sl_config_req.sl_bwp_config.sl_scs;
+  while(sensing_data->size > 0) {
+    sensing_data_t* last_elem = (sensing_data_t*)((char*)sensing_data->data + (sensing_data->size - 1) * sensing_data->element_size);
+
+    if (normalize(frame_slot, mu) - normalize(&last_elem->frame_slot, mu) <= get_tproc0(sl_mac, pool_id)) {
+      pop_back(sensing_data);
+    } else {
+      break;
+    }
+  }
+}
+
+void update_transmit_history(List_t* transmit_history, frameslot_t *frame_slot, sl_nr_ue_mac_params_t *sl_mac, uint16_t pool_id) {
+  uint8_t mu = sl_mac->sl_phy_config.sl_config_req.sl_bwp_config.sl_scs;
+  while(transmit_history->size > 0) {
+    frameslot_t* last_elem = (frameslot_t*)((uint8_t*)transmit_history->data + (transmit_history->size - 1) * transmit_history->element_size);
+
+    if (normalize(frame_slot, mu) - normalize(last_elem, mu) <= get_tproc0(sl_mac, pool_id)) {
+      pop_back(transmit_history);
+    } else {
+      break;
+    }
+  }
+}
+
+void pop_back(List_t* sensing_data) {
+  if(sensing_data->size > 0) {
+    sensing_data->size--;
+  }
+}
+
+void free_list_mem(List_t* list) {
+  free(list->data);
+  list->data = NULL;
+  list->size = 0;
+  list->capacity = 0;
+}
+
+uint16_t get_T2_min(uint16_t pool_id, sl_nr_ue_mac_params_t *sl_mac, uint8_t mu) {
+  uint16_t t2min = sl_mac->sl_TxPool[pool_id]->t2min * pow(2, mu);
+  return t2min;
+}
+
+uint16_t get_t2(uint16_t pool_id, uint8_t mu, nr_sl_transmission_params_t* sl_tx_params, sl_nr_ue_mac_params_t *sl_mac) {
+  uint16_t t2;
+  if (!(sl_tx_params->packet_delay_budget_ms == 0)) {
+    // Packet delay budget is known, so use it
+    uint16_t pdb_slots = time_to_slots(mu, sl_tx_params->packet_delay_budget_ms);
+    t2 = min(pdb_slots, sl_mac->sl_TxPool[pool_id]->t2);
+  } else {
+    // Packet delay budget is not known, so use max(NrSlUeMac::T2, T2min)
+    uint16_t t2min = get_T2_min(pool_id, sl_mac, mu);
+    t2 = max(t2min, sl_mac->sl_TxPool[pool_id]->t2);
+  }
+  return t2;
+}
+
+uint16_t time_to_slots(uint8_t mu, uint16_t time) {
+  uint8_t slots_per_ms = (uint8_t)pow(2, mu); // subframe is of 1 ms
+  uint16_t time_in_slots = time * slots_per_ms;
+  return time_in_slots;
+}
+
+uint8_t get_tproc0(sl_nr_ue_mac_params_t *sl_mac, uint16_t pool_id) {
+  return sl_mac->sl_TxPool[pool_id]->tproc0;
+}
+
+void init_vector(vec_of_list_t* vec, size_t initial_capacity) {
+  vec->size = 0;
+  vec->capacity = initial_capacity;
+  vec->lists = (List_t*)malloc16_clear(initial_capacity * sizeof(List_t));
+
+  if (!vec->lists) {
+    LOG_E(NR_MAC, "Memory allocation failed\n");
+    exit(EXIT_FAILURE);
+  }
+}
+
+void add_list(vec_of_list_t* vec, size_t element_size, size_t initial_list_capacity) {
+  if (vec->size == vec->capacity) {
+    vec->capacity *= 2;
+    vec->lists = realloc(vec->lists, vec->capacity * sizeof(List_t));
+    if (!vec->lists) {
+      LOG_E(NR_MAC, "Memory allocation failed\n");
+      exit(EXIT_FAILURE);
+    }
+  }
+  init_list(&vec->lists[vec->size], element_size, initial_list_capacity);
+  vec->size++;
+}
+
+void push_back_list(vec_of_list_t* vec, List_t* new_list) {
+  if (vec->size == vec->capacity) {
+    vec->capacity *= 2;
+    vec->lists = realloc(vec->lists, vec->capacity * sizeof(List_t));
+    if (!vec->lists) {
+      LOG_E(NR_MAC, "Memory allocation failed\n");
+      exit(EXIT_FAILURE);
+    }
+  }
+  vec->lists[vec->size] = *new_list;
+  vec->size++;
+}
+
+List_t* get_list(vec_of_list_t *vec, size_t index) {
+  if (index >= vec->size) {
+    LOG_E(NR_MAC, "Index out of bounds\n");
+    return NULL;
+  }
+  return &vec->lists[index];
+}
+
+void free_vector(vec_of_list_t* vec) {
+  for (size_t i = 0; i < vec->size; i++) {
+    free_list_mem(&vec->lists[i]);
+  }
+  free(vec->lists);
+  vec->lists = NULL;
+  vec->size = 0;
+  vec->capacity = 0;
 }

@@ -41,6 +41,9 @@
 #define NR_PUSCH_x 2 // UCI placeholder bit TS 38.212 V15.4.0 subclause 5.3.3.1
 #define NR_PUSCH_y 3 // UCI placeholder bit
 
+// Additional memory allocation, because of applying the filter and the memory offset to ensure memory alignment
+#define FILTER_MARGIN 32
+
 // Functions below implement 36-211 and 36-212
 
 /** @addtogroup _PHY_TRANSPORT_
@@ -371,7 +374,8 @@ uint8_t nr_dci_decoding_procedure(PHY_VARS_NR_UE *ue,
                                   int pscch_flag,
                                   int16_t *pdcch_e_rx,
                                   void *ind,
-                                  fapi_nr_dl_config_dci_dl_pdu_rel15_t *rel15);
+                                  fapi_nr_dl_config_dci_dl_pdu_rel15_t *rel15,
+                                  int16_t *rsrp_dBm);
 
 
 /** \brief This function is the top-level entry point to PDSCH demodulation, after frequency-domain transformation and channel estimation.  It performs
@@ -455,6 +459,15 @@ int8_t nr_ue_decode_psfch0(PHY_VARS_NR_UE *ue,
                          int slot,
                          c16_t rxdataF[][ue->SL_UE_PHY_PARAMS.sl_frame_params.samples_per_slot_wCP],
                          const sl_nr_tx_rx_config_psfch_pdu_t *psfch_pdu);
+
+int nr_csi_rs_sinr_estimation(const PHY_VARS_NR_UE *ue,
+                              const fapi_nr_dl_config_csirs_pdu_rel15_t *csirs_config_pdu,
+                              const uint8_t N_ports,
+                              uint8_t mem_offset,
+                              const int32_t csi_rs_estimated_channel_freq[][N_ports][ue->frame_parms.ofdm_symbol_size + FILTER_MARGIN],
+                              const uint32_t interference_plus_noise_power,
+                              const int16_t log2_re,
+                              int32_t *precoded_sinr_dB);
 /**@}*/
 #endif
 

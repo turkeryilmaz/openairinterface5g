@@ -689,7 +689,7 @@ int8_t sl_handle_scheduled_response(nr_scheduled_response_t *scheduled_response)
   uint32_t slot = scheduled_response->slot;
   uint32_t frame = scheduled_response->frame;
   const char *sl_rx_action[] = {"NONE", "RX_PSBCH", "RX_PSCCH", "RX_SCI2_ON_PSSCH", "RX_SLSCH_ON_PSSCH", "RX_PSFCH", "RX_SLSCH_ON_PSSCH_CSI_RS"};
-  const char *sl_tx_action[] = {"TX_PSBCH", "TX_PSCCH_PSSCH", "TX_PSCCH_PSSCH_PSFCH", "TX_PSCCH_PSSCH_CSI_RS", "TX_PSCCH_PSSCH_PSFCH_CSI_RS"};
+  const char *sl_tx_action[] = {"TX_PSBCH", "TX_PSCCH_PSSCH", "TX_PSCCH_PSSCH_PSFCH", "TX_PSCCH_PSSCH_CSI_RS"};
   NR_UE_CSI_RS *csirs_vars = PHY_vars_UE_g[module_id][cc_id]->csirs_vars[0];
   if(scheduled_response->sl_rx_config != NULL) {
 
@@ -720,7 +720,7 @@ int8_t sl_handle_scheduled_response(nr_scheduled_response_t *scheduled_response)
       case SL_NR_CONFIG_TYPE_RX_PSSCH_SLSCH_CSI_RS:
         phy_data->sl_rx_action = sl_rx_config->sl_rx_config_list[0].pdu_type;
         phy_data->nr_sl_pssch_pdu = sl_rx_config->sl_rx_config_list[0].rx_pssch_config_pdu;
-        LOG_D(NR_PHY, "Recvd %s\n", sl_rx_action[phy_data->sl_rx_action]);
+        LOG_D(NR_PHY, "%4d.%2d Recvd %s\n", frame, slot, sl_rx_action[phy_data->sl_rx_action]);
         if (phy_data->sl_rx_action == SL_NR_CONFIG_TYPE_RX_PSSCH_SLSCH_CSI_RS) {
           csirs_config_pdu = &sl_rx_config->sl_rx_config_list[0].rx_csi_rs_config_pdu;
           memcpy((void*)&(csirs_vars->csirs_config_pdu), (void*)csirs_config_pdu, sizeof(sl_nr_tti_csi_rs_pdu_t));
@@ -764,8 +764,7 @@ int8_t sl_handle_scheduled_response(nr_scheduled_response_t *scheduled_response)
         break;
       case SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH:
       case SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_CSI_RS:
-      case SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_PSFCH:
-      case SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_PSFCH_CSI_RS: {
+      case SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_PSFCH: {
           sl_nr_tx_config_pscch_pssch_pdu_t *tx_config_pdu = &sl_tx_config->tx_config_list[0].tx_pscch_pssch_config_pdu;
           phy_data_tx->sl_tx_action = sl_tx_config->tx_config_list[0].pdu_type;
           phy_data_tx->nr_sl_pssch_pscch_pdu = *tx_config_pdu;
@@ -781,9 +780,12 @@ int8_t sl_handle_scheduled_response(nr_scheduled_response_t *scheduled_response)
                 (unsigned long long)*phy_data_tx->nr_sl_pssch_pscch_pdu.sci2_payload,
                 phy_data_tx->nr_sl_pssch_pscch_pdu.mcs,
                 phy_data_tx->nr_sl_pssch_pscch_pdu.tbslbrm);
-          if (phy_data_tx->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_CSI_RS || phy_data_tx->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_PSFCH_CSI_RS) {
+          if (phy_data_tx->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_CSI_RS) {
             phy_data_tx->nr_sl_pssch_pscch_pdu.nr_sl_csi_rs_pdu = tx_config_pdu->nr_sl_csi_rs_pdu;
           }
+          uint8_t current_harq_pid = tx_config_pdu->harq_pid;
+          NR_UL_UE_HARQ_t *harq_process = &PHY_vars_UE_g[module_id][cc_id]->sl_harq_processes[current_harq_pid];
+          harq_process->status = ACTIVE;
         }
         break;
       default:
@@ -793,7 +795,7 @@ int8_t sl_handle_scheduled_response(nr_scheduled_response_t *scheduled_response)
 
     LOG_D(PHY, "[UE%d] TTI %d:%d, SL-TX action:%s slss_id:%d, sl-mib:%x, psbch pwr:%d\n",
                                                        module_id,frame,slot,
-                                                       sl_tx_action[phy_data_tx->sl_tx_action - 6],
+                                                       sl_tx_action[phy_data_tx->sl_tx_action - SL_NR_CONFIG_TYPE_TX_PSBCH],
                                                        phy_data_tx->psbch_vars.tx_slss_id,
                                                        *((uint32_t *)phy_data_tx->psbch_vars.psbch_payload),
                                                        phy_data_tx->psbch_vars.psbch_tx_power);

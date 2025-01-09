@@ -32,6 +32,8 @@
 #include "LAYER2/NR_MAC_UE/mac_proto.h"
 #include "RRC/NAS/nas_config.h"
 #include "executables/nr-uesoftmodem.h"
+#include "LAYER2/nr_rlc/nr_rlc_oai_api.h"
+#include "LAYER2/nr_pdcp/nr_pdcp_oai_api.h"
 
 #define GNSS_SUPPORT 0
 
@@ -195,7 +197,6 @@ static void prepare_NR_SL_ResourcePool(NR_SL_ResourcePool_r16_t *sl_res_pool,
   sl_res_pool->sl_PTRS_Config_r16 = NULL;
   sl_res_pool->sl_UE_SelectedConfigRP_r16 = calloc(1,sizeof(*sl_res_pool->sl_UE_SelectedConfigRP_r16));
   sl_res_pool->sl_UE_SelectedConfigRP_r16->sl_MaxNumPerReserve_r16 = calloc(1,sizeof(*sl_res_pool->sl_UE_SelectedConfigRP_r16->sl_MaxNumPerReserve_r16));
-  *sl_res_pool->sl_UE_SelectedConfigRP_r16->sl_MaxNumPerReserve_r16 = NR_SL_UE_SelectedConfigRP_r16__sl_MaxNumPerReserve_r16_n2;
 
   sl_res_pool->sl_RxParametersNcell_r16 = NULL;
   sl_res_pool->sl_ZoneConfigMCR_List_r16 = NULL;
@@ -223,11 +224,11 @@ static void prepare_NR_SL_ResourcePool(NR_SL_ResourcePool_r16_t *sl_res_pool,
   // EX: BITMAP 10101010.. indicating every alternating slot supported for sidelink
   for (int i=0;i<sl_res_pool->ext1->sl_TimeResource_r16->size;i++) {
     if (is_txpool) {
-        sl_res_pool->ext1->sl_TimeResource_r16->buf[i] = (is_sl_syncsource) ? 0xAA //0x88;//0xAA;
-                                                                            : 0x55;//0x11;//0x55;
+        sl_res_pool->ext1->sl_TimeResource_r16->buf[i] = (is_sl_syncsource) ? 0xF0 //0x88;//0xAA;
+                                                                            : 0x0F;//0x11;//0x55;
     } else {
-        sl_res_pool->ext1->sl_TimeResource_r16->buf[i] = (is_sl_syncsource) ? 0x55 //0x88;//0xAA;
-                                                                            : 0xAA;//0x11;//0x55;
+        sl_res_pool->ext1->sl_TimeResource_r16->buf[i] = (is_sl_syncsource) ? 0x0F //0x88;//0xAA;
+                                                                            : 0xF0;//0x11;//0x55;
     }
   }
 
@@ -243,11 +244,39 @@ static void prepare_NR_SL_ResourcePool(NR_SL_ResourcePool_r16_t *sl_res_pool,
 
   config_get(SL_POOLPARAMS,sizeof(SL_POOLPARAMS)/sizeof(paramdef_t),aprefix);
 
+
+  sl_res_pool->sl_UE_SelectedConfigRP_r16->sl_SelectionWindowList_r16 = calloc(1, sizeof(*sl_res_pool->sl_UE_SelectedConfigRP_r16->sl_SelectionWindowList_r16));
+  struct NR_SL_UE_SelectedConfigRP_r16 *nr_sl_ue_Selected_config = sl_res_pool->sl_UE_SelectedConfigRP_r16;
+  nr_sl_ue_Selected_config->sl_SelectionWindowList_r16->list.array = (NR_SL_SelectionWindowConfig_r16_t**)malloc16_clear(sizeof(NR_SL_SelectionWindowConfig_r16_t*));
+  nr_sl_ue_Selected_config->sl_SelectionWindowList_r16->list.array[0] = (NR_SL_SelectionWindowConfig_r16_t*)malloc16_clear(sizeof(NR_SL_SelectionWindowConfig_r16_t));
+
+  nr_sl_ue_Selected_config->sl_SensingWindow_r16 = calloc(1, sizeof(*nr_sl_ue_Selected_config->sl_SensingWindow_r16));
+
+  nr_sl_ue_Selected_config->sl_Thres_RSRP_List_r16 = calloc(1, sizeof(*nr_sl_ue_Selected_config->sl_Thres_RSRP_List_r16));
+  nr_sl_ue_Selected_config->sl_Thres_RSRP_List_r16->list.array = (NR_SL_Thres_RSRP_r16_t**)malloc16_clear(sizeof(NR_SL_Thres_RSRP_r16_t*));
+  nr_sl_ue_Selected_config->sl_Thres_RSRP_List_r16->list.array[0] = (NR_SL_Thres_RSRP_r16_t*)malloc16_clear(sizeof(NR_SL_Thres_RSRP_r16_t));
+
+  nr_sl_ue_Selected_config->sl_MaxNumPerReserve_r16 = calloc(1, sizeof(*nr_sl_ue_Selected_config->sl_MaxNumPerReserve_r16));
+
+  nr_sl_ue_Selected_config->sl_ResourceReservePeriodList_r16 = calloc(1, sizeof(*nr_sl_ue_Selected_config->sl_ResourceReservePeriodList_r16));
+  nr_sl_ue_Selected_config->sl_ResourceReservePeriodList_r16->list.array = (NR_SL_ResourceReservePeriod_r16_t**)malloc16_clear(sizeof(NR_SL_ResourceReservePeriod_r16_t*));
+  nr_sl_ue_Selected_config->sl_ResourceReservePeriodList_r16->list.array[0] = (NR_SL_ResourceReservePeriod_r16_t*)malloc16_clear(sizeof(NR_SL_ResourceReservePeriod_r16_t));
+
+  char aprefix_rsc_sel[MAX_OPTNAME_SIZE*2 + 8];
+  paramdef_t SL_RSCSELECTIONPARAMS[] = SL_RSRCSELPARAMS_DESC(sl_res_pool);
+  sprintf(aprefix_rsc_sel, "%s.[%i].%s.[%i]", SL_CONFIG_STRING_SL_PRECONFIGURATION, 0,SL_CONFIG_STRING_RSRC_SEL_PARAMS_LIST, 0);
+  config_get(SL_RSCSELECTIONPARAMS,sizeof(SL_RSCSELECTIONPARAMS)/sizeof(paramdef_t),aprefix_rsc_sel);
+  LOG_D(NR_RRC, "sl_MaxNumPerReserve %ld, sl_SensingWindow %ld, sl_Priority %ld, sl_SelectionWindow %ld, sl_ResourceReservePeriod1 %ld\n",
+        *sl_res_pool->sl_UE_SelectedConfigRP_r16->sl_MaxNumPerReserve_r16,
+        *sl_res_pool->sl_UE_SelectedConfigRP_r16->sl_SensingWindow_r16,
+        sl_res_pool->sl_UE_SelectedConfigRP_r16->sl_SelectionWindowList_r16->list.array[0]->sl_Priority_r16,
+        sl_res_pool->sl_UE_SelectedConfigRP_r16->sl_SelectionWindowList_r16->list.array[0]->sl_SelectionWindow_r16,
+        sl_res_pool->sl_UE_SelectedConfigRP_r16->sl_ResourceReservePeriodList_r16->list.array[0]->choice.sl_ResourceReservePeriod1_r16);
   struct NR_SL_PSFCH_Config_r16 *nr_sl_psfch_config = sl_res_pool->sl_PSFCH_Config_r16->choice.setup;
   if (*nr_sl_psfch_config->sl_PSFCH_Period_r16 > 0) {
     const uint8_t psfch_periods[] = {0,1,2,4};
     AssertFatal(*nr_sl_psfch_config->sl_PSFCH_Period_r16 < 4, "sl_PSFCH_Period_r16 index must be less than 4\n");
-    LOG_I(NR_PHY, "Configuring PSFCH Period %ld\n", *nr_sl_psfch_config->sl_PSFCH_Period_r16);
+    LOG_D(NR_PHY, "Configuring PSFCH Period %d\n", psfch_periods[*nr_sl_psfch_config->sl_PSFCH_Period_r16]);
     uint8_t psfch_period = psfch_periods[*nr_sl_psfch_config->sl_PSFCH_Period_r16];
     uint16_t prod_numCh_period = *sl_res_pool->sl_NumSubchannel_r16*psfch_period;
     uint16_t num_prbs = (*sl_res_pool->sl_RB_Number_r16 / prod_numCh_period) * prod_numCh_period;
@@ -435,7 +464,23 @@ NR_SL_PreconfigurationNR_r16_t *prepare_NR_SL_PRECONFIGURATION(uint16_t num_tx_p
   struct NR_SL_RadioBearerConfig_r16 *sl_RadioBearerConfig_r16 = calloc(1,sizeof(*sl_RadioBearerConfig_r16));
 
   sl_RadioBearerConfig_r16->slrb_Uu_ConfigIndex_r16 = 1;
-  sl_RadioBearerConfig_r16->sl_SDAP_Config_r16 = NULL;
+  sl_RadioBearerConfig_r16->sl_SDAP_Config_r16 = calloc(1, sizeof(*sl_RadioBearerConfig_r16->sl_SDAP_Config_r16));
+  struct NR_SL_SDAP_Config_r16* sl_SDAP_Config = sl_RadioBearerConfig_r16->sl_SDAP_Config_r16;
+  sl_SDAP_Config->sl_SDAP_Header_r16 = NR_SL_SDAP_Config_r16__sl_SDAP_Header_r16_present;
+  sl_SDAP_Config->sl_DefaultRB_r16 = true;
+  sl_SDAP_Config->sl_CastType_r16 = calloc(1, sizeof(*sl_SDAP_Config->sl_CastType_r16));
+  *sl_SDAP_Config->sl_CastType_r16 = NR_SL_SDAP_Config_r16__sl_CastType_r16_unicast;
+  sl_SDAP_Config->sl_MappedQoS_Flows_r16 = calloc(1, sizeof(*sl_SDAP_Config->sl_MappedQoS_Flows_r16));
+  sl_SDAP_Config->sl_MappedQoS_Flows_r16->choice.sl_MappedQoS_FlowsList_r16 = calloc(1, sizeof(*sl_SDAP_Config->sl_MappedQoS_Flows_r16->choice.sl_MappedQoS_FlowsList_r16));
+  struct NR_SL_SDAP_Config_r16__sl_MappedQoS_Flows_r16__sl_MappedQoS_FlowsList_r16* sl_MappedQoS_FlowList = sl_SDAP_Config->sl_MappedQoS_Flows_r16->choice.sl_MappedQoS_FlowsList_r16;
+
+  NR_SL_QoS_Profile_r16_t *sl_QoS_Profile_r16_f1 = calloc(1, sizeof(*sl_QoS_Profile_r16_f1));
+  sl_QoS_Profile_r16_f1->sl_PQI_r16 = calloc(1, sizeof(*sl_QoS_Profile_r16_f1->sl_PQI_r16));
+  struct NR_SL_PQI_r16 *sl_PQI = sl_QoS_Profile_r16_f1->sl_PQI_r16;
+  sl_PQI->choice.sl_StandardizedPQI_r16 = 55;
+
+  ASN_SEQUENCE_ADD(&sl_MappedQoS_FlowList->list, sl_QoS_Profile_r16_f1);
+
   sl_RadioBearerConfig_r16->sl_TransRange_r16 = NULL;
   sl_RadioBearerConfig_r16->sl_PDCP_Config_r16 = calloc(1,sizeof(*sl_RadioBearerConfig_r16));
   sl_RadioBearerConfig_r16->sl_PDCP_Config_r16->sl_DiscardTimer_r16 = calloc(1,sizeof(*sl_RadioBearerConfig_r16->sl_PDCP_Config_r16->sl_DiscardTimer_r16));
@@ -579,7 +624,7 @@ void nr_UE_configure_Sidelink(uint8_t id, uint8_t is_sync_source, ueinfo_t *uein
 
   LOG_D(NR_RRC, "SL L2 SRCid %x, SL ipv4 addr X.X.%d.%d\n", ueinfo->srcid, ueinfo->thirdOctet, ueinfo->fourthOctet);
   nas_config(1 + ueinfo->srcid, ueinfo->thirdOctet, ueinfo->fourthOctet, "oai_sl_tun");
-  nr_rrc_mac_config_req_sl_preconfig(id, sl_preconfig, sync_source, ueinfo->srcid);
+  nr_rrc_mac_config_req_sl_preconfig(id, sl_preconfig, sync_source);
 
 
   // SL RadioBearers

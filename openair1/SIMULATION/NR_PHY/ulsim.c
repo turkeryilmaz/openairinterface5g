@@ -726,7 +726,7 @@ int main(int argc, char **argv)
   NR_UE_RRC_INST_t rrcue = {0};
   rrcue.mib = mib->message.choice.mib;
   rrcue.scell_group_config = secondaryCellGroup;
-  nr_l2_init_ue(&rrcue);
+  nr_l2_init_ue(&rrcue, NULL);
 
   NR_UE_MAC_INST_t* UE_mac = get_mac_inst(0);
   

@@ -37,6 +37,9 @@
 #define SL_CONFIG_STRING_SL_CSI_RS_POWER_CONTROL_OFFSET             "sl_powerControlOffset"
 #define SL_CONFIG_STRING_SL_CSI_RS_POWER_CONTROL_OFFSET_SS          "sl_powerControlOffsetSS"
 #define SL_CONFIG_STRING_SL_CSI_RS_SL_CSI_ACQUISITION               "sl_CSI_Acquisition"
+#define SL_CONFIG_STRING_SL_CSI_RS_SL_LATENCYBOUNDCSI_REPORT        "sl_LatencyBoundCSI_Report"
+
+#define SL_CONFIG_STRING_SL_ALLOWED_RESOURCE_SELECTION_CONFIG       "sl_AllowedResourceSelectionConfig"
 
 #define SL_CSI_RS_DESC(sl_csi_info) { \
 {SL_CONFIG_STRING_SL_CSI_RS_SYMB_L0,NULL,0,.u8ptr=&sl_csi_info->symb_l0,.defuintval=1,TYPE_UINT8,0}, \
@@ -45,7 +48,8 @@
 {SL_CONFIG_STRING_SL_CSI_RS_POWER_CONTROL_OFFSET_SS,NULL,0,.u8ptr=&sl_csi_info->power_control_offset_ss,.defuintval=1,TYPE_UINT8,0}, \
 {SL_CONFIG_STRING_SL_CSI_RS_SLOT_OFFSET,NULL,0,.u8ptr=&sl_csi_info->slot_offset,.defuintval=1,TYPE_UINT8,0}, \
 {SL_CONFIG_STRING_SL_CSI_RS_SLOT_PERIODICITY,NULL,0,.u8ptr=&sl_csi_info->slot_periodicity,.defuintval=1,TYPE_UINT8,0}, \
-{SL_CONFIG_STRING_SL_CSI_RS_SL_CSI_ACQUISITION,NULL,0,.u8ptr=&sl_csi_info->sl_csi_acquisition,.defuintval=1,TYPE_UINT8,0}}
+{SL_CONFIG_STRING_SL_CSI_RS_SL_CSI_ACQUISITION,NULL,0,.u8ptr=&sl_csi_info->sl_csi_acquisition,.defuintval=1,TYPE_UINT8,0}, \
+{SL_CONFIG_STRING_SL_CSI_RS_SL_LATENCYBOUNDCSI_REPORT,NULL,0,.u8ptr=&sl_csi_info->sl_latencyboundcsi_report,.defuintval=8,TYPE_UINT8,0}}
 
 /*Sidelink HARQ configuration parameters */
 #define SL_CONFIG_STRING_SL_CONFIGUREDGRANT_LIST               "sl_ConfiguredGrantConfig"
@@ -57,6 +61,9 @@
 {SL_CONFIG_STRING_SL_CONFIGUREDGRANT_HARQ_PROCID_OFFSET, NULL, 0, .u16ptr=&sl_harq_info->sl_HARQ_ProcID_offset, .defuintval=0, TYPE_UINT16, 0}, \
 {SL_CONFIG_STRING_SL_CONFIGUREDGRANT_HARQ_PERIODIC_RRI, NULL, 0, .u16ptr=&sl_harq_info->sl_Periodic_RRI, .defuintval=0, TYPE_UINT16, 0}}
 
+#define SL_CONFIG_RESOURCE_SELECTION(resource_selection_cfg) { \
+{SL_CONFIG_STRING_SL_ALLOWED_RESOURCE_SELECTION_CONFIG, NULL, 0, .u16ptr=resource_selection_cfg, .defuintval=3, TYPE_UINT16, 0}}
+
 typedef struct sl_csi_info {
   uint8_t symb_l0;
   uint8_t csi_type;
@@ -65,6 +72,7 @@ typedef struct sl_csi_info {
   uint8_t power_control_offset;
   uint8_t power_control_offset_ss;
   uint8_t sl_csi_acquisition;
+  uint8_t sl_latencyboundcsi_report;
 } sl_csi_info_t;
 
 typedef struct sl_harq_info {
@@ -118,7 +126,7 @@ void sl_ue_mac_free(uint8_t module_id)
 //Prepares the TDD config to be passed to PHY
 static int sl_set_tdd_config_nr_ue(sl_nr_phy_config_request_t *cfg,
                                   int mu,
-                                  int *pNumDownlinkSlots, int *pNumDownlinkSymbols,
+                                  long *pNumDownlinkSlots, long *pNumDownlinkSymbols,
                                   int nrofUplinkSlots,   int nrofUplinkSymbols)
 {
 
@@ -375,15 +383,13 @@ static void  sl_prepare_phy_config(int module_id,
 // RRC calls this API when RRC is configured with Sidelink PRE-configuration I.E
 int nr_rrc_mac_config_req_sl_preconfig(module_id_t module_id,
                                        NR_SL_PreconfigurationNR_r16_t *sl_preconfiguration,
-                                       uint8_t sync_source,
-				       int src_id)
+                                       uint8_t sync_source)
 {
 
   LOG_I(NR_MAC,"[UE%d] SL RRC->MAC CONFIG RECEIVED. Syncsource:%d\n",
                                                 module_id, sync_source);
 
   NR_UE_MAC_INST_t *mac = get_mac_inst(module_id);
-  mac->src_id = src_id;
   AssertFatal(sl_preconfiguration !=NULL,"SL-Preconfig Cannot be NULL");
   AssertFatal(mac, "mac should have an instance");
 
@@ -458,7 +464,24 @@ int nr_rrc_mac_config_req_sl_preconfig(module_id_t module_id,
           if (sl_mac->sl_TxPool[i] == NULL)
             sl_mac->sl_TxPool[i] = malloc16_clear(sizeof(SL_ResourcePool_params_t));
           sl_mac->sl_TxPool[i]->respool = txpool;
-
+          uint8_t tproc1_valaues[] = {3, 5, 9, 17};
+          uint8_t mu = get_softmodem_params()->numerology;
+          struct NR_SL_UE_SelectedConfigRP_r16 *sl_ue_selected_config = sl_mac->sl_TxPool[i]->respool->sl_UE_SelectedConfigRP_r16;
+          uint16_t sensing_window_ms = (uint16_t)*sl_ue_selected_config->sl_SensingWindow_r16;
+          uint16_t selection_window = (uint16_t)sl_ue_selected_config->sl_SelectionWindowList_r16->list.array[0]->sl_SelectionWindow_r16;
+          sl_mac->sl_TxPool[i]->t2min = selection_window;
+          sl_mac->sl_TxPool[i]->t0 = time_to_slots(mu, sensing_window_ms);
+          sl_mac->sl_TxPool[i]->tproc0 = 1;
+          sl_mac->sl_TxPool[i]->tproc1 = tproc1_valaues[mu];
+          sl_mac->sl_TxPool[i]->t1 = 1;
+          sl_mac->sl_TxPool[i]->t2 = 60; // According to 38214 sec. 8.1.4: T2min <= t2 <= PDB, where T2min  = {1,5,10,20}*2^μ, u = 1, PDB = 20ms = 40 slots
+          sl_mac->mac_tx_params.rri = sl_ue_selected_config->sl_ResourceReservePeriodList_r16->list.array[0]->choice.sl_ResourceReservePeriod1_r16;
+          sl_mac->mac_tx_params.resel_counter = get_random_reselection_counter(sl_mac->mac_tx_params.rri);
+          mac->sl_thresh_rsrp = (-128 + (*sl_ue_selected_config->sl_Thres_RSRP_List_r16->list.array[0] - 1) * 2);
+          LOG_D(NR_MAC, "sl_thresh_rsrp %d rri %i sl_ResourceReservePeriod1 %ld, i %d, sensing_window_ms %d, selection_window %d\n",
+                mac->sl_thresh_rsrp, sl_mac->mac_tx_params.rri,
+                sl_ue_selected_config->sl_ResourceReservePeriodList_r16->list.array[0]->choice.sl_ResourceReservePeriod1_r16,
+                i, sensing_window_ms, selection_window);
           uint16_t sci_1a_len = 0, num_subch = 0;
           sci_1a_len = sl_determine_sci_1a_len(&num_subch,
                                                sl_mac->sl_TxPool[i]->respool,
@@ -507,6 +530,54 @@ int nr_rrc_mac_config_req_sl_preconfig(module_id_t module_id,
     mac->sl_info.list[0]->UE_sched_ctrl.sched_psfch = calloc(n_ul_slots_period * num_subch, sizeof(SL_sched_feedback_t));
     mac->sl_info.list[0]->UE_sched_ctrl.sched_psfch->feedback_frame = -1;
     mac->sl_info.list[0]->UE_sched_ctrl.sched_psfch->feedback_slot = -1;
+
+    int nr_slots_period = nr_slots_frame;
+    int nr_ulstart_slot = 0;
+    if (tdd) {
+      nr_ulstart_slot = get_first_ul_slot(tdd->nrofDownlinkSlots, tdd->nrofDownlinkSymbols, tdd->nrofUplinkSymbols);
+      nr_slots_period /= get_nb_periods_per_frame(tdd->dl_UL_TransmissionPeriodicity);
+    }
+
+    for (int slot = 0; slot < nr_slots_frame; ++slot) {
+      mac->ulsch_slot_bitmap[slot / 64] |= (uint64_t)((slot % nr_slots_period) >= nr_ulstart_slot) << (slot % 64);
+      LOG_D(NR_MAC,
+            "slot %d UL %d\n",
+            slot,
+            (mac->ulsch_slot_bitmap[slot / 64] & ((uint64_t)1 << (slot % 64))) != 0);
+    }
+
+    BIT_STRING_t *sl_tx_time_rsrc = mac->sl_tx_res_pool->ext1->sl_TimeResource_r16;
+    int total_downlink_slots_in_bitmap = (((sl_tx_time_rsrc->size << 3) - sl_tx_time_rsrc->bits_unused) / n_ul_slots_period) * (nr_slots_period - n_ul_slots_period);
+    int total_uplink_slots_in_bitmap = (((sl_tx_time_rsrc->size << 3) - sl_tx_time_rsrc->bits_unused) / n_ul_slots_period) * (n_ul_slots_period);
+    AssertFatal(((sl_tx_time_rsrc->size << 3) - sl_tx_time_rsrc->bits_unused) == total_uplink_slots_in_bitmap, "The computation for total uplink slots is invalid. %ld != %d\n",
+                ((sl_tx_time_rsrc->size << 3) - sl_tx_time_rsrc->bits_unused), total_uplink_slots_in_bitmap);
+    int phy_sl_size = ((sl_tx_time_rsrc->size << 3) - sl_tx_time_rsrc->bits_unused) + total_downlink_slots_in_bitmap;
+    AssertFatal(total_downlink_slots_in_bitmap + total_uplink_slots_in_bitmap == phy_sl_size, "The total number of uplink and downlink slots must equal the total bitmap size!");
+    LOG_D(NR_MAC, "size of phy_sl_map  %d total_downlink_slots %d, sl_tx_time_rsrc.size %ld, n_ul_slots_period %d, (nr_slots_period - n_ul_slots_period) %d\n",
+          phy_sl_size, total_downlink_slots_in_bitmap, ((sl_tx_time_rsrc->size << 3) - sl_tx_time_rsrc->bits_unused), n_ul_slots_period, (nr_slots_period - n_ul_slots_period));
+
+    uint8_t pool_id = 0;
+    size_t byte_capacity = (phy_sl_size + 7) / 8;
+
+    SL_ResourcePool_params_t *sl_tx_rsrc_pool = sl_mac->sl_TxPool[pool_id];
+    BIT_STRING_t *phy_sl_tx_bitmap = &sl_tx_rsrc_pool->phy_sl_bitmap;
+    phy_sl_tx_bitmap->buf = (uint8_t*)malloc16_clear(byte_capacity);
+    phy_sl_tx_bitmap->size = byte_capacity;
+    phy_sl_tx_bitmap->bits_unused = ((phy_sl_tx_bitmap->size << 3) - phy_sl_size) % 8;
+    uint16_t tx_phy_map_sz = get_physical_sl_pool(mac, sl_tx_time_rsrc, phy_sl_tx_bitmap);
+
+
+    SL_ResourcePool_params_t *sl_rx_rsrc_pool = sl_mac->sl_RxPool[pool_id];
+    BIT_STRING_t *phy_sl_rx_bitmap = &sl_rx_rsrc_pool->phy_sl_bitmap;
+    phy_sl_rx_bitmap->buf = (uint8_t*)malloc16_clear(byte_capacity);
+    phy_sl_rx_bitmap->size = byte_capacity;
+    phy_sl_rx_bitmap->bits_unused = ((phy_sl_rx_bitmap->size << 3) - phy_sl_size) % 8;
+    BIT_STRING_t *sl_rx_time_rsrc = mac->sl_rx_res_pool->ext1->sl_TimeResource_r16;
+    uint16_t rx_phy_map_sz = get_physical_sl_pool(mac, sl_rx_time_rsrc, phy_sl_rx_bitmap);
+
+    AssertFatal(tx_phy_map_sz == rx_phy_map_sz, "Transmit %d and receive %d phy_map_sz is different.\n",
+                tx_phy_map_sz, rx_phy_map_sz);
+    mac->sl_res_percentage = 0.5;
   }
   // Configuring CSI-RS parameters locally at MAC.
   nr_sl_params_read_conf(module_id);
@@ -518,6 +589,7 @@ int nr_rrc_mac_config_req_sl_preconfig(module_id_t module_id,
   sl_prepare_phy_config(module_id, &sl_phy_cfg->sl_config_req,
                         freqcfg, sync_source, sl_OffsetDFN, sl_mac->sl_TDD_config);
 
+  sl_mac->mac_tx_params.packet_delay_budget_ms = 30;
   return 0;
 }
 
@@ -681,6 +753,48 @@ void nr_rrc_mac_config_req_sl_mib(module_id_t module_id,
                             sl_mac->sl_TDD_config->pattern1.nrofDownlinkSlots, sl_mac->sl_TDD_config->pattern1.nrofUplinkSlots,
                             sl_mac->sl_TDD_config->pattern1.nrofDownlinkSymbols,sl_mac->sl_TDD_config->pattern1.nrofUplinkSymbols);
 
+    int nr_slots_period = nr_slots_frame;
+    int nr_ulstart_slot = 0;
+    if (tdd) {
+      nr_ulstart_slot = get_first_ul_slot(tdd->nrofDownlinkSlots, tdd->nrofDownlinkSymbols, tdd->nrofUplinkSymbols);
+      nr_slots_period /= get_nb_periods_per_frame(tdd->dl_UL_TransmissionPeriodicity);
+    }
+
+    for (int slot = 0; slot < nr_slots_frame; ++slot) {
+      mac->ulsch_slot_bitmap[slot / 64] |= (uint64_t)((slot % nr_slots_period) >= nr_ulstart_slot) << (slot % 64);
+      LOG_D(NR_MAC,
+            "slot %d UL %d\n",
+            slot,
+            (mac->ulsch_slot_bitmap[slot / 64] & ((uint64_t)1 << (slot % 64))) != 0);
+    }
+
+    BIT_STRING_t *sl_time_rsrc = mac->sl_tx_res_pool->ext1->sl_TimeResource_r16;
+    int total_downlink_slots = ((sl_time_rsrc->size << 3) - sl_time_rsrc->bits_unused) / n_ul_slots_period * (nr_slots_period - n_ul_slots_period);
+    int phy_sl_size = ((sl_time_rsrc->size << 3) - sl_time_rsrc->bits_unused) + total_downlink_slots;
+    LOG_D(NR_MAC, "size of phy_sl_map  %d total_downlink_slots %d, sl_time_rsrc->size %ld, n_ul_slots_period %d, (nr_slots_period - n_ul_slots_period) %d\n", phy_sl_size, total_downlink_slots, ((sl_time_rsrc->size << 3) - sl_time_rsrc->bits_unused), n_ul_slots_period, (nr_slots_period - n_ul_slots_period));
+
+    size_t byte_capacity = (phy_sl_size + 7) / 8;
+    uint8_t pool_id = 0;
+    SL_ResourcePool_params_t *sl_tx_rsrc_pool = sl_mac->sl_TxPool[pool_id];
+    SL_ResourcePool_params_t *sl_rx_rsrc_pool = sl_mac->sl_RxPool[pool_id];
+
+    sl_tx_rsrc_pool->phy_sl_bitmap.buf = (uint8_t*)malloc16_clear(byte_capacity);
+    sl_rx_rsrc_pool->phy_sl_bitmap.buf = (uint8_t*)malloc16_clear(byte_capacity);
+    sl_tx_rsrc_pool->phy_sl_bitmap.size = (phy_sl_size + 7) >> 3;
+    sl_tx_rsrc_pool->phy_sl_bitmap.bits_unused = ((sl_tx_rsrc_pool->phy_sl_bitmap.size << 3) - phy_sl_size) % 8;
+
+    BIT_STRING_t *phy_sl_bitmap = &sl_tx_rsrc_pool->phy_sl_bitmap;
+    uint16_t tx_phy_map_sz = get_physical_sl_pool(mac, sl_time_rsrc, phy_sl_bitmap);
+
+    sl_time_rsrc = mac->sl_rx_res_pool->ext1->sl_TimeResource_r16;
+    phy_sl_bitmap = &sl_rx_rsrc_pool->phy_sl_bitmap;
+    sl_rx_rsrc_pool->phy_sl_bitmap.size = (phy_sl_size + 7) >> 3;
+    sl_rx_rsrc_pool->phy_sl_bitmap.bits_unused = ((sl_rx_rsrc_pool->phy_sl_bitmap.size << 3) - phy_sl_size) % 8;
+
+    uint16_t rx_phy_map_sz = get_physical_sl_pool(mac, sl_time_rsrc, phy_sl_bitmap);
+
+    AssertFatal(tx_phy_map_sz == rx_phy_map_sz, "Transmit and Receive physical sidelink bitmap does not have same length!!!");
+
     DevAssert(mac->if_module != NULL && mac->if_module->sl_phy_config_request != NULL);
     mac->if_module->sl_phy_config_request(&sl_mac->sl_phy_config);
   }
@@ -692,7 +806,7 @@ void nr_sl_params_read_conf(module_id_t module_id) {
   sl_nr_ue_mac_params_t *sl_mac = mac->SL_MAC_PARAMS;
 
   char aprefix[MAX_OPTNAME_SIZE*2 + 8];
-  sl_csi_info_t *sl_csi_rs_info = (sl_csi_info_t *)malloc(sizeof(sl_csi_info_t));
+  sl_csi_info_t *sl_csi_rs_info = (sl_csi_info_t *)malloc16_clear(sizeof(sl_csi_info_t));
   paramdef_t SL_CRI_RS_INFO[] = SL_CSI_RS_DESC(sl_csi_rs_info);
   paramlist_def_t SL_CRI_RS_List = {SL_CONFIG_STRING_SL_CSI_RS_LIST, NULL, 0};
   sprintf(aprefix, "%s.[%d]", SL_CONFIG_STRING_SL_PRECONFIGURATION, 0);
@@ -701,7 +815,7 @@ void nr_sl_params_read_conf(module_id_t module_id) {
   config_get(SL_CRI_RS_INFO, sizeof(SL_CRI_RS_INFO)/sizeof(paramdef_t), aprefix);
 
   char aprefix1[MAX_OPTNAME_SIZE*2 + 8];
-  sl_harq_info_t *sl_harq_info = (sl_harq_info_t*)malloc(sizeof(sl_harq_info_t));
+  sl_harq_info_t *sl_harq_info = (sl_harq_info_t*)malloc16_clear(sizeof(sl_harq_info_t));
   paramdef_t SL_HARQ_INFO[] = SL_CONFIGUREDGRANT_DESC(sl_harq_info);
   sprintf(aprefix1, "%s.[%i].%s.[%i]", SL_CONFIG_STRING_SL_PRECONFIGURATION, 0, SL_CONFIG_STRING_SL_CONFIGUREDGRANT_LIST, 0);
   config_get(SL_HARQ_INFO, sizeof(SL_HARQ_INFO)/sizeof(paramdef_t), aprefix1);
@@ -713,10 +827,9 @@ void nr_sl_params_read_conf(module_id_t module_id) {
   sl_mac->symb_l0 = sl_csi_rs_info->symb_l0;
   sl_mac->power_control_offset = sl_csi_rs_info->power_control_offset;
   sl_mac->power_control_offset_ss = sl_csi_rs_info->power_control_offset_ss;
-  sl_mac->slot_offset = sl_csi_rs_info->slot_offset;
-  sl_mac->slot_periodicity = sl_csi_rs_info->slot_periodicity;
   sl_mac->measurement_bitmap = 0b00011011;
   sl_mac->sl_CSI_Acquisition = sl_csi_rs_info->sl_csi_acquisition;
+  sl_mac->sl_LatencyBoundCSI_Report = sl_csi_rs_info->sl_latencyboundcsi_report;
   // Based on 38211 Table 7.4.1.5.3-1, for density of 1 and ports 1 & 2 ENUMERATED {noCDM, fd-CDM2}
   sl_mac->cdm_type = get_nrUE_params()->nb_antennas_tx == 1 ? 0 : 1;
   sl_mac->row = get_nrUE_params()->nb_antennas_tx == 1 ? 2 : 3;
@@ -736,4 +849,29 @@ void nr_sl_params_read_conf(module_id_t module_id) {
   sl_mac->nr_of_rbs = min(24, max_allowable_num_rbs);
 
   LOG_D(NR_MAC, "loc_bw %i, start_rb %i, nr_of_rbs %i, max_allowable_num_rbs %i\n", loc_bw, sl_mac->start_rb, sl_mac->nr_of_rbs, max_allowable_num_rbs);
+
+  char aprefix_rsc[MAX_OPTNAME_SIZE*2 + 8];
+  sprintf(aprefix_rsc, "%s.[%d]", SL_CONFIG_STRING_SL_PRECONFIGURATION, 0);
+
+  uint16_t* resource_selection_cfg = (uint16_t *)malloc16_clear(sizeof(*resource_selection_cfg));
+  paramdef_t SL_CONFIG_RSR_INFO[] = SL_CONFIG_RESOURCE_SELECTION(resource_selection_cfg);
+  config_get(SL_CONFIG_RSR_INFO, sizeof(SL_CONFIG_RSR_INFO) / sizeof(paramdef_t), aprefix_rsc);
+
+  switch(*resource_selection_cfg) {
+    case 0:
+      mac->rsc_selection_method = c1;
+      break;
+    case 3:
+      mac->rsc_selection_method = c4;
+      break;
+    case 4:
+      mac->rsc_selection_method = c5;
+      break;
+    case 6:
+      mac->rsc_selection_method = c7;
+      break;
+    default:
+      LOG_D(NR_MAC, "Provided resource selection mechanism is not supported!!!\n");
+      break;
+  }
 }

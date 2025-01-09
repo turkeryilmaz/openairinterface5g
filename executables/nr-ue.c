@@ -807,7 +807,7 @@ void readFrame(PHY_VARS_NR_UE *UE,  openair0_timestamp *timestamp, bool toTrash)
                    4*((x*fp->samples_per_subframe)+
                    fp->get_samples_slot_timestamp(slot,fp,0));
       }
-        
+
       AssertFatal( fp->get_samples_per_slot(slot,fp) ==
                    UE->rfdevice.trx_read_func(&UE->rfdevice,
                    timestamp,
@@ -888,11 +888,9 @@ void *UE_thread(void *arg)
   int start_rx_stream = 0;
   fapi_nr_config_request_t *cfg = &UE->nrUE_config;
   NR_DL_FRAME_PARMS *fp = &UE->frame_parms;
-  sl_nr_phy_config_request_t *sl_cfg = NULL;
   int is_sidelink = (UE->sl_mode == 2) ? 1 : 0;
   if (is_sidelink) {
     fp = &UE->SL_UE_PHY_PARAMS.sl_frame_params;
-    sl_cfg = &UE->SL_UE_PHY_PARAMS.sl_config;
     openair0_cfg[0].gpio_controller = RU_GPIO_CONTROL_GENERIC;
   }
   AssertFatal(0== openair0_device_load(&(UE->rfdevice), &openair0_cfg[0]), "");
@@ -1015,9 +1013,37 @@ void *UE_thread(void *arg)
     curMsg.proc.frame_tx    = ((absolute_slot + DURATION_RX_TO_TX) / nb_slot_frame) % MAX_FRAME_NUMBER;
     if (UE->phy_config_request_sent) {
       if (is_sidelink) {
-        curMsg.proc.rx_slot_type = sl_nr_ue_slot_select(sl_cfg, curMsg.proc.frame_rx, curMsg.proc.nr_slot_rx, TDD);
-        curMsg.proc.tx_slot_type = sl_nr_ue_slot_select(sl_cfg, curMsg.proc.frame_tx, curMsg.proc.nr_slot_tx, TDD);
-      LOG_D(NR_PHY,"Setting SL slot type to TX %d.%d %d, RX %d.%d %d\n",curMsg.proc.frame_tx, curMsg.proc.nr_slot_tx,curMsg.proc.tx_slot_type,curMsg.proc.frame_rx, curMsg.proc.nr_slot_rx,curMsg.proc.rx_slot_type);
+        NR_UE_MAC_INST_t *mac = get_mac_inst(UE->Mod_id);
+        uint8_t pool_id = 0;
+        // Temporarily setting this to this initial NON_NR_SIDELINK_SLOT slot type.
+        // Later we should properly determine if the current slot is an NR_DOWNLINK_SLOT, NR_UPLINK_SLOT, or NR_MIXED_SLOT
+        curMsg.proc.tx_slot_type = NON_NR_SIDELINK_SLOT;
+        curMsg.proc.rx_slot_type = NON_NR_SIDELINK_SLOT;
+
+        SL_ResourcePool_params_t *sl_tx_rsrc_pool = mac->SL_MAC_PARAMS->sl_TxPool[pool_id];
+        uint16_t phy_map_sz_tx = ((sl_tx_rsrc_pool->phy_sl_bitmap.size << 3) - sl_tx_rsrc_pool->phy_sl_bitmap.bits_unused);
+        bool sl_tx_slot = is_sl_slot(mac, &sl_tx_rsrc_pool->phy_sl_bitmap, phy_map_sz_tx, absolute_slot + DURATION_RX_TO_TX);
+        if (sl_tx_slot) {
+          frameslot_t frame_slot_tx;
+          frame_slot_tx.frame = curMsg.proc.frame_tx;
+          frame_slot_tx.slot = curMsg.proc.nr_slot_tx;
+          validate_selected_sl_slot(true , false, mac->SL_MAC_PARAMS->sl_TDD_config, frame_slot_tx);
+          curMsg.proc.tx_slot_type = NR_SIDELINK_SLOT;
+        }
+
+        SL_ResourcePool_params_t *sl_rx_rsrc_pool = mac->SL_MAC_PARAMS->sl_RxPool[pool_id];
+        uint16_t phy_map_sz_rx = ((sl_rx_rsrc_pool->phy_sl_bitmap.size << 3) - sl_rx_rsrc_pool->phy_sl_bitmap.bits_unused);
+        bool sl_rx_slot = is_sl_slot(mac, &sl_rx_rsrc_pool->phy_sl_bitmap, phy_map_sz_rx, absolute_slot);
+        if (sl_rx_slot) {
+          frameslot_t frame_slot_rx;
+          frame_slot_rx.frame = curMsg.proc.frame_rx;
+          frame_slot_rx.slot = curMsg.proc.nr_slot_rx;
+          validate_selected_sl_slot(false , true, mac->SL_MAC_PARAMS->sl_TDD_config, frame_slot_rx);
+          curMsg.proc.rx_slot_type = NR_SIDELINK_SLOT;
+        }
+
+        LOG_D(NR_PHY,"Setting SL slot type to TX %d.%d %d, RX %d.%d %d\n",
+              curMsg.proc.frame_tx, curMsg.proc.nr_slot_tx, curMsg.proc.tx_slot_type, curMsg.proc.frame_rx, curMsg.proc.nr_slot_rx, curMsg.proc.rx_slot_type);
       } else {
         curMsg.proc.rx_slot_type = nr_ue_slot_select(cfg, curMsg.proc.frame_rx, curMsg.proc.nr_slot_rx);
         curMsg.proc.tx_slot_type = nr_ue_slot_select(cfg, curMsg.proc.frame_tx, curMsg.proc.nr_slot_tx);
@@ -1114,14 +1140,15 @@ void *UE_thread(void *arg)
 
 void init_NR_UE(int nb_inst,
                 char* uecap_file,
-                char* rrc_config_path) {
+                char* rrc_config_path,
+                ueinfo_t* ueinfo) {
   int inst;
   NR_UE_MAC_INST_t *mac_inst;
   NR_UE_RRC_INST_t* rrc_inst;
-  
+
   for (inst=0; inst < nb_inst; inst++) {
     AssertFatal((rrc_inst = nr_l3_init_ue(uecap_file,rrc_config_path)) != NULL, "can not initialize RRC module\n");
-    AssertFatal((mac_inst = nr_l2_init_ue(rrc_inst)) != NULL, "can not initialize L2 module\n");
+    AssertFatal((mac_inst = nr_l2_init_ue(rrc_inst, ueinfo)) != NULL, "can not initialize L2 module\n");
     AssertFatal((mac_inst->if_module = nr_ue_if_module_init(inst)) != NULL, "can not initialize IF module\n");
   }
   if (get_softmodem_params()->sl_mode) {

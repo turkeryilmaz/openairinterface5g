@@ -44,7 +44,7 @@
 #include "PHY/NR_TRANSPORT/nr_dlsch.h"
 #include "SCHED_NR/sched_nr.h"
 #include "SCHED_NR/fapi_nr_l1.h"
-#include "defs.h"
+#include "openair1/SCHED_NR_UE/defs.h"
 #include "common/utils/LOG/vcd_signal_dumper.h"
 #include "common/utils/LOG/log.h"
 #include <syscall.h>
@@ -158,9 +158,9 @@ static void nr_processULSegment(void *arg)
 
   t_nrLDPC_time_stats procTime = {0};
   t_nrLDPC_time_stats *p_procTime = &procTime;
-
-  // start_meas(&phy_vars_gNB->ulsch_deinterleaving_stats);
-
+#ifdef DEBUG_ULSCH_DECODING
+  start_meas(&phy_vars_gNB->ulsch_deinterleaving_stats);
+#endif
   ////////////////////////////////////////////////////////////////////////////////////////////
   ///////////////////////////////// nr_deinterleaving_ldpc ///////////////////////////////////
   //////////////////////////////////////////////////////////////////////////////////////////
@@ -172,22 +172,20 @@ static void nr_processULSegment(void *arg)
 
   nr_deinterleaving_ldpc(E, Qm, harq_e, ulsch_llr + r_offset);
 
-
-  // for (int i =0; i<16; i++)
-  //          printf("rx output deinterleaving w[%d]= %d r_offset %d\n", i,ulsch_harq->w[r][i], r_offset);
-
+#ifdef DEBUG_ULSCH_DECODING
+  for (int i =0; i<16; i++)
+           printf("rx output deinterleaving w[%d]= %d r_offset %d\n", i,ulsch_harq->w[r][i], r_offset);
   stop_meas(&phy_vars_gNB->ulsch_deinterleaving_stats);
-
-  //////////////////////////////////////////////////////////////////////////////////////////
+#endif
 
   //////////////////////////////////////////////////////////////////////////////////////////
   //////////////////////////////// nr_rate_matching_ldpc_rx ////////////////////////////////
   //////////////////////////////////////////////////////////////////////////////////////////
 
   ///////////////////////// ulsch_harq->e =====> ulsch_harq->d /////////////////////////
-
-  // start_meas(&phy_vars_gNB->ulsch_rate_unmatching_stats);
-
+#ifdef DEBUG_ULSCH_DECODING
+  start_meas(&phy_vars_gNB->ulsch_rate_unmatching_stats);
+#endif
   if (nr_rate_matching_ldpc_rx(rdata->tbslbrm,
                                p_decoderParms->BG,
                                p_decoderParms->Z,
@@ -200,17 +198,19 @@ static void nr_processULSegment(void *arg)
                                ulsch_harq->F,
                                Kr - ulsch_harq->F - 2 * (p_decoderParms->Z))
       == -1) {
+#ifdef DEBUG_ULSCH_DECODING
     stop_meas(&phy_vars_gNB->ulsch_rate_unmatching_stats);
-
+#endif
     LOG_E(PHY, "ulsch_decoding.c: Problem in rate_matching\n");
     rdata->decodeIterations = max_ldpc_iterations + 1;
     return;
   } else {
+#ifdef DEBUG_ULSCH_DECODING
     stop_meas(&phy_vars_gNB->ulsch_rate_unmatching_stats);
+#endif
   }
 
   ulsch_harq->d_to_be_cleared[r] = false;
-
   memset(ulsch_harq->c[r], 0, Kr_bytes);
 
   if (ulsch_harq->C == 1) {
@@ -224,9 +224,9 @@ static void nr_processULSegment(void *arg)
     crc_type = CRC24_B;
     length_dec = (ulsch_harq->B + 24 * ulsch_harq->C) / ulsch_harq->C;
   }
-
-  // start_meas(&phy_vars_gNB->ulsch_ldpc_decoding_stats);
-
+#ifdef DEBUG_ULSCH_DECODING
+  start_meas(&phy_vars_gNB->ulsch_ldpc_decoding_stats);
+#endif
   // set first 2*Z_c bits to zeros
   memset(&z[0], 0, 2 * ulsch_harq->Z * sizeof(int16_t));
   // set Filler bits
@@ -239,7 +239,6 @@ static void nr_processULSegment(void *arg)
   for (i = 0, j = 0; j < ((kc * ulsch_harq->Z) >> 4) + 1; i += 2, j++) {
     pl[j] = _mm_packs_epi16(pv[i], pv[i + 1]);
   }
-  //////////////////////////////////////////////////////////////////////////////////////////
 
   //////////////////////////////////////////////////////////////////////////////////////////
   ///////////////////////////////////// nrLDPC_decoder /////////////////////////////////////
@@ -252,7 +251,9 @@ static void nr_processULSegment(void *arg)
 
   if (rdata->decodeIterations <= p_decoderParms->numMaxIter)
     memcpy(ulsch_harq->c[r],llrProcBuf,  Kr>>3);
-  //stop_meas(&phy_vars_gNB->ulsch_ldpc_decoding_stats);
+#ifdef DEBUG_ULSCH_DECODING
+  stop_meas(&phy_vars_gNB->ulsch_ldpc_decoding_stats);
+#endif
 }
 
 
@@ -477,16 +478,17 @@ int nr_ulsch_decoding(PHY_VARS_gNB *phy_vars_gNB,
     VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PHY_gNB_ULSCH_DECODING, 0);
 
     if (harq_process->processedSegments == harq_process->C) {
-      LOG_I(NR_PHY, "[%s %d] ULSCH: Setting ACK for slot %d TBS %d\n", phy_vars_gNB ? "gNB" : "UE", phy_vars_gNB ? phy_vars_gNB->Mod_id : 0, ulsch->slot, harq_process->TBS);
+      LOG_D(NR_PHY, "[%s %d] ULSCH: Setting ACK for slot %d TBS %d\n", phy_vars_gNB ? "gNB" : "UE", phy_vars_gNB ? phy_vars_gNB->Mod_id : 0, ulsch->slot, harq_process->TBS);
       ulsch->active = false;
       harq_process->round = 0;
 
       nr_fill_indication(phy_vars_gNB, ulsch->frame, ulsch->slot, ULSCH_id, harq_pid, 0, 0);
 
     } else {
-      LOG_D(PHY,
-            "[%s %d] ULSCH: Setting NAK for SFN/SF %d/%d (pid %d, status %d, round %d, TBS %d)\n",
+      LOG_E(PHY,
+            "[%s %d] ULSCH %d in error: Setting NAK for SFN/SF %d/%d (pid %d, status %d, round %d, TBS %d)\n",
             phy_vars_gNB ? "gNB" : "UE", phy_vars_gNB ? phy_vars_gNB->Mod_id : 0,
+            ULSCH_id,
             ulsch->frame,
             ulsch->slot,
             harq_pid,
@@ -495,7 +497,6 @@ int nr_ulsch_decoding(PHY_VARS_gNB *phy_vars_gNB,
             harq_process->TBS);
       ulsch->handled = 1;
       decodeIterations = ulsch->max_ldpc_iterations + 1;
-      LOG_D(PHY, "ULSCH %d in error\n", ULSCH_id);
       nr_fill_indication(phy_vars_gNB, ulsch->frame, ulsch->slot, ULSCH_id, harq_pid, 1, 0);
     }
     ulsch->last_iteration_cnt = decodeIterations;
@@ -538,7 +539,6 @@ int nr_ulsch_decoding(PHY_VARS_gNB *phy_vars_gNB,
       //////////////////////////////////////////////////////////////////////////////////////////
     }
     if (UE) {
-      int num_seg_ok = 0;
       int nbDecode = harq_process->C;
       while (nbDecode) {
          notifiedFIFO_elt_t *req=pullTpool(&nf,  &get_nrUE_params()->Tpool);

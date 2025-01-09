@@ -175,11 +175,12 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
   int sample_offsetF, N_RE_prime;
 
   bool is_csi_rs_slot = false;
-  if (phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_CSI_RS ||
-      phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_PSFCH_CSI_RS)
+  if (phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_CSI_RS)
     is_csi_rs_slot = true;
-  nfapi_nr_dl_tti_csi_rs_pdu_rel15_t *csi_params = (nfapi_nr_dl_tti_csi_rs_pdu_rel15_t *)&phy_data->nr_sl_pssch_pscch_pdu.nr_sl_csi_rs_pdu;
-  LOG_D(NR_PHY, "Tx start_rb %i, cdm_type %i, csi_type %i, freq_density %i, nr_of_rbs %i, row %i\n", csi_params->start_rb, csi_params->cdm_type, csi_params->csi_type, csi_params->freq_density, csi_params->nr_of_rbs, csi_params->row);
+  nfapi_nr_dl_tti_csi_rs_pdu_rel15_t *csi_params = is_csi_rs_slot ? (nfapi_nr_dl_tti_csi_rs_pdu_rel15_t *)&phy_data->nr_sl_pssch_pscch_pdu.nr_sl_csi_rs_pdu : NULL;
+  if (csi_params)
+    LOG_D(NR_PHY, "Tx start_rb %i, cdm_type %i, csi_type %i, freq_density %i, nr_of_rbs %i, row %i symb_l0 %i is_csi_rs_slot %i\n",
+          csi_params->start_rb, csi_params->cdm_type, csi_params->csi_type, csi_params->freq_density, csi_params->nr_of_rbs, csi_params->row, csi_params->symb_l0, is_csi_rs_slot);
   int      N_PRB_oh = 0; // higher layer (RRC) parameter xOverhead in PUSCH-ServingCellConfig
   uint16_t number_dmrs_symbols = 0;
 
@@ -214,19 +215,21 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
         first_dmrs_symbol = i;
         is_first_dmrs_symbol = false;
       }
-      if (csi_params->symb_l0 != 0)
-        AssertFatal(i != csi_params->symb_l0, "CSI-RS MUST not be sent in DMRS symbol\n");
+      if (csi_params && csi_params->symb_l0 != 0)
+        AssertFatal(i != csi_params->symb_l0, "CSI-RS  (symb_l0 %d) MUST not be sent in DMRS symbol (%d)\n", csi_params->symb_l0, i);
     }
   }
 
-  if (csi_params->symb_l0 != 0)
-    AssertFatal(csi_params->symb_l0 > pscch_pssch_pdu->pscch_numsym, "CSI-RS MUST not be sent in PSCCH symbol\n");
+  if (csi_params && csi_params->symb_l0 != 0)
+    AssertFatal(csi_params->symb_l0 > pscch_pssch_pdu->pscch_numsym, "CSI-RS (symb_l0 %d) MUST not be sent in PSCCH symbol (%d)\n", csi_params->symb_l0, pscch_pssch_pdu->pscch_numsym);
   nb_dmrs_re_per_rb = ((dmrs_type == pusch_dmrs_type1) ? 6:4)*cdm_grps_no_data;
 
   //LOG_I(NR_PHY,"%s TX %x : start_rb %d nb_rb %d mod_order %d Nl %d Tpmi %d bwp_start %d start_sc %d start_symbol %d num_symbols %d cdmgrpsnodata %d num_dmrs %d dmrs_re_per_rb %d\n",pscch_pssch_pdu==NULL?"PUSCH":"PSSCH",
    //     rnti,start_rb,nb_rb,mod_order,Nl,Tpmi,pscch_pssch_pdu==NULL?pusch_pdu->bwp_start:0,start_sc,start_symbol,number_of_symbols,cdm_grps_no_data,number_dmrs_symbols,nb_dmrs_re_per_rb);
   // TbD num_of_mod_symbols is set but never used
-  N_RE_prime = NR_NB_SC_PER_RB*number_of_symbols - nb_dmrs_re_per_rb*number_dmrs_symbols - N_PRB_oh;
+  uint16_t num_CSI_REs = is_csi_rs_slot ? get_nRECSI_RS(csi_params->freq_density, csi_params->nr_of_rbs) : 0;
+  int num_CSI_REs_per_RB = is_csi_rs_slot ? (num_CSI_REs/csi_params->nr_of_rbs) : 0;
+  N_RE_prime = NR_NB_SC_PER_RB * number_of_symbols - nb_dmrs_re_per_rb * number_dmrs_symbols - N_PRB_oh - num_CSI_REs_per_RB;
   harq_process_ul_ue->num_of_mod_symbols = N_RE_prime*nb_rb;
 
   /////////////////////////ULSCH coding/////////////////////////
@@ -244,16 +247,15 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
   //if (pscch_pssch_pdu) LOG_I(NR_PHY,"dmrs_symbol_position %x, pscch_numsym %d\n",pscch_pssch_pdu->dmrs_symbol_position,pscch_pssch_pdu->pscch_numsym);
   AssertFatal(pscch_pssch_pdu->pscch_numsym==2 || pscch_pssch_pdu->pscch_numsym==3,"illegal pscch_numsym %d\n",pscch_pssch_pdu->pscch_numsym);
   int sci1_dmrs_overlap = pscch_pssch_pdu ? pscch_pssch_pdu->dmrs_symbol_position & dmrs_pscch_mask[pscch_pssch_pdu->pscch_numsym-2] : 0;
-  uint16_t csi_rs_re = is_csi_rs_slot ? csi_params->nr_of_rbs/csi_params->freq_density : 0;
   uint16_t sci1_re = pscch_pssch_pdu->pscch_numsym * pscch_pssch_pdu->pscch_numrbs * NR_NB_SC_PER_RB;
   unsigned int G = (pscch_pssch_pdu==NULL) ? nr_get_G(nb_rb, number_of_symbols,
                                                       nb_dmrs_re_per_rb, number_dmrs_symbols, mod_order, Nl):
                                              nr_get_G_SL(nb_rb, number_of_symbols, 6, number_dmrs_symbols, sci1_dmrs_overlap, sci1_re,
-                                             pscch_pssch_pdu->pscch_numrbs, sci2_re, csi_rs_re, mod_order, Nl);
+                                             pscch_pssch_pdu->pscch_numrbs, sci2_re, num_CSI_REs, mod_order, Nl);
 
   // Following code checks, after PSCCH symbols and DMRS symbols, whether PSSCH symbols are used by SCI2 or not,
   // If true, then CSI-RS MUST not be sent in those PSSCH symbols containing SCI2.
-  if (csi_params->symb_l0 != 0) {
+  if (csi_params && csi_params->symb_l0 != 0) {
     int32_t next_symbs_sci2_re = 0;
     int32_t sci1_re = 12 * pscch_pssch_pdu->pscch_numrbs;
     int32_t non_sci1_re = 12 * nb_rb - sci1_re;
@@ -508,7 +510,7 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
       uint8_t is_csi_rs_sym = 0;
       uint8_t is_ptrs_sym = 0;
       uint16_t dmrs_idx = 0, ptrs_idx = 0;
-      int16_t csi_rs_rb = csi_params->start_rb;
+      int16_t csi_rs_rb = 0;
       int is_pscch_sym = 0;
       if (pscch_pssch_pdu && l<(start_symbol + pscch_pssch_pdu->pscch_numsym)) { 
         is_pscch_sym = 1; 
@@ -516,6 +518,7 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
 
       if (is_csi_rs_slot && l == csi_params->symb_l0) {
         is_csi_rs_sym = 1;
+        csi_rs_rb = csi_params->start_rb;
       }
 
       if ((ul_dmrs_symb_pos >> l) & 0x01) {
@@ -592,7 +595,8 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
             if (k == port_freq_indices[nl].k) {
               is_csi_rs = 1;
               csi_rs_rb++;
-              LOG_D(NR_PHY, "Tx port_freq_indices.p %i, port_freq_indices.k %d, is_csi_rs %d, k = %i, RE %i, csi_rs_rb %i\n", port_freq_indices[nl].p, port_freq_indices[nl].k, is_csi_rs, k, i, csi_rs_rb);
+              LOG_D(NR_PHY, "Tx port_freq_indices.p %i, port_freq_indices.k %d, is_csi_rs %d, k = %i, RE %i, csi_rs_rb %i\n",
+                    port_freq_indices[nl].p, port_freq_indices[nl].k, is_csi_rs, k, i, csi_rs_rb);
             }
             free(port_freq_indices);
             port_freq_indices = NULL;
@@ -764,9 +768,7 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
     } // symbol loop
   }// port loop
 
-  NR_UL_UE_HARQ_t *harq_process_ulsch=NULL;
-  harq_process_ulsch = &UE->ul_harq_processes[harq_pid];
-  harq_process_ulsch->status = SCH_IDLE;
+  harq_process_ul_ue->status = SCH_IDLE;
 
   for (int nl = 0; nl < Nl; nl++) {
     free_and_zero(tx_layers[nl]);
