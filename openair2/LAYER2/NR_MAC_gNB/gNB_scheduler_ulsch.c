@@ -750,7 +750,19 @@ static void _nr_rx_sdu(const module_id_t gnb_mod_idP,
       if (UE_scheduling_control->ph < 0 && UE_scheduling_control->tpc0 > 1)
         UE_scheduling_control->tpc0 = 1;
 
+      int old_tpc = UE_scheduling_control->tpc0;
       UE_scheduling_control->tpc0 = nr_limit_tpc(UE_scheduling_control->tpc0, rssi, rssi_threshold);
+      if (old_tpc != 1 || UE_scheduling_control->tpc0 != 1) {
+        LOG_I(NR_MAC,
+              "UE %04x: [%4d.%2d] PUSCH TPC after RSSI threshold = %d, before RSSI threshold = %d, rssi = %u, rssi_threshold = %d\n",
+              UE->rnti,
+              frameP,
+              slotP,
+              UE_scheduling_control->tpc0,
+              old_tpc,
+              rssi,
+              rssi_threshold);
+      }
 
       if (timing_advance != 0xffff)
         UE_scheduling_control->ta_update = timing_advance;

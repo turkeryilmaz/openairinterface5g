@@ -1053,7 +1053,19 @@ void handle_nr_uci_pucch_0_1(module_id_t mod_id,
       sched_ctrl->tpc1 = nr_get_tpc(nrmac->pucch_target_snrx10, uci_01->ul_cqi, 30, 0);
     } else
       sched_ctrl->tpc1 = 1;
+    int8_t old_tpc = sched_ctrl->tpc1;
     sched_ctrl->tpc1 = nr_limit_tpc(sched_ctrl->tpc1, uci_01->rssi, rssi_threshold);
+    if (old_tpc != 1 || sched_ctrl->tpc1 != 1) {
+      LOG_I(NR_MAC,
+            "UE %04x: [%4d.%2d] PUCCH TPC after RSSI threshold = %d, before RSSI threshold = %d, rssi = %u, rssi_threshold = %d\n",
+            UE->rnti,
+            frame,
+            slot,
+            sched_ctrl->tpc1,
+            old_tpc,
+            uci_01->rssi,
+            rssi_threshold);
+    }
   }
 
   // check scheduling request result, confidence_level == 0 is good
@@ -1096,7 +1108,19 @@ void handle_nr_uci_pucch_2_3_4(module_id_t mod_id,
   if (uci_234->ul_cqi != 0xff) {
     sched_ctrl->pucch_snrx10 = uci_234->ul_cqi * 5 - 640;
     sched_ctrl->tpc1 = nr_get_tpc(nrmac->pucch_target_snrx10, uci_234->ul_cqi, 30, 0);
+    int8_t old_tpc = sched_ctrl->tpc1;
     sched_ctrl->tpc1 = nr_limit_tpc(sched_ctrl->tpc1, uci_234->rssi, rssi_threshold);
+    if (old_tpc != 1 || sched_ctrl->tpc1 != 1) {
+      LOG_I(NR_MAC,
+        "UE %04x: [%4d.%2d] PUCCH TPC after RSSI threshold = %d, before RSSI threshold = %d, rssi = %u, rssi_threshold = %d\n",
+        UE->rnti,
+        frame,
+        slot,
+        sched_ctrl->tpc1,
+        old_tpc,
+        uci_234->rssi,
+        rssi_threshold);
+    }
   }
 
   // TODO: handle SR
