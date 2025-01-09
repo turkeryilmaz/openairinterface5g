@@ -429,7 +429,8 @@ static int trx_usrp_write(openair0_device *device,
 			  int flags) {
   int ret=0;
   usrp_state_t *s = (usrp_state_t *)device->priv;
-  timestamp -= device->openair0_cfg->tx_sample_advance;
+  // TODO: Temporarily commented following line; Needs to uncomment and investigate the issue
+  // timestamp -= device->openair0_cfg->tx_sample_advance;
   int nsamps2;  // aligned to upper 32 or 16 byte boundary
 
   radio_tx_burst_flag_t flags_burst = (radio_tx_burst_flag_t) (flags & 0xf);
@@ -644,7 +645,9 @@ void *trx_usrp_write_thread(void * arg){
       ret = (int)s->tx_stream->send(&(((int16_t *)buff_tx[0])[0]), nsamps, s->tx_md);
     }
 
+#ifdef T_USRP_TX_ANT0
     T(T_USRP_TX_ANT0, T_INT(timestamp), T_BUFFER(buff_tx[0], nsamps*4));
+#endif
 
     if (ret != nsamps) LOG_E(HW,"[xmit] tx samples %d != %d\n",ret,nsamps);
     VCD_SIGNAL_DUMPER_DUMP_VARIABLE_BY_NAME( VCD_SIGNAL_DUMPER_VARIABLES_USRP_SEND_RETURN, ret );
@@ -771,7 +774,9 @@ static int trx_usrp_read(openair0_device *device, openair0_timestamp *ptimestamp
   s->rx_timestamp = s->rx_md.time_spec.to_ticks(s->sample_rate);
   *ptimestamp = s->rx_timestamp;
 
+#ifdef T_USRP_RX_ANT0
   T(T_USRP_RX_ANT0, T_INT(s->rx_timestamp), T_BUFFER(buff[0], samples_received*4));
+#endif
 
   recplay_state_t *recPlay=device->recplay_state;
 
