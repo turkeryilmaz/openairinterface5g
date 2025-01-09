@@ -24,6 +24,7 @@ add_library(e2_ran_func_du_cucp_cuup STATIC
             O-RAN/ran_func_kpm_subs.c
             O-RAN/ran_func_rc.c
             O-RAN/ran_func_rc_subs.c
+            O-RAN/rc_ctrl_service_style_2.c
             ../flexric/src/sm/rc_sm/ie/rc_data_ie.c
             CUSTOMIZED/ran_func_gtp.c
             CUSTOMIZED/ran_func_pdcp.c
@@ -31,6 +32,7 @@ add_library(e2_ran_func_du_cucp_cuup STATIC
             CUSTOMIZED/ran_func_rlc.c
             CUSTOMIZED/ran_func_slice.c  # currently, not implemented; therefore, filling rnd data
             ../flexric/test/rnd/fill_rnd_data_slice.c
+            ../../LAYER2/NR_MAC_gNB/slicing/nr_slicing.c
             CUSTOMIZED/ran_func_tc.c     # currently, not implemented; therefore, filling rnd data
             ../flexric/test/rnd/fill_rnd_data_tc.c
             )

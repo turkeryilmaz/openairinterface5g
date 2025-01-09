@@ -19,28 +19,30 @@
  *      contact@openairinterface.org
  */
 
-#ifndef BYTE_ARRAY_H 
-#define BYTE_ARRAY_H 
+/*!
+ * \file   nr_slicing_internal.h
+ * \brief  Internal NR slice helper functions
+ * \author Robert Schmidt
+ * \date   2021
+ * \email  robert.schmidt@eurecom.fr
+ */
 
-/* WARNING: This file is also defined at XXXXX. Both files need to be completely equal. Same applies for *.c */
+#ifndef NR_SLICING_INTERNAL_H__
+#define NR_SLICING_INTERNAL_H__
 
-#include <stdbool.h>
-#include <stdint.h>
-#include <stdlib.h>
+#include "nr_slicing.h"
 
-typedef struct {
-  size_t len;
-  uint8_t* buf;
-} byte_array_t;
+void nr_slicing_add_UE(nr_slice_info_t *si, NR_UE_info_t *new_ue);
 
-typedef struct {
-  uint8_t buf[32];
-} byte_array_32_t;
+void nr_slicing_remove_UE(nr_slice_info_t *si, NR_UE_info_t* rm_ue, int idx);
 
-byte_array_t copy_byte_array(byte_array_t src);
-void free_byte_array(byte_array_t ba);
-bool eq_byte_array(const byte_array_t* m0, const byte_array_t* m1);
+void nr_slicing_move_UE(nr_slice_info_t *si, NR_UE_info_t* assoc_ue, int old_idx, int new_idx);
 
-byte_array_t cp_str_to_ba(const char* str);
-char* cp_ba_to_str(const byte_array_t ba);
-#endif
+int nr_slicing_get_UE_slice_idx(nr_slice_info_t *si, rnti_t rnti);
+
+int nr_slicing_get_UE_idx(nr_slice_t *si, rnti_t rnti);
+
+nr_slice_t *_nr_add_slice(uint8_t *n, nr_slice_t **s);
+nr_slice_t *_nr_remove_slice(uint8_t *n, nr_slice_t **s, int idx);
+
+#endif /* NR_SLICING_INTERNAL_H__ */
