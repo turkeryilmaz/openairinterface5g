@@ -154,7 +154,7 @@ int main(void)
           d16[i].i = expand * data[i].i;
         }
       }
-      dft(get_dft(n), (int16_t *)d16, (int16_t *)o16,get_dft_scaling(n,coeff));
+      dft(get_dft(n), (int16_t *)d16, (int16_t *)o16,get_dft_scaling(n,(int32_t)(10*log10(expand))));
       if (n == 12) {
         for (int i = 0; i < n; i++) {
           cd_t error = {.r = o16[i * 4].r / (expand * sqrt(n)) - out[i].r, .i = o16[i * 4].i / (expand * sqrt(n)) - out[i].i};

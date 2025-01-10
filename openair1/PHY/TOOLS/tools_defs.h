@@ -595,13 +595,17 @@ void init_fft(uint16_t size,
 extern uint32_t DFT_SCALING_64[5][2];
 extern uint32_t DFT_SCALING_128[5][3];
 extern uint32_t DFT_SCALING_256[5][3];
-extern uint32_t DFT_SCALING_512[5][4];
+extern uint32_t DFT_SCALING_512[7][4];
+extern uint32_t DFT_SCALING_512_THRES[7];
 extern uint32_t DFT_SCALING_768[5][4];
 extern uint32_t DFT_SCALING_1024[5][4];
+extern uint32_t DFT_SCALING_1024_THRES[5];
 extern uint32_t DFT_SCALING_1536[5][5];
-extern uint32_t DFT_SCALING_2048[5][5];
+extern uint32_t DFT_SCALING_2048[10][5];
+extern uint32_t DFT_SCALING_2048_THRES[10];
 extern uint32_t DFT_SCALING_3072[5][5];
-extern uint32_t DFT_SCALING_4096[5][5];
+extern uint32_t DFT_SCALING_4096[8][5];
+extern uint32_t DFT_SCALING_4096_THRES[8];
 extern uint32_t DFT_SCALING_6144[5][6];
 extern uint32_t DFT_SCALING_8192[5][6];
 extern uint32_t DFT_SCALING_9216[5][6];
@@ -689,51 +693,66 @@ static inline dft_size_idx_t get_dft(int size)
 *
 *********************************************************************/
 static inline
-uint32_t *get_dft_scaling(int ofdm_symbol_size,int offset)
+uint32_t *get_dft_scaling(int ofdm_symbol_size,uint32_t levdB)
 {
-  if (offset < 0) offset = 0;
-  if (offset > 4) offset = 4;
+  size_t i=0;
   switch (ofdm_symbol_size) {
     case 64:
-      return DFT_SCALING_64[offset];
+      return DFT_SCALING_64[0];
     case 128:
-      return DFT_SCALING_128[offset];
+      return DFT_SCALING_128[0];
     case 256:
-      return DFT_SCALING_256[offset];
+      return DFT_SCALING_256[0];
     case 512:
-      return DFT_SCALING_512[offset];
+      while (i<sizeof(DFT_SCALING_512_THRES)/sizeof(DFT_SCALING_512_THRES[0])) {
+        i++;
+        if (levdB < DFT_SCALING_512_THRES[i]) break;
+      }
+      return DFT_SCALING_512[i];
     case 768:
-      return DFT_SCALING_768[offset];
+      return DFT_SCALING_768[0];
     case 1024:
-      return DFT_SCALING_1024[offset];
+      while (i<sizeof(DFT_SCALING_1024_THRES)/sizeof(DFT_SCALING_1024_THRES[0])) {
+        i++;
+        if (levdB < DFT_SCALING_1024_THRES[i]) break;
+      }
+      return DFT_SCALING_1024[i];
     case 1536:
-      return DFT_SCALING_1536[offset];
+      return DFT_SCALING_1536[0];
     case 2048:
-      return DFT_SCALING_2048[offset];
+      while (i<sizeof(DFT_SCALING_2048_THRES)/sizeof(DFT_SCALING_2048_THRES[0])) {
+        if (levdB < DFT_SCALING_2048_THRES[i]) break;
+        i++;
+      }
+      return DFT_SCALING_2048[i];
     case 3072:
-      return DFT_SCALING_3072[offset];
+      return DFT_SCALING_3072[0];
     case 4096:
-      return DFT_SCALING_4096[offset];
+      while (i<sizeof(DFT_SCALING_2048_THRES)/sizeof(DFT_SCALING_2048_THRES[0])) {
+        i++;
+        if (levdB < DFT_SCALING_2048_THRES[i]) break;
+      }
+      return DFT_SCALING_2048[i];
     case 6144:
-      return DFT_SCALING_6144[offset];
+      return DFT_SCALING_6144[0];
     case 8192:
-      return DFT_SCALING_8192[offset];
+      return DFT_SCALING_8192[0];
     case 9216:
-      return DFT_SCALING_9216[offset];
+      return DFT_SCALING_9216[0];
     case 12288:
-      return DFT_SCALING_12288[offset];
+      return DFT_SCALING_12288[0];
     case 18432:
-      return DFT_SCALING_18432[offset];
+      return DFT_SCALING_18432[0];
     case 24576:
-      return DFT_SCALING_24576[offset];
+      return DFT_SCALING_24576[0];
     case 36864:
-      return DFT_SCALING_36864[offset];
+      return DFT_SCALING_36864[0];
     case 49152:
-      return DFT_SCALING_49152[offset];
+      return DFT_SCALING_49152[0];
     case 73728:
-      return DFT_SCALING_73728[offset];
+      return DFT_SCALING_73728[0];
     case 98304:
-      return DFT_SCALING_98304[offset];
+      return DFT_SCALING_98304[0];
     default:
       return (uint32_t*)1;
       break;

@@ -551,6 +551,7 @@ typedef struct PHY_VARS_NR_UE_s {
   
   ntn_config_message_t* ntn_config_message;
 
+  uint32_t dft_in_levdB;
 } PHY_VARS_NR_UE;
 
 typedef struct {

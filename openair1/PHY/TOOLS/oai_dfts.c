@@ -8307,8 +8307,10 @@ void idft_implementation(uint8_t sizeidx, int16_t *input,int16_t *output,unsigne
 #include <string.h>
 #include <stdio.h>
 #include "../../../common/config/config_paramdesc.h"
+#include "../openair1/SIMULATION/TOOLS/sim.h"
+#include "../common/utils/utils.h"
 
-struct configmodule_interface_s *uniqCfg = NULL;
+configmodule_interface_t *uniqCfg = NULL;
 extern int bitrev4096[4096],bitrev2048[2048],bitrev1024[1024],bitrev512[512],bitrev256[256],bitrev128[128];
 void init_bitrev();
 void radix2(cd_t *x, int N);
@@ -8317,7 +8319,8 @@ void normalize(cd_t *x,cd_t *y,int *bitrev, int N);
 void exit_function(const char *file, const char *function, const int line, const char *s, const int assert) {
 exit(-1);
 }
-int config_get(paramdef_t *params,int numparams, char *prefix) {
+
+int config_get(configmodule_interface_t *cfg, paramdef_t *params, int numparams, char *prefix) {
 return(0);
 }
 
@@ -8497,6 +8500,14 @@ double compute_error(int16_t *x, int16_t *y, int N, int *bitrev, int idft) {
   if (idft==0) for (i=0;i<N;i++) error += pow((ycd[i].r - (double)((int16_t*)y)[i<<1]),2.0) + pow(ycd[i].i-(double)((int16_t*)y)[1+(i<<1)],2.0);
   else         for (i=0;i<N;i++) error += pow((ycd[i].r - (double)((int16_t*)y)[i<<1]),2.0) + pow(ycd[i].i+(double)((int16_t*)y)[1+(i<<1)],2.0);
   return(input_lev/(error/N));
+}
+
+void fill_gauss(c16_t *x,int N,double dBFS) {
+
+  for (int i=0; i < N; i++) {
+     x[i].r = (int16_t)(gaussZiggurat(0,1.0)*SHRT_MAX*pow(10.0,dBFS*.05));
+     x[i].i = (int16_t)(gaussZiggurat(0,1.0)*SHRT_MAX*pow(10.0,dBFS*.05));
+  }
 }
 
 int main(int argc, char**argv)
@@ -8687,7 +8698,6 @@ int main(int argc, char**argv)
     printf("\n");
  
   memset((void*)&x[0],0,2048*4);
-      
   for (i=0; i<2048; i+=4) {
      ((int16_t*)x)[i<<1] = 1024;
      ((int16_t*)x)[1+(i<<1)] = 0;
@@ -9258,11 +9268,7 @@ int main(int argc, char**argv)
     ((int16_t*)x)[i<<1] = (int16_t)(364 * cos(2*M_PI*3*i/128));
     ((int16_t*)x)[1+(i<<1)] = (int16_t)(364 * sin(2*M_PI*3*i/128));
   } 
-#ifdef USE_DFT16_SHIFT
-  uint32_t scale128_rx[3]={2,0};
-#else
-  uint32_t scale128_rx[3]={2,2};
-#endif
+  uint32_t scale128_rx[3]={1,3,0};
   dft128((int16_t*)x,(int16_t*)y,scale128_rx);
   LOG_M("x128_exp.m","x128_exp",x,128,1,1); 
   LOG_M("y128_exp.m","y128_exp",y,128,1,1); 
@@ -9270,16 +9276,39 @@ int main(int argc, char**argv)
 
   printf("128 point DFT SQNR (cplx sinusoid) : %f dB\n",10*log10(sqnr));
 
+  // scaling optimization
+  for (double dBFS = -80;dBFS < 0; dBFS+=2) {
+    int scale128_min[3];
+    double sqnr,max_sqnr=-99;
+    double input_lev=0;
+    int inputcnt=0;
+    for (scale128_rx[0]=1;scale128_rx[0]<=4;scale128_rx[0]++) 
+      for (scale128_rx[1]=0;scale128_rx[1]<=4-scale128_rx[0];scale128_rx[1]++) {
+         scale128_rx[2]=4-scale128_rx[0]-scale128_rx[1];
+         sqnr=0;
+         int n;
+         for (n=0;n<16384/128;n++) {
+           fill_gauss((c16_t*)x,128,dBFS);
+           for (i=0;i<128;i++) input_lev += pow((double)(((c16_t*)x)[i].r),2.0) + pow((double)(((c16_t*)x)[i].i),2.0);
+           dft128((int16_t*)x,(int16_t*)y,scale128_rx);
+           sqnr += compute_error((int16_t*)x,(int16_t*)y,128,bitrev128,0);
+         }
+         sqnr/=n;
+         inputcnt+=(n*128);
+         if (sqnr>max_sqnr) {
+           max_sqnr = sqnr;
+           scale128_min[0]=scale128_rx[0]; scale128_min[1]=scale128_rx[1]; scale128_min[2]=scale128_rx[2];
+         }
+      }
+    printf("128-point dBFS %f(input lev %f) dB SQNR %f(%f):  (%d,%d,%d)\n",dBFS,10*log10(input_lev/inputcnt),10*log10(max_sqnr),max_sqnr,scale128_min[0],scale128_min[1],scale128_min[2]);
+  }
+
   memset((void*)x,0,256*sizeof(int32_t));
   for (i=0;i<256;i++) {
     ((int16_t*)x)[i<<1] = (int16_t)(364 * cos(2*M_PI*3*i/256));
     ((int16_t*)x)[1+(i<<1)] = (int16_t)(364 * sin(2*M_PI*3*i/256));
   } 
-#ifdef USE_DFT16_SHIFT
-  uint32_t scale256_rx[3]={2,0};
-#else
-  uint32_t scale256_rx[3]={2,2};
-#endif
+  uint32_t scale256_rx[3]={0,2,2};
   dft256((int16_t*)x,(int16_t*)y,scale256_rx);
   LOG_M("x256_exp.m","x256_exp",x,256,1,1); 
   LOG_M("y256_exp.m","y256_exp",y,256,1,1); 
@@ -9287,17 +9316,40 @@ int main(int argc, char**argv)
 
   printf("256 point DFT SQNR (cplx sinusoid) : %f dB\n",10*log10(sqnr));
 
+  // scaling optimization
+  for (double dBFS = -80;dBFS < 0; dBFS+=2) {
+    int scale256_min[3];
+    double sqnr,max_sqnr=-99;
+    double input_lev=0;
+    int inputcnt=0;
+    for (scale256_rx[0]=0;scale256_rx[0]<=4;scale256_rx[0]++) 
+      for (scale256_rx[1]=0;scale256_rx[1]<=4-scale256_rx[0];scale256_rx[1]++) {
+         scale256_rx[2]=4-scale256_rx[0]-scale256_rx[1];
+         sqnr=0;
+         int n;
+         for (n=0;n<16384/256;n++) {
+           fill_gauss((c16_t*)x,256,dBFS);
+           for (i=0;i<256;i++) input_lev += pow((double)(((c16_t*)x)[i].r),2.0) + pow((double)(((c16_t*)x)[i].i),2.0);
+           dft256((int16_t*)x,(int16_t*)y,scale256_rx);
+           sqnr += compute_error((int16_t*)x,(int16_t*)y,256,bitrev256,0);
+         }
+         sqnr/=n;
+         inputcnt+=(n*256);
+         if (sqnr>max_sqnr) {
+           max_sqnr = sqnr;
+           scale256_min[0]=scale256_rx[0]; scale256_min[1]=scale256_rx[1]; scale256_min[2]=scale256_rx[2];
+         }
+      }
+    printf("256-point dBFS %f(input lev %f) dB SQNR %f(%f):  (%d,%d,%d)\n",dBFS,10*log10(input_lev/inputcnt),10*log10(max_sqnr),max_sqnr,scale256_min[0],scale256_min[1],scale256_min[2]);
+  }
 
   memset((void*)x,0,512*sizeof(int32_t));
   for (i=0;i<512;i++) {
     ((int16_t*)x)[i<<1] = (int16_t)(364 * cos(2*M_PI*3*i/512));
     ((int16_t*)x)[1+(i<<1)] = (int16_t)(364 * sin(2*M_PI*3*i/512));
   } 
-#ifdef USE_DFT16_SHIFT
-  uint32_t scale512_rx[3]={1,2,0};
-#else
-  uint32_t scale512_rx[3]={1,2,2};
-#endif
+  uint32_t scale512_rx[4]={1,1,1,2};
+
   dft512((int16_t*)x,(int16_t*)y,scale512_rx);
   LOG_M("x512_exp.m","x512_exp",x,512,1,1); 
   LOG_M("y512_exp.m","y512_exp",y,512,1,1); 
@@ -9305,12 +9357,36 @@ int main(int argc, char**argv)
   sqnr = compute_error((int16_t*)x,(int16_t*)y,512,bitrev512,0);
 
   printf("512 point DFT SQNR (cplx sinusoid) : %f dB\n",10*log10(sqnr));
+  // scaling optimization
+  for (double dBFS = -80;dBFS < 0; dBFS+=2) {
+    int scale512_min[4];
+    double sqnr,max_sqnr=-99;
+    double input_lev=0;
+    int inputcnt=0;
+    for (scale512_rx[0]=1;scale512_rx[0]<=5;scale512_rx[0]++) 
+      for (scale512_rx[1]=0;scale512_rx[1]<=5-scale512_rx[0];scale512_rx[1]++) 
+        for (scale512_rx[2]=0;scale512_rx[2]<=5-scale512_rx[0]-scale512_rx[1];scale512_rx[2]++) {
+         scale512_rx[3]=5-scale512_rx[0]-scale512_rx[1]-scale512_rx[2];
+         sqnr=0;
+         int n;
+         for (n=0;n<16384/512;n++) {
+           fill_gauss((c16_t*)x,512,dBFS);
+           for (i=0;i<512;i++) input_lev += pow((double)(((c16_t*)x)[i].r),2.0) + pow((double)(((c16_t*)x)[i].i),2.0);
+           dft512((int16_t*)x,(int16_t*)y,scale512_rx);
+           sqnr += compute_error((int16_t*)x,(int16_t*)y,512,bitrev512,0);
+         }
+         sqnr/=n;
+         inputcnt+=(n*512);
+         if (sqnr>max_sqnr) {
+           max_sqnr = sqnr;
+           scale512_min[0]=scale512_rx[0]; scale512_min[1]=scale512_rx[1]; scale512_min[2]=scale512_rx[2]; scale512_min[3]=scale512_rx[3];
+         }
+      }
+    printf("512-point dBFS %f(input lev %f) dB SQNR %f(%f):  (%d,%d,%d,%d)\n",dBFS,10*log10(input_lev/inputcnt),10*log10(max_sqnr),max_sqnr,scale512_min[0],scale512_min[1],scale512_min[2],scale512_min[3]);
+  }
+
   memset((void*)x,0,1024*sizeof(int32_t));
-#ifdef USE_DFT16_SHIFT
-  uint32_t scale1024_rx[3]={1,2,0};
-#else
-  uint32_t scale1024_rx[3]={1,2,2};
-#endif
+  uint32_t scale1024_rx[4]={1,2,2,0};
   for (i=0;i<1024;i++) {
     ((int16_t*)x)[i<<1] = (int16_t)(364 * cos(2*M_PI*3*i/1024));
     ((int16_t*)x)[1+(i<<1)] = (int16_t)(364 * sin(2*M_PI*3*i/1024));
@@ -9322,6 +9398,33 @@ int main(int argc, char**argv)
   sqnr = compute_error((int16_t*)x,(int16_t*)y,1024,bitrev1024,0);
 
   printf("1024 point DFT SQNR (cplx sinusoid) : %f dB\n",10*log10(sqnr));
+  // scaling optimization
+  for (double dBFS = -80;dBFS < 0; dBFS+=2) {
+    int scale1024_min[4];
+    double sqnr,max_sqnr=-99;
+    double input_lev=0;
+    int inputcnt=0;
+    for (scale1024_rx[0]=0;scale1024_rx[0]<=5;scale1024_rx[0]++) 
+      for (scale1024_rx[1]=0;scale1024_rx[1]<=5-scale1024_rx[0];scale1024_rx[1]++) 
+        for (scale1024_rx[2]=0;scale1024_rx[2]<=5-scale1024_rx[0]-scale1024_rx[1];scale1024_rx[2]++) {
+         scale1024_rx[3]=5-scale1024_rx[0]-scale1024_rx[1]-scale1024_rx[2];
+         sqnr=0;
+         int n;
+         for (n=0;n<16384/1024;n++) {
+           fill_gauss((c16_t*)x,1024,dBFS);
+           for (i=0;i<1024;i++) input_lev += pow((double)(((c16_t*)x)[i].r),2.0) + pow((double)(((c16_t*)x)[i].i),2.0);
+           dft1024((int16_t*)x,(int16_t*)y,scale1024_rx);
+           sqnr += compute_error((int16_t*)x,(int16_t*)y,1024,bitrev1024,0);
+         }
+         sqnr/=n;
+         inputcnt+=(n*1024);
+         if (sqnr>max_sqnr) {
+           max_sqnr = sqnr;
+           scale1024_min[0]=scale1024_rx[0]; scale1024_min[1]=scale1024_rx[1]; scale1024_min[2]=scale1024_rx[2]; scale1024_min[3]=scale1024_rx[3];
+         }
+      }
+    printf("1024-point dBFS %f(input lev %f) dB SQNR %f(%f):  (%d,%d,%d,%d)\n",dBFS,10*log10(input_lev/inputcnt),10*log10(max_sqnr),max_sqnr,scale1024_min[0],scale1024_min[1],scale1024_min[2],scale1024_min[3]);
+  }
   memset((void*)x,0,1536*sizeof(int32_t));
   for (i=0;i<1536;i++) {
     ((int16_t*)x)[i<<1] = (int16_t)(364 * cos(2*M_PI*3*i/1536));
@@ -9336,11 +9439,7 @@ int main(int argc, char**argv)
     ((int16_t*)x)[i<<1] = (int16_t)(384 * cos(2*M_PI*3*i/2048));
     ((int16_t*)x)[1+(i<<1)] = (int16_t)(384 * sin(2*M_PI*3*i/2048));
   } 
-#ifdef USE_DFT16_SHIFT
-  uint32_t scale2048_rx[4]={1,0,3,0};
-#else
-  uint32_t scale2048_rx[4]={1,0,3,2};
-#endif
+  uint32_t scale2048_rx[5]={1,1,1,1,2};
 
   dft2048((int16_t*)x,(int16_t*)y,scale2048_rx);
   LOG_M("x2048_exp.m","x2048_exp",x,2048,1,1); 
@@ -9349,6 +9448,34 @@ int main(int argc, char**argv)
   sqnr = compute_error((int16_t*)x,(int16_t*)y,2048,bitrev2048,0);
 
   printf("2048 point DFT SQNR (cplx sinusoid) : %f dB\n",10*log10(sqnr));
+  // scaling optimization
+  for (double dBFS = -80;dBFS < 0; dBFS+=2) {
+    int scale2048_min[5];
+    double sqnr,max_sqnr=-99;
+    double input_lev=0;
+    int inputcnt=0;
+    for (scale2048_rx[0]=1;scale2048_rx[0]<=6;scale2048_rx[0]++) 
+      for (scale2048_rx[1]=0;scale2048_rx[1]<=6-scale2048_rx[0];scale2048_rx[1]++) 
+        for (scale2048_rx[2]=0;scale2048_rx[2]<=6-scale2048_rx[0]-scale2048_rx[1];scale2048_rx[2]++) 
+          for (scale2048_rx[3]=0;scale2048_rx[3]<=6-scale2048_rx[0]-scale2048_rx[1]-scale2048_rx[2];scale2048_rx[3]++) {
+             scale2048_rx[4]=6-scale2048_rx[0]-scale2048_rx[1]-scale2048_rx[2]-scale2048_rx[3];
+             sqnr=0;
+             int n;
+             for (n=0;n<16384/2048;n++) {
+                fill_gauss((c16_t*)x,2048,dBFS);
+                for (i=0;i<2048;i++) input_lev += pow((double)(((c16_t*)x)[i].r),2.0) + pow((double)(((c16_t*)x)[i].i),2.0);
+                dft2048((int16_t*)x,(int16_t*)y,scale2048_rx);
+                sqnr += compute_error((int16_t*)x,(int16_t*)y,2048,bitrev2048,0);
+             }
+             sqnr/=n;
+             inputcnt+=(n*2048);
+             if (sqnr>max_sqnr) {
+                max_sqnr = sqnr;
+                scale2048_min[0]=scale2048_rx[0]; scale2048_min[1]=scale2048_rx[1]; scale2048_min[2]=scale2048_rx[2]; scale2048_min[3]=scale2048_rx[3]; scale2048_min[4]=scale2048_rx[4];
+             }
+          }
+    printf("2048-point dBFS %f(input lev %f) dB SQNR %f(%f):  (%d,%d,%d,%d,%d)\n",dBFS,10*log10(input_lev/inputcnt),10*log10(max_sqnr),max_sqnr,scale2048_min[0],scale2048_min[1],scale2048_min[2],scale2048_min[3],scale2048_min[4]);
+  }
   memset((void*)x,0,3072*sizeof(int32_t));
   for (i=0;i<3072;i++) {
     ((int16_t*)x)[i<<1] = (int16_t)(200 * cos(2*M_PI*3*i/3072));
@@ -9363,17 +9490,41 @@ int main(int argc, char**argv)
     ((int16_t*)x)[i<<1] = (int16_t)(384 * cos(2*M_PI*331*i/4096));
     ((int16_t*)x)[1+(i<<1)] = (int16_t)(384 * sin(2*M_PI*331*i/4096));
   } 
-#ifndef USE_DFT16_SHIFT
-  uint32_t scale4096_rx[4]={0,0,3,3};
-#else
-  uint32_t scale4096_rx[4]={0,0,3,1};
-#endif
+  uint32_t scale4096_rx[5]={0,1,1,2,2};
   dft4096((int16_t*)x,(int16_t*)y,scale4096_rx);
   LOG_M("x4096_exp.m","x4096_exp",x,4096,1,1); 
   LOG_M("y4096_exp.m","y4096_exp",y,4096,1,1); 
 
   sqnr = compute_error((int16_t*)x,(int16_t*)y,4096,bitrev4096,0);
   printf("4096 point DFT SQNR (cplx sinusoid) : %f dB\n",10*log10(sqnr));
+  // scaling optimization
+  for (double dBFS = -80;dBFS < 0; dBFS+=2) {
+    int scale4096_min[5];
+    double sqnr,max_sqnr=-99;
+    double input_lev=0;
+    int inputcnt=0;
+    for (scale4096_rx[0]=0;scale4096_rx[0]<=6;scale4096_rx[0]++) 
+      for (scale4096_rx[1]=0;scale4096_rx[1]<=6-scale4096_rx[0];scale4096_rx[1]++) 
+        for (scale4096_rx[2]=0;scale4096_rx[2]<=6-scale4096_rx[0]-scale4096_rx[1];scale4096_rx[2]++) 
+          for (scale4096_rx[3]=0;scale4096_rx[3]<=6-scale4096_rx[0]-scale4096_rx[1]-scale4096_rx[2];scale4096_rx[3]++)  {
+             scale4096_rx[4]=6-scale4096_rx[0]-scale4096_rx[1]-scale4096_rx[2]-scale4096_rx[3];
+             sqnr=0;
+             int n;
+             for (n=0;n<16384/4096;n++) {
+                fill_gauss((c16_t*)x,4096,dBFS);
+                for (i=0;i<4096;i++) input_lev += pow((double)(((c16_t*)x)[i].r),2.0) + pow((double)(((c16_t*)x)[i].i),2.0);
+                dft4096((int16_t*)x,(int16_t*)y,scale4096_rx);
+                sqnr += compute_error((int16_t*)x,(int16_t*)y,4096,bitrev4096,0);
+             }
+             sqnr/=n;
+             inputcnt+=(n*4096);
+             if (sqnr>max_sqnr) {
+                max_sqnr = sqnr;
+                scale4096_min[0]=scale4096_rx[0]; scale4096_min[1]=scale4096_rx[1]; scale4096_min[2]=scale4096_rx[2]; scale4096_min[3]=scale4096_rx[3];scale4096_min[4]=scale4096_rx[4];
+             }
+          }
+    printf("4096-point dBFS %f(input lev %f) dB SQNR %f(%f):  (%d,%d,%d,%d,%d)\n",dBFS,10*log10(input_lev/inputcnt),10*log10(max_sqnr),max_sqnr,scale4096_min[0],scale4096_min[1],scale4096_min[2],scale4096_min[3],scale4096_min[4]);
+  }
   return(0);
 }
 

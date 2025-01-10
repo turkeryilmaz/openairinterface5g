@@ -381,7 +381,7 @@ void rx_nr_prach_ru(RU_t *ru, int prachFormat, int numRA, int prachStartSymbol, 
   }
 
   const dft_size_idx_t dftsize = get_dft(dftlen);
-  uint32_t *scaling_sched = get_dft_scaling(dftlen,0);
+  uint32_t *scaling_sched = get_dft_scaling(dftlen,ru->dft_in_levdB);
 
   // Do forward transform
   if (LOG_DEBUGFLAG(PRACH)) {

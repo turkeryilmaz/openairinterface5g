@@ -320,9 +320,9 @@ void rx_prach0(PHY_VARS_eNB *eNB,
           break;
       }
 
-      dft(get_dft(fft_size), prach2, rxsigF[aa], get_dft_scaling(fft_size,0));
+      dft(get_dft(fft_size), prach2, rxsigF[aa], get_dft_scaling(fft_size,ru->dft_in_levdB));
       if (prach_fmt > 1 && prach_fmt != 4)
-          dft(get_dft(fft_size), prach2 + 2 * fft_size, rxsigF[aa] + 2 * fft_size, get_dft_scaling(fft_size,0));
+          dft(get_dft(fft_size), prach2 + 2 * fft_size, rxsigF[aa] + 2 * fft_size, get_dft_scaling(fft_size,ru->dft_in_levdB));
 
       k = (12*n_ra_prb) - 6*fp->N_RB_UL;
 
