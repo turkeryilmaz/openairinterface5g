@@ -1324,7 +1324,7 @@ void *ru_thread(void *param)
         ru->feprx(ru,proc->tti_rx);
         if (ru->dft_in_levdB==-1) {
           int sigenergy=0;
-          for (int aa=0;aa<ru->nb_rx;ru++)
+          for (int aa=0;aa<ru->nb_rx;aa++)
             sigenergy += signal_energy(ru->common.rxdata[aa]+fp->get_samples_slot_timestamp(proc->tti_rx-1,fp,0),2048);
           ru->dft_in_levdB = dB_fixed(sigenergy)+20;
         }

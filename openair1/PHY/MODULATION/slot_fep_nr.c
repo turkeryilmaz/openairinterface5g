@@ -66,7 +66,6 @@ int nr_slot_fep(PHY_VARS_NR_UE *ue,
   }
 
   dft_size_idx_t dftsize = get_dft(frame_parms->ofdm_symbol_size);
-  uint32_t *scaling_sched = get_dft_scaling(frame_parms->ofdm_symbol_size,ue->dft_in_levdB);
   // This is for misalignment issues
   int32_t tmp_dft_in[8192] __attribute__ ((aligned (32)));
 
@@ -87,6 +86,13 @@ int nr_slot_fep(PHY_VARS_NR_UE *ue,
   Ns, symbol, nb_prefix_samples, nb_prefix_samples0, rx_offset, dB_fixed(signal_energy((int32_t *)&common_vars->rxdata[0][rx_offset],frame_parms->ofdm_symbol_size)));
 #endif
 
+  int dft_in_levdB;
+  uint32_t *scaling_sched=NULL;
+
+  if (ue) {
+    dft_in_levdB = ue->dft_in_levdB;
+    scaling_sched = get_dft_scaling(frame_parms->ofdm_symbol_size,dft_in_levdB);
+  }
   for (unsigned char aa=0; aa<frame_parms->nb_antennas_rx; aa++) {
     int16_t *rxdata_ptr = (int16_t *)&rxdata[aa][rx_offset];
 
@@ -111,7 +117,9 @@ int nr_slot_fep(PHY_VARS_NR_UE *ue,
 
     if (ue)
       start_meas_nr_ue_phy(ue, RX_DFT_STATS);
-
+    else 
+      scaling_sched = get_dft_scaling(frame_parms->ofdm_symbol_size,dB_fixed(signal_energy((int32_t*)rxdata_ptr,dftsize)));
+    
     dft(dftsize,
         rxdata_ptr,
         (int16_t *)&rxdataF[aa][frame_parms->ofdm_symbol_size*symbol],
