@@ -1325,7 +1325,7 @@ void *ru_thread(void *param)
         if (ru->dft_in_levdB==-1) {
           int sigenergy=0;
           for (int aa=0;aa<ru->nb_rx;aa++)
-            sigenergy += signal_energy(ru->common.rxdata[aa]+fp->get_samples_slot_timestamp(proc->tti_rx-1,fp,0),2048);
+            sigenergy += signal_energy(ru->common.rxdata[aa]+fp->get_samples_slot_timestamp(proc->tti_rx,fp,0),2048);
           ru->dft_in_levdB = dB_fixed(sigenergy)+20;
         }
         LOG_D(NR_PHY, "Setting %d.%d (%d) to busy\n", proc->frame_rx, proc->tti_rx, proc->tti_rx % RU_RX_SLOT_DEPTH);
