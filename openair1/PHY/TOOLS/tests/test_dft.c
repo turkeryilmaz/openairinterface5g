@@ -248,5 +248,6 @@ int main(void)
   }
   free(d16);
   free(o16);
+  free(d16_2);
   return ret;
 }
