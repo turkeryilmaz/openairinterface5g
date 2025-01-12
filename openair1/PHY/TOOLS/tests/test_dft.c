@@ -45,7 +45,7 @@ bool error(c16_t v16, cd_t vd, double percent)
   return false;
 }
 
-void math_dft(cd_t *in, cd_t *out, int len,int dir)
+void math_dft(c16_t *in, cd_t *out, int len,int dir,int norm)
 {
   for (int k = 0; k < len; k++) {
     cd_t tmp = {0};
@@ -60,12 +60,13 @@ void math_dft(cd_t *in, cd_t *out, int len,int dir)
       cost[n] = cos(phi[n]);
     for (int n = 0; n < len; n++) {
       cd_t coeff = {.r = cost[n], .i = sint[n]};
-      cd_t component = cdMul(coeff, in[n]);
+      cd_t in16q = {.r = (double)in[n].r, .i = (double)in[n].i};
+      cd_t component = cdMul(coeff, in16q);
       tmp.r += component.r;
       tmp.i += component.i;
     }
-    out[k].r = tmp.r / sqrt(len);
-    out[k].i = tmp.i / sqrt(len);
+    out[k].r = tmp.r / ((norm==0) ? 1.0 : sqrt(len));
+    out[k].i = tmp.i / ((norm==0) ? 1.0 : sqrt(len));
   }
 }
 
@@ -124,59 +125,68 @@ int main(void)
 {
   int ret = 0;
   load_dftslib();
-  c16_t *d16 = malloc16(12 * dftFtab[sizeofArray(dftFtab) - 1].size * sizeof(*d16));
+  c16_t *d16   = malloc16(12 * dftFtab[sizeofArray(dftFtab) - 1].size * sizeof(*d16));
+  c16_t *d16_2 = malloc16(12 * sizeof(*d16_2));
   c16_t *o16 = malloc16(12 * dftFtab[sizeofArray(dftFtab) - 1].size * sizeof(*d16));
+  set_taus_seed(0);
   for (int sz = 0; sz < sizeofArray(dftFtab); sz++) {
     const int n = dftFtab[sz].size;
     cd_t data[n];
-    double coeffs[] = {0.25, 0.5, 1, 1.5, 2, 2.5, 3};
+    double coeffs[] = {30,40,50,60,70};
     printf("Testing size %d\n",n);
     cd_t out[n];
     for (int i = 0; i < n; i++) {
       data[i].r = gaussZiggurat(0, 1.0); // gaussZiggurat not used paramters, to fix
       data[i].i = gaussZiggurat(0, 1.0);
     }
-    math_dft(data, out, n,0);
     double evm[sizeofArray(coeffs)] = {0};
     double sqnr[sizeofArray(coeffs)] = {0};
     double samples[sizeofArray(coeffs)] = {0};
+    double samples_out[sizeofArray(coeffs)] = {0};
     for (int coeff = 0; coeff < sizeofArray(coeffs); coeff++) {
-      double expand = coeffs[coeff] * SHRT_MAX / sqrt(n);
+      double expand = pow(10.0,.05*coeffs[coeff])/sqrt(2);
       if (n == 12) {
-        for (int i = 0; i < n; i++)
+        for (int i = 0; i < n; i++) {
           for (int j = 0; j < 4; j++) {
             d16[i * 4 + j].r = expand * data[i].r;
             d16[i * 4 + j].i = expand * data[i].i;
           }
+          d16_2[i].r = d16[i * 4 ].r;
+          d16_2[i].i = d16[i * 4 ].i;
+        }
       } else {
         for (int i = 0; i < n; i++) {
           d16[i].r = expand * data[i].r;
           d16[i].i = expand * data[i].i;
         }
       }
-      dft(get_dft(n), (int16_t *)d16, (int16_t *)o16,get_dft_scaling(n,(int32_t)(10*log10(expand))));
+      if (n==12) math_dft(d16_2,out,n,0,0);
+      else       math_dft(d16, out, n,0,1);
+      dft(get_dft(n), (int16_t *)d16, (int16_t *)o16,get_dft_scaling(n,(int32_t)(coeffs[coeff])));
       if (n == 12) {
         for (int i = 0; i < n; i++) {
-          cd_t error = {.r = o16[i * 4].r / (expand * sqrt(n)) - out[i].r, .i = o16[i * 4].i / (expand * sqrt(n)) - out[i].i};
+          cd_t error = {.r = o16[i * 4].r - out[i].r, .i = o16[i * 4].i - out[i].i};
+          sqnr[coeff] += squaredMod(error);
           evm[coeff] += sqrt(squaredMod(error)) / sqrt(squaredMod(out[i]));
-          samples[coeff] += sqrt(squaredMod(d16[i]));
+          samples_out[coeff] += (squaredMod(out[i])/n);
+          samples[coeff] += squaredMod(d16_2[i]);
         }
       } else {
         for (int i = 0; i < n; i++) {
-          cd_t error2 = {.r = o16[i].r / expand - out[i].r , .i = o16[i].i / expand - out[i].i};
-          evm[coeff] += sqrt(squaredMod(error2)) / sqrt(squaredMod(out[i]));
-          sqnr[coeff] += squaredMod(out[i]) / (squaredMod(error2));
-          samples[coeff] += sqrt(squaredMod(d16[i]));
-      /*    if (n==64){ 
-            if (error(o16[i], out[i], 5))
-            printf("Error in dft %d at %d, coeff %d, expand %f, (%f, %f) != %f, %f)\n", n, i, coeff, expand,o16[i].r/expand, o16[i].i/expand, out[i].r, out[i].i);
-          }*/
+          cd_t error = {.r = o16[i].r - out[i].r , .i = o16[i].i - out[i].i};
+          evm[coeff] += sqrt(squaredMod(error)) / sqrt(squaredMod(out[i]));
+          double error_dB = 10*log10(squaredMod(error));
+          if (coeffs[coeff] == 50 && n==4096 && error_dB >= 10) printf("error in DFT pos %d : in %f dB %f dB \n",i,coeffs[coeff],error_dB);
+          sqnr[coeff] += squaredMod(error);
+          samples[coeff] += squaredMod(d16[i]);
+          samples_out[coeff] += squaredMod(out[i]);
         }
       }
+      sqnr[coeff] = samples_out[coeff] / sqnr[coeff];
     }
-    printf("done DFT size %d (evm (%%), SQNRdB, avg samples amplitude) = ", n);
+    printf("done DFT size %d (evm (%%), SQNRdB, avg in samples amplitude, avg out samples amplitude) = ", n);
     for (int coeff = 0; coeff < sizeofArray(coeffs); coeff++)
-      printf("dBFS %f (%.2f, %f, %.0f) ", 20*log10(coeffs[coeff] / sqrt(n)),(evm[coeff] / n) * 100, 10*log10(sqnr[coeff]/n),samples[coeff] / n);
+      printf("input_lev %f (%.2f, %f, %.1f, %.1f) ", coeffs[coeff],(evm[coeff] / n) * 100, 10*log10(sqnr[coeff]),10*log10(samples[coeff] / n), 10*log10(samples_out[coeff] / n));
     printf("\n");
     int i;
     for (i = 0; i < sizeofArray(coeffs); i++)
@@ -189,10 +199,13 @@ int main(void)
     fflush(stdout);
   }
 
+  // TX test: modulate all used sizss with QPSK and 256QAM. Compute IDFT using
+  // QAM levels and IDFT scaling used in gNB transmit chain. Use double precision DFT 
+  // to bring back to frequency-domain. Compute EVM and SQNR compared to
+  // transmitted waveform 
   for (int sz = 0; sz < sizeofArray(dftFtab); sz++) {
     const int n = dftFtab[sz].size;
     cd_t data[n];
-    cd_t in[n];
     if (n > 4096) break;
     if (n < 128) continue;
     printf("Testing IDFT size %d\n",n);
@@ -201,30 +214,29 @@ int main(void)
       fill_qam(n,data,mod);
       int16_t amp=512;
       for (int i = 0; i < n; i++) {
-        d16[i].r = amp*data[i].r; 
-        d16[i].i = amp*data[i].i;
+        d16[i].r = (int16_t)(amp*data[i].r); 
+        d16[i].i = (int16_t)(amp*data[i].i);
       }
       idft(get_idft(n), (int16_t *)d16, (int16_t *)o16,get_idft_scaling(n));
-      for (int i =0; i < n; i++) {
-        in[i].r = (double)o16[i].r; 
-        in[i].i = (double)o16[i].i;
-      }
-      math_dft(in, out, n,0);
+      math_dft(o16, out, n,0,1);
       double evm = 0;
       double sqnr = 0;
       double samples = 0;
+      double samples_out = 0;
       int nz=0;
       for (int i = 0; i < n; i++) {
         if (data[i].r != 0) {
-            cd_t error2 = {.r = d16[i].r - out[i].r, .i = d16[i].i - out[i].i};
-            evm += sqrt(squaredMod(error2)) / sqrt(squaredMod(out[i]));
-            sqnr += squaredMod(out[i]) / (squaredMod(error2));
+            cd_t error = {.r = (double)d16[i].r - out[i].r, .i =(double) d16[i].i - out[i].i};
+            evm += sqrt(squaredMod(error)) / sqrt(squaredMod(out[i]));
+            sqnr += squaredMod(error);
             samples += sqrt(squaredMod(d16[i]));
+            samples_out += squaredMod(out[i]);
             nz++;
         }
       }
+      sqnr = samples_out / sqnr;
       printf("done IDFT size %d nz %d mod %s (evm (%%), SQNRdB, avg samples amplitude) = ", n,nz, mod==0?"QPSK":"256QAM");
-      printf("(%.2f, %f, %.0f) ", (evm / n) * 100, 10*log10(sqnr/nz),samples/ nz);
+      printf("(%.2f, %f, %.1f) ", (evm / nz) * 100, 10*log10(sqnr),10*log10(samples_out/ nz));
       printf("\n");
       if (evm / nz > 0.01){
         printf("IDFT size: %d/ mod %s, minimum error is more than 1%%, setting the test as failed\n", n, mod==0?"QPSK":"256QAM");

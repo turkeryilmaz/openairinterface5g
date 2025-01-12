@@ -729,7 +729,7 @@ uint32_t *get_dft_scaling(int ofdm_symbol_size,uint32_t levdB)
       return DFT_SCALING_3072[0];
     case 4096:
       while (i<sizeof(DFT_SCALING_2048_THRES)/sizeof(DFT_SCALING_2048_THRES[0])) {
-        if (levdB < DFT_SCALING_2048_THRES[i]) break;
+        if (levdB < DFT_SCALING_4096_THRES[i]) break;
         i++;
       }
       return DFT_SCALING_2048[i];
