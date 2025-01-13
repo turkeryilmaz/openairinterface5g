@@ -1110,7 +1110,7 @@ void *ru_thread(void *param)
   RU_t               *ru      = (RU_t *)param;
   RU_proc_t          *proc    = &ru->proc;
   NR_DL_FRAME_PARMS  *fp      = ru->nr_frame_parms;
-  PHY_VARS_gNB       *gNB     = (RC.nb_L1_inst > 0) ? RC.gNB[0] : NULL;
+  PHY_VARS_gNB       *gNB     = (RC.nb_nr_L1_inst > 0) ? RC.gNB[0] : NULL;
   int                ret;
   int                slot     = fp->slots_per_frame-1;
   int                frame    = 1023;
@@ -1759,7 +1759,7 @@ void init_NR_RU(configmodule_interface_t *cfg, char *rf_config_file)
         ru->num_gNB=1;
       }
     }
-    if (RC.nb_L1_inst > 0) {
+    if (RC.nb_nr_L1_inst > 0) {
       gNB_RC = RC.gNB[0];
       gNB0 = ru->gNB_list[0];
     }
