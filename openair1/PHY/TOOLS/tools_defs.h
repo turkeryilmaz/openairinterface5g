@@ -596,16 +596,16 @@ extern uint32_t DFT_SCALING_64[5][2];
 extern uint32_t DFT_SCALING_128[5][3];
 extern uint32_t DFT_SCALING_256[5][3];
 extern uint32_t DFT_SCALING_512[7][4];
-extern uint32_t DFT_SCALING_512_THRES[7];
+extern int32_t DFT_SCALING_512_THRES[7];
 extern uint32_t DFT_SCALING_768[5][4];
 extern uint32_t DFT_SCALING_1024[5][4];
-extern uint32_t DFT_SCALING_1024_THRES[5];
+extern int32_t DFT_SCALING_1024_THRES[5];
 extern uint32_t DFT_SCALING_1536[5][5];
 extern uint32_t DFT_SCALING_2048[10][5];
-extern uint32_t DFT_SCALING_2048_THRES[10];
+extern int32_t DFT_SCALING_2048_THRES[10];
 extern uint32_t DFT_SCALING_3072[5][5];
 extern uint32_t DFT_SCALING_4096[8][5];
-extern uint32_t DFT_SCALING_4096_THRES[8];
+extern int32_t DFT_SCALING_4096_THRES[8];
 extern uint32_t DFT_SCALING_6144[5][6];
 extern uint32_t DFT_SCALING_8192[5][6];
 extern uint32_t DFT_SCALING_9216[5][6];
@@ -693,7 +693,7 @@ static inline dft_size_idx_t get_dft(int size)
 *
 *********************************************************************/
 static inline
-uint32_t *get_dft_scaling(int ofdm_symbol_size,uint32_t levdB)
+uint32_t *get_dft_scaling(int ofdm_symbol_size,int32_t levdB)
 {
   size_t i=0;
   switch (ofdm_symbol_size) {

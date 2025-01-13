@@ -666,7 +666,7 @@ typedef struct RU_t_s {
   /// structure for analyzing high-level RT measurements
   rt_ru_profiling_t rt_ru_profiling;
   void* scopeData;
-  uint32_t dft_in_levdB;
+  int32_t dft_in_levdB;
 } RU_t;
 
 
