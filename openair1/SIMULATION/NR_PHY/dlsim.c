@@ -352,7 +352,7 @@ int main(int argc, char **argv)
   if ((uniqCfg = load_configmodule(argc, argv, CONFIG_ENABLECMDLINEONLY)) == 0) {
     exit_fun("[NR_DLSIM] Error, configuration module init failed\n");
   }
-  int tx_amp=30;
+  int tx_amp=33;
 
   randominit(0);
 
