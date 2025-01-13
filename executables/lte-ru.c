@@ -1822,7 +1822,7 @@ static void *ru_thread( void *param ) {
               int sigenergy=0;
               for (int aa=0;aa<ru->nb_rx;aa++)
                  sigenergy += signal_energy(ru->common.rxdata[aa]+proc->tti_rx*ru->frame_parms->samples_per_tti,2048);
-              ru->dft_in_levdB = dB_fixed(sigenergy)+20;
+              ru->dft_in_levdB = dB_fixed(sigenergy)+30;
         }
 
         // wakeup all eNB processes waiting for this RU
