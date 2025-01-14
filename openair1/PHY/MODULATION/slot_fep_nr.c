@@ -86,13 +86,11 @@ int nr_slot_fep(PHY_VARS_NR_UE *ue,
   Ns, symbol, nb_prefix_samples, nb_prefix_samples0, rx_offset, dB_fixed(signal_energy((int32_t *)&common_vars->rxdata[0][rx_offset],frame_parms->ofdm_symbol_size)));
 #endif
 
-  int dft_in_levdB;
   uint32_t *scaling_sched=NULL;
 
-  if (ue) {
-    if (ue->dft_in_levdB >= 0) dft_in_levdB = ue->dft_in_levdB;
-    scaling_sched = get_dft_scaling(frame_parms->ofdm_symbol_size,dft_in_levdB);
-  }
+  if (ue && ue->dft_in_levdB >=0) 
+    scaling_sched = get_dft_scaling(frame_parms->ofdm_symbol_size,ue->dft_in_levdB);
+  
   uint32_t sigenergy_avg=0;
   for (unsigned char aa=0; aa<frame_parms->nb_antennas_rx; aa++) {
     int16_t *rxdata_ptr = (int16_t *)&rxdata[aa][rx_offset];
@@ -121,7 +119,7 @@ int nr_slot_fep(PHY_VARS_NR_UE *ue,
     else 
       scaling_sched = get_dft_scaling(frame_parms->ofdm_symbol_size,dB_fixed(signal_energy((int32_t*)rxdata_ptr,dftsize)));
   
-    if (ue->dft_in_levdB < 0) { // this means dft scaling level needs to be recomputed
+    if (ue && ue->dft_in_levdB < 0) { // this means dft scaling level needs to be recomputed
       uint32_t sigenergy= signal_energy((int32_t*)rxdata_ptr,dftsize);
       scaling_sched = get_dft_scaling(frame_parms->ofdm_symbol_size,dB_fixed(sigenergy));
       sigenergy_avg += sigenergy/frame_parms->nb_antennas_rx; 
@@ -136,7 +134,7 @@ int nr_slot_fep(PHY_VARS_NR_UE *ue,
 
     apply_nr_rotation_RX(frame_parms, rxdataF[aa], frame_parms->symbol_rotation[linktype], slot, N_RB, 0, symbol, 1);
   }
-  if (ue->dft_in_levdB < 0) ue->dft_in_levdB = dB_fixed(sigenergy_avg) + 20;
+  if (ue && ue->dft_in_levdB < 0) ue->dft_in_levdB = dB_fixed(sigenergy_avg) + 20;
 #ifdef DEBUG_FEP
   printf("slot_fep: done\n");
 #endif
