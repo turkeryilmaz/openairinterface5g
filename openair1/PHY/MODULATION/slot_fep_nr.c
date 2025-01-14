@@ -88,7 +88,7 @@ int nr_slot_fep(PHY_VARS_NR_UE *ue,
 
   uint32_t *scaling_sched=NULL;
 
-  if (ue && ue->dft_in_levdB >=0) 
+  if (ue && ue->dft_in_levdB >=0)  
     scaling_sched = get_dft_scaling(frame_parms->ofdm_symbol_size,ue->dft_in_levdB);
   
   uint32_t sigenergy_avg=0;
