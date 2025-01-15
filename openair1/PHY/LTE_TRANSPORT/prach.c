@@ -529,13 +529,13 @@ void rx_prach0(PHY_VARS_eNB *eNB,
         // Now do IFFT of size 1024 (N_ZC=839) or 256 (N_ZC=139)
         if (N_ZC == 839) {
           log2_ifft_size = 10;
-          idft(IDFT_1024,(int16_t*)prachF,prach_ifft_tmp,get_idft_scaling(1024));
+          idft(IDFT_1024,(int16_t*)prachF,prach_ifft_tmp,get_idft_scaling(1024,1));
 
           // compute energy and accumulate over receive antennas and repetitions for BR
           for (i=0; i<2048; i++)
             prach_ifft[i] += (prach_ifft_tmp[i<<1]*prach_ifft_tmp[i<<1] + prach_ifft_tmp[1+(i<<1)]*prach_ifft_tmp[1+(i<<1)])>>9;
         } else {
-          idft(IDFT_256,(int16_t*)prachF,prach_ifft_tmp,get_idft_scaling(1024));
+          idft(IDFT_256,(int16_t*)prachF,prach_ifft_tmp,get_idft_scaling(1024,1));
           log2_ifft_size = 8;
 
           // compute energy and accumulate over receive antennas and repetitions for BR

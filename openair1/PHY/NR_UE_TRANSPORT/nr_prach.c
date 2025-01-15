@@ -429,7 +429,7 @@ int32_t generate_nr_prach(PHY_VARS_NR_UE *ue, uint8_t gNB_id, int frame, uint8_t
     c16_t *prach2 = prach + Ncp;
     const idft_size_idx_t idft_size = get_idft(dftlen);
     uint32_t *scaling_sched = get_idft_scaling(dftlen);
-    idft(idft_size, prachF, (int16_t *)prach, scaling_sched);
+    idft(idft_size, prachF, (int16_t *)prach, scaling_sched,0);
     memmove(prach2, prach, (dftlen << 2));
 
     if (prach_sequence_length == 0) {

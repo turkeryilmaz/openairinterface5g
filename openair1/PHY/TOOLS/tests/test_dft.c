@@ -217,7 +217,7 @@ int main(void)
         d16[i].r = (int16_t)(amp*data[i].r); 
         d16[i].i = (int16_t)(amp*data[i].i);
       }
-      idft(get_idft(n), (int16_t *)d16, (int16_t *)o16,get_idft_scaling(n));
+      idft(get_idft(n), (int16_t *)d16, (int16_t *)o16,get_idft_scaling(n,0));
       math_dft(o16, out, n,0,1);
       double evm = 0;
       double sqnr = 0;

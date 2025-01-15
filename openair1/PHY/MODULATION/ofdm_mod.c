@@ -137,7 +137,7 @@ void PHY_ofdm_mod(const int *input, /// pointer to complex input
     return;
 
   idft_size_idx_t idft_size = get_idft(fftsize);
-  uint32_t *scaling_sched = get_idft_scaling(fftsize);
+  uint32_t *scaling_sched = get_idft_scaling(fftsize,0);
 
 #ifdef DEBUG_OFDM_MOD
   printf("[PHY] OFDM mod (size %d,prefix %d) Symbols %d, input %p, output %p\n",
