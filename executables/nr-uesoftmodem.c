@@ -456,8 +456,9 @@ int main(int argc, char **argv)
   else
     init_pdcp(mode_offset + ue_id_g);
   nas_init_nrue(NB_UE_INST);
-
-  init_NR_UE(NB_UE_INST, get_nrUE_params()->uecap_file, get_nrUE_params()->reconfig_file, get_nrUE_params()->rbconfig_file);
+  // EpiSci TODO: Fill ueinfo to pass in init_NR_UE
+  ueinfo_t ueinfo;
+  init_NR_UE(NB_UE_INST, get_nrUE_params()->uecap_file, get_nrUE_params()->reconfig_file, get_nrUE_params()->rbconfig_file, &ueinfo);
 
   if (get_softmodem_params()->emulate_l1) {
     RCconfig_nr_ue_macrlc();

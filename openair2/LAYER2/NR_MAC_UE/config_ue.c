@@ -66,7 +66,7 @@ void set_tdd_config_nr_ue(fapi_nr_tdd_table_t *tdd_table,
                 "set_tdd_configuration_nr: given period is inconsistent with current tdd configuration, nrofDownlinkSlots %d, nrofUplinkSlots %d, nrofMixed slots 1, nb_slots_per_period %d \n",
                 nrofDownlinkSlots,nrofUplinkSlots,nb_slots_per_period);
   }
-
+  // EpiSci TODO: computing method is different  max_tdd_periodicity_list
   tdd_table->max_tdd_periodicity_list = (fapi_nr_max_tdd_periodicity_t *) malloc(nb_slots_per_period * sizeof(fapi_nr_max_tdd_periodicity_t));
 
   for(int memory_alloc = 0 ; memory_alloc < nb_slots_per_period; memory_alloc++)
@@ -1622,7 +1622,7 @@ void nr_rrc_mac_config_req_reset(module_id_t module_id, NR_UE_MAC_reset_cause_t 
   switch (cause) {
     case GO_TO_IDLE:
       reset_ra(mac, true);
-      nr_ue_init_mac(mac);
+      nr_ue_init_mac(mac, NULL);
       release_mac_configuration(mac, cause);
       nr_ue_mac_default_configs(mac);
       // new sync but no target cell id -> -1

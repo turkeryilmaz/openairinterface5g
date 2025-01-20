@@ -53,7 +53,7 @@ void send_srb0_rrc(int ue_id, const uint8_t *sdu, sdu_size_t sdu_len, void *data
   itti_send_msg_to_task(TASK_RRC_NRUE, ue_id, message_p);
 }
 
-void nr_ue_init_mac(NR_UE_MAC_INST_t *mac)
+void nr_ue_init_mac(NR_UE_MAC_INST_t *mac, ueinfo_t *ueinfo)
 {
   LOG_I(NR_MAC, "[UE%d] Initializing MAC\n", mac->ue_id);
   nr_ue_reset_sync_state(mac);
@@ -128,7 +128,7 @@ NR_UE_L2_STATE_t nr_ue_get_sync_state(module_id_t mod_id)
   return mac->state;
 }
 
-NR_UE_MAC_INST_t *nr_l2_init_ue(int nb_inst)
+NR_UE_MAC_INST_t *nr_l2_init_ue(int nb_inst, ueinfo_t *ueinfo)
 {
   //init mac here
   nr_ue_mac_inst = (NR_UE_MAC_INST_t *)calloc(nb_inst, sizeof(NR_UE_MAC_INST_t));
@@ -137,7 +137,7 @@ NR_UE_MAC_INST_t *nr_l2_init_ue(int nb_inst)
   for (int j = 0; j < nb_inst; j++) {
     NR_UE_MAC_INST_t *mac = &nr_ue_mac_inst[j];
     mac->ue_id = j;
-    nr_ue_init_mac(mac);
+    nr_ue_init_mac(mac, ueinfo);
     nr_ue_mac_default_configs(mac);
     if (IS_SA_MODE(get_softmodem_params()))
       ue_init_config_request(mac, get_softmodem_params()->numerology);

@@ -4,6 +4,11 @@
 #include <executables/softmodem-common.h>
 #include "common/utils/threadPool/thread-pool.h"
 #include "PHY/defs_nr_UE.h"
+typedef struct ueinfo {
+  int srcid;
+  int thirdOctet;
+  int fourthOctet;
+} ueinfo_t;
 
 #define  CONFIG_HLP_IF_FREQ                "IF frequency for RF, if needed\n"
 #define  CONFIG_HLP_IF_FREQ_OFF            "UL IF frequency offset for RF, if needed\n"
@@ -108,7 +113,7 @@ extern nrUE_params_t *get_nrUE_params(void);
 // In nr-ue.c
 extern int setup_nr_ue_buffers(PHY_VARS_NR_UE **phy_vars_ue, openair0_config_t *openair0_cfg);
 extern void fill_ue_band_info(void);
-extern void init_NR_UE(int, char *, char *, char *);
+extern void init_NR_UE(int, char *, char *, char *, ueinfo_t*);
 extern void init_NR_UE_threads(PHY_VARS_NR_UE *ue);
 void start_oai_nrue_threads(void);
 void *UE_thread(void *arg);

@@ -36,6 +36,7 @@
 #include "mac_defs.h"
 #include "oai_asn1.h"
 #include "RRC/NR_UE/rrc_defs.h"
+#include "executables/nr-uesoftmodem.h"
 #include "nfapi/open-nFAPI/nfapi/public_inc/nfapi_nr_interface.h"
 
 #define NR_DL_MAX_DAI                            (4)                      /* TS 38.213 table 9.1.3-1 Value of counter DAI for DCI format 1_0 and 1_1 */
@@ -43,7 +44,7 @@
 
 /**\brief initialize the field in nr_mac instance
    \param mac      MAC pointer */
-void nr_ue_init_mac(NR_UE_MAC_INST_t *mac);
+void nr_ue_init_mac(NR_UE_MAC_INST_t *mac, ueinfo_t *ueinfo);
 
 void send_srb0_rrc(int ue_id, const uint8_t *sdu, sdu_size_t sdu_len, void *data);
 void update_mac_timers(NR_UE_MAC_INST_t *mac);
@@ -97,7 +98,7 @@ void nr_rrc_mac_config_req_sib19_r17(module_id_t module_id, const struct positio
 void nr_rrc_mac_config_req_reset(module_id_t module_id, NR_UE_MAC_reset_cause_t cause);
 
 /**\brief initialization NR UE MAC instance(s)*/
-NR_UE_MAC_INST_t * nr_l2_init_ue(int nb_inst);
+NR_UE_MAC_INST_t * nr_l2_init_ue(int nb_inst, ueinfo_t *ueinfo);
 
 /**\brief fetch MAC instance by module_id
    \param module_id index of MAC instance(s)*/
