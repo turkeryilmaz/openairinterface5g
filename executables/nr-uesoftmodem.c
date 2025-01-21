@@ -115,7 +115,7 @@ int oai_exit = 0;
 
 
 static int      tx_max_power[MAX_NUM_CCs] = {0};
-
+int             single_thread_flag = 1;
 double          rx_gain_off = 0.0;
 
 uint64_t        downlink_frequency[MAX_NUM_CCs][4];

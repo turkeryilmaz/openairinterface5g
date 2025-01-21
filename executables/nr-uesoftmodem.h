@@ -15,6 +15,9 @@ typedef struct ueinfo {
 #define  CONFIG_HLP_DLSCH_PARA             "number of threads for dlsch processing 0 for no parallelization\n"
 #define  CONFIG_HLP_OFFSET_DIV             "Divisor for computing OFDM symbol offset in Rx chain (num samples in CP/<the value>). Default value is 8. To set the sample offset to 0, set this value ~ 10e6\n"
 #define  CONFIG_HLP_MAX_LDPC_ITERATIONS    "Maximum LDPC decoder iterations\n"
+#define  CONFIG_HLP_SL_SYNCSOURCEUE        "Sidelink UE acts as SYNC REF UE"
+#define  CONFIG_HLP_SL_MAX_MCS             "Sidelink initial max mcs value"
+#define  CONFIG_HLP_SL_SNR                 "Sets sidelink SNR value"
 #define  CONFIG_HLP_TIME_SYNC_P            "coefficient for Proportional part of time sync PI controller\n"
 #define  CONFIG_HLP_TIME_SYNC_I            "coefficient for Integrating part of time sync PI controller\n"
 #define  CONFIG_HLP_AUTONOMOUS_TA          "Autonomously update TA based on DL drift (useful if main contribution to DL drift is movement, e.g. LEO satellite)\n"
@@ -32,6 +35,7 @@ typedef struct ueinfo {
 #define CALIBPRACH_OPT    "calib-prach-tx"
 #define DUMPFRAME_OPT     "ue-dump-frame"
 
+#define SL_UE_iterator(BaSe, VaR) NR_SL_UE_info_t ** VaR##pptr=BaSe, *VaR; while ((VaR=*(VaR##pptr++)))
 /*------------------------------------------------------------------------------------------------------------------------------------------*/
 /*                                            command line parameters defining UE running mode                                              */
 /*   optname                     helpstr                paramflags                      XXXptr        defXXXval         type       numelt   */
@@ -41,6 +45,7 @@ typedef struct ueinfo {
   {"usrp-args",                CONFIG_HLP_USRP_ARGS,           0,               .strptr=&nrUE_params.usrp_args,           .defstrval="type=b200",          TYPE_STRING,   0}, \
   {"tx_subdev",                CONFIG_HLP_TX_SUBDEV,           0,               .strptr=&nrUE_params.tx_subdev,           .defstrval=NULL,                 TYPE_STRING,   0}, \
   {"rx_subdev",                CONFIG_HLP_RX_SUBDEV,           0,               .strptr=&nrUE_params.rx_subdev,           .defstrval=NULL,                 TYPE_STRING,   0}, \
+  {"single-thread-disable",    CONFIG_HLP_NOSNGLT,             PARAMFLAG_BOOL,  .iptr=&single_thread_flag,                .defintval=1,                    TYPE_INT,      0}, \
   {"dlsch-parallel",           CONFIG_HLP_DLSCH_PARA,          0,               .u8ptr=NULL,                              .defintval=0,                    TYPE_UINT8,    0}, \
   {"offset-divisor",           CONFIG_HLP_OFFSET_DIV,          0,               .uptr=&nrUE_params.ofdm_offset_divisor,   .defuintval=8,                   TYPE_UINT32,   0}, \
   {"max-ldpc-iterations",      CONFIG_HLP_MAX_LDPC_ITERATIONS, 0,               .iptr=&nrUE_params.max_ldpc_iterations,   .defuintval=8,                  TYPE_UINT8,    0}, \
@@ -70,6 +75,9 @@ typedef struct ueinfo {
   {"time-sync-I",                  CONFIG_HLP_TIME_SYNC_I,     0,               .dblptr=&(nrUE_params.time_sync_I),          .defdblval=0.0,    TYPE_DOUBLE,   0}, \
   {"autonomous-ta",                CONFIG_HLP_AUTONOMOUS_TA,   PARAMFLAG_BOOL,  .iptr=&(nrUE_params.autonomous_ta),          .defintval=0,      TYPE_INT,      0}, \
   {"agc",                          CONFIG_HLP_AGC,             PARAMFLAG_BOOL,  .iptr=&(nrUE_params.agc),                    .defintval=0,      TYPE_INT,      0}, \
+  {"sync-ref",                     CONFIG_HLP_SL_SYNCSOURCEUE, PARAMFLAG_BOOL,  .uptr=&(nrUE_params.sync_ref),               .defuintval=0,     TYPE_UINT32,   0}, \
+  {"mcs",                          CONFIG_HLP_SL_MAX_MCS,      0,               .u8ptr=&(nrUE_params.mcs),                   .defintval=9,      TYPE_UINT8,    0}, \
+  {"snr",                          CONFIG_HLP_SL_SNR,          0,               .dblptr=&(nrUE_params.snr),                  .defdblval=0.0,    TYPE_DOUBLE,   0}, \
 }
 // clang-format on
 
@@ -89,6 +97,9 @@ typedef struct {
   int nb_antennas_tx;
   int N_RB_DL;
   int ssb_start_subcarrier;
+  uint32_t sync_ref;
+  uint8_t mcs;
+  double snr;
   double time_sync_P;
   double time_sync_I;
   int autonomous_ta;
