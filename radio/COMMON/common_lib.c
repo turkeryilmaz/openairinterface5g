@@ -59,7 +59,7 @@ int set_device(openair0_device *device)
     if (strcmp(devname,"none") != 0) {
       LOG_I(HW,"[%s] has loaded %s device.\n",((device->host_type == RAU_HOST) ? "RAU": "RRU"),devname);
     } else {
-      LOG_E(HW,"[%s] invalid HW device.\n",((device->host_type == RAU_HOST) ? "RAU": "RRU"));
+      LOG_E(HW, "[%s] invalid HW device.\n", ((device->host_type == RAU_HOST) ? "RAU" : "RRU"));
       return -1;
     }
   return 0;
@@ -150,10 +150,10 @@ int openair0_device_load(openair0_device *device,
     if ( set_device(device) < 0) {
       LOG_E(HW, "%s %d:Unsupported radio head\n", __FILE__, __LINE__);
       return -1;
-	}
+    }
   } else
     AssertFatal(false, "can't open the radio device: %s\n", get_devname(device->type));
-
+  
   return rc;
 }
 

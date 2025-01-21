@@ -964,8 +964,9 @@ void ru_tx_func(void *param)
   int slot_tx = info->slot_tx;
 
   // do TX front-end processing if needed (precoding and/or IDFTs)
-  if (ru->feptx_prec)
-    ru->feptx_prec(ru,frame_tx,slot_tx);
+  if (!info->blank_slot)
+    if (ru->feptx_prec)
+      ru->feptx_prec(ru, frame_tx, slot_tx);
 
   // do OFDM with/without TX front-end processing  if needed
   if (ru->fh_north_asynch_in == NULL && ru->feptx_ofdm)

@@ -15,11 +15,7 @@ typedef struct {
   int16_t r;
   int16_t i;
 } scopeSample_t;
-#define SquaredNorm(VaR) ((VaR).r*(VaR).r+(VaR).i*(VaR).i)
-typedef struct {
-  void ** samplesRx;
-  openair0_device *rfdevice;
-} calibData_t;
+#define SquaredNorm(VaR) ((VaR).r * (VaR).r + (VaR).i * (VaR).i)
 
 typedef struct OAIgraph {
   FL_OBJECT *graph;
@@ -36,13 +32,13 @@ typedef struct OAIgraph {
   double *waterFallAvg;
   bool initDone;
   int iteration;
-  void (*funct) (struct OAIgraph *graph, calibData_t *);
+  void (*funct)(struct OAIgraph *graph, threads_t *);
 } OAIgraph_t;
 
 
 /* Forms and Objects */
 typedef struct {
-  calibData_t * context;
+  threads_t *context;
   FL_FORM    *phy_scope;
   OAIgraph_t graph[20];
   FL_OBJECT *button_0;
@@ -98,34 +94,38 @@ static void commonGraph(OAIgraph_t *graph, int type, FL_Coord x, FL_Coord y, FL_
   graph->iteration=0;
 }
 
-static OAIgraph_t calibrationCommonGraph( void (*funct) (OAIgraph_t *graph, calibData_t *context),
-                                  int type, FL_Coord x, FL_Coord y, FL_Coord w, FL_Coord h, const char *label, FL_COLOR pointColor) {
+static OAIgraph_t calibrationCommonGraph(void (*funct)(OAIgraph_t *graph, threads_t *context),
+                                         int type,
+                                         FL_Coord x,
+                                         FL_Coord y,
+                                         FL_Coord w,
+                                         FL_Coord h,
+                                         const char *label,
+                                         FL_COLOR pointColor)
+{
   OAIgraph_t graph;
   commonGraph(&graph, type, x, y, w, h, label, pointColor);
   graph.funct=funct;
   return graph;
 }
 
-
 static void setRange(OAIgraph_t *graph, float minX, float maxX, float minY, float maxY) {
-  if ( maxX > graph->maxX ||  minX < graph->minX ||
-       abs(maxX-graph->maxX)>abs(graph->maxX)/2 ||
-       abs(maxX-graph->maxX)>abs(graph->maxX)/2 ) {
+  if (maxX > graph->maxX || minX < graph->minX || fabs(maxX - graph->maxX) > fabs(graph->maxX) / 2
+      || fabs(maxX - graph->maxX) > fabs(graph->maxX) / 2) {
     graph->maxX/=2;
     graph->minX/=2;
-    graph->maxX=max(graph->maxX,maxX);
-    graph->minX=min(graph->minX,minX);
-    fl_set_xyplot_xbounds(graph->graph, graph->minX*1.2, graph->maxX*1.2);
+    graph->maxX = fmax(graph->maxX, maxX);
+    graph->minX = fmin(graph->minX, minX);
+    fl_set_xyplot_xbounds(graph->graph, (int32_t)graph->minX * 1.2, (int32_t)graph->maxX * 1.2);
   }
 
-  if ( maxY > graph->maxY || minY < graph->minY ||
-       abs(maxY-graph->maxY)>abs(graph->maxY)/2 ||
-       abs(maxY-graph->maxY)>abs(graph->maxY)/2 ) {
+  if (((maxY > graph->maxY) && (fabs(maxY - graph->maxY) > (fabs(graph->maxY) / 2)))
+      || ((minY < graph->minY) && (fabs(minY - graph->minY) > (fabs(graph->minY) / 2)))) {
     graph->maxY/=2;
     graph->minY/=2;
-    graph->maxY=max(graph->maxY,maxY);
-    graph->minY=min(graph->minY,minY);
-    fl_set_xyplot_ybounds(graph->graph, graph->minY*1.2, graph->maxY*1.2);
+    graph->maxY = fmax(graph->maxY, maxY);
+    graph->minY = fmin(graph->minY, minY);
+    fl_set_xyplot_ybounds(graph->graph, (int32_t)graph->minY * 1.2, (int32_t)graph->maxY * 1.2);
   }
 }
 
@@ -251,20 +251,42 @@ static void genericPowerPerAntena(OAIgraph_t  *graph, const int nb_ant, const sc
   }
 }
 
-static void gNBWaterFall (OAIgraph_t *graph, calibData_t *context) {
+static void gNBWaterFall(OAIgraph_t *graph, threads_t *context)
+{
   //use 1st antenna
   genericWaterFall(graph, (scopeSample_t *)context->samplesRx[0],
                    0, 0,
                    "X axis:one frame in time");
 }
-static void gNBfreqWaterFall  (OAIgraph_t *graph, calibData_t *context) {
+
+static void gNBfreqWaterFall(OAIgraph_t *graph, threads_t *context)
+{
   //use 1st antenna
   genericWaterFall(graph, (scopeSample_t *)context->samplesRx[0],
                    0, 0,
                    "X axis:one frame in time");
 }
-static void timeResponse (OAIgraph_t *graph, calibData_t *context) {
-  #if 0
+
+static void spectrum(OAIgraph_t *graph, threads_t *context)
+{
+  int len = context->dft_sz;
+  c16_t freqDomain[len] __attribute__((aligned(32)));
+  pthread_mutex_lock(&context->rxMutex);
+  dft(get_dft(len), (int16_t *)context->samplesRx[0], (int16_t *)freqDomain, 1);
+  pthread_mutex_unlock(&context->rxMutex);
+  float *valuesr, *valuesi, *time;
+  len /= 2;
+  oai_xygraph_getbuff(graph, &time, &valuesr, len, 0);
+  const int ant = 0;
+  for (int i = 0; i < len; i++) {
+    valuesr[i] = SquaredNorm(freqDomain[i]);
+  }
+  oai_xygraph(graph, time, valuesr, len, 0, 1);
+}
+
+static void timeResponse(OAIgraph_t *graph, threads_t *context)
+{
+#if 0
   const int len=2*phy_vars_gnb->frame_parms.ofdm_symbol_size;
   float *values, *time;
   oai_xygraph_getbuff(graph, &time, &values, len, 0);
@@ -278,14 +300,15 @@ static void timeResponse (OAIgraph_t *graph, calibData_t *context) {
         values[i] = SquaredNorm(data[i]);
       }
 
-      oai_xygraph(graph,time,values, len, ue, 10);
+      oai_xygraph(graph,time,values, len/2, ue, 10);
     }
   }
-  #endif
+#endif
 }
 
-static void puschIQ (OAIgraph_t *graph, calibData_t *context) {
-  #if 0
+static void puschIQ(OAIgraph_t *graph, threads_t *context)
+{
+#if 0
   NR_DL_FRAME_PARMS *frame_parms=&phy_vars_gnb->frame_parms;
   int sz=frame_parms->N_RB_UL*12*frame_parms->symbols_per_slot;
 
@@ -303,11 +326,11 @@ static void puschIQ (OAIgraph_t *graph, calibData_t *context) {
       oai_xygraph(graph,I,Q,sz,ue,10);
     }
   }
-  #endif
+#endif
 }
 
-
-static OAI_phy_scope_t *createScopeCalibration(calibData_t * context) {
+static OAI_phy_scope_t *createScopeCalibration(threads_t *context)
+{
   FL_OBJECT *obj;
   OAI_phy_scope_t *fdui = calloc(( sizeof *fdui ),1);
   fdui->context=context;
@@ -317,29 +340,31 @@ static OAI_phy_scope_t *createScopeCalibration(calibData_t * context) {
   obj = fl_add_box( FL_BORDER_BOX, 0, 0, 800, 800, "" );
   fl_set_object_color( obj, FL_BLACK, FL_WHITE );
   int curY=0,x,y,w,h;
+  OAIgraph_t *graph = fdui->graph;
   // Received signal
-  fdui->graph[0] = calibrationCommonGraph( gNBWaterFall, WATERFALL, 0, curY, 400, 100,
-                                   "Received Signal (Time-Domain, one frame)", FL_RED );
-  
+  *graph++ = calibrationCommonGraph(gNBWaterFall, WATERFALL, 0, curY, 400, 100, "Received Signal (Time-Domain, one frame)", FL_RED);
+
   // Time-domain channel response
-  //fdui->graph[1] = calibrationCommonGraph( timeResponse, FL_NORMAL_XYPLOT, 410, curY, 400, 100, "SRS Frequency Response (samples, abs)", FL_RED );
+  // fdui->graph[1] = calibrationCommonGraph( timeResponse, FL_NORMAL_XYPLOT, 410, curY, 400, 100, "SRS Frequency Response (samples,
+  // abs)", FL_RED );
+  // frequency spectrum
+  *graph++ = calibrationCommonGraph(spectrum, FL_NORMAL_XYPLOT, 410, curY, 400, 100, "DFT output", FL_YELLOW);
   fl_get_object_bbox(fdui->graph[0].graph,&x, &y,&w, &h);
-  curY+=h;
+  curY += h + 20;
+
   // Frequency-domain channel response
-  fdui->graph[1] = calibrationCommonGraph( gNBfreqWaterFall, WATERFALL, 0, curY, 800, 100,
-                                   "Channel Frequency domain (RE, one frame)", FL_RED );
-  fl_get_object_bbox(fdui->graph[1].graph,&x, &y,&w, &h);
+  *graph++ =
+      calibrationCommonGraph(gNBfreqWaterFall, WATERFALL, 0, curY, 800, 100, "Channel Frequency domain (RE, one frame)", FL_RED);
+  fl_get_object_bbox(fdui->graph[2].graph, &x, &y, &w, &h);
   curY+=h+20;
   // LLR of PUSCH
   //fdui->graph[3] = calibrationCommonGraph( puschLLR, FL_POINTS_XYPLOT, 0, curY, 500, 200, "PUSCH Log-Likelihood Ratios (LLR, mag)", FL_YELLOW );
   // I/Q PUSCH comp
-  fdui->graph[2] = calibrationCommonGraph( puschIQ, FL_POINTS_XYPLOT, 500, curY, 300, 200,
-                                   "PUSCH I/Q of MF Output", FL_YELLOW );
+  *graph++ = calibrationCommonGraph(puschIQ, FL_POINTS_XYPLOT, 500, curY, 300, 200, "PUSCH I/Q of MF Output", FL_YELLOW);
   fl_get_object_bbox(fdui->graph[2].graph,&x, &y,&w, &h);
   curY+=h;
   //fl_get_object_bbox(fdui->graph[6].graph,&x, &y,&w, &h);
-  curY+=h;
-  fdui->graph[3].graph=NULL;
+  curY += h;
   fl_end_form( );
   fdui->phy_scope->fdui = fdui;
   fl_show_form (fdui->phy_scope, FL_PLACE_HOTSPOT, FL_FULLBORDER, "LTE UL SCOPE gNB");
@@ -358,13 +383,12 @@ void calibrationScope(OAI_phy_scope_t  *form) {
 }
 
 static void *scopeThread(void *arg) {
-  calibData_t * context = (calibData_t *)arg;
+  threads_t *context = (threads_t *)arg;
   size_t stksize=0;
   pthread_attr_t atr;
   pthread_attr_init(&atr);
   pthread_attr_getstacksize(&atr, &stksize);
-  pthread_attr_setstacksize(&atr,32*1024*1024 );
-  sleep(3); // no clean interthread barriers
+  pthread_attr_setstacksize(&atr, 32 * 1024 * 1024);
   int fl_argc=1;
   char *name="Calibration-scope";
   fl_initialize (&fl_argc, &name, NULL, 0, 0);
@@ -378,10 +402,8 @@ static void *scopeThread(void *arg) {
   return NULL;
 }
 
-void CalibrationInitScope(void ** samplesRx,openair0_device *rfdevice) {
+void CalibrationInitScope(threads_t *p)
+{
   pthread_t forms_thread;
-  calibData_t * tmp=(calibData_t *) malloc(sizeof(*tmp));
-  tmp->samplesRx=samplesRx;
-  tmp->rfdevice=rfdevice;
-  threadCreate(&forms_thread, scopeThread, (void*) tmp, "scope", -1, OAI_PRIORITY_RT_LOW);
+  threadCreate(&forms_thread, scopeThread, (void *)p, "scope", -1, OAI_PRIORITY_RT_LOW);
 }

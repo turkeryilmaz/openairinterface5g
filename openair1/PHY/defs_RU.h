@@ -775,6 +775,7 @@ typedef struct processingData_RU {
   int slot_tx;
   int next_slot;
   openair0_timestamp timestamp_tx;
+  bool blank_slot;
   RU_t *ru;
 } processingData_RU_t;
 #endif //__PHY_DEFS_RU__H__
