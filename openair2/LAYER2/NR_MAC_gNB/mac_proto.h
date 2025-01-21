@@ -399,8 +399,6 @@ uint16_t get_pm_index(const gNB_MAC_INST *nrmac,
                       int layers,
                       int xp_pdsch_antenna_ports);
 
-uint8_t get_mcs_from_cqi(int mcs_table, int cqi_table, int cqi_idx);
-
 uint8_t get_dl_nrOfLayers(const NR_UE_sched_ctrl_t *sched_ctrl, const nr_dci_format_t dci_format);
 
 void set_sched_pucch_list(NR_UE_sched_ctrl_t *sched_ctrl,
@@ -433,12 +431,6 @@ bool nr_find_nb_rb(uint16_t Qm,
                    uint16_t nb_rb_max,
                    uint32_t *tbs,
                    uint16_t *nb_rb);
-
-int get_mcs_from_bler(const NR_bler_options_t *bler_options,
-                      const NR_mac_dir_stats_t *stats,
-                      NR_bler_stats_t *bler_stats,
-                      int max_mcs,
-                      frame_t frame);
 
 int ul_buffer_index(int frame, int slot, int scs, int size);
 void UL_tti_req_ahead_initialization(gNB_MAC_INST *gNB, int n, int CCid, frame_t frameP, int slotP);

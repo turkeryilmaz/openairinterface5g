@@ -47,6 +47,42 @@ typedef enum {
   pusch_dmrs_pos3 = 3,
 } pusch_dmrs_AdditionalPosition_t;
 
+typedef struct NR_mac_dir_stats {
+  uint64_t lc_bytes[64];
+  uint64_t rounds[8];
+  uint64_t errors;
+  uint64_t total_bytes;
+  uint32_t current_bytes;
+  uint64_t total_sdu_bytes;
+  uint32_t total_rbs;
+  uint32_t total_rbs_retx;
+  uint32_t num_mac_sdu;
+  uint32_t current_rbs;
+} NR_mac_dir_stats_t;
+
+typedef struct NR_UE_sl_mac_stats {
+  NR_mac_dir_stats_t sl;
+  uint32_t slsch_DTX;
+  uint64_t slsch_total_bytes_scheduled;
+  int cumul_rsrp;
+  uint8_t num_rsrp_meas;
+  uint32_t cumul_round[5];
+} NR_UE_sl_mac_stats_t;
+
+typedef struct NR_bler_options {
+  double upper;
+  double lower;
+  uint8_t max_mcs;
+  uint8_t harq_round_max;
+} NR_bler_options_t;
+
+typedef struct NR_bler_stats {
+  frame_t last_frame;
+  float bler;
+  uint8_t mcs;
+  uint64_t rounds[8];
+} NR_bler_stats_t;
+
 typedef enum {
   pusch_len1 = 1,
   pusch_len2 = 2
@@ -175,6 +211,14 @@ uint8_t compute_nr_root_seq(NR_RACH_ConfigCommon_t *rach_config,
 
 int ul_ant_bits(NR_DMRS_UplinkConfig_t *NR_DMRS_UplinkConfig, long transformPrecoder);
 
+uint8_t get_mcs_from_cqi(int mcs_table, int cqi_table, int cqi_idx, int default_mcs);
+
+int get_mcs_from_bler(const NR_bler_options_t *bler_options,
+                      const NR_mac_dir_stats_t *stats,
+                      NR_bler_stats_t *bler_stats,
+                      int max_mcs,
+                      frame_t frame);
+
 uint8_t get_pdsch_mcs_table(long *mcs_Table, int dci_format, int rnti_type, int ss_type);
 
 int get_format0(uint8_t index, uint8_t unpaired,frequency_range_t);
@@ -197,6 +241,11 @@ uint32_t nr_compute_tbs(uint16_t Qm,
                         uint16_t nb_rb_oh,
                         uint8_t tb_scaling,
 			uint8_t Nl);
+
+uint32_t nr_compute_tbs_sl(uint16_t Qm,
+                           uint16_t R,
+                           uint16_t nb_re,
+                           uint8_t Nl);
 
 /** \brief Computes Q based on I_MCS PDSCH and table_idx for downlink. Implements MCS Tables from 38.214. */
 uint8_t nr_get_Qm_dl(uint8_t Imcs, uint8_t table_idx);

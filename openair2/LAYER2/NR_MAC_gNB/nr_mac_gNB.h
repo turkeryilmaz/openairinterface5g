@@ -490,15 +490,6 @@ typedef struct NR_UE_harq {
   NR_sched_pdsch_t sched_pdsch;
 } NR_UE_harq_t;
 
-//! fixme : need to enhace for the multiple TB CQI report
-
-typedef struct NR_bler_stats {
-  frame_t last_frame;
-  float bler;
-  uint8_t mcs;
-  uint64_t rounds[8];
-} NR_bler_stats_t;
-
 //
 /*! As per spec 38.214 section 5.2.1.4.2
  * - if the UE is configured with the higher layer parameter groupBasedBeamReporting set to 'disabled', the UE shall report in
@@ -694,19 +685,6 @@ typedef struct {
   uicc_t *uicc;
 } NRUEcontext_t;
 
-typedef struct NR_mac_dir_stats {
-  uint64_t lc_bytes[64];
-  uint64_t rounds[8];
-  uint64_t errors;
-  uint64_t total_bytes;
-  uint32_t current_bytes;
-  uint64_t total_sdu_bytes;
-  uint32_t total_rbs;
-  uint32_t total_rbs_retx;
-  uint32_t num_mac_sdu;
-  uint32_t current_rbs;
-} NR_mac_dir_stats_t;
-
 typedef struct NR_mac_stats {
   NR_mac_dir_stats_t dl;
   NR_mac_dir_stats_t ul;
@@ -720,13 +698,6 @@ typedef struct NR_mac_stats {
   int deltaMCS;
   int NPRB;
 } NR_mac_stats_t;
-
-typedef struct NR_bler_options {
-  double upper;
-  double lower;
-  uint8_t max_mcs;
-  uint8_t harq_round_max;
-} NR_bler_options_t;
 
 typedef struct nr_mac_rrc_ul_if_s {
   f1_reset_du_initiated_func_t f1_reset;
