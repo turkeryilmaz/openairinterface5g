@@ -87,6 +87,34 @@ void nr_ue_init_mac(NR_UE_MAC_INST_t *mac, ueinfo_t *ueinfo)
 
   mac->pucch_power_control_initialized = false;
   mac->pusch_power_control_initialized = false;
+
+  mac->SL_MAC_PARAMS = calloc(1, sizeof(sl_nr_ue_mac_params_t));
+  mac->SL_MAC_PARAMS->sl_bler.harq_round_max = HARQ_ROUND_MAX;
+  mac->reselection_timer = 0;
+
+  if (ueinfo != NULL)  {
+    mac->src_id = ueinfo->srcid;
+    LOG_D(NR_MAC, "srcid %d\n", ueinfo->srcid);
+  }
+
+  AssertFatal((get_nrUE_params()->mcs >= 0 && get_nrUE_params()->mcs <= 28), "MCS must be 1 to 28!!!");
+  int k = 0;
+  for (int i = 0; i < CUR_SL_UE_CONNECTIONS + 1; i++) {
+    if (mac->src_id == i)
+	  continue;
+    mac->sl_info.list[k] = calloc(1, sizeof(NR_SL_UE_info_t));
+    mac->sl_info.list[k]->uid = i;
+    NR_SL_UE_sched_ctrl_t *UE_sched_ctrl = &mac->sl_info.list[k]->UE_sched_ctrl;
+    UE_sched_ctrl->rx_csi_report.RI = 0;
+    UE_sched_ctrl->rx_csi_report.CQI = 0;
+    UE_sched_ctrl->sl_max_mcs = get_nrUE_params()->mcs;
+    create_nr_list(&UE_sched_ctrl->available_sl_harq, 16);
+    for (int harq = 0; harq < 16; harq++)
+      add_tail_nr_list(&UE_sched_ctrl->available_sl_harq, harq);
+    create_nr_list(&UE_sched_ctrl->feedback_sl_harq, 16);
+    create_nr_list(&UE_sched_ctrl->retrans_sl_harq, 16);
+    k++;
+  }
 }
 
 void nr_ue_mac_default_configs(NR_UE_MAC_INST_t *mac)
@@ -128,8 +156,7 @@ NR_UE_L2_STATE_t nr_ue_get_sync_state(module_id_t mod_id)
   return mac->state;
 }
 
-NR_UE_MAC_INST_t *nr_l2_init_ue(int nb_inst, ueinfo_t *ueinfo)
-{
+NR_UE_MAC_INST_t *nr_l2_init_ue(int nb_inst, ueinfo_t *ueinfo) {
   //init mac here
   nr_ue_mac_inst = (NR_UE_MAC_INST_t *)calloc(nb_inst, sizeof(NR_UE_MAC_INST_t));
   AssertFatal(nr_ue_mac_inst, "Couldn't allocate %d instances of MAC module\n", nb_inst);
@@ -159,6 +186,87 @@ NR_UE_MAC_INST_t *get_mac_inst(module_id_t module_id)
   AssertFatal(mac, "Couldn't get MAC inst %d\n", module_id);
   AssertFatal(mac->ue_id == module_id, "MAC ID %d doesn't match with input %d\n", mac->ue_id, module_id);
   return mac;
+}
+
+size_t dump_mac_stats_sl(NR_UE_MAC_INST_t *mac, char *output, size_t strlen, bool reset_rsrp)
+{
+  const char *begin = output;
+  const char *end = output + strlen;
+  sl_nr_ue_mac_params_t *sl_mac = mac->SL_MAC_PARAMS;
+
+  /* this function is called from gNB_dlsch_ulsch_scheduler(), so assumes the
+   * scheduler to be locked*/
+  // NR_UE_SL_SCHED_ENSURE_LOCKED(&mac->sl_sched_lock);
+
+  NR_UE_SL_SCHED_LOCK(&mac->sl_info.mutex);
+  SL_UE_iterator(mac->sl_info.list, UE) {
+    NR_SL_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
+    NR_UE_sl_mac_stats_t *stats = &UE->mac_sl_stats;
+
+    if(sched_ctrl->print_csi_report) {
+      output += snprintf(output,
+                         end - output,
+                         "UE %04x: CQI %d, RI %d\n",
+                         UE->uid,
+                         sched_ctrl->rx_csi_report.CQI,
+                         sched_ctrl->rx_csi_report.RI + 1);
+      sched_ctrl->print_csi_report = false;
+    }
+
+    output += snprintf(output, end - output, "%"PRIu64, stats->sl.rounds[0]);
+    for (int i = 1; i < sl_mac->sl_bler.harq_round_max; i++)
+      output += snprintf(output, end - output, "/%"PRIu64, stats->sl.rounds[i]);
+
+    output += snprintf(output,
+                       end - output,
+                       ", slsch_errors %"PRIu64", BLER %.5f MCS %d\n",
+                       stats->sl.errors,
+                       sched_ctrl->sl_bler_stats.bler,
+                       sched_ctrl->sl_bler_stats.mcs);
+
+    output += snprintf(output,
+                       end - output,
+                       "UE %04x: slsch_total_bytes %"PRIu64"\n",
+                       UE->uid, stats->sl.total_bytes);
+    output += snprintf(output,
+                       end - output,
+                       "UE %04x: slsch_rounds ", UE->uid);
+    output += snprintf(output, end - output, "%"PRIu64, stats->sl.rounds[0]);
+    for (int i = 1; i < sl_mac->sl_bler.harq_round_max; i++)
+      output += snprintf(output, end - output, "/%"PRIu64, stats->sl.rounds[i]);
+
+    output += snprintf(output,
+                       end - output,
+                       ", slsch_DTX %d, slsch_errors %"PRIu64", BLER %.5f MCS %d\n",
+                       stats->slsch_DTX,
+                       stats->sl.errors,
+                       sched_ctrl->sl_bler_stats.bler,
+                       sched_ctrl->sl_bler_stats.mcs);
+    output += snprintf(output,
+                       end - output,
+                       "UE %04x: slsch_total_bytes_scheduled %"PRIu64", slsch_total_bytes_received %"PRIu64"\n",
+                       UE->uid,
+                       stats->slsch_total_bytes_scheduled, stats->sl.total_bytes);
+
+    for (int lc_id = 0; lc_id < 63; lc_id++) {
+      if (stats->sl.lc_bytes[lc_id] > 0)
+        output += snprintf(output,
+                           end - output,
+                           "UE %04x: LCID %d: %"PRIu64" bytes TX\n",
+                           UE->uid,
+                           lc_id,
+                           stats->sl.lc_bytes[lc_id]);
+      if (stats->sl.lc_bytes[lc_id] > 0)
+        output += snprintf(output,
+                           end - output,
+                           "UE %04x: LCID %d: %"PRIu64" bytes RX\n",
+                           UE->uid,
+                           lc_id,
+                           stats->sl.lc_bytes[lc_id]);
+    }
+  }
+  NR_UE_SL_SCHED_UNLOCK(&mac->sl_info.mutex);
+  return output - begin;
 }
 
 void reset_mac_inst(NR_UE_MAC_INST_t *nr_mac)

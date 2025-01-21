@@ -575,6 +575,25 @@ typedef struct nr_csi_report {
   int N2;
 } nr_csi_report_t;
 
+// 38321 sec. 6.1.3.35
+typedef struct {
+  uint8_t RI: 1; // 7th bit
+  uint8_t CQI: 4; // 3-6 bits
+  uint8_t R: 3; // 0-2 bits
+} __attribute__ ((__packed__)) nr_sl_csi_report_t;
+
+// 38321 sec. 6.1.3.34
+typedef struct {
+  uint8_t C1: 1; // 1st bit
+  uint8_t C2: 1; // 2nd bit
+  uint8_t C3: 1; // 3rd bit
+  uint8_t C4: 1; // 4th bit
+  uint8_t C5: 1; // 5th bit
+  uint8_t C6: 1; // 6th bit
+  uint8_t C7: 1; // 7th bit
+  uint8_t C8: 1; // 8th bit
+} __attribute__ ((__packed__)) nr_sl_config_grant_t;
+
 typedef enum {
   NR_SRS_SRI_0 = 0,
   NR_SRS_SRI_1,
@@ -693,6 +712,15 @@ typedef enum {
   RA_4_STEP = 0,
   RA_2_STEP = 1,
 } nr_ra_type_t;
+
+/*! \brief NR_list_t is a "list" (of users, HARQ processes, slices, ...).
+ *  * Especially useful in the scheduler and to keep "classes" of users. */
+typedef struct {
+  int head;
+  int *next;
+  int tail;
+  int len;
+} NR_list_t;
 
 #endif /*__LAYER2_MAC_H__ */
 

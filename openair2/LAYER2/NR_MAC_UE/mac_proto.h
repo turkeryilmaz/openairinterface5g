@@ -461,5 +461,4 @@ void nr_mac_rrc_sl_mib_ind(const module_id_t module_id,
                            uint8_t *pduP,
                            const sdu_size_t pdu_len,
                            const uint16_t rx_slss_id);
-
 #endif

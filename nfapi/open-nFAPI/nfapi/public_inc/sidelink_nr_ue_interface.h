@@ -383,7 +383,26 @@ typedef struct {
   //only 1 SL-BWP can be configured in REL16, REL17
   sl_nr_bwp_config_t sl_bwp_config;
 
+  uint32_t sl_DMRS_ScrambleId;
+
 } sl_nr_phy_config_request_t;
 
+/* Dependencies */
+typedef enum NR_UE_SL_CSI_ResourcePeriodicityAndOffset_PR {
+	NR_UE_SL_CSI_ResourcePeriodicityAndOffset_PR_NOTHING,	/* No components present */
+	NR_UE_SL_CSI_ResourcePeriodicityAndOffset_PR_slots4,
+	NR_UE_SL_CSI_ResourcePeriodicityAndOffset_PR_slots5,
+	NR_UE_SL_CSI_ResourcePeriodicityAndOffset_PR_slots8,
+	NR_UE_SL_CSI_ResourcePeriodicityAndOffset_PR_slots10,
+	NR_UE_SL_CSI_ResourcePeriodicityAndOffset_PR_slots16,
+	NR_UE_SL_CSI_ResourcePeriodicityAndOffset_PR_slots20,
+	NR_UE_SL_CSI_ResourcePeriodicityAndOffset_PR_slots32,
+	NR_UE_SL_CSI_ResourcePeriodicityAndOffset_PR_slots40,
+	NR_UE_SL_CSI_ResourcePeriodicityAndOffset_PR_slots64,
+	NR_UE_SL_CSI_ResourcePeriodicityAndOffset_PR_slots80,
+	NR_UE_SL_CSI_ResourcePeriodicityAndOffset_PR_slots160,
+	NR_UE_SL_CSI_ResourcePeriodicityAndOffset_PR_slots320,
+	NR_UE_SL_CSI_ResourcePeriodicityAndOffset_PR_slots640
+} NR_UE_SL_CSI_ResourcePeriodicityAndOffset_PR;
 
 #endif

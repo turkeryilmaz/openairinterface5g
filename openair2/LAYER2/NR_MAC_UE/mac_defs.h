@@ -62,8 +62,9 @@
 #include "NR_ServingCellConfig.h"
 #include "NR_MeasConfig.h"
 #include "NR_ServingCellConfigCommonSIB.h"
-
-
+#include "NR_SL-BWP-ConfigCommon-r16.h"
+#include "linear_alloc.h"
+#include "nr_ue_sci.h"
 // ==========
 // NR UE defs
 // ==========
@@ -566,6 +567,197 @@ typedef struct ntn_timing_advance_components {
   bool ntn_params_changed;
 } ntn_timing_advance_componets_t;
 
+typedef struct NR_sched_pssch {
+  int frame;
+  int slot;
+  int mu;
+
+  /// RB allocation within active uBWP
+  uint16_t rbSize;
+  uint16_t rbStart;
+
+  /// MCS
+  uint8_t mcs;
+
+  /// TBS-related info
+  uint16_t R;
+  uint8_t Qm;
+  uint32_t tb_size;
+
+  /// UL HARQ PID to use for this UE, or -1 for "any new"
+  int8_t sl_harq_pid;
+
+  uint8_t nrOfLayers;
+  //NR_pusch_dmrs_t dmrs_info;
+} NR_sched_pssch_t;
+
+typedef struct {
+  bool is_waiting;
+  bool is_active;
+  uint8_t ndi;
+  uint8_t round;
+  uint16_t feedback_slot;
+  uint16_t feedback_frame;
+  int8_t sl_harq_pid;
+
+  // Transport block to be sent using this HARQ process, its size is in sched_pssch
+  uint32_t transportBlock[38016]; // valid up to 4 layers
+  uint32_t tb_size;
+
+  /// sched_pusch keeps information on MCS etc used for the initial transmission
+  NR_sched_pssch_t sched_pssch;
+} NR_UE_sl_harq_t;
+
+typedef struct SL_CSI_Report {
+  uint8_t ri;
+  int8_t cqi;
+  uint8_t cqi_table;
+  uint32_t frame;
+  uint32_t slot;
+  bool active;
+  uint8_t slot_offset;
+  uint8_t slot_periodicity;
+  NR_UE_SL_CSI_ResourcePeriodicityAndOffset_PR slot_periodicity_offset;
+} SL_CSI_Report_t;
+  //
+
+typedef struct SL_sched_feedback {
+  int16_t feedback_slot;
+  int16_t feedback_frame;
+  int16_t harq_feedback;
+  uint8_t dai_c;
+  bool    active;
+  uint8_t freq_hop_flag;
+  uint8_t group_hop_flag;
+  uint8_t sequence_hop_flag;
+  uint16_t second_hop_prb;
+  uint8_t nr_of_symbols;
+  uint8_t start_symbol_index;
+  uint8_t hopping_id;
+  uint16_t prb;
+  uint16_t sl_bwp_start;
+  uint16_t initial_cyclic_shift;
+  uint8_t mcs;
+  uint8_t bit_len_harq;
+} SL_sched_feedback_t;
+
+typedef struct {
+
+  // sidelink bytes that are currently scheduled
+  int sched_sl_bytes;
+  /// Sched PSSCH: scheduling decisions, copied into HARQ and cleared every TTI
+  NR_sched_pssch_t sched_pssch;
+
+  // Used on PSFCH transmitter
+  SL_sched_feedback_t *sched_psfch;
+
+  /// total amount of data awaiting for this UE
+  uint32_t num_total_bytes;
+  uint16_t sl_pdus_total;
+  /// per-LC status data
+  mac_rlc_status_resp_t rlc_status[NR_MAX_NUM_LCID];
+  //
+  NR_bler_stats_t sl_bler_stats;
+
+  /// information about every UL HARQ process
+  NR_UE_sl_harq_t sl_harq_processes[NR_MAX_HARQ_PROCESSES];
+  /// UL HARQ processes that are free
+  NR_list_t available_sl_harq;
+  /// UL HARQ processes that await feedback
+  NR_list_t feedback_sl_harq;
+  /// UL HARQ processes that await retransmission
+  NR_list_t retrans_sl_harq;
+  //  NR_SLSCH
+  // Used on CSI report transmitter
+  SL_CSI_Report_t sched_csi_report;
+  // To hold the CSI report values received from different users
+  nr_sl_csi_report_t rx_csi_report;
+  bool print_csi_report;
+  /// UE-estimated maximum MCS (from CSI-RS)
+  uint8_t sl_max_mcs;
+
+} NR_SL_UE_sched_ctrl_t;
+
+#define MAX_SL_UE_CONNECTIONS 8
+#define CUR_SL_UE_CONNECTIONS 1
+
+#define MAX_SL_CSI_REPORTCONFIG MAX_SL_UE_CONNECTIONS
+
+typedef struct {
+  uid_t uid; // unique ID of this UE
+  /// scheduling control info
+  nr_sl_csi_report_t csi_report_template[MAX_SL_CSI_REPORTCONFIG];
+  NR_SL_UE_sched_ctrl_t UE_sched_ctrl;
+  NR_UE_sl_mac_stats_t mac_sl_stats;
+} NR_SL_UE_info_t;
+
+
+typedef struct {
+
+  NR_SL_UE_info_t *list[MAX_SL_UE_CONNECTIONS+1];
+  uid_allocator_t ue_allocator;
+  pthread_mutex_t mutex;
+} NR_SL_UEs_t;
+
+typedef struct {
+  int16_t frame;
+  int16_t slot;
+} frameslot_t;
+
+typedef enum {
+  c1, c2, c3, c4, c5, c6, c7
+} allowed_rsc_selection_t;
+
+typedef struct {
+  uint16_t num_sl_pscch_rbs;
+  uint16_t sl_pscch_sym_start;
+  uint16_t sl_pscch_sym_len;
+  uint16_t sl_pssch_sym_start;
+  uint16_t sl_pssch_sym_len;
+  uint16_t sl_subchan_size;
+  uint16_t sl_max_num_per_reserve;
+  uint8_t sl_psfch_period;
+  uint8_t sl_min_time_gap_psfch;
+  uint8_t sl_min_time_gap_processing;
+  frameslot_t sfn;
+  uint8_t sl_subchan_start;
+  uint8_t sl_subchan_len;
+  bool slot_busy;
+} sl_resource_info_t;
+
+/**
+ * \brief Structure to denote a future resource reserved by another UE
+ *
+ * This data structure represents resources excluded by step 6c) of the
+ * TS 38.214 Sec. 8.1.4 sensing algorithm.
+ */
+typedef struct {
+  frameslot_t sfn; // The SfnSf
+  uint16_t rsvp; // The resource reservation period in ms
+  uint8_t sb_ch_length; // The total number of the sub-channel allocated
+  uint8_t sb_ch_start; // The index of the starting sub-channel allocated
+  uint8_t prio; // The priority
+  double sl_rsrp; // The measured RSRP value over the used resource blocks
+} reserved_resource_t;
+
+typedef struct {
+  // PSCCH
+  uint16_t num_sl_pscch_rbs; // Indicates the number of PRBs for PSCCH in a resource pool where it is not
+                             // greater than the number PRBs of the subchannel.
+  uint16_t sl_pscch_sym_start; // Indicates the starting symbol used for sidelink PSCCH in a slot
+  uint16_t sl_pscch_sym_len; // Indicates the total number of symbols available for sidelink PSCCH
+  // PSSCH
+  uint16_t sl_pssch_sym_start; // Indicates the starting symbol used for sidelink PSSCH in a slot
+  uint16_t sl_pssch_sym_len; // Indicates the total number of symbols available for sidelink PSSCH
+  bool sl_has_psfch; // Indicates whether PSFCH is present in the slot
+                     // subchannel size in RBs
+  uint16_t sl_sub_chan_size; // Indicates the subchannel size in number of RBs
+  uint16_t sl_max_num_per_reserve; // The maximum number of reserved PSCCH/PSSCH resources
+                                   // that can be indicated by an SCI.
+  uint64_t abs_slot_index; // Indicates the the absolute slot index
+  uint32_t slot_offset; // Indicates the positive offset between two slots
+} slot_info_t;
+
 /*!\brief Top level UE MAC structure */
 typedef struct NR_UE_MAC_INST_s {
   module_id_t ue_id;
@@ -599,7 +791,21 @@ typedef struct NR_UE_MAC_INST_s {
 
   NR_UL_TIME_ALIGNMENT_t ul_time_alignment;
   NR_TDD_UL_DL_ConfigCommon_t *tdd_UL_DL_ConfigurationCommon;
+// sidelink
+  NR_SL_BWP_ConfigCommon_r16_t *sl_bwp;
+  int max_fb_time;
+  NR_SL_ResourcePool_r16_t *sl_rx_res_pool;
+  NR_SL_ResourcePool_r16_t *sl_tx_res_pool;
+
+  bool phy_config_request_sent;
   frame_type_t frame_type;
+
+  ///     Type0-PDCCH seach space
+  fapi_nr_dl_config_dci_dl_pdu_rel15_t type0_pdcch_dci_config;
+  uint32_t type0_pdcch_ss_mux_pattern;
+  int type0_pdcch_ss_sfn_c;
+  uint32_t type0_pdcch_ss_n_c;
+  uint32_t type0_pdcch_consecutive_slots;
 
   /* Random Access */
   /// CRNTI
@@ -667,6 +873,36 @@ typedef struct NR_UE_MAC_INST_s {
   sl_nr_ue_mac_params_t *SL_MAC_PARAMS;
   // PUCCH closed loop power control state
   int G_b_f_c;
+
+  // SIDELINK Scheduling fields
+  NR_SL_UEs_t sl_info;
+
+  //  current SCI pdu build from SCI1 and SCI2
+  nr_sci_pdu_t sci_pdu_rx;
+  nr_sci_pdu_t sci1_pdu;
+  nr_sci_pdu_t sci2_pdu;
+  uint8_t slsch_payload[16384];
+  time_stats_t rlc_data_req;
+  int src_id;
+  pthread_mutex_t sl_sched_lock;
+  bool is_synced;
+
+  allowed_rsc_selection_t rsc_selection_method; // Flag to enable NR Sidelink resource selection based on
+                                                // sensing; otherwise, use random selection
+  double m_slProbResourceKeep; // Sidelink probability of keeping a resource after resource
+                                   // re-selection counter reaches zero
+  int sl_thresh_rsrp;     // A threshold in dBm used for sensing based UE autonomous resource selection
+  float sl_res_percentage;  /* The percentage threshold to indicate the
+                                 minimum number of candidate single-slot
+                                 resources to be selected using sensing procedure.
+                              */
+  uint8_t sl_resel_counter;  // The resource selection counter
+  uint16_t sl_c_resel;       // The C_resel counter
+
+  /// bitmap of ULSCH slots, can hold up to 160 slots
+  uint64_t ulsch_slot_bitmap[3];
+  uint16_t reselection_timer;
+
   bool pucch_power_control_initialized;
   int f_b_f_c;
   bool pusch_power_control_initialized;

@@ -104,15 +104,6 @@
 
 extern const uint8_t nr_rv_round_map[4];
 
-/*! \brief NR_list_t is a "list" (of users, HARQ processes, slices, ...).
- * Especially useful in the scheduler and to keep "classes" of users. */
-typedef struct {
-  int head;
-  int *next;
-  int tail;
-  int len;
-} NR_list_t;
-
 typedef enum {
   nrRA_gNB_IDLE,
   nrRA_Msg2,
