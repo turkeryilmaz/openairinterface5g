@@ -23,12 +23,11 @@ data storage. */
 #include <lapacke.h>
 //#define DEBUG_PREPROC
 
-
 void transpose (int N, float complex *A, float complex *Result)
 {
   // COnputes C := alpha*op(A)*op(B) + beta*C,
-  CBLAS_TRANSPOSE transa = CblasTrans;
-  CBLAS_TRANSPOSE transb = CblasNoTrans;
+  enum CBLAS_TRANSPOSE transa = CblasTrans;
+  enum CBLAS_TRANSPOSE transb = CblasNoTrans;
   int rows_opA = N; // number of rows in op(A) and in C
   int col_opB = N; //number of columns of op(B) and in C
   int col_opA = N; //number of columns in op(A) and rows in op(B)
@@ -67,8 +66,8 @@ void transpose (int N, float complex *A, float complex *Result)
 void conjugate_transpose (int N, float complex *A, float complex *Result)
 {
   // Computes C := alpha*op(A)*op(B) + beta*C,
-  CBLAS_TRANSPOSE transa = CblasConjTrans;
-  CBLAS_TRANSPOSE transb = CblasNoTrans;
+  enum CBLAS_TRANSPOSE transa = CblasConjTrans;
+  enum CBLAS_TRANSPOSE transb = CblasNoTrans;
   int rows_opA = N; // number of rows in op(A) and in C
   int col_opB = N; //number of columns of op(B) and in C
   int col_opA = N; //number of columns in op(A) and rows in op(B)
@@ -105,8 +104,8 @@ void conjugate_transpose (int N, float complex *A, float complex *Result)
 void H_hermH_plus_sigma2I (int N, int M, float complex *A, float sigma2, float complex *Result)
 {
   //C := alpha*op(A)*op(B) + beta*C,
-  CBLAS_TRANSPOSE transa = CblasConjTrans;
-  CBLAS_TRANSPOSE transb = CblasNoTrans;
+  enum CBLAS_TRANSPOSE transa = CblasConjTrans;
+  enum CBLAS_TRANSPOSE transb = CblasNoTrans;
   int rows_opA = N; // number of rows in op(A) and in C
   int col_opB = N; //number of columns of op(B) and in C
   int col_opA = N; //number of columns in op(A) and rows in op(B)
@@ -132,8 +131,8 @@ void H_hermH_plus_sigma2I (int N, int M, float complex *A, float sigma2, float c
  void HH_herm_plus_sigma2I (int M, int N, float complex *A, float sigma2, float complex *Result)
 {
   //C := alpha*op(A)*op(B) + beta*C,
-  CBLAS_TRANSPOSE transa = CblasNoTrans;
-  CBLAS_TRANSPOSE transb = CblasConjTrans;
+  enum CBLAS_TRANSPOSE transa = CblasNoTrans;
+  enum CBLAS_TRANSPOSE transb = CblasConjTrans;
   int k = N; //number of columns in op(A) and rows in op(B),k
   float complex alpha = 1.0+I*0;
   int lda  = N;
@@ -200,8 +199,8 @@ void eigen_vectors_values (int N, float complex *A, float complex *Vectors, floa
 }
 
 void mutl_matrix_matrix_row_based(float complex* M0, float complex* M1, int rows_M0, int col_M0, int rows_M1, int col_M1, float complex* Result ){
-  CBLAS_TRANSPOSE transa = CblasNoTrans;
-  CBLAS_TRANSPOSE transb = CblasNoTrans;
+  enum CBLAS_TRANSPOSE transa = CblasNoTrans;
+  enum CBLAS_TRANSPOSE transb = CblasNoTrans;
   int rows_opA = rows_M0; // number of rows in op(A) and in C
   int col_opB = col_M1; //number of columns of op(B) and in C
   int col_opA = col_M0; //number of columns in op(A) and rows in op(B)
@@ -231,8 +230,8 @@ void mutl_matrix_matrix_row_based(float complex* M0, float complex* M1, int rows
 
 }
 void mutl_matrix_matrix_col_based(float complex* M0, float complex* M1, int rows_M0, int col_M0, int rows_M1, int col_M1, float complex* Result ){
-  CBLAS_TRANSPOSE transa = CblasNoTrans;
-  CBLAS_TRANSPOSE transb = CblasNoTrans;
+  enum CBLAS_TRANSPOSE transa = CblasNoTrans;
+  enum CBLAS_TRANSPOSE transb = CblasNoTrans;
   int rows_opA = rows_M0; // number of rows in op(A) and in C
   int col_opB = col_M1; //number of columns of op(B) and in C
   int col_opA = col_M0; //number of columns in op(A) and rows in op(B)
@@ -295,7 +294,6 @@ void compute_MMSE(float complex* H, int order_H, float sigma2, float complex* W_
   free(H_hermH_sigmaI);
   free(H_herm);
 }
-
 #if 0
 void compute_white_filter(float complex* H_re,
                           int order_H,
