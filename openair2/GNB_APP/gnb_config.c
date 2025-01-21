@@ -1118,6 +1118,8 @@ static int read_du_cell_info(configmodule_interface_t *cfg,
   paramdef_t PLMNParams[] = GNBPLMNPARAMS_DESC;
   /* map parameter checking array instances to parameter definition array instances */
   checkedparam_t config_check_PLMNParams[] = PLMNPARAMS_CHECK;
+  static_assert(sizeofArray(config_check_PLMNParams) == sizeofArray(PLMNParams),
+                "config_check_PLMNParams and PLMNParams should have the same size");
   for (int I = 0; I < sizeof(PLMNParams) / sizeof(paramdef_t); ++I)
     PLMNParams[I].chkPptr = &(config_check_PLMNParams[I]);
   paramlist_def_t PLMNParamList = {GNB_CONFIG_STRING_PLMN_LIST, NULL, 0};
@@ -1151,6 +1153,8 @@ static int read_du_cell_info(configmodule_interface_t *cfg,
   paramdef_t SNSSAIParams[] = GNBSNSSAIPARAMS_DESC;
   paramlist_def_t SNSSAIParamList = {GNB_CONFIG_STRING_SNSSAI_LIST, NULL, 0};
   checkedparam_t config_check_SNSSAIParams[] = SNSSAIPARAMS_CHECK;
+  static_assert(sizeofArray(config_check_SNSSAIParams) == sizeofArray(SNSSAIParams),
+                "config_check_SNSSAIParams and SNSSAIParams should have the same size");
   for (int J = 0; J < sizeofArray(SNSSAIParams); ++J)
     SNSSAIParams[J].chkPptr = &(config_check_SNSSAIParams[J]);
   char snssaistr[MAX_OPTNAME_SIZE * 2 + 8];
@@ -1288,6 +1292,8 @@ void RCconfig_nr_macrlc(configmodule_interface_t *cfg)
   paramdef_t GNBParams[] = GNBPARAMS_DESC;
   /* map parameter checking array instances to parameter definition array instances */
   checkedparam_t config_check_GNBParams[] = GNBPARAMS_CHECK;
+  static_assert(sizeofArray(config_check_GNBParams) == sizeofArray(GNBParams),
+                "config_check_GNBParams and GNBParams should have the same size");
   for (int i = 0; i < sizeofArray(GNBParams); ++i)
     GNBParams[i].chkPptr = &(config_check_GNBParams[i]);
   config_getlist(cfg, &GNBParamList, GNBParams, sizeofArray(GNBParams), NULL);
@@ -1296,6 +1302,8 @@ void RCconfig_nr_macrlc(configmodule_interface_t *cfg)
   paramlist_def_t MacRLC_ParamList = {CONFIG_STRING_MACRLC_LIST, NULL, 0};
   /* map parameter checking array instances to parameter definition array instances */
   checkedparam_t config_check_MacRLCParams[] = MACRLCPARAMS_CHECK;
+  static_assert(sizeofArray(config_check_MacRLCParams) == sizeofArray(MacRLC_Params),
+                "config_check_MacRLCParams and MacRLC_Params should have the same size");
   for (int i = 0; i < sizeofArray(MacRLC_Params); ++i)
     MacRLC_Params[i].chkPptr = &(config_check_MacRLCParams[i]);
   config_getlist(config_get_if(), &MacRLC_ParamList, MacRLC_Params, sizeofArray(MacRLC_Params), NULL);
@@ -1409,6 +1417,8 @@ void RCconfig_nr_macrlc(configmodule_interface_t *cfg)
     for (j = 0; j < RC.nb_nr_macrlc_inst; j++) {
       RC.nb_nr_mac_CC[j] = *(MacRLC_ParamList.paramarray[j][MACRLC_CC_IDX].iptr);
       RC.nrmac[j]->pusch_target_snrx10 = *(MacRLC_ParamList.paramarray[j][MACRLC_PUSCHTARGETSNRX10_IDX].iptr);
+      RC.nrmac[j]->pusch_rssi_threshold = *(MacRLC_ParamList.paramarray[j][MACRLC_PUSCH_RSSI_THRES_IDX].iptr);
+      RC.nrmac[j]->pucch_rssi_threshold = *(MacRLC_ParamList.paramarray[j][MACRLC_PUCCH_RSSI_THRES_IDX].iptr);
       RC.nrmac[j]->pucch_target_snrx10 = *(MacRLC_ParamList.paramarray[j][MACRLC_PUCCHTARGETSNRX10_IDX].iptr);
       RC.nrmac[j]->ul_prbblack_SNR_threshold = *(MacRLC_ParamList.paramarray[j][MACRLC_UL_PRBBLACK_SNR_THRESHOLD_IDX].iptr);
       RC.nrmac[j]->pucch_failure_thres = *(MacRLC_ParamList.paramarray[j][MACRLC_PUCCHFAILURETHRES_IDX].iptr);
@@ -1906,6 +1916,8 @@ gNB_RRC_INST *RCconfig_NRRRC()
         paramlist_def_t PLMNParamList = {GNB_CONFIG_STRING_PLMN_LIST, NULL, 0};
         /* map parameter checking array instances to parameter definition array instances */
         checkedparam_t config_check_PLMNParams [] = PLMNPARAMS_CHECK;
+        static_assert(sizeofArray(config_check_PLMNParams) == sizeofArray(PLMNParams),
+                      "config_check_PLMNParams and PLMNParams should have the same size");
 
         for (int I = 0; I < sizeofArray(PLMNParams); ++I)
           PLMNParams[I].chkPptr = &(config_check_PLMNParams[I]);
@@ -2013,7 +2025,11 @@ int RCconfig_NR_NG(MessageDef *msg_p, uint32_t i) {
             paramlist_def_t SNSSAIParamList = {GNB_CONFIG_STRING_SNSSAI_LIST, NULL, 0};
             /* map parameter checking array instances to parameter definition array instances */
             checkedparam_t config_check_PLMNParams [] = PLMNPARAMS_CHECK;
+            static_assert(sizeofArray(config_check_PLMNParams) == sizeofArray(PLMNParams),
+                          "config_check_PLMNParams and PLMNParams should have the same size");
             checkedparam_t config_check_SNSSAIParams [] = SNSSAIPARAMS_CHECK;
+            static_assert(sizeofArray(config_check_SNSSAIParams) == sizeofArray(SNSSAIParams),
+                          "config_check_SNSSAIParams and SNSSAIParams should have the same size");
 
             for (int I = 0; I < sizeofArray(PLMNParams); ++I)
               PLMNParams[I].chkPptr = &(config_check_PLMNParams[I]);
@@ -2277,6 +2293,8 @@ int RCconfig_NR_X2(MessageDef *msg_p, uint32_t i) {
             paramlist_def_t PLMNParamList = {GNB_CONFIG_STRING_PLMN_LIST, NULL, 0};
             /* map parameter checking array instances to parameter definition array instances */
             checkedparam_t config_check_PLMNParams [] = PLMNPARAMS_CHECK;
+            static_assert(sizeofArray(config_check_PLMNParams) == sizeofArray(PLMNParams),
+                          "config_check_PLMNParams and PLMNParams should have the same size");
 
             for (int I = 0; I < sizeofArray(PLMNParams); ++I)
               PLMNParams[I].chkPptr = &(config_check_PLMNParams[I]);

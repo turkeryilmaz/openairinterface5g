@@ -209,30 +209,20 @@ static void nr_ulsch_channel_level(int size_est,
                                    uint32_t len,
                                    uint8_t nrOfLayers)
 {
-  simde__m128i *ul_ch128, avg128U;
-
   int16_t x = factor2(len);
   int16_t y = (len)>>x;
 
   for (int aatx = 0; aatx < nrOfLayers; aatx++) {
     for (int aarx = 0; aarx < frame_parms->nb_antennas_rx; aarx++) {
-      //clear average level
-      avg128U = simde_mm_setzero_si128();
 
-      ul_ch128 = (simde__m128i *)&ul_ch_estimates_ext[aatx * frame_parms->nb_antennas_rx + aarx][symbol * len];
+      simde__m128i *ul_ch128 = (simde__m128i *)&ul_ch_estimates_ext[aatx * frame_parms->nb_antennas_rx + aarx][symbol * len];
 
-      for (int i = 0; i < len >> 2; i++) {
-        avg128U = simde_mm_add_epi32(avg128U, simde_mm_srai_epi32(simde_mm_madd_epi16(ul_ch128[i], ul_ch128[i]), x));
-      }
-
-      int32_t *avg32i = (int32_t *)&avg128U;
-      int64_t avg64 = (int64_t)avg32i[0] + avg32i[1] + avg32i[2] + avg32i[3];
-      avg[aatx * frame_parms->nb_antennas_rx + aarx] = avg64 / y;
+      //compute average level
+      avg[aatx * frame_parms->nb_antennas_rx + aarx] = simde_mm_average(ul_ch128, len, x, y);
+      //LOG_D(PHY, "Channel level: %d\n", avg[aatx * frame_parms->nb_antennas_rx + aarx]);
     }
   }
 
-  simde_mm_empty();
-  simde_m_empty();
 }
 
 static void nr_ulsch_channel_compensation(c16_t *rxFext,
@@ -342,8 +332,6 @@ static void nr_ulsch_channel_compensation(c16_t *rxFext,
     }
   }
 
-  simde_mm_empty();
-  simde_m_empty();
 }
 
 // Zero Forcing Rx function: nr_det_HhH()
@@ -405,8 +393,6 @@ static void nr_ulsch_det_HhH (int32_t *after_mf_00,//a
     after_mf_10_128+=1;
     after_mf_11_128+=1;
   }
-  simde_mm_empty();
-  simde_m_empty();
 }
 
 /* Zero Forcing Rx function: nr_conjch0_mult_ch1()
@@ -452,8 +438,6 @@ static void nr_ulsch_conjch0_mult_ch1(int *ch0,
     dl_ch1_128+=1;
     ch0conj_ch1_128+=1;
   }
-  simde_mm_empty();
-  simde_m_empty();
 }
 
 static simde__m128i nr_ulsch_comp_muli_sum(simde__m128i input_x,
@@ -515,8 +499,6 @@ static simde__m128i nr_ulsch_comp_muli_sum(simde__m128i input_x,
   //print_ints("unpack hi:",&tmp_z1[0]);
   output = simde_mm_packs_epi32(tmp_z0,tmp_z1);
 
-  simde_mm_empty();
-  simde_m_empty();
   return(output);
 }
 
@@ -633,8 +615,6 @@ static void nr_ulsch_construct_HhH_elements(int *conjch00_ch00,
     after_mf_10_128 += 1;
     after_mf_11_128 += 1;
   }
-  simde_mm_empty();
-  simde_m_empty();
 }
 
 // MMSE Rx function: nr_ulsch_mmse_2layers()
@@ -1025,8 +1005,6 @@ static uint8_t nr_ulsch_mmse_2layers(NR_DL_FRAME_PARMS *frame_parms,
     after_mf_c_128 += 1;
     after_mf_d_128 += 1;
   }
-  simde_mm_empty();
-  simde_m_empty();
    return(0);
 }
 
@@ -1268,7 +1246,6 @@ int nr_rx_pusch_tp(PHY_VARS_gNB *gNB,
   nfapi_nr_pusch_pdu_t *rel15_ul = &gNB->ulsch[ulsch_id].harq_process->ulsch_pdu;
 
   NR_gNB_PUSCH *pusch_vars = &gNB->pusch_vars[ulsch_id];
-  int nbSymb = 0;
   uint32_t bwp_start_subcarrier = ((rel15_ul->rb_start + rel15_ul->bwp_start) * NR_NB_SC_PER_RB + frame_parms->first_carrier_offset) % frame_parms->ofdm_symbol_size;
   LOG_D(PHY,"pusch %d.%d : bwp_start_subcarrier %d, rb_start %d, first_carrier_offset %d\n", frame,slot,bwp_start_subcarrier, rel15_ul->rb_start, frame_parms->first_carrier_offset);
   LOG_D(PHY,"pusch %d.%d : ul_dmrs_symb_pos %x\n",frame,slot,rel15_ul->ul_dmrs_symb_pos);
@@ -1489,15 +1466,16 @@ int nr_rx_pusch_tp(PHY_VARS_gNB *gNB,
   start_meas(&gNB->rx_pusch_symbol_processing_stats);
   int numSymbols = gNB->num_pusch_symbols_per_thread;
   int total_res = 0;
-  int const loop_iter = rel15_ul->nr_of_symbols / numSymbols;
+  int const loop_iter = CEILIDIV(rel15_ul->nr_of_symbols, numSymbols);
   puschSymbolProc_t arr[loop_iter];
-  task_ans_t arr_ans[loop_iter];
+  task_ans_t ans;
+  init_task_ans(&ans, loop_iter);
 
-  memset(arr_ans, 0, loop_iter * sizeof(task_ans_t));
   int sz_arr = 0;
-  for(uint8_t symbol = rel15_ul->start_symbol_index; symbol < end_symbol; symbol += numSymbols) {
+  for(uint8_t task_index = 0; task_index < loop_iter; task_index++) {
+    int symbol = task_index * numSymbols + rel15_ul->start_symbol_index;
     int res_per_task = 0;
-    for (int s = 0; s < numSymbols; s++) { 
+    for (int s = 0; s < numSymbols && s + symbol < end_symbol; s++) {
       pusch_vars->ul_valid_re_per_slot[symbol+s] = get_nb_re_pusch(frame_parms,rel15_ul,symbol+s);
       pusch_vars->llr_offset[symbol+s] = ((symbol+s) == rel15_ul->start_symbol_index) ? 
                                          0 : 
@@ -1507,7 +1485,7 @@ int nr_rx_pusch_tp(PHY_VARS_gNB *gNB,
     total_res += res_per_task;
     if (res_per_task > 0) {
       puschSymbolProc_t *rdata = &arr[sz_arr];
-      rdata->ans = &arr_ans[sz_arr];
+      rdata->ans = &ans;
       ++sz_arr;
 
       rdata->gNB = gNB;
@@ -1515,7 +1493,8 @@ int nr_rx_pusch_tp(PHY_VARS_gNB *gNB,
       rdata->rel15_ul = rel15_ul;
       rdata->slot = slot;
       rdata->startSymbol = symbol;
-      rdata->numSymbols = numSymbols;
+      // Last task processes remainder symbols
+      rdata->numSymbols = task_index == loop_iter - 1 ? rel15_ul->nr_of_symbols - (loop_iter - 1) * numSymbols : numSymbols;
       rdata->ulsch_id = ulsch_id;
       rdata->llr = pusch_vars->llr;
       rdata->llr_layers = pusch_vars->llr_layers;
@@ -1528,16 +1507,15 @@ int nr_rx_pusch_tp(PHY_VARS_gNB *gNB,
       } else {
         task_t t = {.func = &nr_pusch_symbol_processing, .args = rdata};
         pushTpool(&gNB->threadPool, t);
-        nbSymb++;
       }
 
-      LOG_D(PHY, "%d.%d Added symbol %d (count %d) to process, in pipe\n", frame, slot, symbol, nbSymb);
+      LOG_D(PHY, "%d.%d Added symbol %d to process, in pipe\n", frame, slot, symbol);
+    } else {
+      completed_task_ans(&ans);
     }
   } // symbol loop
 
-  if (nbSymb > 0) {
-    join_task_ans(arr_ans, sz_arr);
-  }
+  join_task_ans(&ans);
   stop_meas(&gNB->rx_pusch_symbol_processing_stats);
 
   // Copy the data to the scope. This cannot be performed in one call to gNBscopeCopy because the data is not contiguous in the
