@@ -379,4 +379,13 @@ int get_nrofHARQ_ProcessesForPUSCH(const NR_UE_ServingCell_Info_t *sc_info);
 
 int nr_get_prach_mu(const NR_MsgA_ConfigCommon_r16_t *msgacc, const NR_RACH_ConfigCommon_t *rach_ConfigCommon);
 
+/* Functions to manage an NR_list_t */
+void create_nr_list(NR_list_t *listP, int len);
+void resize_nr_list(NR_list_t *list, int new_len);
+void destroy_nr_list(NR_list_t *list);
+void add_nr_list(NR_list_t *listP, int id);
+void remove_nr_list(NR_list_t *listP, int id);
+void add_tail_nr_list(NR_list_t *listP, int id);
+void add_front_nr_list(NR_list_t *listP, int id);
+void remove_front_nr_list(NR_list_t *listP);
 #endif
