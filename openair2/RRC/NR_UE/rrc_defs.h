@@ -220,6 +220,12 @@ typedef struct NR_UE_RRC_INST_s {
   NR_RB_status_t status_DRBs[MAX_DRBS_PER_UE];
   bool active_RLC_entity[NR_MAX_NUM_LCID];
 
+  NR_MIB_t *mib;
+
+  // active BWPs
+  NR_BWP_DownlinkDedicated_t *bwpd;
+  NR_BWP_UplinkDedicated_t *ubwpd;
+
   /* KgNB as computed from parameters within USIM card */
   uint8_t kgnb[32];
   /* Used integrity/ciphering algorithms */
@@ -237,6 +243,7 @@ typedef struct NR_UE_RRC_INST_s {
   bool reconfig_after_reestab;
   //Sidelink params
   NR_SL_PreconfigurationNR_r16_t *sl_preconfig;
+  NR_MasterInformationBlockSidelink_t *sl_mib;
 
   struct position *position_coordinates;
 

@@ -19,13 +19,24 @@
  *      contact@openairinterface.org
  */
 
-#ifndef _OPENAIR2_LAYER2_NR_PDCP_ASN1_UTILS_H_
-#define _OPENAIR2_LAYER2_NR_PDCP_ASN1_UTILS_H_
+/* \file vars.h
+ * \brief RRC layer variables
+ * \author R. Knopp, K.H. HSU
+ * \date 2018
+ * \version 0.1
+ * \company Eurecom / NTUST
+ * \email: knopp@eurecom.fr, kai-hsiang.hsu@eurecom.fr
+ * \note
+ * \warning
+ */
 
-int decode_t_reordering(int v);
-int decode_sn_size_ul(long s);
-int decode_sn_size_dl(long s);
-int decode_discard_timer(long v);
-int decode_discard_timer_sl(long v);
 
-#endif /* _OPENAIR2_LAYER2_NR_PDCP_ASN1_UTILS_H_ */
+#ifndef __OPENAIR_NR_RRC_VARS_H__
+#define __OPENAIR_NR_RRC_VARS_H__
+
+#include "rrc_defs.h"
+
+extern NR_UE_RRC_INST_t *NR_UE_rrc_inst;
+extern uint16_t ue_id_g;
+
+#endif

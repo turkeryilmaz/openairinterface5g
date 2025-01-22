@@ -79,3 +79,34 @@ int decode_discard_timer(long v)
 
   return tab[v];
 }
+
+int decode_discard_timer_sl(long v)
+{
+  static const int tab[18] = {
+      3,
+      10,
+      20,
+      25,
+      30,
+      40,
+      50,
+      60,
+      75,
+      100,
+      150,
+      200,
+      250,
+      300,
+      500,
+      750,
+      1500,
+      -1,
+  };
+
+  if (v < 0 || v > 17) {
+    LOG_E(RLC, "%s:%d:%s: fatal\n", __FILE__, __LINE__, __FUNCTION__);
+    exit(1);
+  }
+
+  return tab[v];
+}

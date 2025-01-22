@@ -137,6 +137,8 @@ typedef struct NRRrcMacSBcchDataInd_s {
   uint16_t  rx_slss_id;
   uint8_t   rsrq;
   uint8_t   rsrp;
+  uint32_t  phycellid;
+  long      ssb_arfcn;
 } NRRrcMacSBcchDataInd;
 
 typedef struct RrcMacBcchMbmsDataReq_s {

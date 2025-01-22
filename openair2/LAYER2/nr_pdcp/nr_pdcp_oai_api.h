@@ -140,4 +140,6 @@ int nr_pdcp_get_num_ues(ue_id_t *ue_list, int len);
 
 bool nr_pdcp_get_statistics(ue_id_t ue_id, int srb_flag, int rb_id, nr_pdcp_statistics_t *out);
 
+void add_drb_sl(ue_id_t srcid, NR_SL_RadioBearerConfig_r16_t *s, const nr_pdcp_entity_security_keys_and_algos_t *security_parameters);
+
 #endif /* NR_PDCP_OAI_API_H */

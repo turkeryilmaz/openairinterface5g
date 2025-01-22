@@ -19,6 +19,7 @@
  *      contact@openairinterface.org
  */
 
+#include "nr_sdap.h"
 #include "nr_sdap_entity.h"
 #include <openair2/LAYER2/nr_pdcp/nr_pdcp_oai_api.h>
 #include <openair3/ocp-gtpu/gtp_itf.h>
@@ -431,6 +432,7 @@ static void nr_sdap_ue_qfi2drb_config(nr_sdap_entity_t *existing_sdap_entity,
   LOG_D(SDAP, "RRC Configuring SDAP Entity\n");
   for(int i = 0; i < mappedQFIs2AddCount; i++){
     uint8_t qfi = mapped_qfi_2_add[i];
+    set_qfi_pduid(qfi, 0);
     /* a default DRB exists and there is no QFI to DRB mapping rule for the QFI */
     if (existing_sdap_entity->default_drb && existing_sdap_entity->qfi2drb_table[qfi].drb_id == SDAP_NO_MAPPING_RULE) {
       nr_sdap_ul_hdr_t sdap_ctrl_pdu = existing_sdap_entity->sdap_construct_ctrl_pdu(qfi);
@@ -518,8 +520,12 @@ nr_sdap_entity_t *new_nr_sdap_entity(int is_gnb,
     sdap_entity->default_drb = drb_identity;
     LOG_I(SDAP, "Default DRB for the created SDAP entity: %ld \n", sdap_entity->default_drb);
     LOG_D(SDAP, "RRC updating mapping rules: %d\n", mappedQFIs2AddCount);
-    for (int i = 0; i < mappedQFIs2AddCount; i++)
-      sdap_entity->qfi2drb_map_update(sdap_entity, mapped_qfi_2_add[i], sdap_entity->default_drb, has_sdap_rx, has_sdap_tx);
+    uint8_t qfi = 0;
+    for (int i = 0; i < mappedQFIs2AddCount; i++) {
+      qfi = (uint8_t)mapped_qfi_2_add[i];
+      set_qfi_pduid(qfi, 0);
+      sdap_entity->qfi2drb_map_update(sdap_entity, qfi, sdap_entity->default_drb, has_sdap_rx, has_sdap_tx);
+    }
   }
 
   sdap_entity->next_entity = sdap_info.sdap_entity_llist;
