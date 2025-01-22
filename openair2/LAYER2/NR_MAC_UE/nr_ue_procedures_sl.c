@@ -528,3 +528,9 @@ uint8_t sl_determine_sci_1a_len(uint16_t *num_subchannels,
 
   return sci_1a_len;
 }
+
+uint16_t time_to_slots(uint8_t mu, uint16_t time) {
+  uint8_t slots_per_ms = (uint8_t)pow(2, mu); // subframe is of 1 ms
+  uint16_t time_in_slots = time * slots_per_ms;
+  return time_in_slots;
+}

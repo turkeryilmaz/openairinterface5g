@@ -3661,3 +3661,153 @@ static void nr_ue_fill_phr(NR_UE_MAC_INST_t *mac,
   nr_timer_start(&phr_info->prohibitPHR_Timer);
   phr_info->phr_reporting = 0;
 }
+
+int get_bit_from_map(const uint8_t *buf, size_t bit_pos) {
+  size_t byte_index = bit_pos / 8;
+  uint8_t bit_index = bit_pos % 8;
+  LOG_D(NR_MAC, "buf[%ld] = %d, ((7 - %d)) & 1), (buf[byte_index] >> %d) = %d  %d\n",
+        byte_index, buf[byte_index], bit_index, (7 - bit_index), buf[byte_index] >> (7 - bit_index), (buf[byte_index] >> (7 - bit_index)) & 1);
+  return (buf[byte_index] >> (7 - bit_index)) & 1;
+}
+
+void append_bit(uint8_t *buf, size_t bit_pos, int bit_value) {
+  size_t byte_index = bit_pos / 8;
+  uint8_t bit_index = bit_pos % 8;
+  LOG_D(NR_MAC, "Appending bit_value %d at byte_index %ld bit index %d\n", bit_value, byte_index, bit_index);
+  if (bit_value) {
+    buf[byte_index] |= (1 << (7 - bit_index));
+  } else {
+    buf[byte_index] &= ~(1 << (7 - bit_index));
+  }
+}
+
+int get_physical_sl_pool(NR_UE_MAC_INST_t *mac, BIT_STRING_t *sl_time_rsrc, BIT_STRING_t *phy_sl_bitmap) {
+  /*
+    Following code is to create physical sidelink bitmap as mentioned in this paper:
+    Ali, Z., Lagén, S., Giupponi, L., & Rouil, R. (2021). 3GPP NR V2X mode 2: Overview, models and system-level evaluation. IEEE Access, 9, 89554-89579.
+  */
+  sl_nr_ue_mac_params_t *sl_mac = mac->SL_MAC_PARAMS;
+  uint8_t mu = get_softmodem_params()->numerology;
+  int n_slots_frame = nr_slots_per_frame[mu]; // tdd pattern len
+  NR_TDD_UL_DL_Pattern_t *tdd = &sl_mac->sl_TDD_config->pattern1;
+  int ul_slots_period = tdd ? tdd->nrofUplinkSlots + (tdd->nrofUplinkSymbols > 0 ? 1 : 0) : n_slots_frame;
+  LOG_D(NR_MAC, "n_slots_frame %d, get_nb_periods_per_frame(tdd->dl_UL_TransmissionPeriodicity) %d\n", n_slots_frame, get_nb_periods_per_frame(tdd->dl_UL_TransmissionPeriodicity));
+  const int nr_slots_period = tdd ? n_slots_frame / get_nb_periods_per_frame(tdd->dl_UL_TransmissionPeriodicity) : n_slots_frame;
+  LOG_D(NR_RRC, "This is the nr_slots_period %d, ul_slots_period %d, mac->sl_bitmap.bits_unused %d size %ld, phy_bitmap size %ld\n",
+        nr_slots_period, ul_slots_period, sl_time_rsrc->bits_unused, sl_time_rsrc->size, phy_sl_bitmap->size);
+
+  int tdd_pattern_len = nr_slots_period;
+  int8_t sl_bitmap_num_bits = ((sl_time_rsrc->size << 3) - sl_time_rsrc->bits_unused);
+  int phy_sl_bits = sl_bitmap_num_bits + (sl_bitmap_num_bits / ul_slots_period * (nr_slots_period - ul_slots_period));
+  AssertFatal(ul_slots_period > 0, "No UL slot found in the given TDD pattern");
+  AssertFatal(sl_bitmap_num_bits % ul_slots_period == 0, "SL bit map size should be multiple of number of UL slots in the TDD pattern");
+  AssertFatal(sl_bitmap_num_bits > tdd_pattern_len, "SL bit map size %ld should be greater than or equal to the TDD pattern size %d", sl_time_rsrc->size, tdd_pattern_len);
+
+#ifdef BITMAP_DEBUG
+  for (int k = 0; k < sl_time_rsrc->size; k++) {
+    LOG_D(NR_MAC, "sl_bitmap %2x\n", sl_time_rsrc->buf[k]);
+  }
+#endif
+
+  int tdd_bit_idx = 0;
+  bool is_UL = 0;
+  int phy_sl_bit_pos = 0;
+  int sl_bitmap_pos = 0;
+  bool is_sidelink_slot;
+  do {
+    is_sidelink_slot = get_bit_from_map(sl_time_rsrc->buf, sl_bitmap_pos);
+    is_UL = (mac->ulsch_slot_bitmap[tdd_bit_idx / 64] & ((uint64_t)1 << (tdd_bit_idx % 64)));
+    if (is_UL == false) {
+      append_bit(phy_sl_bitmap->buf, phy_sl_bit_pos, 0);
+      phy_sl_bit_pos++;
+    } else if (is_sidelink_slot) {
+      LOG_D(NR_MAC, "is_SL %d phy_sl_bit_pos %d sl_bitmap_pos %d\n",
+            is_sidelink_slot,
+            phy_sl_bit_pos,
+            sl_bitmap_pos);
+      append_bit(phy_sl_bitmap->buf, phy_sl_bit_pos, 1);
+      phy_sl_bit_pos++;
+      sl_bitmap_pos++;
+    } else {
+        append_bit(phy_sl_bitmap->buf, phy_sl_bit_pos, 0);
+        phy_sl_bit_pos++;
+        sl_bitmap_pos++;
+    }
+    LOG_D(NR_MAC, "tdd_bit_idx %d/%d, sl_bitmap pos: %d/%d\n",
+          tdd_bit_idx,
+          tdd_pattern_len - 1,
+          sl_bitmap_pos,
+          sl_bitmap_num_bits);
+    if (tdd_bit_idx == (tdd_pattern_len - 1)) {
+      if (sl_bitmap_pos == sl_bitmap_num_bits) {
+        break;
+      } else {
+        tdd_bit_idx = 0;
+      }
+    } else {
+      tdd_bit_idx++;
+    }
+  } while (tdd_bit_idx != (tdd_pattern_len));
+  AssertFatal(phy_sl_bit_pos == phy_sl_bits,  "Physical bitmap length and increment counter are not matching!!!");
+
+#ifdef BITMAP_DEBUG
+  for (int i = 0; i < (phy_sl_bit_pos + 7) >> 3; i++) {
+    LOG_D(NR_MAC, "phy_sl_bitmap[%d] %2x\n", i, phy_sl_bitmap->buf[i]);
+  }
+#endif
+
+  return phy_sl_bit_pos;
+}
+
+uint8_t get_lower_bound_resel_counter(uint16_t p_rsrv) {
+    AssertFatal(p_rsrv < 100, "Resource reservation must be less than 100 ms");
+    uint8_t l_bound = (5 * ceil(100 / (max(20, p_rsrv))));
+    return l_bound;
+}
+
+uint8_t get_upper_bound_resel_counter(uint16_t p_rsrv) {
+    AssertFatal(p_rsrv < 100, "Resource reservation must be less than 100 ms");
+    uint8_t u_bound = (15 * ceil(100 / (max((20), p_rsrv))));
+    return u_bound;
+}
+
+uint8_t get_random_reselection_counter(uint16_t rri) {
+    uint8_t min_res_cntr = 0;
+    uint8_t max_res_cntr = 0;
+
+    switch (rri)
+    {
+    case 100:
+    case 150:
+    case 200:
+    case 250:
+    case 300:
+    case 350:
+    case 400:
+    case 450:
+    case 500:
+    case 550:
+    case 600:
+    case 700:
+    case 750:
+    case 800:
+    case 850:
+    case 900:
+    case 950:
+    case 1000:
+        min_res_cntr = 5;
+        max_res_cntr = 15;
+        break;
+    default:
+        if (rri < 100) {
+          min_res_cntr = get_lower_bound_resel_counter(rri);
+          max_res_cntr = get_upper_bound_resel_counter(rri);
+        } else {
+            LOG_E(NR_MAC, "Value not supported!");
+        }
+        break;
+    }
+
+    LOG_D(NR_MAC, "Range to choose random reselection counter. min: %d max: %d\n", min_res_cntr, max_res_cntr);
+    return min_res_cntr;
+}
