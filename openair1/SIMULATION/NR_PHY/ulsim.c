@@ -732,7 +732,7 @@ int main(int argc, char *argv[])
   init_nr_ue_transport(UE);
 
   //Configure UE
-  nr_l2_init_ue(1);
+  nr_l2_init_ue(1, NULL);
   NR_UE_MAC_INST_t* UE_mac = get_mac_inst(0);
 
   ue_init_config_request(UE_mac, mu);

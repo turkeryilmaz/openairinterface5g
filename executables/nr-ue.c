@@ -1124,7 +1124,7 @@ void init_NR_UE(int nb_inst, char *uecap_file, char *reconfig_file, char *rbconf
       nr_rlc_activate_srb0(mac_inst[i].crnti, NULL, send_srb0_rrc);
     }
     //TODO: Move this call to RRC
-    start_sidelink((&rrc_inst[i])->ue_id);
+    start_sidelink((&rrc_inst[i])->ue_id, ueinfo);
   }
 }
 

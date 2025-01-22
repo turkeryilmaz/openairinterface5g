@@ -76,7 +76,10 @@
 #define SL_CONFIG_STRING_RESPOOL_NUM_SUBCHS                   "sl_NumSubchannel"
 
 
-
+#define SL_CONFIG_STRING_UEINFO                               "sl_UEINFO"
+#define SL_CONFIG_STRING_UEINFO_SRCID                         "srcid"
+#define SL_CONFIG_STRING_UEINFO_IPV4ADDR_THIRD_OCTET          "thirdOctet"
+#define SL_CONFIG_STRING_UEINFO_IPV4ADDR_FOURTH_OCTET         "fourthOctet"
 /*-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 /*             Sidelink Frequency common Cell Config parameters                                                                                                     */
 /*-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
@@ -155,4 +158,15 @@
 {SL_CONFIG_STRING_RESPOOL_NUM_SUBCHS,NULL,0,.i64ptr=sl_res_pool->sl_NumSubchannel_r16,.defint64val=10,TYPE_INT64,0}}
 
 
+/*-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
+/*             Sidelink Top-Level UE Info                                                                                                     */
+/*-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
+/*
+   sl_srcid - 16-bit source ID used for LCID information and indexing in L2 stack
+   sl_ipv4addr - string containing ipv4 address for default SLRB
+*/
+#define SL_UEINFO_DESC(sl_ueinfo) { \
+{SL_CONFIG_STRING_UEINFO_SRCID,NULL,0,.iptr=&ueinfo.srcid,.defintval=1,TYPE_INT,0}, \
+{SL_CONFIG_STRING_UEINFO_IPV4ADDR_THIRD_OCTET,NULL,0,.iptr=&ueinfo.thirdOctet,.defintval=0,TYPE_INT,0}, \
+{SL_CONFIG_STRING_UEINFO_IPV4ADDR_FOURTH_OCTET,NULL,0,.iptr=&ueinfo.fourthOctet,.defintval=1,TYPE_INT,0}}
 #endif

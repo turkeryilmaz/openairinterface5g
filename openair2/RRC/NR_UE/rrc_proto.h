@@ -40,6 +40,7 @@
 #include "NR_CellGroupConfig.h"
 #include "NR_RadioBearerConfig.h"
 #include "common/utils/ocp_itti/intertask_interface.h"
+#include "executables/nr-uesoftmodem.h"
 
 NR_UE_RRC_INST_t *nr_rrc_init_ue(char* uecap_file, int nb_inst, int num_ant_tx);
 NR_UE_RRC_INST_t* get_NR_UE_rrc_inst(int instance);
@@ -92,9 +93,9 @@ void nr_rrc_handle_SetupRelease_RLF_TimersAndConstants(NR_UE_RRC_INST_t *rrc,
 int configure_NR_SL_Preconfig(NR_UE_RRC_INST_t *rrc,int sync_source);
 
 void init_sidelink(NR_UE_RRC_INST_t *rrc);
-void start_sidelink(int instance);
+void start_sidelink(int instance, ueinfo_t *ueinfo);
 
-void rrc_ue_process_sidelink_Preconfiguration(NR_UE_RRC_INST_t *rrc_inst, int sync_ref);
+void rrc_ue_process_sidelink_Preconfiguration(NR_UE_RRC_INST_t *rrc_inst, int sync_ref, ueinfo_t *ueinfo);
 
 void nr_rrc_ue_decode_NR_SBCCH_SL_BCH_Message(NR_UE_RRC_INST_t *rrc,
                                               const uint8_t gNB_index,

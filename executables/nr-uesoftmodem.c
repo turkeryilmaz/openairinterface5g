@@ -87,6 +87,7 @@ unsigned short config_frames[4] = {2,9,11,13};
 #include "nr_nas_msg.h"
 #include <openair1/PHY/MODULATION/nr_modulation.h>
 #include "openair2/GNB_APP/gnb_paramdef.h"
+#include "openair2/RRC/NR_UE/sl_preconfig_paramvalues.h"
 #include "pdcp.h"
 #include "actor.h"
 
@@ -115,7 +116,7 @@ int oai_exit = 0;
 
 
 static int      tx_max_power[MAX_NUM_CCs] = {0};
-int             single_thread_flag = 1;
+
 double          rx_gain_off = 0.0;
 
 uint64_t        downlink_frequency[MAX_NUM_CCs][4];
@@ -129,6 +130,10 @@ int16_t           node_synch_ref[MAX_NUM_CCs];
 int               otg_enabled;
 double            cpuf;
 uint32_t       N_RB_DL    = 106;
+
+nr_bler_struct nr_bler_data[NR_NUM_MCS];
+
+static void init_bler_table(char*);
 
 int create_tasks_nrue(uint32_t ue_nb) {
   LOG_D(NR_RRC, "%s(ue_nb:%d)\n", __FUNCTION__, ue_nb);
@@ -254,7 +259,7 @@ void init_openair0()
     uint64_t dl_carrier, ul_carrier;
     openair0_cfg[card].configFilename    = NULL;
     openair0_cfg[card].threequarter_fs   = frame_parms->threequarter_fs;
-    openair0_cfg[card].sample_rate       = frame_parms->samples_per_subframe * 1e3;
+    openair0_cfg[card].sample_rate       = frame_parms->samples_per_subframe * 1e3; // IS_SOFTMODEM_RFSIM ? frame_parms->samples_per_subframe * 1e3 : 46080000;
     openair0_cfg[card].samples_per_frame = frame_parms->samples_per_frame;
 
     if (frame_parms->frame_type==TDD)
@@ -446,18 +451,29 @@ int main(int argc, char **argv)
     }
   }
 
+  ueinfo_t ueinfo;
+  char aprefix[MAX_OPTNAME_SIZE*2 + 8];
+  paramdef_t SL_UEINFO[] = SL_UEINFO_DESC(ueinfo);
+  paramlist_def_t SL_UEINFOList = {SL_CONFIG_STRING_UEINFO, NULL, 0};
+  sprintf(aprefix, "%s.[%d]", SL_CONFIG_STRING_SL_PRECONFIGURATION, 0);
+  config_getlist(config_get_if(), &SL_UEINFOList, NULL, 0, aprefix);
+  sprintf(aprefix, "%s.[%i].%s.[%i]", SL_CONFIG_STRING_SL_PRECONFIGURATION, 0, SL_CONFIG_STRING_UEINFO, 0);
+  config_get(config_get_if(), SL_UEINFO, sizeof(SL_UEINFO)/sizeof(paramdef_t), aprefix);
+
   int mode_offset = get_softmodem_params()->nsa ? NUMBER_OF_UE_MAX : 1;
   uint16_t node_number = get_softmodem_params()->node_number;
   ue_id_g = (node_number == 0) ? 0 : node_number - 2;
   AssertFatal(ue_id_g >= 0, "UE id is expected to be nonnegative.\n");
 
-  if (node_number == 0)
+  if(node_number == 0 && get_softmodem_params()->sl_mode == 0) {
     init_pdcp(0);
-  else
+  } else if (get_softmodem_params()->sl_mode == 2) {
+    init_pdcp(1+ueinfo.srcid);
+  } else {
     init_pdcp(mode_offset + ue_id_g);
+  }
   nas_init_nrue(NB_UE_INST);
-  // EpiSci TODO: Fill ueinfo to pass in init_NR_UE
-  ueinfo_t ueinfo;
+
   init_NR_UE(NB_UE_INST, get_nrUE_params()->uecap_file, get_nrUE_params()->reconfig_file, get_nrUE_params()->rbconfig_file, &ueinfo);
 
   if (get_softmodem_params()->emulate_l1) {
@@ -570,3 +586,55 @@ int main(int argc, char **argv)
   return 0;
 }
 
+// Read in each MCS file and build BLER-SINR-TB table
+static void init_bler_table(char *env_string) {
+  memset(nr_bler_data, 0, sizeof(nr_bler_data));
+
+  const char *awgn_results_dir = getenv(env_string);
+  if (!awgn_results_dir) {
+    LOG_W(NR_MAC, "No %s\n", env_string);
+    return;
+  }
+
+  for (unsigned int i = 0; i < NR_NUM_MCS; i++) {
+    char fName[1024];
+    snprintf(fName, sizeof(fName), "%s/mcs%u_awgn_5G.csv", awgn_results_dir, i);
+    FILE *pFile = fopen(fName, "r");
+    if (!pFile) {
+      LOG_E(NR_MAC, "%s: open %s: %s\n", __func__, fName, strerror(errno));
+      continue;
+    }
+    size_t bufSize = 1024;
+    char * line = NULL;
+    char * token;
+    char * temp = NULL;
+    int nlines = 0;
+    while (getline(&line, &bufSize, pFile) > 0) {
+      if (!strncmp(line, "SNR", 3)) {
+        continue;
+      }
+
+      if (nlines > NR_NUM_SINR) {
+        LOG_E(NR_MAC, "BLER FILE ERROR - num lines greater than expected - file: %s\n", fName);
+        abort();
+      }
+
+      token = strtok_r(line, ";", &temp);
+      int ncols = 0;
+      while (token != NULL) {
+        if (ncols > NUM_BLER_COL) {
+          LOG_E(NR_MAC, "BLER FILE ERROR - num of cols greater than expected\n");
+          abort();
+        }
+
+        nr_bler_data[i].bler_table[nlines][ncols] = strtof(token, NULL);
+        ncols++;
+
+        token = strtok_r(NULL, ";", &temp);
+      }
+      nlines++;
+    }
+    nr_bler_data[i].length = nlines;
+    fclose(pFile);
+  }
+}

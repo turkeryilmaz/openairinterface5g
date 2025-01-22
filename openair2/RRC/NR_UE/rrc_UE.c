@@ -73,7 +73,7 @@
 #include "nr_nas_msg.h"
 #include "openair2/SDAP/nr_sdap/nr_sdap_entity.h"
 
-static NR_UE_RRC_INST_t *NR_UE_rrc_inst;
+NR_UE_RRC_INST_t *NR_UE_rrc_inst;
 /* NAS Attach request with IMSI */
 static const char nr_nas_attach_req_imsi_dummy_NSA_case[] = {
     0x07,
@@ -2523,7 +2523,7 @@ void handle_t300_expiry(NR_UE_RRC_INST_t *rrc)
 }
 
 //This calls the sidelink preconf message after RRC, MAC instances are created.
-void start_sidelink(int instance)
+void start_sidelink(int instance, ueinfo_t *ueinfo)
 {
 
   NR_UE_RRC_INST_t *rrc = &NR_UE_rrc_inst[instance];
@@ -2531,7 +2531,7 @@ void start_sidelink(int instance)
   if (get_softmodem_params()->sl_mode == 2) {
 
     //Process the Sidelink Preconfiguration
-    rrc_ue_process_sidelink_Preconfiguration(rrc, get_softmodem_params()->sync_ref);
+    rrc_ue_process_sidelink_Preconfiguration(rrc, get_softmodem_params()->sync_ref, ueinfo);
 
   }
 }
