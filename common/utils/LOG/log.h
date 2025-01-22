@@ -57,9 +57,6 @@
 #endif
 /*----------------------------------------------------------------------------*/
 #include <assert.h>
-#ifdef NDEBUG
-#warning assert is disabled
-#endif
 
 #ifdef __cplusplus
 extern "C" {
