@@ -36,7 +36,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "common/platform_types.h"
+#include "platform_types.h"
 
 /* IF */
 #include "NR_IF_Module.h"
@@ -65,6 +65,7 @@
 #include "NR_SL-BWP-ConfigCommon-r16.h"
 #include "linear_alloc.h"
 #include "nr_ue_sci.h"
+
 // ==========
 // NR UE defs
 // ==========
@@ -919,6 +920,7 @@ typedef struct NR_UE_MAC_INST_s {
                                                 // sensing; otherwise, use random selection
   double m_slProbResourceKeep; // Sidelink probability of keeping a resource after resource
                                    // re-selection counter reaches zero
+  List_t sl_sensing_data; // List to store sensing data
   int sl_thresh_rsrp;     // A threshold in dBm used for sensing based UE autonomous resource selection
   float sl_res_percentage;  /* The percentage threshold to indicate the
                                  minimum number of candidate single-slot
@@ -926,9 +928,11 @@ typedef struct NR_UE_MAC_INST_s {
                               */
   uint8_t sl_resel_counter;  // The resource selection counter
   uint16_t sl_c_resel;       // The C_resel counter
+  List_t sl_transmit_history; // History of slots used for transmission
 
   /// bitmap of ULSCH slots, can hold up to 160 slots
   uint64_t ulsch_slot_bitmap[3];
+  List_t *sl_candidate_resources;
   uint16_t reselection_timer;
 
   bool pucch_power_control_initialized;

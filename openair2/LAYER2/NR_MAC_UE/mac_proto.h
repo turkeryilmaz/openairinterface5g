@@ -661,10 +661,6 @@ void configure_psfch_params_rx(int module_idP, NR_UE_MAC_INST_t *mac, sl_nr_rx_c
 
 void reset_sched_psfch(NR_UE_MAC_INST_t *mac, int frameP,int slotP);
 
-void handle_nr_ue_sl_harq(module_id_t mod_id, frame_t frame, sub_frame_t slot, sl_nr_slsch_pdu_t *rx_slsch_pdu, uint16_t src_id);
-
-void abort_nr_ue_sl_harq(NR_UE_MAC_INST_t *mac, int8_t harq_pid, NR_SL_UE_info_t *UE_info);
-
 int nr_ue_sl_acknack_scheduling(NR_UE_MAC_INST_t *mac, sl_nr_rx_indication_t *rx_ind,
                                 long psfch_period, uint16_t frame, uint16_t slot, const int nr_slots_frame);
 
@@ -774,6 +770,13 @@ List_t* get_candidate_resources_from_slots(frameslot_t *sfn,
                                           uint16_t total_subch,
                                           List_t* slot_info,
                                           uint8_t mu);
+
+List_t exclude_reserved_resources(sensing_data_t *sensed_data,
+                                  float slot_period_ms,
+                                  uint16_t resv_period_slots,
+                                  uint16_t t1,
+                                  uint16_t t2,
+                                  uint8_t mu);
 
 void exclude_resources_based_on_history(frameslot_t frame_slot,
                                         List_t* transmit_history,

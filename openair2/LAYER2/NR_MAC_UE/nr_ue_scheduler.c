@@ -3811,3 +3811,46 @@ uint8_t get_random_reselection_counter(uint16_t rri) {
     LOG_D(NR_MAC, "Range to choose random reselection counter. min: %d max: %d\n", min_res_cntr, max_res_cntr);
     return min_res_cntr;
 }
+
+bool is_sl_slot(NR_UE_MAC_INST_t *mac, BIT_STRING_t *phy_sl_bitmap, uint16_t phy_map_sz, uint64_t abs_slot) {
+  /* The purpose of normalizing the abs_slot value is to ensure that we can handle the cases
+    when we wrap beyond the phy_bit_map size. For example, with an uplink and downlink
+    slot configuration of 4 and 6 respectively, we have a phy_bit_map size of 150. When
+    abs_slot (frame.slot absolute value) exceeds 150, we are not able to proeprly map the bits
+    to the resource bitmap. In order to do this, we need to map the abs_slot > 150 value to a
+    value within 150. Since (in this particular configuration) the slots in the last frame (7)
+    are split in half (since 150 is not divisible by 20 slots/frame) so we have to shift the
+    normalization factor by the split (which is ten in this case). In the cases when the original
+    abs_slot value is an even multiple of the phy_map_sz (150) we do not need to shift by 10, only
+    in the odd cases. */
+  int multiple_of_bitmap = floor(abs_slot/phy_map_sz);
+  int val_to_normalize_abs_slot = phy_map_sz * multiple_of_bitmap;
+  LOG_D(NR_MAC, "This is original abs_slot %ld, multiple_of_bitmap %d, val_to_normalize_abs_slot %d, subtract amount %d\n",
+        abs_slot, multiple_of_bitmap, val_to_normalize_abs_slot, (phy_map_sz % nr_slots_per_frame[get_softmodem_params()->numerology]));
+  if (multiple_of_bitmap >= 1 && multiple_of_bitmap % 2 == 1) {
+    val_to_normalize_abs_slot -= (phy_map_sz % nr_slots_per_frame[get_softmodem_params()->numerology]);
+    if ((abs_slot - val_to_normalize_abs_slot < 0) || (abs_slot - val_to_normalize_abs_slot >= phy_map_sz)) {
+      val_to_normalize_abs_slot += 2 * (phy_map_sz % nr_slots_per_frame[get_softmodem_params()->numerology]);
+    }
+  }
+  if (val_to_normalize_abs_slot > abs_slot) {
+    abs_slot += phy_map_sz;
+  }
+  bool sl_slot = get_bit_from_map(phy_sl_bitmap->buf, abs_slot - val_to_normalize_abs_slot) ? true : false;
+  return sl_slot;
+}
+
+bool slot_has_psfch(NR_UE_MAC_INST_t *mac, BIT_STRING_t *phy_sl_bitmap, uint64_t abs_index_cur_slot, uint8_t psfch_period, size_t phy_sl_map_size, NR_TDD_UL_DL_ConfigCommon_t *conf) {
+
+  if (psfch_period == 0) {
+    return false;
+  }
+  AssertFatal(conf->pattern1.nrofUplinkSlots == 4 && conf->pattern1.nrofDownlinkSlots == 6,
+              "Invalid configuration set. Please update the nrofUplinkSlots to 4 and nrofDownlinkSlots to 6.\n");
+  bool sl_slot = is_sl_slot(mac, phy_sl_bitmap, phy_sl_map_size, abs_index_cur_slot);
+  bool has_psfch = sl_slot && ((conf->pattern1.nrofUplinkSlots % psfch_period) == 0);
+  LOG_D(NR_MAC, "num_sl_slots %ld has_psfch %d, abs slot %ld, is_sl_slot %d\n",
+        conf->pattern1.nrofUplinkSlots, has_psfch, abs_index_cur_slot, sl_slot);
+  return has_psfch;
+}
+
