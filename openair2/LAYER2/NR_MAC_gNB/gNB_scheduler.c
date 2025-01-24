@@ -53,8 +53,6 @@
 #include <errno.h>
 #include <string.h>
 
-const uint8_t nr_rv_round_map[4] = {0, 2, 3, 1};
-
 void clear_nr_nfapi_information(gNB_MAC_INST *gNB,
                                 int CC_idP,
                                 frame_t frameP,

@@ -68,8 +68,6 @@ const int sl_dmrs_mask2[2][8] = { {34,34,34,264,264,1032,1032,1032},
                                   {34,34,34,272,272,1040,1040,1040}};
 const int sl_dmrs_mask3[5]    = {146,146,546,546,2114};
 const int sl_dmrs_mask4[3]    = {1170,1170,1170};
-const int pscch_rb_table[5] = {10,12,15,20,25};
-const int pscch_tda[2] = {2,3};
 
 const int subch_to_rb[8] = {10,12,15,20,25,50,75,100};
 

@@ -102,7 +102,6 @@
 #define MAX_NUM_NR_PRACH_PREAMBLES 64
 #define MIN_NUM_PRBS_TO_SCHEDULE  5
 
-extern const uint8_t nr_rv_round_map[4];
 
 typedef enum {
   nrRA_gNB_IDLE,

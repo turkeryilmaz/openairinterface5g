@@ -36,11 +36,11 @@
 
 #include "NR_MAC_COMMON/nr_mac.h"
 #include "NR_MAC_COMMON/nr_mac_common.h"
-#include "NR_MAC_UE/mac_proto.h"
-#include "NR_MAC_UE/mac_extern.h"
-#include "NR_MAC_UE/nr_ue_sci.h"
+#include "mac_proto.h"
+#include "mac_extern.h"
+#include "nr_ue_sci.h"
 #include <executables/nr-uesoftmodem.h>
-#include "NR_MAC_UE/mac_defs_sl.h"
+#include "mac_defs_sl.h"
 #include "NR_MAC_gNB/nr_mac_gNB.h"
 
 #define LOWER_BLER 0.2344

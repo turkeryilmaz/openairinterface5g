@@ -41,6 +41,8 @@
 
 #define NR_DL_MAX_DAI                            (4)                      /* TS 38.213 table 9.1.3-1 Value of counter DAI for DCI format 1_0 and 1_1 */
 #define NR_DL_MAX_NB_CW                          (2)                      /* number of downlink code word */
+static const int pscch_rb_table[5] = {10,12,15,20,25};
+static const int pscch_tda[2] = {2,3};
 
 // 38.213 Table 16.3-1 set of cyclic shift pairs
 static const int16_t table_16_3_1[4][6] = {
@@ -59,6 +61,56 @@ typedef struct psfch_params {
   uint16_t m0;
   prbs_set_t *prbs_sets;
 } psfch_params_t;
+
+typedef struct {
+  union {
+    NR_BSR_SHORT s;
+    NR_BSR_LONG l;
+    uint8_t lcg_bsr[8];
+  } bsr;
+  enum { b_none, b_long, b_short, b_short_trunc, b_long_trunc } type_bsr;
+} type_bsr_t;
+
+#define MAX_LCID 8 // NR_MAX_NUM_LCID shall be used but the mac_rlc_data_req function can fetch data for max 8 LCID
+typedef struct {
+  uint8_t phr_len;
+  uint sdu_length_total;
+  NR_SINGLE_ENTRY_PHR_MAC_CE phr;
+
+  uint8_t bsr_len;
+  uint8_t bsr_ce_len;
+  uint8_t bsr_header_len;
+  uint8_t phr_ce_len;
+  uint8_t phr_header_len;
+  //TODO: Add following inside type_bsr_t
+  NR_SL_BSR_SHORT *sl_bsr_s;
+  type_bsr_t bsr;
+  // int tot_mac_ce_len;
+  // uint8_t total_mac_pdu_header_len;
+  uint8_t *pdu_end;
+  uint8_t *end_for_tailer;
+  uint8_t *cur_ptr;
+  uint num_sdus;
+  //  variable used to store the lcid data status during lcp
+  bool lcids_data_status[NR_MAX_NUM_LCID];
+  uint32_t lcp_allocation_counter;
+} NR_UE_MAC_CE_INFO;
+
+void nr_update_bsr(NR_UE_MAC_INST_t *mac, uint32_t *LCG_bytes);
+
+void trigger_regular_bsr(NR_UE_MAC_INST_t *mac, NR_LogicalChannelIdentity_t lcid, bool sr_DelayTimerApplied);
+
+void nr_ue_get_sdu_mac_ce_pre(NR_UE_MAC_INST_t *mac,
+                              int CC_id,
+                              frame_t frameP,
+                              sub_frame_t subframe,
+                              uint8_t gNB_index,
+                              uint8_t *ulsch_buffer,
+                              uint32_t buflen,
+                              uint32_t *LCG_bytes,
+                              NR_UE_MAC_CE_INFO *mac_ce_p,
+                              int tx_power,
+                              int P_CMAX);
 
 /**\brief initialize the field in nr_mac instance
    \param mac      MAC pointer */
@@ -217,15 +269,6 @@ uint8_t get_rsrp_diff_index(int best_rsrp,int current_rsrp);
 void nr_ue_send_sdu(NR_UE_MAC_INST_t *mac, nr_downlink_indication_t *dl_info, int pdu_id);
 
 void nr_ue_process_mac_pdu(NR_UE_MAC_INST_t *mac,nr_downlink_indication_t *dl_info, int pdu_id);
-
-typedef struct {
-  union {
-    NR_BSR_SHORT s;
-    NR_BSR_LONG l;
-    uint8_t lcg_bsr[8];
-  } bsr;
-  enum { b_none, b_long, b_short, b_short_trunc, b_long_trunc } type_bsr;
-} type_bsr_t;
 
 int nr_write_ce_msg3_pdu(uint8_t *mac_ce, NR_UE_MAC_INST_t *mac, rnti_t crnti, uint8_t *mac_ce_end);
 
@@ -731,8 +774,6 @@ List_t get_nr_sl_comm_opportunities(NR_UE_MAC_INST_t *mac,
                                     uint16_t t2,
                                     uint8_t psfch_period);
 
-bool is_sl_slot(NR_UE_MAC_INST_t *mac, BIT_STRING_t *phy_sl_bitmap, uint16_t phy_map_sz, uint64_t abs_slot);
-
 void validate_selected_sl_slot(bool tx, bool rx, NR_TDD_UL_DL_ConfigCommon_t *conf, frameslot_t frame_slot);
 
 bool check_t1_within_tproc1(uint8_t mu, uint16_t t1_slots);
@@ -798,4 +839,8 @@ uint32_t compute_FRIV(uint8_t sl_max_num_per_reserve,
                       uint8_t n_start_subch1,
                       uint8_t n_start_subch2,
                       uint8_t N_sl_subch);
+
+void print_candidate_list(List_t *candidate_resources, int line);
+void print_reserved_list(List_t *candidate_resources, int line);
+void print_sensing_data_list(List_t *sensing_data, int line);
 #endif
