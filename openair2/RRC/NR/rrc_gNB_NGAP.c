@@ -148,7 +148,7 @@ void nr_rrc_pdcp_config_security(gNB_RRC_UE_t *UE, bool enable_ciphering)
     }
   }
 
-  nr_pdcp_config_set_security(UE->rrc_ue_id, DL_SCH_LCID_DCCH, true, &security_parameters);
+  UE->Srb[DL_SCH_LCID_DCCH].pdcp->set_security(UE->Srb[DL_SCH_LCID_DCCH].pdcp, &security_parameters);
 }
 
 //------------------------------------------------------------------------------

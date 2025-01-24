@@ -117,9 +117,6 @@ int CU_handle_UL_RRC_MESSAGE_TRANSFER(instance_t instance, sctp_assoc_t assoc_id
     return -1;
   }
 
-  /* the RLC-PDCP does not transport the DU UE ID (yet), so we drop it here.
-   * For the moment, let's hope this won't become relevant; to sleep in peace,
-   * let's put an assert to check that it is the expected DU UE ID. */
   f1_ue_data_t ue_data = cu_get_f1_ue_data(msg.gNB_CU_ue_id);
   if (ue_data.secondary_ue != msg.gNB_DU_ue_id) {
     LOG_E(F1AP, "unexpected DU UE ID %u received, expected it to be %u\n", ue_data.secondary_ue, msg.gNB_DU_ue_id);
@@ -132,30 +129,21 @@ int CU_handle_UL_RRC_MESSAGE_TRANSFER(instance_t instance, sctp_assoc_t assoc_id
   else
     LOG_D(F1AP, "UL RRC MESSAGE for SRB %d in DCCH \n", msg.srb_id);
 
-  protocol_ctxt_t ctxt = {
-      .instance = instance,
-      .module_id = instance,
-      .enb_flag = 1,
-      .eNB_index = 0,
-      .rntiMaybeUEid = msg.gNB_CU_ue_id,
-  };
-
   LOG_D(F1AP,
-        "[UE %lx] calling pdcp_data_ind for SRB %d with size %d (DCCH) \n",
-        ctxt.rntiMaybeUEid,
+        "[UE %x] sending F1AP_UL_RRC_MESSAGE to RRC for SRB %d with size %d (DCCH) \n",
+        msg.gNB_CU_ue_id,
         msg.srb_id,
         msg.rrc_container_length);
-  uint8_t *mb = malloc16(msg.rrc_container_length);
-  memcpy(mb, msg.rrc_container, msg.rrc_container_length);
 
-  nr_pdcp_data_ind(&ctxt,
-                   1, // srb_flag
-                   0, // embms_flag
-                   msg.srb_id,
-                   msg.rrc_container_length,
-                   mb,
-                   NULL,
-                   NULL);
+  MessageDef *rrc_msg = itti_alloc_new_message(TASK_PDCP_GNB, 0, F1AP_UL_RRC_MESSAGE);
+  AssertFatal(rrc_msg != NULL, "OUT OF MEMORY\n");
+  f1ap_ul_rrc_message_t *ul_rrc = &F1AP_UL_RRC_MESSAGE(rrc_msg);
+  *ul_rrc = msg;
+  ul_rrc->rrc_container = malloc(msg.rrc_container_length);
+  AssertFatal(ul_rrc->rrc_container != NULL, "OUT OF MEMORY\n");
+  memcpy(ul_rrc->rrc_container, msg.rrc_container, msg.rrc_container_length);
+  itti_send_msg_to_task(TASK_RRC_GNB, 0, rrc_msg);
+
   /* Free UL RRC Message Transfer */
   free_ul_rrc_message_transfer(&msg);
   return 0;

@@ -601,6 +601,7 @@ static void nr_pdcp_entity_get_stats(nr_pdcp_entity_t *entity,
 nr_pdcp_entity_t *new_nr_pdcp_entity(
     nr_pdcp_entity_type_t type,
     int is_gnb,
+    uint64_t ue_id,
     int rb_id,
     int pdusession_id,
     bool has_sdap_rx,
@@ -656,6 +657,7 @@ nr_pdcp_entity_t *new_nr_pdcp_entity(
   ret->deliver_pdu = deliver_pdu;
   ret->deliver_pdu_data = deliver_pdu_data;
 
+  ret->ue_id         = ue_id;
   ret->rb_id         = rb_id;
   ret->pdusession_id = pdusession_id;
   ret->has_sdap_rx   = has_sdap_rx;

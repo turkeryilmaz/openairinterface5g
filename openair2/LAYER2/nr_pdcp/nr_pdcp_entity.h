@@ -25,9 +25,10 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include "common/platform_types.h"
+#include "common/platform_constants.h"
 
 #include "nr_pdcp_sdu.h"
-#include "openair2/RRC/NR/rrc_gNB_radio_bearers.h"
+#include "openair2/RRC/NR/nr_rrc_common.h"
 #include "openair3/SECU/secu_defs.h"
 
 /* PDCP Formats according to clause 6.2 of 3GPP TS 38.323 */
@@ -125,6 +126,7 @@ typedef struct nr_pdcp_entity_t {
   void *deliver_pdu_data;
 
   /* configuration variables */
+  uint64_t ue_id;
   int rb_id;
   int pdusession_id;
   bool has_sdap_rx;
@@ -182,6 +184,7 @@ typedef struct nr_pdcp_entity_t {
 nr_pdcp_entity_t *new_nr_pdcp_entity(
     nr_pdcp_entity_type_t type,
     int is_gnb,
+    uint64_t ue_id,
     int rb_id,
     int pdusession_id,
     bool has_sdap_rx,

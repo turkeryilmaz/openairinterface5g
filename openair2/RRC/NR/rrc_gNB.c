@@ -74,7 +74,6 @@
 #include "linear_alloc.h"
 #include "ngap_messages_types.h"
 #include "nr_pdcp/nr_pdcp_entity.h"
-#include "nr_pdcp/nr_pdcp_oai_api.h"
 #include "nr_rrc_defs.h"
 #include "nr_rrc_extern.h"
 #include "oai_asn1.h"
@@ -200,13 +199,21 @@ void nr_rrc_transfer_protected_rrc_message(const gNB_RRC_INST *rrc,
   RETURN_IF_INVALID_ASSOC_ID(ue_data.du_assoc_id);
   f1ap_dl_rrc_message_t dl_rrc = {.gNB_CU_ue_id = ue_p->rrc_ue_id, .gNB_DU_ue_id = ue_data.secondary_ue, .srb_id = srb_id};
   deliver_dl_rrc_message_data_t data = {.rrc = rrc, .dl_rrc = &dl_rrc, .assoc_id = ue_data.du_assoc_id};
-  nr_pdcp_data_req_srb(ue_p->rrc_ue_id,
-                       srb_id,
-                       rrc_gNB_mui++,
-                       size,
-                       (unsigned char *const)buffer,
-                       rrc_deliver_dl_rrc_message,
-                       &data);
+  int pdu_max_size = nr_max_pdcp_pdu_size(size);
+  uint8_t pdu_buf[pdu_max_size];
+  mui_t mui = rrc_gNB_mui;
+  rrc_gNB_mui++;
+  int pdu_size = ue_p->Srb[srb_id].pdcp->process_sdu(ue_p->Srb[srb_id].pdcp,
+                                                        buffer,
+                                                        size,
+                                                        mui,
+                                                        pdu_buf,
+                                                        pdu_max_size);
+  if (pdu_size == -1) {
+    LOG_E(NR_RRC, "PDCP process_sdu failed\n");
+    return;
+  }
+  rrc_deliver_dl_rrc_message(&data, ue_p->rrc_ue_id, srb_id, pdu_buf, pdu_size, mui);
 }
 
 ///---------------------------------------------------------------------------------------------------------------///
@@ -367,7 +374,23 @@ static void freeSRBlist(NR_SRB_ToAddModList_t *l)
     LOG_E(NR_RRC, "Call free SRB list on NULL pointer\n");
 }
 
-static void activate_srb(gNB_RRC_UE_t *UE, int srb_id)
+static int rrc_gNB_decode_dcch(gNB_RRC_INST *rrc, const f1ap_ul_rrc_message_t *msg);
+
+static void srb_deliver_sdu(void *_rrc, nr_pdcp_entity_t *entity,
+                             uint8_t *buf, int size,
+                             const nr_pdcp_integrity_data_t *msg_integrity)
+{
+  gNB_RRC_INST *rrc = _rrc;
+  f1ap_ul_rrc_message_t msg = {
+    .gNB_CU_ue_id = entity->ue_id,
+    .srb_id = entity->rb_id,
+    .rrc_container = buf,
+    .rrc_container_length = size
+  };
+  rrc_gNB_decode_dcch(rrc, &msg);
+}
+
+static void activate_srb(const gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE, int srb_id)
 {
   AssertFatal(srb_id == 1 || srb_id == 2, "handling only SRB 1 or 2\n");
   if (UE->Srb[srb_id].Active == 1) {
@@ -377,26 +400,31 @@ static void activate_srb(gNB_RRC_UE_t *UE, int srb_id)
   LOG_I(RRC, "activate SRB %d of UE %d\n", srb_id, UE->rrc_ue_id);
   UE->Srb[srb_id].Active = 1;
 
-  NR_SRB_ToAddModList_t *list = CALLOC(sizeof(*list), 1);
-  asn1cSequenceAdd(list->list, NR_SRB_ToAddMod_t, srb);
-  srb->srb_Identity = srb_id;
+  nr_pdcp_entity_security_keys_and_algos_t security_parameters = { 0 };
 
-  if (srb_id == 1) {
-    nr_pdcp_entity_security_keys_and_algos_t null_security_parameters = {0};
-    nr_pdcp_add_srbs(true, UE->rrc_ue_id, list, &null_security_parameters);
-  } else {
-    nr_pdcp_entity_security_keys_and_algos_t security_parameters;
+  if (srb_id != 1) {
     security_parameters.ciphering_algorithm = UE->ciphering_algorithm;
     security_parameters.integrity_algorithm = UE->integrity_algorithm;
     nr_derive_key(RRC_ENC_ALG, UE->ciphering_algorithm, UE->kgnb, security_parameters.ciphering_key);
     nr_derive_key(RRC_INT_ALG, UE->integrity_algorithm, UE->kgnb, security_parameters.integrity_key);
-
-    nr_pdcp_add_srbs(true,
-                     UE->rrc_ue_id,
-                     list,
-                     &security_parameters);
   }
-  freeSRBlist(list);
+
+  int t_Reordering = -1; // infinity as per default SRB configuration in 9.2.1 of 38.331
+  UE->Srb[srb_id].pdcp = new_nr_pdcp_entity(NR_PDCP_SRB,
+                                true,   /* is_gnb */
+                                UE->rrc_ue_id,
+                                srb_id,
+                                0,      // PDU session ID (not relevant)
+                                false,  // has SDAP RX (not relevant)
+                                false,  // has SDAP TX (not relevant)
+                                srb_deliver_sdu,
+                                (void *)rrc,
+                                NULL,
+                                NULL,
+                                SHORT_SN_SIZE,
+                                t_Reordering,
+                                -1,
+                                &security_parameters);
 }
 
 //-----------------------------------------------------------------------------
@@ -854,30 +882,43 @@ static void rrc_gNB_generate_RRCReestablishment(rrc_gNB_ue_context_t *ue_context
   /* SRBs */
   for (int srb_id = 1; srb_id < NR_NUM_SRB; srb_id++) {
     if (ue_p->Srb[srb_id].Active)
-      nr_pdcp_config_set_security(ue_p->rrc_ue_id, srb_id, true, &security_parameters);
+      ue_p->Srb[srb_id].pdcp->set_security(ue_p->Srb[srb_id].pdcp, &security_parameters);
   }
   /* Re-establish PDCP for SRB1, according to 5.3.7.4 of 3GPP TS 38.331 */
-  nr_pdcp_reestablishment(ue_p->rrc_ue_id,
-                          1,
-                          true,
-                          &security_parameters);
+  ue_p->Srb[1].pdcp->reestablish_entity(ue_p->Srb[1].pdcp, &security_parameters);
   /* F1AP DL RRC Message Transfer */
   f1_ue_data_t ue_data = cu_get_f1_ue_data(ue_p->rrc_ue_id);
   RETURN_IF_INVALID_ASSOC_ID(ue_data.du_assoc_id);
   uint32_t old_gNB_DU_ue_id = old_rnti;
+  int srb_id = DL_SCH_LCID_DCCH;
   f1ap_dl_rrc_message_t dl_rrc = {.gNB_CU_ue_id = ue_p->rrc_ue_id,
                                   .gNB_DU_ue_id = ue_data.secondary_ue,
-                                  .srb_id = DL_SCH_LCID_DCCH,
+                                  .srb_id = srb_id,
                                   .old_gNB_DU_ue_id = &old_gNB_DU_ue_id};
   deliver_dl_rrc_message_data_t data = {.rrc = rrc, .dl_rrc = &dl_rrc, .assoc_id = ue_data.du_assoc_id};
-  nr_pdcp_data_req_srb(ue_p->rrc_ue_id, DL_SCH_LCID_DCCH, rrc_gNB_mui++, size, (unsigned char *const)buffer, rrc_deliver_dl_rrc_message, &data);
+
+  int pdu_max_size = nr_max_pdcp_pdu_size(size);
+  uint8_t pdu_buf[pdu_max_size];
+  mui_t mui = rrc_gNB_mui;
+  rrc_gNB_mui++;
+  int pdu_size = ue_p->Srb[srb_id].pdcp->process_sdu(ue_p->Srb[srb_id].pdcp,
+                                                        buffer,
+                                                        size,
+                                                        mui,
+                                                        pdu_buf,
+                                                        pdu_max_size);
+  if (pdu_size == -1) {
+    LOG_E(NR_RRC, "PDCP process_sdu failed\n");
+    return;
+  }
+  rrc_deliver_dl_rrc_message(&data, ue_p->rrc_ue_id, srb_id, pdu_buf, pdu_size, mui);
 
   /* RRCReestablishment has been generated, let's enable ciphering now. */
   security_parameters.ciphering_algorithm = ue_p->ciphering_algorithm;
   /* SRBs */
   for (int srb_id = 1; srb_id < NR_NUM_SRB; srb_id++) {
     if (ue_p->Srb[srb_id].Active)
-      nr_pdcp_config_set_security(ue_p->rrc_ue_id, srb_id, true, &security_parameters);
+      ue_p->Srb[srb_id].pdcp->set_security(ue_p->Srb[srb_id].pdcp, &security_parameters);
   }
 }
 
@@ -938,7 +979,7 @@ static void rrc_gNB_process_RRCReestablishmentComplete(gNB_RRC_INST *rrc, gNB_RR
     nr_derive_key(RRC_ENC_ALG, ue_p->ciphering_algorithm, ue_p->kgnb, security_parameters.ciphering_key);
     nr_derive_key(RRC_INT_ALG, ue_p->integrity_algorithm, ue_p->kgnb, security_parameters.integrity_key);
 
-    nr_pdcp_reestablishment(ue_p->rrc_ue_id, srb_id, true, &security_parameters);
+    ue_p->Srb[srb_id].pdcp->reestablish_entity(ue_p->Srb[srb_id].pdcp, &security_parameters);
   }
   /* PDCP Reestablishment of DRBs according to 5.3.5.6.5 of 3GPP TS 38.331 (over E1) */
   cuup_notify_reestablishment(rrc, ue_p);
@@ -1061,7 +1102,7 @@ static void rrc_handle_RRCSetupRequest(gNB_RRC_INST *rrc,
   UE->establishment_cause = rrcSetupRequest->establishmentCause;
   UE->nr_cellid = msg->nr_cellid;
   UE->masterCellGroup = cellGroupConfig;
-  activate_srb(UE, 1);
+  activate_srb(rrc, UE, 1);
   rrc_gNB_generate_RRCSetup(0, msg->crnti, ue_context_p, msg->du2cu_rrc_container, msg->du2cu_rrc_container_length);
 }
 
@@ -1227,7 +1268,7 @@ fallback_rrc_setup:
     rrc_gNB_send_NGAP_UE_CONTEXT_RELEASE_REQ(0, ue_context_p, NGAP_CAUSE_RADIO_NETWORK, ngap_cause);
 
   rrc_gNB_ue_context_t *new = rrc_gNB_create_ue_context(assoc_id, msg->crnti, rrc, random_value, msg->gNB_DU_ue_id);
-  activate_srb(&new->ue_context, 1);
+  activate_srb(rrc, &new->ue_context, 1);
   rrc_gNB_generate_RRCSetup(0, msg->crnti, new, msg->du2cu_rrc_container, msg->du2cu_rrc_container_length);
   return;
 }
@@ -1765,6 +1806,33 @@ static int rrc_gNB_decode_dcch(gNB_RRC_INST *rrc, const f1ap_ul_rrc_message_t *m
   return 0;
 }
 
+static int rrc_gNB_process_F1AP_UL_RRC_MESSAGE(MessageDef *msg_p, instance_t instance)
+{
+  f1ap_ul_rrc_message_t *msg = &F1AP_UL_RRC_MESSAGE(msg_p);
+  gNB_RRC_INST *rrc = RC.nrrrc[instance];
+
+  /* we look up by CU UE ID! Do NOT change back to RNTI! */
+  rrc_gNB_ue_context_t *ue_context_p = rrc_gNB_get_ue_context(rrc, msg->gNB_CU_ue_id);
+  if (!ue_context_p) {
+    LOG_E(RRC, "could not find UE context for CU UE ID %u, aborting transaction\n", msg->gNB_CU_ue_id);
+    return -1;
+  }
+
+  gNB_RRC_UE_t *UE = &ue_context_p->ue_context;
+
+  /* only accept srb 1 and 2 (may be changed if needed) */
+  AssertFatal(msg->srb_id >= 1 && msg->srb_id <= 2, "bad srb_id, should be in [1..2] but is %d\n", msg->srb_id);
+
+  if (UE->Srb[msg->srb_id].pdcp == NULL) {
+    LOG_E(RRC, "srb %d does not exist for UE %x\n", msg->srb_id, UE->rnti);
+    return -1;
+  }
+
+  UE->Srb[msg->srb_id].pdcp->recv_pdu(UE->Srb[msg->srb_id].pdcp, msg->rrc_container, msg->rrc_container_length);
+
+  return 0;
+}
+
 void rrc_gNB_process_initial_ul_rrc_message(sctp_assoc_t assoc_id, const f1ap_initial_ul_rrc_message_t *ul_rrc)
 {
   AssertFatal(assoc_id != 0, "illegal assoc_id == 0: should be -1 (monolithic) or >0 (split)\n");
@@ -1989,18 +2057,7 @@ static void rrc_CU_process_ue_context_release_request(MessageDef *msg_p, sctp_as
   rrc_gNB_ue_context_t *ue_context_p = rrc_gNB_get_ue_context(rrc, req->gNB_CU_ue_id);
   // TODO what happens if no AMF connected? should also handle, set an_release true
   if (!ue_context_p) {
-    LOG_W(RRC, "could not find UE context for CU UE ID %u: auto-generate release command\n", req->gNB_CU_ue_id);
-    uint8_t buffer[RRC_BUF_SIZE] = {0};
-    int size = do_NR_RRCRelease(buffer, RRC_BUF_SIZE, rrc_gNB_get_next_transaction_identifier(0));
-    f1ap_ue_context_release_cmd_t ue_context_release_cmd = {
-        .gNB_CU_ue_id = req->gNB_CU_ue_id,
-        .gNB_DU_ue_id = req->gNB_DU_ue_id,
-        .cause = F1AP_CAUSE_RADIO_NETWORK,
-        .cause_value = 10, // 10 = F1AP_CauseRadioNetwork_normal_release
-        .srb_id = DCCH,
-    };
-    deliver_ue_ctxt_release_data_t data = {.rrc = rrc, .release_cmd = &ue_context_release_cmd};
-    nr_pdcp_data_req_srb(req->gNB_CU_ue_id, DCCH, rrc_gNB_mui++, size, buffer, rrc_deliver_ue_ctxt_release_cmd, &data);
+    LOG_W(RRC, "could not find UE context for CU UE ID %u, abandon UE Context Release Request\n", req->gNB_CU_ue_id);
     return;
   }
 
@@ -2048,10 +2105,12 @@ static void rrc_delete_ue_data(gNB_RRC_UE_t *UE)
 void rrc_remove_ue(gNB_RRC_INST *rrc, rrc_gNB_ue_context_t *ue_context_p)
 {
   gNB_RRC_UE_t *UE = &ue_context_p->ue_context;
-  /* we call nr_pdcp_remove_UE() in the handler of E1 bearer release, but if we
-   * are in E1, we also need to free the UE in the CU-CP, so call it twice to
-   * cover all cases */
-  nr_pdcp_remove_UE(UE->rrc_ue_id);
+  for (int i = 0; i < NR_NUM_SRB; i++) {
+    if (UE->Srb[i].pdcp != NULL) {
+      UE->Srb[i].pdcp->delete_entity(UE->Srb[i].pdcp);
+      UE->Srb[i].pdcp = NULL;
+    }
+  }
   uint32_t pdu_sessions[256];
   for (int i = 0; i < UE->nb_of_pdusessions && i < 256; ++i)
     pdu_sessions[i] = UE->pduSession[i].param.pdusession_id;
@@ -2522,7 +2581,7 @@ void *rrc_gnb_task(void *args_p) {
       /* Messages from PDCP */
       /* From DU -> CU */
       case F1AP_UL_RRC_MESSAGE:
-        rrc_gNB_decode_dcch(RC.nrrrc[instance], &F1AP_UL_RRC_MESSAGE(msg_p));
+        rrc_gNB_process_F1AP_UL_RRC_MESSAGE(msg_p, instance);
         free_ul_rrc_message_transfer(&F1AP_UL_RRC_MESSAGE(msg_p));
         break;
 
@@ -2684,15 +2743,30 @@ void rrc_gNB_generate_RRCRelease(gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE)
   LOG_UE_DL_EVENT(UE, "Send RRC Release\n");
   f1_ue_data_t ue_data = cu_get_f1_ue_data(UE->rrc_ue_id);
   RETURN_IF_INVALID_ASSOC_ID(ue_data.du_assoc_id);
+  int srb_id = DL_SCH_LCID_DCCH;
   f1ap_ue_context_release_cmd_t ue_context_release_cmd = {
     .gNB_CU_ue_id = UE->rrc_ue_id,
     .gNB_DU_ue_id = ue_data.secondary_ue,
     .cause = F1AP_CAUSE_RADIO_NETWORK,
     .cause_value = 10, // 10 = F1AP_CauseRadioNetwork_normal_release
-    .srb_id = DL_SCH_LCID_DCCH,
+    .srb_id = srb_id,
   };
   deliver_ue_ctxt_release_data_t data = {.rrc = rrc, .release_cmd = &ue_context_release_cmd, .assoc_id = ue_data.du_assoc_id};
-  nr_pdcp_data_req_srb(UE->rrc_ue_id, DL_SCH_LCID_DCCH, rrc_gNB_mui++, size, buffer, rrc_deliver_ue_ctxt_release_cmd, &data);
+  int pdu_max_size = nr_max_pdcp_pdu_size(size);
+  uint8_t pdu_buf[pdu_max_size];
+  mui_t mui = rrc_gNB_mui;
+  rrc_gNB_mui++;
+  int pdu_size = UE->Srb[srb_id].pdcp->process_sdu(UE->Srb[srb_id].pdcp,
+                                                   buffer,
+                                                   size,
+                                                   mui,
+                                                   pdu_buf,
+                                                   pdu_max_size);
+  if (pdu_size == -1) {
+    LOG_E(NR_RRC, "PDCP process_sdu failed\n");
+    return;
+  }
+  rrc_deliver_ue_ctxt_release_cmd(&data, UE->rrc_ue_id, srb_id, pdu_buf, pdu_size, mui);
 }
 
 int rrc_gNB_generate_pcch_msg(sctp_assoc_t assoc_id, const NR_SIB1_t *sib1, uint32_t tmsi, uint8_t paging_drx)
@@ -2805,7 +2879,7 @@ void rrc_gNB_generate_UeContextSetupRequest(const gNB_RRC_INST *rrc,
 
   int nb_srb = 1;
   f1ap_srb_to_be_setup_t srbs[1] = {{.srb_id = 2, .lcid = 2}};
-  activate_srb(ue_p, 2);
+  activate_srb(rrc, ue_p, 2);
 
   /* the callback will fill the UE context setup request and forward it */
   f1_ue_data_t ue_data = cu_get_f1_ue_data(ue_p->rrc_ue_id);

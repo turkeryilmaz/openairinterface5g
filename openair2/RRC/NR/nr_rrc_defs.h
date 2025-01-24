@@ -54,6 +54,7 @@
 #include "NR_UE-MRDC-Capability.h"
 #include "NR_UE-NR-Capability.h"
 #include "intertask_interface.h"
+#include "nr_pdcp/nr_pdcp_entity.h"
 
 // 3GPP TS 38.331 Section 12 Table 12.1-1: UE performance requirements for RRC procedures for UEs
 #define NR_RRC_SETUP_DELAY_MS           10
@@ -179,6 +180,12 @@ typedef enum {
 
 /* forward declaration */
 typedef struct nr_handover_context_s nr_handover_context_t;
+
+typedef struct SRB_INFO_TABLE_ENTRY_NR_s {
+  uint8_t Active;
+  uint8_t status;
+  nr_pdcp_entity_t *pdcp;
+} NR_SRB_INFO_TABLE_ENTRY;
 
 typedef struct gNB_RRC_UE_s {
   time_t last_seen; // last time this UE has been accessed

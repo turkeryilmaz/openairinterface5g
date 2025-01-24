@@ -807,6 +807,7 @@ void add_srb(int is_gnb,
   } else {
     pdcp_srb = new_nr_pdcp_entity(NR_PDCP_SRB,
                                   is_gnb,
+                                  UEid,
                                   srb_id,
                                   0,      // PDU session ID (not relevant)
                                   false,  // has SDAP RX (not relevant)
@@ -903,7 +904,7 @@ void add_drb(int is_gnb,
   if (nr_pdcp_get_rb(ue, drb_id, false) != NULL) {
     LOG_W(PDCP, "warning DRB %d already exist for UE ID %ld, do nothing\n", drb_id, UEid);
   } else {
-    pdcp_drb = new_nr_pdcp_entity(NR_PDCP_DRB_AM, is_gnb, drb_id, pdusession_id,
+    pdcp_drb = new_nr_pdcp_entity(NR_PDCP_DRB_AM, is_gnb, UEid, drb_id, pdusession_id,
                                   has_sdap_rx, has_sdap_tx, deliver_sdu_drb, ue,
                                   is_gnb ?
                                     deliver_pdu_drb_gnb : deliver_pdu_drb_ue,
