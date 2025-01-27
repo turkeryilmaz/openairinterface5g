@@ -58,13 +58,17 @@ void *nrmac_stats_thread(void *arg) {
   char output[MACSTATSSTRLEN] = {0};
   const char *end = output + MACSTATSSTRLEN;
   FILE *file = fopen("nrMAC_stats.log","w");
+  FILE *file_runlog = fopen("statsMAC.log", "a");
+
   AssertFatal(file!=NULL,"Cannot open nrMAC_stats.log, error %s\n",strerror(errno));
+  AssertFatal(file_runlog != NULL, "Cannot open run.log, error %s\n", strerror(errno));
 
   while (oai_exit == 0) {
     char *p = output;
     NR_SCHED_LOCK(&gNB->sched_lock);
-    p += dump_mac_stats(gNB, p, end - p, false);
+    size_t stats_length = dump_mac_stats(gNB, output, end - output, false);
     NR_SCHED_UNLOCK(&gNB->sched_lock);
+    p += stats_length;
     p += snprintf(p, end - p, "\n");
     p += print_meas_log(&gNB->eNB_scheduler, "DL & UL scheduling timing", NULL, NULL, p, end - p);
     p += print_meas_log(&gNB->schedule_dlsch, "dlsch scheduler", NULL, NULL, p, end - p);
@@ -74,125 +78,43 @@ void *nrmac_stats_thread(void *arg) {
     p += print_meas_log(&gNB->nr_srs_tpmi_computation_timer, "UL-TPMI computation time", NULL, NULL, p, end - p);
     fwrite(output, p - output, 1, file);
     fflush(file);
+    fwrite(output, stats_length, 1, file_runlog);
+    fflush(file_runlog);
+
     sleep(1);
     fseek(file,0,SEEK_SET);
   }
   fclose(file);
+  fclose(file_runlog);
   return NULL;
 }
 
-#ifdef USE_E3_UDS
-// This code may be integrated later with common/utils/T/tracer/utils.c
-int create_listen_uds_socket(char *path)
+#ifdef E3_AGENT
+void *prb_update_thread(void *arg)
 {
-  struct sockaddr_un a;
-  int s;
-  int v;
-  s = socket(AF_UNIX, SOCK_STREAM, 0);
+  gNB_MAC_INST *gNB = (gNB_MAC_INST *)arg;
 
-  if (s == -1) {
-    perror("socket");
-    exit(1);
-  }
-
-  v = 1;
-
-  if (setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &v, sizeof(int))) {
-    perror("setsockopt");
-    exit(1);
-  }
-
-  // Bind the socket to a file path
-  memset(&a, 0, sizeof(struct sockaddr_un));
-  a.sun_family = AF_UNIX;
-  strncpy(a.sun_path, path, sizeof(a.sun_path) - 1);
-
-  // Remove any existing socket file
-  unlink(path);
-
-  if (bind(s, (struct sockaddr *)&a, sizeof(a)) == -1) {
-    perror("Bind failed");
-    close(s);
-    exit(1);
-  }
-
-    // Set permissions to 770 (rwxrwx---) to make sure groups can access
-    if (chmod(path, 0770) == -1) {
-        perror("Failed to change permissions");
-        close(s);
-        exit(1);
+  while (1) {
+    pthread_mutex_lock(&e3_agent_control->mutex);
+    while (!e3_agent_control->ready) {
+      pthread_cond_wait(&e3_agent_control->cond, &e3_agent_control->mutex);
     }
 
-  // Listen for incoming connections
-  if (listen(s, 5) == -1) {
-    perror("Listen failed");
-    close(s);
-    exit(1);
-  }
+    NR_SCHED_LOCK(&gNB->sched_lock);
+    for (int j = 0; j < 275; j++) {
+      gNB->dyn_prbbl[j] = 0;
+    }
 
-  return s;
-}
+    for (int j = 0; j < e3_agent_control->action_size; j++) {
+      gNB->dyn_prbbl[(e3_agent_control->action_list[2 * j + 1] << 8 & 0xFF) | (e3_agent_control->action_list[2 * j] & 0xFF)] = 0x3FFF;
+    }
 
-int get_uds_connection(char *path)
-{
-  int s, t;
-  printf("waiting for connection on %s\n", path);
-  s = create_listen_uds_socket(path);
-  t = socket_accept(s);
+    NR_SCHED_UNLOCK(&gNB->sched_lock);
 
-  if (t == -1) {
-    perror("accept");
-    exit(1);
-  }
+    free(e3_agent_control->action_list);
 
-  close(s);
-  printf("connected\n");
-  return t;
-}
-#endif
-
-#ifdef E3_AGENT
-void *prb_update_thread(void *arg) {
-
-  gNB_MAC_INST *gNB = (gNB_MAC_INST *)arg;
-#ifndef USE_E3_UDS
-  char *addr = "127.0.0.1";
-  int port = 9999;
-#endif
-  int s;
-  pthread_mutex_t lock;
-
-#ifdef USE_E3_UDS
-  printf("connecting to %s\n", DAPP_SOCKET_PATH);
-  s=get_uds_connection(DAPP_SOCKET_PATH);
-#else
-  printf("connecting to %s:%d\n", addr, port);
-  s=get_connection(addr,port);
-#endif
-  gNB->prb_thread_listen_sock = s;
-
-  char buf[2],l,*buffer;
-  int len;
-
-  while(1) {
-    l = read(gNB->prb_thread_listen_sock, buf, 2);
-    if (l == 2) {
-      pthread_mutex_lock(&lock);
-      len = ((buf[1]<<8) & 0xFF) | (buf[0] & 0xFF);
-      buffer = (char*)malloc(len*sizeof(uint16_t));
-      l = read(gNB->prb_thread_listen_sock, buffer, len*2);
-
-      for(int j=0;j<275;j++){
-        gNB->dyn_prbbl[j] = 0;
-      }
-
-      for(int j=0;j<len;j++){
-        gNB->dyn_prbbl[(buffer[2*j+1]<<8 & 0xFF) | (buffer[2*j]& 0xFF)] = 0x3FFF;
-      }
-
-      free(buffer);
-      pthread_mutex_unlock(&lock);
-	}
+    e3_agent_control->ready = 0; // Reset ready flag for next production
+    pthread_mutex_unlock(&e3_agent_control->mutex);
   }
   return NULL;
 }
@@ -260,12 +182,14 @@ size_t dump_mac_stats(gNB_MAC_INST *gNB, char *output, size_t strlen, bool reset
 
     output += snprintf(output,
                        end - output,
-                       ", dlsch_errors %"PRIu64", pucch0_DTX %d, BLER %.5f MCS (%d) %d\n",
+                       ", dlsch_errors %"PRIu64", pucch0_DTX %d, BLER %.5f MCS (%d) %d (Qm %d) \n",
                        stats->dl.errors,
                        stats->pucch0_DTX,
                        sched_ctrl->dl_bler_stats.bler,
                        UE->current_DL_BWP.mcsTableIdx,
-                       sched_ctrl->dl_bler_stats.mcs);
+                       sched_ctrl->dl_bler_stats.mcs,
+                       nr_get_Qm_dl(sched_ctrl->dl_bler_stats.mcs,UE->current_DL_BWP.mcsTableIdx)
+                       );
     if (reset_rsrp) {
       stats->num_rsrp_meas = 0;
       stats->cumul_rsrp = 0;

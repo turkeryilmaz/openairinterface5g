@@ -1033,6 +1033,18 @@ void nr_schedule_ue_spec(module_id_t module_id,
           sched_pdsch->pucch_allocation,
           sched_ctrl->tpc1);
 
+    FILE *file = fopen("statsPRB.log", "a");
+    AssertFatal(file != NULL, "Cannot open statsPRB.log, error %s\n", strerror(errno));
+
+    fprintf(file,
+            "start %3d RBs %3d startSymbol %2d nb_symbol %2d\n",
+            sched_pdsch->rbStart,
+            sched_pdsch->rbSize,
+            tda_info->startSymbolIndex,
+            tda_info->nrOfSymbols);
+    // Close the file
+    fclose(file);
+
     const int bwp_id = current_BWP->bwp_id;
     const int coresetid = sched_ctrl->coreset->controlResourceSetId;
 
