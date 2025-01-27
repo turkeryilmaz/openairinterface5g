@@ -751,7 +751,7 @@ int nr_ue_process_sci1_indication_pdu(NR_UE_MAC_INST_t *mac,module_id_t mod_id,f
   rx_config.sl_rx_config_list[0].pdu_type =  SL_NR_CONFIG_TYPE_RX_PSSCH_SCI;
 
   nr_scheduled_response_t scheduled_response;
-  memset(&scheduled_response,0, sizeof(nr_scheduled_response_t));
+  memset(&scheduled_response, 0, sizeof(nr_scheduled_response_t));
 
   fill_scheduled_response(&scheduled_response,NULL,NULL,NULL,&rx_config,NULL,mod_id,0,frame,slot,phy_data);
   LOG_D(NR_MAC, "[UE%d] TTI-%d:%d RX PSSCH_SCI REQ \n", mod_id,frame, slot);
@@ -980,7 +980,7 @@ int nr_ue_process_sci2_indication_pdu(NR_UE_MAC_INST_t *mac, module_id_t mod_id,
                               &rx_config);
   }
   nr_scheduled_response_t scheduled_response;
-  memset(&scheduled_response,0, sizeof(nr_scheduled_response_t));
+  memset(&scheduled_response, 0, sizeof(nr_scheduled_response_t));
 
   fill_scheduled_response(&scheduled_response,NULL,NULL,NULL,&rx_config,NULL,mod_id,0,frame,slot,phy_data);
   LOG_D(NR_MAC, "[UE%d] TTI-%d:%d RX PSSCH_SLSCH REQ \n", mod_id,frame, slot);

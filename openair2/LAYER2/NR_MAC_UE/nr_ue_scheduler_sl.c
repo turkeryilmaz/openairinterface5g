@@ -921,7 +921,7 @@ static void sl_schedule_tx_actions(nr_sidelink_indication_t *sl_ind, NR_UE_MAC_I
   sl_nr_ue_mac_params_t *sl_mac = mac->SL_MAC_PARAMS;
   int ue_id = mac->ue_id;
   nr_scheduled_response_t scheduled_response;
-  memset(&scheduled_response,0, sizeof(nr_scheduled_response_t));
+  memset(&scheduled_response, 0, sizeof(nr_scheduled_response_t));
 
   int tx_action = 0;
   tx_action = sl_mac->future_ttis[sl_ind->slot_tx].sl_action;
