@@ -165,7 +165,7 @@ uint8_t sl_determine_if_SSB_slot(uint16_t frame, uint16_t slot, uint16_t slots_p
     if (num_ssb < sl_NumSSB_WithinPeriod && slot_in_16frames == ssb_slot) {
       num_ssb += 1;
       ssb_slot = (num_ssb < sl_NumSSB_WithinPeriod) ? (ssb_slot + sl_TimeInterval) : sl_TimeOffsetSSB;
-
+      // EpiSci TODO: Check slot_type == SIDELINK_SLOT_TYPE_RX is needed or not
       sl_bch->ssb_slot = ssb_slot;
       sl_bch->num_ssb = num_ssb;
 
@@ -1057,11 +1057,11 @@ void nr_ue_sidelink_scheduler(nr_sidelink_indication_t *sl_ind, NR_UE_MAC_INST_t
       // Check if PSBCH slot and PSBCH should be transmitted or Received
       tti_action = sl_psbch_scheduler(sl_mac, ue_id, frame, slot);
 
-      // TBD .. Check for Actions coming out of TX resource pool
-      if (resource && mac->is_synced && !tti_action && sl_mac->sl_TxPool[0])
+      // Check for Actions coming out of TX resource pool
+      if (resource && sl_mac->is_synced && !tti_action && sl_mac->sl_TxPool[0])
         tti_action = sl_tx_scheduler(mac, frame, slot, &tx_config, resource, sl_ind, psfch_period, mu);
 
-      //TBD .. Check for Actions coming out of RX resource pool
+      // Check for Actions coming out of RX resource pool
       if (!tti_action && sl_mac->sl_RxPool[0])
         tti_action = sl_rx_scheduler(mac, frame, slot, &rx_config, sl_ind, psfch_period, mu);
 

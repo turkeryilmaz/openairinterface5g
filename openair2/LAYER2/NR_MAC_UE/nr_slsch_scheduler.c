@@ -242,7 +242,7 @@ void nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP, int slotP, nr_sci_pdu_
       sci_pdu->psfch_overhead.val = 0;
   }
 
-  sci_pdu->reserved.val = mac->is_synced ? 1 : 0;
+  sci_pdu->reserved.val = sl_mac->is_synced ? 1 : 0;
   sci_pdu->conflict_information_receiver.val = 0;
   sci_pdu->beta_offset_indicator = 0;
   sci2_pdu->harq_pid = cur_harq->sl_harq_pid;

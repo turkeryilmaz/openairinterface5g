@@ -841,6 +841,8 @@ uint32_t compute_FRIV(uint8_t sl_max_num_per_reserve,
                       uint8_t N_sl_subch);
 
 void print_candidate_list(List_t *candidate_resources, int line);
+
 void print_reserved_list(List_t *candidate_resources, int line);
+
 void print_sensing_data_list(List_t *sensing_data, int line);
 #endif

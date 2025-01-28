@@ -711,8 +711,8 @@ int nr_ue_process_sci1_indication_pdu(NR_UE_MAC_INST_t *mac,module_id_t mod_id,f
   if (mac->sl_sensing_data.size > 1)
     remove_old_sensing_data(&sensing_data.frame_slot, sl_mac->sl_RxPool[0]->t0, &mac->sl_sensing_data, sl_mac);
 
-  if (sci_pdu->reserved.val && !mac->is_synced) {
-    mac->is_synced = true;
+  if (sci_pdu->reserved.val && !sl_mac->is_synced) {
+    sl_mac->is_synced = true;
     LOG_D(NR_PHY, "Nearby UE is synced now!!!\n");
   }
   LOG_D(NR_MAC,"SCI1A: frequency_resource %d, time_resource %d, dmrs_pattern %d, beta_offset_indicator %d, mcs %d, number_of_dmrs_port %d, 2nd stage SCI format %d\n",

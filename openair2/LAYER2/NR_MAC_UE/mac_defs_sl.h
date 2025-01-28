@@ -27,6 +27,7 @@
 #include "NR_TDD-UL-DL-ConfigCommon.h"
 #include "NR_MAC_COMMON/nr_mac.h"
 #include "NR_UE_PHY_INTERFACE/NR_IF_Module.h"
+#include "NR_MAC_COMMON/nr_mac_common.h"
 
 #define HARQ_ROUND_MAX 4
 #define SL_NR_MAC_NUM_RX_RESOURCE_POOLS 1
@@ -240,6 +241,7 @@ typedef struct sl_nr_ue_mac_params {
 
   sl_stored_tti_req_t *future_ttis;
   NR_bler_options_t sl_bler;
+  bool is_synced;
 
 } sl_nr_ue_mac_params_t;
 

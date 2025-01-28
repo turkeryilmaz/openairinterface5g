@@ -399,7 +399,7 @@ void fill_uci_harq_indication_UE_MAC(int Mod_id,
 
   pdu->ul_cqi_information.tl.tag = NFAPI_UL_CQI_INFORMATION_TAG;
 
-  int SNRtimes10 = 640;  // TODO: Replace with EpiSci SNR * 10
+  int SNRtimes10 = 640;  // EpiSci TODO: Replace with SNR * 10
 
   if (SNRtimes10 < -640)
     pdu->ul_cqi_information.ul_cqi = 0;
