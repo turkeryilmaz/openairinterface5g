@@ -526,6 +526,14 @@ int CU_send_UE_CONTEXT_SETUP_REQUEST(sctp_assoc_t assoc_id, f1ap_ue_context_setu
         asn1cCalloc(drbs_toBeSetup_item->duplicationActivation, tmp);
         *tmp = F1AP_DuplicationActivation_active;  // enum
       }
+
+      F1AP_ProtocolExtensionContainer_10696P82_t *p = calloc_or_fail(1, sizeof(*p));
+      drbs_toBeSetup_item->iE_Extensions = (struct F1AP_ProtocolExtensionContainer*)p;
+      asn1cSequenceAdd(p->list, F1AP_DRBs_ToBeSetup_ItemExtIEs_t, ie_ext);
+      ie_ext->id = F1AP_ProtocolIE_ID_id_DLPDCPSNLength;
+      ie_ext->criticality = F1AP_Criticality_ignore;
+      ie_ext->extensionValue.present = F1AP_DRBs_ToBeSetup_ItemExtIEs__extensionValue_PR_PDCPSNLength;
+      ie_ext->extensionValue.choice.PDCPSNLength = F1AP_PDCPSNLength_eighteen_bits;
     }
   }
 
