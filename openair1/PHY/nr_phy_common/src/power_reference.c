@@ -9,8 +9,6 @@
  *
  *      http://www.openairinterface.org/?page_id=698
  *
- * Author and copyright: Laurent Thomas, open-cells.com
- *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -21,18 +19,20 @@
  *      contact@openairinterface.org
  */
 
-#ifndef __RFSIMULATOR_H
-#define __RFSIMULATOR_H
-#include "openair1/PHY/TOOLS/tools_defs.h"
-#include "openair1/SIMULATION/TOOLS/sim.h"
-void rxAddInput(const c16_t *input_sig,
-                c16_t *after_channel_sig,
-                int rxAnt,
-                channel_desc_t *channelDesc,
-                int nbSamples,
-                uint64_t TS,
-                uint32_t CirSize,
-                int16_t tx_power_reference,
-                int16_t rx_power_reference);
+#include <stdint.h>
+#include <math.h>
+#include "power_reference.h"
 
-#endif
+#define FULLSCALE INT16_MAX
+
+float calculate_average_rx_power(float rms_squared, float rx_power_reference)
+{
+  const float rms_fullscale = 0.707 * FULLSCALE;
+  return rx_power_reference + 10 * log10(rms_squared / (rms_fullscale * rms_fullscale));
+}
+
+void get_amp_and_power_reference(float requested_power_per_subcarrier, int amp_backoff_db, uint16_t *amp, float *new_power_reference)
+{
+  *new_power_reference = requested_power_per_subcarrier + amp_backoff_db;
+  *amp = (int16_t)fmax((FULLSCALE / pow(10.0, amp_backoff_db / 20.0)), 128);
+}

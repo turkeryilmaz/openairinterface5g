@@ -182,6 +182,8 @@ typedef struct {
   poll_telnetcmdq_func_t poll_telnetcmdq;
   int wait_timeout;
   double prop_delay_ms;
+  int tx_power_reference;
+  int rx_power_reference;
 } rfsimulator_state_t;
 
 
@@ -732,7 +734,7 @@ static int rfsimulator_write_internal(rfsimulator_state_t *t, openair0_timestamp
     buffer_t *b=&t->buf[i];
 
     if (b->conn_sock >= 0 ) {
-      samplesBlockHeader_t header = {nsamps, nbAnt, timestamp};
+      samplesBlockHeader_t header = {nsamps, nbAnt, timestamp, 0, 0, t->tx_power_reference};
       fullwrite(b->conn_sock,&header, sizeof(header), t);
       sample_t tmpSamples[nsamps][nbAnt];
 
@@ -1024,20 +1026,48 @@ static int rfsimulator_read(openair0_device *device, openair0_timestamp *ptimest
                      ptr->channel_model,
                      nsamps,
                      t->nextRxTstamp,
-                     CirSize);
+                     CirSize,
+                     ptr->th.tx_power_reference,
+                     t->rx_power_reference);
         }
         else { // no channel modeling
+          int digital_sample_gain_dB = ptr->th.tx_power_reference - t->rx_power_reference;
+          const double gain_linear = pow(10, digital_sample_gain_dB/ 20.0);
           int nbAnt_tx = ptr->th.nbAnt; // number of Tx antennas
           int firstIndex = (CirSize + t->nextRxTstamp - t->chan_offset) % CirSize;
           sample_t *out = (sample_t *)samplesVoid[a];
-          if ((nbAnt_tx == 1) && ((nb_ue == 1) || (t->role == SIMU_ROLE_CLIENT))) { // optimized for 1 Tx and 1 UE
-            sample_t *firstSample = (sample_t *)&(ptr->circularBuf[firstIndex]);
-            if (firstIndex + nsamps > CirSize) {
-              int tailSz = CirSize - firstIndex;
-              memcpy(out, firstSample, sampleToByte(tailSz, 1));
-              memcpy(out + tailSz, &ptr->circularBuf[0], sampleToByte(nsamps - tailSz, 1));
+          if ((nbAnt_tx == 1) && ((nb_ue == 1) || (t->role == SIMU_ROLE_CLIENT))) {
+            if (digital_sample_gain_dB == 0) {
+              // optimized for 1 Tx and 1 UE
+              sample_t *firstSample = (sample_t *)&(ptr->circularBuf[firstIndex]);
+              if (firstIndex + nsamps > CirSize) {
+                int tailSz = CirSize - firstIndex;
+                memcpy(out, firstSample, sampleToByte(tailSz, 1));
+                memcpy(out + tailSz, &ptr->circularBuf[0], sampleToByte(nsamps - tailSz, 1));
+              } else {
+                memcpy(out, firstSample, sampleToByte(nsamps, 1));
+              }
             } else {
-              memcpy(out, firstSample, sampleToByte(nsamps, 1));
+              sample_t *firstSample = (sample_t *)&(ptr->circularBuf[firstIndex]);
+              if (firstIndex + nsamps > CirSize) {
+                int16_t *samples = (int16_t*)out;
+                int16_t *in = (int16_t*)firstSample;
+                int tailSz = CirSize - firstIndex;
+                for (int i = 0; i < tailSz * 2; i++) {
+                  samples[i] = lround(in[i] * gain_linear);
+                }
+                samples = (int16_t*)&out[tailSz];
+                in = (int16_t*)ptr->circularBuf;
+                for (int i = 0; i < (nsamps - tailSz) * 2; i++) {
+                  samples[i] = lround(in[i] * gain_linear);
+                }
+              } else {
+                int16_t *samples = (int16_t*)out;
+                int16_t *in = (int16_t*)firstSample;
+                for (int i = 0; i < nsamps * 2; i++) {
+                  samples[i] = lround(in[i] * gain_linear);
+                }
+              }
             }
           } else {
             // SIMD (with simde) optimization might be added here later
@@ -1045,7 +1075,7 @@ static int rfsimulator_read(openair0_device *device, openair0_timestamp *ptimest
                                         {0.2, 1.0, 0.2, 0.1}, // rx 1
                                         {0.1, 0.2, 1.0, 0.2}, // rx 2
                                         {0.05, 0.1, 0.2, 1.0}}; // rx 3
-
+            // TODO: Apply gain_linear here
             LOG_D(HW, "nbAnt_tx %d\n", nbAnt_tx);
             for (int i = 0; i < nsamps; i++) { // loop over nsamps
               for (int a_tx = 0; a_tx < nbAnt_tx; a_tx++) { // sum up signals from nbAnt_tx antennas
@@ -1115,17 +1145,39 @@ void do_not_free_integer(void *integer)
   (void)integer;
 }
 
+static int rfsimulator_set_rx_power_reference(openair0_device *device, openair0_config_t *openair0_cfg) {
+  rfsimulator_state_t *s = device->priv;
+  s->rx_power_reference = (int)openair0_cfg->rx_power_reference;
+  return 0;
+}
+
+static int rfsimulator_get_rx_power_reference(openair0_device *device) {
+  rfsimulator_state_t *s = device->priv;
+  return s->rx_power_reference;
+}
+
+static int rfsimulator_get_tx_power_reference(openair0_device *device) {
+  rfsimulator_state_t *s = device->priv;
+  return s->tx_power_reference;
+}
+
+static int rfsimulator_set_tx_power_reference(openair0_device *device, openair0_config_t *openair0_cfg) {
+  rfsimulator_state_t *s = device->priv;
+  s->tx_power_reference = (int)openair0_cfg->tx_power_reference;
+  return 0;
+}
+
 __attribute__((__visibility__("default")))
 int device_init(openair0_device *device, openair0_config_t *openair0_cfg) {
   // to change the log level, use this on command line
   // --log_config.hw_log_level debug
-  rfsimulator_state_t *rfsimulator = calloc(sizeof(rfsimulator_state_t), 1);
+  rfsimulator_state_t *rfsimulator = calloc(1, sizeof(rfsimulator_state_t));
   // initialize channel simulation
   rfsimulator->tx_num_channels=openair0_cfg->tx_num_channels;
   rfsimulator->rx_num_channels=openair0_cfg->rx_num_channels;
   rfsimulator->sample_rate=openair0_cfg->sample_rate;
   rfsimulator->rx_freq=openair0_cfg->rx_freq[0];
-  rfsimulator->tx_bw=openair0_cfg->tx_bw;  
+  rfsimulator->tx_bw=openair0_cfg->tx_bw;
   rfsimulator_readconfig(rfsimulator);
   if (rfsimulator->prop_delay_ms > 0.0)
     rfsimulator->chan_offset = ceil(rfsimulator->sample_rate * rfsimulator->prop_delay_ms / 1000);
@@ -1151,6 +1203,10 @@ int device_init(openair0_device *device, openair0_config_t *openair0_cfg) {
   device->trx_set_gains_func   = rfsimulator_set_gains;
   device->trx_write_func       = rfsimulator_write;
   device->trx_read_func      = rfsimulator_read;
+  device->set_rx_power_reference_func = rfsimulator_set_rx_power_reference;
+  device->get_rx_power_reference_func = rfsimulator_get_rx_power_reference;
+  device->set_tx_power_reference_func = rfsimulator_set_tx_power_reference;
+  device->get_tx_power_reference_func = rfsimulator_get_tx_power_reference;
   /* let's pretend to be a b2x0 */
   device->type = RFSIMULATOR;
   openair0_cfg[0].rx_gain[0] = 0;

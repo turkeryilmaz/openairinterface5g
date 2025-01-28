@@ -37,6 +37,7 @@
 #include "PHY/phy_extern_nr_ue.h"
 #include "common/utils/LOG/log.h"
 #include "PHY/sse_intrin.h"
+#include "power_reference.h"
 
 //#define k1 1000
 #define k1 ((long long int) 1000)
@@ -171,7 +172,7 @@ void nr_ue_measurements(PHY_VARS_NR_UE *ue,
 }
 
 // This function calculates:
-// - SS reference signal received digital power in dB/RE
+// - SS reference signal received digital power
 int nr_ue_calculate_ssb_rsrp(const NR_DL_FRAME_PARMS *fp,
                              const UE_nr_rxtx_proc_t *proc,
                              const c16_t rxdataF[][fp->samples_per_slot_wCP],
@@ -209,9 +210,7 @@ int nr_ue_calculate_ssb_rsrp(const NR_DL_FRAME_PARMS *fp,
 
   LOG_D(PHY, "In %s: RSRP/nb_re: %d nb_re :%d\n", __FUNCTION__, rsrp, nb_re);
 
-  int rsrp_db_per_re = 10 * log10(rsrp);
-
-  return rsrp_db_per_re;
+  return rsrp;
 }
 
 // This function implements:
@@ -234,20 +233,37 @@ void nr_ue_ssb_rsrp_measurements(PHY_VARS_NR_UE *ue,
   if (fp->half_frame_bit)
     symbol_offset += (fp->slots_per_frame >> 1) * fp->symbols_per_slot;
 
-  int rsrp_db_per_re = nr_ue_calculate_ssb_rsrp(fp, proc, rxdataF, symbol_offset, fp->ssb_start_subcarrier);
+  int rsrp = nr_ue_calculate_ssb_rsrp(fp, proc, rxdataF, symbol_offset, fp->ssb_start_subcarrier);
 
   openair0_config_t *cfg0 = &openair0_cfg[0];
 
-  ue->measurements.ssb_rsrp_dBm[ssb_index] = rsrp_db_per_re + 30 - SQ15_SQUARED_NORM_FACTOR_DB
-                                             - ((int)cfg0->rx_gain[0] - (int)cfg0->rx_gain_offset[0])
-                                             - dB_fixed(fp->ofdm_symbol_size);
+  if (get_softmodem_params()->calibrated_radio) {
+    float rx_power_reference = ue->rfdevice.get_rx_power_reference_func(&ue->rfdevice);
+    float rx_power = calculate_average_rx_power(rsrp, rx_power_reference);
+    ue->measurements.ssb_rsrp_dBm[ssb_index] = (int)rx_power;
+    int amp_backoff_dB = 36;
+    float new_rx_power_reference = rx_power + amp_backoff_dB;
+    if (fabs(new_rx_power_reference - rx_power_reference) > 1) {
+      openair0_config_t config;
+      config.rx_power_reference = new_rx_power_reference;
+      ue->rfdevice.set_rx_power_reference_func(&ue->rfdevice, &config);
+      LOG_I(PHY,
+            "Adjust RX power reference based on SSB, new rx_power_reference = %f, old rx_power_reference = %f\n",
+            new_rx_power_reference,
+            rx_power_reference);
+    }
+  } else {
+    ue->measurements.ssb_rsrp_dBm[ssb_index] = 10 * log10(rsrp) + 30 - SQ15_SQUARED_NORM_FACTOR_DB
+                                              - ((int)cfg0->rx_gain[0] - (int)cfg0->rx_gain_offset[0])
+                                              - dB_fixed(fp->ofdm_symbol_size);
+  }
 
   LOG_D(PHY,
         "[UE %d] ssb %d SS-RSRP: %d dBm/RE (%d dB/RE)\n",
         ue->Mod_id,
         ssb_index,
         ue->measurements.ssb_rsrp_dBm[ssb_index],
-        rsrp_db_per_re);
+        (int)(10 * log10(rsrp)));
 }
 
 // This function computes the received noise power

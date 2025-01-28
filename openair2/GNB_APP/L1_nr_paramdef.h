@@ -61,6 +61,8 @@
 #define HLP_L1_PHASE_COMP "Apply NR symbolwise phase rotation"
 #define CONFIG_STRING_NUM_ANTENNAS_PER_THREAD              "dmrs_num_antennas_per_thread"
 #define HLP_NUM_ARX "Number of antennas per thread for PUSCH channel estimation"
+#define CONFIG_STRING_L1_RX_POWER_REFERENCE_DBM            "rx_power_reference_dBm"
+#define HLP_L1_RX_POWER_REFERENCE_DBM                      "RX power reference in dBm. Configures receiver sensitivity. Only used with --calibrated-radio. This should be in line with p0Nominal."
 /*----------------------------------------------------------------------------------------------------------------------------------------------------*/
 /*                                            L1 configuration parameters                                                                             */
 /*   optname                                         helpstr   paramflags    XXXptr              defXXXval                  type           numelt     */
@@ -87,6 +89,7 @@
   {CONFIG_STRING_L1_TX_AMP_BACKOFF_dB,                 HLP_L1TX_BO,0,         .uptr=NULL,           .defintval=36,              TYPE_UINT,     0},         \
   {CONFIG_STRING_L1_PHASE_COMP,                        HLP_L1_PHASE_COMP,PARAMFLAG_BOOL, .uptr=NULL,.defintval=1,               TYPE_UINT,     0},         \
   {CONFIG_STRING_NUM_ANTENNAS_PER_THREAD,              HLP_NUM_ARX,0,         .uptr=NULL,           .defintval=1,               TYPE_UINT,     0},         \
+  {CONFIG_STRING_L1_RX_POWER_REFERENCE_DBM,            HLP_L1_RX_POWER_REFERENCE_DBM, .iptr=NULL,   .defintval=-90,             TYPE_INT,      0},         \
 }
 // clang-format on
 #define L1_CC_IDX                                          0
@@ -109,6 +112,7 @@
 #define L1_TX_AMP_BACKOFF_dB                               17
 #define L1_PHASE_COMP                                      18
 #define NUM_ANTENNAS_PER_THREAD                            19
+#define L1_RX_POWER_REFERENCE_DBM                          20
 
 /*----------------------------------------------------------------------------------------------------------------------------------------------------*/
 #endif

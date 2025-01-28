@@ -240,6 +240,7 @@ int get_srs_tx_power_ue(NR_UE_MAC_INST_t *mac,
                         NR_SRS_ResourceSet_t *srs_resource_set,
                         int delta_srs,
                         bool is_configured_for_pusch_on_current_bwp);
+int nr_get_Po_NOMINAL_PUSCH(NR_UE_MAC_INST_t *mac, NR_PRACH_RESOURCES_t *prach_resources, uint8_t CC_id);
 
 int nr_ue_configure_pucch(NR_UE_MAC_INST_t *mac,
                            int slot,
