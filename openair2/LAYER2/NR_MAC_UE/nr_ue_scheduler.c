@@ -3266,8 +3266,8 @@ uint8_t sl_determine_if_SSB_slot(uint16_t frame, uint16_t slot, uint16_t slots_p
       ssb_slot = (num_ssb < sl_NumSSB_WithinPeriod)
                 ? (ssb_slot + sl_TimeInterval) : sl_TimeOffsetSSB;
 
-      //Update the time when the same slot with RX SLOT type is called
-      if (slot_type == SIDELINK_SLOT_TYPE_RX) {
+      //Update the time when the same slot type is called
+      if ((slot_type == SIDELINK_SLOT_TYPE_RX) || (slot_type == SIDELINK_SLOT_TYPE_TX)) {
         sl_bch->ssb_slot = ssb_slot;
         sl_bch->num_ssb = num_ssb;
       }
@@ -4215,31 +4215,14 @@ void remove_old_sensing_data(frameslot_t *frame_slot,
           frame_slot->slot,
           normalize(frame_slot, mu),
           normalize(frame_slot, mu) - sensing_window);
-    /*
-      normalize(frame_slot, mu) - sensing_window: This condition is to avoid the two cases, where current absolute slot value can be smaller
-      than sensing window size. The first case represents the beginning of simulation, there should be more sensing / transmit history data than
-      the sensing window size to check for deletion. e.g. if sensing window size is 100ms (200 slots), for first 200 slots, there will not be any
-      old data, which should be removed. In the second case, the frame number starts from 0 after completing a cycle of frame numbers (0..1023).
-      In that case, current absolute slot value will also be smaller than the sensing window size. When the above condition is true, it checks if
-      the sensed data slot lies within the sensing window (implemented by the internal condition), if sensed data absolute slot lies within the
-      sensing window, it stops further iterating over the sensing data.
-      In the else part, the sensing data / transmit history list contains data from the last part of the frame number cycle (1013..1023) and beginning
-      (0..10). In this case, the older data may belong to the range (1013..1023). The new_size contains the older sensed, which should be removed from
-      the sensing data / transmit history list.
-    */
-    if ((normalize(frame_slot, mu) - sensing_window) > 0) {
-      if (normalize(&data->frame_slot, mu) >= normalize(frame_slot, mu) - sensing_window) {
-        break;
-      }
-    } else {
-      int sensed_data_size = sensing_data->size;
-      int prev_frame_data_size = sensed_data_size - normalize(frame_slot, mu);
-      if (prev_frame_data_size > 0) {
-        new_size += prev_frame_data_size - (abs(normalize(frame_slot, mu) - sensing_window));
-      }
+
+    int64_t num_max_slots = nr_slots_per_frame[mu] * 1024;
+    int64_t diff = (normalize(frame_slot, mu) - normalize(&data->frame_slot, mu) + num_max_slots) % num_max_slots;
+    if (diff <= sensing_window) {
       break;
+    } else {
+      new_size ++;
     }
-    new_size ++;
   }
   if (new_size > 0) {
     LOG_D(NR_MAC, "sensing data: size %ld, element_size %ld new_size %d\n", sensing_data->size, sensing_data->element_size, new_size);
@@ -4577,7 +4560,7 @@ List_t* get_candidate_resources_from_slots(frameslot_t *sfn,
   init_list(nr_resource_list, sizeof(sl_resource_info_t), 1);
   sl_resource_info_t *rsrc_info = (sl_resource_info_t *)malloc16_clear(sizeof(*rsrc_info));
   for (int s = 0; s < slot_info->size; s++) {
-    for (uint16_t i = 0; i + l_subch <= total_subch; i++) {
+    for (uint16_t i = 0; i + l_subch <= total_subch; i += l_subch) {
         slot_info_t *s_info = (slot_info_t*)((char*)slot_info->data + s * slot_info->element_size);
         frameslot_t frame_slot;
         de_normalize(normalize(sfn, mu) + s_info->slot_offset, mu, &frame_slot);
