@@ -1309,10 +1309,11 @@ frameslot_t add_to_sfn(frameslot_t* sfn, uint16_t slot_n, uint8_t mu) {
 
 void update_sensing_data(List_t* sensing_data, frameslot_t *frame_slot, sl_nr_ue_mac_params_t *sl_mac, uint16_t pool_id) {
   uint8_t mu = sl_mac->sl_phy_config.sl_config_req.sl_bwp_config.sl_scs;
+  int64_t num_max_slots = nr_slots_per_frame[mu] * 1024;
   while(sensing_data->size > 0) {
     sensing_data_t* last_elem = (sensing_data_t*)((char*)sensing_data->data + (sensing_data->size - 1) * sensing_data->element_size);
-
-    if (normalize(frame_slot, mu) - normalize(&last_elem->frame_slot, mu) <= get_tproc0(sl_mac, pool_id)) {
+    int64_t diff = (normalize(frame_slot, mu) - normalize(&last_elem->frame_slot, mu) + num_max_slots) % num_max_slots;
+    if (diff <= get_tproc0(sl_mac, pool_id)) {
       pop_back(sensing_data);
     } else {
       break;
@@ -1322,10 +1323,12 @@ void update_sensing_data(List_t* sensing_data, frameslot_t *frame_slot, sl_nr_ue
 
 void update_transmit_history(List_t* transmit_history, frameslot_t *frame_slot, sl_nr_ue_mac_params_t *sl_mac, uint16_t pool_id) {
   uint8_t mu = sl_mac->sl_phy_config.sl_config_req.sl_bwp_config.sl_scs;
+  int64_t num_max_slots = nr_slots_per_frame[mu] * 1024;
   while(transmit_history->size > 0) {
-    frameslot_t* last_elem = (frameslot_t*)((uint8_t*)transmit_history->data + (transmit_history->size - 1) * transmit_history->element_size);
+    frameslot_t* last_frame_slot = (frameslot_t*)((uint8_t*)transmit_history->data + (transmit_history->size - 1) * transmit_history->element_size);
+    int64_t diff = (normalize(frame_slot, mu) - normalize(last_frame_slot, mu) + num_max_slots) % num_max_slots;
 
-    if (normalize(frame_slot, mu) - normalize(last_elem, mu) <= get_tproc0(sl_mac, pool_id)) {
+    if (diff <= get_tproc0(sl_mac, pool_id)) {
       pop_back(transmit_history);
     } else {
       break;
