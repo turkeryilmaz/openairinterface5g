@@ -21,6 +21,8 @@
 
 
 #include <string.h>
+#include <lapacke.h>
+#include <complex.h>
 
 #include "nr_ul_estimation.h"
 #include "PHY/sse_intrin.h"
@@ -35,17 +37,58 @@
 #include "executables/softmodem-common.h"
 #include "nr_phy_common.h"
 
-
 //#define DEBUG_CH
 //#define DEBUG_PUSCH
 //#define SRS_DEBUG
 
 #define NO_INTERP 1
-#define  NR_SRS_IDFT_OVERSAMP_FACTOR 8
+#define  NR_SRS_IDFT_OVERSAMP_FACTOR 1
 #define dBc(x,y) (dB_fixed(((int32_t)(x))*(x) + ((int32_t)(y))*(y)))
 
-/* Generic function to find the peak of channel estimation buffer */
-int nr_est_toa_ns_srs(NR_DL_FRAME_PARMS *frame_parms,
+#define N_AP 1 // Number of antenna ports
+#define N_FREQ 2048 // Number of frequency bins
+
+// Allocate Rxx dynamically
+double complex **allocate_matrix(int rows, int cols) {
+    double complex **matrix = (double complex **)malloc(rows * sizeof(double complex *));
+    if (!matrix) {
+        printf("Memory allocation failed for Rxx rows.\n");
+        exit(EXIT_FAILURE);
+    }
+
+    for (int i = 0; i < rows; i++) {
+        matrix[i] = (double complex *)malloc(cols * sizeof(double complex));
+        if (!matrix[i]) {
+            printf("Memory allocation failed for Rxx[%d].\n", i);
+            exit(EXIT_FAILURE);
+        }
+    }
+    return matrix;
+}
+
+// Free memory
+void free_matrix(double complex **matrix, int rows) {
+    for (int i = 0; i < rows; i++) {
+        free(matrix[i]);
+    }
+    free(matrix);
+}
+
+void compute_covariance_matrix(double complex chF_reconstructed[N_AP][N_FREQ], double complex R[N_FREQ][N_FREQ]) {
+    memset(R, 0, sizeof(double complex) * N_FREQ * N_FREQ); // Initialize to zero
+
+    for (int f1 = 0; f1 < N_FREQ; f1++) {
+        for (int f2 = 0; f2 < N_FREQ; f2++) {
+            double complex sum = 0.0 + 0.0 * I; // Initialize sum as complex number
+            for (int ap = 0; ap < N_AP; ap++) {
+                sum += chF_reconstructed[ap][f1] * conj(chF_reconstructed[ap][f2]);
+            }
+            R[f1][f2] = sum; // Store the covariance result
+        }
+    }
+}
+
+int nr_est_toa_ns_srs_music(NR_DL_FRAME_PARMS *frame_parms,
 		          uint8_t N_arx,
 		          uint8_t N_ap,
               uint8_t N_symb_srs,
@@ -58,8 +101,6 @@ int nr_est_toa_ns_srs(NR_DL_FRAME_PARMS *frame_parms,
   int32_t chT_interpol_mag_squ_avg[NR_SRS_IDFT_OVERSAMP_FACTOR*frame_parms->ofdm_symbol_size] __attribute__((aligned(32)));
   memset(chF_interpol,0,sizeof(chF_interpol));
   memset(chT_interpol,0,sizeof(chT_interpol));
-
-  int32_t max_val = 0, max_idx = 0, abs_val = 0, mean_val = 0;
 
   int16_t start_offset = NR_SRS_IDFT_OVERSAMP_FACTOR*frame_parms->ofdm_symbol_size - (frame_parms->ofdm_symbol_size>>1);
 
@@ -94,53 +135,111 @@ int nr_est_toa_ns_srs(NR_DL_FRAME_PARMS *frame_parms,
       chT_interpol_mag_squ_avg[k] /= N_symb_srs;
     }
 
-    max_val = 0, max_idx = 0, mean_val = 0;
-    for(int k = 0; k < NR_SRS_IDFT_OVERSAMP_FACTOR*frame_parms->ofdm_symbol_size; k++) {
-      abs_val = chT_interpol_mag_squ_avg[k];
-        mean_val += (abs_val - mean_val)/(k+1);
-        if(abs_val > max_val) {
-          max_val = abs_val;
-          max_idx = k;
+    int32_t chF_reconstructed[N_ap][NR_SRS_IDFT_OVERSAMP_FACTOR*frame_parms->ofdm_symbol_size] __attribute__((aligned(32)));
+    for (int ap_index = 0; ap_index < N_ap; ap_index++) {
+        time2freq(frame_parms->ofdm_symbol_size * NR_SRS_IDFT_OVERSAMP_FACTOR,
+                  (int16_t*) chT_interpol[ap_index],
+                  (int16_t*) chF_reconstructed[ap_index]);
+    }
+    
+    size_t num_elements = sizeof(chF_reconstructed) / sizeof(chF_reconstructed[0][0]);
+    printf("size chF_reconstructed: %lu\n", num_elements);
+
+    // Convert chF_reconstructed to complex format
+    
+    double complex chF_complex[N_AP][N_FREQ];
+    for (int ap = 0; ap < N_AP; ap++) {
+        for (int f = 0; f < N_FREQ; f++) {
+            int16_t *real_part = (int16_t *)&chF_reconstructed[ap][f];
+            int16_t *imag_part = real_part + 1;
+            chF_complex[ap][f] = *real_part + (*imag_part) * I;
+        }
+    }
+    // print the first element of chF_complex
+    printf("chF_complex[0][0] = %.2f + %.2fi\n", creal(chF_complex[0][0]), cimag(chF_complex[0][0]));
+
+    // Allocate Rxx on the heap
+    double complex **Rxx = allocate_matrix(N_FREQ, N_FREQ);
+
+    // Initialize Rxx to zero
+    for (int i = 0; i < N_FREQ; i++) {
+        for (int j = 0; j < N_FREQ; j++) {
+            Rxx[i][j] = 0.0 + 0.0 * I;
+        }
+    }
+
+    // Compute covariance matrix Rxx
+    for (int f1 = 0; f1 < N_FREQ; f1++) {
+        for (int f2 = 0; f2 < N_FREQ; f2++) {
+            double complex sum = 0.0 + 0.0 * I;
+            for (int ap = 0; ap < N_AP; ap++) {
+                sum += chF_complex[ap][f1] * conj(chF_complex[ap][f2]);
+            }
+            Rxx[f1][f2] = sum;
+        }
+    }
+
+    // FBCM (Forward Backward Covariance Matrix) to compute a complex symmetric matrix Rxx from the covariance matrix
+    for (int i = 0; i < frame_parms->ofdm_symbol_size; i++) {
+      for (int j = 0; j < frame_parms->ofdm_symbol_size; j++) {
+        double complex flipped_conj = conj(Rxx[frame_parms->ofdm_symbol_size - 1 - i][frame_parms->ofdm_symbol_size - 1 - j]); // Flip and conjugate
+        Rxx[i][j] = (Rxx[i][j] + flipped_conj) / 2.0; // Average
+        }
       }
+
+    // Debug: Print some values from covariance matrix
+    printf("Rxx[0][0] = %.2f + %.2fi\n", creal(Rxx[0][0]), cimag(Rxx[0][0]));
+    
+    
+    double complex *Rxx_flat = (double complex *)malloc(N_FREQ * N_FREQ * sizeof(double complex));
+    if (!Rxx_flat) {
+      printf("Memory allocation failed for Rxx_flat\n");
+      exit(EXIT_FAILURE);
+    }
+    
+    // Fill Rxx_flat from Rxx
+    for (int i = 0; i < N_FREQ; i++) {
+        for (int j = 0; j < N_FREQ; j++) {
+          Rxx_flat[i + j * N_FREQ] = Rxx[i][j]; // Column-major format for LAPACK
+        }
+    }
+    printf("Rxx_flat[0] = %.2f + %.2fi\n", creal(Rxx_flat[0]), cimag(Rxx_flat[0]));
+    
+    // Allocate arrays for eigenvalues and eigenvectors
+    double *eigval = (double *)malloc(N_FREQ * sizeof(double));
+    double complex **eigvec = allocate_matrix(N_FREQ, N_FREQ);  // Use same function as before
+
+    // LAPACK parameters
+    char jobz = 'V';  // Compute both eigenvalues and eigenvectors
+    char uplo = 'L';  // Lower triangular part is stored
+    int lda = N_FREQ;      // Leading dimension of matrix
+    int info;         // Stores error info
+
+    //info = LAPACKE_zheev(LAPACK_COL_MAJOR, jobz, uplo, N_FREQ, Rxx_flat, lda, eigval);
+    info = LAPACKE_zheevd(LAPACK_COL_MAJOR, jobz, uplo, N_FREQ, Rxx_flat, lda, eigval); //the Divide-and-Conquer version of LAPACKE_zheev() is faster
+    if (info > 0) {
+    printf("Eigenvalue computation failed: LAPACK zheev did not converge\n");
+    exit(EXIT_FAILURE);
     }
 
-    if(max_idx > NR_SRS_IDFT_OVERSAMP_FACTOR*frame_parms->ofdm_symbol_size >>1)
-      max_idx = max_idx - NR_SRS_IDFT_OVERSAMP_FACTOR*frame_parms->ofdm_symbol_size;
+    // Store eigenvectors in eigvec
+    for (int i = 0; i < N_FREQ; i++) {
+        for (int j = 0; j < N_FREQ; j++) {
+            eigvec[i][j] = Rxx_flat[i + j * N_FREQ]; // Extract computed eigenvectors
+        }
+    }    
+    // Debug: Print some values from eigvec and eigenvalue
+    printf("eigvec[0][0] = %.2f + %.2fi\n", creal(eigvec[0][0]), cimag(eigvec[0][0]));
+    printf("eigval[0] = %.2f\n", eigval[0]);
 
-    // Check for detection threshold
+    free(Rxx_flat); 
+    free_matrix(Rxx, N_FREQ);
+    free(eigval);
+    free_matrix(eigvec, N_FREQ);
 
-    //LOG_I(PHY, "SRS ToA before (RX ant %d): max_val %d, mean_val %d, max_idx %d\n", arx_index, max_val, mean_val, max_idx);
-    if ((mean_val != 0) && (max_val / mean_val > 100)) {
-      srs_toa_ns[arx_index] = (max_idx*1e9)/(NR_SRS_IDFT_OVERSAMP_FACTOR*frame_parms->samples_per_frame*100);
-    } else {
-      srs_toa_ns[arx_index] = 0xFFFF;
-    }
-    //LOG_I(PHY, "SRS ToA estimator (RX ant %d): toa %d ns\n",arx_index,srs_toa_ns[arx_index]);
-  } // Antenna loop
-
-  // Add T tracer to log these chF and chT
-  /*
-  T(T_GNB_PHY_UL_FREQ_CHANNEL_ESTIMATE_OVER_SAMPLING,
-    T_INT(0),
-    T_INT(srs_pdu->rnti),
-    T_INT(frame),
-    T_INT(0),
-    T_INT(0),
-    T_BUFFER(chF_interpol[0][0], NR_SRS_IDFT_OVERSAMP_FACTOR*frame_parms->ofdm_symbol_size * sizeof(int32_t)));
-
-  T(T_GNB_PHY_UL_TIME_CHANNEL_ESTIMATE_OVER_SAMPLING,
-    T_INT(0),
-    T_INT(srs_pdu->rnti),
-    T_INT(frame),
-    T_INT(0),
-    T_INT(0),
-    T_BUFFER(chT_interpol[0][0], NR_SRS_IDFT_OVERSAMP_FACTOR*frame_parms->ofdm_symbol_size * sizeof(int32_t)));
-  */
-
+  }
   return 0;
 }
-
-
 
 __attribute__((always_inline)) inline c16_t c32x16cumulVectVectWithSteps(c16_t *in1,
                                                                          int *offset1,

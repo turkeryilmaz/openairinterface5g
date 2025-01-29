@@ -26,7 +26,11 @@ void freq2time(uint16_t ofdm_symbol_size, int16_t *freq_signal, int16_t *time_si
   const idft_size_idx_t idft_size = get_idft(ofdm_symbol_size);
   idft(idft_size, freq_signal, time_signal, 1);
 }
-
+void time2freq(uint16_t ofdm_symbol_size, int16_t *time_signal, int16_t *freq_signal)
+{
+    dft_size_idx_t dft_size = get_dft(ofdm_symbol_size);
+    dft(dft_size, time_signal, freq_signal, 0); // scale_flag = 0 (default)
+}
 void nr_est_delay(int ofdm_symbol_size, const c16_t *ls_est, c16_t *ch_estimates_time, delay_t *delay)
 {
   freq2time(ofdm_symbol_size, (int16_t *)ls_est, (int16_t *)ch_estimates_time);
