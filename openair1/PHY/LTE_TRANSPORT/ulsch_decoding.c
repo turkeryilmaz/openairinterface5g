@@ -42,8 +42,6 @@
 #include "PHY_INTERFACE/phy_interface.h"
 #include "transport_proto.h"
 
-extern int oai_exit;
-
 static const int8_t wACK_RX[5][4] = {{-1, -1, -1, -1}, {-1, 1, -1, 1}, {-1, -1, 1, 1}, {-1, 1, 1, -1}, {1, 1, 1, 1}};
 
 void free_eNB_ulsch(LTE_eNB_ULSCH_t *ulsch) {
@@ -343,7 +341,7 @@ static int ulsch_decoding_data(PHY_VARS_eNB *eNB,
 
     turboDecode_t *rdata = &((turboDecode_t *)t_info->buf)[t_info->len];
     DevAssert(t_info->len < t_info->cap);
-    rdata->ans = &t_info->ans[t_info->len];
+    rdata->ans = t_info->ans;
     t_info->len += 1;
 
     rdata->eNB=eNB;
