@@ -50,7 +50,7 @@
 #include "executables/nr-softmodem.h"
 
 #include <errno.h>
-#include <string.h>
+#include <common/utils/oai_allocator.h>
 
 uint8_t nr_get_rv(int rel_round)
 {

@@ -23,10 +23,10 @@
 #include <netinet/sctp.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <stdlib.h>
-
+#include <common/utils/oai_allocator.h>
 #include "common/utils/alg/find.h"
 #include "common/utils/alg/foreach.h"
+#include "PHY/defs_common.h"
 #include "RRC/NR/nr_rrc_proto.h"
 #include "T.h"
 #include "as_message.h"
