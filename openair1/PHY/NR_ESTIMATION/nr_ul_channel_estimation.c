@@ -47,6 +47,102 @@
 
 #define N_AP 1 // Number of antenna ports
 #define N_FREQ 2048 // Number of frequency bins
+void rootmusic_toa(int source_count, double *eigval, double complex **eigvec, 
+                   double *source_delays, double *source_powers);
+
+// Function to compute Root-MUSIC delays and powers
+void rootmusic_toa(int source_count, double *eigval, double complex **eigvec, 
+                   double *source_delays, double *source_powers) {
+    
+    // Step 1: Compute noise subspace Qn (last columns of eigvec)
+    int noise_dim = N_FREQ - source_count;
+    double complex **Qn = (double complex **)malloc(N_FREQ * sizeof(double complex *));
+    for (int i = 0; i < N_FREQ; i++) {
+        Qn[i] = (double complex *)malloc(noise_dim * sizeof(double complex));
+        for (int j = 0; j < noise_dim; j++) {
+            Qn[i][j] = eigvec[i][source_count + j];  // Select last noise_dim columns
+        }
+    }
+
+    // Step 2: Compute C = Qn * Qn^H
+    double complex **C = (double complex **)malloc(N_FREQ * sizeof(double complex *));
+    for (int i = 0; i < N_FREQ; i++) {
+        C[i] = (double complex *)malloc(N_FREQ * sizeof(double complex));
+        for (int j = 0; j < N_FREQ; j++) {
+            double complex sum = 0.0 + 0.0 * I;
+            for (int k = 0; k < noise_dim; k++) {
+                sum += Qn[i][k] * conj(Qn[j][k]);
+            }
+            C[i][j] = sum;
+        }
+    }
+
+    // Step 3: Compute coefficients for polynomial equation
+    double complex *coeffs = (double complex *)malloc((N_FREQ + 1) * sizeof(double complex));
+    for (int diag = 1; diag < N_FREQ; diag++) {
+        double complex trace_sum = 0.0 + 0.0 * I;
+        for (int i = 0; i < N_FREQ - diag; i++) {
+            trace_sum += C[i][i + diag];
+        }
+        coeffs[N_FREQ - diag] = trace_sum;
+    }
+    coeffs[N_FREQ] = 1.0;  // Middle coefficient
+    for (int i = 1; i < N_FREQ; i++) {
+        coeffs[i - 1] = conj(coeffs[N_FREQ - i]);  // Symmetric polynomial
+    }
+
+    // Step 4: Solve for polynomial roots using LAPACK
+    lapack_int info;
+    lapack_int degree = N_FREQ;
+    double complex *roots = (double complex *)malloc(N_FREQ * sizeof(double complex));
+    
+    info = LAPACKE_zgeev(LAPACK_COL_MAJOR, 'N', 'N', degree, coeffs, degree, roots, NULL, degree, NULL, degree);
+    if (info > 0) {
+        printf("Eigenvalue computation failed.\n");
+        exit(EXIT_FAILURE);
+    }
+
+    // Step 5: Compute powers and filter valid roots
+    double *powers = (double *)malloc(N_FREQ * sizeof(double));
+    int valid_root_count = 0;
+    for (int i = 0; i < N_FREQ; i++) {
+        if (cabs(roots[i]) < 1.0) {  // Filter stable roots
+            powers[valid_root_count] = 1.0 / (1.0 - cabs(roots[i]));
+            source_delays[valid_root_count] = -N_FREQ * carg(roots[i]) / (2.0 * M_PI);
+            valid_root_count++;
+        }
+    }
+
+    // Step 6: Sort by power (strongest to weakest)
+    for (int i = 0; i < source_count - 1; i++) {
+        for (int j = i + 1; j < source_count; j++) {
+            if (powers[i] < powers[j]) {
+                double temp_power = powers[i];
+                double temp_delay = source_delays[i];
+                powers[i] = powers[j];
+                source_delays[i] = source_delays[j];
+                powers[j] = temp_power;
+                source_delays[j] = temp_delay;
+            }
+        }
+    }
+
+    // Copy sorted powers to output
+    for (int i = 0; i < source_count; i++) {
+        source_powers[i] = powers[i];
+    }
+
+    // Free memory
+    free(coeffs);
+    free(roots);
+    free(powers);
+    for (int i = 0; i < N_FREQ; i++) {
+        free(Qn[i]);
+        free(C[i]);
+    }
+    free(Qn);
+    free(C);
+}
 
 // Allocate Rxx dynamically
 double complex **allocate_matrix(int rows, int cols) {
@@ -216,6 +312,7 @@ int nr_est_toa_ns_srs_music(NR_DL_FRAME_PARMS *frame_parms,
     int info;         // Stores error info
 
     //info = LAPACKE_zheev(LAPACK_COL_MAJOR, jobz, uplo, N_FREQ, Rxx_flat, lda, eigval);
+    // info = LAPACKE_zheevx() to be tested on N largest eigenvalues
     info = LAPACKE_zheevd(LAPACK_COL_MAJOR, jobz, uplo, N_FREQ, Rxx_flat, lda, eigval); //the Divide-and-Conquer version of LAPACKE_zheev() is faster
     if (info > 0) {
     printf("Eigenvalue computation failed: LAPACK zheev did not converge\n");
@@ -228,10 +325,23 @@ int nr_est_toa_ns_srs_music(NR_DL_FRAME_PARMS *frame_parms,
             eigvec[i][j] = Rxx_flat[i + j * N_FREQ]; // Extract computed eigenvectors
         }
     }    
-    // Debug: Print some values from eigvec and eigenvalue
+
     printf("eigvec[0][0] = %.2f + %.2fi\n", creal(eigvec[0][0]), cimag(eigvec[0][0]));
     printf("eigval[0] = %.2f\n", eigval[0]);
 
+    
+    int source_count = 1;
+    double *source_delays = (double *)malloc(source_count * sizeof(double));
+    double *source_powers = (double *)malloc(source_count * sizeof(double));
+
+    rootmusic_toa(source_count, eigval, eigvec, source_delays, source_powers);
+
+    printf("Delays and Powers:\n");
+    for (int i = 0; i < source_count; i++) {
+        printf("Delay: %.4f, Power: %.4f\n", source_delays[i], source_powers[i]);
+    }
+    
+   
     free(Rxx_flat); 
     free_matrix(Rxx, N_FREQ);
     free(eigval);

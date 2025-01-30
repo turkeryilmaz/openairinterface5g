@@ -2043,7 +2043,11 @@ target_link_libraries(nr-softmodem PRIVATE
 
 find_package(LAPACK REQUIRED)
 find_package(BLAS REQUIRED)
-find_library(LAPACKE_LIB lapacke PATHS /usr/lib /usr/local/lib /usr/lib/x86_64-linux-gnu)
+
+#set(OpenBLAS_DIR "/lib/x86_64-linux-gnu/")
+#find_package(OpenBLAS REQUIRED)
+#target_link_libraries(nr-softmodem PRIVATE lapacke OpenBLAS)
+
 target_link_libraries(nr-softmodem PRIVATE pthread m CONFIG_LIB rt sctp)
 target_link_libraries(nr-softmodem PRIVATE ${T_LIB})
 target_link_libraries(nr-softmodem PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
