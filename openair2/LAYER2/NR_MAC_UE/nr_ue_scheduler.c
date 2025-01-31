@@ -4209,7 +4209,7 @@ List_t* get_candidate_resources_from_slots(frameslot_t *sfn,
   init_list(nr_resource_list, sizeof(sl_resource_info_t), 1);
   sl_resource_info_t *rsrc_info = (sl_resource_info_t *)malloc16_clear(sizeof(*rsrc_info));
   for (int s = 0; s < slot_info->size; s++) {
-    for (uint16_t i = 0; i + l_subch <= total_subch; i++) {
+    for (uint16_t i = 0; i + l_subch <= total_subch; i += l_subch) {
         slot_info_t *s_info = (slot_info_t*)((char*)slot_info->data + s * slot_info->element_size);
         frameslot_t frame_slot;
         de_normalize(normalize(sfn, mu) + s_info->slot_offset, mu, &frame_slot);
