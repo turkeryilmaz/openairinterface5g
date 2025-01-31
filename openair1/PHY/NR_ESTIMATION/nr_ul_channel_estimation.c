@@ -47,7 +47,7 @@
 #define dBc(x,y) (dB_fixed(((int32_t)(x))*(x) + ((int32_t)(y))*(y)))
 
 #define N_AP 1 // Number of antenna ports
-#define N_FREQ 2048 // Number of frequency bins
+#define N_fft 2048 // Number of frequency bins
 void rootmusic_toa(int source_count, double *eigval, double complex **eigvec, 
                    double *source_delays, double *source_powers);
 
@@ -78,23 +78,23 @@ void save_eigenvalues_text(const char *filename, double *eigval, int size) {
         exit(EXIT_FAILURE);
     }
     for (int i = 0; i < size; i++) {
-        fprintf(file, "%.6f\n", eigval[i]);
+        fprintf(file, "%.10f\n", eigval[i]);
     }
     fclose(file);
 }
 
 // Function to estimate the number of multipath components using MDL
 int rissanen_mdl_epsilon(double *eigenvalues, int M_len, int L_len, int use_fbcm) {
-    double epsilon = 1e-10; // Small value to prevent log(0)
-    double *sorted_eigenvalues = (double *)malloc(N_FREQ * sizeof(double));
-    for (int i = 0; i < N_FREQ; i++) {
-        sorted_eigenvalues[i] = eigenvalues[N_FREQ - 1 - i]+epsilon;  // Correct full reversal
+    double epsilon = 1e-6; // Small value to prevent log(0)
+    double *sorted_eigenvalues = (double *)malloc(N_fft * sizeof(double));
+    for (int i = 0; i < N_fft; i++) {
+        sorted_eigenvalues[i] = eigenvalues[N_fft - 1 - i]+epsilon;  // Correct full reversal to descending order
     }
-    save_eigenvalues_text("eigenvalues_desc.txt", sorted_eigenvalues, N_FREQ);
+    save_eigenvalues_text("sorted_eigenvalues.txt", sorted_eigenvalues, N_fft);
     int M = M_len;
     double mdl[L_len];
     int estimated_order = 0;
-    double min_mdl = DBL_MAX;
+    double min_mdl = DBL_MAX; // maximum value of a double defined in float.h
 
     for (int k = 0; k < L_len; k++) {
         double sum_log_eigenvalues = 0.0, log_sum_eigenvalues = 0.0, total_sum = 0.0;
@@ -130,9 +130,9 @@ void rootmusic_toa(int source_count, double *eigval, double complex **eigvec,
                    double *source_delays, double *source_powers) {
     
     // Step 1: Compute noise subspace Qn (last columns of eigvec)
-    int noise_dim = N_FREQ - source_count;
-    double complex **Qn = (double complex **)malloc(N_FREQ * sizeof(double complex *));
-    for (int i = 0; i < N_FREQ; i++) {
+    int noise_dim = N_fft - source_count;
+    double complex **Qn = (double complex **)malloc(N_fft * sizeof(double complex *));
+    for (int i = 0; i < N_fft; i++) {
         Qn[i] = (double complex *)malloc(noise_dim * sizeof(double complex));
         for (int j = 0; j < noise_dim; j++) {
             Qn[i][j] = eigvec[i][source_count + j];  // Select last noise_dim columns
@@ -140,10 +140,10 @@ void rootmusic_toa(int source_count, double *eigval, double complex **eigvec,
     }
 
     // Step 2: Compute C = Qn * Qn^H
-    double complex **C = (double complex **)malloc(N_FREQ * sizeof(double complex *));
-    for (int i = 0; i < N_FREQ; i++) {
-        C[i] = (double complex *)malloc(N_FREQ * sizeof(double complex));
-        for (int j = 0; j < N_FREQ; j++) {
+    double complex **C = (double complex **)malloc(N_fft * sizeof(double complex *));
+    for (int i = 0; i < N_fft; i++) {
+        C[i] = (double complex *)malloc(N_fft * sizeof(double complex));
+        for (int j = 0; j < N_fft; j++) {
             double complex sum = 0.0 + 0.0 * I;
             for (int k = 0; k < noise_dim; k++) {
                 sum += Qn[i][k] * conj(Qn[j][k]);
@@ -153,27 +153,27 @@ void rootmusic_toa(int source_count, double *eigval, double complex **eigvec,
     }
 
     // Step 3: Compute coefficients for polynomial equation
-    double complex *coeffs = (double complex *)malloc((N_FREQ + 1) * sizeof(double complex));
+    double complex *coeffs = (double complex *)malloc((N_fft + 1) * sizeof(double complex));
     if (!coeffs) {
       printf("Memory allocation failed for coeffs\n");
       exit(EXIT_FAILURE);
     }
-    for (int diag = 1; diag < N_FREQ; diag++) {
+    for (int diag = 1; diag < N_fft; diag++) {
         double complex trace_sum = 0.0 + 0.0 * I;
-        for (int i = 0; i < N_FREQ - diag; i++) {
+        for (int i = 0; i < N_fft - diag; i++) {
             trace_sum += C[i][i + diag];
         }
-        coeffs[N_FREQ - diag] = trace_sum;
+        coeffs[N_fft - diag] = trace_sum;
     }
-    coeffs[N_FREQ] = 1.0;  // Middle coefficient
-    for (int i = 1; i < N_FREQ; i++) {
-        coeffs[i - 1] = conj(coeffs[N_FREQ - i]);  // Symmetric polynomial
+    coeffs[N_fft] = 1.0;  // Middle coefficient
+    for (int i = 1; i < N_fft; i++) {
+        coeffs[i - 1] = conj(coeffs[N_fft - i]);  // Symmetric polynomial
     }
 
     // Step 4: Solve for polynomial roots using LAPACK
     lapack_int info;
-    lapack_int degree = N_FREQ;
-    double complex *roots = (double complex *)malloc(N_FREQ * sizeof(double complex));
+    lapack_int degree = N_fft;
+    double complex *roots = (double complex *)malloc(N_fft * sizeof(double complex));
     
     info = LAPACKE_zgeev(LAPACK_COL_MAJOR, 'N', 'N', degree, coeffs, degree, roots, NULL, degree, NULL, degree);
     if (info > 0) {
@@ -182,12 +182,12 @@ void rootmusic_toa(int source_count, double *eigval, double complex **eigvec,
     }
 
     // Step 5: Compute powers and filter valid roots
-    double *powers = (double *)malloc(N_FREQ * sizeof(double));
+    double *powers = (double *)malloc(N_fft * sizeof(double));
     int valid_root_count = 0;
-    for (int i = 0; i < N_FREQ; i++) {
+    for (int i = 0; i < N_fft; i++) {
         if (cabs(roots[i]) < 1.0) {  // Filter stable roots
             powers[valid_root_count] = 1.0 / (1.0 - cabs(roots[i]));
-            source_delays[valid_root_count] = -N_FREQ * carg(roots[i]) / (2.0 * M_PI);
+            source_delays[valid_root_count] = -N_fft * carg(roots[i]) / (2.0 * M_PI);
             valid_root_count++;
         }
     }
@@ -215,7 +215,7 @@ void rootmusic_toa(int source_count, double *eigval, double complex **eigvec,
     free(coeffs);
     free(roots);
     free(powers);
-    for (int i = 0; i < N_FREQ; i++) {
+    for (int i = 0; i < N_fft; i++) {
         free(Qn[i]);
         free(C[i]);
     }
@@ -249,11 +249,11 @@ void free_matrix(double complex **matrix, int rows) {
     free(matrix);
 }
 
-void compute_covariance_matrix(double complex chF_reconstructed[N_AP][N_FREQ], double complex R[N_FREQ][N_FREQ]) {
-    memset(R, 0, sizeof(double complex) * N_FREQ * N_FREQ); // Initialize to zero
+void compute_covariance_matrix(double complex chF_reconstructed[N_AP][N_fft], double complex R[N_fft][N_fft]) {
+    memset(R, 0, sizeof(double complex) * N_fft * N_fft); // Initialize to zero
 
-    for (int f1 = 0; f1 < N_FREQ; f1++) {
-        for (int f2 = 0; f2 < N_FREQ; f2++) {
+    for (int f1 = 0; f1 < N_fft; f1++) {
+        for (int f2 = 0; f2 < N_fft; f2++) {
             double complex sum = 0.0 + 0.0 * I; // Initialize sum as complex number
             for (int ap = 0; ap < N_AP; ap++) {
                 sum += chF_reconstructed[ap][f1] * conj(chF_reconstructed[ap][f2]);
@@ -322,9 +322,9 @@ int nr_est_toa_ns_srs_music(NR_DL_FRAME_PARMS *frame_parms,
 
     // Convert chF_reconstructed to complex format
 
-    double complex chF_complex[N_AP][N_FREQ];
+    double complex chF_complex[N_AP][N_fft];
     for (int ap = 0; ap < N_AP; ap++) {
-        for (int f = 0; f < N_FREQ; f++) {
+        for (int f = 0; f < N_fft; f++) {
             int16_t *real_part = (int16_t *)&chF_reconstructed[ap][f];
             int16_t *imag_part = real_part + 1;
             chF_complex[ap][f] = *real_part + (*imag_part) * I;
@@ -332,16 +332,16 @@ int nr_est_toa_ns_srs_music(NR_DL_FRAME_PARMS *frame_parms,
     }
     printf("chF_complex[0][0] = %.2f + %.2fi\n", creal(chF_complex[0][0]), cimag(chF_complex[0][0]));
 
-    double complex **Rxx = allocate_matrix(N_FREQ, N_FREQ);
-    for (int i = 0; i < N_FREQ; i++) {
-        for (int j = 0; j < N_FREQ; j++) {
+    double complex **Rxx = allocate_matrix(N_fft, N_fft);
+    for (int i = 0; i < N_fft; i++) {
+        for (int j = 0; j < N_fft; j++) {
             Rxx[i][j] = 0.0 + 0.0 * I;
         }
     }
 
     // Compute covariance matrix Rxx
-    for (int f1 = 0; f1 < N_FREQ; f1++) {
-        for (int f2 = 0; f2 < N_FREQ; f2++) {
+    for (int f1 = 0; f1 < N_fft; f1++) {
+        for (int f2 = 0; f2 < N_fft; f2++) {
             double complex sum = 0.0 + 0.0 * I;
             for (int ap = 0; ap < N_AP; ap++) {
                 sum += chF_complex[ap][f1] * conj(chF_complex[ap][f2]);
@@ -351,7 +351,7 @@ int nr_est_toa_ns_srs_music(NR_DL_FRAME_PARMS *frame_parms,
     }
     
     // FBCM (Forward Backward Covariance Matrix) to compute a complex symmetric matrix Rxx from the covariance matrix
-    double complex **Rxx_fbcm = allocate_matrix(N_FREQ, N_FREQ); 
+    double complex **Rxx_fbcm = allocate_matrix(N_fft, N_fft); 
     for (int i = 0; i < frame_parms->ofdm_symbol_size; i++) {
       for (int j = 0; j < frame_parms->ofdm_symbol_size; j++) {
         double complex flipped_conj = conj(Rxx[frame_parms->ofdm_symbol_size - 1 - i][frame_parms->ofdm_symbol_size - 1 - j]); // Flip and conjugate
@@ -363,140 +363,157 @@ int nr_est_toa_ns_srs_music(NR_DL_FRAME_PARMS *frame_parms,
     printf("Rxx[0][0] = %.2f + %.2fi\n", creal(Rxx[0][0]), cimag(Rxx[0][0]));
     
     
-    double complex *Rxx_flat = (double complex *)malloc(N_FREQ * N_FREQ * sizeof(double complex));
+    double complex *Rxx_flat = (double complex *)malloc(N_fft * N_fft * sizeof(double complex));
     if (!Rxx_flat) {
       printf("Memory allocation failed for Rxx_flat\n");
       exit(EXIT_FAILURE);
     }
     
     // Fill Rxx_flat from Rxx because LAPACK requires a 1D array
-    for (int i = 0; i < N_FREQ; i++) {
-        for (int j = 0; j < N_FREQ; j++) {
-          Rxx_flat[i + j * N_FREQ] = Rxx_fbcm[i][j]; // Column-major format for LAPACK
+    for (int i = 0; i < N_fft; i++) {
+        for (int j = 0; j < N_fft; j++) {
+          Rxx_flat[i + j * N_fft] = Rxx_fbcm[i][j]; // Column-major format for LAPACK
         }
     }
     printf("Rxx_flat[0] = %.2f + %.2fi\n", creal(Rxx_flat[0]), cimag(Rxx_flat[0]));
     
     // Allocate arrays for eigenvalues and eigenvectors
-    double *eigval = (double *)malloc(N_FREQ * sizeof(double));
-    double complex **eigvec = (double complex **)malloc(N_FREQ * sizeof(double complex *));
-    for (int i = 0; i < N_FREQ; i++) {
-        eigvec[i] = (double complex *)malloc(N_FREQ * sizeof(double complex));
+    double *eigval = (double *)malloc(N_fft * sizeof(double));
+    double complex **eigvec = (double complex **)malloc(N_fft * sizeof(double complex *));
+    for (int i = 0; i < N_fft; i++) {
+        eigvec[i] = (double complex *)malloc(N_fft * sizeof(double complex));
     }
 
 
     // LAPACK parameters
     char jobz = 'V';  // Compute both eigenvalues and eigenvectors
     char uplo = 'L';  // Lower triangular part is stored
-    int lda = N_FREQ;      // Leading dimension of matrix
+    int lda = N_fft;      // Leading dimension of matrix
     int info1;            // Stores error info
 
-    //info1 = LAPACKE_zheev(LAPACK_COL_MAJOR, jobz, uplo, N_FREQ, Rxx_flat, lda, eigval);
+    //info1 = LAPACKE_zheev(LAPACK_COL_MAJOR, jobz, uplo, N_fft, Rxx_flat, lda, eigval);
     // info1 = LAPACKE_zheevx() to be tested on N largest eigenvalues
-    info1 = LAPACKE_zheevd(LAPACK_COL_MAJOR, jobz, uplo, N_FREQ, Rxx_flat, lda, eigval); //the Divide-and-Conquer version of LAPACKE_zheev() is faster
+    info1 = LAPACKE_zheevd(LAPACK_COL_MAJOR, jobz, uplo, N_fft, Rxx_flat, lda, eigval); //the Divide-and-Conquer version of LAPACKE_zheev() is faster
     if (info1 > 0) {
     printf("Eigenvalue computation failed: LAPACK zheev did not converge\n");
     exit(EXIT_FAILURE);
     }
 
     // Returning eigenvectors overwritten in Rxx_flat into 2D
-    for (int i = 0; i < N_FREQ; i++) {
-        for (int j = 0; j < N_FREQ; j++) {
-            eigvec[i][j] = Rxx_flat[i + j * N_FREQ]; 
+    for (int i = 0; i < N_fft; i++) {
+        for (int j = 0; j < N_fft; j++) {
+            eigvec[i][j] = Rxx_flat[i + j * N_fft]; 
         }
     }    
     
-    double *eigval_desc = (double *)malloc(N_FREQ * sizeof(double));
-    for (int i = 0; i < N_FREQ / 2; i++) {
-        double temp = eigval[i];
-        eigval_desc[i] = eigval[N_FREQ - 1 - i];
-        eigval_desc[N_FREQ - 1 - i] = temp;
+    // Sort Eigenvalues in Descending Order
+    double *eigval_desc = (double *)malloc(N_fft * sizeof(double));
+    for (int i = 0; i < N_fft; i++) {
+        eigval_desc[i] = eigval[N_fft - 1 - i];  // Reverse ordering
     }
 
-    printf("Eigenvalues:\n");
+    // Swap Corresponding Eigenvectors
+    for (int j = 0; j < N_fft / 2; j++) {  // Swap columns of eigvec
+        for (int i = 0; i < N_fft; i++) {
+            double complex temp = eigvec[i][j];
+            eigvec[i][j] = eigvec[i][N_fft - 1 - j];
+            eigvec[i][N_fft - 1 - j] = temp;
+        }
+    }
+
+    printf("Descending Eigenvalues:\n");
     for (int i = 0; i < 10; i++) {
         printf("λ[%d] = %.6f\n", i, eigval_desc[i]);
     }
-    save_eigenvalues_text("eigenvalues.txt", eigval_desc, N_FREQ);
-    int L_len = N_FREQ/2;
-    int M_len = N_FREQ - L_len + 1;
+    save_eigenvalues_text("eigval_descend.txt", eigval_desc, N_fft);
+    save_eigenvalues_text("eigval_ascend.txt", eigval, N_fft);
+    int L_len = N_fft/2;
+    int M_len = N_fft - L_len + 1;
     int use_fbcm =1;    
-    int mpc = rissanen_mdl_epsilon(eigval,M_len,L_len,use_fbcm);
-    printf("Estimated MPC: %d\n", mpc);
-    /*
-    int source_count = 1;
+    int source_count = rissanen_mdl_epsilon(eigval,M_len,L_len,use_fbcm);
+    printf("Estimated MPC: %d\n", source_count);
+    
+    //int source_count = 1;
 
-    // Step 1: Compute noise subspace Qn (last columns of eigvec)
-    int noise_dim = N_FREQ - source_count;
-    double complex **Qn = (double complex **)malloc(N_FREQ * sizeof(double complex *));
-    for (int i = 0; i < N_FREQ; i++) {
+    // Step 1: Compute noise subspace Qn (last N_fft-source_count columns of the descending eigvec)
+    // Qn is a (N_fft × (N_fft - source_count)) matrix
+    int noise_dim = N_fft - source_count;
+    double complex **Qn = (double complex **)malloc(N_fft * sizeof(double complex *));
+    for (int i = 0; i < N_fft; i++) {
         Qn[i] = (double complex *)malloc(noise_dim * sizeof(double complex));
         for (int j = 0; j < noise_dim; j++) {
-            Qn[i][j] = eigvec[i][source_count + j];  // Select last noise_dim columns
+            Qn[i][j] = eigvec[i][source_count + j];  // Select last noise_dim columns (Noise Subspace)
         }
     }
 
     printf("Qn[0][0] = %.2f + %.2fi\n", creal(Qn[0][0]), cimag(Qn[0][0]));
 
     // Step 2: Compute C = Qn * Qn^H
-    double complex **C = (double complex **)malloc(N_FREQ * sizeof(double complex *));
-    for (int i = 0; i < N_FREQ; i++) {
-        C[i] = (double complex *)malloc(N_FREQ * sizeof(double complex));
-        for (int j = 0; j < N_FREQ; j++) {
+    
+    double complex **C = (double complex **)malloc(N_fft * sizeof(double complex *));
+    for (int i = 0; i < N_fft; i++) {
+        C[i] = (double complex *)malloc(N_fft * sizeof(double complex));
+        for (int j = 0; j < N_fft; j++) {
             double complex sum = 0.0 + 0.0 * I;
             for (int k = 0; k < noise_dim; k++) {
                 sum += Qn[i][k] * conj(Qn[j][k]);
             }
-            C[i][j] = sum;
+            C[i][j] = sum; // C is a (N_fft x N_fft) matrix
         }
     }
     printf("C[0][0] = %.2f + %.2fi\n", creal(C[0][0]), cimag(C[0][0]));
    
     // Step 3: Compute coefficients for polynomial equation
-    double complex *coeffs = (double complex *)malloc((N_FREQ + 1) * sizeof(double complex));
+    double complex *coeffs = (double complex *)malloc((N_fft + 1) * sizeof(double complex));
     if (!coeffs) {
-      printf("Memory allocation failed for coeffs\n");
-      exit(EXIT_FAILURE);
+        printf("Memory allocation failed for coeffs\n");
+        exit(EXIT_FAILURE);
     }
-    for (int diag = 1; diag < N_FREQ; diag++) {
+
+    // Compute diagonal sums from `C`
+    for (int diag = 1; diag < N_fft; diag++) {
         double complex trace_sum = 0.0 + 0.0 * I;
-        for (int i = 0; i < N_FREQ - diag; i++) {
+        for (int i = 0; i < N_fft - diag; i++) {
             trace_sum += C[i][i + diag];
         }
-        coeffs[N_FREQ - diag] = trace_sum;
+        coeffs[diag - 1] = trace_sum;  // Store coefficients properly
     }
-    coeffs[N_FREQ] = 1.0;  // Middle coefficient
-    for (int i = 1; i < N_FREQ; i++) {
-        coeffs[i - 1] = conj(coeffs[N_FREQ - i]);  // Symmetric polynomial
+
+    // Middle coefficient for symmetry
+    coeffs[N_fft - 1] = 1.0;
+
+    // Apply Hermitian symmetry
+    for (int i = 1; i < N_fft; i++) {
+        coeffs[N_fft - 1 - i] = conj(coeffs[i - 1]);
     }
+
+    // Debug print to verify values
     printf("coeffs[0] = %.2f + %.2fi\n", creal(coeffs[0]), cimag(coeffs[0]));
 
-    // Step 4: Solve for polynomial roots using LAPACK
-    lapack_int info2;
-    lapack_int degree = N_FREQ;
-    double complex *roots = (double complex *)malloc(N_FREQ * sizeof(double complex));
-    // Allocate space for eigenvalues
+    // Step 4: Allocate and Copy Coefficients into Coeffs Matrix (Column-Major Order)
+    double complex *coeffs_matrix = (double complex *)malloc(N_fft * N_fft * sizeof(double complex));
+    if (!coeffs_matrix) {
+        printf("Memory allocation failed for coeffs_matrix\n");
+        free(coeffs);
+        exit(EXIT_FAILURE);
+    }
+
+    // Fill `coeffs_matrix` using `coeffs` in column-major order
+    for (int i = 0; i < N_fft; i++) {
+        for (int j = 0; j < N_fft; j++) {
+            coeffs_matrix[i + j * N_fft] = (i == j) ? coeffs[i] : 0.0 + 0.0 * I;
+        }
+    }
+    
+    // Compute eigenvalues using LAPACK
+    int info2;
+    int degree = N_fft;
     double complex *eigval2 = (double complex *)malloc(degree * sizeof(double complex));
     if (!eigval2) {
         printf("Memory allocation failed for eigval2\n");
         exit(EXIT_FAILURE);
     }
 
-    // Allocate space for coefficient matrix (2D array in column-major format)
-    double complex *coeffs_matrix = (double complex *)malloc(degree * degree * sizeof(double complex));
-    if (!coeffs_matrix) {
-        printf("Memory allocation failed for coeffs_matrix\n");
-        free(eigval2);
-        exit(EXIT_FAILURE);
-    }
-    // Copy `coeffs` (1D polynomial coefficients) into `coeffs_matrix`
-    for (int i = 0; i < degree; i++) {
-        for (int j = 0; j < degree; j++) {
-            coeffs_matrix[i + j * degree] = coeffs[i * degree + j]; // Column-major order
-        }
-    }
-
-    // Compute eigenvalues using LAPACK
     info2 = LAPACKE_zgeev(LAPACK_COL_MAJOR, 'N', 'N', degree, coeffs_matrix, degree, eigval2, NULL, 1, NULL, 1);
     if (info2 > 0) {
         printf("Eigenvalue computation failed: LAPACK zgeev did not converge\n");
@@ -507,12 +524,9 @@ int nr_est_toa_ns_srs_music(NR_DL_FRAME_PARMS *frame_parms,
     // Debug Output
     printf("Eigenvalue[0] = %.6f + %.6fi\n", creal(eigval2[0]), cimag(eigval2[0]));   
     
-    
-    // Step 5: Compute powers and filter valid roots
-    double *source_delays = (double *)malloc(N_FREQ * sizeof(double));
-    double *powers = (double *)malloc(N_FREQ * sizeof(double));
-    double *source_powers = (double *)malloc(N_FREQ * sizeof(double));
-
+    double *source_delays = (double *)malloc(N_fft * sizeof(double));
+    double *powers = (double *)malloc(N_fft * sizeof(double));
+    double *source_powers = (double *)malloc(N_fft * sizeof(double));
     if (!source_delays || !powers || !source_powers) {
         printf("Memory allocation failed for source_delays, powers, or source_powers\n");
         free(source_delays);
@@ -520,20 +534,17 @@ int nr_est_toa_ns_srs_music(NR_DL_FRAME_PARMS *frame_parms,
         free(source_powers);
         exit(EXIT_FAILURE);
     }
-
     int valid_root_count = 0;
-    for (int i = 0; i < N_FREQ; i++) {
-        if (cabs(roots[i]) < 1.0) {  // Filter stable roots
-            powers[valid_root_count] = 1.0 / (1.0 - cabs(roots[i]));
-            source_delays[valid_root_count] = -N_FREQ * carg(roots[i]) / (2.0 * M_PI);
+    for (int i = 0; i < N_fft; i++) {
+        if (cabs(eigval2[i]) < 1.0) {  // Filter roots inside the unit circle
+            powers[valid_root_count] = 1.0 / (1.0 - cabs(eigval2[i]));  // Compute "power"
+            source_delays[valid_root_count] = -N_fft * carg(eigval2[i]) / (2.0 * M_PI);  // Compute delay
             valid_root_count++;
         }
     }
-
-    // Resize dynamically to match `valid_root_count`
+    
     source_delays = (double *)realloc(source_delays, valid_root_count * sizeof(double));
     source_powers = (double *)realloc(source_powers, valid_root_count * sizeof(double));
-
     if (!source_delays || !source_powers) {
         printf("Reallocation failed for source_delays or source_powers\n");
         free(source_delays);
@@ -542,6 +553,8 @@ int nr_est_toa_ns_srs_music(NR_DL_FRAME_PARMS *frame_parms,
         exit(EXIT_FAILURE);
     }
 
+    
+    
     // Step 6: Sort by power (strongest to weakest)
     for (int i = 0; i < source_count - 1; i++) {
         for (int j = i + 1; j < source_count; j++) {
@@ -573,13 +586,13 @@ int nr_est_toa_ns_srs_music(NR_DL_FRAME_PARMS *frame_parms,
     
     free(Qn);
     free(C);
-    */
+    
 
     // Free covariance and eigenvalue data
     free(Rxx_flat);
-    free_matrix(Rxx, N_FREQ);
+    free_matrix(Rxx, N_fft);
     free(eigval);
-    free_matrix(eigvec, N_FREQ);
+    free_matrix(eigvec, N_fft);
 
 
   }
