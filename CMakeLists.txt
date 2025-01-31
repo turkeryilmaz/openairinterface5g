@@ -299,7 +299,7 @@ message(STATUS "Selected KPM Version: ${KPM_VERSION}")
 #########################
 ##### E3 AGENT
 #########################
-set(E3_AGENT "OFF" CACHE STRING "O-RAN nGR E3 Agent for dApps")
+set(E3_AGENT "OFF" CACHE STRING "O-RAN nGRG E3 Agent for dApps")
 set_property(CACHE E3_AGENT PROPERTY STRINGS "ON" "OFF")
 
 add_boolean_option(ENABLE_IMSCOPE OFF "Enable phy scope based on imgui" OFF)
@@ -662,7 +662,7 @@ set(SCHED_NR_SRC
   ${OPENAIR1_DIR}/SCHED_NR/phy_frame_config_nr.c
 )
 add_library(SCHED_NR_LIB ${SCHED_NR_SRC})
-target_link_libraries(SCHED_NR_LIB PRIVATE asn1_nr_rrc_hdrs)
+target_link_libraries(SCHED_NR_LIB PRIVATE asn1_nr_rrc_hdrs UTIL)
 if(E3_AGENT)
   target_compile_definitions(SCHED_NR_LIB PRIVATE E3_AGENT)
 endif()
