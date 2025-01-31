@@ -33,6 +33,7 @@
 
 #include "NR_MIB.h"
 #include "NR_CellGroupConfig.h"
+#include "NR_UE-NR-Capability.h"
 #include "nr_mac.h"
 #include "common/utils/nr/nr_common.h"
 
@@ -54,10 +55,6 @@ typedef enum {
 uint32_t get_Y(const NR_SearchSpace_t *ss, int slot, rnti_t rnti);
 
 uint8_t get_BG(uint32_t A, uint16_t R);
-
-uint64_t from_nrarfcn(int nr_bandP, uint8_t scs_index, uint32_t dl_nrarfcn);
-
-uint32_t to_nrarfcn(int nr_bandP, uint64_t dl_CarrierFreq, uint8_t scs_index, uint32_t bw);
 
 int16_t fill_dmrs_mask(const NR_PDSCH_Config_t *pdsch_Config,
                        int dci_format,
@@ -82,6 +79,7 @@ uint8_t compute_precoding_information(NR_PUSCH_Config_t *pusch_Config,
                                       dci_field_t srs_resource_indicator,
                                       nr_srs_feedback_t *srs_feedback,
                                       const uint8_t *nrOfLayers,
+                                      int *tpmi,
                                       uint32_t *val);
 
 NR_PDSCH_TimeDomainResourceAllocationList_t *get_dl_tdalist(const NR_UE_DL_BWP_t *DL_BWP,
@@ -136,10 +134,6 @@ void find_aggregation_candidates(uint8_t *aggregation_level,
                                  uint8_t *nr_of_candidates,
                                  const NR_SearchSpace_t *ss,
                                  int maxL);
-
-void find_monitoring_periodicity_offset_common(NR_SearchSpace_t *ss,
-                                               uint16_t *slot_period,
-                                               uint16_t *offset);
 
 int get_nr_prach_info_from_index(uint8_t index,
                                  int frame,
@@ -238,6 +232,8 @@ NR_tda_info_t get_info_from_tda_tables(default_table_type_t table_type,
                                        int dmrs_TypeA_Position,
                                        int normal_CP);
 
+NR_tda_info_t set_tda_info_from_list(NR_PDSCH_TimeDomainResourceAllocationList_t *tdalist, int tda_index);
+
 default_table_type_t get_default_table_type(int mux_pattern);
 
 void fill_coresetZero(NR_ControlResourceSet_t *coreset0, NR_Type0_PDCCH_CSS_config_t *type0_PDCCH_CSS_config);
@@ -267,8 +263,6 @@ void find_period_offset_SR(const NR_SchedulingRequestResourceConfig_t *Schedulin
 void csi_period_offset(NR_CSI_ReportConfig_t *csirep,
                        struct NR_CSI_ResourcePeriodicityAndOffset *periodicityAndOffset,
                        int *period, int *offset);
-
-void reverse_n_bits(uint8_t *value, uint16_t bitlen);
 
 bool set_dl_ptrs_values(NR_PTRS_DownlinkConfig_t *ptrs_config,
                         uint16_t rbSize, uint8_t mcsIndex, uint8_t mcsTable,
@@ -316,12 +310,24 @@ void compute_cqi_bitlen(struct NR_CSI_ReportConfig *csi_reportconfig,
                         uint8_t ri_restriction,
                         nr_csi_report_t *csi_report);
 
-void compute_csi_bitlen(NR_CSI_MeasConfig_t *csi_MeasConfig, nr_csi_report_t *csi_report_template);
+void compute_csi_bitlen(const NR_CSI_MeasConfig_t *csi_MeasConfig, nr_csi_report_t *csi_report_template);
 
-uint16_t nr_get_csi_bitlen(nr_csi_report_t *csi_report_template, uint8_t csi_report_id);
+uint16_t nr_get_csi_bitlen(nr_csi_report_t *csi_report);
 
-uint16_t compute_PDU_length(uint32_t num_TLV, uint16_t total_length);
+uint32_t compute_PDU_length(uint32_t num_TLV, uint32_t total_length);
 
 rnti_t nr_get_ra_rnti(uint8_t s_id, uint8_t t_id, uint8_t f_id, uint8_t ul_carrier_id);
+
+rnti_t nr_get_MsgB_rnti(uint8_t s_id, uint8_t t_id, uint8_t f_id, uint8_t ul_carrier_id);
+
+bool supported_bw_comparison(int bw_mhz, NR_SupportedBandwidth_t *supported_BW, long *support_90mhz);
+
+int get_FeedbackDisabled(NR_DownlinkHARQ_FeedbackDisabled_r17_t *downlinkHARQ_FeedbackDisabled_r17, int harq_pid);
+
+int get_nrofHARQ_ProcessesForPDSCH(const NR_UE_ServingCell_Info_t *sc_info);
+
+int get_nrofHARQ_ProcessesForPUSCH(const NR_UE_ServingCell_Info_t *sc_info);
+
+int nr_get_prach_mu(const NR_MsgA_ConfigCommon_r16_t *msgacc, const NR_RACH_ConfigCommon_t *rach_ConfigCommon);
 
 #endif

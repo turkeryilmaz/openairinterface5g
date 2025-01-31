@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.5)
 
 project(NAS_SIM_TOOLS)
 
@@ -6,6 +6,7 @@ include(FindPkgConfig)
 pkg_search_module(CONFIG libconfig REQUIRED)
 include_directories(${CONFIG_INCLUDE_DIRS})
 add_definitions(-std=gnu99)
+include("../macros.cmake")
 
 ENABLE_LANGUAGE(C)
 
@@ -30,7 +31,6 @@ set(CONF2UEDATA_LIB_SRC
     ${OPENAIR_DIR}/openair3/NAS/UE/API/USIM/aka_functions.c
     ${OPENAIR_DIR}/common/utils/mem/memory.c
     ${OPENAIR_DIR}/openair3/NAS/COMMON/UTIL/OctetString.c
-    ${OPENAIR_DIR}/openair3/NAS/COMMON/UTIL/TLVEncoder.c
     ${OPENAIR_DIR}/common/utils/utils.c
 )
 

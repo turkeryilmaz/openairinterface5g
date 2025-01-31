@@ -32,23 +32,10 @@
 
 #include "LAYER2/NR_MAC_gNB/mac_proto.h"
 #include "common/utils/nr/nr_common.h"
-#include "openair1/PHY/defs_nr_common.h"
 #include <limits.h>
 #include <executables/softmodem-common.h>
 
 #define reserved 0xffff
-
-
-void reverse_n_bits(uint8_t *value, uint16_t bitlen) {
-  uint16_t j;
-  uint8_t i;
-  for(j = bitlen - 1,i = 0; j > i; j--, i++) {
-    if(((*value>>j)&1) != ((*value>>i)&1)) {
-      *value ^= (1<<j);
-      *value ^= (1<<i);
-    }
-  }
-}
 
 //38.321 Table 6.1.3.1-1
 const uint32_t NR_SHORT_BSR_TABLE[NR_SHORT_BSR_TABLE_SIZE] = {
@@ -479,7 +466,11 @@ NR_tda_info_t get_ul_tda_info(const NR_UE_UL_BWP_t *ul_bwp,
   AssertFatal(scs >= 0 &&  scs < 5, "Subcarrier spacing indicatior %d invalid value\n", scs);
   int j = scs == 0 ? 1 : scs;
   if (tdalist) {
-    AssertFatal(tda_index < tdalist->list.count, "TDA index from DCI %d exceeds TDA list array size %d\n", tda_index, tdalist->list.count);
+    tda_info.valid_tda = tda_index < tdalist->list.count;
+    if (!tda_info.valid_tda) {
+      LOG_E(NR_MAC, "TDA index from DCI %d exceeds TDA list array size %d\n", tda_index, tdalist->list.count);
+      return tda_info;
+    }
     NR_PUSCH_TimeDomainResourceAllocation_t *tda = tdalist->list.array[tda_index];
     tda_info.mapping_type = tda->mappingType;
     // As described in 38.331, when the field is absent the UE applies the value 1 when PUSCH SCS is 15/30KHz
@@ -491,6 +482,11 @@ NR_tda_info_t get_ul_tda_info(const NR_UE_UL_BWP_t *ul_bwp,
     tda_info.nrOfSymbols = L;
   } else {
     bool normal_CP = ul_bwp->cyclicprefix ? false : true;
+    tda_info.valid_tda = tda_index < 16;
+    if (!tda_info.valid_tda) {
+      LOG_E(NR_MAC, "TDA index from DCI %d exceeds default TDA list array size %d\n", tda_index, 16);
+      return tda_info;
+    }
     if (normal_CP) {
       tda_info.mapping_type = table_6_1_2_1_1_2[tda_index][0];
       tda_info.k2 = table_6_1_2_1_1_2[tda_index][1] + j;
@@ -512,6 +508,11 @@ NR_tda_info_t get_info_from_tda_tables(default_table_type_t table_type,
                                        int normal_CP)
 {
   NR_tda_info_t tda_info = {0};
+  tda_info.valid_tda = tda < 16;
+  if (!tda_info.valid_tda) {
+    LOG_E(NR_MAC, "TDA index from DCI %d exceeds default TDA list array size %d\n", tda, 16);
+    return tda_info;
+  }
   bool is_mapping_typeA;
   int k0 = 0;
   switch(table_type){
@@ -598,7 +599,11 @@ default_table_type_t get_default_table_type(int mux_pattern)
 NR_tda_info_t set_tda_info_from_list(NR_PDSCH_TimeDomainResourceAllocationList_t *tdalist, int tda_index)
 {
   NR_tda_info_t tda_info = {0};
-  AssertFatal(tda_index < tdalist->list.count, "TDA index from DCI %d exceeds TDA list array size %d\n", tda_index, tdalist->list.count);
+  tda_info.valid_tda = tda_index < tdalist->list.count;
+  if (!tda_info.valid_tda) {
+    LOG_E(NR_MAC, "TDA index from DCI %d exceeds TDA list array size %d\n", tda_index, tdalist->list.count);
+    return tda_info;
+  }
   NR_PDSCH_TimeDomainResourceAllocation_t *tda = tdalist->list.array[tda_index];
   tda_info.mapping_type = tda->mappingType;
   int S, L;
@@ -650,6 +655,7 @@ NR_tda_info_t get_dl_tda_info(const NR_UE_DL_BWP_t *dl_BWP,
     case TYPE_CS_RNTI_:
     case TYPE_MCS_C_RNTI_:
     case TYPE_RA_RNTI_:
+    case TYPE_MSGB_RNTI_:
     case TYPE_TC_RNTI_:
       if(tdalist)
         tda_info = set_tda_info_from_list(tdalist, tda_index);
@@ -702,8 +708,8 @@ static const int16_t N_RA_RB[16] = {6, 3, 2, 24, 12, 6, 12, 6, 3, 24, 12, 6, 12,
 
 /* Function to get number of RBs required for prach occasion based on
  * 38.211 Table 6.3.3.2-1 */
-int16_t get_N_RA_RB (int delta_f_RA_PRACH,int delta_f_PUSCH) {
-	
+int16_t get_N_RA_RB (int delta_f_RA_PRACH, int delta_f_PUSCH)
+{
   int8_t index = 0;
   switch(delta_f_RA_PRACH) {
     case 0 :
@@ -1676,100 +1682,25 @@ void set_monitoring_periodicity_offset(NR_SearchSpace_t *ss,
 }
 
 
-void find_monitoring_periodicity_offset_common(NR_SearchSpace_t *ss,
-                                               uint16_t *slot_period,
-                                               uint16_t *offset) {
-
-  switch(ss->monitoringSlotPeriodicityAndOffset->present) {
-    case NR_SearchSpace__monitoringSlotPeriodicityAndOffset_PR_sl1:
-      *slot_period = 1;
-      *offset = 0;
-      break;
-    case NR_SearchSpace__monitoringSlotPeriodicityAndOffset_PR_sl2:
-      *slot_period = 2;
-      *offset = ss->monitoringSlotPeriodicityAndOffset->choice.sl2;
-      break;
-    case NR_SearchSpace__monitoringSlotPeriodicityAndOffset_PR_sl4:
-      *slot_period = 4;
-      *offset = ss->monitoringSlotPeriodicityAndOffset->choice.sl4;
-      break;
-    case NR_SearchSpace__monitoringSlotPeriodicityAndOffset_PR_sl5:
-      *slot_period = 5;
-      *offset = ss->monitoringSlotPeriodicityAndOffset->choice.sl5;
-      break;
-    case NR_SearchSpace__monitoringSlotPeriodicityAndOffset_PR_sl8:
-      *slot_period = 8;
-      *offset = ss->monitoringSlotPeriodicityAndOffset->choice.sl8;
-      break;
-    case NR_SearchSpace__monitoringSlotPeriodicityAndOffset_PR_sl10:
-      *slot_period = 10;
-      *offset = ss->monitoringSlotPeriodicityAndOffset->choice.sl10;
-      break;
-    case NR_SearchSpace__monitoringSlotPeriodicityAndOffset_PR_sl16:
-      *slot_period = 16;
-      *offset = ss->monitoringSlotPeriodicityAndOffset->choice.sl16;
-      break;
-    case NR_SearchSpace__monitoringSlotPeriodicityAndOffset_PR_sl20:
-      *slot_period = 20;
-      *offset = ss->monitoringSlotPeriodicityAndOffset->choice.sl20;
-      break;
-    case NR_SearchSpace__monitoringSlotPeriodicityAndOffset_PR_sl40:
-      *slot_period = 40;
-      *offset = ss->monitoringSlotPeriodicityAndOffset->choice.sl40;
-      break;
-    case NR_SearchSpace__monitoringSlotPeriodicityAndOffset_PR_sl80:
-      *slot_period = 80;
-      *offset = ss->monitoringSlotPeriodicityAndOffset->choice.sl80;
-      break;
-    case NR_SearchSpace__monitoringSlotPeriodicityAndOffset_PR_sl160:
-      *slot_period = 160;
-      *offset = ss->monitoringSlotPeriodicityAndOffset->choice.sl160;
-      break;
-    case NR_SearchSpace__monitoringSlotPeriodicityAndOffset_PR_sl320:
-      *slot_period = 320;
-      *offset = ss->monitoringSlotPeriodicityAndOffset->choice.sl320;
-      break;
-    case NR_SearchSpace__monitoringSlotPeriodicityAndOffset_PR_sl640:
-      *slot_period = 640;
-      *offset = ss->monitoringSlotPeriodicityAndOffset->choice.sl640;
-      break;
-    case NR_SearchSpace__monitoringSlotPeriodicityAndOffset_PR_sl1280:
-      *slot_period = 1280;
-      *offset = ss->monitoringSlotPeriodicityAndOffset->choice.sl1280;
-      break;
-    case NR_SearchSpace__monitoringSlotPeriodicityAndOffset_PR_sl2560:
-      *slot_period = 2560;
-      *offset = ss->monitoringSlotPeriodicityAndOffset->choice.sl2560;
-      break;
-  default:
-    AssertFatal(1==0,"Invalid monitoring slot periodicity and offset value\n");
-    break;
-  }
-}
-
 int get_nr_prach_occasion_info_from_index(uint8_t index,
-                                 uint32_t pointa,
-                                 uint8_t mu,
-                                 uint8_t unpaired,
-                                 uint16_t *format,
-                                 uint8_t *start_symbol,
-                                 uint8_t *N_t_slot,
-                                 uint8_t *N_dur,
-                                 uint8_t *N_RA_slot,
-                                 uint16_t *N_RA_sfn,
-                                 uint8_t *max_association_period) {
-
+                                          uint32_t pointa,
+                                          uint8_t mu,
+                                          uint8_t unpaired,
+                                          uint16_t *format,
+                                          uint8_t *start_symbol,
+                                          uint8_t *N_t_slot,
+                                          uint8_t *N_dur,
+                                          uint8_t *N_RA_slot,
+                                          uint16_t *N_RA_sfn,
+                                          uint8_t *max_association_period)
+{
   int x;
-  int64_t s_map;
+  uint64_t s_map;
   uint8_t format2 = 0xff;
   if (pointa > 2016666) { //FR2
     x = table_6_3_3_2_4_prachConfig_Index[index][2];
     s_map = table_6_3_3_2_4_prachConfig_Index[index][5];
-    for(int i = 0; i < 64 ;i++) {
-      if ( (s_map >> i) & 0x01) {
-        (*N_RA_sfn)++;
-      }
-    }
+    *N_RA_sfn += count_bits64(s_map);
     *N_RA_slot = table_6_3_3_2_4_prachConfig_Index[index][7]; // Number of RACH slots within a subframe
     *max_association_period = 160/(x * 10); 
     if (start_symbol != NULL && N_t_slot != NULL && N_dur != NULL && format != NULL){
@@ -1793,15 +1724,10 @@ int get_nr_prach_occasion_info_from_index(uint8_t index,
     return 1;
  }
   else {
-
     if (unpaired) {
       x = table_6_3_3_2_3_prachConfig_Index[index][2];
       s_map = table_6_3_3_2_3_prachConfig_Index[index][4];
-		  for(int i = 0; i < 64 ;i++) {
-        if ( (s_map >> i) & 0x01) {
-          (*N_RA_sfn)++;
-				}
-      }
+      *N_RA_sfn += count_bits64(s_map);
       *N_RA_slot = table_6_3_3_2_3_prachConfig_Index[index][6]; // Number of RACH slots within a subframe
       *max_association_period = 160/(x * 10); 
       if (start_symbol != NULL && N_t_slot != NULL && N_dur != NULL && format != NULL){
@@ -1819,18 +1745,14 @@ int get_nr_prach_occasion_info_from_index(uint8_t index,
               *start_symbol,
               *N_t_slot,
               *N_dur,
-							*N_RA_sfn);
+              *N_RA_sfn);
       }
-		  return 1;
-	  }
+      return 1;
+    }
     else { // FDD
       x = table_6_3_3_2_2_prachConfig_Index[index][2];
       s_map = table_6_3_3_2_2_prachConfig_Index[index][4];
-      for(int i = 0; i < 64 ; i++) {
-        if ( (s_map >> i) & 0x01) {
-          (*N_RA_sfn)++;
-        }
-      }
+      *N_RA_sfn += count_bits64(s_map);
       *N_RA_slot = table_6_3_3_2_2_prachConfig_Index[index][6];
       if (start_symbol != NULL && N_t_slot != NULL && N_dur != NULL && format != NULL){
         *start_symbol = table_6_3_3_2_2_prachConfig_Index[index][5];
@@ -1866,8 +1788,8 @@ int get_nr_prach_info_from_index(uint8_t index,
                                  uint8_t *N_dur,
                                  uint16_t *RA_sfn_index,
                                  uint8_t *N_RA_slot,
-				 uint8_t *config_period) {
-
+                                 uint8_t *config_period)
+{
   int x,y;
   int64_t s_map;
   uint8_t format2 = 0xff;
@@ -1879,20 +1801,20 @@ int get_nr_prach_info_from_index(uint8_t index,
     y = table_6_3_3_2_4_prachConfig_Index[index][3];
     y2 = table_6_3_3_2_4_prachConfig_Index[index][4];
     // checking n_sfn mod x = y
-    if ( (frame%x)==y || (frame%x)==y2 ) {
-      slot_60khz = slot >> (mu-2); // in table slots are numbered wrt 60kHz
+    if ((frame % x) == y || (frame % x) == y2) {
+      slot_60khz = slot >> (mu - 2); // in table slots are numbered wrt 60kHz
       s_map = table_6_3_3_2_4_prachConfig_Index[index][5];
-      if ((s_map >> slot_60khz) & 0x01 ) {
+      if ((s_map >> slot_60khz) & 0x01) {
         for(int i = 0; i <= slot_60khz ;i++) {
-          if ( (s_map >> i) & 0x01) {
+          if ((s_map >> i) & 0x01) {
             (*RA_sfn_index)++;
           }
         }
       }
-      if ( ((s_map>>slot_60khz)&0x01) ) {
+      if (((s_map >> slot_60khz) & 0x01)) {
         *N_RA_slot = table_6_3_3_2_4_prachConfig_Index[index][7]; // Number of RACH slots within a subframe
         if (mu == 3) {
-          if ( (*N_RA_slot == 1) && (slot%2 == 0) )
+          if ((*N_RA_slot == 1) && (slot % 2 == 0) )
             return 0; // no prach in even slots @ 120kHz for 1 prach per 60khz slot
         }
         if (start_symbol != NULL && N_t_slot != NULL && N_dur != NULL && format != NULL){
@@ -1929,23 +1851,23 @@ int get_nr_prach_info_from_index(uint8_t index,
     if (unpaired) {
       x = table_6_3_3_2_3_prachConfig_Index[index][2];
       y = table_6_3_3_2_3_prachConfig_Index[index][3];
-      if ( (frame%x)==y ) {
+      if ((frame % x) == y) {
         subframe = slot >> mu;
         s_map = table_6_3_3_2_3_prachConfig_Index[index][4];
-        if ((s_map >> subframe) & 0x01 ) {
+        if ((s_map >> subframe) & 0x01) {
           for(int i = 0; i <= subframe ;i++) {
-            if ( (s_map >> i) & 0x01) {
+            if ((s_map >> i) & 0x01) {
               (*RA_sfn_index)++;
             }
           }
         }
-        if ( (s_map>>subframe)&0x01 ) {
+        if ((s_map >> subframe) & 0x01 ) {
          *N_RA_slot = table_6_3_3_2_3_prachConfig_Index[index][6]; // Number of RACH slots within a subframe
           if (mu == 1 && index >= 67) {
-            if ( (*N_RA_slot <= 1) && (slot%2 == 0) )
+            if ((*N_RA_slot <= 1) && (slot % 2 == 0))
               return 0; // no prach in even slots @ 30kHz for 1 prach per subframe 
           } 
-          if (start_symbol != NULL && N_t_slot != NULL && N_dur != NULL && format != NULL){
+          if (start_symbol != NULL && N_t_slot != NULL && N_dur != NULL && format != NULL) {
             *config_period = x;
             *start_symbol = table_6_3_3_2_3_prachConfig_Index[index][5];
             *N_t_slot = table_6_3_3_2_3_prachConfig_Index[index][7];
@@ -1953,17 +1875,19 @@ int get_nr_prach_info_from_index(uint8_t index,
             if (table_6_3_3_2_3_prachConfig_Index[index][1] != -1)
               format2 = (uint8_t) table_6_3_3_2_3_prachConfig_Index[index][1];
             *format = ((uint8_t) table_6_3_3_2_3_prachConfig_Index[index][0]) | (format2<<8);
-            LOG_D(MAC,"Frame %d slot %d: Getting PRACH info from index %d (col 6 %lu) absoluteFrequencyPointA %u mu %u frame_type %u start_symbol %u N_t_slot %u N_dur %u N_RA_slot %u RA_sfn_index %u \n", frame,
-              slot,
-              index, table_6_3_3_2_3_prachConfig_Index[index][6],
-              pointa,
-              mu,
-              unpaired,
-              *start_symbol,
-              *N_t_slot,
-              *N_dur,
-              *N_RA_slot,
-              *RA_sfn_index);
+            LOG_D(MAC,"Frame %d slot %d: Getting PRACH info from index %d (col 6 %lu) absoluteFrequencyPointA %u mu %u frame_type %u start_symbol %u N_t_slot %u N_dur %u N_RA_slot %u RA_sfn_index %u \n",
+                  frame,
+                  slot,
+                  index,
+                  table_6_3_3_2_3_prachConfig_Index[index][6],
+                  pointa,
+                  mu,
+                  unpaired,
+                  *start_symbol,
+                  *N_t_slot,
+                  *N_dur,
+                  *N_RA_slot,
+                  *RA_sfn_index);
           }
           return 1;
         }
@@ -1976,10 +1900,10 @@ int get_nr_prach_info_from_index(uint8_t index,
     else { // FDD
       x = table_6_3_3_2_2_prachConfig_Index[index][2];
       y = table_6_3_3_2_2_prachConfig_Index[index][3];
-      if ( (frame%x)==y ) {
+      if ((frame % x) == y) {
         subframe = slot >> mu;
         s_map = table_6_3_3_2_2_prachConfig_Index[index][4];
-        if ( (s_map>>subframe)&0x01 ) {
+        if ((s_map>>subframe) & 0x01) {
           *N_RA_slot = table_6_3_3_2_2_prachConfig_Index[index][6]; // Number of RACH slots within a subframe
           if (mu == 1) {
             if ((*N_RA_slot <= 1) && (slot % 2 == 0)){
@@ -1987,7 +1911,7 @@ int get_nr_prach_info_from_index(uint8_t index,
             }
           }
           for(int i = 0; i <= subframe ; i++) {
-            if ( (s_map >> i) & 0x01) {
+            if ((s_map >> i) & 0x01) {
               (*RA_sfn_index)++;
             }
           }
@@ -2248,118 +2172,6 @@ static const uint16_t table_7_3_1_1_2_32[3][15] = {
     {0, 1, 2, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 };
 
-void get_delta_arfcn(int i, uint32_t nrarfcn, uint64_t N_OFFs)
-{
-  uint32_t delta_arfcn = nrarfcn - N_OFFs;
-
-  if(delta_arfcn % (nr_bandtable[i].step_size) != 0)
-    LOG_E(NR_MAC, "nrarfcn %u is not on the channel raster for step size %lu\n", nrarfcn, nr_bandtable[i].step_size);
-}
-
-uint32_t to_nrarfcn(int nr_bandP,
-                    uint64_t dl_CarrierFreq,
-                    uint8_t scs_index,
-                    uint32_t bw)
-{
-  uint64_t dl_CarrierFreq_by_1k = dl_CarrierFreq / 1000;
-  int bw_kHz = bw / 1000;
-  uint32_t nrarfcn;
-  int i = get_nr_table_idx(nr_bandP, scs_index);
-
-  LOG_I(NR_MAC,"Searching for nr band %d DL Carrier frequency %llu bw %u\n",nr_bandP,(long long unsigned int)dl_CarrierFreq,bw);
-
-  AssertFatal(dl_CarrierFreq_by_1k >= nr_bandtable[i].dl_min,
-        "Band %d, bw %u : DL carrier frequency %llu kHz < %llu\n",
-	      nr_bandP, bw, (long long unsigned int)dl_CarrierFreq_by_1k,
-	      (long long unsigned int)nr_bandtable[i].dl_min);
-  AssertFatal(dl_CarrierFreq_by_1k <= (nr_bandtable[i].dl_max - bw_kHz/2),
-        "Band %d, dl_CarrierFreq %llu bw %u: DL carrier frequency %llu kHz > %llu\n",
-	      nr_bandP, (long long unsigned int)dl_CarrierFreq,bw, (long long unsigned int)dl_CarrierFreq_by_1k,
-	      (long long unsigned int)(nr_bandtable[i].dl_max - bw_kHz/2));
- 
-  int deltaFglobal = 60;
-  uint32_t N_REF_Offs = 2016667;
-  uint64_t F_REF_Offs_khz = 24250080;
-
-  if (dl_CarrierFreq < 24.25e9) {
-    deltaFglobal = 15;
-    N_REF_Offs = 600000;
-    F_REF_Offs_khz = 3000000;
-  }
-  if (dl_CarrierFreq < 3e9) {
-    deltaFglobal = 5;
-    N_REF_Offs = 0;
-    F_REF_Offs_khz = 0;
-  }   
-
-  // This is equation before Table 5.4.2.1-1 in 38101-1-f30
-  // F_REF=F_REF_Offs + deltaF_Global(N_REF-NREF_REF_Offs)
-  nrarfcn =  (((dl_CarrierFreq_by_1k - F_REF_Offs_khz)/deltaFglobal)+N_REF_Offs);
-  //get_delta_arfcn(i, nrarfcn, nr_bandtable[i].N_OFFs_DL);
-
-  return nrarfcn;
-}
-
-// This function computes the RF reference frequency from the NR-ARFCN according to 5.4.2.1 of 3GPP TS 38.104
-// this function applies to both DL and UL
-uint64_t from_nrarfcn(int nr_bandP,
-                      uint8_t scs_index,
-                      uint32_t nrarfcn)
-{
-  int deltaFglobal = 5;
-  uint32_t N_REF_Offs = 0;
-  uint64_t F_REF_Offs_khz = 0;
-  uint64_t N_OFFs, frequency, freq_min;
-  int i = get_nr_table_idx(nr_bandP, scs_index);
-
-  if (nrarfcn > 599999 && nrarfcn < 2016667) {
-    deltaFglobal = 15;
-    N_REF_Offs = 600000;
-    F_REF_Offs_khz = 3000000;
-  }
-  if (nrarfcn > 2016666 && nrarfcn < 3279166) {
-    deltaFglobal = 60; 
-    N_REF_Offs = 2016667;
-    F_REF_Offs_khz = 24250080;
-  }
-
-  int32_t delta_duplex = get_delta_duplex(nr_bandP, scs_index);
-
-  if (delta_duplex <= 0){ // DL band >= UL band
-    if (nrarfcn >= nr_bandtable[i].N_OFFs_DL){ // is TDD of FDD DL
-      N_OFFs = nr_bandtable[i].N_OFFs_DL;
-      freq_min = nr_bandtable[i].dl_min;
-    } else {// is FDD UL
-      N_OFFs = nr_bandtable[i].N_OFFs_DL + delta_duplex/deltaFglobal;
-      freq_min = nr_bandtable[i].ul_min;
-    }
-  } else { // UL band > DL band
-    if (nrarfcn >= nr_bandtable[i].N_OFFs_DL + delta_duplex/deltaFglobal){ // is FDD UL
-      N_OFFs = nr_bandtable[i].N_OFFs_DL + delta_duplex/deltaFglobal;
-      freq_min = nr_bandtable[i].ul_min;
-    } else { // is FDD DL
-      N_OFFs = nr_bandtable[i].N_OFFs_DL;
-      freq_min = nr_bandtable[i].dl_min;
-    }
-  }
-
-  LOG_D(NR_MAC, "Frequency from NR-ARFCN for N_OFFs %lu, duplex spacing %d KHz, deltaFglobal %d KHz\n", N_OFFs, delta_duplex, deltaFglobal);
-
-  AssertFatal(nrarfcn >= N_OFFs,"nrarfcn %u < N_OFFs[%d] %llu\n", nrarfcn, nr_bandtable[i].band, (long long unsigned int)N_OFFs);
-  get_delta_arfcn(i, nrarfcn, N_OFFs);
-
-  frequency = 1000 * (F_REF_Offs_khz + (nrarfcn - N_REF_Offs) * deltaFglobal);
-
-  LOG_D(NR_MAC, "Computing frequency (nrarfcn %llu => %llu KHz (freq_min %llu KHz, NR band %d N_OFFs %llu))\n",
-        (unsigned long long)nrarfcn,
-        (unsigned long long)frequency/1000,
-        (unsigned long long)freq_min,
-        nr_bandP,
-        (unsigned long long)N_OFFs);
-
-  return frequency;
-}
-
 void nr_get_tbs_dl(nfapi_nr_dl_tti_pdsch_pdu *pdsch_pdu,
 		   int x_overhead,
                    uint8_t numdmrscdmgroupnodata,
@@ -2420,8 +2232,7 @@ static const uint16_t Table_51311[32][2] = {{2, 1200}, {2, 1570}, {2, 1930}, {2,
                                             {4, 6580}, {6, 4380}, {6, 4660}, {6, 5170}, {6, 5670}, {6, 6160}, {6, 6660}, {6, 7190},
                                             {6, 7720}, {6, 8220}, {6, 8730}, {6, 9100}, {6, 9480}, {2, 0}, {4, 0}, {6, 0}};
 
-//Table 5.1.3.1-2 of 38.214
-// Imcs values 20 and 26 have been multiplied by 2 to avoid the floating point
+// Table 5.1.3.1-2 of 38.214
 static const uint16_t Table_51312[32][2] = {{2, 1200}, {2, 1930}, {2, 3080}, {2, 4490}, {2, 6020}, {4, 3780}, {4, 4340},
                                             {4, 4900}, {4, 5530}, {4, 6160}, {4, 6580}, {6, 4660}, {6, 5170}, {6, 5670},
                                             {6, 6160}, {6, 6660}, {6, 7190}, {6, 7720}, {6, 8220}, {6, 8730}, {8, 6825},
@@ -2663,25 +2474,26 @@ uint8_t getAntPortBitWidth(NR_SetupRelease_DMRS_DownlinkConfig_t *typeA, NR_Setu
 *
 *********************************************************************/
 
-uint8_t get_l0_ul(uint8_t mapping_type, uint8_t dmrs_typeA_position) {
-
+uint8_t get_l0_ul(uint8_t mapping_type, uint8_t dmrs_typeA_position)
+{
   return ((mapping_type==typeA)?dmrs_typeA_position:0);
-
 }
 
-int32_t get_l_prime(uint8_t duration_in_symbols, uint8_t mapping_type, pusch_dmrs_AdditionalPosition_t additional_pos, pusch_maxLength_t pusch_maxLength, uint8_t start_symbol, uint8_t dmrs_typeA_position) {
-
-  uint8_t row, colomn;
-  int32_t l_prime;
-
-  LOG_D(NR_MAC, "In %s: PUSCH NrofSymbols:%d, startSymbol:%d, mappingtype:%d, dmrs_TypeA_Position:%d additional_pos:%d, pusch_maxLength:%d\n",
-    __FUNCTION__,
-    duration_in_symbols,
-    start_symbol,
-    mapping_type,
-    dmrs_typeA_position,
-    additional_pos,
-    pusch_maxLength);
+int32_t get_l_prime(uint8_t duration_in_symbols,
+                    uint8_t mapping_type,
+                    pusch_dmrs_AdditionalPosition_t additional_pos,
+                    pusch_maxLength_t pusch_maxLength,
+                    uint8_t start_symbol,
+                    uint8_t dmrs_typeA_position)
+{
+  LOG_D(NR_MAC,
+        "PUSCH NrofSymbols:%d, startSymbol:%d, mappingtype:%d, dmrs_TypeA_Position:%d additional_pos:%d, pusch_maxLength:%d\n",
+        duration_in_symbols,
+        start_symbol,
+        mapping_type,
+        dmrs_typeA_position,
+        additional_pos,
+        pusch_maxLength);
 
   // Section 6.4.1.1.3 in Spec 38.211
   // For PDSCH Mapping TypeA, ld is duration between first OFDM of the slot and last OFDM symbol of the scheduled PUSCH resources
@@ -2689,16 +2501,18 @@ int32_t get_l_prime(uint8_t duration_in_symbols, uint8_t mapping_type, pusch_dmr
   uint8_t ld = (mapping_type == typeA) ? (duration_in_symbols + start_symbol) : duration_in_symbols;
   uint8_t l0 = (dmrs_typeA_position == NR_MIB__dmrs_TypeA_Position_pos2) ? 2 : 3 ;
 
-  colomn = additional_pos;
+  uint8_t colomn = additional_pos;
 
   if (mapping_type == typeB)
     colomn += 4;
 
+  uint8_t row;
   if (ld < 4)
     row = 0;
   else
     row = ld - 3;
 
+  uint32_t l_prime;
   if (pusch_maxLength == pusch_len1) {
     l_prime = table_6_4_1_1_3_3_pusch_dmrs_positions_l[row][colomn];
     l0 = 1 << l0;
@@ -2715,7 +2529,6 @@ int32_t get_l_prime(uint8_t duration_in_symbols, uint8_t mapping_type, pusch_dmr
   LOG_D(MAC, " PUSCH DMRS MASK in HEX:%x\n", l_prime);
 
   return l_prime;
-
 }
 
 /*******************************************************************
@@ -2839,22 +2652,29 @@ uint16_t get_nr_srs_offset(NR_SRS_PeriodicityAndOffset_t periodicityAndOffset) {
 // - "UE procedure for applying transform precoding on PUSCH"
 long get_transformPrecoding(const NR_UE_UL_BWP_t *current_UL_BWP, nr_dci_format_t dci_format, uint8_t configuredGrant)
 {
-  if (configuredGrant && current_UL_BWP->configuredGrantConfig && current_UL_BWP->configuredGrantConfig->transformPrecoder)
+  if (configuredGrant
+      && current_UL_BWP
+      && current_UL_BWP->configuredGrantConfig
+      && current_UL_BWP->configuredGrantConfig->transformPrecoder)
     return *current_UL_BWP->configuredGrantConfig->transformPrecoder;
 
-  if (dci_format == NR_UL_DCI_FORMAT_0_1 && current_UL_BWP && current_UL_BWP->pusch_Config && current_UL_BWP->pusch_Config->transformPrecoder)
+  long msg3_tp = NR_PUSCH_Config__transformPrecoder_disabled;
+  if (current_UL_BWP && current_UL_BWP->rach_ConfigCommon && current_UL_BWP->rach_ConfigCommon->msg3_transformPrecoder)
+    msg3_tp = NR_PUSCH_Config__transformPrecoder_enabled;
+
+  if (dci_format != NR_UL_DCI_FORMAT_0_0
+      && current_UL_BWP
+      && current_UL_BWP->pusch_Config
+      && current_UL_BWP->pusch_Config->transformPrecoder)
     return *current_UL_BWP->pusch_Config->transformPrecoder;
 
-  if (current_UL_BWP->rach_ConfigCommon && current_UL_BWP->rach_ConfigCommon->msg3_transformPrecoder)
-    return NR_PUSCH_Config__transformPrecoder_enabled;
-
-  return NR_PUSCH_Config__transformPrecoder_disabled;
+  return msg3_tp;
 }
 
 uint8_t get_pusch_nb_antenna_ports(NR_PUSCH_Config_t *pusch_Config,
                                    NR_SRS_Config_t *srs_config,
-                                   dci_field_t srs_resource_indicator) {
-
+                                   dci_field_t srs_resource_indicator)
+{
   uint8_t n_antenna_port = 1;
   if (get_softmodem_params()->phy_test == 1) {
     // temporary hack to allow UL-MIMO in phy-test mode without SRS
@@ -2870,7 +2690,7 @@ uint8_t get_pusch_nb_antenna_ports(NR_PUSCH_Config_t *pusch_Config,
         // shall be configured with the same value for all these SRS resources.
         if (srs_resource_set->usage == NR_SRS_ResourceSet__usage_codebook) {
           NR_SRS_Resource_t *srs_resource = srs_config->srs_ResourceToAddModList->list.array[sri];
-          AssertFatal(srs_resource != NULL, "SRS resource indicated by DCI does not exist\n");
+          AssertFatal(srs_resource, "SRS resource indicated by DCI does not exist\n");
           n_antenna_port = 1 << srs_resource->nrofSRS_Ports;
           break;
         }
@@ -3002,8 +2822,9 @@ uint8_t compute_precoding_information(NR_PUSCH_Config_t *pusch_Config,
                                       dci_field_t srs_resource_indicator,
                                       nr_srs_feedback_t *srs_feedback,
                                       const uint8_t *nrOfLayers,
-                                      uint32_t *val) {
-
+                                      int *tpmi,
+                                      uint32_t *val)
+{
   // It is only applicable to codebook based transmission. This field occupies 0 bits for non-codebook based
   // transmission. It also occupies 0 bits for codebook based transmission using a single antenna port.
   uint8_t nbits = 0;
@@ -3012,14 +2833,16 @@ uint8_t compute_precoding_information(NR_PUSCH_Config_t *pusch_Config,
   }
 
   uint8_t pusch_antenna_ports = get_pusch_nb_antenna_ports(pusch_Config, srs_config, srs_resource_indicator);
-  if ((pusch_Config && pusch_Config->txConfig != NULL && *pusch_Config->txConfig == NR_PUSCH_Config__txConfig_nonCodebook) ||
-      pusch_antenna_ports == 1) {
+  if (!pusch_Config
+      || (pusch_Config->txConfig != NULL && *pusch_Config->txConfig == NR_PUSCH_Config__txConfig_nonCodebook)
+      || pusch_antenna_ports == 1) {
     return nbits;
   }
 
   long max_rank = *pusch_Config->maxRank;
   long *ul_FullPowerTransmission = pusch_Config->ext1 ? pusch_Config->ext1->ul_FullPowerTransmission_r16 : NULL;
   long *codebookSubset = pusch_Config->codebookSubset;
+  int ul_tpmi = tpmi ? *tpmi : srs_feedback ? srs_feedback->tpmi : -1;
 
   if (pusch_antenna_ports == 2) {
 
@@ -3033,21 +2856,21 @@ uint8_t compute_precoding_information(NR_PUSCH_Config_t *pusch_Config,
       if (ul_FullPowerTransmission && *ul_FullPowerTransmission == NR_PUSCH_Config__ext1__ul_FullPowerTransmission_r16_fullpowerMode1) {
         nbits = 2;
         if (val && srs_feedback) {
-          AssertFatal(srs_feedback->tpmi <= 2,"TPMI %d is invalid!\n", srs_feedback->tpmi);
-          *val = srs_feedback->tpmi;
+          AssertFatal(ul_tpmi <= 2,"TPMI %d is invalid!\n", ul_tpmi);
+          *val = ul_tpmi;
         }
       } else {
         if (codebookSubset && *codebookSubset == NR_PUSCH_Config__codebookSubset_nonCoherent) {
           nbits = 1;
           if (val && srs_feedback) {
-            AssertFatal(srs_feedback->tpmi <= 1,"TPMI %d is invalid!\n", srs_feedback->tpmi);
-            *val = srs_feedback->tpmi;
+            AssertFatal(ul_tpmi <= 1,"TPMI %d is invalid!\n", ul_tpmi);
+            *val = ul_tpmi;
           }
         } else {
           nbits = 3;
           if (val && srs_feedback) {
-            AssertFatal(srs_feedback->tpmi <= 5,"TPMI %d is invalid!\n", srs_feedback->tpmi);
-            *val = srs_feedback->tpmi;
+            AssertFatal(ul_tpmi <= 5,"TPMI %d is invalid!\n", ul_tpmi);
+            *val = ul_tpmi;
           }
         }
       }
@@ -3060,25 +2883,25 @@ uint8_t compute_precoding_information(NR_PUSCH_Config_t *pusch_Config,
       if (ul_FullPowerTransmission && *ul_FullPowerTransmission == NR_PUSCH_Config__ext1__ul_FullPowerTransmission_r16_fullpowerMode1) {
         nbits = 2;
         if (val && srs_feedback) {
-          AssertFatal((*nrOfLayers==1 && srs_feedback->tpmi <= 2) || (*nrOfLayers==2 && srs_feedback->tpmi == 0),
-                      "TPMI %d is invalid!\n", srs_feedback->tpmi);
-          *val = *nrOfLayers==1 ? table_7_3_1_1_2_4A_1layer[srs_feedback->tpmi] : 2;
+          AssertFatal((*nrOfLayers==1 && ul_tpmi <= 2) || (*nrOfLayers==2 && ul_tpmi == 0),
+                      "TPMI %d is invalid!\n", ul_tpmi);
+          *val = *nrOfLayers==1 ? table_7_3_1_1_2_4A_1layer[ul_tpmi] : 2;
         }
       } else {
         if (codebookSubset && *codebookSubset == NR_PUSCH_Config__codebookSubset_nonCoherent) {
           nbits = 2;
           if (val && srs_feedback) {
-            AssertFatal((*nrOfLayers==1 && srs_feedback->tpmi <= 1) || (*nrOfLayers==2 && srs_feedback->tpmi == 0),
-                        "TPMI %d is invalid!\n", srs_feedback->tpmi);
-            *val = *nrOfLayers==1 ? srs_feedback->tpmi : 2;
+            AssertFatal((*nrOfLayers==1 && ul_tpmi <= 1) || (*nrOfLayers==2 && ul_tpmi == 0),
+                        "TPMI %d is invalid!\n", ul_tpmi);
+            *val = *nrOfLayers==1 ? ul_tpmi : 2;
           }
         } else {
           nbits = 4;
           if (val && srs_feedback) {
-            AssertFatal((*nrOfLayers==1 && srs_feedback->tpmi <= 5) || (*nrOfLayers==2 && srs_feedback->tpmi <= 2),
-                        "TPMI %d is invalid!\n", srs_feedback->tpmi);
-            *val = *nrOfLayers==1 ? table_7_3_1_1_2_4_1layer_fullyAndPartialAndNonCoherent[srs_feedback->tpmi] :
-                                    table_7_3_1_1_2_4_2layers_fullyAndPartialAndNonCoherent[srs_feedback->tpmi];
+            AssertFatal((*nrOfLayers==1 && ul_tpmi <= 5) || (*nrOfLayers==2 && ul_tpmi <= 2),
+                        "TPMI %d is invalid!\n", ul_tpmi);
+            *val = *nrOfLayers==1 ? table_7_3_1_1_2_4_1layer_fullyAndPartialAndNonCoherent[ul_tpmi] :
+                                    table_7_3_1_1_2_4_2layers_fullyAndPartialAndNonCoherent[ul_tpmi];
           }
         }
       }
@@ -3097,36 +2920,36 @@ uint8_t compute_precoding_information(NR_PUSCH_Config_t *pusch_Config,
         if (codebookSubset && *codebookSubset == NR_PUSCH_Config__codebookSubset_nonCoherent) {
           nbits = 3;
           if (val && srs_feedback) {
-            AssertFatal(srs_feedback->tpmi <= 3 || srs_feedback->tpmi == 13, "TPMI %d is invalid!\n", srs_feedback->tpmi);
+            AssertFatal(ul_tpmi <= 3 || ul_tpmi == 13, "TPMI %d is invalid!\n", ul_tpmi);
           }
         } else {
           nbits = 4;
           if (val && srs_feedback) {
-            AssertFatal(srs_feedback->tpmi <= 15, "TPMI %d is invalid!\n", srs_feedback->tpmi);
+            AssertFatal(ul_tpmi <= 15, "TPMI %d is invalid!\n", ul_tpmi);
           }
         }
         if (val && srs_feedback) {
-          *val = table_7_3_1_1_2_3A[srs_feedback->tpmi];
+          *val = table_7_3_1_1_2_3A[ul_tpmi];
         }
       } else {
         if (codebookSubset && *codebookSubset == NR_PUSCH_Config__codebookSubset_nonCoherent) {
           nbits = 2;
           if (val && srs_feedback) {
-            AssertFatal(srs_feedback->tpmi <= 3, "TPMI %d is invalid!\n", srs_feedback->tpmi);
+            AssertFatal(ul_tpmi <= 3, "TPMI %d is invalid!\n", ul_tpmi);
           }
         } else if (codebookSubset && *codebookSubset == NR_PUSCH_Config__codebookSubset_partialAndNonCoherent) {
           nbits = 4;
           if (val && srs_feedback) {
-            AssertFatal(srs_feedback->tpmi <= 11, "TPMI %d is invalid!\n", srs_feedback->tpmi);
+            AssertFatal(ul_tpmi <= 11, "TPMI %d is invalid!\n", ul_tpmi);
           }
         } else {
           nbits = 5;
           if (val && srs_feedback) {
-            AssertFatal(srs_feedback->tpmi <= 27, "TPMI %d is invalid!\n", srs_feedback->tpmi);
+            AssertFatal(ul_tpmi <= 27, "TPMI %d is invalid!\n", ul_tpmi);
           }
         }
         if (val && srs_feedback) {
-          *val = srs_feedback->tpmi;
+          *val = ul_tpmi;
         }
       }
     } else {
@@ -3144,48 +2967,48 @@ uint8_t compute_precoding_information(NR_PUSCH_Config_t *pusch_Config,
           if (codebookSubset && *codebookSubset == NR_PUSCH_Config__codebookSubset_nonCoherent) {
             nbits = 4;
             if (val && srs_feedback) {
-              AssertFatal((*nrOfLayers==1 && (srs_feedback->tpmi <= 3 || srs_feedback->tpmi==13)) || (*nrOfLayers==2 && srs_feedback->tpmi <= 6),
-                          "TPMI %d is invalid!\n", srs_feedback->tpmi);
+              AssertFatal((*nrOfLayers==1 && (ul_tpmi <= 3 || ul_tpmi==13)) || (*nrOfLayers==2 && ul_tpmi <= 6),
+                          "TPMI %d is invalid!\n", ul_tpmi);
             }
           } else {
             nbits = 5;
             if (val && srs_feedback) {
-              AssertFatal((*nrOfLayers==1 && srs_feedback->tpmi <= 15) || (*nrOfLayers==2 && srs_feedback->tpmi <= 13),
-                          "TPMI %d is invalid!\n", srs_feedback->tpmi);
+              AssertFatal((*nrOfLayers==1 && ul_tpmi <= 15) || (*nrOfLayers==2 && ul_tpmi <= 13),
+                          "TPMI %d is invalid!\n", ul_tpmi);
             }
           }
           if (val && srs_feedback) {
-            *val = *nrOfLayers==1 ? table_7_3_1_1_2_2A_1layer[srs_feedback->tpmi] : table_7_3_1_1_2_2A_2layers[srs_feedback->tpmi];
+            *val = *nrOfLayers==1 ? table_7_3_1_1_2_2A_1layer[ul_tpmi] : table_7_3_1_1_2_2A_2layers[ul_tpmi];
           }
         } else {
           if (codebookSubset && *codebookSubset == NR_PUSCH_Config__codebookSubset_nonCoherent) {
             nbits = 4;
             if (val && srs_feedback) {
-              AssertFatal((*nrOfLayers==1 && (srs_feedback->tpmi <= 3 || srs_feedback->tpmi == 13)) || (*nrOfLayers==2 && srs_feedback->tpmi <= 6) ||
-                          (*nrOfLayers==3 && srs_feedback->tpmi <= 1) || (*nrOfLayers==4 && srs_feedback->tpmi == 0),
-                          "TPMI %d is invalid!\n", srs_feedback->tpmi);
+              AssertFatal((*nrOfLayers==1 && (ul_tpmi <= 3 || ul_tpmi == 13)) || (*nrOfLayers==2 && ul_tpmi <= 6) ||
+                          (*nrOfLayers==3 && ul_tpmi <= 1) || (*nrOfLayers==4 && ul_tpmi == 0),
+                          "TPMI %d is invalid!\n", ul_tpmi);
             }
           } else {
             nbits = 6;
             if (val && srs_feedback) {
-              AssertFatal((*nrOfLayers==1 && srs_feedback->tpmi <= 15) || (*nrOfLayers==2 && srs_feedback->tpmi <= 13) ||
-                          (*nrOfLayers==3 && srs_feedback->tpmi <= 2) || (*nrOfLayers==4 && srs_feedback->tpmi <= 2),
-                          "TPMI %d is invalid!\n", srs_feedback->tpmi);
+              AssertFatal((*nrOfLayers==1 && ul_tpmi <= 15) || (*nrOfLayers==2 && ul_tpmi <= 13) ||
+                          (*nrOfLayers==3 && ul_tpmi <= 2) || (*nrOfLayers==4 && ul_tpmi <= 2),
+                          "TPMI %d is invalid!\n", ul_tpmi);
             }
           }
           if (val && srs_feedback) {
             switch (*nrOfLayers) {
               case 1:
-                *val = table_7_3_1_1_2_2B_1layer[srs_feedback->tpmi];
+                *val = table_7_3_1_1_2_2B_1layer[ul_tpmi];
                 break;
               case 2:
-                *val = table_7_3_1_1_2_2B_2layers[srs_feedback->tpmi];
+                *val = table_7_3_1_1_2_2B_2layers[ul_tpmi];
                 break;
               case 3:
-                *val = table_7_3_1_1_2_2B_3layers[srs_feedback->tpmi];
+                *val = table_7_3_1_1_2_2B_3layers[ul_tpmi];
                 break;
               case 4:
-                *val = table_7_3_1_1_2_2B_4layers[srs_feedback->tpmi];
+                *val = table_7_3_1_1_2_2B_4layers[ul_tpmi];
                 break;
               default:
                 LOG_E(NR_MAC,"Number of layers %d is invalid!\n", *nrOfLayers);
@@ -3196,38 +3019,38 @@ uint8_t compute_precoding_information(NR_PUSCH_Config_t *pusch_Config,
         if (codebookSubset && *codebookSubset == NR_PUSCH_Config__codebookSubset_nonCoherent) {
           nbits = 4;
           if (val && srs_feedback) {
-            AssertFatal((*nrOfLayers==1 && srs_feedback->tpmi <= 3) || (*nrOfLayers==2 && srs_feedback->tpmi <= 5) ||
-                        (*nrOfLayers==3 && srs_feedback->tpmi == 0) || (*nrOfLayers==4 && srs_feedback->tpmi == 0),
-                        "TPMI %d is invalid!\n", srs_feedback->tpmi);
+            AssertFatal((*nrOfLayers==1 && ul_tpmi <= 3) || (*nrOfLayers==2 && ul_tpmi <= 5) ||
+                        (*nrOfLayers==3 && ul_tpmi == 0) || (*nrOfLayers==4 && ul_tpmi == 0),
+                        "TPMI %d is invalid!\n", ul_tpmi);
           }
         } else if (codebookSubset && *codebookSubset == NR_PUSCH_Config__codebookSubset_partialAndNonCoherent) {
           nbits = 5;
           if (val && srs_feedback) {
-            AssertFatal((*nrOfLayers==1 && srs_feedback->tpmi <= 11) || (*nrOfLayers==2 && srs_feedback->tpmi <= 13) ||
-                        (*nrOfLayers==3 && srs_feedback->tpmi <= 2) || (*nrOfLayers==4 && srs_feedback->tpmi <= 2),
-                        "TPMI %d is invalid!\n", srs_feedback->tpmi);
+            AssertFatal((*nrOfLayers==1 && ul_tpmi <= 11) || (*nrOfLayers==2 && ul_tpmi <= 13) ||
+                        (*nrOfLayers==3 && ul_tpmi <= 2) || (*nrOfLayers==4 && ul_tpmi <= 2),
+                        "TPMI %d is invalid!\n", ul_tpmi);
           }
         } else {
           nbits = 6;
           if (val && srs_feedback) {
-            AssertFatal((*nrOfLayers==1 && srs_feedback->tpmi <= 28) || (*nrOfLayers==2 && srs_feedback->tpmi <= 22) ||
-                        (*nrOfLayers==3 && srs_feedback->tpmi <= 7) || (*nrOfLayers==4 && srs_feedback->tpmi <= 5),
-                        "TPMI %d is invalid!\n", srs_feedback->tpmi);
+            AssertFatal((*nrOfLayers==1 && ul_tpmi <= 28) || (*nrOfLayers==2 && ul_tpmi <= 22) ||
+                        (*nrOfLayers==3 && ul_tpmi <= 7) || (*nrOfLayers==4 && ul_tpmi <= 5),
+                        "TPMI %d is invalid!\n", ul_tpmi);
           }
         }
         if (val && srs_feedback) {
           switch (*nrOfLayers) {
             case 1:
-              *val = table_7_3_1_1_2_2_1layer[srs_feedback->tpmi];
+              *val = table_7_3_1_1_2_2_1layer[ul_tpmi];
               break;
             case 2:
-              *val = table_7_3_1_1_2_2_2layers[srs_feedback->tpmi];
+              *val = table_7_3_1_1_2_2_2layers[ul_tpmi];
               break;
             case 3:
-              *val = table_7_3_1_1_2_2_3layers[srs_feedback->tpmi];
+              *val = table_7_3_1_1_2_2_3layers[ul_tpmi];
               break;
             case 4:
-              *val = table_7_3_1_1_2_2_4layers[srs_feedback->tpmi];
+              *val = table_7_3_1_1_2_2_4layers[ul_tpmi];
               break;
             default:
               LOG_E(NR_MAC,"Number of layers %d is invalid!\n", *nrOfLayers);
@@ -3237,7 +3060,6 @@ uint8_t compute_precoding_information(NR_PUSCH_Config_t *pusch_Config,
     }
 
   }
-
   return nbits;
 }
 
@@ -3295,6 +3117,58 @@ uint16_t get_rb_bwp_dci(nr_dci_format_t format,
   return N_RB;
 }
 
+// 32 HARQ processes supported in rel17, default is 8
+int get_nrofHARQ_ProcessesForPDSCH(const NR_UE_ServingCell_Info_t *sc_info)
+{
+  if (sc_info && sc_info->nrofHARQ_ProcessesForPDSCH_v1700)
+    return 32;
+
+  if (!sc_info || !sc_info->nrofHARQ_ProcessesForPDSCH)
+    return 8;
+
+  int IEvalues[] = {2, 4, 6, 10, 12, 16};
+  return IEvalues[*sc_info->nrofHARQ_ProcessesForPDSCH];
+}
+
+// 32 HARQ processes supported in rel17, default is 16
+int get_nrofHARQ_ProcessesForPUSCH(const NR_UE_ServingCell_Info_t *sc_info)
+{
+  if (sc_info && sc_info->nrofHARQ_ProcessesForPUSCH_r17)
+    return 32;
+
+  return 16;
+}
+
+static int get_nrofHARQ_bits_PDSCH(int dci_format, int num_dl_harq, NR_PDSCH_Config_t *dl_cfg)
+{
+  // IF DCI Format 1_0 - then use 4 bits. Refer to Spec 38.212 section 7.3.1.2.1
+  int harqbits = 4;
+  if (dl_cfg && dl_cfg->ext3) {
+    // 5 bits if higher layer parameter harq-ProcessNumberSizeDCI-1-1 is configured, otherwise 4 bits
+    // Refer to Spec 38.212 section 7.3.1.2.2
+    if (dci_format == NR_DL_DCI_FORMAT_1_1 && dl_cfg->ext3->harq_ProcessNumberSizeDCI_1_1_r17) {
+      harqbits = 5;
+      AssertFatal(num_dl_harq == 32, "Incorrect configuration of DL HARQ processes %d\n",num_dl_harq);
+    }
+  }
+  return harqbits;
+}
+
+static int get_nrofHARQ_bits_PUSCH(int dci_format, int num_ul_harq, NR_PUSCH_Config_t *ul_cfg)
+{
+  // IF DCI Format 0_0 - then use 4 bits. Refer to Spec 38.212 section 7.3.1.1.1
+  int harqbits = 4;
+  if (ul_cfg && ul_cfg->ext2) {
+    // 5 bits if higher layer parameter harq-ProcessNumberSizeDCI-0-1 is configured, otherwise 4 bits
+    // Refer to Spec 38.212 section 7.3.1.1.2
+    if (dci_format == NR_UL_DCI_FORMAT_0_1 && ul_cfg->ext2->harq_ProcessNumberSizeDCI_0_1_r17) {
+      harqbits = 5;
+      AssertFatal(num_ul_harq == 32, "Incorrect configuration of UL HARQ processes %d\n",num_ul_harq);
+    }
+  }
+  return harqbits;
+}
+
 uint16_t nr_dci_size(const NR_UE_DL_BWP_t *DL_BWP,
                      const NR_UE_UL_BWP_t *UL_BWP,
                      const NR_UE_ServingCell_Info_t *sc_info,
@@ -3328,10 +3202,17 @@ uint16_t nr_dci_size(const NR_UE_DL_BWP_t *DL_BWP,
                           sc_info->initial_ul_BWPSize,
                           sc_info->initial_dl_BWPSize);
 
+  const int num_dl_harq = get_nrofHARQ_ProcessesForPDSCH(sc_info);
+  const int num_ul_harq = get_nrofHARQ_ProcessesForPUSCH(sc_info);
+  const int num_dlharqbits = get_nrofHARQ_bits_PDSCH(format, num_dl_harq, pdsch_Config);
+  const int num_ulharqbits = get_nrofHARQ_bits_PUSCH(format, num_ul_harq, pusch_Config);
+
   switch(format) {
     case NR_UL_DCI_FORMAT_0_0:
       /// fixed: Format identifier 1, Hop flag 1, MCS 5, NDI 1, RV 2, HARQ PID 4, PUSCH TPC 2 Time Domain assgnmt 4 --20
       size += 20;
+      // HARQ pid - 4bits , Spec 38.212 section 7.3.1.1.1
+      dci_pdu->harq_pid.nbits = 4;
       dci_pdu->frequency_domain_assignment.nbits = (uint8_t)ceil(log2((N_RB * (N_RB + 1)) >>1)); // Freq domain assignment -- hopping scenario to be updated
       size += dci_pdu->frequency_domain_assignment.nbits;
       if(alt_size >= size)
@@ -3344,8 +3225,16 @@ uint16_t nr_dci_size(const NR_UE_DL_BWP_t *DL_BWP,
       break;
 
     case NR_UL_DCI_FORMAT_0_1:
-      /// fixed: Format identifier 1, MCS 5, NDI 1, RV 2, HARQ PID 4, PUSCH TPC 2, ULSCH indicator 1 --16
-      size += 16;
+      if (!UL_BWP) {
+        LOG_E(NR_MAC, "Error! Not possible to configure DCI format 01 without UL BWP.\n");
+        return 0;
+      }
+      /// fixed: Format identifier 1, MCS 5, NDI 1, RV 2, PUSCH TPC 2, ULSCH indicator 1 --12
+      size += 12;
+      // HARQ PID - 4/5 bits Spec 38.212 section 7.3.1.1.2
+      // 5 bits if higher layer parameter harq-ProcessNumberSizeDCI-0-1 is configured;otherwise 4 bits
+      dci_pdu->harq_pid.nbits = num_ulharqbits;
+      size += dci_pdu->harq_pid.nbits;
       // Carrier indicator
       if (sc_info->crossCarrierSchedulingConfig) {
         dci_pdu->carrier_indicator.nbits = 3;
@@ -3412,7 +3301,8 @@ uint16_t nr_dci_size(const NR_UE_DL_BWP_t *DL_BWP,
       size += dci_pdu->srs_resource_indicator.nbits;
       LOG_D(NR_MAC, "dci_pdu->srs_resource_indicator.nbits %d\n", dci_pdu->srs_resource_indicator.nbits);
       // Precoding info and number of layers
-      dci_pdu->precoding_information.nbits = compute_precoding_information(pusch_Config, srs_config, dci_pdu->srs_resource_indicator, NULL, NULL, NULL);
+      dci_pdu->precoding_information.nbits =
+          compute_precoding_information(pusch_Config, srs_config, dci_pdu->srs_resource_indicator, NULL, NULL, NULL, NULL);
       size += dci_pdu->precoding_information.nbits;
       LOG_D(NR_MAC, "dci_pdu->precoding_informaiton.nbits=%d\n", dci_pdu->precoding_information.nbits);
       // Antenna ports
@@ -3487,6 +3377,8 @@ uint16_t nr_dci_size(const NR_UE_DL_BWP_t *DL_BWP,
       // Size of DCI format 1_0 is given by the size of CORESET 0 if CORESET 0 is configured for the cell and the size
       // of initial DL bandwidth part if CORESET 0 is not configured for the cell
       size = 28;
+      // HARQ pid - 4 bits. Spec 38.212 section 7.3.1.2.1
+      dci_pdu->harq_pid.nbits = 4;
       dci_pdu->frequency_domain_assignment.nbits = (uint8_t)ceil(log2((N_RB * (N_RB + 1)) >> 1)); // Freq domain assignment
       size += dci_pdu->frequency_domain_assignment.nbits;
       if(ss_type == NR_SearchSpace__searchSpaceType_PR_ue_Specific && alt_size >= size)
@@ -3497,6 +3389,10 @@ uint16_t nr_dci_size(const NR_UE_DL_BWP_t *DL_BWP,
 
     case NR_DL_DCI_FORMAT_1_1:
       LOG_D(NR_MAC, "DCI_FORMAT 1_1 : pdsch_Config %p, pucch_Config %p\n", pdsch_Config, pucch_Config);
+      if (!DL_BWP) {
+        LOG_E(NR_MAC, "Error! Not possible to configure DCI format 11 without DL BWP.\n");
+        return 0;
+      }
       // General note: 0 bits condition is ignored as default nbits is 0.
       // Format identifier
       size = 1;
@@ -3565,8 +3461,10 @@ uint16_t nr_dci_size(const NR_UE_DL_BWP_t *DL_BWP,
       if ((maxCWperDCI != NULL) && (*maxCWperDCI == 2)) {
         size += 8;
       }
-      // HARQ PID
-      size += 4;
+      // HARQ process number – 5 bits if higher layer parameter harq-ProcessNumberSizeDCI-1-1 is configured;
+      // otherwise 4 bits. Spec 38.212 Section 7.3.1.2.2
+      dci_pdu->harq_pid.nbits = num_dlharqbits;
+      size += dci_pdu->harq_pid.nbits;
       // DAI
       if (pdsch_HARQ_ACK_Codebook == NR_PhysicalCellGroupConfig__pdsch_HARQ_ACK_Codebook_dynamic) { // FIXME in case of more than one serving cell
         dci_pdu->dai[0].nbits = 2;
@@ -3787,8 +3685,7 @@ int16_t fill_dmrs_mask(const NR_PDSCH_Config_t *pdsch_Config,
     AssertFatal(startSymbol <= l0, "Wrong config, Start symbol %d cannot be later than dmrs_TypeA_Position %d \n", startSymbol, l0);
 
     // Section 7.4.1.1.2 in Spec 38.211
-    AssertFatal(l0 == 2 || (l0 == 3 && (ld != 3 || ld != 4)), "ld 3 or 4 symbols only possible with dmrs_TypeA_Position POS2 \n");
-
+    AssertFatal(l0 == 2 || (l0 == 3 && (ld != 3 && ld != 4)), "ld 3 or 4 symbols only possible with dmrs_TypeA_Position POS2 \n");
   }
 
   // number of front loaded symbols
@@ -4449,11 +4346,8 @@ void get_type0_PDCCH_CSS_config_parameters(NR_Type0_PDCCH_CSS_config_t *type0_PD
 
 void fill_coresetZero(NR_ControlResourceSet_t *coreset0, NR_Type0_PDCCH_CSS_config_t *type0_PDCCH_CSS_config)
 {
-  if (coreset0 == NULL)
-    coreset0 = calloc(1,sizeof(*coreset0));
-
-  AssertFatal(type0_PDCCH_CSS_config!=NULL,"No type0 CSS configuration\n");
-
+  AssertFatal(type0_PDCCH_CSS_config, "No type0 CSS configuration\n");
+  AssertFatal(coreset0, "Coreset0 should have been allocated outside of this function\n");
   coreset0->controlResourceSetId = 0;
   int duration = type0_PDCCH_CSS_config->num_symbols;
 
@@ -4502,8 +4396,7 @@ void fill_searchSpaceZero(NR_SearchSpace_t *ss0,
                           int slots_per_frame,
                           NR_Type0_PDCCH_CSS_config_t *type0_PDCCH_CSS_config)
 {
-  if(ss0 == NULL)
-    ss0 = calloc(1, sizeof(*ss0));
+  AssertFatal(ss0, "SearchSpace0 should have been allocated outside of this function\n");
   if(ss0->controlResourceSetId == NULL)
     ss0->controlResourceSetId = calloc(1, sizeof(*ss0->controlResourceSetId));
   if(ss0->monitoringSymbolsWithinSlot == NULL)
@@ -4845,29 +4738,30 @@ void compute_rsrp_bitlen(struct NR_CSI_ReportConfig *csi_reportconfig,
 }
 
 uint8_t compute_ri_bitlen(struct NR_CSI_ReportConfig *csi_reportconfig,
-                          nr_csi_report_t *csi_report) {
+                          nr_csi_report_t *csi_report)
+{
 
   struct NR_CodebookConfig *codebookConfig = csi_reportconfig->codebookConfig;
   uint8_t nb_allowed_ri, ri_bitlen;
   uint8_t ri_restriction = 0;
 
   if (codebookConfig == NULL) {
-    csi_report->csi_meas_bitlen.ri_bitlen=0;
+    csi_report->csi_meas_bitlen.ri_bitlen = 0;
     return ri_restriction;
   }
 
   // codebook type1 single panel
-  if (NR_CodebookConfig__codebookType__type1__subType_PR_typeI_SinglePanel==codebookConfig->codebookType.choice.type1->subType.present){
+  if (NR_CodebookConfig__codebookType__type1__subType_PR_typeI_SinglePanel == codebookConfig->codebookType.choice.type1->subType.present) {
     struct NR_CodebookConfig__codebookType__type1__subType__typeI_SinglePanel *type1single = codebookConfig->codebookType.choice.type1->subType.choice.typeI_SinglePanel;
-    if (type1single->nrOfAntennaPorts.present == NR_CodebookConfig__codebookType__type1__subType__typeI_SinglePanel__nrOfAntennaPorts_PR_two){
+    if (type1single->nrOfAntennaPorts.present == NR_CodebookConfig__codebookType__type1__subType__typeI_SinglePanel__nrOfAntennaPorts_PR_two) {
 
       ri_restriction = csi_reportconfig->codebookConfig->codebookType.choice.type1->subType.choice.typeI_SinglePanel->typeI_SinglePanel_ri_Restriction.buf[0];
 
       nb_allowed_ri = number_of_bits_set(ri_restriction);
       ri_bitlen = ceil(log2(nb_allowed_ri));
 
-      ri_bitlen = ri_bitlen<1?ri_bitlen:1; //from the spec 38.212 and table  6.3.1.1.2-3: RI, LI, CQI, and CRI of codebookType=typeI-SinglePanel
-      csi_report->csi_meas_bitlen.ri_bitlen=ri_bitlen;
+      ri_bitlen = ri_bitlen < 1 ? ri_bitlen : 1; //from the spec 38.212 and table  6.3.1.1.2-3: RI, LI, CQI, and CRI of codebookType=typeI-SinglePanel
+      csi_report->csi_meas_bitlen.ri_bitlen = ri_bitlen;
     }
     if (type1single->nrOfAntennaPorts.present == NR_CodebookConfig__codebookType__type1__subType__typeI_SinglePanel__nrOfAntennaPorts_PR_moreThanTwo){
       if (type1single->nrOfAntennaPorts.choice.moreThanTwo->n1_n2.present ==
@@ -4879,8 +4773,8 @@ uint8_t compute_ri_bitlen(struct NR_CSI_ReportConfig *csi_reportconfig,
         nb_allowed_ri = number_of_bits_set(ri_restriction);
         ri_bitlen = ceil(log2(nb_allowed_ri));
 
-        ri_bitlen = ri_bitlen<2?ri_bitlen:2; //from the spec 38.212 and table  6.3.1.1.2-3: RI, LI, CQI, and CRI of codebookType=typeI-SinglePanel
-        csi_report->csi_meas_bitlen.ri_bitlen=ri_bitlen;
+        ri_bitlen = ri_bitlen < 2 ? ri_bitlen : 2; //from the spec 38.212 and table  6.3.1.1.2-3: RI, LI, CQI, and CRI of codebookType=typeI-SinglePanel
+        csi_report->csi_meas_bitlen.ri_bitlen = ri_bitlen;
       }
       else {
         // more than 4 ports
@@ -4890,7 +4784,7 @@ uint8_t compute_ri_bitlen(struct NR_CSI_ReportConfig *csi_reportconfig,
         nb_allowed_ri = number_of_bits_set(ri_restriction);
         ri_bitlen = ceil(log2(nb_allowed_ri));
 
-        csi_report->csi_meas_bitlen.ri_bitlen=ri_bitlen;
+        csi_report->csi_meas_bitlen.ri_bitlen = ri_bitlen;
       }
     }
     return ri_restriction;
@@ -5006,145 +4900,171 @@ void get_n1n2_o1o2_singlepanel(int *n1, int *n2, int *o1, int *o2,
   }
 }
 
-void get_x1x2_bitlen_singlepanel(int n1, int n2, int o1, int o2,
-                                 int *x1, int *x2, int rank, int codebook_mode) {
-
+static void set_bitlen_size_singlepanel(CSI_Meas_bitlen_t *csi_bitlen, int n1, int n2, int o1, int o2, int rank, int codebook_mode)
+{
+  int i = rank - 1;
   // Table 6.3.1.1.2-1 in 38.212
   switch(rank){
     case 1:
-      if(n2>1) {
+      if(n2 > 1) {
         if (codebook_mode == 1) {
-          *x1 = ceil(log2(n1*o1)) + ceil(log2(n2*o2));
-          *x2 = 2;
+          csi_bitlen->pmi_i11_bitlen[i] = ceil(log2(n1 * o1));
+          csi_bitlen->pmi_i12_bitlen[i] = ceil(log2(n2 * o2));
+          csi_bitlen->pmi_x2_bitlen[i] = 2;
         }
         else {
-          *x1 = ceil(log2(n1*o1/2)) + ceil(log2(n2*o2/2));
-          *x2 = 4;
+          csi_bitlen->pmi_i11_bitlen[i] = ceil(log2(n1 * o1 / 2));
+          csi_bitlen->pmi_i12_bitlen[i] = ceil(log2(n2 * o2 / 2));
+          csi_bitlen->pmi_x2_bitlen[i] = 4;
         }
       }
       else{
         if (codebook_mode == 1) {
-          *x1 = ceil(log2(n1*o1)) + ceil(log2(n2*o2));
-          *x2 = 2;
+          csi_bitlen->pmi_i11_bitlen[i] = ceil(log2(n1 * o1));
+          csi_bitlen->pmi_i12_bitlen[i] = ceil(log2(n2 * o2));
+          csi_bitlen->pmi_x2_bitlen[i] = 2;
         }
         else {
-          *x1 = ceil(log2(n1*o1/2));
-          *x2 = 4;
+          csi_bitlen->pmi_i11_bitlen[i] = ceil(log2(n1 * o1 / 2));
+          csi_bitlen->pmi_i12_bitlen[i] = 0;
+          csi_bitlen->pmi_x2_bitlen[i] = 4;
         }
       }
+      csi_bitlen->pmi_i13_bitlen[i] = 0;
       break;
     case 2:
-      if(n1*n2 == 2) {
+      if(n1 * n2 == 2) {
         if (codebook_mode == 1) {
-          *x1 = ceil(log2(n1*o1)) + ceil(log2(n2*o2));
-          *x2 = 1;
+          csi_bitlen->pmi_i11_bitlen[i] = ceil(log2(n1 * o1));
+          csi_bitlen->pmi_i12_bitlen[i] = ceil(log2(n2 * o2));
+          csi_bitlen->pmi_x2_bitlen[i] = 1;
         }
         else {
-          *x1 = ceil(log2(n1*o1/2));
-          *x2 = 3;
+          csi_bitlen->pmi_i11_bitlen[i] = ceil(log2(n1 * o1 / 2));
+          csi_bitlen->pmi_i12_bitlen[i] = 0;
+          csi_bitlen->pmi_x2_bitlen[i] = 3;
         }
-        *x1 += 1;
+        csi_bitlen->pmi_i13_bitlen[i] = 1;
       }
       else {
-        if(n2>1) {
+        if(n2 > 1) {
           if (codebook_mode == 1) {
-            *x1 = ceil(log2(n1*o1)) + ceil(log2(n2*o2));
-            *x2 = 3;
+            csi_bitlen->pmi_i11_bitlen[i] = ceil(log2(n1 * o1));
+            csi_bitlen->pmi_i12_bitlen[i] = ceil(log2(n2 * o2));
+            csi_bitlen->pmi_x2_bitlen[i] = 1;
           }
           else {
-            *x1 = ceil(log2(n1*o1/2)) + ceil(log2(n2*o2/2));
-            *x2 = 3;
+            csi_bitlen->pmi_i11_bitlen[i] = ceil(log2(n1 * o1 / 2));
+            csi_bitlen->pmi_i12_bitlen[i] = ceil(log2(n2 * o2 / 2));
+            csi_bitlen->pmi_x2_bitlen[i] = 3;
           }
         }
         else{
           if (codebook_mode == 1) {
-            *x1 = ceil(log2(n1*o1)) + ceil(log2(n2*o2));
-            *x2 = 1;
+            csi_bitlen->pmi_i11_bitlen[i] = ceil(log2(n1 * o1));
+            csi_bitlen->pmi_i12_bitlen[i] = ceil(log2(n2 * o2));
+            csi_bitlen->pmi_x2_bitlen[i] = 1;
           }
           else {
-            *x1 = ceil(log2(n1*o1/2));
-            *x2 = 3;
+            csi_bitlen->pmi_i11_bitlen[i] = ceil(log2(n1 * o1 / 2));
+            csi_bitlen->pmi_i12_bitlen[i] = 0;
+            csi_bitlen->pmi_x2_bitlen[i] = 3;
           }
         }
-        *x1 += 2;
+        csi_bitlen->pmi_i13_bitlen[i] = 2;
       }
       break;
     case 3:
     case 4:
       if(n1*n2 == 2) {
-        *x1 = ceil(log2(n1*o1)) + ceil(log2(n2*o2));
-        *x2 = 1;
+        csi_bitlen->pmi_i11_bitlen[i] = ceil(log2(n1 * o1));
+        csi_bitlen->pmi_i12_bitlen[i] = ceil(log2(n2 * o2));
+        csi_bitlen->pmi_i13_bitlen[i] = 0;
+        csi_bitlen->pmi_x2_bitlen[i] = 1;
       }
       else {
         if(n1*n2 >= 8) {
-          *x1 = ceil(log2(n1*o1/2)) + ceil(log2(n2*o2)) + 2;
-          *x2 = 1;
+          csi_bitlen->pmi_i11_bitlen[i] = ceil(log2(n1 * o1 / 2));
+          csi_bitlen->pmi_i12_bitlen[i] = ceil(log2(n2 * o2));
+          csi_bitlen->pmi_i13_bitlen[i] = 2;
+          csi_bitlen->pmi_x2_bitlen[i] = 1;
         }
         else {
-          *x1 = ceil(log2(n1*o1)) + ceil(log2(n2*o2)) + 2;
-          *x2 = 1;
+          csi_bitlen->pmi_i11_bitlen[i] = ceil(log2(n1 * o1));
+          csi_bitlen->pmi_i12_bitlen[i] = ceil(log2(n2 * o2));
+          csi_bitlen->pmi_i13_bitlen[i] = 2;
+          csi_bitlen->pmi_x2_bitlen[i] = 1;
         }
       }
       break;
     case 5:
     case 6:
-      *x1 = ceil(log2(n1*o1)) + ceil(log2(n2*o2));
-      *x2 = 1;
+      csi_bitlen->pmi_i11_bitlen[i] = ceil(log2(n1 * o1));
+      csi_bitlen->pmi_i12_bitlen[i] = ceil(log2(n2 * o2));
+      csi_bitlen->pmi_i13_bitlen[i] = 0;
+      csi_bitlen->pmi_x2_bitlen[i] = 1;
       break;
     case 7:
     case 8:
       if(n1 == 4 && n2 == 1) {
-        *x1 = ceil(log2(n1*o1/2)) + ceil(log2(n2*o2));
-        *x2 = 1;
+        csi_bitlen->pmi_i11_bitlen[i] = ceil(log2(n1 * o1));
+        csi_bitlen->pmi_i12_bitlen[i] = ceil(log2(n2 * o2 / 2));
+        csi_bitlen->pmi_i13_bitlen[i] = 0;
+        csi_bitlen->pmi_x2_bitlen[i] = 1;
       }
       else {
         if(n1 > 2 && n2 == 2) {
-          *x1 = ceil(log2(n1*o1)) + ceil(log2(n2*o2/2));
-          *x2 = 1;
+          csi_bitlen->pmi_i11_bitlen[i] = ceil(log2(n1 * o1));
+          csi_bitlen->pmi_i12_bitlen[i] = ceil(log2(n2 * o2 / 2));
+          csi_bitlen->pmi_i13_bitlen[i] = 0;
+          csi_bitlen->pmi_x2_bitlen[i] = 1;
         }
         else {
-          *x1 = ceil(log2(n1*o1)) + ceil(log2(n2*o2));
-          *x2 = 1;
+          csi_bitlen->pmi_i11_bitlen[i] = ceil(log2(n1 * o1));
+          csi_bitlen->pmi_i12_bitlen[i] = ceil(log2(n2 * o2));
+          csi_bitlen->pmi_i13_bitlen[i] = 0;
+          csi_bitlen->pmi_x2_bitlen[i] = 1;
         }
       }
       break;
     default:
       AssertFatal(1==0,"Invalid rank in x1 x2 bit length computation\n");
   }
+  csi_bitlen->pmi_x1_bitlen[i] = csi_bitlen->pmi_i11_bitlen[i] + csi_bitlen->pmi_i12_bitlen[i] + csi_bitlen->pmi_i13_bitlen[i];
 }
 
 
 void compute_pmi_bitlen(struct NR_CSI_ReportConfig *csi_reportconfig,
                         uint8_t ri_restriction,
-                        nr_csi_report_t *csi_report) {
-
-  struct NR_CodebookConfig *codebookConfig = csi_reportconfig->codebookConfig;
-  for(int i=0; i<8; i++) {
-    csi_report->csi_meas_bitlen.pmi_x1_bitlen[i]=0;
-    csi_report->csi_meas_bitlen.pmi_x2_bitlen[i]=0;
-    if (codebookConfig == NULL || ((ri_restriction>>i)&0x01) == 0)
+                        nr_csi_report_t *csi_report)
+{
+  NR_CodebookConfig_t *codebookConfig = csi_reportconfig->codebookConfig;
+  for(int i = 0; i < 8; i++) {
+    csi_report->csi_meas_bitlen.pmi_x1_bitlen[i] = 0;
+    csi_report->csi_meas_bitlen.pmi_x2_bitlen[i] = 0;
+    if (codebookConfig == NULL || ((ri_restriction >> i) & 0x01) == 0)
       return;
     else {
       if(codebookConfig->codebookType.present == NR_CodebookConfig__codebookType_PR_type1) {
-        if(codebookConfig->codebookType.choice.type1->subType.present == NR_CodebookConfig__codebookType__type1__subType_PR_typeI_SinglePanel) {
-          if(codebookConfig->codebookType.choice.type1->subType.choice.typeI_SinglePanel->nrOfAntennaPorts.present ==
+        struct NR_CodebookConfig__codebookType__type1 *type1 = codebookConfig->codebookType.choice.type1;
+        if(type1->subType.present == NR_CodebookConfig__codebookType__type1__subType_PR_typeI_SinglePanel) {
+          struct NR_CodebookConfig__codebookType__type1__subType__typeI_SinglePanel *sp = type1->subType.choice.typeI_SinglePanel;
+          if(sp->nrOfAntennaPorts.present ==
              NR_CodebookConfig__codebookType__type1__subType__typeI_SinglePanel__nrOfAntennaPorts_PR_two) {
             csi_report->N1 = 1;
             csi_report->N2 = 1;
-            if (i==0)
-              csi_report->csi_meas_bitlen.pmi_x2_bitlen[i]=2;
-            if (i==1)
-              csi_report->csi_meas_bitlen.pmi_x2_bitlen[i]=1;
+            if (i == 0)
+              csi_report->csi_meas_bitlen.pmi_x2_bitlen[i] = 2;
+            if (i == 1)
+              csi_report->csi_meas_bitlen.pmi_x2_bitlen[i] = 1;
           }
           else {  // more than two
-            int n1,n2,o1,o2,x1,x2;
-            get_n1n2_o1o2_singlepanel(&n1,&n2,&o1,&o2,codebookConfig->codebookType.choice.type1->subType.choice.typeI_SinglePanel->nrOfAntennaPorts.choice.moreThanTwo);
-            get_x1x2_bitlen_singlepanel(n1,n2,o1,o2,&x1,&x2,i+1,codebookConfig->codebookType.choice.type1->codebookMode);
+            int n1, n2, o1, o2;
+            get_n1n2_o1o2_singlepanel(&n1, &n2, &o1, &o2, sp->nrOfAntennaPorts.choice.moreThanTwo);
+            set_bitlen_size_singlepanel(&csi_report->csi_meas_bitlen, n1, n2, o1, o2, i + 1, type1->codebookMode);
             csi_report->N1 = n1;
             csi_report->N2 = n2;
-            csi_report->codebook_mode = codebookConfig->codebookType.choice.type1->codebookMode;
-            csi_report->csi_meas_bitlen.pmi_x1_bitlen[i]=x1;
-            csi_report->csi_meas_bitlen.pmi_x2_bitlen[i]=x2;
+            csi_report->codebook_mode = type1->codebookMode;
           }
         }
         else
@@ -5190,7 +5110,8 @@ void compute_cqi_bitlen(struct NR_CSI_ReportConfig *csi_reportconfig,
 }
 
 //!TODO : same function can be written to handle csi_resources
-void compute_csi_bitlen(NR_CSI_MeasConfig_t *csi_MeasConfig, nr_csi_report_t *csi_report_template) {
+void compute_csi_bitlen(const NR_CSI_MeasConfig_t *csi_MeasConfig, nr_csi_report_t *csi_report_template)
+{
   uint8_t csi_report_id = 0;
   uint8_t nb_resources = 0;
   NR_CSI_ReportConfig__reportQuantity_PR reportQuantity_type;
@@ -5199,7 +5120,7 @@ void compute_csi_bitlen(NR_CSI_MeasConfig_t *csi_MeasConfig, nr_csi_report_t *cs
 
   // for each CSI measurement report configuration (list of CSI-ReportConfig)
   LOG_D(NR_MAC,"Searching %d csi_reports\n",csi_MeasConfig->csi_ReportConfigToAddModList->list.count);
-  for (csi_report_id=0; csi_report_id < csi_MeasConfig->csi_ReportConfigToAddModList->list.count; csi_report_id++){
+  for (csi_report_id = 0; csi_report_id < csi_MeasConfig->csi_ReportConfigToAddModList->list.count; csi_report_id++) {
     struct NR_CSI_ReportConfig *csi_reportconfig = csi_MeasConfig->csi_ReportConfigToAddModList->list.array[csi_report_id];
     // MAC structure for CSI measurement reports (per UE and per report)
     nr_csi_report_t *csi_report = &csi_report_template[csi_report_id];
@@ -5211,7 +5132,7 @@ void compute_csi_bitlen(NR_CSI_MeasConfig_t *csi_MeasConfig, nr_csi_report_t *cs
     int csi_resourceidx = 0;
     while (found_resource == 0 && csi_resourceidx < csi_MeasConfig->csi_ResourceConfigToAddModList->list.count) {
       csi_resourceconfig = csi_MeasConfig->csi_ResourceConfigToAddModList->list.array[csi_resourceidx];
-      if ( csi_resourceconfig->csi_ResourceConfigId == csi_ResourceConfigId)
+      if (csi_resourceconfig->csi_ResourceConfigId == csi_ResourceConfigId)
         found_resource = 1;
       csi_resourceidx++;
     }
@@ -5222,6 +5143,7 @@ void compute_csi_bitlen(NR_CSI_MeasConfig_t *csi_MeasConfig, nr_csi_report_t *cs
 
     reportQuantity_type = csi_reportconfig->reportQuantity.present;
     csi_report->reportQuantity_type = reportQuantity_type;
+    csi_report->reportConfigId = csi_reportconfig->reportConfigId;
 
     // setting the CSI or SSB index list
     if (NR_CSI_ReportConfig__reportQuantity_PR_ssb_Index_RSRP == csi_report->reportQuantity_type) {
@@ -5229,7 +5151,7 @@ void compute_csi_bitlen(NR_CSI_MeasConfig_t *csi_MeasConfig, nr_csi_report_t *cs
         if (csi_MeasConfig->csi_SSB_ResourceSetToAddModList->list.array[csi_idx]->csi_SSB_ResourceSetId ==
             *(csi_resourceconfig->csi_RS_ResourceSetList.choice.nzp_CSI_RS_SSB->csi_SSB_ResourceSetList->list.array[0])){
           //We can configure only one SSB resource set from spec 38.331 IE CSI-ResourceConfig
-          nb_resources=  csi_MeasConfig->csi_SSB_ResourceSetToAddModList->list.array[csi_idx]->csi_SSB_ResourceList.list.count;
+          nb_resources = csi_MeasConfig->csi_SSB_ResourceSetToAddModList->list.array[csi_idx]->csi_SSB_ResourceList.list.count;
           csi_report->SSB_Index_list = csi_MeasConfig->csi_SSB_ResourceSetToAddModList->list.array[csi_idx]->csi_SSB_ResourceList.list.array;
           csi_report->CSI_Index_list = NULL;
           break;
@@ -5286,41 +5208,93 @@ void compute_csi_bitlen(NR_CSI_MeasConfig_t *csi_MeasConfig, nr_csi_report_t *cs
   }
 }
 
-uint16_t nr_get_csi_bitlen(nr_csi_report_t *csi_report_template, uint8_t csi_report_id) {
-
+uint16_t nr_get_csi_bitlen(nr_csi_report_t *csi_report)
+{
   uint16_t csi_bitlen = 0;
   uint16_t max_bitlen = 0;
   L1_RSRP_bitlen_t *CSI_report_bitlen = NULL;
   CSI_Meas_bitlen_t *csi_meas_bitlen = NULL;
 
-  if (csi_report_template[csi_report_id].reportQuantity_type == NR_CSI_ReportConfig__reportQuantity_PR_ssb_Index_RSRP ||
-      csi_report_template[csi_report_id].reportQuantity_type == NR_CSI_ReportConfig__reportQuantity_PR_cri_RSRP) {
-    CSI_report_bitlen = &(csi_report_template[csi_report_id].CSI_report_bitlen); // This might need to be moodif for Aperiodic CSI-RS measurements
+  if (csi_report->reportQuantity_type == NR_CSI_ReportConfig__reportQuantity_PR_ssb_Index_RSRP ||
+      csi_report->reportQuantity_type == NR_CSI_ReportConfig__reportQuantity_PR_cri_RSRP) {
+    CSI_report_bitlen = &(csi_report->CSI_report_bitlen); // This might need to be moodif for Aperiodic CSI-RS measurements
     csi_bitlen += ((CSI_report_bitlen->cri_ssbri_bitlen * CSI_report_bitlen->nb_ssbri_cri) +
                    CSI_report_bitlen->rsrp_bitlen +(CSI_report_bitlen->diff_rsrp_bitlen *
                                                     (CSI_report_bitlen->nb_ssbri_cri -1 )));
   } else {
-    csi_meas_bitlen = &(csi_report_template[csi_report_id].csi_meas_bitlen); //This might need to be moodif for Aperiodic CSI-RS measurements
+    csi_meas_bitlen = &(csi_report->csi_meas_bitlen); //This might need to be moodif for Aperiodic CSI-RS measurements
     uint16_t temp_bitlen;
-    for (int i=0; i<8; i++) {
+    for (int i = 0; i < 8; i++) {
       temp_bitlen = (csi_meas_bitlen->cri_bitlen+
                      csi_meas_bitlen->ri_bitlen+
                      csi_meas_bitlen->li_bitlen[i]+
                      csi_meas_bitlen->cqi_bitlen[i]+
                      csi_meas_bitlen->pmi_x1_bitlen[i]+
                      csi_meas_bitlen->pmi_x2_bitlen[i]);
-      if(temp_bitlen>max_bitlen)
+      if(temp_bitlen > max_bitlen)
         max_bitlen = temp_bitlen;
     }
     csi_bitlen += max_bitlen;
   }
-
   return csi_bitlen;
 }
 
-uint16_t compute_PDU_length(uint32_t num_TLV, uint16_t total_length)
+bool supported_bw_comparison(int bw_mhz, NR_SupportedBandwidth_t *supported_BW, long *support_90mhz)
 {
-  uint8_t pdu_length = 8; // 2 bytes PDU_Length + 2 bytes PDU_Index + 4 bytes num_TLV
+  if (bw_mhz == 90)
+    return support_90mhz ? true : false;
+  switch (supported_BW->present) {
+    case NR_SupportedBandwidth_PR_fr1 :
+      switch (supported_BW->choice.fr1) {
+        case NR_SupportedBandwidth__fr1_mhz5 :
+          return bw_mhz == 5;
+        case NR_SupportedBandwidth__fr1_mhz10 :
+          return bw_mhz == 10;
+        case NR_SupportedBandwidth__fr1_mhz15 :
+          return bw_mhz == 15;
+        case NR_SupportedBandwidth__fr1_mhz20 :
+          return bw_mhz == 20;
+        case NR_SupportedBandwidth__fr1_mhz25 :
+          return bw_mhz == 25;
+        case NR_SupportedBandwidth__fr1_mhz30 :
+          return bw_mhz == 30;
+        case NR_SupportedBandwidth__fr1_mhz40 :
+          return bw_mhz == 40;
+        case NR_SupportedBandwidth__fr1_mhz50 :
+          return bw_mhz == 50;
+        case NR_SupportedBandwidth__fr1_mhz60 :
+          return bw_mhz == 60;
+        case NR_SupportedBandwidth__fr1_mhz80 :
+          return bw_mhz == 80;
+        case NR_SupportedBandwidth__fr1_mhz100 :
+          return bw_mhz == 100;
+        default :
+          AssertFatal(false, "Invalid FR1 supported band\n");
+      }
+      break;
+    case NR_SupportedBandwidth_PR_fr2 :
+      switch (supported_BW->choice.fr2) {
+        case NR_SupportedBandwidth__fr2_mhz50 :
+          return bw_mhz == 50;
+        case NR_SupportedBandwidth__fr2_mhz100 :
+          return bw_mhz == 100;
+        case NR_SupportedBandwidth__fr2_mhz200 :
+          return bw_mhz == 200;
+        case NR_SupportedBandwidth__fr2_mhz400 :
+          return bw_mhz == 400;
+        default :
+          AssertFatal(false, "Invalid FR2 supported band\n");
+      }
+      break;
+    default :
+      AssertFatal(false, "Invalid BW type\n");
+  }
+  return false;
+}
+
+uint32_t compute_PDU_length(uint32_t num_TLV, uint32_t total_length)
+{
+  uint32_t pdu_length = 8; // 2 bytes PDU_Length + 2 bytes PDU_Index + 4 bytes num_TLV
   // For each TLV, add 2 bytes tag + 2 bytes length + value size without padding
   pdu_length += (num_TLV * 4) + total_length;
   return pdu_length;
@@ -5340,4 +5314,41 @@ rnti_t nr_get_ra_rnti(uint8_t s_id, uint8_t t_id, uint8_t f_id, uint8_t ul_carri
   LOG_D(MAC, "f_id %d t_id %d s_id %d ul_carrier_id %d Computed RA_RNTI is 0x%04X\n", f_id, t_id, s_id, ul_carrier_id, ra_rnti);
 
   return ra_rnti;
+}
+
+rnti_t nr_get_MsgB_rnti(uint8_t s_id, uint8_t t_id, uint8_t f_id, uint8_t ul_carrier_id)
+{
+  // 3GPP TS 38.321 Section 5.1.3a
+  rnti_t MsgB_rnti = 1 + s_id + 14 * t_id + 1120 * f_id + 8960 * ul_carrier_id + 17920;
+  LOG_D(MAC, "f_id %d t_id %d s_id %d ul_carrier_id %d Computed MsgB_RNTI is 0x%04X\n", f_id, t_id, s_id, ul_carrier_id, MsgB_rnti);
+
+  return MsgB_rnti;
+}
+
+int get_FeedbackDisabled(NR_DownlinkHARQ_FeedbackDisabled_r17_t *downlinkHARQ_FeedbackDisabled_r17, int harq_pid)
+{
+  if (downlinkHARQ_FeedbackDisabled_r17 == NULL)
+    return 0;
+
+  const int byte_index = harq_pid / 8;
+  const int bit_index = harq_pid % 8;
+
+  return (downlinkHARQ_FeedbackDisabled_r17->buf[byte_index] >> (7 - bit_index)) & 1;
+}
+
+int nr_get_prach_mu(const NR_MsgA_ConfigCommon_r16_t *msgacc, const NR_RACH_ConfigCommon_t *rach_ConfigCommon)
+{
+  int mu;
+
+  // if 2-Step configuration file exists
+  if (msgacc && msgacc->rach_ConfigCommonTwoStepRA_r16.msgA_SubcarrierSpacing_r16) {
+    // Choose Subcarrier Spacing of configuration file of 2-Step
+    mu = *msgacc->rach_ConfigCommonTwoStepRA_r16.msgA_SubcarrierSpacing_r16;
+  } else if (rach_ConfigCommon->msg1_SubcarrierSpacing) {
+    // Choose Subcarrier Spacing of configuration file of 4-Step
+    mu = *rach_ConfigCommon->msg1_SubcarrierSpacing;
+  } else
+    AssertFatal(false, "PRACH subcarrier spacing mandatory present for L139, not supported otherwise\n");
+
+  return mu;
 }

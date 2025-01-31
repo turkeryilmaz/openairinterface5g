@@ -320,7 +320,7 @@ typedef struct timer_elm_s {
                  (char *)itti_get_task_name(task_id),
                  -1,
                  OAI_PRIORITY_RT);
-    LOG_I(ITTI,"Created Posix thread %s\n",  itti_get_task_name(task_id) );
+    LOG_D(ITTI,"Created Posix thread %s\n",  itti_get_task_name(task_id) );
     return 0;
   }
 
@@ -343,7 +343,7 @@ typedef struct timer_elm_s {
     tasks[newQueue]= new task_list_t;
     tasks[newQueue]->task_parms = {0};
     pthread_mutex_unlock (&lock_nb_queues);
-    LOG_I(ITTI,"Starting itti queue: %s as task %d\n", taskInfo->name, newQueue);
+    LOG_D(ITTI, "Starting itti queue: %s as task %d\n", taskInfo->name, newQueue);
     pthread_mutex_init(&tasks[newQueue]->queue_cond_lock, NULL);
     memcpy(&tasks[newQueue]->admin, taskInfo, sizeof(task_info_t));
     AssertFatal( ( tasks[newQueue]->epoll_fd = epoll_create1(0) ) >=0, "");
@@ -434,7 +434,7 @@ typedef struct timer_elm_s {
   void itti_send_terminate_message(task_id_t task_id) {
   }
 
-  sem_t itti_sem_block;
+  static sem_t itti_sem_block;
   void itti_wait_tasks_unblock()
   {
     int rc = sem_post(&itti_sem_block);

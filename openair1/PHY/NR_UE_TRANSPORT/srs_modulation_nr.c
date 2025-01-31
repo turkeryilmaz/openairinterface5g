@@ -110,17 +110,17 @@ uint16_t compute_F_b(frame_t frame_number,
   uint16_t product_N_b = 1;
   for (unsigned int b_prime = b_hop; b_prime < B_SRS; b_prime++) {
     if (b_prime != b_hop) {
-      product_N_b *= srs_bandwidth_config[C_SRS][b_prime][1];
+      product_N_b *= get_N_b_srs(C_SRS, b_prime);
     }
   }
 
   uint16_t F_b = 0;
-  uint8_t N_b = srs_bandwidth_config[C_SRS][b][1];
+  uint8_t N_b = get_N_b_srs(C_SRS, b);
   if (N_b & 1) { // Nb odd
     F_b = (N_b/2)*(n_SRS/product_N_b);
   } else { // Nb even
     uint16_t product_N_b_B_SRS = product_N_b;
-    product_N_b_B_SRS *= srs_bandwidth_config[C_SRS][B_SRS][1]; /* product for b_hop to b */
+    product_N_b_B_SRS *= get_N_b_srs(C_SRS, B_SRS); /* product for b_hop to b */
     F_b = (N_b/2)*((n_SRS%product_N_b_B_SRS)/product_N_b) + ((n_SRS%product_N_b_B_SRS)/2*product_N_b);
   }
 
@@ -142,8 +142,8 @@ uint16_t compute_n_b(frame_t frame_number,
                      uint8_t l_line,
                      uint8_t b) {
 
-  uint8_t N_b = srs_bandwidth_config[C_SRS][b][1];
-  uint16_t m_SRS_b = srs_bandwidth_config[C_SRS][B_SRS][0];
+  uint8_t N_b = get_N_b_srs(C_SRS, b);
+  uint16_t m_SRS_b = get_m_srs(C_SRS, B_SRS);
 
   uint16_t n_b = 0;
   if (b_hop >= B_SRS) {
@@ -179,13 +179,13 @@ uint16_t compute_n_b(frame_t frame_number,
 ***************************************************************************/
 int generate_srs_nr(nfapi_nr_srs_pdu_t *srs_config_pdu,
                     NR_DL_FRAME_PARMS *frame_parms,
-                    int32_t **txdataF,
+                    c16_t **txdataF,
                     uint16_t symbol_offset,
                     nr_srs_info_t *nr_srs_info,
                     int16_t amp,
                     frame_t frame_number,
-                    slot_t slot_number) {
-
+                    slot_t slot_number)
+{
 #ifdef SRS_DEBUG
   LOG_I(NR_PHY,"Calling %s function\n", __FUNCTION__);
 #endif
@@ -205,11 +205,13 @@ int generate_srs_nr(nfapi_nr_srs_pdu_t *srs_config_pdu,
   uint16_t T_SRS = srs_config_pdu->t_srs;
   uint16_t T_offset = srs_config_pdu->t_offset;
   uint8_t R = 1<<srs_config_pdu->num_repetitions;
-  uint8_t N_ap = 1<<srs_config_pdu->num_ant_ports;            // Number of antenna port for transmission
+  /* Number of antenna ports (M) can't be higher than number of physical antennas (N): M <= N */
+  uint8_t num_ant_ports = 1 << srs_config_pdu->num_ant_ports; // Number of antenna port for transmission
+  int N_ap = num_ant_ports > frame_parms->nb_antennas_tx ? frame_parms->nb_antennas_tx : num_ant_ports;
   uint8_t N_symb_SRS = 1<<srs_config_pdu->num_symbols;        // Number of consecutive OFDM symbols
   uint8_t l0 = frame_parms->symbols_per_slot - 1 - l_offset;  // Starting symbol position in the time domain
   uint8_t n_SRS_cs_max = srs_max_number_cs[srs_config_pdu->comb_size];
-  uint16_t m_SRS_b = srs_bandwidth_config[C_SRS][B_SRS][0];   // Number of resource blocks
+  uint16_t m_SRS_b = get_m_srs(C_SRS, B_SRS);   // Number of resource blocks
   uint16_t M_sc_b_SRS = m_SRS_b * NR_NB_SC_PER_RB/K_TC;       // Length of the SRS sequence
 
 #ifdef SRS_DEBUG
@@ -271,7 +273,7 @@ int generate_srs_nr(nfapi_nr_srs_pdu_t *srs_config_pdu,
   }
   uint64_t subcarrier_offset = frame_parms->first_carrier_offset + srs_config_pdu->bwp_start*NR_NB_SC_PER_RB;
   double sqrt_N_ap = sqrt(N_ap);
-  uint16_t n_b[B_SRS_NUMBER];
+  uint16_t n_b[B_SRS + 1];
 
   // Find index of table which is for this SRS length
   uint16_t M_sc_b_SRS_index = 0;
@@ -371,20 +373,15 @@ int generate_srs_nr(nfapi_nr_srs_pdu_t *srs_config_pdu,
 
       // For each port, and for each OFDM symbol, here it is computed and mapped an SRS sequence with M_sc_b_SRS symbols
       for (int k = 0; k < M_sc_b_SRS; k++) {
-
-        double shift_real = cos(alpha_i * k);
-        double shift_imag = sin(alpha_i * k);
-        int16_t r_overbar_real = rv_ul_ref_sig[u][v][M_sc_b_SRS_index][k<<1];
-        int16_t r_overbar_imag = rv_ul_ref_sig[u][v][M_sc_b_SRS_index][(k<<1)+1];
+        cd_t shift = {cos(alpha_i * k), sin(alpha_i * k)};
+        const c16_t tmp = rv_ul_ref_sig[u][v][M_sc_b_SRS_index][k];
+        cd_t r_overbar = {tmp.r, tmp.i};
 
         // cos(x+y) = cos(x)cos(y) - sin(x)sin(y)
-        double r_real = (shift_real*r_overbar_real - shift_imag*r_overbar_imag) / sqrt_N_ap;
+        cd_t r = cdMul(shift, r_overbar);
 
-        // sin(x+y) = sin(x)cos(y) + cos(x)sin(y)
-        double r_imag = (shift_imag*r_overbar_real + shift_real*r_overbar_imag) / sqrt_N_ap;
-
-        int32_t r_real_amp = ((int32_t) round((double) amp * r_real)) >> 15;
-        int32_t r_imag_amp = ((int32_t) round((double) amp * r_imag)) >> 15;
+        c16_t r_amp = {(((int32_t)round((double)amp * r.r / sqrt_N_ap)) >> 15),
+                       (((int32_t)round((double)amp * r.i / sqrt_N_ap)) >> 15)};
 
 #ifdef SRS_DEBUG
         int subcarrier_log = subcarrier-subcarrier_offset;
@@ -394,10 +391,10 @@ int generate_srs_nr(nfapi_nr_srs_pdu_t *srs_config_pdu,
         if(subcarrier_log%12 == 0) {
           LOG_I(NR_PHY,"------------ %d ------------\n", subcarrier_log/12);
         }
-        LOG_I(NR_PHY,"(%d)  \t%i\t%i\n", subcarrier_log, (int16_t)(r_real_amp&0xFFFF), (int16_t)(r_imag_amp&0xFFFF));
+        LOG_I(NR_PHY, "(%d)  \t%i\t%i\n", subcarrier_log, r_amp.r, r_amp.i);
 #endif
 
-        *(c16_t *)&txdataF[p_index][symbol_offset + l_line_offset + subcarrier] = (c16_t){r_real_amp, r_imag_amp};
+        txdataF[p_index][symbol_offset + l_line_offset + subcarrier] = r_amp;
 
         // Subcarrier increment
         subcarrier += K_TC;
@@ -465,14 +462,7 @@ int ue_srs_procedures_nr(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, c16_
   NR_DL_FRAME_PARMS *frame_parms = &(ue->frame_parms);
   uint16_t symbol_offset = (frame_parms->symbols_per_slot - 1 - srs_config_pdu->time_start_position)*frame_parms->ofdm_symbol_size;
 
-  if (generate_srs_nr(srs_config_pdu,
-                      frame_parms,
-                      (int32_t **)txdataF,
-                      symbol_offset,
-                      ue->nr_srs_info,
-                      AMP,
-                      proc->frame_tx,
-                      proc->nr_slot_tx)
+  if (generate_srs_nr(srs_config_pdu, frame_parms, txdataF, symbol_offset, ue->nr_srs_info, AMP, proc->frame_tx, proc->nr_slot_tx)
       == 0) {
     return 0;
   } else {

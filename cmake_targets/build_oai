@@ -46,16 +46,19 @@ BUILD_DOXYGEN=0
 DISABLE_HARDWARE_DEPENDENCY="False"
 CMAKE_BUILD_TYPE="RelWithDebInfo"
 CMAKE_CMD="$CMAKE"
-OPTIONAL_LIBRARIES="telnetsrv enbscope uescope nrscope nrqtscope ldpc_cuda ldpc_t2 websrv oai_iqplayer"
+OPTIONAL_LIBRARIES="telnetsrv enbscope uescope nrscope ldpc_cuda ldpc_t2 ldpc_xdma websrv oai_iqplayer imscope"
 TARGET_LIST=""
+BUILD_TOOL_OPT="-j$(nproc)"
 
 function print_help() {
   echo_info "
 This script compiles OpenAirInterface Software, and can install dependencies
-for a number of distributions (Ubuntu 18-22, Fedora, RHEL7/8).
+for a number of distributions (Ubuntu 22-24, Fedora, RHEL9).
 Options:
 --arch-native
    Passes -march=native to the compiler.
+--build-tool-opt
+   Pass options to build tool (ninja/make), e.g. -k (\"keep going\")
 -c | --clean
    Erase all files to make a rebuild from start
 -C | --clean-all
@@ -87,7 +90,7 @@ Options:
 --RU
   Makes the OAI RRU
 --UE
-   Makes the UE specific parts (ue_ip, usim, nvram) from the given configuration file
+   Makes the UE specific parts (usim, nvram) from the given configuration file
 --nrUE
   Makes the NR UE softmodem
 --UE-conf-nvram [configuration file]
@@ -95,37 +98,26 @@ Options:
 --UE-gen-nvram [output path]
    Specify gen_nvram_path (default \"$gen_nvram_path\")
 -w | --hardware
-   USRP, BLADERF, LMSSDR, IRIS, SIMU, AW2SORI, None (Default)
+   USRP, BLADERF, LMSSDR, IRIS, SIMU, AW2SORI, AERIAL, None (Default)
    Adds this RF board support (in external packages installation and in compilation)
 -t | --transport
    Selects the transport protocol type, options: None, Ethernet, benetel4g, benetel5g, oran_fhlib_5g
 -P | --phy_simulators
    Makes the unitary tests Layer 1 simulators
--S | --core_simulators
-   Makes the core security features unitary simulators
 -s | --check
    runs a set of auto-tests based on simulators and several compilation tests
 --run-group 
    runs only specified test cases specified here. This flag is only valid with -s
 -V | --vcd
    Adds a debgging facility to the binary files: GUI with major internal synchronization events
--x | --xforms
-   Will compile with software oscilloscope features
 --verbose-compile
    Shows detailed compilation instructions in makefile
 --build-doxygen
    Builds doxygen based documentation.
---build-coverity-scan
-   Builds Coverity-Scan objects for upload
---disable-deadline
-   Disables deadline scheduler of Linux kernel (>=3.14.x).
 --trace-asn1c-enc-dec
    Output asn1c logging traces via OAI logging system.
---enable-deadline
-   Enable deadline scheduler of Linux kernel (>=3.14.x). 
---disable-cpu-affinity
-   Disables CPU Affinity between UHD/TX/RX Threads (Valid only when deadline scheduler is disabled). By defaulT, CPU Affinity is enabled when not using deadline scheduler. It is enabled only with >2 CPUs. For eNB, CPU_0-> Device library (UHD), CPU_1->TX Threads, CPU_2...CPU_MAX->Rx Threads. For UE, CPU_0->Device Library(UHD), CPU_1..CPU_MAX -> All the UE threads
---enable-cpu-affinity
+--enable-LTTNG
+   Enable LTTNG log. While lttng is enabled, T-Tracer will be disabled
 --disable-T-Tracer
    Disables the T tracer.
 --disable-hardware-dependency
@@ -146,8 +138,6 @@ Options:
    Disable AVX512 intrinsics whatever processor capability is
 --noavx2
    Disable AVX2 intrinsics whatever processor capability is
--k | --skip-shared-libraries
-   Skip build for shared libraries to reduce compilation time when building frequently for debugging purposes
 --ninja
   Tell cmake to use the Ninja build system. Without, will generate make files
 --sanitize
@@ -175,6 +165,9 @@ function main() {
        --arch-native)
             echo_fatal "Error: specify --arch-native on the command line to cmake directly: ./build_oai --cmake-opt \"-DCMAKE_C_FLAGS=-march=native -DCMAKE_CXX_FLAGS=-march=native\""
             shift;;
+       --build-tool-opt)
+            BUILD_TOOL_OPT+=" $2"
+            shift 2;;
        -c | --clean)
             CLEAN=1
             shift;;
@@ -275,9 +268,6 @@ function main() {
        --UE-gen-nvram)
             gen_nvram_path=$(readlink -f "$2")
             shift 2;;
-       --UE-ip)
-            TARGET_LIST="$TARGET_LIST ue_ip"
-            shift;;
        -w | --hardware)
             case "$2" in
                 "USRP" | "BLADERF" | "LMSSDR" | "IRIS")
@@ -294,6 +284,10 @@ function main() {
                     HW="OAI_"$2
                     TARGET_LIST="$TARGET_LIST aw2sori_transpro"
                     CMAKE_CMD="$CMAKE_CMD -DOAI_$2=ON"
+                    ;;
+                "AERIAL"|"Aerial"|"aerial")
+                    HW="OAI_AERIAL"
+                    CMAKE_CMD="$CMAKE_CMD -DOAI_AERIAL=ON"
                     ;;
                 "None")
                     ;;
@@ -326,7 +320,7 @@ function main() {
        -P | --phy_simulators)
             SIMUS_PHY=1
             # TODO: fix: dlsim_tm4 pucchsim prachsim pdcchsim pbchsim mbmssim
-            TARGET_LIST="$TARGET_LIST dlsim ulsim ldpctest polartest smallblocktest nr_pbchsim nr_dlschsim nr_ulschsim nr_dlsim nr_ulsim nr_pucchsim nr_prachsim"
+            TARGET_LIST="$TARGET_LIST dlsim ulsim ldpctest polartest smallblocktest nr_pbchsim nr_dlschsim nr_ulschsim nr_dlsim nr_ulsim nr_pucchsim nr_prachsim nr_psbchsim"
             echo_info "Will compile dlsim, ulsim, ..."
             shift;;
        -s | --check)
@@ -342,9 +336,6 @@ function main() {
             echo_info "Setting gtk-wave output"
             CMAKE_CMD="$CMAKE_CMD -DENABLE_VCD_FIFO=True"
             shift;;
-       -x | --xforms)
-            echo_info "Will generate the software oscilloscope features"
-            shift;;
        --verbose-compile)
             VERBOSE_COMPILE=1
             echo_info "Will compile with verbose instructions"
@@ -355,6 +346,11 @@ function main() {
            BUILD_DOXYGEN=1
            echo_info "Will build doxygen support"
            shift;;     
+       --enable-LTTNG)
+            CMAKE_CMD="$CMAKE_CMD -DENABLE_LTTNG=ON -DT_TRACER=OFF"
+            echo_info "Enable LTTNG tracer"
+            USE_LTTNG=1
+            shift 1;;
        --disable-T-Tracer)
             CMAKE_CMD="$CMAKE_CMD -DT_TRACER=False"
             echo_info "Disabling the T tracer"
@@ -413,24 +409,21 @@ function main() {
             CMAKE_CMD="$CMAKE_CMD -DSANITIZE_ADDRESS=True -DSANITIZE_UNDEFINED=True"
             shift;;
         --sanitize-address | -fsanitize=address)
-            grep -sq "Ubuntu 18.04" /etc/os-release && echo_error "Bug in OS with this option, see CMakeLists.txt"
             CMAKE_CMD="$CMAKE_CMD -DSANITIZE_ADDRESS=True"
             shift;;
-        --sanitize-undefined | -fundefined=address)
+        --sanitize-undefined | -fsanitize=undefined)
             CMAKE_CMD="$CMAKE_CMD -DSANITIZE_UNDEFINED=True"
             shift;;
         --sanitize-memory | -fsanitize=memory)
-            echo_warning "Note: memory sanitizer\n* requires clang (tested: v17)\n* is incompatible with address/undefined behavior sanitizer\n* requires cmake_targets/tools/memsan.patch"
-            sleep 2
             CMAKE_CMD="$CMAKE_CMD -DSANITIZE_MEMORY=ON -DSANITIZE_ADDRESS=OFF -DSANITIZE_UNDEFINED=OFF"
+            shift;;
+        --sanitize-thread | -fsanitize=thread)
+            CMAKE_CMD="$CMAKE_CMD -DSANITIZE_THREAD=True"
             shift;;
        --trace-asn1c-enc-dec)
             CMAKE_CMD="$CMAKE_CMD -DTRACE_ASN1C_ENC_DEC=ON"
             echo_info "Enabling asn1c internal traces via OAI logging system"
             shift 1;;
-        --sanitize-thread | -fthread=address)
-            CMAKE_CMD="$CMAKE_CMD -DSANITIZE_THREAD=True"
-            shift;;
         -h | --help)
             print_help
             exit 1;;
@@ -458,6 +451,10 @@ function main() {
   if [ "$INSTALL_EXTERNAL" = "1" ] ; then
     echo_info "Installing packages"
     check_install_oai_software
+    if [ "$USE_LTTNG" = "1" ] ; then
+      echo_info "installing LTTng"
+      install_lttng $1
+    fi
     if [ "$HW" == "OAI_USRP" ] ; then
       echo_info "installing packages for USRP support"
       check_install_usrp_uhd_driver
@@ -490,11 +487,11 @@ function main() {
 
   [ "$CLEAN" = "1" ] && rm -rf $DIR/$BUILD_DIR/build
 
-  if [[ $TARGET_LIST != "" ]]; then
+  if [[ $TARGET_LIST != "" ]] && [[ -f $OPENAIR_DIR/CMakeLists.txt ]]; then
     # add some default libraries that should always be built
     # for eNB, gNB, UEs, simulators
     if [[ $gNB == 1 || $eNB == 1 || $UE == 1 || $nrUE == 1 || $SIMUS_PHY == 1 || $RU == 1 ]]; then
-      TARGET_LIST="$TARGET_LIST params_libconfig coding rfsimulator dfts"
+      TARGET_LIST="$TARGET_LIST params_libconfig coding rfsimulator dfts params_yaml"
     fi
 
     mkdir -p $DIR/$BUILD_DIR/build
@@ -505,7 +502,7 @@ function main() {
     CMAKE_CMD="$CMAKE_CMD ../../.."
     echo_info "Running \"$CMAKE_CMD\""
     eval $CMAKE_CMD
-    compilations $BUILD_DIR all.txt $TARGET_LIST
+    compilations $BUILD_DIR all.txt "$TARGET_LIST" "${BUILD_TOOL_OPT}"
     ###################
     # Doxygen Support #
     ###################
@@ -527,10 +524,10 @@ function main() {
       mkdir -p $DIR/nas_sim_tools/build
       cd $DIR/nas_sim_tools/build
 
-      eval $CMAKE_CMD ..
-      compilations nas_sim_tools usim.txt usim
-      compilations nas_sim_tools nvram.txt nvram
-      compilations nas_sim_tools conf2uedata.txt conf2uedata
+      ${CMAKE_CMD% *} ..
+      compilations nas_sim_tools usim.txt "usim" "${BUILD_TOOL_OPT}"
+      compilations nas_sim_tools nvram.txt "nvram" "${BUILD_TOOL_OPT}"
+      compilations nas_sim_tools conf2uedata.txt "conf2uedata" "${BUILD_TOOL_OPT}"
 
       # generate USIM data
       if [ -f conf2uedata ]; then
@@ -546,22 +543,15 @@ function main() {
   # Auto-tests #
   ##############
   if [ "$OAI_TEST" = "1" ] ; then
-    echo_error "These scripts ASSUME that user is in /etc/sudoers and can execute commands without PASSWORD prompt"
-    echo_error "Add the following lines in /etc/sudoers file to make your __user_name__ sudo without password prompt"
-    echo_error " __your_user_name__ ALL = (ALL:ALL) NOPASSWD: ALL"
-    echo_error " __your_user_name__ ALL = (ALL) NOPASSWD: ALL "
     echo_info "The log file for the autotest script for debugging is located here: $OPENAIR_DIR/cmake_targets/autotests/log/autotests.log "
     echo_info "The results of autotests results is located here: $OPENAIR_DIR/cmake_targets/autotests/log/results_autotests.xml "
     echo_info "You can hit CTRL-C at any time to terminate the autotests..."
-    echo "Current User Name: $USER"
-    read -s -p "Enter Password: " mypassword
-    echo -e "\n"
     rm -fr $OPENAIR_DIR/cmake_targets/autotests/log
     mkdir -p $OPENAIR_DIR/cmake_targets/autotests/log
     if [ "$RUN_GROUP" -eq "1" ]; then
-        $OPENAIR_DIR/cmake_targets/autotests/run_exec_autotests.bash -g "$TEST_CASE_GROUP" -p $mypassword >& $OPENAIR_DIR/cmake_targets/autotests/log/autotests.log &
+        $OPENAIR_DIR/cmake_targets/autotests/run_exec_autotests.bash -g "$TEST_CASE_GROUP" >& $OPENAIR_DIR/cmake_targets/autotests/log/autotests.log
     else
-        $OPENAIR_DIR/cmake_targets/autotests/run_exec_autotests.bash -p $mypassword >& $OPENAIR_DIR/cmake_targets/autotests/log/autotests.log &
+        $OPENAIR_DIR/cmake_targets/autotests/run_exec_autotests.bash >& $OPENAIR_DIR/cmake_targets/autotests/log/autotests.log
     fi
     wait
   else

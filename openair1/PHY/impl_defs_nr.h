@@ -85,6 +85,7 @@ SystemInformationBlockType1_nr_t;
 #define NR_DOWNLINK_SLOT                   (0x01)
 #define NR_UPLINK_SLOT                     (0x02)
 #define NR_MIXED_SLOT                      (0x03)
+#define NR_SIDELINK_SLOT NR_UPLINK_SLOT
 
 #define FRAME_DURATION_MICRO_SEC           (10000)  /* frame duration in microsecond */
 
@@ -485,16 +486,6 @@ typedef enum {
   zeroDot80 = 6,
   reserved  = 7
 } PUCCH_MaxCodeRate_t;
-
-typedef struct {
-  pucch_format_nr_t format;
-  uint8_t                startingSymbolIndex;
-  uint8_t                nrofSymbols;
-  uint16_t               PRB_offset;
-  uint8_t                nb_CS_indexes;
-  uint8_t                initial_CS_indexes[MAX_NB_CYCLIC_SHIFT];
-} initial_pucch_resource_t;
-
 
 /***********************************************************************
 *

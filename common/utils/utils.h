@@ -18,10 +18,23 @@ extern "C" {
 #endif
 
 #define sizeofArray(a) (sizeof(a)/sizeof(*(a)))
+#define CHECK_INDEX(ARRAY, INDEX) assert((INDEX) < sizeofArray(ARRAY))
 
-#define cmax(a,b)  ((a>b) ? (a) : (b))
-#define cmax3(a,b,c) ((cmax(a,b)>c) ? (cmax(a,b)) : (c))
-#define cmin(a,b)  ((a<b) ? (a) : (b))
+// Prevent double evaluation in max macro
+#define cmax(a,b) ({ __typeof__ (a) _a = (a); \
+                     __typeof__ (b) _b = (b); \
+                     _a > _b ? _a : _b; })
+
+
+#define cmax3(a,b,c) ( cmax(cmax(a,b), c) )  
+
+// Prevent double evaluation in min macro
+#define cmin(a,b) ({ __typeof__ (a) _a = (a); \
+                     __typeof__ (b) _b = (b); \
+                     _a < _b ? _a : _b; })
+
+
+
 
 #ifdef __cplusplus
 #ifdef min
@@ -62,7 +75,7 @@ static inline void *calloc_or_fail(size_t nmemb, size_t size)
 
   if (ptr == NULL) {
     fprintf(stderr, "Failed to calloc() %zu elements of %zu bytes: out of memory", nmemb, size);
-    exit(EXIT_FAILURE);
+    abort();
   }
 
   return ptr;
@@ -102,8 +115,6 @@ const char *hexdump(const void *data, size_t data_len, char *out, size_t out_len
 int hex_char_to_hex_value (char c);
 // Converts an hexadecimal ASCII coded string into its value.**
 int hex_string_to_hex_value (uint8_t *hex_value, const char *hex_string, int size);
-
-void set_priority(int priority);
 
 char *itoa(int i);
 

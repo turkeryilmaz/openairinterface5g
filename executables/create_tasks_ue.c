@@ -34,11 +34,12 @@
   #include "RRC/LTE/rrc_defs.h"
 # include "enb_app.h"
 
-int create_tasks_ue(uint32_t ue_nb) {
+int create_tasks_ue(uint32_t ue_nb)
+{
   LOG_D(ENB_APP, "%s(ue_nb:%d)\n", __FUNCTION__, ue_nb);
   itti_wait_ready(1);
 
-  if (EPC_MODE_ENABLED) {
+  if (!IS_SOFTMODEM_NOS1) {
 #      if defined(NAS_BUILT_IN_UE)
 
     if (ue_nb > 0) {
@@ -50,12 +51,13 @@ int create_tasks_ue(uint32_t ue_nb) {
       ittiTask_parms_t parms = {users, NULL};
       if (itti_create_task(TASK_NAS_UE, nas_ue_task, &parms) < 0) {
         LOG_E(NAS, "Create task for NAS UE failed\n");
+        free(users);
         return -1;
       }
     }
 
 #      endif
-  } /* EPC_MODE_ENABLED */
+  }
 
   if (ue_nb > 0) {
     if (itti_create_task (TASK_RRC_UE, rrc_ue_task, NULL) < 0) {

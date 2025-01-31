@@ -27,26 +27,31 @@
  * \version 0.1
  */
  
-#include <stdint.h>
-
-#include "intertask_interface.h"
-
-#include "ngap_common.h"
-// #include "ngap_gNB.h"
-#include "ngap_gNB_defs.h"
 #include "ngap_gNB_handlers.h"
-#include "ngap_gNB_decoder.h"
-
-#include "ngap_gNB_ue_context.h"
-#include "ngap_gNB_trace.h"
-#include "ngap_gNB_nas_procedures.h"
-#include "ngap_gNB_management_procedures.h"
-
-#include "ngap_gNB_default_values.h"
-
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
+#include "INTEGER.h"
+#include "ngap_msg_includes.h"
+#include "OCTET_STRING.h"
+#include "PHY/defs_common.h"
+#include "T.h"
 #include "assertions.h"
+#include "common/utils/T/T.h"
+#include "constr_TYPE.h"
 #include "conversions.h"
-#include "NGAP_NonDynamic5QIDescriptor.h"
+#include "intertask_interface.h"
+#include "ngap_common.h"
+#include "ngap_gNB_decoder.h"
+#include "ngap_gNB_defs.h"
+#include "ngap_gNB_management_procedures.h"
+#include "ngap_gNB_nas_procedures.h"
+#include "ngap_gNB_trace.h"
+#include "ngap_gNB_ue_context.h"
+#include "ngap_messages_types.h"
+#include "oai_asn1.h"
+#include "queue.h"
 
 static void allocCopy(ngap_pdu_t *out, OCTET_STRING_t in)
 {
@@ -87,6 +92,7 @@ void ngap_handle_ng_setup_message(ngap_gNB_amf_data_t *amf_desc_p, int sctp_shut
       }
     }
   } else {
+    LOG_A(NGAP, "Received NGSetupResponse from AMF\n");
     /* Check that at least one setup message is pending */
     DevCheck(amf_desc_p->ngap_gNB_instance->ngap_amf_pending_nb > 0, amf_desc_p->ngap_gNB_instance->instance,
              amf_desc_p->ngap_gNB_instance->ngap_amf_pending_nb, 0);
@@ -740,37 +746,38 @@ static int ngap_gNB_handle_initial_context_request(sctp_assoc_t assoc_id, uint32
   NGAP_FIND_PROTOCOLIE_BY_ID(NGAP_InitialContextSetupRequestIEs_t, ie, container,
                              NGAP_ProtocolIE_ID_id_GUAMI, true);
 
-    TBCD_TO_MCC_MNC(&ie->value.choice.GUAMI.pLMNIdentity, msg->guami.mcc,
-                    msg->guami.mnc, msg->guami.mnc_len);
+  TBCD_TO_MCC_MNC(&ie->value.choice.GUAMI.pLMNIdentity, msg->guami.mcc,
+                  msg->guami.mnc, msg->guami.mnc_len);
     
-    OCTET_STRING_TO_INT8(&ie->value.choice.GUAMI.aMFRegionID, msg->guami.amf_region_id);
-    OCTET_STRING_TO_INT16(&ie->value.choice.GUAMI.aMFSetID, msg->guami.amf_set_id);
-    OCTET_STRING_TO_INT8(&ie->value.choice.GUAMI.aMFPointer, msg->guami.amf_pointer);
+  msg->guami.amf_region_id = BIT_STRING_to_uint8(&ie->value.choice.GUAMI.aMFRegionID);
+  msg->guami.amf_set_id = BIT_STRING_to_uint16(&ie->value.choice.GUAMI.aMFSetID);
+  msg->guami.amf_pointer = BIT_STRING_to_uint8(&ie->value.choice.GUAMI.aMFPointer);
 
-    NGAP_FIND_PROTOCOLIE_BY_ID(NGAP_InitialContextSetupRequestIEs_t, ie, container, NGAP_ProtocolIE_ID_id_PDUSessionResourceSetupListCxtReq, false);
-    if (ie != NULL) {
-      msg->nb_of_pdusessions = ie->value.choice.PDUSessionResourceSetupListCxtReq.list.count;
 
-      for (i = 0; i < ie->value.choice.PDUSessionResourceSetupListCxtReq.list.count; i++) {
-        NGAP_PDUSessionResourceSetupItemCxtReq_t *item_p = ie->value.choice.PDUSessionResourceSetupListCxtReq.list.array[i];
-        msg->pdusession_param[i].pdusession_id = item_p->pDUSessionID;
+  NGAP_FIND_PROTOCOLIE_BY_ID(NGAP_InitialContextSetupRequestIEs_t, ie, container, NGAP_ProtocolIE_ID_id_PDUSessionResourceSetupListCxtReq, false);
+  if (ie != NULL) {
+    msg->nb_of_pdusessions = ie->value.choice.PDUSessionResourceSetupListCxtReq.list.count;
 
-        OCTET_STRING_TO_INT8(&item_p->s_NSSAI.sST, msg->pdusession_param[i].nssai.sst);
-        if (item_p->s_NSSAI.sD != NULL) {
-          uint8_t *sd_p = (uint8_t *)&msg->pdusession_param[i].nssai.sd;
-          sd_p[0] = item_p->s_NSSAI.sD->buf[0];
-          sd_p[1] = item_p->s_NSSAI.sD->buf[1];
-          sd_p[2] = item_p->s_NSSAI.sD->buf[2];
-        } else {
-          msg->pdusession_param[i].nssai.sd = 0xffffff;
-        }
+    for (i = 0; i < ie->value.choice.PDUSessionResourceSetupListCxtReq.list.count; i++) {
+      NGAP_PDUSessionResourceSetupItemCxtReq_t *item_p = ie->value.choice.PDUSessionResourceSetupListCxtReq.list.array[i];
+      msg->pdusession_param[i].pdusession_id = item_p->pDUSessionID;
 
-        if (item_p->nAS_PDU) {
-          allocCopy(&msg->pdusession_param[i].nas_pdu, *item_p->nAS_PDU);
-        }
-        allocCopy(&msg->pdusession_param[i].pdusessionTransfer, item_p->pDUSessionResourceSetupRequestTransfer);
+      OCTET_STRING_TO_INT8(&item_p->s_NSSAI.sST, msg->pdusession_param[i].nssai.sst);
+      if (item_p->s_NSSAI.sD != NULL) {
+        uint8_t *sd_p = (uint8_t *)&msg->pdusession_param[i].nssai.sd;
+        sd_p[0] = item_p->s_NSSAI.sD->buf[0];
+        sd_p[1] = item_p->s_NSSAI.sD->buf[1];
+        sd_p[2] = item_p->s_NSSAI.sD->buf[2];
+      } else {
+        msg->pdusession_param[i].nssai.sd = 0xffffff;
       }
+
+      if (item_p->nAS_PDU) {
+        allocCopy(&msg->pdusession_param[i].nas_pdu, *item_p->nAS_PDU);
+      }
+      allocCopy(&msg->pdusession_param[i].pdusessionTransfer, item_p->pDUSessionResourceSetupRequestTransfer);
     }
+  }
 
   /* id-AllowedNSSAI */
   NGAP_FIND_PROTOCOLIE_BY_ID(NGAP_InitialContextSetupRequestIEs_t, ie, container,
@@ -1134,8 +1141,8 @@ static int ngap_gNB_handle_pdusession_modify_request(sctp_assoc_t assoc_id, uint
         item_p = (NGAP_PDUSessionResourceModifyItemModReq_t *)ie->value.choice.PDUSessionResourceModifyListModReq.list.array[nb_of_pdusessions_failed];
         pdusession_failed_t *tmp = &msg->pdusessions_failed[nb_of_pdusessions_failed];
         tmp->pdusession_id = item_p->pDUSessionID;
-        tmp->cause = NGAP_CAUSE_RADIO_NETWORK;
-        tmp->cause_value = NGAP_CauseRadioNetwork_unknown_local_UE_NGAP_ID;
+        tmp->cause.type = NGAP_CAUSE_RADIO_NETWORK;
+        tmp->cause.value = NGAP_CauseRadioNetwork_unknown_local_UE_NGAP_ID;
       }
     msg->nb_of_pdusessions_failed = ie->value.choice.PDUSessionResourceModifyListModReq.list.count;
     ngap_gNB_pdusession_modify_resp(amf_desc_p->ngap_gNB_instance->instance,msg);

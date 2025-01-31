@@ -43,7 +43,6 @@ Description Defines the messages supported by the Access Stratum sublayer
 
 #include "commonDef.h"
 #include "networkDef.h"
-
 /****************************************************************************/
 /*********************  G L O B A L    C O N S T A N T S  *******************/
 /****************************************************************************/
@@ -167,7 +166,7 @@ typedef struct as_stmsi_s {
 /* Dedicated NAS information */
 typedef struct as_nas_info_s {
   uint32_t length;    /* Length of the NAS information data       */
-  Byte_t* data;   /* Dedicated NAS information data container */
+  Byte_t* nas_data; /* Dedicated NAS information data container */
 } as_nas_info_t;
 
 /* Radio Access Bearer identity */

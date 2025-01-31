@@ -1,5 +1,5 @@
 ## configuring the logging facility
-The logging facility is fully configurable and it uses the [config module](../../../config/config.md) to get its parameters at init time. The [telnet server](../../telnetsrv/DOC/telnetsrv.md) includes a set of commands which can be used to dynamically modify the logging facility behavior
+The logging facility is fully configurable and it uses the [config module](../../../../common/config/DOC/config.md) to get its parameters at init time. The [telnet server](../../telnetsrv/DOC/telnetsrv.md) includes a set of commands which can be used to dynamically modify the logging facility behavior
 
 All logging facility parameters are defined in the log_config section. Some parameters are global to the logging facility, they modify the way messages are printed to stdout. Conversely, some parameters are specific to a component and  only modify the behavior for messages issued by a given component. A third type of parameters can be used to activate conditional debug code or dump messages or buffers.
 
@@ -227,6 +227,10 @@ It can also be retrieved when using the telnet server, as explained  [below](###
 |:---:|:---:|:---:|:----|
 | `<flag>_debug` | `boolean` | 0 = false | Triggers the activation of conditional code identified by the specified flag.
 | `<flag>_dump` | `boolean` | 0 = false| Triggers buffer dump, on the console in text form or in a file in matlab format, depending on the developper choice and forcasted usage|
+
+Example: dump all ASN.1 structures during operation with
+`--log_config.ASN1_debug`. To get a list of all flag/dump options, provide an
+invalid flag, e.g. `--log_config.HELP_debug`.
 
 ### Using the configuration file to configure the logging facility
 The following example sets all components log level to info, exept for hw,phy,mac,rlc,pdcp,rrc which log levels are set to error or warning.

@@ -661,7 +661,7 @@ int main(int argc, char **argv) {
   uint32_t Nsoft;
   int sf;
   int CCE_table[800];
-  opp_enabled=1; // to enable the time meas
+  cpu_meas_enabled = 1; // to enable the time meas
   FILE *csv_fd=NULL;
   char csv_fname[FILENAME_MAX];
   int DLSCH_RB_ALLOC = 0;
@@ -688,9 +688,8 @@ int main(int argc, char **argv) {
   else {
     while(fgets(buf, 63, proc_fd))
       printf("%s", buf);
+    fclose(proc_fd);
   }
-
-  fclose(proc_fd);
   cpu_freq_GHz = ((double)atof(buf))/1e6;
 #else
   cpu_freq_GHz = get_cpu_freq_GHz();
@@ -990,7 +989,7 @@ int main(int argc, char **argv) {
   set_glog_onlinelog(true);
   // enable these lines if you need debug info
   set_glog(loglvl);
-  SET_LOG_DEBUG(UE_TIMING);
+  set_log_debug("UE_TIMING", true);
   // moreover you need to init itti with the following line
   // however itti will catch all signals, so ctrl-c won't work anymore
   // alternatively you can disable ITTI completely in CMakeLists.txt

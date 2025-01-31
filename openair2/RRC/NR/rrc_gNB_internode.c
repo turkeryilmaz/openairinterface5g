@@ -30,16 +30,22 @@
 #ifndef RRC_GNB_INTERNODE_C
 #define RRC_GNB_INTERNODE_C
 
-#include "nr_rrc_defs.h"
-#include "NR_RRCReconfiguration.h"
-#include "NR_UE-NR-Capability.h"
-#include "NR_CG-ConfigInfo.h"
-#include "NR_UE-CapabilityRAT-ContainerList.h"
-#include "LTE_UE-CapabilityRAT-ContainerList.h"
-#include "NR_CG-Config.h"
-#include "uper_encoder.h"
-#include "uper_decoder.h"
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include "OCTET_STRING.h"
+#include "PHY/defs_common.h"
+#include "RRC/NR/nr_rrc_proto.h"
+#include "T.h"
+#include "asn_codecs.h"
+#include "assertions.h"
+#include "common/utils/T/T.h"
+#include "constr_TYPE.h"
 #include "executables/softmodem-common.h"
+#include "nr_rrc_defs.h"
+#include "uper_decoder.h"
+#include "uper_encoder.h"
+#include "x2ap_messages_types.h"
 
 int parse_CG_ConfigInfo(gNB_RRC_INST *rrc, NR_CG_ConfigInfo_t *CG_ConfigInfo, x2ap_ENDC_sgnb_addition_req_t *m) {
   if (CG_ConfigInfo->criticalExtensions.present == NR_CG_ConfigInfo__criticalExtensions_PR_c1) {
@@ -79,17 +85,14 @@ int parse_CG_ConfigInfo(gNB_RRC_INST *rrc, NR_CG_ConfigInfo_t *CG_ConfigInfo, x2
   return(0);
 }
 
-
-int generate_CG_Config(gNB_RRC_INST *rrc,
-                       NR_CG_Config_t *cg_Config,
-                       NR_RRCReconfiguration_t *reconfig,
-                       NR_RadioBearerConfig_t *rbconfig) {
+NR_CG_Config_t *generate_CG_Config(const NR_RRCReconfiguration_t *reconfig, const NR_RadioBearerConfig_t *rbconfig)
+{
+  NR_CG_Config_t *cg_Config = calloc(1, sizeof(*cg_Config));
   cg_Config->criticalExtensions.present = NR_CG_Config__criticalExtensions_PR_c1;
   cg_Config->criticalExtensions.choice.c1 = calloc(1,sizeof(*cg_Config->criticalExtensions.choice.c1));
   cg_Config->criticalExtensions.choice.c1->present = NR_CG_Config__criticalExtensions__c1_PR_cg_Config;
   cg_Config->criticalExtensions.choice.c1->choice.cg_Config = calloc(1,sizeof(NR_CG_Config_IEs_t));
   char buffer[1024];
-  int total_size;
   asn_enc_rval_t enc_rval = uper_encode_to_buffer(&asn_DEF_NR_RRCReconfiguration, NULL, (void *)reconfig, buffer, 1024);
   AssertFatal (enc_rval.encoded > 0, "ASN1 message encoding failed (%s, %jd)!\n",
                enc_rval.failed_type->name, enc_rval.encoded);
@@ -97,10 +100,9 @@ int generate_CG_Config(gNB_RRC_INST *rrc,
   OCTET_STRING_fromBuf(cg_Config->criticalExtensions.choice.c1->choice.cg_Config->scg_CellGroupConfig,
                        (const char *)buffer,
                        (enc_rval.encoded+7)>>3);
-  total_size = (enc_rval.encoded+7)>>3;
 
   FILE *fd; // file to be generated for nr-ue
-  if (get_softmodem_params()->phy_test==1 || get_softmodem_params()->do_ra > 0 || get_softmodem_params()->sa == 1) {
+  if (get_softmodem_params()->phy_test==1 || get_softmodem_params()->do_ra > 0) {
     // This is for phytest only, emulate first X2 message if uecap.raw file is present
     LOG_I(RRC,"Dumping NR_RRCReconfiguration message (%jd bytes)\n",(enc_rval.encoded+7)>>3);
     for (int i=0; i<(enc_rval.encoded+7)>>3; i++) {
@@ -125,7 +127,7 @@ int generate_CG_Config(gNB_RRC_INST *rrc,
 
 
   
-  if (get_softmodem_params()->phy_test==1 || get_softmodem_params()->do_ra > 0 || get_softmodem_params()->sa == 1) {
+  if (get_softmodem_params()->phy_test==1 || get_softmodem_params()->do_ra > 0) {
 
     LOG_I(RRC,"Dumping scg_RB_Config message (%jd bytes)\n",(enc_rval.encoded+7)>>3);
     for (int i=0; i<(enc_rval.encoded+7)>>3; i++) {
@@ -140,8 +142,7 @@ int generate_CG_Config(gNB_RRC_INST *rrc,
     }
   }
   
-  total_size = total_size + ((enc_rval.encoded+7)>>3);
-  return(total_size);
+  return cg_Config;
 }
 
 #endif

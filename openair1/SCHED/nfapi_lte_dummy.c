@@ -12,7 +12,6 @@ void handle_nfapi_nr_pdcch_pdu(PHY_VARS_gNB *gNB,
 void handle_nr_nfapi_ssb_pdu(PHY_VARS_gNB *gNB,int frame,int slot,
                              nfapi_nr_dl_tti_request_pdu_t *dl_tti_pdu){}
 
-int16_t find_nr_dlsch(uint16_t rnti, PHY_VARS_gNB *gNB,find_type_t type){return 0;}
 void handle_nr_nfapi_pdsch_pdu(processingData_L1tx_t *msgTx,
 			       nfapi_nr_dl_tti_pdsch_pdu *pdsch_pdu,
                             uint8_t *sdu){
@@ -23,7 +22,7 @@ void handle_nfapi_nr_csirs_pdu(processingData_L1tx_t *msgTx,
                     }                           
 int l1_north_init_gNB(void){return 0;}
 
-uint8_t slot_ahead=6;
+int slot_ahead = 6;
 //uint8_t nfapi_mode=0;
 NR_IF_Module_t *NR_IF_Module_init(int Mod_id) {return NULL;}
 

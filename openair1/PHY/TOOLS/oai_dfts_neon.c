@@ -909,9 +909,6 @@ const static int16_t tw64c[96] __attribute__((aligned(32))) = {
 #ifdef simd_q15_t
 #undef simd_q15_t
 #endif
-#ifdef simdshort_q15_t 
-#undef simdshort_q15_t
-#endif
 #ifdef shiftright_int16
 #undef shiftright_int16
 #endif
@@ -1013,7 +1010,11 @@ void dft64(int16_t *x,int16_t *y,unsigned char scale)
 
 #ifdef D64STATS
   stop_meas(&ts_b);
-  printf("t: %llu cycles, d: %llu cycles, b: %llu cycles\n",ts_t.diff,ts_d.diff,ts_b.diff);
+#if defined(__x86_64__) || defined(__i386__)
+  printf("t: %lld cycles, d: %lld cycles, b: %lld cycles\n", ts_t.diff, ts_d.diff, ts_b.diff);
+#elif defined(__arm__) || defined(__aarch64__)
+  printf("t: %u cycles, d: %u cycles, b: %u cycles\n", ts_t.diff, ts_d.diff, ts_b.diff);
+#endif
 #endif
 
 
@@ -1102,7 +1103,11 @@ void idft64(int16_t *x,int16_t *y,unsigned char scale)
 
 #ifdef D64STATS
   stop_meas(&ts_b);
-  printf("t: %llu cycles, d: %llu cycles, b: %llu cycles\n",ts_t.diff,ts_d.diff,ts_b.diff);
+#if defined(__x86_64__) || defined(__i386__)
+  printf("t: %lld cycles, d: %lld cycles, b: %lld cycles\n", ts_t.diff, ts_d.diff, ts_b.diff);
+#elif defined(__arm__) || defined(__aarch64__)
+  printf("t: %u cycles, d: %u cycles, b: %u cycles\n", ts_t.diff, ts_d.diff, ts_b.diff);
+#endif
 #endif
 
 
@@ -1433,7 +1438,11 @@ void dft256(int16_t *x,int16_t *y,unsigned char scale)
 
 #ifdef D256STATS
   stop_meas(&ts_b);
-  printf("t: %llu cycles, d: %llu cycles, b: %llu cycles\n",ts_t.diff,ts_d.diff,ts_b.diff);
+#if defined(__x86_64__) || defined(__i386__)
+  printf("t: %lld cycles, d: %lld cycles, b: %lld cycles\n", ts_t.diff, ts_d.diff, ts_b.diff);
+#elif defined(__arm__) || defined(__aarch64__)
+  printf("t: %u cycles, d: %u cycles, b: %u cycles\n", ts_t.diff, ts_d.diff, ts_b.diff);
+#endif
 #endif
 
   if (scale>0) {
@@ -1537,7 +1546,7 @@ void dft512(int16_t *x,int16_t *y,unsigned char scale)
 {
 
   simdshort_q15_t xtmp[256],*xtmpp,*x64 = (simdshort_q15_t *)x;
-  simd_q15_t ytmp[128],*tw512_128p=(simd_q15_t*)tw512,*tw512a_128p=(simd_q15_t *)tw512a,*tw512b_128p=(simd_q15_t *)tw512b,*y128=(simd_q15_t *)y,*y128p=(simd_q15_t *)y;
+  simd_q15_t ytmp[128],*tw512a_128p=(simd_q15_t *)tw512a,*tw512b_128p=(simd_q15_t *)tw512b,*y128=(simd_q15_t *)y,*y128p=(simd_q15_t *)y;
   simd_q15_t *ytmpp = &ytmp[0];
   int i;
   simd_q15_t ONE_OVER_SQRT2_Q15_128 = set1_int16(ONE_OVER_SQRT2_Q15);
@@ -3017,19 +3026,6 @@ void dft6144(int16_t *input, int16_t *output,unsigned char scale)
   }
 }
 
-int16_t twa9216[6144] __attribute__((aligned(32)));
-int16_t twb9216[6144] __attribute__((aligned(32)));
-// 3072 x 3
-void dft9216(int16_t *input, int16_t *output,uint8_t scale) {
-
-  AssertFatal(1==0,"Need to do this ..\n");
-}
-
-void idft9216(int16_t *input, int16_t *output,uint8_t scale) {
-
-  AssertFatal(1==0,"Need to do this ..\n");
-}
-
 int16_t twa12288[8192] __attribute__((aligned(32)));
 int16_t twb12288[8192] __attribute__((aligned(32)));
 // 4096 x 3
@@ -3634,22 +3630,7 @@ void idft65536(int16_t *x,int16_t *y,unsigned char scale)
 
   }
 
-  simde_mm_empty();
-  simde_m_empty();
 }
-int16_t twa73728[49152] __attribute__((aligned(32)));
-int16_t twb73728[49152] __attribute__((aligned(32)));
-// 24576 x 3
-void dft73728(int16_t *input, int16_t *output,uint8_t scale) {
-
-  AssertFatal(1==0,"Need to do this ..\n");
-}
-
-void idft73728(int16_t *input, int16_t *output,uint8_t scale) {
-
-  AssertFatal(1==0,"Need to do this ..\n");
-}
-
 
 int16_t twa98304[65536] __attribute__((aligned(32)));
 int16_t twb98304[65536] __attribute__((aligned(32)));
@@ -7113,8 +7094,9 @@ int dfts_autoinit(void)
 
 #ifndef MR_MAIN
 
-void dft(uint8_t sizeidx, int16_t *input,int16_t *output,unsigned char scale_flag){
-	AssertFatal((sizeidx >= 0 && sizeidx<DFT_SIZE_IDXTABLESIZE),"Invalid dft size index %i\n",sizeidx);
+void dft_implementation(uint8_t sizeidx, int16_t *input, int16_t *output, unsigned char scale_flag)
+{
+  AssertFatal((sizeidx >= 0 && sizeidx<DFT_SIZE_IDXTABLESIZE),"Invalid dft size index %i\n",sizeidx);
         int algn=0xF;
         AssertFatal(((intptr_t)output&algn)==0,"Buffers should be aligned %p",output);
         if (((intptr_t)input)&algn) {
@@ -7129,8 +7111,9 @@ void dft(uint8_t sizeidx, int16_t *input,int16_t *output,unsigned char scale_fla
           dft_ftab[sizeidx].func(input,output,scale_flag);
 };
 
-void idft(uint8_t sizeidx, int16_t *input,int16_t *output,unsigned char scale_flag){
-	AssertFatal((sizeidx>=0 && sizeidx<DFT_SIZE_IDXTABLESIZE),"Invalid idft size index %i\n",sizeidx);
+void idft_implementation(uint8_t sizeidx, int16_t *input, int16_t *output, unsigned char scale_flag)
+{
+  AssertFatal((sizeidx>=0 && sizeidx<DFT_SIZE_IDXTABLESIZE),"Invalid idft size index %i\n",sizeidx);
         int algn=0xF;
         AssertFatal( ((intptr_t)output&algn)==0,"Buffers should be 16 bytes aligned %p",output);
         if (((intptr_t)input)&algn ) {  
@@ -7325,47 +7308,47 @@ int main(int argc, char**argv)
   dfts_autoinit();
 
   set_taus_seed(0);
-  opp_enabled = 1;
- /* 
-    ((int16_t *)&tw0)[0] = 32767;
-    ((int16_t *)&tw0)[1] = 0;
-    ((int16_t *)&tw0)[2] = 32767;
-    ((int16_t *)&tw0)[3] = 0;
-    ((int16_t *)&tw0)[4] = 32767;
-    ((int16_t *)&tw0)[5] = 0;
-    ((int16_t *)&tw0)[6] = 32767;
-    ((int16_t *)&tw0)[7] = 0;
+  cpu_meas_enabled = 1;
+  /*
+     ((int16_t *)&tw0)[0] = 32767;
+     ((int16_t *)&tw0)[1] = 0;
+     ((int16_t *)&tw0)[2] = 32767;
+     ((int16_t *)&tw0)[3] = 0;
+     ((int16_t *)&tw0)[4] = 32767;
+     ((int16_t *)&tw0)[5] = 0;
+     ((int16_t *)&tw0)[6] = 32767;
+     ((int16_t *)&tw0)[7] = 0;
 
-    ((int16_t *)&tw1)[0] = 32767;
-    ((int16_t *)&tw1)[1] = 0;
-    ((int16_t *)&tw1)[2] = 32767;
-    ((int16_t *)&tw1)[3] = 0;
-    ((int16_t *)&tw1)[4] = 32767;
-    ((int16_t *)&tw1)[5] = 0;
-    ((int16_t *)&tw1)[6] = 32767;
-    ((int16_t *)&tw1)[7] = 0;
+     ((int16_t *)&tw1)[0] = 32767;
+     ((int16_t *)&tw1)[1] = 0;
+     ((int16_t *)&tw1)[2] = 32767;
+     ((int16_t *)&tw1)[3] = 0;
+     ((int16_t *)&tw1)[4] = 32767;
+     ((int16_t *)&tw1)[5] = 0;
+     ((int16_t *)&tw1)[6] = 32767;
+     ((int16_t *)&tw1)[7] = 0;
 
-    ((int16_t *)&tw2)[0] = 32767;
-    ((int16_t *)&tw2)[1] = 0;
-    ((int16_t *)&tw2)[2] = 32767;
-    ((int16_t *)&tw2)[3] = 0;
-    ((int16_t *)&tw2)[4] = 32767;
-    ((int16_t *)&tw2)[5] = 0;
-    ((int16_t *)&tw2)[6] = 32767;
-    ((int16_t *)&tw2)[7] = 0;
+     ((int16_t *)&tw2)[0] = 32767;
+     ((int16_t *)&tw2)[1] = 0;
+     ((int16_t *)&tw2)[2] = 32767;
+     ((int16_t *)&tw2)[3] = 0;
+     ((int16_t *)&tw2)[4] = 32767;
+     ((int16_t *)&tw2)[5] = 0;
+     ((int16_t *)&tw2)[6] = 32767;
+     ((int16_t *)&tw2)[7] = 0;
 
-    ((int16_t *)&tw3)[0] = 32767;
-    ((int16_t *)&tw3)[1] = 0;
-    ((int16_t *)&tw3)[2] = 32767;
-    ((int16_t *)&tw3)[3] = 0;
-    ((int16_t *)&tw3)[4] = 32767;
-    ((int16_t *)&tw3)[5] = 0;
-    ((int16_t *)&tw3)[6] = 32767;
-    ((int16_t *)&tw3)[7] = 0;
- */
-    for (i=0;i<300;i++) {
-      x[i] = (int16x8_t)vdupq_n_s32(taus());
-      x[i] = vshrq_n_s16(x[i],4);
+     ((int16_t *)&tw3)[0] = 32767;
+     ((int16_t *)&tw3)[1] = 0;
+     ((int16_t *)&tw3)[2] = 32767;
+     ((int16_t *)&tw3)[3] = 0;
+     ((int16_t *)&tw3)[4] = 32767;
+     ((int16_t *)&tw3)[5] = 0;
+     ((int16_t *)&tw3)[6] = 32767;
+     ((int16_t *)&tw3)[7] = 0;
+  */
+  for (i = 0; i < 300; i++) {
+    x[i] = (int16x8_t)vdupq_n_s32(taus());
+    x[i] = vshrq_n_s16(x[i], 4);
     }
       /*
     bfly2_tw1(x,x+1,y,y+1);

@@ -33,19 +33,15 @@
 #define _GNU_SOURCE
 #include <pthread.h>
 
-#undef MALLOC //there are two conflicting definitions, so we better make sure we don't use it at all
-
 #include "assertions.h"
 #include <common/utils/LOG/log.h>
 #include <common/utils/system.h>
-#include "rt_profiling.h"
 
 #include "PHY/types.h"
 
 #include "PHY/INIT/nr_phy_init.h"
 
 #include "PHY/defs_gNB.h"
-#include "SCHED/sched_eNB.h"
 #include "SCHED_NR/sched_nr.h"
 #include "SCHED_NR/fapi_nr_l1.h"
 #include "PHY/NR_TRANSPORT/nr_transport_proto.h"
@@ -55,13 +51,7 @@
 #include "LAYER2/NR_MAC_COMMON/nr_mac_extern.h"
 #include "LAYER2/NR_MAC_gNB/mac_proto.h"
 
-#undef MALLOC //there are two conflicting definitions, so we better make sure we don't use it at all
-//#undef FRAME_LENGTH_COMPLEX_SAMPLES //there are two conflicting definitions, so we better make sure we don't use it at all
-
 #include "radio/COMMON/common_lib.h"
-
-//#undef FRAME_LENGTH_COMPLEX_SAMPLES //there are two conflicting definitions, so we better make sure we don't use it at all
-
 #include "PHY/LTE_TRANSPORT/if4_tools.h"
 
 #include "PHY/phy_extern.h"
@@ -69,17 +59,13 @@
 #include "common/ran_context.h"
 #include "RRC/LTE/rrc_extern.h"
 #include "PHY_INTERFACE/phy_interface.h"
-#include "common/utils/LOG/log_extern.h"
+#include "common/utils/LOG/log.h"
 #include "UTIL/OTG/otg_tx.h"
 #include "UTIL/OTG/otg_externs.h"
-#include "UTIL/MATH/oml.h"
 #include "common/utils/LOG/vcd_signal_dumper.h"
 #include "UTIL/OPT/opt.h"
-#include "enb_config.h"
 #include "gnb_paramdef.h"
 
-#include "s1ap_eNB.h"
-#include "SIMULATION/ETH_TRANSPORT/proto.h"
 #include <executables/softmodem-common.h>
 
 #include "T.h"
@@ -91,33 +77,19 @@
 #include <PHY/NR_ESTIMATION/nr_ul_estimation.h>
 
 // #define USRP_DEBUG 1
-//  Fix per CC openair rf/if device update
-
-time_stats_t softmodem_stats_mt; // main thread
-time_stats_t softmodem_stats_hw; //  hw acquisition
-time_stats_t softmodem_stats_rxtx_sf; // total tx time
-time_stats_t nfapi_meas; // total tx time
-time_stats_t softmodem_stats_rx_sf; // total rx time
-
-
 #include "executables/thread-common.h"
-
 
 //#define TICK_TO_US(ts) (ts.diff)
 #define TICK_TO_US(ts) (ts.trials==0?0:ts.diff/ts.trials)
 #define L1STATSSTRLEN 16384
+static void rx_func(processingData_L1_t *param);
 
-static void tx_func(void *param)
+static void tx_func(processingData_L1tx_t *info)
 {
-  processingData_L1tx_t *info = (processingData_L1tx_t *) param;
-
   int frame_tx = info->frame;
   int slot_tx = info->slot;
   int frame_rx = info->frame_rx;
   int slot_rx = info->slot_rx;
-  int absslot_tx = info->timestamp_tx / info->gNB->frame_parms.get_samples_per_slot(slot_tx, &info->gNB->frame_parms);
-  int absslot_rx = absslot_tx - info->gNB->RU_list[0]->sl_ahead;
-
   LOG_D(NR_PHY, "%d.%d running tx_func\n", frame_tx, slot_tx);
   PHY_VARS_gNB *gNB = info->gNB;
   module_id_t module_id = gNB->Mod_id;
@@ -141,7 +113,7 @@ static void tx_func(void *param)
 
   // At this point, MAC scheduler just ran, including scheduling
   // PRACH/PUCCH/PUSCH, so trigger RX chain processing
-  LOG_D(NR_PHY, "%s() trigger RX for %d.%d\n", __func__, frame_rx, slot_rx);
+  LOG_D(NR_PHY, "Trigger RX for %d.%d\n", frame_rx, slot_rx);
   notifiedFIFO_elt_t *res = newNotifiedFIFO_elt(sizeof(processingData_L1_t), 0, &gNB->resp_L1, NULL);
   processingData_L1_t *syncMsg = NotifiedFifoData(res);
   syncMsg->gNB = gNB;
@@ -155,8 +127,6 @@ static void tx_func(void *param)
   if (tx_slot_type == NR_DOWNLINK_SLOT || tx_slot_type == NR_MIXED_SLOT || get_softmodem_params()->continuous_tx) {
     start_meas(&info->gNB->phy_proc_tx);
     phy_procedures_gNB_TX(info, frame_tx, slot_tx, 1);
-    const int rt_prof_idx = absslot_rx % RT_PROF_DEPTH;
-    clock_gettime(CLOCK_MONOTONIC, &info->gNB->rt_L1_profiling.return_L1_TX[rt_prof_idx]);
 
     PHY_VARS_gNB *gNB = info->gNB;
     processingData_RU_t syncMsgRU;
@@ -168,11 +138,15 @@ static void tx_func(void *param)
     ru_tx_func((void *)&syncMsgRU);
     stop_meas(&info->gNB->phy_proc_tx);
   }
-  /* this thread is done with the sched_info, decrease the reference counter */
-  LOG_D(NR_PHY, "Calling deref_sched_response for id %d (tx_func) in %d.%d\n", info->sched_response_id, frame_tx, slot_tx);
-  deref_sched_response(info->sched_response_id);
-}
 
+  if (NFAPI_MODE == NFAPI_MONOLITHIC) {
+    /* this thread is done with the sched_info, decrease the reference counter.
+     * This only applies for monolithic; in the PNF, the memory is allocated in
+     * a ring buffer that should never be overwritten (one frame duration). */
+    LOG_D(NR_PHY, "Calling deref_sched_response for id %d (tx_func) in %d.%d\n", info->sched_response_id, frame_tx, slot_tx);
+    deref_sched_response(info->sched_response_id);
+  }
+}
 
 void *L1_rx_thread(void *arg) 
 {
@@ -203,35 +177,12 @@ void *L1_tx_thread(void *arg) {
   return NULL;
 }
 
-void rx_func(void *param)
+static void rx_func(processingData_L1_t *info)
 {
-  processingData_L1_t *info = (processingData_L1_t *) param;
   PHY_VARS_gNB *gNB = info->gNB;
   int frame_rx = info->frame_rx;
   int slot_rx = info->slot_rx;
   nfapi_nr_config_request_scf_t *cfg = &gNB->gNB_config;
-  int cumul_samples = gNB->frame_parms.get_samples_per_slot(0, &gNB->frame_parms);
-  int i = 1;
-  for (; i < gNB->frame_parms.slots_per_subframe / 2; i++)
-    cumul_samples += gNB->frame_parms.get_samples_per_slot(i, &gNB->frame_parms);
-  int samples = cumul_samples / i;
-  int absslot_tx = info->timestamp_tx / samples;
-  int absslot_rx = absslot_tx - gNB->RU_list[0]->sl_ahead;
-  int rt_prof_idx = absslot_rx % RT_PROF_DEPTH;
-  clock_gettime(CLOCK_MONOTONIC,&info->gNB->rt_L1_profiling.start_L1_RX[rt_prof_idx]);
-  start_meas(&softmodem_stats_rxtx_sf);
-
-  // *******************************************************************
-
-  if (NFAPI_MODE == NFAPI_MODE_PNF) {
-    // I am a PNF and I need to let nFAPI know that we have a (sub)frame tick
-    //LOG_D(PHY, "oai_nfapi_slot_ind(frame:%u, slot:%d) ********\n", frame_rx, slot_rx);
-    start_meas(&nfapi_meas);
-    handle_nr_slot_ind(frame_rx, slot_rx);
-    stop_meas(&nfapi_meas);
-
-  }
-  // ****************************************
 
   // RX processing
   int rx_slot_type = nr_slot_select(cfg, frame_rx, slot_rx);
@@ -239,37 +190,36 @@ void rx_func(void *param)
     LOG_D(NR_PHY, "%d.%d Starting RX processing\n", frame_rx, slot_rx);
 
     // UE-specific RX processing for subframe n
-    // TODO: check if this is correct for PARALLEL_RU_L1_TRX_SPLIT
-
+    NR_UL_IND_t UL_INFO = {.frame = frame_rx, .slot = slot_rx, .module_id = gNB->Mod_id, .CC_id = gNB->CC_id};
     // Do PRACH RU processing
-    L1_nr_prach_procedures(gNB,frame_rx,slot_rx);
+    UL_INFO.rach_ind.pdu_list = UL_INFO.prach_pdu_indication_list;
+    L1_nr_prach_procedures(gNB, frame_rx, slot_rx, &UL_INFO.rach_ind);
 
     //WA: comment rotation in tx/rx
     if (gNB->phase_comp) {
       //apply the rx signal rotation here
       int soffset = (slot_rx & 3) * gNB->frame_parms.symbols_per_slot * gNB->frame_parms.ofdm_symbol_size;
-      for (int aa = 0; aa < gNB->frame_parms.nb_antennas_rx; aa++) {
-        apply_nr_rotation_RX(&gNB->frame_parms,
-                             gNB->common_vars.rxdataF[aa],
-                             gNB->frame_parms.symbol_rotation[1],
-                             slot_rx,
-                             gNB->frame_parms.N_RB_UL,
-                             soffset,
-                             0,
-                             gNB->frame_parms.Ncp == EXTENDED ? 12 : 14);
+      for (int bb = 0; bb < gNB->common_vars.num_beams_period; bb++) {
+        for (int aa = 0; aa < gNB->frame_parms.nb_antennas_rx; aa++) {
+          apply_nr_rotation_RX(&gNB->frame_parms,
+                               gNB->common_vars.rxdataF[bb][aa],
+                               gNB->frame_parms.symbol_rotation[1],
+                               slot_rx,
+                               gNB->frame_parms.N_RB_UL,
+                               soffset,
+                               0,
+                               gNB->frame_parms.Ncp == EXTENDED ? 12 : 14);
+        }
       }
     }
-    phy_procedures_gNB_uespec_RX(gNB, frame_rx, slot_rx);
+    phy_procedures_gNB_uespec_RX(gNB, frame_rx, slot_rx, &UL_INFO);
 
     // Call the scheduler
     start_meas(&gNB->ul_indication_stats);
-    gNB->UL_INFO.frame = frame_rx;
-    gNB->UL_INFO.slot = slot_rx;
-    gNB->UL_INFO.module_id = gNB->Mod_id;
-    gNB->UL_INFO.CC_id = gNB->CC_id;
-    gNB->if_inst->NR_UL_indication(&gNB->UL_INFO);
+    gNB->if_inst->NR_UL_indication(&UL_INFO);
     stop_meas(&gNB->ul_indication_stats);
 
+#ifndef OAI_FHI72
     notifiedFIFO_elt_t *res = newNotifiedFIFO_elt(sizeof(processingData_L1_t), 0, &gNB->L1_rx_out, NULL);
     processingData_L1_t *syncMsg = NotifiedFifoData(res);
     syncMsg->gNB = gNB;
@@ -278,10 +228,9 @@ void rx_func(void *param)
     res->key = slot_rx;
     LOG_D(NR_PHY, "Signaling completion for %d.%d (mod_slot %d) on L1_rx_out\n", frame_rx, slot_rx, slot_rx % RU_RX_SLOT_DEPTH);
     pushNotifiedFIFO(&gNB->L1_rx_out, res);
+#endif
   }
 
-  stop_meas(&softmodem_stats_rxtx_sf);
-  clock_gettime(CLOCK_MONOTONIC, &info->gNB->rt_L1_profiling.return_L1_RX[rt_prof_idx]);
 }
 
 static size_t dump_L1_meas_stats(PHY_VARS_gNB *gNB, RU_t *ru, char *output, size_t outputlen) {
@@ -290,8 +239,7 @@ static size_t dump_L1_meas_stats(PHY_VARS_gNB *gNB, RU_t *ru, char *output, size
   output += print_meas_log(&gNB->phy_proc_tx, "L1 Tx processing", NULL, NULL, output, end - output);
   output += print_meas_log(&gNB->dlsch_encoding_stats, "DLSCH encoding", NULL, NULL, output, end - output);
   output += print_meas_log(&gNB->dlsch_scrambling_stats, "DLSCH scrambling", NULL, NULL, output, end-output);
-  output += print_meas_log(&gNB->dlsch_modulation_stats, "DLSCH modulation", NULL, NULL, output, end-output);
-  output += print_meas_log(&gNB->dlsch_layer_mapping_stats, "DLSCH layer mapping", NULL, NULL, output,end-output);
+  output += print_meas_log(&gNB->dlsch_modulation_stats, "DLSCH modulation", NULL, NULL, output, end - output);
   output += print_meas_log(&gNB->dlsch_resource_mapping_stats, "DLSCH resource mapping", NULL, NULL, output,end-output);
   output += print_meas_log(&gNB->dlsch_precoding_stats, "DLSCH precoding", NULL, NULL, output,end-output);
   output += print_meas_log(&gNB->phy_proc_rx, "L1 Rx processing", NULL, NULL, output, end - output);
@@ -344,7 +292,6 @@ void *nrL1_stats_thread(void *param) {
   reset_meas(&gNB->schedule_response_stats);
   reset_meas(&gNB->dlsch_scrambling_stats);
   reset_meas(&gNB->dlsch_modulation_stats);
-  reset_meas(&gNB->dlsch_layer_mapping_stats);
   reset_meas(&gNB->dlsch_resource_mapping_stats);
   reset_meas(&gNB->dlsch_precoding_stats);
   while (!oai_exit) {
@@ -361,7 +308,13 @@ void *nrL1_stats_thread(void *param) {
   return(NULL);
 }
 
-void init_gNB_Tpool(int inst) {
+void init_gNB_Tpool(int inst)
+{
+  AssertFatal(NFAPI_MODE == NFAPI_MODE_PNF || NFAPI_MODE == NFAPI_MONOLITHIC,
+              "illegal NFAPI_MODE %d (%s): it cannot have an L1\n",
+              NFAPI_MODE,
+              nfapi_get_strmode());
+
   PHY_VARS_gNB *gNB;
   gNB = RC.gNB[inst];
   gNB_L1_proc_t *proc = &gNB->proc;
@@ -386,7 +339,7 @@ void init_gNB_Tpool(int inst) {
   // create the TX thread responsible for TX processing start event (L1_tx_out msg queue), then launch tx_func()
   threadCreate(&gNB->L1_tx_thread, L1_tx_thread, (void *)gNB, "L1_tx_thread", gNB->L1_tx_thread_core, OAI_PRIORITY_RT_MAX);
 
-  notifiedFIFO_elt_t *msgL1Tx = newNotifiedFIFO_elt(sizeof(processingData_L1tx_t), 0, &gNB->L1_tx_out, tx_func);
+  notifiedFIFO_elt_t *msgL1Tx = newNotifiedFIFO_elt(sizeof(processingData_L1tx_t), 0, &gNB->L1_tx_out, NULL);
   processingData_L1tx_t *msgDataTx = (processingData_L1tx_t *)NotifiedFifoData(msgL1Tx);
   memset(msgDataTx, 0, sizeof(processingData_L1tx_t));
   init_DLSCH_struct(gNB, msgDataTx);
@@ -394,85 +347,52 @@ void init_gNB_Tpool(int inst) {
   // this will be removed when the msgDataTx is not necessary anymore
   gNB->msgDataTx = msgDataTx;
 
-  if ((!get_softmodem_params()->emulate_l1) && (!IS_SOFTMODEM_NOSTATS_BIT) && (NFAPI_MODE!=NFAPI_MODE_VNF))
-     threadCreate(&proc->L1_stats_thread,nrL1_stats_thread,(void*)gNB,"L1_stats",-1,OAI_PRIORITY_RT_LOW);
-
+  if (!IS_SOFTMODEM_NOSTATS)
+    threadCreate(&proc->L1_stats_thread, nrL1_stats_thread, (void *)gNB, "L1_stats", -1, OAI_PRIORITY_RT_LOW);
 }
-
 
 void term_gNB_Tpool(int inst) {
   PHY_VARS_gNB *gNB = RC.gNB[inst];
-  abortTpool(&gNB->threadPool);
-  abortNotifiedFIFO(&gNB->respDecode);
   abortNotifiedFIFO(&gNB->resp_L1);
+  pthread_join(gNB->L1_rx_thread, NULL);
+  abortNotifiedFIFO(&gNB->L1_tx_out);
+  pthread_join(gNB->L1_tx_thread, NULL);
+
+  abortTpool(&gNB->threadPool);
+  abortNotifiedFIFO(&gNB->respPuschSymb);
+  abortNotifiedFIFO(&gNB->respDecode);
   abortNotifiedFIFO(&gNB->L1_tx_free);
   abortNotifiedFIFO(&gNB->L1_tx_filled);
-  abortNotifiedFIFO(&gNB->L1_tx_out);
   abortNotifiedFIFO(&gNB->L1_rx_out);
 
   gNB_L1_proc_t *proc = &gNB->proc;
-  if (!get_softmodem_params()->emulate_l1)
-    pthread_join(proc->L1_stats_thread, NULL);
+  pthread_join(proc->L1_stats_thread, NULL);
 }
-
-void reset_opp_meas(void) {
-  int sfn;
-  reset_meas(&softmodem_stats_mt);
-  reset_meas(&softmodem_stats_hw);
-
-  for (sfn=0; sfn < 10; sfn++) {
-    reset_meas(&softmodem_stats_rxtx_sf);
-    reset_meas(&softmodem_stats_rx_sf);
-  }
-}
-
-
-void print_opp_meas(void) {
-  int sfn=0;
-  print_meas(&softmodem_stats_mt, "Main gNB Thread", NULL, NULL);
-  print_meas(&softmodem_stats_hw, "HW Acquisation", NULL, NULL);
-
-  for (sfn=0; sfn < 10; sfn++) {
-    print_meas(&softmodem_stats_rxtx_sf,"[gNB][total_phy_proc_rxtx]",NULL, NULL);
-    print_meas(&softmodem_stats_rx_sf,"[gNB][total_phy_proc_rx]",NULL,NULL);
-  }
-}
-
 
 /// eNB kept in function name for nffapi calls, TO FIX
 void init_eNB_afterRU(void) {
   int inst,ru_id,i,aa;
   PHY_VARS_gNB *gNB;
-  LOG_I(PHY,"%s() RC.nb_nr_inst:%d\n", __FUNCTION__, RC.nb_nr_inst);
 
-  if(NFAPI_MODE == NFAPI_MODE_PNF)
-    RC.nb_nr_inst = 1;
-  for (inst=0; inst<RC.nb_nr_inst; inst++) {
-    LOG_I(PHY,"RC.nb_nr_CC[inst:%d]:%p\n", inst, RC.gNB[inst]);
-
+  for (inst=0; inst<RC.nb_nr_L1_inst; inst++) {
     gNB = RC.gNB[inst];
-    gNB->ldpc_offload_flag = get_softmodem_params()->ldpc_offload_flag;
 
     phy_init_nr_gNB(gNB);
 
     // map antennas and PRACH signals to gNB RX
     if (0) AssertFatal(gNB->num_RU>0,"Number of RU attached to gNB %d is zero\n",gNB->Mod_id);
 
-    LOG_I(PHY,"Mapping RX ports from %d RUs to gNB %d\n",gNB->num_RU,gNB->Mod_id);
-    LOG_I(PHY,"gNB->num_RU:%d\n", gNB->num_RU);
+    LOG_D(NR_PHY, "Mapping RX ports from %d RUs to gNB %d\n", gNB->num_RU, gNB->Mod_id);
 
     for (ru_id=0,aa=0; ru_id<gNB->num_RU; ru_id++) {
-      AssertFatal(gNB->RU_list[ru_id]->common.rxdataF!=NULL,
-		  "RU %d : common.rxdataF is NULL\n",
-		  gNB->RU_list[ru_id]->idx);
-      AssertFatal(gNB->RU_list[ru_id]->prach_rxsigF!=NULL,
-		  "RU %d : prach_rxsigF is NULL\n",
-		  gNB->RU_list[ru_id]->idx);
+      AssertFatal(gNB->RU_list[ru_id]->common.rxdataF != NULL, "RU %d : common.rxdataF is NULL\n", gNB->RU_list[ru_id]->idx);
+      AssertFatal(gNB->RU_list[ru_id]->prach_rxsigF != NULL, "RU %d : prach_rxsigF is NULL\n", gNB->RU_list[ru_id]->idx);
       
       for (i=0; i<gNB->RU_list[ru_id]->nb_rx; aa++,i++) {
         LOG_I(PHY,"Attaching RU %d antenna %d to gNB antenna %d\n",gNB->RU_list[ru_id]->idx,i,aa);
-        gNB->prach_vars.rxsigF[aa]    =  gNB->RU_list[ru_id]->prach_rxsigF[0][i];
-        gNB->common_vars.rxdataF[aa]     =  (c16_t *)gNB->RU_list[ru_id]->common.rxdataF[i];
+        gNB->prach_vars.rxsigF[aa] = gNB->RU_list[ru_id]->prach_rxsigF[0][i];
+        // TODO hardcoded beam to 0, still need to understand how to handle this properly
+        gNB->common_vars.rxdataF[0][aa] = (c16_t *)gNB->RU_list[ru_id]->common.rxdataF[i];
       }
     }
 
@@ -486,57 +406,41 @@ void init_eNB_afterRU(void) {
 
 }
 
-void init_gNB(int single_thread_flag,int wait_for_sync) {
-
-  int inst;
-  PHY_VARS_gNB *gNB;
-
+/**
+ * @brief Initialize gNB struct in RAN context
+ */
+void init_gNB()
+{
+  LOG_I(NR_PHY, "Initializing gNB RAN context: RC.nb_nr_L1_inst = %d \n", RC.nb_nr_L1_inst);
   if (RC.gNB == NULL) {
-    RC.gNB = (PHY_VARS_gNB **) calloc(1+RC.nb_nr_L1_inst, sizeof(PHY_VARS_gNB *));
-    LOG_I(PHY,"gNB L1 structure RC.gNB allocated @ %p\n",RC.gNB);
+    RC.gNB = (PHY_VARS_gNB **)calloc_or_fail(RC.nb_nr_L1_inst, sizeof(PHY_VARS_gNB *));
+    LOG_D(NR_PHY, "gNB L1 structure RC.gNB allocated @ %p\n", RC.gNB);
   }
 
-  for (inst=0; inst<RC.nb_nr_L1_inst; inst++) {
-
+  for (int inst = 0; inst < RC.nb_nr_L1_inst; inst++) {
+    // Allocate L1 instance
     if (RC.gNB[inst] == NULL) {
-      RC.gNB[inst] = (PHY_VARS_gNB *) calloc(1, sizeof(PHY_VARS_gNB));
-      LOG_I(PHY,"[nr-gnb.c] gNB structure RC.gNB[%d] allocated @ %p\n",inst,RC.gNB[inst]);
+      RC.gNB[inst] = (PHY_VARS_gNB *)calloc_or_fail(1, sizeof(PHY_VARS_gNB));
+      LOG_D(NR_PHY, "[nr-gnb.c] gNB structure RC.gNB[%d] allocated @ %p\n", inst, RC.gNB[inst]);
     }
-    gNB                     = RC.gNB[inst];
-    gNB->abstraction_flag   = 0;
-    gNB->single_thread_flag = single_thread_flag;
-    /*nr_polar_init(&gNB->nrPolar_params,
-      NR_POLAR_PBCH_MESSAGE_TYPE,
-      NR_POLAR_PBCH_PAYLOAD_BITS,
-      NR_POLAR_PBCH_AGGREGATION_LEVEL);*/
-    LOG_I(PHY,"Initializing gNB %d single_thread_flag:%d\n",inst,gNB->single_thread_flag);
-    LOG_I(PHY,"Initializing gNB %d\n",inst);
+    PHY_VARS_gNB *gNB = RC.gNB[inst];
+    LOG_D(NR_PHY, "Initializing gNB %d\n", inst);
 
-    LOG_I(PHY,"Registering with MAC interface module (before %p)\n",gNB->if_inst);
-    AssertFatal((gNB->if_inst         = NR_IF_Module_init(inst))!=NULL,"Cannot register interface");
-    LOG_I(PHY,"Registering with MAC interface module (after %p)\n",gNB->if_inst);
-    gNB->if_inst->NR_Schedule_response   = nr_schedule_response;
-    gNB->if_inst->NR_PHY_config_req      = nr_phy_config_request;
-    memset((void *)&gNB->UL_INFO,0,sizeof(gNB->UL_INFO));
-    LOG_I(PHY,"Setting indication lists\n");
+    // Init module ID
+    gNB->Mod_id = inst;
 
-    gNB->UL_INFO.rx_ind.pdu_list = gNB->rx_pdu_list;
-    gNB->UL_INFO.crc_ind.crc_list = gNB->crc_pdu_list;
-    /*gNB->UL_INFO.sr_ind.sr_indication_body.sr_pdu_list = gNB->sr_pdu_list;
-    gNB->UL_INFO.harq_ind.harq_indication_body.harq_pdu_list = gNB->harq_pdu_list;
-    gNB->UL_INFO.cqi_ind.cqi_pdu_list = gNB->cqi_pdu_list;
-    gNB->UL_INFO.cqi_ind.cqi_raw_pdu_list = gNB->cqi_raw_pdu_list;*/
+    // Register MAC interface module
+    AssertFatal((gNB->if_inst = NR_IF_Module_init(inst)) != NULL, "Cannot register interface");
+
+    LOG_I(NR_PHY, "Registered with MAC interface module (%p)\n", gNB->if_inst);
+    gNB->if_inst->NR_Schedule_response = nr_schedule_response;
+    gNB->if_inst->NR_PHY_config_req = nr_phy_config_request;
 
     gNB->prach_energy_counter = 0;
     gNB->chest_time = get_softmodem_params()->chest_time;
     gNB->chest_freq = get_softmodem_params()->chest_freq;
-
   }
-  
-
-  LOG_I(PHY,"[nr-gnb.c] gNB structure allocated\n");
 }
-
 
 void stop_gNB(int nb_inst) {
   for (int inst=0; inst<nb_inst; inst++) {

@@ -90,12 +90,37 @@ void oai_xran_fh_rx_callback(void *pCallbackTag, xran_status_t status)
 
   tti = xran_get_slot_idx_from_tti(rx_tti, &frame, &subframe, &slot, &second);
 
-  rx_sym = callback_tag->symbol;
+  rx_sym = callback_tag->symbol & 0xFF;
   uint32_t ru_id = callback_tag->oXuId;
-  if (rx_sym == 7) {
+
+  LOG_D(NR_PHY,
+        "rx_callback frame %d, subframe %d, slot %d, second %lld, rx_sym %d ru_id %d\n",
+        frame,
+        subframe,
+        slot,
+        (unsigned long long)second,
+        rx_sym,
+        ru_id);
+  if (rx_sym == 7) { // in F release this value is defined as XRAN_FULL_CB_SYM (full slot (offset + 7))
+#ifdef F_RELEASE
+    int32_t nCellIdx = callback_tag->cellId;
+    int32_t ntti = (rx_tti + XRAN_N_FE_BUF_LEN - 1) % XRAN_N_FE_BUF_LEN;
+
+    for(uint32_t ant_id = 0; ant_id < fh_config->neAxc; ant_id++) {
+      struct xran_prb_map *pRbMap = (struct xran_prb_map *)xran_ctx->sFrontHaulRxPrbMapBbuIoBufCtrl[ntti][nCellIdx][ant_id].sBufferList.pBuffers->pData;
+      AssertFatal(pRbMap != NULL, "(%d:%d:%d)pRbMap == NULL. Aborting.\n", nCellIdx, ntti, ant_id);
+
+      for (uint32_t sym_id = 0; sym_id < XRAN_NUM_OF_SYMBOL_PER_SLOT; sym_id++) {
+        for (uint32_t idxElm = 0; idxElm < pRbMap->nPrbElm; idxElm++ ) {
+          struct xran_prb_elm *pRbElm = &pRbMap->prbMap[idxElm];
+          pRbElm->nSecDesc[sym_id] = 0; // number of section descriptors per symbol; M-plane info <supported-section-types>
+        }
+      }
+    }
+#endif
     if (first_call_set) {
       if (!first_rx_set) {
-        LOG_I(NR_PHY, "first_rx is set (num_ports %d)\n", num_ports);
+        LOG_I(NR_PHY, "first_rx is set (num_ports %d), first_read_set %d\n", num_ports, first_read_set);
       }
       first_rx_set = 1;
       if (first_read_set == 1) {
@@ -238,6 +263,22 @@ int read_prach_data(ru_info_t *ru, int frame, int slot)
   return (0);
 }
 
+static bool is_tdd_ul_symbol(const struct xran_frame_config *frame_conf, int slot, int sym_idx)
+{
+  /* in FDD, every symbol is also UL */
+  if (frame_conf->nFrameDuplexType == XRAN_FDD)
+    return true;
+  int tdd_period = frame_conf->nTddPeriod;
+  int slot_in_period = slot % tdd_period;
+  /* check if symbol is UL */
+  return frame_conf->sSlotConfig[slot_in_period].nSymbolType[sym_idx] == 1 /* UL */;
+}
+
+static bool is_tdd_dl_guard_slot(const struct xran_frame_config *frame_conf, int slot)
+{
+  return !is_tdd_ul_symbol(frame_conf, slot, XRAN_NUM_OF_SYMBOL_PER_SLOT - 1);
+}
+
 int xran_fh_rx_read_slot(ru_info_t *ru, int *frame, int *slot)
 {
   void *ptr = NULL;
@@ -303,18 +344,15 @@ int xran_fh_rx_read_slot(ru_info_t *ru, int *frame, int *slot)
       rx_data = (uint8_t *)ru->rxdataF[ant_id];
       start_ptr = rx_data + (slot_size * slot_offset_rxdata);
       xran_ctx = xran_dev_get_ctx_by_id(ant_id / nb_rx_per_ru);
-      const struct xran_fh_config *fh_config = &xran_ctx->fh_cfg;
-      int tdd_period = fh_config->frame_conf.nTddPeriod;
-      int slot_in_period = *slot % tdd_period;
-      if (fh_config->frame_conf.sSlotConfig[slot_in_period].nSymbolType[XRAN_NUM_OF_SYMBOL_PER_SLOT - 1] == 0)
+      const struct xran_frame_config *frame_conf = &xran_ctx->fh_cfg.frame_conf;
+      // skip processing this slot is TX (no RX in this slot)
+      if (is_tdd_dl_guard_slot(frame_conf, *slot))
         continue;
-      // skip processing this slot if the last symbol in the slot is TX
-      // (no RX in this slot)
       // This loop would better be more inner to avoid confusion and maybe also errors.
       for (int32_t sym_idx = 0; sym_idx < XRAN_NUM_OF_SYMBOL_PER_SLOT; sym_idx++) {
         /* the callback is for mixed and UL slots. In mixed, we have to
          * skip DL and guard symbols. */
-        if (fh_config->frame_conf.sSlotConfig[slot_in_period].nSymbolType[sym_idx] != 1 /* UL */)
+        if (!is_tdd_ul_symbol(frame_conf, *slot, sym_idx))
           continue;
 
         uint8_t *pData;
@@ -323,7 +361,11 @@ int xran_fh_rx_read_slot(ru_info_t *ru, int *frame, int *slot)
         struct xran_prb_map *pPrbMap = (struct xran_prb_map *)pPrbMapData;
 
         struct xran_prb_elm *pRbElm = &pPrbMap->prbMap[0];
+#ifdef E_RELEASE
         struct xran_section_desc *p_sec_desc = pRbElm->p_sec_desc[sym_idx][0];
+#elif defined F_RELEASE
+        struct xran_section_desc *p_sec_desc = &pRbElm->sec_desc[sym_idx][0];
+#endif
         uint32_t one_rb_size =
             (((pRbElm->iqWidth == 0) || (pRbElm->iqWidth == 16)) ? (N_SC_PER_PRB * 2 * 2) : (3 * pRbElm->iqWidth + 1));
         if (fh_init->mtu < pRbElm->nRBSize * one_rb_size)
@@ -477,9 +519,12 @@ int xran_fh_tx_send_slot(ru_info_t *ru, int frame, int slot, uint64_t timestamp)
           for (idxElm = 0; idxElm < pRbMap->nPrbElm; idxElm++) {
             struct xran_section_desc *p_sec_desc = NULL;
             p_prbMapElm = &pRbMap->prbMap[idxElm];
-            p_sec_desc =
-                // assumes one fragment per symbol
-                p_prbMapElm->p_sec_desc[sym_id][0];
+            // assumes one fragment per symbol
+#ifdef E_RELEASE
+            p_sec_desc = p_prbMapElm->p_sec_desc[sym_id][0];
+#elif F_RELEASE
+            p_sec_desc = &p_prbMapElm->sec_desc[sym_id][0];
+#endif
 
             dst = xran_add_hdr_offset(dst, p_prbMapElm->compMethod);
 

@@ -56,6 +56,9 @@
 #include "NR_UE-NR-Capability.h"
 #include "NR_SL-PreconfigurationNR-r16.h"
 #include "NR_MasterInformationBlockSidelink.h"
+#include "NR_ReestablishmentCause.h"
+#include "NR_MeasurementReport.h"
+#include "NR_VarMeasReport.h"
 
 #include "RRC/NR/nr_rrc_common.h"
 #include "as_message.h"
@@ -65,6 +68,7 @@
 #define MAX_MEAS_OBJ 7
 #define MAX_MEAS_CONFIG 7
 #define MAX_MEAS_ID 7
+#define MAX_QUANTITY_CONFIG 2
 
 typedef uint32_t channel_t;
 
@@ -85,25 +89,12 @@ typedef enum Rrc_State_NR_e {
   RRC_STATE_INACTIVE_NR,
   RRC_STATE_CONNECTED_NR,
   RRC_STATE_DETACH_NR,
-  RRC_STATE_FIRST_NR = RRC_STATE_IDLE_NR,
-  RRC_STATE_LAST_NR = RRC_STATE_CONNECTED_NR,
 } Rrc_State_NR_t;
-
-typedef enum requested_SI_List_e {
-  SIB2  = 1,
-  SIB3  = 2,
-  SIB4  = 4,
-  SIB5  = 8,
-  SIB6  = 16,
-  SIB7  = 32,
-  SIB8  = 64,
-  SIB9  = 128
-} requested_SI_List_t;
 
 // 3GPP TS 38.300 Section 9.2.6
 typedef enum RA_trigger_e {
   RA_NOT_RUNNING,
-  INITIAL_ACCESS_FROM_RRC_IDLE,
+  RRC_CONNECTION_SETUP,
   RRC_CONNECTION_REESTABLISHMENT,
   DURING_HANDOVER,
   NON_SYNCHRONISED,
@@ -113,36 +104,61 @@ typedef enum RA_trigger_e {
   BEAM_FAILURE_RECOVERY,
 } RA_trigger_t;
 
+typedef enum {
+  SIB_NOT_VALID,
+  SIB_VALID,
+  SIB_REQUESTED,
+} SIB_validity_t;
+
+typedef struct UE_RRC_SI_INFO_NR_r17_s {
+  uint32_t default_otherSI_map_r17;
+  SIB_validity_t sib15_validity;
+  NR_timer_t sib15_timer;
+  SIB_validity_t sib16_validity;
+  NR_timer_t sib16_timer;
+  SIB_validity_t sib17_validity;
+  NR_timer_t sib17_timer;
+  SIB_validity_t sib18_validity;
+  NR_timer_t sib18_timer;
+  SIB_validity_t sib19_validity;
+  NR_timer_t sib19_timer;
+  SIB_validity_t sib20_validity;
+  NR_timer_t sib20_timer;
+  SIB_validity_t sib21_validity;
+  NR_timer_t sib21_timer;
+} NR_UE_RRC_SI_INFO_r17;
+
 typedef struct UE_RRC_SI_INFO_NR_s {
   uint32_t default_otherSI_map;
-  NR_SIB1_t *sib1;
+  SIB_validity_t sib1_validity;
   NR_timer_t sib1_timer;
-  NR_SIB2_t *sib2;
+  SIB_validity_t sib2_validity;
   NR_timer_t sib2_timer;
-  NR_SIB3_t *sib3;
+  SIB_validity_t sib3_validity;
   NR_timer_t sib3_timer;
-  NR_SIB4_t *sib4;
+  SIB_validity_t sib4_validity;
   NR_timer_t sib4_timer;
-  NR_SIB5_t *sib5;
+  SIB_validity_t sib5_validity;
   NR_timer_t sib5_timer;
-  NR_SIB6_t *sib6;
+  SIB_validity_t sib6_validity;
   NR_timer_t sib6_timer;
-  NR_SIB7_t *sib7;
+  SIB_validity_t sib7_validity;
   NR_timer_t sib7_timer;
-  NR_SIB8_t *sib8;
+  SIB_validity_t sib8_validity;
   NR_timer_t sib8_timer;
-  NR_SIB9_t *sib9;
+  SIB_validity_t sib9_validity;
   NR_timer_t sib9_timer;
-  NR_SIB10_r16_t *sib10;
+  SIB_validity_t sib10_validity;
   NR_timer_t sib10_timer;
-  NR_SIB11_r16_t *sib11;
+  SIB_validity_t sib11_validity;
   NR_timer_t sib11_timer;
-  NR_SIB12_r16_t *sib12;
+  SIB_validity_t sib12_validity;
   NR_timer_t sib12_timer;
-  NR_SIB13_r16_t *sib13;
+  SIB_validity_t sib13_validity;
   NR_timer_t sib13_timer;
-  NR_SIB14_r16_t *sib14;
+  SIB_validity_t sib14_validity;
   NR_timer_t sib14_timer;
+  NR_UE_RRC_SI_INFO_r17 SInfo_r17;
 } NR_UE_RRC_SI_INFO;
 
 typedef struct NR_UE_Timers_Constants_s {
@@ -155,7 +171,9 @@ typedef struct NR_UE_Timers_Constants_s {
   NR_timer_t T311;
   NR_timer_t T319;
   NR_timer_t T320;
+  NR_timer_t T321;
   NR_timer_t T325;
+  NR_timer_t T380;
   NR_timer_t T390;
   // counters
   uint32_t N310_cnt;
@@ -163,6 +181,7 @@ typedef struct NR_UE_Timers_Constants_s {
   // constants (limits configured by the network)
   uint32_t N310_k;
   uint32_t N311_k;
+  NR_UE_TimersAndConstants_t *sib1_TimersAndConstants;
 } NR_UE_Timers_Constants_t;
 
 typedef enum {
@@ -175,8 +194,9 @@ typedef enum { RB_NOT_PRESENT, RB_ESTABLISHED, RB_SUSPENDED } NR_RB_status_t;
 typedef struct rrcPerNB {
   NR_MeasObjectToAddMod_t *MeasObj[MAX_MEAS_OBJ];
   NR_ReportConfigToAddMod_t *ReportConfig[MAX_MEAS_CONFIG];
-  NR_QuantityConfig_t *QuantityConfig;
+  NR_QuantityConfigNR_t *QuantityConfig[MAX_QUANTITY_CONFIG];
   NR_MeasIdToAddMod_t *MeasId[MAX_MEAS_ID];
+  NR_VarMeasReport_t *MeasReport[MAX_MEAS_ID];
   NR_MeasGapConfig_t *measGapConfig;
   NR_UE_RRC_SI_INFO SInfo;
   NR_RSRP_Range_t s_measure;
@@ -187,10 +207,14 @@ typedef struct NR_UE_RRC_INST_s {
   rrcPerNB_t perNB[NB_CNX_UE];
 
   rnti_t rnti;
+  uint32_t phyCellID;
+  long arfcn_ssb;
 
   OAI_NR_UECapability_t UECap;
   NR_UE_Timers_Constants_t timers_and_constants;
+
   RA_trigger_t ra_trigger;
+  NR_ReestablishmentCause_t reestablishment_cause;
   plmn_t plmnID;
 
   NR_BWP_Id_t dl_bwp_id;
@@ -208,14 +232,15 @@ typedef struct NR_UE_RRC_INST_s {
   e_NR_IntegrityProtAlgorithm  integrityProtAlgorithm;
   long keyToUse;
   bool as_security_activated;
-
-  long               selected_plmn_identity;
-  Rrc_State_NR_t     nrRrcState;
-  as_nas_info_t      initialNasMsg;
-
+  bool detach_after_release;
+  NR_timer_t release_timer;
+  NR_RRCRelease_t *RRCRelease;
+  long selected_plmn_identity;
+  Rrc_State_NR_t nrRrcState;
+  // flag to identify 1st reconfiguration after reestablishment
+  bool reconfig_after_reestab;
   //Sidelink params
   NR_SL_PreconfigurationNR_r16_t *sl_preconfig;
-
 } NR_UE_RRC_INST_t;
 
 #endif

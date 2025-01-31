@@ -31,8 +31,13 @@
 #include "common/utils/LOG/log.h"
 #include "common/utils/LOG/vcd_signal_dumper.h"
 #include "openair1/PHY/defs_gNB.h"
-#include "common/utils/threadPool/thread-pool.h"
 #include "oaioran.h"
+#include "oran-config.h"
+
+// include the following file for VERSIONX, version of xran lib, to print it during
+// startup. Only relevant for printing, if it ever makes problem, remove this
+// line and the use of VERSIONX further below. It is relative to phy/fhi_lib/lib/api
+#include "../../app/src/common.h"
 
 typedef struct {
   eth_state_t e;
@@ -198,7 +203,6 @@ void oran_fh_if4p5_south_in(RU_t *ru, int *frame, int *slot)
   ru_info.prach_buf = ru->prach_rxsigF[0]; // index: [prach_oca][ant_id]
 
   RU_proc_t *proc = &ru->proc;
-  extern uint16_t sl_ahead;
   int f, sl;
   LOG_D(PHY, "Read rxdataF %p,%p\n", ru_info.rxdataF[0], ru_info.rxdataF[1]);
   start_meas(&ru->rx_fhaul);
@@ -212,8 +216,8 @@ void oran_fh_if4p5_south_in(RU_t *ru, int *frame, int *slot)
   int slots_per_frame = 10 << (ru->openair0_cfg.nr_scs_for_raster);
   proc->tti_rx = sl;
   proc->frame_rx = f;
-  proc->tti_tx = (sl + sl_ahead) % slots_per_frame;
-  proc->frame_tx = (sl > (slots_per_frame - 1 - sl_ahead)) ? (f + 1) & 1023 : f;
+  proc->tti_tx = (sl + ru->sl_ahead) % slots_per_frame;
+  proc->frame_tx = (sl > (slots_per_frame - 1 - ru->sl_ahead)) ? (f + 1) & 1023 : f;
 
   if (proc->first_rx == 0) {
     if (proc->tti_rx != *slot) {
@@ -309,10 +313,19 @@ __attribute__((__visibility__("default"))) int transport_init(openair0_device *d
 
   eth->last_msg = (rru_config_msg_type_t)-1;
 
-  printf("ORAN: %s\n", __FUNCTION__);
+  LOG_I(HW, "Initializing O-RAN 7.2 FH interface through xran library (compiled against headers of %s)\n", VERSIONX);
 
   initNotifiedFIFO(&oran_sync_fifo);
-  eth->oran_priv = oai_oran_initialize(openair0_cfg);
+
+  struct xran_fh_init fh_init = {0};
+  struct xran_fh_config fh_config[XRAN_PORTS_NUM] = {0};
+#ifndef OAI_MPLANE_SUPPORT
+  bool success = get_xran_config(openair0_cfg, &fh_init, fh_config);
+  AssertFatal(success, "cannot get configuration for xran\n");
+#else
+  /* TODO: M-plane integration */
+#endif
+  eth->oran_priv = oai_oran_initialize(&fh_init, fh_config);
   AssertFatal(eth->oran_priv != NULL, "can not initialize fronthaul");
   // create message queues for ORAN sync
   return 0;

@@ -70,7 +70,7 @@ int read_strlist(configmodule_interface_t *cfg, paramdef_t *cfgoptions, config_s
     str=config_setting_get_string_elem(setting,i);
 
     if (str==NULL) {
-      printf("[LIBCONFIG] %s%i  not found in config file\n", cfgoptions->optname,i);
+      printf_params(cfg, "[LIBCONFIG] %s%i  not found in config file\n", cfgoptions->optname,i);
     } else {
       snprintf(cfgoptions->strlistptr[i], DEFAULT_EXTRA_SZ, "%s",str);
       st++;
@@ -322,19 +322,16 @@ int config_libconfig_set(configmodule_interface_t *cfg, paramdef_t *cfgoptions, 
 int config_libconfig_get(configmodule_interface_t *cfg, paramdef_t *cfgoptions, int numoptions, char *prefix)
 {
   config_setting_t *setting;
-  char *str;
-  int i,u;
-  long long int llu;
-  double dbl;
-  int rst;
-  int status=0;
-  int notfound;
-  int defval;
-  int fatalerror=0;
-  int numdefvals=0;
+  char *str = NULL;
+  int u = 0;
+  long long int llu = 0;
+  double dbl = 0.0f;
+  int status = 0;
+  int fatalerror = 0;
+  int numdefvals = 0;
   char cfgpath[512];  /* 512 should be enough for the sprintf below */
 
-  for(i=0; i<numoptions; i++) {
+  for(int i=0; i<numoptions; i++) {
     if (prefix != NULL) {
       sprintf(cfgpath,"%s.%s",prefix,cfgoptions[i].optname);
     } else {
@@ -346,8 +343,8 @@ int config_libconfig_get(configmodule_interface_t *cfg, paramdef_t *cfgoptions, 
       continue;
     }
 
-    notfound=0;
-    defval=0;
+    int notfound = 0;
+    int defval = 0;
 
     switch(cfgoptions[i].type) {
       case TYPE_STRING:
@@ -436,7 +433,7 @@ int config_libconfig_get(configmodule_interface_t *cfg, paramdef_t *cfgoptions, 
         if ( !config_lookup_string(&(libconfig_privdata.cfg),cfgpath, (const char **)&str)) {
           defval = config_setdefault_ipv4addr(cfg, &(cfgoptions[i]), prefix);
         } else {
-          rst = config_assign_ipv4addr(cfg, cfgoptions, str);
+          int rst = config_assign_ipv4addr(cfg, cfgoptions, str);
 
           if (rst < 0) {
             fprintf(stderr,"[LIBCONFIG] %s not valid for %s \n", str, cfgpath);
@@ -464,13 +461,11 @@ int config_libconfig_get(configmodule_interface_t *cfg, paramdef_t *cfgoptions, 
     } /* switch on param type */
 
     if( notfound == 1) {
-      printf("[LIBCONFIG] %s not found in %s ", cfgpath,libconfig_privdata.configfile );
+      fprintf(stderr, "[LIBCONFIG] %s not found in %s ", cfgpath, libconfig_privdata.configfile);
 
       if ( (cfgoptions[i].paramflags & PARAMFLAG_MANDATORY) != 0) {
         fatalerror=1;
-        printf("  mandatory parameter missing\n");
-      } else {
-        printf("\n");
+        fprintf(stderr, "  mandatory parameter missing\n");
       }
     } else {
       if (defval == 1) {
@@ -484,9 +479,12 @@ int config_libconfig_get(configmodule_interface_t *cfg, paramdef_t *cfgoptions, 
     }
   } /* for loop on options */
 
-  printf("[LIBCONFIG] %s: %i/%i parameters successfully set, (%i to default value)\n",
-         ((prefix == NULL)?"(root)":prefix),
-         status,numoptions,numdefvals );
+  printf_params(cfg,
+                "[LIBCONFIG] %s: %i/%i parameters successfully set, (%i to default value)\n",
+                prefix == NULL ? "(root)" : prefix,
+                status,
+                numoptions,
+                numdefvals);
 
   if (fatalerror == 1) {
     fprintf(stderr,"[LIBCONFIG] fatal errors found when processing  %s \n", libconfig_privdata.configfile );
@@ -520,8 +518,7 @@ int config_libconfig_getlist(configmodule_interface_t *cfg,
     status = ParamList->numelt = config_setting_length(setting);
     printf_params(cfg, "[LIBCONFIG] %i %s in config file %s \n", ParamList->numelt, listpath, libconfig_privdata.configfile);
   } else {
-    printf("[LIBCONFIG] list %s not found in config file %s \n",
-           listpath,libconfig_privdata.configfile );
+    printf_params(cfg, "[LIBCONFIG] list %s not found in config file %s \n", listpath, libconfig_privdata.configfile);
     ParamList->numelt= 0;
     status = -1;
   }
@@ -571,17 +568,19 @@ int config_libconfig_init(configmodule_interface_t *cfg)
   }
   
   const char *incp = config_get_include_dir (&(libconfig_privdata.cfg)) ;
- 
-  printf("[LIBCONFIG] Path for include directive set to: %s\n", (incp!=NULL)?incp:"libconfig defaults");
+
+  printf_params(cfg, "[LIBCONFIG] Path for include directive set to: %s\n", (incp != NULL) ? incp : "libconfig defaults");
   /* set convertion option to allow integer to float conversion*/
    config_set_auto_convert (&(libconfig_privdata.cfg), CONFIG_TRUE);
   /* Read the file. If there is an error, report it and exit. */
   if( config_read_file(&(libconfig_privdata.cfg), libconfig_privdata.configfile) == CONFIG_FALSE) {
-    fprintf(stderr,"[LIBCONFIG] %s %d file %s - line %d: %s\n",__FILE__, __LINE__,
-            libconfig_privdata.configfile, config_error_line(&(libconfig_privdata.cfg)),
+    fprintf(stderr,
+            "[LIBCONFIG] file %s - line %d: %s\n",
+            libconfig_privdata.configfile,
+            config_error_line(&(libconfig_privdata.cfg)),
             config_error_text(&(libconfig_privdata.cfg)));
     config_destroy(&(libconfig_privdata.cfg));
-    printf( "\n");
+    fprintf(stderr, "\n");
     free(tmppath);
     return -1;
   }
@@ -622,11 +621,11 @@ void config_libconfig_write_parsedcfg(configmodule_interface_t *cfg)
               config_error_line(&(libconfig_privdata.runtcfg)),
               config_error_text(&(libconfig_privdata.runtcfg)));
     } else {
-      printf("[LIBCONFIG] file %s created successfully\n", cfg->status->debug_cfgname);
+      printf_params(cfg, "[LIBCONFIG] file %s created successfully\n", cfg->status->debug_cfgname);
     }
     free(fname);
   } else {
-    printf("[LIBCONFIG] Cannot create config file after parsing: CONFIG_SAVERUNCFG flag not specified\n");
+    printf_params(cfg, "[LIBCONFIG] Cannot create config file after parsing: CONFIG_SAVERUNCFG flag not specified\n");
   }
 }
 
