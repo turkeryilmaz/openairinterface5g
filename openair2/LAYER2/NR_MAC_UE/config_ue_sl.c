@@ -225,7 +225,7 @@ static void  sl_prepare_phy_config(int module_id,
   AssertFatal(carriercfg, "SCS_SpecificCarrier cannot be NULL");
 
   int bw_index = get_supported_band_index(carriercfg->subcarrierSpacing,
-                                          sl_band,
+                                          FR1,
                                           carriercfg->carrierBandwidth);
   phycfg->sl_carrier_config.sl_bandwidth = get_supported_bw_mhz(FR1, bw_index);
 

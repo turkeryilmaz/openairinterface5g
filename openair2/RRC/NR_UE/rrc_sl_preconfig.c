@@ -674,7 +674,7 @@ void nr_rrc_ue_decode_NR_SBCCH_SL_BCH_Message(NR_UE_RRC_INST_t *rrc,
 }
 
 void rrc_ue_process_sidelink_Preconfiguration(NR_UE_RRC_INST_t *rrc_inst,
-                                              sl_sync_source_enum_t sync_source,
+                                              sl_sync_source_enum_t is_sync_source,
                                               ueinfo_t *ueinfo)
 {
 
@@ -682,6 +682,13 @@ void rrc_ue_process_sidelink_Preconfiguration(NR_UE_RRC_INST_t *rrc_inst,
 
   NR_SL_PreconfigurationNR_r16_t *sl_preconfig = rrc_inst->sl_preconfig;
   AssertFatal(rrc_inst->sl_preconfig, "Check if SL-preconfig was created");
+
+  uint8_t sync_source = SL_SYNC_SOURCE_NONE;
+
+  if (is_sync_source) {
+    sync_source = (GNSS_SUPPORT) ? SL_SYNC_SOURCE_GNSS
+                                 : SL_SYNC_SOURCE_LOCAL_TIMING;
+  }
 
   AssertFatal(sync_source != SL_SYNC_SOURCE_GNBENB, "Sync source GNB not supported\n");
 
