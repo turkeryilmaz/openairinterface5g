@@ -683,12 +683,20 @@ void nr_rrc_mac_config_req_sl_mib(module_id_t module_id,
                                   cfg->sl_bwp_config.sl_scs,
                                   cfg->sl_bwp_config.sl_num_symbols,
                                   cfg->sl_bwp_config.sl_start_symbol);
-    // EpiSci TODO: set tdd_period
+
     if (ret == 0) {
       //sl_tdd_config bytes are all 1's - no TDD config present use all slots for sidelink.
       //Spec not clear -- TBD...
+      sl_config->tdd_table.tdd_period_in_slots = 7;// set it to frame period
       sl_mac->sl_TDD_config->pattern1.nrofUplinkSlots =
                         NR_NUMBER_OF_SUBFRAMES_PER_FRAME*(1<<cfg->sl_bwp_config.sl_scs);
+    } else {
+      if (sl_mac->sl_TDD_config->pattern1.ext1 == NULL) {
+        sl_config->tdd_table.tdd_period_in_slots = sl_mac->sl_TDD_config->pattern1.dl_UL_TransmissionPeriodicity;
+      } else {
+        if (sl_mac->sl_TDD_config->pattern1.ext1->dl_UL_TransmissionPeriodicity_v1530 != NULL)
+          sl_config->tdd_table.tdd_period_in_slots += (1 + *sl_mac->sl_TDD_config->pattern1.ext1->dl_UL_TransmissionPeriodicity_v1530);
+      }
     }
 
     sl_set_tdd_config_nr_ue(&cfg->tdd_table,
