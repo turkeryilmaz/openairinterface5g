@@ -207,7 +207,7 @@ void gNB_dlsch_ulsch_scheduler(module_id_t module_idP, frame_t frame, sub_frame_
       memcpy(&vrb_map_UL[prev_slot % size * MAX_BWP_SIZE], &gNB->ulprbbl, sizeof(uint16_t) * MAX_BWP_SIZE);
       // This for downlink PRBs
       uint16_t *vrb_map = cc[CC_id].vrb_map[i];
-      memcpy(&vrb_map, &gNB->ulprbbl, sizeof(uint16_t) * MAX_BWP_SIZE);
+      memcpy(vrb_map, &gNB->ulprbbl, sizeof(uint16_t) * MAX_BWP_SIZE);
     }
     clear_nr_nfapi_information(gNB, CC_id, frame, slot, &sched_info->DL_req, &sched_info->TX_req, &sched_info->UL_dci_req);
   }
