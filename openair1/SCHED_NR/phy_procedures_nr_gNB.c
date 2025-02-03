@@ -716,16 +716,6 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx, N
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PHY_PROCEDURES_gNB_UESPEC_RX,1);
   LOG_D(PHY,"phy_procedures_gNB_uespec_RX frame %d, slot %d\n",frame_rx,slot_rx);
 
-  /*Extracting time domain IQ samples from Antenna: 0 TODO: Multiple antenna*/
-  if(nr_slot_select(&gNB->gNB_config, frame_rx, slot_rx)== NR_UPLINK_SLOT){
-    int numsamples = gNB->frame_parms.get_samples_per_slot(slot_rx,&gNB->frame_parms);
-    T(T_GNB_PHY_INPUT_SIGNAL,
-        T_INT(frame_rx),
-        T_INT(0),
-        T_INT(0),
-        T_BUFFER(&gNB->RU_list[0]->common.rxdata[0][slot_rx* numsamples],numsamples* sizeof(int32_t)));
-  }
-
   // Mask of occupied RBs, per symbol and PRB
   uint32_t rb_mask_ul[14][9];
   fill_ul_rb_mask(gNB, frame_rx, slot_rx, rb_mask_ul);
@@ -1138,12 +1128,12 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx, N
   }
 
 #ifdef E3_AGENT
-  //Spectrum Listening Symbols
-  if(nr_slot_select(&gNB->gNB_config, frame_rx, slot_rx) == NR_UPLINK_SLOT && slot_rx == 8){
+  // Spectrum Listening Symbols
+  if (nr_slot_select(&gNB->gNB_config, frame_rx, slot_rx) == NR_UPLINK_SLOT && slot_rx == 8) {
     uint16_t n_symbols = (slot_rx % RU_RX_SLOT_DEPTH) * gNB->frame_parms.symbols_per_slot;
     // Extracting 12th symbol
-    uint64_t symbol_offset = (n_symbols)*gNB->frame_parms.ofdm_symbol_size+(12)*gNB->frame_parms.ofdm_symbol_size;
-    int32_t *rx_signal = (int32_t *) &gNB->common_vars.rxdataF[0][symbol_offset];
+    uint64_t symbol_offset = (n_symbols)*gNB->frame_parms.ofdm_symbol_size + (12) * gNB->frame_parms.ofdm_symbol_size;
+    int32_t *rx_signal = (int32_t *)&gNB->common_vars.rxdataF[0][symbol_offset];
     e3_agent_control->sampling_counter++;
     if (e3_agent_control->sampling_counter > e3_agent_control->sampling_threshold) {
       T(T_GNB_PHY_UL_FREQ_SENSING_SYMBOL,
