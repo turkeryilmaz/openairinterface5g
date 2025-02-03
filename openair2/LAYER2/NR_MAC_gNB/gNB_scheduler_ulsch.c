@@ -63,7 +63,7 @@ int get_ul_tda(gNB_MAC_INST *nrmac, const NR_ServingCellConfigCommon_t *scc, int
   }
 
   // Empty symbol in slot 8 for spectrum sensing. Symbol 12.ToDo handle when SRS is present
-  if(slot == 8) {
+  if (slot == 8) {
     return 1;
   }
 
