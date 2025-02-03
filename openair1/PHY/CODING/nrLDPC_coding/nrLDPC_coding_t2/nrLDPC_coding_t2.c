@@ -1027,7 +1027,6 @@ int32_t nrLDPC_coding_decoder(nrLDPC_slot_decoding_parameters_t *nrLDPC_slot_dec
   for(uint16_t h = 0; h < nrLDPC_slot_decoding_parameters->nb_TBs; ++h){
     num_blocks += nrLDPC_slot_decoding_parameters->TBs[h].C;
   }
-  uint16_t z_ol[LDPC_MAX_CB_SIZE] __attribute__((aligned(16)));
   /* It is not unlikely that l_ol becomes big enough to overflow the stack
    * If you observe this behavior then move it to the heap
    * Then you would better do a persistent allocation to limit the overhead
@@ -1057,12 +1056,13 @@ int32_t nrLDPC_coding_decoder(nrLDPC_slot_decoding_parameters_t *nrLDPC_slot_dec
   int offset = 0;
   for(uint16_t h = 0; h < nrLDPC_slot_decoding_parameters->nb_TBs; ++h){
     for (int r = 0; r < nrLDPC_slot_decoding_parameters->TBs[h].C; r++) {
-      memcpy(z_ol, nrLDPC_slot_decoding_parameters->TBs[h].segments[r].llr, nrLDPC_slot_decoding_parameters->TBs[h].segments[r].E * sizeof(uint16_t));
-      simde__m128i *pv_ol128 = (simde__m128i *)z_ol;
+      nrLDPC_segment_decoding_parameters_t ldpc_segment =  nrLDPC_slot_decoding_parameters->TBs[h].segments[r];
+      simde__m128i *pv_ol128 = (simde__m128i *)ldpc_segment.llr;
       simde__m128i *pl_ol128 = (simde__m128i *)&l_ol[offset];
-      int kc = nrLDPC_slot_decoding_parameters->TBs[h].BG == 2 ? 52 : 68;
-      for (int i = 0, j = 0; j < ((kc * nrLDPC_slot_decoding_parameters->TBs[h].Z) >> 4) + 1; i += 2, j++) {
-        pl_ol128[j] = simde_mm_packs_epi16(pv_ol128[i], pv_ol128[i + 1]);
+      for (int i = 0, j = 0; j < (ldpc_segment.E >> 4) + 1; i += 2, j++) {
+        simde__m128i seg1 = simde_mm_loadu_si128(pv_ol128++);
+        simde__m128i seg2 = simde_mm_loadu_si128(pv_ol128++);
+        pl_ol128[j] = simde_mm_packs_epi16(seg1, seg2);
       }
       offset += LDPC_MAX_CB_SIZE;
     }
