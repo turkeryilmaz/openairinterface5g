@@ -140,7 +140,7 @@ typedef struct {
   int frame;
   int slot;
   // identifier for concurrent beams
-  int beam_nb;
+  int *beam_nb;
   nfapi_nr_prach_pdu_t pdu;  
 } gNB_PRACH_list_t;
 

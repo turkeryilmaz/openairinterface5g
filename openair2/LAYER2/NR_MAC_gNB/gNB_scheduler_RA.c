@@ -365,10 +365,11 @@ void schedule_nr_prach(module_id_t module_idP, frame_t frameP, sub_frame_t slotP
 
   NR_COMMON_channels_t *cc = gNB->common_channels;
   NR_ServingCellConfigCommon_t *scc = cc->ServingCellConfigCommon;
-  NR_RACH_ConfigCommon_t *rach_ConfigCommon = scc->uplinkConfigCommon->initialUplinkBWP->rach_ConfigCommon->choice.setup;
+  NR_BWP_UplinkCommon_t *initialUplinkBWP = scc->uplinkConfigCommon->initialUplinkBWP;
+  NR_RACH_ConfigCommon_t *rach_ConfigCommon = initialUplinkBWP->rach_ConfigCommon->choice.setup;
   NR_MsgA_ConfigCommon_r16_t *msgacc = NULL;
-  if (scc->uplinkConfigCommon->initialUplinkBWP->ext1 && scc->uplinkConfigCommon->initialUplinkBWP->ext1->msgA_ConfigCommon_r16)
-    msgacc = scc->uplinkConfigCommon->initialUplinkBWP->ext1->msgA_ConfigCommon_r16->choice.setup;
+  if (initialUplinkBWP->ext1 && initialUplinkBWP->ext1->msgA_ConfigCommon_r16)
+    msgacc = initialUplinkBWP->ext1->msgA_ConfigCommon_r16->choice.setup;
   int mu = nr_get_prach_mu(msgacc, rach_ConfigCommon);
   int index = ul_buffer_index(frameP, slotP, mu, gNB->UL_tti_req_ahead_size);
   nfapi_nr_ul_tti_request_t *UL_tti_req = &RC.nrmac[module_idP]->UL_tti_req_ahead[0][index];
@@ -384,7 +385,7 @@ void schedule_nr_prach(module_id_t module_idP, frame_t frameP, sub_frame_t slotP
     int slot_index = 0;
     uint16_t prach_occasion_id = -1;
 
-    int bwp_start = NRRIV2PRBOFFSET(scc->uplinkConfigCommon->initialUplinkBWP->genericParameters.locationAndBandwidth, MAX_BWP_SIZE);
+    int bwp_start = NRRIV2PRBOFFSET(initialUplinkBWP->genericParameters.locationAndBandwidth, MAX_BWP_SIZE);
 
     uint8_t fdm = cfg->prach_config.num_prach_fd_occasions.value;
     // prach is scheduled according to configuration index and tables 6.3.3.2.2 to 6.3.3.2.4
@@ -419,6 +420,16 @@ void schedule_nr_prach(module_id_t module_idP, frame_t frameP, sub_frame_t slotP
       UL_tti_req->rach_present = 1;
       NR_beam_alloc_t beam = {0};
       for (int fdm_index = 0; fdm_index < fdm; fdm_index++) { // one structure per frequency domain occasion
+        AssertFatal(UL_tti_req->n_pdus < sizeof(UL_tti_req->pdus_list) / sizeof(UL_tti_req->pdus_list[0]),
+                    "Invalid UL_tti_req->n_pdus %d\n",
+                     UL_tti_req->n_pdus);
+
+        UL_tti_req->pdus_list[UL_tti_req->n_pdus].pdu_type = NFAPI_NR_UL_CONFIG_PRACH_PDU_TYPE;
+        UL_tti_req->pdus_list[UL_tti_req->n_pdus].pdu_size = sizeof(nfapi_nr_prach_pdu_t);
+        nfapi_nr_prach_pdu_t  *prach_pdu = &UL_tti_req->pdus_list[UL_tti_req->n_pdus].prach_pdu;
+        memset(prach_pdu, 0, sizeof(nfapi_nr_prach_pdu_t));
+        UL_tti_req->n_pdus += 1;
+        int num_td_occ = 0;
         for (int td_index = 0; td_index < N_t_slot; td_index++) {
 
           prach_occasion_id = (((frameP % (cc->max_association_period * config_period))/config_period) * cc->total_prach_occasions_per_config_period) +
@@ -427,6 +438,7 @@ void schedule_nr_prach(module_id_t module_idP, frame_t frameP, sub_frame_t slotP
           if (prach_occasion_id >= cc->total_prach_occasions) // to be confirmed: unused occasion?
             continue;
 
+          num_td_occ++;
           float num_ssb_per_RO = ssb_per_rach_occasion[cfg->prach_config.ssb_per_rach.value];
           int beam_index = 0;
           if(num_ssb_per_RO <= 1) {
@@ -437,8 +449,7 @@ void schedule_nr_prach(module_id_t module_idP, frame_t frameP, sub_frame_t slotP
             // multi-beam allocation structure
             beam = beam_allocation_procedure(&gNB->beam_info, frameP, slotP, beam_index, nr_slots_per_frame[mu]);
             AssertFatal(beam.idx >= 0, "Cannot allocate PRACH corresponding to %d SSB transmitted in any available beam\n", n_ssb + 1);
-          }
-          else {
+          } else {
             int first_ssb_index = (prach_occasion_id * (int)num_ssb_per_RO) % cc->num_active_ssb;
             for(int j = first_ssb_index; j < first_ssb_index + num_ssb_per_RO; j++) {
               // fapi beam index
@@ -448,39 +459,17 @@ void schedule_nr_prach(module_id_t module_idP, frame_t frameP, sub_frame_t slotP
               AssertFatal(beam.idx >= 0, "Cannot allocate PRACH corresponding to SSB %d in any available beam\n", j);
             }
           }
-          if(td_index == 0) {
-            AssertFatal(UL_tti_req->n_pdus < sizeof(UL_tti_req->pdus_list) / sizeof(UL_tti_req->pdus_list[0]),
-                        "Invalid UL_tti_req->n_pdus %d\n", UL_tti_req->n_pdus);
-
-            UL_tti_req->pdus_list[UL_tti_req->n_pdus].pdu_type = NFAPI_NR_UL_CONFIG_PRACH_PDU_TYPE;
-            UL_tti_req->pdus_list[UL_tti_req->n_pdus].pdu_size = sizeof(nfapi_nr_prach_pdu_t);
-            nfapi_nr_prach_pdu_t  *prach_pdu = &UL_tti_req->pdus_list[UL_tti_req->n_pdus].prach_pdu;
-            memset(prach_pdu,0,sizeof(nfapi_nr_prach_pdu_t));
-            UL_tti_req->n_pdus+=1;
+          if(num_td_occ == 1) {
 
             // filling the prach fapi structure
             prach_pdu->phys_cell_id = *scc->physCellId;
-            prach_pdu->num_prach_ocas = N_t_slot;
+
             prach_pdu->prach_start_symbol = start_symbol;
             prach_pdu->num_ra = fdm_index;
             prach_pdu->num_cs = get_NCS(rach_ConfigGeneric->zeroCorrelationZoneConfig,
                                         format0,
                                         rach_ConfigCommon->restrictedSetConfig);
 
-            prach_pdu->beamforming.num_prgs = 0;
-            prach_pdu->beamforming.prg_size = 0;
-            prach_pdu->beamforming.dig_bf_interface = 1;
-            prach_pdu->beamforming.prgs_list[0].dig_bf_interface_list[0].beam_idx = beam_index;
-
-            LOG_D(NR_MAC,
-                  "Frame %d, Slot %d: Prach Occasion id = %u  fdm index = %u start symbol = %u slot index = %u subframe index = %u \n",
-                  frameP,
-                  slotP,
-                  prach_occasion_id,
-                  prach_pdu->num_ra,
-                  prach_pdu->prach_start_symbol,
-                  slot_index,
-                  RA_sfn_index);
             // SCF PRACH PDU format field does not consider A1/B1 etc. possibilities
             // We added 9 = A1/B1 10 = A2/B2 11 A3/B3
             if (format1!=0xff) {
@@ -537,8 +526,7 @@ void schedule_nr_prach(module_id_t module_idP, frame_t frameP, sub_frame_t slotP
                 AssertFatal(1==0,"Invalid PRACH format");
               }
             }
-            if (scc->uplinkConfigCommon->initialUplinkBWP->ext1
-                && scc->uplinkConfigCommon->initialUplinkBWP->ext1->msgA_ConfigCommon_r16) {
+            if (initialUplinkBWP->ext1 && initialUplinkBWP->ext1->msgA_ConfigCommon_r16) {
               if (gNB->UE_info.list[0] == NULL)
                 schedule_nr_MsgA_pusch(scc->uplinkConfigCommon,
                                        gNB,
@@ -550,7 +538,24 @@ void schedule_nr_prach(module_id_t module_idP, frame_t frameP, sub_frame_t slotP
                                        *scc->physCellId);
             }
           }
+          prach_pdu->num_prach_ocas = num_td_occ;
+          prach_pdu->beamforming.num_prgs = 0;
+          prach_pdu->beamforming.prg_size = 0;
+          prach_pdu->beamforming.dig_bf_interface = num_td_occ;
+          prach_pdu->beamforming.prgs_list[0].dig_bf_interface_list[num_td_occ - 1].beam_idx = beam_index;
+
+          LOG_D(NR_MAC,
+                "Frame %d, Slot %d: Prach Occasion id = %u  fdm index = %u start symbol = %u slot index = %u subframe index = %u \n",
+                frameP,
+                slotP,
+                prach_occasion_id,
+                prach_pdu->num_ra,
+                prach_pdu->prach_start_symbol,
+                slot_index,
+                RA_sfn_index);
         }
+        if (num_td_occ == 0) // no TD PRACH occasion -> no PRACH PDU
+          UL_tti_req->n_pdus -= 1;
       }
 
       // block resources in vrb_map_UL
