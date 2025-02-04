@@ -64,4 +64,8 @@ do
     o) ue_id=${OPTARG}; open_namespace;;
     /?) echo "Invalid option"; usage ${prog_name}; exit;;
   esac
+<<<<<<< HEAD
 done
+=======
+done
+>>>>>>> a69974a740 (Added zmq auto installation, Added necessary scripts, updated readme)
