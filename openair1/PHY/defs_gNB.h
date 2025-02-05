@@ -274,8 +274,9 @@ typedef struct {
 
 typedef struct {
   /// \brief Pointers (dynamic) to the received data in the frequency domain.
-  /// - first index: rx antenna [0..nb_antennas_rx[
-  /// - second index: ? [0..2*ofdm_symbol_size*frame_parms->symbols_per_tti[
+  /// - first index: beam (for concurrent beams)
+  /// - second index: rx antenna [0..nb_antennas_rx[
+  /// - third index: sample [0..2*ofdm_symbol_size*frame_parms->symbols_per_tti[
   c16_t ***rxdataF;
   /// \brief holds the transmit data in the frequency domain.
   /// For IFFT_FPGA this points to the same memory as PHY_vars->rx_vars[a].RX_DMA_BUFFER. //?
@@ -306,7 +307,7 @@ typedef struct {
   int32_t **ul_ch_estimates;
   /// \brief Holds the compensated signal.
   /// - first index: rx antenna id [0..nb_antennas_rx[
-  /// - second index: ? [0..12*N_RB_UL*frame_parms->symbols_per_tti[
+  /// - second index: IQ sample [0..12*N_RB_UL*frame_parms->symbols_per_tti[
   int32_t **rxdataF_comp;
   /// \f$\log_2(\max|H_i|^2)\f$
   int16_t log2_maxh;
