@@ -879,8 +879,12 @@ static void sl_schedule_rx_actions(nr_sidelink_indication_t *sl_ind, NR_UE_MAC_I
   int ue_id = mac->ue_id;
   int rx_action = 0;
 
-  if (sl_mac->future_ttis == NULL)
+  if (sl_mac->future_ttis == NULL) {
+    AssertFatal(!get_softmodem_params()->sync_ref, "SyncRef should have allocated future_ttis.");
+    LOG_I(NR_MAC, "[UE%d] %d:%d Nearby UE has not acquired new timing !!!\n",
+          ue_id, sl_ind->frame_rx, sl_ind->slot_rx);
     return;
+  }
 
   if (sl_ind->sci_ind != NULL) {
     // TBD..
