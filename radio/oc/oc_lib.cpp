@@ -15,18 +15,22 @@
 #include "common_lib.h"
 #include "assertions.h"
 #else
-#define LOG_E(m, a...) printf(a)
+//#define LOG_E(m, a...) printf(a)
 #include "common_lib.h"
 #endif
 #include "system.h"
 #include <sys/resource.h>
 
-#define DEVICE_NAME_DEFAULT "/dev/xdma0_h2c_0"
-#define SIZE_DEFAULT (32)
+#define DEVICE_WRITE_DEFAULT "/dev/xdma0_h2c_0"
+#define DEVICE_READ_DEFAULT "/dev/xdma0_c2h_0"
+#define OC_BUFFER 8192 * 4 // in bytes
+#define SAMPLE_BUF (OC_BUFFER / sizeof(c16_t)) // in samples
 
 typedef struct {
-  char filename[FILENAME_MAX];
-  int fd;
+  char filename_write[FILENAME_MAX];
+  char filename_read[FILENAME_MAX];
+  int fd_write;
+  int fd_read;
   int num_underflows;
   int num_overflows;
   int num_seq_errors;
@@ -35,7 +39,17 @@ typedef struct {
   int wait_for_first_pps;
   int use_gps;
   openair0_timestamp rx_timestamp;
+  openair0_timestamp tx_ts;
+  c16_t **tx_block;
+  size_t tx_block_sz;
+  bool first_tx;
 } oc_state_t;
+
+typedef struct {
+  openair0_device *rfdevice;
+  int antennas;
+  int dft_sz;
+} threads_t;
 
 static int check_ref_locked(oc_state_t *s)
 {
@@ -47,26 +61,103 @@ static int sync_to_gps(openair0_device *device)
   return 0;
 }
 
+void *write_thread(void *arg)
+{
+  // threads_t params = *(threads_t *)arg;
+
+  return NULL;
+}
+
+void *read_thread(void *arg)
+{
+  // threads_t params = *(threads_t *)arg;
+
+  return NULL;
+}
+#if 0
+  //TEST 4G 20MHz
+  int nsamps2 = (nsamps*4) / 8 ;
+  simde__m256i buff_tx[nsamps2];
+  simde__m256i *out=buff_tx;
+  int *in=(int *)buff[0];
+  // bring RX data into 12 LSBs for softmodem RX
+  for (uint j = 0; j < nsamps/2; j++) {
+    simde__m256i tmp=simde_mm256_set_epi32(in[1],in[1],in[1],in[1], in[0],in[0],in[0],in[0]);
+    in+=2;
+    *out++ = simde_mm256_slli_epi16(tmp, 6);
+  }
+#endif
+
+// DC-filter: 0 will be done in FPGA after seeing 128-consecutive samples having the same value
+static inline void write_block(oc_state_t *s)
+{
+  __m256i *b = (__m256i *)*s->tx_block;
+  for (uint j = 0; j < SAMPLE_BUF / 8; j++)
+    b[j] = (__m256i){}; // simde_mm256_slli_epi16(b[j], 6);
+  size_t wrote = write(s->fd_write, s->tx_block[0], SAMPLE_BUF * sizeof(c16_t));
+  wrote /= sizeof(c16_t);
+  if (wrote != SAMPLE_BUF)
+    LOG_E(HW, "write to SDR failed, request: %lu, wrote %ld\n", SAMPLE_BUF, wrote / sizeof(c16_t));
+  if (wrote < 0)
+    LOG_E(HW, "write to %s failed, errno %d:%s\n", s->filename_write, errno, strerror(errno));
+  s->tx_block_sz = 0;
+  s->tx_count++;
+}
+
 static int oc_write(openair0_device *device, openair0_timestamp timestamp, void **buff, int nsamps, int cc, int flags)
 {
   oc_state_t *s = (oc_state_t *)device->priv;
   timestamp -= device->openair0_cfg->command_line_sample_advance + device->openair0_cfg->tx_sample_advance;
-  size_t wrote = write(s->fd, buff[0], nsamps * sizeof(c16_t));
-  if (wrote != nsamps * sizeof(c16_t)) {
-    LOG_E(HW, "write to SDR failed, request: %d, wrote %ld\n", nsamps, wrote / sizeof(c16_t));
-    if (wrote < 0)
-      LOG_E(HW, "write to %s failed, errno %d:%s\n", DEVICE_NAME_DEFAULT, errno, strerror(errno));
+  c16_t *in = (c16_t *)buff[0];
+
+  if (s->first_tx) {
+    s->tx_ts = timestamp;
+    s->first_tx = false;
   }
-  return wrote;
+
+  int64_t gap = timestamp - s->tx_ts;
+  if (gap < 0) {
+    LOG_E(HW, "out of sequence\n");
+    gap = 0;
+  }
+
+  while (gap) {
+    int tmp = std::min((long unsigned int)nsamps, SAMPLE_BUF - s->tx_block_sz);
+    memset(s->tx_block[0] + s->tx_block_sz, 0, tmp * sizeof(*in));
+    gap -= tmp;
+    s->tx_block_sz += tmp;
+    if (s->tx_block_sz == SAMPLE_BUF)
+      write_block(s);
+  }
+  int wr_sz = nsamps;
+  while (wr_sz) {
+    int tmp = std::min((long unsigned int)wr_sz, SAMPLE_BUF - s->tx_block_sz);
+    memcpy(s->tx_block[0] + s->tx_block_sz, in, tmp * sizeof(*in));
+    wr_sz -= tmp;
+    s->tx_block_sz += tmp;
+    if (s->tx_block_sz == SAMPLE_BUF)
+      write_block(s);
+  }
+  s->tx_ts = timestamp + nsamps;
+  return nsamps;
 }
 
 static int oc_read(openair0_device *device, openair0_timestamp *ptimestamp, void **buff, int nsamps, int cc)
 {
   oc_state_t *s = (oc_state_t *)device->priv;
-  int samples_received = nsamps;
-  if (0)
-    samples_received = read(s->fd, buff[0], nsamps * sizeof(c16_t));
-  return samples_received;
+  static openair0_timestamp rx_ts = 0;
+  static uint remain = 0;
+  remain += nsamps;
+  while (remain > SAMPLE_BUF) {
+    int bytes_received = read(s->fd_read, buff[0], SAMPLE_BUF * sizeof(c16_t));
+    s->rx_count++;
+    if (bytes_received % sizeof(c16_t))
+      printf("Error in read, size is not a number of samples %d\n", bytes_received);
+    remain -= SAMPLE_BUF;
+  }
+  *ptimestamp = rx_ts;
+  rx_ts += nsamps;
+  return nsamps;
 }
 
 static int oc_set_freq(openair0_device *device, openair0_config_t *openair0_cfg)
@@ -169,15 +260,34 @@ int oc_write_init(openair0_device *device)
 static int oc_start(openair0_device *device)
 {
   oc_state_t *s = (oc_state_t *)device->priv;
+  s->tx_block_sz = 0;
+  s->first_tx = true;
+  ;
+  int nb_tx = device->openair0_cfg->tx_num_channels;
+  s->tx_block = (c16_t **)malloc(nb_tx * sizeof(*s->tx_block));
+  for (int i = 0; i < nb_tx; i++)
+    s->tx_block[i] = (c16_t *)malloc16(OC_BUFFER);
   s->wait_for_first_pps = 1;
   s->rx_count = 0;
   s->tx_count = 0;
   s->rx_timestamp = 0;
-  s->fd = open(s->filename, O_RDWR);
-  if (s->fd < 0) {
-    LOG_E(HW, "Open %s failed, errno %d:%s\n", s->filename, errno, strerror(errno));
+  s->fd_write = open(s->filename_write, O_RDWR);
+  if (s->fd_write < 0) {
+    LOG_E(HW, "Open %s failed, errno %d:%s\n", s->filename_write, errno, strerror(errno));
     exit(1);
   }
+  s->fd_read = open(s->filename_read, O_RDWR);
+  if (s->fd_read < 0) {
+    LOG_E(HW, "Open %s failed, errno %d:%s\n", s->filename_read, errno, strerror(errno));
+    exit(1);
+  }
+  /*
+  threads_t params = (threads_t){&rfdevice, antennas, DFT};
+  pthread_t w_thread;
+  threadCreate(&w_thread, write_thread, &params, "write_thr", -1, OAI_PRIORITY_RT);
+  pthread_t r_thread;
+  threadCreate(&r_thread, read_thread, &params, "read_thr", -1, OAI_PRIORITY_RT);
+  */
   oc_set_gains(device, device->openair0_cfg);
   oc_set_freq(device, device->openair0_cfg);
   sync_to_gps(device);
@@ -190,17 +300,19 @@ static void oc_end(openair0_device *device)
 {
   if (device == NULL)
     return;
+  oc_state_t *s = (oc_state_t *)device->priv;
+  int nb_tx = device->openair0_cfg->tx_num_channels;
+  if (s && nb_tx > 0) {
+    for (int i = 0; i < nb_tx; i++)
+      free(s->tx_block[i]);
+    free(s->tx_block);
+  }
 }
 
 extern "C" {
 int device_init(openair0_device *device, openair0_config_t *openair0_cfg)
 {
-  LOG_I(HW, "openair0_cfg[0].sdr_addrs == '%s'\n", openair0_cfg[0].sdr_addrs);
-  LOG_I(HW,
-        "openair0_cfg[0].clock_source == '%d' (internal = %d, external = %d)\n",
-        openair0_cfg[0].clock_source,
-        internal,
-        external);
+  LOG_I(HW, "openair0_cfg->clock_source == '%d' (internal = %d, external = %d)\n", openair0_cfg->clock_source, internal, external);
   oc_state_t *s;
   if (device->priv == NULL) {
     s = (oc_state_t *)calloc(1, sizeof(oc_state_t));
@@ -210,7 +322,6 @@ int device_init(openair0_device *device, openair0_config_t *openair0_cfg)
     LOG_E(HW, "multiple calls to device init detected\n");
     return 0;
   }
-
   device->openair0_cfg = openair0_cfg;
   device->trx_start_func = oc_start;
   device->trx_get_stats_func = oc_get_stats;
@@ -226,6 +337,8 @@ int device_init(openair0_device *device, openair0_config_t *openair0_cfg)
     std::cerr << "OC device initialized in subframes record mode" << std::endl;
   }
 
+  device->type = USRP_X300_DEV;
+  
   struct {
     int sample_rate;
     int tx_sample_advance;
@@ -255,7 +368,8 @@ int device_init(openair0_device *device, openair0_config_t *openair0_cfg)
     exit(-1);
   }
 
-  strcpy(s->filename, DEVICE_NAME_DEFAULT);
+  strcpy(s->filename_write, DEVICE_WRITE_DEFAULT);
+  strcpy(s->filename_read, DEVICE_READ_DEFAULT);
   openair0_cfg[0].iq_txshift = 4; // shift
   openair0_cfg[0].iq_rxrescale = 15; // rescale iqs
 

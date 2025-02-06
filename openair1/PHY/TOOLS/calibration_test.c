@@ -25,12 +25,105 @@ uint32_t target_ul_Nl;
 char *uecap_file;
 #include <executables/nr-softmodem.h>
 
+typedef struct {
+  openair0_device *rfdevice;
+  int antennas;
+  int dft_sz;
+} threads_t;
+
 int read_recplayconfig(recplay_conf_t **recplay_conf, recplay_state_t **recplay_state) {return 0;}
 void nfapi_setmode(nfapi_mode_t nfapi_mode) {}
 void set_taus_seed(unsigned int seed_init){};
 // configmodule_interface_t *uniqCfg = NULL;
-int main(int argc, char **argv) {
-  ///static configuration for NR at the moment
+
+void *write_thread(void *arg)
+{
+  threads_t params = *(threads_t *)arg;
+  c16_t **samplesTx = malloc16(params.antennas * sizeof(c16_t *));
+
+  for (int i = 0; i < params.antennas; i++) {
+    samplesTx[i] = malloc16_clear(params.dft_sz * sizeof(c16_t));
+  }
+  uint64_t ts = 0;
+  for (int i = 0; i < params.dft_sz; i++) {
+    // Better to select a frequency having an integer division with the sampling rate to avoid having DFT leakage later on
+    //  .r = cos and .i = sin -> having a positive spectrum
+    //  For negative spectrum -> .r = sin and .i = cos
+    samplesTx[0][i].r = 16000 * cos((ts * M_PI * 2 * 30720) / 122880);
+    samplesTx[0][i].i = 16000 * sin((ts * M_PI * 2 * 30720) / 122880); // samplesTx[0][i].r;
+    // Hamming Window - to allow some pseudo-continuity between batches as this is not a continuously generated signal as in real
+    // life
+    samplesTx[0][i].r = (samplesTx[0][i].r) * (0.54 - 0.46 * cos(2 * M_PI * 30720 / 122880));
+    samplesTx[0][i].i = (samplesTx[0][i].i) * (0.54 - 0.46 * cos(2 * M_PI * 30720 / 122880));
+    ts++;
+  }
+  double avg = 0;
+  for (int i = 0; i < params.dft_sz; i++) {
+    avg += sqrt(squaredMod(samplesTx[0][i]));
+  }
+  printf("avg: %f \n", avg / params.dft_sz);
+  openair0_timestamp timestamp = 0;
+  int TxAdvanceInDFTSize = 12;
+  uint64_t count = 0;
+  struct timespec last_second;
+  clock_gettime(CLOCK_REALTIME, &last_second);
+  while (!oai_exit) {
+    params.rfdevice->trx_write_func(params.rfdevice,
+                                    timestamp + TxAdvanceInDFTSize * params.dft_sz,
+                                    (void **)samplesTx,
+                                    params.dft_sz,
+                                    params.antennas,
+                                    0);
+    count++;
+    timestamp += params.dft_sz;
+    struct timespec now;
+    clock_gettime(CLOCK_REALTIME, &now);
+    if (now.tv_sec != last_second.tv_sec) {
+      printf("write thread wrote %lu times in one second\n", count);
+      last_second = now;
+      count = 0;
+    }
+  }
+  return NULL;
+}
+
+void *read_thread(void *arg)
+{
+  threads_t params = *(threads_t *)arg;
+  c16_t **samplesRx = malloc16(params.antennas * sizeof(c16_t *));
+
+  for (int i = 0; i < params.antennas; i++) {
+    samplesRx[i] = malloc16_clear(params.dft_sz * sizeof(c16_t));
+  }
+  openair0_timestamp timestamp = 0;
+  uint64_t count = 0;
+  struct timespec last_second;
+  clock_gettime(CLOCK_REALTIME, &last_second);
+
+  while (!oai_exit) {
+    int ret = params.rfdevice->trx_read_func(params.rfdevice, &timestamp, (void **)samplesRx, params.dft_sz, params.antennas);
+    if (ret != params.dft_sz)
+      printf("read of :%d\n", ret);
+    count++;
+    struct timespec now;
+    clock_gettime(CLOCK_REALTIME, &now);
+    if (now.tv_sec != last_second.tv_sec) {
+      printf("read thread got %lu blocks in one second, samples per block: %d\n", count, ret);
+      last_second = now;
+      count = 0;
+      FILE *fd = fopen("trace.iq", "w+");
+      if (!fd)
+        abort();
+      for (int i = 0; i < ret; i++)
+        fprintf(fd, "%d %d %d\n", i, samplesRx[0][i].r, samplesRx[0][i].i);
+    }
+  }
+  return NULL;
+}
+
+int main(int argc, char **argv)
+{
+  /// static configuration for NR at the moment
   if ((uniqCfg = load_configmodule(argc, argv, CONFIG_ENABLECMDLINEONLY)) == NULL) {
     exit_fun("[SOFTMODEM] Error, configuration module init failed\n");
   }
@@ -38,7 +131,7 @@ int main(int argc, char **argv) {
   setvbuf(stdout, NULL, _IONBF, 0);
   setvbuf(stderr, NULL, _IONBF, 0);
   logInit();
-   paramdef_t cmdline_params[] = CMDLINE_PARAMS_DESC_GNB ;
+  paramdef_t cmdline_params[] = CMDLINE_PARAMS_DESC_GNB;
 
   CONFIG_SETRTFLAG(CONFIG_NOEXITONHELP);
   get_common_options(uniqCfg);
@@ -46,16 +139,13 @@ int main(int argc, char **argv) {
   CONFIG_CLEARRTFLAG(CONFIG_NOEXITONHELP);
   lock_memory_to_ram();
 
-  int N_RB=50;
-  int sampling_rate=30.72e6;
-  int DFT=2048;
-  int TxAdvanceInDFTSize=12;
-  int antennas=1;
+  int sampling_rate = 30.72e6;
+  int DFT = 2048 * 4;
+  int antennas = 1;
   uint64_t freq = 2420.0e6;
-  int rxGain=90;
+  int rxGain = 90;
   int txGain = 0;
-  int filterBand=40e6;
-  char * usrp_addrs="type=b200";
+  int filterBand = 40e6;
 
   openair0_config_t openair0_cfg = {
       .log_level = 0,
@@ -104,37 +194,18 @@ int main(int argc, char **argv) {
   };
 
   openair0_device_load(&rfdevice, &openair0_cfg);
-  void ** samplesRx = (void **)malloc16(antennas* sizeof(c16_t *) );
-  void ** samplesTx = (void **)malloc16(antennas* sizeof(c16_t *) );
 
-  for (int i=0; i<antennas; i++) {
-    samplesRx[i] = (int32_t *)malloc16_clear( DFT*sizeof(c16_t) );
-    samplesTx[i] = (int32_t *)malloc16_clear( DFT*sizeof(c16_t) );
-  }
-  int fd = -1;
-  if (getenv("rftestInputFile")) {
-    fd = open(getenv("rftestInputFile"), O_RDONLY);
-    AssertFatal(fd >= 0, "%s", strerror(errno));
-  } else {
-    printf("generate a sinus wave at middle RB");
-    load_dftslib();
-    c16_t frequency[DFT];
-    memset(frequency, 0, sizeof(frequency));
-    frequency[DFT / 4] = (c16_t){32767, 0};
-    dft(DFT_2048, (int16_t *)frequency, samplesTx[0], 1);
-  }
+  printf("generate a sinus wave at middle RB");
+  load_dftslib();
 
-  CalibrationInitScope(samplesRx, &rfdevice);
-  openair0_timestamp timestamp=0;
+  // CalibrationInitScope(samplesRx, &rfdevice);
   rfdevice.trx_start_func(&rfdevice);
-  
-  while(!oai_exit) {
-    if (fd >= 0)
-      for (int i = 0; i < antennas; i++)
-        read(fd, samplesTx[i], DFT * sizeof(c16_t));
-    rfdevice.trx_read_func(&rfdevice, &timestamp, samplesRx, DFT, antennas);
-    rfdevice.trx_write_func(&rfdevice, timestamp + TxAdvanceInDFTSize * DFT, samplesTx, DFT, antennas, 0);
-  }
-
+  threads_t params = (threads_t){&rfdevice, antennas, DFT};
+  pthread_t w_thread;
+  threadCreate(&w_thread, write_thread, &params, "write_thr", -1, OAI_PRIORITY_RT);
+  pthread_t r_thread;
+  threadCreate(&r_thread, read_thread, &params, "read_thr", -1, OAI_PRIORITY_RT);
+  (void)pthread_join(w_thread, NULL);
+  (void)pthread_join(r_thread, NULL);
   return 0;
 }
