@@ -61,16 +61,16 @@ void nr_idft(int32_t *z, uint32_t Msc_PUSCH)
   }
 }
 
-static void nr_ulsch_extract_rbs(c16_t* const rxdataF,
-                                 c16_t* const chF,
-                                 c16_t *rxFext,
-                                 c16_t *chFext,
-                                 int rxoffset,
-                                 int choffset,
-                                 int aarx,
-                                 int is_dmrs_symbol,
-                                 nfapi_nr_pusch_pdu_t *pusch_pdu,
-                                 NR_DL_FRAME_PARMS *frame_parms)
+void nr_ulsch_extract_rbs(c16_t* const rxdataF,
+                          c16_t* const chF,
+                          c16_t *rxFext,
+                          c16_t *chFext,
+                          int rxoffset,
+                          int choffset,
+                          int aarx,
+                          int is_dmrs_symbol,
+                          nfapi_nr_pusch_pdu_t *pusch_pdu,
+                          NR_DL_FRAME_PARMS *frame_parms)
 {
   uint8_t delta = 0;
   int start_re = (frame_parms->first_carrier_offset + (pusch_pdu->rb_start + pusch_pdu->bwp_start) * NR_NB_SC_PER_RB)%frame_parms->ofdm_symbol_size;
@@ -149,15 +149,15 @@ static void nr_ulsch_extract_rbs(c16_t* const rxdataF,
   }
 }
 
-static void nr_ulsch_scale_channel(int size_est,
-                                   int ul_ch_estimates_ext[][size_est],
-                                   NR_DL_FRAME_PARMS *frame_parms,
-                                   uint8_t symbol,
-                                   uint8_t is_dmrs_symbol,
-                                   uint32_t len,
-                                   uint8_t nrOfLayers,
-                                   unsigned short nb_rb,
-                                   int shift_ch_ext)
+void nr_ulsch_scale_channel(int size_est,
+                            int ul_ch_estimates_ext[][size_est],
+                            NR_DL_FRAME_PARMS *frame_parms,
+                            uint8_t symbol,
+                            uint8_t is_dmrs_symbol,
+                            uint32_t len,
+                            uint8_t nrOfLayers,
+                            unsigned short nb_rb,
+                            int shift_ch_ext)
 {
   // Determine scaling amplitude based the symbol
   int b = 3;
@@ -185,7 +185,7 @@ static void nr_ulsch_scale_channel(int size_est,
   }
 }
 
-static int get_nb_re_pusch (NR_DL_FRAME_PARMS *frame_parms, nfapi_nr_pusch_pdu_t *rel15_ul,int symbol) 
+int get_nb_re_pusch(NR_DL_FRAME_PARMS *frame_parms, nfapi_nr_pusch_pdu_t *rel15_ul, int symbol)
 {
   uint8_t dmrs_symbol_flag = (rel15_ul->ul_dmrs_symb_pos >> symbol) & 0x01;
   if (dmrs_symbol_flag == 1) {
@@ -202,13 +202,13 @@ static int get_nb_re_pusch (NR_DL_FRAME_PARMS *frame_parms, nfapi_nr_pusch_pdu_t
 }
 
 // compute average channel_level on each (TX,RX) antenna pair
-static void nr_ulsch_channel_level(int size_est,
-                                   int ul_ch_estimates_ext[][size_est],
-                                   NR_DL_FRAME_PARMS *frame_parms,
-                                   int32_t *avg,
-                                   uint8_t symbol,
-                                   uint32_t len,
-                                   uint8_t nrOfLayers)
+void nr_ulsch_channel_level(int size_est,
+                            int ul_ch_estimates_ext[][size_est],
+                            NR_DL_FRAME_PARMS *frame_parms,
+                            int32_t *avg,
+                            uint8_t symbol,
+                            uint32_t len,
+                            uint8_t nrOfLayers)
 {
   int16_t x = factor2(len);
   int16_t y = (len)>>x;
@@ -226,18 +226,18 @@ static void nr_ulsch_channel_level(int size_est,
 
 }
 
-static void nr_ulsch_channel_compensation(c16_t *rxFext,
-                                          c16_t *chFext,
-                                          c16_t *ul_ch_maga,
-                                          c16_t *ul_ch_magb,
-                                          c16_t *ul_ch_magc,
-                                          int32_t **rxComp,
-                                          c16_t *rho,
-                                          NR_DL_FRAME_PARMS *frame_parms,
-                                          nfapi_nr_pusch_pdu_t* rel15_ul,
-                                          uint32_t symbol,
-                                          uint32_t buffer_length,
-                                          uint32_t output_shift)
+void nr_ulsch_channel_compensation(c16_t *rxFext,
+                                   c16_t *chFext,
+                                   c16_t *ul_ch_maga,
+                                   c16_t *ul_ch_magb,
+                                   c16_t *ul_ch_magc,
+                                   int32_t **rxComp,
+                                   c16_t *rho,
+                                   NR_DL_FRAME_PARMS *frame_parms,
+                                   nfapi_nr_pusch_pdu_t* rel15_ul,
+                                   uint32_t symbol,
+                                   uint32_t buffer_length,
+                                   uint32_t output_shift)
 {
   int mod_order = rel15_ul->qam_mod_order;
   int nrOfLayers = rel15_ul->nrOfLayers;
@@ -1213,7 +1213,7 @@ static void nr_pusch_symbol_processing(void *arg)
   completed_task_ans(rdata->ans);
 }
 
-static uint32_t average_u32(const uint32_t *x, uint16_t size)
+uint32_t average_u32(const uint32_t *x, uint16_t size)
 {
   AssertFatal(size > 0 && x != NULL, "x is NULL or size is 0\n");
 
@@ -1579,5 +1579,43 @@ chestcomp_params_t collect_channel_estimation_compensation_parameters(PHY_VARS_g
                             .low_papr_group_number = rel15_ul->dfts_ofdm.low_papr_group_number,
                             .low_papr_sequence_number = rel15_ul->dfts_ofdm.low_papr_sequence_number};
   return ret;
+
+}
+
+void set_channel_estimation_compensation_parameters(chestcomp_params_t params, PHY_VARS_gNB *gNB, int *frame, int *slot, int *beam_nb, int *ulsch_id) {
+
+  *frame = params.frame;
+  *slot = params.slot;
+  *beam_nb = params.beam_nb;
+  *ulsch_id = params.ulsch_id;
+
+  NR_DL_FRAME_PARMS *frame_parms = &gNB->frame_parms;
+  nfapi_nr_pusch_pdu_t *rel15_ul = &gNB->ulsch[*ulsch_id].harq_process->ulsch_pdu;
+
+  gNB->gNB_config.cell_config.phy_cell_id.value = params.phy_cell_id;
+  gNB->chest_time = params.chest_time;
+  gNB->chest_freq = params.chest_freq;
+  gNB->dmrs_num_antennas_per_thread = params.dmrs_num_antennas_per_thread;
+  frame_parms->N_RB_UL = params.N_RB_UL;
+  frame_parms->first_carrier_offset = params.first_carrier_offset;
+  frame_parms->ofdm_symbol_size = params.ofdm_symbol_size;
+  frame_parms->symbols_per_slot = params.symbols_per_slot;
+  frame_parms->nb_antennas_rx = params.nb_antennas_rx;
+  frame_parms->Ncp = params.Ncp;
+  rel15_ul->bwp_size = params.bwp_size;
+  rel15_ul->bwp_start = params.bwp_start;
+  rel15_ul->qam_mod_order = params.qam_mod_order;
+  rel15_ul->transform_precoding = params.transform_precoding;
+  rel15_ul->nrOfLayers = params.nrOfLayers;
+  rel15_ul->ul_dmrs_symb_pos = params.ul_dmrs_symb_pos;
+  rel15_ul->dmrs_config_type = params.dmrs_config_type;
+  rel15_ul->scid = params.scid;
+  rel15_ul->num_dmrs_cdm_grps_no_data = params.num_dmrs_cdm_grps_no_data;
+  rel15_ul->rb_start = params.rb_start;
+  rel15_ul->rb_size = params.rb_size;
+  rel15_ul->start_symbol_index = params.start_symbol_index;
+  rel15_ul->nr_of_symbols = params.nr_of_symbols;
+  rel15_ul->dfts_ofdm.low_papr_group_number = params.low_papr_group_number;
+  rel15_ul->dfts_ofdm.low_papr_sequence_number = params.low_papr_sequence_number;
 
 }

@@ -78,6 +78,114 @@ void dump_nr_I0_stats(FILE *fd,PHY_VARS_gNB *gNB);
 
 NR_gNB_SCH_STATS_t *get_ulsch_stats(PHY_VARS_gNB *gNB,NR_gNB_ULSCH_t *ulsch);
 
+/// Channel estimation and compensation
+
+/*! \brief compute average of uint32_t array
+ *  \param x uint32_t array to average
+ *  \param size size of the array 
+ */
+uint32_t average_u32(const uint32_t *x, uint16_t size);
+
+/*! \brief get number of resource element in one symbol
+ *  \param frame_parms frame parameters
+ *  \param rel15_ul PUSCH PDU
+ *  \param symbol symbol index
+ */
+int get_nb_re_pusch(NR_DL_FRAME_PARMS *frame_parms, nfapi_nr_pusch_pdu_t *rel15_ul, int symbol);
+
+/*! \brief extract resource blocks for corresponding PUSCH PDU from symbol and channel model
+ *  \param rxdataF input symbol array
+ *  \param chF input channel model array
+ *  \param rxFext output symbol
+ *  \param chFext output channel model
+ *  \param rxoffset offset to symbol in input array
+ *  \param choffset offset to channel model in input array
+ *  \param aarx antenna id
+ *  \param is_dmrs_symbol indicates if the symbol is a DMRS symbol
+ *  \param pusch_pdu PUSCH PDU to which the RBs belong
+ *  \param frme_parms frame parameters
+ */
+void nr_ulsch_extract_rbs(c16_t* const rxdataF,
+                          c16_t* const chF,
+                          c16_t *rxFext,
+                          c16_t *chFext,
+                          int rxoffset,
+                          int choffset,
+                          int aarx,
+                          int is_dmrs_symbol,
+                          nfapi_nr_pusch_pdu_t *pusch_pdu,
+                          NR_DL_FRAME_PARMS *frame_parms);
+
+/*! \brief scales channel level on each (TX,RX) antenna pair
+ *  \param size_est size of channel estimation per antenna
+ *  \param ul_ch_estimates_ext channel estimation array
+ *         index 1: layer and antenna (layer * total number of antennas + antenna)
+ *         index 2: sample
+ *  \param frame_parms frame parameters
+ *  \param symbol first symbol index
+ *  \param is_dmrs_symbol flag indicating if the first symbol is a DMRS symbol
+ *  \param len number of RX resource elements
+ *  \param nrOfLayers number of layers
+ *  \param nb_rb number of resource blocks in corresponding PDU
+ *  \param shift_ch_ext shift to compress channel estimation
+ */
+void nr_ulsch_scale_channel(int size_est,
+                            int ul_ch_estimates_ext[][size_est],
+                            NR_DL_FRAME_PARMS *frame_parms,
+                            uint8_t symbol,
+                            uint8_t is_dmrs_symbol,
+                            uint32_t len,
+                            uint8_t nrOfLayers,
+                            unsigned short nb_rb,
+                            int shift_ch_ext);
+
+/*! \brief compute average channel level on each (TX,RX) antenna pair
+ *  \param size_est size of channel estimation per antenna
+ *  \param ul_ch_estimates_ext channel estimation array
+ *         index 1: layer and antenna (layer * total number of antennas + antenna)
+ *         index 2: sample
+ *  \param frame_parms frame parameters
+ *  \param avg average channel level
+ *         index: layer and antenna (layer * total number of antennas + antenna)
+ *  \param symbol first symbol index
+ *  \param len number of resource elements
+ *  \param nrOfLayers number of layers
+ */
+void nr_ulsch_channel_level(int size_est,
+                            int ul_ch_estimates_ext[][size_est],
+                            NR_DL_FRAME_PARMS *frame_parms,
+                            int32_t *avg,
+                            uint8_t symbol,
+                            uint32_t len,
+                            uint8_t nrOfLayers);
+
+/*! \brief performs channel compensation on symbol
+ *  \param rxFext input symbol after RBs extraction
+ *  \param chFext input channel model after RBs extraction
+ *  \param ul_ch_maga channel model aggregate A (Qm > 2), or something like that ...
+ *  \param ul_ch_magb channel model aggregate B (Qm > 4), or something like that ...
+ *  \param ul_ch_magc channel model aggregate C (Qm > 6), or something like that ...
+ *  \param rxComp output compensated symbol
+ *         index 1: layer and RX antenna (layer * total number of RX antennas + antenna)
+ *         index 2: sample
+ *  \param rho aggregated cross layer channel estimation correlation, or something like that ...
+ *  \param frame_parms frame parameters
+ *  \param buffer_length number of samples allocated per symbol in arrays
+ *  \param output_shift shift to reduce quadratic channel estimate size, or something like that ...
+ */
+void nr_ulsch_channel_compensation(c16_t *rxFext,
+                                   c16_t *chFext,
+                                   c16_t *ul_ch_maga,
+                                   c16_t *ul_ch_magb,
+                                   c16_t *ul_ch_magc,
+                                   int32_t **rxComp,
+                                   c16_t *rho,
+                                   NR_DL_FRAME_PARMS *frame_parms,
+                                   nfapi_nr_pusch_pdu_t* rel15_ul,
+                                   uint32_t symbol,
+                                   uint32_t buffer_length,
+                                   uint32_t output_shift);
+
 typedef struct chestcomp_params_s {
   int frame;
   int slot;
