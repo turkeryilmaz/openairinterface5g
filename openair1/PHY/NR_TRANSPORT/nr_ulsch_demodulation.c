@@ -1,6 +1,7 @@
 #include "PHY/defs_gNB.h"
 #include "PHY/phy_extern.h"
 #include "nr_transport_proto.h"
+#include "nr_ulsch.h"
 #include "PHY/impl_defs_top.h"
 #include "PHY/NR_TRANSPORT/nr_sch_dmrs.h"
 #include "PHY/NR_REFSIG/dmrs_nr.h"
@@ -1541,4 +1542,42 @@ int nr_rx_pusch_tp(PHY_VARS_gNB *gNB,
   uint32_t total_llrs = total_res * rel15_ul->qam_mod_order * rel15_ul->nrOfLayers;
   gNBscopeCopyWithMetadata(gNB, gNBPuschLlr, pusch_vars->llr, sizeof(c16_t), 1, total_llrs, 0, &mt);
   return 0;
+}
+
+chestcomp_params_t collect_channel_estimation_compensation_parameters(PHY_VARS_gNB *gNB, int frame, int slot, int beam_nb, int ulsch_id) {
+
+  NR_DL_FRAME_PARMS *frame_parms = &gNB->frame_parms;
+  nfapi_nr_pusch_pdu_t *rel15_ul = &gNB->ulsch[ulsch_id].harq_process->ulsch_pdu;
+
+  chestcomp_params_t ret = {.frame = frame,
+                            .slot = slot,
+			    .beam_nb = beam_nb,
+			    .ulsch_id = ulsch_id,
+                            .phy_cell_id = gNB->gNB_config.cell_config.phy_cell_id.value,
+                            .chest_time = gNB->chest_time,
+                            .chest_freq = gNB->chest_freq,
+                            .dmrs_num_antennas_per_thread = gNB->dmrs_num_antennas_per_thread,
+                            .N_RB_UL = frame_parms->N_RB_UL,
+                            .first_carrier_offset = frame_parms->first_carrier_offset,
+                            .ofdm_symbol_size = frame_parms->ofdm_symbol_size,
+                            .symbols_per_slot = frame_parms->symbols_per_slot,
+                            .nb_antennas_rx = frame_parms->nb_antennas_rx,
+                            .Ncp = frame_parms->Ncp,
+                            .bwp_size = rel15_ul->bwp_size,
+                            .bwp_start = rel15_ul->bwp_start,
+                            .qam_mod_order = rel15_ul->qam_mod_order,
+                            .transform_precoding = rel15_ul->transform_precoding,
+                            .nrOfLayers = rel15_ul->nrOfLayers,
+                            .ul_dmrs_symb_pos = rel15_ul->ul_dmrs_symb_pos,
+                            .dmrs_config_type = rel15_ul->dmrs_config_type,
+                            .scid = rel15_ul->scid,
+                            .num_dmrs_cdm_grps_no_data = rel15_ul->num_dmrs_cdm_grps_no_data,
+                            .rb_start = rel15_ul->rb_start,
+                            .rb_size = rel15_ul->rb_size,
+                            .start_symbol_index = rel15_ul->start_symbol_index,
+                            .nr_of_symbols = rel15_ul->nr_of_symbols,
+                            .low_papr_group_number = rel15_ul->dfts_ofdm.low_papr_group_number,
+                            .low_papr_sequence_number = rel15_ul->dfts_ofdm.low_papr_sequence_number};
+  return ret;
+
 }

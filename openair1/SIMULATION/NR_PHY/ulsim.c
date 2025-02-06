@@ -95,6 +95,43 @@
 
 //#define DEBUG_ULSIM
 
+#define DUMP_CH_EST_COMP_IN_OUT
+
+void dump_channel_estimation_compensation_in_out(PHY_VARS_gNB *gNB,
+                                                 int beam_nb,
+                                                 int ulsch_id,
+                                                 chestcomp_params_t params,
+                                                 char *params_file,
+                                                 char *rxdataF_file,
+                                                 char *rxdataF_comp_file)
+{
+  FILE *fd;
+
+  fd = fopen(params_file, "w");
+  fwrite((void *)&params, sizeof(chestcomp_params_t), 1, fd);
+  fclose(fd);
+
+  fd = fopen(rxdataF_file, "w");
+  int nb_samples_per_antenna = gNB->frame_parms.symbols_per_slot * gNB->frame_parms.ofdm_symbol_size;
+  for (int antenna = 0; antenna < gNB->frame_parms.nb_antennas_rx; antenna++) {
+    c16_t *rxdataF = &gNB->common_vars.rxdataF[beam_nb][antenna][0];
+    fwrite((void *)rxdataF, sizeof(c16_t), nb_samples_per_antenna, fd);
+  }
+  fclose(fd);
+
+  fd = fopen(rxdataF_comp_file, "w");
+  nfapi_nr_pusch_pdu_t *rel15_ul = &gNB->ulsch[ulsch_id].harq_process->ulsch_pdu;
+  int buffer_length = ceil_mod(rel15_ul->rb_size * NR_NB_SC_PER_RB, 16);
+  int nb_samples_per_antenna_layer = rel15_ul->nr_of_symbols * buffer_length;
+  for (int layer = 0; layer < rel15_ul->nrOfLayers; layer++) {
+    int32_t *rxdataF_comp =
+        &gNB->pusch_vars[ulsch_id]
+             .rxdataF_comp[layer * gNB->frame_parms.nb_antennas_rx][rel15_ul->start_symbol_index * buffer_length];
+    fwrite((void *)rxdataF_comp, sizeof(int32_t), nb_samples_per_antenna_layer, fd);
+  }
+  fclose(fd);
+}
+
 const char *__asan_default_options()
 {
   /* don't do leak checking in nr_ulsim, not finished yet */
@@ -1288,6 +1325,48 @@ int main(int argc, char *argv[])
         }
 
         ul_proc_error = phy_procedures_gNB_uespec_RX(gNB, frame, slot, &UL_INFO);
+
+#ifdef DUMP_CH_EST_COMP_IN_OUT
+        if (n_trials == 1) {
+          char *params_in_file = NULL;
+          char *rxdataF_in_file = NULL;
+          char *rxdataF_comp_in_file = NULL;
+          paramdef_t LoaderParams[] = {{"params_in_file",
+                                        NULL,
+                                        0,
+                                        .strptr = &params_in_file,
+                                        .defstrval = "dump_channel_estimation_compensation_params.log",
+                                        TYPE_STRING,
+                                        0,
+                                        NULL},
+                                       {"rxdataF_in_file",
+                                        NULL,
+                                        0,
+                                        .strptr = &rxdataF_in_file,
+                                        .defstrval = "dump_channel_estimation_compensation_rxdataF.log",
+                                        TYPE_STRING,
+                                        0,
+                                        NULL},
+                                       {"rxdataF_comp_in_file",
+                                        NULL,
+                                        0,
+                                        .strptr = &rxdataF_comp_in_file,
+                                        .defstrval = "dump_channel_estimation_compensation_rxdataF_comp.log",
+                                        TYPE_STRING,
+                                        0,
+                                        NULL}};
+          config_get(config_get_if(), LoaderParams, sizeofArray(LoaderParams), "nr_chestcompsim");
+
+          chestcomp_params_t chestcompsim_params = collect_channel_estimation_compensation_parameters(gNB, frame, slot, 0, 0);
+          dump_channel_estimation_compensation_in_out(gNB,
+                                                      0,
+                                                      0,
+                                                      chestcompsim_params,
+                                                      params_in_file,
+                                                      rxdataF_in_file,
+                                                      rxdataF_comp_in_file);
+        }
+#endif
 
         if (n_trials == 1 && round == 0) {
           LOG_M("rxsig0.m", "rx0", &rxdata[0][slot_offset], slot_length, 1, 1);

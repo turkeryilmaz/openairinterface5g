@@ -78,4 +78,59 @@ void dump_nr_I0_stats(FILE *fd,PHY_VARS_gNB *gNB);
 
 NR_gNB_SCH_STATS_t *get_ulsch_stats(PHY_VARS_gNB *gNB,NR_gNB_ULSCH_t *ulsch);
 
+typedef struct chestcomp_params_s {
+  int frame;
+  int slot;
+  int beam_nb;
+  int ulsch_id;
+  // gNB
+  /// Physical Cell ID, 𝑁_{𝐼𝐷}^{𝑐𝑒𝑙𝑙} [38.211, sec 7.4.2.1] Value: 0 ->1007
+  uint16_t phy_cell_id;
+  /// indicate the channel estimation technique in time domain
+  int chest_time;
+  /// indicate the channel estimation technique in freq domain
+  int chest_freq;
+  /// number of RX antennas processed within each channel estimation task
+  /// Must be equal to the total number of antennas if multi-threading is disabled
+  int dmrs_num_antennas_per_thread;
+  // frame_parms
+  /// Number of resource blocks (RB) in UL
+  int N_RB_UL;
+  /// Carrier offset in FFT buffer for first RE in PRB0
+  uint16_t first_carrier_offset;
+  /// Size of FFT
+  uint16_t ofdm_symbol_size;
+  /// Number of OFDM/SC-FDMA symbols in one slot
+  uint16_t symbols_per_slot;
+  /// Number of Receive antennas in node
+  uint8_t nb_antennas_rx;
+  /// Cyclic Prefix for DL (0=Normal CP, 1=Extended CP)
+  lte_prefix_type_t Ncp;
+  // pusch_pdu
+  //BWP
+  uint16_t bwp_size;
+  uint16_t bwp_start;
+  //pusch information always include
+  uint8_t  qam_mod_order;
+  uint8_t  transform_precoding;
+  uint8_t  nrOfLayers;
+  //DMRS
+  uint16_t  ul_dmrs_symb_pos;
+  uint8_t  dmrs_config_type;
+  uint8_t  scid;
+  uint8_t  num_dmrs_cdm_grps_no_data;
+  uint16_t rb_start;
+  uint16_t rb_size;
+  //Resource Allocation in time domain
+  uint8_t  start_symbol_index;
+  uint8_t  nr_of_symbols;
+  // pusch_pdu.dfts_ofdm
+  uint8_t  low_papr_group_number;//Group number for Low PAPR sequence generation.
+  uint16_t low_papr_sequence_number;//[TS38.211, sec 5.2.2] For DFT-S-OFDM.
+} chestcomp_params_t;
+
+chestcomp_params_t collect_channel_estimation_compensation_parameters(PHY_VARS_gNB *gNB, int frame, int slot, int beam_nb, int ulsch_id);
+
+void set_channel_estimation_compensation_parameters(chestcomp_params_t params, PHY_VARS_gNB *gNB, int *frame, int *slot, int *beam_nb, int *ulsch_id);
+
 #endif /* NR_ULSCH_H_ */
