@@ -1082,50 +1082,12 @@ static void rfsimulator_end(openair0_device *device) {
   rfsimulator_state_t* s = device->priv;
   for (int i = 0; i < MAX_FD_RFSIMU; i++) {
     buffer_t *b = &s->buf[i];
-<<<<<<< HEAD
-<<<<<<< HEAD
-    if (b->conn_sock >= 0 )
-      removeCirBuf(s, b->fd_sub_sock);
-  }
-  close(s->epollfd);
-<<<<<<< HEAD
-  hashtable_destroy(&s->fd_to_buf_map);
-  free(s);
-=======
-  // hashtable_destroy(&s->fd_to_buf_map);
-=======
-    if (b->fd_pub_sock >= 0 )
-      removeCirBuf(s, b->conn_device_id);
-  }
-<<<<<<< HEAD
->>>>>>> 849d83a78d (cleaning code)
-    hashtable_destroy(&s->id_to_buf_map);
-=======
-  s->fd_pub_sock=-1;
-  s->fd_sub_sock=-1;
-  hashtable_destroy(&s->id_to_buf_map);
-<<<<<<< HEAD
->>>>>>> cc24f4a7f1 (Fixed uninitialized pointers)
-
->>>>>>> 3d93ab2863 (Adding support for multiple UEs - seg faulted)
-=======
->>>>>>> ab0d938a90 (Fixed killing process with Ctrl-C)
-=======
     if (b->conn_sock >= 0 )
       removeCirBuf(s, b->conn_sock);
   }
   close(s->epollfd);
   hashtable_destroy(&s->fd_to_buf_map);
->>>>>>> 6fc16d6379 (Merged)
 }
-static void stopServer(openair0_device *device)
-{
-  rfsimulator_state_t *t = (rfsimulator_state_t *) device->priv;
-  DevAssert(t != NULL);
-  close(t->listen_sock);
-  rfsimulator_end(device);
-}
-
 static int rfsimulator_stop(openair0_device *device) {
   return 0;
 }
@@ -1176,7 +1138,7 @@ int device_init(openair0_device *device, openair0_config_t *openair0_cfg) {
   device->trx_start_func = rfsimulator->role == SIMU_ROLE_SERVER ? startServer : startClient;
   device->trx_get_stats_func   = rfsimulator_get_stats;
   device->trx_reset_stats_func = rfsimulator_reset_stats;
-  device->trx_end_func         = rfsimulator->role == SIMU_ROLE_SERVER ? stopServer : rfsimulator_end;
+  device->trx_end_func         = rfsimulator_end;
   device->trx_stop_func        = rfsimulator_stop;
   device->trx_set_freq_func    = rfsimulator_set_freq;
   device->trx_set_gains_func   = rfsimulator_set_gains;
