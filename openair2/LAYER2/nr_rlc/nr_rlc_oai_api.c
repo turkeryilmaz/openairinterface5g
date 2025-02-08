@@ -861,8 +861,8 @@ static void add_drb_am(int ue_id, int drb_id, const NR_RLC_BearerConfig_t *rlc_B
   if (ue->drb[drb_id-1] != NULL) {
     LOG_E(RLC, "DRB %d already exists for UE %d, do nothing\n", drb_id, ue_id);
   } else {
-    nr_rlc_entity_t *nr_rlc_am = new_nr_rlc_entity_am(RLC_RX_MAXSIZE,
-                                                      RLC_TX_MAXSIZE,
+    nr_rlc_entity_t *nr_rlc_am = new_nr_rlc_entity_am(5 * RLC_RX_MAXSIZE,
+                                                      5 * RLC_TX_MAXSIZE,
                                                       deliver_sdu, ue,
                                                       successful_delivery, ue,
                                                       max_retx_reached, ue,
