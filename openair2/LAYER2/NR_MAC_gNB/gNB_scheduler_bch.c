@@ -45,8 +45,6 @@
 
 #include "executables/softmodem-common.h"
 
-extern RAN_CONTEXT_t RC;
-
 static void schedule_ssb(frame_t frame,
                          sub_frame_t slot,
                          NR_ServingCellConfigCommon_t *scc,
@@ -731,7 +729,8 @@ void schedule_nr_sib1(module_id_t module_idP,
 
       nfapi_nr_dl_tti_request_body_t *dl_req = &DL_req->dl_tti_request_body;
       int pdu_index = gNB_mac->pdu_index[0]++;
-      nr_fill_nfapi_dl_SIB_pdu(module_idP, 
+      LOG_D(NR_MAC, "%s() %4d.%2d\n", __func__, frameP, slotP);
+      nr_fill_nfapi_dl_SIB_pdu(module_idP,
                               NULL,
                               gNB_mac->sched_ctrlCommon,
                               dl_req,

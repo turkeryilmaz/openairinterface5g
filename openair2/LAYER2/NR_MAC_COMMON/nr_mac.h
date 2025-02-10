@@ -344,7 +344,8 @@ typedef struct {
      NRUE MAC layer already does in get_downlink_ack(). */
   int active_dl_harq_sfn;
   int active_dl_harq_slot;
-  int active_ul_harq_sfn_slot;
+  int active_ul_harq_sfn;
+  int active_ul_harq_slot;
   bool active;
 } emul_l1_harq_t;
 
@@ -600,8 +601,8 @@ typedef struct nr_csi_report {
   NR_CSI_ReportConfig__reportQuantity_PR reportQuantity_type;
   long periodicity;
   uint16_t offset;
-  long ** SSB_Index_list;
-  long ** CSI_Index_list;
+  long **SSB_Index_list;
+  long **CSI_Index_list;
 //  uint8_t nb_of_nzp_csi_report;
   uint8_t nb_of_csi_ssb_report;
   L1_RSRP_bitlen_t CSI_report_bitlen;

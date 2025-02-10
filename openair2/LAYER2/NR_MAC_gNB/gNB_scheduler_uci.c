@@ -33,11 +33,6 @@
 #include "common/ran_context.h"
 #include "common/utils/nr/nr_common.h"
 #include "nfapi/oai_integration/vendor_ext.h"
-
-extern RAN_CONTEXT_t RC;
-
-
-
 static void nr_fill_nfapi_pucch(gNB_MAC_INST *nrmac,
                                 frame_t frame,
                                 sub_frame_t slot,
@@ -97,13 +92,6 @@ static void nr_fill_nfapi_pucch(gNB_MAC_INST *nrmac,
 
 #define MIN_RSRP_VALUE -141
 #define MAX_RSRP_VALUE -43
-#define MAX_NUM_SSB 128
-#define MAX_SSB_SCHED 8
-#define L1_RSRP_HYSTERIS 10 //considering 10 dBm as hysterisis for avoiding frequent SSB Beam Switching. !Fixme provide exact value if any
-//#define L1_DIFF_RSRP_STEP_SIZE 2
-
-static int ssb_index_sorted[MAX_NUM_SSB] = {0};
-static int ssb_rsrp_sorted[MAX_NUM_SSB] = {0};
 
 //Measured RSRP Values Table 10.1.16.1-1 from 36.133
 //Stored all the upper limits[Max RSRP Value of corresponding index]
@@ -145,43 +133,48 @@ static const int diff_rsrp_ssb_csi_meas_10_1_6_1_2[16] = {
     -30 // 10 - 15
 };
 
-static int get_pucch_index(int frame, int slot, int n_slots_frame, const NR_TDD_UL_DL_Pattern_t *tdd, int sched_pucch_size)
+static int get_pucch_index(int frame, int slot, const frame_structure_t *fs, int sched_pucch_size)
 {
   // PUCCH structures are indexed by slot in the PUCCH period determined by sched_pucch_size number of UL slots
   // this functions return the index to the structure for slot passed to the function
-  const int first_ul_slot_period = tdd ? get_first_ul_slot(tdd->nrofDownlinkSlots, tdd->nrofDownlinkSymbols, tdd->nrofUplinkSymbols) : 0;
-  const int n_ul_slots_period = tdd ? tdd->nrofUplinkSlots + (tdd->nrofUplinkSymbols > 0 ? 1 : 0) : n_slots_frame;
-  const int nr_slots_period = tdd ? n_slots_frame / get_nb_periods_per_frame(tdd->dl_UL_TransmissionPeriodicity) : n_slots_frame;
-  const int n_ul_slots_frame = n_slots_frame / nr_slots_period * n_ul_slots_period;
+  const int n_ul_slots_period = get_ul_slots_per_period(fs);
+  const int n_ul_slots_frame = get_ul_slots_per_frame(fs);
   // (frame * n_ul_slots_frame) adds up the number of UL slots in the previous frames
   const int frame_start      = frame * n_ul_slots_frame;
   // ((slot / nr_slots_period) * n_ul_slots_period) adds up the number of UL slots in the previous TDD periods of this frame
-  const int ul_period_start  = (slot / nr_slots_period) * n_ul_slots_period;
+  const int ul_period_start  = (slot / fs->numb_slots_period) * n_ul_slots_period;
   // ((slot % nr_slots_period) - first_ul_slot_period) gives the progressive number of the slot in this TDD period
-  const int ul_period_slot   = (slot % nr_slots_period) - first_ul_slot_period;
+  int ul_period_slot = -1;
+  for (int i = 0; i <= slot % fs->numb_slots_period; i++) {
+    if (is_ul_slot(i, fs)) {
+      ul_period_slot++;
+    }
+  }
+  LOG_D(NR_MAC,
+        "PUCCH frame/slot:  request %4d.%2d:frame_start %d,ul_period_start %d, ul_period_slot %d  pucch_index %d pucch_size %d "
+        "scheduling PUCCH\n",
+        frame,
+        slot,
+        frame_start,
+        ul_period_start,
+        ul_period_slot,
+        ((frame_start + ul_period_start + ul_period_slot) % sched_pucch_size),
+        sched_pucch_size);
   // the sum gives the index of current UL slot in the frame which is normalized wrt sched_pucch_size
   return (frame_start + ul_period_start + ul_period_slot) % sched_pucch_size;
-
 }
 
-void nr_schedule_pucch(gNB_MAC_INST *nrmac,
-                       frame_t frameP,
-                       sub_frame_t slotP)
+void nr_schedule_pucch(gNB_MAC_INST *nrmac, frame_t frameP, sub_frame_t slotP)
 {
   /* already mutex protected: held in gNB_dlsch_ulsch_scheduler() */
   NR_SCHED_ENSURE_LOCKED(&nrmac->sched_lock);
 
-  if (!is_xlsch_in_slot(nrmac->ulsch_slot_bitmap[slotP / 64], slotP))
+  if (!is_ul_slot(slotP, &nrmac->frame_structure))
     return;
 
   UE_iterator(nrmac->UE_info.list, UE) {
     NR_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
-    NR_UE_UL_BWP_t *ul_bwp = &UE->current_UL_BWP;
-    const int n_slots_frame = nr_slots_per_frame[ul_bwp->scs];
-    const NR_ServingCellConfigCommon_t *scc = nrmac->common_channels[0].ServingCellConfigCommon;
-    const NR_TDD_UL_DL_Pattern_t *tdd = scc->tdd_UL_DL_ConfigurationCommon ? &scc->tdd_UL_DL_ConfigurationCommon->pattern1 : NULL;
-    AssertFatal(tdd || nrmac->common_channels[0].frame_type == FDD, "Dynamic TDD not handled yet\n");
-    const int pucch_index = get_pucch_index(frameP, slotP, n_slots_frame, tdd, sched_ctrl->sched_pucch_size);
+    const int pucch_index = get_pucch_index(frameP, slotP, &nrmac->frame_structure, sched_ctrl->sched_pucch_size);
     NR_sched_pucch_t *curr_pucch = &UE->UE_sched_ctrl.sched_pucch[pucch_index];
     if (!curr_pucch->active)
       continue;
@@ -207,9 +200,7 @@ void nr_schedule_pucch(gNB_MAC_INST *nrmac,
   }
 }
 
-void nr_csi_meas_reporting(int Mod_idP,
-                           frame_t frame,
-                           sub_frame_t slot)
+void nr_csi_meas_reporting(int Mod_idP,frame_t frame, sub_frame_t slot)
 {
   const int CC_id = 0;
   gNB_MAC_INST *nrmac = RC.nrmac[Mod_idP];
@@ -252,7 +243,7 @@ void nr_csi_meas_reporting(int Mod_idP,
       if ((sched_frame * n_slots_frame + sched_slot - offset) % period != 0)
         continue;
 
-      AssertFatal(is_xlsch_in_slot(nrmac->ulsch_slot_bitmap[sched_slot / 64], sched_slot), "CSI reporting slot %d is not set for an uplink slot\n", sched_slot);
+      AssertFatal(is_ul_slot(sched_slot, &nrmac->frame_structure), "CSI reporting slot %d is not set for an uplink slot\n", sched_slot);
       LOG_D(NR_MAC, "CSI reporting in frame %d slot %d CSI report ID %ld\n", sched_frame, sched_slot, csirep->reportConfigId);
 
       const NR_PUCCH_ResourceSet_t *pucchresset = pucch_Config->resourceSetToAddModList->list.array[1]; // set with formats >1
@@ -264,9 +255,7 @@ void nr_csi_meas_reporting(int Mod_idP,
       AssertFatal(res_index < n,
                   "CSI pucch resource %ld not found among PUCCH resources\n", pucchcsires->pucch_Resource);
 
-      const NR_TDD_UL_DL_Pattern_t *tdd = scc->tdd_UL_DL_ConfigurationCommon ? &scc->tdd_UL_DL_ConfigurationCommon->pattern1 : NULL;
-      AssertFatal(tdd || nrmac->common_channels[0].frame_type == FDD, "Dynamic TDD not handled yet\n");
-      const int pucch_index = get_pucch_index(sched_frame, sched_slot, n_slots_frame, tdd, sched_ctrl->sched_pucch_size);
+      const int pucch_index = get_pucch_index(sched_frame, sched_slot, &nrmac->frame_structure, sched_ctrl->sched_pucch_size);
       NR_sched_pucch_t *curr_pucch = &sched_ctrl->sched_pucch[pucch_index];
       AssertFatal(curr_pucch->active == false, "CSI structure is scheduled in advance. It should be free!\n");
       curr_pucch->r_pucch = -1;
@@ -279,9 +268,10 @@ void nr_csi_meas_reporting(int Mod_idP,
       int bwp_start = ul_bwp->BWPStart;
 
       // going through the list of PUCCH resources to find the one indexed by resource_id
-      int beam_idx = 0; // TODO proper beam allocation
+      NR_beam_alloc_t beam = beam_allocation_procedure(&nrmac->beam_info, sched_frame, sched_slot, UE->UE_beam_index, n_slots_frame);
+      AssertFatal(beam.idx >= 0, "Cannot allocate CSI measurements on PUCCH in any available beam\n");
       const int index = ul_buffer_index(sched_frame, sched_slot, ul_bwp->scs, nrmac->vrb_map_UL_size);
-      uint16_t *vrb_map_UL = &nrmac->common_channels[0].vrb_map_UL[beam_idx][index * MAX_BWP_SIZE];
+      uint16_t *vrb_map_UL = &nrmac->common_channels[0].vrb_map_UL[beam.idx][index * MAX_BWP_SIZE];
       const int m = pucch_Config->resourceToAddModList->list.count;
       for (int j = 0; j < m; j++) {
         NR_PUCCH_Resource_t *pucchres = pucch_Config->resourceToAddModList->list.array[j];
@@ -402,71 +392,6 @@ static void handle_dl_harq(NR_UE_info_t * UE,
   }
 }
 
-static int checkTargetSSBInFirst64TCIStates_pdschConfig(int ssb_index_t, NR_UE_info_t *UE)
-{
-  const NR_PDSCH_Config_t *pdsch_Config = UE->current_DL_BWP.pdsch_Config;
-  int nb_tci_states = pdsch_Config ? pdsch_Config->tci_StatesToAddModList->list.count : 0;
-  NR_TCI_State_t *tci =NULL;
-
-  for(int i=0; i<nb_tci_states && i<64; i++) {
-    tci = (NR_TCI_State_t *)pdsch_Config->tci_StatesToAddModList->list.array[i];
-
-    if(tci != NULL) {
-      if(tci->qcl_Type1.referenceSignal.present == NR_QCL_Info__referenceSignal_PR_ssb) {
-        if(tci->qcl_Type1.referenceSignal.choice.ssb == ssb_index_t)
-          return tci->tci_StateId;  // returned TCI state ID
-      }
-      // if type2 is configured
-      else if(tci->qcl_Type2 != NULL && tci->qcl_Type2->referenceSignal.present == NR_QCL_Info__referenceSignal_PR_ssb) {
-        if(tci->qcl_Type2->referenceSignal.choice.ssb == ssb_index_t)
-          return tci->tci_StateId; // returned TCI state ID
-      } else LOG_I(NR_MAC,"SSB index is not found in first 64 TCI states of TCI_statestoAddModList[%d]", i);
-    }
-  }
-
-  // tci state not identified in first 64 TCI States of PDSCH Config
-  return -1;
-}
-
-static int checkTargetSSBInTCIStates_pdcchConfig(int ssb_index_t, NR_UE_info_t *UE)
-{
-  NR_TCI_State_t *tci =NULL;
-  NR_TCI_StateId_t *tci_id = NULL;
-  NR_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
-  NR_ControlResourceSet_t *coreset = sched_ctrl->coreset;
-  int flag = 0;
-  int tci_stateID = -1;
-  const NR_PDSCH_Config_t *pdsch_Config = UE->current_DL_BWP.pdsch_Config;
-  int nb_tci_states = pdsch_Config ? pdsch_Config->tci_StatesToAddModList->list.count : 0;
-  for(int i=0; i<nb_tci_states && i<128; i++) {
-    tci = (NR_TCI_State_t *)pdsch_Config->tci_StatesToAddModList->list.array[i];
-
-    if(tci != NULL && tci->qcl_Type1.referenceSignal.present == NR_QCL_Info__referenceSignal_PR_ssb) {
-      if(tci->qcl_Type1.referenceSignal.choice.ssb == ssb_index_t) {
-        flag = 1;
-        tci_stateID = tci->tci_StateId;
-        break;
-      } else if(tci->qcl_Type2 != NULL && tci->qcl_Type2->referenceSignal.present == NR_QCL_Info__referenceSignal_PR_ssb) {
-        flag = 1;
-        tci_stateID = tci->tci_StateId;
-        break;
-      }
-    }
-
-    if(flag != 0 && tci_stateID != -1 && coreset != NULL) {
-      for(i=0; i<64 && i<coreset->tci_StatesPDCCH_ToAddList->list.count; i++) {
-        tci_id = coreset->tci_StatesPDCCH_ToAddList->list.array[i];
-
-        if(tci_id != NULL && *tci_id == tci_stateID)
-          return tci_stateID;
-      }
-    }
-  }
-
-  // Need to implement once configuration is received
-  return -1;
-}
-
 //returns the measured RSRP value (upper limit)
 static bool get_measured_rsrp(uint8_t index, int *rsrp)
 {
@@ -481,196 +406,13 @@ static bool get_measured_rsrp(uint8_t index, int *rsrp)
 }
 
 //returns the differential RSRP value (upper limit)
-static int get_diff_rsrp(uint8_t index, int strongest_rsrp) {
-  if(strongest_rsrp != -1) {
+static int get_diff_rsrp(uint8_t index, int strongest_rsrp)
+{
+  if(strongest_rsrp != -1)
     return strongest_rsrp + diff_rsrp_ssb_csi_meas_10_1_6_1_2[index];
-  } else
+  else
     return MIN_RSRP_VALUE;
 }
-
-//identifies the target SSB Beam index
-//keeps the required date for PDCCH and PDSCH TCI state activation/deactivation CE consutruction globally
-//handles triggering of PDCCH and PDSCH MAC CEs
-static void tci_handling(NR_UE_info_t *UE, frame_t frame, slot_t slot)
-{
-  int cqi_idx = 0;
-  int curr_ssb_beam_index = 0; //ToDo: yet to know how to identify the serving ssb beam index
-  uint8_t target_ssb_beam_index = curr_ssb_beam_index;
-  uint8_t is_triggering_ssb_beam_switch =0;
-  uint8_t ssb_idx = 0;
-  int pdsch_bwp_id = 0;
-  int ssb_index[MAX_NUM_SSB] = {0};
-  int ssb_rsrp[MAX_NUM_SSB] = {0};
-  uint8_t idx = 0;
-  NR_UE_DL_BWP_t *dl_bwp = &UE->current_DL_BWP;
-  NR_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
-
-  uint8_t nr_ssbri_cri = 0;
-  uint8_t nb_of_csi_ssb_report = UE->csi_report_template[cqi_idx].nb_of_csi_ssb_report;
-  int better_rsrp_reported = -140-(-0); /*minimum_measured_RSRP_value - minimum_differntail_RSRP_value*///considering the minimum RSRP value as better RSRP initially
-  uint8_t diff_rsrp_idx = 0;
-  uint8_t i, j;
-
-  //bwp indicator
-  int n_dl_bwp = UE->sc_info.n_dl_bwp;
-  const int bwp_id = dl_bwp->bwp_id;
-  if (n_dl_bwp < 4)
-    pdsch_bwp_id = bwp_id;
-  else
-    pdsch_bwp_id = bwp_id - 1; // as per table 7.3.1.1.2-1 in 38.212
-
-  /*Example:
-  CRI_SSBRI: 1 2 3 4| 5 6 7 8| 9 10 1 2|
-  nb_of_csi_ssb_report = 3 //3 sets as above
-  nr_ssbri_cri = 4 //each set has 4 elements
-  storing ssb indexes in ssb_index array as ssb_index[0] = 1 .. ssb_index[4] = 5
-  ssb_rsrp[0] = strongest rsrp in first set, ssb_rsrp[4] = strongest rsrp in second set, ..
-  idx: resource set index
-  */
-
-  nr_ssbri_cri = sched_ctrl->CSI_report.ssb_cri_report.nr_ssbri_cri;
-  //extracting the ssb indexes
-  for (ssb_idx = 0; ssb_idx < nr_ssbri_cri; ssb_idx++) {
-    ssb_index[idx * nb_of_csi_ssb_report + ssb_idx] = sched_ctrl->CSI_report.ssb_cri_report.CRI_SSBRI[ssb_idx];
-  }
-
-  //if strongest measured RSRP is configured
-  int strongest_ssb_rsrp;
-  int rsrp_index = sched_ctrl->CSI_report.ssb_cri_report.RSRP;
-  bool valid = get_measured_rsrp(rsrp_index, &strongest_ssb_rsrp);
-  if (!valid) {
-    LOG_E(NR_MAC, "UE %04x: reported RSRP index %d invalid\n", UE->rnti, rsrp_index);
-    return;
-  }
-  ssb_rsrp[idx * nb_of_csi_ssb_report] = strongest_ssb_rsrp;
-  LOG_D(NR_MAC,"ssb_rsrp = %d\n",strongest_ssb_rsrp);
-
-  //if current ssb rsrp is greater than better rsrp
-  if(ssb_rsrp[idx * nb_of_csi_ssb_report] > better_rsrp_reported) {
-    better_rsrp_reported = ssb_rsrp[idx * nb_of_csi_ssb_report];
-    target_ssb_beam_index = idx * nb_of_csi_ssb_report;
-  }
-
-  for(diff_rsrp_idx =1; diff_rsrp_idx < nr_ssbri_cri; diff_rsrp_idx++) {
-    ssb_rsrp[idx * nb_of_csi_ssb_report + diff_rsrp_idx] = get_diff_rsrp(sched_ctrl->CSI_report.ssb_cri_report.diff_RSRP[diff_rsrp_idx-1], strongest_ssb_rsrp);
-
-    //if current reported rsrp is greater than better rsrp
-    if(ssb_rsrp[idx * nb_of_csi_ssb_report + diff_rsrp_idx] > better_rsrp_reported) {
-      better_rsrp_reported = ssb_rsrp[idx * nb_of_csi_ssb_report + diff_rsrp_idx];
-      target_ssb_beam_index = idx * nb_of_csi_ssb_report + diff_rsrp_idx;
-    }
-  }
-
-  if(ssb_index[target_ssb_beam_index] != ssb_index[curr_ssb_beam_index] && ssb_rsrp[target_ssb_beam_index] > ssb_rsrp[curr_ssb_beam_index]) {
-    if( ssb_rsrp[target_ssb_beam_index] - ssb_rsrp[curr_ssb_beam_index] > L1_RSRP_HYSTERIS) {
-      is_triggering_ssb_beam_switch = 1;
-      LOG_D(NR_MAC, "Triggering ssb beam switching using tci\n");
-    }
-  }
-
-  if(is_triggering_ssb_beam_switch) {
-    //filling pdcch tci state activativation mac ce structure fields
-    sched_ctrl->UE_mac_ce_ctrl.pdcch_state_ind.is_scheduled = 1;
-    //OAI currently focusing on Non CA usecase hence 0 is considered as serving
-    //cell id
-    sched_ctrl->UE_mac_ce_ctrl.pdcch_state_ind.servingCellId = 0; //0 for PCell as 38.331 v15.9.0 page 353 //serving cell id for which this MAC CE applies
-    sched_ctrl->UE_mac_ce_ctrl.pdcch_state_ind.coresetId = 0; //coreset id for which the TCI State id is being indicated
-
-    /* 38.321 v15.8.0 page 66
-    TCI State ID: This field indicates the TCI state identified by TCI-StateId as specified in TS 38.331 [5] applicable
-    to the Control Resource Set identified by CORESET ID field.
-    If the field of CORESET ID is set to 0,
-      this field indicates a TCI-StateId for a TCI state of the first 64 TCI-states configured by tci-States-ToAddModList and tciStates-ToReleaseList in the PDSCH-Config in the active BWP.
-    If the field of CORESET ID is set to the other value than 0,
-     this field indicates a TCI-StateId configured by tci-StatesPDCCH-ToAddList and tciStatesPDCCH-ToReleaseList in the controlResourceSet identified by the indicated CORESET ID.
-    The length of the field is 7 bits
-     */
-    if(sched_ctrl->UE_mac_ce_ctrl.pdcch_state_ind.coresetId == 0) {
-      int tci_state_id = checkTargetSSBInFirst64TCIStates_pdschConfig(ssb_index[target_ssb_beam_index], UE);
-
-      if( tci_state_id != -1)
-        sched_ctrl->UE_mac_ce_ctrl.pdcch_state_ind.tciStateId = tci_state_id;
-      else {
-        //identify the best beam within first 64 TCI States of PDSCH
-        //Config TCI-states-to-addModList
-        int flag = 0;
-
-        for(i =0; ssb_index_sorted[i]!=0; i++) {
-          tci_state_id = checkTargetSSBInFirst64TCIStates_pdschConfig(ssb_index_sorted[i],UE) ;
-
-          if(tci_state_id != -1 && ssb_rsrp_sorted[i] > ssb_rsrp[curr_ssb_beam_index] && ssb_rsrp_sorted[i] - ssb_rsrp[curr_ssb_beam_index] > L1_RSRP_HYSTERIS) {
-            sched_ctrl->UE_mac_ce_ctrl.pdcch_state_ind.tciStateId = tci_state_id;
-            flag = 1;
-            break;
-          }
-        }
-
-        if(flag == 0 || ssb_rsrp_sorted[i] < ssb_rsrp[curr_ssb_beam_index] || ssb_rsrp_sorted[i] - ssb_rsrp[curr_ssb_beam_index] < L1_RSRP_HYSTERIS) {
-          sched_ctrl->UE_mac_ce_ctrl.pdcch_state_ind.is_scheduled = 0;
-        }
-      }
-    } else {
-      int tci_state_id = checkTargetSSBInTCIStates_pdcchConfig(ssb_index[target_ssb_beam_index], UE);
-
-      if (tci_state_id !=-1)
-        sched_ctrl->UE_mac_ce_ctrl.pdcch_state_ind.tciStateId = tci_state_id;
-      else {
-        //identify the best beam within CORESET/PDCCH
-        ////Config TCI-states-to-addModList
-        int flag = 0;
-
-        for(i =0; ssb_index_sorted[i]!=0; i++) {
-          tci_state_id = checkTargetSSBInTCIStates_pdcchConfig(ssb_index_sorted[i], UE);
-
-          if( tci_state_id != -1 && ssb_rsrp_sorted[i] > ssb_rsrp[curr_ssb_beam_index] && ssb_rsrp_sorted[i] - ssb_rsrp[curr_ssb_beam_index] > L1_RSRP_HYSTERIS) {
-            sched_ctrl->UE_mac_ce_ctrl.pdcch_state_ind.tciStateId = tci_state_id;
-            flag = 1;
-            break;
-          }
-        }
-
-        if(flag == 0 || ssb_rsrp_sorted[i] < ssb_rsrp[curr_ssb_beam_index] || ssb_rsrp_sorted[i] - ssb_rsrp[curr_ssb_beam_index] < L1_RSRP_HYSTERIS) {
-          sched_ctrl->UE_mac_ce_ctrl.pdcch_state_ind.is_scheduled = 0;
-        }
-      }
-    }
-
-    sched_ctrl->UE_mac_ce_ctrl.pdcch_state_ind.tci_present_inDCI = sched_ctrl->coreset ?
-                                                                   sched_ctrl->coreset->tci_PresentInDCI : NULL;
-
-    //filling pdsch tci state activation deactivation mac ce structure fields
-    if(sched_ctrl->UE_mac_ce_ctrl.pdcch_state_ind.tci_present_inDCI) {
-      sched_ctrl->UE_mac_ce_ctrl.pdsch_TCI_States_ActDeact.is_scheduled = 1;
-      /*
-      Serving Cell ID: This field indicates the identity of the Serving Cell for which the MAC CE applies
-      Considering only PCell exists. Serving cell index of PCell is always 0, hence configuring 0
-      */
-      sched_ctrl->UE_mac_ce_ctrl.pdsch_TCI_States_ActDeact.servingCellId = 0;
-      /*
-      BWP ID: This field indicates a DL BWP for which the MAC CE applies as the codepoint of the DCI bandwidth
-      part indicator field as specified in TS 38.212
-      */
-      sched_ctrl->UE_mac_ce_ctrl.pdsch_TCI_States_ActDeact.bwpId = pdsch_bwp_id;
-
-      /*
-       * TODO ssb_rsrp_sort() API yet to code to find 8 best beams, rrc configuration
-       * is required
-       */
-      for(i = 0; i<8; i++) {
-        sched_ctrl->UE_mac_ce_ctrl.pdsch_TCI_States_ActDeact.tciStateActDeact[i] = i;
-      }
-
-      sched_ctrl->UE_mac_ce_ctrl.pdsch_TCI_States_ActDeact.highestTciStateActivated = 8;
-
-      for(i = 0, j =0; i<MAX_TCI_STATES; i++) {
-        if(sched_ctrl->UE_mac_ce_ctrl.pdsch_TCI_States_ActDeact.tciStateActDeact[i]) {
-          sched_ctrl->UE_mac_ce_ctrl.pdsch_TCI_States_ActDeact.codepoint[j] = i;
-          j++;
-        }
-      }
-    }//tci_presentInDCI
-  }//is-triggering_beam_switch
-} // tci handling
 
 static uint8_t pickandreverse_bits(uint8_t *payload, uint16_t bitlen, uint8_t start_bit)
 {
@@ -680,17 +422,14 @@ static uint8_t pickandreverse_bits(uint8_t *payload, uint16_t bitlen, uint8_t st
   return rev_bits;
 }
 
-static void evaluate_rsrp_report(NR_UE_info_t *UE,
+static void evaluate_rsrp_report(gNB_MAC_INST *nrmac,
+                                 NR_UE_info_t *UE,
                                  NR_UE_sched_ctrl_t *sched_ctrl,
                                  uint8_t csi_report_id,
                                  uint8_t *payload,
                                  int *cumul_bits,
                                  NR_CSI_ReportConfig__reportQuantity_PR reportQuantity_type)
 {
-  nr_csi_report_t *csi_report = &UE->csi_report_template[csi_report_id];
-  uint8_t cri_ssbri_bitlen = csi_report->CSI_report_bitlen.cri_ssbri_bitlen;
-  uint16_t curr_payload;
-
   /*! As per the spec 38.212 and table:  6.3.1.1.2-12 in a single UCI sequence we can have multiple CSI_report
   * the number of CSI_report will depend on number of CSI resource sets that are configured in CSI-ResourceConfig RRC IE
   * From spec 38.331 from the IE CSI-ResourceConfig for SSB RSRP reporting we can configure only one resource set
@@ -708,46 +447,52 @@ static void evaluate_rsrp_report(NR_UE_info_t *UE,
     resources can be received simultaneously by the UE either with a single spatial domain receive filter, or with
     multiple simultaneous spatial domain receive filter
   */
+  nr_csi_report_t *csi_report = &UE->csi_report_template[csi_report_id];
+  RSRP_report_t *rsrp_report;
+  long **index_list;
+  switch (reportQuantity_type) {
+    case NR_CSI_ReportConfig__reportQuantity_PR_ssb_Index_RSRP:
+      rsrp_report = &sched_ctrl->CSI_report.ssb_rsrp_report;
+      index_list = csi_report->SSB_Index_list;
+      break;
+    case NR_CSI_ReportConfig__reportQuantity_PR_cri_RSRP :
+      rsrp_report = &sched_ctrl->CSI_report.csirs_rsrp_report;
+      index_list = csi_report->CSI_Index_list;
+      break;
+    default :
+      AssertFatal(false, "Invalid RSRP report type\n");
+  }
 
-  sched_ctrl->CSI_report.ssb_cri_report.nr_ssbri_cri = csi_report->CSI_report_bitlen.nb_ssbri_cri;
-
-  for (int csi_ssb_idx = 0; csi_ssb_idx < sched_ctrl->CSI_report.ssb_cri_report.nr_ssbri_cri ; csi_ssb_idx++) {
-    curr_payload = pickandreverse_bits(payload, cri_ssbri_bitlen, *cumul_bits);
-
-    if (NR_CSI_ReportConfig__reportQuantity_PR_ssb_Index_RSRP == reportQuantity_type) {
-      sched_ctrl->CSI_report.ssb_cri_report.CRI_SSBRI[csi_ssb_idx] =
-        *(csi_report->SSB_Index_list[cri_ssbri_bitlen>0?((curr_payload)&~(~1U<<(cri_ssbri_bitlen-1))):cri_ssbri_bitlen]);
-      LOG_D(MAC,"SSB_index = %d\n",sched_ctrl->CSI_report.ssb_cri_report.CRI_SSBRI[csi_ssb_idx]);
-    }
-    else {
-      sched_ctrl->CSI_report.ssb_cri_report.CRI_SSBRI[csi_ssb_idx] =
-        *(csi_report->CSI_Index_list[cri_ssbri_bitlen>0?((curr_payload)&~(~1U<<(cri_ssbri_bitlen-1))):cri_ssbri_bitlen]);
-      LOG_D(MAC,"CSI-RS Resource Indicator = %d\n",sched_ctrl->CSI_report.ssb_cri_report.CRI_SSBRI[csi_ssb_idx]);
-    }
-    *cumul_bits += cri_ssbri_bitlen;
-
+  rsrp_report->nr_reports = csi_report->CSI_report_bitlen.nb_ssbri_cri;
+  uint16_t curr_payload;
+  for (int i = 0; i < rsrp_report->nr_reports; i++) {
+    int bitlen = csi_report->CSI_report_bitlen.cri_ssbri_bitlen;
+    curr_payload = pickandreverse_bits(payload, bitlen, *cumul_bits);
+    rsrp_report->resource_id[i] = *(index_list[bitlen > 0 ? ((curr_payload) & ~(~1U << (bitlen - 1))) : bitlen]);
+    LOG_D(MAC,"SSB/CSI-RS index = %d\n", rsrp_report->resource_id[i]);
+    *cumul_bits += bitlen;
   }
 
   curr_payload = pickandreverse_bits(payload, 7, *cumul_bits);
-  sched_ctrl->CSI_report.ssb_cri_report.RSRP = curr_payload & 0x7f;
+  int rsrp_index = curr_payload & 0x7f;
   *cumul_bits += 7;
 
-  for (int diff_rsrp_idx =0; diff_rsrp_idx < sched_ctrl->CSI_report.ssb_cri_report.nr_ssbri_cri - 1; diff_rsrp_idx++ ) {
-    curr_payload = pickandreverse_bits(payload, 4, *cumul_bits);
-    sched_ctrl->CSI_report.ssb_cri_report.diff_RSRP[diff_rsrp_idx] = curr_payload & 0x0f;
-    *cumul_bits += 4;
-  }
   csi_report->nb_of_csi_ssb_report++;
-  int strongest_ssb_rsrp;
-  int rsrp_index = sched_ctrl->CSI_report.ssb_cri_report.RSRP;
-  bool valid = get_measured_rsrp(rsrp_index, &strongest_ssb_rsrp);
+  bool valid = get_measured_rsrp(rsrp_index, &rsrp_report->RSRP[0]);
   if (!valid) {
     LOG_E(NR_MAC, "UE %04x: reported RSRP index %d invalid\n", UE->rnti, rsrp_index);
     return;
   }
+
+  for (int i = 1; i < rsrp_report->nr_reports; i++) {
+    curr_payload = pickandreverse_bits(payload, 4, *cumul_bits);
+    rsrp_report->RSRP[i] = get_diff_rsrp(curr_payload & 0x0f, rsrp_report->RSRP[0]);
+    *cumul_bits += 4;
+  }
+
   NR_mac_stats_t *stats = &UE->mac_stats;
   // including ssb rsrp in mac stats
-  stats->cumul_rsrp += strongest_ssb_rsrp;
+  stats->cumul_rsrp += rsrp_report->RSRP[0];
   stats->num_rsrp_meas++;
 }
 
@@ -870,7 +615,7 @@ static void extract_pucch_csi_report(NR_CSI_MeasConfig_t *csi_MeasConfig,
                                      frame_t frame,
                                      slot_t slot,
                                      NR_UE_info_t *UE,
-                                     NR_ServingCellConfigCommon_t *scc)
+                                     gNB_MAC_INST *nrmac)
 {
   /** From Table 6.3.1.1.2-3: RI, LI, CQI, and CRI of codebookType=typeI-SinglePanel */
   uint8_t *payload = uci_pdu->csi_part1.csi_part1_payload;
@@ -900,12 +645,13 @@ static void extract_pucch_csi_report(NR_CSI_MeasConfig_t *csi_MeasConfig,
     if ((n_slots_frame*frame + slot - offset)%period == 0) {
       reportQuantity_type = csi_report->reportQuantity_type;
       LOG_D(MAC,"SFN/SF:%d/%d reportQuantity type = %d\n",frame,slot,reportQuantity_type);
-      switch(reportQuantity_type){
+      switch(reportQuantity_type) {
         case NR_CSI_ReportConfig__reportQuantity_PR_cri_RSRP:
-          evaluate_rsrp_report(UE,sched_ctrl,csi_report_id,payload,&cumul_bits,reportQuantity_type);
+          evaluate_rsrp_report(nrmac, UE, sched_ctrl, csi_report_id, payload, &cumul_bits, reportQuantity_type);
           break;
         case NR_CSI_ReportConfig__reportQuantity_PR_ssb_Index_RSRP:
-          evaluate_rsrp_report(UE,sched_ctrl,csi_report_id,payload,&cumul_bits,reportQuantity_type);
+          evaluate_rsrp_report(nrmac, UE, sched_ctrl, csi_report_id, payload, &cumul_bits, reportQuantity_type);
+          beam_selection_procedures(nrmac, UE);
           break;
         case NR_CSI_ReportConfig__reportQuantity_PR_cri_RI_CQI:
           sched_ctrl->CSI_report.cri_ri_li_pmi_cqi_report.print_report = true;
@@ -1018,6 +764,7 @@ void handle_nr_uci_pucch_0_1(module_id_t mod_id,
                              const nfapi_nr_uci_pucch_pdu_format_0_1_t *uci_01)
 {
   gNB_MAC_INST *nrmac = RC.nrmac[mod_id];
+  int rssi_threshold = nrmac->pucch_rssi_threshold;
   NR_SCHED_LOCK(&nrmac->sched_lock);
   NR_UE_info_t * UE = find_nr_UE(&nrmac->UE_info, uci_01->rnti);
   if (!UE) {
@@ -1053,6 +800,7 @@ void handle_nr_uci_pucch_0_1(module_id_t mod_id,
       sched_ctrl->tpc1 = nr_get_tpc(nrmac->pucch_target_snrx10, uci_01->ul_cqi, 30, 0);
     } else
       sched_ctrl->tpc1 = 1;
+    sched_ctrl->tpc1 = nr_limit_tpc(sched_ctrl->tpc1, uci_01->rssi, rssi_threshold);
   }
 
   // check scheduling request result, confidence_level == 0 is good
@@ -1074,8 +822,9 @@ void handle_nr_uci_pucch_2_3_4(module_id_t mod_id,
 {
   gNB_MAC_INST *nrmac = RC.nrmac[mod_id];
   NR_SCHED_LOCK(&nrmac->sched_lock);
+  int rssi_threshold = nrmac->pucch_rssi_threshold;
 
-  NR_UE_info_t * UE = find_nr_UE(&nrmac->UE_info, uci_234->rnti);
+  NR_UE_info_t *UE = find_nr_UE(&nrmac->UE_info, uci_234->rnti);
   if (!UE) {
     NR_SCHED_UNLOCK(&nrmac->sched_lock);
     LOG_E(NR_MAC, "%s(): unknown RNTI %04x in PUCCH UCI\n", __func__, uci_234->rnti);
@@ -1094,6 +843,7 @@ void handle_nr_uci_pucch_2_3_4(module_id_t mod_id,
   if (uci_234->ul_cqi != 0xff) {
     sched_ctrl->pucch_snrx10 = uci_234->ul_cqi * 5 - 640;
     sched_ctrl->tpc1 = nr_get_tpc(nrmac->pucch_target_snrx10, uci_234->ul_cqi, 30, 0);
+    sched_ctrl->tpc1 = nr_limit_tpc(sched_ctrl->tpc1, uci_234->rssi, rssi_threshold);
   }
 
   // TODO: handle SR
@@ -1123,9 +873,7 @@ void handle_nr_uci_pucch_2_3_4(module_id_t mod_id,
     LOG_D(NR_MAC, "CSI CRC %d\n", uci_234->csi_part1.csi_part1_crc);
     if (uci_234->csi_part1.csi_part1_crc != 1) {
       // API to parse the csi report and store it into sched_ctrl
-      extract_pucch_csi_report(csi_MeasConfig, uci_234, frame, slot, UE, nrmac->common_channels->ServingCellConfigCommon);
-      // TCI handling function
-      tci_handling(UE, frame, slot);
+      extract_pucch_csi_report(csi_MeasConfig, uci_234, frame, slot, UE, nrmac);
     }
     free(uci_234->csi_part1.csi_part1_payload);
   }
@@ -1242,7 +990,7 @@ int nr_acknack_scheduling(gNB_MAC_INST *mac,
                           NR_UE_info_t *UE,
                           frame_t frame,
                           sub_frame_t slot,
-                          int beam_index,
+                          int ue_beam,
                           int r_pucch,
                           int is_common)
 {
@@ -1256,10 +1004,7 @@ int nr_acknack_scheduling(gNB_MAC_INST *mac,
   const int minfbtime = mac->radio_config.minRXTXTIME + NTN_gNB_Koffset;
   const NR_UE_UL_BWP_t *ul_bwp = &UE->current_UL_BWP;
   const int n_slots_frame = nr_slots_per_frame[ul_bwp->scs];
-  const NR_TDD_UL_DL_Pattern_t *tdd = scc->tdd_UL_DL_ConfigurationCommon ? &scc->tdd_UL_DL_ConfigurationCommon->pattern1 : NULL;
-  AssertFatal(tdd || mac->common_channels[CC_id].frame_type == FDD, "Dynamic TDD not handled yet\n");
-  const int nr_slots_period = tdd ? n_slots_frame / get_nb_periods_per_frame(tdd->dl_UL_TransmissionPeriodicity) : n_slots_frame;
-  const int first_ul_slot_period = tdd ? get_first_ul_slot(tdd->nrofDownlinkSlots, tdd->nrofDownlinkSymbols, tdd->nrofUplinkSymbols) : 0;
+  const frame_structure_t *fs = &mac->frame_structure;
 
   NR_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
   NR_PUCCH_Config_t *pucch_Config = ul_bwp->pucch_Config;
@@ -1280,11 +1025,14 @@ int nr_acknack_scheduling(gNB_MAC_INST *mac,
       continue;
     const int pucch_slot = (slot + pdsch_to_harq_feedback[f] + NTN_gNB_Koffset) % n_slots_frame;
     // check if the slot is UL
-    if(pucch_slot%nr_slots_period < first_ul_slot_period)
-      continue;
+    if (fs->is_tdd) {
+      int mod_slot = pucch_slot % fs->numb_slots_period;
+      if (!is_ul_slot(mod_slot, fs))
+        continue;
+    }
     const int pucch_frame = (frame + ((slot + pdsch_to_harq_feedback[f] + NTN_gNB_Koffset) / n_slots_frame)) % MAX_FRAME_NUMBER;
     // we store PUCCH resources according to slot, TDD configuration and size of the vector containing PUCCH structures
-    const int pucch_index = get_pucch_index(pucch_frame, pucch_slot, n_slots_frame, tdd, sched_ctrl->sched_pucch_size);
+    const int pucch_index = get_pucch_index(pucch_frame, pucch_slot, &mac->frame_structure, sched_ctrl->sched_pucch_size);
     NR_sched_pucch_t *curr_pucch = &sched_ctrl->sched_pucch[pucch_index];
     if (curr_pucch->active &&
         curr_pucch->frame == pucch_frame &&
@@ -1332,7 +1080,7 @@ int nr_acknack_scheduling(gNB_MAC_INST *mac,
     else { // unoccupied occasion
       // checking if in ul_slot the resources potentially to be assigned to this PUCCH are available
       set_pucch_allocation(ul_bwp, r_pucch, bwp_size, curr_pucch);
-      NR_beam_alloc_t beam = beam_allocation_procedure(&mac->beam_info, pucch_frame, pucch_slot, beam_index, n_slots_frame);
+      NR_beam_alloc_t beam = beam_allocation_procedure(&mac->beam_info, pucch_frame, pucch_slot, ue_beam, n_slots_frame);
       if (beam.idx < 0) {
         LOG_D(NR_MAC,
               "DL %4d.%2d, UL_ACK %4d.%2d beam resources for this occasion are already occupied, move to the following occasion\n",
@@ -1352,7 +1100,7 @@ int nr_acknack_scheduling(gNB_MAC_INST *mac,
               slot,
               pucch_frame,
               pucch_slot);
-        reset_beam_status(&mac->beam_info, pucch_frame, pucch_slot, beam_index, n_slots_frame, beam.new_beam);
+        reset_beam_status(&mac->beam_info, pucch_frame, pucch_slot, ue_beam, n_slots_frame, beam.new_beam);
         continue;
       }
       // allocating a new PUCCH structure for this occasion
@@ -1383,7 +1131,7 @@ void nr_sr_reporting(gNB_MAC_INST *nrmac, frame_t SFN, sub_frame_t slot)
   /* already mutex protected: held in gNB_dlsch_ulsch_scheduler() */
   NR_SCHED_ENSURE_LOCKED(&nrmac->sched_lock);
 
-  if (!is_xlsch_in_slot(nrmac->ulsch_slot_bitmap[slot / 64], slot))
+  if (!is_ul_slot(slot, &nrmac->frame_structure))
     return;
   const int CC_id = 0;
   UE_iterator(nrmac->UE_info.list, UE) {
@@ -1404,10 +1152,10 @@ void nr_sr_reporting(gNB_MAC_INST *nrmac, frame_t SFN, sub_frame_t slot)
 
       int SR_period; int SR_offset;
 
-      find_period_offset_SR(SchedulingRequestResourceConfig,&SR_period,&SR_offset);
+      find_period_offset_SR(SchedulingRequestResourceConfig, &SR_period, &SR_offset);
       // convert to int to avoid underflow of uint
       int sfn_sf = SFN * n_slots_frame + slot;
-      LOG_D(NR_MAC,"SR_resource_id %d: SR_period %d, SR_offset %d\n",SR_resource_id,SR_period,SR_offset);
+      LOG_D(NR_MAC,"SR_resource_id %d: SR_period %d, SR_offset %d\n", SR_resource_id, SR_period, SR_offset);
       if ((sfn_sf - SR_offset) % SR_period != 0)
         continue;
       LOG_D(NR_MAC, "%4d.%2d Scheduling Request UE %04x identified\n", SFN, slot, UE->rnti);
@@ -1420,18 +1168,12 @@ void nr_sr_reporting(gNB_MAC_INST *nrmac, frame_t SFN, sub_frame_t slot)
         if (*pucchresset->resourceList.list.array[i] == *PucchResourceId )
           idx = i;
       }
-      AssertFatal(idx>-1,"SR resource not found among PUCCH resources");
+      AssertFatal(idx > -1, "SR resource not found among PUCCH resources");
 
-      const NR_ServingCellConfigCommon_t *scc = nrmac->common_channels[CC_id].ServingCellConfigCommon;
-      const NR_TDD_UL_DL_Pattern_t *tdd = scc->tdd_UL_DL_ConfigurationCommon ? &scc->tdd_UL_DL_ConfigurationCommon->pattern1 : NULL;
-      AssertFatal(tdd || nrmac->common_channels[CC_id].frame_type == FDD, "Dynamic TDD not handled yet\n");
-      const int pucch_index = get_pucch_index(SFN, slot, n_slots_frame, tdd, sched_ctrl->sched_pucch_size);
+      const int pucch_index = get_pucch_index(SFN, slot, &nrmac->frame_structure, sched_ctrl->sched_pucch_size);
       NR_sched_pucch_t *curr_pucch = &sched_ctrl->sched_pucch[pucch_index];
 
-      if (curr_pucch->active &&
-          curr_pucch->frame == SFN &&
-          curr_pucch->ul_slot == slot &&
-          curr_pucch->resource_indicator == idx)
+      if (curr_pucch->active && curr_pucch->frame == SFN && curr_pucch->ul_slot == slot && curr_pucch->resource_indicator == idx)
         curr_pucch->sr_flag = true;
       else if (curr_pucch->active) {
         LOG_E(NR_MAC,
@@ -1444,9 +1186,10 @@ void nr_sr_reporting(gNB_MAC_INST *nrmac, frame_t SFN, sub_frame_t slot)
         continue;
       }
       else {
-        int beam_idx = 0; // TODO proper beam allocation
+        NR_beam_alloc_t beam = beam_allocation_procedure(&nrmac->beam_info, SFN, slot, UE->UE_beam_index, n_slots_frame);
+        AssertFatal(beam.idx >= 0, "Cannot allocate SR in any available beam\n");
         const int index = ul_buffer_index(SFN, slot, ul_bwp->scs, nrmac->vrb_map_UL_size);
-        uint16_t *vrb_map_UL = &nrmac->common_channels[CC_id].vrb_map_UL[beam_idx][index * MAX_BWP_SIZE];
+        uint16_t *vrb_map_UL = &nrmac->common_channels[CC_id].vrb_map_UL[beam.idx][index * MAX_BWP_SIZE];
         const int bwp_start = ul_bwp->BWPStart;
         const int bwp_size = ul_bwp->BWPSize;
         set_pucch_allocation(ul_bwp, -1, bwp_size, curr_pucch);

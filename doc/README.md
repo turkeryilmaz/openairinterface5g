@@ -57,7 +57,8 @@ There is some general information in the [OpenAirInterface Gitlab Wiki](https://
 - [How to use the L2 simulator](./L2NFAPI.md)
 - [How to use the OAI channel simulator](../openair1/SIMULATION/TOOLS/DOC/channel_simulation.md)
 - [How to use multiple BWPs](./RUN_NR_multiple_BWPs.md)
-- [How to run OAI-VNF and OAI-PNF](./RUN_NR_NFAPI.md) _Note: does not work currently_
+- [How to run OAI-VNF and OAI-PNF](./nfapi.md): how to run the nFAPI split,
+  including some general remarks on FAPI/nFAPI.
 - [How to use the positioning reference signal (PRS)](./RUN_NR_PRS.md)
 - [How to use device-to-device communication (D2D, 4G)](./d2d_emulator_setup.txt)
 - [How to run with E2 agent](../openair2/E2AP/README.md)
@@ -84,6 +85,7 @@ Legacy unmaintained files:
 - [L1 threads in NR-UE](./nr-ue-design.md)
 - [Information on gNB MAC](./MAC/mac-usage.md)
 - [Information on gNB RRC](./RRC/rrc-usage.md)
+- [Information on analog beamforming implementation](./analog_beamforming.md)
 
 Legacy unmaintained files:
 - [`5Gnas.md`](./5Gnas.md)
@@ -133,3 +135,4 @@ The other SDRs (AW2S, LimeSDR, ...) have no READMEs.
 
 - [formatting](../tools/formatting/README.md) is a clang-format error detection tool
 - [iwyu](../tools/iwyu/README.md) is a tool to detect `#include` errors
+- [docker-dev-env](../tools/docker-dev-env/README.md) is a ubuntu22 docker development environment

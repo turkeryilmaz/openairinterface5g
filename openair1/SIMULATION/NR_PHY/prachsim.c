@@ -83,7 +83,6 @@ openair0_config_t openair0_cfg[MAX_CARDS];
 //uint8_t nfapi_mode=0;
 uint64_t downlink_frequency[MAX_NUM_CCs][4];
 int32_t uplink_frequency_offset[MAX_NUM_CCs][4];
-uint16_t sl_ahead = 0;
 uint32_t N_RB_DL = 106;
 
 NR_IF_Module_t *NR_IF_Module_init(int Mod_id) { return (NULL); }
@@ -91,7 +90,6 @@ nfapi_mode_t nfapi_getmode(void) { return NFAPI_MODE_UNKNOWN; }
 void init_downlink_harq_status(NR_DL_UE_HARQ_t *dl_harq) { }
 
 /* temporary dummy implem of get_softmodem_optmask, till basic simulators implemented as device */
-uint64_t get_softmodem_optmask(void) {return 0;}
 static softmodem_params_t softmodem_params;
 softmodem_params_t *get_softmodem_params(void) {
   return &softmodem_params;
@@ -404,7 +402,7 @@ int main(int argc, char **argv){
   // Configure log
   logInit();
   set_glog(loglvl);
-  SET_LOG_DEBUG(PRACH); 
+  SET_LOG_DEBUG(DEBUG_PRACH);
 
   // Configure gNB and RU
   RC.gNB = (PHY_VARS_gNB**) malloc(2*sizeof(PHY_VARS_gNB *));
@@ -570,7 +568,10 @@ int main(int argc, char **argv){
 
   memcpy((void*)&ru->config,(void*)&RC.gNB[0]->gNB_config,sizeof(ru->config));
   RC.nb_nr_L1_inst=1;
-  set_tdd_config_nr(&gNB->gNB_config, mu, 7, 6, 2, 4);
+  // TDD configuration
+  gNB->gNB_config.tdd_table.tdd_period.value = 6;
+  do_tdd_config_sim(gNB, mu);
+
   phy_init_nr_gNB(gNB);
   nr_phy_init_RU(ru);
 
@@ -680,16 +681,16 @@ int main(int argc, char **argv){
   for (i = 0; i < frame_parms->samples_per_subframe; i++) {
     for (aa=0; aa<1; aa++) {
       if (awgn_flag == 0) {
-        s_re[aa][i] = ((double)(((short *)&txdata[aa][prach_start]))[(i<<1)]);
-        s_im[aa][i] = ((double)(((short *)&txdata[aa][prach_start]))[(i<<1)+1]);
+        s_re[aa][i] = txdata[aa][prach_start + i].r;
+        s_im[aa][i] = txdata[aa][prach_start + i].i;
       } else {
         for (aarx=0; aarx<gNB->frame_parms.nb_antennas_rx; aarx++) {
           if (aa==0) {
-            r_re[aarx][i] = ((double)(((short *)&txdata[aa][prach_start]))[(i<<1)]);
-            r_im[aarx][i] = ((double)(((short *)&txdata[aa][prach_start]))[(i<<1)+1]);
+            r_re[aa][i] = txdata[aa][prach_start + i].r;
+            r_im[aa][i] = txdata[aa][prach_start + i].i;
           } else {
-            r_re[aarx][i] += ((double)(((short *)&txdata[aa][prach_start]))[(i<<1)]);
-            r_im[aarx][i] += ((double)(((short *)&txdata[aa][prach_start]))[(i<<1)+1]);
+            r_re[aa][i] += txdata[aa][prach_start + i].r;
+            r_im[aa][i] += txdata[aa][prach_start + i].i;
           }
         }
       }
@@ -826,7 +827,7 @@ int main(int argc, char **argv){
 
   phy_free_nr_gNB(gNB);
   // allocated in set_tdd_config_nr()
-  int nb_slots_to_set = TDD_CONFIG_NB_FRAMES*(1<<mu)*NR_NUMBER_OF_SUBFRAMES_PER_FRAME;
+  int nb_slots_to_set = (1<<mu)*NR_NUMBER_OF_SUBFRAMES_PER_FRAME;
   free(gNB->gNB_config.prach_config.num_prach_fd_occasions_list);
   for (int i = 0; i < nb_slots_to_set; ++i)
     free(gNB->gNB_config.tdd_table.max_tdd_periodicity_list[i].max_num_of_symbol_per_slot_list);

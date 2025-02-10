@@ -66,7 +66,6 @@ void free_gNB_dlsch(NR_gNB_DLSCH_t *dlsch, uint16_t N_RB, const NR_DL_FRAME_PARM
     harq->c[r] = NULL;
   }
   free(harq->c);
-  free(harq->pdu);
 }
 
 NR_gNB_DLSCH_t new_gNB_dlsch(NR_DL_FRAME_PARMS *frame_parms, uint16_t N_RB)
@@ -87,10 +86,6 @@ NR_gNB_DLSCH_t new_gNB_dlsch(NR_DL_FRAME_PARMS *frame_parms, uint16_t N_RB)
   bzero(harq, sizeof(NR_DL_gNB_HARQ_t));
   harq->b = malloc16(dlsch_bytes);
   AssertFatal(harq->b, "cannot allocate memory for harq->b\n");
-  harq->pdu = malloc16(dlsch_bytes);
-  AssertFatal(harq->pdu, "cannot allocate memory for harq->pdu\n");
-  bzero(harq->pdu, dlsch_bytes);
-  nr_emulate_dlsch_payload(harq->pdu, (dlsch_bytes) >> 3);
   bzero(harq->b, dlsch_bytes);
 
   harq->c = (uint8_t **)malloc16(a_segments*sizeof(uint8_t *));
@@ -309,7 +304,7 @@ int nr_dlsch_encoding(PHY_VARS_gNB *gNB,
      * => dlsch_offset should remain a multiple of 64 with enough offset to fit each dlsch
      */
     const size_t dlsch_size = rel15->rbSize * NR_SYMBOLS_PER_SLOT * NR_NB_SC_PER_RB * rel15->qamModOrder[0] * rel15->nrOfLayers;
-    dlsch_offset += (dlsch_size + 63 - ((dlsch_size + 63) % 64));
+    dlsch_offset += ceil_mod(dlsch_size, 64);
   }
 
   gNB->nrLDPC_coding_interface.nrLDPC_coding_encoder(&slot_parameters);

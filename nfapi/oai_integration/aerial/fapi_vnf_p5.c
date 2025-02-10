@@ -38,9 +38,8 @@
 
 extern RAN_CONTEXT_t RC;
 extern UL_RCC_IND_t UL_RCC_INFO;
-extern uint16_t sf_ahead;
-extern uint16_t slot_ahead;
-
+extern int sf_ahead;
+extern int slot_ahead;
 
 void *aerial_vnf_nr_p7_config_init(void *ptr)
 {
@@ -50,7 +49,6 @@ void *aerial_vnf_nr_p7_config_init(void *ptr)
   init_queue(&gnb_rx_ind_queue);
   init_queue(&gnb_crc_ind_queue);
   init_queue(&gnb_uci_ind_queue);
-  init_queue(&gnb_slot_ind_queue);
 
   p7_vnf->config->port = p7_vnf->local_port;
   p7_vnf->config->sync_indication = NULL;
@@ -336,12 +334,6 @@ int aerial_nr_config_resp_cb(nfapi_vnf_config_t *config, int p5_idx, nfapi_nr_co
 int aerial_nr_start_resp_cb(nfapi_vnf_config_t *config, int p5_idx, nfapi_nr_start_response_scf_t *resp)
 {
   NFAPI_TRACE(NFAPI_TRACE_INFO, "[VNF] Received NFAPI_START_RESP idx:%d phy_id:%d\n", p5_idx, resp->header.phy_id);
-  vnf_info *vnf = (vnf_info *)(config->user_data);
-  pnf_info *pnf = vnf->pnfs;
-  phy_info *phy = pnf->phys;
-  vnf_p7_info *p7_vnf = vnf->p7_vnfs;
-
-  nfapi_vnf_p7_add_pnf((p7_vnf->config), phy->remote_addr, phy->remote_port, phy->id);
   return 0;
 }
 

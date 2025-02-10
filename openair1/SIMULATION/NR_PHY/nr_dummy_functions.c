@@ -3,7 +3,7 @@
 #include "openair2/NR_PHY_INTERFACE/NR_IF_Module.h"
 #include "openair2/NR_UE_PHY_INTERFACE/NR_IF_Module.h"
 #include "openair1/PHY/defs_nr_UE.h"
-
+#include "position_interface.h"
 
 int oai_nfapi_dl_tti_req(nfapi_nr_dl_tti_request_t *dl_config_req) { return (0); }
 int oai_nfapi_tx_data_req(nfapi_nr_tx_data_request_t *tx_data_req) { return (0); }
@@ -15,11 +15,13 @@ int oai_nfapi_nr_uci_indication(nfapi_nr_uci_indication_t *ind) { return (0); }
 int oai_nfapi_nr_rach_indication(nfapi_nr_rach_indication_t *ind) { return (0); }
 int oai_nfapi_nr_rx_data_indication(nfapi_nr_rx_data_indication_t *ind) { return 0; }
 
+void handle_nr_slot_ind(uint16_t sfn, uint16_t slot) { }
+
 int pack_nr_srs_beamforming_report(void *pMessageBuf, void *pPackedBuf, uint32_t packedBufLen) { return 0; }
 int unpack_nr_srs_beamforming_report(void *pMessageBuf, uint32_t messageBufLen, void *pUnpackedBuf, uint32_t unpackedBufLen) { return 0; }
 int pack_nr_srs_normalized_channel_iq_matrix(void *pMessageBuf, void *pPackedBuf, uint32_t packedBufLen) { return 0; }
 int unpack_nr_srs_normalized_channel_iq_matrix(void *pMessageBuf, uint32_t messageBufLen, void *pUnpackedBuf, uint32_t unpackedBufLen) { return 0; }
-
+void get_position_coordinates(int Mod_id, position_t *position) {}
 int32_t get_uldl_offset(int nr_bandP) { return (0); }
 
 void configure_nr_nfapi_pnf(char *vnf_ip_addr, int vnf_p5_port, char *pnf_ip_addr, int pnf_p7_port, int vnf_p7_port) {}

@@ -63,9 +63,61 @@
 
 #include "common/utils/alg/find.h"
 
-//#define DEBUG_DCI
+// #define DEBUG_DCI
+//  CQI TABLES (10 times the value in 214 to adequately compare with R)
+//  Table 1 (38.214 5.2.2.1-2)
+static const uint16_t cqi_table1[16][2] = {{0, 0},
+                                           {2, 780},
+                                           {2, 1200},
+                                           {2, 1930},
+                                           {2, 3080},
+                                           {2, 4490},
+                                           {2, 6020},
+                                           {4, 3780},
+                                           {4, 4900},
+                                           {4, 6160},
+                                           {6, 4660},
+                                           {6, 5670},
+                                           {6, 6660},
+                                           {6, 7720},
+                                           {6, 8730},
+                                           {6, 9480}};
 
-extern RAN_CONTEXT_t RC;
+// Table 2 (38.214 5.2.2.1-3)
+static const uint16_t cqi_table2[16][2] = {{0, 0},
+                                           {2, 780},
+                                           {2, 1930},
+                                           {2, 4490},
+                                           {4, 3780},
+                                           {4, 4900},
+                                           {4, 6160},
+                                           {6, 4660},
+                                           {6, 5670},
+                                           {6, 6660},
+                                           {6, 7720},
+                                           {6, 8730},
+                                           {8, 7110},
+                                           {8, 7970},
+                                           {8, 8850},
+                                           {8, 9480}};
+
+// Table 2 (38.214 5.2.2.1-4)
+static const uint16_t cqi_table3[16][2] = {{0, 0},
+                                           {2, 300},
+                                           {2, 500},
+                                           {2, 780},
+                                           {2, 1200},
+                                           {2, 1930},
+                                           {2, 3080},
+                                           {2, 4490},
+                                           {2, 6020},
+                                           {4, 3780},
+                                           {4, 4900},
+                                           {4, 6160},
+                                           {6, 4660},
+                                           {6, 5670},
+                                           {6, 6660},
+                                           {6, 7720}};
 
 uint8_t get_dl_nrOfLayers(const NR_UE_sched_ctrl_t *sched_ctrl,
                           const nr_dci_format_t dci_format) {
@@ -462,23 +514,13 @@ int get_cce_index(const gNB_MAC_INST *nrmac,
 
   const uint32_t Y = is_common ? 0 : get_Y(ss, slot, rnti);
   uint8_t nr_of_candidates;
-  for (int i=0; i<5; i++) {
+  for (int i = 0; i < 5; i++) {
     // for now taking the lowest value among the available aggregation levels
-    find_aggregation_candidates(aggregation_level,
-                                &nr_of_candidates,
-                                ss,
-                                1<<i);
-    if(nr_of_candidates>0)
+    find_aggregation_candidates(aggregation_level, &nr_of_candidates, ss, 1 << i);
+    if(nr_of_candidates > 0)
       break;
   }
-  int CCEIndex = find_pdcch_candidate(nrmac,
-                                      CC_id,
-                                      *aggregation_level,
-                                      nr_of_candidates,
-                                      beam_idx,
-                                      sched_pdcch,
-                                      coreset,
-                                      Y);
+  int CCEIndex = find_pdcch_candidate(nrmac, CC_id, *aggregation_level, nr_of_candidates, beam_idx, sched_pdcch, coreset, Y);
   return CCEIndex;
 }
 
@@ -1822,12 +1864,35 @@ void delete_nr_ue_data(NR_UE_info_t *UE, NR_COMMON_channels_t *ccPtr, uid_alloca
   destroy_nr_list(&sched_ctrl->available_ul_harq);
   destroy_nr_list(&sched_ctrl->feedback_ul_harq);
   destroy_nr_list(&sched_ctrl->retrans_ul_harq);
+  for (int i = 0; i < NR_MAX_HARQ_PROCESSES; ++i)
+    free_transportBlock_buffer(&sched_ctrl->harq_processes[i].transportBlock);
   free_sched_pucch_list(sched_ctrl);
   uid_linear_allocator_free(uia, UE->uid);
   LOG_I(NR_MAC, "Remove NR rnti 0x%04x\n", UE->rnti);
   free(UE);
 }
 
+#define TB_SINGLE_LAYER (32 * 1024)
+uint8_t *allocate_transportBlock_buffer(byte_array_t *tb, uint32_t needed)
+{
+  DevAssert(needed > 0);
+  if (tb->buf != NULL && needed <= tb->len)
+    return tb->buf; // nothing to do, current is enough
+
+  uint32_t size = TB_SINGLE_LAYER;
+  while (needed > size)
+    size *= 2;
+  LOG_D(NR_MAC, "allocating new TB block of size %d\n", size);
+  free(tb->buf);
+  tb->buf = malloc_or_fail(size);
+  tb->len = size;
+  return tb->buf;
+}
+
+void free_transportBlock_buffer(byte_array_t *tb)
+{
+  free_byte_array(*tb);
+}
 
 void set_max_fb_time(NR_UE_UL_BWP_t *UL_BWP, const NR_UE_DL_BWP_t *DL_BWP)
 {
@@ -1881,6 +1946,31 @@ int get_ulbw_tbslbrm(int scc_bwpsize, const NR_ServingCellConfig_t *servingCellC
     }
   }
   return bw;
+}
+
+static void set_sched_pucch_list(NR_UE_sched_ctrl_t *sched_ctrl,
+                                 const NR_UE_UL_BWP_t *ul_bwp,
+                                 const NR_ServingCellConfigCommon_t *scc,
+                                 const frame_structure_t *fs)
+{
+  const int NTN_gNB_Koffset = get_NTN_Koffset(scc);
+  const int n_ul_slots_period = get_ul_slots_per_period(fs);
+
+  // PUCCH list size is given by the number of UL slots in the PUCCH period
+  // the length PUCCH period is determined by max_fb_time since we may need to prepare PUCCH for ACK/NACK max_fb_time slots ahead
+  const int list_size = n_ul_slots_period << (int)ceil(log2((ul_bwp->max_fb_time + NTN_gNB_Koffset) / fs->numb_slots_period + 1));
+
+  if (!sched_ctrl->sched_pucch) {
+    sched_ctrl->sched_pucch = calloc_or_fail(list_size, sizeof(*sched_ctrl->sched_pucch));
+    sched_ctrl->sched_pucch_size = list_size;
+  } else if (list_size > sched_ctrl->sched_pucch_size) {
+    sched_ctrl->sched_pucch = realloc(sched_ctrl->sched_pucch, list_size * sizeof(*sched_ctrl->sched_pucch));
+    for (int i = sched_ctrl->sched_pucch_size; i < list_size; i++) {
+      NR_sched_pucch_t *curr_pucch = &sched_ctrl->sched_pucch[i];
+      memset(curr_pucch, 0, sizeof(*curr_pucch));
+    }
+    sched_ctrl->sched_pucch_size = list_size;
+  }
 }
 
 // main function to configure parameters of current BWP
@@ -2128,7 +2218,7 @@ void configure_UE_BWP(gNB_MAC_INST *nr_mac,
                          NR_UL_DCI_FORMAT_0_0;
 
     set_max_fb_time(UL_BWP, DL_BWP);
-    set_sched_pucch_list(sched_ctrl, UL_BWP, scc);
+    set_sched_pucch_list(sched_ctrl, UL_BWP, scc, &nr_mac->frame_structure);
   }
 
   if(ra) {
@@ -2258,32 +2348,6 @@ NR_UE_info_t *add_new_nr_ue(gNB_MAC_INST *nr_mac, rnti_t rntiP, NR_CellGroupConf
   LOG_D(NR_MAC, "Add NR rnti %x\n", rntiP);
   dump_nr_list(UE_info->list);
   return (UE);
-}
-
-void set_sched_pucch_list(NR_UE_sched_ctrl_t *sched_ctrl,
-                          const NR_UE_UL_BWP_t *ul_bwp,
-                          const NR_ServingCellConfigCommon_t *scc)
-{
-  const int NTN_gNB_Koffset = get_NTN_Koffset(scc);
-  const NR_TDD_UL_DL_Pattern_t *tdd = scc->tdd_UL_DL_ConfigurationCommon ? &scc->tdd_UL_DL_ConfigurationCommon->pattern1 : NULL;
-  const int n_slots_frame = nr_slots_per_frame[ul_bwp->scs];
-  const int nr_slots_period = tdd ? n_slots_frame / get_nb_periods_per_frame(tdd->dl_UL_TransmissionPeriodicity) : n_slots_frame;
-  const int n_ul_slots_period = tdd ? tdd->nrofUplinkSlots + (tdd->nrofUplinkSymbols > 0 ? 1 : 0) : n_slots_frame;
-  // PUCCH list size is given by the number of UL slots in the PUCCH period
-  // the length PUCCH period is determined by max_fb_time since we may need to prepare PUCCH for ACK/NACK max_fb_time slots ahead
-  const int list_size = n_ul_slots_period << (int)ceil(log2((ul_bwp->max_fb_time + NTN_gNB_Koffset) / nr_slots_period + 1));
-  if(!sched_ctrl->sched_pucch) {
-    sched_ctrl->sched_pucch = calloc(list_size, sizeof(*sched_ctrl->sched_pucch));
-    sched_ctrl->sched_pucch_size = list_size;
-  }
-  else if (list_size > sched_ctrl->sched_pucch_size) {
-    sched_ctrl->sched_pucch = realloc(sched_ctrl->sched_pucch, list_size * sizeof(*sched_ctrl->sched_pucch));
-    for(int i=sched_ctrl->sched_pucch_size; i<list_size; i++){
-      NR_sched_pucch_t *curr_pucch = &sched_ctrl->sched_pucch[i];
-      memset(curr_pucch, 0, sizeof(*curr_pucch));
-    }
-    sched_ctrl->sched_pucch_size = list_size;
-  }
 }
 
 void free_sched_pucch_list(NR_UE_sched_ctrl_t *sched_ctrl)
@@ -2436,6 +2500,44 @@ uint8_t nr_get_tpc(int target, uint8_t cqi, int incr, int tx_power)
   return 1; // no change
 }
 
+/**
+ * @brief Limits the power control commands (TPC) in NR by checking the RSSI threshold.
+ *
+ * This function evaluates the received signal strength indicator (RSSI) and adjusts the
+ * transmit power control (TPC) commands accordingly to ensure they remain within acceptable
+ * limits. It helps in maintaining the signal quality and preventing excessive power usage.
+ *
+ * @param rssi The received signal strength indicator value, as defined in FAPI specifications.
+ * @param tpc The transmit power control command to be limited.
+ * @param rssi_threshold RSSI threshold in 0.1 dBm/dBFS, range -1280 to 0
+ * @return The adjusted TPC command after applying the RSSI threshold check.
+ */
+uint8_t nr_limit_tpc(int tpc, int rssi, int rssi_threshold)
+{
+  if (rssi == 0xFFFF) {
+    // RSSI not available, keep tpc
+    return tpc;
+  }
+  // Convert RSSI threshold to FAPI scale
+  const int fapi_rssi_0dBm_or_0dBFS = 1280;
+  int rssi_fapi_threshold = fapi_rssi_0dBm_or_0dBFS + rssi_threshold;
+  // Further limit TPC if above or near RSSI threshold
+  int tpc_to_db[] = {-1, 0, 1, 3};
+  if (rssi > rssi_fapi_threshold) {
+    // RSSI above theshold, reduce power
+    return 0;
+  } else if (rssi + tpc_to_db[tpc] * 10 > rssi_fapi_threshold) {
+    // Cannot apply required TPC, check 1 dB increment
+    if (rssi + 10 > rssi_fapi_threshold) {
+      // Still cannot apply required TPC, keep power
+      return 1;
+    } else {
+      // Can apply 1dB increment, but 3 was requested
+      return 2;
+    }
+  }
+  return tpc;
+}
 
 int get_pdsch_to_harq_feedback(NR_PUCCH_Config_t *pucch_Config,
                                 nr_dci_format_t dci_format,
@@ -2754,7 +2856,7 @@ int nr_mac_get_reconfig_delay_slots(NR_SubcarrierSpacing_t scs)
   /* we previously assumed a specific "slot ahead" value for the PHY processing
    * time. However, we cannot always know it (e.g., third-party PHY), so simply
    * assume a tentative worst-case slot processing time */
-  const uint16_t sl_ahead = 10;
+  const int sl_ahead = 10;
   /* 16ms seems to be the most common: See 38.331 Tab 12.1-1 */
   int delay_ms = NR_RRC_RECONFIGURATION_DELAY_MS + NR_RRC_BWP_SWITCHING_DELAY_MS;
   return (delay_ms << scs) + sl_ahead;
@@ -2918,7 +3020,7 @@ void fapi_beam_index_allocation(NR_ServingCellConfigCommon_t *scc, gNB_MAC_INST 
   }
 }
 
-static inline int get_beam_index(const NR_beam_info_t *beam_info, int frame, int slot, int beam_index, int slots_per_frame)
+static inline int get_beam_index(const NR_beam_info_t *beam_info, int frame, int slot, int slots_per_frame)
 {
   return ((frame * slots_per_frame + slot) / beam_info->beam_duration) % beam_info->beam_allocation_size;
 }
@@ -2929,7 +3031,7 @@ NR_beam_alloc_t beam_allocation_procedure(NR_beam_info_t *beam_info, int frame, 
   if (!beam_info->beam_allocation)
     return (NR_beam_alloc_t) {.new_beam = false, .idx = 0};
 
-  const int index = get_beam_index(beam_info, frame, slot, beam_index, slots_per_frame);
+  const int index = get_beam_index(beam_info, frame, slot, slots_per_frame);
   for (int i = 0; i < beam_info->beams_per_period; i++) {
     NR_beam_alloc_t beam_struct = {.new_beam = false, .idx = i};
     int *beam = &beam_info->beam_allocation[i][index];
@@ -2937,8 +3039,10 @@ NR_beam_alloc_t beam_allocation_procedure(NR_beam_info_t *beam_info, int frame, 
       beam_struct.new_beam = true;
       *beam = beam_index;
     }
-    if (*beam == beam_index)
+    if (*beam == beam_index) {
+      LOG_D(NR_MAC, "%d.%d Using beam structure with index %d for beam %d (%s)\n", frame, slot, beam_struct.idx, beam_index, beam_struct.new_beam ? "new beam" : "old beam");
       return beam_struct;
+    }
   }
 
   return (NR_beam_alloc_t) {.new_beam = false, .idx = -1};
@@ -2948,11 +3052,23 @@ void reset_beam_status(NR_beam_info_t *beam_info, int frame, int slot, int beam_
 {
   if(!new_beam) // need to reset only if the beam was allocated specifically for this instance
     return;
-  const int index = get_beam_index(beam_info, frame, slot, beam_index, slots_per_frame);
+  const int index = get_beam_index(beam_info, frame, slot, slots_per_frame);
   for (int i = 0; i < beam_info->beams_per_period; i++) {
     if (beam_info->beam_allocation[i][index] == beam_index)
       beam_info->beam_allocation[i][index] = -1;
   }
+}
+
+void beam_selection_procedures(gNB_MAC_INST *mac, NR_UE_info_t *UE)
+{
+  RSRP_report_t *rsrp_report = &UE->UE_sched_ctrl.CSI_report.ssb_rsrp_report;
+  // simple beam switching algorithm -> we select beam with highest RSRP from CSI report
+  int new_bf_index = get_fapi_beamforming_index(mac, rsrp_report->resource_id[0]);
+  if (UE->UE_beam_index == new_bf_index)
+    return; // no beam change needed
+
+  LOG_I(NR_MAC, "[UE %x] Switching to beam with ID %d (SSB number %d)\n", UE->rnti, new_bf_index, rsrp_report->resource_id[0]);
+  UE->UE_beam_index = new_bf_index;
 }
 
 void send_initial_ul_rrc_message(int rnti, const uint8_t *sdu, sdu_size_t sdu_len, void *data)

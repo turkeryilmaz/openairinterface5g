@@ -472,7 +472,9 @@ static bool set_fh_io_cfg(struct xran_io_cfg *io_cfg, const paramdef_t *fhip, in
   }
   io_cfg->bbdev_dev[0] = NULL; // BBDev dev name; max devices = 1
   io_cfg->bbdev_mode = XRAN_BBDEV_NOT_USED; // DPDK for BBDev
-  io_cfg->dpdkIoVaMode = 0; // IOVA mode
+  int dpdk_iova_mode_idx = config_paramidx_fromname((paramdef_t *)fhip, nump, ORAN_CONFIG_DPDK_IOVA_MODE);
+  AssertFatal(dpdk_iova_mode_idx >= 0,"Index for dpdk_iova_mode config option not found!");
+  io_cfg->dpdkIoVaMode = config_get_processedint(config_get_if(), (paramdef_t *)&fhip[dpdk_iova_mode_idx]); // IOVA mode
   io_cfg->dpdkMemorySize = *gpd(fhip, nump, ORAN_CONFIG_DPDK_MEM_SIZE)->uptr; // DPDK max memory allocation
 
   /* the following core assignment is needed for rte_eal_init() function within xran library;
@@ -586,7 +588,11 @@ static bool set_fh_init(struct xran_fh_init *fh_init, enum xran_category xran_ca
   }
 
   paramdef_t fhip[] = ORAN_GLOBALPARAMS_DESC;
+  checkedparam_t fhip_CheckParams[] = ORAN_GLOBALPARAMS_CHECK_DESC;
+  static_assert(sizeofArray(fhip) == sizeofArray(fhip_CheckParams),
+		"fhip and fhip_CheckParams should have the same size");
   int nump = sizeofArray(fhip);
+  config_set_checkfunctions(fhip, fhip_CheckParams, nump);
   int ret = config_get(config_get_if(), fhip, nump, CONFIG_STRING_ORAN);
   if (ret <= 0) {
     printf("problem reading section \"%s\"\n", CONFIG_STRING_ORAN);
@@ -764,7 +770,6 @@ static bool set_fh_config(int ru_idx, int num_rus, enum xran_category xran_cat, 
   for (int i = 1; i < oai0->rx_num_channels; ++i)
     DevAssert(oai0->rx_freq[0] == oai0->rx_freq[i]);
   DevAssert(oai0->nr_band > 0);
-  DevAssert(oai0->nr_scs_for_raster > 0);
   AssertFatal(oai0->threequarter_fs == 0, "cannot use three-quarter sampling with O-RAN 7.2 split\n");
 
   paramdef_t FHconfigs[] = ORAN_FH_DESC;

@@ -246,6 +246,56 @@ static void config_common_ue_sa(NR_UE_MAC_INST_t *mac,
 
 }
 
+// computes delay between ue and sat based on SIB19 ephemeris data
+static double calculate_ue_sat_ta(const position_t *position_params, NR_PositionVelocity_r17_t *sat_pos)
+{
+  // get UE position coordinates
+  double posx = position_params->positionX;
+  double posy = position_params->positionY;
+  double posz = position_params->positionZ;
+
+  // get sat position coordinates
+  double posx_0 = (double)sat_pos->positionX_r17 * 1.3;
+  double posy_0 = (double)sat_pos->positionY_r17 * 1.3;
+  double posz_0 = (double)sat_pos->positionZ_r17 * 1.3;
+
+  double distance = sqrt(pow(posx - posx_0, 2) + pow(posy - posy_0, 2) + pow(posz - posz_0, 2));
+  // this computation will ensure 3 decimal precision
+  double ta_ms = round(((distance / SPEED_OF_LIGHT) * 1000) * 1000.0) / 1000.0;
+
+  return ta_ms;
+}
+
+// populate ntn_ta structure from mac
+void configure_ntn_ta(module_id_t module_id, ntn_timing_advance_componets_t *ntn_ta, NR_NTN_Config_r17_t *ntn_Config_r17)
+{
+  position_t position_params = {0};
+  get_position_coordinates(module_id, &position_params);
+
+  // if ephemerisInfo_r17 present in SIB19
+  NR_EphemerisInfo_r17_t *ephemeris_info = ntn_Config_r17->ephemerisInfo_r17;
+  if (ephemeris_info) {
+    NR_PositionVelocity_r17_t *position_velocity = ephemeris_info->choice.positionVelocity_r17;
+    if (position_velocity
+        && (position_velocity->positionX_r17 != 0 || position_velocity->positionY_r17 != 0
+            || position_velocity->positionZ_r17 != 0)) {
+      ntn_ta->N_UE_TA_adj = calculate_ue_sat_ta(&position_params, position_velocity);
+    }
+  }
+  // if cellSpecificKoffset_r17 is present
+  if (ntn_Config_r17->cellSpecificKoffset_r17) {
+    ntn_ta->cell_specific_k_offset = *ntn_Config_r17->cellSpecificKoffset_r17;
+  }
+  // Check if ta_Info_r17 is present and convert directly ta_Common_r17 (is in units of 4.072e-3 µs)
+  if (ntn_Config_r17->ta_Info_r17) {
+    ntn_ta->N_common_ta_adj = ntn_Config_r17->ta_Info_r17->ta_Common_r17 * 4.072e-6;
+    // ta_CommonDrift_r17 (is in units of 0.2e-3 µs/s)
+    if (ntn_Config_r17->ta_Info_r17->ta_CommonDrift_r17)
+      ntn_ta->ntn_ta_commondrift = *ntn_Config_r17->ta_Info_r17->ta_CommonDrift_r17 * 0.2e-3;
+  }
+  ntn_ta->ntn_params_changed = true;
+}
+
 static void config_common_ue(NR_UE_MAC_INST_t *mac,
                              NR_ServingCellConfigCommon_t *scc,
                              int cc_idP)
@@ -421,6 +471,7 @@ static void config_common_ue(NR_UE_MAC_INST_t *mac,
   // NTN Config
   if (scc->ext2) {
     UPDATE_IE(mac->sc_info.ntn_Config_r17, scc->ext2->ntn_Config_r17, NR_NTN_Config_r17_t);
+    configure_ntn_ta(mac->ue_id, &mac->ntn_ta, mac->sc_info.ntn_Config_r17);
   } else {
     asn1cFreeStruc(asn_DEF_NR_NTN_Config_r17, mac->sc_info.ntn_Config_r17);
   }
@@ -1704,17 +1755,19 @@ static void configure_si_schedulingInfo(NR_UE_MAC_INST_t *mac,
   }
 }
 
-void nr_rrc_mac_config_req_sib1(module_id_t module_id,
-                                int cc_idP,
-                                NR_SI_SchedulingInfo_t *si_SchedulingInfo,
-                                NR_SI_SchedulingInfo_v1700_t *si_SchedulingInfo_v1700,
-                                NR_ServingCellConfigCommonSIB_t *scc)
+void nr_rrc_mac_config_req_sib1(module_id_t module_id, int cc_idP, NR_SIB1_t *sib1)
 {
   NR_UE_MAC_INST_t *mac = get_mac_inst(module_id);
   int ret = pthread_mutex_lock(&mac->if_mutex);
   AssertFatal(!ret, "mutex failed %d\n", ret);
+  NR_SI_SchedulingInfo_t *si_SchedulingInfo = sib1->si_SchedulingInfo;
+  NR_SI_SchedulingInfo_v1700_t *si_SchedulingInfo_v1700 = NULL;
+  if (sib1->nonCriticalExtension && sib1->nonCriticalExtension->nonCriticalExtension
+      && sib1->nonCriticalExtension->nonCriticalExtension->nonCriticalExtension) {
+    si_SchedulingInfo_v1700 = sib1->nonCriticalExtension->nonCriticalExtension->nonCriticalExtension->si_SchedulingInfo_v1700;
+  }
+  NR_ServingCellConfigCommonSIB_t *scc = sib1->servingCellConfigCommon;
   AssertFatal(scc, "SIB1 SCC should not be NULL\n");
-
   UPDATE_IE(mac->tdd_UL_DL_ConfigurationCommon, scc->tdd_UL_DL_ConfigurationCommon, NR_TDD_UL_DL_ConfigCommon_t);
   configure_si_schedulingInfo(mac, si_SchedulingInfo, si_SchedulingInfo_v1700);
   mac->n_ta_offset = get_ta_offset(scc->n_TimingAdvanceOffset);
@@ -1748,59 +1801,19 @@ void nr_rrc_mac_config_req_sib1(module_id_t module_id,
   AssertFatal(!ret, "mutex failed %d\n", ret);
 }
 
-// computes delay between ue and sat based on SIB19 ephemeris data
-static double calculate_ue_sat_ta(const position_t *position_params, struct NR_PositionVelocity_r17 *sat_pos)
-{
-  // get UE position coordinates
-  double posx = position_params->positionX;
-  double posy = position_params->positionY;
-  double posz = position_params->positionZ;
-
-  // get sat position coordinates
-  double posx_0 = (double)sat_pos->positionX_r17 * 1.3;
-  double posy_0 = (double)sat_pos->positionY_r17 * 1.3;
-  double posz_0 = (double)sat_pos->positionZ_r17 * 1.3;
-
-  double distance = sqrt(pow(posx - posx_0, 2) + pow(posy - posy_0, 2) + pow(posz - posz_0, 2));
-  // this computation will ensure 3 decimal precision
-  double ta_ms = round(((distance / SPEED_OF_LIGHT) * 1000) * 1000.0) / 1000.0;
-
-  return ta_ms;
-}
-
-void nr_rrc_mac_config_req_sib19_r17(module_id_t module_id, const position_t *pos, NR_SIB19_r17_t *sib19_r17)
+void nr_rrc_mac_config_other_sib(module_id_t module_id, NR_SIB19_r17_t *sib19)
 {
   NR_UE_MAC_INST_t *mac = get_mac_inst(module_id);
   int ret = pthread_mutex_lock(&mac->if_mutex);
   AssertFatal(!ret, "mutex failed %d\n", ret);
-  
-  // update ntn_Config_r17 with received values
-  struct NR_NTN_Config_r17 *ntn_Config_r17 = mac->sc_info.ntn_Config_r17;
-  UPDATE_IE(ntn_Config_r17, sib19_r17->ntn_Config_r17, NR_NTN_Config_r17_t);
 
-  // populate ntn_ta structure from mac
-  // if ephemerisInfo_r17 present in SIB19
-  struct NR_EphemerisInfo_r17 *ephemeris_info = ntn_Config_r17->ephemerisInfo_r17;
-  if (ephemeris_info) {
-    struct NR_PositionVelocity_r17 *position_velocity = ephemeris_info->choice.positionVelocity_r17;
-    if (position_velocity
-        && (position_velocity->positionX_r17 != 0 || position_velocity->positionY_r17 != 0
-            || position_velocity->positionZ_r17 != 0)) {
-      mac->ntn_ta.N_UE_TA_adj = calculate_ue_sat_ta(pos, position_velocity);
-    }
+  if (sib19) {
+    // update ntn_Config_r17 with received values
+    NR_NTN_Config_r17_t *ntn_Config_r17 = mac->sc_info.ntn_Config_r17;
+    UPDATE_IE(ntn_Config_r17, sib19->ntn_Config_r17, NR_NTN_Config_r17_t);
+
+    configure_ntn_ta(mac->ue_id, &mac->ntn_ta, ntn_Config_r17);
   }
-  // if cellSpecificKoffset_r17 is present
-  if (ntn_Config_r17->cellSpecificKoffset_r17) {
-    mac->ntn_ta.cell_specific_k_offset = *ntn_Config_r17->cellSpecificKoffset_r17;
-  }
-  // Check if ta_Info_r17 is present and convert directly ta_Common_r17 (is in units of 4.072e-3 µs)
-  if (ntn_Config_r17->ta_Info_r17) {
-    mac->ntn_ta.N_common_ta_adj = ntn_Config_r17->ta_Info_r17->ta_Common_r17 * 4.072e-6;
-    // ta_CommonDrift_r17 (is in units of 0.2e-3 µs/s)
-    if (ntn_Config_r17->ta_Info_r17->ta_CommonDrift_r17)
-      mac->ntn_ta.ntn_ta_commondrift = *ntn_Config_r17->ta_Info_r17->ta_CommonDrift_r17 * 0.2e-3;
-  }
-  mac->ntn_ta.ntn_params_changed = true;
   ret = pthread_mutex_unlock(&mac->if_mutex);
   AssertFatal(!ret, "mutex failed %d\n", ret);
 }

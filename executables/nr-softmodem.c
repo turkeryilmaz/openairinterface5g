@@ -82,11 +82,11 @@ unsigned short config_frames[4] = {2,9,11,13};
 #include "radio/COMMON/common_lib.h"
 #include "s1ap_eNB.h"
 #include "sctp_eNB_task.h"
-#include "softmodem-bits.h"
 #include "system.h"
 #include "time_meas.h"
 #include "utils.h"
 #include "x2ap_eNB.h"
+#include "openair1/SCHED_NR/sched_nr.h"
 
 pthread_cond_t nfapi_sync_cond;
 pthread_mutex_t nfapi_sync_mutex;
@@ -117,8 +117,7 @@ double rx_gain[MAX_NUM_CCs][4] = {{110,0,0,0},{20,0,0,0}};
 double rx_gain_off = 0.0;
 
 static int tx_max_power[MAX_NUM_CCs]; /* =  {0,0}*/;
-int chain_offset=0;
-extern void *udp_eNB_task(void *args_p);
+int chain_offset = 0;
 int emulate_rf = 0;
 int numerology = 0;
 double cpuf;
@@ -350,7 +349,8 @@ static void get_options(configmodule_interface_t *cfg)
 {
   paramdef_t cmdline_params[] = CMDLINE_PARAMS_DESC_GNB ;
   CONFIG_SETRTFLAG(CONFIG_NOEXITONHELP);
-  get_common_options(cfg, SOFTMODEM_GNB_BIT);
+  IS_SOFTMODEM_GNB = true;
+  get_common_options(cfg);
   config_process_cmdline(cfg, cmdline_params, sizeofArray(cmdline_params), NULL);
   CONFIG_CLEARRTFLAG(CONFIG_NOEXITONHELP);
 }
@@ -397,9 +397,6 @@ void terminate_task(task_id_t task_id, module_id_t mod_id) {
   msg = itti_alloc_new_message (TASK_ENB_APP, 0, TERMINATE_MESSAGE);
   itti_send_msg_to_task (task_id, ENB_MODULE_ID_TO_INSTANCE(mod_id), msg);
 }
-
-//extern void  free_transport(PHY_VARS_gNB *);
-extern void  nr_phy_free_RU(RU_t *);
 
 int stop_L1(module_id_t gnb_id)
 {
@@ -678,27 +675,30 @@ int main( int argc, char **argv ) {
 
 #endif // E2_AGENT
 
+  // wait for F1 Setup Response before starting L1 for real
+  if (NFAPI_MODE != NFAPI_MODE_PNF && (NODE_IS_DU(node_type) || NODE_IS_MONOLITHIC(node_type)))
+    wait_f1_setup_response();
+
+  if (RC.nb_RU > 0)
+    start_NR_RU();
+
+#ifdef ENABLE_AERIAL
+  gNB_MAC_INST *nrmac = RC.nrmac[0];
+  nvIPC_Init(nrmac->nvipc_params_s);
+#endif
+
+  for (int idx = 0; idx < RC.nb_nr_L1_inst; idx++)
+    RC.gNB[idx]->if_inst->sl_ahead = sl_ahead;
 
   if (NFAPI_MODE==NFAPI_MODE_PNF) {
     wait_nfapi_init("main?");
   }
 
-  // wait for F1 Setup Response before starting L1 for real
-  if (NODE_IS_DU(node_type) || NODE_IS_MONOLITHIC(node_type))
-    wait_f1_setup_response();
-
-  if (RC.nb_RU > 0)
-    start_NR_RU();
-#ifdef ENABLE_AERIAL
-  gNB_MAC_INST *nrmac = RC.nrmac[0];
-  nvIPC_Init(nrmac->nvipc_params_s);
-#endif
   if (RC.nb_nr_L1_inst > 0) {
     wait_RUs();
     // once all RUs are ready initialize the rest of the gNBs ((dependence on final RU parameters after configuration)
 
-    for (int idx=0;idx<RC.nb_nr_L1_inst;idx++) RC.gNB[idx]->if_inst->sl_ahead = sl_ahead;
-    if (IS_SOFTMODEM_DOSCOPE || IS_SOFTMODEM_IMSCOPE_ENABLED) {
+    if (IS_SOFTMODEM_DOSCOPE || IS_SOFTMODEM_IMSCOPE_ENABLED || IS_SOFTMODEM_IMSCOPE_RECORD_ENABLED) {
       sleep(1);
       scopeParms_t p;
       p.argc = &argc;
@@ -710,6 +710,11 @@ int main( int argc, char **argv ) {
       }
       if (IS_SOFTMODEM_IMSCOPE_ENABLED) {
         load_softscope("im", &p);
+      }
+      AssertFatal(!(IS_SOFTMODEM_IMSCOPE_ENABLED && IS_SOFTMODEM_IMSCOPE_RECORD_ENABLED),
+                  "Data recoding and ImScope cannot be enabled at the same time\n");
+      if (IS_SOFTMODEM_IMSCOPE_RECORD_ENABLED) {
+        load_module_shlib("imscope_record", NULL, 0, &p);
       }
     }
 

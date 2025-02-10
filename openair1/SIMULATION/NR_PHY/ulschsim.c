@@ -59,7 +59,6 @@ RAN_CONTEXT_t RC;
 int32_t uplink_frequency_offset[MAX_NUM_CCs][4];
 uint64_t downlink_frequency[MAX_NUM_CCs][4];
 
-uint64_t get_softmodem_optmask(void) {return 0;}
 static softmodem_params_t softmodem_params;
 softmodem_params_t *get_softmodem_params(void) {
   return &softmodem_params;
@@ -407,8 +406,10 @@ int main(int argc, char **argv)
   gNB->frame_parms.nb_antennas_rx = n_rx;
 
   nr_phy_config_request_sim(gNB, N_RB_UL, N_RB_UL, mu, Nid_cell, SSB_positions);
+  // TDD configuration
   gNB->gNB_config.tdd_table.tdd_period.value = 6;
-  set_tdd_config_nr(&gNB->gNB_config, mu, 7, 6, 2, 4);
+  do_tdd_config_sim(gNB, mu);
+
   phy_init_nr_gNB(gNB);
 
   //configure UE
@@ -575,7 +576,6 @@ int main(int argc, char **argv)
       printf("\n");
       exit(-1);
 #endif
-
       nr_ulsch_decoding(gNB, frame_parms, frame, subframe, &G, &UE_id, 1);
       bool crc_valid = check_crc(harq_process_gNB->b, lenWithCrc(1, (harq_process_gNB->TBS) << 3), crcType(1, (harq_process_gNB->TBS) << 3));
       if (!crc_valid) {
@@ -600,12 +600,10 @@ int main(int argc, char **argv)
 
   free_nr_ue_ul_harq(UE->ul_harq_processes, NR_MAX_ULSCH_HARQ_PROCESSES, UE->frame_parms.N_RB_UL, UE->frame_parms.nb_antennas_tx);
 
-  int nb_slots_to_set = TDD_CONFIG_NB_FRAMES * (1 << mu) * NR_NUMBER_OF_SUBFRAMES_PER_FRAME;
+  int nb_slots_to_set = (1 << mu) * NR_NUMBER_OF_SUBFRAMES_PER_FRAME;
   for (int i = 0; i < nb_slots_to_set; ++i)
     free(gNB->gNB_config.tdd_table.max_tdd_periodicity_list[i].max_num_of_symbol_per_slot_list);
   free(gNB->gNB_config.tdd_table.max_tdd_periodicity_list);
-
-  free_nrLDPC_coding_interface(&gNB->nrLDPC_coding_interface);
 
   term_nr_ue_signal(UE, 1);
   free(UE);

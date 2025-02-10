@@ -77,8 +77,6 @@ void deref_sched_response(int _)
   LOG_E(PHY, "fatal\n");
   exit(1);
 }
-
-uint64_t get_softmodem_optmask(void) {return 0;}
 static softmodem_params_t softmodem_params;
 softmodem_params_t *get_softmodem_params(void) {
   return &softmodem_params;
@@ -450,13 +448,10 @@ int main(int argc, char **argv)
   frame_parms->freq_range = mu<2 ? FR1 : FR2;
 
   nr_phy_config_request_sim(gNB, N_RB_DL, N_RB_DL, mu, Nid_cell, SSB_positions);
+  // TDD configuration
   gNB->gNB_config.tdd_table.tdd_period.value = 6;
-  if (mu == 0)
-    set_tdd_config_nr(&gNB->gNB_config, mu, 3, 6, 1, 4);
-  else if (mu == 1)
-    set_tdd_config_nr(&gNB->gNB_config, mu, 7, 6, 2, 4);
-  else if (mu == 3)
-    set_tdd_config_nr(&gNB->gNB_config, mu, 27, 6, 12, 4);
+  do_tdd_config_sim(gNB, mu);
+
   phy_init_nr_gNB(gNB);
   frame_parms->ssb_start_subcarrier = 12 * gNB->gNB_config.ssb_table.ssb_offset_point_a.value + ssb_subcarrier_offset;
   initFloatingCoresTpool(ssb_scan_threads, &nrUE_params.Tpool, false, "UE-tpool");
@@ -784,7 +779,7 @@ int main(int argc, char **argv)
 
   free_channel_desc_scm(gNB2UE);
 
-  int nb_slots_to_set = TDD_CONFIG_NB_FRAMES * (1 << mu) * NR_NUMBER_OF_SUBFRAMES_PER_FRAME;
+  int nb_slots_to_set = (1 << mu) * NR_NUMBER_OF_SUBFRAMES_PER_FRAME;
   for (int i = 0; i < nb_slots_to_set; ++i)
     free(gNB->gNB_config.tdd_table.max_tdd_periodicity_list[i].max_num_of_symbol_per_slot_list);
   free(gNB->gNB_config.tdd_table.max_tdd_periodicity_list);

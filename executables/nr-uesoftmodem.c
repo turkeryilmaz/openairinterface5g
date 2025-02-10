@@ -52,6 +52,7 @@
 #include "PHY_INTERFACE/phy_interface_vars.h"
 #include "NR_IF_Module.h"
 #include "openair1/SIMULATION/TOOLS/sim.h"
+#include "openair2/RRC/NR_UE/L2_interface_ue.h"
 
 #ifdef SMBV
 #include "PHY/TOOLS/smbv.h"
@@ -91,7 +92,6 @@ unsigned short config_frames[4] = {2,9,11,13};
 #include "pdcp.h"
 #include "actor.h"
 
-extern const char *duplex_mode[];
 THREAD_STRUCT thread_struct;
 nrUE_params_t nrUE_params = {0};
 
@@ -99,7 +99,6 @@ nrUE_params_t nrUE_params = {0};
 pthread_cond_t nfapi_sync_cond;
 pthread_mutex_t nfapi_sync_mutex;
 int nfapi_sync_var=-1; //!< protected by mutex \ref nfapi_sync_mutex
-uint16_t sf_ahead=6; //??? value ???
 pthread_cond_t sync_cond;
 pthread_mutex_t sync_mutex;
 int sync_var=-1; //!< protected by mutex \ref sync_mutex.
@@ -273,12 +272,13 @@ void init_openair0()
     openair0_cfg[card].tx_num_channels = min(4, frame_parms->nb_antennas_tx);
     openair0_cfg[card].rx_num_channels = min(4, frame_parms->nb_antennas_rx);
 
-    LOG_I(PHY, "HW: Configuring card %d, sample_rate %f, tx/rx num_channels %d/%d, duplex_mode %s\n",
-      card,
-      openair0_cfg[card].sample_rate,
-      openair0_cfg[card].tx_num_channels,
-      openair0_cfg[card].rx_num_channels,
-      duplex_mode[openair0_cfg[card].duplex_mode]);
+    LOG_I(PHY,
+          "HW: Configuring card %d, sample_rate %f, tx/rx num_channels %d/%d, duplex_mode %s\n",
+          card,
+          openair0_cfg[card].sample_rate,
+          openair0_cfg[card].tx_num_channels,
+          openair0_cfg[card].rx_num_channels,
+          duplex_mode_txt[openair0_cfg[card].duplex_mode]);
 
     if (is_sidelink) {
       dl_carrier = frame_parms->dl_CarrierFreq;
@@ -406,8 +406,8 @@ int main(int argc, char **argv)
   // get options and fill parameters from configuration file
 
   get_options(uniqCfg); // Command-line options specific for NRUE
-
-  get_common_options(uniqCfg, SOFTMODEM_5GUE_BIT);
+  IS_SOFTMODEM_5GUE = true;
+  get_common_options(uniqCfg);
   CONFIG_CLEARRTFLAG(CONFIG_NOEXITONHELP);
 
   softmodem_verify_mode(get_softmodem_params());
@@ -503,6 +503,12 @@ int main(int argc, char **argv)
                                     get_softmodem_params()->numerology,
                                     nr_band);
         } else {
+	  MessageDef *msg = NULL;
+	  do {
+	    itti_poll_msg(TASK_MAC_UE, &msg);
+	    if (msg)
+	      process_msg_rcc_to_mac(msg);
+	  } while (msg);
           fapi_nr_config_request_t *nrUE_config = &UE[CC_id]->nrUE_config;
           nr_init_frame_parms_ue(&UE[CC_id]->frame_parms, nrUE_config, mac->nr_band);
         }
@@ -512,6 +518,7 @@ int main(int argc, char **argv)
         for (int i = 0; i < NUM_DL_ACTORS; i++) {
           init_actor(&UE[CC_id]->dl_actors[i], "DL_", -1);
         }
+        init_actor(&UE[CC_id]->ul_actor, "UL_", -1);
         init_nr_ue_vars(UE[CC_id], inst);
 
         if (UE[CC_id]->sl_mode) {
@@ -539,6 +546,11 @@ int main(int argc, char **argv)
     }
     if (IS_SOFTMODEM_IMSCOPE_ENABLED) {
       load_softscope("im", PHY_vars_UE_g[0][0]);
+    }
+    AssertFatal(!(IS_SOFTMODEM_IMSCOPE_ENABLED && IS_SOFTMODEM_IMSCOPE_RECORD_ENABLED),
+                "Data recoding and ImScope cannot be enabled at the same time\n");
+    if (IS_SOFTMODEM_IMSCOPE_RECORD_ENABLED) {
+      load_module_shlib("imscope_record", NULL, 0, PHY_vars_UE_g[0][0]);
     }
 
     for (int inst = 0; inst < NB_UE_INST; inst++) {
@@ -580,6 +592,7 @@ int main(int argc, char **argv)
     }
   }
 
+  free_nrLDPC_coding_interface(&nrLDPC_coding_interface);
   free(pckg);
   return 0;
 }

@@ -72,8 +72,6 @@ const short conjugate2[8]__attribute__((aligned(16))) = {1,-1,1,-1,1,-1,1,-1};
 PHY_VARS_NR_UE *PHY_vars_UE_g[1][1] = { { NULL } };
 uint16_t n_rnti = 0x1234;
 openair0_config_t openair0_cfg[MAX_CARDS];
-
-uint64_t get_softmodem_optmask(void) {return 0;}
 static softmodem_params_t softmodem_params;
 softmodem_params_t *get_softmodem_params(void) {
   return &softmodem_params;
@@ -390,8 +388,9 @@ int main(int argc, char **argv)
 	frame_parms->Ncp = extended_prefix_flag ? EXTENDED : NORMAL;
 	crcTableInit();
 	nr_phy_config_request_sim(gNB, N_RB_DL, N_RB_DL, mu, Nid_cell,SSB_positions);
-        gNB->gNB_config.tdd_table.tdd_period.value = 6;
-        set_tdd_config_nr(&gNB->gNB_config, mu, 7, 6, 2, 4);
+    // TDD configuration
+    gNB->gNB_config.tdd_table.tdd_period.value = 6;
+    do_tdd_config_sim(gNB, mu);
 	phy_init_nr_gNB(gNB);
 	//init_eNB_afterRU();
 	frame_length_complex_samples = frame_parms->samples_per_subframe;
@@ -499,7 +498,8 @@ int main(int argc, char **argv)
   dlsch0_ue->dlsch_config.tbslbrm = Tbslbrm;
 	printf("harq process ue mcs = %d Qm = %d, symb %d\n", dlsch0_ue->dlsch_config.mcs, dlsch0_ue->dlsch_config.qamModOrder, nb_symb_sch);
 
-	unsigned char *test_input=dlsch->harq_process.pdu;
+  uint8_t test_input[TBS / 8 + 4]; // + 3 for CRC + 1 additional byte, see nr_dlsch_encoding()
+  dlsch->harq_process.pdu = test_input;
 	//unsigned char test_input[TBS / 8]  __attribute__ ((aligned(16)));
 	for (i = 0; i < TBS / 8; i++)
 		test_input[i] = (unsigned char) rand();
@@ -621,49 +621,14 @@ int main(int argc, char **argv)
 		}
 	}
 
-	/*LOG_M("txsigF0.m","txsF0", gNB->common_vars.txdataF[0],frame_length_complex_samples_no_prefix,1,1);
-	 if (gNB->frame_parms.nb_antennas_tx>1)
-	 LOG_M("txsigF1.m","txsF1", gNB->common_vars.txdataF[1],frame_length_complex_samples_no_prefix,1,1);*/
-
-	//TODO: loop over slots
-	/*for (aa=0; aa<gNB->frame_parms.nb_antennas_tx; aa++) {
-	 if (gNB_config->subframe_config.dl_cyclic_prefix_type.value == 1) {
-	 PHY_ofdm_mod(gNB->common_vars.txdataF[aa],
-	 txdata[aa],
-	 frame_parms->ofdm_symbol_size,
-	 12,
-	 frame_parms->nb_prefix_samples,
-	 CYCLIC_PREFIX);
-	 } else {
-	 nr_normal_prefix_mod(gNB->common_vars.txdataF[aa],
-	 txdata[aa],
-	 14,
-	 frame_parms);
-	 }
-	 }
-
-	 LOG_M("txsig0.m","txs0", txdata[0],frame_length_complex_samples,1,1);
-	 if (gNB->frame_parms.nb_antennas_tx>1)
-	 LOG_M("txsig1.m","txs1", txdata[1],frame_length_complex_samples,1,1);
-
-
-	 for (i=0; i<frame_length_complex_samples; i++) {
-	 for (aa=0; aa<frame_parms->nb_antennas_tx; aa++) {
-	 r_re[aa][i] = ((double)(((short *)txdata[aa]))[(i<<1)]);
-	 r_im[aa][i] = ((double)(((short *)txdata[aa]))[(i<<1)+1]);
-	 }
-	 }*/
-
   free_channel_desc_scm(gNB2UE);
 
   reset_DLSCH_struct(gNB, &msgDataTx);
 
-  int nb_slots_to_set = TDD_CONFIG_NB_FRAMES * (1 << mu) * NR_NUMBER_OF_SUBFRAMES_PER_FRAME;
+  int nb_slots_to_set = (1 << mu) * NR_NUMBER_OF_SUBFRAMES_PER_FRAME;
   for (int i = 0; i < nb_slots_to_set; ++i)
     free(gNB->gNB_config.tdd_table.max_tdd_periodicity_list[i].max_num_of_symbol_per_slot_list);
   free(gNB->gNB_config.tdd_table.max_tdd_periodicity_list);
-
-  free_nrLDPC_coding_interface(&gNB->nrLDPC_coding_interface);
 
   abortTpool(&gNB->threadPool);
 

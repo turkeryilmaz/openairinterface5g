@@ -724,13 +724,13 @@ int nr_rx_pdsch(PHY_VARS_NR_UE *ue,
       metadata mt = {.frame = proc->frame_rx, .slot = proc->nr_slot_rx };
       int total_valid_res = 0;
       for (int i = startSymbIdx; i < startSymbIdx + nbSymb; i++) {
-        total_valid_res = dl_valid_re[i - 1];
+        total_valid_res += dl_valid_re[i];
       }
       if (UETryLockScopeData(ue, pdschRxdataF_comp, sizeof(c16_t), 1,  total_valid_res, &mt)) {
         size_t offset = 0;
         for (int i = startSymbIdx; i < startSymbIdx + nbSymb; i++) {
-          size_t data_size = sizeof(c16_t) * dl_valid_re[i - i];
-          UEscopeCopyUnsafe(ue, pdschRxdataF_comp, &rxdataF_comp[0][0][rx_size_symbol * i], data_size, offset, i - startSymbIdx);
+          size_t data_size = sizeof(c16_t) * dl_valid_re[i];
+          UEscopeCopyUnsafe(ue, pdschRxdataF_comp, &rxdataF_comp[0][0][rx_size_symbol * i], data_size, offset, i);
           offset += data_size;
         }
         UEunlockScopeData(ue, pdschRxdataF_comp)
@@ -1304,8 +1304,6 @@ static void nr_dlsch_detection_mrc(uint32_t rx_size_symbol,
         rho128_0[i] = simde_mm_adds_epi16(simde_mm_srai_epi16(rho128_0[i],1),simde_mm_srai_epi16(rho128_1[i],1));
       }*/
       }
-      simde_mm_empty();
-      simde_m_empty();
   }
 }
 
@@ -1517,8 +1515,8 @@ uint8_t nr_matrix_inverse(int32_t size,
       //Convert Q15 to floating point
       for (int rtx=0;rtx<size;rtx++) {//row
         for (int ctx=0;ctx<size;ctx++) {//column
-          a44_cpx[ctx][rtx] = ((double)(a44[ctx][rtx])[i].r) / (1 << (shift0 - 1)) + I * ((double)(a44[ctx][rtx])[i].i) / (1 << (shift0 - 1));
-          //if (i<4) printf("a44_cpx(%d,%d)= ((FP %d))%lf+(FP %d)j%lf \n",ctx,rtx,((short *)a44[ctx*size+rtx])[(i<<1)],creal(a44_cpx[ctx*size+rtx]),((short *)a44[ctx*size+rtx])[(i<<1)+1],cimag(a44_cpx[ctx*size+rtx]));
+          a44_cpx[ctx][rtx] =
+              ((double)(a44[ctx][rtx])[i].r) / (1 << (shift0 - 1)) + I * ((double)(a44[ctx][rtx])[i].i) / (1 << (shift0 - 1));
         }
       }
       //Compute Matrix determinant (copy real value only)
@@ -1529,13 +1527,10 @@ uint8_t nr_matrix_inverse(int32_t size,
 
       //Round and convert to Q15 (Out in the same format as Fixed point).
       if (creal(determin_cpx)>0) {//determin of the symmetric matrix is real part only
-        ((short*) ad_bc)[i<<1] = (short) ((creal(determin_cpx)*(1<<(shift0)))+0.5);//
-        //((short*) ad_bc)[(i<<1)+1] = (short) ((cimag(determin_cpx)*(1<<(shift0)))+0.5);//
+        ((short *)ad_bc)[i << 1] = (short)((creal(determin_cpx) * (1 << (shift0))) + 0.5); //
       } else {
-        ((short*) ad_bc)[i<<1] = (short) ((creal(determin_cpx)*(1<<(shift0)))-0.5);//
-        //((short*) ad_bc)[(i<<1)+1] = (short) ((cimag(determin_cpx)*(1<<(shift0)))-0.5);//
+        ((short *)ad_bc)[i << 1] = (short)((creal(determin_cpx) * (1 << (shift0))) - 0.5); //
       }
-      //if (i<4) printf("nr_det_FP= %d+j%d \n",((short*) ad_bc)[i<<1],((short*) ad_bc)[(i<<1)+1]);
       //Compute Inversion of the H^*H matrix (normalized output divide by determinant)
       for (int rtx=0;rtx<size;rtx++) {//row
         k=0;
@@ -1617,8 +1612,6 @@ void nr_conjch0_mult_ch1(int *ch0,
     dl_ch1_128+=1;
     ch0conj_ch1_128+=1;
   }
-  simde_mm_empty();
-  simde_m_empty();
 }
 
 /*

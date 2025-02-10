@@ -33,12 +33,9 @@
 #define _GNU_SOURCE
 #include <pthread.h>
 
-#undef MALLOC //there are two conflicting definitions, so we better make sure we don't use it at all
-
 #include "assertions.h"
 #include <common/utils/LOG/log.h>
 #include <common/utils/system.h>
-#include "rt_profiling.h"
 
 #include "PHY/types.h"
 
@@ -54,13 +51,7 @@
 #include "LAYER2/NR_MAC_COMMON/nr_mac_extern.h"
 #include "LAYER2/NR_MAC_gNB/mac_proto.h"
 
-#undef MALLOC //there are two conflicting definitions, so we better make sure we don't use it at all
-//#undef FRAME_LENGTH_COMPLEX_SAMPLES //there are two conflicting definitions, so we better make sure we don't use it at all
-
 #include "radio/COMMON/common_lib.h"
-
-//#undef FRAME_LENGTH_COMPLEX_SAMPLES //there are two conflicting definitions, so we better make sure we don't use it at all
-
 #include "PHY/LTE_TRANSPORT/if4_tools.h"
 
 #include "PHY/phy_extern.h"
@@ -99,12 +90,6 @@ static void tx_func(processingData_L1tx_t *info)
   int slot_tx = info->slot;
   int frame_rx = info->frame_rx;
   int slot_rx = info->slot_rx;
-  int64_t absslot_tx = info->timestamp_tx / info->gNB->frame_parms.get_samples_per_slot(slot_tx, &info->gNB->frame_parms);
-  int64_t absslot_rx = absslot_tx - info->gNB->RU_list[0]->sl_ahead;
-  if (absslot_rx < 0) {
-    LOG_W(NR_PHY, "Slot ahead %d is larger than absslot_tx %ld. Cannot start TX yet.\n", info->gNB->RU_list[0]->sl_ahead, absslot_tx);
-    return;
-  }
   LOG_D(NR_PHY, "%d.%d running tx_func\n", frame_tx, slot_tx);
   PHY_VARS_gNB *gNB = info->gNB;
   module_id_t module_id = gNB->Mod_id;
@@ -142,8 +127,6 @@ static void tx_func(processingData_L1tx_t *info)
   if (tx_slot_type == NR_DOWNLINK_SLOT || tx_slot_type == NR_MIXED_SLOT || get_softmodem_params()->continuous_tx) {
     start_meas(&info->gNB->phy_proc_tx);
     phy_procedures_gNB_TX(info, frame_tx, slot_tx, 1);
-    const int rt_prof_idx = absslot_rx % RT_PROF_DEPTH;
-    clock_gettime(CLOCK_MONOTONIC, &info->gNB->rt_L1_profiling.return_L1_TX[rt_prof_idx]);
 
     PHY_VARS_gNB *gNB = info->gNB;
     processingData_RU_t syncMsgRU;
@@ -155,9 +138,14 @@ static void tx_func(processingData_L1tx_t *info)
     ru_tx_func((void *)&syncMsgRU);
     stop_meas(&info->gNB->phy_proc_tx);
   }
-  /* this thread is done with the sched_info, decrease the reference counter */
-  LOG_D(NR_PHY, "Calling deref_sched_response for id %d (tx_func) in %d.%d\n", info->sched_response_id, frame_tx, slot_tx);
-  deref_sched_response(info->sched_response_id);
+
+  if (NFAPI_MODE == NFAPI_MONOLITHIC) {
+    /* this thread is done with the sched_info, decrease the reference counter.
+     * This only applies for monolithic; in the PNF, the memory is allocated in
+     * a ring buffer that should never be overwritten (one frame duration). */
+    LOG_D(NR_PHY, "Calling deref_sched_response for id %d (tx_func) in %d.%d\n", info->sched_response_id, frame_tx, slot_tx);
+    deref_sched_response(info->sched_response_id);
+  }
 }
 
 void *L1_rx_thread(void *arg) 
@@ -195,24 +183,6 @@ static void rx_func(processingData_L1_t *info)
   int frame_rx = info->frame_rx;
   int slot_rx = info->slot_rx;
   nfapi_nr_config_request_scf_t *cfg = &gNB->gNB_config;
-  int cumul_samples = gNB->frame_parms.get_samples_per_slot(0, &gNB->frame_parms);
-  int i = 1;
-  for (; i < gNB->frame_parms.slots_per_subframe / 2; i++)
-    cumul_samples += gNB->frame_parms.get_samples_per_slot(i, &gNB->frame_parms);
-  int samples = cumul_samples / i;
-  int64_t absslot_tx = info->timestamp_tx / samples;
-  int64_t absslot_rx = absslot_tx - gNB->RU_list[0]->sl_ahead;
-  int rt_prof_idx = absslot_rx % RT_PROF_DEPTH;
-  clock_gettime(CLOCK_MONOTONIC, &info->gNB->rt_L1_profiling.start_L1_RX[rt_prof_idx]);
-
-  // *******************************************************************
-
-  if (NFAPI_MODE == NFAPI_MODE_PNF) {
-    // I am a PNF and I need to let nFAPI know that we have a (sub)frame tick
-    // LOG_D(PHY, "oai_nfapi_slot_ind(frame:%u, slot:%d) ********\n", frame_rx, slot_rx);
-    handle_nr_slot_ind(frame_rx, slot_rx);
-  }
-  // ****************************************
 
   // RX processing
   int rx_slot_type = nr_slot_select(cfg, frame_rx, slot_rx);
@@ -220,10 +190,10 @@ static void rx_func(processingData_L1_t *info)
     LOG_D(NR_PHY, "%d.%d Starting RX processing\n", frame_rx, slot_rx);
 
     // UE-specific RX processing for subframe n
-    // TODO: check if this is correct for PARALLEL_RU_L1_TRX_SPLIT
-
+    NR_UL_IND_t UL_INFO = {.frame = frame_rx, .slot = slot_rx, .module_id = gNB->Mod_id, .CC_id = gNB->CC_id};
     // Do PRACH RU processing
-    L1_nr_prach_procedures(gNB,frame_rx,slot_rx);
+    UL_INFO.rach_ind.pdu_list = UL_INFO.prach_pdu_indication_list;
+    L1_nr_prach_procedures(gNB, frame_rx, slot_rx, &UL_INFO.rach_ind);
 
     //WA: comment rotation in tx/rx
     if (gNB->phase_comp) {
@@ -242,15 +212,11 @@ static void rx_func(processingData_L1_t *info)
         }
       }
     }
-    phy_procedures_gNB_uespec_RX(gNB, frame_rx, slot_rx);
+    phy_procedures_gNB_uespec_RX(gNB, frame_rx, slot_rx, &UL_INFO);
 
     // Call the scheduler
     start_meas(&gNB->ul_indication_stats);
-    gNB->UL_INFO.frame = frame_rx;
-    gNB->UL_INFO.slot = slot_rx;
-    gNB->UL_INFO.module_id = gNB->Mod_id;
-    gNB->UL_INFO.CC_id = gNB->CC_id;
-    gNB->if_inst->NR_UL_indication(&gNB->UL_INFO);
+    gNB->if_inst->NR_UL_indication(&UL_INFO);
     stop_meas(&gNB->ul_indication_stats);
 
 #ifndef OAI_FHI72
@@ -265,7 +231,6 @@ static void rx_func(processingData_L1_t *info)
 #endif
   }
 
-  clock_gettime(CLOCK_MONOTONIC, &info->gNB->rt_L1_profiling.return_L1_RX[rt_prof_idx]);
 }
 
 static size_t dump_L1_meas_stats(PHY_VARS_gNB *gNB, RU_t *ru, char *output, size_t outputlen) {
@@ -343,7 +308,13 @@ void *nrL1_stats_thread(void *param) {
   return(NULL);
 }
 
-void init_gNB_Tpool(int inst) {
+void init_gNB_Tpool(int inst)
+{
+  AssertFatal(NFAPI_MODE == NFAPI_MODE_PNF || NFAPI_MODE == NFAPI_MONOLITHIC,
+              "illegal NFAPI_MODE %d (%s): it cannot have an L1\n",
+              NFAPI_MODE,
+              nfapi_get_strmode());
+
   PHY_VARS_gNB *gNB;
   gNB = RC.gNB[inst];
   gNB_L1_proc_t *proc = &gNB->proc;
@@ -376,9 +347,8 @@ void init_gNB_Tpool(int inst) {
   // this will be removed when the msgDataTx is not necessary anymore
   gNB->msgDataTx = msgDataTx;
 
-  if ((!get_softmodem_params()->emulate_l1) && (!IS_SOFTMODEM_NOSTATS_BIT) && (NFAPI_MODE!=NFAPI_MODE_VNF) && (NFAPI_MODE != NFAPI_MODE_AERIAL))
-     threadCreate(&proc->L1_stats_thread,nrL1_stats_thread,(void*)gNB,"L1_stats",-1,OAI_PRIORITY_RT_LOW);
-
+  if (!IS_SOFTMODEM_NOSTATS)
+    threadCreate(&proc->L1_stats_thread, nrL1_stats_thread, (void *)gNB, "L1_stats", -1, OAI_PRIORITY_RT_LOW);
 }
 
 void term_gNB_Tpool(int inst) {
@@ -396,8 +366,7 @@ void term_gNB_Tpool(int inst) {
   abortNotifiedFIFO(&gNB->L1_rx_out);
 
   gNB_L1_proc_t *proc = &gNB->proc;
-  if (!get_softmodem_params()->emulate_l1)
-    pthread_join(proc->L1_stats_thread, NULL);
+  pthread_join(proc->L1_stats_thread, NULL);
 }
 
 /// eNB kept in function name for nffapi calls, TO FIX
@@ -405,7 +374,7 @@ void init_eNB_afterRU(void) {
   int inst,ru_id,i,aa;
   PHY_VARS_gNB *gNB;
 
-  for (inst=0; inst<RC.nb_nr_inst; inst++) {
+  for (inst=0; inst<RC.nb_nr_L1_inst; inst++) {
     gNB = RC.gNB[inst];
 
     phy_init_nr_gNB(gNB);
@@ -462,16 +431,10 @@ void init_gNB()
 
     // Register MAC interface module
     AssertFatal((gNB->if_inst = NR_IF_Module_init(inst)) != NULL, "Cannot register interface");
-    LOG_I(NR_PHY, "Registered with MAC interface module (%p)\n", gNB->if_inst);
 
-    // Set function pointers in MAC IF module
+    LOG_I(NR_PHY, "Registered with MAC interface module (%p)\n", gNB->if_inst);
     gNB->if_inst->NR_Schedule_response = nr_schedule_response;
     gNB->if_inst->NR_PHY_config_req = nr_phy_config_request;
-
-    // Clear UL_INFO and set rx/crc indication lists
-    memset((void *)&gNB->UL_INFO, 0, sizeof(gNB->UL_INFO));
-    gNB->UL_INFO.rx_ind.pdu_list = gNB->rx_pdu_list;
-    gNB->UL_INFO.crc_ind.crc_list = gNB->crc_pdu_list;
 
     gNB->prach_energy_counter = 0;
     gNB->chest_time = get_softmodem_params()->chest_time;

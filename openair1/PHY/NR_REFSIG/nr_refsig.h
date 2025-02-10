@@ -45,11 +45,8 @@ void nr_generate_csi_rs(const NR_DL_FRAME_PARMS *frame_parms,
                         const int slot,
                         const csi_mapping_parms_t *phy_csi_parms);
 
-void init_scrambling_luts(void);
 void nr_generate_modulation_table(void);
 
-extern simde__m64 byte2m64_re[256];
-extern simde__m64 byte2m64_im[256];
 extern simde__m128i byte2m128i[256];
 
 int nr_pusch_lowpaprtype1_dmrs_rx(PHY_VARS_gNB *gNB,

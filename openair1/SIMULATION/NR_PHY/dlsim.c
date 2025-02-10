@@ -88,7 +88,6 @@
 #include "openair1/SIMULATION/NR_PHY/nr_unitary_defs.h"
 #include "openair1/SIMULATION/TOOLS/sim.h"
 #include "openair2/RRC/LTE/rrc_vars.h"
-#include "softmodem-bits.h"
 #include "thread-pool.h"
 #include "time_meas.h"
 #include "utils.h"
@@ -108,7 +107,6 @@ int32_t uplink_frequency_offset[MAX_NUM_CCs][4];
 double cpuf;
 char *uecap_file;
 
-uint16_t sl_ahead=0;
 //uint8_t nfapi_mode = 0;
 uint64_t downlink_frequency[MAX_NUM_CCs][4];
 THREAD_STRUCT thread_struct;
@@ -191,7 +189,7 @@ void nr_dlsim_preprocessor(module_id_t module_id,
   /* the following might override the table that is mandated by RRC
    * configuration */
   current_BWP->mcsTableIdx = g_mcsTableIdx;
-  sched_pdsch->time_domain_allocation = get_dl_tda(RC.nrmac[module_id], scc, slot);
+  sched_pdsch->time_domain_allocation = get_dl_tda(RC.nrmac[module_id], slot);
   AssertFatal(sched_pdsch->time_domain_allocation >= 0,"Unable to find PDSCH time domain allocation in list\n");
 
   sched_pdsch->tda_info = get_dl_tda_info(current_BWP,
@@ -623,7 +621,7 @@ int main(int argc, char **argv)
   get_softmodem_params()->phy_test = 1;
   get_softmodem_params()->usim_test = 1;
   get_softmodem_params()->do_ra = 0;
-  set_softmodem_optmask(SOFTMODEM_DLSIM_BIT);
+  IS_SOFTMODEM_DLSIM = true;
 
   if (snr1set==0)
     snr1 = snr0+10;

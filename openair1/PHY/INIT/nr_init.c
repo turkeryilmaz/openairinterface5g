@@ -128,7 +128,8 @@ void phy_init_nr_gNB(PHY_VARS_gNB *gNB)
   load_dftslib();
 
   crcTableInit();
-  init_scrambling_luts();
+  init_byte2m128i();
+  init_byte2bit16();
   init_pucch2_luts();
 
   nr_init_fde(); // Init array for frequency equalization of transform precoding of PUSCH
@@ -136,10 +137,9 @@ void phy_init_nr_gNB(PHY_VARS_gNB *gNB)
   int ret_loader = load_nrLDPC_coding_interface(NULL, &gNB->nrLDPC_coding_interface);
   AssertFatal(ret_loader == 0, "error loading LDPC library\n");
 
-  pthread_mutex_init(&gNB->UL_INFO.crc_rx_mutex, NULL);
-
   gNB->max_nb_pdsch = MAX_MOBILES_PER_GNB;
   init_delay_table(fp->ofdm_symbol_size, MAX_DELAY_COMP, NR_MAX_OFDM_SYMBOL_SIZE, fp->delay_table);
+  init_delay_table(128, MAX_DELAY_COMP, 128, fp->delay_table128);
 
   gNB->bad_pucch = 0;
   if (gNB->TX_AMP == 0)
@@ -197,7 +197,7 @@ void phy_init_nr_gNB(PHY_VARS_gNB *gNB)
   int n_buf = Prx*max_ul_mimo_layers;
 
   int nb_re_pusch = N_RB_UL * NR_NB_SC_PER_RB;
-  int nb_re_pusch2 = ALIGN_UP_16(nb_re_pusch);
+  int nb_re_pusch2 = ceil_mod(nb_re_pusch, 16);
 
   gNB->pusch_vars = (NR_gNB_PUSCH *)malloc16_clear(gNB->max_nb_pusch * sizeof(NR_gNB_PUSCH));
   for (int ULSCH_id = 0; ULSCH_id < gNB->max_nb_pusch; ULSCH_id++) {
@@ -230,8 +230,6 @@ void phy_free_nr_gNB(PHY_VARS_gNB *gNB)
   const int Prx = gNB->gNB_config.carrier_config.num_rx_ant.value;
   const int max_ul_mimo_layers = 4; // taken from phy_init_nr_gNB()
   const int n_buf = Prx * max_ul_mimo_layers;
-
-  pthread_mutex_destroy(&gNB->UL_INFO.crc_rx_mutex);
 
   PHY_MEASUREMENTS_gNB *meas = &gNB->measurements;
   free_and_zero(meas->n0_subband_power);
@@ -295,6 +293,9 @@ void phy_free_nr_gNB(PHY_VARS_gNB *gNB)
     free_and_zero(pusch_vars->llr);
   } // ULSCH_id
   free(gNB->pusch_vars);
+
+  free_nrLDPC_coding_interface(&gNB->nrLDPC_coding_interface);
+
 }
 
 //Adding nr_schedule_handler
