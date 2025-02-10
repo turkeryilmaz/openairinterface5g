@@ -262,7 +262,7 @@ function main() {
             shift;;
        --zmq)
             ZMQ=1
-            CMAKE_CMD="$CMAKE_CMD -DOAI_ZMQ=ON -DOAI_SIMU=OFF"
+            CMAKE_CMD="$CMAKE_CMD -DOAI_ZMQ=ON"
             TARGET_LIST="$TARGET_LIST broker"
             shift;;
        --UE-conf-nvram)
@@ -281,10 +281,11 @@ function main() {
                 "SIMU")
                     HW="OAI_"$2
                     TARGET_LIST="$TARGET_LIST rfsimulator"
+                    CMAKE_CMD="$CMAKE_CMD -DOAI_$2=ON"
                     if [ "$3" == "--zmq" ]; then
                         ZMQ=1
                         # TARGET_LIST="$TARGET_LIST rfsimulator_pub_sub"
-                        CMAKE_CMD="$CMAKE_CMD -DOAI_ZMQ=ON -DOAI_SIMU=OFF"
+                        CMAKE_CMD="$CMAKE_CMD -DOAI_ZMQ=ON"
                         TARGET_LIST="$TARGET_LIST broker"
                         shift 3
                     else 
@@ -511,10 +512,10 @@ function main() {
     if [[ $gNB == 1 || $eNB == 1 || $UE == 1 || $nrUE == 1 || $SIMUS_PHY == 1 || $RU == 1 ]]; then
       # TARGET_LIST="$TARGET_LIST params_libconfig coding rfsimulator dfts params_yaml"
       if [ $ZMQ = 1 ]; then
-        CMAKE_CMD="$CMAKE_CMD -DOAI_ZMQ=ON -DOAI_SIMU=OFF"
+        CMAKE_CMD="$CMAKE_CMD -DOAI_ZMQ=ON"
         TARGET_LIST="$TARGET_LIST broker"
       else 
-        CMAKE_CMD="$CMAKE_CMD -DOAI_ZMQ=OFF -DOAI_SIMU=ON"
+        CMAKE_CMD="$CMAKE_CMD -DOAI_ZMQ=OFF"
       fi
       TARGET_LIST="$TARGET_LIST params_libconfig coding dfts params_yaml rfsimulator"
       
