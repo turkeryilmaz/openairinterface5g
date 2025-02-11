@@ -37,6 +37,17 @@ extern "C" {
                                   const bool      rqi,
                                   const int       pdusession_id);
 
+  /* a simpler callback, for a simpler interface */
+  typedef bool (*gtpCallback2)(void *gtp_callback_data,
+                               ue_id_t ue_id,
+                               int pdu_session_id,
+                               int rb_id,
+                               int qfi,
+                               int rqi,
+                               uint8_t *buf,
+                               int size);
+
+
   typedef struct openAddr_s {
     char originHost[HOST_NAME_MAX];
     char originService[HOST_NAME_MAX];
@@ -77,6 +88,9 @@ extern "C" {
                                gtpv1u_gnb_create_tunnel_resp_t *const create_tunnel_resp_pP,
                                gtpCallback callBack,
                                gtpCallbackSDAP callBackSDAP);
+
+  void gtpu_get_instance_address_and_port(const instance_t instance, uint8_t *addr, int *addr_len, int *port);
+  void gtpu_set_callback2(teid_t teid, gtpCallback2 callback, void *callback_data);
 
   int gtpv1u_delete_ngu_tunnel( const instance_t instance,
                                 gtpv1u_gnb_delete_tunnel_req_t *req);

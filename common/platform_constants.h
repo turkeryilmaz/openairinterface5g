@@ -74,6 +74,9 @@
 #define MAX_DRBS_PER_UE         (32)  /* Maximum number of Data Radio Bearers per UE
                                        * defined for NGAP in TS 38.413 - maxnoofDRBs */
 #define MAX_PDUS_PER_UE         (8)   /* Maximum number of PDU Sessions per UE */
+#define MAX_DRBS_PER_PDU_SESSION 32   /* in 38.331 DRB-Identity is in [1..32]
+                                       * 37.483 9.3.1.16 seems to allow more IDs, not
+                                       * sure where is the truth, let's keep 32 */
 
 #define NB_RB_MBMS_MAX (29 * 16) /* 29 = LTE_maxSessionPerPMCH + 16 = LTE_maxServiceCount from LTE_asn_constant.h */
 

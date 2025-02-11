@@ -88,6 +88,114 @@ void nr_pdcp_submit_sdap_ctrl_pdu(ue_id_t ue_id, rb_id_t sdap_ctrl_pdu_drb, nr_s
   return;
 }
 
+static void nr_sdap_recv_ul_pdu(nr_sdap_entity_t *entity,
+                                uint8_t *buf,
+                                int size,
+                                int rb_id,
+                                bool has_sdap_header)
+{
+  bool is_control = false;
+  int qfi = -1;
+
+  if (has_sdap_header) {
+    qfi = buf[0] & 0x3f;
+    is_control = (buf[0] >> 7) == 0;
+  }
+
+  if (is_control) {
+    /* todo: deal with end marker */
+    LOG_W(SDAP, "end-marker control UL PDU received (qfi %d), discarding\n", qfi);
+    return;
+  }
+
+  // very very dirty hack gloabl var N3GTPUInst
+  instance_t inst = *N3GTPUInst;
+
+  if (has_sdap_header) {
+    buf++;
+    size--;
+  }
+
+  if (size <= 0) {
+    LOG_E(SDAP, "empty buffer received, discard\n");
+    return;
+  }
+
+  gtpv1uSendDirect(inst, entity->ue_id, entity->pdusession_id, buf, size, false, false);
+}
+
+static void nr_sdap_recv_dl_sdu(nr_sdap_entity_t *entity, uint8_t *buf, int size, int rb_id, int qfi)
+{
+  int rb_to_use = entity->default_drb;
+  bool has_header = entity->default_drb_has_sdap_tx;
+
+  /* use configured RB if a mapping exists (37.324 5.2.1) */
+  if (qfi >= 1 && qfi <= SDAP_MAX_QFI && entity->qfi2drb_table[qfi].drb_id > 0) {
+    rb_to_use = entity->qfi2drb_table[qfi].drb_id;
+    has_header = entity->qfi2drb_table[qfi].has_sdap_tx;
+  }
+
+  /* no default drb and no mapping? 37.324 5.2.1 note 1 says undefined behavior:
+   * we choose to reject the SDU */
+  if (rb_to_use == 0) {
+    LOG_E(SDAP, "SDAP SDU rejected, no QoS flow exists for qfi %d\n", qfi);
+    return;
+  }
+
+  uint8_t sdap_buf[size + 1];
+  uint8_t *out_buf;
+  int out_size = size;
+
+  if (has_header) {
+    out_size++;
+    memcpy(sdap_buf + 1, buf, size);
+    /* hardcoded values for the moment */
+    int rdi = 0;
+    int rqi = 0;
+    sdap_buf[0] = (rdi << 7) | (rqi << 6) | qfi;
+    out_buf = sdap_buf;
+  } else {
+    out_buf = buf;
+  }
+
+  entity->deliver_pdu(entity->deliver_pdu_data, rb_to_use, out_buf, out_size);
+}
+
+static void nr_sdap_remove_entity(nr_sdap_entity_t *entity)
+{
+  memset(entity, 0, sizeof(*entity));
+  free(entity);
+}
+
+nr_sdap_entity_t *new_nr_sdap_entity2_gnb(ue_id_t ue_id,
+                                          int pdusession_id,
+                                          void (*deliver_pdu)(void *deliver_pdu_data, int rb_id, uint8_t *buf, int size),
+                                          void *deliver_pdu_data)
+{
+  if (nr_sdap_get_entity(ue_id, pdusession_id)) {
+    LOG_E(SDAP, "SDAP Entity for UE already exists with RNTI/UE ID: %lu and PDU SESSION ID: %d\n", ue_id, pdusession_id);
+    DevAssert(0);
+  }
+
+  nr_sdap_entity_t *sdap_entity = calloc(1, sizeof(nr_sdap_entity_t));
+  AssertFatal(sdap_entity != NULL, "SDAP Entity creation failed, out of memory\n");
+
+  sdap_entity->ue_id = ue_id;
+  sdap_entity->pdusession_id = pdusession_id;
+
+  sdap_entity->recv_sdu = nr_sdap_recv_dl_sdu;
+  sdap_entity->recv_pdu = nr_sdap_recv_ul_pdu;
+  sdap_entity->deliver_pdu = deliver_pdu;
+  sdap_entity->deliver_pdu_data = deliver_pdu_data;
+  sdap_entity->remove = nr_sdap_remove_entity;
+
+  sdap_entity->qfi2drb_map_update = nr_sdap_qfi2drb_map_update;
+  sdap_entity->qfi2drb_map_delete = nr_sdap_qfi2drb_map_del;
+  sdap_entity->qfi2drb_map = nr_sdap_qfi2drb_map;
+
+  return sdap_entity;
+}
+
 static bool nr_sdap_tx_entity(nr_sdap_entity_t *entity,
                               protocol_ctxt_t *ctxt_p,
                               const srb_flag_t srb_flag,

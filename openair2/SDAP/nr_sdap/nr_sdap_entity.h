@@ -79,8 +79,10 @@ void nr_pdcp_submit_sdap_ctrl_pdu(ue_id_t ue_id, rb_id_t sdap_ctrl_pdu_drb, nr_s
 
 typedef struct nr_sdap_entity_s {
   ue_id_t ue_id;
-  rb_id_t default_drb;
   int pdusession_id;
+  rb_id_t default_drb;
+  bool default_drb_has_sdap_rx;
+  bool default_drb_has_sdap_tx;
   qfi2drb_t qfi2drb_table[SDAP_MAX_QFI];
 
   void (*qfi2drb_map_update)(struct nr_sdap_entity_s *entity, uint8_t qfi, rb_id_t drb, bool has_sdap_rx, bool has_sdap_tx);
@@ -114,8 +116,24 @@ typedef struct nr_sdap_entity_s {
                     uint8_t *buf,
                     int size);
 
+  void (*recv_sdu)(struct nr_sdap_entity_s *entity,
+                   uint8_t *buf,
+                   int size,
+                   int rb_id,
+                   int qfi);
+  void (*recv_pdu)(struct nr_sdap_entity_s *entity,
+                   uint8_t *buf,
+                   int size,
+                   int rb_id,
+                   bool has_sdap_header);
+
   /* List of entities */
   struct nr_sdap_entity_s *next_entity;
+
+  void (*deliver_pdu)(void *deliver_pdu_data, int rb_id, uint8_t *buf, int size);
+  void *deliver_pdu_data;
+
+  void (*remove)(struct nr_sdap_entity_s *entity);
 } nr_sdap_entity_t;
 
 /* QFI to DRB Mapping Related Function */
@@ -154,6 +172,11 @@ rb_id_t nr_sdap_map_ctrl_pdu(nr_sdap_entity_t *entity, rb_id_t pdcp_entity, int 
  * Submit the end-marker control PDU to the lower layer.
  */
 void nr_sdap_submit_ctrl_pdu(ue_id_t ue_id, rb_id_t sdap_ctrl_pdu_drb, nr_sdap_ul_hdr_t ctrl_pdu);
+
+nr_sdap_entity_t *new_nr_sdap_entity2_gnb(ue_id_t ue_id,
+                                          int pdusession_id,
+                                          void (*deliver_pdu)(void *deliver_pdu_data, int rb_id, uint8_t *buf, int size),
+                                          void *deliver_pdu_data);
 
 /*
  * TS 37.324 4.4 5.1.1 SDAP entity establishment

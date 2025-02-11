@@ -118,6 +118,8 @@ typedef struct {
   gtpCallback callBack;
   teid_t outgoing_teid;
   gtpCallbackSDAP callBackSDAP;
+  gtpCallback2 callback2;
+  void *callback2_data;
   int pdusession_id;
 } ueidData_t;
 
@@ -604,6 +606,7 @@ teid_t newGtpuCreateTunnel(instance_t instance,
   globGtp.te2ue_mapping[incoming_teid].outgoing_teid = outgoing_teid;
   globGtp.te2ue_mapping[incoming_teid].callBack = callBack;
   globGtp.te2ue_mapping[incoming_teid].callBackSDAP = callBackSDAP;
+  globGtp.te2ue_mapping[incoming_teid].callback2 = NULL;
   globGtp.te2ue_mapping[incoming_teid].pdusession_id = (uint8_t)outgoing_bearer_id;
 
   gtpv1u_bearer_t *tmp=&inst->ue2te_mapping[ue_id].bearers[outgoing_bearer_id];
@@ -768,6 +771,35 @@ int gtpv1u_create_ngu_tunnel(const instance_t instance,
   }
 
   return !GTPNOK;
+}
+
+void gtpu_get_instance_address_and_port(const instance_t instance, uint8_t *addr, int *addr_len, int *port)
+{
+  getInstRetVoid(compatInst(instance));
+
+  pthread_mutex_lock(&globGtp.gtp_lock);
+  *port = inst->get_dstport();
+  memcpy(addr, inst->foundAddr, inst->foundAddrLen);
+  *addr_len = inst->foundAddrLen;
+  pthread_mutex_unlock(&globGtp.gtp_lock);
+}
+
+void gtpu_set_callback2(teid_t teid, gtpCallback2 callback, void *callback_data)
+{
+  pthread_mutex_lock(&globGtp.gtp_lock);
+
+  auto tunnel = globGtp.te2ue_mapping.find(teid);
+
+  if (tunnel == globGtp.te2ue_mapping.end()) {
+    LOG_E(GTPU,"unknown teid (%x), cannot setup callback\n", teid);
+    pthread_mutex_unlock(&globGtp.gtp_lock);
+    return;
+  }
+
+  globGtp.te2ue_mapping[teid].callback2 = callback;
+  globGtp.te2ue_mapping[teid].callback2_data = callback_data;
+
+  pthread_mutex_unlock(&globGtp.gtp_lock);
 }
 
 int gtpv1u_update_ue_id(const instance_t instanceP, ue_id_t old_ue_id, ue_id_t new_ue_id)
@@ -1161,34 +1193,46 @@ static int Gtpv1uHandleGpdu(int h,
   pthread_mutex_unlock(&globGtp.gtp_lock);
 
   if (sdu_buffer_size > 0) {
-    if (qfi != -1 && tunnel->second.callBackSDAP) {
-      if ( !tunnel->second.callBackSDAP(&ctxt,
-                                        tunnel->second.ue_id,
-                                        srb_flag,
-                                        rb_id,
-                                        mui,
-                                        confirm,
-                                        sdu_buffer_size,
-                                        sdu_buffer,
-                                        mode,
-                                        &sourceL2Id,
-                                        &destinationL2Id,
-                                        qfi,
-                                        rqi,
-                                        tunnel->second.pdusession_id) )
+    if (tunnel->second.callback2) {
+      if (!tunnel->second.callback2(tunnel->second.callback2_data,
+                                    tunnel->second.ue_id,
+                                    tunnel->second.pdusession_id,
+                                    rb_id,
+                                    qfi,
+                                    rqi,
+                                    sdu_buffer,
+                                    sdu_buffer_size))
         LOG_E(GTPU,"[%d] down layer refused incoming packet\n", h);
     } else {
-      if ( !tunnel->second.callBack(&ctxt,
-                                    srb_flag,
-                                    rb_id,
-                                    mui,
-                                    confirm,
-                                    sdu_buffer_size,
-                                    sdu_buffer,
-                                    mode,
-                                    &sourceL2Id,
-                                    &destinationL2Id) )
-        LOG_E(GTPU,"[%d] down layer refused incoming packet\n", h);
+      if (qfi != -1 && tunnel->second.callBackSDAP) {
+        if ( !tunnel->second.callBackSDAP(&ctxt,
+                                          tunnel->second.ue_id,
+                                          srb_flag,
+                                          rb_id,
+                                          mui,
+                                          confirm,
+                                          sdu_buffer_size,
+                                          sdu_buffer,
+                                          mode,
+                                          &sourceL2Id,
+                                          &destinationL2Id,
+                                          qfi,
+                                          rqi,
+                                          tunnel->second.pdusession_id) )
+          LOG_E(GTPU,"[%d] down layer refused incoming packet\n", h);
+      } else {
+        if ( !tunnel->second.callBack(&ctxt,
+                                      srb_flag,
+                                      rb_id,
+                                      mui,
+                                      confirm,
+                                      sdu_buffer_size,
+                                      sdu_buffer,
+                                      mode,
+                                      &sourceL2Id,
+                                      &destinationL2Id) )
+          LOG_E(GTPU,"[%d] down layer refused incoming packet\n", h);
+      }
     }
   }
 
