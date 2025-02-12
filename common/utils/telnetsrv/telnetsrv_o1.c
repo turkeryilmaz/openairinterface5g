@@ -77,13 +77,8 @@ typedef struct ue_stat {
     } \
   } \
 
-static int get_stats(char *buf, int debug, telnet_printfunc_t prnt)
+static int get_du_stats(telnet_printfunc_t prnt, gNB_MAC_INST *mac)
 {
-  if (buf)
-    ERROR_MSG_RET("no parameter allowed\n");
-
-  gNB_MAC_INST *mac = RC.nrmac[0];
-  AssertFatal(mac != NULL, "need MAC\n");
   NR_SCHED_LOCK(&mac->sched_lock);
 
   const f1ap_setup_req_t *sr = mac->f1_config.setup_req;
@@ -194,7 +189,20 @@ static int get_stats(char *buf, int debug, telnet_printfunc_t prnt)
     prnt("  }\n");
   prnt("}\n");
   prnt("OK\n");
+
   NR_SCHED_UNLOCK(&mac->sched_lock);
+}
+
+static int get_stats(char *buf, int debug, telnet_printfunc_t prnt)
+{
+  if (buf)
+    ERROR_MSG_RET("no parameter allowed\n");
+
+  gNB_MAC_INST *mac = RC.nrmac ? RC.nrmac[0] : NULL;
+  bool is_du = mac != NULL;
+  if (is_du)
+    get_du_stats(prnt, mac);
+
   return 0;
 }
 
