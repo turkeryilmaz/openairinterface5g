@@ -30,7 +30,7 @@ endif()
 
 add_boolean_option(OAI_SIMU ON "Activate OAI's rfsimulator driver" OFF)
 add_boolean_option(OAI_ZMQ ON "Activate OAI's rfsimulator pub sub driver" OFF)
-if(OAI_SIMU OR OAI_ZMQ)
+if(OAI_SIMU)
   add_subdirectory(rfsimulator)
 endif()
 
