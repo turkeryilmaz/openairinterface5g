@@ -37,7 +37,9 @@
 #include "openair2/RRC/NR/nr_rrc_config.h"
 #include "openair2/LAYER2/NR_MAC_gNB/mac_proto.h"
 #include "openair2/LAYER2/nr_rlc/nr_rlc_oai_api.c"
+#include "openair2/RRC/NR/nr_rrc_defs.h"
 #include "common/utils/nr/nr_common.h"
+#include "common/ngran_types.h"
 
 #define ERROR_MSG_RET(mSG, aRGS...) do { prnt("FAILURE: " mSG, ##aRGS); return 1; } while (0)
 
@@ -63,6 +65,13 @@
 #define SSBOFF  "nrcelldu3gpp:ssbOffset"
 #define SSBDUR  "nrcelldu3gpp:ssbDuration"
 
+#define PMAX "nrfreqrel3gpp:pMax"
+#define CELLLOCALID "nrcellcu3gpp:cellLocalId"
+#define CU_MCC "nrcellcu3gpp:mcc"
+#define CU_MNC "nrcellcu3gpp:mnc"
+#define CU_SST "nrcellcu3gpp:sst"
+#define CU_SD  "nrcellcu3gpp:sd"
+
 typedef struct b {
   long int dl;
   long int ul;
@@ -81,7 +90,55 @@ typedef struct ue_stat {
     } \
   } \
 
-static int get_du_stats(telnet_printfunc_t prnt, gNB_MAC_INST *mac)
+/* Tree management functions */
+static int du_compare(const nr_rrc_du_container_t *a, const nr_rrc_du_container_t *b)
+{
+  if (a->assoc_id > b->assoc_id)
+    return 1;
+  if (a->assoc_id == b->assoc_id)
+    return 0;
+  return -1; /* a->assoc_id < b->assoc_id */
+}
+
+RB_GENERATE/*_STATIC*/(rrc_du_tree, nr_rrc_du_container_t, entries, du_compare);
+static void get_cu_stats(telnet_printfunc_t prnt, gNB_RRC_INST *rrc)
+{
+  /* This is not thread safe; we just read, so hope for the best */
+
+  prnt("{\n");
+    prnt("  \"o1-config\": {\n");
+    prnt("    \"NRCELLCU\": [\n"); // list?
+
+    nr_rrc_du_container_t *it = NULL;
+    bool first = true;
+    RB_FOREACH (it, rrc_du_tree, &rrc->dus) {
+
+      const f1ap_served_cell_info_t *ci = &it->setup_req->cell[0].info;
+      if (!first)
+        prnt(",\n");
+      prnt("      {\n");
+      prnt("        \""CELLLOCALID"\": %d,\n", ci->nr_cellid);
+      prnt("        \""CU_MCC"\": \"%03d\",\n", ci->plmn.mcc);
+      prnt("        \""CU_MNC"\": \"%0*d\",\n", ci->plmn.mnc_digit_length, ci->plmn.mnc);
+      prnt("        \""CU_SST"\": %0*d,\n", ci->nssai[0].sst);
+      prnt("        \""CU_SD "\": %0*d\n", ci->nssai[0].sd);
+      prnt("      }");
+      first = false;
+    }
+    prnt("\n    ],\n");
+
+    prnt("    \"device\": {\n");
+    prnt("      \"gNBId\": %d,\n", rrc->node_id);
+    prnt("      \"gnbName\": \"%s\",\n", rrc->node_name);
+    prnt("      \"vendor\": \"OpenAirInterface\"\n");
+    prnt("    }\n");
+    prnt("  }\n");
+
+  prnt("}\n");
+  prnt("OK\n");
+}
+
+static void get_du_stats(telnet_printfunc_t prnt, gNB_MAC_INST *mac)
 {
   NR_SCHED_LOCK(&mac->sched_lock);
 
@@ -206,9 +263,13 @@ static int get_stats(char *buf, int debug, telnet_printfunc_t prnt)
   if (buf)
     ERROR_MSG_RET("no parameter allowed\n");
 
+  gNB_RRC_INST *rrc = RC.nrrrc[0];
+  bool is_cu = rrc != NULL && (NODE_IS_MONOLITHIC(rrc->node_type) || NODE_IS_CU(rrc->node_type));
   gNB_MAC_INST *mac = RC.nrmac ? RC.nrmac[0] : NULL;
   bool is_du = mac != NULL;
-  if (is_du)
+  if (is_cu)
+    get_cu_stats(prnt, rrc);
+  else if (is_du)
     get_du_stats(prnt, mac);
 
   return 0;
