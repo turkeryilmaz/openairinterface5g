@@ -274,28 +274,23 @@ function main() {
                     HW="OAI_"$2
                     TARGET_LIST="$TARGET_LIST rfsimulator rfsimulator_zmq broker"
                     CMAKE_CMD="$CMAKE_CMD -DOAI_$2=ON"
-                    shift 2
                     ;;
                 "AW2SORI")
                     HW="OAI_"$2
                     TARGET_LIST="$TARGET_LIST aw2sori_transpro"
                     CMAKE_CMD="$CMAKE_CMD -DOAI_$2=ON"
-                    shift 2
                     ;;
                 "AERIAL"|"Aerial"|"aerial")
                     HW="OAI_AERIAL"
                     CMAKE_CMD="$CMAKE_CMD -DOAI_AERIAL=ON"
-                    shift 2
                     ;;
                 "None")
-                    shift 2
                     ;;
                 *)
                     echo_fatal "Unknown hardware type $2: exit..."
-                    shift 2
                     ;;
             esac
-            ;;
+            shift 2;;
        -t | --transport)
             case "$2" in
               "Ethernet")
