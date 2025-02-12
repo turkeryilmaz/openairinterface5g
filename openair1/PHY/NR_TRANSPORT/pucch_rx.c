@@ -1298,8 +1298,8 @@ void nr_decode_pucch2(PHY_VARS_gNB *gNB,
       decoderState = 1;
     corr_dB = dB_fixed64(corr);
     LOG_D(PHY, "metric %d dB\n", corr_dB);
-  } else
-    LOG_E(PHY, "PUCCH not processed: nb_bit %d decoderState %d\n", nb_bit, decoderState);
+  } /*else
+    LOG_E(PHY, "PUCCH not processed: nb_bit %d decoderState %d slot %d\n", nb_bit, decoderState, slot);*/
 
   LOG_D(PHY, "UCI decoderState %d, payload[0] %llu\n", decoderState, (unsigned long long)decodedPayload[0]);
 

@@ -31,13 +31,8 @@
 #include "common/utils/LOG/log.h"
 #include "common/utils/LOG/vcd_signal_dumper.h"
 #include "openair1/PHY/defs_gNB.h"
+#include "common/utils/threadPool/thread-pool.h"
 #include "oaioran.h"
-#include "oran-config.h"
-
-// include the following file for VERSIONX, version of xran lib, to print it during
-// startup. Only relevant for printing, if it ever makes problem, remove this
-// line and the use of VERSIONX further below. It is relative to phy/fhi_lib/lib/api
-#include "../../app/src/common.h"
 
 typedef struct {
   eth_state_t e;
@@ -175,14 +170,14 @@ int trx_oran_ctlrecv(openair0_device *device, void *msg, ssize_t msg_len)
     cap = (RRU_capabilities_t *)&rru_config_msg->msg[0];
     cap->FH_fmt = OAI_IF4p5_only;
     cap->num_bands = 1;
-    cap->band_list[0] = 78;
+    cap->band_list[0] = 257; //78;
     // cap->num_concurrent_bands             = 1; component carriers
-    cap->nb_rx[0] = 1; // device->openair0_cfg->rx_num_channels;
-    cap->nb_tx[0] = 1; // device->openair0_cfg->tx_num_channels;
+    cap->nb_rx[0] = 2; // device->openair0_cfg->rx_num_channels;
+    cap->nb_tx[0] = 2; // device->openair0_cfg->tx_num_channels;
     cap->max_pdschReferenceSignalPower[0] = -27;
     cap->max_rxgain[0] = 90;
-    cap->N_RB_DL[0] = 106;
-    cap->N_RB_UL[0] = 106;
+    cap->N_RB_DL[0] = 66;
+    cap->N_RB_UL[0] = 66;
 
     s->capabilities_sent = 1;
 
@@ -202,9 +197,27 @@ void oran_fh_if4p5_south_in(RU_t *ru, int *frame, int *slot)
   ru_info.rxdataF = ru->common.rxdataF;
   ru_info.prach_buf = ru->prach_rxsigF[0]; // index: [prach_oca][ant_id]
 
+
+
+      PHY_VARS_gNB **gNB_list = ru->gNB_list, *gNB;
+     // if (ru->num_gNB == 1){
+        //gNB = gNB_list[0];
+        //printf(" #################################### COPY THE LIST OF BEAMS\n\n");
+        //ru_info.beamID = gNB->common_vars.beam_id;
+        //printf("slot %d beam %d\n", *slot, ru_info.beamID[0][*slot*14]);
+      /*for (int i=0;i<2;i++){
+        for (int s=0; s<80;s++){
+            printf("#slot %d port %d beam %u\n", s, i, ru_info.beamID[i][s]);
+        }
+      }*/
+      //}
+
   RU_proc_t *proc = &ru->proc;
   extern int sl_ahead;
   int f, sl;
+
+
+
   LOG_D(PHY, "Read rxdataF %p,%p\n", ru_info.rxdataF[0], ru_info.rxdataF[1]);
   start_meas(&ru->rx_fhaul);
   int ret = xran_fh_rx_read_slot(&ru_info, &f, &sl);
@@ -214,12 +227,32 @@ void oran_fh_if4p5_south_in(RU_t *ru, int *frame, int *slot)
     printf("ORAN: %d.%d ORAN_fh_if4p5_south_in ERROR in RX function \n", f, sl);
   }
 
-  int slots_per_frame = 10 << (ru->openair0_cfg.nr_scs_for_raster);
+  int slots_per_frame = 80; // 10 << (ru->openair0_cfg.nr_scs_for_raster);
   proc->tti_rx = sl;
   proc->frame_rx = f;
   proc->tti_tx = (sl + sl_ahead) % slots_per_frame;
   proc->frame_tx = (sl > (slots_per_frame - 1 - sl_ahead)) ? (f + 1) & 1023 : f;
 
+  if (ru->common.beam_id){
+   //ru_info.beamID = ru->common.beam_id;  // ru->common.beam_id[i][slot_tx * fp->symbols_per_slot] //14 hardcoed for now
+    gNB = gNB_list[0];
+  for (int i = 0; i < 80*14; i++) //80 hardcoded for now
+  {
+    if (ru->common.beam_id[0][i] != -1){
+    nfapi_nr_dig_beam_t *beam = &gNB->gNB_config.dbt_config.dig_beam_list[ru->common.beam_id[0][i]];
+    //printf("before: ru->common.beam_id[0][%d] %d slot %d symbol %d \n", i, ru->common.beam_id[0][i], proc->tti_tx, i%14);
+    ru_info.beamID[0][i] = beam->txru_list[0].dig_beam_weight_Re;
+    //if (i%14 ==0 && ru->common.beam_id[0][i] == 0)
+    //printf("slot %d symbol %d beam index %d beam RU %d\n", proc->tti_tx , i%14, ru->common.beam_id[0][i], ru_info.beamID[0][i]);
+    }else{
+    ru_info.beamID[0][i] = 1;
+    //printf("slot %d symbol %d beam index %d beam RU %d\n", proc->tti_tx , i%14, ru->common.beam_id[0][i], ru_info.beamID[0][i]);
+
+    }
+  }
+    update_beams_ctx(ru_info.beamID); 
+  }
+  //printf("received %d.%d, expected %d.%d\n", proc->frame_rx,proc->tti_rx,*frame,*slot);
   if (proc->first_rx == 0) {
     if (proc->tti_rx != *slot) {
       LOG_E(PHY,
@@ -240,12 +273,14 @@ void oran_fh_if4p5_south_in(RU_t *ru, int *frame, int *slot)
             *slot);
       *frame = proc->frame_rx;
     }
+
   } else {
     proc->first_rx = 0;
     LOG_I(PHY, "before adjusting, OAI: frame=%d slot=%d, XRAN: frame=%d slot=%d\n", *frame, *slot, proc->frame_rx, proc->tti_rx);
     *frame = proc->frame_rx;
     *slot = proc->tti_rx;
     LOG_I(PHY, "After adjusting, OAI: frame=%d slot=%d, XRAN: frame=%d slot=%d\n", *frame, *slot, proc->frame_rx, proc->tti_rx);
+
   }
 }
 
@@ -311,22 +346,14 @@ __attribute__((__visibility__("default"))) int transport_init(openair0_device *d
   eth->oran_priv = NULL; // define_oran_pointer();
   device->priv = eth;
   device->openair0_cfg = &openair0_cfg[0];
+  
 
   eth->last_msg = (rru_config_msg_type_t)-1;
 
-  LOG_I(HW, "Initializing O-RAN 7.2 FH interface through xran library (compiled against headers of %s)\n", VERSIONX);
+  printf("ORAN: %s\n", __FUNCTION__);
 
   initNotifiedFIFO(&oran_sync_fifo);
-
-  struct xran_fh_init fh_init = {0};
-  struct xran_fh_config fh_config[XRAN_PORTS_NUM] = {0};
-#ifndef OAI_MPLANE_SUPPORT
-  bool success = get_xran_config(openair0_cfg, &fh_init, fh_config);
-  AssertFatal(success, "cannot get configuration for xran\n");
-#else
-  /* TODO: M-plane integration */
-#endif
-  eth->oran_priv = oai_oran_initialize(&fh_init, fh_config);
+  eth->oran_priv = oai_oran_initialize(openair0_cfg);
   AssertFatal(eth->oran_priv != NULL, "can not initialize fronthaul");
   // create message queues for ORAN sync
   return 0;

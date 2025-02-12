@@ -65,7 +65,7 @@ int beam_index_allocation(int fapi_beam_index, NR_gNB_COMMON *common_vars, int s
     if (idx != -1)
       break;
   }
-  AssertFatal(idx >= 0, "Couldn't allocate beam ID %d\n", fapi_beam_index);
+  AssertFatal(idx >= 0, "Couldn't allocate beam ID %d in slot %d\n", fapi_beam_index,slot);
   for (int j = 0; j < symbols_per_slot; j++) {
     if (((bitmap_symbols >> j) & 0x01))
       common_vars->beam_id[idx][slot * symbols_per_slot + j] = fapi_beam_index;

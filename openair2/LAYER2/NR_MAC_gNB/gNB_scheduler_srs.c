@@ -476,6 +476,7 @@ static void nr_configure_srs(nfapi_nr_srs_pdu_t *srs_pdu,
                                                    slot,
                                                    UE->UE_beam_index,
                                                    nr_slots_per_frame[current_BWP->scs]);
+  LOG_D(NR_MAC,"beam_allocation_procedure [SRS] slot %d.%d beam %d\n", frame, slot, UE->UE_beam_index);
   AssertFatal(beam.idx >= 0, "Cannot allocate SRS in any available beam\n");
   uint16_t *vrb_map_UL = &RC.nrmac[module_id]->common_channels[CC_id].vrb_map_UL[beam.idx][buffer_index * MAX_BWP_SIZE];
   uint64_t mask = SL_to_bitmap(srs_pdu->time_start_position, srs_pdu->num_symbols);

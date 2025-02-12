@@ -43,10 +43,12 @@ typedef struct ru_info_s {
 
   // Needed for Prach
   int16_t **prach_buf;
+  int beamID[2][1120]; // 80 hardcoded for now
 } ru_info_t;
 
 int xran_fh_rx_read_slot(ru_info_t *ru, int *frame, int *slot);
 int xran_fh_tx_send_slot(ru_info_t *ru, int frame, int slot, uint64_t timestamp);
+int update_beams_ctx(int beamID[2][1120]);
 
 int compute_xran_statistics();
 

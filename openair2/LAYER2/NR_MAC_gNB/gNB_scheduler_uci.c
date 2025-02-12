@@ -267,6 +267,8 @@ void nr_csi_meas_reporting(int Mod_idP,frame_t frame, sub_frame_t slot)
 
       // going through the list of PUCCH resources to find the one indexed by resource_id
       NR_beam_alloc_t beam = beam_allocation_procedure(&nrmac->beam_info, sched_frame, sched_slot, UE->UE_beam_index, n_slots_frame);
+      LOG_D(NR_MAC,"beam_allocation_procedure [CSI] slot %d.%d UE %d beam %d\n", sched_frame, sched_slot, UE->rnti, UE->UE_beam_index);
+
       AssertFatal(beam.idx >= 0, "Cannot allocate CSI measurements on PUCCH in any available beam\n");
       const int index = ul_buffer_index(sched_frame, sched_slot, ul_bwp->scs, nrmac->vrb_map_UL_size);
       uint16_t *vrb_map_UL = &nrmac->common_channels[0].vrb_map_UL[beam.idx][index * MAX_BWP_SIZE];
@@ -467,7 +469,7 @@ static void evaluate_rsrp_report(gNB_MAC_INST *nrmac,
     int bitlen = csi_report->CSI_report_bitlen.cri_ssbri_bitlen;
     curr_payload = pickandreverse_bits(payload, bitlen, *cumul_bits);
     rsrp_report->resource_id[i] = *(index_list[bitlen > 0 ? ((curr_payload) & ~(~1U << (bitlen - 1))) : bitlen]);
-    LOG_D(MAC,"SSB/CSI-RS index = %d\n", rsrp_report->resource_id[i]);
+    LOG_D(MAC,"SSB/CSI-RS i = %d index = %d\n", i, rsrp_report->resource_id[i]);
     *cumul_bits += bitlen;
   }
 
@@ -1078,6 +1080,8 @@ int nr_acknack_scheduling(gNB_MAC_INST *mac,
       // checking if in ul_slot the resources potentially to be assigned to this PUCCH are available
       set_pucch_allocation(ul_bwp, r_pucch, bwp_size, curr_pucch);
       NR_beam_alloc_t beam = beam_allocation_procedure(&mac->beam_info, pucch_frame, pucch_slot, ue_beam, n_slots_frame);
+      LOG_D(NR_MAC,"beam_allocation_procedure [ACKNACK] slot %d.%d UE %d beam %d\n", pucch_frame, pucch_slot, UE->rnti, ue_beam);
+
       if (beam.idx < 0) {
         LOG_D(NR_MAC,
               "DL %4d.%2d, UL_ACK %4d.%2d beam resources for this occasion are already occupied, move to the following occasion\n",
@@ -1187,6 +1191,8 @@ void nr_sr_reporting(gNB_MAC_INST *nrmac, frame_t SFN, sub_frame_t slot)
       }
       else {
         NR_beam_alloc_t beam = beam_allocation_procedure(&nrmac->beam_info, SFN, slot, UE->UE_beam_index, n_slots_frame);
+        LOG_D(NR_MAC,"beam_allocation_procedure [SR] slot %d.%d UE %d beam %d\n", SFN, slot, UE->rnti, UE->UE_beam_index);
+
         AssertFatal(beam.idx >= 0, "Cannot allocate SR in any available beam\n");
         const int index = ul_buffer_index(SFN, slot, ul_bwp->scs, nrmac->vrb_map_UL_size);
         uint16_t *vrb_map_UL = &nrmac->common_channels[CC_id].vrb_map_UL[beam.idx][index * MAX_BWP_SIZE];

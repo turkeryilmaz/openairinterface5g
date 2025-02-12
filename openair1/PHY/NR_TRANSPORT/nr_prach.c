@@ -76,7 +76,11 @@ int16_t find_nr_prach(PHY_VARS_gNB *gNB,int frame, int slot, find_type_t type) {
 void nr_fill_prach(PHY_VARS_gNB *gNB, int SFN, int Slot, nfapi_nr_prach_pdu_t *prach_pdu)
 {
   int prach_id = find_nr_prach(gNB, SFN, Slot, SEARCH_EXIST_OR_FREE);
-  AssertFatal(((prach_id >= 0) && (prach_id < NUMBER_OF_NR_PRACH_MAX)), "illegal or no prach_id found!!! prach_id %d\n", prach_id);
+  //AssertFatal(((prach_id >= 0) && (prach_id < NUMBER_OF_NR_PRACH_MAX)), "illegal or no prach_id found!!! prach_id %d\n", prach_id);
+    if ((prach_id < 0)) 
+  {
+    LOG_E(PHY,"ILLEGAL PRACH (removed assert)\n");
+    return;}
   gNB_PRACH_list_t *prach = &gNB->prach_vars.list[prach_id];
   prach->frame = SFN;
   prach->slot = Slot;
@@ -128,10 +132,13 @@ int16_t find_nr_prach_ru(RU_t *ru,int frame,int slot, find_type_t type)
 void nr_fill_prach_ru(RU_t *ru, int SFN, int Slot, nfapi_nr_prach_pdu_t *prach_pdu)
 {
   int prach_id = find_nr_prach_ru(ru, SFN, Slot, SEARCH_EXIST_OR_FREE);
-  AssertFatal(((prach_id >= 0) && (prach_id < NUMBER_OF_NR_PRACH_MAX)) || (prach_id < 0),
+  /*AssertFatal(((prach_id >= 0) && (prach_id < NUMBER_OF_NR_PRACH_MAX)) || (prach_id < 0),
               "illegal or no prach_id found!!! prach_id %d\n",
-              prach_id);
-
+              prach_id);*/
+  if ((prach_id < 0)) 
+  {
+    printf("ILLEGAL PRACH\n");
+    return;}
   pthread_mutex_lock(&ru->prach_list_mutex);
   ru->prach_list[prach_id].frame = SFN;
   ru->prach_list[prach_id].slot = Slot;
