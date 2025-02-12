@@ -636,7 +636,7 @@ int get_psfch_index(int frame, int slot, int n_slots_frame, const NR_TDD_UL_DL_P
   // PUCCH structures are indexed by slot in the PUCCH period determined by sched_psfch_max_size number of UL slots
   // this functions return the index to the structure for slot passed to the function
 
-  const int first_ul_slot_period = tdd ? get_first_ul_slot(tdd->nrofDownlinkSlots, tdd->nrofDownlinkSymbols, tdd->nrofUplinkSymbols) : 0;
+  const int first_ul_slot_period = tdd ? tdd->nrofDownlinkSlots + (tdd->nrofDownlinkSymbols != 0 && tdd->nrofUplinkSymbols == 0)  : 0;
   const int n_ul_slots_period = tdd ? tdd->nrofUplinkSlots + (tdd->nrofUplinkSymbols > 0 ? 1 : 0) : n_slots_frame;
   const int nr_slots_period = tdd ? n_slots_frame / get_nb_periods_per_frame(tdd->dl_UL_TransmissionPeriodicity) : n_slots_frame;
   const int n_ul_slots_frame = n_slots_frame / nr_slots_period * n_ul_slots_period;
@@ -670,7 +670,7 @@ int get_feedback_frame_slot(NR_UE_MAC_INST_t *mac, NR_TDD_UL_DL_Pattern_t *tdd,
                             long psfch_period, int *psfch_frame, int *psfch_slot) {
 
   AssertFatal(tdd != NULL, "Expecting valid tdd configurations");
-  const int first_ul_slot_period = tdd ? get_first_ul_slot(tdd->nrofDownlinkSlots, tdd->nrofDownlinkSymbols, tdd->nrofUplinkSymbols) : 0;
+  const int first_ul_slot_period = tdd ? tdd->nrofDownlinkSlots + (tdd->nrofDownlinkSymbols != 0 && tdd->nrofUplinkSymbols == 0) : 0;
   const int nr_slots_period = tdd ? nr_slots_frame / get_nb_periods_per_frame(tdd->dl_UL_TransmissionPeriodicity) : nr_slots_frame;
   // can't schedule ACKNACK before minimum feedback time
   if(feedback_offset < psfch_min_time_gap)
@@ -1334,7 +1334,7 @@ int get_csi_reporting_frame_slot(NR_UE_MAC_INST_t *mac,
                                  uint32_t *csi_report_frame,
                                  uint32_t *csi_report_slot) {
   AssertFatal(tdd != NULL, "Expecting valid tdd configurations");
-  const int first_ul_slot_period = tdd ? get_first_ul_slot(tdd->nrofDownlinkSlots, tdd->nrofDownlinkSymbols, tdd->nrofUplinkSymbols) : 0;
+  const int first_ul_slot_period = tdd ? tdd->nrofDownlinkSlots + (tdd->nrofDownlinkSymbols != 0 && tdd->nrofUplinkSymbols == 0) : 0;
   const int nr_slots_period = tdd ? nr_slots_frame / get_nb_periods_per_frame(tdd->dl_UL_TransmissionPeriodicity) : nr_slots_frame;
 
   *csi_report_slot = (slot + csi_offset) % nr_slots_frame;
