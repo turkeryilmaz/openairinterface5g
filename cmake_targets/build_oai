@@ -37,7 +37,6 @@ set_openair_env
 gen_nvram_path=$OPENAIR_DIR/cmake_targets/ran_build/build
 conf_nvram_path=$OPENAIR_DIR/openair3/NAS/TOOLS/ue_eurecom_test_sfr.conf
 
-ZMQ=0
 HW=""
 VERBOSE_COMPILE=0
 RUN_GROUP=0
