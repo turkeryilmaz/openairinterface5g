@@ -1556,7 +1556,7 @@ void nr_ue_sl_indication(nr_sidelink_indication_t *sl_indication)
   if (sl_indication->rx_ind) {
     sl_nr_process_rx_ind(ue_id, frame, slot, sl_mac, sl_indication->rx_ind);
   }
-   if (sl_indication->sci_ind) {
+  else if (sl_indication->sci_ind) {
     sl_nr_process_sci_ind(ue_id, cc_id, frame, slot, sl_mac, sl_indication->sci_ind, sl_indication->phy_data);
   } else {
     nr_ue_sidelink_scheduler(sl_indication, mac);
