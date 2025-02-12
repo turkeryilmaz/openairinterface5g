@@ -469,6 +469,8 @@ static void nr_configure_srs(gNB_MAC_INST *nrmac,
   }
   srs_pdu->beamforming.prgs_list[0].dig_bf_interface_list[0].beam_idx = UE->UE_beam_index;
   NR_beam_alloc_t beam = beam_allocation_procedure(&nrmac->beam_info, frame, slot, UE->UE_beam_index, slots_per_frame);
+
+  LOG_D(NR_MAC,"beam_allocation_procedure [SRS] slot %d.%d beam %d\n", frame, slot, UE->UE_beam_index);
   AssertFatal(beam.idx >= 0, "Cannot allocate SRS in any available beam\n");
   uint16_t *vrb_map_UL = &nrmac->common_channels[CC_id].vrb_map_UL[beam.idx][buffer_index * MAX_BWP_SIZE];
   uint64_t mask = SL_to_bitmap(srs_pdu->time_start_position, srs_pdu->num_symbols);

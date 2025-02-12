@@ -94,16 +94,19 @@ static struct xran_prb_map get_xran_prb_map(const struct xran_fh_config *f, cons
       .cc_id = 0,
       .ru_port_id = 0,
       .tti_id = 0,
-      .nPrbElm = 1,
+      .start_sym_id = 0,
+      .nPrbElm = 14,//1,
   };
-  struct xran_prb_elm *e = &prbmap.prbMap[0];
-  e->nStartSymb = start_sym;
-  e->numSymb = num_sym;
-  e->nRBStart = 0;
-  e->nRBSize = (dir == XRAN_DIR_DL) ? f->nDLRBs : f->nULRBs;
-  e->nBeamIndex = 0;
-  e->compMethod = f->ru_conf.compMeth;
-  e->iqWidth = f->ru_conf.iqWidth;
+  for (int i=0; i < prbmap.nPrbElm; i++) {
+    struct xran_prb_elm *e = &prbmap.prbMap[i];
+    e->nStartSymb = 0;// start_sym;
+    e->numSymb = 1; // num_sym;
+    e->nRBStart = 0;
+    e->nRBSize = (dir == XRAN_DIR_DL) ? f->nDLRBs : f->nULRBs;
+    e->nBeamIndex = 1;//0;
+    e->compMethod = f->ru_conf.compMeth;
+    e->iqWidth = f->ru_conf.iqWidth;
+  }
   return prbmap;
 }
 
@@ -127,7 +130,9 @@ static uint32_t oran_allocate_uplane_buffers(
   /* xran_bm_init() uses rte_pktmbuf_pool_create() which recommends to use a power of two for the buffers;
     the E release sample app didn't take this into account, but we introduced it ourselves;
     the F release sample app took this into account, so we can proudly say we assumed correctly */
-  uint32_t numBufs = next_power_2(XRAN_N_FE_BUF_LEN * ant * XRAN_NUM_OF_SYMBOL_PER_SLOT) - 1;
+//  uint32_t numBufs = next_power_2(XRAN_N_FE_BUF_LEN * ant * XRAN_NUM_OF_SYMBOL_PER_SLOT) - 1;
+/// TODO: Check if the 'next_power_2' approach works for Liteon FR2
+  uint32_t numBufs = XRAN_N_FE_BUF_LEN * ant * XRAN_NUM_OF_SYMBOL_PER_SLOT;
   status = xran_bm_init(instHandle, &pool, numBufs, bufSize);
   AssertFatal(XRAN_STATUS_SUCCESS == status, "Failed at xran_bm_init(), status %d\n", status);
   printf("xran_bm_init() hInstance %p poolIdx %u elements %u size %u\n", instHandle, pool, numBufs, bufSize);
@@ -206,7 +211,7 @@ static void oran_allocate_cplane_buffers(void *instHandle,
                                          const struct xran_fh_config *fh_config,
                                        #endif
                                          uint32_t size_of_prb_map,
-                                         oran_cplane_prb_config *prb_conf)
+                                         const oran_cplane_prb_config *prb_conf)
 {
   xran_status_t status;
   uint32_t count1 = 0;
@@ -214,7 +219,9 @@ static void oran_allocate_cplane_buffers(void *instHandle,
 #ifdef E_RELEASE
   uint32_t count2 = 0;
   uint32_t poolSec;
-  uint32_t numBufsSec = next_power_2(XRAN_N_FE_BUF_LEN * ant * XRAN_NUM_OF_SYMBOL_PER_SLOT * sect * XRAN_MAX_FRAGMENT);
+ // uint32_t numBufsSec = next_power_2(XRAN_N_FE_BUF_LEN * ant * XRAN_NUM_OF_SYMBOL_PER_SLOT * sect * XRAN_MAX_FRAGMENT);
+/// TODO: Check if the next_power_2 approach works for Liteon FR2
+  uint32_t numBufsSec = XRAN_N_FE_BUF_LEN * ant * XRAN_NUM_OF_SYMBOL_PER_SLOT * sect * XRAN_MAX_FRAGMENT;
   uint32_t bufSizeSec = sizeof(struct xran_section_desc);
   status = xran_bm_init(instHandle, &poolSec, numBufsSec, bufSizeSec);
   AssertFatal(XRAN_STATUS_SUCCESS == status, "Failed at xran_bm_init(), status %d\n", status);
@@ -222,7 +229,9 @@ static void oran_allocate_cplane_buffers(void *instHandle,
 #endif
 
   uint32_t poolPrb;
-  uint32_t numBufsPrb = next_power_2(XRAN_N_FE_BUF_LEN * ant * XRAN_NUM_OF_SYMBOL_PER_SLOT) - 1;
+  //uint32_t numBufsPrb = next_power_2(XRAN_N_FE_BUF_LEN * ant * XRAN_NUM_OF_SYMBOL_PER_SLOT) - 1;
+  /// TODO: Check if the next_power_2 approach works for Liteon FR2
+  uint32_t numBufsPrb = XRAN_N_FE_BUF_LEN * ant * XRAN_NUM_OF_SYMBOL_PER_SLOT;
   uint32_t bufSizePrb = size_of_prb_map;
   status = xran_bm_init(instHandle, &poolPrb, numBufsPrb, bufSizePrb);
   AssertFatal(XRAN_STATUS_SUCCESS == status, "Failed at xran_bm_init(), status %d\n", status);
@@ -245,8 +254,9 @@ static void oran_allocate_cplane_buffers(void *instHandle,
       fb->pData = ptr;
       fb->pCtrl = mb;
 
-      struct xran_prb_map *src = &prb_conf->slotMap;
+      const struct xran_prb_map *src = &prb_conf->slotMap;
       // get mixed slot map if in TDD and in mixed slot
+      /// TODO: Check if I can or must ignore nTDDPeriod Being 0
       if (prb_conf->nTddPeriod != 0 && (j % prb_conf->nTddPeriod) == prb_conf->mixed_slot_index)
         src = &prb_conf->mixedSlotMap;
 #ifdef E_RELEASE
@@ -340,6 +350,23 @@ static void oran_allocate_buffers(void *handle,
     dlPmMixed = get_xran_prb_map(fh_config, XRAN_DIR_DL, 0, info.num_dlsym);
     ulPmMixed = get_xran_prb_map(fh_config, XRAN_DIR_UL, info.start_ulsym, info.num_ulsym);
     idx = info.idx;
+
+  /// TODO: Check if this is actually needed
+  /// CHECK IF **Mixed need to be set to *lPm as done by the commit creator
+  dlPmMixed = dlPm;
+  dlPmMixed.nPrbElm = info.num_dlsym;
+  for (int i = 0; i < dlPmMixed.nPrbElm; i++) {
+    struct xran_prb_elm *e = &dlPmMixed.prbMap[i];
+    e->nStartSymb = 0; // start symbol always 0 for DL
+  }
+
+  ulPmMixed = ulPm;
+  ulPmMixed.nPrbElm = info.num_ulsym; //1
+  for (int i=0; i < ulPmMixed.nPrbElm; i++){
+    struct xran_prb_elm *e = &ulPmMixed.prbMap[i];
+    e->nStartSymb = info.start_ulsym; // numSymb is always 1 for UL
+  }
+
   }
 
   oran_cplane_prb_config dlConf = {
@@ -425,24 +452,40 @@ static void oran_allocate_buffers(void *handle,
     }
   }
 
-  xran_5g_fronthault_config(pi->instanceHandle, src, srccp, dst, dstcp, oai_xran_fh_rx_callback, &portInstances->pusch_tag);
-  xran_5g_prach_req(pi->instanceHandle, prach, prachdecomp, oai_xran_fh_rx_prach_callback, &portInstances->prach_tag);
+  xran_5g_fronthault_config(pi->instanceHandle, src, srccp, dst, dstcp, oai_xran_fh_rx_callback, &portInstances->RxCbTag[0][0]);
+  xran_5g_prach_req(pi->instanceHandle, prach, prachdecomp, oai_xran_fh_rx_prach_callback, &portInstances->PrachCbTag[0][0]);
+
 }
 
-int *oai_oran_initialize(struct xran_fh_init *xran_fh_init, struct xran_fh_config *xran_fh_config)
+int *oai_oran_initialize(const openair0_config_t *openair0_cfg)
 {
   int32_t xret = 0;
 
-  print_fh_init(xran_fh_init);
-  xret = xran_init(0, NULL, xran_fh_init, NULL, &gxran_handle);
+  struct xran_fh_init init = {0};
+  if (!set_fh_init(NULL,&init, XRAN_CATEGORY_A)) {
+    printf("could not read FHI 7.2/ORAN config\n");
+    return NULL;
+  }
+  print_fh_init(&init);
+
+  /* read all configuration before starting anything */
+  struct xran_fh_config xran_fh_config[XRAN_PORTS_NUM] = {0};
+  for (int32_t o_xu_id = 0; o_xu_id < init.xran_ports; o_xu_id++) {
+    if (!set_fh_config(NULL, o_xu_id, init.xran_ports, XRAN_CATEGORY_A, openair0_cfg,  &xran_fh_config[o_xu_id])) {
+      printf("could not read FHI 7.2/RU-specific config\n");
+      return NULL;
+    }
+    print_fh_config(&xran_fh_config[o_xu_id]);
+  }
+
+  xret = xran_init(0, NULL, &init, NULL, &gxran_handle);
   if (xret != XRAN_STATUS_SUCCESS) {
     printf("xran_init failed %d\n", xret);
     exit(-1);
   }
 
   /** process all the O-RU|O-DU for use case */
-  for (int32_t o_xu_id = 0; o_xu_id < xran_fh_init->xran_ports; o_xu_id++) {
-    print_fh_config(&xran_fh_config[o_xu_id]);
+  for (int32_t o_xu_id = 0; o_xu_id < init.xran_ports; o_xu_id++) {
     xret = xran_open(gxran_handle, &xran_fh_config[o_xu_id]);
     if (xret != XRAN_STATUS_SUCCESS) {
       printf("xran_open failed %d\n", xret);
@@ -450,11 +493,8 @@ int *oai_oran_initialize(struct xran_fh_init *xran_fh_init, struct xran_fh_confi
     }
 
     int sector = 0;
-    printf("Initialize ORAN port instance %d (%d) sector %d\n", o_xu_id, xran_fh_init->xran_ports, sector);
+    printf("Initialize ORAN port instance %d (%d) sector %d\n", o_xu_id, init.xran_ports, sector);
     oran_port_instance_t *pi = &gPortInst[o_xu_id][sector];
-    struct xran_cb_tag tag = {.cellId = sector, .oXuId = o_xu_id};
-    pi->prach_tag = tag;
-    pi->pusch_tag = tag;
 #ifdef E_RELEASE
     LOG_W(HW, "Please be aware that E release support will be removed in the future. Consider switching to F release.\n");
     oran_allocate_buffers(gxran_handle, o_xu_id, 1, pi, &xran_fh_config[o_xu_id]);
@@ -479,8 +519,8 @@ int *oai_oran_initialize(struct xran_fh_init *xran_fh_init, struct xran_fh_confi
 
   // store config after xran initialization -- xran makes modifications to
   // these structs during initialization
-  memcpy(&g_fh_init, xran_fh_init, sizeof(*xran_fh_init));
-  memcpy(&g_fh_config, xran_fh_config, sizeof(*xran_fh_config) * xran_fh_init->xran_ports);
+  memcpy(&g_fh_init, &init, sizeof(init));
+  memcpy(&g_fh_config, xran_fh_config, sizeof(*xran_fh_config) * init.xran_ports);
 
   return (void *)gxran_handle;
 }

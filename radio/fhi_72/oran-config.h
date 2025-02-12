@@ -24,6 +24,7 @@
 
 #include "stdbool.h"
 #include "stdint.h"
+#include "xran_fh_o_du.h"
 
 struct xran_fh_init;
 struct xran_fh_config;
@@ -32,7 +33,11 @@ struct openair0_config;
 bool get_xran_config(void *mplane_api, const struct openair0_config *openair0_cfg, struct xran_fh_init *fh_init, struct xran_fh_config *fh_config);
 
 void print_fh_init(const struct xran_fh_init *fh_init);
+struct xran_fh_config;
 void print_fh_config(const struct xran_fh_config *fh_config);
+
+bool set_fh_init(void *mplane_api, struct xran_fh_init *fh_init, enum xran_category xran_cat);
+bool set_fh_config(void *mplane_api, int ru_idx, int num_rus, enum xran_category xran_cat, const struct openair0_config *oai0_cfg, struct xran_fh_config *fh_config);
 
 // hack to workaround LiteOn limitation
 extern int g_kbar;

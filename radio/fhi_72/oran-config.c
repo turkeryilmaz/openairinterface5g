@@ -24,7 +24,6 @@
 #include "common/utils/assertions.h"
 #include "common_lib.h"
 
-#include "xran_fh_o_du.h"
 #include "xran_cp_api.h"
 #include "rte_ether.h"
 #include <rte_ethdev.h>
@@ -61,6 +60,55 @@ static void print_fh_eowd_cmn(unsigned index, const struct xran_ecpri_del_meas_c
       eowd_cmn->measMethod,
       eowd_cmn->owdm_enable,
       eowd_cmn->owdm_PlLength);
+}
+
+static void print_fh_eowd_port(unsigned index, unsigned vf, const struct xran_ecpri_del_meas_port *eowd_port)
+{
+  printf("\
+    eowd_port[%d][%d]:\n\
+      t1 %ld\n\
+      t2 %ld\n\
+      tr %ld\n\
+      delta %ld\n\
+      portid %d\n\
+      runMeas %d\n\
+      currentMeasID %d\n\
+      msState %d\n\
+      numMeas %d\n\
+      txDone %d\n\
+      rspTimerIdx %ld\n\
+      delaySamples [%ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld]\n\
+      delayAvg %ld\n",
+      index,
+      vf,
+      eowd_port->t1,
+      eowd_port->t2,
+      eowd_port->tr,
+      eowd_port->delta,
+      eowd_port->portid,
+      eowd_port->runMeas,
+      eowd_port->currentMeasID,
+      eowd_port->msState,
+      eowd_port->numMeas,
+      eowd_port->txDone,
+      eowd_port->rspTimerIdx,
+      eowd_port->delaySamples[0],
+      eowd_port->delaySamples[1],
+      eowd_port->delaySamples[2],
+      eowd_port->delaySamples[3],
+      eowd_port->delaySamples[4],
+      eowd_port->delaySamples[5],
+      eowd_port->delaySamples[6],
+      eowd_port->delaySamples[7],
+      eowd_port->delaySamples[8],
+      eowd_port->delaySamples[9],
+      eowd_port->delaySamples[10],
+      eowd_port->delaySamples[11],
+      eowd_port->delaySamples[12],
+      eowd_port->delaySamples[13],
+      eowd_port->delaySamples[14],
+      eowd_port->delaySamples[15],
+      eowd_port->delayAvg);
 }
 
 static void print_fh_init_io_cfg(const struct xran_io_cfg *io_cfg)
@@ -107,7 +155,7 @@ static void print_fh_init_io_cfg(const struct xran_io_cfg *io_cfg)
     pkt_proc_core_64_127 %016lx\n\
     pkt_aux_core %d\n\
     timing_core %d\n\
-    port (filled within xran library)\n\
+    port [%d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, ]\n\
     io_sleep %d\n\
     nEthLinePerPort %d\n\
     nEthLineSpeed %d\n\
@@ -118,11 +166,32 @@ static void print_fh_init_io_cfg(const struct xran_io_cfg *io_cfg)
       io_cfg->pkt_proc_core_64_127,
       io_cfg->pkt_aux_core,
       io_cfg->timing_core,
+      io_cfg->port[XRAN_UP_VF],
+      io_cfg->port[XRAN_CP_VF],
+      io_cfg->port[XRAN_UP_VF1],
+      io_cfg->port[XRAN_CP_VF1],
+      io_cfg->port[XRAN_UP_VF2],
+      io_cfg->port[XRAN_CP_VF2],
+      io_cfg->port[XRAN_UP_VF3],
+      io_cfg->port[XRAN_CP_VF3],
+      io_cfg->port[XRAN_UP_VF4],
+      io_cfg->port[XRAN_CP_VF4],
+      io_cfg->port[XRAN_UP_VF5],
+      io_cfg->port[XRAN_CP_VF5],
+      io_cfg->port[XRAN_UP_VF6],
+      io_cfg->port[XRAN_CP_VF6],
+      io_cfg->port[XRAN_UP_VF7],
+      io_cfg->port[XRAN_CP_VF7],
       io_cfg->io_sleep,
       io_cfg->nEthLinePerPort,
       io_cfg->nEthLineSpeed,
       io_cfg->one_vf_cu_plane);
   print_fh_eowd_cmn(io_cfg->id, &io_cfg->eowd_cmn[io_cfg->id]);
+  print_fh_eowd_cmn(0, &io_cfg->eowd_cmn[0]);
+  print_fh_eowd_cmn(1, &io_cfg->eowd_cmn[1]);
+  for (int i = 0; i < 2; ++i)
+    for (int v = 0; v < io_cfg->num_vfs; ++v)
+      print_fh_eowd_port(i, v, &io_cfg->eowd_port[i][v]);
   printf("eowd_port (filled within xran library)\n");
 #ifdef F_RELEASE
   printf("\
@@ -176,14 +245,13 @@ void print_fh_init(const struct xran_fh_init *fh_init)
   dpdkBasebandFecMode %d\n\
   dpdkBasebandDevice %s\n\
   filePrefix %s\n\
-  mtu %d\n\
-  p_o_du_addr %s\n",
+  mtu %d\n",
       fh_init->xran_ports,
       fh_init->dpdkBasebandFecMode,
       fh_init->dpdkBasebandDevice,
       fh_init->filePrefix,
-      fh_init->mtu,
-      fh_init->p_o_du_addr);
+      fh_init->mtu);
+  print_ether_addr("  p_o_du_addr", fh_init->xran_ports * fh_init->io_cfg.num_vfs, (struct rte_ether_addr *)fh_init->p_o_du_addr);
   print_ether_addr("  p_o_ru_addr", fh_init->xran_ports * fh_init->io_cfg.num_vfs, (struct rte_ether_addr *)fh_init->p_o_ru_addr);
   printf("\
   totalBfWeights %d\n",
@@ -407,7 +475,7 @@ void print_fh_config(const struct xran_fh_config *fh_config)
   print_srs_config(&fh_config->srs_conf);
   print_frame_config(&fh_config->frame_conf);
   print_ru_config(&fh_config->ru_conf);
-
+#ifdef F_RELEASE
   printf("\
   bbdev_enc %p\n\
   bbdev_dec %p\n\
@@ -427,7 +495,23 @@ void print_fh_config(const struct xran_fh_config *fh_config)
       fh_config->log_level,
       fh_config->max_sections_per_slot,
       fh_config->max_sections_per_symbol);
-
+#else
+  printf("\
+  bbdev_enc %p\n\
+  bbdev_dec %p\n\
+  tx_cp_eAxC2Vf [not implemented by fhi_lib]\n\
+  tx_up_eAxC2Vf [not implemented by fhi_lib]\n\
+  rx_cp_eAxC2Vf [not implemented by fhi_lib]\n\
+  rx_up_eAxC2Vf [not implemented by fhi_lib]\n\
+  log_level %d\n\
+  max_sections_per_slot %d\n\
+  max_sections_per_symbol %d\n",
+    fh_config->bbdev_enc,
+    fh_config->bbdev_dec,
+    fh_config->log_level,
+    fh_config->max_sections_per_slot,
+    fh_config->max_sections_per_symbol);
+#endif
 #ifdef F_RELEASE
   printf("\
   RunSlotPrbMapBySymbolEnable %d\n\
@@ -476,6 +560,8 @@ static bool set_fh_io_cfg(struct xran_io_cfg *io_cfg, const paramdef_t *fhip, in
   io_cfg->id = 0; // 0 -> xran as O-DU; 1 -> xran as O-RU
   io_cfg->num_vfs = num_dev; // number of VFs for C-plane and U-plane (should be even); max = XRAN_VF_MAX
   io_cfg->num_rxq = 1; // number of RX queues per VF
+  /// TODO: This is only for Liteon, maybe add a #define for it
+  io_cfg->num_rxq = 2; // Assume two HW RX queues per RU
   for (int i = 0; i < num_dev; ++i) {
     io_cfg->dpdk_dev[i] = strdup(gpd(fhip, nump, ORAN_CONFIG_DPDK_DEVICES)->strlistptr[i]); // VFs devices
   }
@@ -519,6 +605,7 @@ static bool set_fh_io_cfg(struct xran_io_cfg *io_cfg, const paramdef_t *fhip, in
 #endif
   int dpdk_iova_mode_idx = config_paramidx_fromname((paramdef_t *)fhip, nump, ORAN_CONFIG_DPDK_IOVA_MODE);
   AssertFatal(dpdk_iova_mode_idx >= 0,"Index for dpdk_iova_mode config option not found!");
+/// MUST be set to 0 in the config file for Liteon FR2
   io_cfg->dpdkIoVaMode = config_get_processedint(config_get_if(), (paramdef_t *)&fhip[dpdk_iova_mode_idx]); // IOVA mode
   io_cfg->dpdkMemorySize = *gpd(fhip, nump, ORAN_CONFIG_DPDK_MEM_SIZE)->uptr; // DPDK max memory allocation
 
@@ -536,6 +623,8 @@ static bool set_fh_io_cfg(struct xran_io_cfg *io_cfg, const paramdef_t *fhip, in
   io_cfg->nEthLinePerPort = *gpd(fhip, nump, ORAN_CONFIG_NETHPERPORT)->uptr; // 1, 2, 3 total number of links per O-RU (Fronthaul Ethernet link)
   io_cfg->nEthLineSpeed = *gpd(fhip, nump, ORAN_CONFIG_NETHSPEED)->uptr; // 10G,25G,40G,100G speed of Physical connection on O-RU
   io_cfg->one_vf_cu_plane = (io_cfg->num_vfs == num_rus); // C-plane and U-plane use one VF
+  /// TODO: Check if the above comparison results in 0 in the Liteon case
+  io_cfg->one_vf_cu_plane = 0; // C-plane and U-plane use one VF
 
   /* eCPRI One-Way Delay Measurements common settings for O-DU and O-RU;
     use owdm to calculate T12 and T34 -> CUS specification, section 2.3.3.3;
@@ -544,7 +633,9 @@ static bool set_fh_io_cfg(struct xran_io_cfg *io_cfg, const paramdef_t *fhip, in
     via M-plane the o-ran-ecpri-delay@<version>.yang capability;
     this functionality is improved in F release */
   /* if RU does support, io_cfg->eowd_cmn[0] should only be filled as id = O_DU; io_cfg->eowd_cmn[1] only used if id = O_RU */
-  const uint16_t owdm_enable = *gpd(fhip, nump, ORAN_CONFIG_ECPRI_OWDM)->uptr;
+  uint16_t owdm_enable = *gpd(fhip, nump, ORAN_CONFIG_ECPRI_OWDM)->uptr;
+  /// TODO: This is for Liteon FR2, check if can be removed
+  owdm_enable = 0;
   if (owdm_enable) {
     io_cfg->eowd_cmn[0].initiator_en = 1; // 1 -> initiator (always O-DU), 0 -> recipient (always O-RU)
     io_cfg->eowd_cmn[0].numberOfSamples = 8; // total number of samples to be collected and averaged per port
@@ -620,6 +711,11 @@ static bool set_fh_eaxcid_conf(struct xran_eaxcid_config *eaxcid_conf, enum xran
       eaxcid_conf->bit_bandSectorId = 0; // total number of band sectors supported by O-RU should be retrieved by M-plane - <max-num-bands> && <max-num-sectors>
       eaxcid_conf->bit_ccId = 0; // total number of CC supported by O-RU should be retrieved by M-plane - <max-num-component-carriers>
       eaxcid_conf->bit_ruPortId = 0;
+      /// TODO: Perhaps add #define for Liteon FR2 to set these 3 following values
+      eaxcid_conf->bit_cuPortId = 12;
+      eaxcid_conf->bit_bandSectorId = 8;
+      eaxcid_conf->bit_ccId = 4;
+
       break;
     case XRAN_CATEGORY_B:
       eaxcid_conf->mask_cuPortId = 0xf000;
@@ -651,7 +747,8 @@ uint8_t *get_ether_addr(const char *addr, struct rte_ether_addr *ether_addr)
   return NULL;
 }
 
-static bool set_fh_init(void *mplane_api, struct xran_fh_init *fh_init, enum xran_category xran_cat)
+struct xran_fh_init;
+bool set_fh_init(void *mplane_api, struct xran_fh_init *fh_init, enum xran_category xran_cat)
 {
   memset(fh_init, 0, sizeof(*fh_init));
 
@@ -683,10 +780,22 @@ static bool set_fh_init(void *mplane_api, struct xran_fh_init *fh_init, enum xra
   sprintf(aprefix, "%s", CONFIG_STRING_ORAN);
   const int nfh = sizeofArray(FHconfigs);
   config_getlist(config_get_if(), &FH_ConfigList, FHconfigs, nfh, aprefix);
+  int num_rus = FH_ConfigList.numelt;
+  int num_ru_addr = gpd(fhip, nump, ORAN_CONFIG_RU_ADDR)->numelt;
+  int num_du_addr = gpd(fhip, nump, ORAN_CONFIG_DU_ADDR)->numelt;
+  int num_vfs = gpd(fhip, nump, ORAN_CONFIG_DPDK_DEVICES)->numelt;
+  if (num_ru_addr != num_du_addr) {
+    printf("need to have same number of DUs and RUs!\n");
+    return false;
+  }
+  if (num_ru_addr != num_vfs) {
+    printf("need to have as many RU/DU entries as DPDK devices (one VF for CP and UP each)\n");
+    return false;
+  }
 
 #ifdef OAI_MPLANE
   ru_session_list_t *ru_session_list = (ru_session_list_t *)mplane_api;
-  int num_rus = ru_session_list->num_rus;
+  num_rus = ru_session_list->num_rus;
   fh_init->xran_ports = num_rus; // since we use xran as O-DU, xran_ports is set to the number of RUs
   if (!set_fh_io_cfg(&fh_init->io_cfg, fhip, nump, num_rus))
     return false;
@@ -710,17 +819,45 @@ static bool set_fh_init(void *mplane_api, struct xran_fh_init *fh_init, enum xra
     }
   }
 #else
-  int num_rus = FH_ConfigList.numelt; // based on the number of fh_config sections -> number of RUs
+  num_rus = FH_ConfigList.numelt; // based on the number of fh_config sections -> number of RUs
   fh_init->xran_ports = num_rus; // since we use xran as O-DU, xran_ports is set to the number of RUs
   if (!set_fh_io_cfg(&fh_init->io_cfg, fhip, nump, num_rus))
     return false;
   if (!set_fh_eaxcid_conf(&fh_init->eAxCId_conf, xran_cat))
     return false;
+  fh_init->xran_ports = num_rus;
+  fh_init->dpdkBasebandFecMode = 0;
+  fh_init->dpdkBasebandDevice = NULL;
+  fh_init->filePrefix = strdup(*gpd(fhip, nump, ORAN_CONFIG_FILE_PREFIX)->strptr); // see DPDK --file-prefix
   /* maximum transmission unit (MTU) is the size of the largest protocol data unit (PDU) that can be
     communicated in a single xRAN network layer transaction. Supported 1500 bytes and 9600 bytes (Jumbo Frame);
     xran only checks if (MTU <= 1500), therefore setting any value > 1500, xran assumes 9600 value is used */
   fh_init->mtu = *gpd(fhip, nump, ORAN_CONFIG_MTU)->uptr;
-  int num_ru_addr = gpd(fhip, nump, ORAN_CONFIG_RU_ADDR)->numelt;
+
+  // if multiple RUs: xran_ethdi_init_dpdk_io() iterates over
+  // &p_o_ru_addr[i]
+/*  char **du_addrs = gpd(fhip, nump, ORAN_CONFIG_DU_ADDR)->strlistptr;
+  fh_init->p_o_du_addr = calloc(num_du_addr, sizeof(struct rte_ether_addr));
+  AssertFatal(fh_init->p_o_du_addr != NULL, "out of memory\n");
+  for (int i = 0; i < num_du_addr; ++i) {
+    struct rte_ether_addr *ea = (struct rte_ether_addr *)fh_init->p_o_du_addr;
+    if (get_ether_addr(du_addrs[i], &ea[i]) == NULL) {
+      printf("could not read ethernet address '%s' for DU!\n", du_addrs[i]);
+      return false;
+    }
+  }*/
+
+  fh_init->p_o_du_addr = calloc(num_du_addr, sizeof(struct rte_ether_addr));
+  AssertFatal(fh_init->p_o_du_addr != NULL, "out of memory\n");
+  char **du_addrs = gpd(fhip, nump, ORAN_CONFIG_DU_ADDR)->strlistptr;
+  for (int i = 0; i < num_du_addr; ++i) {
+    struct rte_ether_addr *ea = (struct rte_ether_addr *)fh_init->p_o_du_addr;
+    if (get_ether_addr(du_addrs[i], &ea[i]) == NULL) {
+      printf("could not read ethernet address '%s' for RU!\n", du_addrs[i]);
+      return false;
+    }
+  }
+
   fh_init->p_o_ru_addr = calloc(num_ru_addr, sizeof(struct rte_ether_addr));
   AssertFatal(fh_init->p_o_ru_addr != NULL, "out of memory\n");
   char **ru_addrs = gpd(fhip, nump, ORAN_CONFIG_RU_ADDR)->strlistptr;
@@ -738,7 +875,7 @@ static bool set_fh_init(void *mplane_api, struct xran_fh_init *fh_init, enum xra
   /* used to specify a unique prefix for shared memory, and files created by multiple DPDK processes;
     it is necessary */
   fh_init->filePrefix = strdup(*gpd(fhip, nump, ORAN_CONFIG_FILE_PREFIX)->strptr);
-  fh_init->p_o_du_addr = NULL; // DPDK retreives DU MAC address within the xran library with rte_eth_macaddr_get() function
+  //fh_init->p_o_du_addr = NULL; // DPDK retreives DU MAC address within the xran library with rte_eth_macaddr_get() function
   fh_init->totalBfWeights = 0; // only used if id = O_RU (for emulation); C-plane extension types; section 5.4.6 of CUS spec
 
 #ifdef F_RELEASE
@@ -746,9 +883,44 @@ static bool set_fh_init(void *mplane_api, struct xran_fh_init *fh_init, enum xra
   fh_init->dlCpProcBurst = 0; /* 1 -> DL CP processing will be done on single symbol,
                                  0 -> DL CP processing will be spread across all allowed symbols and multiple cores to reduce burstiness */
 #endif
+  /// TODO: Create #define for Liteon FR2 RU
+  fh_init->totalBfWeights = 32;
 
   return true;
 }
+
+static enum xran_cp_filterindex get_prach_filterindex_fr1(duplex_mode_t mode, int prach_index)
+{
+  if (mode == duplex_mode_TDD) {
+    // 38.211 table 6.3.3.2-3 "unpaired spectrum" -> TDD
+    switch (prach_index) {
+      case 0 ... 39:
+      case 256 ... 262:
+        return XRAN_FILTERINDEX_PRACH_012;
+      case 40 ... 66:
+        return XRAN_FILTERINDEX_PRACH_3;
+      case 67 ... 255:
+        return XRAN_FILTERINDEX_PRACH_ABC;
+    }
+  } else if (mode == duplex_mode_FDD) {
+    // 38.211 table 6.3.3.2-2 "paired spectrum" -> FDD
+    switch (prach_index) {
+      case 0 ... 59:
+        return XRAN_FILTERINDEX_PRACH_012;
+      case 60 ... 86:
+        return XRAN_FILTERINDEX_PRACH_3;
+      case 87 ... 255:
+        return XRAN_FILTERINDEX_PRACH_ABC;
+      default:
+        AssertFatal(false, "unknown PRACH index %d\n", prach_index);
+    }
+  } else {
+    AssertFatal(false, "unsupported duplex mode %d\n", mode);
+  }
+  return XRAN_FILTERINDEX_STANDARD;
+}
+
+
 
 // PRACH guard interval. Raymond: "[it] is not in the configuration, (i.e. it
 // is deterministic depending on others). LiteON must hard-code this in the
@@ -778,6 +950,14 @@ static bool set_fh_prach_config(void *mplane_api,
                                         in E release hardcoded to XRAN_FILTERINDEX_PRACH_ABC (preamble format A1~3, B1~4, C0, C2)
                                         in F release properly calculated */
 
+/// TODO: Created #define for Liteon FR2 RU
+  prach_config->nPrachFreqOffset = -792; //(s7cfg->prach_freq_start * 12 - oai0->num_rb_dl * 6) * 2 + 4;
+  if (oai0->nr_band < 100)
+    prach_config->nPrachFilterIdx = get_prach_filterindex_fr1(oai0->duplex_mode, s7cfg->prach_index);
+  else
+    prach_config->nPrachFilterIdx = XRAN_FILTERINDEX_PRACH_ABC;
+
+
   /* Return values after initialization */
   prach_config->startSymId = 0;
   prach_config->lastSymId = 0;
@@ -800,10 +980,21 @@ static bool set_fh_prach_config(void *mplane_api,
 #else
   uint8_t offset = *gpd(prachp, nprach, ORAN_PRACH_CONFIG_EAXC_OFFSET)->u8ptr;
   prach_config->eAxC_offset = (offset != 0) ? offset : max_num_ant;
+
+  /// TODO: Created #define for Liteon FR2 RU
+  /// The patch doesn't seem to "care" if the offset is 0
+  prach_config->eAxC_offset = offset;
 #endif
 
   g_kbar = *gpd(prachp, nprach, ORAN_PRACH_CONFIG_KBAR)->uptr;
 
+  return true;
+}
+
+static bool set_fh_srs_config(struct xran_srs_config *srs_config)
+{
+  srs_config->symbMask = 0;
+  srs_config->eAxC_offset = 8;
   return true;
 }
 
@@ -814,9 +1005,10 @@ static bool set_fh_frame_config(const openair0_config_t *oai0, struct xran_frame
   frame_config->nNumerology = oai0->nr_scs_for_raster; /* 0 -> 15kHz,  1 -> 30kHz,  2 -> 60kHz
                                                           3 -> 120kHz, 4 -> 240kHz */
 
-  if (frame_config->nFrameDuplexType == XRAN_FDD)
+  /// TODO: Add perhaps an ifndef Liteon FR2 RU
+ /* if (frame_config->nFrameDuplexType == XRAN_FDD)
     return true;
-
+*/
   // TDD periodicity
   frame_config->nTddPeriod = s7cfg->n_tdd_period;
 
@@ -831,6 +1023,10 @@ static bool set_fh_frame_config(const openair0_config_t *oai0, struct xran_frame
 
 static bool set_fh_ru_config(void *mplane_api, const paramdef_t *rup, uint16_t fftSize, int nru, enum xran_category xran_cat, struct xran_ru_config *ru_config)
 {
+/// TODO: check to ensure that the following is true wherever called
+/// ru_config->fftSize = *gpd(rup, nru, ORAN_RU_CONFIG_FFT_SIZE)->uptr;
+/// ru_config->xranCat = XRAN_CATEGORY_A;
+
   ru_config->xranTech = XRAN_RAN_5GNR; // 5GNR or LTE
   ru_config->xranCat = xran_cat; // mode: Catergory A or Category B
   ru_config->xranCompHdrType = XRAN_COMP_HDR_TYPE_STATIC; // dynamic or static udCompHdr handling
@@ -871,7 +1067,9 @@ static bool set_maxmin_pd(const paramdef_t *pd, int num, const char *name, uint1
   return true;
 }
 
-static bool set_fh_config(void *mplane_api, int ru_idx, int num_rus, enum xran_category xran_cat, const openair0_config_t *oai0, struct xran_fh_config *fh_config)
+extern uint32_t to_nrarfcn(int nr_bandP, uint64_t dl_CarrierFreq, uint8_t scs_index, uint32_t bw);
+
+bool set_fh_config(void *mplane_api, int ru_idx, int num_rus, enum xran_category xran_cat, const openair0_config_t *oai0, struct xran_fh_config *fh_config)
 {
   AssertFatal(num_rus == 1 || num_rus == 2, "only support 1 or 2 RUs as of now\n");
   AssertFatal(ru_idx < num_rus, "illegal ru_idx %d: must be < %d\n", ru_idx, num_rus);
@@ -885,6 +1083,13 @@ static bool set_fh_config(void *mplane_api, int ru_idx, int num_rus, enum xran_c
     DevAssert(oai0->rx_freq[0] == oai0->rx_freq[i]);
   DevAssert(oai0->nr_band > 0);
   AssertFatal(oai0->threequarter_fs == 0, "cannot use three-quarter sampling with O-RAN 7.2 split\n");
+  DevAssert(oai0->nr_scs_for_raster > 0);
+
+  // we simply assume that the loading process provides function to_nrarfcn()
+  // to calculate the ARFCN numbers from frequency. That is not clean, but the
+  // best we can do without copy-pasting the function.
+  uint32_t nDLCenterFreqARFCN = to_nrarfcn(oai0->nr_band, oai0->tx_freq[0], oai0->nr_scs_for_raster, oai0->tx_bw);
+  uint32_t nULCenterFreqARFCN = to_nrarfcn(oai0->nr_band, oai0->rx_freq[0], oai0->nr_scs_for_raster, oai0->rx_bw);
 
   paramdef_t FHconfigs[] = ORAN_FH_DESC;
   paramlist_def_t FH_ConfigList = {CONFIG_STRING_ORAN_FH};
@@ -934,6 +1139,26 @@ static bool set_fh_config(void *mplane_api, int ru_idx, int num_rus, enum xran_c
   fh_config->ttiCb = NULL; // check tti_to_phy_cb(), tx_cp_dl_cb() and tx_cp_ul_cb => first_call
   fh_config->ttiCbParam = NULL; // check tti_to_phy_cb(), tx_cp_dl_cb() and tx_cp_ul_cb => first_call
 
+/// TODO: ADD #ifdef Liteon_fr2_ru
+  fh_config->neAxcUl = oai0->rx_num_channels / num_rus;
+  fh_config->nAntElmTRx = oai0->tx_num_channels / num_rus;
+  fh_config->nDLFftSize = 1024;
+  fh_config->nULFftSize = 1024;
+  fh_config->nDLAbsFrePointA = 27968160;
+  fh_config->nULAbsFrePointA = 27968160;
+  fh_config->nDLCenterFreqARFCN = nDLCenterFreqARFCN;
+  fh_config->nULCenterFreqARFCN = nULCenterFreqARFCN;
+  fh_config->Tadv_cp_dl = *gpd(fhp, nfh, ORAN_FH_CONFIG_TADV_CP_DL)->uptr;
+/// TODO: Check if the following only apply to Liteon FR2 RU
+  if (!set_maxmin_pd(fhp, nfh, ORAN_FH_CONFIG_T2A_CP_DL, &fh_config->T2a_min_cp_dl, &fh_config->T2a_max_cp_dl))
+    return false;
+  if (!set_maxmin_pd(fhp, nfh, ORAN_FH_CONFIG_T2A_CP_UL, &fh_config->T2a_min_cp_ul, &fh_config->T2a_max_cp_ul))
+    return false;
+  if (!set_maxmin_pd(fhp, nfh, ORAN_FH_CONFIG_T2A_UP, &fh_config->T2a_min_up, &fh_config->T2a_max_up))
+    return false;
+  if (!set_maxmin_pd(fhp, nfh, ORAN_FH_CONFIG_TA3, &fh_config->Ta3_min, &fh_config->Ta3_max))
+    return false;
+
   /* DU delay profile */
   if (!set_maxmin_pd(fhp, nfh, ORAN_FH_CONFIG_T1A_CP_DL, &fh_config->T1a_min_cp_dl, &fh_config->T1a_max_cp_dl)) // E - min not used in xran, max yes; F - both min and max are used in xran
     return false;
@@ -955,6 +1180,10 @@ static bool set_fh_config(void *mplane_api, int ru_idx, int num_rus, enum xran_c
   fh_config->puschMaskSlot = 0; // specific which slot PUSCH channel masked; only used if id = O_RU
   fh_config->cp_vlan_tag = 0; // C-plane VLAN tag; not used in xran; needed for M-plane
   fh_config->up_vlan_tag = 0; // U-plane VLAN tag; not used in xran; needed for M-plane
+/// TODO: Check if the 2 following apply to other RUs than the Liteon FR2 to set the VLANs
+  fh_config->cp_vlan_tag = *gpd(fhp, nfh, ORAN_FH_CONFIG_CP_VLAN_TAG)->uptr;
+  fh_config->up_vlan_tag = *gpd(fhp, nfh, ORAN_FH_CONFIG_UP_VLAN_TAG)->uptr;
+
   fh_config->debugStop = 0; // enable auto stop; only used if id = O_RU
   fh_config->debugStopCount = 0; // enable auto stop after number of Tx packets; not used in xran
   fh_config->DynamicSectionEna = 0; // enable dynamic C-Plane section allocation
@@ -966,6 +1195,10 @@ static bool set_fh_config(void *mplane_api, int ru_idx, int num_rus, enum xran_c
   /* SRS only used if XRAN_CATEGORY_B
     Note: srs_config->eAxC_offset >= prach_config->eAxC_offset + PRACH */
   // fh_config->srs_conf = {0};
+  ///TODO: Check if set_fh_srs_config is needed for the Liteon FR2 RU
+  if (!set_fh_srs_config(&fh_config->srs_conf))
+    return false;
+
   if (!set_fh_frame_config(oai0, &fh_config->frame_conf))
     return false;
   if (!set_fh_ru_config(mplane_api, rup, oai0->split7.fftSize, nru, xran_cat, &fh_config->ru_conf))
@@ -991,6 +1224,9 @@ static bool set_fh_config(void *mplane_api, int ru_idx, int num_rus, enum xran_c
           In this case, O-RU is not expected to perform any PRACH specific processing. */
   fh_config->max_sections_per_slot = 0; // not used in xran
   fh_config->max_sections_per_symbol = 0; // not used in xran
+  /// TODO: Add #ifdef Liteon_FR2_RU
+  fh_config->max_sections_per_slot = 14;
+  fh_config->max_sections_per_symbol = 14;
 
 #ifdef F_RELEASE
   fh_config->RunSlotPrbMapBySymbolEnable = 0; // enable PRB mapping by symbol with multisection

@@ -1875,6 +1875,8 @@ static void pf_ul(module_id_t module_id,
     NR_UE_UL_BWP_t *current_BWP = &UE->current_UL_BWP;
 
     NR_sched_pusch_t *sched_pusch = &sched_ctrl->sched_pusch;
+    sched_pusch->frame = sched_frame;
+    sched_pusch->slot = sched_slot;
     const NR_mac_dir_stats_t *stats = &UE->mac_stats.ul;
 
     /* Calculate throughput */
@@ -1889,12 +1891,18 @@ static void pf_ul(module_id_t module_id,
       continue;
 
     NR_beam_alloc_t dci_beam = beam_allocation_procedure(&nrmac->beam_info, frame, slot, UE->UE_beam_index, slots_per_frame);
+
+    LOG_D(NR_MAC,"beam_allocation_procedure [DCI UL] slot %d.%d UE %d beam %d\n", frame, slot, UE->rnti, UE->UE_beam_index);
+
     if (dci_beam.idx < 0) {
       LOG_D(NR_MAC, "[UE %04x][%4d.%2d] Beam could not be allocated\n", UE->rnti, frame, slot);
       continue;
     }
 
     NR_beam_alloc_t beam = beam_allocation_procedure(&nrmac->beam_info, sched_frame, sched_slot, UE->UE_beam_index, slots_per_frame);
+
+    LOG_D(NR_MAC,"beam_allocation_procedure [PUSCH] slot %d.%d UE %d beam %d\n", sched_pusch->frame, sched_pusch->slot, UE->rnti, UE->UE_beam_index);
+
     if (beam.idx < 0) {
       LOG_D(NR_MAC, "[UE %04x][%4d.%2d] Beam could not be allocated\n", UE->rnti, frame, slot);
       reset_beam_status(&nrmac->beam_info, frame, slot, UE->UE_beam_index, slots_per_frame, dci_beam.new_beam);
@@ -2099,6 +2107,9 @@ static void pf_ul(module_id_t module_id,
     NR_sched_pusch_t *sched_pusch = &sched_ctrl->sched_pusch;
 
     NR_beam_alloc_t beam = beam_allocation_procedure(&nrmac->beam_info, sched_frame, sched_slot, iterator->UE->UE_beam_index, slots_per_frame);
+
+    LOG_D(NR_MAC,"beam_allocation_procedure [PUSCH2] slot %d.%d UE %d beam %d\n", sched_pusch->frame, sched_pusch->slot, iterator->UE->rnti, iterator->UE->UE_beam_index);
+
     if (beam.idx < 0) {
       LOG_D(NR_MAC, "[UE %04x][%4d.%2d] Beam could not be allocated\n", iterator->UE->rnti, frame, slot);
       iterator++;
@@ -2112,6 +2123,9 @@ static void pf_ul(module_id_t module_id,
     }
 
     NR_beam_alloc_t dci_beam = beam_allocation_procedure(&nrmac->beam_info, frame, slot, iterator->UE->UE_beam_index, slots_per_frame);
+
+    LOG_D(NR_MAC,"beam_allocation_procedure [DCI UL2] slot %d.%d UE %d beam %d\n", frame, slot, iterator->UE->rnti, iterator->UE->UE_beam_index);
+
     if (dci_beam.idx < 0) {
       LOG_D(NR_MAC, "[UE %04x][%4d.%2d] Beam could not be allocated\n", iterator->UE->rnti, frame, slot);
       reset_beam_status(&nrmac->beam_info, sched_frame, sched_slot, iterator->UE->UE_beam_index, slots_per_frame, beam.new_beam);

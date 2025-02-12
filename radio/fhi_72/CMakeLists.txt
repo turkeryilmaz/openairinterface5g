@@ -16,11 +16,12 @@ add_library(oran_fhlib_5g MODULE
             oran-init.c
 )
 
-set(E_VERSION 5.1.6)
-set(F_VERSION 6.1.4)
+set(E_VERSION 5.1.0)
+set(F_VERSION 6.1.3)
 
 find_package(xran REQUIRED)
-if(xran_VERSION VERSION_EQUAL E_VERSION)
+if(xran_VERSION VERSION_GREATER_EQUAL E_VERSION
+   AND xran_VERSION VERSION_LESS F_VERSION)
   target_compile_definitions(oran_fhlib_5g PRIVATE E_RELEASE)
 elseif(xran_VERSION VERSION_EQUAL F_VERSION)
   target_compile_definitions(oran_fhlib_5g PRIVATE F_RELEASE)

@@ -418,6 +418,7 @@ void schedule_nr_prach(module_id_t module_idP, frame_t frameP, slot_t slotP)
             beam_index = get_fapi_beamforming_index(gNB, cc->ssb_index[n_ssb]);
             // multi-beam allocation structure
             beam = beam_allocation_procedure(&gNB->beam_info, frameP, slotP, beam_index, slots_frame);
+            LOG_D(NR_MAC,"beam_allocation_procedure [PRACH] slot %d.%d SSB %d beam %d\n", frameP, slotP, cc->ssb_index[n_ssb], beam_index);
             AssertFatal(beam.idx >= 0, "Cannot allocate PRACH corresponding to %d SSB transmitted in any available beam\n", n_ssb + 1);
           } else {
             int first_ssb_index = (prach_occasion_id * (int)num_ssb_per_RO) % cc->num_active_ssb;
@@ -426,6 +427,7 @@ void schedule_nr_prach(module_id_t module_idP, frame_t frameP, slot_t slotP)
               beam_index = get_fapi_beamforming_index(gNB, cc->ssb_index[j]);
               // multi-beam allocation structure
               beam = beam_allocation_procedure(&gNB->beam_info, frameP, slotP, beam_index, slots_frame);
+              LOG_D(NR_MAC,"beam_allocation_procedure [PRACH multi ssb per RO] slot %d.%d SSB %d beam %d\n", frameP, slotP, cc->ssb_index[j], beam_index);
               AssertFatal(beam.idx >= 0, "Cannot allocate PRACH corresponding to SSB %d in any available beam\n", j);
             }
           }
