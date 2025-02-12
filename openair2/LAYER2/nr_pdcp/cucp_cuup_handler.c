@@ -165,7 +165,7 @@ void e1_bearer_context_setup(const e1ap_bearer_setup_req_t *req)
   resp.numPDUSessions = req->numPDUSessions;
   for (int i = 0; i < resp.numPDUSessions; ++i) {
     const pdu_session_to_setup_t *req_pdu = req->pduSession + i;
-    LOG_I(E1AP, "UE %d: add PDU session ID %ld (%ld bearers)\n", cu_up_ue_id, req_pdu->sessionId, req_pdu->numDRB2Setup);
+    LOG_I(E1AP, "UE %d: add PDU session ID %ld (%d bearers)\n", cu_up_ue_id, req_pdu->sessionId, req_pdu->numDRB2Setup);
 
     pdu_session_setup_t *resp_pdu = resp.pduSession + i;
     resp_pdu->id = req_pdu->sessionId;
