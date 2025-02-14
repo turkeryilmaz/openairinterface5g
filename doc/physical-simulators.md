@@ -30,7 +30,7 @@ These are the simulators known to work properly and tested in CI:
 - 4G: `dlsim`, `ulsim`
 - 5G: `nr_dlsim`, `nr_ulsim`, `nr_dlschsim`, `nr_ulschsim`, `ldpctest`,
   `nr_pbchsim`, `nr_prachsim`, `nr_pucchsim`, `polartest`, `smallblocktest`,
-  `nr_psbchsim` (sidelink)
+  `nr_psbchsim` (sidelink), `nr_chestcompsim` (UL channel estimation and compensation)
 
 # How to run
 
@@ -129,7 +129,58 @@ ran_build/build/nr_dlsim -h
 You can modify the source files to adapt to your needs. For instance, for
 `nr_dlsim` above, refer to file `openair1/SIMULATION/NR_PHY/dlsim.c`.
 
-# CI
+## CI
 
 These tests are run in this pipeline:
 [RAN-PhySim-Cluster](https://jenkins-oai.eurecom.fr/job/RAN-PhySim-Cluster/).
+
+## Simulators singularities
+
+This section contains any singular information about any of the physical simulators.
+
+### `nr_chestcompsim`
+
+`nr_chestcompsim` tries to reduce as much as possible the set of simulated functions down to the only UL channel estimation and compensation.  
+Therefore it relies on dumps of the RX data and compensated RX data for one slot to files.
+
+#### How to generate the dump files
+
+Use `nr_ulsim` with option `-n1` to generate the dump files.
+You may configure the simulated scenario with `nr_ulsim` options.  
+Then `nr_chestcompsim` will fetch the parameters it needs from the dump files.  
+
+**Remark:** With OAI native implementation of channel estimation, to ensure to run only one thread, the value of options `-z` (number of RX antennas) and `-A` (number of threads processed per thread) of `nr_ulsim` should match.
+
+#### Changing dump files paths
+
+The paths of the dump files can be chosen in `nr_chestcompsim` and `nr_ulsim` on the command line or in a configuration file:
+
+**On the command line:**
+* `--nr_chestcompsim.params_in_file`: original dumped parameters, output of `nr_ulsim`, input of `nr_chestcompsim`.
+* `--nr_chestcompsim.rxdataF_in_file`: original dumped RX slot, output of `nr_ulsim`, input of `nr_chestcompsim`.
+* `--nr_chestcompsim.rxdataF_comp_in_file`: original dumped compensated RX slot, output of `nr_ulsim`, input of `nr_chestcompsim`.
+* `--nr_chestcompsim.rxdataF_out_file`: RX slot as seen by `nr_chestcompsim`, output of `nr_chestcompsim`, for debugging dump file reading.
+* `--nr_chestcompsim.rxdataF_comp_out_file`: compensated RX slot out of `nr_chestcompsim`, output of `nr_chestcompsim`.
+
+If not provided the default values are respectively:
+* `dump_channel_estimation_compensation_params.log`
+* `dump_channel_estimation_compensation_rxdataF.log`
+* `dump_channel_estimation_compensation_rxdataF_comp.log`
+* `test_dump_channel_estimation_compensation_rxdataF.log`
+* `test_dump_channel_estimation_compensation_rxdataF_comp.log`
+
+**In a configuration file:**
+Here is an example of a file setting the five file pathes.  
+It is then provided to `nr_chestcompsim` and `nr_ulsim` via option `-O`.  
+
+```
+nr_chestcompsim :
+{
+  params_in_file = "/home/ubuntu/chestcompsim/dump_channel_estimation_compensation_params_nr_ulsim_m9_r106_s10_W4_y4_z4_A4.log";
+  rxdataF_in_file = "/home/ubuntu/chestcompsim/dump_channel_estimation_compensation_rxdataF_nr_ulsim_m9_r106_s10_W4_y4_z4_A4.log";
+  rxdataF_comp_in_file = "/home/ubuntu/chestcompsim/dump_channel_estimation_compensation_rxdataF_comp_nr_ulsim_m9_r106_s10_W4_y4_z4_A4.log";
+  rxdataF_out_file = "/home/ubuntu/chestcompsim/test_dump_channel_estimation_compensation_rxdataF_nr_ulsim_m9_r106_s10_W4_y4_z4_A4.log";
+  rxdataF_comp_out_file = "/home/ubuntu/chestcompsim/test_dump_channel_estimation_compensation_rxdataF_comp_nr_ulsim_m9_r106_s10_W4_y4_z4_A4.log";
+};
+```
+
