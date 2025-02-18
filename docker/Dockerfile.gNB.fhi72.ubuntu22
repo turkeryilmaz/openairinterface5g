@@ -25,9 +25,9 @@
 #
 #---------------------------------------------------------------------
 
-FROM ran-base:latest AS gnb-base
+FROM ran-base:mwc2025 AS gnb-base
 
-FROM ran-build-fhi72:latest AS gnb-build
+FROM ran-build-fhi72:mwc2025.w06_latest AS gnb-build
 
 
 #start from scratch for target executable

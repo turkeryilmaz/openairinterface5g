@@ -100,6 +100,8 @@ nr_rlc_entity_t *new_nr_rlc_entity_am(
     exit(1);
   }
 
+  tx_maxsize *= 50;
+  rx_maxsize *= 50;
   ret->tx_maxsize = tx_maxsize;
   ret->rx_maxsize = rx_maxsize;
 
