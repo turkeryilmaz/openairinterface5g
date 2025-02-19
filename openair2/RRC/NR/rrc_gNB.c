@@ -573,6 +573,15 @@ static void rrc_gNB_generate_dedicatedRRCReconfiguration(gNB_RRC_INST *rrc, gNB_
 
   LOG_UE_DL_EVENT(ue_p, "Generate RRCReconfiguration (bytes %d, xid %d)\n", size, xid);
   nr_rrc_transfer_protected_rrc_message(rrc, ue_p, DL_SCH_LCID_DCCH, buffer, size);
+
+#ifdef E2_AGENT
+  const uint32_t rrc_msg_id = 1; // TS 38.331, section 6.2.1 ("DL-DCCH-Message")
+  byte_array_t buffer_ba = {.len = size};
+  buffer_ba.buf = calloc(size, sizeof(uint8_t));
+  assert(buffer_ba.buf != NULL && "Memory exhausted");
+  memcpy(buffer_ba.buf, buffer, size);
+  signal_rrc_msg(DL_DCCH_NR_RRC_CLASS, rrc_msg_id, buffer_ba);
+#endif
 }
 
 void rrc_gNB_modify_dedicatedRRCReconfiguration(gNB_RRC_INST *rrc, gNB_RRC_UE_t *ue_p)
