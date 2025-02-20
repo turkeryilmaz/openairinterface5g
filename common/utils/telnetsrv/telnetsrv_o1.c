@@ -127,6 +127,7 @@ static void get_cu_stats(telnet_printfunc_t prnt, gNB_RRC_INST *rrc)
     }
     prnt("\n    ],\n");
 
+    /* TODO harmonize this between DU&CU to be able to have one in monolithic */
     prnt("    \"device\": {\n");
     prnt("      \"gNBId\": %d,\n", rrc->node_id);
     prnt("      \"gnbName\": \"%s\",\n", rrc->node_name);
