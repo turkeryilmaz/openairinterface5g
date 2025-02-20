@@ -58,6 +58,10 @@
 #define MNC     "nrcelldu3gpp:mnc"
 #define SD      "nrcelldu3gpp:sd"
 #define SST     "nrcelldu3gpp:sst"
+#define SSBSCS  "nrcelldu3gpp:ssbSubCarrierSpacing"
+#define SSBPRD  "nrcelldu3gpp:ssbPeriodicity"
+#define SSBOFF  "nrcelldu3gpp:ssbOffset"
+#define SSBDUR  "nrcelldu3gpp:ssbDuration"
 
 typedef struct b {
   long int dl;
@@ -168,7 +172,11 @@ static int get_du_stats(telnet_printfunc_t prnt, gNB_MAC_INST *mac)
     prnt("      \"" MCC "\": \"%03d\",\n", cell_info->plmn.mcc);
     prnt("      \"" MNC "\": \"%0*d\",\n", cell_info->plmn.mnc_digit_length, cell_info->plmn.mnc);
     prnt("      \"" SD  "\": %d,\n", cell_info->nssai[0].sd);
-    prnt("      \"" SST "\": %d\n", cell_info->nssai[0].sst);
+    prnt("      \"" SST "\": %d,\n", cell_info->nssai[0].sst);
+    prnt("      \"" SSBSCS "\": %d,\n", 30);
+    prnt("      \"" SSBPRD "\": %d,\n", 20);
+    prnt("      \"" SSBOFF "\": %d,\n", 0);
+    prnt("      \"" SSBDUR "\": %d\n", 1);
     prnt("    },\n");
     prnt("    \"device\": {\n");
     prnt("      \"gnbId\": %d,\n", sr->gNB_DU_id);
