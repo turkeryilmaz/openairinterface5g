@@ -681,14 +681,16 @@ void signal_rrc_state_changed_to(const gNB_RRC_UE_t *rrc_ue_context, const rc_sm
   pthread_mutex_unlock(&rc_mutex);
 }
 
-static rc_ind_data_t* fill_rrc_msg_copy(const byte_array_t rrc_ba)
+static rc_ind_data_t* fill_rrc_msg_copy(const byte_array_t rrc_ba, const uint16_t cond_id)
 {
   rc_ind_data_t* rc_ind = calloc(1, sizeof(rc_ind_data_t));
   assert(rc_ind != NULL && "Memory exhausted");
 
   // Generate Indication Header
   rc_ind->hdr.format = FORMAT_1_E2SM_RC_IND_HDR;
-  rc_ind->hdr.frmt_1.ev_trigger_id = NULL;
+  rc_ind->hdr.frmt_1.ev_trigger_id = calloc(1, sizeof(uint32_t));
+  assert(rc_ind->hdr.frmt_1.ev_trigger_id != NULL && "Memory exhausted");
+  *rc_ind->hdr.frmt_1.ev_trigger_id = cond_id;
 
   // Generate Indication Message
   rc_ind->msg.format = FORMAT_1_E2SM_RC_IND_MSG;
@@ -718,7 +720,7 @@ static void check_rrc_msg_copy(const nr_rrc_class_e nr_channel, const uint32_t r
     if (frmt_1->msg_ev_trg[i].rrc_msg.type != NR_RRC_MESSAGE_ID)
       continue;
     if (frmt_1->msg_ev_trg[i].rrc_msg.nr == nr_channel && frmt_1->msg_ev_trg[i].rrc_msg.rrc_msg_id == rrc_msg_id) {
-      rc_ind_data_t* rc_ind_data = fill_rrc_msg_copy(rrc_ba);
+      rc_ind_data_t* rc_ind_data = fill_rrc_msg_copy(rrc_ba, frmt_1->msg_ev_trg[i].ev_trigger_cond_id);
       send_aper_ric_ind(ric_req_id, rc_ind_data);
     }
   }
