@@ -116,6 +116,7 @@
 #define GNB_CONFIG_STRING_NROFDOWNLINKSYMBOLS                            "nrofDownlinkSymbols"
 #define GNB_CONFIG_STRING_NROFUPLINKSLOTS                                "nrofUplinkSlots"
 #define GNB_CONFIG_STRING_NROFUPLINKSYMBOLS                              "nrofUplinkSymbols"
+#define GNB_CONFIG_STRING_PATTERN2                                       "pattern2"
 #define GNB_CONFIG_STRING_DLULTRANSMISSIONPERIODICITY2                   "dl_UL_TransmissionPeriodicity2"
 #define GNB_CONFIG_STRING_NROFDOWNLINKSLOTS2                             "nrofDownlinkSlots2"
 #define GNB_CONFIG_STRING_NROFDOWNLINKSYMBOLS2                           "nrofDownlinkSymbols2"
@@ -131,6 +132,7 @@
 #define GNB_CONFIG_STRING_EPHEMERIS_VELOCITY_VY                          "velocityVY-r17"
 #define GNB_CONFIG_STRING_EPHEMERIS_VELOCITY_VZ                          "velocityVZ-r17"
 #define GNB_CONFIG_STRING_TA_COMMON                                      "ta-Common-r17"
+#define GNB_CONFIG_STRING_TA_COMMONDRIFT                                 "ta-CommonDrift-r17"
 
 #define CARRIERBANDWIDTH_OKVALUES {11,18,24,25,31,32,38,51,52,65,66,78,79,93,106,107,121,132,133,135,160,162,189,216,217,245,264,270,273}
 
@@ -247,11 +249,6 @@
 {GNB_CONFIG_STRING_NROFDOWNLINKSYMBOLS,NULL,0,.i64ptr=&scc->tdd_UL_DL_ConfigurationCommon->pattern1.nrofDownlinkSymbols,.defint64val=6,TYPE_INT64,0},\
 {GNB_CONFIG_STRING_NROFUPLINKSLOTS,NULL,0,.i64ptr=&scc->tdd_UL_DL_ConfigurationCommon->pattern1.nrofUplinkSlots,.defint64val=2,TYPE_INT64,0},\
 {GNB_CONFIG_STRING_NROFUPLINKSYMBOLS,NULL,0,.i64ptr=&scc->tdd_UL_DL_ConfigurationCommon->pattern1.nrofUplinkSymbols,.defint64val=4,TYPE_INT64,0},\
-{GNB_CONFIG_STRING_DLULTRANSMISSIONPERIODICITY2,NULL,0,.i64ptr=&scc->tdd_UL_DL_ConfigurationCommon->pattern2->dl_UL_TransmissionPeriodicity,.defintval=-1,TYPE_INT64,0},\
-{GNB_CONFIG_STRING_NROFDOWNLINKSLOTS2,NULL,0,.i64ptr=&scc->tdd_UL_DL_ConfigurationCommon->pattern2->nrofDownlinkSlots,.defint64val=-1,TYPE_INT64,0},\
-{GNB_CONFIG_STRING_NROFDOWNLINKSYMBOLS2,NULL,0,.i64ptr=&scc->tdd_UL_DL_ConfigurationCommon->pattern2->nrofDownlinkSymbols,.defint64val=-1,TYPE_INT64,0},\
-{GNB_CONFIG_STRING_NROFUPLINKSLOTS2,NULL,0,.i64ptr=&scc->tdd_UL_DL_ConfigurationCommon->pattern2->nrofUplinkSlots,.defint64val=-1,TYPE_INT64,0},\
-{GNB_CONFIG_STRING_NROFUPLINKSYMBOLS2,NULL,0,.i64ptr=&scc->tdd_UL_DL_ConfigurationCommon->pattern2->nrofUplinkSymbols,.defint64val=-1,TYPE_INT64,0},\
 {GNB_CONFIG_STRING_SSPBCHBLOCKPOWER,NULL,0,.i64ptr=&scc->ss_PBCH_BlockPower,.defint64val=20,TYPE_INT64,0}, \
 {GNB_CONFIG_STRING_CELLSPECIFICKOFFSET,NULL,0,.i64ptr=scc->ext2->ntn_Config_r17->cellSpecificKoffset_r17,.defint64val=0,TYPE_INT64,0}, \
 {GNB_CONFIG_STRING_EPHEMERIS_POSITION_X,NULL,0,.i64ptr=&scc->ext2->ntn_Config_r17->ephemerisInfo_r17->choice.positionVelocity_r17->positionX_r17,.defint64val=LONG_MAX,TYPE_INT64,0}, \
@@ -261,7 +258,17 @@
 {GNB_CONFIG_STRING_EPHEMERIS_VELOCITY_VY,NULL,0,.i64ptr=&scc->ext2->ntn_Config_r17->ephemerisInfo_r17->choice.positionVelocity_r17->velocityVY_r17,.defint64val=LONG_MAX,TYPE_INT64,0}, \
 {GNB_CONFIG_STRING_EPHEMERIS_VELOCITY_VZ,NULL,0,.i64ptr=&scc->ext2->ntn_Config_r17->ephemerisInfo_r17->choice.positionVelocity_r17->velocityVZ_r17,.defint64val=LONG_MAX,TYPE_INT64,0}, \
 {GNB_CONFIG_STRING_TA_COMMON,NULL,0,.i64ptr=&scc->ext2->ntn_Config_r17->ta_Info_r17->ta_Common_r17,.defint64val=-1,TYPE_INT64,0}, \
+{GNB_CONFIG_STRING_TA_COMMONDRIFT,NULL,0,.i64ptr=scc->ext2->ntn_Config_r17->ta_Info_r17->ta_CommonDrift_r17,.defint64val=0,TYPE_INT64,0}, \
 {GNB_CONFIG_STRING_MSG1SUBCARRIERSPACING,NULL,0,.i64ptr=scc->uplinkConfigCommon->initialUplinkBWP->rach_ConfigCommon->choice.setup->msg1_SubcarrierSpacing,.defintval=-1,TYPE_INT64,0}}
+
+#define SCC_PATTERN2_STRING_CONFIG     "pattern2"
+
+#define SCC_PATTERN2_PARAMS_DESC(pattern2) { \
+{GNB_CONFIG_STRING_DLULTRANSMISSIONPERIODICITY2, NULL,0,.i64ptr=&pattern2.dl_UL_TransmissionPeriodicity,.defint64val=-1,TYPE_INT64,0},\
+{GNB_CONFIG_STRING_NROFDOWNLINKSLOTS2, NULL,0,.i64ptr=&pattern2.nrofDownlinkSlots,.defint64val=-1,TYPE_INT64,0},\
+{GNB_CONFIG_STRING_NROFDOWNLINKSYMBOLS2, NULL,0,.i64ptr=&pattern2.nrofDownlinkSymbols,.defint64val=-1,TYPE_INT64,0},\
+{GNB_CONFIG_STRING_NROFUPLINKSLOTS2,NULL, 0,.i64ptr=&pattern2.nrofUplinkSlots,.defint64val=-1,TYPE_INT64,0},\
+{GNB_CONFIG_STRING_NROFUPLINKSYMBOLS2,NULL, 0,.i64ptr=&pattern2.nrofUplinkSymbols,.defint64val=-1,TYPE_INT64,0}}
 
 /*-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 /*                                     Serving Cell Config Dedicated configuration parameters                                                                                                     */

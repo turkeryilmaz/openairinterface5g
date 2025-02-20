@@ -172,6 +172,7 @@ typedef struct nr_mac_config_t {
   /// beamforming weight matrix size
   int nb_bfw[2];
   int32_t *bw_list;
+  int num_agg_level_candidates[NUM_PDCCH_AGG_LEVELS];
 } nr_mac_config_t;
 
 typedef struct NR_preamble_ue {
@@ -675,6 +676,10 @@ typedef struct {
 
   /// per-LC configuration
   seq_arr_t lc_config;
+
+  // pdcch closed loop adjust for PDCCH aggregation level, range <0, 1>
+  // 0 - good channel, 1 - bad channel
+  float pdcch_cl_adjust;
 } NR_UE_sched_ctrl_t;
 
 typedef struct {
@@ -909,13 +914,10 @@ typedef struct gNB_MAC_INST_s {
 
   NR_beam_info_t beam_info;
 
-  /// bitmap of DLSCH slots, can hold up to 160 slots
-  uint64_t dlsch_slot_bitmap[3];
-  /// bitmap of ULSCH slots, can hold up to 160 slots
-  uint64_t ulsch_slot_bitmap[3];
-
   /// maximum number of slots before a UE will be scheduled ULSCH automatically
   uint32_t ulsch_max_frame_inactivity;
+  /// instance of the frame structure configuration
+  frame_structure_t frame_structure;
 
   /// DL preprocessor for differentiated scheduling
   nr_pp_impl_dl pre_processor_dl;

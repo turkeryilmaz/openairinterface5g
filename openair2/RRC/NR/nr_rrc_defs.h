@@ -202,8 +202,6 @@ typedef struct gNB_RRC_UE_s {
   NR_CellGroupConfig_t               *masterCellGroup;
   NR_RadioBearerConfig_t             *rb_config;
 
-  ImsiMobileIdentity_t               imsi;
-
   /* KgNB as derived from KASME received from EPC */
   uint8_t kgnb[32];
   int8_t  kgnb_ncc;
@@ -345,7 +343,7 @@ typedef struct nr_mac_rrc_dl_if_s {
 
 typedef struct cucp_cuup_if_s {
   cucp_cuup_bearer_context_setup_func_t bearer_context_setup;
-  cucp_cuup_bearer_context_setup_func_t bearer_context_mod;
+  cucp_cuup_bearer_context_mod_func_t bearer_context_mod;
   cucp_cuup_bearer_context_release_func_t bearer_context_release;
 } cucp_cuup_if_t;
 

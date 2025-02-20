@@ -40,6 +40,7 @@
 #include "assertions.h"
 #include <time.h>
 #include <stdint.h>
+#include <openair1/PHY/TOOLS/phy_scope_interface.h>
 
 #ifdef E3_AGENT
 #include <openair1/E3AP/e3_agent.h>
@@ -293,6 +294,7 @@ void phy_procedures_gNB_TX(processingData_L1tx_t *msgTx,
 
   //apply the OFDM symbol rotation here
   if (gNB->phase_comp) {
+    start_meas(&gNB->phase_comp_stats);
     for(int i = 0; i < gNB->common_vars.num_beams_period; ++i) {
       for (int aa = 0; aa < cfg->carrier_config.num_tx_ant.value; aa++) {
         apply_nr_rotation_TX(fp,
@@ -307,6 +309,7 @@ void phy_procedures_gNB_TX(processingData_L1tx_t *msgTx,
           T_INT(aa), T_BUFFER(&gNB->common_vars.txdataF[aa][txdataF_offset], fp->samples_per_slot_wCP*sizeof(int32_t)));
       }
     }
+    stop_meas(&gNB->phase_comp_stats);
   }
 
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PHY_PROCEDURES_gNB_TX + gNB->CC_id, 0);
@@ -442,6 +445,7 @@ static int nr_ulsch_procedures(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx, boo
             ulsch_harq->ulsch_pdu.rb_size,
             ulsch_harq->TBS);
       nr_fill_indication(gNB, ulsch->frame, ulsch->slot, ULSCH_id, ulsch->harq_pid, 1, 0, crc, pdu);
+      gNBdumpScopeData(gNB, ulsch->slot, ulsch->frame, "ULSCH_NACK");
       ulsch->handled = 1;
       LOG_D(PHY, "ULSCH %d in error\n",ULSCH_id);
       ulsch->last_iteration_cnt = ulsch->max_ldpc_iterations + 1; // Setting to max_ldpc_iterations + 1 is sufficient given that this variable is only used for checking for failure
@@ -651,8 +655,9 @@ int fill_srs_channel_matrix(uint8_t *channel_matrix,
                             const uint16_t prg_size,
                             const uint16_t num_prgs,
                             const NR_DL_FRAME_PARMS *frame_parms,
-                            const int32_t srs_estimated_channel_freq[][1<<srs_pdu->num_ant_ports][frame_parms->ofdm_symbol_size*(1<<srs_pdu->num_symbols)]) {
-
+                            const c16_t srs_estimated_channel_freq[][1 << srs_pdu->num_ant_ports]
+                                                                  [frame_parms->ofdm_symbol_size * (1 << srs_pdu->num_symbols)])
+{
   const uint64_t subcarrier_offset = frame_parms->first_carrier_offset + srs_pdu->bwp_start*NR_NB_SC_PER_RB;
   const uint16_t step = prg_size*NR_NB_SC_PER_RB;
 
@@ -668,8 +673,7 @@ int fill_srs_channel_matrix(uint8_t *channel_matrix,
       }
 
       for(int pI = 0; pI < num_prgs; pI++) {
-
-        c16_t *srs_estimated_channel16 = (c16_t *)&srs_estimated_channel_freq[gI][uI][subcarrier];
+        const c16_t *srs_estimated_channel16 = srs_estimated_channel_freq[gI][uI] + subcarrier;
         uint16_t index = uI*num_gnb_antenna_elements*num_prgs + gI*num_prgs + pI;
 
         if (normalized_iq_representation == 0) {
@@ -873,6 +877,7 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx, N
           nfapi_nr_rx_data_pdu_t *pdu = &UL_INFO->rx_ind.pdu_list[UL_INFO->rx_ind.number_of_pdus++];
           nr_fill_indication(gNB, frame_rx, slot_rx, ULSCH_id, ulsch->harq_pid, 1, 1, crc, pdu);
           pusch_DTX++;
+          gNBdumpScopeData(gNB, ulsch->slot, ulsch->frame, "ULSCH_DTX");
           continue;
         }
       } else {
@@ -923,10 +928,13 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx, N
         NR_DL_FRAME_PARMS *frame_parms = &gNB->frame_parms;
         nfapi_nr_srs_pdu_t *srs_pdu = &srs->srs_pdu;
         uint8_t N_symb_SRS = 1 << srs_pdu->num_symbols;
-        int32_t srs_received_signal[frame_parms->nb_antennas_rx][frame_parms->ofdm_symbol_size * N_symb_SRS];
-        int32_t srs_estimated_channel_freq[frame_parms->nb_antennas_rx][1 << srs_pdu->num_ant_ports][frame_parms->ofdm_symbol_size * N_symb_SRS] __attribute__((aligned(32)));
-        int32_t srs_estimated_channel_time[frame_parms->nb_antennas_rx][1 << srs_pdu->num_ant_ports][frame_parms->ofdm_symbol_size] __attribute__((aligned(32)));
-        int32_t srs_estimated_channel_time_shifted[frame_parms->nb_antennas_rx][1 << srs_pdu->num_ant_ports][frame_parms->ofdm_symbol_size];
+        c16_t srs_received_signal[frame_parms->nb_antennas_rx][frame_parms->ofdm_symbol_size * N_symb_SRS];
+        c16_t srs_estimated_channel_freq[frame_parms->nb_antennas_rx][1 << srs_pdu->num_ant_ports]
+                                        [frame_parms->ofdm_symbol_size * N_symb_SRS] __attribute__((aligned(32)));
+        c16_t srs_estimated_channel_time[frame_parms->nb_antennas_rx][1 << srs_pdu->num_ant_ports][frame_parms->ofdm_symbol_size]
+            __attribute__((aligned(32)));
+        c16_t srs_estimated_channel_time_shifted[frame_parms->nb_antennas_rx][1 << srs_pdu->num_ant_ports]
+                                                [frame_parms->ofdm_symbol_size];
         int8_t snr_per_rb[srs_pdu->bwp_size];
 
         start_meas(&gNB->generate_srs_stats);

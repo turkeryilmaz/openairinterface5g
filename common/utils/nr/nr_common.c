@@ -109,8 +109,6 @@ static const unsigned short srs_bandwidth_config[C_SRS_NUMBER][B_SRS_NUMBER][2] 
     /* 63 */ {{272, 1}, {16, 17}, {8, 2}, {4, 2}},
 };
 
-const char *duplex_mode[]={"FDD","TDD"};
-
 static const uint8_t bit_reverse_table_256[] = {
     0x00, 0x80, 0x40, 0xC0, 0x20, 0xA0, 0x60, 0xE0, 0x10, 0x90, 0x50, 0xD0, 0x30, 0xB0, 0x70, 0xF0, 0x08, 0x88, 0x48, 0xC8,
     0x28, 0xA8, 0x68, 0xE8, 0x18, 0x98, 0x58, 0xD8, 0x38, 0xB8, 0x78, 0xF8, 0x04, 0x84, 0x44, 0xC4, 0x24, 0xA4, 0x64, 0xE4,
@@ -125,6 +123,36 @@ static const uint8_t bit_reverse_table_256[] = {
     0x13, 0x93, 0x53, 0xD3, 0x33, 0xB3, 0x73, 0xF3, 0x0B, 0x8B, 0x4B, 0xCB, 0x2B, 0xAB, 0x6B, 0xEB, 0x1B, 0x9B, 0x5B, 0xDB,
     0x3B, 0xBB, 0x7B, 0xFB, 0x07, 0x87, 0x47, 0xC7, 0x27, 0xA7, 0x67, 0xE7, 0x17, 0x97, 0x57, 0xD7, 0x37, 0xB7, 0x77, 0xF7,
     0x0F, 0x8F, 0x4F, 0xCF, 0x2F, 0xAF, 0x6F, 0xEF, 0x1F, 0x9F, 0x5F, 0xDF, 0x3F, 0xBF, 0x7F, 0xFF};
+
+simde__m128i byte2bit16_lut[256];
+void init_byte2bit16(void)
+{
+  for (int s = 0; s < 256; s++) {
+    byte2bit16_lut[s] = simde_mm_insert_epi16(byte2bit16_lut[s], s & 1, 0);
+    byte2bit16_lut[s] = simde_mm_insert_epi16(byte2bit16_lut[s], (s >> 1) & 1, 1);
+    byte2bit16_lut[s] = simde_mm_insert_epi16(byte2bit16_lut[s], (s >> 2) & 1, 2);
+    byte2bit16_lut[s] = simde_mm_insert_epi16(byte2bit16_lut[s], (s >> 3) & 1, 3);
+    byte2bit16_lut[s] = simde_mm_insert_epi16(byte2bit16_lut[s], (s >> 4) & 1, 4);
+    byte2bit16_lut[s] = simde_mm_insert_epi16(byte2bit16_lut[s], (s >> 5) & 1, 5);
+    byte2bit16_lut[s] = simde_mm_insert_epi16(byte2bit16_lut[s], (s >> 6) & 1, 6);
+    byte2bit16_lut[s] = simde_mm_insert_epi16(byte2bit16_lut[s], (s >> 7) & 1, 7);
+  }
+}
+
+simde__m128i byte2m128i[256];
+void init_byte2m128i(void) {
+
+  for (int s=0;s<256;s++) {
+    byte2m128i[s] = simde_mm_insert_epi16(byte2m128i[s],(1-2*(s&1)),0);
+    byte2m128i[s] = simde_mm_insert_epi16(byte2m128i[s],(1-2*((s>>1)&1)),1);
+    byte2m128i[s] = simde_mm_insert_epi16(byte2m128i[s],(1-2*((s>>2)&1)),2);
+    byte2m128i[s] = simde_mm_insert_epi16(byte2m128i[s],(1-2*((s>>3)&1)),3);
+    byte2m128i[s] = simde_mm_insert_epi16(byte2m128i[s],(1-2*((s>>4)&1)),4);
+    byte2m128i[s] = simde_mm_insert_epi16(byte2m128i[s],(1-2*((s>>5)&1)),5);
+    byte2m128i[s] = simde_mm_insert_epi16(byte2m128i[s],(1-2*((s>>6)&1)),6);
+    byte2m128i[s] = simde_mm_insert_epi16(byte2m128i[s],(1-2*((s>>7)&1)),7);
+  }
+}
 
 void reverse_bits_u8(uint8_t const* in, size_t sz, uint8_t* out)
 {
@@ -160,18 +188,20 @@ uint64_t reverse_bits(uint64_t in, int n_bits)
   return rev_bits;
 }
 
-static const int tables_5_3_2[5][12] = {
-    {25, 52, 79, 106, 133, 160, 216, 270, -1, -1, -1, -1}, // 15 FR1
-    {11, 24, 38, 51, 65, 78, 106, 133, 162, 217, 245, 273}, // 30 FR1
-    {-1, 11, 18, 24, 31, 38, 51, 65, 79, 107, 121, 135}, // 60 FR1
-    {66, 132, 264, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // 60 FR2
-    {32, 66, 132, 264, -1, -1, -1, -1, -1, -1, -1, -1} // 120FR2
+#define NUM_BW_ENTRIES 15
+
+static const int tables_5_3_2[5][NUM_BW_ENTRIES] = {
+    {25, 52, 79, 106, 133, 160, 188, 216, 242, 270, -1, -1, -1, -1, -1}, // 15 FR1
+    {11, 24, 38, 51, 65, 78, 92, 106, 119, 133, 162, 189, 217, 245, 273}, // 30 FR1
+    {-1, 11, 18, 24, 31, 38, 44, 51, 58, 65, 79, 93, 107, 121, 135}, // 60 FR1
+    {66, 132, 264, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // 60 FR2
+    {32, 66, 132, 264, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1} // 120FR2
 };
 
 int get_supported_band_index(int scs, frequency_range_t freq_range, int n_rbs)
 {
   int scs_index = scs + freq_range;
-  for (int i = 0; i < 12; i++) {
+  for (int i = 0; i < NUM_BW_ENTRIES; i++) {
     if(n_rbs == tables_5_3_2[scs_index][i])
       return i;
   }
@@ -181,7 +211,7 @@ int get_supported_band_index(int scs, frequency_range_t freq_range, int n_rbs)
 int get_smallest_supported_bandwidth_index(int scs, frequency_range_t frequency_range, int n_rbs)
 {
   int scs_index = scs + frequency_range;
-  for (int i = 0; i < 12; i++) {
+  for (int i = 0; i < NUM_BW_ENTRIES; i++) {
     if (n_rbs <= tables_5_3_2[scs_index][i])
       return i;
   }
@@ -394,10 +424,8 @@ void check_ssb_raster(uint64_t freq, int band, int scs)
 int get_supported_bw_mhz(frequency_range_t frequency_range, int bw_index)
 {
   if (frequency_range == FR1) {
-    int bandwidth_index_to_mhz[] = {5, 10, 15, 20, 25, 30, 40, 50, 60, 80, 90, 100};
-    AssertFatal(bw_index >= 0 && bw_index <= sizeofArray(bandwidth_index_to_mhz),
-                "Bandwidth index %d is invalid\n",
-                bw_index);
+    int bandwidth_index_to_mhz[] = {5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 60, 70, 80, 90, 100};
+    AssertFatal(bw_index >= 0 && bw_index <= sizeofArray(bandwidth_index_to_mhz), "Bandwidth index %d is invalid\n", bw_index);
     return bandwidth_index_to_mhz[bw_index];
   } else {
     int bandwidth_index_to_mhz[] = {50, 100, 200, 400};
@@ -521,6 +549,18 @@ void get_coreset_rballoc(uint8_t *FreqDomainResource,int *n_rb,int *rb_offset) {
     }
   *rb_offset = 6*start;
   *n_rb = 6*count;
+}
+
+// According to 38.211 7.3.2.2
+int get_coreset_num_cces(uint8_t *FreqDomainResource, int duration)
+{
+  int num_rbs;
+  int rb_offset;
+  get_coreset_rballoc(FreqDomainResource, &num_rbs, &rb_offset);
+  int total_resource_element_groups = num_rbs * duration;
+  int reg_per_cce = 6;
+  int total_cces = total_resource_element_groups / reg_per_cce;
+  return total_cces;
 }
 
 int get_nb_periods_per_frame(uint8_t tdd_period)
@@ -676,9 +716,12 @@ uint64_t from_nrarfcn(int nr_bandP, uint8_t scs_index, uint32_t nrarfcn)
   return frequency;
 }
 
-int get_first_ul_slot(int nrofDownlinkSlots, int nrofDownlinkSymbols, int nrofUplinkSymbols)
+/**
+ * @brief Get the slot index within the period
+ */
+int get_slot_idx_in_period(const int slot, const frame_structure_t *fs)
 {
-  return (nrofDownlinkSlots + (nrofDownlinkSymbols != 0 && nrofUplinkSymbols == 0));
+  return slot % fs->numb_slots_period;
 }
 
 int get_dmrs_port(int nl, uint16_t dmrs_ports)
@@ -704,7 +747,7 @@ frame_type_t get_frame_type(uint16_t current_band, uint8_t scs_index)
 {
   int32_t delta_duplex = get_delta_duplex(current_band, scs_index);
   frame_type_t current_type = delta_duplex == 0 ? TDD : FDD;
-  LOG_D(NR_MAC, "NR band %d, duplex mode %s, duplex spacing = %d KHz\n", current_band, duplex_mode[current_type], delta_duplex);
+  LOG_D(NR_MAC, "NR band %d, duplex mode %s, duplex spacing = %d KHz\n", current_band, duplex_mode_txt[current_type], delta_duplex);
   return current_type;
 }
 
@@ -794,6 +837,18 @@ void get_samplerate_and_bw(int mu,
         *tx_bw = 50e6;
         *rx_bw = 50e6;
       }
+      break;
+    case 242: // 45Mhz
+    case 188: // 35Mhz
+      if (threequarter_fs) {
+        *sample_rate = 46.08e6;
+        *samples_per_frame = 460800;
+      } else {
+        *sample_rate = 61.44e6;
+        *samples_per_frame = 614400;
+      }
+      *tx_bw = (n_rb == 242) ? 45e6 : 35e6;
+      *rx_bw = (n_rb == 242) ? 45e6 : 35e6;
       break;
     case 216:
       if (threequarter_fs) {
@@ -895,6 +950,17 @@ void get_samplerate_and_bw(int mu,
         *rx_bw = 80e6;
       }
       break;
+    case 189:
+      if (threequarter_fs) {
+        *sample_rate = 92.16e6;
+        *samples_per_frame = 921600;
+      } else {
+        *sample_rate = 122.88e6;
+        *samples_per_frame = 1228800;
+      }
+      *tx_bw = 70e6;
+      *rx_bw = 70e6;
+      break;
     case 162 :
       if (threequarter_fs) {
         AssertFatal(1==0,"N_RB %d cannot use 3/4 sampling\n",n_rb);
@@ -920,6 +986,20 @@ void get_samplerate_and_bw(int mu,
       }
 
       break;
+
+    case 119: // 45Mhz
+    case 92: // 35Mhz
+      if (threequarter_fs) {
+        *sample_rate = 46.08e6;
+        *samples_per_frame = 460800;
+      } else {
+        *sample_rate = 61.44e6;
+        *samples_per_frame = 614400;
+      }
+      *tx_bw = (n_rb == 119) ? 45e6 : 35e6;
+      *rx_bw = (n_rb == 119) ? 45e6 : 35e6;
+      break;
+
     case 106:
       if (threequarter_fs) {
         *sample_rate=46.08e6;

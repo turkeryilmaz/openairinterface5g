@@ -34,6 +34,7 @@
 #include "uper_encoder.h"
 #include "uper_decoder.h"
 #include "rrc_defs.h"
+#include "rrc_proto.h"
 #include "rrc_extern.h"
 #include "assertions.h"
 #include "common/ran_context.h"
@@ -104,22 +105,7 @@
 #define NUMBEROF_DRBS_TOBE_ADDED 1
 static int encode_CG_ConfigInfo(char *buffer,int buffer_size,rrc_eNB_ue_context_t *const ue_context_pP,int *enc_size);
 
-extern RAN_CONTEXT_t RC;
-
-extern eNB_MAC_INST                *eNB_mac_inst;
-extern UE_MAC_INST                 *UE_mac_inst;
-
-
 mui_t                               rrc_eNB_mui = 0;
-
-extern uint32_t to_earfcn_DL(int eutra_bandP, uint32_t dl_CarrierFreq, uint32_t bw);
-extern int rrc_eNB_process_security(const protocol_ctxt_t *const ctxt_pP, rrc_eNB_ue_context_t *const ue_context_pP, security_capabilities_t *security_capabilities_pP);
-extern void process_eNB_security_key(const protocol_ctxt_t *const ctxt_pP,
-                                     rrc_eNB_ue_context_t *const ue_context_pP,
-                                     uint8_t *security_key_pP);
-extern int rrc_eNB_generate_RRCConnectionReconfiguration_endc(protocol_ctxt_t *ctxt, rrc_eNB_ue_context_t *ue_context, unsigned char *buffer, int buffer_size, OCTET_STRING_t *scg_group_config,
-    OCTET_STRING_t *scg_RB_config);
-extern struct rrc_eNB_ue_context_s *get_first_ue_context(eNB_RRC_INST *rrc_instance_pP);
 
 pthread_mutex_t      rrc_release_freelist;
 RRC_release_list_t   rrc_release_info;
@@ -5264,7 +5250,9 @@ rrc_eNB_process_RRCConnectionReconfigurationComplete(
                   ctxt_pP->module_id);
             char ip[20];
             snprintf(ip, sizeof(ip), "10.0.%d.%d", ctxt_pP->module_id + 1, ctxt_pP->module_id + 1);
-            oip_ifup = tun_config(ctxt_pP->module_id, ip, NULL, "oaitun_oai");
+            char ifname[IFNAMSIZ];
+            tun_generate_ifname(ifname, "oaitun_oai", ctxt_pP->module_id);
+            oip_ifup = tun_config(ifname, ip, NULL);
 
             if (oip_ifup == 0) { // interface is up --> send a config the DRB
               module_id_t ue_module_id;

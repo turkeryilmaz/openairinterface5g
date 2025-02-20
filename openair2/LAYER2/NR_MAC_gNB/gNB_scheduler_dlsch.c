@@ -52,20 +52,22 @@
 #define WORD 32
 //#define SIZE_OF_POINTER sizeof (void *)
 
-int get_dl_tda(const gNB_MAC_INST *nrmac, const NR_ServingCellConfigCommon_t *scc, int slot)
+int get_dl_tda(const gNB_MAC_INST *nrmac, int slot)
 {
   /* we assume that this function is mutex-protected from outside */
-  const NR_TDD_UL_DL_Pattern_t *tdd = scc->tdd_UL_DL_ConfigurationCommon ? &scc->tdd_UL_DL_ConfigurationCommon->pattern1 : NULL;
-  AssertFatal(tdd || nrmac->common_channels->frame_type == FDD, "Dynamic TDD not handled yet\n");
+  const frame_structure_t *fs = &nrmac->frame_structure;
 
   // Use special TDA in case of CSI-RS
-  if(nrmac->UE_info.sched_csirs > 0)
+  if (nrmac->UE_info.sched_csirs > 0)
     return 1;
 
-  if (tdd && tdd->nrofDownlinkSymbols > 1) { // if there is a mixed slot where we can transmit DL
-    const int nr_slots_period = tdd->nrofDownlinkSlots + tdd->nrofUplinkSlots + 1;
-    if ((slot % nr_slots_period) == tdd->nrofDownlinkSlots)
+  if (fs->frame_type == TDD) {
+    int s = get_slot_idx_in_period(slot, fs);
+    // if there is a mixed slot where we can transmit DL
+    const tdd_bitmap_t *tdd_slot_bitmap = fs->period_cfg.tdd_slot_bitmap;
+    if (tdd_slot_bitmap[s].num_dl_symbols > 1 && is_mixed_slot(s, fs)) {
       return 2;
+    }
   }
   return 0; // if FDD or not mixed slot in TDD, for now use default TDA
 }
@@ -461,7 +463,7 @@ static bool allocate_dl_retransmission(module_id_t module_id,
   int pm_index = (curInfo->nrOfLayers < retInfo->nrOfLayers) ? curInfo->pm_index : retInfo->pm_index;
 
   const int coresetid = sched_ctrl->coreset->controlResourceSetId;
-  const int tda = get_dl_tda(nr_mac, scc, slot);
+  const int tda = get_dl_tda(nr_mac, slot);
   AssertFatal(tda >= 0,"Unable to find PDSCH time domain allocation in list\n");
 
   /* Check first whether the old TDA can be reused
@@ -565,7 +567,8 @@ static bool allocate_dl_retransmission(module_id_t module_id,
                                sched_ctrl->search_space,
                                sched_ctrl->coreset,
                                &sched_ctrl->sched_pdcch,
-                               false);
+                               false,
+                               sched_ctrl->pdcch_cl_adjust);
   if (CCEIndex<0) {
     LOG_D(NR_MAC, "[UE %04x][%4d.%2d] could not find free CCE for DL DCI retransmission\n", UE->rnti, frame, slot);
     return false;
@@ -626,6 +629,7 @@ static void pf_dl(module_id_t module_id,
     remainUEs[i] = max_num_ue;
   int curUE = 0;
   int CC_id = 0;
+  int slots_per_frame = mac->frame_structure.numb_slots_frame;
 
   /* Loop UE_info->list to check retransmission */
   UE_iterator(UE_list, UE) {
@@ -655,18 +659,14 @@ static void pf_dl(module_id_t module_id,
 
     /* retransmission */
     if (sched_pdsch->dl_harq_pid >= 0) {
-      NR_beam_alloc_t beam = beam_allocation_procedure(&mac->beam_info,
-                                                       frame,
-                                                       slot,
-                                                       UE->UE_beam_index,
-                                                       nr_slots_per_frame[current_BWP->scs]);
+      NR_beam_alloc_t beam = beam_allocation_procedure(&mac->beam_info, frame, slot, UE->UE_beam_index, slots_per_frame);
       bool sch_ret = beam.idx >= 0;
       /* Allocate retransmission */
       if (sch_ret)
         sch_ret = allocate_dl_retransmission(module_id, frame, slot, &n_rb_sched[beam.idx], UE, beam.idx, sched_pdsch->dl_harq_pid);
       if (!sch_ret) {
         LOG_D(NR_MAC, "[UE %04x][%4d.%2d] DL retransmission could not be allocated\n", UE->rnti, frame, slot);
-        reset_beam_status(&mac->beam_info, frame, slot, UE->UE_beam_index, nr_slots_per_frame[current_BWP->scs], beam.new_beam);
+        reset_beam_status(&mac->beam_info, frame, slot, UE->UE_beam_index, slots_per_frame, beam.new_beam);
         continue;
       }
       /* reduce max_num_ue once we are sure UE can be allocated, i.e., has CCE */
@@ -749,11 +749,7 @@ static void pf_dl(module_id_t module_id,
       continue;
     }
 
-    NR_beam_alloc_t beam = beam_allocation_procedure(&mac->beam_info,
-                                                     frame,
-                                                     slot,
-                                                     iterator->UE->UE_beam_index,
-                                                     nr_slots_per_frame[dl_bwp->scs]);
+    NR_beam_alloc_t beam = beam_allocation_procedure(&mac->beam_info, frame, slot, iterator->UE->UE_beam_index, slots_per_frame);
 
     if (beam.idx < 0) {
       // no available beam
@@ -761,12 +757,7 @@ static void pf_dl(module_id_t module_id,
       continue;
     }
     if (remainUEs[beam.idx] == 0 || n_rb_sched[beam.idx] < min_rbSize) {
-      reset_beam_status(&mac->beam_info,
-                        frame,
-                        slot,
-                        iterator->UE->UE_beam_index,
-                        nr_slots_per_frame[dl_bwp->scs],
-                        beam.new_beam);
+      reset_beam_status(&mac->beam_info, frame, slot, iterator->UE->UE_beam_index, slots_per_frame, beam.new_beam);
       iterator++;
       continue;
     }
@@ -775,7 +766,7 @@ static void pf_dl(module_id_t module_id,
     sched_pdsch->dl_harq_pid = sched_ctrl->available_dl_harq.head;
 
     /* MCS has been set above */
-    sched_pdsch->time_domain_allocation = get_dl_tda(mac, scc, slot);
+    sched_pdsch->time_domain_allocation = get_dl_tda(mac, slot);
     AssertFatal(sched_pdsch->time_domain_allocation>=0,"Unable to find PDSCH time domain allocation in list\n");
 
     const int coresetid = sched_ctrl->coreset->controlResourceSetId;
@@ -829,15 +820,11 @@ static void pf_dl(module_id_t module_id,
                                  sched_ctrl->search_space,
                                  sched_ctrl->coreset,
                                  &sched_ctrl->sched_pdcch,
-                                 false);
+                                 false,
+                                 sched_ctrl->pdcch_cl_adjust);
     if (CCEIndex < 0) {
       LOG_D(NR_MAC, "[UE %04x][%4d.%2d] could not find free CCE for DL DCI\n", rnti, frame, slot);
-      reset_beam_status(&mac->beam_info,
-                        frame,
-                        slot,
-                        iterator->UE->UE_beam_index,
-                        nr_slots_per_frame[dl_bwp->scs],
-                        beam.new_beam);
+      reset_beam_status(&mac->beam_info, frame, slot, iterator->UE->UE_beam_index, slots_per_frame, beam.new_beam);
       iterator++;
       continue;
     }
@@ -851,12 +838,7 @@ static void pf_dl(module_id_t module_id,
       alloc = nr_acknack_scheduling(mac, iterator->UE, frame, slot, iterator->UE->UE_beam_index, r_pucch, 0);
       if (alloc < 0) {
         LOG_D(NR_MAC, "[UE %04x][%4d.%2d] could not find PUCCH for DL DCI\n", rnti, frame, slot);
-        reset_beam_status(&mac->beam_info,
-                          frame,
-                          slot,
-                          iterator->UE->UE_beam_index,
-                          nr_slots_per_frame[dl_bwp->scs],
-                          beam.new_beam);
+        reset_beam_status(&mac->beam_info, frame, slot, iterator->UE->UE_beam_index, slots_per_frame, beam.new_beam);
         iterator++;
         continue;
       }
@@ -969,7 +951,7 @@ void nr_schedule_ue_spec(module_id_t module_id,
   AssertFatal(pthread_mutex_trylock(&gNB_mac->sched_lock) == EBUSY,
               "this function should be called with the scheduler mutex locked\n");
 
-  if (!is_xlsch_in_slot(gNB_mac->dlsch_slot_bitmap[slot / 64], slot))
+  if (!is_dl_slot(slot, &gNB_mac->frame_structure))
     return;
 
   /* PREPROCESSOR */
@@ -1438,11 +1420,7 @@ void nr_schedule_ue_spec(module_id_t module_id,
       if (sched_ctrl->ta_apply) {
         sched_ctrl->ta_apply = false;
         sched_ctrl->ta_frame = frame;
-        LOG_D(NR_MAC,
-              "%d.%2d UE %04x TA scheduled, resetting TA frame\n",
-              frame,
-              slot,
-              UE->rnti);
+        LOG_D(NR_MAC, "%d.%2d UE %04x TA scheduled, resetting TA frame\n", frame, slot, UE->rnti);
       }
 
       T(T_GNB_MAC_DL_PDU_WITH_DATA, T_INT(module_id), T_INT(CC_id), T_INT(rnti),

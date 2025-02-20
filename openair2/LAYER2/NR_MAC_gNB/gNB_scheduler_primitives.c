@@ -63,12 +63,9 @@
 
 #include "common/utils/alg/find.h"
 
-//#define DEBUG_DCI
-
-extern RAN_CONTEXT_t RC;
-
-// CQI TABLES (10 times the value in 214 to adequately compare with R)
-// Table 1 (38.214 5.2.2.1-2)
+// #define DEBUG_DCI
+//  CQI TABLES (10 times the value in 214 to adequately compare with R)
+//  Table 1 (38.214 5.2.2.1-2)
 static const uint16_t cqi_table1[16][2] = {{0, 0},
                                            {2, 780},
                                            {2, 1200},
@@ -121,6 +118,9 @@ static const uint16_t cqi_table3[16][2] = {{0, 0},
                                            {6, 5670},
                                            {6, 6660},
                                            {6, 7720}};
+
+static void determine_aggregation_level_search_order(int agg_level_search_order[NUM_PDCCH_AGG_LEVELS],
+                                                     float pdcch_cl_adjust);
 
 uint8_t get_dl_nrOfLayers(const NR_UE_sched_ctrl_t *sched_ctrl,
                           const nr_dci_format_t dci_format) {
@@ -553,15 +553,18 @@ int get_cce_index(const gNB_MAC_INST *nrmac,
                   const NR_SearchSpace_t *ss,
                   const NR_ControlResourceSet_t *coreset,
                   NR_sched_pdcch_t *sched_pdcch,
-                  bool is_common)
+                  bool is_common,
+                  float pdcch_cl_adjust)
 {
-
   const uint32_t Y = is_common ? 0 : get_Y(ss, slot, rnti);
   uint8_t nr_of_candidates;
-  for (int i = 0; i < 5; i++) {
-    // for now taking the lowest value among the available aggregation levels
-    find_aggregation_candidates(aggregation_level, &nr_of_candidates, ss, 1 << i);
-    if(nr_of_candidates > 0)
+
+  int agg_level_search_order[NUM_PDCCH_AGG_LEVELS];
+  determine_aggregation_level_search_order(agg_level_search_order, pdcch_cl_adjust);
+
+  for (int i = 0; i < NUM_PDCCH_AGG_LEVELS; i++) {
+    find_aggregation_candidates(aggregation_level, &nr_of_candidates, ss, 1 << agg_level_search_order[i]);
+    if (nr_of_candidates > 0)
       break;
   }
   int CCEIndex = find_pdcch_candidate(nrmac, CC_id, *aggregation_level, nr_of_candidates, beam_idx, sched_pdcch, coreset, Y);
@@ -2163,6 +2166,31 @@ int get_ulbw_tbslbrm(int scc_bwpsize, const NR_ServingCellConfig_t *servingCellC
   return bw;
 }
 
+static void set_sched_pucch_list(NR_UE_sched_ctrl_t *sched_ctrl,
+                                 const NR_UE_UL_BWP_t *ul_bwp,
+                                 const NR_ServingCellConfigCommon_t *scc,
+                                 const frame_structure_t *fs)
+{
+  const int NTN_gNB_Koffset = get_NTN_Koffset(scc);
+  const int n_ul_slots_period = get_ul_slots_per_period(fs);
+
+  // PUCCH list size is given by the number of UL slots in the PUCCH period
+  // the length PUCCH period is determined by max_fb_time since we may need to prepare PUCCH for ACK/NACK max_fb_time slots ahead
+  const int list_size = n_ul_slots_period << (int)ceil(log2((ul_bwp->max_fb_time + NTN_gNB_Koffset) / fs->numb_slots_period + 1));
+
+  if (!sched_ctrl->sched_pucch) {
+    sched_ctrl->sched_pucch = calloc_or_fail(list_size, sizeof(*sched_ctrl->sched_pucch));
+    sched_ctrl->sched_pucch_size = list_size;
+  } else if (list_size > sched_ctrl->sched_pucch_size) {
+    sched_ctrl->sched_pucch = realloc(sched_ctrl->sched_pucch, list_size * sizeof(*sched_ctrl->sched_pucch));
+    for (int i = sched_ctrl->sched_pucch_size; i < list_size; i++) {
+      NR_sched_pucch_t *curr_pucch = &sched_ctrl->sched_pucch[i];
+      memset(curr_pucch, 0, sizeof(*curr_pucch));
+    }
+    sched_ctrl->sched_pucch_size = list_size;
+  }
+}
+
 // main function to configure parameters of current BWP
 void configure_UE_BWP(gNB_MAC_INST *nr_mac,
                       NR_ServingCellConfigCommon_t *scc,
@@ -2408,7 +2436,7 @@ void configure_UE_BWP(gNB_MAC_INST *nr_mac,
                          NR_UL_DCI_FORMAT_0_0;
 
     set_max_fb_time(UL_BWP, DL_BWP);
-    set_sched_pucch_list(sched_ctrl, UL_BWP, scc);
+    set_sched_pucch_list(sched_ctrl, UL_BWP, scc, &nr_mac->frame_structure);
   }
 
   if(ra) {
@@ -2494,6 +2522,7 @@ NR_UE_info_t *add_new_nr_ue(gNB_MAC_INST *nr_mac, rnti_t rntiP, NR_CellGroupConf
   sched_ctrl->ta_update = 31;
   sched_ctrl->sched_srs.frame = -1;
   sched_ctrl->sched_srs.slot = -1;
+  sched_ctrl->pdcch_cl_adjust = 0;
 
   // initialize LCID structure
   seq_arr_init(&sched_ctrl->lc_config, sizeof(nr_lc_config_t));
@@ -2538,32 +2567,6 @@ NR_UE_info_t *add_new_nr_ue(gNB_MAC_INST *nr_mac, rnti_t rntiP, NR_CellGroupConf
   LOG_D(NR_MAC, "Add NR rnti %x\n", rntiP);
   dump_nr_list(UE_info->list);
   return (UE);
-}
-
-void set_sched_pucch_list(NR_UE_sched_ctrl_t *sched_ctrl,
-                          const NR_UE_UL_BWP_t *ul_bwp,
-                          const NR_ServingCellConfigCommon_t *scc)
-{
-  const int NTN_gNB_Koffset = get_NTN_Koffset(scc);
-  const NR_TDD_UL_DL_Pattern_t *tdd = scc->tdd_UL_DL_ConfigurationCommon ? &scc->tdd_UL_DL_ConfigurationCommon->pattern1 : NULL;
-  const int n_slots_frame = nr_slots_per_frame[ul_bwp->scs];
-  const int nr_slots_period = tdd ? n_slots_frame / get_nb_periods_per_frame(tdd->dl_UL_TransmissionPeriodicity) : n_slots_frame;
-  const int n_ul_slots_period = tdd ? tdd->nrofUplinkSlots + (tdd->nrofUplinkSymbols > 0 ? 1 : 0) : n_slots_frame;
-  // PUCCH list size is given by the number of UL slots in the PUCCH period
-  // the length PUCCH period is determined by max_fb_time since we may need to prepare PUCCH for ACK/NACK max_fb_time slots ahead
-  const int list_size = n_ul_slots_period << (int)ceil(log2((ul_bwp->max_fb_time + NTN_gNB_Koffset) / nr_slots_period + 1));
-  if(!sched_ctrl->sched_pucch) {
-    sched_ctrl->sched_pucch = calloc(list_size, sizeof(*sched_ctrl->sched_pucch));
-    sched_ctrl->sched_pucch_size = list_size;
-  }
-  else if (list_size > sched_ctrl->sched_pucch_size) {
-    sched_ctrl->sched_pucch = realloc(sched_ctrl->sched_pucch, list_size * sizeof(*sched_ctrl->sched_pucch));
-    for(int i=sched_ctrl->sched_pucch_size; i<list_size; i++){
-      NR_sched_pucch_t *curr_pucch = &sched_ctrl->sched_pucch[i];
-      memset(curr_pucch, 0, sizeof(*curr_pucch));
-    }
-    sched_ctrl->sched_pucch_size = list_size;
-  }
 }
 
 void free_sched_pucch_list(NR_UE_sched_ctrl_t *sched_ctrl)
@@ -2774,12 +2777,12 @@ int get_pdsch_to_harq_feedback(NR_PUCCH_Config_t *pucch_Config,
   }
 }
 
-void nr_csirs_scheduling(int Mod_idP, frame_t frame, sub_frame_t slot, int n_slots_frame, nfapi_nr_dl_tti_request_t *DL_req)
+void nr_csirs_scheduling(int Mod_idP, frame_t frame, sub_frame_t slot, nfapi_nr_dl_tti_request_t *DL_req)
 {
   int CC_id = 0;
   NR_UEs_t *UE_info = &RC.nrmac[Mod_idP]->UE_info;
   gNB_MAC_INST *gNB_mac = RC.nrmac[Mod_idP];
-
+  int n_slots_frame = gNB_mac->frame_structure.numb_slots_frame;
   NR_SCHED_ENSURE_LOCKED(&gNB_mac->sched_lock);
 
   UE_info->sched_csirs = 0;
@@ -3175,9 +3178,9 @@ void nr_mac_update_timers(module_id_t module_id,
   }
 }
 
-int ul_buffer_index(int frame, int slot, int scs, int size)
+int ul_buffer_index(int frame, int slot, int slots_per_frame, int size)
 {
-  const int abs_slot = frame * nr_slots_per_frame[scs] + slot;
+  const int abs_slot = frame * slots_per_frame + slot;
   return abs_slot % size;
 }
 
@@ -3527,4 +3530,32 @@ bool nr_mac_get_new_rnti(NR_UEs_t *UEs, const NR_RA_t *ra_base, int ra_count, rn
     loop++;
   } while (loop < 100 && (exist_connected_ue || exist_in_pending_ra_ue));
   return loop < 100; // nothing found: loop count 100
+}
+
+/// @brief Orders PDCCH aggregation levels so that we first check desired aggregation level according to
+///        pdcch_cl_adjust
+/// @param agg_level_search_order in/out 5-element array of aggregation levels from 0 to 4
+/// @param pdcch_cl_adjust value from 0 to 1 indication channel impariments (0 - good channel, 1 - bad channel)
+static void determine_aggregation_level_search_order(int agg_level_search_order[NUM_PDCCH_AGG_LEVELS], float pdcch_cl_adjust)
+{
+  int desired_agg_level_index = round(4 * pdcch_cl_adjust);
+  int agg_level_search_index = 0;
+  for (int i = desired_agg_level_index; i < NUM_PDCCH_AGG_LEVELS; i++) {
+    agg_level_search_order[agg_level_search_index++] = i;
+  }
+  for (int i = desired_agg_level_index - 1; i >= 0; i--) {
+    agg_level_search_order[agg_level_search_index++] = i;
+  }
+}
+
+/// @brief Update PDCCH closed loop adjust for UE depending on detection of feedback.
+/// @param sched_ctrl UE scheduling control info
+/// @param feedback_not_detected Whether feedback (PUSCH or HARQ) was detected
+void nr_mac_update_pdcch_closed_loop_adjust(NR_UE_sched_ctrl_t *sched_ctrl, bool feedback_not_detected)
+{
+  if (feedback_not_detected) {
+    sched_ctrl->pdcch_cl_adjust = min(1, sched_ctrl->pdcch_cl_adjust + 0.05);
+  } else {
+    sched_ctrl->pdcch_cl_adjust = max(0, sched_ctrl->pdcch_cl_adjust - 0.01);
+  }
 }

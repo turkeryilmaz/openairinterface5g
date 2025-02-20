@@ -49,7 +49,9 @@
 #include "constr_TYPE.h"
 #include "executables/softmodem-common.h"
 #include "oai_asn1.h"
+#include "openair2/LAYER2/NR_MAC_gNB/mac_proto.h"
 #include "openair2/LAYER2/NR_MAC_gNB/nr_mac_gNB.h"
+#include "openair2/LAYER2/NR_MAC_gNB/mac_proto.h"
 #include "openair3/UTILS/conversions.h"
 #include "uper_decoder.h"
 #include "uper_encoder.h"
@@ -68,6 +70,50 @@ static NR_BWP_t clone_generic_parameters(const NR_BWP_t *gp)
     asn1cCallocOne(clone.cyclicPrefix, *gp->cyclicPrefix);
   }
   return clone;
+}
+
+/**
+ * @brief Verifies the aggregation level candidates
+ *
+ * This function checks the input aggregation level candidates and translates the value provided
+ * in the config to a valid field in RRC message.
+ *
+ * @param[in] num_cce_in_coreset number of CCE in coreset
+ * @param[in] in_num_agg_level_candidates input array of aggregation level candidates, interpreted as number of candidates.
+ * @param[in] coresetid coreset id
+ * @param[in] searchspaceid searchspace id
+ * @param[out] out_num_agg_level_candidates array of aggregation level candidates, output is a valid 3gpp field value.
+ * 
+ */
+static void verify_agg_levels(int num_cce_in_coreset,
+                              const int in_num_agg_level_candidates[NUM_PDCCH_AGG_LEVELS],
+                              int coresetid,
+                              int searchspaceid,
+                              int out_num_agg_level_candidates[NUM_PDCCH_AGG_LEVELS])
+{
+  int agg_level_to_n_cces[] = {1, 2, 4, 8, 16};
+  for (int i = 0; i < NUM_PDCCH_AGG_LEVELS; i++) {
+    // 7 is not a valid value, the mapping in 38.331 is from 0-7 mapped to 0-8 candidates and value 7 means 8 candidates instead. If
+    // the user wants 7 candidates round it up to 8.
+    int num_agg_level_candidates = in_num_agg_level_candidates[i];
+    if (num_agg_level_candidates == 7) {
+      num_agg_level_candidates = 8;
+    }
+    if (num_agg_level_candidates * agg_level_to_n_cces[i] > num_cce_in_coreset) {
+      int new_agg_level_candidates = num_cce_in_coreset / agg_level_to_n_cces[i];
+      LOG_E(NR_RRC,
+            "Invalid configuration: Not enough CCEs in coreset %d, searchspace %d, agg_level %d, number of requested "
+            "candidates = %d, number of CCES in coreset %d. Aggregation level candidates limited to %d\n",
+            coresetid,
+            searchspaceid,
+            agg_level_to_n_cces[i],
+            in_num_agg_level_candidates[i],
+            num_cce_in_coreset,
+            new_agg_level_candidates);
+      num_agg_level_candidates = new_agg_level_candidates;
+    }
+    out_num_agg_level_candidates[i] = min(num_agg_level_candidates, 7);
+  }
 }
 
 static NR_SetupRelease_RACH_ConfigCommon_t *clone_rach_configcommon(const NR_SetupRelease_RACH_ConfigCommon_t *rcc)
@@ -206,9 +252,11 @@ static int get_nb_pucch2_per_slot(const NR_ServingCellConfigCommon_t *scc, int b
   return nb_pucch2;
 }
 
-NR_SearchSpace_t *rrc_searchspace_config(bool is_common, int searchspaceid, int coresetid)
+NR_SearchSpace_t *rrc_searchspace_config(bool is_common,
+                                         int searchspaceid,
+                                         int coresetid,
+                                         const int num_agg_level_candidates[NUM_PDCCH_AGG_LEVELS])
 {
-
   NR_SearchSpace_t *ss = calloc(1,sizeof(*ss));
   ss->searchSpaceId = searchspaceid;
   ss->controlResourceSetId = calloc(1,sizeof(*ss->controlResourceSetId));
@@ -224,23 +272,12 @@ NR_SearchSpace_t *rrc_searchspace_config(bool is_common, int searchspaceid, int 
   ss->monitoringSymbolsWithinSlot->buf[1] = 0x0;
   ss->monitoringSymbolsWithinSlot->bits_unused = 2;
   ss->nrofCandidates = calloc(1,sizeof(*ss->nrofCandidates));
-  // TODO temporary hardcoded implementation
-  ss->nrofCandidates->aggregationLevel1 = NR_SearchSpace__nrofCandidates__aggregationLevel1_n0;
-  if (get_softmodem_params()->usim_test) {
-    ss->nrofCandidates->aggregationLevel2 = NR_SearchSpace__nrofCandidates__aggregationLevel2_n0;
-    ss->nrofCandidates->aggregationLevel4 = NR_SearchSpace__nrofCandidates__aggregationLevel4_n1;
-    ss->nrofCandidates->aggregationLevel8 = NR_SearchSpace__nrofCandidates__aggregationLevel8_n1;
-  } else {
-    if (is_common) {
-      ss->nrofCandidates->aggregationLevel2 = NR_SearchSpace__nrofCandidates__aggregationLevel2_n0;
-      ss->nrofCandidates->aggregationLevel4 = NR_SearchSpace__nrofCandidates__aggregationLevel4_n1;
-    } else {
-      ss->nrofCandidates->aggregationLevel2 = NR_SearchSpace__nrofCandidates__aggregationLevel2_n2;
-      ss->nrofCandidates->aggregationLevel4 = NR_SearchSpace__nrofCandidates__aggregationLevel4_n0;
-    }
-    ss->nrofCandidates->aggregationLevel8 = NR_SearchSpace__nrofCandidates__aggregationLevel8_n0;
-  }
-  ss->nrofCandidates->aggregationLevel16 = NR_SearchSpace__nrofCandidates__aggregationLevel16_n0;
+  ss->nrofCandidates->aggregationLevel1 = num_agg_level_candidates[PDCCH_AGG_LEVEL1];
+  ss->nrofCandidates->aggregationLevel2 = num_agg_level_candidates[PDCCH_AGG_LEVEL2];
+  ss->nrofCandidates->aggregationLevel4 = num_agg_level_candidates[PDCCH_AGG_LEVEL4];
+  ss->nrofCandidates->aggregationLevel8 = num_agg_level_candidates[PDCCH_AGG_LEVEL8];
+  ss->nrofCandidates->aggregationLevel16 = num_agg_level_candidates[PDCCH_AGG_LEVEL16];
+
   ss->searchSpaceType = calloc(1,sizeof(*ss->searchSpaceType));
   if (is_common) {
     ss->searchSpaceType->present = NR_SearchSpace__searchSpaceType_PR_common;
@@ -312,9 +349,13 @@ static uint64_t get_ssb_bitmap(const NR_ServingCellConfigCommon_t *scc)
   return bitmap;
 }
 
-static int set_ideal_period(const int n_slots_period, const int n_ul_slots_period)
+static int set_ideal_period(bool is_csi)
 {
-  return MAX_MOBILES_PER_GNB * 2 * n_slots_period / n_ul_slots_period; // 2 reports per UE (RSRP and RI-PMI-CQI)
+  const frame_structure_t *fs = &RC.nrmac[0]->frame_structure;
+  const int nb_slots_per_period = fs->numb_slots_period;
+  const int n_ul_slots_per_period = get_ul_slots_per_period(fs); // full UL + mixed with UL symbols
+  // 2 reports per UE (RSRP and RI-PMI-CQI)
+  return is_csi ? MAX_MOBILES_PER_GNB * 2 * nb_slots_per_period / n_ul_slots_per_period : nb_slots_per_period * MAX_MOBILES_PER_GNB;
 }
 
 static void set_csirs_periodicity(NR_NZP_CSI_RS_Resource_t *nzpcsi0,
@@ -389,16 +430,6 @@ static void config_csirs(const NR_ServingCellConfigCommon_t *servingcellconfigco
     nzpcsirs0->aperiodicTriggeringOffset = NULL;
     nzpcsirs0->trs_Info = NULL;
     asn1cSeqAdd(&csi_MeasConfig->nzp_CSI_RS_ResourceSetToAddModList->list,nzpcsirs0);
-
-    const NR_TDD_UL_DL_Pattern_t *tdd = servingcellconfigcommon->tdd_UL_DL_ConfigurationCommon ?
-                                        &servingcellconfigcommon->tdd_UL_DL_ConfigurationCommon->pattern1 : NULL;
-
-    const int n_slots_frame = slotsperframe[*servingcellconfigcommon->ssbSubcarrierSpacing];
-    const int nb_slots_per_period = tdd ? n_slots_frame/get_nb_periods_per_frame(tdd->dl_UL_TransmissionPeriodicity): n_slots_frame;
-    const int nb_dl_slots_period = tdd ? tdd->nrofDownlinkSlots : n_slots_frame;
-    const int n_ul_slots_period = tdd ? (tdd->nrofUplinkSlots + (tdd->nrofUplinkSymbols > 0)) : n_slots_frame;
-    const int ideal_period = set_ideal_period(nb_slots_per_period, n_ul_slots_period); // same periodicity as CSI measurement report
-
     if(!csi_MeasConfig->nzp_CSI_RS_ResourceToAddModList)
       csi_MeasConfig->nzp_CSI_RS_ResourceToAddModList = calloc(1,sizeof(*csi_MeasConfig->nzp_CSI_RS_ResourceToAddModList));
     NR_NZP_CSI_RS_Resource_t *nzpcsi0 = calloc(1,sizeof(*nzpcsi0));
@@ -447,7 +478,12 @@ static void config_csirs(const NR_ServingCellConfigCommon_t *servingcellconfigco
     nzpcsi0->powerControlOffsetSS = calloc(1,sizeof(*nzpcsi0->powerControlOffsetSS));
     *nzpcsi0->powerControlOffsetSS = NR_NZP_CSI_RS_Resource__powerControlOffsetSS_db0;
     nzpcsi0->scramblingID = *servingcellconfigcommon->physCellId;
-    set_csirs_periodicity(nzpcsi0, id, ideal_period, nb_slots_per_period, nb_dl_slots_period);
+
+    const int ideal_period = set_ideal_period(true); // same periodicity as CSI measurement report
+    const frame_structure_t *fs = &(RC.nrmac[0]->frame_structure);
+    const int nb_dl_slots_period = get_full_dl_slots_per_period(fs); // full DL slots
+    set_csirs_periodicity(nzpcsi0, id, ideal_period, fs->numb_slots_period, nb_dl_slots_period);
+
     nzpcsi0->qcl_InfoPeriodicCSI_RS = calloc(1,sizeof(*nzpcsi0->qcl_InfoPeriodicCSI_RS));
     *nzpcsi0->qcl_InfoPeriodicCSI_RS = 0;
     asn1cSeqAdd(&csi_MeasConfig->nzp_CSI_RS_ResourceToAddModList->list,nzpcsi0);
@@ -565,9 +601,8 @@ static void config_csiim(int do_csirs,
 void set_dl_maxmimolayers(NR_PDSCH_ServingCellConfig_t *pdsch_servingcellconfig,
                           const NR_ServingCellConfigCommon_t *scc,
                           const NR_UE_NR_Capability_t *uecap,
-			  int maxMIMO_layers)
+                          int maxMIMO_layers)
 {
-
   if(!pdsch_servingcellconfig->ext1)
     pdsch_servingcellconfig->ext1=calloc(1,sizeof(*pdsch_servingcellconfig->ext1));
   if(!pdsch_servingcellconfig->ext1->maxMIMO_Layers)
@@ -628,15 +663,12 @@ long rrc_get_max_nr_csrs(const int max_rbs, const long b_SRS) {
 static struct NR_SRS_Resource__resourceType__periodic *configure_periodic_srs(const NR_ServingCellConfigCommon_t *scc,
                                                                               const int uid)
 {
+  frame_structure_t *fs = &RC.nrmac[0]->frame_structure;
+  int offset = get_ul_slot_offset(fs, uid, false); // only full UL slots for SRS
 
-  const NR_TDD_UL_DL_Pattern_t *tdd = scc->tdd_UL_DL_ConfigurationCommon ? &scc->tdd_UL_DL_ConfigurationCommon->pattern1 : NULL;
-  const int n_slots_frame = slotsperframe[*scc->ssbSubcarrierSpacing];
-  const int ul_slots_period = tdd ? tdd->nrofUplinkSlots : n_slots_frame;
-  const int n_slots_period = tdd ? n_slots_frame/get_nb_periods_per_frame(tdd->dl_UL_TransmissionPeriodicity) : n_slots_frame;
-  const int first_full_ul_slot = n_slots_period - ul_slots_period;
-  const int ideal_period = n_slots_period * MAX_MOBILES_PER_GNB;
-  const int offset = first_full_ul_slot + (uid % ul_slots_period) + (n_slots_period * (uid / ul_slots_period));
   AssertFatal(offset < 2560, "Cannot allocate SRS configuration for uid %d, not enough resources\n", uid);
+  const int ideal_period = set_ideal_period(false);
+
   struct NR_SRS_Resource__resourceType__periodic *periodic_srs = calloc(1,sizeof(*periodic_srs));
   if (ideal_period < 5) {
     periodic_srs->periodicityAndOffset_p.present = NR_SRS_PeriodicityAndOffset_PR_sl4;
@@ -824,6 +856,48 @@ static NR_SetupRelease_SRS_Config_t *get_config_srs(const NR_ServingCellConfigCo
   return setup_release_srs_Config;
 }
 
+static int get_SupportedBandwidth_fr1_bw_index(int bw_index)
+{
+  int val = -1;
+
+  switch (bw_index) {
+    case NR_SupportedBandwidth_v1700__fr1_r17_mhz5:
+    case NR_SupportedBandwidth_v1700__fr1_r17_mhz10:
+    case NR_SupportedBandwidth_v1700__fr1_r17_mhz15:
+    case NR_SupportedBandwidth_v1700__fr1_r17_mhz20:
+    case NR_SupportedBandwidth_v1700__fr1_r17_mhz25:
+      val = bw_index;
+      break;
+    case NR_SupportedBandwidth_v1700__fr1_r17_mhz30:
+    case NR_SupportedBandwidth_v1700__fr1_r17_mhz35:
+      val = NR_SupportedBandwidth__fr1_mhz30;
+      break;
+    case NR_SupportedBandwidth_v1700__fr1_r17_mhz40:
+    case NR_SupportedBandwidth_v1700__fr1_r17_mhz45:
+      val = NR_SupportedBandwidth__fr1_mhz40;
+      break;
+    case NR_SupportedBandwidth_v1700__fr1_r17_mhz50:
+      val = NR_SupportedBandwidth__fr1_mhz50;
+      break;
+    case NR_SupportedBandwidth_v1700__fr1_r17_mhz60:
+      val = NR_SupportedBandwidth__fr1_mhz60;
+      break;
+    case NR_SupportedBandwidth_v1700__fr1_r17_mhz70:
+    case NR_SupportedBandwidth_v1700__fr1_r17_mhz80:
+      val = NR_SupportedBandwidth__fr1_mhz80;
+      break;
+    case NR_SupportedBandwidth_v1700__fr1_r17_mhz90:
+    case NR_SupportedBandwidth_v1700__fr1_r17_mhz100:
+      val = NR_SupportedBandwidth__fr1_mhz100;
+      break;
+    default:
+      AssertFatal(1==0, "Invalid bw index\n");
+  }
+
+  return val;
+}
+
+
 void prepare_sim_uecap(NR_UE_NR_Capability_t *cap,
                        NR_ServingCellConfigCommon_t *scc,
                        int numerology,
@@ -860,26 +934,41 @@ void prepare_sim_uecap(NR_UE_NR_Capability_t *cap,
     fs->featureSetsDownlinkPerCC = calloc(1, sizeof(*fs->featureSetsDownlinkPerCC));
     NR_FeatureSetDownlinkPerCC_t *fs_cc = calloc(1, sizeof(*fs_cc));
     fs_cc->supportedSubcarrierSpacingDL = numerology;
-    int bw = get_supported_band_index(numerology, freq_range, rbsize);
-    if (bw == 10) // 90MHz
+    int bw_index = get_supported_band_index(numerology, freq_range, rbsize);
+    int bw = get_supported_bw_mhz(freq_range, bw_index);
+    if (bw == 90) // 90MHz
       fs_cc->channelBW_90mhz = calloc(1, sizeof(*fs_cc->channelBW_90mhz));
-    if (bw == 11) // 100MHz
-      bw--;
     if(freq_range == FR2) {
       fs_cc->supportedBandwidthDL.present = NR_SupportedBandwidth_PR_fr2;
-      fs_cc->supportedBandwidthDL.choice.fr2 = bw;
+      fs_cc->supportedBandwidthDL.choice.fr2 = bw_index;
     }
     else{
       fs_cc->supportedBandwidthDL.present = NR_SupportedBandwidth_PR_fr1;
-      fs_cc->supportedBandwidthDL.choice.fr1 = bw;
+      fs_cc->supportedBandwidthDL.choice.fr1 = get_SupportedBandwidth_fr1_bw_index(bw_index);
     }
+    fs_cc->maxNumberMIMO_LayersPDSCH = calloc(1, sizeof(*fs_cc->maxNumberMIMO_LayersPDSCH));
+    *fs_cc->maxNumberMIMO_LayersPDSCH = NR_MIMO_LayersDL_fourLayers;
     fs_cc->supportedModulationOrderDL = calloc(1, sizeof(*fs_cc->supportedModulationOrderDL));
     *fs_cc->supportedModulationOrderDL = NR_ModulationOrder_qam256;
     asn1cSeqAdd(&fs->featureSetsDownlinkPerCC->list, fs_cc);
+
+    if (bw == 35 || bw == 45 || bw == 70) {
+      fs->ext6 = calloc(1, sizeof(*fs->ext6));
+      fs->ext6->featureSetsDownlinkPerCC_v1700 = calloc(1, sizeof(*fs->ext6->featureSetsDownlinkPerCC_v1700));
+      NR_FeatureSetDownlinkPerCC_v1700_t *fs_dlcc_v1700 = calloc(1, sizeof(*fs_dlcc_v1700));
+      fs_dlcc_v1700->supportedBandwidthDL_v1710 = calloc(1, sizeof(*fs_dlcc_v1700->supportedBandwidthDL_v1710));
+      fs_dlcc_v1700->supportedBandwidthDL_v1710->present = NR_SupportedBandwidth_v1700_PR_fr1_r17;
+      fs_dlcc_v1700->supportedBandwidthDL_v1710->choice.fr1_r17 = bw_index;
+      asn1cSeqAdd(&fs->ext6->featureSetsDownlinkPerCC_v1700->list, fs_dlcc_v1700);
+    }
   }
 
   phy_Parameters->phy_ParametersFRX_Diff = calloc(1, sizeof(*phy_Parameters->phy_ParametersFRX_Diff));
   phy_Parameters->phy_ParametersFRX_Diff->pucch_F0_2WithoutFH = NULL;
+
+  if (LOG_DEBUGFLAG(DEBUG_ASN1)) {
+    xer_fprint(stdout, &asn_DEF_NR_UE_NR_Capability, cap);
+  }
 }
 
 void nr_rrc_config_dl_tda(struct NR_PDSCH_TimeDomainResourceAllocationList *pdsch_TimeDomainAllocationList,
@@ -907,7 +996,17 @@ void nr_rrc_config_dl_tda(struct NR_PDSCH_TimeDomainResourceAllocationList *pdsc
   if(frame_type==TDD) {
     // TDD
     if(tdd_UL_DL_ConfigurationCommon) {
-      int dl_symb = tdd_UL_DL_ConfigurationCommon->pattern1.nrofDownlinkSymbols;
+      int dl_symb = 0;
+      if (tdd_UL_DL_ConfigurationCommon->pattern2 && tdd_UL_DL_ConfigurationCommon->pattern2->nrofDownlinkSymbols)
+        AssertFatal(tdd_UL_DL_ConfigurationCommon->pattern2->nrofDownlinkSymbols == tdd_UL_DL_ConfigurationCommon->pattern1.nrofDownlinkSymbols,
+                    "nrofDownlinkSymbols in pattern1 %ld and pattern2 %ld must be the same in current implementation\n",
+                    tdd_UL_DL_ConfigurationCommon->pattern2->nrofDownlinkSymbols,
+                    tdd_UL_DL_ConfigurationCommon->pattern1.nrofDownlinkSymbols);
+      if (tdd_UL_DL_ConfigurationCommon->pattern1.nrofDownlinkSymbols != 0) {
+        dl_symb = tdd_UL_DL_ConfigurationCommon->pattern1.nrofDownlinkSymbols;
+      } else if (tdd_UL_DL_ConfigurationCommon->pattern2) {
+        dl_symb = tdd_UL_DL_ConfigurationCommon->pattern2->nrofDownlinkSymbols;
+      }
       if(dl_symb > 1) {
         // mixed slot TDA with TDA index 2
         struct NR_PDSCH_TimeDomainResourceAllocation *timedomainresourceallocation2 = CALLOC(1,sizeof(NR_PDSCH_TimeDomainResourceAllocation_t));
@@ -919,6 +1018,40 @@ void nr_rrc_config_dl_tda(struct NR_PDSCH_TimeDomainResourceAllocationList *pdsc
   }
 }
 
+static struct NR_PUSCH_TimeDomainResourceAllocation *set_TimeDomainResourceAllocation(const int k2, uint8_t index, int ul_symb)
+{
+  struct NR_PUSCH_TimeDomainResourceAllocation *puschTdrAlloc = calloc_or_fail(1, sizeof(*puschTdrAlloc));
+  puschTdrAlloc->k2 = calloc_or_fail(1, sizeof(*puschTdrAlloc->k2));
+  *puschTdrAlloc->k2 = k2;
+  puschTdrAlloc->mappingType = NR_PUSCH_TimeDomainResourceAllocation__mappingType_typeB;
+  switch (index) {
+    case 0:
+      puschTdrAlloc->startSymbolAndLength = get_SLIV(0, 13);
+      break;
+    case 1:
+      puschTdrAlloc->startSymbolAndLength = get_SLIV(0, 12);
+      break;
+    case 2:
+      // UL TDA index 2 for mixed slot (TDD)
+      puschTdrAlloc->startSymbolAndLength =
+          get_SLIV(NR_NUMBER_OF_SYMBOLS_PER_SLOT - ul_symb, ul_symb - 1); // starting in fist ul symbol til the last but one
+      break;
+    case 3: {
+      // UL TDA index 3 for msg3 in the mixed slot (TDD)
+      int no_mix_slot = ul_symb < 3 ? 1 : 0; // we need at least 2 symbols for scheduling Msg3
+      *puschTdrAlloc->k2 += no_mix_slot;
+      if (no_mix_slot)
+        puschTdrAlloc->startSymbolAndLength = get_SLIV(0, 13); // full allocation if there is no mixed slot
+      else
+        puschTdrAlloc->startSymbolAndLength =
+            get_SLIV(NR_NUMBER_OF_SYMBOLS_PER_SLOT - ul_symb, ul_symb - 1); // starting in fist ul symbol til the last but one
+      }
+      break;
+    default:
+      break;
+  }
+  return puschTdrAlloc;
+}
 
 void nr_rrc_config_ul_tda(NR_ServingCellConfigCommon_t *scc, int min_fb_delay)
 {
@@ -928,58 +1061,48 @@ void nr_rrc_config_ul_tda(NR_ServingCellConfigCommon_t *scc, int min_fb_delay)
       scc->uplinkConfigCommon->initialUplinkBWP->pusch_ConfigCommon->choice.setup->pusch_TimeDomainAllocationList;
   AssertFatal(tda->list.count == 0, "already have pusch_TimeDomainAllocationList members\n");
 
-  frame_type_t frame_type = get_frame_type(*scc->downlinkConfigCommon->frequencyInfoDL->frequencyBandList.list.array[0], *scc->ssbSubcarrierSpacing);
   const int k2 = min_fb_delay;
-
   uint8_t DELTA[4]= {2,3,4,6}; // Delta parameter for Msg3
   int mu = scc->uplinkConfigCommon->initialUplinkBWP->genericParameters.subcarrierSpacing;
+  struct NR_SetupRelease_PUSCH_ConfigCommon *pusch_ConfigCommon = scc->uplinkConfigCommon->initialUplinkBWP->pusch_ConfigCommon;
 
   // UL TDA index 0 is basic slot configuration starting in symbol 0 til the last but one symbol
-  struct NR_PUSCH_TimeDomainResourceAllocation *pusch_timedomainresourceallocation = CALLOC(1,sizeof(struct NR_PUSCH_TimeDomainResourceAllocation));
-  pusch_timedomainresourceallocation->k2 = CALLOC(1,sizeof(long));
-  *pusch_timedomainresourceallocation->k2 = k2;
-  pusch_timedomainresourceallocation->mappingType = NR_PUSCH_TimeDomainResourceAllocation__mappingType_typeB;
-  pusch_timedomainresourceallocation->startSymbolAndLength = get_SLIV(0, 13);
-  asn1cSeqAdd(&scc->uplinkConfigCommon->initialUplinkBWP->pusch_ConfigCommon->choice.setup->pusch_TimeDomainAllocationList->list,pusch_timedomainresourceallocation); 
+  asn1cSeqAdd(&pusch_ConfigCommon->choice.setup->pusch_TimeDomainAllocationList->list, set_TimeDomainResourceAllocation(k2, 0, 0));
 
   // UL TDA index 1 in case of SRS
-  struct NR_PUSCH_TimeDomainResourceAllocation *pusch_timedomainresourceallocation1 = CALLOC(1,sizeof(struct NR_PUSCH_TimeDomainResourceAllocation));
-  pusch_timedomainresourceallocation1->k2 = CALLOC(1,sizeof(long));
-  *pusch_timedomainresourceallocation1->k2 = k2;
-  pusch_timedomainresourceallocation1->mappingType = NR_PUSCH_TimeDomainResourceAllocation__mappingType_typeB;
-  pusch_timedomainresourceallocation1->startSymbolAndLength = get_SLIV(0, 12);
-  asn1cSeqAdd(&scc->uplinkConfigCommon->initialUplinkBWP->pusch_ConfigCommon->choice.setup->pusch_TimeDomainAllocationList->list,pusch_timedomainresourceallocation1);
+  asn1cSeqAdd(&pusch_ConfigCommon->choice.setup->pusch_TimeDomainAllocationList->list, set_TimeDomainResourceAllocation(k2, 1, 0));
 
-  if(frame_type==TDD) {
-    if(scc->tdd_UL_DL_ConfigurationCommon) {
-      int ul_symb = scc->tdd_UL_DL_ConfigurationCommon->pattern1.nrofUplinkSymbols;
-      if (ul_symb>1) {
-        // UL TDA index 2 for mixed slot (TDD)
-        pusch_timedomainresourceallocation = CALLOC(1,sizeof(struct NR_PUSCH_TimeDomainResourceAllocation));
-        pusch_timedomainresourceallocation->k2 = CALLOC(1,sizeof(long));
-        *pusch_timedomainresourceallocation->k2 = k2;
-        pusch_timedomainresourceallocation->mappingType = NR_PUSCH_TimeDomainResourceAllocation__mappingType_typeB;
-        pusch_timedomainresourceallocation->startSymbolAndLength = get_SLIV(14 - ul_symb, ul_symb - 1); // starting in fist ul symbol til the last but one
-        asn1cSeqAdd(&scc->uplinkConfigCommon->initialUplinkBWP->pusch_ConfigCommon->choice.setup->pusch_TimeDomainAllocationList->list,pusch_timedomainresourceallocation);
-      }
-      // UL TDA index 3 for msg3 in the mixed slot (TDD)
-      int nb_periods_per_frame = get_nb_periods_per_frame(scc->tdd_UL_DL_ConfigurationCommon->pattern1.dl_UL_TransmissionPeriodicity);
-      int nb_slots_per_period = ((1 << mu) * 10) / nb_periods_per_frame;
-      struct NR_PUSCH_TimeDomainResourceAllocation *pusch_timedomainresourceallocation_msg3 = CALLOC(1,sizeof(struct NR_PUSCH_TimeDomainResourceAllocation));
-      pusch_timedomainresourceallocation_msg3->k2 = CALLOC(1,sizeof(long));
-      int no_mix_slot = ul_symb < 3 ? 1 : 0; // we need at least 2 symbols for scheduling Msg3
-      *pusch_timedomainresourceallocation_msg3->k2 = nb_slots_per_period - DELTA[mu] + no_mix_slot;
-      if(*pusch_timedomainresourceallocation_msg3->k2 < min_fb_delay)
-        *pusch_timedomainresourceallocation_msg3->k2 += nb_slots_per_period;
-      AssertFatal(*pusch_timedomainresourceallocation_msg3->k2 < 33,"Computed k2 for msg3 %ld is larger than the range allowed by RRC (0..32)\n",
-                  *pusch_timedomainresourceallocation_msg3->k2);
-      pusch_timedomainresourceallocation_msg3->mappingType = NR_PUSCH_TimeDomainResourceAllocation__mappingType_typeB;
-      if(no_mix_slot)
-        pusch_timedomainresourceallocation_msg3->startSymbolAndLength = get_SLIV(0, 13); // full allocation if there is no mixed slot
-      else
-        pusch_timedomainresourceallocation_msg3->startSymbolAndLength = get_SLIV(14 - ul_symb, ul_symb - 1); // starting in fist ul symbol til the last but one
-      asn1cSeqAdd(&scc->uplinkConfigCommon->initialUplinkBWP->pusch_ConfigCommon->choice.setup->pusch_TimeDomainAllocationList->list,pusch_timedomainresourceallocation_msg3);
+  if (scc->tdd_UL_DL_ConfigurationCommon) {
+    int ul_symb = 0;
+    NR_TDD_UL_DL_Pattern_t *p1 = &scc->tdd_UL_DL_ConfigurationCommon->pattern1;
+    NR_TDD_UL_DL_Pattern_t *p2 = scc->tdd_UL_DL_ConfigurationCommon->pattern2;
+    if (p2 && p2->nrofUplinkSymbols)
+      AssertFatal(p2->nrofUplinkSymbols == p1->nrofUplinkSymbols,
+                  "nrofDownlinkSymbols in pattern1 %ld and pattern2 %ld must be the same in current implementation\n",
+                  p1->nrofUplinkSymbols,
+                  p2->nrofUplinkSymbols);
+    if (p1->nrofUplinkSymbols) {
+      ul_symb = p1->nrofUplinkSymbols;
+    } else if (p2) {
+      ul_symb = p1->nrofUplinkSymbols;
     }
+    if (ul_symb>1) {
+      // UL TDA index 2 for mixed slot (TDD)
+      asn1cSeqAdd(&pusch_ConfigCommon->choice.setup->pusch_TimeDomainAllocationList->list,
+                  set_TimeDomainResourceAllocation(k2, 2, ul_symb));
+    }
+    // UL TDA index 3 for msg3 in the mixed slot (TDD)
+    int tdd_period_idx = get_tdd_period_idx(scc->tdd_UL_DL_ConfigurationCommon);
+    int nb_periods_per_frame = get_nb_periods_per_frame(tdd_period_idx);
+    int nb_slots_per_period = ((1 << mu) * 10) / nb_periods_per_frame;
+    int k2_msg3 = nb_slots_per_period - DELTA[mu];
+    struct NR_PUSCH_TimeDomainResourceAllocation *puschTdrAllocMsg3 = set_TimeDomainResourceAllocation(k2_msg3, 3, ul_symb);
+    if (*puschTdrAllocMsg3->k2 < min_fb_delay)
+      *puschTdrAllocMsg3->k2 += nb_slots_per_period;
+    AssertFatal(*puschTdrAllocMsg3->k2 < 33,
+                "Computed k2 for msg3 %ld is larger than the range allowed by RRC (0..32)\n",
+                *puschTdrAllocMsg3->k2);
+    asn1cSeqAdd(&pusch_ConfigCommon->choice.setup->pusch_TimeDomainAllocationList->list, puschTdrAllocMsg3);
   }
 }
 
@@ -1118,10 +1241,10 @@ void set_pucch_power_config(NR_PUCCH_Config_t *pucch_Config, int do_csirs) {
 
 static void set_SR_periodandoffset(NR_SchedulingRequestResourceConfig_t *schedulingRequestResourceConfig, const NR_ServingCellConfigCommon_t *scc, int scs)
 {
-  const NR_TDD_UL_DL_Pattern_t *tdd = scc->tdd_UL_DL_ConfigurationCommon ? &scc->tdd_UL_DL_ConfigurationCommon->pattern1 : NULL;
+  const frame_structure_t *fs = &RC.nrmac[0]->frame_structure;
   int sr_slot = 1; // in FDD SR in slot 1
-  if(tdd)
-    sr_slot = get_first_ul_slot(tdd->nrofDownlinkSlots, tdd->nrofDownlinkSymbols, tdd->nrofUplinkSymbols);
+  if (fs->frame_type == TDD)
+    sr_slot = get_first_ul_slot(fs, true);
 
   schedulingRequestResourceConfig->periodicityAndOffset = calloc(1,sizeof(*schedulingRequestResourceConfig->periodicityAndOffset));
 
@@ -1403,7 +1526,8 @@ static void config_downlinkBWP(NR_BWP_Downlink_t *bwp,
                                int dl_antenna_ports,
                                bool force_256qam_off,
                                int bwp_loop,
-                               bool is_SA)
+                               bool is_SA,
+                               const int num_agg_level_candidates[NUM_PDCCH_AGG_LEVELS])
 {
   bwp->bwp_Common = calloc(1,sizeof(*bwp->bwp_Common));
 
@@ -1435,8 +1559,12 @@ static void config_downlinkBWP(NR_BWP_Downlink_t *bwp,
   bwp->bwp_Common->pdcch_ConfigCommon->choice.setup->commonSearchSpaceList=NULL;
   bwp->bwp_Common->pdcch_ConfigCommon->choice.setup->commonSearchSpaceList=calloc(1,sizeof(*bwp->bwp_Common->pdcch_ConfigCommon->choice.setup->commonSearchSpaceList));
 
-  NR_SearchSpace_t *ss = rrc_searchspace_config(true, 5+bwp->bwp_Id, coreset->controlResourceSetId);
-  asn1cSeqAdd(&bwp->bwp_Common->pdcch_ConfigCommon->choice.setup->commonSearchSpaceList->list,ss);
+  int searchspaceid = 5 + bwp->bwp_Id;
+  int rrc_num_agg_level_candidates[NUM_PDCCH_AGG_LEVELS];
+  int num_cces = get_coreset_num_cces(coreset->frequencyDomainResources.buf, coreset->duration);
+  verify_agg_levels(num_cces, num_agg_level_candidates, coreset->controlResourceSetId, searchspaceid, rrc_num_agg_level_candidates);
+  NR_SearchSpace_t *ss = rrc_searchspace_config(true, searchspaceid, coreset->controlResourceSetId, rrc_num_agg_level_candidates);
+  asn1cSeqAdd(&bwp->bwp_Common->pdcch_ConfigCommon->choice.setup->commonSearchSpaceList->list, ss);
 
   bwp->bwp_Common->pdcch_ConfigCommon->choice.setup->searchSpaceSIB1=NULL;
   bwp->bwp_Common->pdcch_ConfigCommon->choice.setup->searchSpaceOtherSystemInformation=NULL;
@@ -1471,7 +1599,11 @@ static void config_downlinkBWP(NR_BWP_Downlink_t *bwp,
   NR_ControlResourceSet_t *coreset2 = get_coreset_config(bwp->bwp_Id, curr_bwp, ssb_bitmap);
   asn1cSeqAdd(&bwp->bwp_Dedicated->pdcch_Config->choice.setup->controlResourceSetToAddModList->list, coreset2);
 
-  NR_SearchSpace_t *ss2 = rrc_searchspace_config(false, 10+bwp->bwp_Id, coreset2->controlResourceSetId);
+  searchspaceid = 10 + bwp->bwp_Id;
+  num_cces = get_coreset_num_cces(coreset2->frequencyDomainResources.buf, coreset2->duration);
+  verify_agg_levels(num_cces, num_agg_level_candidates, coreset->controlResourceSetId, searchspaceid, rrc_num_agg_level_candidates);
+  NR_SearchSpace_t *ss2 =
+      rrc_searchspace_config(false, searchspaceid, coreset2->controlResourceSetId, rrc_num_agg_level_candidates);
   asn1cSeqAdd(&bwp->bwp_Dedicated->pdcch_Config->choice.setup->searchSpacesToAddModList->list, ss2);
 
   bwp->bwp_Dedicated->pdcch_Config->choice.setup->searchSpacesToReleaseList = NULL;
@@ -1581,15 +1713,14 @@ static void set_csi_meas_periodicity(const NR_ServingCellConfigCommon_t *scc,
                                      int curr_bwp,
                                      bool is_rsrp)
 {
-  const NR_TDD_UL_DL_Pattern_t *tdd = scc->tdd_UL_DL_ConfigurationCommon ? &scc->tdd_UL_DL_ConfigurationCommon->pattern1 : NULL;
-  const int n_slots_frame = slotsperframe[*scc->ssbSubcarrierSpacing];
-  const int n_ul_slots_period = tdd ? (tdd->nrofUplinkSlots + (tdd->nrofUplinkSymbols > 0)) : n_slots_frame;
-  const int n_slots_period = tdd ? n_slots_frame / get_nb_periods_per_frame(tdd->dl_UL_TransmissionPeriodicity) : n_slots_frame;
-  const int ideal_period = set_ideal_period(n_slots_period, n_ul_slots_period);
-  const int first_ul_slot_period = tdd ? get_first_ul_slot(tdd->nrofDownlinkSlots, tdd->nrofDownlinkSymbols, tdd->nrofUplinkSymbols) : 0;
+  const int ideal_period = set_ideal_period(true);
   const int num_pucch2 = get_nb_pucch2_per_slot(scc, curr_bwp);
   const int idx = (uid * 2 / num_pucch2) + is_rsrp;
-  const int offset = first_ul_slot_period + idx % n_ul_slots_period + (idx / n_ul_slots_period) * n_slots_period;
+
+  frame_structure_t *fs = &RC.nrmac[0]->frame_structure;
+  int offset = get_ul_slot_offset(fs, idx, true);
+
+  LOG_D(NR_MAC, "set_csi_meas_periodicity: uid = %d, offset = %d, ideal_period = %d", uid, offset, ideal_period);
   AssertFatal(offset < 320, "Not enough UL slots to accomodate all possible UEs. Need to rework the implementation\n");
 
   if (ideal_period < 5) {
@@ -2218,6 +2349,19 @@ static long get_NR_UE_TimersAndConstants_t319(const nr_mac_timers_t *timer_confi
   }
 }
 
+static bool is_ntn_band(int band)
+{
+  // TS 3GPP 38.101-5 V1807 Section 5.2.2
+  if (band >= 254 && band <= 256) // FR1 NTN
+    return true;
+
+  // TS 3GPP 38.101-5 V1807 Section 5.2.3
+  if (band >= 510 && band <= 512) // FR2 NTN
+    return true;
+
+  return false;
+}
+
 NR_BCCH_DL_SCH_Message_t *get_SIB1_NR(const NR_ServingCellConfigCommon_t *scc,
                                       const f1ap_plmn_t *plmn,
                                       uint64_t cellID,
@@ -2316,12 +2460,26 @@ NR_BCCH_DL_SCH_Message_t *get_SIB1_NR(const NR_ServingCellConfigCommon_t *scc,
 
   asn1cSeqAdd(&sib1->si_SchedulingInfo->schedulingInfoList.list,schedulingInfo);*/
 
-  // sib19 scheduling info
-  // ensure ntn-config is initialized 
-  if (scc->ext2 && scc->ext2->ntn_Config_r17) {
+  const NR_FreqBandIndicatorNR_t band = *scc->downlinkConfigCommon->frequencyInfoDL->frequencyBandList.list.array[0];
+  if (is_ntn_band(band)) {
     sib1->nonCriticalExtension = CALLOC(1, sizeof(struct NR_SIB1_v1610_IEs));
     sib1->nonCriticalExtension->nonCriticalExtension = CALLOC(1, sizeof(struct NR_SIB1_v1630_IEs));
     sib1->nonCriticalExtension->nonCriticalExtension->nonCriticalExtension = CALLOC(1, sizeof(struct NR_SIB1_v1700_IEs));
+    // If cell provides NTN access, set cellBarredNTN to notBarred.
+    struct NR_SIB1_v1700_IEs *sib1_v1700 = sib1->nonCriticalExtension->nonCriticalExtension->nonCriticalExtension;
+    sib1_v1700->cellBarredNTN_r17 = CALLOC(1, sizeof(long));
+    *sib1_v1700->cellBarredNTN_r17 = NR_SIB1_v1700_IEs__cellBarredNTN_r17_notBarred;
+  }
+
+  // sib19 scheduling info
+  // ensure ntn-config is initialized
+  if (scc->ext2 && scc->ext2->ntn_Config_r17) {
+    if (sib1->nonCriticalExtension == NULL)
+      sib1->nonCriticalExtension = CALLOC(1, sizeof(struct NR_SIB1_v1610_IEs));
+    if (sib1->nonCriticalExtension->nonCriticalExtension == NULL)
+      sib1->nonCriticalExtension->nonCriticalExtension = CALLOC(1, sizeof(struct NR_SIB1_v1630_IEs));
+    if (sib1->nonCriticalExtension->nonCriticalExtension->nonCriticalExtension == NULL)
+      sib1->nonCriticalExtension->nonCriticalExtension->nonCriticalExtension = CALLOC(1, sizeof(struct NR_SIB1_v1700_IEs));
 
     struct NR_SI_SchedulingInfo_v1700 *sib_v17_scheduling_info = CALLOC(1, sizeof(struct NR_SI_SchedulingInfo_v1700));
 
@@ -2353,7 +2511,6 @@ NR_BCCH_DL_SCH_Message_t *get_SIB1_NR(const NR_ServingCellConfigCommon_t *scc,
         frequencyInfoDL->frequencyBandList.list.array[i];
   }
 
-  const NR_FreqBandIndicatorNR_t band = *scc->downlinkConfigCommon->frequencyInfoDL->frequencyBandList.list.array[0];
   frequency_range_t frequency_range = band > 256 ? FR2 : FR1;
   sib1->servingCellConfigCommon->downlinkConfigCommon.frequencyInfoDL.offsetToPointA = get_ssb_offset_to_pointA(*scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB,
                                scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencyPointA,
@@ -2499,7 +2656,10 @@ NR_BCCH_DL_SCH_Message_t *get_SIB1_NR(const NR_ServingCellConfigCommon_t *scc,
     AssertFatal(ServCellCom->tdd_UL_DL_ConfigurationCommon != NULL, "out of memory\n");
     ServCellCom->tdd_UL_DL_ConfigurationCommon->referenceSubcarrierSpacing = scc->tdd_UL_DL_ConfigurationCommon->referenceSubcarrierSpacing;
     ServCellCom->tdd_UL_DL_ConfigurationCommon->pattern1 = scc->tdd_UL_DL_ConfigurationCommon->pattern1;
-    ServCellCom->tdd_UL_DL_ConfigurationCommon->pattern2 = scc->tdd_UL_DL_ConfigurationCommon->pattern2;
+    if (scc->tdd_UL_DL_ConfigurationCommon->pattern2) {
+      ServCellCom->tdd_UL_DL_ConfigurationCommon->pattern2 = calloc_or_fail(1, sizeof(struct NR_TDD_UL_DL_Pattern));
+      *ServCellCom->tdd_UL_DL_ConfigurationCommon->pattern2 = *scc->tdd_UL_DL_ConfigurationCommon->pattern2;
+    }
   }
   ServCellCom->ss_PBCH_BlockPower = scc->ss_PBCH_BlockPower;
 
@@ -2925,7 +3085,15 @@ static NR_SpCellConfig_t *get_initial_SpCellConfig(int uid,
 
   asn1cSeqAdd(&bwp_Dedicated->pdcch_Config->choice.setup->controlResourceSetToAddModList->list, coreset);
 
-  NR_SearchSpace_t *ss2 = rrc_searchspace_config(false, 5, coreset->controlResourceSetId);
+  int searchspaceid = 5;
+  int rrc_num_agg_level_candidates[NUM_PDCCH_AGG_LEVELS];
+  int num_cces = get_coreset_num_cces(coreset->frequencyDomainResources.buf, coreset->duration);
+  verify_agg_levels(num_cces,
+                    configuration->num_agg_level_candidates,
+                    coreset->controlResourceSetId,
+                    searchspaceid,
+                    rrc_num_agg_level_candidates);
+  NR_SearchSpace_t *ss2 = rrc_searchspace_config(false, searchspaceid, coreset->controlResourceSetId, rrc_num_agg_level_candidates);
   asn1cSeqAdd(&bwp_Dedicated->pdcch_Config->choice.setup->searchSpacesToAddModList->list, ss2);
 
   bwp_Dedicated->pdsch_Config = config_pdsch(bitmap, 0, pdsch_AntennaPorts);
@@ -2969,7 +3137,7 @@ static NR_SpCellConfig_t *get_initial_SpCellConfig(int uid,
         calloc(1, sizeof(*SpCellConfig->spCellConfigDedicated->downlinkBWP_ToAddModList));
     for (int bwp_loop = 0; bwp_loop < n_dl_bwp; bwp_loop++) {
       NR_BWP_Downlink_t *bwp = calloc(1, sizeof(*bwp));
-      config_downlinkBWP(bwp, scc, servingcellconfigdedicated, NULL, 0, false, bwp_loop, true);
+      config_downlinkBWP(bwp, scc, servingcellconfigdedicated, NULL, 0, false, bwp_loop, true, configuration->num_agg_level_candidates);
       asn1cSeqAdd(&SpCellConfig->spCellConfigDedicated->downlinkBWP_ToAddModList->list, bwp);
     }
     const NR_BWP_Id_t *firstActiveDownlinkBWP_Id = servingcellconfigdedicated->firstActiveDownlinkBWP_Id;
@@ -3431,7 +3599,8 @@ NR_CellGroupConfig_t *get_default_secondaryCellGroup(const NR_ServingCellConfigC
                          dl_antenna_ports,
                          configuration->force_256qam_off,
                          bwp_loop,
-                         false);
+                         false,
+                         configuration->num_agg_level_candidates);
       asn1cSeqAdd(&secondaryCellGroup->spCellConfig->spCellConfigDedicated->downlinkBWP_ToAddModList->list, bwp);
     }
     secondaryCellGroup->spCellConfig->spCellConfigDedicated->firstActiveDownlinkBWP_Id =

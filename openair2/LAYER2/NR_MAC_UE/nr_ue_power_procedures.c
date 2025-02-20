@@ -233,7 +233,7 @@ float nr_get_Pcmax(int p_Max,
 
 float nr_get_Pcmin(int bandwidth_index) {
   const float table_38101_6_3_1_1[] = {
-    -40, -40, -40, -40, -39, -38.2, -37.5, -37, -36.5, -35.2, -34.6, -34, -33.5, -33
+    -40, -40, -40, -40, -39, -38.2, -37.5, -37, -36.5, -36, -35.2, -34.6, -34, -33.5, -33
   };
   return table_38101_6_3_1_1[bandwidth_index];
 }
@@ -347,7 +347,7 @@ int16_t get_pucch_tx_power_ue(NR_UE_MAC_INST_t *mac,
   // modulated CP-OFDM of equivalent RB allocation.
   int P_CMAX = nr_get_Pcmax(mac->p_Max,
                             mac->nr_band,
-                            mac->frame_type,
+                            mac->frame_structure.frame_type,
                             mac->frequency_range,
                             current_UL_BWP->channel_bandwidth,
                             2,
@@ -529,7 +529,7 @@ int get_pusch_tx_power_ue(NR_UE_MAC_INST_t *mac,
   int M_pusch_component = 10 * log10((pow(2, mu)) * num_rb);
   int P_CMAX = nr_get_Pcmax(mac->p_Max,
                             mac->nr_band,
-                            mac->frame_type,
+                            mac->frame_structure.frame_type,
                             mac->frequency_range,
                             mac->current_UL_BWP->channel_bandwidth,
                             qm,
@@ -619,7 +619,7 @@ int get_srs_tx_power_ue(NR_UE_MAC_INST_t *mac,
   // allocation.
   int P_CMAX = nr_get_Pcmax(mac->p_Max,
                             mac->nr_band,
-                            mac->frame_type,
+                            mac->frame_structure.frame_type,
                             mac->frequency_range,
                             mac->current_UL_BWP->channel_bandwidth,
                             2,
