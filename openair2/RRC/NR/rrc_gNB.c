@@ -1733,6 +1733,14 @@ static int rrc_gNB_decode_dcch(gNB_RRC_INST *rrc, const f1ap_ul_rrc_message_t *m
     xer_fprint(stdout, &asn_DEF_NR_UL_DCCH_Message, (void *)ul_dcch_msg);
   }
 
+#ifdef E2_AGENT
+  // 38.331 Sec 6.2.1: message index of UL-DCCH-Message
+  const uint32_t rrc_msg_id = ul_dcch_msg->message.present;
+  byte_array_t buffer_ba = {.len = msg->rrc_container_length};
+  buffer_ba.buf = msg->rrc_container;
+  signal_rrc_msg(UL_DCCH_NR_RRC_CLASS, rrc_msg_id, buffer_ba);
+#endif
+
   if (ul_dcch_msg->message.present == NR_UL_DCCH_MessageType_PR_c1) {
     switch (ul_dcch_msg->message.choice.c1->present) {
       case NR_UL_DCCH_MessageType__c1_PR_NOTHING:
@@ -1751,14 +1759,6 @@ static int rrc_gNB_decode_dcch(gNB_RRC_INST *rrc, const f1ap_ul_rrc_message_t *m
 
       case NR_UL_DCCH_MessageType__c1_PR_measurementReport:
         rrc_gNB_process_MeasurementReport(UE, ul_dcch_msg->message.choice.c1->choice.measurementReport);
-
-#ifdef E2_AGENT
-        // 38.331 Sec 6.2.1: Measurement Report is index 1 of UL-DCCH-Message
-        const uint32_t rrc_msg_id = 1;
-        byte_array_t buffer_ba = {.len = msg->rrc_container_length};
-        buffer_ba.buf = msg->rrc_container;
-        signal_rrc_msg(UL_DCCH_NR_RRC_CLASS, rrc_msg_id, buffer_ba);
-#endif
         break;
 
       case NR_UL_DCCH_MessageType__c1_PR_ulInformationTransfer:
