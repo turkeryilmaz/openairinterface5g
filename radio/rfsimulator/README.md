@@ -71,12 +71,13 @@ The RF simulator is using the configuration module, and its parameters are defin
 
 | CL option                       | usage                                                                          | default                |
 |:---------------------           |:-------------------------------------------------------------------------------|----:                   |
-|`--rfsimulator.serveraddr <addr>`| ip address to connect to, or `server` to behave as a tcp server                | 127.0.0.1              |
+|`--rfsimulator.serveraddr <addr>`| IPv4v6 address or DNS name to connect to, or `server` to behave as a IPv4v6 TCP server | 127.0.0.1      |
 |`--rfsimulator.serverport <port>`| port number to connect to or to listen on (eNB, which behaves as a tcp server) | 4043                   |
-| `--rfsimulator.options`         | list of comma separated run-time options, two are supported: `chanmod`, `saviq`| all options disabled   |
-| `--rfsimulator.options saviq`   | store IQs to a file for future replay                                          | disabled               |
+|`--rfsimulator.options`          | list of comma separated run-time options, two are supported: `chanmod`, `saviq`| all options disabled   |
+|`--rfsimulator.options saviq`    | store IQs to a file for future replay                                          | disabled               |
 |`--rfsimulator.options chanmod`  | enable the channel model                                                       | disabled               |
 |`--rfsimulator.IQfile <file>`    | path to a file to store the IQ samples to (only with `saviq`)                  | `/tmp/rfsimulator.iqs` |
+|`--rfsimulator.prop_delay`       | simulated receive-path (gNB: UL, UE: DL) propagation delay in ms               | 0                      |
 |`--rfsimulator.wait_timeout`     | wait timeout when no UE is connected                                           | 1                      |
 
 Please refer to this document [`SIMULATION/TOOLS/DOC/channel_simulation.md`](../../openair1/SIMULATION/TOOLS/DOC/channel_simulation.md) for information about using the RFSimulator options to run the simulator with a channel model.
@@ -113,26 +114,44 @@ $OPENAIR_DIR/cmake_targets/ran_build/build/conf2uedata -c $OPENAIR_DIR/openair3/
 
 Similarly as for 4G, first launch the gNB, here in an example for the phytest:
 
-```bash
-sudo ./nr-softmodem -O ../../../targets/PROJECTS/GENERIC-LTE-EPC/CONF/gnb.band78.tm1.106PRB.usrpn300.conf --gNBs.[0].min_rxtxtime 6 --phy-test --rfsim --rfsimulator.serveraddr server
-```
+run gNB:
 
-`--gNBs.[0].min_rxtxtime 6` is due to the UE not being able to handle shorter
+  ```bash
+  sudo ./nr-softmodem -O ../../../targets/PROJECTS/GENERIC-LTE-EPC/CONF/gnb.band78.tm1.106PRB.usrpn300.conf --gNBs.[0].min_rxtxtime 6 --phy-test --rfsim --rfsimulator.serveraddr server
+  ```
+
+where `--gNBs.[0].min_rxtxtime 6` is due to the UE not being able to handle shorter
 RX/TX times.  As in the 4G case above, you can define an `rfsimulator` section
 in the config file.
 
-Then, launch the UE:
+and run UE:
 
-```bash
-sudo ./nr-uesoftmodem --rfsim --phy-test --rfsimulator.serveraddr <TARGET_GNB_IP_ADDRESS>
-```
+  ```bash
+  sudo ./nr-uesoftmodem --rfsim --phy-test --rfsimulator.serveraddr <TARGET_GNB_IP_ADDRESS>
+  ```
+
+To run OAI RFSimulator for SA mode, gNB:
+
+  ```bash
+  sudo ./nr-softmodem -O ../../../targets/PROJECTS/GENERIC-NR-5GC/CONF/gnb.sa.band78.fr1.106PRB.usrpb210.conf --rfsim --rfsimulator.serveraddr server
+  ```
+
+and UE:
+
+  ```bash
+  sudo ./nr-uesoftmodem --rfsim --rfsimulator.serveraddr <TARGET_GNB_IP_ADDRESS>
+  ```
+
+In the commands for the UE, `TARGET_GNB_IP_ADDRESS` can be 127.0.0.1 if both UE and gNB run on the same machine.
+
+If necessary the user can provide a custom UICC configuration file to the UE with command line option `-O ue.conf`. In case of a multi-UE scenario, the user shall provide a different IMSI to each UE with the command line option `--uicc0.imsi` followed by the IMSI, e.g. `--uicc0.imsi 001010000000001`.
 
 Notes:
 
 1. This starts the gNB and UE in the `phy-test` UP-only mode where the gNB is started as if a UE had already connected. See [`RUNMODEM.md`](../../doc/RUNMODEM.md) for more details.
 2. `<TARGET_GNB_IP_ADDRESS>` should be the IP interface address of the remote host running the gNB executable, if the gNB and nrUE run on separate hosts, or be omitted if they are on the same host.
 3. To enable the noS1 mode, `--noS1` option should be added to the command line, see again [`RUNMODEM.md`](../../doc/RUNMODEM.md).
-4. To operate the gNB/UE with a 5GC, start them using the `--sa` option. More information can be found [here](../../../doc/NR_SA_Tutorial_OAI_CN5G.md).
+4. Information on operating the gNB/UE with a 5GC can be found here. [here](../../../doc/NR_SA_Tutorial_OAI_CN5G.md).
 
 ## Store and replay
 
@@ -152,6 +171,41 @@ The format intends to be compatible with the OAI store/replay feature on USRP.
 
 Please refer to this document [`channel_simulation.md`](../../openair1/SIMULATION/TOOLS/DOC/channel_simulation.md) to get familiar with channel simulation in RFSIM and to see the list of commands for real-time usage with telnet.
 
+## How to simulate a simple GEO satellite channel model
+
+A simple channel model for satellites on a geostationary orbit (GEO) simulates simply one line-of-sight propagation channel.
+
+The most basic version is to simply simulate a constant propagation delay, without any other effects.
+
+In case of a transparent GEO satellite, the minumum one-way propagation delay (DL: gNB -> satellite -> UE, or UL: UE -> satellite -> gNB) is 238.74 ms.
+
+So, additionally to other parameters, this parameter should be given when executing the gNB and the UE executables:
+
+```
+--rfsimulator.prop_delay 238.74
+```
+
+Note:
+
+To successfully establish a connection with such a GEO satellite channel, both gNB and UE need to have the NTN support configured.
+
 # Caveats
 
 There are issues in power control: txgain/rxgain setting is not supported.
+
+# How to improve performance
+
+Most importantly, note that the RFsimulator is not designed to be as performant
+as possible, nor is it designed to run close to real-time. It might run faster
+or slower than realtime, depending on CPU, and by design, as this allows to
+stop the entire system for inspection, e.g., using a debugger.
+
+In order to improve performance, you can modify the radio parameters of the gNB
+to reduce the amount of transported samples:
+
+- Use option `-E` for three-quarter sampling (also to be done on the UE-side!)
+- Prefer smaller cell bandwidths
+
+A possible, unimplemented optimization would be to compress samples.
+
+You can further [tune your machine](../../doc/tuning_and_security.md)

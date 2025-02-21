@@ -33,8 +33,9 @@
 #include <stdint.h>
 #include "PHY/NR_TRANSPORT/nr_transport_common_proto.h"
 #include "PHY/NR_TRANSPORT/nr_ulsch.h"
+#include "SCHED_NR/sched_nr.h"
 
-NR_gNB_ULSCH_t *find_nr_ulsch(PHY_VARS_gNB *gNB, uint16_t rnti, int pid)
+static NR_gNB_ULSCH_t *find_nr_ulsch(PHY_VARS_gNB *gNB, uint16_t rnti, int pid)
 {
   int16_t first_free_index = -1;
   AssertFatal(gNB != NULL, "gNB is null\n");
@@ -42,7 +43,7 @@ NR_gNB_ULSCH_t *find_nr_ulsch(PHY_VARS_gNB *gNB, uint16_t rnti, int pid)
 
   for (int i = 0; i < gNB->max_nb_pusch; i++) {
     ulsch = &gNB->ulsch[i];
-    AssertFatal(ulsch != NULL, "gNB->ulsch[%d] is null\n", i);
+    AssertFatal(ulsch, "gNB->ulsch[%d] is null\n", i);
     if (!ulsch->active) {
       if (first_free_index == -1)
         first_free_index = i;
@@ -62,12 +63,21 @@ void nr_fill_ulsch(PHY_VARS_gNB *gNB, int frame, int slot, nfapi_nr_pusch_pdu_t 
 {
   int harq_pid = ulsch_pdu->pusch_data.harq_process_id;
   NR_gNB_ULSCH_t *ulsch = find_nr_ulsch(gNB, ulsch_pdu->rnti, harq_pid);
-  AssertFatal(ulsch, "No ulsch_id found for rnti %04x\n", ulsch_pdu->rnti);
+  if (ulsch == NULL) {
+    LOG_E(NR_PHY, "No ulsch_id found for rnti %04x\n", ulsch_pdu->rnti);
+    return;
+  }
 
   ulsch->rnti = ulsch_pdu->rnti;
   ulsch->harq_pid = harq_pid;
   ulsch->handled = 0;
   ulsch->active = true;
+  ulsch->beam_nb = 0;
+  if (gNB->common_vars.beam_id) {
+    int fapi_beam_idx = ulsch_pdu->beamforming.prgs_list[0].dig_bf_interface_list[0].beam_idx;
+    int bitmap = SL_to_bitmap(ulsch_pdu->start_symbol_index, ulsch_pdu->nr_of_symbols);
+    ulsch->beam_nb = beam_index_allocation(fapi_beam_idx, &gNB->common_vars, slot, NR_NUMBER_OF_SYMBOLS_PER_SLOT, bitmap);
+  }
   ulsch->frame = frame;
   ulsch->slot = slot;
 

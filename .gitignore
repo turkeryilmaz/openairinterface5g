@@ -27,3 +27,4 @@ nfapi_nr_interface_scf
 *.out
 
 build/*
+CMakeUserPresets.json

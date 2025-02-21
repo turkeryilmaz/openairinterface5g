@@ -24,7 +24,6 @@
 #include <arpa/inet.h>
 #include "common/utils/LOG/log.h"
 #include "common/utils/nr/nr_common.h"
-#include "common/utils/LOG/log_extern.h"
 #include "assertions.h"
 #include "common/utils/ocp_itti/intertask_interface.h"
 #include "openair2/GNB_APP/gnb_paramdef.h"
@@ -51,7 +50,7 @@ static void get_NGU_S1U_addr(char **addr, uint16_t *port)
   sprintf(gtpupath, "%s.[%i].%s", GNB_CONFIG_STRING_GNB_LIST, 0, GNB_CONFIG_STRING_NETWORK_INTERFACES_CONFIG);
   config_get(config_get_if(), NETParams, sizeofArray(NETParams), gtpupath);
   char *address;
-  if (NETParams[1].strptr != NULL) {
+  if (NETParams[GNB_IPV4_ADDRESS_FOR_NG_AMF_IDX].strptr != NULL) {
     LOG_I(GTPU, "SA mode \n");
     AssertFatal(gnb_ipv4_address_for_NGU != NULL, "NG-U IPv4 address is NULL: could not read IPv4 address\n");
     address = strdup(gnb_ipv4_address_for_NGU);
@@ -68,6 +67,17 @@ static void get_NGU_S1U_addr(char **addr, uint16_t *port)
   return;
 }
 
+/**
+ * @brief Prepares an E1AP_REGISTER_REQ message for gNB-CU-UP/CP registration
+ *
+ * This function creates and populates an E1AP_REGISTER_REQ message using system
+ * configuration parameters. It supports both integrated CU-CP/UP and E1 splits,
+ * fetching RAN, PLMN, NSSAIs, and network configuration.
+ *
+ * @param entity Specifies the entity type (CU-CP or CU-UP. If NULL, assumes integrated CU-CP/UP
+ *
+ * @return A pointer to the E1AP_REGISTER_REQ message or NULL on allocation failure
+ */
 MessageDef *RCconfig_NR_CU_E1(const E1_t *entity)
 {
   MessageDef *msgConfig = itti_alloc_new_message(TASK_GNB_APP, 0, E1AP_REGISTER_REQ);
@@ -91,10 +101,15 @@ MessageDef *RCconfig_NR_CU_E1(const E1_t *entity)
     if (*gnbParms[GNB_GNB_NAME_IDX].strptr)
       e1Setup->gNB_cu_up_name = *(gnbParms[GNB_GNB_NAME_IDX].strptr);
 
+    // Only 5GC supported
+    e1Setup->cn_support = cn_support_5GC;
+
     paramdef_t PLMNParams[] = GNBPLMNPARAMS_DESC;
     paramlist_def_t PLMNParamList = {GNB_CONFIG_STRING_PLMN_LIST, NULL, 0};
     /* map parameter checking array instances to parameter definition array instances */
     checkedparam_t config_check_PLMNParams[] = PLMNPARAMS_CHECK;
+    static_assert(sizeofArray(config_check_PLMNParams) == sizeofArray(PLMNParams),
+                  "config_check_PLMNParams and PLMNParams should have the same size");
 
     for (int I = 0; I < sizeofArray(PLMNParams); ++I)
       PLMNParams[I].chkPptr = &(config_check_PLMNParams[I]);

@@ -614,8 +614,8 @@ static void pucchIQ (OAIgraph_t *graph, scopeData_t *p, int nb_UEs) {
 static void puschThroughtput (OAIgraph_t *graph, scopeData_t *p, int nb_UEs) {
   // PUSCH Throughput
   /*
-  float tput_time_enb[NUMBER_OF_UE_MAX][TPUT_WINDOW_LENGTH] = {{0}};
-  float tput_enb[NUMBER_OF_UE_MAX][TPUT_WINDOW_LENGTH] = {{0}};
+  float tput_time_enb[MAX_MOBILES_PER_GNB][TPUT_WINDOW_LENGTH] = {{0}};
+  float tput_enb[MAX_MOBILES_PER_GNB][TPUT_WINDOW_LENGTH] = {{0}};
 
   memmove( tput_time_enb[UE_id], &tput_time_enb[UE_id][1], (TPUT_WINDOW_LENGTH-1)*sizeof(float) );
   memmove( tput_enb[UE_id], &tput_enb[UE_id][1], (TPUT_WINDOW_LENGTH-1)*sizeof(float) );
@@ -686,7 +686,7 @@ STATICFORXSCOPE OAI_phy_scope_t *create_phy_scope_gnb(void)
   fl_end_form( );
   if (fdui->phy_scope)
     fdui->phy_scope->fdui = fdui;
-  fl_show_form (fdui->phy_scope, FL_PLACE_HOTSPOT, FL_FULLBORDER, "LTE UL SCOPE gNB");
+  fl_show_form (fdui->phy_scope, FL_PLACE_HOTSPOT, FL_FULLBORDER, "NR UL SCOPE gNB");
   return fdui;
 }
 
@@ -725,7 +725,7 @@ static void *scope_thread_gNB(void *arg) {
   int fl_argc=1;
   char *name="5G-gNB-scope";
   fl_initialize (&fl_argc, &name, NULL, 0, 0);
-  int nb_ue=min(NUMBER_OF_UE_MAX, scope_enb_num_ue);
+  int nb_ue=min(MAX_MOBILES_PER_GNB, scope_enb_num_ue);
   OAI_phy_scope_t  *form_gnb = create_phy_scope_gnb();
 
   while (!oai_exit) {
@@ -786,14 +786,14 @@ static void ueTimeResponse  (OAIgraph_t *graph, PHY_VARS_NR_UE *phy_vars_ue, int
 */
 
 static void ueChannelResponse  (scopeGraphData_t **data, OAIgraph_t *graph, PHY_VARS_NR_UE *phy_vars_ue, int eNB_id, int UE_id) {
+  enum scopeDataType typ = (phy_vars_ue->sl_mode) ? psbchDlChEstimateTime : pbchDlChEstimateTime;
+
   // Channel Impulse Response
-  if (!data[pbchDlChEstimateTime])
+  if (!data[typ])
     return;
 
-  const scopeSample_t *tmp=(scopeSample_t *)(data[pbchDlChEstimateTime]+1);
-  genericPowerPerAntena(graph, data[pbchDlChEstimateTime]->colSz,
-                        &tmp,
-                        data[pbchDlChEstimateTime]->lineSz);
+  const scopeSample_t *tmp = (scopeSample_t *)(data[typ] + 1);
+  genericPowerPerAntena(graph, data[typ]->colSz, &tmp, data[typ]->lineSz);
 }
 
 static void ueFreqWaterFall (scopeGraphData_t **data, OAIgraph_t *graph,PHY_VARS_NR_UE *phy_vars_ue, int eNB_id, int UE_id ) {
@@ -847,14 +847,16 @@ static void uePbchFrequencyResp  (OAIgraph_t *graph, PHY_VARS_NR_UE *phy_vars_ue
 }
 */
 static void uePbchLLR  (scopeGraphData_t **data, OAIgraph_t *graph, PHY_VARS_NR_UE *phy_vars_ue, int eNB_id, int UE_id) {
+  enum scopeDataType typ = (phy_vars_ue->sl_mode) ? psbchLlr : pbchLlr;
+
   // PBCH LLRs
-  if ( !data[pbchLlr])
+  if (!data[typ])
     return;
 
-  const int sz=data[pbchLlr]->lineSz;
-  //const int antennas=data[pbchLlr]->colSz;
+  const int sz = data[typ]->lineSz;
+  // const int antennas=data[typ]->colSz;
   // We take the first antenna only for now
-  int16_t *llrs = (int16_t *) (data[pbchLlr]+1);
+  int16_t *llrs = (int16_t *)(data[typ] + 1);
   float *llr_pbch=NULL, *bit_pbch=NULL;
   int nx = sz;
 #ifdef WEBSRVSCOPE
@@ -870,12 +872,14 @@ static void uePbchLLR  (scopeGraphData_t **data, OAIgraph_t *graph, PHY_VARS_NR_
 }
 
 static void uePbchIQ  (scopeGraphData_t **data, OAIgraph_t *graph, PHY_VARS_NR_UE *phy_vars_ue, int eNB_id, int UE_id) {
+  enum scopeDataType typ = (phy_vars_ue->sl_mode) ? psbchRxdataF_comp : pbchRxdataF_comp;
+
   // PBCH I/Q of MF Output
-  if (!data[pbchRxdataF_comp])
+  if (!data[typ])
     return;
 
-  scopeSample_t *pbch_comp = (scopeSample_t *) (data[pbchRxdataF_comp]+1);
-  const int sz=data[pbchRxdataF_comp]->lineSz;
+  scopeSample_t *pbch_comp = (scopeSample_t *)(data[typ] + 1);
+  const int sz = data[typ]->lineSz;
   int newsz = sz;
   float *I=NULL, *Q=NULL;
 #ifdef WEBSRVSCOPE
@@ -985,9 +989,9 @@ static void uePdschIQ  (scopeGraphData_t **data, OAIgraph_t *graph, PHY_VARS_NR_
 }
 static void uePdschThroughput  (scopeGraphData_t **data, OAIgraph_t *graph, PHY_VARS_NR_UE *phy_vars_ue, int eNB_id, int UE_id) {
   /*
-  float tput_time_ue[NUMBER_OF_UE_MAX][TPUT_WINDOW_LENGTH] = {{0}};
-  float tput_ue[NUMBER_OF_UE_MAX][TPUT_WINDOW_LENGTH] = {{0}};
-  float tput_ue_max[NUMBER_OF_UE_MAX] = {0};
+  float tput_time_ue[MAX_MOBILES_PER_GNB][TPUT_WINDOW_LENGTH] = {{0}};
+  float tput_ue[MAX_MOBILES_PER_GNB][TPUT_WINDOW_LENGTH] = {{0}};
+  float tput_ue_max[MAX_MOBILES_PER_GNB] = {0};
 
 
   // PDSCH Throughput
@@ -1161,9 +1165,9 @@ STATICFORXSCOPE void nrUEinitScope(PHY_VARS_NR_UE *ue)
 }
 
 void nrscope_autoinit(void *dataptr) {
-  AssertFatal( (IS_SOFTMODEM_GNB_BIT||IS_SOFTMODEM_5GUE_BIT),"Scope cannot find NRUE or GNB context");
+  AssertFatal((IS_SOFTMODEM_GNB || IS_SOFTMODEM_5GUE), "Scope cannot find NRUE or GNB context");
 
-  if (IS_SOFTMODEM_GNB_BIT)
+  if (IS_SOFTMODEM_GNB)
     gNBinitScope(dataptr);
   else
     nrUEinitScope(dataptr);
@@ -1178,7 +1182,7 @@ static void reset_stats_gNB(FL_OBJECT *button,
   int i,k;
   //PHY_VARS_gNB *phy_vars_gNB = RC.gNB[0][0];
 
-  for (i=0; i<NUMBER_OF_UE_MAX; i++) {
+  for (i=0; i<MAX_MOBILES_PER_GNB; i++) {
     for (k=0; k<8; k++) { //harq_processes
       /*      for (j=0; j<phy_vars_gNB->dlsch[i][0]->Mlimit; j++) {
               phy_vars_gNB->UE_stats[i].dlsch_NAK[k][j]=0;

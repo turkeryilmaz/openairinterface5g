@@ -79,7 +79,7 @@ More details about the E1AP procedures in OAI are available in this document: [E
 
 # 2. Running the E1 Split
 
-The setup is assuming that all modules are running on the same machine. The user can refer to the [F1 design document](./../F1-design.md) for local deployment of the DU.
+The setup is assuming that all modules are running on the same machine. The user can refer to the [F1 design document](./../F1AP/F1-design.md) for local deployment of the DU.
 
 ## 2.1 Configuration File
 
@@ -139,7 +139,7 @@ Note: A 5G core must be running at this point. Steps to start the OAI 5G core ca
 
 1. Start the CUCP first by running the following command
 ```
-sudo ./nr-softmodem -O ../../../ci-scripts/conf_files/gnb-cucp.sa.f1.conf --gNBs.[0].min_rxtxtime 6 --sa
+sudo ./nr-softmodem -O ../../../ci-scripts/conf_files/gnb-cucp.sa.f1.conf --gNBs.[0].min_rxtxtime 6
 ```
 
 Note that `min_rxtxtime` should be set to `6` only when you are connecting an OAI UE to the gNB.
@@ -148,12 +148,12 @@ Note that `min_rxtxtime` should be set to `6` only when you are connecting an OA
 
 CUUP (has its own executable):
 ```
-sudo ./nr-cuup -O ../../../ci-scripts/conf_files/gnb-cuup.sa.f1.conf --sa
+sudo ./nr-cuup -O ../../../ci-scripts/conf_files/gnb-cuup.sa.f1.conf
 ```
 
 DU:
 ```
-sudo ./nr-softmodem -O ../../../ci-scripts/conf_files/gNB_SA_DU.conf --rfsim --sa
+sudo ./nr-softmodem -O ../../../ci-scripts/conf_files/gNB_SA_DU.conf --rfsim
 ```
 
 You need to use  `--rfsim` if you are running the test with rfsimulator.
@@ -162,16 +162,16 @@ You need to use  `--rfsim` if you are running the test with rfsimulator.
 
 OAI UE:
 ```
-sudo ./nr-uesoftmodem -r 106 --numerology 1 --band 78 -C 3619200000 --rfsim --sa --rfsimulator.serveraddr 127.0.0.1
+sudo ./nr-uesoftmodem -r 106 --numerology 1 --band 78 -C 3619200000 --rfsim --rfsimulator.serveraddr 127.0.0.1
 ```
 
 # 3. Configuration file IP addresses of network functions
 
 You can also run the nodes on different machines. If you do so please change the interface parameters accordingly and make sure the interfaces are reachable. Please refer to the following figure for an overview of all parameters.
 
-![E1/F1/NG parameters](images/e1-archi.png){width=1200}
+![E1/F1/NG parameters](./images/e1-archi.png){width=1200}
 
-[PDF version](images/e1-archi.pdf) | [LaTeX/TikZ version](img/e1-archi.tex) if you want to modify to reflect your setup
+[PDF version](./images/e1-archi.pdf) | [LaTeX/TikZ version](./images/e1-archi.tex) if you want to modify to reflect your setup
 
 # 4. Multiple CU-UP
 
@@ -194,3 +194,7 @@ Note that CU-UPs are not released from CU-CP internal structures. That means
 that you have to restart the CU-CP if you want to connect the CU-UP again
 (e.g., after a crash). The CU-CP might also misfunction during attach if a
 CU-UP was connected, but disconnected in the meantime.
+
+# 5. Abnormal conditions
+
+* The CU-UP goes offline during normal operation (e.g. UEs have a valid PDU Session and are exchanging data on the UP): after restarting the CU-UP, the UP is not restored and the user will notice GTP errors. In this case the UEs have to reconnect.

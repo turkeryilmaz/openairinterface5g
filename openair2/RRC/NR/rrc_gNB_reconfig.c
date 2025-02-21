@@ -30,33 +30,20 @@
 #ifndef RRC_GNB_NSA_C
 #define RRC_GNB_NSA_C
 
-#include "NR_ServingCellConfigCommon.h"
-#include "NR_ServingCellConfig.h"
-#include "NR_RRCReconfiguration.h"
-#include "NR_RRCReconfiguration-IEs.h"
-#include "NR_CellGroupConfig.h"
-#include "NR_MAC-CellGroupConfig.h"
-#include "NR_BSR-Config.h"
-#include "NR_PDSCH-ServingCellConfig.h"
-#include "NR_RLC-BearerConfig.h"
-#include "BOOLEAN.h"
-#include "uper_encoder.h"
-#include "assertions.h"
-#include "oai_asn1.h"
-#include "common/utils/nr/nr_common.h"
-#include "executables/softmodem-common.h"
-#include "LAYER2/nr_rlc/nr_rlc_oai_api.h"
-#include "nr_rrc_config.h"
-#include "MESSAGES/asn1_msg.h"
+#include <stdlib.h>
 
-void fill_default_reconfig(NR_ServingCellConfigCommon_t *servingcellconfigcommon,
-                           NR_ServingCellConfig_t *servingcellconfigdedicated,
-                           NR_RRCReconfiguration_IEs_t *reconfig,
-                           NR_CellGroupConfig_t *secondaryCellGroup,
-                           NR_UE_NR_Capability_t *uecap,
-                           int uid) {
-  AssertFatal(servingcellconfigcommon!=NULL,"servingcellconfigcommon is null\n");
-  AssertFatal(reconfig!=NULL,"reconfig is null\n");
+#include "OCTET_STRING.h"
+#include "RRC/NR/nr_rrc_proto.h"
+#include "asn_codecs.h"
+#include "assertions.h"
+#include "constr_TYPE.h"
+#include "oai_asn1.h"
+#include "uper_encoder.h"
+
+NR_RRCReconfiguration_IEs_t *get_default_reconfig(const NR_CellGroupConfig_t *secondaryCellGroup)
+{
+  NR_RRCReconfiguration_IEs_t *reconfig = calloc(1, sizeof(NR_RRCReconfiguration_IEs_t));
+  AssertFatal(reconfig != NULL, "out of memory\n");
   AssertFatal(secondaryCellGroup!=NULL,"secondaryCellGroup is null\n");
   // radioBearerConfig
   reconfig->radioBearerConfig=NULL;
@@ -74,6 +61,7 @@ void fill_default_reconfig(NR_ServingCellConfigCommon_t *servingcellconfigcommon
   reconfig->lateNonCriticalExtension = NULL;
   // nonCriticalExtension
   reconfig->nonCriticalExtension = NULL;
+  return reconfig;
 }
 
 /* Function to set or overwrite PTRS DL RRC parameters */

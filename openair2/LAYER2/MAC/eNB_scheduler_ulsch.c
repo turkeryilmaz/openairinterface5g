@@ -134,7 +134,15 @@ rx_sdu(const module_id_t enb_mod_idP,
   memset(rx_lengths, 0, NB_RB_MAX * sizeof(unsigned short));
   start_meas(&mac->rx_ulsch_sdu);
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_RX_SDU, 1);
-  trace_pdu(DIRECTION_UPLINK, sduP, sdu_lenP, 0, WS_C_RNTI, current_rnti, frameP, subframeP, 0, 0);
+  ws_trace_t tmp = {.direction = DIRECTION_UPLINK,
+                    .pdu_buffer = sduP,
+                    .pdu_buffer_size = sdu_lenP,
+                    .ueid = 0,
+                    .rntiType = WS_C_RNTI,
+                    .rnti = current_rnti,
+                    .sysFrame = frameP,
+                    .subframe = subframeP};
+  trace_pdu(&tmp);
 
   if (UE_id != -1) {
     UE_scheduling_control = &UE_info->UE_sched_ctrl[UE_id];
@@ -522,7 +530,7 @@ rx_sdu(const module_id_t enb_mod_idP,
 
               /* Received a new rnti */
               if (ret == 0) {
-                ra->state = MSGCRNTI;
+                ra->eRA_state = MSGCRNTI;
                 LOG_I(MAC, "[eNB %d] Frame %d, Subframe %d CC_id %d : (rnti %x UE_id %d) Received rnti(Msg4)\n",
                       enb_mod_idP,
                       frameP,
@@ -729,13 +737,14 @@ rx_sdu(const module_id_t enb_mod_idP,
 
         if (RA_id != -1) {
           RA_t *ra = &(mac->common_channels[CC_idP].ra[RA_id]);
-          LOG_D(MAC, "[mac %d][RAPROC] CC_id %d Checking proc %d : rnti (%x, %x), state %d\n",
+          LOG_D(MAC,
+                "[mac %d][RAPROC] CC_id %d Checking proc %d : rnti (%x, %x), state %s\n",
                 enb_mod_idP,
                 CC_idP,
                 RA_id,
                 ra->rnti,
                 current_rnti,
-                ra->state);
+                era_text[ra->eRA_state]);
 
           if (UE_id < 0) {
             memcpy(&(ra->cont_res_id[0]), payload_ptr, 6);
@@ -788,7 +797,7 @@ rx_sdu(const module_id_t enb_mod_idP,
           }
 
           // prepare transmission of Msg4
-          ra->state = MSG4;
+          ra->eRA_state = MSG4;
 
           if(mac->common_channels[CC_idP].tdd_Config != NULL) {
             switch(mac->common_channels[CC_idP].tdd_Config->subframeAssignment) {

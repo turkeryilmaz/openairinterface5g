@@ -34,6 +34,8 @@
 #include "f1ap_cu_interface_management.h"
 #include "f1ap_cu_rrc_message_transfer.h"
 #include "f1ap_cu_ue_context_management.h"
+#include "lib/f1ap_rrc_message_transfer.h"
+#include "lib/f1ap_interface_management.h"
 #include "f1ap_cu_paging.h"
 #include "f1ap_cu_task.h"
 #include <openair3/ocp-gtpu/gtp_itf.h>
@@ -64,26 +66,16 @@ static void cu_task_handle_sctp_association_ind(instance_t instance,
 static void cu_task_handle_sctp_association_resp(instance_t instance, sctp_new_association_resp_t *sctp_new_association_resp) {
   DevAssert(sctp_new_association_resp != NULL);
 
-  if (sctp_new_association_resp->sctp_state == SCTP_STATE_SHUTDOWN) {
+  sctp_state_e state = sctp_new_association_resp->sctp_state;
+  if (state != SCTP_STATE_ESTABLISHED) {
     f1ap_cudu_inst_t *f1ap_cu_data = getCxt(instance);
     AssertFatal(f1ap_cu_data != NULL, "illegal state: SCTP shutdown for non-existing F1AP endpoint\n");
-    LOG_I(F1AP, "Received SCTP shutdown for assoc_id %d, removing endpoint\n", sctp_new_association_resp->assoc_id);
+    LOG_I(F1AP, "Received SCTP state %d for assoc_id %d, removing endpoint\n", state, sctp_new_association_resp->assoc_id);
     /* inform RRC that the DU is gone */
     MessageDef *message_p = itti_alloc_new_message(TASK_CU_F1, 0, F1AP_LOST_CONNECTION);
     message_p->ittiMsgHeader.originInstance = sctp_new_association_resp->assoc_id;
     itti_send_msg_to_task(TASK_RRC_GNB, instance, message_p);
     return;
-  }
-
-  if (sctp_new_association_resp->sctp_state != SCTP_STATE_ESTABLISHED) {
-    LOG_W(F1AP, "Received unsuccessful result for SCTP association (%u), instance %ld, cnx_id %u\n",
-          sctp_new_association_resp->sctp_state,
-          instance,
-          sctp_new_association_resp->ulp_cnx_id);
-    //if (sctp_new_association_resp->sctp_state == SCTP_STATE_SHUTDOWN)
-    //proto_agent_stop(instance);
-    //f1ap_handle_setup_message(instance, sctp_new_association_resp->sctp_state == SCTP_STATE_SHUTDOWN);
-    return; // exit -1 for debugging
   }
 }
 
@@ -96,25 +88,20 @@ static void cu_task_handle_sctp_data_ind(instance_t instance, sctp_data_ind_t *s
   AssertFatal (result == EXIT_SUCCESS, "Failed to free memory (%d)!\n", result);
 }
 
-static void cu_task_send_sctp_init_req(instance_t instance, char *my_addr) {
+static void cu_task_send_sctp_init_req(instance_t instance, char *my_addr)
+{
   // 1. get the itti msg, and retrive the nb_id from the message
   // 2. use RC.rrc[nb_id] to fill the sctp_init_t with the ip, port
   // 3. creat an itti message to init
-  LOG_I(F1AP, "F1AP_CU_SCTP_REQ(create socket)\n");
-  MessageDef  *message_p = NULL;
-  message_p = itti_alloc_new_message (TASK_CU_F1, 0, SCTP_INIT_MSG);
-  message_p->ittiMsg.sctp_init.port = F1AP_PORT_NUMBER;
-  message_p->ittiMsg.sctp_init.ppid = F1AP_SCTP_PPID;
-  message_p->ittiMsg.sctp_init.ipv4 = 1;
-  message_p->ittiMsg.sctp_init.ipv6 = 0;
-  message_p->ittiMsg.sctp_init.nb_ipv4_addr = 1;
-  message_p->ittiMsg.sctp_init.ipv4_address[0] = inet_addr(my_addr);
-  /*
-   * SR WARNING: ipv6 multi-homing fails sometimes for localhost.
-   * * * * Disable it for now.
-   */
-  message_p->ittiMsg.sctp_init.nb_ipv6_addr = 0;
-  message_p->ittiMsg.sctp_init.ipv6_address[0] = "0:0:0:0:0:0:0:1";
+  size_t addr_len = strlen(my_addr) + 1;
+  LOG_I(F1AP, "F1AP_CU_SCTP_REQ(create socket) for %s len %ld\n", my_addr, addr_len);
+  MessageDef *message_p = itti_alloc_new_message_sized(TASK_CU_F1, 0, SCTP_INIT_MSG, sizeof(sctp_init_t) + addr_len);
+  sctp_init_t *init = &SCTP_INIT_MSG(message_p);
+  init->port = F1AP_PORT_NUMBER;
+  init->ppid = F1AP_SCTP_PPID;
+  char *addr_buf = (char *) (init + 1); // address after ITTI message end, allocated above
+  init->bind_address = addr_buf;
+  memcpy(addr_buf, my_addr, addr_len);
   itti_send_msg_to_task(TASK_SCTP, instance, message_p);
 }
 
@@ -165,6 +152,15 @@ void *F1AP_CU_task(void *arg) {
                                      &received_msg->ittiMsg.sctp_data_ind);
         break;
 
+      case F1AP_RESET:
+        CU_send_RESET(assoc_id, &F1AP_RESET(received_msg));
+        free_f1ap_reset(&F1AP_RESET(received_msg));
+        break;
+
+      case F1AP_RESET_ACK:
+        CU_send_RESET_ACKNOWLEDGE(assoc_id, &F1AP_RESET_ACK(received_msg));
+        break;
+
       case F1AP_SETUP_RESP: // from rrc
         CU_send_F1_SETUP_RESPONSE(assoc_id,
                                   &F1AP_SETUP_RESP(received_msg));
@@ -179,10 +175,13 @@ void *F1AP_CU_task(void *arg) {
                                             &F1AP_GNB_CU_CONFIGURATION_UPDATE(received_msg));
         break;
 
+      case F1AP_GNB_DU_CONFIGURATION_UPDATE_ACKNOWLEDGE:
+        CU_send_gNB_DU_CONFIGURATION_UPDATE_ACKNOWLEDGE(assoc_id, &F1AP_GNB_DU_CONFIGURATION_UPDATE_ACKNOWLEDGE(received_msg));
+        break;
       case F1AP_DL_RRC_MESSAGE: // from rrc
         CU_send_DL_RRC_MESSAGE_TRANSFER(assoc_id,
                                         &F1AP_DL_RRC_MESSAGE(received_msg));
-        free(F1AP_DL_RRC_MESSAGE(received_msg).rrc_container);
+        free_dl_rrc_message_transfer(&F1AP_DL_RRC_MESSAGE(received_msg));
         break;
 
       case F1AP_UE_CONTEXT_SETUP_REQ: // from rrc
