@@ -79,7 +79,9 @@ void nr_mac_update_timers(module_id_t module_id,
                           frame_t frame,
                           sub_frame_t slot);
 
+#ifdef E3_AGENT
 void nr_update_prb_policy(module_id_t module_id, frame_t frame, sub_frame_t slot);
+#endif // E3_AGENT
 
 void gNB_dlsch_ulsch_scheduler(module_id_t module_idP, frame_t frame_rxP, sub_frame_t slot_rxP, NR_Sched_Rsp_t *sched_info);
 

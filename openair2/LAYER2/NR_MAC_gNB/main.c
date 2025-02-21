@@ -74,10 +74,9 @@
 
 #ifdef E3_AGENT
 #include <openair1/E3AP/e3_agent.h>
-#endif
 
 extern RAN_CONTEXT_t RC;
-
+#endif // E3_AGENT
 
 #define MACSTATSSTRLEN 36256
 
@@ -88,17 +87,13 @@ void *nrmac_stats_thread(void *arg) {
   char output[MACSTATSSTRLEN] = {0};
   const char *end = output + MACSTATSSTRLEN;
   FILE *file = fopen("nrMAC_stats.log","w");
-  FILE *file_runlog = fopen("statsMAC.log", "a");
-
   AssertFatal(file!=NULL,"Cannot open nrMAC_stats.log, error %s\n",strerror(errno));
-  AssertFatal(file_runlog != NULL, "Cannot open run.log, error %s\n", strerror(errno));
 
   while (oai_exit == 0) {
     char *p = output;
     NR_SCHED_LOCK(&gNB->sched_lock);
-    size_t stats_length = dump_mac_stats(gNB, output, end - output, false);
+    p += dump_mac_stats(gNB, p, end - p, false);
     NR_SCHED_UNLOCK(&gNB->sched_lock);
-    p += stats_length;
     p += snprintf(p, end - p, "\n");
     p += print_meas_log(&gNB->eNB_scheduler, "DL & UL scheduling timing", NULL, NULL, p, end - p);
     p += print_meas_log(&gNB->schedule_dlsch, "dlsch scheduler", NULL, NULL, p, end - p);
@@ -108,14 +103,10 @@ void *nrmac_stats_thread(void *arg) {
     p += print_meas_log(&gNB->nr_srs_tpmi_computation_timer, "UL-TPMI computation time", NULL, NULL, p, end - p);
     fwrite(output, p - output, 1, file);
     fflush(file);
-    fwrite(output, stats_length, 1, file_runlog);
-    fflush(file_runlog);
-
     sleep(1);
     fseek(file,0,SEEK_SET);
   }
   fclose(file);
-  fclose(file_runlog);
   return NULL;
 }
 
@@ -149,7 +140,7 @@ void *prb_update_thread(void *arg)
   }
   return NULL;
 }
-#endif
+#endif // E3_AGENT
 
 void clear_mac_stats(gNB_MAC_INST *gNB) {
   UE_iterator(gNB->UE_info.list, UE) {
@@ -213,14 +204,12 @@ size_t dump_mac_stats(gNB_MAC_INST *gNB, char *output, size_t strlen, bool reset
 
     output += snprintf(output,
                        end - output,
-                       ", dlsch_errors %"PRIu64", pucch0_DTX %d, BLER %.5f MCS (%d) %d (Qm %d) \n",
+                       ", dlsch_errors %"PRIu64", pucch0_DTX %d, BLER %.5f MCS (%d) %d\n",
                        stats->dl.errors,
                        stats->pucch0_DTX,
                        sched_ctrl->dl_bler_stats.bler,
                        UE->current_DL_BWP.mcsTableIdx,
-                       sched_ctrl->dl_bler_stats.mcs,
-                       nr_get_Qm_dl(sched_ctrl->dl_bler_stats.mcs,UE->current_DL_BWP.mcsTableIdx)
-                       );
+                       sched_ctrl->dl_bler_stats.mcs);
     if (reset_rsrp) {
       stats->num_rsrp_meas = 0;
       stats->cumul_rsrp = 0;
@@ -347,7 +336,7 @@ void mac_top_init_gNB(ngran_node_t node_type,
 #ifdef E3_AGENT
       // Prb policy updating
       threadCreate(&RC.nrmac[i]->prb_update_thread, prb_update_thread, (void *)RC.nrmac[i], "prb_update", -1, OAI_PRIORITY_RT_MAX);
-#endif
+#endif // E3_AGENT
 
       if (!IS_SOFTMODEM_NOSTATS)
         threadCreate(&RC.nrmac[i]->stats_thread,

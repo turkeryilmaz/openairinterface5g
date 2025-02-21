@@ -719,7 +719,6 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx, N
 
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PHY_PROCEDURES_gNB_UESPEC_RX,1);
   LOG_D(PHY,"phy_procedures_gNB_uespec_RX frame %d, slot %d\n",frame_rx,slot_rx);
-
   // Mask of occupied RBs, per symbol and PRB
   uint32_t rb_mask_ul[14][9];
   fill_ul_rb_mask(gNB, frame_rx, slot_rx, rb_mask_ul);

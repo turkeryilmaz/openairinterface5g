@@ -72,6 +72,7 @@ int get_dl_tda(const gNB_MAC_INST *nrmac, int slot)
   return 0; // if FDD or not mixed slot in TDD, for now use default TDA
 }
 
+#ifdef E3_AGENT
 void nr_update_prb_policy(module_id_t module_id, frame_t frame, sub_frame_t slot)
 {
   gNB_MAC_INST *mac = RC.nrmac[module_id];
@@ -85,6 +86,7 @@ void nr_update_prb_policy(module_id_t module_id, frame_t frame, sub_frame_t slot
 
   memcpy(mac->ulprbbl, mac->dyn_prbbl, 275 * sizeof(mac->dyn_prbbl[0]));
 }
+#endif // E3_AGENT
 
 // Compute and write all MAC CEs and subheaders, and return number of written
 // bytes
@@ -1052,18 +1054,6 @@ void nr_schedule_ue_spec(module_id_t module_id,
           pucch->ul_slot,
           sched_pdsch->pucch_allocation,
           sched_ctrl->tpc1);
-
-    FILE *file = fopen("statsPRB.log", "a");
-    AssertFatal(file != NULL, "Cannot open statsPRB.log, error %s\n", strerror(errno));
-
-    fprintf(file,
-            "start %3d RBs %3d startSymbol %2d nb_symbol %2d\n",
-            sched_pdsch->rbStart,
-            sched_pdsch->rbSize,
-            tda_info->startSymbolIndex,
-            tda_info->nrOfSymbols);
-    // Close the file
-    fclose(file);
 
     const int bwp_id = current_BWP->bwp_id;
     const int coresetid = sched_ctrl->coreset->controlResourceSetId;
