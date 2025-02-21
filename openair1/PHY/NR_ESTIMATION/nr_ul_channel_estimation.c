@@ -44,6 +44,43 @@
 #define  NR_SRS_IDFT_OVERSAMP_FACTOR 8
 #define dBc(x,y) (dB_fixed(((int32_t)(x))*(x) + ((int32_t)(y))*(y)))
 
+int find_first_peak(double *y, int length, double minPeakHeight, double *first_peak_val) {
+    if (length < 3) { // No peaks possible in a small array
+        return -1;  // Indicating no peak found
+    }
+
+    double max_val = 0;
+    // Find the maximum value for normalization
+    for (int i = 0; i < length; i++) {
+        if (y[i] > max_val) {
+            max_val = y[i];
+        }
+    }
+
+    // Normalize the input array
+    double *y_norm = (double *)malloc(length * sizeof(double));
+    if (!y_norm) {
+        fprintf(stderr, "Memory allocation failed!\n");
+        exit(1);
+    }
+    for (int i = 0; i < length; i++) {
+        y_norm[i] = y[i] / max_val;
+    }
+
+    // Find first peak (smallest index among valid peaks)
+    int first_peak_idx = -1;
+    for (int i = 1; i < length - 1; i++) {
+        if (y_norm[i] > y_norm[i - 1] && y_norm[i] > y_norm[i + 1] && y_norm[i] >= minPeakHeight) {
+            first_peak_idx = i;
+            *first_peak_val = y[i]; // Store the original (non-normalized) value
+            break;  // Return immediately on the first peak found
+        }
+    }
+
+    free(y_norm);
+    return first_peak_idx; // Returns the index of the first peak found, or -1 if none found
+}
+
 /* Generic function to find the peak of channel estimation buffer */
 int nr_est_toa_ns_srs(NR_DL_FRAME_PARMS *frame_parms,
 		          uint8_t N_arx,
@@ -93,7 +130,7 @@ int nr_est_toa_ns_srs(NR_DL_FRAME_PARMS *frame_parms,
     for(int k = 0; k < NR_SRS_IDFT_OVERSAMP_FACTOR*frame_parms->ofdm_symbol_size; k++) {
       chT_interpol_mag_squ_avg[k] /= N_symb_srs;
     }
-
+    /*
     max_val = 0, max_idx = 0, mean_val = 0;
     for(int k = 0; k < NR_SRS_IDFT_OVERSAMP_FACTOR*frame_parms->ofdm_symbol_size; k++) {
       abs_val = chT_interpol_mag_squ_avg[k];
@@ -103,18 +140,43 @@ int nr_est_toa_ns_srs(NR_DL_FRAME_PARMS *frame_parms,
           max_idx = k;
       }
     }
+    */
+    
+    double first_peak_val;
+    int first_peak_idx = find_first_peak((double *)chT_interpol_mag_squ_avg, 
+                                          NR_SRS_IDFT_OVERSAMP_FACTOR * frame_parms->ofdm_symbol_size, 
+                                          0.8, // Adjust threshold
+                                          &first_peak_val);
 
+    if (first_peak_idx > 0) {
+        max_idx = first_peak_idx;
+        max_val = (int32_t)first_peak_val; // Store the original magnitude
+        printf("First peak found at index %d with value: %d\n", max_idx, max_val);
+    } else {
+        printf("No peak found above the threshold.\n");
+        max_idx = -1;
+    }
+/*
     if(max_idx > NR_SRS_IDFT_OVERSAMP_FACTOR*frame_parms->ofdm_symbol_size >>1)
       max_idx = max_idx - NR_SRS_IDFT_OVERSAMP_FACTOR*frame_parms->ofdm_symbol_size;
+*/
+    if (max_idx > (NR_SRS_IDFT_OVERSAMP_FACTOR * frame_parms->ofdm_symbol_size) >> 1)
+        max_idx -= (NR_SRS_IDFT_OVERSAMP_FACTOR * frame_parms->ofdm_symbol_size);
 
+    srs_toa_ns[arx_index] = (max_idx*1e9)/(NR_SRS_IDFT_OVERSAMP_FACTOR*frame_parms->samples_per_frame*100);
     // Check for detection threshold
-
+/*
     //LOG_I(PHY, "SRS ToA before (RX ant %d): max_val %d, mean_val %d, max_idx %d\n", arx_index, max_val, mean_val, max_idx);
+    //if ((mean_val != 0) && (max_val / mean_val > 100) && (max_idx > -100) && (max_idx < 100)) {
     if ((mean_val != 0) && (max_val / mean_val > 100)) {
+        printf("max_idx: %d - TRUE\n", max_idx);
       srs_toa_ns[arx_index] = (max_idx*1e9)/(NR_SRS_IDFT_OVERSAMP_FACTOR*frame_parms->samples_per_frame*100);
+      printf("srs_toa_ns[%d]=%d \n",arx_index,srs_toa_ns[arx_index]);
     } else {
+      printf("max_idx: %d - FALSE\n", max_idx);
       srs_toa_ns[arx_index] = 0xFFFF;
     }
+*/
     //LOG_I(PHY, "SRS ToA estimator (RX ant %d): toa %d ns\n",arx_index,srs_toa_ns[arx_index]);
   } // Antenna loop
 
