@@ -120,8 +120,8 @@ static void get_cu_stats(telnet_printfunc_t prnt, gNB_RRC_INST *rrc)
       prnt("        \""CELLLOCALID"\": %d,\n", ci->nr_cellid);
       prnt("        \""CU_MCC"\": \"%03d\",\n", ci->plmn.mcc);
       prnt("        \""CU_MNC"\": \"%0*d\",\n", ci->plmn.mnc_digit_length, ci->plmn.mnc);
-      prnt("        \""CU_SST"\": %0*d,\n", ci->nssai[0].sst);
-      prnt("        \""CU_SD "\": %0*d\n", ci->nssai[0].sd);
+      prnt("        \""CU_SST"\": %d,\n", ci->nssai[0].sst);
+      prnt("        \""CU_SD "\": %d\n", ci->nssai[0].sd);
       prnt("      }");
       first = false;
     }
