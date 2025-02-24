@@ -395,7 +395,20 @@ void check_ssb_raster(uint64_t freq, int band, int scs)
         break;
       }
     }
-    AssertFatal(N != 0, "SSB frequency %lu Hz not on the synchronization raster (N * 1200kHz + M * 50 kHz)\n", freq);
+    uint64_t multiples_of_1200Khz = freq / 1200000;
+    AssertFatal(N != 0,
+                "SSB frequency %lu Hz not on the synchronization raster (N * 1200kHz + M * 50 kHz). "
+                "Valid neighboring SSB frequency positions [Hz]: %lu, %lu, %lu, %lu, %lu, %lu, %lu, %lu, %lu\n",
+                freq,
+                (multiples_of_1200Khz - 1) * 1200000 + 50000,
+                (multiples_of_1200Khz - 1) * 1200000 + 50000 * 3,
+                (multiples_of_1200Khz - 1) * 1200000 + 50000 * 5,
+                multiples_of_1200Khz * 1200000 + 50000,
+                multiples_of_1200Khz * 1200000 + 50000 * 3,
+                multiples_of_1200Khz * 1200000 + 50000 * 5,
+                (multiples_of_1200Khz + 1) * 1200000 + 50000,
+                (multiples_of_1200Khz + 1) * 1200000 + 50000 * 3,
+                (multiples_of_1200Khz + 1) * 1200000 + 50000 * 5);
     gscn = (3 * N) + (M - 3) / 2;
   } else if (freq < 24250000000) {
     AssertFatal((freq - 3000000000) % 1440000 == 0,
