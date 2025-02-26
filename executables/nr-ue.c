@@ -626,11 +626,6 @@ static void UE_pdcch_preprocessing(PHY_VARS_NR_UE *UE,
                                    nr_phy_data_t *phy_data)
 {
   if (proc->rx_slot_type == NR_DOWNLINK_SLOT || proc->rx_slot_type == NR_MIXED_SLOT) {
-    if(UE->if_inst != NULL && UE->if_inst->dl_indication != NULL) {
-      nr_downlink_indication_t dl_indication;
-      nr_fill_dl_indication(&dl_indication, NULL, NULL, proc, UE, phy_data);
-      UE->if_inst->dl_indication(&dl_indication);
-    }
     pdcch_processing(UE, proc, phy_data);
     if (phy_data->dlsch[0].active && phy_data->dlsch[0].rnti_type == TYPE_C_RNTI_) {
       // indicate to tx thread to wait for DLSCH decoding
@@ -1078,35 +1073,56 @@ void *UE_thread(void *arg)
       shiftForNextFrame = -round(UE->max_pos_acc * get_nrUE_params()->time_sync_I);
     }
 
-    // Read first 4 symbols of the slot
-    const int readBlockSizeFirst4Symbols = get_readBlockSize_symb(slot_nr, fp, 4);
-    openair0_timestamp rx_timestamp;
-    int tmp = UE->rfdevice.trx_read_func(&UE->rfdevice, &rx_timestamp, rxp, readBlockSizeFirst4Symbols, fp->nb_antennas_rx);
-    AssertFatal(readBlockSizeFirst4Symbols == tmp, "");
-    const int readBlockSize = get_readBlockSize(slot_nr, fp) - iq_shift_to_apply;
-    bool has_scope_lock = UETryLockScopeData(UE, ueTimeDomainSamples, sizeof(c16_t), 1, readBlockSize, 0);
-    if (has_scope_lock) {
-      UEscopeCopyUnsafe(UE, ueTimeDomainSamples, rxp[0], readBlockSizeFirst4Symbols, 0, 0);
-    }
-
-
-    // RX slot processing. We launch and forget.
     notifiedFIFO_elt_t *newRx = newNotifiedFIFO_elt(sizeof(nr_rxtx_thread_data_t), curMsg.proc.nr_slot_tx, NULL, UE_dl_processing);
     nr_rxtx_thread_data_t *curMsgRx = (nr_rxtx_thread_data_t *)NotifiedFifoData(newRx);
     *curMsgRx = (nr_rxtx_thread_data_t){.proc = curMsg.proc, .UE = UE};
-    UE_pdcch_preprocessing(UE, &curMsgRx->proc, tx_wait_for_dlsch, &curMsgRx->phy_data);
 
-    // Read the rest of the slot
-    for (int i = 0; i < fp->nb_antennas_rx; i++)
-      rxp[i] = (void *)((uint32_t *)rxp[i] + readBlockSizeFirst4Symbols);
-    openair0_timestamp dummy_rx_timestamp;
-    tmp = UE->rfdevice.trx_read_func(&UE->rfdevice, &dummy_rx_timestamp, rxp, readBlockSize - readBlockSizeFirst4Symbols, fp->nb_antennas_rx);
-    AssertFatal(readBlockSize - readBlockSizeFirst4Symbols == tmp, "");
-    if (has_scope_lock) {
-      UEscopeCopyUnsafe(UE, ueTimeDomainSamples, rxp[0], readBlockSize - readBlockSizeFirst4Symbols, readBlockSizeFirst4Symbols, 1);
-      UEunlockScopeData(UE, ueTimeDomainSamples);
+    // Determine number of PDCCH symbols in the slot
+    uint8_t nb_symb_pdcch = 0;
+    if (curMsg.proc.rx_slot_type == NR_DOWNLINK_SLOT || curMsg.proc.rx_slot_type == NR_MIXED_SLOT) {
+      if(UE->if_inst != NULL && UE->if_inst->dl_indication != NULL) {
+        nr_downlink_indication_t dl_indication;
+        nr_fill_dl_indication(&dl_indication, NULL, NULL, &curMsgRx->proc, UE, &curMsgRx->phy_data);
+        UE->if_inst->dl_indication(&dl_indication);
+        // Calculate the number of symbols containing PDCCH
+        NR_UE_PDCCH_CONFIG *phy_pdcch_config = &curMsgRx->phy_data.phy_pdcch_config;
+        for (int i = 0; i < phy_pdcch_config->nb_search_space; i++) {
+          nb_symb_pdcch =
+              max(nb_symb_pdcch,
+                  phy_pdcch_config->pdcch_config[i].coreset.StartSymbolIndex + phy_pdcch_config->pdcch_config[i].coreset.duration);
+        }
+      }
     }
 
+    // Receive either whole slot or PDCCH symbols & the rest separately
+    openair0_timestamp rx_timestamp;
+    const int readBlockSize = get_readBlockSize(slot_nr, fp) - iq_shift_to_apply;
+    if (nb_symb_pdcch != 0) {
+      const int readBlockSizeFirstSymbols = get_readBlockSize_symb(slot_nr, fp, nb_symb_pdcch);
+      int tmp = UE->rfdevice.trx_read_func(&UE->rfdevice, &rx_timestamp, rxp, readBlockSizeFirstSymbols, fp->nb_antennas_rx);
+      AssertFatal(readBlockSizeFirstSymbols == tmp, "");
+      bool has_scope_lock = UETryLockScopeData(UE, ueTimeDomainSamples, sizeof(c16_t), 1, readBlockSize, 0);
+      if (has_scope_lock) {
+        UEscopeCopyUnsafe(UE, ueTimeDomainSamples, rxp[0], readBlockSizeFirstSymbols, 0, 0);
+      }
+
+      UE_pdcch_preprocessing(UE, &curMsgRx->proc, tx_wait_for_dlsch, &curMsgRx->phy_data);
+
+      // Read the rest of the slot
+      for (int i = 0; i < fp->nb_antennas_rx; i++)
+        rxp[i] = (void *)((uint32_t *)rxp[i] + readBlockSizeFirstSymbols);
+      openair0_timestamp dummy_rx_timestamp;
+      tmp = UE->rfdevice.trx_read_func(&UE->rfdevice, &dummy_rx_timestamp, rxp, readBlockSize - readBlockSizeFirstSymbols, fp->nb_antennas_rx);
+      AssertFatal(readBlockSize - readBlockSizeFirstSymbols == tmp, "");
+      if (has_scope_lock) {
+        UEscopeCopyUnsafe(UE, ueTimeDomainSamples, rxp[0], readBlockSize - readBlockSizeFirstSymbols, readBlockSizeFirstSymbols, 1);
+        UEunlockScopeData(UE, ueTimeDomainSamples);
+      }
+    } else {
+      int tmp = UE->rfdevice.trx_read_func(&UE->rfdevice, &rx_timestamp, rxp, readBlockSize, fp->nb_antennas_rx);
+      AssertFatal(readBlockSize == tmp, "");
+      UEscopeCopy(UE, ueTimeDomainSamples, rxp[0], sizeof(c16_t), 1, readBlockSize, 0);
+    }
 
     if(slot_nr == (nb_slot_frame - 1)) {
       // read in first symbol of next frame and adjust for timing drift
