@@ -744,7 +744,7 @@ static radio_tx_gpio_flag_t get_gpio_flags(RU_t *ru, int slot)
         int beam = beam_ids[slot * fp->symbols_per_slot];
         if (prev_beam != beam) {
           flags_gpio = beam | TX_GPIO_CHANGE; // enable change of gpio
-          LOG_I(HW, "slot %d, beam %d\n", slot, ru->common.beam_id[0][slot * fp->symbols_per_slot]);
+          LOG_D(HW, "slot %d, beam %d\n", slot, ru->common.beam_id[0][slot * fp->symbols_per_slot]);
         }
       }
       break;

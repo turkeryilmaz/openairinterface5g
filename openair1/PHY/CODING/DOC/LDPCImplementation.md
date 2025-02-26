@@ -56,7 +56,7 @@ At runtime, to successfully use hardware acceleration via OpenCL, you need to in
 [HW]   Device 0 is  available
 [HW]   Device 0, type 2 = 0x00000002: cpu 
 [HW]   Device 0, number of Compute Units: 8
-[HW]   Device 0, max Work Items dimension: 3
+]   Device 0, max Work Items dimension: 3
 [HW]   Device 0, max Work Items size for dimension: 0 8192
 [HW]   Device 0, max Work Items size for dimension: 1 8192
 [HW]   Device 0, max Work Items size for dimension: 2 8192

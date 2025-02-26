@@ -56,6 +56,8 @@ bool nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP,int slotP, nr_sci_pdu_t
   bool csi_acq = !mac->SL_MAC_PARAMS->sl_CSI_Acquisition;
   bool csi_req_slot = !((slots_per_frame * frameP + slotP - sl_mac->slot_offset) % sl_mac->slot_periodicity);
   if (rlc_status.bytes_in_buffer > 0 || mac->sci_pdu_rx.harq_feedback || (csi_acq && csi_req_slot)) {
+      LOG_I(NR_MAC, "%d.%d buffer %d\n",frameP, slotP, rlc_status.bytes_in_buffer );
+
      // Fill SCI1A
      sci_pdu->priority = 0;
      sci_pdu->frequency_resource_assignment.val = 0;

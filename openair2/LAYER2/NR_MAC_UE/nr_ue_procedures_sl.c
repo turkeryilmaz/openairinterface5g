@@ -740,7 +740,7 @@ void nr_ue_process_mac_sl_pdu(int module_idP,
                               sl_nr_rx_indication_t *rx_ind,
                               int pdu_id)
 {
-LOG_I(NR_MAC,"nr_ue_process_mac_sl_pdu enter\n");
+  //LOG_I(NR_MAC,"nr_ue_process_mac_sl_pdu enter\n");
   uint8_t *pduP          = (rx_ind->rx_indication_body + pdu_id)->rx_slsch_pdu.pdu;
   int32_t pdu_len        = (int32_t)(rx_ind->rx_indication_body + pdu_id)->rx_slsch_pdu.pdu_length;
   uint8_t done           = 0;
@@ -750,22 +750,24 @@ LOG_I(NR_MAC,"nr_ue_process_mac_sl_pdu enter\n");
   if (!pduP){
     return;
   }
-LOG_I(NR_MAC,"nr_ue_process_mac_sl_pdu pduP not null\n");
+  //LOG_I(NR_MAC,"nr_ue_process_mac_sl_pdu pduP not null\n");
 
   if (mac->sci_pdu_rx.harq_feedback) {
     configure_psfch_params(module_idP, mac, rx_ind, pdu_id);
   }
 
   if (mac->sci_pdu_rx.csi_req) {
-    LOG_I(NR_MAC, "%4d.%2d Configuring sl_csi_report parameters\n", frame, slot);
+    LOG_D(NR_MAC, "%4d.%2d Configuring sl_csi_report parameters\n", frame, slot);
     configure_csi_report_params(mac);
   }
+  //LOG_I(NR_MAC,"nr_ue_process_mac_sl_pdu pduP not null %d.%d\n",frame,slot);
+
   if ((rx_ind->rx_indication_body + pdu_id)->rx_slsch_pdu.ack_nack == 0)
     return;
 
-  LOG_I(NR_MAC, "In %s : processing PDU %d (with length %d) of %d total number of PDUs...\n", __FUNCTION__, pdu_id, pdu_len, rx_ind->number_pdus);
+  LOG_D(NR_MAC, "In %s : processing PDU %d (with length %d) of %d total number of PDUs...\n", __FUNCTION__, pdu_id, pdu_len, rx_ind->number_pdus);
   NR_SLSCH_MAC_SUBHEADER_FIXED *sl_sch_subheader = (NR_SLSCH_MAC_SUBHEADER_FIXED *) pduP;
-  LOG_I(NR_PHY, "Rx V %d R %d SRC %d DST %d\n", sl_sch_subheader->V, sl_sch_subheader->R, sl_sch_subheader->SRC, sl_sch_subheader->DST);
+  LOG_D(NR_PHY, "Rx V %d R %d SRC %d DST %d\n", sl_sch_subheader->V, sl_sch_subheader->R, sl_sch_subheader->SRC, sl_sch_subheader->DST);
   pduP += sizeof(*sl_sch_subheader);
   pdu_len -= sizeof(*sl_sch_subheader);
   while (!done && pdu_len > 0) {
