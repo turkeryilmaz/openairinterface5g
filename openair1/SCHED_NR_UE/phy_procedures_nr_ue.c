@@ -837,7 +837,7 @@ static bool is_ssb_index_transmitted(const PHY_VARS_NR_UE *ue, const int index)
     return ue->frame_parms.ssb_index == index;
 }
 
-int pbch_processing(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, nr_phy_data_t *phy_data)
+int pbch_processing(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc)
 {
   TracyCZone(ctx, true);
   int frame_rx = proc->frame_rx;

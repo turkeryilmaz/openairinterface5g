@@ -672,7 +672,7 @@ static int UE_dl_preprocessing(PHY_VARS_NR_UE *UE,
   bool dl_slot = false;
   if (proc->rx_slot_type == NR_DOWNLINK_SLOT || proc->rx_slot_type == NR_MIXED_SLOT) {
     dl_slot = true;
-    sampleShift = pbch_processing(UE, proc, phy_data);
+    sampleShift = pbch_processing(UE, proc);
   }
   if (fp->frame_type == FDD || !dl_slot) {
     // good time to print statistics, we don't have to spend time  to decode DCI
