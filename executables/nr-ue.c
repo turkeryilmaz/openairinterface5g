@@ -812,12 +812,6 @@ static inline int get_readBlockSize(uint16_t slot, NR_DL_FRAME_PARMS *fp) {
   return rem_samples + next_slot_first_symbol;
 }
 
-static inline int get_readBlockSize_symb(uint16_t slot, NR_DL_FRAME_PARMS *fp, int num_symbols) {
-  AssertFatal(num_symbols < fp->symbols_per_slot, "Invalid number of symbols %d\n", num_symbols);
-  int samples_full_slot = get_readBlockSize(slot, fp);
-  return samples_full_slot - (fp->symbols_per_slot - num_symbols) * (fp->nb_prefix_samples + fp->ofdm_symbol_size);
-}
-
 static inline void apply_ntn_config(PHY_VARS_NR_UE *UE,
                                     NR_DL_FRAME_PARMS *fp,
                                     int slot_nr,
@@ -1097,31 +1091,40 @@ void *UE_thread(void *arg)
     // Receive either whole slot or PDCCH symbols & the rest separately
     openair0_timestamp rx_timestamp;
     const int readBlockSize = get_readBlockSize(slot_nr, fp) - iq_shift_to_apply;
+    bool has_scope_lock = false;
+    int readBlockSizeFirstSymbols = 0;
     if (nb_symb_pdcch != 0) {
-      const int readBlockSizeFirstSymbols = get_readBlockSize_symb(slot_nr, fp, nb_symb_pdcch);
-      int tmp = UE->rfdevice.trx_read_func(&UE->rfdevice, &rx_timestamp, rxp, readBlockSizeFirstSymbols, fp->nb_antennas_rx);
-      AssertFatal(readBlockSizeFirstSymbols == tmp, "");
-      bool has_scope_lock = UETryLockScopeData(UE, ueTimeDomainSamples, sizeof(c16_t), 1, readBlockSize, 0);
-      if (has_scope_lock) {
-        UEscopeCopyUnsafe(UE, ueTimeDomainSamples, rxp[0], readBlockSizeFirstSymbols, 0, 0);
+      if (nb_symb_pdcch > 1) {
+        readBlockSizeFirstSymbols = (fp->ofdm_symbol_size + fp->nb_prefix_samples) * (nb_symb_pdcch - 1);
+        int tmp = UE->rfdevice.trx_read_func(&UE->rfdevice, &rx_timestamp, rxp, readBlockSizeFirstSymbols, fp->nb_antennas_rx);
+        AssertFatal(readBlockSizeFirstSymbols == tmp, "");
+        has_scope_lock = UETryLockScopeData(UE, ueTimeDomainSamples, sizeof(c16_t), 1, readBlockSize, 0);
+        if (has_scope_lock) {
+          UEscopeCopyUnsafe(UE, ueTimeDomainSamples, rxp[0], readBlockSizeFirstSymbols, 0, 0);
+        }
+        for (int i = 0; i < fp->nb_antennas_rx; i++)
+          rxp[i] = (void *)((c16_t *)rxp[i] + readBlockSizeFirstSymbols);
       }
 
       UE_pdcch_preprocessing(UE, &curMsgRx->proc, tx_wait_for_dlsch, &curMsgRx->phy_data);
+    }
 
-      // Read the rest of the slot
-      for (int i = 0; i < fp->nb_antennas_rx; i++)
-        rxp[i] = (void *)((uint32_t *)rxp[i] + readBlockSizeFirstSymbols);
-      openair0_timestamp dummy_rx_timestamp;
-      tmp = UE->rfdevice.trx_read_func(&UE->rfdevice, &dummy_rx_timestamp, rxp, readBlockSize - readBlockSizeFirstSymbols, fp->nb_antennas_rx);
-      AssertFatal(readBlockSize - readBlockSizeFirstSymbols == tmp, "");
-      if (has_scope_lock) {
-        UEscopeCopyUnsafe(UE, ueTimeDomainSamples, rxp[0], readBlockSize - readBlockSizeFirstSymbols, readBlockSizeFirstSymbols, 1);
-        UEunlockScopeData(UE, ueTimeDomainSamples);
-      }
+    // Read the rest of the slot
+    openair0_timestamp dummy_rx_timestamp;
+    openair0_timestamp *rx_timestamp_ptr = readBlockSizeFirstSymbols == 0 ? &rx_timestamp : &dummy_rx_timestamp;
+    int32_t num_samples_left = readBlockSize - readBlockSizeFirstSymbols;
+    AssertFatal(num_samples_left > 0,
+                "Incorrect number of samples %d, nb_symb_pdcch = %d iq_shift_to_apply = %d\n",
+                num_samples_left,
+                nb_symb_pdcch,
+                iq_shift_to_apply);
+    tmp = UE->rfdevice.trx_read_func(&UE->rfdevice, rx_timestamp_ptr, rxp, num_samples_left, fp->nb_antennas_rx);
+    AssertFatal(num_samples_left == tmp, "");
+    if (has_scope_lock) {
+      UEscopeCopyUnsafe(UE, ueTimeDomainSamples, rxp[0], num_samples_left, readBlockSizeFirstSymbols, 1);
+      UEunlockScopeData(UE, ueTimeDomainSamples);
     } else {
-      int tmp = UE->rfdevice.trx_read_func(&UE->rfdevice, &rx_timestamp, rxp, readBlockSize, fp->nb_antennas_rx);
-      AssertFatal(readBlockSize == tmp, "");
-      UEscopeCopy(UE, ueTimeDomainSamples, rxp[0], sizeof(c16_t), 1, readBlockSize, 0);
+      UEscopeCopy(UE, ueTimeDomainSamples, rxp[0], sizeof(c16_t), 1, num_samples_left, 0);
     }
 
     if(slot_nr == (nb_slot_frame - 1)) {
