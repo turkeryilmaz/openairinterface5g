@@ -22,7 +22,7 @@ services:
                 
     ims:
         container_name: "asterisk-ims"
-        image: andrius/asterisk:latest-arm-v2
+        image: oaisoftwarealliance/ims:latest-arm-v2
         volumes:
             - ./conf/sip.conf:/etc/asterisk/sip.conf
             - ./conf/users.conf:/etc/asterisk/users.conf
@@ -36,7 +36,7 @@ services:
                 ipv4_address: 192.168.70.139
     oai-udr:
         container_name: "oai-udr"
-        image: oai-udr:develop-arm-v2
+        image: oaisoftwarealliance/oai-udr:develop-arm-v2
         expose:
             - 80/tcp
             - 8080/tcp
@@ -52,7 +52,7 @@ services:
                 ipv4_address: 192.168.70.136
     oai-udm:
         container_name: "oai-udm"
-        image: oai-udm:develop-arm-v2
+        image: oaisoftwarealliance/oai-udm:develop-arm-v2
         expose:
             - 80/tcp
             - 8080/tcp
@@ -67,7 +67,7 @@ services:
                 ipv4_address: 192.168.70.137
     oai-ausf:
         container_name: "oai-ausf"
-        image: oai-ausf:develop-arm-v2
+        image: oaisoftwarealliance/oai-ausf:develop-arm-v2
         expose:
             - 80/tcp
             - 8080/tcp
@@ -82,7 +82,7 @@ services:
                 ipv4_address: 192.168.70.138
     oai-nrf:
         container_name: "oai-nrf"
-        image: oai-nrf:develop-arm-v2
+        image: oaisoftwarealliance/oai-nrf:develop-arm-v2
         expose:
             - 80/tcp
             - 8080/tcp
@@ -95,7 +95,7 @@ services:
                 ipv4_address: 192.168.70.130
     oai-amf:
         container_name: "oai-amf"
-        image: oai-amf:develop-arm-v2
+        image: oaisoftwarealliance/oai-amf:develop-arm-v2
         expose:
             - 80/tcp
             - 8080/tcp
@@ -113,7 +113,7 @@ services:
                 ipv4_address: 192.168.70.132
     oai-smf:
         container_name: "oai-smf"
-        image: oai-smf:develop-arm-v2
+        image: oaisoftwarealliance/oai-smf:develop-arm-v2
         expose:
             - 80/tcp
             - 8080/tcp
@@ -130,7 +130,7 @@ services:
                 ipv4_address: 192.168.70.133
     oai-upf:
         container_name: "oai-upf"
-        image: oai-upf:develop-arm-v2
+        image: oaisoftwarealliance/oai-upf:develop-arm-v2
         expose:
             - 2152/udp
             - 8805/udp

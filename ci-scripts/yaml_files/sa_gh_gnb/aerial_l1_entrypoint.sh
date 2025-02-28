@@ -50,6 +50,10 @@ else
     argument="$1"
 fi
 
+sed -i "s/ nic:.*/ nic: 0000:01:00.0/" ${cuBB_SDK}/cuPHY-CP/cuphycontroller/config/cuphycontroller_P5G_FXN_GH.yaml
+sed -i "s/ dst_mac_addr:.*/ dst_mac_addr: 6c:ad:ad:00:02:02/" ${cuBB_SDK}/cuPHY-CP/cuphycontroller/config/cuphycontroller_P5G_FXN_GH.yaml
+sed -i "s/ vlan:.*/ vlan: 2/" ${cuBB_SDK}/cuPHY-CP/cuphycontroller/config/cuphycontroller_P5G_FXN_GH.yaml  
+sed -i "s/ ul_gain_calibration:.*/ ul_gain_calibration: 78.68/" ${cuBB_SDK}/cuPHY-CP/cuphycontroller/config/cuphycontroller_P5G_FXN_GH.yaml
 
 export AERIAL_LOG_PATH=/var/log/aerial
 sudo -E "$cuBB_Path"/build/cuPHY-CP/cuphycontroller/examples/cuphycontroller_scf $argument
