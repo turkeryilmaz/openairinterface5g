@@ -122,7 +122,7 @@ static void nr_pusch_antenna_processing(void *arg)
     if (pusch_pdu->dmrs_config_type == pusch_dmrs_type1 && chest_freq == 0) {
       c16_t *pil = pilot;
       int re_offset = k0;
-      LOG_D(PHY, "PUSCH estimation DMRS type 1, Freq-domain interpolation");
+      LOG_D(PHY, "PUSCH estimation DMRS type 1, Freq-domain interpolation\n");
       int pilot_cnt = 0;
 
       for (int n = 0; n < 3 * nb_rb_pusch; n++) {
@@ -168,8 +168,8 @@ static void nr_pusch_antenna_processing(void *arg)
                  pil->i,
                  rxF->r,
                  rxF->i,
-                 ch.r,
-                 ch.i);
+                 ch16.r,
+                 ch16.i);
 #endif
 
           if (pilot_cnt == 0) {
@@ -397,7 +397,7 @@ static void nr_pusch_antenna_processing(void *arg)
     }
 
 #ifdef DEBUG_PUSCH
-    ul_ch = &ul_ch_estimates[nl * gNB->frame_parms.nb_antennas_rx + aarx][symbol_offset];
+    ul_ch = &ul_ch_estimates[nl * frame_parms->nb_antennas_rx + antenna][symbol_offset];
     for (int idxP = 0; idxP < ceil((float)nb_rb_pusch * 12 / 8); idxP++) {
       for (int idxI = 0; idxI < 8; idxI++) {
         printf("%d\t%d\t", ul_ch[idxP * 8 + idxI].r, ul_ch[idxP * 8 + idxI].i);
