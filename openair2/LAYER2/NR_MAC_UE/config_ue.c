@@ -1744,7 +1744,7 @@ void nr_rrc_mac_config_req_sib1(module_id_t module_id, int cc_idP, NR_SIB1_t *si
   AssertFatal(scc, "SIB1 SCC should not be NULL\n");
   UPDATE_IE(mac->tdd_UL_DL_ConfigurationCommon, scc->tdd_UL_DL_ConfigurationCommon, NR_TDD_UL_DL_ConfigCommon_t);
   configure_si_schedulingInfo(mac, si_SchedulingInfo, si_SchedulingInfo_v1700);
-  mac->n_ta_offset = get_ta_offset(scc->n_TimingAdvanceOffset);
+  mac->phy_config.config_req.cell_config.N_TA_offset = get_ta_offset(scc->n_TimingAdvanceOffset);
 
   config_common_ue_sa(mac, scc, cc_idP);
   configure_common_BWP_dl(mac,
@@ -1813,7 +1813,7 @@ static void handle_reconfiguration_with_sync(NR_UE_MAC_INST_t *mac,
 
   if (reconfWithSync->spCellConfigCommon) {
     NR_ServingCellConfigCommon_t *scc = reconfWithSync->spCellConfigCommon;
-    mac->n_ta_offset = get_ta_offset(scc->n_TimingAdvanceOffset);
+    mac->phy_config.config_req.cell_config.N_TA_offset = get_ta_offset(scc->n_TimingAdvanceOffset);
     if (scc->physCellId)
       mac->physCellId = *scc->physCellId;
     mac->dmrs_TypeA_Position = scc->dmrs_TypeA_Position;

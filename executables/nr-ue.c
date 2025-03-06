@@ -147,6 +147,19 @@ static void *nrL1_UE_stats_thread(void *param)
   return NULL;
 }
 
+static int determine_N_TA_offset(PHY_VARS_NR_UE *ue) {
+  if (ue->sl_mode == 2)
+    return 0;
+  else {
+    int N_TA_offset = ue->nrUE_config.cell_config.N_TA_offset;
+    if (N_TA_offset == -1) {
+      return set_default_nta_offset(ue->frame_parms.freq_range, ue->frame_parms.samples_per_subframe);
+    } else {
+      return (N_TA_offset * ue->frame_parms.samples_per_subframe) / (4096 * 480);
+    }
+  }
+}
+
 void init_nr_ue_vars(PHY_VARS_NR_UE *ue, uint8_t UE_id)
 {
   int nb_connected_gNB = 1;
@@ -867,7 +880,7 @@ void *UE_thread(void *arg)
   initNotifiedFIFO_nothreadSafe(&freeBlocks);
 
   int timing_advance = UE->timing_advance;
-  int N_TA_offset = UE->N_TA_offset;
+  UE->N_TA_offset = determine_N_TA_offset(UE);
   NR_UE_MAC_INST_t *mac = get_mac_inst(UE->Mod_id);
 
   bool syncRunning = false;
@@ -1090,7 +1103,7 @@ void *UE_thread(void *arg)
 
     // use previous timing_advance value to compute writeTimestamp
     const openair0_timestamp writeTimestamp = rx_timestamp + fp->get_samples_slot_timestamp(slot_nr, fp, duration_rx_to_tx)
-                                              - firstSymSamp - N_TA_offset - timing_advance;
+                                              - firstSymSamp - UE->N_TA_offset - timing_advance;
 
     // but use current UE->timing_advance value to compute writeBlockSize
     int writeBlockSize = fp->get_samples_per_slot((slot_nr + duration_rx_to_tx) % nb_slot_frame, fp) - iq_shift_to_apply;
@@ -1099,10 +1112,11 @@ void *UE_thread(void *arg)
       writeBlockSize -= new_timing_advance- timing_advance;
       timing_advance = new_timing_advance;
     }
-    int new_N_TA_offset = UE->N_TA_offset;
-    if (new_N_TA_offset != N_TA_offset) {
-      writeBlockSize -= new_N_TA_offset - N_TA_offset;
-      N_TA_offset = new_N_TA_offset;
+    int new_N_TA_offset = determine_N_TA_offset(UE);
+    if (new_N_TA_offset != UE->N_TA_offset) {
+      LOG_I(PHY, "N_TA_offset changed from %d to %d\n", UE->N_TA_offset, new_N_TA_offset);
+      writeBlockSize -= new_N_TA_offset - UE->N_TA_offset;
+      UE->N_TA_offset = new_N_TA_offset;
     }
 
     if (curMsg.proc.nr_slot_tx == 0)
