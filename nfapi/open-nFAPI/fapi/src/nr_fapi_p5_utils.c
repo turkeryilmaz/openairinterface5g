@@ -186,6 +186,8 @@ bool eq_config_request(const nfapi_nr_config_request_scf_t *unpacked_req, const 
 
   EQ_TLV(unpacked_req->cell_config.frame_duplex_type, req->cell_config.frame_duplex_type);
 
+  EQ_TLV(unpacked_req->cell_config.n_timing_advance_offset, req->cell_config.n_timing_advance_offset);
+
   EQ_TLV(unpacked_req->ssb_config.ss_pbch_power, req->ssb_config.ss_pbch_power);
 
   EQ_TLV(unpacked_req->ssb_config.bch_payload, req->ssb_config.bch_payload);
@@ -708,6 +710,8 @@ void copy_config_request(const nfapi_nr_config_request_scf_t *src, nfapi_nr_conf
   COPY_TLV(dst->cell_config.phy_cell_id, src->cell_config.phy_cell_id);
 
   COPY_TLV(dst->cell_config.frame_duplex_type, src->cell_config.frame_duplex_type);
+
+  COPY_TLV(dst->cell_config.n_timing_advance_offset, src->cell_config.n_timing_advance_offset);
 
   COPY_TLV(dst->ssb_config.ss_pbch_power, src->ssb_config.ss_pbch_power);
 
