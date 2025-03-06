@@ -74,6 +74,9 @@ static void fill_config_request_tlv_tdd_rand(nfapi_nr_config_request_scf_t *nfap
   FILL_TLV(nfapi_resp->cell_config.frame_duplex_type, NFAPI_NR_CONFIG_FRAME_DUPLEX_TYPE_TAG, 1 /* TDD */);
   nfapi_resp->num_tlv++;
 
+  FILL_TLV(nfapi_resp->cell_config.n_timing_advance_offset, NFAPI_NR_CONFIG_N_TIMING_ADVANCE_OFFSET_TAG, 0);
+  nfapi_resp->num_tlv++;
+
   FILL_TLV(nfapi_resp->ssb_config.ss_pbch_power, NFAPI_NR_CONFIG_SS_PBCH_POWER_TAG, (int32_t)rand32());
   nfapi_resp->num_tlv++;
 
@@ -325,6 +328,8 @@ static void fill_config_request_tlv_fdd(nfapi_nr_config_request_scf_t *req)
   FILL_TLV(req->cell_config.phy_cell_id, NFAPI_NR_CONFIG_PHY_CELL_ID_TAG, 0);
   req->num_tlv++;
   FILL_TLV(req->cell_config.frame_duplex_type, NFAPI_NR_CONFIG_FRAME_DUPLEX_TYPE_TAG, 0 /* FDD */);
+  req->num_tlv++;
+  FILL_TLV(req->cell_config.n_timing_advance_offset, NFAPI_NR_CONFIG_N_TIMING_ADVANCE_OFFSET_TAG, 0);
   req->num_tlv++;
 
   /* SSB config */

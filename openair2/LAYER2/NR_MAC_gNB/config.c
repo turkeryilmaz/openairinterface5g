@@ -488,6 +488,13 @@ static void config_common(gNB_MAC_INST *nrmac,
   cfg->cell_config.frame_duplex_type.tl.tag = NFAPI_NR_CONFIG_FRAME_DUPLEX_TYPE_TAG;
   cfg->num_tlv++;
 
+  uint8_t n_timing_advance_offset = frequency_range == FR1 ? 1 : 3;
+  if (scc->n_TimingAdvanceOffset)
+    n_timing_advance_offset = *scc->n_TimingAdvanceOffset;
+  cfg->cell_config.n_timing_advance_offset.value = n_timing_advance_offset;
+  cfg->cell_config.n_timing_advance_offset.tl.tag = NFAPI_NR_CONFIG_N_TIMING_ADVANCE_OFFSET_TAG;
+  cfg->num_tlv++;
+
   // SSB configuration
   cfg->ssb_config.ss_pbch_power.value = scc->ss_PBCH_BlockPower;
   cfg->ssb_config.ss_pbch_power.tl.tag = NFAPI_NR_CONFIG_SS_PBCH_POWER_TAG;

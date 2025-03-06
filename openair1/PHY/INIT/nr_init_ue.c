@@ -495,7 +495,6 @@ void clean_UE_harq(PHY_VARS_NR_UE *UE)
 
 void init_N_TA_offset(PHY_VARS_NR_UE *ue)
 {
-  NR_DL_FRAME_PARMS *fp = &ue->frame_parms;
   ue->ta_frame = -1;
   ue->ta_slot = -1;
 }

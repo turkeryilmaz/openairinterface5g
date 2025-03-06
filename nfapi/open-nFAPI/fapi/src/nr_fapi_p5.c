@@ -834,6 +834,13 @@ uint8_t pack_nr_config_request(void *msg, uint8_t **ppWritePackedMsg, uint8_t *e
                         end,
                         &pack_uint8_tlv_value);
   numTLVs++;
+
+  retval &= pack_nr_tlv(NFAPI_NR_CONFIG_N_TIMING_ADVANCE_OFFSET_TAG,
+    &(pNfapiMsg->cell_config.n_timing_advance_offset),
+    ppWritePackedMsg,
+    end,
+    &pack_uint8_tlv_value);
+  numTLVs++;
   // END Cell Configuration
 
   // START SSB Configuration
@@ -1155,6 +1162,7 @@ uint8_t unpack_nr_config_request(uint8_t **ppReadPackedMsg, uint8_t *end, void *
       {NFAPI_NR_CONFIG_FREQUENCY_SHIFT_7P5KHZ_TAG, &(pNfapiMsg->carrier_config.frequency_shift_7p5khz), &unpack_uint8_tlv_value},
       {NFAPI_NR_CONFIG_PHY_CELL_ID_TAG, &(pNfapiMsg->cell_config.phy_cell_id), &unpack_uint16_tlv_value},
       {NFAPI_NR_CONFIG_FRAME_DUPLEX_TYPE_TAG, &(pNfapiMsg->cell_config.frame_duplex_type), &unpack_uint8_tlv_value},
+      {NFAPI_NR_CONFIG_N_TIMING_ADVANCE_OFFSET_TAG, &(pNfapiMsg->cell_config.n_timing_advance_offset), &unpack_uint8_tlv_value},
       {NFAPI_NR_CONFIG_SS_PBCH_POWER_TAG, &(pNfapiMsg->ssb_config.ss_pbch_power), &unpack_uint32_tlv_value},
       {NFAPI_NR_CONFIG_BCH_PAYLOAD_TAG, &(pNfapiMsg->ssb_config.bch_payload), &unpack_uint8_tlv_value},
       {NFAPI_NR_CONFIG_SCS_COMMON_TAG, &(pNfapiMsg->ssb_config.scs_common), &unpack_uint8_tlv_value},

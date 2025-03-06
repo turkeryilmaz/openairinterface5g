@@ -295,6 +295,7 @@ typedef struct
 
 #define NFAPI_NR_CONFIG_PHY_CELL_ID_TAG 0x100C
 #define NFAPI_NR_CONFIG_FRAME_DUPLEX_TYPE_TAG 0x100D
+#define NFAPI_NR_CONFIG_N_TIMING_ADVANCE_OFFSET_TAG 0x104A
 
 #define NFAPI_NR_CONFIG_SS_PBCH_POWER_TAG 0x100E
 #define NFAPI_NR_CONFIG_BCH_PAYLOAD_TAG 0x100F
@@ -351,6 +352,7 @@ typedef struct
 {
   nfapi_uint16_tlv_t phy_cell_id;//Physical Cell ID, 𝑁_{𝐼𝐷}^{𝑐𝑒𝑙𝑙} [38.211, sec 7.4.2.1] Value: 0 ->1007
   nfapi_uint8_tlv_t frame_duplex_type;//Frame duplex type Value: 0 = FDD 1 = TDD
+  nfapi_uint8_tlv_t n_timing_advance_offset;
 
 } nfapi_nr_cell_config_t;
 
