@@ -757,7 +757,6 @@ uint32_t *get_dft_scaling(int ofdm_symbol_size,int32_t levdB)
     case 98304:
       return DFT_SCALING_98304[0];
     default:
-      return (uint32_t*)1;
       break;
   }
   return NULL;
