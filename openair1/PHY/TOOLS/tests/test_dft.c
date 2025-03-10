@@ -174,10 +174,13 @@ int main(void)
         }
       } else {
         for (int i = 0; i < n; i++) {
+          if (n == 16)
+            printf("i: %d, o: %f,%f, dft: %d,%d\n", i, out[i].r, out[i].i, o16[i].r, o16[i].i);
           cd_t error = {.r = o16[i].r - out[i].r , .i = o16[i].i - out[i].i};
           evm[coeff] += sqrt(squaredMod(error)) / sqrt(squaredMod(out[i]));
           double error_dB = 10*log10(squaredMod(error));
-          if (coeffs[coeff] == 50 && n==4096 && error_dB >= 10) printf("error in DFT pos %d : in %f dB %f dB \n",i,coeffs[coeff],error_dB);
+          if (coeffs[coeff] == 50 && n == 16) // && error_dB >= 10)
+            printf("error in DFT pos %d : in %f dB, error %f (%f dB) \n", i, coeffs[coeff], squaredMod(error), error_dB);
           sqnr[coeff] += squaredMod(error);
           samples[coeff] += squaredMod(d16[i]);
           samples_out[coeff] += squaredMod(out[i]);
@@ -185,9 +188,14 @@ int main(void)
       }
       sqnr[coeff] = samples_out[coeff] / sqnr[coeff];
     }
-    printf("done DFT size %d (evm (%%), SQNRdB, avg in samples amplitude, avg out samples amplitude) = ", n);
+    printf("done DFT size %d (evm (%%), SQNRdB, avg in samples amplitude, avg out samples amplitude) = \n", n);
     for (int coeff = 0; coeff < sizeofArray(coeffs); coeff++)
-      printf("input_lev %f (%.2f, %f, %.1f, %.1f) ", coeffs[coeff],(evm[coeff] / n) * 100, 10*log10(sqnr[coeff]),10*log10(samples[coeff] / n), 10*log10(samples_out[coeff] / n));
+      printf("input_lev %f (%.2f, %f, %.1f, %.1f)\n",
+             coeffs[coeff],
+             (evm[coeff] / n) * 100,
+             10 * log10(sqnr[coeff]),
+             10 * log10(samples[coeff] / n),
+             10 * log10(samples_out[coeff] / n));
     printf("\n");
     int i;
     for (i = 0; i < sizeofArray(coeffs); i++)
