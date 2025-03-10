@@ -43,7 +43,6 @@
 #include "ngap_gNB_encoder.h"
 #include "ngap_gNB_itti_messaging.h"
 #include "ngap_gNB_utils.h"
-#include "ngap_gNB_ue_context.h"
 #include "oai_asn1.h"
 
 int ngap_ue_context_release_complete(instance_t instance,

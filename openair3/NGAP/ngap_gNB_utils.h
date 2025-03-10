@@ -19,6 +19,10 @@
  *      contact@openairinterface.org
  */
 
+#include <stdint.h>
+#include "ngap_gNB_defs.h"
+#include "tree.h"
+
 #ifndef NGAP_GNB_UTILS_H_
 #define NGAP_GNB_UTILS_H_
 
@@ -26,10 +30,57 @@ struct ngap_gNB_amf_data_s *ngap_gNB_get_AMF(ngap_gNB_instance_t *instance_p, sc
 
 void ngap_gNB_insert_new_instance(ngap_gNB_instance_t *new_instance_p);
 
-ngap_gNB_instance_t *ngap_gNB_get_instance(uint8_t mod_id);
+ngap_gNB_instance_t *ngap_gNB_get_instance(instance_t mod_id);
 
 uint16_t ngap_gNB_fetch_add_global_cnx_id(void);
 
 void ngap_gNB_prepare_internal_data(void);
+
+/* UE CONTEXT MANAGEMENT UTILS */
+
+typedef enum {
+  /* UE has not been registered to a AMF or UE association has failed. */
+  NGAP_UE_DECONNECTED = 0x0,
+  /* UE ngap state is waiting for initial context setup request message. */
+  NGAP_UE_WAITING_CSR = 0x1,
+  /* UE association is ready and bearers are established. */
+  NGAP_UE_CONNECTED   = 0x2,
+  NGAP_UE_STATE_MAX,
+} ngap_ue_state;
+
+typedef struct ngap_gNB_ue_context_s {
+  /* Tree related data */
+  RB_ENTRY(ngap_gNB_ue_context_s) entries;
+
+  /* Uniquely identifies the UE between AMF and gNB within the gNB.
+   * This id is encoded on 32bits.
+   */
+  uint32_t gNB_ue_ngap_id;
+
+  uint64_t amf_ue_ngap_id;
+
+  /* Stream used for this particular UE */
+  int32_t tx_stream;
+  int32_t rx_stream;
+
+  /* Current UE state. */
+  ngap_ue_state ue_state;
+
+  /* Reference to AMF data this UE is attached to */
+  struct ngap_gNB_amf_data_s *amf_ref;
+
+  /* Signaled by the UE in RRC Connection Setup Complete and used in NAS Uplink
+   * to route NAS messages correctly. 0-based, not 1-based as in TS 36.331
+   * 6.2.2 RRC Connection Setup Complete! */
+  int selected_plmn_identity;
+
+  /* Reference to gNB data this UE is attached to */
+  ngap_gNB_instance_t *gNB_instance;
+} ngap_gNB_ue_context_t;
+
+void ngap_store_ue_context(ngap_gNB_ue_context_t *ue_desc_p);
+
+ngap_gNB_ue_context_t *ngap_get_ue_context(uint32_t gNB_ue_ngap_id);
+ngap_gNB_ue_context_t *ngap_detach_ue_context(uint32_t gNB_ue_ngap_id);
 
 #endif /* NGAP_GNB_UTILS_H_ */

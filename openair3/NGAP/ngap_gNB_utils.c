@@ -19,6 +19,7 @@
  *      contact@openairinterface.org
  */
 
+#include "ngap_gNB_utils.h"
 #include <netinet/in.h>
 #include <netinet/sctp.h>
 #include <stdint.h>
@@ -27,36 +28,17 @@
 #include <string.h>
 #include "assertions.h"
 #include "ngap_gNB_defs.h"
+#include "ngap_common.h"
 #include "queue.h"
 #include "tree.h"
 
+/* NGAP gNB INTERNAL DATA */
+
 static ngap_gNB_internal_data_t ngap_gNB_internal_data;
 
+struct ngap_amf_map;
+
 RB_GENERATE(ngap_amf_map, ngap_gNB_amf_data_s, entry, ngap_gNB_compare_assoc_id);
-
-int ngap_gNB_compare_assoc_id(struct ngap_gNB_amf_data_s *p1, struct ngap_gNB_amf_data_s *p2)
-{
-  if (p1->assoc_id == -1) {
-    if (p1->cnx_id < p2->cnx_id) {
-      return -1;
-    }
-
-    if (p1->cnx_id > p2->cnx_id) {
-      return 1;
-    }
-  } else {
-    if (p1->assoc_id < p2->assoc_id) {
-      return -1;
-    }
-
-    if (p1->assoc_id > p2->assoc_id) {
-      return 1;
-    }
-  }
-
-  /* Matching reference */
-  return 0;
-}
 
 uint16_t ngap_gNB_fetch_add_global_cnx_id(void)
 {
@@ -115,4 +97,80 @@ ngap_gNB_instance_t *ngap_gNB_get_instance(instance_t instance)
   }
 
   return NULL;
+}
+
+/* ASSOCIATION ID UTILS */
+
+int ngap_gNB_compare_assoc_id(struct ngap_gNB_amf_data_s *p1, struct ngap_gNB_amf_data_s *p2)
+{
+  if (p1->assoc_id == -1) {
+    if (p1->cnx_id < p2->cnx_id) {
+      return -1;
+    }
+
+    if (p1->cnx_id > p2->cnx_id) {
+      return 1;
+    }
+  } else {
+    if (p1->assoc_id < p2->assoc_id) {
+      return -1;
+    }
+
+    if (p1->assoc_id > p2->assoc_id) {
+      return 1;
+    }
+  }
+
+  /* Matching reference */
+  return 0;
+}
+
+/* UE CONTEXT UTILS */
+
+/* Tree of UE ordered by gNB_ue_ngap_id's
+ * NO INSTANCE, the 32 bits id is large enough to handle all UEs, regardless the cell, gNB, ...
+ */
+static RB_HEAD(ngap_ue_map, ngap_gNB_ue_context_s) ngap_ue_head = RB_INITIALIZER(&ngap_ue_head);
+
+/* Generate the tree management functions prototypes */
+RB_PROTOTYPE(ngap_ue_map, ngap_gNB_ue_context_s, entries, ngap_gNB_compare_gNB_ue_ngap_id);
+
+static int ngap_gNB_compare_gNB_ue_ngap_id(struct ngap_gNB_ue_context_s *p1, struct ngap_gNB_ue_context_s *p2)
+{
+  if (p1->gNB_ue_ngap_id > p2->gNB_ue_ngap_id) {
+    return 1;
+  }
+
+  if (p1->gNB_ue_ngap_id < p2->gNB_ue_ngap_id) {
+    return -1;
+  }
+
+  return 0;
+}
+
+/* Generate the tree management functions */
+RB_GENERATE(ngap_ue_map, ngap_gNB_ue_context_s, entries, ngap_gNB_compare_gNB_ue_ngap_id);
+
+void ngap_store_ue_context(struct ngap_gNB_ue_context_s *ue_desc_p)
+{
+  if (RB_INSERT(ngap_ue_map, &ngap_ue_head, ue_desc_p))
+    LOG_E(NGAP, "Bug in UE uniq number allocation %u, we try to add a existing UE\n", ue_desc_p->gNB_ue_ngap_id);
+  return;
+}
+
+struct ngap_gNB_ue_context_s *ngap_get_ue_context(uint32_t gNB_ue_ngap_id)
+{
+  ngap_gNB_ue_context_t temp = {.gNB_ue_ngap_id = gNB_ue_ngap_id};
+  return RB_FIND(ngap_ue_map, &ngap_ue_head, &temp);
+}
+
+struct ngap_gNB_ue_context_s *ngap_detach_ue_context(uint32_t gNB_ue_ngap_id)
+{
+  struct ngap_gNB_ue_context_s *tmp = ngap_get_ue_context(gNB_ue_ngap_id);
+  if (tmp == NULL) {
+    NGAP_ERROR("Trying to free a NULL UE context, %u\n", gNB_ue_ngap_id);
+    return NULL;
+  }
+  RB_REMOVE(ngap_ue_map, &ngap_ue_head, tmp);
+  return tmp;
 }

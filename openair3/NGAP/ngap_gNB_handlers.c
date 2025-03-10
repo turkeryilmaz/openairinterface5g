@@ -48,7 +48,6 @@
 #include "ngap_gNB_utils.h"
 #include "ngap_gNB_nas_procedures.h"
 #include "ngap_gNB_trace.h"
-#include "ngap_gNB_ue_context.h"
 #include "ngap_messages_types.h"
 #include "oai_asn1.h"
 #include "queue.h"

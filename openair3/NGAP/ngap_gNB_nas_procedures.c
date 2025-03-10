@@ -54,7 +54,6 @@
 #include "ngap_gNB_itti_messaging.h"
 #include "ngap_gNB_utils.h"
 #include "ngap_gNB_nnsf.h"
-#include "ngap_gNB_ue_context.h"
 #include "oai_asn1.h"
 #include "s1ap_messages_types.h"
 #include "xer_encoder.h"
