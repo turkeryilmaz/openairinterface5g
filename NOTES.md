@@ -1,0 +1,1 @@
+* consider to use plmn_identity_t instead of ngap_plmn_identity_t
