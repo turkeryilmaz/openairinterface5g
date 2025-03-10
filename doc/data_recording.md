@@ -184,9 +184,13 @@ The following figure shows an exemplary of SigMF metadata file, for example for 
 
 <img src="images/sigmf_metadata.png" alt="Exemplary from SigMF-metadata" width="500">
 
+## Synchronization Validation
+For synchronization validation and to show how to read SigMF metadata, a simple script `common/utils/data_recording/sync_validation_demo.py` has been created to validate that, for example: the recorded bits from gNB and UE are in sync.
+
 ## Data Recording Application Limitation
 
-- Support the Uplink messages listed above. 
+- MIMO Support: The data recording app is ready, tested and validated for SISO. For MIMO, it should be enhanced, tested, and validated.
+- It supports the uplink gNB and UE messages listed above. If the user would like to record another message for example from DL. The user needs to define the required meta-data. User can use the existing meta-data definition of UL as a template. Then, add those messages to the headers of different Data Recording App services.
 - Data serialization in Tx scrambled bits message without considering location of DMRS symbols: Only captured valid data bits is stored. It means the location of DMRS symbols are not considered and filled with zeros and stored as it is in the grid presented on the figure below. For example:
     - Number of bits per IQ Symbol = 4
     - Number of subcarrier = 72
