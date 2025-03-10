@@ -79,6 +79,8 @@ static void nr_pusch_antenna_processing(void *arg)
   uint64_t noise_amp2 = *(rdata->noise_amp2);
   int nest_count = *(rdata->nest_count);
   delay_t *delay = rdata->delay;
+  c16_t *pusch_ch_est_dmrs_pos_slot_mem = rdata->pusch_ch_est_dmrs_pos_slot_mem;
+  int dmrs_symbol_start_idx = rdata->dmrs_symbol_start_idx; 
 
   const int chest_freq = rdata->chest_freq;
   NR_gNB_PUSCH *pusch_vars = rdata->pusch_vars;
@@ -124,6 +126,7 @@ static void nr_pusch_antenna_processing(void *arg)
       int re_offset = k0;
       LOG_D(PHY, "PUSCH estimation DMRS type 1, Freq-domain interpolation");
       int pilot_cnt = 0;
+      int ch_est_cnt = 0;	// To trace channel coefficients 
 
       for (int n = 0; n < 3 * nb_rb_pusch; n++) {
         // LS estimation
@@ -140,6 +143,11 @@ static void nr_pusch_antenna_processing(void *arg)
         for (int k = pilot_cnt << 1; k < (pilot_cnt << 1) + 4; k++) {
           ul_ls_est[k] = ch16;
         }
+        //------------------Write channel parameters to Memory ------------------//
+        // Trace channel coefficients
+        pusch_ch_est_dmrs_pos_slot_mem [dmrs_symbol_start_idx + delta + ch_est_cnt] =  ch16; // 0, 2, 4, 6, 8, location of REs
+        pusch_ch_est_dmrs_pos_slot_mem [dmrs_symbol_start_idx + delta + ch_est_cnt + 2] =  ch16; // 0, 2, 4, 6, 8, location of REs
+        ch_est_cnt += 4;  
         pilot_cnt += 2;
       }
 
@@ -423,7 +431,9 @@ int nr_pusch_channel_estimation(PHY_VARS_gNB *gNB,
                                 unsigned short bwp_start_subcarrier,
                                 nfapi_nr_pusch_pdu_t *pusch_pdu,
                                 int *max_ch,
-                                uint32_t *nvar)
+                                uint32_t *nvar,
+                                c16_t *pusch_dmrs_slot_mem,
+                                c16_t *pusch_ch_est_dmrs_pos_slot_mem)
 {
   c16_t pilot[3280] __attribute__((aligned(32)));
 
@@ -481,6 +491,16 @@ int nr_pusch_channel_estimation(PHY_VARS_gNB *gNB,
 
 #endif
 
+  //------------------Write DMRS to Memory ------------------//
+  // used by T-Tracer to trace DMRS slot grid
+  int dmrs_delta = 0; // intialize it to zero currently, derive it later from above functions 
+  int dmrs_symbol_start_idx = symbol * pusch_pdu->nrOfLayers * nb_rb_pusch * NR_NB_SC_PER_RB + nl * nb_rb_pusch * NR_NB_SC_PER_RB;
+  for (int i = 0; i < (6 * nb_rb_pusch); i++) {
+    // the generated DMRs is a complex conjugate of mod table, so flip the sign of imag. part
+    pusch_dmrs_slot_mem [dmrs_symbol_start_idx + dmrs_delta + i * 2].r =  pilot[i].r; // 0, 2, 4, 6, 8, location of REs
+    pusch_dmrs_slot_mem [dmrs_symbol_start_idx + dmrs_delta + i * 2].i =  -pilot[i].i; // 0, 2, 4, 6, 8, location of REs
+  } 	
+
   int nest_count = 0;
   uint64_t noise_amp2 = 0;
   delay_t *delay = &gNB->ulsch[ul_id].delay;
@@ -532,6 +552,8 @@ int nr_pusch_channel_estimation(PHY_VARS_gNB *gNB,
     rdata->chest_freq = gNB->chest_freq;
     rdata->rxdataF = gNB->common_vars.rxdataF;
     rdata->ans = &ans;
+    rdata->pusch_ch_est_dmrs_pos_slot_mem = pusch_ch_est_dmrs_pos_slot_mem;
+    rdata->dmrs_symbol_start_idx = dmrs_symbol_start_idx;
     // Call the nr_pusch_antenna_processing function
     if (job_id == num_jobs - 1) {
       // Run the last job inline

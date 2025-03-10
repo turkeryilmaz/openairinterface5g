@@ -595,6 +595,8 @@ typedef struct puschAntennaProc_s {
   NR_DL_FRAME_PARMS *frame_parms;
   c16_t ***rxdataF;
   task_ans_t* ans;
+  c16_t *pusch_ch_est_dmrs_pos_slot_mem;
+  int dmrs_symbol_start_idx;
 } puschAntennaProc_t;
 
 struct puschAntennaReqId {
