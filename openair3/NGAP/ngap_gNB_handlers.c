@@ -31,6 +31,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <stdlib.h>
 #include <string.h>
 #include "INTEGER.h"
 #include "ngap_msg_includes.h"
@@ -47,6 +48,7 @@
 #include "ngap_gNB_defs.h"
 #include "ngap_gNB_utils.h"
 #include "ngap_gNB_nas_procedures.h"
+#include "ngap_gNB_interface_management.h"
 #include "ngap_gNB_trace.h"
 #include "ngap_messages_types.h"
 #include "oai_asn1.h"
@@ -145,14 +147,36 @@ static int ngap_gNB_handle_ng_setup_failure(sctp_assoc_t assoc_id, uint32_t stre
   return 0;
 }
 
+static void update_amf_info(ngap_gNB_amf_data_t *amf_desc_p, ng_setup_response_t *msg)
+{
+  for (int i = 0; i < msg->num_guami; i++) {
+    STAILQ_INSERT_TAIL(&amf_desc_p->served_guami, &msg->guami[i], next);
+  }
+
+  amf_desc_p->relative_amf_capacity = msg->relative_amf_capacity;
+
+  if (msg->amf_name) {
+    amf_desc_p->amf_name = strdup(msg->amf_name);
+  }
+
+  STAILQ_INIT(&amf_desc_p->plmn_supports);
+
+  for (int i = 0; i < msg->num_plmn; i++) {
+    STAILQ_INSERT_TAIL(&amf_desc_p->plmn_supports, &msg->plmn[i], next);
+  }
+
+  /* The association is now ready as gNB and AMF know parameters of each other.
+   * Mark the association as UP to enable UE contexts creation.
+   */
+  amf_desc_p->state = NGAP_GNB_STATE_CONNECTED;
+  amf_desc_p->ngap_gNB_instance->ngap_amf_associated_nb++;
+}
+
 static int ngap_gNB_handle_ng_setup_response(sctp_assoc_t assoc_id, uint32_t stream, NGAP_NGAP_PDU_t *pdu)
 {
-  NGAP_NGSetupResponse_t    *container;
-  NGAP_NGSetupResponseIEs_t *ie;
   ngap_gNB_amf_data_t       *amf_desc_p;
-  int i;
   DevAssert(pdu != NULL);
-  container = &pdu->choice.successfulOutcome->value.choice.NGSetupResponse;
+  NGAP_NGSetupResponse_t *container = &pdu->choice.successfulOutcome->value.choice.NGSetupResponse;
 
   /* NG Setup Response == Non UE-related procedure -> stream 0 */
   if (stream != 0) {
@@ -167,132 +191,14 @@ static int ngap_gNB_handle_ng_setup_response(sctp_assoc_t assoc_id, uint32_t str
     return -1;
   }
 
-  NGAP_FIND_PROTOCOLIE_BY_ID(NGAP_NGSetupResponseIEs_t, ie, container,
-                             NGAP_ProtocolIE_ID_id_ServedGUAMIList, true);
-
-  /* The list of served guami can contain at most 256 elements.
-   * NR related guami is the first element in the list, i.e with an id of 0.
-   */
-  NGAP_DEBUG("servedGUAMIs.list.count %d\n", ie->value.choice.ServedGUAMIList.list.count);
-  DevAssert(ie->value.choice.ServedGUAMIList.list.count > 0);
-  DevAssert(ie->value.choice.ServedGUAMIList.list.count <= NGAP_maxnoofServedGUAMIs);
-
-  for (i = 0; i < ie->value.choice.ServedGUAMIList.list.count; i++) {
-    NGAP_ServedGUAMIItem_t  *guami_item_p;
-    struct served_guami_s   *new_guami_p;
-
-    guami_item_p = ie->value.choice.ServedGUAMIList.list.array[i];
-    new_guami_p = calloc(1, sizeof(struct served_guami_s));
-    STAILQ_INIT(&new_guami_p->served_plmns);
-    STAILQ_INIT(&new_guami_p->served_region_ids);
-    STAILQ_INIT(&new_guami_p->amf_set_ids);
-    STAILQ_INIT(&new_guami_p->amf_pointers);
-    
-    NGAP_PLMNIdentity_t *plmn_identity_p;
-    struct plmn_identity_s *new_plmn_identity_p;
-    plmn_identity_p = &guami_item_p->gUAMI.pLMNIdentity;
-    new_plmn_identity_p = calloc(1, sizeof(struct plmn_identity_s));
-    TBCD_TO_MCC_MNC(plmn_identity_p, new_plmn_identity_p->mcc,
-                    new_plmn_identity_p->mnc, new_plmn_identity_p->mnc_digit_length);
-    STAILQ_INSERT_TAIL(&new_guami_p->served_plmns, new_plmn_identity_p, next);
-    new_guami_p->nb_served_plmns++;
-    
-    NGAP_AMFRegionID_t        *amf_region_id_p;
-    struct served_region_id_s *new_region_id_p;
-    amf_region_id_p = &guami_item_p->gUAMI.aMFRegionID;
-    new_region_id_p = calloc(1, sizeof(struct served_region_id_s));
-    OCTET_STRING_TO_INT8(amf_region_id_p, new_region_id_p->amf_region_id);
-    STAILQ_INSERT_TAIL(&new_guami_p->served_region_ids, new_region_id_p, next);
-    new_guami_p->nb_region_id++;
-
-    NGAP_AMFSetID_t        *amf_set_id_p;
-    struct amf_set_id_s    *new_amf_set_id_p;
-    amf_set_id_p = &guami_item_p->gUAMI.aMFSetID;
-    new_amf_set_id_p = calloc(1, sizeof(struct amf_set_id_s));
-    OCTET_STRING_TO_INT16(amf_set_id_p, new_amf_set_id_p->amf_set_id);
-    STAILQ_INSERT_TAIL(&new_guami_p->amf_set_ids, new_amf_set_id_p, next);
-    new_guami_p->nb_amf_set_id++;
-
-    NGAP_AMFPointer_t        *amf_pointer_p;
-    struct amf_pointer_s     *new_amf_pointer_p;
-    amf_pointer_p = &guami_item_p->gUAMI.aMFPointer;
-    new_amf_pointer_p = calloc(1, sizeof(struct amf_pointer_s));
-    OCTET_STRING_TO_INT8(amf_pointer_p, new_amf_pointer_p->amf_pointer);
-    STAILQ_INSERT_TAIL(&new_guami_p->amf_pointers, new_amf_pointer_p, next);
-    new_guami_p->nb_amf_pointer++;
-
-    STAILQ_INSERT_TAIL(&amf_desc_p->served_guami, new_guami_p, next);
+  ng_setup_response_t msg = {0};
+  if (decode_ng_setup_response(&msg, container) < 0) {
+    NGAP_ERROR("Failed to decode NG Setup Response");
+    return -1;
   }
 
-  /* Set the capacity of this AMF */
-  NGAP_FIND_PROTOCOLIE_BY_ID(NGAP_NGSetupResponseIEs_t, ie, container,
-                             NGAP_ProtocolIE_ID_id_RelativeAMFCapacity, true);
+  update_amf_info(amf_desc_p, &msg);
 
-  amf_desc_p->relative_amf_capacity = ie->value.choice.RelativeAMFCapacity;
-
-  /* mandatory set the amf name */
-  NGAP_FIND_PROTOCOLIE_BY_ID(NGAP_NGSetupResponseIEs_t, ie, container,
-                             NGAP_ProtocolIE_ID_id_AMFName, true);
-
-  if (ie) {
-    amf_desc_p->amf_name = malloc(ie->value.choice.AMFName.size + 1);
-    memcpy(amf_desc_p->amf_name, ie->value.choice.AMFName.buf, ie->value.choice.AMFName.size);
-    amf_desc_p->amf_name[ie->value.choice.AMFName.size] = '\0';
-  }
-
-  
-  /* mandatory set the plmn supports */
-  NGAP_FIND_PROTOCOLIE_BY_ID(NGAP_NGSetupResponseIEs_t, ie, container,
-                               NGAP_ProtocolIE_ID_id_PLMNSupportList, true);
-
-  NGAP_DEBUG("PLMNSupportList.list.count %d\n", ie->value.choice.PLMNSupportList.list.count);
-  DevAssert(ie->value.choice.PLMNSupportList.list.count > 0);
-  DevAssert(ie->value.choice.PLMNSupportList.list.count <= NGAP_maxnoofPLMNs);
-
-  STAILQ_INIT(&amf_desc_p->plmn_supports);
-
-  for (i = 0; i < ie->value.choice.PLMNSupportList.list.count; i++) {
-    NGAP_PLMNSupportItem_t *plmn_support_item_p;
-    struct plmn_support_s  *new_plmn_support_p;
-    NGAP_SliceSupportItem_t  *slice_support_item_p;
-    struct slice_support_s *new_slice_support_p;
-
-    plmn_support_item_p = ie->value.choice.PLMNSupportList.list.array[i];
-
-    new_plmn_support_p = calloc(1, sizeof(struct plmn_support_s));
-    
-    TBCD_TO_MCC_MNC(&plmn_support_item_p->pLMNIdentity, new_plmn_support_p->plmn_identity.mcc,
-                    new_plmn_support_p->plmn_identity.mnc, new_plmn_support_p->plmn_identity.mnc_digit_length);
-
-    NGAP_DEBUG("PLMNSupportList.list.count %d\n", plmn_support_item_p->sliceSupportList.list.count);
-    DevAssert(plmn_support_item_p->sliceSupportList.list.count > 0);
-    DevAssert(plmn_support_item_p->sliceSupportList.list.count <= NGAP_maxnoofSliceItems);
-
-    STAILQ_INIT(&new_plmn_support_p->slice_supports);
-    for(int j=0; j<plmn_support_item_p->sliceSupportList.list.count; j++) {
-      slice_support_item_p = plmn_support_item_p->sliceSupportList.list.array[j];
-      
-      new_slice_support_p = calloc(1, sizeof(struct slice_support_s));
-
-      OCTET_STRING_TO_INT8(&slice_support_item_p->s_NSSAI.sST, new_slice_support_p->sST);
-
-      if(slice_support_item_p->s_NSSAI.sD != NULL) {
-        new_slice_support_p->sD_flag = 1;
-        new_slice_support_p->sD[0] = slice_support_item_p->s_NSSAI.sD->buf[0];
-        new_slice_support_p->sD[1] = slice_support_item_p->s_NSSAI.sD->buf[1];
-        new_slice_support_p->sD[2] = slice_support_item_p->s_NSSAI.sD->buf[2];
-      }
-      STAILQ_INSERT_TAIL(&new_plmn_support_p->slice_supports, new_slice_support_p, next);
-    }
-
-    STAILQ_INSERT_TAIL(&amf_desc_p->plmn_supports, new_plmn_support_p, next);
-  }
-
-  /* The association is now ready as gNB and AMF know parameters of each other.
-   * Mark the association as UP to enable UE contexts creation.
-   */
-  amf_desc_p->state = NGAP_GNB_STATE_CONNECTED;
-  amf_desc_p->ngap_gNB_instance->ngap_amf_associated_nb ++;
   ngap_handle_ng_setup_message(amf_desc_p, 0);
 
   return 0;
