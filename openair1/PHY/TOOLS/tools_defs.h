@@ -500,6 +500,7 @@ void init_fft(uint16_t size,
 
 #define FOREACH_DFTSZ(SZ_DEF) \
   SZ_DEF(12)                  \
+  SZ_DEF(16)                  \
   SZ_DEF(24)                  \
   SZ_DEF(36)                  \
   SZ_DEF(48)                  \
@@ -591,6 +592,7 @@ void init_fft(uint16_t size,
   SZ_DEF(65536)                \
   SZ_DEF(98304)
 
+extern uint32_t DFT_SCALING_16[][1];
 extern uint32_t DFT_SCALING_64[5][2];
 extern uint32_t DFT_SCALING_128[5][3];
 extern uint32_t DFT_SCALING_256[5][3];
@@ -696,6 +698,8 @@ uint32_t *get_dft_scaling(int ofdm_symbol_size,int32_t levdB)
 {
   size_t i=0;
   switch (ofdm_symbol_size) {
+    case 16:
+      return DFT_SCALING_16[0];
     case 64:
       return DFT_SCALING_64[0];
     case 128:

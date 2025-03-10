@@ -7,6 +7,7 @@
 // should be FOREACH_DFTSZ but we restrict to tested DFT sizes
 #define FOREACH_DFTSZ_working(SZ_DEF) \
   SZ_DEF(12)                          \
+  SZ_DEF(16)                          \
   SZ_DEF(64)                          \
   SZ_DEF(128)                         \
   SZ_DEF(256)                         \

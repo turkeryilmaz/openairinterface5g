@@ -1345,6 +1345,31 @@ __attribute__((always_inline)) static inline void dft16_simd256(int16_t *x, int1
   // [y24 y25 y26 y27 y28 y29 y30 y31]
 }
 
+void dft16(int16_t *x, int16_t *y, unsigned int *scale)
+{
+  simde__m256i *x256 = (simde__m256i *)x;
+  simde__m256i xtmp[4];
+
+  simde__m256i const perm_mask = simde_mm256_set_epi32(3, 2, 1, 0, 3, 2, 1, 0);
+  simde__m256i const perm_mask2 = simde_mm256_set_epi32(7, 6, 5, 4, 7, 6, 5, 4);
+  xtmp[0] = simde_mm256_permutevar8x32_epi32(x256[0], perm_mask); // x0  x1  x2  x3  x0  x1  x2  x3
+  xtmp[1] = simde_mm256_permutevar8x32_epi32(x256[0], perm_mask2); // x4  x5  x6  x7  x4  x5  x6  x7
+  xtmp[2] = simde_mm256_permutevar8x32_epi32(x256[1], perm_mask); // x8  x9 x10 x11  x8 x9  x10  x11
+  xtmp[3] = simde_mm256_permutevar8x32_epi32(x256[1], perm_mask2); // x12 x13 x14 x15 x12 x13 x14 x15
+
+  /* This function performs two 16 point DFTs. Hence we repeat the input twice within
+     a single m256 vector. The returned output contains the two 16 point DFTs in order.
+     So we ignore the second 16 point DFT.
+  */
+  simde__m256i ytmp[4];
+  const unsigned int scale16 = scale ? scale[0] : 0;
+  dft16_simd256((int16_t *)xtmp, (int16_t *)ytmp, scale16);
+
+  simde__m256i *y256 = (simde__m256i *)y;
+  y256[0] = ytmp[0];
+  y256[1] = ytmp[1];
+}
+
 __attribute__((always_inline)) static inline void idft16(int16_t *x, int16_t *y)
 {
   simde__m128i *tw16a_128 = (simde__m128i *)tw16, *tw16b_128 = (simde__m128i *)tw16c, *x128 = (simde__m128i *)x,
