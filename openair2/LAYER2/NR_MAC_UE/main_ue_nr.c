@@ -58,7 +58,7 @@ void nr_ue_init_mac(NR_UE_MAC_INST_t *mac)
   nr_ue_reset_sync_state(mac);
   mac->get_sib1 = false;
   mac->get_otherSI = false;
-  memset(&mac->phy_config, 0, sizeof(mac->phy_config));
+  memset(&mac->config_request, 0, sizeof(mac->config_request));
   mac->si_SchedInfo.si_window_start = -1;
   mac->servCellIndex = 0;
   mac->harq_ACK_SpatialBundlingPUCCH = false;

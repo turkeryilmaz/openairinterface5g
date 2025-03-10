@@ -902,7 +902,12 @@ printf("%d\n", slot);
   fapi_nr_dl_config_request_t dl_config = {.sfn = frame, .slot = slot};
   nr_scheduled_response_t scheduled_response = {.dl_config = &dl_config, .phy_data = &phy_data, .mac = UE_mac};
 
-  nr_ue_phy_config_request(&UE_mac->phy_config);
+  nr_phy_config_t config;
+  config.Mod_id = 0;
+  config.CC_id = 0;
+  config.type = NR_PHY_CONFIG_REQUEST;
+  config.choice.config_req = UE_mac->config_request;
+  nr_ue_phy_config_request(&config);
   //NR_COMMON_channels_t *cc = RC.nrmac[0]->common_channels;
   int n_errs = 0;
 

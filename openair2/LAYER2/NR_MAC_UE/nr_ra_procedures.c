@@ -73,7 +73,7 @@ void init_RA(NR_UE_MAC_INST_t *mac,
   ra->RA_backoff_cnt = 0;
   ra->RA_window_cnt = -1;
 
-  fapi_nr_config_request_t *cfg = &mac->phy_config.config_req;
+  fapi_nr_config_request_t *cfg = &mac->config_request;
 
   prach_resources->RA_PREAMBLE_BACKOFF = 0;
   NR_SubcarrierSpacing_t prach_scs;
@@ -83,7 +83,7 @@ void init_RA(NR_UE_MAC_INST_t *mac,
     scs_for_pcmax = prach_scs;
   } else {
     const unsigned int index = rach_ConfigGeneric->prach_ConfigurationIndex;
-    const unsigned int unpaired = mac->phy_config.config_req.cell_config.frame_duplex_type;
+    const unsigned int unpaired = mac->frame_structure.frame_type;
     const unsigned int format = get_format0(index, unpaired, mac->frequency_range);
     prach_scs = get_delta_f_RA_long(format);
     scs_for_pcmax = mac->current_UL_BWP->scs;

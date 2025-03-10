@@ -1846,7 +1846,7 @@ static void build_ro_list(NR_UE_MAC_INST_t *mac)
   // Create the PRACH occasions map
   // WIP: For now assume no rejected PRACH occasions because of conflict with SSB or TDD_UL_DL_ConfigurationCommon schedule
 
-  int unpaired = mac->phy_config.config_req.cell_config.frame_duplex_type;
+  int unpaired = mac->frame_structure.frame_type;
 
   const int64_t *prach_config_info_p = get_prach_config_info(mac->frequency_range, config_index, unpaired);
   const int ul_mu = mac->current_UL_BWP->scs;
@@ -1986,7 +1986,7 @@ static void build_ssb_list(NR_UE_MAC_INST_t *mac)
   // Create the list of transmitted SSBs
   const int bwp_id = mac->current_UL_BWP->bwp_id;
   ssb_list_info_t *ssb_list = &mac->ssb_list[bwp_id];
-  fapi_nr_config_request_t *cfg = &mac->phy_config.config_req;
+  fapi_nr_config_request_t *cfg = &mac->config_request;
   ssb_list->nb_tx_ssb = 0;
 
   for (int ssb_index = 0; ssb_index < MAX_NB_SSB; ssb_index++) {
@@ -2827,8 +2827,6 @@ void nr_schedule_csirs_reception(NR_UE_MAC_INST_t *mac, int frame, int slot)
 
 // This function schedules the PRACH according to prach_ConfigurationIndex and TS 38.211, tables 6.3.3.2.x
 // PRACH formats 9, 10, 11 are corresponding to dual PRACH format configurations A1/B1, A2/B2, A3/B3.
-// - todo:
-// - Partial configuration is actually already stored in (fapi_nr_prach_config_t) &mac->phy_config.config_req->prach_config
 static void nr_ue_prach_scheduler(NR_UE_MAC_INST_t *mac, frame_t frameP, sub_frame_t slotP)
 {
   RA_config_t *ra = &mac->ra;
@@ -2836,7 +2834,7 @@ static void nr_ue_prach_scheduler(NR_UE_MAC_INST_t *mac, frame_t frameP, sub_fra
   if (ra->ra_state != nrRA_GENERATE_PREAMBLE)
     return;
 
-  fapi_nr_config_request_t *cfg = &mac->phy_config.config_req;
+  fapi_nr_config_request_t *cfg = &mac->config_request;
   fapi_nr_prach_config_t *prach_config = &cfg->prach_config;
 
   NR_RACH_ConfigCommon_t *setup = mac->current_UL_BWP->rach_ConfigCommon;

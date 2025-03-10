@@ -169,16 +169,24 @@ typedef struct {
     struct NR_UE_MAC_INST_s *mac;
 } nr_scheduled_response_t;
 
-typedef struct {
-    /// module id
-    uint8_t Mod_id;
-    /// component carrier id
-    uint8_t CC_id;
-    
-    /// NR UE FAPI-like P5 message
-    /// physical layer configuration request structure
-    fapi_nr_config_request_t config_req;
+typedef enum {
+  NR_PHY_CONFIG_REQUEST,
+  NR_PHY_CONFIG_MIB
+} nr_phy_config_type;
 
+typedef struct {
+  /// module id
+  uint8_t Mod_id;
+  /// component carrier id
+  uint8_t CC_id;
+    
+  /// NR UE FAPI-like P5 message
+  /// physical layer configuration request structure
+  nr_phy_config_type type;
+  union {
+    fapi_nr_config_request_t config_req;
+    fapi_nr_master_info_config_t mib_config;
+  } choice;
 } nr_phy_config_t;
 
 typedef struct {

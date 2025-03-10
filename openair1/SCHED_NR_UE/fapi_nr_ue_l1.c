@@ -599,10 +599,13 @@ int8_t nr_ue_scheduled_response(nr_scheduled_response_t *scheduled_response)
 void nr_ue_phy_config_request(nr_phy_config_t *phy_config)
 {
   PHY_VARS_NR_UE *phy = PHY_vars_UE_g[phy_config->Mod_id][phy_config->CC_id];
-  fapi_nr_config_request_t *nrUE_config = &phy->nrUE_config;
-  if(phy_config != NULL) {
+  if(phy_config != NULL && phy_config->type == NR_PHY_CONFIG_REQUEST) {
+    fapi_nr_config_request_t *nrUE_config = &phy->nrUE_config;
     phy->received_config_request = true;
-    memcpy(nrUE_config, &phy_config->config_req, sizeof(fapi_nr_config_request_t));
+    memcpy(nrUE_config, &phy_config->choice.config_req, sizeof(fapi_nr_config_request_t));
+  }
+  if(phy_config != NULL && phy_config->type == NR_PHY_CONFIG_MIB) {
+    phy->mib_frame = phy_config->choice.mib_config.mib_frame;
   }
 }
 

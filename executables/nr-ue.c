@@ -867,7 +867,6 @@ void *UE_thread(void *arg)
   initNotifiedFIFO_nothreadSafe(&freeBlocks);
 
   int timing_advance = UE->timing_advance;
-  NR_UE_MAC_INST_t *mac = get_mac_inst(UE->Mod_id);
 
   bool syncRunning = false;
   const int nb_slot_frame = fp->slots_per_frame;
@@ -917,7 +916,7 @@ void *UE_thread(void *arg)
               process_msg_rcc_to_mac(msg);
             else
               LOG_E(PHY, "It seems we arbort while trying to sync\n");
-            decoded_frame_rx = mac->mib_frame;
+            decoded_frame_rx = UE->mib_frame;
           }
           LOG_A(PHY,
                 "UE synchronized! decoded_frame_rx=%d UE->init_sync_frame=%d trashed_frames=%d\n",

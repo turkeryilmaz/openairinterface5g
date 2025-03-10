@@ -429,7 +429,7 @@ static int get_deltatf(uint16_t nb_of_prbs,
 // - referenceSignalPower:   dBm/RE (average EPRE of the resources elements that carry secondary synchronization signals in dBm)
 int16_t compute_nr_SSB_PL(NR_UE_MAC_INST_t *mac, short ssb_rsrp_dBm)
 {
-  fapi_nr_config_request_t *cfg = &mac->phy_config.config_req;
+  fapi_nr_config_request_t *cfg = &mac->config_request;
   int referenceSignalPower = cfg->ssb_config.ss_pbch_power;
   //TODO improve PL measurements. Probably not correct as it is.
 

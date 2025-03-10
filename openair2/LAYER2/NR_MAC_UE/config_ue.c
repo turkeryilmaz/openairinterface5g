@@ -81,11 +81,13 @@ static void set_tdd_config_nr_ue(fapi_nr_tdd_table_t *tdd_table, const frame_str
   }
 }
 
-static void config_common_ue_sa(NR_UE_MAC_INST_t *mac, NR_ServingCellConfigCommonSIB_t *scc, int cc_idP)
+static nr_phy_config_t config_common_ue_sa(NR_UE_MAC_INST_t *mac, NR_ServingCellConfigCommonSIB_t *scc, int cc_idP)
 {
-  fapi_nr_config_request_t *cfg = &mac->phy_config.config_req;
-  mac->phy_config.Mod_id = mac->ue_id;
-  mac->phy_config.CC_id = cc_idP;
+  nr_phy_config_t config;
+  config.Mod_id = mac->ue_id;
+  config.CC_id = cc_idP;
+  config.type = NR_PHY_CONFIG_REQUEST;
+  fapi_nr_config_request_t *cfg = &config.choice.config_req;
 
   LOG_D(MAC, "Entering SA UE Config Common\n");
 
@@ -219,7 +221,8 @@ static void config_common_ue_sa(NR_UE_MAC_INST_t *mac, NR_ServingCellConfigCommo
     //prach_fd_occasion->num_unused_root_sequences = ???
   }
   cfg->prach_config.ssb_per_rach = rach_ConfigCommon->ssb_perRACH_OccasionAndCB_PreamblesPerSSB->present-1;
-
+  mac->config_request = *cfg;
+  return config;
 }
 
 // computes round-trip-time between ue and sat based on SIB19 ephemeris data
@@ -271,12 +274,13 @@ void configure_ntn_ta(module_id_t module_id, ntn_timing_advance_componets_t *ntn
   ntn_ta->ntn_params_changed = true;
 }
 
-static void config_common_ue(NR_UE_MAC_INST_t *mac, NR_ServingCellConfigCommon_t *scc, int cc_idP)
+static nr_phy_config_t config_common_ue(NR_UE_MAC_INST_t *mac, NR_ServingCellConfigCommon_t *scc, int cc_idP)
 {
-  fapi_nr_config_request_t *cfg = &mac->phy_config.config_req;
-
-  mac->phy_config.Mod_id = mac->ue_id;
-  mac->phy_config.CC_id = cc_idP;
+  nr_phy_config_t config;
+  config.Mod_id = mac->ue_id;
+  config.CC_id = cc_idP;
+  config.type = NR_PHY_CONFIG_REQUEST;
+  fapi_nr_config_request_t *cfg = &config.choice.config_req;
   frame_type_t frame_type = mac->frame_structure.frame_type;
 
   // carrier config
@@ -450,6 +454,8 @@ static void config_common_ue(NR_UE_MAC_INST_t *mac, NR_ServingCellConfigCommon_t
   } else {
     asn1cFreeStruc(asn_DEF_NR_NTN_Config_r17, mac->sc_info.ntn_Config_r17);
   }
+  mac->config_request = *cfg;
+  return config;
 }
 
 void release_common_ss_cset(NR_BWP_PDCCH_t *pdcch)
@@ -905,14 +911,20 @@ void nr_rrc_mac_config_req_mib(module_id_t module_id,
   if (!mac->mib)
     mac->mib = calloc(1, sizeof(*mac->mib));
   update_mib_conf(mac->mib, mib);
-  mac->phy_config.Mod_id = module_id;
-  mac->phy_config.CC_id = cc_idP;
   if (sched_sib == 1)
     mac->get_sib1 = true;
   else if (sched_sib == 2)
     mac->get_otherSI = true;
   nr_ue_decode_mib(mac, cc_idP);
   ret = pthread_mutex_unlock(&mac->if_mutex);
+  if (!get_softmodem_params()->emulate_l1) {
+    nr_phy_config_t phy_config;
+    phy_config.CC_id = cc_idP;
+    phy_config.Mod_id = module_id;
+    phy_config.type = NR_PHY_CONFIG_MIB;
+    phy_config.choice.mib_config.mib_frame = mac->mib_frame;
+    mac->if_module->phy_config_request(&phy_config);
+  }
   AssertFatal(!ret, "mutex failed %d\n", ret);
 }
 
@@ -1746,7 +1758,7 @@ void nr_rrc_mac_config_req_sib1(module_id_t module_id, int cc_idP, NR_SIB1_t *si
   configure_si_schedulingInfo(mac, si_SchedulingInfo, si_SchedulingInfo_v1700);
   mac->n_ta_offset = get_ta_offset(scc->n_TimingAdvanceOffset);
 
-  config_common_ue_sa(mac, scc, cc_idP);
+  nr_phy_config_t phy_config = config_common_ue_sa(mac, scc, cc_idP);
   configure_common_BWP_dl(mac,
                           0, // bwp-id
                           &scc->downlinkConfigCommon.initialDownlinkBWP);
@@ -1772,7 +1784,7 @@ void nr_rrc_mac_config_req_sib1(module_id_t module_id, int cc_idP, NR_SIB1_t *si
   build_ssb_to_ro_map(mac);
 
   if (!get_softmodem_params()->emulate_l1)
-    mac->if_module->phy_config_request(&mac->phy_config);
+    mac->if_module->phy_config_request(&phy_config);
   ret = pthread_mutex_unlock(&mac->if_mutex);
   AssertFatal(!ret, "mutex failed %d\n", ret);
 }
@@ -1796,9 +1808,7 @@ void nr_rrc_mac_config_other_sib(module_id_t module_id, NR_SIB19_r17_t *sib19, b
   AssertFatal(!ret, "mutex failed %d\n", ret);
 }
 
-static void handle_reconfiguration_with_sync(NR_UE_MAC_INST_t *mac,
-                                             int cc_idP,
-                                             const NR_ReconfigurationWithSync_t *reconfWithSync)
+static void handle_reconfiguration_with_sync(NR_UE_MAC_INST_t *mac, int cc_idP, const NR_ReconfigurationWithSync_t *reconfWithSync)
 {
   reset_mac_inst(mac);
   mac->crnti = reconfWithSync->newUE_Identity;
@@ -1818,12 +1828,15 @@ static void handle_reconfiguration_with_sync(NR_UE_MAC_INST_t *mac,
       mac->physCellId = *scc->physCellId;
     mac->dmrs_TypeA_Position = scc->dmrs_TypeA_Position;
     UPDATE_IE(mac->tdd_UL_DL_ConfigurationCommon, scc->tdd_UL_DL_ConfigurationCommon, NR_TDD_UL_DL_ConfigCommon_t);
-    config_common_ue(mac, scc, cc_idP);
+    nr_phy_config_t phy_config = config_common_ue(mac, scc, cc_idP);
     const int bwp_id = 0;
     if (scc->downlinkConfigCommon)
       configure_common_BWP_dl(mac, bwp_id, scc->downlinkConfigCommon->initialDownlinkBWP);
     if (scc->uplinkConfigCommon)
       configure_common_BWP_ul(mac, bwp_id, scc->uplinkConfigCommon->initialUplinkBWP);
+    if (!get_softmodem_params()->emulate_l1) {
+      mac->if_module->phy_config_request(&phy_config);
+    }
   }
 
   mac->state = UE_NOT_SYNC;
@@ -1835,7 +1848,6 @@ static void handle_reconfiguration_with_sync(NR_UE_MAC_INST_t *mac,
     mac->synch_request.CC_id = cc_idP;
     mac->synch_request.synch_req.target_Nid_cell = mac->physCellId;
     mac->if_module->synch_request(&mac->synch_request);
-    mac->if_module->phy_config_request(&mac->phy_config);
   }
 }
 
@@ -2559,7 +2571,7 @@ static void handle_mac_uecap_info(NR_UE_MAC_INST_t *mac, NR_UE_NR_Capability_t *
       NR_FeatureSetDownlinkPerCC_t *fs_dl_cc = fs_dlcc_list->list.array[i];
       if (mac->current_DL_BWP->scs != fs_dl_cc->supportedSubcarrierSpacingDL)
         continue;
-      int dl_bw_mhz = mac->phy_config.config_req.carrier_config.dl_bandwidth;
+      int dl_bw_mhz = mac->config_request.carrier_config.dl_bandwidth;
       if (!supported_bw_comparison(dl_bw_mhz, &fs_dl_cc->supportedBandwidthDL, fs_dl_cc->channelBW_90mhz))
         continue;
       if (fs_dl_cc->maxNumberMIMO_LayersPDSCH)
@@ -2572,7 +2584,7 @@ static void handle_mac_uecap_info(NR_UE_MAC_INST_t *mac, NR_UE_NR_Capability_t *
       NR_FeatureSetUplinkPerCC_t *fs_ul_cc = fs_ulcc_list->list.array[i];
       if (mac->current_UL_BWP->scs != fs_ul_cc->supportedSubcarrierSpacingUL)
         continue;
-      int ul_bw_mhz = mac->phy_config.config_req.carrier_config.uplink_bandwidth;
+      int ul_bw_mhz = mac->config_request.carrier_config.uplink_bandwidth;
       if (!supported_bw_comparison(ul_bw_mhz, &fs_ul_cc->supportedBandwidthUL, fs_ul_cc->channelBW_90mhz))
         continue;
       if (fs_ul_cc->maxNumberMIMO_LayersNonCB_PUSCH)

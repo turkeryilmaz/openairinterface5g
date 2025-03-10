@@ -701,15 +701,16 @@ typedef struct {
 } fapi_nr_synch_request_t;
 
 typedef struct {
-  uint32_t config_mask;
+  int mib_frame;
+} fapi_nr_master_info_config_t;
 
+typedef struct {
   fapi_nr_ue_carrier_config_t carrier_config;
   fapi_nr_cell_config_t cell_config;
   fapi_nr_ssb_config_t ssb_config;
   fapi_nr_ssb_table_t ssb_table;
   fapi_nr_tdd_table_t tdd_table;
   fapi_nr_prach_config_t prach_config;
-
 } fapi_nr_config_request_t;
 
 #endif

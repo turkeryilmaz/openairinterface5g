@@ -753,7 +753,12 @@ int main(int argc, char *argv[])
 
   initFloatingCoresTpool(threadCnt, &nrUE_params.Tpool, false, "UE-tpool");
 
-  nr_ue_phy_config_request(&UE_mac->phy_config);
+  nr_phy_config_t config;
+  config.Mod_id = 0;
+  config.CC_id = 0;
+  config.type = NR_PHY_CONFIG_REQUEST;
+  config.choice.config_req = UE_mac->config_request;
+  nr_ue_phy_config_request(&config);
 
   unsigned char harq_pid = 0;
 

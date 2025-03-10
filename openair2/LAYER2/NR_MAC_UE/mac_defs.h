@@ -621,9 +621,9 @@ typedef struct NR_UE_MAC_INST_s {
   fapi_nr_dl_config_request_t *dl_config_request;
 
   ///     Interface module instances
-  nr_ue_if_module_t       *if_module;
-  nr_phy_config_t         phy_config;
-  nr_synch_request_t      synch_request;
+  nr_ue_if_module_t *if_module;
+  nr_synch_request_t synch_request;
+  fapi_nr_config_request_t config_request;
 
   // order lc info
   A_SEQUENCE_OF(nr_lcordered_info_t) lc_ordered_list;

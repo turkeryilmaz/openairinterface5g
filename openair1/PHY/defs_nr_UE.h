@@ -476,6 +476,8 @@ typedef struct PHY_VARS_NR_UE_s {
   int ta_slot;
   int ta_command;
 
+  int mib_frame;
+
   /// Flag to tell if UE is secondary user (cognitive mode)
   unsigned char    is_secondary_ue;
   /// Flag to tell if secondary gNB has channel estimates to create NULL-beams from.
