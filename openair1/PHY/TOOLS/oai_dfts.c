@@ -1607,8 +1607,8 @@ const static int16_t tw64c[96] __attribute__((aligned(32))) = {
 
 void dft64(int16_t *x,int16_t *y,unsigned int *scale)
 {
-
-  simd256_q15_t xtmp[16],ytmp[16],*tw64a_256=(simd256_q15_t *)tw64a,*tw64b_256=(simd256_q15_t *)tw64b,*x256=(simd256_q15_t *)x,*y256=(simd256_q15_t *)y;
+  simd256_q15_t xtmp[8], ytmp[8], *tw64a_256 = (simd256_q15_t *)tw64a, *tw64b_256 = (simd256_q15_t *)tw64b,
+                                  *x256 = (simd256_q15_t *)x, *y256 = (simd256_q15_t *)y;
 
   int scale16=0;
   if (scale) scale16 = scale[1];
