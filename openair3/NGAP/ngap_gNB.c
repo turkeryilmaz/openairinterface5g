@@ -53,7 +53,7 @@
 #include "ngap_gNB_encoder.h"
 #include "ngap_gNB_handlers.h"
 #include "ngap_gNB_itti_messaging.h"
-#include "ngap_gNB_management_procedures.h"
+#include "ngap_gNB_utils.h"
 #include "ngap_gNB_nas_procedures.h"
 #include "ngap_messages_types.h"
 #include "oai_asn1.h"

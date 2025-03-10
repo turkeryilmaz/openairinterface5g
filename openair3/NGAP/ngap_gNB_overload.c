@@ -32,7 +32,7 @@
 #include <stdio.h>
 #include "assertions.h"
 #include "ngap_gNB_defs.h"
-#include "ngap_gNB_management_procedures.h"
+#include "ngap_gNB_utils.h"
 
 int ngap_gNB_handle_overload_start(sctp_assoc_t assoc_id, uint32_t stream, NGAP_NGAP_PDU_t *pdu)
 {

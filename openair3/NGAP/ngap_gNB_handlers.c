@@ -45,7 +45,7 @@
 #include "ngap_common.h"
 #include "ngap_gNB_decoder.h"
 #include "ngap_gNB_defs.h"
-#include "ngap_gNB_management_procedures.h"
+#include "ngap_gNB_utils.h"
 #include "ngap_gNB_nas_procedures.h"
 #include "ngap_gNB_trace.h"
 #include "ngap_gNB_ue_context.h"

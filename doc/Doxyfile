@@ -1040,9 +1040,9 @@ INPUT                  = \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair3/S1AP/s1ap_eNB_default_values.h \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair3/S1AP/s1ap_eNB.h \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair3/NGAP/ngap_gNB_nnsf.c \
-@CMAKE_CURRENT_SOURCE_DIR@/../openair3/NGAP/ngap_gNB_management_procedures.c \
+@CMAKE_CURRENT_SOURCE_DIR@/../openair3/NGAP/ngap_gNB_utils.c \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair3/NGAP/ngap_gNB_nnsf.h \
-@CMAKE_CURRENT_SOURCE_DIR@/../openair3/NGAP/ngap_gNB_management_procedures.h \
+@CMAKE_CURRENT_SOURCE_DIR@/../openair3/NGAP/ngap_gNB_utils.h \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair3/NGAP/ngap_gNB_context_management_procedures.h \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair3/NGAP/ngap_gNB_nas_procedures.h \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair3/NGAP/ngap_gNB_overload.h \
