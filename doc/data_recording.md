@@ -17,7 +17,7 @@ Regarding to the APIs between different services, they are such as the following
 
 The following figure shows OAI gNB and UE with the Data Recording App system architecture. 
 
-<img src="images/data_recording_arch.png" alt="OAI gNB and UE with the Data Recording App system architectur" width="900">
+<img src="images/data_recording_arch.png" alt="OAI gNB and UE with the Data Recording App system architectur" width="1000">
 
 ## Requirement Packages
 The following packages are required:
@@ -76,7 +76,7 @@ There are some metadata parameters that the user may need to change only once. T
 
 The following figure shows an exemplary of global metadata.
 
-<img src="images/global metadata_example.png" alt="Exemplary from global meta-data" width="700">
+<img src="images/global metadata_example.png" alt="Exemplary from global meta-data" width="750">
 
 The following figure shows an exemplary of mapping between supported OAI messages by Data recorrding App and file_name_prefix.
 
@@ -153,7 +153,7 @@ python3 data_recording_app_v1.0.py
 The recorded data set will be stored in the configured path, assume `/home/user/workarea/oai_recorded_data/`. 
 The following figure shows an exemplary of global metadata.
 
-<img src="images/sigmf_dataset.png" alt="Exemplary from SigMF recorded data set" width="500">
+<img src="images/sigmf_dataset.png" alt="Exemplary from SigMF recorded data set" width="600">
 
 ## Overview on Collected Data Set
 
@@ -173,11 +173,11 @@ A heterogeneous data set generated for a certain scenario is stored in a SigMF c
 
 The following figure shows an exemplary of SigMF collection file and how it bundles multiple SigMF files of a single record.
 
-<img src="images/sigmf_data_collection.png" alt="Exemplary from data collection" width="600">
+<img src="images/sigmf_data_collection.png" alt="Exemplary from data collection" width="700">
 
 Each SigMF metadata has three sections:
 - global: The standardized global parameters are presented here to understand and read the binary data.
-- captures: The standardized capture parameters provides details about the capture process.
+- captures: The standardized capture parameters provide details about the capture process.
 - annotations: It provides details about the recording scenario.
 
 The following figure shows an exemplary of SigMF metadata file, for example for the frequency-domain RX data.
@@ -187,7 +187,7 @@ The following figure shows an exemplary of SigMF metadata file, for example for 
 ## Data Recording Application Limitation
 
 - Support the Uplink messages listed above. 
-- Data serialization in Tx scrambled bits message without considering location of DMRS symbols: Only captured valid data bits is stored. It means the location of DMRS symbols are not considered and filled with zeros and stored as it is in the grid presented on the figure below. For example
+- Data serialization in Tx scrambled bits message without considering location of DMRS symbols: Only captured valid data bits is stored. It means the location of DMRS symbols are not considered and filled with zeros and stored as it is in the grid presented on the figure below. For example:
     - Number of bits per IQ Symbol = 4
     - Number of subcarrier = 72
     - Number of OFDM symbols = 13
@@ -196,6 +196,4 @@ The following figure shows an exemplary of SigMF metadata file, for example for 
 <img src="images/data_serialization_tx_scrambled_bit_message.png" alt="Data serialization " width="500">
 
 ### To Do List:
-Provide an overview about the different serivces of the Data Recording App (Data Control Service, Data collection (T-Tracer) Service, Data Conversion Service) and the APIs defination between them.
-
-
+- Provide an overview about the different services of the Data Recording App (Data Control Service, Data collection (T-Tracer) Service, Data Conversion Service) and the APIs definition between them.
