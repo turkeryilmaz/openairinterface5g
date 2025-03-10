@@ -17,7 +17,7 @@ Regarding to the APIs between different services, they are such as the following
 
 The following figure shows OAI gNB and UE with the Data Recording App system architecture. 
 
-<img src="images/data_recording_arch.png" alt="OAI gNB and UE with the Data Recording App system architectur" width="700">
+<img src="images/data_recording_arch.png" alt="OAI gNB and UE with the Data Recording App system architectur" width="900">
 
 ## Requirement Packages
 The following packages are required:
@@ -193,7 +193,7 @@ The following figure shows an exemplary of SigMF metadata file, for example for 
     - Number of OFDM symbols = 13
     - So, the valid number of bits in the transport block (slot) is: 3312 bits. If we will fill DMRS locations by zeros, the number of bits is: 3744 bits, but it is not done due to the real-timing issues. For Tx scrambled bits data de-serialization, the user can reconstruct the Tx Scrambled Bits Grid (2D Grid) by using the captured DMRS grid or Channel Estimates Grid as a reference and no need to derive the DMRS symbols locations based on 5G NR config parameters.
 
-<img src="images/data_serialization_tx_scrambled_bit_message.png" alt="Data serialization " width="300">
+<img src="images/data_serialization_tx_scrambled_bit_message.png" alt="Data serialization " width="500">
 
 ### To Do List:
 Provide an overview about the different serivces of the Data Recording App (Data Control Service, Data collection (T-Tracer) Service, Data Conversion Service) and the APIs defination between them.
