@@ -50,11 +50,7 @@ double get_cpu_freq_GHz(void)
   return cpu_freq_GHz;
 }
 
-
-
-void print_meas_now(time_stats_t *ts,
-                    const char *name,
-                    FILE *file_name)
+void print_meas_now(time_stats_t *ts, const char *name)
 {
   if (cpu_meas_enabled) {
     //static double cpu_freq_GHz = 3.2;
@@ -63,7 +59,8 @@ void print_meas_now(time_stats_t *ts,
     //cpu_freq_GHz = get_cpu_freq_GHz(); // super slow
     if (ts->trials>0) {
       //fprintf(file_name,"Name %25s: Processing %15.3f ms for SF %d, diff_now %15.3f \n", name,(ts->p_time/(cpu_freq_GHz*1000000.0)),subframe,ts->p_time);
-      fprintf(file_name,"%15.3f us, diff_now %15.3f \n",(ts->p_time/(cpu_freq_GHz*1000.0)),(double)ts->p_time);
+      printf("%15.3f us, diff_now %15.3f \n", (ts->p_time / (cpu_freq_GHz * 1000.0)), (double)ts->p_time);
+      fflush(stdout);
     }
   }
 }
