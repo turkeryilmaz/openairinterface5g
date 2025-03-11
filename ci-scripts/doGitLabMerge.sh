@@ -135,6 +135,14 @@ then
     exit $STATUS
 fi
 
+
+STATUS=`git diff origin/$SOURCE_BRANCH | wc -l`
+if [ $STATUS -ne 0 ]
+then
+    echo "fatal: $SOURCE_COMMIT_ID is not the latest in branch $SOURCE_BRANCH"
+    exit 1
+fi
+
 git merge --ff $TARGET_COMMIT_ID -m "Temporary merge for CI"
 
 STATUS=`git status | grep -E -c "You have unmerged paths.|fix conflicts"`
