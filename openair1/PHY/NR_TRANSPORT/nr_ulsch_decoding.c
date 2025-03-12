@@ -271,6 +271,7 @@ int nr_ulsch_decoding(PHY_VARS_gNB *phy_vars_gNB,
                       uint32_t G,
                       UE_nr_rxtx_proc_t *proc,
                       nr_phy_data_t *phy_data,
+                      tpool_t *Tpool,
                       int8_t *ack_nack_rcvd,
                       uint8_t num_acks)
   {
@@ -532,7 +533,7 @@ int nr_ulsch_decoding(PHY_VARS_gNB *phy_vars_gNB,
       rdata->ulsch = ulsch;
       rdata->ulsch_id = ULSCH_id;
       rdata->tbslbrm = pusch_pdu->maintenance_parms_v3.tbSizeLbrmBytes;
-      pushTpool(phy_vars_gNB ? &phy_vars_gNB->threadPool : &get_nrUE_params()->Tpool, req);
+      pushTpool(phy_vars_gNB ? &phy_vars_gNB->threadPool : Tpool, req);
       LOG_D(PHY, "Added a block to decode, in pipe: %d\n", r);
       r_offset += E;
       offset += (Kr_bytes - (harq_process->F >> 3) - ((harq_process->C > 1) ? 3 : 0));
@@ -541,15 +542,14 @@ int nr_ulsch_decoding(PHY_VARS_gNB *phy_vars_gNB,
     if (UE) {
       int nbDecode = harq_process->C;
       while (nbDecode) {
-         notifiedFIFO_elt_t *req=pullTpool(&nf,  &get_nrUE_params()->Tpool);
-         if (req == NULL)
-           break; // Tpool has been stopped
-         nr_postDecode_slsch(UE, req, proc, phy_data, ack_nack_rcvd, num_acks);
-         delNotifiedFIFO_elt(req);
-         nbDecode--;
+        notifiedFIFO_elt_t *req=pullTpool(&nf,  Tpool);
+        if (req == NULL)
+          break; // Tpool has been stopped
+        nr_postDecode_slsch(UE, req, proc, phy_data, ack_nack_rcvd, num_acks);
+        delNotifiedFIFO_elt(req);
+        nbDecode--;
       }
-  }
-
+    }
   }
   return harq_process->C;
 }

@@ -135,6 +135,8 @@ void nr_rx_pusch(PHY_VARS_gNB *gNB,
                  uint8_t UE_id,
                  uint32_t frame,
                  uint8_t slot,
+                 uint8_t nb_antennas_tx,
+                 void (* _nr_ue_csi_rs_procedures)(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP]),
                  unsigned char harq_pid,
                  bool *is_csi_rs_slot
                  );

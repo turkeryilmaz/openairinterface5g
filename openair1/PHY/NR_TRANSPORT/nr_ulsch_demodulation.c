@@ -1961,6 +1961,8 @@ void nr_rx_pusch(PHY_VARS_gNB *gNB,
                  uint8_t ulsch_id,
                  uint32_t frame,
                  uint8_t slot,
+                 uint8_t nb_antennas_tx,
+                 void (* _nr_ue_csi_rs_procedures)(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP]),
                  unsigned char harq_pid,
                  bool *is_csi_rs_slot)
 {
@@ -2151,7 +2153,7 @@ void nr_rx_pusch(PHY_VARS_gNB *gNB,
         if (ue->csirs_vars[0]->active == 1) {
           LOG_D(NR_PHY, "%d.%d Received CSI-RS\n", proc->frame_rx, proc->nr_slot_rx);
           nr_slot_fep(ue, frame_parms, proc, symbol, rxdataF, link_type_sl);
-          nr_ue_csi_rs_procedures(ue, proc, rxdataF);
+          _nr_ue_csi_rs_procedures(ue, proc, rxdataF);
           ue->csirs_vars[0]->active = 0;
         }
       }
@@ -2164,7 +2166,7 @@ void nr_rx_pusch(PHY_VARS_gNB *gNB,
       uint8_t nr_rbs_w_csi_rs = csi_params->nr_of_rbs / csi_params->freq_density;
       uint8_t nr_rbs_wo_csi_rs = (rb_size - nr_rbs_w_csi_rs);
       // Actually, kprime + 1 sub-carriers are used by csi-rs. kprime can be 0 or 1 but nb_antennas_tx can be greater than 2.
-      uint8_t subcarriers_used = get_nrUE_params()->nb_antennas_tx > 2 ? 2 : get_nrUE_params()->nb_antennas_tx;
+      uint8_t subcarriers_used = nb_antennas_tx > 2 ? 2 : nb_antennas_tx;
       nb_re_pusch = nr_rbs_wo_csi_rs * freq_subcarriers_per_rb  + nr_rbs_w_csi_rs * (freq_subcarriers_per_rb - subcarriers_used);
     } else if (dmrs_symbol_flag == 1) {
       if ((ul_dmrs_symb_pos >> ((symbol + 1) % frame_parms->symbols_per_slot)) & 0x01)
