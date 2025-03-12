@@ -1031,7 +1031,8 @@ void pbch_pdcch_processing(PHY_VARS_NR_UE *ue,
                                   pdcch_est_size,
                                   pdcch_dl_ch_estimates,
                                   rxdataF,
-                                  NULL);
+                                  NULL,
+                                  RADIO_TYPE_UU);
 
       stop_meas(&ue->ofdm_demod_stats);
 

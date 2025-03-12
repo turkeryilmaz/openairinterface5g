@@ -62,6 +62,7 @@ int nr_ulsch_decoding(PHY_VARS_gNB *phy_vars_gNB,
                       uint32_t G,
                       UE_nr_rxtx_proc_t *proc,
                       nr_phy_data_t *phy_data,
+                      tpool_t *Tpool,
                       int8_t *ack_nack_rcvd,
                       uint8_t num_acks);
 
