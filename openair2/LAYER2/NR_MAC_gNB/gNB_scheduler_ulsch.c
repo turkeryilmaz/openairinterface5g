@@ -1375,7 +1375,7 @@ void handle_nr_srs_measurements(const module_id_t module_id,
 #ifdef SRS_IND_DEBUG
   LOG_I(NR_MAC, "frame = %i\n", frame);
   LOG_I(NR_MAC, "slot = %i\n", slot);
-  LOG_I(NR_MAC, "srs_ind->rnti = %04x\n", srs_ind->rnti);
+  LOG_I(NR_MAC, "srs_ind->rnti = 0x%04x\n", srs_ind->rnti);
   LOG_I(NR_MAC, "srs_ind->timing_advance_offset = %i\n", srs_ind->timing_advance_offset);
   LOG_I(NR_MAC, "srs_ind->timing_advance_offset_nsec = %i\n", srs_ind->timing_advance_offset_nsec);
   LOG_I(NR_MAC, "srs_ind->srs_usage = %i\n", srs_ind->srs_usage);
@@ -1395,11 +1395,17 @@ void handle_nr_srs_measurements(const module_id_t module_id,
     return;
   }
 
+  if (srs_ind->report_type == 0) {
+    LOG_W(NR_MAC, "SRS Report type = 0 for RNTI %04x\n", srs_ind->rnti);
+    NR_SCHED_UNLOCK(&nrmac->sched_lock);
+    return;
+  }
+
   gNB_MAC_INST *nr_mac = RC.nrmac[module_id];
   NR_mac_stats_t *stats = &UE->mac_stats;
   nfapi_srs_report_tlv_t *report_tlv = &srs_ind->report_tlv;
 
-  switch (srs_ind->srs_usage) {
+  switch (srs_ind->srs_usage>>1) { // Because this comes from enumeration vs. FAPI
     case NR_SRS_ResourceSet__usage_beamManagement: {
       nfapi_nr_srs_beamforming_report_t nr_srs_bf_report;
       unpack_nr_srs_beamforming_report(report_tlv->value,
@@ -1420,13 +1426,13 @@ void handle_nr_srs_measurements(const module_id_t module_id,
       LOG_I(NR_MAC, "nr_srs_bf_report.num_symbols = %i\n", nr_srs_bf_report.num_symbols);
       LOG_I(NR_MAC, "nr_srs_bf_report.wide_band_snr = %i (%i dB)\n", nr_srs_bf_report.wide_band_snr, wide_band_snr_dB);
       LOG_I(NR_MAC, "nr_srs_bf_report.num_reported_symbols = %i\n", nr_srs_bf_report.num_reported_symbols);
-      LOG_I(NR_MAC, "nr_srs_bf_report.prgs[0].num_prgs = %i\n", nr_srs_bf_report.prgs[0].num_prgs);
-      for (int prg_idx = 0; prg_idx < nr_srs_bf_report.prgs[0].num_prgs; prg_idx++) {
+      LOG_I(NR_MAC, "nr_srs_bf_report.prgs[0].num_prgs = %i\n", nr_srs_bf_report.reported_symbol_list[0].num_prgs);
+      for (int prg_idx = 0; prg_idx < nr_srs_bf_report.reported_symbol_list[0].num_prgs; prg_idx++) {
         LOG_I(NR_MAC,
               "nr_srs_bf_report.prgs[0].prg_list[%3i].rb_snr = %i (%i dB)\n",
               prg_idx,
-              nr_srs_bf_report.prgs[0].prg_list[prg_idx].rb_snr,
-              (nr_srs_bf_report.prgs[0].prg_list[prg_idx].rb_snr >> 1) - 64);
+              nr_srs_bf_report.reported_symbol_list[0].prg_list[prg_idx].rb_snr,
+              (nr_srs_bf_report.reported_symbol_list[0].prg_list[prg_idx].rb_snr >> 1) - 64);
       }
 #endif
 
