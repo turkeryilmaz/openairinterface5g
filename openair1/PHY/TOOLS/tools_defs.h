@@ -621,6 +621,7 @@ extern uint32_t DFT_SCALING_65536[5][7];
 extern uint32_t DFT_SCALING_73728[5][8];
 extern uint32_t DFT_SCALING_98304[5][8];
 
+extern uint32_t IDFT_SCALING_64[2][2];
 extern uint32_t IDFT_SCALING_128[2][2];
 extern uint32_t IDFT_SCALING_256[2][2];
 extern uint32_t IDFT_SCALING_512[2][3];
@@ -731,11 +732,11 @@ uint32_t *get_dft_scaling(int ofdm_symbol_size,int32_t levdB)
     case 3072:
       return DFT_SCALING_3072[0];
     case 4096:
-      while (i<sizeof(DFT_SCALING_2048_THRES)/sizeof(DFT_SCALING_2048_THRES[0])) {
+      while (i < sizeof(DFT_SCALING_4096_THRES) / sizeof(DFT_SCALING_4096_THRES[0])) {
         if (levdB < DFT_SCALING_4096_THRES[i]) break;
         i++;
       }
-      return DFT_SCALING_2048[i];
+      return DFT_SCALING_4096[i];
     case 6144:
       return DFT_SCALING_6144[0];
     case 8192:
@@ -778,6 +779,8 @@ uint32_t *get_idft_scaling(int ofdm_symbol_size,unsigned int lev_ind)
 {
   AssertFatal(lev_ind < 2, "Illegal lev_ind %u\n",lev_ind); 
   switch (ofdm_symbol_size) {
+    case 64:
+      return IDFT_SCALING_64[lev_ind];
     case 128:
       return IDFT_SCALING_128[lev_ind];
     case 256:
