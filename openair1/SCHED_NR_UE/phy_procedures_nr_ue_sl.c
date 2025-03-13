@@ -293,7 +293,7 @@ void psbch_pscch_pssch_processing(PHY_VARS_NR_UE *ue,
                   proc,
                   sym,
                   rxdataF,
-                  link_type_sl);
+                  link_type_sl_pc5);
 
       start_meas(&sl_phy_params->channel_estimation_stats);
       nr_pbch_channel_estimation(ue,
@@ -389,7 +389,7 @@ void psbch_pscch_pssch_processing(PHY_VARS_NR_UE *ue,
                   proc,
                   1+sym,
                   rxdataF,
-                  link_type_sl);
+                  link_type_sl_pc5);
       nr_pdcch_channel_estimation(ue,
                                   proc,
                                   1,
@@ -401,7 +401,7 @@ void psbch_pscch_pssch_processing(PHY_VARS_NR_UE *ue,
                                   pscch_dl_ch_estimates,
                                   rxdataF,
                                   &rsrp_dBm,
-                                  RADIO_TYPE_PC5);
+                                  link_type_sl_pc5);
     }
 
     nr_ue_pdcch_procedures(ue, proc, 1, pscch_est_size, pscch_dl_ch_estimates, phy_data, 0, rxdataF, &rsrp_dBm);
@@ -450,7 +450,7 @@ void psbch_pscch_pssch_processing(PHY_VARS_NR_UE *ue,
                   proc,
                   sym,
                   rxdataF,
-                  link_type_sl);
+                  link_type_sl_pc5);
 
     }
 
@@ -485,7 +485,7 @@ void psbch_pscch_pssch_processing(PHY_VARS_NR_UE *ue,
                     proc,
                     psfch_pdu->start_symbol_index,
                     rxdataF,
-                    link_type_sl);
+                    link_type_sl_pc5);
         ack_nack_rcvd[k] = nr_ue_decode_psfch0(ue,
                                             frame_rx,
                                             nr_slot_rx,
@@ -634,7 +634,7 @@ int phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue,
                                   proc->nr_slot_tx,
                                   fp,
                                   fp->nb_antennas_tx,
-                                  txdataF, link_type_sl);
+                                  txdataF, link_type_sl_pc5);
 
   }
   LOG_D(PHY,"****** end Sidelink TX-Chain for AbsSubframe %d.%d ******\n",

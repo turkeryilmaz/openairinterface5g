@@ -29,11 +29,6 @@ typedef struct sl_nr_tti_csi_rs_pdu {
   uint8_t measurement_bitmap;       // bit 0 RSRP, bit 1 RI, bit 2 LI, bit 3 PMI, bit 4 CQI, bit 5 i1
 } sl_nr_tti_csi_rs_pdu_t;
 
-typedef enum radio_interface_type_enum {
-  RADIO_TYPE_NONE,
-  RADIO_TYPE_UU,
-  RADIO_TYPE_PC5,
-} radio_interface_type_enum_t;
 
 typedef enum sl_sci_format_type_enum {
   SL_SCI_INVALID_FORMAT,

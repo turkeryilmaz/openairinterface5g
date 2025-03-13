@@ -125,7 +125,9 @@ NR_gNB_ULSCH_t new_gNB_ulsch(uint8_t max_ldpc_iterations, uint16_t N_RB_UL)
 static void nr_processULSegment(void *arg)
 {
   ldpcDecode_t *rdata = (ldpcDecode_t *)arg;
+#ifdef DEBUG_ULSCH_DECODING
   PHY_VARS_gNB *phy_vars_gNB = rdata->gNB;
+#endif
   NR_UL_gNB_HARQ_t *ulsch_harq = rdata->ulsch_harq;
   t_nrLDPC_dec_params *p_decoderParms = &rdata->decoderParms;
   int length_dec;
