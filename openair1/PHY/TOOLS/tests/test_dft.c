@@ -151,7 +151,11 @@ int main(void)
     double samples_out[sizeofArray(coeffs)] = {0};
     double mse[sizeofArray(coeffs)] = {0};
     double error_vector[sizeofArray(coeffs)][n];
+    const int num_coeffs = sizeofArray(coeffs);
+    double *error_vector_d = malloc(num_coeffs * NUM_TRIALS * n * sizeof(*error_vector_d));
     memset(error_vector, 0, sizeof(error_vector));
+    memset(error_vector_d, 0, num_coeffs * NUM_TRIALS * n * sizeof(*error_vector_d));
+    double(*error_vec_d_p)[num_coeffs][NUM_TRIALS][n] = (double(*)[num_coeffs][NUM_TRIALS][n])error_vector_d;
     printf("Testing size %d\n", n);
     for (int t = 0; t < NUM_TRIALS; t++) {
       cd_t data[n];
@@ -203,6 +207,7 @@ int main(void)
             evm_trial += sqrt(squaredMod(error)) / sqrt(squaredMod(out[i]));
             double error_dB = 10 * log10(squaredMod(error));
             error_vector[coeff][i] += squaredMod(error);
+            (*error_vec_d_p)[coeff][t][i] = squaredMod(error);
             if (coeffs[coeff] == 50 && n == n_simu && NUM_TRIALS == 1 && error_dB >= 10)
               printf("error in DFT pos %d : in %f dB, error %f (%f dB) \n", i, coeffs[coeff], squaredMod(error), error_dB);
             sqnr_trial += squaredMod(error);
@@ -263,8 +268,24 @@ int main(void)
       fprintf(file, "\n");
     }
     fclose(file);
+
+    file = fopen("error_dist.csv", "w+");
+    for (int p = 0; p < n; p++) {
+      fprintf(file, "%d,", p);
+    }
+    fprintf(file, "\n");
+
+    for (int i = 0; i < NUM_TRIALS; i++) {
+      for (int p = 0; p < n; p++) {
+        fprintf(file, "%4.4f,", (*error_vec_d_p)[0][i][p]);
+      }
+      fprintf(file, "\n");
+    }
+    fclose(file);
+    free(error_vector_d);
   }
 #else
+    free(error_vector_d);
   }
 
   // TX test: modulate all used sizss with QPSK and 256QAM. Compute IDFT using
