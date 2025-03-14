@@ -1032,7 +1032,7 @@ void pbch_pdcch_processing(PHY_VARS_NR_UE *ue,
                                   pdcch_dl_ch_estimates,
                                   rxdataF,
                                   NULL,
-                                  RADIO_TYPE_UU);
+                                  link_type_sl_uu);
 
       stop_meas(&ue->ofdm_demod_stats);
 

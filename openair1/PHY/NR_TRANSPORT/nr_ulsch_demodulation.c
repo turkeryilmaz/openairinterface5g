@@ -2152,7 +2152,7 @@ void nr_rx_pusch(PHY_VARS_gNB *gNB,
         // FIXIT: Reconsider index of csirs_vars[0] for multiple connected UEs case
         if (ue->csirs_vars[0]->active == 1) {
           LOG_D(NR_PHY, "%d.%d Received CSI-RS\n", proc->frame_rx, proc->nr_slot_rx);
-          nr_slot_fep(ue, frame_parms, proc, symbol, rxdataF, link_type_sl);
+          nr_slot_fep(ue, frame_parms, proc, symbol, rxdataF, link_type_sl_pc5);
           _nr_ue_csi_rs_procedures(ue, proc, rxdataF);
           ue->csirs_vars[0]->active = 0;
         }
