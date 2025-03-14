@@ -70,6 +70,8 @@ typedef struct nr_ho_target_cu {
   ho_req_ack_t ho_req_ack;
   /// function pointer to announce handover success
   ho_success_t ho_success;
+  /// function pointer to announce the handover failure
+  ho_failure_t ho_failure;
 } nr_ho_target_cu_t;
 
 typedef struct nr_handover_context_s {
@@ -90,5 +92,7 @@ void nr_rrc_trigger_n2_ho(gNB_RRC_INST *rrc,
                           const nr_neighbour_cell_t *neighbour_config);
 
 void rrc_gNB_trigger_reconfiguration_for_handover(gNB_RRC_INST *rrc, gNB_RRC_UE_t *ue, uint8_t *rrc_reconf, int rrc_reconf_len);
+
+void nr_rrc_trigger_n2_ho_target(gNB_RRC_INST *rrc, gNB_RRC_UE_t *ue);
 
 #endif /* RRC_GNB_MOBILITY_H_ */
