@@ -4,7 +4,7 @@
 #include <executables/softmodem-common.h>
 #include <openair1/PHY/TOOLS/calibration_scope.h>
 #include "nfapi/oai_integration/vendor_ext.h"
-
+#include <arpa/inet.h>
 
 int oai_exit=false;
 unsigned int mmapped_dma=0;
@@ -25,12 +25,6 @@ uint32_t target_ul_Nl;
 char *uecap_file;
 #include <executables/nr-softmodem.h>
 
-typedef struct {
-  openair0_device *rfdevice;
-  int antennas;
-  int dft_sz;
-} threads_t;
-
 int read_recplayconfig(recplay_conf_t **recplay_conf, recplay_state_t **recplay_state) {return 0;}
 void nfapi_setmode(nfapi_mode_t nfapi_mode) {}
 void set_taus_seed(unsigned int seed_init){};
@@ -39,11 +33,7 @@ void set_taus_seed(unsigned int seed_init){};
 void *write_thread(void *arg)
 {
   threads_t params = *(threads_t *)arg;
-  c16_t **samplesTx = malloc16(params.antennas * sizeof(c16_t *));
-
-  for (int i = 0; i < params.antennas; i++) {
-    samplesTx[i] = malloc16_clear(params.dft_sz * sizeof(c16_t));
-  }
+  c16_t **samplesTx = params.samplesTx;
   uint64_t ts = 0;
   for (int i = 0; i < params.dft_sz; i++) {
     // Better to select a frequency having an integer division with the sampling rate to avoid having DFT leakage later on
@@ -90,23 +80,20 @@ void *write_thread(void *arg)
 void *read_thread(void *arg)
 {
   threads_t params = *(threads_t *)arg;
-  c16_t **samplesRx = malloc16(params.antennas * sizeof(c16_t *));
-
-  for (int i = 0; i < params.antennas; i++) {
-    samplesRx[i] = malloc16_clear(params.dft_sz * sizeof(c16_t));
-  }
+  c16_t **samplesRx = params.samplesRx;
   openair0_timestamp timestamp = 0;
   uint64_t count = 0;
   struct timespec last_second;
   clock_gettime(CLOCK_REALTIME, &last_second);
-
   while (!oai_exit) {
+    pthread_mutex_lock(&params.rxMutex);
     int ret = params.rfdevice->trx_read_func(params.rfdevice, &timestamp, (void **)samplesRx, params.dft_sz, params.antennas);
+    pthread_mutex_unlock(&params.rxMutex);
     if (ret != params.dft_sz)
       printf("read of :%d\n", ret);
     count++;
     struct timespec now;
-    clock_gettime(CLOCK_REALTIME, &now);
+    clock_gettime(CLOCK_MONOTONIC, &now);
     if (now.tv_sec != last_second.tv_sec) {
       printf("read thread got %lu blocks in one second, samples per block: %d\n", count, ret);
       last_second = now;
@@ -114,8 +101,17 @@ void *read_thread(void *arg)
       FILE *fd = fopen("trace.iq", "w+");
       if (!fd)
         abort();
-      for (int i = 0; i < ret; i++)
-        fprintf(fd, "%d %d %d\n", i, samplesRx[0][i].r, samplesRx[0][i].i);
+
+      /* We should advance +1 only if header was detected in previous steps
+       * Which will make the read working even without timestamped rxdata
+       */
+      c16_t *s = samplesRx[0]; /* Exclude the header from the samples */
+      for (int i = 0; i < ret; i++) {
+        /* We need to throw the entie 256-bits word if we detect the 64-bits header.
+         * This may happens when receiving a big packet size in chuncks.
+         */
+        fprintf(fd, "%d %d %d\n", i, s[i].r, s[i].i);
+      }
     }
   }
   return NULL;
@@ -140,7 +136,7 @@ int main(int argc, char **argv)
   lock_memory_to_ram();
 
   int sampling_rate = 30.72e6;
-  int DFT = 2048 * 4;
+
   int antennas = 1;
   uint64_t freq = 2420.0e6;
   int rxGain = 90;
@@ -198,9 +194,20 @@ int main(int argc, char **argv)
   printf("generate a sinus wave at middle RB");
   load_dftslib();
 
-  // CalibrationInitScope(samplesRx, &rfdevice);
+  c16_t **samplesRx = malloc16(antennas * sizeof(c16_t *));
+  for (int i = 0; i < antennas; i++) {
+    samplesRx[i] = malloc16_clear(DFT * sizeof(c16_t));
+  }
+  c16_t **samplesTx = malloc16(antennas * sizeof(c16_t *));
+  for (int i = 0; i < antennas; i++) {
+    samplesTx[i] = malloc16_clear(DFT * sizeof(c16_t));
+  }
+
+  /* scopedata shall be filled from a software FIFO and not directly from the samples */
+  threads_t params = (threads_t){&rfdevice, antennas, DFT, samplesRx, samplesTx};
+  pthread_mutex_init(&params.rxMutex, NULL);
+  CalibrationInitScope(&params);
   rfdevice.trx_start_func(&rfdevice);
-  threads_t params = (threads_t){&rfdevice, antennas, DFT};
   pthread_t w_thread;
   threadCreate(&w_thread, write_thread, &params, "write_thr", -1, OAI_PRIORITY_RT);
   pthread_t r_thread;

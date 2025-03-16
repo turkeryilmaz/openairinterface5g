@@ -124,6 +124,7 @@ static void tx_func(processingData_L1tx_t *info)
     syncMsgRU.slot_tx = slot_tx;
     syncMsgRU.ru = gNB->RU_list[0];
     syncMsgRU.timestamp_tx = info->timestamp_tx;
+    syncMsgRU.blank_slot = (tx_slot_type != NR_DOWNLINK_SLOT && tx_slot_type != NR_MIXED_SLOT);
     LOG_D(PHY, "gNB: %d.%d : calling RU TX function\n", syncMsgRU.frame_tx, syncMsgRU.slot_tx);
     ru_tx_func((void *)&syncMsgRU);
     stop_meas(&info->gNB->phy_proc_tx);
@@ -135,6 +136,9 @@ static void tx_func(processingData_L1tx_t *info)
      * a ring buffer that should never be overwritten (one frame duration). */
     LOG_D(NR_PHY, "Calling deref_sched_response for id %d (tx_func) in %d.%d\n", info->sched_response_id, frame_tx, slot_tx);
     deref_sched_response(info->sched_response_id);
+    uint64_t end = rdtsc_oai();
+    if (end - st > 1000)
+      LOG_E(PHY, "deferred: %ld\n", end - st);
   }
 }
 
@@ -157,7 +161,14 @@ void *L1_tx_thread(void *arg) {
   PHY_VARS_gNB *gNB = (PHY_VARS_gNB*)arg;
 
   while (oai_exit == 0) {
-     notifiedFIFO_elt_t *res = pullNotifiedFIFO(&gNB->L1_tx_out);
+    notifiedFIFO_elt_t *res = NULL;
+    do {
+      res = pollNotifiedFIFO(&gNB->L1_tx_out);
+      if (!res) {
+        LOG_W(HW, "possible underrun\n");
+        usleep(100);
+      }
+    } while (!res);
      if (res == NULL) // stopping condition, happens only when queue is freed
        break;
      processingData_L1tx_t *info = (processingData_L1tx_t *)NotifiedFifoData(res);

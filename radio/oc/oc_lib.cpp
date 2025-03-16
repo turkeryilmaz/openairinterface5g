@@ -23,8 +23,17 @@
 
 #define DEVICE_WRITE_DEFAULT "/dev/xdma0_h2c_0"
 #define DEVICE_READ_DEFAULT "/dev/xdma0_c2h_0"
-#define OC_BUFFER 8192 * 4 // in bytes
+#define OC_BUFFER 8192 * 16 // in bytes
 #define SAMPLE_BUF (OC_BUFFER / sizeof(c16_t)) // in samples
+
+static const uint64_t magic = 0xA5A5A5A5A5A5A5A5;
+
+typedef struct rxHeader {
+  uint64_t header;
+  uint64_t sdrStatus;
+  int64_t timestamp;
+  uint64_t trailer;
+} rxHeader_t;
 
 typedef struct {
   char filename_write[FILENAME_MAX];
@@ -43,6 +52,7 @@ typedef struct {
   c16_t **tx_block;
   size_t tx_block_sz;
   bool first_tx;
+  bool rxMagicFound;
 } oc_state_t;
 
 typedef struct {
@@ -88,20 +98,55 @@ void *read_thread(void *arg)
   }
 #endif
 
+static int32_t signalEnergy(int32_t *input, uint32_t length)
+{
+  // init
+  simde__m128 mm0 = simde_mm_setzero_ps();
+
+  // Acc
+  for (uint32_t i = 0; i < (length >> 2); i++) {
+    simde__m128i in = simde_mm_loadu_si128((simde__m128i *)input);
+    mm0 = simde_mm_add_ps(mm0, simde_mm_cvtepi32_ps(simde_mm_madd_epi16(in, in)));
+    input += 4;
+  }
+
+  // leftover
+  float leftover_sum = 0;
+  c16_t *leftover_input = (c16_t *)input;
+  uint16_t lefover_count = length - ((length >> 2) << 2);
+  for (int32_t i = 0; i < lefover_count; i++) {
+    leftover_sum += leftover_input[i].r * leftover_input[i].r + leftover_input[i].i * leftover_input[i].i;
+  }
+
+  // Ave
+  float sums[4];
+  simde_mm_store_ps(sums, mm0);
+  return (uint32_t)((sums[0] + sums[1] + sums[2] + sums[3] + leftover_sum) / (float)length);
+}
+
 // DC-filter: 0 will be done in FPGA after seeing 128-consecutive samples having the same value
 static inline void write_block(oc_state_t *s)
 {
-  __m256i *b = (__m256i *)*s->tx_block;
-  for (uint j = 0; j < SAMPLE_BUF / 8; j++)
-    b[j] = (__m256i){}; // simde_mm256_slli_epi16(b[j], 6);
+  uint64_t st = rdtsc_oai();
   size_t wrote = write(s->fd_write, s->tx_block[0], SAMPLE_BUF * sizeof(c16_t));
+  uint64_t end = rdtsc_oai();
+  // if (end-st > 100*5000)
+  // LOG_E(HW,"one write to xdma took %ld µs, ts:%lu\n", (end-st)/5000, s->tx_ts);
+  /*
+  static uint64_t  old;
+  if (old-st > 5000*500)
+    LOG_E(HW,"we come back to writer after: %ld µs\n", (old-st)/5000);
+  old=st;
+  */
   wrote /= sizeof(c16_t);
   if (wrote != SAMPLE_BUF)
     LOG_E(HW, "write to SDR failed, request: %lu, wrote %ld\n", SAMPLE_BUF, wrote / sizeof(c16_t));
   if (wrote < 0)
     LOG_E(HW, "write to %s failed, errno %d:%s\n", s->filename_write, errno, strerror(errno));
+  s->tx_ts += wrote;
   s->tx_block_sz = 0;
   s->tx_count++;
+  LOG_D(HW, "wrote at ts: %lu, energy: %u\n", s->tx_ts, signalEnergy((int32_t *)s->tx_block[0], SAMPLE_BUF));
 }
 
 static int oc_write(openair0_device *device, openair0_timestamp timestamp, void **buff, int nsamps, int cc, int flags)
@@ -120,9 +165,11 @@ static int oc_write(openair0_device *device, openair0_timestamp timestamp, void 
     LOG_E(HW, "out of sequence\n");
     gap = 0;
   }
+  if (gap)
+    LOG_D(HW, "gap of %ld\n", gap);
 
   while (gap) {
-    int tmp = std::min((long unsigned int)nsamps, SAMPLE_BUF - s->tx_block_sz);
+    int tmp = std::min(gap, (int64_t)SAMPLE_BUF - (int64_t)s->tx_block_sz);
     memset(s->tx_block[0] + s->tx_block_sz, 0, tmp * sizeof(*in));
     gap -= tmp;
     s->tx_block_sz += tmp;
@@ -132,7 +179,10 @@ static int oc_write(openair0_device *device, openair0_timestamp timestamp, void 
   int wr_sz = nsamps;
   while (wr_sz) {
     int tmp = std::min((long unsigned int)wr_sz, SAMPLE_BUF - s->tx_block_sz);
-    memcpy(s->tx_block[0] + s->tx_block_sz, in, tmp * sizeof(*in));
+    simde__m256i *sig = (simde__m256i *)(s->tx_block[0] + s->tx_block_sz);
+    for (int j = 0; j < tmp; j += 8)
+      *sig++ = simde_mm256_slli_epi16(*(simde__m256i *)(in + j), 4);
+    // memcpy(s->tx_block[0] + s->tx_block_sz, in, tmp * sizeof(*in));
     wr_sz -= tmp;
     s->tx_block_sz += tmp;
     if (s->tx_block_sz == SAMPLE_BUF)
@@ -145,19 +195,37 @@ static int oc_write(openair0_device *device, openair0_timestamp timestamp, void 
 static int oc_read(openair0_device *device, openair0_timestamp *ptimestamp, void **buff, int nsamps, int cc)
 {
   oc_state_t *s = (oc_state_t *)device->priv;
-  static openair0_timestamp rx_ts = 0;
-  static uint remain = 0;
-  remain += nsamps;
-  while (remain > SAMPLE_BUF) {
-    int bytes_received = read(s->fd_read, buff[0], SAMPLE_BUF * sizeof(c16_t));
-    s->rx_count++;
-    if (bytes_received % sizeof(c16_t))
-      printf("Error in read, size is not a number of samples %d\n", bytes_received);
-    remain -= SAMPLE_BUF;
+  rxHeader_t rx = {0};
+
+  if (!s->rxMagicFound) {
+    while (rx.header != magic) {
+      int ret = read(s->fd_read, &rx, sizeof(rx));
+    }
+    printf("found magic, rx can start\n");
+    s->rx_timestamp = rx.timestamp;
+    s->rxMagicFound = true;
   }
-  *ptimestamp = rx_ts;
-  rx_ts += nsamps;
-  return nsamps;
+
+  // need to read, test, skip header at given rate
+  // logic failure: if i read a header, i should get samples after, not a second header
+  c16_t tmp[nsamps + sizeof(rxHeader_t) / sizeof(c16_t)];
+  int bytes_received = read(s->fd_read, &tmp, sizeof(tmp));
+  if (bytes_received % sizeof(c16_t))
+    printf("Error in read, size is not a number of samples %d\n", bytes_received);
+  memcpy(&rx, tmp, sizeof(rx));
+  if (rx.header != magic) {
+    printf("wrong header %lx, dropping packet %lu\n", rx.header, s->rx_count);
+    s->rxMagicFound = false;
+    return 0;
+  }
+  if (s->rx_timestamp != rx.timestamp)
+    printf("expected ts: %lu got %lu, diff %ld\n", s->rx_timestamp, rx.timestamp, (int64_t)rx.timestamp - s->rx_timestamp);
+
+  s->rx_count++;
+  *ptimestamp = s->rx_timestamp;
+  memcpy(buff[0], tmp + sizeof(rxHeader_t) / sizeof(c16_t), nsamps * sizeof(c16_t));
+  s->rx_timestamp = rx.timestamp + nsamps;
+  return nsamps; // fixme: return actual status
 }
 
 static int oc_set_freq(openair0_device *device, openair0_config_t *openair0_cfg)
