@@ -1116,7 +1116,7 @@ extern "C" {
     LOG_I(HW,"Found USRP %s\n", device_adds[0].get(type_str).c_str());
     double usrp_master_clock;
 
-    if (device_adds[0].get(type_str) == "b200") {
+    if (device_adds[0].get(type_str) == "b200" || device_adds[0].get(type_str) == "ant") {
       device->type = USRP_B200_DEV;
       usrp_master_clock = 30.72e6;
       args += boost::str(boost::format(",master_clock_rate=%f") % usrp_master_clock);

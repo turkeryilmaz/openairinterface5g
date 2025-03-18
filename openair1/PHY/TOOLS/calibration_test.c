@@ -29,6 +29,9 @@ int read_recplayconfig(recplay_conf_t **recplay_conf, recplay_state_t **recplay_
 void nfapi_setmode(nfapi_mode_t nfapi_mode) {}
 void set_taus_seed(unsigned int seed_init){};
 // configmodule_interface_t *uniqCfg = NULL;
+const int tx_ahead = DFT * 50;
+openair0_timestamp rx_timestamp = 0;
+openair0_timestamp tx_timestamp = 0;
 
 void *write_thread(void *arg)
 {
@@ -52,20 +55,24 @@ void *write_thread(void *arg)
     avg += sqrt(squaredMod(samplesTx[0][i]));
   }
   printf("avg: %f \n", avg / params.dft_sz);
-  openair0_timestamp timestamp = 0;
-  int TxAdvanceInDFTSize = 12;
   uint64_t count = 0;
   struct timespec last_second;
   clock_gettime(CLOCK_REALTIME, &last_second);
+
+  openair0_timestamp last_tx_timestamp = 0, new_tx = 0;
+
   while (!oai_exit) {
-    params.rfdevice->trx_write_func(params.rfdevice,
-                                    timestamp + TxAdvanceInDFTSize * params.dft_sz,
-                                    (void **)samplesTx,
-                                    params.dft_sz,
-                                    params.antennas,
-                                    0);
+    do {
+      pthread_mutex_lock(&params.txMutex);
+      printf("write got lock\n");
+      new_tx = tx_timestamp & ~31;
+      pthread_mutex_unlock(&params.txMutex);
+      if (new_tx == last_tx_timestamp)
+        usleep(5);
+    } while (last_tx_timestamp == new_tx);
+    last_tx_timestamp = new_tx & ~31;
+    params.rfdevice->trx_write_func(params.rfdevice, new_tx + tx_ahead, (void **)samplesTx, params.dft_sz, params.antennas, 0);
     count++;
-    timestamp += params.dft_sz;
     struct timespec now;
     clock_gettime(CLOCK_REALTIME, &now);
     if (now.tv_sec != last_second.tv_sec) {
@@ -81,17 +88,19 @@ void *read_thread(void *arg)
 {
   threads_t params = *(threads_t *)arg;
   c16_t **samplesRx = params.samplesRx;
-  openair0_timestamp timestamp = 0;
   uint64_t count = 0;
   struct timespec last_second;
   clock_gettime(CLOCK_REALTIME, &last_second);
   while (!oai_exit) {
     pthread_mutex_lock(&params.rxMutex);
-    int ret = params.rfdevice->trx_read_func(params.rfdevice, &timestamp, (void **)samplesRx, params.dft_sz, params.antennas);
+    int ret = params.rfdevice->trx_read_func(params.rfdevice, &rx_timestamp, (void **)samplesRx, params.dft_sz, params.antennas);
     pthread_mutex_unlock(&params.rxMutex);
     if (ret != params.dft_sz)
       printf("read of :%d\n", ret);
     count++;
+    pthread_mutex_lock(&params.txMutex);
+    tx_timestamp = rx_timestamp;
+    pthread_mutex_unlock(&params.txMutex);
     struct timespec now;
     clock_gettime(CLOCK_MONOTONIC, &now);
     if (now.tv_sec != last_second.tv_sec) {
@@ -206,6 +215,7 @@ int main(int argc, char **argv)
   /* scopedata shall be filled from a software FIFO and not directly from the samples */
   threads_t params = (threads_t){&rfdevice, antennas, DFT, samplesRx, samplesTx};
   pthread_mutex_init(&params.rxMutex, NULL);
+  pthread_mutex_init(&params.txMutex, NULL);
   CalibrationInitScope(&params);
   rfdevice.trx_start_func(&rfdevice);
   pthread_t w_thread;
