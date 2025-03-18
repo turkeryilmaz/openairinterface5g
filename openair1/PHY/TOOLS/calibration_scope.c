@@ -396,7 +396,7 @@ static void *scopeThread(void *arg) {
 
   while (!oai_exit) {
     calibrationScope(form);
-    usleep(99*1000);
+    usleep(990 * 1000);
   }
 
   return NULL;

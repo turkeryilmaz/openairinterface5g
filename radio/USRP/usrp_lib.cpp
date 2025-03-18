@@ -711,6 +711,7 @@ static int trx_usrp_read(openair0_device *device, openair0_timestamp *ptimestamp
   simde__m256i buff_tmp[cc < 2 ? 2 : cc][nsamps2];
   static int read_count = 0;
   int rxshift;
+  static openair0_timestamp prevts;
   switch (device->type) {
      case USRP_B200_DEV:
         rxshift=4;
@@ -725,6 +726,7 @@ static int trx_usrp_read(openair0_device *device, openair0_timestamp *ptimestamp
   }
 
   samples_received=0;
+  uhd::rx_metadata_t md;
   while (samples_received != nsamps) {
 
     if (cc>1) {
@@ -732,14 +734,13 @@ static int trx_usrp_read(openair0_device *device, openair0_timestamp *ptimestamp
       std::vector<void *> buff_ptrs;
 
       for (int i=0; i<cc; i++) buff_ptrs.push_back(buff_tmp[i]+samples_received);
-      samples_received += s->rx_stream->recv(buff_ptrs, nsamps-samples_received, s->rx_md);
+      samples_received += s->rx_stream->recv(buff_ptrs, nsamps - samples_received, md);
     } else {
       // receive a single channel (e.g. from connector RF A)
 
-      samples_received += s->rx_stream->recv((void*)((int32_t*)buff_tmp[0]+samples_received),
-                                             nsamps-samples_received, s->rx_md);
+      samples_received += s->rx_stream->recv((void *)((int32_t *)buff_tmp[0] + samples_received), nsamps - samples_received, md);
     }
-    if  ((s->wait_for_first_pps == 0) && (s->rx_md.error_code!=uhd::rx_metadata_t::ERROR_CODE_NONE))
+    if ((s->wait_for_first_pps == 0) && (md.error_code != uhd::rx_metadata_t::ERROR_CODE_NONE))
       break;
 
     if ((s->wait_for_first_pps == 1) && (samples_received != nsamps)) {
@@ -766,15 +767,22 @@ static int trx_usrp_read(openair0_device *device, openair0_timestamp *ptimestamp
     LOG_E(HW,"[recv] received %d samples out of %d\n",samples_received,nsamps);
   }
 
-  if ( s->rx_md.error_code != uhd::rx_metadata_t::ERROR_CODE_NONE)
-    LOG_E(HW, "%s\n", s->rx_md.to_pp_string(true).c_str());
+  if (md.error_code != uhd::rx_metadata_t::ERROR_CODE_NONE)
+    LOG_E(HW, "%s\n", md.to_pp_string(true).c_str());
 
   s->rx_count += nsamps;
-  s->rx_timestamp = s->rx_md.time_spec.to_ticks(s->sample_rate);
+  s->rx_timestamp = md.time_spec.to_ticks(s->sample_rate);
   *ptimestamp = s->rx_timestamp;
-
+  if (prevts != s->rx_timestamp)
+    LOG_E(HW, "Diff: %ld\n", prevts - s->rx_timestamp);
+  prevts = s->rx_timestamp + nsamps;
   T(T_USRP_RX_ANT0, T_INT(s->rx_timestamp), T_BUFFER(buff[0], samples_received*4));
+  static openair0_timestamp last_ts = 0;
+  long long unsigned delta = md.time_spec.to_ticks(s->sample_rate) - last_ts;
+  if (delta != 0)
+    printf("--- sample drop detected. %llu.\n", delta);
 
+  last_ts = md.time_spec.to_ticks(s->sample_rate) + nsamps;
   recplay_state_t *recPlay=device->recplay_state;
 
   if (device->openair0_cfg->recplay_mode == RECPLAY_RECORDMODE) { // record mode
@@ -1116,7 +1124,7 @@ extern "C" {
     LOG_I(HW,"Found USRP %s\n", device_adds[0].get(type_str).c_str());
     double usrp_master_clock;
 
-    if (device_adds[0].get(type_str) == "b200") {
+    if (device_adds[0].get(type_str) == "b200" || device_adds[0].get(type_str) == "ant") {
       device->type = USRP_B200_DEV;
       usrp_master_clock = 30.72e6;
       args += boost::str(boost::format(",master_clock_rate=%f") % usrp_master_clock);

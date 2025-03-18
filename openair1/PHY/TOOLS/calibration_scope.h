@@ -9,6 +9,7 @@ typedef struct {
   c16_t **samplesRx;
   c16_t **samplesTx;
   pthread_mutex_t rxMutex;
+  pthread_mutex_t txMutex;
 } threads_t;
 
 void CalibrationInitScope(threads_t *p);

@@ -33,7 +33,7 @@ typedef struct rxHeader {
   uint64_t sdrStatus;
   int64_t timestamp;
   uint64_t trailer;
-} rxHeader_t;
+} header_t;
 
 typedef struct {
   char filename_write[FILENAME_MAX];
@@ -128,7 +128,15 @@ static int32_t signalEnergy(int32_t *input, uint32_t length)
 static inline void write_block(oc_state_t *s)
 {
   uint64_t st = rdtsc_oai();
-  size_t wrote = write(s->fd_write, s->tx_block[0], SAMPLE_BUF * sizeof(c16_t));
+  uint8_t buf[SAMPLE_BUF * sizeof(c16_t) + sizeof(header_t)];
+  *(header_t *)buf = (header_t){
+      .header = magic,
+      .sdrStatus = 0,
+      .timestamp = s->tx_ts,
+      .trailer = SAMPLE_BUF,
+  };
+  memcpy(buf + sizeof(header_t), s->tx_block[0], SAMPLE_BUF * sizeof(c16_t));
+  size_t wrote = write(s->fd_write, buf, sizeof(buf));
   uint64_t end = rdtsc_oai();
   // if (end-st > 100*5000)
   // LOG_E(HW,"one write to xdma took %ld µs, ts:%lu\n", (end-st)/5000, s->tx_ts);
@@ -138,7 +146,7 @@ static inline void write_block(oc_state_t *s)
     LOG_E(HW,"we come back to writer after: %ld µs\n", (old-st)/5000);
   old=st;
   */
-  wrote /= sizeof(c16_t);
+  wrote = (wrote - sizeof(header_t)) / sizeof(c16_t);
   if (wrote != SAMPLE_BUF)
     LOG_E(HW, "write to SDR failed, request: %lu, wrote %ld\n", SAMPLE_BUF, wrote / sizeof(c16_t));
   if (wrote < 0)
@@ -165,6 +173,7 @@ static int oc_write(openair0_device *device, openair0_timestamp timestamp, void 
     LOG_E(HW, "out of sequence\n");
     gap = 0;
   }
+
   if (gap)
     LOG_D(HW, "gap of %ld\n", gap);
 
@@ -180,8 +189,10 @@ static int oc_write(openair0_device *device, openair0_timestamp timestamp, void 
   while (wr_sz) {
     int tmp = std::min((long unsigned int)wr_sz, SAMPLE_BUF - s->tx_block_sz);
     simde__m256i *sig = (simde__m256i *)(s->tx_block[0] + s->tx_block_sz);
+    if ((intptr_t)sig % 32)
+      abort();
     for (int j = 0; j < tmp; j += 8)
-      *sig++ = simde_mm256_slli_epi16(*(simde__m256i *)(in + j), 4);
+      *sig++ = simde_mm256_slli_epi16(simde_mm256_loadu_si256((simde__m256i *)(in + j)), 4);
     // memcpy(s->tx_block[0] + s->tx_block_sz, in, tmp * sizeof(*in));
     wr_sz -= tmp;
     s->tx_block_sz += tmp;
@@ -195,7 +206,7 @@ static int oc_write(openair0_device *device, openair0_timestamp timestamp, void 
 static int oc_read(openair0_device *device, openair0_timestamp *ptimestamp, void **buff, int nsamps, int cc)
 {
   oc_state_t *s = (oc_state_t *)device->priv;
-  rxHeader_t rx = {0};
+  header_t rx = {0};
 
   if (!s->rxMagicFound) {
     while (rx.header != magic) {
@@ -208,7 +219,7 @@ static int oc_read(openair0_device *device, openair0_timestamp *ptimestamp, void
 
   // need to read, test, skip header at given rate
   // logic failure: if i read a header, i should get samples after, not a second header
-  c16_t tmp[nsamps + sizeof(rxHeader_t) / sizeof(c16_t)];
+  c16_t tmp[nsamps + sizeof(header_t) / sizeof(c16_t)];
   int bytes_received = read(s->fd_read, &tmp, sizeof(tmp));
   if (bytes_received % sizeof(c16_t))
     printf("Error in read, size is not a number of samples %d\n", bytes_received);
@@ -223,7 +234,7 @@ static int oc_read(openair0_device *device, openair0_timestamp *ptimestamp, void
 
   s->rx_count++;
   *ptimestamp = s->rx_timestamp;
-  memcpy(buff[0], tmp + sizeof(rxHeader_t) / sizeof(c16_t), nsamps * sizeof(c16_t));
+  memcpy(buff[0], tmp + sizeof(header_t) / sizeof(c16_t), nsamps * sizeof(c16_t));
   s->rx_timestamp = rx.timestamp + nsamps;
   return nsamps; // fixme: return actual status
 }
@@ -406,7 +417,7 @@ int device_init(openair0_device *device, openair0_config_t *openair0_cfg)
   }
 
   device->type = USRP_X300_DEV;
-  
+
   struct {
     int sample_rate;
     int tx_sample_advance;
