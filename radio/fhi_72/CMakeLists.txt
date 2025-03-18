@@ -35,6 +35,12 @@ target_link_libraries(oran_fhlib_5g PRIVATE ${dpdk_LINK_LIBRARIES})
 target_include_directories(oran_fhlib_5g PRIVATE ${dpdk_INCLUDE_DIRS})
 target_link_libraries(oran_fhlib_5g PRIVATE pthread dl rt m numa)
 target_link_libraries(oran_fhlib_5g PRIVATE ${T_LIB})
+if (CMAKE_SYSTEM_PROCESSOR STREQUAL "aarch64")
+  add_library(armral_bfp_compression OBJECT armral_bfp_compression.c)
+  target_include_directories(armral_bfp_compression PRIVATE ${dpdk_INCLUDE_DIRS})
+  target_link_libraries(oran_fhlib_5g PRIVATE armral_bfp_compression)
+  target_link_libraries(oran_fhlib_5g PRIVATE armral)
+endif()
 
 # TODO: can be removed?
 target_include_directories(oran_fhlib_5g PRIVATE ${xran_INCLUDE_DIRS}/../src/)
