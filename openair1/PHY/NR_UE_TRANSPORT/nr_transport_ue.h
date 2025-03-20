@@ -87,8 +87,6 @@ typedef struct {
   uint8_t n_DMRS2;
   /// Number of soft channel bits
   uint32_t G;
-  // Number of modulated symbols carrying data
-  uint32_t num_of_mod_symbols;
   // Encoder BG
   uint8_t BG;
   // LDPC lifting size

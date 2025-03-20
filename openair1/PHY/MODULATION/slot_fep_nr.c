@@ -190,7 +190,7 @@ int nr_slot_fep(PHY_VARS_NR_UE *ue,
         1);
 
     stop_meas(&ue->rx_dft_stats);
-
+/*
     LOG_D(NR_PHY,"%d.%d Applying rotation for symbol %d, linktype %d\n",
           proc->frame_rx,proc->nr_slot_rx,symbol,linktype);
     apply_nr_rotation_RX(frame_parms,
@@ -201,6 +201,7 @@ int nr_slot_fep(PHY_VARS_NR_UE *ue,
                          0,
                          symbol,
                          linktype);
+*/
   }
 
 #ifdef DEBUG_FEP
