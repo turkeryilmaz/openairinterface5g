@@ -500,7 +500,6 @@ int main(int argc, char **argv)
   ulsch_ue->pusch_pdu.nrOfLayers = Nl;
   ulsch_ue->pusch_pdu.rb_size = nb_rb;
   ulsch_ue->pusch_pdu.nr_of_symbols = nb_symb_sch;
-  harq_process_ul_ue->num_of_mod_symbols = N_RE_prime*nb_rb*nb_codewords;
   ulsch_ue->pusch_pdu.pusch_data.rv_index = rvidx;
   ulsch_ue->pusch_pdu.pusch_data.tb_size  = TBS>>3;
   ulsch_ue->pusch_pdu.target_code_rate = code_rate;

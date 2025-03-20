@@ -51,6 +51,7 @@
 #include <openair2/UTIL/OPT/opt.h>
 
 //#define DEBUG_PUSCH_MAPPING
+//#define DEBUG_ULSCH_PROCEDURES
 //#define DEBUG_MAC_PDU
 //#define DEBUG_DFT_IDFT
 
@@ -167,95 +168,86 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
                             c16_t **txdataF,
                             nr_link_type_t link_type)
 {
-  LOG_D(PHY,"nr_ue_ulsch_procedures hard_id %d %d.%d\n",harq_pid,frame,slot);
+  LOG_D(PHY,"nr_ue_ulsch_procedures hard_id %d %d.%d\n", harq_pid, frame, slot);
 
-  int8_t Wf[2], Wt[2];
-  int l_prime[2], delta;
-  uint8_t nb_dmrs_re_per_rb;
-  int i;
-  int sample_offsetF, N_RE_prime;
-
-  bool is_csi_rs_slot = false;
-  if (phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_CSI_RS)
-    is_csi_rs_slot = true;
+  bool is_csi_rs_slot = phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_CSI_RS;
   nfapi_nr_dl_tti_csi_rs_pdu_rel15_t *csi_params = is_csi_rs_slot ? (nfapi_nr_dl_tti_csi_rs_pdu_rel15_t *)&phy_data->nr_sl_pssch_pscch_pdu.nr_sl_csi_rs_pdu : NULL;
   if (csi_params)
     LOG_D(NR_PHY, "Tx start_rb %i, cdm_type %i, csi_type %i, freq_density %i, nr_of_rbs %i, row %i symb_l0 %i is_csi_rs_slot %i\n",
           csi_params->start_rb, csi_params->cdm_type, csi_params->csi_type, csi_params->freq_density, csi_params->nr_of_rbs, csi_params->row, csi_params->symb_l0, is_csi_rs_slot);
-  int      N_PRB_oh = 0; // higher layer (RRC) parameter xOverhead in PUSCH-ServingCellConfig
-  uint16_t number_dmrs_symbols = 0;
 
-  NR_UE_ULSCH_t *ulsch_ue = &phy_data->ulsch;
-  sl_nr_tx_config_pscch_pssch_pdu_t *pscch_pssch_pdu = (link_type == link_type_pc5) ? &phy_data->nr_sl_pssch_pscch_pdu : NULL;
-  NR_UL_UE_HARQ_t *harq_process_ul_ue = get_softmodem_params()->sl_mode ? &UE->sl_harq_processes[harq_pid] : &UE->ul_harq_processes[harq_pid];
-  const nfapi_nr_ue_pusch_pdu_t *pusch_pdu = &ulsch_ue->pusch_pdu;
+  const nfapi_nr_ue_pusch_pdu_t *pusch_pdu = &phy_data->ulsch.pusch_pdu;
+  const sl_nr_tx_config_pscch_pssch_pdu_t *pscch_pssch_pdu = &phy_data->nr_sl_pssch_pscch_pdu;
+  bool is_pc5 = link_type == link_type_pc5;
+  if (is_pc5)
+    AssertFatal(pscch_pssch_pdu != NULL, "pscch_pssch_pdu %p is not properly defined for the SL mode 2 PC5 link\n", &pscch_pssch_pdu);
+  if (!is_pc5)
+    AssertFatal(pusch_pdu != NULL, "pusch_pdu %p is not properly defined for the Non-SL mode 2 PC5 link\n", &pusch_pdu);
 
-  NR_DL_FRAME_PARMS *frame_parms = pscch_pssch_pdu == NULL ? &UE->frame_parms : &UE->SL_UE_PHY_PARAMS.sl_frame_params;
-  int start_symbol          = pscch_pssch_pdu == NULL ? pusch_pdu->start_symbol_index : (1+pscch_pssch_pdu->pssch_startsym);
-  uint16_t ul_dmrs_symb_pos = pscch_pssch_pdu == NULL ? pusch_pdu->ul_dmrs_symb_pos : pscch_pssch_pdu->dmrs_symbol_position;
-  uint8_t number_of_symbols = pscch_pssch_pdu == NULL ? pusch_pdu->nr_of_symbols : pscch_pssch_pdu->pssch_numsym;
-  uint8_t dmrs_type         = pscch_pssch_pdu == NULL ? pusch_pdu->dmrs_config_type : pusch_dmrs_type1;
-  uint16_t start_rb         = pscch_pssch_pdu == NULL ? pusch_pdu->rb_start : pscch_pssch_pdu->startrb;
-  uint16_t nb_rb            = pscch_pssch_pdu == NULL ? pusch_pdu->rb_size : pscch_pssch_pdu->l_subch * pscch_pssch_pdu->subchannel_size;
-  uint8_t Nl                = pscch_pssch_pdu == NULL ? pusch_pdu->nrOfLayers : pscch_pssch_pdu->num_layers;
-  uint8_t mod_order         = pscch_pssch_pdu == NULL ? pusch_pdu->qam_mod_order : pscch_pssch_pdu->mod_order;
-  uint16_t rnti             = pscch_pssch_pdu == NULL ? pusch_pdu->rnti : 0;
-  uint8_t cdm_grps_no_data  = pscch_pssch_pdu == NULL ? pusch_pdu->num_dmrs_cdm_grps_no_data : 1;
-  uint16_t start_sc         = frame_parms->first_carrier_offset + (start_rb+(pscch_pssch_pdu == NULL ? pusch_pdu->bwp_start:0))*NR_NB_SC_PER_RB;
-  uint16_t Tpmi             = pscch_pssch_pdu == NULL ? pusch_pdu->Tpmi : 0;
- 
+  NR_DL_FRAME_PARMS *frame_parms = !is_pc5 ? &UE->frame_parms : &UE->SL_UE_PHY_PARAMS.sl_frame_params;
+  phy_data->ulsch.Nid_cell = frame_parms->Nid_cell;
+  int start_symbol          = !is_pc5 ? pusch_pdu->start_symbol_index : (1 + pscch_pssch_pdu->pssch_startsym);
+  uint16_t ul_dmrs_symb_pos = !is_pc5 ? pusch_pdu->ul_dmrs_symb_pos : pscch_pssch_pdu->dmrs_symbol_position;
+  uint8_t number_of_symbols = !is_pc5 ? pusch_pdu->nr_of_symbols : pscch_pssch_pdu->pssch_numsym;
+  uint8_t dmrs_type         = !is_pc5 ? pusch_pdu->dmrs_config_type : pusch_dmrs_type1;
+  uint16_t start_rb         = !is_pc5 ? pusch_pdu->rb_start : pscch_pssch_pdu->startrb;
+  uint16_t nb_rb            = !is_pc5 ? pusch_pdu->rb_size : pscch_pssch_pdu->l_subch * pscch_pssch_pdu->subchannel_size;
+  uint8_t Nl                = !is_pc5 ? pusch_pdu->nrOfLayers : pscch_pssch_pdu->num_layers;
+  uint8_t mod_order         = !is_pc5 ? pusch_pdu->qam_mod_order : pscch_pssch_pdu->mod_order;
+  uint16_t rnti             = !is_pc5 ? pusch_pdu->rnti : 0;
+  uint8_t cdm_grps_no_data  = !is_pc5 ? pusch_pdu->num_dmrs_cdm_grps_no_data : 1;
+  uint16_t start_sc         = frame_parms->first_carrier_offset + (start_rb + (!is_pc5 ? pusch_pdu->bwp_start : 0)) * NR_NB_SC_PER_RB;
   if (start_sc >= frame_parms->ofdm_symbol_size)
     start_sc -= frame_parms->ofdm_symbol_size;
-  ulsch_ue->Nid_cell = frame_parms->Nid_cell;
-  uint8_t first_dmrs_symbol = 0;
+  uint16_t Tpmi             = !is_pc5 ? pusch_pdu->Tpmi : 0;
+
+  int first_dmrs_symbol = 0;
   bool is_first_dmrs_symbol = true;
+  uint16_t number_dmrs_symbols = 0;
   for (int i = start_symbol; i < start_symbol + number_of_symbols; i++) {
-    if((ul_dmrs_symb_pos >> i) & 0x01) {
+    if ((ul_dmrs_symb_pos >> i) & 0x01) {
       number_dmrs_symbols += 1;
-      if (link_type == link_type_pc5) {
-        if (is_first_dmrs_symbol) {
-          first_dmrs_symbol = i;
-          is_first_dmrs_symbol = false;
-        }
-        if (csi_params && csi_params->symb_l0 != 0)
-          AssertFatal(i != csi_params->symb_l0, "CSI-RS  (symb_l0 %d) MUST not be sent in DMRS symbol (%d)\n", csi_params->symb_l0, i);
+      if (is_first_dmrs_symbol) {
+        first_dmrs_symbol = i;
+        is_first_dmrs_symbol = false;
       }
+      if (csi_params && csi_params->symb_l0 != 0)
+        AssertFatal(i != csi_params->symb_l0, "CSI-RS  (symb_l0 %d) MUST not be sent in DMRS symbol (%d)\n", csi_params->symb_l0, i);
     }
   }
 
   if (csi_params && csi_params->symb_l0 != 0)
     AssertFatal(csi_params->symb_l0 > pscch_pssch_pdu->pscch_numsym, "CSI-RS (symb_l0 %d) MUST not be sent in PSCCH symbol (%d)\n", csi_params->symb_l0, pscch_pssch_pdu->pscch_numsym);
-  nb_dmrs_re_per_rb = ((dmrs_type == pusch_dmrs_type1) ? 6:4)*cdm_grps_no_data;
+  uint8_t nb_dmrs_re_per_rb = ((dmrs_type == pusch_dmrs_type1) ? 6:4)*cdm_grps_no_data;
 
-  //LOG_I(NR_PHY,"%s TX %x : start_rb %d nb_rb %d mod_order %d Nl %d Tpmi %d bwp_start %d start_sc %d start_symbol %d num_symbols %d cdmgrpsnodata %d num_dmrs %d dmrs_re_per_rb %d\n",pscch_pssch_pdu==NULL?"PUSCH":"PSSCH",
-   //     rnti,start_rb,nb_rb,mod_order,Nl,Tpmi,pscch_pssch_pdu==NULL?pusch_pdu->bwp_start:0,start_sc,start_symbol,number_of_symbols,cdm_grps_no_data,number_dmrs_symbols,nb_dmrs_re_per_rb);
-  // TbD num_of_mod_symbols is set but never used
-  uint16_t num_CSI_REs = is_csi_rs_slot ? get_nRECSI_RS(csi_params->freq_density, csi_params->nr_of_rbs) : 0;
-  int num_CSI_REs_per_RB = is_csi_rs_slot ? (num_CSI_REs/csi_params->nr_of_rbs) : 0;
-  N_RE_prime = NR_NB_SC_PER_RB * number_of_symbols - nb_dmrs_re_per_rb * number_dmrs_symbols - N_PRB_oh - num_CSI_REs_per_RB;
-  harq_process_ul_ue->num_of_mod_symbols = N_RE_prime*nb_rb;
+#ifdef DEBUG_ULSCH_PROCEDURES 
+  LOG_I(NR_PHY, "%s TX %x : start_rb %d nb_rb %d mod_order %d Nl %d Tpmi %d bwp_start %d start_sc %d start_symbol %d num_symbols %d cdmgrpsnodata %d num_dmrs %d dmrs_re_per_rb %d\n", !is_pc5 ? "PUSCH" : "PSSCH",
+        rnti, start_rb, nb_rb, mod_order, Nl, Tpmi, !is_pc5 ? pusch_pdu->bwp_start : 0, start_sc, start_symbol, number_of_symbols, cdm_grps_no_data, number_dmrs_symbols, nb_dmrs_re_per_rb);
+#endif
 
   /////////////////////////ULSCH coding/////////////////////////
   ///////////
-  int sci2_re = pscch_pssch_pdu ? get_NREsci2(pscch_pssch_pdu->sci2_alpha_times_100,
-                                              pscch_pssch_pdu->sci2_payload_len,
-                                              pscch_pssch_pdu->sci2_beta_offset,
-                                              pscch_pssch_pdu->pssch_numsym,
-                                              pscch_pssch_pdu->pscch_numsym,
-                                              pscch_pssch_pdu->pscch_numrbs,
-                                              pscch_pssch_pdu->l_subch,
-                                              pscch_pssch_pdu->subchannel_size,
-                                              get_softmodem_params()->sl_mode ? 1 : pscch_pssch_pdu->mcs,
-                                              pscch_pssch_pdu->mcs_table): 0 ;
-  //if (pscch_pssch_pdu) LOG_I(NR_PHY,"dmrs_symbol_position %x, pscch_numsym %d\n",pscch_pssch_pdu->dmrs_symbol_position,pscch_pssch_pdu->pscch_numsym);
-  if (pscch_pssch_pdu)
-    AssertFatal(pscch_pssch_pdu->pscch_numsym==2 || pscch_pssch_pdu->pscch_numsym==3,"illegal pscch_numsym %d\n",pscch_pssch_pdu->pscch_numsym);
-  int sci1_dmrs_overlap = pscch_pssch_pdu ? pscch_pssch_pdu->dmrs_symbol_position & dmrs_pscch_mask[pscch_pssch_pdu->pscch_numsym-2] : 0;
-  uint16_t sci1_re = (pscch_pssch_pdu==NULL) ? 0 : pscch_pssch_pdu->pscch_numsym * pscch_pssch_pdu->pscch_numrbs * NR_NB_SC_PER_RB;
-  unsigned int G = (pscch_pssch_pdu==NULL) ? nr_get_G(nb_rb, number_of_symbols,
-                                                      nb_dmrs_re_per_rb, number_dmrs_symbols, mod_order, Nl):
-                                             nr_get_G_SL(nb_rb, number_of_symbols, 6, number_dmrs_symbols, sci1_dmrs_overlap, sci1_re,
-                                             pscch_pssch_pdu->pscch_numrbs, sci2_re, num_CSI_REs, mod_order, Nl);
+  int sci2_re = !is_pc5 ? 0 : get_NREsci2(pscch_pssch_pdu->sci2_alpha_times_100,
+                                                                pscch_pssch_pdu->sci2_payload_len,
+                                                                pscch_pssch_pdu->sci2_beta_offset,
+                                                                pscch_pssch_pdu->pssch_numsym,
+                                                                pscch_pssch_pdu->pscch_numsym,
+                                                                pscch_pssch_pdu->pscch_numrbs,
+                                                                pscch_pssch_pdu->l_subch,
+                                                                pscch_pssch_pdu->subchannel_size,
+                                                                1,
+                                                                pscch_pssch_pdu->mcs_table);
+#ifdef DEBUG_ULSCH_PROCEDURES
+  if (is_pc5) LOG_I(NR_PHY,"dmrs_symbol_position %x, pscch_numsym %d\n", pscch_pssch_pdu->dmrs_symbol_position, pscch_pssch_pdu->pscch_numsym);
+#endif
+  if (is_pc5)
+    AssertFatal(pscch_pssch_pdu->pscch_numsym == 2 || pscch_pssch_pdu->pscch_numsym == 3, "illegal pscch_numsym %d\n", pscch_pssch_pdu->pscch_numsym);
+  int sci1_dmrs_overlap = (!is_pc5) ? 0 : pscch_pssch_pdu->dmrs_symbol_position & dmrs_pscch_mask[pscch_pssch_pdu->pscch_numsym-2];
+  uint16_t sci1_re = (!is_pc5) ? 0 : pscch_pssch_pdu->pscch_numsym * pscch_pssch_pdu->pscch_numrbs * NR_NB_SC_PER_RB;
+  uint16_t num_CSI_REs = csi_params ? get_nRECSI_RS(csi_params->freq_density, csi_params->nr_of_rbs) : 0;
+  unsigned int G = (!is_pc5) ? nr_get_G(nb_rb, number_of_symbols,nb_dmrs_re_per_rb, number_dmrs_symbols, mod_order, Nl) :
+                                                     nr_get_G_SL(nb_rb, number_of_symbols, 6, number_dmrs_symbols, sci1_dmrs_overlap, sci1_re,
+                                                                 pscch_pssch_pdu->pscch_numrbs, sci2_re, num_CSI_REs, mod_order, Nl);
 
   // Following code checks, after PSCCH symbols and DMRS symbols, whether PSSCH symbols are used by SCI2 or not,
   // If true, then CSI-RS MUST not be sent in those PSSCH symbols containing SCI2.
@@ -269,24 +261,24 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
     AssertFatal(csi_params->symb_l0 > non_csi_rs_symbs, "CSI-RS MUST not be sent in PSSCH symbol containing SCI2");
   }
 
-  uint32_t Gsci2 = sci2_re*2*Nl;
+  uint32_t Gsci2 = sci2_re * 2 * Nl;
+  NR_UL_UE_HARQ_t *harq_process_ue = (is_pc5) ? &UE->sl_harq_processes[harq_pid] : &UE->ul_harq_processes[harq_pid];
   trace_NRpdu(DIRECTION_UPLINK,
-              harq_process_ul_ue->a,
-              pscch_pssch_pdu==NULL?pusch_pdu->pusch_data.tb_size:pscch_pssch_pdu->tb_size,
+              harq_process_ue->a,
+              !is_pc5 ? pusch_pdu->pusch_data.tb_size : pscch_pssch_pdu->tb_size,
               WS_C_RNTI, rnti, frame, slot, 0, 0);
-
-  if (nr_ulsch_encoding(UE, ulsch_ue, pscch_pssch_pdu,frame_parms, harq_pid, G) == -1)
+  // Note, we check for pscch_pssch_pdu == NULL inside of nr_ulsch_encoding 
+  if (nr_ulsch_encoding(UE, &phy_data->ulsch, is_pc5 ? pscch_pssch_pdu : NULL, frame_parms, harq_pid, G) == -1)
     return;
  
   
   uint32_t sci2_encoded_output[sci2_re*2];
   
-  if (pscch_pssch_pdu) {
-    LOG_D(NR_PHY,"Generating SCI2/PSSCH with %d RE, payload %llx\n",sci2_re,*(unsigned long long*)pscch_pssch_pdu->sci2_payload);
+  if (is_pc5) {
+    LOG_D(NR_PHY,"Generating SCI2/PSSCH with %d RE, payload %llx\n", sci2_re, *(unsigned long long*)pscch_pssch_pdu->sci2_payload);
     // do SCI2 encoding
-    polar_encoder_fast((uint64_t*)pscch_pssch_pdu->sci2_payload, (void*)sci2_encoded_output, NULL,0, 1, 
-                       NR_POLAR_SCI2_MESSAGE_TYPE, 
-                       pscch_pssch_pdu->sci2_payload_len, sci2_re);
+    polar_encoder_fast((uint64_t*)pscch_pssch_pdu->sci2_payload, (void*)sci2_encoded_output, NULL, 0, 1, 
+                       NR_POLAR_SCI2_MESSAGE_TYPE, pscch_pssch_pdu->sci2_payload_len, sci2_re);
   }
 
   ///////////
@@ -296,38 +288,44 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
   ///////////
 
   uint32_t available_bits = G;
-  uint32_t scrambled_output[(available_bits>>5)+1];
-  uint32_t scrambled_output_sci[(Gsci2>>5)+1];
-  memset(scrambled_output, 0, ((available_bits>>5)+1)*sizeof(uint32_t));
-  if (pscch_pssch_pdu)
-    memset(scrambled_output_sci, 0, ((Gsci2>>5)+1)*sizeof(uint32_t));
+  uint32_t scrambled_output[(available_bits >> 5) + 1];
+  uint32_t scrambled_output_sci[(Gsci2 >> 5) + 1];
+  memset(scrambled_output, 0, ((available_bits >> 5) + 1)*sizeof(uint32_t));
+  if (is_pc5)
+    memset(scrambled_output_sci, 0, ((Gsci2 >> 5) + 1)*sizeof(uint32_t));
 
-//  for (int i=0;i<(Gsci2>>5)+1;i++) LOG_I(NR_PHY,"sci2_encoded[%d] %x\n",i,sci2_encoded_output[i]); 
-//  for (int g=0;g<G;g++) LOG_I(NR_PHY,"coded_output_f[%d] %d\n",g,harq_process_ul_ue->f[g]);
-//  LOG_I(NR_PHY,"Scrambling with Nid %x\n",phy_data->pscch_Nid);
-  nr_pusch_codeword_scrambling(harq_process_ul_ue->f,
+#ifdef DEBUG_PUSCH
+  for (int i = 0; i < (Gsci2 >> 5) + 1;i++)
+    LOG_I(NR_PHY, "sci2_encoded[%d] %x\n", i, sci2_encoded_output[i]); 
+  for (int g = 0;g<G;g++)
+    LOG_I(NR_PHY,"coded_output_f[%d] %d\n", g, harq_process_ue->f[g]);
+  LOG_I(NR_PHY,"Scrambling with Nid %x\n",phy_data->pscch_Nid);
+#endif
+  nr_pusch_codeword_scrambling(harq_process_ue->f,
                                G,
-                               pscch_pssch_pdu==NULL ? ulsch_ue->Nid_cell : phy_data->pscch_Nid,
-                               pscch_pssch_pdu==NULL ? rnti : 1010,
+                               !is_pc5 ? phy_data->ulsch.Nid_cell : phy_data->pscch_Nid,
+                               !is_pc5 ? rnti : 1010,
                                false,
                                scrambled_output);
-  if (pscch_pssch_pdu && Nl==1) 
+  if (is_pc5 && Nl == 1) 
     nr_pdcch_scrambling(sci2_encoded_output,
                         Gsci2,
-                        phy_data->pscch_Nid,1010,
-                        scrambled_output_sci,1);
-  else if (pscch_pssch_pdu)
+                        phy_data->pscch_Nid,
+                        1010,
+                        scrambled_output_sci,
+                        1);
+  else if (is_pc5)
     nr_pusch_codeword_scrambling_sci_2layer(sci2_encoded_output,
-                                 Gsci2,
-                                 phy_data->pscch_Nid,
-                                 scrambled_output_sci);                                          
+                                            Gsci2,
+                                            phy_data->pscch_Nid,
+                                            scrambled_output_sci);                                          
   /////////////
   //////////////////////////////////////////////////////////////////////////
 
   /////////////////////////ULSCH modulation/////////////////////////
   ///////////
 
-  int max_num_re = Nl*number_of_symbols*nb_rb*NR_NB_SC_PER_RB;
+  int max_num_re = Nl * number_of_symbols * nb_rb * NR_NB_SC_PER_RB;
   int32_t d_mod[max_num_re] __attribute__ ((aligned(16)));
 
   if (Gsci2 > 0) {
@@ -335,14 +333,17 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
                   Gsci2,
                   2,
                   (int16_t *)d_mod);
-    //for (int i=0;i<Gsci2;i+=2) LOG_I(NR_PHY,"SCI2 RE %d/%d: (%d,%d)\n",i/2,Gsci2/2,((int16_t*)d_mod)[i],((int16_t*)d_mod)[i+1]);
+#ifdef DEBUG_ULSCH_PROCEDURES
+    for (int i = 0; i < Gsci2; i += 2)
+      LOG_I(NR_PHY,"SCI2 RE %d/%d: (%d,%d)\n", i/2, Gsci2/2, ((int16_t*)d_mod)[i], ((int16_t*)d_mod)[i +1 ]);
+#endif
     int32_t d_mod2[max_num_re] __attribute__ ((aligned(16)));
     nr_modulation(scrambled_output, // assume one codeword for the moment
                   available_bits,
                   mod_order,
                   (int16_t *)d_mod2);
-    LOG_D(NR_PHY,"SCI bits %d (sci2_re %d), PSSCH bits %d (PSCCH RE %d), max_re %d\n",Gsci2,sci2_re,available_bits,available_bits/mod_order,max_num_re);
-    memcpy(d_mod+sci2_re,d_mod2,available_bits*sizeof(int32_t)/mod_order);
+    LOG_D(NR_PHY,"SCI bits %d (sci2_re %d), PSSCH bits %d (PSCCH RE %d), max_re %d\n", Gsci2, sci2_re, available_bits, available_bits / mod_order, max_num_re);
+    memcpy(d_mod + sci2_re, d_mod2, available_bits * sizeof(int32_t) / mod_order);
   }
   else
     nr_modulation(scrambled_output, // assume one codeword for the moment
@@ -356,13 +357,13 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
   /////////////////////////DMRS Modulation/////////////////////////
   ///////////
 
-  if(!pscch_pssch_pdu && pusch_pdu->ul_dmrs_scrambling_id != UE->scramblingID_ulsch[pusch_pdu->scid])  {
+  if (!is_pc5 && pusch_pdu->ul_dmrs_scrambling_id != UE->scramblingID_ulsch[pusch_pdu->scid])  {
     UE->scramblingID_ulsch[pusch_pdu->scid] = pusch_pdu->ul_dmrs_scrambling_id;
     nr_init_pusch_dmrs(UE, pusch_pdu->scid, pusch_pdu->ul_dmrs_scrambling_id);
   } 
 
   uint32_t ***pusch_dmrs = UE->nr_gold_pusch_dmrs[slot];
-  uint16_t n_dmrs = ((pscch_pssch_pdu==NULL ? pusch_pdu->bwp_start : 0) + start_rb + nb_rb)*((dmrs_type == pusch_dmrs_type1) ? 6:4);
+  uint16_t n_dmrs = ((!is_pc5 ? pusch_pdu->bwp_start : 0) + start_rb + nb_rb) * ((dmrs_type == pusch_dmrs_type1) ? 6 : 4);
   int16_t mod_dmrs[n_dmrs<<1] __attribute((aligned(16)));
 
   ///////////
@@ -376,16 +377,12 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
   uint8_t L_ptrs, K_ptrs = 0;
   uint16_t beta_ptrs = 1; // temp value until power control is implemented
 
-  if (!pscch_pssch_pdu && (pusch_pdu->pdu_bit_map & PUSCH_PDU_BITMAP_PUSCH_PTRS)) {
-
+  if (!is_pc5 && (pusch_pdu->pdu_bit_map & PUSCH_PDU_BITMAP_PUSCH_PTRS)) {
     K_ptrs = pusch_pdu->pusch_ptrs.ptrs_freq_density;
-    L_ptrs = 1<<pusch_pdu->pusch_ptrs.ptrs_time_density;
-
+    L_ptrs = 1 << pusch_pdu->pusch_ptrs.ptrs_time_density;
     beta_ptrs = 1; // temp value until power control is implemented
-
-    ulsch_ue->ptrs_symbols = 0;
-
-    set_ptrs_symb_idx(&ulsch_ue->ptrs_symbols,
+    phy_data->ulsch.ptrs_symbols = 0;
+    set_ptrs_symb_idx(&phy_data->ulsch.ptrs_symbols,
                       number_of_symbols,
                       start_symbol,
                       L_ptrs,
@@ -413,44 +410,33 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
   //////////////////////// ULSCH transform precoding ////////////////////////
   ///////////
 
-  l_prime[0] = 0; // single symbol ap 0
-
-  uint16_t index;
-  uint8_t u = 0, v = 0;
-  int16_t *dmrs_seq = NULL;
-
   /// Transform-coded "y"-sequences (for definition see 38-211 V15.3.0 2018-09, subsection 6.3.1.4)
   int32_t y[max_num_re] __attribute__ ((aligned(16)));
+  int16_t *dmrs_seq = NULL;
 
-  if (!pscch_pssch_pdu && (pusch_pdu->transform_precoding == transformPrecoder_enabled)) {
+  if (!is_pc5 && (pusch_pdu->transform_precoding == transformPrecoder_enabled)) {
 
     uint32_t nb_re_pusch=nb_rb * NR_NB_SC_PER_RB;
     uint32_t y_offset = 0;
     uint16_t num_dmrs_res_per_symbol = nb_rb*(NR_NB_SC_PER_RB/2);
 
     // Calculate index to dmrs seq array based on number of DMRS Subcarriers on this symbol
-    index = get_index_for_dmrs_lowpapr_seq(num_dmrs_res_per_symbol);
-    u = pusch_pdu->dfts_ofdm.low_papr_group_number;
-    v = pusch_pdu->dfts_ofdm.low_papr_sequence_number;
+    uint16_t index = get_index_for_dmrs_lowpapr_seq(num_dmrs_res_per_symbol);
+    uint8_t u = pusch_pdu->dfts_ofdm.low_papr_group_number;
+    uint8_t v = pusch_pdu->dfts_ofdm.low_papr_sequence_number;
     dmrs_seq = dmrs_lowpaprtype1_ul_ref_sig[u][v][index];
 
     AssertFatal(index >= 0, "Num RBs not configured according to 3GPP 38.211 section 6.3.1.4. For PUSCH with transform precoding, num RBs cannot be multiple of any other primenumber other than 2,3,5\n");
     AssertFatal(dmrs_seq != NULL, "DMRS low PAPR seq not found, check if DMRS sequences are generated");
-
     LOG_D(PHY,"Transform Precoding params. u: %d, v: %d, index for dmrsseq: %d\n", u, v, index);
 
     for (int l = start_symbol; l < start_symbol + number_of_symbols; l++) {
-
       if((ul_dmrs_symb_pos >> l) & 0x01)
         /* In the symbol with DMRS no data would be transmitted CDM groups is 2*/
         continue;
-
       nr_dft(&y[y_offset], &((int32_t*)tx_layers[0])[y_offset], nb_re_pusch);
-
       y_offset = y_offset + nb_re_pusch;
-
       LOG_D(PHY,"Transform precoding being done on data- symbol: %d, nb_re_pusch: %d, y_offset: %d\n", l, nb_re_pusch, y_offset);
-
 #ifdef DEBUG_PUSCH_MAPPING
       LOG_I(NR_PHY,"NR_ULSCH_UE: y_offset %u\t nb_re_pusch %u \t Symbol %d \t nb_rb %d \n",
              y_offset, nb_re_pusch, l, nb_rb);
@@ -461,11 +447,9 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
     int32_t debug_symbols[MAX_NUM_NR_RE] __attribute__ ((aligned(16)));
     int offset = 0;
     printf("NR_ULSCH_UE: available_bits: %u, mod_order: %d", available_bits,mod_order);
-
     for (int ll = 0; ll < (available_bits/mod_order); ll++) {
-        debug_symbols[ll] = ulsch_ue->y[ll];     
+        debug_symbols[ll] = phy_data->ulsch.y[ll];     
     }
-      
     printf("NR_ULSCH_UE: numSym: %d, num_dmrs_sym: %d", number_of_symbols,number_dmrs_symbols);
     for (int ll = 0; ll < (number_of_symbols-number_dmrs_symbols); ll++) {
       nr_idft(&debug_symbols[offset], nb_re_pusch);
@@ -494,18 +478,21 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
 
   for (int nl=0; nl < Nl; nl++) {
     uint8_t k_prime = 0;
+    int l_prime[2];
     uint16_t m = 0;
-    
+    int sample_offsetF;
+
 #ifdef DEBUG_PUSCH_MAPPING
-    LOG_I(NR_PHY,"NR_ULSCH_UE: Value of CELL ID %d /t, u %d \n", frame_parms->Nid_cell, u);
+    LOG_I(NR_PHY,"NR_ULSCH_UE: Value of CELL ID %d /t\n", frame_parms->Nid_cell);
 #endif
 
-    int dmrs_port = get_dmrs_port(nl,pscch_pssch_pdu ? nl : pusch_pdu->dmrs_ports);
+    int dmrs_port = get_dmrs_port(nl, is_pc5 ? nl : pusch_pdu->dmrs_ports);
     if (dmrs_port < 0) return;
     // DMRS params for this dmrs port
+    int8_t Wf[2], Wt[2];
     get_Wt(Wt, dmrs_port, dmrs_type);
     get_Wf(Wf, dmrs_port, dmrs_type);
-    delta = get_delta(dmrs_port, dmrs_type);
+    int delta = get_delta(dmrs_port, dmrs_type);
 
     for (int l=start_symbol; l<start_symbol+number_of_symbols; l++) {
 
@@ -517,11 +504,11 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
       uint16_t dmrs_idx = 0, ptrs_idx = 0;
       int16_t csi_rs_rb = 0;
       int is_pscch_sym = 0;
-      if (pscch_pssch_pdu && l<(start_symbol + pscch_pssch_pdu->pscch_numsym)) { 
+      if (is_pc5 && l < (start_symbol + pscch_pssch_pdu->pscch_numsym)) { 
         is_pscch_sym = 1; 
       }
 
-      if (is_csi_rs_slot && l == csi_params->symb_l0) {
+      if (csi_params && l == csi_params->symb_l0) {
         is_csi_rs_sym = 1;
         csi_rs_rb = csi_params->start_rb;
       }
@@ -529,17 +516,15 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
       if ((ul_dmrs_symb_pos >> l) & 0x01) {
         is_dmrs_sym = 1;
 
-        if (pscch_pssch_pdu || (pusch_pdu->transform_precoding == transformPrecoder_disabled)){
-        
+        if (is_pc5 || (pusch_pdu->transform_precoding == transformPrecoder_disabled)){
           if (dmrs_type == pusch_dmrs_type1)
-            dmrs_idx = ((pscch_pssch_pdu==NULL ? pusch_pdu->bwp_start : 0) + start_rb)*6;
+            dmrs_idx = ((!is_pc5 ? pusch_pdu->bwp_start : 0) + start_rb)*6;
           else
-            dmrs_idx = ((pscch_pssch_pdu==NULL ? pusch_pdu->bwp_start : 0) + start_rb)*4;
-
+            dmrs_idx = ((!is_pc5 ? pusch_pdu->bwp_start : 0) + start_rb)*4;
           // TODO: performance improvement, we can skip the modulation of DMRS symbols outside the bandwidth part
           // Perform this on gold sequence, not required when SC FDMA operation is done,
           LOG_D(PHY,"DMRS in symbol %d\n",l);
-          if (pscch_pssch_pdu == NULL) 
+          if (!is_pc5) 
             nr_modulation(pusch_dmrs[l][pusch_pdu->scid], n_dmrs*2, DMRS_MOD_ORDER, mod_dmrs); // currently only codeword 0 is modulated. Qm = 2 as DMRS is QPSK modulated
           else {
              uint32_t pssch_dmrs[((frame_parms->N_RB_UL * 12) >> 5) + 1];
@@ -553,20 +538,20 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
 
         AssertFatal(pusch_pdu->transform_precoding == transformPrecoder_disabled, "PTRS NOT SUPPORTED IF TRANSFORM PRECODING IS ENABLED\n");
 
-        if(is_ptrs_symbol(l, ulsch_ue->ptrs_symbols)) {
+        if(is_ptrs_symbol(l, phy_data->ulsch.ptrs_symbols)) {
           is_ptrs_sym = 1;
           nr_modulation(pusch_dmrs[l][pusch_pdu->scid], nb_rb, DMRS_MOD_ORDER, mod_ptrs);
         }
       }
 
-      for (i=0; i< nb_rb*NR_NB_SC_PER_RB; i++) {
+      for (int i=0; i < nb_rb * NR_NB_SC_PER_RB; i++) {
         uint8_t is_dmrs = 0;
         uint8_t is_ptrs = 0;
         uint8_t is_csi_rs = 0;
 
-        if (is_pscch_sym && i==(pscch_pssch_pdu->startrb)) {
-           i+=(pscch_pssch_pdu->pscch_numrbs*NR_NB_SC_PER_RB);
-           k+=(pscch_pssch_pdu->pscch_numrbs*NR_NB_SC_PER_RB);
+        if (is_pscch_sym && i == (pscch_pssch_pdu->startrb)) {
+           i+=(pscch_pssch_pdu->pscch_numrbs * NR_NB_SC_PER_RB);
+           k+=(pscch_pssch_pdu->pscch_numrbs * NR_NB_SC_PER_RB);
            if (is_dmrs_sym) { 
               dmrs_idx+=(6*pscch_pssch_pdu->pscch_numrbs);
               n+=(3*pscch_pssch_pdu->pscch_numrbs);
@@ -610,7 +595,8 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
 
         if (is_dmrs == 1) {
           // if transform precoding is enabled
-          if (!pscch_pssch_pdu && pusch_pdu->transform_precoding == transformPrecoder_enabled) {
+          l_prime[0] = 0; // single symbol ap 0
+          if (!is_pc5 && pusch_pdu->transform_precoding == transformPrecoder_enabled) {
             ((int16_t*)tx_precoding[nl])[(sample_offsetF)<<1] = (Wt[l_prime[0]]*Wf[k_prime]*AMP*dmrs_seq[2*dmrs_idx]) >> 15;
             ((int16_t*)tx_precoding[nl])[((sample_offsetF)<<1) + 1] = (Wt[l_prime[0]]*Wf[k_prime]*AMP*dmrs_seq[(2*dmrs_idx) + 1]) >> 15;
           } else {
@@ -634,7 +620,7 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
           ((int16_t*)tx_precoding[nl])[((sample_offsetF)<<1) + 1] = (beta_ptrs*AMP*mod_ptrs[(ptrs_idx<<1) + 1]) >> 15;
           ptrs_idx++;
         } else if (!is_dmrs_sym || allowed_xlsch_re_in_dmrs_symbol(k, start_sc, frame_parms->ofdm_symbol_size, cdm_grps_no_data, dmrs_type)) {
-          if (pscch_pssch_pdu || pusch_pdu->transform_precoding == transformPrecoder_disabled) {
+          if (is_pc5 || pusch_pdu->transform_precoding == transformPrecoder_disabled) {
             if (!is_csi_rs) {
               ((int16_t*)tx_precoding[nl])[(sample_offsetF)<<1]       = ((int16_t *)tx_layers[nl])[m<<1];
               ((int16_t*)tx_precoding[nl])[((sample_offsetF)<<1) + 1] = ((int16_t *)tx_layers[nl])[(m<<1) + 1];
@@ -664,9 +650,9 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
 
         if (++k >= frame_parms->ofdm_symbol_size)
           k -= frame_parms->ofdm_symbol_size;
-      } //for (i=0; i< nb_rb*NR_NB_SC_PER_RB; i++) 
-    }//for (l=start_symbol; l<start_symbol+number_of_symbols; l++)
-  }//for (nl=0; nl < Nl; nl++)
+      } //for (int i = 0; i < nb_rb*NR_NB_SC_PER_RB; i++) 
+    } //for (l = start_symbol; l < start_symbol + number_of_symbols; l++)
+  } //for (nl = 0; nl < Nl; nl++)
 
 
 
@@ -682,15 +668,16 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
     for (int l=start_symbol; l<start_symbol+number_of_symbols; l++) {
       uint16_t k = start_sc;
       int is_pscch_sym = 0;
-      if (pscch_pssch_pdu && l<(start_symbol + pscch_pssch_pdu->pscch_numsym)) { 
+      if (is_pc5 && l < (start_symbol + pscch_pssch_pdu->pscch_numsym)) { 
         is_pscch_sym = 1; 
       }
 
       for (int rb=0; rb<nb_rb; rb++) {
-        if (is_pscch_sym && rb==(pscch_pssch_pdu->startrb)) {
-           k+=(pscch_pssch_pdu->pscch_numrbs*NR_NB_SC_PER_RB);
-	   if (k>=frame_parms->ofdm_symbol_size) k-=frame_parms->ofdm_symbol_size;
-	   rb=pscch_pssch_pdu->startrb+pscch_pssch_pdu->pscch_numrbs;
+        if (is_pscch_sym && rb == (pscch_pssch_pdu->startrb)) {
+          k += (pscch_pssch_pdu->pscch_numrbs*NR_NB_SC_PER_RB);
+          if (k >= frame_parms->ofdm_symbol_size)
+            k-=frame_parms->ofdm_symbol_size;
+          rb = pscch_pssch_pdu->startrb + pscch_pssch_pdu->pscch_numrbs;
         }
         //get pmi info
         uint8_t pmi=Tpmi;
@@ -758,7 +745,7 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
               break;
           }
 
-          for (int i=0; i<NR_NB_SC_PER_RB; i++) {
+          for (int i = 0; i < NR_NB_SC_PER_RB; i++) {
             int32_t re_offset = l*frame_parms->ofdm_symbol_size + k;
             int32_t precodatatx_F = nr_layer_precoder(tx_precoding, W_prec, Nl, re_offset);
             ((int16_t*)txdataF[ap])[(re_offset<<1)] = ((int16_t *) &precodatatx_F)[0];
@@ -769,11 +756,11 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
             }
           }
         }
-      } //RB loop
+      } // RB loop
     } // symbol loop
-  }// port loop
+  } // port loop
 
-  harq_process_ul_ue->status = SCH_IDLE;
+  harq_process_ue->status = SCH_IDLE;
 
   for (int nl = 0; nl < Nl; nl++) {
     free_and_zero(tx_layers[nl]);
