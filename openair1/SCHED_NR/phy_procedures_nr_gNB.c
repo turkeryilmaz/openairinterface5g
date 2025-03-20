@@ -773,6 +773,7 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx)
   const int soffset = (slot_rx & 3) * gNB->frame_parms.symbols_per_slot * gNB->frame_parms.ofdm_symbol_size;
   int offset = 10 * gNB->frame_parms.ofdm_symbol_size + gNB->frame_parms.first_carrier_offset;
   int power_rxF = signal_energy_nodc((int32_t *)&gNB->common_vars.rxdataF[0][soffset + offset + (47 * 12)], 12 * 18);
+  const uint32_t rxdataF_sz = 4 * gNB->frame_parms.symbols_per_slot * gNB->frame_parms.ofdm_symbol_size;
   LOG_D(PHY,"frame %d, slot %d: UL signal energy %d\n",frame_rx,slot_rx,power_rxF);
 
   start_meas(&gNB->phy_proc_rx);
@@ -889,8 +890,7 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx)
 
       VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_NR_RX_PUSCH, 1);
       start_meas(&gNB->rx_pusch_stats);
-      const uint32_t rxdataF_sz = gNB->frame_parms.samples_per_slot_wCP;
-      nr_rx_pusch(gNB, NULL, NULL, NULL, rxdataF_sz, (c16_t (*)[rxdataF_sz]) gNB->common_vars.rxdataF[0], ULSCH_id, frame_rx, slot_rx, 0, NULL, ulsch->harq_pid, NULL);
+      nr_rx_pusch(gNB, NULL, NULL, NULL, rxdataF_sz, (c16_t (*)[rxdataF_sz]) gNB->common_vars.rxdataF[0], ULSCH_id, frame_rx, slot_rx, 0, link_type_ul, NULL, ulsch->harq_pid, NULL);
       NR_gNB_PUSCH *pusch_vars = &gNB->pusch_vars[ULSCH_id];
       pusch_vars->ulsch_power_tot = 0;
       pusch_vars->ulsch_noise_power_tot = 0;

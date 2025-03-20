@@ -142,7 +142,7 @@ int nr_pusch_channel_estimation(PHY_VARS_gNB *gNB,
   NR_gNB_PUSCH *pusch_vars = gNB ? &gNB->pusch_vars[ul_id] : &ue->pssch_vars[ul_id];
   c16_t **ul_ch_estimates = (c16_t **)pusch_vars->ul_ch_estimates;
   const int symbolSize = gNB ? gNB->frame_parms.ofdm_symbol_size : ue->SL_UE_PHY_PARAMS.sl_frame_params.ofdm_symbol_size;
-  const int soffset = 0;//(Ns&3)*(gNB?gNB->frame_parms.symbols_per_slot:(ue->SL_UE_PHY_PARAMS.sl_frame_params.symbols_per_slot)*symbolSize);
+  const int soffset = gNB ? (Ns & 3) * gNB->frame_parms.symbols_per_slot * symbolSize : 0;
   const int nushift = (p>>1)&1;
   if (gNB) gNB->frame_parms.nushift = nushift; 
   else ue->SL_UE_PHY_PARAMS.sl_frame_params.nushift = nushift;

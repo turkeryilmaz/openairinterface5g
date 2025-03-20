@@ -162,8 +162,7 @@ int nr_slot_fep(PHY_VARS_NR_UE *ue,
   rx_offset += frame_parms->ofdm_symbol_size * symbol;
 
   // use OFDM symbol from within 1/8th of the CP to avoid ISI
-//  rx_offset -= (nb_prefix_samples / frame_parms->ofdm_offset_divisor);
-  rx_offset += 1;
+  rx_offset -= (nb_prefix_samples / frame_parms->ofdm_offset_divisor);
 
 #ifdef DEBUG_FEP
   //  if (ue->frame <100)
@@ -192,8 +191,7 @@ int nr_slot_fep(PHY_VARS_NR_UE *ue,
 
     stop_meas(&ue->rx_dft_stats);
 
-/*
-    LOG_I(NR_PHY,"%d.%d Applying rotation for symbol %d, linktype %d\n",
+    LOG_D(NR_PHY,"%d.%d Applying rotation for symbol %d, linktype %d\n",
           proc->frame_rx,proc->nr_slot_rx,symbol,linktype);
     apply_nr_rotation_RX(frame_parms,
                          rxdataF[aa],
@@ -203,7 +201,6 @@ int nr_slot_fep(PHY_VARS_NR_UE *ue,
                          0,
                          symbol,
                          linktype);
-*/ 
   }
 
 #ifdef DEBUG_FEP

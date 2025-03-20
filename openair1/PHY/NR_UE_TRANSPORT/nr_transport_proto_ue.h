@@ -247,7 +247,8 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
                             const uint8_t slot,
                             const int gNB_id,
                             nr_phy_data_tx_t *phy_data,
-                            c16_t **txdataF);
+                            c16_t **txdataF,
+                            nr_link_type_t link_type);
 
 /** \brief This function does IFFT for PUSCH
 */

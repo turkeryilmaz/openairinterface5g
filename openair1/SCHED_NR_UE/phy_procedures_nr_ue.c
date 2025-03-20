@@ -282,7 +282,7 @@ void phy_procedures_nrUE_TX(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, n
 
   for (uint8_t harq_pid = 0; harq_pid < NR_MAX_ULSCH_HARQ_PROCESSES; harq_pid++) {
     if (ue->ul_harq_processes[harq_pid].status == ACTIVE) {
-      nr_ue_ulsch_procedures(ue, harq_pid, frame_tx, slot_tx, gNB_id, phy_data, (c16_t **)&txdataF);
+      nr_ue_ulsch_procedures(ue, harq_pid, frame_tx, slot_tx, gNB_id, phy_data, (c16_t **)&txdataF, link_type_ul);
     }
   }
 
@@ -1032,7 +1032,7 @@ void pbch_pdcch_processing(PHY_VARS_NR_UE *ue,
                                   pdcch_dl_ch_estimates,
                                   rxdataF,
                                   NULL,
-                                  link_type_sl_uu);
+                                  link_type_dl);
 
       stop_meas(&ue->ofdm_demod_stats);
 
@@ -1163,7 +1163,7 @@ void pdsch_processing(PHY_VARS_NR_UE *ue,
         nr_slot_fep(ue, &ue->frame_parms, proc, symb, rxdataF, link_type_dl);
       }
     }
-    nr_ue_csi_rs_procedures(ue, proc, rxdataF);
+    nr_ue_csi_rs_procedures(ue, proc, rxdataF, link_type_dl);
     ue->csirs_vars[gNB_id]->active = 0;
   }
 

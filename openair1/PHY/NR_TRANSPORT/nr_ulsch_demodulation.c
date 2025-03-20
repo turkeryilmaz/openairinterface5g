@@ -321,6 +321,7 @@ void nr_ulsch_extract_rbs(int rxFSz,
                           uint32_t nrOfLayers,
                           uint32_t num_dmrs_cdm_grps_no_data,
                           uint32_t dmrs_config_type,
+                          nr_link_type_t link_type,
                           NR_DL_FRAME_PARMS *frame_parms,
                           nfapi_nr_dl_tti_csi_rs_pdu_rel15_t *csi_params) {
  
@@ -331,7 +332,7 @@ void nr_ulsch_extract_rbs(int rxFSz,
   uint32_t ul_ch0_index = 0;
   int16_t *rxF,*rxF_ext;
   int *ul_ch0,*ul_ch0_ext;
-  int soffset = 0; /*(slot&3)*frame_parms->symbols_per_slot*frame_parms->ofdm_symbol_size;*/
+  int soffset = (link_type == link_type_pc5) ? 0 : (slot&3) * frame_parms->symbols_per_slot * frame_parms->ofdm_symbol_size;
 
 #ifdef DEBUG_RB_EXT
   printf("--------------------symbol = %d-----------------------\n", symbol);
@@ -352,7 +353,7 @@ void nr_ulsch_extract_rbs(int rxFSz,
     AssertFatal(symbol * nb_re_pusch2 + nb_re_pusch < nb_re_pusch2 * frame_parms->symbols_per_slot, "Copied PUSCH data is more than rxF_ext size\n");
     LOG_D(NR_PHY,"symbol %d : rxF energy %d\n",symbol,dB_fixed(signal_energy_nodc((int32_t*)rxF,frame_parms->ofdm_symbol_size))); 
     if (is_dmrs_symbol == 0) {
-      if (is_csirs_symbol == 0) {
+      if (((link_type == link_type_pc5) && (is_csirs_symbol == 0)) || (link_type != link_type_pc5)) {
         if (start_re + nb_re_pusch <= frame_parms->ofdm_symbol_size) {
           memcpy1((void*)rxF_ext, (void*)&rxF[start_re*2], nb_re_pusch*sizeof(int32_t));
         } else {
@@ -1962,7 +1963,8 @@ void nr_rx_pusch(PHY_VARS_gNB *gNB,
                  uint32_t frame,
                  uint8_t slot,
                  uint8_t nb_antennas_tx,
-                 void (* _nr_ue_csi_rs_procedures)(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP]),
+                 nr_link_type_t link_type,
+                 void (* _nr_ue_csi_rs_procedures)(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP], nr_link_type_t link_type),
                  unsigned char harq_pid,
                  bool *is_csi_rs_slot)
 {
@@ -2121,40 +2123,41 @@ void nr_rx_pusch(PHY_VARS_gNB *gNB,
   }
 
   for(uint8_t symbol = start_symbol_index; symbol < (start_symbol_index + nr_of_symbols); symbol++) {
-
     uint8_t csi_rs_symbol_flag = 0;
-    if (phy_data->sl_rx_action == SL_NR_CONFIG_TYPE_RX_PSSCH_SLSCH_CSI_RS) {
-      *is_csi_rs_slot = true;
-      csi_params = (nfapi_nr_dl_tti_csi_rs_pdu_rel15_t *)&ue->csirs_vars[0]->csirs_config_pdu;
-    } else {
-      *is_csi_rs_slot = false;
-    }
-    if (*is_csi_rs_slot && (csi_params->symb_l0 == symbol)) {
-      csi_rs_symbol_flag = 1;
-      AssertFatal(csi_params->freq_density > 0, "freq_density MUST be greater than zero");
-      AssertFatal(csi_params->nr_of_rbs > 0, "nr_of_rbs MUST be greater than zero");
-      LOG_D(NR_PHY, "%d.%d symbol %i, freq_density %i symb_l0 %i csi_type %i power_control_offset %i power_control_offset_ss %i measurement_bitmap %i cdm_type %i row %i freq_domain %i start_rb %i nr_of_rbs %i\n",
-            frame,
-            slot,
-            symbol,
-            csi_params->freq_density,
-            csi_params->symb_l0,
-            csi_params->csi_type,
-            csi_params->power_control_offset,
-            csi_params->power_control_offset_ss,
-            csi_params->measurement_bitmap,
-            csi_params->cdm_type,
-            csi_params->row,
-            csi_params->freq_domain,
-            csi_params->start_rb,
-            csi_params->nr_of_rbs);
+    if (phy_data && is_csi_rs_slot) {
       if (phy_data->sl_rx_action == SL_NR_CONFIG_TYPE_RX_PSSCH_SLSCH_CSI_RS) {
-        // FIXIT: Reconsider index of csirs_vars[0] for multiple connected UEs case
-        if (ue->csirs_vars[0]->active == 1) {
-          LOG_D(NR_PHY, "%d.%d Received CSI-RS\n", proc->frame_rx, proc->nr_slot_rx);
-          nr_slot_fep(ue, frame_parms, proc, symbol, rxdataF, link_type_sl_pc5);
-          _nr_ue_csi_rs_procedures(ue, proc, rxdataF);
-          ue->csirs_vars[0]->active = 0;
+        *is_csi_rs_slot = true;
+        csi_params = (nfapi_nr_dl_tti_csi_rs_pdu_rel15_t *)&ue->csirs_vars[0]->csirs_config_pdu;
+      } else {
+        *is_csi_rs_slot = false;
+      }
+      if (*is_csi_rs_slot && (csi_params->symb_l0 == symbol)) {
+        csi_rs_symbol_flag = 1;
+        AssertFatal(csi_params->freq_density > 0, "freq_density MUST be greater than zero");
+        AssertFatal(csi_params->nr_of_rbs > 0, "nr_of_rbs MUST be greater than zero");
+        LOG_D(NR_PHY, "%d.%d symbol %i, freq_density %i symb_l0 %i csi_type %i power_control_offset %i power_control_offset_ss %i measurement_bitmap %i cdm_type %i row %i freq_domain %i start_rb %i nr_of_rbs %i\n",
+              frame,
+              slot,
+              symbol,
+              csi_params->freq_density,
+              csi_params->symb_l0,
+              csi_params->csi_type,
+              csi_params->power_control_offset,
+              csi_params->power_control_offset_ss,
+              csi_params->measurement_bitmap,
+              csi_params->cdm_type,
+              csi_params->row,
+              csi_params->freq_domain,
+              csi_params->start_rb,
+              csi_params->nr_of_rbs);
+        if (phy_data->sl_rx_action == SL_NR_CONFIG_TYPE_RX_PSSCH_SLSCH_CSI_RS) {
+          // FIXIT: Reconsider index of csirs_vars[0] for multiple connected UEs case
+          if (ue->csirs_vars[0]->active == 1) {
+            LOG_D(NR_PHY, "%d.%d Received CSI-RS\n", proc->frame_rx, proc->nr_slot_rx);
+            nr_slot_fep(ue, frame_parms, proc, symbol, rxdataF, link_type_pc5);
+            _nr_ue_csi_rs_procedures(ue, proc, rxdataF, link_type_pc5);
+            ue->csirs_vars[0]->active = 0;
+          }
         }
       }
     }
@@ -2196,7 +2199,7 @@ void nr_rx_pusch(PHY_VARS_gNB *gNB,
     if (nb_re_pusch > 0) {
       LOG_D(NR_PHY,"extract RBs : frame   %d, slot %d symbol %d nb_re_pusch %d\n", frame,slot,symbol, nb_re_pusch);
       if (gNB) start_meas(&gNB->ulsch_rbs_extraction_stats);
-      nr_ulsch_extract_rbs(rxFSz, rxdataF, pusch_vars, slot, symbol, dmrs_symbol_flag, csi_rs_symbol_flag, bwp_start, rb_start, rb_size, nrOfLayers, num_dmrs_cdm_grps_no_data, dmrs_config_type, frame_parms, csi_params);
+      nr_ulsch_extract_rbs(rxFSz, rxdataF, pusch_vars, slot, symbol, dmrs_symbol_flag, csi_rs_symbol_flag, bwp_start, rb_start, rb_size, nrOfLayers, num_dmrs_cdm_grps_no_data, dmrs_config_type, link_type, frame_parms, csi_params);
       if (gNB) stop_meas(&gNB->ulsch_rbs_extraction_stats);
 
       //----------------------------------------------------------
@@ -2322,7 +2325,7 @@ void nr_rx_pusch(PHY_VARS_gNB *gNB,
       /*-----------------------------------------------------------------------------------------------------*/
       if (gNB) start_meas(&gNB->ulsch_llr_stats);
       int sci1_offset=0;
-      if (symbol <= pssch_pdu->pscch_numsym) { 
+      if (pssch_pdu && (symbol <= pssch_pdu->pscch_numsym)) { 
         pusch_vars->ul_valid_re_per_slot[symbol] -= sci1_re_per_symb;
         sci1_offset=sci1_re_per_symb;
       }

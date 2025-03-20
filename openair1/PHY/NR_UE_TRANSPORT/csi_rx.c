@@ -205,7 +205,7 @@ int nr_get_csi_rs_signal(const PHY_VARS_NR_UE *ue,
     for (int rb = csirs_config_pdu->start_rb; rb < (csirs_config_pdu->start_rb+csirs_config_pdu->nr_of_rbs); rb++) {
 
       // for freq density 0.5 checks if even or odd RB
-      if(csirs_config_pdu->freq_density <= 1 && get_softmodem_params()->sl_mode ? 0 : csirs_config_pdu->freq_density != (rb % 2)) {
+      if(csirs_config_pdu->freq_density <= 1 && (get_softmodem_params()->sl_mode ? 0 : csirs_config_pdu->freq_density != (rb % 2))) {
         continue;
       }
 
@@ -253,6 +253,7 @@ int nr_get_csi_rs_signal(const PHY_VARS_NR_UE *ue,
   }
 
 
+  AssertFatal(meas_count != 0, "Expecting meas_count > 0, but meas_count = 0\n");
   *rsrp = rsrp_sum/meas_count;
   *rsrp_dBm = dB_fixed(*rsrp) + 30 - pow_2_30_dB
       - ((int)openair0_cfg[0].rx_gain[0] - (int)openair0_cfg[0].rx_gain_offset[0]) - dB_fixed(ue->frame_parms.ofdm_symbol_size);
@@ -921,7 +922,7 @@ int nr_ue_csi_im_procedures(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, c16_t r
   return 0;
 }
 
-void nr_ue_csi_rs_procedures(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP])
+void nr_ue_csi_rs_procedures(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP], nr_link_type_t link_type)
 {
   // TODO: check the id whether it is working for multiple UEs
   int id = get_softmodem_params()->sl_mode == 2 ? 0 : proc->gNB_id;
@@ -977,8 +978,9 @@ void nr_ue_csi_rs_procedures(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, c16_t 
 
   uint8_t num_of_layers = min(get_nrUE_params()->nb_antennas_tx, get_nrUE_params()->nb_antennas_rx);
   AssertFatal(num_of_layers > 0, "Number of layers MUST be greater than zero!!!");
-  uint16_t beta_csirs = get_softmodem_params()->sl_mode ? (uint16_t)(AMP * (ceil(sqrt(num_of_layers / frame_parms->nb_antennas_tx)))) & 0xFFFF : AMP;
-  csirs_config_pdu->scramb_id = ue->slsch[0].harq_process->pssch_pdu->Nid % (1 << 10);
+  uint16_t beta_csirs = (link_type == link_type_pc5) ? (uint16_t)(AMP * (ceil(sqrt(num_of_layers / frame_parms->nb_antennas_tx)))) & 0xFFFF : AMP;
+  if (link_type == link_type_pc5)
+    csirs_config_pdu->scramb_id = ue->slsch[0].harq_process->pssch_pdu->Nid % (1 << 10);
   LOG_D(NR_PHY, "Rx beta_csirs: %d, scramb_id %i, frame.slot (%d.%d)\n", beta_csirs, csirs_config_pdu->scramb_id, proc->frame_rx, proc->nr_slot_rx);
 
   nr_generate_csi_rs(frame_parms,
