@@ -136,7 +136,8 @@ void nr_rx_pusch(PHY_VARS_gNB *gNB,
                  uint32_t frame,
                  uint8_t slot,
                  uint8_t nb_antennas_tx,
-                 void (* _nr_ue_csi_rs_procedures)(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP]),
+                 nr_link_type_t link_type,
+                 void (* _nr_ue_csi_rs_procedures)(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP], nr_link_type_t link_type),
                  unsigned char harq_pid,
                  bool *is_csi_rs_slot
                  );
@@ -163,6 +164,7 @@ void nr_ulsch_extract_rbs(int rxFSz,
                           uint32_t nrOfLayers,
                           uint32_t num_dmrs_cdm_grps_no_data,
                           uint32_t dmrs_config_type,
+                          nr_link_type_t link_type,
                           NR_DL_FRAME_PARMS *frame_parms,
                           nfapi_nr_dl_tti_csi_rs_pdu_rel15_t *csi_params);
 

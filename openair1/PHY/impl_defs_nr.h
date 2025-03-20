@@ -106,8 +106,7 @@ SystemInformationBlockType1_nr_t;
 typedef enum {
   link_type_dl,
   link_type_ul,
-  link_type_sl_pc5,
-  link_type_sl_uu
+  link_type_pc5,
 } nr_link_type_t;
 
 typedef enum {

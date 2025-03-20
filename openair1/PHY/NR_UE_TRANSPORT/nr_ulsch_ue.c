@@ -164,7 +164,8 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
                             const uint8_t slot,
                             const int gNB_id,
                             nr_phy_data_tx_t *phy_data,
-                            c16_t **txdataF)
+                            c16_t **txdataF,
+                            nr_link_type_t link_type)
 {
   LOG_D(PHY,"nr_ue_ulsch_procedures hard_id %d %d.%d\n",harq_pid,frame,slot);
 
@@ -185,7 +186,7 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
   uint16_t number_dmrs_symbols = 0;
 
   NR_UE_ULSCH_t *ulsch_ue = &phy_data->ulsch;
-  sl_nr_tx_config_pscch_pssch_pdu_t *pscch_pssch_pdu = &phy_data->nr_sl_pssch_pscch_pdu;
+  sl_nr_tx_config_pscch_pssch_pdu_t *pscch_pssch_pdu = (link_type == link_type_pc5) ? &phy_data->nr_sl_pssch_pscch_pdu : NULL;
   NR_UL_UE_HARQ_t *harq_process_ul_ue = get_softmodem_params()->sl_mode ? &UE->sl_harq_processes[harq_pid] : &UE->ul_harq_processes[harq_pid];
   const nfapi_nr_ue_pusch_pdu_t *pusch_pdu = &ulsch_ue->pusch_pdu;
 
@@ -211,12 +212,14 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
   for (int i = start_symbol; i < start_symbol + number_of_symbols; i++) {
     if((ul_dmrs_symb_pos >> i) & 0x01) {
       number_dmrs_symbols += 1;
-      if (is_first_dmrs_symbol) {
-        first_dmrs_symbol = i;
-        is_first_dmrs_symbol = false;
+      if (link_type == link_type_pc5) {
+        if (is_first_dmrs_symbol) {
+          first_dmrs_symbol = i;
+          is_first_dmrs_symbol = false;
+        }
+        if (csi_params && csi_params->symb_l0 != 0)
+          AssertFatal(i != csi_params->symb_l0, "CSI-RS  (symb_l0 %d) MUST not be sent in DMRS symbol (%d)\n", csi_params->symb_l0, i);
       }
-      if (csi_params && csi_params->symb_l0 != 0)
-        AssertFatal(i != csi_params->symb_l0, "CSI-RS  (symb_l0 %d) MUST not be sent in DMRS symbol (%d)\n", csi_params->symb_l0, i);
     }
   }
 
@@ -245,9 +248,10 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
                                               get_softmodem_params()->sl_mode ? 1 : pscch_pssch_pdu->mcs,
                                               pscch_pssch_pdu->mcs_table): 0 ;
   //if (pscch_pssch_pdu) LOG_I(NR_PHY,"dmrs_symbol_position %x, pscch_numsym %d\n",pscch_pssch_pdu->dmrs_symbol_position,pscch_pssch_pdu->pscch_numsym);
-  AssertFatal(pscch_pssch_pdu->pscch_numsym==2 || pscch_pssch_pdu->pscch_numsym==3,"illegal pscch_numsym %d\n",pscch_pssch_pdu->pscch_numsym);
+  if (pscch_pssch_pdu)
+    AssertFatal(pscch_pssch_pdu->pscch_numsym==2 || pscch_pssch_pdu->pscch_numsym==3,"illegal pscch_numsym %d\n",pscch_pssch_pdu->pscch_numsym);
   int sci1_dmrs_overlap = pscch_pssch_pdu ? pscch_pssch_pdu->dmrs_symbol_position & dmrs_pscch_mask[pscch_pssch_pdu->pscch_numsym-2] : 0;
-  uint16_t sci1_re = pscch_pssch_pdu->pscch_numsym * pscch_pssch_pdu->pscch_numrbs * NR_NB_SC_PER_RB;
+  uint16_t sci1_re = (pscch_pssch_pdu==NULL) ? 0 : pscch_pssch_pdu->pscch_numsym * pscch_pssch_pdu->pscch_numrbs * NR_NB_SC_PER_RB;
   unsigned int G = (pscch_pssch_pdu==NULL) ? nr_get_G(nb_rb, number_of_symbols,
                                                       nb_dmrs_re_per_rb, number_dmrs_symbols, mod_order, Nl):
                                              nr_get_G_SL(nb_rb, number_of_symbols, 6, number_dmrs_symbols, sci1_dmrs_overlap, sci1_re,
@@ -295,7 +299,8 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
   uint32_t scrambled_output[(available_bits>>5)+1];
   uint32_t scrambled_output_sci[(Gsci2>>5)+1];
   memset(scrambled_output, 0, ((available_bits>>5)+1)*sizeof(uint32_t));
-  memset(scrambled_output_sci, 0, ((Gsci2>>5)+1)*sizeof(uint32_t));
+  if (pscch_pssch_pdu)
+    memset(scrambled_output_sci, 0, ((Gsci2>>5)+1)*sizeof(uint32_t));
 
 //  for (int i=0;i<(Gsci2>>5)+1;i++) LOG_I(NR_PHY,"sci2_encoded[%d] %x\n",i,sci2_encoded_output[i]); 
 //  for (int g=0;g<G;g++) LOG_I(NR_PHY,"coded_output_f[%d] %d\n",g,harq_process_ul_ue->f[g]);
