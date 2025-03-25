@@ -40,7 +40,7 @@
 #include <pthread.h>
 static NR_UE_MAC_INST_t *nr_ue_mac_inst; 
 
-void send_srb0_rrc(int ue_id, const uint8_t *sdu, sdu_size_t sdu_len, void *data)
+void send_initial_srb0_message(int ue_id, const uint8_t *sdu, sdu_size_t sdu_len)
 {
   AssertFatal(sdu_len > 0 && sdu_len < CCCH_SDU_SIZE, "invalid CCCH SDU size %d\n", sdu_len);
 
@@ -144,9 +144,8 @@ NR_UE_MAC_INST_t *nr_l2_init_ue(int nb_inst)
   int rc = nr_rlc_module_init(NR_RLC_OP_MODE_UE);
   AssertFatal(rc == 0, "Could not initialize RLC layer\n");
 
-  for (int j = 0; j < nb_inst; j++) {
-    nr_rlc_activate_srb0(j, NULL, send_srb0_rrc);
-  }
+  for (int j = 0; j < nb_inst; j++)
+    nr_rlc_init_ue(j);
 
   return (nr_ue_mac_inst);
 }
