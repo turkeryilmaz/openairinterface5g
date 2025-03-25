@@ -23,6 +23,7 @@
 
 #include <stdint.h>
 #include "common/utils/ds/byte_array.h"
+#include "nr_rrc_defs.h"
 
 /* forward declarations */
 typedef struct gNB_RRC_INST_s gNB_RRC_INST;
@@ -74,5 +75,10 @@ typedef struct nr_handover_context_s {
 
 void nr_rrc_trigger_f1_ho(gNB_RRC_INST *rrc, gNB_RRC_UE_t *ue, nr_rrc_du_container_t *source_du, nr_rrc_du_container_t *target_du);
 void nr_rrc_finalize_ho(gNB_RRC_UE_t *ue);
+
+void nr_rrc_trigger_n2_ho(gNB_RRC_INST *rrc,
+                          gNB_RRC_UE_t *ue,
+                          int serving_pci,
+                          const nr_neighbour_cell_t *neighbour_config);
 
 #endif /* RRC_GNB_MOBILITY_H_ */
