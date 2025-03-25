@@ -40,7 +40,7 @@
 #include <pthread.h>
 static NR_UE_MAC_INST_t *nr_ue_mac_inst[MAX_NUM_NR_UE_INST] = {0};
 
-void send_srb0_rrc(int ue_id, const uint8_t *sdu, sdu_size_t sdu_len, void *data)
+void send_initial_srb0_message(int ue_id, const uint8_t *sdu, sdu_size_t sdu_len)
 {
   AssertFatal(sdu_len > 0 && sdu_len < CCCH_SDU_SIZE, "invalid CCCH SDU size %d\n", sdu_len);
 
@@ -147,8 +147,7 @@ NR_UE_MAC_INST_t *nr_l2_init_ue(int instance_id)
     initialized = true;
   }
 
-  nr_rlc_activate_srb0(instance_id, NULL, send_srb0_rrc);
-
+  nr_rlc_init_ue(instance_id);
   return nr_ue_mac_inst[instance_id];
 }
 
