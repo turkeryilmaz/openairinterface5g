@@ -46,7 +46,7 @@
 /* name of shared library implementing a third-party transport */
 #define OAI_THIRDPARTY_TP_LIBNAME        "thirdparty_transpro"
 /* name of shared library implementing the rf simulator */
-#define OAI_RFSIM_LIBNAME     "rfsimulator"
+#define OAI_RFSIM_LIBNAME     "rfsimulator_zmq"
 /* name of shared library implementing the iq player */
 #define OAI_IQPLAYER_LIBNAME  "oai_iqplayer"
 
