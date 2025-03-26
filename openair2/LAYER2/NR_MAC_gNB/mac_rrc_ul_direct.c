@@ -932,9 +932,10 @@ static void positioning_measurement_response(const f1ap_measurement_resp_t *resp
     f1ap_measured_results_value_t *MeasResVal= &posMeasRes->pos_measurement_result_item->measuredResultsValue;
     MeasResVal->present = f1ap_measured_results_value_pr_ul_rtoa;
     if (mac->meas_pos_info.toa_ns[trp_i] != 0xffff) {
-      int32_t k1 =  ((mac->meas_pos_info.toa_ns[trp_i] * T_inv) / T_ns_inv ) + 492512;
+      //int32_t k1 =  ((mac->meas_pos_info.toa_ns[trp_i] * T_inv) / T_ns_inv ) + 492512;
+      int32_t k1 = (int32_t)(((int64_t)mac->meas_pos_info.toa_ns[trp_i] * (int64_t)T_inv) / (int64_t)T_ns_inv) + 492512;
       if (k1<0) k1=0;
-      if (k1>985025) k1=985025;
+      //if (k1>985025) k1=985025;
       
       MeasResVal->choice.uL_RTOA.uL_RTOA_MeasurementItem.present = f1ap_ulrtoameas_pr_k1;
       MeasResVal->choice.uL_RTOA.uL_RTOA_MeasurementItem.choice.k1 = k1;
