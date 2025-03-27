@@ -501,7 +501,7 @@ static void nr_configure_srs_f1ap(nfapi_nr_srs_pdu_t *srs_pdu,
   srs_pdu->config_index = srs_resource->c_SRS;
   srs_pdu->sequence_id = srs_resource->sequenceId;
   srs_pdu->bandwidth_index = srs_resource->b_SRS;
-  srs_pdu->comb_size = srs_resource->transmissionComb.present;
+  srs_pdu->comb_size = srs_resource->transmissionComb.present-1;
 
   switch(srs_resource->transmissionComb.present) {
   case f1ap_transmission_comb_pr_n2:
@@ -520,7 +520,7 @@ static void nr_configure_srs_f1ap(nfapi_nr_srs_pdu_t *srs_pdu,
   srs_pdu->frequency_shift = srs_resource->freqDomainShift;
   srs_pdu->frequency_hopping = srs_resource->b_hop;
   srs_pdu->group_or_sequence_hopping = srs_resource->groupOrSequenceHopping;
-  srs_pdu->resource_type = srs_resource->resourceType.present;
+  srs_pdu->resource_type = srs_resource->resourceType.present-1;
   srs_pdu->t_srs = srs_period[srs_resource->resourceType.choice.periodic.periodicity];
   srs_pdu->t_offset = srs_resource->resourceType.choice.periodic.offset;
 

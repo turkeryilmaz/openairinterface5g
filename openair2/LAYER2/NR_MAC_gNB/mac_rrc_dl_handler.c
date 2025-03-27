@@ -876,7 +876,6 @@ void positioning_measurement_request(const f1ap_measurement_req_t *req, uint8_t 
         req->lmf_measurement_id,
         req->ran_measurement_id);
   LOG_I(MAC, "Serving gNB ind is =%d\n",serving_gNB_ind);
-
   if (req->pos_report_characteristics != 0) {
     LOG_W(MAC, "periodic positioning measurements not yet supported\n");
     AssertFatal(false, "Not implemented\n");
@@ -924,7 +923,7 @@ void positioning_measurement_request(const f1ap_measurement_req_t *req, uint8_t 
     LOG_I(MAC, "Serving gNB ind is =%d\n",serving_gNB_ind);
     mac->secondary_srs_configured = 1; //secondary srs enabled for non serving gNB
   }*/
-  mac->secondary_srs_configured = 1;
+  mac->secondary_srs_configured = 1; //this is never reset
   mac->do_srs_meas = 1;         //this is reset once the NRPPA measurement response is set
 }
 

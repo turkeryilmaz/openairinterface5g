@@ -919,15 +919,14 @@ static void positioning_measurement_response(const f1ap_measurement_resp_t *resp
   uint16_t k = 1;
   uint64_t T_inv = Tc_inv / (1 << k);
   uint64_t T_ns_inv = 1000000000;
-
-
   for (int trp_i=0; trp_i < noOfTRPs; trp_i++){
     meas_res_list_item->tRPID =trp_i; // TODO: needs to be added to config file
     f1ap_pos_measurement_result_t *posMeasRes= &meas_res_list_item->posMeasurementResult;
     posMeasRes->f1ap_pos_measurement_result_length =1;
     posMeasRes->pos_measurement_result_item =malloc(sizeof(f1ap_pos_measurement_result_item_t));
     DevAssert(posMeasRes->pos_measurement_result_item);
-     LOG_I(MAC,"ToA[%d] = %d  ",trp_i,mac->meas_pos_info.toa_ns[trp_i]);
+
+    LOG_I(MAC,"ToA[%d] = %d  ",trp_i,mac->meas_pos_info.toa_ns[trp_i]);
 
     // we assume we use UL_RTOA for now with k=1 (i.e. 8 times oversampling from 122.88e6 Msps)
     f1ap_measured_results_value_t *MeasResVal= &posMeasRes->pos_measurement_result_item->measuredResultsValue;
@@ -949,7 +948,7 @@ static void positioning_measurement_response(const f1ap_measurement_resp_t *resp
 	LOG_I(MAC,"ul_RTOA invalid, MeasurementResponse set to NOTHING\n");
 	MeasResVal->choice.uL_RTOA.uL_RTOA_MeasurementItem.present = f1ap_ulrtoameas_pr_NOTHING;
     }
-        LOG_I(MAC,"reported val[%d] = %d\n",trp_i,MeasResVal->choice.uL_RTOA.uL_RTOA_MeasurementItem.choice.k1);
+  LOG_I(MAC,"reported val[%d] = %d\n",trp_i,MeasResVal->choice.uL_RTOA.uL_RTOA_MeasurementItem.choice.k1);
       
     // IE timeStamp.measurementTime
     posMeasRes->pos_measurement_result_item->timeStamp.systemFrameNumber = mac->meas_pos_info.frame;// mac->frame;
