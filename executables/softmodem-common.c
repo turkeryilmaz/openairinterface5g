@@ -118,6 +118,9 @@ void get_common_options(uint32_t execmask) {
   config_set_checkfunctions(cmdline_logparams, cmdline_log_CheckParams, numlogparams);
   config_get(cmdline_logparams, numlogparams, NULL);
 
+  uint8_t relay_type = get_softmodem_params()->relay_type;
+  AssertFatal( (relay_type == 0) || (relay_type == 1), "Incorrect relay type!!!\n");
+
   if(config_isparamset(cmdline_logparams,config_paramidx_fromname(cmdline_logparams,numparams, CONFIG_FLOG_OPT))) {
     set_glog_onlinelog(online_log_messages);
   }
