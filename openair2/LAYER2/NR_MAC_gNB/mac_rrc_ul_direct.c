@@ -936,6 +936,7 @@ static void positioning_measurement_response(const f1ap_measurement_resp_t *resp
       int32_t k1 = (int32_t)(((int64_t)mac->meas_pos_info.toa_ns[trp_i] * (int64_t)T_inv) / (int64_t)T_ns_inv) + 492512;
       if (k1<0) k1=0;
       //if (k1>985025) k1=985025;
+      LOG_I(MAC,"k1[%d] = %d\n",trp_i,k1);
       
       MeasResVal->choice.uL_RTOA.uL_RTOA_MeasurementItem.present = f1ap_ulrtoameas_pr_k1;
       MeasResVal->choice.uL_RTOA.uL_RTOA_MeasurementItem.choice.k1 = k1;
@@ -947,7 +948,8 @@ static void positioning_measurement_response(const f1ap_measurement_resp_t *resp
 	LOG_I(MAC,"ul_RTOA invalid, MeasurementResponse set to NOTHING\n");
 	MeasResVal->choice.uL_RTOA.uL_RTOA_MeasurementItem.present = f1ap_ulrtoameas_pr_NOTHING;
     }
-    
+  LOG_I(MAC,"reported val[%d] = %d\n",trp_i,MeasResVal->choice.uL_RTOA.uL_RTOA_MeasurementItem.choice.k1);
+  
     // IE timeStamp.measurementTime
     posMeasRes->pos_measurement_result_item->timeStamp.systemFrameNumber = mac->meas_pos_info.frame;// mac->frame;
     // IE timeStamp.slotIndex
