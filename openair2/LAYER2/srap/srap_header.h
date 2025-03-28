@@ -28,7 +28,7 @@ void encode_srap_header(void* header, uint8_t* buffer);
 // Function to decode SRAP Header
 void decode_srap_header(void* header, uint8_t* buffer);
 
-// Factory function to create headers dynamically
+// Function to SRAP create headers
 void create_header(relay_type_t relay_type, uint8_t bearer_id, uint8_t src_ue_id, uint8_t dest_ue_id, void* header);
 
 #endif /* _SRAP_HEADER_H_ */

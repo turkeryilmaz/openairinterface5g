@@ -700,8 +700,7 @@ static void deliver_pdu_drb(void *deliver_pdu_data, ue_id_t ue_id, int rb_id,
     itti_send_msg_to_task(TASK_GTPV1_U, CUuniqInstance, message_p);
   } else if (node_type == -1) {   // UE
     if (get_softmodem_params()->srap) {
-      // Add SRAP data pdu here for IAB-MT data plane Tx side.
-      // SRAP data pdu: hdr 3 octets, data variable.
+      // SRAP data pdu: 2 bytes hdr for U2N, 3 bytes hdr for U2U
       uint8_t relay_type = get_softmodem_params()->relay_type;
       uint8_t header_size = relay_type == U2N ? 2 : 3;
       mem_block_t *memblock = get_free_mem_block(size + header_size, __FUNCTION__);
