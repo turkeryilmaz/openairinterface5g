@@ -2118,6 +2118,7 @@ add_executable(nr-cuup
   ${OPENAIR2_DIR}/E1AP/e1ap_setup.c
   ${NR_PDCP_SRC}
   ${NR_SDAP_SRC}
+  ${NR_SRAP_SRC}
   )
 
 target_link_libraries(nr-cuup PRIVATE
