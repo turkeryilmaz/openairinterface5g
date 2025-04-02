@@ -422,11 +422,11 @@ static byte_array_t rrc_gNB_encode_HandoverCommand(gNB_RRC_UE_t *UE, gNB_RRC_INS
   alg->integrityProtAlgorithm = calloc_or_fail(1, sizeof(*alg->integrityProtAlgorithm));
   *alg->integrityProtAlgorithm = UE->integrity_algorithm;
 
-  /* 3GPP TS 38.331 RadioBearerConfig: re-establish PDCP whenever the security key
-  used for this radio bearer changes, e.g. for SRB2 when receiving
-  reconfiguration with sync, resuming an RRC connection, or at the first
-  reconfiguration after RRC connection reestablishment in NR */
-  nr_rrc_reconfig_param_t params = get_RRCReconfiguration_params(rrc, UE, (1 << 1) | (1 << 2), false);
+  /* 3GPP TS 38.331 RadioBearerConfig: re-establish PDCP whenever
+  the security key used for this radio bearer changes, e.g. for SRB2
+  when receiving reconfiguration with sync [...]. Similarly, for DRBs
+  PDCP re-establishment is necessary with derivation of new UP keys */
+  nr_rrc_reconfig_param_t params = get_RRCReconfiguration_params(rrc, UE, (1 << 1) | (1 << 2), true);
   UE->xids[params.transaction_id] = RRC_DEDICATED_RECONF;
 
   params.security_config = sec;
