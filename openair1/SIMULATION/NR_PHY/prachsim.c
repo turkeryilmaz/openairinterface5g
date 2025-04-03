@@ -42,7 +42,6 @@
 #include "PHY/NR_UE_TRANSPORT/nr_transport_ue.h"
 #include "PHY/TOOLS/tools_defs.h"
 #include "PHY/defs_RU.h"
-#include "PHY/defs_common.h"
 #include "PHY/defs_gNB.h"
 #include "PHY/defs_nr_UE.h"
 #include "PHY/defs_nr_common.h"
@@ -129,6 +128,10 @@ int NB_UE_INST = 1;
 configmodule_interface_t *uniqCfg = NULL;
 int main(int argc, char **argv){
 
+  stop = false;
+  __attribute__((unused)) struct sigaction oldaction;
+  sigaction(SIGINT, &sigint_action, &oldaction);
+
   get_softmodem_params()->sl_mode = 0;
   double sigma2, sigma2_dB = 0, SNR, snr0 = -2.0, snr1 = 0.0, ue_speed0 = 0.0, ue_speed1 = 0.0;
   double **s_re, **s_im, **r_re, **r_im, iqim = 0.0, delay_avg = 0, ue_speed = 0, fs=-1, bw;
@@ -136,13 +139,11 @@ int main(int argc, char **argv){
   c16_t **txdata;
   int N_RB_UL = 106, delay = 0, NCS_config = 13, rootSequenceIndex = 1, threequarter_fs = 0, mu = 1, fd_occasion = 0, loglvl = OAILOG_INFO, numRA = 0, prachStartSymbol = 0;
   uint8_t snr1set = 0, ue_speed1set = 0, transmission_mode = 1, n_tx = 1, n_rx = 1, awgn_flag = 0, msg1_frequencystart = 0, num_prach_fd_occasions = 1, prach_format=0;
-  uint8_t config_index = 98, prach_sequence_length = 1, restrictedSetConfig = 0, N_dur, N_t_slot, start_symbol;
-  uint16_t Nid_cell = 0, preamble_tx = 0, preamble_delay, format, format0, format1;
+  uint8_t config_index = 98, prach_sequence_length = 1, restrictedSetConfig = 0;
+  uint16_t Nid_cell = 0, preamble_tx = 0, preamble_delay, format0, format1;
   uint32_t tx_lev = 10000, prach_errors = 0; //,tx_lev_dB;
   uint64_t SSB_positions = 0x01;
   uint16_t RA_sfn_index;
-  uint8_t N_RA_slot;
-  uint8_t config_period;
   int prachOccasion = 0;
   double DS_TDL = .03;
 
@@ -482,25 +483,24 @@ int main(int argc, char **argv){
   gNB->gNB_config.prach_config.num_prach_fd_occasions.value = num_prach_fd_occasions;
   gNB->gNB_config.prach_config.num_prach_fd_occasions_list = (nfapi_nr_num_prach_fd_occasions_t *) malloc(num_prach_fd_occasions*sizeof(nfapi_nr_num_prach_fd_occasions_t));
 
-  gNB->proc.slot_rx       = slot;
+  gNB->proc.slot_rx = slot;
+  frequency_range_t freq_range = get_freq_range_from_arfcn(absoluteFrequencyPointA);
+  nr_prach_info_t prach_info = get_nr_prach_occasion_info_from_index(config_index, freq_range, frame_parms->frame_type);
+  int ret = get_nr_prach_sched_from_info(prach_info,
+                                         config_index,
+                                         frame,
+                                         slot,
+                                         mu,
+                                         freq_range,
+                                         &RA_sfn_index,
+                                         frame_parms->frame_type);
 
-  int ret = get_nr_prach_info_from_index(config_index,
-					 (int)frame,
-					 (int)slot,
-					 absoluteFrequencyPointA,
-					 mu,
-					 frame_parms->frame_type,
-					 &format,
-					 &start_symbol,
-					 &N_t_slot,
-					 &N_dur,
-					 &RA_sfn_index,
-					 &N_RA_slot,
-					 &config_period);
-
-  if (ret == 0) {printf("No prach in %d.%d, mu %d, config_index %d\n",frame,slot,mu,config_index); exit(-1);}
-  format0 = format&0xff;      // first column of format from table
-  format1 = (format>>8)&0xff; // second column of format from table
+  if (ret == 0) {
+    printf("No prach in %d.%d, mu %d, config_index %d\n", frame, slot, mu, config_index);
+    exit(-1);
+  }
+  format0 = prach_info.format & 0xff; // first column of format from table
+  format1 = (prach_info.format >> 8) & 0xff; // second column of format from table
 
   if (format1 != 0xff) {
     switch(format0) {
@@ -562,6 +562,7 @@ int main(int argc, char **argv){
   prach_config->num_prach_fd_occasions_list[fd_occasion].k1.value                        = msg1_frequencystart;
   prach_config->restricted_set_config.value                                              = restrictedSetConfig;
   prach_config->prach_sequence_length.value                                              = prach_sequence_length;
+  prach_config->prach_sub_c_spacing.value                                                = mu;
   prach_pdu->num_cs                                                                      = get_NCS(NCS_config, format0, restrictedSetConfig);
   prach_config->num_prach_fd_occasions_list[fd_occasion].num_root_sequences.value        = 1+(64/(N_ZC/prach_pdu->num_cs));
   prach_pdu->prach_format                                                                = prach_format;
@@ -593,7 +594,7 @@ int main(int argc, char **argv){
   ue_prach_config        = &UE->nrUE_config.prach_config;
   txdata = UE->common_vars.txData;
 
-  UE->prach_vars[0]->amp        = AMP;
+  ue_prach_pdu->prach_tx_power = AMP;
   ue_prach_pdu->root_seq_id     = rootSequenceIndex;
   ue_prach_pdu->num_cs          = get_NCS(NCS_config, format0, restrictedSetConfig);
   ue_prach_pdu->restricted_set  = restrictedSetConfig;
@@ -718,15 +719,15 @@ int main(int argc, char **argv){
   uint16_t preamble_rx, preamble_energy;
 
 
-  for (SNR=snr0; SNR<snr1; SNR+=.1) {
-    for (ue_speed=ue_speed0; ue_speed<ue_speed1; ue_speed+=10) {
+  for (SNR = snr0; SNR < snr1 && !stop; SNR += .1) {
+    for (ue_speed = ue_speed0; ue_speed < ue_speed1 && !stop; ue_speed += 10) {
       delay_avg = 0.0;
       // max Doppler shift
       UE2gNB->max_Doppler = 1.9076e9*(ue_speed/3.6)/3e8;
       printf("n_frames %d SNR %f\n",n_frames,SNR);
       prach_errors=0;
 
-      for (trial=0; trial<n_frames; trial++) {
+      for (trial = 0; trial < n_frames && !stop; trial++) {
 
 	if (input_fd==NULL) {
           sigma2_dB = 10*log10((double)tx_lev) - SNR - 10*log10(N_RB_UL*12/N_ZC);
@@ -774,7 +775,7 @@ int main(int argc, char **argv){
 	  }
 	}
 	
-        rx_nr_prach_ru(ru, prach_format, numRA, prachStartSymbol, prachOccasion, frame, slot);
+        rx_nr_prach_ru(ru, prach_format, numRA, prachStartSymbol, slot, prachOccasion, frame, slot);
 
         for (int i = 0; i < ru->nb_rx; ++i)
           gNB->prach_vars.rxsigF[i] = ru->prach_rxsigF[prachOccasion][i];

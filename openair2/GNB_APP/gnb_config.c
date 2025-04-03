@@ -40,11 +40,9 @@
 #include "L1_nr_paramdef.h"
 #include "MACRLC_nr_paramdef.h"
 #include "PHY/INIT/nr_phy_init.h"
-#include "PHY/defs_common.h"
 #include "PHY/defs_gNB.h"
 #include "PHY/defs_nr_common.h"
 #include "RRC/NR/nr_rrc_config.h"
-#include "RRC/NR/nr_rrc_extern.h"
 #include "RRC_nr_paramsvalues.h"
 #include "T.h"
 #include "asn_SEQUENCE_OF.h"
@@ -72,7 +70,6 @@
 #include "ngap_messages_types.h"
 #include "nr_common.h"
 #include "oai_asn1.h"
-#include "openair1/PHY/defs_common.h"
 #include "prs_nr_paramdef.h"
 #include "radio/ETHERNET/if_defs.h"
 #include "rrc_messages_types.h"
@@ -1014,7 +1011,7 @@ void RCconfig_NR_L1(void)
       gNB->L1_rx_thread_core = *(L1_ParamList.paramarray[j][L1_RX_THREAD_CORE].iptr);
       gNB->L1_tx_thread_core = *(L1_ParamList.paramarray[j][L1_TX_THREAD_CORE].iptr);
       LOG_I(NR_PHY, "L1_RX_THREAD_CORE %d (%d)\n", *(L1_ParamList.paramarray[j][L1_RX_THREAD_CORE].iptr), L1_RX_THREAD_CORE);
-      gNB->TX_AMP = (int16_t)(32767.0 / pow(10.0, .05 * (double)(*L1_ParamList.paramarray[j][L1_TX_AMP_BACKOFF_dB].uptr)));
+      gNB->TX_AMP = min(32767.0 / pow(10.0, .05 * (double)(*L1_ParamList.paramarray[j][L1_TX_AMP_BACKOFF_dB].uptr)), INT16_MAX);
       gNB->phase_comp = *L1_ParamList.paramarray[j][L1_PHASE_COMP].uptr;
       gNB->dmrs_num_antennas_per_thread = *(L1_ParamList.paramarray[j][NUM_ANTENNAS_PER_THREAD].uptr);
       LOG_I(NR_PHY, "TX_AMP = %d (-%d dBFS)\n", gNB->TX_AMP, *L1_ParamList.paramarray[j][L1_TX_AMP_BACKOFF_dB].uptr);
@@ -1393,6 +1390,37 @@ f1ap_setup_req_t *RC_read_F1Setup(uint64_t id,
   return req;
 }
 
+static nr_redcap_config_t *get_redcap_config(int gnb_idx)
+{
+  paramdef_t RedCap_Params[] = GNB_REDCAP_PARAMS_DESC;
+  char aprefix[MAX_OPTNAME_SIZE * 2 + 8];
+  sprintf(aprefix, "%s.[%d].%s", GNB_CONFIG_STRING_GNB_LIST, gnb_idx, GNB_CONFIG_STRING_REDCAP);
+  int ret = config_get(config_get_if(), RedCap_Params, sizeofArray(RedCap_Params), aprefix);
+
+  if (ret <= 0) {
+    printf("problem reading section \"%s\"\n", aprefix);
+    return NULL;
+  }
+  // Check for default/non-existing values in configuration file
+  if (*RedCap_Params[GNB_REDCAP_CELL_BARRED_REDCAP1_RX_R17_IDX].i8ptr == -1
+      || *RedCap_Params[GNB_REDCAP_CELL_BARRED_REDCAP2_RX_R17_IDX].i8ptr == -1) {
+    LOG_I(NR_MAC, "No RedCap configuration found\n");
+    return NULL;
+  }
+
+  nr_redcap_config_t *rc = calloc_or_fail(1, sizeof(*rc));
+  rc->cellBarredRedCap1Rx_r17 = *RedCap_Params[GNB_REDCAP_CELL_BARRED_REDCAP1_RX_R17_IDX].i8ptr;
+  rc->cellBarredRedCap2Rx_r17 = *RedCap_Params[GNB_REDCAP_CELL_BARRED_REDCAP2_RX_R17_IDX].i8ptr;
+  rc->intraFreqReselectionRedCap_r17 = *RedCap_Params[GNB_REDCAP_INTRA_FREQ_RESELECTION_REDCAP_R17_IDX].u8ptr;
+
+  LOG_I(GNB_APP,
+        "cellBarredRedCap1Rx_r17 %d cellBarredRedCap2Rx_r17 %d intraFreqReselectionRedCap_r17 %d\n",
+        rc->cellBarredRedCap1Rx_r17,
+        rc->cellBarredRedCap2Rx_r17,
+        rc->intraFreqReselectionRedCap_r17);
+  return rc;
+}
+
 void RCconfig_nr_macrlc(configmodule_interface_t *cfg)
 {
   int j = 0;
@@ -1478,6 +1506,8 @@ void RCconfig_nr_macrlc(configmodule_interface_t *cfg)
         config.num_ulharq);
   int tot_ant = config.pdsch_AntennaPorts.N1 * config.pdsch_AntennaPorts.N2 * config.pdsch_AntennaPorts.XP;
   AssertFatal(config.maxMIMO_layers != 0 && config.maxMIMO_layers <= tot_ant, "Invalid maxMIMO_layers %d\n", config.maxMIMO_layers);
+
+  config.redcap = get_redcap_config(0);
 
   paramdef_t Timers_Params[] = GNB_TIMERS_PARAMS_DESC;
   char aprefix[MAX_OPTNAME_SIZE * 2 + 8];

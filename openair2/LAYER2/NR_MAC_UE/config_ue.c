@@ -34,7 +34,6 @@
 #define SPEED_OF_LIGHT 299792458
 
 #include "mac_defs.h"
-#include <NR_MAC_gNB/mac_proto.h>
 #include "NR_MAC_UE/mac_proto.h"
 #include "NR_MAC-CellGroupConfig.h"
 #include "LAYER2/NR_MAC_COMMON/nr_mac_common.h"
@@ -43,6 +42,44 @@
 #include "SCHED_NR/phy_frame_config_nr.h"
 #include "oai_asn1.h"
 #include "executables/position_interface.h"
+
+// Build the list of all the valid/transmitted SSBs according to the config
+static void build_ssb_list(NR_UE_MAC_INST_t *mac)
+{
+  // Create the list of transmitted SSBs
+  memset(&mac->ssb_list, 0, sizeof(ssb_list_info_t));
+  ssb_list_info_t *ssb_list = &mac->ssb_list;
+  fapi_nr_config_request_t *cfg = &mac->phy_config.config_req;
+  ssb_list->nb_tx_ssb = 0;
+
+  for (int ssb_index = 0; ssb_index < MAX_NB_SSB; ssb_index++) {
+    uint32_t curr_mask = cfg->ssb_table.ssb_mask_list[ssb_index / 32].ssb_mask;
+    // check if if current SSB is transmitted
+    if ((curr_mask >> (31 - (ssb_index % 32))) & 0x01) {
+      ssb_list->nb_ssb_per_index[ssb_index] = ssb_list->nb_tx_ssb;
+      ssb_list->nb_tx_ssb++;
+    } else
+      ssb_list->nb_ssb_per_index[ssb_index] = -1;
+  }
+}
+
+static int get_ta_offset(long *n_TimingAdvanceOffset)
+{
+  if (!n_TimingAdvanceOffset)
+    return -1;
+
+  switch (*n_TimingAdvanceOffset) {
+    case NR_ServingCellConfigCommonSIB__n_TimingAdvanceOffset_n0 :
+      return 0;
+    case NR_ServingCellConfigCommonSIB__n_TimingAdvanceOffset_n25600 :
+      return 25600;
+    case NR_ServingCellConfigCommonSIB__n_TimingAdvanceOffset_n39936 :
+      return 39936;
+    default :
+      AssertFatal(false, "Invalid n-TimingAdvanceOffset\n");
+  }
+  return -1;
+}
 
 static void set_tdd_config_nr_ue(fapi_nr_tdd_table_t *tdd_table, const frame_structure_t *fs)
 {
@@ -125,8 +162,7 @@ static void config_common_ue_sa(NR_UE_MAC_INST_t *mac, NR_ServingCellConfigCommo
   if (frequencyInfoUL->absoluteFrequencyPointA == NULL)
     cfg->carrier_config.uplink_frequency = cfg->carrier_config.dl_frequency;
   else
-    // TODO check if corresponds to what reported in SIB1
-    cfg->carrier_config.uplink_frequency = (downlink_frequency[cc_idP][0]/1000) + uplink_frequency_offset[cc_idP][0];
+    cfg->carrier_config.uplink_frequency = cfg->carrier_config.dl_frequency + (uplink_frequency_offset[cc_idP][0] / 1000);
 
   for (int i = 0; i < 5; i++) {
     if (i == frequencyInfoUL->scs_SpecificCarrierList.list.array[0]->subcarrierSpacing) {
@@ -143,6 +179,7 @@ static void config_common_ue_sa(NR_UE_MAC_INST_t *mac, NR_ServingCellConfigCommo
   // cell config
   cfg->cell_config.phy_cell_id = mac->physCellId;
   cfg->cell_config.frame_duplex_type = frame_type;
+  cfg->cell_config.N_TA_offset = get_ta_offset(scc->n_TimingAdvanceOffset);
 
   // SSB config
   cfg->ssb_config.ss_pbch_power = scc->ss_PBCH_BlockPower;
@@ -188,9 +225,8 @@ static void config_common_ue_sa(NR_UE_MAC_INST_t *mac, NR_ServingCellConfigCommo
   else {
     // If absent, the UE applies the SCS as derived from the prach-ConfigurationIndex (for 839)
     int config_index = rach_ConfigCommon->rach_ConfigGeneric.prach_ConfigurationIndex;
-    const int64_t *prach_config_info_p = get_prach_config_info(mac->frequency_range, config_index, frame_type);
-    int format = prach_config_info_p[0];
-    cfg->prach_config.prach_sub_c_spacing = format == 3 ? 5 : 4;
+    int format = get_format0(config_index, frame_type, mac->frequency_range);
+    cfg->prach_config.prach_sub_c_spacing = get_delta_f_RA_long(format);
   }
 
   cfg->prach_config.restricted_set_config = rach_ConfigCommon->restrictedSetConfig;
@@ -269,6 +305,13 @@ void configure_ntn_ta(module_id_t module_id, ntn_timing_advance_componets_t *ntn
       ntn_ta->ntn_ta_commondrift = *ntn_Config_r17->ta_Info_r17->ta_CommonDrift_r17 * 0.2e-3;
   }
   ntn_ta->ntn_params_changed = true;
+
+  LOG_D(NR_MAC,
+        "SIB19 Rxd. k_offset:%ld, N_Common_Ta:%f,drift:%f,N_UE_TA:%f \n",
+        ntn_ta->cell_specific_k_offset,
+        ntn_ta->N_common_ta_adj,
+        ntn_ta->ntn_ta_commondrift,
+        ntn_ta->N_UE_TA_adj);
 }
 
 static void config_common_ue(NR_UE_MAC_INST_t *mac, NR_ServingCellConfigCommon_t *scc, int cc_idP)
@@ -287,7 +330,7 @@ static void config_common_ue(NR_UE_MAC_INST_t *mac, NR_ServingCellConfigCommon_t
   if (frequencyInfoDL) { // NeedM for inter-freq handover
     mac->nr_band = *frequencyInfoDL->frequencyBandList.list.array[0];
     frame_type = get_frame_type(mac->nr_band, get_softmodem_params()->numerology);
-    mac->frequency_range = mac->nr_band < 256 ? FR1 : FR2;
+    mac->frequency_range = get_freq_range_from_band(mac->nr_band);
 
     int bw_index = get_supported_band_index(frequencyInfoDL->scs_SpecificCarrierList.list.array[0]->subcarrierSpacing,
                                             mac->frequency_range,
@@ -345,6 +388,7 @@ static void config_common_ue(NR_UE_MAC_INST_t *mac, NR_ServingCellConfigCommon_t
   // cell config
   cfg->cell_config.phy_cell_id = *scc->physCellId;
   cfg->cell_config.frame_duplex_type = frame_type;
+  cfg->cell_config.N_TA_offset = get_ta_offset(scc->n_TimingAdvanceOffset);
 
   // SSB config
   cfg->ssb_config.ss_pbch_power = scc->ss_PBCH_BlockPower;
@@ -412,8 +456,7 @@ static void config_common_ue(NR_UE_MAC_INST_t *mac, NR_ServingCellConfigCommon_t
     else {
       // If absent, the UE applies the SCS as derived from the prach-ConfigurationIndex (for 839)
       int config_index = rach_ConfigCommon->rach_ConfigGeneric.prach_ConfigurationIndex;
-      const int64_t *prach_config_info_p = get_prach_config_info(mac->frequency_range, config_index, frame_type);
-      int format = prach_config_info_p[0];
+      int format = get_format0(config_index, frame_type, mac->frequency_range);
       cfg->prach_config.prach_sub_c_spacing = format == 3 ? 5 : 4;
     }
 
@@ -1400,7 +1443,7 @@ static void setup_srsconfig(NR_UE_UL_BWP_t *bwp, NR_SRS_Config_t *source, NR_SRS
   }
 }
 
-static NR_UE_DL_BWP_t *get_dl_bwp_structure(NR_UE_MAC_INST_t *mac, int bwp_id, bool setup)
+NR_UE_DL_BWP_t *get_dl_bwp_structure(NR_UE_MAC_INST_t *mac, int bwp_id, bool setup)
 {
   NR_UE_DL_BWP_t *bwp = NULL;
   for (int i = 0; i < mac->dl_BWPs.count; i++) {
@@ -1424,7 +1467,7 @@ static NR_UE_DL_BWP_t *get_dl_bwp_structure(NR_UE_MAC_INST_t *mac, int bwp_id, b
   return bwp;
 }
 
-static NR_UE_UL_BWP_t *get_ul_bwp_structure(NR_UE_MAC_INST_t *mac, int bwp_id, bool setup)
+NR_UE_UL_BWP_t *get_ul_bwp_structure(NR_UE_MAC_INST_t *mac, int bwp_id, bool setup)
 {
   NR_UE_UL_BWP_t *bwp = NULL;
   for (int i = 0; i < mac->ul_BWPs.count; i++) {
@@ -1685,24 +1728,6 @@ void nr_rrc_mac_config_req_reset(module_id_t module_id, NR_UE_MAC_reset_cause_t 
   AssertFatal(!ret, "mutex failed %d\n", ret);
 }
 
-static int get_ta_offset(long *n_TimingAdvanceOffset)
-{
-  if (!n_TimingAdvanceOffset)
-    return -1;
-
-  switch (*n_TimingAdvanceOffset) {
-    case NR_ServingCellConfigCommonSIB__n_TimingAdvanceOffset_n0 :
-      return 0;
-    case NR_ServingCellConfigCommonSIB__n_TimingAdvanceOffset_n25600 :
-      return 25600;
-    case NR_ServingCellConfigCommonSIB__n_TimingAdvanceOffset_n39936 :
-      return 39936;
-    default :
-      AssertFatal(false, "Invalid n-TimingAdvanceOffset\n");
-  }
-  return -1;
-}
-
 static void configure_si_schedulingInfo(NR_UE_MAC_INST_t *mac,
                                         NR_SI_SchedulingInfo_t *si_SchedulingInfo,
                                         NR_SI_SchedulingInfo_v1700_t *si_SchedulingInfo_v1700)
@@ -1744,17 +1769,18 @@ void nr_rrc_mac_config_req_sib1(module_id_t module_id, int cc_idP, NR_SIB1_t *si
   AssertFatal(scc, "SIB1 SCC should not be NULL\n");
   UPDATE_IE(mac->tdd_UL_DL_ConfigurationCommon, scc->tdd_UL_DL_ConfigurationCommon, NR_TDD_UL_DL_ConfigCommon_t);
   configure_si_schedulingInfo(mac, si_SchedulingInfo, si_SchedulingInfo_v1700);
-  mac->n_ta_offset = get_ta_offset(scc->n_TimingAdvanceOffset);
 
   config_common_ue_sa(mac, scc, cc_idP);
-  configure_common_BWP_dl(mac,
-                          0, // bwp-id
-                          &scc->downlinkConfigCommon.initialDownlinkBWP);
+
+  // Build the list of all the valid/transmitted SSBs according to the config
+  LOG_D(NR_MAC, "Build SSB list\n");
+  build_ssb_list(mac);
+
+  int bwp_id = 0;
+  configure_common_BWP_dl(mac, bwp_id, &scc->downlinkConfigCommon.initialDownlinkBWP);
   if (scc->uplinkConfigCommon) {
     mac->timeAlignmentTimerCommon = scc->uplinkConfigCommon->timeAlignmentTimerCommon;
-    configure_common_BWP_ul(mac,
-                            0, // bwp-id
-                            &scc->uplinkConfigCommon->initialUplinkBWP);
+    configure_common_BWP_ul(mac, bwp_id, &scc->uplinkConfigCommon->initialUplinkBWP);
   }
   // set current BWP only if coming from non-connected state
   // otherwise it is just a periodically update of the SIB1 content
@@ -1767,9 +1793,6 @@ void nr_rrc_mac_config_req_sib1(module_id_t module_id, int cc_idP, NR_SIB1_t *si
   }
   if (mac->state == UE_RECEIVING_SIB && can_start_ra)
     mac->state = UE_PERFORMING_RA;
-
-  // Setup the SSB to Rach Occasions mapping according to the config
-  build_ssb_to_ro_map(mac);
 
   if (!get_softmodem_params()->emulate_l1)
     mac->if_module->phy_config_request(&mac->phy_config);
@@ -1813,12 +1836,15 @@ static void handle_reconfiguration_with_sync(NR_UE_MAC_INST_t *mac,
 
   if (reconfWithSync->spCellConfigCommon) {
     NR_ServingCellConfigCommon_t *scc = reconfWithSync->spCellConfigCommon;
-    mac->n_ta_offset = get_ta_offset(scc->n_TimingAdvanceOffset);
     if (scc->physCellId)
       mac->physCellId = *scc->physCellId;
     mac->dmrs_TypeA_Position = scc->dmrs_TypeA_Position;
     UPDATE_IE(mac->tdd_UL_DL_ConfigurationCommon, scc->tdd_UL_DL_ConfigurationCommon, NR_TDD_UL_DL_ConfigCommon_t);
     config_common_ue(mac, scc, cc_idP);
+    // Build the list of all the valid/transmitted SSBs according to the config
+    LOG_D(NR_MAC,"Build SSB list\n");
+    build_ssb_list(mac);
+
     const int bwp_id = 0;
     if (scc->downlinkConfigCommon)
       configure_common_BWP_dl(mac, bwp_id, scc->downlinkConfigCommon->initialDownlinkBWP);
@@ -2625,11 +2651,6 @@ void nr_rrc_mac_config_req_cg(module_id_t module_id,
 
   if (ue_Capability)
     handle_mac_uecap_info(mac, ue_Capability);
-
-  // Setup the SSB to Rach Occasions mapping according to the config
-  // Only if RACH is configured for current BWP
-  if (mac->current_UL_BWP->rach_ConfigCommon)
-    build_ssb_to_ro_map(mac);
 
   if (!mac->dl_config_request || !mac->ul_config_request)
     ue_init_config_request(mac, mac->frame_structure.numb_slots_frame);

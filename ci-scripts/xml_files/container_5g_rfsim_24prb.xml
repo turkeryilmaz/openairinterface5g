@@ -34,6 +34,9 @@
  020002
  030001
  030002
+ 040001
+ 000004
+ 020002
  100001
  222222
         </TestCaseRequestedList>
@@ -76,12 +79,20 @@
                 <nodes>cacofonix</nodes>
         </testCase>
 
+        <testCase id="000004">
+                <class>IdleSleep</class>
+                <desc>Sleep</desc>
+                <idle_sleep_time_in_sec>5</idle_sleep_time_in_sec>
+        </testCase>
+
         <testCase id="020001">
                 <class>Ping</class>
                 <desc>Ping ext-dn from NR-UE</desc>
                 <id>rfsim5g_ue</id>
                 <nodes>cacofonix</nodes>
-                <ping_args> -c 20 -i0.2 192.168.72.135</ping_args>
+                <svr_id>rfsim5g_ext_dn</svr_id>
+                <svr_node>cacofonix</svr_node>
+                <ping_args> -c 20 -i0.2</ping_args>
                 <ping_packetloss_threshold>5</ping_packetloss_threshold>
         </testCase>
 
@@ -90,7 +101,9 @@
                 <desc>Ping NR-UE from ext-dn</desc>
                 <id>rfsim5g_ext_dn</id>
                 <nodes>cacofonix</nodes>
-                <ping_args>-c 20 12.1.1.2 -i0.2</ping_args>
+                <svr_id>rfsim5g_ue</svr_id>
+                <svr_node>cacofonix</svr_node>
+                <ping_args>-c 20 -i0.2</ping_args>
                 <ping_packetloss_threshold>5</ping_packetloss_threshold>
         </testCase>
 
@@ -116,6 +129,14 @@
                 <svr_node>cacofonix</svr_node>
                 <iperf_packetloss_threshold>5</iperf_packetloss_threshold>
                 <iperf_bitrate_threshold>90</iperf_bitrate_threshold>
+        </testCase>
+
+        <testCase id="040001">
+                <class>Custom_Command</class>
+                <desc>Force Msg3 C-RNTI RA</desc>
+                <node>cacofonix</node>
+                <command>echo ciUE force_crnti_ra | nc 192.168.71.150 8091</command>
+                <command_fail>yes</command_fail>
         </testCase>
 
         <testCase id="100001">

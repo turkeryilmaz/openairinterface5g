@@ -43,9 +43,6 @@ NAMESPACE = "oaicicd-ran"
 OCUrl = "https://api.oai.cs.eurecom.fr:6443"
 OCRegistry = "default-route-openshift-image-registry.apps.oai.cs.eurecom.fr"
 CI_OC_RAN_NAMESPACE = "oaicicd-ran"
-CN_IMAGES = ["mysql", "oai-nrf", "oai-amf", "oai-smf", "oai-upf", "oai-ausf", "oai-udm", "oai-udr", "oai-traffic-server"]
-CN_CONTAINERS = ["", "-c nrf", "-c amf", "-c smf", "-c upf", "-c ausf", "-c udm", "-c udr", ""]
-
 
 def OC_login(cmd, ocUserName, ocPassword, ocProjectName):
 	if ocUserName == '' or ocPassword == '' or ocProjectName == '':
@@ -66,49 +63,6 @@ def OC_login(cmd, ocUserName, ocPassword, ocProjectName):
 
 def OC_logout(cmd):
 	cmd.run(f'oc logout')
-
-def OC_deploy_CN(cmd, ocUserName, ocPassword, ocNamespace, path):
-	logging.debug(f'OC OAI CN5G: Deploying OAI CN5G on Openshift Cluster: {ocNamespace}')
-	succeeded = OC_login(cmd, ocUserName, ocPassword, ocNamespace)
-	if not succeeded:
-		return False, CONST.OC_LOGIN_FAIL
-	cmd.run('helm uninstall oai5gcn --wait --timeout 60s')
-	ret = cmd.run(f'helm install --wait --timeout 120s oai5gcn {path}/ci-scripts/charts/oai-5g-basic/.')
-	if ret.returncode != 0:
-		logging.error('OC OAI CN5G: Deployment failed')
-		OC_logout(cmd)
-		return False, CONST.OC_PROJECT_FAIL
-	report = cmd.run('oc get pods')
-	OC_logout(cmd)
-	return True, report
-
-def OC_undeploy_CN(cmd, ocUserName, ocPassword, ocNamespace, path):
-	logging.debug(f'OC OAI CN5G: Terminating CN on Openshift Cluster: {ocNamespace}')
-	succeeded = OC_login(cmd, ocUserName, ocPassword, ocNamespace)
-	if not succeeded:
-		return False, CONST.OC_LOGIN_FAIL
-	cmd.run(f'rm -Rf {path}/logs')
-	cmd.run(f'mkdir -p {path}/logs')
-	logging.debug('OC OAI CN5G: Collecting log files to workspace')
-	cmd.run(f'oc describe pod &> {path}/logs/describe-pods-post-test.log')
-	cmd.run(f'oc get pods.metrics.k8s &> {path}/logs/nf-resource-consumption.log')
-	for ii, ci in zip(CN_IMAGES, CN_CONTAINERS):
-		podName = cmd.run(f"oc get pods | grep {ii} | awk \'{{print $1}}\'").stdout.strip()
-		if not podName:
-			logging.debug(f'{ii} pod not found!')
-		else:
-			cmd.run(f'oc logs -f {podName} {ci} &> {path}/logs/{ii}.log &')
-	cmd.run(f'cd {path}/logs && zip -r -qq test_logs_CN.zip *.log')
-	cmd.copyin(f'{path}/logs/test_logs_CN.zip','test_logs_CN.zip')
-	ret = cmd.run('helm uninstall --wait --timeout 60s oai5gcn')
-	if ret.returncode != 0:
-		logging.error('OC OAI CN5G: Undeployment failed')
-		cmd.run('helm uninstall --wait --timeout 60s oai5gcn')
-		OC_logout(cmd)
-		return False, CONST.OC_PROJECT_FAIL
-	report = cmd.run('oc get pods')
-	OC_logout(cmd)
-	return True, report
 
 class Cluster:
 	def __init__(self):
@@ -140,7 +94,7 @@ class Cluster:
 		self._retag_image_statement(name, name, newTag, filename)
 		self.cmd.run(f'oc delete -f {filename}')
 		ret = self.cmd.run(f'oc create -f {filename}')
-		if re.search('buildconfig.build.openshift.io/[a-zA-Z\-0-9]+ created', ret.stdout) is not None:
+		if re.search(r'buildconfig.build.openshift.io/[a-zA-Z\-0-9]+ created', ret.stdout) is not None:
 			return True
 		logging.error('error while creating buildconfig: ' + ret.stdout)
 		return False
@@ -210,7 +164,7 @@ class Cluster:
 
 	def _deploy_pod(self, filename, timeout = 120):
 		ret = self.cmd.run(f'oc create -f {filename}')
-		result = re.search(f'pod/(?P<pod>[a-zA-Z0-9_\-]+) created', ret.stdout)
+		result = re.search(r'pod/(?P<pod>[a-zA-Z0-9_\-]+) created', ret.stdout)
 		if result is None:
 			logging.error(f'could not deploy pod: {ret.stdout}')
 			return None
@@ -226,7 +180,7 @@ class Cluster:
 	def _undeploy_pod(self, filename):
 		self.cmd.run(f'oc delete -f {filename}')
 
-	def PullClusterImage(self, HTML, node, images):
+	def PullClusterImage(self, HTML, node, images, tag_prefix):
 		logging.debug(f'Pull OC image {images} to server {node}')
 		self.testCase_id = HTML.testCase_id
 		with cls_cmd.getConnection(node) as cmd:
@@ -242,7 +196,7 @@ class Cluster:
 				return False
 			tag = cls_containerize.CreateTag(self.ranCommitID, self.ranBranch, self.ranAllowMerge)
 			registry = f'{self.OCRegistry}/{CI_OC_RAN_NAMESPACE}'
-			success, msg = cls_containerize.Containerize.Pull_Image(cmd, images, tag, registry, None, None)
+			success, msg = cls_containerize.Containerize.Pull_Image(cmd, images, tag, tag_prefix, registry, None, None)
 			OC_logout(cmd)
 		param = f"on node {node}"
 		if success:
@@ -330,7 +284,7 @@ class Cluster:
 			self._recreate_bc('ran-base', baseTag, 'openshift/ran-base-bc.yaml')
 			ranbase_job = self._start_build('ran-base')
 			attemptedImages += ['ran-base']
-			status = ranbase_job is not None and self._wait_build_end([ranbase_job], 800)
+			status = ranbase_job is not None and self._wait_build_end([ranbase_job], 1000)
 			if not status: logging.error('failure during build of ran-base')
 			self.cmd.run(f'oc logs {ranbase_job} &> cmake_targets/log/ran-base.log') # cannot use cmd.run because of redirect
 			# recover logs by mounting image
@@ -368,7 +322,7 @@ class Cluster:
 			self.cmd.run(f'oc logs {ranbuild_job} &> cmake_targets/log/ran-build.log')
 			self.cmd.run(f'oc logs {physim_job} &> cmake_targets/log/oai-physim.log')
 			self.cmd.run(f'oc logs {clang_job} &> cmake_targets/log/oai-clang.log')
-			self.cmd.run(f'oc get pods.metrics.k8s.io &>> cmake_targets/log/build-metrics.log', '\$', 10)
+			self.cmd.run(f'oc get pods.metrics.k8s.io &>> cmake_targets/log/build-metrics.log')
 
 		if status:
 			self._recreate_is_tag('oai-enb', imageTag, 'openshift/oai-enb-is.yaml')
@@ -392,7 +346,7 @@ class Cluster:
 			gnb_aw2s_job = self._start_build('oai-gnb-aw2s')
 			attemptedImages += ['oai-gnb-aw2s']
 
-			wait = enb_job is not None and gnb_job is not None and gnb_aw2s_job is not None and self._wait_build_end([enb_job, gnb_job, gnb_aw2s_job], 600)
+			wait = enb_job is not None and gnb_job is not None and gnb_aw2s_job is not None and self._wait_build_end([enb_job, gnb_job, gnb_aw2s_job], 800)
 			if not wait: logging.error('error during build of eNB/gNB')
 			status = status and wait
 			# recover logs
@@ -421,14 +375,14 @@ class Cluster:
 			nrue_job = self._start_build('oai-nr-ue')
 			attemptedImages += ['oai-nr-ue']
 
-			wait = nr_cuup_job is not None and lteue_job is not None and nrue_job is not None and self._wait_build_end([nr_cuup_job, lteue_job, nrue_job], 600)
+			wait = nr_cuup_job is not None and lteue_job is not None and nrue_job is not None and self._wait_build_end([nr_cuup_job, lteue_job, nrue_job], 800)
 			if not wait: logging.error('error during build of nr-cuup/lteUE/nrUE')
 			status = status and wait
 			# recover logs
 			self.cmd.run(f'oc logs {nr_cuup_job} &> cmake_targets/log/oai-nr-cuup.log')
 			self.cmd.run(f'oc logs {lteue_job} &> cmake_targets/log/oai-lte-ue.log')
 			self.cmd.run(f'oc logs {nrue_job} &> cmake_targets/log/oai-nr-ue.log')
-			self.cmd.run(f'oc get pods.metrics.k8s.io &>> cmake_targets/log/build-metrics.log', '\$', 10)
+			self.cmd.run(f'oc get pods.metrics.k8s.io &>> cmake_targets/log/build-metrics.log')
 
 		if status:
 			self._recreate_is_tag('ran-build-fhi72', imageTag, 'openshift/ran-build-fhi72-is.yaml')
@@ -441,7 +395,7 @@ class Cluster:
 			if not wait: logging.error('error during build of ranbuildfhi72_job')
 			status = status and wait
 			self.cmd.run(f'oc logs {ranbuildfhi72_job} &> cmake_targets/log/ran-build-fhi72.log')
-			self.cmd.run(f'oc get pods.metrics.k8s.io &>> cmake_targets/log/build-metrics.log', '\$', 10)
+			self.cmd.run(f'oc get pods.metrics.k8s.io &>> cmake_targets/log/build-metrics.log')
 
 		if status:
 			self._recreate_is_tag('oai-gnb-fhi72', imageTag, 'openshift/oai-gnb-fhi72-is.yaml')
@@ -456,7 +410,7 @@ class Cluster:
 			status = status and wait
 			# recover logs
 			self.cmd.run(f'oc logs {gnb_fhi72_job} &> cmake_targets/log/oai-gnb-fhi72.log')
-			self.cmd.run(f'oc get pods.metrics.k8s.io &>> cmake_targets/log/build-metrics.log', '\$', 10)
+			self.cmd.run(f'oc get pods.metrics.k8s.io &>> cmake_targets/log/build-metrics.log')
 
 		# split and analyze logs
 		imageSize = {}
@@ -472,9 +426,9 @@ class Cluster:
 				imageSize[image] = f'{sizeMb:.1f} Mbytes (uncompressed: ~{sizeMb*2.5:.1f} Mbytes)'
 			logging.info(f'\u001B[1m{image} size is {imageSize[image]}\u001B[0m')
 
-		grep_exp = "\|".join(attemptedImages)
+		grep_exp = r"\|".join(attemptedImages)
 		self.cmd.run(f'oc get images | grep -e \'{grep_exp}\' &> cmake_targets/log/image_registry.log');
-		self.cmd.run(f'for pod in $(oc get pods | tail -n +2 | awk \'{{print $1}}\'); do oc get pod $pod -o json &>> cmake_targets/log/build_pod_summary.log; done', '\$', 60)
+		self.cmd.run(f'for pod in $(oc get pods | tail -n +2 | awk \'{{print $1}}\'); do oc get pod $pod -o json &>> cmake_targets/log/build_pod_summary.log; done')
 
 		build_log_name = f'build_log_{self.testCase_id}'
 		cls_containerize.CopyLogsToExecutor(self.cmd, lSourcePath, build_log_name)

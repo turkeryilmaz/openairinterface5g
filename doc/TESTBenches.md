@@ -25,6 +25,7 @@
 | aerial2       | 172.21.16.131   | CI-Aerial2-Usage      | gNB (PNF/Nvidia CUBB + VNF) | Foxconn RU, _Nvidia Aerial SDK integrated_   |
 | cacofonix     | 172.21.16.150   | CI-Cacofonix-Usage    | gNB (n78, FHI7.2)  |                                                       |
 | matix         | 172.21.19.58    | CI-Matix-Usage        | gNB (n77)          | N310                                                  |
+| gracehopper1-oai | --           | Gracehopper1          | build, gNB/Aerial  | _Nvidia Aerial SDK integrated_                        |
 
 Note: The available resources, and their current usage, is indicated here:
 - [Lockable resources of jenkins-oai](https://jenkins-oai.eurecom.fr/lockable-resources/):
@@ -78,7 +79,7 @@ Note: The available resources, and their current usage, is indicated here:
 ### [RAN-Container-Parent](https://jenkins-oai.eurecom.fr/job/RAN-Container-Parent/)
 
 **Purpose**: automatically triggered tests on MR creation or push, from Gitlab
-Webhook ~documentation ~BUILD-ONLY ~4G-LTE ~5G-NR
+Webhook ~documentation ~BUILD-ONLY ~4G-LTE ~5G-NR ~nrUE
 
 This pipeline has basically two main stages, as follows. For the image build,
 please also refer to the [dedicated documentation](../docker/README.md) for
@@ -87,16 +88,16 @@ information on how the images are built.
 #### Image Build pipelines
 
 - [RAN-ARM-Cross-Compile-Builder](https://jenkins-oai.eurecom.fr/job/RAN-ARM-Cross-Compile-Builder/)
-  ~BUILD-ONLY ~4G-LTE ~5G-NR
+  ~BUILD-ONLY ~4G-LTE ~5G-NR ~nrUE
   - orion: Cross-compilation from Intel to ARM
   - base image from `Dockerfile.base.ubuntu22.cross-arm64`
   - build image from `Dockerfile.build.ubuntu22.cross-arm64` (no target images)
 - [RAN-cppcheck](https://jenkins-oai.eurecom.fr/job/RAN-cppcheck/)
-  ~BUILD-ONLY ~4G-LTE ~5G-NR
+  ~BUILD-ONLY ~4G-LTE ~5G-NR ~nrUE
   - bellatrix
   - performs static code analysis, currently not actively enforced
 - [RAN-RHEL8-Cluster-Image-Builder](https://jenkins-oai.eurecom.fr/job/RAN-RHEL8-Cluster-Image-Builder/)
-  ~BUILD-ONLY ~4G-LTE ~5G-NR
+  ~BUILD-ONLY ~4G-LTE ~5G-NR ~nrUE
   - cluster (`Asterix-OC-oaicicd-session` resource): RHEL image build using the OpenShift Cluster (using gcc/clang)
   - base image from `Dockerfile.build.rhel9`
   - build image from `Dockerfile.build.rhel9`, followed by
@@ -110,7 +111,7 @@ information on how the images are built.
     image)
   - build image from `Dockerfile.clang.rhel9` (compilation only, artifacts not used currently)
 - [RAN-Ubuntu18-Image-Builder](https://jenkins-oai.eurecom.fr/job/RAN-Ubuntu18-Image-Builder/)
-  ~BUILD-ONLY ~4G-LTE ~5G-NR
+  ~BUILD-ONLY ~4G-LTE ~5G-NR ~nrUE
   - run formatting check from `ci-scripts/docker/Dockerfile.formatting.bionic`
   - obelix: Ubuntu 22 image build using docker (Note: builds U22 images while pipeline is named U18!)
   - base image from `Dockerfile.base.ubuntu22`
@@ -122,13 +123,22 @@ information on how the images are built.
     - target image from `Dockerfile.lteUE.ubuntu22`
     - target image from `Dockerfile.lteRU.ubuntu22`
   - build unit tests from `ci-scripts/docker/Dockerfile.unittest.ubuntu22`, and run them
+- [RAN-Ubuntu-ARM-Image-Builder](https://jenkins-oai.eurecom.fr/job/RAN-Ubuntu-ARM-Image-Builder/)
+  ~BUILD-ONLY ~4G-LTE ~5G-NR
+  - gracehopper1-oai: ARM Ubuntu 22 image build using docker
+  - base image from `Dockerfile.base.ubuntu22`
+  - build image from `Dockerfile.build.ubuntu22`, followed by
+    - target image from `Dockerfile.gNB.ubuntu22`
+    - target image from `Dockerfile.nr-cuup.ubuntu22`
+    - target image from `Dockerfile.nrUE.ubuntu22`
+    - target image from `Dockerfile.gNB.aerial.ubuntu22`
 
 #### Image Test pipelines
 
 - [OAI-CN5G-COTS-UE-Test](https://jenkins-oai.eurecom.fr/job/OAI-CN5G-COTS-UE-Test/)
   ~5G-NR
   - using 5GC bench (resources `CI-Cetautomatix-OC-oaicicd-session`, `CI-Dogmatix-CN5G-gNB`): Attach/Detach of UE with multiple PDU sessions
-- [OAI-FLEXRIC-RAN-Integration-Test](https://jenkins-oai.eurecom.fr/job/OAI-FLEXRIC-RAN-Integration-Test/) ~5G-NR
+- [OAI-FLEXRIC-RAN-Integration-Test](https://jenkins-oai.eurecom.fr/job/OAI-FLEXRIC-RAN-Integration-Test/) ~5G-NR ~nrUE
   - selfix (gNB, nrUE, OAI 5GC, FlexRIC)
   - uses RFsimulator, tests FlexRIC/E2 interface and xApps
 - [RAN-gNB-N300-Timing-Phytest-LDPC](https://jenkins-oai.eurecom.fr/view/RAN/job/RAN-gNB-N300-Timing-Phytest-LDPC/)
@@ -160,7 +170,7 @@ information on how the images are built.
   - nepes + B200 (eNB), ofqot + B200 (gNB), idefix + Quectel, nepes w/ ltebox
   - basic NSA test
 - [RAN-PhySim-Cluster](https://jenkins-oai.eurecom.fr/job/RAN-PhySim-Cluster/)
-  ~4G-LTE ~5G-NR
+  ~4G-LTE ~5G-NR ~nrUE
   - cluster (`Asterix-OC-oaicicd-session` resource), tests in OpenShift Cluster
   - unitary simulators (`nr_dlsim`, etc.)
   - see [`./physical-simulators.md`](./physical-simulators.md) for an overview
@@ -169,7 +179,7 @@ information on how the images are built.
   - cacofonix (eNB, lteUE, OAI EPC)
   - uses RFsimulator, for FDD 5, 10, 20MHz with core, 5MHz noS1
 - [RAN-RF-Sim-Test-5G](https://jenkins-oai.eurecom.fr/job/RAN-RF-Sim-Test-5G/)
-  ~5G-NR
+  ~5G-NR ~nrUE
   - cacofonix (gNB, nrUE, OAI 5GC)
   - uses RFsimulator, TDD 40MHz, FDD 40MHz, F1 split
 - [RAN-SA-AW2S-CN5G](https://jenkins-oai.eurecom.fr/job/RAN-SA-AW2S-CN5G/)
@@ -182,7 +192,7 @@ information on how the images are built.
   - ofqot + B200, idefix + Quectel, nepes w/ sabox
   - basic SA test (20 MHz TDD), F1, reestablishment, ...
 - [RAN-SA-OAIUE-CN5G](https://jenkins-oai.eurecom.fr/job/RAN-SA-OAIUE-CN5G/)
-  ~5G-NR
+  ~5G-NR ~nrUE
   - 5G-NR SA test setup: gNB on avra + N310, OAIUE on caracal + N310, OAI CN5G
   - OpenShift cluster for CN deployment and container images for gNB and UE deployment
 - [RAN-SA-AERIAL-CN5G](https://jenkins-oai.eurecom.fr/job/RAN-SA-AERIAL-CN5G/)

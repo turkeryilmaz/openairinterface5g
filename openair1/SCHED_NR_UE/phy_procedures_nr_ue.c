@@ -294,14 +294,19 @@ void phy_procedures_nrUE_TX(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, n
   pucch_procedures_ue_nr(ue, proc, phy_data, (c16_t **)&txdataF);
 
   LOG_D(PHY, "Sending Uplink data \n");
-  start_meas_nr_ue_phy(ue, OFDM_MOD_STATS);
-  nr_ue_pusch_common_procedures(ue,
-                                proc->nr_slot_tx,
-                                &ue->frame_parms,
-                                ue->frame_parms.nb_antennas_tx,
-                                (c16_t **)txdataF,
-                                link_type_ul);
-  stop_meas_nr_ue_phy(ue, OFDM_MOD_STATS);
+
+  // Don't do OFDM Mod if txdata contains prach
+  const NR_UE_PRACH *prach_var = ue->prach_vars[proc->gNB_id];
+  if (!prach_var->active) {
+    start_meas_nr_ue_phy(ue, OFDM_MOD_STATS);
+    nr_ue_pusch_common_procedures(ue,
+                                  proc->nr_slot_tx,
+                                  &ue->frame_parms,
+                                  ue->frame_parms.nb_antennas_tx,
+                                  (c16_t **)txdataF,
+                                  link_type_ul);
+    stop_meas_nr_ue_phy(ue, OFDM_MOD_STATS);
+  }
 
   nr_ue_prach_procedures(ue, proc);
 
@@ -681,20 +686,18 @@ static uint32_t compute_csi_rm_unav_res(fapi_nr_dl_config_dlsch_pdu_rel15_t *dls
 
 /*! \brief Process the whole DLSCH slot
  */
-static bool nr_ue_dlsch_procedures(PHY_VARS_NR_UE *ue,
+static void nr_ue_dlsch_procedures(PHY_VARS_NR_UE *ue,
                                    const UE_nr_rxtx_proc_t *proc,
                                    NR_UE_DLSCH_t dlsch[2],
                                    int16_t *llr[2]) {
   if (dlsch[0].active == false) {
     LOG_E(PHY, "DLSCH should be active when calling this function\n");
-    return true;
+    return;
   }
 
-  bool dec = false;
   int harq_pid = dlsch[0].dlsch_config.harq_process_nbr;
   int frame_rx = proc->frame_rx;
   int nr_slot_rx = proc->nr_slot_rx;
-  uint32_t ret = UINT32_MAX;
   NR_DL_UE_HARQ_t *dl_harq0 = &ue->dl_harq_processes[0][harq_pid];
   NR_DL_UE_HARQ_t *dl_harq1 = &ue->dl_harq_processes[1][harq_pid];
   uint16_t dmrs_len = get_num_dmrs(dlsch[0].dlsch_config.dlDmrsSymbPos);
@@ -727,7 +730,7 @@ static bool nr_ue_dlsch_procedures(PHY_VARS_NR_UE *ue,
     const int ack_nack_slot_and_frame =
         (proc->nr_slot_rx + dlsch[0].dlsch_config.k1_feedback) + proc->frame_rx * ue->frame_parms.slots_per_frame;
     dynamic_barrier_join(&ue->process_slot_tx_barriers[ack_nack_slot_and_frame % NUM_PROCESS_SLOT_TX_BARRIERS]);
-    return false;
+    return;
   }
 
   int G[2];
@@ -760,10 +763,8 @@ static bool nr_ue_dlsch_procedures(PHY_VARS_NR_UE *ue,
   }
 
   start_meas_nr_ue_phy(ue, DLSCH_DECODING_STATS);
-  ret = nr_dlsch_decoding(ue, proc, dlsch, llr, p_b, G, nb_dlsch, DLSCH_ids);
+  nr_dlsch_decoding(ue, proc, dlsch, llr, p_b, G, nb_dlsch, DLSCH_ids);
   stop_meas_nr_ue_phy(ue, DLSCH_DECODING_STATS);
-
-  if (ret < ue->max_ldpc_iterations + 1) dec = true;
 
   int ind_type = -1;
   switch (dlsch[0].rnti_type) {
@@ -824,7 +825,6 @@ static bool nr_ue_dlsch_procedures(PHY_VARS_NR_UE *ue,
   else if (ue->phy_sim_dlsch_b && is_cw1_active == ACTIVE)
     memcpy(ue->phy_sim_dlsch_b, p_b[1], dlsch_bytes);
 
-  return dec;
 }
 
 static bool is_ssb_index_transmitted(const PHY_VARS_NR_UE *ue, const int index)
@@ -1168,36 +1168,57 @@ void nr_ue_prach_procedures(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc)
 
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PHY_PROCEDURES_UE_TX_PRACH, VCD_FUNCTION_IN);
 
-  if (ue->prach_vars[gNB_id]->active) {
-    fapi_nr_ul_config_prach_pdu *prach_pdu = &ue->prach_vars[gNB_id]->prach_pdu;
-    ue->tx_power_dBm[nr_slot_tx] = prach_pdu->prach_tx_power;
+  NR_UE_PRACH *prach_var = ue->prach_vars[gNB_id];
+  if (prach_var->active) {
+    fapi_nr_ul_config_prach_pdu *prach_pdu = &prach_var->prach_pdu;
+    // Generate PRACH in first slot. For L839, the following slots are also filled in this slot.
+    if (prach_pdu->prach_slot == nr_slot_tx) {
+      ue->tx_power_dBm[nr_slot_tx] = prach_pdu->prach_tx_power;
 
-    LOG_D(PHY, "In %s: [UE %d][RAPROC][%d.%d]: Generating PRACH Msg1 (preamble %d, P0_PRACH %d)\n",
-          __FUNCTION__,
-          mod_id,
-          frame_tx,
-          nr_slot_tx,
-          prach_pdu->ra_PreambleIndex,
-          ue->tx_power_dBm[nr_slot_tx]);
+      LOG_D(PHY,
+            "In %s: [UE %d][RAPROC][%d.%d]: Generating PRACH Msg1 (preamble %d, P0_PRACH %d)\n",
+            __FUNCTION__,
+            mod_id,
+            frame_tx,
+            nr_slot_tx,
+            prach_pdu->ra_PreambleIndex,
+            ue->tx_power_dBm[nr_slot_tx]);
 
-    ue->prach_vars[gNB_id]->amp = AMP;
+      prach_var->amp = AMP;
 
-    VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_UE_GENERATE_PRACH, VCD_FUNCTION_IN);
+      VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_UE_GENERATE_PRACH, VCD_FUNCTION_IN);
 
-    prach_power = generate_nr_prach(ue, gNB_id, frame_tx, nr_slot_tx);
+      start_meas_nr_ue_phy(ue, PRACH_GEN_STATS);
+      prach_power = generate_nr_prach(ue, gNB_id, frame_tx, nr_slot_tx);
+      stop_meas_nr_ue_phy(ue, PRACH_GEN_STATS);
+      if (cpumeas(CPUMEAS_GETSTATE)) {
+        LOG_D(PHY,
+              "[SFN %d.%d] PRACH Proc %5.2f\n",
+              proc->frame_tx,
+              proc->nr_slot_tx,
+              ue->phy_cpu_stats.cpu_time_stats[PRACH_GEN_STATS].p_time / (cpuf * 1000.0));
+      }
 
-    VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_UE_GENERATE_PRACH, VCD_FUNCTION_OUT);
+      VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_UE_GENERATE_PRACH, VCD_FUNCTION_OUT);
 
-    LOG_D(PHY, "In %s: [UE %d][RAPROC][%d.%d]: Generated PRACH Msg1 (TX power PRACH %d dBm, digital power %d dBW (amp %d)\n",
-      __FUNCTION__,
-      mod_id,
-      frame_tx,
-      nr_slot_tx,
-      ue->tx_power_dBm[nr_slot_tx],
-      dB_fixed(prach_power),
-      ue->prach_vars[gNB_id]->amp);
+      LOG_D(PHY,
+            "In %s: [UE %d][RAPROC][%d.%d]: Generated PRACH Msg1 (TX power PRACH %d dBm, digital power %d dBW (amp %d)\n",
+            __FUNCTION__,
+            mod_id,
+            frame_tx,
+            nr_slot_tx,
+            ue->tx_power_dBm[nr_slot_tx],
+            dB_fixed(prach_power),
+            ue->prach_vars[gNB_id]->amp);
 
-    ue->prach_vars[gNB_id]->active = false;
+      // set duration of prach slots so we know when to skip OFDM modulation
+      const int prach_format = ue->prach_vars[gNB_id]->prach_pdu.prach_format;
+      const int prach_slots = (prach_format < 4) ? get_long_prach_dur(prach_format, ue->frame_parms.numerology_index) : 1;
+      prach_var->num_prach_slots = prach_slots;
+    }
+
+    // set as inactive in the last slot
+    prach_var->active = !(nr_slot_tx == (prach_pdu->prach_slot + prach_var->num_prach_slots - 1));
   }
 
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PHY_PROCEDURES_UE_TX_PRACH, VCD_FUNCTION_OUT);

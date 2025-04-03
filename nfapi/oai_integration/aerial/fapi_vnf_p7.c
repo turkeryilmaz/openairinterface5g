@@ -93,7 +93,7 @@ int aerial_phy_nr_uci_indication(nfapi_nr_uci_indication_t *ind)
   return 1;
 }
 
-void gNB_dlsch_ulsch_scheduler(module_id_t module_idP, frame_t frame, sub_frame_t slot, NR_Sched_Rsp_t* sched_info);
+void gNB_dlsch_ulsch_scheduler(module_id_t module_idP, frame_t frame, slot_t slot, NR_Sched_Rsp_t* sched_info);
 int oai_fapi_dl_tti_req(nfapi_nr_dl_tti_request_t *dl_config_req);
 int oai_fapi_ul_tti_req(nfapi_nr_ul_tti_request_t *ul_tti_req);
 int oai_fapi_tx_data_req(nfapi_nr_tx_data_request_t* tx_data_req);
@@ -309,11 +309,8 @@ uint8_t aerial_unpack_nr_srs_indication(uint8_t **ppReadPackedMsg,
   nfapi_nr_srs_indication_t *srs_ind = (nfapi_nr_srs_indication_t *)msg;
   for (uint8_t pdu_idx = 0; pdu_idx < srs_ind->number_of_pdus; pdu_idx++) {
     nfapi_nr_srs_indication_pdu_t *pdu = &srs_ind->pdu_list[pdu_idx];
-    nfapi_srs_report_tlv_t *report_tlv = &pdu->report_tlv;
-    for (int i = 0; i < (report_tlv->length + 3) / 4; i++) {
-      if (!pull32(pDataMsg, &report_tlv->value[i], data_end)) {
-        return 0;
-      }
+    if (!unpack_nr_srs_report_tlv_value(&pdu->report_tlv, pDataMsg, data_end)) {
+      return 0;
     }
   }
   return retval;

@@ -56,7 +56,6 @@
 #include "PHY/NR_UE_TRANSPORT/nr_transport_ue.h"
 #include "PHY/TOOLS/tools_defs.h"
 #include "PHY/defs_RU.h"
-#include "PHY/defs_common.h"
 #include "PHY/defs_gNB.h"
 #include "PHY/defs_nr_UE.h"
 #include "PHY/defs_nr_common.h"
@@ -166,6 +165,10 @@ int NB_UE_INST = 1;
 configmodule_interface_t *uniqCfg = NULL;
 int main(int argc, char *argv[])
 {
+  stop = false;
+  __attribute__((unused)) struct sigaction oldaction;
+  sigaction(SIGINT, &sigint_action, &oldaction);
+
   FILE *csv_file = NULL;
   char *filename_csv = NULL;
   int i;
@@ -973,7 +976,7 @@ int main(int argc, char *argv[])
   //---------------
   int ret = 1;
   int srs_ret = do_SRS;
-  for (SNR = snr0; SNR <= snr1; SNR += snr_step) {
+  for (SNR = snr0; SNR <= snr1 && !stop; SNR += snr_step) {
 
     varArray_t *table_rx=initVarArray(1000,sizeof(double));
     int error_flag = 0;
@@ -1012,16 +1015,16 @@ int main(int argc, char *argv[])
     int64_t sum_srs_snr = 0;
     int srs_snr_count = 0;
 
-    for (trial = 0; trial < n_trials; trial++) {
+    for (trial = 0; trial < n_trials && !stop; trial++) {
 
       uint8_t round = 0;
       crc_status = 1;
       errors_decoding = 0;
 
-      while (round < max_rounds && crc_status) {
+      while (round < max_rounds && crc_status && !stop) {
 
         round_trials[round]++;
-        rv_index = nr_rv_round_map[round % 4];
+        rv_index = nr_get_rv(round % 4);
 
         /// gNB UL PDUs
 
@@ -1322,13 +1325,6 @@ int main(int argc, char *argv[])
                 1,
                 1);
 
-          LOG_M("rxsigF0_llrlayers0.m",
-                "rxsF0_llrlayers0",
-                &pusch_vars->llr_layers[0][0],
-                (nb_symb_sch - 1) * NR_NB_SC_PER_RB * pusch_pdu->rb_size * mod_order,
-                1,
-                0);
-
           if (precod_nbr_layers == 2) {
 
             LOG_M("chestF3.m",
@@ -1344,13 +1340,6 @@ int main(int argc, char *argv[])
                   nb_symb_sch * (off + (NR_NB_SC_PER_RB * pusch_pdu->rb_size)),
                   1,
                   1);
-
-            LOG_M("rxsigF0_llrlayers1.m",
-                  "rxsF0_llrlayers1",
-                  &pusch_vars->llr_layers[1][0],
-                  (nb_symb_sch - 1) * NR_NB_SC_PER_RB * pusch_pdu->rb_size * mod_order,
-                  1,
-                  0);
           }
 
           if (precod_nbr_layers == 4) {
@@ -1392,24 +1381,6 @@ int main(int argc, char *argv[])
                   nb_symb_sch * (off + (NR_NB_SC_PER_RB * pusch_pdu->rb_size)),
                   1,
                   1);
-            LOG_M("rxsigF0_llrlayers1.m",
-                  "rxsF0_llrlayers1",
-                  &pusch_vars->llr_layers[1][0],
-                  (nb_symb_sch - 1) * NR_NB_SC_PER_RB * pusch_pdu->rb_size * mod_order,
-                  1,
-                  0);
-            LOG_M("rxsigF0_llrlayers2.m",
-                  "rxsF0_llrlayers2",
-                  &pusch_vars->llr_layers[2][0],
-                  (nb_symb_sch - 1) * NR_NB_SC_PER_RB * pusch_pdu->rb_size * mod_order,
-                  1,
-                  0);
-            LOG_M("rxsigF0_llrlayers3.m",
-                  "rxsF0_llrlayers3",
-                  &pusch_vars->llr_layers[3][0],
-                  (nb_symb_sch - 1) * NR_NB_SC_PER_RB * pusch_pdu->rb_size * mod_order,
-                  1,
-                  0);
           }
 
           LOG_M("rxsigF0_llr.m",
@@ -1420,7 +1391,7 @@ int main(int argc, char *argv[])
                 0);
         }
 
-        if ((ulsch_gNB->last_iteration_cnt >= ulsch_gNB->max_ldpc_iterations + 1) || ul_proc_error == 1) {
+        if ((ulsch_gNB->last_iteration_cnt >= ulsch_gNB->max_ldpc_iterations) || ul_proc_error == 1) {
           error_flag = 1;
           n_errors[round]++;
           crc_status = 1;

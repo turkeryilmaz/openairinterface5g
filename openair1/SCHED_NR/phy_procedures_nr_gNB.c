@@ -320,7 +320,7 @@ static int nr_ulsch_procedures(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx, boo
   NR_DL_FRAME_PARMS *frame_parms = &gNB->frame_parms;
 
   int nb_pusch = 0;
-  for (uint8_t ULSCH_id = 0; ULSCH_id < gNB->max_nb_pusch; ULSCH_id++) {
+  for (int ULSCH_id = 0; ULSCH_id < gNB->max_nb_pusch; ULSCH_id++) {
     if (ulsch_to_decode[ULSCH_id]) {
       nb_pusch++;
     }
@@ -333,7 +333,7 @@ static int nr_ulsch_procedures(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx, boo
   uint8_t ULSCH_ids[nb_pusch];
   uint32_t G[nb_pusch];
   int pusch_id = 0;
-  for (uint8_t ULSCH_id = 0; ULSCH_id < gNB->max_nb_pusch; ULSCH_id++) {
+  for (int ULSCH_id = 0; ULSCH_id < gNB->max_nb_pusch; ULSCH_id++) {
 
     if (ulsch_to_decode[ULSCH_id]) {
 
@@ -428,7 +428,7 @@ static int nr_ulsch_procedures(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx, boo
       LOG_D(PHY, "ULSCH received ok \n");
       ulsch->active = false;
       ulsch_harq->round = 0;
-      ulsch->last_iteration_cnt = ulsch->max_ldpc_iterations; // Setting to max_ldpc_iterations is sufficient given that this variable is only used for checking for failure
+      ulsch->last_iteration_cnt = ulsch->max_ldpc_iterations - 1; // Setting to max_ldpc_iterations - 1 is sufficient given that this variable is only used for checking for failure
     } else {
       LOG_D(PHY,
             "[gNB %d] ULSCH: Setting NAK for SFN/SF %d/%d (pid %d, ndi %d, status %d, round %d, RV %d, prb_start %d, prb_size %d, "
@@ -448,7 +448,7 @@ static int nr_ulsch_procedures(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx, boo
       gNBdumpScopeData(gNB, ulsch->slot, ulsch->frame, "ULSCH_NACK");
       ulsch->handled = 1;
       LOG_D(PHY, "ULSCH %d in error\n",ULSCH_id);
-      ulsch->last_iteration_cnt = ulsch->max_ldpc_iterations + 1; // Setting to max_ldpc_iterations + 1 is sufficient given that this variable is only used for checking for failure
+      ulsch->last_iteration_cnt = ulsch->max_ldpc_iterations; // Setting to max_ldpc_iterations is sufficient given that this variable is only used for checking for failure
     }
   }
 

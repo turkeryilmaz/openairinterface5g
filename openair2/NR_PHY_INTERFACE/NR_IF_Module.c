@@ -35,7 +35,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include "LAYER2/NR_MAC_gNB/mac_proto.h"
-#include "PHY/defs_common.h"
 #include "common/platform_constants.h"
 #include "common/utils/T/T.h"
 #include "executables/softmodem-common.h"
@@ -99,7 +98,7 @@ static void handle_nr_uci(NR_UL_IND_t *UL_info)
 
   const module_id_t mod_id = UL_info->module_id;
   const frame_t frame = UL_info->uci_ind.sfn;
-  const sub_frame_t slot = UL_info->uci_ind.slot;
+  const slot_t slot = UL_info->uci_ind.slot;
   int num_ucis = UL_info->uci_ind.num_ucis;
   nfapi_nr_uci_t *uci_list = UL_info->uci_ind.uci_list;
 
@@ -225,7 +224,7 @@ static void handle_nr_srs(NR_UL_IND_t *UL_info)
 
   const module_id_t module_id = UL_info->module_id;
   const frame_t frame = UL_info->srs_ind.sfn;
-  const sub_frame_t slot = UL_info->srs_ind.slot;
+  const slot_t slot = UL_info->srs_ind.slot;
   const int num_srs = UL_info->srs_ind.number_of_pdus;
   nfapi_nr_srs_indication_pdu_t *srs_list = UL_info->srs_ind.pdu_list;
 

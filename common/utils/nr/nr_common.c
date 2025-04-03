@@ -33,8 +33,9 @@
 #include <stdint.h>
 #include "assertions.h"
 #include "common/utils/assertions.h"
+#include "common/utils/LOG/log.h"
 #include "nr_common.h"
-#include <complex.h>
+#include <limits.h>
 
 #define C_SRS_NUMBER (64)
 #define B_SRS_NUMBER (4)
@@ -123,36 +124,6 @@ static const uint8_t bit_reverse_table_256[] = {
     0x13, 0x93, 0x53, 0xD3, 0x33, 0xB3, 0x73, 0xF3, 0x0B, 0x8B, 0x4B, 0xCB, 0x2B, 0xAB, 0x6B, 0xEB, 0x1B, 0x9B, 0x5B, 0xDB,
     0x3B, 0xBB, 0x7B, 0xFB, 0x07, 0x87, 0x47, 0xC7, 0x27, 0xA7, 0x67, 0xE7, 0x17, 0x97, 0x57, 0xD7, 0x37, 0xB7, 0x77, 0xF7,
     0x0F, 0x8F, 0x4F, 0xCF, 0x2F, 0xAF, 0x6F, 0xEF, 0x1F, 0x9F, 0x5F, 0xDF, 0x3F, 0xBF, 0x7F, 0xFF};
-
-simde__m128i byte2bit16_lut[256];
-void init_byte2bit16(void)
-{
-  for (int s = 0; s < 256; s++) {
-    byte2bit16_lut[s] = simde_mm_insert_epi16(byte2bit16_lut[s], s & 1, 0);
-    byte2bit16_lut[s] = simde_mm_insert_epi16(byte2bit16_lut[s], (s >> 1) & 1, 1);
-    byte2bit16_lut[s] = simde_mm_insert_epi16(byte2bit16_lut[s], (s >> 2) & 1, 2);
-    byte2bit16_lut[s] = simde_mm_insert_epi16(byte2bit16_lut[s], (s >> 3) & 1, 3);
-    byte2bit16_lut[s] = simde_mm_insert_epi16(byte2bit16_lut[s], (s >> 4) & 1, 4);
-    byte2bit16_lut[s] = simde_mm_insert_epi16(byte2bit16_lut[s], (s >> 5) & 1, 5);
-    byte2bit16_lut[s] = simde_mm_insert_epi16(byte2bit16_lut[s], (s >> 6) & 1, 6);
-    byte2bit16_lut[s] = simde_mm_insert_epi16(byte2bit16_lut[s], (s >> 7) & 1, 7);
-  }
-}
-
-simde__m128i byte2m128i[256];
-void init_byte2m128i(void) {
-
-  for (int s=0;s<256;s++) {
-    byte2m128i[s] = simde_mm_insert_epi16(byte2m128i[s],(1-2*(s&1)),0);
-    byte2m128i[s] = simde_mm_insert_epi16(byte2m128i[s],(1-2*((s>>1)&1)),1);
-    byte2m128i[s] = simde_mm_insert_epi16(byte2m128i[s],(1-2*((s>>2)&1)),2);
-    byte2m128i[s] = simde_mm_insert_epi16(byte2m128i[s],(1-2*((s>>3)&1)),3);
-    byte2m128i[s] = simde_mm_insert_epi16(byte2m128i[s],(1-2*((s>>4)&1)),4);
-    byte2m128i[s] = simde_mm_insert_epi16(byte2m128i[s],(1-2*((s>>5)&1)),5);
-    byte2m128i[s] = simde_mm_insert_epi16(byte2m128i[s],(1-2*((s>>6)&1)),6);
-    byte2m128i[s] = simde_mm_insert_epi16(byte2m128i[s],(1-2*((s>>7)&1)),7);
-  }
-}
 
 void reverse_bits_u8(uint8_t const* in, size_t sz, uint8_t* out)
 {
@@ -726,12 +697,12 @@ int get_slot_idx_in_period(const int slot, const frame_structure_t *fs)
 
 int get_dmrs_port(int nl, uint16_t dmrs_ports)
 {
-
-  if (dmrs_ports == 0) return 0; // dci 1_0
+  if (dmrs_ports == 0)
+    return 0; // dci 1_0
   int p = -1;
   int found = -1;
-  for (int i=0; i<12; i++) { // loop over dmrs ports
-    if((dmrs_ports>>i)&0x01) { // check if current bit is 1
+  for (int i = 0; i < 12; i++) { // loop over dmrs ports
+    if((dmrs_ports >> i) & 0x01) { // check if current bit is 1
       found++;
       if (found == nl) { // found antenna port number corresponding to current layer
         p = i;
@@ -739,7 +710,7 @@ int get_dmrs_port(int nl, uint16_t dmrs_ports)
       }
     }
   }
-  AssertFatal(p>-1,"No dmrs port corresponding to layer %d found\n",nl);
+  AssertFatal(p > -1, "No dmrs port corresponding to layer %d found\n", nl);
   return p;
 }
 
@@ -1287,6 +1258,58 @@ int get_scan_ssb_first_sc(const double fc, const int nbRB, const int nrBand, con
   return numGscn;
 }
 
+// Table 38.211 6.3.3.1-1
+static uint8_t long_prach_dur[4] = {1, 3, 4, 1}; // 0.9, 2.28, 3.35, 0.9 ms
+
+uint8_t get_long_prach_dur(unsigned int format, unsigned int mu)
+{
+  AssertFatal(format < 4, "Invalid long PRACH format %d\n", format);
+  const int num_slots_subframe = (1 << mu);
+  const int prach_dur_subframes = long_prach_dur[format];
+  return (prach_dur_subframes * num_slots_subframe);
+}
+
+// Table 38.211 6.3.3.2-1
+uint8_t get_PRACH_k_bar(unsigned int delta_f_RA_PRACH, unsigned int delta_f_PUSCH)
+{
+  uint8_t k_bar = 0;
+  if (delta_f_RA_PRACH > 3) { // Rel 15 max PRACH SCS is 120 kHz, 4 and 5 are 1.25 and 5 kHz
+    // long formats
+    DevAssert(delta_f_PUSCH < 3);
+    DevAssert(delta_f_RA_PRACH < 6);
+    const uint8_t k_bar_table[3][2] = {{7, 12},
+                                       {1, 10},
+                                       {133, 7}};
+
+    k_bar = k_bar_table[delta_f_PUSCH][delta_f_RA_PRACH - 4];
+  } else {
+    if (delta_f_RA_PRACH == 3 && delta_f_PUSCH == 4) // \delta f_RA == 120 kHz AND \delta f == 480 kHz
+      k_bar = 1;
+    else if (delta_f_RA_PRACH == 3 && delta_f_PUSCH == 5) // \delta f_RA == 120 kHz AND \delta f == 960 kHz
+      k_bar = 23;
+    else
+      k_bar = 2;
+  }
+  return k_bar;
+}
+
+// K according to 38.211 5.3.2
+unsigned int get_prach_K(int prach_sequence_length, int prach_fmt_id, int pusch_mu, int prach_mu)
+{
+  unsigned int K = 1;
+  if (prach_sequence_length == 0) {
+    if (prach_fmt_id == 3)
+      K = (15 << pusch_mu) / 5;
+    else
+      K = (15 << pusch_mu) / 1.25;
+  } else if (prach_sequence_length == 1) {
+    K = (15 << pusch_mu) / (15 << prach_mu);
+  } else {
+    AssertFatal(0, "Invalid PRACH sequence length %d\n", prach_sequence_length);
+  }
+  return K;
+}
+
 int get_delay_idx(int delay, int max_delay_comp)
 {
   int delay_idx = max_delay_comp + delay;
@@ -1295,20 +1318,6 @@ int get_delay_idx(int delay, int max_delay_comp)
   // If the measured delay is greater than +MAX_DELAY_COMP, a +MAX_DELAY_COMP delay is compensated.
   delay_idx = min(delay_idx, max_delay_comp << 1);
   return delay_idx;
-}
-
-void init_delay_table(uint16_t ofdm_symbol_size,
-                      int max_delay_comp,
-                      int max_ofdm_symbol_size,
-                      c16_t delay_table[][max_ofdm_symbol_size])
-{
-  for (int delay = -max_delay_comp; delay <= max_delay_comp; delay++) {
-    for (int k = 0; k < ofdm_symbol_size; k++) {
-      double complex delay_cexp = cexp(I * (2.0 * M_PI * k * delay / ofdm_symbol_size));
-      delay_table[max_delay_comp + delay][k].r = (int16_t)round(256 * creal(delay_cexp));
-      delay_table[max_delay_comp + delay][k].i = (int16_t)round(256 * cimag(delay_cexp));
-    }
-  }
 }
 
 int set_default_nta_offset(frequency_range_t freq_range, uint32_t samples_per_subframe)
@@ -1328,13 +1337,20 @@ int set_default_nta_offset(frequency_range_t freq_range, uint32_t samples_per_su
 void nr_timer_start(NR_timer_t *timer)
 {
   timer->active = true;
+  timer->suspended = false;
   timer->counter = 0;
 }
 
 void nr_timer_stop(NR_timer_t *timer)
 {
   timer->active = false;
+  timer->suspended = false;
   timer->counter = 0;
+}
+
+void nr_timer_suspension(NR_timer_t *timer)
+{
+  timer->suspended = !timer->suspended;
 }
 
 bool nr_timer_is_active(const NR_timer_t *timer)
@@ -1347,7 +1363,7 @@ bool nr_timer_tick(NR_timer_t *timer)
   bool expired = false;
   if (timer->active) {
     timer->counter += timer->step;
-    if (timer->target == UINT_MAX) // infinite target, never expires
+    if (timer->target == UINT_MAX || timer->suspended) // infinite target, never expires
       return false;
     expired = nr_timer_expired(timer);
     if (expired)
@@ -1358,7 +1374,7 @@ bool nr_timer_tick(NR_timer_t *timer)
 
 bool nr_timer_expired(const NR_timer_t *timer)
 {
-  if (timer->target == UINT_MAX) // infinite target, never expires
+  if (timer->target == UINT_MAX || timer->suspended) // infinite target, never expires
     return false;
   return timer->counter >= timer->target;
 }
@@ -1381,4 +1397,33 @@ unsigned short get_m_srs(int c_srs, int b_srs) {
 
 unsigned short get_N_b_srs(int c_srs, int b_srs) {
   return srs_bandwidth_config[c_srs][b_srs][1];
+}
+
+frequency_range_t get_freq_range_from_freq(uint64_t freq)
+{
+  // 3GPP TS 38.101-1 Version 19.0.0 Table 5.1-1: Definition of frequency ranges
+  if (freq >= 410000000 && freq <= 7125000000)
+    return FR1;
+
+  if (freq >= 24250000000 && freq <= 71000000000)
+    return FR2;
+
+  AssertFatal(false, "Undefined Frequency Range for frequency %ld Hz\n", freq);
+}
+
+frequency_range_t get_freq_range_from_arfcn(uint32_t arfcn)
+{
+  // 3GPP TS 38.101-1 Version 19.0.0 Table 5.1-1: Definition of frequency ranges
+  if (arfcn >= 82000 && arfcn <= 875000)
+    return FR1;
+
+  if (arfcn >= 2016667 && arfcn <= 2795832)
+    return FR2;
+
+  AssertFatal(false, "Undefined Frequency Range for ARFCN %d\n", arfcn);
+}
+
+frequency_range_t get_freq_range_from_band(uint16_t band)
+{
+  return band <= 256 ? FR1 : FR2;
 }

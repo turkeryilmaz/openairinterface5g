@@ -28,7 +28,6 @@
 #include "NR_MAC_UE/mac_proto.h"
 #include "RRC/NR_UE/rrc_proto.h"
 #include "RRC/NR_UE/L2_interface_ue.h"
-#include "SCHED_NR_UE/phy_frame_config_nr.h"
 #include "SCHED_NR_UE/defs.h"
 #include "PHY/NR_UE_TRANSPORT/nr_transport_proto_ue.h"
 #include "executables/softmodem-common.h"
@@ -147,6 +146,24 @@ static void *nrL1_UE_stats_thread(void *param)
   return NULL;
 }
 
+static int determine_N_TA_offset(PHY_VARS_NR_UE *ue) {
+  if (ue->sl_mode == 2)
+    return 0;
+  else {
+    int N_TA_offset = ue->nrUE_config.cell_config.N_TA_offset;
+    if (N_TA_offset == -1) {
+      return set_default_nta_offset(ue->frame_parms.freq_range, ue->frame_parms.samples_per_subframe);
+    } else {
+      // Return N_TA_offet in samples, as described in 38.211 4.1 and 4.3.1
+      // T_c[s] =  1/(Δf_max x N_f) = 1 / (480 * 1000 * 4096)
+      // N_TA_offset[s] = N_TA_offset x T_c
+      // N_TA_offset[samples] = samples_per_second x N_TA_offset[s]
+      // N_TA_offset[samples] = N_TA_offset x samples_per_subframe x 1000 x T_c
+      return (N_TA_offset * ue->frame_parms.samples_per_subframe) / (4096 * 480);
+    }
+  }
+}
+
 void init_nr_ue_vars(PHY_VARS_NR_UE *ue, uint8_t UE_id)
 {
   int nb_connected_gNB = 1;
@@ -165,8 +182,8 @@ void init_nr_ue_vars(PHY_VARS_NR_UE *ue, uint8_t UE_id)
   // intialize transport
   init_nr_ue_transport(ue);
 
-  // init N_TA offset
-  init_N_TA_offset(ue);
+  ue->ta_frame = -1;
+  ue->ta_slot = -1;
 }
 
 void init_nrUE_standalone_thread(int ue_idx)
@@ -448,6 +465,38 @@ static void UE_synch(void *arg) {
   }
 }
 
+static int nr_ue_slot_select(const fapi_nr_config_request_t *cfg, int nr_slot)
+{
+  if (cfg->cell_config.frame_duplex_type == FDD)
+    return NR_UPLINK_SLOT | NR_DOWNLINK_SLOT;
+
+  const fapi_nr_tdd_table_t *tdd_table = &cfg->tdd_table;
+  int rel_slot = nr_slot % tdd_table->tdd_period_in_slots;
+
+  if (tdd_table->max_tdd_periodicity_list == NULL) // this happens before receiving TDD configuration
+    return NR_DOWNLINK_SLOT;
+
+  const fapi_nr_max_tdd_periodicity_t *current_slot = &tdd_table->max_tdd_periodicity_list[rel_slot];
+
+  // if the 1st symbol is UL the whole slot is UL
+  if (current_slot->max_num_of_symbol_per_slot_list[0].slot_config == 1)
+    return NR_UPLINK_SLOT;
+
+  // if the 1st symbol is flexible the whole slot is mixed
+  if (current_slot->max_num_of_symbol_per_slot_list[0].slot_config == 2)
+    return NR_MIXED_SLOT;
+
+  for (int i = 1; i < NR_NUMBER_OF_SYMBOLS_PER_SLOT; i++) {
+    // if the 1st symbol is DL and any other is not, the slot is mixed
+    if (current_slot->max_num_of_symbol_per_slot_list[i].slot_config != 0) {
+      return NR_MIXED_SLOT;
+    }
+  }
+
+  // if here, all the symbols where DL
+  return NR_DOWNLINK_SLOT;
+}
+
 static void RU_write(nr_rxtx_thread_data_t *rxtxD, bool sl_tx_action)
 {
   PHY_VARS_NR_UE *UE = rxtxD->UE;
@@ -519,7 +568,7 @@ void processSlotTX(void *arg)
   bool sl_tx_action = false;
 
   if (UE->if_inst)
-    UE->if_inst->slot_indication(UE->Mod_id);
+    UE->if_inst->slot_indication(UE->Mod_id, true);
 
   if (proc->tx_slot_type == NR_UPLINK_SLOT || proc->tx_slot_type == NR_MIXED_SLOT) {
     if (UE->sl_mode == 2 && proc->tx_slot_type == NR_SIDELINK_SLOT) {
@@ -649,6 +698,9 @@ static int UE_dl_preprocessing(PHY_VARS_NR_UE *UE,
       nr_pdcp_tick(proc->frame_rx, proc->nr_slot_rx / fp->slots_per_subframe);
     }
   }
+
+  if (UE->if_inst)
+    UE->if_inst->slot_indication(UE->Mod_id, false);
 
   bool dl_slot = false;
   if (proc->rx_slot_type == NR_DOWNLINK_SLOT || proc->rx_slot_type == NR_MIXED_SLOT) {
@@ -820,18 +872,22 @@ static inline void apply_ntn_config(PHY_VARS_NR_UE *UE,
   if (*update_ntn_system_information) {
     *update_ntn_system_information = false;
 
-    *duration_rx_to_tx = NR_UE_CAPABILITY_SLOT_RX_TO_TX + UE->ntn_config_message->ntn_config_params.cell_specific_k_offset;
-    UE->timing_advance = fp->samples_per_subframe * UE->ntn_config_message->ntn_config_params.ntn_total_time_advance_ms;
-    *timing_advance +=
-        fp->get_samples_slot_timestamp(slot_nr,
-                                       fp,
-                                       UE->ntn_config_message->ntn_config_params.cell_specific_k_offset - *ntn_koffset);
-    *ntn_koffset = UE->ntn_config_message->ntn_config_params.cell_specific_k_offset;
+    double total_ta_ms = UE->ntn_config_message->ntn_config_params.ntn_total_time_advance_ms;
+    UE->timing_advance = fp->samples_per_subframe * total_ta_ms;
+
+    int mu = fp->numerology_index;
+    int koffset = UE->ntn_config_message->ntn_config_params.cell_specific_k_offset;
+    if (*ntn_koffset != koffset) {
+      *duration_rx_to_tx = NR_UE_CAPABILITY_SLOT_RX_TO_TX + (koffset << mu);
+      *timing_advance += fp->get_samples_slot_timestamp(slot_nr, fp, (koffset - *ntn_koffset) << mu);
+      *ntn_koffset = koffset;
+    }
 
     LOG_I(PHY,
-          "cell_specific_k_offset = %d ms, ntn_total_time_advance_ms = %f ms (%d samples)\n",
+          "k_offset = %d ms (%d slots), ntn_total_time_advance_ms = %f ms (%d samples)\n",
           *ntn_koffset,
-          UE->ntn_config_message->ntn_config_params.ntn_total_time_advance_ms,
+          *ntn_koffset << mu,
+          total_ta_ms,
           UE->timing_advance);
   }
 }
@@ -867,6 +923,7 @@ void *UE_thread(void *arg)
   initNotifiedFIFO_nothreadSafe(&freeBlocks);
 
   int timing_advance = UE->timing_advance;
+  UE->N_TA_offset = determine_N_TA_offset(UE);
   NR_UE_MAC_INST_t *mac = get_mac_inst(UE->Mod_id);
 
   bool syncRunning = false;
@@ -970,6 +1027,8 @@ void *UE_thread(void *arg)
       syncMsg->UE = UE;
       memset(&syncMsg->proc, 0, sizeof(syncMsg->proc));
       pushNotifiedFIFO(&UE->sync_actor.fifo, Msg);
+      timing_advance = 0;
+      UE->timing_advance = 0;
       trashed_frames = 0;
       syncRunning = true;
       continue;
@@ -1025,7 +1084,7 @@ void *UE_thread(void *arg)
     if (UE->ntn_config_message->update) {
       UE->ntn_config_message->update = false;
       update_ntn_system_information = true;
-      nr_slot_tx_offset = UE->ntn_config_message->ntn_config_params.cell_specific_k_offset;
+      nr_slot_tx_offset = UE->ntn_config_message->ntn_config_params.cell_specific_k_offset << fp->numerology_index;
     }
 
     int slot_nr = absolute_slot % nb_slot_frame;
@@ -1093,9 +1152,16 @@ void *UE_thread(void *arg)
 
     // but use current UE->timing_advance value to compute writeBlockSize
     int writeBlockSize = fp->get_samples_per_slot((slot_nr + duration_rx_to_tx) % nb_slot_frame, fp) - iq_shift_to_apply;
-    if (UE->timing_advance != timing_advance) {
-      writeBlockSize -= UE->timing_advance - timing_advance;
-      timing_advance = UE->timing_advance;
+    int new_timing_advance = UE->timing_advance;
+    if (new_timing_advance != timing_advance) {
+      writeBlockSize -= new_timing_advance- timing_advance;
+      timing_advance = new_timing_advance;
+    }
+    int new_N_TA_offset = determine_N_TA_offset(UE);
+    if (new_N_TA_offset != UE->N_TA_offset) {
+      LOG_I(PHY, "N_TA_offset changed from %d to %d\n", UE->N_TA_offset, new_N_TA_offset);
+      writeBlockSize -= new_N_TA_offset - UE->N_TA_offset;
+      UE->N_TA_offset = new_N_TA_offset;
     }
 
     if (curMsg.proc.nr_slot_tx == 0)
@@ -1152,7 +1218,7 @@ void init_NR_UE(int nb_inst, char *uecap_file, char *reconfig_file, char *rbconf
     NR_UE_MAC_INST_t *mac = get_mac_inst(i);
     mac->if_module = nr_ue_if_module_init(i);
     AssertFatal(mac->if_module, "can not initialize IF module\n");
-    if (!IS_SA_MODE(get_softmodem_params()) || !get_softmodem_params()->sl_mode) {
+    if (!IS_SA_MODE(get_softmodem_params()) && !get_softmodem_params()->sl_mode) {
       init_nsa_message(&rrc_inst[i], reconfig_file, rbconfig_file);
       nr_rlc_activate_srb0(mac_inst[i].crnti, NULL, send_srb0_rrc);
     }
@@ -1162,13 +1228,11 @@ void init_NR_UE(int nb_inst, char *uecap_file, char *reconfig_file, char *rbconf
 }
 
 void init_NR_UE_threads(PHY_VARS_NR_UE *UE) {
-  pthread_t thread;
   char thread_name[16];
   sprintf(thread_name, "UEthread_%d", UE->Mod_id);
-  threadCreate(&thread, UE_thread, (void *)UE, thread_name, -1, OAI_PRIORITY_RT_MAX);
+  threadCreate(&UE->main_thread, UE_thread, (void *)UE, thread_name, -1, OAI_PRIORITY_RT_MAX);
   if (!IS_SOFTMODEM_NOSTATS) {
-    pthread_t stat_pthread;
     sprintf(thread_name, "L1_UE_stats_%d", UE->Mod_id);
-    threadCreate(&stat_pthread, nrL1_UE_stats_thread, UE, thread_name, -1, OAI_PRIORITY_RT_LOW);
+    threadCreate(&UE->stat_thread, nrL1_UE_stats_thread, UE, thread_name, -1, OAI_PRIORITY_RT_LOW);
   }
 }

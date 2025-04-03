@@ -271,7 +271,6 @@ int init_nr_ue_signal(PHY_VARS_NR_UE *ue, int nb_connected_gNB)
   }
 
   ue->init_averaging = 1;
-  init_nr_prach_tables(839);
   init_symbol_rotation(fp);
   init_timeshift_rotation(fp);
 
@@ -491,24 +490,6 @@ void clean_UE_harq(PHY_VARS_NR_UE *UE)
     ul_harq_process->ULstatus = SCH_IDLE;
     ul_harq_process->round = 0;
   }
-}
-
-
-void init_N_TA_offset(PHY_VARS_NR_UE *ue)
-{
-  NR_DL_FRAME_PARMS *fp = &ue->frame_parms;
-
-  // No timing offset for Sidelink, refer to 3GPP 38.211 Section 8.5
-  if (ue->sl_mode == 2)
-    ue->N_TA_offset = 0;
-  else
-    ue->N_TA_offset = set_default_nta_offset(fp->freq_range, fp->samples_per_subframe);
-  ue->ta_frame = -1;
-  ue->ta_slot = -1;
-
-  LOG_I(PHY,
-        "UE %d Setting N_TA_offset to %d samples (UL Freq %lu, N_RB %d, mu %d)\n",
-        ue->Mod_id, ue->N_TA_offset, fp->ul_CarrierFreq, fp->N_RB_DL, fp->numerology_index);
 }
 
 void phy_init_nr_top(PHY_VARS_NR_UE *ue) {

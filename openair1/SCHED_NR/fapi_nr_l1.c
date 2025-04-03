@@ -63,7 +63,7 @@ void handle_nfapi_nr_csirs_pdu(processingData_L1tx_t *msgTx, int frame, int slot
 {
   int found = 0;
 
-  for (int id = 0; id < NR_SYMBOLS_PER_SLOT; id++) {
+  for (int id = 0; id < NR_NUMBER_OF_SYMBOLS_PER_SLOT; id++) {
     NR_gNB_CSIRS_t *csirs = &msgTx->csirs_pdu[id];
     if (csirs->active == 0) {
       LOG_D(NR_PHY,"Frame %d Slot %d CSI_RS with ID %d is now active\n",frame,slot,id);
@@ -202,7 +202,7 @@ void nr_schedule_response(NR_Sched_Rsp_t *Sched_INFO)
   // copy data from L2 interface into L1 structures
   module_id_t Mod_id = Sched_INFO->module_id;
   frame_t frame = Sched_INFO->frame;
-  sub_frame_t slot = Sched_INFO->slot;
+  slot_t slot = Sched_INFO->slot;
 
   AssertFatal(RC.gNB != NULL, "RC.gNB is null\n");
   AssertFatal(RC.gNB[Mod_id] != NULL, "RC.gNB[%d] is null\n", Mod_id);

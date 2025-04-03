@@ -70,27 +70,25 @@ int nr_transmission_action_indicator_stop(gNB_MAC_INST *mac, NR_UE_info_t *UE_in
 void clear_nr_nfapi_information(gNB_MAC_INST *gNB,
                                 int CC_idP,
                                 frame_t frameP,
-                                sub_frame_t slotP,
+                                slot_t slotP,
                                 nfapi_nr_dl_tti_request_t *DL_req,
                                 nfapi_nr_tx_data_request_t *TX_req,
                                 nfapi_nr_ul_dci_request_t *UL_dci_req);
 
-void nr_mac_update_timers(module_id_t module_id,
-                          frame_t frame,
-                          sub_frame_t slot);
+void nr_mac_update_timers(module_id_t module_id, frame_t frame, slot_t slot);
 
 #ifdef E3_AGENT
-void nr_update_prb_policy(module_id_t module_id, frame_t frame, sub_frame_t slot);
+void nr_update_prb_policy(module_id_t module_id, frame_t frame, slot_t slot);
 #endif // E3_AGENT
 
-void gNB_dlsch_ulsch_scheduler(module_id_t module_idP, frame_t frame_rxP, sub_frame_t slot_rxP, NR_Sched_Rsp_t *sched_info);
+void gNB_dlsch_ulsch_scheduler(module_id_t module_idP, frame_t frame_rxP, slot_t slot_rxP, NR_Sched_Rsp_t *sched_info);
 
 /* \brief main DL scheduler function. Calls a preprocessor to decide on
  * resource allocation, then "post-processes" resource allocation (nFAPI
  * messages, statistics, HARQ handling, CEs, ... */
 void nr_schedule_ue_spec(module_id_t module_id,
                          frame_t frame,
-                         sub_frame_t slot,
+                         slot_t slot,
                          nfapi_nr_dl_tti_request_t *DL_req,
                          nfapi_nr_tx_data_request_t *TX_req);
 
@@ -99,13 +97,13 @@ nr_pp_impl_dl nr_init_dlsch_preprocessor(int CC_id);
 
 void schedule_nr_sib1(module_id_t module_idP,
                       frame_t frameP,
-                      sub_frame_t slotP,
+                      slot_t slotP,
                       nfapi_nr_dl_tti_request_t *DL_req,
                       nfapi_nr_tx_data_request_t *TX_req);
 
 void schedule_nr_sib19(module_id_t module_idP,
                       frame_t frameP,
-                      sub_frame_t slotP,
+                      slot_t slotP,
                       nfapi_nr_dl_tti_request_t *DL_req,
                       nfapi_nr_tx_data_request_t *TX_req, 
                       int sib19_bcch_length,
@@ -113,12 +111,12 @@ void schedule_nr_sib19(module_id_t module_idP,
                     
 struct NR_SchedulingInfo2_r17* find_sib19_sched_info(const struct NR_SI_SchedulingInfo_v1700*);
 
-void schedule_nr_mib(module_id_t module_idP, frame_t frameP, sub_frame_t slotP, nfapi_nr_dl_tti_request_t *DL_req);
+void schedule_nr_mib(module_id_t module_idP, frame_t frameP, slot_t slotP, nfapi_nr_dl_tti_request_t *DL_req);
 
 /* \brief main UL scheduler function. Calls a preprocessor to decide on
  * resource allocation, then "post-processes" resource allocation (nFAPI
  * messages, statistics, HARQ handling, ... */
-void nr_schedule_ulsch(module_id_t module_id, frame_t frame, sub_frame_t slot, nfapi_nr_ul_dci_request_t *ul_dci_req);
+void nr_schedule_ulsch(module_id_t module_id, frame_t frame, slot_t slot, nfapi_nr_ul_dci_request_t *ul_dci_req);
 
 /* \brief default UL preprocessor init routine, returns preprocessor to call */
 nr_pp_impl_ul nr_init_ulsch_preprocessor(int CC_id);
@@ -127,7 +125,7 @@ nr_pp_impl_ul nr_init_ulsch_preprocessor(int CC_id);
 
 void nr_schedule_RA(module_id_t module_idP,
                     frame_t frameP,
-                    sub_frame_t slotP,
+                    slot_t slotP,
                     nfapi_nr_ul_dci_request_t *ul_dci_req,
                     nfapi_nr_dl_tti_request_t *DL_req,
                     nfapi_nr_tx_data_request_t *TX_req);
@@ -144,9 +142,9 @@ void nr_initiate_ra_proc(module_id_t module_idP,
 
 void nr_clear_ra_proc(NR_RA_t *ra);
 
-int nr_allocate_CCEs(int module_idP, int CC_idP, frame_t frameP, sub_frame_t slotP, int test_only);
+int nr_allocate_CCEs(int module_idP, int CC_idP, frame_t frameP, slot_t slotP, int test_only);
 
-void schedule_nr_prach(module_id_t module_idP, frame_t frameP, sub_frame_t slotP);
+void schedule_nr_prach(module_id_t module_idP, frame_t frameP, slot_t slotP);
 
 uint16_t nr_mac_compute_RIV(uint16_t N_RB_DL, uint16_t RBstart, uint16_t Lcrbs);
 
@@ -154,18 +152,18 @@ uint16_t nr_mac_compute_RIV(uint16_t N_RB_DL, uint16_t RBstart, uint16_t Lcrbs);
 
 /* \brief preprocessor for phytest: schedules UE_id 0 with fixed MCS on all
  * freq resources */
-void nr_preprocessor_phytest(module_id_t module_id, frame_t frame, sub_frame_t slot);
+void nr_preprocessor_phytest(module_id_t module_id, frame_t frame, slot_t slot);
 /* \brief UL preprocessor for phytest: schedules UE_id 0 with fixed MCS on a
  * fixed set of resources */
-bool nr_ul_preprocessor_phytest(module_id_t module_id, frame_t frame, sub_frame_t slot);
+bool nr_ul_preprocessor_phytest(module_id_t module_id, frame_t frame, slot_t slot);
 
 void handle_nr_uci_pucch_0_1(module_id_t mod_id,
                              frame_t frame,
-                             sub_frame_t slot,
+                             slot_t slot,
                              const nfapi_nr_uci_pucch_pdu_format_0_1_t *uci_01);
 void handle_nr_uci_pucch_2_3_4(module_id_t mod_id,
                                frame_t frame,
-                               sub_frame_t slot,
+                               slot_t slot,
                                const nfapi_nr_uci_pucch_pdu_format_2_3_4_t *uci_234);
 
 void config_uldci(const NR_UE_ServingCell_Info_t *sc_info,
@@ -178,9 +176,7 @@ void config_uldci(const NR_UE_ServingCell_Info_t *sc_info,
                   uint8_t ndi,
                   NR_UE_UL_BWP_t *ul_bwp);
 
-void nr_schedule_pucch(gNB_MAC_INST *nrmac,
-                       frame_t frameP,
-                       sub_frame_t slotP);
+void nr_schedule_pucch(gNB_MAC_INST *nrmac, frame_t frameP, slot_t slotP);
 
 void nr_srs_ri_computation(const nfapi_nr_srs_normalized_channel_iq_matrix_t *nr_srs_normalized_channel_iq_matrix,
                            const NR_UE_UL_BWP_t *current_BWP,
@@ -190,14 +186,14 @@ int get_pucch_resourceid(NR_PUCCH_Config_t *pucch_Config, int O_uci, int pucch_r
 
 void nr_schedule_srs(int module_id, frame_t frame, int slot);
 
-void nr_csirs_scheduling(int Mod_idP, frame_t frame, sub_frame_t slot, nfapi_nr_dl_tti_request_t *DL_req);
+void nr_csirs_scheduling(int Mod_idP, frame_t frame, slot_t slot, nfapi_nr_dl_tti_request_t *DL_req);
 
-void nr_csi_meas_reporting(int Mod_idP, frame_t frameP, sub_frame_t slotP);
+void nr_csi_meas_reporting(int Mod_idP, frame_t frameP, slot_t slotP);
 
 int nr_acknack_scheduling(gNB_MAC_INST *mac,
                           NR_UE_info_t *UE,
                           frame_t frameP,
-                          sub_frame_t slotP,
+                          slot_t slotP,
                           int beam_index,
                           int r_pucch,
                           int do_common);
@@ -309,11 +305,6 @@ int get_spf(nfapi_nr_config_request_scf_t *cfg);
 
 int to_absslot(nfapi_nr_config_request_scf_t *cfg,int frame,int slot);
 
-void nr_get_tbs_dl(nfapi_nr_dl_tti_pdsch_pdu *pdsch_pdu,
-		   int x_overhead,
-                   uint8_t numdmrscdmgroupnodata,
-                   uint8_t tb_scaling);
-
 int NRRIV2BW(int locationAndBandwidth,int N_RB);
 
 int NRRIV2PRBOFFSET(int locationAndBandwidth,int N_RB);
@@ -350,8 +341,6 @@ int nr_write_ce_dlsch_pdu(module_id_t module_idP,
                           unsigned char drx_cmd,
                           unsigned char *ue_cont_res_id);
 
-int binomial(int n, int k);
-
 /* \brief Function to indicate a received SDU on ULSCH.
 @param Mod_id Instance ID of gNB
 @param CC_id Component carrier index
@@ -364,7 +353,7 @@ int binomial(int n, int k);
 void nr_rx_sdu(const module_id_t gnb_mod_idP,
                const int CC_idP,
                const frame_t frameP,
-               const sub_frame_t subframeP,
+               const slot_t subframeP,
                const rnti_t rntiP,
                uint8_t * sduP,
                const uint32_t sdu_lenP,
@@ -384,7 +373,7 @@ void reset_ul_harq_list(NR_UE_sched_ctrl_t *sched_ctrl);
 void handle_nr_ul_harq(const int CC_idP,
                        module_id_t mod_id,
                        frame_t frame,
-                       sub_frame_t slot,
+                       slot_t slot,
                        const nfapi_nr_crc_t *crc_pdu);
 
 uint8_t *allocate_transportBlock_buffer(byte_array_t *tb, uint32_t needed);
@@ -392,7 +381,7 @@ void free_transportBlock_buffer(byte_array_t *tb);
 
 void handle_nr_srs_measurements(const module_id_t module_id,
                                 const frame_t frame,
-                                const sub_frame_t slot,
+                                const slot_t slot,
                                 nfapi_nr_srs_indication_pdu_t *srs_ind);
 
 void find_SSB_and_RO_available(gNB_MAC_INST *nrmac);
@@ -455,7 +444,7 @@ int get_fapi_beamforming_index(gNB_MAC_INST *mac, int ssb_idx);
 NR_beam_alloc_t beam_allocation_procedure(NR_beam_info_t *beam_info, int frame, int slot, int beam_index, int slots_per_frame);
 void reset_beam_status(NR_beam_info_t *beam_info, int frame, int slot, int beam_index, int slots_per_frame, bool new_beam);
 void beam_selection_procedures(gNB_MAC_INST *mac, NR_UE_info_t *UE);
-void nr_sr_reporting(gNB_MAC_INST *nrmac, frame_t frameP, sub_frame_t slotP);
+void nr_sr_reporting(gNB_MAC_INST *nrmac, frame_t frameP, slot_t slotP);
 
 size_t dump_mac_stats(gNB_MAC_INST *gNB, char *output, size_t strlen, bool reset_rsrp);
 

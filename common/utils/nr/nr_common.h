@@ -36,7 +36,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include "assertions.h"
-#include "PHY/defs_common.h"
+#include "common/utils/utils.h"
 
 #define NR_MAX_PDSCH_TBS 3824
 #define MAX_NUM_BEAM_PERIODS 4
@@ -83,7 +83,7 @@ static inline const char *rnti_types(nr_rnti_type_t rr)
 
 #define MU_SCS(m) (15 << m)
 #define MAX_GSCN_BAND 620 // n78 has the highest GSCN range of 619
-
+#define NR_NUMBER_OF_SYMBOLS_PER_SLOT 14
 #define NR_MAX_NB_LAYERS 4 // 8
 
 // Since the IQ samples are represented by SQ15 R+I (see https://en.wikipedia.org/wiki/Q_(number_format)) we need to compensate when
@@ -156,6 +156,7 @@ typedef struct {
 
 typedef struct {
   bool active;
+  bool suspended;
   uint32_t counter;
   uint32_t target;
   uint32_t step;
@@ -171,6 +172,12 @@ void nr_timer_start(NR_timer_t *timer);
  * @param timer Timer to stopped
  */
 void nr_timer_stop(NR_timer_t *timer);
+/**
+ * @brief To suspend/resume a timer
+ * @param timer Timer to be stopped/suspended
+ */
+void nr_timer_suspension(NR_timer_t *timer);
+
 /**
  * @brief If active, it increases timer counter by an amout of units equal to step. It stops timer if expired
  * @param timer Timer to be handled
@@ -204,16 +211,6 @@ bool nr_timer_is_active(const NR_timer_t *timer);
 uint32_t nr_timer_elapsed_time(const NR_timer_t *timer);
 
 int set_default_nta_offset(frequency_range_t freq_range, uint32_t samples_per_subframe);
-extern const nr_bandentry_t nr_bandtable[];
-
-extern simde__m128i byte2bit16_lut[256];
-void init_byte2bit16(void);
-void  init_byte2m128i(void);
-
-static inline simde__m128i byte2bit16(uint8_t b)
-{
-  return byte2bit16_lut[b];
-}
 
 static inline int get_num_dmrs(uint16_t dmrs_mask )
 {
@@ -287,8 +284,15 @@ void check_ssb_raster(uint64_t freq, int band, int scs);
 int get_smallest_supported_bandwidth_index(int scs, frequency_range_t frequency_range, int n_rbs);
 unsigned short get_m_srs(int c_srs, int b_srs);
 unsigned short get_N_b_srs(int c_srs, int b_srs);
+uint8_t get_long_prach_dur(unsigned int format, unsigned int num_slots_subframe);
+uint8_t get_PRACH_k_bar(unsigned int delta_f_RA_PRACH, unsigned int delta_f_PUSCH);
+unsigned int get_prach_K(int prach_sequence_length, int prach_fmt_id, int pusch_mu, int prach_mu);
 
 int get_slot_idx_in_period(const int slot, const frame_structure_t *fs);
+
+frequency_range_t get_freq_range_from_freq(uint64_t freq);
+frequency_range_t get_freq_range_from_arfcn(uint32_t arfcn);
+frequency_range_t get_freq_range_from_band(uint16_t band);
 
 #define CEILIDIV(a,b) ((a+b-1)/b)
 #define ROUNDIDIV(a,b) (((a<<1)+b)/(b<<1))

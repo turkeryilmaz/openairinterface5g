@@ -39,13 +39,10 @@
 #include "LAYER2/NR_MAC_COMMON/nr_mac_common.h"
 #include "LAYER2/NR_MAC_gNB/mac_proto.h"
 #include "NR_MIB.h"
-#include "NR_MAC_COMMON/nr_mac_extern.h"
 #include "NR_MAC_gNB/nr_mac_gNB.h"
 #include "NR_BCCH-BCH-Message.h"
 #include "NR_ServingCellConfigCommon.h"
 #include "NR_MIB.h"
-#include "PHY/TOOLS/tools_defs.h"
-#include "PHY/defs_common.h"
 #include "RRC/NR/nr_rrc_config.h"
 #include "SCHED_NR/phy_frame_config_nr.h"
 #include "T.h"
@@ -411,7 +408,7 @@ static void config_common(gNB_MAC_INST *nrmac,
 
   // Carrier configuration
   struct NR_FrequencyInfoDL *frequencyInfoDL = scc->downlinkConfigCommon->frequencyInfoDL;
-  frequency_range_t frequency_range = *frequencyInfoDL->frequencyBandList.list.array[0] > 256 ? FR2 : FR1;
+  frequency_range_t frequency_range = get_freq_range_from_band(*frequencyInfoDL->frequencyBandList.list.array[0]);
   int bw_index = get_supported_band_index(frequencyInfoDL->scs_SpecificCarrierList.list.array[0]->subcarrierSpacing,
                                           frequency_range,
                                           frequencyInfoDL->scs_SpecificCarrierList.list.array[0]->carrierBandwidth);
@@ -441,7 +438,7 @@ static void config_common(gNB_MAC_INST *nrmac,
   }
   struct NR_FrequencyInfoUL *frequencyInfoUL = scc->uplinkConfigCommon->frequencyInfoUL;
   int scs = frequencyInfoUL->scs_SpecificCarrierList.list.array[0]->subcarrierSpacing;
-  frequency_range = *frequencyInfoUL->frequencyBandList->list.array[0] > 256 ? FR2 : FR1;
+  frequency_range = get_freq_range_from_band(*frequencyInfoUL->frequencyBandList->list.array[0]);
   bw_index =
       get_supported_band_index(scs, frequency_range, frequencyInfoUL->scs_SpecificCarrierList.list.array[0]->carrierBandwidth);
   cfg->carrier_config.uplink_bandwidth.value = get_supported_bw_mhz(frequency_range, bw_index);
@@ -475,7 +472,8 @@ static void config_common(gNB_MAC_INST *nrmac,
     }
   }
 
-  frame_type_t frame_type = get_frame_type(*frequencyInfoDL->frequencyBandList.list.array[0], *scc->ssbSubcarrierSpacing);
+  NR_FreqBandIndicatorNR_t band = *frequencyInfoDL->frequencyBandList.list.array[0];
+  frame_type_t frame_type = get_frame_type(band, *scc->ssbSubcarrierSpacing);
   nrmac->common_channels[0].frame_type = frame_type;
 
   // Cell configuration
@@ -511,17 +509,24 @@ static void config_common(gNB_MAC_INST *nrmac,
   cfg->prach_config.prach_sequence_length.tl.tag = NFAPI_NR_CONFIG_PRACH_SEQUENCE_LENGTH_TAG;
   cfg->num_tlv++;
 
+  cfg->prach_config.prach_ConfigurationIndex.value = rach_ConfigCommon->rach_ConfigGeneric.prach_ConfigurationIndex;
+  cfg->prach_config.prach_ConfigurationIndex.tl.tag = NFAPI_NR_CONFIG_PRACH_CONFIG_INDEX_TAG;
+  cfg->num_tlv++;
+
   if (rach_ConfigCommon->msg1_SubcarrierSpacing)
     cfg->prach_config.prach_sub_c_spacing.value = *rach_ConfigCommon->msg1_SubcarrierSpacing;
-  else
-    cfg->prach_config.prach_sub_c_spacing.value = frequencyInfoDL->scs_SpecificCarrierList.list.array[0]->subcarrierSpacing;
+  else {
+    // If absent, use SCS as derived from the prach-ConfigurationIndex (for 839)
+    int config_index = rach_ConfigCommon->rach_ConfigGeneric.prach_ConfigurationIndex;
+    int frame_type = get_frame_type(band, frequencyInfoUL->scs_SpecificCarrierList.list.array[0]->subcarrierSpacing);
+    int format = get_nr_prach_format_from_index(config_index, UL_pointA, frame_type) & 0xff;
+    cfg->prach_config.prach_sub_c_spacing.value = get_delta_f_RA_long(format);
+  }
+
   cfg->prach_config.prach_sub_c_spacing.tl.tag = NFAPI_NR_CONFIG_PRACH_SUB_C_SPACING_TAG;
   cfg->num_tlv++;
   cfg->prach_config.restricted_set_config.value = rach_ConfigCommon->restrictedSetConfig;
   cfg->prach_config.restricted_set_config.tl.tag = NFAPI_NR_CONFIG_RESTRICTED_SET_CONFIG_TAG;
-  cfg->num_tlv++;
-  cfg->prach_config.prach_ConfigurationIndex.value = rach_ConfigCommon->rach_ConfigGeneric.prach_ConfigurationIndex;
-  cfg->prach_config.prach_ConfigurationIndex.tl.tag = NFAPI_NR_CONFIG_PRACH_CONFIG_INDEX_TAG;
   cfg->num_tlv++;
 
   switch (rach_ConfigCommon->rach_ConfigGeneric.msg1_FDM) {
@@ -541,10 +546,6 @@ static void config_common(gNB_MAC_INST *nrmac,
       AssertFatal(1 == 0, "msg1 FDM identifier %ld undefined (0,1,2,3) \n", rach_ConfigCommon->rach_ConfigGeneric.msg1_FDM);
   }
   cfg->prach_config.num_prach_fd_occasions.tl.tag = NFAPI_NR_CONFIG_NUM_PRACH_FD_OCCASIONS_TAG;
-  cfg->num_tlv++;
-
-  cfg->prach_config.prach_ConfigurationIndex.value = rach_ConfigCommon->rach_ConfigGeneric.prach_ConfigurationIndex;
-  cfg->prach_config.prach_ConfigurationIndex.tl.tag = NFAPI_NR_CONFIG_PRACH_CONFIG_INDEX_TAG;
   cfg->num_tlv++;
 
   cfg->prach_config.num_prach_fd_occasions_list = (nfapi_nr_num_prach_fd_occasions_t *)malloc(
@@ -587,6 +588,14 @@ static void config_common(gNB_MAC_INST *nrmac,
   cfg->prach_config.ssb_per_rach.value = rach_ConfigCommon->ssb_perRACH_OccasionAndCB_PreamblesPerSSB->present - 1;
   cfg->prach_config.ssb_per_rach.tl.tag = NFAPI_NR_CONFIG_SSB_PER_RACH_TAG;
   cfg->num_tlv++;
+
+  // compute and store prach duration in slots from rach_ConfigCommon
+  NR_RACH_ConfigGeneric_t *rachConfig =
+      &scc->uplinkConfigCommon->initialUplinkBWP->rach_ConfigCommon->choice.setup->rach_ConfigGeneric;
+  NR_COMMON_channels_t *cc = nrmac->common_channels;
+  const uint32_t pointA = scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencyPointA;
+  const int prach_fmt = (get_nr_prach_format_from_index(rachConfig->prach_ConfigurationIndex, pointA, cc->frame_type) & 0xff);
+  cc->prach_len = (prach_fmt < 4) ? get_long_prach_dur(prach_fmt, *scc->ssbSubcarrierSpacing) : 1;
 
   // SSB Table Configuration
 
@@ -837,7 +846,7 @@ void nr_mac_configure_sib1(gNB_MAC_INST *nrmac, const f1ap_plmn_t *plmn, uint64_
 
   NR_COMMON_channels_t *cc = &nrmac->common_channels[0];
   NR_ServingCellConfigCommon_t *scc = cc->ServingCellConfigCommon;
-  NR_BCCH_DL_SCH_Message_t *sib1 = get_SIB1_NR(scc, plmn, cellID, tac, &nrmac->radio_config.timer_config);
+  NR_BCCH_DL_SCH_Message_t *sib1 = get_SIB1_NR(scc, plmn, cellID, tac, &nrmac->radio_config);
   cc->sib1 = sib1;
   cc->sib1_bcch_length = encode_SIB1_NR(sib1, cc->sib1_bcch_pdu, sizeof(cc->sib1_bcch_pdu));
   AssertFatal(cc->sib1_bcch_length > 0, "could not encode SIB1\n");

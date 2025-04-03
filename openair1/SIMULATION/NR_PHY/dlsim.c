@@ -56,7 +56,6 @@
 #include "PHY/NR_UE_TRANSPORT/nr_transport_ue.h"
 #include "PHY/TOOLS/tools_defs.h"
 #include "PHY/defs_RU.h"
-#include "PHY/defs_common.h"
 #include "PHY/defs_gNB.h"
 #include "PHY/defs_nr_UE.h"
 #include "PHY/defs_nr_common.h"
@@ -148,7 +147,7 @@ extern void fix_scd(NR_ServingCellConfig_t *scd);// forward declaration
 /* specific dlsim DL preprocessor: uses rbStart/rbSize/mcs/nrOfLayers from command line of dlsim */
 int g_mcsIndex = -1, g_mcsTableIdx = 0, g_rbStart = -1, g_rbSize = -1, g_nrOfLayers = 1, g_pmi = 0;
 
-void nr_dlsim_preprocessor(module_id_t module_id, frame_t frame, sub_frame_t slot)
+void nr_dlsim_preprocessor(module_id_t module_id, frame_t frame, slot_t slot)
 {
   NR_UE_info_t *UE_info = RC.nrmac[module_id]->UE_info.list[0];
   AssertFatal(RC.nrmac[module_id]->UE_info.list[1]==NULL, "can have only a single UE\n");
@@ -266,6 +265,10 @@ int NB_UE_INST = 1;
 configmodule_interface_t *uniqCfg = NULL;
 int main(int argc, char **argv)
 {
+  stop = false;
+  __attribute__((unused)) struct sigaction oldaction;
+  sigaction(SIGINT, &sigint_action, &oldaction);
+
   FILE *csv_file = NULL;
   char *filename_csv = NULL;
   setbuf(stdout, NULL);
@@ -955,7 +958,7 @@ printf("%d\n", slot);
     fprintf(csv_file,"avg_round,eff_rate,eff_throughput,TBS\n");
   }
   //---------------
-  for (SNR = snr0; SNR < snr1; SNR += .2) {
+  for (SNR = snr0; SNR < snr1 && !stop; SNR += .2) {
 
     varArray_t *table_tx=initVarArray(1000,sizeof(double));
     reset_meas(&gNB->phy_proc_tx);
@@ -985,7 +988,7 @@ printf("%d\n", slot);
     n_false_positive = 0;
     if (n_trials== 1) num_rounds = 1;
 
-    for (trial = 0; trial < n_trials; trial++) {
+    for (trial = 0; trial < n_trials && !stop; trial++) {
 
       errors_bit = 0;
       //multipath channel
@@ -1016,7 +1019,7 @@ printf("%d\n", slot);
       memset(Sched_INFO, 0, sizeof(*Sched_INFO));
       Sched_INFO->sched_response_id = -1;
 
-      while (round < num_rounds && !UE_harq_process->decodeResult) {
+      while (round < num_rounds && !UE_harq_process->decodeResult && !stop) {
         round_trials[round]++;
 
         clear_nr_nfapi_information(RC.nrmac[0], 0, frame, slot, &Sched_INFO->DL_req, &Sched_INFO->TX_req, &Sched_INFO->UL_dci_req);
@@ -1163,7 +1166,7 @@ printf("%d\n", slot);
         //---------------------- count errors ----------------------
         //----------------------------------------------------------
 
-        if (dlsch0->last_iteration_cnt >= dlsch0->max_ldpc_iterations+1)
+        if (dlsch0->last_iteration_cnt >= dlsch0->max_ldpc_iterations)
           n_errors[round]++;
 
         int16_t *UE_llr = (int16_t*)UE->phy_sim_pdsch_llr;
