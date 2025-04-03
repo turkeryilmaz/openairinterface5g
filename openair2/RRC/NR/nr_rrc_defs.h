@@ -255,6 +255,8 @@ typedef struct gNB_RRC_UE_s {
   /* Nas Pdu */
   ngap_pdu_t nas_pdu;
 
+  int rsrp; // tmp for GNW
+
 } gNB_RRC_UE_t;
 
 typedef struct rrc_gNB_ue_context_s {
@@ -401,6 +403,8 @@ typedef struct gNB_RRC_INST_s {
 
   RB_HEAD(rrc_cuup_tree, nr_rrc_cuup_container_t) cuups; // CU-UPs, indexed by assoc_id
   size_t num_cuups;
+
+  int rsrp;
 
 } gNB_RRC_INST;
 

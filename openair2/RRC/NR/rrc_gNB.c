@@ -1375,7 +1375,10 @@ static void rrc_gNB_process_MeasurementReport(gNB_RRC_UE_t *UE, NR_MeasurementRe
 
   LOG_I(NR_RRC, "receive measurement ID %ld\n", measId);
   if (measId == 3) {
-    xer_fprint(stdout, &asn_DEF_NR_MeasurementReport, (void *)measurementReport);
+    //xer_fprint(stdout, &asn_DEF_NR_MeasurementReport, (void *)measurementReport);
+    if (measurementReport->criticalExtensions.choice.measurementReport->measResults.measResultNeighCells)
+     RC.nrrrc[0]->rsrp = *measurementReport->criticalExtensions.choice.measurementReport->measResults.measResultNeighCells->choice.measResultListNR->list.array[0]->measResult.cellResults.resultsSSB_Cell->rsrp - 156;
+    
   }
 
   NR_MeasIdToAddMod_t *meas_id_s = NULL;

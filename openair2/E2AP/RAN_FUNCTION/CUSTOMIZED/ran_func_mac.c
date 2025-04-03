@@ -36,6 +36,21 @@ bool read_mac_sm(void* data)
   mac->msg.tstamp = time_now_us();
 
   NR_UEs_t *UE_info = &RC.nrmac[mod_id]->UE_info;
+
+  /*rrc_gNB_ue_context_t *ue_context_p;
+  gNB_RRC_UE_t *ue2;
+  RB_FOREACH(ue_context_p, rrc_nr_ue_tree_s, &RC.nrrrc[mod_id]->rrc_ue_head) {
+     ue2 = &ue_context_p->ue_context; // get first UE context.
+     //if (ue2)
+     //break;
+       if (ue2)
+  printf("E2  = %d\n",ue2);
+  }*/
+
+
+  //printf("E2 rsrp = %d\n",RC.nrrrc[mod_id]->rsrp);
+
+
   size_t num_ues = 0;
   UE_iterator(UE_info->list, ue) {
     if (ue)
@@ -91,7 +106,8 @@ bool read_mac_sm(void* data)
     rd->ul_bler = sched_ctrl->ul_bler_stats.bler;
     rd->dl_mcs2 = 0;
     rd->ul_mcs2 = 0;
-    rd->phr = sched_ctrl->ph;
+    rd->phr = RC.nrrrc[mod_id]->rsrp; //sched_ctrl->ph;
+
 
     const uint32_t bufferSize = sched_ctrl->estimated_ul_buffer - sched_ctrl->sched_ul_bytes;
     rd->bsr = bufferSize;
