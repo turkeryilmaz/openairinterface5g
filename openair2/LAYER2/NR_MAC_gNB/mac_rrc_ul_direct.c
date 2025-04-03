@@ -916,9 +916,13 @@ static void positioning_measurement_response(const f1ap_measurement_resp_t *resp
   LOG_I(MAC, "Preparing pos_measurement_result_list for NRPPA noOfTRPs= %d\n", noOfTRPs);
 
   uint32_t Tc_inv = 4096 * 480000;
-  uint16_t k = 1;
-  uint64_t T_inv = Tc_inv / (1 << k);
-  uint64_t T_ns_inv = 1000000000;
+  //uint16_t k = 1;
+  //uint64_t T_inv = Tc_inv / (1 << k);
+  //uint64_t T_ns_inv = 1000000000;
+  int16_t k = 1;
+  int64_t T_inv = Tc_inv / (1 << k);
+  int64_t T_ns_inv = 1000000000;
+
   for (int trp_i=0; trp_i < noOfTRPs; trp_i++){
     meas_res_list_item->tRPID =trp_i; // TODO: needs to be added to config file
     f1ap_pos_measurement_result_t *posMeasRes= &meas_res_list_item->posMeasurementResult;
@@ -933,7 +937,15 @@ static void positioning_measurement_response(const f1ap_measurement_resp_t *resp
     MeasResVal->present = f1ap_measured_results_value_pr_ul_rtoa;
     MeasResVal->choice.uL_RTOA.uL_RTOA_MeasurementItem.present = f1ap_ulrtoameas_pr_k1;
     if (mac->meas_pos_info.toa_ns[trp_i] != 0xffff) {
-      int32_t k1 = (int32_t)(((int64_t)mac->meas_pos_info.toa_ns[trp_i] * (int64_t)T_inv) / (int64_t)T_ns_inv) + 492512;
+      //int32_t k1 = (int32_t)(((int64_t)mac->meas_pos_info.toa_ns[trp_i] * (int64_t)T_inv) / (int64_t)T_ns_inv) + 492512;
+      int64_t toa = (int64_t)(mac->meas_pos_info.toa_ns[trp_i]);
+      int64_t num = toa * (int64_t)T_inv;
+      int32_t k1;
+      if (num >= 0)
+          k1 = (int32_t)((num + T_ns_inv / 2) / T_ns_inv) + 492512;
+      else
+          k1 = (int32_t)((num - T_ns_inv / 2) / T_ns_inv) + 492512;
+      
       //if (k1<0) k1=0;
       //if (k1>985025) k1=985025;
       LOG_I(MAC,"k1[%d] = %d\n",trp_i,k1);
