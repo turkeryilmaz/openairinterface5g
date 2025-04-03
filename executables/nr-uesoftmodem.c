@@ -483,6 +483,12 @@ int main( int argc, char **argv ) {
   sprintf(aprefix, "%s.[%i].%s.[%i]", SL_CONFIG_STRING_SL_PRECONFIGURATION, 0, SL_CONFIG_STRING_UEINFO, 0);
   config_get(SL_UEINFO, sizeof(SL_UEINFO)/sizeof(paramdef_t), aprefix);
 
+  if (get_softmodem_params()->relay_type > 0 ) {
+    // FIXIT: This is temporary code until we get the ue configurations via RRC
+    get_softmodem_params()->remote_ue_id = ueinfo.remote_ue_id;
+    get_softmodem_params()->is_relay_ue = ueinfo.is_relay_ue;
+  }
+
   init_NR_UE(1, uecap_file, rrc_config_path, &ueinfo);
 
   int mode_offset = get_softmodem_params()->nsa ? NUMBER_OF_UE_MAX : 1;

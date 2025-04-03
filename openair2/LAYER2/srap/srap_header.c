@@ -36,21 +36,23 @@ void decode_srap_header(void* header, uint8_t* buffer) {
 // Function to construct SRAP data PDU header
 // Inputs: SRAP data PDU BEARER ID (5 bits) and UE ID (8 bits)
 // Output: SRAP data PDU header
-void create_header(relay_type_t r_type, uint8_t bearer_id, uint8_t src_ue_id, uint8_t dest_ue_id, void* header) {
+void create_header(uint8_t dc_bit, relay_type_t r_type, uint8_t bearer_id, int8_t src_ue_id, int8_t dest_ue_id, void* header) {
     if (r_type == U2N) {
+        AssertFatal(src_ue_id == -1, "UE ID field in octet 2 should be the remote UE, which is passed in on the dest_ue_id variable. src_ue_id is not used.");
         U2NHeader_t* u2n_header = (U2NHeader_t*) header;
         /* 1st octet */
         u2n_header->octet1 = 0;
-        u2n_header->octet1 |= 0x80; /* D/C bit 7=1 for data, 2 R bits 5-6 = 0 */
+        u2n_header->octet1 |= (dc_bit << 7); /* D/C bit 7=1 for data, 2 R bits 5-6 = 0 */
         u2n_header->octet1 |= (bearer_id & 0x1F);
 
         /* 2nd octet */
-        u2n_header->octet2 = src_ue_id;
+        u2n_header->octet2 = dest_ue_id;
     } else if (r_type == U2U) {
+        AssertFatal(src_ue_id != -1, "UE ID field in octet 2 should be a valid src_ue_id.");
         U2UHeader_t* u2u_header = (U2UHeader_t*) header;
         /* 1st octet */
         u2u_header->octet1 = 0;
-        u2u_header->octet1 |= 0x80; /* D/C bit 7=1 for data, 2 R bits 5-6 = 0 */
+        u2u_header->octet1 |= (dc_bit << 7); /* D/C bit 7=1 for data, 2 R bits 5-6 = 0 */
         u2u_header->octet1 |= (bearer_id & 0x1F);
 
         /* 2nd octet */

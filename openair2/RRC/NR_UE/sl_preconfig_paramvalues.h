@@ -94,6 +94,8 @@
 #define SL_CONFIG_STRING_UEINFO_SRCID                         "srcid"
 #define SL_CONFIG_STRING_UEINFO_IPV4ADDR_THIRD_OCTET          "thirdOctet"
 #define SL_CONFIG_STRING_UEINFO_IPV4ADDR_FOURTH_OCTET         "fourthOctet"
+#define SL_CONFIG_STRING_UEINFO_REMOTE_UE_ID                  "remote_ue_id"
+#define SL_CONFIG_STRING_UEINFO_IS_RELAY_UE                   "is_relay_ue"
 /*-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 /*             Sidelink Frequency common Cell Config parameters                                                                                                     */
 /*-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
@@ -193,7 +195,9 @@
    sl_ipv4addr - string containing ipv4 address for default SLRB 
 */
 #define SL_UEINFO_DESC(sl_ueinfo) { \
-{SL_CONFIG_STRING_UEINFO_SRCID,NULL,0,.iptr=&ueinfo.srcid,.defintval=1,TYPE_INT,0}, \
-{SL_CONFIG_STRING_UEINFO_IPV4ADDR_THIRD_OCTET,NULL,0,.iptr=&ueinfo.thirdOctet,.defintval=0,TYPE_INT,0}, \
-{SL_CONFIG_STRING_UEINFO_IPV4ADDR_FOURTH_OCTET,NULL,0,.iptr=&ueinfo.fourthOctet,.defintval=1,TYPE_INT,0}}
+{SL_CONFIG_STRING_UEINFO_SRCID,NULL,0,.iptr=&sl_ueinfo.srcid,.defintval=1,TYPE_INT,0}, \
+{SL_CONFIG_STRING_UEINFO_IPV4ADDR_THIRD_OCTET,NULL,0,.iptr=&sl_ueinfo.thirdOctet,.defintval=0,TYPE_INT,0}, \
+{SL_CONFIG_STRING_UEINFO_IPV4ADDR_FOURTH_OCTET,NULL,0,.iptr=&sl_ueinfo.fourthOctet,.defintval=1,TYPE_INT,0}, \
+{SL_CONFIG_STRING_UEINFO_REMOTE_UE_ID,NULL,0,.iptr=&sl_ueinfo.remote_ue_id,.defintval=0,TYPE_INT,0}, \
+{SL_CONFIG_STRING_UEINFO_IS_RELAY_UE,NULL,0,.iptr=&sl_ueinfo.is_relay_ue,.defintval=0,TYPE_INT,0}}
 #endif
