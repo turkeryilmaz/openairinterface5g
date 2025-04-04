@@ -1552,7 +1552,7 @@ void set_monitoring_periodicity_offset(NR_SearchSpace_t *ss,
 nr_prach_info_t get_nr_prach_occasion_info_from_index(uint8_t index, frequency_range_t freq_range, uint8_t unpaired)
 {
   uint8_t format2 = 0xff;
-  nr_prach_info_t info;
+  nr_prach_info_t info = {0};
   if (freq_range == FR2) {
     info.x = table_6_3_3_2_4_prachConfig_Index[index][2];
     info.y = table_6_3_3_2_4_prachConfig_Index[index][3];
