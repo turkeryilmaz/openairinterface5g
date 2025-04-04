@@ -40,6 +40,7 @@
 #include "common/utils/LOG/log.h"
 #include "softmodem-common.h"
 #include "nfapi/oai_integration/vendor_ext.h"
+#include "openair2/LAYER2/srap/srap_header.h"
 
 
 static softmodem_params_t softmodem_params;
@@ -119,7 +120,7 @@ void get_common_options(uint32_t execmask) {
   config_get(cmdline_logparams, numlogparams, NULL);
 
   uint8_t relay_type = get_softmodem_params()->relay_type;
-  AssertFatal((relay_type >= 0) && (relay_type <= 2), "Incorrect relay type!!!\n");
+  AssertFatal((relay_type >= NO_RELAY) && (relay_type <= U2U), "Incorrect relay type!!!\n");
 
   if(config_isparamset(cmdline_logparams,config_paramidx_fromname(cmdline_logparams,numparams, CONFIG_FLOG_OPT))) {
     set_glog_onlinelog(online_log_messages);
