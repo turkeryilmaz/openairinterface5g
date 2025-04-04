@@ -2,8 +2,8 @@
  * Copyright(c) 2017 Intel Corporation
  */
 
-#ifndef _MAIN_H_
-#define _MAIN_H_
+#ifndef __NRLDPC_CODING_T2_H__
+#define __NRLDPC_CODING_T2_H__
 
 #include <stddef.h>
 #include <sys/queue.h>
