@@ -87,6 +87,7 @@ unsigned short config_frames[4] = {2,9,11,13};
 #include <openair1/PHY/MODULATION/nr_modulation.h>
 #include "openair2/GNB_APP/gnb_paramdef.h"
 #include "openair2/RRC/NR_UE/sl_preconfig_paramvalues.h"
+#include "openair2/LAYER2/srap/srap_header.h"
 
 extern const char *duplex_mode[];
 THREAD_STRUCT thread_struct;
@@ -482,6 +483,12 @@ int main( int argc, char **argv ) {
   config_getlist(&SL_UEINFOList, NULL, 0, aprefix);
   sprintf(aprefix, "%s.[%i].%s.[%i]", SL_CONFIG_STRING_SL_PRECONFIGURATION, 0, SL_CONFIG_STRING_UEINFO, 0);
   config_get(SL_UEINFO, sizeof(SL_UEINFO)/sizeof(paramdef_t), aprefix);
+  uint8_t relay_type = get_softmodem_params()->relay_type;
+  if (relay_type == U2N || relay_type == U2U) {
+    // FIXIT: This is temporary code until we get the ue configurations via RRC
+    get_softmodem_params()->remote_ue_id = ueinfo.remote_ue_id;
+    get_softmodem_params()->is_relay_ue = ueinfo.is_relay_ue;
+  }
 
   init_NR_UE(1, uecap_file, rrc_config_path, &ueinfo);
 

@@ -9,6 +9,8 @@ typedef struct ueinfo {
   int srcid;
   int thirdOctet;
   int fourthOctet;
+  uint8_t remote_ue_id;
+  uint8_t is_relay_ue;
 } ueinfo_t;
 
 #define  CONFIG_HLP_IF_FREQ                "IF frequency for RF, if needed\n"
