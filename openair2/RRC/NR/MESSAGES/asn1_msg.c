@@ -81,6 +81,7 @@
 #include "NR_UE-CapabilityRequestFilterNR.h"
 #include "NR_HandoverPreparationInformation.h"
 #include "NR_HandoverPreparationInformation-IEs.h"
+#include "NR_UECapabilityEnquiry-v1560-IEs.h"
 #include "common/utils/nr/nr_common.h"
 #if defined(NR_Rel16)
   #include "NR_SCS-SpecificCarrier.h"
@@ -581,13 +582,23 @@ int do_NR_SA_UECapabilityEnquiry(uint8_t *const buffer, const uint8_t Transactio
   ue_capabilityrat_request->rat_Type = NR_RAT_Type_nr;
 
   sa_band_infoNR = (NR_FreqBandInformationNR_t*)calloc(1,sizeof(NR_FreqBandInformationNR_t));
-  sa_band_infoNR->bandNR = 78;
+  sa_band_infoNR->bandNR = 77;
   sa_band_info = (NR_FreqBandInformation_t*)calloc(1,sizeof(NR_FreqBandInformation_t));
   sa_band_info->present = NR_FreqBandInformation_PR_bandInformationNR;
   sa_band_info->choice.bandInformationNR = sa_band_infoNR;
   
   sa_band_list = (NR_FreqBandList_t *)calloc(1, sizeof(NR_FreqBandList_t));
   asn1cSeqAdd(&sa_band_list->list, sa_band_info);
+
+  NR_FreqBandInformation_t *sa2_band_info;
+  NR_FreqBandInformationNR_t *sa2_band_infoNR;
+  sa2_band_infoNR = (NR_FreqBandInformationNR_t*)calloc(1,sizeof(NR_FreqBandInformationNR_t));
+  sa2_band_infoNR->bandNR = 257;
+  sa2_band_info = (NR_FreqBandInformation_t*)calloc(1,sizeof(NR_FreqBandInformation_t));
+  sa2_band_info->present = NR_FreqBandInformation_PR_bandInformationNR;
+  sa2_band_info->choice.bandInformationNR = sa2_band_infoNR;
+
+  asn1cSeqAdd(&sa_band_list->list, sa2_band_info);
 
   sa_band_filter = (NR_UE_CapabilityRequestFilterNR_t*)calloc(1,sizeof(NR_UE_CapabilityRequestFilterNR_t));
   sa_band_filter->frequencyBandListFilter = sa_band_list;
@@ -607,6 +618,34 @@ int do_NR_SA_UECapabilityEnquiry(uint8_t *const buffer, const uint8_t Transactio
   asn1cSeqAdd(&dl_dcch_msg.message.choice.c1->choice.ueCapabilityEnquiry->criticalExtensions.choice.ueCapabilityEnquiry->ue_CapabilityRAT_RequestList.list,
                    ue_capabilityrat_request);
 
+  /* NR-DC request */
+  NR_UECapabilityEnquiry_v1560_IEs_t nr_dc_cap = { 0 };
+  NR_UE_CapabilityRequestFilterCommon_t nr_dc_filter = { 0 };
+  nr_dc_cap.capabilityRequestFilterCommon = &nr_dc_filter;
+  nr_dc_filter.mrdc_Request = &(struct NR_UE_CapabilityRequestFilterCommon__mrdc_Request) {
+    .omitEN_DC = NULL,
+    .includeNR_DC = &(long){ NR_UE_CapabilityRequestFilterCommon__mrdc_Request__includeNR_DC_true },
+    .includeNE_DC = NULL
+  };
+
+  nr_dc_filter.ext2 = &(struct NR_UE_CapabilityRequestFilterCommon__ext2) {
+    .requestedCellGrouping_r16 = &(struct NR_UE_CapabilityRequestFilterCommon__ext2__requestedCellGrouping_r16) {
+      .list = { 0 }
+    }
+  };
+  NR_CellGrouping_r16_t nr_dc_combination = { 0 };
+  nr_dc_combination.mode_r16 = NR_CellGrouping_r16__mode_r16_async;
+  NR_FreqBandIndicatorNR_t b77 = 77;
+  NR_FreqBandIndicatorNR_t b257 = 257;
+  asn1cSeqAdd(&nr_dc_combination.mcg_r16.list, &b77);
+  asn1cSeqAdd(&nr_dc_combination.scg_r16.list, &b257);
+
+  asn1cSeqAdd(&nr_dc_filter.ext2->requestedCellGrouping_r16->list, &nr_dc_combination);
+
+  OCTET_STRING_t *nr_dc = calloc_or_fail(1, sizeof(*nr_dc));
+  nr_dc->size = uper_encode_to_new_buffer(&asn_DEF_NR_UECapabilityEnquiry_v1560_IEs, NULL, &nr_dc_cap, (void **)&nr_dc->buf);
+
+  dl_dcch_msg.message.choice.c1->choice.ueCapabilityEnquiry->criticalExtensions.choice.ueCapabilityEnquiry->ue_CapabilityEnquiryExt = nr_dc;
 
   if ( LOG_DEBUGFLAG(DEBUG_ASN1) ) {
     xer_fprint(stdout, &asn_DEF_NR_DL_DCCH_Message, (void *)&dl_dcch_msg);
@@ -1351,6 +1390,114 @@ NR_MeasConfig_t *get_MeasConfig(const NR_MeasTiming_t *mt,
     measid->measId = reportIdx + 1;
     measid->reportConfigId = reportId;
     measid->measObjectId = 1;
+    asn1cSeqAdd(&mc->measIdToAddModList->list, measid);
+  }
+
+  /* add FR2 measurement */
+  {
+    /* measObject */
+    NR_MeasObjectToAddMod_t *mo1 = calloc(1, sizeof(*mo1));
+    mo1->measObjectId = 2;
+    mo1->measObject.present = NR_MeasObjectToAddMod__measObject_PR_measObjectNR;
+    NR_MeasObjectNR_t *monr1 = calloc(1, sizeof(*monr1));
+    asn1cCallocOne(monr1->ssbFrequency, 2090683);
+    asn1cCallocOne(monr1->ssbSubcarrierSpacing, 3 /* 120KHz */);
+    monr1->referenceSignalConfig.ssb_ConfigMobility = calloc(1, sizeof(*monr1->referenceSignalConfig.ssb_ConfigMobility));
+    monr1->referenceSignalConfig.ssb_ConfigMobility->deriveSSB_IndexFromCell = true;
+    monr1->absThreshSS_BlocksConsolidation = calloc(1, sizeof(*monr1->absThreshSS_BlocksConsolidation));
+    asn1cCallocOne(monr1->absThreshSS_BlocksConsolidation->thresholdRSRP, 36);
+    asn1cCallocOne(monr1->nrofSS_BlocksToAverage, 8);
+    monr1->smtc1 = calloc(1, sizeof(*monr1->smtc1));
+    monr1->smtc1->periodicityAndOffset = ssb_mtc->periodicityAndOffset;
+    monr1->smtc1->periodicityAndOffset.choice.sf20 = 2;
+    monr1->smtc1->duration = 1;
+    monr1->quantityConfigIndex = 1;
+    monr1->ext1 = calloc(1, sizeof(*monr1->ext1));
+    asn1cCallocOne(monr1->ext1->freqBandIndicatorNR, 257);
+
+#if 0
+    if (neighbourConfiguration && measurementConfiguration->a3_event_list) {
+      for (uint8_t nCell = 0; nCell < neighbourConfiguration->size; nCell++) {
+        const nr_neighbour_gnb_configuration_t *neighbourCell =
+            (const nr_neighbour_gnb_configuration_t *)seq_arr_at(neighbourConfiguration, nCell);
+        if (!neighbourCell->isIntraFrequencyNeighbour)
+          continue;
+
+        if (monr1->cellsToAddModList == NULL) {
+          monr1->cellsToAddModList = calloc(1, sizeof(*monr1->cellsToAddModList));
+        }
+
+        NR_CellsToAddMod_t *cell = calloc(1, sizeof(*cell));
+        cell->physCellId = neighbourCell->physicalCellId;
+        ASN_SEQUENCE_ADD(&monr1->cellsToAddModList->list, cell);
+      }
+    }
+#endif
+
+    mo1->measObject.choice.measObjectNR = monr1;
+    asn1cSeqAdd(&mc->measObjectToAddModList->list, mo1);
+
+    /* measReportConfig */
+#if 0
+    /* periodic measurement (does not seem to work, UE reports similar values to b77 master cell, plus there is no fr2 cell running) */
+    NR_ReportConfigToAddMod_t *rc = calloc(1, sizeof(*rc));
+    rc->reportConfigId = 3;
+    rc->reportConfig.present = NR_ReportConfigToAddMod__reportConfig_PR_reportConfigNR;
+
+    NR_PeriodicalReportConfig_t *prc = calloc(1, sizeof(*prc));
+    prc->rsType = NR_NR_RS_Type_ssb;
+    prc->reportInterval = NR_ReportInterval_ms1024;
+    prc->reportAmount = NR_PeriodicalReportConfig__reportAmount_infinity;
+    prc->reportQuantityCell.rsrp = true;
+    prc->reportQuantityCell.rsrq = true;
+    prc->reportQuantityCell.sinr = true;
+    prc->reportQuantityRS_Indexes = calloc(1, sizeof(*prc->reportQuantityRS_Indexes));
+    prc->reportQuantityRS_Indexes->rsrp = true;
+    prc->reportQuantityRS_Indexes->rsrq = true;
+    prc->reportQuantityRS_Indexes->sinr = true;
+    asn1cCallocOne(prc->maxNrofRS_IndexesToReport, 4);
+    prc->maxReportCells = 4;
+    prc->includeBeamMeasurements = 1;
+
+    NR_ReportConfigNR_t *rcnr = calloc(1, sizeof(*rcnr));
+    rcnr->reportType.present = NR_ReportConfigNR__reportType_PR_periodical;
+    rcnr->reportType.choice.periodical = prc;
+
+    rc->reportConfig.choice.reportConfigNR = rcnr;
+    asn1cSeqAdd(&mc->reportConfigToAddModList->list, rc);
+#endif
+    /* A4 event */
+    NR_ReportConfigToAddMod_t *rc_A4 = calloc(1, sizeof(*rc_A4));
+    rc_A4->reportConfigId = 3;
+    rc_A4->reportConfig.present = NR_ReportConfigToAddMod__reportConfig_PR_reportConfigNR;
+    NR_EventTriggerConfig_t *etrc_A4 = calloc(1, sizeof(*etrc_A4));
+    etrc_A4->eventId.present = NR_EventTriggerConfig__eventId_PR_eventA4;
+    etrc_A4->eventId.choice.eventA4 = calloc(1, sizeof(*etrc_A4->eventId.choice.eventA4));
+    etrc_A4->eventId.choice.eventA4->a4_Threshold.present = NR_MeasTriggerQuantity_PR_rsrp;
+    etrc_A4->eventId.choice.eventA4->a4_Threshold.choice.rsrp = 20;
+    etrc_A4->eventId.choice.eventA4->reportOnLeave = true;
+    etrc_A4->eventId.choice.eventA4->hysteresis = 0;
+    etrc_A4->eventId.choice.eventA4->timeToTrigger = 1; // ms40
+    etrc_A4->rsType = NR_NR_RS_Type_ssb;
+    etrc_A4->reportInterval = NR_ReportInterval_ms1024;
+    etrc_A4->reportAmount = NR_EventTriggerConfig__reportAmount_r4;
+    etrc_A4->reportQuantityCell.rsrp = true;
+    etrc_A4->reportQuantityCell.rsrq = true;
+    etrc_A4->reportQuantityCell.sinr = true;
+    asn1cCallocOne(etrc_A4->maxNrofRS_IndexesToReport, 4);
+    etrc_A4->maxReportCells = 4;
+    etrc_A4->includeBeamMeasurements = false;
+    NR_ReportConfigNR_t *rcnr_A4 = calloc(1, sizeof(*rcnr_A4));
+    rcnr_A4->reportType.present = NR_ReportConfigNR__reportType_PR_eventTriggered;
+    rcnr_A4->reportType.choice.eventTriggered = etrc_A4;
+    rc_A4->reportConfig.choice.reportConfigNR = rcnr_A4;
+    asn1cSeqAdd(&mc->reportConfigToAddModList->list, rc_A4);
+
+    /* measId */
+    NR_MeasIdToAddMod_t *measid = calloc(1, sizeof(NR_MeasIdToAddMod_t));
+    measid->measId = 3;
+    measid->reportConfigId = 3;
+    measid->measObjectId = 2;
     asn1cSeqAdd(&mc->measIdToAddModList->list, measid);
   }
 

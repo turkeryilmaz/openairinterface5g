@@ -1373,6 +1373,8 @@ static void rrc_gNB_process_MeasurementReport(gNB_RRC_UE_t *UE, NR_MeasurementRe
   NR_MeasurementReport_IEs_t *measurementReport_IEs = measurementReport->criticalExtensions.choice.measurementReport;
   const NR_MeasId_t measId = measurementReport_IEs->measResults.measId;
 
+  LOG_I(NR_RRC, "receive measurement ID %ld\n", measId);
+
   NR_MeasIdToAddMod_t *meas_id_s = NULL;
   for (int meas_idx = 0; meas_idx < meas_config->measIdToAddModList->list.count; meas_idx++) {
     if (measId == meas_config->measIdToAddModList->list.array[meas_idx]->measId) {
