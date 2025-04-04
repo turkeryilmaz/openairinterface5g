@@ -1082,22 +1082,27 @@ int32_t nrLDPC_coding_init()
   int ret;
   int dev_id = -1;
 
-  char *dpdk_dev = NULL; // PCI address of the card
-  char *dpdk_core_list = NULL; // cores used by DPDK for the accelerator card
+  char *dpdk_dev = NULL;            // PCI address of the card
+  char *dpdk_core_list = NULL;      // cores used by DPDK for the accelerator card
   char *dpdk_file_prefix = NULL;
-  paramdef_t LoaderParams[] = {{"dpdk_dev", NULL, 0, .strptr = &dpdk_dev, .defstrval = NULL, TYPE_STRING, 0, NULL},
-                               {"dpdk_core_list", NULL, 0, .strptr = &dpdk_core_list, .defstrval = NULL, TYPE_STRING, 0, NULL},
-                               {"dpdk_file_prefix", NULL, 0, .strptr = &dpdk_file_prefix, .defstrval = "b6", TYPE_STRING, 0, NULL}};
+  char *vfio_vf_token = NULL;       // vfio token for the card
+  paramdef_t LoaderParams[] = {
+    {"dpdk_dev", NULL, 0, .strptr = &dpdk_dev, .defstrval = NULL, TYPE_STRING, 0, NULL},
+    {"dpdk_core_list", NULL, 0, .strptr = &dpdk_core_list, .defstrval = NULL, TYPE_STRING, 0, NULL},
+    {"dpdk_file_prefix", NULL, 0, .strptr = &dpdk_file_prefix, .defstrval = "b6", TYPE_STRING, 0, NULL},
+    {"vfio_vf_token", NULL, 0, .strptr = &vfio_vf_token, .defstrval = NULL, TYPE_STRING, 0, NULL}
+  };
   config_get(config_get_if(), LoaderParams, sizeofArray(LoaderParams), "nrLDPC_coding_aal");
   AssertFatal(dpdk_dev != NULL, "nrLDPC_coding_aal.dpdk_dev was not provided");
   AssertFatal(dpdk_core_list != NULL, "nrLDPC_coding_aal.dpdk_core_list was not provided");
-  // char *argv_re[] = {"bbdev", "-a", dpdk_dev, "-l", dpdk_core_list, "--file-prefix", dpdk_file_prefix, "--"};
-  // EAL initialization, if already initialized (init in xran lib) try to probe DPDK device
-  // ret = rte_eal_init(sizeofArray(argv_re), argv_re);
-  int argc = 7;
-  char *argv[] = {"bbdev", "-l", "0-1", "-a", "0000:f7:00.2", "--vfio-vf-token=00112233-4455-6677-8899-aabbccddeeff", "--"};
 
-  ret = rte_eal_init(argc, argv);
+  if(vfio_vf_token != NULL) {
+    char *argv[] = {"bbdev", "-l", dpdk_core_list, "-a", dpdk_dev, "--vfio-vf-token", vfio_vf_token, "--"};
+    ret = rte_eal_init(sizeofArray(argv), argv);
+  } else {
+    char *argv[] = {"bbdev", "-l", dpdk_core_list, "-a", dpdk_dev, "--"};
+    ret = rte_eal_init(sizeofArray(argv), argv);
+  }
   if (ret < 0) {
     printf("EAL initialization failed, probing DPDK device %s\n", dpdk_dev);
     if (rte_dev_probe(dpdk_dev) != 0) {
@@ -1216,8 +1221,8 @@ int32_t nrLDPC_coding_decoder(nrLDPC_slot_decoding_parameters_t *nrLDPC_slot_dec
   // LLR input size can be 6/8bits, and LLR decimal can be 0/1/2/4
   // Thus, the LLR input must be scaled accordingly
   // Need to clarify the input format coming from OAI, and the current assumptions for T2
-  int llr_size = active_dev.info.drv.capabilities->cap.ldpc_dec.llr_size;
-  int llr_decimal = active_dev.info.drv.capabilities->cap.ldpc_dec.llr_decimals;
+  int8_t llr_size = (active_dev.info.drv.capabilities)[RTE_BBDEV_OP_LDPC_DEC].cap.ldpc_dec.llr_size;
+  int8_t llr_decimal = (active_dev.info.drv.capabilities)[RTE_BBDEV_OP_LDPC_DEC].cap.ldpc_dec.llr_decimals;
   int offset = 0;
   for (uint16_t h = 0; h < nrLDPC_slot_decoding_parameters->nb_TBs; ++h) {
     for (int r = 0; r < nrLDPC_slot_decoding_parameters->TBs[h].C; r++) {
@@ -1226,7 +1231,6 @@ int32_t nrLDPC_coding_decoder(nrLDPC_slot_decoding_parameters_t *nrLDPC_slot_dec
              nrLDPC_slot_decoding_parameters->TBs[h].segments[r].E * sizeof(uint16_t));
       simde__m128i *pv_ol128 = (simde__m128i *)z_ol;
       simde__m128i *pl_ol128 = (simde__m128i *)&l_ol[offset];
-
       int kc = nrLDPC_slot_decoding_parameters->TBs[h].BG == 2 ? 52 : 68;
       for (int i = 0, j = 0; j < ((kc * nrLDPC_slot_decoding_parameters->TBs[h].Z) >> 4) + 1; i += 2, j++) {
         pl_ol128[j] = simde_mm_packs_epi16(pv_ol128[i], pv_ol128[i + 1]);
