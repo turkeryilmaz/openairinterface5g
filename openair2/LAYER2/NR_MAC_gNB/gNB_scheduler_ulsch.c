@@ -63,8 +63,9 @@ int get_ul_tda(gNB_MAC_INST *nrmac, int frame, int slot)
       return 1;
   }
 
-  #ifdef E3_AGENT
-  // Empty symbol in slot 8 for spectrum sensing. Symbol 12.ToDo handle when SRS is present
+#ifdef E3_AGENT
+  // Empty symbol in slot 8 for spectrum sensing. Symbol 12.
+  // TODO handle when SRS is present
   if (slot == 8) {
     return 1;
   }
