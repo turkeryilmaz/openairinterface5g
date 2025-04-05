@@ -1479,8 +1479,8 @@ NR_MeasConfig_t *get_MeasConfig(const NR_MeasTiming_t *mt,
     etrc_A4->eventId.choice.eventA4->hysteresis = 0;
     etrc_A4->eventId.choice.eventA4->timeToTrigger = 1; // ms40
     etrc_A4->rsType = NR_NR_RS_Type_ssb;
-    etrc_A4->reportInterval = NR_ReportInterval_ms1024;
-    etrc_A4->reportAmount = NR_EventTriggerConfig__reportAmount_r4;
+    etrc_A4->reportInterval = NR_ReportInterval_ms120; //NR_ReportInterval_ms1024;
+    etrc_A4->reportAmount = NR_EventTriggerConfig__reportAmount_infinity;
     etrc_A4->reportQuantityCell.rsrp = true;
     etrc_A4->reportQuantityCell.rsrq = true;
     etrc_A4->reportQuantityCell.sinr = true;
