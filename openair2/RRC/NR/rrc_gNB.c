@@ -1374,6 +1374,9 @@ static void rrc_gNB_process_MeasurementReport(gNB_RRC_UE_t *UE, NR_MeasurementRe
   const NR_MeasId_t measId = measurementReport_IEs->measResults.measId;
 
   LOG_I(NR_RRC, "receive measurement ID %ld\n", measId);
+  if (measId == 3) {
+    xer_fprint(stdout, &asn_DEF_NR_MeasurementReport, (void *)measurementReport);
+  }
 
   NR_MeasIdToAddMod_t *meas_id_s = NULL;
   for (int meas_idx = 0; meas_idx < meas_config->measIdToAddModList->list.count; meas_idx++) {
