@@ -50,7 +50,7 @@ int LDPCencoder(uint8_t **test_input, uint8_t **channel_input, encoder_implempar
   short BG = impp->BG;
 
   short nrows=0,ncols=0;
-  int i,i1,j,rate=3;
+  int i,j,rate=3;
   int no_punctured_columns,removed_bit;
   char temp;
   int simd_size;
@@ -116,16 +116,7 @@ int LDPCencoder(uint8_t **test_input, uint8_t **channel_input, encoder_implempar
   memset(d,0,sizeof(unsigned char) * nrows * Zc);
 
   if(impp->tinput != NULL) start_meas(impp->tinput);
-#if 0
-  for (i=0; i<block_length; i++) {
-    for (j=0; j<n_segments; j++) {
 
-      temp = (test_input[j][i/8]&(128>>(i&7)))>>(7-(i&7));
-      //printf("c(%d,%d)=%d\n",j,i,temp);
-      c[i] |= (temp << j);
-    }
-  }
-#else
   for (i=0; i<block_length>>5; i++) {
     c256 = simde_mm256_and_si256(simde_mm256_cmpeq_epi8(simde_mm256_andnot_si256(simde_mm256_shuffle_epi8(simde_mm256_set1_epi32(((uint32_t*)test_input[0])[i]), shufmask),andmask),zero256),masks[0]);
     for (j=1; j<impp->n_segments; j++) {
@@ -143,7 +134,6 @@ int LDPCencoder(uint8_t **test_input, uint8_t **channel_input, encoder_implempar
       c[i] |= (temp << j);
     }
   }
-#endif
 
   if(impp->tinput != NULL) stop_meas(impp->tinput);
 
@@ -164,70 +154,8 @@ int LDPCencoder(uint8_t **test_input, uint8_t **channel_input, encoder_implempar
   }
   if(impp->toutput != NULL) start_meas(impp->toutput);
   // information part and puncture columns
-  /*
-  memcpy(&channel_input[0], &c[2*Zc], (block_length-2*Zc)*sizeof(unsigned char));
-  memcpy(&channel_input[block_length-2*Zc], &d[0], ((nrows-no_punctured_columns) * Zc-removed_bit)*sizeof(unsigned char));
-  */
-#ifdef __AVX512F__
-  uint32_t l1 = (block_length-(2*Zc));
-  uint32_t l2 = ((nrows-no_punctured_columns) * Zc-removed_bit);
-  if ((((2*Zc)&63) == 0) && (((block_length-(2*Zc))&63) == 0)) {
-    __m512i *c512p = (__m512i *)&c[2*Zc];
-    __m512i *d512p = (__m512i *)&d[0];
-    __m512i mask0 = _mm512_set1_epi8(0x1);
-    
-    for (i=0;i<l1>>6;i++)
-      for (j=0;j<impp->n_segments;j++) 
-        ((__m512i *)channel_input[j])[i] = _mm512_and_si512(_mm512_srai_epi16(c512p[i],j),mask0);
-    
-    for (i1=0;i1<l2>>6;i1++,i++)
-      for (j=0;j<impp->n_segments;j++) 
-        ((__m512i *)channel_input[j])[i] = _mm512_and_si512(_mm512_srai_epi16(d512p[i1],j),mask0);
-  } 
-  else if ((((2*Zc)&31) == 0) && (((block_length-(2*Zc))&31) == 0)) {
-    __m256i *c256p = (__m256i *)&c[2*Zc];
-    __m256i *d256p = (__m256i *)&d[0];
-    __m256i mask0 = _mm256_set1_epi8(0x1);
-    
-    for (i=0;i<l1>>6;i++)
-      for (j=0;j<impp->n_segments;j++) 
-        ((__m256i *)channel_input[j])[i] = _mm256_and_si256(_mm256_srai_epi16(c256p[i],j),mask0);
-    
-    for (i1=0;i1<l2>>6;i1++,i++)
-      for (j=0;j<impp->n_segments;j++) 
-        ((__m256i *)channel_input[j])[i] = _mm256_and_si256(_mm256_srai_epi16(d256p[i1],j),mask0);
-  }
-#else
-  if ((((2*Zc)&31) == 0) && (((block_length-(2*Zc))&31) == 0)) {
-    //AssertFatal(((2*Zc)&31) == 0,"2*Zc needs to be a multiple of 32 for now\n");
-    //AssertFatal(((block_length-(2*Zc))&31) == 0,"block_length-(2*Zc) needs to be a multiple of 32 for now\n");
-    uint32_t l1 = (block_length-(2*Zc))>>5;
-    uint32_t l2 = ((nrows-no_punctured_columns) * Zc-removed_bit)>>5;
-    simde__m256i *c256p = (simde__m256i *)&c[2*Zc];
-    simde__m256i *d256p = (simde__m256i *)&d[0];
-    //  if (((block_length-(2*Zc))&31)>0) l1++;
-    
-    for (i=0;i<l1;i++)
-      for (j=0;j<impp->n_segments;j++) ((simde__m256i *)channel_input[j])[i] = simde_mm256_and_si256(simde_mm256_srai_epi16(c256p[i],j),masks[0]);
-    
-    //  if ((((nrows-no_punctured_columns) * Zc-removed_bit)&31)>0) l2++;
-    
-    for (i1=0;i1<l2;i1++,i++)
-      for (j=0;j<impp->n_segments;j++) ((simde__m256i *)channel_input[j])[i] = simde_mm256_and_si256(simde_mm256_srai_epi16(d256p[i1],j),masks[0]);
-  }
-#endif
-  else {
-#ifdef DEBUG_LDPC
-  LOG_W(PHY,"using non-optimized version\n");
-#endif
-    // do non-SIMD version
-    for (i=0;i<(block_length-2*Zc);i++) 
-      for (j=0; j<impp->n_segments; j++)
-	channel_input[j][i] = (c[2*Zc+i]>>j)&1;
-    for (i=0;i<((nrows-no_punctured_columns) * Zc-removed_bit);i++)
-      for (j=0; j<impp->n_segments; j++)
-	channel_input[j][block_length-2*Zc+i] = (d[i]>>j)&1;
-    }
+  memcpy(&channel_input[0][0], &c[2*Zc], (block_length-2*Zc)*sizeof(unsigned char));
+  memcpy(&channel_input[0][block_length-2*Zc], &d[0], ((nrows-no_punctured_columns) * Zc-removed_bit)*sizeof(unsigned char));
 
 
   if(impp->toutput != NULL) stop_meas(impp->toutput);
