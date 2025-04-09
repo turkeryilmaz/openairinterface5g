@@ -116,8 +116,6 @@ int oai_exit = 0;
 
 static int      tx_max_power[MAX_NUM_CCs] = {0};
 
-double          rx_gain_off = 0.0;
-
 uint64_t        downlink_frequency[MAX_NUM_CCs][4];
 int32_t         uplink_frequency_offset[MAX_NUM_CCs][4];
 uint64_t        sidelink_frequency[MAX_NUM_CCs][4];
@@ -286,7 +284,7 @@ void init_openair0()
 
     nr_rf_card_config_freq(&openair0_cfg[card], ul_carrier, dl_carrier, freq_off);
 
-    nr_rf_card_config_gain(&openair0_cfg[card], rx_gain_off);
+    nr_rf_card_config_gain(&openair0_cfg[card], 0);
 
     openair0_cfg[card].configFilename = get_softmodem_params()->rf_config_file;
 
