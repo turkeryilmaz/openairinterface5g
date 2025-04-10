@@ -69,7 +69,7 @@ void prepare_sim_uecap(NR_UE_NR_Capability_t *cap,
 
 NR_BCCH_BCH_Message_t *get_new_MIB_NR(const NR_ServingCellConfigCommon_t *scc);
 void free_MIB_NR(NR_BCCH_BCH_Message_t *mib);
-int encode_MIB_NR(NR_BCCH_BCH_Message_t *mib, int frame, uint8_t *buf, int buf_size);
+int encode_MIB_NR(NR_BCCH_BCH_Message_t *mib, int frame, uint8_t *buf, int buf_size, bool cell_barred);
 int encode_MIB_NR_setup(NR_MIB_t *mib, int frame, uint8_t *buf, int buf_size);
 
 struct NR_MeasurementTimingConfiguration;

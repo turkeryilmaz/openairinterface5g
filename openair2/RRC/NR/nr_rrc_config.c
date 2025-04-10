@@ -2073,7 +2073,7 @@ NR_BCCH_BCH_Message_t *get_new_MIB_NR(const NR_ServingCellConfigCommon_t *scc)
       AssertFatal(1 == 0, "Unknown dmrs_TypeA_Position %d\n", (int)scc->dmrs_TypeA_Position);
   }
 
-  mib->message.choice.mib->cellBarred = NR_MIB__cellBarred_notBarred;
+  mib->message.choice.mib->cellBarred = NR_MIB__cellBarred_barred;
   mib->message.choice.mib->intraFreqReselection = NR_MIB__intraFreqReselection_notAllowed;
   return mib;
 }
@@ -2083,12 +2083,12 @@ void free_MIB_NR(NR_BCCH_BCH_Message_t *mib)
   ASN_STRUCT_FREE(asn_DEF_NR_BCCH_BCH_Message, mib);
 }
 
-int encode_MIB_NR(NR_BCCH_BCH_Message_t *mib, int frame, uint8_t *buf, int buf_size)
+int encode_MIB_NR(NR_BCCH_BCH_Message_t *mib, int frame, uint8_t *buf, int buf_size, bool cell_barred)
 {
   DevAssert(mib != NULL && mib->message.choice.mib->systemFrameNumber.buf != NULL);
   uint8_t sfn_msb = (uint8_t)((frame >> 4) & 0x3f);
   *mib->message.choice.mib->systemFrameNumber.buf = sfn_msb << 2;
-
+  mib->message.choice.mib->cellBarred = cell_barred ? NR_MIB__cellBarred_barred : NR_MIB__cellBarred_notBarred;
   asn_enc_rval_t enc_rval = uper_encode_to_buffer(&asn_DEF_NR_BCCH_BCH_Message, NULL, mib, buf, buf_size);
   AssertFatal(enc_rval.encoded > 0, "ASN1 message encoding failed (%s, %lu)!\n", enc_rval.failed_type->name, enc_rval.encoded);
   LOG_D(NR_RRC, "Encoded MIB for frame %d sfn_msb %d, bits %lu\n", frame, sfn_msb, enc_rval.encoded);

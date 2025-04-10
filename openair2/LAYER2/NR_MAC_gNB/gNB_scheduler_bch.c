@@ -105,11 +105,11 @@ static void fill_ssb_vrb_map(NR_COMMON_channels_t *cc,
     vrb_map[rbStart + rb] = SL_to_bitmap(symStart % NR_NUMBER_OF_SYMBOLS_PER_SLOT, 4);
 }
 
-static int encode_mib(NR_BCCH_BCH_Message_t *mib, frame_t frame, uint8_t *buffer, int buf_size)
+static int encode_mib(NR_BCCH_BCH_Message_t *mib, frame_t frame, uint8_t *buffer, int buf_size, bool cell_barred)
 {
   int encode_size = 3;
   AssertFatal(buf_size >= encode_size, "buffer of size %d too small, need 3 bytes\n", buf_size);
-  int encoded = encode_MIB_NR(mib, frame, buffer, encode_size);
+  int encoded = encode_MIB_NR(mib, frame, buffer, encode_size, cell_barred);
   DevAssert(encoded == encode_size);
   return encode_size;
 }
@@ -130,7 +130,19 @@ void schedule_nr_mib(module_id_t module_idP, frame_t frameP, slot_t slotP, nfapi
     // get MIB every 8 frames
     if(((slotP == 0) && (frameP & 7) == 0) ||
        gNB->first_MIB) {
-      int mib_sdu_length = encode_mib(cc->mib, frameP, cc->MIB_pdu, sizeof(cc->MIB_pdu));
+      static int num_cell_barred_mibs = 0;
+      if (gNB->first_MIB) {
+        num_cell_barred_mibs = 0;
+      }
+      bool cell_barred = true;
+      int num_frames_cell_barred = num_cell_barred_mibs * 8;
+      int num_ra_occasions_per_frame = 1;
+      if (num_frames_cell_barred < 100 * num_ra_occasions_per_frame) {
+        cell_barred = false;
+      } else {
+        num_cell_barred_mibs++;
+      }
+      int mib_sdu_length = encode_mib(cc->mib, frameP, cc->MIB_pdu, sizeof(cc->MIB_pdu), cell_barred);
 
       // flag to avoid sending an empty MIB in the first frames of execution since gNB doesn't get at the beginning in frame 0 slot 0
       gNB->first_MIB = false;

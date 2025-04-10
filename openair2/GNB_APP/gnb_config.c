@@ -1319,7 +1319,7 @@ f1ap_gnb_du_system_info_t *get_sys_info(NR_BCCH_BCH_Message_t *mib, const NR_BCC
 
   sys_info->mib = calloc_or_fail(buf_len, sizeof(*sys_info->mib));
   DevAssert(mib != NULL);
-  sys_info->mib_length = encode_MIB_NR(mib, 0, sys_info->mib, buf_len);
+  sys_info->mib_length = encode_MIB_NR(mib, 0, sys_info->mib, buf_len, false);
   DevAssert(sys_info->mib_length == buf_len);
 
   DevAssert(sib1 != NULL);
