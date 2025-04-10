@@ -885,6 +885,11 @@ int trx_usrp_set_gains(openair0_device *device,
   return(0);
 }
 
+double trx_usrp_get_rx_power_reference(openair0_device *device) {
+  usrp_state_t *s = (usrp_state_t *)device->priv;
+  return s->usrp->get_rx_power_reference(0);
+}
+
 /*! \brief Stop USRP
  * \param card refers to the hardware index to use
  */
@@ -1563,6 +1568,12 @@ extern "C" {
       std::cerr<< "Memory allocation failed for subframe record or replay mode." << std::endl;
       exit(-1);
     }
+  }
+
+  if (s->usrp->has_rx_power_reference(0)) {
+    device->trx_get_rx_power_reference = trx_usrp_get_rx_power_reference;
+  } else {
+    device->trx_get_rx_power_reference = NULL;
   }
   return 0;
 }

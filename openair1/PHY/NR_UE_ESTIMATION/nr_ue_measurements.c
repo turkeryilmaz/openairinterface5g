@@ -238,11 +238,15 @@ void nr_ue_ssb_rsrp_measurements(PHY_VARS_NR_UE *ue,
 
   openair0_config_t *cfg0 = &openair0_cfg[0];
 
-  ue->measurements.ssb_rsrp_dBm[ssb_index] = rsrp_db_per_re + 30 - SQ15_SQUARED_NORM_FACTOR_DB
-                                             - ((int)cfg0->rx_gain[0] - (int)cfg0->rx_gain_offset[0])
-                                             - dB_fixed(fp->ofdm_symbol_size);
-
-  LOG_D(PHY,
+  if (ue->rfdevice.trx_get_rx_power_reference != NULL) {
+    double rx_power_reference = ue->rfdevice.trx_get_rx_power_reference(&ue->rfdevice);
+    ue->measurements.ssb_rsrp_dBm[ssb_index] = rx_power_reference + rsrp_db_per_re - 10 * log10(INT16_MAX * INT16_MAX);
+  } else {
+    ue->measurements.ssb_rsrp_dBm[ssb_index] = rsrp_db_per_re + 30 - SQ15_SQUARED_NORM_FACTOR_DB
+                                               - ((int)cfg0->rx_gain[0] - (int)cfg0->rx_gain_offset[0])
+                                               - dB_fixed(fp->ofdm_symbol_size);
+  }
+  LOG_I(PHY,
         "[UE %d] ssb %d SS-RSRP: %d dBm/RE (%d dB/RE)\n",
         ue->Mod_id,
         ssb_index,
