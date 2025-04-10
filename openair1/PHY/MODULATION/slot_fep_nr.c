@@ -34,6 +34,33 @@
 #define LOG_I(A,B...) printf(A)
 #endif*/
 
+/* rxdata & rxdataF should be 16 bytes aligned */
+void nr_symbol_fep(const NR_DL_FRAME_PARMS *frame_parms,
+                   const int slot,
+                   const unsigned char symbol,
+                   const int link_type,
+                   const c16_t *rxdata[frame_parms->nb_antennas_rx],
+                   c16_t *rxdataF[frame_parms->nb_antennas_rx])
+{
+  AssertFatal(symbol < frame_parms->symbols_per_slot,
+              "slot_fep: symbol must be between 0 and %d\n",
+              frame_parms->symbols_per_slot - 1);
+  AssertFatal(slot < frame_parms->slots_per_frame, "slot_fep: Ns must be between 0 and %d\n", frame_parms->slots_per_frame - 1);
+
+  dft_size_idx_t dftsize = get_dft(frame_parms->ofdm_symbol_size);
+  for (unsigned char aa = 0; aa < frame_parms->nb_antennas_rx; aa++) {
+    dft(dftsize, (int16_t *)rxdata[aa], (int16_t *)rxdataF[aa], 1);
+
+    const bool is_sl = (link_type == link_type_sl);
+    apply_nr_rotation_symbol_RX(frame_parms,
+                                rxdataF[aa],
+                                frame_parms->symbol_rotation[link_type],
+                                is_sl ? frame_parms->N_RB_SL : frame_parms->N_RB_DL,
+                                slot,
+                                symbol);
+  }
+}
+
 int nr_slot_fep(PHY_VARS_NR_UE *ue,
                 const NR_DL_FRAME_PARMS *frame_parms,
                 unsigned int slot,
@@ -43,36 +70,23 @@ int nr_slot_fep(PHY_VARS_NR_UE *ue,
                 uint32_t sample_offset,
                 c16_t **rxdata)
 {
-
-  AssertFatal(symbol < frame_parms->symbols_per_slot, "slot_fep: symbol must be between 0 and %d\n", frame_parms->symbols_per_slot-1);
+  AssertFatal(symbol < frame_parms->symbols_per_slot,
+              "slot_fep: symbol must be between 0 and %d\n",
+              frame_parms->symbols_per_slot - 1);
   AssertFatal(slot < frame_parms->slots_per_frame, "slot_fep: Ns must be between 0 and %d\n", frame_parms->slots_per_frame - 1);
 
-  bool is_sl = (linktype == link_type_sl) ? true : false;
-  bool is_synchronized = (ue) ? ue->is_synchronized : false;
-  unsigned int nb_prefix_samples;
-  unsigned int nb_prefix_samples0;
+  const bool is_sl = (linktype == link_type_sl);
+  const bool is_synchronized = (ue) ? ue->is_synchronized : false;
+  const unsigned int nb_prefix_samples = frame_parms->nb_prefix_samples;
+  const unsigned int nb_prefix_samples0 = (is_synchronized || is_sl) ? frame_parms->nb_prefix_samples0 : nb_prefix_samples;
+
   // For Sidelink 16 frames worth of samples is processed to find SSB, for 5G-NR 2.
-  unsigned int total_samples = (is_sl) ? 16 * frame_parms->samples_per_frame : 2 * frame_parms->samples_per_frame;
+  const unsigned int total_samples = (is_sl) ? 16 * frame_parms->samples_per_frame : 2 * frame_parms->samples_per_frame;
 
-  int N_RB = (is_sl) ? frame_parms->N_RB_SL : frame_parms->N_RB_DL;
-
-  if (is_synchronized || is_sl) {
-    nb_prefix_samples  = frame_parms->nb_prefix_samples;
-    nb_prefix_samples0 = frame_parms->nb_prefix_samples0;
-  } else {
-    nb_prefix_samples  = frame_parms->nb_prefix_samples;
-    nb_prefix_samples0 = frame_parms->nb_prefix_samples;
-    AssertFatal(slot == 0, "Slot should be 0\n");
-  }
-
-  dft_size_idx_t dftsize = get_dft(frame_parms->ofdm_symbol_size);
-  // This is for misalignment issues
-  int32_t tmp_dft_in[8192] __attribute__ ((aligned (32)));
-
-  unsigned int rx_offset = frame_parms->get_samples_slot_timestamp(slot, frame_parms, 0);
-  unsigned int abs_symbol = slot * frame_parms->symbols_per_slot + symbol;
+  unsigned int rx_offset = frame_parms->get_samples_slot_timestamp(slot,frame_parms,0);
+  const unsigned int abs_symbol = slot * frame_parms->symbols_per_slot + symbol;
   for (int idx_symb = slot * frame_parms->symbols_per_slot; idx_symb <= abs_symbol; idx_symb++)
-    rx_offset += (idx_symb%(0x7<<frame_parms->numerology_index)) ? nb_prefix_samples : nb_prefix_samples0;
+    rx_offset += (idx_symb % (0x7 << frame_parms->numerology_index)) ? nb_prefix_samples : nb_prefix_samples0;
   rx_offset += frame_parms->ofdm_symbol_size * symbol;
 
   rx_offset += sample_offset;
@@ -80,52 +94,34 @@ int nr_slot_fep(PHY_VARS_NR_UE *ue,
   // use OFDM symbol from within 1/8th of the CP to avoid ISI
   rx_offset -= (nb_prefix_samples / frame_parms->ofdm_offset_divisor);
 
-#ifdef DEBUG_FEP
-  //  if (ue->frame <100)
-  LOG_D(PHY,"slot_fep: slot %d, symbol %d, nb_prefix_samples %u, nb_prefix_samples0 %u, rx_offset %u energy %d\n",
-  Ns, symbol, nb_prefix_samples, nb_prefix_samples0, rx_offset, dB_fixed(signal_energy((int32_t *)&common_vars->rxdata[0][rx_offset],frame_parms->ofdm_symbol_size)));
-#endif
+  LOG_D(PHY,
+        "slot_fep: slot %d, symbol %d, nb_prefix_samples %u, nb_prefix_samples0 %u, rx_offset %u energy %d\n",
+        slot,
+        symbol,
+        nb_prefix_samples,
+        nb_prefix_samples0,
+        rx_offset,
+        dB_fixed(signal_energy((int32_t *)&rxdata[0][rx_offset], frame_parms->ofdm_symbol_size)));
 
-  for (unsigned char aa=0; aa<frame_parms->nb_antennas_rx; aa++) {
-    int16_t *rxdata_ptr = (int16_t *)&rxdata[aa][rx_offset];
-
-    rx_offset %= total_samples;
-
+  c16_t tmp_dft_in[frame_parms->nb_antennas_rx][8192] __attribute__((aligned(32)));
+  const c16_t *rxdata_symb_ptr[frame_parms->nb_antennas_rx];
+  c16_t *rxdataF_symb_ptr[frame_parms->nb_antennas_rx];
+  for (unsigned char aa = 0; aa < frame_parms->nb_antennas_rx; aa++) {
     // This happens only during initial sync
     if (rx_offset + frame_parms->ofdm_symbol_size > total_samples) {
       // rxdata is 2 frames len
       // we have to wrap on the end
-
-      memcpy((void *)&tmp_dft_in[0], (void *)&rxdata[aa][rx_offset], (total_samples - rx_offset) * sizeof(int32_t));
-      memcpy((void *)&tmp_dft_in[total_samples - rx_offset],
-             (void *)&rxdata[aa][0],
+      memcpy(&tmp_dft_in[aa][0], &rxdata[aa][rx_offset], (total_samples - rx_offset) * sizeof(int32_t));
+      memcpy(&tmp_dft_in[aa][total_samples - rx_offset],
+             &rxdata[aa][0],
              (frame_parms->ofdm_symbol_size - (total_samples - rx_offset)) * sizeof(int32_t));
-      rxdata_ptr = (int16_t *)tmp_dft_in;
-
-    } else if ((rx_offset & 7) != 0) { // if input to dft is not 256-bit aligned
-      memcpy((void *)&tmp_dft_in[0], (void *)&rxdata[aa][rx_offset], frame_parms->ofdm_symbol_size * sizeof(int32_t));
-
-      rxdata_ptr = (int16_t *)tmp_dft_in;
+      rxdata_symb_ptr[aa] = &tmp_dft_in[aa][0];
+    } else {
+      rxdata_symb_ptr[aa] = &rxdata[aa][rx_offset];
+      rxdataF_symb_ptr[aa] = &rxdataF[aa][frame_parms->ofdm_symbol_size * symbol];
     }
-
-    if (ue)
-      start_meas_nr_ue_phy(ue, RX_DFT_STATS);
-
-    dft(dftsize,
-        rxdata_ptr,
-        (int16_t *)&rxdataF[aa][frame_parms->ofdm_symbol_size*symbol],
-        1);
-
-    if (ue)
-      stop_meas_nr_ue_phy(ue, RX_DFT_STATS);
-
-    apply_nr_rotation_RX(frame_parms, rxdataF[aa], frame_parms->symbol_rotation[linktype], slot, N_RB, 0, symbol, 1);
   }
-
-#ifdef DEBUG_FEP
-  printf("slot_fep: done\n");
-#endif
-
+  nr_symbol_fep(frame_parms, slot, symbol, linktype, rxdata_symb_ptr, rxdataF_symb_ptr);
   return 0;
 }
 
@@ -188,54 +184,26 @@ int nr_slot_fep_ul(NR_DL_FRAME_PARMS *frame_parms,
   return 0;
 }
 
-void apply_nr_rotation_RX(const NR_DL_FRAME_PARMS *frame_parms,
-                          c16_t *rxdataF,
-                          const c16_t *rot,
-                          int slot,
-                          int nb_rb,
-                          int soffset,
-                          int first_symbol,
-                          int nsymb)
+void apply_nr_rotation_symbol_RX(const NR_DL_FRAME_PARMS *frame_parms,
+                                 c16_t *rxdataF,
+                                 const c16_t *rot,
+                                 int nb_rb,
+                                 int slot,
+                                 int symbol)
 {
-  AssertFatal(first_symbol + nsymb <= NR_NUMBER_OF_SYMBOLS_PER_SLOT,
-              "First symbol %d and number of symbol %d not compatible with number of symbols in a slot %d\n",
-              first_symbol, nsymb, NR_NUMBER_OF_SYMBOLS_PER_SLOT);
-  int symb_offset = (slot % frame_parms->slots_per_subframe) * frame_parms->symbols_per_slot;
+  const int symb_offset = (slot % frame_parms->slots_per_subframe) * frame_parms->symbols_per_slot;
 
-  for (int symbol = first_symbol; symbol < first_symbol + nsymb; symbol++) {
-    
-    c16_t rot2 = rot[symbol + symb_offset];
-    rot2.i = -rot2.i;
-    LOG_D(PHY,"slot %d, symb_offset %d rotating by %d.%d\n", slot, symb_offset, rot2.r, rot2.i);
-    const c16_t *shift_rot = frame_parms->timeshift_symbol_rotation;
-    c16_t *this_symbol = &rxdataF[soffset + (frame_parms->ofdm_symbol_size * symbol)];
-
-    if (nb_rb & 1) {
-      rotate_cpx_vector(this_symbol, &rot2, this_symbol,
-                        (nb_rb + 1) * 6, 15);
-      rotate_cpx_vector(this_symbol + frame_parms->first_carrier_offset - 6,
-                        &rot2,
-                        this_symbol + frame_parms->first_carrier_offset - 6,
-                        (nb_rb + 1) * 6, 15);
-      multadd_cpx_vector((int16_t *)this_symbol, (int16_t *)shift_rot, (int16_t *)this_symbol,
-                         1, (nb_rb + 1) * 6, 15);
-      multadd_cpx_vector((int16_t *)(this_symbol + frame_parms->first_carrier_offset - 6),
-                         (int16_t *)(shift_rot   + frame_parms->first_carrier_offset - 6),
-                         (int16_t *)(this_symbol + frame_parms->first_carrier_offset - 6),
-                         1, (nb_rb + 1) * 6, 15);
-    } else {
-      rotate_cpx_vector(this_symbol, &rot2, this_symbol,
-                        nb_rb * 6, 15);
-      rotate_cpx_vector(this_symbol + frame_parms->first_carrier_offset,
-                        &rot2,
-                        this_symbol + frame_parms->first_carrier_offset,
-                        nb_rb * 6, 15);
-      multadd_cpx_vector((int16_t *)this_symbol, (int16_t *)shift_rot, (int16_t *)this_symbol,
-                         1, nb_rb * 6, 15);
-      multadd_cpx_vector((int16_t *)(this_symbol + frame_parms->first_carrier_offset),
-                         (int16_t *)(shift_rot   + frame_parms->first_carrier_offset),
-                         (int16_t *)(this_symbol + frame_parms->first_carrier_offset),
-                         1, nb_rb * 6, 15);
-    }
+  c16_t rot2 = rot[symbol + symb_offset];
+  rot2.i = -rot2.i;
+  LOG_D(PHY,"slot %d, symb_offset %d rotating by %d.%d\n", slot, symb_offset, rot2.r, rot2.i);
+  const c16_t *shift_rot = (c16_t *)frame_parms->timeshift_symbol_rotation;
+  unsigned int offset = frame_parms->first_carrier_offset;
+  if (nb_rb & 1) {
+    offset -= 6;
+    nb_rb++;
   }
+  rotate_cpx_vector(rxdataF, &rot2, rxdataF, nb_rb * 6, 15);
+  rotate_cpx_vector(rxdataF + offset, &rot2, rxdataF + offset, nb_rb * 6, 15);
+  mult_cpx_vector(rxdataF, shift_rot, rxdataF, nb_rb * 6, 15);
+  mult_cpx_vector(rxdataF + offset, shift_rot + offset, rxdataF + offset, nb_rb * 6, 15);
 }
