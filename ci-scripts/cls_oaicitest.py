@@ -265,6 +265,12 @@ class OaiCiTest():
 		self.testCase_id = ''
 		self.testXMLfiles = []
 		self.desc = ''
+		self.type = ''
+		self.eNB_instance = ''
+		self.eNB_serverId = ''
+		self.rt_stats_cfg = ''
+		self.USRP_IPAddress = ''
+		self.Initialize_eNB_args = ''
 		self.ping_args = ''
 		self.ping_packetloss_threshold = ''
 		self.ping_rttavg_threshold =''
@@ -286,6 +292,33 @@ class OaiCiTest():
 		self.svr_node = None
 		self.svr_id = None
 		self.cmd_prefix = '' # prefix before {lte,nr}-uesoftmodem
+		self.always_exec = False
+		self.postActions = []
+		self.d_retx_th = ''
+		self.u_retx_th = ''
+		self.ue_nodes = ''
+		self.ue_containers = ''
+		self.yaml_path = ''
+		self.services = ''
+		self.num_attempts = ''
+		self.node = ''
+		self.command = ''
+		self.command_fail = ''
+		self.images = ''
+		self.script = ''
+		self.parameters = ''
+		self.args = ''
+		self.cn_id = ''
+		self.idle_sleep_time_in_sec = ''
+		self.option = ''
+		self.id = ''
+		self.physim_time_threshold = 'inf'
+		self.physim_run_args = ''
+		self.physim_test = ''
+		self.proxy_commit = ''
+		self.Build_eNB_args = ''
+		self.kind = ''
+		self.forced_workspace_cleanup = ''
 
 	def InitializeUE(self, HTML):
 		ues = [cls_module.Module_UE(n.strip()) for n in self.ue_ids]
