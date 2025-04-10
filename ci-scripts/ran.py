@@ -72,8 +72,6 @@ class RANManagement():
 		self.eNB2Password = ''
 		self.eNB2SourceCodePath = ''
 		self.Build_eNB_args = ''
-		self.backgroundBuild = False
-		self.backgroundBuildTestId = ['', '', '']
 		self.Build_eNB_forced_workspace_cleanup = False
 		self.Initialize_eNB_args = ''
 		self.imageKind = ''

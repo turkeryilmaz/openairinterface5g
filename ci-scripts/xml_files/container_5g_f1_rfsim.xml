@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <!--
 
  Licensed to the OpenAirInterface (OAI) Software Alliance under one or more
@@ -20,45 +21,11 @@
       contact@openairinterface.org
 
 -->
-<testCaseList>
-        <htmlTabRef>rfsim-5gnr-f1</htmlTabRef>
-        <htmlTabName>CU-DU F1 split</htmlTabName>
-        <htmlTabIcon>wrench</htmlTabIcon>
-        <TestCaseRequestedList>
- 111111
- 800813
- 000021
- 000022
- 000023
- 020021
- 030020
- 030021
- 030022
- 040001
- 020022
- 040002
- 030021
- 030022
- 040021
- 000030
- 040022
- 040023
- 020022
- 040024
- 000024
- 000030
- 040025
- 000031
- 030021
- 040027
- 040025
- 000031
- 020022
- 040026
- 100021
- 222222
-        </TestCaseRequestedList>
-        <TestCaseExclusionList></TestCaseExclusionList>
+<testCaseList xmlns:xi="http://www.w3.org/2001/XInclude">
+    <xi:include href="common.xml"/>
+    <htmlTabRef>rfsim-5gnr-f1</htmlTabRef>
+    <htmlTabName>CU-DU F1 split</htmlTabName>
+    <htmlTabIcon>wrench</htmlTabIcon>
 
         <testCase id="111111">
                 <class>Pull_Local_Registry</class>
@@ -90,43 +57,14 @@
                 <eNB_serverId>0</eNB_serverId>
         </testCase>
 
-        <testCase id="000030">
-                <class>IdleSleep</class>
-                <desc>Sleep</desc>
-                <idle_sleep_time_in_sec>5</idle_sleep_time_in_sec>
-        </testCase>
-
-        <testCase id="000031">
-                <class>IdleSleep</class>
-                <desc>Sleep</desc>
-                <idle_sleep_time_in_sec>2</idle_sleep_time_in_sec>
-        </testCase>
-
         <testCase id="000023">
                 <class>Attach_UE</class>
                 <desc>Attach OAI UE (Wait for IP)</desc>
                 <id>rfsim5g_ue</id>
                 <nodes>cacofonix</nodes>
-        </testCase>
-
-        <testCase id="000024">
-                <class>Deploy_Object</class>
-                <desc>Deploy OAI 5G (target) DU-PCI1 RF sim SA</desc>
-                <yaml_path>ci-scripts/yaml_files/5g_f1_rfsimulator</yaml_path>
-                <services>oai-du-pci1</services>
-                <eNB_instance>0</eNB_instance>
-                <eNB_serverId>0</eNB_serverId>
-        </testCase>
-
-        <testCase id="020021">
-                <class>Ping</class>
-                <desc>Ping ext-dn from all NR-UEs</desc>
-                <id>rfsim5g_ue</id>
-                <nodes>cacofonix</nodes>
-                <svr_id>rfsim5g_ext_dn</svr_id>
-                <svr_node>cacofonix</svr_node>
-                <ping_args>-c 20 -i0.25</ping_args>
-                <ping_packetloss_threshold>5</ping_packetloss_threshold>
+                <postActions>
+                        <step id="020021"/> <!-- Ping all -->
+                </postActions>
         </testCase>
 
         <testCase id="030020">
@@ -135,30 +73,10 @@
                 <node>cacofonix</node>
                 <command>echo channelmod modify 0 noise_power_dB 3 | nc --send-only 192.168.71.181 8091</command>
                 <command_fail>yes</command_fail>
-        </testCase>
-
-        <testCase id="030021">
-                <class>Iperf</class>
-                <desc>Iperf (DL/5Mbps/UDP)(30 sec)</desc>
-                <iperf_args>-u -b 5M -t 20 -R</iperf_args>
-                <id>rfsim5g_ue</id>
-                <nodes>cacofonix</nodes>
-                <svr_id>rfsim5g_ext_dn</svr_id>
-                <svr_node>cacofonix</svr_node>
-                <iperf_packetloss_threshold>5</iperf_packetloss_threshold>
-                <iperf_bitrate_threshold>90</iperf_bitrate_threshold>
-        </testCase>
-
-        <testCase id="030022">
-                <class>Iperf</class>
-                <desc>Iperf (UL/3Mbps/UDP)(30 sec)</desc>
-                <iperf_args>-u -b 3M -t 20</iperf_args>
-                <id>rfsim5g_ue</id>
-                <nodes>cacofonix</nodes>
-                <svr_id>rfsim5g_ext_dn</svr_id>
-                <svr_node>cacofonix</svr_node>
-                <iperf_packetloss_threshold>5</iperf_packetloss_threshold>
-                <iperf_bitrate_threshold>90</iperf_bitrate_threshold>
+                <postActions>
+                        <step id="030021"/> <!-- Iperf DL -->
+                        <step id="030022"/> <!-- Iperf UL -->
+                </postActions>
         </testCase>
 
         <testCase id="040001">
@@ -167,17 +85,9 @@
                 <node>cacofonix</node>
                 <command>echo ci force_reestab | nc 192.168.71.171 9090 | grep -E 'Reset RLC counters of UE RNTI [0-9a-f]{4} to trigger reestablishment'</command>
                 <command_fail>yes</command_fail>
-        </testCase>
-
-        <testCase id="020022">
-                <class>Ping</class>
-                <desc>Ping ext-dn from NR-UE</desc>
-                <id>rfsim5g_ue</id>
-                <nodes>cacofonix</nodes>
-                <svr_id>rfsim5g_ext_dn</svr_id>
-                <svr_node>cacofonix</svr_node>
-                <ping_args>-c 20 -i0.5 -w25</ping_args>
-                <ping_packetloss_threshold>80</ping_packetloss_threshold>
+                <postActions>
+                        <step id="020022"/> <!-- Ping -->
+                </postActions>
         </testCase>
 
         <testCase id="040002">
@@ -186,6 +96,10 @@
                 <node>cacofonix</node>
                 <command>echo ci get_reestab_count | nc 192.168.71.150 9090 | grep -E 'UE RNTI [0-9a-f]{4} reestab 1'</command>
                 <command_fail>yes</command_fail>
+                <postActions>
+                        <step id="030021"/> <!-- Iperf DL -->
+                        <step id="030022"/> <!-- Iperf UL -->
+                </postActions>
         </testCase>
 
         <testCase id="040021">
@@ -194,6 +108,9 @@
                 <node>cacofonix</node>
                 <command>echo channelmod modify 0 ploss 55 | nc 192.168.71.181 8091</command>
                 <command_fail>yes</command_fail>
+                <postActions>
+                        <step id="000030"/> <!-- Sleep -->
+                </postActions>
         </testCase>
 
         <testCase id="040022">
@@ -210,6 +127,9 @@
                 <node>cacofonix</node>
                 <command>echo channelmod modify 0 ploss 20 | nc 192.168.71.181 8091</command>
                 <command_fail>yes</command_fail>
+                <postActions>
+                        <step id="020022"/> <!-- Ping -->
+                </postActions>
         </testCase>
 
         <testCase id="040024">
@@ -220,28 +140,18 @@
                 <command_fail>yes</command_fail>
         </testCase>
 
-        <testCase id="040025">
-                <class>Custom_Command</class>
-                <desc>Trigger Handover</desc>
-                <node>cacofonix</node>
-                <command>echo ci trigger_f1_ho | nc 192.168.71.150 9090</command>
-                <command_fail>yes</command_fail>
-        </testCase>
-
-        <testCase id="040026">
-                <class>Custom_Command</class>
-                <desc>UE (1) connected to DU-PCI 0?</desc>
-                <node>cacofonix</node>
-                <command>echo ci fetch_du_by_ue_id 1 | nc 192.168.71.150 9090 | grep "3584"</command>
-                <command_fail>yes</command_fail>
-        </testCase>
-
-        <testCase id="040027">
-                <class>Custom_Command</class>
-                <desc>UE (1) connected to DU-PCI 1?</desc>
-                <node>cacofonix</node>
-                <command>echo ci fetch_du_by_ue_id 1 | nc 192.168.71.150 9090 | grep "3585"</command>
-                <command_fail>yes</command_fail>
+        <testCase id="000024">
+                <class>Deploy_Object</class>
+                <desc>Deploy OAI 5G (target) DU-PCI1 RF sim SA</desc>
+                <yaml_path>ci-scripts/yaml_files/5g_f1_rfsimulator</yaml_path>
+                <services>oai-du-pci1</services>
+                <eNB_instance>0</eNB_instance>
+                <eNB_serverId>0</eNB_serverId>
+                <postActions>
+                        <step id="040025"/> <!-- trigger F1 Handover -->
+                        <step id="000031"/> <!-- sleep -->
+                        <step id="030021"/> <!-- iperf -->
+                </postActions>
         </testCase>
 
         <testCase id="100021">

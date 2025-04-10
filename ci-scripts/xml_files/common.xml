@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testCases>
+        <testCase id="000030">
+                <class>IdleSleep</class>
+                <desc>Sleep</desc>
+                <idle_sleep_time_in_sec>5</idle_sleep_time_in_sec>
+        </testCase>
+
+        <testCase id="000031">
+                <class>IdleSleep</class>
+                <desc>Sleep</desc>
+                <idle_sleep_time_in_sec>2</idle_sleep_time_in_sec>
+        </testCase>
+
+        <testCase id="020021">
+                <class>Ping</class>
+                <desc>Ping ext-dn from all NR-UEs</desc>
+                <id>rfsim5g_ue</id>
+                <nodes>cacofonix</nodes>
+                <ping_args> -c 20 192.168.72.135 -i0.25</ping_args>
+                <ping_packetloss_threshold>5</ping_packetloss_threshold>
+        </testCase>
+
+        <testCase id="030021">
+                <class>Iperf</class>
+                <desc>Iperf (DL/5Mbps/UDP)(30 sec)</desc>
+                <iperf_args>-u -b 5M -t 20 -R</iperf_args>
+                <id>rfsim5g_ue</id>
+                <nodes>cacofonix</nodes>
+                <svr_id>rfsim5g_ext_dn</svr_id>
+                <svr_node>cacofonix</svr_node>
+                <iperf_packetloss_threshold>5</iperf_packetloss_threshold>
+                <iperf_bitrate_threshold>90</iperf_bitrate_threshold>
+        </testCase>
+
+        <testCase id="030022">
+                <class>Iperf</class>
+                <desc>Iperf (UL/3Mbps/UDP)(30 sec)</desc>
+                <iperf_args>-u -b 3M -t 20</iperf_args>
+                <id>rfsim5g_ue</id>
+                <nodes>cacofonix</nodes>
+                <svr_id>rfsim5g_ext_dn</svr_id>
+                <svr_node>cacofonix</svr_node>
+                <iperf_packetloss_threshold>5</iperf_packetloss_threshold>
+                <iperf_bitrate_threshold>90</iperf_bitrate_threshold>
+        </testCase>
+        <testCase id="020022">
+                <class>Ping</class>
+                <desc>Ping ext-dn from all NR-UEs</desc>
+                <id>rfsim5g_ue</id>
+                <nodes>cacofonix</nodes>
+                <ping_args> -c 20 192.168.72.135 -i0.5 -w25</ping_args>
+                <ping_packetloss_threshold>80</ping_packetloss_threshold>
+        </testCase>
+        <testCase id="020023">
+                <class>Ping</class>
+                <desc>Ping ext-dn from all NR-UEs</desc>
+                <id>rfsim5g_ue</id>
+                <nodes>cacofonix</nodes>
+                <ping_args> -c 5 192.168.72.135 -i0.5 -w25</ping_args>
+                <ping_packetloss_threshold>80</ping_packetloss_threshold>
+        </testCase>
+
+        <testCase id="040025">
+                <class>Custom_Command</class>
+                <desc>Trigger Handover</desc>
+                <node>cacofonix</node>
+                <command>echo ci trigger_f1_ho | nc 192.168.71.150 9090</command>
+                <command_fail>yes</command_fail>
+        </testCase>
+
+</testCases>
+
+
+
