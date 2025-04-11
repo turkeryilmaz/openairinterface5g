@@ -935,7 +935,8 @@ static void positioning_measurement_response(const f1ap_measurement_resp_t *resp
     // we assume we use UL_RTOA for now with k=1 (i.e. 8 times oversampling from 122.88e6 Msps)
     f1ap_measured_results_value_t *MeasResVal= &posMeasRes->pos_measurement_result_item->measuredResultsValue;
     MeasResVal->present = f1ap_measured_results_value_pr_ul_rtoa;
-    if (mac->meas_pos_info.toa_ns[trp_i] != 0x8000) {
+    //if (mac->meas_pos_info.toa_ns[trp_i] != 0x8000) {
+    if (mac->meas_pos_info.toa_ns[trp_i] != (int16_t) 0x8000) {
       //int32_t k1 =  ((mac->meas_pos_info.toa_ns[trp_i] * T_inv) / T_ns_inv ) + 492512;
       //int32_t k1 = (int32_t)(((int64_t)mac->meas_pos_info.toa_ns[trp_i] * (int64_t)T_inv) / (int64_t)T_ns_inv) + 492512;
       int64_t toa = (int64_t)(mac->meas_pos_info.toa_ns[trp_i]);
@@ -958,8 +959,8 @@ static void positioning_measurement_response(const f1ap_measurement_resp_t *resp
 	    "Extracting uL_RTOA info of MeasurementResponse, k1=%d \n",
 	    MeasResVal->choice.uL_RTOA.uL_RTOA_MeasurementItem.choice.k1);
     } else {
-	LOG_I(MAC,"ul_RTOA invalid, MeasurementResponse set to NOTHING\n");
-	MeasResVal->choice.uL_RTOA.uL_RTOA_MeasurementItem.present = f1ap_ulrtoameas_pr_NOTHING;
+      LOG_I(MAC,"ul_RTOA invalid, MeasurementResponse set to '-32768'\n");
+      MeasResVal->choice.uL_RTOA.uL_RTOA_MeasurementItem.choice.k1 = 985025;
     }
     LOG_I(MAC,"reported val[%d] = %d\n",trp_i,MeasResVal->choice.uL_RTOA.uL_RTOA_MeasurementItem.choice.k1);
   
