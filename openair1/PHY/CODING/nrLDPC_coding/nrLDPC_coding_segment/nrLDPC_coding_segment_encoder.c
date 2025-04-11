@@ -65,8 +65,6 @@ static void ldpc8blocks(void *p)
   // nrLDPC_encoder output is in "d"
   // let's make this interface happy!
   uint8_t d[68 * 384] __attribute__((aligned(64)));
-  uint8_t *dp[2];
-  dp[0] = &d[0];
   uint8_t *c[nrLDPC_TB_encoding_parameters->C];
   unsigned int macro_segment, macro_segment_end;
 
@@ -76,7 +74,7 @@ static void ldpc8blocks(void *p)
   for (int r = 0; r < nrLDPC_TB_encoding_parameters->C; r++)
     c[r] = nrLDPC_TB_encoding_parameters->segments[r].c;
   start_meas(&nrLDPC_TB_encoding_parameters->segments[impp->macro_num * 8].ts_ldpc_encode);
-  LDPCencoder(c, dp, impp);
+  LDPCencoder(c, d, impp);
   stop_meas(&nrLDPC_TB_encoding_parameters->segments[impp->macro_num * 8].ts_ldpc_encode);
   // Compute where to place in output buffer that is concatenation of all segments
 

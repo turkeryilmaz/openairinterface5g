@@ -41,7 +41,7 @@
 #include "ldpc_encode_parity_check.c"
 #include "ldpc_generate_coefficient.c"
 
-int LDPCencoder(uint8_t **test_input, uint8_t **channel_input, encoder_implemparams_t *impp)
+int LDPCencoder(uint8_t **test_input, uint8_t *channel_input, encoder_implemparams_t *impp)
 {
   int Zc = impp->Zc;
   int Kb = impp->Kb;
@@ -121,8 +121,8 @@ int LDPCencoder(uint8_t **test_input, uint8_t **channel_input, encoder_implempar
   }
   if(impp->toutput != NULL) start_meas(impp->toutput);
   // information part and puncture columns
-  memcpy(&channel_input[0][0], &c[2*Zc], (block_length-2*Zc)*sizeof(unsigned char));
-  memcpy(&channel_input[0][block_length-2*Zc], &d[0], ((nrows-no_punctured_columns) * Zc-removed_bit)*sizeof(unsigned char));
+  memcpy(&channel_input[0], &c[2*Zc], (block_length-2*Zc)*sizeof(unsigned char));
+  memcpy(&channel_input[block_length-2*Zc], &d[0], ((nrows-no_punctured_columns) * Zc-removed_bit)*sizeof(unsigned char));
 
   if(impp->toutput != NULL) stop_meas(impp->toutput);
   return 0;

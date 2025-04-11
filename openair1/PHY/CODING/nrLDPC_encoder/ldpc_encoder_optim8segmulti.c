@@ -43,7 +43,7 @@
 #include "ldpc_encode_parity_check.c"
 #include "ldpc_generate_coefficient.c"
 
-int LDPCencoder(uint8_t **input, uint8_t **output, encoder_implemparams_t *impp)
+int LDPCencoder(uint8_t **input, uint8_t *output, encoder_implemparams_t *impp)
 {
   //set_log(PHY, 4);
 
@@ -207,8 +207,8 @@ int LDPCencoder(uint8_t **input, uint8_t **output, encoder_implemparams_t *impp)
       return(-1);
     }
   }
-  memcpy(output[0],&cc[2*Zc],(block_length-(2*Zc)));
-  memcpy(output[0]+block_length-(2*Zc),dd,((nrows-no_punctured_columns) * Zc-removed_bit));
+  memcpy(output,&cc[2*Zc],(block_length-(2*Zc)));
+  memcpy(output+block_length-(2*Zc),dd,((nrows-no_punctured_columns) * Zc-removed_bit));
   return 0;
 }
 
