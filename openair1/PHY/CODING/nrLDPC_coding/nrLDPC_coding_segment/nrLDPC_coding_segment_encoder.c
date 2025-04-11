@@ -84,11 +84,14 @@ static void ldpc8blocks(void *p)
   const uint32_t E = nrLDPC_TB_encoding_parameters->segments[macro_segment].E;
   uint32_t E2=E,E2_first_segment=macro_segment_end-macro_segment;
   bool Eshift=false;
+  uint32_t Emax = E;
   for (int s=macro_segment;s<macro_segment_end;s++)
       if (nrLDPC_TB_encoding_parameters->segments[s].E != E) {
 	 E2=nrLDPC_TB_encoding_parameters->segments[s].E;
          Eshift=true;
 	 E2_first_segment = s-macro_segment;
+         if(E2 > Emax)
+           Emax = E2;
          break;
       }	 
     
@@ -122,14 +125,12 @@ static void ldpc8blocks(void *p)
 */
   uint32_t Tbslbrm = nrLDPC_TB_encoding_parameters->tbslbrm;
 
-  uint8_t e[E] __attribute__((aligned(64)));
+  uint8_t e[Emax] __attribute__((aligned(64)));
   uint8_t f[E+64] __attribute__((aligned(64)));
-  uint8_t e2[E2] __attribute__((aligned(64)));
   uint8_t f2[E2+64] __attribute__((aligned(64)));
-  bzero(e, E);
+  bzero(e, Emax);
   bzero(f, E + 64);
   if (Eshift) {
-    bzero(e2, E2);
     bzero(f2, E2 + 64);
   }
   start_meas(&nrLDPC_TB_encoding_parameters->segments[macro_segment].ts_rate_match);
@@ -142,18 +143,7 @@ static void ldpc8blocks(void *p)
                         impp->F,
                         impp->K - impp->F - 2 * impp->Zc,
                         nrLDPC_TB_encoding_parameters->rv_index,
-                        E);
-  if (Eshift)
-    nr_rate_matching_ldpc(Tbslbrm,
-                          impp->BG,
-                          impp->Zc,
-                          d,
-                          e2,
-                          impp->n_segments,
-                          impp->F,
-                          impp->K - impp->F - 2 * impp->Zc,
-                          nrLDPC_TB_encoding_parameters->rv_index,
-                          E2);
+                        Emax);
 
   stop_meas(&nrLDPC_TB_encoding_parameters->segments[macro_segment].ts_rate_match);
   if (impp->K - impp->F - 2 * impp->Zc > E) {
@@ -187,7 +177,7 @@ static void ldpc8blocks(void *p)
   if (Eshift)
     nr_interleaving_ldpc(E2,
                          mod_order,
-                         e2,
+                         e,
                          f2);
   stop_meas(&nrLDPC_TB_encoding_parameters->segments[macro_segment].ts_interleave);
   if(impp->toutput != NULL) start_meas(impp->toutput);
@@ -502,7 +492,7 @@ static void ldpc8blocks(void *p)
   completed_task_ans(impp->ans);
 }
 
-static int nrLDPC_prepare_TB_encoding(nrLDPC_slot_encoding_parameters_t *nrLDPC_slot_encoding_parameters,
+static int nrLDPC_launch_TB_encoding(nrLDPC_slot_encoding_parameters_t *nrLDPC_slot_encoding_parameters,
                                       int dlsch_id,
                                       thread_info_tm_t *t_info)
 {
@@ -556,7 +546,7 @@ int nrLDPC_coding_encoder(nrLDPC_slot_encoding_parameters_t *nrLDPC_slot_encodin
 
   int nbEncode = 0;
   for (int dlsch_id = 0; dlsch_id < nrLDPC_slot_encoding_parameters->nb_TBs; dlsch_id++) {
-    nbEncode += nrLDPC_prepare_TB_encoding(nrLDPC_slot_encoding_parameters, dlsch_id, &t_info);
+    nbEncode += nrLDPC_launch_TB_encoding(nrLDPC_slot_encoding_parameters, dlsch_id, &t_info);
   }
   if (nbEncode < nbTasks) {
     completed_many_task_ans(&ans, nbTasks - nbEncode);
