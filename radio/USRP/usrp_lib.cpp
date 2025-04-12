@@ -924,7 +924,7 @@ rx_gain_calib_table_t calib_table_x310[] = {
 
 /*! \brief USRPn3xf RX calibration table */
 rx_gain_calib_table_t calib_table_n310[] = {
-  {3500000000.0,0.0},
+  {3500000000.0,0.0}, // fill this
   {2660000000.0,0.0},
   {2300000000.0,0.0},
   {1880000000.0,0.0},
@@ -955,6 +955,8 @@ void set_rx_gain_offset(openair0_config_t *openair0_cfg, int chain_index,int bw_
 
   if (bw_gain_adjust==1) {
     switch ((int)openair0_cfg[0].sample_rate) {
+      // check this: needs to match the signal processing in the USRP
+      // to be measured
       case 46080000:
         break;
 

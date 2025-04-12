@@ -249,10 +249,10 @@ typedef struct openair0_config {
   rx_gain_t rxg_mode[8];
   //! \brief Gain for RX in dB.
   //! index: [0..rx_num_channels]
-  double rx_gain[8];
+  double rx_gain[8]; // power we give to the radio
   //! \brief Gain offset (for calibration) in dB
   //! index: [0..rx_num_channels]
-  double rx_gain_offset[8];
+  double rx_gain_offset[8]; // additional offset
   //! gain for TX in dB
   double tx_gain[8];
   //! RX bandwidth in Hz
