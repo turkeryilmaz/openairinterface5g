@@ -45,6 +45,47 @@
 //#define DEBUG_LDPC_ENCODING_FREE 1
 
 /**
+ * \typedef group_tail_t
+ * \struct group_tail_s
+ * \brief index and content of the last word written by a task to the encoding library output
+ * It is returned after task completion to fix the borders of segment groups
+ * \var index index of the last word written by the task
+ * \var content content of the last word written by the task
+ */
+typedef struct group_tail_s
+{
+  uint32_t index;
+#if defined(__AVX512VBMI__)
+  uint64_t content;
+#elif defined(__aarch64__)
+  uint16_t content;
+#else
+  uint32_t content;
+#endif
+} group_tail_t;
+
+/**
+ * \brief fix segment groups first and last words
+ * The last word of a segment group is not written by encoding tasks in order to avoid race conditions
+ * This function fixes the segment group borders after encoding tasks completion
+ * \param group_tail store segment groups tail to fix segment borders
+ * \param nbGroups number of groups
+ * \params output encoding library output to write to
+ */
+static void fix_group_borders(group_tail_t *group_tail, int nbGroups, uint8_t *output)
+{
+  for(int i = 0; i < nbGroups; i++) {
+#if defined(__AVX512VBMI__)
+    ((uint64_t *)output)[group_tail[i].index] = group_tail[i].content | ((uint64_t *)output)[group_tail[i].index];
+#elif defined(__aarch64__)
+    ((uint16_t *)output)[group_tail[i].index] = group_tail[i].content | ((uint16_t *)output)[group_tail[i].index];
+#else
+    ((uint32_t *)output)[group_tail[i].index] = group_tail[i].content | ((uint32_t *)output)[group_tail[i].index];
+#endif
+  }
+}
+
+/**
  * \brief determine the value of E for the current segment
  * \param E number of bits per segment in f
  * \param E2 number of bits per segment in f2
@@ -71,6 +112,7 @@ static inline uint32_t select_E(uint32_t E, uint32_t E2, bool Eshift, uint32_t s
  * \param nb_segments number of segments in the group
  * \param output nrLDPC_coding_segment_encoder with concatenated segments and packed bits
  * \param Eoffset offset in number of bits of the first segment of the segment group within output
+ * \param group_tail store segment group last words to fix segment group borders
  */
 static void write_task_output(uint8_t *f,
                               uint32_t E,
@@ -80,7 +122,8 @@ static void write_task_output(uint8_t *f,
                               uint32_t E2_first_segment,
                               uint32_t nb_segments,
                               uint8_t *output,
-                              uint32_t Eoffset)
+                              uint32_t Eoffset,
+                              group_tail_t *group_tail)
 {
 
 #if defined(__AVX512VBMI__)
@@ -100,11 +143,12 @@ static void write_task_output(uint8_t *f,
     Eoffset2_bit[n] = Eoffset & 63;
     Eoffset += select_E(E, E2, Eshift, n, E2_first_segment);
   } 
+  group_tail->index = Eoffset2[nb_segments - 1];
   int i2=0;
   __m64 tmp;
   for (i=0;i<E2;i+=64,i2++) {
-     if (i<E) {
-      for (int j=0; j < E2_first_segment; j++) {
+    if (i<E) {
+      for (int j=0; j < E2_first_segment && (j < (nb_segments - 1) || i < (E2 - 64)); j++) {
 #ifdef DEBUG_BIT_INTERLEAVE
         printf("segment %d : qword %d, first bit %d last bit %d\n",j, 
             Eoffset2[j]+(i>>6),
@@ -121,10 +165,13 @@ static void write_task_output(uint8_t *f,
         // and >> operations are undefined and in fact don't give "0" which is
         // what we want here. The SIMD version do give 0 when the shift is 64
         tmp = (__m64)_mm512_bitshuffle_epi64_mask(((__m512i *)f)[i2],bitperm[j]);
-        *(__m64*)(output_p + Eoffset2[j])   = _mm_or_si64(*(__m64*)(output_p + Eoffset2[j]),_mm_slli_si64(tmp,Eoffset2_bit[j]));
-        *(__m64*)(output_p + Eoffset2[j]+1) = _mm_or_si64(*(__m64*)(output_p + Eoffset2[j]+1),_mm_srli_si64(tmp,(64-Eoffset2_bit[j])));
+
+        *(__m64*)(output_p + Eoffset2[j]) = _mm_or_si64(*(__m64*)(output_p + Eoffset2[j]),_mm_slli_si64(tmp,Eoffset2_bit[j]));
+
+        *(__m64*)(output_p + Eoffset2[j] + 1) = _mm_or_si64(*(__m64*)(output_p + Eoffset2[j]+1),_mm_srli_si64(tmp,(64-Eoffset2_bit[j])));
+
 #ifdef DEBUG_BIT_INTERLEAVE
-       if (j<=1) { 
+        if (j<=1) { 
            printf("pos : %d, i2 %d, j %d\n",(int)(output_p + Eoffset2[j]-(uint64_t*)output),i2,j);
            printf("i : %x.%x.%x.%x.%x.%x.%x.%x\n",
            ((uint8_t*)(output_p + Eoffset2[j]))[0],
@@ -209,29 +256,40 @@ static void write_task_output(uint8_t *f,
                ((_mm256_extract_epi8(_mm512_extracti32x8_epi32(((__m512i *)f)[i2],1),29)<<(5-j))&32)+
                ((_mm256_extract_epi8(_mm512_extracti32x8_epi32(((__m512i *)f)[i2],1),30)<<(6-j))&64)+
                ((_mm256_extract_epi8(_mm512_extracti32x8_epi32(((__m512i *)f)[i2],1),31)<<(7-j))&128));
-       }
+        }
 #endif
       } //for (int j=0;
-     } // if (i < E)
-     for (int j=E2_first_segment; j < nb_segments; j++) {
+    } // if (i < E)
+    for (int j=E2_first_segment; j < nb_segments && (j < (nb_segments - 1) || i < (E2 - 64)); j++) {
 #ifdef DEBUG_BIT_INTERLEAVE
-       printf("segment %d : qword %d, first bit %d last bit %d\n",j,
-           Eoffset2[j]+(i>>6),
-           (Eoffset2_bit[j] + i)&63,
-           (i<=(E-64)) ? 63 : (Eoffset2_bit[j] + E-1)&63);
-       if (Eoffset2_bit[j] > 0) 
-         printf("segment %d : qword %d, first bit %d last bit %d\n",j,
-                1+Eoffset2[j]+(i>>6),
-                0,
-                ((Eoffset2_bit[j] + i)&63) - 1);
+      printf("segment %d : qword %d, first bit %d last bit %d\n",j,
+          Eoffset2[j]+(i>>6),
+          (Eoffset2_bit[j] + i)&63,
+          (i<=(E-64)) ? 63 : (Eoffset2_bit[j] + E-1)&63);
+      if (Eoffset2_bit[j] > 0) 
+        printf("segment %d : qword %d, first bit %d last bit %d\n",j,
+               1+Eoffset2[j]+(i>>6),
+               0,
+               ((Eoffset2_bit[j] + i)&63) - 1);
 #endif
-       tmp = (__m64)_mm512_bitshuffle_epi64_mask(((__m512i *)f2)[i2],bitperm[j]);
-       *(__m64*)(output_p + Eoffset2[j])   = _mm_or_si64(*(__m64*)(output_p + Eoffset2[j]),
-                                                          _mm_slli_si64(tmp,Eoffset2_bit[j]));
-       *(__m64*)(output_p + Eoffset2[j]+1) = _mm_or_si64(*(__m64*)(output_p + Eoffset2[j]+1),_mm_srli_si64(tmp,(64-Eoffset2_bit[j])));
-     }
-     output_p++;
+      tmp = (__m64)_mm512_bitshuffle_epi64_mask(((__m512i *)f2)[i2],bitperm[j]);
+
+      *(__m64*)(output_p + Eoffset2[j]) = _mm_or_si64(*(__m64*)(output_p + Eoffset2[j]),_mm_slli_si64(tmp,Eoffset2_bit[j]));
+
+      *(__m64*)(output_p + Eoffset2[j]+1) = _mm_or_si64(*(__m64*)(output_p + Eoffset2[j]+1),_mm_srli_si64(tmp,(64-Eoffset2_bit[j])));
+    }
+    output_p++;
+    group_tail->index++;
   }
+
+  // Do not write the last word of the segment group but keep it for fixing segment borders
+  if (Eshift) {
+    tmp = (__m64)_mm512_bitshuffle_epi64_mask(((__m512i *)f2)[(E2 - 1) >> 6], bitperm[nb_segments - 1]);
+  } else {
+    tmp = (__m64)_mm512_bitshuffle_epi64_mask(((__m512i *)f)[(E2 - 1) >> 6], bitperm[nb_segments - 1]);
+  }
+  *(__m64*)(output_p - 1 + Eoffset2[nb_segments - 1]) = _mm_or_si64(*(__m64*)(output_p - 1 + Eoffset2[nb_segments - 1]), _mm_slli_si64(tmp, Eoffset2_bit[nb_segments - 1]));
+  group_tail->content = (uint64_t)_mm_srli_si64(tmp, (64 - Eoffset2_bit[nb_segments - 1]));
 
 #elif defined(__aarch64__)
   uint16_t *output_p = (uint16_t*)output;
@@ -243,6 +301,7 @@ static void write_task_output(uint8_t *f,
     Eoffset2_bit[n] = Eoffset & 15;
     Eoffset += select_E(E, E2, Eshift, n, E2_first_segment);
   } 
+  group_tail->index = Eoffset2[nb_segments - 1];
   int i2=0;
   const int8_t __attribute__ ((aligned (16))) ucShift[8][16] = {
     {0,1,2,3,4,5,6,7,0,1,2,3,4,5,6,7},     // segment 0
@@ -262,24 +321,36 @@ static void write_task_output(uint8_t *f,
   int32_t tmp;
   uint8x16_t cshift;
   for (i=0;i<E2;i+=16,i2++) {
-     if (i<E) {	
-       for (int j=0; j < E2_first_segment; j++) {
-         cshift = vandq_u8(vshlq_u8(((uint8x16_t*)f)[i2],vshift[j]),vmask);
-         tmp = (int)vaddv_u8(vget_low_u8(cshift));
-         tmp += (int)(vaddv_u8(vget_high_u8(cshift))<<8);
-         *(output_p + Eoffset2[j])   |= (uint16_t)(tmp<<Eoffset2_bit[j]);
-         *(output_p + Eoffset2[j]+1) |= (uint16_t)(tmp>>(16-Eoffset2_bit[j]));
-       }
-     }
-     for (int j=E2_first_segment; j < nb_segments; j++) {
-       cshift = vandq_u8(vshlq_u8(((uint8x16_t*)f2)[i2],vshift[j]),vmask);
-       tmp = (int)vaddv_u8(vget_low_u8(cshift));
-       tmp += (int)(vaddv_u8(vget_high_u8(cshift))<<8);
-       *(output_p + Eoffset2[j])   |= (uint16_t)(tmp<<Eoffset2_bit[j]);
-       *(output_p + Eoffset2[j]+1) |= (uint16_t)(tmp>>(16-Eoffset2_bit[j]));
-     }
-     output_p++;
+    if (i<E) {	
+      for (int j=0; j < E2_first_segment && (j < (nb_segments - 1) || i < (E2 - 16)); j++) {
+        cshift = vandq_u8(vshlq_u8(((uint8x16_t*)f)[i2],vshift[j]),vmask);
+        tmp = (int)vaddv_u8(vget_low_u8(cshift));
+        tmp += (int)(vaddv_u8(vget_high_u8(cshift))<<8);
+        *(output_p + Eoffset2[j]) |= (uint16_t)(tmp<<Eoffset2_bit[j]);
+        *(output_p + Eoffset2[j] + 1) |= (uint16_t)(tmp>>(16-Eoffset2_bit[j]));
+      }
+    }
+    for (int j=E2_first_segment; j < nb_segments && (j < (nb_segments - 1) || i < (E2 - 16)); j++) {
+      cshift = vandq_u8(vshlq_u8(((uint8x16_t*)f2)[i2],vshift[j]),vmask);
+      tmp = (int)vaddv_u8(vget_low_u8(cshift));
+      tmp += (int)(vaddv_u8(vget_high_u8(cshift))<<8);
+      *(output_p + Eoffset2[j]) |= (uint16_t)(tmp<<Eoffset2_bit[j]);
+      *(output_p + Eoffset2[j] + 1) |= (uint16_t)(tmp>>(16-Eoffset2_bit[j]));
+    }
+    output_p++;
+    group_tail->index++;
   }
+
+  // Do not write the last word of the segment group but keep it for fixing segment borders
+  if (Eshift) {
+    cshift = vandq_u8(vshlq_u8(((uint8x16_t*)f2)[(E2 - 1) >> 4], vshift[nb_segments - 1]), vmask);
+  } else {
+    cshift = vandq_u8(vshlq_u8(((uint8x16_t*)f)[(E2 - 1) >> 4], vshift[nb_segments - 1]), vmask);
+  }
+  tmp = (int)vaddv_u8(vget_low_u8(cshift));
+  tmp += (int)(vaddv_u8(vget_high_u8(cshift)) << 8);
+  *(output_p  - 1 + Eoffset2[nb_segments - 1]) |= (uint16_t)(tmp << Eoffset2_bit[nb_segments - 1]);
+  group_tail->content = (uint16_t)(tmp >> (16 - Eoffset2_bit[nb_segments - 1]));
        
 #else
   uint32_t *output_p = (uint32_t*)output;
@@ -291,27 +362,28 @@ static void write_task_output(uint8_t *f,
     Eoffset2_bit[n] = Eoffset & 31;
     Eoffset += select_E(E, E2, Eshift, n, E2_first_segment);
   } 
+  group_tail->index = Eoffset2[nb_segments - 1];
   int i2 = 0;
   int tmp;
   __m64 tmp64, tmp64b, tmp64c, out64;
   
   for (i=0; i < E2; i += 32, i2++) {
-     if (i < E) {
-       for (int j = 0; j < E2_first_segment; j++) {
-         // Note: Here and below, we are using the 64-bit SIMD instruction
-         // instead of C >>/<< because when the Eoffset2_bit is 64 or 0, the <<
-         // and >> operations are undefined and in fact don't give "0" which is
-         // what we want here. The SIMD version do give 0 when the shift is 64
-         tmp = _mm256_movemask_epi8(_mm256_slli_epi16(((__m256i *)f)[i2], 7 - j));
-         tmp64 = _mm_set1_pi32(tmp);
-         out64 = _mm_set_pi32(*(output_p + Eoffset2[j] + 1), *(output_p + Eoffset2[j]));
-         tmp64b = _mm_or_si64(out64, _mm_slli_pi32(tmp64, Eoffset2_bit[j]));
-         tmp64c = _mm_or_si64(out64, _mm_srli_pi32(tmp64, (32 - Eoffset2_bit[j])));
-         *(output_p + Eoffset2[j]) = _m_to_int(tmp64b);
-         *(output_p + Eoffset2[j] + 1) = _m_to_int(_mm_srli_si64(tmp64c, 32));
-       }
+    if (i < E) {
+      for (int j = 0; j < E2_first_segment && (j < (nb_segments - 1) || i < (E2 - 32)); j++) {
+        // Note: Here and below, we are using the 64-bit SIMD instruction
+        // instead of C >>/<< because when the Eoffset2_bit is 64 or 0, the <<
+        // and >> operations are undefined and in fact don't give "0" which is
+        // what we want here. The SIMD version do give 0 when the shift is 64
+        tmp = _mm256_movemask_epi8(_mm256_slli_epi16(((__m256i *)f)[i2], 7 - j));
+        tmp64 = _mm_set1_pi32(tmp);
+        out64 = _mm_set_pi32(*(output_p + Eoffset2[j] + 1), *(output_p + Eoffset2[j]));
+        tmp64b = _mm_or_si64(out64, _mm_slli_pi32(tmp64, Eoffset2_bit[j]));
+        tmp64c = _mm_or_si64(out64, _mm_srli_pi32(tmp64, (32 - Eoffset2_bit[j])));
+        *(output_p + Eoffset2[j]) = _m_to_int(tmp64b);
+        *(output_p + Eoffset2[j] + 1) = _m_to_int(_mm_srli_si64(tmp64c, 32));
+      }
     } 
-    for (int j = E2_first_segment; j < nb_segments; j++) {
+    for (int j = E2_first_segment; j < nb_segments && (j < (nb_segments - 1) || i < (E2 - 32)); j++) {
       tmp = _mm256_movemask_epi8(_mm256_slli_epi16(((__m256i *)f2)[i2], 7 - j));
       tmp64 = _mm_set1_pi32(tmp);
       out64 = _mm_set_pi32(*(output_p + Eoffset2[j] + 1), *(output_p + Eoffset2[j]));
@@ -321,8 +393,21 @@ static void write_task_output(uint8_t *f,
       *(output_p + Eoffset2[j] + 1) = _m_to_int(_mm_srli_si64(tmp64c, 32));
     }
     output_p++;
+    group_tail->index++;
   }
 
+  // Do not write the last word of the segment group but keep it for fixing segment borders
+  if (Eshift) {
+    tmp = _mm256_movemask_epi8(_mm256_slli_epi16(((__m256i *)f2)[(E2 - 1) >> 5], 7 - nb_segments + 1));
+  } else {
+    tmp = _mm256_movemask_epi8(_mm256_slli_epi16(((__m256i *)f)[(E2 - 1) >> 5], 7 - nb_segments + 1));
+  }
+  tmp64 = _mm_set1_pi32(tmp);
+  out64 = _mm_set_pi32(*(output_p - 1 + Eoffset2[nb_segments - 1] + 1), *(output_p - 1 + Eoffset2[nb_segments - 1]));
+  tmp64b = _mm_or_si64(out64, _mm_slli_pi32(tmp64, Eoffset2_bit[nb_segments - 1]));
+  tmp64c = _mm_srli_pi32(tmp64, (32 - Eoffset2_bit[nb_segments - 1]));
+  *(output_p - 1 + Eoffset2[nb_segments - 1])  = _m_to_int(tmp64b);
+  group_tail->content = _m_to_int(tmp64c);
   
 #endif
 }
@@ -330,6 +415,7 @@ static void write_task_output(uint8_t *f,
 typedef struct ldpc8blocks_args_s {
   nrLDPC_TB_encoding_parameters_t *nrLDPC_TB_encoding_parameters;
   encoder_implemparams_t impp;
+  group_tail_t *group_tail;
 } ldpc8blocks_args_t;
 
 static void ldpc8blocks(void *p)
@@ -483,7 +569,8 @@ static void ldpc8blocks(void *p)
                     E2_first_segment,
                     macro_segment_end - macro_segment,
                     impp->output,
-                    Eoffset);
+                    Eoffset,
+		    args->group_tail);
 
   if(impp->toutput != NULL) stop_meas(impp->toutput);
 /*
@@ -497,8 +584,9 @@ static void ldpc8blocks(void *p)
 }
 
 static int nrLDPC_launch_TB_encoding(nrLDPC_slot_encoding_parameters_t *nrLDPC_slot_encoding_parameters,
-                                      int dlsch_id,
-                                      thread_info_tm_t *t_info)
+                                     int dlsch_id,
+                                     thread_info_tm_t *t_info,
+                                     group_tail_t *group_tail)
 {
   nrLDPC_TB_encoding_parameters_t *nrLDPC_TB_encoding_parameters = &nrLDPC_slot_encoding_parameters->TBs[dlsch_id];
 
@@ -527,6 +615,7 @@ static int nrLDPC_launch_TB_encoding(nrLDPC_slot_encoding_parameters_t *nrLDPC_s
     perJobImpp->impp.first_seg = j * 8;
     perJobImpp->impp.ans = t_info->ans;
     perJobImpp->nrLDPC_TB_encoding_parameters = nrLDPC_TB_encoding_parameters;
+    perJobImpp->group_tail = &group_tail[j];
 
     task_t t = {.func = ldpc8blocks, .args = perJobImpp};
     pushTpool(nrLDPC_slot_encoding_parameters->threadPool, t);
@@ -548,15 +637,26 @@ int nrLDPC_coding_encoder(nrLDPC_slot_encoding_parameters_t *nrLDPC_slot_encodin
   init_task_ans(&ans, nbTasks);
   thread_info_tm_t t_info = {.buf = (uint8_t *)arr, .len = 0, .cap = nbTasks, .ans = &ans};
 
+  group_tail_t group_tail[nbTasks];
+  memset(group_tail, 0, nbTasks * sizeof(group_tail_t));
+
   int nbEncode = 0;
   for (int dlsch_id = 0; dlsch_id < nrLDPC_slot_encoding_parameters->nb_TBs; dlsch_id++) {
-    nbEncode += nrLDPC_launch_TB_encoding(nrLDPC_slot_encoding_parameters, dlsch_id, &t_info);
+    nbEncode += nrLDPC_launch_TB_encoding(nrLDPC_slot_encoding_parameters, dlsch_id, &t_info, &group_tail[dlsch_id]);
   }
   if (nbEncode < nbTasks) {
     completed_many_task_ans(&ans, nbTasks - nbEncode);
   }
   // Execute thread pool tasks
   join_task_ans(&ans);
+
+  int n_seg_sum = 0;
+  for (int dlsch_id = 0; dlsch_id < nrLDPC_slot_encoding_parameters->nb_TBs; dlsch_id++) {
+    nrLDPC_TB_encoding_parameters_t *nrLDPC_TB_encoding_parameters = &nrLDPC_slot_encoding_parameters->TBs[dlsch_id];
+    int n_seg = (nrLDPC_TB_encoding_parameters->C / 8 + ((nrLDPC_TB_encoding_parameters->C & 7) == 0 ? 0 : 1));
+    fix_group_borders(&group_tail[n_seg_sum], n_seg, nrLDPC_TB_encoding_parameters->output);
+    n_seg_sum += n_seg;
+  }
 
   return 0;
 }
