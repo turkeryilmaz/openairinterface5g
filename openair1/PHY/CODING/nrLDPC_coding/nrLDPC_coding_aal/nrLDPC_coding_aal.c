@@ -2,7 +2,7 @@
  * Copyright(c) 2017 Intel Corporation
  */
 
-/*! \file PHY/CODING/nrLDPC_coding/nrLDPC_coding_t2/nrLDPC_coding_t2.c
+/*! \file PHY/CODING/nrLDPC_coding/nrLDPC_coding_aal/nrLDPC_coding_al.c
  * \note: based on testbbdev test_bbdev_perf.c functions. Harq buffer offset added.
  * \mbuf and mempool allocated at the init step, LDPC parameters updated from OAI.
  */
@@ -448,11 +448,12 @@ static int add_dev(uint8_t dev_id)
   unsigned int nb_queues;
   struct rte_bbdev_queue_conf qconf;
 
-  active_dev.dev_id = dev_id;
-
   // retrieve device capabilities
   rte_bbdev_info_get(dev_id, &active_dev.info);
   printf("using bbdev %d: %s\n", dev_id, active_dev.info.dev_name);
+
+  active_dev.driver_name = active_dev.info.drv.driver_name;
+  active_dev.dev_id = dev_id;
 
   nb_queues = RTE_MIN(rte_lcore_count(), active_dev.info.drv.max_num_queues);
   nb_queues = RTE_MIN(nb_queues, (unsigned int)MAX_QUEUES);
@@ -508,7 +509,7 @@ static int add_dev(uint8_t dev_id)
 
 // based on DPDK BBDEV init_op_data_objs
 static int init_op_data_objs_dec(struct rte_bbdev_op_data *bufs,
-                                 u_int8_t *input,
+                                 int8_t *input,
                                  nrLDPC_slot_decoding_parameters_t *nrLDPC_slot_decoding_parameters,
                                  struct rte_mempool *mbuf_pool,
                                  enum op_data_type op_type,
@@ -676,7 +677,6 @@ static void set_ldpc_dec_op(struct rte_bbdev_dec_op **ops,
   unsigned int j = 0;
   for (h = 0; h < nrLDPC_slot_decoding_parameters->nb_TBs; ++h) {
     for (i = 0; i < nrLDPC_slot_decoding_parameters->TBs[h].C; ++i) {
-      ops[j]->ldpc_dec.cb_params.e = nrLDPC_slot_decoding_parameters->TBs[h].segments[i].E;
       ops[j]->ldpc_dec.basegraph = nrLDPC_slot_decoding_parameters->TBs[h].BG;
       ops[j]->ldpc_dec.z_c = nrLDPC_slot_decoding_parameters->TBs[h].Z;
       ops[j]->ldpc_dec.q_m = nrLDPC_slot_decoding_parameters->TBs[h].Qm;
@@ -699,23 +699,35 @@ static void set_ldpc_dec_op(struct rte_bbdev_dec_op **ops,
         // ops[j]->ldpc_dec.op_flags |= RTE_BBDEV_LDPC_HQ_COMBINE_IN_ENABLE;
       }
       if (nrLDPC_slot_decoding_parameters->TBs[h].C > 1) {
+        ops[j]->ldpc_dec.code_block_mode = 1;
+        ops[j]->ldpc_dec.cb_params.e = nrLDPC_slot_decoding_parameters->TBs[h].segments[i].E;
         ops[j]->ldpc_dec.op_flags |= RTE_BBDEV_LDPC_CRC_TYPE_24B_DROP;
         ops[j]->ldpc_dec.op_flags |= RTE_BBDEV_LDPC_CRC_TYPE_24B_CHECK;
       } else {
+        /**
+         * This is a special case when #TB = 1 and #CB = 1
+         * In this case, we must use TB mode
+         * Quoted from: https://doc.dpdk.org/guides-23.11/prog_guide/bbdev.html#bbdev-ldpc-decode-operation
+         * The case when one CB belongs to TB and is being enqueued individually to BBDEV, this case is considered as a
+         * special case of partial TB where its number of CBs is 1. Therefore, it requires to get processed in TB-mode.
+         */
+        ops[j]->ldpc_dec.code_block_mode = 0;
+        ops[j]->ldpc_dec.tb_params.c = 1;
+        ops[j]->ldpc_dec.tb_params.r = 0;
+        ops[j]->ldpc_dec.tb_params.cab = 1;
+        ops[j]->ldpc_dec.tb_params.ea = nrLDPC_slot_decoding_parameters->TBs[h].segments[i].E;
+        ops[j]->ldpc_dec.tb_params.eb = nrLDPC_slot_decoding_parameters->TBs[h].segments[i].E;
         bool non24b_crc = check_non24b_crc(&active_dev.info);
         if(non24b_crc) {
           uint8_t crc_type = crcType(nrLDPC_slot_decoding_parameters->TBs[h].C, nrLDPC_slot_decoding_parameters->TBs[h].A);
           if(crc_type == 0)     // CRC_24A
-          {
             ops[j]->ldpc_dec.op_flags |= RTE_BBDEV_LDPC_CRC_TYPE_24A_CHECK;
-          }
           else if(crc_type == 2) // CRC_16
-          {
             ops[j]->ldpc_dec.op_flags |= RTE_BBDEV_LDPC_CRC_TYPE_16_CHECK;
-          }
+          else
+            AssertFatal(0, "ERROR: Unsupported CRC type %d\n", crc_type);
         }
       }
-      ops[j]->ldpc_dec.code_block_mode = 1;
 
       // Calculate offset in the HARQ combined buffers
       // Unique segment offset
@@ -755,20 +767,37 @@ static void set_ldpc_enc_op(struct rte_bbdev_enc_op **ops,
   unsigned int j = 0;
   for (h = 0; h < nrLDPC_slot_encoding_parameters->nb_TBs; ++h) {
     for (i = 0; i < nrLDPC_slot_encoding_parameters->TBs[h].C; ++i) {
-      ops[j]->ldpc_enc.cb_params.e = nrLDPC_slot_encoding_parameters->TBs[h].segments[i].E;
       ops[j]->ldpc_enc.basegraph = nrLDPC_slot_encoding_parameters->TBs[h].BG;
       ops[j]->ldpc_enc.z_c = nrLDPC_slot_encoding_parameters->TBs[h].Z;
       ops[j]->ldpc_enc.q_m = nrLDPC_slot_encoding_parameters->TBs[h].Qm;
       ops[j]->ldpc_enc.n_filler = nrLDPC_slot_encoding_parameters->TBs[h].F;
       ops[j]->ldpc_enc.n_cb = (nrLDPC_slot_encoding_parameters->TBs[h].BG == 1) ? (66 * nrLDPC_slot_encoding_parameters->TBs[h].Z)
-                                                                                : (50 * nrLDPC_slot_encoding_parameters->TBs[h].Z);
+      : (50 * nrLDPC_slot_encoding_parameters->TBs[h].Z);
       if (nrLDPC_slot_encoding_parameters->TBs[h].tbslbrm != 0) {
         uint32_t Nref = 3 * nrLDPC_slot_encoding_parameters->TBs[h].tbslbrm / (2 * nrLDPC_slot_encoding_parameters->TBs[h].C);
         ops[j]->ldpc_enc.n_cb = min(ops[j]->ldpc_enc.n_cb, Nref);
       }
       ops[j]->ldpc_enc.rv_index = nrLDPC_slot_encoding_parameters->TBs[h].rv_index;
       ops[j]->ldpc_enc.op_flags = RTE_BBDEV_LDPC_RATE_MATCH;
-      ops[j]->ldpc_enc.code_block_mode = 1;
+      if(nrLDPC_slot_encoding_parameters->TBs[h].C > 1) {
+        ops[j]->ldpc_enc.code_block_mode = 1;
+        ops[j]->ldpc_enc.cb_params.e = nrLDPC_slot_encoding_parameters->TBs[h].segments[i].E;
+      } else {
+        /**
+         * This is a special case when #TB = 1 and #CB = 1
+         * In this case, we must use TB mode
+         * Quoted from: https://doc.dpdk.org/guides-23.11/prog_guide/bbdev.html#bbdev-ldpc-decode-operation
+         * The case when one CB belongs to TB and is being enqueued individually to BBDEV, this case is considered as a
+         * special case of partial TB where its number of CBs is 1. Therefore, it requires to get processed in TB-mode.
+         */
+        ops[j]->ldpc_enc.code_block_mode = 0;
+        ops[j]->ldpc_enc.tb_params.c = 1;
+        ops[j]->ldpc_enc.tb_params.r = 0;
+        ops[j]->ldpc_enc.tb_params.cab = 1;
+        ops[j]->ldpc_enc.tb_params.ea = nrLDPC_slot_encoding_parameters->TBs[h].segments[i].E;
+        ops[j]->ldpc_enc.tb_params.eb = nrLDPC_slot_encoding_parameters->TBs[h].segments[i].E;
+      }
+
       ops[j]->ldpc_enc.output = outputs[start_idx + j];
       ops[j]->ldpc_enc.input = inputs[start_idx + j];
       ++j;
@@ -924,14 +953,14 @@ static int pmd_lcore_ldpc_dec(void *arg)
             uint8_t *decoded_bytes = nrLDPC_slot_decoding_parameters->TBs[h].segments[i].c;
             uint8_t crc_type = crcType(nrLDPC_slot_decoding_parameters->TBs[h].C, nrLDPC_slot_decoding_parameters->TBs[h].A);
             uint32_t len_with_crc = lenWithCrc(nrLDPC_slot_decoding_parameters->TBs[h].C, nrLDPC_slot_decoding_parameters->TBs[h].A);
-            *status = check_crc(decoded_bytes, len_with_crc, crc_type);
+            int crc_status = check_crc(decoded_bytes, len_with_crc, crc_type);
+            *status= (crc_status == 1);
           }
         }
         if (*status) {
           *nrLDPC_slot_decoding_parameters->TBs[h].processedSegments =
               *nrLDPC_slot_decoding_parameters->TBs[h].processedSegments + 1;
         }
-
         ++j;
       }
     }
@@ -1182,6 +1211,122 @@ int32_t nrLDPC_coding_shutdown()
   return 0;
 }
 
+/**
+ * @brief Scale LLR values to fit into the fixed-point representation.
+ * @note 
+ * This functions scales the LLR values to fit into the fixed-point representation.
+ * The implementation includes some hacks to improve its robustness at low SNRs.
+ * @todo 
+ * This LLR scaling method is far from optimal. More testing is needed to understand its performance.
+ * Can consider introducing SINR information to improve scaling.
+ * A better approach would be to do LLR scaling/quantization right after demodulation, since both the software LDPC decoder also uses an 8-bit input.
+ */
+void llr_scaling(int16_t *llr, int llr_len, int8_t *llr_scaled, int8_t llr_size, int8_t llr_decimal, int8_t nb_layers, int8_t Qm) {
+  const int16_t llr_max = (1 << (llr_size - 1)) - 1;
+  const int16_t llr_min = -llr_max;
+
+  // Step 1: Find the max absolute LLR
+  int16_t max_abs = 1; // prevent divide-by-zero
+  // SCALAR IMPLEMENTATION
+  // for (int i = 0; i < llr_len; i++) {
+  //     int16_t abs_val = abs(llr[i]);
+  //     if (abs_val > max_abs) max_abs = abs_val;
+  // }
+  // VECTORIZED IMPLEMENTATION
+  simde__m128i max_vec = simde_mm_set1_epi16(1);
+  for (int i = 0; i < llr_len; i += 8) {
+      simde__m128i llr_vec = simde_mm_loadu_si128((simde__m128i*)&llr[i]);
+      simde__m128i abs_vec = simde_mm_abs_epi16(llr_vec);
+      max_vec = simde_mm_max_epi16(max_vec, abs_vec);
+  }
+  // reduce max_vec to single max_abs
+  int16_t temp[8];
+  simde_mm_storeu_si128((simde__m128i*)temp, max_vec);
+  for (int i = 0; i < 8; i++) {
+      if (temp[i] > max_abs) max_abs = temp[i];
+  }
+
+  // Step 2: Compute dynamic scale factor
+  float fixed_point_range = (float)llr_max / (1 << llr_decimal);
+  float scale = fixed_point_range / (float)max_abs;
+  if(max_abs < fixed_point_range) {
+    scale = 1.0f;
+  }
+
+  // Step 3: Scale and saturate
+  // SCALAR IMPLEMENTATION
+  // for (int i = 0; i < llr_len; i++) {
+  //     float scaled = (float)llr[i] * scale; // map into fixed-point domain
+  //     if(Qm == 2) { /* this is a hack! */
+  //       scaled = (int8_t)roundf(scaled) >> llr_decimal;
+  //     } else {
+  //       scaled = (int8_t)roundf(scaled * (1 << llr_decimal));
+  //     }
+  //     // Clamp to [-128, 127]
+  //     if (scaled > llr_max) llr_scaled[i] = llr_max;
+  //     else if (scaled < llr_min) llr_scaled[i] = llr_min;
+  // }
+  // VECTORIZED IMPLEMENTATION
+  simde__m128 scale_vec = simde_mm_set1_ps(scale);
+  simde__m128i llr_max_vec = simde_mm_set1_epi16(llr_max);
+  simde__m128i llr_min_vec = simde_mm_set1_epi16(llr_min);
+  simde__m128i decimal_shift = simde_mm_set1_epi16(1 << llr_decimal);
+  for (int i = 0; i < llr_len; i += 8) {
+    // load LLR values
+    simde__m128i llr_vec = simde_mm_loadu_si128((simde__m128i*)&llr[i]);
+
+    // convert to float for scaling
+    simde__m128i llr_lo = simde_mm_cvtepi16_epi32(llr_vec);
+    simde__m128i llr_hi = simde_mm_cvtepi16_epi32(simde_mm_srli_si128(llr_vec, 8));
+    simde__m128 float_lo = simde_mm_cvtepi32_ps(llr_lo);
+    simde__m128 float_hi = simde_mm_cvtepi32_ps(llr_hi);
+
+    // scale
+    float_lo = simde_mm_mul_ps(float_lo, scale_vec);
+    float_hi = simde_mm_mul_ps(float_hi, scale_vec);
+
+    // convert back to int16 with saturation
+    llr_lo = simde_mm_cvtps_epi32(float_lo);
+    llr_hi = simde_mm_cvtps_epi32(float_hi);
+    simde__m128i scaled_vec = simde_mm_packs_epi32(llr_lo, llr_hi);
+    
+    if (Qm == 2) {  /* this is a hack! */
+      scaled_vec = simde_mm_srai_epi16(scaled_vec, 1);
+    } else {
+      scaled_vec = simde_mm_mullo_epi16(scaled_vec, decimal_shift);
+    }
+
+    // clamp to [llr_min, llr_max]
+    scaled_vec = simde_mm_min_epi16(scaled_vec, llr_max_vec);
+    scaled_vec = simde_mm_max_epi16(scaled_vec, llr_min_vec);
+
+    // Pack to int8 and store
+    simde__m128i result = simde_mm_packs_epi16(scaled_vec, simde_mm_setzero_si128());
+    simde_mm_storeu_si128((simde__m128i*)&llr_scaled[i], result);
+  }
+}
+
+/**
+ * @brief nrLDPC_coding_decoder
+ * @param nrLDPC_slot_decoding_parameters
+ * @return
+ *   -1 on error
+ *    0 on success
+ * @note
+ *   In OAI, nr_ulsch_decoding.c assumes:
+ *   - Input: LLR soft bits after demodulation/unscrambling.
+ *   - Output: Individual CBs without CRC24B.
+ *   The LDPC decoder must perform: (1) rate dematching, (2) LDPC decoding, and (3) CRC checking/dropping for CBs.
+ *   nr_ulsch_decoding.c performs CB concatenation and CRC checking for the entire TB later.
+ * @todo
+ *   In the future, we should check the underlying LDPC AAL HW capabilities in nr_ulsch_decoding.c first.
+ *   This will require nrLDPC_coding_interface.h to be updated, as we will need to keep track of the HW capabilities globally after nrLPDC_coding_init.
+ *   Example of other operations that can be offloaded/enabled in the decoding process include:
+ *   - CB segmentation (i.e., bypassnr_segmentation()) if the HW supports TB mode.
+ *   - CRC24A/CRC16 checking for the entire TB (RTE_BBDEV_LDPC_CRC_TYPE_24A_CHECK/RTE_BBDEV_LDPC_CRC_TYPE_16_CHECK)
+ *   - Input LLR compression (RTE_BBDEV_LDPC_LLR_COMPRESSION)
+ *   Other features like HARQ combining is not supported for now.
+ */
 int32_t nrLDPC_coding_decoder(nrLDPC_slot_decoding_parameters_t *nrLDPC_slot_decoding_parameters)
 {
   pthread_mutex_lock(&decode_mutex);
@@ -1194,12 +1339,11 @@ int32_t nrLDPC_coding_decoder(nrLDPC_slot_decoding_parameters_t *nrLDPC_slot_dec
     num_blocks += nrLDPC_slot_decoding_parameters->TBs[h].C;
   }
 
-  u_int16_t z_ol[LDPC_MAX_CB_SIZE] __attribute__((aligned(16)));
   /* It is not unlikely that l_ol becomes big enough to overflow the stack
    * If you observe this behavior then move it to the heap
    * Then you would better do a persistent allocation to limit the overhead
    */
-  u_int8_t l_ol[num_blocks * LDPC_MAX_CB_SIZE] __attribute__((aligned(16)));
+  int8_t l_ol[num_blocks * LDPC_MAX_CB_SIZE] __attribute__((aligned(16)));
 
   // fill_queue_buffers -> init_op_data_objs
   struct rte_mempool *in_mp = active_dev.mp_dec_inputs;
@@ -1216,25 +1360,18 @@ int32_t nrLDPC_coding_decoder(nrLDPC_slot_decoding_parameters_t *nrLDPC_slot_dec
                                                           &dec_op_params->q_bufs[socket_id][queue_id].hard_outputs,
                                                           &dec_op_params->q_bufs[socket_id][queue_id].harq_inputs,
                                                           &dec_op_params->q_bufs[socket_id][queue_id].harq_outputs};
-  
-  // TODO: REWORK THE FOLLOWING
-  // LLR input size can be 6/8bits, and LLR decimal can be 0/1/2/4
-  // Thus, the LLR input must be scaled accordingly
-  // Need to clarify the input format coming from OAI, and the current assumptions for T2
   int8_t llr_size = (active_dev.info.drv.capabilities)[RTE_BBDEV_OP_LDPC_DEC].cap.ldpc_dec.llr_size;
   int8_t llr_decimal = (active_dev.info.drv.capabilities)[RTE_BBDEV_OP_LDPC_DEC].cap.ldpc_dec.llr_decimals;
   int offset = 0;
   for (uint16_t h = 0; h < nrLDPC_slot_decoding_parameters->nb_TBs; ++h) {
     for (int r = 0; r < nrLDPC_slot_decoding_parameters->TBs[h].C; r++) {
-      memcpy(z_ol,
-             nrLDPC_slot_decoding_parameters->TBs[h].segments[r].llr,
-             nrLDPC_slot_decoding_parameters->TBs[h].segments[r].E * sizeof(uint16_t));
-      simde__m128i *pv_ol128 = (simde__m128i *)z_ol;
-      simde__m128i *pl_ol128 = (simde__m128i *)&l_ol[offset];
-      int kc = nrLDPC_slot_decoding_parameters->TBs[h].BG == 2 ? 52 : 68;
-      for (int i = 0, j = 0; j < ((kc * nrLDPC_slot_decoding_parameters->TBs[h].Z) >> 4) + 1; i += 2, j++) {
-        pl_ol128[j] = simde_mm_packs_epi16(pv_ol128[i], pv_ol128[i + 1]);
-      }
+      llr_scaling(nrLDPC_slot_decoding_parameters->TBs[h].segments[r].llr,
+                  nrLDPC_slot_decoding_parameters->TBs[h].segments[r].E,
+                  &l_ol[offset],
+                  llr_size,
+                  llr_decimal,
+                  nrLDPC_slot_decoding_parameters->TBs[h].nb_layers,
+                  nrLDPC_slot_decoding_parameters->TBs[h].Qm);
       offset += LDPC_MAX_CB_SIZE;
     }
   }
@@ -1263,6 +1400,25 @@ int32_t nrLDPC_coding_decoder(nrLDPC_slot_decoding_parameters_t *nrLDPC_slot_dec
   return 0;
 }
 
+/**
+ * @brief nrLDPC_coding_encoder
+ * @param nrLDPC_slot_encoding_parameters
+ * @return
+ *   -1 on error
+ *    0 on success
+ * @note
+ *   In OAI, nr_dlsch_coding.c assumes:
+ *   - Input: TB with ALL the CRC bits -- CRC24A/CRC16 for the TB, and CRC24B for the CBs.
+ *   - Output: Individual encoded CBs (TODO: To update after !3168 is finalized, and the new output will be concatenated CBs).
+ *   The LDPC encoder must perform: (1) LDPC encoding, (2) rate matching and interleaving.
+ * @todo:
+ *  In the future, we should check the underlying LDPC AAL HW capabilities in nr_dlsch_coding.c first.
+ *  This will require nrLDPC_coding_interface.h to be updated, as we will need to keep track of the HW capabilities globally after nrLPDC_coding_init.
+ *  Example of other operations that can be offloaded in the encoding process include:
+ *  - CB segmentation (i.e., bypass nr_segmentation) if the HW supports TB mode.
+ *  - CRC24A/CRC16 computation for each TB (RTE_BBDEV_LDPC_CRC_24A_ATTACH/RTE_BBDEV_LDPC_CRC_16_ATTACH).
+ *  - CRC24B computation for each CBs (RTE_BBDEV_LDPC_CRC_24B_ATTACH).
+ */
 int32_t nrLDPC_coding_encoder(nrLDPC_slot_encoding_parameters_t *nrLDPC_slot_encoding_parameters)
 {
   pthread_mutex_lock(&encode_mutex);
