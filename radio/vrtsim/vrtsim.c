@@ -47,6 +47,7 @@
 #include "actor.h"
 #include "noise_device.h"
 #include "simde/x86/avx512.h"
+#include "taps_client.h"
 
 // Simulator role
 typedef enum { ROLE_SERVER = 1, ROLE_CLIENT } role;
@@ -60,6 +61,8 @@ typedef enum { ROLE_SERVER = 1, ROLE_CLIENT } role;
 #define VRTSIM_SECTION "vrtsim"
 #define TIME_SCALE_HLP \
   "sample time scale. 1.0 means realtime. Values > 1 mean faster than realtime. Values < 1 mean slower than realtime\n"
+#define TAPS_SOCKET_HLP \
+  "Socket to connect to the channel emulation server. If not set channel emulation would be done inline\n"
 
 // clang-format off
 #define VRTSIM_PARAMS_DESC \
@@ -68,6 +71,7 @@ typedef enum { ROLE_SERVER = 1, ROLE_CLIENT } role;
      {"role",         "either client or server\n",     0, .strptr = &role,                       .defstrval = ROLE_CLIENT_STRING,  TYPE_STRING, 0}, \
      {"timescale",    TIME_SCALE_HLP,                  0, .dblptr = &vrtsim_state->timescale, .defdblval = 1.0,                 TYPE_DOUBLE, 0}, \
      {"chanmod",      "Enable channel modelling",      0, .iptr = &vrtsim_state->chanmod,     .defintval = 0,                   TYPE_INT,    0}, \
+     {"taps-socket",  TAPS_SOCKET_HLP,                 0, .strptr = &vrtsim_state->taps_socket, .defstrval = NULL, TYPE_STRING, 0}, \
   };
 // clang-format on
 
@@ -112,6 +116,7 @@ typedef struct {
   int rx_num_channels;
   channel_desc_t *channel_desc;
   Actor_t *channel_modelling_actors;
+  char *taps_socket;
 } vrtsim_state_t;
 
 // Sample history for channel impulse response
@@ -154,13 +159,16 @@ static void load_channel_model(vrtsim_state_t *vrtsim_state)
                    vrtsim_state->tx_bw);
   char *model_name = vrtsim_state->role == ROLE_CLIENT ? "client_tx_channel_model" : "server_tx_channel_model";
   vrtsim_state->channel_desc = find_channel_desc_fromname(model_name);
-  AssertFatal(vrtsim_state->channel_desc !=NULL, "Could not find model name %s. Make sure it is present in the config file", model_name);
-  LOG_I(HW, "Channel model %s parameters: path_loss_dB=%.2f, nb_tx=%d, nb_rx=%d, channel_length=%d\n",
-    model_name,
-    vrtsim_state->channel_desc->path_loss_dB,
-    vrtsim_state->channel_desc->nb_tx,
-    vrtsim_state->channel_desc->nb_rx,
-    vrtsim_state->channel_desc->channel_length);
+  AssertFatal(vrtsim_state->channel_desc != NULL,
+              "Could not find model name %s. Make sure it is present in the config file",
+              model_name);
+  LOG_I(HW,
+        "Channel model %s parameters: path_loss_dB=%.2f, nb_tx=%d, nb_rx=%d, channel_length=%d\n",
+        model_name,
+        vrtsim_state->channel_desc->path_loss_dB,
+        vrtsim_state->channel_desc->nb_tx,
+        vrtsim_state->channel_desc->nb_rx,
+        vrtsim_state->channel_desc->channel_length);
   random_channel(vrtsim_state->channel_desc, 0);
   AssertFatal(vrtsim_state->channel_desc != NULL, "Could not find channel model %s\n", model_name);
 }
@@ -179,6 +187,9 @@ static void vrtsim_readconfig(vrtsim_state_t *vrtsim_state)
     vrtsim_state->role = ROLE_SERVER;
   } else {
     AssertFatal(false, "Invalid role configuration\n");
+  }
+  if (vrtsim_state->taps_socket) {
+    LOG_A(HW, "VRTSIM: will use taps socket %s\n", vrtsim_state->taps_socket);
   }
 }
 
@@ -323,12 +334,20 @@ static int vrtsim_connect(openair0_device *device)
 
   // Handle channel modelling after number of RX antennas are known
   int num_tx_stats = 1;
-  if (vrtsim_state->chanmod) {
+  if (vrtsim_state->chanmod || vrtsim_state->taps_socket) {
     vrtsim_state->channel_modelling_actors = calloc_or_fail(vrtsim_state->peer_info.num_rx_antennas, sizeof(Actor_t));
     for (int i = 0; i < vrtsim_state->peer_info.num_rx_antennas; i++) {
       init_actor(&vrtsim_state->channel_modelling_actors[i], "chanmod", -1);
     }
-    load_channel_model(vrtsim_state);
+    if (vrtsim_state->taps_socket) {
+      taps_client_connect(0,
+                          vrtsim_state->taps_socket,
+                          device->openair0_cfg[0].tx_num_channels,
+                          vrtsim_state->peer_info.num_rx_antennas,
+                          &vrtsim_state->channel_desc);
+    } else {
+      load_channel_model(vrtsim_state);
+    }
     num_tx_stats = vrtsim_state->peer_info.num_rx_antennas;
   }
   vrtsim_state->tx_timing = calloc_or_fail(num_tx_stats, sizeof(tx_timing_t));
@@ -398,6 +417,7 @@ typedef struct {
 static void perform_channel_modelling(void *arg)
 {
   channel_modelling_args_t *channel_modelling_args = arg;
+  vrtsim_state_t *vrtsim_state = channel_modelling_args->vrtsim_state;
   int nsamps = channel_modelling_args->nsamps;
   int aarx = channel_modelling_args->aarx;
   int nb_tx_ant = channel_modelling_args->nbAnt;
@@ -408,23 +428,36 @@ static void perform_channel_modelling(void *arg)
   // Apply noise from global settings
   get_noise_vector((float *)samples, nsamps * 2);
 
-  channel_desc_t *channel_desc = channel_modelling_args->vrtsim_state->channel_desc;
-  const float pathloss_linear = powf(10, channel_desc->path_loss_dB / 20.0);
+  channel_desc_t *channel_desc = vrtsim_state->channel_desc;
 
-  // Convert channel impulse response to float + apply pathloss
+  if (channel_desc == NULL) {
+    return;
+  }
+
   cf_t channel_impulse_response[nb_tx_ant][channel_desc->channel_length];
-  for (int aatx = 0; aatx < nb_tx_ant; aatx++) {
-    const struct complexd *channelModel = channel_desc->ch[aarx + (aatx * channel_desc->nb_rx)];
-    for (int i = 0; i < channel_desc->channel_length; i++) {
-      channel_impulse_response[aatx][i].r = channelModel[i].r * pathloss_linear;
-      channel_impulse_response[aatx][i].i = channelModel[i].i * pathloss_linear;
+  cf_t *channel_impulse_response_p[nb_tx_ant];
+  if (!vrtsim_state->taps_socket) {
+    const float pathloss_linear = powf(10, channel_desc->path_loss_dB / 20.0);
+    // Convert channel impulse response to float + apply pathloss
+    for (int aatx = 0; aatx < nb_tx_ant; aatx++) {
+      const struct complexd *channelModel = channel_desc->ch[aarx + (aatx * channel_desc->nb_rx)];
+      for (int i = 0; i < channel_desc->channel_length; i++) {
+        channel_impulse_response[aatx][i].r = channelModel[i].r * pathloss_linear;
+        channel_impulse_response[aatx][i].i = channelModel[i].i * pathloss_linear;
+      }
+      channel_impulse_response_p[aatx] = channel_impulse_response[aatx];
+    }
+  } else {
+    for (int aatx = 0; aatx < nb_tx_ant; aatx++) {
+      struct complexf *channelModel = channel_desc->ch_ps[aarx + (aatx * channel_desc->nb_rx)];
+      channel_impulse_response_p[aatx] = channelModel;
     }
   }
 
   for (int aatx = 0; aatx < nb_tx_ant; aatx++) {
     c16_t *previous_samples = saved_samples[aatx];
     for (int i = 0; i < nsamps; i++) {
-      cf_t *impulse_response = channel_impulse_response[aatx];
+      cf_t *impulse_response = channel_impulse_response_p[aatx];
       for (int l = 0; l < channel_desc->channel_length; l++) {
         int idx = i - l;
         // TODO: Use AVX2 for this
@@ -512,8 +545,9 @@ static int vrtsim_write(openair0_device *device, openair0_timestamp timestamp, v
 {
   timestamp -= device->openair0_cfg->command_line_sample_advance;
   vrtsim_state_t *vrtsim_state = (vrtsim_state_t *)device->priv;
-  return vrtsim_state->chanmod ? vrtsim_write_with_chanmod(vrtsim_state, timestamp, samplesVoid, nsamps, nbAnt, flags)
-                               : vrtsim_write_internal(vrtsim_state, timestamp, (c16_t *)samplesVoid[0], nsamps, 0, flags, 0);
+  bool channel_modelling = vrtsim_state->chanmod || vrtsim_state->taps_socket;
+  return channel_modelling ? vrtsim_write_with_chanmod(vrtsim_state, timestamp, samplesVoid, nsamps, nbAnt, flags)
+                           : vrtsim_write_internal(vrtsim_state, timestamp, (c16_t *)samplesVoid[0], nsamps, 0, flags, 0);
 }
 
 static int vrtsim_read(openair0_device *device, openair0_timestamp *ptimestamp, void **samplesVoid, int nsamps, int nbAnt)
@@ -542,7 +576,7 @@ static void vrtsim_end(openair0_device *device)
   }
 
   tx_timing_t *tx_timing = vrtsim_state->tx_timing;
-  if (vrtsim_state->chanmod) {
+  if (vrtsim_state->chanmod || vrtsim_state->taps_socket) {
     for (int i = 0; i < vrtsim_state->peer_info.num_rx_antennas; i++) {
       shutdown_actor(&vrtsim_state->channel_modelling_actors[i]);
     }
@@ -556,6 +590,9 @@ static void vrtsim_end(openair0_device *device)
     }
     tx_timing->average_tx_budget /= vrtsim_state->peer_info.num_rx_antennas;
     free_noise_device();
+    if (vrtsim_state->taps_socket) {
+      taps_client_stop();
+    }
   }
   // produce 1 second of extra samples so threads can finish
   shm_td_iq_channel_produce_samples(vrtsim_state->channel, vrtsim_state->sample_rate);
@@ -618,10 +655,11 @@ __attribute__((__visibility__("default"))) int device_init(openair0_device *devi
   vrtsim_state->tx_num_channels = openair0_cfg->tx_num_channels;
   vrtsim_state->rx_num_channels = openair0_cfg->rx_num_channels;
 
-  if (vrtsim_state->chanmod) {
+  if (vrtsim_state->chanmod || vrtsim_state->taps_socket) {
     init_channelmod();
     int noise_power_dBFS = get_noise_power_dBFS();
     int16_t noise_power = noise_power_dBFS == INVALID_DBFS_VALUE ? 0 : (int16_t)(32767.0 / powf(10.0, .05 * -noise_power_dBFS));
+    LOG_A(HW, "VRTSIM: Noise power %d sample value\n", noise_power);
     init_noise_device(noise_power);
   }
   return 0;
