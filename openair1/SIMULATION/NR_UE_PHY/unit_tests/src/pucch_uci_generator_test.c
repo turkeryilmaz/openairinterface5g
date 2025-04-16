@@ -72,7 +72,8 @@ int test_pucch_generators(PHY_VARS_NR_UE *ue) {
                          (uint8_t)m_CS,
                          nb_symbols_total,
                          starting_symbol_index,
-                         starting_prb);
+                         starting_prb,
+                         uu);
       break;
     }
 

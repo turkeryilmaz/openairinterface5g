@@ -332,6 +332,17 @@ void init_ue_devices(PHY_VARS_UE *UE) {
   UE->rfdevice.trx_stop_func        = UE_trx_stop;
   UE->rfdevice.trx_set_freq_func    = UE_trx_set_freq;
   UE->rfdevice.trx_set_gains_func   = UE_trx_set_gains;
+
+  UE->rfdevice_sl.Mod_id               = UE->Mod_id;
+  UE->rfdevice_sl.CC_id                = UE->CC_id;
+  UE->rfdevice_sl.trx_start_func       = UE_trx_start;
+  UE->rfdevice_sl.trx_read_func        = UE_trx_read;
+  UE->rfdevice_sl.trx_write_func       = UE_trx_write;
+  UE->rfdevice_sl.trx_end_func         = UE_trx_end;
+  UE->rfdevice_sl.trx_stop_func        = UE_trx_stop;
+  UE->rfdevice_sl.trx_set_freq_func    = UE_trx_set_freq;
+  UE->rfdevice_sl.trx_set_gains_func   = UE_trx_set_gains;
+
   sim.last_UE_rx_timestamp[UE->Mod_id][UE->CC_id] = 0;
 }
 

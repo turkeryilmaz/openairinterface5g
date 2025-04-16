@@ -119,7 +119,7 @@ void test_synchro_pss_nr(PHY_VARS_NR_UE *PHY_VARS_NR_UE, int position_symbol, in
 
   /* search pss */
   synchro_position = pss_synchro_nr(PHY_VARS_NR_UE, rate_change);
-  int pss_sequence = get_softmodem_params()->sl_mode == 0 ? NUMBER_PSS_SEQUENCE : NUMBER_PSS_SEQUENCE_SL;
+  int pss_sequence = NUMBER_PSS_SEQUENCE;
 
   if (pss_sequence_number < pss_sequence) {
     NID2_value = pss_sequence_number;

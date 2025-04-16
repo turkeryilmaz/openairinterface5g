@@ -560,13 +560,13 @@ int main(int argc, char **argv) {
 
       for (int i=0; i<frame_length_complex_samples; i++) {
         for (int aa=0; aa<frame_parms->nb_antennas_tx; aa++) {
-          struct complex16 *txdata_ptr = (struct complex16 *)&UE_TX->common_vars.txData[aa][i];
+          struct complex16 *txdata_ptr = (struct complex16 *)&UE_TX->common_vars.txDataSl[aa][i];
           r_re[aa][i] = (double)txdata_ptr->r;
           r_im[aa][i] = (double)txdata_ptr->i;
         }
       }
 
-      LOG_M("txData0.m","txd0", UE_TX->common_vars.txData[0],frame_parms->samples_per_frame,1,1);
+      LOG_M("txData0.m","txd0", UE_TX->common_vars.txDataSl[0],frame_parms->samples_per_frame,1,1);
 
       //AWGN
       sigma2_dB = 20*log10((double)AMP/4)-SNR;
@@ -596,8 +596,8 @@ int main(int argc, char **argv) {
 
         for (int i=0; i<frame_length_complex_samples; i++) {
           for (int aa=0; aa<frame_parms->nb_antennas_rx; aa++) {
-            UE_RX->common_vars.rxdata[aa][i].r = (short)(r_re[aa][i] + sqrt(sigma2 / 2) * gaussdouble(0.0, 1.0));
-            UE_RX->common_vars.rxdata[aa][i].i = (short)(r_im[aa][i] + sqrt(sigma2 / 2) * gaussdouble(0.0, 1.0));
+            UE_RX->common_vars.rxdata_sl[aa][i].r = (short)(r_re[aa][i] + sqrt(sigma2 / 2) * gaussdouble(0.0, 1.0));
+            UE_RX->common_vars.rxdata_sl[aa][i].i = (short)(r_im[aa][i] + sqrt(sigma2 / 2) * gaussdouble(0.0, 1.0));
           }
         }
 

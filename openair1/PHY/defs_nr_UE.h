@@ -235,12 +235,14 @@ typedef struct {
   /// - first index: tx antenna [0..nb_antennas_tx[
   /// - second index: sample [0..FRAME_LENGTH_COMPLEX_SAMPLES[
   c16_t **txData;
+  c16_t **txDataSl;
 
   /// \brief Holds the received data in time domain.
   /// Should point to the same memory as PHY_vars->rx_vars[a].RX_DMA_BUFFER.
   /// - first index: rx antenna [0..nb_antennas_rx[
   /// - second index: sample [0..2*FRAME_LENGTH_COMPLEX_SAMPLES+2048[
   c16_t **rxdata;
+  c16_t **rxdata_sl;
 
   /// estimated frequency offset (in radians) for all subcarriers
   int32_t freq_offset;
@@ -382,6 +384,8 @@ typedef struct PHY_VARS_NR_UE_s {
   uint8_t CC_id;
   /// \brief Mapping of CC_id antennas to cards
   openair0_rf_map      rf_map;
+  /// \brief Mapping of Sidelink CC_id antennas to cards
+  openair0_rf_map      rf_map_sl;
   /// \brief Indicator that UE should perform band scanning
   int UE_scan;
   /// \brief Indicator that UE should perform coarse scanning around carrier
@@ -537,12 +541,15 @@ typedef struct PHY_VARS_NR_UE_s {
   int              rx_offset_diff; /// Timing adjustment for ofdm symbol0 on HW USRP
   int64_t          max_pos_fil;    /// Timing offset IIR filter
   bool             apply_timing_offset;     /// Do time sync for current frame
+  bool             apply_timing_offset_sl;  /// Do time sync for current frame
   int              time_sync_cell;
 
   /// Timing Advance updates variables
   /// Timing advance update computed from the TA command signalled from gNB
   int timing_advance;
   int N_TA_offset; ///timing offset used in TDD
+  int timing_advance_sl;
+  int N_TA_offset_sl; ///timing offset used in TDD
   int ta_frame;
   int ta_slot;
   int ta_command;
@@ -642,6 +649,7 @@ typedef struct PHY_VARS_NR_UE_s {
 
   /// RF and Interface devices per CC
   openair0_device rfdevice;
+  openair0_device rfdevice_sl;
 
 #if ENABLE_RAL
   hash_table_t    *ral_thresholds_timed;
@@ -734,6 +742,7 @@ typedef struct nr_rxtx_thread_data_s {
   notifiedFIFO_t txFifo;
   nr_phy_data_t phy_data;
   int tx_wait_for_dlsch;
+  nr_intf_type_t intf_type;
 } nr_rxtx_thread_data_t;
 
 typedef struct LDPCDecode_ue_s {

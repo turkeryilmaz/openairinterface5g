@@ -1063,6 +1063,7 @@ extern "C" {
 
     device->openair0_cfg = openair0_cfg;
     device->trx_start_func = trx_usrp_start;
+    device->trx_start_func_sl = trx_usrp_start;
     device->trx_get_stats_func = trx_usrp_get_stats;
     device->trx_reset_stats_func = trx_usrp_reset_stats;
     device->trx_end_func   = trx_usrp_end;
