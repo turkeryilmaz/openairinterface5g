@@ -421,6 +421,11 @@ struct openair0_device_t {
   */
   int (*trx_start_func)(openair0_device *device);
 
+  /*! \brief Called to start the transceiver for sidelink. Return 0 if OK, < 0 if error
+      @param device pointer to the device structure specific to the RF hardware target
+  */
+ int (*trx_start_func_sl)(openair0_device *device);
+
  /*! \brief Called to configure the device
       @param device pointer to the device structure specific to the RF hardware target  
   */

@@ -35,7 +35,7 @@ static int sl_nr_pss_correlation(PHY_VARS_NR_UE *UE, int frame_index)
   uint32_t length = (frame_index == 0) ? sl_fp->samples_per_frame + (2 * sl_fp->ofdm_symbol_size) : sl_fp->samples_per_frame;
   int64_t psss_corr_value = 0;
   
-  rxdata = (int32_t **)UE->common_vars.rxdata;
+  rxdata = (int32_t **)UE->common_vars.rxdata_sl;
 
 #ifdef SL_DEBUG
   char fname[50], sname[25];

@@ -69,7 +69,7 @@
 #define INDEX_NO_PHASE_DIFFERENCE (3) /* this is for no phase shift case */
 /************** FUNCTION ******************************************/
 
-void init_context_sss_nr(int amp);
+void init_context_sss_nr(int amp, nr_intf_type_t intf_type);
 void free_context_sss_nr(void);
 
 void insert_sss_nr(int16_t *sss_time,

@@ -65,6 +65,7 @@ int16_t *get_primary_synchro_nr2(const int nid2)
 *
 * PARAMETERS :   N_ID_2 : element 2 of physical layer cell identity
 *                value : { 0, 1, 2}
+*                intf_type : { uu, pc5}
 *
 * RETURN :       generate binary pss sequence (this is a m-sequence)
 *
@@ -73,7 +74,7 @@ int16_t *get_primary_synchro_nr2(const int nid2)
 *
 *********************************************************************/
 
-void generate_pss_nr(NR_DL_FRAME_PARMS *fp, int N_ID_2)
+void generate_pss_nr(NR_DL_FRAME_PARMS *fp, int N_ID_2, nr_intf_type_t intf_type)
 {
   AssertFatal(fp->ofdm_symbol_size > 127,"Illegal ofdm_symbol_size %d\n",fp->ofdm_symbol_size);
   AssertFatal(N_ID_2>=0 && N_ID_2 <=2,"Illegal N_ID_2 %d\n",N_ID_2);
@@ -138,7 +139,7 @@ void generate_pss_nr(NR_DL_FRAME_PARMS *fp, int N_ID_2)
   * sample 0 is for continuous frequency which is used here
   */
 
-  unsigned int subcarrier_start = get_softmodem_params()->sl_mode == 0 ? PSS_SSS_SUB_CARRIER_START : PSS_SSS_SUB_CARRIER_START_SL;
+  unsigned int subcarrier_start = (intf_type == uu) ? PSS_SSS_SUB_CARRIER_START : PSS_SSS_SUB_CARRIER_START_SL;
   unsigned int  k = fp->first_carrier_offset + fp->ssb_start_subcarrier + subcarrier_start;
   if (k>= fp->ofdm_symbol_size) k-=fp->ofdm_symbol_size;
   c16_t synchroF_tmp[fp->ofdm_symbol_size] __attribute__((aligned(32)));
@@ -234,16 +235,16 @@ void generate_pss_nr(NR_DL_FRAME_PARMS *fp, int N_ID_2)
 *
 *********************************************************************/
 
-static void init_context_pss_nr(NR_DL_FRAME_PARMS *frame_parms_ue)
+static void init_context_pss_nr(NR_DL_FRAME_PARMS *frame_parms_ue, nr_intf_type_t intf_type)
 {
   AssertFatal(frame_parms_ue->ofdm_symbol_size > 127, "illegal ofdm_symbol_size %d\n", frame_parms_ue->ofdm_symbol_size);
-  int pss_sequence = get_softmodem_params()->sl_mode == 0 ? NUMBER_PSS_SEQUENCE : NUMBER_PSS_SEQUENCE_SL;
+  int pss_sequence = (intf_type == uu) ? NUMBER_PSS_SEQUENCE : NUMBER_PSS_SEQUENCE_SL;
   for (int i = 0; i < pss_sequence; i++) {
     primary_synchro_nr2[i] = malloc16_clear(LENGTH_PSS_NR * sizeof(int16_t));
     AssertFatal(primary_synchro_nr2[i], "Fatal memory allocation problem \n");
     primary_synchro_time_nr[i] = malloc16_clear(frame_parms_ue->ofdm_symbol_size * sizeof(c16_t));
     AssertFatal(primary_synchro_time_nr[i], "Fatal memory allocation problem \n");
-    generate_pss_nr(frame_parms_ue,i);
+    generate_pss_nr(frame_parms_ue, i, intf_type);
   }
 }
 
@@ -271,7 +272,7 @@ static void free_context_pss_nr(void)
 *
 * NAME :         init_context_synchro_nr
 *
-* PARAMETERS :   none
+* PARAMETERS :   configuration for UE, nr interface type
 *
 * RETURN :       generate context for pss and sss
 *
@@ -279,11 +280,11 @@ static void free_context_pss_nr(void)
 *
 *********************************************************************/
 
-void init_context_synchro_nr(NR_DL_FRAME_PARMS *frame_parms_ue)
+void init_context_synchro_nr(NR_DL_FRAME_PARMS *frame_parms_ue, nr_intf_type_t intf_type)
 {
   /* initialise global buffers for synchronisation */
-  init_context_pss_nr(frame_parms_ue);
-  init_context_sss_nr(AMP);
+  init_context_pss_nr(frame_parms_ue, intf_type);
+  init_context_sss_nr(AMP, intf_type);
 }
 
 /*******************************************************************
@@ -324,7 +325,7 @@ void set_frame_context_pss_nr(NR_DL_FRAME_PARMS *frame_parms_ue, int rate_change
   free_context_pss_nr();
 
   /* pss reference have to be rebuild with new parameters ie ofdm symbol size */
-  init_context_synchro_nr(frame_parms_ue);
+  init_context_synchro_nr(frame_parms_ue, uu);
 
 #ifdef SYNCHRO_DECIMAT
   set_pss_nr(frame_parms_ue->ofdm_symbol_size);
@@ -351,7 +352,7 @@ void restore_frame_context_pss_nr(NR_DL_FRAME_PARMS *frame_parms_ue, int rate_ch
   free_context_pss_nr();
 
   /* pss reference have to be rebuild with new parameters ie ofdm symbol size */
-  init_context_synchro_nr(frame_parms_ue);
+  init_context_synchro_nr(frame_parms_ue, uu);
 #ifdef SYNCHRO_DECIMAT
   set_pss_nr(frame_parms_ue->ofdm_symbol_size);
 #endif
@@ -584,7 +585,7 @@ static int pss_search_time_nr(c16_t **rxdata, PHY_VARS_NR_UE *ue, int fo_flag, i
   pss_source = 0;
 
   int maxval=0;
-  int max_size = get_softmodem_params()->sl_mode == 0 ?  NUMBER_PSS_SEQUENCE : NUMBER_PSS_SEQUENCE_SL;
+  int max_size = NUMBER_PSS_SEQUENCE;
   for (int j = 0; j < max_size; j++)
     for (int i = 0; i < frame_parms->ofdm_symbol_size; i++) {
       maxval = max(maxval, abs(primary_synchro_time_nr[j][i].r));
@@ -597,7 +598,7 @@ static int pss_search_time_nr(c16_t **rxdata, PHY_VARS_NR_UE *ue, int fo_flag, i
   /* Correlation computation is based on a a dot product which is realized thank to SIMS extensions */
 
   uint16_t pss_index_start = 0;
-  uint16_t pss_index_end = get_softmodem_params()->sl_mode == 0 ? NUMBER_PSS_SEQUENCE : NUMBER_PSS_SEQUENCE_SL;
+  uint16_t pss_index_end = NUMBER_PSS_SEQUENCE;
   if (ue->target_Nid_cell != -1) {
     pss_index_start = GET_NID2(ue->target_Nid_cell);
     pss_index_end = pss_index_start + 1;

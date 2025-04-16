@@ -292,20 +292,23 @@ int init_nr_ue_signal(PHY_VARS_NR_UE *ue, int nb_connected_gNB)
 
   // init TX buffers
   common_vars->txData = malloc16(fp->nb_antennas_tx * sizeof(c16_t *));
+  common_vars->txDataSl = malloc16(fp->nb_antennas_tx * sizeof(c16_t *));
 
   for (i=0; i<fp->nb_antennas_tx; i++) {
     common_vars->txData[i] = malloc16_clear((fp->samples_per_frame) * sizeof(c16_t));
+    common_vars->txDataSl[i] = malloc16_clear((fp->samples_per_frame) * sizeof(c16_t));
   }
 
   // init RX buffers
   common_vars->rxdata = malloc16(fp->nb_antennas_rx * sizeof(c16_t *));
+  common_vars->rxdata_sl = malloc16(fp->nb_antennas_rx * sizeof(c16_t *));
 
   int num_samples = 2 * fp->samples_per_frame + fp->ofdm_symbol_size;
-  if (ue->sl_mode == 2)
-    num_samples = (SL_NR_PSBCH_REPETITION_IN_FRAMES * fp->samples_per_frame) + fp->ofdm_symbol_size;
+  int num_samples_sl = (SL_NR_PSBCH_REPETITION_IN_FRAMES * fp->samples_per_frame) + fp->ofdm_symbol_size;
 
   for (i=0; i<fp->nb_antennas_rx; i++) {
     common_vars->rxdata[i] = malloc16_clear(num_samples * sizeof(c16_t));
+    common_vars->rxdata_sl[i] = malloc16_clear(num_samples_sl * sizeof(c16_t));
   }
 
   // ceil(((NB_RB<<1)*3)/32) // 3 RE *2(QPSK)
@@ -420,14 +423,18 @@ void term_nr_ue_signal(PHY_VARS_NR_UE *ue, int nb_connected_gNB)
 
   for (int i = 0; i < fp->nb_antennas_tx; i++) {
     free_and_zero(common_vars->txData[i]);
+    free_and_zero(common_vars->txDataSl[i]);
   }
 
   free_and_zero(common_vars->txData);
+  free_and_zero(common_vars->txDataSl);
 
   for (int i = 0; i < fp->nb_antennas_rx; i++) {
     free_and_zero(common_vars->rxdata[i]);
+    free_and_zero(common_vars->rxdata_sl[i]);
   }
   free_and_zero(common_vars->rxdata);
+  free_and_zero(common_vars->rxdata_sl);
 
   for (int slot = 0; slot < fp->slots_per_frame; slot++) {
     for (int symb = 0; symb < fp->symbols_per_slot; symb++)
@@ -657,9 +664,11 @@ void init_N_TA_offset(PHY_VARS_NR_UE *ue){
   NR_DL_FRAME_PARMS *fp = &ue->frame_parms;
 
   // No timing offset for Sidelink, refer to 3GPP 38.211 Section 8.5
-  if (fp->frame_type == FDD || ue->sl_mode == 2) {
+  if (fp->frame_type == FDD || (ue->sl_mode == 1 || ue->sl_mode == 2)) {
     ue->N_TA_offset = 0;
-  } else {
+    ue->N_TA_offset_sl = 0;
+  }
+  if (fp->frame_type != FDD && (ue->sl_mode == 0 || ue->sl_mode == 1)) {
     int N_TA_offset = fp->ul_CarrierFreq < 6e9 ? 400 : 431; // reference samples  for 25600Tc @ 30.72 Ms/s for FR1, same @ 61.44 Ms/s for FR2
 
     double factor = 1.0;
@@ -700,7 +709,7 @@ void phy_init_nr_top(PHY_VARS_NR_UE *ue) {
   crcTableInit();
   init_scrambling_luts();
   load_dftslib();
-  init_context_synchro_nr(frame_parms);
+  init_context_synchro_nr(frame_parms, (ue->sl_mode == 2) ? pc5 : uu);
   generate_ul_reference_signal_sequences(SHRT_MAX);
 }
 

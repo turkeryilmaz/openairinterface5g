@@ -335,7 +335,7 @@ void psbch_pscch_pssch_processing(PHY_VARS_NR_UE *ue,
                          0,
                          16384);
     }
-    ue->apply_timing_offset = true;
+    ue->apply_timing_offset_sl = true;
 
     LOG_D(PHY, "Doing N0 measurements in %s\n", __FUNCTION__);
 //    nr_ue_rrc_measurements(ue, proc, rxdataF);
@@ -542,14 +542,14 @@ void psbch_pscch_pssch_processing(PHY_VARS_NR_UE *ue,
 
   return;
 }
-int phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue,
+bool phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue,
                             UE_nr_rxtx_proc_t *proc,
                             nr_phy_data_tx_t *phy_data)
 {
 
   int slot_tx = proc->nr_slot_tx;
   int frame_tx = proc->frame_tx;
-  int tx_action = 0;
+  bool tx_action = false;
 
   const char *sl_tx_actions[] = {"PSBCH", "PSCCH_PSSCH", "PSCCH_PSSCH_PSFCH", "PSCCH_PSSCH_CSI_RS"};
   if (phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_CSI_RS) {
@@ -576,8 +576,7 @@ int phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue,
     sl_nr_tx_config_psbch_pdu_t *psbch_vars = &phy_data->psbch_vars;
     nr_tx_psbch(ue, frame_tx, slot_tx, psbch_vars, txdataF);
     sl_phy_params->psbch.num_psbch_tx ++;
-
-    tx_action = 1;
+    tx_action = true;
   }
   else if (phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH ||
            phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_CSI_RS ||
@@ -627,18 +626,18 @@ int phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue,
       free(phy_data->nr_sl_pssch_pscch_pdu.psfch_pdu_list);
       phy_data->nr_sl_pssch_pscch_pdu.psfch_pdu_list = NULL;
     }
-    tx_action = 1;
+    tx_action = true;
   }
   if (tx_action) {
-    LOG_D(PHY, "Sending SL data \n");
+    LOG_D(NR_PHY, "Sending SL data \n");
     nr_ue_pusch_common_procedures(ue,
                                   proc->nr_slot_tx,
                                   fp,
                                   fp->nb_antennas_tx,
-                                  txdataF, link_type_pc5);
-
+                                  txdataF,
+                                  link_type_pc5);
   }
-  LOG_D(PHY,"****** end Sidelink TX-Chain for AbsSubframe %d.%d ******\n",
+  LOG_D(NR_PHY, "****** end Sidelink TX-Chain for AbsSubframe %d.%d ******\n",
         frame_tx, slot_tx);
   return tx_action;
 }

@@ -77,12 +77,12 @@ int sl_nr_slot_fep(PHY_VARS_NR_UE *ue,
   for (unsigned char aa=0; aa<frame_params->nb_antennas_rx; aa++) {
     memset(&rxdataF[aa][frame_params->ofdm_symbol_size*symbol],0,frame_params->ofdm_symbol_size*sizeof(int32_t));
 
-    int16_t *rxdata_ptr = (int16_t *)&common_vars->rxdata[aa][rx_offset];
+    int16_t *rxdata_ptr = (int16_t *)&common_vars->rxdata_sl[aa][rx_offset];
 
     // if input to dft is not 256-bit aligned
     if ((rx_offset & 7) != 0) {
       memcpy((void *)&tmp_dft_in[0],
-             (void *)&common_vars->rxdata[aa][rx_offset],
+             (void *)&common_vars->rxdata_sl[aa][rx_offset],
              frame_params->ofdm_symbol_size * sizeof(int32_t));
 
       rxdata_ptr = (int16_t *)tmp_dft_in;
@@ -143,7 +143,8 @@ int nr_slot_fep(PHY_VARS_NR_UE *ue,
 
   unsigned int nb_prefix_samples;
   unsigned int nb_prefix_samples0;
-  if (ue->is_synchronized) {
+  int is_synchronized = (linktype == link_type_pc5) ? ue->is_synchronized_sl : ue->is_synchronized;
+  if (is_synchronized) {
     nb_prefix_samples  = frame_parms->nb_prefix_samples;
     nb_prefix_samples0 = frame_parms->nb_prefix_samples0;
   } else {
@@ -171,12 +172,13 @@ int nr_slot_fep(PHY_VARS_NR_UE *ue,
 #endif
 
   for (unsigned char aa=0; aa<frame_parms->nb_antennas_rx; aa++) {
-    int16_t *rxdata_ptr = (int16_t *)&common_vars->rxdata[aa][rx_offset];
+    int16_t *rxdata_ptr = (linktype == link_type_pc5) ? (int16_t *)&common_vars->rxdata_sl[aa][rx_offset] : (int16_t *)&common_vars->rxdata[aa][rx_offset];
 
     // if input to dft is not 256-bit aligned
     if ((rx_offset & 7) != 0) {
       memcpy((void *)&tmp_dft_in[0],
-             (void *)&common_vars->rxdata[aa][rx_offset],
+             (linktype == link_type_pc5) ? (void *)&common_vars->rxdata_sl[aa][rx_offset] :
+                                           (void *)&common_vars->rxdata[aa][rx_offset],
              frame_parms->ofdm_symbol_size * sizeof(int32_t));
 
       rxdata_ptr = (int16_t *)tmp_dft_in;

@@ -72,13 +72,13 @@ static const int16_t phase_im_nr[PHASE_HYPOTHESIS_NUMBER] // -pi/3 ---- pi/3
 
 static int16_t d_sss[N_ID_2_NUMBER][N_ID_1_NUMBER][LENGTH_SSS_NR];
 
-void init_context_sss_nr(int amp)
+void init_context_sss_nr(int amp, nr_intf_type_t intf_type)
 {
   int16_t x0[LENGTH_SSS_NR];
   int16_t x1[LENGTH_SSS_NR];
   int16_t dss_current;
   int m0, m1;
-  int nid_2_num = get_softmodem_params()->sl_mode == 0 ? N_ID_2_NUMBER : N_ID_2_NUMBER_SL;
+  int nid_2_num = (intf_type == uu) ? N_ID_2_NUMBER : N_ID_2_NUMBER_SL;
 
   const int x0_initial[INITIAL_SSS_NR] = { 1, 0, 0, 0, 0, 0, 0 };
   const int x1_initial[INITIAL_SSS_NR] = { 1, 0, 0, 0, 0, 0, 0 };
@@ -270,9 +270,7 @@ static int do_pss_sss_extract_nr(
 
   for (int aarx = 0; aarx < frame_parms->nb_antennas_rx; aarx++) {
     int pss_symbol = 0;
-    int sss_symbol = get_softmodem_params()->sl_mode == 0 ?
-                     (SSS_SYMBOL_NB - PSS_SYMBOL_NB) :
-                     (SSS0_SL_SYMBOL_NB - PSS0_SL_SYMBOL_NB) ;
+    int sss_symbol = SSS_SYMBOL_NB - PSS_SYMBOL_NB;
     unsigned int ofdm_symbol_size = frame_parms->ofdm_symbol_size;
 
     c16_t *pss_rxF = rxdataF[aarx] + pss_symbol * ofdm_symbol_size;
@@ -283,9 +281,7 @@ static int do_pss_sss_extract_nr(
 
     unsigned int k = frame_parms->first_carrier_offset +
                      frame_parms->ssb_start_subcarrier +
-                     ((get_softmodem_params()->sl_mode == 0) ?
-                     PSS_SSS_SUB_CARRIER_START :
-                     PSS_SSS_SUB_CARRIER_START_SL);
+                     PSS_SSS_SUB_CARRIER_START;
 
     if (k>= frame_parms->ofdm_symbol_size) k-=frame_parms->ofdm_symbol_size;
 

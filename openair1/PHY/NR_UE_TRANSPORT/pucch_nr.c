@@ -56,7 +56,8 @@ void nr_generate_pucch0(const PHY_VARS_NR_UE *ue,
                         const NR_DL_FRAME_PARMS *frame_parms,
                         const int16_t amp,
                         const int nr_slot_tx,
-                        const fapi_nr_ul_config_pucch_pdu *pucch_pdu)
+                        const fapi_nr_ul_config_pucch_pdu *pucch_pdu,
+                        nr_intf_type_t intf_type)
 {
 #ifdef DEBUG_NR_PUCCH_TX
   LOG_I(NR_PHY, "\t [nr_generate_pucch0] start function at slot(nr_slot_tx)=%d\n", nr_slot_tx);
@@ -121,7 +122,7 @@ void nr_generate_pucch0(const PHY_VARS_NR_UE *ue,
   for (int l=0; l<pucch_pdu->nr_of_symbols; l++) {
     alpha = nr_cyclic_shift_hopping(pucch_pdu->hopping_id,
                                     pucch_pdu->initial_cyclic_shift,
-                                    pucch_pdu->mcs,l,
+                                    pucch_pdu->mcs, intf_type == pc5 ? 0 : l,
                                     pucch_pdu->start_symbol_index,
                                     nr_slot_tx);
 #ifdef DEBUG_NR_PUCCH_TX

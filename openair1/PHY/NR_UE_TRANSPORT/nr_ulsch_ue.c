@@ -782,7 +782,7 @@ uint8_t nr_ue_pusch_common_procedures(PHY_VARS_NR_UE *UE,
 {
   const int tx_offset = frame_parms->get_samples_slot_timestamp(slot, frame_parms, 0);
 
-  c16_t **txdata = UE->common_vars.txData;
+  c16_t **txdata = (linktype != link_type_pc5) ?  UE->common_vars.txData : UE->common_vars.txDataSl;
 
   LOG_D(NR_PHY,"Applying TX rotation for slot %d linktype %d\n",slot,linktype);
   for(int ap = 0; ap < n_antenna_ports; ap++) {

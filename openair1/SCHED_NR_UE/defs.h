@@ -199,7 +199,7 @@ int get_nRECSI_RS(uint8_t  freq_density,
 void psbch_pscch_pssch_processing(PHY_VARS_NR_UE *ue,
                                   UE_nr_rxtx_proc_t *proc,
                                   nr_phy_data_t *phy_data);
-int phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue,
+bool phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue,
                             UE_nr_rxtx_proc_t *proc,
                             nr_phy_data_tx_t *phy_data);
 /*! \brief This function prepares the sl indication to pass to the MAC
