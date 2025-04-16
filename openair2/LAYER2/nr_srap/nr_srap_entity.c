@@ -28,7 +28,7 @@ void nr_srap_entity_recv_pdu(const protocol_ctxt_t *const  ctxt_pP,
   uint8_t relay_type = get_softmodem_params()->relay_type;
   uint8_t header_size = relay_type == U2N ? 2 : 3;
 
-  sdu = nr_srap_new_sdu((char *) buffer + header_size, size - header_size);
+  sdu = nr_srap_new_sdu((char *) buffer, size);
 
   if (get_softmodem_params()->is_relay_ue) {
     if (entity->type == NR_SRAP_PC5) {

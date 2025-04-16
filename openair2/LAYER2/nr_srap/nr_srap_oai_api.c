@@ -307,17 +307,14 @@ static void *srap_pc5_data_ind_thread(void *_)
   pthread_setname_np(pthread_self(), "SRAP PC5 data ind");
   while (1) {
     if (pthread_mutex_lock(&rx_srap_pc5_q.m) != 0) {
-      LOG_E(NR_SRAP, "Aborting in %s %d\n", __FUNCTION__, __LINE__);
       abort();
     }
     while (rx_srap_pc5_q.length == 0)
       if (pthread_cond_wait(&rx_srap_pc5_q.c, &rx_srap_pc5_q.m) != 0) {
-        LOG_E(NR_SRAP, "Aborting in %s %d\n", __FUNCTION__, __LINE__);
         abort();
       }
     i = rx_srap_pc5_q.start;
     if (pthread_mutex_unlock(&rx_srap_pc5_q.m) != 0) {
-      LOG_E(NR_SRAP, "Aborting in %s %d\n", __FUNCTION__, __LINE__);
       abort();
     }
     LOG_D(NR_SRAP, "PC5 Sending indication to above layer by passing rx_srap_pc5_q in %s rntiMaybeYUEid %ld\n",
