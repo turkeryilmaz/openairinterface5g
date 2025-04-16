@@ -87,7 +87,7 @@ unsigned short config_frames[4] = {2,9,11,13};
 #include <openair1/PHY/MODULATION/nr_modulation.h>
 #include "openair2/GNB_APP/gnb_paramdef.h"
 #include "openair2/RRC/NR_UE/sl_preconfig_paramvalues.h"
-#include "openair2/LAYER2/srap/srap_header.h"
+#include "openair2/LAYER2/nr_srap/nr_srap_header.h"
 
 extern const char *duplex_mode[];
 THREAD_STRUCT thread_struct;
@@ -384,6 +384,13 @@ static void init_pdcp(int ue_id) {
   nr_pdcp_module_init(pdcp_initmask, ue_id);
   pdcp_set_rlc_data_req_func((send_rlc_data_req_func_t) rlc_data_req);
   pdcp_set_pdcp_data_ind_func((pdcp_data_ind_func_t) pdcp_data_ind);
+  // creates srap module, which will instanitate srap manager responsible for creating srap entitites and managing the entities operations
+  uint8_t relay_type = get_softmodem_params()->relay_type;
+  if (relay_type == U2N || relay_type == U2U) {
+    uint8_t gNB_flag = get_node_type() == -1 ? 0 : 1;
+    nr_srap_layer_init(gNB_flag);
+    srap_module_init(gNB_flag);
+  }
 }
 
 // Stupid function addition because UE itti messages queues definition is common with eNB

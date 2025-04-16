@@ -1,14 +1,16 @@
+/*
+Author: Ejaz Ahmed
+Email ID: ejaz.ahmed@applied.co
+*/
+
+#ifndef _NR_SRAP_HEADER_H_
+#define _NR_SRAP_HEADER_H_
+
 #include <stdint.h>
 #include "openair2/COMMON/platform_types.h"
 
-#ifndef _SRAP_HEADER_H_
-#define _SRAP_HEADER_H_
+#include "nr_srap_oai_api.h"
 
-typedef enum {
-    NO_RELAY = 0,
-    U2N = 1,
-    U2U = 2
-} relay_type_t;
 
 // 38.351 6.2.2 SRAP data pdu: 2 bytes hdr for U2N, 3 bytes hdr for U2U
 // U2N Header (2 octets)
@@ -33,4 +35,4 @@ void decode_srap_header(void* header, uint8_t* buffer);
 // Function to create SRAP headers
 void create_header(uint8_t dc_bit, relay_type_t relay_type, uint8_t bearer_id, int8_t src_ue_id, int8_t dest_ue_id, void* header);
 
-#endif /* _SRAP_HEADER_H_ */
+#endif /* _NR_SRAP_HEADER_H_ */

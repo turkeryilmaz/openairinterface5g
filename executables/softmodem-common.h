@@ -109,7 +109,7 @@ extern "C"
 #define CONFIG_HLP_SYNC_REF      "Sync Reference in Sidelink\n"
 #define CONFIG_HLP_NID1          "Set NID1 value in Sidelink\n"
 #define CONFIG_HLP_NID2          "Set NID2 value in Sidelink\n"
-#define CONFIG_HLP_RELAY_TYPE    "Set Relay type to represent No Relay (0), U2N (1) and U2U (2) cases"
+#define CONFIG_HLP_RELAY_TYPE    "Set Relay type to represent No Relay (0), U2N (1) and U2U (2) cases. Later this will be properly configured from RRC."
 #define CONFIG_HLP_REMOTE_UE_ID  "Set Remote UE ID to fill in SRAP header"
 #define CONFIG_HLP_IS_RELAY_UE   "Set to configure a UE Relay role"
 

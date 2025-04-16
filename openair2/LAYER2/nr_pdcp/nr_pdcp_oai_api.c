@@ -41,8 +41,13 @@
 #include "nr_pdcp_e1_api.h"
 #include "gnb_config.h"
 #include "executables/softmodem-common.h"
-#include "LAYER2/srap/srap_header.h"
 
+#include "LAYER2/nr_srap/nr_srap_entity.h"
+#include "LAYER2/nr_srap/nr_srap_header.h"
+#include "LAYER2/nr_srap/nr_srap_manager.h"
+#include "LAYER2/nr_srap/nr_srap_oai_api.h"
+
+extern nr_srap_manager_t *nr_srap_manager;
 #define TODO do { \
     printf("%s:%d:%s: todo\n", __FILE__, __LINE__, __FUNCTION__); \
     exit(1); \
@@ -280,23 +285,7 @@ static void do_pdcp_data_ind(
   }
 
   if (rb != NULL) {
-    if (node_type == -1 && get_softmodem_params()->relay_type > 0) {
-      U2NHeader_t u2n_header;
-      U2UHeader_t u2u_header;
-      uint8_t relay_type = get_softmodem_params()->relay_type;
-      void *header = (relay_type == U2N) ? (void*) &u2n_header: (void*) &u2u_header;
-      uint8_t header_size = (relay_type == U2N) ? sizeof(*((U2NHeader_t*)header)) : sizeof(*((U2UHeader_t*)header));
-      LOG_D(PDCP, "header_size %d SDU size %d\n", header_size, sdu_buffer_size - header_size);
-      decode_srap_header(header, sdu_buffer->data);
-      if (relay_type == U2N) {
-        LOG_D(PDCP, "Rx - bearer id: %x, ue id: %x\n", ((U2NHeader_t*)header)->octet1 & 0x1F, ((U2NHeader_t*)header)->octet2);
-      } else if (relay_type == U2U) {
-        LOG_D(PDCP, "Rx - bearer id: %x, source ue id: %x, destination ue id: %x\n", ((U2UHeader_t*)header)->octet1 & 0x1F, ((U2UHeader_t*)header)->octet2, ((U2UHeader_t*)header)->octet3);
-      }
-      rb->recv_pdu(rb, (char *)(sdu_buffer->data + header_size), sdu_buffer_size - header_size);
-    } else {
       rb->recv_pdu(rb, (char *)sdu_buffer->data, sdu_buffer_size);
-    }
   } else {
     LOG_E(PDCP, "%s:%d:%s: no RB found (rb_id %ld, srb_flag %d)\n",
           __FILE__, __LINE__, __FUNCTION__, rb_id, srb_flagP);
@@ -680,6 +669,7 @@ static void deliver_pdu_drb(void *deliver_pdu_data, ue_id_t ue_id, int rb_id,
   DevAssert(deliver_pdu_data == NULL);
   protocol_ctxt_t ctxt = { .enb_flag = 1, .rntiMaybeUEid = ue_id };
 
+  uint8_t relay_type = get_softmodem_params()->relay_type;
   if (NODE_IS_CU(node_type)) {
     MessageDef  *message_p = itti_alloc_new_message_sized(TASK_PDCP_ENB, 0,
 							  GTPV1U_TUNNEL_DATA_REQ,
@@ -699,28 +689,8 @@ static void deliver_pdu_drb(void *deliver_pdu_data, ue_id_t ue_id, int rb_id,
     LOG_D(PDCP, "%s() (drb %d) sending message to gtp size %d\n", __func__, rb_id, size);
     extern instance_t CUuniqInstance;
     itti_send_msg_to_task(TASK_GTPV1_U, CUuniqInstance, message_p);
-  } else if (node_type == -1 && get_softmodem_params()->relay_type > 0) {   // UE
-    uint8_t relay_type = get_softmodem_params()->relay_type;
-    U2NHeader_t u2n_header;
-    U2UHeader_t u2u_header;
-    void *header = (relay_type == U2N) ? (void*) &u2n_header: (void*) &u2u_header;
-    uint8_t header_size = (relay_type == U2N) ? sizeof(*((U2NHeader_t*)header)) : sizeof(*((U2UHeader_t*)header));
-    mem_block_t *memblock = get_free_mem_block(size + header_size, __FUNCTION__);
-    if (relay_type == U2N) {
-      uint8_t dc_bit = 1; // control : 0, data : 1
-      uint8_t remote_ue_id = get_softmodem_params()->remote_ue_id;
-      create_header(dc_bit, relay_type, rb_id, -1, remote_ue_id, header); // In U2N relay case, we do not have a ue_src_id field in the header, the spec. 38351, 6.3.2 defines only U2N remote ue id.
-    } else if (relay_type == U2U) {
-      // TODO: Call the following functions to enable U2U relay support
-      // create_header(relay_type, rb_id, src_ue_id, dest_ue_id, header);
-    }
-    encode_srap_header(header, memblock->data);
-    memcpy(memblock->data + header_size, buf, size);
-    if (relay_type == U2N)
-      LOG_D(PDCP, "SRAP UE %s(): (drb %d) calling rlc_data_req size %d bearer id %x, ue id: %x\n", __func__, rb_id, size, (((U2NHeader_t*)header)->octet1 & 0x1F), ((U2NHeader_t*)header)->octet2);
-    else if (relay_type == U2U)
-      LOG_D(PDCP, "SRAP UE %s(): (drb %d) calling rlc_data_req size %d bearer id %x, src ue id: %x dest ue id: %x\n", __func__, rb_id, size, (((U2UHeader_t*)header)->octet1 & 0x1F), ((U2UHeader_t*)header)->octet2, ((U2UHeader_t*)header)->octet3);
-    enqueue_rlc_data_req(&ctxt, 0, MBMS_FLAG_NO, rb_id, sdu_id, 0, size + header_size, memblock);
+  } else if (node_type == -1 && (relay_type == U2N || relay_type == U2U)) {   // UE
+    nr_srap_data_req_drb(&ctxt, rb_id, sdu_id, size, buf);
   } else {
     mem_block_t *memblock = get_free_mem_block(size, __FUNCTION__);
     memcpy(memblock->data, buf, size);
@@ -974,6 +944,15 @@ void add_drb_sl(ue_id_t srcid, NR_SL_RadioBearerConfig_r16_t *s, int ciphering_a
 
     LOG_I(PDCP, "%s:%d:%s: added slrb %d to UE ID %ld\n", __FILE__, __LINE__, __FUNCTION__, slrb_id, srcid);
 
+    static bool srap_pc5_created;
+    uint8_t relay_type = get_softmodem_params()->relay_type;
+    if ((relay_type == U2N || relay_type == U2U) && !srap_pc5_created) {
+      nr_srap_manager_internal_t *m = nr_srap_manager;
+      if (m && m->srap_entity[0]) {
+        m->srap_entity[0] = new_nr_srap_entity(NR_SRAP_PC5, srap_deliver_sdu_drb, ue, srap_deliver_pdu_drb, ue); // index 0 will always have NR_SRAP_PC5 entity.
+        srap_pc5_created = true;
+      }
+    }
     new_nr_sdap_entity(0, has_sdap, has_sdap, srcid, 0, is_sdap_DefaultRB, slrb_id, mappedQFIs2Add, mappedQFIs2AddCount);
   }
   nr_pdcp_manager_unlock(nr_pdcp_ue_manager);
