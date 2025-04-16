@@ -937,27 +937,31 @@ void dl_rrc_message_transfer(const f1ap_dl_rrc_message_t *dl_rrc)
     AssertFatal(*dl_rrc->old_gNB_DU_ue_id != dl_rrc->gNB_DU_ue_id,
                 "logic bug: current and old gNB DU UE ID cannot be the same\n");
     /* 38.401 says: "Find UE context based on old gNB-DU UE F1AP ID, replace
-     * old C-RNTI/PCI with new C-RNTI/PCI". Below, we do the inverse: we keep
-     * the new UE context (with new C-RNTI), but set up everything to reuse the
-     * old config. */
+     * old C-RNTI/PCI with new C-RNTI/PCI". */
     NR_UE_info_t *oldUE = find_nr_UE(&mac->UE_info, *dl_rrc->old_gNB_DU_ue_id);
     AssertFatal(oldUE, "CU claims we should know UE %04x, but we don't\n", *dl_rrc->old_gNB_DU_ue_id);
     pthread_mutex_lock(&mac->sched_lock);
     /* 38.331 5.3.7.2 says that the UE releases the spCellConfig, so we drop it
      * from the current configuration. Also, expect the reconfiguration from
      * the CU, so save the old UE's CellGroup for the new UE */
-    UE->CellGroup->spCellConfig = NULL;
-    uid_t temp_uid = UE->uid;
-    UE->uid = oldUE->uid;
-    oldUE->uid = temp_uid;
-    for (int i = 1; i < seq_arr_size(&oldUE->UE_sched_ctrl.lc_config); ++i) {
-      const nr_lc_config_t *c = seq_arr_at(&oldUE->UE_sched_ctrl.lc_config, i);
-      nr_mac_add_lcid(&UE->UE_sched_ctrl, c);
-    }
-    ASN_STRUCT_FREE(asn_DEF_NR_CellGroupConfig, UE->CellGroup);
-    UE->CellGroup = oldUE->CellGroup;
-    oldUE->CellGroup = NULL;
-    mac_remove_nr_ue(mac, *dl_rrc->old_gNB_DU_ue_id);
+    ASN_STRUCT_FREE(asn_DEF_NR_SpCellConfig, oldUE->CellGroup->spCellConfig);
+    oldUE->CellGroup->spCellConfig = NULL;
+    LOG_W(NR_MAC, "update old RNTI %04x to new %04x\n", oldUE->rnti, UE->rnti);
+    oldUE->rnti = UE->rnti;
+    oldUE->UE_beam_index = UE->UE_beam_index;
+    DevAssert(UE->ra);
+    NR_RA_t ra = *UE->ra;
+    nr_release_ra_UE(mac, dl_rrc->gNB_DU_ue_id);
+    bool success = transition_ue_access_nr_ue(mac, oldUE, &ra);
+    DevAssert(success);
+
+    int CC_id = 0;
+    NR_ServingCellConfigCommon_t *scc = mac->common_channels[CC_id].ServingCellConfigCommon;
+    memset(&oldUE->sc_info, 0, sizeof(NR_UE_ServingCell_Info_t));
+    nr_mac_reset_ul_failure(&oldUE->UE_sched_ctrl);
+    reset_dl_harq_list(&oldUE->UE_sched_ctrl);
+    reset_ul_harq_list(&oldUE->UE_sched_ctrl);
+    configure_UE_BWP(mac, scc, oldUE, true, NR_SearchSpace__searchSpaceType_PR_common, -1, -1);
     pthread_mutex_unlock(&mac->sched_lock);
     nr_rlc_remove_ue(dl_rrc->gNB_DU_ue_id);
     nr_rlc_update_id(*dl_rrc->old_gNB_DU_ue_id, dl_rrc->gNB_DU_ue_id);
@@ -965,8 +969,8 @@ void dl_rrc_message_transfer(const f1ap_dl_rrc_message_t *dl_rrc)
     nr_rlc_reconfigure_entity(dl_rrc->gNB_DU_ue_id, 1, NULL);
     // We re-establish RLC entities when transmitting RRC Reconfiguration
     // in principle we should only re-establish if reestablishRLC
-    for (int i = 1; i < seq_arr_size(&UE->UE_sched_ctrl.lc_config); ++i) {
-      nr_lc_config_t *lc_config = seq_arr_at(&UE->UE_sched_ctrl.lc_config, i);
+    for (int i = 0; i < seq_arr_size(&oldUE->UE_sched_ctrl.lc_config); ++i) {
+      nr_lc_config_t *lc_config = seq_arr_at(&oldUE->UE_sched_ctrl.lc_config, i);
       nr_rlc_reestablish_entity(dl_rrc->gNB_DU_ue_id, lc_config->lcid);
     }
     instance_t f1inst = get_f1_gtp_instance();

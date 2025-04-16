@@ -312,6 +312,7 @@ void configure_UE_BWP(gNB_MAC_INST *nr_mac,
                       int ul_bwp_switch);
 
 bool transition_ra_connected_nr_ue(gNB_MAC_INST *nr_mac, NR_UE_info_t *UE);
+bool transition_ue_access_nr_ue(gNB_MAC_INST *nr_mac, NR_UE_info_t *UE, NR_RA_t *ra);
 bool add_connected_nr_ue(gNB_MAC_INST *nr_mac, NR_UE_info_t *UE);
 void nr_check_Msg4_MsgB_Ack(module_id_t module_id, frame_t frame, slot_t slot, NR_UE_info_t *UE, bool success);
 void mac_remove_nr_ue(gNB_MAC_INST *nr_mac, rnti_t rnti);

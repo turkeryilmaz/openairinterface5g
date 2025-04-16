@@ -2293,6 +2293,7 @@ void configure_UE_BWP(gNB_MAC_INST *nr_mac,
     DL_BWP->pdsch_Config = NULL;
     UL_BWP->pusch_Config = NULL;
     UL_BWP->pucch_Config = NULL;
+    UL_BWP->srs_Config = NULL;
     UL_BWP->configuredGrantConfig = NULL;
   }
 
@@ -2567,6 +2568,20 @@ bool transition_ra_connected_nr_ue(gNB_MAC_INST *nr_mac, NR_UE_info_t *UE)
   return add_connected_nr_ue(nr_mac, UE);
 }
 
+/** @brief Transition a UE from connected list to access list (e.g., during
+ * reestablishment. */
+bool transition_ue_access_nr_ue(gNB_MAC_INST *nr_mac, NR_UE_info_t *UE, NR_RA_t *ra)
+{
+  NR_UEs_t *UE_info = &nr_mac->UE_info;
+  NR_UE_info_t *r = remove_UE_from_list(MAX_MOBILES_PER_GNB, UE_info->connected_ue_list, UE->rnti);
+  DevAssert(r == UE); /* sanity check: we should have removed the current UE ptr from list */
+
+  DevAssert(!UE->ra);
+  UE->ra = malloc_or_fail(sizeof(*UE->ra));
+  *UE->ra = *ra;
+  return add_UE_to_list(NR_NB_RA_PROC_MAX, nr_mac->UE_info.access_ue_list, UE);
+}
+
 /** @brief Add a UE to the list of UEs in * connected mode.
  *
  * To remove the UE, use mac_remove_nr_ue(). */
@@ -2663,7 +2678,8 @@ void create_ul_harq_list(NR_UE_sched_ctrl_t *sched_ctrl, const NR_UE_ServingCell
   }
 }
 
-void reset_dl_harq_list(NR_UE_sched_ctrl_t *sched_ctrl) {
+void reset_dl_harq_list(NR_UE_sched_ctrl_t *sched_ctrl)
+{
   int harq;
   while ((harq = sched_ctrl->feedback_dl_harq.head) >= 0) {
     remove_front_nr_list(&sched_ctrl->feedback_dl_harq);
@@ -2682,7 +2698,8 @@ void reset_dl_harq_list(NR_UE_sched_ctrl_t *sched_ctrl) {
   }
 }
 
-void reset_ul_harq_list(NR_UE_sched_ctrl_t *sched_ctrl) {
+void reset_ul_harq_list(NR_UE_sched_ctrl_t *sched_ctrl)
+{
   int harq;
   while ((harq = sched_ctrl->feedback_ul_harq.head) >= 0) {
     remove_front_nr_list(&sched_ctrl->feedback_ul_harq);
