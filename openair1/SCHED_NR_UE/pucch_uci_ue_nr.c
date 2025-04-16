@@ -234,7 +234,7 @@ void pucch_procedures_ue_nr(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, n
 
       switch(pucch_pdu->format_type) {
         case 0:
-          nr_generate_pucch0(ue, txdataF, &ue->frame_parms, tx_amp, nr_slot_tx, pucch_pdu, uu);
+          nr_generate_pucch0(ue, txdataF, &ue->frame_parms, tx_amp, nr_slot_tx, pucch_pdu, UU);
           break;
         case 1:
           nr_generate_pucch1(ue, txdataF, &ue->frame_parms, tx_amp, nr_slot_tx, pucch_pdu);

@@ -2768,7 +2768,7 @@ int nr_ue_get_sdu_mac_ce_pre(module_id_t module_idP,
                 "Inconsistent BSR Trigger=%d !\n",
                 mac->BSR_reporting_active);
 
-    uint8_t size_bsr = (intf_type == pc5) ? sizeof(NR_SL_BSR_SHORT) : sizeof(NR_BSR_SHORT);
+    uint8_t size_bsr = (intf_type == PC5) ? sizeof(NR_SL_BSR_SHORT) : sizeof(NR_BSR_SHORT);
     //A Regular or Periodic BSR can only be sent if TBS is sufficient as transmitting only a BSR is not allowed if UE has data to transmit
     if (num_lcg_id_with_data <= 1) {
       if (buflen >= (size_bsr + sizeof(NR_MAC_SUBHEADER_FIXED) + 1)) {
@@ -3002,7 +3002,7 @@ uint8_t nr_ue_get_sdu(module_id_t module_idP,
   uint8_t *pdu = ulsch_buffer;
 
   //nr_ue_get_sdu_mac_ce_pre updates all mac_ce related header field related to length
-  mac_ce_p->tot_mac_ce_len = nr_ue_get_sdu_mac_ce_pre(module_idP, CC_id, frameP, subframe, gNB_index, ulsch_buffer, buflen, mac_ce_p, uu);
+  mac_ce_p->tot_mac_ce_len = nr_ue_get_sdu_mac_ce_pre(module_idP, CC_id, frameP, subframe, gNB_index, ulsch_buffer, buflen, mac_ce_p, UU);
   mac_ce_p->total_mac_pdu_header_len = mac_ce_p->tot_mac_ce_len;
 
   LOG_D(NR_MAC, "In %s: [UE %d] [%d.%d] process UL transport block at with size TBS = %d bytes \n", __FUNCTION__, module_idP, frameP, subframe, buflen);
@@ -3669,7 +3669,7 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
             mac_ce_p->total_mac_pdu_header_len = total_mac_pdu_header_len;
 
             //nr_ue_get_sdu_mac_ce_pre updates all mac_ce related header field related to length
-            mac_ce_p->tot_mac_ce_len = nr_ue_get_sdu_mac_ce_pre(0, 0, frame, slot, 0, pdu, buflen, mac_ce_p, pc5);
+            mac_ce_p->tot_mac_ce_len = nr_ue_get_sdu_mac_ce_pre(0, 0, frame, slot, 0, pdu, buflen, mac_ce_p, PC5);
             buflen_remain -= mac_ce_p->tot_mac_ce_len;
             pdu += mac_ce_p->tot_mac_ce_len;
             LOG_D(NR_PHY, "buflen_remain %d, sdu_length_total %d, total_mac_pdu_header_len %d, adding tot_mac_ce_len %d, \n", buflen_remain, mac_ce_p->sdu_length_total, mac_ce_p->total_mac_pdu_header_len, mac_ce_p->tot_mac_ce_len);

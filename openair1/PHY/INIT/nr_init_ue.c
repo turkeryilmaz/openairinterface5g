@@ -709,7 +709,7 @@ void phy_init_nr_top(PHY_VARS_NR_UE *ue) {
   crcTableInit();
   init_scrambling_luts();
   load_dftslib();
-  init_context_synchro_nr(frame_parms, (ue->sl_mode == 2) ? pc5 : uu);
+  init_context_synchro_nr(frame_parms, (ue->sl_mode == 2) ? PC5 : UU);
   generate_ul_reference_signal_sequences(SHRT_MAX);
 }
 
