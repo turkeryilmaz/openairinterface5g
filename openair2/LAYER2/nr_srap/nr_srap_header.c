@@ -1,4 +1,9 @@
-#include "srap_header.h"
+/*
+Author: Ejaz Ahmed
+Email ID: ejaz.ahmed@applied.co
+*/
+
+#include "nr_srap_header.h"
 #include "softmodem-common.h"
 
 // Function to encode SRAP Header
@@ -13,7 +18,7 @@ void encode_srap_header(void* header, uint8_t* buffer) {
         buffer[1] = u2u_header->octet2;
         buffer[2] = u2u_header->octet3;
     } else {
-        //LOG_E(); // Incorrect relay type!!!
+        LOG_E(NR_SRAP, "Incorrect relay type!!!\n");
     }
 }
 
@@ -29,13 +34,13 @@ void decode_srap_header(void* header, uint8_t* buffer) {
         u2u_header->octet2 = buffer[1];
         u2u_header->octet3 = buffer[2];
     } else {
-        //LOG_E(); // Incorrect relay type!!!
+        LOG_E(NR_SRAP, "Incorrect relay type!!!\n");
     }
 }
 
-// Function to construct SRAP data PDU header
-// Inputs: SRAP data PDU BEARER ID (5 bits) and UE ID (8 bits)
-// Output: SRAP data PDU header
+/*Function to construct SRAP data PDU header
+Inputs: SRAP data PDU BEARER ID (5 bits) and UE ID (8 bits)
+Output: SRAP data PDU header*/
 void create_header(uint8_t dc_bit, relay_type_t r_type, uint8_t bearer_id, int8_t src_ue_id, int8_t dest_ue_id, void* header) {
     if (r_type == U2N) {
         AssertFatal(src_ue_id == -1, "UE ID field in octet 2 should be the remote UE, which is passed in on the dest_ue_id variable. src_ue_id is not used.");

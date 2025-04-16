@@ -40,7 +40,7 @@
 #include "common/utils/LOG/log.h"
 #include "softmodem-common.h"
 #include "nfapi/oai_integration/vendor_ext.h"
-#include "openair2/LAYER2/srap/srap_header.h"
+#include "openair2/LAYER2/nr_srap/nr_srap_header.h"
 
 
 static softmodem_params_t softmodem_params;

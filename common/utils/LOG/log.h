@@ -245,6 +245,7 @@ typedef enum {
   NFAPI_PNF,
   ITTI,
   UTIL,
+  NR_SRAP,
   MAX_LOG_PREDEF_COMPONENTS,
 }
 comp_name_t;

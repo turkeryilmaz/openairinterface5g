@@ -198,6 +198,6 @@
 {SL_CONFIG_STRING_UEINFO_SRCID,NULL,0,.iptr=&sl_ueinfo.srcid,.defintval=1,TYPE_INT,0}, \
 {SL_CONFIG_STRING_UEINFO_IPV4ADDR_THIRD_OCTET,NULL,0,.iptr=&sl_ueinfo.thirdOctet,.defintval=0,TYPE_INT,0}, \
 {SL_CONFIG_STRING_UEINFO_IPV4ADDR_FOURTH_OCTET,NULL,0,.iptr=&sl_ueinfo.fourthOctet,.defintval=1,TYPE_INT,0}, \
-{SL_CONFIG_STRING_UEINFO_REMOTE_UE_ID,NULL,0,.iptr=&sl_ueinfo.remote_ue_id,.defintval=0,TYPE_INT,0}, \
-{SL_CONFIG_STRING_UEINFO_IS_RELAY_UE,NULL,0,.iptr=&sl_ueinfo.is_relay_ue,.defintval=0,TYPE_INT,0}}
+{SL_CONFIG_STRING_UEINFO_REMOTE_UE_ID,NULL,0,.u8ptr=&sl_ueinfo.remote_ue_id,.defintval=0,TYPE_UINT8,0}, \
+{SL_CONFIG_STRING_UEINFO_IS_RELAY_UE,NULL,0,.u8ptr=&sl_ueinfo.is_relay_ue,.defintval=0,TYPE_UINT8,0}}
 #endif

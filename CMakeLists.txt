@@ -1235,7 +1235,11 @@ set(NR_SDAP_SRC
   )
 
 set(NR_SRAP_SRC
-  ${OPENAIR2_DIR}/LAYER2/srap/srap_header.c
+  ${OPENAIR2_DIR}/LAYER2/nr_srap/nr_srap_header.c
+  ${OPENAIR2_DIR}/LAYER2/nr_srap/nr_srap_sdu.c
+  ${OPENAIR2_DIR}/LAYER2/nr_srap/nr_srap_entity.c
+  ${OPENAIR2_DIR}/LAYER2/nr_srap/nr_srap_oai_api.c
+  ${OPENAIR2_DIR}/LAYER2/nr_srap/nr_srap_manager.c
   )
 
 set(L2_SRC
