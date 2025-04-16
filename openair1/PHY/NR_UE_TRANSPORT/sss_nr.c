@@ -78,7 +78,7 @@ void init_context_sss_nr(int amp, nr_intf_type_t intf_type)
   int16_t x1[LENGTH_SSS_NR];
   int16_t dss_current;
   int m0, m1;
-  int nid_2_num = (intf_type == uu) ? N_ID_2_NUMBER : N_ID_2_NUMBER_SL;
+  int nid_2_num = (intf_type == UU) ? N_ID_2_NUMBER : N_ID_2_NUMBER_SL;
 
   const int x0_initial[INITIAL_SSS_NR] = { 1, 0, 0, 0, 0, 0, 0 };
   const int x1_initial[INITIAL_SSS_NR] = { 1, 0, 0, 0, 0, 0, 0 };

@@ -65,7 +65,7 @@ int16_t *get_primary_synchro_nr2(const int nid2)
 *
 * PARAMETERS :   N_ID_2 : element 2 of physical layer cell identity
 *                value : { 0, 1, 2}
-*                intf_type : { uu, pc5}
+*                intf_type : { UU, PC5}
 *
 * RETURN :       generate binary pss sequence (this is a m-sequence)
 *
@@ -139,7 +139,7 @@ void generate_pss_nr(NR_DL_FRAME_PARMS *fp, int N_ID_2, nr_intf_type_t intf_type
   * sample 0 is for continuous frequency which is used here
   */
 
-  unsigned int subcarrier_start = (intf_type == uu) ? PSS_SSS_SUB_CARRIER_START : PSS_SSS_SUB_CARRIER_START_SL;
+  unsigned int subcarrier_start = (intf_type == UU) ? PSS_SSS_SUB_CARRIER_START : PSS_SSS_SUB_CARRIER_START_SL;
   unsigned int  k = fp->first_carrier_offset + fp->ssb_start_subcarrier + subcarrier_start;
   if (k>= fp->ofdm_symbol_size) k-=fp->ofdm_symbol_size;
   c16_t synchroF_tmp[fp->ofdm_symbol_size] __attribute__((aligned(32)));
@@ -238,7 +238,7 @@ void generate_pss_nr(NR_DL_FRAME_PARMS *fp, int N_ID_2, nr_intf_type_t intf_type
 static void init_context_pss_nr(NR_DL_FRAME_PARMS *frame_parms_ue, nr_intf_type_t intf_type)
 {
   AssertFatal(frame_parms_ue->ofdm_symbol_size > 127, "illegal ofdm_symbol_size %d\n", frame_parms_ue->ofdm_symbol_size);
-  int pss_sequence = (intf_type == uu) ? NUMBER_PSS_SEQUENCE : NUMBER_PSS_SEQUENCE_SL;
+  int pss_sequence = (intf_type == UU) ? NUMBER_PSS_SEQUENCE : NUMBER_PSS_SEQUENCE_SL;
   for (int i = 0; i < pss_sequence; i++) {
     primary_synchro_nr2[i] = malloc16_clear(LENGTH_PSS_NR * sizeof(int16_t));
     AssertFatal(primary_synchro_nr2[i], "Fatal memory allocation problem \n");
@@ -325,7 +325,7 @@ void set_frame_context_pss_nr(NR_DL_FRAME_PARMS *frame_parms_ue, int rate_change
   free_context_pss_nr();
 
   /* pss reference have to be rebuild with new parameters ie ofdm symbol size */
-  init_context_synchro_nr(frame_parms_ue, uu);
+  init_context_synchro_nr(frame_parms_ue, UU);
 
 #ifdef SYNCHRO_DECIMAT
   set_pss_nr(frame_parms_ue->ofdm_symbol_size);
@@ -352,7 +352,7 @@ void restore_frame_context_pss_nr(NR_DL_FRAME_PARMS *frame_parms_ue, int rate_ch
   free_context_pss_nr();
 
   /* pss reference have to be rebuild with new parameters ie ofdm symbol size */
-  init_context_synchro_nr(frame_parms_ue, uu);
+  init_context_synchro_nr(frame_parms_ue, UU);
 #ifdef SYNCHRO_DECIMAT
   set_pss_nr(frame_parms_ue->ofdm_symbol_size);
 #endif

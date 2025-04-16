@@ -73,7 +73,7 @@ int test_pucch_generators(PHY_VARS_NR_UE *ue) {
                          nb_symbols_total,
                          starting_symbol_index,
                          starting_prb,
-                         uu);
+                         UU);
       break;
     }
 

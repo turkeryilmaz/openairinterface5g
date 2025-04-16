@@ -122,7 +122,7 @@ void nr_generate_pucch0(const PHY_VARS_NR_UE *ue,
   for (int l=0; l<pucch_pdu->nr_of_symbols; l++) {
     alpha = nr_cyclic_shift_hopping(pucch_pdu->hopping_id,
                                     pucch_pdu->initial_cyclic_shift,
-                                    pucch_pdu->mcs, intf_type == pc5 ? 0 : l,
+                                    pucch_pdu->mcs, intf_type == PC5 ? 0 : l,
                                     pucch_pdu->start_symbol_index,
                                     nr_slot_tx);
 #ifdef DEBUG_NR_PUCCH_TX

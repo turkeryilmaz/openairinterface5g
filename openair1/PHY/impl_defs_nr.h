@@ -110,8 +110,8 @@ typedef enum {
 } nr_link_type_t;
 
 typedef enum {
-  uu,
-  pc5,
+  UU,
+  PC5,
 } nr_intf_type_t;
 
 typedef enum {
