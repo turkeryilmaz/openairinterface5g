@@ -110,7 +110,7 @@ int nr_est_toa_ns_srs(NR_DL_FRAME_PARMS *frame_parms,
     // Check for detection threshold
 
     //LOG_I(PHY, "SRS ToA before (RX ant %d): max_val %d, mean_val %d, max_idx %d\n", arx_index, max_val, mean_val, max_idx);
-    if ((mean_val != 0) && (max_val / mean_val > 100)) {
+    if ((mean_val >= 100) && (max_val / mean_val > 100)) {
       srs_toa_ns[arx_index] = (max_idx*1e9)/(NR_SRS_IDFT_OVERSAMP_FACTOR*frame_parms->samples_per_frame*100);
     } else {
       srs_toa_ns[arx_index] = 0x8000;
