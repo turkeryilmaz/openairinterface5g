@@ -30,7 +30,7 @@ Currently Supported:
 Introduction
 ============
 
-sec:introduction
+\#sec:introduction
 
 Low Density Parity Check (LDPC) codes have been developed by Gallager in
 1963 [@gallager1962low]. They are linear error correcting codes that are
@@ -45,7 +45,7 @@ $$R = \frac{B}{N} = 1-\frac{M}{N}.$$ \#eq:37
 LDPC in NR
 ----------
 
-sec:ldpc-nr
+\#sec:ldpc-nr
 
 NR uses quasi-cyclic (QC) Protograph LDPC codes, i.e. a smaller graph,
 called Base Graph (BG), is defined and utilized to construct the larger
@@ -67,7 +67,7 @@ $$\mathbf{H}_\mathrm{BG2}=
     9   & 117       & 204       & 26  & \emptyset & \emptyset & 189       & \emptyset & \emptyset & 205       & 0         & 0         & \emptyset & \emptyset \\
     127 & \emptyset & \emptyset & 166 & 253       & 125       & 226       & 156       & 224       & 252       & \emptyset & 0         & 0         & \emptyset \\
     81  & 114       & \emptyset & 44  & 52        & \emptyset & \emptyset & \emptyset & 240       & \emptyset & 1         & \emptyset & 0         & 0
-  \end{bmatrix}.$$eq:33
+  \end{bmatrix}.$$\#eq:33
 
 To obtain the PCM $\mathbf{H}$ from the BG $\mathbf{H}_\mathrm{BG}$,
 each element $\mathbf{H}_\mathrm{BG}(i,j)$ in the BG is replaced by a

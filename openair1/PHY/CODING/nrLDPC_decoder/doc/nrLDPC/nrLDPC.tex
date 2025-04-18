@@ -148,8 +148,7 @@
 \tableofcontents
 
 \newpage
-\section{Introduction}
-{sec:introduction}
+\section{Introduction} {#sec:introduction}
 
 Low Density Parity Check (LDPC) codes have been developed by Gallager in 1963 \cite{gallager1962low}. They are linear error correcting codes that are capacity-achieving for large block length and are completely described by their Parity Check Matrix (PCM) $\H^{M\times N}$. The PCM $\H$ defines $M$ constraints on the codeword $\c$ of length $N$ such that
 \begin{equation}
@@ -161,8 +160,7 @@ The number of information bits $B$ that can be encoded with $\H$ is given by $B=
 \end{equation} {#eq:37}
 
 
-\subsection{LDPC in NR}
-{sec:ldpc-nr}
+\subsection{LDPC in NR}{#sec:ldpc-nr}
 
 NR uses quasi-cyclic (QC) Protograph LDPC codes, i.e. a smaller graph, called Base Graph (BG), is defined and utilized to construct the larger PCM. This has the advantage that the large PCM does not have to be stored in memory and allows for a more efficient implementation while maintaining good decoding properties.
 Two BGs $\Hbg\in\Nbb^{\Mb\times \Nb}$ are defined in NR:
@@ -180,7 +178,7 @@ where $\Nbb$ is the set of integers. For instance the first 3 rows and 13 column
     127 & \emptyset & \emptyset & 166 & 253       & 125       & 226       & 156       & 224       & 252       & \emptyset & 0         & 0         & \emptyset \\
     81  & 114       & \emptyset & 44  & 52        & \emptyset & \emptyset & \emptyset & 240       & \emptyset & 1         & \emptyset & 0         & 0
   \end{bmatrix}.
-\end{equation*}{eq:33}
+\end{equation*}{#eq:33}
 
 To obtain the PCM $\H$ from the BG $\Hbg$, each element $\Hbg(i,j)$ in the BG is replaced by a lifting matrix of size $\Zc\times \Zc$ according to
 \begin{equation}
