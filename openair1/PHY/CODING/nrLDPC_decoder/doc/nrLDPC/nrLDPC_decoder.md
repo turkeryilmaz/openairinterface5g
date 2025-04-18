@@ -1,33 +1,4 @@
-Currently Supported:
-
-#### Version 1.0:
-
--   Initial version
-
-#### Version 2.0:
-
--   Enhancements in message passing:
-
-    -   LUTs replaced by smaller BG-specific parameters
-
-    -   Inefficient load/store replaced by circular memcpy
-
--   Bug fixes:
-
-    -   Fixed bug in function `llr2CnProcBuf`
-
-    -   Corrected input LLR dynamic range in BLER simulations
-
--   Results:
-
-    -   Size of LUTs reduced significantly (60MB to 200KB)
-
-    -   Siginifcantly enhances execution time (factor 3.5)
-
-    -   Improved BLER performance (all simulation results have been
-        updated)
-
-Introduction {#sec:introduction}
+Introduction
 ============
 
 Low Density Parity Check (LDPC) codes have been developed by Gallager in
