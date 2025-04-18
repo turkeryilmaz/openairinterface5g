@@ -116,6 +116,7 @@ void nr_ue_reset_sync_state(NR_UE_MAC_INST_t *mac)
   // reset synchornization status
   mac->state = UE_NOT_SYNC;
   mac->ra.ra_state = nrRA_UE_IDLE;
+  asn1cFreeStruc(asn_DEF_NR_RACH_ConfigDedicated, mac->rach_ConfigDedicated);
 }
 
 NR_UE_L2_STATE_t nr_ue_get_sync_state(module_id_t mod_id)

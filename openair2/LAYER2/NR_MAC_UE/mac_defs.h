@@ -300,8 +300,6 @@ typedef struct {
 } NR_pdcch_order_config_t;
 
 typedef struct {
-  // pointer to RACH config dedicated
-  NR_RACH_ConfigDedicated_t *rach_ConfigDedicated;
   /// state of RA procedure
   nrRA_UE_state_t ra_state;
   /// RA contention type
@@ -570,6 +568,8 @@ typedef struct NR_UE_MAC_INST_s {
   uint16_t crnti;
   /// RA configuration
   RA_config_t ra;
+  // pointer to RACH config dedicated
+  NR_RACH_ConfigDedicated_t *rach_ConfigDedicated;
   /// SSB index from MIB decoding
   uint8_t mib_ssb;
   uint32_t mib_additional_bits;

@@ -1686,7 +1686,7 @@ void nr_rrc_mac_config_req_reset(module_id_t module_id, NR_UE_MAC_reset_cause_t 
   fapi_nr_synch_request_t sync_req = {.target_Nid_cell = -1, .ssb_bw_scan = true};
   switch (cause) {
     case GO_TO_IDLE:
-      reset_ra(mac, true);
+      reset_ra(mac);
       nr_ue_init_mac(mac);
       release_mac_configuration(mac, cause);
       nr_ue_mac_default_configs(mac);
@@ -1695,14 +1695,14 @@ void nr_rrc_mac_config_req_reset(module_id_t module_id, NR_UE_MAC_reset_cause_t 
       break;
     case DETACH:
       LOG_A(NR_MAC, "Received detach indication\n");
-      reset_ra(mac, true);
+      reset_ra(mac);
       reset_mac_inst(mac);
       nr_ue_reset_sync_state(mac);
       release_mac_configuration(mac, cause);
       mac->state = UE_DETACHING;
       break;
     case T300_EXPIRY:
-      reset_ra(mac, false);
+      reset_ra(mac);
       reset_mac_inst(mac);
       mac->state = UE_PERFORMING_RA; // still in sync but need to restart RA
       break;
@@ -1828,7 +1828,7 @@ static void handle_reconfiguration_with_sync(NR_UE_MAC_INST_t *mac,
   if (reconfWithSync->rach_ConfigDedicated) {
     AssertFatal(reconfWithSync->rach_ConfigDedicated->present == NR_ReconfigurationWithSync__rach_ConfigDedicated_PR_uplink,
                 "RACH on supplementaryUplink not supported\n");
-    UPDATE_IE(ra->rach_ConfigDedicated, reconfWithSync->rach_ConfigDedicated->choice.uplink, NR_RACH_ConfigDedicated_t);
+    UPDATE_IE(mac->rach_ConfigDedicated, reconfWithSync->rach_ConfigDedicated->choice.uplink, NR_RACH_ConfigDedicated_t);
   }
 
   if (reconfWithSync->spCellConfigCommon) {

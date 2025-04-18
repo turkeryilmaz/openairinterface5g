@@ -354,7 +354,7 @@ static void configure_ra_preamble(NR_UE_MAC_INST_t *mac)
   RA_config_t *ra = &mac->ra;
   int ssb = -1; // init as not selected
   ra->ro_mask_index = -1; // init as not selected
-  NR_RACH_ConfigDedicated_t *rach_ConfigDedicated = ra->rach_ConfigDedicated;
+  NR_RACH_ConfigDedicated_t *rach_ConfigDedicated = mac->rach_ConfigDedicated;
   if (ra->ra_type == RA_4_STEP) {
     // TODO if the Random Access procedure was initiated for SpCell beam failure recovery
     // TODO if the Random Access procedure was initiated for SI request
@@ -943,7 +943,7 @@ bool init_RA(NR_UE_MAC_INST_t *mac, int frame)
   // have been explicitly provided by RRC for the BWP selected for Random Access procedure
 
   NR_RACH_ConfigCommonTwoStepRA_r16_t *twostep_conf = NULL;
-  NR_RACH_ConfigDedicated_t *rach_Dedicated = ra->rach_ConfigDedicated;
+  NR_RACH_ConfigDedicated_t *rach_Dedicated = mac->rach_ConfigDedicated;
 
   // if the Random Access procedure is initiated by PDCCH order
   // and if the ra-PreambleIndex explicitly provided by PDCCH is not 0b000000
@@ -1238,7 +1238,7 @@ void trigger_MAC_UE_RA(NR_UE_MAC_INST_t *mac, dci_pdu_rel15_t *pdcch_order)
 {
   LOG_W(NR_MAC, "Triggering new RA procedure for UE with RNTI %x\n", mac->crnti);
   mac->state = UE_PERFORMING_RA;
-  reset_ra(mac, false);
+  reset_ra(mac);
   RA_config_t *ra = &mac->ra;
   mac->msg3_C_RNTI = true;
   if (pdcch_order) {
@@ -1275,13 +1275,8 @@ void prepare_msg4_msgb_feedback(NR_UE_MAC_INST_t *mac, int pid, int ack_nack)
   release_ul_config(pdu, false);
 }
 
-void reset_ra(NR_UE_MAC_INST_t *nr_mac, bool free_prach)
+void reset_ra(NR_UE_MAC_INST_t *nr_mac)
 {
   RA_config_t *ra = &nr_mac->ra;
-  if (ra->rach_ConfigDedicated)
-    asn1cFreeStruc(asn_DEF_NR_RACH_ConfigDedicated, ra->rach_ConfigDedicated);
   memset(ra, 0, sizeof(RA_config_t));
-
-  if (!free_prach)
-    return;
 }
