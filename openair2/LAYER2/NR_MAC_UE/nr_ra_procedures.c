@@ -1237,6 +1237,8 @@ void nr_rar_not_successful(NR_UE_MAC_INST_t *mac)
 void trigger_MAC_UE_RA(NR_UE_MAC_INST_t *mac, dci_pdu_rel15_t *pdcch_order)
 {
   LOG_W(NR_MAC, "Triggering new RA procedure for UE with RNTI %x\n", mac->crnti);
+  // in do-ra mode we can't trigger a new RA via C-RNTI in MSG3 (there is no MSG3 and the gNB wouldn't recognize the preamble)
+  AssertFatal(IS_SA_MODE(get_softmodem_params()), "Triggering RA at MAC only possible in SA mode\n");
   mac->state = UE_PERFORMING_RA;
   reset_ra(mac);
   RA_config_t *ra = &mac->ra;
