@@ -768,6 +768,11 @@ void ue_context_modification_request(const f1ap_ue_context_modif_req_t *req)
     LOG_I(NR_MAC, "DU received confirmation of successful RRC Reconfiguration\n");
     // we re-configure the BWP to apply the CellGroup and to use UE specific Search Space with DCIX1
     nr_mac_clean_cellgroup(UE->CellGroup);
+    // we reconfigure spCellGroup that was dropped during re-establishment if needed
+    if (UE->reest_spCellConfig) {
+      UE->CellGroup->spCellConfig = UE->reest_spCellConfig;
+      UE->reest_spCellConfig = NULL;
+    }
     configure_UE_BWP(mac, scc, UE, false, NR_SearchSpace__searchSpaceType_PR_ue_Specific, -1, -1);
   }
 
@@ -944,7 +949,7 @@ void dl_rrc_message_transfer(const f1ap_dl_rrc_message_t *dl_rrc)
     /* 38.331 5.3.7.2 says that the UE releases the spCellConfig, so we drop it
      * from the current configuration. Also, expect the reconfiguration from
      * the CU, so save the old UE's CellGroup for the new UE */
-    ASN_STRUCT_FREE(asn_DEF_NR_SpCellConfig, oldUE->CellGroup->spCellConfig);
+    oldUE->reest_spCellConfig = oldUE->CellGroup->spCellConfig;
     oldUE->CellGroup->spCellConfig = NULL;
     LOG_W(NR_MAC, "update old RNTI %04x to new %04x\n", oldUE->rnti, UE->rnti);
     oldUE->rnti = UE->rnti;

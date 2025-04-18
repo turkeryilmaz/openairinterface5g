@@ -405,7 +405,7 @@ static NR_SearchSpace_t *get_searchspace(NR_ServingCellConfigCommon_t *scc,
   else
     n = scc->downlinkConfigCommon->initialDownlinkBWP->pdcch_ConfigCommon->choice.setup->commonSearchSpaceList->list.count;
 
-  for (int i=0;i<n;i++) {
+  for (int i = 0; i < n; i++) {
     NR_SearchSpace_t *ss = NULL;
     if(bwp_Dedicated)
       ss = bwp_Dedicated->pdcch_Config->choice.setup->searchSpacesToAddModList->list.array[i];
@@ -417,7 +417,7 @@ static NR_SearchSpace_t *get_searchspace(NR_ServingCellConfigCommon_t *scc,
       return ss;
     }
   }
-  AssertFatal(0, "Couldn't find an adequate searchspace bwp_Dedicated %p\n",bwp_Dedicated);
+  AssertFatal(false, "Couldn't find an adequate searchspace bwp_Dedicated\n");
 }
 
 NR_sched_pdcch_t set_pdcch_structure(gNB_MAC_INST *gNB_mac,

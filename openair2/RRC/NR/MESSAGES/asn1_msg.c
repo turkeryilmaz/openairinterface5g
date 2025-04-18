@@ -679,7 +679,7 @@ int do_RRCReconfiguration(const gNB_RRC_UE_t *UE,
       uint8_t *buf = NULL;
       ssize_t len = uper_encode_to_new_buffer(&asn_DEF_NR_CellGroupConfig, NULL, cellGroupConfig, (void **)&buf);
       AssertFatal(len > 0, "ASN1 message encoding failed (%lu)!\n", len);
-      if ( LOG_DEBUGFLAG(DEBUG_ASN1) ) {
+      if (LOG_DEBUGFLAG(DEBUG_ASN1)) {
         xer_fprint(stdout, &asn_DEF_NR_CellGroupConfig, (const void *) cellGroupConfig);
       }
       ie->nonCriticalExtension->masterCellGroup = calloc(1,sizeof(OCTET_STRING_t));

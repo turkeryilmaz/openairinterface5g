@@ -901,8 +901,10 @@ void handle_nr_uci_pucch_0_1(module_id_t mod_id, frame_t frame, slot_t slot, con
       handle_dl_harq(UE, pid, success, nrmac->dl_bler.harq_round_max);
       if (is_ra)
         nr_check_Msg4_MsgB_Ack(mod_id, frame, slot, UE, success);
-      if (harq_confidence == 1)
+      if (harq_confidence == 1) {
         UE->mac_stats.pucch0_DTX++;
+        LOG_I(NR_MAC, "PUCCH0 missed detection = %d\n", UE->mac_stats.pucch0_DTX);
+      }
     }
 
     // tpc (power control) only if we received AckNack

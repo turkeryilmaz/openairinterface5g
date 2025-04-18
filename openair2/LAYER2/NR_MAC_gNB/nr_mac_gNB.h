@@ -743,6 +743,8 @@ typedef struct {
   NR_mac_stats_t mac_stats;
   /// currently active CellGroupConfig
   NR_CellGroupConfig_t *CellGroup;
+  /// spCellConfig stored during re-establishment
+  NR_SpCellConfig_t *reest_spCellConfig;
   interrupt_followup_action_t interrupt_action;
   NR_UE_NR_Capability_t *capability;
   // UE selected beam index
