@@ -103,7 +103,7 @@ $3200$ are transmitted resulting in the desired rate $R=640/3200=0.2$.
 LDPC Decoding
 -------------
 
-sec:ldpc-decoding
+\#sec:ldpc-decoding
 
 The decoding of codeword $\mathbf{c}$ can be achieved via the classical
 message passing algorithm. This algorithm can be illustrated best using
@@ -152,7 +152,7 @@ correctly.
 LDPC Decoder Implementation
 ===========================
 
-sec:ldpc-implementation
+\#sec:ldpc-implementation
 
 The implementation on a general purpose processor (GPP) has to take
 advantage of potential instruction extension of the processor
@@ -197,7 +197,7 @@ in more detail.
 Check Node Processing
 ---------------------
 
-sec:check-node-proc
+\#sec:check-node-proc
 
 Denote $q_{ij}$ the value from BN $j$ to CN $i$ and let $\mathcal{B}_i$
 be the set of connected BNs to the $i$th CN. Then, using the min-sum
@@ -282,7 +282,7 @@ calculated, they are copied to the bit node processing buffer.
 Bit Node Processing
 -------------------
 
-sec:bit-node-processing
+\#sec:bit-node-processing
 
 Denote $r_{ji}$ the value from CN $i$ to BN $j$ and let $\mathcal{C}_j$
 be the set of connected CNs to the $j$th BN. Each BN $j$ has to carry
@@ -384,7 +384,7 @@ results in significant loss of sensitivity for low code rates.
 Mapping to the Processing Buffers
 ---------------------------------
 
-sec:mapp-cn-proc
+\#sec:mapp-cn-proc
 
 For efficient processing with the AVX instructions, the data is required
 to be aligned in a certain manner. That is the reason why processing
@@ -406,7 +406,7 @@ depending on the CN group (CNG).
 Performance Results
 ===================
 
-sec:performance-results
+\#sec:performance-results
 
 In this section, the performance in terms of BLER and decoding latency
 of the current LDPC decoder implementation is verified.
@@ -414,7 +414,7 @@ of the current LDPC decoder implementation is verified.
 BLER Performance
 ----------------
 
-sec:bler-performance
+\#sec:bler-performance
 
 In all simulations, we assume AWGN, QPSK modulation and 8-bit input
 LLRs, i.e. $-127$ until $+127$. The DLSCH coding procedure in 38.212 is
@@ -502,7 +502,7 @@ fig:bler-bg1-r89
 Decoding Latency
 ----------------
 
-sec:decoding-time
+\#sec:decoding-time
 
 This section provides results in terms of decoding latency. That is, the
 time it takes the decoder to to finish decoding for a given number of
@@ -596,7 +596,7 @@ activated via the define `NR_LDPC_ENABLE_PARITY_CHECK`.
 Conclusion
 ==========
 
-sec:conclusion
+\#sec:conclusion
 
 The results in the previous sections show that the current optimized
 LDPC implementation full-fills the requirements in terms of decoding
@@ -609,7 +609,7 @@ detailed in the next section.
 Future Work
 ===========
 
-sec:future-work
+\#sec:future-work
 
 The improvements upon the current LDPC decoder implementation can be
 divided into two categories:
@@ -621,7 +621,7 @@ divided into two categories:
 Improved BLER Performance
 -------------------------
 
-sec:impr-bler-perf
+\#sec:impr-bler-perf
 
 The BLER performance can be improved by using a tighter approximation
 than the min-sum approximation. For instance, the min-sum algorithm can
@@ -639,7 +639,7 @@ The correction term $w(q_{ij'})$ is defined as $$w(q_{ij'}) =
 Reduced Decoding Latency
 ------------------------
 
-sec:reduc-decod-latency
+\#sec:reduc-decod-latency
 
 The following improvements will reduce the decoding latency:
 

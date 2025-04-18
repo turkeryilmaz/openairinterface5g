@@ -148,7 +148,7 @@
 \tableofcontents
 
 \newpage
-\section{Introduction} {#sec:introduction}
+\section{Introduction}#sec:introduction
 
 Low Density Parity Check (LDPC) codes have been developed by Gallager in 1963 \cite{gallager1962low}. They are linear error correcting codes that are capacity-achieving for large block length and are completely described by their Parity Check Matrix (PCM) $\H^{M\times N}$. The PCM $\H$ defines $M$ constraints on the codeword $\c$ of length $N$ such that
 \begin{equation}
@@ -198,7 +198,7 @@ The lifting size $\Zc$ depends on the number of bits to encode. To limit the com
 The base rate of the two BGs is $1/3$ and $1/5$ for BG1 and BG2, respectively. That is, BG1 encodes $K=22\Zc$ bits and BG2 encodes $K=10\Zc$ bits. Note that the first 2 columns of BG 1 and 2 are always punctured, that is after encoding, the first $2\Zc$ bits are discarded and not transmitted.
 For instance, consider $B=500$ information bits to encode using BG2, @eq:36 yields $\Zc=64$ hence $K=640$. Since $K>B$, $K-B=140$ filler bits are appended to the information bits. The PCM $\Hbgt$ is of size $2688\times 3328$ and the $640$ bits $\b$ are encoded according to @eq:29 at a rate $R \approx 0.192$. To achieve the higher base rate of $0.2$, the first $128$ are punctured, i.e. instead of transmitting all $3328$ bits, only $3200$ are transmitted resulting in the desired rate $R=640/3200=0.2$.
 
-\subsection{LDPC Decoding}{sec:ldpc-decoding}
+\subsection{LDPC Decoding}{#sec:ldpc-decoding}
 
 The decoding of codeword $\c$ can be achieved via the classical message passing algorithm. This algorithm can be illustrated best using the Tanner graph of the PCM. The rows of the PCM are called check nodes (CN) since they represent the parity check equations. The parity check equation of each of these check nodes involves various bits in the codeword. Similarly, every column of the PCM corresponds to a bit and each bit is involved in several parity check equations. In the Tanner graph representation, the bits are called bit nodes (BN). Let's go back to the previous example of BG2 and assume $\Zc=2$, hence the first 3 rows and 13 columns of BG2 $\Hbgt$ read
 \begin{equation*}
@@ -267,7 +267,7 @@ The Tanner graph of the first 8 BNs is shown in Figure {@fig:tannergraph}.
 The message passing algorithm is an iterative algorithm where probabilities of the bits (being either 0 or 1) are exchanged between the BNs and CNs. After sufficient iterations, the probabilities will have either converged to either 0 or 1 and the parity check equations will be satisfied, at this point, the codeword has been decoded correctly.
 
 \newpage
-\section{LDPC Decoder Implementation}{sec:ldpc-implementation}
+\section{LDPC Decoder Implementation}{#sec:ldpc-implementation}
 
 The implementation on a general purpose processor (GPP) has to take advantage of potential instruction extension of the processor architecture. We focus on the Intel x86 instruction set architecture (ISA) and its advanced vector extension (AVX). In particular, we utilize AVX2 with its 256-bit single instruction multiple data (SIMD) format. In order to utilize AVX2 to speed up the processing at the CNs and BNs, the corresponding data has to be ordered/aligned in a specific way. The processing flow of the LDPC decoder is depicted in {@fig:ldpcdecoderflow}.
 
@@ -356,7 +356,7 @@ The functions involved are described in more detail in Table \ref{tbl:sum-func}.
 The input LLRs are assumed to be 8-bit and aligned on 32 bytes. CN processing is carried out in 8-bit whereas BN processing is done in 16 bit. Subsequently, the processing tasks at the CNs and BNs are explained in more detail.
 
 \newpage
-\subsection{Check Node Processing}{sec:check-node-proc}
+\subsection{Check Node Processing}{#sec:check-node-proc}
 
 Denote $q_{ij}$ the value from BN $j$ to CN $i$ and let $\Bcal_i$ be the set of connected BNs to the $i$th CN. Then, using the min-sum approximation, CN $i$ has to carry out the following operation for each connected BN.
 \begin{equation}
@@ -430,7 +430,7 @@ Hence, $|p_C^k| = kM_k$, e.g, $\Zc=128$, $|p_C^4| = 4\cdot 20\cdot 128 = 10240$.
 
 Once all results of the check node processing $r_{ji}$ have been calculated, they are copied to the bit node processing buffer.
 
-\subsection{Bit Node Processing}{sec:bit-node-processing}
+\subsection{Bit Node Processing}{#sec:bit-node-processing}
 
 Denote $r_{ji}$ the value from CN $i$ to BN $j$ and let $\Ccal_j$ be the set of connected CNs to the $j$th BN. Each BN $j$ has to carry out the following operation for every connected CN $i\in\Ccal_j$.
 \begin{equation}
@@ -517,16 +517,16 @@ Depending on the code rate, some parity bits are not being transmitted. For inst
 
 The sum of the LLRs is carried out in 16 bit for accuracy and is then saturated to 8 bit for CN processing. Saturation after each addition results in significant loss of sensitivity for low code rates.
 
-\subsection{Mapping to the Processing Buffers}{sec:mapp-cn-proc}
+\subsection{Mapping to the Processing Buffers}{#sec:mapp-cn-proc}
 
 For efficient processing with the AVX instructions, the data is required to be aligned in a certain manner. That is the reason why processing buffers have been introduced. The drawback is that the results of the processing need to copied every time to the processing buffer of the next task. However, the speed up in computation with AVX more than makes up for the time wasted in copying data. The copying is implemented as a circular memcpy because every edge in the BG is a circular shift of a $Z\times Z$ identity matrix. Hence, a circular mempcy consists of two regular memcpys each copying a part of the $Z$ values depending on the circular shift in the BG definition. The circular shifts are stored in \texttt{nrLDPC\_lut.h} in arrays \texttt{circShift\_BGX\_ZX\_CNGX}. In the specification there are only 8 sets of cirular shifts defined. However, the applied circular shift depends on $Z$, i.e. modulo $Z$. To avoid inefficient modulo operations in loops, we store the the circular shift values for every $Z$. Moreover, for convinience the arrays are already arranged depending on the CN group (CNG).
 
 \newpage
-\section{Performance Results}{sec:performance-results}
+\section{Performance Results}{#sec:performance-results}
 
 In this section, the performance in terms of BLER and decoding latency of the current LDPC decoder implementation is verified.
 
-\subsection{BLER Performance}{sec:bler-performance}
+\subsection{BLER Performance}{#sec:bler-performance}
 
 In all simulations, we assume AWGN, QPSK modulation and 8-bit input LLRs, i.e. $-127$ until $+127$. The DLSCH coding procedure in 38.212 is used to encode/decode the TB and an error is declared if the TB CRC check failed. Results are averaged over at least $10\,000$ channel realizations. 
 
@@ -747,7 +747,7 @@ Figure {@fig:bler-bg1-r89} shows the performance of BG1 with largest block size 
 \end{figure}{fig:bler-bg1-r89}
 
 \newpage
-\subsection{Decoding Latency}{sec:decoding-time}
+\subsection{Decoding Latency}{#sec:decoding-time}
 
 This section provides results in terms of decoding latency. That is, the time it takes the decoder to to finish decoding for a given number of iterations. To measure the run time of the decoder we use the OAI tool \texttt{time\_meas.h}. The clock frequency is about 2.9 GHZ, decoder is run on a single core and the results are averaged over $10\,000$ blocks.
 
@@ -859,12 +859,12 @@ From the above results it can be observed that the data transfer between CNs and
 It is often unnecessary to carry out the maximum number of iterations. After each iteration a parity check (PC) @eq:29 can be computed and if a valid code word is found the decoder can stop. This functionality has been implemented and the additional overhead is reasonable. The PC is carried out in the CN processing buffer and the calculation complexity itself is negligible. However, for the processing it is necessary to move the BN results to the CN buffer which takes time, the overall overhead is at most $10\%$ compared to an algorithm without early stopping criteria with the same number of iterations. The PC has to be activated via the define \texttt{NR\_LDPC\_ENABLE\_PARITY\_CHECK}.
 
 
-\section{Conclusion}{sec:conclusion}
+\section{Conclusion}{#sec:conclusion}
 
 The results in the previous sections show that the current optimized LDPC implementation full-fills the requirements in terms of decoding latency for low to medium number of iterations at the expense of a loss in BLER performance. To improve BLER performance, it is recommended to implement a layered algorithm and a min-sum algorithm with normalization. Further improvements upon the current implementation are detailed in the next section.
 
 \newpage
-\section{Future Work}{sec:future-work}
+\section{Future Work}{#sec:future-work}
 
 The improvements upon the current LDPC decoder implementation can be divided into two categories:
 \begin{enumerate}
@@ -872,7 +872,7 @@ The improvements upon the current LDPC decoder implementation can be divided int
 \item Reduced decoding latency
 \end{enumerate}
 
-\subsection{Improved BLER Performance}{sec:impr-bler-perf}
+\subsection{Improved BLER Performance}{#sec:impr-bler-perf}
 
 The BLER performance can be improved by using a tighter approximation than the min-sum approximation. For instance, the min-sum algorithm can be improved by adding a correction factor in the CN processing . The min-sum approximation in @eq:40 is modified as
 \begin{equation}
@@ -890,7 +890,7 @@ The correction term $w(q_{ij'})$ is defined as
 \end{equation}{eq:51}
 where the constant $c$ is of order $0.5$ typically.
 
-\subsection{Reduced Decoding Latency}{sec:reduc-decod-latency}
+\subsection{Reduced Decoding Latency}{#sec:reduc-decod-latency}
 
 The following improvements will reduce the decoding latency:
 
