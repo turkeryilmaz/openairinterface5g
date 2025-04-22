@@ -75,6 +75,98 @@ static void fill_uci_2_3_4(nfapi_nr_uci_pucch_pdu_format_2_3_4_t *pdu_2_3_4,
   pdu_2_3_4->csi_part1.csi_part1_crc = 0;
 }
 
+static char *rb_bitmap_to_string(const uint8_t *rb_bitmap, size_t size)
+{
+  static char buffer[128];
+  char *ptr = buffer;
+  for (size_t i = 0; i < size; i++) {
+    ptr += sprintf(ptr, "%02x ", rb_bitmap[i]);
+  }
+  return buffer;
+}
+
+static char *csiRsForRateMatching_to_string(const fapi_nr_dl_config_csirs_pdu_rel15_t *csiRs, size_t size)
+{
+  static char buffer[512];
+  char *ptr = buffer;
+  for (size_t i = 0; i < size; i++) {
+    ptr += sprintf(ptr,
+                   "{ subcarrier_spacing: %u, cyclic_prefix: %u, start_rb: %u, nr_of_rbs: %u }, ",
+                   csiRs[i].subcarrier_spacing,
+                   csiRs[i].cyclic_prefix,
+                   csiRs[i].start_rb,
+                   csiRs[i].nr_of_rbs);
+  }
+  return buffer;
+}
+
+static void print_fapi_pdsch_pdu(fapi_nr_dl_config_dlsch_pdu_rel15_t *pdu, int frame, int slot)
+{
+  LOG_I(NR_MAC,
+        "fapi_nr_dl_config_dlsch_pdu_rel15_t [%d.%d]: { BWPSize: %u, BWPStart: %u, SubcarrierSpacing: %u, resource_alloc: %u, rb_bitmap: "
+        "[%s], number_rbs: %u, start_rb: %u, number_symbols: %u, start_symbol: %u, rb_offset: %u, dlDmrsSymbPos: %u, "
+        "dmrsConfigType: %u, prb_bundling_size_ind: %u, rate_matching_ind: %u, zp_csi_rs_trigger: %u, mcs: %u, new_data_indicator: "
+        "%s, rv: %u, targetCodeRate: %u, qamModOrder: %u, TBS: %u, tb2_mcs: %u, tb2_new_data_indicator: %s, tb2_rv: %u, "
+        "harq_process_nbr: %u, vrb_to_prb_mapping: %u, dai: %u, scaling_factor_S: %f, pucch_resource_id: %u, "
+        "pdsch_to_harq_feedback_time_ind: %u, n_dmrs_cdm_groups: %u, dmrs_ports: %u, n_front_load_symb: %u, tci_state: %u, cbgti: "
+        "%u, codeBlockGroupFlushIndicator: %u, PTRSPortIndex: %u, PTRSTimeDensity: %u, PTRSFreqDensity: %u, PTRSReOffset: %u, "
+        "nEpreRatioOfPDSCHToPTRS: %u, mcs_table: %u, tbslbrm: %u, nscid: %u, dlDmrsScramblingId: %u, dlDataScramblingId: %u, "
+        "pduBitmap: %u, k1_feedback: %u, ldpcBaseGraph: %u, numCsiRsForRateMatching: %u, csiRsForRateMatching: [%s] }\n",
+        frame,
+        slot,
+        pdu->BWPSize,
+        pdu->BWPStart,
+        pdu->SubcarrierSpacing,
+        pdu->resource_alloc,
+        rb_bitmap_to_string(pdu->rb_bitmap, 36),
+        pdu->number_rbs,
+        pdu->start_rb,
+        pdu->number_symbols,
+        pdu->start_symbol,
+        pdu->rb_offset,
+        pdu->dlDmrsSymbPos,
+        pdu->dmrsConfigType,
+        pdu->prb_bundling_size_ind,
+        pdu->rate_matching_ind,
+        pdu->zp_csi_rs_trigger,
+        pdu->mcs,
+        pdu->new_data_indicator ? "true" : "false",
+        pdu->rv,
+        pdu->targetCodeRate,
+        pdu->qamModOrder,
+        pdu->TBS,
+        pdu->tb2_mcs,
+        pdu->tb2_new_data_indicator ? "true" : "false",
+        pdu->tb2_rv,
+        pdu->harq_process_nbr,
+        pdu->vrb_to_prb_mapping,
+        pdu->dai,
+        pdu->scaling_factor_S,
+        pdu->pucch_resource_id,
+        pdu->pdsch_to_harq_feedback_time_ind,
+        pdu->n_dmrs_cdm_groups,
+        pdu->dmrs_ports,
+        pdu->n_front_load_symb,
+        pdu->tci_state,
+        pdu->cbgti,
+        pdu->codeBlockGroupFlushIndicator,
+        pdu->PTRSPortIndex,
+        pdu->PTRSTimeDensity,
+        pdu->PTRSFreqDensity,
+        pdu->PTRSReOffset,
+        pdu->nEpreRatioOfPDSCHToPTRS,
+        pdu->mcs_table,
+        pdu->tbslbrm,
+        pdu->nscid,
+        pdu->dlDmrsScramblingId,
+        pdu->dlDataScramblingId,
+        pdu->pduBitmap,
+        pdu->k1_feedback,
+        pdu->ldpcBaseGraph,
+        pdu->numCsiRsForRateMatching,
+        csiRsForRateMatching_to_string(pdu->csiRsForRateMatching, pdu->numCsiRsForRateMatching));
+}
+
 static void free_uci_inds(nfapi_nr_uci_indication_t *uci_ind)
 {
     for (int k = 0; k < uci_ind->num_ucis; k++)
@@ -471,6 +563,7 @@ static void nr_ue_scheduled_response_dl(NR_UE_MAC_INST_t *mac,
         dlsch0->rnti_type = TYPE_C_RNTI_;
         dlsch0->dlsch_config = *dlsch_config_pdu;
         configure_dlsch(dlsch0, phy->dl_harq_processes[0], dlsch_config_pdu, mac, pdu->dlsch_config_pdu.rnti);
+        print_fapi_pdsch_pdu(dlsch_config_pdu, dl_config->sfn, dl_config->slot);
       } break;
       case FAPI_NR_CONFIG_TA_COMMAND:
         configure_ta_command(phy, &pdu->ta_command_pdu);
