@@ -300,7 +300,7 @@ one_measurement_t test_ldpc(short max_iterations,
 
     impp.n_segments = n_segments;
     start_meas(&ret.time_optim);
-    impp.macro_num = 0;
+    impp.first_seg = 0;
     ldpc_toCompare.LDPCencoder(test_input, channel_input_optim, &impp);
     stop_meas(&ret.time_optim);
 

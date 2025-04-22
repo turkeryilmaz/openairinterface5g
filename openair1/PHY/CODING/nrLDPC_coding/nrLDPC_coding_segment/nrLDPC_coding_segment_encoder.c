@@ -352,13 +352,13 @@ static void ldpc8blocks(void *p)
   unsigned int macro_segment, macro_segment_end;
 
   
-  macro_segment = 8*impp->macro_num;
-  macro_segment_end = (impp->n_segments > 8*(impp->macro_num+1)) ? 8*(impp->macro_num+1) : impp->n_segments;
+  macro_segment = impp->first_seg;
+  macro_segment_end = (impp->n_segments > impp->first_seg + 8) ? impp->first_seg + 8 : impp->n_segments;
   for (int r = 0; r < nrLDPC_TB_encoding_parameters->C; r++)
     c[r] = nrLDPC_TB_encoding_parameters->segments[r].c;
-  start_meas(&nrLDPC_TB_encoding_parameters->segments[impp->macro_num * 8].ts_ldpc_encode);
+  start_meas(&nrLDPC_TB_encoding_parameters->segments[impp->first_seg].ts_ldpc_encode);
   LDPCencoder(c, d, impp);
-  stop_meas(&nrLDPC_TB_encoding_parameters->segments[impp->macro_num * 8].ts_ldpc_encode);
+  stop_meas(&nrLDPC_TB_encoding_parameters->segments[impp->first_seg].ts_ldpc_encode);
   // Compute where to place in output buffer that is concatenation of all segments
 
 #ifdef DEBUG_LDPC_ENCODING
@@ -502,36 +502,36 @@ static int nrLDPC_launch_TB_encoding(nrLDPC_slot_encoding_parameters_t *nrLDPC_s
 {
   nrLDPC_TB_encoding_parameters_t *nrLDPC_TB_encoding_parameters = &nrLDPC_slot_encoding_parameters->TBs[dlsch_id];
 
-  encoder_implemparams_t impp = {0};
+  encoder_implemparams_t common_segment_params = {
+    .n_segments = nrLDPC_TB_encoding_parameters->C,
+    .tinput = nrLDPC_slot_encoding_parameters->tinput,
+    .tprep = nrLDPC_slot_encoding_parameters->tprep,
+    .tparity = nrLDPC_slot_encoding_parameters->tparity,
+    .toutput = nrLDPC_slot_encoding_parameters->toutput,
+    .Kb = nrLDPC_TB_encoding_parameters->Kb,
+    .Zc = nrLDPC_TB_encoding_parameters->Z,
+    .BG = nrLDPC_TB_encoding_parameters->BG,
+    .output = nrLDPC_TB_encoding_parameters->output, 
+    .K = nrLDPC_TB_encoding_parameters->K,
+    .F = nrLDPC_TB_encoding_parameters->F,
+  };
 
-  impp.n_segments = nrLDPC_TB_encoding_parameters->C;
-  impp.tinput = nrLDPC_slot_encoding_parameters->tinput;
-  impp.tprep = nrLDPC_slot_encoding_parameters->tprep;
-  impp.tparity = nrLDPC_slot_encoding_parameters->tparity;
-  impp.toutput = nrLDPC_slot_encoding_parameters->toutput;
-  impp.Kb = nrLDPC_TB_encoding_parameters->Kb;
-  impp.Zc = nrLDPC_TB_encoding_parameters->Z;
-  impp.BG = nrLDPC_TB_encoding_parameters->BG;
-  impp.output = nrLDPC_TB_encoding_parameters->output; 
-  impp.K = nrLDPC_TB_encoding_parameters->K;
-  impp.F = nrLDPC_TB_encoding_parameters->F;
+  const size_t n_tasks = (common_segment_params.n_segments + 7) >> 3;
 
-  size_t const n_seg = (impp.n_segments / 8 + ((impp.n_segments & 7) == 0 ? 0 : 1));
-
-  for (int j = 0; j < n_seg; j++) {
+  for (int j = 0; j < n_tasks; j++) {
     ldpc8blocks_args_t *perJobImpp = &((ldpc8blocks_args_t *)t_info->buf)[t_info->len];
     DevAssert(t_info->len < t_info->cap);
-    impp.ans = t_info->ans;
     t_info->len += 1;
 
-    impp.macro_num = j;
-    perJobImpp->impp = impp;
+    perJobImpp->impp = common_segment_params;
+    perJobImpp->impp.first_seg = j * 8;
+    perJobImpp->impp.ans = t_info->ans;
     perJobImpp->nrLDPC_TB_encoding_parameters = nrLDPC_TB_encoding_parameters;
 
     task_t t = {.func = ldpc8blocks, .args = perJobImpp};
     pushTpool(nrLDPC_slot_encoding_parameters->threadPool, t);
   }
-  return n_seg;
+  return n_tasks;
 }
 
 int nrLDPC_coding_encoder(nrLDPC_slot_encoding_parameters_t *nrLDPC_slot_encoding_parameters)

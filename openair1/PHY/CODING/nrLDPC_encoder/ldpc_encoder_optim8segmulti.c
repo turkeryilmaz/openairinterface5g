@@ -61,8 +61,8 @@ int LDPCencoder(uint8_t **input, uint8_t *output, encoder_implemparams_t *impp)
   unsigned int macro_segment, macro_segment_end;
 
   
-  macro_segment = 8*impp->macro_num;
-  macro_segment_end = (impp->n_segments > 8*(impp->macro_num+1)) ? 8*(impp->macro_num+1) : impp->n_segments;
+  macro_segment = impp->first_seg;
+  macro_segment_end = (impp->n_segments > impp->first_seg + 8) ? impp->first_seg + 8 : impp->n_segments;
   ///printf("macro_segment: %d\n", macro_segment);
   ///printf("macro_segment_end: %d\n", macro_segment_end );
 
