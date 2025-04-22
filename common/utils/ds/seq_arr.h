@@ -51,6 +51,19 @@ SOFTWARE.
   (seq_arr_push_back((arr), (data_ptr), sizeof(type)), \
    ((type *)seq_arr_end((arr)) - 1))
 
+/** @brief Initializes a seq_arr of type @param elt_type and maximum size @param size */
+#define SEQ_ARR_INIT(pp, elt_type, max_size)         \
+  do {                                                    \
+    seq_arr_t **_pp = (pp);                               \
+    if (*_pp == NULL) {                                   \
+      *_pp = malloc_or_fail(sizeof(**_pp));               \
+      seq_arr_init(*_pp, sizeof(elt_type));               \
+    }                                                     \
+    if (seq_arr_size(*_pp) >= (max_size)) {               \
+      return NULL;                                        \
+    }                                                     \
+  } while (0)
+
 typedef struct seq_arr_s {
   uint8_t* data;
   size_t size;

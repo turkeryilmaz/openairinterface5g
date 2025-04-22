@@ -79,7 +79,7 @@ static int fill_drb_to_be_setup(const gNB_RRC_INST *rrc, gNB_RRC_UE_t *ue, f1ap_
     drb->up_ul_tnl_length = 1;
 
     /* fetch an existing PDU session for this DRB */
-    rrc_pdu_session_param_t *pdu = find_pduSession_from_drbId(ue, drb->drb_id);
+    rrc_pdu_session_param_t *pdu = find_pduSession_from_drbId(ue, ue->pduSessions, drb->drb_id);
     AssertFatal(pdu != NULL, "no PDU session for DRB ID %ld\n", drb->drb_id);
     drb->nssai = pdu->param.nssai;
 

@@ -849,7 +849,7 @@ static void cuup_notify_reestablishment(gNB_RRC_INST *rrc, gNB_RRC_UE_t *ue_p)
     if (drb->status == DRB_INACTIVE)
       continue;
     /* fetch an existing PDU session for this DRB */
-    rrc_pdu_session_param_t *pdu = find_pduSession_from_drbId(ue_p, drb_id);
+    rrc_pdu_session_param_t *pdu = find_pduSession_from_drbId(ue_p, ue_p->pduSessions, drb_id);
     if (pdu == NULL) {
       LOG_E(RRC, "UE %d: E1 Bearer Context Modification: no PDU session for DRB ID %d\n", ue_p->rrc_ue_id, drb_id);
       continue;
@@ -2045,7 +2045,7 @@ static void e1_send_bearer_updates(gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE, int n, f
 
   for (int i = 0; i < n; i++) {
     const f1ap_drb_to_be_setup_t *drb_f1 = &drbs[i];
-    rrc_pdu_session_param_t *pdu_ue = find_pduSession_from_drbId(UE, drb_f1->drb_id);
+    rrc_pdu_session_param_t *pdu_ue = find_pduSession_from_drbId(UE, UE->pduSessions, drb_f1->drb_id);
     if (pdu_ue == NULL) {
       LOG_E(RRC, "UE %d: UE Context Modif Response: no PDU session for DRB ID %ld\n", UE->rrc_ue_id, drb_f1->drb_id);
       continue;
@@ -2390,7 +2390,7 @@ static int fill_drb_to_be_setup_from_e1_resp(const gNB_RRC_INST *rrc,
 {
   int nb_drb = 0;
   for (int p = 0; p < numPduSession; ++p) {
-    rrc_pdu_session_param_t *RRC_pduSession = find_pduSession(UE, pduSession[p].id, false);
+    rrc_pdu_session_param_t *RRC_pduSession = (rrc_pdu_session_param_t*)find_pduSession(UE->pduSessions, pduSession[p].id);
     DevAssert(RRC_pduSession);
     for (int i = 0; i < pduSession[p].numDRBSetup; i++) {
       const DRB_nGRAN_setup_t *drb_config = &pduSession[p].DRBnGRanList[i];
@@ -2445,7 +2445,7 @@ void rrc_gNB_process_e1_bearer_context_setup_resp(e1ap_bearer_setup_resp_t *resp
   // save the tunnel address for the PDU sessions
   for (int i = 0; i < resp->numPDUSessions; i++) {
     pdu_session_setup_t *e1_pdu = &resp->pduSession[i];
-    rrc_pdu_session_param_t *rrc_pdu = find_pduSession(UE, e1_pdu->id, false);
+    rrc_pdu_session_param_t *rrc_pdu = (rrc_pdu_session_param_t*)find_pduSession(UE->pduSessions, e1_pdu->id);
     if (rrc_pdu == NULL) {
       LOG_W(RRC, "E1: received setup for PDU session %ld, but has not been requested\n", e1_pdu->id);
       continue;

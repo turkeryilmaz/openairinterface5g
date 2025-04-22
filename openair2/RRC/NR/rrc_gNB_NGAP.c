@@ -266,9 +266,12 @@ bool trigger_bearer_setup(gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE, int n, pdusession
 
   e1ap_nssai_t cuup_nssai = {0};
   for (int i = 0; i < n; i++) {
-    rrc_pdu_session_param_t *pduSession = find_pduSession(UE, sessions[i].pdusession_id, true);
-    pdusession_t *session = &pduSession->param;
-    cp_pdusession(session, &sessions[i]);
+    rrc_pdu_session_param_t *rrc_pdu = add_pduSession(&UE->pduSessions, UE->rrc_ue_id, &sessions[i]);
+    if (!rrc_pdu) {
+      LOG_E(NR_RRC, "Could not add PDU Session for UE %d\n", UE->rrc_ue_id);
+      return false;
+    }
+    pdusession_t *session = &rrc_pdu->param;
     LOG_I(NR_RRC, "Update PDU Session %d (total nb of sessions = %ld)\n", session->pdusession_id, seq_arr_size(UE->pduSessions));
     // Fill E1 Bearer Context Modification Request
     bearer_req.gNB_cu_cp_ue_id = UE->rrc_ue_id;
@@ -302,7 +305,7 @@ bool trigger_bearer_setup(gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE, int n, pdusession
     int drb_id = get_next_available_drb_id(UE);
     drb_t *rrc_drb = generateDRB(UE,
                                  drb_id,
-                                 pduSession,
+                                 session,
                                  rrc->configuration.enable_sdap,
                                  rrc->security.do_drb_integrity,
                                  rrc->security.do_drb_ciphering,
@@ -807,7 +810,7 @@ void rrc_gNB_process_NGAP_PDUSESSION_SETUP_REQ(MessageDef *msg_p, instance_t ins
   // might be more work than is worth it. See 8.2.1.4 in 38.413
   for (int i = 0; i < msg->nb_pdusessions_tosetup; ++i) {
     const pdusession_resource_item_t *p = &msg->pdusession[i];
-    rrc_pdu_session_param_t *exist = find_pduSession(UE, p->pdusession_id, false /* don't create */);
+    rrc_pdu_session_param_t *exist = (rrc_pdu_session_param_t*)find_pduSession(UE->pduSessions, p->pdusession_id);
     if (exist) {
       LOG_E(NR_RRC, "UE %d: already has existing PDU session %d rejecting PDU Session Resource Setup Request\n", UE->rrc_ue_id, p->pdusession_id);
       ngap_cause_t cause = {.type = NGAP_CAUSE_RADIO_NETWORK, .value = NGAP_CAUSE_RADIO_NETWORK_MULTIPLE_PDU_SESSION_ID_INSTANCES};
@@ -873,7 +876,7 @@ int rrc_gNB_process_NGAP_PDUSESSION_MODIFY_REQ(MessageDef *msg_p, instance_t ins
   bool all_failed = true;
   for (int i = 0; i < req->nb_pdusessions_tomodify; i++) {
     const pdusession_resource_item_t *sessMod = req->pdusession + i;
-    rrc_pdu_session_param_t *session = find_pduSession(UE, sessMod->pdusession_id, false);
+    rrc_pdu_session_param_t *session = (rrc_pdu_session_param_t*)find_pduSession(UE->pduSessions, sessMod->pdusession_id);
     if (session == NULL) {
       LOG_W(NR_RRC, "Requested modification of non-existing PDU session, refusing modification\n");
       rrc_pdu_session_param_t to_add = {0};
@@ -951,7 +954,7 @@ int rrc_gNB_send_NGAP_PDUSESSION_MODIFY_RESP(gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE
       continue;
     }
     if (session->status == PDU_SESSION_STATUS_DONE) {
-      rrc_pdu_session_param_t *pduSession = find_pduSession(UE, session->param.pdusession_id, false);
+      rrc_pdu_session_param_t *pduSession = (rrc_pdu_session_param_t*)find_pduSession(UE->pduSessions, session->param.pdusession_id);
       if (pduSession) {
         LOG_I(NR_RRC, "update pdu session %d \n", pduSession->param.pdusession_id);
         // Update UE->pduSession
@@ -1219,7 +1222,7 @@ int rrc_gNB_process_NGAP_PDUSESSION_RELEASE_COMMAND(MessageDef *msg_p, instance_
   uint8_t xid = rrc_gNB_get_next_transaction_identifier(rrc->module_id);
   UE->xids[xid] = RRC_PDUSESSION_RELEASE;
   for (int pdusession = 0; pdusession < cmd->nb_pdusessions_torelease; pdusession++) {
-    rrc_pdu_session_param_t *pduSession = find_pduSession(UE, cmd->pdusession_release_params[pdusession].pdusession_id, false);
+    rrc_pdu_session_param_t *pduSession = (rrc_pdu_session_param_t*)find_pduSession(UE->pduSessions, cmd->pdusession_release_params[pdusession].pdusession_id);
     if (!pduSession) {
       LOG_I(NR_RRC, "no pdusession_id, AMF requested to close it id=%d\n", cmd->pdusession_release_params[pdusession].pdusession_id);
       rrc_pdu_session_param_t *item = calloc_or_fail(1, sizeof(*item));
