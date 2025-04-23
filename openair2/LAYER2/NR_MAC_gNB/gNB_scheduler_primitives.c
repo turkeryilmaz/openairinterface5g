@@ -3162,6 +3162,10 @@ void nr_mac_update_timers(module_id_t module_id, frame_t frame, slot_t slot)
       nr_timer_stop(&sched_ctrl->transm_interrupt);
       if (UE->interrupt_action == FOLLOW_OUTOFSYNC)
         nr_mac_trigger_ul_failure(sched_ctrl, UE->current_DL_BWP.scs);
+      else {
+        NR_ServingCellConfigCommon_t *scc = mac->common_channels[0].ServingCellConfigCommon;
+        configure_UE_BWP(mac, scc, UE, false, NR_SearchSpace__searchSpaceType_PR_common, -1, -1);
+      }
     }
   }
 }

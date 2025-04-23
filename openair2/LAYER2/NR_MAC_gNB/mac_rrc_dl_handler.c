@@ -768,11 +768,6 @@ void ue_context_modification_request(const f1ap_ue_context_modif_req_t *req)
     LOG_I(NR_MAC, "DU received confirmation of successful RRC Reconfiguration\n");
     // we re-configure the BWP to apply the CellGroup and to use UE specific Search Space with DCIX1
     nr_mac_clean_cellgroup(UE->CellGroup);
-    // we reconfigure spCellGroup that was dropped during re-establishment if needed
-    if (UE->reest_spCellConfig) {
-      UE->CellGroup->spCellConfig = UE->reest_spCellConfig;
-      UE->reest_spCellConfig = NULL;
-    }
     configure_UE_BWP(mac, scc, UE, false, NR_SearchSpace__searchSpaceType_PR_ue_Specific, -1, -1);
   }
 
@@ -936,6 +931,19 @@ void dl_rrc_message_transfer(const f1ap_dl_rrc_message_t *dl_rrc)
     f1_ue_data_t new_ue_data = {.secondary_ue = dl_rrc->gNB_CU_ue_id};
     bool success = du_add_f1_ue_data(dl_rrc->gNB_DU_ue_id, &new_ue_data);
     DevAssert(success);
+  }
+
+  if (UE->reest_spCellConfig && dl_rrc->srb_id == 1) {
+    /* we expected a reconfiguration, and this is on DCCH. We assume this is
+     * the reconfiguration: nr_mac_prepare_cellgroup_update() already stored
+     * the CellGroupConfig. Below, we trigger a timer, and the CellGroupConfig
+     * will be applied after its expiry in nr_mac_apply_cellgroup().*/
+    NR_SCHED_LOCK(&mac->sched_lock);
+    UE->CellGroup->spCellConfig = UE->reest_spCellConfig;
+    UE->reest_spCellConfig = NULL;
+    int delay = nr_mac_get_reconfig_delay_slots(UE->current_UL_BWP.scs);
+    nr_mac_interrupt_ue_transmission(mac, UE, FOLLOW_INSYNC_RECONFIG, delay);
+    NR_SCHED_UNLOCK(&mac->sched_lock);
   }
 
   if (dl_rrc->old_gNB_DU_ue_id != NULL) {
