@@ -149,17 +149,6 @@ static void write_task_output(uint8_t *f,
   for (i=0;i<E2;i+=64,i2++) {
     if (i<E) {
       for (int j=0; j < E2_first_segment && (j < (nb_segments - 1) || i < (E2 - 64)); j++) {
-#ifdef DEBUG_BIT_INTERLEAVE
-        printf("segment %d : qword %d, first bit %d last bit %d\n",j, 
-            Eoffset2[j]+(i>>6),
-            (Eoffset2_bit[j] + i)&63,
-            (i<=(E-64)) ? 63 : (Eoffset2_bit[j] + E-1)&63);
-        if  (Eoffset2_bit[j] > 0) 
-          printf("segment %d : qword %d, first bit %d last bit %d\n",j,
-                 1+Eoffset2[j]+(i>>6),
-                 0,
-                 ((Eoffset2_bit[j] + i)&63) - 1);
-#endif 
         // Note: Here and below for AVX2, we are using the 64-bit SIMD instruction
         // instead of C >>/<< because when the Eoffset2_bit is 64 or 0, the <<
         // and >> operations are undefined and in fact don't give "0" which is
@@ -170,108 +159,9 @@ static void write_task_output(uint8_t *f,
 
         *(__m64*)(output_p + Eoffset2[j] + 1) = _mm_or_si64(*(__m64*)(output_p + Eoffset2[j]+1),_mm_srli_si64(tmp,(64-Eoffset2_bit[j])));
 
-#ifdef DEBUG_BIT_INTERLEAVE
-        if (j<=1) { 
-           printf("pos : %d, i2 %d, j %d\n",(int)(output_p + Eoffset2[j]-(uint64_t*)output),i2,j);
-           printf("i : %x.%x.%x.%x.%x.%x.%x.%x\n",
-           ((uint8_t*)(output_p + Eoffset2[j]))[0],
-           ((uint8_t*)(output_p + Eoffset2[j]))[1],
-           ((uint8_t*)(output_p + Eoffset2[j]))[2],
-           ((uint8_t*)(output_p + Eoffset2[j]))[3],
-           ((uint8_t*)(output_p + Eoffset2[j]))[4],
-           ((uint8_t*)(output_p + Eoffset2[j]))[5],
-           ((uint8_t*)(output_p + Eoffset2[j]))[6],
-           ((uint8_t*)(output_p + Eoffset2[j]))[7]);
-           printf("i+1 : %x.%x.%x.%x.%x.%x.%x.%x\n",
-           ((uint8_t*)(output_p + Eoffset2[j]+1))[0],
-           ((uint8_t*)(output_p + Eoffset2[j]+1))[1],
-           ((uint8_t*)(output_p + Eoffset2[j]+1))[2],
-           ((uint8_t*)(output_p + Eoffset2[j]+1))[3],
-           ((uint8_t*)(output_p + Eoffset2[j]+1))[4],
-           ((uint8_t*)(output_p + Eoffset2[j]+1))[5],
-           ((uint8_t*)(output_p + Eoffset2[j]+1))[6],
-           ((uint8_t*)(output_p + Eoffset2[j]+1))[7]);
-           printf("%x.%x.%x.%x.%x.%x.%x.%x\n",
-               ((_mm256_extract_epi8(_mm512_extracti32x8_epi32(((__m512i *)f)[i2],0),0)<<(0-j))&1)+
-               ((_mm256_extract_epi8(_mm512_extracti32x8_epi32(((__m512i *)f)[i2],0),1)<<(1-j))&2)+
-               ((_mm256_extract_epi8(_mm512_extracti32x8_epi32(((__m512i *)f)[i2],0),2)<<(2-j))&4)+
-               ((_mm256_extract_epi8(_mm512_extracti32x8_epi32(((__m512i *)f)[i2],0),3)<<(3-j))&8)+
-               ((_mm256_extract_epi8(_mm512_extracti32x8_epi32(((__m512i *)f)[i2],0),4)<<(4-j))&16)+
-               ((_mm256_extract_epi8(_mm512_extracti32x8_epi32(((__m512i *)f)[i2],0),5)<<(5-j))&32)+
-               ((_mm256_extract_epi8(_mm512_extracti32x8_epi32(((__m512i *)f)[i2],0),6)<<(6-j))&64)+
-               ((_mm256_extract_epi8(_mm512_extracti32x8_epi32(((__m512i *)f)[i2],0),7)<<(7-j))&128),
-               ((_mm256_extract_epi8(_mm512_extracti32x8_epi32(((__m512i *)f)[i2],0),8)<<(0-j))&1)+
-               ((_mm256_extract_epi8(_mm512_extracti32x8_epi32(((__m512i *)f)[i2],0),9)<<(1-j))&2)+
-               ((_mm256_extract_epi8(_mm512_extracti32x8_epi32(((__m512i *)f)[i2],0),10)<<(2-j))&4)+
-               ((_mm256_extract_epi8(_mm512_extracti32x8_epi32(((__m512i *)f)[i2],0),11)<<(3-j))&8)+
-               ((_mm256_extract_epi8(_mm512_extracti32x8_epi32(((__m512i *)f)[i2],0),12)<<(4-j))&16)+
-               ((_mm256_extract_epi8(_mm512_extracti32x8_epi32(((__m512i *)f)[i2],0),13)<<(5-j))&32)+
-               ((_mm256_extract_epi8(_mm512_extracti32x8_epi32(((__m512i *)f)[i2],0),14)<<(6-j))&64)+
-               ((_mm256_extract_epi8(_mm512_extracti32x8_epi32(((__m512i *)f)[i2],0),15)<<(7-j))&128),
-               ((_mm256_extract_epi8(_mm512_extracti32x8_epi32(((__m512i *)f)[i2],0),16)<<(0-j))&1)+
-               ((_mm256_extract_epi8(_mm512_extracti32x8_epi32(((__m512i *)f)[i2],0),17)<<(1-j))&2)+
-               ((_mm256_extract_epi8(_mm512_extracti32x8_epi32(((__m512i *)f)[i2],0),18)<<(2-j))&4)+
-               ((_mm256_extract_epi8(_mm512_extracti32x8_epi32(((__m512i *)f)[i2],0),19)<<(3-j))&8)+
-               ((_mm256_extract_epi8(_mm512_extracti32x8_epi32(((__m512i *)f)[i2],0),20)<<(4-j))&16)+
-               ((_mm256_extract_epi8(_mm512_extracti32x8_epi32(((__m512i *)f)[i2],0),21)<<(5-j))&32)+
-               ((_mm256_extract_epi8(_mm512_extracti32x8_epi32(((__m512i *)f)[i2],0),22)<<(6-j))&64)+
-               ((_mm256_extract_epi8(_mm512_extracti32x8_epi32(((__m512i *)f)[i2],0),23)<<(7-j))&128),
-               ((_mm256_extract_epi8(_mm512_extracti32x8_epi32(((__m512i *)f)[i2],0),24)<<(0-j))&1)+
-               ((_mm256_extract_epi8(_mm512_extracti32x8_epi32(((__m512i *)f)[i2],0),25)<<(1-j))&2)+
-               ((_mm256_extract_epi8(_mm512_extracti32x8_epi32(((__m512i *)f)[i2],0),26)<<(2-j))&4)+
-               ((_mm256_extract_epi8(_mm512_extracti32x8_epi32(((__m512i *)f)[i2],0),27)<<(3-j))&8)+
-               ((_mm256_extract_epi8(_mm512_extracti32x8_epi32(((__m512i *)f)[i2],0),28)<<(4-j))&16)+
-               ((_mm256_extract_epi8(_mm512_extracti32x8_epi32(((__m512i *)f)[i2],0),29)<<(5-j))&32)+
-               ((_mm256_extract_epi8(_mm512_extracti32x8_epi32(((__m512i *)f)[i2],0),30)<<(6-j))&64)+
-               ((_mm256_extract_epi8(_mm512_extracti32x8_epi32(((__m512i *)f)[i2],0),31)<<(7-j))&128),
-               ((_mm256_extract_epi8(_mm512_extracti32x8_epi32(((__m512i *)f)[i2],1),0)<<(0-j))&1)+
-               ((_mm256_extract_epi8(_mm512_extracti32x8_epi32(((__m512i *)f)[i2],1),1)<<(1-j))&2)+
-               ((_mm256_extract_epi8(_mm512_extracti32x8_epi32(((__m512i *)f)[i2],1),2)<<(2-j))&4)+
-               ((_mm256_extract_epi8(_mm512_extracti32x8_epi32(((__m512i *)f)[i2],1),3)<<(3-j))&8)+
-               ((_mm256_extract_epi8(_mm512_extracti32x8_epi32(((__m512i *)f)[i2],1),4)<<(4-j))&16)+
-               ((_mm256_extract_epi8(_mm512_extracti32x8_epi32(((__m512i *)f)[i2],1),5)<<(5-j))&32)+
-               ((_mm256_extract_epi8(_mm512_extracti32x8_epi32(((__m512i *)f)[i2],1),6)<<(6-j))&64)+
-               ((_mm256_extract_epi8(_mm512_extracti32x8_epi32(((__m512i *)f)[i2],1),7)<<(7-j))&128),
-               ((_mm256_extract_epi8(_mm512_extracti32x8_epi32(((__m512i *)f)[i2],1),8)<<(0-j))&1)+
-               ((_mm256_extract_epi8(_mm512_extracti32x8_epi32(((__m512i *)f)[i2],1),9)<<(1-j))&2)+
-               ((_mm256_extract_epi8(_mm512_extracti32x8_epi32(((__m512i *)f)[i2],1),10)<<(2-j))&4)+
-               ((_mm256_extract_epi8(_mm512_extracti32x8_epi32(((__m512i *)f)[i2],1),11)<<(3-j))&8)+
-               ((_mm256_extract_epi8(_mm512_extracti32x8_epi32(((__m512i *)f)[i2],1),12)<<(4-j))&16)+
-               ((_mm256_extract_epi8(_mm512_extracti32x8_epi32(((__m512i *)f)[i2],1),13)<<(5-j))&32)+
-               ((_mm256_extract_epi8(_mm512_extracti32x8_epi32(((__m512i *)f)[i2],1),14)<<(6-j))&64)+
-               ((_mm256_extract_epi8(_mm512_extracti32x8_epi32(((__m512i *)f)[i2],1),15)<<(7-j))&128),
-               ((_mm256_extract_epi8(_mm512_extracti32x8_epi32(((__m512i *)f)[i2],1),16)<<(0-j))&1)+
-               ((_mm256_extract_epi8(_mm512_extracti32x8_epi32(((__m512i *)f)[i2],1),17)<<(1-j))&2)+
-               ((_mm256_extract_epi8(_mm512_extracti32x8_epi32(((__m512i *)f)[i2],1),18)<<(2-j))&4)+
-               ((_mm256_extract_epi8(_mm512_extracti32x8_epi32(((__m512i *)f)[i2],1),19)<<(3-j))&8)+
-               ((_mm256_extract_epi8(_mm512_extracti32x8_epi32(((__m512i *)f)[i2],1),20)<<(4-j))&16)+
-               ((_mm256_extract_epi8(_mm512_extracti32x8_epi32(((__m512i *)f)[i2],1),21)<<(5-j))&32)+
-               ((_mm256_extract_epi8(_mm512_extracti32x8_epi32(((__m512i *)f)[i2],1),22)<<(6-j))&64)+
-               ((_mm256_extract_epi8(_mm512_extracti32x8_epi32(((__m512i *)f)[i2],1),23)<<(7-j))&128),
-               ((_mm256_extract_epi8(_mm512_extracti32x8_epi32(((__m512i *)f)[i2],1),24)<<(0-j))&1)+
-               ((_mm256_extract_epi8(_mm512_extracti32x8_epi32(((__m512i *)f)[i2],1),25)<<(1-j))&2)+
-               ((_mm256_extract_epi8(_mm512_extracti32x8_epi32(((__m512i *)f)[i2],1),26)<<(2-j))&4)+
-               ((_mm256_extract_epi8(_mm512_extracti32x8_epi32(((__m512i *)f)[i2],1),27)<<(3-j))&8)+
-               ((_mm256_extract_epi8(_mm512_extracti32x8_epi32(((__m512i *)f)[i2],1),28)<<(4-j))&16)+
-               ((_mm256_extract_epi8(_mm512_extracti32x8_epi32(((__m512i *)f)[i2],1),29)<<(5-j))&32)+
-               ((_mm256_extract_epi8(_mm512_extracti32x8_epi32(((__m512i *)f)[i2],1),30)<<(6-j))&64)+
-               ((_mm256_extract_epi8(_mm512_extracti32x8_epi32(((__m512i *)f)[i2],1),31)<<(7-j))&128));
-        }
-#endif
       } //for (int j=0;
     } // if (i < E)
     for (int j=E2_first_segment; j < nb_segments && (j < (nb_segments - 1) || i < (E2 - 64)); j++) {
-#ifdef DEBUG_BIT_INTERLEAVE
-      printf("segment %d : qword %d, first bit %d last bit %d\n",j,
-          Eoffset2[j]+(i>>6),
-          (Eoffset2_bit[j] + i)&63,
-          (i<=(E-64)) ? 63 : (Eoffset2_bit[j] + E-1)&63);
-      if (Eoffset2_bit[j] > 0) 
-        printf("segment %d : qword %d, first bit %d last bit %d\n",j,
-               1+Eoffset2[j]+(i>>6),
-               0,
-               ((Eoffset2_bit[j] + i)&63) - 1);
-#endif
       tmp = (__m64)_mm512_bitshuffle_epi64_mask(((__m512i *)f2)[i2],bitperm[j]);
 
       *(__m64*)(output_p + Eoffset2[j]) = _mm_or_si64(*(__m64*)(output_p + Eoffset2[j]),_mm_slli_si64(tmp,Eoffset2_bit[j]));
