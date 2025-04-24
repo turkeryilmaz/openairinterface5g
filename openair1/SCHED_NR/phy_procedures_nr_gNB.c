@@ -215,7 +215,8 @@ void phy_procedures_gNB_TX(processingData_L1tx_t *msgTx,
                          NULL,
                          NULL,
                          NULL,
-                         NULL);
+                         NULL,
+                         UU);
       csirs->active = 0;
     }
   }

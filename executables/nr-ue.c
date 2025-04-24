@@ -629,7 +629,6 @@ void processSlotTX(void *arg) {
   PHY_VARS_NR_UE    *UE   = rxtxD->UE;
   nr_phy_data_tx_t phy_data = {0};
   bool sl_tx_action = false;
-  uint8_t sl_mode = UE->sl_mode;
 
   if (proc->tx_slot_type == NR_SIDELINK_SLOT) {
 
@@ -695,9 +694,7 @@ void processSlotTX(void *arg) {
 nr_phy_data_t UE_dl_preprocessing(PHY_VARS_NR_UE *UE, UE_nr_rxtx_proc_t *proc,  nr_intf_type_t intf_type)
 {
   nr_phy_data_t phy_data = {0};
-  NR_DL_FRAME_PARMS *fp = &UE->frame_parms;
-  if (intf_type == PC5)
-    fp = &UE->SL_UE_PHY_PARAMS.sl_frame_params;
+  NR_DL_FRAME_PARMS *fp = intf_type == UU ? &UE->frame_parms : &UE->SL_UE_PHY_PARAMS.sl_frame_params;
 
   if (IS_SOFTMODEM_NOS1 || get_softmodem_params()->sa) {
 
@@ -985,11 +982,13 @@ void *UE_thread_sl(void *arg)
       continue;
     }
     if (UE->is_synchronized_sl) {
-      pthread_mutex_lock(&sync_notif.m);
-      sync_notif.abs_slot = absolute_slot;
-      sync_notif.ready = 1;
-      pthread_cond_signal(&sync_notif.c); // Notify the waiting thread
-      pthread_mutex_unlock(&sync_notif.m);
+      if (UE->sl_mode == 2) {
+        pthread_mutex_lock(&sync_notif.m);
+        sync_notif.abs_slot = absolute_slot;
+        sync_notif.ready = 1;
+        pthread_cond_signal(&sync_notif.c); // Notify the waiting thread
+        pthread_mutex_unlock(&sync_notif.m);
+      }
       break;
     }
   } // while !oai_exit
@@ -1047,7 +1046,7 @@ void *UE_thread(void *arg)
           }
         } else {
           readFrame(UE, &timestamp, UU, true);
-          trashed_frames += ((UE->sl_mode) ? SL_NR_PSBCH_REPETITION_IN_FRAMES : 2);
+          trashed_frames += 2;
         }
         continue;
       }
@@ -1085,10 +1084,6 @@ void *UE_thread(void *arg)
       decoded_frame_rx++;
       // we do ++ first in the regular processing, so it will be begin of frame;
       absolute_slot = decoded_frame_rx * nb_slot_frame - 1;
-      if (UE->sl_mode == 2) {
-        //Set to the slot where the SL-SSB was decoded
-        absolute_slot += UE->SL_UE_PHY_PARAMS.sync_params.slot_offset;
-      }
       continue;
     }
     if (UE->is_synchronized) {
@@ -1248,10 +1243,8 @@ void rfdevice_trx(PHY_VARS_NR_UE *UE, openair0_device *rfdevice, c16_t **rxdata,
   void *rxp[NB_ANTENNAS_RX];
   openair0_timestamp timestamp, writeTimestamp;
   int timing_advance = *ta;
-  NR_DL_FRAME_PARMS *fp = &UE->frame_parms;
-  NR_DL_FRAME_PARMS *fp_sl = &UE->SL_UE_PHY_PARAMS.sl_frame_params;
-  fp = (intf_type == PC5) ? fp_sl : fp;
-  bool apply_timing_offset = (intf_type == PC5) ? UE->apply_timing_offset_sl : UE->apply_timing_offset;
+  NR_DL_FRAME_PARMS *fp = (intf_type == UU) ? &UE->frame_parms : &UE->SL_UE_PHY_PARAMS.sl_frame_params;
+  bool apply_timing_offset = (intf_type == UU) ? UE->apply_timing_offset : UE->apply_timing_offset_sl;
   const int nb_slot_frame = fp->slots_per_frame;
 
   int firstSymSamp = get_firstSymSamp(slot_nr, fp);

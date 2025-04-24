@@ -194,7 +194,8 @@ void nr_decode_pucch0(PHY_VARS_gNB *gNB,
                             0,
                             slot,
                             &u[0],
-                            &v[0]); // calculating u and v value first hop
+                            &v[0],
+                            UU); // calculating u and v value first hop
   LOG_D(PHY,"pucch0: u %d, v %d\n",u[0],v[0]);
 
   if (pucch_pdu->freq_hop_flag == 1) {
@@ -203,7 +204,8 @@ void nr_decode_pucch0(PHY_VARS_gNB *gNB,
                               1,
                               slot,
                               &u[1],
-                              &v[1]); // calculating u and v value second hop
+                              &v[1],
+                              UU); // calculating u and v value second hop
     LOG_D(PHY,"pucch0 second hop: u %d, v %d\n",u[1],v[1]);
     prb_offset[1] = pucch_pdu->bwp_start + pucch_pdu->second_hop_prb;
   }
@@ -619,7 +621,7 @@ void nr_decode_pucch1(c16_t **rxdataF,
     printf("\t [nr_generate_pucch1] entering function nr_group_sequence_hopping with n_hop=%d, nr_tti_tx=%d\n",
            n_hop,nr_tti_tx);
 #endif
-    nr_group_sequence_hopping(pucch_GroupHopping,n_id,n_hop,nr_tti_tx,&u,&v); // calculating u and v value
+    nr_group_sequence_hopping(pucch_GroupHopping,n_id,n_hop,nr_tti_tx,&u,&v, UU); // calculating u and v value
     alpha = nr_cyclic_shift_hopping(n_id,m0,mcs,l,lprime,nr_tti_tx);
     
     for (int n=0; n<12; n++) {  // generating low papr sequences

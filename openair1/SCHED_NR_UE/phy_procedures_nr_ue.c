@@ -1163,7 +1163,7 @@ void pdsch_processing(PHY_VARS_NR_UE *ue,
         nr_slot_fep(ue, &ue->frame_parms, proc, symb, rxdataF, link_type_dl);
       }
     }
-    nr_ue_csi_rs_procedures(ue, proc, rxdataF, link_type_dl);
+    nr_ue_csi_rs_procedures(ue, proc, rxdataF, UU);
     ue->csirs_vars[gNB_id]->active = 0;
   }
 

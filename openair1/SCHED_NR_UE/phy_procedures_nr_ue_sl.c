@@ -596,7 +596,7 @@ bool phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue,
     sl_phy_params->pssch.num_pssch_sci2_tx ++;
     sl_phy_params->pssch.num_pssch_tx ++;
     if (phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_CSI_RS) {
-      uint16_t beta_csirs = get_softmodem_params()->sl_mode ? (uint16_t)(AMP * (ceil(sqrt(phy_data->nr_sl_pssch_pscch_pdu.num_layers / fp->nb_antennas_tx)))) & 0xFFFF : AMP;
+      uint16_t beta_csirs = (uint16_t)(AMP * (ceil(sqrt(phy_data->nr_sl_pssch_pscch_pdu.num_layers / fp->nb_antennas_tx)))) & 0xFFFF;
       LOG_D(NR_PHY, "Tx beta_csirs: %d, scramb_id %i (%d.%d)\n", beta_csirs, csi_params->scramb_id, frame_tx, slot_tx);
       nr_generate_csi_rs(fp,
                          (int32_t **)txdataF,
@@ -611,7 +611,8 @@ bool phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue,
                          NULL,
                          NULL,
                          NULL,
-                         NULL);
+                         NULL,
+                         PC5);
     }
     if (phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_PSFCH) {
       for (int k = 0; k < phy_data->nr_sl_pssch_pscch_pdu.num_psfch_pdus; k++) {

@@ -121,7 +121,7 @@ int8_t nr_ue_decode_pucch0(PHY_VARS_NR_UE *ue,
                           nfapi_nr_uci_pucch_pdu_format_0_1_t *uci_pdu,
                           nfapi_nr_pucch_pdu_t *pucch_pdu)
 {
-  NR_DL_FRAME_PARMS *frame_parms = get_softmodem_params()->sl_mode ? &ue->SL_UE_PHY_PARAMS.sl_frame_params : &ue->frame_parms;
+  NR_DL_FRAME_PARMS *frame_parms = &ue->SL_UE_PHY_PARAMS.sl_frame_params;
 
   int soffset = 0;
   int nr_sequences;
@@ -184,7 +184,8 @@ int8_t nr_ue_decode_pucch0(PHY_VARS_NR_UE *ue,
                             0,
                             slot,
                             &u[0],
-                            &v[0]); // calculating u and v value first hop
+                            &v[0],
+                            PC5); // calculating u and v value first hop
   LOG_D(PHY, "pucch0: u %d, v %d\n", u[0], v[0]);
 
   if (pucch_pdu->freq_hop_flag == 1) {
@@ -193,7 +194,8 @@ int8_t nr_ue_decode_pucch0(PHY_VARS_NR_UE *ue,
                               1,
                               slot,
                               &u[1],
-                              &v[1]); // calculating u and v value second hop
+                              &v[1],
+                              PC5); // calculating u and v value second hop
     LOG_D(PHY, "pucch0 second hop: u %d, v %d\n", u[1], v[1]);
     prb_offset[1] = pucch_pdu->bwp_start + pucch_pdu->second_hop_prb;
   }

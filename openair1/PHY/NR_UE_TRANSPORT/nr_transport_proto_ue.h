@@ -468,7 +468,8 @@ int nr_csi_rs_sinr_estimation(const PHY_VARS_NR_UE *ue,
                               const int32_t csi_rs_estimated_channel_freq[][N_ports][ue->frame_parms.ofdm_symbol_size + FILTER_MARGIN],
                               const uint32_t interference_plus_noise_power,
                               const int16_t log2_re,
-                              int32_t *precoded_sinr_dB);
+                              int32_t *precoded_sinr_dB,
+                              nr_intf_type_t intf_type);
 /**@}*/
 #endif
 
