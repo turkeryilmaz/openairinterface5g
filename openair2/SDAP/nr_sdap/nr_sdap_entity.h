@@ -103,7 +103,7 @@ typedef struct nr_sdap_entity_s {
 
   qfi2drb_t qfi2drb_table[SDAP_MAX_QFI];
 
-  void (*qfi2drb_map_update)(struct nr_sdap_entity_s *entity, uint8_t qfi, rb_id_t drb, bool has_sdap_rx, bool has_sdap_tx);
+  void (*qfi2drb_map_update)(struct nr_sdap_entity_s *entity, const sdap_config_t sdap);
   void (*qfi2drb_map_delete)(struct nr_sdap_entity_s *entity, uint8_t qfi);
   int (*qfi2drb_map)(struct nr_sdap_entity_s *entity, uint8_t qfi);
 
@@ -137,9 +137,6 @@ typedef struct nr_sdap_entity_s {
   /* List of entities */
   struct nr_sdap_entity_s *next_entity;
 } nr_sdap_entity_t;
-
-/* QFI to DRB Mapping Related Function */
-void nr_sdap_qfi2drb_map_update(nr_sdap_entity_t *entity, uint8_t qfi, rb_id_t drb, bool has_sdap_rx, bool has_sdap_tx);
 
 /* QFI to DRB Mapping Related Function */
 void nr_sdap_qfi2drb_map_del(nr_sdap_entity_t *entity, uint8_t qfi);
