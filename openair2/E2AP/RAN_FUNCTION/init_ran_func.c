@@ -36,6 +36,7 @@
 
 #include "O-RAN/ran_func_kpm.h"
 #include "O-RAN/ran_func_rc.h"
+#include "CUSTOMIZED/ran_func_srs.h"
 
 static
 void init_read_ind_tbl(read_ind_fp (*read_ind_tbl)[SM_AGENT_IF_READ_V0_END])
@@ -53,6 +54,7 @@ void init_read_ind_tbl(read_ind_fp (*read_ind_tbl)[SM_AGENT_IF_READ_V0_END])
   
   (*read_ind_tbl)[KPM_STATS_V3_0] = read_kpm_sm ; 
   (*read_ind_tbl)[RAN_CTRL_STATS_V1_03] = read_rc_sm;
+  (*read_ind_tbl)[SRS_STATS_V0] = read_srs_sm ;
 }
 
 static
@@ -71,6 +73,7 @@ void init_read_setup_tbl(read_e2_setup_fp (*read_setup_tbl)[SM_AGENT_IF_E2_SETUP
 
   (*read_setup_tbl)[KPM_V3_0_AGENT_IF_E2_SETUP_ANS_V0] = read_kpm_setup_sm ; 
   (*read_setup_tbl)[RAN_CTRL_V1_3_AGENT_IF_E2_SETUP_ANS_V0] = read_rc_setup_sm;
+  (*read_setup_tbl)[SRS_AGENT_IF_E2_SETUP_ANS_V0] = read_srs_setup_sm ;
 }
 
 static
@@ -88,6 +91,7 @@ void init_write_ctrl( write_ctrl_fp (*write_ctrl_tbl)[SM_AGENT_IF_WRITE_CTRL_V0_
   #endif
 
   (*write_ctrl_tbl)[RAN_CONTROL_CTRL_V1_03] = write_ctrl_rc_sm;
+  (*write_ctrl_tbl)[SRS_CTRL_REQ_V0] = write_ctrl_srs_sm;
 }
 
 static
@@ -106,6 +110,7 @@ void init_write_subs(write_subs_fp (*write_subs_tbl)[SM_AGENT_IF_WRITE_SUBS_V0_E
 
   (*write_subs_tbl)[KPM_SUBS_V3_0] = NULL;
   (*write_subs_tbl)[RAN_CTRL_SUBS_V1_03] = write_subs_rc_sm;
+  (*write_subs_tbl)[SRS_SUBS_V0] = NULL;
 }
 
 sm_io_ag_ran_t init_ran_func_ag(void)

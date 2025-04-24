@@ -79,6 +79,11 @@ set(SM_ENCODING_GTP "PLAIN" CACHE STRING "The GTP SM encoding to use")
 set_property(CACHE SM_ENCODING_GTP PROPERTY STRINGS "PLAIN")
 message(STATUS "Selected GTP SM_ENCODING: ${SM_ENCODING_GTP}")
 
+# SRS Service Model
+set(SM_ENCODING_SRS "PLAIN" CACHE STRING "The SRS SM encoding to use")
+set_property(CACHE SM_ENCODING_SRS PROPERTY STRINGS "PLAIN")
+message(STATUS "Selected SRS SM_ENCODING: ${SM_ENCODING_SRS}")
+
 
 if(E2AP_VERSION STREQUAL "E2AP_V1")
   add_library(e2ap_ran_func_obj OBJECT 
