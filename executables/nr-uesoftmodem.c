@@ -329,7 +329,7 @@ void init_openair0() {
     uint64_t ul_carrier = frame_parms->ul_CarrierFreq;
     openair0_cfg[card].configFilename    = NULL;
     openair0_cfg[card].threequarter_fs   = frame_parms->threequarter_fs;
-    openair0_cfg[card].sample_rate       = IS_SOFTMODEM_RFSIM ? frame_parms->samples_per_subframe * 1e3 : 46080000;
+    openair0_cfg[card].sample_rate       = frame_parms->samples_per_subframe * 1e3;
     openair0_cfg[card].samples_per_frame = frame_parms->samples_per_frame;
     openair0_cfg[card].Mod_id = 0;
     openair0_cfg[card].num_rb_dl = frame_parms->N_RB_DL;
@@ -503,13 +503,12 @@ int main( int argc, char **argv ) {
   ue_id_g = (node_number == 0) ? 0 : node_number - 2;
   AssertFatal(ue_id_g >= 0, "UE id is expected to be nonnegative.\n");
 
+  uint8_t sl_mode = get_softmodem_params()->sl_mode;
   if(IS_SOFTMODEM_NOS1 || get_softmodem_params()->sa || get_softmodem_params()->nsa) {
-    if(node_number == 0 && get_softmodem_params()->sl_mode == 0) {
+    if(node_number == 0 && (sl_mode == 0 || sl_mode == 1)) {
       init_pdcp(0);
-    } else if (get_softmodem_params()->sl_mode == 2) {
+    } else if (sl_mode == 2) {
       init_pdcp(1+ueinfo.srcid);
-    } else if (get_softmodem_params()->sl_mode == 1) {
-      init_pdcp(0);
     } else {
       init_pdcp(mode_offset + ue_id_g);
     }

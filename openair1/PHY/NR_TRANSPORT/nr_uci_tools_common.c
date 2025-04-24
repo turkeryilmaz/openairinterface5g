@@ -38,7 +38,8 @@ void nr_group_sequence_hopping (pucch_GroupHopping_t PUCCH_GroupHopping,
                                 uint8_t n_hop,
                                 int nr_slot_tx,
                                 uint8_t *u,
-                                uint8_t *v) {
+                                uint8_t *v,
+                                nr_intf_type_t intf_type) {
   /*
    * Implements TS 38.211 subclause 6.3.2.2.1 Group and sequence hopping
    * The following variables are set by higher layers:
@@ -65,7 +66,7 @@ void nr_group_sequence_hopping (pucch_GroupHopping_t PUCCH_GroupHopping,
   *u=0;
   *v=0;
   uint32_t c_init = 0;
-  if (get_softmodem_params()->sl_mode) {
+  if (intf_type == PC5) {
     *u = n_id % 30;
     return;
   }

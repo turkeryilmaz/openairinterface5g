@@ -548,7 +548,8 @@ void nr_generate_csi_rs(const NR_DL_FRAME_PARMS *frame_parms,
                         uint8_t *N_ports,
                         uint8_t *j_cdm,
                         uint8_t *k_overline,
-                        uint8_t *l_overline) {
+                        uint8_t *l_overline,
+                        nr_intf_type_t intf_type) {
 
 #ifdef NR_CSIRS_DEBUG
   LOG_I(NR_PHY, "csi_params->subcarrier_spacing = %i\n", csi_params->subcarrier_spacing);
@@ -567,7 +568,7 @@ void nr_generate_csi_rs(const NR_DL_FRAME_PARMS *frame_parms,
   LOG_I(NR_PHY, "csi_params->power_control_offset_ss = %i\n", csi_params->power_control_offset_ss);
 #endif
 
-  int dataF_offset = get_softmodem_params()->sl_mode ? 0 : slot * frame_parms->samples_per_slot_wCP;
+  int dataF_offset = intf_type == PC5 ? 0 : slot * frame_parms->samples_per_slot_wCP;
   uint32_t **nr_gold_csi_rs = nr_csi_info->nr_gold_csi_rs[slot];
   //*8(max allocation per RB)*2(QPSK))
   int csi_rs_length =  frame_parms->N_RB_DL<<4;

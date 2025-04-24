@@ -1964,7 +1964,7 @@ void nr_rx_pusch(PHY_VARS_gNB *gNB,
                  uint8_t slot,
                  uint8_t nb_antennas_tx,
                  nr_link_type_t link_type,
-                 void (* _nr_ue_csi_rs_procedures)(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP], nr_link_type_t link_type),
+                 void (* _nr_ue_csi_rs_procedures)(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP], nr_intf_type_t intf_type),
                  unsigned char harq_pid,
                  bool *is_csi_rs_slot)
 {
@@ -2155,7 +2155,7 @@ void nr_rx_pusch(PHY_VARS_gNB *gNB,
           if (ue->csirs_vars[0]->active == 1) {
             LOG_D(NR_PHY, "%d.%d Received CSI-RS\n", proc->frame_rx, proc->nr_slot_rx);
             nr_slot_fep(ue, frame_parms, proc, symbol, rxdataF, link_type_pc5);
-            _nr_ue_csi_rs_procedures(ue, proc, rxdataF, link_type_pc5);
+            _nr_ue_csi_rs_procedures(ue, proc, rxdataF, PC5);
             ue->csirs_vars[0]->active = 0;
           }
         }
@@ -2452,7 +2452,7 @@ void nr_rx_pusch(PHY_VARS_gNB *gNB,
         printf("\n");
 #endif
       }
-      stop_meas(&gNB->ulsch_llr_stats);
+      if (gNB) stop_meas(&gNB->ulsch_llr_stats);
       rxdataF_ext_offset += pusch_vars->ul_valid_re_per_slot[symbol];
     }
   } // symbol loop

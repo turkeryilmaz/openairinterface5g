@@ -114,9 +114,9 @@ void nr_generate_pucch0(const PHY_VARS_NR_UE *ue,
 
   // we proceed to calculate alpha according to TS 38.211 Subclause 6.3.2.2.2
   int prb_offset[2] = {startingPRB, startingPRB};
-  nr_group_sequence_hopping(pucch_GroupHopping, pucch_pdu->hopping_id, 0, nr_slot_tx, &u[0], &v[0]); // calculating u and v value
+  nr_group_sequence_hopping(pucch_GroupHopping, pucch_pdu->hopping_id, 0, nr_slot_tx, &u[0], &v[0], intf_type); // calculating u and v value
   if (pucch_pdu->freq_hop_flag == 1) {
-    nr_group_sequence_hopping(pucch_GroupHopping, pucch_pdu->hopping_id, 1, nr_slot_tx, &u[1], &v[1]); // calculating u and v value
+    nr_group_sequence_hopping(pucch_GroupHopping, pucch_pdu->hopping_id, 1, nr_slot_tx, &u[1], &v[1], intf_type); // calculating u and v value
     prb_offset[1] = pucch_pdu->second_hop_prb + pucch_pdu->bwp_start;
   }
   for (int l=0; l<pucch_pdu->nr_of_symbols; l++) {
@@ -296,7 +296,7 @@ void nr_generate_pucch1(const PHY_VARS_NR_UE *ue,
            n_hop,nr_slot_tx);
 #endif
     pucch_GroupHopping_t pucch_GroupHopping = pucch_pdu->group_hop_flag + (pucch_pdu->sequence_hop_flag<<1);
-    nr_group_sequence_hopping(pucch_GroupHopping,pucch_pdu->hopping_id,n_hop,nr_slot_tx,&u,&v); // calculating u and v value
+    nr_group_sequence_hopping(pucch_GroupHopping, pucch_pdu->hopping_id, n_hop,nr_slot_tx, &u, &v, UU); // calculating u and v value
     // mcs = 0 except for PUCCH format 0
     int mcs = 0;
     double alpha = nr_cyclic_shift_hopping(pucch_pdu->hopping_id, m0, mcs, l, lprime, nr_slot_tx);
@@ -1206,7 +1206,7 @@ void nr_generate_pucch3_4(const PHY_VARS_NR_UE *ue,
     if ((intraSlotFrequencyHopping == 1) && (l >= (int)floor(nrofSymbols/2))) n_hop = 1; // n_hop = 1 for second hop
 
     pucch_GroupHopping_t pucch_GroupHopping = pucch_pdu->group_hop_flag + (pucch_pdu->sequence_hop_flag<<1);
-    nr_group_sequence_hopping(pucch_GroupHopping,pucch_pdu->hopping_id,n_hop,nr_slot_tx,&u,&v); // calculating u and v value
+    nr_group_sequence_hopping(pucch_GroupHopping, pucch_pdu->hopping_id, n_hop, nr_slot_tx, &u, &v, UU); // calculating u and v value
 
     // Next we proceed to calculate base sequence for DM-RS signal, according to TS 38.211 subclause 6.4.1.33
     if (nrofPRB >= 3) { // TS 38.211 subclause 5.2.2.1 (Base sequences of length 36 or larger) applies
