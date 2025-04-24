@@ -1908,6 +1908,34 @@ static void nr_rrc_ue_process_measConfig(rrcPerNB_t *rrc, NR_MeasConfig_t *const
   }
 }
 
+/** @brief Add bearer in PDCP/SDAP for 5GC association (SA) */
+static void rrc_ue_add_bearer(const int ue_id, const NR_DRB_ToAddMod_t *drb, const nr_pdcp_entity_security_keys_and_algos_t *sp)
+{
+  DevAssert(drb->cnAssociation);
+  DevAssert(drb->cnAssociation->present != NR_DRB_ToAddMod__cnAssociation_PR_NOTHING);
+  if (drb->cnAssociation->present == NR_DRB_ToAddMod__cnAssociation_PR_eps_BearerIdentity) {
+    DevAssert(drb->cnAssociation->present == NR_DRB_ToAddMod__cnAssociation_PR_eps_BearerIdentity);
+    // get SDAP config
+    sdap_config_t sdap = {0};
+    // EPC association
+    sdap.pdusession_id = drb->cnAssociation->choice.eps_BearerIdentity;
+    sdap.drb_id = drb->drb_Identity;
+    // add SDAP entity (terminated at gNB, since it's EPC)
+    new_nr_sdap_entity(GNB_FLAG_NO, ue_id, sdap);
+    // add PDCP entity
+    add_drb(GNB_FLAG_NO, ue_id, drb->pdcp_Config, &sdap, sp);
+  } else {
+    DevAssert(drb->cnAssociation->present == NR_DRB_ToAddMod__cnAssociation_PR_sdap_Config);
+    DevAssert(drb->cnAssociation->choice.sdap_Config);
+    // get SDAP config
+    sdap_config_t sdap = get_sdap_Config(GNB_FLAG_NO, ue_id, drb->cnAssociation->choice.sdap_Config, drb->drb_Identity);
+    // add SDAP entity
+    new_nr_sdap_entity(GNB_FLAG_NO, ue_id, sdap);
+    // add PDCP entity
+    add_drb(GNB_FLAG_NO, ue_id, drb->pdcp_Config, &sdap, sp);
+  }
+}
+
 /**
  * @brief add, modify and release SRBs and/or DRBs
  * @ref   3GPP TS 38.331
@@ -2022,10 +2050,7 @@ static void nr_rrc_ue_process_RadioBearerConfig(NR_UE_RRC_INST_t *ue_rrc,
           nr_reconfigure_sdap_entity(sdap_Config, ue_rrc->ue_id, sdap_Config->pdu_Session, DRB_id);
       } else {
         set_DRB_status(ue_rrc ,DRB_id, RB_ESTABLISHED);
-        add_drb(false,
-                ue_rrc->ue_id,
-                radioBearerConfig->drb_ToAddModList->list.array[cnt],
-                &security_up_parameters);
+        rrc_ue_add_bearer(ue_rrc->ue_id, radioBearerConfig->drb_ToAddModList->list.array[cnt], &security_up_parameters);
       }
     }
   } // drb_ToAddModList //
