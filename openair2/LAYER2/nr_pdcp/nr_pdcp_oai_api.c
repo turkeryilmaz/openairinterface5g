@@ -596,7 +596,6 @@ void add_drb(int is_gnb,
              struct NR_DRB_ToAddMod *s,
              const nr_pdcp_entity_security_keys_and_algos_t *security_parameters)
 {
-  nr_pdcp_entity_t *pdcp_drb;
   nr_pdcp_ue_t *ue;
 
   int drb_id = s->drb_Identity;
@@ -629,38 +628,6 @@ void add_drb(int is_gnb,
   else
     has_ciphering = 1;
 
-  if ((!s->cnAssociation) || s->cnAssociation->present == NR_DRB_ToAddMod__cnAssociation_PR_NOTHING) {
-    LOG_E(PDCP, "fatal, cnAssociation is missing or present is NR_DRB_ToAddMod__cnAssociation_PR_NOTHING\n");
-    exit(-1);
-  }
-
-  int pdusession_id;
-  bool has_sdap_rx = false;
-  bool has_sdap_tx = false;
-  bool is_sdap_DefaultDRB = false;
-  NR_QFI_t *mappedQFIs2Add = NULL;
-  uint8_t mappedQFIs2AddCount=0;
-  if (s->cnAssociation->present == NR_DRB_ToAddMod__cnAssociation_PR_eps_BearerIdentity)
-     pdusession_id = s->cnAssociation->choice.eps_BearerIdentity;
-  else {
-    if (!s->cnAssociation->choice.sdap_Config) {
-      LOG_E(PDCP,"fatal, sdap_Config is null");
-      exit(-1);
-    }
-    pdusession_id = s->cnAssociation->choice.sdap_Config->pdu_Session;
-    has_sdap_rx = is_sdap_rx(is_gnb, s->cnAssociation->choice.sdap_Config);
-    has_sdap_tx = is_sdap_tx(is_gnb, s->cnAssociation->choice.sdap_Config);
-    is_sdap_DefaultDRB = s->cnAssociation->choice.sdap_Config->defaultDRB == true ? 1 : 0;
-    mappedQFIs2Add = (NR_QFI_t*)s->cnAssociation->choice.sdap_Config->mappedQoS_FlowsToAdd->list.array[0]; 
-    mappedQFIs2AddCount = s->cnAssociation->choice.sdap_Config->mappedQoS_FlowsToAdd->list.count;
-    LOG_D(SDAP, "Captured mappedQoS_FlowsToAdd from RRC: %ld \n", *mappedQFIs2Add);
-  }
-  /* TODO(?): accept different UL and DL SN sizes? */
-  if (sn_size_ul != sn_size_dl) {
-    LOG_E(PDCP, "fatal, bad SN sizes, must be same. ul=%d, dl=%d\n", sn_size_ul, sn_size_dl);
-    exit(1);
-  }
-
   /* get actual ciphering and integrity algorithm based on pdcp_Config */
   nr_pdcp_entity_security_keys_and_algos_t actual_security_parameters = *security_parameters;
   actual_security_parameters.ciphering_algorithm = has_ciphering ? security_parameters->ciphering_algorithm : 0;
@@ -671,26 +638,62 @@ void add_drb(int is_gnb,
   if (nr_pdcp_get_rb(ue, drb_id, false) != NULL) {
     LOG_W(PDCP, "warning DRB %d already exist for UE ID %ld, do nothing\n", drb_id, UEid);
   } else {
-    pdcp_drb = new_nr_pdcp_entity(NR_PDCP_DRB_AM, is_gnb, drb_id, pdusession_id,
-                                  has_sdap_rx, has_sdap_tx, deliver_sdu_drb, ue,
-                                  is_gnb ?
-                                    deliver_pdu_drb_gnb : deliver_pdu_drb_ue,
-                                  ue,
-                                  sn_size_dl, t_reordering, discard_timer,
-                                  &actual_security_parameters);
+    if ((!s->cnAssociation) || s->cnAssociation->present == NR_DRB_ToAddMod__cnAssociation_PR_NOTHING) {
+      LOG_E(PDCP, "fatal, cnAssociation is missing or set to NOTHING\n");
+      exit(-1);
+    }
+
+    bool cn_5GC = s->cnAssociation->present == NR_DRB_ToAddMod__cnAssociation_PR_sdap_Config;
+    if (cn_5GC && !s->cnAssociation->choice.sdap_Config) {
+      LOG_E(PDCP, "Fatal error! sdap_Config is mandatory with 5GC association.");
+      exit(-1);
+    }
+
+    // get SDAP config
+    sdap_config_t sdap = {0};
+    if (cn_5GC)
+      // 5GC association (SA)
+      sdap = get_sdap_Config(is_gnb, UEid, s->cnAssociation->choice.sdap_Config, s->drb_Identity);
+    else {
+      // EPC association
+      sdap.pdusession_id = s->cnAssociation->choice.eps_BearerIdentity;
+      sdap.drb_id = s->drb_Identity;
+    }
+
+    // code assumption: same SN size for both DL and UL
+    if (sn_size_ul != sn_size_dl) {
+      LOG_E(PDCP, "fatal, bad SN sizes, must be same. ul=%d, dl=%d\n", sn_size_ul, sn_size_dl);
+      exit(1);
+    }
+
+    // add PDCP entity
+    nr_pdcp_entity_t *pdcp_drb = new_nr_pdcp_entity(NR_PDCP_DRB_AM,
+                                                    is_gnb,
+                                                    sdap.drb_id,
+                                                    sdap.pdusession_id,
+                                                    sdap.sdap_rx,
+                                                    sdap.sdap_tx,
+                                                    deliver_sdu_drb,
+                                                    ue,
+                                                    is_gnb ? deliver_pdu_drb_gnb : deliver_pdu_drb_ue,
+                                                    ue,
+                                                    sn_size_dl,
+                                                    t_reordering,
+                                                    discard_timer,
+                                                    &actual_security_parameters);
     nr_pdcp_ue_add_drb_pdcp_entity(ue, drb_id, pdcp_drb);
 
     LOG_I(PDCP, "added drb %d to UE ID %ld\n", drb_id, UEid);
     /* add new SDAP entity for the PDU session the DRB belongs to */
     new_nr_sdap_entity(is_gnb,
-                       has_sdap_rx,
-                       has_sdap_tx,
+                       sdap.sdap_rx,
+                       sdap.sdap_tx,
                        UEid,
-                       pdusession_id,
-                       is_sdap_DefaultDRB,
+                       sdap.pdusession_id,
+                       sdap.defaultDRB,
                        drb_id,
-                       mappedQFIs2Add,
-                       mappedQFIs2AddCount);
+                       sdap.mappedQFIs2Add,
+                       sdap.mappedQFIs2AddCount);
   }
   nr_pdcp_manager_unlock(nr_pdcp_ue_manager);
 }
