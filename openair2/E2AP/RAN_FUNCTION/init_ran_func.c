@@ -54,7 +54,7 @@ void init_read_ind_tbl(read_ind_fp (*read_ind_tbl)[SM_AGENT_IF_READ_V0_END])
   
   (*read_ind_tbl)[KPM_STATS_V3_0] = read_kpm_sm ; 
   (*read_ind_tbl)[RAN_CTRL_STATS_V1_03] = read_rc_sm;
-  (*read_ind_tbl)[SRS_STATS_V0] = read_srs_sm ;
+  (*read_ind_tbl)[SRS_STATS_V0] = read_srs_sm;//NULL ;
 }
 
 static
@@ -110,7 +110,7 @@ void init_write_subs(write_subs_fp (*write_subs_tbl)[SM_AGENT_IF_WRITE_SUBS_V0_E
 
   (*write_subs_tbl)[KPM_SUBS_V3_0] = NULL;
   (*write_subs_tbl)[RAN_CTRL_SUBS_V1_03] = write_subs_rc_sm;
-  (*write_subs_tbl)[SRS_SUBS_V0] = NULL;
+  (*write_subs_tbl)[SRS_SUBS_V0] = write_subs_srs_sm;
 }
 
 sm_io_ag_ran_t init_ran_func_ag(void)

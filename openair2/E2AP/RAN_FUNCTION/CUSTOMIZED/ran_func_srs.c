@@ -20,36 +20,44 @@
  */
 
 #include "ran_func_srs.h"
+#include "ran_func_srs_extern.h"
 #include <stdio.h>
 #include <assert.h>
 #include "openair2/E2AP/flexric/src/util/time_now_us.h"
+#include "openair2/E2AP/flexric/test/rnd/fill_rnd_data_srs.h"
+
+#include "../../flexric/src/agent/e2_agent_api.h"
+#include <unistd.h>
 #include <stdlib.h>
 #include <time.h>
-
+#include <pthread.h>
 
 // define static gunctions for trigger
 /*
 static void log_srs_measurement_report
 */
+static uint32_t srs_ric_id;
+
 bool read_srs_sm(void* data)
 {
   assert(data != NULL);
 
-  srand(time(0)); // tmp for now
-  srs_ind_data_t* srs = (srs_ind_data_t*)data;
-   // fill data tsstamp, len and srs fapi
-  srs->msg.tstamp = time_now_us();
-  srs->msg.len = 1; // tmp for now
+  // srand(time(0)); // tmp for now
+  // srs_ind_data_t* srs = (srs_ind_data_t*)data;
+  //  // fill data tsstamp, len and srs fapi
+  // srs->msg.tstamp = time_now_us();
+  // srs->msg.len = 1; // tmp for now
 
-  if(srs->msg.len > 0 ){  
-    srs->msg.indication_stats = calloc(srs->msg.len, sizeof(srs_indication_stats_impl_t));
-    assert(srs->msg.indication_stats != NULL && "Memory exhausted");
-  }
-  srs_indication_stats_impl_t* indication_stats = &srs->msg.indication_stats[0]; // len =1
-  indication_stats->rnti=rand()%100; // tmp for now
-
+  // if(srs->msg.len > 0 ){  
+  //   srs->msg.indication_stats = calloc(srs->msg.len, sizeof(srs_indication_stats_impl_t));
+  //   assert(srs->msg.indication_stats != NULL && "Memory exhausted");
+  // }
+  // srs_indication_stats_impl_t* indication_stats = &srs->msg.indication_stats[0]; // len =1
+  // indication_stats->rnti=rand()%100; // tmp for now
+  assert(0!=0 && "Not implemented");
   return true;
 }
+
 
 void read_srs_setup_sm(void* data)
 {
@@ -63,3 +71,81 @@ sm_ag_if_ans_t write_ctrl_srs_sm(void const* src)
   assert(0 !=0 && "Not supported");
 }
 
+static srs_ind_hdr_t fill_srs_ind_hdr(void)
+{
+  srs_ind_hdr_t hdr = {0};
+  hdr.ev_trigger_cond_id = 2;
+  return hdr;
+}
+
+static srs_ind_msg_t fill_srs_ind_msg(nfapi_nr_srs_indication_pdu_t *nfapi_srs_ind)
+{
+  srs_ind_msg_t msg = {0};
+  msg.len = 1; // only for now
+  msg.tstamp = time_now_us();
+  
+  if(msg.len > 0 ){  
+    msg.indication_stats = calloc(msg.len, sizeof(srs_indication_stats_impl_t));
+    assert(msg.indication_stats != NULL && "Memory exhausted");
+  }
+
+  for(uint32_t i = 0; i < msg.len; ++i){
+    srs_indication_stats_impl_t* indication_stats = &msg.indication_stats[i];
+  
+    indication_stats->rnti=nfapi_srs_ind->rnti;
+    printf("SRS.indication RNTI: %u\n", indication_stats->rnti);
+  }
+
+  return msg;
+}
+
+static void send_ric_indication(const uint32_t ric_req_id, srs_ind_data_t* srs_ind_data)
+{
+  async_event_agent_api(ric_req_id, srs_ind_data);
+  printf("Event for RIC Req ID %u generated\n", ric_req_id);
+}
+
+
+static void free_aperiodic_subscription(uint32_t ric_req_id)
+{
+  assert(ric_req_id == srs_ric_id);
+  (void)ric_req_id;
+}
+
+
+static srs_ind_data_t* fill_fapi_srs_indication(nfapi_nr_srs_indication_pdu_t *nfapi_srs_ind)
+{
+  srs_ind_data_t* srs_ind = calloc(1,sizeof(srs_ind_data_t));
+  assert(srs_ind != NULL && "Memory exhausted");
+
+  srs_ind->hdr = fill_srs_ind_hdr();
+  srs_ind->msg = fill_srs_ind_msg(nfapi_srs_ind);
+
+  return srs_ind;
+}
+
+void signal_nfapi_srs_indication(nfapi_nr_srs_indication_pdu_t *nfapi_srs_ind)
+{
+
+  srs_ind_data_t* srs_ind_data = fill_fapi_srs_indication(nfapi_srs_ind);
+  //Send RIC indication
+  send_ric_indication(srs_ric_id, srs_ind_data);
+}
+
+
+
+
+
+sm_ag_if_ans_t write_subs_srs_sm(void const* src)
+{
+  assert(src != NULL);
+  wr_srs_sub_data_t* wr_srs = (wr_srs_sub_data_t*)src;
+  srs_ric_id = wr_srs->ric_req_id;
+
+  sm_ag_if_ans_t ans = {.type = SUBS_OUTCOME_SM_AG_IF_ANS_V0};
+  ans.subs_out.type = APERIODIC_SUBSCRIPTION_FLRC;
+  ans.subs_out.aper.free_aper_subs = free_aperiodic_subscription;
+
+
+  return ans;
+}
