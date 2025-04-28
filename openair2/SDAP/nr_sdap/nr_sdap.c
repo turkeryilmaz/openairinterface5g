@@ -177,7 +177,8 @@ void start_sdap_tun_ue(ue_id_t ue_id, int pdu_session_id, int sock)
 {
   nr_sdap_entity_t *entity = nr_sdap_get_entity(ue_id, pdu_session_id);
   DevAssert(entity != NULL);
-  entity->pdusession_sock = sock;
+  if (entity->pdusession_sock == -1) // initialize socket only for new entities
+    entity->pdusession_sock = sock;
   entity->stop_thread = false;
   char thread_name[64];
   snprintf(thread_name, sizeof(thread_name), "ue_tun_read_%ld_p%d", ue_id, pdu_session_id);
