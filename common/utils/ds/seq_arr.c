@@ -146,7 +146,8 @@ void seq_arr_erase_it(seq_arr_t* arr, void* start_it, void* end_it, void (*free_
 
 size_t seq_arr_size(seq_arr_t const* arr)
 {
-  assert(arr != NULL);
+  if (!arr)
+    return 0;
   return arr->size;
 }
 
