@@ -301,35 +301,20 @@ void generate_pucch1x(int32_t **txdataF,
 
 }
 
-
-
-
-static inline void pucch2x_scrambling(LTE_DL_FRAME_PARMS *fp,int subframe,uint16_t rnti,uint32_t B,uint8_t *btilde) __attribute__((always_inline));
-static inline void pucch2x_scrambling(LTE_DL_FRAME_PARMS *fp,int subframe,uint16_t rnti,uint32_t B,uint8_t *btilde) {
-
-  uint32_t x1, x2, s=0;
-  int i;
-  uint8_t c;
-
-  x2 = (rnti) + ((uint32_t)(1+subframe)<<16)*(1+(fp->Nid_cell<<1)); //this is c_init in 36.211 Sec 6.3.1
-  s = lte_gold_generic(&x1, &x2, 1);
-  for (i=0;i<19;i++) {
-    c = (uint8_t)((s>>i)&1);
-    btilde[i] = (((B>>i)&1) ^ c);
+static inline void pucch2x_scrambling_modulation(LTE_DL_FRAME_PARMS *fp,
+                                                 int subframe,
+                                                 uint16_t rnti,
+                                                 uint32_t B,
+                                                 int16_t amp,
+                                                 int16_t *d)
+{
+  uint32_t x1, x2;
+  x2 = (rnti) + ((uint32_t)(1 + subframe) << 16) * (1 + (fp->Nid_cell << 1)); // this is c_init in 36.211 Sec 6.3.1
+  uint32_t s = lte_gold_generic(&x1, &x2, 1);
+  for (int i = 0; i < 20; i++) {
+    d[i] = ((B ^ s) >> i) & 1 ? -amp : amp;
   }
 }
-
-inline void pucch2x_modulation(uint8_t *btilde,int16_t *d,int16_t amp) __attribute__((always_inline));
-inline void pucch2x_modulation(uint8_t *btilde,int16_t *d,int16_t amp) {
-
-  int i;
-
-  for (i=0;i<20;i++) 
-    d[i] = btilde[i] == 1 ? -amp : amp;
-
-}
-
-
 
 uint32_t pucch_code[13] = {0xFFFFF,0x5A933,0x10E5A,0x6339C,0x73CE0,
 			   0xFFC00,0xD8E64,0x4F6B0,0x218EC,0x1B746,
@@ -349,8 +334,7 @@ void generate_pucch2x(c16_t **txdataF,
                       uint16_t rnti)
 {
   int i,j;
-  uint32_t B=0;
-  uint8_t btilde[20] = {0};
+  uint32_t B = 0;
   c16_t d[11];
   uint8_t deltaPUCCH_Shift          = fp->pucch_config_common.deltaPUCCH_Shift;
   uint8_t NRB2                      = fp->pucch_config_common.nRB_CQI;
@@ -384,9 +368,7 @@ void generate_pucch2x(c16_t **txdataF,
       B=B^pucch_code[i];
 
   // scrambling
-  pucch2x_scrambling(fp,subframe,rnti,B,btilde);
-  // modulation
-  pucch2x_modulation(btilde, (int16_t *)d, amp);
+  pucch2x_scrambling_modulation(fp, subframe, rnti, B, amp, (int16_t *)d);
 
   // add extra symbol for 2a/2b
   d[10] = (c16_t){};
