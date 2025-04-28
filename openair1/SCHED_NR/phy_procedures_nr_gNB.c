@@ -1006,12 +1006,7 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx)
         srs_indication->timing_advance_offset = srs_est >= 0 ? nr_est_timing_advance_srs(frame_parms, N_ap, srs_estimated_channel_time[0]) : 0xFFFF;
         stop_meas(&gNB->srs_timing_advance_stats);
         
-        if (srs_est>=0) {
-	  nr_est_toa_ns_srs(frame_parms, N_ant_rx, N_ap ,N_symb_SRS, srs_estimated_channel_freq, srs_toa_ns);
-	}
-	else {
-	  for (int ant=0;ant<N_ant_rx;ant++) srs_toa_ns[ant] = 0x8000;
-	}
+	nr_est_toa_ns_srs(frame_parms, N_ant_rx, N_ap ,N_symb_SRS, srs_estimated_channel_freq, srs_toa_ns);
 	
         for (int ant=0;ant<N_ant_rx;ant++)
           LOG_D(NR_PHY,"[first] srs_toa_ns[%d] = %d\n",ant,srs_toa_ns[ant]);
