@@ -173,6 +173,7 @@ static void capture_sst_sd(test_cond_value_t* test_cond_value, uint8_t *sst, uin
         *sd = malloc(**sd);
         **sd = buf[1] << 16 | buf[2] << 8 | buf[3];
       }
+      printf("[E2 AGENT][E2SM-KPM] Condition NSSAI (%d, %x).\n", *sst, (*sd) ? **sd : 0xffffff);
       break;
     }
     default:
@@ -408,8 +409,12 @@ bool read_kpm_sm(void* data)
         ue_type_matcher fp_match_cond_type = (*match_cond_arr[test_info.test_cond_type])[node_type];
         arr_ue_id_t arr_ue_id = fp_match_cond_type(test_info);
 
-        if (arr_ue_id.sz == 0) return false;
+        if (arr_ue_id.sz == 0) {
+          printf("[E2 AGENT][E2SM-KPM] No UE matches the condition criteria.\n");
+          return false;
+        }
         kpm->ind.msg.frm_3 = fill_kpm_ind_msg_frm_3(&arr_ue_id, &frm_4->action_def_format_1);
+        printf("[E2 AGENT][E2SM-KPM] %ld UE(s) match(es) the condition criteria. RIC INDICATION message sent.\n", arr_ue_id.sz);
       }
       break;
     }
