@@ -19,13 +19,38 @@
  *      contact@openairinterface.org
  */
 
-#ifndef RAN_FUNC_SM_SRS_EXTERN_AGENT_H
-#define RAN_FUNC_SM_SRS_EXTERN_AGENT_H
+#include "ran_func_srs_subs.h"
+#include "common/utils/assertions.h"
+#include "common/utils/alg/find.h"
 
-// #include "openair2/NR_PHY_INTERFACE/NR_IF_Module.h"
-#include "nfapi/open-nFAPI/nfapi/public_inc/nfapi_nr_interface_scf.h"
+#include <assert.h>
+#include <pthread.h>
 
-// void signal_nfapi_srs_indication(NR_UL_IND_t *UL_info, nfapi_nr_srs_indication_pdu_t *nfapi_srs_ind);
-void signal_nfapi_srs_indication(nfapi_nr_srs_indication_pdu_t *nfapi_srs_ind);
 
-#endif
+// static pthread_mutex_t srs_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+ static bool eq_int(const void* value, const void* it)
+ {
+   const uint32_t ric_req_id = *(uint32_t *)value;
+   const ran_param_data_t *dit = (const ran_param_data_t *)it;
+   return ric_req_id == dit->ric_req_id;
+ }
+
+void init_srs_subs_data(seq_arr_t *srs_subs_data)
+{
+  seq_arr_init(srs_subs_data, sizeof(ran_param_data_t));
+
+}
+void insert_srs_subs_data(seq_arr_t *seq_arr, ran_param_data_t *data)
+{
+    // Insert RIC Req ID
+    seq_arr_push_back(seq_arr, data, sizeof(*data));
+}
+void remove_srs_subs_data(seq_arr_t *srs_subs_data, uint32_t ric_req_id){
+    elm_arr_t elm = find_if(srs_subs_data, (void *)&ric_req_id, eq_int);
+    ran_param_data_t *data = elm.it;
+    if (data != NULL) {
+      // free_srs_event_trigger...
+      seq_arr_erase(srs_subs_data, elm.it);
+    }
+}

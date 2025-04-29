@@ -52,6 +52,7 @@ add_library(e2_ran_func_cuup STATIC
             CUSTOMIZED/ran_func_tc.c     # currently, not implemented; therefore, filling rnd data
             ../flexric/test/rnd/fill_rnd_data_tc.c
             CUSTOMIZED/ran_func_srs.c     # just a first step 
+            CUSTOMIZED/ran_func_srs_subs.c
             ../flexric/test/rnd/fill_rnd_data_srs.c
             ../flexric/src/sm/srs_sm/ie/srs_data_ie.c
             )
@@ -79,6 +80,7 @@ add_library(e2_ran_func_du_cucp_cuup STATIC
             CUSTOMIZED/ran_func_tc.c     # currently, not implemented; therefore, filling rnd data
             ../flexric/test/rnd/fill_rnd_data_tc.c
             CUSTOMIZED/ran_func_srs.c     # just a first step 
+            CUSTOMIZED/ran_func_srs_subs.c
             ../flexric/test/rnd/fill_rnd_data_srs.c
             ../flexric/src/sm/srs_sm/ie/srs_data_ie.c
             )

@@ -21,6 +21,7 @@
 
 #include "ran_func_srs.h"
 #include "ran_func_srs_extern.h"
+#include "ran_func_srs_subs.h"
 #include <stdio.h>
 #include <assert.h>
 #include "openair2/E2AP/flexric/src/util/time_now_us.h"
@@ -36,24 +37,11 @@
 /*
 static void log_srs_measurement_report
 */
-static uint32_t srs_ric_id;
+static seq_arr_t srs_subs_data = {0};
 
 bool read_srs_sm(void* data)
 {
   assert(data != NULL);
-
-  // srand(time(0)); // tmp for now
-  // srs_ind_data_t* srs = (srs_ind_data_t*)data;
-  //  // fill data tsstamp, len and srs fapi
-  // srs->msg.tstamp = time_now_us();
-  // srs->msg.len = 1; // tmp for now
-
-  // if(srs->msg.len > 0 ){  
-  //   srs->msg.indication_stats = calloc(srs->msg.len, sizeof(srs_indication_stats_impl_t));
-  //   assert(srs->msg.indication_stats != NULL && "Memory exhausted");
-  // }
-  // srs_indication_stats_impl_t* indication_stats = &srs->msg.indication_stats[0]; // len =1
-  // indication_stats->rnti=rand()%100; // tmp for now
   assert(0!=0 && "Not implemented");
   return true;
 }
@@ -62,7 +50,7 @@ bool read_srs_sm(void* data)
 void read_srs_setup_sm(void* data)
 {
   assert(data != NULL);
-  assert(0 !=0 && "Not supported");
+  assert(0!=0 && "Not implemented");
 }
 
 sm_ag_if_ans_t write_ctrl_srs_sm(void const* src)
@@ -70,6 +58,7 @@ sm_ag_if_ans_t write_ctrl_srs_sm(void const* src)
   assert(src != NULL);
   assert(0 !=0 && "Not supported");
 }
+
 
 static srs_ind_hdr_t fill_srs_ind_hdr(void)
 {
@@ -108,8 +97,7 @@ static void send_ric_indication(const uint32_t ric_req_id, srs_ind_data_t* srs_i
 
 static void free_aperiodic_subscription(uint32_t ric_req_id)
 {
-  assert(ric_req_id == srs_ric_id);
-  (void)ric_req_id;
+  remove_srs_subs_data(&srs_subs_data, ric_req_id);
 }
 
 
@@ -126,10 +114,14 @@ static srs_ind_data_t* fill_fapi_srs_indication(nfapi_nr_srs_indication_pdu_t *n
 
 void signal_nfapi_srs_indication(nfapi_nr_srs_indication_pdu_t *nfapi_srs_ind)
 {
-
-  srs_ind_data_t* srs_ind_data = fill_fapi_srs_indication(nfapi_srs_ind);
-  //Send RIC indication
-  send_ric_indication(srs_ric_id, srs_ind_data);
+  // Check number of subscriptions:
+  const size_t num_subs = seq_arr_size(&srs_subs_data);
+  for (size_t sub_idx = 0; sub_idx < num_subs; sub_idx++) {
+    const ran_param_data_t data = *(const ran_param_data_t *)seq_arr_at(&srs_subs_data, sub_idx);
+    srs_ind_data_t* srs_ind_data = fill_fapi_srs_indication(nfapi_srs_ind);
+    //Send RIC indication
+    send_ric_indication(data.ric_req_id, srs_ind_data);
+  }
 }
 
 
@@ -140,9 +132,17 @@ sm_ag_if_ans_t write_subs_srs_sm(void const* src)
 {
   assert(src != NULL);
   wr_srs_sub_data_t* wr_srs = (wr_srs_sub_data_t*)src;
-  srs_ric_id = wr_srs->ric_req_id;
+  assert(wr_srs->srs.ad != NULL && "Cannot be NULL");
 
-  sm_ag_if_ans_t ans = {.type = SUBS_OUTCOME_SM_AG_IF_ANS_V0};
+  sm_ag_if_ans_t ans = {0};
+
+  const uint32_t ric_req_id = wr_srs->ric_req_id;
+
+  struct ran_param_data data = { .ric_req_id = ric_req_id};
+  init_srs_subs_data(&srs_subs_data);
+  insert_srs_subs_data(&srs_subs_data,&data);
+
+  ans.type = SUBS_OUTCOME_SM_AG_IF_ANS_V0;
   ans.subs_out.type = APERIODIC_SUBSCRIPTION_FLRC;
   ans.subs_out.aper.free_aper_subs = free_aperiodic_subscription;
 
