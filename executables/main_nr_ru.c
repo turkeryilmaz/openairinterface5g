@@ -69,7 +69,7 @@ int sync_var=-1; //!< protected by mutex \ref sync_mutex.
 int config_sync_var=-1;
 
 int oai_exit = 0;
-uint16_t sf_ahead = 4;
+int sf_ahead = 4;
 
 RAN_CONTEXT_t RC;
 
@@ -114,7 +114,7 @@ void exit_function(const char *file, const char *function, const int line, const
 static void get_options(configmodule_interface_t *cfg)
 {
   CONFIG_SETRTFLAG(CONFIG_NOEXITONHELP);
-  get_common_options(cfg, SOFTMODEM_ENB_BIT);
+  get_common_options(cfg);
   CONFIG_CLEARRTFLAG(CONFIG_NOEXITONHELP);
 
 //  NRCConfig();
@@ -139,7 +139,7 @@ struct timespec timespec_sub(struct timespec,struct timespec) {struct timespec t
 void perform_symbol_rotation(NR_DL_FRAME_PARMS *fp, double f0, c16_t *symbol_rotation) {return;}
 void init_timeshift_rotation(NR_DL_FRAME_PARMS *fp) {return;};
 int beam_index_allocation(int fapi_beam_index, NR_gNB_COMMON *common_vars, int slot, int symbols_per_slot, int bitmap_symbols) {int i=0; return i;};
-void nr_fill_du(uint16_t N_ZC, const uint16_t *prach_root_sequence_map) {return;}
+void nr_fill_du(uint16_t N_ZC, const uint16_t *prach_root_sequence_map, uint16_t nr_du[NR_PRACH_SEQ_LEN_L - 1]) {return;}
 uint16_t nr_du[838];
 
 uint64_t                 downlink_frequency[MAX_NUM_CCs][4];

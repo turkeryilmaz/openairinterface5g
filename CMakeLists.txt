@@ -1820,7 +1820,7 @@ target_link_libraries(oainr_ru PRIVATE
   UTIL SCHED_RU_LIB PHY_COMMON PHY_RU shlib_loader
   -Wl,--end-group z dl)
 target_link_libraries(oainr_ru PRIVATE pthread m CONFIG_LIB rt ${T_LIB} utils
-  barrier actor)
+  barrier actor nr_phy_common time_management)
 target_link_libraries(oainr_ru PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
 
 # nr-softmodem
