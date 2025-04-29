@@ -36,7 +36,7 @@
 #include "nr_phy_common.h"
 
 
-#define ADDRESS "tcp://172.21.16.204:1883"
+//#define ADDRESS "tcp://172.21.16.204:1883"
 #define TOPIC       "srs_toa_ns"
 #define SRS_CH_EST
 
@@ -50,18 +50,14 @@
 extern MQTTClient client;
 
 void fftshift(int32_t *buffer, int32_t buf_len) {
-    // buf_len is number of int32_t words
-    int num_c16 = buf_len / 2;  // because 2 int16 in one c16_t
-    int half = num_c16 / 2;
-
-    c16_t *cbuf = (c16_t *)buffer;
-
+    int half = buf_len / 2;
     for (int i = 0; i < half; i++) {
-        c16_t temp = cbuf[i];
-        cbuf[i] = cbuf[i + half];
-        cbuf[i + half] = temp;
+        c16_t temp = ((c16_t*)buffer)[i];
+        ((c16_t*)buffer)[i] = ((c16_t*)buffer)[i + half];
+        ((c16_t*)buffer)[i + half] = temp;
     }
 }
+
 
 
 void srs_toa_MQTT(int32_t *buffer, int32_t buf_len, int16_t gNB_id, int16_t ant_idx) {
