@@ -28,6 +28,10 @@ In principle, any lookaside LDPC accelerator supporting the O-RAN AAL/ DPDK BBDE
 
 - TODO. To be validated.
 
+### Intel ACC100
+
+- TODO. To be validated.
+
 ### Intel ACC200 (also known as VRB1)
 - DPDK22.11.7 on Ubuntu 24.04.
 - DPDK23.11.3 on Ubuntu 24.04.
@@ -139,14 +143,6 @@ Baseband devices using DPDK-compatible driver
 ...
 ```
 
-
-<!-- # Modifications in the OAI code -->
-<!-- ## DPDK lib and PMD path specification
-If DPDK library was installed into custom path, you have to point to the right directory with `PKG_CONFIG_PATH`, prior to the OAI build. Sample command to set the DPDK path to `/opt/dpdk-t2/lib64/pkgconfig/`:
-```
-export PKG_CONFIG_PATH=/opt/dpdk-t2/lib64/pkgconfig/:$PKG_CONFIG_PATH
-``` -->
-
 # Building OAI with ORAN-AAL
 OTA deployment is precisely described in the following tutorial:
 - [NR_SA_Tutorial_COTS_UE](https://gitlab.eurecom.fr/oai/openairinterface5g/-/blob/develop/doc/NR_SA_Tutorial_COTS_UE.md)
@@ -243,8 +239,3 @@ Example command:
 # Known Limitations
 
 TODO. To be validated.
-
-<!-- ## AMD Xilinx T2 card
-The functionality of the LDPC encoding and decoding offload verified in OTA SISO setup with USRP N310 and Quectel RM500Q, blocking of the card reported for MIMO setup (2 layers)
-
-*Note: AMD Xilinx T1 Telco card is not supported anymore.* -->
