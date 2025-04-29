@@ -1008,9 +1008,10 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx)
         
 	nr_est_toa_ns_srs(frame_parms, N_ant_rx, N_ap ,N_symb_SRS, srs_estimated_channel_freq, srs_toa_ns);
 	
-        for (int ant=0;ant<N_ant_rx;ant++)
+        for (int ant=0;ant<N_ant_rx;ant++){
           LOG_D(NR_PHY,"[first] srs_toa_ns[%d] = %d\n",ant,srs_toa_ns[ant]);
-
+          srs_toa_MQTT((int32_t *)srs_estimated_channel_time[ant][0], frame_parms->ofdm_symbol_size, gNB->Mod_id, ant);
+        }
 	//the value of the first antenna goes into this field. All of the antennas are also in the TLV part of the localization report below.
         srs_indication->timing_advance_offset_nsec = srs_toa_ns[0];
 

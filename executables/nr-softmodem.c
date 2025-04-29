@@ -90,6 +90,7 @@ unsigned short config_frames[4] = {2,9,11,13};
 #include "openair2/E2AP/RAN_FUNCTION/init_ran_func.h"
 #endif
 
+MQTTClient client;
 pthread_cond_t nfapi_sync_cond;
 pthread_mutex_t nfapi_sync_mutex;
 int nfapi_sync_var=-1; //!< protected by mutex \ref nfapi_sync_mutex
