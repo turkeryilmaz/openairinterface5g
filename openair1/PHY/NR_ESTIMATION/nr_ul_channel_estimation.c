@@ -44,7 +44,7 @@
 #define ADDRESS     "tcp://localhost:1883"
 #define CLIENTID    "Gnb1"
 */
-
+#define ADDRESS "tcp://172.21.16.204:1883"
 #define TOPIC       "srs_toa_ns"
 #define SRS_CH_EST
 
@@ -57,8 +57,8 @@
 #define  NR_SRS_IDFT_OVERSAMP_FACTOR 8
 
 extern MQTTClient client;
-void srs_toa_MQTT(int32_t *buffer, int32_t buf_len, int32_t gNB_id, int32_t peak_idx, int16_t ant_idx);
-//void srs_toa_MQTT(int32_t *buffer, int32_t buf_len, int16_t gNB_id, int16_t ant_idx);
+//void srs_toa_MQTT(int32_t *buffer, int32_t buf_len, int32_t gNB_id, int32_t peak_idx, int16_t ant_idx);
+void srs_toa_MQTT(int32_t *buffer, int32_t buf_len, int16_t gNB_id, int16_t ant_idx);
 
 
 /* Generic function to find the peak of channel estimation buffer */
@@ -166,7 +166,7 @@ void fftshift(int32_t *buffer, int32_t buf_len) {
     }
 }
 
-
+/*
 void srs_toa_MQTT(int32_t *buffer, int32_t buf_len, int32_t gNB_id, int32_t peak_idx, int16_t ant_idx) {
 
     // MQTT Part
@@ -188,16 +188,15 @@ void srs_toa_MQTT(int32_t *buffer, int32_t buf_len, int32_t gNB_id, int32_t peak
       LOG_W(PHY, "Failed to publish \"SRS ToA measurements\" MQTT message, return code %d\n", rc);
     }
 }
+*/
 
 
-/*
 void srs_toa_MQTT(int32_t *buffer, int32_t buf_len, int16_t gNB_id, int16_t ant_idx) {
-    // MQTT Part
     MQTTClient_message pubmsg = MQTTClient_message_initializer;
     MQTTClient_deliveryToken token;
     int rc;
-    int16_t peak_idx=0;
-    int16_t peak_val=0;
+    int16_t peak_idx = 0;
+    int16_t peak_val = 0;
 
     cJSON *mqtt_payload = cJSON_CreateObject();
     cJSON_AddNumberToObject(mqtt_payload, "peak_index", peak_idx);
@@ -205,50 +204,67 @@ void srs_toa_MQTT(int32_t *buffer, int32_t buf_len, int16_t gNB_id, int16_t ant_
     cJSON_AddNumberToObject(mqtt_payload, "source", gNB_id);
     cJSON_AddNumberToObject(mqtt_payload, "antenna_index", ant_idx);
 
-    #ifdef SRS_CH_EST
-      cJSON *chest_json    = NULL; //cJSON_CreateArray();
-      chest_json= cJSON_AddArrayToObject(mqtt_payload, "ch_est_T");
-    #endif
+#ifdef SRS_CH_EST
+    cJSON *chest_json = cJSON_AddArrayToObject(mqtt_payload, "ch_est_T");
+
+    // Temporary array to hold channel estimation values
+    int32_t chest_tmp[buf_len];
+#endif
 
     fftshift(buffer, buf_len);
 
-    // peak calculation
+    // Peak calculation
     int32_t max_val = 0, max_idx = 0, abs_val = 0;
-      for(int k = 0; k < buf_len; k++)  {
-          int Re = ((c16_t*)buffer)[k].r;
-          int Im = ((c16_t*)buffer)[k].i;
-          abs_val = (Re*Re/2) + (Im*Im/2);
-          if(abs_val > max_val){
-          max_val = abs_val;
-          max_idx = k;
-          }
+    for (int k = 0; k < buf_len; k++) {
+        int Re = ((c16_t*)buffer)[k].r;
+        int Im = ((c16_t*)buffer)[k].i;
+        abs_val = (Re * Re / 2) + (Im * Im / 2);
 
-          #ifdef SRS_CH_EST
-            cJSON *chest_json_value   = cJSON_CreateObject();
-            cJSON_AddNumberToObject(chest_json_value,"ch_est",  abs_val);
-            cJSON_AddItemToArray(chest_json,  chest_json_value );
-          #endif
+        if (abs_val > max_val) {
+            max_val = abs_val;
+            max_idx = k;
+        }
 
-      }
+#ifdef SRS_CH_EST
+        chest_tmp[k] = abs_val;  // Save to temp array
+#endif
+    }
 
-      peak_idx =  max_idx;
-      peak_val = max_val;
-      printf("ant=%d , peak=%d\n",ant_idx,peak_idx);
+    peak_idx = max_idx;
+    peak_val = max_val;
+    printf("ant=%d , peak=%d\n", ant_idx, peak_idx);
 
-      cJSON_SetIntValue(cJSON_GetObjectItem(mqtt_payload, "peak_index"), peak_idx);
-      cJSON_SetIntValue(cJSON_GetObjectItem(mqtt_payload, "peak_val"), peak_val);
+    cJSON_SetIntValue(cJSON_GetObjectItem(mqtt_payload, "peak_index"), peak_idx);
+    cJSON_SetIntValue(cJSON_GetObjectItem(mqtt_payload, "peak_val"), peak_val);
 
-    // PUBLISHING the Message
-    pubmsg.payload = cJSON_Print(mqtt_payload);
+#ifdef SRS_CH_EST
+    // Circular shift of chest_tmp
+    int shift = 2098; 
+    int real_size = buf_len; 
+    int32_t chest_shifted[real_size];
+
+    for (int i = 0; i < real_size; i++) {
+        chest_shifted[i] = chest_tmp[(i - shift + real_size) % real_size];
+    }
+
+    int chest_size = 100;
+    for (int i = 0; i < chest_size; i++) {
+        cJSON_AddItemToArray(chest_json, cJSON_CreateNumber(chest_shifted[i]));
+    }
+#endif
+
+    pubmsg.payload = cJSON_PrintUnformatted(mqtt_payload);
     pubmsg.payloadlen = (int)strlen(pubmsg.payload);
     pubmsg.qos = 0;
     pubmsg.retained = 0;
-    // MQTTClient_publishMessage(client, TOPIC, &pubmsg, &token);
-    if ((rc = MQTTClient_publishMessage(client, TOPIC, &pubmsg, &token) ) != MQTTCLIENT_SUCCESS){
-      LOG_W(PHY, "Failed to publish \"SRS ToA measurements\" MQTT message, return code %d\n", rc);
+
+    if ((rc = MQTTClient_publishMessage(client, TOPIC, &pubmsg, &token)) != MQTTCLIENT_SUCCESS) {
+        LOG_W(PHY, "Failed to publish \"SRS ToA measurements\" MQTT message, return code %d\n", rc);
     }
+
+    cJSON_Delete(mqtt_payload);
 }
-*/
+
 
 __attribute__((always_inline)) inline c16_t c32x16cumulVectVectWithSteps(c16_t *in1,
                                                                          int *offset1,
