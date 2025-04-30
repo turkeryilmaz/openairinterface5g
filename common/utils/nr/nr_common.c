@@ -269,7 +269,13 @@ const nr_bandentry_t nr_bandtable[] = {{1, 1920000, 1980000, 2110000, 2170000, 2
                                        {260, 37000020, 40000000, 37000020, 40000000, 1, 2229166, 60},
                                        {260, 37000080, 40000000, 37000080, 40000000, 2, 2229167, 120},
                                        {261, 27500040, 28350000, 27500040, 28350000, 1, 2070833, 60},
-                                       {261, 27500040, 28350000, 27500040, 28350000, 2, 2070833, 120}};
+                                       {261, 27500040, 28350000, 27500040, 28350000, 2, 2070833, 120},
+                                       {510, 27500000, 28350000, 17300000, 20200000, 4, 1553336, 60}, // UL STEPSIZE 1, N_OFFS_UL 2070833
+                                       {510, 27500000, 28350000, 17300000, 20200000, 8, 1553336, 120}, // UL STEPSIZE 2, N_OFFS_UL 2070833
+                                       {511, 28350000, 30000000, 17300000, 20200000, 4, 1553336, 60}, // UL STEPSIZE 1, N_OFFS_UL 2084999
+                                       {511, 28350000, 30000000, 17300000, 20200000, 8, 1553336, 120}, // UL STEPSIZE 2, N_OFFS_UL 2084999
+                                       {512, 27500000, 30000000, 17300000, 20200000, 4, 1553336, 60}, // UL STEPSIZE 1, N_OFFS_UL 2070833
+                                       {512, 27500000, 30000000, 17300000, 20200000, 8, 1553336, 120}}; // UL STEPSIZE 2, N_OFFS_UL 2070833
 
 // synchronization raster per band tables (Rel.15)
 // (38.101-1 Table 5.4.3.3-1 and 38.101-2 Table 5.4.3.3-1)
@@ -340,6 +346,13 @@ const sync_raster_t sync_raster[] = {
   {260, 4, 22996, 2, 23164},
   {261, 3, 22446, 1, 22492},
   {261, 4, 22446, 2, 22490},
+  {510, 3, 17448, 12, 19428},
+  {510, 4, 17472, 24, 19416},
+  {511, 3, 17448, 12, 19428},
+  {511, 4, 17472, 24, 19416},
+  {512, 3, 17448, 12, 19428},
+  {512, 4, 17472, 24, 19416},
+/***************************/
 };
 // clang-format on
 
@@ -432,6 +445,14 @@ uint16_t get_band(uint64_t downlink_frequency, int64_t delta_duplex)
       continue;
 
     int64_t current_offset_khz = nr_bandtable[ind].ul_min - nr_bandtable[ind].dl_min;
+
+#define NTN_FR2_DLFREQ_LOW_Khz 17300000
+#define NTN_FR2_DLFREQ_HIGH_Khz 20200000
+
+    if (dl_freq_khz >= NTN_FR2_DLFREQ_LOW_Khz && dl_freq_khz <= NTN_FR2_DLFREQ_HIGH_Khz) {
+      current_band = 512;
+      break;
+    }
 
     if (current_offset_khz != delta_duplex_khz)
       continue;
@@ -578,12 +599,24 @@ int get_nb_periods_per_frame(uint8_t tdd_period)
   return nb_periods_per_frame;
 }
 
+// UL STEP Size if different to DL STEP Size in case of NTN FR2 bands
+static int get_ul_stepsize(int band, uint32_t nrarfcn, int stepsize)
+{
+  if ((band == 510 || band == 511 || band == 512) && (nrarfcn >= 2070833 && nrarfcn <= 2112499))
+    stepsize = (stepsize == 8) ? 2 : 1;
+
+  return stepsize;
+}
+
 void get_delta_arfcn(int i, uint32_t nrarfcn, uint64_t N_OFFs)
 {
   uint32_t delta_arfcn = nrarfcn - N_OFFs;
+  int stepsize = nr_bandtable[i].step_size;
 
-  if(delta_arfcn % (nr_bandtable[i].step_size) != 0)
-    LOG_E(NR_MAC, "nrarfcn %u is not on the channel raster for step size %lu\n", nrarfcn, nr_bandtable[i].step_size);
+  stepsize = get_ul_stepsize(nr_bandtable[i].band, nrarfcn, stepsize);
+
+  if (delta_arfcn % stepsize != 0)
+    LOG_E(NR_MAC, "nrarfcn %u is not on the channel raster for step size %u\n", nrarfcn, stepsize);
 }
 
 uint32_t to_nrarfcn(int nr_bandP, uint64_t dl_CarrierFreq, uint8_t scs_index, uint32_t bw)
@@ -648,30 +681,40 @@ uint64_t from_nrarfcn(int nr_bandP, uint8_t scs_index, uint32_t nrarfcn)
     F_REF_Offs_khz = 24250080;
   }
 
-  int32_t delta_duplex = get_delta_duplex(nr_bandP, scs_index);
+  // For NTN-FR2 bands N_OFFS_UL cannot be calculated from N_OFFS_DL and delta_duplex
+  if (nr_bandP >= 510 && nr_bandP <= 512) {
+    freq_min = nr_bandtable[i].dl_min;
+    N_OFFs = nr_bandtable[i].N_OFFs_DL;
+    if (deltaFglobal == 60) {
+      freq_min =  nr_bandtable[i].ul_min;
+      N_OFFs = (nr_bandP == 511) ? 2084999 : 2070833;
+    }
+  } else {
+    int32_t delta_duplex = get_delta_duplex(nr_bandP, scs_index);
 
-  if (delta_duplex <= 0){ // DL band >= UL band
-    if (nrarfcn >= nr_bandtable[i].N_OFFs_DL){ // is TDD of FDD DL
-      N_OFFs = nr_bandtable[i].N_OFFs_DL;
-      freq_min = nr_bandtable[i].dl_min;
-    } else {// is FDD UL
-      N_OFFs = nr_bandtable[i].N_OFFs_DL + delta_duplex/deltaFglobal;
-      freq_min = nr_bandtable[i].ul_min;
+    if (delta_duplex <= 0){ // DL band >= UL band
+      if (nrarfcn >= nr_bandtable[i].N_OFFs_DL){ // is TDD of FDD DL
+        N_OFFs = nr_bandtable[i].N_OFFs_DL;
+        freq_min = nr_bandtable[i].dl_min;
+      } else {// is FDD UL
+        N_OFFs = nr_bandtable[i].N_OFFs_DL + delta_duplex/deltaFglobal;
+        freq_min = nr_bandtable[i].ul_min;
+      }
+    } else { // UL band > DL band
+      if (nrarfcn >= nr_bandtable[i].N_OFFs_DL + delta_duplex / deltaFglobal) { // is FDD UL
+        N_OFFs = nr_bandtable[i].N_OFFs_DL + delta_duplex / deltaFglobal;
+        freq_min = nr_bandtable[i].ul_min;
+      } else { // is FDD DL
+        N_OFFs = nr_bandtable[i].N_OFFs_DL;
+        freq_min = nr_bandtable[i].dl_min;
+      }
     }
-  } else { // UL band > DL band
-    if (nrarfcn >= nr_bandtable[i].N_OFFs_DL + delta_duplex / deltaFglobal){ // is FDD UL
-      N_OFFs = nr_bandtable[i].N_OFFs_DL + delta_duplex / deltaFglobal;
-      freq_min = nr_bandtable[i].ul_min;
-    } else { // is FDD DL
-      N_OFFs = nr_bandtable[i].N_OFFs_DL;
-      freq_min = nr_bandtable[i].dl_min;
-    }
+
+    LOG_D(NR_MAC, "Frequency from NR-ARFCN for N_OFFs %lu, duplex spacing %d KHz, deltaFglobal %d KHz\n",
+          N_OFFs,
+          delta_duplex,
+          deltaFglobal);
   }
-
-  LOG_D(NR_MAC, "Frequency from NR-ARFCN for N_OFFs %lu, duplex spacing %d KHz, deltaFglobal %d KHz\n",
-        N_OFFs,
-        delta_duplex,
-        deltaFglobal);
 
   AssertFatal(nrarfcn >= N_OFFs,"nrarfcn %u < N_OFFs[%d] %llu\n", nrarfcn, nr_bandtable[i].band, (long long unsigned int)N_OFFs);
   get_delta_arfcn(i, nrarfcn, N_OFFs);
@@ -1124,7 +1167,7 @@ uint32_t get_ssb_offset_to_pointA(uint32_t absoluteFrequencySSB,
   // only difference wrt NR-ARFCN is delta frequency 5kHz if f < 3 GHz for ARFCN
   uint32_t absolute_diff = (absoluteFrequencySSB - absoluteFrequencyPointA);
   const int scaling_5khz = absoluteFrequencyPointA < 600000 ? 3 : 1;
-  const int scaling = frequency_range == FR2 ? 1 << (ssbSubcarrierSpacing - 2) : 1 << ssbSubcarrierSpacing;
+  const int scaling = (absoluteFrequencyPointA >= 2016667) ? 1 << (ssbSubcarrierSpacing - 2) : 1 << ssbSubcarrierSpacing;
   const int scaled_abs_diff = absolute_diff / (scaling_5khz * scaling);
   // absoluteFrequencySSB is the central frequency of SSB which is made by 20RBs in total
   const int ssb_offset_point_a = ((scaled_abs_diff / 12) - 10) * scaling;
@@ -1402,11 +1445,14 @@ unsigned short get_N_b_srs(int c_srs, int b_srs) {
 
 frequency_range_t get_freq_range_from_freq(uint64_t freq)
 {
-  // 3GPP TS 38.101-1 Version 19.0.0 Table 5.1-1: Definition of frequency ranges
+  // 3GPP TS 38.101-1,38.101-5 Version 19.0.0 Table 5.1-1: Definition of frequency ranges
   if (freq >= 410000000 && freq <= 7125000000)
     return FR1;
-
-  if (freq >= 24250000000 && freq <= 71000000000)
+  // 3GPP TS 38.101-1 Version 19.0.0 Table 5.1-1: Definition of frequency ranges
+  // FR2 is from 24250 MHz to 71000 MHz
+  // 3GPP TS 38.101-5 Version 19.0.0 Table 5.1-1: Definition of frequency ranges
+  // FR2 for NTN is from 17300 Mhz to 30000 MHz
+  if (freq >= 17300000000 && freq <= 71000000000)
     return FR2;
 
   AssertFatal(false, "Undefined Frequency Range for frequency %ld Hz\n", freq);
@@ -1417,8 +1463,11 @@ frequency_range_t get_freq_range_from_arfcn(uint32_t arfcn)
   // 3GPP TS 38.101-1 Version 19.0.0 Table 5.1-1: Definition of frequency ranges
   if (arfcn >= 82000 && arfcn <= 875000)
     return FR1;
-
-  if (arfcn >= 2016667 && arfcn <= 2795832)
+  // 3GPP TS 38.101-1 Version 19.0.0 Table 5.1-1: Definition of frequency ranges
+  // FR2 is from 24250 MHz to 71000 MHz (from ARFCN 2016667)
+  // 3GPP TS 38.101-5 Version 19.0.0 Table 5.1-1: Definition of frequency ranges
+  // FR2 for NTN is from 17300 Mhz to 30000 MHz, from ARFCN 1553336 (Table 5.4.2.3-3)
+  if (arfcn >= 1553336 && arfcn <= 2795832)
     return FR2;
 
   AssertFatal(false, "Undefined Frequency Range for ARFCN %d\n", arfcn);
