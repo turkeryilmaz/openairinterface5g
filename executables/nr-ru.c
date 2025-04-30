@@ -1256,18 +1256,18 @@ void *ru_thread( void *param ) {
   int rc;
   extern MQTTClient client;
   //#define ADDRESS     "tcp://localhost:1883"
-  #define ADDRESS "tcp://172.21.16.204:1883"
+  #define ADDRESS "tcp://10.87.0.133:1883" //MQTT Broker ID
   #define CLIENTID    "Gnb1"
 	MQTTClient_connectOptions conn_opts = MQTTClient_connectOptions_initializer;
   if ((rc = MQTTClient_create(&client, ADDRESS, CLIENTID,
       MQTTCLIENT_PERSISTENCE_NONE, NULL)) != MQTTCLIENT_SUCCESS)  {
-       printf("Failed to create MQTT client %s, return code %d\n", CLIENTID, rc);
+       printf("1 Failed to create MQTT client %s, return code %d\n", CLIENTID, rc);
        exit(EXIT_FAILURE);
   }
   conn_opts.keepAliveInterval = 60;
   conn_opts.cleansession = 1;
   if ((rc = MQTTClient_connect(client, &conn_opts)) != MQTTCLIENT_SUCCESS){
-      printf("Failed to create MQTT client %s, return code %d\n", CLIENTID, rc);
+      printf("2 Failed to create MQTT client %s, return code %d\n", CLIENTID, rc);
       exit(EXIT_FAILURE);
   }
 

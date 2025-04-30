@@ -108,7 +108,7 @@ void srs_toa_MQTT(int32_t *buffer, int32_t buf_len, int16_t gNB_id, int16_t ant_
 
 #ifdef SRS_CH_EST
     // Circular shift of chest_tmp
-    int shift = 2098; 
+    int shift = 0;//2098; 
     int real_size = buf_len; 
     int32_t chest_shifted[real_size];
 
@@ -116,7 +116,7 @@ void srs_toa_MQTT(int32_t *buffer, int32_t buf_len, int16_t gNB_id, int16_t ant_
         chest_shifted[i] = chest_tmp[(i - shift + real_size) % real_size];
     }
 
-    int chest_size = 100;
+    int chest_size =buf_len; //100;
     for (int i = 0; i < chest_size; i++) {
         cJSON_AddItemToArray(chest_json, cJSON_CreateNumber(chest_shifted[i]));
     }
