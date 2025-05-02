@@ -701,7 +701,7 @@ int main( int argc, char **argv ) {
     wait_f1_setup_response();
 
   if (RC.nb_RU > 0)
-    start_NR_RU();
+    start_NR_RU(RC.ru[0]);
 
 #ifdef ENABLE_AERIAL
   gNB_MAC_INST *nrmac = RC.nrmac[0];
