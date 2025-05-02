@@ -87,6 +87,8 @@
     { .s5 = { NULL } },                          \
     { .s5 = { NULL } },                          \
     { .s5 = { NULL } },                          \
+    { .s5 = { NULL } },                          \
+    { .s5 = { NULL } },                          \
     { .s3a = { config_checkstr_assign_integer,   \
 	       {"PA", "VA"}, {0, 1}, 2} },           \
     { .s5 = { NULL } },                          \

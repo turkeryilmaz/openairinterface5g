@@ -1243,7 +1243,7 @@ void *ru_thread(void *param)
   // This is a forever while loop, it loops over subframes which are scheduled by incoming samples from HW devices
   struct timespec slot_start;
 	clock_gettime(CLOCK_MONOTONIC, &slot_start);
-  
+  return NULL;
   while (!oai_exit) {
     if (slot==(fp->slots_per_frame-1)) {
       slot=0;
