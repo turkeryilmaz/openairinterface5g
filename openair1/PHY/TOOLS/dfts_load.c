@@ -42,10 +42,14 @@
 
 
 /* function description array, to be used when loading the dfts/idfts lib */
-static loader_shlibfunc_t shlib_fdesc[2];
+static loader_shlibfunc_t shlib_fdesc[4];
 static char *arg[64] = {"phytest", "-O", "cmdlineonly::dbgl0"};
+
 dftfunc_t dft;
 idftfunc_t idft;
+dfts_start_t dfts_start;
+dfts_stop_t dfts_stop;
+
 int load_dftslib(void)
 {
   char *ptr = (char *)config_get_if();
@@ -55,9 +59,27 @@ int load_dftslib(void)
   }
   shlib_fdesc[0].fname = "dft_implementation";
   shlib_fdesc[1].fname = "idft_implementation";
+  shlib_fdesc[2].fname = "dfts_start";
+  shlib_fdesc[3].fname = "dfts_stop";
   int ret = load_module_shlib("dfts", shlib_fdesc, sizeof(shlib_fdesc) / sizeof(loader_shlibfunc_t), NULL);
-  AssertFatal((ret >= 0), "Error loading dftsc decoder");
+  AssertFatal((ret >= 0), "Error loading dfts decoder");
+
   dft = (dftfunc_t)shlib_fdesc[0].fptr;
   idft = (idftfunc_t)shlib_fdesc[1].fptr;
+  dfts_start = (dfts_start_t)shlib_fdesc[2].fptr;
+  dfts_stop = (dfts_stop_t)shlib_fdesc[3].fptr;
+
+  dfts_start();
+
   return 0;
+}
+
+int free_dftslib()
+{
+  if (dfts_stop) {
+    dfts_stop();
+    return 0;
+  } else {
+    return -1;
+  }
 }

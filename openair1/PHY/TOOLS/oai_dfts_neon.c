@@ -7126,6 +7126,12 @@ void idft_implementation(uint8_t sizeidx, int16_t *input, int16_t *output, unsig
           idft_ftab[sizeidx].func(input,output,scale_flag);
 };
 
+void dfts_start()
+{}
+
+void dfts_stop()
+{}
+
 #endif
 
 /*---------------------------------------------------------------------------------------*/

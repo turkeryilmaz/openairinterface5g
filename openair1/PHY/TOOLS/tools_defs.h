@@ -630,8 +630,10 @@ void init_fft(uint16_t size,
   SZ_DEF(65536)                \
   SZ_DEF(98304)
 
-typedef  void(*dftfunc_t)(uint8_t sizeidx,int16_t *sigF,int16_t *sig,unsigned char scale_flag);
+typedef void (*dftfunc_t)(uint8_t sizeidx,int16_t *sigF,int16_t *sig,unsigned char scale_flag);
 typedef void (*idftfunc_t)(uint8_t sizeidx, int16_t *sigF, int16_t *sig, unsigned char scale_flag);
+typedef void (*dfts_start_t)();
+typedef void (*dfts_stop_t)();
 extern dftfunc_t dft;
 extern idftfunc_t idft;
 int load_dftslib(void);

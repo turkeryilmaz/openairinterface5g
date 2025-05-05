@@ -61,6 +61,12 @@ endif()
 ###################################
 include(FindPkgConfig)
 
+# Modules that are required
+# We provide a find script in cmake_targets/tools/MODULES
+# for cmake to find the headers and libraries
+###################################
+set(CMAKE_MODULE_PATH "${OPENAIR_DIR}/cmake_targets/tools/MODULES" "${CMAKE_MODULE_PATH}")
+
 # Check if asn1c is installed, and check if it supports all options we need
 # a user can provide ASN1C_EXEC to override an asn1c to use (e.g., parallel
 # installation)
@@ -790,6 +796,24 @@ set(PHY_NRLDPC_CODINGIF
 )
 
 add_library(dfts MODULE ${OPENAIR1_DIR}/PHY/TOOLS/oai_dfts.c ${OPENAIR1_DIR}/PHY/TOOLS/oai_dfts_neon.c)
+
+##########################################################
+# DFT library - ArmRAN Acceleration Library
+##########################################################
+
+# TODO: Merge ldpc_armral and dfts_armral in one option?
+add_boolean_option(ENABLE_DFTS_ARMRAL OFF "Build support for DFT and iDFT with the Arm RAN Acceleration Library" OFF)
+
+if (ENABLE_DFTS_ARMRAL)
+
+  find_package(armral REQUIRED)
+  add_library(dfts_armral MODULE
+    ${OPENAIR1_DIR}/PHY/TOOLS/oai_dfts_armral.c
+  )
+  set_target_properties(dfts_armral PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+  target_link_libraries(dfts_armral PRIVATE armral)
+
+endif()
 
 add_library(crc_byte OBJECT ${OPENAIR1_DIR}/PHY/CODING/crc_byte.c)
 
@@ -1694,7 +1718,6 @@ include_directories("${NFAPI_DIR}/pnf_sim/inc")
 add_library(oai_iqplayer MODULE
 	${OPENAIR_DIR}/radio/iqplayer/iqplayer_lib.c
 	)
-set(CMAKE_MODULE_PATH "${OPENAIR_DIR}/cmake_targets/tools/MODULES" "${CMAKE_MODULE_PATH}")
 
 #################################
 # add executables for operation
