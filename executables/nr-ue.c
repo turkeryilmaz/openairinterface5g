@@ -1110,8 +1110,8 @@ void *UE_RU_thread(void *arg)
   openair0_timestamp timestamp, writeTimestamp;
   openair0_timestamp timestampSl, writeTimestampSl;
 
-  NR_DL_FRAME_PARMS *fp = &UE->frame_parms;
   uint8_t sl_mode = UE->sl_mode;
+  NR_DL_FRAME_PARMS *fp = sl_mode == 2 ? &UE->SL_UE_PHY_PARAMS.sl_frame_params : &UE->frame_parms;
 
   notifiedFIFO_t txFifo;
   initNotifiedFIFO(&txFifo);

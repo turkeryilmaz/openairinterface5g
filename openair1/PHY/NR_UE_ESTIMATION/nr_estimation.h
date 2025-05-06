@@ -51,6 +51,7 @@ void peak_estimator(int32_t *buffer, int32_t buf_len, int32_t *peak_idx, int32_t
 \param symbol symbol within slot
 */
 void nr_pdcch_channel_estimation(PHY_VARS_NR_UE *ue,
+                                NR_DL_FRAME_PARMS *frame_parms,
                                  UE_nr_rxtx_proc_t *proc,
                                  int pscch_flag,
                                  unsigned char symbol,
@@ -59,9 +60,9 @@ void nr_pdcch_channel_estimation(PHY_VARS_NR_UE *ue,
                                  uint16_t BWPStart,
                                  int32_t pdcch_est_size,
                                  int32_t pdcch_dl_ch_estimates[][pdcch_est_size],
-                                 c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP],
+                                 c16_t rxdataF[][frame_parms->samples_per_slot_wCP],
                                  int16_t* rsrp_dBm,
-                                 nr_link_type_t link_type);
+                                 nr_intf_type_t intf_type);
 
 int nr_pbch_dmrs_correlation(PHY_VARS_NR_UE *ue,
                              UE_nr_rxtx_proc_t *proc,
@@ -148,7 +149,8 @@ void nr_pdsch_ptrs_processing(PHY_VARS_NR_UE *ue,
 float_t get_nr_RSRP(module_id_t Mod_id,uint8_t CC_id,uint8_t gNB_index);
 
 
-void nr_sl_psbch_rsrp_measurements(sl_nr_ue_phy_params_t *sl_phy_params,
+void nr_sl_psbch_rsrp_measurements(PHY_VARS_NR_UE *ue,
+                                   sl_nr_ue_phy_params_t *sl_phy_params,
                                    NR_DL_FRAME_PARMS *fp,
                                    c16_t rxdataF[][fp->samples_per_slot_wCP],
                                    bool use_SSS);

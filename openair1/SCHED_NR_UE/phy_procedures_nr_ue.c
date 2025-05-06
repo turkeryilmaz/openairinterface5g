@@ -282,7 +282,7 @@ void phy_procedures_nrUE_TX(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, n
 
   for (uint8_t harq_pid = 0; harq_pid < NR_MAX_ULSCH_HARQ_PROCESSES; harq_pid++) {
     if (ue->ul_harq_processes[harq_pid].status == ACTIVE) {
-      nr_ue_ulsch_procedures(ue, harq_pid, frame_tx, slot_tx, gNB_id, phy_data, (c16_t **)&txdataF, link_type_ul);
+      nr_ue_ulsch_procedures(ue, harq_pid, frame_tx, slot_tx, gNB_id, phy_data, (c16_t **)&txdataF, UU);
     }
   }
 
@@ -421,13 +421,14 @@ unsigned int nr_get_tx_amp(int power_dBm, int power_max_dBm, int N_RB_UL, int nb
 }
 
 int nr_ue_pdcch_procedures(PHY_VARS_NR_UE *ue,
+                           NR_DL_FRAME_PARMS *frame_parms,
                            UE_nr_rxtx_proc_t *proc,
                            int pscch_flag,
                            int32_t pdcch_est_size,
                            int32_t pdcch_dl_ch_estimates[][pdcch_est_size],
                            nr_phy_data_t *phy_data,
                            int n_ss,
-                           c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP],
+                           c16_t rxdataF[][frame_parms->samples_per_slot_wCP],
                            int16_t *rsrp_dBm)
 {
   int frame_rx = proc->frame_rx;
@@ -449,7 +450,7 @@ int nr_ue_pdcch_procedures(PHY_VARS_NR_UE *ue,
   int16_t pdcch_e_rx[pdcch_e_rx_size];
 
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_RX_PDCCH, VCD_FUNCTION_IN);
-  nr_rx_pdcch(ue, proc, pscch_flag, pdcch_est_size, pdcch_dl_ch_estimates, pdcch_e_rx, rel15, rxdataF);
+  nr_rx_pdcch(ue, frame_parms, proc, pscch_flag, pdcch_est_size, pdcch_dl_ch_estimates, pdcch_e_rx, rel15, rxdataF);
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_RX_PDCCH, VCD_FUNCTION_OUT);
 
 
@@ -1022,6 +1023,7 @@ void pbch_pdcch_processing(PHY_VARS_NR_UE *ue,
       // note: this only works if RBs for PDCCH are contigous!
 
       nr_pdcch_channel_estimation(ue,
+                                  fp,
                                   proc,
                                   0,
                                   l,
@@ -1032,12 +1034,12 @@ void pbch_pdcch_processing(PHY_VARS_NR_UE *ue,
                                   pdcch_dl_ch_estimates,
                                   rxdataF,
                                   NULL,
-                                  link_type_dl);
+                                  UU);
 
       stop_meas(&ue->ofdm_demod_stats);
 
     }
-    dci_cnt = dci_cnt + nr_ue_pdcch_procedures(ue, proc, 0, pdcch_est_size, pdcch_dl_ch_estimates, phy_data, n_ss, rxdataF, NULL);
+    dci_cnt = dci_cnt + nr_ue_pdcch_procedures(ue, fp, proc, 0, pdcch_est_size, pdcch_dl_ch_estimates, phy_data, n_ss, rxdataF, NULL);
   }
   LOG_D(PHY,"[UE %d] Frame %d, nr_slot_rx %d: found %d DCIs\n", ue->Mod_id, frame_rx, nr_slot_rx, dci_cnt);
   phy_pdcch_config->nb_search_space = 0;
@@ -1163,7 +1165,7 @@ void pdsch_processing(PHY_VARS_NR_UE *ue,
         nr_slot_fep(ue, &ue->frame_parms, proc, symb, rxdataF, link_type_dl);
       }
     }
-    nr_ue_csi_rs_procedures(ue, proc, rxdataF, UU);
+    nr_ue_csi_rs_procedures(ue, &ue->frame_parms, proc, rxdataF, UU);
     ue->csirs_vars[gNB_id]->active = 0;
   }
 

@@ -272,7 +272,7 @@ static void sl_nr_extract_sss(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc,
 
 #ifdef SL_DEBUG
 
-  write_output("rxsig0.m","rxs0",&ue->common_vars.rxdata[0][0],ue->frame_parms.samples_per_subframe,1,1);
+  write_output("rxsig0.m","rxs0",&ue->common_vars.rxdata_sl[0][0],ue->frame_parms.samples_per_subframe,1,1);
   write_output("rxdataF0_pss.m","rxF0_pss",&ue->common_vars.rxdataF[0][0],frame_parms->ofdm_symbol_size,1,1);
   write_output("rxdataF0_sss.m","rxF0_sss",&ue->common_vars.rxdataF[0][(SSS_SYMBOL_NB-PSS_SYMBOL_NB)*frame_parms->ofdm_symbol_size],frame_parms->ofdm_symbol_size,1,1);
   write_output("pss_ext.m","pss_ext",pss_ext,LENGTH_PSS_NR,1,1);
@@ -482,12 +482,12 @@ int sl_nr_slss_search(PHY_VARS_NR_UE *UE, UE_nr_rxtx_proc_t *proc, int num_frame
 
           LOG_I(NR_PHY,"%sSLSS SEARCH: FREQ comp of SLSS samples. Freq_OFSET:%d, startpos:%d, end_pos:%d\n",KRED,
                                   sync_params->freq_offset, start, end);
-          for(int n=start; n<end; n++) {
-            for (int ar=0; ar<sl_fp->nb_antennas_rx; ar++) {
-              re = ((double)(((short *)UE->common_vars.rxdata[ar]))[2*n]);
-              im = ((double)(((short *)UE->common_vars.rxdata[ar]))[2*n+1]);
-              ((short *)UE->common_vars.rxdata[ar])[2*n] = (short)(round(re*cos(n*off_angle) - im*sin(n*off_angle)));
-              ((short *)UE->common_vars.rxdata[ar])[2*n+1] = (short)(round(re*sin(n*off_angle) + im*cos(n*off_angle)));
+          for(int n = start; n < end; n++) {
+            for (int ar = 0; ar < sl_fp->nb_antennas_rx; ar++) {
+              re = ((double)(((short *)UE->common_vars.rxdata_sl[ar]))[2*n]);
+              im = ((double)(((short *)UE->common_vars.rxdata_sl[ar]))[2*n+1]);
+              ((short *)UE->common_vars.rxdata_sl[ar])[2 * n] = (short)(round(re * cos(n * off_angle) - im * sin(n * off_angle)));
+              ((short *)UE->common_vars.rxdata_sl[ar])[2 * n + 1] = (short)(round(re * sin(n * off_angle) + im * cos(n * off_angle)));
             }
           }
         }
@@ -562,7 +562,7 @@ int sl_nr_slss_search(PHY_VARS_NR_UE *UE, UE_nr_rxtx_proc_t *proc, int num_frame
           LOG_I(NR_PHY, "%sUE[%d]SIDELINK SLSS SEARCH: SL-MIB: DFN:%d, slot:%d.\n",KRED,
                                           UE->Mod_id, sync_params->DFN, sync_params->slot_offset);
 
-          nr_sl_psbch_rsrp_measurements(sl_ue,frame_parms,rxdataF, false);
+          nr_sl_psbch_rsrp_measurements(UE, sl_ue, frame_parms, rxdataF, false);
 
           UE->init_sync_frame = sync_params->remaining_frames;
           UE->rx_offset = sync_params->rx_offset;

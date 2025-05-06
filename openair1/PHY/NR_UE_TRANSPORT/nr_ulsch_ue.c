@@ -166,7 +166,7 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
                             const int gNB_id,
                             nr_phy_data_tx_t *phy_data,
                             c16_t **txdataF,
-                            nr_link_type_t link_type)
+                            nr_intf_type_t intf_type)
 {
   LOG_D(PHY,"nr_ue_ulsch_procedures hard_id %d %d.%d\n", harq_pid, frame, slot);
 
@@ -178,7 +178,7 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
 
   const nfapi_nr_ue_pusch_pdu_t *pusch_pdu = &phy_data->ulsch.pusch_pdu;
   const sl_nr_tx_config_pscch_pssch_pdu_t *pscch_pssch_pdu = &phy_data->nr_sl_pssch_pscch_pdu;
-  bool is_pc5 = link_type == link_type_pc5;
+  bool is_pc5 = intf_type == PC5;
   if (is_pc5)
     AssertFatal(pscch_pssch_pdu != NULL, "pscch_pssch_pdu %p is not properly defined for the SL mode 2 PC5 link\n", &pscch_pssch_pdu);
   if (!is_pc5)
@@ -579,7 +579,7 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
         if (is_csi_rs_sym) {
           if ((k >= csi_params->start_rb * NR_NB_SC_PER_RB) && (i % NR_NB_SC_PER_RB == 0) && (csi_rs_rb < csi_params->nr_of_rbs)) {
             csi_rs_params_t table_params;
-            get_csi_rs_params_from_table(csi_params, &table_params);
+            get_csi_rs_params_from_table(csi_params, &table_params, intf_type);
             port_freq_indices_t *port_freq_indices = (port_freq_indices_t *)malloc(table_params.ports*sizeof(port_freq_indices));
             get_csi_rs_freq_ind_sl(frame_parms, csi_rs_rb, csi_params, &table_params, port_freq_indices);
             if (k == port_freq_indices[nl].k) {

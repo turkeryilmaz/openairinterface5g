@@ -671,15 +671,14 @@ void nr_pdcch_detection_mrc(NR_DL_FRAME_PARMS *frame_parms,
 }
 
 int32_t nr_rx_pdcch(PHY_VARS_NR_UE *ue,
+                    NR_DL_FRAME_PARMS *frame_parms,
                     UE_nr_rxtx_proc_t *proc,
                     int pscch_flag,
                     int32_t pdcch_est_size,
                     int32_t pdcch_dl_ch_estimates[][pdcch_est_size],
                     int16_t *pdcch_e_rx,
                     fapi_nr_dl_config_dci_dl_pdu_rel15_t *rel15,
-                    c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP]) {
-
-  NR_DL_FRAME_PARMS *frame_parms = &ue->frame_parms;
+                    c16_t rxdataF[][frame_parms->samples_per_slot_wCP]) {
 
   uint8_t log2_maxh, aarx;
   int32_t avgs;
@@ -709,7 +708,7 @@ int32_t nr_rx_pdcch(PHY_VARS_NR_UE *ue,
   for (int s=rel15->coreset.StartSymbolIndex; s<(rel15->coreset.StartSymbolIndex+rel15->coreset.duration); s++) {
     LOG_D(NR_PHY,"in nr_pdcch_extract_rbs_single(rxdataF -> rxdataF_ext || dl_ch_estimates -> dl_ch_estimates_ext)\n");
 
-    nr_pdcch_extract_rbs_single(ue->frame_parms.samples_per_slot_wCP,
+    nr_pdcch_extract_rbs_single(frame_parms->samples_per_slot_wCP,
                                 rxdataF,
                                 pdcch_est_size,
                                 pdcch_dl_ch_estimates,

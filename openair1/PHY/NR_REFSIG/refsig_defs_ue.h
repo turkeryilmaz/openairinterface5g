@@ -102,5 +102,6 @@ void get_csi_rs_freq_ind_sl(const NR_DL_FRAME_PARMS* frame_parms,
                             port_freq_indices_t* port_freq_indices);
 
 void get_csi_rs_params_from_table(const nfapi_nr_dl_tti_csi_rs_pdu_rel15_t *csi_params,
-                                  csi_rs_params_t* table_params);
+                                  csi_rs_params_t* table_params,
+                                  nr_intf_type_t intf_type);
 #endif
