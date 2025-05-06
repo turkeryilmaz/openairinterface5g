@@ -95,8 +95,6 @@
 #define MAX_NUM_BWP 5
 #define MAX_NUM_CORESET 12
 #define MAX_NUM_CCE 90
-/*!\brief Maximum number of random access process */
-#define NR_NB_RA_PROC_MAX 4
 #define MAX_NUM_OF_SSB 64
 #define MAX_NUM_NR_PRACH_PREAMBLES 64
 
@@ -769,7 +767,7 @@ typedef struct {
   // last element always NULL
   pthread_mutex_t mutex;
   NR_UE_info_t *connected_ue_list[MAX_MOBILES_PER_GNB + 1];
-  NR_UE_info_t *access_ue_list[NR_NB_RA_PROC_MAX + 1];
+  seq_arr_t access_ue_list;
   // bitmap of CSI-RS already scheduled in current slot
   int sched_csirs;
   uid_allocator_t uid_allocator;
@@ -791,6 +789,8 @@ typedef struct {
 } NR_beam_info_t;
 
 #define UE_iterator(BaSe, VaR) NR_UE_info_t ** VaR##pptr=BaSe, *VaR; while ((VaR=*(VaR##pptr++)))
+#define UE_arr_iterator(arr, it_var) \
+  for (NR_UE_info_t* it_var = seq_arr_front(arr); it_var != seq_arr_end(arr); it_var = seq_arr_next(arr, it_var))
 
 typedef struct {
   /// current frame for DCI

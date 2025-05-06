@@ -2192,6 +2192,13 @@ void remove_front_nr_list(NR_list_t *listP)
     listP->tail = -1;
 }
 
+// Comparison function to check for UE with RNTI
+static bool is_rnti(const void* element, const void* rnti) {
+  const NR_UE_info_t* current_element = (const NR_UE_info_t*)element;
+  const rnti_t* target_rnti = (const rnti_t*)rnti;
+  return current_element->rnti == *target_rnti;
+}
+
 NR_UE_info_t *find_nr_UE(NR_UEs_t *UEs, rnti_t rntiP)
 {
   UE_iterator(UEs->connected_ue_list, UE) {
@@ -2203,15 +2210,10 @@ NR_UE_info_t *find_nr_UE(NR_UEs_t *UEs, rnti_t rntiP)
   return NULL;
 }
 
-NR_UE_info_t *find_ra_UE(NR_UEs_t *UEs, rnti_t rntiP)
+NR_UE_info_t *find_ra_UE(NR_UEs_t *UEs, rnti_t rnti)
 {
-  UE_iterator(UEs->access_ue_list, UE) {
-    if (UE->rnti == rntiP) {
-      LOG_D(NR_MAC,"Search and found rnti: %04x\n", rntiP);
-      return UE;
-    }
-  }
-  return NULL;
+  elm_arr_t elm = find_if(&UEs->access_ue_list, &rnti, is_rnti);
+  return elm.found ? elm.it : NULL;
 }
 
 void delete_nr_ue_data(NR_UE_info_t *UE, NR_COMMON_channels_t *ccPtr, uid_allocator_t *uia)
@@ -2742,11 +2744,8 @@ NR_UE_info_t *remove_UE_from_list(int list_size, NR_UE_info_t *list[list_size], 
 bool transition_ra_connected_nr_ue(gNB_MAC_INST *nr_mac, NR_UE_info_t *UE)
 {
   NR_UEs_t *UE_info = &nr_mac->UE_info;
-
   // remove UE from initial access list (moved to connected mode)
-  NR_UE_info_t *r = remove_UE_from_list(NR_NB_RA_PROC_MAX, UE_info->access_ue_list, UE->rnti);
-  DevAssert(r == UE); /* sanity check: we should have removed the current UE ptr from list */
-
+  seq_arr_erase(&UE_info->access_ue_list, UE);
   free_and_zero(UE->ra);
 
   return add_connected_nr_ue(nr_mac, UE);

@@ -629,7 +629,7 @@ int nr_fill_successrar(const NR_UE_sched_ctrl_t *ue_sched_ctl,
 /** @brief find UE with RA process for given preamble */
 static NR_UE_info_t *get_existing_ra(gNB_MAC_INST *nr_mac, uint16_t preamble_index)
 {
-  UE_iterator(nr_mac->UE_info.access_ue_list, UE) {
+  UE_arr_iterator(&nr_mac->UE_info.access_ue_list, UE) {
     NR_RA_t *ra = UE->ra;
     for (int i = 0; i < ra->preambles.num_preambles; ++i) {
       if (ra->preambles.preamble_list[i] == preamble_index)
@@ -642,10 +642,14 @@ static NR_UE_info_t *get_existing_ra(gNB_MAC_INST *nr_mac, uint16_t preamble_ind
 /** @brief add UE to list of UEs doing RA.
  *
  * Remove with nr_release_ra_UE(). */
+#define MAX_UE_RA 10
 bool add_new_UE_RA(gNB_MAC_INST *nr_mac, NR_UE_info_t *UE)
 {
+  if (seq_arr_size(&nr_mac->UE_info.access_ue_list) == MAX_UE_RA)
+    return false;
   DevAssert(UE->ra); // a UE in the acess_ue_list needs to have an RA process
-  return add_UE_to_list(NR_NB_RA_PROC_MAX, nr_mac->UE_info.access_ue_list, UE);
+  seq_arr_push_back(&nr_mac->UE_info.access_ue_list, UE, sizeof(NR_UE_info_t));
+  return true;
 }
 
 static uint8_t nr_get_msg3_tpc(uint32_t preamble_power)
@@ -703,7 +707,9 @@ void nr_initiate_ra_proc(module_id_t module_idP,
     return;
   }
 
+  bool new_UE = false;
   if (!UE) {
+    new_UE = true;
     /* in CBRA: we don't know this UE yet. There might be CFRA (e.g., HO IN SA)
      * where we know the UE */
     rnti_t rnti;
@@ -715,12 +721,6 @@ void nr_initiate_ra_proc(module_id_t module_idP,
     }
 
     UE = get_new_nr_ue_inst(&nr_mac->UE_info.uid_allocator, rnti, NULL);
-    if (!add_new_UE_RA(nr_mac, UE)) {
-      LOG_E(NR_MAC, "FAILURE: %4d.%2d initiating RA procedure for preamble index %d: no free RA process\n", frame, slot, preamble_index);
-      delete_nr_ue_data(UE, NULL, &nr_mac->UE_info.uid_allocator);
-      NR_SCHED_UNLOCK(&nr_mac->sched_lock);
-      return;
-    }
   }
 
   NR_RA_t *ra = UE->ra;
@@ -758,6 +758,12 @@ void nr_initiate_ra_proc(module_id_t module_idP,
   int n_ssb = ssb_index_from_prach(module_idP, frame, slot, preamble_index, freq_index, symbol);
   UE->UE_beam_index = get_fapi_beamforming_index(nr_mac, cc->ssb_index[n_ssb]);
 
+  if (new_UE) {
+    if (!add_new_UE_RA(nr_mac, UE)) {
+      LOG_E(NR_MAC, "FAILURE: %4d.%2d initiating RA procedure for preamble index %d: no free RA process\n", frame, slot, preamble_index);
+      delete_nr_ue_data(UE, NULL, &nr_mac->UE_info.uid_allocator);
+    }
+  }
   NR_SCHED_UNLOCK(&nr_mac->sched_lock);
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_INITIATE_RA_PROC, 0);
 }
@@ -2113,13 +2119,14 @@ void nr_release_ra_UE(gNB_MAC_INST *mac, rnti_t rnti)
 {
   NR_UEs_t *UE_info = &mac->UE_info;
   NR_SCHED_LOCK(&UE_info->mutex);
-  NR_UE_info_t *UE = remove_UE_from_list(NR_NB_RA_PROC_MAX, UE_info->access_ue_list, rnti);
-  NR_SCHED_UNLOCK(&UE_info->mutex);
+  NR_UE_info_t *UE = find_ra_UE(&mac->UE_info, rnti);
   if (UE) {
+    seq_arr_erase(&mac->UE_info.access_ue_list, UE);
     delete_nr_ue_data(UE, mac->common_channels, &UE_info->uid_allocator);
   } else {
     LOG_W(NR_MAC,"Call to release RA UE with rnti %04x, but not existing\n", rnti);
   }
+  NR_SCHED_UNLOCK(&UE_info->mutex);
 }
 
 void nr_schedule_RA(module_id_t module_idP,
@@ -2135,7 +2142,7 @@ void nr_schedule_RA(module_id_t module_idP,
 
   start_meas(&mac->schedule_ra);
   for (int CC_id = 0; CC_id < MAX_NUM_CCs; CC_id++) {
-    UE_iterator(mac->UE_info.access_ue_list, UE) {
+    UE_arr_iterator(&mac->UE_info.access_ue_list, UE) {
       NR_RA_t *ra = UE->ra;
       if (ra->ra_state != nrRA_gNB_IDLE)
         LOG_D(NR_MAC, "UE %04x frame.slot %d.%d RA state: %d\n", UE->rnti, frameP, slotP, ra->ra_state);

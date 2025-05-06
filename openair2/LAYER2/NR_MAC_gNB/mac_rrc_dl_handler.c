@@ -595,12 +595,12 @@ static NR_UE_info_t *create_new_UE(gNB_MAC_INST *mac, uint32_t cu_id, const NR_C
     bool res = add_connected_nr_ue(mac, UE);
     DevAssert(res);
   } else {
+    nr_mac_prepare_ra_ue(mac, UE);
     if (!add_new_UE_RA(mac, UE)) {
       delete_nr_ue_data(UE, /*not used*/ NULL, &mac->UE_info.uid_allocator);
       LOG_E(NR_MAC, "UE list full while creating new UE\n");
       return NULL;
     }
-    nr_mac_prepare_ra_ue(mac, UE);
 
     if (is_SA) {
       /* SRB1 is added to RLC and MAC in the handler later */
