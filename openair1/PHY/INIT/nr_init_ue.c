@@ -705,7 +705,7 @@ void init_N_TA_offset(PHY_VARS_NR_UE *ue){
 }
 
 void phy_init_nr_top(PHY_VARS_NR_UE *ue) {
-  NR_DL_FRAME_PARMS *frame_parms = &ue->frame_parms;
+  NR_DL_FRAME_PARMS *frame_parms = ue->sl_mode == 2 ? &ue->SL_UE_PHY_PARAMS.sl_frame_params : &ue->frame_parms;
   crcTableInit();
   init_scrambling_luts();
   load_dftslib();

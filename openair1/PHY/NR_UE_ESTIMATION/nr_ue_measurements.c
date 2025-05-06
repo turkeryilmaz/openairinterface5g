@@ -315,7 +315,8 @@ void nr_ue_rrc_measurements(PHY_VARS_NR_UE *ue,
 }
 
 //PSBCH RSRP calculations according to 38.215 section 5.1.22
-void nr_sl_psbch_rsrp_measurements(sl_nr_ue_phy_params_t *sl_phy_params,
+void nr_sl_psbch_rsrp_measurements(PHY_VARS_NR_UE *ue,
+                                   sl_nr_ue_phy_params_t *sl_phy_params,
                                    NR_DL_FRAME_PARMS *fp,
                                    c16_t rxdataF[][fp->samples_per_slot_wCP],
                                    bool use_SSS)
@@ -358,7 +359,7 @@ void nr_sl_psbch_rsrp_measurements(sl_nr_ue_phy_params_t *sl_phy_params,
   psbch_rx->rsrp_dB_per_RE = 10*log10(rsrp / num_re);
   psbch_rx->rsrp_dBm_per_RE = psbch_rx->rsrp_dB_per_RE +
                               30 - 10*log10(pow(2,30)) -
-                              ((int)openair0_cfg[0].rx_gain[0] - (int)openair0_cfg[0].rx_gain_offset[0]) -
+                              ((int)openair0_cfg[ue->rf_map_sl.card].rx_gain[0] - (int)openair0_cfg[ue->rf_map_sl.card].rx_gain_offset[0]) -
                               dB_fixed(fp->ofdm_symbol_size);
 
 

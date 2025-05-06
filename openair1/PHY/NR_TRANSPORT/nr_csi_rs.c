@@ -95,14 +95,15 @@ void get_csi_rs_freq_ind_sl(const NR_DL_FRAME_PARMS *frame_parms,
 }
 
 void get_csi_rs_params_from_table(const nfapi_nr_dl_tti_csi_rs_pdu_rel15_t *csi_params,
-                                  csi_rs_params_t* table_params) {
+                                  csi_rs_params_t* table_params,
+                                  nr_intf_type_t intf_type) {
   uint16_t b = csi_params->freq_domain;
   uint8_t size, ports, kprime, lprime, i;
   uint8_t j[16], k_n[6], koverline[16], loverline[16];
   int found = 0;
   uint8_t fi = 0;
   double rho, alpha;
-  if (get_softmodem_params()->sl_mode) {
+  if (intf_type == PC5) {
     AssertFatal(csi_params->row == 2 || csi_params->row == 3, "Row value can be only 2 or 3");
   }
   switch (csi_params->row) {
@@ -479,7 +480,7 @@ void get_csi_rs_params_from_table(const nfapi_nr_dl_tti_csi_rs_pdu_rel15_t *csi_
       break;
 
     case 1:
-      rho = get_softmodem_params()->sl_mode ? 1 : 0.5;
+      rho = intf_type == PC5 ? 1 : 0.5;
       break;
 
     case 2:
@@ -589,7 +590,7 @@ void nr_generate_csi_rs(const NR_DL_FRAME_PARMS *frame_parms,
     nr_init_csi_rs(frame_parms, nr_csi_info->nr_gold_csi_rs, csi_params->scramb_id);
   }
   csi_rs_params_t table_params;
-  get_csi_rs_params_from_table(csi_params, &table_params);
+  get_csi_rs_params_from_table(csi_params, &table_params, intf_type);
   memcpy(j, table_params.j, sizeof(table_params.j));
   memcpy(k_n, table_params.k_n, sizeof(table_params.k_n));
   memcpy(koverline, table_params.koverline, sizeof(table_params.koverline));
@@ -677,7 +678,7 @@ void nr_generate_csi_rs(const NR_DL_FRAME_PARMS *frame_parms,
 
   // resource mapping according to 38.211 7.4.1.5.3
   for (n=csi_params->start_rb; n<(csi_params->start_rb+csi_params->nr_of_rbs); n++) {
-   if ( (csi_params->freq_density > 1) || (get_softmodem_params()->sl_mode ? csi_params->freq_density : (csi_params->freq_density == (n%2)))) {  // for freq density 0.5 checks if even or odd RB
+   if ( (csi_params->freq_density > 1) || (intf_type == PC5 ? csi_params->freq_density : (csi_params->freq_density == (n%2)))) {  // for freq density 0.5 checks if even or odd RB
     for (int ji=0; ji<size; ji++) { // loop over CDM groups
       for (int s=0 ; s<table_params.gs; s++)  { // loop over each CDM group size
         p = s+j[ji]*table_params.gs; // port index

@@ -315,7 +315,7 @@ void psbch_pscch_pssch_processing(PHY_VARS_NR_UE *ue,
       sym = (sym == 0) ? 5 : sym + 1;
     }
 
-    nr_sl_psbch_rsrp_measurements(sl_phy_params,fp, rxdataF,false);
+    nr_sl_psbch_rsrp_measurements(ue, sl_phy_params,fp, rxdataF, false);
 
     LOG_D(PHY," ------  Decode SL-MIB: frame.slot %d.%d ------  \n",
                                                   frame_rx%1024, nr_slot_rx);
@@ -391,6 +391,7 @@ void psbch_pscch_pssch_processing(PHY_VARS_NR_UE *ue,
                   rxdataF,
                   link_type_pc5);
       nr_pdcch_channel_estimation(ue,
+                                  fp,
                                   proc,
                                   1,
                                   1+sym,
@@ -401,10 +402,10 @@ void psbch_pscch_pssch_processing(PHY_VARS_NR_UE *ue,
                                   pscch_dl_ch_estimates,
                                   rxdataF,
                                   &rsrp_dBm,
-                                  link_type_pc5);
+                                  PC5);
     }
 
-    nr_ue_pdcch_procedures(ue, proc, 1, pscch_est_size, pscch_dl_ch_estimates, phy_data, 0, rxdataF, &rsrp_dBm);
+    nr_ue_pdcch_procedures(ue, fp, proc, 1, pscch_est_size, pscch_dl_ch_estimates, phy_data, 0, rxdataF, &rsrp_dBm);
     LOG_D(NR_PHY,"returned from nr_ue_pdcch_procedures\n");
   }
 
@@ -456,6 +457,7 @@ void psbch_pscch_pssch_processing(PHY_VARS_NR_UE *ue,
 
     nr_rx_pusch(NULL,
                 ue,
+                fp,
                 proc,
                 phy_data,
                 rxdataF_sz,
@@ -464,7 +466,7 @@ void psbch_pscch_pssch_processing(PHY_VARS_NR_UE *ue,
                 frame_rx,
                 nr_slot_rx,
                 get_nrUE_params()->nb_antennas_tx,
-                link_type_pc5,
+                PC5,
                 nr_ue_csi_rs_procedures,
                 0,
                 &is_csi_rs_slot);
@@ -588,7 +590,7 @@ bool phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue,
     csi_params->scramb_id = phy_data->pscch_Nid % (1 << 10);
     for (uint8_t harq_pid = 0; harq_pid < NR_MAX_ULSCH_HARQ_PROCESSES; harq_pid++) {
       if (ue->sl_harq_processes[harq_pid].status == ACTIVE) {
-        nr_ue_ulsch_procedures(ue, harq_pid, frame_tx, slot_tx, 0, phy_data, txdataF, link_type_pc5);
+        nr_ue_ulsch_procedures(ue, harq_pid, frame_tx, slot_tx, 0, phy_data, txdataF, PC5);
       }
     }
 

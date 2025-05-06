@@ -181,6 +181,7 @@ bool is_csi_rs_in_symbol(const fapi_nr_dl_config_csirs_pdu_rel15_t csirs_config_
 }
 
 int nr_get_csi_rs_signal(const PHY_VARS_NR_UE *ue,
+                         const NR_DL_FRAME_PARMS *frame_parms,
                          const UE_nr_rxtx_proc_t *proc,
                          const fapi_nr_dl_config_csirs_pdu_rel15_t *csirs_config_pdu,
                          const nr_csi_info_t *nr_csi_info,
@@ -191,13 +192,12 @@ int nr_get_csi_rs_signal(const PHY_VARS_NR_UE *ue,
                          const uint8_t *j_cdm,
                          const uint8_t *k_overline,
                          const uint8_t *l_overline,
-                         int32_t csi_rs_received_signal[][ue->frame_parms.samples_per_slot_wCP],
+                         int32_t csi_rs_received_signal[][frame_parms->samples_per_slot_wCP],
                          uint32_t *rsrp,
                          int *rsrp_dBm,
-                         c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP],
+                         c16_t rxdataF[][frame_parms->samples_per_slot_wCP],
                          nr_intf_type_t intf_type) {
 
-  const NR_DL_FRAME_PARMS *frame_parms = &ue->frame_parms;
   uint16_t meas_count = 0;
   uint32_t rsrp_sum = 0;
 
@@ -233,7 +233,7 @@ int nr_get_csi_rs_signal(const PHY_VARS_NR_UE *ue,
               meas_count++;
               LOG_D(NR_PHY, "RX CSI-RS symbol_offset %li k %i symbol_offset+k=%li\n", symbol_offset, k, symbol_offset+k);
 #ifdef NR_CSIRS_DEBUG
-              int dataF_offset = get_softmodem_params()->sl_mode == 2 ? 0 : proc->nr_slot_rx * ue->frame_parms.samples_per_slot_wCP;
+              int dataF_offset = intf_type == PC5 ? 0 : proc->nr_slot_rx * frame_parms->samples_per_slot_wCP;
               uint16_t port_tx = s+j_cdm[cdm_id]*CDM_group_size;
               c16_t *tx_csi_rs_signal = (c16_t*)&nr_csi_info->csi_rs_generated_signal[port_tx][symbol_offset+dataF_offset];
               LOG_I(NR_PHY, "l,k (%2d,%4d) |\tport_tx %d (%4d,%4d)\tant_rx %d (%4d,%4d)\n",
@@ -255,9 +255,10 @@ int nr_get_csi_rs_signal(const PHY_VARS_NR_UE *ue,
 
 
   AssertFatal(meas_count != 0, "Expecting meas_count > 0, but meas_count = 0\n");
+  int card = intf_type == PC5 ? ue->rf_map_sl.card : ue->rf_map.card;
   *rsrp = rsrp_sum/meas_count;
   *rsrp_dBm = dB_fixed(*rsrp) + 30 - pow_2_30_dB
-      - ((int)openair0_cfg[0].rx_gain[0] - (int)openair0_cfg[0].rx_gain_offset[0]) - dB_fixed(ue->frame_parms.ofdm_symbol_size);
+      - ((int)openair0_cfg[card].rx_gain[0] - (int)openair0_cfg[card].rx_gain_offset[0]) - dB_fixed(frame_parms->ofdm_symbol_size);
 
 #ifdef NR_CSIRS_DEBUG
   LOG_I(NR_PHY, "RSRP = %i (%i dBm)\n", *rsrp, *rsrp_dBm);
@@ -283,11 +284,12 @@ uint32_t calc_power_csirs(const uint16_t *x, const fapi_nr_dl_config_csirs_pdu_r
 }
 
 int nr_csi_rs_channel_estimation(const PHY_VARS_NR_UE *ue,
+                                 const NR_DL_FRAME_PARMS *frame_parms,
                                  const UE_nr_rxtx_proc_t *proc,
                                  const fapi_nr_dl_config_csirs_pdu_rel15_t *csirs_config_pdu,
                                  const nr_csi_info_t *nr_csi_info,
                                  const int32_t **csi_rs_generated_signal,
-                                 const int32_t csi_rs_received_signal[][ue->frame_parms.samples_per_slot_wCP],
+                                 const int32_t csi_rs_received_signal[][frame_parms->samples_per_slot_wCP],
                                  const uint8_t N_cdm_groups,
                                  const uint8_t CDM_group_size,
                                  const uint8_t k_prime,
@@ -297,14 +299,13 @@ int nr_csi_rs_channel_estimation(const PHY_VARS_NR_UE *ue,
                                  const uint8_t *k_overline,
                                  const uint8_t *l_overline,
                                  uint8_t mem_offset,
-                                 int32_t csi_rs_ls_estimated_channel[][N_ports][ue->frame_parms.ofdm_symbol_size],
-                                 int32_t csi_rs_estimated_channel_freq[][N_ports][ue->frame_parms.ofdm_symbol_size + FILTER_MARGIN],
+                                 int32_t csi_rs_ls_estimated_channel[][N_ports][frame_parms->ofdm_symbol_size],
+                                 int32_t csi_rs_estimated_channel_freq[][N_ports][frame_parms->ofdm_symbol_size + FILTER_MARGIN],
                                  int16_t *log2_re,
                                  int16_t *log2_maxh,
                                  uint32_t *noise_power,
                                  nr_intf_type_t intf_type) {
-  const NR_DL_FRAME_PARMS *frame_parms = &ue->frame_parms;
-  const int dataF_offset = get_softmodem_params()->sl_mode == 2 ? 0 : proc->nr_slot_rx * ue->frame_parms.samples_per_slot_wCP;
+  const int dataF_offset = intf_type == PC5 ? 0 : proc->nr_slot_rx * frame_parms->samples_per_slot_wCP;
   *noise_power = 0;
   int maxh = 0;
   int count = 0;
@@ -320,7 +321,7 @@ int nr_csi_rs_channel_estimation(const PHY_VARS_NR_UE *ue,
     for (int rb = csirs_config_pdu->start_rb; rb < (csirs_config_pdu->start_rb+csirs_config_pdu->nr_of_rbs); rb++) {
 
       // for freq density 0.5 checks if even or odd RB
-      if(csirs_config_pdu->freq_density <= 1 && get_softmodem_params()->sl_mode ? 0 : csirs_config_pdu->freq_density != (rb % 2)) {
+      if(csirs_config_pdu->freq_density <= 1 && intf_type == PC5 ? 0 : csirs_config_pdu->freq_density != (rb % 2)) {
         continue;
       }
 
@@ -466,24 +467,24 @@ int nr_csi_rs_channel_estimation(const PHY_VARS_NR_UE *ue,
 }
 
 int nr_csi_rs_ri_estimation(const PHY_VARS_NR_UE *ue,
+                            const NR_DL_FRAME_PARMS *frame_parms,
                             const fapi_nr_dl_config_csirs_pdu_rel15_t *csirs_config_pdu,
                             const nr_csi_info_t *nr_csi_info,
                             const uint8_t N_ports,
                             uint8_t mem_offset,
-                            int32_t csi_rs_estimated_channel_freq[][N_ports][ue->frame_parms.ofdm_symbol_size + FILTER_MARGIN],
+                            int32_t csi_rs_estimated_channel_freq[][N_ports][frame_parms->ofdm_symbol_size + FILTER_MARGIN],
                             const int16_t log2_maxh,
                             uint8_t *rank_indicator) {
 
-  const NR_DL_FRAME_PARMS *frame_parms = &ue->frame_parms;
   const int16_t cond_dB_threshold = 5;
   int count = 0;
   *rank_indicator = 0;
 
-  if (ue->frame_parms.nb_antennas_rx == 1 || N_ports == 1) {
+  if (frame_parms->nb_antennas_rx == 1 || N_ports == 1) {
     return 0;
-  } else if( !(ue->frame_parms.nb_antennas_rx == 2 && N_ports == 2) ) {
+  } else if (!(frame_parms->nb_antennas_rx == 2 && N_ports == 2)) {
     LOG_W(NR_PHY, "Rank indicator computation is not implemented for %i x %i system\n",
-          ue->frame_parms.nb_antennas_rx, N_ports);
+          frame_parms->nb_antennas_rx, N_ports);
     return -1;
   }
 
@@ -598,11 +599,12 @@ int nr_csi_rs_ri_estimation(const PHY_VARS_NR_UE *ue,
 }
 
 int nr_csi_rs_pmi_estimation(const PHY_VARS_NR_UE *ue,
+                             const NR_DL_FRAME_PARMS *frame_parms,
                              const fapi_nr_dl_config_csirs_pdu_rel15_t *csirs_config_pdu,
                              const nr_csi_info_t *nr_csi_info,
                              const uint8_t N_ports,
                              uint8_t mem_offset,
-                             const int32_t csi_rs_estimated_channel_freq[][N_ports][ue->frame_parms.ofdm_symbol_size + FILTER_MARGIN],
+                             const int32_t csi_rs_estimated_channel_freq[][N_ports][frame_parms->ofdm_symbol_size + FILTER_MARGIN],
                              const uint32_t interference_plus_noise_power,
                              const uint8_t rank_indicator,
                              const int16_t log2_re,
@@ -611,7 +613,6 @@ int nr_csi_rs_pmi_estimation(const PHY_VARS_NR_UE *ue,
                              uint32_t *precoded_sinr_dB,
                              nr_intf_type_t intf_type) {
 
-  const NR_DL_FRAME_PARMS *frame_parms = intf_type == UU ? &ue->frame_parms : &ue->SL_UE_PHY_PARAMS.sl_frame_params;
   memset(i1, 0, 3 * sizeof(uint8_t));
   i2[0] = 0;
 
@@ -702,16 +703,15 @@ int nr_csi_rs_pmi_estimation(const PHY_VARS_NR_UE *ue,
 }
 
 int nr_csi_rs_sinr_estimation(const PHY_VARS_NR_UE *ue,
+                              const NR_DL_FRAME_PARMS *frame_parms,
                               const fapi_nr_dl_config_csirs_pdu_rel15_t *csirs_config_pdu,
                               const uint8_t N_ports,
                               uint8_t mem_offset,
-                              const int32_t csi_rs_estimated_channel_freq[][N_ports][ue->frame_parms.ofdm_symbol_size + FILTER_MARGIN],
+                              const int32_t csi_rs_estimated_channel_freq[][N_ports][frame_parms->ofdm_symbol_size + FILTER_MARGIN],
                               const uint32_t interference_plus_noise_power,
                               const int16_t log2_re,
                               int32_t *precoded_sinr_dB,
                               nr_intf_type_t intf_type) {
-
-  const NR_DL_FRAME_PARMS *frame_parms = intf_type == UU ? &ue->frame_parms : &ue->SL_UE_PHY_PARAMS.sl_frame_params;
 
   if (interference_plus_noise_power == 0) {
     *precoded_sinr_dB = 0;
@@ -926,7 +926,7 @@ int nr_ue_csi_im_procedures(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, c16_t r
   return 0;
 }
 
-void nr_ue_csi_rs_procedures(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP], nr_intf_type_t intf_type)
+void nr_ue_csi_rs_procedures(PHY_VARS_NR_UE *ue, NR_DL_FRAME_PARMS *frame_parms, UE_nr_rxtx_proc_t *proc, c16_t rxdataF[][frame_parms->samples_per_slot_wCP], nr_intf_type_t intf_type)
 {
   // TODO: check the id whether it is working for multiple UEs
   int id = intf_type == PC5 ? ue->Mod_id : proc->gNB_id;
@@ -958,7 +958,6 @@ void nr_ue_csi_rs_procedures(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, c16_t 
     return;
   }
 
-  const NR_DL_FRAME_PARMS *frame_parms = intf_type == UU ? &ue->frame_parms : &ue->SL_UE_PHY_PARAMS.sl_frame_params;
   int32_t csi_rs_received_signal[frame_parms->nb_antennas_rx][frame_parms->samples_per_slot_wCP];
   uint8_t N_cdm_groups = 0;
   uint8_t CDM_group_size = 0;
@@ -1012,6 +1011,7 @@ void nr_ue_csi_rs_procedures(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, c16_t 
   uint8_t mem_offset = (((32 - ((long)&csi_rs_estimated_channel_freq[0][0][frame_parms->first_carrier_offset])) & 0x1F) >> 2);
 
   nr_get_csi_rs_signal(ue,
+                       frame_parms,
                        proc,
                        csirs_config_pdu,
                        ue->nr_csi_info,
@@ -1032,6 +1032,7 @@ void nr_ue_csi_rs_procedures(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, c16_t 
   // if we need to measure only RSRP no need to do channel estimation
   if (csirs_config_pdu->measurement_bitmap > 1)
     nr_csi_rs_channel_estimation(ue,
+                                 frame_parms,
                                  proc,
                                  csirs_config_pdu,
                                  ue->nr_csi_info,
@@ -1056,6 +1057,7 @@ void nr_ue_csi_rs_procedures(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, c16_t 
   // bit 1 in bitmap to indicate RI measurment
   if (csirs_config_pdu->measurement_bitmap & 2) {
     nr_csi_rs_ri_estimation(ue,
+                            frame_parms,
                             csirs_config_pdu,
                             ue->nr_csi_info,
                             N_ports,
@@ -1070,6 +1072,7 @@ void nr_ue_csi_rs_procedures(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, c16_t 
     // Sidelink mode 2 considers only one port (for now), in case of N_ports = 2, we need to revisit
     if (N_ports >= 2)
       nr_csi_rs_pmi_estimation(ue,
+                              frame_parms,
                               csirs_config_pdu,
                               ue->nr_csi_info,
                               N_ports,
@@ -1084,6 +1087,7 @@ void nr_ue_csi_rs_procedures(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, c16_t 
                               intf_type);
     else
       nr_csi_rs_sinr_estimation(ue,
+                                frame_parms,
                                 csirs_config_pdu,
                                 N_ports,
                                 mem_offset,
