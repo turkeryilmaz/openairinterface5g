@@ -45,19 +45,6 @@
 //#define DEBUG_LDPC_ENCODING_FREE 1
 
 /**
- * \brief determine the value of E for the current segment
- * \param E number of bits per segment in f
- * \param E2 number of bits per segment in f2
- * \param Eshift flag indicating if there was a E shift within the segment group
- * \param segment index of the segment
- * \param E2_first_segment index of the first segment of size E2 if there is a E shift in the segment group
- */
-static inline uint32_t select_E(uint32_t E, uint32_t E2, bool Eshift, uint32_t segment, uint32_t E2_first_segment)
-{
-  return (Eshift && (segment >= E2_first_segment)) ? E2 : E;
-}
-
-/**
  * \brief write nrLDPC_coding_segment_encoder output with interleaver output
  * the interleaver output has 8 bits from 8 different segments per byte
  * nrLDPC_coding_segment_encoder is made of concatenated packed segments
@@ -85,55 +72,45 @@ static void write_task_output(uint8_t *f,
 
 #if defined(__AVX512VBMI__)
   uint64_t *output_p = (uint64_t*)output;
-  int i=0;
-  __m512i bitperm[8];
-  uint32_t Eoffset2[8];
-  uint32_t Eoffset2_bit[8];
-  bitperm[0] = _mm512_set1_epi64(0x3830282018100800);
   __m512i inc = _mm512_set1_epi8(0x1);
-  Eoffset2[0] = Eoffset >> 6;
-  Eoffset2_bit[0] = Eoffset & 63;
-  Eoffset += select_E(E, E2, Eshift, 0, E2_first_segment);
-  for (int n = 1; n < nb_segments; n++) {
-    bitperm[n] = _mm512_add_epi8(bitperm[n-1] ,inc);
-    Eoffset2[n] = Eoffset >> 6;
-    Eoffset2_bit[n] = Eoffset & 63;
-    Eoffset += select_E(E, E2, Eshift, n, E2_first_segment);
-  } 
-  int i2=0;
-  __m64 tmp;
-  for (i=0;i<E2;i+=64,i2++) {
-     if (i<E) {
+
+  for (int i=0;i<E2;i+=64) {
+    uint32_t Eoffset2 = Eoffset;
+    __m512i bitperm = _mm512_set1_epi64(0x3830282018100800);
+    if (i<E) {
       for (int j=0; j < E2_first_segment; j++) {
         // Note: Here and below for AVX2, we are using the 64-bit SIMD instruction
         // instead of C >>/<< because when the Eoffset2_bit is 64 or 0, the <<
         // and >> operations are undefined and in fact don't give "0" which is
         // what we want here. The SIMD version do give 0 when the shift is 64
-        tmp = (__m64)_mm512_bitshuffle_epi64_mask(((__m512i *)f)[i2],bitperm[j]);
-        *(__m64*)(output_p + Eoffset2[j])   = _mm_or_si64(*(__m64*)(output_p + Eoffset2[j]),_mm_slli_si64(tmp,Eoffset2_bit[j]));
-        *(__m64*)(output_p + Eoffset2[j]+1) = _mm_or_si64(*(__m64*)(output_p + Eoffset2[j]+1),_mm_srli_si64(tmp,(64-Eoffset2_bit[j])));
-      } //for (int j=0;
-     } // if (i < E)
-     for (int j=E2_first_segment; j < nb_segments; j++) {
-       tmp = (__m64)_mm512_bitshuffle_epi64_mask(((__m512i *)f2)[i2],bitperm[j]);
-       *(__m64*)(output_p + Eoffset2[j])   = _mm_or_si64(*(__m64*)(output_p + Eoffset2[j]),
-                                                          _mm_slli_si64(tmp,Eoffset2_bit[j]));
-       *(__m64*)(output_p + Eoffset2[j]+1) = _mm_or_si64(*(__m64*)(output_p + Eoffset2[j]+1),_mm_srli_si64(tmp,(64-Eoffset2_bit[j])));
-     }
-     output_p++;
+        uint32_t Eoffset2_byte = Eoffset2 >> 6;
+        uint32_t Eoffset2_bit = Eoffset2 & 63;
+        __m64 tmp = (__m64)_mm512_bitshuffle_epi64_mask(((__m512i *)f)[i >> 6],bitperm);
+        *(__m64*)(output_p + Eoffset2_byte)   = _mm_or_si64(*(__m64*)(output_p + Eoffset2_byte),_mm_slli_si64(tmp,Eoffset2_bit));
+        *(__m64*)(output_p + Eoffset2_byte+1) = _mm_or_si64(*(__m64*)(output_p + Eoffset2_byte+1),_mm_srli_si64(tmp,(64-Eoffset2_bit)));
+        Eoffset2 += E;
+        bitperm = _mm512_add_epi8(bitperm ,inc);
+      }
+    } else {
+      for (int j=0; j < E2_first_segment; j++) {
+        Eoffset2 += E;
+        bitperm = _mm512_add_epi8(bitperm ,inc);
+      }
+    }
+    for (int j=E2_first_segment; j < nb_segments; j++) {
+      uint32_t Eoffset2_byte = Eoffset2 >> 6;
+      uint32_t Eoffset2_bit = Eoffset2 & 63;
+      __m64 tmp = (__m64)_mm512_bitshuffle_epi64_mask(((__m512i *)f2)[i >> 6],bitperm);
+      *(__m64*)(output_p + Eoffset2_byte)   = _mm_or_si64(*(__m64*)(output_p + Eoffset2_byte),_mm_slli_si64(tmp,Eoffset2_bit));
+      *(__m64*)(output_p + Eoffset2_byte+1) = _mm_or_si64(*(__m64*)(output_p + Eoffset2_byte+1),_mm_srli_si64(tmp,(64-Eoffset2_bit)));
+      Eoffset2 += E2;
+      bitperm = _mm512_add_epi8(bitperm ,inc);
+    }
+    output_p++;
   }
 
 #elif defined(__aarch64__)
   uint16_t *output_p = (uint16_t*)output;
-  int i=0;
-  uint32_t Eoffset2[8];
-  uint32_t Eoffset2_bit[8];
-  for (int n = 0; n < nb_segments; n++) {
-    Eoffset2[n]  = Eoffset >> 4;
-    Eoffset2_bit[n] = Eoffset & 15;
-    Eoffset += select_E(E, E2, Eshift, n, E2_first_segment);
-  } 
-  int i2=0;
   const int8_t __attribute__ ((aligned (16))) ucShift[8][16] = {
     {0,1,2,3,4,5,6,7,0,1,2,3,4,5,6,7},     // segment 0
     {-1,0,1,2,3,4,5,6,-1,0,1,2,3,4,5,6},   // segment 1
@@ -149,66 +126,75 @@ static void write_task_output(uint8_t *f,
   for (int n=0;n<8;n++) vshift[n] = vld1q_s8(ucShift[n]);
   uint8x16_t vmask  = vld1q_u8(masks);
 
-  int32_t tmp;
-  uint8x16_t cshift;
-  for (i=0;i<E2;i+=16,i2++) {
-     if (i<E) {	
-       for (int j=0; j < E2_first_segment; j++) {
-         cshift = vandq_u8(vshlq_u8(((uint8x16_t*)f)[i2],vshift[j]),vmask);
-         tmp = (int)vaddv_u8(vget_low_u8(cshift));
-         tmp += (int)(vaddv_u8(vget_high_u8(cshift))<<8);
-         *(output_p + Eoffset2[j])   |= (uint16_t)(tmp<<Eoffset2_bit[j]);
-         *(output_p + Eoffset2[j]+1) |= (uint16_t)(tmp>>(16-Eoffset2_bit[j]));
-       }
-     }
-     for (int j=E2_first_segment; j < nb_segments; j++) {
-       cshift = vandq_u8(vshlq_u8(((uint8x16_t*)f2)[i2],vshift[j]),vmask);
-       tmp = (int)vaddv_u8(vget_low_u8(cshift));
-       tmp += (int)(vaddv_u8(vget_high_u8(cshift))<<8);
-       *(output_p + Eoffset2[j])   |= (uint16_t)(tmp<<Eoffset2_bit[j]);
-       *(output_p + Eoffset2[j]+1) |= (uint16_t)(tmp>>(16-Eoffset2_bit[j]));
-     }
-     output_p++;
+  for (int i=0;i<E2;i+=16) {
+    uint32_t Eoffset2 = Eoffset;
+    if (i<E) {	
+      for (int j=0; j < E2_first_segment; j++) {
+        uint32_t Eoffset2_byte = Eoffset2 >> 4;
+        uint32_t Eoffset2_bit = Eoffset2 & 15;
+        uint8x16_t cshift = vandq_u8(vshlq_u8(((uint8x16_t*)f)[i >> 4],vshift[j]),vmask);
+        int32_t tmp = (int)vaddv_u8(vget_low_u8(cshift));
+        tmp += (int)(vaddv_u8(vget_high_u8(cshift))<<8);
+        *(output_p + Eoffset2_byte)   |= (uint16_t)(tmp<<Eoffset2_bit);
+        *(output_p + Eoffset2_byte+1) |= (uint16_t)(tmp>>(16-Eoffset2_bit));
+        Eoffset2 += E;
+      }
+    } else {
+      for (int j=0; j < E2_first_segment; j++) {
+        Eoffset2 += E;
+      }
+    }
+    for (int j=E2_first_segment; j < nb_segments; j++) {
+      uint32_t Eoffset2_byte = Eoffset2 >> 4;
+      uint32_t Eoffset2_bit = Eoffset2 & 15;
+      uint8x16_t cshift = vandq_u8(vshlq_u8(((uint8x16_t*)f2)[i >> 4],vshift[j]),vmask);
+      int32_t tmp = (int)vaddv_u8(vget_low_u8(cshift));
+      tmp += (int)(vaddv_u8(vget_high_u8(cshift))<<8);
+      *(output_p + Eoffset2_byte)   |= (uint16_t)(tmp<<Eoffset2_bit);
+      *(output_p + Eoffset2_byte+1) |= (uint16_t)(tmp>>(16-Eoffset2_bit));
+      Eoffset2 += E2;
+    }
+    output_p++;
   }
        
 #else
   uint32_t *output_p = (uint32_t*)output;
-  int i=0;
-  uint32_t Eoffset2[8];
-  uint32_t Eoffset2_bit[8];
-  for (int n = 0; n < nb_segments; n++) {
-    Eoffset2[n]  = Eoffset >> 5;
-    Eoffset2_bit[n] = Eoffset & 31;
-    Eoffset += select_E(E, E2, Eshift, n, E2_first_segment);
-  } 
-  int i2 = 0;
-  int tmp;
-  __m64 tmp64, tmp64b, tmp64c, out64;
-  
-  for (i=0; i < E2; i += 32, i2++) {
-     if (i < E) {
-       for (int j = 0; j < E2_first_segment; j++) {
-         // Note: Here and below, we are using the 64-bit SIMD instruction
-         // instead of C >>/<< because when the Eoffset2_bit is 64 or 0, the <<
-         // and >> operations are undefined and in fact don't give "0" which is
-         // what we want here. The SIMD version do give 0 when the shift is 64
-         tmp = _mm256_movemask_epi8(_mm256_slli_epi16(((__m256i *)f)[i2], 7 - j));
-         tmp64 = _mm_set1_pi32(tmp);
-         out64 = _mm_set_pi32(*(output_p + Eoffset2[j] + 1), *(output_p + Eoffset2[j]));
-         tmp64b = _mm_or_si64(out64, _mm_slli_pi32(tmp64, Eoffset2_bit[j]));
-         tmp64c = _mm_or_si64(out64, _mm_srli_pi32(tmp64, (32 - Eoffset2_bit[j])));
-         *(output_p + Eoffset2[j]) = _m_to_int(tmp64b);
-         *(output_p + Eoffset2[j] + 1) = _m_to_int(_mm_srli_si64(tmp64c, 32));
-       }
+
+  for (int i=0; i < E2; i += 32) {
+    uint32_t Eoffset2 = Eoffset;
+    if (i < E) {
+      for (int j = 0; j < E2_first_segment; j++) {
+        // Note: Here and below, we are using the 64-bit SIMD instruction
+        // instead of C >>/<< because when the Eoffset2_bit is 64 or 0, the <<
+        // and >> operations are undefined and in fact don't give "0" which is
+        // what we want here. The SIMD version do give 0 when the shift is 64
+        uint32_t Eoffset2_byte = Eoffset2 >> 5;
+        uint32_t Eoffset2_bit = Eoffset2 & 31;
+        int tmp = _mm256_movemask_epi8(_mm256_slli_epi16(((__m256i *)f)[i >> 5], 7 - j));
+        __m64 tmp64 = _mm_set1_pi32(tmp);
+        __m64 out64 = _mm_set_pi32(*(output_p + Eoffset2_byte + 1), *(output_p + Eoffset2_byte));
+        __m64 tmp64b = _mm_or_si64(out64, _mm_slli_pi32(tmp64, Eoffset2_bit));
+        __m64 tmp64c = _mm_or_si64(out64, _mm_srli_pi32(tmp64, (32 - Eoffset2_bit)));
+        *(output_p + Eoffset2_byte) = _m_to_int(tmp64b);
+        *(output_p + Eoffset2_byte + 1) = _m_to_int(_mm_srli_si64(tmp64c, 32));
+        Eoffset2 += E;
+      }
+    } else {
+      for (int j = 0; j < E2_first_segment; j++) {
+        Eoffset2 += E;
+      }
     } 
     for (int j = E2_first_segment; j < nb_segments; j++) {
-      tmp = _mm256_movemask_epi8(_mm256_slli_epi16(((__m256i *)f2)[i2], 7 - j));
-      tmp64 = _mm_set1_pi32(tmp);
-      out64 = _mm_set_pi32(*(output_p + Eoffset2[j] + 1), *(output_p + Eoffset2[j]));
-      tmp64b = _mm_or_si64(out64, _mm_slli_pi32(tmp64, Eoffset2_bit[j]));
-      tmp64c = _mm_or_si64(out64, _mm_srli_pi32(tmp64, (32 - Eoffset2_bit[j])));
-      *(output_p + Eoffset2[j])  = _m_to_int(tmp64b);
-      *(output_p + Eoffset2[j] + 1) = _m_to_int(_mm_srli_si64(tmp64c, 32));
+      uint32_t Eoffset2_byte = Eoffset2 >> 5;
+      uint32_t Eoffset2_bit = Eoffset2 & 31;
+      int tmp = _mm256_movemask_epi8(_mm256_slli_epi16(((__m256i *)f2)[i >> 5], 7 - j));
+      __m64 tmp64 = _mm_set1_pi32(tmp);
+      __m64 out64 = _mm_set_pi32(*(output_p + Eoffset2_byte + 1), *(output_p + Eoffset2_byte));
+      __m64 tmp64b = _mm_or_si64(out64, _mm_slli_pi32(tmp64, Eoffset2_bit));
+      __m64 tmp64c = _mm_or_si64(out64, _mm_srli_pi32(tmp64, (32 - Eoffset2_bit)));
+      *(output_p + Eoffset2_byte)  = _m_to_int(tmp64b);
+      *(output_p + Eoffset2_byte + 1) = _m_to_int(_mm_srli_si64(tmp64c, 32));
+      Eoffset2 += E2;
     }
     output_p++;
   }
