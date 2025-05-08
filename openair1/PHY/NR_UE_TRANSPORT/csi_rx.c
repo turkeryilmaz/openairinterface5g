@@ -44,9 +44,10 @@
 // 10*log10(pow(2,30))
 #define pow_2_30_dB 90
 
-//#define DEBUG_CSI_PRINTS  // To enable CSI SNR debug logs
+// #define DEBUG_CSI_PRINTS  // To enable CSI SNR debug logs
 extern short nr_qpsk_mod_table[8];
-//#define NR_CSIRS_DEBUG
+// #define NR_CSIRS_DEBUG
+#define METRICS
 //#define NR_CSIIM_DEBUG
 
 void nr_det_A_MF_2x2(int32_t *a_mf_00,
@@ -235,7 +236,7 @@ int nr_get_csi_rs_signal(const PHY_VARS_NR_UE *ue,
               int dataF_offset = get_softmodem_params()->sl_mode == 2 ? 0 : proc->nr_slot_rx * ue->frame_parms.samples_per_slot_wCP;
               uint16_t port_tx = s+j_cdm[cdm_id]*CDM_group_size;
               c16_t *tx_csi_rs_signal = (c16_t*)&nr_csi_info->csi_rs_generated_signal[port_tx][symbol_offset+dataF_offset];
-              LOG_I(NR_PHY, "l,k (%2d,%4d) |\tport_tx %d (%4d,%4d)\tant_rx %d (%4d,%4d)\n",
+              LOG_D(NR_PHY, "l,k (%2d,%4d) |\tport_tx %d (%4d,%4d)\tant_rx %d (%4d,%4d)\n",
                     symb,
                     k,
                     port_tx+3000,
@@ -257,7 +258,7 @@ int nr_get_csi_rs_signal(const PHY_VARS_NR_UE *ue,
   *rsrp_dBm = dB_fixed(*rsrp) + 30 - pow_2_30_dB
       - ((int)openair0_cfg[0].rx_gain[0] - (int)openair0_cfg[0].rx_gain_offset[0]) - dB_fixed(ue->frame_parms.ofdm_symbol_size);
 
-#ifdef NR_CSIRS_DEBUG
+#ifdef METRICS
   LOG_I(NR_PHY, "RSRP = %i (%i dBm)\n", *rsrp, *rsrp_dBm);
 #endif
 
@@ -359,19 +360,19 @@ int nr_csi_rs_channel_estimation(const PHY_VARS_NR_UE *ue,
         continue;
       }
       for(int k = 0; k<frame_parms->ofdm_symbol_size; k++) {
-        LOG_I(NR_PHY, "l,k (%2d,%4d) | ", symb, k);
+        LOG_D(NR_PHY, "l,k (%2d,%4d) | ", symb, k);
         for(uint16_t port_tx = 0; port_tx<N_ports; port_tx++) {
           uint64_t symbol_offset = symb*frame_parms->ofdm_symbol_size;
           c16_t *tx_csi_rs_signal = (c16_t*)&csi_rs_generated_signal[port_tx][symbol_offset+dataF_offset];
           c16_t *rx_csi_rs_signal = (c16_t*)&csi_rs_received_signal[ant_rx][symbol_offset];
           c16_t *csi_rs_ls_estimated_channel16 = (c16_t*)&csi_rs_ls_estimated_channel[ant_rx][port_tx][0];
-          printf("port_tx %d --> ant_rx %d, tx (%4d,%4d), rx (%4d,%4d), ls (%4d,%4d) | ",
-                 port_tx+3000, ant_rx,
-                 tx_csi_rs_signal[k].r, tx_csi_rs_signal[k].i,
-                 rx_csi_rs_signal[k].r, rx_csi_rs_signal[k].i,
-                 csi_rs_ls_estimated_channel16[k].r, csi_rs_ls_estimated_channel16[k].i);
+          // printf("port_tx %d --> ant_rx %d, tx (%4d,%4d), rx (%4d,%4d), ls (%4d,%4d) | ",
+          //        port_tx+3000, ant_rx,
+          //        tx_csi_rs_signal[k].r, tx_csi_rs_signal[k].i,
+          //        rx_csi_rs_signal[k].r, rx_csi_rs_signal[k].i,
+          //        csi_rs_ls_estimated_channel16[k].r, csi_rs_ls_estimated_channel16[k].i);
         }
-        printf("\n");
+        // printf("\n");
       }
     }
 #endif
@@ -434,18 +435,18 @@ int nr_csi_rs_channel_estimation(const PHY_VARS_NR_UE *ue,
       int rb = k >= frame_parms->first_carrier_offset ?
                (k - frame_parms->first_carrier_offset)/NR_NB_SC_PER_RB :
                (k + frame_parms->ofdm_symbol_size - frame_parms->first_carrier_offset)/NR_NB_SC_PER_RB;
-      LOG_I(NR_PHY, "(k = %4d) |\t", k);
+      LOG_D(NR_PHY, "(k = %4d) |\t", k);
       for(uint16_t port_tx = 0; port_tx<N_ports; port_tx++) {
         c16_t *csi_rs_ls_estimated_channel16 = (c16_t*)&csi_rs_ls_estimated_channel[ant_rx][port_tx][0];
         c16_t *csi_rs_estimated_channel16 = (c16_t *)&csi_rs_estimated_channel_freq[ant_rx][port_tx][mem_offset];
-        printf("Channel port_tx %d --> ant_rx %d : ls (%4d,%4d), int (%4d,%4d), noise (%4d,%4d) | ",
-               port_tx+3000, ant_rx,
-               csi_rs_ls_estimated_channel16[k].r, csi_rs_ls_estimated_channel16[k].i,
-               csi_rs_estimated_channel16[k].r, csi_rs_estimated_channel16[k].i,
-               rb >= csirs_config_pdu->start_rb+csirs_config_pdu->nr_of_rbs ? 0 : noise_real[ant_rx][port_tx][rb-csirs_config_pdu->start_rb],
-               rb >= csirs_config_pdu->start_rb+csirs_config_pdu->nr_of_rbs ? 0 : noise_imag[ant_rx][port_tx][rb-csirs_config_pdu->start_rb]);
+        // printf("Channel port_tx %d --> ant_rx %d : ls (%4d,%4d), int (%4d,%4d), noise (%4d,%4d) | ",
+        //        port_tx+3000, ant_rx,
+        //        csi_rs_ls_estimated_channel16[k].r, csi_rs_ls_estimated_channel16[k].i,
+        //        csi_rs_estimated_channel16[k].r, csi_rs_estimated_channel16[k].i,
+        //        rb >= csirs_config_pdu->start_rb+csirs_config_pdu->nr_of_rbs ? 0 : noise_real[ant_rx][port_tx][rb-csirs_config_pdu->start_rb],
+        //        rb >= csirs_config_pdu->start_rb+csirs_config_pdu->nr_of_rbs ? 0 : noise_imag[ant_rx][port_tx][rb-csirs_config_pdu->start_rb]);
       }
-      printf("\n");
+      // printf("\n");
     }
 #endif
 
@@ -1087,11 +1088,11 @@ void nr_ue_csi_rs_procedures(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, c16_t 
       if (get_softmodem_params()->sl_mode == 2) {
         nr_csi_rs_cqi_estimation_sl(sl_sinr_dB, &cqi);
         get_nrUE_params()->snr = sl_sinr_dB;
-        LOG_D(NR_PHY, "Rx CSI-RS %4d.%2d sl_sinr %i rsrp %d dBm cqi %d\n",
+        LOG_I(NR_PHY, "Rx CSI-RS %4d.%2d sl_sinr %i rsrp %d dBm cqi %d\n",
               proc->frame_rx, proc->nr_slot_rx, sl_sinr_dB, rsrp_dBm, cqi);
       } else {
         nr_csi_rs_cqi_estimation(precoded_sinr_dB, &cqi);
-        LOG_D(NR_PHY, "Rx %4d.%2d snr %u rsrp %d dBm cqi %d\n",
+        LOG_I(NR_PHY, "Rx %4d.%2d snr %u rsrp %d dBm cqi %d\n",
               proc->frame_rx, proc->nr_slot_rx, precoded_sinr_dB, rsrp_dBm, cqi);
       }
     }
