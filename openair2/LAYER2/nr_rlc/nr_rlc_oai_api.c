@@ -40,6 +40,7 @@
 #include "NR_UL-CCCH-Message.h"
 
 #include "openair2/F1AP/f1ap_du_rrc_message_transfer.h"
+#include "common/utils/nr/nr_common.h"
 
 extern RAN_CONTEXT_t RC;
 
@@ -309,7 +310,8 @@ rlc_op_status_t rlc_data_req(const protocol_ctxt_t *const ctxt_pP,
                              sdu_size_t sdu_sizeP,
                              mem_block_t *sdu_pP,
                              const uint32_t *const sourceL2Id,
-                             const uint32_t *const destinationL2Id)
+                             const uint32_t *const destinationL2Id,
+                             nr_intf_type_t intf_type)
 {
   int rnti = ctxt_pP->rntiMaybeUEid;
   nr_rlc_ue_t *ue;
@@ -521,8 +523,8 @@ rb_found:
     exit(1);
   }
   memcpy(memblock->data, buf, size);
-  uint8_t relay_type = get_softmodem_params()->relay_type;
-  if (relay_type == U2N || relay_type == U2U) {
+  bool srap_enabled = get_softmodem_params()->relay_type > 0 ? true : false;
+  if (srap_enabled) {
     if (!srap_data_ind(&ctx, is_srb, 0, rb_id, size, memblock, NULL, NULL, entity->intf_type)) {
       LOG_E(RLC, "%s:%d:%s: ERROR: srap_data_ind failed\n", __FILE__, __LINE__, __FUNCTION__);
     }

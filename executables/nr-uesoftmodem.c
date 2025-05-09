@@ -366,7 +366,7 @@ void init_openair0() {
   }
 }
 
-static void init_pdcp(int ue_id) {
+static void init_pdcp(int ue_id, bool srap_enabled) {
   uint32_t pdcp_initmask = (!IS_SOFTMODEM_NOS1) ? LINK_ENB_PDCP_TO_GTPV1U_BIT : (LINK_ENB_PDCP_TO_GTPV1U_BIT | PDCP_USE_NETLINK_BIT | LINK_ENB_PDCP_TO_IP_DRIVER_BIT);
 
   /*if (IS_SOFTMODEM_RFSIM || (nfapi_getmode()==NFAPI_UE_STUB_PNF)) {
@@ -384,9 +384,8 @@ static void init_pdcp(int ue_id) {
   pdcp_set_rlc_data_req_func((send_rlc_data_req_func_t) rlc_data_req);
   pdcp_set_pdcp_data_ind_func((pdcp_data_ind_func_t) pdcp_data_ind);
   // creates srap module, which will instanitate srap manager responsible for creating srap entitites and managing the entities operations
-  uint8_t relay_type = get_softmodem_params()->relay_type;
-  if (relay_type == U2N || relay_type == U2U) {
-    bool gNB_flag = get_node_type() == -1 ? false : true;
+  if (srap_enabled) {
+    uint8_t gNB_flag = (get_node_type() == -1 || NODE_IS_CU(get_node_type())) ? 0 : 1;
     nr_srap_layer_init(gNB_flag);
     srap_module_init(gNB_flag);
   }
@@ -489,8 +488,8 @@ int main( int argc, char **argv ) {
   config_getlist(&SL_UEINFOList, NULL, 0, aprefix);
   sprintf(aprefix, "%s.[%i].%s.[%i]", SL_CONFIG_STRING_SL_PRECONFIGURATION, 0, SL_CONFIG_STRING_UEINFO, 0);
   config_get(SL_UEINFO, sizeof(SL_UEINFO)/sizeof(paramdef_t), aprefix);
-  uint8_t relay_type = get_softmodem_params()->relay_type;
-  if (relay_type == U2N || relay_type == U2U) {
+  bool srap_enabled = get_softmodem_params()->relay_type > 0 ? true : false;
+  if (srap_enabled) {
     // FIXIT: This is temporary code until we get the ue configurations via RRC
     get_softmodem_params()->remote_ue_id = ueinfo.remote_ue_id;
     get_softmodem_params()->is_relay_ue = ueinfo.is_relay_ue;
@@ -506,11 +505,11 @@ int main( int argc, char **argv ) {
   uint8_t sl_mode = get_softmodem_params()->sl_mode;
   if(IS_SOFTMODEM_NOS1 || get_softmodem_params()->sa || get_softmodem_params()->nsa) {
     if(node_number == 0 && (sl_mode == 0 || sl_mode == 1)) {
-      init_pdcp(0);
+      init_pdcp(0, srap_enabled);
     } else if (sl_mode == 2) {
-      init_pdcp(1+ueinfo.srcid);
+      init_pdcp(1+ueinfo.srcid, srap_enabled);
     } else {
-      init_pdcp(mode_offset + ue_id_g);
+      init_pdcp(mode_offset + ue_id_g, srap_enabled);
     }
   }
 

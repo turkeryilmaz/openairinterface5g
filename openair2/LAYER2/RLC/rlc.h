@@ -287,7 +287,8 @@ rlc_op_status_t rlc_data_req (
   sdu_size_t sdu_sizeP,
   mem_block_t *sdu_pP,
   const uint32_t *const sourceL2Id,
-  const uint32_t *const destinationL2Id
+  const uint32_t *const destinationL2Id,
+  nr_intf_type_t intf_type
 );
 
 /*! \fn void rlc_data_ind     (const protocol_ctxt_t* const ctxtP, const  srb_flag_t srb_flagP, const  MBMS_flag_t MBMS_flagP, const  rb_id_t rb_idP, const sdu_size_t sdu_sizeP, mem_block_t* sduP) {
