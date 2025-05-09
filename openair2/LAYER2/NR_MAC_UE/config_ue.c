@@ -126,7 +126,7 @@ static void set_tdd_config_nr_ue(fapi_nr_tdd_table_t *tdd_table, const frame_str
   }
 }
 
-static void config_common_ue_sa(NR_UE_MAC_INST_t *mac, NR_ServingCellConfigCommonSIB_t *scc, int cc_idP)
+void config_common_ue_sa(NR_UE_MAC_INST_t *mac, NR_ServingCellConfigCommonSIB_t *scc, int cc_idP)
 {
   fapi_nr_config_request_t *cfg = &mac->phy_config.config_req;
   mac->phy_config.Mod_id = mac->ue_id;
@@ -1553,7 +1553,7 @@ static void configure_dedicated_BWP_ul(NR_UE_MAC_INST_t *mac, int bwp_id, NR_BWP
   }
 }
 
-static void configure_common_BWP_dl(NR_UE_MAC_INST_t *mac, int bwp_id, NR_BWP_DownlinkCommon_t *dl_common)
+void configure_common_BWP_dl(NR_UE_MAC_INST_t *mac, int bwp_id, NR_BWP_DownlinkCommon_t *dl_common)
 {
   if (dl_common) {
     NR_UE_DL_BWP_t *bwp = get_dl_bwp_structure(mac, bwp_id, true);

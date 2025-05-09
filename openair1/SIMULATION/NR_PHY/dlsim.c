@@ -38,6 +38,7 @@
 #include "LAYER2/NR_MAC_gNB/mac_rrc_dl_handler.h"
 #include "LAYER2/NR_MAC_gNB/nr_mac_gNB.h"
 #include "NR_BCCH-BCH-Message.h"
+#include "NR_DL-CCCH-Message.h"
 #include "NR_BWP-Downlink.h"
 #include "NR_CellGroupConfig.h"
 #include "NR_MAC_COMMON/nr_mac.h"
@@ -90,6 +91,7 @@
 #include "utils.h"
 #define inMicroS(a) (((double)(a))/(get_cpu_freq_GHz()*1000.0))
 #include "SIMULATION/LTE_PHY/common_sim.h"
+#include "openair2/COMMON/mac_messages_types.h"
 
 const char *__asan_default_options()
 {
@@ -295,6 +297,70 @@ void validate_input_pmi(nfapi_nr_config_request_scf_t *gNB_config,
               num_antenna_ports, pmi_pdu->num_ant_ports, pmi);
 }
 
+typedef struct {
+  uint64_t dl_freq;
+  uint64_t frame;
+  uint64_t slot;
+  uint64_t cellid;
+  uint64_t rnti;
+} param_from_file_t;
+
+void load_sib1_config(const uint8_t *sdu, const uint32_t sdu_size, NR_UE_MAC_INST_t *mac)
+{
+  NR_BCCH_DL_SCH_Message_t *bcch_message = NULL;
+  asn_dec_rval_t dec_rval = uper_decode_complete(NULL,
+                                                 &asn_DEF_NR_BCCH_DL_SCH_Message,
+                                                 (void **)&bcch_message,
+                                                 (const void *)sdu,
+                                                 sdu_size);
+  if ((dec_rval.code != RC_OK) && (dec_rval.consumed == 0)) {
+    printf("Failed to decode BCCH_DLSCH_MESSAGE (%zu bits)\n", dec_rval.consumed);
+    // free the memory
+    SEQUENCE_free(&asn_DEF_NR_BCCH_DL_SCH_Message, (void *)bcch_message, 1);
+    return;
+  }
+
+  xer_fprint(stdout, &asn_DEF_NR_BCCH_DL_SCH_Message,(void *)bcch_message);
+
+  NR_SIB1_t *sib1 = bcch_message->message.choice.c1->choice.systemInformationBlockType1;
+  NR_ServingCellConfigCommonSIB_t *scc = sib1->servingCellConfigCommon;
+  int bwp_id = 0;
+  config_common_ue_sa(mac, scc, 0);
+  configure_common_BWP_dl(mac, bwp_id, &scc->downlinkConfigCommon.initialDownlinkBWP);
+}
+
+void load_rrcsetup_config(const uint8_t *sdu, const uint32_t sdu_size, NR_UE_NR_Capability_t *ue_cap, NR_UE_MAC_INST_t *mac)
+{
+  NR_DL_CCCH_Message_t *dl_ccch_msg = NULL;
+  asn_dec_rval_t dec_rval = uper_decode(NULL, &asn_DEF_NR_DL_CCCH_Message, (void **)&dl_ccch_msg, sdu, sdu_size, 0, 0);
+
+  xer_fprint(stdout, &asn_DEF_NR_DL_CCCH_Message, (void *)dl_ccch_msg);
+
+  if ((dec_rval.code != RC_OK) && (dec_rval.consumed == 0)) {
+    printf("Failed to decode DL-CCCH-Message (%zu bytes)\n", dec_rval.consumed);
+    return;
+  }
+  if (dl_ccch_msg->message.present != NR_DL_CCCH_MessageType_PR_c1) {
+    printf("No message present %d\n", dl_ccch_msg->message.present);
+    return;
+  } else {
+    if (dl_ccch_msg->message.choice.c1->present != NR_DL_CCCH_MessageType__c1_PR_rrcSetup) {
+      printf("Expected rrcSetup but got %d\n", dl_ccch_msg->message.choice.c1->present);
+      return;
+    }
+  }
+  NR_RRCSetup_t *rrcSetup = dl_ccch_msg->message.choice.c1->choice.rrcSetup;
+  OCTET_STRING_t *mcg = &rrcSetup->criticalExtensions.choice.rrcSetup->masterCellGroup;
+  NR_CellGroupConfig_t *cellGroupConfig = NULL;
+  uper_decode(NULL,
+              &asn_DEF_NR_CellGroupConfig,   //might be added prefix later
+              (void **)&cellGroupConfig,
+              (uint8_t *)mcg->buf,
+              mcg->size, 0, 0);
+
+  xer_fprint(stdout, &asn_DEF_NR_CellGroupConfig, (const void *) cellGroupConfig);
+  nr_rrc_mac_config_req_cg(0, 0, cellGroupConfig, ue_cap);
+}
 
 configmodule_interface_t *uniqCfg = NULL;
 int main(int argc, char **argv)
@@ -392,7 +458,7 @@ int main(int argc, char **argv)
 
   FILE *scg_fd=NULL;
 
-  while ((c = getopt(argc, argv, "--:O:f:hA:p:f:g:i:n:s:S:t:v:x:y:z:o:H:M:N:F:GR:d:PI:L:a:b:e:m:w:T:U:q:X:Y:Z:")) != -1) {
+  while ((c = getopt(argc, argv, "--:O:f:hA:p:f:g:i:n:s:S:t:v:x:y:z:o:H:M:N:F:GR:d:PI:L:a:b:e:m:wT:U:q:X:Y:Z:")) != -1) {
 
     /* ignore long options starting with '--', option '-O' and their arguments that are handled by configmodule */
     /* with this opstring getopt returns 1 for non-option arguments, refer to 'man 3 getopt' */
@@ -657,6 +723,26 @@ printf("%d\n", slot);
   get_softmodem_params()->do_ra = 0;
   IS_SOFTMODEM_DLSIM = true;
 
+  NRRrcMacCcchDataInd has_sib1;
+  NRRrcMacCcchDataInd has_rrcSetup;
+  param_from_file_t in_params = {0};
+  uint64_t input_sample_size = 0;
+  c16_t *input_slot_iq = NULL;
+  if (input_fd) {
+    int err = 0;
+    err += fread(&in_params, sizeof(in_params), 1, input_fd);
+    err += fread(&has_sib1.sdu_size, sizeof(has_sib1.sdu_size), 1, input_fd);
+    err += fread(&has_sib1.sdu, has_sib1.sdu_size, 1, input_fd);
+    err += fread(&has_rrcSetup.sdu_size, sizeof(has_rrcSetup.sdu_size), 1, input_fd);
+    err += fread(&has_rrcSetup.sdu, has_rrcSetup.sdu_size, 1, input_fd);
+    err += fread(&input_sample_size, sizeof(input_sample_size), 1, input_fd);
+    printf("input sample size %ld\n",input_sample_size);
+    input_slot_iq = malloc16_clear(sizeof(*input_slot_iq) * input_sample_size);
+    err += fread(input_slot_iq, sizeof(c16_t), input_sample_size, input_fd);
+    if (err == 0)
+      printf("Error reading from file\n");
+  }
+
   if (snr1set==0)
     snr1 = snr0+10;
 
@@ -920,15 +1006,16 @@ printf("%d\n", slot);
   initFloatingCoresTpool(dlsch_threads, &nrUE_params.Tpool, false, "UE-tpool");
 
   // generate signal
-  AssertFatal(input_fd==NULL,"Not ready for input signal file\n");
 
   // clone CellGroup to have a separate copy at UE
   NR_CellGroupConfig_t *UE_CellGroup = clone_CellGroupConfig(secondaryCellGroup);
 
   //Configure UE
   NR_BCCH_BCH_Message_t *mib = get_new_MIB_NR(scc);
-  nr_rrc_mac_config_req_mib(0, 0, mib->message.choice.mib, false);
-  nr_rrc_mac_config_req_cg(0, 0, UE_CellGroup, UE_Capability_nr);
+  if (input_fd == NULL) {
+    nr_rrc_mac_config_req_mib(0, 0, mib->message.choice.mib, false);
+    nr_rrc_mac_config_req_cg(0, 0, UE_CellGroup, UE_Capability_nr);
+  }
 
   asn1cFreeStruc(asn_DEF_NR_CellGroupConfig, UE_CellGroup);
 
@@ -1027,7 +1114,7 @@ printf("%d\n", slot);
     //n_errors2 = 0;
     //n_alamouti = 0;
     n_false_positive = 0;
-    if (n_trials== 1) num_rounds = 1;
+    if (input_fd != NULL || n_trials== 1) num_rounds = 1;
 
     NR_gNB_DLSCH_t *gNB_dlsch = &msgDataTx->dlsch[0][0];
     nfapi_nr_dl_tti_pdsch_pdu_rel15_t *rel15 = &gNB_dlsch->harq_process.pdsch_pdu.pdsch_pdu_rel15;
@@ -1192,11 +1279,31 @@ printf("%d\n", slot);
                   pdu_bit_map,
                   0x1,
                   UE->frame_parms.nb_antennas_rx);
-        dl_config.sfn = frame;
-        dl_config.slot = slot;
-        ue_dci_configuration(UE_mac, &dl_config, frame, slot);
-        nr_ue_scheduled_response(&scheduled_response);
 
+        if (input_fd) {
+          UE_proc.frame_rx = frame = in_params.frame;
+          UE_proc.nr_slot_rx = slot = in_params.slot;
+          UE->frame_parms.Nid_cell = in_params.cellid;
+          UE->frame_parms.dl_CarrierFreq = in_params.dl_freq;
+          UE_mac->crnti = in_params.rnti;
+          load_sib1_config(has_sib1.sdu, has_sib1.sdu_size, UE_mac);
+          load_rrcsetup_config(has_rrcSetup.sdu, has_rrcSetup.sdu_size, UE_Capability_nr, UE_mac);
+          nr_ue_phy_config_request(&UE_mac->phy_config);
+          init_symbol_rotation(&UE->frame_parms);
+          dl_config.sfn = frame;
+          dl_config.slot = slot;
+          ue_dci_configuration(UE_mac, &dl_config, frame, slot);
+          nr_ue_scheduled_response(&scheduled_response);
+
+          slot_offset = frame_parms->get_samples_slot_timestamp(slot,frame_parms,0);
+          slot_length = slot_offset - frame_parms->get_samples_slot_timestamp(slot-1,frame_parms,0);
+          memcpy(&UE->common_vars.rxdata[0][slot_offset], input_slot_iq, sizeof(c16_t) * slot_length);
+        } else {
+          dl_config.sfn = frame;
+          dl_config.slot = slot;
+          ue_dci_configuration(UE_mac, &dl_config, frame, slot);
+          nr_ue_scheduled_response(&scheduled_response);
+        }
         pbch_pdcch_processing(UE,
                               &UE_proc,
                               &phy_data);
@@ -1403,6 +1510,7 @@ printf("%d\n", slot);
   free(UE->phy_sim_pdsch_dl_ch_estimates);
   free(UE->phy_sim_pdsch_dl_ch_estimates_ext);
   free(UE->phy_sim_dlsch_b);
+  free_and_zero(input_slot_iq);
 
   free_nrLDPC_coding_interface(&gNB->nrLDPC_coding_interface);
 
