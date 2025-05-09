@@ -175,6 +175,10 @@ bool manage_ru(ru_session_t *ru_session, const openair0_config_t *oai, const siz
   success = get_uplane_info(operational_ds, &ru_session->ru_mplane_config);
   AssertError(success, return false, "[MPLANE] Unable to get U-plane info from RU operational datastore.\n");
 
+  // Performance Management
+  success = get_pm_object_list(operational_ds, &ru_session->pm_stats);
+  AssertError(success, return false, "[MPLANE] Unable to retrieve performance measurement names from RU \"%s\".\n", ru_session->ru_ip_add);
+
   if (ru_session->ru_notif.ptp_state) {
     success = edit_config_mplane(ru_session, operational_ds, oai, num_rus);
     AssertError(success, return false, "[MPLANE] Unable to edit the RU configuration.\n");

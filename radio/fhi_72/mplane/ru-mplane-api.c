@@ -163,3 +163,16 @@ bool get_uplane_info(const char *buffer, ru_mplane_config_t *ru_mplane_config)
 
   return true;
 }
+
+bool get_pm_object_list(const char *buffer, pm_stats_t *pm_stats)
+{
+  // Rx window
+  get_ru_xml_list(buffer, "rx-window-measurement-objects", &pm_stats->rx_window_meas, &pm_stats->rx_num);
+
+  // Tx
+  get_ru_xml_list(buffer, "tx-measurement-objects", &pm_stats->tx_meas, &pm_stats->tx_num);
+
+  MP_LOG_I("Successfully retreived all performance measurement names.\n");
+
+  return true;
+}
