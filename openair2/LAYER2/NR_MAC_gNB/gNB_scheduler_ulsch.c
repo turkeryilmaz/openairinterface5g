@@ -38,6 +38,32 @@
 
 //#define SRS_IND_DEBUG
 
+static void dump_srs_channel_iq_matrix(nfapi_nr_srs_normalized_channel_iq_matrix_t* channel_iq_matrix, const char* filename) {
+  FILE* f = fopen(filename, "wb");
+  if (!f) {
+    perror("Failed to open file");
+    return;
+  }
+  uint16_t Ng = channel_iq_matrix->num_gnb_antenna_elements;
+  uint16_t Nu = channel_iq_matrix->num_ue_srs_ports;
+  // uint16_t prg_size = channel_iq_matrix->prg_size;
+  uint16_t num_prgs = channel_iq_matrix->num_prgs;
+
+  // Could be a csv file header
+  //fprintf(f, "Num gNB antennas, Num UE SRS Ports, PRG size, Num of PRG");
+
+  printf("Ng = %u\t ,Nu = %u\t, Np = %u\n", Ng, Nu, num_prgs);
+
+  uint32_t total = Nu * Ng * num_prgs;
+
+  const c16_t *channel = (const c16_t*)channel_iq_matrix->channel_matrix;
+  fwrite(channel, sizeof(c16_t), total, f);
+
+  fclose(f);
+
+  return;
+}
+
 int get_ul_tda(gNB_MAC_INST *nrmac, int frame, int slot)
 {
   /* we assume that this function is mutex-protected from outside */
@@ -1518,6 +1544,7 @@ void handle_nr_srs_measurements(const module_id_t module_id,
                                                  report_tlv->length,
                                                  &nr_srs_channel_iq_matrix,
                                                  sizeof(nfapi_nr_srs_normalized_channel_iq_matrix_t));
+      dump_srs_channel_iq_matrix(&nr_srs_channel_iq_matrix, "mac_channel_rfsim.iq");
 
 #ifdef SRS_IND_DEBUG
       LOG_I(NR_MAC, "nr_srs_channel_iq_matrix.normalized_iq_representation = %i\n", nr_srs_channel_iq_matrix.normalized_iq_representation);
