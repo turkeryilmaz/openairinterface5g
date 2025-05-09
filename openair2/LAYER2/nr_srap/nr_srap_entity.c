@@ -95,7 +95,8 @@ nr_srap_entity_t *new_nr_srap_entity(nr_srap_entity_type_t type,
                                                          const rb_id_t rb_id),
                                      void *deliver_sdu_data,
                                      void (*deliver_pdu)(protocol_ctxt_t *ctxt, int rb_id,
-                                                         char *buf, int size, int sdu_id),
+                                                         char *buf, int size, int sdu_id,
+                                                         nr_intf_type_t intf_type),
                                      void *deliver_pdu_data)
 {
   nr_srap_entity_t *ret;

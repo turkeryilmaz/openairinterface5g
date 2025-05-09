@@ -56,6 +56,7 @@ nr_srap_entity_t* nr_srap_get_entity(nr_srap_manager_t *_m, nr_srap_entity_type_
   uint8_t relay_type = get_softmodem_params()->relay_type;
   uint8_t num_of_entities = (is_relay_ue && relay_type == U2N) ? 2 : 1; // 38.351 - 4.2.2
   for (int i = 0; i < num_of_entities; i++) {
+    AssertFatal((m->srap_entity[i] != NULL), "SRAP entity is not initialized!!!");
     if (m->srap_entity[i]->type == entity_type) {
       LOG_D(NR_SRAP, "%s m->srap_entity[%d] %p\n", __FUNCTION__, i, (m->srap_entity[i]));
       return (m->srap_entity[i]);

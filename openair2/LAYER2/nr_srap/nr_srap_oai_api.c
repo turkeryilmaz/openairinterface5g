@@ -10,6 +10,7 @@ Email ID: ejaz.ahmed@applied.co
 #include <executables/nr-uesoftmodem.h>
 #include "nr_srap_header.h"
 #include "nr_srap_manager.h"
+#include "common/ngran_types.h"
 
 extern nr_srap_manager_t *nr_srap_manager;
 
@@ -42,7 +43,8 @@ static void *tx_srap_rlc_pc5_data_req_thread(void *_)
                  tx_srap_pc5_q.q[i].sdu_sizeP,
                  tx_srap_pc5_q.q[i].sdu_pP,
                  NULL,
-                 NULL);
+                 NULL,
+                 PC5);
 
     if (pthread_mutex_lock(&tx_srap_pc5_q.m) != 0) abort();
 
@@ -76,7 +78,8 @@ static void *tx_srap_rlc_uu_data_req_thread(void *_)
                  tx_srap_uu_q.q[i].sdu_sizeP,
                  tx_srap_uu_q.q[i].sdu_pP,
                  NULL,
-                 NULL);
+                 NULL,
+                 UU);
 
     if (pthread_mutex_lock(&tx_srap_uu_q.m) != 0) abort();
 
@@ -95,13 +98,13 @@ static void init_nr_srap_rlc_data_req_queue(bool gNB_flag)
   if (!gNB_flag) {
     pthread_mutex_init(&tx_srap_pc5_q.m, NULL);
     pthread_cond_init(&tx_srap_pc5_q.c, NULL);
-    threadCreate(&t1, tx_srap_rlc_pc5_data_req_thread, NULL, "tx_srap_rlc_pc5_data_req_thread", -1, OAI_PRIORITY_RT_MAX-1);
+    threadCreate(&t1, tx_srap_rlc_pc5_data_req_thread, NULL, "tx_srap_rlc_pc5_data_req_thread", -1, OAI_PRIORITY_RT_MAX - 1);
   }
 
-  if (gNB_flag || (!gNB_flag && get_softmodem_params()->is_relay_ue && (get_softmodem_params()->relay_type == U2N))) {
+  if (gNB_flag || (get_softmodem_params()->is_relay_ue && (get_softmodem_params()->relay_type == U2N))) {
     pthread_mutex_init(&tx_srap_uu_q.m, NULL);
     pthread_cond_init(&tx_srap_uu_q.c, NULL);
-    threadCreate(&t2, tx_srap_rlc_uu_data_req_thread, NULL, "tx_srap_rlc_uu_data_req_thread", -1, OAI_PRIORITY_RT_MAX-1);
+    threadCreate(&t2, tx_srap_rlc_uu_data_req_thread, NULL, "tx_srap_rlc_uu_data_req_thread", -1, OAI_PRIORITY_RT_MAX - 1);
   }
 }
 
@@ -141,6 +144,44 @@ void enqueue_srap_pc5_data_req(const protocol_ctxt_t *const ctxt_pP,
   if (pthread_mutex_unlock(&tx_srap_pc5_q.m) != 0) abort();
 }
 
+void enqueue_srap_uu_data_req(const protocol_ctxt_t *const ctxt_pP,
+                              const srb_flag_t   srb_flagP,
+                              const MBMS_flag_t  MBMS_flagP,
+                              const rb_id_t      rb_idP,
+                              const mui_t        muiP,
+                              confirm_t    confirmP,
+                              sdu_size_t   sdu_sizeP,
+                              mem_block_t *sdu_pP)
+{
+  int i;
+  int logged = 0;
+
+  if (pthread_mutex_lock(&tx_srap_uu_q.m) != 0) abort();
+  while (tx_srap_uu_q.length == SRAP_DATA_REQ_QUEUE_SIZE) {
+    if (!logged) {
+      logged = 1;
+      LOG_W(NR_SRAP, "%s: tx_srap_uu_q data queue is full\n", __FUNCTION__);
+    }
+    if (pthread_cond_wait(&tx_srap_uu_q.c, &tx_srap_uu_q.m) != 0) abort();
+  }
+
+  i = (tx_srap_uu_q.start + tx_srap_uu_q.length) % SRAP_DATA_REQ_QUEUE_SIZE;
+  tx_srap_uu_q.length++;
+
+  tx_srap_uu_q.q[i].ctxt_pP    = *ctxt_pP;
+  tx_srap_uu_q.q[i].srb_flagP  = srb_flagP;
+  tx_srap_uu_q.q[i].MBMS_flagP = MBMS_flagP;
+  tx_srap_uu_q.q[i].rb_idP     = rb_idP;
+  tx_srap_uu_q.q[i].muiP       = muiP;
+  tx_srap_uu_q.q[i].confirmP   = confirmP;
+  tx_srap_uu_q.q[i].sdu_sizeP  = sdu_sizeP;
+  tx_srap_uu_q.q[i].sdu_pP     = sdu_pP;
+
+  if (pthread_cond_signal(&tx_srap_uu_q.c) != 0) abort();
+  if (pthread_mutex_unlock(&tx_srap_uu_q.m) != 0) abort();
+}
+
+
 void srap_deliver_sdu_srb(void *_ue, nr_srap_entity_t *entity,
                           char *buf, int size)
 {
@@ -154,16 +195,14 @@ void srap_forward_sdu_drb(void *_ue, nr_srap_entity_t *entity,
 }
 
 void srap_deliver_pdu_drb(protocol_ctxt_t *ctxt, int rb_id,
-                          char *buf, int size, int sdu_id) {
+                          char *buf, int size, int sdu_id,
+                          nr_intf_type_t intf_type) {
   mem_block_t *memblock = get_free_mem_block(size, __FUNCTION__);
   memcpy(memblock->data, buf, size);
-  enqueue_srap_pc5_data_req(ctxt, 0, MBMS_FLAG_NO, rb_id, sdu_id, 0, size, memblock);
-}
-
-void srap_deliver_pdu_srb(void *_ue, nr_srap_entity_t *entity,
-                          char *buf, int size)
-{
-  //TODO:
+  if (intf_type == PC5)
+    enqueue_srap_pc5_data_req(ctxt, 0, MBMS_FLAG_NO, rb_id, sdu_id, 0, size, memblock);
+  else if (intf_type == UU)
+    enqueue_srap_uu_data_req(ctxt, 0, MBMS_FLAG_NO, rb_id, sdu_id, 0, size, memblock);
 }
 
 int srap_module_init(bool gNB_flag)
@@ -219,7 +258,8 @@ static void do_srap_data_ind(const protocol_ctxt_t *const  ctxt_pP,
                              const MBMS_flag_t MBMS_flagP,
                              const rb_id_t rb_id,
                              const sdu_size_t sdu_buffer_size,
-                             mem_block_t *sdu_buffer)
+                             mem_block_t *sdu_buffer,
+                             nr_intf_type_t intf_type)
 {
   if (ctxt_pP->module_id != 0 ||
       ctxt_pP->instance != 0  ||
@@ -228,16 +268,14 @@ static void do_srap_data_ind(const protocol_ctxt_t *const  ctxt_pP,
     LOG_E(NR_SRAP, "%s:%d:%s: fatal\n", __FILE__, __LINE__, __FUNCTION__);
     exit(EXIT_FAILURE);
   }
-  ngran_node_t node_type = get_node_type();
-  if (node_type == 0) {
-    LOG_W(NR_SRAP, "Currently, not supporting gNB!!!\n");
-    return;
-  }
-
   nr_srap_manager_lock(nr_srap_manager);
   nr_srap_manager_t  *m = get_nr_srap_manager();
-
-  nr_srap_entity_t* srap_entity = nr_srap_get_entity(m, NR_SRAP_PC5);
+  nr_srap_entity_t *srap_entity;
+  if (intf_type == UU) {
+    srap_entity = nr_srap_get_entity(m, NR_SRAP_UU);
+  } else if (intf_type == PC5) {
+    srap_entity = nr_srap_get_entity(m, NR_SRAP_PC5);
+  }
   if ((srap_entity != NULL)) {
     uint8_t relay_type = get_softmodem_params()->relay_type;
     uint8_t header_size;
@@ -288,7 +326,8 @@ static void *srap_pc5_data_ind_thread(void *_)
                      rx_srap_pc5_q.q[i].MBMS_flagP,
                      rx_srap_pc5_q.q[i].rb_id,
                      rx_srap_pc5_q.q[i].sdu_buffer_size,
-                     rx_srap_pc5_q.q[i].sdu_buffer);
+                     rx_srap_pc5_q.q[i].sdu_buffer,
+                     PC5);
 
     if (pthread_mutex_lock(&rx_srap_pc5_q.m) != 0) {
       abort();
@@ -323,8 +362,8 @@ static void *srap_uu_data_ind_thread(void *_)
                      rx_srap_uu_q.q[i].MBMS_flagP,
                      rx_srap_uu_q.q[i].rb_id,
                      rx_srap_uu_q.q[i].sdu_buffer_size,
-                     rx_srap_uu_q.q[i].sdu_buffer);
-
+                     rx_srap_uu_q.q[i].sdu_buffer,
+                     UU);
     if (pthread_mutex_lock(&rx_srap_uu_q.m) != 0) abort();
 
     rx_srap_uu_q.length--;
@@ -347,7 +386,7 @@ static void init_nr_srap_data_ind_queue(bool gNB_flag)
       exit(EXIT_FAILURE);
     }
   }
-  if (gNB_flag || (!gNB_flag && get_softmodem_params()->is_relay_ue && (get_softmodem_params()->relay_type == U2N))) {
+  if (gNB_flag || (get_softmodem_params()->is_relay_ue && (get_softmodem_params()->relay_type == U2N))) {
     pthread_mutex_init(&rx_srap_uu_q.m, NULL);
     pthread_cond_init(&rx_srap_uu_q.c, NULL);
     if (pthread_create(&t2, NULL, srap_uu_data_ind_thread, NULL) != 0) {
@@ -433,7 +472,6 @@ bool srap_data_ind(const protocol_ctxt_t *const ctxt_pP,
                    const uint32_t *const dstID,
                    nr_intf_type_t intf_type)
 {
-
   if (intf_type == PC5) {
     enqueue_srap_pc5_data_ind(ctxt_pP,
                               srb_flagP,
@@ -479,8 +517,46 @@ bool nr_srap_data_req_drb(protocol_ctxt_t *ctxt,
                           const rb_id_t rb_id,
                           const mui_t sdu_id,
                           const sdu_size_t sdu_buffer_size,
-                          char *sdu_buffer) {
+                          char *sdu_buffer,
+                          nr_intf_type_t intf_type) {
+    uint8_t relay_type = get_softmodem_params()->relay_type;
+    nr_srap_manager_internal_t *m = nr_srap_manager;
 
+    AssertFatal(m != NULL, "SRAP manager is not initialized!!!");
+
+    U2NHeader_t u2n_header;
+    U2UHeader_t u2u_header;
+    int srap_pdu_size = sdu_buffer_size + ((relay_type == U2N) ? sizeof(u2n_header) : sizeof(u2u_header));
+    char pdu_buf[srap_pdu_size];
+    /* For relay, we need to work on two entities:
+      (srap_entity[0] - pc5 and srap_entity[1] - uu) - Relay
+      srap_entity[0] - gNB;
+      srap_entity[0] - remote UE;
+    */
+    nr_srap_entity_t *srap_entity = NULL;
+    if (intf_type == UU) {
+      srap_entity = nr_srap_get_entity(m, NR_SRAP_UU);
+    } else if (intf_type == PC5) {
+      srap_entity = nr_srap_get_entity(m, NR_SRAP_PC5);
+    }
+    if ((srap_entity != NULL)) {
+      srap_entity->process_sdu(sdu_buffer, sdu_buffer_size, relay_type, rb_id, pdu_buf,
+                              (relay_type == U2N) ? sizeof(u2n_header) : sizeof(u2u_header),
+                              (relay_type == U2N) ? (void*)&u2n_header : (void*)&u2u_header);
+      srap_deliver_pdu deliver_pdu_cb = srap_entity->deliver_pdu;
+      deliver_pdu_cb(ctxt, rb_id, pdu_buf, srap_pdu_size, sdu_id, intf_type);
+      return true;
+   }
+  return false;
+}
+
+bool nr_srap_data_req_srb(protocol_ctxt_t *ctxt,
+                          const rb_id_t rb_id,
+                          const sdu_size_t sdu_buffer_size,
+                          char *sdu_buffer,
+                          srap_deliver_pdu deliver_pdu_cb,
+                          int sdu_id,
+                          nr_intf_type_t intf_type) {
     uint8_t relay_type = get_softmodem_params()->relay_type;
     nr_srap_manager_internal_t *m = nr_srap_manager;
 
@@ -489,19 +565,39 @@ bool nr_srap_data_req_drb(protocol_ctxt_t *ctxt,
         return false;
     }
 
-    if (m && (m->srap_entity[0] == NULL)) {
-        LOG_E(NR_SRAP, "SRAP entity is not initialized!!!");
-        return false;
-    }
-
     U2NHeader_t u2n_header;
     U2UHeader_t u2u_header;
     int srap_pdu_size = sdu_buffer_size + ((relay_type == U2N) ? sizeof(u2n_header) : sizeof(u2u_header));
     char pdu_buf[srap_pdu_size];
-    m->srap_entity[0]->process_sdu(sdu_buffer, sdu_buffer_size, relay_type, rb_id, pdu_buf,
-                                  (relay_type == U2N) ? sizeof(u2n_header) : sizeof(u2u_header),
-                                  (relay_type == U2N) ? (void*)&u2n_header : (void*)&u2u_header);
-    srap_deliver_pdu deliver_pdu_cb = m->srap_entity[0]->deliver_pdu;
-    deliver_pdu_cb(ctxt, rb_id, pdu_buf, srap_pdu_size, sdu_id);
-  return true;
+    /* For relay, we need to work on two entities:
+      (srap_entity[0] - pc5 and srap_entity[1] - uu) - Relay
+      srap_entity[0] - gNB;
+      srap_entity[0] - remote UE;
+    */
+    nr_srap_entity_t *srap_entity = NULL;
+    if (intf_type == UU) {
+      srap_entity = nr_srap_get_entity(m, NR_SRAP_UU);
+    } else if (intf_type == PC5) {
+      srap_entity = nr_srap_get_entity(m, NR_SRAP_PC5);
+    }
+    if ((srap_entity != NULL)) {
+      srap_entity->process_sdu(sdu_buffer, sdu_buffer_size, relay_type, rb_id, pdu_buf,
+                              (relay_type == U2N) ? sizeof(u2n_header) : sizeof(u2u_header),
+                              (relay_type == U2N) ? (void*)&u2n_header : (void*)&u2u_header);
+      deliver_pdu_cb(ctxt, rb_id, pdu_buf, srap_pdu_size, sdu_id, intf_type);
+      return true;
+   }
+  return false;
+}
+
+void srap_deliver_pdu_srb(protocol_ctxt_t *ctxt, int srb_id, char *buf,
+                          int size, int sdu_id, nr_intf_type_t intf_type)
+{
+  mem_block_t *memblock = get_free_mem_block(size, __FUNCTION__);
+  memcpy(memblock->data, buf, size);
+
+  if (intf_type == PC5)
+    enqueue_srap_pc5_data_req(ctxt, 1, MBMS_FLAG_NO, srb_id, sdu_id, 0, size, memblock);
+  else if (intf_type == UU)
+    enqueue_srap_uu_data_req(ctxt, 1, MBMS_FLAG_NO, srb_id, sdu_id, 0, size, memblock);
 }
