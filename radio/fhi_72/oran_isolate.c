@@ -325,11 +325,12 @@ __attribute__((__visibility__("default"))) int transport_init(openair0_device *d
     AssertFatal(false, "[MPLANE] Stopping M-plane.\n");
   }
 
-  while (true) {
+/* while (true) {
     sleep(1);
     bool all_rus_ready = true;
     for (int i = 0; i < ru_session_list.num_rus; i++) {
       ru_session_t *ru_session = &ru_session_list.ru_session[i];
+      printf("ru_ready %d, config_change %d, rx %d, tx %d\n", ru_ready[i], ru_session->ru_notif.config_change, ru_session->ru_notif.rx_carrier_state, ru_session->ru_notif.tx_carrier_state);
       if (!ru_ready[i] && ru_session->ru_notif.config_change && ru_session->ru_notif.rx_carrier_state && ru_session->ru_notif.tx_carrier_state) {
         MP_LOG_I("RU \"%s\" is now ready.\n", ru_session->ru_ip_add);
         ru_ready[i] = true;
@@ -342,7 +343,7 @@ __attribute__((__visibility__("default"))) int transport_init(openair0_device *d
       break;
     }
   }
-
+*/
   eth->mplane_priv = (void *)&ru_session_list;
 
   success = get_xran_config((void *)&ru_session_list, openair0_cfg, &fh_init, fh_config);
