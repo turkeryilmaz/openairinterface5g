@@ -325,7 +325,7 @@ NR_UE_info_t *get_new_nr_ue_inst(uid_allocator_t *uia, rnti_t rnti, NR_CellGroup
 int nr_get_default_pucch_res(int pucch_ResourceCommon);
 
 int nr_write_ce_dlsch_pdu(module_id_t module_idP,
-                          const NR_UE_sched_ctrl_t *ue_sched_ctl,
+                          NR_UE_sched_ctrl_t *ue_sched_ctl,
                           unsigned char *mac_pdu,
                           unsigned char drx_cmd,
                           unsigned char *ue_cont_res_id);
