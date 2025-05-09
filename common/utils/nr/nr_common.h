@@ -42,6 +42,7 @@
 #define NR_MAX_HARQ_PROCESSES 16
 #define NR_NB_REG_PER_CCE 6
 #define NR_NB_SC_PER_RB 12
+#define MAX_SL_UE_CONNECTIONS 8
 
 typedef enum {
   nr_FR1 = 0,
@@ -71,6 +72,11 @@ typedef enum frequency_range_e {
   FR1 = 0,
   FR2
 } frequency_range_t;
+
+typedef enum {
+  UU,
+  PC5,
+} nr_intf_type_t;
 
 extern const nr_bandentry_t nr_bandtable[];
 

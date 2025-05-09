@@ -49,6 +49,7 @@
 #    include "LTE_SRB-ToAddModList.h"
 #    include "LTE_DRB-ToReleaseList.h"
 #    include "LTE_PMCH-InfoList-r9.h"
+#    include "common/utils/nr/nr_common.h"
 
 
 //-----------------------------------------------------------------------------
@@ -217,8 +218,8 @@ tbs_size_t            mac_rlc_data_req     (const module_id_t, const rnti_t, con
 * \param[in]  num_tbP          Number of transport blocks.
 * \param[in]  crcs             Array of CRC decoding.
 */
-void                  mac_rlc_data_ind     (const module_id_t, const rnti_t, const eNB_index_t,const frame_t, const  eNB_flag_t, const  MBMS_flag_t, logical_chan_id_t, char *, tb_size_t, num_tb_t,
-    crc_t * );
+void  mac_rlc_data_ind(const module_id_t, const rnti_t, const eNB_index_t, const frame_t, const  eNB_flag_t, const  MBMS_flag_t, logical_chan_id_t, char *, tb_size_t, num_tb_t,
+                       crc_t *, uint16_t, uint8_t);
 
 /*! \fn mac_rlc_status_resp_t mac_rlc_status_ind     (const module_id_t mod_idP, const rnti_t rntiP, const frame_t frameP, const sub_frame_t subframeP, const  eNB_flag_t eNB_flagP, const  MBMS_flag_t MBMS_flagP, logical_chan_id_t rb_idP)
 * \brief    Interface with MAC layer, request and set the number of bytes scheduled for transmission by the RLC instance corresponding to the radio bearer identifier.
@@ -264,7 +265,7 @@ void rlc_util_print_hex_octets(
 
 
 
-/*! \fn rlc_op_status_t rlc_data_req     (const protocol_ctxt_t* const ctxtP, const  srb_flag_t srb_flagP,  const  MBMS_flag_t MBMS_flagP, const  rb_id_t rb_idP, mui_t muiP, confirm_t confirmP, sdu_size_t sdu_sizeP, mem_block_t *sduP)
+/*! \fn rlc_op_status_t rlc_data_req(const protocol_ctxt_t* const ctxtP, const  srb_flag_t srb_flagP,  const  MBMS_flag_t MBMS_flagP, const  rb_id_t rb_idP, mui_t muiP, confirm_t confirmP, sdu_size_t sdu_sizeP, mem_block_t *sduP)
 * \brief    Interface with higher layers, map request to the RLC corresponding to the radio bearer.
 * \param[in]  ctxtP            Running context.
 * \param[in]  srb_flagP        Flag to indicate SRB (1) or DRB (0)
@@ -276,17 +277,17 @@ void rlc_util_print_hex_octets(
 * \param[in]  sduP             SDU.
 * \return     A status about the processing, OK or error code.
 */
-rlc_op_status_t rlc_data_req     (
-  const protocol_ctxt_t *const,
-  const  srb_flag_t,
-  const  MBMS_flag_t,
-  const  rb_id_t,
-  const  mui_t,
-  const confirm_t,
-  const sdu_size_t,
-  mem_block_t *const,
-  const uint32_t *const,
-  const uint32_t *const
+rlc_op_status_t rlc_data_req (
+  const protocol_ctxt_t *const ctxt_pP,
+  const srb_flag_t srb_flagP,
+  const MBMS_flag_t MBMS_flagP,
+  const rb_id_t rb_idP,
+  const mui_t muiP,
+  confirm_t confirmP,
+  sdu_size_t sdu_sizeP,
+  mem_block_t *sdu_pP,
+  const uint32_t *const sourceL2Id,
+  const uint32_t *const destinationL2Id
 );
 
 /*! \fn void rlc_data_ind     (const protocol_ctxt_t* const ctxtP, const  srb_flag_t srb_flagP, const  MBMS_flag_t MBMS_flagP, const  rb_id_t rb_idP, const sdu_size_t sdu_sizeP, mem_block_t* sduP) {

@@ -386,7 +386,7 @@ static void init_pdcp(int ue_id) {
   // creates srap module, which will instanitate srap manager responsible for creating srap entitites and managing the entities operations
   uint8_t relay_type = get_softmodem_params()->relay_type;
   if (relay_type == U2N || relay_type == U2U) {
-    uint8_t gNB_flag = get_node_type() == -1 ? 0 : 1;
+    bool gNB_flag = get_node_type() == -1 ? false : true;
     nr_srap_layer_init(gNB_flag);
     srap_module_init(gNB_flag);
   }

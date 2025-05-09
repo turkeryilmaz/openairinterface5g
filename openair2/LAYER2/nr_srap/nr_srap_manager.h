@@ -13,14 +13,14 @@ typedef void nr_srap_manager_t;
 typedef struct {
   pthread_mutex_t lock;
   nr_srap_entity_t **srap_entity;
-  int             gNB_flag;
+  bool             gNB_flag;
 } nr_srap_manager_internal_t;
 
 /***********************************************************************/
 /* manager functions                                                   */
 /***********************************************************************/
 
-nr_srap_manager_t *new_nr_srap_manager(uint8_t gNB_flag);
+nr_srap_manager_t *new_nr_srap_manager(bool gNB_flag);
 
 nr_srap_manager_t *get_nr_srap_manager();
 

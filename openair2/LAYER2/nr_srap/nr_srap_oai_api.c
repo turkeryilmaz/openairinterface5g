@@ -18,7 +18,7 @@ static srap_data_req_queue tx_srap_pc5_q;
 static srap_data_ind_queue rx_srap_uu_q;
 static srap_data_ind_queue rx_srap_pc5_q;
 
-static void init_nr_srap_data_ind_queue(uint8_t gNB_flag);
+static void init_nr_srap_data_ind_queue(bool gNB_flag);
 
 static void *tx_srap_rlc_pc5_data_req_thread(void *_)
 {
@@ -88,7 +88,7 @@ static void *tx_srap_rlc_uu_data_req_thread(void *_)
   }
 }
 
-static void init_nr_srap_rlc_data_req_queue(uint8_t gNB_flag)
+static void init_nr_srap_rlc_data_req_queue(bool gNB_flag)
 {
   pthread_t t1, t2;
 
@@ -141,43 +141,6 @@ void enqueue_srap_pc5_data_req(const protocol_ctxt_t *const ctxt_pP,
   if (pthread_mutex_unlock(&tx_srap_pc5_q.m) != 0) abort();
 }
 
-static void enqueue_srap_uu_data_req(const protocol_ctxt_t *const ctxt_pP,
-                                     const srb_flag_t   srb_flagP,
-                                     const MBMS_flag_t  MBMS_flagP,
-                                     const rb_id_t      rb_idP,
-                                     const mui_t        muiP,
-                                     confirm_t    confirmP,
-                                     sdu_size_t   sdu_sizeP,
-                                     mem_block_t *sdu_pP)
-{
-  int i;
-  int logged = 0;
-
-  if (pthread_mutex_lock(&tx_srap_uu_q.m) != 0) abort();
-  while (tx_srap_uu_q.length == SRAP_DATA_REQ_QUEUE_SIZE) {
-    if (!logged) {
-      logged = 1;
-      LOG_W(NR_SRAP, "%s: tx_srap_uu_q data queue is full\n", __FUNCTION__);
-    }
-    if (pthread_cond_wait(&tx_srap_uu_q.c, &tx_srap_uu_q.m) != 0) abort();
-  }
-
-  i = (tx_srap_uu_q.start + tx_srap_uu_q.length) % SRAP_DATA_REQ_QUEUE_SIZE;
-  tx_srap_uu_q.length++;
-
-  tx_srap_uu_q.q[i].ctxt_pP    = *ctxt_pP;
-  tx_srap_uu_q.q[i].srb_flagP  = srb_flagP;
-  tx_srap_uu_q.q[i].MBMS_flagP = MBMS_flagP;
-  tx_srap_uu_q.q[i].rb_idP     = rb_idP;
-  tx_srap_uu_q.q[i].muiP       = muiP;
-  tx_srap_uu_q.q[i].confirmP   = confirmP;
-  tx_srap_uu_q.q[i].sdu_sizeP  = sdu_sizeP;
-  tx_srap_uu_q.q[i].sdu_pP     = sdu_pP;
-
-  if (pthread_cond_signal(&tx_srap_uu_q.c) != 0) abort();
-  if (pthread_mutex_unlock(&tx_srap_uu_q.m) != 0) abort();
-}
-
 void srap_deliver_sdu_srb(void *_ue, nr_srap_entity_t *entity,
                           char *buf, int size)
 {
@@ -203,7 +166,7 @@ void srap_deliver_pdu_srb(void *_ue, nr_srap_entity_t *entity,
   //TODO:
 }
 
-int srap_module_init(uint8_t gNB_flag)
+int srap_module_init(bool gNB_flag)
 {
   static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
   static int inited = 0;
@@ -211,18 +174,18 @@ int srap_module_init(uint8_t gNB_flag)
 
   if (pthread_mutex_lock(&lock)) abort();
 
-  if (gNB_flag == 1 && inited) {
+  if (gNB_flag == true && inited) {
     LOG_E(NR_SRAP, "%s:%d:%s: fatal, inited already 1\n", __FILE__, __LINE__, __FUNCTION__);
     exit(EXIT_FAILURE);
   }
 
-  if (gNB_flag == 0 && inited_ue) {
+  if (gNB_flag == false && inited_ue) {
     LOG_E(NR_SRAP, "%s:%d:%s: fatal, inited_ue already 1\n", __FILE__, __LINE__, __FUNCTION__);
     exit(EXIT_FAILURE);
   }
 
-  if (gNB_flag == 1) inited = 1;
-  if (gNB_flag == 0) inited_ue = 1;
+  if (gNB_flag == true) inited = 1;
+  if (gNB_flag == false) inited_ue = 1;
 
   LOG_D(NR_SRAP, "Created NR SRAP UE Mananger!!!");
 
@@ -231,7 +194,7 @@ int srap_module_init(uint8_t gNB_flag)
   return 0;
 }
 
-void nr_srap_layer_init(uint8_t gNB_flag)
+void nr_srap_layer_init(bool gNB_flag)
 {
   /* hack: be sure to initialize only once */
   static pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
@@ -372,7 +335,7 @@ static void *srap_uu_data_ind_thread(void *_)
   }
 }
 
-static void init_nr_srap_data_ind_queue(uint8_t gNB_flag)
+static void init_nr_srap_data_ind_queue(bool gNB_flag)
 {
   pthread_t t1, t2;
 
@@ -467,25 +430,25 @@ bool srap_data_ind(const protocol_ctxt_t *const ctxt_pP,
                    const sdu_size_t sdu_buffer_size,
                    mem_block_t *const sdu_buffer,
                    const uint32_t *const srcID,
-                   const uint32_t *const dstID)
+                   const uint32_t *const dstID,
+                   nr_intf_type_t intf_type)
 {
 
-  enqueue_srap_pc5_data_ind(ctxt_pP,
-                            srb_flagP,
-                            MBMS_flagP,
-                            rb_id,
-                            sdu_buffer_size,
-                            sdu_buffer);
-
-  /*
-  // Add function call for uu data indication after checking some conditions
-  enqueue_srap_uu_data_ind(ctxt_pP,
-                           srb_flagP,
-                           MBMS_flagP,
-                           rb_id,
-                           sdu_buffer_size,
-                           sdu_buffer);
-  */
+  if (intf_type == PC5) {
+    enqueue_srap_pc5_data_ind(ctxt_pP,
+                              srb_flagP,
+                              MBMS_flagP,
+                              rb_id,
+                              sdu_buffer_size,
+                              sdu_buffer);
+  } else if (intf_type == UU) {
+    enqueue_srap_uu_data_ind(ctxt_pP,
+                             srb_flagP,
+                             MBMS_flagP,
+                             rb_id,
+                             sdu_buffer_size,
+                             sdu_buffer);
+  }
   return true;
 }
 

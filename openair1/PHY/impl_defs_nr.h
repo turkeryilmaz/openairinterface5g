@@ -110,11 +110,6 @@ typedef enum {
 } nr_link_type_t;
 
 typedef enum {
-  UU,
-  PC5,
-} nr_intf_type_t;
-
-typedef enum {
   ms0p5    = 500,                 /* duration is given in microsecond */
   ms0p625  = 625,
   ms1      = 1000,
