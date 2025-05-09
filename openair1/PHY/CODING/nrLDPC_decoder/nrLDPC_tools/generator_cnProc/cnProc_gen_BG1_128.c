@@ -24,7 +24,9 @@
 #include <stdint.h>
 #include "../../nrLDPCdecoder_defs.h"
 
+#ifdef __aarch64__
 #define AVOID_SIGN 1
+#endif
 #define DROP_MAXLLR 1
 void nrLDPC_cnProc_BG1_generator_128(const char* dir, int R)
 {
