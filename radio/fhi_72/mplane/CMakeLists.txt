@@ -8,7 +8,7 @@ add_dependencies(oran_fhlib_5g_mplane oran_fhlib_5g)
 
 if(xran_VERSION VERSION_EQUAL 5.1.4)
   target_compile_definitions(oran_fhlib_5g_mplane PRIVATE E_RELEASE)
-elseif(xran_VERSION VERSION_EQUAL 6.1.1)
+elseif(xran_VERSION VERSION_EQUAL 6.1.2)
   target_compile_definitions(oran_fhlib_5g_mplane PRIVATE F_RELEASE)
 endif()
 
