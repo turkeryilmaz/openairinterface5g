@@ -81,6 +81,7 @@ unsigned short config_frames[4] = {2,9,11,13};
 #include "gnb_config.h"
 #include "openair2/E1AP/e1ap_common.h"
 #include "openair2/E1AP/e1ap_api.h"
+#include "nr_srap/nr_srap_oai_api.h"
 
 #ifdef E2_AGENT
 #include "openair2/E2AP/flexric/src/agent/e2_agent_api.h"
@@ -571,6 +572,14 @@ void init_pdcp(void) {
   if (!NODE_IS_DU(get_node_type())) {
     nr_pdcp_layer_init();
     nr_pdcp_module_init(pdcp_initmask, 0);
+  }
+  if (!NODE_IS_CU(get_node_type())) {
+    uint8_t relay_type = get_softmodem_params()->relay_type;
+    if (relay_type == U2N || relay_type == U2U) {
+      bool gNB_flag = get_node_type() == -1 ? false : true;
+      nr_srap_layer_init(gNB_flag);
+      srap_module_init(gNB_flag);
+    }
   }
 }
 

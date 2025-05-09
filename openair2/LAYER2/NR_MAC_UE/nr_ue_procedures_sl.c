@@ -1111,7 +1111,9 @@ void nr_ue_process_mac_sl_pdu(int module_idP,
                          (char *)(pduP + mac_subheader_len),
                          mac_len,
                          1,
-                         NULL);
+                         NULL,
+                         sl_sch_subheader->SRC,
+                         sl_sch_subheader->DST);
 	      break;
       case SL_SCH_LCID_SL_CSI_REPORT:
         {

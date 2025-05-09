@@ -55,9 +55,9 @@ typedef struct {
   pthread_cond_t c;
 } srap_data_ind_queue;
 
-void nr_srap_layer_init(uint8_t gNB_flag);
+void nr_srap_layer_init(bool gNB_flag);
 
-int srap_module_init(uint8_t gNB_flag);
+int srap_module_init(bool gNB_flag);
 
 typedef void (*srap_deliver_pdu)(protocol_ctxt_t *ctxt, int rb_id,
                                  char *buf, int size, int sdu_id);
@@ -103,6 +103,7 @@ bool srap_data_ind(const protocol_ctxt_t *const  ctxt_pP,
                    const sdu_size_t sdu_buffer_size,
                    mem_block_t *const sdu_buffer,
                    const uint32_t *const srcID,
-                   const uint32_t *const dstID);
+                   const uint32_t *const dstID,
+                   nr_intf_type_t intf_type);
 
 #endif /* _NR_SRAP_OAI_API_H_ */

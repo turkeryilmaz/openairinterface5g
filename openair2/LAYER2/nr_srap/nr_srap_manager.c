@@ -10,7 +10,7 @@ Email ID: ejaz.ahmed@applied.co
 
 nr_srap_manager_t *nr_srap_manager;
 
-nr_srap_manager_t *new_nr_srap_manager(uint8_t gNB_flag) {
+nr_srap_manager_t *new_nr_srap_manager(bool gNB_flag) {
   nr_srap_manager_internal_t *ret;
 
   ret = calloc(1, sizeof(nr_srap_manager_internal_t));

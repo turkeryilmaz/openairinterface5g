@@ -334,7 +334,9 @@ static int nr_process_mac_pdu(instance_t module_idP,
                            (char *) (pduP + mac_subheader_len),
                            mac_len,
                            1,
-                           NULL);
+                           NULL,
+                           0,
+                           0);
         } else {
           AssertFatal(1==0,"[UE %04x] Frame/Slot %d.%d : Received LCID %d which is not configured, dropping packet\n",UE->rnti,frameP,slot,rx_lcid);
         }
@@ -384,7 +386,9 @@ static int nr_process_mac_pdu(instance_t module_idP,
                          (char *) (pduP + mac_subheader_len),
                          mac_len,
                          1,
-                         NULL);
+                         NULL,
+                         0,
+                         0);
         break;
 
       case UL_SCH_LCID_DTCH ... (UL_SCH_LCID_DTCH + 28):
@@ -414,7 +418,9 @@ static int nr_process_mac_pdu(instance_t module_idP,
                          (char *)(pduP + mac_subheader_len),
                          mac_len,
                          1,
-                         NULL);
+                         NULL,
+                         0,
+                         0);
 
         sdus += 1;
         /* Updated estimated buffer when receiving data */

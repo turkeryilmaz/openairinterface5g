@@ -266,17 +266,16 @@ rlc_buffer_occupancy_t mac_rlc_get_buffer_occupancy_ind(
 }
 
 
-rlc_op_status_t rlc_data_req     (const protocol_ctxt_t *const ctxt_pP,
-                                  const srb_flag_t   srb_flagP,
-                                  const MBMS_flag_t  MBMS_flagP,
-                                  const rb_id_t      rb_idP,
-                                  const mui_t        muiP,
-                                  confirm_t    confirmP,
-                                  sdu_size_t   sdu_sizeP,
-                                  mem_block_t *sdu_pP,
-                                  const uint32_t *const sourceL2Id,
-                                  const uint32_t *const destinationL2Id
-                                 )
+rlc_op_status_t rlc_data_req(const protocol_ctxt_t *const ctxt_pP,
+                             const srb_flag_t srb_flagP,
+                             const MBMS_flag_t MBMS_flagP,
+                             const rb_id_t rb_idP,
+                             const mui_t muiP,
+                             confirm_t confirmP,
+                             sdu_size_t sdu_sizeP,
+                             mem_block_t *sdu_pP,
+                             const uint32_t *const sourceL2Id,
+                             const uint32_t *const destinationL2Id)
 {
   int rnti = ctxt_pP->rntiMaybeUEid;
   rlc_ue_t *ue;

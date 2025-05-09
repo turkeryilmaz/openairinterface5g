@@ -63,7 +63,8 @@ nr_rlc_entity_t *new_nr_rlc_entity_am(
     int poll_pdu,
     int poll_byte,
     int max_retx_threshold,
-    int sn_field_length)
+    int sn_field_length,
+    nr_intf_type_t intf_type)
 {
   nr_rlc_entity_am_t *ret;
 
@@ -111,7 +112,7 @@ nr_rlc_entity_t *new_nr_rlc_entity_am(
   ret->common.max_retx_reached_data        = max_retx_reached_data;
 
   ret->common.stats.mode = NR_RLC_AM;
-
+  ret->common.intf_type = intf_type;
   /* let's take average over the last 100 milliseconds
    * initial_size of 1024 is arbitrary
    */
@@ -127,7 +128,8 @@ nr_rlc_entity_t *new_nr_rlc_entity_um(
                       char *buf, int size),
     void *deliver_sdu_data,
     int t_reassembly,
-    int sn_field_length)
+    int sn_field_length,
+    nr_intf_type_t intf_type)
 {
   nr_rlc_entity_um_t *ret;
 
@@ -166,6 +168,7 @@ nr_rlc_entity_t *new_nr_rlc_entity_um(
   ret->common.deliver_sdu_data             = deliver_sdu_data;
 
   ret->common.stats.mode = NR_RLC_UM;
+  ret->common.intf_type = intf_type;
 
   /* let's take average over the last 100 milliseconds
    * initial_size of 1024 is arbitrary
