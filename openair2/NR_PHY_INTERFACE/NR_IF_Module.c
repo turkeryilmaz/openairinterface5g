@@ -214,6 +214,22 @@ static void handle_nr_ulsch(NR_UL_IND_t *UL_info)
   }
 }
 
+static void dump_srs_report(const nfapi_srs_report_tlv_t* report_tlv, const char* filename) {
+  FILE* f = fopen(filename, "w");
+  if (!f) {
+    perror("Failed to open file");
+    return;
+  }
+
+  for (size_t i = 0; i < 16384; ++i) {
+    fprintf(f, "%zu,%u\n", i, report_tlv->value[i]);
+  }
+
+  fclose(f);
+
+  return;
+}
+
 static void handle_nr_srs(NR_UL_IND_t *UL_info)
 {
   if(NFAPI_MODE == NFAPI_MODE_PNF) {
@@ -233,10 +249,17 @@ static void handle_nr_srs(NR_UL_IND_t *UL_info)
   nfapi_nr_srs_indication_pdu_t *srs_list = UL_info->srs_ind.pdu_list;
 
   // from here
-
+/*
+  #ifdef E2_AGENT
+  byte_array_t buffer_ba = {.len = sizeof(nfapi_nr_srs_indication_pdu_t)};
+  buffer_ba.buf = malloc(buffer_ba.len);
+  uint8_t *end = buffer_ba.buf + sizeof(nfapi_srs_indication_pdu_t);
+  #endif
+*/
+ // LOG_I(NR_PHY, "(%d.%d) UL_info->srs_ind.number_of_pdus: %d\n", frame, slot, num_srs);
   for (int i = 0; i < num_srs; i++) {
     nfapi_nr_srs_indication_pdu_t *srs_ind = &srs_list[i];
-    LOG_I(NR_PHY, "(%d.%d) UL_info->srs_ind.pdu_list[%d].rnti: 0x%04x\n", frame, slot, i, srs_ind->rnti);
+    LOG_D(NR_PHY, "(%d.%d) UL_info->srs_ind.pdu_list[%d].rnti: 0x%04x\n", frame, slot, i, srs_ind->rnti);
     handle_nr_srs_measurements(module_id,
                                frame,
                                slot,
@@ -244,7 +267,13 @@ static void handle_nr_srs(NR_UL_IND_t *UL_info)
     #ifdef E2_AGENT
     signal_nfapi_srs_indication(srs_ind);
     #endif
-
+    
+    if (num_srs>0 && i==0){
+    dump_srs_report(&srs_ind->report_tlv, "tlv_value_agent.csv");
+    LOG_I(NR_PHY, "(%d.%d) UL_info->srs_ind.pdu_list[%d].srs_usage: 0x%04x\n", frame, slot, i, srs_ind->srs_usage);
+    LOG_I(NR_PHY, "(%d.%d) UL_info->srs_ind.pdu_list[%d].report_type: 0x%04x\n", frame, slot, i, srs_ind->report_type);
+    LOG_I(NR_PHY, "(%d.%d) UL_info->srs_ind.pdu_list[%d].report_tlv.tag: 0x%04x\n", frame, slot, i, srs_ind->report_tlv.tag);
+    }
   }
 
   UL_info->srs_ind.number_of_pdus = 0;
