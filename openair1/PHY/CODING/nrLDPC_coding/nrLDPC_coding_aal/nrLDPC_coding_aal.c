@@ -2,7 +2,7 @@
  * Copyright(c) 2017 Intel Corporation
  */
 
-/*! \file PHY/CODING/nrLDPC_coding/nrLDPC_coding_aal/nrLDPC_coding_al.c
+/*! \file PHY/CODING/nrLDPC_coding/nrLDPC_coding_aal/nrLDPC_coding_aal.c
  * \note: based on testbbdev test_bbdev_perf.c functions. Harq buffer offset added.
  * \mbuf and mempool allocated at the init step, LDPC parameters updated from OAI.
  */
@@ -65,7 +65,7 @@ const char *typeStr[] = {
     "RTE_BBDEV_OP_TURBO_ENC", /**< Turbo encode */
     "RTE_BBDEV_OP_LDPC_DEC", /**< LDPC decode */
     "RTE_BBDEV_OP_LDPC_ENC", /**< LDPC encode */
-    "RTE_BBDEV_OP_FFT", /**< Count of different op types */
+    "RTE_BBDEV_OP_FFT", /**< FFT */
 };
 
 struct active_device {
