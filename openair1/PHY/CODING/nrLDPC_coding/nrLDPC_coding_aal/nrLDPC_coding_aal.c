@@ -378,18 +378,18 @@ void debug_dev_capabilities(uint8_t dev_id, struct rte_bbdev_info *info)
 {
   /* Display for debug the capabilities of the card */
   for (int i = 0; info->drv.capabilities[i].type != RTE_BBDEV_OP_NONE; i++) {
-    printf("device: %d, capability[%d]=%s\n", dev_id, i, typeStr[info->drv.capabilities[i].type]);
+    LOG_D(NR_PHY, "device: %d, capability[%d]=%s\n", dev_id, i, typeStr[info->drv.capabilities[i].type]);
     if (info->drv.capabilities[i].type == RTE_BBDEV_OP_LDPC_ENC) {
       const struct rte_bbdev_op_cap_ldpc_enc cap = info->drv.capabilities[i].cap.ldpc_enc;
-      printf("    buffers: src = %d, dst = %d\n   capabilites: ", cap.num_buffers_src, cap.num_buffers_dst);
+      LOG_D(NR_PHY, "    buffers: src = %d, dst = %d\n   capabilites: ", cap.num_buffers_src, cap.num_buffers_dst);
       for (int j = 0; j < sizeof(cap.capability_flags) * 8; j++)
         if (cap.capability_flags & (1ULL << j))
-          printf("%s ", ldpcenc_flag_bitmask[j]);
-      printf("\n");
+          LOG_D(NR_PHY, "%s ", ldpcenc_flag_bitmask[j]);
+      LOG_D(NR_PHY, "\n");
     }
     if (info->drv.capabilities[i].type == RTE_BBDEV_OP_LDPC_DEC) {
       const struct rte_bbdev_op_cap_ldpc_dec cap = info->drv.capabilities[i].cap.ldpc_dec;
-      printf("    buffers: src = %d, hard out = %d, soft_out %d, llr size %d, llr decimals %d \n   capabilities: ",
+      LOG_D(NR_PHY, "    buffers: src = %d, hard out = %d, soft_out %d, llr size %d, llr decimals %d \n   capabilities: ",
              cap.num_buffers_src,
              cap.num_buffers_hard_out,
              cap.num_buffers_soft_out,
@@ -397,8 +397,8 @@ void debug_dev_capabilities(uint8_t dev_id, struct rte_bbdev_info *info)
              cap.llr_decimals);
       for (int j = 0; j < sizeof(cap.capability_flags) * 8; j++)
         if (cap.capability_flags & (1ULL << j))
-          printf("%s ", ldpcdec_flag_bitmask[j]);
-      printf("\n");
+          LOG_D(NR_PHY, "%s ", ldpcdec_flag_bitmask[j]);
+      LOG_D(NR_PHY, "\n");
     }
   }
 }
@@ -452,7 +452,7 @@ static int add_dev(uint8_t dev_id)
 
   // retrieve device capabilities
   rte_bbdev_info_get(dev_id, &active_dev.info);
-  printf("using bbdev %d: %s\n", dev_id, active_dev.info.dev_name);
+  LOG_I(NR_PHY, "using bbdev %d: %s\n", dev_id, active_dev.info.dev_name);
 
   active_dev.driver_name = active_dev.info.drv.driver_name;
   active_dev.dev_id = dev_id;
@@ -478,8 +478,8 @@ static int add_dev(uint8_t dev_id)
 
   // here, we allocate queues equally among encoding and decoding
   AssertFatal(nb_queues % 2 == 0, "ERROR: odd number of queues %u", nb_queues);
-  printf("total %u queues available\n", nb_queues);
-  printf("to allocate %u queues for encoding and %u queues for decoding\n", nb_queues / 2, nb_queues / 2);
+  LOG_I(NR_PHY, "total %u queues available\n", nb_queues);
+  LOG_I(NR_PHY, "to allocate %u queues for encoding and %u queues for decoding\n", nb_queues / 2, nb_queues / 2);
 
   for (queue_id = 0; queue_id < nb_queues / 2; queue_id++) {
     qconf.op_type = RTE_BBDEV_OP_LDPC_ENC;
@@ -487,7 +487,7 @@ static int add_dev(uint8_t dev_id)
     if (ret != 0) {
       break;
     } else {
-      printf("allocated LDPC encoding queue (id=%u) at prio%u on dev%u\n", queue_id, qconf.priority, dev_id);
+      LOG_I(NR_PHY, "allocated LDPC encoding queue (id=%u) at prio%u on dev%u\n", queue_id, qconf.priority, dev_id);
     }
     active_dev.queue_ids[queue_id] = queue_id;
   }
@@ -499,7 +499,7 @@ static int add_dev(uint8_t dev_id)
     if (ret != 0) {
       break;
     } else {
-      printf("allocated LDPC decoding queue (id=%u) at prio%u on dev%u\n", queue_id, qconf.priority, dev_id);
+      LOG_I(NR_PHY, "allocated LDPC decoding queue (id=%u) at prio%u on dev%u\n", queue_id, qconf.priority, dev_id);
     }
     active_dev.queue_ids[queue_id] = queue_id;
   }
@@ -531,7 +531,7 @@ static int init_op_data_objs_dec(struct rte_bbdev_op_data *bufs,
                   mbuf_pool->size);
 
       if (data_len > RTE_BBDEV_LDPC_E_MAX_MBUF) {
-        printf("Warning: Larger input size than DPDK mbuf %u\n", data_len);
+        LOG_W(NR_PHY, "Warning: Larger input size than DPDK mbuf %u\n", data_len);
         large_input = true;
       }
       bufs[j].data = m_head;
@@ -587,7 +587,7 @@ static int init_op_data_objs_enc(struct rte_bbdev_op_data *bufs,
                   mbuf_pool->size);
 
       if (data_len > RTE_BBDEV_LDPC_E_MAX_MBUF) {
-        printf("Warning: Larger input size than DPDK mbuf %u\n", data_len);
+        LOG_W(NR_PHY, "Warning: Larger input size than DPDK mbuf %u\n", data_len);
         large_input = true;
       }
       bufs[j].data = m_head;
@@ -629,7 +629,7 @@ static int allocate_buffers_on_socket(struct rte_bbdev_op_data **buffers, const 
 
   *buffers = rte_zmalloc_socket(NULL, len, 0, socket);
   if (*buffers == NULL) {
-    printf("WARNING: Failed to allocate op_data on socket %d\n", socket);
+    LOG_W(NR_PHY, "WARNING: Failed to allocate op_data on socket %d\n", socket);
     /* try to allocate memory on other detected sockets */
     for (i = 0; i < socket; i++) {
       *buffers = rte_zmalloc_socket(NULL, len, 0, i);
@@ -1139,7 +1139,7 @@ int32_t nrLDPC_coding_init()
     ret = rte_eal_init(sizeofArray(argv), argv);
   }
   if (ret < 0) {
-    printf("EAL initialization failed, probing DPDK device %s\n", dpdk_dev);
+    LOG_E(NR_PHY, "EAL initialization failed, probing DPDK device %s\n", dpdk_dev);
     if (rte_dev_probe(dpdk_dev) != 0) {
       LOG_E(PHY, "bbdev %s not found\n", dpdk_dev);
       return (-1);
@@ -1152,12 +1152,12 @@ int32_t nrLDPC_coding_init()
 
   // find bbdev that matches the dpdk_dev specified in the config file
   struct rte_bbdev_info info;
-  printf("detected %u bbdev devices.\n", nb_bbdevs);
+  LOG_I(NR_PHY, "detected %u bbdev devices.\n", nb_bbdevs);
   for (uint16_t device_id = 0; device_id < nb_bbdevs; device_id++) {
     rte_bbdev_info_get(device_id, &info);
     // check if info matches the dpdk dev we looking for
     if (strcmp(info.dev_name, dpdk_dev) == 0) {
-      printf("bbdev %s found.\n", info.dev_name);
+      LOG_I(NR_PHY, "bbdev %s found.\n", info.dev_name);
       dev_id = device_id;
       break;
     }
