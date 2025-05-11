@@ -52,6 +52,8 @@
 /* Number of segments that could be stored in HARQ combined buffers */
 #define HARQ_CODEBLOCK_ID_MAX (16 << 5)
 
+#define LDPC_T2_NAME "baseband_accl_ldpc"
+
 pthread_mutex_t encode_mutex;
 pthread_mutex_t decode_mutex;
 struct test_op_params *enc_op_params = NULL;
@@ -698,7 +700,9 @@ static void set_ldpc_dec_op(struct rte_bbdev_dec_op **ops,
         // NOTE: OAI does not support HARQ combining for now.
         // ops[j]->ldpc_dec.op_flags |= RTE_BBDEV_LDPC_HQ_COMBINE_IN_ENABLE;
       }
-      if (nrLDPC_slot_decoding_parameters->TBs[h].C > 1) {
+      if (nrLDPC_slot_decoding_parameters->TBs[h].C > 1 ||
+          strcmp(active_dev.driver_name, LDPC_T2_NAME) == 0 // handle T2 special case
+      ) {
         ops[j]->ldpc_dec.code_block_mode = 1;
         ops[j]->ldpc_dec.cb_params.e = nrLDPC_slot_decoding_parameters->TBs[h].segments[i].E;
         ops[j]->ldpc_dec.op_flags |= RTE_BBDEV_LDPC_CRC_TYPE_24B_DROP;
@@ -779,7 +783,9 @@ static void set_ldpc_enc_op(struct rte_bbdev_enc_op **ops,
       }
       ops[j]->ldpc_enc.rv_index = nrLDPC_slot_encoding_parameters->TBs[h].rv_index;
       ops[j]->ldpc_enc.op_flags = RTE_BBDEV_LDPC_RATE_MATCH;
-      if(nrLDPC_slot_encoding_parameters->TBs[h].C > 1) {
+      if(nrLDPC_slot_encoding_parameters->TBs[h].C > 1 ||
+        strcmp(active_dev.driver_name, LDPC_T2_NAME) == 0 // handle T2 special case
+      ) {
         ops[j]->ldpc_enc.code_block_mode = 1;
         ops[j]->ldpc_enc.cb_params.e = nrLDPC_slot_encoding_parameters->TBs[h].segments[i].E;
       } else {
