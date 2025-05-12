@@ -2,6 +2,7 @@
 #include "../nr_rlc_entity_am.h"
 #include "../nr_rlc_entity_um.h"
 #include "../nr_rlc_entity_tm.h"
+#include "common/utils/nr/nr_common.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -254,7 +255,8 @@ int test_main(void)
                                      max_retx_reached_gnb, NULL,
                                      test[pos+3], test[pos+4], test[pos+5],
                                      test[pos+6], test[pos+7], test[pos+8],
-                                     test[pos+9]);
+                                     test[pos+9],
+                                     UU);
           pos += 10;
           break;
         case UE_AM:
@@ -264,7 +266,8 @@ int test_main(void)
                                     max_retx_reached_ue, NULL,
                                     test[pos+3], test[pos+4], test[pos+5],
                                     test[pos+6], test[pos+7], test[pos+8],
-                                    test[pos+9]);
+                                    test[pos+9],
+                                    UU);
           pos += 10;
           break;
         case GNB_UM:

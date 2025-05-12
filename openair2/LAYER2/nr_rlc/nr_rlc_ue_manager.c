@@ -26,6 +26,7 @@
 #include <string.h>
 
 #include "LOG/log.h"
+#include "common/utils/nr/nr_common.h"
 
 typedef struct {
   pthread_mutex_t lock;
@@ -204,5 +205,9 @@ void nr_rlc_ue_add_drb_rlc_entity(nr_rlc_ue_t *ue, int drb_id, nr_rlc_entity_t *
     exit(1);
   }
 
-  ue->drb[drb_id] = entity;
+  if (entity->intf_type == PC5) {
+    ue->sl_drb[drb_id] = entity;
+  } else if (entity->intf_type == UU) {
+    ue->drb[drb_id] = entity;
+  }
 }

@@ -1,5 +1,5 @@
 #include "nr_rlc_entity.h"
-
+#include "common/utils/nr/nr_common.h"
 #include <stdio.h>
 
 int main(void)
@@ -16,7 +16,7 @@ int main(void)
                             0, 0,
                             45, 35, 0,
                             -1, -1, 8,
-                            12);
+                            12, UU);
 
   char data[8] = { 1, 2, 3, 4, 8, 7, 6, 5 };
 

@@ -385,7 +385,7 @@ static void init_pdcp(int ue_id, bool srap_enabled) {
   pdcp_set_pdcp_data_ind_func((pdcp_data_ind_func_t) pdcp_data_ind);
   // creates srap module, which will instanitate srap manager responsible for creating srap entitites and managing the entities operations
   if (srap_enabled) {
-    uint8_t gNB_flag = (get_node_type() == -1 || NODE_IS_CU(get_node_type())) ? 0 : 1;
+    bool gNB_flag = (get_node_type() == -1 || NODE_IS_CU(get_node_type())) ? false : true;
     nr_srap_layer_init(gNB_flag);
     srap_module_init(gNB_flag);
   }
@@ -491,8 +491,10 @@ int main( int argc, char **argv ) {
   bool srap_enabled = get_softmodem_params()->relay_type > 0 ? true : false;
   if (srap_enabled) {
     // FIXIT: This is temporary code until we get the ue configurations via RRC
-    get_softmodem_params()->remote_ue_id = ueinfo.remote_ue_id;
-    get_softmodem_params()->is_relay_ue = ueinfo.is_relay_ue;
+    if (!get_softmodem_params()->remote_ue_id)
+      get_softmodem_params()->remote_ue_id = ueinfo.remote_ue_id;
+    if (!get_softmodem_params()->is_relay_ue)
+      get_softmodem_params()->is_relay_ue = ueinfo.is_relay_ue;
   }
 
   init_NR_UE(1, uecap_file, rrc_config_path, &ueinfo);

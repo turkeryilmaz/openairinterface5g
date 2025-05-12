@@ -767,6 +767,7 @@ static void deliver_pdu_drb(void *deliver_pdu_data, ue_id_t ue_id, int rb_id,
     LOG_D(PDCP, "%s(): (drb %d) calling rlc_data_req size %d\n", __func__, rb_id, size);
     //for (i = 0; i < size; i++) printf(" %2.2x", (unsigned char)memblock->data[i]);
     //printf("\n");
+    // TODO: intf_type will need to be updated for SL Mode 1
     nr_intf_type_t intf_type = ((get_softmodem_params()->sl_mode == 2) && (node_type == -1)) ? PC5 : UU;
     enqueue_rlc_data_req(&ctxt, 0, MBMS_FLAG_NO, rb_id, sdu_id, 0, size, memblock, intf_type);
   }
@@ -821,6 +822,7 @@ void deliver_pdu_srb_rlc(void *deliver_pdu_data, ue_id_t ue_id, int srb_id,
   protocol_ctxt_t ctxt = { .enb_flag = 1, .rntiMaybeUEid = ue_id };
   mem_block_t *memblock = get_free_mem_block(size, __FUNCTION__);
   memcpy(memblock->data, buf, size);
+  // TODO: intf_type will need to be updated for SL Mode 1
   nr_intf_type_t intf_type = ((get_softmodem_params()->sl_mode == 2) && (node_type == -1)) ? PC5 : UU;
   enqueue_rlc_data_req(&ctxt, 1, MBMS_FLAG_NO, srb_id, sdu_id, 0, size, memblock, intf_type);
 }
