@@ -1294,7 +1294,6 @@ void init_NR_UE(int nb_inst, char *uecap_file, char *reconfig_file, char *rbconf
     AssertFatal(mac->if_module, "can not initialize IF module\n");
     if (!IS_SA_MODE(get_softmodem_params()) && !get_softmodem_params()->sl_mode) {
       init_nsa_message(&rrc_inst[i], reconfig_file, rbconfig_file);
-      nr_rlc_init_ue(i);
     }
     //TODO: Move this call to RRC
     start_sidelink((&rrc_inst[i])->ue_id);
