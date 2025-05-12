@@ -370,6 +370,23 @@ int nr_rlc_module_init(nr_rlc_op_mode_t mode)
   return 0;
 }
 
+static void deliver_sdu_srb0(void *_ue, nr_rlc_entity_t *entity, char *buf, int size)
+{
+  nr_rlc_ue_t *ue = _ue;
+  AssertFatal(entity == ue->srb0, "Error! Function to deliver SRB0 called for a different entity\n");
+  uint8_t *message_buffer;
+  int is_gnb = nr_rlc_manager_get_gnb_flag(nr_rlc_ue_manager);
+  if (is_gnb) {
+    bool rlc_split = nr_rlc_manager_rlc_is_split(nr_rlc_ue_manager);
+    task_id_t dest = rlc_split ? TASK_DU_F1 : TASK_RRC_GNB;
+    message_buffer = itti_malloc(TASK_RLC_ENB, dest, size);
+    memcpy(message_buffer, buf, size);
+  } else {
+    message_buffer = (uint8_t *) buf;
+  }
+  send_initial_srb0_message(ue->ue_id, message_buffer, size);
+}
+
 static void deliver_sdu(void *_ue, nr_rlc_entity_t *entity, char *buf, int size)
 {
   nr_rlc_ue_t *ue = _ue;
@@ -379,14 +396,7 @@ static void deliver_sdu(void *_ue, nr_rlc_entity_t *entity, char *buf, int size)
   uint8_t *memblock;
   int i;
 
-  /* is it SRB0? */
-  if (entity == ue->srb0) {
-    is_srb = 1;
-    rb_id = 0;
-    goto rb_found;
-  }
-
-  /* is it another SRB? */
+  /* is it a SRB != 0 */
   for (i = 0; i < sizeofArray(ue->srb); i++) {
     if (entity == ue->srb[i]) {
       is_srb = 1;
@@ -425,23 +435,6 @@ rb_found:
    * ID if in gNB, else use RNTI normally */
   ctx.rntiMaybeUEid = ue->ue_id;
   ctx.enb_flag = is_gnb;
-  bool rlc_split = nr_rlc_manager_rlc_is_split(nr_rlc_ue_manager);
-
-
-  if (is_srb && rb_id == 0) {
-    uint8_t *message_buffer;
-    if (is_gnb) {
-      if (rlc_split)
-        message_buffer = itti_malloc(TASK_RLC_ENB, TASK_DU_F1, size);
-      else
-        message_buffer = itti_malloc(TASK_RLC_ENB, TASK_RRC_GNB, size);
-      memcpy(message_buffer, buf, size);
-    } else {
-      message_buffer = (uint8_t *) buf;
-    }
-    send_initial_srb0_message(ue->ue_id, message_buffer, size);
-    return;
-  }
 
   if (is_gnb) {
     f1_ue_data_t ue_data = du_get_f1_ue_data(ue->ue_id);
@@ -449,7 +442,7 @@ rb_found:
     T(T_ENB_RLC_UL,
       T_INT(0 /*ctxt_pP->module_id*/),
       T_INT(ue->ue_id), T_INT(rb_id), T_INT(size));
-
+    bool rlc_split = nr_rlc_manager_rlc_is_split(nr_rlc_ue_manager);
     if (rlc_split) {
       if(is_srb) {
         MessageDef *msg;
@@ -889,7 +882,7 @@ void nr_rlc_init_ue(int ue_id)
   nr_rlc_manager_lock(nr_rlc_ue_manager);
   nr_rlc_ue_t *ue = nr_rlc_manager_get_ue(nr_rlc_ue_manager, ue_id);
 
-  nr_rlc_entity_t *nr_rlc_tm = new_nr_rlc_entity_tm(10000, deliver_sdu, ue);
+  nr_rlc_entity_t *nr_rlc_tm = new_nr_rlc_entity_tm(10000, deliver_sdu_srb0, ue);
   nr_rlc_ue_add_srb_rlc_entity(ue, 0, nr_rlc_tm);
   LOG_I(RLC, "RLC initialized for UE %d\n", ue_id);
   nr_rlc_manager_unlock(nr_rlc_ue_manager);
