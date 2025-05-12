@@ -333,8 +333,13 @@ rlc_op_status_t rlc_data_req(const protocol_ctxt_t *const ctxt_pP,
     if (rb_idP >= 1 && rb_idP <= 2)
       rb = ue->srb[rb_idP - 1];
   } else {
-    if (rb_idP >= 1 && rb_idP <= MAX_DRBS_PER_UE)
-      rb = ue->drb[rb_idP - 1];
+    if (rb_idP >= 1 && rb_idP <= MAX_DRBS_PER_UE) {
+      if (intf_type == PC5) {
+        rb = ue->sl_drb[rb_idP - 1];
+      } else if (intf_type == UU) {
+        rb = ue->drb[rb_idP - 1];
+      }
+    }
   }
 
   if (rb != NULL) {
