@@ -191,7 +191,8 @@ static void nr_dlsch_channel_compensation(uint32_t rx_size_symbol,
                                           unsigned char mod_order,
                                           unsigned short nb_rb,
                                           unsigned char output_shift,
-                                          PHY_NR_MEASUREMENTS *measurements);
+                                          PHY_NR_MEASUREMENTS *measurements,
+                                          int32_t ch_mag2_avg);
 
 /** \brief This function computes the average channel level over all allocated RBs and antennas (TX/RX) in order to compute output shift for compensated signal
     @param dl_ch_estimates_ext Channel estimates in allocated RBs
@@ -318,7 +319,7 @@ int nr_rx_pdsch(PHY_VARS_NR_UE *ue,
                 uint32_t dl_valid_re[NR_SYMBOLS_PER_SLOT],
                 c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP],
                 uint32_t llr_offset[NR_SYMBOLS_PER_SLOT],
-                int32_t *log2_maxh,
+                int32_t *ch_avgs,
                 int rx_size_symbol,
                 int nbRx,
                 int32_t rxdataF_comp[][nbRx][rx_size_symbol * NR_SYMBOLS_PER_SLOT],
@@ -436,6 +437,7 @@ int nr_rx_pdsch(PHY_VARS_NR_UE *ue,
   //----------------------------------------------------------
   const int n_rx = frame_parms->nb_antennas_rx;
   const bool meas_enabled = cpumeas(CPUMEAS_GETSTATE);
+  int log2_maxh = 0;
 
   {
     start_meas_nr_ue_phy(ue, DLSCH_EXTRACT_RBS_STATS);
@@ -506,26 +508,25 @@ int nr_rx_pdsch(PHY_VARS_NR_UE *ue,
         nr_dlsch_channel_level(rx_size_symbol, dl_ch_estimates_ext, frame_parms->nb_antennas_rx, nl, avg, nb_re_pdsch);
       else
         LOG_E(NR_PHY, "Average channel level is 0: nb_rb_pdsch = %d, nb_re_pdsch = %d\n", nb_rb_pdsch, nb_re_pdsch);
-      int avgs = 0;
       int32_t median[MAX_ANT][MAX_ANT];
       for (int aatx = 0; aatx < nl; aatx++)
         for (int aarx = 0; aarx < n_rx; aarx++) {
-          avgs = cmax(avgs, avg[aatx][aarx]);
+          *ch_avgs = cmax(*ch_avgs, avg[aatx][aarx]);
           LOG_D(PHY, "nb_rb %d avg_%d_%d Power per SC is %d\n", nb_rb_pdsch, aarx, aatx, avg[aatx][aarx]);
-          LOG_D(PHY, "avgs Power per SC is %d\n", avgs);
+          LOG_D(PHY, "avgs Power per SC is %d\n", *ch_avgs);
           median[aatx][aarx] = avg[aatx][aarx];
         }
       if (nl > 1) {
         nr_dlsch_channel_level_median(rx_size_symbol, dl_ch_estimates_ext, median, nl, n_rx, nb_re_pdsch);
         for (int aatx = 0; aatx < nl; aatx++) {
           for (int aarx = 0; aarx < n_rx; aarx++) {
-            avgs = cmax(avgs, median[aatx][aarx]);
+            *ch_avgs = cmax(*ch_avgs, median[aatx][aarx]);
           }
         }
       }
-      *log2_maxh = (log2_approx(avgs) / 2) + 1;
-      LOG_D(PHY, "[DLSCH] AbsSubframe %d.%d log2_maxh = %d (%d)\n", frame % 1024, nr_slot_rx, *log2_maxh, avgs);
     }
+    log2_maxh = (log2_approx(*ch_avgs) / 2);
+    LOG_D(PHY, "[DLSCH] AbsSubframe %d.%d log2_maxh = %d (%d)\n", frame % 1024, nr_slot_rx, log2_maxh, *ch_avgs);
     stop_meas_nr_ue_phy(ue, DLSCH_CHANNEL_LEVEL_STATS);
     if (meas_enabled) {
       LOG_D(PHY,
@@ -562,8 +563,9 @@ int nr_rx_pdsch(PHY_VARS_NR_UE *ue,
                                   first_symbol_flag,
                                   dlsch_config->qamModOrder,
                                   nb_rb_pdsch,
-                                  *log2_maxh,
-                                  measurements); // log2_maxh+I0_shift
+                                  log2_maxh,
+                                  measurements,
+                                  *ch_avgs);
     stop_meas_nr_ue_phy(ue, DLSCH_CHANNEL_COMPENSATION_STATS);
     if (meas_enabled) {
       LOG_D(PHY,
@@ -572,7 +574,7 @@ int nr_rx_pdsch(PHY_VARS_NR_UE *ue,
             nr_slot_rx,
             slot,
             symbol,
-            *log2_maxh,
+            log2_maxh,
             ue->phy_cpu_stats.cpu_time_stats[DLSCH_CHANNEL_COMPENSATION_STATS].p_time / (cpuf * 1000.0));
     }
     // Please keep it: useful for debugging
@@ -620,7 +622,7 @@ int nr_rx_pdsch(PHY_VARS_NR_UE *ue,
                       dl_ch_estimates_ext,
                       nb_rb_pdsch,
                       dlsch_config->qamModOrder,
-                      *log2_maxh,
+                      log2_maxh,
                       symbol,
                       nb_re_pdsch,
                       nvar);
@@ -809,6 +811,23 @@ void nr_dlsch_deinterleaving(uint8_t symbol,
 // Pre-processing for LLR computation
 //==============================================================================================
 
+static inline void compensate_amplitude(const simde__m128i *h2, simde__m128i *rF, const int amp)
+{
+  const simde__m128i rF_128 = *rF;
+  const simde__m128i h2_128 = *h2;
+  const simde__m128 ones = simde_mm_set1_ps((float)amp);
+  // sample 0, 1
+  const simde__m128i o0 = simde_mm_cvtps_epi32(simde_mm_mul_ps(
+      simde_mm_div_ps(simde_mm_cvtepi32_ps(simde_mm_cvtepi16_epi32(rF_128)), simde_mm_cvtepi32_ps(simde_mm_cvtepi16_epi32(h2_128))),
+      ones));
+  // sample 2, 3
+  const simde__m128i o1 = simde_mm_cvtps_epi32(
+      simde_mm_mul_ps(simde_mm_div_ps(simde_mm_cvtepi32_ps(simde_mm_cvtepi16_epi32(simde_mm_shuffle_epi32(rF_128, 0b1110))),
+                                      simde_mm_cvtepi32_ps(simde_mm_cvtepi16_epi32(simde_mm_shuffle_epi32(h2_128, 0b1110)))),
+                      ones));
+  *((simde__m128i *)rF) = simde_mm_packs_epi32(o0, o1);
+}
+
 static void nr_dlsch_channel_compensation(uint32_t rx_size_symbol,
                                           int nbRx,
                                           c16_t rxdataF_ext[][rx_size_symbol],
@@ -826,26 +845,33 @@ static void nr_dlsch_channel_compensation(uint32_t rx_size_symbol,
                                           unsigned char mod_order,
                                           unsigned short nb_rb,
                                           unsigned char output_shift,
-                                          PHY_NR_MEASUREMENTS *measurements)
+                                          PHY_NR_MEASUREMENTS *measurements,
+                                          int32_t ch_mag2_avg)
 {
   simde__m128i *dl_ch128, *dl_ch128_2, *dl_ch_mag128, *dl_ch_mag128b, *dl_ch_mag128r, *rxdataF128, *rxdataF_comp128, *rho128;
-  simde__m128i mmtmpD0, mmtmpD1, QAM_amp128 = {0}, QAM_amp128b = {0}, QAM_amp128r = {0};
+  simde__m128i QAM_amp128 = {0}, QAM_amp128b = {0}, QAM_amp128r = {0};
 
   uint32_t nb_rb_0 = length / 12 + ((length % 12) ? 1 : 0);
 
   for (int l = 0; l < n_layers; l++) {
     if (mod_order == 4) {
-      QAM_amp128 = simde_mm_set1_epi16(QAM16_n1); // 2/sqrt(10)
+      const int16_t amp = (int16_t)((ch_mag2_avg >> output_shift) * 2 / sqrt(10));
+      QAM_amp128 = simde_mm_set1_epi16(amp); // 2/sqrt(10)
       QAM_amp128b = simde_mm_setzero_si128();
       QAM_amp128r = simde_mm_setzero_si128();
     } else if (mod_order == 6) {
-      QAM_amp128 = simde_mm_set1_epi16(QAM64_n1); //
-      QAM_amp128b = simde_mm_set1_epi16(QAM64_n2);
+      const int16_t amp = (int16_t)((ch_mag2_avg >> output_shift) * 4 / sqrt(42));
+      const int16_t ampb = (int16_t)((ch_mag2_avg >> output_shift) * 2 / sqrt(42));
+      QAM_amp128 = simde_mm_set1_epi16(amp);
+      QAM_amp128b = simde_mm_set1_epi16(ampb);
       QAM_amp128r = simde_mm_setzero_si128();
     } else if (mod_order == 8) {
-      QAM_amp128 = simde_mm_set1_epi16(QAM256_n1);
-      QAM_amp128b = simde_mm_set1_epi16(QAM256_n2);
-      QAM_amp128r = simde_mm_set1_epi16(QAM256_n3);
+      const int16_t amp = (int16_t)((ch_mag2_avg >> output_shift) * 8 / sqrt(170));
+      const int16_t ampb = (int16_t)((ch_mag2_avg >> output_shift) * 4 / sqrt(170));
+      const int16_t ampr = (int16_t)((ch_mag2_avg >> output_shift) * 2 / sqrt(170));
+      QAM_amp128 = simde_mm_set1_epi16(amp);
+      QAM_amp128b = simde_mm_set1_epi16(ampb);
+      QAM_amp128r = simde_mm_set1_epi16(ampr);
     }
 
     for (int aarx = 0; aarx < frame_parms->nb_antennas_rx; aarx++) {
@@ -860,47 +886,35 @@ static void nr_dlsch_channel_compensation(uint32_t rx_size_symbol,
         if (mod_order > 2) {
           // get channel amplitude if not QPSK
 
-          mmtmpD0 = simde_mm_madd_epi16(dl_ch128[0], dl_ch128[0]);
-          mmtmpD0 = simde_mm_srai_epi32(mmtmpD0, output_shift);
+          dl_ch_mag128[0] = QAM_amp128;
+          dl_ch_mag128b[0] = QAM_amp128b;
+          dl_ch_mag128r[0] = QAM_amp128r;
 
-          mmtmpD1 = simde_mm_madd_epi16(dl_ch128[1], dl_ch128[1]);
-          mmtmpD1 = simde_mm_srai_epi32(mmtmpD1, output_shift);
-
-          mmtmpD0 = simde_mm_packs_epi32(mmtmpD0, mmtmpD1); //|H[0]|^2 |H[1]|^2 |H[2]|^2 |H[3]|^2 |H[4]|^2 |H[5]|^2 |H[6]|^2 |H[7]|^2
-
-          // store channel magnitude here in a new field of dlsch
-
-          dl_ch_mag128[0] = simde_mm_unpacklo_epi16(mmtmpD0, mmtmpD0);
-          dl_ch_mag128b[0] = dl_ch_mag128[0];
-          dl_ch_mag128r[0] = dl_ch_mag128[0];
-          dl_ch_mag128[0] = simde_mm_mulhrs_epi16(dl_ch_mag128[0], QAM_amp128);
-          dl_ch_mag128b[0] = simde_mm_mulhrs_epi16(dl_ch_mag128b[0], QAM_amp128b);
-          dl_ch_mag128r[0] = simde_mm_mulhrs_epi16(dl_ch_mag128r[0], QAM_amp128r);
-
-          dl_ch_mag128[1] = simde_mm_unpackhi_epi16(mmtmpD0, mmtmpD0);
-          dl_ch_mag128b[1] = dl_ch_mag128[1];
-          dl_ch_mag128r[1] = dl_ch_mag128[1];
-          dl_ch_mag128[1] = simde_mm_mulhrs_epi16(dl_ch_mag128[1], QAM_amp128);
-          dl_ch_mag128b[1] = simde_mm_mulhrs_epi16(dl_ch_mag128b[1], QAM_amp128b);
-          dl_ch_mag128r[1] = simde_mm_mulhrs_epi16(dl_ch_mag128r[1], QAM_amp128r);
-
-          mmtmpD0 = simde_mm_madd_epi16(dl_ch128[2], dl_ch128[2]);
-          mmtmpD0 = simde_mm_srai_epi32(mmtmpD0, output_shift);
-          mmtmpD1 = simde_mm_packs_epi32(mmtmpD0, mmtmpD0);
-
-          dl_ch_mag128[2] = simde_mm_unpacklo_epi16(mmtmpD1, mmtmpD1);
-          dl_ch_mag128b[2] = dl_ch_mag128[2];
-          dl_ch_mag128r[2] = dl_ch_mag128[2];
-
-          dl_ch_mag128[2] = simde_mm_mulhrs_epi16(dl_ch_mag128[2], QAM_amp128);
-          dl_ch_mag128b[2] = simde_mm_mulhrs_epi16(dl_ch_mag128b[2], QAM_amp128b);
-          dl_ch_mag128r[2] = simde_mm_mulhrs_epi16(dl_ch_mag128r[2], QAM_amp128r);
+          dl_ch_mag128[1] = dl_ch_mag128[2] = dl_ch_mag128[0];
+          dl_ch_mag128b[1] = dl_ch_mag128b[2] = dl_ch_mag128b[0];
+          dl_ch_mag128r[1] = dl_ch_mag128r[2] = dl_ch_mag128r[0];
         }
 
         // Multiply received data by conjugated channel
         rxdataF_comp128[0] = oai_mm_cpx_mult_conj(dl_ch128[0], rxdataF128[0], output_shift);
         rxdataF_comp128[1] = oai_mm_cpx_mult_conj(dl_ch128[1], rxdataF128[1], output_shift);
         rxdataF_comp128[2] = oai_mm_cpx_mult_conj(dl_ch128[2], rxdataF128[2], output_shift);
+
+        // Compensate channel amplitude
+        simde__m128i h2_0 = simde_mm_srai_epi32(simde_mm_madd_epi16(dl_ch128[0], dl_ch128[0]), output_shift);
+        simde__m128i h2_1 = simde_mm_srai_epi32(simde_mm_madd_epi16(dl_ch128[1], dl_ch128[1]), output_shift);
+        simde__m128i h2_2 = simde_mm_srai_epi32(simde_mm_madd_epi16(dl_ch128[2], dl_ch128[2]), output_shift);
+        h2_0 = simde_mm_packs_epi32(h2_0, h2_1);
+        h2_0 = simde_mm_unpacklo_epi16(h2_0, h2_0);
+        h2_1 = simde_mm_unpackhi_epi16(h2_0, h2_0);
+        h2_2 = simde_mm_packs_epi32(h2_2, h2_2);
+        h2_2 = simde_mm_unpacklo_epi16(h2_2, h2_2);
+        /* When using int16_t arithmetic to compensate channel magnitude, there is a chance of overflow when channel amplitude
+        response has large dynamic range. So we have to use either int32 or floating point arithmetic. We use floating point. */
+        const int h2_avg = ch_mag2_avg >> output_shift;
+        compensate_amplitude(&h2_0, rxdataF_comp128, h2_avg);
+        compensate_amplitude(&h2_1, rxdataF_comp128 + 1, h2_avg);
+        compensate_amplitude(&h2_2, rxdataF_comp128 + 2, h2_avg);
 
         dl_ch128 += 3;
         dl_ch_mag128 += 3;

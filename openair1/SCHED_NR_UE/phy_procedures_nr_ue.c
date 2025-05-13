@@ -601,8 +601,6 @@ static int nr_ue_pdsch_procedures(PHY_VARS_NR_UE *ue,
     uint32_t dl_valid_re[NR_SYMBOLS_PER_SLOT] = {0};
     uint32_t llr_offset[NR_SYMBOLS_PER_SLOT] = {0};
 
-    int32_t log2_maxh = 0;
-
     const uint32_t rx_llr_layer_size = (G + dlsch[0].Nl - 1) / dlsch[0].Nl;
 
     if (dlsch[0].Nl == 0 || rx_llr_layer_size == 0 || rx_llr_layer_size > 10 * 1000 * 1000) {
@@ -611,6 +609,7 @@ static int nr_ue_pdsch_procedures(PHY_VARS_NR_UE *ue,
     }
     __attribute__((aligned(32))) int16_t layer_llr[dlsch[0].Nl][rx_llr_layer_size];
 
+    int32_t ch_avgs = 0;
     start_meas_nr_ue_phy(ue, RX_PDSCH_STATS);
     for (int m = dlschCfg->start_symbol; m < (dlschCfg->number_symbols + dlschCfg->start_symbol); m++) {
       bool first_symbol_flag = false;
@@ -633,7 +632,7 @@ static int nr_ue_pdsch_procedures(PHY_VARS_NR_UE *ue,
                       dl_valid_re,
                       rxdataF,
                       llr_offset,
-                      &log2_maxh,
+                      &ch_avgs,
                       rx_size_symbol,
                       ue->frame_parms.nb_antennas_rx,
                       rxdataF_comp,
