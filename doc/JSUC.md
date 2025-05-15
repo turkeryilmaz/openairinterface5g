@@ -3,7 +3,9 @@ This tutorial will discuss the setup for a hybrid communication mode using sidel
 
 ## Setup
 The idea is to have 4 UEs, two running sidelink and two running normal mode. A logical UE (UE A and UE B) supporting hybrid communication mode is represented by 2 UEs, one running sidelink and the other running normal mode.
+
 ![Hybrid Communication Setup Diagram](doc/images/hybrid_communication_setup.png)
+
 The following repos will be used for each technology:
 - Uu: `mkdir normal-mode`, `cd normal-mode` then clone `https://github.com/beraoudabdelkhalek/rfsim-Uu-metrics`
 - Sidelink: `mkdir sidelink`, `cd sidelink` then clone `https://gitlab.eurecom.fr/oai/openairinterface5g` and `git checkout sl-eurecom4`
