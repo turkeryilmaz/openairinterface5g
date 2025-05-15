@@ -225,14 +225,16 @@
       <desc>nr_dlsim Test cases. (Test1: 106 PRBs 50 PDSCH-PRBs MCS Index 27),
                                  (Test2: 106 PRBs 50 PDSCH-PRBs MCS Index 16),
                                  (Test3: 106 MCS-TABLE 256 QAM MCS Index 26),
-                                 (Test4: MCS 0, low SNR performance),
-                                 (Test5: 4x4 MIMO, 1 Layer),
-                                 (Test6: 4x4 MIMO, 2 Layers),
-                                 (Test7: 4x4 MIMO, 4 Layers)</desc>
+                                 (Test4: 106 MCS-TABLE 256 QAM MCS Index 22, Fading Channel),
+                                 (Test5: MCS 0, low SNR performance),
+                                 (Test6: 4x4 MIMO, 1 Layer),
+                                 (Test7: 4x4 MIMO, 2 Layers),
+                                 (Test8: 4x4 MIMO, 4 Layers)</desc>
       <main_exec>nr_dlsim</main_exec>
       <main_exec_args>-n100 -e27 -s30
                       -n100 -e16 -s11 -S13
                       -n100 -q1 -e26 -s30
+                      -n100 -q1 -e22 -s25 -gA
                       -n100 -e0 -t95 -S-1.0 -i 2 1 0
                       -n10 -s20 -U 3 0 0 2 -gA -x1 -y4 -z4
                       -n10 -s20 -U 3 0 0 2 -gA -x2 -y4 -z4
