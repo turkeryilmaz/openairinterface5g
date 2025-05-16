@@ -50,8 +50,10 @@
 #define CHANNELMOD_DYNAMICLOAD
 #include <openair1/SIMULATION/TOOLS/sim.h>
 #include "rfsimulator.h"
+#include "sync_service.h"
 
 #define PORT 4043 //default TCP port for this simulator
+#define SYNC_PORT 4044 //default TCP port for sync service
 //
 // CirSize defines the number of samples inquired for a read cycle
 // It is bounded by a slot read capability (which depends on bandwidth and numerology)
@@ -85,7 +87,7 @@ typedef enum { SIMU_ROLE_SERVER = 1, SIMU_ROLE_CLIENT } simuRole;
   "        chanmod:   enable channel modelisation\n"\
   "        saviq:     enable saving written iqs to a file\n"
 #define CONFIG_HELP_HANG_WORKAROUND "Enable workaroud for server mode hanging on new client connection.\n"
-
+#define CONFIG_HELP_SYNC_SERVICE "Enable sync service: 0 (default) disable, 1 enable server, 2 enable client.\n"
 /*-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 /*                                            configuration parameters for the rfsimulator device                                                                              */
 /*   optname                     helpstr                     paramflags           XXXptr                               defXXXval                          type         numelt  */
@@ -103,6 +105,7 @@ typedef enum { SIMU_ROLE_SERVER = 1, SIMU_ROLE_CLIENT } simuRole;
     {"prop_delay",             "<propagation delay in ms>\n",         simOpt,  .dblptr=&(rfsimulator->prop_delay_ms),  .defdblval=0.0,                   TYPE_DOUBLE,    0 },\
     {"wait_timeout",           "<wait timeout if no UE connected>\n", simOpt,  .iptr=&(rfsimulator->wait_timeout),     .defintval=1,                     TYPE_INT,       0 },\
     {"hanging-workaround",     CONFIG_HELP_HANG_WORKAROUND,           simOpt,  .iptr=&rfsimulator->hanging_workaround, .defintval=0,                     TYPE_INT,       0 },\
+    {"sync-service",           CONFIG_HELP_SYNC_SERVICE,              simOpt,  .iptr=&rfsimulator->sync_service,      .defintval=SYNC_SERVICE_DISABLED,  TYPE_INT,       0 },\
   };
 
 static void getset_currentchannels_type(char *buf, int debug, webdatadef_t *tdata, telnet_printfunc_t prnt);
@@ -166,6 +169,8 @@ typedef struct {
   int wait_timeout;
   double prop_delay_ms;
   int hanging_workaround;
+  int sync_service;
+  sync_service_t *sync_service_ptr;
 } rfsimulator_state_t;
 
 static buffer_t* allocCirBuf(rfsimulator_state_t *bridge, int sock)
@@ -657,6 +662,9 @@ static int client_try_connect(const char *host, uint16_t port)
 static int startClient(openair0_device *device)
 {
   rfsimulator_state_t *t = device->priv;
+  if (t->sync_service != SYNC_SERVICE_DISABLED) {
+    t->sync_service_ptr = sync_service_init(t->sync_service, t->ip, SYNC_PORT);
+  }
   t->role = SIMU_ROLE_CLIENT;
   int sock;
 
@@ -940,6 +948,11 @@ static int rfsimulator_read(openair0_device *device, openair0_timestamp *ptimest
             have_to_wait=true;
             break;
           }
+      }
+
+      if (t->sync_service_ptr != NULL) {
+        int ret = sync_service_sync(t->sync_service_ptr, t->nextRxTstamp + nsamps);
+        AssertFatal(ret == 0, "sync_service_sync() failed: %d\n", ret);
       }
 
       if (have_to_wait) {
