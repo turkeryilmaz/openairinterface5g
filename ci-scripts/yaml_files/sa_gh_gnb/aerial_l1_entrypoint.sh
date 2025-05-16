@@ -50,16 +50,22 @@ else
     argument="$1"
 fi
 
+#Change this to the PCIe port used for FH communication
 sed -i "s/ nic:.*/ nic: 0000:01:00.0/" ${cuBB_SDK}/cuPHY-CP/cuphycontroller/config/cuphycontroller_P5G_FXN_GH.yaml
+#Change this to the MAC address of the ORU
 sed -i "s/ dst_mac_addr:.*/ dst_mac_addr: 6c:ad:ad:00:02:02/" ${cuBB_SDK}/cuPHY-CP/cuphycontroller/config/cuphycontroller_P5G_FXN_GH.yaml
+#Change this to the VLAN used for FH communication
 sed -i "s/ vlan:.*/ vlan: 2/" ${cuBB_SDK}/cuPHY-CP/cuphycontroller/config/cuphycontroller_P5G_FXN_GH.yaml  
+#This value might need to be adjusted depending the the radio environment
 sed -i "s/ ul_gain_calibration:.*/ ul_gain_calibration: 78.68/" ${cuBB_SDK}/cuPHY-CP/cuphycontroller/config/cuphycontroller_P5G_FXN_GH.yaml
+
 
 export AERIAL_LOG_PATH=/var/log/aerial
 sudo -E "$cuBB_Path"/build/cuPHY-CP/cuphycontroller/examples/cuphycontroller_scf $argument
-sudo ./build/cuPHY-CP/gt_common_libs/nvIPC/tests/pcap/pcap_collect nvipc $AERIAL_LOG_PATH
+sudo ./build/cuPHY-CP/gt_common_libs/nvIPC/tests/pcap/pcap_collect nvipc /tmp
+sudo mv /tmp/nvipc*.pcap $AERIAL_LOG_PATH
 
 #Uncomment this if using multiple nvipc interfaces
-#sudo ./build_x86/cuPHY-CP/gt_common_libs/nvIPC/tests/pcap/pcap_collect nvipc1 /tmp
+#sudo ./build/cuPHY-CP/gt_common_libs/nvIPC/tests/pcap/pcap_collect nvipc1 /tmp
 #sudo mv /tmp/nvipc*.pcap /var/log/aerial/
 #sleep infinity
