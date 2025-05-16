@@ -44,6 +44,7 @@
 
 //#define DEBUG_RXDATA
 //#define SRS_IND_DEBUG
+#define E2_AGENT
 
 int beam_index_allocation(int fapi_beam_index, NR_gNB_COMMON *common_vars, int slot, int symbols_per_slot, int bitmap_symbols)
 {
@@ -649,13 +650,13 @@ int fill_srs_channel_matrix(uint8_t *channel_matrix,
                             const uint16_t num_gnb_antenna_elements,
                             const uint16_t num_ue_srs_ports,
                             const uint16_t prg_size,
-                            const uint16_t num_prgs,
+                            const uint16_t num_samples,
                             const NR_DL_FRAME_PARMS *frame_parms,
                             const c16_t srs_estimated_channel_freq[][1 << srs_pdu->num_ant_ports]
-                                                                  [frame_parms->ofdm_symbol_size * (1 << srs_pdu->num_symbols)])
+                                                                  [frame_parms->ofdm_symbol_size * (1 << srs_pdu->num_symbols)], uint16_t step_size)
 {
   const uint64_t subcarrier_offset = frame_parms->first_carrier_offset + srs_pdu->bwp_start*NR_NB_SC_PER_RB;
-  const uint16_t step = prg_size*NR_NB_SC_PER_RB;
+  const uint16_t step = step_size; //prg_size*NR_NB_SC_PER_RB;
 
   c16_t *channel_matrix16 = (c16_t*)channel_matrix;
   c8_t *channel_matrix8 = (c8_t*)channel_matrix;
@@ -668,9 +669,9 @@ int fill_srs_channel_matrix(uint8_t *channel_matrix,
         subcarrier -= frame_parms->ofdm_symbol_size;
       }
 
-      for(int pI = 0; pI < num_prgs; pI++) {
+      for(int pI = 0; pI < num_samples; pI++) {
         const c16_t *srs_estimated_channel16 = srs_estimated_channel_freq[gI][uI] + subcarrier;
-        uint16_t index = uI*num_gnb_antenna_elements*num_prgs + gI*num_prgs + pI;
+        uint16_t index = uI*num_gnb_antenna_elements*num_samples + gI*num_samples + pI;
 
         if (normalized_iq_representation == 0) {
           channel_matrix8[index].r = (int8_t)(srs_estimated_channel16->r>>8);
@@ -1065,6 +1066,14 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx, N
             nr_srs_channel_iq_matrix.num_ue_srs_ports = srs_pdu->srs_parameters_v4.num_total_ue_antennas;
             nr_srs_channel_iq_matrix.prg_size = srs_pdu->srs_parameters_v4.prg_size;
             nr_srs_channel_iq_matrix.num_prgs = srs_pdu->srs_parameters_v4.srs_bandwidth_size / srs_pdu->srs_parameters_v4.prg_size;
+            uint16_t step = nr_srs_channel_iq_matrix.prg_size*NR_NB_SC_PER_RB;
+            uint16_t num_samples = nr_srs_channel_iq_matrix.num_prgs;
+#ifdef E2_AGENT
+
+            nr_srs_channel_iq_matrix.prg_size = 0;
+            step = 1;
+            num_samples = NR_NB_SC_PER_RB * num_samples;
+#endif
             fill_srs_channel_matrix(nr_srs_channel_iq_matrix.channel_matrix,
                                     srs_pdu,
                                     gNB->nr_srs_info[i],
@@ -1072,10 +1081,9 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx, N
                                     nr_srs_channel_iq_matrix.num_gnb_antenna_elements,
                                     nr_srs_channel_iq_matrix.num_ue_srs_ports,
                                     nr_srs_channel_iq_matrix.prg_size,
-                                    nr_srs_channel_iq_matrix.num_prgs,
+                                    num_samples,
                                     &gNB->frame_parms,
-                                    srs_estimated_channel_freq);
-
+                                    srs_estimated_channel_freq, step);
 #ifdef SRS_IND_DEBUG
             LOG_I(NR_PHY, "nr_srs_channel_iq_matrix.normalized_iq_representation = %i\n", nr_srs_channel_iq_matrix.normalized_iq_representation);
             LOG_I(NR_PHY, "nr_srs_channel_iq_matrix.num_gnb_antenna_elements = %i\n", nr_srs_channel_iq_matrix.num_gnb_antenna_elements);

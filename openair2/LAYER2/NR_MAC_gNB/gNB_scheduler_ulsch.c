@@ -37,6 +37,7 @@
 #include "LAYER2/nr_rlc/nr_rlc_oai_api.h"
 
 //#define SRS_IND_DEBUG
+#define E2_AGENT
 
 static void dump_srs_channel_iq_matrix(nfapi_nr_srs_normalized_channel_iq_matrix_t* channel_iq_matrix, const char* filename) {
   FILE* f = fopen(filename, "wb");
@@ -1462,7 +1463,7 @@ void handle_nr_srs_measurements(const module_id_t module_id,
   NR_SCHED_LOCK(&nrmac->sched_lock);
   LOG_D(NR_MAC, "(%d.%d) Received SRS indication for UE %04x\n", frame, slot, srs_ind->rnti);
 
-//#ifdef SRS_IND_DEBUG
+#ifdef SRS_IND_DEBUG
   LOG_I(NR_MAC, "frame = %i\n", frame);
   LOG_I(NR_MAC, "slot = %i\n", slot);
   LOG_I(NR_MAC, "srs_ind->rnti = %04x\n", srs_ind->rnti);
@@ -1470,7 +1471,7 @@ void handle_nr_srs_measurements(const module_id_t module_id,
   LOG_I(NR_MAC, "srs_ind->timing_advance_offset_nsec = %i\n", srs_ind->timing_advance_offset_nsec);
   LOG_I(NR_MAC, "srs_ind->srs_usage = %i\n", srs_ind->srs_usage);
   LOG_I(NR_MAC, "srs_ind->report_type = %i\n", srs_ind->report_type);
-//#endif
+#endif
 
   NR_UE_info_t *UE = find_nr_UE(&RC.nrmac[module_id]->UE_info, srs_ind->rnti);
   if (!UE) {
@@ -1544,7 +1545,10 @@ void handle_nr_srs_measurements(const module_id_t module_id,
                                                  report_tlv->length,
                                                  &nr_srs_channel_iq_matrix,
                                                  sizeof(nfapi_nr_srs_normalized_channel_iq_matrix_t));
+#ifdef E2_AGENT
       dump_srs_channel_iq_matrix(&nr_srs_channel_iq_matrix, "mac_channel_rfsim.iq");
+      break;
+#endif
 
 #ifdef SRS_IND_DEBUG
       LOG_I(NR_MAC, "nr_srs_channel_iq_matrix.normalized_iq_representation = %i\n", nr_srs_channel_iq_matrix.normalized_iq_representation);
