@@ -677,7 +677,7 @@ static uint64_t get_carrier_frequency(const int N_RB, const int mu, const uint32
   return carrier_freq;
 }
 
-static void readFrame(PHY_VARS_NR_UE *UE, openair0_timestamp *timestamp, int duration_rx_to_tx, bool toTrash);
+static int readFrame(PHY_VARS_NR_UE *UE, openair0_timestamp *timestamp, int duration_rx_to_tx, bool toTrash);
 static int handle_sync_req_from_mac(PHY_VARS_NR_UE *UE)
 {
   NR_DL_FRAME_PARMS *fp = &UE->frame_parms;
@@ -844,7 +844,7 @@ void dummyWrite(PHY_VARS_NR_UE *UE,openair0_timestamp timestamp, int writeBlockS
   AssertFatal(writeBlockSize == tmp, "");
 }
 
-static void readFrame(PHY_VARS_NR_UE *UE, openair0_timestamp *timestamp, int duration_rx_to_tx, bool toTrash)
+static int readFrame(PHY_VARS_NR_UE *UE, openair0_timestamp *timestamp, int duration_rx_to_tx, bool toTrash)
 {
   NR_DL_FRAME_PARMS *fp = &UE->frame_parms;
   // two frames for initial sync
@@ -870,7 +870,13 @@ static void readFrame(PHY_VARS_NR_UE *UE, openair0_timestamp *timestamp, int dur
       int read_block_size = fp->get_samples_per_slot(slot, fp);
       int tmp = UE->rfdevice.trx_read_func(&UE->rfdevice, timestamp, rxp, read_block_size, fp->nb_antennas_rx);
       UEscopeCopy(UE, ueTimeDomainSamplesBeforeSync, rxp[0], sizeof(c16_t), 1, read_block_size, 0);
-      AssertFatal(read_block_size == tmp, "");
+      if (read_block_size != tmp) {
+        if (toTrash)
+          for (int i = 0; i < fp->nb_antennas_rx; i++)
+            free(rxp[i]);
+
+        return 1;
+      }
 
       if (IS_SOFTMODEM_RFSIM) {
         const openair0_timestamp writeTimestamp =
@@ -883,6 +889,8 @@ static void readFrame(PHY_VARS_NR_UE *UE, openair0_timestamp *timestamp, int dur
   if (toTrash)
     for (int i = 0; i < fp->nb_antennas_rx; i++)
       free(rxp[i]);
+
+  return 0;
 }
 
 static void syncInFrame(PHY_VARS_NR_UE *UE, openair0_timestamp *timestamp, int duration_rx_to_tx, openair0_timestamp rx_offset)
@@ -1150,7 +1158,10 @@ void *UE_thread(void *arg)
         readFrame(UE, &tmp, duration_rx_to_tx, true);
 
       // read 2 frames to do initial sync
-      readFrame(UE, &sync_timestamp, duration_rx_to_tx, false);
+      while (true) {
+        if (readFrame(UE, &sync_timestamp, duration_rx_to_tx, false) == 0)
+          break;
+      }
       syncMsg->UE = UE;
       memset(&syncMsg->proc, 0, sizeof(syncMsg->proc));
       pushNotifiedFIFO(&UE->sync_actor.fifo, Msg);
