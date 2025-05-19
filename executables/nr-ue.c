@@ -1129,8 +1129,8 @@ void *UE_thread(void *arg)
         last_scanned_gscn = syncMsg->gscnInfo[syncMsg->numGscn - 1].gscn;
         // set dl freqeuncy for current scan
         fp->dl_CarrierFreq = dlFreq * 1000;
-        nr_rf_card_config_freq(&openair0_cfg[UE->rf_map.card], 0, fp->dl_CarrierFreq, 0); // no need to set UL freq for cell search
-        UE->rfdevice.trx_set_freq_func(&UE->rfdevice, &openair0_cfg[0]);
+        nr_rf_card_config_freq(&UE->openair0_cfg[UE->rf_map.card], fp->dl_CarrierFreq, fp->dl_CarrierFreq, 0);
+        UE->rfdevice.trx_set_freq_func(&UE->rfdevice, &UE->openair0_cfg[0]);
         init_symbol_rotation(fp);
       } else {
         LOG_W(PHY, "SSB position provided\n");

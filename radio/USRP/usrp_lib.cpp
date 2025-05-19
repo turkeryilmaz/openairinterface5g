@@ -145,6 +145,36 @@ int check_ref_locked(usrp_state_t *s,size_t mboard) {
   return ref_locked;
 }
 
+int check_lo_locked(usrp_state_t *s, size_t channel)
+{
+  std::vector<std::string> sensor_names = s->usrp->get_rx_sensor_names(channel);
+  bool lo_locked = false;
+
+  if(std::find(sensor_names.begin(), sensor_names.end(), "lo_locked") != sensor_names.end()) {
+    std::cout << "Waiting for LO lock..." << std::flush;
+
+    for (int i = 0; i < 30 and not lo_locked; i++) {
+      lo_locked = s->usrp->get_rx_sensor("lo_locked", channel).to_bool();
+
+      if (not lo_locked) {
+        std::cout << "." << std::flush;
+        boost::this_thread::sleep(boost::posix_time::milliseconds(5));
+      }
+    }
+
+    if(lo_locked) {
+      std::cout << "LOCKED" << std::endl;
+    } else {
+      std::cout << "FAILED" << std::endl;
+    }
+  } else {
+    std::cout << boost::format("lo_locked sensor not present on this board.\n");
+  }
+
+  return lo_locked;
+
+}
+
 static int sync_to_gps(openair0_device *device) {
   //uhd::set_thread_priority_safe();
   //std::string args;
@@ -838,6 +868,13 @@ int trx_usrp_set_freq(openair0_device *device, openair0_config_t *openair0_cfg)
   uhd::tune_request_t rx_tune_req(openair0_cfg[0].rx_freq[0], openair0_cfg[0].tune_offset);
   s->usrp->set_tx_freq(tx_tune_req);
   s->usrp->set_rx_freq(rx_tune_req);
+
+  for(int i=0; i<((int) s->usrp->get_rx_num_channels()); i++) {
+    openair0_config_t *cfg = device->openair0_cfg;
+    if (i < cfg->rx_num_channels) {
+      check_lo_locked(s, i);
+    }
+  }
 
   return(0);
 }
