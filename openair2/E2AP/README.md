@@ -264,3 +264,9 @@ The same was shown in the following events:
 
 In order to reproduce this testbed, please follow the [O-RAN SC nearRT-RIC installation guide](https://lf-o-ran-sc.atlassian.net/wiki/spaces/GS/overview), and the [kpm-rc-xapp](https://github.com/mirazabal/kpm_rc-xapp) xApp used. Please note that we do not give support for the O-RAN SC nearRT-RIC.
 
+# 5.2 J release
+The OAI E2 Agent has been successfully validated with the release J of the O-RAN OSC nearRT-RIC, leveraging the xDevSM framework developed by the MMWG at the University of Bologna and the WIoT at Northeastern University.
+
+Please follow [the xDevSM framework tutorial](https://openrangym.com/tutorials/xdevsm-tutorial) in order to reproduce this testbed, and try [the example xApps](https://github.com/wineslab/xDevSM-xapps-examples) built using this framework.
+
+
