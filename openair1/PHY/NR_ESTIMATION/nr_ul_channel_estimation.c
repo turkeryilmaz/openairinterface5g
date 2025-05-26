@@ -83,14 +83,24 @@ void srs_toa_MQTT(int32_t *buffer, int32_t buf_len, int16_t gNB_id, int16_t ant_
         avg_buffer[i].r = sum_r / N_symb_SRS;
         avg_buffer[i].i = sum_i / N_symb_SRS;
     }
+    
+    fftshift((int32_t *)avg_buffer, N_bins);
+    
+    int16_t *freq_signal, *time_signal;
 
-    // Prepare input buffer for freq2time (interleaved int16_t format)
-    int16_t freq_signal[2 * N_bins];
+    if (posix_memalign((void **)&freq_signal, 32, sizeof(int16_t) * 2 * N_bins) != 0 ||
+        posix_memalign((void **)&time_signal, 32, sizeof(int16_t) * 2 * N_bins) != 0) { 
+        printf("Failed to allocate aligned buffers\n");
+        abort();
+    }
+
+    assert(((intptr_t)freq_signal & 0x1F) == 0);
+    assert(((intptr_t)time_signal & 0x1F) == 0);
+
     for (int i = 0; i < N_bins; i++) {
         freq_signal[2 * i]     = avg_buffer[i].r;
         freq_signal[2 * i + 1] = avg_buffer[i].i;
     }
-    int16_t time_signal[2 * N_bins];  // same size
     freq2time(N_bins, freq_signal, time_signal);
 
 
@@ -152,6 +162,9 @@ void srs_toa_MQTT(int32_t *buffer, int32_t buf_len, int16_t gNB_id, int16_t ant_
     }
 
     cJSON_Delete(mqtt_payload);
+    free(freq_signal);
+    free(time_signal);
+
 }
 
 
