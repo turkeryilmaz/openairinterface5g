@@ -59,13 +59,40 @@ void fftshift(int32_t *buffer, int32_t buf_len) {
 }
 
 
-
-void srs_toa_MQTT(int32_t *buffer, int32_t buf_len, int16_t gNB_id, int16_t ant_idx) {
+void srs_toa_MQTT(int32_t *buffer, int32_t buf_len, int16_t gNB_id, int16_t ant_idx, int N_symb_SRS) {
     MQTTClient_message pubmsg = MQTTClient_message_initializer;
     MQTTClient_deliveryToken token;
     int rc;
     int16_t peak_idx = 0;
     int16_t peak_val = 0;
+
+    int N_bins = buf_len / N_symb_SRS; 
+
+    // Averaged buffer over N_symbols
+    c16_t avg_buffer[N_bins];
+    memset(avg_buffer, 0, sizeof(avg_buffer));
+
+    for (int i = 0; i < N_bins; i++) {
+        int sum_r = 0;
+        int sum_i = 0;
+        for (int s = 0; s < N_symb_SRS; s++) {
+            c16_t *val = &((c16_t *)buffer)[i + s * N_bins];
+            sum_r += val->r;
+            sum_i += val->i;
+        }
+        avg_buffer[i].r = sum_r / N_symb_SRS;
+        avg_buffer[i].i = sum_i / N_symb_SRS;
+    }
+
+    // Prepare input buffer for freq2time (interleaved int16_t format)
+    int16_t freq_signal[2 * N_bins];
+    for (int i = 0; i < N_bins; i++) {
+        freq_signal[2 * i]     = avg_buffer[i].r;
+        freq_signal[2 * i + 1] = avg_buffer[i].i;
+    }
+    int16_t time_signal[2 * N_bins];  // same size
+    freq2time(N_bins, freq_signal, time_signal);
+
 
     cJSON *mqtt_payload = cJSON_CreateObject();
     cJSON_AddNumberToObject(mqtt_payload, "peak_index", peak_idx);
@@ -75,20 +102,15 @@ void srs_toa_MQTT(int32_t *buffer, int32_t buf_len, int16_t gNB_id, int16_t ant_
 
 #ifdef SRS_CH_EST
     cJSON *chest_json = cJSON_AddArrayToObject(mqtt_payload, "ch_est_T");
-
-    // Temporary array to hold channel estimation values
-    int32_t chest_tmp[buf_len];
+    int32_t chest_tmp[N_bins];
 #endif
-
-    //fftshift(buffer, buf_len);
 
     // Peak calculation
     int32_t max_val = 0, max_idx = 0, abs_val = 0;
-    for (int k = 0; k < buf_len; k++) {
-        int Re = ((c16_t*)buffer)[k].r;
-        int Im = ((c16_t*)buffer)[k].i;
-        //abs_val = (Re * Re / 2) + (Im * Im / 2);
-        abs_val = (int32_t)sqrtf((float)(Re * Re + Im * Im));  // Absolute value
+    for (int k = 0; k < N_bins; k++) {
+        int Re = time_signal[2 * k];
+        int Im = time_signal[2 * k + 1];
+        abs_val = (int32_t)sqrtf((float)(Re * Re + Im * Im));
 
         if (abs_val > max_val) {
             max_val = abs_val;
@@ -96,21 +118,18 @@ void srs_toa_MQTT(int32_t *buffer, int32_t buf_len, int16_t gNB_id, int16_t ant_
         }
 
 #ifdef SRS_CH_EST
-        chest_tmp[k] = abs_val;  // Save to temp array
+        chest_tmp[k] = abs_val;
 #endif
     }
 
     peak_idx = max_idx;
     peak_val = max_val;
-    //printf("ant=%d , peak=%d\n", ant_idx, peak_idx);
-
     cJSON_SetIntValue(cJSON_GetObjectItem(mqtt_payload, "peak_index"), peak_idx);
     cJSON_SetIntValue(cJSON_GetObjectItem(mqtt_payload, "peak_val"), peak_val);
 
 #ifdef SRS_CH_EST
-    // Circular shift of chest_tmp
-    int shift = 2098; 
-    int real_size = buf_len; 
+    int shift = 2098;
+    int real_size = N_bins;
     int32_t chest_shifted[real_size];
 
     for (int i = 0; i < real_size; i++) {
@@ -134,6 +153,7 @@ void srs_toa_MQTT(int32_t *buffer, int32_t buf_len, int16_t gNB_id, int16_t ant_
 
     cJSON_Delete(mqtt_payload);
 }
+
 
 
 /* Generic function to find the peak of channel estimation buffer */

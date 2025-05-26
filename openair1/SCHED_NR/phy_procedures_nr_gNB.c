@@ -979,7 +979,7 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx)
           T_INT(frame_rx),
           T_INT(slot_rx),
           T_INT(ant_rx),
-          T_BUFFER(srs_estimated_channel_freq[ant_rx][0], frame_parms->ofdm_symbol_size * sizeof(int32_t)));
+          T_BUFFER(srs_estimated_channel_freq[ant_rx][0], (N_symb_SRS * frame_parms->ofdm_symbol_size) * sizeof(int32_t)));
 
         T(T_GNB_PHY_UL_TIME_CHANNEL_ESTIMATE,
           T_INT(gNB->Mod_id),
@@ -1011,7 +1011,7 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx)
         for (int ant=0;ant<N_ant_rx;ant++){
           LOG_D(NR_PHY,"[first] srs_toa_ns[%d] = %d\n",ant,srs_toa_ns[ant]);
           if(frame_rx%10==0){
-          srs_toa_MQTT((int32_t *)srs_estimated_channel_time_shifted[ant][0], frame_parms->ofdm_symbol_size, gNB->Mod_id, ant);
+            srs_toa_MQTT((int32_t *)srs_estimated_channel_freq[ant][0], N_symb_SRS * frame_parms->ofdm_symbol_size, gNB->Mod_id, ant, N_symb_SRS);
           }
         }
 	//the value of the first antenna goes into this field. All of the antennas are also in the TLV part of the localization report below.
