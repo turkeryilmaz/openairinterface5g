@@ -2226,8 +2226,7 @@ void nr_release_ra_UE(gNB_MAC_INST *mac, rnti_t rnti)
   NR_SCHED_LOCK(&UE_info->mutex);
   elm_arr_t elm = find_if(&UE_info->access_ue_list, &rnti, is_rnti);
   if (elm.found) {
-    seq_arr_erase(&mac->UE_info.access_ue_list, elm.it);
-    delete_nr_ue_data(*(NR_UE_info_t **)elm.it, &UE_info->uid_allocator);
+    seq_arr_erase_deep(&mac->UE_info.access_ue_list, elm.it, (seq_arr_free_func_t)delete_nr_ue_data, &UE_info->uid_allocator);
   } else {
     LOG_W(NR_MAC,"Call to release RA UE with rnti %04x, but not existing\n", rnti);
   }
