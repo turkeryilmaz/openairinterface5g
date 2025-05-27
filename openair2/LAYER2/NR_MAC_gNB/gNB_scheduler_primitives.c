@@ -2216,7 +2216,7 @@ NR_UE_info_t *find_ra_UE(NR_UEs_t *UEs, rnti_t rnti)
   return elm.found ? elm.it : NULL;
 }
 
-void delete_nr_ue_data(NR_UE_info_t *UE, NR_COMMON_channels_t *ccPtr, uid_allocator_t *uia)
+void delete_nr_ue_data(NR_UE_info_t *UE, uid_allocator_t *uia)
 {
   ASN_STRUCT_FREE(asn_DEF_NR_CellGroupConfig, UE->CellGroup);
   ASN_STRUCT_FREE(asn_DEF_NR_SpCellConfig, UE->reconfigSpCellConfig);
@@ -2766,7 +2766,7 @@ bool add_connected_nr_ue(gNB_MAC_INST *nr_mac, NR_UE_info_t *UE)
   bool success = add_UE_to_list(MAX_MOBILES_PER_GNB, UE_info->connected_ue_list, UE);
   if (!success) {
     LOG_E(NR_MAC,"Try to add UE %04x but the list is full\n", UE->rnti);
-    delete_nr_ue_data(UE, NULL, &UE_info->uid_allocator);
+    delete_nr_ue_data(UE, &UE_info->uid_allocator);
     NR_SCHED_UNLOCK(&UE_info->mutex);
     return false;
   }
@@ -2837,7 +2837,7 @@ void mac_remove_nr_ue(gNB_MAC_INST *nr_mac, rnti_t rnti)
   NR_UE_info_t *UE = remove_UE_from_list(MAX_MOBILES_PER_GNB + 1, UE_info->connected_ue_list, rnti);
   NR_SCHED_UNLOCK(&UE_info->mutex);
   if (UE)
-    delete_nr_ue_data(UE, nr_mac->common_channels, &UE_info->uid_allocator);
+    delete_nr_ue_data(UE, &UE_info->uid_allocator);
   else
     nr_release_ra_UE(nr_mac, rnti);
 }

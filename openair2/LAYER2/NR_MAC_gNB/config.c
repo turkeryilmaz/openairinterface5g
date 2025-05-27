@@ -1116,7 +1116,7 @@ bool nr_mac_add_test_ue(gNB_MAC_INST *nrmac, uint32_t rnti, NR_CellGroupConfig_t
   bool res = add_connected_nr_ue(nrmac, UE);
   if (!res) {
     LOG_E(NR_MAC, "Error adding UE %04x\n", rnti);
-    delete_nr_ue_data(UE, NULL, &nrmac->UE_info.uid_allocator);
+    delete_nr_ue_data(UE, &nrmac->UE_info.uid_allocator);
     NR_SCHED_UNLOCK(&nrmac->sched_lock);
     return false;
   }

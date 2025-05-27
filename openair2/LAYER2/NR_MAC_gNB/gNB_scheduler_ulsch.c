@@ -839,7 +839,7 @@ static void nr_rx_ra_sdu(const module_id_t mod_id,
     configure_UE_BWP(mac, scc, UE, false, ss_type, -1, -1);
     if (!transition_ra_connected_nr_ue(mac, UE)) {
       LOG_E(NR_MAC, "cannot add UE %04x: list is full\n", UE->rnti);
-      delete_nr_ue_data(UE, NULL, &mac->UE_info.uid_allocator);
+      delete_nr_ue_data(UE, &mac->UE_info.uid_allocator);
       return;
     }
   } else {

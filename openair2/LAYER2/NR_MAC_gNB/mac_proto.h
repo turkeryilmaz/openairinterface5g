@@ -48,7 +48,7 @@ int get_full_ul_slots_per_period(const frame_structure_t *fs);
 int get_full_dl_slots_per_period(const frame_structure_t *fs);
 int get_ul_slot_offset(const frame_structure_t *fs, int idx, bool count_mixed);
 
-void delete_nr_ue_data(NR_UE_info_t *UE, NR_COMMON_channels_t *ccPtr, uid_allocator_t *uia);
+void delete_nr_ue_data(NR_UE_info_t *UE, uid_allocator_t *uia);
 
 void mac_top_init_gNB(ngran_node_t node_type,
                       NR_ServingCellConfigCommon_t *scc,
@@ -316,7 +316,7 @@ void remove_front_nr_list(NR_list_t *listP);
 void nr_release_ra_UE(gNB_MAC_INST *mac, rnti_t rnti);
 NR_UE_info_t * find_nr_UE(NR_UEs_t* UEs, rnti_t rntiP);
 NR_UE_info_t *find_ra_UE(NR_UEs_t *UEs, rnti_t rntiP);
-void delete_nr_ue_data(NR_UE_info_t *UE, NR_COMMON_channels_t *ccPtr, uid_allocator_t *uia);
+void delete_nr_ue_data(NR_UE_info_t *UE, uid_allocator_t *uia);
 void configure_UE_BWP(gNB_MAC_INST *nr_mac,
                       NR_ServingCellConfigCommon_t *scc,
                       NR_UE_info_t *UE,

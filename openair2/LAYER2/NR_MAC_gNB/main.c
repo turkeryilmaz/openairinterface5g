@@ -336,12 +336,12 @@ void mac_top_destroy_gNB(gNB_MAC_INST *mac)
   NR_UEs_t *UE_info = &mac->UE_info;
   for (int i = 0; i < sizeofArray(UE_info->connected_ue_list); ++i)
     if (UE_info->connected_ue_list[i])
-      delete_nr_ue_data(UE_info->connected_ue_list[i], cc, &UE_info->uid_allocator);
+      delete_nr_ue_data(UE_info->connected_ue_list[i], &UE_info->uid_allocator);
   int size = seq_arr_size(&mac->UE_info.access_ue_list);
   for (int i = size; i > 0; i--) {
     NR_UE_info_t *UE = *(NR_UE_info_t **)seq_arr_at(&mac->UE_info.access_ue_list, i - 1);
     seq_arr_erase_it(&mac->UE_info.access_ue_list, UE, seq_arr_next(&mac->UE_info.access_ue_list, UE), NULL);
-    delete_nr_ue_data(UE, mac->common_channels, &UE_info->uid_allocator);
+    delete_nr_ue_data(UE, &UE_info->uid_allocator);
   }
   if (mac->f1_config.setup_resp)
     free_f1ap_setup_response(mac->f1_config.setup_resp);
