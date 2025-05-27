@@ -103,6 +103,7 @@ int trx_oran_set_gains(openair0_device *device, openair0_config_t *openair0_cfg)
 
 int trx_oran_get_stats(openair0_device *device)
 {
+  //xran_get_time_stats()
   printf("ORAN: %s\n", __FUNCTION__);
   return (0);
 }
