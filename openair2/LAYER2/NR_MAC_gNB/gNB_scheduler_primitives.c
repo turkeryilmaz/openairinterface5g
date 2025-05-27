@@ -2193,10 +2193,11 @@ void remove_front_nr_list(NR_list_t *listP)
 }
 
 // Comparison function to check for UE with RNTI
-static bool is_rnti(const void* element, const void* rnti) {
-  const NR_UE_info_t* current_element = (const NR_UE_info_t*)element;
-  const rnti_t* target_rnti = (const rnti_t*)rnti;
-  return current_element->rnti == *target_rnti;
+static bool is_rnti(const void *rnti, const void* element)
+{
+  const NR_UE_info_t* UE_it = *(const NR_UE_info_t**)element;
+  const rnti_t target_rnti = *(const rnti_t*)rnti;
+  return UE_it->rnti == target_rnti;
 }
 
 NR_UE_info_t *find_nr_UE(NR_UEs_t *UEs, rnti_t rntiP)
@@ -2213,7 +2214,24 @@ NR_UE_info_t *find_nr_UE(NR_UEs_t *UEs, rnti_t rntiP)
 NR_UE_info_t *find_ra_UE(NR_UEs_t *UEs, rnti_t rnti)
 {
   elm_arr_t elm = find_if(&UEs->access_ue_list, &rnti, is_rnti);
-  return elm.found ? elm.it : NULL;
+  return elm.found ? *(NR_UE_info_t **)elm.it : NULL;
+}
+
+/** @brief remove the UE with RNTI rnti from list of UEs doing RA.
+ *
+ * The corresponding function to add is add_new_UE_RA(). */
+void nr_release_ra_UE(gNB_MAC_INST *mac, rnti_t rnti)
+{
+  NR_UEs_t *UE_info = &mac->UE_info;
+  NR_SCHED_LOCK(&UE_info->mutex);
+  elm_arr_t elm = find_if(&UE_info->access_ue_list, &rnti, is_rnti);
+  if (elm.found) {
+    seq_arr_erase(&mac->UE_info.access_ue_list, elm.it);
+    delete_nr_ue_data(*(NR_UE_info_t **)elm.it, &UE_info->uid_allocator);
+  } else {
+    LOG_W(NR_MAC,"Call to release RA UE with rnti %04x, but not existing\n", rnti);
+  }
+  NR_SCHED_UNLOCK(&UE_info->mutex);
 }
 
 void delete_nr_ue_data(NR_UE_info_t *UE, uid_allocator_t *uia)
@@ -2745,7 +2763,11 @@ bool transition_ra_connected_nr_ue(gNB_MAC_INST *nr_mac, NR_UE_info_t *UE)
 {
   NR_UEs_t *UE_info = &nr_mac->UE_info;
   // remove UE from initial access list (moved to connected mode)
-  seq_arr_erase(&UE_info->access_ue_list, UE);
+  elm_arr_t elm = find_if(&UE_info->access_ue_list, &UE->rnti, is_rnti);
+  DevAssert(elm.found);
+  /* verify that the UE found is the one we already have */
+  DevAssert(UE == *(NR_UE_info_t **)elm.it);
+  seq_arr_erase(&UE_info->access_ue_list, elm.it);
   free_and_zero(UE->ra);
 
   return add_connected_nr_ue(nr_mac, UE);

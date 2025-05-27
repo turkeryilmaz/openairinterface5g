@@ -318,7 +318,7 @@ void mac_top_init_gNB(ngran_node_t node_type,
     gNB_MAC_INST *nrmac = RC.nrmac[i];
     nrmac->if_inst = NR_IF_Module_init(i);
     memset(&nrmac->UE_info, 0, sizeof(nrmac->UE_info));
-    seq_arr_init(&nrmac->UE_info.access_ue_list, sizeof(NR_UE_info_t));
+    seq_arr_init(&nrmac->UE_info.access_ue_list, sizeof(NR_UE_info_t *));
   }
 
   du_init_f1_ue_data();
@@ -339,8 +339,9 @@ void mac_top_destroy_gNB(gNB_MAC_INST *mac)
       delete_nr_ue_data(UE_info->connected_ue_list[i], &UE_info->uid_allocator);
   int size = seq_arr_size(&mac->UE_info.access_ue_list);
   for (int i = size; i > 0; i--) {
-    NR_UE_info_t *UE = *(NR_UE_info_t **)seq_arr_at(&mac->UE_info.access_ue_list, i - 1);
-    seq_arr_erase_it(&mac->UE_info.access_ue_list, UE, seq_arr_next(&mac->UE_info.access_ue_list, UE), NULL);
+    void *it = seq_arr_at(&mac->UE_info.access_ue_list, i - 1);
+    seq_arr_erase(&mac->UE_info.access_ue_list, it);
+    NR_UE_info_t *UE = *(NR_UE_info_t **)it;
     delete_nr_ue_data(UE, &UE_info->uid_allocator);
   }
   if (mac->f1_config.setup_resp)

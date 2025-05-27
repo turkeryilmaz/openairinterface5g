@@ -648,7 +648,7 @@ bool add_new_UE_RA(gNB_MAC_INST *nr_mac, NR_UE_info_t *UE)
   if (seq_arr_size(&nr_mac->UE_info.access_ue_list) == MAX_UE_RA)
     return false;
   DevAssert(UE->ra); // a UE in the acess_ue_list needs to have an RA process
-  seq_arr_push_back(&nr_mac->UE_info.access_ue_list, UE, sizeof(NR_UE_info_t));
+  seq_arr_push_back(&nr_mac->UE_info.access_ue_list, &UE, sizeof(NR_UE_info_t *));
   return true;
 }
 
@@ -2110,23 +2110,6 @@ static void nr_fill_rar(uint8_t Mod_idP, NR_UE_info_t *UE, uint8_t *dlsch_buffer
 
   // resetting msg3 TPC to 0dB for possible retransmissions
   ra->msg3_TPC = 1;
-}
-
-/** @brief remove the UE with RNTI rnti from list of UEs doing RA.
- *
- * The corresponding function to add is add_new_UE_RA(). */
-void nr_release_ra_UE(gNB_MAC_INST *mac, rnti_t rnti)
-{
-  NR_UEs_t *UE_info = &mac->UE_info;
-  NR_SCHED_LOCK(&UE_info->mutex);
-  NR_UE_info_t *UE = find_ra_UE(&mac->UE_info, rnti);
-  if (UE) {
-    seq_arr_erase(&mac->UE_info.access_ue_list, UE);
-    delete_nr_ue_data(UE, &UE_info->uid_allocator);
-  } else {
-    LOG_W(NR_MAC,"Call to release RA UE with rnti %04x, but not existing\n", rnti);
-  }
-  NR_SCHED_UNLOCK(&UE_info->mutex);
 }
 
 void nr_schedule_RA(module_id_t module_idP,
