@@ -760,7 +760,7 @@ typedef struct {
   // last element always NULL
   pthread_mutex_t mutex;
   NR_UE_info_t *connected_ue_list[MAX_MOBILES_PER_GNB + 1];
-  seq_arr_t access_ue_list;
+  seq_arr_t access_ue_list; // array over NR_UE_info_t*
   // bitmap of CSI-RS already scheduled in current slot
   int sched_csirs;
   uid_allocator_t uid_allocator;
@@ -775,8 +775,12 @@ typedef struct {
 } NR_beam_info_t;
 
 #define UE_iterator(BaSe, VaR) NR_UE_info_t ** VaR##pptr=BaSe, *VaR; while ((VaR=*(VaR##pptr++)))
+/* defines an iterator over all elements in the list. Since seq_arr stores
+ * pointers to NR_UE_info_t, the iterators are pointers to pointers of
+ * NR_UE_info_t (NR_UE_info_t **), but the user expects the actual
+ * NR_UE_info_t *, hence both ITRTR (ITeRaToR) and it_var. */
 #define UE_arr_iterator(arr, it_var) \
-  for (NR_UE_info_t* it_var = seq_arr_front(arr); it_var != seq_arr_end(arr); it_var = seq_arr_next(arr, it_var))
+  for (NR_UE_info_t **ITRTR = seq_arr_front(arr), *it_var = *ITRTR; ITRTR != seq_arr_end(arr); ITRTR = seq_arr_next(arr, ITRTR), it_var = *ITRTR)
 
 typedef void (*nr_pp_impl_dl)(module_id_t mod_id, frame_t frame, slot_t slot);
 typedef bool (*nr_pp_impl_ul)(module_id_t mod_id, frame_t frame, slot_t slot);
