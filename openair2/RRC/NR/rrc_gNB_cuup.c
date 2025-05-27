@@ -225,7 +225,7 @@ static void remove_unassociated_e1_connections(gNB_RRC_INST *rrc, sctp_assoc_t e
     rrc_gNB_send_NGAP_UE_CONTEXT_RELEASE_REQ(0, p, cause);
     rrc_remove_ue(rrc, p);
   }
-  seq_arr_free(&ue_context_to_remove, NULL);
+  seq_arr_free(&ue_context_to_remove, NULL, NULL);
 
   for (int i = 0; i < seq_arr_size(&affected_du); ++i) {
     void *it = seq_arr_at(&affected_du, i);
@@ -233,7 +233,7 @@ static void remove_unassociated_e1_connections(gNB_RRC_INST *rrc, sctp_assoc_t e
     LOG_W(NR_RRC, "trigger F1 reset on DU %d due to E1 connection loss\n", du_assoc_id);
     trigger_f1_reset(rrc, du_assoc_id);
   }
-  seq_arr_free(&affected_du, NULL);
+  seq_arr_free(&affected_du, NULL, NULL);
 }
 
 /**
