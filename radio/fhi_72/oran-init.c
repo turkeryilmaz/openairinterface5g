@@ -46,6 +46,9 @@
 static oran_port_instance_t gPortInst[XRAN_PORTS_NUM][XRAN_MAX_SECTOR_NR];
 void *gxran_handle;
 
+static struct xran_fh_init g_fh_init = {0};
+static struct xran_fh_config g_fh_config[XRAN_PORTS_NUM] = {0};
+
 static uint32_t get_nSW_ToFpga_FTH_TxBufferLen(int mu, int sections)
 {
   uint32_t xran_max_sections_per_slot = RTE_MAX(sections, XRAN_MIN_SECTIONS_PER_SLOT);
@@ -462,10 +465,29 @@ int *oai_oran_initialize(struct xran_fh_init *xran_fh_init, struct xran_fh_confi
     }
   }
 
+  // store config after xran initialization -- xran makes modifications to
+  // these structs during initialization
+  memcpy(&g_fh_init, xran_fh_init, sizeof(*xran_fh_init));
+  memcpy(&g_fh_config, xran_fh_config, sizeof(*xran_fh_config) * xran_fh_init->xran_ports);
+
   return (void *)gxran_handle;
 }
 
 oran_buf_list_t *get_xran_buffers(uint32_t port_id)
 {
+  struct xran_fh_init *fh_init = get_xran_fh_init();
+  DevAssert(port_id < fh_init->xran_ports);
   return gPortInst[port_id][0].buf_list;
+}
+
+struct xran_fh_init *get_xran_fh_init(void)
+{
+  return &g_fh_init;
+}
+
+struct xran_fh_config *get_xran_fh_config(uint32_t port_id)
+{
+  struct xran_fh_init *fh_init = get_xran_fh_init();
+  DevAssert(port_id < fh_init->xran_ports);
+  return &g_fh_config[port_id];
 }
