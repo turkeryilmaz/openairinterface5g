@@ -44,6 +44,8 @@ typedef struct seq_arr_s {
   size_t cap;
 } seq_arr_t;
 
+typedef void (*seq_arr_free_func_t)(void *it, void *user);
+
 /**
  * Init a sequence container, similar to a constructor
  * @brief Constructor.
@@ -57,8 +59,9 @@ void seq_arr_init(seq_arr_t* arr, size_t elm_sz);
  * @brief Destructor.
  * @param arr The sequence container
  * @param free_func Function called for every element while destructing e.g., useful to free memory of deep objects.
+ * @param user user-supplied data to be passed to free_func
  */
-void seq_arr_free(seq_arr_t* arr, void (*free_func)(void* it));
+void seq_arr_free(seq_arr_t* arr, seq_arr_free_func_t free_func, void *user);
 
 /**
  * @brief Push back elements into the sequence container. Value semantic. i.e., the void* data will be shallowly copied in the
@@ -82,17 +85,18 @@ void seq_arr_erase(seq_arr_t*, void* it);
  * @param it Iterator to the element to erase
  * @param free_func Function to call while erasing element
  */
-void seq_arr_erase_deep(seq_arr_t* arr, void* it, void (*free_func)(void* it));
+void seq_arr_erase_deep(seq_arr_t* arr, void* it, seq_arr_free_func_t free_func, void *user);
 
 /**
  * @brief Erase the elements in the semi-open range [first,last)
  * @param arr The sequence container
  * @param first Iterator to the first element to erase
  * @param last Iterator to the last element. Note that this element will NOT be erased
- * @param f Function that will be called by every element while erasing. Useful for deep copies. Pass NULL if shallow
+ * @param free_func Function that will be called by every element while erasing. Useful for deep copies. Pass NULL if shallow
  * erased required
+ * @param user user-supplied data to be passed to free_func
  */
-void seq_arr_erase_it(seq_arr_t* arr, void* first, void* last, void (*free_func)(void* it));
+void seq_arr_erase_it(seq_arr_t* arr, void* first, void* last, seq_arr_free_func_t free_func, void *user);
 
 /**
  * @brief Elements in the array

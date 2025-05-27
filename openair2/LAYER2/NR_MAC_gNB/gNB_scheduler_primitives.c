@@ -2240,7 +2240,7 @@ void delete_nr_ue_data(NR_UE_info_t *UE, uid_allocator_t *uia)
   ASN_STRUCT_FREE(asn_DEF_NR_SpCellConfig, UE->reconfigSpCellConfig);
   ASN_STRUCT_FREE(asn_DEF_NR_UE_NR_Capability, UE->capability);
   NR_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
-  seq_arr_free(&sched_ctrl->lc_config, NULL);
+  seq_arr_free(&sched_ctrl->lc_config, NULL, NULL);
   destroy_nr_list(&sched_ctrl->available_dl_harq);
   destroy_nr_list(&sched_ctrl->feedback_dl_harq);
   destroy_nr_list(&sched_ctrl->retrans_dl_harq);

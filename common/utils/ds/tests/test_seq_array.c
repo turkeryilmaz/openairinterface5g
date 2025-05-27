@@ -77,7 +77,7 @@ int main()
   assert(*(int*)seq_arr_at(&arr, 50) == 51);
 
   // Erase range and force shrink
-  seq_arr_erase_it(&arr, seq_arr_front(&arr), seq_arr_at(&arr, 90), NULL);
+  seq_arr_erase_it(&arr, seq_arr_front(&arr), seq_arr_at(&arr, 90), NULL, NULL);
   assert(seq_arr_size(&arr) == 9);
   assert(*(int*)seq_arr_front(&arr) == 91);
 
@@ -104,7 +104,7 @@ int main()
   assert(*(int*)seq_arr_at(&arr, 5) == 99);
 
   // Free data structure
-  seq_arr_free(&arr, NULL);
+  seq_arr_free(&arr, NULL, NULL);
 
   return EXIT_SUCCESS;
 }

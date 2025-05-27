@@ -479,7 +479,7 @@ static int invalidate_du_connections(gNB_RRC_INST *rrc, sctp_assoc_t assoc_id)
     rrc_gNB_ue_context_t *p = *(rrc_gNB_ue_context_t **)seq_arr_at(&ue_context_to_remove, i);
     rrc_remove_nsa_user_context(rrc, p);
   }
-  seq_arr_free(&ue_context_to_remove, NULL);
+  seq_arr_free(&ue_context_to_remove, NULL, NULL);
   return count;
 }
 

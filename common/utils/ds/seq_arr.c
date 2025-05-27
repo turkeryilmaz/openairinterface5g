@@ -64,16 +64,17 @@ void seq_arr_init(seq_arr_t* arr, size_t elt_size) //__attribute__(malloc)
   assert(arr->data != NULL);
 }
 
-void seq_arr_free(seq_arr_t* arr, void (*free_func)(void*))
+void seq_arr_free(seq_arr_t* arr, seq_arr_free_func_t free_func, void *user)
 {
   assert(arr != NULL);
   assert(arr->data != NULL);
+  assert(user == NULL || free_func != NULL);
 
   if (free_func != NULL) {
     void* start_it = seq_arr_front(arr);
     void* end_it = seq_arr_end(arr);
     while (start_it != end_it) {
-      free_func(start_it);
+      free_func(start_it, user);
       start_it = seq_arr_next(arr, start_it);
     }
   }
@@ -100,33 +101,36 @@ void seq_arr_erase(seq_arr_t* arr, void* start_it)
   // start_it must be in the range of arr->data
   assert(arr != NULL);
   assert(start_it != NULL);
-  return seq_arr_erase_deep(arr, start_it, NULL);
+  return seq_arr_erase_deep(arr, start_it, NULL, NULL);
 }
 
-void seq_arr_erase_deep(seq_arr_t* arr, void* start_it, void (*free_func)(void* it))
+void seq_arr_erase_deep(seq_arr_t* arr, void* start_it, seq_arr_free_func_t free_func, void *user)
 {
   // start_it must be in the range of arr->data
   assert(arr != NULL);
   assert(start_it != NULL);
-  return seq_arr_erase_it(arr, start_it, seq_arr_next(arr, start_it), free_func);
+  assert(user == NULL || free_func != NULL);
+  return seq_arr_erase_it(arr, start_it, seq_arr_next(arr, start_it), free_func, user);
 }
 
-void seq_arr_erase_it(seq_arr_t* arr, void* start_it, void* end_it, void (*free_func)(void* it))
+void seq_arr_erase_it(seq_arr_t* arr, void* start_it, void* end_it, seq_arr_free_func_t free_func, void *user)
 {
   // start_it && end_it must be in the range of arr->data
   assert(arr != NULL);
   assert(start_it != NULL);
   assert(end_it != NULL);
   assert(end_it >= start_it);
+  assert(user == NULL || free_func != NULL);
 
   if (start_it == end_it)
     return;
 
   if (free_func != NULL) {
-    void* it = start_it;
-    while (it != end_it) {
-      free_func(it);
-      it = seq_arr_next(arr, it);
+    void* start_it = seq_arr_front(arr);
+    void* end_it = seq_arr_end(arr);
+    while (start_it != end_it) {
+      free_func(start_it, user);
+      start_it = seq_arr_next(arr, start_it);
     }
   }
 
