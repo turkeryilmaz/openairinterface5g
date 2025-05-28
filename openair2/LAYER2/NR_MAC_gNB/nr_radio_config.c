@@ -1957,7 +1957,34 @@ static void config_csi_meas_report(NR_CSI_MeasConfig_t *csi_MeasConfig,
   asn1cSeqAdd(&csi_MeasConfig->csi_ReportConfigToAddModList->list, csirep);
 }
 
+static long config_nrofReportedRS(const NR_UE_NR_Capability_t *uecap, uint64_t ssb_bitmap, const NR_ServingCellConfigCommon_t *scc)
+{
+  long nb_band = *scc->downlinkConfigCommon->frequencyInfoDL->frequencyBandList.list.array[0];
+  int num_supported_rs = 0;
+  if (uecap) {
+    for (int i = 0; i < uecap->rf_Parameters.supportedBandListNR.list.count; i++) {
+      NR_BandNR_t *band = uecap->rf_Parameters.supportedBandListNR.list.array[i];
+      if (band->bandNR == nb_band) {
+        if (band->mimo_ParametersPerBand && band->mimo_ParametersPerBand->maxNumberNonGroupBeamReporting) {
+          int maxNumberNonGroupBeamReporting = 1 << *band->mimo_ParametersPerBand->maxNumberNonGroupBeamReporting;
+          if (num_supported_rs == 0 || num_supported_rs > maxNumberNonGroupBeamReporting)
+            num_supported_rs = maxNumberNonGroupBeamReporting;
+        }
+      }
+    }
+  }
+  uint32_t num_ssb = count_bits64(ssb_bitmap);
+  if (num_ssb == 1 || num_supported_rs < 2)
+    return NR_CSI_ReportConfig__groupBasedBeamReporting__disabled__nrofReportedRS_n1;
+  if (num_ssb == 2 || num_supported_rs == 2)
+    return NR_CSI_ReportConfig__groupBasedBeamReporting__disabled__nrofReportedRS_n2;
+  if (num_ssb == 3)
+    return NR_CSI_ReportConfig__groupBasedBeamReporting__disabled__nrofReportedRS_n3;
+  return NR_CSI_ReportConfig__groupBasedBeamReporting__disabled__nrofReportedRS_n4;
+}
+
 static void config_rsrp_meas_report(NR_CSI_MeasConfig_t *csi_MeasConfig,
+                                    const NR_UE_NR_Capability_t *uecap,
                                     const NR_ServingCellConfigCommon_t *servingcellconfigcommon,
                                     NR_PUCCH_CSI_Resource_t *pucchcsires,
                                     int do_csi, // if rsrp is based on CSI or SSB
@@ -1965,6 +1992,7 @@ static void config_rsrp_meas_report(NR_CSI_MeasConfig_t *csi_MeasConfig,
                                     int uid,
                                     int curr_bwp,
                                     int num_antenna_ports,
+                                    uint64_t ssb_bitmap,
                                     bool do_sinr)
 {
   int resource_id = -1;
@@ -2011,7 +2039,7 @@ static void config_rsrp_meas_report(NR_CSI_MeasConfig_t *csi_MeasConfig,
   csirep->groupBasedBeamReporting.present = NR_CSI_ReportConfig__groupBasedBeamReporting_PR_disabled;
   csirep->groupBasedBeamReporting.choice.disabled = calloc(1, sizeof(*csirep->groupBasedBeamReporting.choice.disabled));
   csirep->groupBasedBeamReporting.choice.disabled->nrofReportedRS = calloc(1, sizeof(*csirep->groupBasedBeamReporting.choice.disabled->nrofReportedRS));
-  *csirep->groupBasedBeamReporting.choice.disabled->nrofReportedRS = NR_CSI_ReportConfig__groupBasedBeamReporting__disabled__nrofReportedRS_n1;
+  *csirep->groupBasedBeamReporting.choice.disabled->nrofReportedRS = config_nrofReportedRS(uecap, ssb_bitmap, servingcellconfigcommon);
   asn1cSeqAdd(&csi_MeasConfig->csi_ReportConfigToAddModList->list, csirep);
 }
 
@@ -3355,6 +3383,7 @@ static NR_SpCellConfig_t *get_initial_SpCellConfig(int uid,
     pucchrsrp->uplinkBandwidthPartId = bwp_id;
     pucchrsrp->pucch_Resource = pucch_Resource;
     config_rsrp_meas_report(csi_MeasConfig,
+                            NULL,
                             scc,
                             pucchrsrp,
                             configuration->do_CSIRS,
@@ -3362,6 +3391,7 @@ static NR_SpCellConfig_t *get_initial_SpCellConfig(int uid,
                             uid,
                             curr_bwp,
                             pdsch_AntennaPorts,
+                            bitmap,
                             configuration->do_SINR);
   }
 
@@ -3543,6 +3573,13 @@ void update_cellGroupConfig(NR_CellGroupConfig_t *cellGroupConfig,
     NR_CSI_ReportConfig_t *csirep = csi_MeasConfig->csi_ReportConfigToAddModList->list.array[report];
     if(csirep->codebookConfig)
       config_csi_codebook(&configuration->pdsch_AntennaPorts, *pdsch_servingcellconfig->ext1->maxMIMO_Layers, csirep->codebookConfig);
+  }
+
+  for (int i = 0; i < csi_MeasConfig->csi_ReportConfigToAddModList->list.count; i++) {
+    NR_CSI_ReportConfig_t *csirep = csi_MeasConfig->csi_ReportConfigToAddModList->list.array[i];
+    if (csirep->groupBasedBeamReporting.present == NR_CSI_ReportConfig__groupBasedBeamReporting_PR_disabled
+        && csirep->groupBasedBeamReporting.choice.disabled->nrofReportedRS)
+      *csirep->groupBasedBeamReporting.choice.disabled->nrofReportedRS = config_nrofReportedRS(uecap, get_ssb_bitmap(scc), scc);
   }
 
   int curr_bwp = NRRIV2BW(scc->downlinkConfigCommon->initialDownlinkBWP->genericParameters.locationAndBandwidth, MAX_BWP_SIZE);
@@ -3980,6 +4017,7 @@ NR_CellGroupConfig_t *get_default_secondaryCellGroup(const NR_ServingCellConfigC
                            uid,
                            curr_bwp);
     config_rsrp_meas_report(csi_MeasConfig,
+                            uecap,
                             servingcellconfigcommon,
                             pucchcsires1,
                             do_csirs,
@@ -3987,6 +4025,7 @@ NR_CellGroupConfig_t *get_default_secondaryCellGroup(const NR_ServingCellConfigC
                             uid,
                             curr_bwp,
                             dl_antenna_ports,
+                            bitmap,
                             configuration->do_SINR);
   }
   secondaryCellGroup->spCellConfig->spCellConfigDedicated->sCellDeactivationTimer = NULL;
