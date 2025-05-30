@@ -406,31 +406,8 @@ static int nr_ulsch_procedures(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx, boo
         crc_valid = true;
       }
     }
-
-    nfapi_nr_crc_t *crc = &UL_INFO->crc_ind.crc_list[UL_INFO->crc_ind.number_crcs++];
-    nfapi_nr_rx_data_pdu_t *pdu = &UL_INFO->rx_ind.pdu_list[UL_INFO->rx_ind.number_of_pdus++];
-    if (crc_valid && !check_abort(&ulsch_harq->abort_decode) && !pusch->DTX) {
-      LOG_D(NR_PHY,
-            "[gNB %d] ULSCH %d: Setting ACK for SFN/SF %d.%d (rnti %x, pid %d, ndi %d, status %d, round %d, TBS %d, Max interation "
-            "(all seg) %d)\n",
-            gNB->Mod_id,
-            ULSCH_id,
-            ulsch->frame,
-            ulsch->slot,
-            ulsch->rnti,
-            ulsch->harq_pid,
-            pusch_pdu->pusch_data.new_data_indicator,
-            ulsch->active,
-            ulsch_harq->round,
-            ulsch_harq->TBS,
-            ulsch->max_ldpc_iterations);
-      nr_fill_indication(gNB, ulsch->frame, ulsch->slot, ULSCH_id, ulsch->harq_pid, 0, 0, crc, pdu);
-      LOG_D(PHY, "ULSCH received ok \n");
-      ulsch->active = false;
-      ulsch_harq->round = 0;
-      ulsch->last_iteration_cnt = ulsch->max_ldpc_iterations; // Setting to max_ldpc_iterations is sufficient given that this variable is only used for checking for failure
-      
-      // Get Time Stamp for T-tracer messages
+    // capture Rx Payload via T-Tracer for both CRC valid and invalid cases
+    // Get Time Stamp for T-tracer messages
       get_time_stamp_usec(trace_rx_payload_time_stamp_str);
       // trace_rx_payload_time_stamp_str = 8 bytes timestamp = YYYYMMDD
       //                      + 9 bytes timestamp = HHMMSSMMM
@@ -487,6 +464,28 @@ static int nr_ulsch_procedures(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx, boo
         T_INT(((ulsch_harq->TBS) << 3)), //number_of_bits
         T_BUFFER((uint8_t*)((ulsch_harq->b)), ((ulsch_harq->TBS) << 3)/8)); //data
 
+    nfapi_nr_crc_t *crc = &UL_INFO->crc_ind.crc_list[UL_INFO->crc_ind.number_crcs++];
+    nfapi_nr_rx_data_pdu_t *pdu = &UL_INFO->rx_ind.pdu_list[UL_INFO->rx_ind.number_of_pdus++];
+    if (crc_valid && !check_abort(&ulsch_harq->abort_decode) && !pusch->DTX) {
+      LOG_D(NR_PHY,
+            "[gNB %d] ULSCH %d: Setting ACK for SFN/SF %d.%d (rnti %x, pid %d, ndi %d, status %d, round %d, TBS %d, Max interation "
+            "(all seg) %d)\n",
+            gNB->Mod_id,
+            ULSCH_id,
+            ulsch->frame,
+            ulsch->slot,
+            ulsch->rnti,
+            ulsch->harq_pid,
+            pusch_pdu->pusch_data.new_data_indicator,
+            ulsch->active,
+            ulsch_harq->round,
+            ulsch_harq->TBS,
+            ulsch->max_ldpc_iterations);
+      nr_fill_indication(gNB, ulsch->frame, ulsch->slot, ULSCH_id, ulsch->harq_pid, 0, 0, crc, pdu);
+      LOG_D(PHY, "ULSCH received ok \n");
+      ulsch->active = false;
+      ulsch_harq->round = 0;
+      ulsch->last_iteration_cnt = ulsch->max_ldpc_iterations; // Setting to max_ldpc_iterations is sufficient given that this variable is only used for checking for failure
     } else {
       LOG_D(PHY,
             "[gNB %d] ULSCH: Setting NAK for SFN/SF %d/%d (pid %d, ndi %d, status %d, round %d, RV %d, prb_start %d, prb_size %d, "
