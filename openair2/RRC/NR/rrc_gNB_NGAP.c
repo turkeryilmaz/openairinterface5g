@@ -216,7 +216,6 @@ void rrc_gNB_send_NGAP_NAS_FIRST_REQ(gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE, NR_RRC
 {
   MessageDef *message_p = itti_alloc_new_message(TASK_RRC_GNB, rrc->module_id, NGAP_NAS_FIRST_REQ);
   ngap_nas_first_req_t *req = &NGAP_NAS_FIRST_REQ(message_p);
-  memset(req, 0, sizeof(*req));
 
   // RAN UE NGAP ID
   req->gNB_ue_ngap_id = UE->rrc_ue_id;
@@ -654,7 +653,6 @@ void rrc_gNB_send_NGAP_INITIAL_CONTEXT_SETUP_FAIL(uint32_t gnb, const ngap_cause
 {
   MessageDef *msg_p = itti_alloc_new_message(TASK_RRC_GNB, 0, NGAP_INITIAL_CONTEXT_SETUP_FAIL);
   ngap_initial_context_setup_fail_t *fail = &NGAP_INITIAL_CONTEXT_SETUP_FAIL(msg_p);
-  memset(fail, 0, sizeof(*fail));
   fail->gNB_ue_ngap_id = gnb;
   fail->cause = causeP;
   itti_send_msg_to_task(TASK_NGAP, 0, msg_p);
@@ -1417,7 +1415,6 @@ void rrc_gNB_send_NGAP_UE_CONTEXT_RELEASE_REQ(const module_id_t gnb_mod_idP,
     const gNB_RRC_UE_t *UE = &ue_context_pP->ue_context;
     MessageDef *msg = itti_alloc_new_message(TASK_RRC_GNB, 0, NGAP_UE_CONTEXT_RELEASE_REQ);
     ngap_ue_release_req_t *req = &NGAP_UE_CONTEXT_RELEASE_REQ(msg);
-    memset(req, 0, sizeof(*req));
     req->gNB_ue_ngap_id = UE->rrc_ue_id;
     req->cause.type = causeP.type;
     req->cause.value = causeP.value;
@@ -1769,7 +1766,6 @@ void rrc_gNB_send_NGAP_UE_CAPABILITIES_IND(gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE, 
     MessageDef *msg_p;
     msg_p = itti_alloc_new_message (TASK_RRC_GNB, rrc->module_id, NGAP_UE_CAPABILITIES_IND);
     ngap_ue_cap_info_ind_t *ind = &NGAP_UE_CAPABILITIES_IND(msg_p);
-    memset(ind, 0, sizeof(*ind));
     ind->gNB_ue_ngap_id = UE->rrc_ue_id;
     ind->ue_radio_cap.len = encoded;
     ind->ue_radio_cap.buf = buf2;
@@ -1783,7 +1779,6 @@ void rrc_gNB_send_NGAP_HANDOVER_REQUEST_ACKNOWLEDGE(gNB_RRC_INST *rrc, gNB_RRC_U
 
   MessageDef *msg_p = itti_alloc_new_message(TASK_RRC_GNB, 0, NGAP_HANDOVER_REQUEST_ACKNOWLEDGE);
   ngap_handover_request_ack_t *msg = &NGAP_HANDOVER_REQUEST_ACKNOWLEDGE(msg_p);
-  memset(msg, 0, sizeof(*msg));
 
   // RAN UE NGAP ID
   msg->gNB_ue_ngap_id = UE->rrc_ue_id;
@@ -1830,7 +1825,6 @@ void rrc_gNB_send_NGAP_HANDOVER_NOTIFY(gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE)
   }
   MessageDef *msg_p = itti_alloc_new_message(TASK_RRC_GNB, 0, NGAP_HANDOVER_NOTIFY);
   ngap_handover_notify_t *ho_notify = &NGAP_HANDOVER_NOTIFY(msg_p);
-  memset(ho_notify, 0, sizeof(*ho_notify));
 
   ho_notify->gNB_ue_ngap_id = UE->rrc_ue_id;
   ho_notify->amf_ue_ngap_id = UE->amf_ue_ngap_id;
@@ -1858,7 +1852,6 @@ void rrc_gNB_send_NGAP_HANDOVER_CANCEL(int module_id, gNB_RRC_UE_t *UE, ngap_cau
 
   MessageDef *msg_p = itti_alloc_new_message(TASK_RRC_GNB, 0, NGAP_HANDOVER_CANCEL);
   ngap_handover_cancel_t *ho_cancel = &NGAP_HANDOVER_CANCEL(msg_p);
-  memset(ho_cancel, 0, sizeof(*ho_cancel));
 
   /* Mandatory IEs (38.413 §9.2.3.11) */
   ho_cancel->gNB_ue_ngap_id = UE->rrc_ue_id;
@@ -1900,7 +1893,6 @@ void rrc_gNB_send_NGAP_PDUSESSION_RELEASE_RESPONSE(gNB_RRC_INST *rrc, gNB_RRC_UE
   MessageDef   *msg_p;
   msg_p = itti_alloc_new_message (TASK_RRC_GNB, rrc->module_id, NGAP_PDUSESSION_RELEASE_RESPONSE);
   ngap_pdusession_release_resp_t *resp = &NGAP_PDUSESSION_RELEASE_RESPONSE(msg_p);
-  memset(resp, 0, sizeof(*resp));
   resp->gNB_ue_ngap_id = UE->rrc_ue_id;
 
   FOR_EACH_SEQ_ARR(rrc_pdu_session_param_t *, session, &UE->pduSessions) {
