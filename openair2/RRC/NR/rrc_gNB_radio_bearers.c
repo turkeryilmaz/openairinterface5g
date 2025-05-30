@@ -37,7 +37,7 @@
 static bool eq_pdu_session_id(const void *vval, const void *vit)
 {
   const int *id = (const int *)vval;
-  const pdusession_t *elem = &((const rrc_pdu_session_param_t *)vit)->param;
+  const pdusession_t *elem = (const pdusession_t *)vit;
   return elem->pdusession_id == *id;
 }
 
@@ -67,27 +67,76 @@ void *find_pduSession(seq_arr_t *seq, int id)
   return NULL;
 }
 
-/** @brief Adds a new PDU Session to the list
+/** @brief Adds a new PDU Session to the list (either setup or addmod)
  *  @return pointer to the new PDU Session */
-rrc_pdu_session_param_t *add_pduSession(seq_arr_t **sessions_ptr, const int rrc_ue_id, const pdusession_t *in)
+pdusession_t *add_pduSession(seq_arr_t **sessions_ptr, const int rrc_ue_id, pdusession_t *in)
 {
   if (sessions_ptr == NULL || in == NULL) {
     LOG_E(NR_RRC, "add_pduSession: Invalid input\n");
     return NULL;
   }
+  // Initialized seq_arr if necessary
+  SEQ_ARR_INIT(sessions_ptr, pdusession_t, NGAP_MAX_PDU_SESSION);
+  // Add item to the list
+  pdusession_t *added = SEQ_ARR_PUSH_BACK_AND_GET(pdusession_t, *sessions_ptr, in);
+  return added;
+}
 
-  SEQ_ARR_INIT(sessions_ptr, rrc_pdu_session_param_t, NGAP_MAX_PDU_SESSION);
+/** @brief Update an established PDU Session (setup list) after a "modify" procedure */
+bool update_pduSession(seq_arr_t **sessions_ptr, const pdusession_t *mod)
+{
+  if (sessions_ptr == NULL || mod == NULL) {
+    LOG_E(NR_RRC, "update_pduSession: Invalid input\n");
+    return false;
+  }
 
-  rrc_pdu_session_param_t new = {0};
-  new.xid = -1;
-  cp_pdusession(&new.param, in);
-  rrc_pdu_session_param_t *added = SEQ_ARR_PUSH_BACK_AND_GET(rrc_pdu_session_param_t, *sessions_ptr, &new);
-  LOG_I(NR_RRC, "Added PDU Session %d, total number of PDU Sessions = %ld\n", in->pdusession_id, seq_arr_size(*sessions_ptr) + 1);
+  pdusession_t *found = (pdusession_t *)find_pduSession(*sessions_ptr, mod->pdusession_id);
+  if (!found) {
+    LOG_E(NR_RRC, "PDU Session not found in the setup list (UE->pduSessions)\n");
+    return false;
+  }
+
+  // Update the setup PDU Session with new status
+  cp_pdusession(found, mod);
+
+  return true;
+}
+
+/** @brief Adds a new PDU Session to the list
+ *  @return pointer to the new PDU Session */
+rrc_pdusession_release_t *add_pduSession_to_release(seq_arr_t **sessions_ptr, const int rrc_ue_id, rrc_pdusession_release_t in)
+{
+  if (sessions_ptr == NULL) {
+    LOG_E(NR_RRC, "add_pduSession_to_release: Invalid input\n");
+    return NULL;
+  }
+
+  SEQ_ARR_INIT(sessions_ptr, rrc_pdusession_release_t, NGAP_MAX_PDU_SESSION);
+
+  rrc_pdusession_release_t *added = SEQ_ARR_PUSH_BACK_AND_GET(rrc_pdusession_release_t, *sessions_ptr, &in);
+  LOG_I(NR_RRC, "Added PDU Session %d to release (total = %ld)\n", added->pdusession_id, seq_arr_size(*sessions_ptr));
 
   return added;
 }
 
-rrc_pdu_session_param_t *find_pduSession_from_drbId(gNB_RRC_UE_t *ue, seq_arr_t *seq, int drb_id)
+/** @brief Adds a new PDU Session to the list
+ *  @return pointer to the new PDU Session */
+rrc_pdusession_failed_t *add_failed_pduSession(seq_arr_t **sessions_ptr, const int rrc_ue_id, rrc_pdusession_failed_t in)
+{
+  if (sessions_ptr == NULL) {
+    LOG_E(NR_RRC, "add_failed_pduSession: Invalid input\n");
+    return NULL;
+  }
+
+  SEQ_ARR_INIT(sessions_ptr, rrc_pdusession_failed_t, NGAP_MAX_PDU_SESSION);
+
+  rrc_pdusession_failed_t *added = SEQ_ARR_PUSH_BACK_AND_GET(rrc_pdusession_failed_t, *sessions_ptr, &in);
+  LOG_I(NR_RRC, "Added failed PDU Session %d (total = %ld)\n", added->pdusession_id, seq_arr_size(*sessions_ptr));
+
+  return added;
+}
+
+pdusession_t *find_pduSession_from_drbId(gNB_RRC_UE_t *ue, seq_arr_t *seq, int drb_id)
 {
   const drb_t *drb = &ue->established_drbs[drb_id - 1];
   if (drb->status == DRB_INACTIVE) {
@@ -95,15 +144,27 @@ rrc_pdu_session_param_t *find_pduSession_from_drbId(gNB_RRC_UE_t *ue, seq_arr_t 
     return NULL;
   }
   int id = drb->cnAssociation.sdap_config.pdusession_id;
-  return (rrc_pdu_session_param_t*)find_pduSession(seq, id);
+  return (pdusession_t *)find_pduSession(seq, id);
 }
 
-void get_pduSession_array(gNB_RRC_UE_t *ue, uint32_t pdu_sessions[NGAP_MAX_PDU_SESSION])
+/** @brief Removes the PDU Session with the given ID from the list.
+ *  @return true if a session was removed, false if not found. */
+bool rm_pduSession(seq_arr_t *seq, int pdusession_id)
 {
-  int i = 0;
-  FOR_EACH_SEQ_ARR(rrc_pdu_session_param_t *, session, ue->pduSessions) {
-    pdu_sessions[i++] = session->param.pdusession_id;
+  if (seq == NULL) {
+    LOG_E(NR_RRC, "rm_pduSession: seq is NULL\n");
+    return false;
   }
+
+  elm_arr_t elm = find_if(seq, &pdusession_id, eq_pdu_session_id);
+  if (!elm.found) {
+    LOG_W(NR_RRC, "rm_pduSession: PDU Session %d not found\n", pdusession_id);
+    return false;
+  }
+
+  seq_arr_erase(seq, elm.it);  // shallow erase
+  LOG_I(NR_RRC, "Removed PDU Session %d, remaining = %ld\n", pdusession_id, seq_arr_size(seq));
+  return true;
 }
 
 drb_t *get_drb(gNB_RRC_UE_t *ue, uint8_t drb_id)

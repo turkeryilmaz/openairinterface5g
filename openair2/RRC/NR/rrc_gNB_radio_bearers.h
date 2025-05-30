@@ -68,14 +68,18 @@ int get_number_active_drbs(gNB_RRC_UE_t *ue);
 /// @brief retrieve PDU session of UE ue with ID id
 void *find_pduSession(seq_arr_t *seq, int id);
 
-/// @brief Add a new PDU session for UE @param ue and configuration @param in
-rrc_pdu_session_param_t *add_pduSession(seq_arr_t **sessions_ptr, const int rrc_ue_id, const pdusession_t *in);
+/// @brief Add a new PDU session @param in to the list @param for sessions_ptr for UE @param rrc_ue_id
+pdusession_t *add_pduSession(seq_arr_t **sessions_ptr, const int rrc_ue_id, pdusession_t *in);
+
+/// @brief Update an established PDU Session in @param sessions_ptr (setup list) with modified @param mod session
+bool update_pduSession(seq_arr_t **sessions_ptr, const pdusession_t *mod);
 
 /// @brief get PDU session of UE ue through the DRB drb_id
-rrc_pdu_session_param_t *find_pduSession_from_drbId(gNB_RRC_UE_t *ue, seq_arr_t *seq, int drb_id);
+pdusession_t *find_pduSession_from_drbId(gNB_RRC_UE_t *ue, seq_arr_t *seq, int drb_id);
 
-/// @brief get the PDU sessions of this UE in a single array
-void get_pduSession_array(gNB_RRC_UE_t *ue, uint32_t pdu_sessions[NGAP_MAX_PDU_SESSION]);
+rrc_pdusession_failed_t *add_failed_pduSession(seq_arr_t **sessions_ptr, const int rrc_ue_id, rrc_pdusession_failed_t in);
+
+rrc_pdusession_release_t *add_pduSession_to_release(seq_arr_t **sessions_ptr, const int rrc_ue_id, rrc_pdusession_release_t in);
 
 /// @brief set PDCP configuration in a bearer context management message
 void set_bearer_context_pdcp_config(bearer_context_pdcp_config_t *pdcp_config, drb_t *rrc_drb, bool um_on_default_drb);
@@ -84,5 +88,7 @@ void set_bearer_context_pdcp_config(bearer_context_pdcp_config_t *pdcp_config, d
 void cp_pdusession(pdusession_t *dst, const pdusession_t *src);
 
 void free_pdusession(void *ptr);
+
+bool rm_pduSession(seq_arr_t *seq, int pdusession_id);
 
 #endif

@@ -79,20 +79,20 @@ static int fill_drb_to_be_setup(const gNB_RRC_INST *rrc, gNB_RRC_UE_t *ue, f1ap_
     drb->up_ul_tnl_length = 1;
 
     /* fetch an existing PDU session for this DRB */
-    rrc_pdu_session_param_t *pdu = find_pduSession_from_drbId(ue, ue->pduSessions, drb->drb_id);
+    pdusession_t *pdu = find_pduSession_from_drbId(ue, ue->pduSessions, drb->drb_id);
     AssertFatal(pdu != NULL, "no PDU session for DRB ID %ld\n", drb->drb_id);
-    drb->nssai = pdu->param.nssai;
+    drb->nssai = pdu->nssai;
 
     // for the moment, we only support one QoS flow. Put a reminder in case
     // this changes
-    AssertFatal(pdu->param.nb_qos == 1, "only 1 Qos flow supported\n");
+    AssertFatal(pdu->nb_qos == 1, "only 1 Qos flow supported\n");
     drb->drb_info.flows_to_be_setup_length = 1;
     drb->drb_info.flows_mapped_to_drb = calloc_or_fail(1, sizeof(drb->drb_info.flows_mapped_to_drb[0]));
     AssertFatal(drb->drb_info.flows_mapped_to_drb, "could not allocate memory\n");
     int qfi = rrc_drb->cnAssociation.sdap_config.mappedQoS_FlowsToAdd[0];
     DevAssert(qfi > 0);
     drb->drb_info.flows_mapped_to_drb[0].qfi = qfi;
-    drb->drb_info.flows_mapped_to_drb[0].qos_params.qos_characteristics = get_qos_characteristics(qfi, &pdu->param);
+    drb->drb_info.flows_mapped_to_drb[0].qos_params.qos_characteristics = get_qos_characteristics(qfi, pdu);
 
     /* the DRB QoS parameters: we just reuse the ones from the first flow */
     drb->drb_info.drb_qos = drb->drb_info.flows_mapped_to_drb[0].qos_params;

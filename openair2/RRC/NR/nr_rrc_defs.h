@@ -88,23 +88,14 @@ typedef struct nr_e_rab_param_s {
   uint8_t xid; // transaction_id
 } __attribute__ ((__packed__)) nr_e_rab_param_t;
 
-typedef enum pdu_session_satus_e {
-  PDU_SESSION_STATUS_NEW,
-  PDU_SESSION_STATUS_DONE,
-  PDU_SESSION_STATUS_ESTABLISHED,
-  PDU_SESSION_STATUS_REESTABLISHED, // after HO
-  PDU_SESSION_STATUS_TOMODIFY, // ENDC NSA
-  PDU_SESSION_STATUS_FAILED,
-  PDU_SESSION_STATUS_TORELEASE, // to release DRB between eNB and UE
-  PDU_SESSION_STATUS_RELEASED
-} pdu_session_status_t;
-
 typedef struct {
   uint8_t qfi;
   qos_flow_level_qos_parameters_t qos_params;
 } pdusession_qos_t;
 
 typedef struct pdusession_s {
+  // RRC transaction ID
+  uint8_t xid;
   /* Unique pdusession_id for the UE. */
   int pdusession_id;
   byte_array_t nas_pdu;
@@ -120,12 +111,16 @@ typedef struct pdusession_s {
   nssai_t nssai;
 } pdusession_t;
 
-typedef struct pdu_session_param_s {
-  pdusession_t param;
-  pdu_session_status_t status;
-  uint8_t xid; // transaction_id
+typedef struct {
+  int pdusession_id;
   ngap_cause_t cause;
-} rrc_pdu_session_param_t;
+  uint8_t xid;
+} rrc_pdusession_failed_t;
+
+typedef struct {
+  int pdusession_id;
+  uint8_t xid;
+} rrc_pdusession_release_t;
 
 typedef struct drb_s {
   int status;
@@ -237,6 +232,9 @@ typedef struct gNB_RRC_UE_s {
 
   //SA block
   seq_arr_t *pduSessions;
+  seq_arr_t *pduSessions_to_addmod;
+  seq_arr_t *pduSessions_failed;
+  seq_arr_t *pduSessions_to_release;
 
   rrc_action_t xids[NR_RRC_TRANSACTION_IDENTIFIER_NUMBER];
   uint8_t e_rab_release_command_flag;
