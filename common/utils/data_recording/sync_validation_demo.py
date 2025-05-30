@@ -22,7 +22,7 @@
 # file common/utils/data_recording/sync_validation_demo.py
 # brief simple application to validate sync between payload captured on gNB and UE
 # author Abdo Gaber
-# date 2024
+# date 2025
 # version 1.0
 # company Emerson, NI Test and Measurement
 # email:
@@ -32,23 +32,11 @@
 import numpy as np
 import os
 import glob
-import csv
-import json
-import sys
 import matplotlib.pyplot as plt
-import time
 from lib import sigmf_interface
-from lib import sigmf_collection
+from lib import config_interface
+import sigmf
 
-def read_main_config_file_json(main_config_file: str) -> dict:
-    """
-    Reads main config file.
-    """
-    # read general parameter set from yaml config file
-    with open(main_config_file, "r") as file:
-        main_config = json.load(file)
-
-    return main_config
 
 def calculate_ber(capture_subdir: str, scope: str):
     """
@@ -65,13 +53,14 @@ def calculate_ber(capture_subdir: str, scope: str):
     num_bits_total = 0
 
     for idx, file in enumerate(file_list):
+        print("Processing file:", file)
 
         # read SigMF collection file
-        collection_file = sigmf_collection.fromfile(file)
+        collection_file = sigmf.sigmffile.fromfile(file)
         print(" ")
         print("Collection file:", file)
         # extract filenames
-        stream_files = collection_file.get_stream_files()
+        stream_files = collection_file.get_stream_names()
         print("Stream files:", stream_files)
         # extract filename from list of streams
         tx_bits_filename = next(
@@ -146,7 +135,7 @@ def calculate_stats(main_config_file: str):
     print(f"Starting to generate statistics with data scope: {scope}")
 
     # read main config
-    main_config = read_main_config_file_json(main_config_file)
+    main_config = config_interface.read_main_config_file_json(main_config_file)
 
     # get paths for recorded captures
     capture_path = main_config["data_recording_config"]["data_storage_path"]

@@ -22,7 +22,7 @@
 # file common/utils/data_recording/lib/sigmf_interface.py
 # brief SigMF Interface to Write data and meta-data to files in SigMF format
 # author Abdo Gaber
-# date 2024
+# date 2025
 # version 1.0
 # company Emerson, NI Test and Measurement
 # email:
@@ -31,14 +31,12 @@
 
 import os
 import sigmf
-import datetime as dt
 from sigmf import SigMFFile
-from sigmf.utils import get_data_type_str
+# from sigmf.utils import get_data_type_str
 import numpy as np
 from datetime import datetime
 import yaml
 from sigmf import SigMFCollection
-from bitarray import bitarray
 
 """
 SERIALIZATION_SCHEMES = {
@@ -68,9 +66,9 @@ def time_stamp_formating(time_stamp, datetime_offset):
 
     return time_stamp_ms, time_stamp_ms_file_name
 
-def create_serialization_metadata(
-    serialization_scheme, data_source: str, link_sim_parameters: dict
-) -> dict:
+
+def create_serialization_metadata(serialization_scheme, data_source: str,
+                                  link_sim_parameters: dict) -> dict:
     """Creates dict that specifies the serialization metadata."""
 
     # retrieve parameter from LinkSimulator config
@@ -90,20 +88,18 @@ def create_serialization_metadata(
         counts = [num_bits_per_symbol, num_subcarriers, num_ofdm_symbol]
     else:
         raise Exception(
-            f"Invalid number of elements in serialization scheme: {len(serialization_scheme)}"
-        )
+            f"Invalid number of elements in serialization scheme: {len(serialization_scheme)}")
 
     # create metadata dict
     serialization_dict = {
         "serialization:scheme": serialization_scheme,
         "serialization:counts": counts,
-    }
+        }
 
     return serialization_dict
 
-def map_metadata_to_sigmf_format(
-    scope, waveform_generator, parameter_map_file, captured_data
-):
+
+def map_metadata_to_sigmf_format(scope, waveform_generator, parameter_map_file, captured_data):
     """
     Maps metadata from Waveform creator to API and SigMF format.
     The used parameters and the mapping pairs are specified in a separate YAML file
@@ -138,8 +134,9 @@ def map_metadata_to_sigmf_format(
     # check if standard key is given
     if parameter_map_dic is None:
         raise Exception(
-            f"Invalid standard key: Name should be corrected or added to wireless_link_parameter_map.yaml, given: ",
-            waveform_generator,
+            "Invalid standard key: "
+            "Name should be corrected or added to wireless_link_parameter_map.yaml, given: "
+            f"{waveform_generator}"
         )
 
     for parameter_pair in parameter_map_dic:
@@ -147,36 +144,25 @@ def map_metadata_to_sigmf_format(
         if waveform_generator + "_parameter" in parameter_pair.keys():
             # only continue with mapping from file if direct equivalent exists
             if parameter_pair[waveform_generator + "_parameter"]["name"]:
-                # It is not necessary to get all parameters from wireless_link_parameter_map.yaml in captured_data
-                # since some parameters related to DL or UL only
-                if (
-                    parameter_pair[waveform_generator + "_parameter"]["name"]
-                    in captured_data.keys()
-                ):
+                # It is not necessary to get all parameters from wireless_link_parameter_map.yaml 
+                # in captured_data since some parameters related to DL or UL only
+                if (parameter_pair[waveform_generator + "_parameter"]["name"] in captured_data.keys()):
                     # extract value from waveform config source
                     value = captured_data[
-                        parameter_pair[waveform_generator + "_parameter"]["name"]
-                    ]
+                        parameter_pair[waveform_generator + "_parameter"]["name"]]
                     # additional mapping if parameter values should come from a discrete set of values
-                    if (
-                        "value_map"
-                        in parameter_pair[waveform_generator + "_parameter"].keys()
-                    ):
-                        value = parameter_pair[waveform_generator + "_parameter"][
-                            "value_map"
-                        ][value]
+                    if ("value_map" in parameter_pair[waveform_generator + "_parameter"].keys()):
+                        value = parameter_pair[waveform_generator + "_parameter"]["value_map"][value]
                     # write to target dictionary for SigMF
                     sigmf_metadata_dict[parameter_pair["sigmf_parameter_name"]] = value
             else:
                 raise Exception(
-                    f"Incomplete specification in field '{waveform_generator}_parameter'!"
-                )
+                    f"Incomplete specification in field '{waveform_generator}_parameter'!")
         # else:  # fill_non_explicit_fields
         #     waveform_config[parameter_pair["sigmf_parameter_name"]] = "none"
     if not sigmf_metadata_dict:
         raise Exception(
-            """ERROR: Check captured meta-data or provided config and meta data """
-        )
+            """ERROR: Check captured meta-data or provided config and meta data """)
 
     # check for non-JSON-serializable data types
     def isfloat(NumberString):
@@ -207,9 +193,8 @@ def map_metadata_to_sigmf_format(
 
     return sigmf_metadata_dict, generator
 
-def create_system_components_metadata(
-    waveform_generator, parameter_map_file, captured_data
-):
+
+def create_system_components_metadata(waveform_generator, parameter_map_file, captured_data):
     """Creates system components (TX, channel, RX) metadata that will reside in the annotations."""
     # map metadata of waveform generator to SigMF format
     signal_info, generator = map_metadata_to_sigmf_format(
@@ -235,11 +220,9 @@ def write_recorded_data_to_sigmf(captured_data, config_meta_data, global_info, i
     """
     # get meta data from config file
     base_station_meta_data = config_meta_data["data_recording_config"]["base_station"][
-        "meta_data"
-    ]
+        "meta_data"]
     user_equipment_meta_data = config_meta_data["data_recording_config"][
-        "user_equipment"
-    ]["meta_data"]
+        "user_equipment"]["meta_data"]
 
     # Check the receive target path is valid, else create folder
     data_storage_path = config_meta_data["data_recording_config"]["data_storage_path"]
@@ -250,15 +233,12 @@ def write_recorded_data_to_sigmf(captured_data, config_meta_data, global_info, i
     # Write recorded data to file
     # Get time stamp
     time_stamp_ms, time_stamp_ms_file_name = time_stamp_formating(
-        captured_data["time_stamp"], global_info["datetime_offset"]
-    )
+        captured_data["time_stamp"], global_info["datetime_offset"])
     # Map OAI Message Name to SigMF Message Name
     file_name_prefix = config_meta_data["data_recording_config"][
-        "supported_oai_tracer_messages"
-    ][captured_data["message_type"]]["file_name_prefix"]
+        "supported_oai_tracer_messages"][captured_data["message_type"]]["file_name_prefix"]
     recorded_data_file_name = (
-        file_name_prefix + "-rec-" + str(idx) + "-" + time_stamp_ms_file_name
-    )
+        file_name_prefix + "-rec-" + str(idx) + "-" + time_stamp_ms_file_name)
 
     dataset_filename = recorded_data_file_name + ".sigmf-data"
     dataset_file_path = os.path.join(data_storage_path, dataset_filename)
@@ -267,12 +247,10 @@ def write_recorded_data_to_sigmf(captured_data, config_meta_data, global_info, i
 
     # map OAI config data to SigMF metadata
     waveform_generator = config_meta_data["data_recording_config"]["global_info"][
-        "waveform_generator"
-    ]
+        "waveform_generator"]
     parameter_map_file = config_meta_data["data_recording_config"]["parameter_map_file"]
     tx_metadata, channel_metadata, rx_metadata = create_system_components_metadata(
-        waveform_generator, parameter_map_file, captured_data
-    )
+        waveform_generator, parameter_map_file, captured_data)
 
     # Add other OAI metadata to SigMF metadata
     # ----------------------------------------------------
@@ -281,42 +259,34 @@ def write_recorded_data_to_sigmf(captured_data, config_meta_data, global_info, i
     # PUSCH DMRS: OFDM symbol start index within slot
     get_pusch_dmrs_start_ofdm_symbol = 0
     tx_metadata["signal:detail"][STANDARDS[waveform_generator]][
-        "pusch_dmrs:ofdm_symbol_idx"
-    ] = []
+        "pusch_dmrs:ofdm_symbol_idx"] = []
 
-    for symbol in range(
-        captured_data["start_symbol_index"],
-        captured_data["start_symbol_index"] + captured_data["nr_of_symbols"],
-    ):
+    for symbol in range(captured_data["start_symbol_index"], 
+                        captured_data["start_symbol_index"] + captured_data["nr_of_symbols"]):
+
         dmrs_symbol_flag = (captured_data["ul_dmrs_symb_pos"] >> symbol) & 0x01
         if dmrs_symbol_flag and not get_pusch_dmrs_start_ofdm_symbol:
             get_pusch_dmrs_start_ofdm_symbol = 1
             tx_metadata["signal:detail"][STANDARDS[waveform_generator]][
-                "pusch_dmrs:start_ofdm_symbol"
-            ] = symbol
+                "pusch_dmrs:start_ofdm_symbol"] = symbol
         if dmrs_symbol_flag:
             tx_metadata["signal:detail"][STANDARDS[waveform_generator]][
-                "pusch_dmrs:ofdm_symbol_idx"
-            ].append(
-                symbol
-            )  # Append symbol to the list
+                "pusch_dmrs:ofdm_symbol_idx"].append(symbol)  # Append symbol to the list
 
     tx_metadata["signal:detail"][STANDARDS[waveform_generator]][
-        "pusch_dmrs:duration_num_ofdm_symbols"
-    ] = 1
+        "pusch_dmrs:duration_num_ofdm_symbols"] = 1
     tx_metadata["signal:detail"][STANDARDS[waveform_generator]][
-        "pusch_dmrs:num_add_positions"
-    ] = (captured_data["number_dmrs_symbols"] - 1)
+        "pusch_dmrs:num_add_positions"] = (captured_data["number_dmrs_symbols"] - 1)
 
     # If the message is a BIT message, add number of bits to the signal info
     # "UE_PHY_UL_SCRAMBLED_TX_BITS", "GNB_PHY_UL_PAYLOAD_RX_BITS", "UE_PHY_UL_PAYLOAD_TX_BITS"
     if "_BITS" in captured_data["message_type"]:
         # if "BIT" in captured_data["message_type"]:
         tx_metadata["signal:detail"][STANDARDS[waveform_generator]]["num_bits"] = (
-            captured_data["number_of_bits"]
-        )
+            captured_data["number_of_bits"])
 
-    # If the message is captured from UE, it is UPLink message, so number of antennas is num of Tx antennas
+    # If the message is captured from UE, it is UPLink message, 
+    # so number of antennas is num of Tx antennas
     # number of antennas on Rx side should be read from global_info given by user
     if "UE" in captured_data["message_type"]:
         tx_metadata["signal:detail"][STANDARDS[waveform_generator]][
@@ -325,61 +295,48 @@ def write_recorded_data_to_sigmf(captured_data, config_meta_data, global_info, i
         rx_metadata.update(
             {"num_rx_antennas": base_station_meta_data["num_rx_antennas"]}
         )
-    # If the message is captured from gNB, it is UPLink message, so number of antennas is num of Rx antennas
+    # If the message is captured from gNB, it is UPLink message, 
+    # so number of antennas is num of Rx antennas
     # number of antennas on Tx side should be read from global_info given by user
     else:
         tx_metadata["signal:detail"][STANDARDS[waveform_generator]][
-            "num_tx_antennas"
-        ] = user_equipment_meta_data["num_tx_antennas"]
+            "num_tx_antennas"] = user_equipment_meta_data["num_tx_antennas"]
         rx_metadata.update({"num_rx_antennas": captured_data["nb_antennas"]})
 
     # Check if the message type contains "UL"
     if "UL" in captured_data["message_type"]:
         tx_metadata["signal:detail"][STANDARDS[waveform_generator]][
-            "link_direction"
-        ] = "uplink"
+            "link_direction"] = "uplink"
     else:
         tx_metadata["signal:detail"][STANDARDS[waveform_generator]][
-            "link_direction"
-        ] = "downlink"
+            "link_direction"] = "downlink"
     # ----------------------------------------------------
     # Set 2: Parameters that is hardcoded
     # ----------------------------------------------------
     tx_metadata["signal:detail"][STANDARDS[waveform_generator]][
-        "pusch:content"
-    ] = "compliant"
+        "pusch:content"] = "compliant"
     tx_metadata["signal:detail"][STANDARDS[waveform_generator]][
-        "pusch:mapping_type"
-    ] = "B"
+        "pusch:mapping_type"] = "B"
     tx_metadata["signal:detail"][STANDARDS[waveform_generator]]["num_slots"] = 1
     if config_meta_data["test_config"]["test_mode"] == "rf_simulation":
         tx_metadata["signal:detail"][STANDARDS[waveform_generator]][
-            "pusch:payload_bit_pattern"
-        ] = "random"
+            "pusch:payload_bit_pattern"] = "random"
     elif config_meta_data["test_config"]["test_mode"] == "rf_real_time":
         tx_metadata["signal:detail"][STANDARDS[waveform_generator]][
-            "pusch:payload_bit_pattern"
-        ] = "zeros"
+            "pusch:payload_bit_pattern"] = "zeros"
     else:
         raise Exception("ERROR: Test mode is not supported in SigMF formatting")
-    
     # ----------------------------------------------------
     # Read mean parameters
     freq = config_meta_data["environment_emulation"]["target_link_config"][
-        "wireless_channel"
-    ]["carrierFreqValueList_hz"][0]
+        "wireless_channel"]["carrierFreqValueList_hz"][0]
     bandwidth = config_meta_data["data_recording_config"]["common_meta_data"][
-        "bandwidth"
-    ]
-    used_signal_bandwidth = (
-        pow(10, 6)
-        * config_meta_data["environment_emulation"]["target_link_config"]["ran_config"][
-            "uplink"
-        ]["ul_used_signal_BW_MHz"]
-    )
+        "bandwidth"]
+    # used_signal_bandwidth = (
+    #    pow(10, 6) * config_meta_data["environment_emulation"]["target_link_config"]["ran_config"][
+    #        "uplink"]["ul_used_signal_BW_MHz"])
     sample_rate = config_meta_data["data_recording_config"]["common_meta_data"][
-        "sample_rate"
-    ]
+        "sample_rate"]
 
     # get signal emitter info
     signal_emitter = {
@@ -394,7 +351,7 @@ def write_recorded_data_to_sigmf(captured_data, config_meta_data, global_info, i
         "clock_reference": config_meta_data["data_recording_config"][
             "common_meta_data"
         ]["clock_reference"],
-    }
+        }
 
     # ----------------------------------------------------
     # get channel metadata
@@ -414,49 +371,40 @@ def write_recorded_data_to_sigmf(captured_data, config_meta_data, global_info, i
         if ch_uplink_config["type"] == "statistical_predefined":
             channel_metadata.update(
                 {
-                    "channel_model": ch_uplink_config["statistical"][
-                        "predef_channel_profile"
-                    ],
-                    "snr_esn0_db": ch_uplink_config["statistical"]["snr_db"],
-                }
+                    "channel_model": ch_uplink_config["statistical"]["predef_channel_profile"],
+                    "snr_esn0_db": ch_uplink_config["statistical"]["snr_db"], 
+                    }
             )
 
         elif ch_uplink_config["type"] == "statistical_var":
             channel_metadata.update(
                 {
-                    "channel_model": ch_uplink_config["statistical"][
-                        "var_power_delay_profile"
-                    ],
+                    "channel_model": ch_uplink_config["statistical"]["var_power_delay_profile"],
                     "snr_esn0_db": ch_uplink_config["statistical"]["snr_db"],
-                    "delay_spread": ch_uplink_config["statistical"]["delay_spread_ns"]
-                    * pow(10, -9),
+                    "delay_spread": ch_uplink_config["statistical"]["delay_spread_ns"] * pow(10, -9),
                     "speed": ch_uplink_config["statistical"]["speed_mps"],
-                }
+                    }
             )
         else:
             raise Exception("ERROR: channel type is not supported in SigMF formatting")
+        
     # RF Simulation
     elif config_meta_data["test_config"]["test_mode"] == "rf_simulation":
         channel_metadata.update({"emulation_mode": "oai rf simulation"})
         channel_metadata.update(
             {
-                "channel_model": ch_uplink_config["statistical"][
-                    "predef_channel_profile"
-                ],
+                "channel_model": ch_uplink_config["statistical"]["predef_channel_profile"],
                 "snr_esn0_db": ch_uplink_config["statistical"]["snr_db"],
                 "delay_spread": ch_uplink_config["statistical"]["delay_spread_ns"]
-                * pow(10, -9),
-                "speed": ch_uplink_config["statistical"]["speed_mps"],
+                * pow(10, -9), "speed": ch_uplink_config["statistical"]["speed_mps"],
             }
         )
     else:
         raise Exception(
-            "ERROR: Channel Emulation mode is not supported in SigMF formatting"
-        )
+            "ERROR: Channel Emulation mode is not supported in SigMF formatting")
 
     channel_metadata["carrier_frequency"] = config_meta_data["environment_emulation"][
-        "target_link_config"
-    ]["wireless_channel"]["carrierFreqValueList_hz"][0]
+        "target_link_config"]["wireless_channel"]["carrierFreqValueList_hz"][0]
 
     # ----------------------------------------------------
     # get rx metadata
@@ -541,8 +489,7 @@ def write_recorded_data_to_sigmf(captured_data, config_meta_data, global_info, i
     }
 
     system_components_dict["system_components:channel"] = [
-        {"transmitter_id": "tx_0", **channel_metadata}
-    ]
+        {"transmitter_id": "tx_0", **channel_metadata}]
 
     system_components_dict["system_components:receiver"] = rx_metadata
     # ----------------------
@@ -561,7 +508,7 @@ def write_recorded_data_to_sigmf(captured_data, config_meta_data, global_info, i
         },
     )
 
-    ## Write Meta Data to file
+    # Write Meta Data to file
     dataset_meta_filename = recorded_data_file_name + ".sigmf-meta"
     dataset_meta_file_path = os.path.join(data_storage_path, dataset_meta_filename)
     meta.tofile(dataset_meta_file_path)  # extension is optional
@@ -571,14 +518,11 @@ def write_recorded_data_to_sigmf(captured_data, config_meta_data, global_info, i
     return dataset_meta_file_path
 
 
-def save_sigmf_collection(
-    streams: list, global_info: dict, description: str, storage_path: str
-):
+def save_sigmf_collection(streams: list, global_info: dict, description: str, storage_path: str):
     """Save metadata and links to SigMF data/metadata files to SigMF collection file."""        
     # construct path
     storage_path = os.path.expanduser(storage_path)
     collection_filepath = os.path.join(storage_path, global_info["collection_file"])
-    
     # statically configure Collection metadata
     collection = SigMFCollection(
         streams,
@@ -597,7 +541,8 @@ def save_sigmf_collection(
     # save collection file
     collection.tofile(collection_filepath)
     print("")
-    print(collection_filepath)
+    print(collection_filepath + ".sigmf-collection")
+
 
 def load_sigmf(filename: str, storage_path: str, scope: str):
     """
@@ -631,7 +576,6 @@ def load_sigmf(filename: str, storage_path: str, scope: str):
 
     # read actual data
     data = signal.read_samples(
-        annotation_start_idx, annotation_length, autoscale=False, raw_components=True
-    )
+        annotation_start_idx, annotation_length, autoscale=False, raw_components=True)
 
     return data, global_metadata, annotations_metadata

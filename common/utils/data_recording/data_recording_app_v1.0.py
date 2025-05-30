@@ -22,20 +22,18 @@
 # file common/utils/data_recording/data_recording_app_v1.0.py
 # brief main application of synchronized real-time data recording
 # author Abdo Gaber
-# date 2024
+# date 2025
 # version 1.0
 # company Emerson, NI Test and Measurement
 # email:
 # note
 # warning
 
-import os
 import sysv_ipc as ipc
 import struct
 import time
 from datetime import datetime
-import argparse
-from termcolor import colored, cprint
+from termcolor import colored
 import numpy as np
 import json
 import concurrent.futures
@@ -43,7 +41,14 @@ import concurrent.futures
 import threading
 # import related functions
 from lib import sigmf_interface
-from bitarray import bitarray
+# import library functions
+from lib import sync_service
+from lib import data_recording_messages_def
+from lib import common_utils
+from lib import config_interface
+
+DEBUG_WIRELESS_RECORDED_DATA = True
+DEBUG_BUFFER_READING = False
 
 # globally applicable metadata
 global_info = {
@@ -61,7 +66,8 @@ global_info = {
 
 # Supported OAI Trace messages
 # UL receiver messages
-# gNB IQ Msgs: "GNB_PHY_UL_FD_PUSCH_IQ", "GNB_PHY_UL_FD_DMRS", "GNB_PHY_UL_FD_CHAN_EST_DMRS_POS"
+# gNB IQ Msgs: "GNB_PHY_UL_FD_PUSCH_IQ", "GNB_PHY_UL_FD_DMRS", "GNB_PHY_UL_FD_CHAN_EST_DMRS_POS", 
+#               "GNB_PHY_UL_FD_CHAN_EST_DMRS_INTERPL"
 # gNB BITS Msgs: "GNB_PHY_UL_PAYLOAD_RX_BITS"
 # UE BITS Msgs: "UE_PHY_UL_SCRAMBLED_TX_BITS", "UE_PHY_UL_PAYLOAD_TX_BITS"
 
@@ -122,6 +128,7 @@ project_id_ue = 2336
 read_shm_path_ue = "/tmp/ue_app1"
 write_shm_path_ue = "/tmp/ue_app2"
 
+
 # initialize shared memory
 def attach_shm(shm_path, project_id):
     key = ipc.ftok(shm_path, project_id)
@@ -131,12 +138,14 @@ def attach_shm(shm_path, project_id):
     shm.attach(0, 0)
     return shm
 
+
 def detach_shm(shm):
     try:
         shm.detach()
         print("Shared memory detached successfully.")
     except ipc.ExistentialError:
         print("Shared memory segment does not exist.")
+
 
 def remove_shm(shm):
     try:
@@ -145,115 +154,6 @@ def remove_shm(shm):
     except ipc.ExistentialError:
         print("Shared memory segment does not exist.")
 
-# Function to parse the OAI T_messages file and get the index of a given string
-def parse_message_file(file_path):
-    with open(file_path, "r") as file:
-        content = file.readlines()
-
-    # Extract lines that start with 'ID' and remove the 'ID = ' prefix
-    tracer_msgs_identities = [
-        line.strip().replace("ID = ", "")
-        for line in content
-        if line.strip().startswith("ID")
-    ]
-
-    return tracer_msgs_identities
-
-# Function to get the index of a given string in the list of ID lines
-def get_index_of_id(tracer_msgs_identities, message_id):
-    try:
-        return tracer_msgs_identities.index(message_id)
-    except ValueError:
-        return -1  # Return -1 if the string is not found
-
-def real_to_complex(real_vector):
-    # Ensure the length of the real vector is even
-    if len(real_vector) % 2 != 0:
-        raise ValueError("The length of the real vector must be even.")
-
-    # Split the real vector into real and imaginary parts
-    real_part = real_vector[::2]
-    imag_part = real_vector[1::2]
-
-    # Combine the real and imaginary parts to form a complex vector
-    complex_vector = real_part + 1j * imag_part
-
-    return complex_vector
-
-# Data Collection Trace Messages - General message structure - number of bytes
-def get_general_msg_header_list():
-    """
-    shared memory layout written from the app:
-    =================================
-    msg_id                  (uint8)  message type ID
-    frame                   (uint16)
-    slot                    (uint8)
-    datetime_yyyymmdd       (uint32)
-    datetime_hhmmssmmm      (uint32)
-    frame_type              (uint8)
-    freq_range              (uint8)
-    subcarrier_spacing      (uint8)
-    cyclic_prefix           (uint8)
-    symbols_per_slot        (uint8)
-    Nid_cell                (uint16)
-    rnti                    (uint16)
-    rb_size                 (uint16)
-    rb_start                (uint16)
-    start_symbol_index      (uint8)
-    nr_of_symbols           (uint8)
-    qam_mod_order           (uint8)
-    mcs_index               (uint8)
-    mcs_table               (uint8)
-    nrOfLayers              (uint8)
-    transform_precoding     (uint8)
-    dmrs_config_type        (uint8)
-    ul_dmrs_symb_pos        (uint16)
-    number_dmrs_symbols     (uint8)
-    dmrs_port               (uint16)
-    dmrs_scid               (uint16)
-    nb_antennas             (uint8)
-    number_of_bits          (uint32)
-    length_bytes            (uint32)
-    For IQ Data: IQ samples: I0, Q0, I1, Q1, ... I_x, Q_x (int16)
-    For bit data: bits: b0, b1, b2, ... b_x (uint8)
-    """
-    # Data Collection Trace Messages - General message structure - number of bytes
-    general_msg_header_list = {
-        "msg_id": 2,
-        "frame": 2,
-        "slot": 1,
-        "datetime_yyyymmdd": 4,
-        "datetime_hhmmssmmm": 4,
-        "frame_type": 1,
-        "freq_range": 1,
-        "subcarrier_spacing": 1,
-        "cyclic_prefix": 1,
-        "symbols_per_slot": 1,
-        "Nid_cell": 2,
-        "rnti": 2,
-        "rb_size": 2,
-        "rb_start": 2,
-        "start_symbol_index": 1,
-        "nr_of_symbols": 1,
-        "qam_mod_order": 1,
-        "mcs_index": 1,
-        "mcs_table": 1,
-        "nrOfLayers": 1,
-        "transform_precoding": 1,
-        "dmrs_config_type": 1,
-        "ul_dmrs_symb_pos": 2,
-        "number_dmrs_symbols": 1,
-        "dmrs_port": 2,
-        "dmrs_scid": 2,
-        "nb_antennas": 1,  # for gNB or nb_antennas_tx for UE
-        "number_of_bits": 4,
-        "length_bytes": 4,
-    }
-    # initial number of bytes to read to get data
-    general_message_header_length = 0
-    for key, value in general_msg_header_list.items():
-        general_message_header_length = general_message_header_length + value
-    return general_msg_header_list, general_message_header_length
 
 # check data if avalible in the shared memory
 def is_data_available_in_memory(shm, bufIdx, general_message_header_length, timeout=20):
@@ -270,104 +170,14 @@ def is_data_available_in_memory(shm, bufIdx, general_message_header_length, time
         time.sleep(1)
     return False
 
-# check if first frame ahead:
-def is_frame_ahead(frame1, frame2, max_frame=1023):
-    """
-    Check if frame1 is ahead of frame2, considering wrap-around from max_frame to 0.
-    Args:
-        frame1 (int): The first frame number.
-        frame2 (int): The second frame number.
-        max_frame (int): The maximum frame number before wrap-around. Default is 1023.
-    Returns:
-        bool: True if frame1 is ahead of frame2, False otherwise.
-    """
-    # Calculate the difference considering wrap-around
-    diff = (frame1 - frame2 + (max_frame + 1)) % (max_frame + 1)
-    # If the difference is less than half the range, frame1 is ahead
-    return diff < (max_frame + 1) // 2
-
-# Sync data between gNB and UE
-def sync_gnb_ue_captured_data(shm_reading_gnb, shm_reading_ue):
-    """
-    Function to get the sync (frame, slot) data between gNB and UE
-    Args:
-    shm_reading_gnb: Shared memory for gNB
-    shm_reading_ue: Shared memory for UE
-    Returns:
-    sync_info: Dictionary containing the sync information between gNB and UE
-        sync_info["frame_start"] = frame_start
-        sync_info["slot_start"]  = slot_start
-        sync_info["gnb_frame_ahead"] = gnb_frame_ahead
-        sync_info["frame_diff"] = frame_diff
-    """
-    # get general message header list
-    general_msg_header_list, general_message_header_length = (
-        get_general_msg_header_list()
-    )
-
-    # Read data from gNB T-tracer Application
-    def get_frame_slot_start(
-        shm_reading, bufIdx, general_msg_header_list, general_message_header_length
-    ):
-        buf = shm_reading.read(bufIdx + general_message_header_length)
-        msg_id = struct.unpack(
-            "<H", buf[bufIdx : bufIdx + general_msg_header_list.get("msg_id")]
-        )[0]
-        bufIdx += general_msg_header_list.get("msg_id")
-        frame = struct.unpack(
-            "<H", buf[bufIdx : bufIdx + general_msg_header_list.get("frame")]
-        )[0]
-        bufIdx += general_msg_header_list.get("frame")
-        slot = struct.unpack(
-            "B", buf[bufIdx : bufIdx + general_msg_header_list.get("slot")]
-        )[0]
-        return frame, slot
-
-    # Read data from gNB T-tracer Application
-    bufIdx = 0
-    frame_gnb, slot_gnb = get_frame_slot_start(
-        shm_reading_gnb, bufIdx, general_msg_header_list, general_message_header_length
-    )
-    # Read data from UE T-tracer Application
-    bufIdx = 0
-    frame_ue, slot_ue = get_frame_slot_start(
-        shm_reading_ue, bufIdx, general_msg_header_list, general_message_header_length
-    )
-
-    # Sync data between gNB and UE
-    # We noticed that the maximum difference between the frame number of gNB and UE is 3 frames
-    # Calculate the frame difference considering the wrap-around from 1023 to 0
-    sync_info = {}
-    if frame_ue == frame_gnb:
-        frame_start = frame_gnb
-        slot_start = max(slot_gnb, slot_ue)
-        gnb_frame_ahead = True
-        frame_diff = 0
-    elif is_frame_ahead(frame_gnb, frame_ue):
-        frame_start = frame_gnb
-        slot_start = slot_gnb
-        gnb_frame_ahead = True
-        frame_diff = (frame_gnb - frame_ue + 1024) % 1024
-    elif is_frame_ahead(frame_ue, frame_gnb):
-        frame_start = frame_ue
-        slot_start = slot_ue
-        gnb_frame_ahead = False
-        frame_diff = (frame_ue - frame_gnb + 1024) % 1024
-    # Determine the starting frame and slot for data sync
-    sync_info["frame_gNB"] = frame_gnb
-    sync_info["slot_gNB"] = slot_gnb
-    sync_info["frame_UE"] = frame_ue
-    sync_info["slot_UE"] = slot_ue
-    sync_info["frame_start"] = frame_start
-    sync_info["slot_start"] = slot_start
-    sync_info["gnb_frame_ahead"] = gnb_frame_ahead
-    sync_info["frame_diff"] = frame_diff
-    return sync_info
 
 # Read data from Shared memory based Data Conversion Service message structure
 def read_data_from_shm(shm, bufIdx, tracer_msgs_identities):
+    # print buffer index
+    if DEBUG_BUFFER_READING:
+        print("Buffer Index: ", bufIdx)
     # get general message header list
-    general_msg_header_list, general_message_header_length = get_general_msg_header_list()
+    general_msg_header_list, general_message_header_length = data_recording_messages_def.get_general_msg_header_list()
     buf = shm.read(bufIdx + general_message_header_length)
     n_bytes = sum(buf)
     if n_bytes == 0:
@@ -379,9 +189,11 @@ def read_data_from_shm(shm, bufIdx, tracer_msgs_identities):
     slot  = struct.unpack('B', buf[bufIdx:bufIdx+general_msg_header_list.get("slot")])[0]
     bufIdx += general_msg_header_list.get("slot")
     # get time stamp:  yyyy mm dd hh mm ss msec
-    nr_trace_time_stamp_yyymmdd = struct.unpack('<i', buf[bufIdx:bufIdx+general_msg_header_list.get("datetime_yyyymmdd")])[0]
+    nr_trace_time_stamp_yyymmdd = \
+        struct.unpack('<i', buf[bufIdx:bufIdx+general_msg_header_list.get("datetime_yyyymmdd")])[0]
     bufIdx += general_msg_header_list.get("datetime_yyyymmdd")
-    nr_trace_time_stamp_hhmmssmmm = struct.unpack('<i', buf[bufIdx:bufIdx+general_msg_header_list.get("datetime_hhmmssmmm")])[0]
+    nr_trace_time_stamp_hhmmssmmm = \
+        struct.unpack('<i', buf[bufIdx:bufIdx+general_msg_header_list.get("datetime_hhmmssmmm")])[0]
     bufIdx += general_msg_header_list.get("datetime_hhmmssmmm")
     time_stamp_milli_sec = str(nr_trace_time_stamp_yyymmdd)+"_"+str(nr_trace_time_stamp_hhmmssmmm)
     # get frame type
@@ -457,53 +269,61 @@ def read_data_from_shm(shm, bufIdx, tracer_msgs_identities):
     length_bytes = struct.unpack('<I', buf[bufIdx:bufIdx+general_msg_header_list.get("length_bytes")])[0]
     bufIdx += general_msg_header_list.get("length_bytes")
 
-   
     # print all captured data
-    print(" ")
-    print(f"Time stamp: {time_stamp_milli_sec}")
-    print(f"MSG ID: {msg_id:<5} MSG Name: {tracer_msgs_identities[msg_id]}")
-    print(f"Frame: {frame:<5} Slot: {slot:<5}")
-    print(f"Frame Type: {frame_type:<5} Frequency Range: {freq_range:<5} Subcarrier Spacing: {subcarrier_spacing:<5} Cyclic Prefix: {cyclic_prefix:<5} Symbols per Slot: {symbols_per_slot:<5}")
-    print(f"Nid Cell: {Nid_cell:<5} RNTI: {rnti:<5}")
-    print(f"RB Size: {rb_size:<5} RB Start: {rb_start:<5} Start Symbol Index: {start_symbol_index:<5} Number of Symbols: {nr_of_symbols:<5}")
-    print(f"QAM Modulation Order: {qam_mod_order:<5} MCS Index: {mcs_index:<5} MCS Table: {mcs_table:<5}")
-    print(f"Number of Layers: {nrOfLayers:<5} Transform Precoding: {transform_precoding:<5}")
-    print(f"DMRS Config Type: {dmrs_config_type:<5} UL DMRS Symbol Position: {ul_dmrs_symb_pos:<5} Number of DMRS Symbols: {number_dmrs_symbols:<5}")
-    print(f"DMRS Port: {dmrs_port:<5} DMRS SCID: {dmrs_scid:<5} Number of Antennas: {nb_antennas:<5}")
-    print(f"Number of bits: {number_of_bits:<5} Length of bytes: {length_bytes:<5}")
-
+    if DEBUG_WIRELESS_RECORDED_DATA:
+        print(" ")
+        print(f"Time stamp: {time_stamp_milli_sec}")
+        print(f"MSG ID: {msg_id:<5} MSG Name: {tracer_msgs_identities[msg_id]}")
+        print(f"Frame: {frame:<5} Slot: {slot:<5}")
+        print(f"Frame Type: {frame_type:<5} Frequency Range: {freq_range:<5}"
+              f"Subcarrier Spacing: {subcarrier_spacing:<5} Cyclic Prefix: {cyclic_prefix:<5} "
+              f"Symbols per Slot: {symbols_per_slot:<5}")
+        print(f"Nid Cell: {Nid_cell:<5} RNTI: {rnti:<5}")
+        print(f"RB Size: {rb_size:<5} RB Start: {rb_start:<5} Start Symbol Index: {start_symbol_index:<5} "
+              f"Number of Symbols: {nr_of_symbols:<5}")
+        print(f"QAM Modulation Order: {qam_mod_order:<5} MCS Index: {mcs_index:<5} "
+              f"MCS Table: {mcs_table:<5}")
+        print(f"Number of Layers: {nrOfLayers:<5} Transform Precoding: {transform_precoding:<5}")
+        print(f"DMRS Config Type: {dmrs_config_type:<5} UL DMRS Symbol Position: {ul_dmrs_symb_pos:<5} "
+              f"Number of DMRS Symbols: {number_dmrs_symbols:<5}")
+        print(f"DMRS Port: {dmrs_port:<5} DMRS SCID: {dmrs_scid:<5} "
+              f"Number of Antennas: {nb_antennas:<5}")
+        print(f"Number of bits: {number_of_bits:<5} Length of bytes: {length_bytes:<5}")
+    # raise exception if time stamp is zero, it means that the data is not recorded yet
+    if nr_trace_time_stamp_yyymmdd == 0 and nr_trace_time_stamp_hhmmssmmm == 0:
+        raise Exception("ERROR: Time stamp is zero, data is not recorded yet or something wrong, check logs!")
     # get recorded data
     buf = shm.read(bufIdx + length_bytes)
-    #bit_msg_index = get_index_of_id(tracer_msgs_identities, "GNB_PHY_UL_PAYLOAD_RX_BITS")
+    # bit_msg_index = get_index_of_id(tracer_msgs_identities, "GNB_PHY_UL_PAYLOAD_RX_BITS")
     captured_data = {}
     # If message is bit message, store data in bytes
     # then the field number_of_bits should be not zero
     
-    if "_BITS" in  tracer_msgs_identities[msg_id]:
-        #recorded_data = buf[bufIdx:bufIdx + length_bytes]
-        recorded_data = struct.unpack("<"+ int(length_bytes) *'B', buf[bufIdx:bufIdx + length_bytes])
+    if "_BITS" in tracer_msgs_identities[msg_id]:
+        # recorded_data = buf[bufIdx:bufIdx + length_bytes]
+        recorded_data = struct.unpack("<" + int(length_bytes) * 'B', buf[bufIdx:bufIdx + length_bytes])
         bufIdx += length_bytes
         # convert data in bytes to bits
         bits_vector = []
         for byte in recorded_data:
             bits_vector.extend([int(bit) for bit in format(int(byte), '08b')])
         captured_data["sigmf_data_type"] = "ri8_le"
-        captured_data["recorded_data"] = np.asarray(bits_vector).astype(np.uint8) # convert to uint8
-        #recorded_data_formated = recorded_data.astype(np.complex64) # convert to complex64
+        # convert to uint8
+        captured_data["recorded_data"] = np.asarray(bits_vector).astype(np.uint8)
+        # recorded_data_formated = recorded_data.astype(np.complex64) # convert to complex64
     else:
-        recorded_data = struct.unpack("<"+ int(length_bytes/2) *'h', buf[bufIdx:bufIdx + length_bytes])
+        recorded_data = struct.unpack("<" + int(length_bytes/2) * 'h', buf[bufIdx:bufIdx + length_bytes])
         bufIdx += length_bytes
-
-        #print("IQ data I/Q: ", recorded_data)
-    
+        # print("IQ data I/Q: ", recorded_data)
         # Convert real data to complext data
         # converting list to array
         recorded_data = np.asarray(recorded_data)
-        #recorded_data_complex = recorded_data
-        recorded_data_complex = real_to_complex(recorded_data)
+        # recorded_data_complex = recorded_data
+        recorded_data_complex = common_utils.real_to_complex(recorded_data)
         captured_data["sigmf_data_type"] = "cf32_le"
-        captured_data["recorded_data"] = recorded_data_complex.astype(np.complex64) # convert to complex64
-    #print("Recorded Data: ", captured_data["recorded_data"])
+        # convert to complex64
+        captured_data["recorded_data"] = recorded_data_complex.astype(np.complex64)
+    # print("Recorded Data: ", captured_data["recorded_data"])
     # store data in dictonary
     captured_data["message_id"] = msg_id
     captured_data["message_type"] = tracer_msgs_identities[msg_id]
@@ -514,7 +334,7 @@ def read_data_from_shm(shm, bufIdx, tracer_msgs_identities):
     captured_data["freq_range"] = freq_range
     captured_data["subcarrier_spacing"] = subcarrier_spacing
     captured_data["cyclic_prefix"] = cyclic_prefix
-    #captured_data["symbols_per_slot"] = symbols_per_slot  ... not used
+    # captured_data["symbols_per_slot"] = symbols_per_slot  ... not used
     captured_data["Nid_cell"] = Nid_cell
     captured_data["rnti"] = rnti
     captured_data["rb_size"] = rb_size
@@ -532,13 +352,13 @@ def read_data_from_shm(shm, bufIdx, tracer_msgs_identities):
     captured_data["dmrs_port"] = dmrs_port
     captured_data["dmrs_scid"] = dmrs_scid
     captured_data["nb_antennas"] = nb_antennas
-    captured_data["number_of_bits"] = number_of_bits
-    
+    captured_data["number_of_bits"] = number_of_bits  
     return captured_data, bufIdx
 
+
+# Synchronize data between gNB and UE
 def sync_data_conversion_service(
-    shm_reading_gnb, shm_reading_ue, sync_info, config_meta_data
-):
+        shm_reading_gnb, shm_reading_ue, sync_info, config_meta_data, gnb_args, ue_args):
     # Initialize variables
     record_idx = 0
     prev_frame = -1
@@ -548,62 +368,48 @@ def sync_data_conversion_service(
 
     gnb_args.num_requested_tracer_msgs = len(
         config_meta_data["data_recording_config"]["base_station"][
-            "requested_tracer_messages"
-        ]
-    )
+            "requested_tracer_messages"])
     ue_args.num_requested_tracer_msgs = len(
         config_meta_data["data_recording_config"]["user_equipment"][
-            "requested_tracer_messages"
-        ]
-    )
+            "requested_tracer_messages"])
     tracer_msgs_identities = config_meta_data["data_recording_config"][
-        "tracer_msgs_identities"
-    ]
+        "tracer_msgs_identities"]
 
     global_info = config_meta_data["data_recording_config"]["global_info"]
 
-    # Sync data between gNB and UE: Get buffer index where the sync data starts
-    # Get the buffer index where the sync data starts for UE
+    # Get UE data based on the sync data
     bufIdx = 0
     timeout_sync = time.time() + 5  # 5 seconds if no sync data found, stop the process
     while True:
         # wait for the next record
         # To do: check if we need to add exta waiting times between different events in case of 
         # data streaming via network such as on UE side or gNB side
-        time.sleep(0.0035)  # Note: 2.3 ms = latency of T tracer to capture data from the RAN
+        time.sleep(0.0035)  # 2.3 ms = latency of T tracer to capture data from the RAN
         ue_bufIdx = bufIdx
-        captured_data, bufIdx = read_data_from_shm(
-            shm_reading_ue, bufIdx, tracer_msgs_identities
-        )
-        if (
-            captured_data["frame"] == sync_info["frame_start"]
-            and captured_data["slot"] == sync_info["slot_start"]
-        ):
+        captured_data, bufIdx = read_data_from_shm(shm_reading_ue, bufIdx, tracer_msgs_identities)
+        if (captured_data["frame"] == sync_info["frame"]
+                and captured_data["slot"] == sync_info["slot"]):
             break
         if time.time() > timeout_sync:
             raise Exception(
-                "ERROR: Data Recording NO Sync Found, check Tracer Services if they are connected!"
-            )
+                "ERROR: Data Recording NO Sync Found, check Tracer Services if they are connected!")
 
-    # Get the buffer index where the sync data starts for gNB
+    # Get gNB data based on the sync data
     bufIdx = 0
     while True:
         time.sleep(0.0035)
         gnb_bufIdx = bufIdx
         captured_data, bufIdx = read_data_from_shm(
-            shm_reading_gnb, bufIdx, tracer_msgs_identities
-        )
-        if (
-            captured_data["frame"] == sync_info["frame_start"]
-            and captured_data["slot"] == sync_info["slot_start"]
-        ):
+            shm_reading_gnb, bufIdx, tracer_msgs_identities)
+        if (captured_data["frame"] == sync_info["frame"]
+                and captured_data["slot"] == sync_info["slot"]):
             break
 
     # Read Synchronized data between gNB and UE
     while True:  # read all records
-        print(" ")
-        print("Record number: ", record_idx)
-        print(f"Buffer Index gNB: {gnb_bufIdx}, Buffer Index UE: {ue_bufIdx}")
+        print("\nRecord number: ", record_idx)
+        if DEBUG_BUFFER_READING:
+            print(f"Buffer Index gNB: {gnb_bufIdx}, Buffer Index UE: {ue_bufIdx}")
         # wait for the next record
         # To do: check if we need to add exta waiting times between different events in case of 
         # data streaming via network such as on UE side or gNB side
@@ -612,20 +418,18 @@ def sync_data_conversion_service(
         collected_metafiles = []
         # Read data from gNB T-tracer Application
         for idx in range(gnb_args.num_requested_tracer_msgs):
-            time.sleep(0.0015)
-            print("Reading gNB data", idx)
+            time.sleep(0.0015) 
+            if DEBUG_WIRELESS_RECORDED_DATA:
+                print(f"\nRecord number: {record_idx}, Reading MSG data ", idx)
             captured_data, gnb_bufIdx = read_data_from_shm(
-                shm_reading_gnb, gnb_bufIdx, tracer_msgs_identities
-            )
+                shm_reading_gnb, gnb_bufIdx, tracer_msgs_identities)
 
-            # drive the collection file name from the first message per record
+            # drive the collection file time stamp from the first message per record
             if idx == 0:
                 # Get time stamp
                 time_stamp_ms, time_stamp_ms_file_name = (
                     sigmf_interface.time_stamp_formating(
-                        captured_data["time_stamp"], global_info["datetime_offset"]
-                    )
-                )
+                        captured_data["time_stamp"], global_info["datetime_offset"]))
                 global_info["collection_file"] = (
                     global_info["collection_file_prefix"]
                     + "-rec-"
@@ -636,34 +440,32 @@ def sync_data_conversion_service(
                 global_info["timestamp"] = time_stamp_ms
 
             # Write data into files with the given format
-            collected_metafiles.append(
-                sigmf_interface.write_recorded_data_to_sigmf(
-                    captured_data, config_meta_data, global_info, record_idx
-                )
-            )
+            if config_meta_data["data_recording_config"]["enable_saving_tracer_messages_sigmf"]:
+                collected_metafiles.append(
+                    sigmf_interface.write_recorded_data_to_sigmf(
+                        captured_data, config_meta_data, global_info, record_idx))
 
         # Read data from UE T-tracer Application
         for idx in range(ue_args.num_requested_tracer_msgs):
             time.sleep(0.0015)
+            if DEBUG_WIRELESS_RECORDED_DATA:
+                print(f"\nRecord number: {record_idx}, Reading MSG data ", idx)
             captured_data, ue_bufIdx = read_data_from_shm(
-                shm_reading_ue, ue_bufIdx, tracer_msgs_identities
-            )
+                shm_reading_ue, ue_bufIdx, tracer_msgs_identities)
 
             # Write data into files with the given format
-            collected_metafiles.append(
-                sigmf_interface.write_recorded_data_to_sigmf(
-                    captured_data, config_meta_data, global_info, record_idx
-                )
-            )
+            if config_meta_data["data_recording_config"]["enable_saving_tracer_messages_sigmf"]:
+                collected_metafiles.append(
+                    sigmf_interface.write_recorded_data_to_sigmf(
+                        captured_data, config_meta_data, global_info, record_idx))
 
         # generate SigMF collection file
-        data_storage_path = config_meta_data["data_recording_config"][
-            "data_storage_path"
-        ]
-        description = global_info["description"]
-        sigmf_interface.save_sigmf_collection(
-            collected_metafiles, global_info, description, data_storage_path
-        )
+        if config_meta_data["data_recording_config"]["enable_saving_tracer_messages_sigmf"]:
+            data_storage_path = config_meta_data["data_recording_config"][
+                "data_storage_path"]
+            description = global_info["description"]
+            sigmf_interface.save_sigmf_collection(
+                collected_metafiles, global_info, description, data_storage_path)
 
         frame = captured_data["frame"]
         slot = captured_data["slot"]
@@ -678,42 +480,48 @@ def sync_data_conversion_service(
         prev_frame = frame
         prev_slot = slot
 
+
 # data conversion service
-def data_conversion_service(shm_reading, config_meta_data):
+def data_conversion_service(shm_reading, config_meta_data, args, sync_info, do_sync):
     # Initialize variables
     record_idx = 0
     prev_frame = -1
     prev_slot = -1
     bufIdx = 0
     # Read data from T-tracer Application
-    gnb_args.num_requested_tracer_msgs = len(
-        config_meta_data["data_recording_config"]["base_station"][
-            "requested_tracer_messages"
-        ]
-    )
-    ue_args.num_requested_tracer_msgs = len(
-        config_meta_data["data_recording_config"]["user_equipment"][
-            "requested_tracer_messages"
-        ]
-    )
-
-    if gnb_args.num_requested_tracer_msgs > 0:
-        num_requested_tracer_msgs = gnb_args.num_requested_tracer_msgs
-    elif ue_args.num_requested_tracer_msgs > 0:
-        num_requested_tracer_msgs = ue_args.num_requested_tracer_msgs
+    print("Data Conversion Service: Reading data from T-tracer Application")
+    print("Requested Tracer Messages: ", args.num_requested_tracer_msgs)
+    if args.num_requested_tracer_msgs > 0:
+        num_requested_tracer_msgs = args.num_requested_tracer_msgs
     else:
         raise Exception("ERROR: No requested tracer messages found!")
 
     tracer_msgs_identities = config_meta_data["data_recording_config"][
-        "tracer_msgs_identities"
-    ]
+        "tracer_msgs_identities"]
     global_info = config_meta_data["data_recording_config"]["global_info"]
+
+    if do_sync:
+        print(" Find Memory Index of NR MSGs based on Sync info")
+        while True:
+            time.sleep(0.0035)
+            station_bufIdx = bufIdx
+            captured_data, bufIdx = read_data_from_shm(
+                shm_reading, bufIdx, tracer_msgs_identities)
+            print("*Sync Status: NR Captured Data (Frame, slot): (", captured_data["frame"],
+                  ", ", captured_data["slot"], "), Sync Info (Frame, slot): (", sync_info["frame"],
+                  ", ", sync_info["slot"]," )")
+            if (captured_data["frame"] == sync_info["frame"]
+                    and captured_data["slot"] == sync_info["slot"]):
+                print("*sync Pass")
+                break
+            print("*sync Fail")
+        bufIdx = station_bufIdx
 
     # Read data from T-tracer Application
     while True:  # read all records
-        print(" ")
-        print("Record number: ", record_idx)
-        print(f"Buffer Index: {bufIdx}")
+        print("\nRecord number: ", record_idx)
+        if DEBUG_BUFFER_READING:
+            print(f"Buffer Index: {bufIdx}")
         # wait for the next record
         # To do: check if we need to add exta waiting times between different events in case of 
         # data streaming via network such as on UE side or gNB side
@@ -722,43 +530,40 @@ def data_conversion_service(shm_reading, config_meta_data):
         collected_metafiles = []
         for idx in range(num_requested_tracer_msgs):
             time.sleep(0.0015)
+            if DEBUG_WIRELESS_RECORDED_DATA:
+                print(f"\nRecord number: {record_idx}, Reading MSG data ", idx)
             captured_data, bufIdx = read_data_from_shm(
-                shm_reading, bufIdx, tracer_msgs_identities
-            )
-            # derive the collection file name from the first message per record
+                shm_reading, bufIdx, tracer_msgs_identities)
+            
+            # derive the collection file time stamp from the first message per record
             if idx == 0:
                 # Get time stamp
                 time_stamp_ms, time_stamp_ms_file_name = (
                     sigmf_interface.time_stamp_formating(
-                        captured_data["time_stamp"], global_info["datetime_offset"]
-                    )
-                )
+                        captured_data["time_stamp"], global_info["datetime_offset"]))
                 global_info["collection_file"] = (
                     global_info["collection_file_prefix"]
                     + "-rec-"
                     + str(record_idx)
                     + "-"
-                    + str(time_stamp_ms_file_name)
-                )
+                    + str(time_stamp_ms_file_name))
                 global_info["timestamp"] = time_stamp_ms
             # Write data into files with the given format
-            collected_metafiles.append(
-                sigmf_interface.write_recorded_data_to_sigmf(
-                    captured_data, config_meta_data, global_info, record_idx
-                )
-            )
+            if config_meta_data["data_recording_config"]["enable_saving_tracer_messages_sigmf"]:
+                collected_metafiles.append(
+                    sigmf_interface.write_recorded_data_to_sigmf(
+                        captured_data, config_meta_data, global_info, record_idx))
 
         frame = captured_data["frame"]
         slot = captured_data["slot"]
 
         # generate SigMF collection file
-        data_storage_path = config_meta_data["data_recording_config"][
-            "data_storage_path"
-        ]
-        description = global_info["description"]
-        sigmf_interface.save_sigmf_collection(
-            collected_metafiles, global_info, description, data_storage_path
-        )
+        if config_meta_data["data_recording_config"]["enable_saving_tracer_messages_sigmf"]:
+            data_storage_path = config_meta_data["data_recording_config"][
+                "data_storage_path"]
+            description = global_info["description"]
+            sigmf_interface.save_sigmf_collection(
+                collected_metafiles, global_info, description, data_storage_path)
 
         # Check for changes in frame or slot
         if frame != prev_frame or slot != prev_slot:
@@ -770,316 +575,242 @@ def data_conversion_service(shm_reading, config_meta_data):
         prev_frame = frame
         prev_slot = slot
 
+
 # Write Tracer Control Message
 def write_shm(shm, args):
-    if args.action == "record":
-        # Note: Big Endian >, Little Endian <
+    # Note: Big Endian >, Little Endian <
+    # Note: unsigned char B, signed char b, short h, int I, long long q
+    # Note: float f, double d, string s,  char c, bool ?
+    # 1: config
+    # 2: record
+    # 3: quit
+    print("Write Shared Memory: ", args.action)
+    if args.action == "config":
         # Determine the length of the IP address
         ip_length = len(args.bytes_IPaddress) + 1  # String terminator
-
         # Construct the format string dynamically
         format_string = f"{ip_length}s"
-
         shm.write(
-            struct.pack("<B", ip_length)
-            + struct.pack(format_string, args.bytes_IPaddress)
-            +
-            # message +
+            # Config action
+            struct.pack("<B", 1) + 
+            struct.pack("<B", ip_length) +
+            struct.pack(format_string, args.bytes_IPaddress) +
             struct.pack("<h", int(args.port))
-            + struct.pack("<B", args.num_requested_tracer_msgs)
-            + struct.pack(
-                "<{}h".format(len(args.req_tracer_msgs_indices)),
-                *args.req_tracer_msgs_indices,
-            )
-            + struct.pack("<I", args.num_records)
-            + struct.pack("<h", args.start_frame_number)
         )
-        print(
-            "Record: N Messags: ",
-            args.num_requested_tracer_msgs,
-            ", Msg IDs: ",
-            args.req_tracer_msgs_indices,
-            ", Num records: ",
-            args.num_records,
-            ", Start Frame: ",
-            args.start_frame_number,
+        print("T-Tracer Config IP: ", args.bytes_IPaddress, " port: ", args.port)
+    elif args.action == "record":
+        shm.write(
+                # Record action 
+                struct.pack("<B", int(2)) +
+                struct.pack("<B", args.num_requested_tracer_msgs) +
+                struct.pack(
+                    "<{}h".format(len(args.req_tracer_msgs_indices)),
+                    *args.req_tracer_msgs_indices,) +
+                struct.pack("<I", args.num_records) +
+                struct.pack("<h", args.start_frame_number)
         )
+        print("T-Tracer Record: N Messags: ", args.num_requested_tracer_msgs,
+              ", Msg IDs: ", args.req_tracer_msgs_indices,
+              ", Num records: ", args.num_records,
+              ", Start Frame: ", args.start_frame_number,
+              )
     elif args.action == "quit":
-        print("Quit:", bytes(args.action, "utf-8"))
-        shm.write(bytes(args.action, "utf-8"))
+        shm.write(struct.pack("<B", int(3)))  # Quit action
+        print("T-Tracer Quit")
     else:
         print("Unknown action for data recording system!")
 
 
-def get_requested_tracer_msgs_indices(
-    requested_tracer_messages, tracer_msgs_identities
-):
-    # get requested tracer messages indices
-    req_tracer_msgs_indices = []
-    for idx, value in enumerate(requested_tracer_messages):
-        msg_index = get_index_of_id(tracer_msgs_identities, value)
-        req_tracer_msgs_indices.append(msg_index)
-    print("Requested Traces IDs: ", req_tracer_msgs_indices)
-    return req_tracer_msgs_indices
-
-
-def write_config_data_recording_app_json(config_meta_data):
-    if config_meta_data["data_recording_config"]["global_info"][
-        "save_config_data_recording_app_json"
-    ]:
-        try:
-            json.dumps(config_meta_data)
-            is_json_serializable = True
-        except (TypeError, ValueError) as e:
-            is_json_serializable = False
-            print(f"data_recording_config_meta_json is not JSON serializable: {e}")
-
-        # Specify the file name
-        output_file = (
-            config_meta_data["data_recording_config"]["data_storage_path"]
-            + "config_data_recording_app.json"
-        )
-        # Ensure the directory exists
-        os.makedirs(os.path.dirname(output_file), exist_ok=True)
-
-        # Write the JSON data to the file
-        with open(output_file, "w") as file:
-            try:
-                json.dump(config_meta_data, file, indent=4)
-                print(f"JSON file created successfully at {output_file}")
-            except Exception as e:
-                print(f"Failed to create JSON file: {e}")
+# write shared memory task
+def write_shm_task(barrier, shm_id, args):
+    # Wait for threads to be ready
+    barrier.wait()
+    # send request to related T-Tracer Application
+    write_shm(shm_id, args)
 
 
 if __name__ == "__main__":
     # -------------------------------------------
     # ------------- Configuration --------------
     # ------------------------------------------
-    # Data recording app Configuration
+    # Data Recording Configuration
     data_recording_config_file = "config/config_data_recording.json"
-
-    # ----------- Execution ------------------------
-    parser = argparse.ArgumentParser(description="request messages IDs")
-    ue_args = parser.parse_args()
-    gnb_args = parser.parse_args()
-
     # -------------------------------------------
-    # get the configuration from the JSON file
+    # Configuration
     # -------------------------------------------
-    # collect args to write them to shared memory
-    # get base station and user equipment configurations
+    # First: get the configuration mode either local or remote
+    # Second: get data recording configuration
     # Read and parse the JSON file
     with open(data_recording_config_file, "r") as file:
         config_meta_data = json.load(file)
-  
-    # get Time Stamp
-    start_time = time.time()
 
-    # get Tracer Messages IDs from the T-Tracer Messages file
-    #   ... common/utils/T/T_messages.txt
-    # Parse the T_messages file
-    tracer_msgs_identities = parse_message_file(
-        config_meta_data["data_recording_config"]["t_tracer_message_definition_file"]
-    )
-    config_meta_data["data_recording_config"][
-        "tracer_msgs_identities"
-    ] = tracer_msgs_identities
+    # get Configuration parameters
+    config_meta_data, gnb_args, ue_args = config_interface.get_data_recording_config(config_meta_data)
 
-    # get requested tracer messages indices for gNB
-    gnb_args.requested_tracer_messages = config_meta_data["data_recording_config"][
-        "base_station"
-    ]["requested_tracer_messages"]
+    # check if lists of requested tracer messages IDs are not empty
+    if not gnb_args.requested_tracer_messages and \
+            not ue_args.requested_tracer_messages: 
+        raise Exception("ERROR: No requested tracer messages are provided")
 
-    # get requested tracer messages indices for UE
-    ue_args.requested_tracer_messages = config_meta_data["data_recording_config"][
-        "user_equipment"
-    ]["requested_tracer_messages"]
-
-    # check if both lists of requested tracer messages IDs are not empty
-    if not gnb_args.requested_tracer_messages and not ue_args.requested_tracer_messages:
-        raise Exception("ERROR: No requested tracer messages IDs are provided")
-
-    # check if gnb_requested_tracer_messages is not empty
+    # check if gnb_requested_tracer_messages is not empty, attach to the shared memory
     if gnb_args.requested_tracer_messages:
-        config_meta_data["data_recording_config"]["base_station"][
-            "req_tracer_msgs_indices"
-        ] = get_requested_tracer_msgs_indices(
-            gnb_args.requested_tracer_messages, tracer_msgs_identities
-        )
         # attach to the shared memory
         shm_writing_gnb = attach_shm(write_shm_path_gnb, project_id_gnb)
         shm_reading_gnb = attach_shm(read_shm_path_gnb, project_id_gnb)
 
-        # get gNB Trace Messages
-        gnb_args.num_records = config_meta_data["data_recording_config"]["num_records"]
-        gnb_args.start_frame_number = config_meta_data["data_recording_config"][
-            "start_frame_number"
-        ]
-        gnb_args.req_tracer_msgs_indices = config_meta_data["data_recording_config"][
-            "base_station"
-        ]["req_tracer_msgs_indices"]
-        gnb_args.num_requested_tracer_msgs = len(
-            config_meta_data["data_recording_config"]["base_station"][
-                "req_tracer_msgs_indices"
-            ]
-        )
-        # Split the string into IP and port
-        gnb_args.IPaddress, gnb_args.port = config_meta_data["data_recording_config"][
-            "tracer_service_baseStation_address"
-        ].split(":")
-        gnb_args.bytes_IPaddress = bytes(gnb_args.IPaddress, "utf-8")
-        gnb_args.action = "record"
-
-    # check if ue_requested_tracer_messages is not empty
+    # check if ue_requested_tracer_messages is not empty, attach to the shared memory
     if ue_args.requested_tracer_messages:
-        config_meta_data["data_recording_config"]["user_equipment"][
-            "req_tracer_msgs_indices"
-        ] = get_requested_tracer_msgs_indices(
-            ue_args.requested_tracer_messages, tracer_msgs_identities
-        )
-
         # attach to the shared memory
         shm_writing_ue = attach_shm(write_shm_path_ue, project_id_ue)
         shm_reading_ue = attach_shm(read_shm_path_ue, project_id_ue)
 
-        # get UE Trace Messages
-        ue_args.num_records = config_meta_data["data_recording_config"]["num_records"]
-        ue_args.start_frame_number = config_meta_data["data_recording_config"][
-            "start_frame_number"
-        ]
-        ue_args.req_tracer_msgs_indices = config_meta_data["data_recording_config"][
-            "user_equipment"
-        ]["req_tracer_msgs_indices"]
-        ue_args.num_requested_tracer_msgs = len(
-            config_meta_data["data_recording_config"]["user_equipment"][
-                "req_tracer_msgs_indices"
-            ]
-        )
-        ue_args.IPaddress, ue_args.port = config_meta_data["data_recording_config"][
-            "tracer_service_userEquipment_address"
-        ].split(":")
-        ue_args.bytes_IPaddress = bytes(ue_args.IPaddress, "utf-8")
-        ue_args.action = "record"
+    # get general message header list
+    general_msg_header_list, general_message_header_length = \
+        data_recording_messages_def.get_general_msg_header_list()
+
+    # Add supported OAI Tracer Messages
+    config_meta_data["data_recording_config"]["supported_oai_tracer_messages"] = supported_oai_tracer_messages
+    # Add global info
+    config_meta_data["data_recording_config"]["global_info"] = global_info
 
     # -------------------------------------------
-    # send Tracer Control Message request to UE T-Tracer Application
+    # Initialization
+    # -------------------------------------------
+    # -------------------------------------------
+    # send Tracer Control Message request to T-Tracers Apps
     # -------------------------------------------
     #   It consists of the following fields:
+    #       Config action
+    #       IP address length
     #       IP address
     #       Port Number
-    #       Number of records in slots
-    #       Start SFN: Frame Index to start data collection from it, useful for future data sync between gNB and UE  --> not yet used
-    #       Number of traces
-    #       Trace Type ID 1, …, ID N
+    # check if gnb_requested_tracer_messages is not empty, config T-Tracer gNB via shared memory
+    if gnb_args.requested_tracer_messages:
+        # Config T-Tracer via shared memory
+        gnb_args.action = "config"
+        write_shm(shm_writing_gnb, gnb_args)
 
-    # Get the current time
-    time_stamp_micro_sec = datetime.now().strftime("%Y%m%d-%H%M%S%f")
-    print("Send data logging request us:", time_stamp_micro_sec)
+    # check if ue_requested_tracer_messages is not empty, config T-Tracer UE via shared memory
+    if ue_args.requested_tracer_messages:
+        # Config T-Tracer via shared memory
+        ue_args.action = "config"
+        write_shm(shm_writing_ue, ue_args)
 
+    time.sleep(0.5)  # wait for the config to be applied
+
+    # -------------------------------------------
+    # Execution
+    # -------------------------------------------
+    # send Tracer Control Message request to T-Tracers Apps
+    # -------------------------------------------
+    #   It consists of the following fields:
+    #       Record action
+    #       Number of requested Tracer Messages
+    #       Requested Tracer Messages ID 1, …, ID N
+    #       Number of records to be recorded in slots
+    #       Start SFN: Frame Index to start data collection from it, useful for future 
+    #       data sync between gNB and UE but not yet used
+    print("Args:")
+    if gnb_args.requested_tracer_messages:
+        gnb_args.action = "record"
+        print("gnb_args: ", gnb_args)
+    if ue_args.requested_tracer_messages:
+        ue_args.action = "record"
+        print("ue_args: ", ue_args)
+
+    start_time = time.time()
+    print("Send data logging request us:", datetime.now().strftime("%Y%m%d-%H%M%S%f"))
+
+    # if requested: gNB and UE Tracer Messages 
+    # gNB + UE Tracer Messages
     if gnb_args.requested_tracer_messages and ue_args.requested_tracer_messages:
         # Create a barrier to synchronize the threads
         barrier = threading.Barrier(2)
-
-        def write_shm_ue(ue_args):
-            # Wait for both threads to be ready
-            barrier.wait()
-            # send request to UE T-Tracer Application
-            write_shm(shm_writing_ue, ue_args)
-
-        # send request to gNB T-Tracer Application
-        def write_shm_gnb(gnb_args):
-            # Wait for both threads to be ready
-            barrier.wait()
-            # send request to gNB T-Tracer Application
-            write_shm(shm_writing_gnb, gnb_args)
-
         with concurrent.futures.ThreadPoolExecutor() as executor:
-            print("ue_args: ", ue_args)
-            print("gnb_args: ", gnb_args)
-            tracer_ue = executor.submit(write_shm_ue, ue_args)
-            tracer_gnb = executor.submit(write_shm_gnb, gnb_args)
-
+            tracer_ue = executor.submit(write_shm_task, barrier, shm_writing_ue, ue_args)
+            tracer_gnb = executor.submit(write_shm_task, barrier, shm_writing_gnb, gnb_args)
             # Wait for both functions to complete
             concurrent.futures.wait([tracer_ue, tracer_gnb])
 
+    # gNB Tracer Messages
     elif gnb_args.requested_tracer_messages:
-        print("gnb_args: ", gnb_args)
         write_shm(shm_writing_gnb, gnb_args)
+
+    # UE Tracer Messages
     elif ue_args.requested_tracer_messages:
-        print("ue_args: ", ue_args)
         write_shm(shm_writing_ue, ue_args)
     else:
         raise Exception("ERROR: No requested tracer messages IDs are provided")
 
     # -------------------------------------------
-    # Read data from UE T-tracer Application
+    # Read data from gNB and UE T-tracer Application
     # -------------------------------------------
     # Check if data is available in memory
-    # get general message header list
-    general_msg_header_list, general_message_header_length = (
-        get_general_msg_header_list()
-    )
     # Initialize variables
     bufIdx = 0
     timeout = 10  # 10 seconds from now
 
     # If gNB MSGs are requested
     if gnb_args.requested_tracer_messages:
-        if not is_data_available_in_memory(
-            shm_reading_gnb, bufIdx, general_message_header_length, timeout
-        ):
-            time.sleep(1)  # Wait for the client to read the status
-            raise Exception(
-                "ERROR: Time out, check if gNB T-Tracer APP connected to stack"
-            )
-
+        # Check if data is available in gNB memory
+        is_gnb_data_in_memory = is_data_available_in_memory(
+            shm_reading_gnb, bufIdx, general_message_header_length, timeout)
+        # Report the status of gNB T-Tracer APP locally
+        if not is_gnb_data_in_memory:
+            print("Error: gNB: Check t-Tracer APP of gNB, check IPs and Ports")
+            print("Error: gNB: If IPs and Ports are correct, re-run the hanging app.")
+            print("It seems the socket was not closed properly")
+            raise Exception("ERROR: Time out, check if gNB T-Tracer APP connected to stack")
     # If UE MSGs are requested
     if ue_args.requested_tracer_messages:
         # Check if data is available in UE memory
-        if not is_data_available_in_memory(
-            shm_reading_ue, bufIdx, general_message_header_length, timeout
-        ):
-            raise Exception(
-                "ERROR: Time out, check if UE T-Tracer APP connected to stack"
-            )
+        is_ue_data_in_memory = is_data_available_in_memory(
+            shm_reading_ue, bufIdx, general_message_header_length, timeout)
+        # Report the status of UE T-Tracer APP locally
+        if not is_ue_data_in_memory:
+            print("Error: UE: Check t-Tracer APP of UE, check IPs and Ports")
+            print("Error: UE: If IPs and Ports are correct, re-run the hanging app.")
+            print("It seems the socket was not closed properly")
+            raise Exception("ERROR: Time out, check if UE T-Tracer APP connected to stack")
 
     # -------------------------------------------
     # Sync data between gNB and UE
     # -------------------------------------------
-    # Add supported OAI Tracer Messages
-    config_meta_data["data_recording_config"][
-        "supported_oai_tracer_messages"
-    ] = supported_oai_tracer_messages
-    # Add global info
-    config_meta_data["data_recording_config"]["global_info"] = global_info
-
-    # Create JSON file
-    write_config_data_recording_app_json(config_meta_data)
-
+    # write JSON file
+    common_utils.write_config_data_recording_app_json(config_meta_data)
+    sync_info = {}
     if gnb_args.requested_tracer_messages and ue_args.requested_tracer_messages:
         # Sync data between gNB and UE
-        sync_info = sync_gnb_ue_captured_data(shm_reading_gnb, shm_reading_ue)
-        print("\nSync data between gNB and UE: ", sync_info)
-        
+        sync_info = sync_service.sync_gnb_ue_captured_data(shm_reading_gnb, shm_reading_ue)
+        print("\n***Sync data between gNB and UE: ", sync_info)
         # Read data from gNB and UE T-tracer Applications
         sync_data_conversion_service(
-            shm_reading_gnb, shm_reading_ue, sync_info, config_meta_data
-        )
+            shm_reading_gnb, shm_reading_ue, sync_info, config_meta_data, gnb_args, ue_args)
     elif gnb_args.requested_tracer_messages:
         # Read data from gNB T-tracer Application
-        data_conversion_service(shm_reading_gnb, config_meta_data)
+        data_conversion_service(
+            shm_reading_gnb, config_meta_data, gnb_args, sync_info, do_sync=False)
     elif ue_args.requested_tracer_messages:
         # Read data from UE T-tracer Application
-        data_conversion_service(shm_reading_ue, config_meta_data)
+        data_conversion_service(
+            shm_reading_ue, config_meta_data, ue_args, sync_info, do_sync=False)
     else:
         raise Exception("ERROR: No requested tracer messages IDs are provided")
 
+    # measure Elapsed time
+    time_elapsed = time.time() - start_time
+    time_elapsed_ms = int(time_elapsed * 1000)
+    print(
+        "Elapsed time of getting Requested Messages and writing data and meta data files:",
+        colored(time_elapsed_ms, "yellow"), "ms",)
+
     # Stop T-Tracer Application function
-    # For future work, we can add a function to stop the T-Tracer application
-    # currenlty, the t-tracer stops if the number of records is reached
     if gnb_args.requested_tracer_messages:
         gnb_args.action = "quit"
         write_shm(shm_writing_gnb, gnb_args)
+        # Add Sleep time to ensure that the message sent to the UE T-tracer application is received
+        # before the shared memory is detached
+        time.sleep(0.5)
         # Clean shared memory
         detach_shm(shm_reading_gnb)
         detach_shm(shm_writing_gnb)
@@ -1088,22 +819,14 @@ if __name__ == "__main__":
     if ue_args.requested_tracer_messages:
         ue_args.action = "quit"
         write_shm(shm_writing_ue, ue_args)
+        # Add Sleep time to ensure that the message sent to the UE T-tracer application is received
+        # before the shared memory is detached
+        time.sleep(0.5)
         # Clean shared memory
         detach_shm(shm_reading_ue)
         detach_shm(shm_writing_ue)
         remove_shm(shm_reading_ue)
         remove_shm(shm_writing_ue)
-
-    # measure Elapsed time
-    end_time = time.time()
-    time_elapsed = end_time - start_time
-    time_elapsed_ms = int(time_elapsed * 1000)
-    print(
-        "Elapsed time of getting Requested Messages and writing data and meta data files:",
-        colored(time_elapsed_ms, "yellow"),
-        "ms",
-    )
-    print(" ")
 
     print("End of the RF Data Recording API")
     pass
