@@ -37,6 +37,7 @@
     "data_recording_config": {
         "data_storage_path": "/home/user/workarea/oai_recorded_data/",
         "data_file_format": "SigMF",
+        "enable_saving_tracer_messages_sigmf": true,
         "num_records": 5,
         "t_tracer_message_definition_file": "../T/T_messages.txt",
         "parameter_map_file": "config/wireless_link_parameter_map.yaml",
@@ -78,6 +79,6 @@
             "clock_reference": "external"
         },
         "tracer_service_baseStation_address": "127.0.0.1:2021",
-        "tracer_service_userEquipment_address": "10.88.136.27:2023"
+        "tracer_service_userEquipment_address": "10.88.136.68:2023"
     }
 }
