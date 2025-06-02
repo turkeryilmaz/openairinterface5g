@@ -36,6 +36,7 @@
 #include "NR_MAC_COMMON/nr_mac_extern.h"
 #include "LAYER2/NR_MAC_gNB/mac_proto.h"
 #include "LAYER2/RLC/rlc.h"
+#include "LAYER2/nr_rlc/nr_rlc_oai_api.h"
 
 /*TAG*/
 #include "NR_TAG-Id.h"
@@ -337,16 +338,31 @@ static void nr_store_dlsch_buffer(module_id_t module_id, frame_t frame, sub_fram
       if (lcid == DL_SCH_LCID_DTCH && nr_timer_is_active(&sched_ctrl->transm_interrupt))
         continue;
       start_meas(&RC.nrmac[module_id]->rlc_status_ind);
-      sched_ctrl->rlc_status[lcid] = mac_rlc_status_ind(module_id,
-                                                        rnti,
-                                                        module_id,
-                                                        frame,
-                                                        slot,
-                                                        ENB_FLAG_YES,
-                                                        MBMS_FLAG_NO,
-                                                        lcid,
-                                                        0,
-                                                        0);
+      nr_rlc_rb_type rb_type = UE->lcid2rb[lcid].type;
+      if (rb_type == NR_RLC_NONE)
+        continue;
+      int rb_id;
+      nr_rlc_entity_t *rlc;
+      if (rb_type == NR_RLC_SRB) {
+        rb_id = UE->lcid2rb[lcid].choice.srb_id;
+        rlc = UE->srb[rb_id];
+      } else {
+        rb_id = UE->lcid2rb[lcid].choice.drb_id;
+        rlc = UE->drb[rb_id];
+      }
+      if (rlc == NULL)
+        continue;
+      rlc->set_time(rlc, get_nr_rlc_current_time());
+      nr_rlc_entity_buffer_status_t status = rlc->buffer_status(rlc, 1000*1000);
+      sched_ctrl->rlc_status[lcid] = (mac_rlc_status_resp_t){
+        .bytes_in_buffer = status.status_size
+                         + status.retx_size
+                         + status.tx_size,
+        .pdus_in_buffer = 0,                    /* todo: report this value */
+        .head_sdu_creation_time = 0,
+        .head_sdu_remaining_size_to_send = 0,
+        .head_sdu_is_segmented = false
+      };
       stop_meas(&RC.nrmac[module_id]->rlc_status_ind);
 
       if (sched_ctrl->rlc_status[lcid].bytes_in_buffer == 0)
@@ -1292,17 +1308,25 @@ void nr_schedule_ue_spec(module_id_t module_id,
              * such that TBS is full */
             const rlc_buffer_occupancy_t ndata = min(sched_ctrl->rlc_status[lcid].bytes_in_buffer,
                                                      bufEnd-buf-sizeof(NR_MAC_SUBHEADER_LONG));
-            tbs_size_t len = mac_rlc_data_req(module_id,
-                                              rnti,
-                                              module_id,
-                                              frame,
-                                              ENB_FLAG_YES,
-                                              MBMS_FLAG_NO,
-                                              lcid,
-                                              ndata,
-                                              (char *)buf+sizeof(NR_MAC_SUBHEADER_LONG),
-                                              0,
-                                              0);
+            nr_rlc_entity_t *rlc = NULL;
+            switch (UE->lcid2rb[lcid].type) {
+              case NR_RLC_SRB:
+                rlc = UE->srb[UE->lcid2rb[lcid].choice.srb_id];
+                break;
+              case NR_RLC_DRB:
+                rlc = UE->drb[UE->lcid2rb[lcid].choice.drb_id];
+                break;
+              case NR_RLC_NONE:
+                /* nothing to do */
+                break;
+            }
+            if (rlc == NULL)
+              break;
+
+            rlc->set_time(rlc, get_nr_rlc_current_time());
+            /* todo: remove cast to char * */
+            tbs_size_t len = rlc->generate_pdu(rlc, (char *)buf+sizeof(NR_MAC_SUBHEADER_LONG), ndata);
+
             LOG_D(NR_MAC,
                   "%4d.%2d RNTI %04x: %d bytes from %s %d (ndata %d, remaining size %ld)\n",
                   frame,

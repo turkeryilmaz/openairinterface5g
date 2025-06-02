@@ -55,6 +55,7 @@
 #include "NR_UE-NR-Capability.h"
 #include "intertask_interface.h"
 #include "nr_pdcp/nr_pdcp_entity.h"
+#include "common/utils/l2_queue.h"
 
 // 3GPP TS 38.331 Section 12 Table 12.1-1: UE performance requirements for RRC procedures for UEs
 #define NR_RRC_SETUP_DELAY_MS           10
@@ -185,6 +186,9 @@ typedef struct SRB_INFO_TABLE_ENTRY_NR_s {
   uint8_t Active;
   uint8_t status;
   nr_pdcp_entity_t *pdcp;
+  l2_queue_t *l2_dl_queue;
+  l2_queue_t *l2_ul_queue;
+  pthread_t l2_pdcp_srb1_thread;
 } NR_SRB_INFO_TABLE_ENTRY;
 
 typedef struct gNB_RRC_UE_s {

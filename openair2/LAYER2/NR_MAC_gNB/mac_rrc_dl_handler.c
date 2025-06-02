@@ -890,6 +890,9 @@ void dl_rrc_message_transfer(const f1ap_dl_rrc_message_t *dl_rrc)
       gtpv1u_update_ue_id(f1inst, *dl_rrc->old_gNB_DU_ue_id, dl_rrc->gNB_DU_ue_id);
   }
 
-  /* the DU ue id is the RNTI */
-  nr_rlc_srb_recv_sdu(dl_rrc->gNB_DU_ue_id, dl_rrc->srb_id, dl_rrc->rrc_container, dl_rrc->rrc_container_length);
+  nr_rlc_entity_t *rlc = UE->srb[dl_rrc->srb_id];
+  DevAssert(rlc);
+  rlc->set_time(rlc, get_nr_rlc_current_time());
+  /* todo: change type of pdu buffer to uint8_t * everywhere */
+  rlc->recv_sdu(rlc, (char *)dl_rrc->rrc_container, dl_rrc->rrc_container_length, -1);
 }

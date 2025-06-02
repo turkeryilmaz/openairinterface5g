@@ -456,7 +456,6 @@ long get_lcid_from_drbid(int drb_id);
 long get_lcid_from_srbid(int srb_id);
 
 bool prepare_initial_ul_rrc_message(gNB_MAC_INST *mac, NR_UE_info_t *UE);
-void send_initial_ul_rrc_message(int rnti, const uint8_t *sdu, sdu_size_t sdu_len, void *data);
 
 void finish_nr_dl_harq(NR_UE_sched_ctrl_t *sched_ctrl, int harq_pid);
 void abort_nr_dl_harq(NR_UE_info_t* UE, int8_t harq_pid);
@@ -480,5 +479,7 @@ bool nr_mac_add_lcid(NR_UE_sched_ctrl_t *sched_ctrl, const nr_lc_config_t *c);
 bool nr_mac_remove_lcid(NR_UE_sched_ctrl_t *sched_ctrl, long lcid);
 
 bool nr_mac_get_new_rnti(NR_UEs_t *UEs, const NR_RA_t *ra_base, int ra_count, rnti_t *rnti);
+
+void nr_mac_get_l2_queues_srb(int rnti, int srb_id, l2_queue_t **dl, l2_queue_t **ul);
 
 #endif /*__LAYER2_NR_MAC_PROTO_H__*/

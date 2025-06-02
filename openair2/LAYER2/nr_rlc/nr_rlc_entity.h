@@ -28,6 +28,16 @@
 
 #define NR_SDU_MAX 16000   /* max NR PDCP SDU size is 9000, let's take more */
 
+typedef enum nr_rlc_rb_type { NR_RLC_NONE = 0, NR_RLC_SRB = 1, NR_RLC_DRB = 2 } nr_rlc_rb_type;
+
+typedef struct nr_rlc_rb_t {
+  nr_rlc_rb_type type;
+  union {
+    int srb_id;
+    int drb_id;
+  } choice;
+} nr_rlc_rb_t;
+
 typedef enum {
   NR_RLC_AM,
   NR_RLC_UM,

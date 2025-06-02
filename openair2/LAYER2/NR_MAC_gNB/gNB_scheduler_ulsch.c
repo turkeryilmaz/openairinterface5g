@@ -347,17 +347,9 @@ static int nr_process_mac_pdu(instance_t module_idP,
         LOG_I(MAC, "[RAPROC] Received SDU for CCCH length %d for UE %04x\n", mac_len, UE->rnti);
 
         if (prepare_initial_ul_rrc_message(RC.nrmac[module_idP], UE)) {
-          mac_rlc_data_ind(module_idP,
-                           UE->rnti,
-                           module_idP,
-                           frameP,
-                           ENB_FLAG_YES,
-                           MBMS_FLAG_NO,
-                           0,
-                           (char *)(pduP + mac_subheader_len),
-                           mac_len,
-                           1,
-                           NULL);
+          UE->srb[0]->set_time(UE->srb[0], get_nr_rlc_current_time());
+          /* todo: change pdu type to uint8_t * everywhere */
+          UE->srb[0]->recv_pdu(UE->srb[0], (char *)pduP + mac_subheader_len, mac_len);
         } else {
           LOG_E(NR_MAC, "prepare_initial_ul_rrc_message() returned false, cannot forward CCCH message\n");
         }
@@ -372,20 +364,19 @@ static int nr_process_mac_pdu(instance_t module_idP,
                     slot,
                     lcid);
 
-        mac_rlc_data_ind(module_idP,
-                         UE->rnti,
-                         module_idP,
-                         frameP,
-                         ENB_FLAG_YES,
-                         MBMS_FLAG_NO,
-                         lcid,
-                         (char *)(pduP + mac_subheader_len),
-                         mac_len,
-                         1,
-                         NULL);
+        nr_rlc_rb_type rb_type = UE->lcid2rb[lcid].type;
+        int rb_id = UE->lcid2rb[lcid].choice.srb_id;
+        if (rb_type != NR_RLC_SRB)
+          LOG_E(MAC, "no RLC SRB entity found for LCID %d UE ID %d\n", lcid, UE->rnti);
+        else {
+          nr_rlc_entity_t *rlc = UE->srb[rb_id];
+          rlc->set_time(rlc, get_nr_rlc_current_time());
+          /* todo: uint8_t * to remove cast to char * */
+          rlc->recv_pdu(rlc, (char *)(pduP + mac_subheader_len), mac_len);
 
-        UE->mac_stats.ul.total_sdu_bytes += mac_len;
-        UE->mac_stats.ul.lc_bytes[lcid] += mac_len;
+          UE->mac_stats.ul.total_sdu_bytes += mac_len;
+          UE->mac_stats.ul.lc_bytes[lcid] += mac_len;
+        }
         break;
 
       case UL_SCH_LCID_DTCH ...(UL_SCH_LCID_DTCH + 28):

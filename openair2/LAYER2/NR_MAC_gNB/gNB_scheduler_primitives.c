@@ -3222,10 +3222,9 @@ void reset_beam_status(NR_beam_info_t *beam_info, int frame, int slot, int beam_
   }
 }
 
-void send_initial_ul_rrc_message(int rnti, const uint8_t *sdu, sdu_size_t sdu_len, void *data)
+void send_initial_ul_rrc_message(NR_UE_info_t *UE, uint8_t *sdu, sdu_size_t sdu_len)
 {
   gNB_MAC_INST *mac = RC.nrmac[0];
-  NR_UE_info_t *UE = (NR_UE_info_t *)data;
   NR_SCHED_ENSURE_LOCKED(&mac->sched_lock);
 
   uint8_t du2cu[1024];
@@ -3236,9 +3235,9 @@ void send_initial_ul_rrc_message(int rnti, const uint8_t *sdu, sdu_size_t sdu_le
   const f1ap_initial_ul_rrc_message_t ul_rrc_msg = {
     .plmn = mac->f1_config.setup_req->cell[0].info.plmn,
     .nr_cellid = mac->f1_config.setup_req->cell[0].info.nr_cellid,
-    .gNB_DU_ue_id = rnti,
-    .crnti = rnti,
-    .rrc_container = (uint8_t *) sdu,
+    .gNB_DU_ue_id = UE->rnti,
+    .crnti = UE->rnti,
+    .rrc_container = sdu,
     .rrc_container_length = sdu_len,
     .du2cu_rrc_container = (uint8_t *) du2cu,
     .du2cu_rrc_container_length = encoded
@@ -3246,13 +3245,47 @@ void send_initial_ul_rrc_message(int rnti, const uint8_t *sdu, sdu_size_t sdu_le
   mac->mac_rrc.initial_ul_rrc_message_transfer(0, &ul_rrc_msg);
 }
 
+static void deliver_sdu_srb0(void *deliver_sdu_data, struct nr_rlc_entity_t *entity,
+                             char *buf, int size)
+{
+  NR_UE_info_t *UE = deliver_sdu_data;
+  send_initial_ul_rrc_message(UE, (unsigned char *)buf, size);
+}
+
+static void deliver_sdu_srb1(void *_ue, nr_rlc_entity_t *entity, char *buf, int size)
+{
+  NR_UE_info_t *UE = _ue;
+
+  int srb_id = 1;
+  uint8_t *buf_copy = malloc(size);
+  AssertFatal(buf_copy, "out of memory\n");
+  memcpy(buf_copy, buf, size);
+  l2_enqueue(UE->srb_queue_ul[srb_id], (uint8_t *)buf_copy, size);
+}
+
+static void successful_delivery_srb1(void *ue, nr_rlc_entity_t *entity, int sdu_id)
+{
+  LOG_D(MAC, "successful_delivery_srb1 sdu_id %d\n", sdu_id);
+  /* todo: report successful delivery to rrc (or f1ap) */
+}
+
+static void max_retx_reached(void *ue, nr_rlc_entity_t *entity)
+{
+  LOG_E(MAC, "max_retx_reached\n");
+  exit(1);
+}
+
 bool prepare_initial_ul_rrc_message(gNB_MAC_INST *mac, NR_UE_info_t *UE)
 {
   NR_SCHED_ENSURE_LOCKED(&mac->sched_lock);
 
   /* activate SRB0 */
-  if (!nr_rlc_activate_srb0(UE->rnti, UE, send_initial_ul_rrc_message))
+  if (UE->srb[0] != NULL)
     return false;
+
+  UE->srb[0] = new_nr_rlc_entity_tm(10000, deliver_sdu_srb0, UE);
+  UE->lcid2rb[0].type = NR_RLC_SRB;
+  UE->lcid2rb[0].choice.srb_id = 0;
 
   /* create this UE's initial CellGroup */
   int CC_id = 0;
@@ -3267,7 +3300,13 @@ bool prepare_initial_ul_rrc_message(gNB_MAC_INST *mac, NR_UE_info_t *UE)
   DevAssert(cellGroupConfig->rlc_BearerToAddModList->list.count == 1);
   const NR_RLC_BearerConfig_t *bearer = cellGroupConfig->rlc_BearerToAddModList->list.array[0];
   DevAssert(bearer->servedRadioBearer->choice.srb_Identity == srb_id);
-  nr_rlc_add_srb(UE->rnti, bearer->servedRadioBearer->choice.srb_Identity, bearer);
+  UE->srb_queue_dl[srb_id] = new_l2_queue(1024);
+  UE->srb_queue_ul[srb_id] = new_l2_queue(1024);
+  UE->srb[srb_id] = nr_rlc_new_srb(bearer, deliver_sdu_srb1, successful_delivery_srb1, max_retx_reached, UE);
+  int lcid = bearer->logicalChannelIdentity;
+  DevAssert(lcid >= 1 && lcid <= 32);
+  UE->lcid2rb[lcid].type = NR_RLC_SRB;
+  UE->lcid2rb[lcid].choice.srb_id = srb_id;
 
   int priority = bearer->mac_LogicalChannelConfig->ul_SpecificParameters->priority;
   nr_lc_config_t c = {.lcid = bearer->logicalChannelIdentity, .priority = priority};

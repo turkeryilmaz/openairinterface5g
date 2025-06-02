@@ -1953,19 +1953,36 @@ static void nr_generate_Msg4_MsgB(module_id_t module_idP,
 
     logical_chan_id_t lcid = DL_SCH_LCID_CCCH;
     if (current_harq_pid < 0) {
-      // Check for data on SRB0 (RRCSetup)
-      mac_rlc_status_resp_t srb_status = mac_rlc_status_ind(module_idP, ra->rnti, module_idP, frameP, slotP, ENB_FLAG_YES, MBMS_FLAG_NO, lcid, 0, 0);
+      nr_rlc_entity_buffer_status_t srb_status;
+      int bytes_in_buffer = 0;
 
-      if (srb_status.bytes_in_buffer == 0) {
+      // Check for data on SRB0 (RRCSetup)
+      if (UE->srb[0]) {
+        UE->srb[0]->set_time(UE->srb[0], get_nr_rlc_current_time());
+        srb_status = UE->srb[0]->buffer_status(UE->srb[0], 10000);
+        bytes_in_buffer = srb_status.status_size
+                        + srb_status.retx_size
+                        + srb_status.tx_size;
+      }
+
+      if (bytes_in_buffer == 0) {
         lcid = DL_SCH_LCID_DCCH;
         // Check for data on SRB1 (RRCReestablishment, RRCReconfiguration)
-        srb_status = mac_rlc_status_ind(module_idP, ra->rnti, module_idP, frameP, slotP, ENB_FLAG_YES, MBMS_FLAG_NO, lcid, 0, 0);
+        nr_rlc_rb_type rb_type = UE->lcid2rb[lcid].type;
+        int rb_id = UE->lcid2rb[lcid].choice.srb_id;
+        if (rb_type == NR_RLC_SRB && UE->srb[rb_id]) {
+          UE->srb[rb_id]->set_time(UE->srb[rb_id], get_nr_rlc_current_time());
+          srb_status = UE->srb[rb_id]->buffer_status(UE->srb[rb_id], 10000);
+          bytes_in_buffer = srb_status.status_size
+                          + srb_status.retx_size
+                          + srb_status.tx_size;
+        }
       }
 
       // Need to wait until data for Msg4 is ready
-      if (srb_status.bytes_in_buffer == 0)
+      if (bytes_in_buffer == 0)
         return;
-      mac_sdu_length = srb_status.bytes_in_buffer;
+      mac_sdu_length = bytes_in_buffer;
     }
 
     const int n_slots_frame = nr_slots_per_frame[dl_bwp->scs];
@@ -2137,17 +2154,16 @@ static void nr_generate_Msg4_MsgB(module_id_t module_idP,
       uint8_t buffer[CCCH_SDU_SIZE];
       uint8_t mac_subheader_len = sizeof(NR_MAC_SUBHEADER_SHORT);
       // Get RLC data on the SRB (RRCSetup, RRCReestablishment)
-      mac_sdu_length = mac_rlc_data_req(module_idP,
-                                        ra->rnti,
-                                        module_idP,
-                                        frameP,
-                                        ENB_FLAG_YES,
-                                        MBMS_FLAG_NO,
-                                        lcid,
-                                        CCCH_SDU_SIZE,
-                                        (char *)buffer,
-                                        0,
-                                        0);
+      nr_rlc_rb_type rb_type = UE->lcid2rb[lcid].type;
+      int rb_id = UE->lcid2rb[lcid].choice.srb_id;
+      if (rb_type == NR_RLC_SRB && UE->srb[rb_id]) {
+        nr_rlc_entity_t *rlc = UE->srb[rb_id];
+        rlc->set_time(rlc, get_nr_rlc_current_time());
+        /* todo: convert buffer argument to uint8_t * to remove the cast */
+        mac_sdu_length = rlc->generate_pdu(rlc, (char *)buffer, CCCH_SDU_SIZE);
+      } else {
+        mac_sdu_length = 0;
+      }
 
       if (mac_sdu_length < 256) {
         ((NR_MAC_SUBHEADER_SHORT *)&buf[mac_pdu_length])->R = 0;

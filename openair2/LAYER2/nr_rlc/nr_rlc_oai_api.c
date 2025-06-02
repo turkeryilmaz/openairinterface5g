@@ -68,7 +68,7 @@ void unlock_nr_rlc_current_time(void)
     AssertFatal(0, "error locking mutex");
 }
 
-static uint64_t get_nr_rlc_current_time(void)
+uint64_t get_nr_rlc_current_time(void)
 {
   lock_nr_rlc_current_time();
 
@@ -745,6 +745,61 @@ void nr_rlc_reconfigure_entity(int ue_id, int lc_id, NR_RLC_Config_t *rlc_Config
                                  &sn_field_length);
   }
   nr_rlc_manager_unlock(nr_rlc_ue_manager);
+}
+
+nr_rlc_entity_t *nr_rlc_new_srb(const NR_RLC_BearerConfig_t *rlc_BearerConfig,
+                                void (*deliver_sdu)(void *ue, nr_rlc_entity_t *entity, char *buf, int size),
+                                void (*successful_delivery)(void *ue, nr_rlc_entity_t *entity, int sdu_id),
+                                void (*max_retx_reached)(void *ue, nr_rlc_entity_t *entity),
+                                void *ue)
+{
+  struct NR_RLC_Config *r = rlc_BearerConfig->rlc_Config;
+  int t_status_prohibit;
+  int t_poll_retransmit;
+  int poll_pdu;
+  int poll_byte;
+  int max_retx_threshold;
+  int t_reassembly;
+  int sn_field_length;
+
+  if (r && r->present == NR_RLC_Config_PR_am) {
+    struct NR_RLC_Config__am *am;
+    am = r->choice.am;
+    t_reassembly = decode_t_reassembly(am->dl_AM_RLC.t_Reassembly);
+    t_status_prohibit = decode_t_status_prohibit(am->dl_AM_RLC.t_StatusProhibit);
+    t_poll_retransmit = decode_t_poll_retransmit(am->ul_AM_RLC.t_PollRetransmit);
+    poll_pdu = decode_poll_pdu(am->ul_AM_RLC.pollPDU);
+    poll_byte = decode_poll_byte(am->ul_AM_RLC.pollByte);
+    max_retx_threshold = decode_max_retx_threshold(am->ul_AM_RLC.maxRetxThreshold);
+    DevAssert(*am->dl_AM_RLC.sn_FieldLength == *am->ul_AM_RLC.sn_FieldLength);
+    sn_field_length = decode_sn_field_length_am(*am->dl_AM_RLC.sn_FieldLength);
+  } else {
+    // default values as in 9.2.1 of 38.331
+    t_reassembly = 35;
+    t_status_prohibit = 0;
+    t_poll_retransmit = 45;
+    poll_pdu = -1;
+    poll_byte = -1;
+    max_retx_threshold = 8;
+    sn_field_length = 12;
+  }
+
+  AssertFatal(rlc_BearerConfig->servedRadioBearer &&
+              (rlc_BearerConfig->servedRadioBearer->present ==
+              NR_RLC_BearerConfig__servedRadioBearer_PR_srb_Identity),
+              "servedRadioBearer for SRB mandatory present when setting up an SRB RLC entity\n");
+  nr_rlc_entity_t *nr_rlc_am = new_nr_rlc_entity_am(RLC_RX_MAXSIZE,
+                                                    RLC_TX_MAXSIZE,
+                                                    deliver_sdu, ue,
+                                                    successful_delivery, ue,
+                                                    max_retx_reached, ue,
+                                                    t_poll_retransmit,
+                                                    t_reassembly, t_status_prohibit,
+                                                    poll_pdu, poll_byte, max_retx_threshold,
+                                                    sn_field_length);
+  LOG_I(RLC, "created new SRB\n");
+
+  return (nr_rlc_entity_t *)nr_rlc_am;
 }
 
 void nr_rlc_add_srb(int ue_id, int srb_id, const NR_RLC_BearerConfig_t *rlc_BearerConfig)

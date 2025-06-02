@@ -47,6 +47,7 @@
 #include "F1AP_CauseRadioNetwork.h"
 #include "NGAP_CauseRadioNetwork.h"
 #include "openair2/LAYER2/NR_MAC_COMMON/nr_mac.h"
+#include "openair2/LAYER2/NR_MAC_gNB/mac_proto.h"
 #include "OCTET_STRING.h"
 #include "PHY/defs_common.h"
 #include "RRC/NR/MESSAGES/asn1_msg.h"
@@ -94,6 +95,7 @@
 #include "x2ap_messages_types.h"
 #include "xer_encoder.h"
 #include "E1AP/lib/e1ap_bearer_context_management.h"
+#include "common/utils/system.h"
 
 #ifdef E2_AGENT
 #include "openair2/E2AP/RAN_FUNCTION/O-RAN/ran_func_rc_extern.h"
@@ -390,6 +392,17 @@ static void srb_deliver_sdu(void *_rrc, nr_pdcp_entity_t *entity,
   rrc_gNB_decode_dcch(rrc, &msg);
 }
 
+static void *srb_pdcp_srb1_thread(void *_ue)
+{
+  gNB_RRC_UE_t *UE = _ue;
+  while (true) {
+    l2_buffer_t b = l2_dequeue_wait(UE->Srb[1].l2_ul_queue);
+    UE->Srb[1].pdcp->recv_pdu(UE->Srb[1].pdcp, b.buffer, b.size);
+    free(b.buffer);
+  }
+  return 0;
+}
+
 static void activate_srb(const gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE, int srb_id)
 {
   AssertFatal(srb_id == 1 || srb_id == 2, "handling only SRB 1 or 2\n");
@@ -425,6 +438,13 @@ static void activate_srb(const gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE, int srb_id)
                                 t_Reordering,
                                 -1,
                                 &security_parameters);
+  if (NODE_IS_MONOLITHIC(rrc->node_type)) {
+    nr_mac_get_l2_queues_srb(UE->rnti,
+                            srb_id,
+                            &UE->Srb[srb_id].l2_dl_queue,
+                            &UE->Srb[srb_id].l2_ul_queue);
+    threadCreate(&UE->Srb[srb_id].l2_pdcp_srb1_thread, srb_pdcp_srb1_thread, UE, "srb1 pdcp", -1, OAI_PRIORITY_RT_LOW);
+  }
 }
 
 //-----------------------------------------------------------------------------

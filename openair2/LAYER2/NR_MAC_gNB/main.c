@@ -351,3 +351,20 @@ void nr_mac_send_f1_setup_req(void)
   DevAssert(mac);
   mac->mac_rrc.f1_setup_request(mac->f1_config.setup_req);
 }
+
+void nr_mac_get_l2_queues_srb(int rnti, int srb_id, l2_queue_t **dl, l2_queue_t **ul)
+{
+  gNB_MAC_INST *mac = RC.nrmac[0];
+  DevAssert(mac);
+  /* todo: speedup, no list search */
+  UE_iterator(RC.nrmac[0]->UE_info.list, UE) {
+    if (UE->rnti == rnti) {
+      *dl = UE->srb_queue_dl[srb_id];
+      *ul = UE->srb_queue_ul[srb_id];
+      return;
+    }
+  }
+  LOG_E(MAC, "l2 get queues: UE rnti %d not found\n", rnti);
+  *dl = NULL;
+  *ul = NULL;
+}

@@ -29,6 +29,9 @@
 
  */
 
+#ifndef NR_RLC_OAI_API_H
+#define NR_RLC_OAI_API_H
+
 #include "NR_RLC-BearerConfig.h"
 #include "NR_RLC-Config.h"
 #include "NR_LogicalChannelIdentity.h"
@@ -69,3 +72,13 @@ bool nr_rlc_activate_srb0(int ue_id,
                           void (*send_initial_ul_rrc_message)(int rnti, const uint8_t *sdu, sdu_size_t sdu_len, void *data));
 
 bool nr_rlc_get_statistics(int ue_id, int srb_flag, int rb_id, nr_rlc_statistics_t *out);
+
+uint64_t get_nr_rlc_current_time(void);
+
+nr_rlc_entity_t *nr_rlc_new_srb(const NR_RLC_BearerConfig_t *rlc_BearerConfig,
+                                void (*deliver_sdu)(void *ue, nr_rlc_entity_t *entity, char *buf, int size),
+                                void (*successful_delivery)(void *ue, nr_rlc_entity_t *entity, int sdu_id),
+                                void (*max_retx_reached)(void *ue, nr_rlc_entity_t *entity),
+                                void *ue);
+
+#endif /* NR_RLC_OAI_API_H */

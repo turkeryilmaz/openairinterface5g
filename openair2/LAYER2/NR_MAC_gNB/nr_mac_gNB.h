@@ -44,6 +44,7 @@
 #include <pthread.h>
 #include "common/utils/ds/seq_arr.h"
 #include "common/utils/nr/nr_common.h"
+#include "common/utils/l2_queue.h"
 
 #define NR_SCHED_LOCK(lock)                                        \
   do {                                                             \
@@ -74,6 +75,9 @@
 #include "NR_CellGroupConfig.h"
 #include "NR_BCCH-DL-SCH-Message.h"
 #include "openair2/RRC/NR/nr_rrc_config.h"
+
+/* RLC */
+#include "nr_rlc/nr_rlc_entity.h"
 
 /* PHY */
 #include "time_meas.h"
@@ -747,6 +751,11 @@ typedef enum interrupt_followup_action { FOLLOW_INSYNC, FOLLOW_INSYNC_RECONFIG, 
 typedef struct {
   rnti_t rnti;
   uid_t uid; // unique ID of this UE
+  nr_rlc_entity_t *srb[4];
+  l2_queue_t *srb_queue_ul[4];
+  l2_queue_t *srb_queue_dl[4];
+  nr_rlc_entity_t *drb[MAX_DRBS_PER_UE];
+  nr_rlc_rb_t lcid2rb[33];                /* we access indexes 1..32 */
   /// scheduling control info
   nr_csi_report_t csi_report_template[MAX_CSI_REPORTCONFIG];
   NR_UE_sched_ctrl_t UE_sched_ctrl;
