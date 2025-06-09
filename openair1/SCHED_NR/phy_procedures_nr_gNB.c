@@ -655,8 +655,11 @@ int fill_srs_channel_matrix(uint8_t *channel_matrix,
                             const c16_t srs_estimated_channel_freq[][1 << srs_pdu->num_ant_ports]
                                                                   [frame_parms->ofdm_symbol_size * (1 << srs_pdu->num_symbols)], uint16_t step_size)
 {
-  const uint64_t subcarrier_offset = frame_parms->first_carrier_offset + srs_pdu->bwp_start*NR_NB_SC_PER_RB;
+  uint64_t subcarrier_offset = frame_parms->first_carrier_offset + srs_pdu->bwp_start*NR_NB_SC_PER_RB;
   const uint16_t step = step_size; //prg_size*NR_NB_SC_PER_RB;
+  if(prg_size == 0){
+    subcarrier_offset = 0;
+  }
 
   c16_t *channel_matrix16 = (c16_t*)channel_matrix;
   c8_t *channel_matrix8 = (c8_t*)channel_matrix;
@@ -665,6 +668,9 @@ int fill_srs_channel_matrix(uint8_t *channel_matrix,
     for(int gI = 0; gI < num_gnb_antenna_elements; gI++) {
 
       uint16_t subcarrier = subcarrier_offset + nr_srs_info->k_0_p[uI][0];
+      if(prg_size == 0){
+        subcarrier  = subcarrier_offset;
+      }
       if (subcarrier>frame_parms->ofdm_symbol_size) {
         subcarrier -= frame_parms->ofdm_symbol_size;
       }
@@ -1067,12 +1073,13 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx, N
             nr_srs_channel_iq_matrix.prg_size = srs_pdu->srs_parameters_v4.prg_size;
             nr_srs_channel_iq_matrix.num_prgs = srs_pdu->srs_parameters_v4.srs_bandwidth_size / srs_pdu->srs_parameters_v4.prg_size;
             uint16_t step = nr_srs_channel_iq_matrix.prg_size*NR_NB_SC_PER_RB;
-            uint16_t num_samples = nr_srs_channel_iq_matrix.num_prgs;
+            //uint16_t num_samples = nr_srs_channel_iq_matrix.num_prgs;
 #ifdef E2_AGENT
 
             nr_srs_channel_iq_matrix.prg_size = 0;
             step = 1;
-            num_samples = NR_NB_SC_PER_RB * num_samples;
+            //num_samples = &gNB->frame_parms.ofdm_symbol_size;// NR_NB_SC_PER_RB * num_samples;
+            nr_srs_channel_iq_matrix.num_prgs = gNB->frame_parms.ofdm_symbol_size;
 #endif
             fill_srs_channel_matrix(nr_srs_channel_iq_matrix.channel_matrix,
                                     srs_pdu,
@@ -1081,7 +1088,7 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx, N
                                     nr_srs_channel_iq_matrix.num_gnb_antenna_elements,
                                     nr_srs_channel_iq_matrix.num_ue_srs_ports,
                                     nr_srs_channel_iq_matrix.prg_size,
-                                    num_samples,
+                                    nr_srs_channel_iq_matrix.num_prgs,
                                     &gNB->frame_parms,
                                     srs_estimated_channel_freq, step);
 #ifdef SRS_IND_DEBUG

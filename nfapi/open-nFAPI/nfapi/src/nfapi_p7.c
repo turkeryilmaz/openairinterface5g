@@ -42,7 +42,7 @@
 #include "nr_fapi.h"
 #include "nr_fapi_p7.h"
 
-#include "common/utils/nr/nr_common.h"
+//#include "common/utils/nr/nr_common.h"
 
 extern int nfapi_unpack_p7_vendor_extension(nfapi_p7_message_header_t *header, uint8_t **ppReadPackedMsg, void *user_data);
 extern int nfapi_pack_p7_vendor_extension(nfapi_p7_message_header_t *header, uint8_t **ppWritePackedMsg, void *user_data);
@@ -2536,10 +2536,10 @@ int pack_nr_srs_normalized_channel_iq_matrix(void *pMessageBuf, void *pPackedBuf
   uint16_t channel_matrix_size = nr_srs_normalized_channel_iq_matrix->num_prgs
                                  * nr_srs_normalized_channel_iq_matrix->num_ue_srs_ports
                                  * nr_srs_normalized_channel_iq_matrix->num_gnb_antenna_elements;
-  if (nr_srs_normalized_channel_iq_matrix->prg_size == 0){
-    // (Not definde by FAPI) used for E2AP SRS-SM to send the full channel estimates to the RIC
-    channel_matrix_size = NR_NB_SC_PER_RB * channel_matrix_size;
-  }
+  // if (nr_srs_normalized_channel_iq_matrix->prg_size == 0){
+  //   // (Not definde by FAPI) used for E2AP SRS-SM to send the full channel estimates to the RIC
+  //   channel_matrix_size = NR_NB_SC_PER_RB * channel_matrix_size;
+  // }
     
   if (nr_srs_normalized_channel_iq_matrix->normalized_iq_representation == 0) {
     // 0: 16-bit normalized complex number (iqSize = 2)
@@ -4417,10 +4417,10 @@ int unpack_nr_srs_normalized_channel_iq_matrix(void *pMessageBuf,
                                  * nr_srs_normalized_channel_iq_matrix->num_ue_srs_ports
                                  * nr_srs_normalized_channel_iq_matrix->num_gnb_antenna_elements;
 
-  if (nr_srs_normalized_channel_iq_matrix->prg_size == 0){
-    // (Not definde by FAPI) used for E2AP SRS-SM to send the full channel estimates to the RIC
-    channel_matrix_size = NR_NB_SC_PER_RB * channel_matrix_size;
-  }
+  // if (nr_srs_normalized_channel_iq_matrix->prg_size == 0){
+  //   // (Not definde by FAPI) used for E2AP SRS-SM to send the full channel estimates to the RIC
+  //   channel_matrix_size = NR_NB_SC_PER_RB * channel_matrix_size;
+  // }
   if (nr_srs_normalized_channel_iq_matrix->normalized_iq_representation == 0) {
     // 0: 16-bit normalized complex number (iqSize = 2)
     channel_matrix_size <<= 1;
