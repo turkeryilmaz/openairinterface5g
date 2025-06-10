@@ -15,7 +15,8 @@ enum event_arg_type {
   EVENT_ULONG,
   EVENT_FLOAT,
   EVENT_STRING,
-  EVENT_BUFFER
+  EVENT_BUFFER,
+  EVENT_BUFFER_dB
 };
 
 typedef struct {
