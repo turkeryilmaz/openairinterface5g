@@ -32,6 +32,7 @@ static void _event(void *p, event e)
   void *buffer;
   int bsize;
   int nsamples;
+  int type;
 
   if (l->common.filter != NULL && filter_eval(l->common.filter, e) == 0)
     return;
@@ -39,6 +40,7 @@ static void _event(void *p, event e)
   subframe = e.e[l->subframe_arg].i;
   buffer = e.e[l->buffer_arg].b;
   bsize = e.e[l->buffer_arg].bsize;
+  type = e.e[l->buffer_arg].type;
 
   if (l->skip_delay != 0) {
     if (subframe == 0) {
@@ -52,7 +54,9 @@ static void _event(void *p, event e)
   }
   if (l->skip_on) return;
 
-  nsamples = bsize / (2*sizeof(int16_t));
+  nsamples = bsize / sizeof(int16_t);
+  if (type != EVENT_BUFFER_dB)
+    nsamples >>= 1;
 
   if (l->blength != nsamples * 10) {
     l->blength = nsamples * 10;
@@ -72,9 +76,13 @@ static void _event(void *p, event e)
 
   /* TODO: compute the LOGs in the plotter (too much useless computations) */
   for (i = 0; i < nsamples; i++) {
-    int I = ((int16_t *)buffer)[i*2];
-    int Q = ((int16_t *)buffer)[i*2+1];
-    l->buffer[subframe * nsamples + i] = 10*log10(1.0+(float)(I*I+Q*Q));
+    if (type == EVENT_BUFFER_dB) {
+      l->buffer[subframe * nsamples + i] = ((int16_t *)buffer)[i];
+    } else {
+      int I = ((int16_t *)buffer)[i * 2];
+      int Q = ((int16_t *)buffer)[i * 2 + 1];
+      l->buffer[subframe * nsamples + i] = 10 * log10(1.0 + (float)(I * I + Q * Q));
+    }
   }
 
   if (l->update_only_at_sf9 == 0 || subframe == 9)
@@ -126,8 +134,8 @@ logger *new_framelog(event_handler *h, void *database,
         __FILE__, __LINE__, subframe_varname);
     abort();
   }
-  if (strcmp(f.type[ret->buffer_arg], "buffer") != 0) {
-    printf("%s:%d: argument '%s' has wrong type (should be 'buffer')\n",
+  if (strcmp(f.type[ret->buffer_arg], "buffer") != 0 && strcmp(f.type[ret->buffer_arg], "buffer_dB") != 0) {
+    printf("%s:%d: argument '%s' has wrong type (should be 'buffer' or 'buffer_dB')\n",
         __FILE__, __LINE__, buffer_varname);
     abort();
   }
