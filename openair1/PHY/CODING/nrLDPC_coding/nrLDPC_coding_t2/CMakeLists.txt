@@ -17,10 +17,9 @@ if (ENABLE_LDPC_T2)
 
   set_target_properties(ldpc_t2 PROPERTIES COMPILE_FLAGS "-DALLOW_EXPERIMENTAL_API")
   set_target_properties(ldpc_t2 PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+  target_link_libraries(ldpc_t2 PRIVATE ldpc_gen_HEADERS ${LIBDPDK_T2_LDFLAGS})
   if (PMD_T2)
-    target_link_libraries(ldpc_t2 PRIVATE ldpc_gen_HEADERS ${LIBDPDK_T2_LDFLAGS} ${PMD_T2})
-  else()
-    target_link_libraries(ldpc_t2 PRIVATE ldpc_gen_HEADERS ${LIBDPDK_T2_LDFLAGS})
+    target_link_libraries(ldpc_t2 PRIVATE ${PMD_T2})
   endif()
 
   add_dependencies(nr-softmodem ldpc_t2)
