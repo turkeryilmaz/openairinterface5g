@@ -1158,8 +1158,10 @@ int32_t nrLDPC_coding_decoder(nrLDPC_slot_decoding_parameters_t *nrLDPC_slot_dec
   struct rte_mempool *mbuf_pools[DATA_NUM_TYPES] = {active_dev.in_mbuf_pool, active_dev.hard_out_mbuf_pool};
   struct data_buffers data_buffers;
   struct rte_bbdev_op_data **queue_ops[DATA_NUM_TYPES] = {&data_buffers.inputs, &data_buffers.hard_outputs};
+#ifndef LDPC_T2
   int8_t llr_size = (active_dev.info.drv.capabilities)[RTE_BBDEV_OP_LDPC_DEC].cap.ldpc_dec.llr_size;
   int8_t llr_decimal = (active_dev.info.drv.capabilities)[RTE_BBDEV_OP_LDPC_DEC].cap.ldpc_dec.llr_decimals;
+#endif
   int offset = 0;
   for (int h = 0; h < nrLDPC_slot_decoding_parameters->nb_TBs; ++h) {
     for (int r = 0; r < nrLDPC_slot_decoding_parameters->TBs[h].C; r++) {
