@@ -55,4 +55,41 @@ typedef enum {
 
 typedef enum { NON_DYNAMIC, DYNAMIC } fiveQI_t;
 
+typedef struct {
+  union {
+    struct {
+      uint16_t fiveqi;
+      uint8_t qos_priority_level;
+    } non_dynamic;
+    struct {
+      // Range 5QI [0 - 255]
+      uint16_t fiveqi;
+      /* Range [0 - 15]
+       15 = "no priority," 1-14 = decreasing priority (1 highest), 0 = logical error if received */
+      uint8_t qos_priority_level;
+      // Range [0, 1023]: Upper bound for packet delay in 0.5ms units
+      uint16_t packet_delay_budget;
+      struct {
+        // PER = Scalar x 10^-k (k: 0-9)
+        uint8_t per_scalar;
+        uint8_t per_exponent;
+      } packet_error_rate;
+    } dynamic;
+  };
+  fiveQI_t qos_type;
+} qos_characteristics_t;
+
+typedef struct {
+  uint16_t priority_level;
+  // Pre-emption capability on other QoS flows
+  uint8_t preemption_capability;
+  // Vulnerability of the QoS flow to pre-emption of other QoS flows
+  uint8_t preemption_vulnerability;
+} ngran_allocation_retention_priority_t;
+
+typedef struct {
+  qos_characteristics_t qos_characteristics;
+  ngran_allocation_retention_priority_t arp;
+} qos_flow_level_qos_parameters_t;
+
 #endif

@@ -706,9 +706,10 @@ static void *decode_pdusession_transfer(const asn_TYPE_descriptor_t *td, const O
   return decoded;
 }
 
-static pdusession_level_qos_parameter_t fill_qos(uint8_t qfi, const NGAP_QosFlowLevelQosParameters_t *params)
+static qos_flow_setup_request_item_t fill_qos(uint8_t qfi, const NGAP_QosFlowLevelQosParameters_t *params)
 {
-  pdusession_level_qos_parameter_t out = {0};
+  qos_flow_setup_request_item_t out = {0};
+  qos_characteristics_t *qos_char = &out.qos_params.qos_characteristics;
   // QFI
   out.qfi = qfi;
   AssertFatal(params != NULL, "QoS parameters are NULL\n");
@@ -717,20 +718,20 @@ static pdusession_level_qos_parameter_t fill_qos(uint8_t qfi, const NGAP_QosFlow
   AssertFatal(qosChar != NULL, "QoS characteristics are NULL\n");
   if (qosChar->present == NGAP_QosCharacteristics_PR_nonDynamic5QI) {
     AssertFatal(qosChar->choice.nonDynamic5QI != NULL, "nonDynamic5QI is NULL\n");
-    out.fiveQI_type = NON_DYNAMIC;
-    out.fiveQI = qosChar->choice.nonDynamic5QI->fiveQI;
+    qos_char->qos_type = NON_DYNAMIC;
+    qos_char->non_dynamic.fiveqi = qosChar->choice.nonDynamic5QI->fiveQI;
   } else if (qosChar->present == NGAP_QosCharacteristics_PR_dynamic5QI) {
     AssertFatal(qosChar->choice.dynamic5QI != NULL, "dynamic5QI is NULL\n");
-    out.fiveQI_type = DYNAMIC;
-    out.fiveQI = *qosChar->choice.dynamic5QI->fiveQI;
+    qos_char->qos_type = DYNAMIC;
+    qos_char->dynamic.fiveqi = *qosChar->choice.dynamic5QI->fiveQI;
   } else {
     AssertFatal(0, "Unsupported QoS Characteristics present value: %d\n", qosChar->present);
   }
   // Allocation and Retention Priority
   const NGAP_AllocationAndRetentionPriority_t *arp = &params->allocationAndRetentionPriority;
-  out.allocation_retention_priority.priority_level = arp->priorityLevelARP;
-  out.allocation_retention_priority.pre_emp_capability = arp->pre_emptionCapability;
-  out.allocation_retention_priority.pre_emp_vulnerability = arp->pre_emptionVulnerability;
+  out.qos_params.arp.priority_level = arp->priorityLevelARP;
+  out.qos_params.arp.preemption_capability = arp->pre_emptionCapability;
+  out.qos_params.arp.preemption_vulnerability = arp->pre_emptionVulnerability;
 
   return out;
 }

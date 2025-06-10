@@ -39,9 +39,9 @@
 #include "openair2/LAYER2/NR_MAC_gNB/nr_mac_gNB.h"
 #include "openair2/LAYER2/nr_pdcp/nr_pdcp_oai_api.h"
 
-static void f1ap_read_drb_qos_param(const F1AP_QoSFlowLevelQoSParameters_t *asn1_qos, f1ap_qos_flow_level_qos_parameters_t *drb_qos)
+static void f1ap_read_drb_qos_param(const F1AP_QoSFlowLevelQoSParameters_t *asn1_qos, qos_flow_level_qos_parameters_t *drb_qos)
 {
-  f1ap_qos_characteristics_t *drb_qos_char = &drb_qos->qos_characteristics;
+  qos_characteristics_t *drb_qos_char = &drb_qos->qos_characteristics;
   const F1AP_QoS_Characteristics_t *dRB_QoS_Char = &asn1_qos->qoS_Characteristics;
 
   if (dRB_QoS_Char->present == F1AP_QoS_Characteristics_PR_non_Dynamic_5QI) {
@@ -61,9 +61,9 @@ static void f1ap_read_drb_qos_param(const F1AP_QoSFlowLevelQoSParameters_t *asn1
   }
 
   /* nGRANallocationRetentionPriority */
-  drb_qos->alloc_reten_priority.priority_level = asn1_qos->nGRANallocationRetentionPriority.priorityLevel;
-  drb_qos->alloc_reten_priority.preemption_vulnerability = asn1_qos->nGRANallocationRetentionPriority.pre_emptionVulnerability;
-  drb_qos->alloc_reten_priority.preemption_capability = asn1_qos->nGRANallocationRetentionPriority.pre_emptionVulnerability;
+  drb_qos->arp.priority_level = asn1_qos->nGRANallocationRetentionPriority.priorityLevel;
+  drb_qos->arp.preemption_vulnerability = asn1_qos->nGRANallocationRetentionPriority.pre_emptionVulnerability;
+  drb_qos->arp.preemption_capability = asn1_qos->nGRANallocationRetentionPriority.pre_emptionVulnerability;
 }
 
 static void f1ap_read_flows_mapped(const F1AP_Flows_Mapped_To_DRB_List_t *asn1_flows_mapped, f1ap_flows_mapped_to_drb_t *flows_mapped, int n)
@@ -76,11 +76,11 @@ static void f1ap_read_flows_mapped(const F1AP_Flows_Mapped_To_DRB_List_t *asn1_f
 
     /* QoS-Flow-Level-QoS-Parameters */
     {
-      f1ap_qos_flow_level_qos_parameters_t *flow_qos = &flows_mapped_to_drb->qos_params;
+      qos_flow_level_qos_parameters_t *flow_qos = &flows_mapped_to_drb->qos_params;
       const F1AP_QoSFlowLevelQoSParameters_t *Flow_QoS = &flows_Mapped_To_Drb->qoSFlowLevelQoSParameters;
 
       /* QoS Characteristics*/
-      f1ap_qos_characteristics_t *flow_qos_char = &flow_qos->qos_characteristics;
+      qos_characteristics_t *flow_qos_char = &flow_qos->qos_characteristics;
       const F1AP_QoS_Characteristics_t *Flow_QoS_Char = &Flow_QoS->qoS_Characteristics;
 
       if (Flow_QoS_Char->present == F1AP_QoS_Characteristics_PR_non_Dynamic_5QI) {
@@ -100,9 +100,9 @@ static void f1ap_read_flows_mapped(const F1AP_Flows_Mapped_To_DRB_List_t *asn1_f
       }
 
       /* nGRANallocationRetentionPriority */
-      flow_qos->alloc_reten_priority.priority_level = Flow_QoS->nGRANallocationRetentionPriority.priorityLevel;
-      flow_qos->alloc_reten_priority.preemption_vulnerability = Flow_QoS->nGRANallocationRetentionPriority.pre_emptionVulnerability;
-      flow_qos->alloc_reten_priority.preemption_capability = Flow_QoS->nGRANallocationRetentionPriority.pre_emptionVulnerability;
+      flow_qos->arp.priority_level = Flow_QoS->nGRANallocationRetentionPriority.priorityLevel;
+      flow_qos->arp.preemption_vulnerability = Flow_QoS->nGRANallocationRetentionPriority.pre_emptionVulnerability;
+      flow_qos->arp.preemption_capability = Flow_QoS->nGRANallocationRetentionPriority.pre_emptionVulnerability;
     }
   }
 }

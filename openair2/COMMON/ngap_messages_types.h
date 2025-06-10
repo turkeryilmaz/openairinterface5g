@@ -192,13 +192,13 @@ typedef enum ngap_rrc_establishment_cause_e {
   NGAP_RRC_CAUSE_LAST
 } ngap_rrc_establishment_cause_t;
 
-typedef struct pdusession_level_qos_parameter_s {
+/* QoS Flow Setup Request Item (9.3.4.1 3GPP TS 38.413) */
+typedef struct {
+  // QoS Flow Identifier
   uint8_t qfi;
-  uint64_t fiveQI;
-  uint64_t qos_priority;
-  fiveQI_t fiveQI_type;
-  ngap_allocation_retention_priority_t allocation_retention_priority;
-} pdusession_level_qos_parameter_t;
+  // QoS Flow Level QoS Parameters (9.3.1.12 3GPP TS 38.413)
+  qos_flow_level_qos_parameters_t qos_params;
+} qos_flow_setup_request_item_t;
 
 typedef struct fiveg_s_tmsi_s {
   uint16_t amf_set_id;
@@ -540,7 +540,7 @@ typedef struct ngap_downlink_nas_s {
 /* PDU Session Resource Setup Request Transfer (9.3.4.1 3GPP TS 38.413) */
 typedef struct {
   uint8_t nb_qos;
-  pdusession_level_qos_parameter_t qos[QOSFLOW_MAX_VALUE];
+  qos_flow_setup_request_item_t qos[QOSFLOW_MAX_VALUE];
   pdu_session_type_t pdu_session_type;
   // UPF endpoint of the NG-U (N3) transport bearer
   gtpu_tunnel_t n3_incoming;

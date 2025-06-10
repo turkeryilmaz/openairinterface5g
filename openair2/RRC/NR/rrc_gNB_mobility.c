@@ -92,8 +92,7 @@ static int fill_drb_to_be_setup(const gNB_RRC_INST *rrc, gNB_RRC_UE_t *ue, f1ap_
     int qfi = rrc_drb->cnAssociation.sdap_config.mappedQoS_FlowsToAdd[0];
     DevAssert(qfi > 0);
     drb->drb_info.flows_mapped_to_drb[0].qfi = qfi;
-    pdusession_level_qos_parameter_t *in_qos_char = get_qos_characteristics(qfi, pdu);
-    drb->drb_info.flows_mapped_to_drb[0].qos_params.qos_characteristics = get_qos_char_from_qos_flow_param(in_qos_char);
+    drb->drb_info.flows_mapped_to_drb[0].qos_params.qos_characteristics = get_qos_characteristics(qfi, pdu);
 
     /* the DRB QoS parameters: we just reuse the ones from the first flow */
     drb->drb_info.drb_qos = drb->drb_info.flows_mapped_to_drb[0].qos_params;

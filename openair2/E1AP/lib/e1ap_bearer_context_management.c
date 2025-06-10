@@ -236,7 +236,7 @@ static E1AP_QoS_Flow_QoS_Parameter_Item_t e1_encode_qos_flow_to_setup(const qos_
     dynamic_5QI->packetErrorRate.pER_Exponent = qos_char_in->dynamic.packet_error_rate.per_exponent;
   }
   // QoS Retention Priority
-  const ngran_allocation_retention_priority_t *rent_priority_in = &in->qos_params.alloc_reten_priority;
+  const ngran_allocation_retention_priority_t *rent_priority_in = &in->qos_params.arp;
   E1AP_NGRANAllocationAndRetentionPriority_t *arp = &out.qoSFlowLevelQoSParameters.nGRANallocationRetentionPriority;
   arp->priorityLevel = rent_priority_in->priority_level;
   arp->pre_emptionCapability = rent_priority_in->preemption_capability;
@@ -272,7 +272,7 @@ bool e1_decode_qos_flow_to_setup(qos_flow_to_setup_t *out, const E1AP_QoS_Flow_Q
       break;
   }
   // NG-RAN Allocation and Retention Priority (M)
-  ngran_allocation_retention_priority_t *rent_priority = &out->qos_params.alloc_reten_priority;
+  ngran_allocation_retention_priority_t *rent_priority = &out->qos_params.arp;
   const E1AP_NGRANAllocationAndRetentionPriority_t *aRP = &qosParams->nGRANallocationRetentionPriority;
   rent_priority->priority_level = aRP->priorityLevel;
   rent_priority->preemption_capability = aRP->pre_emptionCapability;
@@ -286,8 +286,8 @@ bool e1_decode_qos_flow_to_setup(qos_flow_to_setup_t *out, const E1AP_QoS_Flow_Q
 static bool eq_qos_flow(const qos_flow_to_setup_t *a, const qos_flow_to_setup_t *b)
 {
   _E1_EQ_CHECK_LONG(a->qfi, b->qfi);
-  const ngran_allocation_retention_priority_t *arp_a = &a->qos_params.alloc_reten_priority;
-  const ngran_allocation_retention_priority_t *arp_b = &b->qos_params.alloc_reten_priority;
+  const ngran_allocation_retention_priority_t *arp_a = &a->qos_params.arp;
+  const ngran_allocation_retention_priority_t *arp_b = &b->qos_params.arp;
   _E1_EQ_CHECK_INT(arp_a->preemption_capability, arp_b->preemption_capability);
   _E1_EQ_CHECK_INT(arp_a->preemption_vulnerability, arp_b->preemption_vulnerability);
   _E1_EQ_CHECK_INT(arp_a->priority_level, arp_b->priority_level);

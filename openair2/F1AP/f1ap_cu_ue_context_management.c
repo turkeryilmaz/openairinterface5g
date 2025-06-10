@@ -44,11 +44,11 @@
 #include "openair2/E2AP/RAN_FUNCTION/O-RAN/ran_func_rc_extern.h"
 #endif
 
-static void f1ap_write_drb_qos_param(const f1ap_qos_flow_level_qos_parameters_t *drb_qos_in, F1AP_QoSFlowLevelQoSParameters_t *asn1_qosparam)
+static void f1ap_write_drb_qos_param(const qos_flow_level_qos_parameters_t *drb_qos_in, F1AP_QoSFlowLevelQoSParameters_t *asn1_qosparam)
 {
   int type = drb_qos_in->qos_characteristics.qos_type;
 
-  const f1ap_qos_characteristics_t *drb_qos_char_in = &drb_qos_in->qos_characteristics;
+  const qos_characteristics_t *drb_qos_char_in = &drb_qos_in->qos_characteristics;
   if (type == NON_DYNAMIC) {
     asn1_qosparam->qoS_Characteristics.present = F1AP_QoS_Characteristics_PR_non_Dynamic_5QI;
     asn1cCalloc(asn1_qosparam->qoS_Characteristics.choice.non_Dynamic_5QI, tmp);
@@ -77,10 +77,9 @@ static void f1ap_write_drb_qos_param(const f1ap_qos_flow_level_qos_parameters_t 
   }
 
   {
-    asn1_qosparam->nGRANallocationRetentionPriority.priorityLevel = drb_qos_in->alloc_reten_priority.priority_level;
-    asn1_qosparam->nGRANallocationRetentionPriority.pre_emptionCapability = drb_qos_in->alloc_reten_priority.preemption_capability;
-    asn1_qosparam->nGRANallocationRetentionPriority.pre_emptionVulnerability =
-        drb_qos_in->alloc_reten_priority.preemption_vulnerability;
+    asn1_qosparam->nGRANallocationRetentionPriority.priorityLevel = drb_qos_in->arp.priority_level;
+    asn1_qosparam->nGRANallocationRetentionPriority.pre_emptionCapability = drb_qos_in->arp.preemption_capability;
+    asn1_qosparam->nGRANallocationRetentionPriority.pre_emptionVulnerability = drb_qos_in->arp.preemption_vulnerability;
   } // nGRANallocationRetentionPriority
 
   /* OPTIONAL */
@@ -132,11 +131,11 @@ static void f1ap_write_flows_mapped(const f1ap_flows_mapped_to_drb_t *flows_mapp
     flow_item->qoSFlowIdentifier = qos_flow_in->qfi;
 
     /* qoSFlowLevelQoSParameters */
-    const f1ap_qos_flow_level_qos_parameters_t *flow_qos_params_in = &qos_flow_in->qos_params;
+    const qos_flow_level_qos_parameters_t *flow_qos_params_in = &qos_flow_in->qos_params;
     /* qoS_Characteristics */
 
     F1AP_QoS_Characteristics_t *QosParams = &flow_item->qoSFlowLevelQoSParameters.qoS_Characteristics;
-    const f1ap_qos_characteristics_t *flow_qos_char_in = &flow_qos_params_in->qos_characteristics;
+    const qos_characteristics_t *flow_qos_char_in = &flow_qos_params_in->qos_characteristics;
 
     int type = flow_qos_params_in->qos_characteristics.qos_type;
     if (type == NON_DYNAMIC) {
@@ -168,12 +167,9 @@ static void f1ap_write_flows_mapped(const f1ap_flows_mapped_to_drb_t *flows_mapp
 
     /* nGRANallocationRetentionPriority */
     {
-      flow_item->qoSFlowLevelQoSParameters.nGRANallocationRetentionPriority.priorityLevel =
-          flow_qos_params_in->alloc_reten_priority.priority_level;
-      flow_item->qoSFlowLevelQoSParameters.nGRANallocationRetentionPriority.pre_emptionCapability =
-          flow_qos_params_in->alloc_reten_priority.preemption_capability;
-      flow_item->qoSFlowLevelQoSParameters.nGRANallocationRetentionPriority.pre_emptionVulnerability =
-          flow_qos_params_in->alloc_reten_priority.preemption_vulnerability;
+      flow_item->qoSFlowLevelQoSParameters.nGRANallocationRetentionPriority.priorityLevel = flow_qos_params_in->arp.priority_level;
+      flow_item->qoSFlowLevelQoSParameters.nGRANallocationRetentionPriority.pre_emptionCapability = flow_qos_params_in->arp.preemption_capability;
+      flow_item->qoSFlowLevelQoSParameters.nGRANallocationRetentionPriority.pre_emptionVulnerability = flow_qos_params_in->arp.preemption_vulnerability;
     } // nGRANallocationRetentionPriority
 
     /* OPTIONAL */

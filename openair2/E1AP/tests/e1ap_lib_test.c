@@ -99,11 +99,11 @@ static void test_bearer_context_setup_request(void)
   };
 
   qos_flow_to_setup_t qos = {
-    .qfi = 1,
-    .qos_params.alloc_reten_priority.preemption_capability = E1AP_Pre_emptionCapability_shall_not_trigger_pre_emption,
-    .qos_params.alloc_reten_priority.preemption_vulnerability = E1AP_Pre_emptionVulnerability_not_pre_emptable,
-    .qos_params.alloc_reten_priority.priority_level = E1AP_PriorityLevel_highest,
-    .qos_params.qos_characteristics.non_dynamic.fiveqi = 9,
+      .qfi = 1,
+      .qos_params.arp.preemption_capability = E1AP_Pre_emptionCapability_shall_not_trigger_pre_emption,
+      .qos_params.arp.preemption_vulnerability = E1AP_Pre_emptionVulnerability_not_pre_emptable,
+      .qos_params.arp.priority_level = E1AP_PriorityLevel_highest,
+      .qos_params.qos_characteristics.non_dynamic.fiveqi = 9,
   };
 
   security_indication_t security = {
@@ -484,9 +484,9 @@ static void test_bearer_context_modification_request(void)
 
   const qos_flow_to_setup_t dummy_qos_flows = {
       .qfi = 9,
-      .qos_params.alloc_reten_priority.preemption_capability = E1AP_Pre_emptionCapability_may_trigger_pre_emption,
-      .qos_params.alloc_reten_priority.preemption_vulnerability = E1AP_Pre_emptionVulnerability_pre_emptable,
-      .qos_params.alloc_reten_priority.priority_level = E1AP_PriorityLevel_no_priority,
+      .qos_params.arp.preemption_capability = E1AP_Pre_emptionCapability_may_trigger_pre_emption,
+      .qos_params.arp.preemption_vulnerability = E1AP_Pre_emptionVulnerability_pre_emptable,
+      .qos_params.arp.priority_level = E1AP_PriorityLevel_no_priority,
       .qos_params.qos_characteristics.non_dynamic.fiveqi = 9,
   };
 

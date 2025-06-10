@@ -171,7 +171,9 @@ drb_t *generateDRB(gNB_RRC_UE_t *ue,
   }
   for (int qos_flow_index = 0; qos_flow_index < pduSession->nb_qos; qos_flow_index++) {
     est_drb->cnAssociation.sdap_config.mappedQoS_FlowsToAdd[qos_flow_index] = pduSession->qos[qos_flow_index].qfi;
-    if (pduSession->qos[qos_flow_index].fiveQI > 5)
+    const qos_characteristics_t *chars = &pduSession->qos[qos_flow_index].qos_params.qos_characteristics;
+    int fiveqi = chars->qos_type == NON_DYNAMIC ? chars->non_dynamic.fiveqi : chars->dynamic.fiveqi;
+    if (fiveqi > 5)
       est_drb->status = DRB_ACTIVE_NONGBR;
     else
       est_drb->status = DRB_ACTIVE;

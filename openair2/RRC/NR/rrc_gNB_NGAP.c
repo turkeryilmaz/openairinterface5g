@@ -170,7 +170,8 @@ static void cp_pdusession_resource_item_to_pdusession(pdusession_t *dst, const p
   dst->nas_pdu = src->nas_pdu;
   dst->nb_qos = src->pdusessionTransfer.nb_qos;
   for (uint8_t i = 0; i < src->pdusessionTransfer.nb_qos && i < QOSFLOW_MAX_VALUE; ++i) {
-    dst->qos[i] = src->pdusessionTransfer.qos[i];
+    dst->qos[i].qfi = src->pdusessionTransfer.qos[i].qfi;
+    dst->qos[i].qos_params = src->pdusessionTransfer.qos[i].qos_params;
   }
   dst->pdu_session_type = src->pdusessionTransfer.pdu_session_type;
   dst->n3_incoming = src->pdusessionTransfer.n3_incoming;
@@ -335,24 +336,9 @@ bool trigger_bearer_setup(gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE, int n, pdusession
       drb->numQosFlow2Setup = session->nb_qos;
       for (int k=0; k < drb->numQosFlow2Setup; k++) {
         qos_flow_to_setup_t *qos_flow = drb->qosFlows + k;
-        pdusession_level_qos_parameter_t *qos_session = session->qos + k;
-
-        qos_characteristics_t *qos_char = &qos_flow->qos_params.qos_characteristics;
+        pdusession_qos_t *qos_session = session->qos + k;
         qos_flow->qfi = qos_session->qfi;
-        qos_char->qos_type = qos_session->fiveQI_type;
-        if (qos_char->qos_type == DYNAMIC) {
-          qos_char->dynamic.fiveqi = qos_session->fiveQI;
-          qos_char->dynamic.qos_priority_level = qos_session->qos_priority;
-        } else {
-          qos_char->non_dynamic.fiveqi = qos_session->fiveQI;
-          qos_char->non_dynamic.qos_priority_level = qos_session->qos_priority;
-        }
-
-        ngran_allocation_retention_priority_t *rent_priority = &qos_flow->qos_params.alloc_reten_priority;
-        ngap_allocation_retention_priority_t *rent_priority_in = &qos_session->allocation_retention_priority;
-        rent_priority->priority_level = rent_priority_in->priority_level;
-        rent_priority->preemption_capability = rent_priority_in->pre_emp_capability;
-        rent_priority->preemption_vulnerability = rent_priority_in->pre_emp_vulnerability;
+        qos_flow->qos_params = qos_session->qos_params;
       }
     }
   }

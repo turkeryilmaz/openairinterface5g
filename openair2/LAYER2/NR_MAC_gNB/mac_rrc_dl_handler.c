@@ -284,7 +284,7 @@ static int get_non_dynamic_priority(int fiveqi)
   return 0;
 }
 
-static NR_QoS_config_t get_qos_config(const f1ap_qos_characteristics_t *qos_char)
+static NR_QoS_config_t get_qos_config(const qos_characteristics_t *qos_char)
 {
   NR_QoS_config_t qos_c = {0};
   switch (qos_char->qos_type) {

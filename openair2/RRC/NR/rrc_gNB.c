@@ -97,6 +97,7 @@
 #include "NR_DL-DCCH-Message.h"
 #include "ds/byte_array.h"
 #include "alg/find.h"
+#include "5g_platform_types.h"
 
 #ifdef E2_AGENT
 #include "openair2/E2AP/RAN_FUNCTION/O-RAN/ran_func_rc_extern.h"
@@ -724,8 +725,9 @@ void rrc_gNB_modify_dedicatedRRCReconfiguration(gNB_RRC_INST *rrc, gNB_RRC_UE_t 
 
     // Reference TS23501 Table 5.7.4-1: Standardized 5QI to QoS characteristics mapping
     for (qos_flow_index = 0; qos_flow_index < session->nb_qos; qos_flow_index++) {
-      pdusession_level_qos_parameter_t *qos = &session->qos[qos_flow_index];
-      switch (qos->fiveQI) {
+      qos_characteristics_t *qos = &session->qos[qos_flow_index].qos_params.qos_characteristics;
+      int fiveQI = qos->qos_type == NON_DYNAMIC ? qos->non_dynamic.fiveqi : qos->dynamic.fiveqi;
+      switch (fiveQI) {
         case 1: //100ms
         case 2: //150ms
         case 3: //50ms
@@ -739,14 +741,14 @@ void rrc_gNB_modify_dedicatedRRCReconfiguration(gNB_RRC_INST *rrc, gNB_RRC_UE_t 
           break;
 
         default:
-          LOG_E(NR_RRC, "not supported 5qi %lu\n", qos->fiveQI);
+          LOG_E(NR_RRC, "not supported 5qi %d\n", fiveQI);
           ngap_cause_t cause = {.type = NGAP_CAUSE_RADIO_NETWORK, .value = NGAP_CauseRadioNetwork_not_supported_5QI_value};
           item->status = PDU_SESSION_STATUS_FAILED;
           item->xid = params.transaction_id;
           item->cause = cause;
           continue;
       }
-      LOG_I(NR_RRC, "PDU Session ID %d, QOS flow %d, 5QI %ld \n", session->pdusession_id, qos_flow_index, qos->fiveQI);
+      LOG_I(NR_RRC, "PDU Session ID %d, QOS flow %d, 5QI %d \n", session->pdusession_id, qos_flow_index, fiveQI);
     }
 
     item->status = PDU_SESSION_STATUS_DONE;
@@ -2353,31 +2355,16 @@ unsigned int mask_flip(unsigned int x) {
   return((((x>>8) + (x<<8))&0xffff)>>6);
 }
 
-pdusession_level_qos_parameter_t *get_qos_characteristics(const int qfi, rrc_pdu_session_param_t *pduSession)
+qos_characteristics_t get_qos_characteristics(const int qfi, rrc_pdu_session_param_t *pduSession)
 {
   pdusession_t *pdu = &pduSession->param;
   for (int i = 0; i < pdu->nb_qos; i++) {
     if (qfi == pdu->qos[i].qfi)
-      return &pdu->qos[i];
+      return pdu->qos[i].qos_params.qos_characteristics;
   }
   AssertFatal(1 == 0, "The pdu session %d does not contain a qos flow with qfi = %d\n", pdu->pdusession_id, qfi);
-  return NULL;
-}
-
-/* \bref return F1AP QoS characteristics based on Qos flow parameters */
-f1ap_qos_characteristics_t get_qos_char_from_qos_flow_param(const pdusession_level_qos_parameter_t *qos_param)
-{
-  f1ap_qos_characteristics_t qos_char = {0};
-  if (qos_param->fiveQI_type == DYNAMIC) {
-    qos_char.qos_type = DYNAMIC;
-    qos_char.dynamic.fiveqi = qos_param->fiveQI;
-    qos_char.dynamic.qos_priority_level = qos_param->qos_priority;
-  } else {
-    qos_char.qos_type = NON_DYNAMIC;
-    qos_char.non_dynamic.fiveqi = qos_param->fiveQI;
-    qos_char.non_dynamic.qos_priority_level = qos_param->qos_priority;
-  }
-  return qos_char;
+  qos_characteristics_t dummy = {0};
+  return dummy; // unreachable, but avoids compiler warning
 }
 
 /* \brief fills a list of DRBs to be setup from a number of PDU sessions in E1
@@ -2410,8 +2397,7 @@ static int fill_drb_to_be_setup_from_e1_resp(const gNB_RRC_INST *rrc,
       AssertFatal(drb->drb_info.flows_mapped_to_drb, "could not allocate memory\n");
       for (int j = 0; j < nb_qos_flows; j++) {
         drb->drb_info.flows_mapped_to_drb[j].qfi = drb_config->qosFlows[j].qfi;
-        pdusession_level_qos_parameter_t *in_qos_char = get_qos_characteristics(drb_config->qosFlows[j].qfi, RRC_pduSession);
-        drb->drb_info.flows_mapped_to_drb[j].qos_params.qos_characteristics = get_qos_char_from_qos_flow_param(in_qos_char);
+        drb->drb_info.flows_mapped_to_drb[j].qos_params.qos_characteristics = get_qos_characteristics(drb_config->qosFlows[j].qfi, RRC_pduSession);
       }
       /* the DRB QoS parameters: we just reuse the ones from the first flow */
       drb->drb_info.drb_qos = drb->drb_info.flows_mapped_to_drb[0].qos_params;

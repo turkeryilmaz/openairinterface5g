@@ -99,13 +99,18 @@ typedef enum pdu_session_satus_e {
   PDU_SESSION_STATUS_RELEASED
 } pdu_session_status_t;
 
+typedef struct {
+  uint8_t qfi;
+  qos_flow_level_qos_parameters_t qos_params;
+} pdusession_qos_t;
+
 typedef struct pdusession_s {
   /* Unique pdusession_id for the UE. */
   int pdusession_id;
   byte_array_t nas_pdu;
   uint8_t nb_qos;
-  /* Quality of service for this pdusession */
-  pdusession_level_qos_parameter_t qos[QOSFLOW_MAX_VALUE];
+  // QoS Flows mapped to current PDU Session
+  pdusession_qos_t qos[QOSFLOW_MAX_VALUE];
   /* The transport layer address for the IP packets */
   pdu_session_type_t pdu_session_type;
   // NG-RAN endpoint of the NG-U (N3) transport bearer
