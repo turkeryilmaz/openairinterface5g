@@ -370,7 +370,7 @@ static int add_dev(uint8_t dev_id)
   for (queue_id = 0; queue_id < nb_queues; ++queue_id) {
     ret = rte_bbdev_queue_configure(dev_id, queue_id, &qconf);
     if (ret == 0) {
-      LOG_I(PHY, "Found LDPC encoding queue (id=%u) at prio%u on dev%u\n", queue_id, qconf.priority, dev_id);
+      LOG_I(NR_PHY, "Found LDPC encoding queue (id=%u) at prio%u on dev%u\n", queue_id, qconf.priority, dev_id);
       qconf.priority++;
       active_dev.enc_queue = queue_id;
       active_dev.queue_ids[queue_id] = queue_id;
@@ -384,7 +384,7 @@ static int add_dev(uint8_t dev_id)
   for (queue_id++; queue_id < nb_queues; ++queue_id) {
     ret = rte_bbdev_queue_configure(dev_id, queue_id, &qconf);
     if (ret == 0) {
-      LOG_I(PHY, "Found LDPC decoding queue (id=%u) at prio%u on dev%u\n", queue_id, qconf.priority, dev_id);
+      LOG_I(NR_PHY, "Found LDPC decoding queue (id=%u) at prio%u on dev%u\n", queue_id, qconf.priority, dev_id);
       qconf.priority++;
       active_dev.dec_queue = queue_id;
       active_dev.queue_ids[queue_id] = queue_id;
@@ -1000,7 +1000,7 @@ int32_t nrLDPC_coding_init()
   if (ret < 0) {
     LOG_W(NR_PHY, "EAL initialization failed, probing DPDK device %s\n", dpdk_dev);
     if (rte_dev_probe(dpdk_dev) != 0) {
-      LOG_E(PHY, "bbdev %s not found\n", dpdk_dev);
+      LOG_E(NR_PHY, "bbdev %s not found\n", dpdk_dev);
       return (-1);
     }
   }
@@ -1214,7 +1214,7 @@ int32_t nrLDPC_coding_decoder(nrLDPC_slot_decoding_parameters_t *nrLDPC_slot_dec
 
   ret = start_pmd_dec(&active_dev, op_params, &data_buffers, nrLDPC_slot_decoding_parameters);
   if (ret < 0) {
-    LOG_E(PHY, "Couldn't start pmd dec\n");
+    LOG_E(NR_PHY, "Couldn't start pmd dec\n");
   }
 
   for (enum op_data_type type = DATA_INPUT; type < DATA_NUM_TYPES; ++type) {
