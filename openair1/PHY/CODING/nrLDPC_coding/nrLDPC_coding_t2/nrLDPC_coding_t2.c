@@ -301,27 +301,37 @@ void check_required_dev_capabilities(struct rte_bbdev_info *info)
   AssertFatal(ldpc_enc, "ERROR: bbdev device does not support LDPC encoding\n");
   AssertFatal(ldpc_dec, "ERROR: bbdev device does not support LDPC decoding\n");
 
-  // check encoding capabilities
-  bool rate_match = check_bit(info->drv.capabilities[RTE_BBDEV_OP_LDPC_ENC].cap.ldpc_enc.capability_flags, RTE_BBDEV_LDPC_RATE_MATCH);
-  AssertFatal(rate_match, "ERROR: bbdev device does not support LDPC encoding with rate matching\n");
+  for (int i = 0; info->drv.capabilities[i].type != RTE_BBDEV_OP_NONE; i++) {
+    if (info->drv.capabilities[i].type == RTE_BBDEV_OP_LDPC_ENC) {
+      // check encoding capabilities
+      bool rate_match = check_bit(info->drv.capabilities[i].cap.ldpc_enc.capability_flags, RTE_BBDEV_LDPC_RATE_MATCH);
+      AssertFatal(rate_match, "ERROR: bbdev device does not support LDPC encoding with rate matching\n");
+    }
+    if (info->drv.capabilities[i].type == RTE_BBDEV_OP_LDPC_DEC) {
+      // check decoding capabilities
+      bool iter_stop = check_bit(info->drv.capabilities[i].cap.ldpc_dec.capability_flags, RTE_BBDEV_LDPC_ITERATION_STOP_ENABLE);
+      AssertFatal(iter_stop, "ERROR: bbdev device does not support LDPC decoding with iteration stop\n");
 
-  // check decoding capabilities
-  bool iter_stop = check_bit(info->drv.capabilities[RTE_BBDEV_OP_LDPC_DEC].cap.ldpc_dec.capability_flags, RTE_BBDEV_LDPC_ITERATION_STOP_ENABLE);
-  AssertFatal(iter_stop, "ERROR: bbdev device does not support LDPC decoding with iteration stop\n");
+      bool crc_24b_drop = check_bit(info->drv.capabilities[i].cap.ldpc_dec.capability_flags, RTE_BBDEV_LDPC_CRC_TYPE_24B_DROP);
+      AssertFatal(crc_24b_drop, "ERROR: bbdev device does not support LDPC decoding with CRC-24B drop\n");
 
-  bool crc_24b_drop = check_bit(info->drv.capabilities[RTE_BBDEV_OP_LDPC_DEC].cap.ldpc_dec.capability_flags, RTE_BBDEV_LDPC_CRC_TYPE_24B_DROP);
-  AssertFatal(crc_24b_drop, "ERROR: bbdev device does not support LDPC decoding with CRC-24B drop\n");
-
-  bool crc_24b_check = check_bit(info->drv.capabilities[RTE_BBDEV_OP_LDPC_DEC].cap.ldpc_dec.capability_flags, RTE_BBDEV_LDPC_CRC_TYPE_24B_CHECK);
-  AssertFatal(crc_24b_check, "ERROR: bbdev device does not support LDPC decoding with CRC-24B check\n");
+      bool crc_24b_check = check_bit(info->drv.capabilities[i].cap.ldpc_dec.capability_flags, RTE_BBDEV_LDPC_CRC_TYPE_24B_CHECK);
+      AssertFatal(crc_24b_check, "ERROR: bbdev device does not support LDPC decoding with CRC-24B check\n");
+    }
+  }
 }
 
 bool check_non24b_crc_capabilities(struct rte_bbdev_info *info)
 {
-  bool crc_24a_check = check_bit(info->drv.capabilities[RTE_BBDEV_OP_LDPC_DEC].cap.ldpc_dec.capability_flags, RTE_BBDEV_LDPC_CRC_TYPE_24A_CHECK);
-  bool crc_16_check = check_bit(info->drv.capabilities[RTE_BBDEV_OP_LDPC_DEC].cap.ldpc_dec.capability_flags, RTE_BBDEV_LDPC_CRC_TYPE_16_CHECK);
-  bool non_24b_crc = crc_24a_check & crc_16_check;
-  return non_24b_crc;
+  for (int i = 0; info->drv.capabilities[i].type != RTE_BBDEV_OP_NONE; i++) {
+    if (info->drv.capabilities[i].type == RTE_BBDEV_OP_LDPC_DEC) {
+      bool crc_24a_check = check_bit(info->drv.capabilities[i].cap.ldpc_dec.capability_flags, RTE_BBDEV_LDPC_CRC_TYPE_24A_CHECK);
+      bool crc_16_check = check_bit(info->drv.capabilities[i].cap.ldpc_dec.capability_flags, RTE_BBDEV_LDPC_CRC_TYPE_16_CHECK);
+      bool non_24b_crc = crc_24a_check & crc_16_check;
+      return non_24b_crc;
+    }
+  }
+  return false;
 }
 
 // based on DPDK BBDEV add_bbdev_dev
