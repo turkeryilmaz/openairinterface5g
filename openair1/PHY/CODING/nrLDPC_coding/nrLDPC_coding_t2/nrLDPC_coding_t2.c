@@ -652,6 +652,7 @@ set_ldpc_enc_op(struct rte_bbdev_enc_op **ops,
         ops[j]->ldpc_enc.n_cb = min(ops[j]->ldpc_enc.n_cb, Nref);
       }
       ops[j]->ldpc_enc.rv_index = nrLDPC_slot_encoding_parameters->TBs[h].rv_index;
+      ops[j]->ldpc_enc.op_flags = RTE_BBDEV_LDPC_RATE_MATCH;
 #ifdef LDPC_T2
       ops[j]->ldpc_enc.code_block_mode = 1;
       ops[j]->ldpc_enc.cb_params.e = nrLDPC_slot_encoding_parameters->TBs[h].segments[i].E;
