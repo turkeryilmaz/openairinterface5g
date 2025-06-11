@@ -314,6 +314,7 @@ void check_required_dev_capabilities(struct rte_bbdev_info *info)
   }
 }
 
+#ifndef DPDK_VER_PRE_21_11
 bool check_non24b_crc_capabilities(struct rte_bbdev_info *info)
 {
   for (int i = 0; info->drv.capabilities[i].type != RTE_BBDEV_OP_NONE; i++) {
@@ -326,6 +327,7 @@ bool check_non24b_crc_capabilities(struct rte_bbdev_info *info)
   }
   return false;
 }
+#endif
 
 // based on DPDK BBDEV add_bbdev_dev
 static int add_dev(uint8_t dev_id)
