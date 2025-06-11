@@ -7,6 +7,10 @@ add_boolean_option(ENABLE_LDPC_T2 OFF "Build support for LDPC Offload to T2 libr
 if (ENABLE_LDPC_T2)
   pkg_check_modules(LIBDPDK_T2 REQUIRED libdpdk>=20.11.9)
 
+  if(LIBDPDK_T2_VERSION VERSION_LESS "21.11")
+    add_compile_definitions(DPDK_VER_PRE_21_11)
+  endif()
+
   find_library(PMD_T2 NAMES rte_baseband_accl_ldpc HINTS ${LIBDPDK_T2_LIBRARY_DIRS})
   if (PMD_T2)
     add_compile_definitions(LDPC_T2)

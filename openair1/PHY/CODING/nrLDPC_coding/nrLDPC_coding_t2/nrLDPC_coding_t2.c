@@ -60,7 +60,9 @@ struct active_device {
   const char *driver_name;
   uint8_t dev_id;
   struct rte_bbdev_info info;
+#ifndef DPDK_VER_PRE_21_11
   bool support_non24b_crc;
+#endif
   int dec_queue;
   int enc_queue;
   uint16_t queue_ids[MAX_QUEUES];
@@ -356,8 +358,10 @@ static int add_dev(uint8_t dev_id)
   // check required device capabilities
   check_required_dev_capabilities(&active_dev.info);
 
+#ifndef DPDK_VER_PRE_21_11
   // check non24b crc capabilities
   active_dev.support_non24b_crc = check_non24b_crc_capabilities(&active_dev.info);
+#endif
 
   // device setup
   ret = rte_bbdev_setup_queues(dev_id, nb_queues, active_dev.info.socket_id);
@@ -614,6 +618,7 @@ set_ldpc_dec_op(struct rte_bbdev_dec_op **ops,
         ops[j]->ldpc_dec.tb_params.cab = 1;
         ops[j]->ldpc_dec.tb_params.ea = nrLDPC_slot_decoding_parameters->TBs[h].segments[i].E;
         ops[j]->ldpc_dec.tb_params.eb = nrLDPC_slot_decoding_parameters->TBs[h].segments[i].E;
+#ifndef DPDK_VER_PRE_21_11
         if(active_dev.support_non24b_crc) {
           uint8_t crc_type = crcType(nrLDPC_slot_decoding_parameters->TBs[h].C, nrLDPC_slot_decoding_parameters->TBs[h].A);
           if(crc_type == 0)     // CRC_24A
@@ -623,6 +628,7 @@ set_ldpc_dec_op(struct rte_bbdev_dec_op **ops,
           else
             AssertFatal(0, "ERROR: Unsupported CRC type %d\n", crc_type);
         }
+#endif
       }
 
 #endif
@@ -798,6 +804,12 @@ pmd_lcore_ldpc_dec(void *arg)
         if (nrLDPC_slot_decoding_parameters->TBs[h].C > 1) {
           *status = (ops_enq[j]->status == 0);
         } else {
+#ifdef DPDK_VER_PRE_21_11
+          uint8_t *decoded_bytes = nrLDPC_slot_decoding_parameters->TBs[h].segments[i].c;
+          uint8_t crc_type = crcType(nrLDPC_slot_decoding_parameters->TBs[h].C, nrLDPC_slot_decoding_parameters->TBs[h].A);
+          uint32_t len_with_crc = lenWithCrc(nrLDPC_slot_decoding_parameters->TBs[h].C, nrLDPC_slot_decoding_parameters->TBs[h].A);
+          *status = check_crc(decoded_bytes, len_with_crc, crc_type);
+#else
           if(active_dev.support_non24b_crc) {
             *status = (ops_enq[j]->status == 0);
           } else {
@@ -806,6 +818,7 @@ pmd_lcore_ldpc_dec(void *arg)
             uint32_t len_with_crc = lenWithCrc(nrLDPC_slot_decoding_parameters->TBs[h].C, nrLDPC_slot_decoding_parameters->TBs[h].A);
             *status = check_crc(decoded_bytes, len_with_crc, crc_type);
           }
+#endif
         }
 
         if (*status) {
