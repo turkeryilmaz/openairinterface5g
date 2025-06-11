@@ -40,8 +40,17 @@ COPY ./etc-pki-entitlement /etc/pki/entitlement
 ENV SMDEV_CONTAINER_OFF=1
 #install developers pkg/repo
 RUN rm -f /etc/rhsm-host && \
-    subscription-manager repos --enable codeready-builder-for-rhel-9-x86_64-rpms && \
-    dnf update -y && \
+    subscription-manager repos --enable codeready-builder-for-rhel-9-x86_64-rpms
+
+# Remove any internet epel repo files that might have been added
+RUN rm -f /etc/yum.repos.d/epel*.repo
+
+COPY local-epel.repo /etc/yum.repos.d/local-epel.repo
+
+# Clean metadata cache to avoid stale data
+RUN dnf clean all
+
+RUN dnf update -y && \
     cat /etc/os-release && \
     dnf install -y \
        #gcc needed for build_oai
@@ -95,3 +104,8 @@ RUN /bin/sh oaienv && \
     scl enable gcc-toolset-13 "\
     ./build_oai -I --install-optional-packages -w USRP" && \
     rm /etc/pki/entitlement/*pem
+
+# OPTIONAL: Check if an EPEL package is installed via local-epel-repo
+RUN dnf repolist
+RUN dnf info yaml-cpp-devel
+
