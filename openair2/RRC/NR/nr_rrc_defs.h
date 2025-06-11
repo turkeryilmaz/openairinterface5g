@@ -125,31 +125,7 @@ typedef struct {
 typedef struct drb_s {
   int status;
   int drb_id;
-  struct cnAssociation_s {
-    int present;
-    int eps_BearerIdentity;
-    struct sdap_config_s {
-      bool defaultDRB;
-      int pdusession_id;
-      int sdap_HeaderDL;
-      int sdap_HeaderUL;
-      int mappedQoS_FlowsToAdd[QOSFLOW_MAX_VALUE];
-    } sdap_config;
-  } cnAssociation;
-  struct pdcp_config_s {
-    int discardTimer;
-    int pdcp_SN_SizeUL;
-    int pdcp_SN_SizeDL;
-    int t_Reordering;
-    int integrityProtection;
-    struct headerCompression_s {
-      int NotUsed;
-      int present;
-    } headerCompression;
-    struct ext1_s {
-      int cipheringDisabled;
-    } ext1;
-  } pdcp_config;
+  int pdusession_id;
   // F1-U Downlink Tunnel Config (on DU side)
   gtpu_tunnel_t du_tunnel_config;
   // F1-U Uplink Tunnel Config (on CU-UP side)

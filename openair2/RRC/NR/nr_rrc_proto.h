@@ -125,4 +125,5 @@ nr_rrc_reconfig_param_t get_RRCReconfiguration_params(gNB_RRC_INST *rrc, gNB_RRC
 qos_characteristics_t get_qos_characteristics(const int qfi, pdusession_t *pduSession);
 
 void openair_rrc_gNB_configuration(gNB_RRC_INST *rrc, gNB_RrcConfigurationReq *configuration);
+
 #endif

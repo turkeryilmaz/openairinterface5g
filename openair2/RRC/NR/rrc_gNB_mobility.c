@@ -90,8 +90,7 @@ static int fill_drb_to_be_setup(const gNB_RRC_INST *rrc, gNB_RRC_UE_t *ue, f1ap_
     AssertFatal(pdu->nb_qos == 1, "only 1 Qos flow supported\n");
     drb->drb_info.flows_to_be_setup_length = 1;
     drb->drb_info.flows_mapped_to_drb = calloc_or_fail(1, sizeof(drb->drb_info.flows_mapped_to_drb[0]));
-    AssertFatal(drb->drb_info.flows_mapped_to_drb, "could not allocate memory\n");
-    int qfi = rrc_drb->cnAssociation.sdap_config.mappedQoS_FlowsToAdd[0];
+    int qfi = pdu->qos[0].qfi;
     DevAssert(qfi > 0);
     drb->drb_info.flows_mapped_to_drb[0].qfi = qfi;
     drb->drb_info.flows_mapped_to_drb[0].qos_params.qos_characteristics = get_qos_characteristics(qfi, pdu);

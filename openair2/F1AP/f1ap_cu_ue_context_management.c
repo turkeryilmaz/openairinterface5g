@@ -167,9 +167,10 @@ static void f1ap_write_flows_mapped(const f1ap_flows_mapped_to_drb_t *flows_mapp
 
     /* nGRANallocationRetentionPriority */
     {
-      flow_item->qoSFlowLevelQoSParameters.nGRANallocationRetentionPriority.priorityLevel = flow_qos_params_in->arp.priority_level;
-      flow_item->qoSFlowLevelQoSParameters.nGRANallocationRetentionPriority.pre_emptionCapability = flow_qos_params_in->arp.preemption_capability;
-      flow_item->qoSFlowLevelQoSParameters.nGRANallocationRetentionPriority.pre_emptionVulnerability = flow_qos_params_in->arp.preemption_vulnerability;
+      F1AP_NGRANAllocationAndRetentionPriority_t *arp = &flow_item->qoSFlowLevelQoSParameters.nGRANallocationRetentionPriority;
+      arp->priorityLevel = flow_qos_params_in->arp.priority_level;
+      arp->pre_emptionCapability = flow_qos_params_in->arp.preemption_capability;
+      arp->pre_emptionVulnerability = flow_qos_params_in->arp.preemption_vulnerability;
     } // nGRANallocationRetentionPriority
 
     /* OPTIONAL */

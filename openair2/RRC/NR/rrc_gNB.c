@@ -98,6 +98,7 @@
 #include "ds/byte_array.h"
 #include "alg/find.h"
 #include "5g_platform_types.h"
+#include "E1AP_RLC-Mode.h"
 
 #ifdef E2_AGENT
 #include "openair2/E2AP/RAN_FUNCTION/O-RAN/ran_func_rc_extern.h"
@@ -300,17 +301,33 @@ static NR_SRB_ToAddModList_t *createSRBlist(gNB_RRC_UE_t *ue, uint8_t reestablis
   return list;
 }
 
+static nr_sdap_configuration_t get_sdap_config(pdusession_t *pduSession, int pdusession_id, const bool enable_sdap)
+{
+  nr_sdap_configuration_t sdap = {.pdu_Session_id = pdusession_id, .nb_qos = pduSession->nb_qos};
+  for (int q = 0; q < sdap.nb_qos; q++) {
+    sdap.mappedQoS_FlowsToAdd[q] = pduSession->qos[q].qfi;
+  }
+  sdap.sdap_HeaderUL = enable_sdap ? 0 : NR_SDAP_Config__sdap_HeaderUL_absent;
+  sdap.sdap_HeaderDL = enable_sdap ? 0 : NR_SDAP_Config__sdap_HeaderDL_absent;
+  return sdap;
+}
+
 static NR_DRB_ToAddModList_t *createDRBlist(gNB_RRC_UE_t *ue, bool reestablish)
 {
-  NR_DRB_ToAddMod_t *DRB_config = NULL;
+  gNB_RRC_INST *rrc = RC.nrrrc[0];
   NR_DRB_ToAddModList_t *DRB_configList = CALLOC(sizeof(*DRB_configList), 1);
 
   FOR_EACH_SEQ_ARR(drb_t *, drb, ue->drbs) {
-    DRB_config = generateDRB_ASN1(drb);
-    if (reestablish) {
-      asn1cCallocOne(DRB_config->reestablishPDCP, NR_DRB_ToAddMod__reestablishPDCP_true);
+    bool do_integrity = rrc->security.do_drb_integrity;
+    bool do_ciphering = rrc->security.do_drb_ciphering;
+    pdusession_t *pduSession = (pdusession_t *)find_pduSession(ue->pduSessions_to_addmod, drb->pdusession_id);
+    if (!pduSession) {
+      LOG_D(NR_RRC, "PDU Session %d not found in UE->pduSessions_to_addmod, skip in DRB list\n", drb->pdusession_id);
+      continue;
     }
-    asn1cSeqAdd(&DRB_configList->list, DRB_config);
+    nr_sdap_configuration_t sdap = get_sdap_config(pduSession, drb->pdusession_id, rrc->configuration.enable_sdap);
+    NR_DRB_ToAddMod_t *DRB_ToAddMod = get_DRB_ToAddMod(drb->drb_id, do_integrity, do_ciphering, reestablish, &sdap, NULL, &rrc->pdcp_config);
+    asn1cSeqAdd(&DRB_configList->list, DRB_ToAddMod);
   }
   if (DRB_configList->list.count == 0) {
     free(DRB_configList);
@@ -836,9 +853,8 @@ static void cuup_notify_reestablishment(gNB_RRC_INST *rrc, gNB_RRC_UE_t *ue_p)
     /* PDCP configuration */
     if (!drb_e1->pdcp_config)
       drb_e1->pdcp_config = malloc_or_fail(sizeof(*drb_e1->pdcp_config));
-    bearer_context_pdcp_config_t *pdcp_config = drb_e1->pdcp_config;
-    set_bearer_context_pdcp_config(pdcp_config, drb, rrc->configuration.um_on_default_drb);
-    pdcp_config->pDCP_Reestablishment = true;
+    *drb_e1->pdcp_config = set_bearer_context_pdcp_config(rrc->pdcp_config, rrc->configuration.um_on_default_drb);
+    drb_e1->pdcp_config->pDCP_Reestablishment = true;
     /* increase DRB to modify counter */
     pdu_e1->numDRB2Modify += 1;
   }

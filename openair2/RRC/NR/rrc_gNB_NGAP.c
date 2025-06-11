@@ -39,6 +39,8 @@
 #include <arpa/inet.h>
 #include "E1AP_ConfidentialityProtectionIndication.h"
 #include "E1AP_IntegrityProtectionIndication.h"
+#include "E1AP_RLC-Mode.h"
+#include "NR_PDCP-Config.h"
 #include "NGAP_CauseRadioNetwork.h"
 #include "NGAP_Dynamic5QIDescriptor.h"
 #include "NGAP_GTPTunnel.h"
@@ -242,6 +244,48 @@ void rrc_gNB_send_NGAP_NAS_FIRST_REQ(gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE, NR_RRC
   itti_send_msg_to_task(TASK_NGAP, rrc->module_id, message_p);
 }
 
+/** @brief Returns an instance of E1AP DRB To Setup List */
+static DRB_nGRAN_to_setup_t fill_drb_ngran_tosetup(const drb_t *rrc_drb, const pdusession_t *session, const gNB_RRC_INST *rrc)
+{
+  DRB_nGRAN_to_setup_t drb_ngran = {0};
+  drb_ngran.id = rrc_drb->drb_id;
+
+  drb_ngran.sdap_config.defaultDRB = true;
+  drb_ngran.sdap_config.sDAP_Header_UL = rrc->configuration.enable_sdap ? 0 : 1;
+  drb_ngran.sdap_config.sDAP_Header_DL = rrc->configuration.enable_sdap ? 0 : 1;
+
+  drb_ngran.pdcp_config = set_bearer_context_pdcp_config(rrc->pdcp_config, rrc->configuration.um_on_default_drb);
+
+  drb_ngran.numCellGroups = 1;
+  for (int k = 0; k < drb_ngran.numCellGroups; k++) {
+    drb_ngran.cellGroupList[k] = MCG; // 1 cellGroup only
+  }
+
+  drb_ngran.numQosFlow2Setup = session->nb_qos;
+  for (int k = 0; k < drb_ngran.numQosFlow2Setup; k++) {
+    qos_flow_to_setup_t *qos_flow = &drb_ngran.qosFlows[k];
+    qos_flow->qfi = session->qos[k].qfi;
+    qos_flow->qos_params = session->qos[k].qos_params;
+  }
+
+  return drb_ngran;
+}
+
+/** @brief Set up the drb_t DRB instance in the UE context */
+static drb_t *setup_rrc_drb_for_pdu_session(gNB_RRC_UE_t *ue, const pdusession_t *session)
+{
+  int drb_id = seq_arr_size(ue->drbs) + 1;
+  if (drb_id >= MAX_DRBS_PER_UE) {
+    LOG_E(NR_RRC, "UE %d: Cannot set up new DRB for pdusession_id=%d - reached maximum capacity\n", ue->rrc_ue_id, session->pdusession_id);
+    return NULL;
+  }
+
+  LOG_I(NR_RRC, "UE %d: add DRB ID %d (pdusession_id=%d)\n", ue->rrc_ue_id, drb_id, session->pdusession_id);
+  drb_t drb = {.drb_id = drb_id, .pdusession_id = session->pdusession_id};
+
+  return add_rrc_drb(&ue->drbs, drb);
+}
+
 /**
  * @brief Triggers bearer setup for the specified UE.
  *
@@ -303,49 +347,14 @@ bool trigger_bearer_setup(gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE, int n, pdusession
     inet_ntop(AF_INET, n3_incoming->addr.buffer, ip_str, sizeof(ip_str));
     LOG_I(NR_RRC, "Bearer Context Setup: PDU Session ID=%d, incoming TEID=0x%08x, Addr=%s\n", session->pdusession_id, n3_incoming->teid, ip_str);
 
-    /* we assume for the moment one DRB per PDU session. Activate the bearer,
-     * and configure in RRC. */
-    int drb_id = get_next_available_drb_id(UE);
-    if (!drb_id) {
-      LOG_E(NR_RRC, "Failed to trigger bearer setup: no available DRB ID\n");
-      return false;
-    }
-    drb_t *rrc_drb = generateDRB(UE,
-                                 drb_id,
-                                 session,
-                                 rrc->configuration.enable_sdap,
-                                 rrc->security.do_drb_integrity,
-                                 rrc->security.do_drb_ciphering,
-                                 &rrc->pdcp_config);
-
     pdu->numDRB2Setup = 1; // One DRB per PDU Session. TODO: Remove hardcoding
-    for (int j=0; j < pdu->numDRB2Setup; j++) {
-      DRB_nGRAN_to_setup_t *drb = pdu->DRBnGRanList + j;
-
-      drb->id = rrc_drb->drb_id;
-      /* SDAP */
-      struct sdap_config_s *sdap_config = &rrc_drb->cnAssociation.sdap_config;
-      drb->sdap_config.defaultDRB = sdap_config->defaultDRB;
-      drb->sdap_config.sDAP_Header_UL = sdap_config->sdap_HeaderUL;
-      drb->sdap_config.sDAP_Header_DL = sdap_config->sdap_HeaderDL;
-      /* PDCP */
-      set_bearer_context_pdcp_config(&drb->pdcp_config, rrc_drb, rrc->configuration.um_on_default_drb);
-
-      drb->numCellGroups = 1; // assume one cell group associated with a DRB
-
-      // Set all Cell Group IDs to MCG
-      for (int k=0; k < drb->numCellGroups; k++) {
-        cell_group_id_t *cellGroup = drb->cellGroupList + k;
-        *cellGroup = MCG;
+    for (int j = 0; j < pdu->numDRB2Setup; j++) {
+      drb_t *rrc_drb = setup_rrc_drb_for_pdu_session(UE, session);
+      if (!rrc_drb) {
+        LOG_E(RRC, "Failed to allocate DRB for PDU session ID %d\n", session->pdusession_id);
+        return false;
       }
-
-      drb->numQosFlow2Setup = session->nb_qos;
-      for (int k=0; k < drb->numQosFlow2Setup; k++) {
-        qos_flow_to_setup_t *qos_flow = drb->qosFlows + k;
-        pdusession_qos_t *qos_session = session->qos + k;
-        qos_flow->qfi = qos_session->qfi;
-        qos_flow->qos_params = qos_session->qos_params;
-      }
+      pdu->DRBnGRanList[0] = fill_drb_ngran_tosetup(rrc_drb, session, rrc);
     }
   }
   /* Limitation: we assume one fixed CU-UP per UE. We base the selection on
