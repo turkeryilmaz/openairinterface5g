@@ -987,7 +987,7 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx, N
 
 	double fs = gNB->RU_list[0]->openair0_cfg.sample_rate;
         double range = (300000000/(2.0*fs))*(double)srs_toa;
-        LOG_I(NR_PHY,"Distance between gNB and UE %f\n",range);
+        LOG_I(NR_PHY,"Distance between gNB and UE %f meters\n",range);
 
         // data model difficult to understand, nfapi do malloc for this pointer
         UL_INFO->srs_ind.pdu_list = UL_INFO->srs_pdu_list;

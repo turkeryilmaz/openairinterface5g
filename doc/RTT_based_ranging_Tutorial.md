@@ -38,8 +38,8 @@ Note that the options `--prs_threshold` and `--srs_threshold` lies between (0, 1
 Verify that it is connected: you should see the following output at gNB:
 
 ```
-[NR_PHY]   rxAnt 0, SRS ToA peak estimator 0, srs threshold 0.300000
-[NR_PHY]   Distance between gNB and UE 0.0
+[NR_PHY]   rxAnt 0, SRS ToA peak estimator 0 (samples), srs threshold 0.300000
+[NR_PHY]   Distance between gNB and UE 0.0 meters
 
 ```
 and nrUE:
@@ -94,8 +94,8 @@ rfsimu_setdistance_cmd: new_offset 15, new (exact) distance 97.589 m, new delay 
 correspondingly you should see the RTT in samples at the gNB:
 
 ```
-[NR_PHY]   rxAnt 0, SRS ToA peak estimator 15, srs threshold 0.300000
-[NR_PHY]   Distance between gNB and UE 48.828125
+[NR_PHY]   rxAnt 0, SRS ToA peak estimator 15 (samples), srs threshold 0.300000
+[NR_PHY]   Distance between gNB and UE 48.828125 meters
 ```
 
 The distance between the gNB and UE = (SRS ToA peak estimator)/(2*fs)
