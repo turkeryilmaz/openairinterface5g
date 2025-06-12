@@ -81,6 +81,43 @@ int nr_est_timing_advance_srs(const NR_DL_FRAME_PARMS *frame_parms,
   return timing_advance_update;
 }
 
+int peak_estimator_srs(const NR_DL_FRAME_PARMS *frame_parms,
+                              const c16_t srs_estimated_channel_time[][frame_parms->ofdm_symbol_size],
+			      float threshold)
+{
+  int max_idx = 0;
+  int max_val = 0;
+  float abs_val_normalized = 0.0;
+
+  for (int aa = 0; aa < frame_parms->nb_antennas_rx; aa++) {
+      for (int i = 0; i < frame_parms->ofdm_symbol_size; i++) {
+          int temp = squaredMod(((c16_t*)srs_estimated_channel_time[aa])[i]);  
+          if (temp > max_val) {
+             max_idx = i;
+             max_val = temp;
+          }
+       }
+
+       if (max_val != 0) {
+          for(int k = 0; k < frame_parms->ofdm_symbol_size; k++) {
+             int abs_val = squaredMod(((c16_t*)srs_estimated_channel_time[aa])[k]);
+             abs_val_normalized = (float)abs_val/(float)max_val;
+             if(abs_val_normalized >= threshold) {
+               max_idx = k;
+               break;
+             }
+         }
+       }
+
+       if (max_idx > frame_parms->ofdm_symbol_size/2) {
+          max_idx = max_idx - frame_parms->ofdm_symbol_size;
+       }
+
+       LOG_I(NR_PHY,"rxAnt %d, SRS ToA peak estmiator %d, srs threshold %f\n",aa,max_idx,threshold);
+  }
+  return max_idx;
+}
+
 void dump_nr_I0_stats(FILE *fd,PHY_VARS_gNB *gNB) {
 
 

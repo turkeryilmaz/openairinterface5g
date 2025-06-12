@@ -46,9 +46,10 @@
 #define NO_INTERP 1
 
 /* Generic function to find the peak of channel estimation buffer */
-void peak_estimator(int32_t *buffer, int32_t buf_len, int32_t *peak_idx, int32_t *peak_val, int32_t mean_val)
+void peak_estimator(int32_t *buffer, int32_t buf_len, int32_t *peak_idx, int32_t *peak_val, int32_t mean_val, float threshold)
 {
   int32_t max_val = 0, max_idx = 0, abs_val = 0;
+  float abs_val_normalized = 0.0, max_val_normalized = 0.0;
   for(int k = 0; k < buf_len; k++)
   {
     abs_val = squaredMod(((c16_t*)buffer)[k]);
@@ -59,15 +60,37 @@ void peak_estimator(int32_t *buffer, int32_t buf_len, int32_t *peak_idx, int32_t
     }
   }
 
+  if (max_val != 0) {
+     for(int k = 0; k < buf_len; k++)
+     {
+        abs_val = squaredMod(((c16_t*)buffer)[k]);
+       abs_val_normalized = (float)abs_val/(float)max_val;
+        if(abs_val_normalized >= threshold)
+        {
+          max_val_normalized = abs_val_normalized;
+          //max_idx = k-(buf_len/2);
+          max_idx = k;
+          break;
+        }
+     }
+   *peak_val = max_val;
+   *peak_idx = max_idx;
+  } else {
+   *peak_val = 0;
+   *peak_idx = 0;
+  }
+  LOG_I(PHY, "PRS ToA estimator: peak_idx %d,  max_val_normalized %f\n", *peak_idx, max_val_normalized);
+
+
   // Check for detection threshold
-  LOG_D(PHY, "PRS ToA estimator: max_val %d, mean_val %d, max_idx %d\n", max_val, mean_val, max_idx);
+  /*LOG_D(PHY, "PRS ToA estimator: max_val %d, mean_val %d, max_idx %d\n", max_val, mean_val, max_idx);
   if ((mean_val != 0) && (max_val / mean_val > 10)) {
     *peak_val = max_val;
     *peak_idx = max_idx;
   } else {
     *peak_val = 0;
     *peak_idx = 0;
-  }
+  }*/
 }
 
 int nr_prs_channel_estimation(uint8_t gNB_id,
@@ -485,7 +508,7 @@ int nr_prs_channel_estimation(uint8_t gNB_id,
 
     // peak estimator
     mean_val = squaredMod(((c16_t *)ch_tmp)[(prs_cfg->NumRB * 12) >> 1]);
-    peak_estimator(&chT_interpol[rxAnt][0], NR_PRS_IDFT_OVERSAMP_FACTOR * frame_params->ofdm_symbol_size, &prs_toa, &ch_pwr, mean_val);
+    peak_estimator(&chT_interpol[rxAnt][0], NR_PRS_IDFT_OVERSAMP_FACTOR * frame_params->ofdm_symbol_size, &prs_toa, &ch_pwr, mean_val, get_softmodem_params()->prs_threshold);
 
     // adjusting the rx_gains for channel peak power
     ch_pwr_dbm = 10 * log10(ch_pwr) + 30 - SQ15_SQUARED_NORM_FACTOR_DB - ((int)openair0_cfg[0].rx_gain[0] - (int)openair0_cfg[0].rx_gain_offset[0]) - dB_fixed(frame_params->ofdm_symbol_size);

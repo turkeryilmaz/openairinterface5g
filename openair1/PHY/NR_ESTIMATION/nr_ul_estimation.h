@@ -66,6 +66,11 @@ void nr_gnb_measurements(PHY_VARS_gNB *gNB,
 int nr_est_timing_advance_srs(const NR_DL_FRAME_PARMS *frame_parms,
                               const c16_t srs_estimated_channel_time[][frame_parms->ofdm_symbol_size]);
 
+int peak_estimator_srs(const NR_DL_FRAME_PARMS *frame_parms,
+                              const c16_t srs_estimated_channel_time[][frame_parms->ofdm_symbol_size],
+			      float threshold);
+
+
 void nr_pusch_ptrs_processing(PHY_VARS_gNB *gNB,
                               NR_DL_FRAME_PARMS *frame_parms,
                               nfapi_nr_pusch_pdu_t *rel15_ul,

@@ -1117,7 +1117,8 @@ void *UE_thread(void *arg)
       rxp[i] = (void *)&UE->common_vars.rxdata[i][firstSymSamp + fp->get_samples_slot_timestamp(slot_nr, fp, 0)];
 
     int iq_shift_to_apply = 0;
-    if (slot_nr == nb_slot_frame - 1) {
+    int slot_prs = 1; // This is hardcoded make sure this matches with the scheduled slot of PRS
+    if (slot_nr == (slot_prs+1)%fp->slots_per_frame && curMsg.proc.frame_rx%2==0) { 
       // we shift of half of measured drift, at each beginning of frame for both rx and tx
       iq_shift_to_apply = shiftForNextFrame;
       // TODO: remove this autonomous TA and use up-to-date values of ta-Common, ta-CommonDrift and ta-CommonDriftVariant from received SIB19 instead
@@ -1175,8 +1176,10 @@ void *UE_thread(void *arg)
     nr_rxtx_thread_data_t *curMsgRx = (nr_rxtx_thread_data_t *)NotifiedFifoData(newRx);
     *curMsgRx = (nr_rxtx_thread_data_t){.proc = curMsg.proc, .UE = UE};
     int ret = UE_dl_preprocessing(UE, &curMsgRx->proc, tx_wait_for_dlsch, &curMsgRx->phy_data, &stats_printed);
-    if (ret != INT_MAX)
-      shiftForNextFrame = ret;
+    prs_meas_t **prs_meas  = UE->prs_vars[0]->prs_resource[0].prs_meas;
+    int prs_ret = -prs_meas[0]->dl_toa;
+    //if (prs_ret != INT_MAX)
+    shiftForNextFrame = prs_ret;
     pushNotifiedFIFO(&UE->dl_actors[curMsg.proc.nr_slot_rx % NUM_DL_ACTORS].fifo, newRx);
 
     // apply new NTN timing information

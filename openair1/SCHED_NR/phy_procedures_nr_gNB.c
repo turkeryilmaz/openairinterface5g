@@ -982,6 +982,9 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx, N
         UL_INFO->srs_ind.sfn = frame_rx;
         UL_INFO->srs_ind.slot = slot_rx;
 
+	
+	peak_estimator_srs(frame_parms,srs_estimated_channel_time[0],get_softmodem_params()->srs_threshold);
+
         // data model difficult to understand, nfapi do malloc for this pointer
         UL_INFO->srs_ind.pdu_list = UL_INFO->srs_pdu_list;
         nfapi_nr_srs_indication_pdu_t *srs_indication = UL_INFO->srs_pdu_list + UL_INFO->srs_ind.number_of_pdus++;

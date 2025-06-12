@@ -95,6 +95,8 @@ extern "C"
 #define CONFIG_HLP_NOTWAIT       "don't wait for tracer, start immediately\n"
 #define CONFIG_HLP_TNOFORK       "to ease debugging with gdb\n"
 
+#define CONFIG_HLP_PRS_THRESHOLD "Set PRS detection threshold \n"
+#define CONFIG_HLP_SRS_THRESHOLD "Set SRS detection threshold \n"
 #define CONFIG_HLP_NUMEROLOGY    "adding numerology for 5G\n"
 #define CONFIG_HLP_BAND          "band index\n"
 #define CONFIG_HLP_EMULATE_RF    "Emulated RF enabled(disable by defult)\n"
@@ -128,6 +130,8 @@ extern "C"
 #define SL_MODE             softmodem_params.sl_mode
 #define CHAIN_OFFSET        softmodem_params.chain_offset
 #define NUMEROLOGY          softmodem_params.numerology
+#define PRS_THRESHOLD       softmodem_params.prs_threshold
+#define SRS_THRESHOLD       softmodem_params.srs_threshold
 #define BAND                softmodem_params.band
 #define EMULATE_RF          softmodem_params.emulate_rf
 #define CLOCK_SOURCE        softmodem_params.clock_source
@@ -164,8 +168,10 @@ extern int usrp_tx_thread;
   {"CO" ,                   CONFIG_HLP_ULF,           0,              .iptr=&(uplink_frequency_offset[0][0]), .defintval=0,             TYPE_INT,    0},  \
   {"a" ,                    CONFIG_HLP_CHOFF,         0,              .iptr=&CHAIN_OFFSET,                    .defintval=0,             TYPE_INT,    0},  \
   {"d" ,                    CONFIG_HLP_SOFTS,         PARAMFLAG_BOOL, .uptr=&do_forms,                        .defintval=0,             TYPE_UINT,   0},  \
-  {"q" ,                    CONFIG_HLP_STMON,         PARAMFLAG_BOOL, .iptr=&cpu_meas_enabled,                     .defintval=0,             TYPE_INT,    0},  \
+  {"q" ,                    CONFIG_HLP_STMON,         PARAMFLAG_BOOL, .iptr=&cpu_meas_enabled,                .defintval=0,             TYPE_INT,    0},  \
   {"numerology" ,           CONFIG_HLP_NUMEROLOGY,    0,              .iptr=&NUMEROLOGY,                      .defintval=1,             TYPE_INT,    0},  \
+  {"prs_threshold" ,        CONFIG_HLP_PRS_THRESHOLD, 0,              .dblptr=&PRS_THRESHOLD,                 .defintval=0.3,           TYPE_DOUBLE, 0},  \
+  {"srs_threshold" ,        CONFIG_HLP_SRS_THRESHOLD, 0,              .dblptr=&SRS_THRESHOLD,                 .defintval=0.3,           TYPE_DOUBLE, 0},  \
   {"band" ,                 CONFIG_HLP_BAND,          0,              .iptr=&BAND,                            .defintval=78,            TYPE_INT,    0},  \
   {"emulate-rf" ,           CONFIG_HLP_EMULATE_RF,    PARAMFLAG_BOOL, .iptr=&EMULATE_RF,                      .defintval=0,             TYPE_INT,    0},  \
   {"parallel-config",       CONFIG_HLP_PARALLEL_CMD,  0,              .strptr=&parallel_config,               .defstrval=NULL,          TYPE_STRING, 0},  \
@@ -185,7 +191,7 @@ extern int usrp_tx_thread;
   {"disable-stats",         CONFIG_HLP_STATS_DISABLE, PARAMFLAG_BOOL, .iptr=&stats_disabled,                  .defintval=0,             TYPE_INT,    0},  \
   {"no-itti-threads",       CONFIG_HLP_NOITTI,        PARAMFLAG_BOOL, .iptr=&softmodem_params.no_itti,        .defintval=0,             TYPE_INT,    0},  \
   {"sync-ref",              CONFIG_HLP_SYNC_REF,      0,              .uptr=&SYNC_REF,                        .defintval=0,             TYPE_UINT,   0},  \
-  {"A" ,                    CONFIG_HLP_TADV,          0,             .iptr=&softmodem_params.command_line_sample_advance,.defintval=0,            TYPE_INT,   0},  \
+  {"A" ,                    CONFIG_HLP_TADV,          0,             .iptr=&softmodem_params.command_line_sample_advance,.defintval=0,  TYPE_INT,   0},  \
   {"E" ,                    CONFIG_HLP_TQFS,          PARAMFLAG_BOOL, .iptr=&softmodem_params.threequarter_fs, .defintval=0,            TYPE_INT,    0}, \
   {"imscope" ,              CONFIG_HLP_IMSCOPE,       PARAMFLAG_BOOL, .uptr=&enable_imscope,                   .defintval=0,            TYPE_UINT,   0}, \
   {"imscope-record" ,       CONFIG_HLP_IMSCOPE_RECORD,PARAMFLAG_BOOL, .uptr=&enable_imscope_record,            .defintval=0,            TYPE_UINT,   0}, \
@@ -195,6 +201,8 @@ extern int usrp_tx_thread;
 
 // clang-format off
 #define CMDLINE_PARAMS_CHECK_DESC {         \
+    { .s5 = { NULL } },                     \
+    { .s5 = { NULL } },                     \
     { .s5 = { NULL } },                     \
     { .s5 = { NULL } },                     \
     { .s5 = { NULL } },                     \
@@ -328,6 +336,8 @@ typedef struct {
   int            emulate_rf;
   int            chain_offset;
   int            numerology;
+  double         prs_threshold;
+  double         srs_threshold;
   int            band;
   uint32_t       clock_source;
   uint32_t       timing_source;
