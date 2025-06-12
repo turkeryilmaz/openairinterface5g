@@ -47,6 +47,10 @@ SOFTWARE.
     }                                                \
   } while (0)
 
+#define SEQ_ARR_PUSH_BACK_AND_GET(type, arr, data_ptr) \
+  (seq_arr_push_back((arr), (data_ptr), sizeof(type)), \
+   ((type *)seq_arr_end((arr)) - 1))
+
 typedef struct seq_arr_s {
   uint8_t* data;
   size_t size;

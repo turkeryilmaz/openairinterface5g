@@ -31,6 +31,14 @@
 #include "ngap_messages_types.h"
 #include "oai_asn1.h"
 #include "openair2/LAYER2/nr_pdcp/nr_pdcp_asn1_utils.h"
+#include "common/utils/alg/find.h"
+
+static bool eq_pdu_session_id(const void *vval, const void *vit)
+{
+  const int *id = (const int *)vval;
+  const pdusession_t *elem = &((const rrc_pdu_session_param_t *)vit)->param;
+  return elem->pdusession_id == *id;
+}
 
 /** @brief Deep copy pdusession_t */
 void cp_pdusession(pdusession_t *dst, const pdusession_t *src)
@@ -50,17 +58,15 @@ void free_pdusession(void *ptr)
 
 rrc_pdu_session_param_t *find_pduSession(gNB_RRC_UE_t *ue, int id, bool create)
 {
-  int j;
-  for (j = 0; j < ue->nb_of_pdusessions; j++)
-    if (id == ue->pduSession[j].param.pdusession_id)
-      break;
-  if (j == ue->nb_of_pdusessions) {
-    if (create)
-      ue->nb_of_pdusessions++;
-    else
-      return NULL;
-  }
-  return ue->pduSession + j;
+  elm_arr_t elm = find_if(ue->pduSessions, &id, eq_pdu_session_id);
+  if (elm.found)
+    return (rrc_pdu_session_param_t *)elm.it;
+
+  if (!create)
+    return NULL;
+
+  rrc_pdu_session_param_t new = {.xid = -1};
+  return SEQ_ARR_PUSH_BACK_AND_GET(rrc_pdu_session_param_t, ue->pduSessions, &new);
 }
 
 rrc_pdu_session_param_t *find_pduSession_from_drbId(gNB_RRC_UE_t *ue, int drb_id)
@@ -76,8 +82,10 @@ rrc_pdu_session_param_t *find_pduSession_from_drbId(gNB_RRC_UE_t *ue, int drb_id
 
 void get_pduSession_array(gNB_RRC_UE_t *ue, uint32_t pdu_sessions[NGAP_MAX_PDU_SESSION])
 {
-  for (int i = 0; i < ue->nb_of_pdusessions && i < NGAP_MAX_PDU_SESSION; ++i)
-    pdu_sessions[i] = ue->pduSession[i].param.pdusession_id;
+  int i = 0;
+  FOR_EACH_SEQ_ARR(rrc_pdu_session_param_t *, session, ue->pduSessions) {
+    pdu_sessions[i++] = session->param.pdusession_id;
+  }
 }
 
 drb_t *get_drb(gNB_RRC_UE_t *ue, uint8_t drb_id)
