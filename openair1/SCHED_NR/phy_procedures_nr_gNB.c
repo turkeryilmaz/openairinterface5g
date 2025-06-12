@@ -983,7 +983,11 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx, N
         UL_INFO->srs_ind.slot = slot_rx;
 
 	
-	peak_estimator_srs(frame_parms,srs_estimated_channel_time[0],get_softmodem_params()->srs_threshold);
+	int srs_toa = peak_estimator_srs(frame_parms,srs_estimated_channel_time[0],get_softmodem_params()->srs_threshold);
+
+	double fs = gNB->RU_list[0]->openair0_cfg.sample_rate;
+        double range = (300000000/(2.0*fs))*(double)srs_toa;
+        LOG_I(NR_PHY,"Distance between gNB and UE %f\n",range);
 
         // data model difficult to understand, nfapi do malloc for this pointer
         UL_INFO->srs_ind.pdu_list = UL_INFO->srs_pdu_list;

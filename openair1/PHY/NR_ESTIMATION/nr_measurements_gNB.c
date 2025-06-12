@@ -113,7 +113,7 @@ int peak_estimator_srs(const NR_DL_FRAME_PARMS *frame_parms,
           max_idx = max_idx - frame_parms->ofdm_symbol_size;
        }
 
-       LOG_I(NR_PHY,"rxAnt %d, SRS ToA peak estmiator %d, srs threshold %f\n",aa,max_idx,threshold);
+       LOG_I(NR_PHY,"rxAnt %d, SRS ToA peak estimator %d, srs threshold %f\n",aa,max_idx,threshold);
   }
   return max_idx;
 }
