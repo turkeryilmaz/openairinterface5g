@@ -45,7 +45,12 @@ RUN rm -f /etc/rhsm-host && \
 # Remove any internet epel repo files that might have been added
 RUN rm -f /etc/yum.repos.d/epel*.repo
 
-COPY local-epel.repo /etc/yum.repos.d/local-epel.repo
+# COPY local-epel.repo /etc/yum.repos.d/local-epel.repo
+RUN echo "[local-epel]" > /etc/yum.repos.d/local-epel.repo && \
+    echo "name=Local EPEL Repository" >> /etc/yum.repos.d/local-epel.repo && \
+    echo "baseurl=http://epel-repo:80/epel/epel-9/epel" >> /etc/yum.repos.d/local-epel.repo && \
+    echo "enabled=1" >> /etc/yum.repos.d/local-epel.repo && \
+    echo "gpgcheck=0" >> /etc/yum.repos.d/local-epel.repo
 
 # Clean metadata cache to avoid stale data
 RUN dnf clean all
@@ -106,6 +111,6 @@ RUN /bin/sh oaienv && \
     rm /etc/pki/entitlement/*pem
 
 # OPTIONAL: Check if an EPEL package is installed via local-epel-repo
-RUN dnf repolist
-RUN dnf info yaml-cpp-devel
+# RUN dnf repolist
+# RUN dnf info yaml-cpp-devel
 

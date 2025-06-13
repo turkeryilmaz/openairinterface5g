@@ -1,5 +1,0 @@
-[local-epel]
-name=Local EPEL Repository
-baseurl=http://epel-repo:80/epel/epel-9/epel
-enabled=1
-gpgcheck=0
