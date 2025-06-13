@@ -1090,7 +1090,7 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx, N
                                     nr_srs_channel_iq_matrix.prg_size,
                                     nr_srs_channel_iq_matrix.num_prgs,
                                     &gNB->frame_parms,
-                                    srs_estimated_channel_freq, step);
+                                    srs_estimated_channel_time_shifted, step);
 #ifdef SRS_IND_DEBUG
             LOG_I(NR_PHY, "nr_srs_channel_iq_matrix.normalized_iq_representation = %i\n", nr_srs_channel_iq_matrix.normalized_iq_representation);
             LOG_I(NR_PHY, "nr_srs_channel_iq_matrix.num_gnb_antenna_elements = %i\n", nr_srs_channel_iq_matrix.num_gnb_antenna_elements);
