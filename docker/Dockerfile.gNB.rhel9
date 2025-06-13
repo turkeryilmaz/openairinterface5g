@@ -35,7 +35,20 @@ FROM registry.access.redhat.com/ubi9/ubi:latest AS oai-gnb
 ENV TZ=Europe/Paris
 
 # Install EPEL for RHEL9
-RUN dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
+# RUN dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
+
+# Remove any internet epel repo files that might have been added
+RUN rm -f /etc/yum.repos.d/epel*.repo
+
+# COPY local-epel.repo /etc/yum.repos.d/local-epel.repo
+RUN echo "[local-epel]" > /etc/yum.repos.d/local-epel.repo && \
+    echo "name=Local EPEL Repository" >> /etc/yum.repos.d/local-epel.repo && \
+    echo "baseurl=http://epel-repo:80/epel/epel-9/epel" >> /etc/yum.repos.d/local-epel.repo && \
+    echo "enabled=1" >> /etc/yum.repos.d/local-epel.repo && \
+    echo "gpgcheck=0" >> /etc/yum.repos.d/local-epel.repo
+
+# Clean metadata cache to avoid stale data
+RUN dnf clean all
 
 RUN dnf update -y && \
     dnf install -y \
@@ -132,3 +145,5 @@ WORKDIR /opt/oai-gnb
 COPY --from=gnb-base /tini /tini
 ENTRYPOINT ["/tini", "-v", "--", "/opt/oai-gnb/bin/entrypoint.sh"]
 CMD ["/opt/oai-gnb/bin/nr-softmodem"]
+
+# RUN dnf info yaml-cpp-devel
