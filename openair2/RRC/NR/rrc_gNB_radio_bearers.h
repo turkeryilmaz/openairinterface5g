@@ -28,9 +28,6 @@
 #include "e1ap_messages_types.h"
 #include "nr_rrc_defs.h"
 
-#define DRB_ACTIVE_NONGBR       (2)   /* DRB is used for Non-GBR Flows */
-#define DRB_ACTIVE              (1)
-#define DRB_INACTIVE            (0)
 #define GBR_FLOW                (1)
 #define NONGBR_FLOW             (0)
 
@@ -40,7 +37,7 @@
 NR_DRB_ToAddMod_t *generateDRB_ASN1(const drb_t *drb_asn1);
 
 /// @brief retrieve the data structure representing DRB with ID drb_id of UE ue
-drb_t *get_drb(gNB_RRC_UE_t *ue, uint8_t drb_id);
+drb_t *get_drb(seq_arr_t *seq, int id);
 
 /// @brief Creates and stores a DRB in the gNB_RRC_UE_t struct
 /// @param ue The gNB_RRC_UE_t struct that holds information for the UEs
@@ -61,9 +58,6 @@ drb_t *generateDRB(gNB_RRC_UE_t *ue,
 
 /// @brief return the next available (inactive) DRB ID of UE ue
 uint8_t get_next_available_drb_id(gNB_RRC_UE_t *ue);
-
-/// @brief returns the number of active DRBs for this UE
-int get_number_active_drbs(gNB_RRC_UE_t *ue);
 
 /// @brief retrieve PDU session of UE ue with ID id
 void *find_pduSession(seq_arr_t *seq, int id);
@@ -90,5 +84,7 @@ void cp_pdusession(pdusession_t *dst, const pdusession_t *src);
 void free_pdusession(void *ptr);
 
 bool rm_pduSession(seq_arr_t *seq, int pdusession_id);
+
+drb_t *add_rrc_drb(seq_arr_t **drb_ptr, drb_t in);
 
 #endif

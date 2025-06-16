@@ -64,10 +64,12 @@ static void free_ho_ctx(nr_handover_context_t *ho_ctx)
 static int fill_drb_to_be_setup(const gNB_RRC_INST *rrc, gNB_RRC_UE_t *ue, f1ap_drb_to_be_setup_t drbs[MAX_DRBS_PER_UE])
 {
   int nb_drb = 0;
-  for (int i = 0; i < MAX_DRBS_PER_UE; ++i) {
-    drb_t *rrc_drb = &ue->established_drbs[i];
-    if (rrc_drb->status == DRB_INACTIVE)
+  FOR_EACH_SEQ_ARR(drb_t *, rrc_drb, ue->drbs) {
+
+    if (nb_drb == MAX_DRBS_PER_UE) {
+      LOG_E(NR_RRC, "UE %d: reached max number of DRBs for F1AP, failed to setup DRB %d\n", ue->rrc_ue_id, rrc_drb->drb_id);
       continue;
+    }
 
     f1ap_drb_to_be_setup_t *drb = &drbs[nb_drb];
     nb_drb++;

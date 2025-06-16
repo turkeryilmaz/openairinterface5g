@@ -175,7 +175,6 @@ typedef struct nr_handover_context_s nr_handover_context_t;
 typedef struct gNB_RRC_UE_s {
   time_t last_seen; // last time this UE has been accessed
 
-  drb_t                              established_drbs[MAX_DRBS_PER_UE];
   NR_DRB_ToReleaseList_t            *DRB_ReleaseList;
 
   NR_SRB_INFO_TABLE_ENTRY Srb[NR_NUM_SRB];
@@ -235,6 +234,8 @@ typedef struct gNB_RRC_UE_s {
   seq_arr_t *pduSessions_to_addmod;
   seq_arr_t *pduSessions_failed;
   seq_arr_t *pduSessions_to_release;
+  // Established DRBs
+  seq_arr_t *drbs;
 
   rrc_action_t xids[NR_RRC_TRANSACTION_IDENTIFIER_NUMBER];
   uint8_t e_rab_release_command_flag;

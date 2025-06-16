@@ -305,14 +305,12 @@ static NR_DRB_ToAddModList_t *createDRBlist(gNB_RRC_UE_t *ue, bool reestablish)
   NR_DRB_ToAddMod_t *DRB_config = NULL;
   NR_DRB_ToAddModList_t *DRB_configList = CALLOC(sizeof(*DRB_configList), 1);
 
-  for (int i = 0; i < MAX_DRBS_PER_UE; i++) {
-    if (ue->established_drbs[i].status != DRB_INACTIVE) {
-      DRB_config = generateDRB_ASN1(&ue->established_drbs[i]);
-      if (reestablish) {
-        asn1cCallocOne(DRB_config->reestablishPDCP, NR_DRB_ToAddMod__reestablishPDCP_true);
-      }
-      asn1cSeqAdd(&DRB_configList->list, DRB_config);
+  FOR_EACH_SEQ_ARR(drb_t *, drb, ue->drbs) {
+    DRB_config = generateDRB_ASN1(drb);
+    if (reestablish) {
+      asn1cCallocOne(DRB_config->reestablishPDCP, NR_DRB_ToAddMod__reestablishPDCP_true);
     }
+    asn1cSeqAdd(&DRB_configList->list, DRB_config);
   }
   if (DRB_configList->list.count == 0) {
     free(DRB_configList);
@@ -811,8 +809,8 @@ static void cuup_notify_reestablishment(gNB_RRC_INST *rrc, gNB_RRC_UE_t *ue_p)
     return;
   /* loop through active DRBs */
   for (int drb_id = 1; drb_id <= MAX_DRBS_PER_UE; drb_id++) {
-    drb_t *drb = get_drb(ue_p, drb_id);
-    if (drb->status == DRB_INACTIVE)
+    drb_t *drb = get_drb(ue_p->drbs, drb_id);
+    if (!drb)
       continue;
     /* fetch an existing PDU session for this DRB */
     pdusession_t *pdu = find_pduSession_from_drbId(ue_p, ue_p->pduSessions_to_addmod, drb_id);
@@ -1994,7 +1992,7 @@ static void store_du_f1u_tunnel(const f1ap_drb_to_be_setup_t *drbs, int n, gNB_R
     const f1ap_drb_to_be_setup_t *drb_f1 = &drbs[i];
     AssertFatal(drb_f1->up_dl_tnl_length == 1, "can handle only one UP param\n");
     AssertFatal(drb_f1->drb_id < MAX_DRBS_PER_UE, "illegal DRB ID %ld\n", drb_f1->drb_id);
-    drb_t *drb = get_drb(ue, drb_f1->drb_id);
+    drb_t *drb = get_drb(ue->drbs, drb_f1->drb_id);
     drb->du_tunnel_config = f1u_gtp_update(drb_f1->up_dl_tnl[0].teid, drb_f1->up_dl_tnl[0].tl_address);
   }
 }
@@ -2075,7 +2073,7 @@ static void rrc_CU_process_ue_context_setup_response(MessageDef *msg_p, instance
   }
 
   if (resp->drbs_to_be_setup_length > 0) {
-    int num_drb = get_number_active_drbs(UE);
+    int num_drb = seq_arr_size(UE->drbs);
     DevAssert(num_drb == 0 || num_drb == resp->drbs_to_be_setup_length);
 
     /* Note: we would ideally check that SRB2 is acked, but at least LiteOn DU
@@ -2409,7 +2407,7 @@ void rrc_gNB_process_e1_bearer_context_setup_resp(e1ap_bearer_setup_resp_t *resp
       DRB_nGRAN_setup_t *drb_config = &e1_pdu->DRBnGRanList[i];
       // numUpParam only relevant in F1, but not monolithic
       AssertFatal(drb_config->numUpParam <= 1, "can only up to one UP param\n");
-      drb_t *drb = get_drb(UE, drb_config->id);
+      drb_t *drb = get_drb(UE->drbs, drb_config->id);
       UP_TL_information_t *tl_info = &drb_config->UpParamList[0].tl_info;
       drb->cuup_tunnel_config = f1u_gtp_update(tl_info->teId, tl_info->tlAddress);
     }

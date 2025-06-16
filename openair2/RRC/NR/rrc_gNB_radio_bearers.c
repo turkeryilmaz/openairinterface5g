@@ -33,6 +33,35 @@
 #include "openair2/LAYER2/nr_pdcp/nr_pdcp_asn1_utils.h"
 #include "common/utils/alg/find.h"
 
+drb_t *add_rrc_drb(seq_arr_t **drb_ptr, drb_t in)
+{
+  if (drb_ptr == NULL) {
+    LOG_E(NR_RRC, "add_drb: Invalid input\n");
+    return NULL;
+  }
+
+  SEQ_ARR_INIT(drb_ptr, drb_t, MAX_DRBS_PER_UE);
+
+  return SEQ_ARR_PUSH_BACK_AND_GET(drb_t, *drb_ptr, &in);
+}
+
+static bool eq_drb_id(const void *vval, const void *vit)
+{
+  const int *id = (const int *)vval;
+  const drb_t *elem = (const drb_t *)vit;
+  return elem->drb_id == *id;
+}
+
+/** @brief Retrieves DRB for the input ID
+ *  @return pointer to the found DRB, NULL if not found */
+drb_t *get_drb(seq_arr_t *seq, int id)
+{
+  DevAssert(id > 0 && id <= MAX_DRBS_PER_UE);
+  elm_arr_t elm = find_if(seq, &id, eq_drb_id);
+  if (elm.found)
+    return (drb_t *)elm.it;
+  return NULL;
+}
 
 static bool eq_pdu_session_id(const void *vval, const void *vit)
 {
@@ -138,9 +167,9 @@ rrc_pdusession_failed_t *add_failed_pduSession(seq_arr_t **sessions_ptr, const i
 
 pdusession_t *find_pduSession_from_drbId(gNB_RRC_UE_t *ue, seq_arr_t *seq, int drb_id)
 {
-  const drb_t *drb = &ue->established_drbs[drb_id - 1];
-  if (drb->status == DRB_INACTIVE) {
-    LOG_E(NR_RRC, "UE %d: DRB %d inactive\n", ue->rrc_ue_id, drb_id);
+  const drb_t *drb = get_drb(ue->drbs, drb_id);
+  if (!drb) {
+    LOG_E(NR_RRC, "UE %d: DRB %d not found\n", ue->rrc_ue_id, drb_id);
     return NULL;
   }
   int id = drb->cnAssociation.sdap_config.pdusession_id;
@@ -165,14 +194,6 @@ bool rm_pduSession(seq_arr_t *seq, int pdusession_id)
   seq_arr_erase(seq, elm.it);  // shallow erase
   LOG_I(NR_RRC, "Removed PDU Session %d, remaining = %ld\n", pdusession_id, seq_arr_size(seq));
   return true;
-}
-
-drb_t *get_drb(gNB_RRC_UE_t *ue, uint8_t drb_id)
-{
-  DevAssert(drb_id > 0 && drb_id <= 32);
-  DevAssert(ue != NULL);
-
-  return &ue->established_drbs[drb_id - 1];
 }
 
 void set_default_drb_pdcp_config(struct pdcp_config_s *pdcp_config,
@@ -213,10 +234,7 @@ drb_t *generateDRB(gNB_RRC_UE_t *ue,
 
   LOG_I(NR_RRC, "UE %d: configure DRB ID %d for PDU session ID %d\n", ue->rrc_ue_id, drb_id, pduSession->pdusession_id);
 
-  drb_t *est_drb = &ue->established_drbs[drb_id - 1];
-  DevAssert(est_drb->status == DRB_INACTIVE);
-
-  est_drb->status = DRB_ACTIVE;
+  drb_t *est_drb = get_drb(ue->drbs, drb_id);
   est_drb->drb_id = drb_id;
   est_drb->cnAssociation.sdap_config.defaultDRB = true;
 
@@ -232,17 +250,11 @@ drb_t *generateDRB(gNB_RRC_UE_t *ue,
   }
   for (int qos_flow_index = 0; qos_flow_index < pduSession->nb_qos; qos_flow_index++) {
     est_drb->cnAssociation.sdap_config.mappedQoS_FlowsToAdd[qos_flow_index] = pduSession->qos[qos_flow_index].qfi;
-    const qos_characteristics_t *chars = &pduSession->qos[qos_flow_index].qos_params.qos_characteristics;
-    int fiveqi = chars->qos_type == NON_DYNAMIC ? chars->non_dynamic.fiveqi : chars->dynamic.fiveqi;
-    if (fiveqi > 5)
-      est_drb->status = DRB_ACTIVE_NONGBR;
-    else
-      est_drb->status = DRB_ACTIVE;
   }
   /* PDCP Configuration */
   set_default_drb_pdcp_config(&est_drb->pdcp_config, do_drb_integrity, do_drb_ciphering, pdcp_config);
 
-  drb_t *rrc_drb = get_drb(ue, drb_id);
+  drb_t *rrc_drb = get_drb(ue->drbs, drb_id);
   DevAssert(rrc_drb == est_drb); /* to double check that we create the same which we would retrieve */
   return rrc_drb;
 }
@@ -297,19 +309,10 @@ NR_DRB_ToAddMod_t *generateDRB_ASN1(const drb_t *drb_asn1)
 
 uint8_t get_next_available_drb_id(gNB_RRC_UE_t *ue)
 {
-  for (uint8_t drb_id = 0; drb_id < MAX_DRBS_PER_UE; drb_id++)
-    if (ue->established_drbs[drb_id].status == DRB_INACTIVE)
-      return drb_id + 1;
+  uint8_t drb_id = seq_arr_size(ue->drbs) + 1;
+  if (drb_id < MAX_DRBS_PER_UE)
+    return drb_id;
   /* From this point, we need to handle the case that all DRBs are already used by the UE. */
   LOG_E(RRC, "Error - All the DRBs are used - Handle this\n");
-  return DRB_INACTIVE;
-}
-
-int get_number_active_drbs(gNB_RRC_UE_t *ue)
-{
-  int n = 0;
-  for (int i = 0; i < MAX_DRBS_PER_UE; ++i)
-    if (ue->established_drbs[i].status != DRB_INACTIVE)
-      n++;
-  return n;
+  return 0;
 }
