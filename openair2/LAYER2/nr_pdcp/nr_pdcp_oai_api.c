@@ -511,7 +511,7 @@ static void *enb_tun_read_thread(void *_)
     ctxt.brOption = 0;
     ctxt.rntiMaybeUEid = rntiMaybeUEid;
 
-    uint8_t qfi = 7;
+    uint8_t qfi = 1; // SDAP entity was created for qfi 1 in gNB
     bool rqi = 0;
     int pdusession_id = 10;
 
@@ -1002,15 +1002,14 @@ void add_drb_sl(ue_id_t srcid, NR_SL_RadioBearerConfig_r16_t *s, int ciphering_a
   bool is_sdap_DefaultRB = s->sl_SDAP_Config_r16 && s->sl_SDAP_Config_r16->sl_DefaultRB_r16 == true ? true : false;
   /* TODO(?): accept different UL and DL SN sizes? */
 
-  uint8_t mappedQFIs2AddCount = s->sl_SDAP_Config_r16->sl_MappedQoS_Flows_r16->choice.sl_MappedQoS_FlowsList_r16->list.count;
+  uint8_t mappedQFIs2AddCount = s->sl_SDAP_Config_r16->sl_MappedQoS_Flows_r16->choice.sl_MappedQoS_FlowsListDedicated_r16->sl_MappedQoS_FlowsToAddList_r16->list.count;
   NR_QFI_t *mappedQFIs2Add = calloc(mappedQFIs2AddCount, sizeof(*mappedQFIs2Add));
   LOG_D(SDAP, "Captured mappedQoS_FlowsToAdd from RRC: count %d\n", mappedQFIs2AddCount);
 
-  long standardized_PQI = 0;
+  NR_SL_QoS_FlowIdentity_r16_t qfi = 0;
   for (int i = 0; i < mappedQFIs2AddCount; i++) {
-      standardized_PQI = s->sl_SDAP_Config_r16->sl_MappedQoS_Flows_r16->choice.sl_MappedQoS_FlowsList_r16->list.array[i]->sl_PQI_r16->choice.sl_StandardizedPQI_r16;
-      if (standardized_PQI < 64)
-        mappedQFIs2Add[i] = standardized_PQI;
+    qfi = *s->sl_SDAP_Config_r16->sl_MappedQoS_Flows_r16->choice.sl_MappedQoS_FlowsListDedicated_r16->sl_MappedQoS_FlowsToAddList_r16->list.array[i];
+    mappedQFIs2Add[i] = qfi;
   }
 
   nr_pdcp_manager_lock(nr_pdcp_ue_manager);

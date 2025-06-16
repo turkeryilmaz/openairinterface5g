@@ -172,10 +172,11 @@ void nr_postDecode_slsch(PHY_VARS_NR_UE *UE, notifiedFIFO_elt_t *req,UE_nr_rxtx_
     slsch_status_t slsch_status;
     if (!check_abort(&slsch_harq->abort_decode) && !UE->pssch_vars[rdata->ulsch_id].DTX) {
       LOG_D(NR_PHY,
-            "[UE] SLSCH: Setting ACK for SFN/SF %d.%d (pid %d, ndi %d, status %d, round %d, TBS %d, Max interation "
+            "[UE] SLSCH %d: Setting ACK for SFN/SF %d.%d (pid %d, ndi %d, status %d, round %d, TBS %d, Max interation "
             "(all seg) %d)\n",
-            slsch->frame,
-            slsch->slot,
+            rdata->ulsch_id,
+            proc->frame_rx,
+            proc->nr_slot_rx,
             rdata->harq_pid,
             slsch_pdu->ndi,
             slsch->active,
@@ -190,18 +191,18 @@ void nr_postDecode_slsch(PHY_VARS_NR_UE *UE, notifiedFIFO_elt_t *req,UE_nr_rxtx_
       //dumpsig=1;
     } else {
       LOG_E(NR_PHY,
-            "[UE] SLSCH %d in error: Setting NAK for SFN/SF %d/%d (pid %d, ndi %d, status %d, round %d, RV %d, prb_start %d, prb_size %d, "
+            "[UE] SLSCH %d in error: Setting NAK for SFN/SF %d/%d (pid %d, ndi %d, status %d, round %d, RV %d, prb_start %d, subchannel_size %d, "
             "TBS %d) r %d\n",
             rdata->ulsch_id,
-            slsch->frame,
-            slsch->slot,
+            proc->frame_rx,
+            proc->nr_slot_rx,
             rdata->harq_pid,
             slsch_pdu->ndi,
             slsch->active,
             slsch_harq->round,
-            slsch_harq->ulsch_pdu.pusch_data.rv_index,
-            slsch_harq->ulsch_pdu.rb_start,
-            slsch_harq->ulsch_pdu.rb_size,
+            slsch_harq->slsch_pdu ? slsch_harq->slsch_pdu->rv_index : slsch_harq->ulsch_pdu.pusch_data.rv_index,
+            slsch_harq->pssch_pdu->startrb,
+            slsch_harq->pssch_pdu->subchannel_size,
             slsch_harq->TBS,
             r);
       slsch->handled = 1;

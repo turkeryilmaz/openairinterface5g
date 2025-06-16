@@ -350,7 +350,7 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
                   available_bits,
                   mod_order,
                   (int16_t *)d_mod);
-   
+
   ///////////
   ////////////////////////////////////////////////////////////////////////
 
