@@ -165,11 +165,16 @@ typedef struct sl_bch_params {
  * resources as per TR 38.214 Section 8.1.4
  */
 typedef struct {
-    uint8_t priority;         // L1 priority prio_TX
+    uint8_t priority;    // L1 priority prio_TX
     uint16_t packet_delay_budget_ms;   // remaining packet delay budget
-    uint16_t l_subch;       // L_subCH; number of subchannels to be used
-    uint16_t rri;          // resource reservation interval
+    uint16_t l_subch;    // L_subCH; number of subchannels to be used
+    uint16_t rri;        // resource reservation interval
     uint16_t resel_counter;       // C_resel counter
+    int sl_thresh_rsrp;  // A threshold in dBm used for sensing based UE autonomous resource selection
+    float sl_res_ratio;  /* The percentage threshold to indicate the
+                                 minimum number of candidate single-slot
+                                 resources to be selected using sensing procedure.
+                              */
 } nr_sl_transmission_params_t;
 
 typedef struct sl_nr_ue_mac_params {
