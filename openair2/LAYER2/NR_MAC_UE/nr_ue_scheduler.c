@@ -4877,16 +4877,16 @@ List_t* get_candidate_resources(frameslot_t *frame_slot, NR_UE_MAC_INST_t *mac, 
   // Exclude resources function may not be effective if updated history is empty
   List_t *rsrc_rsrvation_period_list = malloc16_clear(sizeof(*rsrc_rsrvation_period_list));
   init_list(rsrc_rsrvation_period_list, sizeof(long), 1);
-  push_back(rsrc_rsrvation_period_list, &sl_mac->mac_tx_params.rri);
+  push_back(rsrc_rsrvation_period_list, &sl_tx_params->rri);
   exclude_resources_based_on_history(*frame_slot, updated_history, remaining_candidates, rsrc_rsrvation_period_list, mu);
 
-  LOG_D(NR_MAC, "sl_res_percentage %f, %lf, %lf\n",
-        mac->sl_res_percentage, mac->sl_res_percentage / 100.0, (mac->sl_res_percentage / 100.0) * m_total);
-  if (remaining_candidates->size >= (mac->sl_res_percentage / 100.0) * m_total) {
+  LOG_D(NR_MAC, "sl_res_ratio %f, %lf\n",
+        sl_tx_params->sl_res_ratio, (sl_tx_params->sl_res_ratio * m_total));
+  if (remaining_candidates->size >= (sl_tx_params->sl_res_ratio * m_total)) {
     LOG_D(NR_MAC, "Step 5a check allows step 5 to pass: original: %ld  remaining: %ld X: %lf\n",
-          candidate_resources->size, remaining_candidates->size, mac->sl_res_percentage / 100.0);
+          candidate_resources->size, remaining_candidates->size, sl_tx_params->sl_res_ratio);
   } else {
-    LOG_D(NR_MAC, "Step 5a fails-- too few remaining candidates: original: %ld  updated: %ld  X: %lf", candidate_resources->size, remaining_candidates->size, mac->sl_res_percentage / 100.0);
+    LOG_D(NR_MAC, "Step 5a fails-- too few remaining candidates: original: %ld  updated: %ld  X: %lf", candidate_resources->size, remaining_candidates->size, sl_tx_params->sl_res_ratio);
     remaining_candidates = candidate_resources;
   }
 
@@ -4929,7 +4929,7 @@ List_t* get_candidate_resources(frameslot_t *frame_slot, NR_UE_MAC_INST_t *mac, 
     push_back_list(&sensing_data_projections, &temp_rsrc_list);
   }
 
-  int rsrp_threshold = mac->sl_thresh_rsrp;
+  int rsrp_threshold = sl_tx_params->sl_thresh_rsrp;
   List_t* candidate_resources_after_step5 = remaining_candidates;
   int counter_c = 0;
   do
@@ -5032,7 +5032,7 @@ List_t* get_candidate_resources(frameslot_t *frame_slot, NR_UE_MAC_INST_t *mac, 
       break; // break do while
     }
     counter_c++;
-  } while (remaining_candidates->size < (mac->sl_res_percentage / 100.0) * m_total);
+  } while (remaining_candidates->size < (sl_tx_params->sl_res_ratio * m_total));
 
   LOG_D(NR_MAC, "%ld resources selected after sensing resource selection from %ld slots\n", remaining_candidates->size, m_total);
   return remaining_candidates;
