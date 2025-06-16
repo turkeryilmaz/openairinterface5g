@@ -36,6 +36,4 @@ srap_mapping_t *nr_srap_manager_get_ue_mapping(nr_srap_manager_t *_m, int rnti, 
 
 void nr_srap_manager_remove_ue(nr_srap_manager_t *m, int rnti);
 
-void nr_create_ue_id_rb_rlc_channel_mapping(uint8_t ue, uint8_t rb_id, uint8_t rlc_ch_id, nr_srap_manager_t *_m, nr_srap_entity_type_t entity_type);
-
 #endif /* _NR_SRAP_MANAGER_H_ */

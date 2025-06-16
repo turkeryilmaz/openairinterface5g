@@ -5037,4 +5037,3 @@ List_t* get_candidate_resources(frameslot_t *frame_slot, NR_UE_MAC_INST_t *mac, 
   LOG_D(NR_MAC, "%ld resources selected after sensing resource selection from %ld slots\n", remaining_candidates->size, m_total);
   return remaining_candidates;
 }
-

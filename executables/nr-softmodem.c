@@ -576,7 +576,7 @@ void init_pdcp(void) {
   if (!NODE_IS_CU(get_node_type())) {
     uint8_t relay_type = get_softmodem_params()->relay_type;
     if (relay_type == U2N || relay_type == U2U) {
-      bool gNB_flag = get_node_type() == -1 ? false : true;
+      bool gNB_flag = true;
       nr_srap_layer_init(gNB_flag);
       srap_module_init(gNB_flag);
     }

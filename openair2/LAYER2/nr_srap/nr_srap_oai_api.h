@@ -72,9 +72,6 @@ void srap_deliver_sdu_drb(const protocol_ctxt_t *const  ctxt_pP,
 void srap_deliver_sdu_srb(void *_ue, nr_srap_entity_t *entity,
                           char *buf, int size);
 
-void srap_forward_sdu_drb(void *_ue, nr_srap_entity_t *entity,
-                          char *buf, int size);
-
 void srap_deliver_pdu_drb(protocol_ctxt_t *ctxt, int rb_id,
                           char *buf, int size, int sdu_id,
                           nr_intf_type_t intf_type);
@@ -115,7 +112,7 @@ bool nr_srap_data_req_srb(protocol_ctxt_t *ctxt,
                           int sdu_id,
                           nr_intf_type_t intf_type);
 
-bool srap_data_ind(const protocol_ctxt_t *const  ctxt_pP,
+bool srap_data_ind(protocol_ctxt_t *const  ctxt_pP,
                    const srb_flag_t srb_flagP,
                    const MBMS_flag_t MBMS_flagP,
                    const rb_id_t rb_id,
@@ -125,4 +122,19 @@ bool srap_data_ind(const protocol_ctxt_t *const  ctxt_pP,
                    const uint32_t *const dstID,
                    nr_intf_type_t intf_type);
 
+void enqueue_fwd_srap_pc5_data_req(protocol_ctxt_t *const ctxt_pP,
+                                   const srb_flag_t srb_flagP,
+                                   const rb_id_t rb_idP,
+                                   const mui_t muiP,
+                                   confirm_t confirmP,
+                                   sdu_size_t sdu_sizeP,
+                                   mem_block_t *sdu_pP);
+
+void enqueue_fwd_srap_uu_data_req(protocol_ctxt_t *const ctxt_pP,
+                                  const srb_flag_t srb_flagP,
+                                  const rb_id_t rb_idP,
+                                  const mui_t muiP,
+                                  confirm_t confirmP,
+                                  sdu_size_t sdu_sizeP,
+                                  mem_block_t *sdu_pP);
 #endif /* _NR_SRAP_OAI_API_H_ */

@@ -110,4 +110,5 @@ const bool nr_pdcp_get_statistics(ue_id_t ue_id, int srb_flag, int rb_id, nr_pdc
 
 void add_drb_sl(ue_id_t srcid, NR_SL_RadioBearerConfig_r16_t *s, int ciphering_algorithm, int integrity_algorithm, unsigned char *ciphering_key, unsigned char *integrity_key);
 
+void add_srap_entity(int src_id);
 #endif /* NR_PDCP_OAI_API_H */
