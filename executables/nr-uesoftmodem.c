@@ -385,7 +385,7 @@ static void init_pdcp(int ue_id, bool srap_enabled) {
   pdcp_set_pdcp_data_ind_func((pdcp_data_ind_func_t) pdcp_data_ind);
   // creates srap module, which will instanitate srap manager responsible for creating srap entitites and managing the entities operations
   if (srap_enabled) {
-    bool gNB_flag = (get_node_type() == -1 || NODE_IS_CU(get_node_type())) ? false : true;
+    bool gNB_flag = false;
     nr_srap_layer_init(gNB_flag);
     srap_module_init(gNB_flag);
   }

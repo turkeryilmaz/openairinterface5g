@@ -3620,8 +3620,8 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
                                           lcid,
                                           ndata,
                                           (char *)pdu,
-                                          0,
-                                          0);
+                                          sl_sch_subheader->SRC,
+                                          sl_sch_subheader->DST);
             stop_meas(&mac->rlc_data_req);
             AssertFatal(buflen_remain >= sdu_length, "In %s: LCID = 0x%02x RLC has segmented %d bytes but MAC has max %d remaining bytes\n",
                         __FUNCTION__,

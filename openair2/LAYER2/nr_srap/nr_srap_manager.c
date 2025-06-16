@@ -7,7 +7,6 @@ Email ID: ejaz.ahmed@applied.co
 #include "nr_srap_oai_api.h"
 #include <softmodem-common.h>
 
-
 nr_srap_manager_t *nr_srap_manager;
 
 nr_srap_manager_t *new_nr_srap_manager(bool gNB_flag) {
@@ -95,25 +94,6 @@ srap_mapping_t *nr_srap_manager_get_ue_mapping(nr_srap_manager_t *_m, int rnti, 
     LOG_W(NR_SRAP, "SRAP entity does not exist!!!\n");
   }
   return NULL;
-}
-
-void nr_create_ue_id_rb_rlc_channel_mapping(uint8_t ue_id, uint8_t rb_id, uint8_t rlc_ch_id, nr_srap_manager_t *_m, nr_srap_entity_type_t entity_type) {
-  nr_srap_manager_internal_t *m = _m;
-  nr_srap_entity_t *srap_entity = nr_srap_get_entity(m, entity_type);
-  if (srap_entity == NULL) {
-    LOG_W(NR_SRAP, "SRAP entity does not exist!!!\n");
-  } else {
-    srap_entity->bearer_to_rlc_map.array->ue_id = ue_id;
-    if (entity_type == NR_SRAP_UU) {
-      srap_entity->bearer_to_rlc_map.array->uu_mapping->ue_id = ue_id;
-      srap_entity->bearer_to_rlc_map.array->uu_mapping->bearer_id = rb_id;
-      srap_entity->bearer_to_rlc_map.array->uu_mapping->rlc_channel = rlc_ch_id;
-    } else if (entity_type == NR_SRAP_PC5) {
-      srap_entity->bearer_to_rlc_map.array->pc5_mapping->ue_id = ue_id;
-      srap_entity->bearer_to_rlc_map.array->pc5_mapping->bearer_id = rb_id;
-      srap_entity->bearer_to_rlc_map.array->pc5_mapping->rlc_channel = rlc_ch_id;
-    }
-  }
 }
 
 nr_srap_manager_t *get_nr_srap_manager() {

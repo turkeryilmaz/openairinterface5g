@@ -466,27 +466,26 @@ NR_SL_PreconfigurationNR_r16_t *prepare_NR_SL_PRECONFIGURATION(uint16_t num_tx_p
   sl_RadioBearerConfig_r16->slrb_Uu_ConfigIndex_r16 = 1;
   sl_RadioBearerConfig_r16->sl_SDAP_Config_r16 = calloc(1, sizeof(*sl_RadioBearerConfig_r16->sl_SDAP_Config_r16));
   struct NR_SL_SDAP_Config_r16* sl_SDAP_Config = sl_RadioBearerConfig_r16->sl_SDAP_Config_r16;
-  sl_SDAP_Config->sl_SDAP_Header_r16 = NR_SL_SDAP_Config_r16__sl_SDAP_Header_r16_present;
+  sl_SDAP_Config->sl_SDAP_Header_r16 = NR_SL_SDAP_Config_r16__sl_SDAP_Header_r16_absent;
   sl_SDAP_Config->sl_DefaultRB_r16 = true;
   sl_SDAP_Config->sl_CastType_r16 = calloc(1, sizeof(*sl_SDAP_Config->sl_CastType_r16));
   *sl_SDAP_Config->sl_CastType_r16 = NR_SL_SDAP_Config_r16__sl_CastType_r16_unicast;
   sl_SDAP_Config->sl_MappedQoS_Flows_r16 = calloc(1, sizeof(*sl_SDAP_Config->sl_MappedQoS_Flows_r16));
-  sl_SDAP_Config->sl_MappedQoS_Flows_r16->choice.sl_MappedQoS_FlowsList_r16 = calloc(1, sizeof(*sl_SDAP_Config->sl_MappedQoS_Flows_r16->choice.sl_MappedQoS_FlowsList_r16));
-  struct NR_SL_SDAP_Config_r16__sl_MappedQoS_Flows_r16__sl_MappedQoS_FlowsList_r16* sl_MappedQoS_FlowList = sl_SDAP_Config->sl_MappedQoS_Flows_r16->choice.sl_MappedQoS_FlowsList_r16;
 
-  NR_SL_QoS_Profile_r16_t *sl_QoS_Profile_r16_f1 = calloc(1, sizeof(*sl_QoS_Profile_r16_f1));
-  sl_QoS_Profile_r16_f1->sl_PQI_r16 = calloc(1, sizeof(*sl_QoS_Profile_r16_f1->sl_PQI_r16));
-  struct NR_SL_PQI_r16 *sl_PQI = sl_QoS_Profile_r16_f1->sl_PQI_r16;
-  sl_PQI->choice.sl_StandardizedPQI_r16 = 55;
-
-  ASN_SEQUENCE_ADD(&sl_MappedQoS_FlowList->list, sl_QoS_Profile_r16_f1);
+  sl_SDAP_Config->sl_MappedQoS_Flows_r16->choice.sl_MappedQoS_FlowsListDedicated_r16 = calloc(1, sizeof(*sl_SDAP_Config->sl_MappedQoS_Flows_r16->choice.sl_MappedQoS_FlowsListDedicated_r16));
+  struct NR_SL_MappedQoS_FlowsListDedicated_r16 *sl_MappedQoS_FlowsListDedicated = sl_SDAP_Config->sl_MappedQoS_Flows_r16->choice.sl_MappedQoS_FlowsListDedicated_r16;
+  sl_MappedQoS_FlowsListDedicated->sl_MappedQoS_FlowsToAddList_r16 = calloc(1, sizeof(*sl_MappedQoS_FlowsListDedicated->sl_MappedQoS_FlowsToAddList_r16));
+  NR_SL_QoS_FlowIdentity_r16_t *sl_qfi = calloc(1, sizeof(*sl_qfi));
+  *sl_qfi = 1;
+  ASN_SEQUENCE_ADD(&sl_MappedQoS_FlowsListDedicated->sl_MappedQoS_FlowsToAddList_r16->list, sl_qfi);
+  LOG_D(SDAP, "SDAP qfi %ld\n", *sl_MappedQoS_FlowsListDedicated->sl_MappedQoS_FlowsToAddList_r16->list.array[0]);
 
   sl_RadioBearerConfig_r16->sl_TransRange_r16 = NULL;
   sl_RadioBearerConfig_r16->sl_PDCP_Config_r16 = calloc(1,sizeof(*sl_RadioBearerConfig_r16));
   sl_RadioBearerConfig_r16->sl_PDCP_Config_r16->sl_DiscardTimer_r16 = calloc(1,sizeof(*sl_RadioBearerConfig_r16->sl_PDCP_Config_r16->sl_DiscardTimer_r16));
   *sl_RadioBearerConfig_r16->sl_PDCP_Config_r16->sl_DiscardTimer_r16 = NR_SL_PDCP_Config_r16__sl_DiscardTimer_r16_infinity;
   sl_RadioBearerConfig_r16->sl_PDCP_Config_r16->sl_PDCP_SN_Size_r16 = calloc(1,sizeof(*sl_RadioBearerConfig_r16->sl_PDCP_Config_r16->sl_PDCP_SN_Size_r16));
-  *sl_RadioBearerConfig_r16->sl_PDCP_Config_r16->sl_PDCP_SN_Size_r16 = NR_SL_PDCP_Config_r16__sl_PDCP_SN_Size_r16_len12bits;
+  *sl_RadioBearerConfig_r16->sl_PDCP_Config_r16->sl_PDCP_SN_Size_r16 = NR_SL_PDCP_Config_r16__sl_PDCP_SN_Size_r16_len18bits;
   sl_RadioBearerConfig_r16->sl_PDCP_Config_r16->sl_OutOfOrderDelivery = NULL;
   ASN_SEQUENCE_ADD(&sl_preconfig->sl_RadioBearerPreConfigList_r16->list,sl_RadioBearerConfig_r16);
    
@@ -500,9 +499,9 @@ NR_SL_PreconfigurationNR_r16_t *prepare_NR_SL_PRECONFIGURATION(uint16_t num_tx_p
   sl_RLC_BearerConfig_r16->sl_RLC_Config_r16 = calloc(1,sizeof(*sl_RLC_BearerConfig_r16->sl_RLC_Config_r16));
   sl_RLC_BearerConfig_r16->sl_RLC_Config_r16->present = NR_SL_RLC_Config_r16_PR_sl_UM_RLC_r16;
   sl_RLC_BearerConfig_r16->sl_RLC_Config_r16->choice.sl_UM_RLC_r16 = calloc(1,sizeof(*sl_RLC_BearerConfig_r16->sl_RLC_Config_r16->choice.sl_UM_RLC_r16));
-  sl_RLC_BearerConfig_r16->sl_RLC_Config_r16->choice.sl_UM_RLC_r16->sl_SN_FieldLengthUM_r16=calloc(1,sizeof(*sl_RLC_BearerConfig_r16->sl_MAC_LogicalChannelConfig_r16));  
+  sl_RLC_BearerConfig_r16->sl_RLC_Config_r16->choice.sl_UM_RLC_r16->sl_SN_FieldLengthUM_r16 = calloc(1, sizeof(*sl_RLC_BearerConfig_r16->sl_MAC_LogicalChannelConfig_r16));
 
-  *sl_RLC_BearerConfig_r16->sl_RLC_Config_r16->choice.sl_UM_RLC_r16->sl_SN_FieldLengthUM_r16=NR_SN_FieldLengthUM_size6;  
+  *sl_RLC_BearerConfig_r16->sl_RLC_Config_r16->choice.sl_UM_RLC_r16->sl_SN_FieldLengthUM_r16 = NR_SN_FieldLengthUM_size6;
   // Logical Channel Config for default link
   sl_RLC_BearerConfig_r16->sl_MAC_LogicalChannelConfig_r16 = calloc(1,sizeof(*sl_RLC_BearerConfig_r16->sl_MAC_LogicalChannelConfig_r16));
   sl_RLC_BearerConfig_r16->sl_MAC_LogicalChannelConfig_r16->sl_Priority_r16 = 1;
@@ -628,11 +627,18 @@ void nr_UE_configure_Sidelink(uint8_t id, uint8_t is_sync_source, ueinfo_t *uein
 
   if (get_softmodem_params()->sl_mode == 2) {
     // SL RadioBearers
-    for (int i=0; i<sl_preconfig->sidelinkPreconfigNR_r16.sl_RadioBearerPreConfigList_r16->list.count; i++) {
+    for (int i = 0; i < sl_preconfig->sidelinkPreconfigNR_r16.sl_RadioBearerPreConfigList_r16->list.count; i++) {
       add_drb_sl(ueinfo->srcid, (NR_SL_RadioBearerConfig_r16_t *)sl_preconfig->sidelinkPreconfigNR_r16.sl_RadioBearerPreConfigList_r16->list.array[i], 0, 0, NULL, NULL);
     }
     // configure RLC
-    for (int i=0; i<sl_preconfig->sidelinkPreconfigNR_r16.sl_RLC_BearerPreConfigList_r16->list.count; i++) {
+    for (int i = 0; i < sl_preconfig->sidelinkPreconfigNR_r16.sl_RLC_BearerPreConfigList_r16->list.count; i++) {
+      nr_rlc_add_drb_sl(ueinfo->srcid, 1, (NR_SL_RLC_BearerConfig_r16_t *)sl_preconfig->sidelinkPreconfigNR_r16.sl_RLC_BearerPreConfigList_r16->list.array[i]);
+    }
+  } else if (get_softmodem_params()->sl_mode == 1) {
+    // SL RadioBearers
+    add_srap_entity(ueinfo->srcid);
+    // configure RLC
+    for (int i = 0; i < sl_preconfig->sidelinkPreconfigNR_r16.sl_RLC_BearerPreConfigList_r16->list.count; i++) {
       nr_rlc_add_drb_sl(ueinfo->srcid, 1, (NR_SL_RLC_BearerConfig_r16_t *)sl_preconfig->sidelinkPreconfigNR_r16.sl_RLC_BearerPreConfigList_r16->list.array[i]);
     }
   }

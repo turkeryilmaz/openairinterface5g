@@ -511,7 +511,7 @@ static void *enb_tun_read_thread(void *_)
     ctxt.brOption = 0;
     ctxt.rntiMaybeUEid = rntiMaybeUEid;
 
-    uint8_t qfi = 7;
+    uint8_t qfi = 1; // SDAP entity was created for qfi 1 in gNB
     bool rqi = 0;
     int pdusession_id = 10;
 
@@ -560,8 +560,17 @@ static void *ue_tun_read_thread(void *_)
     bool dc = SDAP_HDR_UL_DATA_PDU;
     extern uint8_t nas_qfi;
     extern uint8_t nas_pduid;
-
-    sdap_data_req(&ctxt, rntiMaybeUEid, SRB_FLAG_NO, rb_id, RLC_MUI_UNDEFINED, RLC_SDU_CONFIRM_NO, len, (unsigned char *)rx_buf, PDCP_TRANSMISSION_MODE_DATA, NULL, NULL, nas_qfi, dc, nas_pduid);
+    bool srap_enabled = get_softmodem_params()->relay_type > 0 ? true : false;
+    if (srap_enabled) {
+      if (!get_softmodem_params()->is_relay_ue) {
+        sdap_data_req(&ctxt, rntiMaybeUEid, SRB_FLAG_NO, rb_id, RLC_MUI_UNDEFINED, RLC_SDU_CONFIRM_NO, len, (unsigned char *)rx_buf, PDCP_TRANSMISSION_MODE_DATA, NULL, NULL, nas_qfi, dc, nas_pduid);
+      } else {
+        // TODO: add the Relay UE transmission support
+        LOG_D(PDCP, "Relay UE transmission on PDCP is not supported yet!!!\n");
+      }
+    } else {
+      sdap_data_req(&ctxt, rntiMaybeUEid, SRB_FLAG_NO, rb_id, RLC_MUI_UNDEFINED, RLC_SDU_CONFIRM_NO, len, (unsigned char *)rx_buf, PDCP_TRANSMISSION_MODE_DATA, NULL, NULL, nas_qfi, dc, nas_pduid);
+    }
   }
 
   return NULL;
@@ -736,7 +745,8 @@ static void deliver_pdu_drb(void *deliver_pdu_data, ue_id_t ue_id, int rb_id,
   bool srap_enabled = get_softmodem_params()->relay_type > 0 ? true : false;
   // We only send to SRAP from PDCP if we are CU (split occurs at PDCP/SRAP) or a standard gNB
   bool gNB_flag = (NODE_IS_MONOLITHIC(node_type) || NODE_IS_CU(node_type));
-  bool remote_UE_flag = ((node_type == -1) && !get_softmodem_params()->is_relay_ue);
+  bool is_relay_ue = get_softmodem_params()->is_relay_ue;
+  bool remote_UE_flag = ((node_type == -1) && !is_relay_ue);
 
   if (NODE_IS_CU(node_type)) {
     MessageDef  *message_p = itti_alloc_new_message_sized(TASK_PDCP_ENB, 0,
@@ -759,6 +769,8 @@ static void deliver_pdu_drb(void *deliver_pdu_data, ue_id_t ue_id, int rb_id,
     itti_send_msg_to_task(TASK_GTPV1_U, CUuniqInstance, message_p);
   } else if (remote_UE_flag && srap_enabled) { // only remote UE should send PDCP traffic
     nr_srap_data_req_drb(&ctxt, rb_id, sdu_id, size, buf, PC5);
+  } else if (is_relay_ue && srap_enabled) {
+    nr_srap_data_req_drb(&ctxt, rb_id, sdu_id, size, buf, UU); // TODO: Interface type can be PC5 as well.
   } else if (gNB_flag && srap_enabled) { // gNB
     nr_srap_data_req_drb(&ctxt, rb_id, sdu_id, size, buf, UU);
   } else { // without srap
@@ -871,10 +883,10 @@ static void add_srb(int is_gnb, ue_id_t rntiMaybeUEid, struct NR_SRB_ToAddMod *s
       nr_srap_manager_internal_t *m = nr_srap_manager;
       // We check for node being the DU because SRAP exists there (not in the CU)
       if (m && m->srap_entity[0] && (NODE_IS_DU(get_node_type()) || NODE_IS_MONOLITHIC(get_node_type()))) { // on gNB - UU entity is on index 0
-        m->srap_entity[0] = new_nr_srap_entity(NR_SRAP_UU, srap_deliver_sdu_drb, ue, srap_deliver_pdu_drb, ue);
+        m->srap_entity[0] = new_nr_srap_entity(NR_SRAP_UU, srap_deliver_sdu_drb, ue, srap_deliver_pdu_drb, ue, rntiMaybeUEid);
         srap_uu_created = true;
       } else if (m && m->srap_entity[1] && (get_softmodem_params()->is_relay_ue)) { // on relay UE, UU entity is on index 1
-        m->srap_entity[1] = new_nr_srap_entity(NR_SRAP_UU, srap_deliver_sdu_drb, ue, srap_deliver_pdu_drb, ue);
+        m->srap_entity[1] = new_nr_srap_entity(NR_SRAP_UU, srap_deliver_sdu_drb, ue, srap_deliver_pdu_drb, ue, rntiMaybeUEid);
         srap_uu_created = true;
       }
     }
@@ -977,10 +989,21 @@ void add_drb_am(int is_gnb, ue_id_t rntiMaybeUEid, ue_id_t reestablish_ue_id, st
     }
 
     LOG_D(PDCP, "%s:%d:%s: added drb %d to UE ID/RNTI %ld\n", __FILE__, __LINE__, __FUNCTION__, drb_id, rntiMaybeUEid);
-
     new_nr_sdap_entity(is_gnb, has_sdap_rx, has_sdap_tx, rntiMaybeUEid, pdusession_id, is_sdap_DefaultDRB, drb_id, mappedQFIs2Add, mappedQFIs2AddCount);
   }
   nr_pdcp_manager_unlock(nr_pdcp_ue_manager);
+}
+
+void add_srap_entity(int src_id) {
+  static bool srap_pc5_created;
+  bool srap_enabled = get_softmodem_params()->relay_type > 0 ? true : false;
+  if (srap_enabled && !srap_pc5_created) {
+    nr_srap_manager_internal_t *m = nr_srap_manager;
+    if (m && m->srap_entity[0]) {
+      m->srap_entity[0] = new_nr_srap_entity(NR_SRAP_PC5, srap_deliver_sdu_drb, NULL, srap_deliver_pdu_drb, NULL, src_id); // index 0 will always have NR_SRAP_PC5 entity.
+      srap_pc5_created = true;
+    }
+  }
 }
 
 void add_drb_sl(ue_id_t srcid, NR_SL_RadioBearerConfig_r16_t *s, int ciphering_algorithm, int integrity_algorithm, unsigned char *ciphering_key, unsigned char *integrity_key)
@@ -1002,15 +1025,14 @@ void add_drb_sl(ue_id_t srcid, NR_SL_RadioBearerConfig_r16_t *s, int ciphering_a
   bool is_sdap_DefaultRB = s->sl_SDAP_Config_r16 && s->sl_SDAP_Config_r16->sl_DefaultRB_r16 == true ? true : false;
   /* TODO(?): accept different UL and DL SN sizes? */
 
-  uint8_t mappedQFIs2AddCount = s->sl_SDAP_Config_r16->sl_MappedQoS_Flows_r16->choice.sl_MappedQoS_FlowsList_r16->list.count;
+  uint8_t mappedQFIs2AddCount = s->sl_SDAP_Config_r16->sl_MappedQoS_Flows_r16->choice.sl_MappedQoS_FlowsListDedicated_r16->sl_MappedQoS_FlowsToAddList_r16->list.count;
   NR_QFI_t *mappedQFIs2Add = calloc(mappedQFIs2AddCount, sizeof(*mappedQFIs2Add));
   LOG_D(SDAP, "Captured mappedQoS_FlowsToAdd from RRC: count %d\n", mappedQFIs2AddCount);
 
-  long standardized_PQI = 0;
+  NR_SL_QoS_FlowIdentity_r16_t qfi = 0;
   for (int i = 0; i < mappedQFIs2AddCount; i++) {
-      standardized_PQI = s->sl_SDAP_Config_r16->sl_MappedQoS_Flows_r16->choice.sl_MappedQoS_FlowsList_r16->list.array[i]->sl_PQI_r16->choice.sl_StandardizedPQI_r16;
-      if (standardized_PQI < 64)
-        mappedQFIs2Add[i] = standardized_PQI;
+    qfi = *s->sl_SDAP_Config_r16->sl_MappedQoS_Flows_r16->choice.sl_MappedQoS_FlowsListDedicated_r16->sl_MappedQoS_FlowsToAddList_r16->list.array[i];
+    mappedQFIs2Add[i] = qfi;
   }
 
   nr_pdcp_manager_lock(nr_pdcp_ue_manager);
@@ -1029,16 +1051,7 @@ void add_drb_sl(ue_id_t srcid, NR_SL_RadioBearerConfig_r16_t *s, int ciphering_a
     nr_pdcp_ue_add_drb_pdcp_entity(ue, slrb_id, pdcp_drb);
 
     LOG_I(PDCP, "%s:%d:%s: added slrb %d to UE ID %ld\n", __FILE__, __LINE__, __FUNCTION__, slrb_id, srcid);
-
-    static bool srap_pc5_created;
-    bool srap_enabled = get_softmodem_params()->relay_type > 0 ? true : false;
-    if (srap_enabled && !srap_pc5_created) {
-      nr_srap_manager_internal_t *m = nr_srap_manager;
-      if (m && m->srap_entity[0]) {
-        m->srap_entity[0] = new_nr_srap_entity(NR_SRAP_PC5, srap_deliver_sdu_drb, ue, srap_deliver_pdu_drb, ue); // index 0 will always have NR_SRAP_PC5 entity.
-        srap_pc5_created = true;
-      }
-    }
+    add_srap_entity(srcid);
     new_nr_sdap_entity(0, has_sdap, has_sdap, srcid, 0, is_sdap_DefaultRB, slrb_id, mappedQFIs2Add, mappedQFIs2AddCount);
   }
   nr_pdcp_manager_unlock(nr_pdcp_ue_manager);
@@ -1198,9 +1211,11 @@ bool nr_pdcp_data_req_srb(ue_id_t ue_id,
   nr_pdcp_entity_t *rb;
 
   bool srap_enabled = get_softmodem_params()->relay_type > 0 ? true : false;
+  srap_enabled = false; // TODO: Temporary - We are not following standard; control messages are not passed through SRAP
   // We only send to SRAP from PDCP if we are CU (split occurs at PDCP/SRAP) or a standard gNB
   bool gNB_flag = (NODE_IS_MONOLITHIC(node_type) || NODE_IS_CU(node_type));
-  bool remote_UE_flag = ((node_type == -1) && !get_softmodem_params()->is_relay_ue);
+  bool is_relay_ue = get_softmodem_params()->is_relay_ue;
+  bool remote_UE_flag = ((node_type == -1) && !is_relay_ue);
 
   nr_pdcp_manager_lock(nr_pdcp_ue_manager);
 
@@ -1226,6 +1241,8 @@ bool nr_pdcp_data_req_srb(ue_id_t ue_id,
   protocol_ctxt_t ctxt = { .enb_flag = 1, .rntiMaybeUEid = ue_id };
   if (remote_UE_flag && srap_enabled) { // Remote UE
     nr_srap_data_req_srb(&ctxt, rb_id, pdu_size, pdu_buf, srap_deliver_pdu_srb, muiP, PC5);
+  } else if (is_relay_ue && srap_enabled) { // Relay UE
+    nr_srap_data_req_srb(&ctxt, rb_id, pdu_size, pdu_buf, srap_deliver_pdu_srb, muiP, UU);
   } else if (gNB_flag && srap_enabled) { // Only gNB
     nr_srap_data_req_srb(&ctxt, rb_id, pdu_size, pdu_buf, srap_deliver_pdu_srb, muiP, UU);
   } else { // Sending directly to RLC

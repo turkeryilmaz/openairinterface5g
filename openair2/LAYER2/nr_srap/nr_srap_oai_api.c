@@ -18,6 +18,8 @@ static srap_data_req_queue tx_srap_uu_q;
 static srap_data_req_queue tx_srap_pc5_q;
 static srap_data_ind_queue rx_srap_uu_q;
 static srap_data_ind_queue rx_srap_pc5_q;
+static srap_data_req_queue fwd_srap_to_uu_q;
+static srap_data_req_queue fwd_srap_to_pc5_q;
 
 static void init_nr_srap_data_ind_queue(bool gNB_flag);
 
@@ -33,7 +35,7 @@ static void *tx_srap_rlc_pc5_data_req_thread(void *_)
       if (pthread_cond_wait(&tx_srap_pc5_q.c, &tx_srap_pc5_q.m) != 0) abort();
     i = tx_srap_pc5_q.start;
     if (pthread_mutex_unlock(&tx_srap_pc5_q.m) != 0) abort();
-    LOG_D(NR_SRAP, "Pass data from SRAP tx_srap_pc5_q to RLC%s %d\n\n", __FUNCTION__, __LINE__);
+    LOG_D(NR_SRAP, "Pass data from SRAP tx_srap_pc5_q to RLC%s %d\n", __FUNCTION__, __LINE__);
     rlc_data_req(&tx_srap_pc5_q.q[i].ctxt_pP,
                  tx_srap_pc5_q.q[i].srb_flagP,
                  tx_srap_pc5_q.q[i].MBMS_flagP,
@@ -91,21 +93,173 @@ static void *tx_srap_rlc_uu_data_req_thread(void *_)
   }
 }
 
+static void *fwd_srap_to_pc5_data_req_thread(void *_)
+{
+  int i;
+
+  LOG_D(NR_SRAP, "fwd_srap_to_pc5_data_req_thread created on core %d\n", sched_getcpu());
+  pthread_setname_np(pthread_self(), "Fwd SRAP PC5 queue");
+  while (1) {
+    if (pthread_mutex_lock(&fwd_srap_to_pc5_q.m) != 0) abort();
+    while (fwd_srap_to_pc5_q.length == 0)
+      if (pthread_cond_wait(&fwd_srap_to_pc5_q.c, &fwd_srap_to_pc5_q.m) != 0) abort();
+    i = fwd_srap_to_pc5_q.start;
+    if (pthread_mutex_unlock(&fwd_srap_to_pc5_q.m) != 0) abort();
+    LOG_D(NR_SRAP, "Pass data from SRAP fwd_srap_to_pc5_q to RLC%s %d\n", __FUNCTION__, __LINE__);
+    rlc_data_req(&fwd_srap_to_pc5_q.q[i].ctxt_pP,
+                 fwd_srap_to_pc5_q.q[i].srb_flagP,
+                 fwd_srap_to_pc5_q.q[i].MBMS_flagP,
+                 fwd_srap_to_pc5_q.q[i].rb_idP,
+                 fwd_srap_to_pc5_q.q[i].muiP,
+                 fwd_srap_to_pc5_q.q[i].confirmP,
+                 fwd_srap_to_pc5_q.q[i].sdu_sizeP,
+                 fwd_srap_to_pc5_q.q[i].sdu_pP,
+                 NULL,
+                 NULL,
+                 PC5);
+
+    if (pthread_mutex_lock(&fwd_srap_to_pc5_q.m) != 0) abort();
+
+    fwd_srap_to_pc5_q.length--;
+    fwd_srap_to_pc5_q.start = (fwd_srap_to_pc5_q.start + 1) % SRAP_DATA_REQ_QUEUE_SIZE;
+
+    if (pthread_cond_signal(&fwd_srap_to_pc5_q.c) != 0) abort();
+    if (pthread_mutex_unlock(&fwd_srap_to_pc5_q.m) != 0) abort();
+  }
+}
+
+static void *fwd_srap_to_uu_data_req_thread(void *_)
+{
+  int i;
+
+  LOG_D(NR_SRAP, "fwd_srap_to_uu_data_req_thread created on core %d\n", sched_getcpu());
+  pthread_setname_np(pthread_self(), "Fwd SRAP UU queue");
+  while (1) {
+    if (pthread_mutex_lock(&fwd_srap_to_uu_q.m) != 0) abort();
+    while (fwd_srap_to_uu_q.length == 0)
+      if (pthread_cond_wait(&fwd_srap_to_uu_q.c, &fwd_srap_to_uu_q.m) != 0) abort();
+    i = fwd_srap_to_uu_q.start;
+    if (pthread_mutex_unlock(&fwd_srap_to_uu_q.m) != 0) abort();
+    LOG_D(NR_SRAP, "Pass data from SRAP fwd_srap_to_uu_q to RLC %s %d\n", __FUNCTION__, __LINE__);
+    rlc_data_req(&fwd_srap_to_uu_q.q[i].ctxt_pP,
+                 fwd_srap_to_uu_q.q[i].srb_flagP,
+                 fwd_srap_to_uu_q.q[i].MBMS_flagP,
+                 fwd_srap_to_uu_q.q[i].rb_idP,
+                 fwd_srap_to_uu_q.q[i].muiP,
+                 fwd_srap_to_uu_q.q[i].confirmP,
+                 fwd_srap_to_uu_q.q[i].sdu_sizeP,
+                 fwd_srap_to_uu_q.q[i].sdu_pP,
+                 NULL,
+                 NULL,
+                 UU);
+
+    if (pthread_mutex_lock(&fwd_srap_to_uu_q.m) != 0) abort();
+
+    fwd_srap_to_uu_q.length--;
+    fwd_srap_to_uu_q.start = (fwd_srap_to_uu_q.start + 1) % SRAP_DATA_REQ_QUEUE_SIZE;
+
+    if (pthread_cond_signal(&fwd_srap_to_uu_q.c) != 0) abort();
+    if (pthread_mutex_unlock(&fwd_srap_to_uu_q.m) != 0) abort();
+  }
+}
+
 static void init_nr_srap_rlc_data_req_queue(bool gNB_flag)
 {
-  pthread_t t1, t2;
+  pthread_t t1, t2, t3, t4;
 
   if (!gNB_flag) {
     pthread_mutex_init(&tx_srap_pc5_q.m, NULL);
     pthread_cond_init(&tx_srap_pc5_q.c, NULL);
     threadCreate(&t1, tx_srap_rlc_pc5_data_req_thread, NULL, "tx_srap_rlc_pc5_data_req_thread", -1, OAI_PRIORITY_RT_MAX - 1);
   }
+  bool is_relay_ue = get_softmodem_params()->is_relay_ue;
+  uint8_t relay_type = get_softmodem_params()->relay_type;
+  bool is_u2n_relay_ue = is_relay_ue && (relay_type == U2N);
+  bool is_u2u_relay_ue = is_relay_ue && (relay_type == U2U);
 
-  if (gNB_flag || (get_softmodem_params()->is_relay_ue && (get_softmodem_params()->relay_type == U2N))) {
+  if (gNB_flag || is_u2n_relay_ue) {
     pthread_mutex_init(&tx_srap_uu_q.m, NULL);
     pthread_cond_init(&tx_srap_uu_q.c, NULL);
     threadCreate(&t2, tx_srap_rlc_uu_data_req_thread, NULL, "tx_srap_rlc_uu_data_req_thread", -1, OAI_PRIORITY_RT_MAX - 1);
+    if (is_u2n_relay_ue || is_u2u_relay_ue) {
+      pthread_mutex_init(&fwd_srap_to_pc5_q.m, NULL);
+      pthread_cond_init(&fwd_srap_to_pc5_q.c, NULL);
+      threadCreate(&t3, fwd_srap_to_pc5_data_req_thread, NULL, "fwd_srap_to_pc5_data_req_thread", -1, OAI_PRIORITY_RT_MAX - 1);
+      if (is_u2n_relay_ue) {
+        pthread_mutex_init(&fwd_srap_to_uu_q.m, NULL);
+        pthread_cond_init(&fwd_srap_to_uu_q.c, NULL);
+        threadCreate(&t4, fwd_srap_to_uu_data_req_thread, NULL, "fwd_srap_to_uu_data_req_thread", -1, OAI_PRIORITY_RT_MAX - 1);
+      }
+    }
   }
+}
+
+void enqueue_fwd_srap_pc5_data_req(protocol_ctxt_t *const ctxt_pP,
+                                   const srb_flag_t srb_flagP,
+                                   const rb_id_t rb_idP,
+                                   const mui_t muiP,
+                                   confirm_t confirmP,
+                                   sdu_size_t sdu_sizeP,
+                                   mem_block_t *sdu_pP)
+{
+  int i;
+  int logged = 0;
+  if (pthread_mutex_lock(&fwd_srap_to_pc5_q.m) != 0) abort();
+  while (fwd_srap_to_pc5_q.length == SRAP_DATA_REQ_QUEUE_SIZE) {
+    if (!logged) {
+      logged = 1;
+      LOG_W(NR_SRAP, "%s: fwd_srap_to_pc5_q data queue is full\n", __FUNCTION__);
+    }
+    if (pthread_cond_wait(&fwd_srap_to_pc5_q.c, &fwd_srap_to_pc5_q.m) != 0) abort();
+  }
+
+  i = (fwd_srap_to_pc5_q.start + fwd_srap_to_pc5_q.length) % SRAP_DATA_REQ_QUEUE_SIZE;
+  fwd_srap_to_pc5_q.length++;
+
+  fwd_srap_to_pc5_q.q[i].ctxt_pP    = *ctxt_pP;
+  fwd_srap_to_pc5_q.q[i].srb_flagP  = srb_flagP;
+  fwd_srap_to_pc5_q.q[i].rb_idP     = rb_idP;
+  fwd_srap_to_pc5_q.q[i].muiP       = muiP;
+  fwd_srap_to_pc5_q.q[i].confirmP   = confirmP;
+  fwd_srap_to_pc5_q.q[i].sdu_sizeP  = sdu_sizeP;
+  fwd_srap_to_pc5_q.q[i].sdu_pP     = sdu_pP;
+
+  if (pthread_cond_signal(&fwd_srap_to_pc5_q.c) != 0) abort();
+  if (pthread_mutex_unlock(&fwd_srap_to_pc5_q.m) != 0) abort();
+}
+
+void enqueue_fwd_srap_uu_data_req(protocol_ctxt_t *const ctxt_pP,
+                                  const srb_flag_t srb_flagP,
+                                  const rb_id_t rb_idP,
+                                  const mui_t muiP,
+                                  confirm_t confirmP,
+                                  sdu_size_t sdu_sizeP,
+                                  mem_block_t *sdu_pP)
+{
+  int i;
+  int logged = 0;
+  if (pthread_mutex_lock(&fwd_srap_to_uu_q.m) != 0) abort();
+  while (fwd_srap_to_uu_q.length == SRAP_DATA_REQ_QUEUE_SIZE) {
+    if (!logged) {
+      logged = 1;
+      LOG_W(NR_SRAP, "%s: fwd_srap_to_uu_q data queue is full\n", __FUNCTION__);
+    }
+    if (pthread_cond_wait(&fwd_srap_to_uu_q.c, &fwd_srap_to_uu_q.m) != 0) abort();
+  }
+
+  i = (fwd_srap_to_uu_q.start + fwd_srap_to_uu_q.length) % SRAP_DATA_REQ_QUEUE_SIZE;
+  fwd_srap_to_uu_q.length++;
+
+  fwd_srap_to_uu_q.q[i].ctxt_pP    = *ctxt_pP;
+  fwd_srap_to_uu_q.q[i].srb_flagP  = srb_flagP;
+  fwd_srap_to_uu_q.q[i].rb_idP     = rb_idP;
+  fwd_srap_to_uu_q.q[i].muiP       = muiP;
+  fwd_srap_to_uu_q.q[i].confirmP   = confirmP;
+  fwd_srap_to_uu_q.q[i].sdu_sizeP  = sdu_sizeP;
+  fwd_srap_to_uu_q.q[i].sdu_pP     = sdu_pP;
+
+  if (pthread_cond_signal(&fwd_srap_to_uu_q.c) != 0) abort();
+  if (pthread_mutex_unlock(&fwd_srap_to_uu_q.m) != 0) abort();
 }
 
 void enqueue_srap_pc5_data_req(const protocol_ctxt_t *const ctxt_pP,
@@ -188,12 +342,6 @@ void srap_deliver_sdu_srb(void *_ue, nr_srap_entity_t *entity,
   // TODO:
 }
 
-void srap_forward_sdu_drb(void *_ue, nr_srap_entity_t *entity,
-                          char *buf, int size)
-{
-  // TODO:
-}
-
 void srap_deliver_pdu_drb(protocol_ctxt_t *ctxt, int rb_id,
                           char *buf, int size, int sdu_id,
                           nr_intf_type_t intf_type) {
@@ -253,7 +401,7 @@ void nr_srap_layer_init(bool gNB_flag)
 
 }
 
-static void do_srap_data_ind(const protocol_ctxt_t *const  ctxt_pP,
+static void do_srap_data_ind(protocol_ctxt_t *const  ctxt_pP,
                              const srb_flag_t srb_flagP,
                              const MBMS_flag_t MBMS_flagP,
                              const rb_id_t rb_id,
@@ -268,7 +416,7 @@ static void do_srap_data_ind(const protocol_ctxt_t *const  ctxt_pP,
     LOG_E(NR_SRAP, "%s:%d:%s: fatal\n", __FILE__, __LINE__, __FUNCTION__);
     exit(EXIT_FAILURE);
   }
-  nr_srap_manager_lock(nr_srap_manager);
+
   nr_srap_manager_t  *m = get_nr_srap_manager();
   nr_srap_entity_t *srap_entity;
   if (intf_type == UU) {
@@ -276,27 +424,12 @@ static void do_srap_data_ind(const protocol_ctxt_t *const  ctxt_pP,
   } else if (intf_type == PC5) {
     srap_entity = nr_srap_get_entity(m, NR_SRAP_PC5);
   }
+
   if ((srap_entity != NULL)) {
-    uint8_t relay_type = get_softmodem_params()->relay_type;
-    uint8_t header_size;
-    if (relay_type == U2N) {
-      U2NHeader_t u2n_header;
-      header_size = sizeof(u2n_header);
-      decode_srap_header(&u2n_header, sdu_buffer->data);
-      LOG_D(NR_SRAP, "Rx - bearer id: %x, ue id: %x\n", u2n_header.octet1 & 0x1F, u2n_header.octet2);
-    } else if (relay_type == U2U) {
-      U2UHeader_t u2u_header;
-      header_size = sizeof(u2u_header);
-      decode_srap_header(&u2u_header, sdu_buffer->data);
-      LOG_D(NR_SRAP, "Rx - bearer id: %x, source ue id: %x, destination ue id: %x\n",
-            u2u_header.octet1 & 0x1F, u2u_header.octet2, u2u_header.octet3);
-    } else
-      return;
-    srap_entity->recv_pdu(ctxt_pP, srap_entity, (char *)(sdu_buffer->data + header_size), sdu_buffer_size - header_size, srb_flagP, MBMS_flagP, rb_id);
+    srap_entity->recv_pdu(ctxt_pP, srap_entity, (char *)(sdu_buffer->data), sdu_buffer_size, srb_flagP, MBMS_flagP, rb_id);
   } else {
     LOG_E(NR_SRAP, "%s:%d:%s: no SRAP entity found (rb_id %ld, srb_flag %d)\n", __FILE__, __LINE__, __FUNCTION__, rb_id, srb_flagP);
   }
-  nr_srap_manager_unlock(nr_srap_manager);
 
   free_mem_block(sdu_buffer, __FUNCTION__);
 }
@@ -318,9 +451,7 @@ static void *srap_pc5_data_ind_thread(void *_)
     if (pthread_mutex_unlock(&rx_srap_pc5_q.m) != 0) {
       abort();
     }
-    LOG_D(NR_SRAP, "PC5 Sending indication to above layer by passing rx_srap_pc5_q in %s rntiMaybeYUEid %ld\n",
-          __FUNCTION__,
-          rx_srap_pc5_q.q[i].ctxt_pP.rntiMaybeUEid);
+
     do_srap_data_ind(&rx_srap_pc5_q.q[i].ctxt_pP,
                      rx_srap_pc5_q.q[i].srb_flagP,
                      rx_srap_pc5_q.q[i].MBMS_flagP,
@@ -396,7 +527,7 @@ static void init_nr_srap_data_ind_queue(bool gNB_flag)
   }
 }
 
-static void enqueue_srap_pc5_data_ind(const protocol_ctxt_t *const  ctxt_pP,
+static void enqueue_srap_pc5_data_ind(protocol_ctxt_t *const  ctxt_pP,
                                       const srb_flag_t srb_flagP,
                                       const MBMS_flag_t MBMS_flagP,
                                       const rb_id_t rb_id,
@@ -429,7 +560,7 @@ static void enqueue_srap_pc5_data_ind(const protocol_ctxt_t *const  ctxt_pP,
   if (pthread_mutex_unlock(&rx_srap_pc5_q.m) != 0) abort();
 }
 
-static void enqueue_srap_uu_data_ind(const protocol_ctxt_t *const  ctxt_pP,
+static void enqueue_srap_uu_data_ind(protocol_ctxt_t *const  ctxt_pP,
                                      const srb_flag_t srb_flagP,
                                      const MBMS_flag_t MBMS_flagP,
                                      const rb_id_t rb_id,
@@ -447,7 +578,7 @@ static void enqueue_srap_uu_data_ind(const protocol_ctxt_t *const  ctxt_pP,
     }
     if (pthread_cond_wait(&rx_srap_uu_q.c, &rx_srap_uu_q.m) != 0) abort();
   }
-  LOG_D(NR_SRAP, "Calling SRAP layer from RLC in %s\n", __FUNCTION__);
+  LOG_D(NR_SRAP, "Enqueuing data in rx_srap_uu_q %s %d\n", __FUNCTION__, __LINE__);
   i = (rx_srap_uu_q.start + rx_srap_uu_q.length) % SRAP_DATA_IND_QUEUE_SIZE;
   rx_srap_uu_q.length++;
 
@@ -462,7 +593,7 @@ static void enqueue_srap_uu_data_ind(const protocol_ctxt_t *const  ctxt_pP,
   if (pthread_mutex_unlock(&rx_srap_uu_q.m) != 0) abort();
 }
 
-bool srap_data_ind(const protocol_ctxt_t *const ctxt_pP,
+bool srap_data_ind(protocol_ctxt_t *const ctxt_pP,
                    const srb_flag_t srb_flagP,
                    const MBMS_flag_t MBMS_flagP,
                    const rb_id_t rb_id,

@@ -7,9 +7,33 @@ Email ID: ejaz.ahmed@applied.co
 #include "nr_srap_entity.h"
 #include "nr_srap_oai_api.h"
 #include "executables/softmodem-common.h"
+#include "nr_srap_manager.h"
+
+extern nr_srap_manager_t *nr_srap_manager;
+
+void srap_forward_sdu_drb(protocol_ctxt_t *const ctxt_pP,
+                          nr_srap_entity_t *entity,
+                          const srb_flag_t srb_flagP,
+                          const MBMS_flag_t MBMS_flagP,
+                          unsigned char *buffer,
+                          int size,
+                          const rb_id_t rb_id,
+                          uint8_t src_id,
+                          uint8_t dst_id)
+{
+  if (entity != NULL) {
+    mem_block_t *memblock = get_free_mem_block(size, __FUNCTION__);
+    memcpy(memblock->data, buffer, size);
+    if (entity->type == NR_SRAP_PC5) {
+      enqueue_fwd_srap_pc5_data_req(ctxt_pP, srb_flagP, rb_id, 0, 0, size, memblock);
+    } else if (entity->type == NR_SRAP_UU) {
+      enqueue_fwd_srap_uu_data_req(ctxt_pP, srb_flagP, rb_id, 0, 0, size, memblock);
+    }
+  }
+}
 
 // Rx side function to receive SRAP pdu containing SRAP headers and PDCP PDU
-void nr_srap_entity_recv_pdu(const protocol_ctxt_t *const  ctxt_pP,
+void nr_srap_entity_recv_pdu(protocol_ctxt_t *const  ctxt_pP,
                              nr_srap_entity_t *entity,
                              char *_buffer, int size,
                              const srb_flag_t srb_flagP,
@@ -22,25 +46,60 @@ void nr_srap_entity_recv_pdu(const protocol_ctxt_t *const  ctxt_pP,
     LOG_E(NR_SRAP, "bad PDU received (size = %d)\n", size);
     return;
   }
-
+  AssertFatal(entity != NULL, "Entity is NULL!!!");
   entity->stats.rxpdu_pkts++;
   entity->stats.rxpdu_bytes += size;
 
-  sdu = nr_srap_new_sdu((char *) buffer, size);
+  uint8_t relay_type = get_softmodem_params()->relay_type;
+  uint8_t header_size;
+  uint8_t src_id;
+  uint8_t dest_id;
+  U2NHeader_t u2n_header;
+  U2UHeader_t u2u_header;
+  if (relay_type == U2N) {
+    header_size = sizeof(u2n_header);
+    decode_srap_header(&u2n_header, buffer);
+    LOG_D(NR_SRAP, "Rx - bearer id: %x, ue id: %x\n", u2n_header.octet1 & 0x1F, u2n_header.octet2);
+  } else if (relay_type == U2U) {
+    header_size = sizeof(u2u_header);
+    decode_srap_header(&u2u_header, buffer);
+    LOG_D(NR_SRAP, "Rx - bearer id: %x, source ue id: %x, destination ue id: %x\n",
+          u2u_header.octet1 & 0x1F, u2u_header.octet2, u2u_header.octet3);
+  } else
+    return;
 
-  if (get_softmodem_params()->is_relay_ue) {
+  nr_srap_entity_t *forwarding_entity = NULL;
+  sdu = nr_srap_new_sdu((char *) buffer  + header_size, size - header_size);
+
+  nr_srap_manager_t  *m = get_nr_srap_manager();
+  char *entity_types[] = {"NR_SRAP_UU", "NR_SRAP_PC5"};
+  src_id = relay_type == U2N ? -1 : u2u_header.octet2;
+  dest_id = relay_type == U2N ? u2n_header.octet2 : u2u_header.octet3;
+  bool is_relay_ue = get_softmodem_params()->is_relay_ue;
+  if (is_relay_ue) {
     if (entity->type == NR_SRAP_PC5) {
-      // TODO: Send to NR_SRAP_UU entity
-      LOG_E(NR_SRAP, "Doing nothing after receiving SRAP PDU at %s\n", __FUNCTION__);
+      forwarding_entity = nr_srap_get_entity(m, NR_SRAP_UU);
     } else if (entity->type == NR_SRAP_UU) {
-      LOG_E(NR_SRAP, "Doing nothing after receiving SRAP PDU at %s\n", __FUNCTION__);
-      // TODO: Send to NR_SRAP_PC5 entity
+      forwarding_entity = nr_srap_get_entity(m, NR_SRAP_PC5);
     }
-  } else {
-    entity->deliver_sdu(ctxt_pP, entity->deliver_sdu_data, entity, sdu->buffer, sdu->size, srb_flagP, MBMS_flagP, rb_id);
+    AssertFatal(forwarding_entity != NULL, "Forwarding entity is NULL!!!");
+    LOG_D(NR_SRAP, "%s: Received SRAP SDU on %s; forwarding on %s\n", __FUNCTION__, entity_types[entity->type], entity_types[forwarding_entity->type]);
+    ctxt_pP->rntiMaybeUEid = forwarding_entity->rnti;
+    srap_forward_sdu_drb(ctxt_pP, forwarding_entity, srb_flagP, MBMS_flagP, buffer, size, rb_id, src_id, dest_id);
   }
-  entity->stats.txsdu_pkts++;
-  entity->stats.txsdu_bytes += sdu->size;
+  if (!is_relay_ue || (!is_relay_ue && entity->type == NR_SRAP_UU)) {
+    LOG_W(NR_SRAP, "Sending upstream: src_id = %d  dest_id = %d\n", src_id, dest_id);
+    if (entity->type == NR_SRAP_PC5) {
+      LOG_D(NR_SRAP, "Sending PC5 SRAP indication to above layer from SRAP %s\n", __FUNCTION__);
+    } else {
+      LOG_D(NR_SRAP, "Sending Uu SRAP indication to above layer from SRAP %s\n", __FUNCTION__);
+    }
+
+    entity->deliver_sdu(ctxt_pP, entity->deliver_sdu_data, entity, sdu->buffer, sdu->size, srb_flagP, MBMS_flagP, rb_id);
+    entity->stats.txsdu_pkts++;
+    entity->stats.txsdu_bytes += sdu->size;
+  }
+
   nr_srap_free_sdu(sdu);
 }
 
@@ -97,7 +156,8 @@ nr_srap_entity_t *new_nr_srap_entity(nr_srap_entity_type_t type,
                                      void (*deliver_pdu)(protocol_ctxt_t *ctxt, int rb_id,
                                                          char *buf, int size, int sdu_id,
                                                          nr_intf_type_t intf_type),
-                                     void *deliver_pdu_data)
+                                     void *deliver_pdu_data,
+                                     int rnti)
 {
   nr_srap_entity_t *ret;
   ret = calloc(1, sizeof(nr_srap_entity_t));
@@ -118,5 +178,6 @@ nr_srap_entity_t *new_nr_srap_entity(nr_srap_entity_type_t type,
 
   ret->deliver_pdu = deliver_pdu;
   ret->deliver_pdu_data = deliver_pdu_data;
+  ret->rnti = rnti;
   return ret;
 }
