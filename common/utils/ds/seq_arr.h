@@ -38,6 +38,15 @@ SOFTWARE.
   if ((arr) != NULL) \
     for (type var = seq_arr_front(arr); var != seq_arr_end(arr); var = seq_arr_next(arr, var))
 
+#define SEQ_ARR_CLEANUP_AND_FREE(seq_ptr, free_func) \
+  do {                                               \
+    if ((seq_ptr) != NULL) {                         \
+      seq_arr_free((seq_ptr), (free_func));          \
+      free(seq_ptr);                                 \
+      seq_ptr = NULL;                                \
+    }                                                \
+  } while (0)
+
 typedef struct seq_arr_s {
   uint8_t* data;
   size_t size;
