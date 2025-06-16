@@ -82,13 +82,14 @@
 #define SL_CONFIG_STRING_RESPOOL_PSFCH_CANDIDATERESOURCETYPE  "sl_PSFCH_CandidateResourceType"
 #define SL_CONFIG_STRING_RSRC_SEL_PRIORITY                    "sl_Priority"
 
-#define SL_CONFIG_STRING_RSRC_SEL_PARAMS_LIST                  "rsrc_selection_params"
-#define SL_CONFIG_STRING_RSRC_SEL_SELECTION_WINDOW             "sl_SelectionWindow"
-#define SL_CONFIG_STRING_RSRC_SEL_SENSING_WINDOW               "sl_SensingWindow"
-#define SL_CONFIG_STRING_RSRC_SEL_TRESHOLD_RSRP                "sl_Thres_RSRP"
-#define SL_CONFIG_STRING_RSRC_SEL_MAXNUM_PER_RESERVE           "sl_MaxNumPerReserve"
-#define SL_CONFIG_STRING_RSRC_SEL_RESOURCE_RESERVED_PERIOD     "sl_ResourceReservePeriod"
-#define SL_CONFIG_STRING_RSRC_SEL_RS_FOR_SENSING               "sl_RS_ForSensing"
+#define SL_CONFIG_STRING_RSRC_SEL_PARAMS_LIST                 "rsrc_selection_params"
+#define SL_CONFIG_STRING_RSRC_SEL_SELECTION_WINDOW            "sl_SelectionWindow"
+#define SL_CONFIG_STRING_RSRC_SEL_SENSING_WINDOW              "sl_SensingWindow"
+#define SL_CONFIG_STRING_RSRC_SEL_TRESHOLD_RSRP               "sl_Thres_RSRP"
+#define SL_CONFIG_STRING_RSRC_SEL_MAXNUM_PER_RESERVE          "sl_MaxNumPerReserve"
+#define SL_CONFIG_STRING_RSRC_SEL_RESOURCE_RESERVED_PERIOD    "sl_ResourceReservePeriod"
+#define SL_CONFIG_STRING_RSRC_SEL_RS_FOR_SENSING              "sl_RS_ForSensing"
+#define SL_CONFIG_STRING_RSRC_SEL_TX_PERCENTAGE               "sl_TxPercentage"
 
 #define SL_CONFIG_STRING_UEINFO                               "sl_UEINFO"
 #define SL_CONFIG_STRING_UEINFO_SRCID                         "srcid"
@@ -183,7 +184,9 @@
 {SL_CONFIG_STRING_RSRC_SEL_TRESHOLD_RSRP,NULL,0,.i64ptr=sl_res_pool->sl_UE_SelectedConfigRP_r16->sl_Thres_RSRP_List_r16->list.array[0],.defint64val=-128,TYPE_INT64,0}, \
 {SL_CONFIG_STRING_RSRC_SEL_MAXNUM_PER_RESERVE,NULL,0,.i64ptr=sl_res_pool->sl_UE_SelectedConfigRP_r16->sl_MaxNumPerReserve_r16,.defint64val=1,TYPE_INT64,0}, \
 {SL_CONFIG_STRING_RSRC_SEL_RESOURCE_RESERVED_PERIOD,NULL,0,.i64ptr=&sl_res_pool->sl_UE_SelectedConfigRP_r16->sl_ResourceReservePeriodList_r16->list.array[0]->choice.sl_ResourceReservePeriod1_r16,.defint64val=100,TYPE_INT64,0}, \
-{SL_CONFIG_STRING_RSRC_SEL_RS_FOR_SENSING,NULL,0,.i64ptr=&sl_res_pool->sl_UE_SelectedConfigRP_r16->sl_RS_ForSensing_r16,.defint64val=1,TYPE_INT64,0}}
+{SL_CONFIG_STRING_RSRC_SEL_RS_FOR_SENSING,NULL,0,.i64ptr=&sl_res_pool->sl_UE_SelectedConfigRP_r16->sl_RS_ForSensing_r16,.defint64val=1,TYPE_INT64,0}, \
+{SL_CONFIG_STRING_RSRC_SEL_TX_PERCENTAGE,NULL,0,.i64ptr=&sl_res_pool->sl_TxPercentageList_r16->list.array[0]->sl_TxPercentage_r16,.defint64val=0,TYPE_INT64,0}, \
+}
 
 /*-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 /*             Sidelink Top-Level UE Info                                                                                                     */
