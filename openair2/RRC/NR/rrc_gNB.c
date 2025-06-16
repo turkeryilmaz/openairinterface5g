@@ -2355,9 +2355,8 @@ unsigned int mask_flip(unsigned int x) {
   return((((x>>8) + (x<<8))&0xffff)>>6);
 }
 
-qos_characteristics_t get_qos_characteristics(const int qfi, rrc_pdu_session_param_t *pduSession)
+qos_characteristics_t get_qos_characteristics(const int qfi, pdusession_t *pdu)
 {
-  pdusession_t *pdu = &pduSession->param;
   for (int i = 0; i < pdu->nb_qos; i++) {
     if (qfi == pdu->qos[i].qfi)
       return pdu->qos[i].qos_params.qos_characteristics;
@@ -2393,11 +2392,11 @@ static int fill_drb_to_be_setup_from_e1_resp(const gNB_RRC_INST *rrc,
       int nb_qos_flows = drb_config->numQosFlowSetup;
       AssertFatal(nb_qos_flows > 0, "must map at least one flow to a DRB\n");
       drb->drb_info.flows_to_be_setup_length = nb_qos_flows;
-      drb->drb_info.flows_mapped_to_drb = calloc(nb_qos_flows, sizeof(f1ap_flows_mapped_to_drb_t));
-      AssertFatal(drb->drb_info.flows_mapped_to_drb, "could not allocate memory\n");
+      drb->drb_info.flows_mapped_to_drb = calloc_or_fail(nb_qos_flows, sizeof(f1ap_flows_mapped_to_drb_t));
       for (int j = 0; j < nb_qos_flows; j++) {
-        drb->drb_info.flows_mapped_to_drb[j].qfi = drb_config->qosFlows[j].qfi;
-        drb->drb_info.flows_mapped_to_drb[j].qos_params.qos_characteristics = get_qos_characteristics(drb_config->qosFlows[j].qfi, RRC_pduSession);
+        f1ap_flows_mapped_to_drb_t *qos2drb = &drb->drb_info.flows_mapped_to_drb[j];
+        qos2drb->qfi = drb_config->qosFlows[j].qfi;
+        qos2drb->qos_params.qos_characteristics = get_qos_characteristics(drb_config->qosFlows[j].qfi, &RRC_pduSession->param);
       }
       /* the DRB QoS parameters: we just reuse the ones from the first flow */
       drb->drb_info.drb_qos = drb->drb_info.flows_mapped_to_drb[0].qos_params;

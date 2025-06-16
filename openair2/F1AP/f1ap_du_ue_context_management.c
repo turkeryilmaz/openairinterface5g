@@ -63,7 +63,7 @@ static void f1ap_read_drb_qos_param(const F1AP_QoSFlowLevelQoSParameters_t *asn1
   /* nGRANallocationRetentionPriority */
   drb_qos->arp.priority_level = asn1_qos->nGRANallocationRetentionPriority.priorityLevel;
   drb_qos->arp.preemption_vulnerability = asn1_qos->nGRANallocationRetentionPriority.pre_emptionVulnerability;
-  drb_qos->arp.preemption_capability = asn1_qos->nGRANallocationRetentionPriority.pre_emptionVulnerability;
+  drb_qos->arp.preemption_capability = asn1_qos->nGRANallocationRetentionPriority.pre_emptionCapability;
 }
 
 static void f1ap_read_flows_mapped(const F1AP_Flows_Mapped_To_DRB_List_t *asn1_flows_mapped, f1ap_flows_mapped_to_drb_t *flows_mapped, int n)
