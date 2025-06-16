@@ -79,6 +79,7 @@
 #define simOpt PARAMFLAG_NOFREE|PARAMFLAG_CMDLINE_NOPREFIXENABLED
 #define RFSIMULATOR_PARAMS_DESC {					\
     {"serveraddr",             "<ip address to connect to>\n",        simOpt,  .strptr=&rfsimulator->ip,               .defstrval="127.0.0.1",           TYPE_STRING,    0 },\
+    {"serveraddrsl",           "<ip address to connect to>\n",        simOpt,  .strptr=&rfsimulator->ip_sl,            .defstrval="127.0.0.1",           TYPE_STRING,    0 },\
     {"serverport",             "<port to connect to>\n",              simOpt,  .u16ptr=&(rfsimulator->port),           .defuintval=PORT,                 TYPE_UINT16,    0 },\
     {"serverportsl",           "<port to connect to>\n",              simOpt,  .u16ptr=&(rfsimulator->port_sl),        .defuintval=PORT_SL,              TYPE_UINT16,    0 },\
     {RFSIMU_OPTIONS_PARAMNAME, RFSIM_CONFIG_HELP_OPTIONS,             0,       .strlistptr=NULL,                       .defstrlistval=NULL,              TYPE_STRINGLIST,0 },\
@@ -130,6 +131,7 @@ typedef struct {
   openair0_timestamp lastWroteTS;
   uint64_t typeStamp;
   char *ip;
+  char *ip_sl;
   uint16_t port;
   uint16_t port_sl;
   int saveIQfile;
@@ -313,7 +315,8 @@ static void rfsimulator_readconfig(rfsimulator_state_t *rfsimulator) {
   }
 
   if ( strncasecmp(rfsimulator->ip,"enb",3) == 0 ||
-       strncasecmp(rfsimulator->ip,"server",3) == 0 )
+       strncasecmp(rfsimulator->ip,"server",3) == 0 ||
+       strncasecmp(rfsimulator->ip_sl,"server",3) == 0 )
     rfsimulator->typeStamp = ENB_MAGICDL;
   else
     rfsimulator->typeStamp = UE_MAGICDL;
@@ -636,11 +639,11 @@ static int startClientSL(openair0_device *device) {
                               .sin_port = htons(t->port_sl),
                               .sin_addr = { .s_addr= INADDR_ANY}
                             };
-  addr.sin_addr.s_addr = inet_addr(t->ip);
+  addr.sin_addr.s_addr = inet_addr(t->ip_sl);
   bool connected=false;
 
   while(!connected) {
-    LOG_I(HW,"rfsimulator: SL trying to connect to %s:%d\n", t->ip, t->port_sl);
+    LOG_I(HW,"rfsimulator: SL trying to connect to %s:%d\n", t->ip_sl, t->port_sl);
 
     if (connect(sock, (struct sockaddr *)&addr, sizeof(addr)) == 0) {
       LOG_I(HW,"rfsimulator: connection established\n");
