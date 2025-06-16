@@ -57,7 +57,7 @@ RUN reposync --repoid=epel --download-metadata --destdir=/var/www/html/epel/epel
 RUN tee /etc/yum.repos.d/local-epel.repo > /dev/null <<EOF
 [local-epel]
 name=Local EPEL Repository for RHEL 9
-baseurl=http://localhost/epel/epel-9/epel
+baseurl=http://local-epel.oaicicd-ran.svc.cluster.local/epel/epel-9/epel
 enabled=1
 gpgcheck=0
 EOF
