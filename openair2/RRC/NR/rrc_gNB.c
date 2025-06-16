@@ -2409,9 +2409,8 @@ unsigned int mask_flip(unsigned int x) {
   return((((x>>8) + (x<<8))&0xffff)>>6);
 }
 
-pdusession_level_qos_parameter_t *get_qos_characteristics(const int qfi, rrc_pdu_session_param_t *pduSession)
+pdusession_level_qos_parameter_t *get_qos_characteristics(const int qfi, pdusession_t *pdu)
 {
-  pdusession_t *pdu = &pduSession->param;
   for (int i = 0; i < pdu->nb_qos; i++) {
     if (qfi == pdu->qos[i].qfi)
       return &pdu->qos[i];
@@ -2476,7 +2475,7 @@ static int fill_drb_to_be_setup_from_e1_resp(const gNB_RRC_INST *rrc,
         /* find the QoS characteristics stored at RRC based on QFI returned
          * from E1. We expect this to correspond to a QFI we passed to E1
          * previously, so we expect it to exist. */
-        pdusession_level_qos_parameter_t *qos_param = get_qos_characteristics(qfi, pdu);
+        pdusession_level_qos_parameter_t *qos_param = get_qos_characteristics(qfi, &pdu->param);
         DevAssert(qos_param);
         f1ap_drb_flows_mapped_t *flow = &drb->nr.flows[j];
         flow->qfi = qfi;
