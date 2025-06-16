@@ -797,6 +797,7 @@ void nr_rrc_mac_config_req_sl_mib(module_id_t module_id,
 
     DevAssert(mac->if_module != NULL && mac->if_module->sl_phy_config_request != NULL);
     mac->if_module->sl_phy_config_request(&sl_mac->sl_phy_config);
+    mac->sl_res_percentage = 0.5;
   }
 
 }
