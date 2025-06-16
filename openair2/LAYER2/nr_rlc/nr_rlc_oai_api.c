@@ -529,6 +529,7 @@ rb_found:
   }
   memcpy(memblock->data, buf, size);
   bool srap_enabled = get_softmodem_params()->relay_type > 0 ? true : false;
+  srap_enabled = is_srb ? false : srap_enabled;
   if (srap_enabled) {
     if (!srap_data_ind(&ctx, is_srb, 0, rb_id, size, memblock, NULL, NULL, entity->intf_type)) {
       LOG_E(RLC, "%s:%d:%s: ERROR: srap_data_ind failed\n", __FILE__, __LINE__, __FUNCTION__);
@@ -564,6 +565,15 @@ static void successful_delivery(void *_ue, nr_rlc_entity_t *entity, int sdu_id)
   /* maybe DRB? */
   for (i = 0; i < MAX_DRBS_PER_UE; i++) {
     if (entity == ue->drb[i]) {
+      is_srb = 0;
+      rb_id = i+1;
+      goto rb_found;
+    }
+  }
+
+  /* maybe DRB? */
+  for (i = 0; i < MAX_DRBS_PER_UE; i++) {
+    if (entity == ue->sl_drb[i]) {
       is_srb = 0;
       rb_id = i+1;
       goto rb_found;
@@ -622,6 +632,15 @@ static void max_retx_reached(void *_ue, nr_rlc_entity_t *entity)
   /* maybe DRB? */
   for (i = 0; i < MAX_DRBS_PER_UE; i++) {
     if (entity == ue->drb[i]) {
+      is_srb = 0;
+      rb_id = i+1;
+      goto rb_found;
+    }
+  }
+
+  /* maybe DRB? */
+  for (i = 0; i < MAX_DRBS_PER_UE; i++) {
+    if (entity == ue->sl_drb[i]) {
       is_srb = 0;
       rb_id = i+1;
       goto rb_found;

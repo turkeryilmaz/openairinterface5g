@@ -8,11 +8,12 @@ Email ID: ejaz.ahmed@applied.co
 
 // Function to encode SRAP Header
 void encode_srap_header(void* header, uint8_t* buffer) {
-    if (get_softmodem_params()->relay_type == U2N) {
+    uint8_t relay_type = get_softmodem_params()->relay_type;
+    if (relay_type == U2N) {
         U2NHeader_t* u2n_header = (U2NHeader_t*)header;
         buffer[0] = u2n_header->octet1;
         buffer[1] = u2n_header->octet2;
-    } else if (get_softmodem_params()->relay_type == U2U) {
+    } else if (relay_type == U2U) {
         U2UHeader_t* u2u_header = (U2UHeader_t*)header;
         buffer[0] = u2u_header->octet1;
         buffer[1] = u2u_header->octet2;
@@ -24,11 +25,12 @@ void encode_srap_header(void* header, uint8_t* buffer) {
 
 // Function to decode SRAP Header
 void decode_srap_header(void* header, uint8_t* buffer) {
-    if (get_softmodem_params()->relay_type == U2N) {
+    uint8_t relay_type = get_softmodem_params()->relay_type;
+    if (relay_type == U2N) {
         U2NHeader_t* u2n_header = (U2NHeader_t*)header;
         u2n_header->octet1 = buffer[0];
         u2n_header->octet2 = buffer[1];
-    } else if (get_softmodem_params()->relay_type == U2U) {
+    } else if (relay_type == U2U) {
         U2UHeader_t* u2u_header = (U2UHeader_t*)header;
         u2u_header->octet1 = buffer[0];
         u2u_header->octet2 = buffer[1];
