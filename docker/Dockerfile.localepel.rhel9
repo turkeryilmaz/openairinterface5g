@@ -1,0 +1,69 @@
+#/*
+# * Licensed to the OpenAirInterface (OAI) Software Alliance under one or more
+# * contributor license agreements.  See the NOTICE file distributed with
+# * this work for additional information regarding copyright ownership.
+# * The OpenAirInterface Software Alliance licenses this file to You under
+# * the OAI Public License, Version 1.1  (the "License"); you may not use this file
+# * except in compliance with the License.
+# * You may obtain a copy of the License at
+# *
+# *      http://www.openairinterface.org/?page_id=698
+# *
+# * Unless required by applicable law or agreed to in writing, software
+# * distributed under the License is distributed on an "AS IS" BASIS,
+# * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# * See the License for the specific language governing permissions and
+# * limitations under the License.
+# *-------------------------------------------------------------------------------
+# * For more information about the OpenAirInterface (OAI) Software Alliance:
+# *      contact@openairinterface.org
+# */
+#---------------------------------------------------------------------
+#
+# Dockerfile to set up a local copy of the EPEL software repository.
+#   Valid for RHEL9
+#
+#--------------------------------------------------------------------
+# We will use the Red Hat UBI 9 container, allowing to install EPEL packages.
+FROM registry.access.redhat.com/ubi9/ubi
+
+# Install wget and EPEL 
+# Clean up the downloaded RPM
+RUN dnf install -y wget && \ 
+    wget https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm && \
+    dnf install -y epel-release-latest-9.noarch.rpm && \
+    rm -f epel-release-latest-9.noarch.rpm
+
+# Install Apache HTTP server
+# Install dnf-plugins-core
+# Install yum-utils (includes reposync)
+RUN dnf install -y dnf-plugins-core yum-utils httpd 
+
+# Clean DNF metadata and cache to reduce image size
+RUN dnf clean all
+
+# Create the directory where the EPEL repo will be downloaded
+RUN mkdir -p /var/www/html/epel/epel-9
+
+# Sync the EPEL repository into the created directory
+# This includes all packages and metadata
+RUN reposync --repoid=epel --download-metadata --destdir=/var/www/html/epel/epel-9
+
+# Note:
+# createrepo is not required for RHEL 8 and above. 
+# reposync will download everything including the repodata
+
+# Serve local repo to other systems
+RUN tee /etc/yum.repos.d/local-epel.repo > /dev/null <<EOF
+[local-epel]
+name=Local EPEL Repository for RHEL 9
+baseurl=http://localhost/epel/epel-9/epel
+enabled=1
+gpgcheck=0
+EOF
+
+# Expose port 80 for HTTP
+EXPOSE 80
+
+# Start Apache in foreground to serve repo files
+CMD ["/usr/sbin/httpd", "-D", "FOREGROUND"]
