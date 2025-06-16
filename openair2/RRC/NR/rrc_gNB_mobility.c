@@ -80,7 +80,7 @@ static int fill_drb_to_be_setup(const gNB_RRC_INST *rrc, gNB_RRC_UE_t *ue, f1ap_
     // this changes
     AssertFatal(pdu->param.nb_qos == 1, "only 1 Qos flow supported\n");
     int qfi = rrc_drb->cnAssociation.sdap_config.mappedQoS_FlowsToAdd[0];
-    pdusession_level_qos_parameter_t *qos_param = get_qos_characteristics(qfi, pdu);
+    pdusession_level_qos_parameter_t *qos_param = get_qos_characteristics(qfi, &pdu->param);
 
     drb->id = rrc_drb->drb_id;
 
