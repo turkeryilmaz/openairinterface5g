@@ -124,17 +124,17 @@ NOTE: Keep the gNB and UE at a known distance and calibrate it using `-A` option
 
 # Scripts
 
-The scripts to record and analyze the data can be found in the [link](link)
-
-Steps to record and analyze the required data can also be found in reference [2]
+Steps to record and analyze the required data can also be found in [2]
 
 # Datasets
 
-Datasets collected at the Northeastern university burlington campus can be found in [link](link)
+Datasets collected at the Northeastern university burlington campus can be found in [link](https://hdl.handle.net/2047/D20772403)
 
 # References
 [1]. R. Mundlamuri, R. Gangula, F. Kaltenberger and R. Knopp, "Novel Round Trip Time Estimation in 5G NR," GLOBECOM 2024 - 2024 IEEE Global Communications Conference, Cape Town, South Africa, 2024, pp. 3069-3074, doi: 10.1109/GLOBECOM52923.2024.10901749.
 
 [2]. R. Mundlamuri, R. Gangula, F. Kaltenberger and R. Knopp, "5G NR Positioning with OpenAirInterface: Tools and Methodologies," 2025 20th Wireless On-Demand Network Systems and Services Conference (WONS), Hintertux, Austria, 2025, pp. 1-7.
 
-[3]. Link to datasets
+[3]. R. Mundlamuri, R. Gangula, F. Kaltenberger, R. Knopp and T. Melodia, "Colosseum as a Digital Twin platform for Round Trip Time Estimation in 5G NR and beyond," submitted to IEEE TRANSACTIONS ON MOBILE COMPUTING, 2025.
+
+[4]. https://hdl.handle.net/2047/D20772403
