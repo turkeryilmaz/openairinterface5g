@@ -64,6 +64,41 @@ drb_t *get_drb(seq_arr_t *seq, int id)
   return NULL;
 }
 
+static bool eq_drb_pdu_session_id(const void *vval, const void *vit)
+{
+  const int *id = (const int *)vval;
+  const drb_t *elem = (const drb_t *)vit;
+  return elem->pdusession_id == *id;
+}
+
+/** @brief Finds the first DRB with the given PDU session ID.
+ *  @return Pointer to matching drb_t or NULL if not found. */
+drb_t *find_drb(seq_arr_t *seq, int pdusession_id)
+{
+  elm_arr_t elm = find_if(seq, &pdusession_id, eq_drb_pdu_session_id);
+  if (elm.found)
+    return (drb_t *)elm.it;
+  return NULL;
+}
+
+
+/** @brief Removes all DRBs associated with a given PDU session ID */
+void remove_drbs_by_pdu_session(seq_arr_t **drbs, int pdusession_id)
+{
+  if (drbs == NULL)
+    return;
+
+  drb_t *drb;
+  while ((drb = find_drb(*drbs, pdusession_id)) != NULL) {
+    LOG_I(NR_RRC, "Removing DRB ID %d associated with PDU Session ID %d\n", drb->drb_id, pdusession_id);
+    seq_arr_erase(*drbs, drb);
+  }
+
+  if (!seq_arr_size(*drbs)) {
+    SEQ_ARR_CLEANUP_AND_FREE(*drbs, NULL);
+  }
+}
+
 static bool eq_pdu_session_id(const void *vval, const void *vit)
 {
   const int *id = (const int *)vval;

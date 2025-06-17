@@ -1134,6 +1134,7 @@ void rrc_gNB_send_NGAP_PDUSESSION_RELEASE_RESPONSE(gNB_RRC_INST *rrc, gNB_RRC_UE
       resp->pdusession_release[resp->nb_of_pdusessions_released++].pdusession_id = session->pdusession_id;
       LOG_I(NR_RRC, "UE %u: PDU Session %d Release Response\n", resp->gNB_ue_ngap_id, session->pdusession_id);
     }
+    remove_drbs_by_pdu_session(&UE->drbs, session->pdusession_id);
   }
   SEQ_ARR_CLEANUP_AND_FREE(UE->pduSessions_to_release, NULL);
 

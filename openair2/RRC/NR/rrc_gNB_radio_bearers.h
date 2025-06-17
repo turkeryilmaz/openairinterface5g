@@ -64,4 +64,8 @@ drb_t *add_rrc_drb(seq_arr_t **drb_ptr, drb_t in);
 
 void release_pduSessions(gNB_RRC_INST *rrc, gNB_RRC_UE_t *ue);
 
+void remove_drbs_by_pdu_session(seq_arr_t **drbs, int pdusession_id);
+
+drb_t *find_drb(seq_arr_t *seq, int pdusession_id);
+
 #endif
