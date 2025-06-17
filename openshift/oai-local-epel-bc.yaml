@@ -25,17 +25,11 @@ apiVersion: build.openshift.io/v1
 kind: BuildConfig
 metadata:
   name: local-epel
-  namespace: oaicicd-ran
+  namespace: open5gs
 spec:
   runPolicy: Serial
-  nodeSelector:
-    node-role.kubernetes.io/local-epel: ""
   source:
     type: Binary
-    secrets:
-      - secret:
-          name: etc-pki-entitlement
-        destinationDir: etc-pki-entitlement
   strategy:
     type: Docker
     dockerStrategy:

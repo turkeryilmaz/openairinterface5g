@@ -24,7 +24,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: local-epel                   # Name of the Deployment
-  namespace: oaicicd-ran             
+  namespace: open5gs             
 spec:
   replicas: 1                      
   selector:
@@ -37,35 +37,30 @@ spec:
     spec:
       containers:
         - name: local-epel          # Container name within the Pod
-          image: image-registry.openshift-image-registry.svc:5000/oaicicd-ran/local-epel:latest  
+          image: image-registry.openshift-image-registry.svc:5000/open5gs/local-epel:latest  
                                       # Container image pulled from internal OpenShift registry
           ports:
-            - containerPort: 80     # Port exposed by the container (Apache HTTP Server)
+            - containerPort: 8080     # Port exposed by the container (Apache HTTP Server)
+
+          volumeMounts:
+            - name: httpd-logs
+              mountPath: /tmp/httpd-logs
           
           # Readiness probe checks if the container is ready to accept traffic.
           readinessProbe:
             httpGet:
-              path: /               # HTTP GET request to root path
-              port: 80              # Port to query for readiness
+              path: /epel/epel-9/epel/repodata/repomd.xml               # HTTP GET request to root path
+              port: 8080              # Port to query for readiness
             initialDelaySeconds: 5  # Wait 5 seconds before first probe after container starts
             periodSeconds: 10       # Probe runs every 10 seconds
 
           # Liveness probe checks if the container is still alive and responsive.
           livenessProbe:
             httpGet:
-              path: /               # HTTP GET request to root path
-              port: 80              # Port to query for liveness
+              path: /epel/epel-9/epel/repodata/repomd.xml               # HTTP GET request to root path
+              port: 8080              # Port to query for liveness
             initialDelaySeconds: 15 # Wait 15 seconds before first liveness probe
             periodSeconds: 20       # Probe runs every 20 seconds
-
-          # Resource requests and limits control the CPU and memory usage for the container.
-          # Requests define the guaranteed resources for scheduling,
-          # Limits define the maximum resources the container can use.
-          resources:
-            requests:
-              memory: "128Mi"       # Request  memory
-              cpu: "100m"           # Request  millicores CPU
-            limits:
-              memory: "512Mi"       # Limit memory
-              cpu: "500m"           # Limit CPU to millicores
-
+      volumes:
+        - name: httpd-logs
+          emptyDir: {}
