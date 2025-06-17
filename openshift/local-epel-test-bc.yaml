@@ -1,0 +1,18 @@
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: local-epel-test
+  namespace: open5gs
+spec:
+  runPolicy: Serial
+  source:
+    type: Binary
+  strategy:
+    type: Docker
+    dockerStrategy:
+      dockerfilePath: docker/Dockerfile.local-epel-test.rhel9
+  output:
+    to:
+      kind: ImageStreamTag
+      name: local-epel-test:latest
+

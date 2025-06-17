@@ -1,0 +1,21 @@
+FROM registry.access.redhat.com/ubi9/ubi
+
+# Add local EPEL repo config pointing to your local-epel service
+RUN echo '[local-epel]' > /etc/yum.repos.d/local-epel.repo && \
+    echo 'name=Local EPEL Repository for RHEL 9' >> /etc/yum.repos.d/local-epel.repo && \
+    echo 'baseurl=http://local-epel.open5gs.svc.cluster.local/epel/epel-9/epel/' >> /etc/yum.repos.d/local-epel.repo && \
+    echo 'enabled=1' >> /etc/yum.repos.d/local-epel.repo && \
+    echo 'gpgcheck=0' >> /etc/yum.repos.d/local-epel.repo
+
+# Clean cache and install yaml-cpp-devel from local repo
+RUN dnf clean all 
+    
+RUN dnf install -y yaml-cpp-devel && \
+    dnf clean all
+
+RUN dnf repolist
+
+RUN dnf info yaml-cpp-devel
+
+CMD ["/bin/bash"]
+
