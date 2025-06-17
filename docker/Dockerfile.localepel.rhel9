@@ -54,16 +54,24 @@ RUN reposync --repoid=epel --download-metadata --destdir=/var/www/html/epel/epel
 # reposync will download everything including the repodata
 
 # Serve local repo to other systems
-RUN tee /etc/yum.repos.d/local-epel.repo > /dev/null <<EOF
-[local-epel]
-name=Local EPEL Repository for RHEL 9
-baseurl=http://local-epel.oaicicd-ran.svc.cluster.local/epel/epel-9/epel
-enabled=1
-gpgcheck=0
-EOF
+RUN echo '[local-epel]' > /etc/yum.repos.d/local-epel.repo && \
+    echo 'name=Local EPEL Repository for RHEL 9' >> /etc/yum.repos.d/local-epel.repo && \
+    echo 'baseurl=http://local-epel.open5gs.svc.cluster.local/epel/epel-9/epel' >> /etc/yum.repos.d/local-epel.repo && \
+    echo 'enabled=1' >> /etc/yum.repos.d/local-epel.repo && \
+    echo 'gpgcheck=0' >> /etc/yum.repos.d/local-epel.repo
 
+
+# Change Apache to use unprivileged port
+
+
+RUN sed -i 's/^Listen 80/Listen 8080/' /etc/httpd/conf/httpd.conf && \
+    mkdir -p /tmp/httpd-logs && \
+    sed -i 's|logs/error_log|/tmp/httpd-logs/error_log|' /etc/httpd/conf/httpd.conf && \
+    sed -i 's|logs/access_log|/tmp/httpd-logs/access_log|' /etc/httpd/conf/httpd.conf
 # Expose port 80 for HTTP
-EXPOSE 80
+EXPOSE 8080
 
 # Start Apache in foreground to serve repo files
-CMD ["/usr/sbin/httpd", "-D", "FOREGROUND"]
+# CMD ["/usr/sbin/httpd", "-D", "FOREGROUND"]
+CMD ["/usr/sbin/httpd", "-D", "FOREGROUND", "-f", "/etc/httpd/conf/httpd.conf", "-c", "PidFile /tmp/httpd.pid"]
+
