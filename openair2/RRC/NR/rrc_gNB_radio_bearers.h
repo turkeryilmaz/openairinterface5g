@@ -51,4 +51,8 @@ bearer_context_pdcp_config_t set_bearer_context_pdcp_config(const nr_pdcp_config
 
 void release_pduSessions(gNB_RRC_INST *rrc, gNB_RRC_UE_t *ue);
 
+void remove_drbs_by_pdu_session(seq_arr_t *drbs, int pdusession_id);
+
+drb_t *get_drb_by_pdusession_id(seq_arr_t *seq, int pdusession_id);
+
 #endif

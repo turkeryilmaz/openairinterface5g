@@ -133,6 +133,37 @@ rrc_pdu_session_param_t *find_pduSession_from_drbId(gNB_RRC_UE_t *ue, int drb_id
   return find_pduSession(&ue->pduSessions, id);
 }
 
+static bool eq_drb_pdu_session_id(const void *vval, const void *vit)
+{
+  const int *id = (const int *)vval;
+  const drb_t *elem = (const drb_t *)vit;
+  return elem->pdusession_id == *id;
+}
+
+/** @brief Finds the first DRB with the given PDU session ID.
+ *  @return Pointer to matching drb_t or NULL if not found. */
+drb_t *get_drb_by_pdusession_id(seq_arr_t *seq, int pdusession_id)
+{
+  elm_arr_t elm = find_if(seq, &pdusession_id, eq_drb_pdu_session_id);
+  if (elm.found)
+    return (drb_t *)elm.it;
+  return NULL;
+}
+
+/** @brief Removes all DRBs associated with a given PDU session ID */
+void remove_drbs_by_pdu_session(seq_arr_t *drbs, int pdusession_id)
+{
+  if (drbs == NULL)
+    return;
+
+  drb_t *drb;
+  while ((drb = get_drb_by_pdusession_id(drbs, pdusession_id)) != NULL) {
+    LOG_I(NR_RRC, "Removing DRB ID %d associated with PDU Session ID %d\n", drb->drb_id, pdusession_id);
+    seq_arr_erase(drbs, drb);
+  }
+
+}
+
 /** @brief Delete all N2 GTP tunnels for PDU Session to release
  *  Context: CU/CU-CP, so deletes NG-C (N2) tunnels only */
 void release_pduSessions(gNB_RRC_INST *rrc, gNB_RRC_UE_t *ue)

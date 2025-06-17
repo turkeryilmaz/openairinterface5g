@@ -1193,6 +1193,7 @@ void rrc_gNB_send_NGAP_PDUSESSION_RELEASE_RESPONSE(gNB_RRC_INST *rrc, gNB_RRC_UE
       session->status = PDU_SESSION_STATUS_RELEASED;
       pdu_sessions_released++;
     }
+    remove_drbs_by_pdu_session(&UE->drbs, session->param.pdusession_id);
   }
 
   resp->nb_of_pdusessions_released = pdu_sessions_released;
