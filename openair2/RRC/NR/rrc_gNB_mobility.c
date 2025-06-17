@@ -236,19 +236,6 @@ void nr_rrc_trigger_n2_ho(gNB_RRC_INST *rrc, int nr_cgi, uint8_t *ho_prep_info, 
 }
 */
 
-typedef struct deliver_ue_ctxt_modification_data_t {
-  gNB_RRC_INST *rrc;
-  f1ap_ue_context_mod_req_t *modification_req;
-  sctp_assoc_t assoc_id;
-} deliver_ue_ctxt_modification_data_t;
-static void rrc_deliver_ue_ctxt_modif_req(void *deliver_pdu_data, ue_id_t ue_id, int srb_id, char *buf, int size, int sdu_id)
-{
-  DevAssert(deliver_pdu_data != NULL);
-  deliver_ue_ctxt_modification_data_t *data = deliver_pdu_data;
-  byte_array_t ba = {.buf = (uint8_t *) buf, .len = size};
-  data->modification_req->rrc_container = &ba;
-  data->rrc->mac_rrc.ue_context_modification_request(data->assoc_id, data->modification_req);
-}
 static void rrc_gNB_trigger_reconfiguration_for_handover(gNB_RRC_INST *rrc, gNB_RRC_UE_t *ue, uint8_t *rrc_reconf, int rrc_reconf_len)
 {
   f1_ue_data_t ue_data = cu_get_f1_ue_data(ue->rrc_ue_id);
