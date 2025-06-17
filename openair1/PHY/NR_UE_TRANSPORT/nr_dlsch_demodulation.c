@@ -227,6 +227,34 @@ static void nr_dlsch_detection_mrc(uint32_t rx_size_symbol,
                                    int32_t dl_ch_magr[][n_rx][rx_size_symbol],
                                    unsigned char symbol,
                                    int length);
+static void nr_dlsch_ch_mag(const uint32_t rx_size_symbol,
+                            const int nbRx,
+                            int32_t dl_ch_mag[][nbRx][rx_size_symbol],
+                            int32_t dl_ch_magb[][nbRx][rx_size_symbol],
+                            int32_t dl_ch_magr[][nbRx][rx_size_symbol],
+                            const unsigned char mod_order,
+                            const uint8_t n_layers,
+                            const int length,
+                            const unsigned char output_shift,
+                            const int32_t ch_mag2_avg);
+static void nr_dlsch_comp_mag(const uint32_t rx_size_symbol,
+                              const int nbRx,
+                              int32_t rxdataF_comp[][nbRx][rx_size_symbol * NR_SYMBOLS_PER_SLOT],
+                              const int32_t dl_ch_estimates_ext[][rx_size_symbol],
+                              const uint8_t n_layers,
+                              const unsigned char symbol,
+                              const int length,
+                              const unsigned char output_shift,
+                              const int32_t ch_mag2_avg);
+static void nr_dlsch_compensate_channel_phase(const uint32_t rx_size_symbol,
+                                              const c16_t rxdataF_ext[][rx_size_symbol],
+                                              const int32_t dl_ch_estimates_ext[][rx_size_symbol],
+                                              const uint16_t n_rx,
+                                              const uint16_t n_layers,
+                                              const uint32_t length,
+                                              const uint32_t symbol,
+                                              const uint32_t output_shift,
+                                              int32_t rxdataF_comp[][n_rx][rx_size_symbol * NR_SYMBOLS_PER_SLOT]);
 
 static bool overlap_csi_symbol(fapi_nr_dl_config_csirs_pdu_rel15_t *csi_pdu, int symbol)
 {
@@ -547,25 +575,15 @@ int nr_rx_pdsch(PHY_VARS_NR_UE *ue,
     //----------------------------------------------------------
     // Disable correlation measurement for optimizing UE
     start_meas_nr_ue_phy(ue, DLSCH_CHANNEL_COMPENSATION_STATS);
-    nr_dlsch_channel_compensation(rx_size_symbol,
-                                  nbRx,
-                                  rxdataF_ext,
-                                  dl_ch_estimates_ext,
-                                  dl_ch_mag,
-                                  dl_ch_magb,
-                                  dl_ch_magr,
-                                  rxdataF_comp,
-                                  NULL,
-                                  frame_parms,
-                                  nl,
-                                  symbol,
-                                  nb_re_pdsch,
-                                  first_symbol_flag,
-                                  dlsch_config->qamModOrder,
-                                  nb_rb_pdsch,
-                                  log2_maxh,
-                                  measurements,
-                                  *ch_avgs);
+    nr_dlsch_compensate_channel_phase(rx_size_symbol,
+                                      rxdataF_ext,
+                                      dl_ch_estimates_ext,
+                                      nbRx,
+                                      nl,
+                                      nb_re_pdsch,
+                                      symbol,
+                                      log2_maxh,
+                                      rxdataF_comp);
     stop_meas_nr_ue_phy(ue, DLSCH_CHANNEL_COMPENSATION_STATS);
     if (meas_enabled) {
       LOG_D(PHY,
@@ -610,22 +628,36 @@ int nr_rx_pdsch(PHY_VARS_NR_UE *ue,
                            dl_ch_magr,
                            symbol,
                            nb_re_pdsch);
-    if (nl >= 2) // Apply MMSE for 2, 3, and 4 Tx layers
-      if (nb_re_pdsch)
-        nr_dlsch_mmse(rx_size_symbol,
-                      n_rx,
-                      nl,
-                      rxdataF_comp,
-                      dl_ch_mag,
-                      dl_ch_magb,
-                      dl_ch_magr,
-                      dl_ch_estimates_ext,
-                      nb_rb_pdsch,
-                      dlsch_config->qamModOrder,
-                      log2_maxh,
-                      symbol,
-                      nb_re_pdsch,
-                      nvar);
+  }
+  if (nl > 1) { // Apply MMSE for 2, 3, and 4 Tx layers
+    AssertFatal(n_rx > 1, "Number of Rx antennas less than layers\n");
+    if (nb_re_pdsch)
+      nr_dlsch_mmse(rx_size_symbol,
+                    n_rx,
+                    nl,
+                    rxdataF_comp,
+                    dl_ch_mag,
+                    dl_ch_magb,
+                    dl_ch_magr,
+                    dl_ch_estimates_ext,
+                    nb_rb_pdsch,
+                    dlsch_config->qamModOrder,
+                    log2_maxh,
+                    symbol,
+                    nb_re_pdsch,
+                    nvar);
+  } else {
+    nr_dlsch_comp_mag(rx_size_symbol, n_rx, rxdataF_comp, dl_ch_estimates_ext, nl, symbol, nb_re_pdsch, log2_maxh, *ch_avgs);
+    nr_dlsch_ch_mag(rx_size_symbol,
+                    n_rx,
+                    dl_ch_mag,
+                    dl_ch_magb,
+                    dl_ch_magr,
+                    dlsch_config->qamModOrder,
+                    nl,
+                    nb_re_pdsch,
+                    log2_maxh,
+                    *ch_avgs);
   }
   stop_meas_nr_ue_phy(ue, DLSCH_MRC_MMSE_STATS);
 
@@ -828,6 +860,155 @@ static inline void compensate_amplitude(const simde__m128i *h2, simde__m128i *rF
   *((simde__m128i *)rF) = simde_mm_packs_epi32(o0, o1);
 }
 
+static void nr_dlsch_ch_mag(const uint32_t rx_size_symbol,
+                            const int nbRx,
+                            int32_t dl_ch_mag[][nbRx][rx_size_symbol],
+                            int32_t dl_ch_magb[][nbRx][rx_size_symbol],
+                            int32_t dl_ch_magr[][nbRx][rx_size_symbol],
+                            const unsigned char mod_order,
+                            const uint8_t n_layers,
+                            const int length,
+                            const unsigned char output_shift,
+                            const int32_t ch_mag2_avg)
+{
+  const uint32_t nb_rb_0 = length / 12 + ((length % 12) ? 1 : 0);
+
+  for (int l = 0; l < n_layers; l++) {
+    simde__m128i QAM_amp128 = {0}, QAM_amp128b = {0}, QAM_amp128r = {0};
+    if (mod_order == 4) {
+      const int16_t amp = (int16_t)((ch_mag2_avg >> output_shift) * 2 / sqrt(10));
+      QAM_amp128 = simde_mm_set1_epi16(amp); // 2/sqrt(10)
+      QAM_amp128b = simde_mm_setzero_si128();
+      QAM_amp128r = simde_mm_setzero_si128();
+    } else if (mod_order == 6) {
+      const int16_t amp = (int16_t)((ch_mag2_avg >> output_shift) * 4 / sqrt(42));
+      const int16_t ampb = (int16_t)((ch_mag2_avg >> output_shift) * 2 / sqrt(42));
+      QAM_amp128 = simde_mm_set1_epi16(amp);
+      QAM_amp128b = simde_mm_set1_epi16(ampb);
+      QAM_amp128r = simde_mm_setzero_si128();
+    } else if (mod_order == 8) {
+      const int16_t amp = (int16_t)((ch_mag2_avg >> output_shift) * 8 / sqrt(170));
+      const int16_t ampb = (int16_t)((ch_mag2_avg >> output_shift) * 4 / sqrt(170));
+      const int16_t ampr = (int16_t)((ch_mag2_avg >> output_shift) * 2 / sqrt(170));
+      QAM_amp128 = simde_mm_set1_epi16(amp);
+      QAM_amp128b = simde_mm_set1_epi16(ampb);
+      QAM_amp128r = simde_mm_set1_epi16(ampr);
+    }
+
+    for (int aarx = 0; aarx < nbRx; aarx++) {
+      simde__m128i *dl_ch_mag128 = (simde__m128i *)dl_ch_mag[l][aarx];
+      simde__m128i *dl_ch_mag128b = (simde__m128i *)dl_ch_magb[l][aarx];
+      simde__m128i *dl_ch_mag128r = (simde__m128i *)dl_ch_magr[l][aarx];
+
+      for (int rb = 0; rb < nb_rb_0; rb++) {
+        if (mod_order > 2) {
+          // get channel amplitude if not QPSK
+
+          dl_ch_mag128[0] = QAM_amp128;
+          dl_ch_mag128b[0] = QAM_amp128b;
+          dl_ch_mag128r[0] = QAM_amp128r;
+
+          dl_ch_mag128[1] = dl_ch_mag128[2] = dl_ch_mag128[0];
+          dl_ch_mag128b[1] = dl_ch_mag128b[2] = dl_ch_mag128b[0];
+          dl_ch_mag128r[1] = dl_ch_mag128r[2] = dl_ch_mag128r[0];
+        }
+
+        dl_ch_mag128 += 3;
+        dl_ch_mag128b += 3;
+        dl_ch_mag128r += 3;
+      }
+    }
+  }
+}
+
+/*
+ * Compesate for channel amplitude only in case of single layer
+ */
+static void nr_dlsch_comp_mag(const uint32_t rx_size_symbol,
+                              const int nbRx,
+                              int32_t rxdataF_comp[][nbRx][rx_size_symbol * NR_SYMBOLS_PER_SLOT],
+                              const int32_t dl_ch_estimates_ext[][rx_size_symbol],
+                              const uint8_t n_layers,
+                              const unsigned char symbol,
+                              const int length,
+                              const unsigned char output_shift,
+                              const int32_t ch_mag2_avg)
+{
+  const uint32_t nb_rb_0 = length / 12 + ((length % 12) ? 1 : 0);
+
+  /* we could also call MMSE directly here but I'm not sure if the complexity is justified given there is only one layer
+  need to check the performance difference after rewritting MMSE funtion to handle one layer
+  */
+  AssertFatal(n_layers == 1, "Call nr_dlsch_mmse() for more than 1 layer\n");
+  for (int l = 0; l < n_layers; l++) {
+    // holds sum of channel magnitude of all antennas for each RE
+    c16_t h2[rx_size_symbol];
+    memset(h2, 0, sizeof(h2));
+    for (int_fast8_t aarx = 0; aarx < nbRx; aarx++) {
+      simde__m128i *h2_128 = (simde__m128i *)h2;
+      const simde__m128i *dl_ch128 = (const simde__m128i *)dl_ch_estimates_ext[(l * nbRx) + aarx];
+      for (int rb = 0; rb < nb_rb_0; rb++) {
+        simde__m128i h2_0 = simde_mm_srai_epi32(simde_mm_madd_epi16(dl_ch128[0], dl_ch128[0]), output_shift);
+        simde__m128i h2_1 = simde_mm_srai_epi32(simde_mm_madd_epi16(dl_ch128[1], dl_ch128[1]), output_shift);
+        simde__m128i h2_2 = simde_mm_srai_epi32(simde_mm_madd_epi16(dl_ch128[2], dl_ch128[2]), output_shift);
+        h2_0 = simde_mm_packs_epi32(h2_0, h2_1);
+        // sum channel magnitude of all antenna (|h1|^2 + |h2|^2 + ...)
+        h2_128[0] = simde_mm_add_epi16(h2_128[0], simde_mm_unpacklo_epi16(h2_0, h2_0));
+        h2_128[1] = simde_mm_add_epi16(h2_128[1], simde_mm_unpackhi_epi16(h2_0, h2_0));
+        h2_2 = simde_mm_packs_epi32(h2_2, h2_2);
+        h2_128[2] = simde_mm_add_epi16(h2_128[2], simde_mm_unpacklo_epi16(h2_2, h2_2));
+
+        h2_128 += 3;
+        dl_ch128 += 3;
+      }
+    }
+    simde__m128i *rxdataF_comp128 = (simde__m128i *)(rxdataF_comp[l][0] + symbol * rx_size_symbol);
+    simde__m128i *h2_128 = (simde__m128i *)h2;
+    const int h2_avg = ch_mag2_avg >> output_shift;
+    for (int rb = 0; rb < nb_rb_0; rb++) {
+      /* When using int16_t arithmetic to compensate channel magnitude, there is a chance of overflow when channel amplitude
+      response has large dynamic range. So we have to use either int32 or floating point arithmetic. We use floating point. */
+      compensate_amplitude(h2_128, rxdataF_comp128, h2_avg);
+      compensate_amplitude(h2_128 + 1, rxdataF_comp128 + 1, h2_avg);
+      compensate_amplitude(h2_128 + 2, rxdataF_comp128 + 2, h2_avg);
+
+      h2_128 += 3;
+      rxdataF_comp128 += 3;
+    }
+  }
+}
+
+static void nr_dlsch_compensate_channel_phase(const uint32_t rx_size_symbol,
+                                              const c16_t rxdataF_ext[][rx_size_symbol],
+                                              const int32_t dl_ch_estimates_ext[][rx_size_symbol],
+                                              const uint16_t n_rx,
+                                              const uint16_t n_layers,
+                                              const uint32_t length,
+                                              const uint32_t symbol,
+                                              const uint32_t output_shift,
+                                              int32_t rxdataF_comp[][n_rx][rx_size_symbol * NR_SYMBOLS_PER_SLOT])
+{
+  const uint32_t nb_rb_0 = length / 12 + ((length % 12) ? 1 : 0);
+  for (int_fast16_t l = 0; l < n_layers; l++) {
+    for (int_fast16_t aarx = 0; aarx < n_rx; aarx++) {
+      simde__m128i *dl_ch128 = (simde__m128i *)dl_ch_estimates_ext[(l * n_rx) + aarx];
+      simde__m128i *rxdataF128 = (simde__m128i *)rxdataF_ext[aarx];
+      simde__m128i *rxdataF_comp128 = (simde__m128i *)(rxdataF_comp[l][aarx] + symbol * rx_size_symbol);
+
+      for (int_fast32_t rb = 0; rb < nb_rb_0; rb++) {
+        // Multiply received data by conjugated channel
+        rxdataF_comp128[0] = oai_mm_cpx_mult_conj(dl_ch128[0], rxdataF128[0], output_shift);
+        rxdataF_comp128[1] = oai_mm_cpx_mult_conj(dl_ch128[1], rxdataF128[1], output_shift);
+        rxdataF_comp128[2] = oai_mm_cpx_mult_conj(dl_ch128[2], rxdataF128[2], output_shift);
+
+        dl_ch128 += 3;
+        rxdataF128 += 3;
+        rxdataF_comp128 += 3;
+      }
+    }
+  }
+}
+
 static void nr_dlsch_channel_compensation(uint32_t rx_size_symbol,
                                           int nbRx,
                                           c16_t rxdataF_ext[][rx_size_symbol],
@@ -915,6 +1096,10 @@ static void nr_dlsch_channel_compensation(uint32_t rx_size_symbol,
         compensate_amplitude(&h2_0, rxdataF_comp128, h2_avg);
         compensate_amplitude(&h2_1, rxdataF_comp128 + 1, h2_avg);
         compensate_amplitude(&h2_2, rxdataF_comp128 + 2, h2_avg);
+
+        print_shorts(" Rx signal:=", (int16_t *)rxdataF_comp128);
+        print_shorts(" Rx signal:=", (int16_t *)(rxdataF_comp128 + 1));
+        print_shorts(" Rx signal:=", (int16_t *)(rxdataF_comp128 + 2));
 
         dl_ch128 += 3;
         dl_ch_mag128 += 3;
