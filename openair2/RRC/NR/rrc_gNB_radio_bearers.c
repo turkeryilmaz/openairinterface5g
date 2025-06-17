@@ -79,6 +79,24 @@ rrc_pdu_session_param_t *add_pduSession(seq_arr_t *sessions_ptr, const pdusessio
   return added;
 }
 
+/** @brief Removes a PDU Session from the list by ID
+ *  @return true if successfully removed, false if not found */
+bool rm_pduSession(seq_arr_t *sessions, int pdusession_id)
+{
+  DevAssert(sessions);
+
+  rrc_pdu_session_param_t *session = find_pduSession(sessions, pdusession_id);
+
+  if (session) {
+    LOG_I(NR_RRC, "Removing PDU Session %d from RRC setup list\n", pdusession_id);
+    seq_arr_erase(sessions, session);
+    return true;
+  }
+
+  LOG_W(NR_RRC, "PDU Session %d not found to remove\n", pdusession_id);
+  return false;
+}
+
 /** @brief Add drb_t item in the UE context list for @param pdusession_id */
 drb_t *nr_rrc_add_drb(seq_arr_t *drb_ptr, int pdusession_id, nr_pdcp_configuration_t *pdcp)
 {
@@ -138,6 +156,39 @@ rrc_pdu_session_param_t *find_pduSession_from_drbId(gNB_RRC_UE_t *ue, int drb_id
   }
   int id = drb->pdusession_id;
   return find_pduSession(&ue->pduSessions, id);
+}
+
+static bool eq_drb_pdu_session_id(const void *vval, const void *vit)
+{
+  const int *id = (const int *)vval;
+  const drb_t *elem = (const drb_t *)vit;
+  return elem->pdusession_id == *id;
+}
+
+/** @brief Finds the first DRB with the given PDU session ID.
+ *  @return Pointer to matching drb_t or NULL if not found. */
+static drb_t *get_drb_by_pdusession_id(seq_arr_t *seq, int pdusession_id)
+{
+  elm_arr_t elm = find_if(seq, &pdusession_id, eq_drb_pdu_session_id);
+  if (elm.found)
+    return (drb_t *)elm.it;
+  return NULL;
+}
+
+/** @brief Removes all DRBs associated with a given PDU session ID */
+bool rm_drbs(seq_arr_t *drbs, int pdusession_id)
+{
+  DevAssert(drbs);
+
+  drb_t *drb;
+  while ((drb = get_drb_by_pdusession_id(drbs, pdusession_id)) != NULL) {
+    LOG_I(NR_RRC, "Removing DRB ID %d associated with PDU Session ID %d\n", drb->drb_id, pdusession_id);
+    seq_arr_erase(drbs, drb);
+    return true;
+  }
+
+  LOG_W(NR_RRC, "DRB ID %d (PDU Session ID %d) not found to remove\n", drb->drb_id, pdusession_id);
+  return true;
 }
 
 bearer_context_pdcp_config_t set_bearer_context_pdcp_config(const nr_pdcp_configuration_t pdcp,

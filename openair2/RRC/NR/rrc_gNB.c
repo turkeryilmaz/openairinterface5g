@@ -2715,7 +2715,6 @@ static const char *get_pdusession_status_text(pdu_session_status_t status)
     case PDU_SESSION_STATUS_TOMODIFY: return "to-modify";
     case PDU_SESSION_STATUS_FAILED: return "failed";
     case PDU_SESSION_STATUS_TORELEASE: return "to-release";
-    case PDU_SESSION_STATUS_RELEASED: return "released";
     default: AssertFatal(false, "illegal PDU status code %d\n", status); return "illegal";
   }
   return "illegal";

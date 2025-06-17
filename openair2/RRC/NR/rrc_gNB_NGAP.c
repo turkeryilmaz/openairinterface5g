@@ -1205,14 +1205,22 @@ void rrc_gNB_send_NGAP_PDUSESSION_RELEASE_RESPONSE(gNB_RRC_INST *rrc, gNB_RRC_UE
   memset(resp, 0, sizeof(*resp));
   resp->gNB_ue_ngap_id = UE->rrc_ue_id;
 
+  int ids_to_remove[NGAP_MAX_PDU_SESSION];
+  int n_to_remove = 0;
+
   FOR_EACH_SEQ_ARR(rrc_pdu_session_param_t *, session, &UE->pduSessions) {
     if (xid == session->xid) {
       const pdusession_t *pdusession = &session->param;
       if (session->status == PDU_SESSION_STATUS_TORELEASE) {
         resp->pdusession_release[resp->nb_of_pdusessions_released++].pdusession_id = pdusession->pdusession_id;
+        ids_to_remove[n_to_remove++] = pdusession->pdusession_id;
       }
-      session->status = PDU_SESSION_STATUS_RELEASED;
     }
+  }
+
+  for (int i = 0; i < n_to_remove; ++i) {
+    rm_drbs(&UE->drbs, ids_to_remove[i]);
+    rm_pduSession(&UE->pduSessions, ids_to_remove[i]);
   }
 
   LOG_I(NR_RRC, "NGAP PDUSESSION RELEASE RESPONSE: rrc_ue_id %u release_pdu_sessions %d\n", resp->gNB_ue_ngap_id, resp->nb_of_pdusessions_released);
