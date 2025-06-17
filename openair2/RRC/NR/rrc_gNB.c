@@ -682,7 +682,10 @@ static void rrc_gNB_generate_dedicatedRRCReconfiguration(gNB_RRC_INST *rrc, gNB_
 {
   /* do not re-establish PDCP for any bearer */
   nr_rrc_reconfig_param_t params = get_RRCReconfiguration_params(rrc, ue_p, 0, false);
-  ue_p->xids[params.transaction_id] = RRC_PDUSESSION_ESTABLISH;
+  if (params.num_nas_msg)
+    ue_p->xids[params.transaction_id] = RRC_PDUSESSION_ESTABLISH;
+  else 
+    ue_p->xids[params.transaction_id] = RRC_DEDICATED_RECONF;
   byte_array_t msg = rrc_gNB_encode_RRCReconfiguration(rrc, ue_p, params);
   if (msg.len <= 0) {
     LOG_E(NR_RRC, "UE %d: Failed to generate RRCReconfiguration\n", ue_p->rrc_ue_id);
@@ -767,24 +770,42 @@ void rrc_gNB_modify_dedicatedRRCReconfiguration(gNB_RRC_INST *rrc, gNB_RRC_UE_t 
   free_byte_array(msg);
 }
 
-//-----------------------------------------------------------------------------
+void rrc_deliver_ue_ctxt_modif_req(void *deliver_pdu_data, ue_id_t ue_id, int srb_id, char *buf, int size, int sdu_id)
+{
+  DevAssert(deliver_pdu_data != NULL);
+  deliver_ue_ctxt_modification_data_t *data = deliver_pdu_data;
+  byte_array_t ba = {.buf = (uint8_t *) buf, .len = size};
+  data->modification_req->rrc_container = &ba;
+  data->rrc->mac_rrc.ue_context_modification_request(data->assoc_id, data->modification_req);
+}
+
 void rrc_gNB_generate_dedicatedRRCReconfiguration_release(gNB_RRC_INST *rrc,
                                                           gNB_RRC_UE_t *ue_p,
                                                           uint8_t xid,
                                                           uint32_t nas_length,
                                                           uint8_t *nas_buffer)
-//-----------------------------------------------------------------------------
 {
   nr_rrc_reconfig_param_t params = {.transaction_id = xid};
+  f1_ue_data_t ue_data = cu_get_f1_ue_data(ue_p->rrc_ue_id);
+  f1ap_ue_context_mod_req_t req = {
+      .gNB_CU_ue_id = ue_p->rrc_ue_id,
+      .gNB_DU_ue_id = ue_data.secondary_ue,
+      .plmn = rrc->configuration.plmn,
+      .servCellIndex = 0,
+  };
+  req.nr_cellid = malloc_or_fail(sizeof(*req.nr_cellid));
+  *req.nr_cellid = rrc->nr_cellid;
 
   if (seq_arr_size(&ue_p->pduSessions)) {
     asn1cCalloc(params.drb_release_list, to_release);
+    params.drb_release_list = to_release;
     FOR_EACH_SEQ_ARR(rrc_pdu_session_param_t *, item, &ue_p->pduSessions) {
       if ((item->status == PDU_SESSION_STATUS_TORELEASE) && item->xid == xid) {
         FOR_EACH_SEQ_ARR(drb_t *, drb, &ue_p->drbs) {
           if (drb->pdusession_id == item->param.pdusession_id) {
             asn1cSequenceAdd(to_release->list, NR_DRB_Identity_t, DRB_release);
             *DRB_release = drb->drb_id;
+            req.drbs_rel[req.drbs_len++].id = *DRB_release;
           }
         }
       }
@@ -802,6 +823,16 @@ void rrc_gNB_generate_dedicatedRRCReconfiguration_release(gNB_RRC_INST *rrc,
   }
   LOG_DUMPMSG(NR_RRC, DEBUG_RRC, msg.buf, msg.len, "[MSG] RRC Reconfiguration\n");
   LOG_I(NR_RRC, "UE %d: Generate NR_RRCReconfiguration (bytes %ld)\n", ue_p->rrc_ue_id, msg.len);
+
+  deliver_ue_ctxt_modification_data_t data = {.rrc = rrc, .modification_req = &req, .assoc_id = ue_data.du_assoc_id};
+  nr_pdcp_data_req_srb(ue_p->rrc_ue_id,
+                         DL_SCH_LCID_DCCH,
+                         rrc_gNB_mui++,
+                         msg.len,
+                         (unsigned char *const)msg.buf,
+                         rrc_deliver_ue_ctxt_modif_req,
+                         &data);
+
   const uint32_t msg_id = NR_DL_DCCH_MessageType__c1_PR_rrcReconfiguration;
   nr_rrc_transfer_protected_rrc_message(rrc, ue_p, DL_SCH_LCID_DCCH, msg_id, msg.buf, msg.len);
   free_RRCReconfiguration_params(params);
@@ -1738,9 +1769,6 @@ static void handle_rrcReconfigurationComplete(gNB_RRC_INST *rrc, gNB_RRC_UE_t *U
 
   switch (UE->xids[xid]) {
     case RRC_PDUSESSION_RELEASE: {
-      gtpv1u_gnb_delete_tunnel_req_t req = {0};
-      gtpv1u_delete_ngu_tunnel(rrc->module_id, &req);
-      // NGAP_PDUSESSION_RELEASE_RESPONSE
       rrc_gNB_send_NGAP_PDUSESSION_RELEASE_RESPONSE(rrc, UE, xid);
     } break;
     case RRC_PDUSESSION_ESTABLISH:
