@@ -38,6 +38,7 @@
 #include "openair2/LAYER2/nr_rlc/nr_rlc_ue_manager.h"
 #include "openair2/LAYER2/nr_rlc/nr_rlc_entity_am.h"
 #include "openair2/LAYER2/NR_MAC_gNB/mac_proto.h"
+#include "openair3/NGAP/ngap_gNB_ue_context.h"
 
 #define TELNETSERVERCODE
 #include "telnetsrv.h"
@@ -215,6 +216,23 @@ int force_ue_release(char *buf, int debug, telnet_printfunc_t prnt)
   return 0;
 }
 
+int trigger_ngap_pdu_session_release(char *buf, int debug, telnet_printfunc_t prnt)
+{
+  int gNB_ue_ngap_id = (buf != NULL) ? strtol(buf, NULL, 10) : 1;
+  ngap_gNB_ue_context_t *ngap = ngap_get_ue_context(gNB_ue_ngap_id);
+  if (ngap == NULL)
+    ERROR_MSG_RET("no NGAP UE context for gNB_ue_ngap_id %d\n", gNB_ue_ngap_id);
+  MessageDef *message_p = itti_alloc_new_message(TASK_NGAP, 0, NGAP_PDUSESSION_RELEASE_COMMAND);
+  ngap_pdusession_release_command_t * msg = &NGAP_PDUSESSION_RELEASE_COMMAND(message_p);
+  memset(msg, 0, sizeof(*msg));
+  msg->amf_ue_ngap_id = ngap->amf_ue_ngap_id;
+  msg->gNB_ue_ngap_id = ngap->gNB_ue_ngap_id;
+  msg->nb_pdusessions_torelease = 1;
+  msg->pdusession_release_params->pdusession_id = 10;
+  itti_send_msg_to_task(TASK_RRC_GNB, 0, message_p);
+  return 0;
+}
+
 static telnetshell_cmddef_t cicmds[] = {
     {"get_single_rnti", "", get_single_rnti},
     {"force_reestab", "[rnti(hex,opt)]", trigger_reestab},
@@ -223,6 +241,7 @@ static telnetshell_cmddef_t cicmds[] = {
     {"force_ul_failure", "[rnti(hex,opt)]", force_ul_failure},
     {"trigger_f1_ho", "[rrc_ue_id(int,opt)]", rrc_gNB_trigger_f1_ho},
     {"fetch_du_by_ue_id", "[rrc_ue_id(int,opt)]", fetch_du_by_ue_id},
+    {"pdu_session_release", "[gNB_ue_ngap_id(int,opt)]", trigger_ngap_pdu_session_release},
     {"", "", NULL},
 };
 
