@@ -1769,6 +1769,7 @@ static void handle_rrcReconfigurationComplete(gNB_RRC_INST *rrc, gNB_RRC_UE_t *U
 
   switch (UE->xids[xid]) {
     case RRC_PDUSESSION_RELEASE: {
+      release_pduSessions(rrc, UE);
       rrc_gNB_send_NGAP_PDUSESSION_RELEASE_RESPONSE(rrc, UE, xid);
     } break;
     case RRC_PDUSESSION_ESTABLISH:

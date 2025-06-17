@@ -49,4 +49,6 @@ drb_t *nr_rrc_add_drb(seq_arr_t *drb_ptr, int pdusession_id);
 /// @brief set PDCP configuration in E1 Bearer Context Management message
 bearer_context_pdcp_config_t set_bearer_context_pdcp_config(const nr_pdcp_configuration_t pdcp, bool um_on_default_drb);
 
+void release_pduSessions(gNB_RRC_INST *rrc, gNB_RRC_UE_t *ue);
+
 #endif
