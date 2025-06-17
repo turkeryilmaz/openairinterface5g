@@ -757,11 +757,14 @@ void rrc_gNB_generate_dedicatedRRCReconfiguration_release(gNB_RRC_INST *rrc,
 {
   NR_DRB_ToReleaseList_t *DRB_Release_configList2 = CALLOC(sizeof(*DRB_Release_configList2), 1);
 
-  int i = 0;
   FOR_EACH_SEQ_ARR(rrc_pdusession_release_t *, item, ue_p->pduSessions_to_release) {
     if (item->xid == xid) {
-      asn1cSequenceAdd(DRB_Release_configList2->list, NR_DRB_Identity_t, DRB_release);
-      *DRB_release = i++ + 1; // DRB ID
+      FOR_EACH_SEQ_ARR(drb_t *, drb, ue_p->drbs) {
+        if (drb->pdusession_id == item->pdusession_id) {
+          asn1cSequenceAdd(DRB_Release_configList2->list, NR_DRB_Identity_t, DRB_release);
+          *DRB_release = drb->drb_id;
+        }
+      }
     }
   }
 
