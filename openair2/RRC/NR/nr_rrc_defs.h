@@ -375,6 +375,12 @@ typedef struct gNB_RRC_INST_s {
   nr_rlc_configuration_t rlc_config;
 } gNB_RRC_INST;
 
+typedef struct {
+  gNB_RRC_INST *rrc;
+  f1ap_ue_context_modif_req_t *modification_req;
+  sctp_assoc_t assoc_id;
+} deliver_ue_ctxt_modification_data_t;
+
 #define UE_LOG_FMT "(cellID %lx, UE ID %d RNTI %04x)"
 #define UE_LOG_ARGS(ue_context) (ue_context)->nr_cellid, (ue_context)->rrc_ue_id, (ue_context)->rnti
 

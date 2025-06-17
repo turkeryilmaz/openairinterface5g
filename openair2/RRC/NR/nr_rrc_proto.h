@@ -126,4 +126,6 @@ qos_characteristics_t get_qos_characteristics(const int qfi, pdusession_t *pduSe
 
 void openair_rrc_gNB_configuration(gNB_RRC_INST *rrc, gNB_RrcConfigurationReq *configuration);
 
+void rrc_deliver_ue_ctxt_modif_req(void *deliver_pdu_data, ue_id_t ue_id, int srb_id, char *buf, int size, int sdu_id);
+
 #endif
