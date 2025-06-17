@@ -1218,12 +1218,7 @@ int rrc_gNB_process_NGAP_PDUSESSION_RELEASE_COMMAND(MessageDef *msg_p, instance_
     LOG_I(NR_RRC, "Send RRCReconfiguration To UE 0x%x\n", UE->rrc_ue_id);
     rrc_gNB_generate_dedicatedRRCReconfiguration_release(rrc, UE, xid, cmd->nas_pdu.len, cmd->nas_pdu.buf);
   } else {
-    // gtp tunnel delete
-    LOG_I(NR_RRC, "gtp tunnel delete all tunnels for UE %04x\n", UE->rnti);
-    gtpv1u_gnb_delete_tunnel_req_t req = {0};
-    req.ue_id = UE->rnti;
-    gtpv1u_delete_ngu_tunnel(rrc->module_id, &req);
-    // NGAP_PDUSESSION_RELEASE_RESPONSE
+    release_pduSessions(rrc, UE);
     rrc_gNB_send_NGAP_PDUSESSION_RELEASE_RESPONSE(rrc, UE, xid);
     LOG_I(NR_RRC, "Send PDU Session Release Response \n");
   }

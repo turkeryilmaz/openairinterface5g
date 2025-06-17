@@ -32,6 +32,7 @@
 #include "oai_asn1.h"
 #include "openair2/LAYER2/nr_pdcp/nr_pdcp_asn1_utils.h"
 #include "common/utils/alg/find.h"
+#include "openair3/ocp-gtpu/gtp_itf.h"
 
 drb_t *add_rrc_drb(seq_arr_t **drb_ptr, drb_t in)
 {
@@ -174,6 +175,20 @@ pdusession_t *find_pduSession_from_drbId(gNB_RRC_UE_t *ue, seq_arr_t *seq, int d
   }
   int id = drb->pdusession_id;
   return (pdusession_t *)find_pduSession(seq, id);
+}
+
+/** @brief Delete all N2 GTP tunnels for PDU Session to release
+ *  Context: CU/CU-CP, so deletes NG-C (N2) tunnels only */
+void release_pduSessions(gNB_RRC_INST *rrc, gNB_RRC_UE_t *ue)
+{
+  // GTP tunnel cleanup
+  gtpv1u_gnb_delete_tunnel_req_t req = {0};
+  req.ue_id = ue->rnti;
+  FOR_EACH_SEQ_ARR(rrc_pdusession_release_t *, release, ue->pduSessions_to_release) {
+    LOG_I(NR_RRC, "Delete GTP tunnels for UE %04x, PDU Session ID %d\n", ue->rnti, release->pdusession_id);
+    req.pdusession_id[req.num_pdusession++] = release->pdusession_id;
+  }
+  gtpv1u_delete_ngu_tunnel(rrc->module_id, &req);
 }
 
 /** @brief Removes the PDU Session with the given ID from the list.
