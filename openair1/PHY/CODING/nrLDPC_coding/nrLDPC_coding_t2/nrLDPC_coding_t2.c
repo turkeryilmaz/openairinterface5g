@@ -63,6 +63,7 @@ struct active_device {
 #ifndef DPDK_VER_PRE_21_11
   bool support_non24b_crc;
 #endif
+  bool support_internal_harq_memory;
   int dec_queue;
   int enc_queue;
   uint16_t queue_ids[MAX_QUEUES];
@@ -356,6 +357,22 @@ bool check_non24b_crc_capabilities(struct rte_bbdev_info *info)
 }
 #endif
 
+bool check_internal_harq_memory_capabilities(struct rte_bbdev_info *info)
+{
+  for (int i = 0; info->drv.capabilities[i].type != RTE_BBDEV_OP_NONE; i++) {
+    if (info->drv.capabilities[i].type == RTE_BBDEV_OP_LDPC_DEC) {
+      bool harq_in = check_bit(info->drv.capabilities[i].cap.ldpc_dec.capability_flags, RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_IN_ENABLE);
+      bool harq_out = check_bit(info->drv.capabilities[i].cap.ldpc_dec.capability_flags, RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_OUT_ENABLE);
+      bool internal_harq_memory_support = harq_in & harq_out;
+      if(internal_harq_memory_support) {
+        LOG_I(NR_PHY, "bbdev device supports internal HARQ memory\n");
+      }
+      return internal_harq_memory_support;
+    }
+  }
+  return false;
+}
+
 // based on DPDK BBDEV add_bbdev_dev
 static int add_dev(uint8_t dev_id)
 {
@@ -382,6 +399,9 @@ static int add_dev(uint8_t dev_id)
   // check non24b crc capabilities
   active_dev.support_non24b_crc = check_non24b_crc_capabilities(&active_dev.info);
 #endif
+
+  // check internal harq memory capabilities
+  active_dev.support_internal_harq_memory = check_internal_harq_memory_capabilities(&active_dev.info);
 
   // device setup
   ret = rte_bbdev_setup_queues(dev_id, nb_queues, active_dev.info.socket_id);
@@ -642,14 +662,10 @@ set_ldpc_dec_op(struct rte_bbdev_dec_op **ops,
         *nrLDPC_slot_decoding_parameters->TBs[h].segments[i].d_to_be_cleared = false;
       } else {
         ops[j]->ldpc_dec.op_flags |= RTE_BBDEV_LDPC_HQ_COMBINE_IN_ENABLE;
-        // Calculate offset in the HARQ combined buffers
-        // Unique segment offset
-        uint32_t segment_offset = (nrLDPC_slot_decoding_parameters->TBs[h].harq_unique_pid * NR_LDPC_MAX_NUM_CB) + i;
-        // Prune to avoid shooting above maximum id
-        uint32_t pruned_segment_offset = segment_offset % HARQ_CODEBLOCK_ID_MAX;
-
-        // retrieve corresponding HARQ buffers from previous iteration
-        ops[j]->ldpc_dec.harq_combined_input = harq_buffers[pruned_segment_offset];
+        if(active_dev.support_internal_harq_memory) {
+          ops[j]->ldpc_dec.op_flags |= RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_IN_ENABLE;
+          ops[j]->ldpc_dec.op_flags |= RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_OUT_ENABLE;
+        }
       }
       if (nrLDPC_slot_decoding_parameters->TBs[h].C > 1) {
         ops[j]->ldpc_dec.code_block_mode = 1;
@@ -682,7 +698,26 @@ set_ldpc_dec_op(struct rte_bbdev_dec_op **ops,
         }
 #endif
       }
-      ops[j]->ldpc_dec.harq_combined_output = harq_outputs[j];
+      // Calculate offset in the HARQ combined buffers
+      // Unique segment offset
+      uint32_t segment_offset = (nrLDPC_slot_decoding_parameters->TBs[h].harq_unique_pid * NR_LDPC_MAX_NUM_CB) + i;
+      // Prune to avoid shooting above maximum id
+      uint32_t pruned_segment_offset = segment_offset % HARQ_CODEBLOCK_ID_MAX;
+      // Segment offset to byte offset
+      uint32_t harq_combined_offset = pruned_segment_offset * LDPC_MAX_CB_SIZE;
+
+      if(active_dev.support_internal_harq_memory) {
+        // retrieve corresponding HARQ output information from previous iteration, especially the length
+        ops[j]->ldpc_dec.harq_combined_input = harq_buffers[pruned_segment_offset];
+        // Note: When using INTERNAL_HARQ memory, the "offset" is used to point to a particular address
+        // within the BBDEV's onboard memory, and the address should be multiples of 32K.
+        harq_outputs[j].offset = harq_combined_offset;
+        ops[j]->ldpc_dec.harq_combined_output = harq_outputs[j];
+      } else {
+        // retrieve corresponding HARQ buffers from previous iteration
+        ops[j]->ldpc_dec.harq_combined_input = harq_buffers[pruned_segment_offset];
+        ops[j]->ldpc_dec.harq_combined_output = harq_outputs[j];
+      }
 #endif
       ops[j]->ldpc_dec.hard_output = outputs[j];
       ops[j]->ldpc_dec.input = inputs[j];
@@ -762,10 +797,14 @@ static int retrieve_ldpc_dec_op(struct rte_bbdev_dec_op **ops, nrLDPC_slot_decod
       uint8_t *data_src = rte_pktmbuf_mtod_offset(m_src, uint8_t *, harq_output->offset);
       struct rte_mbuf *m_dst = harq_buffers[pruned_segment_offset].data;
       uint8_t *data_dst = rte_pktmbuf_mtod_offset(m_dst, uint8_t *, harq_output->offset);
-      rte_memcpy(data_dst, data_src, data_len_src);
-      harq_buffers[pruned_segment_offset].offset = harq_output->offset;
-      harq_buffers[pruned_segment_offset].length = data_len_src;
-
+      if(!active_dev.support_internal_harq_memory) {
+        rte_memcpy(data_dst, data_src, data_len_src);
+        harq_buffers[pruned_segment_offset].offset = harq_output->offset;
+        harq_buffers[pruned_segment_offset].length = data_len_src;
+      } else {
+        harq_buffers[pruned_segment_offset].offset = harq_output->offset;
+        harq_buffers[pruned_segment_offset].length = harq_output->length;
+      }
       ++j;
     }
   }
