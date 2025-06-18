@@ -1156,6 +1156,56 @@ void rrc_gNB_free_Handover_Request(ngap_handover_request_t *msg)
   free(msg->mobility_restriction);
 }
 
+/** @brief Send NG Uplink RAN Status Transfer message (8.4.6 3GPP TS 38.413)
+ * Direction: source NG-RAN node -> AMF */
+int rrc_gNB_send_NGAP_ul_ran_status_transfer(gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE)
+{
+  AssertFatal(UE != NULL, "UE context is NULL\n");
+
+  LOG_I(NR_RRC,
+        "Sending NGAP Uplink RAN Status Transfer (AMF_UE_NGAP_ID=%" PRIu64 ", GNB_UE_NGAP_ID=%u)\n",
+        UE->amf_ue_ngap_id,
+        UE->rrc_ue_id);
+
+  ngap_ran_status_transfer_t msg = {
+      .amf_ue_ngap_id = UE->amf_ue_ngap_id,
+      .gnb_ue_ngap_id = UE->rrc_ue_id,
+  };
+
+  // Loop through DRBs and extract COUNT values
+  for (int i = 0; i < MAX_DRBS_PER_UE; ++i) {
+    drb_t *drb = &UE->established_drbs[i];
+    if (!drb->status)
+      continue;
+
+    uint32_t ul_sn = 0, ul_hfn = 0;
+    uint32_t dl_sn = 0, dl_hfn = 0;
+    bool sn_length_18 = false;
+
+    if (!nr_pdcp_get_drb_count_values(UE->rrc_ue_id, drb->drb_id, &ul_sn, &ul_hfn, &dl_sn, &dl_hfn, &sn_length_18)) {
+      LOG_W(NR_RRC, "Failed to get PDCP COUNT values for DRB %d (UE %u)\n", drb->drb_id, UE->rrc_ue_id);
+      continue;
+    }
+
+    ngap_drb_status_t *item = &msg.ran_status.drb_status_list[msg.ran_status.nb_drb++];
+    item->drb_id = drb->drb_id;
+
+    item->ul_count.pdcp_sn = ul_sn;
+    item->ul_count.hfn = ul_hfn;
+    item->ul_count.sn_len = sn_length_18 ? NGAP_SN_LENGTH_18 : NGAP_SN_LENGTH_12;
+
+    item->dl_count.pdcp_sn = dl_sn;
+    item->dl_count.hfn = dl_hfn;
+    item->dl_count.sn_len = sn_length_18 ? NGAP_SN_LENGTH_18 : NGAP_SN_LENGTH_12;
+  }
+
+  MessageDef *msg_p = itti_alloc_new_message(TASK_RRC_GNB, 0, NGAP_UL_RAN_STATUS_TRANSFER);
+  NGAP_UL_RAN_STATUS_TRANSFER(msg_p) = msg;
+  itti_send_msg_to_task(TASK_NGAP, rrc->module_id, msg_p);
+
+  return 0;
+}
+
 /** @brief Process NG Handover Command on Source gNB */
 void rrc_gNB_process_HandoverCommand(gNB_RRC_INST *rrc, const ngap_handover_command_t *msg)
 {
@@ -1174,6 +1224,8 @@ void rrc_gNB_process_HandoverCommand(gNB_RRC_INST *rrc, const ngap_handover_comm
   LOG_D(NR_RRC, "RRCReconfiguration for UE %d: Encoded (%d bytes)\n", UE->rrc_ue_id, enc);
 
   rrc_gNB_trigger_reconfiguration_for_handover(rrc, UE, buffer, enc);
+
+  rrc_gNB_send_NGAP_ul_ran_status_transfer(rrc, UE);
 }
 
 void rrc_gNB_free_Handover_Command(ngap_handover_command_t *msg)
@@ -1545,4 +1597,52 @@ void rrc_gNB_send_NGAP_HANDOVER_REQUIRED(gNB_RRC_INST *rrc,
   MessageDef *msg_p = itti_alloc_new_message(TASK_RRC_GNB, 0, NGAP_HANDOVER_REQUIRED);
   NGAP_HANDOVER_REQUIRED(msg_p) = msg;
   itti_send_msg_to_task(TASK_NGAP, rrc->module_id, msg_p);
+}
+
+int rrc_gNB_process_NGAP_DL_RAN_STATUS_TRANSFER(MessageDef *msg_p, instance_t instance)
+{
+  const ngap_ran_status_transfer_t *cmd = &NGAP_DL_RAN_STATUS_TRANSFER(msg_p);
+  gNB_RRC_INST *rrc = RC.nrrrc[instance];
+  rrc_gNB_ue_context_t *ue_context_p = rrc_gNB_get_ue_context(rrc, cmd->gnb_ue_ngap_id);
+
+  if (!ue_context_p) {
+    LOG_E(NR_RRC, "[gNB %ld] No UE context for gNB_ue_ngap_id %u\n", instance, cmd->gnb_ue_ngap_id);
+    return -1;
+  }
+
+  gNB_RRC_UE_t *UE = &ue_context_p->ue_context;
+  LOG_I(NR_RRC,
+        "[gNB %ld] DL RAN Status Transfer for gNB_ue_ngap_id %u AMF_UE_NGAP_ID %lu\n",
+        instance,
+        cmd->gnb_ue_ngap_id,
+        cmd->amf_ue_ngap_id);
+
+  for (int i = 0; i < cmd->ran_status.nb_drb; ++i) {
+    const ngap_drb_status_t *s = &cmd->ran_status.drb_status_list[i];
+    LOG_I(NR_RRC,
+          "DL RAN Status Transfer - DRB ID %d:\n"
+          "  UL COUNT: PDCP SN = %u, HFN = %u (%s)\n"
+          "  DL COUNT: PDCP SN = %u, HFN = %u (%s)\n",
+          s->drb_id,
+          s->ul_count.pdcp_sn,
+          s->ul_count.hfn,
+          s->ul_count.sn_len == NGAP_SN_LENGTH_18 ? "18-bit" : "12-bit",
+          s->dl_count.pdcp_sn,
+          s->dl_count.hfn,
+          s->dl_count.sn_len == NGAP_SN_LENGTH_18 ? "18-bit" : "12-bit");
+
+    // Send to PDCP layer
+    for (int j = 0; j < MAX_DRBS_PER_UE; j++) {
+      if (UE->established_drbs[j].drb_id == s->drb_id)
+        nr_pdcp_update_ran_status(UE->rrc_ue_id,
+                                  s->drb_id,
+                                  s->ul_count.pdcp_sn,
+                                  s->ul_count.hfn,
+                                  s->dl_count.pdcp_sn,
+                                  s->dl_count.hfn,
+                                  s->dl_count.sn_len == NGAP_SN_LENGTH_18);
+    }
+  }
+
+  return 0;
 }
