@@ -788,16 +788,17 @@ static int retrieve_ldpc_dec_op(struct rte_bbdev_dec_op **ops, nrLDPC_slot_decod
       uint8_t *data = rte_pktmbuf_mtod_offset(m, uint8_t *, hard_output->offset);
       memcpy(nrLDPC_slot_decoding_parameters->TBs[h].segments[i].c, data, data_len);
 
+#ifndef LDPC_T2
       // copy HARQ combined output to the HARQ buffers for the subsequent iteration
       uint32_t segment_offset = (nrLDPC_slot_decoding_parameters->TBs[h].harq_unique_pid * NR_LDPC_MAX_NUM_CB) + i;
       uint32_t pruned_segment_offset = segment_offset % HARQ_CODEBLOCK_ID_MAX;
       struct rte_bbdev_op_data *harq_output = &ops[j]->ldpc_dec.harq_combined_output;
-      struct rte_mbuf *m_src = harq_output->data;
-      uint16_t data_len_src = rte_pktmbuf_data_len(m_src) - harq_output->offset;
-      uint8_t *data_src = rte_pktmbuf_mtod_offset(m_src, uint8_t *, harq_output->offset);
-      struct rte_mbuf *m_dst = harq_buffers[pruned_segment_offset].data;
-      uint8_t *data_dst = rte_pktmbuf_mtod_offset(m_dst, uint8_t *, harq_output->offset);
       if(!active_dev.support_internal_harq_memory) {
+        struct rte_mbuf *m_src = harq_output->data;
+        uint16_t data_len_src = rte_pktmbuf_data_len(m_src) - harq_output->offset;
+        uint8_t *data_src = rte_pktmbuf_mtod_offset(m_src, uint8_t *, harq_output->offset);
+        struct rte_mbuf *m_dst = harq_buffers[pruned_segment_offset].data;
+        uint8_t *data_dst = rte_pktmbuf_mtod_offset(m_dst, uint8_t *, harq_output->offset);
         rte_memcpy(data_dst, data_src, data_len_src);
         harq_buffers[pruned_segment_offset].offset = harq_output->offset;
         harq_buffers[pruned_segment_offset].length = data_len_src;
@@ -805,6 +806,7 @@ static int retrieve_ldpc_dec_op(struct rte_bbdev_dec_op **ops, nrLDPC_slot_decod
         harq_buffers[pruned_segment_offset].offset = harq_output->offset;
         harq_buffers[pruned_segment_offset].length = harq_output->length;
       }
+#endif
       ++j;
     }
   }
