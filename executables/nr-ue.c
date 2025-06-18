@@ -568,7 +568,7 @@ static void RU_write(nr_rxtx_thread_data_t *rxtxD, bool sl_tx_action, c16_t **tx
     }
   }
 
-  openair0_timestamp writeTimestamp = proc->timestamp_tx;
+  openair0_timestamp_t writeTimestamp = proc->timestamp_tx;
   int writeBlockSize = rxtxD->writeBlockSize;
   // if writeBlockSize gets longer that slot size, fill with dummy
   const int maxWriteBlockSize = fp->get_samples_per_slot(proc->nr_slot_tx, fp);
@@ -811,7 +811,8 @@ void UE_dl_processing(void *arg) {
   TracyCZoneEnd(ctx);
 }
 
-void dummyWrite(PHY_VARS_NR_UE *UE,openair0_timestamp timestamp, int writeBlockSize) {
+void dummyWrite(PHY_VARS_NR_UE *UE, openair0_timestamp_t timestamp, int writeBlockSize)
+{
   NR_DL_FRAME_PARMS *fp = &UE->frame_parms;
   if (UE->sl_mode == 2)
     fp = &UE->SL_UE_PHY_PARAMS.sl_frame_params;
@@ -827,7 +828,7 @@ void dummyWrite(PHY_VARS_NR_UE *UE,openair0_timestamp timestamp, int writeBlockS
   AssertFatal(writeBlockSize == tmp, "");
 }
 
-void readFrame(PHY_VARS_NR_UE *UE, openair0_timestamp *timestamp, int duration_rx_to_tx, bool toTrash)
+void readFrame(PHY_VARS_NR_UE *UE, openair0_timestamp_t *timestamp, int duration_rx_to_tx, bool toTrash)
 {
   NR_DL_FRAME_PARMS *fp = &UE->frame_parms;
   // two frames for initial sync
@@ -856,7 +857,7 @@ void readFrame(PHY_VARS_NR_UE *UE, openair0_timestamp *timestamp, int duration_r
       AssertFatal(read_block_size == tmp, "");
 
       if (IS_SOFTMODEM_RFSIM) {
-        const openair0_timestamp writeTimestamp =
+        const openair0_timestamp_t writeTimestamp =
             *timestamp + fp->get_samples_slot_timestamp(slot, fp, duration_rx_to_tx) - UE->N_TA_offset - UE->timing_advance;
         dummyWrite(UE, writeTimestamp, fp->get_samples_per_slot(slot, fp));
       }
@@ -868,7 +869,7 @@ void readFrame(PHY_VARS_NR_UE *UE, openair0_timestamp *timestamp, int duration_r
       free(rxp[i]);
 }
 
-static void syncInFrame(PHY_VARS_NR_UE *UE, openair0_timestamp *timestamp, int duration_rx_to_tx, openair0_timestamp rx_offset)
+static void syncInFrame(PHY_VARS_NR_UE *UE, openair0_timestamp_t *timestamp, int duration_rx_to_tx, openair0_timestamp_t rx_offset)
 {
   NR_DL_FRAME_PARMS *fp = &UE->frame_parms;
   if (UE->sl_mode == 2)
@@ -883,7 +884,7 @@ static void syncInFrame(PHY_VARS_NR_UE *UE, openair0_timestamp *timestamp, int d
     const int res = UE->rfdevice.trx_read_func(&UE->rfdevice, timestamp, (void **)UE->common_vars.rxdata, unitTransfer, fp->nb_antennas_rx);
     DevAssert(unitTransfer == res);
     if (IS_SOFTMODEM_RFSIM) {
-      const openair0_timestamp writeTimestamp =
+      const openair0_timestamp_t writeTimestamp =
           *timestamp + fp->get_samples_slot_timestamp(slot, fp, duration_rx_to_tx) - UE->N_TA_offset - UE->timing_advance;
       dummyWrite(UE, writeTimestamp, unitTransfer);
     }
@@ -1010,7 +1011,7 @@ void *UE_thread(void *arg)
   }
   int shiftForNextFrame = 0;
   int intialSyncOffset = 0;
-  openair0_timestamp sync_timestamp;
+  openair0_timestamp_t sync_timestamp;
   bool stats_printed = false;
 
   if (get_softmodem_params()->sync_ref && UE->sl_mode == 2) {
@@ -1184,7 +1185,7 @@ void *UE_thread(void *arg)
     }
 
     const int readBlockSize = get_readBlockSize(slot_nr, fp) - iq_shift_to_apply;
-    openair0_timestamp rx_timestamp;
+    openair0_timestamp_t rx_timestamp;
     int tmp = UE->rfdevice.trx_read_func(&UE->rfdevice, &rx_timestamp, rxp, readBlockSize, fp->nb_antennas_rx);
     metadata meta = {.slot =  curMsg.proc.nr_slot_rx, .frame =  curMsg.proc.frame_rx};
     UEscopeCopyWithMetadata(UE, ueTimeDomainSamples, rxp[0] - firstSymSamp * sizeof(c16_t), sizeof(c16_t), 1, readBlockSize, 0, &meta);
@@ -1199,7 +1200,7 @@ void *UE_thread(void *arg)
       int first_symbols = fp->ofdm_symbol_size + fp->nb_prefix_samples0; // first symbol of every frames
 
       if (first_symbols > 0) {
-        openair0_timestamp ignore_timestamp;
+        openair0_timestamp_t ignore_timestamp;
         int tmp = UE->rfdevice.trx_read_func(&UE->rfdevice,
                                              &ignore_timestamp,
                                              (void **)UE->common_vars.rxdata,
@@ -1212,8 +1213,8 @@ void *UE_thread(void *arg)
     }
 
     // use previous timing_advance value to compute writeTimestamp
-    const openair0_timestamp writeTimestamp = rx_timestamp + fp->get_samples_slot_timestamp(slot_nr, fp, duration_rx_to_tx)
-                                              - firstSymSamp - UE->N_TA_offset - timing_advance;
+    const openair0_timestamp_t writeTimestamp = rx_timestamp + fp->get_samples_slot_timestamp(slot_nr, fp, duration_rx_to_tx)
+                                                - firstSymSamp - UE->N_TA_offset - timing_advance;
 
     // Calculate TX deadline, approximately 1 symbol before the first sample should be written
     const uint64_t samples_diff = writeTimestamp - rx_timestamp - fp->ofdm_symbol_size;

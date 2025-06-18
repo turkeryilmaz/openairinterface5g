@@ -119,7 +119,7 @@ typedef struct {
 typedef struct NR_DL_FRAME_PARMS NR_DL_FRAME_PARMS;
 
 typedef uint32_t (*get_samples_per_slot_t)(int slot, const NR_DL_FRAME_PARMS *fp);
-typedef uint32_t (*get_slot_from_timestamp_t)(openair0_timestamp timestamp_rx, const NR_DL_FRAME_PARMS *fp);
+typedef uint32_t (*get_slot_from_timestamp_t)(openair0_timestamp_t timestamp_rx, const NR_DL_FRAME_PARMS *fp);
 
 typedef uint32_t (*get_samples_slot_timestamp_t)(int slot, const NR_DL_FRAME_PARMS *fp, unsigned int sl_ahead);
 

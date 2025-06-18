@@ -259,7 +259,7 @@ uint32_t get_samples_per_slot(int slot, const NR_DL_FRAME_PARMS *fp)
   return samp_count;
 }
 
-uint32_t get_slot_from_timestamp(openair0_timestamp timestamp_rx, const NR_DL_FRAME_PARMS *fp)
+uint32_t get_slot_from_timestamp(openair0_timestamp_t timestamp_rx, const NR_DL_FRAME_PARMS *fp)
 {
    uint32_t slot_idx = 0;
    int samples_till_the_slot = fp->get_samples_per_slot(slot_idx,fp)-1;

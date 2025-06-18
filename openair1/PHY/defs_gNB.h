@@ -339,7 +339,7 @@ typedef struct {
   /// Component Carrier index
   uint8_t CC_id;
   /// timestamp transmitted to HW
-  openair0_timestamp timestamp_tx;
+  openair0_timestamp_t timestamp_tx;
   /// slot to act upon for transmission
   int slot_tx;
   /// slot to act upon for reception
@@ -363,9 +363,9 @@ typedef struct gNB_L1_proc_t_s {
   /// Component Carrier index
   uint8_t CC_id;
   /// timestamp received from HW
-  openair0_timestamp timestamp_rx;
+  openair0_timestamp_t timestamp_rx;
   /// timestamp to send to "slave rru"
-  openair0_timestamp timestamp_tx;
+  openair0_timestamp_t timestamp_tx;
   /// slot to act upon for reception
   int slot_rx;
   /// frame to act upon for reception
@@ -619,7 +619,7 @@ union ldpcReqUnion {
 typedef struct processingData_L1 {
   int frame_rx;
   int slot_rx;
-  openair0_timestamp timestamp_tx;
+  openair0_timestamp_t timestamp_tx;
   PHY_VARS_gNB *gNB;
   notifiedFIFO_elt_t *elt;
 } processingData_L1_t;
@@ -629,7 +629,7 @@ typedef struct processingData_L1tx {
   int slot;
   int frame_rx;
   int slot_rx;
-  openair0_timestamp timestamp_tx;
+  openair0_timestamp_t timestamp_tx;
   PHY_VARS_gNB *gNB;
   nfapi_nr_dl_tti_pdcch_pdu pdcch_pdu[NFAPI_NR_MAX_NB_CORESETS];
   nfapi_nr_ul_dci_request_pdus_t ul_pdcch_pdu[NFAPI_NR_MAX_NB_CORESETS];
