@@ -44,8 +44,6 @@
 #include <openair1/PHY/TOOLS/phy_scope_interface.h>
 #include "PHY/log_tools.h"	
 
-char trace_rx_payload_time_stamp_str[30];	
-
 //#define DEBUG_RXDATA
 //#define SRS_IND_DEBUG
 
@@ -406,8 +404,11 @@ static int nr_ulsch_procedures(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx, boo
         crc_valid = true;
       }
     }
-    // capture Rx Payload via T-Tracer for both CRC valid and invalid cases
-    // Get Time Stamp for T-tracer messages
+#if T_TRACER
+    if (T_ACTIVE(T_GNB_PHY_UL_PAYLOAD_RX_BITS)) {
+      // capture Rx Payload via T-Tracer for both CRC valid and invalid cases
+      // Get Time Stamp for T-tracer messages
+      char trace_rx_payload_time_stamp_str[30];	
       get_time_stamp_usec(trace_rx_payload_time_stamp_str);
       // trace_rx_payload_time_stamp_str = 8 bytes timestamp = YYYYMMDD
       //                      + 9 bytes timestamp = HHMMSSMMM
@@ -420,7 +421,7 @@ static int nr_ulsch_procedures(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx, boo
       // int,qam_mod_order : int,mcs_index : int,mcs_table : int,nrOfLayers : 
       // int,transform_precoding : int,dmrs_config_type : int,ul_dmrs_symb_pos :  int,number_dmrs_symbols : int,dmrs_port : int,dmrs_nscid : 
       // int,nb_antennas_rx : int,number_of_bits : buffer,data
-  
+    
       NR_DL_FRAME_PARMS *frame_parms = &gNB->frame_parms;
       int dmrs_port = get_dmrs_port(0, pusch_pdu->dmrs_ports);
       //int num_bytes = rdata->Kr_bytes - (ulsch_harq->F >> 3) - ((ulsch_harq->C > 1) ? 3 : 0);
@@ -463,6 +464,8 @@ static int nr_ulsch_procedures(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx, boo
         T_INT((int)frame_parms->nb_antennas_rx), // rx antenna
         T_INT(((ulsch_harq->TBS) << 3)), //number_of_bits
         T_BUFFER((uint8_t*)((ulsch_harq->b)), ((ulsch_harq->TBS) << 3)/8)); //data
+      }
+#endif
 
     nfapi_nr_crc_t *crc = &UL_INFO->crc_ind.crc_list[UL_INFO->crc_ind.number_crcs++];
     nfapi_nr_rx_data_pdu_t *pdu = &UL_INFO->rx_ind.pdu_list[UL_INFO->rx_ind.number_of_pdus++];

@@ -143,10 +143,14 @@ static void nr_pusch_antenna_processing(void *arg)
         for (int k = pilot_cnt << 1; k < (pilot_cnt << 1) + 4; k++) {
           ul_ls_est[k] = ch16;
         }
-        //------------------Write channel parameters to Memory ------------------//
-        // Trace channel coefficients
-        pusch_ch_est_dmrs_pos_slot_mem [dmrs_symbol_start_idx + delta + ch_est_cnt] =  ch16; // 0, 2, 4, 6, 8, location of REs
-        pusch_ch_est_dmrs_pos_slot_mem [dmrs_symbol_start_idx + delta + ch_est_cnt + 2] =  ch16; // 0, 2, 4, 6, 8, location of REs
+        //------------------Write channel parameters to Memory  for data recording ------------------//
+        #if T_TRACER
+          if (T_ACTIVE(T_GNB_PHY_UL_FD_CHAN_EST_DMRS_POS)) {
+            // Trace channel coefficients
+            pusch_ch_est_dmrs_pos_slot_mem[dmrs_symbol_start_idx + delta + ch_est_cnt] =  ch16; // 0, 2, 4, 6, 8, location of REs
+            pusch_ch_est_dmrs_pos_slot_mem[dmrs_symbol_start_idx + delta + ch_est_cnt + 2] =  ch16; // 0, 2, 4, 6, 8, location of REs
+          }
+        #endif
         ch_est_cnt += 4;  
         pilot_cnt += 2;
       }
@@ -491,15 +495,19 @@ int nr_pusch_channel_estimation(PHY_VARS_gNB *gNB,
 
 #endif
 
-  //------------------Write DMRS to Memory ------------------//
-  // used by T-Tracer to trace DMRS slot grid
-  int dmrs_delta = 0; // intialize it to zero currently, derive it later from above functions 
+  //------------------Write DMRS to Memory for Data Recording ------------------//
   int dmrs_symbol_start_idx = symbol * pusch_pdu->nrOfLayers * nb_rb_pusch * NR_NB_SC_PER_RB + nl * nb_rb_pusch * NR_NB_SC_PER_RB;
-  for (int i = 0; i < (6 * nb_rb_pusch); i++) {
-    // the generated DMRs is a complex conjugate of mod table, so flip the sign of imag. part
-    pusch_dmrs_slot_mem [dmrs_symbol_start_idx + dmrs_delta + i * 2].r =  pilot[i].r; // 0, 2, 4, 6, 8, location of REs
-    pusch_dmrs_slot_mem [dmrs_symbol_start_idx + dmrs_delta + i * 2].i =  -pilot[i].i; // 0, 2, 4, 6, 8, location of REs
-  } 	
+#if T_TRACER
+  if (T_ACTIVE(T_GNB_PHY_UL_FD_DMRS)) {
+    // used by T-Tracer to trace DMRS slot grid
+    int dmrs_delta = 0; // intialize it to zero currently, derive it later from above functions 
+    for (int i = 0; i < (6 * nb_rb_pusch); i++) {
+      // the generated DMRs is a complex conjugate of mod table, so flip the sign of imag. part
+      pusch_dmrs_slot_mem [dmrs_symbol_start_idx + dmrs_delta + i * 2].r =  pilot[i].r; // 0, 2, 4, 6, 8, location of REs
+      pusch_dmrs_slot_mem [dmrs_symbol_start_idx + dmrs_delta + i * 2].i =  -pilot[i].i; // 0, 2, 4, 6, 8, location of REs
+    }
+  }
+#endif 	
 
   int nest_count = 0;
   uint64_t noise_amp2 = 0;

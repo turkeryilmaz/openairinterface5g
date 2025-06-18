@@ -16,18 +16,12 @@
 
 #define INVALID_VALUE 255
 
-char trace_time_stamp_str[30];
-
-static void copy_rxFDext_chFext_data_to_memory (c16_t *rxFext,
-  c16_t *chFext,
-  c16_t *rxFext_slot,
-  c16_t *chFext_slot, int nb_re_pusch, int symbol){
-  c16_t *rxF_ext_ptr    = &rxFext[0];
-  c16_t *chFext_ptr     = &chFext[0];             
-  c16_t *rxFext_slot_pt   = &rxFext_slot[nb_re_pusch*symbol];
-  c16_t *chFext_slot_pt   = &chFext_slot[nb_re_pusch*symbol];
-  memcpy(rxFext_slot_pt, &rxF_ext_ptr[0], nb_re_pusch * sizeof(c16_t));
-  memcpy(chFext_slot_pt, &chFext_ptr[0], nb_re_pusch * sizeof(c16_t));
+static void copy_c16_data_to_slot_memory(
+    c16_t *src, c16_t *dst_slot, int nb_re_pusch, int symbol)
+{
+    c16_t *src_ptr = &src[0];
+    c16_t *dst_slot_ptr = &dst_slot[nb_re_pusch * symbol];
+    memcpy(dst_slot_ptr, &src_ptr[0], nb_re_pusch * sizeof(c16_t));
 }
 
 void nr_idft(int32_t *z, uint32_t Msc_PUSCH)
@@ -1072,11 +1066,15 @@ static void inner_rx(PHY_VARS_gNB *gNB,
                            dmrs_symbol_flag, 
                            rel15_ul,
                            frame_parms);
+#if T_TRACER                   
       // Assume assume Tx and Rx = 1
-      copy_rxFDext_chFext_data_to_memory (rxFext[aarx],
-        chFext[aatx][aarx],
-        rxFext_slot,
-        chFext_slot, nb_re_pusch, symbol);
+      if (T_ACTIVE(T_GNB_PHY_UL_FD_PUSCH_IQ)) {
+        copy_c16_data_to_slot_memory(rxFext[aarx], rxFext_slot, nb_re_pusch, symbol);
+      }
+      if (T_ACTIVE(T_GNB_PHY_UL_FD_CHAN_EST_DMRS_INTERPL)) {
+        copy_c16_data_to_slot_memory(chFext[aatx][aarx], chFext_slot, nb_re_pusch, symbol);
+      }
+#endif
     }
   }
   c16_t rho[nb_layer][nb_layer][buffer_length] __attribute__((aligned(32)));
@@ -1571,180 +1569,188 @@ int nr_rx_pusch_tp(PHY_VARS_gNB *gNB,
     }
   } // symbol loop
 
-// Get Time Stamp for T-tracer messages
+#if T_TRACER
+  // Get Time Stamp for T-tracer messages
+  char trace_time_stamp_str[30];
   get_time_stamp_usec(trace_time_stamp_str);
-// trace_time_stamp_str = 8 bytes timestamp = YYYYMMDD
-//                      + 9 bytes timestamp = HHMMSSMMM
-
-// Log GNB_PHY_UL_FD_DMRS using T-Tracer if activated
-// FORMAT = int,frame : int,slot : int,datetime_yyyymmdd : int,datetime_hhmmssmmm : 
-// int,frame_type : int,freq_range : int,subcarrier_spacing : int,cyclic_prefix : int,symbols_per_slot : 
-// int,Nid_cell : int,rnti : 
-// int,rb_size : int,rb_start : int,start_symbol_index : int,nr_of_symbols : 
-// int,qam_mod_order : int,mcs_index : int,mcs_table : int,nrOfLayers : 
-// int,transform_precoding : int,dmrs_config_type : int,ul_dmrs_symb_pos :  int,number_dmrs_symbols : int,dmrs_port : int,dmrs_nscid : 
-// int,nb_antennas_rx : int,number_of_bits : buffer,data
+  // trace_time_stamp_str = 8 bytes timestamp = YYYYMMDD
+  //                      + 9 bytes timestamp = HHMMSSMMM
   // Not Ready for MIMO
   int dmrs_port = get_dmrs_port(0,rel15_ul->dmrs_ports);
-
-  T(T_GNB_PHY_UL_FD_DMRS, 
-    T_INT((int)frame), 
-    T_INT((int)slot), 
-    T_INT((int)split_time_stamp_and_convert_to_int(trace_time_stamp_str, 0, 8)), 
-    T_INT((int)split_time_stamp_and_convert_to_int(trace_time_stamp_str, 8, 9)), 
-    T_INT((int)frame_parms->frame_type), // Frame type (0 FDD, 1 TDD)  frame_structure
-    T_INT((int)frame_parms->freq_range), // Frequency range (0 FR1, 1 FR2)
-    T_INT((int)rel15_ul->subcarrier_spacing), // Subcarrier spacing (0 15kHz, 1 30kHz, 2 60kHz)
-    T_INT((int)rel15_ul->cyclic_prefix), // Normal or extended prefix (0 normal, 1 extended)
-    T_INT((int)frame_parms->symbols_per_slot), // Number of symbols per slot
-    T_INT((int)frame_parms->Nid_cell),
-    T_INT((int)rel15_ul->rnti),
-    T_INT((int)rel15_ul->rb_size), 
-    T_INT((int)rel15_ul->rb_start),
-    T_INT((int)rel15_ul->start_symbol_index), //start_ofdm_symbol
-    T_INT((int)rel15_ul->nr_of_symbols),  //num_ofdm_symbols
-    T_INT((int)rel15_ul->qam_mod_order),  //modulation
-    T_INT((int)rel15_ul->mcs_index),   //mcs
-    T_INT((int)rel15_ul->mcs_table),  //mcs_table_index
-    T_INT((int)rel15_ul->nrOfLayers), // num_layer 
-    T_INT((int)rel15_ul->transform_precoding), // transformPrecoder_enabled = 0, transformPrecoder_disabled = 1
-    T_INT((int)rel15_ul->dmrs_config_type), // dmrs_resource_map_config: pusch_dmrs_type1 = 0, pusch_dmrs_type2 = 1
-    T_INT((int)rel15_ul->ul_dmrs_symb_pos), // used to derive the DMRS symbol positions
-    T_INT((int)number_dmrs_symbols),
-      //dmrs_start_ofdm_symbol
-      //dmrs_duration_num_ofdm_symbols
-      //dmrs_num_add_positions
-    T_INT((int)dmrs_port), //dmrs_antenna_port
-    T_INT((int)rel15_ul->scid), //dmrs_nscid
-    T_INT((int)frame_parms->nb_antennas_rx), // rx antenna
-    T_INT(0), //number_of_bits
-    T_BUFFER((c16_t*)(&(pusch_dmrs_slot_mem[0])), rel15_ul->rb_size * NR_NB_SC_PER_RB * rel15_ul->nr_of_symbols * 4));
+  if (T_ACTIVE(T_GNB_PHY_UL_FD_DMRS)) {
+    // Log GNB_PHY_UL_FD_DMRS using T-Tracer if activated
+    // FORMAT = int,frame : int,slot : int,datetime_yyyymmdd : int,datetime_hhmmssmmm : 
+    // int,frame_type : int,freq_range : int,subcarrier_spacing : int,cyclic_prefix : int,symbols_per_slot : 
+    // int,Nid_cell : int,rnti : 
+    // int,rb_size : int,rb_start : int,start_symbol_index : int,nr_of_symbols : 
+    // int,qam_mod_order : int,mcs_index : int,mcs_table : int,nrOfLayers : 
+    // int,transform_precoding : int,dmrs_config_type : int,ul_dmrs_symb_pos :  int,number_dmrs_symbols : int,dmrs_port : int,dmrs_nscid : 
+    // int,nb_antennas_rx : int,number_of_bits : buffer,data
+    T(T_GNB_PHY_UL_FD_DMRS, 
+      T_INT((int)frame), 
+      T_INT((int)slot), 
+      T_INT((int)split_time_stamp_and_convert_to_int(trace_time_stamp_str, 0, 8)), 
+      T_INT((int)split_time_stamp_and_convert_to_int(trace_time_stamp_str, 8, 9)), 
+      T_INT((int)frame_parms->frame_type), // Frame type (0 FDD, 1 TDD)  frame_structure
+      T_INT((int)frame_parms->freq_range), // Frequency range (0 FR1, 1 FR2)
+      T_INT((int)rel15_ul->subcarrier_spacing), // Subcarrier spacing (0 15kHz, 1 30kHz, 2 60kHz)
+      T_INT((int)rel15_ul->cyclic_prefix), // Normal or extended prefix (0 normal, 1 extended)
+      T_INT((int)frame_parms->symbols_per_slot), // Number of symbols per slot
+      T_INT((int)frame_parms->Nid_cell),
+      T_INT((int)rel15_ul->rnti),
+      T_INT((int)rel15_ul->rb_size), 
+      T_INT((int)rel15_ul->rb_start),
+      T_INT((int)rel15_ul->start_symbol_index), //start_ofdm_symbol
+      T_INT((int)rel15_ul->nr_of_symbols),  //num_ofdm_symbols
+      T_INT((int)rel15_ul->qam_mod_order),  //modulation
+      T_INT((int)rel15_ul->mcs_index),   //mcs
+      T_INT((int)rel15_ul->mcs_table),  //mcs_table_index
+      T_INT((int)rel15_ul->nrOfLayers), // num_layer 
+      T_INT((int)rel15_ul->transform_precoding), // transformPrecoder_enabled = 0, transformPrecoder_disabled = 1
+      T_INT((int)rel15_ul->dmrs_config_type), // dmrs_resource_map_config: pusch_dmrs_type1 = 0, pusch_dmrs_type2 = 1
+      T_INT((int)rel15_ul->ul_dmrs_symb_pos), // used to derive the DMRS symbol positions
+      T_INT((int)number_dmrs_symbols),
+        //dmrs_start_ofdm_symbol
+        //dmrs_duration_num_ofdm_symbols
+        //dmrs_num_add_positions
+      T_INT((int)dmrs_port), //dmrs_antenna_port
+      T_INT((int)rel15_ul->scid), //dmrs_nscid
+      T_INT((int)frame_parms->nb_antennas_rx), // rx antenna
+      T_INT(0), //number_of_bits
+      T_BUFFER((c16_t*)(&(pusch_dmrs_slot_mem[0])), rel15_ul->rb_size * NR_NB_SC_PER_RB * rel15_ul->nr_of_symbols * 4));
+  }
+    
+  if (T_ACTIVE(T_GNB_PHY_UL_FD_CHAN_EST_DMRS_POS)) {
+    // Log GNB_PHY_UL_FD_CHAN_EST_DMRS_POS using T-Tracer if activated
+    // FORMAT = int,frame : int,slot : int,datetime_yyyymmdd : int,datetime_hhmmssmmm : 
+    // int,frame_type : int,freq_range : int,subcarrier_spacing : int,cyclic_prefix : int,symbols_per_slot : 
+    // int,Nid_cell : int,rnti : 
+    // int,rb_size : int,rb_start : int,start_symbol_index : int,nr_of_symbols : 
+    // int,qam_mod_order : int,mcs_index : int,mcs_table : int,nrOfLayers : 
+    // int,transform_precoding : int,dmrs_config_type : int,ul_dmrs_symb_pos :  int,number_dmrs_symbols : int,dmrs_port : int,dmrs_nscid : 
+    // int,nb_antennas_rx : int,number_of_bits : buffer,data
+    T(T_GNB_PHY_UL_FD_CHAN_EST_DMRS_POS, 
+      T_INT((int)frame), 
+      T_INT((int)slot), 
+      T_INT((int)split_time_stamp_and_convert_to_int(trace_time_stamp_str, 0, 8)), 
+      T_INT((int)split_time_stamp_and_convert_to_int(trace_time_stamp_str, 8, 9)), 
+      T_INT((int)frame_parms->frame_type), // Frame type (0 FDD, 1 TDD)  frame_structure
+      T_INT((int)frame_parms->freq_range), // Frequency range (0 FR1, 1 FR2)
+      T_INT((int)rel15_ul->subcarrier_spacing), // Subcarrier spacing (0 15kHz, 1 30kHz, 2 60kHz)
+      T_INT((int)rel15_ul->cyclic_prefix), // Normal or extended prefix (0 normal, 1 extended)
+      T_INT((int)frame_parms->symbols_per_slot), // Number of symbols per slot
+      T_INT((int)frame_parms->Nid_cell),
+      T_INT((int)rel15_ul->rnti),
+      T_INT((int)rel15_ul->rb_size), 
+      T_INT((int)rel15_ul->rb_start),
+      T_INT((int)rel15_ul->start_symbol_index), //start_ofdm_symbol
+      T_INT((int)rel15_ul->nr_of_symbols),  //num_ofdm_symbols
+      T_INT((int)rel15_ul->qam_mod_order),  //modulation
+      T_INT((int)rel15_ul->mcs_index),   //mcs
+      T_INT((int)rel15_ul->mcs_table),  //mcs_table_index
+      T_INT((int)rel15_ul->nrOfLayers), // num_layer 
+      T_INT((int)rel15_ul->transform_precoding), // transformPrecoder_enabled = 0, transformPrecoder_disabled = 1
+      T_INT((int)rel15_ul->dmrs_config_type), // dmrs_resource_map_config: pusch_dmrs_type1 = 0, pusch_dmrs_type2 = 1
+      T_INT((int)rel15_ul->ul_dmrs_symb_pos), // used to derive the DMRS symbol positions
+      T_INT((int)number_dmrs_symbols),
+        //dmrs_start_ofdm_symbol
+        //dmrs_duration_num_ofdm_symbols
+        //dmrs_num_add_positions
+      T_INT((int)dmrs_port), //dmrs_antenna_port
+      T_INT((int)rel15_ul->scid), //dmrs_nscid
+      T_INT((int)frame_parms->nb_antennas_rx), // rx antenna
+      T_INT(0), //number_of_bits
+      T_BUFFER((c16_t*)(&(pusch_ch_est_dmrs_pos_slot_mem[0])), rel15_ul->rb_size * NR_NB_SC_PER_RB * rel15_ul->nr_of_symbols * 4));
+  }
   
-  // Log GNB_PHY_UL_FD_CHAN_EST_DMRS_POS using T-Tracer if activated
-  // FORMAT = int,frame : int,slot : int,datetime_yyyymmdd : int,datetime_hhmmssmmm : 
-  // int,frame_type : int,freq_range : int,subcarrier_spacing : int,cyclic_prefix : int,symbols_per_slot : 
-  // int,Nid_cell : int,rnti : 
-  // int,rb_size : int,rb_start : int,start_symbol_index : int,nr_of_symbols : 
-  // int,qam_mod_order : int,mcs_index : int,mcs_table : int,nrOfLayers : 
-  // int,transform_precoding : int,dmrs_config_type : int,ul_dmrs_symb_pos :  int,number_dmrs_symbols : int,dmrs_port : int,dmrs_nscid : 
-  // int,nb_antennas_rx : int,number_of_bits : buffer,data
-  T(T_GNB_PHY_UL_FD_CHAN_EST_DMRS_POS, 
-    T_INT((int)frame), 
-    T_INT((int)slot), 
-    T_INT((int)split_time_stamp_and_convert_to_int(trace_time_stamp_str, 0, 8)), 
-    T_INT((int)split_time_stamp_and_convert_to_int(trace_time_stamp_str, 8, 9)), 
-    T_INT((int)frame_parms->frame_type), // Frame type (0 FDD, 1 TDD)  frame_structure
-    T_INT((int)frame_parms->freq_range), // Frequency range (0 FR1, 1 FR2)
-    T_INT((int)rel15_ul->subcarrier_spacing), // Subcarrier spacing (0 15kHz, 1 30kHz, 2 60kHz)
-    T_INT((int)rel15_ul->cyclic_prefix), // Normal or extended prefix (0 normal, 1 extended)
-    T_INT((int)frame_parms->symbols_per_slot), // Number of symbols per slot
-    T_INT((int)frame_parms->Nid_cell),
-    T_INT((int)rel15_ul->rnti),
-    T_INT((int)rel15_ul->rb_size), 
-    T_INT((int)rel15_ul->rb_start),
-    T_INT((int)rel15_ul->start_symbol_index), //start_ofdm_symbol
-    T_INT((int)rel15_ul->nr_of_symbols),  //num_ofdm_symbols
-    T_INT((int)rel15_ul->qam_mod_order),  //modulation
-    T_INT((int)rel15_ul->mcs_index),   //mcs
-    T_INT((int)rel15_ul->mcs_table),  //mcs_table_index
-    T_INT((int)rel15_ul->nrOfLayers), // num_layer 
-    T_INT((int)rel15_ul->transform_precoding), // transformPrecoder_enabled = 0, transformPrecoder_disabled = 1
-    T_INT((int)rel15_ul->dmrs_config_type), // dmrs_resource_map_config: pusch_dmrs_type1 = 0, pusch_dmrs_type2 = 1
-    T_INT((int)rel15_ul->ul_dmrs_symb_pos), // used to derive the DMRS symbol positions
-    T_INT((int)number_dmrs_symbols),
-      //dmrs_start_ofdm_symbol
-      //dmrs_duration_num_ofdm_symbols
-      //dmrs_num_add_positions
-    T_INT((int)dmrs_port), //dmrs_antenna_port
-    T_INT((int)rel15_ul->scid), //dmrs_nscid
-    T_INT((int)frame_parms->nb_antennas_rx), // rx antenna
-    T_INT(0), //number_of_bits
-    T_BUFFER((c16_t*)(&(pusch_ch_est_dmrs_pos_slot_mem[0])), rel15_ul->rb_size * NR_NB_SC_PER_RB * rel15_ul->nr_of_symbols * 4));
-  
-  // Log GNB_PHY_UL_FD_PUSCH_IQ using T-Tracer if activated
-  // FORMAT = int,frame : int,slot : int,datetime_yyyymmdd : int,datetime_hhmmssmmm : 
-  // int,frame_type : int,freq_range : int,subcarrier_spacing : int,cyclic_prefix : int,symbols_per_slot : 
-  // int,Nid_cell : int,rnti : 
-  // int,rb_size : int,rb_start : int,start_symbol_index : int,nr_of_symbols : 
-  // int,qam_mod_order : int,mcs_index : int,mcs_table : int,nrOfLayers : 
-  // int,transform_precoding : int,dmrs_config_type : int,ul_dmrs_symb_pos :  int,number_dmrs_symbols : int,dmrs_port : int,dmrs_nscid : 
-  // int,nb_antennas_rx : int,number_of_bits : buffer,data
-  
-  T(T_GNB_PHY_UL_FD_PUSCH_IQ, 
-    T_INT((int)frame), 
-    T_INT((int)slot), 
-    T_INT((int)split_time_stamp_and_convert_to_int(trace_time_stamp_str, 0, 8)), 
-    T_INT((int)split_time_stamp_and_convert_to_int(trace_time_stamp_str, 8, 9)), 
-    T_INT((int)frame_parms->frame_type), // Frame type (0 FDD, 1 TDD)  frame_structure
-    T_INT((int)frame_parms->freq_range), // Frequency range (0 FR1, 1 FR2)
-    T_INT((int)rel15_ul->subcarrier_spacing), // Subcarrier spacing (0 15kHz, 1 30kHz, 2 60kHz)
-    T_INT((int)rel15_ul->cyclic_prefix), // Normal or extended prefix (0 normal, 1 extended)
-    T_INT((int)frame_parms->symbols_per_slot), // Number of symbols per slot
-    T_INT((int)frame_parms->Nid_cell),
-    T_INT((int)rel15_ul->rnti),
-    T_INT((int)rel15_ul->rb_size), 
-    T_INT((int)rel15_ul->rb_start),
-    T_INT((int)rel15_ul->start_symbol_index), //start_ofdm_symbol
-    T_INT((int)rel15_ul->nr_of_symbols),  //num_ofdm_symbols
-    T_INT((int)rel15_ul->qam_mod_order),  //modulation
-    T_INT((int)rel15_ul->mcs_index),   //mcs
-    T_INT((int)rel15_ul->mcs_table),  //mcs_table_index
-    T_INT((int)rel15_ul->nrOfLayers), // num_layer 
-    T_INT((int)rel15_ul->transform_precoding), // transformPrecoder_enabled = 0, transformPrecoder_disabled = 1
-    T_INT((int)rel15_ul->dmrs_config_type), // dmrs_resource_map_config: pusch_dmrs_type1 = 0, pusch_dmrs_type2 = 1
-    T_INT((int)rel15_ul->ul_dmrs_symb_pos), // used to derive the DMRS symbol positions
-    T_INT((int)number_dmrs_symbols),
-      //dmrs_start_ofdm_symbol
-      //dmrs_duration_num_ofdm_symbols
-      //dmrs_num_add_positions
-    T_INT((int)dmrs_port), //dmrs_antenna_port
-    T_INT((int)rel15_ul->scid), //dmrs_nscid
-    T_INT((int)frame_parms->nb_antennas_rx), // rx antenna
-    T_INT(0), //number_of_bits
-    T_BUFFER((c16_t*)(&(rxFext_slot_mem[0])), rel15_ul->rb_size * NR_NB_SC_PER_RB * rel15_ul->nr_of_symbols * frame_parms->nb_antennas_rx * 4));
-
+  if (T_ACTIVE(T_GNB_PHY_UL_FD_PUSCH_IQ)) {
+    // Log GNB_PHY_UL_FD_PUSCH_IQ using T-Tracer if activated
+    // FORMAT = int,frame : int,slot : int,datetime_yyyymmdd : int,datetime_hhmmssmmm : 
+    // int,frame_type : int,freq_range : int,subcarrier_spacing : int,cyclic_prefix : int,symbols_per_slot : 
+    // int,Nid_cell : int,rnti : 
+    // int,rb_size : int,rb_start : int,start_symbol_index : int,nr_of_symbols : 
+    // int,qam_mod_order : int,mcs_index : int,mcs_table : int,nrOfLayers : 
+    // int,transform_precoding : int,dmrs_config_type : int,ul_dmrs_symb_pos :  int,number_dmrs_symbols : int,dmrs_port : int,dmrs_nscid : 
+    // int,nb_antennas_rx : int,number_of_bits : buffer,data
+    
+    T(T_GNB_PHY_UL_FD_PUSCH_IQ, 
+      T_INT((int)frame), 
+      T_INT((int)slot), 
+      T_INT((int)split_time_stamp_and_convert_to_int(trace_time_stamp_str, 0, 8)), 
+      T_INT((int)split_time_stamp_and_convert_to_int(trace_time_stamp_str, 8, 9)), 
+      T_INT((int)frame_parms->frame_type), // Frame type (0 FDD, 1 TDD)  frame_structure
+      T_INT((int)frame_parms->freq_range), // Frequency range (0 FR1, 1 FR2)
+      T_INT((int)rel15_ul->subcarrier_spacing), // Subcarrier spacing (0 15kHz, 1 30kHz, 2 60kHz)
+      T_INT((int)rel15_ul->cyclic_prefix), // Normal or extended prefix (0 normal, 1 extended)
+      T_INT((int)frame_parms->symbols_per_slot), // Number of symbols per slot
+      T_INT((int)frame_parms->Nid_cell),
+      T_INT((int)rel15_ul->rnti),
+      T_INT((int)rel15_ul->rb_size), 
+      T_INT((int)rel15_ul->rb_start),
+      T_INT((int)rel15_ul->start_symbol_index), //start_ofdm_symbol
+      T_INT((int)rel15_ul->nr_of_symbols),  //num_ofdm_symbols
+      T_INT((int)rel15_ul->qam_mod_order),  //modulation
+      T_INT((int)rel15_ul->mcs_index),   //mcs
+      T_INT((int)rel15_ul->mcs_table),  //mcs_table_index
+      T_INT((int)rel15_ul->nrOfLayers), // num_layer 
+      T_INT((int)rel15_ul->transform_precoding), // transformPrecoder_enabled = 0, transformPrecoder_disabled = 1
+      T_INT((int)rel15_ul->dmrs_config_type), // dmrs_resource_map_config: pusch_dmrs_type1 = 0, pusch_dmrs_type2 = 1
+      T_INT((int)rel15_ul->ul_dmrs_symb_pos), // used to derive the DMRS symbol positions
+      T_INT((int)number_dmrs_symbols),
+        //dmrs_start_ofdm_symbol
+        //dmrs_duration_num_ofdm_symbols
+        //dmrs_num_add_positions
+      T_INT((int)dmrs_port), //dmrs_antenna_port
+      T_INT((int)rel15_ul->scid), //dmrs_nscid
+      T_INT((int)frame_parms->nb_antennas_rx), // rx antenna
+      T_INT(0), //number_of_bits
+      T_BUFFER((c16_t*)(&(rxFext_slot_mem[0])), rel15_ul->rb_size * NR_NB_SC_PER_RB * rel15_ul->nr_of_symbols * frame_parms->nb_antennas_rx * 4));
+  }
+  if (T_ACTIVE(T_GNB_PHY_UL_FD_CHAN_EST_DMRS_INTERPL)) {
     // Log pusch_ch_est_dmrs_interpl_slot_mem using T-Tracer if activated  
-  // FORMAT = int,frame : int,slot : int,datetime_yyyymmdd : int,datetime_hhmmssmmm : 
-  // int,frame_type : int,freq_range : int,subcarrier_spacing : int,cyclic_prefix : int,symbols_per_slot : 
-  // int,Nid_cell : int,rnti : 
-  // int,rb_size : int,rb_start : int,start_symbol_index : int,nr_of_symbols : 
-  // int,qam_mod_order : int,mcs_index : int,mcs_table : int,nrOfLayers : 
-  // int,transform_precoding : int,dmrs_config_type : int,ul_dmrs_symb_pos :  int,number_dmrs_symbols : int,dmrs_port : int,dmrs_nscid : 
-  // int,nb_antennas_rx : int,number_of_bits : buffer,data
-  
-  T(T_GNB_PHY_UL_FD_CHAN_EST_DMRS_INTERPL, 
-    T_INT((int)frame), 
-    T_INT((int)slot), 
-    T_INT((int)split_time_stamp_and_convert_to_int(trace_time_stamp_str, 0, 8)), 
-    T_INT((int)split_time_stamp_and_convert_to_int(trace_time_stamp_str, 8, 9)), 
-    T_INT((int)frame_parms->frame_type), // Frame type (0 FDD, 1 TDD)  frame_structure
-    T_INT((int)frame_parms->freq_range), // Frequency range (0 FR1, 1 FR2)
-    T_INT((int)rel15_ul->subcarrier_spacing), // Subcarrier spacing (0 15kHz, 1 30kHz, 2 60kHz)
-    T_INT((int)rel15_ul->cyclic_prefix), // Normal or extended prefix (0 normal, 1 extended)
-    T_INT((int)frame_parms->symbols_per_slot), // Number of symbols per slot
-    T_INT((int)frame_parms->Nid_cell),
-    T_INT((int)rel15_ul->rnti),
-    T_INT((int)rel15_ul->rb_size), 
-    T_INT((int)rel15_ul->rb_start),
-    T_INT((int)rel15_ul->start_symbol_index), //start_ofdm_symbol
-    T_INT((int)rel15_ul->nr_of_symbols),  //num_ofdm_symbols
-    T_INT((int)rel15_ul->qam_mod_order),  //modulation
-    T_INT((int)rel15_ul->mcs_index),   //mcs
-    T_INT((int)rel15_ul->mcs_table),  //mcs_table_index
-    T_INT((int)rel15_ul->nrOfLayers), // num_layer 
-    T_INT((int)rel15_ul->transform_precoding), // transformPrecoder_enabled = 0, transformPrecoder_disabled = 1
-    T_INT((int)rel15_ul->dmrs_config_type), // dmrs_resource_map_config: pusch_dmrs_type1 = 0, pusch_dmrs_type2 = 1
-    T_INT((int)rel15_ul->ul_dmrs_symb_pos), // used to derive the DMRS symbol positions
-    T_INT((int)number_dmrs_symbols),
-      //dmrs_start_ofdm_symbol
-      //dmrs_duration_num_ofdm_symbols
-      //dmrs_num_add_positions
-    T_INT((int)dmrs_port), //dmrs_antenna_port
-    T_INT((int)rel15_ul->scid), //dmrs_nscid
-    T_INT((int)frame_parms->nb_antennas_rx), // rx antenna
-    T_INT(0), //number_of_bits
-    T_BUFFER((c16_t*)pusch_ch_est_dmrs_interpl_slot_mem, 
-      rel15_ul->rb_size * NR_NB_SC_PER_RB * rel15_ul->nr_of_symbols * frame_parms->nb_antennas_rx * rel15_ul->nrOfLayers * 4));
+    // FORMAT = int,frame : int,slot : int,datetime_yyyymmdd : int,datetime_hhmmssmmm : 
+    // int,frame_type : int,freq_range : int,subcarrier_spacing : int,cyclic_prefix : int,symbols_per_slot : 
+    // int,Nid_cell : int,rnti : 
+    // int,rb_size : int,rb_start : int,start_symbol_index : int,nr_of_symbols : 
+    // int,qam_mod_order : int,mcs_index : int,mcs_table : int,nrOfLayers : 
+    // int,transform_precoding : int,dmrs_config_type : int,ul_dmrs_symb_pos :  int,number_dmrs_symbols : int,dmrs_port : int,dmrs_nscid : 
+    // int,nb_antennas_rx : int,number_of_bits : buffer,data
+    
+    T(T_GNB_PHY_UL_FD_CHAN_EST_DMRS_INTERPL, 
+      T_INT((int)frame), 
+      T_INT((int)slot), 
+      T_INT((int)split_time_stamp_and_convert_to_int(trace_time_stamp_str, 0, 8)), 
+      T_INT((int)split_time_stamp_and_convert_to_int(trace_time_stamp_str, 8, 9)), 
+      T_INT((int)frame_parms->frame_type), // Frame type (0 FDD, 1 TDD)  frame_structure
+      T_INT((int)frame_parms->freq_range), // Frequency range (0 FR1, 1 FR2)
+      T_INT((int)rel15_ul->subcarrier_spacing), // Subcarrier spacing (0 15kHz, 1 30kHz, 2 60kHz)
+      T_INT((int)rel15_ul->cyclic_prefix), // Normal or extended prefix (0 normal, 1 extended)
+      T_INT((int)frame_parms->symbols_per_slot), // Number of symbols per slot
+      T_INT((int)frame_parms->Nid_cell),
+      T_INT((int)rel15_ul->rnti),
+      T_INT((int)rel15_ul->rb_size), 
+      T_INT((int)rel15_ul->rb_start),
+      T_INT((int)rel15_ul->start_symbol_index), //start_ofdm_symbol
+      T_INT((int)rel15_ul->nr_of_symbols),  //num_ofdm_symbols
+      T_INT((int)rel15_ul->qam_mod_order),  //modulation
+      T_INT((int)rel15_ul->mcs_index),   //mcs
+      T_INT((int)rel15_ul->mcs_table),  //mcs_table_index
+      T_INT((int)rel15_ul->nrOfLayers), // num_layer 
+      T_INT((int)rel15_ul->transform_precoding), // transformPrecoder_enabled = 0, transformPrecoder_disabled = 1
+      T_INT((int)rel15_ul->dmrs_config_type), // dmrs_resource_map_config: pusch_dmrs_type1 = 0, pusch_dmrs_type2 = 1
+      T_INT((int)rel15_ul->ul_dmrs_symb_pos), // used to derive the DMRS symbol positions
+      T_INT((int)number_dmrs_symbols),
+        //dmrs_start_ofdm_symbol
+        //dmrs_duration_num_ofdm_symbols
+        //dmrs_num_add_positions
+      T_INT((int)dmrs_port), //dmrs_antenna_port
+      T_INT((int)rel15_ul->scid), //dmrs_nscid
+      T_INT((int)frame_parms->nb_antennas_rx), // rx antenna
+      T_INT(0), //number_of_bits
+      T_BUFFER((c16_t*)pusch_ch_est_dmrs_interpl_slot_mem, 
+        rel15_ul->rb_size * NR_NB_SC_PER_RB * rel15_ul->nr_of_symbols * frame_parms->nb_antennas_rx * rel15_ul->nrOfLayers * 4));
+  }
+#endif
 
   join_task_ans(&ans);
   stop_meas(&gNB->rx_pusch_symbol_processing_stats);
