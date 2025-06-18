@@ -17,6 +17,7 @@
 enum op_data_type {
   DATA_INPUT = 0,
   DATA_HARD_OUTPUT,
+  DATA_HARQ_OUTPUT,
   DATA_NUM_TYPES,
 };
 
