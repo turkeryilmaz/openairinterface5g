@@ -802,11 +802,11 @@ void prepare_scd(NR_ServingCellConfig_t *scd) {
 }
 
 /* This function checks dedicated serving cell configuration and performs fixes as needed */
-void fix_scd(NR_ServingCellConfig_t *scd) {
-
+void fix_scd(NR_ServingCellConfig_t *scd)
+{
   // Remove unused BWPs
   int b = 0;
-  while (b<scd->downlinkBWP_ToAddModList->list.count) {
+  while (b < scd->downlinkBWP_ToAddModList->list.count) {
     if (scd->downlinkBWP_ToAddModList->list.array[b]->bwp_Common->genericParameters.locationAndBandwidth == 0) {
       ASN_STRUCT_FREE(asn_DEF_NR_BWP_Downlink, scd->downlinkBWP_ToAddModList->list.array[b]);
       asn_sequence_del(&scd->downlinkBWP_ToAddModList->list,b,1);
@@ -816,7 +816,7 @@ void fix_scd(NR_ServingCellConfig_t *scd) {
   }
 
   b = 0;
-  while (b<scd->uplinkConfig->uplinkBWP_ToAddModList->list.count) {
+  while (b < scd->uplinkConfig->uplinkBWP_ToAddModList->list.count) {
     if (scd->uplinkConfig->uplinkBWP_ToAddModList->list.array[b]->bwp_Common->genericParameters.locationAndBandwidth == 0) {
       ASN_STRUCT_FREE(asn_DEF_NR_BWP_Uplink, scd->uplinkConfig->uplinkBWP_ToAddModList->list.array[b]);
       asn_sequence_del(&scd->uplinkConfig->uplinkBWP_ToAddModList->list,b,1);
@@ -1298,7 +1298,23 @@ static NR_ServingCellConfigCommon_t *get_scc_config(configmodule_interface_t *cf
   return scc;
 }
 
-static NR_ServingCellConfig_t *get_scd_config(configmodule_interface_t *cfg)
+static void configure_full_bwp(NR_ServingCellConfigCommon_t *scc, NR_ServingCellConfig_t *scd)
+{
+  NR_BWP_DownlinkCommon_t *initialDownlinkBWP = scc->downlinkConfigCommon->initialDownlinkBWP;
+  NR_FrequencyInfoDL_t *frequencyInfoDL = scc->downlinkConfigCommon->frequencyInfoDL;
+  NR_BWP_Downlink_t *dl_bwp = scd->downlinkBWP_ToAddModList->list.array[0];
+  dl_bwp->bwp_Id = 1;
+  dl_bwp->bwp_Common->genericParameters.subcarrierSpacing = initialDownlinkBWP->genericParameters.subcarrierSpacing;
+  int riv = PRBalloc_to_locationandbandwidth(frequencyInfoDL->scs_SpecificCarrierList.list.array[0]->carrierBandwidth, 0);
+  dl_bwp->bwp_Common->genericParameters.locationAndBandwidth = riv;
+  NR_BWP_Uplink_t *ul_bwp = scd->uplinkConfig->uplinkBWP_ToAddModList->list.array[0];
+  ul_bwp->bwp_Id = 1;
+  NR_BWP_UplinkCommon_t *initialUplinkBWP = scc->uplinkConfigCommon->initialUplinkBWP;
+  ul_bwp->bwp_Common->genericParameters.subcarrierSpacing = initialUplinkBWP->genericParameters.subcarrierSpacing;
+  ul_bwp->bwp_Common->genericParameters.locationAndBandwidth = riv;
+}
+
+static NR_ServingCellConfig_t *get_scd_config(configmodule_interface_t *cfg, NR_ServingCellConfigCommon_t *scc)
 {
   NR_ServingCellConfig_t *scd = calloc(1, sizeof(*scd));
   prepare_scd(scd);
@@ -1326,8 +1342,11 @@ static NR_ServingCellConfig_t *get_scd_config(configmodule_interface_t *cfg)
           scd->downlinkBWP_ToAddModList->list.array[0]->bwp_Common->genericParameters.subcarrierSpacing,
           scd->downlinkBWP_ToAddModList->list.array[0]->bwp_Common->genericParameters.locationAndBandwidth);
   }
+  // configure BWP1 as full BWP only if BWP 1 is not selected via config file
+  if (scd->downlinkBWP_ToAddModList->list.array[0]->bwp_Common->genericParameters.locationAndBandwidth == 0
+      && scd->uplinkConfig->uplinkBWP_ToAddModList->list.array[0]->bwp_Common->genericParameters.locationAndBandwidth == 0)
+    configure_full_bwp(scc, scd);
   fix_scd(scd);
-
   return scd;
 }
 
@@ -1731,7 +1750,7 @@ void RCconfig_nr_macrlc(configmodule_interface_t *cfg)
 
   NR_ServingCellConfigCommon_t *scc = get_scc_config(cfg, config.minRXTXTIME, config.do_SRS);
   //xer_fprint(stdout, &asn_DEF_NR_ServingCellConfigCommon, scc);
-  NR_ServingCellConfig_t *scd = get_scd_config(cfg);
+  NR_ServingCellConfig_t *scd = get_scd_config(cfg, scc);
 
   if (MacRLC_ParamList.numelt > 0) {
     /* NR RLC config is needed by mac_top_init_gNB() */
