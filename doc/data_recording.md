@@ -1,7 +1,7 @@
 # Synchronized Real-Time Data Recording Application
  
 The Data Recording Application runs in parallel to the system components on one of the LINUX servers. It makes use of OAI T-tracer framework. It is able to communicate with the Base station (gNB) and User terminal (UE).
-In addition, it synchronizes and combines data traces and control information (metadata) from Base station and User terminal into consistent [Signal Metadata Format (SigMF) format](https://github.com/gnuradio/SigMF) data sets. SigMF is an open-source standard that specifies a way to describe sets of recorded digital signal samples with metadata (data properties and scenario descriptions) provided in [JSON](http://www.json.org/) files. The recorded data sets can be used for various research and application areas.  
+In addition, it synchronizes and combines data traces and control information (metadata) from Base station and User terminal into consistent [Signal Metadata Format (SigMF) format](https://github.com/gnuradio/SigMF) data sets. SigMF is an open-source standard that specifies a way to describe sets of recorded digital signal samples with metadata (data properties and scenario descriptions) provided in [JSON](http://www.json.org/) files. These recorded data sets have a wide range of uses in research and applications. 
 
 ## Data Recording Application Architecture 
 
@@ -19,7 +19,7 @@ The following figure shows OAI gNB and UE with the Data Recording App system arc
 
 <img src="images/data_recording_arch.png" alt="OAI gNB and UE with the Data Recording App system architectur" width="1000">
 
-## Requirement Packages
+## Required Packages
 The following packages are required:
 - `sudo apt-get install -y python3-sysv-ipc`
 - `sudo apt-get install libxft-dev`
@@ -59,14 +59,14 @@ The Data Recording application provides configuration file in [JSON](http://www.
 
 The figure below illustrates an example of a JSON Data Recording App configuration file.
 
-<img src="images/data_recording_app_config.png" alt="Exemplary JSON Data Recording Configuration File" width="500">
+<img src="images/data_recording_app_config.png" alt="Example from JSON Data Recording Configuration File" width="500">
 
 ### Wireless Link Parameter Map Dictionary
 Since every signal recorder has related configuration with different naming scheme, the [common/utils/data_recording/config/wireless_link_parameter_map.yaml](../common/utils/data_recording/config/wireless_link_parameter_map.yaml) is a dictionary to do the parameters pair between the signal configuration and the SigMF metadata (e.g. OAI parameter name vs. SigMF metadata parameter name). It eases of adoption in case of adding new parameters. In case of changing the name of given parameters in OAI and we need to get those parameters in metadata, the required changes need to be done in the parameter map dictionary.
 
-The following figure shows an exemplary of Wireless Link Parameter Map Dictionary. For example, the frequency range is called in standardized  SigMF metadata `frequency_range` while it is called in OAI `freq_range` and it is called in NI 5G NR RFmx `frequency range`.
+The following figure shows an example of Wireless Link Parameter Map Dictionary. For example, the frequency range is called in standardized  SigMF metadata `frequency_range` while it is called in OAI `freq_range` and it is called in NI 5G NR RFmx `frequency range`.
 
-<img src="images/wireless_link_parameter_map_exemplary.png" alt="Exemplary Wireless Link Parameter Map Dictionary" width="400">
+<img src="images/wireless_link_parameter_map_example.png" alt="Example of Wireless Link Parameter Map Dictionary" width="400">
 
 ### Global Metadata
 There are some metadata parameters that the user may need to change only once. Those parameters have been hard coded in the Data Recording App header.
@@ -74,11 +74,11 @@ There are some metadata parameters that the user may need to change only once. T
 - The global metadata such as: author, description,  sigmf collection file prefix, datetime_offset, enable saving config Data Recording App in json file with recorded data, and name of signal generator (i.e. 5gnr_oai). The name of signal generator is used for parameter mapping dictionary (OAI parameters to standardized metadata).
 - The mapping between supported OAI messages and file_name_prefix, scope, and description.
 
-The following figure shows an exemplary of global metadata.
+The following figure shows an example of global metadata.
 
-<img src="images/global metadata_example.png" alt="Exemplary from global meta-data" width="750">
+<img src="images/global metadata_example.png" alt="Example from global meta-data" width="750">
 
-The following figure shows an exemplary of mapping between supported OAI messages by Data recorrding App and file_name_prefix.
+The following figure shows an example of mapping between supported OAI messages by Data recorrding App and file_name_prefix.
 
 <img src="images/mapping_oai_messages_and_file_name_prefix.png" alt="mapping between supported OAI messages and file_name_prefix" width="600">
 
@@ -96,7 +96,7 @@ sudo ./cmake_targets/ran_build/build/nr-softmodem -O ./targets/PROJECTS/GENERIC-
 ```
 Run NR gNB Softmodem in RF Simulation:
 ```
-OAI RF Simulation: $ sudo ./cmake_targets/ran_build/build/nr-softmodem -O ./targets/PROJECTS/GENERIC-NR-5GC/CONF/gnb.band78.sa.fr1.106PRB.1x1.usrpx410_3300MHz.conf --gNBs.[0].min_rxtxtime 6 --rfsim --rfsimulator.serveraddr server --phy-test -d --T_stdout 2 --T_nowait
+sudo ./cmake_targets/ran_build/build/nr-softmodem -O ./targets/PROJECTS/GENERIC-NR-5GC/CONF/gnb.band78.sa.fr1.106PRB.1x1.usrpx410_3300MHz.conf --gNBs.[0].min_rxtxtime 6 --rfsim --rfsimulator.serveraddr server --phy-test -d --T_stdout 2 --T_nowait
 ```
 Note: User needs to change the name of gNB config file to your gNB config file. 
 
@@ -151,9 +151,9 @@ python3 data_recording_app_v1.0.py
 ```
 
 The recorded data set will be stored in the configured path, assume `/home/user/workarea/oai_recorded_data/`. 
-The following figure shows an exemplary of global metadata.
+The following figure shows an example of global metadata.
 
-<img src="images/sigmf_dataset.png" alt="Exemplary from SigMF recorded data set" width="600">
+<img src="images/sigmf_dataset.png" alt="Example from SigMF recorded data set" width="600">
 
 ## Overview on Collected Data Set
 
@@ -171,18 +171,18 @@ A heterogeneous data set generated for a certain scenario is stored in a SigMF c
     - tx-scrambled-bits-rec-idx-timestamp.sigmf-meta
     - tx-scrambled-bits-rec-idx-timestamp.sigmf-data
 
-The following figure shows an exemplary of SigMF collection file and how it bundles multiple SigMF files of a single record.
+The following figure shows an example of SigMF collection file and how it bundles multiple SigMF files of a single record.
 
-<img src="images/sigmf_data_collection.png" alt="Exemplary from data collection" width="700">
+<img src="images/sigmf_data_collection.png" alt="Example from data collection" width="700">
 
 Each SigMF metadata has three sections:
 - global: The standardized global parameters are presented here to understand and read the binary data.
 - captures: The standardized capture parameters provide details about the capture process.
 - annotations: It provides details about the recording scenario.
 
-The following figure shows an exemplary of SigMF metadata file, for example for the frequency-domain RX data.
+The following figure shows an example of SigMF metadata file, for example for the frequency-domain RX data.
 
-<img src="images/sigmf_metadata.png" alt="Exemplary from SigMF-metadata" width="500">
+<img src="images/sigmf_metadata.png" alt="Example from SigMF-metadata" width="500">
 
 ## Synchronization Validation
 For synchronization validation and to show how to read SigMF metadata, a simple script `common/utils/data_recording/sync_validation_demo.py` has been created to validate that, for example: the recorded bits from gNB and UE are in sync.
@@ -190,7 +190,7 @@ For synchronization validation and to show how to read SigMF metadata, a simple 
 ## Data Recording Application Limitation
 
 - MIMO Support: The data recording app is ready, tested and validated for SISO. For MIMO, it should be enhanced, tested, and validated.
-- It supports the uplink gNB and UE messages listed above. If the user would like to record another message for example from DL. The user needs to define the required meta-data. User can use the existing meta-data definition of UL as a template. Then, add those messages to the headers of different Data Recording App services.
+- It supports the uplink gNB and UE messages listed above. If the user would like to record another message for example from DL, the user needs to define the required meta-data. User can use the existing meta-data definition of UL as a template. Then, add those messages to the headers of different Data Recording App services.
 - Data serialization in Tx scrambled bits message without considering location of DMRS symbols: Only captured valid data bits is stored. It means the location of DMRS symbols are not considered and filled with zeros and stored as it is in the grid presented on the figure below. For example:
     - Number of bits per IQ Symbol = 4
     - Number of subcarrier = 72
