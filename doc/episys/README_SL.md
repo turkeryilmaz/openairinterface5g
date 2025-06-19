@@ -136,6 +136,12 @@ Run `ping` command on the second terminal of Machine 2.
 ping -I oaitun_ue2 10.0.0.1
 ```
 
+**🔔Note:** Following errors can be seen when PSFCH is enabled (sl_PSFCH_period = 1, 2, 3) in the configurations files; we are working to fix this issue.
+```
+[NR_PHY]   [UE] SLSCH 0 in error: Setting NAK for SFN/SF 254/19 (pid 5, ndi 0, status 0, round 0, RV 0, prb_start 0, subchannel_size 50, TBS 656) r 0
+[PDCP]   discard NR PDU rcvd_count=9, entity->rx_deliv 10,sdu_in_list 0
+```
+
 To perform full system testing (including CSI Reporting and PSFCH feedback), the commands remain unchanged - you only need to update the UE configuration files as outlined below.
 
 #### 5.2.1.2 **Changing Configurations (CSI Reporting and PSFCH Period):**
