@@ -1284,20 +1284,26 @@ int nr_rx_pusch_tp(PHY_VARS_gNB *gNB,
 
   // Initialize memory for DMRS signals
   c16_t pusch_dmrs_slot_mem[nb_layer * buffer_length_slot] __attribute__((aligned(32)));
-  memset(pusch_dmrs_slot_mem, 0, sizeof(c16_t) * nb_layer * buffer_length_slot);
-
   // Initialize memory for channel estimates based on DMRS positions
   c16_t pusch_ch_est_dmrs_pos_slot_mem[buffer_length_slot * nb_layer * nb_rx_ant] __attribute__((aligned(32)));
-  memset(pusch_ch_est_dmrs_pos_slot_mem, 0, sizeof(c16_t) * buffer_length_slot * nb_layer * nb_rx_ant );
-
   // memory to store slot grid with channel coefficients based on DMRS positions after interpolation
   c16_t pusch_ch_est_dmrs_interpl_slot_mem[buffer_length_slot * nb_layer * nb_rx_ant] __attribute__((aligned(32)));
-  memset(pusch_ch_est_dmrs_interpl_slot_mem, 0, sizeof(c16_t) * buffer_length_slot * nb_layer * nb_rx_ant );
-
   // memory to store extracted data including PUSCH + DMRS
   c16_t rxFext_slot_mem[nb_rx_ant*buffer_length_slot] __attribute__((aligned(32)));
-  memset(rxFext_slot_mem, 0, sizeof(c16_t) * buffer_length_slot * nb_rx_ant);
 
+#if T_TRACER
+  // Initialize memory for DMRS signals
+  if (T_ACTIVE(T_GNB_PHY_UL_FD_DMRS)) {memset(pusch_dmrs_slot_mem, 0, sizeof(c16_t) * nb_layer * buffer_length_slot);}
+
+  // Initialize memory for channel estimates based on DMRS positions
+  if (T_ACTIVE(T_GNB_PHY_UL_FD_CHAN_EST_DMRS_POS)) {memset(pusch_ch_est_dmrs_pos_slot_mem, 0, sizeof(c16_t) * buffer_length_slot * nb_layer * nb_rx_ant );}
+
+  // memory to store slot grid with channel coefficients based on DMRS positions after interpolation
+  if (T_ACTIVE(T_GNB_PHY_UL_FD_CHAN_EST_DMRS_INTERPL)) {memset(pusch_ch_est_dmrs_interpl_slot_mem, 0, sizeof(c16_t) * buffer_length_slot * nb_layer * nb_rx_ant );}
+
+  // memory to store extracted data including PUSCH + DMRS
+  if (T_ACTIVE(T_GNB_PHY_UL_FD_PUSCH_IQ)) {memset(rxFext_slot_mem, 0, sizeof(c16_t) * buffer_length_slot * nb_rx_ant);}
+#endif 
   //----------------------------------------------------------
   //------------------- Channel estimation -------------------
   //----------------------------------------------------------
