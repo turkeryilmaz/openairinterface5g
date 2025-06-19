@@ -62,6 +62,7 @@ void *write_thread(void *arg)
   openair0_timestamp last_tx_timestamp = 0, new_tx = 0;
 
   while (!oai_exit) {
+    /*
     do {
       pthread_mutex_lock(&params.txMutex);
       printf("write got lock\n");
@@ -70,6 +71,7 @@ void *write_thread(void *arg)
       if (new_tx == last_tx_timestamp)
         usleep(5);
     } while (last_tx_timestamp == new_tx);
+    */
     last_tx_timestamp = new_tx & ~31;
     params.rfdevice->trx_write_func(params.rfdevice, new_tx + tx_ahead, (void **)samplesTx, params.dft_sz, params.antennas, 0);
     count++;

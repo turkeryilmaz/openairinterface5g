@@ -165,7 +165,7 @@ void *L1_tx_thread(void *arg) {
     do {
       res = pollNotifiedFIFO(&gNB->L1_tx_out);
       if (!res) {
-        LOG_W(HW, "possible underrun\n");
+        // LOG_W(HW, "possible underrun\n");
         usleep(100);
       }
     } while (!res);
