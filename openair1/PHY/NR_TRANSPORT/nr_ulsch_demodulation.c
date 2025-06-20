@@ -19,9 +19,7 @@
 static void copy_c16_data_to_slot_memory(
     c16_t *src, c16_t *dst_slot, int nb_re_pusch, int symbol)
 {
-    c16_t *src_ptr = &src[0];
-    c16_t *dst_slot_ptr = &dst_slot[nb_re_pusch * symbol];
-    memcpy(dst_slot_ptr, &src_ptr[0], nb_re_pusch * sizeof(c16_t));
+  memcpy(&dst_slot[nb_re_pusch * symbol], src, nb_re_pusch * sizeof(c16_t));
 }
 
 void nr_idft(int32_t *z, uint32_t Msc_PUSCH)
@@ -1293,16 +1291,20 @@ int nr_rx_pusch_tp(PHY_VARS_gNB *gNB,
 
 #if T_TRACER
   // Initialize memory for DMRS signals
-  if (T_ACTIVE(T_GNB_PHY_UL_FD_DMRS)) {memset(pusch_dmrs_slot_mem, 0, sizeof(c16_t) * nb_layer * buffer_length_slot);}
+  if (T_ACTIVE(T_GNB_PHY_UL_FD_DMRS))
+    memset(pusch_dmrs_slot_mem, 0, sizeof(c16_t) * nb_layer * buffer_length_slot);
 
   // Initialize memory for channel estimates based on DMRS positions
-  if (T_ACTIVE(T_GNB_PHY_UL_FD_CHAN_EST_DMRS_POS)) {memset(pusch_ch_est_dmrs_pos_slot_mem, 0, sizeof(c16_t) * buffer_length_slot * nb_layer * nb_rx_ant );}
+  if (T_ACTIVE(T_GNB_PHY_UL_FD_CHAN_EST_DMRS_POS))
+    memset(pusch_ch_est_dmrs_pos_slot_mem, 0, sizeof(c16_t) * buffer_length_slot * nb_layer * nb_rx_ant );
 
   // memory to store slot grid with channel coefficients based on DMRS positions after interpolation
-  if (T_ACTIVE(T_GNB_PHY_UL_FD_CHAN_EST_DMRS_INTERPL)) {memset(pusch_ch_est_dmrs_interpl_slot_mem, 0, sizeof(c16_t) * buffer_length_slot * nb_layer * nb_rx_ant );}
+  if (T_ACTIVE(T_GNB_PHY_UL_FD_CHAN_EST_DMRS_INTERPL))
+    memset(pusch_ch_est_dmrs_interpl_slot_mem, 0, sizeof(c16_t) * buffer_length_slot * nb_layer * nb_rx_ant );
 
   // memory to store extracted data including PUSCH + DMRS
-  if (T_ACTIVE(T_GNB_PHY_UL_FD_PUSCH_IQ)) {memset(rxFext_slot_mem, 0, sizeof(c16_t) * buffer_length_slot * nb_rx_ant);}
+  if (T_ACTIVE(T_GNB_PHY_UL_FD_PUSCH_IQ))
+    memset(rxFext_slot_mem, 0, sizeof(c16_t) * buffer_length_slot * nb_rx_ant);
 #endif 
   //----------------------------------------------------------
   //------------------- Channel estimation -------------------

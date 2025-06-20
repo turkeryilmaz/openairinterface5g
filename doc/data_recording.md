@@ -11,9 +11,9 @@ Data Recording Application designed to have multiple services in different simul
 - Data Conversion Service (Python)
 
 Regarding to the APIs between different services, they are such as the following: 
-- Data Control Service &rarr; Data Collection (T–Tracer) Service: The API is based on a shared memory.
-- Data Collection (T–Tracer) Service &rarr; 5G NR Stack: T-Tracer Framework, ethernet connection.
-- Data Collection (T–Tracer) Service &rarr; Data Conversion Service: The API is based on a shared memory.
+- Data Control Service -> Data Collection (T–Tracer) Service: The API is based on a shared memory.
+- Data Collection (T–Tracer) Service -> 5G NR Stack: T-Tracer Framework, ethernet connection.
+- Data Collection (T–Tracer) Service -> Data Conversion Service: The API is based on a shared memory.
 
 The following figure shows OAI gNB and UE with the Data Recording App system architecture. 
 

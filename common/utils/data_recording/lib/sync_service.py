@@ -19,7 +19,7 @@
 # * For more information about the OpenAirInterface (OAI) Software Alliance:
 # *      contact@openairinterface.org
 # */
-#---------------------------------------------------------------------
+# ---------------------------------------------------------------------
 # file common/utils/data_recording/lib/sync_service.py
 # brief Sync service between captured Data from 5GNR gNB and UE
 # author Abdo Gaber
@@ -56,8 +56,7 @@ def is_frame_ahead(frame1, frame2, max_frame=1023):
 
 
 # find the frame and slot start
-# TO DO: To be improved for both DL and UL 
-def find_frame_slot_start(dataset1_start_info, dataset2_start_info):
+def find_frame_slot_start(dataset1_start, dataset2_start):
     """
     Function to find the frame and slot start for data sync
     Args:
@@ -71,20 +70,20 @@ def find_frame_slot_start(dataset1_start_info, dataset2_start_info):
     """
     sync_info = {}
 
-    if dataset1_start_info["frame"] == dataset2_start_info["frame"] :
+    if dataset1_start["frame"] == dataset2_start["frame"]:
         frame_diff = 0
-        frame_start = dataset1_start_info["frame"] 
-        slot_start = max(dataset1_start_info["slot"], dataset2_start_info["slot"])
+        frame_start = dataset1_start["frame"] 
+        slot_start = max(dataset1_start["slot"], dataset2_start["slot"])
 
-    elif is_frame_ahead(dataset1_start_info["frame"], dataset2_start_info["frame"]):
-        frame_start = dataset1_start_info["frame"]
-        slot_start = dataset1_start_info["slot"]
-        frame_diff = (dataset1_start_info["frame"]- dataset2_start_info["frame"] + 1024) % 1024
-    elif is_frame_ahead(dataset2_start_info["frame"], dataset1_start_info["frame"]):
-        frame_start = dataset2_start_info["frame"]
-        slot_start = dataset2_start_info["slot"]
-        frame_diff = (dataset2_start_info["frame"] - dataset1_start_info["frame"] + 1024) % 1024
-    # check first if the delta time between the two datasets is larger than expected offset time. 
+    elif is_frame_ahead(dataset1_start["frame"], dataset2_start["frame"]):
+        frame_start = dataset1_start["frame"]
+        slot_start = dataset1_start["slot"]
+        frame_diff = (dataset1_start["frame"]- dataset2_start["frame"] + 1024) % 1024
+    elif is_frame_ahead(dataset2_start["frame"], dataset1_start["frame"]):
+        frame_start = dataset2_start["frame"]
+        slot_start = dataset2_start["slot"]
+        frame_diff = (dataset2_start["frame"] - dataset1_start["frame"] + 1024) % 1024
+    # check first if the delta time between the two datasets is larger than expected offset time.
     # So, the sync will not be applied
     # check during the calculation of the frame the ramp-around from 1023 to 0
     if abs(frame_diff) > 6:
@@ -100,7 +99,7 @@ def find_frame_slot_start(dataset1_start_info, dataset2_start_info):
 
 
 # Read data from gNB T-tracer Application
-def get_frame_slot_start(shm_reading, bufIdx, general_msg_header_list, 
+def get_frame_slot_start(shm_reading, bufIdx, general_msg_header_list,
                          general_message_header_length):
         buf = shm_reading.read(bufIdx + general_message_header_length)
         msg_id = struct.unpack("<H", buf[bufIdx: bufIdx + general_msg_header_list.get("msg_id")])[0]
@@ -135,17 +134,17 @@ def sync_gnb_ue_captured_data(shm_reading_gnb, shm_reading_ue):
     bufIdx = 0
     frame_ue, slot_ue = get_frame_slot_start(
         shm_reading_ue, bufIdx, general_msg_header_list, general_message_header_length)
-    dataset1_start_info = {}
-    dataset1_start_info["frame"] = frame_gnb
-    dataset1_start_info["slot"] = slot_gnb
-    dataset2_start_info = {}
-    dataset2_start_info["frame"] = frame_ue
-    dataset2_start_info["slot"] = slot_ue
+    dataset1_start = {}
+    dataset1_start["frame"] = frame_gnb
+    dataset1_start["slot"] = slot_gnb
+    dataset2_start = {}
+    dataset2_start["frame"] = frame_ue
+    dataset2_start["slot"] = slot_ue
     # Sync data between gNB and UE
     # We noticed that the maximum difference between the frame number of gNB and UE is 3 frames
     # Calculate the frame difference considering the wrap-around from 1023 to 0
-    sync_info = find_frame_slot_start(dataset1_start_info, dataset2_start_info)
-    print(" gNB Start info: ", dataset1_start_info)
-    print(" UE Start info: ", dataset2_start_info)
+    sync_info = find_frame_slot_start(dataset1_start, dataset2_start)
+    print(" gNB Start info: ", dataset1_start)
+    print(" UE Start info: ", dataset2_start)
     print(" gNB and UE Sync info: ", sync_info)
     return sync_info
