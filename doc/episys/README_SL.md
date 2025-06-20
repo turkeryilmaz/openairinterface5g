@@ -131,7 +131,8 @@ $ sudo LD_LIBRARY_PATH=$PWD:$LD_LIBRARY_PATH -E \
 --sa --sl-mode 2 --rfsim --thread-pool -1,-1,-1,-1 \
 --rfsimulator.serveraddrsl <MACHINE 1 IP Address> --rfsimulator.serverportsl 4048
 ```
-Run `ping` command on the second terminal of Machine 2.
+Run `ping` command on a terminal in Machine 2. Note, oaitun_ue2 is the interface name of the Nearby UE. 10.0.0.1 is the IP address of the SyncRef UE.
+
 ```
 ping -I oaitun_ue2 10.0.0.1
 ```
@@ -239,17 +240,17 @@ $ uhd_usrp_probe # This will probe the USRP and will ensure the status is ready
 
 The USRPs can be connected through either cable or over-the-air medium. In a case of cable connectivity, an attenuator can be used in lab environment to simulate real-world signal loss conditions.
 
-#### 5.4.1 **Setting of attenuation:**
+#### 5.4.1 **Set the Attenuation Value**
 
-In order to set the attenuation for each channel you have to run this command
+In order to set the attenuation for each channel, run the following command.
 ```
 curl http://169.254.10.10/:CHAN:<channel number>:SETATT:<attenuation in dB>
 ```
-for example: to set attenuation of channels 1 to 4 to 30 dB:
+An example command is shown below, where we are setting the attenuation of channels 1 to 4 to 30 dB.
 ```
 curl http://169.254.10.10/:CHAN:1:2:3:4:SETATT:30
 ```
-In order to read current attenuation of each channel,
+Additionally, if you want to view the current attenuation values for each channel, run the folloiwng command.
 ```
 curl http://169.254.10.10/:ATT?
 ```
@@ -274,7 +275,7 @@ $ sudo LD_LIBRARY_PATH=$PWD:$LD_LIBRARY_PATH -E \
 --sa --sl-mode 2 --sync-ref --ue-txgain 10 --ue-rxgain 100 --usrp-args "serial=3150384,type=b200" \
 --thread-pool -1,-1 -E
 ```
-Run `ping` command on the second terminal of Machine 2.
+Run `ping` command on a terminal in Machine 2. Note, oaitun_ue1 is the interface name of the SyncRef UE. 10.0.0.2 is the IP address of the Nearby UE.
 ```
 ping -I oaitun_ue1 10.0.0.2
 ```
