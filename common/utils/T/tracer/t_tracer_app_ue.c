@@ -58,67 +58,60 @@
 #define DISCARD_RECORD_DURATION_MS 10 
 //#include <linux/time.h>
 
-// Combine bytes
-int combine_bytes(const uint8_t *bytes, size_t num_bytes, bool is_little_endian) {
-    int result = 0;
-
-    if (is_little_endian) {
-        for (size_t i = 0; i < num_bytes; ++i) {
-            result |= (bytes[i] << (i * 8));
-        }
-    } else {
-        for (size_t i = 0; i < num_bytes; ++i) {
-            result |= (bytes[i] << ((num_bytes - 1 - i) * 8));
-        }
-    }
-
-    return result;
+// Combine bytes in little-endian format
+int combine_bytes(const uint8_t *bytes, size_t num_bytes) 
+{
+  int result = 0;
+  for (size_t i = 0; i < num_bytes; ++i) {
+      result |= (bytes[i] << (i * 8));
+  }
+  return result;
 }
 
-// Convert an integer to an array of bytes
-void int_to_bytes(int num, uint8_t *bytes, size_t num_bytes, bool is_little_endian) {
-    if (is_little_endian) {
-        for (size_t i = 0; i < num_bytes; ++i) {
-            bytes[i] = (num >> (i * 8)) & 0xFF;
-        }
-    } else {
-        for (size_t i = 0; i < num_bytes; ++i) {
-            bytes[num_bytes - 1 - i] = (num >> (i * 8)) & 0xFF;
-        }
-    }
+// Convert an integer to an array of bytes in little-endian format
+void int_to_bytes(int num, uint8_t *bytes, size_t num_bytes)
+{
+  for (size_t i = 0; i < num_bytes; ++i) {
+      bytes[i] = (num >> (i * 8)) & 0xFF;
+  }
 }
 
 // Check if the message is in the list of bits messages
-bool is_bits_messages(int traces_bits_support_data_Collection_format_idx[], int n_bits_msgs, int msg_id) {
-    for (int i = 0; i < n_bits_msgs; i++) {
-        if (msg_id == traces_bits_support_data_Collection_format_idx[i]) {
-            return true;
-        }
-    }
-    return false;
+bool is_bits_messages(int traces_bits_support_data_Collection_format_idx[], int n_bits_msgs, int msg_id)
+{
+  for (int i = 0; i < n_bits_msgs; i++) {
+      if (msg_id == traces_bits_support_data_Collection_format_idx[i]) {
+          return true;
+      }
+  }
+  return false;
 }
 
 // Get the current time
-struct timespec get_current_time() {
-    struct timespec time;
-    clock_gettime(CLOCK_MONOTONIC, &time);
-    return time;
+struct timespec get_current_time()
+{
+  struct timespec time;
+  clock_gettime(CLOCK_MONOTONIC, &time);
+  return time;
 }
 
 // Function to convert timespec to microseconds
-long long timespec_to_microseconds(struct timespec time) {
-    return (time.tv_sec * 1000000LL) + (time.tv_nsec / 1000);
+long long timespec_to_microseconds(struct timespec time) 
+{
+  return (time.tv_sec * 1000000LL) + (time.tv_nsec / 1000);
 }
 
 // Calculate the time difference in milliseconds
-double calculate_time_difference(struct timespec start, struct timespec end) {
-    double start_ms = start.tv_sec * 1000.0 + start.tv_nsec / 1000000.0;
-    double end_ms = end.tv_sec * 1000.0 + end.tv_nsec / 1000000.0;
-    return end_ms - start_ms;
+double calculate_time_difference(struct timespec start, struct timespec end)
+{
+  double start_ms = start.tv_sec * 1000.0 + start.tv_nsec / 1000000.0;
+  double end_ms = end.tv_sec * 1000.0 + end.tv_nsec / 1000000.0;
+  return end_ms - start_ms;
 }
 
 // Get Time Stamp in microseconds in YYYYMMDDHHMMSSmmmuuu format
-char* get_time_stamp_usec(char time_stamp_str[]){
+char* get_time_stamp_usec(char time_stamp_str[])
+{
   // initialization to measure time stamp --This part should be moved to inilization part
   time_t my_time;
   struct tm * timeinfo; 
@@ -144,27 +137,31 @@ char* get_time_stamp_usec(char time_stamp_str[]){
 }
 
 // Convert timestamp string to integer
-int convert_time_stamp_to_int(const char* timestamp) {
-    return atoi(timestamp);
+int convert_time_stamp_to_int(const char* timestamp)
+{
+  return atoi(timestamp);
 }
 
 // Split timestamp string and convert to integer
-int split_time_stamp_and_convert_to_int (char time_stamp_str[], int shift,  int length){
-    char time_part[length+1]; // Buffer to hold the date part YYYYMMDD or HHMMSSmmm
-    // Copy the first 8 or 9 characters (YYYYMMDD) to HHMMSSmmm
-    strncpy(time_part, time_stamp_str + shift, length);
-    time_part[length] = '\0'; // Null-terminate the string
-    // Convert timestamp string to integer
-    return convert_time_stamp_to_int(time_part);
+int split_time_stamp_and_convert_to_int (char time_stamp_str[], int shift,  int length)
+{
+  char time_part[length+1]; // Buffer to hold the date part YYYYMMDD or HHMMSSmmm
+  // Copy the first 8 or 9 characters (YYYYMMDD) to HHMMSSmmm
+  strncpy(time_part, time_stamp_str + shift, length);
+  time_part[length] = '\0'; // Null-terminate the string
+  // Convert timestamp string to integer
+  return convert_time_stamp_to_int(time_part);
 }
 
-void err_exit(char *buf) {
-    fprintf(stderr, "%s\n", buf);
-    exit(1);
+void err_exit(char *buf)
+{
+  fprintf(stderr, "%s\n", buf);
+  exit(1);
 }
 
 // create shared memory
-int create_shm(char **addrN, const char *shm_path, int projectId) {
+int create_shm(char **addrN, const char *shm_path, int projectId)
+{
   key_t key;
   if (-1 != open(shm_path, O_CREAT, 0777)) {
         key = ftok(shm_path, projectId);
@@ -204,7 +201,8 @@ int create_shm(char **addrN, const char *shm_path, int projectId) {
 }
 
 // delete shared memory
-void del_shm(char *addr, int shm_id) {
+void del_shm(char *addr, int shm_id)
+{
   if ( shmdt(addr) < 0) err_exit("shmdt error");
 
   if (shmctl(shm_id, IPC_RMID, NULL) == -1)
@@ -377,16 +375,18 @@ void setup_trace_msg_data(event_trace_msg_data *d, void *database)
 }
 
 // Function to check if a value is in the array
-int isValueInArray(int value, int arr[], int size) {
-    for (int i = 0; i < size; i++) {
-        if (arr[i] == value) {
-            return 1; // Value found
-        }
-    }
-    return 0; // Value not found
+int isValueInArray(int value, int arr[], int size)
+{
+  for (int i = 0; i < size; i++) {
+      if (arr[i] == value) {
+          return 1; // Value found
+      }
+  }
+  return 0; // Value not found
 }
 
-void reestablish_connection(int *socket, const char *ip, int port, int number_of_events, int *is_on) {
+void reestablish_connection(int *socket, const char *ip, int port, int number_of_events, int *is_on)
+{
   clear_remote_config();
   if (*socket != -1) close(*socket);
 
@@ -446,9 +446,6 @@ int main(int n, char **v)
   uint32_t number_records = 0;  // number of records to capture, it is number of slots
   // array to store the requested tracer messages indices
   int req_tracer_msgs_indices[100] = {0};
-  // network order selection: the data recording application on top of T-Tracer services supports only little-endian
-  bool network_order_is_little_endian = true; // 1: little-endian, 0: big-endian
-
   // define variables --> to do: add all of them to be class of pointers
   char *database_filename = NULL;
   void *database;
@@ -546,7 +543,7 @@ int main(int n, char **v)
       uint8_t port_number_bytes[2] = {addr_rd[bufIdx_rd], addr_rd[bufIdx_rd+1]};
       bufIdx_rd +=2; // + 2 bytes = start frame number
 
-      port = combine_bytes(port_number_bytes, 2, network_order_is_little_endian);
+      port = combine_bytes(port_number_bytes, 2);
       printf("\n Parameters: IP Address length: %d, IP Address: %s, Port Number: %d \n", ip_address_length, ip_address, port);
       addr_rd[0] = 0; // reset memory : to wait for record action
       break;
@@ -595,7 +592,7 @@ int main(int n, char **v)
         // get the array bytes of the tracer message ID: 2 bytes
         uint8_t msg_id_bytes [2]= {addr_rd[bufIdx_rd], addr_rd[bufIdx_rd+1]};
         bufIdx_rd +=2; // + 2 bytes = message ID
-        msg_id= combine_bytes(msg_id_bytes, 2, network_order_is_little_endian);
+        msg_id= combine_bytes(msg_id_bytes, 2);
         
         req_tracer_msgs_indices[msg_n] = msg_id;
         printf(" msg_id: %d, ", msg_id);
@@ -604,7 +601,7 @@ int main(int n, char **v)
       uint8_t number_records_bytes[4] = {addr_rd[bufIdx_rd], addr_rd[bufIdx_rd+1], addr_rd[bufIdx_rd+2], addr_rd[bufIdx_rd+3]};
       bufIdx_rd +=4; // + 4 bytes = number of records
 
-      number_records = combine_bytes(number_records_bytes, 4, network_order_is_little_endian);
+      number_records = combine_bytes(number_records_bytes, 4);
       
       printf("num_records: %d, ", number_records);
 
@@ -612,7 +609,7 @@ int main(int n, char **v)
       uint8_t start_frame_number_bytes[2] = {addr_rd[bufIdx_rd], addr_rd[bufIdx_rd+1]};
       bufIdx_rd +=2; // + 2 bytes = start frame number
 
-      start_frame_number = combine_bytes(start_frame_number_bytes, 2, network_order_is_little_endian);
+      start_frame_number = combine_bytes(start_frame_number_bytes, 2);
       
       printf("start_frame: %d\n", start_frame_number);
 
@@ -819,19 +816,11 @@ int main(int n, char **v)
         }
         else {
           for (int byte_idx = 0; byte_idx < e.e[trace_msg_data.data].bsize; byte_idx+=2) {
-            if (network_order_is_little_endian){
-              //For a little-endian system:
-              memcpy(&addr_wr[bufIdx_wr], &buf[byte_idx], sizeof(uint8_t));
-              bufIdx_wr += sizeof(uint8_t);
-              memcpy(&addr_wr[bufIdx_wr], &buf[byte_idx+1], sizeof(uint8_t));
-              bufIdx_wr += sizeof(uint8_t);
-            } else {
-              //For a big-endian system:
-              memcpy(&addr_wr[bufIdx_wr], &buf[byte_idx +1], sizeof(uint8_t));
-              bufIdx_wr += sizeof(uint8_t);
-              memcpy(&addr_wr[bufIdx_wr], &buf[byte_idx], sizeof(uint8_t));
-              bufIdx_wr += sizeof(uint8_t);
-            }
+            //For a little-endian system:
+            memcpy(&addr_wr[bufIdx_wr], &buf[byte_idx], sizeof(uint8_t));
+            bufIdx_wr += sizeof(uint8_t);
+            memcpy(&addr_wr[bufIdx_wr], &buf[byte_idx+1], sizeof(uint8_t));
+            bufIdx_wr += sizeof(uint8_t);
           }
         }
         /*

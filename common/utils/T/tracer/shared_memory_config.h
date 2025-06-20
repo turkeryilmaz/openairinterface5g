@@ -30,6 +30,10 @@
  * \warning
  */
 
+ 
+ #ifndef SHARED_MEMORY_CONFIG_H_
+ #define SHARED_MEMORY_CONFIG_H_
+
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -57,3 +61,4 @@
 void err_exit(char *buf);
 int create_shm(char **addrN, const char *pathname, int projectId);
 void del_shm(char *addr, int shm_id);
+#endif /* SHARED_MEMORY_CONFIG_H_ */
