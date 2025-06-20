@@ -29,5 +29,4 @@
 # note
 # warning
 
-# This file is important in python to call functions from the lib folder
-# without importing the lib folder itself.
+# This file is important in python to call functions from the lib folder.
