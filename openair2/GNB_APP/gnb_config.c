@@ -705,13 +705,6 @@ void prepare_scd(NR_ServingCellConfig_t *scd) {
   scd->uplinkConfig = calloc_or_fail(1, sizeof(*scd->uplinkConfig));
   scd->uplinkConfig->uplinkBWP_ToAddModList = calloc_or_fail(1, sizeof(*scd->uplinkConfig->uplinkBWP_ToAddModList));
   scd->bwp_InactivityTimer = calloc_or_fail(1, sizeof(*scd->bwp_InactivityTimer));
-  scd->uplinkConfig->firstActiveUplinkBWP_Id = calloc_or_fail(1, sizeof(*scd->uplinkConfig->firstActiveUplinkBWP_Id));
-  scd->firstActiveDownlinkBWP_Id = calloc_or_fail(1, sizeof(*scd->firstActiveDownlinkBWP_Id));
-  *scd->firstActiveDownlinkBWP_Id = 1;
-  *scd->uplinkConfig->firstActiveUplinkBWP_Id = 1;
-  scd->defaultDownlinkBWP_Id = calloc_or_fail(1, sizeof(*scd->defaultDownlinkBWP_Id));
-  *scd->defaultDownlinkBWP_Id = 0;
-
   for (int j = 0; j < NR_MAX_NUM_BWP; j++) {
 
     // Downlink bandwidth part
@@ -1331,14 +1324,13 @@ static NR_ServingCellConfig_t *get_scd_config(configmodule_interface_t *cfg, NR_
         bwp_Dedicated->pusch_Config->choice.setup->dmrs_UplinkForPUSCH_MappingTypeB->choice.setup->phaseTrackingRS->choice.setup;
     LOG_I(RRC,
           "Read in ServingCellConfigDedicated UL (FreqDensity_0 %ld, FreqDensity_1 %ld, TimeDensity_0 %ld, TimeDensity_1 %ld, "
-          "TimeDensity_2 %ld, RE offset %ld, First_active_BWP_ID %ld SCS %ld, LocationandBW %ld\n",
+          "TimeDensity_2 %ld, RE offset %ld, SCS %ld, LocationandBW %ld\n",
           *setup->transformPrecoderDisabled->frequencyDensity->list.array[0],
           *setup->transformPrecoderDisabled->frequencyDensity->list.array[1],
           *setup->transformPrecoderDisabled->timeDensity->list.array[0],
           *setup->transformPrecoderDisabled->timeDensity->list.array[1],
           *setup->transformPrecoderDisabled->timeDensity->list.array[2],
           *setup->transformPrecoderDisabled->resourceElementOffset,
-          *scd->firstActiveDownlinkBWP_Id,
           scd->downlinkBWP_ToAddModList->list.array[0]->bwp_Common->genericParameters.subcarrierSpacing,
           scd->downlinkBWP_ToAddModList->list.array[0]->bwp_Common->genericParameters.locationAndBandwidth);
   }
@@ -1668,6 +1660,8 @@ void RCconfig_nr_macrlc(configmodule_interface_t *cfg)
   }
   config.minRXTXTIME = *GNBParamList.paramarray[0][GNB_MINRXTXTIME_IDX].iptr;
   LOG_I(GNB_APP, "minTXRXTIME %d\n", config.minRXTXTIME);
+  config.first_active_BWP = *GNBParamList.paramarray[0][GNB_1ST_BWP_IDX].iptr;
+  LOG_I(GNB_APP, "1st active BWP %d\n", config.first_active_BWP);
   config.sib1_tda = *GNBParamList.paramarray[0][GNB_SIB1_TDA_IDX].iptr;
   LOG_I(GNB_APP, "SIB1 TDA %d\n", config.sib1_tda);
   config.do_CSIRS = *GNBParamList.paramarray[0][GNB_DO_CSIRS_IDX].iptr;

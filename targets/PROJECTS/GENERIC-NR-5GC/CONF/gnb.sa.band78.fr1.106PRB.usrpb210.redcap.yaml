@@ -19,6 +19,7 @@ gNBs:
     # Physical parameters:
     do_CSIRS: 1
     do_SRS: 1
+    first_active_BWP: 2
     #uess_agg_levels: [0,1,1,1,1]
     servingCellConfigCommon:
       #spCellConfigCommon
@@ -130,15 +131,12 @@ gNBs:
         ssPBCH_BlockPower: -25
 
     servingCellConfigDedicated:
-      - dl_bwp-Id_1: 1
+      - dl_bwp-Id_1: 2
         dl_bwp1_locationAndBandwidth: 28875
         dl_bwp1_subcarrierSpacing: 1
-        firstActiveDownlinkBWP-Id: 1
-        defaultDownlinkBWP-Id: 1
-        ul_bwp-Id_1: 1
+        ul_bwp-Id_1: 2
         ul_bwp1_locationAndBandwidth: 28875
         ul_bwp1_subcarrierSpacing: 1
-        firstActiveUplinkBWP-Id: 1
 
     RedCap:
       cellBarredRedCap1Rx_r17: 1
