@@ -546,6 +546,7 @@ typedef struct PHY_VARS_gNB_s {
   int nbSymb;
   int nbAarx;
   int num_pusch_symbols_per_thread;
+  int num_pdsch_symbols_per_thread;
   int dmrs_num_antennas_per_thread;
   pthread_t L1_rx_thread;
   int L1_rx_thread_core;
