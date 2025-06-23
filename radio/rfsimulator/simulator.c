@@ -170,6 +170,7 @@ static bool flushInput(rfsimulator_state_t *t, int timeout, bool first_time);
 static buffer_t *allocCirBuf(rfsimulator_state_t *bridge, int sock)
 {
   uint64_t buff_index = bridge->next_buf++ % MAX_FD_RFSIMU;
+  LOG_W(HW, "new Conn index is %lu\n", buff_index);
   buffer_t *ptr = &bridge->buf[buff_index];
   ptr->circularBuf = calloc(1, sampleToByte(CirSize, 1));
   if (ptr->circularBuf == NULL) {
@@ -287,6 +288,15 @@ static int setblocking(int sock, enum blocking_t active)
     return -1;
   }
   return 0;
+}
+
+static void debug_state_print(rfsimulator_state_t *t) {
+  LOG_W(HW, "Debug rfsimulator state: nextRxTimestamp: %lu, lastWroteTS: %lu, nb_cnx: %u\n", t->nextRxTstamp, t->lastWroteTS, t->nb_cnx);
+  for (int i = 0; i < sizeofArray(t->buf); i++) {
+    if (t->buf[i].conn_sock != -1) {
+      LOG_W(HW, "Conn %d: lastReceivedTX: %lu\n", i, t->buf[i].lastReceivedTS);
+    }
+  }
 }
 
 static void fullwrite(int fd, void *_buf, ssize_t count, rfsimulator_state_t *t) {
@@ -941,6 +951,7 @@ static int rfsimulator_read(openair0_device *device, openair0_timestamp *ptimest
     }
   } else {
     bool have_to_wait;
+    int loops = 0;
     do {
       have_to_wait = false;
       buffer_t *b = NULL;
@@ -958,6 +969,10 @@ static int rfsimulator_read(openair0_device *device, openair0_timestamp *ptimest
               b->lastReceivedTS,
               t->nextRxTstamp + nsamps);
         flushInput(t, 3, false);
+      }
+      loops++;
+      if (loops == 100) {
+        debug_state_print(t);
       }
     } while (have_to_wait);
   }
