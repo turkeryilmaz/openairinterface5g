@@ -483,17 +483,24 @@ static freq_alloc_bitmap_t set_start_end_from_bitmap(int size, int alloc_size, c
 {
   freq_alloc_bitmap_t alloc = {
     .num_rbs = 0,
+    .num_blocks = 0,
     .start = size,
     .end = 0
   };
 
+  bool pos_bit = false;
   for (int i = 0; i < size; i++) {
     if ((bitmap[i / 8] >> i % 8) & 0x1) {
+      if (!pos_bit) {
+        pos_bit = true;
+        alloc.num_blocks++;
+      }
       if (alloc.start == size)
         alloc.start = i;
       alloc.end = i;
       alloc.num_rbs++;
-    }
+    } else
+      pos_bit = false;
   }
   AssertFatal(alloc.end > 0, "Frequency allocation bitmap empty\n");
   memcpy(alloc.bitmap, bitmap, alloc_size * sizeof(uint8_t));
@@ -504,6 +511,7 @@ static freq_alloc_bitmap_t set_bitmap_from_start_size(int start, int size)
 {
   freq_alloc_bitmap_t alloc = {
     .num_rbs = size,
+    .num_blocks = 1,
     .start = start,
     .end = start + size - 1
   };
@@ -674,6 +682,7 @@ static int nr_ue_pdsch_procedures(PHY_VARS_NR_UE *ue,
       if (nr_rx_pdsch(ue,
                       proc,
                       dlsch,
+                      &freq_alloc,
                       m,
                       first_symbol_flag,
                       harq_pid,

@@ -47,6 +47,7 @@ typedef struct {
   int start;
   int end;
   int num_rbs;
+  int num_blocks;
   uint8_t bitmap[36];
 } freq_alloc_bitmap_t;
 
