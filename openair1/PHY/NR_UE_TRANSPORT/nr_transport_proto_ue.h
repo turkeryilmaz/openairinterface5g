@@ -58,7 +58,6 @@ typedef struct pdsch_scope_req_s {
 /** \brief This function initialises structures for DLSCH at UE
 */
 void nr_ue_dlsch_init(NR_UE_DLSCH_t *dlsch_list, int num_dlsch, uint8_t max_ldpc_iterations);
-
 void nr_dlsch_deinterleaving(uint8_t symbol,
                              uint8_t start_symbol,
                              uint16_t L,

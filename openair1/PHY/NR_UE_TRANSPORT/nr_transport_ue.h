@@ -44,6 +44,12 @@ typedef enum {
 } harq_result_t;
 
 typedef struct {
+  int start;
+  int end;
+  uint8_t bitmap[36];
+} freq_alloc_bitmap_t;
+
+typedef struct {
   /// HARQ tx status
   harq_result_t tx_status;
   /// Last TPC command
