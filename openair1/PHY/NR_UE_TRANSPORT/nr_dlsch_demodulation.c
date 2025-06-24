@@ -702,7 +702,6 @@ int nr_rx_pdsch(PHY_VARS_NR_UE *ue,
                              gNB_id,
                              nr_slot_rx,
                              symbol,
-                             (nb_rb_pdsch * 12),
                              dlsch[0].rnti,
                              dlsch);
     dl_valid_re[symbol] -= ptrs_re_per_slot[0][symbol];
@@ -793,53 +792,6 @@ int nr_rx_pdsch(PHY_VARS_NR_UE *ue,
            dl_ch_estimates_ext,
            sizeof(dl_ch_estimates_ext));
   return 0;
-}
-
-void nr_dlsch_deinterleaving(uint8_t symbol,
-                             uint8_t start_symbol,
-                             uint16_t L,
-                             uint16_t *llr,
-                             uint16_t *llr_deint,
-                             uint16_t nb_rb_pdsch)
-{
-
-  uint32_t bundle_idx, N_bundle, R, C, r,c;
-  int32_t m,k;
-  uint8_t nb_re;
-
-  R=2;
-  N_bundle = nb_rb_pdsch/L;
-  C=N_bundle/R;
-
-  uint32_t bundle_deint[N_bundle];
-  memset(bundle_deint, 0 , sizeof(bundle_deint));
-
-  printf("N_bundle %u L %d nb_rb_pdsch %d\n",N_bundle, L,nb_rb_pdsch);
-
-  if (symbol==start_symbol)
-	  nb_re = 6;
-  else
-	  nb_re = 12;
-
-
-  AssertFatal(llr!=NULL,"nr_dlsch_deinterleaving: FATAL llr is Null\n");
-
-
-  for (c =0; c< C; c++){
-	  for (r=0; r<R;r++){
-		  bundle_idx = r*C+c;
-		  bundle_deint[bundle_idx] = c*R+r;
-		  //printf("c %u r %u bundle_idx %u bundle_deinter %u\n", c, r, bundle_idx, bundle_deint[bundle_idx]);
-	  }
-  }
-
-  for (k=0; k<N_bundle;k++)
-  {
-	  for (m=0; m<nb_re*L;m++){
-		  llr_deint[bundle_deint[k]*nb_re*L+m]= llr[k*nb_re*L+m];
-		  //printf("k %d m %d bundle_deint %d llr_deint %d\n", k, m, bundle_deint[k], llr_deint[bundle_deint[k]*nb_re*L+m]);
-	  }
-  }
 }
 
 //==============================================================================================
@@ -1282,13 +1234,8 @@ void nr_a_sum_b(c16_t *input_x, c16_t *input_y, unsigned short nb_rb)
 }
 
 /* Zero Forcing Rx function: nr_element_sign()
- * Compute b=sign*a
- *
- * */
-static inline void nr_element_sign(c16_t *a, // a
-                                   c16_t *b, // b
-                                   unsigned short nb_rb,
-                                   int32_t sign)
+ * Compute b=sign*a */
+static inline void nr_element_sign(c16_t *a, c16_t *b, unsigned short nb_rb, int32_t sign)
 {
   const int16_t nr_sign[8] __attribute__((aligned(16))) = {-1, -1, -1, -1, -1, -1, -1, -1};
   simde__m128i *a_128,*b_128;
