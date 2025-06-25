@@ -704,6 +704,7 @@ static bool set_fh_init(void *mplane_api, struct xran_fh_init *fh_init, enum xra
             return false;
          }
      }
+     fh_init->p_o_du_addr = NULL; // DPDK retreives DU MAC address within the xran library with rte_eth_macaddr_get() function
   }
   else {
      fh_init->p_o_du_addr = calloc(num_du_addr, sizeof(struct rte_ether_addr));
@@ -724,7 +725,6 @@ static bool set_fh_init(void *mplane_api, struct xran_fh_init *fh_init, enum xra
   /* used to specify a unique prefix for shared memory, and files created by multiple DPDK processes;
     it is necessary */
   fh_init->filePrefix = strdup(*gpd(fhip, nump, ORAN_CONFIG_FILE_PREFIX)->strptr);
-  fh_init->p_o_du_addr = NULL; // DPDK retreives DU MAC address within the xran library with rte_eth_macaddr_get() function
   fh_init->totalBfWeights = 0; // only used if id = O_RU (for emulation); C-plane extension types; section 5.4.6 of CUS spec
 
 #ifdef F_RELEASE
