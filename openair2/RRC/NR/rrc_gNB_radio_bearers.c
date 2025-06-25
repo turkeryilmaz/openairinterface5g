@@ -41,6 +41,13 @@ void cp_pdusession(pdusession_t *dst, const pdusession_t *src)
   dst->nas_pdu = copy_byte_array(src->nas_pdu);
 }
 
+/** @brief Free pdusession_t */
+void free_pdusession(void *ptr)
+{
+  pdusession_t *session = (pdusession_t *)ptr;
+  FREE_AND_ZERO_BYTE_ARRAY(session->nas_pdu);
+}
+
 rrc_pdu_session_param_t *find_pduSession(gNB_RRC_UE_t *ue, int id, bool create)
 {
   int j;
