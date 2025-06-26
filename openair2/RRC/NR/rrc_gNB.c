@@ -1754,6 +1754,7 @@ static void handle_rrcReconfigurationComplete(gNB_RRC_INST *rrc, gNB_RRC_UE_t *U
         add_pduSession_to_release(&UE->pduSessions_to_release, UE->rrc_ue_id, release);
       }
       SEQ_ARR_CLEANUP_AND_FREE(UE->pduSessions_to_addmod, free_pdusession);
+      release_pduSessions(rrc, UE);
       rrc_gNB_send_NGAP_PDUSESSION_RELEASE_RESPONSE(rrc, UE, xid);
     } break;
     case RRC_PDUSESSION_ESTABLISH:
