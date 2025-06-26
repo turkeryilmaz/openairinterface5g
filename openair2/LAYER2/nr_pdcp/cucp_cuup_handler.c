@@ -308,6 +308,7 @@ void e1_bearer_context_modif(const e1ap_bearer_mod_req_t *req)
     instance_t f1inst = get_f1_gtp_instance();
     instance_t n3inst = get_n3_gtp_instance();
     instance_t inst = f1inst >= 0 ? f1inst : n3inst; // is there F1-U?
+    // NOTE (TODO): shouldn't both F1 and N3 tunnels be removed ?
     newGtpuDeleteOneTunnel(inst, req->gNB_cu_up_ue_id, req->pduSessionRem[i].sessionId);
     nr_pdcp_release_drbs(req->gNB_cu_up_ue_id, req->pduSessionRem[i].sessionId);
     nr_sdap_delete_entity(req->gNB_cu_up_ue_id, req->pduSessionRem[i].sessionId);
