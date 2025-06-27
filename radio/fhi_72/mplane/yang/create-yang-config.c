@@ -23,6 +23,7 @@
 #include "common/utils/nr/nr_common.h"
 
 #define VERIFY_SUCCESS(var, message, args...) AssertError(var, return false, message, ##args)
+const char *scs_name[] = {"KHZ_15", "KHZ_30", "KHZ_60", "KHZ_120", "KHZ_240", NULL};
 
 #ifdef MPLANE_V2
 static bool create_cu_interface_v2(struct ly_ctx **ctx, const ru_session_t *ru_session, const size_t idx, const char *int_name, struct lyd_node **root)
@@ -108,6 +109,12 @@ static bool fill_uplane_ch_rx_v2(const xran_mplane_t *xran_mplane, const openair
 {
   LY_ERR ret = LY_SUCCESS;
 
+  const int frame = (oai->split7.fftSize << 4) + oai->nr_scs_for_raster;
+  char frame_str[8];
+  snprintf(frame_str, sizeof(frame_str), "%d", frame); // 3GPP TS 38.211
+  ret = lyd_new_term(*root, NULL, "frame-structure", frame_str, 0, NULL);
+  VERIFY_SUCCESS(ret == LY_SUCCESS, "[MPLANE] Failed to create \"frame-structure\" node.\n");
+
   ret = lyd_new_term(*root, NULL, "cp-length", "0", 0, NULL);
   VERIFY_SUCCESS(ret == LY_SUCCESS, "[MPLANE] Failed to create \"cp-length\" node.\n");
 
@@ -135,6 +142,16 @@ static bool fill_uplane_ch_rx_v2(const xran_mplane_t *xran_mplane, const openair
     // ret = lyd_new_term(compression_node, NULL, "compression-method", "BLOCK_FLOATING_POINT", 0, NULL);
     // VERIFY_SUCCESS(ret == LY_SUCCESS, "[MPLANE] Failed to create \"compression-method\" node.\n");
   }
+
+  struct lyd_node *fft_offset = NULL;
+  ret = lyd_new_list(*root, NULL, "ul-fft-sampling-offsets", 0, &fft_offset, scs_name[oai->nr_scs_for_raster]);
+  VERIFY_SUCCESS(ret == LY_SUCCESS, "[MPLANE] Failed to create \"ul-fft-sampling-offsets\" node.\n");
+
+  // Note: set of allowed values is restricted by SCS derived from values in supported-frame-structures.
+  char ul_fft_offset[8];
+  snprintf(ul_fft_offset, sizeof(ul_fft_offset), "%d", frame - xran_mplane->frame_str);
+  ret = lyd_new_term(fft_offset, NULL, "ul-fft-sampling-offset", ul_fft_offset, 0, NULL);
+  VERIFY_SUCCESS(ret == LY_SUCCESS, "[MPLANE] Failed to create \"ul-fft-sampling-offset\" node.\n");
 
   struct lyd_node *eaxc_conf = NULL;
   ret = lyd_new_inner(*root, NULL, "e-axcid", 0, &eaxc_conf);
@@ -171,6 +188,11 @@ static bool fill_uplane_ch_rx_v2(const xran_mplane_t *xran_mplane, const openair
 static bool fill_uplane_ch_tx_v2(const xran_mplane_t *xran_mplane, const openair0_config_t *oai, const size_t idx, struct lyd_node **root)
 {
   LY_ERR ret = LY_SUCCESS;
+
+  char frame_str[8];
+  snprintf(frame_str, sizeof(frame_str), "%d", (oai->split7.fftSize << 4) + oai->nr_scs_for_raster); // 3GPP TS 38.211
+  ret = lyd_new_term(*root, NULL, "frame-structure", frame_str, 0, NULL);
+  VERIFY_SUCCESS(ret == LY_SUCCESS, "[MPLANE] Failed to create \"frame-structure\" node.\n");
 
   ret = lyd_new_term(*root, NULL, "cp-length", "0", 0, NULL);
   VERIFY_SUCCESS(ret == LY_SUCCESS, "[MPLANE] Failed to create \"cp-length\" node.\n");
