@@ -385,6 +385,8 @@ void nr_fep_tp(RU_t *ru, int slot) {
         feprx_cmd->endSymbol = ru->nr_frame_parms->symbols_per_slot - 1;
 
         task_t t = {.func = nr_fep, .args = feprx_cmd};
+
+        // start thread BPODRYGAJLO: This is the thread pool for FEP RX
         pushTpool(ru->threadPool, t);
 
         nbfeprx++;

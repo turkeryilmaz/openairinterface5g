@@ -1252,6 +1252,7 @@ void *ru_thread(void *param)
     // synchronization on input FH interface, acquire signals/data and block
     LOG_D(PHY,"[RU_thread] read data: frame_rx = %d, tti_rx = %d\n", frame, slot);
 
+    /// BPODRYGAJLO: RU read IQ data. Get frame and slot from here every slot
     if (ru->fh_south_in) ru->fh_south_in(ru,&frame,&slot);
     else AssertFatal(1==0, "No fronthaul interface at south port");
 
@@ -1291,6 +1292,7 @@ void *ru_thread(void *param)
       if (!wait_free_rx_tti(&gNB->L1_rx_out, rx_tti_busy, proc->frame_rx, proc->tti_rx))
         break; // nothing to wait for: we have to stop
       if (ru->feprx) {
+        /// BPODRYGAJLO: Front end processing (most likely dft)
         ru->feprx(ru,proc->tti_rx);
         LOG_D(NR_PHY, "Setting %d.%d (%d) to busy\n", proc->frame_rx, proc->tti_rx, proc->tti_rx % RU_RX_SLOT_DEPTH);
         //LOG_M("rxdata.m","rxs",ru->common.rxdata[0],1228800,1,1);
@@ -1303,7 +1305,7 @@ void *ru_thread(void *param)
                      gNB->frame_parms.samples_per_slot_wCP,
                      proc->tti_rx * gNB->frame_parms.samples_per_slot_wCP);
 
-        // Do PRACH RU processing
+        // Do PRACH RU processing BPODRYGAJLO: ONLY IF CONFIGURED
         int prach_id = find_nr_prach_ru(ru, proc->frame_rx, proc->tti_rx, SEARCH_EXIST);
         if (prach_id >= 0) {
           VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME( VCD_SIGNAL_DUMPER_FUNCTIONS_PHY_RU_PRACH_RX, 1 );
@@ -1337,6 +1339,7 @@ void *ru_thread(void *param)
       } // end if (ru->feprx)
     } // end if (slot_type == NR_UPLINK_SLOT || slot_type == NR_MIXED_SLOT) {
 
+    // BPODRYGAJLO: This is supposed to trigger TX eventually
     notifiedFIFO_elt_t *resTx = newNotifiedFIFO_elt(sizeof(processingData_L1tx_t), 0, &gNB->L1_tx_out, NULL);
     processingData_L1tx_t *syncMsgTx = NotifiedFifoData(resTx);
     syncMsgTx->gNB = gNB;
