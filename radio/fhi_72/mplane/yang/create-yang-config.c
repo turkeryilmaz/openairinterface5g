@@ -115,6 +115,10 @@ static bool fill_uplane_ch_rx_v2(const xran_mplane_t *xran_mplane, const openair
   ret = lyd_new_term(*root, NULL, "frame-structure", frame_str, 0, NULL);
   VERIFY_SUCCESS(ret == LY_SUCCESS, "[MPLANE] Failed to create \"frame-structure\" node.\n");
 
+  const char *managed_delay = xran_mplane->managed_delay ? "true" : "false";
+  ret = lyd_new_term(*root, NULL, "non-time-managed-delay-enabled", managed_delay, 0, NULL);
+  VERIFY_SUCCESS(ret == LY_SUCCESS, "[MPLANE] Failed to create \"non-time-managed-delay-enabled\" node.\n");
+
   // EXTENDED not supported
   // 3GPP TS 38.211
   const char cp_type[] = "NORMAL";
