@@ -104,7 +104,7 @@ static bool create_proc_elem_v2(struct ly_ctx **ctx, const ru_session_t *ru_sess
   return true;
 }
 
-static bool fill_uplane_ch_rx_v2(const xran_mplane_t *xran_mplane, const size_t idx, struct lyd_node **root)
+static bool fill_uplane_ch_rx_v2(const xran_mplane_t *xran_mplane, const openair0_config_t *oai, const size_t idx, struct lyd_node **root)
 {
   LY_ERR ret = LY_SUCCESS;
 
@@ -114,8 +114,9 @@ static bool fill_uplane_ch_rx_v2(const xran_mplane_t *xran_mplane, const size_t 
   ret = lyd_new_term(*root, NULL, "cp-length-other", "0", 0, NULL);
   VERIFY_SUCCESS(ret == LY_SUCCESS, "[MPLANE] Failed to create \"cp-length-other\" node.\n");
 
-  // to we actually store this from DU config file?
-  ret = lyd_new_term(*root, NULL, "offset-to-absolute-frequency-center", "0", 0, NULL);
+  char freq_offset[8];
+  snprintf(freq_offset, sizeof(freq_offset), "%d", oai->split7.ul_k0[oai->nr_scs_for_raster]);
+  ret = lyd_new_term(*root, NULL, "offset-to-absolute-frequency-center", freq_offset, 0, NULL);
   VERIFY_SUCCESS(ret == LY_SUCCESS, "[MPLANE] Failed to create \"offset-to-absolute-frequency-center\" node.\n");
 
   struct lyd_node *compression_node = NULL;
@@ -167,7 +168,7 @@ static bool fill_uplane_ch_rx_v2(const xran_mplane_t *xran_mplane, const size_t 
   return true;
 }
 
-static bool fill_uplane_ch_tx_v2(const xran_mplane_t *xran_mplane, const size_t idx, struct lyd_node **root)
+static bool fill_uplane_ch_tx_v2(const xran_mplane_t *xran_mplane, const openair0_config_t *oai, const size_t idx, struct lyd_node **root)
 {
   LY_ERR ret = LY_SUCCESS;
 
@@ -177,8 +178,9 @@ static bool fill_uplane_ch_tx_v2(const xran_mplane_t *xran_mplane, const size_t 
   ret = lyd_new_term(*root, NULL, "cp-length-other", "0", 0, NULL);
   VERIFY_SUCCESS(ret == LY_SUCCESS, "[MPLANE] Failed to create \"cp-length-other\" node.\n");
     
-  // to we actually store this from DU config file?
-  ret = lyd_new_term(*root, NULL, "offset-to-absolute-frequency-center", "0", 0, NULL);
+  char freq_offset[8];
+  snprintf(freq_offset, sizeof(freq_offset), "%d", oai->split7.ul_k0[oai->nr_scs_for_raster]);
+  ret = lyd_new_term(*root, NULL, "offset-to-absolute-frequency-center", freq_offset, 0, NULL);
   VERIFY_SUCCESS(ret == LY_SUCCESS, "[MPLANE] Failed to create \"offset-to-absolute-frequency-center\" node.\n");
   
   struct lyd_node *compression_node = NULL;
@@ -317,7 +319,7 @@ static bool create_uplane_conf_v2(struct ly_ctx **ctx, const ru_session_t *ru_se
     ret = lyd_new_list(*root, NULL, "low-level-rx-endpoints", 0, &pusch_node, ru_session->ru_mplane_config.rx_endpoints.name[i]);
     VERIFY_SUCCESS(ret == LY_SUCCESS, "[MPLANE] Failed to create \"low-level-rx-endpoints\" node.\n");
     
-    success = fill_uplane_ch_rx_v2(&ru_session->xran_mplane, i, &pusch_node);
+    success = fill_uplane_ch_rx_v2(&ru_session->xran_mplane, oai, i, &pusch_node);
     VERIFY_SUCCESS(success, "[MPLANE] Failed to fill \"low-level-rx-endpoints\" node for %s.\n", ru_session->ru_mplane_config.rx_endpoints.name[i]);
 
     const size_t prach_endpoint_name_offset = i + (ru_session->ru_mplane_config.rx_endpoints.num / 2);
@@ -325,7 +327,7 @@ static bool create_uplane_conf_v2(struct ly_ctx **ctx, const ru_session_t *ru_se
     ret = lyd_new_list(*root, NULL, "low-level-rx-endpoints", 0, &prach_node, ru_session->ru_mplane_config.rx_endpoints.name[prach_endpoint_name_offset]);
     VERIFY_SUCCESS(ret == LY_SUCCESS, "[MPLANE] Failed to create \"low-level-rx-endpoints\" node.\n");
 
-    success = fill_uplane_ch_rx_v2(&ru_session->xran_mplane, i + ru_session->xran_mplane.prach_offset, &prach_node);
+    success = fill_uplane_ch_rx_v2(&ru_session->xran_mplane, oai, i + ru_session->xran_mplane.prach_offset, &prach_node);
     VERIFY_SUCCESS(success, "[MPLANE] Failed to fill \"low-level-rx-endpoints\" node for %s.\n", ru_session->ru_mplane_config.rx_endpoints.name[prach_endpoint_name_offset]);
   }
 
@@ -336,7 +338,7 @@ static bool create_uplane_conf_v2(struct ly_ctx **ctx, const ru_session_t *ru_se
     ret = lyd_new_list(*root, NULL, "low-level-tx-endpoints", 0, &pdsch_node, ru_session->ru_mplane_config.tx_endpoints.name[i]);
     VERIFY_SUCCESS(ret == LY_SUCCESS, "[MPLANE] Failed to create \"low-level-tx-endpoints\" node.\n");
 
-    success = fill_uplane_ch_tx_v2(&ru_session->xran_mplane, i, &pdsch_node);
+    success = fill_uplane_ch_tx_v2(&ru_session->xran_mplane, oai, i, &pdsch_node);
     VERIFY_SUCCESS(success, "[MPLANE] Failed to fill \"low-level-tx-endpoints\" node for %s.\n", ru_session->ru_mplane_config.tx_endpoints.name[i]);
   }
 
