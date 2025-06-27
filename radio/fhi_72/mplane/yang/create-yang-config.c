@@ -115,10 +115,20 @@ static bool fill_uplane_ch_rx_v2(const xran_mplane_t *xran_mplane, const openair
   ret = lyd_new_term(*root, NULL, "frame-structure", frame_str, 0, NULL);
   VERIFY_SUCCESS(ret == LY_SUCCESS, "[MPLANE] Failed to create \"frame-structure\" node.\n");
 
-  ret = lyd_new_term(*root, NULL, "cp-length", "0", 0, NULL);
+  // EXTENDED not supported
+  // 3GPP TS 38.211
+  const char cp_type[] = "NORMAL";
+  ret = lyd_new_term(*root, NULL, "cp-type", cp_type, 0, NULL);
+  VERIFY_SUCCESS(ret == LY_SUCCESS, "[MPLANE] Failed to create \"cp-type\" node.\n");
+
+  char cp_len[8];
+  snprintf(cp_len, sizeof(cp_len), "%d", oai->split7.cp_prefix0);
+  ret = lyd_new_term(*root, NULL, "cp-length", cp_len, 0, NULL);
   VERIFY_SUCCESS(ret == LY_SUCCESS, "[MPLANE] Failed to create \"cp-length\" node.\n");
 
-  ret = lyd_new_term(*root, NULL, "cp-length-other", "0", 0, NULL);
+  char cp_len_other[8];
+  snprintf(cp_len_other, sizeof(cp_len_other), "%d", oai->split7.cp_prefix_other);
+  ret = lyd_new_term(*root, NULL, "cp-length-other", cp_len_other, 0, NULL);
   VERIFY_SUCCESS(ret == LY_SUCCESS, "[MPLANE] Failed to create \"cp-length-other\" node.\n");
 
   char freq_offset[8];
@@ -194,12 +204,22 @@ static bool fill_uplane_ch_tx_v2(const xran_mplane_t *xran_mplane, const openair
   ret = lyd_new_term(*root, NULL, "frame-structure", frame_str, 0, NULL);
   VERIFY_SUCCESS(ret == LY_SUCCESS, "[MPLANE] Failed to create \"frame-structure\" node.\n");
 
-  ret = lyd_new_term(*root, NULL, "cp-length", "0", 0, NULL);
+  // EXTENDED not supported
+  // 3GPP TS 38.211
+  const char cp_type[] = "NORMAL";
+  ret = lyd_new_term(*root, NULL, "cp-type", cp_type, 0, NULL);
+  VERIFY_SUCCESS(ret == LY_SUCCESS, "[MPLANE] Failed to create \"cp-type\" node.\n");
+
+  char cp_len[8];
+  snprintf(cp_len, sizeof(cp_len), "%d", oai->split7.cp_prefix0);
+  ret = lyd_new_term(*root, NULL, "cp-length", cp_len, 0, NULL);
   VERIFY_SUCCESS(ret == LY_SUCCESS, "[MPLANE] Failed to create \"cp-length\" node.\n");
-  
-  ret = lyd_new_term(*root, NULL, "cp-length-other", "0", 0, NULL);
+
+  char cp_len_other[8];
+  snprintf(cp_len_other, sizeof(cp_len_other), "%d", oai->split7.cp_prefix_other);
+  ret = lyd_new_term(*root, NULL, "cp-length-other", cp_len_other, 0, NULL);
   VERIFY_SUCCESS(ret == LY_SUCCESS, "[MPLANE] Failed to create \"cp-length-other\" node.\n");
-    
+
   char freq_offset[8];
   snprintf(freq_offset, sizeof(freq_offset), "%d", oai->split7.ul_k0[oai->nr_scs_for_raster]);
   ret = lyd_new_term(*root, NULL, "offset-to-absolute-frequency-center", freq_offset, 0, NULL);
