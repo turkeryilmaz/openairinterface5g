@@ -17,29 +17,46 @@
 [[_TOC_]]
 
 This documentation describes the integration of LDPC coding for lookaside acceleration using O-RAN AAL (i.e., DPDK BBDEV) in OAI, along with its usage.
+> Note: This documentation will be harmonized with the T2's documentation in future commits.
 
 # Requirements
 
 In principle, any lookaside LDPC accelerator supporting the O-RAN AAL/ DPDK BBDEV should work.
+However, the current implementation has only been validated for the Xilinx T2, Intel ACC100, and Intel ACC200 (VRB1).
+Therefore, your mileage may vary when using other BBDEV devices as there may be some hardware-specific changes required -- contributions are welcomed!
 
-## Tested Devices/ Environments
+## DPDK Version Requirements
+
+The following DPDK versions are supported:
+- For the Xilinx T2 card, the current supported version is DPDK20.11.
+- As for the Intel ACC100/ACC200, only DPDK22.11+ is supported.
+
+> Note: The future plan is to migrate the Xilinx T2 card to use DPDK22.11+ too.
+
+## Tested Devices/ DPDK versions
 
 ### Xilinx T2
 
-- TODO. To be validated.
+- DPDK20.11.9.
 
 ### Intel ACC100
 
-- TODO. To be validated.
+- DPDK22.11.7*.
+- DPDK23.11.3*.
+- DPDK24.11.2.
+> Note: Patch required for pre-DPDK24.11 versions when using the Intel ACC100.
 
 ### Intel ACC200 (also known as VRB1)
-- DPDK22.11.7 on Ubuntu 24.04.
-- DPDK23.11.3 on Ubuntu 24.04.
+- DPDK22.11.7.
+- DPDK23.11.3.
+- DPDK24.11.2.
 
 # System Setup
 ## DPDK installation
 
-> Note: If you are using the Xilinx T2 card, you will need to apply the corresponding patches before compiling DPDK. 
+> Note: 
+> - If you are using the Xilinx T2 card, you will need to apply the vendor-supplied patches before compiling DPDK. 
+> - If you are using the Intel ACC100, you will need to [patch](https://github.com/DPDK/dpdk/commit/fdde63a1dfc129d0a510a831aa98253b36a2a1cd) the ACC100's driver if you are using DPDK22.11 or DPDK23.11. 
 
 Refer to the guide [here](https://gitlab.eurecom.fr/oai/openairinterface5g/-/blob/develop/doc/ORAN_FHI7.2_Tutorial.md?ref_type=heads#dpdk-data-plane-development-kit) to install, and then validate your DPDK installation.
 
@@ -162,30 +179,30 @@ cd ~/openairinterface5g/cmake_targets
 cd ~/openairinterface5g
 source oaienv
 cd cmake_targets
-./build_oai -w USRP --ninja --gNB -P --build-lib "ldpc_aal" -C
+./build_oai -w USRP --ninja --gNB -P --build-lib "ldpc_t2" -C
 ```
 
-A shared object file *libldpc_aal.so* will created during the compilation. 
+A shared object file *libldpc_t2.so* will created during the compilation. 
 This object is conditionally compiled. 
-The selection of the library to compile is done using *--build-lib ldpc_aal*.
+The selection of the library to compile is done using *--build-lib ldpc_t2*.
 
 > Note: The required DPDK poll mode driver has to be present on the host machine and required DPDK version has to be installed on the host, prior to building OAI.
 
 # O-RAN AAL DPDK EAL parameters
 To configure O-RAN AAL-related DPDK Environment Abstraction Layer (EAL) parameters, you can set the following parameters via the command line of PHY simulators or softmodem:
 
-- `nrLDPC_coding_aal.dpdk_dev` - **mandatory** parameter, this specifies PCI address of our accelerator. It must follow the format `0000:XX:YY.Z`.
+- `nrLDPC_coding_t2.dpdk_dev` - **mandatory** parameter, this specifies PCI address of our accelerator. It must follow the format `0000:XX:YY.Z`.
 
-- `nrLDPC_coding_aal.dpdk_core_list` - **mandatory** parameter, specifies CPU cores assigned to DPDK . 
-Ensure that the CPU cores specified in *nrLDPC_coding_aal.dpdk_core_list* are available and not used by other processes to avoid conflicts.
+- `nrLDPC_coding_t2.dpdk_core_list` - **mandatory** parameter, specifies CPU cores assigned to DPDK . 
+Ensure that the CPU cores specified in *nrLDPC_coding_t2.dpdk_core_list* are available and not used by other processes to avoid conflicts.
 
-- `nrLDPC_coding_aal.dpdk_prefix` - optional parameter, DPDK shared data file prefix, by default set to *b6*.
+- `nrLDPC_coding_t2.dpdk_prefix` - optional parameter, DPDK shared data file prefix, by default set to *b6*.
 
-- `nrLDPC_coding_aal.vfio_vf_token` - optional parameter, VFIO token set for the VF, if applicable.
+- `nrLDPC_coding_t2.vfio_vf_token` - optional parameter, VFIO token set for the VF, if applicable.
 
 **Note:** These parameters can also be provided in a configuration file:
 ```
-nrLDPC_coding_aal : {
+nrLDPC_coding_t2 : {
   dpdk_dev : "0000:f7:00.1";
   dpdk_core_list : "14-15";
   vfio_vf_token: "00112233-4455-6677-8899-aabbccddeeff";
@@ -193,38 +210,37 @@ nrLDPC_coding_aal : {
 
 loader : {
   ldpc : {
-    shlibversion : "_aal";
+    shlibversion : "_t2";
   };
 };
 ```
 
 # Running OAI with O-RAN AAL
 
+In general, to offload of the channel coding to the LDPC accelerator, we use use *--loader.ldpc.shlibversion _t2* option. 
+
 ## 5G PHY simulators
 
 ### nr_ulsim
-Offload of the channel decoding to the LDPC accelerator is in nr_ulsim specified by *--loader.ldpc.shlibversion _aal* option. 
 
 Example command:
 ```
 cd ~/openairinterface5g
 source oaienv
 cd cmake_targets/ran_build/build
-sudo ./nr_ulsim -n100 -s20 -m20 -r273 -R273 --loader.ldpc.shlibversion _aal --nrLDPC_coding_aal.dpdk_dev 0000:f7:00.1 --nrLDPC_coding_aal.dpdk_core_list 0-1 --nrLDPC_coding_aal.vfio_vf_token 00112233-4455-6677-8899-aabbccddeeff
+sudo ./nr_ulsim -n100 -s20 -m20 -r273 -R273 --loader.ldpc.shlibversion _t2 --nrLDPC_coding_t2.dpdk_dev 0000:f7:00.1 --nrLDPC_coding_t2.dpdk_core_list 0-1 --nrLDPC_coding_t2.vfio_vf_token 00112233-4455-6677-8899-aabbccddeeff
 ```
 ### nr_dlsim
-Offload of the channel encoding to the LDPC accelerator is in nr_dlsim specified by *-c* option.
 
 Example command:
 ```
 cd ~/openairinterface5g
 source oaienv
 cd cmake_targets/ran_build/build
-sudo ./nr_dlsim -n300 -s30 -R 106 -e 27 --loader.ldpc.shlibversion _aal --nrLDPC_coding_aal.dpdk_dev 0000:f7:00.1 --nrLDPC_coding_aal.dpdk_core_list 0-1 --nrLDPC_coding_aal.vfio_vf_token 00112233-4455-6677-8899-aabbccddeeff
+sudo ./nr_dlsim -n300 -s30 -R 106 -e 27 --loader.ldpc.shlibversion _t2 --nrLDPC_coding_t2.dpdk_dev 0000:f7:00.1 --nrLDPC_coding_t2.dpdk_core_list 0-1 --nrLDPC_coding_t2.vfio_vf_token 00112233-4455-6677-8899-aabbccddeeff
 ```
 
 ## OTA test
-Offload of the LDPC channel encoding and decoding to the LDPC accelerator is enabled by *--loader.ldpc.shlibversion _aal* option.
 
 ### Running OAI gNB with USRP B210
 
@@ -233,9 +249,48 @@ Example command:
 # cd ~/openairinterface5g
 # source oaienv
 # cd cmake_targets/ran_build/build
-# sudo ./nr-softmodem -O ../../../targets/PROJECTS/GENERIC-NR-5GC/CONF/gnb.sa.band78.fr1.106PRB.usrpb210.conf --loader.ldpc.shlibversion _aal --nrLDPC_coding_aal.dpdk_dev 0000:f7:00.1 --nrLDPC_coding_aal.dpdk_core_list 0-1 --nrLDPC_coding_aal.vfio_vf_token 00112233-4455-6677-8899-aabbccddeeff
+# sudo ./nr-softmodem -O ../../../targets/PROJECTS/GENERIC-NR-5GC/CONF/gnb.sa.band78.fr1.106PRB.usrpb210.conf --loader.ldpc.shlibversion _t2 --nrLDPC_coding_t2.dpdk_dev 0000:f7:00.1 --nrLDPC_coding_t2.dpdk_core_list 0-1 --nrLDPC_coding_t2.vfio_vf_token 00112233-4455-6677-8899-aabbccddeeff
 ```
 
 # Known Limitations
 
-TODO. To be validated.
+While the current implementation is tested to work in an E2E setup, there remain some caveats.
+In particular, LDPC decoding performance remains far from optimal and improving its performance remains a work-in-progress.
+Therefore, it is expected that the DL/UL throughput may not be as optimal.
+
+As a workaround, to yield better decoding performance, we recommend the following:
+1. Increasing the number of LDPC decoding iterations of the L1, i.e., `max_ldpc_iterations` to 50.
+1. Increasing the BLER targets of the MAC scheduler. 
+
+Example configuration snippet:
+```
+...
+MACRLCs = (
+{
+  num_cc                      = 1;
+  tr_s_preference             = "local_L1";
+  tr_n_preference             = "local_RRC";
+  pusch_TargetSNRx10          = 180;
+  pucch_TargetSNRx10          = 220;
+  dl_bler_target_upper        = .35;
+  dl_bler_target_lower        = .15;
+  ul_bler_target_upper        = .35;
+  ul_bler_target_lower        = .15;
+  pusch_FailureThres          = 1000;
+  ul_max_mcs                  = 28;
+
+}
+);
+
+L1s = (
+{
+  num_cc = 1;
+  tr_n_preference       = "local_mac";
+  prach_dtx_threshold   = 120;
+  pucch0_dtx_threshold  = 100;
+  ofdm_offset_divisor   = 8; #set this to UINT_MAX for offset 0
+  max_ldpc_iterations = 100;
+}
+);
+...
+```
