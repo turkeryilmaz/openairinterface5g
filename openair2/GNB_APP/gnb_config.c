@@ -1116,7 +1116,7 @@ void RCconfig_NR_L1(void)
       gNB->TX_AMP = min(32767.0 / pow(10.0, .05 * (double)(*L1_ParamList.paramarray[j][L1_TX_AMP_BACKOFF_dB].uptr)), INT16_MAX);
       gNB->phase_comp = *L1_ParamList.paramarray[j][L1_PHASE_COMP].uptr;
       gNB->dmrs_num_antennas_per_thread = *(L1_ParamList.paramarray[j][NUM_ANTENNAS_PER_THREAD].uptr);
-      gNB->enable_analog_das = *(L1_ParamList.paramarray[j][L1_ANALOG_DAS].uptr);
+      gNB->enable_timedomain_das = *(L1_ParamList.paramarray[j][L1_TD_DAS].uptr);
       LOG_I(NR_PHY, "TX_AMP = %d (-%d dBFS)\n", gNB->TX_AMP, *L1_ParamList.paramarray[j][L1_TX_AMP_BACKOFF_dB].uptr);
       AssertFatal(gNB->TX_AMP > 300, "TX_AMP is too small, must be larger than 300 (is %d)\n", gNB->TX_AMP);
       // Midhaul configuration
@@ -1786,31 +1786,32 @@ void RCconfig_nr_macrlc(configmodule_interface_t *cfg)
         LOG_I(NR_PHY, "Copying %d blacklisted PRB to L1 context\n", num_ulprbbl);
         memcpy(RC.nrmac[j]->ulprbbl, prbbl, MAX_BWP_SIZE * sizeof(prbbl[0]));
       }
-      int ab = *MacRLC_ParamList.paramarray[j][MACRLC_ANALOG_BEAMFORMING_IDX].u8ptr;
-      if (ab > 0) {
-        if (ab == 1) AssertFatal(NFAPI_MODE == NFAPI_MONOLITHIC, "Analog beamforming only supported for monolithic scenario\n");
+      int tdbf = *MacRLC_ParamList.paramarray[j][MACRLC_TD_BEAMFORMING_IDX].u8ptr;
+      if (tdbf > 0) {
+        if (tdbf == 1)
+          AssertFatal(NFAPI_MODE == NFAPI_MONOLITHIC, "Time domain beamforming only supported for monolithic scenario\n");
         NR_beam_info_t *beam_info = &RC.nrmac[j]->beam_info;
-        int beams_per_period = *MacRLC_ParamList.paramarray[j][MACRLC_ANALOG_BEAMS_PERIOD_IDX].u8ptr;
+        int beams_per_period = *MacRLC_ParamList.paramarray[j][MACRLC_TD_BEAMS_PERIOD_IDX].u8ptr;
         beam_info->beam_allocation = malloc16(beams_per_period * sizeof(int *));
-        beam_info->beam_duration = *MacRLC_ParamList.paramarray[j][MACRLC_ANALOG_BEAM_DURATION_IDX].u8ptr;
+        beam_info->beam_duration = *MacRLC_ParamList.paramarray[j][MACRLC_TD_BEAM_DURATION_IDX].u8ptr;
         beam_info->beams_per_period = beams_per_period;
         beam_info->beam_allocation_size = -1; // to be initialized once we have information on frame configuration
-        beam_info->beam_mode = ab == 1 ? PRECONFIGURED_BEAM_IDX : LOPHY_BEAM_IDX;
+        beam_info->beam_mode = tdbf == 1 ? PRECONFIGURED_BEAM_IDX : LOPHY_BEAM_IDX;
       } else
         RC.nrmac[j]->beam_info.beam_mode = NO_BEAM_MODE;
       if (config_isparamset(MacRLC_ParamList.paramarray[j], MACRLC_BEAMWEIGHTS_IDX)) {
         if (NFAPI_MODE == NFAPI_MONOLITHIC) {
           GET_PARAMS_LIST(L1_ParamList, L1_Params, L1PARAMS_DESC, CONFIG_STRING_L1_LIST, NULL);
-          if (ab == 1) AssertFatal(*(L1_ParamList.paramarray[j][L1_ANALOG_DAS].uptr) == 0, "No need to set beam weights in case of DAS\n");
+          AssertFatal(*(L1_ParamList.paramarray[j][L1_TD_DAS].uptr) == 0, "No need to set beam weights in case of DAS\n");
         }
         int n = MacRLC_ParamList.paramarray[j][MACRLC_BEAMWEIGHTS_IDX].numelt;
         int num_beam = n;
-        if (!ab) {
+        if (!tdbf) {
           AssertFatal(n % num_tx == 0, "Error! Number of beam input needs to be multiple of TX antennas\n");
           num_beam = n / num_tx;
         }
         // each beam is described by a set of weights (one for each antenna)
-        // in case of analog beamforming an index to the RU beam identifier is provided
+        // in case of time domain beamforming an index to the RU beam identifier is provided
         // (one for each beam regardless of the number of antennas per beam)
         config.nb_bfw[0] = num_tx;  // number of tx antennas
         config.nb_bfw[1] = num_beam; // number of beams weights/indices

@@ -107,11 +107,10 @@ void phy_init_nr_gNB(PHY_VARS_gNB *gNB)
   NR_gNB_COMMON *const common_vars  = &gNB->common_vars;
   NR_gNB_PRACH *const prach_vars   = &gNB->prach_vars;
 
-  common_vars->analog_bf = cfg->analog_beamforming_ve.analog_bf_vendor_ext.value;
-  LOG_I(PHY, "L1 configured with%s analog beamforming\n", common_vars->analog_bf ? "" : "out");
-  if (common_vars->analog_bf) {
-    // True only if nrmac->beam_info.beam_mode == FAPI_ANALOG_BEAM, thus analog_beamforming=2
-    common_vars->num_beams_period = cfg->analog_beamforming_ve.num_beams_period_vendor_ext.value;
+  common_vars->timedomain_bf = cfg->timedomain_beamforming_ve.timedomain_bf_vendor_ext.value;
+  LOG_I(PHY, "L1 configured with%s time domain beamforming\n", common_vars->timedomain_bf ? "" : "out");
+  if (common_vars->timedomain_bf) {
+    common_vars->num_beams_period = cfg->timedomain_beamforming_ve.num_beams_period_vendor_ext.value;
     LOG_I(PHY, "Max number of concurrent beams: %d\n", common_vars->num_beams_period);
   } else
     common_vars->num_beams_period = 1;
@@ -174,7 +173,7 @@ void phy_init_nr_gNB(PHY_VARS_gNB *gNB)
   for (int i = 0; i < common_vars->num_beams_period; i++)
     common_vars->rxdataF[i] = (c16_t **)malloc16(Prx * sizeof(c16_t*));
 
-  if (cfg->analog_beamforming_ve.analog_bf_vendor_ext.value) {
+  if (cfg->timedomain_beamforming_ve.timedomain_bf_vendor_ext.value) {
     common_vars->beam_id = (int **)malloc16(common_vars->num_beams_period * sizeof(int*));
     for (int i = 0; i < common_vars->num_beams_period; i++)
       common_vars->beam_id[i] = (int*)malloc16_clear(fp->symbols_per_slot * fp->slots_per_frame * sizeof(int));
