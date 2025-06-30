@@ -288,7 +288,7 @@ typedef struct {
   /// - second index: beam_id [0.. symbols_per_frame[
   int **beam_id;
   int num_beams_period;
-  bool analog_bf;
+  bool timedomain_bf;
   int32_t *debugBuff;
   int32_t debugBuff_sample_offset;
 } NR_gNB_COMMON;
@@ -492,7 +492,7 @@ typedef struct PHY_VARS_gNB_s {
   int num_ulprbbl;
   uint16_t ulprbbl [MAX_BWP_SIZE];
 
-  bool enable_analog_das;
+  bool enable_timedomain_das;
 
   time_stats_t phy_proc_tx;
   time_stats_t phy_proc_rx;

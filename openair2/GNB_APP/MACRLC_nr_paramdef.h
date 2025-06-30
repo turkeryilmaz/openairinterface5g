@@ -73,7 +73,7 @@
 #define CONFIG_STRING_MACRLC_UL_HARQ_ROUND_MAX             "ul_harq_round_max"
 #define CONFIG_STRING_MACRLC_MIN_GRANT_PRB                 "min_grant_prb"
 #define CONFIG_STRING_MACRLC_IDENTITY_PM                   "identity_precoding_matrix"
-#define CONFIG_STRING_MACRLC_ANALOG_BEAMFORMING            "set_analog_beamforming"
+#define CONFIG_STRING_MACRLC_TD_BEAMFORMING                "set_timedomain_beamforming"
 #define CONFIG_STRING_MACRLC_BEAM_DURATION                 "beam_duration"
 #define CONFIG_STRING_MACRLC_BEAMS_PERIOD                  "beams_per_period"
 #define CONFIG_STRING_MACRLC_BEAM_WEIGHTS_LIST             "beam_weights"
@@ -93,7 +93,7 @@
 #define HLP_MACRLC_UL_HARQ_MAX "Maximum number of UL HARQ rounds"
 #define HLP_MACRLC_MIN_GRANT_PRB "Minimal Periodic ULSCH Grant PRBs"
 #define HLP_MACRLC_IDENTITY_PM "Flag to use only identity matrix in DL precoding"
-#define HLP_MACRLC_AB "Flag to enable analog beamforming"
+#define HLP_MACRLC_AB "Flag to enable time domain beamforming"
 #define HLP_MACRLC_BEAM_DURATION "number of consecutive slots for a given set of beams"
 #define HLP_MACRLC_BEAMS_PERIOD "set of beams that can be simultaneously allocated in a period"
 #define HLP_MACRLC_PUSCH_RSSI_THRESHOLD "Limits PUSCH TPC commands based on RSSI to prevent ADC railing. Value range [-1280, 0], unit 0.1 dBm/dBFS"
@@ -141,7 +141,7 @@
   {CONFIG_STRING_MACRLC_LOCAL_N_ADDRESS_F1U,         NULL,                     0, .strptr=NULL, .defstrval=NULL,            TYPE_STRING,  0}, \
   {CONFIG_STRING_MACRLC_TRANSPORT_S_SHM_PREFIX,      NULL,                     0, .strptr=NULL, .defstrval="nvipc",         TYPE_STRING,  0}, \
   {CONFIG_STRING_MACRLC_TRANSPORT_S_POLL_CORE,       NULL,                     0, .i8ptr=NULL,  .defintval=-1,              TYPE_INT8,    0}, \
-  {CONFIG_STRING_MACRLC_ANALOG_BEAMFORMING,          HLP_MACRLC_AB,            PARAMFLAG_BOOL, .u8ptr=NULL, .defintval=0,   TYPE_UINT8,   0}, \
+  {CONFIG_STRING_MACRLC_TD_BEAMFORMING,              HLP_MACRLC_AB,            PARAMFLAG_BOOL, .u8ptr=NULL, .defintval=0,   TYPE_UINT8,   0}, \
   {CONFIG_STRING_MACRLC_BEAM_DURATION,               HLP_MACRLC_BEAM_DURATION, 0, .u8ptr=NULL,  .defintval=1,               TYPE_UINT8,   0}, \
   {CONFIG_STRING_MACRLC_BEAMS_PERIOD,                HLP_MACRLC_BEAMS_PERIOD,  0, .u8ptr=NULL,  .defintval=1,               TYPE_UINT8,   0}, \
   {CONFIG_STRING_MACRLC_BEAM_WEIGHTS_LIST,           NULL,                     0, .iptr=NULL,   .defintarrayval=0,          TYPE_INTARRAY,0}, \
@@ -188,9 +188,9 @@
 #define MACRLC_LOCAL_N_ADDRESS_F1U_IDX                         33
 #define MACRLC_TRANSPORT_S_SHM_PREFIX                          34
 #define MACRLC_TRANSPORT_S_POLL_CORE                           35
-#define MACRLC_ANALOG_BEAMFORMING_IDX                          36
-#define MACRLC_ANALOG_BEAM_DURATION_IDX                        37
-#define MACRLC_ANALOG_BEAMS_PERIOD_IDX                         38
+#define MACRLC_TD_BEAMFORMING_IDX                              36
+#define MACRLC_TD_BEAM_DURATION_IDX                            37
+#define MACRLC_TD_BEAMS_PERIOD_IDX                             38
 #define MACRLC_BEAMWEIGHTS_IDX                                 39
 #define MACRLC_PUSCH_RSSI_THRES_IDX                            40
 #define MACRLC_PUCCH_RSSI_THRES_IDX                            41
