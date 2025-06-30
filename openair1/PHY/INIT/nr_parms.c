@@ -330,30 +330,49 @@ void nr_ru_init_frame_parms(RU_t *ru) {
   ru->config.prach_config.num_prach_fd_occasions_list = malloc(sizeof(*ru->config.prach_config.num_prach_fd_occasions_list));
   ru->config.prach_config.num_prach_fd_occasions_list[0].k1.value = ru->prach_msg1_freq;
   if (ru->config.cell_config.frame_duplex_type.value == 1 /* TDD */) {
-     ru->config.tdd_table.tdd_period.value = ru->tdd_period;
-     ru->config.tdd_table.tdd_period.tl.tag = 0x1026;
-     int n=0,s=0;
-     ru->config.tdd_table.max_tdd_periodicity_list = malloc(sizeof(*ru->config.tdd_table.max_tdd_periodicity_list)*(ru->num_DL_slots+ru->num_UL_slots+1));
-     for (;n<ru->num_DL_slots;n++) {
-       ru->config.tdd_table.max_tdd_periodicity_list[n].max_num_of_symbol_per_slot_list = malloc(sizeof(*ru->config.tdd_table.max_tdd_periodicity_list[n].max_num_of_symbol_per_slot_list)*14); 
-       for (int s=0;s<14;s++)
-         ru->config.tdd_table.max_tdd_periodicity_list[n].max_num_of_symbol_per_slot_list[s].slot_config.value = 0;
-     }
-     ru->config.tdd_table.max_tdd_periodicity_list[n].max_num_of_symbol_per_slot_list = malloc(sizeof(*ru->config.tdd_table.max_tdd_periodicity_list[n].max_num_of_symbol_per_slot_list)*14); 
-     for (s=0;s<ru->num_DL_symbols;s++)
-         ru->config.tdd_table.max_tdd_periodicity_list[n].max_num_of_symbol_per_slot_list[s].slot_config.value = 0;
-     for (;s<14-ru->num_UL_symbols;s++)
-         ru->config.tdd_table.max_tdd_periodicity_list[n].max_num_of_symbol_per_slot_list[s].slot_config.value = 2;
-     for (;s<14;s++)
-         ru->config.tdd_table.max_tdd_periodicity_list[n].max_num_of_symbol_per_slot_list[s].slot_config.value = 1;
-     n++;
-     for (;n<ru->num_DL_slots+ru->num_UL_slots+1;n++){ 
-       ru->config.tdd_table.max_tdd_periodicity_list[n].max_num_of_symbol_per_slot_list = malloc(sizeof(*ru->config.tdd_table.max_tdd_periodicity_list[n].max_num_of_symbol_per_slot_list)*14); 
-       for (;s<14;s++)
-         ru->config.tdd_table.max_tdd_periodicity_list[n].max_num_of_symbol_per_slot_list[s].slot_config.value = 1;
-     }
+    ru->config.tdd_table.tdd_period.value = ru->tdd_period;
+    ru->config.tdd_table.tdd_period.tl.tag = 0x1026;
+    int numb_slots_frame = (1 << ru->numerology) * NR_NUMBER_OF_SUBFRAMES_PER_FRAME;
+    int numb_period_frame = get_nb_periods_per_frame(ru->tdd_period);
+    int numb_slots_period = numb_slots_frame / numb_period_frame;
+    LOG_I(NR_PHY,
+          "Set TDD Period Configuration: %d periods per frame, %d slots to be configured (%d DL, %d UL)\n",
+          numb_period_frame,
+          numb_slots_frame,
+          ru->num_DL_slots + 1,
+          ru->num_UL_slots + 1);
+    ru->config.tdd_table.max_tdd_periodicity_list =
+        malloc(sizeof(*ru->config.tdd_table.max_tdd_periodicity_list) * (numb_slots_frame));
+    for (int n = 0; n < numb_slots_frame; n++) {
+      int s = 0;
+      int p = n % numb_slots_period;
+      if (p < ru->num_DL_slots) {
+        ru->config.tdd_table.max_tdd_periodicity_list[n].max_num_of_symbol_per_slot_list =
+            malloc(sizeof(*ru->config.tdd_table.max_tdd_periodicity_list[n].max_num_of_symbol_per_slot_list)
+                   * NR_NUMBER_OF_SYMBOLS_PER_SLOT);
+        for (s = 0; s < 14; s++)
+          ru->config.tdd_table.max_tdd_periodicity_list[n].max_num_of_symbol_per_slot_list[s].slot_config.value = 0;
+      } else if (p == ru->num_DL_slots) {
+        ru->config.tdd_table.max_tdd_periodicity_list[n].max_num_of_symbol_per_slot_list =
+            malloc(sizeof(*ru->config.tdd_table.max_tdd_periodicity_list[n].max_num_of_symbol_per_slot_list)
+                   * NR_NUMBER_OF_SYMBOLS_PER_SLOT);
+        for (s = 0; s < ru->num_DL_symbols; s++)
+          ru->config.tdd_table.max_tdd_periodicity_list[n].max_num_of_symbol_per_slot_list[s].slot_config.value = 0;
+        for (; s < NR_NUMBER_OF_SYMBOLS_PER_SLOT - ru->num_UL_symbols; s++)
+          ru->config.tdd_table.max_tdd_periodicity_list[n].max_num_of_symbol_per_slot_list[s].slot_config.value = 2;
+        for (; s < NR_NUMBER_OF_SYMBOLS_PER_SLOT; s++)
+          ru->config.tdd_table.max_tdd_periodicity_list[n].max_num_of_symbol_per_slot_list[s].slot_config.value = 1;
+      } else {
+        ru->config.tdd_table.max_tdd_periodicity_list[n].max_num_of_symbol_per_slot_list =
+            malloc(sizeof(*ru->config.tdd_table.max_tdd_periodicity_list[n].max_num_of_symbol_per_slot_list)
+                   * NR_NUMBER_OF_SYMBOLS_PER_SLOT);
+        for (s = 0; s < NR_NUMBER_OF_SYMBOLS_PER_SLOT; s++)
+          ru->config.tdd_table.max_tdd_periodicity_list[n].max_num_of_symbol_per_slot_list[s].slot_config.value = 1;
+      }
+    }
   }
 }
+
 void nr_init_frame_parms(nfapi_nr_config_request_scf_t* cfg, NR_DL_FRAME_PARMS *fp)
 {
 
