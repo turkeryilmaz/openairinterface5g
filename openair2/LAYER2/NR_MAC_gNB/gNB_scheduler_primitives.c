@@ -3377,7 +3377,7 @@ static inline int get_beam_index(const NR_beam_info_t *beam_info, int frame, int
 
 NR_beam_alloc_t beam_allocation_procedure(NR_beam_info_t *beam_info, int frame, int slot, int beam_index, int slots_per_frame)
 {
-  // if no beam allocation for analog beamforming we always return beam index 0 (no multiple beams)
+  // if no beam allocation for time domain beamforming we always return beam index 0 (no multiple beams)
   if (beam_info->beam_mode == NO_BEAM_MODE)
     return (NR_beam_alloc_t) {.new_beam = false, .idx = 0};
 

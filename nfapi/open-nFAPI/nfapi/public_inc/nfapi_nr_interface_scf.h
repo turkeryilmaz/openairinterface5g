@@ -507,10 +507,10 @@ typedef struct {
 
 typedef struct {
   nfapi_uint8_tlv_t num_beams_period_vendor_ext;
-  nfapi_uint8_tlv_t analog_bf_vendor_ext;
+  nfapi_uint8_tlv_t timedomain_bf_vendor_ext;
   nfapi_uint8_tlv_t total_num_beams_vendor_ext;
-  nfapi_uint8_tlv_t *analog_beam_list;
-} nfapi_nr_analog_beamforming_ve_t;
+  nfapi_uint8_tlv_t *timedomain_beam_list;
+} nfapi_nr_timedomain_beamforming_ve_t;
 
 // ERROR enums
 typedef enum {    // Table 2-22
@@ -625,7 +625,7 @@ typedef struct {
   nfapi_nr_nfapi_t              nfapi_config;
   nfapi_nr_pm_list_t            pmi_list;
   nfapi_nr_dbt_pdu_t            dbt_config;
-  nfapi_nr_analog_beamforming_ve_t analog_beamforming_ve;
+  nfapi_nr_timedomain_beamforming_ve_t timedomain_beamforming_ve;
 } nfapi_nr_config_request_scf_t;
 
 typedef enum {

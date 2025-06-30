@@ -311,14 +311,14 @@ bool eq_config_request(const nfapi_nr_config_request_scf_t *unpacked_req, const 
 
   EQ_TLV(unpacked_req->nfapi_config.timing_info_period, req->nfapi_config.timing_info_period);
 
-  EQ_TLV(unpacked_req->analog_beamforming_ve.num_beams_period_vendor_ext, req->analog_beamforming_ve.num_beams_period_vendor_ext);
+  EQ_TLV(unpacked_req->timedomain_beamforming_ve.num_beams_period_vendor_ext, req->timedomain_beamforming_ve.num_beams_period_vendor_ext);
 
-  EQ_TLV(unpacked_req->analog_beamforming_ve.analog_bf_vendor_ext, req->analog_beamforming_ve.analog_bf_vendor_ext);
+  EQ_TLV(unpacked_req->timedomain_beamforming_ve.timedomain_bf_vendor_ext, req->timedomain_beamforming_ve.timedomain_bf_vendor_ext);
 
-  EQ_TLV(unpacked_req->analog_beamforming_ve.total_num_beams_vendor_ext, req->analog_beamforming_ve.total_num_beams_vendor_ext);
+  EQ_TLV(unpacked_req->timedomain_beamforming_ve.total_num_beams_vendor_ext, req->timedomain_beamforming_ve.total_num_beams_vendor_ext);
 
-  for (int i = 0; i < unpacked_req->analog_beamforming_ve.total_num_beams_vendor_ext.value; ++i) {
-    EQ_TLV(unpacked_req->analog_beamforming_ve.analog_beam_list[i], req->analog_beamforming_ve.analog_beam_list[i]);
+  for (int i = 0; i < unpacked_req->timedomain_beamforming_ve.total_num_beams_vendor_ext.value; ++i) {
+    EQ_TLV(unpacked_req->timedomain_beamforming_ve.timedomain_beam_list[i], req->timedomain_beamforming_ve.timedomain_beam_list[i]);
   }
 
   return true;
@@ -465,8 +465,8 @@ void free_config_request(nfapi_nr_config_request_scf_t *msg)
 
   free(msg->pmi_list.pmi_pdu);
 
-  if (msg->analog_beamforming_ve.analog_beam_list) {
-    free(msg->analog_beamforming_ve.analog_beam_list);
+  if (msg->timedomain_beamforming_ve.timedomain_beam_list) {
+    free(msg->timedomain_beamforming_ve.timedomain_beam_list);
   }
 }
 
@@ -895,17 +895,17 @@ void copy_config_request(const nfapi_nr_config_request_scf_t *src, nfapi_nr_conf
 
   COPY_TLV(dst->nfapi_config.tx_data_timing_offset, src->nfapi_config.tx_data_timing_offset);
 
-  COPY_TLV(dst->analog_beamforming_ve.num_beams_period_vendor_ext, src->analog_beamforming_ve.num_beams_period_vendor_ext);
+  COPY_TLV(dst->timedomain_beamforming_ve.num_beams_period_vendor_ext, src->timedomain_beamforming_ve.num_beams_period_vendor_ext);
 
-  COPY_TLV(dst->analog_beamforming_ve.analog_bf_vendor_ext, src->analog_beamforming_ve.analog_bf_vendor_ext);
+  COPY_TLV(dst->timedomain_beamforming_ve.timedomain_bf_vendor_ext, src->timedomain_beamforming_ve.timedomain_bf_vendor_ext);
 
-  COPY_TLV(dst->analog_beamforming_ve.total_num_beams_vendor_ext, src->analog_beamforming_ve.total_num_beams_vendor_ext);
+  COPY_TLV(dst->timedomain_beamforming_ve.total_num_beams_vendor_ext, src->timedomain_beamforming_ve.total_num_beams_vendor_ext);
 
-  if (dst->analog_beamforming_ve.total_num_beams_vendor_ext.value > 0) {
-    dst->analog_beamforming_ve.analog_beam_list = (nfapi_uint8_tlv_t *)malloc(
-                  dst->analog_beamforming_ve.total_num_beams_vendor_ext.value * sizeof(nfapi_uint8_tlv_t));
-    for (int i = 0; i < src->analog_beamforming_ve.total_num_beams_vendor_ext.value; ++i) {
-      COPY_TLV(dst->analog_beamforming_ve.analog_beam_list[i], src->analog_beamforming_ve.analog_beam_list[i]);
+  if (dst->timedomain_beamforming_ve.total_num_beams_vendor_ext.value > 0) {
+    dst->timedomain_beamforming_ve.timedomain_beam_list = (nfapi_uint8_tlv_t *)malloc(
+                  dst->timedomain_beamforming_ve.total_num_beams_vendor_ext.value * sizeof(nfapi_uint8_tlv_t));
+    for (int i = 0; i < src->timedomain_beamforming_ve.total_num_beams_vendor_ext.value; ++i) {
+      COPY_TLV(dst->timedomain_beamforming_ve.timedomain_beam_list[i], src->timedomain_beamforming_ve.timedomain_beam_list[i]);
     }
   }
 
@@ -1362,9 +1362,9 @@ void dump_config_request(const nfapi_nr_config_request_scf_t *msg)
   INDENTED_TLV_FORMAT_PRINT("UL_DCI Timing Offset", "%d", nfapi_config->ul_dci_timing_offset);
   INDENTED_TLV_FORMAT_PRINT("TX_DATA Timing Offset", "%d", nfapi_config->tx_data_timing_offset);
   /* Beamforming VE */
-  const nfapi_nr_analog_beamforming_ve_t *analog_beamforming_ve = &msg->analog_beamforming_ve;
-  INDENTED_TLV_FORMAT_PRINT("Num Beams per Period", "%d", analog_beamforming_ve->num_beams_period_vendor_ext);
-  INDENTED_TLV_PRINT("Analog Beamforming VE", analog_beamforming_ve->analog_bf_vendor_ext);
+  const nfapi_nr_timedomain_beamforming_ve_t *timedomain_beamforming_ve = &msg->timedomain_beamforming_ve;
+  INDENTED_TLV_FORMAT_PRINT("Num Beams per Period", "%d", timedomain_beamforming_ve->num_beams_period_vendor_ext);
+  INDENTED_TLV_PRINT("Time domain Beamforming VE", timedomain_beamforming_ve->timedomain_bf_vendor_ext);
   /* Vendor Extension */
   if (msg->vendor_extension) {
     const nfapi_tl_t *vendor_extension = (nfapi_tl_t *)&msg->vendor_extension;
