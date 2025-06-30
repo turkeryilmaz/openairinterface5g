@@ -614,6 +614,9 @@ set_ldpc_dec_op(struct rte_bbdev_dec_op **ops,
                 nrLDPC_slot_decoding_parameters_t *nrLDPC_slot_decoding_parameters)
 {
   int j = 0;
+#ifndef LDPC_T2
+  bool special_case_tb_mode = (nrLDPC_slot_decoding_parameters->nb_TBs == 1) && (nb_segments_decoding(nrLDPC_slot_decoding_parameters) == 1);
+#endif
   for (int h = 0; h < nrLDPC_slot_decoding_parameters->nb_TBs; ++h) {
     for (int i = 0; i < nrLDPC_slot_decoding_parameters->TBs[h].C; ++i) {
       ops[j]->ldpc_dec.basegraph = nrLDPC_slot_decoding_parameters->TBs[h].BG;
@@ -667,11 +670,26 @@ set_ldpc_dec_op(struct rte_bbdev_dec_op **ops,
           ops[j]->ldpc_dec.op_flags |= RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_OUT_ENABLE;
         }
       }
-      if (nrLDPC_slot_decoding_parameters->TBs[h].C > 1) {
+      if (!special_case_tb_mode) {
         ops[j]->ldpc_dec.code_block_mode = 1;
         ops[j]->ldpc_dec.cb_params.e = nrLDPC_slot_decoding_parameters->TBs[h].segments[i].E;
-        ops[j]->ldpc_dec.op_flags |= RTE_BBDEV_LDPC_CRC_TYPE_24B_DROP;
-        ops[j]->ldpc_dec.op_flags |= RTE_BBDEV_LDPC_CRC_TYPE_24B_CHECK;
+        uint8_t crc_type = crcType(nrLDPC_slot_decoding_parameters->TBs[h].C, nrLDPC_slot_decoding_parameters->TBs[h].A);
+        if(crc_type == 1) {
+          ops[j]->ldpc_dec.op_flags |= RTE_BBDEV_LDPC_CRC_TYPE_24B_DROP;
+          ops[j]->ldpc_dec.op_flags |= RTE_BBDEV_LDPC_CRC_TYPE_24B_CHECK;
+        }
+#ifndef DPDK_VER_PRE_21_11
+        else {
+          if(active_dev.support_non24b_crc) {
+            if(crc_type == 0)     // CRC_24A
+              ops[j]->ldpc_dec.op_flags |= RTE_BBDEV_LDPC_CRC_TYPE_24A_CHECK;
+            else if(crc_type == 2) // CRC_16
+              ops[j]->ldpc_dec.op_flags |= RTE_BBDEV_LDPC_CRC_TYPE_16_CHECK;
+            else
+              AssertFatal(0, "ERROR: Unsupported CRC type %d\n", crc_type);
+          }
+        }
+#endif
       } else {
         /**
          * This is a special case when #TB = 1 and #CB = 1
@@ -734,6 +752,9 @@ set_ldpc_enc_op(struct rte_bbdev_enc_op **ops,
                 nrLDPC_slot_encoding_parameters_t *nrLDPC_slot_encoding_parameters)
 {
   int j = 0;
+#ifndef LDPC_T2
+  bool special_case_tb_mode = (nrLDPC_slot_encoding_parameters->nb_TBs == 1) && (nb_segments_encoding(nrLDPC_slot_encoding_parameters) == 1);
+#endif
   for (int h = 0; h < nrLDPC_slot_encoding_parameters->nb_TBs; ++h) {
     for (int i = 0; i < nrLDPC_slot_encoding_parameters->TBs[h].C; ++i) {
       ops[j]->ldpc_enc.basegraph = nrLDPC_slot_encoding_parameters->TBs[h].BG;
@@ -751,7 +772,7 @@ set_ldpc_enc_op(struct rte_bbdev_enc_op **ops,
       ops[j]->ldpc_enc.code_block_mode = 1;
       ops[j]->ldpc_enc.cb_params.e = nrLDPC_slot_encoding_parameters->TBs[h].segments[i].E;
 #else
-      if(nrLDPC_slot_encoding_parameters->TBs[h].C > 1) {
+      if(!special_case_tb_mode) {
         ops[j]->ldpc_enc.code_block_mode = 1;
         ops[j]->ldpc_enc.cb_params.e = nrLDPC_slot_encoding_parameters->TBs[h].segments[i].E;
       } else {
