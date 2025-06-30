@@ -23,7 +23,7 @@ This documentation describes the integration of LDPC coding for lookaside accele
 
 In principle, any lookaside LDPC accelerator supporting the O-RAN AAL/ DPDK BBDEV should work.
 However, the current implementation has only been validated for the Xilinx T2, Intel ACC100, and Intel ACC200 (VRB1).
-Therefore, your mileage may vary when using other BBDEV devices as there may be some hardware-specific changes required -- contributions are welcomed!
+Therefore, your mileage may vary when using other BBDEV devices as there may be some hardware-specific changes required -- contributions are welcome!
 
 ## DPDK Version Requirements
 
@@ -109,9 +109,9 @@ If you use an Intel vRAN accelerator, read on.
 
 > IMPORTANT NOTE: 
 > - Currently, we only support using the Virtual Functions (VFs) of the Intel vRAN accelerators, but not the Physical Function (PF). 
-> - One key advantage of using VFs is that this allows us to share the accelerator with other DU instances one the same machine, which is common in practice.
+> - One key advantage of using VFs is that this allows us to share the accelerator with other DU instances on the same machine, which is common in practice.
 
-If you are using an Intel vRAN accelerator, you will need to use the the [pf_bb_config](https://github.com/intel/pf-bb-config) tool to configure the accelerator beforehand. 
+If you are using an Intel vRAN accelerator, you will need to use the [pf_bb_config](https://github.com/intel/pf-bb-config) tool to configure the accelerator beforehand. 
 
 #### pf_bb_config
 For more details, please consult the `pf_bb_config` README.
@@ -126,7 +126,7 @@ This clones and builds the `pf_bb_config` binary.
 Next, we show an example for the Intel ACC200.
 We use an existing configuration located at `./vrb1/vrb1_config_16vf.cfg`.
 
-Here, it is necessary to specific a VFIO token (in this case, we use the UUID `00112233-4455-6677-8899-aabbccddeeff`).
+Here, it is necessary to specify a VFIO token (in this case, we use the UUID `00112233-4455-6677-8899-aabbccddeeff`).
 Note that in practice, a random UUID should be used.
 ```
 # sudo ./pf_bb_config VRB1 -v 00112233-4455-6677-8899-aabbccddeeff -c vrb1/vrb1_config_16vf.cfg
@@ -143,13 +143,13 @@ In this example, we only create one SR-IOV VF.
 # echo 1 | sudo tee /sys/bus/pci/devices/0000:f7:00.0/sriov_numvfs
 ```
 
-If you encounter any errors when creating the VF(s), e.g., `tee: '/sys/bus/pci/devices/0000:f7:00.0/sriov_numvfs': No such file or directory`, try enabling SR-IOV again.
+If you encounter any error when creating the VF(s), e.g., `tee: '/sys/bus/pci/devices/0000:f7:00.0/sriov_numvfs': No such file or directory`, then try enabling SR-IOV again.
 ```
 # echo 1 | sudo tee /sys/module/vfio_pci/parameters/enable_sriov
 ```
 
 After you have successfully created the VF, you should see an additional baseband device, in our case, it is `0000:f7:00.1`. 
-We will then use this device with OAI later.
+We will use this device with OAI later.
 ```
 # sudo dpdk-devbind.py -s
 ...
@@ -163,7 +163,7 @@ Baseband devices using DPDK-compatible driver
 # Building OAI with ORAN-AAL
 OTA deployment is precisely described in the following tutorial:
 - [NR_SA_Tutorial_COTS_UE](https://gitlab.eurecom.fr/oai/openairinterface5g/-/blob/develop/doc/NR_SA_Tutorial_COTS_UE.md)
-Instead of section *3.2 Build OAI gNB* from the tutorial, run following commands:
+Instead of section *3.2 Build OAI gNB* from the tutorial, run the following commands:
 
 ```
 # Get openairinterface5g source code
@@ -182,7 +182,7 @@ cd cmake_targets
 ./build_oai -w USRP --ninja --gNB -P --build-lib "ldpc_t2" -C
 ```
 
-A shared object file *libldpc_t2.so* will created during the compilation. 
+A shared object file *libldpc_t2.so* will be created during the compilation. 
 This object is conditionally compiled. 
 The selection of the library to compile is done using *--build-lib ldpc_t2*.
 
@@ -191,9 +191,9 @@ The selection of the library to compile is done using *--build-lib ldpc_t2*.
 # O-RAN AAL DPDK EAL parameters
 To configure O-RAN AAL-related DPDK Environment Abstraction Layer (EAL) parameters, you can set the following parameters via the command line of PHY simulators or softmodem:
 
-- `nrLDPC_coding_t2.dpdk_dev` - **mandatory** parameter, this specifies PCI address of our accelerator. It must follow the format `0000:XX:YY.Z`.
+- `nrLDPC_coding_t2.dpdk_dev` - **mandatory** parameter, specifies the PCI address of our accelerator. It must follow the format `WWWW:XX:YY.Z`.
 
-- `nrLDPC_coding_t2.dpdk_core_list` - **mandatory** parameter, specifies CPU cores assigned to DPDK . 
+- `nrLDPC_coding_t2.dpdk_core_list` - **mandatory** parameter, specifies the CPU cores assigned to DPDK . 
 Ensure that the CPU cores specified in *nrLDPC_coding_t2.dpdk_core_list* are available and not used by other processes to avoid conflicts.
 
 - `nrLDPC_coding_t2.dpdk_prefix` - optional parameter, DPDK shared data file prefix, by default set to *b6*.
@@ -217,7 +217,7 @@ loader : {
 
 # Running OAI with O-RAN AAL
 
-In general, to offload of the channel coding to the LDPC accelerator, we use use *--loader.ldpc.shlibversion _t2* option. 
+In general, to offload of the channel coding to the LDPC accelerator, we use use the *--loader.ldpc.shlibversion _t2* option. 
 
 ## 5G PHY simulators
 
@@ -256,11 +256,11 @@ Example command:
 
 While the current implementation is tested to work in an E2E setup, there remain some caveats.
 In particular, LDPC decoding performance remains far from optimal and improving its performance remains a work-in-progress.
-Therefore, it is expected that the DL/UL throughput may not be as optimal.
+Therefore, it is expected that the DL/UL throughput may not be optimal.
 
 As a workaround, to yield better decoding performance, we recommend the following:
 1. Increasing the number of LDPC decoding iterations of the L1, i.e., `max_ldpc_iterations` to 50.
-1. Increasing the BLER targets of the MAC scheduler. 
+2. Increasing the BLER targets of the MAC scheduler. 
 
 Example configuration snippet:
 ```

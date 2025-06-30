@@ -53,7 +53,7 @@ When using the internal memory, we need to specify the *offset* of the hardware'
 
 In the current implementation, we use a fixed offset of 32K, i.e., this means that each block is 32K. 
 
-An index is derived from a unique HARQ PID assigned by OAI, modulo by `HARQ_CODEBLOCK_ID_MAX`. 
+An index is derived from a unique HARQ PID assigned by OAI, modulo `HARQ_CODEBLOCK_ID_MAX`. 
 Using that index, we then derived the corresponding offset in the memory (i.e., `harq_combined_offset`).
 
 ```C
@@ -70,7 +70,7 @@ uint32_t harq_combined_offset = pruned_segment_offset * LDPC_MAX_CB_SIZE;
 ...
 ```
 
-This `harq_combined_offset` is then set for `harq_combined_input.offset` and `harq_combined_output.offset` to tell BBDEV on where to read/write the HARQ buffers.
+This `harq_combined_offset` is then set for `harq_combined_input.offset` and `harq_combined_output.offset` to tell BBDEV where to read/write the HARQ buffers.
 
 Especially for the Intel ACCs, when providing the HARQ input, the `harq_combined_input.length` must be provided. 
 To do so, we maintain the length of previous round's output using the globally defined `harq_buffers` variable by copying it in `retrieve_ldpc_dec_op`.
@@ -81,7 +81,7 @@ Different from the Xilinx T2 and Intel ACC100, the Intel ACC200 uses DDR memory 
 
 In short, we use the globally defined `harq_buffers` variable, which have been initialzed with corresponding DPDK mempools for BBDEV to read/write the HARQ input/outputs.
 
-For indexing, we use the `pruned_segment_offset`, which is derived from the unique HARQ PID assigned by OAI, modulo by `HARQ_CODEBLOCK_ID_MAX`. 
+For indexing, we use the `pruned_segment_offset`, which is derived from the unique HARQ PID assigned by OAI, modulo `HARQ_CODEBLOCK_ID_MAX`. 
 
 `harq_combined_input.offset` and `harq_combined_output.offset` is always set to 0 in our implementation.
 Instead, we provide BBDEV the pointers to our allocated mempool regions through `harq_combined_input.data` and `harq_combined_output.data`.
