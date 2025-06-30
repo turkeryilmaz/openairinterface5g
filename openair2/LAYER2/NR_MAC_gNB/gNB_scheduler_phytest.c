@@ -208,9 +208,11 @@ uint32_t target_ul_mcs = 9;
 uint32_t target_ul_bw = 50;
 uint32_t target_ul_Nl = 1;
 uint64_t ulsch_slot_bitmap = (1 << 8);
-bool nr_ul_preprocessor_phytest(module_id_t module_id, frame_t frame, slot_t slot)
+bool nr_ul_preprocessor_phytest(gNB_MAC_INST *nr_mac, post_process_pusch_t *pp_pusch)
 {
-  gNB_MAC_INST *nr_mac = RC.nrmac[module_id];
+  int frame = pp_pusch->frame;
+  int slot = pp_pusch->slot;
+
   /* already mutex protected: held in gNB_dlsch_ulsch_scheduler() */
   NR_COMMON_channels_t *cc = nr_mac->common_channels;
   NR_ServingCellConfigCommon_t *scc = cc->ServingCellConfigCommon;
@@ -336,7 +338,8 @@ bool nr_ul_preprocessor_phytest(module_id_t module_id, frame_t frame, slot_t slo
                                  sched.nrOfLayers /* NrOfLayers */)
                   >> 3;
 
-  sched_ctrl->sched_pusch = sched;
+  /* save allocation to FAPI structures */
+  post_process_ulsch(nr_mac, pp_pusch, UE, &sched);
 
   /* mark the corresponding RBs as used */
   fill_pdcch_vrb_map(nr_mac,
