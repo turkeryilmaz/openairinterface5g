@@ -506,7 +506,7 @@ static bool set_fh_io_cfg(struct xran_io_cfg *io_cfg, const paramdef_t *fhip, in
   /* if RU does support, io_cfg->eowd_cmn[0] should only be filled as id = O_DU; io_cfg->eowd_cmn[1] only used if id = O_RU */
   const uint16_t owdm_enable = *gpd(fhip, nump, ORAN_CONFIG_ECPRI_OWDM)->uptr;
   if (owdm_enable) {
-    io_cfg->eowd_cmn[0].initiator_en = 1; // 1 -> initiator (always O-DU), 0 -> recipient (always O-RU)
+    io_cfg->eowd_cmn[0].initiator_en = is_du ? 1 : 0; // 1 -> initiator (always O-DU), 0 -> recipient (always O-RU)
     io_cfg->eowd_cmn[0].numberOfSamples = 8; // total number of samples to be collected and averaged per port
     io_cfg->eowd_cmn[0].filterType = 0; // 0 -> simple average based on number of measurements; not used in xran in both E and F releases
     io_cfg->eowd_cmn[0].responseTo = 10000000; // response timeout in [ns]
@@ -717,6 +717,7 @@ static bool set_fh_init(void *mplane_api, struct xran_fh_init *fh_init, enum xra
             return false;
          }
      }
+     fh_init->p_o_ru_addr = NULL; 
   }
 #endif
 
