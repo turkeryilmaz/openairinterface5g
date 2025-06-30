@@ -35,7 +35,8 @@ SOFTWARE.
 #include <stdint.h>
 
 #define FOR_EACH_SEQ_ARR(type, var, arr) \
-  for (type var = seq_arr_front(arr); var != seq_arr_end(arr); var = seq_arr_next(arr, var))
+  if ((arr) != NULL) \
+    for (type var = seq_arr_front(arr); var != seq_arr_end(arr); var = seq_arr_next(arr, var))
 
 typedef struct seq_arr_s {
   uint8_t* data;
