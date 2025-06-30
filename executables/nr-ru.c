@@ -19,6 +19,7 @@
  *      contact@openairinterface.org
  */
 
+#define DEVELOP_CIR
 #define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
@@ -70,6 +71,11 @@ static int DEFRUTPCORES[] = {-1,-1,-1,-1};
 #include "executables/nr-softmodem-common.h"
 
 static void NRRCconfig_RU(configmodule_interface_t *cfg);
+
+#ifdef DEVELOP_CIR
+#include <cblas.h>
+static uint32_t noise_index = 1;
+#endif // DEVELOP_CIR
 
 /*************************************************************/
 /* Functions to attach and configure RRU                     */
@@ -586,6 +592,23 @@ void *emulatedRF_thread(void *param) {
   return 0;
 }
 
+#ifdef DEVELOP_CIR
+// noise reader
+static void noise_reader(RU_t *ru, cf_t **ret_noise/*(nb_tx, nsamps)::cf_t*/, int nsamps, int nb_antennas)
+{
+  cf_t *noise_1d = (cf_t *)ret_noise;
+  int i, a;
+  pthread_mutex_lock(&ru->proc.mutex_noise);
+  for (i = 0; i < nsamps; i++) { // n({real, img}) = 2
+    for (a = 0; a < nb_antennas; a++) {
+      noise_index = (48271 * noise_index) % 0x7FFFFFFF;
+      noise_1d[a * nsamps + i] = ru->noise_array[a][noise_index % nsamps];
+    }
+  }
+  pthread_mutex_unlock(&ru->proc.mutex_noise);
+}
+#endif // DEVELOP_CIR
+
 static void rx_rf(RU_t *ru, int *frame, int *slot)
 {
   RU_proc_t *proc = &ru->proc;
@@ -597,6 +620,15 @@ static void rx_rf(RU_t *ru, int *frame, int *slot)
   uint32_t samples_per_slot = fp->get_samples_per_slot(*slot,fp);
   uint32_t samples_per_slot_prev ;
   openair0_timestamp ts,old_ts;
+
+#ifdef DEVELOP_CIR
+  int a_rx;
+  int nb_tx = ru->nb_tx;
+  int nb_rx = ru->nb_rx;
+  cf_t pathLossLinear;
+  cf_t noise_per_sample;
+#endif // DEVELOP_CIR
+
   AssertFatal(*slot<fp->slots_per_frame && *slot>=0, "slot %d is illegal (%d)\n",*slot,fp->slots_per_frame);
 
   start_meas(&ru->rx_fhaul);
@@ -619,6 +651,84 @@ static void rx_rf(RU_t *ru, int *frame, int *slot)
                                      samples_per_slot,
                                      ru->nb_rx);
   }
+
+#ifdef DEVELOP_CIR
+  //init common variables
+  pathLossLinear = ru->pathLossLinear;
+  noise_per_sample = ru->noise_per_sample;
+  noise_reader(ru, ru->common.noise_array, samples_per_slot, nb_rx);
+
+  // channel_length convolution
+  for (a_rx = 0; a_rx < nb_rx; a_rx++) {
+    for (i = 0; i < samples_per_slot; i++) {
+      int idx = (ru->common.buffboundary + i + ru->common.circular_buff_size) % ru->common.circular_buff_size; //buffboundaryって何のための変数だっけ…？ここはなぜ+circular_buff_size？
+      ru->common.circular_buff[a_rx][idx].r = (float)((c16_t *)rxp[a_rx])[i].r;
+      ru->common.circular_buff[a_rx][idx].i = (float)((c16_t *)rxp[a_rx])[i].i;
+    }
+  }
+
+  // memcpy from circularBuff
+  for (int lp = 0; lp < ru->channel_length; lp++) {
+    pthread_mutex_lock(&ru->proc.mutex_mimo);
+    int l = ru->delayindexlist[lp]; // l: tap index number
+    pthread_mutex_unlock(&ru->proc.mutex_mimo);
+    int delayed_boundary_s = (ru->common.buffboundary - l + ru->common.circular_buff_size) % ru->common.circular_buff_size;
+    int delayed_boundary_e = (ru->common.buffboundary + samples_per_slot - l + ru->common.circular_buff_size) % ru->common.circular_buff_size;
+    for (a_rx = 0; a_rx < nb_rx; a_rx++) {
+      if (delayed_boundary_s < delayed_boundary_e) { // data is contiguous in the buffer
+        memcpy(
+          &ru->common.simul_input[(nb_rx*lp + a_rx) * samples_per_slot],
+          &ru->common.circular_buff[a_rx][delayed_boundary_s],
+          sizeof(cf_t) * (delayed_boundary_e - delayed_boundary_s));
+      }
+      else {
+        memcpy(
+          &ru->common.simul_input[(nb_rx*lp + a_rx)*samples_per_slot],
+          &ru->common.circular_buff[a_rx][delayed_boundary_s],
+          sizeof(cf_t) * (ru->common.circular_buff_size - delayed_boundary_s)); // Copy the first half
+        memcpy(
+          &ru->common.simul_input[(nb_rx*lp + a_rx) * samples_per_slot + ru->common.circular_buff_size - delayed_boundary_s],
+          &ru->common.circular_buff[a_rx][0],
+          sizeof(cf_t) * delayed_boundary_e); // Copy the second half
+      }
+    }
+  }
+
+  ru->common.buffboundary = (ru->common.buffboundary + samples_per_slot + ru->common.circular_buff_size) % ru->common.circular_buff_size;
+
+  pthread_mutex_lock(&ru->proc.mutex_mimo);
+  // calculation C <= alpha * AB + beta * C
+  // alpha: pathLossLinear
+  // A    : (nb_rx, nb_tx*channel_length) cirMIMO_simulmatrix
+  // B    : (nb_tx*channel_length, nsamps) samples array
+  // beta : noise_per_sample
+  // C    : (nb_rx, nsamps) noise_array
+  cblas_cgemm(
+    CblasRowMajor,
+    CblasNoTrans,
+    CblasNoTrans,
+    nb_rx,                      // M, A rows: MIMO rows
+    samples_per_slot,           // N, B cols: sample cols
+    nb_tx * ru->channel_length, // K, A cols == B rows
+    &pathLossLinear,            // alpha: path loss linear
+    ru->cirMIMO_simulmatrix,    // A: MIMO matrix
+    nb_tx * ru->channel_length, // K, leading dimension == A cols
+    ru->common.simul_input,     // B: samples matrix
+    samples_per_slot,           // N, leading dimension == B cols
+    &noise_per_sample,          // beta: noise_per_sample
+    ru->common.noise_array,     // C: noise_array
+    samples_per_slot            // N, leading dimension == C cols
+  );
+  pthread_mutex_unlock(&ru->proc.mutex_mimo);
+  // store
+  for (a_rx = 0; a_rx < ru->nb_rx; a_rx++) {
+    c16_t *out = (c16_t *)rxp[a_rx];
+    for (i = 0; i < samples_per_slot; i++) {
+      out[i].r = (short)ru->common.noise_array[a_rx*samples_per_slot+i].r; // 32->16bit
+      out[i].i = (short)ru->common.noise_array[a_rx*samples_per_slot+i].i; // 32->16bit
+    }
+  }
+#endif // DEVELOP_CIR
 
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME( VCD_SIGNAL_DUMPER_FUNCTIONS_TRX_READ, 0 );
   proc->timestamp_rx = ts-ru->ts_offset;
@@ -822,6 +932,93 @@ void tx_rf(RU_t *ru, int frame,int slot, uint64_t timestamp)
 
   for (i = 0; i < ru->nb_tx; i++)
     txp[i] = (void *)&ru->common.txdata[i][fp->get_samples_slot_timestamp(slot, fp, 0)] - sf_extension * sizeof(int32_t);
+
+#ifdef DEVELOP_CIR
+  int a_tx;
+  int nb_tx = ru->nb_tx;
+  int nb_rx = ru->nb_rx;
+  int samples_per_slot = siglen + sf_extension;
+  cf_t pathLossLinear;
+  cf_t noise_per_sample;
+#endif // DEVELOP_CIR
+
+#ifdef DEVELOP_CIR
+  //init common variables
+  pathLossLinear = ru->pathLossLinear;
+  noise_per_sample = ru->noise_per_sample;
+  noise_reader(ru, ru->common.noise_array, samples_per_slot, nb_tx);
+
+  // channel_length convolution
+  for (a_tx = 0; a_tx < nb_tx; a_tx++) {
+    for (i = 0; i < samples_per_slot; i++) {
+      int idx = (ru->common.buffboundary + i + ru->common.circular_buff_size) % ru->common.circular_buff_size;
+      ru->common.circular_buff[a_tx][idx].r = (float)((c16_t *)txp[a_tx])[i].r;
+      ru->common.circular_buff[a_tx][idx].i = (float)((c16_t *)txp[a_tx])[i].i;
+    }
+  }
+
+  // memcpy from circularBuff
+  for (int lp = 0; lp < ru->channel_length; lp++) {
+    pthread_mutex_lock(&ru->proc.mutex_mimo);
+    int l = ru->delayindexlist[lp];
+    pthread_mutex_unlock(&ru->proc.mutex_mimo);
+    int delayed_boundary_s = (ru->common.buffboundary - l + ru->common.circular_buff_size) % ru->common.circular_buff_size;
+    int delayed_boundary_e = (ru->common.buffboundary + samples_per_slot - l + ru->common.circular_buff_size) % ru->common.circular_buff_size;
+    for (a_tx = 0; a_tx < nb_tx; a_tx++) {
+      if (delayed_boundary_s < delayed_boundary_e) { // data is contiguous in the buffer
+        memcpy(
+          &ru->common.simul_input[(nb_tx*lp + a_tx) * samples_per_slot],
+          &ru->common.circular_buff[a_tx][delayed_boundary_s],
+          sizeof(cf_t) * (delayed_boundary_e - delayed_boundary_s));
+      }
+      else {
+        memcpy(
+          &ru->common.simul_input[(nb_tx*lp + a_tx)*samples_per_slot],
+          &ru->common.circular_buff[a_tx][delayed_boundary_s],
+          sizeof(cf_t) * (ru->common.circular_buff_size - delayed_boundary_s)); // Copy the first half
+        memcpy(
+          &ru->common.simul_input[(nb_tx*lp + a_tx) * samples_per_slot + ru->common.circular_buff_size - delayed_boundary_s],
+          &ru->common.circular_buff[a_tx][0],
+          sizeof(cf_t) * delayed_boundary_e); // Copy the second half
+      }
+    }
+  }
+
+  ru->common.buffboundary = (ru->common.buffboundary + samples_per_slot + ru->common.circular_buff_size) % ru->common.circular_buff_size;
+
+  pthread_mutex_lock(&ru->proc.mutex_mimo);
+  // calculation C <= alpha * AB + beta * C
+  // alpha: pathLossLinear
+  // A    : (nb_rx, nb_tx*channel_length) cirMIMO_simulmatrix
+  // B    : (nb_tx*channel_length, nsamps) samples array
+  // beta : noise_per_sample
+  // C    : (nb_rx, nsamps) noise_array
+  cblas_cgemm(
+    CblasRowMajor,
+    CblasNoTrans,
+    CblasNoTrans,
+    nb_rx,                      // M, A rows: MIMO rows
+    samples_per_slot,           // N, B cols: sample cols
+    nb_tx * ru->channel_length, // K, A cols == B rows
+    &pathLossLinear,            // alpha: path loss linear
+    ru->cirMIMO_simulmatrix,    // A: MIMO matrix
+    nb_tx * ru->channel_length, // K, leading dimension == A cols
+    ru->common.simul_input,     // B: samples matrix
+    samples_per_slot,           // N, leading dimension == B cols
+    &noise_per_sample,          // beta: noise_per_sample
+    ru->common.noise_array,     // C: noise_array
+    samples_per_slot            // N, leading dimension == C cols
+  );
+  pthread_mutex_unlock(&ru->proc.mutex_mimo);
+  // store
+  for (a_tx = 0; a_tx < ru->nb_tx; a_tx++) {
+    c16_t *out = (c16_t *)txp[a_tx];
+    for (i = 0; i < samples_per_slot; i++) {
+      out[i].r = (short)ru->common.noise_array[a_tx*samples_per_slot+i].r;
+      out[i].i = (short)ru->common.noise_array[a_tx*samples_per_slot+i].i;
+    }
+  }
+#endif // DEVELOP_CIR
 
   VCD_SIGNAL_DUMPER_DUMP_VARIABLE_BY_NAME(VCD_SIGNAL_DUMPER_VARIABLES_TRX_TST, (timestamp + ru->ts_offset) & 0xffffffff);
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_TRX_WRITE, 1);
