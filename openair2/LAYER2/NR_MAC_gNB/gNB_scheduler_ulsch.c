@@ -1816,6 +1816,7 @@ static bool allocate_ul_retransmission(gNB_MAC_INST *nrmac,
                                sched_ctrl->pdcch_cl_adjust);
   if (CCEIndex<0) {
     LOG_D(NR_MAC, "[UE %04x][%4d.%2d] no free CCE for retransmission UL DCI UE\n", UE->rnti, frame, slot);
+    sched_ctrl->ul_cce_fail++;
     return false;
   }
 
@@ -2065,6 +2066,7 @@ static int  pf_ul(gNB_MAC_INST *nrmac,
                                  sched_ctrl->pdcch_cl_adjust);
 
     if (CCEIndex < 0) {
+      sched_ctrl->ul_cce_fail++;
       reset_beam_status(&nrmac->beam_info, frame, slot, iterator->UE->UE_beam_index, slots_per_frame, dci_beam.new_beam);
       reset_beam_status(&nrmac->beam_info, sched_frame, sched_slot, iterator->UE->UE_beam_index, slots_per_frame, beam.new_beam);
       LOG_D(NR_MAC, "[UE %04x][%4d.%2d] no free CCE for UL DCI\n", iterator->UE->rnti, frame, slot);
@@ -2192,14 +2194,14 @@ static int  pf_ul(gNB_MAC_INST *nrmac,
           sched.dmrs_info.num_dmrs_symb,
           sched.dmrs_info.N_PRB_DMRS);
 
-    /* Mark the corresponding RBs as used */
-
+    // TODO move this into post-proc
     sched_ctrl->cce_index = CCEIndex;
     fill_pdcch_vrb_map(nrmac, CC_id, &sched_ctrl->sched_pdcch, CCEIndex, sched_ctrl->aggregation_level, dci_beam.idx);
 
     /* save allocation to FAPI structures */
     post_process_ulsch(nrmac, pp_pusch, iterator->UE, &sched);
 
+    // TODO move this into post-proc
     n_rb_sched[beam.idx] -= sched.rbSize;
     for (int rb = bi.bwpStart; rb < sched.rbSize; rb++)
       rballoc_mask[rb + sched.rbStart] |= slbitmap;
@@ -2376,34 +2378,21 @@ void post_process_ulsch(gNB_MAC_INST *nr_mac, post_process_pusch_t *pusch, NR_UE
   sched_ctrl->last_ul_frame = sched_pusch->frame;
   sched_ctrl->last_ul_slot = sched_pusch->slot;
 
-  LOG_D(NR_MAC,
-        "ULSCH/PUSCH: %4d.%2d RNTI %04x UL sched %4d.%2d DCI L %d start %2d RBS %3d startSymbol %2d nb_symbol %2d dmrs_pos %x MCS "
-        "Table %2d MCS %2d nrOfLayers %2d num_dmrs_cdm_grps_no_data %2d TBS %4d HARQ PID %2d round %d RV %d NDI %d est %6d sched "
-        "%6d est BSR %6d TPC %d\n",
+  LOG_I(NR_MAC,
+        "ULSCH/PUSCH %04x: %4d.%2d for UL %4d.%2d PRBs %2d/%3d symbol %2d/%2d MCS "
+        "%2d HARQ PID %2d round %d\n",
+        UE->rnti,
         frame,
         slot,
-        UE->rnti,
         sched_pusch->frame,
         sched_pusch->slot,
-        sched_ctrl->aggregation_level,
         sched_pusch->rbStart,
         sched_pusch->rbSize,
         sched_pusch->tda_info.startSymbolIndex,
         sched_pusch->tda_info.nrOfSymbols,
-        sched_pusch->dmrs_info.ul_dmrs_symb_pos,
-        current_BWP->mcs_table,
         sched_pusch->mcs,
-        sched_pusch->nrOfLayers,
-        sched_pusch->dmrs_info.num_dmrs_cdm_grps_no_data,
-        sched_pusch->tb_size,
         harq_id,
-        cur_harq->round,
-        nr_get_rv(cur_harq->round % 4),
-        cur_harq->ndi,
-        sched_ctrl->estimated_ul_buffer,
-        sched_ctrl->sched_ul_bytes,
-        sched_ctrl->estimated_ul_buffer - sched_ctrl->sched_ul_bytes,
-        sched_ctrl->tpc0);
+        cur_harq->round);
 
   /* PUSCH in a later slot, but corresponding DCI now! */
   const int index = ul_buffer_index(sched_pusch->frame,
@@ -2585,6 +2574,7 @@ nr_pp_impl_ul nr_init_ulsch_preprocessor(int CC_id)
       const uint8_t Qm = nr_get_Qm_ul(mcs, mcsTableIdx);
       const uint16_t R = nr_get_code_rate_ul(mcs, mcsTableIdx);
       /* note: we do not update R/Qm based on low MCS or pi2BPSK */
+      // TODO: remove this, doesn't make sense
       ul_pf_tbs[mcsTableIdx][mcs] = nr_compute_tbs(Qm,
                                                    R,
                                                    1, /* rbSize */

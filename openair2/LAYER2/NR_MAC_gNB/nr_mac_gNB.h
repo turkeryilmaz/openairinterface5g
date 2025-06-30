@@ -585,12 +585,13 @@ typedef struct {
   /// CCE index and aggregation, should be coherent with cce_list
   NR_SearchSpace_t *search_space;
   NR_ControlResourceSet_t *coreset;
-  NR_sched_pdcch_t sched_pdcch;
+  NR_sched_pdcch_t sched_pdcch; // to be stored??
 
   /// CCE index and Aggr. Level are shared for PUSCH/PDSCH allocation decisions
   /// corresponding to the sched_pusch/sched_pdsch structures below
-  int cce_index;
-  uint8_t aggregation_level;
+  int cce_index; // to be stored??
+  uint8_t aggregation_level; // to be stored??
+  uint32_t dl_cce_fail, ul_cce_fail;
 
   /// Array of PUCCH scheduling information
   /// Its size depends on TDD configuration and max feedback time
