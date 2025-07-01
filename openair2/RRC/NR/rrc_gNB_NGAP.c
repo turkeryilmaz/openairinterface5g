@@ -169,7 +169,6 @@ static nr_guami_t get_guami(const uint32_t amf_Id, const plmn_id_t plmn)
 static void cp_pdusession_resource_item_to_pdusession(pdusession_t *dst, const pdusession_resource_item_t *src)
 {
   dst->pdusession_id = src->pdusession_id;
-  dst->nas_pdu = src->nas_pdu;
   dst->nb_qos = src->pdusessionTransfer.nb_qos;
   for (uint8_t i = 0; i < src->pdusessionTransfer.nb_qos && i < QOSFLOW_MAX_VALUE; ++i) {
     dst->qos[i].qfi = src->pdusessionTransfer.qos[i].qfi;
@@ -399,6 +398,15 @@ static void send_ngap_initial_context_setup_resp_fail(instance_t instance,
   itti_send_msg_to_task(TASK_NGAP, instance, msg_p);
 }
 
+/** @brief Add NAS PDU to seq_arr list, to be forwarded with an RRC message, e.g.
+ * with RRCReconfiguration message (TS 38.331, SEQUENCE (SIZE(1..maxDRB)) OF DedicatedNAS-Message)
+ * or with a DL information transfer message (1 dedicatedNAS-Message) */
+static byte_array_t *store_nas_pdu(gNB_RRC_UE_t *UE, byte_array_t pdu)
+{
+  SEQ_ARR_INIT(&UE->nas_pdu, byte_array_t, MAX_DRBS_PER_UE);
+  return SEQ_ARR_PUSH_BACK_AND_GET(byte_array_t, UE->nas_pdu, &pdu);
+}
+
 //------------------------------------------------------------------------------
 int rrc_gNB_process_NGAP_INITIAL_CONTEXT_SETUP_REQ(MessageDef *msg_p, instance_t instance)
 //------------------------------------------------------------------------------
@@ -423,17 +431,18 @@ int rrc_gNB_process_NGAP_INITIAL_CONTEXT_SETUP_REQ(MessageDef *msg_p, instance_t
   // Directly copy the entire guami structure
   UE->ue_guami = req->guami;
 
-  /* NAS PDU */
-  // this is malloced pointers, we pass it for later free()
-  UE->nas_pdu = req->nas_pdu;
-
   if (req->nb_of_pdusessions > 0) {
     /* if there are PDU sessions to setup, store them to be created once
      * security (and UE capabilities) are received */
     UE->n_initial_pdu = req->nb_of_pdusessions;
     UE->initial_pdus = calloc_or_fail(UE->n_initial_pdu, sizeof(*UE->initial_pdus));
-    for (int i = 0; i < UE->n_initial_pdu; ++i)
+    // Store NAS PDU, forward later
+    for (int i = 0; i < UE->n_initial_pdu; ++i) {
       cp_pdusession_resource_item_to_pdusession(&UE->initial_pdus[i], &req->pdusession[i]);
+      if (req->pdusession[i].nas_pdu.len > 0) {
+        store_nas_pdu(UE, req->pdusession[i].nas_pdu);
+      }
+    }
   }
 
   /* security */
@@ -448,6 +457,8 @@ int rrc_gNB_process_NGAP_INITIAL_CONTEXT_SETUP_REQ(MessageDef *msg_p, instance_t
     /* configure only integrity, ciphering comes after receiving SecurityModeComplete */
     nr_rrc_pdcp_config_security(UE, false);
     rrc_gNB_generate_SecurityModeCommand(rrc, UE);
+    // Store NAS PDU, forward later
+    store_nas_pdu(UE, req->nas_pdu);
   } else {
     /* if AS security key is active, we also have the UE capabilities. Then,
      * there are two possibilities: we should set up PDU sessions, and/or
@@ -460,14 +471,16 @@ int rrc_gNB_process_NGAP_INITIAL_CONTEXT_SETUP_REQ(MessageDef *msg_p, instance_t
         LOG_W(NR_RRC, "UE %d: reject PDU Session Setup in Initial Context Setup Response\n", UE->rrc_ue_id);
         ngap_cause_t cause = {.type = NGAP_CAUSE_RADIO_NETWORK, .value = NGAP_CAUSE_RADIO_NETWORK_RESOURCES_NOT_AVAILABLE_FOR_THE_SLICE};
         send_ngap_initial_context_setup_resp_fail(rrc->module_id, req, cause);
-        rrc_forward_ue_nas_message(rrc, UE);
+        // Forward directly NAS PDU
+        rrc_forward_ue_nas_message(rrc, UE, &req->nas_pdu);
         return -1;
       }
     } else {
       /* no PDU sesion to setup: acknowledge this message, and forward NAS
        * message, if required */
       rrc_gNB_send_NGAP_INITIAL_CONTEXT_SETUP_RESP(rrc, UE);
-      rrc_forward_ue_nas_message(rrc, UE);
+      // Forward directly NAS PDU
+      rrc_forward_ue_nas_message(rrc, UE, &req->nas_pdu);
     }
   }
 
@@ -638,9 +651,9 @@ static void set_UE_security_algos(const gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE, con
                integrityProtAlgorithm);
 }
 
-//------------------------------------------------------------------------------
+/** @brief Process Downlink NAS transport (AMF to NG-RAN) (8.6.2 3GPP TS 38.413). The goal of this
+ * message is to forward a NAS message transparently via the NG-RAN node to the UE */
 int rrc_gNB_process_NGAP_DOWNLINK_NAS(MessageDef *msg_p, instance_t instance, mui_t *rrc_gNB_mui)
-//------------------------------------------------------------------------------
 {
   ngap_downlink_nas_t *req = &NGAP_DOWNLINK_NAS(msg_p);
   gNB_RRC_INST *rrc = RC.nrrrc[instance];
@@ -659,9 +672,11 @@ int rrc_gNB_process_NGAP_DOWNLINK_NAS(MessageDef *msg_p, instance_t instance, mu
     return (-1);
   }
 
+  /* The NAS-PDU IE contains an AMF-UE message that is transferred
+    without interpretation in the NG-RAN node (8.6.2 3GPP TS 38.413) */
   gNB_RRC_UE_t *UE = &ue_context_p->ue_context;
-  UE->nas_pdu = req->nas_pdu;
-  rrc_forward_ue_nas_message(rrc, UE);
+  // Forward directly NAS PDU
+  rrc_forward_ue_nas_message(rrc, UE, &req->nas_pdu);
   return 0;
 }
 
@@ -795,7 +810,7 @@ void rrc_gNB_process_NGAP_PDUSESSION_SETUP_REQ(MessageDef *msg_p, instance_t ins
     LOG_W(NR_RRC, "[gNB %ld] In NGAP_PDUSESSION_SETUP_REQ: unknown UE NGAP ID (%u)\n", instance, msg->gNB_ue_ngap_id);
     ngap_cause_t cause = {.type = NGAP_CAUSE_RADIO_NETWORK, .value = NGAP_CAUSE_RADIO_NETWORK_UNKNOWN_LOCAL_UE_NGAP_ID};
     send_ngap_pdu_session_setup_resp_fail(instance, msg, cause);
-    rrc_forward_ue_nas_message(rrc, UE);
+    // rrc_forward_ue_nas_message(rrc, UE); TODO TBC remove: nothing to forward here? 
     return;
   }
 
@@ -804,7 +819,7 @@ void rrc_gNB_process_NGAP_PDUSESSION_SETUP_REQ(MessageDef *msg_p, instance_t ins
     LOG_E(NR_RRC, "UE %d: no security context active for UE, rejecting PDU Session Resource Setup Request\n", UE->rrc_ue_id);
     ngap_cause_t cause = {.type = NGAP_CAUSE_PROTOCOL, .value = NGAP_CAUSE_PROTOCOL_MSG_NOT_COMPATIBLE_WITH_RECEIVER_STATE};
     send_ngap_pdu_session_setup_resp_fail(instance, msg, cause);
-    rrc_forward_ue_nas_message(rrc, UE);
+    // rrc_forward_ue_nas_message(rrc, UE); TODO TBC remove: nothing to forward here? 
     return;
   }
 
@@ -818,7 +833,7 @@ void rrc_gNB_process_NGAP_PDUSESSION_SETUP_REQ(MessageDef *msg_p, instance_t ins
       LOG_E(NR_RRC, "UE %d: already has existing PDU session %d rejecting PDU Session Resource Setup Request\n", UE->rrc_ue_id, p->pdusession_id);
       ngap_cause_t cause = {.type = NGAP_CAUSE_RADIO_NETWORK, .value = NGAP_CAUSE_RADIO_NETWORK_MULTIPLE_PDU_SESSION_ID_INSTANCES};
       send_ngap_pdu_session_setup_resp_fail(instance, msg, cause);
-      rrc_forward_ue_nas_message(rrc, UE);
+    // rrc_forward_ue_nas_message(rrc, UE); TODO TBC remove: nothing to forward here? 
       return;
     }
   }
@@ -846,15 +861,20 @@ void rrc_gNB_process_NGAP_PDUSESSION_SETUP_REQ(MessageDef *msg_p, instance_t ins
   }
 
   pdusession_t to_setup[NGAP_MAX_PDU_SESSION] = {0};
-  for (int i = 0; i < msg->nb_pdusessions_tosetup; ++i)
+  for (int i = 0; i < msg->nb_pdusessions_tosetup; ++i) {
     cp_pdusession_resource_item_to_pdusession(&to_setup[i], &msg->pdusession[i]);
+    // Store NAS PDU, forward later
+    if (msg->pdusession[i].nas_pdu.len > 0) {
+      store_nas_pdu(UE, msg->pdusession[i].nas_pdu);
+    }
+  }
 
   if (!trigger_bearer_setup(rrc, UE, msg->nb_pdusessions_tosetup, to_setup, msg->ueAggMaxBitRate.br_dl)) {
     // Reject PDU Session Resource setup if there's no CU-UP associated
     LOG_W(NR_RRC, "UE %d: reject PDU Session Setup in PDU Session Resource Setup Response\n", UE->rrc_ue_id);
     ngap_cause_t cause = {.type = NGAP_CAUSE_RADIO_NETWORK, .value = NGAP_CAUSE_RADIO_NETWORK_RESOURCES_NOT_AVAILABLE_FOR_THE_SLICE};
     send_ngap_pdu_session_setup_resp_fail(instance, msg, cause);
-    rrc_forward_ue_nas_message(rrc, UE);
+    // rrc_forward_ue_nas_message(rrc, UE); TODO TBC remove: nothing to forward here? 
   } else {
     UE->ongoing_pdusession_setup_request = true;
   }
@@ -894,6 +914,10 @@ int rrc_gNB_process_NGAP_PDUSESSION_MODIFY_REQ(MessageDef *msg_p, instance_t ins
       cp_pdusession_resource_item_to_pdusession(&to_mod, &req->pdusession[i]);
       add_pduSession(&UE->pduSessions_to_addmod, UE->rrc_ue_id, &to_mod);
       LOG_I(NR_RRC, "Added pduSessions_to_addmod %d, (total = %ld)\n", to_mod.pdusession_id, seq_arr_size(UE->pduSessions_to_addmod));
+      // Store NAS PDU, forward later
+      if (req->pdusession[i].nas_pdu.len > 0) {
+        store_nas_pdu(UE, req->pdusession[i].nas_pdu);
+      }
     }
   }
 

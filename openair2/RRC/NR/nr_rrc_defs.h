@@ -98,7 +98,6 @@ typedef struct pdusession_s {
   uint8_t xid;
   /* Unique pdusession_id for the UE. */
   int pdusession_id;
-  byte_array_t nas_pdu;
   uint8_t nb_qos;
   // QoS Flows mapped to current PDU Session
   pdusession_qos_t qos[QOSFLOW_MAX_VALUE];
@@ -227,7 +226,7 @@ typedef struct gNB_RRC_UE_s {
   pdusession_t *initial_pdus;
 
   /* Nas Pdu */
-  byte_array_t nas_pdu;
+  seq_arr_t *nas_pdu;
 
   /* hack, see rrc_gNB_process_NGAP_PDUSESSION_SETUP_REQ() for more info */
   int max_delays_pdu_session;

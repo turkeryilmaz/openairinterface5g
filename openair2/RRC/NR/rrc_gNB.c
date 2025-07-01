@@ -646,21 +646,18 @@ nr_rrc_reconfig_param_t get_RRCReconfiguration_params(gNB_RRC_INST *rrc, gNB_RRC
                                     .srb_config_list = SRBs};
   UE->DRB_ReleaseList = NULL; // pointer transferred to params
 
-  // This is RRCReconfiguration: loop through pduSessions_to_addmod list 
-  FOR_EACH_SEQ_ARR(pdusession_t *, session, UE->pduSessions_to_addmod) {
-    if (session->nas_pdu.len > 0) {
-      params.dedicated_NAS_msg_list[params.num_nas_msg++] = session->nas_pdu;
-      session->nas_pdu.buf = NULL;
-      session->nas_pdu.len = 0;
-      LOG_D(NR_RRC, "Transfer NAS info with size %ld to RRCReconfiguration params\n", session->nas_pdu.len);
+  // Loop through stored NAS PDUs
+  FOR_EACH_SEQ_ARR(byte_array_t *, pdu, UE->nas_pdu) {
+    if (pdu->len > 0) {
+      params.dedicated_NAS_msg_list[params.num_nas_msg++] = *pdu;
+      LOG_D(NR_RRC, "Transfer NAS info with size %ld to RRCReconfiguration params\n", pdu->len);
+      pdu->buf = NULL;
+      pdu->len = 0;
     }
   }
-  if (UE->nas_pdu.len > 0) {
-    params.dedicated_NAS_msg_list[params.num_nas_msg++] = UE->nas_pdu;
-    UE->nas_pdu.buf = NULL;
-    UE->nas_pdu.len = 0;
-    LOG_D(NR_RRC, "Transfer NAS info with size %ld to RRCReconfiguration params\n", UE->nas_pdu.len);
-  }
+  // Free seq_arr
+  free(UE->nas_pdu);
+  UE->nas_pdu = NULL;
 
   return params;
 }
@@ -1530,23 +1527,36 @@ static int handle_rrcReestablishmentComplete(gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE
  *        the NG-RAN node shall pass it transparently towards the UE.
  *        - 8.6.2: The NAS-PDU IE contains an AMF–UE message that is transferred without interpretation in the NG-RAN node.
  */
-void rrc_forward_ue_nas_message(gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE)
+void rrc_forward_ue_nas_message(gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE, byte_array_t *pdu)
 {
-  if (UE->nas_pdu.buf == NULL || UE->nas_pdu.len == 0)
+  if (pdu->buf == NULL || pdu->len == 0)
     return; // no problem: the UE will re-request a NAS PDU
 
-  LOG_UE_DL_EVENT(UE, "Send DL Information Transfer [%ld bytes]\n", UE->nas_pdu.len);
+  LOG_UE_DL_EVENT(UE, "Send DL Information Transfer [%ld bytes]\n", pdu->len);
 
   uint8_t buffer[4096];
   unsigned int xid = rrc_gNB_get_next_transaction_identifier(rrc->module_id);
-  uint32_t length = do_NR_DLInformationTransfer(buffer, sizeof(buffer), xid, UE->nas_pdu.len, UE->nas_pdu.buf);
+  uint32_t length = do_NR_DLInformationTransfer(buffer, sizeof(buffer), xid, pdu->len, pdu->buf);
   LOG_DUMPMSG(NR_RRC, DEBUG_RRC, buffer, length, "[MSG] RRC DL Information Transfer\n");
   rb_id_t srb_id = UE->Srb[2].Active ? DL_SCH_LCID_DCCH1 : DL_SCH_LCID_DCCH;
   const uint32_t msg_id = NR_DL_DCCH_MessageType__c1_PR_dlInformationTransfer;
   nr_rrc_transfer_protected_rrc_message(rrc, UE, srb_id, msg_id, buffer, length);
-  // no need to free UE->nas_pdu.buf, do_NR_DLInformationTransfer() did that
-  UE->nas_pdu.buf = NULL;
-  UE->nas_pdu.len = 0;
+  // no need to free pdu->buf, do_NR_DLInformationTransfer() did that
+  pdu->buf = NULL;
+  pdu->len = 0;
+}
+
+/** @brief Forward stored NAS PDUs received in NGAP messages, i.e. PDU Session/Initial Context Setup Request */
+static void rrc_forward_stored_nas_pdus(gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE)
+{
+  DevAssert(UE->nas_pdu != NULL);
+  DevAssert(seq_arr_size(UE->nas_pdu) == 1); // Expected only stored NAS PDU
+  FOR_EACH_SEQ_ARR(byte_array_t *, pdu, UE->nas_pdu) {
+    rrc_forward_ue_nas_message(rrc, UE, pdu);
+  }
+  // Free seq_arr
+  free(UE->nas_pdu);
+  UE->nas_pdu = NULL;
 }
 
 static void handle_ueCapabilityInformation(gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE, const NR_UECapabilityInformation_t *ue_cap_info)
@@ -1654,12 +1664,12 @@ static void handle_ueCapabilityInformation(gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE, 
     if (!trigger_bearer_setup(rrc, UE, UE->n_initial_pdu, UE->initial_pdus, 0)) {
       LOG_W(NR_RRC, "Failed to setup bearers for UE %d: send Initial Context Setup Response\n", UE->rrc_ue_id);
       rrc_gNB_send_NGAP_INITIAL_CONTEXT_SETUP_RESP(rrc, UE);
-      rrc_forward_ue_nas_message(rrc, UE);
+      rrc_forward_stored_nas_pdus(rrc, UE);
       return;
     }
   } else {
     rrc_gNB_send_NGAP_INITIAL_CONTEXT_SETUP_RESP(rrc, UE);
-    rrc_forward_ue_nas_message(rrc, UE);
+    rrc_forward_stored_nas_pdus(rrc, UE);
   }
 
   return;
@@ -1905,13 +1915,13 @@ static int rrc_gNB_decode_dcch(gNB_RRC_INST *rrc, const f1ap_ul_rrc_message_t *m
           if (!trigger_bearer_setup(rrc, UE, UE->n_initial_pdu, UE->initial_pdus, 0)) {
             LOG_W(NR_RRC, "Failed to setup bearers for UE %d: send Initial Context Setup Response\n", UE->rrc_ue_id);
             rrc_gNB_send_NGAP_INITIAL_CONTEXT_SETUP_RESP(rrc, UE);
-            rrc_forward_ue_nas_message(rrc, UE);
+            rrc_forward_stored_nas_pdus(rrc, UE);
           }
         } else {
           /* we already have capabilities, and no PDU sessions to setup, ack
            * this UE */
           rrc_gNB_send_NGAP_INITIAL_CONTEXT_SETUP_RESP(rrc, UE);
-          rrc_forward_ue_nas_message(rrc, UE);
+          rrc_forward_stored_nas_pdus(rrc, UE);
         }
         break;
 

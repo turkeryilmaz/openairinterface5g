@@ -585,8 +585,7 @@ typedef struct ngap_initial_context_setup_req_s {
   uint8_t                        mobility_restriction_flag;
   ngap_mobility_restriction_t    mobility_restriction;
 
-  /* Nas Pdu */
-  uint8_t                        nas_pdu_flag;
+  // NAS PDU: to be forwarded transparently towards the UE
   byte_array_t nas_pdu;
 } ngap_initial_context_setup_req_t;
 
