@@ -28,9 +28,6 @@
 #include "e1ap_messages_types.h"
 #include "nr_rrc_defs.h"
 
-#define GBR_FLOW                (1)
-#define NONGBR_FLOW             (0)
-
 /// @brief retrieve the data structure representing DRB with ID drb_id of UE ue
 drb_t *get_drb(seq_arr_t *seq, int id);
 
