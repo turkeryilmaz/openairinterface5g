@@ -1693,6 +1693,62 @@ void nr_conjch0_mult_ch1(c16_t *ch0, c16_t *ch1, c16_t *ch0conj_ch1, unsigned sh
   mult_cpx_conj_vector(ch0, ch1, ch0conj_ch1, 12 * nb_rb, output_shift0);
 }
 
+static void nr_matrix_scale_determin(const int size,
+                                     const int length,
+                                     const int nb_rb_0,
+                                     const int shift,
+                                     const c16_t determin[NR_NB_SC_PER_RB*nb_rb_0],
+                                     c16_t *matrix[size][size])
+{
+  /*
+  Dividing two complex numbers:
+
+  a + bi   (a + bi)(c - di)
+  ------ = ----------------
+  c + di   (c + di)(c - di)
+
+           ac + bd      bc - ad
+         = --------- + ----------- i
+           c^2 + d^2    c^2 + d^2
+  */
+
+  // average of determin
+  const int16_t x = factor2(length);
+  const int16_t y = (length) >> x;
+  simde__m128i *cd = (simde__m128i *)determin;
+  const int32_t det_avg = simde_mm_average(cd, NR_NB_SC_PER_RB * nb_rb_0, x, y);
+  const int32_t log2_det_avg = log2_approx(det_avg) / 2;
+  for (int_fast16_t r = 0; r < size; r++) {
+    for (int_fast16_t c = 0; c < size; c++) {
+      // (a + bi)(c - di)
+      mult_cpx_conj_vector(determin, matrix[r][c], matrix[r][c], NR_NB_SC_PER_RB * nb_rb_0, log2_det_avg);
+      // scale by 1/(c^2 + d^2)
+      simde__m128i *ab = (simde__m128i *)matrix[r][c];
+      cd = (simde__m128i *)determin;
+      for (int_fast16_t rb = 0; rb < nb_rb_0; rb++) {
+        simde__m128i c2d2_unpack[3];
+        c2d2_unpack[0] = simde_mm_srai_epi32(simde_mm_madd_epi16(cd[0], cd[0]), log2_det_avg);
+        c2d2_unpack[1] = simde_mm_srai_epi32(simde_mm_madd_epi16(cd[1], cd[1]), log2_det_avg);
+        c2d2_unpack[2] = simde_mm_srai_epi32(simde_mm_madd_epi16(cd[2], cd[2]), log2_det_avg);
+        simde__m128i c2d2[3];
+        const simde__m128i c2d2_01 = simde_mm_packs_epi32(c2d2_unpack[0], c2d2_unpack[1]);
+        c2d2[0] = simde_mm_unpacklo_epi16(c2d2_01, c2d2_01);
+        c2d2[1] = simde_mm_unpackhi_epi16(c2d2_01, c2d2_01);
+        const simde__m128i c2d2_2 = simde_mm_packs_epi32(c2d2_unpack[2], c2d2_unpack[2]);
+        c2d2[2] = simde_mm_unpacklo_epi16(c2d2_2, c2d2_2);
+
+        const int32_t c2d2_avg = 1 << shift;
+        compensate_amplitude(c2d2, ab, c2d2_avg);
+        compensate_amplitude(c2d2 + 1, ab + 1, c2d2_avg);
+        compensate_amplitude(c2d2 + 2, ab + 2, c2d2_avg);
+
+        cd += 3;
+        ab += 3;
+      }
+    }
+  }
+}
+
 /*
  * MMSE Rx function: up to 4 layers
  */
@@ -1769,6 +1825,9 @@ static void nr_dlsch_mmse(uint32_t rx_size_symbol,
                     nb_rb_0,
                     fp_flag, // fixed point flag
                     shift - (fp_flag == 1 ? 2 : 0)); // the out put is Q15
+
+  // scale inv(H*H) by determinant
+  nr_matrix_scale_determin(nl, length, nb_rb_0, shift /*- (fp_flag == 1 ? 2 : 0)*/, determ_fin, inv_H_h_H);
 
   // multiply Matrix inversion pf H_h_H by the rx signal vector
   c16_t outtemp[12 * nb_rb_0] __attribute__((aligned(32)));
