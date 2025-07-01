@@ -807,6 +807,27 @@ static void config_sched_ctrlCommon(gNB_MAC_INST *nr_mac)
   nr_mac->cset0_bwp_size = type0_PDCCH_CSS_config.num_rbs;
 }
 
+/**
+ * \brief Initializes the UL TDA information used for every UE in UL.
+ */
+static void init_ul_tda_info(const NR_PUSCH_TimeDomainResourceAllocationList_t *l, NR_tda_info_t tda[16])
+{
+  memset(tda, 0, sizeof(*tda) * 16);
+  DevAssert(l->list.count > 0);
+  const bool v = true; // validity of TDAs
+  int idx = 0;
+
+  for (int i = 0; i < l->list.count; ++i) {
+    NR_PUSCH_TimeDomainResourceAllocation_t *t = l->list.array[i];
+    DevAssert(t->k2);
+    int s, l;
+    SLIV2SL(t->startSymbolAndLength, &s, &l);
+    int k2 = *t->k2;
+    LOG_I(NR_MAC, "TDA index %d: start %d length %d k2 %d\n", idx, s, l, k2);
+    tda[idx++] = (NR_tda_info_t) { typeB, s, l, k2, v };
+  }
+}
+
 void nr_mac_config_scc(gNB_MAC_INST *nrmac, NR_ServingCellConfigCommon_t *scc, const nr_mac_config_t *config)
 {
   DevAssert(nrmac != NULL);
@@ -853,6 +874,8 @@ void nr_mac_config_scc(gNB_MAC_INST *nrmac, NR_ServingCellConfigCommon_t *scc, c
 
   if (IS_SA_MODE(get_softmodem_params()))
     config_sched_ctrlCommon(nrmac);
+
+  init_ul_tda_info(scc->uplinkConfigCommon->initialUplinkBWP->pusch_ConfigCommon->choice.setup->pusch_TimeDomainAllocationList, nrmac->ul_tda);
 }
 
 bool nr_mac_configure_other_sib(gNB_MAC_INST *nrmac, int num_cu_sib, const f1ap_sib_msg_t cu_sib[num_cu_sib])
