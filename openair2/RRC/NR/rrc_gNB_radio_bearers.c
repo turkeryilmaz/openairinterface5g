@@ -23,15 +23,32 @@
 #include <stddef.h>
 #include "E1AP_RLC-Mode.h"
 #include "RRC/NR/nr_rrc_defs.h"
-#include "T.h"
 #include "asn_internal.h"
 #include "assertions.h"
 #include "common/platform_constants.h"
-#include "common/utils/T/T.h"
 #include "ngap_messages_types.h"
 #include "oai_asn1.h"
 #include "openair2/LAYER2/nr_pdcp/nr_pdcp_asn1_utils.h"
 #include "common/utils/alg/find.h"
+
+#ifdef ENABLE_TESTS
+
+#define RRC_LOG_INFO(fmt, ...) printf("[INFO] " fmt "\n", ##__VA_ARGS__)
+#define RRC_LOG_DEBUG(fmt, ...) printf("[DEBUG] " fmt "\n", ##__VA_ARGS__)
+#define RRC_LOG_WARN(fmt, ...) printf("[WARN]  " fmt "\n", ##__VA_ARGS__)
+#define RRC_LOG_ERROR(fmt, ...) printf("[ERROR] " fmt "\n", ##__VA_ARGS__)
+
+#else
+
+#include "log.h"
+#include "common/utils/T/T.h"
+
+#define RRC_LOG_INFO(fmt, ...) LOG_I(NR_RRC, fmt, ##__VA_ARGS__)
+#define RRC_LOG_DEBUG(fmt, ...) LOG_D(NR_RRC, fmt, ##__VA_ARGS__)
+#define RRC_LOG_WARN(fmt, ...) LOG_W(NR_RRC, fmt, ##__VA_ARGS__)
+#define RRC_LOG_ERROR(fmt, ...) LOG_E(NR_RRC, fmt, ##__VA_ARGS__)
+
+#endif
 
 static bool eq_pdu_session_id(const void *vval, const void *vit)
 {
@@ -66,7 +83,7 @@ rrc_pdu_session_param_t *add_pduSession(seq_arr_t *sessions_ptr, const pdusessio
   DevAssert(in);
 
   if (seq_arr_size(sessions_ptr) == NGAP_MAX_PDU_SESSION) {
-    LOG_W(NR_RRC, "Reached maximum number of PDU Session = %ld\n", seq_arr_size(sessions_ptr));
+    RRC_LOG_WARN("Reached maximum number of PDU Session = %ld\n", seq_arr_size(sessions_ptr));
     return NULL;
   }
 
@@ -74,7 +91,7 @@ rrc_pdu_session_param_t *add_pduSession(seq_arr_t *sessions_ptr, const pdusessio
   seq_arr_push_back(sessions_ptr, &new, sizeof(rrc_pdu_session_param_t));
   rrc_pdu_session_param_t *added = find_pduSession(sessions_ptr, in->pdusession_id);
   DevAssert(added);
-  LOG_I(NR_RRC, "Added PDU Session %d, (total nb of sessions = %ld)\n", in->pdusession_id, seq_arr_size(sessions_ptr));
+  RRC_LOG_INFO("Added PDU Session %d, (total nb of sessions = %ld)\n", in->pdusession_id, seq_arr_size(sessions_ptr));
 
   return added;
 }
@@ -92,7 +109,7 @@ drb_t *nr_rrc_add_drb(seq_arr_t *drb_ptr, int pdusession_id, nr_pdcp_configurati
   }
 
   if (!drb_id) {
-    LOG_E(NR_RRC, "Cannot set up new DRB for pdusession_id=%d - reached maximum capacity\n", pdusession_id);
+    RRC_LOG_ERROR("Cannot set up new DRB for pdusession_id=%d - reached maximum capacity\n", pdusession_id);
     return NULL;
   }
 
@@ -101,7 +118,10 @@ drb_t *nr_rrc_add_drb(seq_arr_t *drb_ptr, int pdusession_id, nr_pdcp_configurati
   seq_arr_push_back(drb_ptr, &in, sizeof(drb_t));
   drb_t *out = get_drb(drb_ptr, drb_id);
   DevAssert(out);
-  LOG_I(NR_RRC, "Added DRB %d to established list (PDU Session ID=%d, total DRBs = %ld)\n", out->drb_id, pdusession_id, seq_arr_size(drb_ptr));
+  RRC_LOG_INFO("Added DRB %d to established list (PDU Session ID=%d, total DRBs = %ld)\n",
+               out->drb_id,
+               pdusession_id,
+               seq_arr_size(drb_ptr));
   return out;
 }
 
@@ -133,7 +153,7 @@ rrc_pdu_session_param_t *find_pduSession_from_drbId(gNB_RRC_UE_t *ue, int drb_id
 {
   const drb_t *drb = get_drb(&ue->drbs, drb_id);
   if (!drb) {
-    LOG_E(NR_RRC, "UE %d: DRB %d not found\n", ue->rrc_ue_id, drb_id);
+    RRC_LOG_ERROR("UE %d: DRB %d not found\n", ue->rrc_ue_id, drb_id);
     return NULL;
   }
   int id = drb->pdusession_id;
@@ -146,7 +166,7 @@ bearer_context_pdcp_config_t set_bearer_context_pdcp_config(const nr_pdcp_config
 {
   bearer_context_pdcp_config_t out = {0};
   if (redcap_cap && redcap_cap->support_of_redcap_r17 && !redcap_cap->pdcp_drb_long_sn_redcap_r17) {
-    LOG_I(NR_RRC, "UE is RedCap without long PDCP SN support: overriding PDCP SN size to 12\n");
+    RRC_LOG_INFO("UE is RedCap without long PDCP SN support: overriding PDCP SN size to 12\n");
     out.pDCP_SN_Size_DL = NR_PDCP_Config__drb__pdcp_SN_SizeDL_len12bits;
     out.pDCP_SN_Size_UL = NR_PDCP_Config__drb__pdcp_SN_SizeUL_len12bits;
   } else {
@@ -188,7 +208,7 @@ nr_rrc_qos_t *add_qos(seq_arr_t *qos, const pdusession_level_qos_parameter_t *in
   DevAssert(in);
 
   if (seq_arr_size(qos) == MAX_QOS_FLOWS) {
-    LOG_W(NR_RRC, "Reached maximum number of QoS flows = %ld\n", seq_arr_size(qos));
+    RRC_LOG_WARN("Reached maximum number of QoS flows = %ld\n", seq_arr_size(qos));
     return NULL;
   }
 
@@ -198,7 +218,7 @@ nr_rrc_qos_t *add_qos(seq_arr_t *qos, const pdusession_level_qos_parameter_t *in
   // Double check successful add
   nr_rrc_qos_t *added = find_qos(qos, in->qfi);
   DevAssert(added);
-  LOG_I(NR_RRC, "Added QoS flow with qfi=%d, total number of QoS flows = %ld\n", in->qfi, seq_arr_size(qos));
+  RRC_LOG_INFO("Added QoS flow with qfi=%d, total number of QoS flows = %ld\n", in->qfi, seq_arr_size(qos));
 
   // Only one QoS flow is supported
   AssertFatal(seq_arr_size(qos) == 1, "only 1 Qos flow supported\n");
