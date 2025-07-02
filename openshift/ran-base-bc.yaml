@@ -25,11 +25,10 @@ kind: BuildConfig
 apiVersion: build.openshift.io/v1
 metadata:
   name: "ran-base"
-  namespace: "oaicicd-ran"
+  namespace: "open5gs"
 spec:
     runPolicy: "Serial"
-    nodeSelector:
-        node-role.kubernetes.io/ran-base: ""
+    
     source:
         type: "Binary"
         secrets:
