@@ -23,21 +23,38 @@
 #include <stddef.h>
 #include "E1AP_RLC-Mode.h"
 #include "RRC/NR/nr_rrc_defs.h"
-#include "T.h"
 #include "asn_internal.h"
 #include "assertions.h"
 #include "common/platform_constants.h"
-#include "common/utils/T/T.h"
 #include "ngap_messages_types.h"
 #include "oai_asn1.h"
 #include "openair2/LAYER2/nr_pdcp/nr_pdcp_asn1_utils.h"
 #include "common/utils/alg/find.h"
 #include "openair3/ocp-gtpu/gtp_itf.h"
 
+#ifdef ENABLE_TESTS
+
+#define RRC_LOG_INFO(fmt, ...)    printf("[INFO] " fmt "\n", ##__VA_ARGS__)
+#define RRC_LOG_DEBUG(fmt, ...)   printf("[DEBUG] " fmt "\n", ##__VA_ARGS__)
+#define RRC_LOG_WARN(fmt, ...)    printf("[WARN]  " fmt "\n", ##__VA_ARGS__)
+#define RRC_LOG_ERROR(fmt, ...)   printf("[ERROR] " fmt "\n", ##__VA_ARGS__)
+
+#else
+
+#include "log.h"
+#include "common/utils/T/T.h"
+
+#define RRC_LOG_INFO(fmt, ...)   LOG_I(NR_RRC, fmt, ##__VA_ARGS__)
+#define RRC_LOG_DEBUG(fmt, ...)   LOG_D(NR_RRC, fmt, ##__VA_ARGS__)
+#define RRC_LOG_WARN(fmt, ...)    LOG_W(NR_RRC, fmt, ##__VA_ARGS__)
+#define RRC_LOG_ERROR(fmt, ...)   LOG_E(NR_RRC, fmt, ##__VA_ARGS__)
+
+#endif
+
 drb_t *add_rrc_drb(seq_arr_t **drb_ptr, drb_t in)
 {
   if (drb_ptr == NULL) {
-    LOG_E(NR_RRC, "add_drb: Invalid input\n");
+    RRC_LOG_ERROR("add_drb: Invalid input\n");
     return NULL;
   }
 
@@ -90,7 +107,7 @@ void remove_drbs_by_pdu_session(seq_arr_t **drbs, int pdusession_id)
 
   drb_t *drb;
   while ((drb = find_drb(*drbs, pdusession_id)) != NULL) {
-    LOG_I(NR_RRC, "Removing DRB ID %d associated with PDU Session ID %d\n", drb->drb_id, pdusession_id);
+    RRC_LOG_INFO("Removing DRB ID %d associated with PDU Session ID %d\n", drb->drb_id, pdusession_id);
     seq_arr_erase(*drbs, drb);
   }
 
@@ -122,16 +139,23 @@ void *find_pduSession(seq_arr_t *seq, int id)
   return NULL;
 }
 
-/** @brief Adds a new PDU Session to the list (either setup or addmod)
- *  @return pointer to the new PDU Session */
+/** @brief Adds a new PDU Session type pdusession_t to the list (either setup or addmod)
+ *  @return pointer to the new PDU Session (or if already existing, to the found one */
 pdusession_t *add_pduSession(seq_arr_t **sessions_ptr, const int rrc_ue_id, pdusession_t *in)
 {
   if (sessions_ptr == NULL || in == NULL) {
-    LOG_E(NR_RRC, "add_pduSession: Invalid input\n");
+    RRC_LOG_ERROR("add_pduSession: Invalid input\n");
     return NULL;
   }
-  // Initialized seq_arr if necessary
+  // Initialize seq_arr if necessary
   SEQ_ARR_INIT(sessions_ptr, pdusession_t, NGAP_MAX_PDU_SESSION);
+
+  pdusession_t *found = (pdusession_t *)find_pduSession(*sessions_ptr, in->pdusession_id);
+  if (found) {
+    RRC_LOG_WARN("PDU Session already in the list!\n");
+    return found;
+  }
+
   // Add item to the list
   pdusession_t *added = SEQ_ARR_PUSH_BACK_AND_GET(pdusession_t, *sessions_ptr, in);
   return added;
@@ -141,13 +165,13 @@ pdusession_t *add_pduSession(seq_arr_t **sessions_ptr, const int rrc_ue_id, pdus
 bool update_pduSession(seq_arr_t **sessions_ptr, const pdusession_t *mod)
 {
   if (sessions_ptr == NULL || mod == NULL) {
-    LOG_E(NR_RRC, "update_pduSession: Invalid input\n");
+    RRC_LOG_ERROR("update_pduSession: Invalid input\n");
     return false;
   }
 
   pdusession_t *found = (pdusession_t *)find_pduSession(*sessions_ptr, mod->pdusession_id);
   if (!found) {
-    LOG_E(NR_RRC, "PDU Session not found in the setup list (UE->pduSessions)\n");
+    RRC_LOG_ERROR("PDU Session not found in the setup list (UE->pduSessions)\n");
     return false;
   }
 
@@ -162,14 +186,14 @@ bool update_pduSession(seq_arr_t **sessions_ptr, const pdusession_t *mod)
 rrc_pdusession_release_t *add_pduSession_to_release(seq_arr_t **sessions_ptr, const int rrc_ue_id, rrc_pdusession_release_t in)
 {
   if (sessions_ptr == NULL) {
-    LOG_E(NR_RRC, "add_pduSession_to_release: Invalid input\n");
+    RRC_LOG_ERROR("add_pduSession_to_release: Invalid input\n");
     return NULL;
   }
 
   SEQ_ARR_INIT(sessions_ptr, rrc_pdusession_release_t, NGAP_MAX_PDU_SESSION);
 
   rrc_pdusession_release_t *added = SEQ_ARR_PUSH_BACK_AND_GET(rrc_pdusession_release_t, *sessions_ptr, &in);
-  LOG_I(NR_RRC, "Added PDU Session %d to release (total = %ld)\n", added->pdusession_id, seq_arr_size(*sessions_ptr));
+  RRC_LOG_INFO("Added PDU Session %d to release (total = %ld)\n", added->pdusession_id, seq_arr_size(*sessions_ptr));
 
   return added;
 }
@@ -179,14 +203,14 @@ rrc_pdusession_release_t *add_pduSession_to_release(seq_arr_t **sessions_ptr, co
 rrc_pdusession_failed_t *add_failed_pduSession(seq_arr_t **sessions_ptr, const int rrc_ue_id, rrc_pdusession_failed_t in)
 {
   if (sessions_ptr == NULL) {
-    LOG_E(NR_RRC, "add_failed_pduSession: Invalid input\n");
+    RRC_LOG_ERROR("add_failed_pduSession: Invalid input\n");
     return NULL;
   }
 
   SEQ_ARR_INIT(sessions_ptr, rrc_pdusession_failed_t, NGAP_MAX_PDU_SESSION);
 
   rrc_pdusession_failed_t *added = SEQ_ARR_PUSH_BACK_AND_GET(rrc_pdusession_failed_t, *sessions_ptr, &in);
-  LOG_I(NR_RRC, "Added failed PDU Session %d (total = %ld)\n", added->pdusession_id, seq_arr_size(*sessions_ptr));
+  RRC_LOG_INFO("Added failed PDU Session %d (total = %ld)\n", added->pdusession_id, seq_arr_size(*sessions_ptr));
 
   return added;
 }
@@ -195,7 +219,7 @@ pdusession_t *find_pduSession_from_drbId(gNB_RRC_UE_t *ue, seq_arr_t *seq, int d
 {
   const drb_t *drb = get_drb(ue->drbs, drb_id);
   if (!drb) {
-    LOG_E(NR_RRC, "UE %d: DRB %d not found\n", ue->rrc_ue_id, drb_id);
+    RRC_LOG_ERROR("UE %d: DRB %d not found\n", ue->rrc_ue_id, drb_id);
     return NULL;
   }
   int id = drb->pdusession_id;
@@ -210,7 +234,7 @@ void release_pduSessions(gNB_RRC_INST *rrc, gNB_RRC_UE_t *ue)
   gtpv1u_gnb_delete_tunnel_req_t req = {0};
   req.ue_id = ue->rnti;
   FOR_EACH_SEQ_ARR(rrc_pdusession_release_t *, release, ue->pduSessions_to_release) {
-    LOG_I(NR_RRC, "Delete GTP tunnels for UE %04x, PDU Session ID %d\n", ue->rnti, release->pdusession_id);
+    RRC_LOG_INFO("Delete GTP tunnels for UE %04x, PDU Session ID %d\n", ue->rnti, release->pdusession_id);
     req.pdusession_id[req.num_pdusession++] = release->pdusession_id;
   }
   gtpv1u_delete_ngu_tunnel(rrc->module_id, &req);
@@ -221,18 +245,18 @@ void release_pduSessions(gNB_RRC_INST *rrc, gNB_RRC_UE_t *ue)
 bool rm_pduSession(seq_arr_t *seq, int pdusession_id)
 {
   if (seq == NULL) {
-    LOG_E(NR_RRC, "rm_pduSession: seq is NULL\n");
+    RRC_LOG_ERROR("rm_pduSession: seq is NULL\n");
     return false;
   }
 
   elm_arr_t elm = find_if(seq, &pdusession_id, eq_pdu_session_id);
   if (!elm.found) {
-    LOG_W(NR_RRC, "rm_pduSession: PDU Session %d not found\n", pdusession_id);
+    RRC_LOG_WARN("rm_pduSession: PDU Session %d not found\n", pdusession_id);
     return false;
   }
 
   seq_arr_erase(seq, elm.it);  // shallow erase
-  LOG_I(NR_RRC, "Removed PDU Session %d, remaining = %ld\n", pdusession_id, seq_arr_size(seq));
+  RRC_LOG_INFO("Removed PDU Session %d, remaining = %ld\n", pdusession_id, seq_arr_size(seq));
   return true;
 }
 
