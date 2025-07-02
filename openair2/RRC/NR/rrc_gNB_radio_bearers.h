@@ -24,7 +24,6 @@
 
 #include <stdbool.h>
 #include <stdint.h>
-#include "NR_DRB-ToAddMod.h"
 #include "e1ap_messages_types.h"
 #include "nr_rrc_defs.h"
 
