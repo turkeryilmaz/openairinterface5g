@@ -2514,26 +2514,50 @@ void post_process_ulsch(gNB_MAC_INST *nr_mac, post_process_pusch_t *pusch, NR_UE
                      nr_mac->cset0_bwp_size);
 }
 
+typedef struct fsn {
+  frame_t f;
+  slot_t s;
+} fsn_t;
+fsn_t fs_add_delta(const frame_structure_t *fs, uint32_t delta, fsn_t fsn)
+{
+  const int slots_frame = fs->numb_slots_frame;
+  fsn_t res = {
+    .f = (fsn.f + (fsn.s + delta) / slots_frame) % MAX_FRAME_NUMBER,
+    .s = (fsn.s + delta) % slots_frame,
+  };
+  return res;
+}
+int fs_get_diff(const frame_structure_t *fs, fsn_t a, fsn_t b)
+{
+  const int slots_frame = fs->numb_slots_frame;
+  int diff = (a.f * slots_frame + a.s) - (b.f * slots_frame + b.s);
+  if (diff < -512 * slots_frame)
+    diff += 1024 * slots_frame;
+  else if (diff > 512 * slots_frame)
+    diff -= 1024 * slots_frame;
+  return diff;
+}
+fsn_t fs_get_max(const frame_structure_t *fs, fsn_t a, fsn_t b)
+{
+  if (fs_get_diff(fs, a, b) <= 0) {
+    return b;
+  } else {
+    return a;
+  }
+}
+
 static bool nr_ulsch_preprocessor(gNB_MAC_INST *nr_mac, post_process_pusch_t *pp_pusch)
 {
   int frame = pp_pusch->frame;
   int slot = pp_pusch->slot;
 
-  // no UEs
-  if (nr_mac->UE_info.connected_ue_list[0] == NULL)
-    return false;
-
   NR_COMMON_channels_t *cc = nr_mac->common_channels;
   NR_ServingCellConfigCommon_t *scc = cc->ServingCellConfigCommon;
   AssertFatal(scc, "We need one serving cell config common\n");
+  const frame_structure_t *fs = &nr_mac->frame_structure;
 
-  const int slots_frame = nr_mac->frame_structure.numb_slots_frame;
   // we assume the same K2 for all UEs
-  const int K2 = nr_mac->radio_config.minRXTXTIME + get_NTN_Koffset(scc);
-  const int sched_frame = (frame + (slot + K2) / slots_frame) % MAX_FRAME_NUMBER;
-  const int sched_slot = (slot + K2) % slots_frame;
-  if (!is_ul_slot(sched_slot, &nr_mac->frame_structure))
-    return false;
+  const int min_rxtx = nr_mac->radio_config.minRXTXTIME + get_NTN_Koffset(scc);
 
   int num_beams = nr_mac->beam_info.beam_allocation ? nr_mac->beam_info.beams_per_period : 1;
   int bw = scc->uplinkConfigCommon->frequencyInfoUL->scs_SpecificCarrierList.list.array[0]->carrierBandwidth;
@@ -2544,16 +2568,42 @@ static bool nr_ulsch_preprocessor(gNB_MAC_INST *nr_mac, post_process_pusch_t *pp
   // FAPI cannot handle more than MAX_DCI_CORESET DCIs
   max_sched_ues = min(max_sched_ues, MAX_DCI_CORESET);
 
-  int tda = get_ul_tda(nr_mac, sched_frame, sched_slot, nr_mac->radio_config.minRXTXTIME);
-  /* TODO: iterate over all available UL slots if there are more than DL */
-  /* the following supposes that the TDA is the same across all BWPs */
-  NR_tda_info_t tda_info = nr_mac->ul_tda[tda];
+  fsn_t current = {frame, slot};
+  fsn_t min_next = fs_add_delta(fs, min_rxtx, current);
+  static fsn_t next; /* TODO: move to nrmac */
+  while (max_sched_ues > 0) {
+    /* go to the next UL slot, skipping DL if necessary */
+    next = fs_get_max(fs, next, min_next);
+    if (!is_ul_slot(next.s, &nr_mac->frame_structure)) {
+      /* we advance in increments of 1, so if it's DL, it must be the first one */
+      next = fs_add_delta(fs, get_first_ul_slot(fs, true), next);
+      DevAssert(is_ul_slot(next.s, fs));
+    }
+    if (!is_dl_slot(current.s, fs)) // if current slot is not DL, nothing to do
+      break;
 
-  int len[num_beams];
-  for (int i = 0; i < num_beams; i++)
-    len[i] = bw;
-  /* proportional fair scheduling algorithm */
-  pf_ul(nr_mac, pp_pusch, tda, &tda_info, nr_mac->UE_info.connected_ue_list, max_sched_ues, num_beams, len);
+    /* get a TDA so that next UL scheduling slot can be reached from current,
+     * and exit if there is no such TDA */
+    int k2 = fs_get_diff(fs, next, current);
+    DevAssert(k2 > 0);
+    int tda = get_ul_tda(nr_mac, next.f, next.s, k2);
+    if (tda < 0)
+      break;
+    NR_tda_info_t tda_info = nr_mac->ul_tda[tda];
+    DevAssert(tda_info.valid_tda);
+
+    int len[num_beams];
+    for (int i = 0; i < num_beams; i++)
+      len[i] = bw;
+    /* proportional fair scheduling algorithm */
+    int sched = pf_ul(nr_mac, pp_pusch, tda, &tda_info, nr_mac->UE_info.connected_ue_list, max_sched_ues, num_beams, len);
+    //LOG_I(NR_MAC, "run pf_ul() at %4d.%2d with k2 %d (ULSCH at %4d.%2d) scheduled %d\n", frame, slot, k2, next.f, next.s, sched);
+    if (sched == 0)
+      break;
+    max_sched_ues -= sched;
+
+    next = fs_add_delta(fs, 1, next);
+  }
   return true;
 }
 
@@ -2599,12 +2649,6 @@ void nr_schedule_ulsch(module_id_t module_id, frame_t frame, slot_t slot, nfapi_
   ul_dci_req->Slot = slot;
   post_process_pusch_t pusch = { .frame = frame, .slot = slot, .ul_dci_req = ul_dci_req, .pdcch_pdu_coreset = {NULL}, };
 
-  /* Uplink data ONLY can be scheduled when the current slot is downlink slot,
-   * because we have to schedule the DCI0 first before schedule uplink data */
-  if (!is_dl_slot(slot, &nr_mac->frame_structure)) {
-    LOG_D(NR_MAC, "Current slot %d is NOT DL slot, cannot schedule DCI0 for UL data\n", slot);
-    return;
-  }
   bool do_sched = nr_mac->pre_processor_ul(nr_mac, &pusch);
   if (!do_sched)
     return;
