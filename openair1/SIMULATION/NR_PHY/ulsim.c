@@ -1384,7 +1384,7 @@ int main(int argc, char *argv[])
                   1 | log_format);
           }
 
-          LOG_M("rxsigF0_llr.m",
+          LOG_M("rxF_llr.m",
                 "rxsF0_llr",
                 &pusch_vars->llr[0],
                 precod_nbr_layers * (nb_symb_sch - 1) * NR_NB_SC_PER_RB * pusch_pdu->rb_size * mod_order,

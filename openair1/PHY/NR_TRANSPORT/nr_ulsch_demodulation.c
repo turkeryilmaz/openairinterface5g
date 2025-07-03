@@ -986,6 +986,27 @@ static void inner_rx(PHY_VARS_gNB *gNB,
                                 buffer_length,
                                 output_shift);
 
+#define DUMP_PUSCH_BUFF 1
+#if DUMP_PUSCH_BUFF
+  const uint32_t numValidREs = dmrs_symbol_flag ? (rel15_ul->dmrs_config_type == NFAPI_NR_DMRS_TYPE1)
+                                                      ? rel15_ul->rb_size * (12 - 6 * rel15_ul->num_dmrs_cdm_grps_no_data)
+                                                      : rel15_ul->rb_size * (12 - 4 * rel15_ul->num_dmrs_cdm_grps_no_data)
+                                                : 12 * rel15_ul->rb_size;
+  const int decimation = 1;
+  const uint32_t format = 1 | MATLAB_RAW;
+  for (int r = 0; r < nb_rx_ant; r++) {
+    char fName[50];
+    for (int l = 0; l < nb_layer; l++) {
+      snprintf(fName, sizeof(fName), "chestF_ext_l%d_r%d_s%d.m", l, r, symbol);
+      LOG_M(fName, "chest_ext", chFext[l][r], numValidREs, decimation, format);
+      snprintf(fName, sizeof(fName), "rxF_comp_l%d_s%d.m", l, symbol);
+      LOG_M(fName, "rxF_comp", pusch_vars->rxdataF_comp[l * nb_rx_ant] + symbol * buffer_length, numValidREs, decimation, format);
+    }
+    snprintf(fName, sizeof(fName), "rxF_ext_r%d_s%d.m", r, symbol);
+    LOG_M(fName, "rxf_ext", rxFext[r], numValidREs, decimation, format);
+  }
+#endif
+
   if (nb_layer == 1 && rel15_ul->transform_precoding == transformPrecoder_enabled && rel15_ul->qam_mod_order <= 6) {
     if (rel15_ul->qam_mod_order > 2)
       nr_freq_equalization(frame_parms,
