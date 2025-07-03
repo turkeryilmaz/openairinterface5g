@@ -96,11 +96,22 @@ static int du_compare(const nr_rrc_du_container_t *a, const nr_rrc_du_container_
 /* Tree management functions */
 RB_GENERATE/*_STATIC*/(rrc_du_tree, nr_rrc_du_container_t, entries, du_compare);
 
+//static bool rrc_gNB_plmn_matches(const gNB_RRC_INST *rrc, const f1ap_served_cell_info_t *info)
+//{
+//  const gNB_RrcConfigurationReq *conf = &rrc->configuration;
+//  return conf->num_plmn == 1 // F1 supports only one
+//         && conf->plmn[0].mcc == info->plmn.mcc && conf->plmn[0].mnc == info->plmn.mnc;
+//}
 static bool rrc_gNB_plmn_matches(const gNB_RRC_INST *rrc, const f1ap_served_cell_info_t *info)
 {
   const gNB_RrcConfigurationReq *conf = &rrc->configuration;
-  return conf->num_plmn == 1 // F1 supports only one
-         && conf->plmn[0].mcc == info->plmn.mcc && conf->plmn[0].mnc == info->plmn.mnc;
+  for (int i = 0; i < conf->num_plmn; ++i) {
+    if (conf->plmn[i].mcc == info->plmn.mcc &&
+        conf->plmn[i].mnc == info->plmn.mnc) {
+      return true;
+    }
+  }
+  return false;
 }
 
 static bool extract_sys_info(const f1ap_gnb_du_system_info_t *sys_info, NR_MIB_t **mib, NR_SIB1_t **sib1)
