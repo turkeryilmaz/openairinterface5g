@@ -40,13 +40,18 @@
 
 /* \brief Get the UL TDA for given frame and slot. It identifies the index of
  * TDA in the TDA list, as hardcoded in nr_rrc_config_ul_tda(). */
-int get_ul_tda(gNB_MAC_INST *nrmac, int frame, int slot)
+int get_ul_tda(gNB_MAC_INST *nrmac, int frame, int slot, int k2)
 {
   /* we assume that this function is mutex-protected from outside */
   NR_SCHED_ENSURE_LOCKED(&nrmac->sched_lock);
 
   /* there is a mixed slot only when in TDD */
   frame_structure_t *fs = &nrmac->frame_structure;
+
+  /* TODO: we assume currently that all UL TDA have same k2, check below */
+  NR_tda_info_t tda_info = nrmac->ul_tda[0];
+  if (!tda_info.valid_tda || tda_info.k2 != k2)
+    return -1;
 
   if (fs->frame_type == TDD) {
     // if there is uplink symbols in mixed slot
@@ -2550,7 +2555,7 @@ static bool nr_ulsch_preprocessor(gNB_MAC_INST *nr_mac, post_process_pusch_t *pp
   // FAPI cannot handle more than MAX_DCI_CORESET DCIs
   max_sched_ues = min(max_sched_ues, MAX_DCI_CORESET);
 
-  int tda = get_ul_tda(nr_mac, sched_frame, sched_slot);
+  int tda = get_ul_tda(nr_mac, sched_frame, sched_slot, nr_mac->radio_config.minRXTXTIME);
   /* TODO: iterate over all available UL slots if there are more than DL */
   /* the following supposes that the TDA is the same across all BWPs */
   NR_tda_info_t tda_info = nr_mac->ul_tda[tda];

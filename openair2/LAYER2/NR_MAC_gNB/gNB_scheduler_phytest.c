@@ -238,16 +238,11 @@ bool nr_ul_preprocessor_phytest(gNB_MAC_INST *nr_mac, post_process_pusch_t *pp_p
                                                                         sched_ctrl->coreset->controlResourceSetId,
                                                                         sched_ctrl->search_space->searchSpaceType->present,
                                                                         TYPE_C_RNTI_);
-  const int temp_tda = get_ul_tda(nr_mac, frame, slot);
-  if (temp_tda < 0)
-    return false;
-  AssertFatal(temp_tda < tdaList->list.count, "time domain assignment %d >= %d\n", temp_tda, tdaList->list.count);
-  const int mu = ul_bwp->scs;
-  int K2 = get_K2(tdaList, temp_tda, mu, scc);
+  int K2 = nr_mac->radio_config.minRXTXTIME; /* TODO + get_NTN_Koffset(scc); */
   int slots_frame = nr_mac->frame_structure.numb_slots_frame;
   const int sched_frame = (frame + (slot + K2) / slots_frame) % MAX_FRAME_NUMBER;
   const int sched_slot = (slot + K2) % slots_frame;
-  const int tda = get_ul_tda(nr_mac, sched_frame, sched_slot);
+  const int tda = get_ul_tda(nr_mac, sched_frame, sched_slot, K2);
   if (tda < 0)
     return false;
   AssertFatal(tda < tdaList->list.count,
