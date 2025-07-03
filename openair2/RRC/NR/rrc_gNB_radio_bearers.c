@@ -246,6 +246,21 @@ bool rm_pduSession(seq_arr_t *seq, int pdusession_id)
   return true;
 }
 
+/** @brief Find active PDU Session for @param pdusession_id */
+pdusession_t *find_active_pdu_session(gNB_RRC_UE_t *ue_p, int pdusession_id)
+{
+  pdusession_t *pdu = find_pduSession(ue_p->pduSessions_to_addmod, pdusession_id);
+  if (pdu) {
+    LOG_I(NR_RRC, "UE %d: found addmod PDU session %d\n", ue_p->rrc_ue_id, pdusession_id);
+    return pdu;
+  } else {
+    pdu = find_pduSession(ue_p->pduSessions, pdusession_id);
+    LOG_I(NR_RRC, "UE %d: found setup PDU session %d\n", ue_p->rrc_ue_id, pdusession_id);
+    return pdu;
+  }
+  return NULL;
+}
+
 bearer_context_pdcp_config_t set_bearer_context_pdcp_config(const nr_pdcp_configuration_t pdcp, bool um_on_default_drb)
 {
   bearer_context_pdcp_config_t out = {0};

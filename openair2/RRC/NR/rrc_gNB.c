@@ -874,20 +874,15 @@ static void cuup_notify_reestablishment(gNB_RRC_INST *rrc, gNB_RRC_UE_t *ue_p)
     if (!drb)
       continue;
     /* fetch an existing PDU session for this DRB */
-    pdusession_t *pdu = find_pduSession_from_drbId(ue_p, ue_p->pduSessions_to_addmod, drb_id);
+    pdusession_t *pdu = find_active_pdu_session(ue_p, drb->pdusession_id);
     if (pdu == NULL) {
       LOG_E(RRC, "UE %d: E1 Bearer Context Modification: no PDU session for DRB ID %d\n", ue_p->rrc_ue_id, drb_id);
       continue;
     }
     /* Get pointer to existing (or new one) PDU session to modify in E1 */
-    pdu_session_to_mod_t *pdu_e1 = find_or_next_pdu_session(&req, pdu->pdusession_id);
-    AssertError(pdu != NULL,
-                continue,
-                "UE %u: E1 Bearer Context Modification: PDU session %d to setup is null\n",
-                ue_p->rrc_ue_id,
-                pdu->pdusession_id);
+    pdu_session_to_mod_t *pdu_e1 = find_or_next_pdu_session(&req, drb->pdusession_id);
     /* Prepare PDU for E1 Bearear Context Modification Request */
-    pdu_e1->sessionId = pdu->pdusession_id;
+    pdu_e1->sessionId = drb->pdusession_id;
     /* Fill DRB to setup with ID, DL TL and DL TEID */
     DRB_nGRAN_to_mod_t *drb_e1 = &pdu_e1->DRBnGRanModList[pdu_e1->numDRB2Modify];
     drb_e1->id = drb_id;
@@ -2494,7 +2489,7 @@ void rrc_gNB_process_e1_bearer_context_setup_failure(e1ap_bearer_context_setup_f
 /**
  * @brief E1AP Bearer Context Modification Response processing on CU-CP
  */
-void rrc_gNB_process_e1_bearer_context_modif_resp(const e1ap_bearer_modif_resp_t *resp)
+void rrc_gNB_process_e1_bearer_context_modif_resp(const e1ap_bearer_modif_resp_t *resp) // here
 {
   gNB_RRC_INST *rrc = RC.nrrrc[0];
   rrc_gNB_ue_context_t *ue_context_p = rrc_gNB_get_ue_context(rrc, resp->gNB_cu_cp_ue_id);
