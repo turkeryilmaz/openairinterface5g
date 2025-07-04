@@ -302,9 +302,7 @@ bool trigger_bearer_setup(gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE, int n, pdusession
 
     /* we assume for the moment one DRB per PDU session. Activate the bearer,
      * and configure in RRC. */
-    int drb_id = get_next_available_drb_id(UE);
     drb_t *rrc_drb = generateDRB(UE,
-                                 drb_id,
                                  session,
                                  rrc->configuration.enable_sdap,
                                  rrc->security.do_drb_integrity,
