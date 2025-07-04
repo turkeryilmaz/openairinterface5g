@@ -127,6 +127,7 @@ void rrc_gNB_free_mem_ue_context(rrc_gNB_ue_context_t *const ue_context_pP)
 {
   LOG_T(NR_RRC, " Clearing UE context 0x%p (free internal structs)\n", ue_context_pP);
   seq_arr_free(&ue_context_pP->ue_context.pduSessions, free_pdusession);
+  seq_arr_free(&ue_context_pP->ue_context.drbs, free_drb);
   free(ue_context_pP);
 }
 
@@ -212,6 +213,8 @@ rrc_gNB_ue_context_t *rrc_gNB_create_ue_context(sctp_assoc_t assoc_id,
 
   // Initialise setup PDU Sessions list
   seq_arr_init(&ue->pduSessions, sizeof(rrc_pdu_session_param_t));
+  // Initialise setup DRBs list
+  seq_arr_init(&ue->drbs, sizeof(drb_t));
 
   RB_INSERT(rrc_nr_ue_tree_s, &rrc_instance_pP->rrc_ue_head, ue_context_p);
   LOG_UE_EVENT(ue,
