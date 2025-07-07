@@ -1008,6 +1008,7 @@ static bool get_feasible_msg3_tda(const NR_ServingCellConfigCommon_t *scc,
   const int NTN_gNB_Koffset = get_NTN_Koffset(scc);
 
   int slots_per_frame = fs->numb_slots_frame;
+  /* TODO use scheduler-local TDA list, make it a seq_arr */
   for (int i = 0; i < tda_list->list.count; i++) {
     // check if it is UL
     long k2 = *tda_list->list.array[i]->k2 + NTN_gNB_Koffset;
@@ -1017,18 +1018,11 @@ static bool get_feasible_msg3_tda(const NR_ServingCellConfigCommon_t *scc,
     if (fs->frame_type == TDD && !is_ul_slot(temp_slot, fs))
       continue;
 
-    const tdd_bitmap_t *tdd_slot_bitmap = fs->period_cfg.tdd_slot_bitmap;
     int s = get_slot_idx_in_period(temp_slot, fs);
-    // check if enough symbols in case of mixed slot
+    const tdd_bitmap_t *bm = &fs->period_cfg.tdd_slot_bitmap[s];
     bool is_mixed = is_mixed_slot(s, fs);
-    // if the mixed slot has not enough symbols, skip
-    if (is_mixed && tdd_slot_bitmap[s].num_ul_symbols < 3)
-      continue;
-
-    uint16_t slot_mask =
-        is_mixed ? SL_to_bitmap(NR_NUMBER_OF_SYMBOLS_PER_SLOT - tdd_slot_bitmap[s].num_ul_symbols,
-                                tdd_slot_bitmap[s].num_ul_symbols)
-                 : 0x3fff;
+    /* TODO create functions to get masks from frame_structure_t */
+    uint16_t slot_mask = is_mixed ? SL_to_bitmap(NR_NUMBER_OF_SYMBOLS_PER_SLOT - bm->num_ul_symbols, bm->num_ul_symbols) : 0x3fff;
     long startSymbolAndLength = tda_list->list.array[i]->startSymbolAndLength;
     int start, nr;
     SLIV2SL(startSymbolAndLength, &start, &nr);
