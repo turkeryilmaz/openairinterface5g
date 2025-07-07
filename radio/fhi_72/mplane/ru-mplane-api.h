@@ -82,12 +82,25 @@ typedef struct {
 } ru_mplane_config_t;
 
 typedef struct {
+  // activation if required at start-up timing
+  bool start_up_timing;
+
+  size_t rx_num;
+  char **rx_window_meas;
+
+  size_t tx_num;
+  char **tx_meas;
+
+} pm_stats_t;
+
+typedef struct {
   char *ru_ip_add;
   ru_mplane_config_t ru_mplane_config;
   void *session;
   void *ctx;
   xran_mplane_t xran_mplane;
   ru_notif_t ru_notif;
+  pm_stats_t pm_stats;
 
 } ru_session_t;
 
@@ -101,5 +114,7 @@ typedef struct {
 bool get_config_for_xran(const char *buffer, const int max_num_ant, xran_mplane_t *xran_mplane);
 
 bool get_uplane_info(const char *buffer, ru_mplane_config_t *ru_mplane_config);
+
+bool get_pm_object_list(const char *buffer, pm_stats_t *pm_stats);
 
 #endif /* RU_MPLANE_API_H */

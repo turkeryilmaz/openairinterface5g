@@ -67,8 +67,9 @@ static void find_ru_xml_list(xmlNode *node, const char *filter, char ***match_li
     if (strcmp((const char *)cur_node->name, filter) == 0) {
       xmlNode *name_node = NULL;
 
+      const char *name_node_str = (const char *)cur_node2->name;
       for (xmlNode *cur_node2 = cur_node->children; cur_node2; cur_node2 = cur_node2->next) {
-        if (cur_node2->type == XML_ELEMENT_NODE && strcmp((const char *)cur_node2->name, "name") == 0) {
+        if (cur_node2->type == XML_ELEMENT_NODE && (strcmp(name_node_str, "name") == 0 || strcmp(name_node_str, "measurement-object") == 0)) {
           name_node = cur_node2;
           break;
         }
