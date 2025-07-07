@@ -39,6 +39,8 @@
 #include <arpa/inet.h>
 #include "E1AP_ConfidentialityProtectionIndication.h"
 #include "E1AP_IntegrityProtectionIndication.h"
+#include "E1AP_RLC-Mode.h"
+#include "NR_PDCP-Config.h"
 #include "NGAP_CauseRadioNetwork.h"
 #include "NGAP_Dynamic5QIDescriptor.h"
 #include "NGAP_GTPTunnel.h"
@@ -241,6 +243,40 @@ void rrc_gNB_send_NGAP_NAS_FIRST_REQ(gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE, NR_RRC
   itti_send_msg_to_task(TASK_NGAP, rrc->module_id, message_p);
 }
 
+/** @brief Returns an instance of E1AP DRB To Setup List */
+static DRB_nGRAN_to_setup_t fill_drb_ngran_tosetup(const drb_t *rrc_drb, const pdusession_t *session, const gNB_RRC_INST *rrc)
+{
+  DRB_nGRAN_to_setup_t drb_ngran = {0};
+  drb_ngran.id = rrc_drb->drb_id;
+
+  drb_ngran.sdap_config.defaultDRB = true;
+  drb_ngran.sdap_config.sDAP_Header_UL = rrc->configuration.enable_sdap ? 0 : 1;
+  drb_ngran.sdap_config.sDAP_Header_DL = rrc->configuration.enable_sdap ? 0 : 1;
+
+  drb_ngran.pdcp_config = set_bearer_context_pdcp_config(rrc->pdcp_config, rrc->configuration.um_on_default_drb);
+
+  drb_ngran.numCellGroups = 1;
+  for (int k = 0; k < drb_ngran.numCellGroups; k++) {
+    drb_ngran.cellGroupList[k] = MCG; // 1 cellGroup only
+  }
+
+  drb_ngran.numQosFlow2Setup = session->nb_qos;
+  for (int k = 0; k < drb_ngran.numQosFlow2Setup; k++) {
+    qos_flow_to_setup_t *qos_flow = &drb_ngran.qosFlows[k];
+    qos_flow->qfi = session->qos[k].qfi;
+    qos_flow->qos_params.alloc_reten_priority.preemption_capability = session->qos[k].allocation_retention_priority.pre_emp_capability;
+    qos_flow->qos_params.alloc_reten_priority.preemption_vulnerability = session->qos[k].allocation_retention_priority.pre_emp_vulnerability;
+    qos_flow->qos_params.alloc_reten_priority.priority_level = session->qos[k].allocation_retention_priority.priority_level;
+    if (session->qos[k].fiveQI_type == NON_DYNAMIC)
+      qos_flow->qos_params.qos_characteristics.non_dynamic.fiveqi = session->qos[k].fiveQI;
+    else
+      qos_flow->qos_params.qos_characteristics.dynamic.fiveqi = session->qos[k].fiveQI;
+    // dyn/nondynamic missing fields
+  }
+
+  return drb_ngran;
+}
+
 /**
  * @brief Triggers bearer setup for the specified UE.
  *
@@ -300,58 +336,15 @@ bool trigger_bearer_setup(gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE, int n, pdusession
     inet_ntop(AF_INET, n3_incoming->addr.buffer, ip_str, sizeof(ip_str));
     LOG_I(NR_RRC, "Bearer Context Setup: PDU Session ID=%d, incoming TEID=0x%08x, Addr=%s\n", session->pdusession_id, n3_incoming->teid, ip_str);
 
-    /* we assume for the moment one DRB per PDU session. Activate the bearer,
-     * and configure in RRC. */
-    drb_t *rrc_drb = generateDRB(UE,
-                                 session,
-                                 rrc->configuration.enable_sdap,
-                                 rrc->security.do_drb_integrity,
-                                 rrc->security.do_drb_ciphering,
-                                 &rrc->pdcp_config);
-
     pdu->numDRB2Setup = 1; // One DRB per PDU Session. TODO: Remove hardcoding
-    for (int j=0; j < pdu->numDRB2Setup; j++) {
-      DRB_nGRAN_to_setup_t *drb = pdu->DRBnGRanList + j;
-
-      drb->id = rrc_drb->drb_id;
-      /* SDAP */
-      struct sdap_config_s *sdap_config = &rrc_drb->cnAssociation.sdap_config;
-      drb->sdap_config.defaultDRB = sdap_config->defaultDRB;
-      drb->sdap_config.sDAP_Header_UL = sdap_config->sdap_HeaderUL;
-      drb->sdap_config.sDAP_Header_DL = sdap_config->sdap_HeaderDL;
-      /* PDCP */
-      set_bearer_context_pdcp_config(&drb->pdcp_config, rrc_drb, rrc->configuration.um_on_default_drb);
-
-      drb->numCellGroups = 1; // assume one cell group associated with a DRB
-
-      // Set all Cell Group IDs to MCG
-      for (int k=0; k < drb->numCellGroups; k++) {
-        cell_group_id_t *cellGroup = drb->cellGroupList + k;
-        *cellGroup = MCG;
+    for (int j = 0; j < pdu->numDRB2Setup; j++) {
+      drb_t *rrc_drb = nr_rrc_add_drb(&UE->drbs, session->pdusession_id); // consider &rrc->pdcp_config);
+      if (!rrc_drb) {
+        LOG_E(NR_RRC, "UE %d: failed to add DRB for PDU session ID %d\n", UE->rrc_ue_id, session->pdusession_id);
+        return false;
       }
-
-      drb->numQosFlow2Setup = session->nb_qos;
-      for (int k=0; k < drb->numQosFlow2Setup; k++) {
-        qos_flow_to_setup_t *qos_flow = drb->qosFlows + k;
-        pdusession_level_qos_parameter_t *qos_session = session->qos + k;
-
-        qos_characteristics_t *qos_char = &qos_flow->qos_params.qos_characteristics;
-        qos_flow->qfi = qos_session->qfi;
-        qos_char->qos_type = qos_session->fiveQI_type;
-        if (qos_char->qos_type == DYNAMIC) {
-          qos_char->dynamic.fiveqi = qos_session->fiveQI;
-          qos_char->dynamic.qos_priority_level = qos_session->qos_priority;
-        } else {
-          qos_char->non_dynamic.fiveqi = qos_session->fiveQI;
-          qos_char->non_dynamic.qos_priority_level = qos_session->qos_priority;
-        }
-
-        ngran_allocation_retention_priority_t *rent_priority = &qos_flow->qos_params.alloc_reten_priority;
-        ngap_allocation_retention_priority_t *rent_priority_in = &qos_session->allocation_retention_priority;
-        rent_priority->priority_level = rent_priority_in->priority_level;
-        rent_priority->preemption_capability = rent_priority_in->pre_emp_capability;
-        rent_priority->preemption_vulnerability = rent_priority_in->pre_emp_vulnerability;
-      }
+      LOG_I(NR_RRC, "UE %d: added DRB %d for PDU session ID %d\n", UE->rrc_ue_id, rrc_drb->drb_id, rrc_drb->pdusession_id);
+      pdu->DRBnGRanList[0] = fill_drb_ngran_tosetup(rrc_drb, session, rrc);
     }
   }
   /* Limitation: we assume one fixed CU-UP per UE. We base the selection on

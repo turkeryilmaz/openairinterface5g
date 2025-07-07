@@ -79,7 +79,7 @@ static int fill_drb_to_be_setup(const gNB_RRC_INST *rrc, gNB_RRC_UE_t *ue, f1ap_
     // for the moment, we only support one QoS flow. Put a reminder in case
     // this changes
     AssertFatal(pdu->param.nb_qos == 1, "only 1 Qos flow supported\n");
-    int qfi = rrc_drb->cnAssociation.sdap_config.mappedQoS_FlowsToAdd[0];
+    int qfi = pdu->param.qos[0].qfi;
     pdusession_level_qos_parameter_t *qos_param = get_qos_characteristics(qfi, &pdu->param);
 
     drb->id = rrc_drb->drb_id;
@@ -99,10 +99,11 @@ static int fill_drb_to_be_setup(const gNB_RRC_INST *rrc, gNB_RRC_UE_t *ue, f1ap_
     drb->up_ul_tnl_len = 1;
 
     drb->rlc_mode = rrc->configuration.um_on_default_drb ? F1AP_RLC_MODE_UM_BIDIR : F1AP_RLC_MODE_AM;
+    DevAssert(rrc->pdcp_config.drb.sn_size == 18 || rrc->pdcp_config.drb.sn_size == 12);
     drb->dl_pdcp_sn_len = malloc_or_fail(sizeof(*drb->dl_pdcp_sn_len));
-    *drb->dl_pdcp_sn_len = rrc_drb->pdcp_config.pdcp_SN_SizeDL == 1 ? F1AP_PDCP_SN_18B : F1AP_PDCP_SN_12B;
+    *drb->dl_pdcp_sn_len = rrc->pdcp_config.drb.sn_size == 18 ? F1AP_PDCP_SN_18B : F1AP_PDCP_SN_12B;
     drb->ul_pdcp_sn_len = malloc_or_fail(sizeof(*drb->ul_pdcp_sn_len));
-    *drb->ul_pdcp_sn_len = rrc_drb->pdcp_config.pdcp_SN_SizeUL == 1 ? F1AP_PDCP_SN_18B : F1AP_PDCP_SN_12B;;
+    *drb->ul_pdcp_sn_len = rrc->pdcp_config.drb.sn_size == 18 ? F1AP_PDCP_SN_18B : F1AP_PDCP_SN_12B;
   }
   return nb_drb;
 }
