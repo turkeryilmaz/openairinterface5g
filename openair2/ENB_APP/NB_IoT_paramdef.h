@@ -34,14 +34,14 @@
 #define __ENB_APP_NB_IOT_PARAMDEF__H__
 
 #include "common/config/config_paramdesc.h"
-#include "SystemInformationBlockType2.h"
-#include "DL-GapConfig-NB-r13.h"
-#include "NPRACH-Parameters-NB-r13.h"
-#include "PowerRampingParameters.h"		  
-#include "BCCH-Config-NB-r13.h"
-#include "PCCH-Config-NB-r13.h"
-#include "ACK-NACK-NumRepetitions-NB-r13.h"
-#include "TDD-Config.h"
+#include "LTE_SystemInformationBlockType2.h"
+#include "LTE_DL-GapConfig-NB-r13.h"
+#include "LTE_NPRACH-Parameters-NB-r13.h"
+#include "LTE_PowerRampingParameters.h"		  
+#include "LTE_BCCH-Config-NB-r13.h"
+#include "LTE_PCCH-Config-NB-r13.h"
+#include "LTE_ACK-NACK-NumRepetitions-NB-r13.h"
+#include "LTE_TDD-Config.h"
 
 
 
@@ -105,55 +105,55 @@
 
 
 #define RACH_RARESPONSEWINDOWSIZE_NB_OKVALUES                   {20,50,80,120,180,240,320,400}
-#define PREF1(A)                                                 RACH_CE_LevelInfo_r13__ra_ResponseWindowSize_r13_ ## A
+#define PREF1(A)                                                 LTE_RACH_CE_LevelInfo_r13__ra_ResponseWindowSize_r13_ ## A
 #define RACH_RARESPONSEWINDOWSIZE_NB_MODVALUES                  { PREF1(sf20),PREF1(sf50),PREF1(sf80),PREF1(sf120),    \
                                                                   PREF1(sf180),PREF1(sf240),PREF1(sf320),PREF1(sf400) }
 
 
 #define RACH_MACCONTENTIONRESOLUTIONTIMER_NB_OKVALUES           {80,100,120,160,200,240,480,960} 
-#define PREF2(A)                                                 RACH_CE_LevelInfo_r13__mac_ContentionResolutionTimer_r13_ ## A 
+#define PREF2(A)                                                 LTE_RACH_CE_LevelInfo_r13__mac_ContentionResolutionTimer_r13_ ## A 
 #define RACH_MACCONTENTIONRESOLUTIONTIMER_NB_MODVALUES          { PREF2(sf80),PREF2(sf100),PREF2(sf120),PREF2(sf160),    \
                                                                   PREF2(sf200),PREF2(sf240),PREF2(sf480),PREF2(sf960) }
 
 
 #define RACH_POWERRAMPINGSTEP_NB_OKVALUES                       {0,2,4,6}
-#define PREF3(A)                                                 PowerRampingParameters__powerRampingStep_ ## A
+#define PREF3(A)                                                 LTE_PowerRampingParameters__powerRampingStep_ ## A
 #define RACH_POWERRAMPINGSTEP_NB_MODVALUES                      { PREF3(dB0),PREF3(dB2),PREF3(dB4),PREF3(dB6) }
 
 
 #define RACH_PREAMBLEINITIALRECEIVEDTARGETPOWER_NB_OKRANGE      {-120, -90}
 
 #define RACH_PREAMBLETRANSMAX_CE_NB_OKVALUES                    {3,4,5,6,7,8,10,20,50,100,200}
-#define PREF4(A)                                                PreambleTransMax_ ## A 
+#define PREF4(A)                                                LTE_PreambleTransMax_ ## A 
 #define RACH_PREAMBLETRANSMAX_CE_NB_MODVALUES                   { PREF4(n3), PREF4(n4), PREF4(n5), PREF4(n6),  PREF4(n7), PREF4(n8), \
                                                                   PREF4(n10),PREF4(n20),PREF4(n50),PREF4(n100),PREF4(n200) }
 
 #define BCCH_MODIFICATIONPERIODCOEFF_NB_OKVALUES                {16,32,64,128}
-#define PREF5(A)                                                BCCH_Config_NB_r13__modificationPeriodCoeff_r13_ ## A 
+#define PREF5(A)                                                LTE_BCCH_Config_NB_r13__modificationPeriodCoeff_r13_ ## A 
 #define BCCH_MODIFICATIONPERIODCOEFF_NB_MODVALUES              { PREF5(n16), PREF5(n32), PREF5(n64),PREF5(n128) }
 
 #define PCCH_DEFAULTPAGINGCYCLE_NB_OKVALUES                     {128,256,512,1024}
-#define PREF6(A)                                                PCCH_Config_NB_r13__defaultPagingCycle_r13_ ## A 
+#define PREF6(A)                                                LTE_PCCH_Config_NB_r13__defaultPagingCycle_r13_ ## A 
 #define PCCH_DEFAULTPAGINGCYCLE_NB_MODVALUES                    { PREF6(rf128), PREF6(rf256), PREF6(rf512), PREF6(rf1024) }
 
 #define NPRACH_CP_LENGTH_OKVALUES                               {0,1}
 #define NPRACH_RSRP_RANGE_OKVALUES                              {0,96}
 
 #define MSG3RANGESTART_OKVALUES                                 {"zero","oneThird","twoThird","one"}
-#define MSG3RANGESTART_MODVALUES {NPRACH_Parameters_NB_r13__nprach_SubcarrierMSG3_RangeStart_r13_zero,     NPRACH_Parameters_NB_r13__nprach_SubcarrierMSG3_RangeStart_r13_oneThird, \
-                                  NPRACH_Parameters_NB_r13__nprach_SubcarrierMSG3_RangeStart_r13_twoThird, NPRACH_Parameters_NB_r13__nprach_SubcarrierMSG3_RangeStart_r13_one}
+#define MSG3RANGESTART_MODVALUES {LTE_NPRACH_Parameters_NB_r13__nprach_SubcarrierMSG3_RangeStart_r13_zero,     LTE_NPRACH_Parameters_NB_r13__nprach_SubcarrierMSG3_RangeStart_r13_oneThird, \
+                                  LTE_NPRACH_Parameters_NB_r13__nprach_SubcarrierMSG3_RangeStart_r13_twoThird, LTE_NPRACH_Parameters_NB_r13__nprach_SubcarrierMSG3_RangeStart_r13_one}
 
 
 #define MAXNUMPREAMBLEATTEMPTCE_OKVALUES    {3,4,5,6,7,8,10}
-#define MAXNUMPREAMBLEATTEMPTCE_MODVALUES   {  NPRACH_Parameters_NB_r13__maxNumPreambleAttemptCE_r13_n3, NPRACH_Parameters_NB_r13__maxNumPreambleAttemptCE_r13_n4, \
-                                               NPRACH_Parameters_NB_r13__maxNumPreambleAttemptCE_r13_n5, NPRACH_Parameters_NB_r13__maxNumPreambleAttemptCE_r13_n6, \
-                                               NPRACH_Parameters_NB_r13__maxNumPreambleAttemptCE_r13_n7, NPRACH_Parameters_NB_r13__maxNumPreambleAttemptCE_r13_n8, \
-                                               NPRACH_Parameters_NB_r13__maxNumPreambleAttemptCE_r13_n10 }
+#define MAXNUMPREAMBLEATTEMPTCE_MODVALUES   {  LTE_NPRACH_Parameters_NB_r13__maxNumPreambleAttemptCE_r13_n3, LTE_NPRACH_Parameters_NB_r13__maxNumPreambleAttemptCE_r13_n4, \
+                                               LTE_NPRACH_Parameters_NB_r13__maxNumPreambleAttemptCE_r13_n5, LTE_NPRACH_Parameters_NB_r13__maxNumPreambleAttemptCE_r13_n6, \
+                                               LTE_NPRACH_Parameters_NB_r13__maxNumPreambleAttemptCE_r13_n7, LTE_NPRACH_Parameters_NB_r13__maxNumPreambleAttemptCE_r13_n8, \
+                                               LTE_NPRACH_Parameters_NB_r13__maxNumPreambleAttemptCE_r13_n10 }
 
 #define NPDSCH_NRS_POWER_OKRANGE                                {-60,50}
 
 #define NPUSCH_ACK_NACK_NUMREPETITIONS_NB_OKVALUES              {1,2,4,8,16,32,64,128}
-#define PREF9(A)                                                ACK_NACK_NumRepetitions_NB_r13_ ## A 
+#define PREF9(A)                                                LTE_ACK_NACK_NumRepetitions_NB_r13_ ## A 
 #define NPUSCH_ACK_NACK_NUMREPETITIONS_NB_MODVALUES             { PREF9(r1),   PREF9(r2),   PREF9(r4),   PREF9(r8), \
                                                                   PREF9(r16),  PREF9(r32),  PREF9(r64),  PREF9(r128) }
 
@@ -167,28 +167,62 @@
 #define NPUSCH_GROUPASSIGNMENTNPUSCH_R13_OKRANGE                {0,29}
 
 #define DLGAPTHRESHOLD_OKVALUES	       {32,64,128,256}
-#define DLGAPTHRESHOLD_MODVALUES       { DL_GapConfig_NB_r13__dl_GapThreshold_r13_n32,  DL_GapConfig_NB_r13__dl_GapThreshold_r13_n64,  \
-                                         DL_GapConfig_NB_r13__dl_GapThreshold_r13_n128, DL_GapConfig_NB_r13__dl_GapThreshold_r13_n256} \
+#define DLGAPTHRESHOLD_MODVALUES       { LTE_DL_GapConfig_NB_r13__dl_GapThreshold_r13_n32,  LTE_DL_GapConfig_NB_r13__dl_GapThreshold_r13_n64,  \
+                                         LTE_DL_GapConfig_NB_r13__dl_GapThreshold_r13_n128, LTE_DL_GapConfig_NB_r13__dl_GapThreshold_r13_n256} \
 
 #define DLGAPPERIODICITY_OKVALUES      {64,128,256,512}
-#define DLGAPPERIODICITY_MODVALUES     { DL_GapConfig_NB_r13__dl_GapPeriodicity_r13_sf64, DL_GapConfig_NB_r13__dl_GapPeriodicity_r13_sf128, \
-          		 	       DL_GapConfig_NB_r13__dl_GapPeriodicity_r13_sf256,DL_GapConfig_NB_r13__dl_GapPeriodicity_r13_sf512}
+#define DLGAPPERIODICITY_MODVALUES     { LTE_DL_GapConfig_NB_r13__dl_GapPeriodicity_r13_sf64, LTE_DL_GapConfig_NB_r13__dl_GapPeriodicity_r13_sf128, \
+          		 	       LTE_DL_GapConfig_NB_r13__dl_GapPeriodicity_r13_sf256, LTE_DL_GapConfig_NB_r13__dl_GapPeriodicity_r13_sf512}
 
 #define DLGAPDURATION_OKVALUES         {"oneEighth","oneFourth","threeEighth","oneHalf"}
-#define DLGAPDURATION_MODVALUES        {DL_GapConfig_NB_r13__dl_GapDurationCoeff_r13_oneEighth,   DL_GapConfig_NB_r13__dl_GapDurationCoeff_r13_oneFourth, \
-                                        DL_GapConfig_NB_r13__dl_GapDurationCoeff_r13_threeEighth, DL_GapConfig_NB_r13__dl_GapDurationCoeff_r13_oneHalf}
+#define DLGAPDURATION_MODVALUES        {LTE_DL_GapConfig_NB_r13__dl_GapDurationCoeff_r13_oneEighth,   LTE_DL_GapConfig_NB_r13__dl_GapDurationCoeff_r13_oneFourth, \
+                                        LTE_DL_GapConfig_NB_r13__dl_GapDurationCoeff_r13_threeEighth, LTE_DL_GapConfig_NB_r13__dl_GapDurationCoeff_r13_oneHalf}
 
 #define NPUSCH_P0_NOMINALNPUSCH_OKRANGE                         {-126,24}
 
 #define NPUSCH_ALPHA_OKVALUES                                    {"AL0","AL04","AL05","AL06","AL07","AL08","AL09","AL1"} 
-#define NPUSCH_ALPHA_MODVALUES                                   { Alpha_r12_al0, Alpha_r12_al04,  Alpha_r12_al05,  Alpha_r12_al06, \
-                                                                   Alpha_r12_al07, Alpha_r12_al08,  Alpha_r12_al09,  Alpha_r12_al1}
+#define NPUSCH_ALPHA_MODVALUES                                   { LTE_Alpha_r12_al0, LTE_Alpha_r12_al04,  LTE_Alpha_r12_al05,  LTE_Alpha_r12_al06, \
+                                                                   LTE_Alpha_r12_al07, LTE_Alpha_r12_al08,  LTE_Alpha_r12_al09,  LTE_Alpha_r12_al1}
 
 #define DELTAPREAMBLEMSG3_OKRANGE                               {-1,6}	
 
 
 
+#define NBIOT_RRCPARAMS_CHECK_DESC_0_14 { \
+             { .s1a= { config_check_modify_integer,     RACH_RARESPONSEWINDOWSIZE_NB_OKVALUES,          RACH_RARESPONSEWINDOWSIZE_NB_MODVALUES,          8}}, 	 \
+             { .s1a= { config_check_modify_integer,     RACH_MACCONTENTIONRESOLUTIONTIMER_NB_OKVALUES,  RACH_MACCONTENTIONRESOLUTIONTIMER_NB_MODVALUES,  8}},	 \
+             { .s1a= { config_check_modify_integer,     RACH_POWERRAMPINGSTEP_NB_OKVALUES,              RACH_POWERRAMPINGSTEP_NB_MODVALUES,              4}} ,    \
+             { .s2=  { config_check_intrange,           RACH_PREAMBLEINITIALRECEIVEDTARGETPOWER_NB_OKRANGE}},   	    	  \
+             { .s1a= { config_check_modify_integer,     RACH_PREAMBLETRANSMAX_CE_NB_OKVALUES,           RACH_PREAMBLETRANSMAX_CE_NB_MODVALUES,          11}} ,    \
+             { .s1a= { config_check_modify_integer,     BCCH_MODIFICATIONPERIODCOEFF_NB_OKVALUES,       BCCH_MODIFICATIONPERIODCOEFF_NB_MODVALUES,       4}} ,    \
+             { .s1a= { config_check_modify_integer,     PCCH_DEFAULTPAGINGCYCLE_NB_OKVALUES,            PCCH_DEFAULTPAGINGCYCLE_NB_MODVALUES,            4}} ,    \
+             { .s1=  { NULL,		           NPRACH_CP_LENGTH_OKVALUES ,4}} ,			     	    	  \
+             { .s2=  { config_check_intrange,	        NPRACH_RSRP_RANGE_OKVALUES}} ,			     	    	  \
+             { .s3a= { config_checkstr_assign_integer,  MSG3RANGESTART_OKVALUES,                        MSG3RANGESTART_MODVALUES,                       4}} ,    \
+             { .s1a= { config_check_modify_integer,     MAXNUMPREAMBLEATTEMPTCE_OKVALUES,               MAXNUMPREAMBLEATTEMPTCE_MODVALUES,              7}} ,    \
+             { .s1=  { config_check_intval,             NPDSCH_NRS_POWER_OKRANGE,4}} ,			     	     	  \
+             { .s1a= { config_check_modify_integer,     NPUSCH_ACK_NACK_NUMREPETITIONS_NB_OKVALUES,     NPUSCH_ACK_NACK_NUMREPETITIONS_NB_MODVALUES,    8}} ,    \
+             { .s2=  { config_check_intrange,           NPUSCH_SRS_SUBFRAMECONFIG_NB_OKRANGE}} , 	             	     	  \
+}
 
+#define NBIOT_RRCPARAMS_CHECK_DESC_15_end { \
+             { .s2=  { config_check_intrange,           NPUSCH_THREETONE_CYCLICSHIFT_R13_OKRANGE}} ,	     	     	  \
+             { .s2=  { config_check_intrange,           NPUSCH_SIXTONE_CYCLICSHIFT_R13_OKRANGE}} ,	             	     	  \
+             { .s3a= { config_checkstr_assign_integer,  NPUSCH_GROUPHOPPINGENABLED_OKVALUES,          NPUSCH_GROUPHOPPINGENABLED_MODVALUES,            2}} ,    \
+             { .s2=  { config_check_intrange,           NPUSCH_GROUPASSIGNMENTNPUSCH_R13_OKRANGE}} ,	     	     	  \
+             { .s1a= { config_check_modify_integer,     DLGAPTHRESHOLD_OKVALUES,                       DLGAPTHRESHOLD_MODVALUES,                        4}} ,    \
+             { .s1a= { config_check_modify_integer,     DLGAPPERIODICITY_OKVALUES,                     DLGAPPERIODICITY_MODVALUES,                      4}} ,    \
+             { .s3a= { config_checkstr_assign_integer,  DLGAPDURATION_OKVALUES,                        DLGAPDURATION_MODVALUES ,                        4}} ,    \
+             { .s2=  { config_check_intrange,           NPUSCH_P0_NOMINALNPUSCH_OKRANGE}} ,		     	     	  \
+             { .s3a= { config_checkstr_assign_integer,  NPUSCH_ALPHA_OKVALUES,                        NPUSCH_ALPHA_MODVALUES,                          8}} ,    \
+             { .s2=  { config_check_intrange,           DELTAPREAMBLEMSG3_OKRANGE}} ,			     	     	  \
+             { .s1a= { config_check_modify_integer,    UETIMER_T300_OKVALUES, UETIMER_T300_MODVALUES,8}} ,	     \
+             { .s1a= { config_check_modify_integer,    UETIMER_T301_OKVALUES, UETIMER_T301_MODVALUES,8}} ,	     \
+             { .s1a= { config_check_modify_integer,    UETIMER_T310_OKVALUES, UETIMER_T310_MODVALUES,7}} ,	     \
+             { .s1a= { config_check_modify_integer,    UETIMER_T311_OKVALUES, UETIMER_T311_MODVALUES,7}} ,	     \
+             { .s1a= { config_check_modify_integer,    UETIMER_N310_OKVALUES, UETIMER_N310_MODVALUES,8}} ,	     \
+             { .s1a= { config_check_modify_integer,    UETIMER_N311_OKVALUES, UETIMER_N311_MODVALUES,8}} ,	     \
+}
 
 #define NBIOT_RRCPARAMS_CHECK_DESC { \
              { .s1a= { config_check_modify_integer,     RACH_RARESPONSEWINDOWSIZE_NB_OKVALUES,          RACH_RARESPONSEWINDOWSIZE_NB_MODVALUES,          8}}, 	 \
@@ -308,51 +342,51 @@
 
 
 #define  NPRACH_PERIODICITY_OKVALUES   {40,80,160,240,320,640,1280,2560}
-#define  NPRACH_PERIODICITY_MODVALUES  { NPRACH_Parameters_NB_r13__nprach_Periodicity_r13_ms40,   NPRACH_Parameters_NB_r13__nprach_Periodicity_r13_ms80,  \
-                                         NPRACH_Parameters_NB_r13__nprach_Periodicity_r13_ms160,  NPRACH_Parameters_NB_r13__nprach_Periodicity_r13_ms240, \
-                                         NPRACH_Parameters_NB_r13__nprach_Periodicity_r13_ms320,  NPRACH_Parameters_NB_r13__nprach_Periodicity_r13_ms640, \
-                                         NPRACH_Parameters_NB_r13__nprach_Periodicity_r13_ms1280, NPRACH_Parameters_NB_r13__nprach_Periodicity_r13_ms2560 }
+#define  NPRACH_PERIODICITY_MODVALUES  { LTE_NPRACH_Parameters_NB_r13__nprach_Periodicity_r13_ms40,   LTE_NPRACH_Parameters_NB_r13__nprach_Periodicity_r13_ms80,  \
+                                         LTE_NPRACH_Parameters_NB_r13__nprach_Periodicity_r13_ms160,  LTE_NPRACH_Parameters_NB_r13__nprach_Periodicity_r13_ms240, \
+                                         LTE_NPRACH_Parameters_NB_r13__nprach_Periodicity_r13_ms320,  LTE_NPRACH_Parameters_NB_r13__nprach_Periodicity_r13_ms640, \
+                                         LTE_NPRACH_Parameters_NB_r13__nprach_Periodicity_r13_ms1280, LTE_NPRACH_Parameters_NB_r13__nprach_Periodicity_r13_ms2560 }
 
 #define  NPRACH_STARTTIME_OKVALUES   {8,16,32,64,128,256,512,1024}
-#define  NPRACH_STARTTIME_MODVALUES  {  NPRACH_Parameters_NB_r13__nprach_StartTime_r13_ms8,   NPRACH_Parameters_NB_r13__nprach_StartTime_r13_ms16,        \
-                                        NPRACH_Parameters_NB_r13__nprach_StartTime_r13_ms32,  NPRACH_Parameters_NB_r13__nprach_StartTime_r13_ms64,        \
-                                        NPRACH_Parameters_NB_r13__nprach_StartTime_r13_ms128, NPRACH_Parameters_NB_r13__nprach_StartTime_r13_ms256,       \
-                                        NPRACH_Parameters_NB_r13__nprach_StartTime_r13_ms512, NPRACH_Parameters_NB_r13__nprach_StartTime_r13_ms1024 }
+#define  NPRACH_STARTTIME_MODVALUES  {  LTE_NPRACH_Parameters_NB_r13__nprach_StartTime_r13_ms8,   LTE_NPRACH_Parameters_NB_r13__nprach_StartTime_r13_ms16,        \
+                                        LTE_NPRACH_Parameters_NB_r13__nprach_StartTime_r13_ms32,  LTE_NPRACH_Parameters_NB_r13__nprach_StartTime_r13_ms64,        \
+                                        LTE_NPRACH_Parameters_NB_r13__nprach_StartTime_r13_ms128, LTE_NPRACH_Parameters_NB_r13__nprach_StartTime_r13_ms256,       \
+                                        LTE_NPRACH_Parameters_NB_r13__nprach_StartTime_r13_ms512, LTE_NPRACH_Parameters_NB_r13__nprach_StartTime_r13_ms1024 }
     
 #define  NPRACH_SUBCARRIEROFFSET_OKVALUES      {0,12,24,36,2,18,34}
-#define  NPRACH_SUBCARRIEROFFSET_MODVALUES     {  NPRACH_Parameters_NB_r13__nprach_SubcarrierOffset_r13_n0,  NPRACH_Parameters_NB_r13__nprach_SubcarrierOffset_r13_n12, \
-                                                  NPRACH_Parameters_NB_r13__nprach_SubcarrierOffset_r13_n24, NPRACH_Parameters_NB_r13__nprach_SubcarrierOffset_r13_n36, \
-                                                  NPRACH_Parameters_NB_r13__nprach_SubcarrierOffset_r13_n2,  NPRACH_Parameters_NB_r13__nprach_SubcarrierOffset_r13_n18, \
-                                                  NPRACH_Parameters_NB_r13__nprach_SubcarrierOffset_r13_n34 }
+#define  NPRACH_SUBCARRIEROFFSET_MODVALUES     {  LTE_NPRACH_Parameters_NB_r13__nprach_SubcarrierOffset_r13_n0,  LTE_NPRACH_Parameters_NB_r13__nprach_SubcarrierOffset_r13_n12, \
+                                                  LTE_NPRACH_Parameters_NB_r13__nprach_SubcarrierOffset_r13_n24, LTE_NPRACH_Parameters_NB_r13__nprach_SubcarrierOffset_r13_n36, \
+                                                  LTE_NPRACH_Parameters_NB_r13__nprach_SubcarrierOffset_r13_n2,  LTE_NPRACH_Parameters_NB_r13__nprach_SubcarrierOffset_r13_n18, \
+                                                  LTE_NPRACH_Parameters_NB_r13__nprach_SubcarrierOffset_r13_n34 }
 
 #define  NPRACH_NUMSUBCARRIERS_OKVALUES      {12,24,36,48}
-#define  NPRACH_NUMSUBCARRIERS_MODVALUES     {  NPRACH_Parameters_NB_r13__nprach_NumSubcarriers_r13_n12, NPRACH_Parameters_NB_r13__nprach_NumSubcarriers_r13_n24, \
-                                                NPRACH_Parameters_NB_r13__nprach_NumSubcarriers_r13_n36, NPRACH_Parameters_NB_r13__nprach_NumSubcarriers_r13_n48 }
+#define  NPRACH_NUMSUBCARRIERS_MODVALUES     {  LTE_NPRACH_Parameters_NB_r13__nprach_NumSubcarriers_r13_n12, LTE_NPRACH_Parameters_NB_r13__nprach_NumSubcarriers_r13_n24, \
+                                                LTE_NPRACH_Parameters_NB_r13__nprach_NumSubcarriers_r13_n36, LTE_NPRACH_Parameters_NB_r13__nprach_NumSubcarriers_r13_n48 }
 
 
 #define  NUMREPETITIONSPERPREAMBLEATTEMPT_OKVALUES  {1,2,4,8,16,32,64,128}
-#define  NUMREPETITIONSPERPREAMBLEATTEMPT_MODVALUES {  NPRACH_Parameters_NB_r13__numRepetitionsPerPreambleAttempt_r13_n1,  NPRACH_Parameters_NB_r13__numRepetitionsPerPreambleAttempt_r13_n2,   \
-                                                       NPRACH_Parameters_NB_r13__numRepetitionsPerPreambleAttempt_r13_n4,  NPRACH_Parameters_NB_r13__numRepetitionsPerPreambleAttempt_r13_n8,   \
-                                                       NPRACH_Parameters_NB_r13__numRepetitionsPerPreambleAttempt_r13_n16, NPRACH_Parameters_NB_r13__numRepetitionsPerPreambleAttempt_r13_n32,  \
-                                                       NPRACH_Parameters_NB_r13__numRepetitionsPerPreambleAttempt_r13_n64, NPRACH_Parameters_NB_r13__numRepetitionsPerPreambleAttempt_r13_n128} 
+#define  NUMREPETITIONSPERPREAMBLEATTEMPT_MODVALUES {  LTE_NPRACH_Parameters_NB_r13__numRepetitionsPerPreambleAttempt_r13_n1,  LTE_NPRACH_Parameters_NB_r13__numRepetitionsPerPreambleAttempt_r13_n2,   \
+                                                       LTE_NPRACH_Parameters_NB_r13__numRepetitionsPerPreambleAttempt_r13_n4,  LTE_NPRACH_Parameters_NB_r13__numRepetitionsPerPreambleAttempt_r13_n8,   \
+                                                       LTE_NPRACH_Parameters_NB_r13__numRepetitionsPerPreambleAttempt_r13_n16, LTE_NPRACH_Parameters_NB_r13__numRepetitionsPerPreambleAttempt_r13_n32,  \
+                                                       LTE_NPRACH_Parameters_NB_r13__numRepetitionsPerPreambleAttempt_r13_n64, LTE_NPRACH_Parameters_NB_r13__numRepetitionsPerPreambleAttempt_r13_n128} 
 
 #define  NPDCCHNUMREPETITIONSRA_OKVALUES  {1,2,4,8,16,32,64,128,256,512,1024,2048}
-#define  NPDCCHNUMREPETITIONSRA_MODVALUES {  NPRACH_Parameters_NB_r13__npdcch_NumRepetitions_RA_r13_r1,   NPRACH_Parameters_NB_r13__npdcch_NumRepetitions_RA_r13_r2,	\
-                                    	     NPRACH_Parameters_NB_r13__npdcch_NumRepetitions_RA_r13_r4,   NPRACH_Parameters_NB_r13__npdcch_NumRepetitions_RA_r13_r8,	\
-                                    	     NPRACH_Parameters_NB_r13__npdcch_NumRepetitions_RA_r13_r16,  NPRACH_Parameters_NB_r13__npdcch_NumRepetitions_RA_r13_r32,	\
-                                    	     NPRACH_Parameters_NB_r13__npdcch_NumRepetitions_RA_r13_r64,  NPRACH_Parameters_NB_r13__npdcch_NumRepetitions_RA_r13_r128,  \
-                                    	     NPRACH_Parameters_NB_r13__npdcch_NumRepetitions_RA_r13_r256, NPRACH_Parameters_NB_r13__npdcch_NumRepetitions_RA_r13_r512,  \
-                                    	     NPRACH_Parameters_NB_r13__npdcch_NumRepetitions_RA_r13_r1024,NPRACH_Parameters_NB_r13__npdcch_NumRepetitions_RA_r13_r2048}
+#define  NPDCCHNUMREPETITIONSRA_MODVALUES {LTE_NPRACH_Parameters_NB_r13__npdcch_NumRepetitions_RA_r13_r1,   LTE_NPRACH_Parameters_NB_r13__npdcch_NumRepetitions_RA_r13_r2,	\
+                                    	     LTE_NPRACH_Parameters_NB_r13__npdcch_NumRepetitions_RA_r13_r4,   LTE_NPRACH_Parameters_NB_r13__npdcch_NumRepetitions_RA_r13_r8,	\
+                                    	     LTE_NPRACH_Parameters_NB_r13__npdcch_NumRepetitions_RA_r13_r16,  LTE_NPRACH_Parameters_NB_r13__npdcch_NumRepetitions_RA_r13_r32,	\
+                                    	     LTE_NPRACH_Parameters_NB_r13__npdcch_NumRepetitions_RA_r13_r64,  LTE_NPRACH_Parameters_NB_r13__npdcch_NumRepetitions_RA_r13_r128,  \
+                                    	     LTE_NPRACH_Parameters_NB_r13__npdcch_NumRepetitions_RA_r13_r256, LTE_NPRACH_Parameters_NB_r13__npdcch_NumRepetitions_RA_r13_r512,  \
+                                    	     LTE_NPRACH_Parameters_NB_r13__npdcch_NumRepetitions_RA_r13_r1024,LTE_NPRACH_Parameters_NB_r13__npdcch_NumRepetitions_RA_r13_r2048}
 
 #define  NPDCCHSTARTSFCSSRA_OKVALUES  {1,2,4,8,16,32,48,64}
-#define  NPDCCHSTARTSFCSSRA_MODVALUES {  NPRACH_Parameters_NB_r13__npdcch_StartSF_CSS_RA_r13_v1dot5,  NPRACH_Parameters_NB_r13__npdcch_StartSF_CSS_RA_r13_v2,	\
-                                         NPRACH_Parameters_NB_r13__npdcch_StartSF_CSS_RA_r13_v4,      NPRACH_Parameters_NB_r13__npdcch_StartSF_CSS_RA_r13_v8,   \
-                                         NPRACH_Parameters_NB_r13__npdcch_StartSF_CSS_RA_r13_v16,     NPRACH_Parameters_NB_r13__npdcch_StartSF_CSS_RA_r13_v32,  \
-                                         NPRACH_Parameters_NB_r13__npdcch_StartSF_CSS_RA_r13_v48,     NPRACH_Parameters_NB_r13__npdcch_StartSF_CSS_RA_r13_v64}
+#define  NPDCCHSTARTSFCSSRA_MODVALUES {  LTE_NPRACH_Parameters_NB_r13__npdcch_StartSF_CSS_RA_r13_v1dot5,  LTE_NPRACH_Parameters_NB_r13__npdcch_StartSF_CSS_RA_r13_v2,	\
+                                         LTE_NPRACH_Parameters_NB_r13__npdcch_StartSF_CSS_RA_r13_v4,      LTE_NPRACH_Parameters_NB_r13__npdcch_StartSF_CSS_RA_r13_v8,   \
+                                         LTE_NPRACH_Parameters_NB_r13__npdcch_StartSF_CSS_RA_r13_v16,     LTE_NPRACH_Parameters_NB_r13__npdcch_StartSF_CSS_RA_r13_v32,  \
+                                         LTE_NPRACH_Parameters_NB_r13__npdcch_StartSF_CSS_RA_r13_v48,     LTE_NPRACH_Parameters_NB_r13__npdcch_StartSF_CSS_RA_r13_v64}
 
 #define  NPDCCHOFFSETRA_OKVALUES    {"zero","oneEighth","oneFourth","threeEighth"}
-#define  NPDCCHOFFSETRA_MODVALUES   { NPRACH_Parameters_NB_r13__npdcch_Offset_RA_r13_zero,	NPRACH_Parameters_NB_r13__npdcch_Offset_RA_r13_oneEighth,     \
-                                      NPRACH_Parameters_NB_r13__npdcch_Offset_RA_r13_oneFourth, NPRACH_Parameters_NB_r13__npdcch_Offset_RA_r13_threeEighth}
+#define  NPDCCHOFFSETRA_MODVALUES   { LTE_NPRACH_Parameters_NB_r13__npdcch_Offset_RA_r13_zero,	LTE_NPRACH_Parameters_NB_r13__npdcch_Offset_RA_r13_oneEighth,     \
+                                      LTE_NPRACH_Parameters_NB_r13__npdcch_Offset_RA_r13_oneFourth, LTE_NPRACH_Parameters_NB_r13__npdcch_Offset_RA_r13_threeEighth}
 
 
 
