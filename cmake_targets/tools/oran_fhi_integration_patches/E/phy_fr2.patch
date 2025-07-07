@@ -1,0 +1,16 @@
+diff --git a/fhi_lib/lib/build/libxran.so b/fhi_lib/lib/build/libxran.so
+index 54f4160..6408072 100755
+Binary files a/fhi_lib/lib/build/libxran.so and b/fhi_lib/lib/build/libxran.so differ
+diff --git a/fhi_lib/lib/src/xran_cp_proc.c b/fhi_lib/lib/src/xran_cp_proc.c
+index 4bd9b50..65fc8ce 100644
+--- a/fhi_lib/lib/src/xran_cp_proc.c
++++ b/fhi_lib/lib/src/xran_cp_proc.c
+@@ -364,7 +364,7 @@ xran_cp_create_and_send_section(void *pHandle, uint8_t ru_port_id, int dir, int
+         //if (p_x_ctx->beamID)
+         //printf("########### subframe_id %d slot_id %d i %d startSym %d beam %d\n",subframe_id, slot_id, i , startSym,  p_x_ctx->beamID[0][(subframe_id*8+slot_id)*14 + startSym + i]);
+         sect_geninfo[i].info.reMask      = 0xfff;
+-        if (p_x_ctx->beamID)
++        if (p_x_ctx->beamID[0])
+         sect_geninfo[i].info.beamId      = p_x_ctx->beamID[0][(subframe_id*8+slot_id)*14 + startSym + i];
+         else
+         sect_geninfo[i].info.beamId      = 1;
