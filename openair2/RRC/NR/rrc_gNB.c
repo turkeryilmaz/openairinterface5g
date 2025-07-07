@@ -86,6 +86,7 @@
 #include "rrc_gNB_mobility.h"
 #include "rrc_gNB_radio_bearers.h"
 #include "rrc_messages_types.h"
+#include "rrc_gNB_asn1.h"
 #include "seq_arr.h"
 #include "tree.h"
 #include "uper_decoder.h"
@@ -98,6 +99,8 @@
 #include "NR_DL-DCCH-Message.h"
 #include "ds/byte_array.h"
 #include "alg/find.h"
+#include "5g_platform_types.h"
+#include "openair2/SDAP/nr_sdap/nr_sdap_configuration.h"
 
 #ifdef E2_AGENT
 #include "openair2/E2AP/RAN_FUNCTION/O-RAN/ran_func_rc_extern.h"
@@ -330,15 +333,24 @@ static NR_SRB_ToAddModList_t *createSRBlist(gNB_RRC_UE_t *ue, uint8_t reestablis
 
 static NR_DRB_ToAddModList_t *createDRBlist(gNB_RRC_UE_t *ue, bool reestablish)
 {
-  NR_DRB_ToAddMod_t *DRB_config = NULL;
+  gNB_RRC_INST *rrc = RC.nrrrc[0];
   NR_DRB_ToAddModList_t *DRB_configList = CALLOC(sizeof(*DRB_configList), 1);
 
   FOR_EACH_SEQ_ARR(drb_t *, drb, &ue->drbs) {
-    DRB_config = generateDRB_ASN1(drb);
-    if (reestablish) {
-      asn1cCallocOne(DRB_config->reestablishPDCP, NR_DRB_ToAddMod__reestablishPDCP_true);
+    bool do_integrity = rrc->security.do_drb_integrity;
+    bool do_ciphering = rrc->security.do_drb_ciphering;
+    rrc_pdu_session_param_t *pduSession = find_pduSession(&ue->pduSessions, drb->pdusession_id);
+    if (!pduSession) {
+      LOG_D(NR_RRC, "PDU Session %d not found, skip\n", drb->pdusession_id);
+      continue;
     }
-    asn1cSeqAdd(&DRB_configList->list, DRB_config);
+    nr_sdap_configuration_t sdap = pduSession->param.sdap_config;
+    NR_DRB_ToAddMod_t *drb_ToAddMod = calloc_or_fail(1, sizeof(*drb_ToAddMod));
+    drb_ToAddMod->drb_Identity = drb->drb_id;
+    get_pdcp_config_ie(drb_ToAddMod, do_integrity, do_ciphering, reestablish, &drb->pdcp_config);
+    get_sdap_config_ie(drb_ToAddMod, drb->pdusession_id, &pduSession->param.qos, &sdap);
+    DevAssert(drb_ToAddMod);
+    asn1cSeqAdd(&DRB_configList->list, drb_ToAddMod);
   }
   if (DRB_configList->list.count == 0) {
     free(DRB_configList);
@@ -873,9 +885,8 @@ static void cuup_notify_reestablishment(gNB_RRC_INST *rrc, gNB_RRC_UE_t *ue_p)
     /* PDCP configuration */
     if (!drb_e1->pdcp_config)
       drb_e1->pdcp_config = malloc_or_fail(sizeof(*drb_e1->pdcp_config));
-    bearer_context_pdcp_config_t *pdcp_config = drb_e1->pdcp_config;
-    set_bearer_context_pdcp_config(pdcp_config, drb, rrc->configuration.um_on_default_drb);
-    pdcp_config->pDCP_Reestablishment = true;
+    *drb_e1->pdcp_config = set_bearer_context_pdcp_config(drb->pdcp_config, rrc->configuration.um_on_default_drb, ue_p->redcap_cap);
+    drb_e1->pdcp_config->pDCP_Reestablishment = true;
     /* increase DRB to modify counter */
     pdu_e1->numDRB2Modify += 1;
   }
@@ -2412,13 +2423,12 @@ f1ap_qos_flow_param_t get_qos_char_from_qos_flow_param(const pdusession_level_qo
     qos_char.qos_type = NON_DYNAMIC;
     qos_char.nondyn.fiveQI = qos_param->fiveQI;
   }
-  const ngap_allocation_retention_priority_t *a = &qos_param->allocation_retention_priority;
+  const qos_arp_t *a = &qos_param->arp;
   qos_char.arp.prio = a->priority_level;
-  qos_char.arp.preempt_cap = a->pre_emp_capability == NGAP_PRE_EMPTION_CAPABILITY_MAY_TRIGGER_PREEMPTION
+  qos_char.arp.preempt_cap = a->pre_emp_capability == PEC_MAY_TRIGGER_PREEMPTION
                                  ? MAY_TRIGGER_PREEMPTION
                                  : SHALL_NOT_TRIGGER_PREEMPTION;
-  qos_char.arp.preempt_vuln =
-      a->pre_emp_vulnerability == NGAP_PRE_EMPTION_VULNERABILITY_PREEMPTABLE ? PREEMPTABLE : NOT_PREEMPTABLE;
+  qos_char.arp.preempt_vuln = a->pre_emp_vulnerability == PEV_PREEMPTABLE ? PREEMPTABLE : NOT_PREEMPTABLE;
   return qos_char;
 }
 
@@ -2437,6 +2447,7 @@ static int fill_drb_to_be_setup_from_e1_resp(const gNB_RRC_INST *rrc,
     for (int i = 0; i < pduSession[p].numDRBSetup; i++) {
       const DRB_nGRAN_setup_t *drb_config = &pduSession[p].DRBnGRanList[i];
       drb_t *rrc_drb = get_drb(&UE->drbs, pduSession[p].DRBnGRanList[i].id);
+      nr_pdcp_configuration_t pdcp = rrc_drb->pdcp_config;
       DevAssert(rrc_drb);
 
       f1ap_drb_to_setup_t *drb = &drbs[nb_drb];
@@ -2470,10 +2481,11 @@ static int fill_drb_to_be_setup_from_e1_resp(const gNB_RRC_INST *rrc,
       drb->up_ul_tnl[0].teid = drb_config->UpParamList[0].tl_info.teId;
       drb->up_ul_tnl_len = 1;
       drb->rlc_mode = rrc->configuration.um_on_default_drb ? F1AP_RLC_MODE_UM_BIDIR : F1AP_RLC_MODE_AM;
+      DevAssert(pdcp.drb.sn_size == 18 || pdcp.drb.sn_size == 12);
       drb->dl_pdcp_sn_len = malloc_or_fail(sizeof(*drb->dl_pdcp_sn_len));
-      *drb->dl_pdcp_sn_len = rrc_drb->pdcp_config.pdcp_SN_SizeDL == 1 ? F1AP_PDCP_SN_18B : F1AP_PDCP_SN_12B;
+      *drb->dl_pdcp_sn_len = pdcp.drb.sn_size == 18 ? F1AP_PDCP_SN_18B : F1AP_PDCP_SN_12B;
       drb->ul_pdcp_sn_len = malloc_or_fail(sizeof(*drb->ul_pdcp_sn_len));
-      *drb->ul_pdcp_sn_len = rrc_drb->pdcp_config.pdcp_SN_SizeUL == 1 ? F1AP_PDCP_SN_18B : F1AP_PDCP_SN_12B;
+      *drb->ul_pdcp_sn_len = pdcp.drb.sn_size == 18 ? F1AP_PDCP_SN_18B : F1AP_PDCP_SN_12B;
 
       nb_drb++;
     }
