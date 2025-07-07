@@ -90,6 +90,12 @@ Options:
    Makes the UE specific parts (usim, nvram) from the given configuration file
 --nrUE
   Makes the NR UE softmodem
+--NR-eNB-packaging
+  Produces NR eNB package
+--NR-gNB-packaging
+  Produces NR gNB package
+--LTE-eNB-packaging
+  Produces LTE eNB package
 --UE-conf-nvram [configuration file]
    Specify conf_nvram_path (default \"$conf_nvram_path\")
 -w | --hardware
@@ -319,6 +325,22 @@ function main() {
             TARGET_LIST="$TARGET_LIST dlsim ulsim ldpctest polartest smallblocktest nr_pbchsim nr_dlschsim nr_ulschsim nr_dlsim nr_ulsim nr_pucchsim nr_prachsim nr_psbchsim"
             echo_info "Will compile dlsim, ulsim, ..."
             shift;;
+       --RPM)
+            CMAKE_CMD="$CMAKE_CMD -DPACKAGING-RPM=ON"
+            echo_info "Set Packaging to RPM"
+            shift;;
+       --NR-gNB-packaging)
+            CMAKE_CMD="$CMAKE_CMD -DNR_gNB_PACKAGE=ON -DPACKAGING=ON"
+            echo_info "Will create a gNB package"
+            shift;;
+       --NR-eNB-packaging)
+            CMAKE_CMD="$CMAKE_CMD -DNR_eNB_PACKAGE=ON -DPACKAGING=ON"
+            echo_info "Will create an eNB package"
+            shift;;
+       --LTE-eNB-packaging)
+            CMAKE_CMD="$CMAKE_CMD -DLTE_eNB_PACKAGE=ON -DPACKAGING=ON"
+            echo_info "Will create a LTE eNB package"
+            shift;;
        -s | --check)
             OAI_TEST=1
             echo_info "Will run auto-tests"
@@ -499,6 +521,9 @@ function main() {
     echo_info "Running \"$CMAKE_CMD\""
     eval $CMAKE_CMD
     compilations $BUILD_DIR all.txt "$TARGET_LIST" "${BUILD_TOOL_OPT}"
+
+    cd $DIR/$BUILD_DIR/build
+    cpack
     ###################
     # Doxygen Support #
     ###################

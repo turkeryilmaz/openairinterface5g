@@ -63,6 +63,12 @@ endif()
 ###################################
 include(FindPkgConfig)
 
+
+option(PACKAGING-RPM "PACKAGING-RPM" OFF)
+option(NR_gNB_PACKAGE "NR-gNB-PACKAGE" OFF)
+option(NR_eNB_PACKAGE "NR-eNB-PACKAGE" OFF)
+option(LTE_eNB_PACKAGE "LTE-eNB-PACKAGE" OFF)
+
 # Check if asn1c is installed, and check if it supports all options we need
 # a user can provide ASN1C_EXEC to override an asn1c to use (e.g., parallel
 # installation)
@@ -1726,7 +1732,7 @@ target_link_libraries(minimal_lib PUBLIC pthread dl ${T_LIB} LOG)
 
 add_executable(nfapi_test
   ${OPENAIR_DIR}/openair2/NR_PHY_INTERFACE/nfapi_5g_test.c
-  )
+)
 
 add_executable(measurement_display
   ${OPENAIR_DIR}/common/utils/threadPool/measurement_display.c)
@@ -1934,7 +1940,7 @@ target_link_libraries(nr-uesoftmodem PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
 target_link_libraries(nr-uesoftmodem PRIVATE
                       asn1_lte_rrc asn1_nr_rrc asn1_s1ap asn1_ngap asn1_m2ap asn1_m3ap asn1_x2ap asn1_f1ap asn1_lpp)
 
-###################################"
+                      ###################################"
 # Addexecutables for tests
 ####################################
 
@@ -2186,3 +2192,104 @@ add_subdirectory(openair2)
 add_subdirectory(openair3)
 add_subdirectory(radio)
 add_subdirectory(tests)
+
+
+include_directories(${OPENAIR_CMAKE}/ran_build/build/openair2/RRC/LTE/MESSAGES)
+include_directories(${OPENAIR_CMAKE}/ran_build/build/openair2/RRC/NR/MESSAGES)
+include_directories(${OPENAIR_CMAKE}/ran_build/build/openair3/S1AP/MESSAGES)
+include_directories(${OPENAIR_CMAKE}/ran_build/build/openair3/NRPPA/MESSAGES)
+
+set(CPACK_COMPONENTS_NR_GNB_LIST)
+set(CPACK_COMPONENTS_NR_ENB_LIST)
+set(CPACK_COMPONENTS_LTE_ENB_LIST)
+set(CPACK_COMPONENTS_SIM_LIST)
+
+if(LTE_eNB_PACKAGE)
+  list(APPEND CPACK_COMPONENTS_LTE_ENB_LIST
+    lte-softmodem     
+    oairu             
+    lte-uesoftmodem   
+  )
+endif()
+
+if(NR_gNB_PACKAGE)
+  list(APPEND CPACK_COMPONENTS_NR_GNB_LIST
+    nr-softmodem      
+    nr-cuup           
+  )
+endif()
+
+if(NR_eNB_PACKAGE)
+  list(APPEND CPACK_COMPONENTS_NR_ENB_LIST
+    nr-uesoftmodem    
+  )
+endif()
+
+# Optionally add simulation components
+# list(APPEND CPACK_COMPONENTS_SIM_LIST
+#   nr_pbchsim
+#   nr_dlsim
+#   nr_prachsim
+#   nr_ulschsim
+#   nr_ulsim
+# )
+
+if(LTE_eNB_PACKAGE)
+  set(CPACK_COMPONENT_LTE_SOFTMODEM_DESCRIPTION "LTE Softmodem binary")
+  set(CPACK_COMPONENT_OAIRU_DESCRIPTION "OAI RU binary")
+  set(CPACK_COMPONENT_LTE_UESOFTMODEM_DESCRIPTION "LTE UE Softmodem binary")
+endif()
+if(NR_gNB_PACKAGE)
+  set(CPACK_COMPONENT_NR_SOFTMODEM_DESCRIPTION "NR Softmodem binary")
+  set(CPACK_COMPONENT_NR_CUUP_DESCRIPTION "NR CUUP binary")
+endif()
+if(NR_eNB_PACKAGE)
+  set(CPACK_COMPONENT_NR_UESOFTMODEM_DESCRIPTION "NR UE Softmodem binary")
+endif()
+#set(CPACK_COMPONENT_NR_PBCHSIM_DESCRIPTION "NR PBCHSIM binary")
+#set(CPACK_COMPONENT_NR_DLSIM_DESCRIPTION "NR DLSIM binary")
+#set(CPACK_COMPONENT_NR_PRACHSIM_DESCRIPTION "NR PRACHSIM binary")
+#set(CPACK_COMPONENT_NR_ULSCHSIM_DESCRIPTION "NR ULSCHSIM binary")
+#set(CPACK_COMPONENT_NR_ULSIM_DESCRIPTION "NR ULSIM binary")
+
+set(CPACK_DEB_COMPONENT_INSTALL ON)
+
+if(NR_gNB_PACKAGE)
+  install(TARGETS nr-softmodem nr-cuup
+      COMPONENT NR_gNB
+      RUNTIME DESTINATION bin
+      LIBRARY DESTINATION lib
+    )
+endif()
+
+if(NR_eNB_PACKAGE)
+  install(TARGETS nr-uesoftmodem
+      COMPONENT NR_eNB
+      RUNTIME DESTINATION bin
+      LIBRARY DESTINATION lib
+    )
+endif()
+
+if(LTE_eNB_PACKAGE)
+  install(TARGETS lte-softmodem lte-uesoftmodem oairu
+      COMPONENT LTE_eNB
+      RUNTIME DESTINATION bin
+      LIBRARY DESTINATION lib
+    )
+endif()
+
+
+set(CPACK_PACKAGE_VERSION "1.0.0")
+set(CPACK_PACKAGE_VENDOR "OpenAirInterface")
+set(CPACK_PACKAGE_MAINTAINER "OpenAirInterface")
+set(CPACK_PACKAGE_CONTACT "calvin.peyron@open-cells.com")
+if(PACKAGING-RPM)
+  set(CPACK_GENERATOR "RPM")
+  set(CPACK_RPM_COMPONENT_INSTALL ON)
+else()
+  set(CPACK_GENERATOR "DEB")
+endif()
+set(CPACK_DEBIAN_PACKAGE_MAINTAINER "OpenAirInterface")
+set(CPACK_DEBIAN_FILE_NAME DEB-DEFAULT)
+
+INCLUDE(CPack)
