@@ -2253,6 +2253,7 @@ endif()
 #set(CPACK_COMPONENT_NR_ULSIM_DESCRIPTION "NR ULSIM binary")
 
 set(CPACK_DEB_COMPONENT_INSTALL ON)
+set(COMPONENTS_LIST "")
 
 if(NR_gNB_PACKAGE)
   install(TARGETS nr-softmodem nr-cuup
@@ -2260,6 +2261,7 @@ if(NR_gNB_PACKAGE)
       RUNTIME DESTINATION bin
       LIBRARY DESTINATION lib
     )
+    list(APPEND COMPONENTS_LIST NR_gNB)
 endif()
 
 if(NR_eNB_PACKAGE)
@@ -2268,6 +2270,7 @@ if(NR_eNB_PACKAGE)
       RUNTIME DESTINATION bin
       LIBRARY DESTINATION lib
     )
+    list(APPEND COMPONENTS_LIST NR_eNB)
 endif()
 
 if(LTE_eNB_PACKAGE)
@@ -2276,7 +2279,15 @@ if(LTE_eNB_PACKAGE)
       RUNTIME DESTINATION bin
       LIBRARY DESTINATION lib
     )
+    list(APPEND COMPONENTS_LIST LTE_eNB)
 endif()
+
+set(CPACK_RESOURCE_FILE_LICENSE "${OPENAIR_DIR}/LICENSE")
+foreach(component IN LISTS COMPONENTS_LIST)
+  install(FILES "${OPENAIR_DIR}/LICENSE" 
+          DESTINATION share/doc/openairinterface
+          COMPONENT ${component})
+endforeach()
 
 
 set(CPACK_PACKAGE_VERSION "1.0.0")
