@@ -28,7 +28,6 @@ char *uecap_file;
 int read_recplayconfig(recplay_conf_t **recplay_conf, recplay_state_t **recplay_state) {return 0;}
 void nfapi_setmode(nfapi_mode_t nfapi_mode) {}
 void set_taus_seed(unsigned int seed_init){};
-configmodule_interface_t *uniqCfg = NULL;
 int main(int argc, char **argv) {
   ///static configuration for NR at the moment
   if ((uniqCfg = load_configmodule(argc, argv, CONFIG_ENABLECMDLINEONLY)) == NULL) {
