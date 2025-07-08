@@ -2566,6 +2566,11 @@ static bool nr_ulsch_preprocessor(gNB_MAC_INST *nr_mac, post_process_pusch_t *pp
   fsn_t current = {frame, slot};
   fsn_t min_next = fs_add_delta(fs, min_rxtx, current);
   static fsn_t next; /* TODO: move to nrmac */
+  /* if it's the last DL slot, we should try all TDAs to make sure that the
+   * scheduler can reach e.g. the next mixed slot. Otherwise, if we don't, we
+   * might starve HARQ processes that need a retransmission in a specific slot
+   * but we might not necessarily reach it */
+  bool last_dl = (current.s % fs->numb_slots_period) == (fs->period_cfg.num_dl_slots - 1);
   while (max_sched_ues > 0) {
     /* go to the next UL slot, skipping DL if necessary */
     next = fs_get_max(fs, next, min_next);
@@ -2592,8 +2597,11 @@ static bool nr_ulsch_preprocessor(gNB_MAC_INST *nr_mac, post_process_pusch_t *pp
       len[i] = bw;
     /* proportional fair scheduling algorithm */
     int sched = pf_ul(nr_mac, pp_pusch, tda, &tda_info, nr_mac->UE_info.connected_ue_list, max_sched_ues, num_beams, len);
-    //LOG_I(NR_MAC, "run pf_ul() at %4d.%2d with k2 %d (ULSCH at %4d.%2d) scheduled %d\n", frame, slot, k2, next.f, next.s, sched);
-    if (sched == 0)
+    LOG_D(NR_MAC, "run pf_ul() at %4d.%2d with k2 %d (ULSCH at %4d.%2d) scheduled %d last_dl %d\n", frame, slot, k2, next.f, next.s, sched, last_dl);
+    /* if we did not schedule anything, and it's not the last slot, break. In
+     * the case we did schedule or it's the last slot (see above!), continue
+     * advancing till there is no TDA anymore */
+    if (sched == 0 && !last_dl)
       break;
     max_sched_ues -= sched;
 
