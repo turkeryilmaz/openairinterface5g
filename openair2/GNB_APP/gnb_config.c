@@ -1788,7 +1788,7 @@ void RCconfig_nr_macrlc(configmodule_interface_t *cfg)
       }
       int ab = *MacRLC_ParamList.paramarray[j][MACRLC_ANALOG_BEAMFORMING_IDX].u8ptr;
       if (ab > 0) {
-        AssertFatal(NFAPI_MODE == NFAPI_MONOLITHIC, "Analog beamforming only supported for monolithic scenario\n");
+        if (ab == 1) AssertFatal(NFAPI_MODE == NFAPI_MONOLITHIC, "Analog beamforming only supported for monolithic scenario\n");
         NR_beam_info_t *beam_info = &RC.nrmac[j]->beam_info;
         int beams_per_period = *MacRLC_ParamList.paramarray[j][MACRLC_ANALOG_BEAMS_PERIOD_IDX].u8ptr;
         beam_info->beam_allocation = malloc16(beams_per_period * sizeof(int *));
@@ -1801,7 +1801,7 @@ void RCconfig_nr_macrlc(configmodule_interface_t *cfg)
       if (config_isparamset(MacRLC_ParamList.paramarray[j], MACRLC_BEAMWEIGHTS_IDX)) {
         if (NFAPI_MODE == NFAPI_MONOLITHIC) {
           GET_PARAMS_LIST(L1_ParamList, L1_Params, L1PARAMS_DESC, CONFIG_STRING_L1_LIST, NULL);
-          AssertFatal(*(L1_ParamList.paramarray[j][L1_ANALOG_DAS].uptr) == 0, "No need to set beam weights in case of DAS\n");
+          if (ab == 1) AssertFatal(*(L1_ParamList.paramarray[j][L1_ANALOG_DAS].uptr) == 0, "No need to set beam weights in case of DAS\n");
         }
         int n = MacRLC_ParamList.paramarray[j][MACRLC_BEAMWEIGHTS_IDX].numelt;
         int num_beam = n;
