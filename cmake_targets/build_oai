@@ -96,6 +96,12 @@ Options:
   Produces NR gNB package
 --LTE-eNB-packaging
   Produces LTE eNB package
+--OAI-COMMON-packaging
+  Produces a package with common executables
+--OAI-USRP-packaging
+  Produces a package with exerything for USRP
+--OAI-LDPC-T2-packaging
+  Produces a package with exerything for T2 accelerator
 --UE-conf-nvram [configuration file]
    Specify conf_nvram_path (default \"$conf_nvram_path\")
 -w | --hardware
@@ -340,6 +346,18 @@ function main() {
        --LTE-eNB-packaging)
             CMAKE_CMD="$CMAKE_CMD -DLTE_eNB_PACKAGE=ON -DPACKAGING=ON"
             echo_info "Will create a LTE eNB package"
+            shift;;
+       --OAI-COMMON-packaging)
+            CMAKE_CMD="$CMAKE_CMD -DOAI_COMMON_PACKAGE=ON -DPACKAGING=ON"
+            echo_info "Will create a OAI COMMON package"
+            shift;;
+       --OAI-USRP-packaging)
+            CMAKE_CMD="$CMAKE_CMD -DOAI_USRP_PACKAGE=ON -DPACKAGING=ON"
+            echo_info "Will create a OAI USRP package"
+            shift;;
+       --OAI-LDPC-T2-packaging)
+            CMAKE_CMD="$CMAKE_CMD -DOAI_LDPC_T2_PACKAGE=ON -DPACKAGING=ON"
+            echo_info "Will create a OAI LDPC T2 package"
             shift;;
        -s | --check)
             OAI_TEST=1

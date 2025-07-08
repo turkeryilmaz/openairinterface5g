@@ -68,6 +68,9 @@ option(PACKAGING-RPM "PACKAGING-RPM" OFF)
 option(NR_gNB_PACKAGE "NR-gNB-PACKAGE" OFF)
 option(NR_eNB_PACKAGE "NR-eNB-PACKAGE" OFF)
 option(LTE_eNB_PACKAGE "LTE-eNB-PACKAGE" OFF)
+option(OAI_COMMON_PACKAGE "OAI-COMMON-PACKAGE" OFF)
+option(OAI_USRP_PACKAGE "OAI-USRP-PACKAGE" OFF)
+option(OAI_LDPC_T2_PACKAGE "OAI-LDPC-T2-PACKAGE" OFF)
 
 # Check if asn1c is installed, and check if it supports all options we need
 # a user can provide ASN1C_EXEC to override an asn1c to use (e.g., parallel
@@ -2280,6 +2283,33 @@ if(LTE_eNB_PACKAGE)
       LIBRARY DESTINATION lib
     )
     list(APPEND COMPONENTS_LIST LTE_eNB)
+endif()
+
+if(OAI_LDPC_T2_PACKAGE)
+  install(TARGETS ldpc_t2
+          COMPONENT OAI_LDPC_T2
+          RUNTIME DESTINATION bin
+          LIBRARY DESTINATION lib
+        )
+    list(APPEND COMPONENTS_LIST OAI_T2)
+endif()
+
+if(OAI_USRP_PACKAGE)
+  install(TARGETS oai_usrpdevif
+          COMPONENT OAI_USRP
+          RUNTIME DESTINATION bin
+          LIBRARY DESTINATION lib
+        )
+    list(APPEND COMPONENTS_LIST OAI_USRP)
+endif()
+
+if(OAI_COMMON_PACKAGE)
+  install(TARGETS params_libconfig dfts oai_iqplayer params_yaml telnetsrv coding rfsimulator ldpc_orig ldpc vrtsim
+          COMPONENT OAI_COMMON
+          RUNTIME DESTINATION bin
+          LIBRARY DESTINATION lib
+        )
+    list(APPEND COMPONENTS_LIST OAI_COMMON)
 endif()
 
 set(CPACK_RESOURCE_FILE_LICENSE "${OPENAIR_DIR}/LICENSE")
