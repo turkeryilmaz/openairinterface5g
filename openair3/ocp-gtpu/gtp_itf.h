@@ -25,7 +25,7 @@ extern "C" {
   typedef bool (*gtpCallbackSDAP)(protocol_ctxt_t  *ctxt_pP,
                                   const ue_id_t        ue_id,
                                   const srb_flag_t     srb_flagP,
-                                  const rb_id_t        rb_idP,
+                                  const int        rb_idP,
                                   const mui_t          muiP,
                                   const confirm_t      confirmP,
                                   const sdu_size_t     sdu_buffer_sizeP,
