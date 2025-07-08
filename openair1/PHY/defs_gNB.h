@@ -305,6 +305,8 @@ typedef struct {
   int32_t **rxdataF_comp;
   /// \f$\log_2(\max|H_i|^2)\f$
   int16_t log2_maxh;
+  /// max|H_i|^2
+  int32_t maxh_avgs;
   /// measured RX power based on DRS
   uint32_t ulsch_power[8];
   /// total signal over antennas

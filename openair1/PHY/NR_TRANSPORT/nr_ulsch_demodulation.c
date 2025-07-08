@@ -225,6 +225,26 @@ static void nr_ulsch_channel_level(int size_est,
 
 }
 
+static inline void compensate_amplitude(const simde__m256i *h2, simde__m256i *rF, const int amp)
+{
+  const simde__m128i *rF_128 = (const simde__m128i *)rF;
+  const simde__m128i *h2_128 = (const simde__m128i *)h2;
+  const simde__m256 ones = simde_mm256_set1_ps((float)amp);
+  // sample 0, 1, 2, 3
+  const simde__m256i o0 =
+      simde_mm256_cvtps_epi32(simde_mm256_mul_ps(simde_mm256_div_ps(simde_mm256_cvtepi32_ps(simde_mm256_cvtepi16_epi32(rF_128[0])),
+                                                                    simde_mm256_cvtepi32_ps(simde_mm256_cvtepi16_epi32(h2_128[0]))),
+                                                 ones));
+  // sample 4, 5, 6, 7
+  const simde__m256i o1 =
+      simde_mm256_cvtps_epi32(simde_mm256_mul_ps(simde_mm256_div_ps(simde_mm256_cvtepi32_ps(simde_mm256_cvtepi16_epi32(rF_128[1])),
+                                                                    simde_mm256_cvtepi32_ps(simde_mm256_cvtepi16_epi32(h2_128[1]))),
+                                                 ones));
+  //*((simde__m256i *)rF) = simde_mm256_packs_epi32(o0, o1);
+  *((simde__m128i *)rF) = simde_mm_packs_epi32(*((simde__m128i *)&o0), *(((simde__m128i *)&o0)+1));
+  *(((simde__m128i *)rF)+1) = simde_mm_packs_epi32(*((simde__m128i *)&o1), *(((simde__m128i *)&o1)+1));
+}
+
 static void nr_ulsch_channel_compensation(c16_t *rxFext,
                                           c16_t *chFext,
                                           c16_t *ul_ch_maga,
@@ -236,6 +256,7 @@ static void nr_ulsch_channel_compensation(c16_t *rxFext,
                                           nfapi_nr_pusch_pdu_t* rel15_ul,
                                           uint32_t symbol,
                                           uint32_t buffer_length,
+                                          int32_t maxh_avg,
                                           uint32_t output_shift)
 {
   int mod_order  = rel15_ul->qam_mod_order;
@@ -247,19 +268,25 @@ static void nr_ulsch_channel_compensation(c16_t *rxFext,
   simde__m256i QAM_ampc_256 = simde_mm256_setzero_si256();
 
   if (mod_order == 4) {
-    QAM_ampa_256 = simde_mm256_set1_epi16(QAM16_n1);
+    const int16_t amp = (int16_t)((maxh_avg >> output_shift) * 2 / sqrt(10));
+    QAM_ampa_256 = simde_mm256_set1_epi16(amp);
     QAM_ampb_256 = simde_mm256_setzero_si256();
     QAM_ampc_256 = simde_mm256_setzero_si256();
   }
   else if (mod_order == 6) {
-    QAM_ampa_256 = simde_mm256_set1_epi16(QAM64_n1);
-    QAM_ampb_256 = simde_mm256_set1_epi16(QAM64_n2);
+    const int16_t amp = (int16_t)((maxh_avg >> output_shift) * 4 / sqrt(42));
+    const int16_t ampb = (int16_t)((maxh_avg >> output_shift) * 2 / sqrt(42));
+    QAM_ampa_256 = simde_mm256_set1_epi16(amp);
+    QAM_ampb_256 = simde_mm256_set1_epi16(ampb);
     QAM_ampc_256 = simde_mm256_setzero_si256();
   }
   else if (mod_order == 8) {
-    QAM_ampa_256 = simde_mm256_set1_epi16(QAM256_n1);
-    QAM_ampb_256 = simde_mm256_set1_epi16(QAM256_n2);
-    QAM_ampc_256 = simde_mm256_set1_epi16(QAM256_n3);
+    const int16_t amp = (int16_t)((maxh_avg >> output_shift) * 8 / sqrt(170));
+    const int16_t ampb = (int16_t)((maxh_avg >> output_shift) * 4 / sqrt(170));
+    const int16_t ampc = (int16_t)((maxh_avg >> output_shift) * 2 / sqrt(170));
+    QAM_ampa_256 = simde_mm256_set1_epi16(amp);
+    QAM_ampb_256 = simde_mm256_set1_epi16(ampb);
+    QAM_ampc_256 = simde_mm256_set1_epi16(ampc);
   }
 
   for (int aatx = 0; aatx < nrOfLayers; aatx++) {
@@ -277,19 +304,32 @@ static void nr_ulsch_channel_compensation(c16_t *rxFext,
         simde__m256i comp = oai_mm256_cpx_mult_conj(chF_256[i], rxF_256[i], output_shift);
         rxComp_256[i] = simde_mm256_add_epi16(rxComp_256[i], comp); 
 
+        simde__m256i h2 = simde_mm256_srai_epi32(simde_mm256_madd_epi16(chF_256[i], chF_256[i]), output_shift);
+        h2 = simde_mm256_packs_epi32(h2, h2);
+        // sum channel magnitude of all antenna (|h1|^2 + |h2|^2 + ...)
+        h2 = simde_mm256_unpacklo_epi16(h2, h2);
+
+        const int amp = maxh_avg >> output_shift;
+        compensate_amplitude(&h2, rxComp_256 + i, amp);
+
         if (mod_order > 2) {
           simde__m256i mag = oai_mm256_smadd(chF_256[i], chF_256[i], output_shift); // |h|^2
           // pack and duplicate
           mag = simde_mm256_packs_epi32(mag, mag);
           mag = simde_mm256_unpacklo_epi16(mag, mag);
 
-          rxF_ch_maga_256[i] = simde_mm256_add_epi16(rxF_ch_maga_256[i], simde_mm256_mulhrs_epi16(mag, QAM_ampa_256));
+          //rxF_ch_maga_256[i] = simde_mm256_add_epi16(rxF_ch_maga_256[i], simde_mm256_mulhrs_epi16(mag, QAM_ampa_256));
+          rxF_ch_maga_256[i] = QAM_ampa_256;
 
-          if (mod_order > 4)
-            rxF_ch_magb_256[i] = simde_mm256_add_epi16(rxF_ch_magb_256[i], simde_mm256_mulhrs_epi16(mag, QAM_ampb_256));
+          if (mod_order > 4) {
+            //rxF_ch_magb_256[i] = simde_mm256_add_epi16(rxF_ch_magb_256[i], simde_mm256_mulhrs_epi16(mag, QAM_ampb_256));
+            rxF_ch_magb_256[i] = QAM_ampb_256;
+          }
 
-          if (mod_order > 6)
-            rxF_ch_magc_256[i] = simde_mm256_add_epi16(rxF_ch_magc_256[i], simde_mm256_mulhrs_epi16(mag, QAM_ampc_256));
+          if (mod_order > 6) {
+            //rxF_ch_magc_256[i] = simde_mm256_add_epi16(rxF_ch_magc_256[i], simde_mm256_mulhrs_epi16(mag, QAM_ampc_256));
+            rxF_ch_magc_256[i] = QAM_ampc_256;
+          }
         }        
       }
       if (rho != NULL) {
@@ -984,6 +1024,7 @@ static void inner_rx(PHY_VARS_gNB *gNB,
                                 rel15_ul,
                                 symbol,
                                 buffer_length,
+                                pusch_vars->maxh_avgs,
                                 output_shift);
 
 #define DUMP_PUSCH_BUFF 1
@@ -1388,6 +1429,8 @@ int nr_rx_pusch_tp(PHY_VARS_gNB *gNB,
   for (int nl = 0; nl < rel15_ul->nrOfLayers; nl++)
     for (int aarx = 0; aarx < frame_parms->nb_antennas_rx; aarx++)
       avgs = cmax(avgs, avg[nl * frame_parms->nb_antennas_rx + aarx]);
+
+  pusch_vars->maxh_avgs = avgs;
 
   if (rel15_ul->nrOfLayers == 2 && rel15_ul->qam_mod_order > 6)
     pusch_vars->log2_maxh = (log2_approx(avgs) >> 1) - 3; // for MMSE
