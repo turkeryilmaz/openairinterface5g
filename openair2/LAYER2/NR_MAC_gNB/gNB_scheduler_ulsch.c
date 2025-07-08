@@ -46,30 +46,25 @@ int get_ul_tda(gNB_MAC_INST *nrmac, int frame, int slot, int k2)
   NR_SCHED_ENSURE_LOCKED(&nrmac->sched_lock);
 
   /* there is a mixed slot only when in TDD */
-  frame_structure_t *fs = &nrmac->frame_structure;
+  const frame_structure_t *fs = &nrmac->frame_structure;
 
-  /* TODO: we assume currently that all UL TDA have same k2, check below */
-  NR_tda_info_t tda_info = nrmac->ul_tda[0];
-  if (!tda_info.valid_tda || tda_info.k2 != k2)
-    return -1;
-
-  if (fs->frame_type == TDD) {
-    // if there is uplink symbols in mixed slot
-    int s = get_slot_idx_in_period(slot, fs);
-    tdd_bitmap_t *tdd_slot_bitmap = fs->period_cfg.tdd_slot_bitmap;
-    if ((tdd_slot_bitmap[s].num_ul_symbols > 1) && is_mixed_slot(s, fs)) {
-      return 2; // mixed slot, all symbols of mixed minus last
-    }
+  const int slot_period = slot % fs->numb_slots_period;
+  const tdd_bitmap_t *bm = &fs->period_cfg.tdd_slot_bitmap[slot_period];
+  /* For some reason, we only store the number of symbols if it's mixed */
+  const int num_ul_symbols = bm->slot_type == TDD_NR_MIXED_SLOT ? bm->num_ul_symbols : 14;
+  const uint16_t ul_bitmap = SL_to_bitmap(14 - num_ul_symbols, num_ul_symbols);
+  for (int i = 0; i < 16; ++i) {
+    NR_tda_info_t tda_info = nrmac->ul_tda[i];
+    if (!tda_info.valid_tda)
+      break;
+    if (tda_info.k2 != k2)
+      continue;
+    // we assume the TDAs are from largest to smallest symbol number
+    uint16_t tda_bitmap = SL_to_bitmap(tda_info.startSymbolIndex, tda_info.nrOfSymbols);
+    if ((tda_bitmap & ul_bitmap) == tda_bitmap) // if TDA fits entiry
+      return i;
   }
-
-  // Avoid slots with the SRS
-  UE_iterator(nrmac->UE_info.connected_ue_list, UE) {
-    NR_sched_srs_t sched_srs = UE->UE_sched_ctrl.sched_srs;
-    if(sched_srs.srs_scheduled && sched_srs.frame == frame && sched_srs.slot == slot)
-      return 1; // symbols 0--12
-  }
-
-  return 0; // symbols 0--13, // if FDD or not mixed slot in TDD, for now use default TDA (TODO handle CSI-RS slots)
+  return -1;
 }
 
 bwp_info_t get_pusch_bwp_start_size(NR_UE_info_t *UE)

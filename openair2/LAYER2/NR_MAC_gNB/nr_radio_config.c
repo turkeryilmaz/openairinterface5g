@@ -1062,24 +1062,22 @@ static struct NR_PUSCH_TimeDomainResourceAllocation *set_TimeDomainResourceAlloc
 
 void nr_rrc_config_ul_tda(NR_ServingCellConfigCommon_t *scc, int min_fb_delay)
 {
-  //TODO change to accomodate for SRS
-
-  const NR_PUSCH_TimeDomainResourceAllocationList_t *tda_list =
+  NR_PUSCH_TimeDomainResourceAllocationList_t *tda_list =
       scc->uplinkConfigCommon->initialUplinkBWP->pusch_ConfigCommon->choice.setup->pusch_TimeDomainAllocationList;
   AssertFatal(tda_list->list.count == 0, "already have pusch_TimeDomainAllocationList members\n");
 
   const int k2 = min_fb_delay;
+
   int mu = scc->uplinkConfigCommon->initialUplinkBWP->genericParameters.subcarrierSpacing;
-  struct NR_SetupRelease_PUSCH_ConfigCommon *pusch_ConfigCommon = scc->uplinkConfigCommon->initialUplinkBWP->pusch_ConfigCommon;
 
   // UL TDA index 0 is basic slot configuration starting in symbol 0 til the last but one symbol
   NR_PUSCH_TimeDomainResourceAllocation_t *tda;
   tda = set_TimeDomainResourceAllocation(k2, get_SLIV(0, 13));
-  asn1cSeqAdd(&pusch_ConfigCommon->choice.setup->pusch_TimeDomainAllocationList->list, tda);
+  asn1cSeqAdd(&tda_list->list, tda);
 
   // UL TDA index 1 in case of SRS
   tda = set_TimeDomainResourceAllocation(k2, get_SLIV(0, 12));
-  asn1cSeqAdd(&pusch_ConfigCommon->choice.setup->pusch_TimeDomainAllocationList->list, tda);
+  asn1cSeqAdd(&tda_list->list, tda);
 
   if (scc->tdd_UL_DL_ConfigurationCommon) {
     int ul_symb = 0;
@@ -1095,11 +1093,40 @@ void nr_rrc_config_ul_tda(NR_ServingCellConfigCommon_t *scc, int min_fb_delay)
     } else if (p2) {
       ul_symb = p1->nrofUplinkSymbols;
     }
-    if (ul_symb>1) {
+
+    DevAssert(p2 == NULL);
+    int N_dl = p1->nrofDownlinkSlots;
+    int N_ul = p1->nrofUplinkSlots;
+    int tdd_period_idx = get_tdd_period_idx(scc->tdd_UL_DL_ConfigurationCommon);
+    int nb_periods_per_frame = get_nb_periods_per_frame(tdd_period_idx);
+    int nb_slots_per_period = ((1 << mu) * 10) / nb_periods_per_frame;
+
+    if (ul_symb>1 && k2 <= N_dl) {
       // UL TDA index 2 for mixed slot (TDD)
       long sliv = get_SLIV(NR_NUMBER_OF_SYMBOLS_PER_SLOT - ul_symb, ul_symb - 1);
-      tda = set_TimeDomainResourceAllocation(k2, sliv);
-      asn1cSeqAdd(&pusch_ConfigCommon->choice.setup->pusch_TimeDomainAllocationList->list, tda);
+      tda = set_TimeDomainResourceAllocation(N_dl, sliv); // to be reached from first DL slot, if any
+      asn1cSeqAdd(&tda_list->list, tda);
+    } else if (ul_symb > 1) { // k2 > N_Dl
+      long sliv = get_SLIV(NR_NUMBER_OF_SYMBOLS_PER_SLOT - ul_symb, ul_symb - 1);
+      tda = set_TimeDomainResourceAllocation(nb_slots_per_period, sliv); // to be reached from last DL (mixed) slot, if any
+      asn1cSeqAdd(&tda_list->list, tda);
+    }
+
+    if (p1->nrofUplinkSlots > k2) {
+      AssertFatal(N_dl >= k2 - 1, "cannot fulfil TDD pattern: N_dl %d, k2 %d\n", N_dl, k2);
+      //int num_slots_period = p1->nrofDownlinkSlots + p1->nrofUplinkSlots + (p1->nrofDownlinkSymbols + p1->nrofUplinkSymbols > 0);
+
+      for (int i = k2 + 1; i <= N_ul; ++i) {
+        tda = set_TimeDomainResourceAllocation(i, get_SLIV(0, 13));
+        asn1cSeqAdd(&tda_list->list, tda);
+      }
+
+      /*
+      long sliv = get_SLIV(NR_NUMBER_OF_SYMBOLS_PER_SLOT - ul_symb, ul_symb - 1);
+      int mixed_k2 = k2 <= N_dl ? N_dl : nb_slots_per_period;
+      tda = set_TimeDomainResourceAllocation(mixed_k2, sliv);
+      asn1cSeqAdd(&tda_list->list, tda);
+      */
     }
   }
 }
