@@ -803,6 +803,8 @@ void rrc_gNB_generate_dedicatedRRCReconfiguration_release(gNB_RRC_INST *rrc,
       if ((item->status == PDU_SESSION_STATUS_TORELEASE) && item->xid == xid) {
         FOR_EACH_SEQ_ARR(drb_t *, drb, &ue_p->drbs) {
           if (drb->pdusession_id == item->param.pdusession_id) {
+            if (!req.drbs_rel)
+              req.drbs_rel = malloc_or_fail(sizeof(*req.drbs_rel));
             asn1cSequenceAdd(to_release->list, NR_DRB_Identity_t, DRB_release);
             *DRB_release = drb->drb_id;
             req.drbs_rel[req.drbs_len++].id = *DRB_release;
