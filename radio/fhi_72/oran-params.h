@@ -32,9 +32,7 @@
 #define ORAN_CONFIG_IO_CORE "io_core"
 #define ORAN_CONFIG_WORKER_CORES "worker_cores"
 #define ORAN_CONFIG_DU_KEYPAIR "du_key_pair" // only needed for M-plane
-#define ORAN_CONFIG_DU_ADDR "du_addr" // only needed for M-plane
 #define ORAN_CONFIG_VLAN_TAG "vlan_tag" // only needed for M-plane
-#define ORAN_CONFIG_RU_ADDR "ru_addr" // not needed if M-plane used
 #define ORAN_CONFIG_RU_IP_ADDR "ru_ip_addr" // only needed for M-plane
 #define ORAN_CONFIG_MTU "mtu" // not needed if M-plane used
 #define ORAN_CONFIG_DU_ADDR "du_addr"
@@ -56,9 +54,7 @@
   {ORAN_CONFIG_IO_CORE,         "DPDK Core used for IO\n",                  PARAMFLAG_MANDATORY, .iptr=NULL,       .defintval=4,        TYPE_INT,        0}, \
   {ORAN_CONFIG_WORKER_CORES,    "CPU Cores to use for workers\n",           PARAMFLAG_MANDATORY, .uptr=NULL,       .defintarrayval=NULL,TYPE_UINTARRAY,  0}, \
   {ORAN_CONFIG_DU_KEYPAIR,      "DU keypair for RU authentication\n",       PARAMFLAG_MANDATORY, .strlistptr=NULL, .defstrlistval=NULL, TYPE_STRINGLIST, 0}, \
-  {ORAN_CONFIG_DU_ADDR,         "Ether addr of DU\n",                       PARAMFLAG_MANDATORY, .strlistptr=NULL, .defstrlistval=NULL, TYPE_STRINGLIST, 0}, \
   {ORAN_CONFIG_VLAN_TAG,        "VLAN tag\n",                               PARAMFLAG_MANDATORY, .iptr=NULL,       .defintarrayval=0,   TYPE_INTARRAY,   0}, \
-  {ORAN_CONFIG_RU_ADDR,         "Ether addr of RU\n",                       PARAMFLAG_MANDATORY, .strlistptr=NULL, .defstrlistval=NULL, TYPE_STRINGLIST, 0}, \
   {ORAN_CONFIG_RU_IP_ADDR,      "IP addr of RU\n",                          PARAMFLAG_MANDATORY, .strlistptr=NULL, .defstrlistval=NULL, TYPE_STRINGLIST, 0}, \
   {ORAN_CONFIG_DU_ADDR,         "Ether addr of DU\n",                                         0, .strlistptr=NULL, .defstrlistval=NULL, TYPE_STRINGLIST, 0}, \
   {ORAN_CONFIG_RU_ADDR,         "Ether addr of RU\n",                                         0, .strlistptr=NULL, .defstrlistval=NULL, TYPE_STRINGLIST, 0}, \
@@ -73,8 +69,6 @@
 
 // clang-format off
 #define ORAN_GLOBALPARAMS_CHECK_DESC {           \
-    { .s5 = { NULL } },                          \
-    { .s5 = { NULL } },                          \
     { .s5 = { NULL } },                          \
     { .s5 = { NULL } },                          \
     { .s5 = { NULL } },                          \

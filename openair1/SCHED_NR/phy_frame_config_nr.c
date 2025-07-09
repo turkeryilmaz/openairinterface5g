@@ -155,7 +155,7 @@ void set_tdd_config_nr(nfapi_nr_config_request_scf_t *cfg, frame_structure_t *fs
 int nr_slot_select(nfapi_nr_config_request_scf_t *cfg, int nr_frame, int nr_slot)
 {
   (void) nr_frame;
- 
+
   /* for FFD all slot can be considered as an uplink */
   int check_slot = 0;
 
