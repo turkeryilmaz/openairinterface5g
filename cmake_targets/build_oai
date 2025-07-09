@@ -90,18 +90,18 @@ Options:
    Makes the UE specific parts (usim, nvram) from the given configuration file
 --nrUE
   Makes the NR UE softmodem
---NR-eNB-packaging
-  Produces NR eNB package
---NR-gNB-packaging
-  Produces NR gNB package
---LTE-eNB-packaging
-  Produces LTE eNB package
+--NR-packaging
+  Produces NR package
+--LTE-packaging
+  Produces LTE package
 --OAI-COMMON-packaging
   Produces a package with common executables
 --OAI-USRP-packaging
   Produces a package with exerything for USRP
 --OAI-LDPC-T2-packaging
   Produces a package with exerything for T2 accelerator
+--OAI-PHYSIM-packaging
+  Produces a package with exerything for simulators
 --UE-conf-nvram [configuration file]
    Specify conf_nvram_path (default \"$conf_nvram_path\")
 -w | --hardware
@@ -335,18 +335,18 @@ function main() {
             CMAKE_CMD="$CMAKE_CMD -DPACKAGING-RPM=ON"
             echo_info "Set Packaging to RPM"
             shift;;
-       --NR-gNB-packaging)
-            CMAKE_CMD="$CMAKE_CMD -DNR_gNB_PACKAGE=ON -DPACKAGING=ON"
-            echo_info "Will create a gNB package"
-            shift;;
-       --NR-eNB-packaging)
-            CMAKE_CMD="$CMAKE_CMD -DNR_eNB_PACKAGE=ON -DPACKAGING=ON"
-            echo_info "Will create an eNB package"
-            shift;;
-       --LTE-eNB-packaging)
-            CMAKE_CMD="$CMAKE_CMD -DLTE_eNB_PACKAGE=ON -DPACKAGING=ON"
-            echo_info "Will create a LTE eNB package"
-            shift;;
+       --NR-packaging)
+            shift
+            set -- --nrUE --gNB "$@"
+            CMAKE_CMD="$CMAKE_CMD -DNR_PACKAGE=ON -DPACKAGING=ON"
+            echo_info "Will create a NR package"
+            ;;
+       --LTE-packaging)
+            shift
+            set -- --UE --eNB "$@"
+            CMAKE_CMD="$CMAKE_CMD -DLTE_PACKAGE=ON -DPACKAGING=ON"
+            echo_info "Will create a LTE package"
+            ;;
        --OAI-COMMON-packaging)
             CMAKE_CMD="$CMAKE_CMD -DOAI_COMMON_PACKAGE=ON -DPACKAGING=ON"
             echo_info "Will create a OAI COMMON package"
@@ -359,6 +359,12 @@ function main() {
             CMAKE_CMD="$CMAKE_CMD -DOAI_LDPC_T2_PACKAGE=ON -DPACKAGING=ON"
             echo_info "Will create a OAI LDPC T2 package"
             shift;;
+       --OAI-PHYSIM-packaging)
+            shift
+            set -- -P "$@"
+            CMAKE_CMD="$CMAKE_CMD -DOAI_PHYSIM_PACKAGE=ON -DPACKAGING=ON"
+            echo_info "Will create a OAI PHYSIM package"
+            ;;
        -s | --check)
             OAI_TEST=1
             echo_info "Will run auto-tests"
@@ -378,7 +384,7 @@ function main() {
             shift;;
        --build-doxygen)
            CMAKE_CMD="$CMAKE_CMD -DGENERATE_DOXYGEN=ON"
-	   TARGET_LIST="$TARGET_LIST doc"
+	         TARGET_LIST="$TARGET_LIST doc"
            BUILD_DOXYGEN=1
            echo_info "Will build doxygen support"
            shift;;     

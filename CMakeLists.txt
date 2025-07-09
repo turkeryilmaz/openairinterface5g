@@ -65,12 +65,12 @@ include(FindPkgConfig)
 
 
 option(PACKAGING-RPM "PACKAGING-RPM" OFF)
-option(NR_gNB_PACKAGE "NR-gNB-PACKAGE" OFF)
-option(NR_eNB_PACKAGE "NR-eNB-PACKAGE" OFF)
-option(LTE_eNB_PACKAGE "LTE-eNB-PACKAGE" OFF)
+option(NR_PACKAGE "NR-PACKAGE" OFF)
+option(LTE_PACKAGE "LTE-PACKAGE" OFF)
 option(OAI_COMMON_PACKAGE "OAI-COMMON-PACKAGE" OFF)
 option(OAI_USRP_PACKAGE "OAI-USRP-PACKAGE" OFF)
 option(OAI_LDPC_T2_PACKAGE "OAI-LDPC-T2-PACKAGE" OFF)
+option(OAI_PHYSIM_PACKAGE "OAI-PHYSIM-PACKAGE" OFF)
 
 # Check if asn1c is installed, and check if it supports all options we need
 # a user can provide ASN1C_EXEC to override an asn1c to use (e.g., parallel
@@ -2202,114 +2202,82 @@ include_directories(${OPENAIR_CMAKE}/ran_build/build/openair2/RRC/NR/MESSAGES)
 include_directories(${OPENAIR_CMAKE}/ran_build/build/openair3/S1AP/MESSAGES)
 include_directories(${OPENAIR_CMAKE}/ran_build/build/openair3/NRPPA/MESSAGES)
 
-set(CPACK_COMPONENTS_NR_GNB_LIST)
-set(CPACK_COMPONENTS_NR_ENB_LIST)
-set(CPACK_COMPONENTS_LTE_ENB_LIST)
-set(CPACK_COMPONENTS_SIM_LIST)
-
-if(LTE_eNB_PACKAGE)
-  list(APPEND CPACK_COMPONENTS_LTE_ENB_LIST
-    lte-softmodem     
-    oairu             
-    lte-uesoftmodem   
-  )
+if(LTE_PACKAGE)
+  set(CPACK_COMPONENT_OAI_LTE_PACKAGE_DESCRIPTION "This package is dedicated for LTE executables")
+endif()
+if(NR_PACKAGE)
+  set(CPACK_COMPONENT_OAI_NR_PACKAGE_DESCRIPTION "This package is dedicated for NR executables")
+endif()
+if(OAI_PHYSIM_PACKAGE)
+  set(CPACK_COMPONENT_OAI_PHYSIM_PACKAGE_DESCRIPTION "This package contains every simulators")
+endif()
+if(OAI_LDPC_T2_PACKAGE)
+  set(CPACK_COMPONENT_OAI_LDPC_T2_PACKAGE_DESCRIPTION "This package is dedicated for T2 accelerator library")
+endif()
+if(OAI_USRP_PACKAGE)
+  set(CPACK_COMPONENT_OAI_USRP_PACKAGE_DESCRIPTION "This package is dedicated for USRP library")
+endif()
+if(OAI_COMMON_PACKAGE)
+  set(CPACK_COMPONENT_OAI_COMMON_PACKAGE_DESCRIPTION "This package contains shared libraries for other packages")
 endif()
 
-if(NR_gNB_PACKAGE)
-  list(APPEND CPACK_COMPONENTS_NR_GNB_LIST
-    nr-softmodem      
-    nr-cuup           
-  )
-endif()
-
-if(NR_eNB_PACKAGE)
-  list(APPEND CPACK_COMPONENTS_NR_ENB_LIST
-    nr-uesoftmodem    
-  )
-endif()
-
-# Optionally add simulation components
-# list(APPEND CPACK_COMPONENTS_SIM_LIST
-#   nr_pbchsim
-#   nr_dlsim
-#   nr_prachsim
-#   nr_ulschsim
-#   nr_ulsim
-# )
-
-if(LTE_eNB_PACKAGE)
-  set(CPACK_COMPONENT_LTE_SOFTMODEM_DESCRIPTION "LTE Softmodem binary")
-  set(CPACK_COMPONENT_OAIRU_DESCRIPTION "OAI RU binary")
-  set(CPACK_COMPONENT_LTE_UESOFTMODEM_DESCRIPTION "LTE UE Softmodem binary")
-endif()
-if(NR_gNB_PACKAGE)
-  set(CPACK_COMPONENT_NR_SOFTMODEM_DESCRIPTION "NR Softmodem binary")
-  set(CPACK_COMPONENT_NR_CUUP_DESCRIPTION "NR CUUP binary")
-endif()
-if(NR_eNB_PACKAGE)
-  set(CPACK_COMPONENT_NR_UESOFTMODEM_DESCRIPTION "NR UE Softmodem binary")
-endif()
-#set(CPACK_COMPONENT_NR_PBCHSIM_DESCRIPTION "NR PBCHSIM binary")
-#set(CPACK_COMPONENT_NR_DLSIM_DESCRIPTION "NR DLSIM binary")
-#set(CPACK_COMPONENT_NR_PRACHSIM_DESCRIPTION "NR PRACHSIM binary")
-#set(CPACK_COMPONENT_NR_ULSCHSIM_DESCRIPTION "NR ULSCHSIM binary")
-#set(CPACK_COMPONENT_NR_ULSIM_DESCRIPTION "NR ULSIM binary")
 
 set(CPACK_DEB_COMPONENT_INSTALL ON)
 set(COMPONENTS_LIST "")
 
-if(NR_gNB_PACKAGE)
-  install(TARGETS nr-softmodem nr-cuup
-      COMPONENT NR_gNB
-      RUNTIME DESTINATION bin
-      LIBRARY DESTINATION lib
-    )
-    list(APPEND COMPONENTS_LIST NR_gNB)
+if(NR_PACKAGE)
+  install(TARGETS nr-softmodem nr-cuup nr-uesoftmodem
+    COMPONENT oai-nr
+    RUNTIME DESTINATION bin
+    LIBRARY DESTINATION lib
+  )
+  list(APPEND COMPONENTS_LIST oai-nr)
 endif()
 
-if(NR_eNB_PACKAGE)
-  install(TARGETS nr-uesoftmodem
-      COMPONENT NR_eNB
-      RUNTIME DESTINATION bin
-      LIBRARY DESTINATION lib
-    )
-    list(APPEND COMPONENTS_LIST NR_eNB)
-endif()
-
-if(LTE_eNB_PACKAGE)
-  install(TARGETS lte-softmodem lte-uesoftmodem oairu
-      COMPONENT LTE_eNB
-      RUNTIME DESTINATION bin
-      LIBRARY DESTINATION lib
-    )
-    list(APPEND COMPONENTS_LIST LTE_eNB)
+if(LTE_PACKAGE)
+  install(TARGETS lte-softmodem lte-uesoftmodem #conf2uedata nvram usim
+    COMPONENT oai-lte
+    RUNTIME DESTINATION bin
+    LIBRARY DESTINATION lib
+  )
+  list(APPEND COMPONENTS_LIST oai-lte)
 endif()
 
 if(OAI_LDPC_T2_PACKAGE)
   install(TARGETS ldpc_t2
-          COMPONENT OAI_LDPC_T2
-          RUNTIME DESTINATION bin
-          LIBRARY DESTINATION lib
-        )
-    list(APPEND COMPONENTS_LIST OAI_T2)
+        COMPONENT OAI_LDPC_T2
+        RUNTIME DESTINATION bin
+        LIBRARY DESTINATION lib
+      )
+  list(APPEND COMPONENTS_LIST oai-t2)
 endif()
 
 if(OAI_USRP_PACKAGE)
   install(TARGETS oai_usrpdevif
-          COMPONENT OAI_USRP
-          RUNTIME DESTINATION bin
-          LIBRARY DESTINATION lib
-        )
-    list(APPEND COMPONENTS_LIST OAI_USRP)
+        COMPONENT oai-usrp
+        RUNTIME DESTINATION bin
+        LIBRARY DESTINATION lib
+      )
+  list(APPEND COMPONENTS_LIST oai-usrp)
 endif()
 
 if(OAI_COMMON_PACKAGE)
   install(TARGETS params_libconfig dfts oai_iqplayer params_yaml telnetsrv coding rfsimulator ldpc_orig ldpc vrtsim
-          COMPONENT OAI_COMMON
+          COMPONENT oai-common
           RUNTIME DESTINATION bin
           LIBRARY DESTINATION lib
         )
-    list(APPEND COMPONENTS_LIST OAI_COMMON)
+    list(APPEND COMPONENTS_LIST oai-common)
+endif()
+
+if(OAI_PHYSIM_PACKAGE)
+  #TO BE FIXED BEFORE ADDED: pbchsim mbmssim pdcchsim pucchsim prachsim syncsim dlsim ulsim scansim 
+  install(TARGETS polartest smallblocktest ldpctest nr_dlschsim nr_psbchsim nr_pucchsim nr_dlsim nr_prachsim nr_ulschsim nr_ulsim 
+          COMPONENT oai-physim
+          RUNTIME DESTINATION bin
+          LIBRARY DESTINATION lib
+        )
+    list(APPEND COMPONENTS_LIST oai-physim)
 endif()
 
 set(CPACK_RESOURCE_FILE_LICENSE "${OPENAIR_DIR}/LICENSE")

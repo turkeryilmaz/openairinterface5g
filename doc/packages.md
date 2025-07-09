@@ -8,11 +8,11 @@
 
 ## Options
 
- - \-\-UE \-\-eNB  \-\-LTE-eNB-packaging => Create packages with oairu, lte-uesoftmodem and lte-softmodem
- - \-\-nrUE \-\-NR-eNB-packaging => Create package with nr-uesoftmodem
- - \-\-gNB \-\-NR-gNB-packaging => Create packages with nr-cuup and nr-softmodem
+ - \-\-LTE-packaging => Create a package with everything for lte
+ - \-\-NR-packaging => Create a package with everything for nr
  - \-\-RPM => Set the packages to be RPM ones, if not used packages will be DEB ones 
  - \-\-build\-lib "ldpc_t2" \-\-OAI\-LDPC\-T2\-packaging => Create a package for T2 accelerator
  - \-\-build-lib telnetsrv \-\-OAI\-COMMON\-packaging
  - \-\-OAI\-USRP\-packaging
+ - \-\-OAI\-PHYSIM\-packaging
 
