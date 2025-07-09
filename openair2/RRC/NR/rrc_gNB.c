@@ -806,7 +806,7 @@ void rrc_gNB_generate_dedicatedRRCReconfiguration_release(gNB_RRC_INST *rrc,
               req.drbs_rel = malloc_or_fail(sizeof(*req.drbs_rel));
             asn1cSequenceAdd(to_release->list, NR_DRB_Identity_t, DRB_release);
             *DRB_release = drb->drb_id;
-            req.drbs_rel[req.drbs_len++].id = *DRB_release;
+            req.drbs_rel[req.drbs_rel_len++].id = *DRB_release;
           }
         }
       }
