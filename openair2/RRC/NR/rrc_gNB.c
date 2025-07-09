@@ -798,7 +798,6 @@ void rrc_gNB_generate_dedicatedRRCReconfiguration_release(gNB_RRC_INST *rrc,
 
   if (seq_arr_size(&ue_p->pduSessions)) {
     asn1cCalloc(params.drb_release_list, to_release);
-    params.drb_release_list = to_release;
     FOR_EACH_SEQ_ARR(rrc_pdu_session_param_t *, item, &ue_p->pduSessions) {
       if ((item->status == PDU_SESSION_STATUS_TORELEASE) && item->xid == xid) {
         FOR_EACH_SEQ_ARR(drb_t *, drb, &ue_p->drbs) {
