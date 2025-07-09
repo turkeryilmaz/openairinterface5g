@@ -31,6 +31,7 @@
 #include "common/config/config_userapi.h"
 #include "common/utils/telnetsrv/telnetsrv.h"
 #include "common/utils/load_module_shlib.h"
+#include "radio/rfsimulator/taps_loader.h"
 
 
 //#define DEBUG_CH
@@ -1683,6 +1684,98 @@ channel_desc_t *new_channel_desc_scm(uint8_t nb_tx,
                         0);
       printf("%s: satellite orbit height %f km\n", map_int_to_str(channelmod_names, channel_model), chan_desc->sat_height / 1000);
       break;
+
+    case TraceDrivenCIR_SionnaRT: {
+      // Load trace-driven CIR parameters from dedicated config file.
+      char cir_file[512] = {0};
+      int cir_len = 0, max_taps = 0;
+      int in_section = 0;
+
+      FILE *conf = fopen("../../../ci-scripts/conf_files/trace_cir_model.conf", "r");
+      if (!conf) {
+        LOG_E(HW, "Could not open trace_cir_model.conf!\n");
+        exit(EXIT_FAILURE);
+      }
+
+      // Parse config: enter only [external_cir_model] section
+      char line[600];
+      while (fgets(line, sizeof(line), conf)) {
+        // Remove leading/trailing spaces
+        char *ptr = line;
+        while (*ptr == ' ' || *ptr == '\t')
+          ptr++;
+        if (*ptr == '#' || *ptr == '\n' || *ptr == '\0')
+          continue;
+
+        // Section detection
+        if (*ptr == '[') {
+          in_section = (strncmp(ptr, "[external_cir_model]", 20) == 0);
+          continue;
+        }
+        if (!in_section)
+          continue; // skip everything outside our section
+
+        // Parse key = value
+        char key[64], value[512];
+        if (sscanf(ptr, "%63[^=]=%511[^\n]", key, value) == 2) {
+          // Trim whitespace from key/value
+          char *k = key, *v = value;
+          while (*k == ' ' || *k == '\t')
+            k++;
+          while (*v == ' ' || *v == '\t')
+            v++;
+          char *kend = k + strlen(k) - 1;
+          while (kend > k && (*kend == ' ' || *kend == '\t'))
+            *kend-- = 0;
+          char *vend = v + strlen(v) - 1;
+          while (vend > v && (*vend == ' ' || *vend == '\t' || *vend == '\r'))
+            *vend-- = 0;
+
+          // Required fields
+          if (!strcmp(k, "cir_file"))
+            strncpy(cir_file, v, sizeof(cir_file) - 1);
+          else if (!strcmp(k, "external_cir_len"))
+            cir_len = atoi(v);
+          else if (!strcmp(k, "max_loaded_taps"))
+            max_taps = atoi(v);
+          // Optional: parse for logging/extension
+          // else if (!strcmp(k, "description")) strncpy(description, v, sizeof(description) - 1);
+          // else if (!strcmp(k, "num_snapshots")) num_snapshots = atoi(v);
+          // else if (!strcmp(k, "replay_mode")) strncpy(replay_mode, v, sizeof(replay_mode) - 1);
+          // else if (!strcmp(k, "metadata_file")) strncpy(metadata_file, v, sizeof(metadata_file) - 1);
+        }
+      }
+      fclose(conf);
+
+      if (cir_file[0] == 0 || cir_len <= 0 || max_taps <= 0) {
+        LOG_E(HW,
+              "Config fields missing or invalid in [external_cir_model] section of trace_cir_model.conf!\n"
+              "cir_file='%s' external_cir_len=%d max_loaded_taps=%d\n",
+              cir_file,
+              cir_len,
+              max_taps);
+        exit(EXIT_FAILURE);
+      }
+
+      chan_desc->external_cir_file = strdup(cir_file);
+      chan_desc->external_cir_len = cir_len;
+      chan_desc->max_loaded_taps = max_taps;
+      chan_desc->Doppler_phase_cur = calloc(nb_rx, sizeof(double));
+
+      // Standard OAI memory allocation for channel state
+      chan_desc->ch = calloc(nb_tx * nb_rx, sizeof(struct complexd *));
+      chan_desc->chF = calloc(nb_tx * nb_rx, sizeof(struct complexd *));
+      for (int i = 0; i < nb_tx * nb_rx; i++) {
+        chan_desc->ch[i] = NULL;
+        chan_desc->chF[i] = calloc(1200, sizeof(struct complexd)); // Typical OFDM symbol size
+      }
+
+      if (load_external_taps_binary(cir_file, chan_desc) < 0) {
+        LOG_E(HW, "[CIR] Failed to load CIR binary file: %s!\n", cir_file);
+        exit(EXIT_FAILURE);
+      }
+      break;
+    }
 
     default:
       LOG_W(OCM,"channel model not yet supported\n");
