@@ -1121,7 +1121,7 @@ printf("%d\n", slot);
         msgDataTx->gNB = gNB;
 
         start_meas(&gNB->phy_proc_tx);
-        phy_procedures_gNB_TX(msgDataTx,frame,slot,1);
+        phy_procedures_gNB_TX(gNB, msgDataTx, frame, slot, 1);
         stop_meas(&gNB->phy_proc_tx);
 
         int txdataF_offset = slot * frame_parms->samples_per_slot_wCP;
