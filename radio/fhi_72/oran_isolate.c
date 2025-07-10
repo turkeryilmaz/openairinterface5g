@@ -242,10 +242,11 @@ void oran_fh_if4p5_south_in(RU_t *ru, int *frame, int *slot)
     gNB = gNB_list[0];
   for (int i = 0; i < 80*14; i++) //80 hardcoded for now
   {
-    if (ru->common.beam_id[0][i] != -1){
-    nfapi_nr_dig_beam_t *beam = &gNB->gNB_config.dbt_config.dig_beam_list[ru->common.beam_id[0][i]];
-    //printf("before: ru->common.beam_id[0][%d] %d slot %d symbol %d \n", i, ru->common.beam_id[0][i], proc->tti_tx, i%14);
-    ru_info.beamID[0][i] = beam->txru_list[0].dig_beam_weight_Re;
+    if (ru->common.beam_id[0][i] != -1) {
+      uint8_t beam = gNB->gNB_config.analog_beamforming_ve.analog_beam_list[ru->common.beam_id[0][i]].value;
+
+      // printf("before: ru->common.beam_id[0][%d] %d slot %d symbol %d \n", i, ru->common.beam_id[0][i], proc->tti_tx, i%14);
+      ru_info.beamID[0][i] = beam;
     //if (i%14 ==0 && ru->common.beam_id[0][i] == 0)
     //printf("slot %d symbol %d beam index %d beam RU %d\n", proc->tti_tx , i%14, ru->common.beam_id[0][i], ru_info.beamID[0][i]);
     }else{
