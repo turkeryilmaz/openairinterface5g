@@ -1098,7 +1098,6 @@ void *ru_thread(void *param)
   RU_t               *ru      = (RU_t *)param;
   RU_proc_t          *proc    = &ru->proc;
   NR_DL_FRAME_PARMS  *fp      = ru->nr_frame_parms;
-  PHY_VARS_gNB       *gNB     = RC.gNB[0];
   int                ret;
   int                slot     = fp->slots_per_frame-1;
   int                frame    = 1023;
@@ -1111,7 +1110,6 @@ void *ru_thread(void *param)
   // set default return value
   sprintf(threadname,"ru_thread %u",ru->idx);
   LOG_I(PHY,"Starting RU %d (%s,%s) on cpu %d\n",ru->idx,NB_functions[ru->function],NB_timing[ru->if_timing],sched_getcpu());
-  memcpy((void *)&ru->config,(void *)&RC.gNB[0]->gNB_config,sizeof(ru->config));
 
   nr_init_frame_parms(&ru->config, fp);
   nr_dump_frame_parms(fp);
@@ -1245,12 +1243,14 @@ void *ru_thread(void *param)
       proc->timestamp_tx += fp->get_samples_per_slot(i % fp->slots_per_frame, fp);
     proc->tti_tx = (proc->tti_rx + ru->sl_ahead) % fp->slots_per_frame;
     proc->frame_tx = proc->tti_rx > proc->tti_tx ? (proc->frame_rx + 1) & 1023 : proc->frame_rx;
-    LOG_D(PHY,"AFTER fh_south_in - SFN/SL:%d%d RU->proc[RX:%d.%d TX:%d.%d] RC.gNB[0]:[RX:%d%d TX(SFN):%d]\n",
-          frame,slot,
-          proc->frame_rx,proc->tti_rx,
-          proc->frame_tx,proc->tti_tx,
-          RC.gNB[0]->proc.frame_rx,RC.gNB[0]->proc.slot_rx,
-          RC.gNB[0]->proc.frame_tx);
+    LOG_D(PHY,
+          "AFTER fh_south_in - SFN/SL:%d%d RU->proc[RX:%d.%d TX:%d.%d]\n",
+          frame,
+          slot,
+          proc->frame_rx,
+          proc->tti_rx,
+          proc->frame_tx,
+          proc->tti_tx);
 
     if (ru->idx != 0)
       proc->frame_tx = (proc->frame_tx + proc->frame_offset) & 1023;
@@ -1258,20 +1258,20 @@ void *ru_thread(void *param)
     // do RX front-end processing (frequency-shift, dft) if needed
     int slot_type = nr_slot_select(&ru->config, proc->frame_rx, proc->tti_rx);
     if (slot_type == NR_UPLINK_SLOT || slot_type == NR_MIXED_SLOT) {
-      if (!wait_free_rx_tti(&gNB->L1_rx_out, rx_tti_busy, proc->frame_rx, proc->tti_rx))
+      if (!wait_free_rx_tti(ru->L1_rx_out, rx_tti_busy, proc->frame_rx, proc->tti_rx))
         break; // nothing to wait for: we have to stop
       if (ru->feprx) {
         ru->feprx(ru,proc->tti_rx);
         LOG_D(NR_PHY, "Setting %d.%d (%d) to busy\n", proc->frame_rx, proc->tti_rx, proc->tti_rx % RU_RX_SLOT_DEPTH);
         //LOG_M("rxdata.m","rxs",ru->common.rxdata[0],1228800,1,1);
         LOG_D(PHY,"RU proc: frame_rx = %d, tti_rx = %d\n", proc->frame_rx, proc->tti_rx);
-        gNBscopeCopy(RC.gNB[0],
+        gNBscopeCopy(ru,
                      gNBRxdataF,
                      ru->common.rxdataF[0],
                      sizeof(c16_t),
                      1,
-                     gNB->frame_parms.samples_per_slot_wCP,
-                     proc->tti_rx * gNB->frame_parms.samples_per_slot_wCP);
+                     ru->nr_frame_parms->samples_per_slot_wCP,
+                     proc->tti_rx * ru->nr_frame_parms->samples_per_slot_wCP);
 
         // Do PRACH RU processing
         int prach_id = find_nr_prach_ru(ru, proc->frame_rx, proc->tti_rx, SEARCH_EXIST);
@@ -1307,16 +1307,15 @@ void *ru_thread(void *param)
       } // end if (ru->feprx)
     } // end if (slot_type == NR_UPLINK_SLOT || slot_type == NR_MIXED_SLOT) {
 
-    notifiedFIFO_elt_t *resTx = newNotifiedFIFO_elt(sizeof(processingData_L1tx_t), 0, &gNB->L1_tx_out, NULL);
+    notifiedFIFO_elt_t *resTx = newNotifiedFIFO_elt(sizeof(processingData_L1tx_t), 0, ru->L1_tx_out, NULL);
     processingData_L1tx_t *syncMsgTx = NotifiedFifoData(resTx);
-    syncMsgTx->gNB = gNB;
     syncMsgTx->frame = proc->frame_tx;
     syncMsgTx->slot = proc->tti_tx;
     syncMsgTx->frame_rx = proc->frame_rx;
     syncMsgTx->slot_rx = proc->tti_rx;
     syncMsgTx->timestamp_tx = proc->timestamp_tx;
     resTx->key = proc->tti_tx;
-    pushNotifiedFIFO(&gNB->L1_tx_out, resTx);
+    pushNotifiedFIFO(ru->L1_tx_out, resTx);
   }
 
   ru_thread_status = 0;

@@ -477,7 +477,9 @@ int start_L1L2(module_id_t gnb_id)
   prepare_du_configuration_update(mac, info, mib, sib1);
 
   init_NR_RU(config_get_if(), NULL);
-
+  RC.ru[0]->L1_rx_out = &RC.gNB[0]->L1_rx_out;
+  RC.ru[0]->L1_tx_out = &RC.gNB[0]->L1_tx_out;
+  memcpy(&RC.ru[0]->config, &RC.gNB[0]->gNB_config, sizeof(RC.ru[0]->config));
   start_NR_RU();
   wait_RUs();
   init_eNB_afterRU();
@@ -701,8 +703,12 @@ int main( int argc, char **argv ) {
   if (NFAPI_MODE != NFAPI_MODE_PNF && (NODE_IS_DU(node_type) || NODE_IS_MONOLITHIC(node_type)))
     wait_f1_setup_response();
 
-  if (RC.nb_RU > 0)
+  if (RC.nb_RU > 0) {
+    RC.ru[0]->L1_rx_out = &RC.gNB[0]->L1_rx_out;
+    RC.ru[0]->L1_tx_out = &RC.gNB[0]->L1_tx_out;
+    memcpy(&RC.ru[0]->config, &RC.gNB[0]->gNB_config, sizeof(RC.ru[0]->config));
     start_NR_RU();
+  }
 
 #ifdef ENABLE_AERIAL
   gNB_MAC_INST *nrmac = RC.nrmac[0];

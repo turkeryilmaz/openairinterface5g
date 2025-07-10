@@ -772,9 +772,8 @@ static int do_one_dlsch(unsigned char *input_ptr, PHY_VARS_gNB *gNB, NR_gNB_DLSC
   return ((size_output_tb + 511) >> 9) << 6;
 }
 
-void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
+void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot, PHY_VARS_gNB *gNB)
 {
-  PHY_VARS_gNB *gNB = msgTx->gNB;
   NR_DL_FRAME_PARMS *frame_parms = &gNB->frame_parms;
   time_stats_t *dlsch_encoding_stats = &gNB->dlsch_encoding_stats;
   time_stats_t *tinput = &gNB->tinput;

@@ -74,14 +74,13 @@
 #define L1STATSSTRLEN 16384
 static void rx_func(processingData_L1_t *param);
 
-static void tx_func(processingData_L1tx_t *info)
+static void tx_func(processingData_L1tx_t *info, PHY_VARS_gNB *gNB)
 {
   int frame_tx = info->frame;
   int slot_tx = info->slot;
   int frame_rx = info->frame_rx;
   int slot_rx = info->slot_rx;
   LOG_D(NR_PHY, "%d.%d running tx_func\n", frame_tx, slot_tx);
-  PHY_VARS_gNB *gNB = info->gNB;
   module_id_t module_id = gNB->Mod_id;
   uint8_t CC_id = gNB->CC_id;
   NR_IF_Module_t *ifi = gNB->if_inst;
@@ -99,7 +98,6 @@ static void tx_func(processingData_L1tx_t *info)
   stop_meas(&gNB->slot_indication_stats);
   gNB->msgDataTx->timestamp_tx = info->timestamp_tx;
   info = gNB->msgDataTx;
-  info->gNB = gNB;
 
   // At this point, MAC scheduler just ran, including scheduling
   // PRACH/PUCCH/PUSCH, so trigger RX chain processing
@@ -115,10 +113,9 @@ static void tx_func(processingData_L1tx_t *info)
 
   int tx_slot_type = nr_slot_select(cfg, frame_tx, slot_tx);
   if (tx_slot_type == NR_DOWNLINK_SLOT || tx_slot_type == NR_MIXED_SLOT || get_softmodem_params()->continuous_tx) {
-    start_meas(&info->gNB->phy_proc_tx);
-    phy_procedures_gNB_TX(info, frame_tx, slot_tx, 1);
+    start_meas(&gNB->phy_proc_tx);
+    phy_procedures_gNB_TX(info, frame_tx, slot_tx, 1, gNB);
 
-    PHY_VARS_gNB *gNB = info->gNB;
     processingData_RU_t syncMsgRU;
     syncMsgRU.frame_tx = frame_tx;
     syncMsgRU.slot_tx = slot_tx;
@@ -126,7 +123,7 @@ static void tx_func(processingData_L1tx_t *info)
     syncMsgRU.timestamp_tx = info->timestamp_tx;
     LOG_D(PHY, "gNB: %d.%d : calling RU TX function\n", syncMsgRU.frame_tx, syncMsgRU.slot_tx);
     ru_tx_func((void *)&syncMsgRU);
-    stop_meas(&info->gNB->phy_proc_tx);
+    stop_meas(&gNB->phy_proc_tx);
   }
 
   if (NFAPI_MODE == NFAPI_MONOLITHIC) {
@@ -161,7 +158,7 @@ void *L1_tx_thread(void *arg) {
      if (res == NULL) // stopping condition, happens only when queue is freed
        break;
      processingData_L1tx_t *info = (processingData_L1tx_t *)NotifiedFifoData(res);
-     tx_func(info);
+     tx_func(info, gNB);
      delNotifiedFIFO_elt(res);
   }
   return NULL;

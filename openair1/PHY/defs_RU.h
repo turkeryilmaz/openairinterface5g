@@ -668,6 +668,8 @@ typedef struct RU_t_s {
   /// number of cores for RU ThreadPool
   int num_tpcores;
   void* scopeData;
+  notifiedFIFO_t *L1_rx_out;
+  notifiedFIFO_t *L1_tx_out;
 } RU_t;
 
 
