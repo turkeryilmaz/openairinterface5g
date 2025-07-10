@@ -71,6 +71,7 @@
 #include "fgs_nas_utils.h"
 #include "fgmm_service_accept.h"
 #include "fgmm_service_reject.h"
+#include "fgmm_authentication_reject.h"
 #include "ds/byte_array.h"
 #include "key_nas_deriver.h"
 
@@ -300,7 +301,44 @@ static void nas_security_decrypt_payload(nr_ue_nas_t *nas, byte_array_t buffer, 
   free(decrypted);
 }
 
-static security_state_t nas_security_rx_process(nr_ue_nas_t *nas, byte_array_t buffer, fgs_nas_msg_t msg_type)
+static fgs_nas_msg_t get_msg_type(uint8_t *pdu_buffer, uint32_t length)
+{
+  if (pdu_buffer == NULL)
+    goto error;
+
+  /* get security header type */
+  if (length < 2)
+    goto error;
+
+  int security_header_type = pdu_buffer[1];
+
+  if (security_header_type == 0) {
+    /* plain NAS message */
+    if (length < 3)
+      goto error;
+    return pdu_buffer[2];
+  }
+
+  if (length < 10)
+    goto error;
+
+  int msg_type = pdu_buffer[9];
+
+  if (msg_type == FGS_DOWNLINK_NAS_TRANSPORT) {
+    if (length < 17)
+      goto error;
+
+    msg_type = pdu_buffer[16];
+  }
+
+  return msg_type;
+
+error:
+  LOG_E(NAS, "[UE] Received invalid downlink message\n");
+  return 0;
+}
+
+static security_state_t nas_security_rx_process(nr_ue_nas_t *nas, byte_array_t buffer)
 {
   if (nas->security_container == NULL)
     return NAS_SECURITY_NO_SECURITY_CONTEXT;
@@ -313,9 +351,11 @@ static security_state_t nas_security_rx_process(nr_ue_nas_t *nas, byte_array_t b
   LOG_D(NAS, "Security type is: %s\n", print_info(security_type, security_header_type_s, sizeofArray(security_header_type_s)));
 
   switch (security_type) {
-    case PLAIN_5GS_MSG:
+    case PLAIN_5GS_MSG: {
+      fgs_nas_msg_t msg_type = get_msg_type(buffer.buf, buffer.len);
       return unprotected_allowed(buffer, msg_type) ? NAS_SECURITY_UNPROTECTED : NAS_SECURITY_BAD_INPUT;
       break;
+    }
     case INTEGRITY_PROTECTED_WITH_NEW_SECU_CTX:
       stream_security_container_delete(nas->security_container);
       nas->security_container = NULL;
@@ -1063,6 +1103,33 @@ static void handle_fgmm_authentication_request(nr_ue_nas_t *nas, as_nas_info_t *
   generateAuthenticationResp(nas, initialNasMsg, buffer->buf);
 }
 
+/** @brief Handle authentication not accepted by the network
+ * This function assumes the message is not integrity protected, processes the received
+ * NAS message and logs whether a EAP-failure is enclosed. The UE enters state: 5GMM-DEREGISTERED.
+ * @todo The UE shall performs actions as per 5.4.1.3.5 of 3GPP TS 24.501, including
+ * (1) Abort any ongoing 5GMM procedure (2) Stop all active timers: T3510, T3516, T3517,
+ * T3519, T3520, T3521 (3) Delete stored SUCI. (4) handle EAP-failure message. */
+static void handle_authentication_reject(nr_ue_nas_t *nas, as_nas_info_t *initialNasMsg, uint8_t *pdu, int pdu_length)
+{
+  LOG_E(NAS, "Received Authentication Reject message from the network\n");
+  uint8_t eap_msg[MAX_EAP_CONTENTS_LEN] = {0};
+  fgmm_auth_reject_msg_t msg = {.eap_msg.buf = eap_msg};
+
+  byte_array_t ba = {.buf = pdu + 3 /* skip header */, .len = pdu_length};
+  if (decode_fgmm_auth_reject(&msg, &ba) < 0) {
+    LOG_E(NAS, "Could not decode Authentication Reject\n");
+    return;
+  }
+
+  if (msg.eap_msg.len > 0) {
+    /** @todo UE handling EAP-failure message (5.4.1.2.2.11 of 3GPP TS 24.501) */
+    LOG_W(NAS, "NAS Authentication Reject contains an EAP message: handling is not implemented\n");
+    log_hex_buffer("EAP-Failure", msg.eap_msg.buf, msg.eap_msg.len);
+  }
+
+  nas->fiveGMM_state = FGS_DEREGISTERED;
+}
+
 int nas_itti_kgnb_refresh_req(instance_t instance, const uint8_t kgnb[32])
 {
   MessageDef *message_p;
@@ -1679,43 +1746,6 @@ static void generatePduSessionEstablishRequest(nr_ue_nas_t *nas, as_nas_info_t *
   }
 }
 
-static fgs_nas_msg_t get_msg_type(uint8_t *pdu_buffer, uint32_t length)
-{
-  if (pdu_buffer == NULL)
-    goto error;
-
-  /* get security header type */
-  if (length < 2)
-    goto error;
-
-  int security_header_type = pdu_buffer[1];
-
-  if (security_header_type == 0) {
-    /* plain NAS message */
-    if (length < 3)
-      goto error;
-    return pdu_buffer[2];
-  }
-
-  if (length < 10)
-    goto error;
-
-  int msg_type = pdu_buffer[9];
-
-  if (msg_type == FGS_DOWNLINK_NAS_TRANSPORT) {
-    if (length < 17)
-      goto error;
-
-    msg_type = pdu_buffer[16];
-  }
-
-  return msg_type;
-
-error:
-  LOG_E(NAS, "[UE] Received invalid downlink message\n");
-  return 0;
-}
-
 static void send_nas_uplink_data_req(nr_ue_nas_t *nas, const as_nas_info_t *initial_nas_msg)
 {
   MessageDef *msg = itti_alloc_new_message(TASK_NAS_NRUE, nas->UE_id, NAS_UPLINK_DATA_REQ);
@@ -1975,13 +2005,13 @@ void *nas_nrue(void *args_p)
               NAS_CONN_ESTABLI_CNF(msg_p).nasMsg.length);
 
         byte_array_t ba = {.buf = NAS_CONN_ESTABLI_CNF(msg_p).nasMsg.nas_data, .len = NAS_CONN_ESTABLI_CNF(msg_p).nasMsg.length};
-        fgs_nas_msg_t msg_type = get_msg_type(ba.buf, ba.len);
-        security_state_t security_state = nas_security_rx_process(nas, ba, msg_type);
+        security_state_t security_state = nas_security_rx_process(nas, ba);
         if (security_state > NAS_SECURITY_INTEGRITY_PASSED) {
           LOG_E(NAS, "NAS integrity failed, discard incoming message: security state is %s\n", security_state_info[security_state].text);
           break;
         }
 
+        fgs_nas_msg_t msg_type = get_msg_type(ba.buf, ba.len);
         if (msg_type == FGS_REGISTRATION_ACCEPT) {
           handle_registration_accept(nas, ba.buf, ba.len);
         } else if (msg_type == FGS_PDU_SESSION_ESTABLISHMENT_ACC) {
@@ -2043,13 +2073,13 @@ void *nas_nrue(void *args_p)
         uint8_t *pdu_buffer = NAS_DOWNLINK_DATA_IND(msg_p).nasMsg.nas_data;
         int pdu_length = NAS_DOWNLINK_DATA_IND(msg_p).nasMsg.length;
         byte_array_t buffer = {.buf = pdu_buffer, .len = pdu_length};
-        fgs_nas_msg_t msg_type = get_msg_type(pdu_buffer, pdu_length);
-        security_state_t security_state = nas_security_rx_process(nas, buffer, msg_type);
+        security_state_t security_state = nas_security_rx_process(nas, buffer);
         if (security_state > NAS_SECURITY_INTEGRITY_PASSED) {
           LOG_E(NAS, "NAS integrity failed, discard incoming message\n");
           break;
         }
 
+        fgs_nas_msg_t msg_type = get_msg_type(pdu_buffer, pdu_length);
         LOG_I(NAS,
               "[UE %ld] Received %s type %s with length %u\n",
               nas->UE_id,
@@ -2063,6 +2093,9 @@ void *nas_nrue(void *args_p)
             break;
           case FGS_AUTHENTICATION_REQUEST:
             handle_fgmm_authentication_request(nas, &initialNasMsg, &buffer);
+            break;
+          case FGS_AUTHENTICATION_REJECT:
+            handle_authentication_reject(nas, &initialNasMsg, pdu_buffer, pdu_length);
             break;
           case FGS_SECURITY_MODE_COMMAND:
             handle_security_mode_command(nas, &initialNasMsg, pdu_buffer, pdu_length);
