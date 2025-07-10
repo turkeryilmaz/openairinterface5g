@@ -684,7 +684,7 @@ static int do_one_dlsch(unsigned char *input_ptr, PHY_VARS_gNB *gNB, NR_gNB_DLSC
         rel15->BWPSize,
         rel15->rbStart,
         rel15->rbSize);
-  const int n_dmrs = (rel15->BWPStart + rel15->rbStart + rel15->rbSize) * nb_re_dmrs;
+  const int n_dmrs = rel15->rbSize * nb_re_dmrs;
 
   const int xOverhead = 0;
   const int nb_re =
@@ -823,10 +823,12 @@ static int do_one_dlsch(unsigned char *input_ptr, PHY_VARS_gNB *gNB, NR_gNB_DLSC
       for (int s=0;s<rdata->numSymbols;s++) {
         rdata->re_beginning_of_symbol[l_symbol+s] = re_beginning_of_symbol;
         re_beginning_of_symbol += rel15->rbSize * NR_NB_SC_PER_RB;
-        if (n_ptrs > 0 && is_ptrs_symbol(l_symbol,dlPtrsSymPos))
+        if (n_ptrs > 0 && is_ptrs_symbol(l_symbol,dlPtrsSymPos)) {
 	    re_beginning_of_symbol -= n_ptrs;
-        else if (rel15->dlDmrsSymbPos & (1 << l_symbol)) 
+	}
+        else if (rel15->dlDmrsSymbPos & (1 << l_symbol)) {
             re_beginning_of_symbol -= n_dmrs;
+	}
       }	
       for (int l=0;l<rel15->nrOfLayers;l++) rdata->tx_layers[l]=tx_layers[l];
       task_t t = {.func = &nr_pdsch_symbol_processing, .args = rdata};
