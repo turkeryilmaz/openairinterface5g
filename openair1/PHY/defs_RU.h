@@ -694,6 +694,10 @@ typedef struct RU_t_s {
   void* scopeData;
 } RU_t;
 
+typedef struct {
+  pthread_t thread;
+  RU_t *ru;
+} ORU_t;
 
 typedef enum {
   RAU_tick=0,

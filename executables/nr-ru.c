@@ -1082,7 +1082,7 @@ static bool wait_free_rx_tti(notifiedFIFO_t *L1_rx_out, bool rx_tti_busy[RU_RX_S
       if (!res)
         return false;
       processingData_L1_t *info = NotifiedFifoData(res);
-      LOG_D(NR_PHY, "%d.%d Got access to RX slot %d.%d (%d)\n", frame_rx, slot_rx, info->frame_rx, info->slot_rx, idx);
+      LOG_I(NR_PHY, "%d.%d Got access to RX slot %d.%d (%d)\n", frame_rx, slot_rx, info->frame_rx, info->slot_rx, idx);
       rx_tti_busy[info->slot_rx % RU_RX_SLOT_DEPTH] = false;
       if ((info->slot_rx % RU_RX_SLOT_DEPTH) == idx)
         not_done = false;
@@ -1981,3 +1981,109 @@ static void NRRCconfig_RU(configmodule_interface_t *cfg)
   return;
 }
 
+void *oru_north_read_thread(void *arg)
+{
+  ORU_t *oru = (ORU_t *)arg;
+
+  RU_t *ru = (RU_t *)oru->ru;
+  NR_DL_FRAME_PARMS *fp = ru->nr_frame_parms;
+  char threadname[40];
+  sprintf(threadname, "oru_thread %u", ru->idx);
+  nr_init_frame_parms(&ru->config, fp);
+  nr_dump_frame_parms(fp);
+  nr_phy_init_RU(ru);
+  fill_rf_config(ru, ru->rf_config_file);
+  fill_split7_2_config(&ru->openair0_cfg.split7, &ru->config, fp->slots_per_frame, fp->ofdm_symbol_size);
+
+  // Start IF device if any
+  if (ru->nr_start_if) {
+    LOG_I(PHY, "starting transport\n");
+    int ret = openair0_transport_load(&ru->ifdevice, &ru->openair0_cfg, &ru->eth_params);
+    AssertFatal(ret == 0, "RU %u: openair0_transport_init() ret %d: cannot initialize transport protocol\n", ru->idx, ret);
+
+    if (ru->ifdevice.get_internal_parameter != NULL) {
+      void *t = ru->ifdevice.get_internal_parameter("fh_if4p5_north_in");
+      if (t != NULL)
+        ru->fh_north_in = t;
+      t = ru->ifdevice.get_internal_parameter("fh_if4p5_north_out");
+      if (t != NULL)
+        ru->fh_north_out = t;
+    }
+
+    int cpu = sched_getcpu();
+    if (ru->ru_thread_core > -1 && cpu != ru->ru_thread_core) {
+      /* we start the ru_thread using threadCreate(), which already sets CPU
+       * affinity; let's force it here again as per feature request #732 */
+      cpu_set_t cpuset;
+      CPU_ZERO(&cpuset);
+      CPU_SET(ru->ru_thread_core, &cpuset);
+      int ret = pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
+      AssertFatal(ret == 0, "Error in pthread_getaffinity_np(): ret: %d, errno: %d", ret, errno);
+      LOG_I(PHY, "RU %d: manually set CPU affinity to CPU %d\n", ru->idx, ru->ru_thread_core);
+    }
+
+    LOG_I(PHY, "Starting IF interface for RU %d, nb_rx %d\n", ru->idx, ru->nb_rx);
+    AssertFatal(ru->nr_start_if(ru, NULL) == 0, "Could not start the IF device\n");
+
+    if (ru->has_ctrl_prt > 0) {
+      ret = attach_rru(ru);
+      AssertFatal(ret == 0, "Cannot connect to remote radio\n");
+    }
+
+  } else {
+    AssertFatal(false, "RU %d: no IF device and no local RF\n", ru->idx);
+  }
+
+  if (setup_RU_buffers(ru) != 0) {
+    LOG_E(PHY, "Exiting, cannot initialize RU Buffers\n");
+    exit(-1);
+  }
+
+  LOG_I(PHY, "Signaling main thread that RU %d is ready, sl_ahead %d\n", ru->idx, ru->sl_ahead);
+  pthread_mutex_lock(&RC.ru_mutex);
+  RC.ru_mask &= ~(1 << ru->idx);
+  pthread_cond_signal(&RC.ru_cond);
+  pthread_mutex_unlock(&RC.ru_mutex);
+  wait_sync("ru_thread");
+
+  if (!ru->emulate_rf) {
+    // Start RF device if any
+    if (ru->start_rf) {
+      if (ru->start_rf(ru) != 0)
+        LOG_E(HW, "Could not start the RF device\n");
+      else
+        LOG_I(PHY, "RU %d rf device ready\n", ru->idx);
+    } else
+      LOG_I(PHY, "RU %d no rf device\n", ru->idx);
+
+    LOG_I(PHY, "RU %d RF started cpu_meas_enabled %d\n", ru->idx, cpu_meas_enabled);
+    // start trx write thread
+    if (usrp_tx_thread == 1) {
+      if (ru->start_write_thread) {
+        if (ru->start_write_thread(ru) != 0) {
+          LOG_E(HW, "Could not start tx write thread\n");
+        } else {
+          LOG_I(PHY, "tx write thread ready\n");
+        }
+      }
+    }
+  }
+
+  int frame = 0, slot = 0;
+  while (!oai_exit) {
+    if (ru->fh_north_in) {
+      ru->fh_north_in(ru, &frame, &slot);
+      LOG_I(PHY,
+            "[ORU_thread] read data: frame_rx = %d, tti_rx = %d, signal_energy = %d\n",
+            frame,
+            slot,
+            signal_energy(ru->common.txdataF_BF[0], ru->nr_frame_parms->ofdm_symbol_size * 14));
+
+      // TODO: Trigger TX. Use FIFOs / Actors
+    }
+    else
+      AssertFatal(1 == 0, "No fronthaul interface at north port");
+  }
+
+  return NULL;
+}

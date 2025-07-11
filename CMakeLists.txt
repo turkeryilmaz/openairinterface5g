@@ -1846,6 +1846,7 @@ target_link_libraries(oainr_ru PRIVATE
 target_link_libraries(oainr_ru PRIVATE pthread m CONFIG_LIB rt ${T_LIB} utils
   barrier actor)
 target_link_libraries(oainr_ru PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs nr_phy_common time_management)
+target_link_libraries(oainr_ru PUBLIC MAC_NR_COMMON)
 
 # nr-softmodem
 ###################################################
