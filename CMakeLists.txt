@@ -2130,6 +2130,7 @@ if (${T_TRACER})
         ulsim pbchsim scansim mbmssim pdcchsim pucchsim prachsim
         syncsim nr_ulsim nr_dlsim nr_dlschsim nr_pbchsim nr_pucchsim
         nr_ulschsim ldpctest polartest smallblocktest cu_test du_test
+        usim nvram conf2uedata 
         #all "add_library" definitions
         ITTI lte_rrc nr_rrc s1ap x2ap m2ap m3ap f1ap
         params_libconfig oai_usrpdevif oai_bladerfdevif oai_lmssdrdevif oai_iqplayer
@@ -2202,74 +2203,97 @@ include_directories(${OPENAIR_CMAKE}/ran_build/build/openair2/RRC/NR/MESSAGES)
 include_directories(${OPENAIR_CMAKE}/ran_build/build/openair3/S1AP/MESSAGES)
 include_directories(${OPENAIR_CMAKE}/ran_build/build/openair3/NRPPA/MESSAGES)
 
+set(COMPONENTS_LIST "")
+
 if(LTE_PACKAGE)
+
+  set(conf2uedata "${OPENAIR_CMAKE}/nas_sim_tools/build/conf2uedata")
+  set(nvram "${OPENAIR_CMAKE}/nas_sim_tools/build/nvram")
+  set(usim "${OPENAIR_CMAKE}/nas_sim_tools/build/usim")
+
   set(CPACK_COMPONENT_OAI-LTE_SUMMARY "OpenAirInterface LTE package")
   set(CPACK_COMPONENT_OAI-LTE_DESCRIPTION "This package is dedicated for LTE executables")
   set(CPACK_DEBIAN_OAI-LTE_PACKAGE_DEPENDS "oai-common")
+
+  install(TARGETS lte-softmodem lte-uesoftmodem
+    COMPONENT oai-lte
+    RUNTIME DESTINATION bin
+    LIBRARY DESTINATION lib
+  )
+
+  install(PROGRAMS 
+      ${conf2uedata} 
+      ${nvram} 
+      ${usim}
+      COMPONENT oai-lte
+      DESTINATION bin
+  )
+
+  list(APPEND COMPONENTS_LIST oai-lte)
 endif()
+
+
 if(NR_PACKAGE)
   set(CPACK_COMPONENT_OAI-NR_SUMMARY "OpenAirInterface NR package")
   set(CPACK_COMPONENT_OAI-NR_DESCRIPTION "This package is dedicated for NR executables")
   set(CPACK_DEBIAN_OAI-NR_PACKAGE_DEPENDS "oai-common")
-endif()
-if(OAI_PHYSIM_PACKAGE)
-  set(CPACK_COMPONENT_OAI-PHYSIM_SUMMARY "OpenAirInterface PhySim package")
-  set(CPACK_COMPONENT_OAI-PHYSIM_DESCRIPTION "This package contains every simulators")
-  set(CPACK_DEBIAN_OAI-PHYSIM_PACKAGE_DEPENDS "oai-common")
-endif()
-if(OAI_LDPC_T2_PACKAGE)
-  set(CPACK_COMPONENT_OAI-LDPC-T2_SUMMARY "OpenAirInterface T2 accelerator package")
-  set(CPACK_COMPONENT_OAI-LDPC-T2_DESCRIPTION "This package is dedicated for T2 accelerator library")
-endif()
-if(OAI_USRP_PACKAGE)
-  set(CPACK_COMPONENT_OAI-USRP_SUMMARY "OpenAirInterface USRP package")
-  set(CPACK_COMPONENT_OAI-USRP_DESCRIPTION "This package is dedicated for USRP library")
-endif()
-if(OAI_COMMON_PACKAGE)
-  set(CPACK_COMPONENT_OAI-COMMON_SUMMARY "OpenAirInterface shared libraries package")
-  set(CPACK_COMPONENT_OAI-COMMON_DESCRIPTION "This package contains shared libraries for other packages")
-endif()
-
-
-set(COMPONENTS_LIST "")
-
-if(NR_PACKAGE)
   install(TARGETS nr-softmodem nr-cuup nr-uesoftmodem
     COMPONENT oai-nr
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib
   )
+  install(FILES "${OPENAIR_DIR}/doc/NR_SA_Tutorial_COTS_UE.md" DESTINATION share/doc/ COMPONENT oai-nr)
+  install(FILES "${OPENAIR_DIR}/doc/NR_SA_Tutorial_OAI_CN5G.md" DESTINATION share/doc/ COMPONENT oai-nr)
+  install(FILES "${OPENAIR_DIR}/doc/NR_SA_Tutorial_OAI_multi_UE.md" DESTINATION share/doc/ COMPONENT oai-nr)
+  install(FILES "${OPENAIR_DIR}/doc/NR_SA_Tutorial_OAI_nrUE.md" DESTINATION share/doc/ COMPONENT oai-nr)
   list(APPEND COMPONENTS_LIST oai-nr)
 endif()
 
-if(LTE_PACKAGE)
-  install(TARGETS lte-softmodem lte-uesoftmodem #conf2uedata nvram usim
-    COMPONENT oai-lte
-    RUNTIME DESTINATION bin
-    LIBRARY DESTINATION lib
-  )
-  list(APPEND COMPONENTS_LIST oai-lte)
+
+if(OAI_PHYSIM_PACKAGE)
+  set(CPACK_COMPONENT_OAI-PHYSIM_SUMMARY "OpenAirInterface PhySim package")
+  set(CPACK_COMPONENT_OAI-PHYSIM_DESCRIPTION "This package contains every simulators")
+  set(CPACK_DEBIAN_OAI-PHYSIM_PACKAGE_DEPENDS "oai-common")
+  #TO BE FIXED BEFORE ADDED: pbchsim mbmssim pdcchsim pucchsim prachsim syncsim dlsim ulsim scansim 
+  install(TARGETS polartest smallblocktest ldpctest nr_dlschsim nr_psbchsim nr_pucchsim nr_dlsim nr_prachsim nr_ulschsim nr_ulsim 
+          COMPONENT oai-physim
+          RUNTIME DESTINATION bin
+          LIBRARY DESTINATION lib
+        )
+  install(FILES "${OPENAIR_DIR}/doc/physical-simulators.md" DESTINATION share/doc/ COMPONENT oai-physim)
+  list(APPEND COMPONENTS_LIST oai-physim)
 endif()
 
+
 if(OAI_LDPC_T2_PACKAGE)
+  set(CPACK_COMPONENT_OAI-LDPC-T2_SUMMARY "OpenAirInterface T2 accelerator package")
+  set(CPACK_COMPONENT_OAI-LDPC-T2_DESCRIPTION "This package is dedicated for T2 accelerator library")
   install(TARGETS ldpc_t2
         COMPONENT OAI_LDPC_T2
         RUNTIME DESTINATION bin
         LIBRARY DESTINATION lib
       )
+  install(FILES "${OPENAIR_DIR}/doc/physical-simulators.md" DESTINATION share/doc/ COMPONENT oai-physim)
   list(APPEND COMPONENTS_LIST oai-ldpc-t2)
 endif()
 
+
 if(OAI_USRP_PACKAGE)
+  set(CPACK_COMPONENT_OAI-USRP_SUMMARY "OpenAirInterface USRP package")
+  set(CPACK_COMPONENT_OAI-USRP_DESCRIPTION "This package is dedicated for USRP library")
   install(TARGETS oai_usrpdevif
         COMPONENT oai-usrp
         RUNTIME DESTINATION bin
         LIBRARY DESTINATION lib
       )
+  install(FILES "${OPENAIR_DIR}/radio/USRP/README.md" DESTINATION share/doc/ COMPONENT oai-usrp)
   list(APPEND COMPONENTS_LIST oai-usrp)
 endif()
 
+
 if(OAI_COMMON_PACKAGE)
+  set(CPACK_COMPONENT_OAI-COMMON_SUMMARY "OpenAirInterface shared libraries package")
+  set(CPACK_COMPONENT_OAI-COMMON_DESCRIPTION "This package contains shared libraries for other packages")
   install(TARGETS params_libconfig dfts oai_iqplayer params_yaml telnetsrv coding rfsimulator ldpc_orig ldpc vrtsim
           COMPONENT oai-common
           RUNTIME DESTINATION bin
@@ -2278,15 +2302,6 @@ if(OAI_COMMON_PACKAGE)
     list(APPEND COMPONENTS_LIST oai-common)
 endif()
 
-if(OAI_PHYSIM_PACKAGE)
-  #TO BE FIXED BEFORE ADDED: pbchsim mbmssim pdcchsim pucchsim prachsim syncsim dlsim ulsim scansim 
-  install(TARGETS polartest smallblocktest ldpctest nr_dlschsim nr_psbchsim nr_pucchsim nr_dlsim nr_prachsim nr_ulschsim nr_ulsim 
-          COMPONENT oai-physim
-          RUNTIME DESTINATION bin
-          LIBRARY DESTINATION lib
-        )
-    list(APPEND COMPONENTS_LIST oai-physim)
-endif()
 
 set(CPACK_RESOURCE_FILE_LICENSE "${OPENAIR_DIR}/LICENSE")
 foreach(component IN LISTS COMPONENTS_LIST)
