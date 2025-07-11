@@ -338,31 +338,35 @@ function main() {
        --NR-packaging)
             shift
             set -- --nrUE --gNB "$@"
-            CMAKE_CMD="$CMAKE_CMD -DNR_PACKAGE=ON -DPACKAGING=ON"
+            CMAKE_CMD="$CMAKE_CMD -DNR_PACKAGE=ON"
             echo_info "Will create a NR package"
             ;;
        --LTE-packaging)
             shift
             set -- --UE --eNB "$@"
-            CMAKE_CMD="$CMAKE_CMD -DLTE_PACKAGE=ON -DPACKAGING=ON"
+            CMAKE_CMD="$CMAKE_CMD -DLTE_PACKAGE=ON"
             echo_info "Will create a LTE package"
             ;;
        --OAI-COMMON-packaging)
-            CMAKE_CMD="$CMAKE_CMD -DOAI_COMMON_PACKAGE=ON -DPACKAGING=ON"
+            shift
+            set -- --build-lib "telnetsrv" "$@"
+            CMAKE_CMD="$CMAKE_CMD -DOAI_COMMON_PACKAGE=ON"
             echo_info "Will create a OAI COMMON package"
-            shift;;
+            ;;
        --OAI-USRP-packaging)
-            CMAKE_CMD="$CMAKE_CMD -DOAI_USRP_PACKAGE=ON -DPACKAGING=ON"
+            CMAKE_CMD="$CMAKE_CMD -DOAI_USRP_PACKAGE=ON"
             echo_info "Will create a OAI USRP package"
             shift;;
        --OAI-LDPC-T2-packaging)
-            CMAKE_CMD="$CMAKE_CMD -DOAI_LDPC_T2_PACKAGE=ON -DPACKAGING=ON"
+            shift
+            set -- --build-lib "ldpc_t2"
+            CMAKE_CMD="$CMAKE_CMD -DOAI_LDPC_T2_PACKAGE=ON"
             echo_info "Will create a OAI LDPC T2 package"
-            shift;;
+            ;;
        --OAI-PHYSIM-packaging)
             shift
             set -- -P "$@"
-            CMAKE_CMD="$CMAKE_CMD -DOAI_PHYSIM_PACKAGE=ON -DPACKAGING=ON"
+            CMAKE_CMD="$CMAKE_CMD -DOAI_PHYSIM_PACKAGE=ON"
             echo_info "Will create a OAI PHYSIM package"
             ;;
        -s | --check)
