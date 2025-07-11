@@ -426,6 +426,7 @@ void nr_init_frame_parms(nfapi_nr_config_request_scf_t* cfg, NR_DL_FRAME_PARMS *
     fp->N_ssb += ((fp->L_ssb >> (63-p)) & 0x01);
 
   fp->print_ue_help_cmdline_log = true;
+  fp->ofdm_offset_divisor = 8;
 }
 
 int nr_init_frame_parms_ue(NR_DL_FRAME_PARMS *fp,

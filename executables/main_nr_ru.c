@@ -148,6 +148,8 @@ uint64_t                 downlink_frequency[MAX_NUM_CCs][4];
 configmodule_interface_t *uniqCfg = NULL;
 THREAD_STRUCT thread_struct;
 
+void *oru_north_read_thread(void *arg);
+
 int main ( int argc, char **argv )
 {
   memset(&RC,0,sizeof(RC));
@@ -182,11 +184,12 @@ int main ( int argc, char **argv )
   RC.ru = malloc(sizeof(RC.ru)); 
 
   init_NR_RU(config_get_if(),NULL);
+  load_dftslib();
 
   RU_t *ru = RC.ru[0];
-
-  LOG_I(PHY, "Starting ru_thread , is_slave %d, send_dmrs %d\n", ru->is_slave, ru->generate_dmrs_sync);
-  start_NR_RU(ru);
+  ORU_t oru;
+  oru.ru = ru;
+  pthread_create(&oru.thread, NULL, oru_north_read_thread, (void *)&oru);
 
   LOG_I(PHY,"RU configured, unlocking threads\n"); 
   config_sync_var=0;
