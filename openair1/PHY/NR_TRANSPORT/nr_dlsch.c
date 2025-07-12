@@ -337,22 +337,22 @@ static inline void neg_dmrs(c16_t *in, c16_t *out, int sz)
     *out++ = i % 2 ? (c16_t){-in[i].r, -in[i].i} : in[i];
 }
 
-static inline int do_onelayer(NR_DL_FRAME_PARMS *frame_parms,
-                              int slot,
-                              nfapi_nr_dl_tti_pdsch_pdu_rel15_t *rel15,
-                              int layer,
-                              c16_t *output,
-                              c16_t *txl_start,
-                              int start_sc,
-                              int symbol_sz,
-                              int l_symbol,
-                              uint16_t dlPtrsSymPos,
-                              int n_ptrs,
-                              int amp,
-                              int16_t amp_dmrs,
-                              int l_prime,
-                              nfapi_nr_dmrs_type_e dmrs_Type,
-                              c16_t *dmrs_start)
+static inline void do_onelayer(NR_DL_FRAME_PARMS *frame_parms,
+                               int slot,
+                               nfapi_nr_dl_tti_pdsch_pdu_rel15_t *rel15,
+                               int layer,
+                               c16_t *output,
+                               c16_t *txl_start,
+                               int start_sc,
+                               int symbol_sz,
+                               int l_symbol,
+                                uint16_t dlPtrsSymPos,
+                               int n_ptrs,
+                               int amp,
+                               int16_t amp_dmrs,
+                               int l_prime,
+                               nfapi_nr_dmrs_type_e dmrs_Type,
+                               c16_t *dmrs_start)
 {
   c16_t *txl = txl_start;
   const uint sz = rel15->rbSize * NR_NB_SC_PER_RB;
@@ -450,7 +450,7 @@ static inline int do_onelayer(NR_DL_FRAME_PARMS *frame_parms,
     txl += no_ptrs_dmrs_case(output + start_sc, txl, amp, upper_limit);
     txl += no_ptrs_dmrs_case(output, txl, amp, remaining_re);
   } // no DMRS/PTRS in symbol
-  return txl - txl_start;
+  return;
 }
 
 static inline void do_txdataF(c16_t **txdataF,
@@ -639,24 +639,23 @@ static void nr_pdsch_symbol_processing(void *arg)
       dmrs_idx += rel15->BWPStart;
     dmrs_idx *= rel15->dmrsConfigType == NFAPI_NR_DMRS_TYPE1 ? 6 : 4;
     c16_t txdataF_precoding[rel15->nrOfLayers][symbol_sz] __attribute__((aligned(64)));
-    int layer_sz = 0;
     for (int layer = 0; layer < rel15->nrOfLayers; layer++) {
-      layer_sz = do_onelayer(frame_parms,
-                             slot,
-                             rel15,
-                             layer,
-                             txdataF_precoding[layer],
-                             tx_layers[layer] + rdata->re_beginning_of_symbol[l_symbol],
-                             start_sc,
-                             symbol_sz,
-                             l_symbol,
-                             rdata->dlPtrsSymPos,
-                             rdata->n_ptrs,
-                             gNB->TX_AMP,
-                             min((double)gNB->TX_AMP * sqrt(rel15->numDmrsCdmGrpsNoData), INT16_MAX), 
-                             l_prime,
-                             rel15->dmrsConfigType,
-                             mod_dmrs + dmrs_idx);
+      do_onelayer(frame_parms,
+                  slot,
+                  rel15,
+                  layer,
+                  txdataF_precoding[layer],
+                  tx_layers[layer] + rdata->re_beginning_of_symbol[l_symbol],
+                  start_sc,
+                  symbol_sz,
+                  l_symbol,
+                  rdata->dlPtrsSymPos,
+                  rdata->n_ptrs,
+                  gNB->TX_AMP,
+                  min((double)gNB->TX_AMP * sqrt(rel15->numDmrsCdmGrpsNoData), INT16_MAX), 
+                  l_prime,
+                  rel15->dmrsConfigType,
+                  mod_dmrs + dmrs_idx);
     } // layer loop
 
     for (int ant = 0; ant < frame_parms->nb_antennas_tx; ant++) {
