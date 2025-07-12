@@ -452,7 +452,7 @@ static inline void do_onelayer(NR_DL_FRAME_PARMS *frame_parms,
   } // no DMRS/PTRS in symbol
   return;
 }
-
+ 
 static inline void do_txdataF(c16_t **txdataF,
                               int symbol_sz,
                               c16_t txdataF_precoding[][symbol_sz],
