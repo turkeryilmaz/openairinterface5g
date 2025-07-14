@@ -121,6 +121,6 @@ For the Intel ACCs, while we also use CB mode mostly, there is a special case th
 In such a case, we perform a check on whether there is only one TB, AND if the TB has only one CB.
 If so, this has to be handled separately by using TB mode.
 
-#### CRC24A/CRC16
+<!-- #### CRC24A/CRC16
 
-In cases when CRC24A/CRC16 is supported by the BBDEV device (i.e., Intel ACC200), we will use the hardware to perform CRC24A/CRC16. Otherwise, we perform that using software when not supported.
+In cases when CRC24A/CRC16 is supported by the BBDEV device (i.e., Intel ACC200), we will use the hardware to perform CRC24A/CRC16. Otherwise, we perform that using software when not supported. -->
