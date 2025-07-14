@@ -190,6 +190,93 @@ uint64_t set_nrUE_optmask(uint64_t bitmask) {
 nrUE_params_t *get_nrUE_params(void) {
   return &nrUE_params;
 }
+
+static int get_nrUE_RU_params(configmodule_interface_t *cfg, nrUE_RU_params_t **RUs)
+{
+  paramdef_t RUParams[] = NRUE_RU_PARAMS_DESC;
+  paramlist_def_t RUParamList = {CONFIG_STRING_NRUE_RU_LIST, NULL, 0};
+  config_getlist(cfg, &RUParamList, RUParams, sizeofArray(RUParams), NULL);
+
+  if (RUParamList.numelt <= 0) {
+    *RUs = (nrUE_RU_params_t *)calloc_or_fail(1, sizeof(nrUE_RU_params_t));
+    (*RUs)[0] = (nrUE_RU_params_t){
+      .nb_tx          = nrUE_params.nb_antennas_tx,
+      .nb_rx          = nrUE_params.nb_antennas_rx,
+      .att_tx         = nrUE_params.tx_gain,
+      .att_rx         = 0,
+      .max_rxgain     = nrUE_params.rx_gain,
+      .sdr_addrs      = nrUE_params.usrp_args,
+      .tx_subdev      = nrUE_params.tx_subdev,
+      .rx_subdev      = nrUE_params.rx_subdev,
+      .clock_source   = get_softmodem_params()->clock_source,
+      .time_source    = get_softmodem_params()->timing_source,
+      .tune_offset    = get_softmodem_params()->tune_offset,
+      .if_frequency   = nrUE_params.if_freq,
+      .if_freq_offset = nrUE_params.if_freq_off,
+    };
+    return 1;
+  }
+
+  *RUs = (nrUE_RU_params_t *)calloc_or_fail(RUParamList.numelt, sizeof(nrUE_RU_params_t));
+
+  for (int j = 0; j < RUParamList.numelt; j++) {
+    nrUE_RU_params_t *RU = &(*RUs)[j];
+
+    RU->nb_tx          = *(RUParamList.paramarray[j][NRUE_RU_NB_TX_IDX].uptr);
+    RU->nb_rx          = *(RUParamList.paramarray[j][NRUE_RU_NB_RX_IDX].uptr);
+    RU->att_tx         = *(RUParamList.paramarray[j][NRUE_RU_ATT_TX_IDX].uptr);
+    RU->att_rx         = *(RUParamList.paramarray[j][NRUE_RU_ATT_RX_IDX].uptr);
+    RU->max_rxgain     = *(RUParamList.paramarray[j][NRUE_RU_MAX_RXGAIN_IDX].iptr);
+    RU->tune_offset    = *(RUParamList.paramarray[j][NRUE_RU_TUNE_OFFSET_IDX].dblptr);
+    RU->if_frequency   = *(RUParamList.paramarray[j][NRUE_RU_IF_FREQUENCY_IDX].u64ptr);
+    RU->if_freq_offset = *(RUParamList.paramarray[j][NRUE_RU_IF_FREQ_OFFSET_IDX].iptr);
+
+    if (config_isparamset(RUParamList.paramarray[j], NRUE_RU_SDR_ADDRS_IDX)) {
+      RU->sdr_addrs = strdup(*(RUParamList.paramarray[j][NRUE_RU_SDR_ADDRS_IDX].strptr));
+    }
+
+    if (config_isparamset(RUParamList.paramarray[j], NRUE_RU_TX_SUBDEV_IDX)) {
+      RU->tx_subdev = strdup(*(RUParamList.paramarray[j][NRUE_RU_TX_SUBDEV_IDX].strptr));
+    }
+
+    if (config_isparamset(RUParamList.paramarray[j], NRUE_RU_RX_SUBDEV_IDX)) {
+      RU->rx_subdev = strdup(*(RUParamList.paramarray[j][NRUE_RU_RX_SUBDEV_IDX].strptr));
+    }
+
+    if (config_isparamset(RUParamList.paramarray[j], NRUE_RU_CLOCK_SRC_IDX)) {
+      if (strcmp(*(RUParamList.paramarray[j][NRUE_RU_CLOCK_SRC_IDX].strptr), "internal") == 0) {
+        RU->clock_source = internal;
+      } else if (strcmp(*(RUParamList.paramarray[j][NRUE_RU_CLOCK_SRC_IDX].strptr), "external") == 0) {
+        RU->clock_source = external;
+      } else if (strcmp(*(RUParamList.paramarray[j][NRUE_RU_CLOCK_SRC_IDX].strptr), "gpsdo") == 0) {
+        RU->clock_source = gpsdo;
+      } else {
+        RU->clock_source = internal;
+        LOG_E(PHY, "Erroneous RU clock source in the provided configuration file: '%s'\n", *(RUParamList.paramarray[j][NRUE_RU_CLOCK_SRC_IDX].strptr));
+      }
+    } else {
+      RU->clock_source = internal;
+    }
+
+    if (config_isparamset(RUParamList.paramarray[j], NRUE_RU_TIME_SRC_IDX)) {
+      if (strcmp(*(RUParamList.paramarray[j][NRUE_RU_TIME_SRC_IDX].strptr), "internal") == 0) {
+        RU->time_source = internal;
+      } else if (strcmp(*(RUParamList.paramarray[j][NRUE_RU_TIME_SRC_IDX].strptr), "external") == 0) {
+        RU->time_source = external;
+      } else if (strcmp(*(RUParamList.paramarray[j][NRUE_RU_TIME_SRC_IDX].strptr), "gpsdo") == 0) {
+        RU->time_source = gpsdo;
+      } else {
+        RU->time_source = internal;
+        LOG_E(PHY, "Erroneous RU time source in the provided configuration file: '%s'\n", *(RUParamList.paramarray[j][NRUE_RU_TIME_SRC_IDX].strptr));
+      }
+    } else {
+      RU->time_source = internal;
+    }
+  }
+
+  return RUParamList.numelt;
+}
+
 static void get_options(configmodule_interface_t *cfg)
 {
   paramdef_t cmdline_params[] = CMDLINE_NRUEPARAMS_DESC;
@@ -204,20 +291,22 @@ static void get_options(configmodule_interface_t *cfg)
 }
 
 // set PHY vars from command line
-void set_options(int CC_id, PHY_VARS_NR_UE *UE){
+static void set_options(int CC_id, PHY_VARS_NR_UE *UE, int card, const nrUE_RU_params_t *RU)
+{
   NR_DL_FRAME_PARMS *fp = &UE->frame_parms;
 
   // Set UE variables
-  UE->rx_total_gain_dB     = (int)nrUE_params.rx_gain;
-  UE->tx_total_gain_dB     = (int)nrUE_params.tx_gain;
+  UE->rx_total_gain_dB = RU->max_rxgain - RU->att_rx;
+  UE->tx_total_gain_dB = RU->att_tx;
+  UE->if_freq          = RU->if_frequency;
+  UE->if_freq_off      = RU->if_freq_offset;
+  UE->rf_map.card      = card;
+  UE->rf_map.chain     = CC_id;
+
   UE->tx_power_max_dBm     = nrUE_params.tx_max_power;
-  UE->rf_map.card          = 0;
-  UE->rf_map.chain         = CC_id + 0;
   UE->max_ldpc_iterations  = nrUE_params.max_ldpc_iterations;
   UE->UE_scan_carrier      = nrUE_params.UE_scan_carrier;
   UE->UE_fo_compensation   = nrUE_params.UE_fo_compensation;
-  UE->if_freq              = nrUE_params.if_freq;
-  UE->if_freq_off          = nrUE_params.if_freq_off;
   UE->chest_freq           = nrUE_params.chest_freq;
   UE->chest_time           = nrUE_params.chest_time;
   UE->no_timing_correction = nrUE_params.no_timing_correction;
@@ -228,16 +317,16 @@ void set_options(int CC_id, PHY_VARS_NR_UE *UE){
         UE->UE_fo_compensation, UE->UE_scan_carrier, UE->no_timing_correction, UE->chest_freq, UE->chest_time);
 
   // Set FP variables
+  fp->nb_antennas_rx = RU->nb_rx;
+  fp->nb_antennas_tx = RU->nb_tx;
 
-  fp->nb_antennas_rx       = nrUE_params.nb_antennas_rx;
-  fp->nb_antennas_tx       = nrUE_params.nb_antennas_tx;
-  fp->threequarter_fs = get_softmodem_params()->threequarter_fs;
-  fp->ofdm_offset_divisor  = nrUE_params.ofdm_offset_divisor;
+  fp->threequarter_fs     = get_softmodem_params()->threequarter_fs;
+  fp->ofdm_offset_divisor = nrUE_params.ofdm_offset_divisor;
 
   LOG_I(PHY, "Set UE nb_rx_antenna %d, nb_tx_antenna %d, threequarter_fs %d, ofdm_offset_divisor %d\n", fp->nb_antennas_rx, fp->nb_antennas_tx, fp->threequarter_fs, fp->ofdm_offset_divisor);
 }
 
-void init_openair0(PHY_VARS_NR_UE *ue)
+static void init_openair0(const nrUE_RU_params_t *RUs, int max_cards)
 {
   int freq_off = 0;
   NR_DL_FRAME_PARMS *frame_parms = &ue->frame_parms;
@@ -245,23 +334,19 @@ void init_openair0(PHY_VARS_NR_UE *ue)
   if (is_sidelink)
     frame_parms = &ue->SL_UE_PHY_PARAMS.sl_frame_params;
 
-  for (int card = 0; card < MAX_CARDS; card++) {
+  for (int card = 0; card < max_cards; card++) {
     openair0_config_t *cfg = &openair0_cfg[card];
-    uint64_t dl_carrier, ul_carrier;
     cfg->configFilename    = NULL;
     cfg->sample_rate       = frame_parms->samples_per_subframe * 1e3;
     cfg->samples_per_frame = frame_parms->samples_per_frame;
 
-    if (frame_parms->frame_type==TDD)
+    if (frame_parms->frame_type == TDD)
       cfg->duplex_mode = duplex_mode_TDD;
     else
       cfg->duplex_mode = duplex_mode_FDD;
 
     cfg->Mod_id = 0;
     cfg->num_rb_dl = frame_parms->N_RB_DL;
-    cfg->clock_source = get_softmodem_params()->clock_source;
-    cfg->time_source = get_softmodem_params()->timing_source;
-    cfg->tune_offset = get_softmodem_params()->tune_offset;
     cfg->tx_num_channels = min(4, frame_parms->nb_antennas_tx);
     cfg->rx_num_channels = min(4, frame_parms->nb_antennas_rx);
 
@@ -273,23 +358,26 @@ void init_openair0(PHY_VARS_NR_UE *ue)
           cfg->rx_num_channels,
           duplex_mode_txt[cfg->duplex_mode]);
 
-    if (is_sidelink) {
+    uint64_t dl_carrier, ul_carrier;
+    if (is_sidelink || RUs[card].if_frequency == 0) {
       dl_carrier = frame_parms->dl_CarrierFreq;
       ul_carrier = frame_parms->ul_CarrierFreq;
-    } else
-      nr_get_carrier_frequencies(PHY_vars_UE_g[0][0], &dl_carrier, &ul_carrier);
+    } else {
+      dl_carrier = RUs[card].if_frequency;
+      ul_carrier = RUs[card].if_frequency + RUs[card].if_freq_offset;
+    }
 
     nr_rf_card_config_freq(cfg, ul_carrier, dl_carrier, freq_off);
     nr_rf_card_config_gain(cfg);
 
     cfg->configFilename = get_softmodem_params()->rf_config_file;
 
-    if (get_nrUE_params()->usrp_args)
-      cfg->sdr_addrs = get_nrUE_params()->usrp_args;
-    if (get_nrUE_params()->tx_subdev)
-      cfg->tx_subdev = get_nrUE_params()->tx_subdev;
-    if (get_nrUE_params()->rx_subdev)
-      cfg->rx_subdev = get_nrUE_params()->rx_subdev;
+    cfg->sdr_addrs = RUs[card].sdr_addrs;
+    cfg->tx_subdev = RUs[card].tx_subdev;
+    cfg->rx_subdev = RUs[card].rx_subdev;
+    cfg->clock_source = RUs[card].clock_source;
+    cfg->time_source = RUs[card].time_source;
+    cfg->tune_offset = RUs[card].tune_offset;
   }
 }
 
@@ -467,13 +555,19 @@ int main(int argc, char **argv)
   if (!get_softmodem_params()->nsa && get_softmodem_params()->emulate_l1)
     start_oai_nrue_threads();
 
+  nrUE_RU_params_t *RUs;
+  int nrue_ru_count = get_nrUE_RU_params(uniqCfg, &RUs);
+
+  int rf_port = 0; // initialize all UEs to RU 0 for now
+  nrUE_RU_params_t *RU = &RUs[rf_port];
+
   if (!get_softmodem_params()->emulate_l1) {
     for (int inst = 0; inst < NB_UE_INST; inst++) {
       PHY_VARS_NR_UE *UE[MAX_NUM_CCs];
       for (int CC_id = 0; CC_id < MAX_NUM_CCs; CC_id++) {
         UE[CC_id] = PHY_vars_UE_g[inst][CC_id];
 
-        set_options(CC_id, UE[CC_id]);
+        set_options(CC_id, UE[CC_id], rf_port, RU);
         NR_UE_MAC_INST_t *mac = get_mac_inst(inst);
         init_nr_ue_phy_cpu_stats(&UE[CC_id]->phy_cpu_stats);
 
@@ -532,9 +626,10 @@ int main(int argc, char **argv)
                                     get_nrUE_params()->ofdm_offset_divisor);
           sl_ue_phy_init(UE[CC_id]);
         }
-        init_openair0(UE[CC_id]);
       }
     }
+
+    init_openair0(RUs, nrue_ru_count);
 
     lock_memory_to_ram();
 

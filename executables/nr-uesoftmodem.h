@@ -129,6 +129,60 @@ extern uint64_t get_nrUE_optmask(void);
 extern uint64_t set_nrUE_optmask(uint64_t bitmask);
 extern nrUE_params_t *get_nrUE_params(void);
 
+/* NR UE RU configuration section name */
+#define CONFIG_STRING_NRUE_RU_LIST "RUs"
+
+/*---------------------------------------------------------------------------------------------------------------------------------------------------*/
+/*                                                     NR UE RU configuration parameters                                                             */
+/*  optname                        helpstr                     paramflags       XXXptr            defXXXval                     type         numelt  */
+/*---------------------------------------------------------------------------------------------------------------------------------------------------*/
+// clang-format off
+#define NRUE_RU_PARAMS_DESC { \
+  {"nb_tx",                        CONFIG_HLP_UENANTT,         0,               .uptr=NULL,       .defuintval=1,                TYPE_UINT,        0}, \
+  {"nb_rx",                        CONFIG_HLP_UENANTR,         0,               .uptr=NULL,       .defuintval=1,                TYPE_UINT,        0}, \
+  {"att_tx",                       NULL,                       0,               .uptr=NULL,       .defuintval=0,                TYPE_UINT,        0}, \
+  {"att_rx",                       NULL,                       0,               .uptr=NULL,       .defuintval=0,                TYPE_UINT,        0}, \
+  {"max_rxgain",                   NULL,                       0,               .iptr=NULL,       .defintval=120,               TYPE_INT,         0}, \
+  {"sdr_addrs",                    CONFIG_HLP_USRP_ARGS,       0,               .strptr=NULL,     .defstrval="type=b200",       TYPE_STRING,      0}, \
+  {"tx_subdev",                    CONFIG_HLP_TX_SUBDEV,       0,               .strptr=NULL,     .defstrval="",                TYPE_STRING,      0}, \
+  {"rx_subdev",                    CONFIG_HLP_RX_SUBDEV,       0,               .strptr=NULL,     .defstrval="",                TYPE_STRING,      0}, \
+  {"clock_src",                    NULL,                       0,               .strptr=NULL,     .defstrval="internal",        TYPE_STRING,      0}, \
+  {"time_src",                     NULL,                       0,               .strptr=NULL,     .defstrval="internal",        TYPE_STRING,      0}, \
+  {"tune_offset",                  CONFIG_HLP_TUNE_OFFSET,     0,               .dblptr=NULL,     .defdblval=0.0,               TYPE_DOUBLE,      0},  \
+  {"if_freq",                      CONFIG_HLP_IF_FREQ,         0,               .u64ptr=NULL,     .defuintval=0,                TYPE_UINT64,      0}, \
+  {"if_offset",                    CONFIG_HLP_IF_FREQ_OFF,     0,               .iptr=NULL,       .defintval=0,                 TYPE_INT,         0}, \
+}
+
+#define NRUE_RU_NB_TX_IDX           0
+#define NRUE_RU_NB_RX_IDX           1
+#define NRUE_RU_ATT_TX_IDX          2
+#define NRUE_RU_ATT_RX_IDX          3
+#define NRUE_RU_MAX_RXGAIN_IDX      4
+#define NRUE_RU_SDR_ADDRS_IDX       5
+#define NRUE_RU_TX_SUBDEV_IDX       6
+#define NRUE_RU_RX_SUBDEV_IDX       7
+#define NRUE_RU_CLOCK_SRC_IDX       8
+#define NRUE_RU_TIME_SRC_IDX        9
+#define NRUE_RU_TUNE_OFFSET_IDX    10
+#define NRUE_RU_IF_FREQUENCY_IDX   11
+#define NRUE_RU_IF_FREQ_OFFSET_IDX 12
+// clang-format on
+
+typedef struct {
+  unsigned int nb_tx;
+  unsigned int nb_rx;
+  unsigned int att_tx;
+  unsigned int att_rx;
+  int max_rxgain;
+  char *sdr_addrs;
+  char *tx_subdev;
+  char *rx_subdev;
+  clock_source_t clock_source;
+  clock_source_t time_source;
+  double tune_offset;
+  uint64_t if_frequency;
+  int if_freq_offset;
+}  nrUE_RU_params_t;
 
 // In nr-ue.c
 extern int setup_nr_ue_buffers(PHY_VARS_NR_UE **phy_vars_ue, openair0_config_t *openair0_cfg);
