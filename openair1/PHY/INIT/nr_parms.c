@@ -433,13 +433,13 @@ int nr_init_frame_parms_ue(NR_DL_FRAME_PARMS *fp,
   return 0;
 }
 
-void nr_init_frame_parms_ue_sa(NR_DL_FRAME_PARMS *frame_parms, uint64_t downlink_frequency, int32_t delta_duplex, uint8_t mu, uint16_t nr_band) {
-
+void nr_init_frame_parms_ue_sa(NR_DL_FRAME_PARMS *frame_parms, uint64_t downlink_frequency, int32_t delta_duplex, uint8_t mu, int N_RB_DL, int ssb_start_subcarrier, uint16_t nr_band)
+{
   LOG_I(PHY,"SA init parameters. DL freq %lu UL offset %d SSB numerology %d N_RB_DL %d\n",
         downlink_frequency,
         delta_duplex,
         mu,
-        frame_parms->N_RB_DL);
+        N_RB_DL);
 
   frame_parms->numerology_index = mu;
   frame_parms->dl_CarrierFreq = downlink_frequency;
@@ -447,6 +447,7 @@ void nr_init_frame_parms_ue_sa(NR_DL_FRAME_PARMS *frame_parms, uint64_t downlink
   if (get_softmodem_params()->sl_mode == 0) {
     frame_parms->freq_range = get_freq_range_from_freq(frame_parms->dl_CarrierFreq);
   }
+  frame_parms->N_RB_DL = N_RB_DL;
   frame_parms->N_RB_UL = frame_parms->N_RB_DL;
 
   frame_parms->nr_band = nr_band;
@@ -469,8 +470,9 @@ void nr_init_frame_parms_ue_sa(NR_DL_FRAME_PARMS *frame_parms, uint64_t downlink
   frame_parms->get_samples_slot_timestamp = &get_samples_slot_timestamp;
   frame_parms->samples_per_frame = 10 * frame_parms->samples_per_subframe;
 
-  LOG_W(PHY, "samples_per_subframe %d/per second %d, wCP %d\n", frame_parms->samples_per_subframe, 1000*frame_parms->samples_per_subframe, frame_parms->samples_per_subframe_wCP);
+  frame_parms->ssb_start_subcarrier = ssb_start_subcarrier;
 
+  LOG_W(PHY, "samples_per_subframe %d/per second %d, wCP %d\n", frame_parms->samples_per_subframe, 1000*frame_parms->samples_per_subframe, frame_parms->samples_per_subframe_wCP);
 }
 
 void nr_dump_frame_parms(NR_DL_FRAME_PARMS *fp)
