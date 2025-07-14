@@ -129,11 +129,8 @@ static void nr_initiate_handover(const gNB_RRC_INST *rrc,
   DevAssert(target_du != NULL);
   // source_du might be NULL -> inter-CU handover
   DevAssert(ho_prep_info->buf != NULL && ho_prep_info->len > 0);
+  DevAssert(ue->ho_context);
 
-  if (ue->ho_context != NULL) {
-    LOG_E(NR_RRC, "handover for UE %u ongoing, cannot trigger new\n", ue->rrc_ue_id);
-    return;
-  }
   // if any reconfiguration is ongoing, abort handover request
   for (int i = 0; i < NR_RRC_TRANSACTION_IDENTIFIER_NUMBER; ++i) {
     if (ue->xids[i] != RRC_ACTION_NONE) {
@@ -142,10 +139,7 @@ static void nr_initiate_handover(const gNB_RRC_INST *rrc,
     }
   }
 
-  // if we know the source DU (F1 handover), allocate the context for it,
-  // otherwise only for the target DU (N2, Xn)
-  ho_ctx_type_t ctx_type = source_du != NULL ? HO_CTX_BOTH : HO_CTX_TARGET;
-  nr_handover_context_t *ho_ctx = alloc_ho_ctx(ctx_type);
+  nr_handover_context_t *ho_ctx = ue->ho_context;
   ho_ctx->target->du = target_du;
   // we will know target->{du_ue_id,new_rnti} once we have UE ctxt setup
   // response
@@ -166,7 +160,7 @@ static void nr_initiate_handover(const gNB_RRC_INST *rrc,
     int result = asn_copy(&asn_DEF_NR_CellGroupConfig, (void **)&ho_ctx->source->old_cellGroupConfig, ue->masterCellGroup);
     AssertFatal(result == 0, "error during asn_copy() of CellGroupConfig\n");
   }
-  ue->ho_context = ho_ctx;
+
   LOG_A(NR_RRC,
         "Handover triggered for UE %u/RNTI %04x towards DU %ld/assoc_id %d/PCI %d\n",
         ue->rrc_ue_id,
@@ -343,6 +337,13 @@ void nr_rrc_trigger_f1_ho(gNB_RRC_INST *rrc, gNB_RRC_UE_t *ue, nr_rrc_du_contain
   uint8_t buf[NR_RRC_BUF_SIZE];
   int size = do_NR_HandoverPreparationInformation(ue->ue_cap_buffer.buf, ue->ue_cap_buffer.len, buf, sizeof buf);
 
+  // Allocate handover context (both CU and DU)
+  if (ue->ho_context != NULL) {
+    LOG_E(NR_RRC, "Ongoing handover for UE %d, cannot trigger new\n", ue->rrc_ue_id);
+    return;
+  }
+  ue->ho_context = alloc_ho_ctx(HO_CTX_BOTH);
+
   // corresponds to a "handover request", 38.300 Sec 9.3.2.3
   // see also 38.413 Sec 9.3.1.29 for information on source-CU to target-CU
   // information (Source NG-RAN Node to Target NG-RAN Node Transparent Container)
@@ -504,6 +505,13 @@ void nr_rrc_trigger_n2_ho_target(gNB_RRC_INST *rrc, gNB_RRC_UE_t *ue)
   ho_cancel_t cancel = nr_rrc_n2_ho_cancel;
   ho_failure_t failure = nr_rrc_n2_ho_failure;
 
+  // allocate context for target
+  if (ue->ho_context != NULL) {
+    LOG_E(NR_RRC, "Ongoing handover for UE %d, cannot trigger new\n", ue->rrc_ue_id);
+    return;
+  }
+  ue->ho_context = alloc_ho_ctx(HO_CTX_TARGET);
+
   const nr_rrc_du_container_t *target_du = get_du_for_ue(rrc, ue->rrc_ue_id);
   nr_initiate_handover(rrc, ue, NULL, target_du, &ue->ue_ho_prep_info, ack, success, cancel, failure);
   FREE_AND_ZERO_BYTE_ARRAY(ue->ue_ho_prep_info);
@@ -528,6 +536,14 @@ void nr_rrc_trigger_n2_ho(gNB_RRC_INST *rrc,
     LOG_E(NR_RRC, "Failed to trigger N2 handover on source gNB for UE %x\n", ue->rrc_ue_id);
     return;
   }
+
+  // allocate context for source
+  if (ue->ho_context != NULL) {
+    LOG_E(NR_RRC, "Ongoing handover for UE %d, cannot trigger new\n", ue->rrc_ue_id);
+    return;
+  }
+  ue->ho_context = alloc_ho_ctx(HO_CTX_SOURCE);
+
   rrc_gNB_send_NGAP_HANDOVER_REQUIRED(rrc, ue, neighbour_config, hoPrepInfo);
   free_byte_array(hoPrepInfo);
 }
