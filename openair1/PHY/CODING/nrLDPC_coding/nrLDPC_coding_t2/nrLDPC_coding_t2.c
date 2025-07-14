@@ -19,6 +19,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
+#include <regex.h>
 
 #include <math.h>
 
@@ -1041,6 +1042,40 @@ int32_t start_pmd_enc(struct active_device *ad,
 
 struct test_op_params *op_params = NULL;
 
+int normalize_dpdk_dev(const char *input, char *output, size_t out_len) {
+  regex_t regex_full, regex_short;
+  int reti;
+  
+  // patterns
+  const char *pattern_full = "^[0]{4}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}\\.[0-7]$";
+  const char *pattern_short = "^[0-9a-fA-F]{2}:[0-9a-fA-F]{2}\\.[0-7]$";
+  regcomp(&regex_full, pattern_full, REG_EXTENDED);
+  regcomp(&regex_short, pattern_short, REG_EXTENDED);
+
+  // check full format
+  reti = regexec(&regex_full, input, 0, NULL, 0);
+  if (reti == 0) {
+      // already in full format
+      strncpy(output, input, out_len-1);
+      output[out_len-1] = '\0';
+  } else {
+      // check short format
+      reti = regexec(&regex_short, input, 0, NULL, 0);
+      if (reti == 0) {
+        // convert to full format
+        snprintf(output, out_len, "0000:%s", input);
+      } else {
+          // invalid format
+          regfree(&regex_full);
+          regfree(&regex_short);
+          return -1;
+      }
+  }
+  regfree(&regex_full);
+  regfree(&regex_short);
+  return 0;
+}
+
 // OAI CODE
 int32_t nrLDPC_coding_init()
 {
@@ -1063,18 +1098,25 @@ int32_t nrLDPC_coding_init()
   config_get(config_get_if(), LoaderParams, sizeofArray(LoaderParams), "nrLDPC_coding_t2");
   AssertFatal(dpdk_dev!=NULL, "nrLDPC_coding_t2.dpdk_dev was not provided");
   AssertFatal(dpdk_core_list!=NULL, "nrLDPC_coding_t2.dpdk_core_list was not provided");
-  
-  if(vfio_vf_token != NULL) {
-    char *argv[] = {"bbdev", "-l", dpdk_core_list, "-a", dpdk_dev, "--vfio-vf-token", vfio_vf_token, "--file-prefix", dpdk_file_prefix, "--"};
-    ret = rte_eal_init(sizeofArray(argv), argv);
-  } else {
-    char *argv[] = {"bbdev", "-l", dpdk_core_list, "-a", dpdk_dev, "--file-prefix", dpdk_file_prefix, "--"};
-    ret = rte_eal_init(sizeofArray(argv), argv);
+
+  char dpdk_dev_full[32];
+  if (normalize_dpdk_dev(dpdk_dev, dpdk_dev_full, sizeof(dpdk_dev_full)) != 0) {
+    LOG_E(NR_PHY, "invalid DPDK device format: %s\n", dpdk_dev);
+    return -1;
   }
+
+  int argc = 7;
+  char *argv[11] = {"bbdev", "-l", dpdk_core_list, "-a", dpdk_dev_full, "--file-prefix", dpdk_file_prefix, "--", "--", "--", "--"};
+  if(vfio_vf_token != NULL) {
+    argc += 2;
+    argv[7] = "--vfio-vf-token";
+    argv[8] = vfio_vf_token;
+  }
+  ret = rte_eal_init(argc, argv);
   if (ret < 0) {
-    LOG_W(NR_PHY, "EAL initialization failed, probing DPDK device %s\n", dpdk_dev);
-    if (rte_dev_probe(dpdk_dev) != 0) {
-      LOG_E(NR_PHY, "bbdev %s not found\n", dpdk_dev);
+    LOG_W(NR_PHY, "EAL initialization failed, probing DPDK device %s\n", dpdk_dev_full);
+    if (rte_dev_probe(dpdk_dev_full) != 0) {
+      LOG_E(NR_PHY, "bbdev %s not found\n", dpdk_dev_full);
       return (-1);
     }
   }
@@ -1087,13 +1129,13 @@ int32_t nrLDPC_coding_init()
   for (uint16_t device_id = 0; device_id < nb_bbdevs; device_id++) {
     rte_bbdev_info_get(device_id, &info);
     // check if info matches the dpdk_dev that we are looking for
-    if (strcmp(info.dev_name, dpdk_dev) == 0) {
+    if (strcmp(info.dev_name, dpdk_dev_full) == 0) {
       LOG_I(NR_PHY, "bbdev %s found.\n", info.dev_name);
       dev_id = device_id;
       break;
     }
   }
-  AssertFatal(dev_id != -1, "bbdev %s not found.", dpdk_dev);
+  AssertFatal(dev_id != -1, "bbdev %s not found.", dpdk_dev_full);
   
   AssertFatal(add_dev(dev_id)== 0, "Failed to setup bbdev");
   AssertFatal(rte_bbdev_stats_reset(dev_id) == 0, "Failed to reset stats of bbdev %u", dev_id);
