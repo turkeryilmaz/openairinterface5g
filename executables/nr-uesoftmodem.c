@@ -112,8 +112,6 @@ RAN_CONTEXT_t RC;
 int oai_exit = 0;
 
 
-static int      tx_max_power[MAX_NUM_CCs] = {0};
-
 uint64_t        downlink_frequency[MAX_NUM_CCs][4];
 int32_t         uplink_frequency_offset[MAX_NUM_CCs][4];
 uint64_t        sidelink_frequency[MAX_NUM_CCs][4];
@@ -124,7 +122,6 @@ openair0_device_t openair0_dev[MAX_CARDS];
 int16_t           node_synch_ref[MAX_NUM_CCs];
 int               otg_enabled;
 double            cpuf;
-uint32_t       N_RB_DL    = 106;
 
 int create_tasks_nrue(uint32_t ue_nb) {
   LOG_D(NR_RRC, "%s(ue_nb:%d)\n", __FUNCTION__, ue_nb);
@@ -385,7 +382,6 @@ int main(int argc, char **argv)
   CONFIG_SETRTFLAG(CONFIG_NOEXITONHELP);
   memset(openair0_cfg, 0, sizeof(openair0_config_t) * MAX_CARDS);
   memset(openair0_dev, 0, sizeof(openair0_device_t) * MAX_CARDS);
-  memset(tx_max_power, 0, sizeof(int) * MAX_NUM_CCs);
   // initialize logging
   logInit();
   // get options and fill parameters from configuration file
