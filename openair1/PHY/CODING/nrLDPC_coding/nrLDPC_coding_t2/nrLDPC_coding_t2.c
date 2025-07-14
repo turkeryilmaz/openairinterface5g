@@ -60,9 +60,6 @@ struct active_device {
   const char *driver_name;
   uint8_t dev_id;
   struct rte_bbdev_info info;
-#ifndef DPDK_VER_PRE_21_11
-  bool support_non24b_crc;
-#endif
   bool support_internal_harq_memory;
   int dec_queue;
   int enc_queue;
@@ -342,21 +339,6 @@ void check_required_dev_capabilities(struct rte_bbdev_info *info)
   }
 }
 
-#ifndef DPDK_VER_PRE_21_11
-bool check_non24b_crc_capabilities(struct rte_bbdev_info *info)
-{
-  for (int i = 0; info->drv.capabilities[i].type != RTE_BBDEV_OP_NONE; i++) {
-    if (info->drv.capabilities[i].type == RTE_BBDEV_OP_LDPC_DEC) {
-      bool crc_24a_check = check_bit(info->drv.capabilities[i].cap.ldpc_dec.capability_flags, RTE_BBDEV_LDPC_CRC_TYPE_24A_CHECK);
-      bool crc_16_check = check_bit(info->drv.capabilities[i].cap.ldpc_dec.capability_flags, RTE_BBDEV_LDPC_CRC_TYPE_16_CHECK);
-      bool non_24b_crc = crc_24a_check & crc_16_check;
-      return non_24b_crc;
-    }
-  }
-  return false;
-}
-#endif
-
 bool check_internal_harq_memory_capabilities(struct rte_bbdev_info *info)
 {
   for (int i = 0; info->drv.capabilities[i].type != RTE_BBDEV_OP_NONE; i++) {
@@ -394,11 +376,6 @@ static int add_dev(uint8_t dev_id)
 
   // check required device capabilities
   check_required_dev_capabilities(&active_dev.info);
-
-#ifndef DPDK_VER_PRE_21_11
-  // check non24b crc capabilities
-  active_dev.support_non24b_crc = check_non24b_crc_capabilities(&active_dev.info);
-#endif
 
   // check internal harq memory capabilities
   active_dev.support_internal_harq_memory = check_internal_harq_memory_capabilities(&active_dev.info);
@@ -673,23 +650,10 @@ set_ldpc_dec_op(struct rte_bbdev_dec_op **ops,
       if (!special_case_tb_mode) {
         ops[j]->ldpc_dec.code_block_mode = 1;
         ops[j]->ldpc_dec.cb_params.e = nrLDPC_slot_decoding_parameters->TBs[h].segments[i].E;
-        uint8_t crc_type = crcType(nrLDPC_slot_decoding_parameters->TBs[h].C, nrLDPC_slot_decoding_parameters->TBs[h].A);
-        if(crc_type == 1) {
+        if(nrLDPC_slot_decoding_parameters->TBs[h].C > 1) {
           ops[j]->ldpc_dec.op_flags |= RTE_BBDEV_LDPC_CRC_TYPE_24B_DROP;
           ops[j]->ldpc_dec.op_flags |= RTE_BBDEV_LDPC_CRC_TYPE_24B_CHECK;
         }
-#ifndef DPDK_VER_PRE_21_11
-        else {
-          if(active_dev.support_non24b_crc) {
-            if(crc_type == 0)     // CRC_24A
-              ops[j]->ldpc_dec.op_flags |= RTE_BBDEV_LDPC_CRC_TYPE_24A_CHECK;
-            else if(crc_type == 2) // CRC_16
-              ops[j]->ldpc_dec.op_flags |= RTE_BBDEV_LDPC_CRC_TYPE_16_CHECK;
-            else
-              AssertFatal(0, "ERROR: Unsupported CRC type %d\n", crc_type);
-          }
-        }
-#endif
       } else {
         /**
          * This is a special case when #TB = 1 and #CB = 1
@@ -704,17 +668,6 @@ set_ldpc_dec_op(struct rte_bbdev_dec_op **ops,
         ops[j]->ldpc_dec.tb_params.cab = 1;
         ops[j]->ldpc_dec.tb_params.ea = nrLDPC_slot_decoding_parameters->TBs[h].segments[i].E;
         ops[j]->ldpc_dec.tb_params.eb = nrLDPC_slot_decoding_parameters->TBs[h].segments[i].E;
-#ifndef DPDK_VER_PRE_21_11
-        if(active_dev.support_non24b_crc) {
-          uint8_t crc_type = crcType(nrLDPC_slot_decoding_parameters->TBs[h].C, nrLDPC_slot_decoding_parameters->TBs[h].A);
-          if(crc_type == 0)     // CRC_24A
-            ops[j]->ldpc_dec.op_flags |= RTE_BBDEV_LDPC_CRC_TYPE_24A_CHECK;
-          else if(crc_type == 2) // CRC_16
-            ops[j]->ldpc_dec.op_flags |= RTE_BBDEV_LDPC_CRC_TYPE_16_CHECK;
-          else
-            AssertFatal(0, "ERROR: Unsupported CRC type %d\n", crc_type);
-        }
-#endif
       }
       // Calculate offset in the HARQ combined buffers
       // Unique segment offset
@@ -810,23 +763,18 @@ static int retrieve_ldpc_dec_op(struct rte_bbdev_dec_op **ops, nrLDPC_slot_decod
       memcpy(nrLDPC_slot_decoding_parameters->TBs[h].segments[i].c, data, data_len);
 
 #ifndef LDPC_T2
-      // copy HARQ combined output to the HARQ buffers for the subsequent iteration
       uint32_t segment_offset = (nrLDPC_slot_decoding_parameters->TBs[h].harq_unique_pid * NR_LDPC_MAX_NUM_CB) + i;
       uint32_t pruned_segment_offset = segment_offset % HARQ_CODEBLOCK_ID_MAX;
       struct rte_bbdev_op_data *harq_output = &ops[j]->ldpc_dec.harq_combined_output;
       if(!active_dev.support_internal_harq_memory) {
         struct rte_mbuf *m_src = harq_output->data;
-        uint16_t data_len_src = rte_pktmbuf_data_len(m_src) - harq_output->offset;
-        uint8_t *data_src = rte_pktmbuf_mtod_offset(m_src, uint8_t *, harq_output->offset);
+        uint8_t *data_src = rte_pktmbuf_mtod_offset(m_src, uint8_t *, 0);
         struct rte_mbuf *m_dst = harq_buffers[pruned_segment_offset].data;
-        uint8_t *data_dst = rte_pktmbuf_mtod_offset(m_dst, uint8_t *, harq_output->offset);
-        rte_memcpy(data_dst, data_src, data_len_src);
-        harq_buffers[pruned_segment_offset].offset = harq_output->offset;
-        harq_buffers[pruned_segment_offset].length = data_len_src;
-      } else {
-        harq_buffers[pruned_segment_offset].offset = harq_output->offset;
-        harq_buffers[pruned_segment_offset].length = harq_output->length;
+        uint8_t *data_dst = rte_pktmbuf_mtod_offset(m_dst, uint8_t *, 0);
+        rte_memcpy(data_dst, data_src, harq_output->length);
       }
+      harq_buffers[pruned_segment_offset].offset = harq_output->offset;
+      harq_buffers[pruned_segment_offset].length = harq_output->length;
 #endif
       ++j;
     }
@@ -933,27 +881,15 @@ pmd_lcore_ldpc_dec(void *arg)
         if (nrLDPC_slot_decoding_parameters->TBs[h].C > 1) {
           *status = (ops_enq[j]->status == 0);
         } else {
-#ifdef DPDK_VER_PRE_21_11
           uint8_t *decoded_bytes = nrLDPC_slot_decoding_parameters->TBs[h].segments[i].c;
           uint8_t crc_type = crcType(nrLDPC_slot_decoding_parameters->TBs[h].C, nrLDPC_slot_decoding_parameters->TBs[h].A);
           uint32_t len_with_crc = lenWithCrc(nrLDPC_slot_decoding_parameters->TBs[h].C, nrLDPC_slot_decoding_parameters->TBs[h].A);
           *status = check_crc(decoded_bytes, len_with_crc, crc_type);
-#else
-          if(active_dev.support_non24b_crc) {
-            *status = (ops_enq[j]->status == 0);
-          } else {
-            uint8_t *decoded_bytes = nrLDPC_slot_decoding_parameters->TBs[h].segments[i].c;
-            uint8_t crc_type = crcType(nrLDPC_slot_decoding_parameters->TBs[h].C, nrLDPC_slot_decoding_parameters->TBs[h].A);
-            uint32_t len_with_crc = lenWithCrc(nrLDPC_slot_decoding_parameters->TBs[h].C, nrLDPC_slot_decoding_parameters->TBs[h].A);
-            *status = check_crc(decoded_bytes, len_with_crc, crc_type);
-          }
-#endif
         }
 
         if (*status) {
           *nrLDPC_slot_decoding_parameters->TBs[h].processedSegments = *nrLDPC_slot_decoding_parameters->TBs[h].processedSegments + 1;
-        }
-      
+        } 
         ++j;
       }
     }
