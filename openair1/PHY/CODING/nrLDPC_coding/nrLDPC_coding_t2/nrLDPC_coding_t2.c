@@ -48,10 +48,6 @@
 #define TIME_OUT_POLL 1e8
 /* Headroom for filler LLRs insertion in HARQ buffer */
 #define FILLER_HEADROOM 1024
-/* Number of segments that could be stored in HARQ combined buffers */
-#define HARQ_CODEBLOCK_ID_MAX (16 << 5)
-
-#define LDPC_T2_NAME "baseband_accl_ldpc"
 
 pthread_mutex_t encode_mutex;
 pthread_mutex_t decode_mutex;
@@ -61,6 +57,10 @@ struct active_device {
   const char *driver_name;
   uint8_t dev_id;
   struct rte_bbdev_info info;
+  uint32_t num_harq_codeblock;
+  /* Persistent data structure to keep track of HARQ-related information */
+  // Note: This is used to store/keep track of the combined output information across iterations
+  struct rte_bbdev_op_data *harq_buffers; 
   bool support_internal_harq_memory;
   int dec_queue;
   int enc_queue;
@@ -80,10 +80,6 @@ struct data_buffers {
   struct rte_bbdev_op_data *hard_outputs;
   struct rte_bbdev_op_data *harq_outputs;
 };
-
-/* Persistent data structure to keep track of HARQ-related information */
-// Note: This is used to store/keep track of the combined output information across iterations
-struct rte_bbdev_op_data harq_buffers[HARQ_CODEBLOCK_ID_MAX];
 
 /* Operation parameters specific for given test case */
 struct test_op_params {
@@ -192,10 +188,10 @@ static int create_mempools(struct active_device *ad, int socket_id, uint16_t num
   /* HARQ inputs */
   // Note: This is used as our harq buffer to store the combined outputs across iterations
   data_room_size = LDPC_MAX_CB_SIZE;
-  ad->harq_in_mbuf_pool = rte_pktmbuf_pool_create("harq_in_mbuf_pool", HARQ_CODEBLOCK_ID_MAX, 0, 0, data_room_size, socket_id);
+  ad->harq_in_mbuf_pool = rte_pktmbuf_pool_create("harq_in_mbuf_pool", active_dev.num_harq_codeblock, 0, 0, data_room_size, socket_id);
   AssertFatal(ad->harq_in_mbuf_pool != NULL,
               "ERROR Failed to create %u items harq input pktmbuf pool for dev %u on socket %d.",
-              HARQ_CODEBLOCK_ID_MAX,
+              active_dev.num_harq_codeblock,
               ad->dev_id,
               socket_id);
 
@@ -357,7 +353,7 @@ bool check_internal_harq_memory_capabilities(struct rte_bbdev_info *info)
 }
 
 // based on DPDK BBDEV add_bbdev_dev
-static int add_dev(uint8_t dev_id)
+static int add_dev(uint8_t dev_id, uint32_t num_harq_codeblock)
 {
   int ret;
   unsigned int nb_queues;
@@ -380,6 +376,10 @@ static int add_dev(uint8_t dev_id)
 
   // check internal harq memory capabilities
   active_dev.support_internal_harq_memory = check_internal_harq_memory_capabilities(&active_dev.info);
+
+  // setup harq buffers
+  active_dev.num_harq_codeblock = num_harq_codeblock;
+  active_dev.harq_buffers = malloc(sizeof(struct rte_bbdev_op_data) * active_dev.num_harq_codeblock);
 
   // device setup
   ret = rte_bbdev_setup_queues(dev_id, nb_queues, active_dev.info.socket_id);
@@ -426,11 +426,11 @@ static int add_dev(uint8_t dev_id)
 static int init_op_data_objs_harq(struct rte_bbdev_op_data *bufs,
                                  struct rte_mempool *mbuf_pool)
 {
-  for(int i=0; i<HARQ_CODEBLOCK_ID_MAX; i++) {
+  for(int i=0; i<active_dev.num_harq_codeblock; i++) {
     struct rte_mbuf *m_head = rte_pktmbuf_alloc(mbuf_pool);
     AssertFatal(m_head != NULL,
                 "Not enough mbufs in HARQ mbuf pool (needed %u, available %u)",
-                HARQ_CODEBLOCK_ID_MAX,
+                active_dev.num_harq_codeblock,
                 mbuf_pool->size);
     bufs[i].data = m_head;
     bufs[i].offset = 0;
@@ -629,7 +629,7 @@ set_ldpc_dec_op(struct rte_bbdev_dec_op **ops,
       // Unique segment offset
       uint32_t segment_offset = (nrLDPC_slot_decoding_parameters->TBs[h].harq_unique_pid * NR_LDPC_MAX_NUM_CB) + i;
       // Prune to avoid shooting above maximum id
-      uint32_t pruned_segment_offset = segment_offset % HARQ_CODEBLOCK_ID_MAX;
+      uint32_t pruned_segment_offset = segment_offset % active_dev.num_harq_codeblock;
       // Segment offset to byte offset
       uint32_t harq_combined_offset = pruned_segment_offset * LDPC_MAX_CB_SIZE;
 
@@ -674,20 +674,20 @@ set_ldpc_dec_op(struct rte_bbdev_dec_op **ops,
       // Unique segment offset
       uint32_t segment_offset = (nrLDPC_slot_decoding_parameters->TBs[h].harq_unique_pid * NR_LDPC_MAX_NUM_CB) + i;
       // Prune to avoid shooting above maximum id
-      uint32_t pruned_segment_offset = segment_offset % HARQ_CODEBLOCK_ID_MAX;
+      uint32_t pruned_segment_offset = segment_offset % active_dev.num_harq_codeblock;
       // Segment offset to byte offset
       uint32_t harq_combined_offset = pruned_segment_offset * LDPC_MAX_CB_SIZE;
 
       if(active_dev.support_internal_harq_memory) {
         // retrieve corresponding HARQ output information from previous iteration, especially the length
-        ops[j]->ldpc_dec.harq_combined_input = harq_buffers[pruned_segment_offset];
+        ops[j]->ldpc_dec.harq_combined_input = active_dev.harq_buffers[pruned_segment_offset];
         // Note: When using INTERNAL_HARQ memory, the "offset" is used to point to a particular address
         // within the BBDEV's onboard memory, and the address should be multiples of 32K.
         harq_outputs[j].offset = harq_combined_offset;
         ops[j]->ldpc_dec.harq_combined_output = harq_outputs[j];
       } else {
         // retrieve corresponding HARQ buffers from previous iteration
-        ops[j]->ldpc_dec.harq_combined_input = harq_buffers[pruned_segment_offset];
+        ops[j]->ldpc_dec.harq_combined_input = active_dev.harq_buffers[pruned_segment_offset];
         ops[j]->ldpc_dec.harq_combined_output = harq_outputs[j];
       }
 #endif
@@ -765,17 +765,17 @@ static int retrieve_ldpc_dec_op(struct rte_bbdev_dec_op **ops, nrLDPC_slot_decod
 
 #ifndef LDPC_T2
       uint32_t segment_offset = (nrLDPC_slot_decoding_parameters->TBs[h].harq_unique_pid * NR_LDPC_MAX_NUM_CB) + i;
-      uint32_t pruned_segment_offset = segment_offset % HARQ_CODEBLOCK_ID_MAX;
+      uint32_t pruned_segment_offset = segment_offset % active_dev.num_harq_codeblock;
       struct rte_bbdev_op_data *harq_output = &ops[j]->ldpc_dec.harq_combined_output;
       if(!active_dev.support_internal_harq_memory) {
         struct rte_mbuf *m_src = harq_output->data;
         uint8_t *data_src = rte_pktmbuf_mtod_offset(m_src, uint8_t *, 0);
-        struct rte_mbuf *m_dst = harq_buffers[pruned_segment_offset].data;
+        struct rte_mbuf *m_dst = active_dev.harq_buffers[pruned_segment_offset].data;
         uint8_t *data_dst = rte_pktmbuf_mtod_offset(m_dst, uint8_t *, 0);
         rte_memcpy(data_dst, data_src, harq_output->length);
       }
-      harq_buffers[pruned_segment_offset].offset = harq_output->offset;
-      harq_buffers[pruned_segment_offset].length = harq_output->length;
+      active_dev.harq_buffers[pruned_segment_offset].offset = harq_output->offset;
+      active_dev.harq_buffers[pruned_segment_offset].length = harq_output->length;
 #endif
       ++j;
     }
@@ -1085,15 +1085,17 @@ int32_t nrLDPC_coding_init()
   int ret;
   int dev_id = -1;
 
-  char *dpdk_dev = NULL;          // PCI address of the card
-  char *dpdk_core_list = NULL;    // cores used by DPDK for bbdev
+  char *dpdk_dev = NULL;            // PCI address of the card
+  char *dpdk_core_list = NULL;      // cores used by DPDK for bbdev
   char *dpdk_file_prefix = NULL;
-  char *vfio_vf_token = NULL;     // vfio token for the bbdev card
+  char *vfio_vf_token = NULL;       // vfio token for the bbdev card
+  uint32_t num_harq_codeblock = 0;    // size of the HARQ buffer in terms of the number of 32K blocks
   paramdef_t LoaderParams[] = {
     {"dpdk_dev", NULL, 0, .strptr = &dpdk_dev, .defstrval = NULL, TYPE_STRING, 0, NULL},
     {"dpdk_core_list", NULL, 0, .strptr = &dpdk_core_list, .defstrval = NULL, TYPE_STRING, 0, NULL},
     {"dpdk_file_prefix", NULL, 0, .strptr = &dpdk_file_prefix, .defstrval = "b6", TYPE_STRING, 0, NULL},
-    {"vfio_vf_token", NULL, 0, .strptr = &vfio_vf_token, .defstrval = NULL, TYPE_STRING, 0, NULL}
+    {"vfio_vf_token", NULL, 0, .strptr = &vfio_vf_token, .defstrval = NULL, TYPE_STRING, 0, NULL},
+    {"num_harq_codeblock", NULL, 0, .uptr = &num_harq_codeblock, .defintval = 512, TYPE_UINT32, 0, NULL},
   };
   config_get(config_get_if(), LoaderParams, sizeofArray(LoaderParams), "nrLDPC_coding_t2");
   AssertFatal(dpdk_dev!=NULL, "nrLDPC_coding_t2.dpdk_dev was not provided");
@@ -1137,7 +1139,7 @@ int32_t nrLDPC_coding_init()
   }
   AssertFatal(dev_id != -1, "bbdev %s not found.", dpdk_dev_full);
   
-  AssertFatal(add_dev(dev_id)== 0, "Failed to setup bbdev");
+  AssertFatal(add_dev(dev_id, num_harq_codeblock)== 0, "Failed to setup bbdev");
   AssertFatal(rte_bbdev_stats_reset(dev_id) == 0, "Failed to reset stats of bbdev %u", dev_id);
   AssertFatal(rte_bbdev_start(dev_id) == 0, "Failed to start bbdev %u", dev_id);
 
@@ -1159,7 +1161,7 @@ int32_t nrLDPC_coding_init()
   }
 
   // initialize persistent data structure to keep track of HARQ-related information
-  init_op_data_objs_harq(harq_buffers, active_dev.harq_in_mbuf_pool);
+  init_op_data_objs_harq(active_dev.harq_buffers, active_dev.harq_in_mbuf_pool);
 
   op_params->num_lcores = 1;
   return 0;
@@ -1169,6 +1171,7 @@ int32_t nrLDPC_coding_shutdown()
 {
   int dev_id = 0;
   struct rte_bbdev_stats stats;
+  free(active_dev.harq_buffers);
   free_mempools(&active_dev);
   rte_free(op_params);
   rte_bbdev_stats_get(dev_id, &stats);

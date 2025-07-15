@@ -200,6 +200,8 @@ Ensure that the CPU cores specified in *nrLDPC_coding_t2.dpdk_core_list* are ava
 
 - `nrLDPC_coding_t2.vfio_vf_token` - optional parameter, VFIO token set for the VF, if applicable.
 
+- `nrLDPC_coding_t2.num_harq_codeblock` - optional parameter, size of the HARQ buffer in terms of the number of 32kB blocks, by default set to *512*.
+
 **Note:** These parameters can also be provided in a configuration file:
 ```
 nrLDPC_coding_t2 : {
