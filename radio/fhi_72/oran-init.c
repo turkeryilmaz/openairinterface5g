@@ -79,14 +79,15 @@ static uint32_t get_nFpgaToSW_FTH_RxBufferLen(int mu)
   }
 }
 
-static struct xran_prb_map get_xran_prb_map(const struct xran_fh_config *f, const uint8_t dir, const int16_t start_sym, const int16_t num_sym)
+static struct xran_prb_map get_xran_prb_map(const struct xran_fh_config *f, const uint8_t dir, const int16_t start_sym, const int16_t num_sym,
+    const int16_t ru_port_id, const int16_t nBeamIndex)
 {
   struct xran_prb_map prbmap = {
       .dir = dir,
       .xran_port = 0,
       .band_id = 0,
       .cc_id = 0,
-      .ru_port_id = 0,
+      .ru_port_id = ru_port_id,
       .tti_id = 0,
       .nPrbElm = 1,
   };
@@ -95,7 +96,7 @@ static struct xran_prb_map get_xran_prb_map(const struct xran_fh_config *f, cons
   e->numSymb = num_sym;
   e->nRBStart = 0;
   e->nRBSize = (dir == XRAN_DIR_DL) ? f->nDLRBs : f->nULRBs;
-  e->nBeamIndex = 0;
+  e->nBeamIndex = nBeamIndex;
   e->compMethod = f->ru_conf.compMeth;
   e->iqWidth = f->ru_conf.iqWidth;
   return prbmap;
@@ -186,8 +187,8 @@ static oran_mixed_slot_t get_mixed_slot_info(const struct xran_frame_config *fco
 typedef struct oran_cplane_prb_config {
   uint8_t nTddPeriod;
   uint32_t mixed_slot_index;
-  struct xran_prb_map slotMap;
-  struct xran_prb_map mixedSlotMap;
+  struct xran_prb_map *slotMap;
+  struct xran_prb_map *mixedSlotMap;
 } oran_cplane_prb_config;
 
 static void oran_allocate_cplane_buffers(void *instHandle,
@@ -239,10 +240,10 @@ static void oran_allocate_cplane_buffers(void *instHandle,
       fb->pData = ptr;
       fb->pCtrl = mb;
 
-      struct xran_prb_map *src = &prb_conf->slotMap;
+      struct xran_prb_map *src = &prb_conf->slotMap[a];
       // get mixed slot map if in TDD and in mixed slot
       if (prb_conf->nTddPeriod != 0 && (j % prb_conf->nTddPeriod) == prb_conf->mixed_slot_index)
-        src = &prb_conf->mixedSlotMap;
+        src = &prb_conf->mixedSlotMap[a];
 #ifdef E_RELEASE
       /* as per E release sample app, the memory is copied up to size_of_prb_map
         which translates to >= sizeof(struct xran_prb_map) + sizeof(struct xran_prb_elm)*5,
@@ -323,19 +324,24 @@ static void oran_allocate_buffers(void *handle,
   printf("-> hInstance %p\n", pi->instanceHandle);
   AssertFatal(status == XRAN_STATUS_SUCCESS, "get sector instance failed for XRAN nInstanceNum %d\n", xran_inst);
 
-  // DL/UL PRB mapping depending on the duplex mode
-  struct xran_prb_map dlPm = get_xran_prb_map(fh_config, XRAN_DIR_DL, 0, 14);
-  struct xran_prb_map ulPm = get_xran_prb_map(fh_config, XRAN_DIR_UL, 0, 14);
-  struct xran_prb_map dlPmMixed = {0};
-  struct xran_prb_map ulPmMixed = {0};
+  // In the context of XRAN, each RAN_MAX_ANTENNA_NR is a logical antenna and one stream.
+  struct xran_prb_map dlPm[xran_max_antenna_nr];
+  struct xran_prb_map ulPm[xran_max_antenna_nr];
+  struct xran_prb_map dlPmMixed[xran_max_antenna_nr];
+  struct xran_prb_map ulPmMixed[xran_max_antenna_nr];
   uint32_t idx = 0;
-  if (fh_config->frame_conf.nFrameDuplexType == XRAN_TDD) {
-    oran_mixed_slot_t info = get_mixed_slot_info(&fh_config->frame_conf);
-    dlPmMixed = get_xran_prb_map(fh_config, XRAN_DIR_DL, 0, info.num_dlsym);
-    ulPmMixed = get_xran_prb_map(fh_config, XRAN_DIR_UL, info.start_ulsym, info.num_ulsym);
-    idx = info.idx;
+  for (int i=0; i < xran_max_antenna_nr; i++) {
+    // DL/UL PRB mapping depending on the duplex mode.
+    // Set RU_PORT_ID and beam to i so that each stream would use different beam id.
+    dlPm[i] = get_xran_prb_map(fh_config, XRAN_DIR_DL, 0, 14, i, i);
+    ulPm[i] = get_xran_prb_map(fh_config, XRAN_DIR_UL, 0, 14, i, i);
+    if (fh_config->frame_conf.nFrameDuplexType == XRAN_TDD) {
+      oran_mixed_slot_t info = get_mixed_slot_info(&fh_config->frame_conf);
+      dlPmMixed[i] = get_xran_prb_map(fh_config, XRAN_DIR_DL, 0, info.num_dlsym, i, i);
+      ulPmMixed[i] = get_xran_prb_map(fh_config, XRAN_DIR_UL, info.start_ulsym, info.num_ulsym, i, i);
+      idx = info.idx;
+    }
   }
-
   oran_cplane_prb_config dlConf = {
       .nTddPeriod = fh_config->frame_conf.nTddPeriod,
       .mixed_slot_index = idx,
@@ -353,7 +359,7 @@ static void oran_allocate_buffers(void *handle,
 #ifdef E_RELEASE
   uint32_t size_of_prb_map = sizeof(struct xran_prb_map) + sizeof(struct xran_prb_elm) * (xran_max_sections_per_slot - 1);
 #elif defined F_RELEASE
-  uint32_t numPrbElm = xran_get_num_prb_elm(&dlPm, mtu);
+  uint32_t numPrbElm = xran_get_num_prb_elm(&dlPm[0], mtu);
   uint32_t size_of_prb_map  = sizeof(struct xran_prb_map) + sizeof(struct xran_prb_elm) * (numPrbElm);
 #endif
 
