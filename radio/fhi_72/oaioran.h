@@ -35,5 +35,6 @@ typedef struct {
 void oai_xran_fh_rx_callback(void *pCallbackTag, xran_status_t status);
 /** @brief xran callback for time alignment, see xran_reg_physide_cb(). */
 int oai_physide_dl_tti_call_back(void *param);
+int32_t symbol_callback(void *args, struct xran_sense_of_time* p_sense_of_time);
 
 #endif /* OAIORAN_H */

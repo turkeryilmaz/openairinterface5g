@@ -53,6 +53,7 @@ typedef struct {
 } oran_eth_state_t;
 
 notifiedFIFO_t oran_sync_fifo;
+notifiedFIFO_t dl_sync_fifo;
 
 int trx_oran_start(openair0_device *device)
 {
@@ -210,6 +211,16 @@ int trx_oran_ctlrecv(openair0_device *device, void *msg, ssize_t msg_len)
   return 0;
 }
 
+void oran_fh_if4p5_north_in(RU_t *ru, int *frame, int *slot) {
+  ru_info_t ru_info;
+  ru_info.nb_rx = ru->nb_rx * ru->num_beams_period;
+  ru_info.txdataF_BF = ru->common.txdataF_BF;
+  start_meas(&ru->rx_fhaul);
+  int ret = xran_fh_tx_read_slot(&ru_info, frame, slot);
+  AssertFatal(ret == 0, "ORAN: %d.%d ORAN_fh_if4p5_north_in ERROR in RX function \n", *frame, *slot);
+  stop_meas(&ru->rx_fhaul);
+}
+
 void oran_fh_if4p5_south_in(RU_t *ru, int *frame, int *slot)
 {
   ru_info_t ru_info;
@@ -286,6 +297,8 @@ void *get_internal_parameter(char *name)
     return (void *)oran_fh_if4p5_south_in;
   if (!strcmp(name, "fh_if4p5_south_out"))
     return (void *)oran_fh_if4p5_south_out;
+  if (!strcmp(name, "fh_if4p5_north_in"))
+    return (void *)oran_fh_if4p5_north_in;
 
   return NULL;
 }
@@ -363,6 +376,7 @@ __attribute__((__visibility__("default"))) int transport_init(openair0_device *d
   // create message queues for ORAN sync
 
   initNotifiedFIFO(&oran_sync_fifo);
+  initNotifiedFIFO(&dl_sync_fifo);
 
   eth->e.flags = ETH_RAW_IF4p5_MODE;
   eth->e.compression = NO_COMPRESS;
