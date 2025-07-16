@@ -1,4 +1,4 @@
-ervices:
+services:
     oai-nr-ue:
         image: oai-nr-ue:w26
         logging:
@@ -26,7 +26,7 @@ ervices:
             TZ: Europe/Paris
             DISPLAY: $DISPLAY
             USE_ADDITIONAL_OPTIONS: |
-               --usrp-args type=x4xx,addr=192.168.20.2,mgmt_addr=10.31.66.112,clock_source=internal,time_source=internal --ue-rxgain 35
+               --usrp-args type=x4xx,addr=192.168.20.2,clock_source=internal,time_source=internal --ue-rxgain 35
                --thread-pool 2,4,6,8,10,12
                --log_config.global_log_options level,wall_clock,nocolor
                --ssb 1478 -r 273 --numerology 1 --band 78 -C 3750000000
