@@ -64,6 +64,23 @@ char cpu_buf_recv[RECV_BUF_LEN];
 uint16_t sfn = 0, slot = 0;
 nv_ipc_t *ipc;
 nfapi_vnf_config_t *vnf_config = 0;
+bool terminate = false;
+bool recv_task_running = false;
+void nvIPC_Stop()
+{
+  LOG_I(NR_MAC, "Received STOP.indication\n");
+  terminate = true;
+}
+
+void nvIPC_send_stop_request()
+{
+  nfapi_nr_stop_request_scf_t req;
+  memset(&req, 0, sizeof(req));
+  req.header.message_id = NFAPI_NR_PHY_MSG_TYPE_STOP_REQUEST;
+  req.header.phy_id = 0;
+  LOG_I(NR_MAC, "Sending NFAPI STOP.request\n");
+  nfapi_nr_vnf_stop_req(vnf_config, vnf_config->pnf_list->p5_idx, &req);
+}
 
 void set_config(nfapi_vnf_config_t *conf)
 {
@@ -479,7 +496,6 @@ static int aerial_recv_msg(nv_ipc_t *ipc, nv_ipc_msg_t *recv_msg)
   return 0;
 }
 
-bool recv_task_running = false;
 void *epoll_recv_task(void *arg)
 {
   struct epoll_event ev, events[MAX_EVENTS];
@@ -498,7 +514,7 @@ void *epoll_recv_task(void *arg)
     LOG_E(NFAPI_VNF, "%s epoll_ctl failed\n", __func__);
   }
 
-  while (1) {
+  while (terminate == false) {
     if (!recv_task_running) {
       recv_task_running = true;
     }
@@ -523,7 +539,9 @@ void *epoll_recv_task(void *arg)
       }
     }
   }
+  recv_task_running = false;
   close(epoll_fd);
+  ipc->ipc_destroy(ipc);
   return NULL;
 }
 
