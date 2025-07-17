@@ -2269,7 +2269,7 @@ if(OAI_LDPC_T2_PACKAGE)
   set(CPACK_COMPONENT_OAI-LDPC-T2_SUMMARY "OpenAirInterface T2 accelerator package")
   set(CPACK_COMPONENT_OAI-LDPC-T2_DESCRIPTION "This package is dedicated for T2 accelerator library")
   install(TARGETS ldpc_t2
-        COMPONENT OAI_LDPC_T2
+        COMPONENT oai-ldpc-t2
         RUNTIME DESTINATION bin
         LIBRARY DESTINATION lib
       )
