@@ -334,6 +334,16 @@ typedef struct {
   fapi_nr_dl_ntn_config_command_pdu ntn_config_params;
 } ntn_config_message_t;
 
+typedef struct {
+  int rf_port;
+  int band;
+  uint64_t rf_frequency;
+  int rf_freq_offset;
+  int numerology;
+  int N_RB_DL;
+  int ssb_start;
+}  nrUE_cell_params_t;
+
 /// Top-level PHY Data Structure for UE
 typedef struct PHY_VARS_NR_UE_s {
   /// \brief Module ID indicator for this instance

@@ -119,6 +119,7 @@ uint64_t        sidelink_frequency[MAX_NUM_CCs][4];
 // UE and OAI config variables
 openair0_config_t openair0_cfg[MAX_CARDS];
 openair0_device_t openair0_dev[MAX_CARDS];
+NR_DL_FRAME_PARMS cell_fp[MAX_CARDS];
 int16_t           node_synch_ref[MAX_NUM_CCs];
 int               otg_enabled;
 double            cpuf;
@@ -213,6 +214,7 @@ static int get_nrUE_RU_params(configmodule_interface_t *cfg, nrUE_RU_params_t **
       .tune_offset    = get_softmodem_params()->tune_offset,
       .if_frequency   = nrUE_params.if_freq,
       .if_freq_offset = nrUE_params.if_freq_off,
+      .used_by_cell   = -1
     };
     return 1;
   }
@@ -230,6 +232,7 @@ static int get_nrUE_RU_params(configmodule_interface_t *cfg, nrUE_RU_params_t **
     RU->tune_offset    = *(RUParamList.paramarray[j][NRUE_RU_TUNE_OFFSET_IDX].dblptr);
     RU->if_frequency   = *(RUParamList.paramarray[j][NRUE_RU_IF_FREQUENCY_IDX].u64ptr);
     RU->if_freq_offset = *(RUParamList.paramarray[j][NRUE_RU_IF_FREQ_OFFSET_IDX].iptr);
+    RU->used_by_cell   = -1;
 
     if (config_isparamset(RUParamList.paramarray[j], NRUE_RU_SDR_ADDRS_IDX)) {
       RU->sdr_addrs = strdup(*(RUParamList.paramarray[j][NRUE_RU_SDR_ADDRS_IDX].strptr));
@@ -277,6 +280,43 @@ static int get_nrUE_RU_params(configmodule_interface_t *cfg, nrUE_RU_params_t **
   return RUParamList.numelt;
 }
 
+static int get_nrUE_cell_params(configmodule_interface_t *cfg, nrUE_cell_params_t **cells)
+{
+  paramdef_t cellParams[] = NRUE_CELL_PARAMS_DESC;
+  paramlist_def_t cellParamList = {CONFIG_STRING_NRUE_CELL_LIST, NULL, 0};
+  config_getlist(cfg, &cellParamList, cellParams, sizeofArray(cellParams), NULL);
+
+  if (cellParamList.numelt <= 0) {
+    *cells = (nrUE_cell_params_t *)calloc_or_fail(1, sizeof(nrUE_cell_params_t));
+    (*cells)[0] = (nrUE_cell_params_t){
+      .rf_port        = 0,
+      .band           = get_softmodem_params()->band,
+      .rf_frequency   = downlink_frequency[0][0],
+      .rf_freq_offset = uplink_frequency_offset[0][0],
+      .numerology     = get_softmodem_params()->numerology,
+      .N_RB_DL        = nrUE_params.N_RB_DL,
+      .ssb_start      = nrUE_params.ssb_start_subcarrier
+    };
+    return 1;
+  }
+
+  *cells = (nrUE_cell_params_t *)calloc_or_fail(cellParamList.numelt, sizeof(nrUE_cell_params_t));
+
+  for (int j = 0; j < cellParamList.numelt; j++) {
+    nrUE_cell_params_t *cell = &(*cells)[j];
+
+    cell->rf_port        = *(cellParamList.paramarray[j][NRUE_CELL_RF_PORT_IDX].iptr);
+    cell->band           = *(cellParamList.paramarray[j][NRUE_CELL_BAND_IDX].iptr);
+    cell->rf_frequency   = *(cellParamList.paramarray[j][NRUE_CELL_RF_FREQUENCY_IDX].u64ptr);
+    cell->rf_freq_offset = *(cellParamList.paramarray[j][NRUE_CELL_RF_FREQ_OFFSET_IDX].iptr);
+    cell->numerology     = *(cellParamList.paramarray[j][NRUE_CELL_NUMEROLOGY_IDX].iptr);
+    cell->N_RB_DL        = *(cellParamList.paramarray[j][NRUE_CELL_N_RB_DL_IDX].iptr);
+    cell->ssb_start      = *(cellParamList.paramarray[j][NRUE_CELL_SSB_START_IDX].iptr);
+  }
+
+  return cellParamList.numelt;
+}
+
 static void get_options(configmodule_interface_t *cfg)
 {
   paramdef_t cmdline_params[] = CMDLINE_NRUEPARAMS_DESC;
@@ -291,10 +331,8 @@ static void get_options(configmodule_interface_t *cfg)
 }
 
 // set PHY vars from command line
-static void set_options(int CC_id, PHY_VARS_NR_UE *UE, int card, const nrUE_RU_params_t *RU)
+static void set_UE_options(int CC_id, PHY_VARS_NR_UE *UE, int card, const nrUE_RU_params_t *RU)
 {
-  NR_DL_FRAME_PARMS *fp = &UE->frame_parms;
-
   // Set UE variables
   UE->rx_total_gain_dB = RU->max_rxgain - RU->att_rx;
   UE->tx_total_gain_dB = RU->att_tx;
@@ -315,7 +353,10 @@ static void set_options(int CC_id, PHY_VARS_NR_UE *UE, int card, const nrUE_RU_p
 
   LOG_I(PHY,"Set UE_fo_compensation %d, UE_scan_carrier %d, UE_no_timing_correction %d \n, chest-freq %d, chest-time %d\n",
         UE->UE_fo_compensation, UE->UE_scan_carrier, UE->no_timing_correction, UE->chest_freq, UE->chest_time);
+}
 
+static void set_fp_options(NR_DL_FRAME_PARMS *fp, const nrUE_RU_params_t *RU)
+{
   // Set FP variables
   fp->nb_antennas_rx = RU->nb_rx;
   fp->nb_antennas_tx = RU->nb_tx;
@@ -329,12 +370,21 @@ static void set_options(int CC_id, PHY_VARS_NR_UE *UE, int card, const nrUE_RU_p
 static void init_openair0(const nrUE_RU_params_t *RUs, int max_cards)
 {
   int freq_off = 0;
-  NR_DL_FRAME_PARMS *frame_parms = &ue->frame_parms;
   bool is_sidelink = (get_softmodem_params()->sl_mode) ? true : false;
-  if (is_sidelink)
-    frame_parms = &ue->SL_UE_PHY_PARAMS.sl_frame_params;
 
   for (int card = 0; card < max_cards; card++) {
+    NR_DL_FRAME_PARMS *frame_parms;
+    if (is_sidelink)
+      frame_parms = &PHY_vars_UE_g[0][0]->SL_UE_PHY_PARAMS.sl_frame_params;
+    else {
+      int cell_id = RUs[card].used_by_cell;
+      if (cell_id == -1) {
+        LOG_W(PHY, "Skipping initialization of RU %d because it is not used by any cell!\n", card);
+        continue;
+      }
+      frame_parms = &cell_fp[cell_id];
+    }
+
     openair0_config_t *cfg = &openair0_cfg[card];
     cfg->configFilename    = NULL;
     cfg->sample_rate       = frame_parms->samples_per_subframe * 1e3;
@@ -530,7 +580,13 @@ int main(int argc, char **argv)
     init_pdcp(mode_offset + ue_id_g);
   nas_init_nrue(NB_UE_INST);
 
-  init_NR_UE(NB_UE_INST, get_nrUE_params()->uecap_file, get_nrUE_params()->reconfig_file, get_nrUE_params()->rbconfig_file, get_softmodem_params()->numerology);
+  nrUE_RU_params_t *RUs;
+  int nrue_ru_count = get_nrUE_RU_params(uniqCfg, &RUs);
+
+  nrUE_cell_params_t *cells;
+  int nrue_cell_count = get_nrUE_cell_params(uniqCfg, &cells);
+
+  init_NR_UE(NB_UE_INST, get_nrUE_params()->uecap_file, get_nrUE_params()->reconfig_file, get_nrUE_params()->rbconfig_file, cells[0].numerology);
 
   if (get_softmodem_params()->emulate_l1) {
     RCconfig_nr_ue_macrlc();
@@ -555,10 +611,21 @@ int main(int argc, char **argv)
   if (!get_softmodem_params()->nsa && get_softmodem_params()->emulate_l1)
     start_oai_nrue_threads();
 
-  nrUE_RU_params_t *RUs;
-  int nrue_ru_count = get_nrUE_RU_params(uniqCfg, &RUs);
+  // initialize per-cell frame parameters
+  for (int cell_id = 0; cell_id < nrue_cell_count; cell_id++) {
+    int rf_port = cells[cell_id].rf_port;
+    AssertFatal(rf_port >= 0 && rf_port < nrue_ru_count, "Invalid rf_port (%d) for cell %d. Should be >= 0 and < %d\n", rf_port, cell_id, nrue_ru_count);
+    AssertFatal(RUs[rf_port].used_by_cell == -1, "RU %d is already used by cell %d and therefore cannot also be used by cell %d\n", rf_port, RUs[rf_port].used_by_cell, cell_id);
+    RUs[rf_port].used_by_cell = cell_id;
 
-  int rf_port = 0; // initialize all UEs to RU 0 for now
+    set_fp_options(&cell_fp[cell_id], &RUs[rf_port]);
+    if (IS_SA_MODE(get_softmodem_params()) || get_softmodem_params()->sl_mode)
+      nr_init_frame_parms_ue_sa(&cell_fp[cell_id], &cells[cell_id]);
+  }
+
+  int cell_id = 0; // initially connect all UEs to cell 0
+  nrUE_cell_params_t *cell = &cells[cell_id];
+  int rf_port = cell->rf_port;
   nrUE_RU_params_t *RU = &RUs[rf_port];
 
   if (!get_softmodem_params()->emulate_l1) {
@@ -566,23 +633,15 @@ int main(int argc, char **argv)
       for (int CC_id = 0; CC_id < MAX_NUM_CCs; CC_id++) {
         PHY_VARS_NR_UE *UE_CC = PHY_vars_UE_g[inst][CC_id];
 
-        set_options(CC_id, UE_CC, rf_port, RU);
+        set_UE_options(CC_id, UE_CC, rf_port, RU);
+        UE_CC->frame_parms = cell_fp[cell_id];
         NR_UE_MAC_INST_t *mac = get_mac_inst(inst);
         init_nr_ue_phy_cpu_stats(&UE_CC->phy_cpu_stats);
 
-        if (IS_SA_MODE(get_softmodem_params()) || get_softmodem_params()->sl_mode) { // set frame config to initial values from command line
-                                                                            // and assume that the SSB is centered on the grid
-          uint16_t nr_band = get_softmodem_params()->band;
-          mac->nr_band = nr_band;
-          mac->ssb_start_subcarrier = UE_CC->frame_parms.ssb_start_subcarrier;
-          mac->dl_frequency = downlink_frequency[CC_id][0];
-          nr_init_frame_parms_ue_sa(&UE_CC->frame_parms,
-                                    downlink_frequency[CC_id][0],
-                                    uplink_frequency_offset[CC_id][0],
-                                    get_softmodem_params()->numerology,
-                                    nrUE_params.N_RB_DL,
-                                    nrUE_params.ssb_start_subcarrier,
-                                    nr_band);
+        if (IS_SA_MODE(get_softmodem_params()) || get_softmodem_params()->sl_mode) {
+          mac->nr_band = cell->band;
+          mac->ssb_start_subcarrier = cell->ssb_start;
+          mac->dl_frequency = cell->rf_frequency;
         } else {
           do {
             notifiedFIFO_elt_t *elt = pollNotifiedFIFO(&mac->input_nf);

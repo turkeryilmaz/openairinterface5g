@@ -182,7 +182,35 @@ typedef struct {
   double tune_offset;
   uint64_t if_frequency;
   int if_freq_offset;
+  int used_by_cell;
 }  nrUE_RU_params_t;
+
+/* NR UE cell configuration section name */
+#define CONFIG_STRING_NRUE_CELL_LIST "cells"
+
+/*---------------------------------------------------------------------------------------------------------------------------------------------------*/
+/*                                                    NR UE cell configuration parameters                                                            */
+/*  optname                        helpstr                     paramflags       XXXptr            defXXXval                     type         numelt  */
+/*---------------------------------------------------------------------------------------------------------------------------------------------------*/
+// clang-format off
+#define NRUE_CELL_PARAMS_DESC { \
+  {"rf_port",                      NULL,                       0,               .iptr=NULL,       .defintval=0,                 TYPE_INT,         0}, \
+  {"band",                         CONFIG_HLP_BAND,            0,               .iptr=NULL,       .defintval=78,                TYPE_INT,         0}, \
+  {"rf_freq",                      CONFIG_HLP_DLF,             0,               .u64ptr=NULL,     .defint64val=0,               TYPE_UINT64,      0}, \
+  {"rf_offset",                    CONFIG_HLP_ULF,             0,               .iptr=NULL,       .defintval=0,                 TYPE_INT,         0}, \
+  {"numerology",                   CONFIG_HLP_NUMEROLOGY,      0,               .iptr=NULL,       .defintval=1,                 TYPE_INT,         0}, \
+  {"N_RB_DL",                      CONFIG_HLP_PRB_SA,          0,               .iptr=NULL,       .defintval=106,               TYPE_INT,         0}, \
+  {"ssb_start",                    CONFIG_HLP_SSC,             0,               .iptr=NULL,       .defintval=516,               TYPE_INT,         0}, \
+}
+
+#define NRUE_CELL_RF_PORT_IDX         0
+#define NRUE_CELL_BAND_IDX            1
+#define NRUE_CELL_RF_FREQUENCY_IDX    2
+#define NRUE_CELL_RF_FREQ_OFFSET_IDX  3
+#define NRUE_CELL_NUMEROLOGY_IDX      4
+#define NRUE_CELL_N_RB_DL_IDX         5
+#define NRUE_CELL_SSB_START_IDX       6
+// clang-format on
 
 // In nr-ue.c
 extern int setup_nr_ue_buffers(PHY_VARS_NR_UE **phy_vars_ue, openair0_config_t *openair0_cfg);
