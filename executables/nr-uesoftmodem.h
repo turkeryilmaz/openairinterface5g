@@ -187,7 +187,7 @@ typedef struct {
 // In nr-ue.c
 extern int setup_nr_ue_buffers(PHY_VARS_NR_UE **phy_vars_ue, openair0_config_t *openair0_cfg);
 extern void fill_ue_band_info(void);
-extern void init_NR_UE(int, char *, char *, char *);
+extern void init_NR_UE(int, char *, char *, char *, int);
 extern void init_NR_UE_threads(PHY_VARS_NR_UE *ue);
 void start_oai_nrue_threads(void);
 void *UE_thread(void *arg);
