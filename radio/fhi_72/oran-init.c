@@ -340,12 +340,12 @@ static void oran_allocate_buffers(void *handle,
     // DL/UL PRB mapping depending on the duplex mode.
     // Set RU_PORT_ID and beam_idx so that each stream would use beam_idx 0 at first.
     int beam_idx = 0;
-    dlPm[i] = get_xran_prb_map(fh_config, XRAN_DIR_DL, 0, 14, i, 0);
-    ulPm[i] = get_xran_prb_map(fh_config, XRAN_DIR_UL, 0, 14, i, 0);
+    dlPm[i] = get_xran_prb_map(fh_config, XRAN_DIR_DL, 0, 14, i, beam_idx);
+    ulPm[i] = get_xran_prb_map(fh_config, XRAN_DIR_UL, 0, 14, i, beam_idx);
     if (fh_config->frame_conf.nFrameDuplexType == XRAN_TDD) {
       oran_mixed_slot_t info = get_mixed_slot_info(&fh_config->frame_conf);
-      dlPmMixed[i] = get_xran_prb_map(fh_config, XRAN_DIR_DL, 0, info.num_dlsym, i, i);
-      ulPmMixed[i] = get_xran_prb_map(fh_config, XRAN_DIR_UL, info.start_ulsym, info.num_ulsym, i, i);
+      dlPmMixed[i] = get_xran_prb_map(fh_config, XRAN_DIR_DL, 0, info.num_dlsym, i, beam_idx);
+      ulPmMixed[i] = get_xran_prb_map(fh_config, XRAN_DIR_UL, info.start_ulsym, info.num_ulsym, i, beam_idx);
       idx = info.idx;
     }
   }
