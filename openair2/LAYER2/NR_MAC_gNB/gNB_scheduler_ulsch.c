@@ -399,6 +399,7 @@ static int nr_process_mac_pdu(instance_t module_idP,
           UE->mac_stats.ul.total_sdu_bytes += mac_len;
           UE->mac_stats.ul.lc_bytes[lcid] += mac_len;
         }
+        T(T_GNB_MAC_LCID_UL, T_INT(UE->rnti), T_INT(frameP), T_INT(slot), T_INT(lcid), T_INT(mac_len * 8));
         break;
 
       case UL_SCH_LCID_DTCH ...(UL_SCH_LCID_DTCH + 28):
@@ -426,6 +427,7 @@ static int nr_process_mac_pdu(instance_t module_idP,
           else
             sched_ctrl->estimated_ul_buffer = 0;
         }
+        T(T_GNB_MAC_LCID_UL, T_INT(UE->rnti), T_INT(frameP), T_INT(slot), T_INT(lcid), T_INT(mac_len * 8));
         break;
 
       case UL_SCH_LCID_RECOMMENDED_BITRATE_QUERY:
@@ -2557,6 +2559,8 @@ void nr_schedule_ulsch(module_id_t module_id, frame_t frame, slot_t slot, nfapi_
           sched_ctrl->sched_ul_bytes,
           sched_ctrl->estimated_ul_buffer - sched_ctrl->sched_ul_bytes,
           sched_ctrl->tpc0);
+
+    T(T_GNB_MAC_UL, T_INT(rnti), T_INT(frame), T_INT(slot), T_INT(sched_pusch->mcs), T_INT(sched_pusch->tb_size));
 
     /* PUSCH in a later slot, but corresponding DCI now! */
     const int index = ul_buffer_index(sched_pusch->frame,
