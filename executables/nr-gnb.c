@@ -135,6 +135,7 @@ static void tx_func(processingData_L1tx_t *info)
      * This only applies for monolithic; in the PNF, the memory is allocated in
      * a ring buffer that should never be overwritten (one frame duration). */
     LOG_D(NR_PHY, "Calling deref_sched_response for id %d (tx_func) in %d.%d\n", info->sched_response_id, frame_tx, slot_tx);
+    uint64_t st = rdtsc_oai();
     deref_sched_response(info->sched_response_id);
     uint64_t end = rdtsc_oai();
     if (end - st > 1000)
