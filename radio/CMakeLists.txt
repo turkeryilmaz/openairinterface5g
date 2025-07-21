@@ -41,6 +41,7 @@ endif()
 add_boolean_option(OAI_VRTSIM ON "Activate OAI's shared memory radio driver" OFF)
 if(OAI_VRTSIM)
   add_subdirectory(vrtsim)
+endif()
 
 add_boolean_option(OAI_OC OFF "Activate OAI's USRP driver" OFF)
 if(OAI_OC)
