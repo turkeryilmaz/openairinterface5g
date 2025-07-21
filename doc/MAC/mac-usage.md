@@ -50,8 +50,10 @@ the decrement value is 0.01. These values are selected to ensure PDCCH success r
 See Examples below for futher explaination.
 
 The possible values of aggregation level on UE SS can be configured via `uess_agg_levels` configuration
-option. By default the gNB uses only aggregation level 2 which translates to `uess_agg_levels` set to
-`[0, 1, 0, 0, 0]`. For example, to enable aggregation level 2 and 4 set `uess_agg_levels` to `[0, 1, 1, 0, 0]`.
+option. By default the gNB uses aggregation levels 1, 2, and 4 with 4, 2, 2
+candidates, respectively, which translates to `uess_agg_levels` set to `[4, 2,
+2, 0, 0]`. For example, to enable aggregation level 2 and 4 only set
+`uess_agg_levels` to `[0, 1, 1, 0, 0]`.
 
 ### Examples:
 #### Example 1:
