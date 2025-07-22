@@ -95,16 +95,18 @@ static struct xran_prb_map get_xran_prb_map(const struct xran_fh_config *f, cons
       .cc_id = 0,
       .ru_port_id = ru_port_id,
       .tti_id = 0,
-      .nPrbElm = 1,
+      .nPrbElm = num_sym,
   };
-  struct xran_prb_elm *e = &prbmap.prbMap[0];
-  e->nStartSymb = start_sym;
-  e->numSymb = num_sym;
-  e->nRBStart = 0;
-  e->nRBSize = (dir == XRAN_DIR_DL) ? f->nDLRBs : f->nULRBs;
-  e->nBeamIndex = nBeamIndex;
-  e->compMethod = f->ru_conf.compMeth;
-  e->iqWidth = f->ru_conf.iqWidth;
+  for (int i=0; i < prbmap.nPrbElm; i++){
+    struct xran_prb_elm *e = &prbmap.prbMap[i];
+    e->nStartSymb = start_sym;
+    e->numSymb = 1;
+    e->nRBStart = 0;
+    e->nRBSize = (dir == XRAN_DIR_DL) ? f->nDLRBs : f->nULRBs;
+    e->nBeamIndex = nBeamIndex;
+    e->compMethod = f->ru_conf.compMeth;
+    e->iqWidth = f->ru_conf.iqWidth;
+  }
   return prbmap;
 }
 
@@ -130,6 +132,7 @@ static uint32_t oran_allocate_uplane_buffers(
     the F release sample app took this into account, so we can proudly say we assumed correctly */
   uint32_t numBufs = next_power_2(XRAN_N_FE_BUF_LEN * ant * XRAN_NUM_OF_SYMBOL_PER_SLOT) - 1;
   status = xran_bm_init(instHandle, &pool, numBufs, bufSize);
+  printf("xran_bm_init() uplane hInstance %p poolIdx %u elements %u size %u\n", instHandle, pool, numBufs, bufSize);
   AssertFatal(XRAN_STATUS_SUCCESS == status, "Failed at xran_bm_init(), status %d\n", status);
   printf("xran_bm_init() hInstance %p poolIdx %u elements %u size %u\n", instHandle, pool, numBufs, bufSize);
   int count = 0;
@@ -225,6 +228,8 @@ static void oran_allocate_cplane_buffers(void *instHandle,
   uint32_t poolPrb;
   uint32_t numBufsPrb = next_power_2(XRAN_N_FE_BUF_LEN * ant * XRAN_NUM_OF_SYMBOL_PER_SLOT) - 1;
   uint32_t bufSizePrb = size_of_prb_map;
+  printf("size_of_prb_map %d %d %d\n", size_of_prb_map,  sizeof(struct xran_prb_map), sizeof(struct xran_prb_elm));
+  printf("xran_bm_init() cplane hInstance %p poolIdx %u elements %u size %u\n", instHandle, poolPrb, numBufsPrb, bufSizePrb);
   status = xran_bm_init(instHandle, &poolPrb, numBufsPrb, bufSizePrb);
   AssertFatal(XRAN_STATUS_SUCCESS == status, "Failed at xran_bm_init(), status %d\n", status);
   printf("xran_bm_init() hInstance %p poolIdx %u elements %u size %u\n", instHandle, poolPrb, numBufsPrb, bufSizePrb);
@@ -367,7 +372,8 @@ static void oran_allocate_buffers(void *handle,
   uint32_t size_of_prb_map = sizeof(struct xran_prb_map) + sizeof(struct xran_prb_elm) * (xran_max_sections_per_slot - 1);
 #elif defined F_RELEASE
   uint32_t numPrbElm = xran_get_num_prb_elm(&dlPm[0], mtu);
-  uint32_t size_of_prb_map  = sizeof(struct xran_prb_map) + sizeof(struct xran_prb_elm) * (numPrbElm);
+  //uint32_t size_of_prb_map  = sizeof(struct xran_prb_map) + sizeof(struct xran_prb_elm) * (numPrbElm);
+  uint32_t size_of_prb_map  = sizeof(struct xran_prb_map);
 #endif
 
   // PDSCH
