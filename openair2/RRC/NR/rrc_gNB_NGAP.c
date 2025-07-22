@@ -1172,7 +1172,6 @@ void rrc_gNB_send_NGAP_UE_CAPABILITIES_IND(gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE, 
 
 void rrc_gNB_send_NGAP_PDUSESSION_RELEASE_RESPONSE(gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE, uint8_t xid)
 {
-  int pdu_sessions_released = 0;
   MessageDef   *msg_p;
   msg_p = itti_alloc_new_message (TASK_RRC_GNB, rrc->module_id, NGAP_PDUSESSION_RELEASE_RESPONSE);
   ngap_pdusession_release_resp_t *resp = &NGAP_PDUSESSION_RELEASE_RESPONSE(msg_p);
@@ -1182,16 +1181,16 @@ void rrc_gNB_send_NGAP_PDUSESSION_RELEASE_RESPONSE(gNB_RRC_INST *rrc, gNB_RRC_UE
   FOR_EACH_SEQ_ARR(rrc_pdu_session_param_t *, session, &UE->pduSessions) {
     if (xid == session->xid) {
       const pdusession_t *pdusession = &session->param;
-      resp->pdusession_release[pdu_sessions_released].pdusession_id = pdusession->pdusession_id;
+      if (session->status == PDU_SESSION_STATUS_TORELEASE) {
+        resp->pdusession_release[resp->nb_of_pdusessions_released++].pdusession_id = pdusession->pdusession_id;
+      } else if (session->status == PDU_SESSION_STATUS_FAILED) {
+        resp->pdusessions_failed[resp->nb_of_pdusessions_failed++].pdusession_id = pdusession->pdusession_id;
+      }
       session->status = PDU_SESSION_STATUS_RELEASED;
-      pdu_sessions_released++;
     }
   }
 
-  resp->nb_of_pdusessions_released = pdu_sessions_released;
-  resp->nb_of_pdusessions_failed = 0;
-
-  LOG_I(NR_RRC, "NGAP PDUSESSION RELEASE RESPONSE: rrc_ue_id %u release_pdu_sessions %d\n", resp->gNB_ue_ngap_id, pdu_sessions_released);
+  LOG_I(NR_RRC, "NGAP PDUSESSION RELEASE RESPONSE: rrc_ue_id %u release_pdu_sessions %d\n", resp->gNB_ue_ngap_id, resp->nb_of_pdusessions_released);
   itti_send_msg_to_task (TASK_NGAP, rrc->module_id, msg_p);
 }
 
