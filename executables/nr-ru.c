@@ -70,6 +70,7 @@ static int DEFCARRIER[] = {3430560};
 #include "nfapi_interface.h"
 #include <nfapi/oai_integration/vendor_ext.h>
 #include "executables/nr-softmodem-common.h"
+#include "common/utils/load_module_shlib.h"
 
 static void NRRCconfig_RU(configmodule_interface_t *cfg);
 
@@ -1981,19 +1982,87 @@ static void NRRCconfig_RU(configmodule_interface_t *cfg)
   return;
 }
 
-void *oru_north_read_thread(void *arg)
-{
-  ORU_t *oru = (ORU_t *)arg;
-
-  RU_t *ru = (RU_t *)oru->ru;
-  NR_DL_FRAME_PARMS *fp = ru->nr_frame_parms;
-  char threadname[40];
-  sprintf(threadname, "oru_thread %u", ru->idx);
+void oru_init(ORU_t *oru) {
+  RU_t *ru = oru->ru;
+  struct NR_DL_FRAME_PARMS *fp = ru->nr_frame_parms;
   nr_init_frame_parms(&ru->config, fp);
   nr_dump_frame_parms(fp);
   nr_phy_init_RU(ru);
   fill_rf_config(ru, ru->rf_config_file);
   fill_split7_2_config(&ru->openair0_cfg.split7, &ru->config, fp->slots_per_frame, fp->ofdm_symbol_size);
+  if (setup_RU_buffers(ru) != 0) {
+    LOG_E(PHY, "Exiting, cannot initialize RU Buffers\n");
+    exit(-1);
+  }
+  openair0_load(&ru->rfdevice, "vrtsim", &ru->openair0_cfg, NULL);
+  ru->rfdevice.trx_start_func(&ru->rfdevice);
+}
+
+static void oru_tx_slot_processing(RU_t *ru, int frame, int slot, openair0_timestamp tx_timestamp)
+{
+  LOG_I(PHY, "RU %d: Processing frame %d, slot %d\n", ru->idx, frame, slot);
+  const NR_DL_FRAME_PARMS *fp = ru->nr_frame_parms;
+  int slot_type = nr_slot_select(&ru->config, frame, slot % fp->slots_per_frame);
+  if (slot_type != NR_UPLINK_SLOT) {
+    for (int i = 0; i < ru->nb_tx; i++) {
+      apply_nr_rotation_TX(fp,
+                          (c16_t *)ru->common.txdataF_BF[i],
+                          fp->symbol_rotation[0],
+                          slot,
+                          fp->N_RB_DL,
+                          0,
+                          fp->Ncp == EXTENDED ? 12 : 14);
+      nr_feptx0(ru, slot, 0, 14, i);
+    }
+  }
+  tx_rf(ru, frame, slot, tx_timestamp);
+}
+
+void oru_keep_timing(ORU_t *oru, int frame, int slot)
+{
+  if (oru->timing_initialized) {
+    if (frame < oru->last_frame) {
+      oru->hfn++;
+    }
+  } else {
+    oru->first_frame = frame;
+    oru->first_call_timestamp = oru->current_timestamp;
+    oru->first_slot = slot;
+    oru->timing_initialized = true;
+    oru->hfn = 0;
+  }
+  oru->last_frame = frame;
+}
+
+uint64_t oru_get_timestamp(ORU_t *oru, int frame, int slot)
+{
+  AssertFatal(oru->timing_initialized, "oru_get_timestamp called before timing initialized\n");
+  const NR_DL_FRAME_PARMS *fp = oru->ru->nr_frame_parms;
+  int frames_since_first_call = frame - oru->first_frame + oru->hfn * 1024;
+  openair0_timestamp timestamp = oru->first_call_timestamp + frames_since_first_call * fp->samples_per_frame;
+  timestamp += fp->get_samples_slot_timestamp(slot, fp, 0) - fp->get_samples_slot_timestamp(oru->first_slot, fp, 0);
+  return timestamp;
+}
+
+void *oru_north_read_thread(void *arg)
+{
+  ORU_t *oru = (ORU_t *)arg;
+
+  RU_t *ru = (RU_t *)oru->ru;
+  char threadname[40];
+  sprintf(threadname, "oru_thread %u", ru->idx);
+
+  int cpu = sched_getcpu();
+  if (ru->ru_thread_core > -1 && cpu != ru->ru_thread_core) {
+    /* we start the ru_thread using threadCreate(), which already sets CPU
+      * affinity; let's force it here again as per feature request #732 */
+    cpu_set_t cpuset;
+    CPU_ZERO(&cpuset);
+    CPU_SET(ru->ru_thread_core, &cpuset);
+    int ret = pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
+    AssertFatal(ret == 0, "Error in pthread_getaffinity_np(): ret: %d, errno: %d", ret, errno);
+    LOG_I(PHY, "RU %d: manually set CPU affinity to CPU %d\n", ru->idx, ru->ru_thread_core);
+  }
 
   // Start IF device if any
   if (ru->nr_start_if) {
@@ -2010,18 +2079,6 @@ void *oru_north_read_thread(void *arg)
         ru->fh_north_out = t;
     }
 
-    int cpu = sched_getcpu();
-    if (ru->ru_thread_core > -1 && cpu != ru->ru_thread_core) {
-      /* we start the ru_thread using threadCreate(), which already sets CPU
-       * affinity; let's force it here again as per feature request #732 */
-      cpu_set_t cpuset;
-      CPU_ZERO(&cpuset);
-      CPU_SET(ru->ru_thread_core, &cpuset);
-      int ret = pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
-      AssertFatal(ret == 0, "Error in pthread_getaffinity_np(): ret: %d, errno: %d", ret, errno);
-      LOG_I(PHY, "RU %d: manually set CPU affinity to CPU %d\n", ru->idx, ru->ru_thread_core);
-    }
-
     LOG_I(PHY, "Starting IF interface for RU %d, nb_rx %d\n", ru->idx, ru->nb_rx);
     AssertFatal(ru->nr_start_if(ru, NULL) == 0, "Could not start the IF device\n");
 
@@ -2029,42 +2086,27 @@ void *oru_north_read_thread(void *arg)
       ret = attach_rru(ru);
       AssertFatal(ret == 0, "Cannot connect to remote radio\n");
     }
-
   } else {
     AssertFatal(false, "RU %d: no IF device and no local RF\n", ru->idx);
   }
 
-  if (setup_RU_buffers(ru) != 0) {
-    LOG_E(PHY, "Exiting, cannot initialize RU Buffers\n");
-    exit(-1);
-  }
+  // Start RF device if any
+  if (ru->start_rf) {
+    if (ru->start_rf(ru) != 0)
+      LOG_E(HW, "Could not start the RF device\n");
+    else
+      LOG_I(PHY, "RU %d rf device ready\n", ru->idx);
+  } else
+    LOG_I(PHY, "RU %d no rf device\n", ru->idx);
 
-  LOG_I(PHY, "Signaling main thread that RU %d is ready, sl_ahead %d\n", ru->idx, ru->sl_ahead);
-  pthread_mutex_lock(&RC.ru_mutex);
-  RC.ru_mask &= ~(1 << ru->idx);
-  pthread_cond_signal(&RC.ru_cond);
-  pthread_mutex_unlock(&RC.ru_mutex);
-  wait_sync("ru_thread");
-
-  if (!ru->emulate_rf) {
-    // Start RF device if any
-    if (ru->start_rf) {
-      if (ru->start_rf(ru) != 0)
-        LOG_E(HW, "Could not start the RF device\n");
-      else
-        LOG_I(PHY, "RU %d rf device ready\n", ru->idx);
-    } else
-      LOG_I(PHY, "RU %d no rf device\n", ru->idx);
-
-    LOG_I(PHY, "RU %d RF started cpu_meas_enabled %d\n", ru->idx, cpu_meas_enabled);
-    // start trx write thread
-    if (usrp_tx_thread == 1) {
-      if (ru->start_write_thread) {
-        if (ru->start_write_thread(ru) != 0) {
-          LOG_E(HW, "Could not start tx write thread\n");
-        } else {
-          LOG_I(PHY, "tx write thread ready\n");
-        }
+  LOG_I(PHY, "RU %d RF started cpu_meas_enabled %d\n", ru->idx, cpu_meas_enabled);
+  // start trx write thread
+  if (usrp_tx_thread == 1) {
+    if (ru->start_write_thread) {
+      if (ru->start_write_thread(ru) != 0) {
+        LOG_E(HW, "Could not start tx write thread\n");
+      } else {
+        LOG_I(PHY, "tx write thread ready\n");
       }
     }
   }
@@ -2073,13 +2115,8 @@ void *oru_north_read_thread(void *arg)
   while (!oai_exit) {
     if (ru->fh_north_in) {
       ru->fh_north_in(ru, &frame, &slot);
-      LOG_I(PHY,
-            "[ORU_thread] read data: frame_rx = %d, tti_rx = %d, signal_energy = %d\n",
-            frame,
-            slot,
-            signal_energy(ru->common.txdataF_BF[0], ru->nr_frame_parms->ofdm_symbol_size * 14));
-
-      // TODO: Trigger TX. Use FIFOs / Actors
+      oru_keep_timing(oru, frame, slot);
+      oru_tx_slot_processing(ru, frame, slot, oru_get_timestamp(oru, frame, slot));
     }
     else
       AssertFatal(1 == 0, "No fronthaul interface at north port");
@@ -2087,3 +2124,38 @@ void *oru_north_read_thread(void *arg)
 
   return NULL;
 }
+
+// Just used to obtain timing information for now. Should be used to read samples for RX chain
+void *oru_south_read_thread(void *arg)
+{
+  ORU_t *oru = (ORU_t *)arg;
+  RU_t *ru = (RU_t *)oru->ru;
+  const int num_samples = 3000;
+  c16_t void_samples[ru->nb_rx][num_samples];
+  c16_t *void_samples_ptr[ru->nb_rx];
+  for (int i = 0; i < ru->nb_rx; i++) {
+    void_samples_ptr[i] = void_samples[i];
+  }
+  while (true) {
+    if (oru->timing_initialized == false) {
+      // Keep updating the timestamp until first xran call
+      openair0_timestamp timestamp;
+      ru->rfdevice.trx_read_func(
+        &ru->rfdevice,
+        &timestamp,
+        (void **)&void_samples_ptr,
+        num_samples,
+        ru->nb_rx);
+      oru->current_timestamp = timestamp + num_samples;
+    } else {
+      openair0_timestamp dummy;
+      ru->rfdevice.trx_read_func(
+        &ru->rfdevice,
+        &dummy,
+        (void **)&void_samples_ptr,
+        num_samples,
+        ru->nb_rx);
+    }
+  }
+}
+

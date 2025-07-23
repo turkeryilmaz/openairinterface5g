@@ -695,8 +695,16 @@ typedef struct RU_t_s {
 } RU_t;
 
 typedef struct {
-  pthread_t thread;
+  pthread_t north_read_thread;
+  pthread_t south_read_thread;
   RU_t *ru;
+  openair0_timestamp current_timestamp;
+  openair0_timestamp first_call_timestamp;
+  int first_frame;
+  int first_slot;
+  int last_frame;
+  int hfn;
+  bool timing_initialized;
 } ORU_t;
 
 typedef enum {
