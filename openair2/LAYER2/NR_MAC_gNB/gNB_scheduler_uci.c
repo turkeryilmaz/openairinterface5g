@@ -1002,27 +1002,6 @@ void handle_nr_uci_pucch_2_3_4(module_id_t mod_id, frame_t frame, slot_t slot, c
   NR_SCHED_UNLOCK(&nrmac->sched_lock);
 }
 
-static void set_pucch_allocation(const NR_UE_UL_BWP_t *ul_bwp, const int r_pucch, const int bwp_size, NR_sched_pucch_t *pucch)
-{
-  if (r_pucch < 0) {
-    const NR_PUCCH_Resource_t *resource = ul_bwp->pucch_Config->resourceToAddModList->list.array[0];
-    DevAssert(resource->format.present == NR_PUCCH_Resource__format_PR_format0);
-    pucch->second_hop_prb = resource->secondHopPRB != NULL ?  *resource->secondHopPRB : 0;
-    pucch->nr_of_symb = resource->format.choice.format0->nrofSymbols;
-    pucch->start_symb = resource->format.choice.format0->startingSymbolIndex;
-    pucch->prb_start = resource->startingPRB;
-  } else {
-    int rsetindex = *ul_bwp->pucch_ConfigCommon->pucch_ResourceCommon;
-    set_r_pucch_parms(rsetindex,
-                      r_pucch,
-                      bwp_size,
-                      &pucch->prb_start,
-                      &pucch->second_hop_prb,
-                      &pucch->nr_of_symb,
-                      &pucch->start_symb);
-  }
-}
-
 static bool test_pucch0_vrb_occupation(const NR_sched_pucch_t *pucch, uint16_t *vrb_map_UL, const int bwp_start, const int bwp_size)
 {
   // We assume initial cyclic shift is always 0 so different pucch resources can't overlap
@@ -1040,6 +1019,61 @@ static bool test_pucch0_vrb_occupation(const NR_sched_pucch_t *pucch, uint16_t *
     }
   }
   return true;
+}
+
+static bool set_pucch_allocation(const NR_PUCCH_Config_t *pucch_Config,
+                                 const NR_PUCCH_ResourceId_t *resource_id,
+                                 uint16_t *vrb_map_UL,
+                                 const int bwp_start,
+                                 const int bwp_size,
+                                 NR_sched_pucch_t *pucch,
+                                 int resource_ind)
+{
+  DevAssert(resource_id);
+  for (int n = 0; n < pucch_Config->resourceToAddModList->list.count; n++) {
+    const NR_PUCCH_Resource_t *resource = pucch_Config->resourceToAddModList->list.array[n];
+    if (resource->pucch_ResourceId == *resource_id) {
+      DevAssert(resource->format.present == NR_PUCCH_Resource__format_PR_format0);
+      pucch->second_hop_prb = resource->secondHopPRB != NULL ?  *resource->secondHopPRB : 0;
+      pucch->nr_of_symb = resource->format.choice.format0->nrofSymbols;
+      pucch->start_symb = resource->format.choice.format0->startingSymbolIndex;
+      pucch->prb_start = resource->startingPRB;
+      pucch->resource_indicator = resource_ind;
+      return test_pucch0_vrb_occupation(pucch, vrb_map_UL, bwp_start, bwp_size);
+   }
+ }
+ LOG_E(NR_MAC, "Couldn't find PUCCH resource with ID %ld\n", *resource_id);
+ return false;
+}
+
+static bool find_pucch_allocation(const NR_UE_UL_BWP_t *ul_bwp,
+                                  uint16_t *vrb_map_UL,
+                                  const int r_pucch,
+                                  const int bwp_start,
+                                  const int bwp_size,
+                                  NR_sched_pucch_t *pucch)
+{
+  if (r_pucch < 0) {
+    NR_PUCCH_Config_t *pucch_Config = ul_bwp->pucch_Config;
+    // PUCCH resource set for F0 or 1 is the one with index 0
+    const NR_PUCCH_ResourceSet_t *pucchresset = pucch_Config->resourceSetToAddModList->list.array[0];
+    for (int i = 0; i < pucchresset->resourceList.list.count; i++) {
+      NR_PUCCH_ResourceId_t *resource_id = pucchresset->resourceList.list.array[i];
+      if (set_pucch_allocation(pucch_Config, resource_id, vrb_map_UL, bwp_start, bwp_size, pucch, i))
+        return true; // we found a valid occasion (otherwise we try with the following one)
+    }
+    return false; // we couldn't find any valid occasion
+  } else {
+    int rsetindex = *ul_bwp->pucch_ConfigCommon->pucch_ResourceCommon;
+    set_r_pucch_parms(rsetindex,
+                      r_pucch,
+                      bwp_size,
+                      &pucch->prb_start,
+                      &pucch->second_hop_prb,
+                      &pucch->nr_of_symb,
+                      &pucch->start_symb);
+    return true;
+  }
 }
 
 static void set_pucch0_vrb_occupation(const NR_sched_pucch_t *pucch, uint16_t *vrb_map_UL, const int bwp_start)
@@ -1195,8 +1229,6 @@ int nr_acknack_scheduling(gNB_MAC_INST *mac, NR_UE_info_t *UE, frame_t frame, sl
       memset(curr_pucch, 0, sizeof(*curr_pucch));
     }
     else { // unoccupied occasion
-      // checking if in ul_slot the resources potentially to be assigned to this PUCCH are available
-      set_pucch_allocation(ul_bwp, r_pucch, bwp_size, curr_pucch);
       NR_beam_alloc_t beam = beam_allocation_procedure(&mac->beam_info, pucch_frame, pucch_slot, ue_beam, n_slots_frame);
       if (beam.idx < 0) {
         LOG_D(NR_MAC,
@@ -1207,10 +1239,11 @@ int nr_acknack_scheduling(gNB_MAC_INST *mac, NR_UE_info_t *UE, frame_t frame, sl
               pucch_slot);
         continue;
       }
+      // checking if in ul_slot the resources potentially to be assigned to this PUCCH are available
       const int index = ul_buffer_index(pucch_frame, pucch_slot, n_slots_frame, mac->vrb_map_UL_size);
       uint16_t *vrb_map_UL = &mac->common_channels[CC_id].vrb_map_UL[beam.idx][index * MAX_BWP_SIZE];
-      bool ret = test_pucch0_vrb_occupation(curr_pucch, vrb_map_UL, bwp_start, bwp_size);
-      if(!ret) {
+      bool valid = find_pucch_allocation(ul_bwp, vrb_map_UL, r_pucch, bwp_start, bwp_size, curr_pucch);
+      if(!valid) {
         LOG_D(NR_MAC,
               "DL %4d.%2d, UL_ACK %4d.%2d PRB resources for this occasion are already occupied, move to the following occasion\n",
               frame,
@@ -1226,7 +1259,6 @@ int nr_acknack_scheduling(gNB_MAC_INST *mac, NR_UE_info_t *UE, frame_t frame, sl
       curr_pucch->ul_slot = pucch_slot;
       curr_pucch->timing_indicator = f; // index in the list of timing indicators
       curr_pucch->dai_c++;
-      curr_pucch->resource_indicator = 0; // each UE has dedicated PUCCH resources
       curr_pucch->r_pucch=r_pucch;
 
       LOG_D(NR_MAC,
@@ -1300,8 +1332,7 @@ void nr_sr_reporting(gNB_MAC_INST *nrmac, frame_t SFN, slot_t slot)
         uint16_t *vrb_map_UL = &nrmac->common_channels[CC_id].vrb_map_UL[beam.idx][index * MAX_BWP_SIZE];
         const int bwp_start = ul_bwp->BWPStart;
         const int bwp_size = ul_bwp->BWPSize;
-        set_pucch_allocation(ul_bwp, -1, bwp_size, curr_pucch);
-        bool ret = test_pucch0_vrb_occupation(curr_pucch, vrb_map_UL, bwp_start, bwp_size);
+        bool ret = set_pucch_allocation(pucch_Config, PucchResourceId, vrb_map_UL, bwp_start, bwp_size, curr_pucch, idx);
         if (!ret) {
           LOG_E(NR_MAC, "Cannot schedule SR. PRBs not available\n");
           continue;
@@ -1309,7 +1340,6 @@ void nr_sr_reporting(gNB_MAC_INST *nrmac, frame_t SFN, slot_t slot)
         curr_pucch->frame = SFN;
         curr_pucch->ul_slot = slot;
         curr_pucch->sr_flag = true;
-        curr_pucch->resource_indicator = idx;
         curr_pucch->r_pucch = -1;
         curr_pucch->active = true;
         set_pucch0_vrb_occupation(curr_pucch, vrb_map_UL, bwp_start);
