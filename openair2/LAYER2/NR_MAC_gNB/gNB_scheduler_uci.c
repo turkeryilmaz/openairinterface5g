@@ -222,6 +222,19 @@ void nr_schedule_pucch(gNB_MAC_INST *nrmac, frame_t frame, slot_t slot)
   }
 }
 
+static int find_pucch_resource_index(const NR_PUCCH_Config_t *pucch_Config, int resset_idx, int pucch_idx)
+{
+  // resset_idx 0 for f0 and f1, resset_idx 1 for f2 and f3
+  const NR_PUCCH_ResourceSet_t *pucchresset = pucch_Config->resourceSetToAddModList->list.array[resset_idx];
+  const int n = pucchresset->resourceList.list.count;
+  int res_index = 0;
+  for (; res_index < n; res_index++)
+  if (*pucchresset->resourceList.list.array[res_index] == pucch_idx)
+    break;
+  AssertFatal(res_index < n, "CSI pucch resource %d not found among PUCCH resources\n", pucch_idx);
+  return res_index;
+}
+
 void nr_csi_meas_reporting(int Mod_idP,frame_t frame, slot_t slot)
 {
   const int CC_id = 0;
@@ -268,15 +281,7 @@ void nr_csi_meas_reporting(int Mod_idP,frame_t frame, slot_t slot)
       AssertFatal(is_ul_slot(sched_slot, &nrmac->frame_structure), "CSI reporting slot %d is not set for an uplink slot\n", sched_slot);
       LOG_D(NR_MAC, "CSI reporting in frame %d slot %d CSI report ID %ld\n", sched_frame, sched_slot, csirep->reportConfigId);
 
-      const NR_PUCCH_ResourceSet_t *pucchresset = pucch_Config->resourceSetToAddModList->list.array[1]; // set with formats >1
-      const int n = pucchresset->resourceList.list.count;
-      int res_index = 0;
-      for (; res_index < n; res_index++)
-        if (*pucchresset->resourceList.list.array[res_index] == pucchcsires->pucch_Resource)
-          break;
-      AssertFatal(res_index < n,
-                  "CSI pucch resource %ld not found among PUCCH resources\n", pucchcsires->pucch_Resource);
-
+      int res_index = find_pucch_resource_index(pucch_Config, 1, pucchcsires->pucch_Resource); // index 1 for F2
       const int pucch_index = get_pucch_index(sched_frame, sched_slot, &nrmac->frame_structure, sched_ctrl->sched_pucch_size);
       NR_sched_pucch_t *curr_pucch = &sched_ctrl->sched_pucch[pucch_index];
       AssertFatal(curr_pucch->active == false, "CSI structure is scheduled in advance. It should be free!\n");
@@ -297,6 +302,7 @@ void nr_csi_meas_reporting(int Mod_idP,frame_t frame, slot_t slot)
       const int m = pucch_Config->resourceToAddModList->list.count;
       for (int j = 0; j < m; j++) {
         NR_PUCCH_Resource_t *pucchres = pucch_Config->resourceToAddModList->list.array[j];
+        const NR_PUCCH_ResourceSet_t *pucchresset = pucch_Config->resourceSetToAddModList->list.array[1]; // set with formats >1
         if (pucchres->pucch_ResourceId != *pucchresset->resourceList.list.array[res_index])
           continue;
         int start = pucchres->startingPRB;
@@ -998,7 +1004,7 @@ void handle_nr_uci_pucch_2_3_4(module_id_t mod_id, frame_t frame, slot_t slot, c
 
 static void set_pucch_allocation(const NR_UE_UL_BWP_t *ul_bwp, const int r_pucch, const int bwp_size, NR_sched_pucch_t *pucch)
 {
-  if(r_pucch < 0) {
+  if (r_pucch < 0) {
     const NR_PUCCH_Resource_t *resource = ul_bwp->pucch_Config->resourceToAddModList->list.array[0];
     DevAssert(resource->format.present == NR_PUCCH_Resource__format_PR_format0);
     pucch->second_hop_prb = resource->secondHopPRB != NULL ?  *resource->secondHopPRB : 0;
@@ -1264,9 +1270,7 @@ void nr_sr_reporting(gNB_MAC_INST *nrmac, frame_t SFN, slot_t slot)
 
     for (int SR_resource_id = 0; SR_resource_id < pucch_Config->schedulingRequestResourceToAddModList->list.count;SR_resource_id++) {
       NR_SchedulingRequestResourceConfig_t *SchedulingRequestResourceConfig = pucch_Config->schedulingRequestResourceToAddModList->list.array[SR_resource_id];
-
       int SR_period; int SR_offset;
-
       find_period_offset_SR(SchedulingRequestResourceConfig, &SR_period, &SR_offset);
       // convert to int to avoid underflow of uint
       int sfn_sf = SFN * n_slots_frame + slot;
@@ -1275,19 +1279,9 @@ void nr_sr_reporting(gNB_MAC_INST *nrmac, frame_t SFN, slot_t slot)
         continue;
       LOG_D(NR_MAC, "%4d.%2d Scheduling Request UE %04x identified\n", SFN, slot, UE->rnti);
       NR_PUCCH_ResourceId_t *PucchResourceId = SchedulingRequestResourceConfig->resource;
-
-      int idx = -1;
-      NR_PUCCH_ResourceSet_t *pucchresset = pucch_Config->resourceSetToAddModList->list.array[0]; // set with formats 0,1
-      int n_list = pucchresset->resourceList.list.count;
-       for (int i=0; i<n_list; i++) {
-        if (*pucchresset->resourceList.list.array[i] == *PucchResourceId )
-          idx = i;
-      }
-      AssertFatal(idx > -1, "SR resource not found among PUCCH resources");
-
+      int idx = find_pucch_resource_index(pucch_Config, 0, *PucchResourceId); // index 1 for F2
       const int pucch_index = get_pucch_index(SFN, slot, &nrmac->frame_structure, sched_ctrl->sched_pucch_size);
       NR_sched_pucch_t *curr_pucch = &sched_ctrl->sched_pucch[pucch_index];
-
       if (curr_pucch->active && curr_pucch->frame == SFN && curr_pucch->ul_slot == slot && curr_pucch->resource_indicator == idx)
         curr_pucch->sr_flag = true;
       else if (curr_pucch->active) {
@@ -1307,12 +1301,9 @@ void nr_sr_reporting(gNB_MAC_INST *nrmac, frame_t SFN, slot_t slot)
         const int bwp_start = ul_bwp->BWPStart;
         const int bwp_size = ul_bwp->BWPSize;
         set_pucch_allocation(ul_bwp, -1, bwp_size, curr_pucch);
-        bool ret = test_pucch0_vrb_occupation(curr_pucch,
-                                              vrb_map_UL,
-                                              bwp_start,
-                                              bwp_size);
+        bool ret = test_pucch0_vrb_occupation(curr_pucch, vrb_map_UL, bwp_start, bwp_size);
         if (!ret) {
-          LOG_E(NR_MAC,"Cannot schedule SR. PRBs not available\n");
+          LOG_E(NR_MAC, "Cannot schedule SR. PRBs not available\n");
           continue;
         }
         curr_pucch->frame = SFN;
