@@ -1260,11 +1260,12 @@ void llr_scaling(int16_t *llr, int llr_len, uint8_t *llr_scaled, int8_t llr_size
     llr_hi = simde_mm_cvtps_epi32(float_hi);
     simde__m128i scaled_vec = simde_mm_packs_epi32(llr_lo, llr_hi);
     
-    if (Qm == 2) {  /* this is a hack! */
-      scaled_vec = simde_mm_srai_epi16(scaled_vec, 1);
-    } else {
-      scaled_vec = simde_mm_mullo_epi16(scaled_vec, decimal_shift);
-    }
+    // if (Qm == 2) {  /* this is a hack! */
+    //   scaled_vec = simde_mm_srai_epi16(scaled_vec, 1);
+    // } else {
+    //   scaled_vec = simde_mm_mullo_epi16(scaled_vec, decimal_shift);
+    // }
+    scaled_vec = simde_mm_mullo_epi16(scaled_vec, decimal_shift);
 
     // clamp to [llr_min, llr_max]
     scaled_vec = simde_mm_min_epi16(scaled_vec, llr_max_vec);
