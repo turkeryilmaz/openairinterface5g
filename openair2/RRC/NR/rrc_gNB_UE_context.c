@@ -40,6 +40,7 @@
 #include "linear_alloc.h"
 #include "openair2/F1AP/f1ap_ids.h"
 #include "tree.h"
+#include "rrc_gNB_radio_bearers.h"
 
 static void rrc_gNB_ue_context_update_time(rrc_gNB_ue_context_t *ctxt)
 {
@@ -77,9 +78,6 @@ rrc_gNB_ue_context_t *rrc_gNB_allocate_new_ue_context(gNB_RRC_INST *rrc_instance
   }
   new_p->ue_context.rrc_ue_id = uid_linear_allocator_new(&rrc_instance_pP->uid_allocator) + 1;
   rrc_gNB_ue_context_update_time(new_p);
-
-  for(int i = 0; i < NB_RB_MAX; i++)
-    new_p->ue_context.pduSession[i].xid = -1;
 
   LOG_D(NR_RRC, "Returning new RRC UE context RRC ue id: %d\n", new_p->ue_context.rrc_ue_id);
   return(new_p);
@@ -128,6 +126,8 @@ void rrc_gNB_free_mem_ue_context(rrc_gNB_ue_context_t *const ue_context_pP)
 //-----------------------------------------------------------------------------
 {
   LOG_T(NR_RRC, " Clearing UE context 0x%p (free internal structs)\n", ue_context_pP);
+  seq_arr_free(&ue_context_pP->ue_context.pduSessions, free_pdusession);
+  seq_arr_free(&ue_context_pP->ue_context.drbs, free_drb);
   free(ue_context_pP);
 }
 
@@ -210,6 +210,11 @@ rrc_gNB_ue_context_t *rrc_gNB_create_ue_context(sctp_assoc_t assoc_id,
   DevAssert(success);
   ue->max_delays_pdu_session = 20; /* see rrc_gNB_process_NGAP_PDUSESSION_SETUP_REQ() */
   ue->ongoing_pdusession_setup_request = false;
+
+  // Initialise setup PDU Sessions list
+  seq_arr_init(&ue->pduSessions, sizeof(rrc_pdu_session_param_t));
+  // Initialise setup DRBs list
+  seq_arr_init(&ue->drbs, sizeof(drb_t));
 
   RB_INSERT(rrc_nr_ue_tree_s, &rrc_instance_pP->rrc_ue_head, ue_context_p);
   LOG_UE_EVENT(ue,

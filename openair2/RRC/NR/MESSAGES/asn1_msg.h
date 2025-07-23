@@ -51,10 +51,14 @@
 #include "NR_SRB-ToAddModList.h"
 #include "NR_SecurityConfig.h"
 #include "NR_MeasurementTimingConfiguration.h"
+#include "NR_SDAP-Config.h"
+#include "NR_asn_constant.h"
 #include "ds/seq_arr.h"
 #include "ds/byte_array.h"
 #include "rrc_messages_types.h"
 #include "openair2/LAYER2/nr_pdcp/nr_pdcp_configuration.h"
+#include "openair2/SDAP/nr_sdap/nr_sdap_configuration.h"
+
 struct asn_TYPE_descriptor_s;
 
 typedef struct {
@@ -159,5 +163,13 @@ NR_MeasConfig_t *get_MeasConfig(const NR_MeasTiming_t *mt,
                                 seq_arr_t *neigh_seq);
 void free_MeasConfig(NR_MeasConfig_t *mc);
 int do_NR_Paging(uint8_t Mod_id, uint8_t *buffer, uint32_t tmsi);
+
+NR_DRB_ToAddMod_t *get_DRB_ToAddMod(const int rb_id,
+                                    const bool do_drb_integrity,
+                                    const bool do_drb_ciphering,
+                                    const bool reestablish,
+                                    const nr_sdap_configuration_t *sdap_config,
+                                    const int *eps_bearer_id,
+                                    const nr_pdcp_configuration_t *pdcp_config);
 
 #endif  /* __RRC_NR_MESSAGES_ASN1_MSG__H__ */
