@@ -1793,6 +1793,7 @@ void nr_rrc_mac_config_req_reset(module_id_t module_id, NR_UE_MAC_reset_cause_t 
         if (lc->rb.type == NR_LCID_SRB && lc->rb.choice.srb_id == 0)
           continue;
         lc->rb_suspended = true;
+        LOG_I(NR_MAC, "RB with LCID %ld suspended\n", lc->lcid);
       }
       // apply the timeAlignmentTimerCommon included in SIB1
       configure_timeAlignmentTimer(&mac->time_alignment_timer, mac->timeAlignmentTimerCommon, mac->current_UL_BWP->scs);
@@ -1833,10 +1834,14 @@ void nr_rrc_mac_resume_rb(module_id_t module_id, bool is_srb, int rb_id)
   NR_UE_MAC_INST_t *mac = get_mac_inst(module_id);
   for (int j = 0; j < mac->lc_ordered_list.count; j++) {
     nr_lcordered_info_t *lc = mac->lc_ordered_list.array[j];
-    if (is_srb && lc->rb.type == NR_LCID_SRB && lc->rb.choice.srb_id == rb_id)
+    if (is_srb && lc->rb.type == NR_LCID_SRB && lc->rb.choice.srb_id == rb_id) {
       lc->rb_suspended = false;
-    if (!is_srb && lc->rb.type == NR_LCID_DRB && lc->rb.choice.drb_id == rb_id)
+      LOG_I(NR_MAC, "RB with LCID %ld resumed\n", lc->lcid);
+    }
+    if (!is_srb && lc->rb.type == NR_LCID_DRB && lc->rb.choice.drb_id == rb_id) {
       lc->rb_suspended = false;
+      LOG_I(NR_MAC, "RB with LCID %ld resumed\n", lc->lcid);
+    }
   }
 }
 
