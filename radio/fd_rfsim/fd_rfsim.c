@@ -1,0 +1,504 @@
+/*
+ * Licensed to the OpenAirInterface (OAI) Software Alliance under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The OpenAirInterface Software Alliance licenses this file to You under
+ * the OAI Public License, Version 1.1  (the "License"); you may not use this file
+ * except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.openairinterface.org/?page_id=698
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *-------------------------------------------------------------------------------
+ * For more information about the OpenAirInterface (OAI) Software Alliance:
+ *      contact@openairinterface.org
+ */
+
+#include <stdio.h>
+#include <string.h>
+#include "common_lib.h"
+#include "radio/ETHERNET/ethernet_lib.h"
+
+#include "common/utils/LOG/log.h"
+#include "common/utils/LOG/vcd_signal_dumper.h"
+#include "openair1/PHY/defs_gNB.h"
+#include "../fhi_72/oran-params.h"
+#include <stdatomic.h>
+#include "common/utils/threadPool/notified_fifo.h"
+#include "PHY/MODULATION/modulation_common.h"
+#include "openair1/PHY/TOOLS/phy_scope_interface.h"
+#include "openair1/PHY/MODULATION/nr_modulation.h"
+#include "PHY/INIT/nr_phy_init.h"
+#include "SCHED_NR/sched_nr.h"
+#include "common/utils/threadPool/pthread_utils.h"
+
+typedef struct {
+  openair0_timestamp timestamp;
+  int slot;
+  int frame;
+} fd_rfsim_timestamp;
+
+typedef struct {
+  bool is_started;
+  rru_config_msg_type_t last_msg;
+  bool capabilities_sent;
+  openair0_config_t openair0_cfg;
+  notifiedFIFO_t sync_fifo;
+  RU_t ru;
+  pthread_mutex_t mutex;
+} fd_rfsim_state_t;
+
+extern void nr_feptx(void *arg);
+static int trx_start(openair0_device *device)
+{
+  printf("Starting fd_rfsim\n");
+  fd_rfsim_state_t *s = (fd_rfsim_state_t *)device->priv;
+  if (s->ru.rfdevice.trx_start_func) {
+    printf("Starting fd_rfsim\n");
+    if (s->ru.rfdevice.trx_start_func(&s->ru.rfdevice) < 0) {
+      printf("Starting fd_rfsim\n");
+      LOG_E(HW, "Failed to start subdevice\n");
+      return -1;
+    }
+  }
+  s->is_started = true;
+  return 0;
+}
+
+static void trx_end(openair0_device *device)
+{
+  fd_rfsim_state_t *s = (fd_rfsim_state_t *)device->priv;
+  if (s->ru.rfdevice.trx_end_func) {
+    s->ru.rfdevice.trx_end_func(&s->ru.rfdevice);
+  }
+  s->is_started = false;
+}
+
+static int trx_stop(openair0_device *device)
+{
+  fd_rfsim_state_t *s = (fd_rfsim_state_t *)device->priv;
+  if (s->ru.rfdevice.trx_stop_func) {
+    if (s->ru.rfdevice.trx_stop_func(&s->ru.rfdevice) < 0) {
+      LOG_E(HW, "Failed to stop subdevice\n");
+      return -1;
+    }
+  }
+  s->is_started = false;
+  return 0;
+}
+
+static int trx_set_freq(openair0_device *device, openair0_config_t *openair0_cfg)
+{
+  fd_rfsim_state_t *s = (fd_rfsim_state_t *)device->priv;
+
+  if (!s->is_started) {
+    LOG_E(HW, "Device not started, cannot set frequency\n");
+    return -1;
+  }
+
+  if (s->ru.rfdevice.trx_set_freq_func) {
+    if (s->ru.rfdevice.trx_set_freq_func(&s->ru.rfdevice, openair0_cfg) < 0) {
+      LOG_E(HW, "Failed to set frequency on subdevice\n");
+      return -1;
+    }
+  }
+  return 0;
+}
+
+static int trx_set_gains(openair0_device *device, openair0_config_t *openair0_cfg)
+{
+  fd_rfsim_state_t *s = (fd_rfsim_state_t *)device->priv;
+
+  if (!s->is_started) {
+    LOG_E(HW, "Device not started, cannot set gains\n");
+    return -1;
+  }
+
+  if (s->ru.rfdevice.trx_set_gains_func) {
+    if (s->ru.rfdevice.trx_set_gains_func(&s->ru.rfdevice, openair0_cfg) < 0) {
+      LOG_E(HW, "Failed to set gains on subdevice\n");
+      return -1;
+    }
+  }
+  return 0;
+}
+
+static int trx_get_stats(openair0_device *device)
+{
+  fd_rfsim_state_t *s = (fd_rfsim_state_t *)device->priv;
+
+  if (!s->is_started) {
+    LOG_E(HW, "Device not started, cannot get stats\n");
+    return -1;
+  }
+
+  if (s->ru.rfdevice.trx_get_stats_func) {
+    return s->ru.rfdevice.trx_get_stats_func(&s->ru.rfdevice);
+  }
+  return 0;
+}
+
+static int trx_reset_stats(openair0_device *device)
+{
+  fd_rfsim_state_t *s = (fd_rfsim_state_t *)device->priv;
+
+  if (!s->is_started) {
+    LOG_E(HW, "Device not started, cannot reset stats\n");
+    return -1;
+  }
+
+  if (s->ru.rfdevice.trx_reset_stats_func) {
+    return s->ru.rfdevice.trx_reset_stats_func(&s->ru.rfdevice);
+  }
+  return 0;
+}
+
+int ethernet_tune(openair0_device *device, unsigned int option, int value)
+{
+  return 0;
+}
+
+static int trx_write_raw(openair0_device *device, openair0_timestamp timestamp, void **buff, int nsamps, int cc, int flags)
+{
+  return 0;
+}
+
+static int trx_read_raw(openair0_device *device, openair0_timestamp *timestamp, void **buff, int nsamps, int cc)
+{
+  return 0;
+}
+
+char *msg_type(int t)
+{
+  static char *s[12] = {
+      "RAU_tick",
+      "RRU_capabilities",
+      "RRU_config",
+      "RRU_config_ok",
+      "RRU_start",
+      "RRU_stop",
+      "RRU_sync_ok",
+      "RRU_frame_resynch",
+      "RRU_MSG_max_num",
+      "RRU_check_sync",
+      "RRU_config_update",
+      "RRU_config_update_ok",
+  };
+
+  if (t < 0 || t > 11)
+    return "UNKNOWN";
+  return s[t];
+}
+
+static int trx_ctlsend(openair0_device *device, void *msg, ssize_t msg_len)
+{
+  RRU_CONFIG_msg_t *rru_config_msg = msg;
+  printf("rru_config_msg->type %d [%s]\n", rru_config_msg->type, msg_type(rru_config_msg->type));
+  return msg_len;
+}
+
+static int trx_ctlrecv(openair0_device *device, void *msg, ssize_t msg_len)
+{
+  RRU_CONFIG_msg_t *rru_config_msg = msg;
+  fd_rfsim_state_t *s = (fd_rfsim_state_t *)device->priv;
+
+  printf("ORAN: %s\n", __FUNCTION__);
+
+  if (s->last_msg == RAU_tick && s->capabilities_sent == 0) {
+    printf("ORAN ctrlrcv RRU_tick received and send capabilities hard coded\n");
+    RRU_capabilities_t *cap;
+    rru_config_msg->type = RRU_capabilities;
+    rru_config_msg->len = sizeof(RRU_CONFIG_msg_t) - MAX_RRU_CONFIG_SIZE + sizeof(RRU_capabilities_t);
+    // Fill RRU capabilities (see openair1/PHY/defs_RU.h)
+    // For now they are hard coded - try to retreive the params from openari device
+
+    cap = (RRU_capabilities_t *)&rru_config_msg->msg[0];
+    cap->FH_fmt = OAI_IF4p5_only;
+    cap->num_bands = 1;
+    cap->band_list[0] = 78;
+    // cap->num_concurrent_bands             = 1; component carriers
+    cap->nb_rx[0] = 1; // device->openair0_cfg->rx_num_channels;
+    cap->nb_tx[0] = 1; // device->openair0_cfg->tx_num_channels;
+    cap->max_pdschReferenceSignalPower[0] = -27;
+    cap->max_rxgain[0] = 90;
+    cap->N_RB_DL[0] = 106;
+    cap->N_RB_UL[0] = 106;
+
+    s->capabilities_sent = 1;
+
+    return rru_config_msg->len;
+  }
+  if (s->last_msg == RRU_config) {
+    printf("Oran RRU_config\n");
+    rru_config_msg->type = RRU_config_ok;
+  }
+  return 0;
+}
+
+extern void rx_nr_prach_ru(RU_t *ru,
+                           int prach_fmt,
+                           int numRA,
+                           int beam,
+                           int prachStartSymbol,
+                           int prachStartSlot,
+                           int prachOccasion,
+                           int frame,
+                           int subframe);
+extern void rx_rf(RU_t *ru, int *frame, int *slot);
+void nr_fep_tp(RU_t *ru, int slot);
+static void fh_if4p5_south_in(RU_t *ru, int *frame, int *slot)
+{
+  fd_rfsim_state_t *s = (fd_rfsim_state_t *)ru->ifdevice.priv;
+  LOG_D(HW, "fd_rfsim: fh_if4p5_south_in: frame %d, slot %d\n", *frame, *slot);
+  // O-DU expects
+  // rxDataF here: ru_info.rxdataF = ru->common.rxdataF;
+  /// PRACH data here: ru_info.prach_buf = ru->prach_rxsigF[0]; // index: [prach_oca][ant_id]
+  s->ru.common.rxdataF = ru->common.rxdataF;
+  start_meas(&ru->rx_fhaul);
+  rx_rf(&s->ru, frame, slot);
+
+  if (*slot == 9 || *slot == 19) {
+    s->ru.prach_rxsigF[0] = ru->prach_rxsigF[0]; // index: [prach_oca][ant_id]
+    int prach_fmt = 9; // TODO: get this from RU config
+    int numRA = 0; // TODO: get this from RU config
+    int beam = 0; // TODO: Set to 0 for now
+    int prachStartSymbol = 8; // TODO: get this from RU config
+    int prachStartSlot = *slot; // TODO: get this from RU config
+    int prachOccasion = 0; // TODO: get this from RU config
+    rx_nr_prach_ru(&s->ru, prach_fmt, numRA, beam, prachStartSymbol, prachStartSlot, prachOccasion, *frame, *slot);
+  }
+  nr_fep_tp(&s->ru, *slot);
+  NR_DL_FRAME_PARMS *fp = s->ru.nr_frame_parms;
+  int soffset = (*slot & 3) * fp->symbols_per_slot * fp->ofdm_symbol_size;
+  for (int aa = 0; aa < fp->nb_antennas_rx; aa++) {
+    apply_nr_rotation_RX(fp,
+                         (c16_t *)s->ru.common.rxdataF[aa],
+                         fp->symbol_rotation[1],
+                         *slot,
+                         fp->N_RB_UL,
+                         soffset,
+                         0,
+                         fp->Ncp == EXTENDED ? 12 : 14);
+  }
+  ru->proc = s->ru.proc;
+  stop_meas(&ru->rx_fhaul);
+}
+
+extern void tx_rf(RU_t *ru, int frame, int slot, uint64_t timestamp);
+extern void nr_feptx0(RU_t *ru, int tti_tx, int first_symbol, int num_symbols, int aa);
+static void fh_if4p5_south_out(RU_t *ru, int frame, int slot, uint64_t timestamp)
+{
+  fd_rfsim_state_t *state = (fd_rfsim_state_t *)ru->ifdevice.priv;
+  RU_t *ru_lower = &state->ru;
+  ru_lower->common.txdataF_BF = ru->common.txdataF_BF;
+  start_meas(&ru_lower->tx_fhaul);
+  // FD data is available in ru->common.txdataF_BF.
+  NR_DL_FRAME_PARMS *fp = ru_lower->nr_frame_parms;
+  for (int i = 0; i < ru->nb_tx; i++) {
+    apply_nr_rotation_TX(fp,
+                         (c16_t *)ru->common.txdataF_BF[i],
+                         fp->symbol_rotation[0],
+                         slot,
+                         fp->N_RB_DL,
+                         0,
+                         fp->Ncp == EXTENDED ? 12 : 14);
+    nr_feptx0(ru_lower, slot, 0, 14, i);
+  }
+  LOG_D(HW, "fd_rfsim: fh_if4p5_south_out: frame %d, slot %d, timestamp %lu\n", frame, slot, timestamp);
+  tx_rf(ru_lower, frame, slot, timestamp);
+  // ru->proc = ru_lower->proc; // Copy the RU proc structure back
+  stop_meas(&ru_lower->tx_fhaul);
+}
+
+static void *get_internal_parameter(char *name)
+{
+  printf("ORAN: %s\n", __FUNCTION__);
+
+  if (!strcmp(name, "fh_if4p5_south_in"))
+    return (void *)fh_if4p5_south_in;
+  if (!strcmp(name, "fh_if4p5_south_out"))
+    return (void *)fh_if4p5_south_out;
+
+  return NULL;
+}
+
+int get_tdd_period(uint8_t nb_periods_per_frame)
+{
+  int tdd_period = 0;
+  switch (nb_periods_per_frame) {
+    case 20:
+      tdd_period = 0; // 10ms/0p5ms
+      break;
+
+    case 16:
+      tdd_period = 1; // 10ms/0p625ms
+      break;
+
+    case 10:
+      tdd_period = 2; // 10ms/1ms
+      break;
+
+    case 8:
+      tdd_period = 3; // 10ms/1p25ms
+      break;
+
+    case 5:
+      tdd_period = 4; // 10ms/2ms
+      break;
+
+    case 4:
+      tdd_period = 5; // 10ms/2p5ms
+      break;
+
+    case 2:
+      tdd_period = 6; // 10ms/5ms
+      break;
+
+    case 1:
+      tdd_period = 7; // 10ms/10ms
+      break;
+
+    default:
+      AssertFatal(1 == 0, "Undefined nb_periods_per_frame %d\n", nb_periods_per_frame);
+  }
+  return tdd_period;
+}
+
+static bool configure_fd_rfsim(openair0_device *device, openair0_config_t *openair0_config)
+{
+  fd_rfsim_state_t *state = calloc_or_fail(1, sizeof(*state));
+  mutexinit(state->mutex);
+  state->is_started = false;
+  state->last_msg = (rru_config_msg_type_t)-1;
+  state->capabilities_sent = false;
+  device->priv = state;
+
+  RU_t *ru_lower = &state->ru;
+  memset(ru_lower, 0, sizeof(*ru_lower));
+  ru_lower->num_gNB = 1;
+  ru_lower->nr_frame_parms = calloc_or_fail(1, sizeof(*ru_lower->nr_frame_parms));
+  ru_lower->proc.first_rx = 1;
+  NR_DL_FRAME_PARMS *fp = ru_lower->nr_frame_parms;
+  int mu = 1;
+  fp->freq_range = FR1;
+  fp->nr_band = 77;
+  fp->dl_CarrierFreq = openair0_config->tx_freq[0];
+  fp->ul_CarrierFreq = openair0_config->rx_freq[0];
+  fp->ofdm_offset_divisor = 8;
+  nfapi_nr_config_request_scf_t *cfg = &ru_lower->config;
+  memset(cfg, 0, sizeof(*cfg));
+  cfg->cell_config.frame_duplex_type.value = TDD;
+  cfg->ssb_config.scs_common.value = mu;
+  cfg->carrier_config.dl_grid_size[cfg->ssb_config.scs_common.value].value = openair0_config->num_rb_dl;
+  cfg->carrier_config.ul_grid_size[cfg->ssb_config.scs_common.value].value = openair0_config->num_rb_dl;
+  cfg->carrier_config.num_rx_ant.value = openair0_config->rx_num_channels;
+  cfg->carrier_config.num_tx_ant.value = openair0_config->tx_num_channels;
+  cfg->prach_config.prach_sequence_length.value = 1; // 139 sequence length
+  cfg->prach_config.prach_sub_c_spacing.value = mu;
+
+  int prach_config_index = openair0_config->split7.prach_index;
+  LOG_I(HW, "Using PRACH config index %d\n", prach_config_index);
+
+  int numRA = 1;
+  cfg->prach_config.num_prach_fd_occasions_list = calloc_or_fail(1, sizeof(nfapi_nr_num_prach_fd_occasions_t));
+  for (int i = 0; i < numRA; i++) {
+    cfg->prach_config.num_prach_fd_occasions_list[i].k1.value = openair0_config->split7.prach_freq_start;
+  }
+
+  LOG_I(HW,
+        "Configuring fd_rfsim with %d RX and %d TX antennas\n",
+        cfg->carrier_config.num_rx_ant.value,
+        cfg->carrier_config.num_tx_ant.value);
+
+  nr_init_frame_parms(&ru_lower->config, fp);
+  init_symbol_rotation(fp);
+  init_timeshift_rotation(fp);
+  nr_dump_frame_parms(fp);
+  ru_lower->N_TA_offset = set_default_nta_offset(fp->freq_range, fp->samples_per_subframe);
+  cfg->tdd_table.tdd_period.value = get_tdd_period(openair0_config->split7.n_tdd_period);
+  cfg->tdd_table.max_tdd_periodicity_list = calloc_or_fail(fp->slots_per_frame, sizeof(nfapi_nr_max_tdd_periodicity_t));
+  for (int i = 0; i < fp->slots_per_frame; i++) {
+    cfg->tdd_table.max_tdd_periodicity_list[i].max_num_of_symbol_per_slot_list =
+        calloc_or_fail(14, sizeof(nfapi_nr_max_num_of_symbol_per_slot_t));
+    for (int j = 0; j < 14; j++) {
+      cfg->tdd_table.max_tdd_periodicity_list[i].max_num_of_symbol_per_slot_list[j].slot_config.value =
+          openair0_config->split7.slot_dirs[i % openair0_config->split7.n_tdd_period].sym_dir[j];
+    }
+  }
+
+  ru_lower->if_south = LOCAL_RF;
+  ru_lower->function = NGFI_RRU_IF5;
+  ru_lower->nb_tx = openair0_config->tx_num_channels;
+  ru_lower->nb_rx = openair0_config->rx_num_channels;
+  nr_phy_init_RU(ru_lower);
+
+  ru_lower->threadPool = calloc_or_fail(1, sizeof(*ru_lower->threadPool));
+  initFloatingCoresTpool(10, ru_lower->threadPool, false, "RU_lower");
+
+  memcpy(&ru_lower->openair0_cfg, openair0_config, sizeof(*openair0_config));
+  IS_SOFTMODEM_RFSIM = true; // A trick to load rfsim here
+  int ret = openair0_device_load(&ru_lower->rfdevice, &ru_lower->openair0_cfg);
+  IS_SOFTMODEM_RFSIM = false; // Reset the flag
+  AssertFatal(ret == 0, "Failed to load openair0 device\n");
+
+  // verify oran section is present: we don't have a list but the below returns
+  // numelt > 0 if the block is there
+  paramlist_def_t pl = {0};
+  strncpy(pl.listname, CONFIG_STRING_ORAN, sizeof(pl.listname) - 1);
+  config_getlist(config_get_if(), &pl, NULL, 0, /* prefix */ NULL);
+  if (pl.numelt == 0) {
+    printf("Configuration section \"%s\" not present: cannot initialize fd_rfsim!\n", CONFIG_STRING_ORAN);
+    return false;
+  }
+
+  paramdef_t fhip[] = ORAN_GLOBALPARAMS_DESC;
+  checkedparam_t fhip_CheckParams[] = ORAN_GLOBALPARAMS_CHECK_DESC;
+  static_assert(sizeofArray(fhip) == sizeofArray(fhip_CheckParams), "fhip and fhip_CheckParams should have the same size");
+  int nump = sizeofArray(fhip);
+  config_set_checkfunctions(fhip, fhip_CheckParams, nump);
+  ret = config_get(config_get_if(), fhip, nump, CONFIG_STRING_ORAN);
+  if (ret <= 0) {
+    printf("problem reading section \"%s\"\n", CONFIG_STRING_ORAN);
+    return false;
+  }
+
+  paramdef_t FHconfigs[] = ORAN_FH_DESC;
+  paramlist_def_t FH_ConfigList = {CONFIG_STRING_ORAN_FH};
+  char aprefix[MAX_OPTNAME_SIZE] = {0};
+  sprintf(aprefix, "%s", CONFIG_STRING_ORAN);
+  const int nfh = sizeofArray(FHconfigs);
+  config_getlist(config_get_if(), &FH_ConfigList, FHconfigs, nfh, aprefix);
+
+  return true;
+}
+
+__attribute__((__visibility__("default"))) int transport_init(openair0_device *device,
+                                                              openair0_config_t *openair0_cfg,
+                                                              eth_params_t *eth_params)
+{
+  bool ret = configure_fd_rfsim(device, openair0_cfg);
+  AssertFatal(ret, "Failed to configure fd_rfsim");
+
+  device->Mod_id = 0;
+  device->transp_type = ETHERNET_TP;
+  device->trx_start_func = trx_start;
+  device->trx_get_stats_func = trx_get_stats;
+  device->trx_reset_stats_func = trx_reset_stats;
+  device->trx_end_func = trx_end;
+  device->trx_stop_func = trx_stop;
+  device->trx_set_freq_func = trx_set_freq;
+  device->trx_set_gains_func = trx_set_gains;
+  device->trx_write_func = trx_write_raw;
+  device->trx_read_func = trx_read_raw;
+  device->trx_ctlsend_func = trx_ctlsend;
+  device->trx_ctlrecv_func = trx_ctlrecv;
+  device->get_internal_parameter = get_internal_parameter;
+  device->openair0_cfg = openair0_cfg;
+
+  return 0;
+}
