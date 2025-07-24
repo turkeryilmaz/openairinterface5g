@@ -60,8 +60,10 @@ The following DPDK versions are supported:
 > - If you are using the Intel ACC100, you will need to [patch](https://github.com/DPDK/dpdk/commit/fdde63a1dfc129d0a510a831aa98253b36a2a1cd) the ACC100's driver if you are using DPDK22.11 or DPDK23.11. 
 
 
+Refer to the guide [here](https://gitlab.eurecom.fr/oai/openairinterface5g/-/blob/develop/doc/ORAN_FHI7.2_Tutorial.md?ref_type=heads#dpdk-data-plane-development-kit) to install, and then validate your DPDK installation.
+
 <details open> 
-<summary> Notes on DPDK patching Xilinx T2. </summary>
+<summary> Notes on DPDK patching/installation for Xilinx T2. </summary>
 
 *Note: The following instructions apply to ACCL_BBDEV_DPDK20.11.3_ldpc_3.1.918.patch, compatible with DPDK 20.11.9. For older patches (e.g., ACL_BBDEV_DPDK20.11.3_BL_1006_build_1105_dev_branch_MCT_optimisations_1106_physical_std.patch), refer to the T2 documentation in 2023.w48.*
 
@@ -74,10 +76,19 @@ git apply ~/ACL_BBDEV_DPDK20.11.3_ldpc_3.1.918.patch
 ```
 Replace `~/ACL_BBDEV_DPDK20.11.3_ldpc_3.1.918.patch` by patch file provided by
 Accelercomm.
+
+If you would like to install DPDK to a custom directory, here is an example.
+```bash
+cd ~/dpdk-stable
+# meson setup build
+meson setup --prefix=/opt/dpdk-t2 build for installation with non-default installation prefix
+cd build
+ninja
+sudo ninja install
+sudo ldconfig
+
+```
 </details>
-
-
-Refer to the guide [here](https://gitlab.eurecom.fr/oai/openairinterface5g/-/blob/develop/doc/ORAN_FHI7.2_Tutorial.md?ref_type=heads#dpdk-data-plane-development-kit) to install, and then validate your DPDK installation.
 
 ## System configuration
 
@@ -169,13 +180,14 @@ If you encounter any error when creating the VF(s), e.g., `tee: '/sys/bus/pci/de
 
 After you have successfully created the VF, you should see an additional baseband device, in our case, it is `0000:f7:00.1`. 
 We will use this device with OAI later.
+The newly created VF should also be using the same `vfio-pci` driver as the PF, if it is not, you will need to do a `dpdk-devbind.py` to bind it with `vfio-pci`. 
 ```
 # sudo dpdk-devbind.py -s
 ...
 Baseband devices using DPDK-compatible driver
 =============================================
-0000:f7:00.0 'Device 57c0' drv= unused=vfio-pci
-0000:f7:00.1 'Device 57c0' drv= unused=vfio-pci
+0000:f7:00.0 'Device 57c0' drv=vfio-pci unused=
+0000:f7:00.1 'Device 57c0' drv=vfio-pci unused=
 ...
 ```
 
@@ -221,7 +233,7 @@ Ensure that the CPU cores specified in *nrLDPC_coding_t2.dpdk_core_list* are ava
 
 - `nrLDPC_coding_t2.num_harq_codeblock` - optional parameter, size of the HARQ buffer in terms of the number of 32kB blocks, by default set to *512* (maximum for the T2; as for the ACCs, this can be further increased).
 
-- `nrLDPC_coding_t2.eal_init_bbdev` - optional parameter, must be set to 1 when using with FHI72.
+- `nrLDPC_coding_t2.eal_init_bbdev` - optional parameter, set this to 1 when using with FHI72 with the Intel ACCs. For the T2, this is not required.
 
 **Note:** These parameters can also be provided in a configuration file.
 Example for the ACC200:
@@ -276,8 +288,6 @@ cd cmake_targets/ran_build/build
 sudo ./nr-softmodem -O ../../../targets/PROJECTS/GENERIC-NR-5GC/CONF/gnb.sa.band78.fr1.106PRB.usrpb210.conf --loader.ldpc.shlibversion _t2 --nrLDPC_coding_t2.dpdk_dev 0000:f7:00.1 --nrLDPC_coding_t2.dpdk_core_list 14-15 --nrLDPC_coding_t2.vfio_vf_token 00112233-4455-6677-8899-aabbccddeeff
 ```
 
-> Note: Make sure that `nrLDPC_coding_t2.dpdk_core_list` does not interfere with other CPU cores used the OAI gNB.
-
 ### Running OAI gNB with FHI72
 
 Example command:
@@ -287,8 +297,6 @@ source oaienv
 cd cmake_targets/ran_build/build
 sudo ./nr-softmodem -O ../../../targets/PROJECTS/GENERIC-NR-5GC/CONF/gnb.sa.band78.fr1.106PRB.usrpb210.conf --loader.ldpc.shlibversion _t2 --nrLDPC_coding_t2.dpdk_dev 0000:f7:00.1 --nrLDPC_coding_t2.dpdk_core_list 14-15 --nrLDPC_coding_t2.vfio_vf_token 00112233-4455-6677-8899-aabbccddeeff --nrLDPC_coding_t2.eal_init_bbdev 1
 ```
-
-> Note: Make sure that `nrLDPC_coding_t2.dpdk_core_list` does not interfere with other CPU cores allocated for the OAI gNB and xRAN.
 
 # Known Issue(s)
 
