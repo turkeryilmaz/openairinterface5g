@@ -7,6 +7,11 @@ add_library(coding MODULE
             3gpplte_turbo_decoder.c
 )
 set_target_properties(coding PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+add_custom_command(TARGET coding
+  COMMAND ${CMAKE_STRIP} --strip-unneeded $<TARGET_FILE:coding>
+  COMMENT "Stripping unneeded symbols from coding"
+  )
+
 #ensure that the T header files are generated before targets depending on them
 target_link_libraries(coding PRIVATE log_headers)
 target_link_options(coding PRIVATE -Wl,--hash-style=gnu)
@@ -88,3 +93,11 @@ add_subdirectory(nrLDPC_coding)
 if(ENABLE_PHYSIM_TESTS)
   add_subdirectory(tests)
 endif()
+
+
+
+foreach(lib ldpc_orig ldpc)
+  add_custom_command(TARGET ${lib}
+    COMMAND ${CMAKE_STRIP} --strip-unneeded $<TARGET_FILE:${lib}>
+    COMMENT "Stripping unneeded symbols from ${lib}")
+endforeach()

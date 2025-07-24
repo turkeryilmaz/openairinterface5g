@@ -2296,8 +2296,11 @@ endif()
 
 
 if(OAI_COMMON_PACKAGE)
-  set(CPACK_COMPONENT_OAI-COMMON_SUMMARY "OpenAirInterface shared libraries package")
-  set(CPACK_COMPONENT_OAI-COMMON_DESCRIPTION "This package contains shared libraries for other packages")
+  foreach(lib params_libconfig dfts oai_iqplayer)
+    add_custom_command(TARGET ${lib} 
+      COMMAND ${CMAKE_STRIP} --strip-unneeded $<TARGET_FILE:${lib}>
+      COMMENT "Stripping unneeded symbols from ${lib}")
+  endforeach()
   install(TARGETS params_libconfig dfts oai_iqplayer params_yaml telnetsrv coding rfsimulator ldpc_orig ldpc vrtsim
           COMPONENT oai-common
           RUNTIME DESTINATION bin
