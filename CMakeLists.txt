@@ -2212,6 +2212,16 @@ include_directories(${OPENAIR_CMAKE}/ran_build/build/openair3/S1AP/MESSAGES)
 include_directories(${OPENAIR_CMAKE}/ran_build/build/openair3/NRPPA/MESSAGES)
 
 set(COMPONENTS_LIST "")
+
+install(DIRECTORY "${OPENAIR_DIR}/doc/"
+  DESTINATION share/doc/openairinterface
+  DIRECTORY_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE
+                        GROUP_READ GROUP_EXECUTE
+                        WORLD_READ WORLD_EXECUTE
+)
+
+
+
 set(CPACK_PACKAGE_VERSION "1.0.0")
 set(CPACK_PACKAGE_RELEASE "1")
 set(CPACK_PACKAGE_VENDOR "OpenAirInterface")
@@ -2338,8 +2348,10 @@ if(OAI_COMMON_PACKAGE)
           COMPONENT oai-common
           RUNTIME DESTINATION bin
           LIBRARY DESTINATION lib
+          PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
         )
     list(APPEND COMPONENTS_LIST oai-common)
+
   set(CPACK_COMPONENT_OAI-COMMON_SUMMARY "OpenAirInterface shared libraries package")
   set(CPACK_COMPONENT_OAI-COMMON_DESCRIPTION "This package contains shared libraries for other packages")
   set(CPACK_COMPONENT_OAI_COMMON_PACKAGE_NAME "openairinterface-oai-common")
@@ -2350,7 +2362,9 @@ set(CPACK_RESOURCE_FILE_LICENSE "${OPENAIR_DIR}/LICENSE")
 foreach(component IN LISTS COMPONENTS_LIST)
   install(FILES "${OPENAIR_DIR}/LICENSE" 
           DESTINATION share/doc/openairinterface
-          COMPONENT ${component})
+          COMPONENT ${component}
+          PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
+          )
 endforeach()
 
 
