@@ -509,6 +509,7 @@ add_library(params_libconfig MODULE ${CONFIG_ROOTDIR}/libconfig/config_libconfig
 target_include_directories(params_libconfig PRIVATE ${libconfig_INCLUDE_DIRS})
 target_link_libraries(params_libconfig PRIVATE config_internals ${libconfig_LIBRARIES})
 target_link_options(params_libconfig PRIVATE -Wl,--hash-style=gnu)
+set_target_properties(params_libconfig PROPERTIES SOVERSION 1)
 
 # shared library loader
 add_library(shlib_loader OBJECT common/utils/load_module_shlib.c)
@@ -818,6 +819,7 @@ set(PHY_NRLDPC_CODINGIF
 )
 
 target_link_options(dfts PRIVATE -Wl,--hash-style=gnu)
+set_target_properties(dfts PROPERTIES SOVERSION 1)
 
 add_library(crc_byte OBJECT ${OPENAIR1_DIR}/PHY/CODING/crc_byte.c)
 
@@ -1728,6 +1730,7 @@ add_library(oai_iqplayer MODULE
 	)
 set(CMAKE_MODULE_PATH "${OPENAIR_DIR}/cmake_targets/tools/MODULES" "${CMAKE_MODULE_PATH}")
 target_link_options(oai_iqplayer PRIVATE -Wl,--hash-style=gnu)
+set_target_properties(oai_iqplayer PROPERTIES SOVERSION 1)
 
 #################################
 # add executables for operation

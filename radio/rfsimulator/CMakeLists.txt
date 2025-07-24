@@ -4,7 +4,7 @@ add_library(rfsimulator MODULE
             ../../openair1/PHY/TOOLS/signal_energy.c
 )
 target_link_libraries(rfsimulator PRIVATE SIMU)
-set_target_properties(rfsimulator PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+set_target_properties(rfsimulator PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR} SOVERSION 1)
 target_link_options(rfsimulator PRIVATE -Wl,--hash-style=gnu)
 
 

@@ -85,6 +85,8 @@ add_dependencies(telnetsrv telnetsrv_o1)
 set_target_properties(telnetsrv telnetsrv_enb telnetsrv_5Gue telnetsrv_ci telnetsrv_ciUE
                       telnetsrv_bearer telnetsrv_rrc telnetsrv_o1
                       PROPERTIES LIBRARY_OUTPUT_DIRECTORY ../../..
+                      SOVERSION 1
+)
 
 
 
