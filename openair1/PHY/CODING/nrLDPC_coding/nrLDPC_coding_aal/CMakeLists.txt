@@ -21,7 +21,7 @@ if (ENABLE_LDPC_T2)
     endif()
   endif()
 
-  add_library(ldpc_t2 MODULE nrLDPC_coding_t2.c)
+  add_library(ldpc_aal MODULE nrLDPC_coding_aal.c)
 
   set_target_properties(ldpc_t2 PROPERTIES COMPILE_FLAGS "-DALLOW_EXPERIMENTAL_API")
   set_target_properties(ldpc_t2 PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
