@@ -1,4 +1,4 @@
-add_library(rfsimulator MODULE
+add_library(rfsimulator SHARED
             simulator.c
             apply_channelmod.c
             ../../openair1/PHY/TOOLS/signal_energy.c

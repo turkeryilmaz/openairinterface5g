@@ -28,7 +28,7 @@
 #* \note
 #* \warning
 #*/
-add_library(telnetsrv MODULE
+add_library(telnetsrv SHARED
             telnetsrv.c
             telnetsrv_proccmd.c
             telnetsrv_loader.c

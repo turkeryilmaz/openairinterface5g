@@ -1,4 +1,4 @@
-add_library(coding MODULE
+add_library(coding SHARED
             3gpplte_sse.c
             3gpplte.c
             3gpplte_turbo_decoder_sse_8bit.c
@@ -17,7 +17,7 @@ set_target_properties(coding PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_
 target_link_libraries(coding PRIVATE log_headers)
 target_link_options(coding PRIVATE -Wl,--hash-style=gnu)
 
-add_library(ldpc_orig MODULE
+add_library(ldpc_orig SHARED
             nrLDPC_decoder/nrLDPC_decoder.c
             nrLDPC_encoder/ldpc_encoder.c
 )
@@ -25,7 +25,7 @@ set_target_properties(ldpc_orig PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINA
 target_link_libraries(ldpc_orig PRIVATE ldpc_segment ldpc_gen_HEADERS)
 target_link_options(ldpc_orig PRIVATE -Wl,--hash-style=gnu)
 
-add_library(ldpc MODULE
+add_library(ldpc SHARED
             nrLDPC_decoder/nrLDPC_decoder.c
             nrLDPC_encoder/ldpc_encoder_optim8segmulti.c
 )

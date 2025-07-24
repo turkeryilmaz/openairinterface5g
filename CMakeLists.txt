@@ -505,7 +505,7 @@ target_link_libraries(CONFIG_LIB PRIVATE config_internals dl UTIL)
 # CONFIG_LIB is a wrapper around a particular config implementation, default is
 # libconfig in params_libconfig below
 pkg_check_modules(libconfig REQUIRED libconfig)
-add_library(params_libconfig MODULE ${CONFIG_ROOTDIR}/libconfig/config_libconfig.c)
+add_library(params_libconfig SHARED ${CONFIG_ROOTDIR}/libconfig/config_libconfig.c)
 target_include_directories(params_libconfig PRIVATE ${libconfig_INCLUDE_DIRS})
 target_link_libraries(params_libconfig PRIVATE config_internals ${libconfig_LIBRARIES})
 target_link_options(params_libconfig PRIVATE -Wl,--hash-style=gnu)
@@ -818,6 +818,7 @@ set(PHY_NRLDPC_CODINGIF
   ${OPENAIR1_DIR}/PHY/CODING/nrLDPC_coding/nrLDPC_coding_interface_load.c
 )
 
+add_library(dfts SHARED ${OPENAIR1_DIR}/PHY/TOOLS/oai_dfts.c ${OPENAIR1_DIR}/PHY/TOOLS/oai_dfts_neon.c)
 target_link_options(dfts PRIVATE -Wl,--hash-style=gnu)
 set_target_properties(dfts PROPERTIES SOVERSION 1)
 
@@ -1725,7 +1726,7 @@ include_directories("${NFAPI_DIR}/nfapi/inc")
 include_directories("${NFAPI_DIR}/sim_common/inc")
 include_directories("${NFAPI_DIR}/pnf_sim/inc")
 
-add_library(oai_iqplayer MODULE
+add_library(oai_iqplayer SHARED
 	${OPENAIR_DIR}/radio/iqplayer/iqplayer_lib.c
 	)
 set(CMAKE_MODULE_PATH "${OPENAIR_DIR}/cmake_targets/tools/MODULES" "${CMAKE_MODULE_PATH}")

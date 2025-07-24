@@ -13,7 +13,7 @@ if (ENABLE_TESTS)
   add_subdirectory(tests)
 endif()
 
-add_library(params_yaml MODULE config_yaml.cpp)
+add_library(params_yaml SHARED config_yaml.cpp)
 target_link_libraries(params_yaml PUBLIC UTIL yaml-cpp::yaml-cpp)
 set_target_properties(params_yaml PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR} SOVERSION 1)
 target_link_options(params_yaml PRIVATE -Wl,--hash-style=gnu)
