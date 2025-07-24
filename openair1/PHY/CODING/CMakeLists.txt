@@ -9,6 +9,7 @@ add_library(coding MODULE
 set_target_properties(coding PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 #ensure that the T header files are generated before targets depending on them
 target_link_libraries(coding PRIVATE log_headers)
+target_link_options(coding PRIVATE -Wl,--hash-style=gnu)
 
 add_library(ldpc_orig MODULE
             nrLDPC_decoder/nrLDPC_decoder.c
@@ -16,6 +17,7 @@ add_library(ldpc_orig MODULE
 )
 set_target_properties(ldpc_orig PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 target_link_libraries(ldpc_orig PRIVATE ldpc_segment ldpc_gen_HEADERS)
+target_link_options(ldpc_orig PRIVATE -Wl,--hash-style=gnu)
 
 add_library(ldpc MODULE
             nrLDPC_decoder/nrLDPC_decoder.c
@@ -23,6 +25,7 @@ add_library(ldpc MODULE
 )
 set_target_properties(ldpc PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 target_link_libraries(ldpc PRIVATE ldpc_segment ldpc_gen_HEADERS)
+target_link_options(ldpc PRIVATE -Wl,--hash-style=gnu)
 
 add_dependencies(ldpctest ldpc ldpc_orig)
 add_dependencies(nr-softmodem ldpc ldpc_orig)

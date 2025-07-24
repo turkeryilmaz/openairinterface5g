@@ -5,6 +5,7 @@ add_library(rfsimulator MODULE
 )
 target_link_libraries(rfsimulator PRIVATE SIMU)
 set_target_properties(rfsimulator PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+target_link_options(rfsimulator PRIVATE -Wl,--hash-style=gnu)
 
 add_executable(replay_node stored_node.c)
 target_link_libraries (replay_node minimal_lib)

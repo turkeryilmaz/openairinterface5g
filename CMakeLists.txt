@@ -508,6 +508,7 @@ pkg_check_modules(libconfig REQUIRED libconfig)
 add_library(params_libconfig MODULE ${CONFIG_ROOTDIR}/libconfig/config_libconfig.c)
 target_include_directories(params_libconfig PRIVATE ${libconfig_INCLUDE_DIRS})
 target_link_libraries(params_libconfig PRIVATE config_internals ${libconfig_LIBRARIES})
+target_link_options(params_libconfig PRIVATE -Wl,--hash-style=gnu)
 
 # shared library loader
 add_library(shlib_loader OBJECT common/utils/load_module_shlib.c)
@@ -816,7 +817,7 @@ set(PHY_NRLDPC_CODINGIF
   ${OPENAIR1_DIR}/PHY/CODING/nrLDPC_coding/nrLDPC_coding_interface_load.c
 )
 
-add_library(dfts MODULE ${OPENAIR1_DIR}/PHY/TOOLS/oai_dfts.c ${OPENAIR1_DIR}/PHY/TOOLS/oai_dfts_neon.c)
+target_link_options(dfts PRIVATE -Wl,--hash-style=gnu)
 
 add_library(crc_byte OBJECT ${OPENAIR1_DIR}/PHY/CODING/crc_byte.c)
 
@@ -1055,6 +1056,7 @@ target_link_libraries(PHY_COMMON
   PUBLIC UTIL
 )
 add_dependencies(PHY_COMMON dfts)
+target_link_options(PHY_COMMON PRIVATE -Wl,--hash-style=gnu)
 
 add_library(PHY ${PHY_SRC})
 target_link_libraries(PHY PRIVATE asn1_lte_rrc_hdrs asn1_nr_rrc_hdrs)
@@ -1724,6 +1726,8 @@ include_directories("${NFAPI_DIR}/pnf_sim/inc")
 add_library(oai_iqplayer MODULE
 	${OPENAIR_DIR}/radio/iqplayer/iqplayer_lib.c
 	)
+set(CMAKE_MODULE_PATH "${OPENAIR_DIR}/cmake_targets/tools/MODULES" "${CMAKE_MODULE_PATH}")
+target_link_options(oai_iqplayer PRIVATE -Wl,--hash-style=gnu)
 
 #################################
 # add executables for operation
