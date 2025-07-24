@@ -60,7 +60,7 @@ struct active_device {
   uint32_t num_harq_codeblock;
   /* Persistent data structure to keep track of HARQ-related information */
   // Note: This is used to store/keep track of the combined output information across iterations
-  struct rte_bbdev_op_data *harq_buffers; 
+  struct rte_bbdev_op_data *harq_buffers;
   bool support_internal_harq_memory;
   int dec_queue;
   int enc_queue;
@@ -100,18 +100,20 @@ struct thread_params {
   struct rte_mempool *bbdev_op_pool;
 };
 
-static uint16_t nb_segments_decoding(nrLDPC_slot_decoding_parameters_t *nrLDPC_slot_decoding_parameters) {
+static uint16_t nb_segments_decoding(nrLDPC_slot_decoding_parameters_t *nrLDPC_slot_decoding_parameters)
+{
   uint16_t nb_segments = 0;
   for (int h = 0; h < nrLDPC_slot_decoding_parameters->nb_TBs; ++h) {
-    nb_segments+=nrLDPC_slot_decoding_parameters->TBs[h].C;
+    nb_segments += nrLDPC_slot_decoding_parameters->TBs[h].C;
   }
   return nb_segments;
 }
 
-static uint16_t nb_segments_encoding(nrLDPC_slot_encoding_parameters_t *nrLDPC_slot_encoding_parameters) {
+static uint16_t nb_segments_encoding(nrLDPC_slot_encoding_parameters_t *nrLDPC_slot_encoding_parameters)
+{
   uint16_t nb_segments = 0;
   for (int h = 0; h < nrLDPC_slot_encoding_parameters->nb_TBs; ++h) {
-    nb_segments+=nrLDPC_slot_encoding_parameters->TBs[h].C;
+    nb_segments += nrLDPC_slot_encoding_parameters->TBs[h].C;
   }
   return nb_segments;
 }
@@ -125,8 +127,7 @@ static inline bool check_bit(uint32_t bitmap, uint32_t bitmask)
 
 /* calculates optimal mempool size not smaller than the val */
 // DPDK BBDEV copy
-static unsigned int
-optimal_mempool_size(unsigned int val)
+static unsigned int optimal_mempool_size(unsigned int val)
 {
   return rte_align32pow2(val + 1) - 1;
 }
@@ -145,17 +146,16 @@ static int create_mempools(struct active_device *ad, int socket_id, uint16_t num
       OPS_POOL_SIZE_MIN));
 
   /* Decoder ops mempool */
-  ad->bbdev_dec_op_pool = rte_bbdev_op_pool_create("bbdev_op_pool_dec", RTE_BBDEV_OP_LDPC_DEC,
-  /* Encoder ops mempool */                         ops_pool_size, OPS_CACHE_SIZE, socket_id);
-  ad->bbdev_enc_op_pool = rte_bbdev_op_pool_create("bbdev_op_pool_enc", RTE_BBDEV_OP_LDPC_ENC,
-                                                    ops_pool_size, OPS_CACHE_SIZE, socket_id);
+  ad->bbdev_dec_op_pool = rte_bbdev_op_pool_create("bbdev_op_pool_dec",
+                                                   RTE_BBDEV_OP_LDPC_DEC,
+                                                   /* Encoder ops mempool */ ops_pool_size,
+                                                   OPS_CACHE_SIZE,
+                                                   socket_id);
+  ad->bbdev_enc_op_pool =
+      rte_bbdev_op_pool_create("bbdev_op_pool_enc", RTE_BBDEV_OP_LDPC_ENC, ops_pool_size, OPS_CACHE_SIZE, socket_id);
 
   if ((ad->bbdev_dec_op_pool == NULL) || (ad->bbdev_enc_op_pool == NULL))
-    AssertFatal(1 == 0,
-                "ERROR Failed to create %u items ops pool for dev %u on socket %d.",
-                ops_pool_size,
-                ad->dev_id,
-                socket_id);
+    AssertFatal(1 == 0, "ERROR Failed to create %u items ops pool for dev %u on socket %d.", ops_pool_size, ad->dev_id, socket_id);
 
   /* Inputs */
   mbuf_pool_size = optimal_mempool_size(ops_pool_size * nb_segments);
@@ -163,9 +163,9 @@ static int create_mempools(struct active_device *ad, int socket_id, uint16_t num
   ad->in_mbuf_pool = rte_pktmbuf_pool_create("in_mbuf_pool", mbuf_pool_size, 0, 0, data_room_size, socket_id);
   AssertFatal(ad->in_mbuf_pool != NULL,
               "ERROR Failed to create %u items input pktmbuf pool for dev %u on socket %d.",
-               mbuf_pool_size,
-               ad->dev_id,
-               socket_id);
+              mbuf_pool_size,
+              ad->dev_id,
+              socket_id);
 
   /* Hard outputs */
   data_room_size = RTE_MAX(out_buff_sz + RTE_PKTMBUF_HEADROOM + FILLER_HEADROOM, (unsigned int)RTE_MBUF_DEFAULT_BUF_SIZE);
@@ -188,7 +188,8 @@ static int create_mempools(struct active_device *ad, int socket_id, uint16_t num
   /* HARQ inputs */
   // Note: This is used as our harq buffer to store the combined outputs across iterations
   data_room_size = LDPC_MAX_CB_SIZE;
-  ad->harq_in_mbuf_pool = rte_pktmbuf_pool_create("harq_in_mbuf_pool", active_dev.num_harq_codeblock, 0, 0, data_room_size, socket_id);
+  ad->harq_in_mbuf_pool =
+      rte_pktmbuf_pool_create("harq_in_mbuf_pool", active_dev.num_harq_codeblock, 0, 0, data_room_size, socket_id);
   AssertFatal(ad->harq_in_mbuf_pool != NULL,
               "ERROR Failed to create %u items harq input pktmbuf pool for dev %u on socket %d.",
               active_dev.num_harq_codeblock,
@@ -286,12 +287,13 @@ void debug_dev_capabilities(uint8_t dev_id, struct rte_bbdev_info *info)
     }
     if (info->drv.capabilities[i].type == RTE_BBDEV_OP_LDPC_DEC) {
       const struct rte_bbdev_op_cap_ldpc_dec cap = info->drv.capabilities[i].cap.ldpc_dec;
-      LOG_D(NR_PHY, "    buffers: src = %d, hard out = %d, soft_out %d, llr size %d, llr decimals %d \n   capabilities: ",
-             cap.num_buffers_src,
-             cap.num_buffers_hard_out,
-             cap.num_buffers_soft_out,
-             cap.llr_size,
-             cap.llr_decimals);
+      LOG_D(NR_PHY,
+            "    buffers: src = %d, hard out = %d, soft_out %d, llr size %d, llr decimals %d \n   capabilities: ",
+            cap.num_buffers_src,
+            cap.num_buffers_hard_out,
+            cap.num_buffers_soft_out,
+            cap.llr_size,
+            cap.llr_decimals);
       for (int j = 0; j < sizeof(cap.capability_flags) * 8; j++)
         if (cap.capability_flags & (1ULL << j))
           LOG_D(NR_PHY, "%s ", ldpcdec_flag_bitmask[j]);
@@ -340,10 +342,12 @@ bool check_internal_harq_memory_capabilities(struct rte_bbdev_info *info)
 {
   for (int i = 0; info->drv.capabilities[i].type != RTE_BBDEV_OP_NONE; i++) {
     if (info->drv.capabilities[i].type == RTE_BBDEV_OP_LDPC_DEC) {
-      bool harq_in = check_bit(info->drv.capabilities[i].cap.ldpc_dec.capability_flags, RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_IN_ENABLE);
-      bool harq_out = check_bit(info->drv.capabilities[i].cap.ldpc_dec.capability_flags, RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_OUT_ENABLE);
+      bool harq_in =
+          check_bit(info->drv.capabilities[i].cap.ldpc_dec.capability_flags, RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_IN_ENABLE);
+      bool harq_out =
+          check_bit(info->drv.capabilities[i].cap.ldpc_dec.capability_flags, RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_OUT_ENABLE);
       bool internal_harq_memory_support = harq_in & harq_out;
-      if(internal_harq_memory_support) {
+      if (internal_harq_memory_support) {
         LOG_I(NR_PHY, "bbdev device supports internal HARQ memory\n");
       }
       return internal_harq_memory_support;
@@ -357,7 +361,7 @@ static int add_dev(uint8_t dev_id, uint32_t num_harq_codeblock)
 {
   int ret;
   unsigned int nb_queues;
-  
+
   // retrieve device capabilities
   rte_bbdev_info_get(dev_id, &active_dev.info);
   LOG_I(NR_PHY, "using bbdev %d: %s\n", dev_id, active_dev.info.dev_name);
@@ -423,10 +427,9 @@ static int add_dev(uint8_t dev_id, uint32_t num_harq_codeblock)
   return 0;
 }
 
-static int init_op_data_objs_harq(struct rte_bbdev_op_data *bufs,
-                                 struct rte_mempool *mbuf_pool)
+static int init_op_data_objs_harq(struct rte_bbdev_op_data *bufs, struct rte_mempool *mbuf_pool)
 {
-  for(int i=0; i<active_dev.num_harq_codeblock; i++) {
+  for (int i = 0; i < active_dev.num_harq_codeblock; i++) {
     struct rte_mbuf *m_head = rte_pktmbuf_alloc(mbuf_pool);
     AssertFatal(m_head != NULL,
                 "Not enough mbufs in HARQ mbuf pool (needed %u, available %u)",
@@ -459,7 +462,7 @@ static int init_op_data_objs_dec(struct rte_bbdev_op_data *bufs,
                   op_type,
                   nb_segments_decoding(nrLDPC_slot_decoding_parameters),
                   mbuf_pool->size);
-  
+
       if (data_len > RTE_BBDEV_LDPC_E_MAX_MBUF) {
         printf("Warning: Larger input size than DPDK mbuf %u\n", data_len);
         large_input = true;
@@ -515,7 +518,7 @@ static int init_op_data_objs_enc(struct rte_bbdev_op_data *bufs,
                   op_type,
                   nb_segments_encoding(nrLDPC_slot_encoding_parameters),
                   mbuf_pool->size);
-  
+
       if (data_len > RTE_BBDEV_LDPC_E_MAX_MBUF) {
         printf("Warning: Larger input size than DPDK mbuf %u\n", data_len);
         large_input = true;
@@ -552,7 +555,6 @@ static int init_op_data_objs_enc(struct rte_bbdev_op_data *bufs,
   return 0;
 }
 
-
 // DPDK BBEV copy
 static int allocate_buffers_on_socket(struct rte_bbdev_op_data **buffers, const int len, const int socket)
 {
@@ -584,16 +586,16 @@ static void free_mempools(struct active_device *ad)
 }
 
 // based on DPDK BBDEV copy_reference_ldpc_dec_op
-static void
-set_ldpc_dec_op(struct rte_bbdev_dec_op **ops,
-                struct rte_bbdev_op_data *inputs,
-                struct rte_bbdev_op_data *outputs,
-                struct rte_bbdev_op_data *harq_outputs,
-                nrLDPC_slot_decoding_parameters_t *nrLDPC_slot_decoding_parameters)
+static void set_ldpc_dec_op(struct rte_bbdev_dec_op **ops,
+                            struct rte_bbdev_op_data *inputs,
+                            struct rte_bbdev_op_data *outputs,
+                            struct rte_bbdev_op_data *harq_outputs,
+                            nrLDPC_slot_decoding_parameters_t *nrLDPC_slot_decoding_parameters)
 {
   int j = 0;
 #ifndef LDPC_T2
-  bool special_case_tb_mode = (nrLDPC_slot_decoding_parameters->nb_TBs == 1) && (nb_segments_decoding(nrLDPC_slot_decoding_parameters) == 1);
+  bool special_case_tb_mode =
+      (nrLDPC_slot_decoding_parameters->nb_TBs == 1) && (nb_segments_decoding(nrLDPC_slot_decoding_parameters) == 1);
 #endif
   for (int h = 0; h < nrLDPC_slot_decoding_parameters->nb_TBs; ++h) {
     for (int i = 0; i < nrLDPC_slot_decoding_parameters->TBs[h].C; ++i) {
@@ -601,15 +603,14 @@ set_ldpc_dec_op(struct rte_bbdev_dec_op **ops,
       ops[j]->ldpc_dec.z_c = nrLDPC_slot_decoding_parameters->TBs[h].Z;
       ops[j]->ldpc_dec.q_m = nrLDPC_slot_decoding_parameters->TBs[h].Qm;
       ops[j]->ldpc_dec.n_filler = nrLDPC_slot_decoding_parameters->TBs[h].F;
-      ops[j]->ldpc_dec.n_cb = (nrLDPC_slot_decoding_parameters->TBs[h].BG == 1) ? (66 * nrLDPC_slot_decoding_parameters->TBs[h].Z) : (50 * nrLDPC_slot_decoding_parameters->TBs[h].Z);
+      ops[j]->ldpc_dec.n_cb = (nrLDPC_slot_decoding_parameters->TBs[h].BG == 1) ? (66 * nrLDPC_slot_decoding_parameters->TBs[h].Z)
+                                                                                : (50 * nrLDPC_slot_decoding_parameters->TBs[h].Z);
       ops[j]->ldpc_dec.iter_max = nrLDPC_slot_decoding_parameters->TBs[h].max_ldpc_iterations;
       ops[j]->ldpc_dec.rv_index = nrLDPC_slot_decoding_parameters->TBs[h].rv_index;
 #ifdef LDPC_T2
       ops[j]->ldpc_dec.cb_params.e = nrLDPC_slot_decoding_parameters->TBs[h].segments[i].E;
-      ops[j]->ldpc_dec.op_flags = RTE_BBDEV_LDPC_ITERATION_STOP_ENABLE |
-                                  RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_IN_ENABLE |
-                                  RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_OUT_ENABLE |
-                                  RTE_BBDEV_LDPC_HQ_COMBINE_OUT_ENABLE;
+      ops[j]->ldpc_dec.op_flags = RTE_BBDEV_LDPC_ITERATION_STOP_ENABLE | RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_IN_ENABLE
+                                  | RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_OUT_ENABLE | RTE_BBDEV_LDPC_HQ_COMBINE_OUT_ENABLE;
       if (*nrLDPC_slot_decoding_parameters->TBs[h].segments[i].d_to_be_cleared) {
         *nrLDPC_slot_decoding_parameters->TBs[h].segments[i].d_to_be_cleared = false;
         *nrLDPC_slot_decoding_parameters->TBs[h].processedSegments = 0;
@@ -637,13 +638,12 @@ set_ldpc_dec_op(struct rte_bbdev_dec_op **ops,
       ops[j]->ldpc_dec.harq_combined_output.offset = harq_combined_offset;
 #else
       *nrLDPC_slot_decoding_parameters->TBs[h].processedSegments = 0;
-      ops[j]->ldpc_dec.op_flags = RTE_BBDEV_LDPC_ITERATION_STOP_ENABLE |
-                                  RTE_BBDEV_LDPC_HQ_COMBINE_OUT_ENABLE;
+      ops[j]->ldpc_dec.op_flags = RTE_BBDEV_LDPC_ITERATION_STOP_ENABLE | RTE_BBDEV_LDPC_HQ_COMBINE_OUT_ENABLE;
       if (*nrLDPC_slot_decoding_parameters->TBs[h].segments[i].d_to_be_cleared) {
         *nrLDPC_slot_decoding_parameters->TBs[h].segments[i].d_to_be_cleared = false;
       } else {
         ops[j]->ldpc_dec.op_flags |= RTE_BBDEV_LDPC_HQ_COMBINE_IN_ENABLE;
-        if(active_dev.support_internal_harq_memory) {
+        if (active_dev.support_internal_harq_memory) {
           ops[j]->ldpc_dec.op_flags |= RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_IN_ENABLE;
           ops[j]->ldpc_dec.op_flags |= RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_OUT_ENABLE;
         }
@@ -651,7 +651,7 @@ set_ldpc_dec_op(struct rte_bbdev_dec_op **ops,
       if (!special_case_tb_mode) {
         ops[j]->ldpc_dec.code_block_mode = 1;
         ops[j]->ldpc_dec.cb_params.e = nrLDPC_slot_decoding_parameters->TBs[h].segments[i].E;
-        if(nrLDPC_slot_decoding_parameters->TBs[h].C > 1) {
+        if (nrLDPC_slot_decoding_parameters->TBs[h].C > 1) {
           ops[j]->ldpc_dec.op_flags |= RTE_BBDEV_LDPC_CRC_TYPE_24B_DROP;
           ops[j]->ldpc_dec.op_flags |= RTE_BBDEV_LDPC_CRC_TYPE_24B_CHECK;
         }
@@ -678,7 +678,7 @@ set_ldpc_dec_op(struct rte_bbdev_dec_op **ops,
       // Segment offset to byte offset
       uint32_t harq_combined_offset = pruned_segment_offset * LDPC_MAX_CB_SIZE;
 
-      if(active_dev.support_internal_harq_memory) {
+      if (active_dev.support_internal_harq_memory) {
         // retrieve corresponding HARQ output information from previous iteration, especially the length
         ops[j]->ldpc_dec.harq_combined_input = active_dev.harq_buffers[pruned_segment_offset];
         // Note: When using INTERNAL_HARQ memory, the "offset" is used to point to a particular address
@@ -699,15 +699,15 @@ set_ldpc_dec_op(struct rte_bbdev_dec_op **ops,
 }
 
 // based on DPDK BBDEV copy_reference_ldpc_enc_op
-static void
-set_ldpc_enc_op(struct rte_bbdev_enc_op **ops,
-                struct rte_bbdev_op_data *inputs,
-                struct rte_bbdev_op_data *outputs,
-                nrLDPC_slot_encoding_parameters_t *nrLDPC_slot_encoding_parameters)
+static void set_ldpc_enc_op(struct rte_bbdev_enc_op **ops,
+                            struct rte_bbdev_op_data *inputs,
+                            struct rte_bbdev_op_data *outputs,
+                            nrLDPC_slot_encoding_parameters_t *nrLDPC_slot_encoding_parameters)
 {
   int j = 0;
 #ifndef LDPC_T2
-  bool special_case_tb_mode = (nrLDPC_slot_encoding_parameters->nb_TBs == 1) && (nb_segments_encoding(nrLDPC_slot_encoding_parameters) == 1);
+  bool special_case_tb_mode =
+      (nrLDPC_slot_encoding_parameters->nb_TBs == 1) && (nb_segments_encoding(nrLDPC_slot_encoding_parameters) == 1);
 #endif
   for (int h = 0; h < nrLDPC_slot_encoding_parameters->nb_TBs; ++h) {
     for (int i = 0; i < nrLDPC_slot_encoding_parameters->TBs[h].C; ++i) {
@@ -715,7 +715,8 @@ set_ldpc_enc_op(struct rte_bbdev_enc_op **ops,
       ops[j]->ldpc_enc.z_c = nrLDPC_slot_encoding_parameters->TBs[h].Z;
       ops[j]->ldpc_enc.q_m = nrLDPC_slot_encoding_parameters->TBs[h].Qm;
       ops[j]->ldpc_enc.n_filler = nrLDPC_slot_encoding_parameters->TBs[h].F;
-      ops[j]->ldpc_enc.n_cb = (nrLDPC_slot_encoding_parameters->TBs[h].BG == 1) ? (66 * nrLDPC_slot_encoding_parameters->TBs[h].Z) : (50 * nrLDPC_slot_encoding_parameters->TBs[h].Z);
+      ops[j]->ldpc_enc.n_cb = (nrLDPC_slot_encoding_parameters->TBs[h].BG == 1) ? (66 * nrLDPC_slot_encoding_parameters->TBs[h].Z)
+                                                                                : (50 * nrLDPC_slot_encoding_parameters->TBs[h].Z);
       if (nrLDPC_slot_encoding_parameters->TBs[h].tbslbrm != 0) {
         uint32_t Nref = 3 * nrLDPC_slot_encoding_parameters->TBs[h].tbslbrm / (2 * nrLDPC_slot_encoding_parameters->TBs[h].C);
         ops[j]->ldpc_enc.n_cb = min(ops[j]->ldpc_enc.n_cb, Nref);
@@ -726,7 +727,7 @@ set_ldpc_enc_op(struct rte_bbdev_enc_op **ops,
       ops[j]->ldpc_enc.code_block_mode = 1;
       ops[j]->ldpc_enc.cb_params.e = nrLDPC_slot_encoding_parameters->TBs[h].segments[i].E;
 #else
-      if(!special_case_tb_mode) {
+      if (!special_case_tb_mode) {
         ops[j]->ldpc_enc.code_block_mode = 1;
         ops[j]->ldpc_enc.cb_params.e = nrLDPC_slot_encoding_parameters->TBs[h].segments[i].E;
       } else {
@@ -767,7 +768,7 @@ static int retrieve_ldpc_dec_op(struct rte_bbdev_dec_op **ops, nrLDPC_slot_decod
       uint32_t segment_offset = (nrLDPC_slot_decoding_parameters->TBs[h].harq_unique_pid * NR_LDPC_MAX_NUM_CB) + i;
       uint32_t pruned_segment_offset = segment_offset % active_dev.num_harq_codeblock;
       struct rte_bbdev_op_data *harq_output = &ops[j]->ldpc_dec.harq_combined_output;
-      if(!active_dev.support_internal_harq_memory) {
+      if (!active_dev.support_internal_harq_memory) {
         struct rte_mbuf *m_src = harq_output->data;
         uint8_t *data_src = rte_pktmbuf_mtod_offset(m_src, uint8_t *, 0);
         struct rte_mbuf *m_dst = active_dev.harq_buffers[pruned_segment_offset].data;
@@ -783,13 +784,11 @@ static int retrieve_ldpc_dec_op(struct rte_bbdev_dec_op **ops, nrLDPC_slot_decod
   return 0;
 }
 
-static int
-retrieve_ldpc_enc_op(struct rte_bbdev_enc_op **ops,
-                     nrLDPC_slot_encoding_parameters_t *nrLDPC_slot_encoding_parameters)
+static int retrieve_ldpc_enc_op(struct rte_bbdev_enc_op **ops, nrLDPC_slot_encoding_parameters_t *nrLDPC_slot_encoding_parameters)
 {
   uint8_t *p_out = NULL;
   int j = 0;
-  for (int h = 0; h < nrLDPC_slot_encoding_parameters->nb_TBs; ++h){
+  for (int h = 0; h < nrLDPC_slot_encoding_parameters->nb_TBs; ++h) {
     int E_sum = 0;
     int bit_offset = 0;
     int byte_offset = 0;
@@ -832,8 +831,7 @@ retrieve_ldpc_enc_op(struct rte_bbdev_enc_op **ops,
 }
 
 // based on DPDK BBDEV throughput_pmd_lcore_ldpc_dec
-static int
-pmd_lcore_ldpc_dec(void *arg)
+static int pmd_lcore_ldpc_dec(void *arg)
 {
   struct thread_params *tp = arg;
   nrLDPC_slot_decoding_parameters_t *nrLDPC_slot_decoding_parameters = tp->nrLDPC_slot_decoding_parameters;
@@ -889,8 +887,9 @@ pmd_lcore_ldpc_dec(void *arg)
         }
 
         if (*status) {
-          *nrLDPC_slot_decoding_parameters->TBs[h].processedSegments = *nrLDPC_slot_decoding_parameters->TBs[h].processedSegments + 1;
-        } 
+          *nrLDPC_slot_decoding_parameters->TBs[h].processedSegments =
+              *nrLDPC_slot_decoding_parameters->TBs[h].processedSegments + 1;
+        }
         ++j;
       }
     }
@@ -977,7 +976,8 @@ int start_pmd_dec(struct active_device *ad,
   t_params[0].nrLDPC_slot_decoding_parameters = nrLDPC_slot_decoding_parameters;
   used_cores++;
   // For now, we never enter here, we don't use the DPDK thread pool
-  RTE_LCORE_FOREACH_WORKER(lcore_id) {
+  RTE_LCORE_FOREACH_WORKER(lcore_id)
+  {
     if (used_cores >= num_lcores)
       break;
     t_params[used_cores].dev_id = ad->dev_id;
@@ -1021,7 +1021,8 @@ int32_t start_pmd_enc(struct active_device *ad,
   t_params[0].nrLDPC_slot_encoding_parameters = nrLDPC_slot_encoding_parameters;
   used_cores++;
   // For now, we never enter here, we don't use the DPDK thread pool
-  RTE_LCORE_FOREACH_WORKER(lcore_id) {
+  RTE_LCORE_FOREACH_WORKER(lcore_id)
+  {
     if (used_cores >= num_lcores)
       break;
     t_params[used_cores].dev_id = ad->dev_id;
@@ -1042,10 +1043,11 @@ int32_t start_pmd_enc(struct active_device *ad,
 
 struct test_op_params *op_params = NULL;
 
-int normalize_dpdk_dev(const char *input, char *output, size_t out_len) {
+int normalize_dpdk_dev(const char *input, char *output, size_t out_len)
+{
   regex_t regex_full, regex_short;
   int reti;
-  
+
   // patterns
   const char *pattern_full = "^[0]{4}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}\\.[0-7]$";
   const char *pattern_short = "^[0-9a-fA-F]{2}:[0-9a-fA-F]{2}\\.[0-7]$";
@@ -1055,21 +1057,21 @@ int normalize_dpdk_dev(const char *input, char *output, size_t out_len) {
   // check full format
   reti = regexec(&regex_full, input, 0, NULL, 0);
   if (reti == 0) {
-      // already in full format
-      strncpy(output, input, out_len-1);
-      output[out_len-1] = '\0';
+    // already in full format
+    strncpy(output, input, out_len - 1);
+    output[out_len - 1] = '\0';
   } else {
-      // check short format
-      reti = regexec(&regex_short, input, 0, NULL, 0);
-      if (reti == 0) {
-        // convert to full format
-        snprintf(output, out_len, "0000:%s", input);
-      } else {
-          // invalid format
-          regfree(&regex_full);
-          regfree(&regex_short);
-          return -1;
-      }
+    // check short format
+    reti = regexec(&regex_short, input, 0, NULL, 0);
+    if (reti == 0) {
+      // convert to full format
+      snprintf(output, out_len, "0000:%s", input);
+    } else {
+      // invalid format
+      regfree(&regex_full);
+      regfree(&regex_short);
+      return -1;
+    }
   }
   regfree(&regex_full);
   regfree(&regex_short);
@@ -1085,21 +1087,21 @@ int32_t nrLDPC_coding_init()
   int ret;
   int dev_id = -1;
 
-  char *dpdk_dev = NULL;            // PCI address of the card
-  char *dpdk_core_list = NULL;      // cores used by DPDK for bbdev
+  char *dpdk_dev = NULL; // PCI address of the card
+  char *dpdk_core_list = NULL; // cores used by DPDK for bbdev
   char *dpdk_file_prefix = NULL;
-  char *vfio_vf_token = NULL;       // vfio token for the bbdev card
-  uint32_t num_harq_codeblock = 0;    // size of the HARQ buffer in terms of the number of 32K blocks
+  char *vfio_vf_token = NULL; // vfio token for the bbdev card
+  uint32_t num_harq_codeblock = 0; // size of the HARQ buffer in terms of the number of 32K blocks
   paramdef_t LoaderParams[] = {
-    {"dpdk_dev", NULL, 0, .strptr = &dpdk_dev, .defstrval = NULL, TYPE_STRING, 0, NULL},
-    {"dpdk_core_list", NULL, 0, .strptr = &dpdk_core_list, .defstrval = NULL, TYPE_STRING, 0, NULL},
-    {"dpdk_file_prefix", NULL, 0, .strptr = &dpdk_file_prefix, .defstrval = "b6", TYPE_STRING, 0, NULL},
-    {"vfio_vf_token", NULL, 0, .strptr = &vfio_vf_token, .defstrval = NULL, TYPE_STRING, 0, NULL},
-    {"num_harq_codeblock", NULL, 0, .uptr = &num_harq_codeblock, .defintval = 512, TYPE_UINT32, 0, NULL},
+      {"dpdk_dev", NULL, 0, .strptr = &dpdk_dev, .defstrval = NULL, TYPE_STRING, 0, NULL},
+      {"dpdk_core_list", NULL, 0, .strptr = &dpdk_core_list, .defstrval = NULL, TYPE_STRING, 0, NULL},
+      {"dpdk_file_prefix", NULL, 0, .strptr = &dpdk_file_prefix, .defstrval = "b6", TYPE_STRING, 0, NULL},
+      {"vfio_vf_token", NULL, 0, .strptr = &vfio_vf_token, .defstrval = NULL, TYPE_STRING, 0, NULL},
+      {"num_harq_codeblock", NULL, 0, .uptr = &num_harq_codeblock, .defintval = 512, TYPE_UINT32, 0, NULL},
   };
   config_get(config_get_if(), LoaderParams, sizeofArray(LoaderParams), "nrLDPC_coding_t2");
-  AssertFatal(dpdk_dev!=NULL, "nrLDPC_coding_t2.dpdk_dev was not provided");
-  AssertFatal(dpdk_core_list!=NULL, "nrLDPC_coding_t2.dpdk_core_list was not provided");
+  AssertFatal(dpdk_dev != NULL, "nrLDPC_coding_t2.dpdk_dev was not provided");
+  AssertFatal(dpdk_core_list != NULL, "nrLDPC_coding_t2.dpdk_core_list was not provided");
 
   char dpdk_dev_full[32];
   if (normalize_dpdk_dev(dpdk_dev, dpdk_dev_full, sizeof(dpdk_dev_full)) != 0) {
@@ -1109,7 +1111,7 @@ int32_t nrLDPC_coding_init()
 
   int argc = 7;
   char *argv[11] = {"bbdev", "-l", dpdk_core_list, "-a", dpdk_dev_full, "--file-prefix", dpdk_file_prefix, "--", "--", "--", "--"};
-  if(vfio_vf_token != NULL) {
+  if (vfio_vf_token != NULL) {
     argc += 2;
     argv[7] = "--vfio-vf-token";
     argv[8] = vfio_vf_token;
@@ -1138,13 +1140,13 @@ int32_t nrLDPC_coding_init()
     }
   }
   AssertFatal(dev_id != -1, "bbdev %s not found.", dpdk_dev_full);
-  
-  AssertFatal(add_dev(dev_id, num_harq_codeblock)== 0, "Failed to setup bbdev");
+
+  AssertFatal(add_dev(dev_id, num_harq_codeblock) == 0, "Failed to setup bbdev");
   AssertFatal(rte_bbdev_stats_reset(dev_id) == 0, "Failed to reset stats of bbdev %u", dev_id);
   AssertFatal(rte_bbdev_start(dev_id) == 0, "Failed to start bbdev %u", dev_id);
 
-  //the previous calls have populated this global variable (beurk)
-  // One more global to remove, not thread safe global op_params
+  // the previous calls have populated this global variable (beurk)
+  //  One more global to remove, not thread safe global op_params
   op_params = rte_zmalloc(NULL, sizeof(struct test_op_params), RTE_CACHE_LINE_SIZE);
   AssertFatal(op_params != NULL,
               "Failed to alloc %zuB for op_params",
@@ -1181,17 +1183,8 @@ int32_t nrLDPC_coding_shutdown()
   return 0;
 }
 
-/**
- * @brief Scale LLR values to fit into the fixed-point representation.
- * @note 
- * This functions scales the LLR values to fit into the fixed-point representation.
- * The implementation includes some hacks to improve its robustness at low SNRs.
- * @todo 
- * This LLR scaling method is far from optimal. More testing is needed to understand its performance.
- * Can consider introducing SINR information to improve scaling.
- * A better approach would be to do LLR scaling/quantization right after demodulation, since both the software LDPC decoder also uses an 8-bit input.
- */
-void llr_scaling(int16_t *llr, int llr_len, uint8_t *llr_scaled, int8_t llr_size, int8_t llr_decimal, int8_t nb_layers, int8_t Qm) {
+void llr_scaling(int16_t *llr, int llr_len, uint8_t *llr_scaled, int8_t llr_size, int8_t llr_decimal, int8_t nb_layers, int8_t Qm)
+{
   const int16_t llr_max = (1 << (llr_size - 1)) - 1;
   const int16_t llr_min = -llr_max;
 
@@ -1205,21 +1198,22 @@ void llr_scaling(int16_t *llr, int llr_len, uint8_t *llr_scaled, int8_t llr_size
   // VECTORIZED IMPLEMENTATION
   simde__m128i max_vec = simde_mm_set1_epi16(1);
   for (int i = 0; i < llr_len; i += 8) {
-      simde__m128i llr_vec = simde_mm_loadu_si128((simde__m128i*)&llr[i]);
-      simde__m128i abs_vec = simde_mm_abs_epi16(llr_vec);
-      max_vec = simde_mm_max_epi16(max_vec, abs_vec);
+    simde__m128i llr_vec = simde_mm_loadu_si128((simde__m128i *)&llr[i]);
+    simde__m128i abs_vec = simde_mm_abs_epi16(llr_vec);
+    max_vec = simde_mm_max_epi16(max_vec, abs_vec);
   }
   // reduce max_vec to single max_abs
   int16_t temp[8];
-  simde_mm_storeu_si128((simde__m128i*)temp, max_vec);
+  simde_mm_storeu_si128((simde__m128i *)temp, max_vec);
   for (int i = 0; i < 8; i++) {
-      if (temp[i] > max_abs) max_abs = temp[i];
+    if (temp[i] > max_abs)
+      max_abs = temp[i];
   }
 
   // Step 2: Compute dynamic scale factor
   float fixed_point_range = (float)llr_max / (1 << llr_decimal);
   float scale = fixed_point_range / (float)max_abs;
-  if(max_abs < fixed_point_range) {
+  if (max_abs < fixed_point_range) {
     scale = 1.0f;
   }
 
@@ -1243,7 +1237,7 @@ void llr_scaling(int16_t *llr, int llr_len, uint8_t *llr_scaled, int8_t llr_size
   simde__m128i decimal_shift = simde_mm_set1_epi16(1 << llr_decimal);
   for (int i = 0; i < llr_len; i += 8) {
     // load LLR values
-    simde__m128i llr_vec = simde_mm_loadu_si128((simde__m128i*)&llr[i]);
+    simde__m128i llr_vec = simde_mm_loadu_si128((simde__m128i *)&llr[i]);
 
     // convert to float for scaling
     simde__m128i llr_lo = simde_mm_cvtepi16_epi32(llr_vec);
@@ -1259,12 +1253,7 @@ void llr_scaling(int16_t *llr, int llr_len, uint8_t *llr_scaled, int8_t llr_size
     llr_lo = simde_mm_cvtps_epi32(float_lo);
     llr_hi = simde_mm_cvtps_epi32(float_hi);
     simde__m128i scaled_vec = simde_mm_packs_epi32(llr_lo, llr_hi);
-    
-    // if (Qm == 2) {  /* this is a hack! */
-    //   scaled_vec = simde_mm_srai_epi16(scaled_vec, 1);
-    // } else {
-    //   scaled_vec = simde_mm_mullo_epi16(scaled_vec, decimal_shift);
-    // }
+
     scaled_vec = simde_mm_mullo_epi16(scaled_vec, decimal_shift);
 
     // clamp to [llr_min, llr_max]
@@ -1273,14 +1262,14 @@ void llr_scaling(int16_t *llr, int llr_len, uint8_t *llr_scaled, int8_t llr_size
 
     // Pack to int8 and store
     simde__m128i result = simde_mm_packs_epi16(scaled_vec, simde_mm_setzero_si128());
-    simde_mm_storeu_si128((simde__m128i*)&llr_scaled[i], result);
+    simde_mm_storeu_si128((simde__m128i *)&llr_scaled[i], result);
   }
 }
 
 int32_t nrLDPC_coding_decoder(nrLDPC_slot_decoding_parameters_t *nrLDPC_slot_decoding_parameters)
 {
   pthread_mutex_lock(&decode_mutex);
-  
+
   int ret;
   int socket_id = active_dev.info.socket_id;
 
@@ -1293,9 +1282,13 @@ int32_t nrLDPC_coding_decoder(nrLDPC_slot_decoding_parameters_t *nrLDPC_slot_dec
   uint8_t l_ol[num_segments * LDPC_MAX_CB_SIZE] __attribute__((aligned(16)));
 
   // fill_queue_buffers -> init_op_data_objs
-  struct rte_mempool *mbuf_pools[DATA_NUM_TYPES] = {active_dev.in_mbuf_pool, active_dev.hard_out_mbuf_pool, active_dev.harq_out_mbuf_pool};
+  struct rte_mempool *mbuf_pools[DATA_NUM_TYPES] = {active_dev.in_mbuf_pool,
+                                                    active_dev.hard_out_mbuf_pool,
+                                                    active_dev.harq_out_mbuf_pool};
   struct data_buffers data_buffers;
-  struct rte_bbdev_op_data **queue_ops[DATA_NUM_TYPES] = {&data_buffers.inputs, &data_buffers.hard_outputs, &data_buffers.harq_outputs};
+  struct rte_bbdev_op_data **queue_ops[DATA_NUM_TYPES] = {&data_buffers.inputs,
+                                                          &data_buffers.hard_outputs,
+                                                          &data_buffers.harq_outputs};
 #ifndef LDPC_T2
   int8_t llr_size = (active_dev.info.drv.capabilities)[RTE_BBDEV_OP_LDPC_DEC].cap.ldpc_dec.llr_size;
   int8_t llr_decimal = (active_dev.info.drv.capabilities)[RTE_BBDEV_OP_LDPC_DEC].cap.ldpc_dec.llr_decimals;
@@ -1305,7 +1298,9 @@ int32_t nrLDPC_coding_decoder(nrLDPC_slot_decoding_parameters_t *nrLDPC_slot_dec
     for (int r = 0; r < nrLDPC_slot_decoding_parameters->TBs[h].C; r++) {
 #ifdef LDPC_T2
       uint16_t z_ol[LDPC_MAX_CB_SIZE] __attribute__((aligned(16)));
-      memcpy(z_ol, nrLDPC_slot_decoding_parameters->TBs[h].segments[r].llr, nrLDPC_slot_decoding_parameters->TBs[h].segments[r].E * sizeof(uint16_t));
+      memcpy(z_ol,
+             nrLDPC_slot_decoding_parameters->TBs[h].segments[r].llr,
+             nrLDPC_slot_decoding_parameters->TBs[h].segments[r].E * sizeof(uint16_t));
       simde__m128i *pv_ol128 = (simde__m128i *)z_ol;
       simde__m128i *pl_ol128 = (simde__m128i *)&l_ol[offset];
       for (int i = 0, j = 0; j < ((nrLDPC_slot_decoding_parameters->TBs[h].segments[r].E + 15) >> 4); i += 2, j++) {
@@ -1370,13 +1365,11 @@ int32_t nrLDPC_coding_encoder(nrLDPC_slot_encoding_parameters_t *nrLDPC_slot_enc
   for (enum op_data_type type = DATA_INPUT; type < 2; ++type) {
     ret = allocate_buffers_on_socket(queue_ops[type], num_segments * sizeof(struct rte_bbdev_op_data), socket_id);
     AssertFatal(ret == 0, "Couldn't allocate memory for rte_bbdev_op_data structs");
-    ret = init_op_data_objs_enc(
-      *queue_ops[type], 
-      nrLDPC_slot_encoding_parameters, 
-      mbuf_pools[type], 
-      type, 
-      active_dev.info.drv.min_alignment
-    );
+    ret = init_op_data_objs_enc(*queue_ops[type],
+                                nrLDPC_slot_encoding_parameters,
+                                mbuf_pools[type],
+                                type,
+                                active_dev.info.drv.min_alignment);
     AssertFatal(ret == 0, "Couldn't init rte_bbdev_op_data structs");
   }
 
@@ -1391,4 +1384,3 @@ int32_t nrLDPC_coding_encoder(nrLDPC_slot_encoding_parameters_t *nrLDPC_slot_enc
   pthread_mutex_unlock(&encode_mutex);
   return ret;
 }
-
