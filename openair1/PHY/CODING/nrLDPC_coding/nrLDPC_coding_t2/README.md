@@ -33,15 +33,16 @@ For the second transmission (or subsequent retransmissions), we need to provide 
 Therefore, both fields, `harq_combined_input` and `harq_combined_output` must be set accordingly.
 
 As HARQ requires the output of the previous transmission/ HARQ round as its input, we need to maintain a separate variable to hold the previous round's information. 
-To do so, we use a global variable `harq_buffers` (see the following) in our implementation.
+To do so, we define `harq_buffers` (which is a pointer to an array of size `num_harq_codeblock` allocated in the heap later) in the `active_device` struct (see the following) in our implementation.
 ```C
-...
-
-/* Persistent data structure to keep track of HARQ-related information */
-// Note: This is used to store/keep track of the combined output information across iterations
-struct rte_bbdev_op_data harq_buffers[HARQ_CODEBLOCK_ID_MAX];
-
-...
+struct active_device {
+  ...
+  uint32_t num_harq_codeblock;
+  /* Persistent data structure to keep track of HARQ-related information */
+  // Note: This is used to store/keep track of the combined output information across iterations
+  struct rte_bbdev_op_data *harq_buffers;
+  ...
+} active_dev;
 ```
 
 
@@ -53,7 +54,7 @@ When using the internal memory, we need to specify the *offset* of the hardware'
 
 In the current implementation, we use a fixed offset of 32K, i.e., this means that each block is 32K. 
 
-An index is derived from a unique HARQ PID assigned by OAI, modulo `HARQ_CODEBLOCK_ID_MAX`. 
+An index is derived from a unique HARQ PID assigned by OAI, modulo `active_dev.num_harq_codeblock` (which is configurable by the user through `nrLDPC_coding_t2.num_harq_codeblock`).
 Using that index, we then derived the corresponding offset in the memory (i.e., `harq_combined_offset`).
 
 ```C
@@ -63,7 +64,7 @@ Using that index, we then derived the corresponding offset in the memory (i.e., 
 // Unique segment offset
 uint32_t segment_offset = (nrLDPC_slot_decoding_parameters->TBs[h].harq_unique_pid * NR_LDPC_MAX_NUM_CB) + i;
 // Prune to avoid shooting above maximum id
-uint32_t pruned_segment_offset = segment_offset % HARQ_CODEBLOCK_ID_MAX;
+uint32_t pruned_segment_offset = segment_offset % active_dev.num_harq_codeblock;
 // Segment offset to byte offset
 uint32_t harq_combined_offset = pruned_segment_offset * LDPC_MAX_CB_SIZE;
 
@@ -73,20 +74,20 @@ uint32_t harq_combined_offset = pruned_segment_offset * LDPC_MAX_CB_SIZE;
 This `harq_combined_offset` is then set for `harq_combined_input.offset` and `harq_combined_output.offset` to tell BBDEV where to read/write the HARQ buffers.
 
 Especially for the Intel ACCs, when providing the HARQ input, the `harq_combined_input.length` must be provided. 
-To do so, we maintain the length of previous round's output using the globally defined `harq_buffers` variable by copying it in `retrieve_ldpc_dec_op`.
+To do so, we maintain the length of previous round's output using `harq_buffers` by copying it in `retrieve_ldpc_dec_op`.
 
 #### External Memory
 
 Different from the Xilinx T2 and Intel ACC100, the Intel ACC200 uses DDR memory to maintain the HARQ buffers which is managed by OAI.
 
-In short, we use the globally defined `harq_buffers` variable, which have been initialzed with corresponding DPDK mempools for BBDEV to read/write the HARQ input/outputs.
+In short, we use `harq_buffers` from the `active_device` struct, which have been initialzed with corresponding DPDK mempools for BBDEV to read/write the HARQ input/outputs.
 
-For indexing, we use the `pruned_segment_offset`, which is derived from the unique HARQ PID assigned by OAI, modulo `HARQ_CODEBLOCK_ID_MAX`. 
+For indexing, we use the `pruned_segment_offset`, which is derived from the unique HARQ PID assigned by OAI, modulo `active_dev.num_harq_codeblock` (which is configurable by the user through `nrLDPC_coding_t2.num_harq_codeblock`).
 
 `harq_combined_input.offset` and `harq_combined_output.offset` is always set to 0 in our implementation.
 Instead, we provide BBDEV the pointers to our allocated mempool regions through `harq_combined_input.data` and `harq_combined_output.data`.
 
-In `retrieve_ldpc_dec_op`, we perform a `rte_memcpy` to copy the HARQ combined outputs to the global variable `harq_buffers`, along with other necessary metadata information to prepare for subsequent HARQ rounds.
+In `retrieve_ldpc_dec_op`, we perform a `rte_memcpy` to copy the HARQ combined outputs to `harq_buffers`, along with other necessary metadata information to prepare for subsequent HARQ rounds.
 Similar to the Intel ACC100, when providing the HARQ input, the `harq_combined_input.length` must be provided. 
 
 ### LLR Scaling
