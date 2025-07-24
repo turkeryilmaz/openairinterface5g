@@ -1284,9 +1284,8 @@ void nr_sr_reporting(gNB_MAC_INST *nrmac, frame_t SFN, slot_t slot)
   /* already mutex protected: held in gNB_dlsch_ulsch_scheduler() */
   NR_SCHED_ENSURE_LOCKED(&nrmac->sched_lock);
 
-  if (!is_ul_slot(slot, &nrmac->frame_structure))
-    return;
   const int CC_id = 0;
+  const NR_ServingCellConfigCommon_t *scc = nrmac->common_channels[CC_id].ServingCellConfigCommon;
   UE_iterator(nrmac->UE_info.connected_ue_list, UE) {
     NR_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
     NR_UE_UL_BWP_t *ul_bwp = &UE->current_UL_BWP;
@@ -1300,35 +1299,46 @@ void nr_sr_reporting(gNB_MAC_INST *nrmac, frame_t SFN, slot_t slot)
 
     AssertFatal(pucch_Config->schedulingRequestResourceToAddModList->list.count>0,"NO SR configuration available");
 
-    for (int SR_resource_id = 0; SR_resource_id < pucch_Config->schedulingRequestResourceToAddModList->list.count;SR_resource_id++) {
-      NR_SchedulingRequestResourceConfig_t *SchedulingRequestResourceConfig = pucch_Config->schedulingRequestResourceToAddModList->list.array[SR_resource_id];
+    for (int id = 0; id < pucch_Config->schedulingRequestResourceToAddModList->list.count; id++) {
+      NR_SchedulingRequestResourceConfig_t *srConf = pucch_Config->schedulingRequestResourceToAddModList->list.array[id];
       int SR_period; int SR_offset;
-      find_period_offset_SR(SchedulingRequestResourceConfig, &SR_period, &SR_offset);
-      // convert to int to avoid underflow of uint
-      int sfn_sf = SFN * n_slots_frame + slot;
-      LOG_D(NR_MAC,"SR_resource_id %d: SR_period %d, SR_offset %d\n", SR_resource_id, SR_period, SR_offset);
+      find_period_offset_SR(srConf, &SR_period, &SR_offset);
+      // we schedule CSI reporting max_fb_time slots in advance
+      const int NTN_gNB_Koffset = get_NTN_Koffset(scc);
+      const int sched_slot = (slot + ul_bwp->max_fb_time + NTN_gNB_Koffset) % n_slots_frame;
+      const int sched_frame = (SFN + ((slot + ul_bwp->max_fb_time + NTN_gNB_Koffset) / n_slots_frame)) % MAX_FRAME_NUMBER;
+       // convert to int to avoid underflow of uint
+      int sfn_sf = sched_frame * n_slots_frame + sched_slot;
+      LOG_D(NR_MAC, "SR_resource_id %d: SR_period %d, SR_offset %d\n", id, SR_period, SR_offset);
       if ((sfn_sf - SR_offset) % SR_period != 0)
         continue;
-      LOG_D(NR_MAC, "%4d.%2d Scheduling Request UE %04x identified\n", SFN, slot, UE->rnti);
-      NR_PUCCH_ResourceId_t *PucchResourceId = SchedulingRequestResourceConfig->resource;
+      LOG_D(NR_MAC, "%4d.%2d Scheduling Request UE %04x identified\n", sched_frame, sched_slot, UE->rnti);
+      NR_PUCCH_ResourceId_t *PucchResourceId = srConf->resource;
       int idx = find_pucch_resource_index(pucch_Config, 0, *PucchResourceId); // index 1 for F2
-      const int pucch_index = get_pucch_index(SFN, slot, &nrmac->frame_structure, sched_ctrl->sched_pucch_size);
+      const int pucch_index = get_pucch_index(sched_frame, sched_slot, &nrmac->frame_structure, sched_ctrl->sched_pucch_size);
       NR_sched_pucch_t *curr_pucch = &sched_ctrl->sched_pucch[pucch_index];
-      if (curr_pucch->active && curr_pucch->frame == SFN && curr_pucch->ul_slot == slot && curr_pucch->resource_indicator == idx)
+      if (curr_pucch->active
+          && curr_pucch->frame == sched_frame
+          && curr_pucch->ul_slot == sched_slot
+          && curr_pucch->resource_indicator == idx)
         curr_pucch->sr_flag = true;
       else if (curr_pucch->active) {
         LOG_E(NR_MAC,
               "current PUCCH inactive: curr_pucch frame.slot %d.%d not matching with computed frame.slot %d.%d\n",
               curr_pucch->frame,
               curr_pucch->ul_slot,
-              SFN,
-              slot);
+              sched_frame,
+              sched_slot);
         memset(curr_pucch, 0, sizeof(*curr_pucch));
         continue;
       } else {
-        NR_beam_alloc_t beam = beam_allocation_procedure(&nrmac->beam_info, SFN, slot, UE->UE_beam_index, n_slots_frame);
+        NR_beam_alloc_t beam = beam_allocation_procedure(&nrmac->beam_info,
+                                                         sched_frame,
+                                                         sched_slot,
+                                                         UE->UE_beam_index,
+                                                         n_slots_frame);
         AssertFatal(beam.idx >= 0, "Cannot allocate SR in any available beam\n");
-        const int index = ul_buffer_index(SFN, slot, n_slots_frame, nrmac->vrb_map_UL_size);
+        const int index = ul_buffer_index(sched_frame, sched_slot, n_slots_frame, nrmac->vrb_map_UL_size);
         uint16_t *vrb_map_UL = &nrmac->common_channels[CC_id].vrb_map_UL[beam.idx][index * MAX_BWP_SIZE];
         const int bwp_start = ul_bwp->BWPStart;
         const int bwp_size = ul_bwp->BWPSize;
@@ -1337,8 +1347,8 @@ void nr_sr_reporting(gNB_MAC_INST *nrmac, frame_t SFN, slot_t slot)
           LOG_E(NR_MAC, "Cannot schedule SR. PRBs not available\n");
           continue;
         }
-        curr_pucch->frame = SFN;
-        curr_pucch->ul_slot = slot;
+        curr_pucch->frame = sched_frame;
+        curr_pucch->ul_slot = sched_slot;
         curr_pucch->sr_flag = true;
         curr_pucch->r_pucch = -1;
         curr_pucch->active = true;
