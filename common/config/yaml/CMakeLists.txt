@@ -15,7 +15,7 @@ endif()
 
 add_library(params_yaml SHARED config_yaml.cpp)
 target_link_libraries(params_yaml PUBLIC UTIL yaml-cpp::yaml-cpp)
-set_target_properties(params_yaml PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR} SOVERSION 1)
+set_target_properties(params_yaml PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR} VERSION 1.0.0 SOVERSION 1)
 target_link_options(params_yaml PRIVATE -Wl,--hash-style=gnu)
 
 
