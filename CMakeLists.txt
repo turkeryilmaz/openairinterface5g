@@ -580,6 +580,7 @@ include_directories("${OPENAIR_DIR}")
 # include T directory even if the T is off because T macros are in the code
 # no matter what. Note: sone files are generated, so we have both source and
 # binary directories
+# TODO remove this
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/common/utils/T
                     ${CMAKE_CURRENT_BINARY_DIR}/common/utils/T)
 
