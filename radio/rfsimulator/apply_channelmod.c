@@ -232,38 +232,24 @@ void rxAddInput(const c16_t *input_sig,
       }
 #endif
 
-      // For SISO: override ch[0] with loaded taps
       channelDesc->ch[0] = taps;
+
+      // Update Tap count and length so the convolution loops use the right size
       channelDesc->nb_taps = channelDesc->external_cir_len;
       channelDesc->channel_length = channelDesc->external_cir_len;
-
-      // Do not call random_channel(); taps are externally defined.
-      // [If MIMO, extend here for ch[ant]]
+      return;
     }
+    // [If MIMO, extend here for ch[ant]]
   }
 
   // channelDesc->path_loss_dB should contain the total path gain
   // so, in actual RF: tx gain + path loss + rx gain (+antenna gain, ...)
   // UE and NB gain control to be added
-
-  // -------------------------------------------------------------------
-  // TODO: Tune pathLossLinear and noise_per_sample for realism.
-  // For now, set to fixed debug-friendly values (no loss, no noise).
-  // See FIXME below for formulae and calibration.
-  // -------------------------------------------------------------------
-  const double pathLossLinear = 1.0;
-  const double noise_per_sample = 0.0;
-
-  // -------------------------------------------------------------------
-  // FIXME: Review/fine-tune for production!
-  // - For pathLossLinear: If "volts", use dB = 20*log10(...), if "power", use dB = 10*log10(...)
-  // - For noise_per_sample: OAI normalized average amplitude is ~256.
-  //   So use pow(10, channelDesc->noise_power_dB/10.0) * 256 when add_noise enabled.
-  // -------------------------------------------------------------------
-  // Example production formula:
-  // const double pathLossLinear = pow(10, channelDesc->path_loss_dB / 20.0);
-  // const double noise_per_sample = add_noise ? pow(10, channelDesc->noise_power_dB / 10.0) * 256 : 0;
-
+  // Fixme: not sure when it is "volts" so dB is 20*log10(...) or "power", so dB is 10*log10(...)
+  const double pathLossLinear = pow(10, channelDesc->path_loss_dB / 20.0);
+  // Energy in one sample to calibrate input noise
+  // the normalized OAI value seems to be 256 as average amplitude (numerical amplification = 1)
+  const double noise_per_sample = add_noise ? pow(10, channelDesc->noise_power_dB / 10.0) * 256 : 0;
   const uint64_t dd = channelDesc->channel_offset;
   const int nbTx=channelDesc->nb_tx;
   double Doppler_phase_cur = channelDesc->Doppler_phase_cur[rxAnt];
