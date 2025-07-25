@@ -80,7 +80,7 @@ If you would like to install DPDK to a custom directory, here is an example.
 ```bash
 cd ~/dpdk-stable
 # meson setup build
-meson setup --prefix=/opt/dpdk-t2 build for installation with non-default installation prefix
+meson setup --prefix=/opt/dpdk-t2 build # for installation with non-default installation prefix
 cd build
 ninja
 sudo ninja install
