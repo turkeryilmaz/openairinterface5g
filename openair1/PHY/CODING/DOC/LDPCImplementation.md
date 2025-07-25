@@ -30,12 +30,12 @@ Its encoder is implemented in [nrLDPC_coding_segment_encoder.c](file://../nrLDPC
 
 loading `libldpc_aal.so` instead of `libldpc.so`:
 
-`make ldpc_t2`
+`make ldpc_aal`
 
 This command creates the `libldpc_aal.so` shared library.
 
 ```
-Building C object CMakeFiles/ldpc_t2.dir/openair1/PHY/CODING/nrLDPC_coding/nrLDPC_coding_aal/nrLDPC_coding_aal.c.o
+Building C object CMakeFiles/ldpc_aal.dir/openair1/PHY/CODING/nrLDPC_coding/nrLDPC_coding_aal/nrLDPC_coding_aal.c.o
 Linking C shared module libldpc_aal.so
 ```
 

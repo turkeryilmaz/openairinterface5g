@@ -210,12 +210,12 @@ cd ~/openairinterface5g/cmake_targets
 cd ~/openairinterface5g
 source oaienv
 cd cmake_targets
-./build_oai -w USRP --ninja --gNB -P --build-lib "ldpc_t2" -C
+./build_oai -w USRP --ninja --gNB -P --build-lib "ldpc_aal" -C
 ```
 
 A shared object file *libldpc_t2.so* will be created during the compilation. 
 This object is conditionally compiled. 
-The selection of the library to compile is done using *--build-lib ldpc_t2*.
+The selection of the library to compile is done using *--build-lib ldpc_aal*.
 
 > Note: The required DPDK poll mode driver has to be present on the host machine and required DPDK version has to be installed on the host, prior to building OAI.
 
