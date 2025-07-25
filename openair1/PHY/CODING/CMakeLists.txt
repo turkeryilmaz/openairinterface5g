@@ -78,6 +78,7 @@ if (ENABLE_LDPC_CUDA)
 endif()
 
 add_subdirectory(nrLDPC_coding)
+add_subdirectory(nrLDPC_decoder)
 
 if(ENABLE_PHYSIM_TESTS)
   add_subdirectory(tests)
