@@ -1676,11 +1676,8 @@ include_directories(${NAS_SRC}UE/ESM)
 include_directories(${NAS_SRC}UE/ESM/SAP)
 
 # nbiot
-add_definitions("-DNUMBER_OF_UE_MAX_NB_IoT=16")
-set (NBIOT_SOURCES
-  ${OPENAIR2_DIR}/ENB_APP/NB_IoT_config.c
-  )
-add_library(NB_IoT MODULE ${NBIOT_SOURCES} )
+add_library(NB_IoT MODULE openair2/ENB_APP/NB_IoT_config.c)
+target_link_libraries(NB_IoT PRIVATE log_headers asn1_lte_rrc asn1_nr_rrc)
 
 # Simulation library
 ##########################
