@@ -34,9 +34,8 @@
                 000111
                 000011
                 000022
-                000033
                 200022
-                300033
+                000033
                 000222
                 222222
                 333333
@@ -107,16 +106,6 @@
                 <iperf_bitrate_threshold>80</iperf_bitrate_threshold>
         </testCase>
 
-        <testCase id="000033">
-                <class>Iperf</class>
-                <desc>iperf (UL/UDP/40M)(30 sec)(single-ue profile)</desc>
-                <iperf_args>-u -b 40M -t 30 -l 1428</iperf_args>
-                <svr_id>oc-cn5g-20897-aerial</svr_id>
-                <id>up2-aerial</id>
-                <iperf_packetloss_threshold>25</iperf_packetloss_threshold>
-                <iperf_bitrate_threshold>80</iperf_bitrate_threshold>
-        </testCase>
-
        <testCase id="200022">
                 <class>Iperf</class>
                 <desc>Optional iperf (DL/UDP/1000M)(30 sec)(single-ue profile)</desc>
@@ -128,11 +117,10 @@
                 <iperf_bitrate_threshold>80</iperf_bitrate_threshold>
         </testCase>
 
-        <testCase id="300033">
+        <testCase id="000033">
                 <class>Iperf</class>
-                <desc>Optional iperf (UL/UDP/90M)(30 sec)(single-ue profile)</desc>
-                <may_fail>true</may_fail>
-                <iperf_args>-u -b 90M -t 30 -l 1428</iperf_args>
+                <desc>iperf (UL/UDP/40M)(30 sec)(single-ue profile)</desc>
+                <iperf_args>-u -b 40M -t 30 -l 1428</iperf_args>
                 <svr_id>oc-cn5g-20897-aerial</svr_id>
                 <id>up2-aerial</id>
                 <iperf_packetloss_threshold>25</iperf_packetloss_threshold>
