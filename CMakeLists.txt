@@ -2356,11 +2356,6 @@ if(OAI_COMMON_PACKAGE)
       COMMAND ${CMAKE_STRIP} --strip-unneeded $<TARGET_FILE:${lib}>
       COMMENT "Stripping unneeded symbols from ${lib}")
   endforeach()
-
-  if(PACKAGING-RPM)
-    set(CPACK_RPM_oai-common_POST_INSTALL_SCRIPT_FILE "${OPENAIR_CMAKE}/ldconfig-postin.sh")
-    set(CPACK_RPM_oai-common_POST_UNINSTALL_SCRIPT_FILE "${OPENAIR_CMAKE}/ldconfig-postun.sh")
-  endif()
   
   install(TARGETS params_libconfig dfts oai_iqplayer params_yaml telnetsrv coding rfsimulator ldpc_orig ldpc vrtsim
           COMPONENT oai-common
@@ -2378,6 +2373,13 @@ endif()
 
 set(CPACK_RESOURCE_FILE_LICENSE "${OPENAIR_DIR}/LICENSE")
 foreach(component IN LISTS COMPONENTS_LIST)
+  if(PACKAGING-RPM)
+    set(postin_var "CPACK_RPM_${component}_POST_INSTALL_SCRIPT_FILE")
+    set(postun_var "CPACK_RPM_${component}_POST_UNINSTALL_SCRIPT_FILE")
+
+    set(${postin_var} "${OPENAIR_CMAKE}/ldconfig-postin.sh")
+    set(${postun_var} "${OPENAIR_CMAKE}/ldconfig-postun.sh")
+  endif()
   install(FILES "${OPENAIR_DIR}/LICENSE" 
           DESTINATION share/doc/openairinterface
           COMPONENT ${component}
