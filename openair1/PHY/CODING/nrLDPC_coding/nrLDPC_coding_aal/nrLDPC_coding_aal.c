@@ -588,8 +588,10 @@ static void set_ldpc_dec_op(struct rte_bbdev_dec_op **ops,
                             nrLDPC_slot_decoding_parameters_t *nrLDPC_slot_decoding_parameters)
 {
   int j = 0;
-#ifndef LDPC_T2
+#ifdef LDPC_T2
   // The T2 only supports CB mode, and does not TB mode special case handling.
+  bool special_case_tb_mode = false;
+#else
   bool special_case_tb_mode =
       (nrLDPC_slot_decoding_parameters->nb_TBs == 1) && (nb_segments_decoding(nrLDPC_slot_decoding_parameters) == 1);
 #endif
@@ -603,37 +605,6 @@ static void set_ldpc_dec_op(struct rte_bbdev_dec_op **ops,
                                                                                 : (50 * nrLDPC_slot_decoding_parameters->TBs[h].Z);
       ops[j]->ldpc_dec.iter_max = nrLDPC_slot_decoding_parameters->TBs[h].max_ldpc_iterations;
       ops[j]->ldpc_dec.rv_index = nrLDPC_slot_decoding_parameters->TBs[h].rv_index;
-#ifdef LDPC_T2
-      ops[j]->ldpc_dec.cb_params.e = nrLDPC_slot_decoding_parameters->TBs[h].segments[i].E;
-      ops[j]->ldpc_dec.op_flags = RTE_BBDEV_LDPC_ITERATION_STOP_ENABLE | RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_IN_ENABLE
-                                  | RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_OUT_ENABLE | RTE_BBDEV_LDPC_HQ_COMBINE_OUT_ENABLE;
-      if (*nrLDPC_slot_decoding_parameters->TBs[h].segments[i].d_to_be_cleared) {
-        *nrLDPC_slot_decoding_parameters->TBs[h].segments[i].d_to_be_cleared = false;
-        *nrLDPC_slot_decoding_parameters->TBs[h].processedSegments = 0;
-      } else {
-        // Note: For the T2, we do not reset the processedSegments in case of HARQ.
-        // This is because if T2 is asked to decode a segment that as already successfully
-        // decoded in the previous round, the T2 reports a failure.
-        ops[j]->ldpc_dec.op_flags |= RTE_BBDEV_LDPC_HQ_COMBINE_IN_ENABLE;
-      }
-      if (nrLDPC_slot_decoding_parameters->TBs[h].C > 1) {
-        ops[j]->ldpc_dec.op_flags |= RTE_BBDEV_LDPC_CRC_TYPE_24B_DROP;
-        ops[j]->ldpc_dec.op_flags |= RTE_BBDEV_LDPC_CRC_TYPE_24B_CHECK;
-      }
-      ops[j]->ldpc_dec.code_block_mode = 1;
-
-      // Calculate offset in the HARQ combined buffers
-      // Unique segment offset
-      uint32_t segment_offset = (nrLDPC_slot_decoding_parameters->TBs[h].harq_unique_pid * NR_LDPC_MAX_NUM_CB) + i;
-      // Prune to avoid shooting above maximum id
-      uint32_t pruned_segment_offset = segment_offset % active_dev.num_harq_codeblock;
-      // Segment offset to byte offset
-      uint32_t harq_combined_offset = pruned_segment_offset * LDPC_MAX_CB_SIZE;
-
-      ops[j]->ldpc_dec.harq_combined_input.offset = harq_combined_offset;
-      ops[j]->ldpc_dec.harq_combined_output.offset = harq_combined_offset;
-#else
-      *nrLDPC_slot_decoding_parameters->TBs[h].processedSegments = 0;
       ops[j]->ldpc_dec.op_flags = RTE_BBDEV_LDPC_ITERATION_STOP_ENABLE | RTE_BBDEV_LDPC_HQ_COMBINE_OUT_ENABLE;
       if (*nrLDPC_slot_decoding_parameters->TBs[h].segments[i].d_to_be_cleared) {
         *nrLDPC_slot_decoding_parameters->TBs[h].segments[i].d_to_be_cleared = false;
@@ -644,6 +615,15 @@ static void set_ldpc_dec_op(struct rte_bbdev_dec_op **ops,
           ops[j]->ldpc_dec.op_flags |= RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_OUT_ENABLE;
         }
       }
+      
+#ifdef LDPC_T2
+      // Note: For the T2, we do not reset the processedSegments in case of HARQ.
+      // This is because if T2 is asked to decode a segment that as already successfully
+      // decoded in the previous round, the T2 reports a failure.
+      if (*nrLDPC_slot_decoding_parameters->TBs[h].segments[i].d_to_be_cleared) *nrLDPC_slot_decoding_parameters->TBs[h].processedSegments = 0;
+#else
+      *nrLDPC_slot_decoding_parameters->TBs[h].processedSegments = 0;
+#endif
       if (!special_case_tb_mode) {
         ops[j]->ldpc_dec.code_block_mode = 1;
         ops[j]->ldpc_dec.cb_params.e = nrLDPC_slot_decoding_parameters->TBs[h].segments[i].E;
@@ -686,7 +666,6 @@ static void set_ldpc_dec_op(struct rte_bbdev_dec_op **ops,
         ops[j]->ldpc_dec.harq_combined_input = active_dev.harq_buffers[pruned_segment_offset];
         ops[j]->ldpc_dec.harq_combined_output = harq_outputs[j];
       }
-#endif
       ops[j]->ldpc_dec.hard_output = outputs[j];
       ops[j]->ldpc_dec.input = inputs[j];
       ++j;
@@ -701,8 +680,10 @@ static void set_ldpc_enc_op(struct rte_bbdev_enc_op **ops,
                             nrLDPC_slot_encoding_parameters_t *nrLDPC_slot_encoding_parameters)
 {
   int j = 0;
-#ifndef LDPC_T2
+#ifdef LDPC_T2
   // The T2 only supports CB mode, and does not TB mode special case handling.
+  bool special_case_tb_mode = false;
+#else
   bool special_case_tb_mode =
       (nrLDPC_slot_encoding_parameters->nb_TBs == 1) && (nb_segments_encoding(nrLDPC_slot_encoding_parameters) == 1);
 #endif
@@ -720,10 +701,6 @@ static void set_ldpc_enc_op(struct rte_bbdev_enc_op **ops,
       }
       ops[j]->ldpc_enc.rv_index = nrLDPC_slot_encoding_parameters->TBs[h].rv_index;
       ops[j]->ldpc_enc.op_flags = RTE_BBDEV_LDPC_RATE_MATCH;
-#ifdef LDPC_T2
-      ops[j]->ldpc_enc.code_block_mode = 1;
-      ops[j]->ldpc_enc.cb_params.e = nrLDPC_slot_encoding_parameters->TBs[h].segments[i].E;
-#else
       if (!special_case_tb_mode) {
         ops[j]->ldpc_enc.code_block_mode = 1;
         ops[j]->ldpc_enc.cb_params.e = nrLDPC_slot_encoding_parameters->TBs[h].segments[i].E;
@@ -742,7 +719,6 @@ static void set_ldpc_enc_op(struct rte_bbdev_enc_op **ops,
         ops[j]->ldpc_enc.tb_params.ea = nrLDPC_slot_encoding_parameters->TBs[h].segments[i].E;
         ops[j]->ldpc_enc.tb_params.eb = nrLDPC_slot_encoding_parameters->TBs[h].segments[i].E;
       }
-#endif
       ops[j]->ldpc_enc.output = outputs[j];
       ops[j]->ldpc_enc.input = inputs[j];
       ++j;
@@ -761,8 +737,6 @@ static int retrieve_ldpc_dec_op(struct rte_bbdev_dec_op **ops, nrLDPC_slot_decod
       uint8_t *data = rte_pktmbuf_mtod_offset(m, uint8_t *, hard_output->offset);
       memcpy(nrLDPC_slot_decoding_parameters->TBs[h].segments[i].c, data, data_len);
 
-#ifndef LDPC_T2
-      // For the T2, it does not require us to maintain the length information from previous HARQ rounds, so this is not used.
       uint32_t segment_offset = (nrLDPC_slot_decoding_parameters->TBs[h].harq_unique_pid * NR_LDPC_MAX_NUM_CB) + i;
       uint32_t pruned_segment_offset = segment_offset % active_dev.num_harq_codeblock;
       struct rte_bbdev_op_data *harq_output = &ops[j]->ldpc_dec.harq_combined_output;
@@ -775,7 +749,6 @@ static int retrieve_ldpc_dec_op(struct rte_bbdev_dec_op **ops, nrLDPC_slot_decod
       }
       active_dev.harq_buffers[pruned_segment_offset].offset = harq_output->offset;
       active_dev.harq_buffers[pruned_segment_offset].length = harq_output->length;
-#endif
       ++j;
     }
   }
