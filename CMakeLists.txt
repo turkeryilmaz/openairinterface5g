@@ -2344,6 +2344,13 @@ endif()
 
 
 if(OAI_COMMON_PACKAGE)
+
+  if(PACKAGING-RPM)
+    set(CPACK_RPM_OAI-COMMON_PACKAGE_REQUIRES "automake, gcc, gcc-c++, git, pkgconfig, lksctp-tools, libtool, ninja-build, make, patch, lapack, blas, vim-common")
+  else()
+    set(CPACK_DEBIAN_OAI-COMMON_PACKAGE_DEPENDS "automake, build-essential, pkg-config, git, patch, openssl, xxd")
+  endif()
+
   foreach(lib params_libconfig dfts oai_iqplayer)
     add_custom_command(TARGET ${lib} 
       COMMAND ${CMAKE_STRIP} --strip-unneeded $<TARGET_FILE:${lib}>
@@ -2363,8 +2370,8 @@ if(OAI_COMMON_PACKAGE)
         )
     list(APPEND COMPONENTS_LIST oai-common)
 
-  set(CPACK_COMPONENT_OAI-COMMON_SUMMARY "OpenAirInterface shared libraries package")
-  set(CPACK_COMPONENT_OAI-COMMON_DESCRIPTION "This package contains shared libraries for other packages")
+  set(CPACK_COMPONENT_OAI_COMMON_SUMMARY "OpenAirInterface shared libraries package")
+  set(CPACK_COMPONENT_OAI_COMMON_DESCRIPTION "This package contains shared libraries for other packages")
   set(CPACK_COMPONENT_OAI_COMMON_PACKAGE_NAME "openairinterface-oai-common")
 endif()
 
