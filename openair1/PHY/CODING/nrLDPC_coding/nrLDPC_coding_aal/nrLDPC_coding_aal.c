@@ -589,6 +589,7 @@ static void set_ldpc_dec_op(struct rte_bbdev_dec_op **ops,
 {
   int j = 0;
 #ifndef LDPC_T2
+  // The T2 only supports CB mode, and does not TB mode special case handling.
   bool special_case_tb_mode =
       (nrLDPC_slot_decoding_parameters->nb_TBs == 1) && (nb_segments_decoding(nrLDPC_slot_decoding_parameters) == 1);
 #endif
@@ -701,6 +702,7 @@ static void set_ldpc_enc_op(struct rte_bbdev_enc_op **ops,
 {
   int j = 0;
 #ifndef LDPC_T2
+  // The T2 only supports CB mode, and does not TB mode special case handling.
   bool special_case_tb_mode =
       (nrLDPC_slot_encoding_parameters->nb_TBs == 1) && (nb_segments_encoding(nrLDPC_slot_encoding_parameters) == 1);
 #endif
@@ -760,6 +762,7 @@ static int retrieve_ldpc_dec_op(struct rte_bbdev_dec_op **ops, nrLDPC_slot_decod
       memcpy(nrLDPC_slot_decoding_parameters->TBs[h].segments[i].c, data, data_len);
 
 #ifndef LDPC_T2
+      // For the T2, it does not require us to maintain the length information from previous HARQ rounds, so this is not used.
       uint32_t segment_offset = (nrLDPC_slot_decoding_parameters->TBs[h].harq_unique_pid * NR_LDPC_MAX_NUM_CB) + i;
       uint32_t pruned_segment_offset = segment_offset % active_dev.num_harq_codeblock;
       struct rte_bbdev_op_data *harq_output = &ops[j]->ldpc_dec.harq_combined_output;
@@ -1038,7 +1041,7 @@ int32_t start_pmd_enc(struct active_device *ad,
 
 struct test_op_params *op_params = NULL;
 
-int normalize_dpdk_dev(const char *input, char *output, size_t out_len)
+static int normalize_dpdk_dev(const char *input, char *output, size_t out_len)
 {
   regex_t regex_full, regex_short;
   int reti;
@@ -1180,7 +1183,7 @@ int32_t nrLDPC_coding_shutdown()
   return 0;
 }
 
-void llr_scaling(int16_t *llr, int llr_len, uint8_t *llr_scaled, int8_t llr_size, int8_t llr_decimal, int8_t nb_layers, int8_t Qm)
+static void llr_scaling(int16_t *llr, int llr_len, uint8_t *llr_scaled, int8_t llr_size, int8_t llr_decimal, int8_t nb_layers, int8_t Qm)
 {
   const int16_t llr_max = (1 << (llr_size - 1)) - 1;
   const int16_t llr_min = -llr_max;
@@ -1218,11 +1221,7 @@ void llr_scaling(int16_t *llr, int llr_len, uint8_t *llr_scaled, int8_t llr_size
   // SCALAR IMPLEMENTATION
   // for (int i = 0; i < llr_len; i++) {
   //     float scaled = (float)llr[i] * scale; // map into fixed-point domain
-  //     if(Qm == 2) { /* this is a hack! */
-  //       scaled = (int8_t)roundf(scaled) >> llr_decimal;
-  //     } else {
-  //       scaled = (int8_t)roundf(scaled * (1 << llr_decimal));
-  //     }
+  //     scaled = (int8_t)roundf(scaled * (1 << llr_decimal));
   //     // Clamp to [-128, 127]
   //     if (scaled > llr_max) llr_scaled[i] = llr_max;
   //     else if (scaled < llr_min) llr_scaled[i] = llr_min;
@@ -1294,6 +1293,7 @@ int32_t nrLDPC_coding_decoder(nrLDPC_slot_decoding_parameters_t *nrLDPC_slot_dec
   for (int h = 0; h < nrLDPC_slot_decoding_parameters->nb_TBs; ++h) {
     for (int r = 0; r < nrLDPC_slot_decoding_parameters->TBs[h].C; r++) {
 #ifdef LDPC_T2
+      // For the T2, we simply saturate the LLRs.
       uint16_t z_ol[LDPC_MAX_CB_SIZE] __attribute__((aligned(16)));
       memcpy(z_ol,
              nrLDPC_slot_decoding_parameters->TBs[h].segments[r].llr,
