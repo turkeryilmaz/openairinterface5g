@@ -1,8 +1,8 @@
 ##########################################################
-# LDPC offload library - DPDK BBDEV
+# LDPC offload library - O-RAN AAL/DPDK BBDEV
 ##########################################################
 
-add_boolean_option(ENABLE_LDPC_AAL OFF "Build support for LDPC Offload to T2 library" OFF)
+add_boolean_option(ENABLE_LDPC_AAL OFF "Build support for LDPC Offload using O-RAN AAL library" OFF)
 
 if (ENABLE_LDPC_AAL)
   pkg_check_modules(LIBDPDK_AAL REQUIRED libdpdk>=20.11.9)
@@ -23,7 +23,7 @@ if (ENABLE_LDPC_AAL)
   target_include_directories(ldpc_aal PRIVATE ${LIBDPDK_AAL_INCLUDE_DIRS})
   target_link_libraries(ldpc_aal PRIVATE ldpc_gen_HEADERS ${LIBDPDK_AAL_LDFLAGS})
   if (PMD_T2)
-    target_link_libraries(ldpc_t2 PRIVATE ${PMD_T2})
+    target_link_libraries(ldpc_aal PRIVATE ${PMD_T2})
   endif()
 
   add_dependencies(nr-softmodem ldpc_aal)
