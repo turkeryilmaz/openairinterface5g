@@ -7,7 +7,7 @@
       </a>
     </td>
     <td style="border-collapse: collapse; border: none; vertical-align: center;">
-      <b><font size = "5">OAI LDPC offload (O-RAN AAL/ DPDK BBDEV)</font></b>
+      <b><font size = "5">OAI LDPC offload (O-RAN AAL/DPDK BBDEV)</font></b>
     </td>
   </tr>
 </table>
@@ -21,24 +21,23 @@ For details on the implementation, please consult the [developer notes](../opena
 
 # Requirements
 
-In principle, any lookaside LDPC accelerator supporting the O-RAN AAL/ DPDK BBDEV should work.
+In principle, any lookaside LDPC accelerator supporting the O-RAN AAL/DPDK BBDEV should work.
 However, the current implementation has only been validated for the Xilinx T2, Intel ACC100, and Intel ACC200 (VRB1).
 Therefore, your mileage may vary when using other BBDEV devices as there may be some hardware-specific changes required -- contributions are welcome!
 
 ## DPDK Version Requirements
 
 The following DPDK versions are supported:
-- For the Xilinx T2 card, the current supported version is DPDK20.11.
+- For the Xilinx T2 card, DPDK20.11+ is supported.
 - As for the Intel ACC100/ACC200, only DPDK22.11+ is supported.
-
-> Note: The future plan is to migrate the Xilinx T2 card to use DPDK22.11+ too.
 
 ## Tested Devices/ DPDK versions
 
 ### Xilinx T2
 
 - DPDK20.11.9*.
-> Note: FPGA bitstream image and patch file (version: `ACCL_BBDEV_DPDK20.11.3_ldpc_3.1.918.patch`) from Accelercomm required.
+- DPDK22.11.7*.
+> Note: FPGA bitstream image and the corresponding patch file (e.g., `ACCL_BBDEV_DPDK20.11.3_ldpc_3.1.918.patch` for DPDK20.11) from Accelercomm required.
 
 ### Intel ACC100
 
@@ -60,12 +59,12 @@ The following DPDK versions are supported:
 > - If you are using the Intel ACC100, you will need to [patch](https://github.com/DPDK/dpdk/commit/fdde63a1dfc129d0a510a831aa98253b36a2a1cd) the ACC100's driver if you are using DPDK22.11 or DPDK23.11. 
 
 
-Refer to the guide [here](https://gitlab.eurecom.fr/oai/openairinterface5g/-/blob/develop/doc/ORAN_FHI7.2_Tutorial.md?ref_type=heads#dpdk-data-plane-development-kit) to install, and then validate your DPDK installation.
+Refer to the guide [here](./ORAN_FHI7.2_Tutorial.md?ref_type=heads#dpdk-data-plane-development-kit) to install, and then validate your DPDK installation.
 
 <details open> 
 <summary> Notes on DPDK patching/installation for Xilinx T2. </summary>
 
-*Note: The following instructions apply to ACCL_BBDEV_DPDK20.11.3_ldpc_3.1.918.patch, compatible with DPDK 20.11.9. For older patches (e.g., ACL_BBDEV_DPDK20.11.3_BL_1006_build_1105_dev_branch_MCT_optimisations_1106_physical_std.patch), refer to the T2 documentation in 2023.w48.*
+*Note: The following instructions apply to `ACCL_BBDEV_DPDK20.11.3_ldpc_3.1.918.patch`, compatible with DPDK 20.11.9. For older patches (e.g., `ACL_BBDEV_DPDK20.11.3_BL_1006_build_1105_dev_branch_MCT_optimisations_1106_physical_std.patch`), refer to the T2 documentation in `2023.w48`.*
 
 ```bash
 # Get DPDK source code
@@ -213,14 +212,14 @@ cd cmake_targets
 ./build_oai -w USRP --ninja --gNB -P --build-lib "ldpc_aal" -C
 ```
 
-A shared object file *libldpc_t2.so* will be created during the compilation. 
+A shared object file `libldpc_aal.so` will be created during the compilation.
 This object is conditionally compiled. 
-The selection of the library to compile is done using *--build-lib ldpc_aal*.
+The selection of the library to compile is done using `--build-lib ldpc_aal`.
 
 > Note: The required DPDK poll mode driver has to be present on the host machine and required DPDK version has to be installed on the host, prior to building OAI.
 
 # O-RAN AAL DPDK EAL parameters
-To configure O-RAN AAL/ DPDK BBDEV, you can set the following parameters via the command line of PHY simulators or nr-softmodem:
+To configure O-RAN AAL/DPDK BBDEV, you can set the following parameters via the command line of PHY simulators or nr-softmodem:
 
 > Note: the group parameter name has been renamed from `nrLDPC_coding_t2` to
 > `nrLDPC_coding_aal` to better reflect that it is a generic AAL accelerator
@@ -229,7 +228,7 @@ To configure O-RAN AAL/ DPDK BBDEV, you can set the following parameters via the
 - `nrLDPC_coding_aal.dpdk_dev` - **mandatory** parameter, specifies the PCI address of our accelerator. It must follow the format `WWWW:XX:YY.Z`.
 
 - `nrLDPC_coding_aal.dpdk_core_list` - **mandatory** parameter, specifies the CPU cores assigned to DPDK . 
-Ensure that the CPU cores specified in *nrLDPC_coding_aal.dpdk_core_list* are available and not used by other processes to avoid conflicts.
+Ensure that the CPU cores specified in `nrLDPC_coding_aal.dpdk_core_list` are available and not used by other processes to avoid conflicts.
 
 - `nrLDPC_coding_aal.dpdk_prefix` - optional parameter, DPDK shared data file prefix, by default set to *b6*.
 
@@ -257,7 +256,7 @@ loader : {
 
 # Running OAI with O-RAN AAL
 
-In general, to offload of the channel coding to the LDPC accelerator, we use use the *--loader.ldpc.shlibversion _all* option. 
+In general, to offload of the channel coding to the LDPC accelerator, we use use the `--loader.ldpc.shlibversion _aal` option.
 
 ## 5G PHY simulators
 
@@ -268,7 +267,7 @@ Example command:
 cd ~/openairinterface5g
 source oaienv
 cd cmake_targets/ran_build/build
-sudo ./nr_ulsim -n100 -s20 -m20 -r273 -R273 --loader.ldpc.shlibversion _all --nrLDPC_coding_aal.dpdk_dev 0000:f7:00.1 --nrLDPC_coding_aal.dpdk_core_list 0-1 --nrLDPC_coding_aal.vfio_vf_token 00112233-4455-6677-8899-aabbccddeeff
+sudo ./nr_ulsim -n100 -s20 -m20 -r273 -R273 --loader.ldpc.shlibversion _aal --nrLDPC_coding_aal.dpdk_dev 0000:f7:00.1 --nrLDPC_coding_aal.dpdk_core_list 0-1 --nrLDPC_coding_aal.vfio_vf_token 00112233-4455-6677-8899-aabbccddeeff
 ```
 ### nr_dlsim
 
@@ -277,7 +276,7 @@ Example command:
 cd ~/openairinterface5g
 source oaienv
 cd cmake_targets/ran_build/build
-sudo ./nr_dlsim -n300 -s30 -R 106 -e 27 --loader.ldpc.shlibversion _all --nrLDPC_coding_aal.dpdk_dev 0000:f7:00.1 --nrLDPC_coding_aal.dpdk_core_list 0-1 --nrLDPC_coding_aal.vfio_vf_token 00112233-4455-6677-8899-aabbccddeeff
+sudo ./nr_dlsim -n300 -s30 -R 106 -e 27 --loader.ldpc.shlibversion _aal --nrLDPC_coding_aal.dpdk_dev 0000:f7:00.1 --nrLDPC_coding_aal.dpdk_core_list 0-1 --nrLDPC_coding_aal.vfio_vf_token 00112233-4455-6677-8899-aabbccddeeff
 ```
 
 ## OTA test
@@ -289,7 +288,7 @@ Example command:
 cd ~/openairinterface5g
 source oaienv
 cd cmake_targets/ran_build/build
-sudo ./nr-softmodem -O ../../../targets/PROJECTS/GENERIC-NR-5GC/CONF/gnb.sa.band78.fr1.106PRB.usrpb210.conf --loader.ldpc.shlibversion _all --nrLDPC_coding_aal.dpdk_dev 0000:f7:00.1 --nrLDPC_coding_aal.dpdk_core_list 14-15 --nrLDPC_coding_aal.vfio_vf_token 00112233-4455-6677-8899-aabbccddeeff
+sudo ./nr-softmodem -O ../../../targets/PROJECTS/GENERIC-NR-5GC/CONF/gnb.sa.band78.fr1.106PRB.usrpb210.conf --loader.ldpc.shlibversion _aal --nrLDPC_coding_aal.dpdk_dev 0000:f7:00.1 --nrLDPC_coding_aal.dpdk_core_list 14-15 --nrLDPC_coding_aal.vfio_vf_token 00112233-4455-6677-8899-aabbccddeeff
 ```
 
 ### Running OAI gNB with FHI72
@@ -299,7 +298,7 @@ Example command:
 cd ~/openairinterface5g
 source oaienv
 cd cmake_targets/ran_build/build
-sudo ./nr-softmodem -O ../../../targets/PROJECTS/GENERIC-NR-5GC/CONF/gnb.sa.band78.fr1.106PRB.usrpb210.conf --loader.ldpc.shlibversion _all --nrLDPC_coding_aal.dpdk_dev 0000:f7:00.1 --nrLDPC_coding_aal.dpdk_core_list 14-15 --nrLDPC_coding_aal.vfio_vf_token 00112233-4455-6677-8899-aabbccddeeff --nrLDPC_coding_aal.eal_init_bbdev 1
+sudo ./nr-softmodem -O ../../../targets/PROJECTS/GENERIC-NR-5GC/CONF/gnb.sa.band78.fr1.106PRB.usrpb210.conf --loader.ldpc.shlibversion _aal --nrLDPC_coding_aal.dpdk_dev 0000:f7:00.1 --nrLDPC_coding_aal.dpdk_core_list 14-15 --nrLDPC_coding_aal.vfio_vf_token 00112233-4455-6677-8899-aabbccddeeff --nrLDPC_coding_aal.eal_init_bbdev 1
 ```
 
 > Note: Make sure that `nrLDPC_coding_aal.dpdk_core_list` does not interfere with other CPU cores allocated for the OAI gNB and xRAN.

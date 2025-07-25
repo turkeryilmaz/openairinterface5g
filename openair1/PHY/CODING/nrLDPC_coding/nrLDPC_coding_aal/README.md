@@ -1,9 +1,9 @@
-This document highlights some of the key aspects of the implementation for O-RAN AAL/ DPDK BBDEV; for user documentation, please consult the [setup guide](../../../../../doc/LDPC_OFFLOAD_SETUP.md) instead.
+This document highlights some of the key aspects of the implementation for O-RAN AAL/DPDK BBDEV; for user documentation, please consult the [setup guide](../../../../../doc/LDPC_OFFLOAD_SETUP.md) instead.
 
 ## Overview
 
 The current implementation supports the following BBDEV devices and respective DPDK versions:
-- Xilinx T2 on DPDK20.11 only
+- Xilinx T2 on DPDK20.11+
 - Intel ACC100* on DPDK22.11+
 - Intel ACC200 (VRB1) on DPDK22.11+
 
