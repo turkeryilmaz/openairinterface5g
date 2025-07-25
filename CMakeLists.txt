@@ -610,7 +610,7 @@ if (cap_FOUND)
   target_link_libraries(UTIL PRIVATE cap)
   target_compile_definitions(UTIL PRIVATE HAVE_LIB_CAP)
 endif()
-target_link_libraries(UTIL PUBLIC ${T_LIB} pthread LOG thread-pool utils barrier actor)
+target_link_libraries(UTIL PUBLIC pthread LOG thread-pool utils barrier actor)
 target_link_libraries(UTIL PUBLIC instrumentation)
 
 set(SECURITY_SRC
@@ -1728,7 +1728,6 @@ target_link_libraries(lte-softmodem PRIVATE
   -Wl,--end-group z dl)
 
 target_link_libraries(lte-softmodem PRIVATE pthread m CONFIG_LIB rt)
-target_link_libraries(lte-softmodem PRIVATE ${T_LIB})
 target_link_libraries(lte-softmodem PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
 target_link_libraries(lte-softmodem PRIVATE ${blas_LIBRARIES} ${cblas_LIBRARIES} ${lapacke_LIBRARIES} ${lapack_LIBRARIES})
 
@@ -1751,7 +1750,7 @@ target_link_libraries(oairu PRIVATE
   SCHED_RU_LIB PHY_COMMON PHY_RU UTIL shlib_loader
   -Wl,--end-group z dl)
 
-target_link_libraries(oairu PRIVATE pthread m CONFIG_LIB rt ${T_LIB})
+target_link_libraries(oairu PRIVATE pthread m CONFIG_LIB rt)
 target_link_libraries(oairu PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
 
 # force the generation of ASN.1 so that we don't need to wait during the build
@@ -1784,7 +1783,6 @@ target_link_libraries(lte-uesoftmodem PRIVATE
   -Wl,--end-group z dl)
 
 target_link_libraries(lte-uesoftmodem PRIVATE pthread m CONFIG_LIB rt)
-target_link_libraries(lte-uesoftmodem PRIVATE ${T_LIB})
 target_link_libraries(lte-uesoftmodem PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
 target_link_libraries(lte-uesoftmodem PRIVATE ${blas_LIBRARIES} ${cblas_LIBRARIES} ${lapacke_LIBRARIES} ${lapack_LIBRARIES})
 
@@ -1821,7 +1819,6 @@ target_link_libraries(nr-softmodem PRIVATE
   -Wl,--end-group z dl)
 
 target_link_libraries(nr-softmodem PRIVATE pthread m CONFIG_LIB rt)
-target_link_libraries(nr-softmodem PRIVATE ${T_LIB})
 target_link_libraries(nr-softmodem PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
 target_link_libraries(nr-softmodem PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
 add_boolean_option(OAI_WLS OFF "Activate OAI's WLS driver" OFF)
@@ -1857,7 +1854,7 @@ target_link_libraries(nr-cuup PRIVATE
                       CONFIG_LIB ITTI SCTP_CLIENT
                       GTPV1U e1ap f1ap
                       time_management
-                      z dl pthread shlib_loader ${T_LIB})
+                      z dl pthread shlib_loader)
 target_link_libraries(nr-cuup PRIVATE asn1_lte_rrc_hdrs asn1_nr_rrc_hdrs)
 if(E2_AGENT)
   target_link_libraries(nr-cuup PRIVATE e2_agent e2_agent_arg e2_ran_func_cuup)
@@ -1892,7 +1889,6 @@ target_link_libraries(nr-uesoftmodem PRIVATE
   -Wl,--end-group z dl)
 
 target_link_libraries(nr-uesoftmodem PRIVATE pthread m CONFIG_LIB rt nr_ue_phy_meas)
-target_link_libraries(nr-uesoftmodem PRIVATE ${T_LIB})
 target_link_libraries(nr-uesoftmodem PRIVATE nr_nas lib_uicc usim_lib)
 target_link_libraries(nr-uesoftmodem PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
 
@@ -1915,7 +1911,7 @@ target_link_libraries(nr-uesoftmodem PRIVATE
 #  )
 #target_link_libraries (dlsim_tm4
 #  -Wl,--start-group SIMU UTIL SCHED_LIB SCHED_RU_LIB PHY ITTI -Wl,--end-group
-#  pthread m rt CONFIG_LIB ${T_LIB}
+#  pthread m rt CONFIG_LIB
 #  )
 
 add_executable(rftest
@@ -2085,8 +2081,7 @@ endforeach(myExe)
 if (${T_TRACER})
   foreach(i
         #all "add_executable" definitions (except tests, updatefw)
-        lte-softmodem lte-uesoftmodem nr-softmodem
-        nr-uesoftmodem dlsim dlsim_tm4 dlsim_tm7
+        dlsim dlsim_tm7
         ulsim pbchsim scansim mbmssim pdcchsim pucchsim prachsim
         syncsim nr_ulsim nr_dlsim nr_dlschsim nr_pbchsim nr_pucchsim
         ldpctest polartest smallblocktest
