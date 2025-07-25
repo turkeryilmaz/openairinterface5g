@@ -2081,8 +2081,6 @@ endforeach(myExe)
 #    )
 #endforeach(myExe)
 
-include(${OPENAIR1_DIR}/PHY/CODING/nrLDPC_decoder/nrLDPC_tools/CMakeLists.txt)
-
 set(ENABLE_TESTS OFF CACHE STRING "Activate build of tests")
 set_property(CACHE ENABLE_TESTS PROPERTY TYPE BOOL)
 set(ENABLE_PHYSIM_TESTS OFF CACHE STRING "Activate build of physim tests")
