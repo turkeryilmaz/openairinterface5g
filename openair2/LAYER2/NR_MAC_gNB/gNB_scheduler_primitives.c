@@ -3351,8 +3351,10 @@ int get_fapi_beamforming_index(gNB_MAC_INST *mac, int ssb_idx)
 
 // TODO this is a placeholder for a possibly more complex function
 // for now the fapi beam index is the number of SSBs transmitted before ssb_index i
-void fapi_beam_index_allocation(NR_ServingCellConfigCommon_t *scc, gNB_MAC_INST *mac)
+void fapi_beam_index_allocation(NR_ServingCellConfigCommon_t *scc, const nr_mac_config_t *config, gNB_MAC_INST *mac)
 {
+  if (mac->beam_info.beam_mode == NO_BEAM_MODE)
+    return;
   int len = 0;
   uint8_t* buf = NULL;
   switch (scc->ssb_PositionsInBurst->present) {
@@ -3371,10 +3373,13 @@ void fapi_beam_index_allocation(NR_ServingCellConfigCommon_t *scc, gNB_MAC_INST 
     default :
       AssertFatal(false, "Invalid configuration\n");
   }
-  int fapi_index = 0;
+  int index = 0;
   for (int i = 0; i < len; ++i) {
-    if ((buf[i / 8] >> (7 - i % 8)) & 0x1)
+    if ((buf[i / 8] >> (7 - i % 8)) & 0x1) {
+      int fapi_index = mac->beam_info.beam_mode == ORAN_72_ANALOG_BEAM ? config->bw_list[index] : index;
       mac->fapi_beam_index[i] = fapi_index++;
+      index++;
+    }
     else
       mac->fapi_beam_index[i] = -1;
   }
@@ -3388,7 +3393,7 @@ static inline int get_beam_index(const NR_beam_info_t *beam_info, int frame, int
 NR_beam_alloc_t beam_allocation_procedure(NR_beam_info_t *beam_info, int frame, int slot, int beam_index, int slots_per_frame)
 {
   // if no beam allocation for analog beamforming we always return beam index 0 (no multiple beams)
-  if (!beam_info->beam_allocation)
+  if (beam_info->beam_mode == NO_BEAM_MODE)
     return (NR_beam_alloc_t) {.new_beam = false, .idx = 0};
 
   const int index = get_beam_index(beam_info, frame, slot, slots_per_frame);
@@ -3422,7 +3427,7 @@ void reset_beam_status(NR_beam_info_t *beam_info, int frame, int slot, int beam_
 void beam_selection_procedures(gNB_MAC_INST *mac, NR_UE_info_t *UE)
 {
   // do not perform beam procedures if there is no beam information
-  if (!mac->beam_info.beam_allocation)
+  if (!mac->beam_info.beam_mode == NO_BEAM_MODE)
     return;
   RSRP_report_t *rsrp_report = &UE->UE_sched_ctrl.CSI_report.ssb_rsrp_report;
   // simple beam switching algorithm -> we select beam with highest RSRP from CSI report
