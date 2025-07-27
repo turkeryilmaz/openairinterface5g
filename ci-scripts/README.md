@@ -24,7 +24,7 @@ hence the tagging.
 Now, run the scenario:
 
     cd ~/openairinterface5g/ci-scripts/
-    ./run_locally.sh container_5g_rfsim_simple.xml
+    ./run_locally.sh xml_files/container_5g_rfsim_simple.xml
 
 Output should look like
 
