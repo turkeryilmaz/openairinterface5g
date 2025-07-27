@@ -30,4 +30,4 @@ python3 main.py --mode=TesteNB --ranRepository=NONE --ranBranch=${CURRENT_BRANCH
     --ranCommitID=${COMMIT_SHA} --ranAllowMerge=false \
     --ranTargetBranch=NONE --eNBIPAddress=NONE --eNBUserName=NONE --eNBPassword=NONE \
     --eNBSourceCodePath=${REPO_PATH} \
-    --XMLTestFile=xml_files/${TESTCASE} --local
+    --XMLTestFile=${TESTCASE} --local
