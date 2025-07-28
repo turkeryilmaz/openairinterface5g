@@ -113,19 +113,13 @@ After downloading, you can load the FPGA image onto your bladeRF device using th
 ```
 bladeRF-cli --load-fpga hostedxA4-latest.rbf
 ```
-> Returns
-```powershell
-Loading FPGA...
-[INFO @ /privatehost/libraries/libbladeRF/src/helpers/version.c:106] FPGA version (v0.15.3) is newer than entries in libbladeRF's compatibility table. Please update libbladeRF if problems arise.
-Successfully loaded FPGA bitstream!
-```
 
 This command loads the FPGA image into the bladeRF device, preparing it for operation. ￼
 
 ---
 
 
-#### &#x1F4E6; [Upgrading FX3 Firmware](https://github.com/Nuand/bladeRF/wiki/Upgrading-bladeRF-FX3-Firmware)
+#### &#x1F4E6; [Upgrading FX3 Firmware](https://github.com/Nuand/bladeRF/wiki/Upgrading-bladeRF-FX3-Firmware) (upgrade once)
 
 [&#x1F4DC; FX3 images](https://www.nuand.com/fx3_images)
 
