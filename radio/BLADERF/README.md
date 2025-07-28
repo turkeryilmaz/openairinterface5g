@@ -45,7 +45,14 @@ As of **2025**, this documentation provides instructions for setting up and usin
       sudo make install
       sudo ldconfig
       ```
+      #### c). **Reload udev rules**
 
+      ```bash
+      sudo udevadm control --reload-rules
+      sudo udevadm trigger
+      ```
+
+      * Log out and log back in
 ---
 
 ### **2. Flashing the FPGA Image**
