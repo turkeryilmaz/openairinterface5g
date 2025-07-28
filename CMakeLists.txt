@@ -2345,6 +2345,10 @@ if(OAI_USRP_PACKAGE)
       )
   install(FILES "${OPENAIR_DIR}/radio/USRP/README.md" DESTINATION share/doc/ COMPONENT oai-usrp)
   list(APPEND COMPONENTS_LIST oai-usrp)
+
+  set(CPACK_COMPONENT_OAI-USRP_SUMMARY "OpenAirInterface USRP package")
+  set(CPACK_COMPONENT_OAI-USRP_DESCRIPTION "This package is dedicated for USRP library")
+  set(CPACK_COMPONENT_OAI-USRP_PACKAGE_NAME "openairinterface-oai-usrp")
 endif()
 
 
