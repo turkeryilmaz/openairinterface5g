@@ -31,3 +31,5 @@
   - Custom_Command
   - Custom_Script
   - Create_Workspace
+  - DeployCU
+  - UndeployCU

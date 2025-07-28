@@ -252,6 +252,13 @@ def ExecuteActionWithParam(action, ctx):
 		core_op = getattr(cls_oaicitest.OaiCiTest, action)
 		success = core_op(cn_id, ctx, HTML)
 
+	elif action == 'DeployCU' or action == 'UndeployCU':
+		svr_id = test.findtext('svr_id') or None
+		if action == 'DeployCU':
+			success = CLUSTER.deploy_oc_cu(HTML, svr_id)
+		elif action == 'UndeployCU':
+			success = CLUSTER.undeploy_oc_cu(HTML, svr_id)
+
 	elif action == 'Deploy_Object' or action == 'Undeploy_Object' or action == "Create_Workspace":
 		node = test.findtext('node')
 		CONTAINERS.yamlPath = test.findtext('yaml_path')
