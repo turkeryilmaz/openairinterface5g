@@ -2346,7 +2346,7 @@ endif()
 if(OAI_COMMON_PACKAGE)
 
   if(PACKAGING-RPM)
-    set(CPACK_RPM_OAI-COMMON_PACKAGE_REQUIRES "automake, gcc, gcc-c++, git, pkgconfig, lksctp-tools, libtool, ninja-build, make, patch, lapack, blas, vim-common")
+    set(CPACK_RPM_OAI-COMMON_PACKAGE_REQUIRES "automake, gcc, gcc-c++, git, pkgconfig, lksctp-tools, ninja-build, make, patch, lapack, blas, vim-common")
   else()
     set(CPACK_DEBIAN_OAI-COMMON_PACKAGE_DEPENDS "automake, build-essential, pkg-config, git, patch, openssl, xxd")
   endif()
