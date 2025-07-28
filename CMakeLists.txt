@@ -1997,6 +1997,7 @@ target_link_libraries(polartest PRIVATE
   -Wl,--start-group UTIL SIMU PHY_COMMON PHY_NR PHY_NR_COMMON PHY_NR_UE CONFIG_LIB -Wl,--end-group
   m pthread dl ${T_LIB}
   )
+set_target_properties(polartest PROPERTIES  VERSION 1.0.0 SOVERSION 1)
 
 add_executable(smallblocktest
   ${OPENAIR1_DIR}/PHY/CODING/TESTBENCH/smallblocktest.c
@@ -2006,6 +2007,7 @@ target_link_libraries(smallblocktest PRIVATE
   -Wl,--start-group UTIL SIMU PHY_NR PHY_COMMON PHY_NR_COMMON -Wl,--end-group
   m pthread dl shlib_loader ${T_LIB}
 )
+set_target_properties(smallblocktest PROPERTIES VERSION 1.0.0 SOVERSION 1)
 
 
 add_executable(ldpctest
@@ -2020,6 +2022,7 @@ target_link_libraries(ldpctest PRIVATE
   # --whole-archive links 'check_crc' in the executable even though it is note used, see 'man ld'
   -Wl,--whole-archive crc_byte -Wl,--no-whole-archive
 )
+set_target_properties(ldpctest PROPERTIES VERSION 1.0.0 SOVERSION 1)
 
 add_library(physim_common OBJECT ${OPENAIR1_DIR}/SIMULATION/NR_PHY/nr_unitary_common.c)
 target_link_libraries(physim_common PRIVATE UTIL)
@@ -2030,6 +2033,7 @@ target_link_libraries(nr_dlschsim PRIVATE
   m pthread ${T_LIB} ITTI dl shlib_loader physim_common
   )
 target_link_libraries(nr_dlschsim PRIVATE asn1_nr_rrc_hdrs)
+set_target_properties(nr_dlschsim PROPERTIES VERSION 1.0.0 SOVERSION 1)
 
 add_executable(nr_pbchsim ${OPENAIR1_DIR}/SIMULATION/NR_PHY/pbchsim.c)
 target_link_libraries(nr_pbchsim PRIVATE
@@ -2051,6 +2055,7 @@ target_link_libraries(nr_psbchsim PRIVATE
   m pthread ${T_LIB} ITTI dl shlib_loader physim_common
   )
 target_link_libraries(nr_psbchsim PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
+set_target_properties(nr_psbchsim PROPERTIES VERSION 1.0.0 SOVERSION 1)
 
 add_executable(nr_pucchsim ${OPENAIR1_DIR}/SIMULATION/NR_PHY/pucchsim.c)
 target_link_libraries(nr_pucchsim PRIVATE
@@ -2058,6 +2063,7 @@ target_link_libraries(nr_pucchsim PRIVATE
   m pthread ${T_LIB} ITTI dl shlib_loader physim_common
 )
 target_link_libraries(nr_pucchsim PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
+set_target_properties(nr_pucchsim PROPERTIES VERSION 1.0.0 SOVERSION 1)
 
 add_executable(nr_dlsim
   ${OPENAIR1_DIR}/SIMULATION/NR_PHY/dlsim.c
@@ -2072,12 +2078,14 @@ target_link_libraries(nr_dlsim PRIVATE
   m pthread ${T_LIB} ITTI dl shlib_loader nr_ue_phy_meas physim_common
   )
 target_link_libraries(nr_dlsim PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
+set_target_properties(nr_dlsim PROPERTIES VERSION 1.0.0 SOVERSION 1)
 
 add_executable(nr_prachsim ${OPENAIR1_DIR}/SIMULATION/NR_PHY/prachsim.c)
 target_link_libraries(nr_prachsim PRIVATE
   -Wl,--start-group UTIL SIMU PHY_COMMON PHY_NR_COMMON PHY_NR PHY_RU PHY_NR_UE MAC_NR_COMMON SCHED_NR_LIB CONFIG_LIB -lz -Wl,--end-group
   m pthread ${T_LIB} ITTI dl shlib_loader physim_common)
 target_link_libraries(nr_prachsim PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
+set_target_properties(nr_prachsim PROPERTIES VERSION 1.0.0 SOVERSION 1)
 
 add_executable(nr_ulschsim
   ${OPENAIR1_DIR}/SIMULATION/NR_PHY/ulschsim.c
@@ -2088,6 +2096,7 @@ target_link_libraries(nr_ulschsim PRIVATE
   m pthread ${T_LIB} ITTI dl shlib_loader physim_common
 )
 target_link_libraries(nr_ulschsim PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
+set_target_properties(nr_ulschsim PROPERTIES VERSION 1.0.0 SOVERSION 1)
 
 add_executable(nr_ulsim
   ${OPENAIR1_DIR}/SIMULATION/NR_PHY/ulsim.c
@@ -2103,6 +2112,7 @@ target_link_libraries(nr_ulsim PRIVATE
   m pthread ${T_LIB} ITTI dl shlib_loader nr_ue_phy_meas physim_common
   )
 target_link_libraries(nr_ulsim PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
+set_target_properties(nr_ulsim PROPERTIES VERSION 1.0.0 SOVERSION 1)
 
 foreach(myExe dlsim dlsim_tm7 ulsim pbchsim scansim mbmssim pdcchsim pucchsim prachsim syncsim)
 
