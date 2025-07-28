@@ -2374,9 +2374,9 @@ if(OAI_COMMON_PACKAGE)
         )
     list(APPEND COMPONENTS_LIST oai-common)
 
-  set(CPACK_COMPONENT_OAI_COMMON_SUMMARY "OpenAirInterface shared libraries package")
-  set(CPACK_COMPONENT_OAI_COMMON_DESCRIPTION "This package contains shared libraries for other packages")
-  set(CPACK_COMPONENT_OAI_COMMON_PACKAGE_NAME "openairinterface-oai-common")
+  set(CPACK_COMPONENT_OAI-COMMON_SUMMARY "OpenAirInterface shared libraries package")
+  set(CPACK_COMPONENT_OAI-COMMON_DESCRIPTION "This package contains shared libraries for other packages")
+  set(CPACK_COMPONENT_OAI-COMMON_PACKAGE_NAME "openairinterface-oai-common")
 endif()
 
 
