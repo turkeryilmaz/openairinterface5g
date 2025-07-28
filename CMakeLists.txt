@@ -2285,15 +2285,18 @@ if(LTE_PACKAGE)
   set(nvram "${OPENAIR_CMAKE}/nas_sim_tools/build/nvram")
   set(usim "${OPENAIR_CMAKE}/nas_sim_tools/build/usim")
 
-  set(CPACK_COMPONENT_OAI-LTE_SUMMARY "OpenAirInterface LTE package")
-  set(CPACK_COMPONENT_OAI-LTE_DESCRIPTION "This package is dedicated for LTE executables")
-  set(CPACK_DEBIAN_OAI-LTE_PACKAGE_DEPENDS "oai-common")
-
   install(TARGETS lte-softmodem lte-uesoftmodem
     COMPONENT oai-lte
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib
+    PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
   )
+
+  foreach(lib lte-softmodem lte-uesoftmodem)
+    add_custom_command(TARGET ${lib} 
+      COMMAND ${CMAKE_STRIP} --strip-unneeded $<TARGET_FILE:${lib}>
+      COMMENT "Stripping unneeded symbols from ${lib}")
+  endforeach()
 
   install(PROGRAMS 
       ${conf2uedata} 
@@ -2304,6 +2307,11 @@ if(LTE_PACKAGE)
   )
 
   list(APPEND COMPONENTS_LIST oai-lte)
+
+  set(CPACK_COMPONENT_OAI-LTE_SUMMARY "OpenAirInterface LTE package")
+  set(CPACK_COMPONENT_OAI-LTE_DESCRIPTION "This package is dedicated for LTE executables")
+  set(CPACK_COMPONENT_OAI-LTE_PACKAGE_NAME "openairinterface-oai-lte")
+  set(CPACK_DEBIAN_OAI-LTE_PACKAGE_DEPENDS "oai-common")
 endif()
 
 
