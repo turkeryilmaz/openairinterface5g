@@ -223,7 +223,10 @@ static void oran_allocate_cplane_buffers(void *instHandle,
 #endif
 
   uint32_t poolPrb;
-  uint32_t numBufsPrb = next_power_2(XRAN_N_FE_BUF_LEN * ant * XRAN_NUM_OF_SYMBOL_PER_SLOT) - 1;
+  // For non-Liteon, xran_prb_map has struct xran_prb_elm prbMap[1]
+  // uint32_t numBufsPrb = next_power_2(XRAN_N_FE_BUF_LEN * ant * XRAN_NUM_OF_SYMBOL_PER_SLOT) - 1;
+  // For Liteon, xran_prb_map has struct xran_prb_elm prbMap[14]
+  uint32_t numBufsPrb = next_power_2(XRAN_N_FE_BUF_LEN * ant) - 1;
   uint32_t bufSizePrb = size_of_prb_map;
   status = xran_bm_init(instHandle, &poolPrb, numBufsPrb, bufSizePrb);
   AssertFatal(XRAN_STATUS_SUCCESS == status, "Failed at xran_bm_init(), status %d\n", status);
@@ -366,8 +369,11 @@ static void oran_allocate_buffers(void *handle,
 #ifdef E_RELEASE
   uint32_t size_of_prb_map = sizeof(struct xran_prb_map) + sizeof(struct xran_prb_elm) * (xran_max_sections_per_slot - 1);
 #elif defined F_RELEASE
-  uint32_t numPrbElm = xran_get_num_prb_elm(&dlPm[0], mtu);
-  uint32_t size_of_prb_map  = sizeof(struct xran_prb_map) + sizeof(struct xran_prb_elm) * (numPrbElm);
+  // For non-Liteon, xran_prb_map has struct xran_prb_elm prbMap[1]
+  // uint32_t numPrbElm = xran_get_num_prb_elm(&dlPm[0], mtu);
+  // uint32_t size_of_prb_map  = sizeof(struct xran_prb_map) + sizeof(struct xran_prb_elm) * (numPrbElm);
+  // For Liteon, xran_prb_map has struct xran_prb_elm prbMap[14]
+  uint32_t size_of_prb_map  = sizeof(struct xran_prb_map);
 #endif
 
   // PDSCH

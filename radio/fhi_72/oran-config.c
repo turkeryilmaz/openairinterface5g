@@ -993,7 +993,7 @@ static bool set_fh_config(void *mplane_api, int ru_idx, int num_rus, enum xran_c
   fh_config->max_sections_per_symbol = 0; // not used in xran
 
 #ifdef F_RELEASE
-  fh_config->RunSlotPrbMapBySymbolEnable = 0; // enable PRB mapping by symbol with multisection
+  fh_config->RunSlotPrbMapBySymbolEnable = 1; // enable PRB mapping by symbol with multisection
 
   fh_config->dssEnable = 0; // enable DSS (extension-9)
   fh_config->dssPeriod = 0; // DSS pattern period for LTE/NR
