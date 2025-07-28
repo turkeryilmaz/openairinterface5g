@@ -27,32 +27,32 @@ As of **2025**, this documentation provides instructions for setting up and usin
                                                                libncurses5-dev libncursesw5-dev libcurl4-openssl-dev
       ```   
 
-      ##### [Building bladeRF libraries and tools from source](https://github.com/Nuand/bladeRF/wiki/Getting-Started%3A-Linux#building-bladerf-libraries-and-tools-from-source)
+### &#x1F6A7; [Building bladeRF libraries and tools from source](https://github.com/Nuand/bladeRF/wiki/Getting-Started%3A-Linux#building-bladerf-libraries-and-tools-from-source)
 
-      ###### a). Clone the **bladeRF** source code
+   #### a). Clone the **bladeRF** source code
 
-      ```bash
-      git clone https://github.com/Nuand/bladeRF.git && cd bladeRF
-      ```
+   ```bash
+   git clone https://github.com/Nuand/bladeRF.git && cd bladeRF
+   ```
 
-      ###### b). Compile and Install the binaries
+   #### b). Compile and Install the binaries
 
-      ```bash
-      mkdir build
-      cd build
-      cmake ..
-      make -j$(nproc)
-      sudo make install
-      sudo ldconfig
-      ```
-      ###### c). **Reload udev rules**
+   ```bash
+   mkdir build
+   cd build
+   cmake ..
+   make -j$(nproc)
+   sudo make install
+   sudo ldconfig
+   ```
+   #### c). **Reload udev rules**
 
-      ```bash
-      sudo udevadm control --reload-rules
-      sudo udevadm trigger
-      ```
+   ```bash
+   sudo udevadm control --reload-rules
+   sudo udevadm trigger
+   ```
 
-      * Log out and log back in
+   * Log out and log back in
 ---
 
 ### :flashlight:  **2. Flashing the FPGA Image**
