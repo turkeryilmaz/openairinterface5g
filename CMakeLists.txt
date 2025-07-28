@@ -2343,17 +2343,27 @@ endif()
 
 
 if(OAI_PHYSIM_PACKAGE)
-  set(CPACK_COMPONENT_OAI-PHYSIM_SUMMARY "OpenAirInterface PhySim package")
-  set(CPACK_COMPONENT_OAI-PHYSIM_DESCRIPTION "This package contains every simulators")
-  set(CPACK_DEBIAN_OAI-PHYSIM_PACKAGE_DEPENDS "oai-common")
   #TO BE FIXED BEFORE ADDED: pbchsim mbmssim pdcchsim pucchsim prachsim syncsim dlsim ulsim scansim 
+  install(FILES "${OPENAIR_DIR}/doc/physical-simulators.md" DESTINATION share/doc/ COMPONENT oai-physim)
+
+  foreach(lib polartest smallblocktest ldpctest nr_dlschsim nr_psbchsim nr_pucchsim nr_dlsim nr_prachsim nr_ulschsim nr_ulsim)
+    add_custom_command(TARGET ${lib} 
+      COMMAND ${CMAKE_STRIP} --strip-unneeded $<TARGET_FILE:${lib}>
+      COMMENT "Stripping unneeded symbols from ${lib}")
+  endforeach()
+
   install(TARGETS polartest smallblocktest ldpctest nr_dlschsim nr_psbchsim nr_pucchsim nr_dlsim nr_prachsim nr_ulschsim nr_ulsim 
           COMPONENT oai-physim
           RUNTIME DESTINATION bin
           LIBRARY DESTINATION lib
+          PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
         )
-  install(FILES "${OPENAIR_DIR}/doc/physical-simulators.md" DESTINATION share/doc/ COMPONENT oai-physim)
+
   list(APPEND COMPONENTS_LIST oai-physim)
+
+  set(CPACK_COMPONENT_OAI-PHYSIM_SUMMARY "OpenAirInterface PhySim package")
+  set(CPACK_COMPONENT_OAI-PHYSIM_DESCRIPTION "This package contains every simulators")
+  set(CPACK_COMPONENT_OAI-PHYSIM_PACKAGE_NAME "openairinterface-oai-physim")
 endif()
 
 
@@ -2364,6 +2374,7 @@ if(OAI_LDPC_T2_PACKAGE)
         COMPONENT oai-ldpc-t2
         RUNTIME DESTINATION bin
         LIBRARY DESTINATION lib
+        PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
       )
   install(FILES "${OPENAIR_DIR}/doc/physical-simulators.md" DESTINATION share/doc/ COMPONENT oai-physim)
   list(APPEND COMPONENTS_LIST oai-ldpc-t2)
@@ -2382,7 +2393,7 @@ if(OAI_USRP_PACKAGE)
         COMPONENT oai-usrp
         RUNTIME DESTINATION bin
         LIBRARY DESTINATION lib
-        PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
+        PERMISSIONS OWNER_READ OWNER_WRITE  GROUP_READ WORLD_READ
       )
   install(FILES "${OPENAIR_DIR}/radio/USRP/README.md" DESTINATION share/doc/ COMPONENT oai-usrp)
   list(APPEND COMPONENTS_LIST oai-usrp)
@@ -2411,7 +2422,7 @@ if(OAI_COMMON_PACKAGE)
           COMPONENT oai-common
           RUNTIME DESTINATION bin
           LIBRARY DESTINATION lib
-          PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
+          PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
         )
     list(APPEND COMPONENTS_LIST oai-common)
 
