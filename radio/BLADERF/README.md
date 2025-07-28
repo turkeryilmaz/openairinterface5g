@@ -209,7 +209,7 @@ bladeRF-cli --probe
 ```
 ---
 
-### **4. Automatic Calibration (AD9361)**
+### &#x1F527; **4. Automatic Calibration (AD9361)**
 
    With the **AD9361** RF transceiver in the **BladeRF 2.0 Micro**, calibration is now **automatic**. This includes calibration of:
    - LMS parameters (IQ imbalance correction).
