@@ -27,7 +27,7 @@ As of **2025**, this documentation provides instructions for setting up and usin
                                                                libncurses5-dev libncursesw5-dev libcurl4-openssl-dev
       ```   
 
-### &#x1F6A7; [Building bladeRF libraries and tools from source](https://github.com/Nuand/bladeRF/wiki/Getting-Started%3A-Linux#building-bladerf-libraries-and-tools-from-source)
+### &#x1F6A7; **2. [Building bladeRF libraries and tools from source](https://github.com/Nuand/bladeRF/wiki/Getting-Started%3A-Linux#building-bladerf-libraries-and-tools-from-source) **
 
    #### a). Clone the **bladeRF** source code
 
@@ -55,7 +55,7 @@ As of **2025**, this documentation provides instructions for setting up and usin
    * Log out and log back in
 ---
 
-### :flashlight:  **2. Flashing the FPGA Image**
+### :flashlight:  **3. Flashing the FPGA Image**
 
 #### :abacus: [Configuration File](https://nuand.com/libbladeRF-doc/v2.5.0/configfile.html)
 
@@ -209,7 +209,7 @@ bladeRF-cli --probe
 ```
 ---
 
-### **3. Automatic Calibration (AD9361)**
+### **4. Automatic Calibration (AD9361)**
 
    With the **AD9361** RF transceiver in the **BladeRF 2.0 Micro**, calibration is now **automatic**. This includes calibration of:
    - LMS parameters (IQ imbalance correction).
@@ -293,7 +293,7 @@ bladeRF>
 
 ---
 
-### **4. OAI and the bladeRF Libraries**
+### **5. OAI and the bladeRF Libraries**
 
 1. Install the OAI libraries
 
@@ -335,33 +335,4 @@ bladeRF>
    ```
 
 ---
-
-### **6. Test the Setup**
-
-   Connect a UE and run traffic tests (e.g., **iperf**).  
-   Expected throughput:
-   - **Downlink:** Over **16 Mbps**  
-   - **Uplink:** Over **8 Mbps**
-
-   In the OAI logs, you should observe entries with **PHR 40** and **CQI 15** if the setup is correctly optimized.
-
----
-
-### **7. Troubleshooting**
-
-   Ensure you are using appropriate radio equipment, including:
-   - **Duplexers**
-   - **Proper antennas**
-   - **A low-interference environment**
-
-   Check USB connections for stability and ensure the device is not overheating.
-
----
-
-### **8. Additional Notes**
-
-   - For high sample rates, ensure your system has sufficient USB 3.1 bandwidth and CPU resources.
-   - Monitor **RX/TX overruns** using logs and adjust parameters (e.g., sample rate, buffer size, and gain) as needed.
-   - Stay updated with the latest firmware and driver releases from Nuand's GitHub repository.
-
 
