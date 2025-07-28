@@ -15,8 +15,17 @@ As of **2025**, this documentation provides instructions for setting up and usin
    - Install the latest **bladeRF 2.0 Micro** libraries and utilities.  
      It's recommended to build from source for the most recent updates.
 
-      Follow this link :point_right: [1.Installing](DOC/1.Installing) to find the installation procedure based on your Linux package Manager.
-   
+      Follow this link :point_right: to find the installation procedure based on your Linux package Manager.
+
+      #### Debian
+
+      ##### Install the required packages
+
+```
+sudo apt update
+sudo apt install -y build-essential cmake git pkg-config libusb-1.0-0-dev libtecla-dev \
+                                                         libncurses5-dev libncursesw5-dev libcurl4-openssl-dev
+```   
 
 ---
 
