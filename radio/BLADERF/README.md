@@ -227,7 +227,74 @@ bladeRF-cli --probe
 
    ```bash
    bladeRF-cli --interactive
-   print
+   bladeRF> print
+
+  RX1 Bandwidth:  18000000 Hz (Range: [200000, 56000000])
+  RX2 Bandwidth:  18000000 Hz (Range: [200000, 56000000])
+  TX1 Bandwidth:  18000000 Hz (Range: [200000, 56000000])
+  TX2 Bandwidth:  18000000 Hz (Range: [200000, 56000000])
+
+  RX1 Frequency:    2400000 Hz (Range: [70000000, 6000000000])
+  RX2 Frequency:    2400000 Hz (Range: [70000000, 6000000000])
+  TX1 Frequency:    2400000 Hz (Range: [47000000, 6000000000])
+  TX2 Frequency:    2400000 Hz (Range: [47000000, 6000000000])
+
+  Tuning Mode: Host
+
+  Bit Mode: 16 bit samples
+
+  Feature:  Default enabled
+
+  RX1 AGC: Enabled   
+  RX2 AGC: Enabled   
+
+  Clock reference: none
+  Clock input:     Onboard VCTCXO
+  Clock output:    Disabled
+
+  RX1 RSSI: preamble = -128 dB, symbol = -128 dB
+  RX2 RSSI: preamble = -128 dB, symbol = -128 dB
+
+  Loopback mode: none
+
+  RX mux: BASEBAND - Baseband samples
+
+  RX FIR Filter: normal (default)
+  TX FIR Filter: bypass (default)
+
+  Gain RX1 overall:  111 dB (Range: [-16, 60])
+              full:  128 dB (Range: [1, 77])
+  Gain RX2 overall:  111 dB (Range: [-16, 60])
+              full:  128 dB (Range: [1, 77])
+  gain: Invalid operation or parameter
+
+  RX1 sample rate: 7680000 0/1 (Range: [520834, 61440000])
+  RX2 sample rate: 7680000 0/1 (Range: [520834, 61440000])
+  TX1 sample rate: 7680000 0/1 (Range: [520834, 61440000])
+  TX2 sample rate: 7680000 0/1 (Range: [520834, 61440000])
+
+  Bias Tee (RX1): off
+  Bias Tee (RX2): off
+  Bias Tee (TX1): off
+  Bias Tee (TX2): off
+
+  Current VCTCXO trim: 0x1f91
+  Stored VCTCXO trim:  0x1f91
+
+  Hardware status:
+    RFIC status:
+      Tuning Mode:  Host
+      Temperature:  223.7 degrees C
+      CTRL_OUT:     0x18 (0x035=0xff, 0x036=0xff)
+    Power source:   USB Bus
+    Power monitor:  4.988 V, 0.45 A, 2.2 W
+    RF routing:
+      RX1: RFIC 0x0 (A_BAL  ) <= SW 0x0 (OPEN   )
+      RX2: RFIC 0x0 (A_BAL  ) <= SW 0x0 (OPEN   )
+      TX1: RFIC 0x0 (TXA    ) => SW 0x0 (OPEN   )
+      TX2: RFIC 0x0 (TXA    ) => SW 0x0 (OPEN   )
+
+bladeRF>
    ```
 
 ---
