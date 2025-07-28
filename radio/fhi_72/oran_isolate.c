@@ -215,6 +215,8 @@ void oran_fh_if4p5_south_in(RU_t *ru, int *frame, int *slot)
   ru_info_t ru_info;
   ru_info.nb_rx = ru->nb_rx * ru->num_beams_period;
   ru_info.rxdataF = ru->common.rxdataF;
+  ru_info.beam_id = ru->common.beam_id;
+  ru_info.num_beams_period = ru->num_beams_period;
   ru_info.prach_buf = ru->prach_rxsigF[0]; // index: [prach_oca][ant_id]
 
   RU_proc_t *proc = &ru->proc;
