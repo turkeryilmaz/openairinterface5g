@@ -27,6 +27,25 @@ sudo apt install -y build-essential cmake git pkg-config libusb-1.0-0-dev libtec
                                                          libncurses5-dev libncursesw5-dev libcurl4-openssl-dev
 ```   
 
+      ##### [Building bladeRF libraries and tools from source](https://github.com/Nuand/bladeRF/wiki/Getting-Started%3A-Linux#building-bladerf-libraries-and-tools-from-source)
+
+      ###### a). Clone the **bladeRF** source code
+
+```
+git clone https://github.com/Nuand/bladeRF.git && cd bladeRF
+```
+
+      ###### b). Compile and Install the binaries
+
+```
+mkdir build
+cd build
+cmake ..
+make -j$(nproc)
+sudo make install
+sudo ldconfig
+```
+
 ---
 
 ### **2. Flashing the FPGA Image**
