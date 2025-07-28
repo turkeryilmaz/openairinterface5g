@@ -2316,19 +2316,29 @@ endif()
 
 
 if(NR_PACKAGE)
-  set(CPACK_COMPONENT_OAI-NR_SUMMARY "OpenAirInterface NR package")
-  set(CPACK_COMPONENT_OAI-NR_DESCRIPTION "This package is dedicated for NR executables")
-  set(CPACK_DEBIAN_OAI-NR_PACKAGE_DEPENDS "oai-common")
   install(TARGETS nr-softmodem nr-cuup nr-uesoftmodem
     COMPONENT oai-nr
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib
+    PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
   )
-  install(FILES "${OPENAIR_DIR}/doc/NR_SA_Tutorial_COTS_UE.md" DESTINATION share/doc/ COMPONENT oai-nr)
-  install(FILES "${OPENAIR_DIR}/doc/NR_SA_Tutorial_OAI_CN5G.md" DESTINATION share/doc/ COMPONENT oai-nr)
-  install(FILES "${OPENAIR_DIR}/doc/NR_SA_Tutorial_OAI_multi_UE.md" DESTINATION share/doc/ COMPONENT oai-nr)
-  install(FILES "${OPENAIR_DIR}/doc/NR_SA_Tutorial_OAI_nrUE.md" DESTINATION share/doc/ COMPONENT oai-nr)
+
+  foreach(lib nr-softmodem nr-cuup nr-uesoftmodem)
+    add_custom_command(TARGET ${lib} 
+      COMMAND ${CMAKE_STRIP} --strip-unneeded $<TARGET_FILE:${lib}>
+      COMMENT "Stripping unneeded symbols from ${lib}")
+  endforeach()
+
+  foreach(document NR_SA_Tutorial_COTS_UE NR_SA_Tutorial_OAI_CN5G NR_SA_Tutorial_OAI_multi_UE NR_SA_Tutorial_OAI_nrUE)
+      install(FILES "${OPENAIR_DIR}/doc/${document}.md" DESTINATION share/doc/ COMPONENT oai-nr)
+  endforeach()
+
   list(APPEND COMPONENTS_LIST oai-nr)
+
+  set(CPACK_COMPONENT_OAI-NR_SUMMARY "OpenAirInterface NR package")
+  set(CPACK_COMPONENT_OAI-NR_DESCRIPTION "This package is dedicated for NR executables")
+  set(CPACK_COMPONENT_OAI-NR_PACKAGE_NAME "openairinterface-oai-nr")
+  set(CPACK_DEBIAN_OAI-NR_PACKAGE_DEPENDS "oai-common")
 endif()
 
 
