@@ -354,9 +354,11 @@ function main() {
             echo_info "Will create a OAI COMMON package"
             ;;
        --OAI-USRP-packaging)
+            shift
+            set -- -w USRP "$@"
             CMAKE_CMD="$CMAKE_CMD -DOAI_USRP_PACKAGE=ON"
             echo_info "Will create a OAI USRP package"
-            shift;;
+            ;;
        --OAI-LDPC-T2-packaging)
             shift
             set -- --build-lib "ldpc_t2"
