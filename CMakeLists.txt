@@ -72,6 +72,14 @@ option(OAI_USRP_PACKAGE "OAI-USRP-PACKAGE" OFF)
 option(OAI_LDPC_T2_PACKAGE "OAI-LDPC-T2-PACKAGE" OFF)
 option(OAI_PHYSIM_PACKAGE "OAI-PHYSIM-PACKAGE" OFF)
 
+if(NR_PACKAGE OR LTE_PACKAGE OR OAI_COMMON_PACKAGE OR OAI_USRP_PACKAGE OR OAI_LDPC_T2_PACKAGE OR OAI_PHYSIM_PACKAGE)
+  set(CMAKE_SKIP_INSTALL_RPATH TRUE)
+  set(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
+  set(CMAKE_INSTALL_RPATH "")
+  set(CMAKE_INSTALL_RPATH_USE_LINK_PATH FALSE)
+  set(CMAKE_SKIP_RPATH TRUE)
+endif()
+
 # Check if asn1c is installed, and check if it supports all options we need
 # a user can provide ASN1C_EXEC to override an asn1c to use (e.g., parallel
 # installation)
@@ -237,7 +245,11 @@ endif()
 add_definitions("-DASN_DISABLE_OER_SUPPORT -DHAVE_CONFIG_H -DHAVE_CONFIG_H_")
 
 #########################
+if(NR_PACKAGE OR LTE_PACKAGE OR OAI_COMMON_PACKAGE OR OAI_USRP_PACKAGE OR OAI_LDPC_T2_PACKAGE OR OAI_PHYSIM_PACKAGE)
+  set(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} -ggdb2")
+else()
 set(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} -ggdb2 -Wl,-rpath -Wl,${CMAKE_CURRENT_BINARY_DIR}")
+endif()
 #########################
 # set a flag for changes in the source code
 # these changes are related to hardcoded path to include .h files
