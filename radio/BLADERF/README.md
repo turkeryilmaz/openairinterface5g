@@ -21,7 +21,7 @@ As of **2025**, this documentation provides instructions for setting up and usin
 
       ##### Install the required packages
 
-```
+```bash
 sudo apt update
 sudo apt install -y build-essential cmake git pkg-config libusb-1.0-0-dev libtecla-dev \
                                                          libncurses5-dev libncursesw5-dev libcurl4-openssl-dev
@@ -31,13 +31,13 @@ sudo apt install -y build-essential cmake git pkg-config libusb-1.0-0-dev libtec
 
       ###### a). Clone the **bladeRF** source code
 
-```
+```bash
 git clone https://github.com/Nuand/bladeRF.git && cd bladeRF
 ```
 
       ###### b). Compile and Install the binaries
 
-```
+```bash
 mkdir build
 cd build
 cmake ..
