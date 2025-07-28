@@ -161,7 +161,7 @@ sudo bladeRF-cli -f bladeRF_fw_${BLADERF_FX3_VERSION}.img
 ```
 This command loads the firmware image into the bladeRF device, preparing it for operation. ￼
 
-### :warning: Reboot the server
+#### :warning: Reboot the server
 
 - [ ] after rebooting check the version:
 
