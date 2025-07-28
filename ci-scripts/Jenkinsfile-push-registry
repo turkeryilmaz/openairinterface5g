@@ -77,7 +77,8 @@ pipeline {
           WEEK_SHA = WEEK_SHA.trim()
 
           withCredentials([
-            [$class: 'UsernamePasswordMultiBinding', credentialsId: "${params.DH_Credentials}", usernameVariable: 'DH_Username', passwordVariable: 'DH_Password']
+            [$class: 'UsernamePasswordMultiBinding', credentialsId: "${params.DH_Credentials}", usernameVariable: 'DH_Username', passwordVariable: 'DH_Password'],
+            [string(credentialsId: 'OAIRANPrivateRegistryURL', variable: 'OAIRANPrivateRegistryURL')]
           ]) {
             def listOfImages = ["oai-enb", "oai-gnb", "oai-lte-ue", "oai-nr-ue", "oai-nr-cuup", "oai-gnb-fhi72"]
             // Logging in on both registries
