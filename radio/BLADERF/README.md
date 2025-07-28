@@ -312,7 +312,7 @@ bladeRF>
 
 ---
 
-### &#x1F4F3; **5. Tune the RX Gain Using the gNB (NR)**
+### &#x1F4F3; **6. Tune the RX Gain Using the gNB (NR)**
 
    Run the softmodem and monitor the **gNB (NR)** logs for input signal strength and performance.  
    Instructions are available on the OAI wiki:  
