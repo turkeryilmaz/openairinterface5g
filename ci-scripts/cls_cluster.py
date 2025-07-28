@@ -448,3 +448,39 @@ class Cluster:
 			HTML.CreateHtmlTestRowQueue('Physical simulator failed', 'KO', [test_result])
 			logging.error('\u001B[1m Physical Simulator Fail\u001B[0m')
 		return test_status
+
+	def deploy_oc_cu(self, HTML, svr_id):
+		if self.ranRepository == '' or self.ranBranch == '' or self.ranCommitID == '':
+			HELP.GenericHelp(CONST.Version)
+			raise ValueError(f'Insufficient Parameter: ranRepository {self.ranRepository} ranBranch {self.ranBranch} ranCommitID {self.ranCommitID}')
+		image_tag = cls_containerize.CreateTag(self.ranCommitID, self.ranBranch, self.ranAllowMerge)
+		logging.debug(f'Deploy CU on OC from server: {svr_id}')
+		script = "scripts/oc-cu-deploy.sh"
+		oc_namespace = "oaicicd-core-for-fhi72"
+		oc_dir = "/opt/oai-cn5g-fed-develop-2025-jan"
+		options = f"{oc_dir} {oc_namespace} {image_tag}"
+		ret = cls_cmd.runScript(svr_id, script, 600, options)
+		logging.debug(f'"{script}" finished with code {ret.returncode}, output:\n{ret.stdout}')
+		param = f"on node {svr_id}"
+		if ret.returncode == 0:
+			HTML.CreateHtmlTestRowQueue(param, 'OK', [f"Deployment of oai-cu:{image_tag} on OC succeeded"])
+		else:
+			HTML.CreateHtmlTestRowQueue(param, 'KO', [f"Deployment of oai-cu:{image_tag} on OC failed"])
+		return ret.returncode == 0
+
+	def undeploy_oc_cu(self, HTML, svr_id):
+		logging.debug(f'Undeploy CU on OC from server: {svr_id}')
+		script = "scripts/oc-cu-undeploy.sh"
+		oc_namespace = "oaicicd-core-for-fhi72"
+		oc_dir = "/opt/oai-cn5g-fed-develop-2025-jan"
+		log_dir = f"{self.eNBSourceCodePath}/cmake_targets/log"
+		options = f"{oc_dir} {oc_namespace} {log_dir}"
+		ret = cls_cmd.runScript(svr_id, script, 600, options)
+		logging.debug(f'"{script}" finished with code {ret.returncode}, output:\n{ret.stdout}')
+		param = f"on node {svr_id}"
+		if ret.returncode == 0:
+			HTML.CreateHtmlTestRowQueue(param, 'OK', [f"Undeployment of CU on OC succeeded"])
+		else:
+			HTML.CreateHtmlTestRowQueue(param, 'KO', [f"Undeployment of CU on OC failed"])
+		return ret.returncode == 0
+
