@@ -27,7 +27,7 @@ As of **2025**, this documentation provides instructions for setting up and usin
                                                                libncurses5-dev libncursesw5-dev libcurl4-openssl-dev
       ```   
 
-### &#x1F6A7; **2. [Building bladeRF libraries and tools from source](https://github.com/Nuand/bladeRF/wiki/Getting-Started%3A-Linux#building-bladerf-libraries-and-tools-from-source) **
+### &#x1F6A7; 2. [Building bladeRF libraries and tools from source](https://github.com/Nuand/bladeRF/wiki/Getting-Started%3A-Linux#building-bladerf-libraries-and-tools-from-source)
 
    #### a). Clone the **bladeRF** source code
 
