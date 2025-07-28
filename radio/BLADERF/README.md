@@ -45,7 +45,7 @@ As of **2025**, this documentation provides instructions for setting up and usin
       sudo make install
       sudo ldconfig
       ```
-      #### c). **Reload udev rules**
+      ###### c). **Reload udev rules**
 
       ```bash
       sudo udevadm control --reload-rules
