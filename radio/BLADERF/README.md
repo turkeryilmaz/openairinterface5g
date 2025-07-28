@@ -293,7 +293,7 @@ bladeRF>
 
 ---
 
-### **5. OAI and the bladeRF Libraries**
+### &#x1F4F6; **5. OAI and the bladeRF Libraries**
 
 1. Install the OAI libraries
 
