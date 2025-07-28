@@ -2331,8 +2331,13 @@ endif()
 
 
 if(OAI_USRP_PACKAGE)
-  set(CPACK_COMPONENT_OAI-USRP_SUMMARY "OpenAirInterface USRP package")
-  set(CPACK_COMPONENT_OAI-USRP_DESCRIPTION "This package is dedicated for USRP library")
+
+  if(PACKAGING-RPM)
+    set(CPACK_RPM_OAI-USRP_PACKAGE_REQUIRES "boost-chrono, boost-date-time, boost-filesystem, boost-program-options, boost-thread, boost-test, boost-regex, python3-mako, python3-docutils, python3-pip")
+  else()
+    set(CPACK_DEBIAN_OAI-USRP_PACKAGE_DEPENDS "doxygen, python3-docutils, python3-mako, python3-numpy, python3-requests, python3-setuptools, ninja-build")
+  endif()
+
   install(TARGETS oai_usrpdevif
         COMPONENT oai-usrp
         RUNTIME DESTINATION bin
