@@ -10,7 +10,7 @@ As of **2025**, this documentation provides instructions for setting up and usin
 
 ---
 
-### **1. Install BladeRF 2.0 Micro Libraries**
+### &#x1F6E2; **1. Install BladeRF 2.0 Micro Libraries**
 
    - Install the latest **bladeRF 2.0 Micro** libraries and utilities.  
      It's recommended to build from source for the most recent updates.
