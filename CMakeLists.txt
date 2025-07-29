@@ -286,7 +286,7 @@ add_boolean_option(UE_TIMING_TRACE     False "Activate UE timing trace" ON)
 
 add_boolean_option(TRACY_ENABLE OFF "Enable tracy instrumentation" ON)
 if (TRACY_ENABLE)
-  CPMAddPackage("gh:wolfpld/tracy#v0.11.1")
+  CPMAddPackage("gh:wolfpld/tracy#master")
 endif()
 
 set (OCP_ITTI ${OPENAIR_DIR}/common/utils/ocp_itti)
