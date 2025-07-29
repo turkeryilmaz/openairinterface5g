@@ -388,10 +388,12 @@ static void nr_rrc_ue_prepare_RRCSetupRequest(NR_UE_RRC_INST_t *rrc)
 #endif
   }
 
-  uint8_t buf[1024];
-  int len = do_RRCSetupRequest(buf, sizeof(buf), rv, rrc->fiveG_S_TMSI);
-
-  nr_rlc_srb_recv_sdu(rrc->ue_id, 0, buf, len);
+  byte_array_t ba = do_RRCSetupRequest(rv, rrc->fiveG_S_TMSI);
+  if (ba.len <= 0) {
+    LOG_E(NR_RRC, "do_RRCSetupRequest failed (UE %04lx)\n", rrc->ue_id);
+    return;
+  }
+  nr_rlc_srb_recv_sdu(rrc->ue_id, 0, ba.buf, ba.len);
 }
 
 static void nr_rrc_configure_default_SI(NR_UE_RRC_SI_INFO *SI_info,
@@ -988,9 +990,12 @@ static void nr_rrc_ue_decode_NR_BCCH_BCH_Message(NR_UE_RRC_INST_t *rrc,
 
 static void nr_rrc_ue_prepare_RRCReestablishmentRequest(NR_UE_RRC_INST_t *rrc)
 {
-  uint8_t buffer[1024];
-  int buf_size = do_RRCReestablishmentRequest(buffer, rrc->reestablishment_cause, rrc->phyCellID, rrc->rnti); // old rnti
-  nr_rlc_srb_recv_sdu(rrc->ue_id, 0, buffer, buf_size);
+  byte_array_t ba = do_RRCReestablishmentRequest(rrc->reestablishment_cause, rrc->phyCellID, rrc->rnti); // old rnti
+  if (ba.len <= 0) {
+    LOG_E(NR_RRC, "do_RRCReestablishmentRequest failed (UE %04lx)\n", rrc->ue_id);
+    return;
+  }
+  nr_rlc_srb_recv_sdu(rrc->ue_id, 0, ba.buf, ba.len);
 }
 
 static void nr_rrc_prepare_msg3_payload(NR_UE_RRC_INST_t *rrc)
@@ -1268,7 +1273,6 @@ static void nr_rrc_ue_process_masterCellGroup(NR_UE_RRC_INST_t *rrc,
 
 static void rrc_ue_generate_RRCSetupComplete(const NR_UE_RRC_INST_t *rrc, const uint8_t Transaction_id)
 {
-  uint8_t buffer[100];
   as_nas_info_t initialNasMsg;
 
   if (IS_SA_MODE(get_softmodem_params())) {
@@ -1286,22 +1290,24 @@ static void rrc_ue_generate_RRCSetupComplete(const NR_UE_RRC_INST_t *rrc, const 
   }
 
   // Encode RRCSetupComplete
-  int size = do_RRCSetupComplete(buffer,
-                                 sizeof(buffer),
-                                 Transaction_id,
-                                 rrc->selected_plmn_identity,
-                                 rrc->ra_trigger == RRC_CONNECTION_SETUP,
-                                 rrc->fiveG_S_TMSI,
-                                 (const uint32_t)initialNasMsg.length,
-                                 (const char*)initialNasMsg.nas_data);
+  byte_array_t ba = do_RRCSetupComplete(Transaction_id,
+                                        rrc->selected_plmn_identity,
+                                        rrc->ra_trigger == RRC_CONNECTION_SETUP,
+                                        rrc->fiveG_S_TMSI,
+                                        (const uint32_t)initialNasMsg.length,
+                                        (const char *)initialNasMsg.nas_data);
+  if (ba.len <= 0) {
+    LOG_E(NR_RRC, "do_RRCSetupComplete failed (UE %04lx)\n", rrc->ue_id);
+    return;
+  }
 
   // Free dynamically allocated data (heap allocated in both SA and NSA)
   free(initialNasMsg.nas_data);
 
-  LOG_I(NR_RRC, "[UE %ld][RAPROC] Logical Channel UL-DCCH (SRB1), Generating RRCSetupComplete (bytes%d)\n", rrc->ue_id, size);
+  LOG_I(NR_RRC, "[UE %ld][RAPROC] Logical Channel UL-DCCH (SRB1), Generating RRCSetupComplete (bytes=%ld)\n", rrc->ue_id, ba.len);
   int srb_id = 1; // RRC setup complete on SRB1
-  LOG_D(NR_RRC, "[RRC_UE %ld] PDCP_DATA_REQ/%d Bytes RRCSetupComplete ---> %d\n", rrc->ue_id, size, srb_id);
-  nr_pdcp_data_req_srb(rrc->ue_id, srb_id, 0, size, buffer, deliver_pdu_srb_rlc, NULL);
+  LOG_D(NR_RRC, "[RRC_UE %ld] PDCP_DATA_REQ/%ld Bytes RRCSetupComplete ---> %d\n", rrc->ue_id, ba.len, srb_id);
+  nr_pdcp_data_req_srb(rrc->ue_id, srb_id, 0, ba.len, ba.buf, deliver_pdu_srb_rlc, NULL);
 }
 
 static void nr_rrc_rrcsetup_fallback(NR_UE_RRC_INST_t *rrc)
@@ -2010,16 +2016,19 @@ static void nr_rrc_ue_process_RadioBearerConfig(NR_UE_RRC_INST_t *ue_rrc,
 
 static void nr_rrc_ue_generate_RRCReconfigurationComplete(NR_UE_RRC_INST_t *rrc, const int srb_id, const uint8_t Transaction_id)
 {
-  uint8_t buffer[32];
-  int size = do_NR_RRCReconfigurationComplete(buffer, sizeof(buffer), Transaction_id);
-  LOG_I(NR_RRC, " Logical Channel UL-DCCH (SRB1), Generating RRCReconfigurationComplete (bytes %d)\n", size);
+  byte_array_t ba = do_NR_RRCReconfigurationComplete(Transaction_id);
+  if (ba.len <= 0) {
+    LOG_E(NR_RRC, "do_NR_RRCReconfigurationComplete failed (UE %04lx)\n", rrc->ue_id);
+    return;
+  }
+  LOG_I(NR_RRC, " Logical Channel UL-DCCH (SRB1), Generating RRCReconfigurationComplete (bytes %ld)\n", ba.len);
   AssertFatal(srb_id == 1 || srb_id == 3, "Invalid SRB ID %d\n", srb_id);
   LOG_D(RLC,
-        "PDCP_DATA_REQ/%d Bytes (RRCReconfigurationComplete) "
+        "PDCP_DATA_REQ/%ld Bytes (RRCReconfigurationComplete) "
         "--->][PDCP][RB %02d]\n",
-        size,
+        ba.len,
         srb_id);
-  nr_pdcp_data_req_srb(rrc->ue_id, srb_id, 0, size, buffer, deliver_pdu_srb_rlc, NULL);
+  nr_pdcp_data_req_srb(rrc->ue_id, srb_id, 0, ba.len, ba.buf, deliver_pdu_srb_rlc, NULL);
 }
 
 static void nr_rrc_ue_process_rrcReestablishment(NR_UE_RRC_INST_t *rrc,
@@ -2360,18 +2369,20 @@ void *rrc_nrue(void *notUsed)
     break;
 
   case NAS_UPLINK_DATA_REQ: {
-    uint32_t length;
-    uint8_t *buffer = NULL;
     ul_info_transfer_req_t *req = &NAS_UPLINK_DATA_REQ(msg_p);
     /* Create message for PDCP (ULInformationTransfer_t) */
-    length = do_NR_ULInformationTransfer(&buffer, req->nasMsg.length, req->nasMsg.nas_data);
+    byte_array_t ba = do_NR_ULInformationTransfer(req->nasMsg.length, req->nasMsg.nas_data);
+    if (ba.len <= 0) {
+      LOG_E(NR_RRC, "do_NR_ULInformationTransfer failed (UE %04lx)\n", rrc->ue_id);
+      return NULL;
+    }
     /* Transfer data to PDCP */
     // check if SRB2 is created, if yes request data_req on SRB2
     // error: the remote gNB is hardcoded here
     rb_id_t srb_id = rrc->Srb[2] == RB_ESTABLISHED ? 2 : 1;
-    nr_pdcp_data_req_srb(rrc->ue_id, srb_id, 0, length, buffer, deliver_pdu_srb_rlc, NULL);
+    nr_pdcp_data_req_srb(rrc->ue_id, srb_id, 0, ba.len, ba.buf, deliver_pdu_srb_rlc, NULL);
     free(req->nasMsg.nas_data);
-    free(buffer);
+    free_byte_array(ba);
     break;
   }
 
@@ -2519,11 +2530,14 @@ static void nr_rrc_initiate_rrcReestablishment(NR_UE_RRC_INST_t *rrc, NR_Reestab
 static void nr_rrc_ue_generate_rrcReestablishmentComplete(const NR_UE_RRC_INST_t *rrc,
                                                           const NR_RRCReestablishment_t *rrcReestablishment)
 {
-  uint8_t buffer[NR_RRC_BUF_SIZE] = {0};
-  int size = do_RRCReestablishmentComplete(buffer, NR_RRC_BUF_SIZE, rrcReestablishment->rrc_TransactionIdentifier);
-  LOG_I(NR_RRC, "[RAPROC] Logical Channel UL-DCCH (SRB1), Generating RRCReestablishmentComplete (bytes %d)\n", size);
+  byte_array_t ba = do_RRCReestablishmentComplete(rrcReestablishment->rrc_TransactionIdentifier);
+  if (ba.len <= 0) {
+    LOG_E(NR_RRC, "do_RRCReestablishmentComplete failed (UE %04lx)\n", rrc->ue_id);
+    return;
+  }
+  LOG_I(NR_RRC, "[RAPROC] Logical Channel UL-DCCH (SRB1), Generating RRCReestablishmentComplete (bytes %ld)\n", ba.len);
   int srb_id = 1; // RRC re-establishment complete on SRB1
-  nr_pdcp_data_req_srb(rrc->ue_id, srb_id, 0, size, buffer, deliver_pdu_srb_rlc, NULL);
+  nr_pdcp_data_req_srb(rrc->ue_id, srb_id, 0, ba.len, ba.buf, deliver_pdu_srb_rlc, NULL);
 }
 
 void *recv_msgs_from_lte_ue(void *args_p)
@@ -2682,9 +2696,12 @@ static void process_lte_nsa_msg(NR_UE_RRC_INST_t *rrc, nsa_msg_t *msg, int msg_l
       process_nsa_message(NR_UE_rrc_inst, nr_SecondaryCellGroupConfig_r15, nr_SecondaryCellGroup_buffer, nr_SecondaryCellGroup_size);
       process_nsa_message(NR_UE_rrc_inst, nr_RadioBearerConfigX_r15, nr_RadioBearer_buffer, nr_RadioBearer_size);
       LOG_I(NR_RRC, "Calling do_NR_RRCReconfigurationComplete. t_id %ld \n", t_id);
-      uint8_t buffer[NR_RRC_BUF_SIZE];
-      size_t size = do_NR_RRCReconfigurationComplete_for_nsa(buffer, sizeof(buffer), t_id);
-      nsa_sendmsg_to_lte_ue(buffer, size, NR_RRC_CONFIG_COMPLETE_REQ);
+      byte_array_t ba = do_NR_RRCReconfigurationComplete_for_nsa(t_id);
+      if (ba.len <= 0) {
+        LOG_E(NR_RRC, "do_NR_RRCReconfigurationComplete_for_nsa failed (UE %04lx)\n", rrc->ue_id);
+        return;
+      }
+      nsa_sendmsg_to_lte_ue(ba.buf, ba.len, NR_RRC_CONFIG_COMPLETE_REQ);
       break;
     }
 

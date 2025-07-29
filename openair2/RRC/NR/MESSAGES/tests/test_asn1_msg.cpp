@@ -39,50 +39,63 @@ RAN_CONTEXT_t RC;
 
 TEST(nr_asn1, rrc_reject)
 {
-  unsigned char buf[1000];
-  EXPECT_GT(do_RRCReject(buf), 0);
+  byte_array_t ba = do_RRCReject();
+  EXPECT_GT(ba.len, 0);
+  EXPECT_NE(ba.buf, nullptr);
+  free_byte_array(ba);
 }
 
 TEST(nr_asn1, sa_capability_enquiry)
 {
-  unsigned char buf[1000];
-  EXPECT_GT(do_NR_SA_UECapabilityEnquiry(buf, 0), 0);
+  byte_array_t ba = do_NR_SA_UECapabilityEnquiry(0);
+  EXPECT_GT(ba.len, 0);
+  EXPECT_NE(ba.buf, nullptr);
+  free_byte_array(ba);
 }
 
 TEST(nr_asn1, rrc_reconfiguration_complete_for_nsa)
 {
-  unsigned char buf[1000];
-  EXPECT_GT(do_NR_RRCReconfigurationComplete_for_nsa(buf, 1000, 0), 0);
+  byte_array_t ba = do_NR_RRCReconfigurationComplete_for_nsa(0);
+  EXPECT_GT(ba.len, 0);
+  EXPECT_NE(ba.buf, nullptr);
+  free_byte_array(ba);
 }
 
 TEST(nr_asn1, ul_information_transfer)
 {
-  unsigned char *buf = NULL;
   unsigned char pdu[20] = {0};
-  EXPECT_GT(do_NR_ULInformationTransfer(&buf, 20, pdu), 0);
-  EXPECT_NE(buf, nullptr);
-  free(buf);
+  byte_array_t ba = do_NR_ULInformationTransfer(20, pdu);
+  EXPECT_GT(ba.len, 0);
+  EXPECT_NE(ba.buf, nullptr);
+  free_byte_array(ba);
 }
 
 TEST(nr_asn1, rrc_reestablishment_request)
 {
-  unsigned char buf[1000];
   const uint16_t c_rnti = 1;
   const uint32_t cell_id = 177;
-  EXPECT_GT(do_RRCReestablishmentRequest(buf, NR_ReestablishmentCause_reconfigurationFailure, cell_id, c_rnti), 0);
+  byte_array_t ba = do_RRCReestablishmentRequest(NR_ReestablishmentCause_reconfigurationFailure, cell_id, c_rnti);
+  EXPECT_GT(ba.len, 0);
+  EXPECT_NE(ba.buf, nullptr);
+  free_byte_array(ba);
+  free_byte_array(shortMAC_I);
 }
 
 TEST(nr_asn1, rrc_reestablishment)
 {
-  unsigned char buf[1000];
   const uint8_t nh_ncc = 0;
-  EXPECT_GT(do_RRCReestablishment(nh_ncc, buf, 1000, 0), 0);
+  byte_array_t ba = do_RRCReestablishment(nh_ncc, 0);
+  EXPECT_GT(ba.len, 0);
+  EXPECT_NE(ba.buf, nullptr);
+  free_byte_array(ba);
 }
 
 TEST(nr_asn1, paging)
 {
-  unsigned char buf[1000];
-  EXPECT_GT(do_NR_Paging(0, buf, 0), 0);
+  byte_array_t ba = do_NR_Paging(0, 1234);
+  EXPECT_GT(ba.len, 0);
+  EXPECT_NE(ba.buf, nullptr);
+  free_byte_array(ba);
 }
 
 void free_RRCReconfiguration_params(nr_rrc_reconfig_param_t params)

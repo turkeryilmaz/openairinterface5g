@@ -37,6 +37,7 @@
 #include <stdlib.h>
 #include "assertions.h"
 #include "common/utils/utils.h"
+#include "ds/byte_array.h"
 
 #define MAX_SI_GROUPS 3
 #define NR_MAX_PDSCH_TBS 3824
@@ -95,8 +96,7 @@ static inline const char *rnti_types(nr_rnti_type_t rr)
 #define SQ15_SQUARED_NORM_FACTOR_DB 90.3089986992
 
 typedef struct {
-  uint8_t *SIB_buffer;
-  int SIB_size;
+  byte_array_t sib;
   int SIB_type;
 } nr_SIBs_t;
 
