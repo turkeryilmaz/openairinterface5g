@@ -545,7 +545,11 @@ static NR_RRCReconfiguration_IEs_t *build_RRCReconfiguration_IEs(const nr_rrc_re
       // Encode in extension IE (Master cell group)
       uint8_t *buf = NULL;
       ssize_t len = uper_encode_to_new_buffer(&asn_DEF_NR_CellGroupConfig, NULL, params->cell_group_config, (void **)&buf);
-      AssertFatal(len > 0, "ASN1 message encoding failed (%lu)!\n", len);
+      if (len <= 0) {
+        LOG_E(NR_RRC, "ASN.1 encoding failed for NR_CellGroupConfig (len=%ld)\n", len);
+        ASN_STRUCT_FREE(asn_DEF_NR_RRCReconfiguration_IEs, ie);
+        return NULL;
+      }
       if (LOG_DEBUGFLAG(DEBUG_ASN1)) {
         xer_fprint(stdout, &asn_DEF_NR_CellGroupConfig, (const void *)params->cell_group_config);
       }
@@ -568,6 +572,10 @@ byte_array_t do_RRCReconfiguration(const nr_rrc_reconfig_param_t *params)
 {
   byte_array_t msg = {.buf = NULL, .len = 0};
   NR_RRCReconfiguration_IEs_t *ie = build_RRCReconfiguration_IEs(params);
+  if (!ie) {
+    LOG_E(NR_RRC, "%s: failed to encode RRCReconfiguration\n", __func__);
+    return msg;
+  }
 
   NR_DL_DCCH_Message_t dl_dcch_msg = {0};
   dl_dcch_msg.message.present = NR_DL_DCCH_MessageType_PR_c1;
