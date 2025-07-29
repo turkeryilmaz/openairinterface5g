@@ -56,6 +56,7 @@
 #include "nr_phy_common.h"
 
 //#define DEBUG_NR_PUCCH_RX 1
+#define NEWRX 1
 
 void nr_fill_pucch(PHY_VARS_gNB *gNB, int frame, int slot, nfapi_nr_pucch_pdu_t *pucch_pdu)
 {
@@ -611,7 +612,11 @@ void nr_decode_pucch1(c16_t **rxdataF,
       re_offset++;
     }
   }
+#ifndef NEWRX
   cd_t y_n[12] = {0}, y1_n[12] = {0};
+#else
+  cd_t y = {0}, y1 = {0};
+#endif
   //generating transmitted sequence and dmrs
   for (int l = 0; l < nrofSymbols; l++) {
 #ifdef DEBUG_NR_PUCCH_RX
@@ -792,31 +797,56 @@ void nr_decode_pucch1(c16_t **rxdataF,
       }
     }
   }
+#ifndef NEWRX
   cd_t H[12] = {0}, H1[12] = {0};
+#else
+  cd_t H = {0}, H1 = {0};
+#endif
   const double half_nb_symbols = nrofSymbols / 2.0;
   const double quarter_nb_symbols = nrofSymbols / 4.0;
   for (int l = 0; l <= half_nb_symbols; l++) {
     if (intraSlotFrequencyHopping == false) {
       for (int n = 0; n < 12; n++) {
+#ifndef NEWRX
         H[n].r += z_dmrs_rx[l * 12 + n].r / half_nb_symbols;
         H[n].i += z_dmrs_rx[l * 12 + n].i / half_nb_symbols;
         y_n[n].r += z_rx[l * 12 + n].r / half_nb_symbols;
         y_n[n].i += z_rx[l * 12 + n].i / half_nb_symbols;
+#else
+        H.r += z_dmrs_rx[l * 12 + n].r / half_nb_symbols / 12;
+        H.i += z_dmrs_rx[l * 12 + n].i / half_nb_symbols / 12;
+        y.r += z_rx[l * 12 + n].r / half_nb_symbols / 12;
+        y.i += z_rx[l * 12 + n].i / half_nb_symbols / 12;
+#endif
       }
     } else {
       if (l < nrofSymbols / 4) {
         for (int n = 0; n < 12; n++) {
+#ifndef NEWRX
           H[n].r += z_dmrs_rx[l * 12 + n].r / quarter_nb_symbols;
           H[n].i += z_dmrs_rx[l * 12 + n].i / quarter_nb_symbols;
           y_n[n].r += z_rx[l * 12 + n].r / quarter_nb_symbols;
           y_n[n].i += z_rx[l * 12 + n].i / quarter_nb_symbols;
+#else
+        H.r += z_dmrs_rx[l * 12 + n].r / half_nb_symbols / 12;
+        H.i += z_dmrs_rx[l * 12 + n].i / half_nb_symbols / 12;
+        y.r += z_rx[l * 12 + n].r / half_nb_symbols / 12;
+        y.i += z_rx[l * 12 + n].i / half_nb_symbols / 12;
+#endif
         }
       } else {
         for (int n = 0; n < 12; n++) {
+#ifndef NEWRX
           H1[n].r += z_dmrs_rx[l * 12 + n].r / quarter_nb_symbols;
           H1[n].i += z_dmrs_rx[l * 12 + n].i / quarter_nb_symbols;
           y1_n[n].r += z_rx[l * 12 + n].r / quarter_nb_symbols;
           y1_n[n].i += z_rx[l * 12 + n].i / quarter_nb_symbols;
+#else
+        H1.r += z_dmrs_rx[l * 12 + n].r / half_nb_symbols / 12;
+        H1.i += z_dmrs_rx[l * 12 + n].i / half_nb_symbols / 12;
+        y1.r += z_rx[l * 12 + n].r / half_nb_symbols / 12;
+        y1.i += z_rx[l * 12 + n].i / half_nb_symbols / 12;
+#endif
         }
       }
     }
@@ -826,15 +856,27 @@ void nr_decode_pucch1(c16_t **rxdataF,
   if (intraSlotFrequencyHopping == false) {
     // complex-valued symbol d_re, d_im containing complex-valued symbol d(0):
     for (int n = 0; n < 12; n++) {
+#ifndef NEWRX
       d.r += H[n].r * y_n[n].r + H[n].i * y_n[n].i;
       d.i += H[n].r * y_n[n].i - H[n].i * y_n[n].r;
+#else
+      d.r += H.r * y.r + H.i * y.i;
+      d.i += H.r * y.i - H.i * y.r;
+#endif
     }
   } else {
     for (int n = 0; n < 12; n++) {
+#ifndef NEWRX
       d.r += H[n].r * y_n[n].r + H[n].i * y_n[n].i;
       d.i += H[n].r * y_n[n].i - H[n].i * y_n[n].r;
-      d.r += H[n].r * y1_n[n].r + H[n].i * y1_n[n].i;
-      d.i += H[n].r * y1_n[n].i - H[n].i * y1_n[n].r;
+      d.r += H1[n].r * y1_n[n].r + H1[n].i * y1_n[n].i;
+      d.i += H1[n].r * y1_n[n].i - H1[n].i * y1_n[n].r;
+#else
+      d.r += H.r * y.r + H.i * y.i;
+      d.i += H.r * y.i - H.i * y.r;
+      d.r += H1.r * y1.r + H1.i * y1.i;
+      d.i += H1.r * y1.i - H1.i * y1.r;
+#endif
     }
   }
   //Decoding QPSK or BPSK symbols to obtain payload bits
