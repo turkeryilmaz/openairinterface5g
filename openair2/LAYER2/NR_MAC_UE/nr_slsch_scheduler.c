@@ -283,7 +283,7 @@ void nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP, int slotP, nr_sci_pdu_
   uint8_t t1 = 0, t2 = 0;
 
   long sl_num_subch = *mac->sl_tx_res_pool->sl_NumSubchannel_r16;
-  uint8_t l_subch = resource->sl_subchan_len; // number of used sub channels; as in current setting, we have only 1 subchannel so l_subch is set to 1
+  uint8_t l_subch = resource ? resource->sl_subchan_len : 1; // number of used sub channels; as in current setting, we have only 1 subchannel so l_subch is set to 1
   uint8_t n_start_subch1 = 0, n_start_subch2 = 0; // represent starting sub-channel index for the second resource and third resource;
                                                   // as we are considering only 1 subchannel, so we have initialized these variables with zeros.
   // Fill SCI1A
