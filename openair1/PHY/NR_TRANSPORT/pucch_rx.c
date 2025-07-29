@@ -56,7 +56,8 @@
 #include "nr_phy_common.h"
 
 //#define DEBUG_NR_PUCCH_RX 1
-#define NEWRX 1
+//#define NEWRX 1
+//#define NEWRX_ML 1
 
 void nr_fill_pucch(PHY_VARS_gNB *gNB, int frame, int slot, nfapi_nr_pucch_pdu_t *pucch_pdu)
 {
@@ -853,6 +854,9 @@ void nr_decode_pucch1(c16_t **rxdataF,
   }
   // mrc combining to obtain z_re and z_im
   cd_t d = {0};
+#if defined(NEWRX) && defined(NEWRX_ML) 
+  cd_t d1 = {0};
+#endif
   if (intraSlotFrequencyHopping == false) {
     // complex-valued symbol d_re, d_im containing complex-valued symbol d(0):
     for (int n = 0; n < 12; n++) {
@@ -872,16 +876,24 @@ void nr_decode_pucch1(c16_t **rxdataF,
       d.r += H1[n].r * y1_n[n].r + H1[n].i * y1_n[n].i;
       d.i += H1[n].r * y1_n[n].i - H1[n].i * y1_n[n].r;
 #else
+#ifndef NEWRX_MLRX // this is equation (1)
       d.r += H.r * y.r + H.i * y.i;
       d.i += H.r * y.i - H.i * y.r;
       d.r += H1.r * y1.r + H1.i * y1.i;
       d.i += H1.r * y1.i - H1.i * y1.r;
+#else // this is equation (2)
+      d.r += H.r + y.r;
+      d.i += H.r * y.i - H.i * y.r;
+      d1.r += H1.r * y1.r + H1.i * y1.i;
+      d1.i += H1.r * y1.i - H1.i * y1.r;
+#endif
 #endif
     }
   }
   //Decoding QPSK or BPSK symbols to obtain payload bits
+#ifndef NEWRX_ML
   if (nr_bit == 1) {
-    if ((d.r + d.i) > 0) {
+    if (d.r > 0) {
       *payload = 0;
     } else {
       *payload = 1;
@@ -897,6 +909,9 @@ void nr_decode_pucch1(c16_t **rxdataF,
       *payload = 3;
     }
   }
+#else
+
+#endif
 }
 
 typedef struct {c16_t cw[16];} cw_t;
