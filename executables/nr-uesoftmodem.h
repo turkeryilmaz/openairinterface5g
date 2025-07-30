@@ -26,6 +26,9 @@ extern uint16_t ue_id_g;
 #define  CONFIG_HLP_NUM_UL_ACTORS          "Number of UL actors to use. Set to 0 to disable UL actor framework and do processing inline\n"
 #define  CONFIG_HLP_NUM_DL_ACTORS          "Number of DL actors to use. Set to 0 to disable DL actor framework and do processing inline\n"
 #define  CONFIG_HLP_EXTRA_PDU_ID           "ID of an additional PDU session to configure alongside default PDU session\n"
+#define  CONFIG_HLP_RFSIM_SERVADDR         "RF-Simulator server IP address to connect to\n"
+#define  CONFIG_HLP_RFSIM_SERVPORT         "RF-Simulator server port number to connect to\n"
+#define  CONFIG_HLP_RFSIM_DELAY            "RF-Simulator DL propagation delay in ms\n"
 
 /***************************************************************************************************************************************/
 /* command line options definitions, CMDLINE_XXXX_DESC macros are used to initialize paramdef_t arrays which are then used as argument
@@ -151,6 +154,9 @@ extern nrUE_params_t *get_nrUE_params(void);
   {"tune_offset",                  CONFIG_HLP_TUNE_OFFSET,     0,               .dblptr=NULL,     .defdblval=0.0,               TYPE_DOUBLE,      0},  \
   {"if_freq",                      CONFIG_HLP_IF_FREQ,         0,               .u64ptr=NULL,     .defint64val=0,               TYPE_UINT64,      0}, \
   {"if_offset",                    CONFIG_HLP_IF_FREQ_OFF,     0,               .iptr=NULL,       .defintval=0,                 TYPE_INT,         0}, \
+  {"rfsim_serveraddr",             CONFIG_HLP_RFSIM_SERVADDR,  0,               .strptr=NULL,     .defstrval=NULL,              TYPE_STRING,      0}, \
+  {"rfsim_serverport",             CONFIG_HLP_RFSIM_SERVPORT,  0,               .u16ptr=NULL,     .defuintval=0,                TYPE_UINT16,      0}, \
+  {"rfsim_prop_delay",             CONFIG_HLP_RFSIM_DELAY,     0,               .dblptr=NULL,     .defdblval=0.0,               TYPE_DOUBLE,      0}, \
 }
 
 #define NRUE_RU_NB_TX_IDX           0
@@ -166,6 +172,9 @@ extern nrUE_params_t *get_nrUE_params(void);
 #define NRUE_RU_TUNE_OFFSET_IDX    10
 #define NRUE_RU_IF_FREQUENCY_IDX   11
 #define NRUE_RU_IF_FREQ_OFFSET_IDX 12
+#define NRUE_RU_RFSIM_SERVADDR_IDX 13
+#define NRUE_RU_RFSIM_SERVPORT_IDX 14
+#define NRUE_RU_RFSIM_DELAY_IDX    15
 // clang-format on
 
 typedef struct {
@@ -182,6 +191,12 @@ typedef struct {
   double tune_offset;
   uint64_t if_frequency;
   int if_freq_offset;
+
+  // Parameters for RF-Simulator
+  char *rfsim_serveraddr;
+  uint16_t rfsim_serverport;
+  double rfsim_prop_delay;
+
   int used_by_cell;
 }  nrUE_RU_params_t;
 

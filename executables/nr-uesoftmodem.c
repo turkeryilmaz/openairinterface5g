@@ -232,7 +232,13 @@ static int get_nrUE_RU_params(configmodule_interface_t *cfg, nrUE_RU_params_t **
     RU->tune_offset    = *(RUParamList.paramarray[j][NRUE_RU_TUNE_OFFSET_IDX].dblptr);
     RU->if_frequency   = *(RUParamList.paramarray[j][NRUE_RU_IF_FREQUENCY_IDX].u64ptr);
     RU->if_freq_offset = *(RUParamList.paramarray[j][NRUE_RU_IF_FREQ_OFFSET_IDX].iptr);
+    RU->rfsim_serverport = *(RUParamList.paramarray[j][NRUE_RU_RFSIM_SERVPORT_IDX].u16ptr);
+    RU->rfsim_prop_delay = *(RUParamList.paramarray[j][NRUE_RU_RFSIM_DELAY_IDX].dblptr);
     RU->used_by_cell   = -1;
+
+    if (RUParamList.paramarray[j][NRUE_RU_RFSIM_SERVADDR_IDX].strptr != NULL) {
+      RU->rfsim_serveraddr = strdup(*(RUParamList.paramarray[j][NRUE_RU_RFSIM_SERVADDR_IDX].strptr));
+    }
 
     if (config_isparamset(RUParamList.paramarray[j], NRUE_RU_SDR_ADDRS_IDX)) {
       RU->sdr_addrs = strdup(*(RUParamList.paramarray[j][NRUE_RU_SDR_ADDRS_IDX].strptr));
@@ -428,6 +434,12 @@ static void init_openair0(const nrUE_RU_params_t *RUs, int max_cards)
     cfg->clock_source = RUs[card].clock_source;
     cfg->time_source = RUs[card].time_source;
     cfg->tune_offset = RUs[card].tune_offset;
+
+    openair0_device_t *dev = &openair0_dev[card];
+    dev->rfsim_params.card = card;
+    dev->rfsim_params.serveraddr = RUs[card].rfsim_serveraddr;
+    dev->rfsim_params.serverport = RUs[card].rfsim_serverport;
+    dev->rfsim_params.prop_delay_ms = RUs[card].rfsim_prop_delay;
   }
 }
 
