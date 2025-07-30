@@ -829,10 +829,10 @@ void nr_decode_pucch1(c16_t **rxdataF,
           y_n[n].r += z_rx[l * 12 + n].r / quarter_nb_symbols;
           y_n[n].i += z_rx[l * 12 + n].i / quarter_nb_symbols;
 #else
-        H.r += z_dmrs_rx[l * 12 + n].r / half_nb_symbols / 12;
-        H.i += z_dmrs_rx[l * 12 + n].i / half_nb_symbols / 12;
-        y.r += z_rx[l * 12 + n].r / half_nb_symbols / 12;
-        y.i += z_rx[l * 12 + n].i / half_nb_symbols / 12;
+          H.r += z_dmrs_rx[l * 12 + n].r / half_nb_symbols / 12;
+          H.i += z_dmrs_rx[l * 12 + n].i / half_nb_symbols / 12;
+          y.r += z_rx[l * 12 + n].r / half_nb_symbols / 12;
+          y.i += z_rx[l * 12 + n].i / half_nb_symbols / 12;
 #endif
         }
       } else {
@@ -843,38 +843,97 @@ void nr_decode_pucch1(c16_t **rxdataF,
           y1_n[n].r += z_rx[l * 12 + n].r / quarter_nb_symbols;
           y1_n[n].i += z_rx[l * 12 + n].i / quarter_nb_symbols;
 #else
-        H1.r += z_dmrs_rx[l * 12 + n].r / half_nb_symbols / 12;
-        H1.i += z_dmrs_rx[l * 12 + n].i / half_nb_symbols / 12;
-        y1.r += z_rx[l * 12 + n].r / half_nb_symbols / 12;
-        y1.i += z_rx[l * 12 + n].i / half_nb_symbols / 12;
+          H1.r += z_dmrs_rx[l * 12 + n].r / half_nb_symbols / 12;
+          H1.i += z_dmrs_rx[l * 12 + n].i / half_nb_symbols / 12;
+          y1.r += z_rx[l * 12 + n].r / half_nb_symbols / 12;
+          y1.i += z_rx[l * 12 + n].i / half_nb_symbols / 12;
 #endif
         }
       }
     }
   }
   // mrc combining to obtain z_re and z_im
-  cd_t d = {0};
+  c16d_t d = {0};
 #if defined(NEWRX) && defined(NEWRX_ML) 
-  cd_t d1 = {0};
+  double dp1=0,dm1=0,dp1_p1=0,dp1_m1=0,dm1_p1=0,dm1_m1=0;
 #endif
   if (intraSlotFrequencyHopping == false) {
     // complex-valued symbol d_re, d_im containing complex-valued symbol d(0):
-    for (int n = 0; n < 12; n++) {
 #ifndef NEWRX
+    for (int n = 0; n < 12; n++) {
       d.r += H[n].r * y_n[n].r + H[n].i * y_n[n].i;
       d.i += H[n].r * y_n[n].i - H[n].i * y_n[n].r;
-#else
-      d.r += H.r * y.r + H.i * y.i;
-      d.i += H.r * y.i - H.i * y.r;
-#endif
     }
+#else
+#ifndef NEWRX_MLRX
+    dr = H.r * y.r + H.i * y.i;
+    if (nr_bit == 1) {
+      if (dr>0) 
+        *payload = 0;
+      else
+        *payload = 1;
+    }
+    else if (nr_bit == 2) {
+      di = H.r * y.i - H.i * y.r;
+      if ((d.r > 0) && (d.i > 0)) {
+        *payload = 0;
+      } else if ((d.r < 0) && (d.i > 0)) {
+        *payload = 1;
+      } else if ((d.r > 0) && (d.i < 0)) {
+        *payload = 2;
+      } else {
+        *payload = 3;
+      }
+    }
+#else
+    if (nr_bit == 1) // BPSK
+    {
+      dp1r =  H.r + y.r;
+      dp1i =  H.i + y.r;    
+      dm1r = -H.r + y.r;
+      dm1i = -H.i + y.i;    
+      if (dp1r*dp1r + dp1i*dp1i) > (dm1r*dm1*r +dm1i*dm1i)) 
+	*payload = 0;
+      else
+	*payload = 1;
+    }  
+    else if (nr_bit == 2) // QPSK
+    {
+      dp1_p1r =  H.r + H.i + y.r;  // Re((1+j)^* x (H.r + jH.i) + y)  
+      dp1_p1i = -H.r + H.i + y.i;  // Im((1+j)^* x (H.r + jH.i) + y)   
+      dp1_p1 = dp1_p1r * dp1_p1r + dp1_p1i * sp1_p1i;				    
+      dp1_m1r =  H.r - H.i + y.r;  // Re((1-j)^* x (H.r - jH.i) + y)
+      dp1_m1i =  H.r + H.i + y.i;  // Im((1-j)^* x (H.r - jH.i) + y)
+      dp1_p1 = dp1_p1r * dp1_p1r + dp1_p1i * sp1_p1i;				    
+      dm1_p1r = -H.r + H.i + y.r;  // Re((-1+j)^* x (H.r +jH.i) + y)
+      dm1_p1i = -H.r - H.i + y.i;  // Im((-1+j)^* x (H.r + jH.i) + y)   
+      dp1_p1 = dp1_p1r * dp1_p1r + dp1_p1i * sp1_p1i;				    
+      dm1_m1r = -H.r - H.i + y.r;  // Re((-1-j)^* x (H.r +jH.i) + y)
+      dm1_m1i =  H.r - H.i + y.i;  // Im((-1-j)^* x (H.r +jH.i) + y)    
+      dp1_p1 = dp1_p1r * dp1_p1r + dp1_p1i * dp1_p1i;				    
+      dp1_m1 = dp1_m1r * dp1_m1r + dp1_m1i * dp1_m1i;				    
+      dm1_p1 = dm1_p1r * dm1_p1r + dm1_p1i * dm1_p1i;				    
+      dm1_m1 = dm1_m1r * dm1_m1r + dm1_m1i * dm1_m1i;				    
+      if (dp1_p1 > dp1_m1 && dp1_p1 > dm1_p1 && dp1_p1 > dm1_m1) {
+        *payload = 0;
+      } else if (dp1_m1 > dp1_p1 && dp1_m1 > dm1_p1 && dp1_m1 > dm1_m1) {
+        *payload = 1;
+      } else if (dm1_p1 > dp1_p1 && dm1_p1 > dp1_m1 && dm1_p1 > dm1_m1) {
+        *payload = 2;
+      } else {
+        *payload = 3;
+      }
+    }  
+#endif
+#endif
   } else {
-    for (int n = 0; n < 12; n++) {
 #ifndef NEWRX
+    for (int n = 0; n < 12; n++) {
       d.r += H[n].r * y_n[n].r + H[n].i * y_n[n].i;
       d.i += H[n].r * y_n[n].i - H[n].i * y_n[n].r;
       d.r += H1[n].r * y1_n[n].r + H1[n].i * y1_n[n].i;
       d.i += H1[n].r * y1_n[n].i - H1[n].i * y1_n[n].r;
+    }
 #else
 #ifndef NEWRX_MLRX // this is equation (1)
       d.r += H.r * y.r + H.i * y.i;
@@ -882,10 +941,7 @@ void nr_decode_pucch1(c16_t **rxdataF,
       d.r += H1.r * y1.r + H1.i * y1.i;
       d.i += H1.r * y1.i - H1.i * y1.r;
 #else // this is equation (2)
-      d.r += H.r + y.r;
-      d.i += H.r * y.i - H.i * y.r;
-      d1.r += H1.r * y1.r + H1.i * y1.i;
-      d1.i += H1.r * y1.i - H1.i * y1.r;
+      //
 #endif
 #endif
     }
