@@ -799,7 +799,7 @@ static bool set_fh_prach_config(void *mplane_api,
   prach_config->eAxC_offset = xran_mplane->prach_offset;
 #else
   uint8_t offset = *gpd(prachp, nprach, ORAN_PRACH_CONFIG_EAXC_OFFSET)->u8ptr;
-  prach_config->eAxC_offset = (offset != 0) ? offset : max_num_ant;
+  prach_config->eAxC_offset = offset;
 #endif
 
   g_kbar = *gpd(prachp, nprach, ORAN_PRACH_CONFIG_KBAR)->uptr;
