@@ -369,6 +369,67 @@ int get_tdd_period(uint8_t nb_periods_per_frame)
   return tdd_period;
 }
 
+typedef struct {
+  int scs;
+  int freq_range;
+  int nr_band;
+  int ofdm_offset_divisor;
+  uint64_t dl_CarrierFreq;
+  uint64_t ul_CarrierFreq;
+  int num_rb_dl;
+  int num_rb_ul;
+  int num_rx_ant;
+  int num_tx_ant;
+  int prach_sequence_length;
+  int prach_config_index;
+  int prach_freq_start;
+} oru_config;
+
+static void configure_ru_t_for_oru(RU_t *ru, oru_config *oru_cfg)
+{
+  memset(ru, 0, sizeof(*ru));
+  ru->num_gNB = 1;
+  ru->nr_frame_parms = calloc_or_fail(1, sizeof(*ru->nr_frame_parms));
+  ru->proc.first_rx = 1;
+  NR_DL_FRAME_PARMS *fp = ru->nr_frame_parms;
+  fp->freq_range = oru_cfg->freq_range;
+  fp->nr_band = oru_cfg->nr_band;
+  fp->ofdm_offset_divisor = oru_cfg->ofdm_offset_divisor;
+  fp->dl_CarrierFreq = oru_cfg->dl_CarrierFreq;
+  fp->ul_CarrierFreq = oru_cfg->ul_CarrierFreq;
+
+  nfapi_nr_config_request_scf_t *cfg = &ru->config;
+  memset(cfg, 0, sizeof(*cfg));
+  cfg->cell_config.frame_duplex_type.value = TDD;
+  cfg->ssb_config.scs_common.value = oru_cfg->scs;
+  cfg->carrier_config.dl_grid_size[cfg->ssb_config.scs_common.value].value = oru_cfg->num_rb_dl;
+  cfg->carrier_config.ul_grid_size[cfg->ssb_config.scs_common.value].value = oru_cfg->num_rb_ul;
+  cfg->carrier_config.num_rx_ant.value = oru_cfg->num_rx_ant;
+  cfg->carrier_config.num_tx_ant.value = oru_cfg->num_tx_ant;
+  cfg->prach_config.prach_sequence_length.value = oru_cfg->prach_sequence_length;
+  cfg->prach_config.prach_sub_c_spacing.value = oru_cfg->scs;
+
+  
+  int numRA = 1;
+  cfg->prach_config.num_prach_fd_occasions_list = calloc_or_fail(1, sizeof(nfapi_nr_num_prach_fd_occasions_t));
+  for (int i = 0; i < numRA; i++) {
+    cfg->prach_config.num_prach_fd_occasions_list[i].k1.value = oru_cfg->prach_freq_start;
+  }
+
+  nr_init_frame_parms(&ru->config, fp);
+  init_symbol_rotation(fp);
+  init_timeshift_rotation(fp);
+  nr_dump_frame_parms(fp);
+
+  ru->if_south = LOCAL_RF;
+  ru->function = NGFI_RRU_IF5;
+  ru->nb_tx = oru_cfg->num_tx_ant;
+  ru->nb_rx = oru_cfg->num_rx_ant;
+  nr_phy_init_RU(ru);
+
+  ru->N_TA_offset = set_default_nta_offset(fp->freq_range, fp->samples_per_subframe);
+}
+
 static bool configure_fd_rfsim(openair0_device *device, openair0_config_t *openair0_config)
 {
   fd_rfsim_state_t *state = calloc_or_fail(1, sizeof(*state));
@@ -379,67 +440,47 @@ static bool configure_fd_rfsim(openair0_device *device, openair0_config_t *opena
   device->priv = state;
 
   RU_t *ru_lower = &state->ru;
-  memset(ru_lower, 0, sizeof(*ru_lower));
-  ru_lower->num_gNB = 1;
-  ru_lower->nr_frame_parms = calloc_or_fail(1, sizeof(*ru_lower->nr_frame_parms));
-  ru_lower->proc.first_rx = 1;
+
+  // Hardcoded configuration for O-RU.
+  oru_config oru_cfg = {
+      .scs = 1,
+      .freq_range = FR1,
+      .nr_band = 77,
+      .ofdm_offset_divisor = 8, // Default value
+      .dl_CarrierFreq = openair0_config->tx_freq[0],
+      .ul_CarrierFreq = openair0_config->rx_freq[0],
+      .num_rb_dl = openair0_config->num_rb_dl,
+      .num_rb_ul = openair0_config->num_rb_dl,
+      .num_rx_ant = openair0_config->rx_num_channels,
+      .num_tx_ant = openair0_config->tx_num_channels,
+      .prach_sequence_length = 1, // harcoded to 139 seq length
+      .prach_config_index = 159, // hardcoded for now, matches sequence length and slot during processing
+      .prach_freq_start = openair0_config->split7.prach_freq_start,
+  };
+
+  AssertFatal(openair0_config->split7.prach_index == 159, 
+              "prach_index %d does not match expected value 159. Other values not supported\n",
+              openair0_config->split7.prach_index);
+  configure_ru_t_for_oru(ru_lower, &oru_cfg);
+
+  // Setup TDD table
+  ru_lower->config.tdd_table.tdd_period.value = get_tdd_period(openair0_config->split7.n_tdd_period);
   NR_DL_FRAME_PARMS *fp = ru_lower->nr_frame_parms;
-  int mu = 1;
-  fp->freq_range = FR1;
-  fp->nr_band = 77;
-  fp->dl_CarrierFreq = openair0_config->tx_freq[0];
-  fp->ul_CarrierFreq = openair0_config->rx_freq[0];
-  fp->ofdm_offset_divisor = 8;
-  nfapi_nr_config_request_scf_t *cfg = &ru_lower->config;
-  memset(cfg, 0, sizeof(*cfg));
-  cfg->cell_config.frame_duplex_type.value = TDD;
-  cfg->ssb_config.scs_common.value = mu;
-  cfg->carrier_config.dl_grid_size[cfg->ssb_config.scs_common.value].value = openair0_config->num_rb_dl;
-  cfg->carrier_config.ul_grid_size[cfg->ssb_config.scs_common.value].value = openair0_config->num_rb_dl;
-  cfg->carrier_config.num_rx_ant.value = openair0_config->rx_num_channels;
-  cfg->carrier_config.num_tx_ant.value = openair0_config->tx_num_channels;
-  cfg->prach_config.prach_sequence_length.value = 1; // 139 sequence length
-  cfg->prach_config.prach_sub_c_spacing.value = mu;
-
-  int prach_config_index = openair0_config->split7.prach_index;
-  LOG_I(HW, "Using PRACH config index %d\n", prach_config_index);
-
-  int numRA = 1;
-  cfg->prach_config.num_prach_fd_occasions_list = calloc_or_fail(1, sizeof(nfapi_nr_num_prach_fd_occasions_t));
-  for (int i = 0; i < numRA; i++) {
-    cfg->prach_config.num_prach_fd_occasions_list[i].k1.value = openair0_config->split7.prach_freq_start;
-  }
-
-  LOG_I(HW,
-        "Configuring FHI adapter with %d RX and %d TX antennas\n",
-        cfg->carrier_config.num_rx_ant.value,
-        cfg->carrier_config.num_tx_ant.value);
-
-  nr_init_frame_parms(&ru_lower->config, fp);
-  init_symbol_rotation(fp);
-  init_timeshift_rotation(fp);
-  nr_dump_frame_parms(fp);
-  ru_lower->N_TA_offset = set_default_nta_offset(fp->freq_range, fp->samples_per_subframe);
-  cfg->tdd_table.tdd_period.value = get_tdd_period(openair0_config->split7.n_tdd_period);
-  cfg->tdd_table.max_tdd_periodicity_list = calloc_or_fail(fp->slots_per_frame, sizeof(nfapi_nr_max_tdd_periodicity_t));
+  ru_lower->config.tdd_table.max_tdd_periodicity_list = calloc_or_fail(fp->slots_per_frame, sizeof(nfapi_nr_max_tdd_periodicity_t));
   for (int i = 0; i < fp->slots_per_frame; i++) {
-    cfg->tdd_table.max_tdd_periodicity_list[i].max_num_of_symbol_per_slot_list =
+    ru_lower->config.tdd_table.max_tdd_periodicity_list[i].max_num_of_symbol_per_slot_list =
         calloc_or_fail(14, sizeof(nfapi_nr_max_num_of_symbol_per_slot_t));
     for (int j = 0; j < 14; j++) {
-      cfg->tdd_table.max_tdd_periodicity_list[i].max_num_of_symbol_per_slot_list[j].slot_config.value =
+      ru_lower->config.tdd_table.max_tdd_periodicity_list[i].max_num_of_symbol_per_slot_list[j].slot_config.value =
           openair0_config->split7.slot_dirs[i % openair0_config->split7.n_tdd_period].sym_dir[j];
     }
   }
 
-  ru_lower->if_south = LOCAL_RF;
-  ru_lower->function = NGFI_RRU_IF5;
-  ru_lower->nb_tx = openair0_config->tx_num_channels;
-  ru_lower->nb_rx = openair0_config->rx_num_channels;
-  nr_phy_init_RU(ru_lower);
-
+  // Allocate some threads to the threadpool
   ru_lower->threadPool = calloc_or_fail(1, sizeof(*ru_lower->threadPool));
   initFloatingCoresTpool(10, ru_lower->threadPool, false, "RU_lower");
 
+  // Force load RFSimulator as the RF device
   memcpy(&ru_lower->openair0_cfg, openair0_config, sizeof(*openair0_config));
   IS_SOFTMODEM_RFSIM = true; // A trick to load rfsim here
   int ret = openair0_device_load(&ru_lower->rfdevice, &ru_lower->openair0_cfg);
@@ -447,6 +488,7 @@ static bool configure_fd_rfsim(openair0_device *device, openair0_config_t *opena
   IS_SOFTMODEM_RFSIM = false; // Reset the flag
   AssertFatal(ret == 0, "Failed to load openair0 device\n");
 
+  // These are fhi_72 specific parameters, currently unused.
   // verify oran section is present: we don't have a list but the below returns
   // numelt > 0 if the block is there
   paramlist_def_t pl = {0};
