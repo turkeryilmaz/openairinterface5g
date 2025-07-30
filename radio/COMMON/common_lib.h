@@ -313,6 +313,13 @@ typedef struct {
 } openair0_rf_map_t;
 
 typedef struct {
+  int card;
+  char *serveraddr;
+  uint16_t serverport;
+  double prop_delay_ms;
+} rfsim_params_t;
+
+typedef struct {
   char *remote_addr;
   //! remote port number for Ethernet interface (control)
   uint16_t remote_portc;
@@ -420,6 +427,9 @@ struct openair0_device {
 
   /* !brief RF frontend parameters set by application */
   openair0_config_t *openair0_cfg;
+
+  /* !brief RF-Simulator params */
+  rfsim_params_t rfsim_params;
 
   /* !brief ETH params set by application */
   eth_params_t *eth_params;

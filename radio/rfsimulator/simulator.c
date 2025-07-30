@@ -141,6 +141,7 @@ typedef struct buffer_s {
 typedef struct {
   int listen_sock, epollfd;
   pthread_mutex_t Sockmutex;
+  unsigned int card;
   unsigned int nb_cnx;
   openair0_timestamp_t nextRxTstamp;
   openair0_timestamp_t lastWroteTS;
@@ -218,7 +219,7 @@ static buffer_t *allocCirBuf(rfsimulator_state_t *bridge, int sock)
              sizeofArray(modelname),
              "rfsimu_channel_%s%d",
              (bridge->role == SIMU_ROLE_SERVER) ? "ue" : "enB",
-             bridge->nb_cnx - 1);
+             (bridge->role == SIMU_ROLE_SERVER) ? bridge->nb_cnx - 1 : bridge->card);
     ptr->channel_model = find_channel_desc_fromname(modelname); // path_loss in dB
     if (!ptr->channel_model) {
       // Use legacy method to find channel model - this will use the same channel model for all clients
@@ -1147,6 +1148,15 @@ __attribute__((__visibility__("default"))) int device_init(openair0_device_t *de
   rfsimulator->rx_freq = openair0_cfg->rx_freq[0];
   rfsimulator->tx_bw = openair0_cfg->tx_bw;
   rfsimulator_readconfig(rfsimulator);
+
+  rfsimulator->card = device->rfsim_params.card;
+  if (device->rfsim_params.serveraddr)
+    rfsimulator->ip = device->rfsim_params.serveraddr;
+  if (device->rfsim_params.serverport)
+    rfsimulator->port = device->rfsim_params.serverport;
+  if (device->rfsim_params.prop_delay_ms)
+    rfsimulator->prop_delay_ms = device->rfsim_params.prop_delay_ms;
+
   if (rfsimulator->prop_delay_ms > 0.0)
     rfsimulator->chan_offset = ceil(rfsimulator->sample_rate * rfsimulator->prop_delay_ms / 1000);
   if (rfsimulator->chan_offset != 0) {
