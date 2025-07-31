@@ -2364,13 +2364,20 @@ if(NR_PACKAGE)
   endif()
 
   foreach(document NR_SA_Tutorial_COTS_UE NR_SA_Tutorial_OAI_CN5G NR_SA_Tutorial_OAI_multi_UE NR_SA_Tutorial_OAI_nrUE)
-      install(FILES "${OPENAIR_DIR}/doc/${document}.md" DESTINATION share/doc/ COMPONENT oai-nr)
+      install(FILES "${OPENAIR_DIR}/doc/${document}.md" DESTINATION share/doc/oai-nr COMPONENT oai-nr)
   endforeach()
 
   list(APPEND COMPONENTS_LIST oai-nr)
 
+  if(PACKAGING-RPM)
   set(CPACK_COMPONENT_OAI-NR_SUMMARY "OpenAirInterface NR package")
   set(CPACK_COMPONENT_OAI-NR_DESCRIPTION "This package is dedicated for NR executables")
+  else()
+    set(CPACK_DEBIAN_OAI-NR_SUMMARY "OpenAirInterface NR package")
+    set(CPACK_DEBIAN_OAI-NR_DESCRIPTION "This package is dedicated for NR executables
+    .")
+  endif()
+
   set(CPACK_COMPONENT_OAI-NR_PACKAGE_NAME "openairinterface-oai-nr")
   set(CPACK_DEBIAN_OAI-NR_PACKAGE_DEPENDS "oai-common")
 endif()
@@ -2476,7 +2483,7 @@ foreach(component IN LISTS COMPONENTS_LIST)
     set(${postun_var} "${OPENAIR_CMAKE}/ldconfig-postun.sh")
   endif()
   install(FILES "${OPENAIR_DIR}/LICENSE" 
-          DESTINATION share/doc/openairinterface
+          DESTINATION "share/doc/${component}"
           COMPONENT ${component}
           PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
           )
