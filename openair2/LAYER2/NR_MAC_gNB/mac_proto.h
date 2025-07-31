@@ -491,6 +491,7 @@ bool nr_mac_remove_lcid(NR_UE_sched_ctrl_t *sched_ctrl, long lcid);
 
 bool nr_mac_get_new_rnti(NR_UEs_t *UEs, rnti_t *rnti);
 void nr_mac_update_pdcch_closed_loop_adjust(NR_UE_sched_ctrl_t *sched_ctrl, bool feedback_not_detected);
+void get_coreset_rb_params(const NR_ControlResourceSet_t *coreset, uint16_t *n_rb, uint16_t *rb_start);
 
 void prepare_du_configuration_update(gNB_MAC_INST *mac,
                                      f1ap_served_cell_info_t *info,
