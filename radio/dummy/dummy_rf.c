@@ -36,6 +36,7 @@ typedef struct {
   uint64_t timestamp;
   pthread_mutex_t mutex;
   pthread_cond_t cond;
+  uint64_t late_reads;
 } dummy_timestamp_t;
 
 typedef struct {
@@ -62,6 +63,15 @@ static void *dummy_timing_job(void *arg)
       LOG_E(UTIL, "clock_gettime failed\n");
       exit(1);
     }
+
+    dummy_timestamp_t *dummy_timestamp = &dummy_state->dummy_timestamp;
+    if (current_time.tv_sec != timestamp.tv_sec) {
+      if (dummy_timestamp->late_reads != 0) {
+        LOG_W(HW, "%ld RF reads were late\n", dummy_timestamp->late_reads);
+      }
+      dummy_timestamp->late_reads = 0;
+    }
+
     uint64_t diff = (current_time.tv_sec - timestamp.tv_sec) * 1000000000 + (current_time.tv_nsec - timestamp.tv_nsec);
     timestamp = current_time;
     double samples_to_produce = dummy_state->sample_rate * dummy_state->timescale * diff / 1e9;
@@ -73,7 +83,6 @@ static void *dummy_timing_job(void *arg)
       leftover_samples -= 1;
     }
 
-    dummy_timestamp_t *dummy_timestamp = &dummy_state->dummy_timestamp;
     mutexlock(dummy_timestamp->mutex);
     dummy_timestamp->timestamp += samples_to_produce;
     condbroadcast(dummy_timestamp->cond);
@@ -227,7 +236,9 @@ static int dummy_read(openair0_device *device, openair0_timestamp *ptimestamp, v
     }
     mutexunlock(dummy_timestamp->mutex);
   } else {
-    LOG_W(HW, "RF read is late!\n");
+    mutexlock(dummy_timestamp->mutex);
+    dummy_timestamp->late_reads++;
+    mutexunlock(dummy_timestamp->mutex);
   }
   *ptimestamp = dummy_state->last_received_sample;
   dummy_state->last_received_sample += nsamps;
