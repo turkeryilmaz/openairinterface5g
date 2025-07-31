@@ -385,7 +385,7 @@ int xran_fh_rx_read_slot(ru_info_t *ru, int *frame, int *slot)
           pRbElm = &pRbMap->prbMap[idxElm];
           if (sym_idx == 0)
             // ant_id / no of antenna per beam gives the beam_nb
-            pRbElm->nBeamIndex = ru->beam_id[ant_id / (ru->nb_rx / ru->num_beams_period)][0];
+            pRbElm->nBeamIndex = ru->beam_id[ant_id / (ru->nb_rx / ru->num_beams_period)][*slot * XRAN_NUM_OF_SYMBOL_PER_SLOT];
           int pos_len = 0;
           int neg_len = 0;
 
@@ -517,7 +517,7 @@ int xran_fh_tx_send_slot(ru_info_t *ru, int frame, int slot, uint64_t timestamp)
             p_prbMapElm = &pRbMap->prbMap[idxElm];
             if (sym_idx == 0)
               // ant_id / no of antenna per beam gives the beam_nb
-              p_prbMapElm->nBeamIndex = ru->beam_id[ant_id / (ru->nb_tx / ru->num_beams_period)][0];
+              p_prbMapElm->nBeamIndex = ru->beam_id[ant_id / (ru->nb_tx / ru->num_beams_period)][slot * XRAN_NUM_OF_SYMBOL_PER_SLOT];
 
             // assumes one fragment per symbol
 #ifdef E_RELEASE
