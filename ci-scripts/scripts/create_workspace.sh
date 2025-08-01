@@ -22,8 +22,5 @@ git config user.name "OAI Jenkins"
 git config advice.detachedHead false
 mkdir -p cmake_targets/log
 git checkout -f ${ref}
-if [ -n "${merge}" ]; then
-  git fetch origin ${merge} || die "Failed to fetch ${merge}"
-  git merge --ff FETCH_HEAD -m "Temporary merge for CI"
-fi
+[ -n "${merge}" ] && git fetch origin ${merge} && git merge --ff FETCH_HEAD -m "Temporary merge for CI"
 exit 0
