@@ -24,7 +24,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: local-epel                   # Name of the Deployment
-  namespace: open5gs             
+  namespace: oai-epel-repo             
 spec:
   replicas: 1                      
   selector:
@@ -37,7 +37,7 @@ spec:
     spec:
       containers:
         - name: local-epel          # Container name within the Pod
-          image: image-registry.openshift-image-registry.svc:5000/open5gs/local-epel:latest  
+          image: image-registry.openshift-image-registry.svc:5000/oai-epel-repo/local-epel:latest  
                                       # Container image pulled from internal OpenShift registry
           ports:
             - containerPort: 8080     # Port exposed by the container (Apache HTTP Server)

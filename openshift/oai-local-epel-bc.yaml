@@ -25,7 +25,7 @@ apiVersion: build.openshift.io/v1
 kind: BuildConfig
 metadata:
   name: local-epel
-  namespace: open5gs
+  namespace: oai-epel-repo
 spec:
   runPolicy: Serial
   source:

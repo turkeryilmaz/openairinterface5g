@@ -56,7 +56,7 @@ RUN reposync --repoid=epel --download-metadata --destdir=/var/www/html/epel/epel
 # Serve local repo to other systems
 RUN echo '[local-epel]' > /etc/yum.repos.d/local-epel.repo && \
     echo 'name=Local EPEL Repository for RHEL 9' >> /etc/yum.repos.d/local-epel.repo && \
-    echo 'baseurl=http://local-epel.open5gs.svc.cluster.local/epel/epel-9/epel' >> /etc/yum.repos.d/local-epel.repo && \
+    echo 'baseurl=http://local-epel.oai-epel-repo.svc.cluster.local/epel/epel-9/epel' >> /etc/yum.repos.d/local-epel.repo && \
     echo 'enabled=1' >> /etc/yum.repos.d/local-epel.repo && \
     echo 'gpgcheck=0' >> /etc/yum.repos.d/local-epel.repo
 
