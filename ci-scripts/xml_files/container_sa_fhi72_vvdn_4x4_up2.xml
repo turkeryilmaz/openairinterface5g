@@ -58,9 +58,11 @@
   </testCase>
 
   <testCase id="444100">
-    <class>DeployCU</class>
+    <class>Deploy_OC_Chart</class>
     <desc>Deploy CU</desc>
-    <svr_id>stonechat</svr_id>
+    <oc_namespace>oaicicd-core-for-fhi72</oc_namespace>
+    <oc_chart>/opt/oai-cn5g-fed-develop-2025-jan/ci-scripts/charts/oai-cu/</oc_chart>
+    <node>stonechat</node>
   </testCase>
 
   <testCase id="200000">
@@ -220,10 +222,12 @@
   </testCase>
 
   <testCase id="444300">
-    <class>UndeployCU</class>
+    <class>Undeploy_OC_Chart</class>
     <always_exec>true</always_exec>
-    <desc>Undeploy CU</desc>
-    <svr_id>stonechat</svr_id>
+    <desc>Undeploy CU on OC</desc>
+    <oc_namespace>oaicicd-core-for-fhi72</oc_namespace>
+    <oc_chart>/opt/oai-cn5g-fed-develop-2025-jan/ci-scripts/charts/oai-cu/</oc_chart>
+    <node>stonechat</node>
   </testCase>
 
   <testCase id="444400">
