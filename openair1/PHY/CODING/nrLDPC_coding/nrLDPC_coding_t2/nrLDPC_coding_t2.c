@@ -752,6 +752,8 @@ pmd_lcore_ldpc_dec(void *arg)
   AssertFatal(ret == 0, "Allocation failed for %d ops", num_segments);
   set_ldpc_dec_op(ops_enq, 0, bufs, nrLDPC_slot_decoding_parameters);
 
+  start_meas(&nrLDPC_slot_decoding_parameters->TBs->segments->ts_ldpc_decode);
+
   for (enq = 0, deq = 0; enq < num_segments;) {
     num_to_enq = num_segments;
     if (unlikely(num_segments - enq < num_to_enq))
@@ -767,6 +769,9 @@ pmd_lcore_ldpc_dec(void *arg)
     time_out++;
     DevAssert(time_out <= TIME_OUT_POLL);
   }
+
+  stop_meas(&nrLDPC_slot_decoding_parameters->TBs->segments->ts_ldpc_decode);
+
   if (deq == enq) {
     ret = retrieve_ldpc_dec_op(ops_deq, tp->op_params->vector_mask, nrLDPC_slot_decoding_parameters);
     AssertFatal(ret == 0, "LDPC offload decoder failed!");

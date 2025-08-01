@@ -1056,7 +1056,10 @@ printf("%d\n", slot);
       memset(Sched_INFO, 0, sizeof(*Sched_INFO));
       Sched_INFO->sched_response_id = -1;
 
-      while (round < num_rounds && !UE_harq_process->decodeResult && !stop) {
+      if (trial == 1000)
+        reset_meas(&gNB->tparity);
+
+      while (round < 1 && !UE_harq_process->decodeResult && !stop) {
         round_trials[round]++;
 
         clear_nr_nfapi_information(RC.nrmac[0], 0, frame, slot, &Sched_INFO->DL_req, &Sched_INFO->TX_req, &Sched_INFO->UL_dci_req);
@@ -1317,6 +1320,7 @@ printf("%d\n", slot);
       printStatIndent3(&gNB->tinput,"DLSCH LDPC input processing time");
       printStatIndent3(&gNB->tprep,"DLSCH LDPC input preparation time");
       printStatIndent3(&gNB->tparity,"DLSCH LDPC parity generation time");
+      printDistribution(&gNB->tparity, table_tx,"DLSCH LDPC parity generation distribution");
       printStatIndent3(&gNB->toutput,"DLSCH LDPC output generation time");
       printStatIndent3(&gNB->dlsch_rate_matching_stats,"DLSCH Rate Matching time");
       printStatIndent3(&gNB->dlsch_interleaving_stats,  "DLSCH Interleaving time");

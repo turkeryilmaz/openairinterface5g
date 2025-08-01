@@ -1040,7 +1040,14 @@ int main(int argc, char *argv[])
       crc_status = 1;
       errors_decoding = 0;
 
-      while (round < max_rounds && crc_status && !stop) {
+      if (trial == 1000)
+        reset_meas(&gNB->ts_ldpc_decode);
+
+      for (i = 1; i < TBS/8; i++) {
+        ulsch_input_buffer[i] = (uint8_t)rand();
+      }
+
+      while (round < 1 && crc_status && !stop) {
 
         round_trials[round]++;
         rv_index = nr_get_rv(round % 4);
@@ -1572,6 +1579,7 @@ int main(int argc, char *argv[])
       printStatIndent2(&gNB->ts_deinterleave, "ULSCH segment deinterleaving time");
       printStatIndent2(&gNB->ts_rate_unmatch, "ULSCH segment rate recovery time");
       printStatIndent2(&gNB->ts_ldpc_decode, "ULSCH segments decoding time");
+      printDistribution(&gNB->ts_ldpc_decode, table_rx, "ULSCH segments decoding distribution");
 
       printf("\nUE TX\n");
       for (int i = PHY_PROC_TX; i <= OFDM_MOD_STATS; i++) {
