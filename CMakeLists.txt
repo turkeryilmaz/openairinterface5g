@@ -2252,7 +2252,6 @@ set(CPACK_PACKAGE_CONTACT "Calvin Peyron <calvin.peyron@open-cells.com>")
 set(CPACK_MONOLITHIC_INSTALL OFF)
 
 set(CPACK_DEBIAN_PACKAGE_MAINTAINER "Calvin Peyron <calvin.peyron@open-cells.com>")
-set(CPACK_DEBIAN_FILE_NAME DEB-DEFAULT)
 
 if(PACKAGING-RPM)
   set(CPACK_GENERATOR "RPM")
@@ -2341,9 +2340,17 @@ if(LTE_PACKAGE)
 
   list(APPEND COMPONENTS_LIST oai-lte)
 
-  set(CPACK_COMPONENT_OAI-LTE_SUMMARY "OpenAirInterface LTE package")
-  set(CPACK_COMPONENT_OAI-LTE_DESCRIPTION "This package is dedicated for LTE executables")
-  set(CPACK_COMPONENT_OAI-LTE_PACKAGE_NAME "openairinterface-oai-lte")
+  if(PACKAGING-RPM)
+    set(CPACK_COMPONENT_OAI-NR_SUMMARY "OpenAirInterface LTE package")
+    set(CPACK_COMPONENT_OAI-NR_DESCRIPTION "This package is dedicated for LTE executables")
+  else()
+    set(CPACK_DEBIAN_OAI-NR_SUMMARY "OpenAirInterface LTE package")
+    set(CPACK_DEBIAN_OAI-NR_DESCRIPTION "This package is dedicated for LTE executables
+    .")
+  endif()
+
+  set(CPACK_COMPONENT_OAI-LTE_PACKAGE_NAME "oai-lte")
+  set(CPACK_DEBIAN_OAI-LTE_FILE_NAME "oai-lte.deb")
   set(CPACK_DEBIAN_OAI-LTE_PACKAGE_DEPENDS "liboai-common")
 endif()
 
@@ -2418,7 +2425,8 @@ if(NR_PACKAGE)
     .")
   endif()
 
-  set(CPACK_COMPONENT_OAI-NR_PACKAGE_NAME "openairinterface-oai-nr")
+  set(CPACK_COMPONENT_OAI-NR_PACKAGE_NAME "oai-nr")
+  set(CPACK_DEBIAN_OAI-NR_FILE_NAME "oai-nr.deb")
   set(CPACK_DEBIAN_OAI-NR_PACKAGE_DEPENDS "liboai-common")
 endif()
 
@@ -2449,38 +2457,38 @@ endif()
 
 
 if(OAI_LDPC_T2_PACKAGE)
-  set(CPACK_COMPONENT_OAI-LDPC-T2_SUMMARY "OpenAirInterface T2 accelerator package")
-  set(CPACK_COMPONENT_OAI-LDPC-T2_DESCRIPTION "This package is dedicated for T2 accelerator library")
+  set(CPACK_COMPONENT_LIBOAI-LDPC-T2_SUMMARY "OpenAirInterface T2 accelerator package")
+  set(CPACK_COMPONENT_LIBOAI-LDPC-T2_DESCRIPTION "This package is dedicated for T2 accelerator library")
   install(TARGETS ldpc_t2
-        COMPONENT oai-ldpc-t2
+        COMPONENT liboai-ldpc-t2
         RUNTIME DESTINATION bin
         LIBRARY DESTINATION lib
         PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
       )
-  install(FILES "${OPENAIR_DIR}/doc/physical-simulators.md" DESTINATION share/doc/ COMPONENT oai-physim)
-  list(APPEND COMPONENTS_LIST oai-ldpc-t2)
+  install(FILES "${OPENAIR_DIR}/doc/LDPC_T2_OFFLOAD_SETUP.md" DESTINATION share/doc/ COMPONENT liboai-ldpc-t2)
+  list(APPEND COMPONENTS_LIST liboai-ldpc-t2)
 endif()
 
 
 if(OAI_USRP_PACKAGE)
 
   if(PACKAGING-RPM)
-    set(CPACK_RPM_OAI-USRP_PACKAGE_REQUIRES "boost-chrono, boost-date-time, boost-filesystem, boost-program-options, boost-thread, boost-test, boost-regex, python3-mako, python3-docutils, python3-pip")
+    set(CPACK_RPM_LIBOAI-USRP_PACKAGE_REQUIRES "boost-chrono, boost-date-time, boost-filesystem, boost-program-options, boost-thread, boost-test, boost-regex, python3-mako, python3-docutils, python3-pip")
   else()
-    set(CPACK_DEBIAN_OAI-USRP_PACKAGE_DEPENDS "doxygen, python3-docutils, python3-mako, python3-numpy, python3-requests, python3-setuptools, ninja-build")
+    set(CPACK_DEBIAN_LIBOAI-USRP_PACKAGE_DEPENDS "doxygen, python3-docutils, python3-mako, python3-numpy, python3-requests, python3-setuptools, ninja-build")
   endif()
 
   install(TARGETS oai_usrpdevif
-        COMPONENT oai-usrp
+        COMPONENT liboai-usrp
         RUNTIME DESTINATION bin
         LIBRARY DESTINATION lib
         PERMISSIONS OWNER_READ OWNER_WRITE  GROUP_READ WORLD_READ
       )
-  install(FILES "${OPENAIR_DIR}/radio/USRP/README.md" DESTINATION share/doc/oai-usrp COMPONENT oai-usrp)
-  list(APPEND COMPONENTS_LIST oai-usrp)
+  install(FILES "${OPENAIR_DIR}/radio/USRP/README.md" DESTINATION share/doc/liboai-usrp COMPONENT liboai-usrp)
+  list(APPEND COMPONENTS_LIST liboai-usrp)
 
   if(PACKAGING-RPM)
-    set(CPACK_RPM_OAI-USRP_PACKAGE_RELOCATABLE FALSE)
+    set(CPACK_RPM_LIBOAI-USRP_PACKAGE_RELOCATABLE FALSE)
   endif()
 
   set(CONFIG_FILELIST_USRP "")
@@ -2491,7 +2499,7 @@ if(OAI_USRP_PACKAGE)
     list(APPEND CONFIG_FILENAME_LIST_USRP ${fname})
   endforeach()
   foreach(config ${CONFIG_FILENAME_LIST_USRP})
-    install(FILES "${OPENAIR_DIR}/ci-scripts/conf_files/${config}" DESTINATION /etc/openairinterface/usrp COMPONENT oai-usrp)
+    install(FILES "${OPENAIR_DIR}/ci-scripts/conf_files/${config}" DESTINATION /etc/openairinterface/usrp COMPONENT liboai-usrp)
     if(PACKAGING-RPM)
       list(APPEND CONFIG_FILELIST_USRP "%config(noreplace) /etc/openairinterface/usrp/${config}")
     else()
@@ -2500,7 +2508,7 @@ if(OAI_USRP_PACKAGE)
   endforeach()
 
   if(PACKAGING-RPM)
-    set(CPACK_RPM_OAI-USRP_USER_FILELIST "${CONFIG_FILELIST_USRP}")
+    set(CPACK_RPM_LIBOAI-USRP_USER_FILELIST "${CONFIG_FILELIST_USRP}")
   else()
     set(CONFFILES_PATH_USRP "${CMAKE_CURRENT_BINARY_DIR}/usrp/conffiles")
     file(WRITE "${CONFFILES_PATH_USRP}" "")
@@ -2508,19 +2516,20 @@ if(OAI_USRP_PACKAGE)
         file(APPEND "${CONFFILES_PATH_USRP}" "${cfg}\n")
     endforeach()    
     file(CHMOD "${CMAKE_CURRENT_BINARY_DIR}/usrp/conffiles" PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
-    set(CPACK_DEBIAN_OAI-USRP_PACKAGE_CONTROL_EXTRA "${CONFFILES_PATH_USRP}")
+    set(CPACK_DEBIAN_LIBOAI-USRP_PACKAGE_CONTROL_EXTRA "${CONFFILES_PATH_USRP}")
   endif()
 
     if(PACKAGING-RPM)
-  set(CPACK_COMPONENT_OAI-USRP_SUMMARY "OpenAirInterface USRP package")
-  set(CPACK_COMPONENT_OAI-USRP_DESCRIPTION "This package is dedicated for USRP library")
+    set(CPACK_COMPONENT_LIBOAI-USRP_SUMMARY "OpenAirInterface USRP package")
+    set(CPACK_COMPONENT_LIBOAI-USRP_DESCRIPTION "This package is dedicated for USRP library")
   else()
-    set(CPACK_DEBIAN_OAI-USRP_SUMMARY "OpenAirInterface USRP package")
-    set(CPACK_DEBIAN_OAI-USRP_DESCRIPTION "This package is dedicated for USRP library
+    set(CPACK_DEBIAN_LIBOAI-USRP_SUMMARY "OpenAirInterface USRP package")
+    set(CPACK_DEBIAN_LIBOAI-USRP_DESCRIPTION "This package is dedicated for USRP library
     .")
   endif()
 
-  set(CPACK_COMPONENT_OAI-USRP_PACKAGE_NAME "openairinterface-oai-usrp")
+  set(CPACK_COMPONENT_LIBOAI-USRP_PACKAGE_NAME "liboai-usrp")
+  set(CPACK_DEBIAN_LIBOAI-USRP_FILE_NAME "liboai-usrp.deb")
 endif()
 
 
