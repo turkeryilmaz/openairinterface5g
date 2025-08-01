@@ -106,6 +106,11 @@ extern "C" {
   int newGtpuDeleteTunnels(instance_t instance, ue_id_t ue_id, int nbTunnels, int *pdusession_id);
 
   void gtpv1uSendDirect(instance_t instance, ue_id_t ue_id, int bearer_id, uint8_t *buf, size_t len, bool seqNumFlag, bool npduNumFlag);
+  void gtpv1uSendDirectWithNRUSeqNum(instance_t instance,
+                                     ue_id_t ue_id,
+                                     int bearer_id,
+                                     uint8_t *buf,
+                                     size_t len);
 
   instance_t gtpv1Init(openAddr_t context);
   void *gtpv1uTask(void *args);
