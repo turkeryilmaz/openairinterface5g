@@ -2305,13 +2305,40 @@ if(LTE_PACKAGE)
       COMPONENT oai-lte
       DESTINATION bin
   )
+  
+  if(PACKAGING-RPM)
+    set(CPACK_RPM_OAI-LTE_PACKAGE_RELOCATABLE FALSE)
+  endif()
+
+  set(CONFIG_FILELIST_LTE "")
+  foreach(config lteue.usim-ci.conf lteue.usim-ci-magma.conf lte-ue.usim.conf lteue.usim-mbs.conf lteue.band7.25prb.l2sim.conf)
+    install(FILES "${OPENAIR_DIR}/ci-scripts/conf_files/${config}" DESTINATION /etc/openairinterface/lte COMPONENT oai-lte)
+    if(PACKAGING-RPM)
+      list(APPEND CONFIG_FILELIST_LTE "%config(noreplace) /etc/openairinterface/lte/${config}")
+    else()
+      list(APPEND CONFIG_FILELIST_LTE "/etc/openairinterface/lte/${config}")
+    endif()
+  endforeach()
+
+  if(PACKAGING-RPM)
+    set(CPACK_RPM_OAI-LTE_USER_FILELIST "${CONFIG_FILELIST_LTE}")
+  else()
+    set(CONFFILES_PATH_LTE "${CMAKE_CURRENT_BINARY_DIR}/lte/conffiles")
+    file(WRITE "${CONFFILES_PATH_LTE}" "")
+    foreach(cfg IN LISTS CONFIG_FILELIST_LTE)
+        file(APPEND "${CONFFILES_PATH_LTE}" "${cfg}\n")
+    endforeach()    
+    file(CHMOD "${CMAKE_CURRENT_BINARY_DIR}/lte/conffiles" PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
+    set(CPACK_DEBIAN_OAI-LTE_PACKAGE_CONTROL_EXTRA "${CONFFILES_PATH_LTE}")
+  endif()
+
 
   list(APPEND COMPONENTS_LIST oai-lte)
 
   set(CPACK_COMPONENT_OAI-LTE_SUMMARY "OpenAirInterface LTE package")
   set(CPACK_COMPONENT_OAI-LTE_DESCRIPTION "This package is dedicated for LTE executables")
   set(CPACK_COMPONENT_OAI-LTE_PACKAGE_NAME "openairinterface-oai-lte")
-  set(CPACK_DEBIAN_OAI-LTE_PACKAGE_DEPENDS "oai-common")
+  set(CPACK_DEBIAN_OAI-LTE_PACKAGE_DEPENDS "liboai-common")
 endif()
 
 
@@ -2334,33 +2361,33 @@ if(NR_PACKAGE)
     set(CPACK_RPM_OAI-NR_PACKAGE_RELOCATABLE FALSE)
   endif()
 
-  set(CONFIG_FILELIST "")
+  set(CONFIG_FILELIST_NR "")
   install(FILES "${OPENAIR_DIR}/doc/tutorial_resources/oai-cn5g/conf/config.yaml" DESTINATION /etc/openairinterface/nr COMPONENT oai-nr)
   foreach(config nrue.uicc.ntn-leo.conf nrue.uicc.conf nrue.band78.106prb.l2sim.conf gnb-cuup.sa.f1.conf gnb-cuup.sa.f1.quectel.conf)
     install(FILES "${OPENAIR_DIR}/ci-scripts/conf_files/${config}" DESTINATION /etc/openairinterface/nr COMPONENT oai-nr)
     if(PACKAGING-RPM)
-      list(APPEND CONFIG_FILELIST "%config(noreplace) /etc/openairinterface/nr/${config}")
+      list(APPEND CONFIG_FILELIST_NR "%config(noreplace) /etc/openairinterface/nr/${config}")
     else()
-      list(APPEND CONFIG_FILELIST "/etc/openairinterface/nr/${config}")
+      list(APPEND CONFIG_FILELIST_NR "/etc/openairinterface/nr/${config}")
     endif()
   endforeach()
 
   if(PACKAGING-RPM)
-    list(APPEND CONFIG_FILELIST "%config(noreplace) /etc/openairinterface/nr/config.yaml")
+    list(APPEND CONFIG_FILELIST_NR "%config(noreplace) /etc/openairinterface/nr/config.yaml")
   else()
-    list(APPEND CONFIG_FILELIST "/etc/openairinterface/nr/config.yaml")
+    list(APPEND CONFIG_FILELIST_NR "/etc/openairinterface/nr/config.yaml")
   endif()
 
   if(PACKAGING-RPM)
-    set(CPACK_RPM_OAI-NR_USER_FILELIST "${CONFIG_FILELIST}")
+    set(CPACK_RPM_OAI-NR_USER_FILELIST "${CONFIG_FILELIST_NR}")
   else()
-    set(CONFFILES_PATH "${CMAKE_CURRENT_BINARY_DIR}/conffiles")
-    file(WRITE "${CONFFILES_PATH}" "")
-    foreach(cfg IN LISTS CONFIG_FILELIST)
-        file(APPEND "${CONFFILES_PATH}" "${cfg}\n")
+    set(CONFFILES_PATH_NR "${CMAKE_CURRENT_BINARY_DIR}/nr/conffiles")
+    file(WRITE "${CONFFILES_PATH_NR}" "")
+    foreach(cfg IN LISTS CONFIG_FILELIST_NR)
+        file(APPEND "${CONFFILES_PATH_NR}" "${cfg}\n")
     endforeach()    
-    file(CHMOD "${CMAKE_CURRENT_BINARY_DIR}/conffiles" PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
-    set(CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA "${CONFFILES_PATH}")
+    file(CHMOD "${CMAKE_CURRENT_BINARY_DIR}/nr/conffiles" PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
+    set(CPACK_DEBIAN_OAI-NR_PACKAGE_CONTROL_EXTRA "${CONFFILES_PATH_NR}")
   endif()
 
   foreach(document NR_SA_Tutorial_COTS_UE NR_SA_Tutorial_OAI_CN5G NR_SA_Tutorial_OAI_multi_UE NR_SA_Tutorial_OAI_nrUE)
@@ -2379,7 +2406,7 @@ if(NR_PACKAGE)
   endif()
 
   set(CPACK_COMPONENT_OAI-NR_PACKAGE_NAME "openairinterface-oai-nr")
-  set(CPACK_DEBIAN_OAI-NR_PACKAGE_DEPENDS "oai-common")
+  set(CPACK_DEBIAN_OAI-NR_PACKAGE_DEPENDS "liboai-common")
 endif()
 
 
@@ -2436,11 +2463,44 @@ if(OAI_USRP_PACKAGE)
         LIBRARY DESTINATION lib
         PERMISSIONS OWNER_READ OWNER_WRITE  GROUP_READ WORLD_READ
       )
-  install(FILES "${OPENAIR_DIR}/radio/USRP/README.md" DESTINATION share/doc/ COMPONENT oai-usrp)
+  install(FILES "${OPENAIR_DIR}/radio/USRP/README.md" DESTINATION share/doc/oai-usrp COMPONENT oai-usrp)
   list(APPEND COMPONENTS_LIST oai-usrp)
 
+  if(PACKAGING-RPM)
+    set(CPACK_RPM_OAI-USRP_PACKAGE_RELOCATABLE FALSE)
+  endif()
+
+  set(CONFIG_FILELIST_USRP "")
+  foreach(config enb.band38.lte_2x2.100prb.usrpn310.conf enb.band38.lte_2x2_tm2.100prb.usrpn310.conf enb-rru.band40.usrpb210.tm1.conf enb-rru.band7.usrpb210.tm1.conf gnb-pnf.band77.usrpn310.4x4.conf gnb.sa.band78.51prb.usrpb200.conf enb.band38.nsa_2x2.100prb.usrpn310.conf enb.band40.100prb.usrpb200.tm1-defaultscheduler.conf enb.band40.25prb.usrpb200.conf gnb.band78.106prb.usrpn300.phytest-dora.conf gnb.sa.band77.162prb.usrpn310.2x2.conf gnb.band78.162prb.usrpn300.phytest-dora.conf enb.band7.100prb.usrpb200.tm1.conf enb.band7.25prb.usrpb200.conf gnb.band78.273prb.usrpn300.phytest-dora.conf gnb.sa.band77.273prb.usrpn310.2x2.conf gnb.sa.band78.106prb.usrp310.2x2.conf gnb-du.sa.band1.52prb.usrpb210.conf gnb.sa.band78.106prb.usrpb200.sc-fdma.conf gnb.sa.band78.106prb.usrpn310.ddsuu-2x2.conf enb.nsa.band7.25prb.usrpb200.conf gnb.nsa.band78.106prb.usrpn310.2x2.conf enb.band7.tm1.50prb.usrpb210.conf gnb.nsa.band78.106prb.usrpb200.conf gnb-du.sa.band78.106prb.usrpb200.conf gnb.sa.band78.162prb.usrpn310.2x2.conf enb.band7.50prb.usrpb200.tm1.conf enb.band7.25prb.usrpb200.tm1-norrc.conf enb.band7.25prb.usrpb200.tm1.conf)
+    install(FILES "${OPENAIR_DIR}/ci-scripts/conf_files/${config}" DESTINATION /etc/openairinterface/usrp COMPONENT oai-usrp)
+    if(PACKAGING-RPM)
+      list(APPEND CONFIG_FILELIST_USRP "%config(noreplace) /etc/openairinterface/usrp/${config}")
+    else()
+      list(APPEND CONFIG_FILELIST_USRP "/etc/openairinterface/usrp/${config}")
+    endif()
+  endforeach()
+
+  if(PACKAGING-RPM)
+    set(CPACK_RPM_OAI-USRP_USER_FILELIST "${CONFIG_FILELIST_USRP}")
+  else()
+    set(CONFFILES_PATH_USRP "${CMAKE_CURRENT_BINARY_DIR}/usrp/conffiles")
+    file(WRITE "${CONFFILES_PATH_USRP}" "")
+    foreach(cfg IN LISTS CONFIG_FILELIST_USRP)
+        file(APPEND "${CONFFILES_PATH_USRP}" "${cfg}\n")
+    endforeach()    
+    file(CHMOD "${CMAKE_CURRENT_BINARY_DIR}/usrp/conffiles" PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
+    set(CPACK_DEBIAN_OAI-USRP_PACKAGE_CONTROL_EXTRA "${CONFFILES_PATH_USRP}")
+  endif()
+
+    if(PACKAGING-RPM)
   set(CPACK_COMPONENT_OAI-USRP_SUMMARY "OpenAirInterface USRP package")
   set(CPACK_COMPONENT_OAI-USRP_DESCRIPTION "This package is dedicated for USRP library")
+  else()
+    set(CPACK_DEBIAN_OAI-USRP_SUMMARY "OpenAirInterface USRP package")
+    set(CPACK_DEBIAN_OAI-USRP_DESCRIPTION "This package is dedicated for USRP library
+    .")
+  endif()
+
   set(CPACK_COMPONENT_OAI-USRP_PACKAGE_NAME "openairinterface-oai-usrp")
 endif()
 
@@ -2448,9 +2508,9 @@ endif()
 if(OAI_COMMON_PACKAGE)
 
   if(PACKAGING-RPM)
-    set(CPACK_RPM_OAI-COMMON_PACKAGE_REQUIRES "automake, gcc, gcc-c++, git, pkgconfig, lksctp-tools, ninja-build, make, patch, lapack, blas, vim-common")
+    set(CPACK_RPM_LIBOAI-COMMON_PACKAGE_REQUIRES "automake, gcc, gcc-c++, git, pkgconfig, lksctp-tools, ninja-build, make, patch, lapack, blas, vim-common")
   else()
-    set(CPACK_DEBIAN_OAI-COMMON_PACKAGE_DEPENDS "automake, build-essential, pkg-config, git, patch, openssl, xxd")
+    set(CPACK_DEBIAN_LIBOAI-COMMON_PACKAGE_DEPENDS "automake, build-essential, pkg-config, git, patch, openssl, xxd")
   endif()
 
   foreach(lib params_libconfig dfts oai_iqplayer)
@@ -2460,16 +2520,50 @@ if(OAI_COMMON_PACKAGE)
   endforeach()
   
   install(TARGETS params_libconfig dfts oai_iqplayer params_yaml telnetsrv coding rfsimulator ldpc_orig ldpc vrtsim
-          COMPONENT oai-common
+          COMPONENT liboai-common
           RUNTIME DESTINATION bin
           LIBRARY DESTINATION lib
           PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
         )
-    list(APPEND COMPONENTS_LIST oai-common)
+    list(APPEND COMPONENTS_LIST liboai-common)
 
-  set(CPACK_COMPONENT_OAI-COMMON_SUMMARY "OpenAirInterface shared libraries package")
-  set(CPACK_COMPONENT_OAI-COMMON_DESCRIPTION "This package contains shared libraries for other packages")
-  set(CPACK_COMPONENT_OAI-COMMON_PACKAGE_NAME "openairinterface-oai-common")
+    if(PACKAGING-RPM)
+    set(CPACK_RPM_LIBOAI-COMMON_PACKAGE_RELOCATABLE FALSE)
+  endif()
+
+  set(CONFIG_FILELIST_COMMON "")
+  foreach(config gnb-du.sa.band78.106prb.rfsim.conf channelmod_rfsimu.conf gnb-pnf.band66.rfsim.conf gnb.sa.band78.273prb.rfsim.2x2.conf enb.band38.25prb.rfsim.conf gnb.sa.band254.u0.25prb.rfsim.ntn.conf gnb.sa.band254.u0.25prb.rfsim.ntn-leo.conf gnb.band66.106prb.rfsim.phytest-dora.conf gnb.sa.band261.u3.32prb.rfsim.conf gnb.band78.106prb.rfsim.phytest-dora.conf gnb.sa.band66.106prb.rfsim.conf enb.band7.100prb.rfsim.conf enb.band7.25prb.rfsim.nos1.conf enb.band7.25prb.rfsim.conf gnb.sa.band78.106prb.rfsim.conf  gnb.sa.band78.106prb.rfsim.flexric.conf gnb.sa.band78.106prb.rfsim.neighbour.conf enb.band7.50prb.rfsim.conf enb.band7.tm1.25prb.rfsim.mbms.conf gnb.sa.band78.24prb.rfsim.conf)
+    install(FILES "${OPENAIR_DIR}/ci-scripts/conf_files/${config}" DESTINATION /etc/openairinterface/liboai-common COMPONENT liboai-common)
+    if(PACKAGING-RPM)
+      list(APPEND CONFIG_FILELIST_COMMON "%config(noreplace) /etc/openairinterface/liboai-common/${config}")
+    else()
+      list(APPEND CONFIG_FILELIST_COMMON "/etc/openairinterface/liboai-common/${config}")
+    endif()
+  endforeach()
+
+  if(PACKAGING-RPM)
+    set(CPACK_RPM_LIBOAI-COMMON_USER_FILELIST "${CONFIG_FILELIST_COMMON}")
+  else()
+    set(CONFFILES_PATH_COMMON "${CMAKE_CURRENT_BINARY_DIR}/liboai-common/conffiles")
+    file(WRITE "${CONFFILES_PATH_COMMON}" "")
+    foreach(cfg IN LISTS CONFIG_FILELIST_COMMON)
+        file(APPEND "${CONFFILES_PATH_COMMON}" "${cfg}\n")
+    endforeach()    
+    file(CHMOD "${CMAKE_CURRENT_BINARY_DIR}/liboai-common/conffiles" PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
+    set(CPACK_DEBIAN_LIBOAI-COMMON_PACKAGE_CONTROL_EXTRA "${CONFFILES_PATH_COMMON}")
+  endif()
+
+    if(PACKAGING-RPM)
+    set(CPACK_COMPONENT_LIBOAI-COMMON_SUMMARY "OpenAirInterface shared libraries package")
+    set(CPACK_COMPONENT_LIBOAI-COMMON_DESCRIPTION "This package contains shared libraries for other packages")
+  else()
+    set(CPACK_DEBIAN_LIBOAI-COMMON_SUMMARY "OpenAirInterface shared libraries package")
+    set(CPACK_DEBIAN_LIBOAI-COMMON_DESCRIPTION "This package contains shared libraries for other packages
+    .")
+  endif()
+
+  set(CPACK_COMPONENT_LIBOAI-COMMON_PACKAGE_NAME "liboai-common")
+  set(CPACK_DEBIAN_LIBOAI-COMMON_FILE_NAME "liboai-common.deb")
 endif()
 
 
