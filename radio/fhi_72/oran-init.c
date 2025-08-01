@@ -341,8 +341,8 @@ static void oran_allocate_buffers(void *handle,
   uint32_t idx = 0;
   for (int i=0; i < xran_max_antenna_nr; i++) {
     // DL/UL PRB mapping depending on the duplex mode.
-    // Set RU_PORT_ID and beam_idx so that each stream would use beam_idx 0 at first.
-    int beam_idx = 0;
+    // Set RU_PORT_ID and beam_idx so that each stream would use beam_idx -1 at first.
+    int beam_idx = -1;
     dlPm[i] = get_xran_prb_map(fh_config, XRAN_DIR_DL, 0, 14, i, beam_idx);
     ulPm[i] = get_xran_prb_map(fh_config, XRAN_DIR_UL, 0, 14, i, beam_idx);
     if (fh_config->frame_conf.nFrameDuplexType == XRAN_TDD) {
