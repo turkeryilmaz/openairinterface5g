@@ -30,6 +30,8 @@
 #include <common/utils/LOG/log.h>
 #include "common/utils/threadPool/pthread_utils.h"
 #include "common_lib.h"
+#include "radio/vrtsim/noise_device.h"
+#include "simde/x86/avx512.h"
 
 // structures and timing thread job for timing
 typedef struct {
@@ -203,12 +205,47 @@ int dummy_write_init(openair0_device *device)
       @param timestamp The timestamp at which the first sample MUST be sent
       @param buff Buffer which holds the samples
       @param nsamps number of samples to be sent
-      @param antenna_id index of the antenna if the device has multiple antennas
+      @param nbAnt number of antennas
       @param flags flags must be set to true if timestamp parameter needs to be applied
 */
-static int dummy_write(openair0_device *device, openair0_timestamp timestamp, void **buff, int nsamps, int cc, int flags)
+static int dummy_write(openair0_device *device, openair0_timestamp timestamp, void **buff, int nsamps, int nbAnt, int flags)
 {
   return 0;
+}
+
+/*! \brief Store noise in the buffer buff
+ * \param[out] buff A buffer for received samples. The buffers must be large enough to hold the number of
+ * samples \ref nsamps.
+ * \param nsamps Number of samples. One sample is 2 byte I + 2 byte Q => 4 byte.
+ */
+static void read_noise(void *buff, int nsamps)
+{
+  int aligned_nsamps = ceil_mod(nsamps, (512 / 8) / sizeof(cf_t));
+  cf_t samples[aligned_nsamps] __attribute__((aligned(64)));
+  // Apply noise from global settings
+  get_noise_vector((float *)samples, nsamps * 2);
+
+  // Convert to c16_t
+  c16_t samples_out[aligned_nsamps] __attribute__((aligned(64)));
+#if defined(__AVX512F__)
+  for (int i = 0; i < aligned_nsamps / 8; i++) {
+    simde__m512 *in = (simde__m512 *)&samples[i * 8];
+    simde__m256i *out = (simde__m256i *)&samples_out[i * 8];
+    *out = simde_mm512_cvtsepi32_epi16(simde_mm512_cvtps_epi32(*in));
+  }
+#elif defined(__AVX2__)
+  for (int i = 0; i < aligned_nsamps / 4; i++) {
+    simde__m256 *in = (simde__m256 *)&samples[i * 4];
+    simde__m128i *out = (simde__m128i *)&samples_out[i * 4];
+    *out = simde_mm256_cvtsepi32_epi16(simde_mm256_cvtps_epi32(*in));
+  }
+#else
+  for (int i = 0; i < nsamps; i++) {
+    samples_out[i].r = lroundf(samples[i].r);
+    samples_out[i].i = lroundf(samples[i].i);
+  }
+#endif
+  memcpy(buff, samples_out, nsamps * sizeof(c16_t));
 }
 
 /*! \brief Receive samples from hardware.
@@ -218,10 +255,11 @@ static int dummy_write(openair0_device *device, openair0_timestamp timestamp, vo
  * \param device the hardware to use
  * \param[out] ptimestamp the time at which the first sample was received.
  * \param[out] buff An array of pointers to buffers for received samples. The buffers must be large enough to hold the number of
- * samples \ref nsamps. \param nsamps Number of samples. One sample is 2 byte I + 2 byte Q => 4 byte. \param antenna_id Index of
- * antenna for which to receive samples \returns the number of sample read
+ * samples \ref nsamps. \param nsamps Number of samples. One sample is 2 byte I + 2 byte Q => 4 byte.
+ * \param nbAnt number of antennas
+ * \returns the number of sample read
  */
-static int dummy_read(openair0_device *device, openair0_timestamp *ptimestamp, void **buff, int nsamps, int cc)
+static int dummy_read(openair0_device *device, openair0_timestamp *ptimestamp, void **buff, int nsamps, int nbAnt)
 {
   dummy_state_t *dummy_state = (dummy_state_t *)device->priv;
 
@@ -243,8 +281,8 @@ static int dummy_read(openair0_device *device, openair0_timestamp *ptimestamp, v
   *ptimestamp = dummy_state->last_received_sample;
   dummy_state->last_received_sample += nsamps;
 
-  for (int i = 0; i < cc; i++) {
-    memset(buff[i], 0, nsamps * sizeof(uint32_t)); // TODO Play random data
+  for (int i = 0; i < nbAnt; i++) {
+    read_noise(buff[i], nsamps);
   }
 
   return nsamps;
@@ -273,6 +311,8 @@ int device_init(openair0_device *device, openair0_config_t *openair0_cfg)
   device->type = USRP_X400_DEV;
   device->trx_write_func = dummy_write;
   device->trx_read_func = dummy_read;
+
+  init_noise_device(0); // TODO configure noise level
 
   return 0;
 }
