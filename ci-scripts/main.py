@@ -252,12 +252,14 @@ def ExecuteActionWithParam(action, ctx):
 		core_op = getattr(cls_oaicitest.OaiCiTest, action)
 		success = core_op(cn_id, ctx, HTML)
 
-	elif action == 'DeployCU' or action == 'UndeployCU':
-		svr_id = test.findtext('svr_id') or None
-		if action == 'DeployCU':
-			success = CLUSTER.deploy_oc_cu(HTML, svr_id)
-		elif action == 'UndeployCU':
-			success = CLUSTER.undeploy_oc_cu(HTML, svr_id)
+	elif action == 'Deploy_OC_Chart' or action == 'Undeploy_OC_Chart':
+		node = test.findtext('node') if not force_local else 'localhost'
+		oc_namespace = test.findtext('oc_namespace')
+		oc_chart = test.findtext('oc_chart')
+		if action == 'Deploy_OC_Chart':
+			success = CLUSTER.deploy_oc_chart(HTML, node, oc_chart, oc_namespace)
+		elif action == 'Undeploy_OC_Chart':
+			success = CLUSTER.undeploy_oc_chart(HTML, node, oc_chart, oc_namespace)
 
 	elif action == 'Deploy_Object' or action == 'Undeploy_Object' or action == "Create_Workspace":
 		node = test.findtext('node')
