@@ -90,6 +90,7 @@
     <yaml_path>ci-scripts/yaml_files/sa_fhi_7.2_vvdn_4x4_gnb</yaml_path>
     <eNB_instance>0</eNB_instance>
     <eNB_serverId>0</eNB_serverId>
+    <num_attempts>2</num_attempts>
   </testCase>
 
   <testCase id="102001">
