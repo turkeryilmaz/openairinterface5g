@@ -96,8 +96,8 @@ static void *dummy_timing_job(void *arg)
 }
 
 /*! \brief Called to start the RF transceiver. Return 0 if OK, < 0 if error
-    @param device pointer to the device structure specific to the RF hardware target
-*/
+ * \param device pointer to the device structure specific to the RF hardware target
+ */
 static int dummy_start(openair0_device *device)
 {
   // Start the timing thread
@@ -135,7 +135,7 @@ static int dummy_start(openair0_device *device)
 }
 
 /*! \brief print the RF statistics
- * \param device the hardware to use
+ * \param device pointer to the device structure specific to the RF hardware target
  * \returns  0 on success
  */
 int dummy_get_stats(openair0_device *device)
@@ -144,7 +144,7 @@ int dummy_get_stats(openair0_device *device)
 }
 
 /*! \brief Reset the RF statistics
- * \param device the hardware to use
+ * \param device pointer to the device structure specific to the RF hardware target
  * \returns  0 on success
  */
 int dummy_reset_stats(openair0_device *device)
@@ -153,7 +153,7 @@ int dummy_reset_stats(openair0_device *device)
 }
 
 /*! \brief Terminate operation of the RF transceiver -- free all associated resources (if any)
- * \param device the hardware to use
+ * \param pointer to the device structure specific to the RF hardware target
  */
 static void dummy_end(openair0_device *device)
 {
@@ -167,7 +167,7 @@ static void dummy_end(openair0_device *device)
 }
 
 /*! \brief Stop RF
- * \param card refers to the hardware index to use
+ * \param device pointer to the device structure specific to the RF hardware target
  */
 int dummy_stop(openair0_device *device)
 {
@@ -175,7 +175,7 @@ int dummy_stop(openair0_device *device)
 }
 
 /*! \brief Set Gains (TX/RX)
- * \param device the hardware to use
+ * \param device pointer to the device structure specific to the RF hardware target
  * \param openair0_cfg RF frontend parameters set by application
  * \returns 0 in success
  */
@@ -184,10 +184,9 @@ int dummy_set_gains(openair0_device *device, openair0_config_t *openair0_cfg)
   return (0);
 }
 
-/*! \brief Set frequencies (TX/RX). Spawns a thread to handle the frequency change to not block the calling thread
- * \param device the hardware to use
+/*! \brief Set frequencies (TX/RX).
+ * \param device pointer to the device structure specific to the RF hardware target
  * \param openair0_cfg RF frontend parameters set by application
- * \param dummy dummy variable not used
  * \returns 0 in success
  */
 int dummy_set_freq(openair0_device *device, openair0_config_t *openair0_cfg)
@@ -201,21 +200,21 @@ int dummy_write_init(openair0_device *device)
 }
 
 /*! \brief Called to send samples to the RF target
-      @param device pointer to the device structure specific to the RF hardware target
-      @param timestamp The timestamp at which the first sample MUST be sent
-      @param buff Buffer which holds the samples
-      @param nsamps number of samples to be sent
-      @param nbAnt number of antennas
-      @param flags flags must be set to true if timestamp parameter needs to be applied
-*/
+ * \param device pointer to the device structure specific to the RF hardware target
+ * \param timestamp The timestamp at which the first sample MUST be sent
+ * \param buff Buffer which holds the samples
+ * \param nsamps number of samples to be sent
+ * \param nbAnt number of antennas
+ * \param flags flags must be set to true if timestamp parameter needs to be applied
+ */
 static int dummy_write(openair0_device *device, openair0_timestamp timestamp, void **buff, int nsamps, int nbAnt, int flags)
 {
   return 0;
 }
 
 /*! \brief Store noise in the buffer buff
- * \param[out] buff A buffer for received samples. The buffers must be large enough to hold the number of
- * samples \ref nsamps.
+ * \param[out] buff A buffer for received samples.
+ * The buffers must be large enough to hold the number of samples \ref nsamps.
  * \param nsamps Number of samples. One sample is 2 byte I + 2 byte Q => 4 byte.
  */
 static void read_noise(void *buff, int nsamps)
@@ -250,14 +249,14 @@ static void read_noise(void *buff, int nsamps)
 
 /*! \brief Receive samples from hardware.
  * Read \ref nsamps samples from each channel to buffers. buff[0] is the array for
- * the first channel. *ptimestamp is the time at which the first sample
- * was received.
- * \param device the hardware to use
+ * the first channel.
+ * \param[out] ptimestamp time at which the first sample was received.
+ * \param device pointer to the device structure specific to the RF hardware target
  * \param[out] ptimestamp the time at which the first sample was received.
  * \param[out] buff An array of pointers to buffers for received samples. The buffers must be large enough to hold the number of
  * samples \ref nsamps. \param nsamps Number of samples. One sample is 2 byte I + 2 byte Q => 4 byte.
  * \param nbAnt number of antennas
- * \returns the number of sample read
+ * \returns the number of samples read
  */
 static int dummy_read(openair0_device *device, openair0_timestamp *ptimestamp, void **buff, int nsamps, int nbAnt)
 {
