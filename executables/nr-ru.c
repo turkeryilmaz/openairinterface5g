@@ -586,7 +586,7 @@ void *emulatedRF_thread(void *param) {
   return 0;
 }
 
-static void rx_rf(RU_t *ru, int *frame, int *slot)
+void rx_rf(RU_t *ru, int *frame, int *slot)
 {
   RU_proc_t *proc = &ru->proc;
   NR_DL_FRAME_PARMS *fp = ru->nr_frame_parms;
