@@ -2473,9 +2473,9 @@ endif()
 if(OAI_USRP_PACKAGE)
 
   if(PACKAGING-RPM)
-    set(CPACK_RPM_LIBOAI-USRP_PACKAGE_REQUIRES "boost-chrono, boost-date-time, boost-filesystem, boost-program-options, boost-thread, boost-test, boost-regex, python3-mako, python3-docutils, python3-pip")
+    set(CPACK_RPM_LIBOAI-USRP_PACKAGE_REQUIRES "boost-chrono, boost-date-time, boost-filesystem, boost-program-options, boost-thread, boost-test, boost-regex, python3-mako, python3-docutils, python3-pip, glibc")
   else()
-    set(CPACK_DEBIAN_LIBOAI-USRP_PACKAGE_DEPENDS "doxygen, python3-docutils, python3-mako, python3-numpy, python3-requests, python3-setuptools, ninja-build")
+    set(CPACK_DEBIAN_LIBOAI-USRP_PACKAGE_DEPENDS "doxygen, python3-docutils, python3-mako, python3-numpy, python3-requests, python3-setuptools, ninja-build, libc6")
   endif()
 
   install(TARGETS oai_usrpdevif
@@ -2536,9 +2536,9 @@ endif()
 if(OAI_COMMON_PACKAGE)
 
   if(PACKAGING-RPM)
-    set(CPACK_RPM_LIBOAI-COMMON_PACKAGE_REQUIRES "automake, gcc, gcc-c++, git, pkgconfig, lksctp-tools, ninja-build, make, patch, lapack, blas, vim-common")
+    set(CPACK_RPM_LIBOAI-COMMON_PACKAGE_REQUIRES "automake, gcc, gcc-c++, git, pkgconfig, lksctp-tools, ninja-build, make, patch, lapack, blas, vim-common, glibc")
   else()
-    set(CPACK_DEBIAN_LIBOAI-COMMON_PACKAGE_DEPENDS "automake, build-essential, pkg-config, git, patch, openssl, xxd")
+    set(CPACK_DEBIAN_LIBOAI-COMMON_PACKAGE_DEPENDS "automake, build-essential, pkgconf, git, patch, openssl, xxd, libc6")
   endif()
 
   foreach(lib params_libconfig dfts oai_iqplayer)
