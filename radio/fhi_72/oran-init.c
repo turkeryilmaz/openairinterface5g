@@ -341,8 +341,9 @@ static void oran_allocate_buffers(void *handle,
   uint32_t idx = 0;
   for (int i=0; i < xran_max_antenna_nr; i++) {
     // DL/UL PRB mapping depending on the duplex mode.
-    // Set RU_PORT_ID and beam_idx so that each stream would use beam_idx -1 at first.
-    int beam_idx = -1;
+    // Set RU_PORT_ID and beam_idx so that each stream would use beam_idx 32767 at first.
+    // In phy-f-1.0/fhi_lib/lib/api/xran_pkt_cp.h, beamId:15 is of 15bit. -1 set extension bit ef:1 to 1 mistakenly.
+    int beam_idx = 32767;
     dlPm[i] = get_xran_prb_map(fh_config, XRAN_DIR_DL, 0, 14, i, beam_idx);
     ulPm[i] = get_xran_prb_map(fh_config, XRAN_DIR_UL, 0, 14, i, beam_idx);
     if (fh_config->frame_conf.nFrameDuplexType == XRAN_TDD) {
