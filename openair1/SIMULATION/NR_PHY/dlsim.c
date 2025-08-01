@@ -1056,7 +1056,7 @@ printf("%d\n", slot);
       memset(Sched_INFO, 0, sizeof(*Sched_INFO));
       Sched_INFO->sched_response_id = -1;
 
-      if (trial == 1000)
+      if (trial == 4)
         reset_meas(&gNB->tparity);
 
       while (round < 1 && !UE_harq_process->decodeResult && !stop) {

@@ -1040,7 +1040,7 @@ int main(int argc, char *argv[])
       crc_status = 1;
       errors_decoding = 0;
 
-      if (trial == 1000)
+      if (trial == 4)
         reset_meas(&gNB->ts_ldpc_decode);
 
       for (i = 1; i < TBS/8; i++) {
