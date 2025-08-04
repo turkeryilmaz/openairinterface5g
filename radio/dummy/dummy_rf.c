@@ -39,6 +39,7 @@ typedef struct {
   pthread_mutex_t mutex;
   pthread_cond_t cond;
   uint64_t late_reads;
+  uint64_t late_writes;
 } dummy_timestamp_t;
 
 typedef struct {
@@ -72,6 +73,10 @@ static void *dummy_timing_job(void *arg)
         LOG_W(HW, "%ld RF reads were late\n", dummy_timestamp->late_reads);
       }
       dummy_timestamp->late_reads = 0;
+      if (dummy_timestamp->late_writes != 0) {
+        LOG_W(HW, "%ld RF writes were late\n", dummy_timestamp->late_writes);
+      }
+      dummy_timestamp->late_writes = 0;
     }
 
     uint64_t diff = (current_time.tv_sec - timestamp.tv_sec) * 1000000000 + (current_time.tv_nsec - timestamp.tv_nsec);
@@ -209,6 +214,17 @@ int dummy_write_init(openair0_device *device)
  */
 static int dummy_write(openair0_device *device, openair0_timestamp timestamp, void **buff, int nsamps, int nbAnt, int flags)
 {
+  dummy_state_t *dummy_state = (dummy_state_t *)device->priv;
+
+  // timestamp in the past
+  dummy_timestamp_t *dummy_timestamp = &dummy_state->dummy_timestamp;
+  uint64_t current_timestamp = dummy_timestamp->timestamp;
+  if (timestamp < current_timestamp) {
+    mutexlock(dummy_timestamp->mutex);
+    dummy_timestamp->late_writes++;
+    mutexunlock(dummy_timestamp->mutex);
+  }
+
   return 0;
 }
 
