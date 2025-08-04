@@ -502,19 +502,32 @@ void ue_dci_configuration(NR_UE_MAC_INST_t *mac, fapi_nr_dl_config_request_t *dl
       config_dci_pdu(mac, dl_config, rnti_type, slot, ra_SS);
     }
   } else if (mac->state == UE_CONNECTED) {
+    /*
+      In RRC Connected state, the UE monitors common and UE-specific SS for DCI with C-RNTI
+      If no SI, RA or P SS is configured the UE searches in ss0
+    */
+    NR_SearchSpace_t *css = NULL;
+    if (pdcch_config->otherSI_SS_id > -1)
+      css = get_common_search_space(mac, pdcch_config->otherSI_SS_id);
+    else if (pdcch_config->ra_SS_id > -1)
+      css = get_common_search_space(mac, pdcch_config->ra_SS_id);
+    else if (pdcch_config->paging_SS_id > -1)
+      css = get_common_search_space(mac, pdcch_config->paging_SS_id);
+    else
+      css = mac->search_space_zero;
+
+    AssertFatal(css, "Atleast one CSS should be present in Connected state\n");
+
+    bool is_css_coreset_configured = false;
     for (int i = 0; i < pdcch_config->list_SS.count; i++) {
       NR_SearchSpace_t *ss = pdcch_config->list_SS.array[i];
-      if (is_ss_monitor_occasion(frame, slot, slots_per_frame, ss))
+      if (is_ss_monitor_occasion(frame, slot, slots_per_frame, ss)) {
         config_dci_pdu(mac, dl_config, TYPE_C_RNTI_, slot, ss);
+        is_css_coreset_configured |= (*ss->controlResourceSetId == *css->controlResourceSetId);
+      }
     }
-    const NR_SearchSpace_t *ra_SS = get_common_search_space(mac, pdcch_config->ra_SS_id);
-    if (pdcch_config->list_SS.count == 0 && ra_SS) {
-      // If the UE has not been provided a Type3-PDCCH CSS set or a USS set and
-      // the UE has received a C-RNTI and has been provided a Type1-PDCCH CSS set,
-      // the UE monitors PDCCH candidates for DCI format 0_0 and DCI format 1_0
-      // with CRC scrambled by the C-RNTI in the Type1-PDCCH CSS set
-      if (is_ss_monitor_occasion(frame, slot, slots_per_frame, ra_SS))
-        config_dci_pdu(mac, dl_config, TYPE_C_RNTI_, slot, ra_SS);
-    }
+
+    if (!is_css_coreset_configured && is_ss_monitor_occasion(frame, slot, slots_per_frame, css))
+      config_dci_pdu(mac, dl_config, TYPE_C_RNTI_, slot, css);
   }
 }
