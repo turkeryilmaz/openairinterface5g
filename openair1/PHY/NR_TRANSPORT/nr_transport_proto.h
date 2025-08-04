@@ -251,7 +251,8 @@ int get_nr_prach_duration(uint8_t prach_format);
 
 void free_nr_prach_entry(PHY_VARS_gNB *gNB, int prach_id);
 
-void nr_decode_pucch1(c16_t **rxdataF,
+void nr_decode_pucch1(int n_rx,
+		      c16_t **rxdataF,
                       pucch_GroupHopping_t pucch_GroupHopping,
                       uint32_t n_id,       // hoppingID higher layer parameter
                       uint64_t *payload,

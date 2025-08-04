@@ -192,7 +192,7 @@ void nr_generate_pucch1(const PHY_VARS_NR_UE *ue,
     d = qpskSymbols[tmp];
   }
 #ifdef DEBUG_NR_PUCCH_TX
-  printf("\t [nr_generate_pucch1] sequence modulation: payload=%lx \tde_re=%d \tde_im=%d\n", payload, d.r, d.i);
+  printf("\t [nr_generate_pucch1] sequence modulation (amp %d/%d): payload=%lx \tde_re=%d \tde_im=%d\n", amp, baseVal,payload, d.r, d.i);
 #endif
   /*
    * Defining cyclic shift hopping TS 38.211 Subclause 6.3.2.2.2
@@ -275,13 +275,14 @@ void nr_generate_pucch1(const PHY_VARS_NR_UE *ue,
 #ifdef DEBUG_NR_PUCCH_TX
       printf(
           "\t [nr_generate_pucch1] sequence generation \tu=%d \tv=%d \talpha=%lf \tr_u_v_alpha_delta[n=%d]=(%d,%d) "
-          "\ty_n[n=%d]=(%d,%d)\n",
+          "\td=(%d,%d)\ty_n[n=%d]=(%d,%d)\n",
           u,
           v,
           alpha,
           n,
           r_u_v_alpha_delta[n].r,
           r_u_v_alpha_delta[n].i,
+	  d.r,d.i,
           n,
           y_n[n].r,
           y_n[n].i);
@@ -491,7 +492,7 @@ static inline void nr_pucch2_3_4_scrambling(uint16_t M_bit, uint16_t rnti, uint1
   const int roundedSz = (M_bit + 31) / 32;
   uint32_t *seq = gold_cache((rnti << 15) + n_id, roundedSz);
 #ifdef DEBUG_NR_PUCCH_TX
-  printf("\t\t [nr_pucch2_3_4_scrambling] gold sequence s=%x, M_bit %d\n",s,M_bit);
+  printf("\t\t [nr_pucch2_3_4_scrambling] gold sequence s=%x, M_bit %d\n",seq[0],M_bit);
 #endif
 
   uint8_t *btildep = btilde;
@@ -760,12 +761,12 @@ void nr_generate_pucch2(const PHY_VARS_NR_UE *ue,
               "\t [nr_generate_pucch2] (n=%d,i=%d) mapping PUCCH to RE \t amp=%d \tofdm_symbol_size=%d \tN_RB_DL=%d "
               "\tfirst_carrier_offset=%d \tz_pucch[%d]=txptr(%d)=(x_n(l=%d,n=%d)=(%d,%d))\n",
               n,
-              i,
+              outSample,
               amp,
               frame_parms->ofdm_symbol_size,
               frame_parms->N_RB_DL,
               frame_parms->first_carrier_offset,
-              i + k,
+              outSample + k,
               re_offset,
               l,
               n,
@@ -781,15 +782,14 @@ void nr_generate_pucch2(const PHY_VARS_NR_UE *ue,
           m++;
 #ifdef DEBUG_NR_PUCCH_TX
           printf(
-              "\t [nr_generate_pucch2] (n=%d,i=%d) mapping DM-RS to RE \t amp=%d \tofdm_symbol_size=%d \tN_RB_DL=%d "
+              "\t [nr_generate_pucch2] (n=%d) mapping DM-RS to RE \t amp=%d \tofdm_symbol_size=%d \tN_RB_DL=%d "
               "\tfirst_carrier_offset=%d \tz_dm-rs[%d]=txptr(%d)=(x_n(l=%d,n=%d)=(%d,%d))\n",
               n,
-              i,
               amp,
               frame_parms->ofdm_symbol_size,
               frame_parms->N_RB_DL,
               frame_parms->first_carrier_offset,
-              i + kk,
+              m,
               re_offset,
               l,
               n,

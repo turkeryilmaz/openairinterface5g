@@ -348,6 +348,7 @@ int main(int argc, char **argv)
     case 'B':
       actual_payload=atoi(optarg);
       random_payload = false;
+      printf("Setting payload to %x\n",actual_payload);
       break;
     case 'T':
       //nacktoack_flag=(uint8_t)atoi(optarg);
@@ -530,6 +531,8 @@ int main(int argc, char **argv)
   }
   if (format==1) {
     pucch_tx_pdu.format_type = 0;
+    pucch_tx_pdu.n_bit = nr_bit;
+    pucch_tx_pdu.payload = actual_payload;
     pucch_tx_pdu.nr_of_symbols = nrofSymbols;
     pucch_tx_pdu.start_symbol_index = startingSymbolIndex;
     pucch_tx_pdu.bwp_start = 0;
@@ -538,9 +541,9 @@ int main(int argc, char **argv)
     pucch_tx_pdu.group_hop_flag = 0;
     pucch_tx_pdu.sequence_hop_flag = 0;
     pucch_tx_pdu.freq_hop_flag = 0;
-    pucch_tx_pdu.mcs = mcs;
     pucch_tx_pdu.initial_cyclic_shift = 0;
     pucch_tx_pdu.second_hop_prb = startingPRB_intraSlotHopping;
+    pucch_tx_pdu.time_domain_occ_idx = 0;
   }
   if (format==2) {
     pucch_tx_pdu.format_type = 2;
@@ -686,11 +689,13 @@ int main(int argc, char **argv)
         pucch_pdu.prb_size              = 1;
         pucch_pdu.bwp_start             = 0;
         pucch_pdu.bwp_size              = N_RB_DL;
+	/*
         if (nrofSymbols>1) {
           pucch_pdu.freq_hop_flag       = 1;
           pucch_pdu.second_hop_prb      = N_RB_DL-1;
         }
-        else pucch_pdu.freq_hop_flag = 0;
+        else */ 
+	pucch_pdu.freq_hop_flag = 0;
 
         nr_decode_pucch0(gNB, rxdataF, nr_frame_tx, nr_slot_tx,&uci_pdu,&pucch_pdu);
         if(sr_flag==1){
@@ -712,7 +717,29 @@ int main(int argc, char **argv)
         }
       }
       else if (format==1) {
-        nr_decode_pucch1((c16_t **)rxdataF,PUCCH_GroupHopping,hopping_id,
+        nfapi_nr_uci_pucch_pdu_format_0_1_t uci_pdu;
+        nfapi_nr_pucch_pdu_t pucch_pdu;
+        gNB->phy_stats[0].rnti = 0x1234;
+        pucch_pdu.rnti                  = 0x1234;
+        pucch_pdu.subcarrier_spacing    = 1;
+        pucch_pdu.group_hop_flag        = PUCCH_GroupHopping&1;
+        pucch_pdu.sequence_hop_flag     = (PUCCH_GroupHopping>>1)&1;
+        pucch_pdu.bit_len_harq          = nr_bit;
+        pucch_pdu.bit_len_csi_part1     = 0;
+        pucch_pdu.bit_len_csi_part2     = 0;
+        pucch_pdu.sr_flag               = sr_flag;
+        pucch_pdu.nr_of_symbols         = nrofSymbols;
+        pucch_pdu.hopping_id            = hopping_id;
+        pucch_pdu.initial_cyclic_shift  = 0;
+        pucch_pdu.start_symbol_index    = startingSymbolIndex;
+        pucch_pdu.prb_start             = startingPRB;
+        pucch_pdu.prb_size              = 1;
+        pucch_pdu.bwp_start             = 0;
+        pucch_pdu.bwp_size              = N_RB_DL;
+        pucch_pdu.freq_hop_flag         = 0;
+        pucch_pdu.second_hop_prb        = 0;
+
+        nr_decode_pucch1(n_rx,(c16_t **)rxdataF,PUCCH_GroupHopping,hopping_id,
                          &(payload_received),frame_parms,amp,nr_slot_tx,
                          m0,nrofSymbols,startingSymbolIndex,startingPRB,
                          startingPRB_intraSlotHopping,timeDomainOCC,nr_bit);
