@@ -108,6 +108,50 @@ ShmTDIQChannel *shm_td_iq_channel_create(const char *name, int num_tx_ant, int n
   return channel;
 }
 
+ShmTDIQChannel *shm_td_iq_channel_emulator_create(const char *name, int num_tx_ant, int num_rx_ant)
+{
+  // Create memory segment
+  size_t tx_buffer_size = CIRCULAR_BUFFER_SIZE * sizeof(sample_t) * num_tx_ant;
+  size_t rx_buffer_size = CIRCULAR_BUFFER_SIZE * sizeof(sample_t) * num_rx_ant;
+  size_t total_size = sizeof(ShmTDIQChannelData) + tx_buffer_size + rx_buffer_size;
+  ShmTDIQChannelData *shm_ptr = (ShmTDIQChannelData *)malloc(total_size);
+
+  // Initialize shared memory
+  memset(shm_ptr, 0, total_size);
+  shm_ptr->num_antennas_tx = num_tx_ant;
+  shm_ptr->num_antennas_rx = num_rx_ant;
+  shm_ptr->is_connected = false;
+  ShmTDIQChannel *channel = calloc_or_fail(1, sizeof(ShmTDIQChannel));
+  strncpy(channel->name, name, sizeof(channel->name) - 1);
+  channel->tx_iq_data = (sample_t *)(shm_ptr + 1);
+  channel->rx_iq_data = channel->tx_iq_data + tx_buffer_size / sizeof(sample_t);
+  channel->data = shm_ptr;
+  channel->type = IQ_CHANNEL_TYPE_SERVER;
+  channel->last_timestamp = 0;
+  pthread_mutexattr_t mutex_attr;
+  pthread_condattr_t cond_attr;
+  int ret = pthread_mutexattr_init(&mutex_attr);
+  AssertFatal(ret == 0, "pthread_mutexattr_init() failed: errno %d, %s\n", errno, strerror(errno));
+
+  ret = pthread_condattr_init(&cond_attr);
+  AssertFatal(ret == 0, "pthread_condattr_init() failed: errno %d, %s\n", errno, strerror(errno));
+
+  ret = pthread_mutexattr_setpshared(&mutex_attr, PTHREAD_PROCESS_SHARED);
+  AssertFatal(ret == 0, "pthread_mutexattr_setpshared() failed: errno %d, %s\n", errno, strerror(errno));
+
+  ret = pthread_condattr_setpshared(&cond_attr, PTHREAD_PROCESS_SHARED);
+  AssertFatal(ret == 0, "pthread_condattr_setpshared() failed: errno %d, %s\n", errno, strerror(errno));
+
+  ret = pthread_mutex_init(&shm_ptr->mutex, &mutex_attr);
+  AssertFatal(ret == 0, "pthread_mutex_init() failed: errno %d, %s\n", errno, strerror(errno));
+
+  ret = pthread_cond_init(&shm_ptr->cond, &cond_attr);
+  AssertFatal(ret == 0, "pthread_cond_init() failed: errno %d, %s\n", errno, strerror(errno));
+
+  shm_ptr->magic = SHM_MAGIC_NUMBER;
+  return channel;
+}
+
 ShmTDIQChannel *shm_td_iq_channel_connect(const char *name, int timeout_in_seconds)
 {
   // Create shared memory segment
@@ -270,6 +314,11 @@ uint64_t shm_td_iq_channel_get_current_sample(const ShmTDIQChannel *channel)
 bool shm_td_iq_channel_is_connected(const ShmTDIQChannel *channel)
 {
   return channel->data->is_connected;
+}
+
+void shm_td_iq_channel_emulator_connect(const ShmTDIQChannel *channel)
+{
+  channel->data->is_connected = true;
 }
 
 void shm_td_iq_channel_destroy(ShmTDIQChannel *channel)

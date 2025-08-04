@@ -65,6 +65,16 @@ typedef struct ShmTDIQChannel_s ShmTDIQChannel;
 ShmTDIQChannel *shm_td_iq_channel_create(const char *name, int num_tx_ant, int num_rx_ant);
 
 /**
+ * @brief Allocate an emulated IQ channel.
+ *
+ * @param name The name of the channel.
+ * @param num_tx_ant The number of TX antennas.
+ * @param num_rx_ant The number of RX antennas.
+ * @return A pointer to the created ShmTDIQChannel structure.
+ */
+ShmTDIQChannel *shm_td_iq_channel_emulator_create(const char *name, int num_tx_ant, int num_rx_ant);
+
+/**
  * @brief Connects to an existing shared memory IQ channel.
  *
  * @param name The name of the shared memory segment.
@@ -128,6 +138,13 @@ void shm_td_iq_channel_wait(ShmTDIQChannel *channel, uint64_t timestamp);
  * @return True if the channel is connected, false otherwise.
  */
 bool shm_td_iq_channel_is_connected(const ShmTDIQChannel *channel);
+
+/**
+ * @brief Emulate IQ channel connection to enable RF emulation.
+ *
+ * @param channel The ShmTDIQChannel structure.
+ */
+void shm_td_iq_channel_emulator_connect(const ShmTDIQChannel *channel);
 
 /**
  * @brief Destroys the shared memory IQ channel.

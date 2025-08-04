@@ -48,12 +48,13 @@
 #include "simde/x86/avx512.h"
 
 // Simulator role
-typedef enum { ROLE_SERVER = 1, ROLE_CLIENT } role;
+typedef enum { ROLE_SERVER = 1, ROLE_CLIENT, ROLE_EMULATOR } role;
 
 #define NUM_CHANMOD_THREADS 1
 
 #define ROLE_CLIENT_STRING "client"
 #define ROLE_SERVER_STRING "server"
+#define ROLE_EMULATOR_STRING "emulator"
 
 #define VRTSIM_SECTION "vrtsim"
 #define TIME_SCALE_HLP \
@@ -62,10 +63,10 @@ typedef enum { ROLE_SERVER = 1, ROLE_CLIENT } role;
 // clang-format off
 #define VRTSIM_PARAMS_DESC \
   { \
-     {"channel_name", "shared memory channel name\n",  0, .strptr = &channel_name,               .defstrval = "vrtsim_channel", TYPE_STRING, 0}, \
-     {"role",         "either client or server\n",     0, .strptr = &role,                       .defstrval = ROLE_CLIENT_STRING,  TYPE_STRING, 0}, \
-     {"timescale",    TIME_SCALE_HLP,                  0, .dblptr = &vrtsim_state->timescale, .defdblval = 1.0,                 TYPE_DOUBLE, 0}, \
-     {"chanmod",      "Enable channel modelling",      0, .iptr = &vrtsim_state->chanmod,     .defintval = 0,                   TYPE_INT,    0}, \
+     {"channel_name", "shared memory channel name\n",        0, .strptr = &channel_name,            .defstrval = "vrtsim_channel",    TYPE_STRING, 0}, \
+     {"role",         "either client, server or emulator\n", 0, .strptr = &role,                    .defstrval = ROLE_CLIENT_STRING,  TYPE_STRING, 0}, \
+     {"timescale",    TIME_SCALE_HLP,                        0, .dblptr = &vrtsim_state->timescale, .defdblval = 1.0,                 TYPE_DOUBLE, 0}, \
+     {"chanmod",      "Enable channel modelling",            0, .iptr = &vrtsim_state->chanmod,     .defintval = 0,                   TYPE_INT,    0}, \
   };
 // clang-format on
 
@@ -165,6 +166,8 @@ static void vrtsim_readconfig(vrtsim_state_t *vrtsim_state)
     vrtsim_state->role = ROLE_CLIENT;
   } else if (strncmp(role, ROLE_SERVER_STRING, strlen(ROLE_SERVER_STRING)) == 0) {
     vrtsim_state->role = ROLE_SERVER;
+  } else if (strncmp(role, ROLE_EMULATOR_STRING, strlen(ROLE_EMULATOR_STRING)) == 0) {
+    vrtsim_state->role = ROLE_EMULATOR;
   } else {
     AssertFatal(false, "Invalid role configuration\n");
   }
@@ -305,8 +308,10 @@ static int vrtsim_connect(openair0_device *device)
   peer_info_t peer_info = {.num_rx_antennas = device->openair0_cfg[0].rx_num_channels};
   if (vrtsim_state->role == ROLE_SERVER) {
     vrtsim_state->peer_info = server_exchange_peer_info(peer_info);
-  } else {
+  } else if (vrtsim_state->role == ROLE_CLIENT) {
     vrtsim_state->peer_info = client_exchange_peer_info(peer_info);
+  } else if (vrtsim_state->role == ROLE_EMULATOR) {
+    vrtsim_state->peer_info = peer_info;
   }
 
   // Handle channel modelling after number of RX antennas are known
@@ -338,8 +343,16 @@ static int vrtsim_connect(openair0_device *device)
     }
     int ret = pthread_create(&vrtsim_state->timing_thread, NULL, vrtsim_timing_job, vrtsim_state);
     AssertFatal(ret == 0, "pthread_create() failed: errno: %d, %s\n", errno, strerror(errno));
-  } else {
+  } else if (vrtsim_state->role == ROLE_CLIENT) {
     vrtsim_state->channel = shm_td_iq_channel_connect(vrtsim_state->channel_name, 10);
+  } else {
+    vrtsim_state->channel = shm_td_iq_channel_emulator_create(vrtsim_state->channel_name,
+                                                              vrtsim_state->peer_info.num_rx_antennas,
+                                                              device->openair0_cfg[0].rx_num_channels);
+    vrtsim_state->run_timing_thread = true;
+    shm_td_iq_channel_emulator_connect(vrtsim_state->channel);
+    int ret = pthread_create(&vrtsim_state->timing_thread, NULL, vrtsim_timing_job, vrtsim_state);
+    AssertFatal(ret == 0, "pthread_create() failed: errno: %d, %s\n", errno, strerror(errno));
   }
 
   return 0;
@@ -487,6 +500,40 @@ static int vrtsim_write(openair0_device *device, openair0_timestamp timestamp, v
                                : vrtsim_write_internal(vrtsim_state, timestamp, (c16_t *)samplesVoid[0], nsamps, 0, flags, 0);
 }
 
+static void inject_noise_rx(void **samplesVoid, int nsamps, int nbAnt)
+{
+
+  for (int aarx = 0; aarx < nbAnt; aarx++) {
+    int aligned_nsamps = ceil_mod(nsamps, (512 / 8) / sizeof(cf_t));
+    cf_t samples[aligned_nsamps] __attribute__((aligned(64)));
+    // Apply noise from global settings
+    get_noise_vector((float *)samples, nsamps * 2);
+
+    // Convert to c16_t
+    c16_t samples_out[aligned_nsamps] __attribute__((aligned(64)));
+#if defined(__AVX512F__)
+    for (int i = 0; i < aligned_nsamps / 8; i++) {
+      simde__m512 *in = (simde__m512 *)&samples[i * 8];
+      simde__m256i *out = (simde__m256i *)&samples_out[i * 8];
+      *out = simde_mm512_cvtsepi32_epi16(simde_mm512_cvtps_epi32(*in));
+    }
+#elif defined(__AVX2__)
+    for (int i = 0; i < aligned_nsamps / 4; i++) {
+      simde__m256 *in = (simde__m256 *)&samples[i * 4];
+      simde__m128i *out = (simde__m128i *)&samples_out[i * 4];
+      *out = simde_mm256_cvtsepi32_epi16(simde_mm256_cvtps_epi32(*in));
+    }
+#else
+    for (int i = 0; i < nsamps; i++) {
+      samples_out[i].r = lroundf(samples[i].r);
+      samples_out[i].i = lroundf(samples[i].i);
+    }
+#endif
+    memcpy(samplesVoid[aarx], samples_out, nsamps * sizeof(c16_t));
+  }
+
+}
+
 static int vrtsim_read(openair0_device *device, openair0_timestamp *ptimestamp, void **samplesVoid, int nsamps, int nbAnt)
 {
   vrtsim_state_t *vrtsim_state = (vrtsim_state_t *)device->priv;
@@ -500,13 +547,16 @@ static int vrtsim_read(openair0_device *device, openair0_timestamp *ptimestamp, 
   vrtsim_state->rx_samples_total += nsamps;
   *ptimestamp = vrtsim_state->last_received_sample;
   vrtsim_state->last_received_sample += nsamps;
+  if (vrtsim_state->role == ROLE_EMULATOR) {
+    inject_noise_rx(samplesVoid, nsamps, nbAnt);
+  }
   return nsamps;
 }
 
 static void vrtsim_end(openair0_device *device)
 {
   vrtsim_state_t *vrtsim_state = (vrtsim_state_t *)device->priv;
-  if (vrtsim_state->role == ROLE_SERVER) {
+  if (vrtsim_state->role == ROLE_SERVER || vrtsim_state->role == ROLE_EMULATOR) {
     vrtsim_state->run_timing_thread = false;
     int ret = pthread_join(vrtsim_state->timing_thread, NULL);
     AssertFatal(ret == 0, "pthread_join() failed: errno: %d, %s\n", errno, strerror(errno));
@@ -565,9 +615,13 @@ __attribute__((__visibility__("default"))) int device_init(openair0_device *devi
 {
   vrtsim_state_t *vrtsim_state = calloc_or_fail(1, sizeof(vrtsim_state_t));
   vrtsim_readconfig(vrtsim_state);
-  LOG_I(HW,
-        "Running as %s\n",
-        vrtsim_state->role == ROLE_SERVER ? "server: waiting for client to connect" : "client: will connect to a vrtsim server");
+  char *log_role = "server: waiting for client to connect";
+  if (vrtsim_state->role == ROLE_CLIENT) {
+    log_role = "client: will connect to a vrtsim server";
+  } else if (vrtsim_state->role == ROLE_EMULATOR) {
+    log_role = "emulator: will emulate RF";
+  }
+  LOG_I(HW, "Running as %s\n", log_role);
   device->trx_start_func = vrtsim_connect;
   device->trx_reset_stats_func = vrtsim_stub;
   device->trx_end_func = vrtsim_end;
