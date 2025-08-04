@@ -503,5 +503,32 @@ void ue_dci_configuration(NR_UE_MAC_INST_t *mac, fapi_nr_dl_config_request_t *dl
       if (is_ss_monitor_occasion(frame, slot, slots_per_frame, ra_SS))
         config_dci_pdu(mac, dl_config, TYPE_C_RNTI_, slot, ra_SS);
     }
+    /*
+      According to TS 38.300 9.2.5:
+      The UE monitors paging search space in RRC_IDLE, RRC_INACTIVE and RRC_CONNECTED states.
+
+      In RRC_IDLE and RRC_INACTIVE the monitoring of paging message can be less frequent, but
+      in RRC_CONNECTED state paging message is monitored all the time for Bandwidth Adaptation.
+
+      TODO: Handle paging messages. The UE does not support paging for now so we don't monitor.
+
+      According to TS 38.213 10.1: In RRC_CONNECTED state, the UE has C-RNTI and
+      If the UE already monitors a CSS for DCI scrambled with P-RNTI,
+      the UE should monitor that CSS for DCI scrambled with C-RNTI too.
+
+      Also, check if the paging ss is already configured C-RNTI (as part of pdcch-Config)
+    */
+    bool is_configured = false;
+    for (int ss = 0; ss < pdcch_config->list_SS.count; ss++) {
+      if (pdcch_config->list_SS.array[ss]->searchSpaceId == pdcch_config->paging_SS_id) {
+        is_configured = true;
+        break;
+      }
+    }
+    if (pdcch_config->paging_SS_id > -1 && !is_configured) {
+      const NR_SearchSpace_t *pa_SS = get_common_search_space(mac, pdcch_config->paging_SS_id);
+      if (is_ss_monitor_occasion(frame, slot, slots_per_frame, pa_SS))
+        config_dci_pdu(mac, dl_config, TYPE_C_RNTI_, slot, pa_SS);
+    }
   }
 }
