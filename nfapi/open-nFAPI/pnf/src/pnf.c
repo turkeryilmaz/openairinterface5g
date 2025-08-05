@@ -207,13 +207,13 @@ void pnf_handle_pnf_config_request(pnf_t* pnf, void *pRecvMsg, int recvMsgLen)
 					int i = 0;
 					for(i = 0; i < req.pnf_phy_rf_config.number_phy_rf_config_info; ++i)
 					{
-						nfapi_pnf_phy_config_t* phy = (nfapi_pnf_phy_config_t*)malloc(sizeof(nfapi_pnf_phy_config_t));
-						memset(phy, 0, sizeof(nfapi_pnf_phy_config_t));
+            nfapi_pnf_phy_config_t* phy = (nfapi_pnf_phy_config_t*)malloc_or_fail(sizeof(nfapi_pnf_phy_config_t));
+            memset(phy, 0, sizeof(nfapi_pnf_phy_config_t));
 
-						phy->state = NFAPI_PNF_PHY_IDLE;
-						phy->phy_id = req.pnf_phy_rf_config.phy_rf_config[i].phy_id;
+            phy->state = NFAPI_PNF_PHY_IDLE;
+            phy->phy_id = req.pnf_phy_rf_config.phy_rf_config[i].phy_id;
 
-						nfapi_pnf_phy_config_add(&(pnf->_public), phy);
+            nfapi_pnf_phy_config_add(&(pnf->_public), phy);
 					}
 				}
 
@@ -274,13 +274,13 @@ void pnf_nr_handle_pnf_config_request(pnf_t* pnf, void *pRecvMsg, int recvMsgLen
 					int i = 0;
 					for(i = 0; i < req.pnf_phy_rf_config.number_phy_rf_config_info; ++i)
 					{
-						nfapi_pnf_phy_config_t* phy = (nfapi_pnf_phy_config_t*)malloc(sizeof(nfapi_pnf_phy_config_t));
-						memset(phy, 0, sizeof(nfapi_pnf_phy_config_t));
+            nfapi_pnf_phy_config_t* phy = (nfapi_pnf_phy_config_t*)malloc_or_fail(sizeof(nfapi_pnf_phy_config_t));
+            memset(phy, 0, sizeof(nfapi_pnf_phy_config_t));
 
-						phy->state = NFAPI_PNF_PHY_IDLE;
-						phy->phy_id = req.pnf_phy_rf_config.phy_rf_config[i].phy_id;
+            phy->state = NFAPI_PNF_PHY_IDLE;
+            phy->phy_id = req.pnf_phy_rf_config.phy_rf_config[i].phy_id;
 
-						nfapi_pnf_phy_config_add(&(pnf->_public), phy);
+            nfapi_pnf_phy_config_add(&(pnf->_public), phy);
 					}
 				}
 
@@ -2026,19 +2026,18 @@ int pnf_read_dispatch_message(pnf_t* pnf)
 
 	if(message_size > stack_buffer_size)
 	{
-		dynamic_buffer = (uint8_t*)malloc(message_size);
+    dynamic_buffer = (uint8_t*)malloc_or_fail(message_size);
 
-		if(dynamic_buffer == NULL)
-		{
-			// todo : add error mesage
-			NFAPI_TRACE(NFAPI_TRACE_INFO, "PNF Failed to allocate dynamic buffer for sctp_recvmsg size:%d\n", message_size);
-			return -1;
-		}
+    if (dynamic_buffer == NULL) {
+      // todo : add error mesage
+      NFAPI_TRACE(NFAPI_TRACE_INFO, "PNF Failed to allocate dynamic buffer for sctp_recvmsg size:%d\n", message_size);
+      return -1;
+    }
 
-		read_buffer = dynamic_buffer;
-	}
+    read_buffer = dynamic_buffer;
+  }
 
-	{
+  {
 		int flags = 0;
 		(void)memset(&sndrcvinfo, 0, sizeof(struct sctp_sndrcvinfo));
 
