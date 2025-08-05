@@ -83,7 +83,7 @@ then
                echo $FILE >> ./files-w-suspect-banner.txt
            fi
        fi
-    done
+    done  
     exit 0
 fi
 
@@ -161,6 +161,8 @@ if [ -f files-w-suspect-banner.txt ]
 then
     rm -f files-w-suspect-banner.txt
 fi
+rm -f files-w-tabs.txt
+
 awk '/#[ \t]*ifndef/ { gsub("^.*ifndef *",""); if (names[$1]!="") print "files with same {define ", FILENAME, names[$1]; names[$1]=FILENAME } /#[ \t]*define/ { gsub("^.*define *",""); if(names[$1]!=FILENAME) print "error in declaration", FILENAME, $1, names[$1]; nextfile }' `find openair* common targets executables -name *.h |grep -v LFDS` > header-files-w-incorrect-define-tmp.txt
 
 for FULLFILE in $MODIFIED_FILES
@@ -195,6 +197,9 @@ do
                 fi
             fi
         fi
+        
+        # Check TABS in source code
+        egrep -l $'\t' "$FULLFILE" >> files-w-tabs.txt
     fi
     # Testing Circular Dependencies protection
     if [ $EXT = "h" ] || [ $EXT = "hpp" ]

@@ -52,3 +52,6 @@ RUN echo "=== Files with a GNU GPL licence Banner ===" && \
 
 RUN echo "=== Files with a suspect Banner ===" && \
   /bin/bash -c "if [[ -f files-w-suspect-banner.txt ]]; then cat files-w-suspect-banner.txt; fi"
+
+RUN echo "=== Files with a tab character ===" && \
+  /bin/bash -c "if [[ -f files-w-tabs.txt ]]; then cat files-w-tabs.txt; fi"
