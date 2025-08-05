@@ -32,6 +32,16 @@
 #include "common_lib.h"
 #include "radio/vrtsim/noise_device.h"
 #include "simde/x86/avx512.h"
+#include "SIMULATION/TOOLS/sim.h"
+
+#define DUMMY_SECTION "dummy_rf"
+// clang-format off
+#define DUMMY_PARAMS_DESC \
+  { \
+     {"enable_noise",     "Enable noise injection", 0, .iptr = &dummy_state->enable_noise,     .defintval = 1,                  TYPE_INT, 0},\
+     {"noise_level_dBFS", "Noise level",            0, .iptr = &dummy_state->noise_level_dBFS, .defintval = INVALID_DBFS_VALUE, TYPE_INT, 0},\
+  };
+// clang-format on
 
 // structures and timing thread job for timing
 typedef struct {
@@ -49,6 +59,8 @@ typedef struct {
   dummy_timestamp_t dummy_timestamp;
   pthread_t timing_thread;
   bool run_timing_thread;
+  int enable_noise;
+  int noise_level_dBFS;
 } dummy_state_t;
 
 static void *dummy_timing_job(void *arg)
@@ -296,11 +308,24 @@ static int dummy_read(openair0_device *device, openair0_timestamp *ptimestamp, v
   *ptimestamp = dummy_state->last_received_sample;
   dummy_state->last_received_sample += nsamps;
 
-  for (int i = 0; i < nbAnt; i++) {
-    read_noise(buff[i], nsamps);
+  if (dummy_state->enable_noise > 0) {
+    for (int i = 0; i < nbAnt; i++) {
+      read_noise(buff[i], nsamps);
+    }
+  } else {
+    for (int i = 0; i < nbAnt; i++) {
+      memset(buff[i], 0, nsamps * sizeof(c16_t));
+    }
   }
 
   return nsamps;
+}
+
+static void dummy_readconfig(dummy_state_t *dummy_state)
+{
+  paramdef_t dummy_params[] = DUMMY_PARAMS_DESC;
+  int ret = config_get(config_get_if(), dummy_params, sizeofArray(dummy_params), DUMMY_SECTION);
+  AssertFatal(ret >= 0, "configuration couldn't be performed\n");
 }
 
 int device_init(openair0_device *device, openair0_config_t *openair0_cfg)
@@ -327,7 +352,14 @@ int device_init(openair0_device *device, openair0_config_t *openair0_cfg)
   device->trx_write_func = dummy_write;
   device->trx_read_func = dummy_read;
 
-  init_noise_device(0); // TODO configure noise level
+  dummy_readconfig(dummy_state);
+
+  if (dummy_state->enable_noise > 0) {
+    int16_t noise_level = dummy_state->noise_level_dBFS == INVALID_DBFS_VALUE
+                              ? 0
+                              : (int16_t)(32767.0 / powf(10.0, .05 * -(dummy_state->noise_level_dBFS)));
+    init_noise_device(noise_level);
+  }
 
   return 0;
 }
