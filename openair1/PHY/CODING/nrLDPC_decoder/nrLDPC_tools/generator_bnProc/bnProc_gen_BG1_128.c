@@ -94,7 +94,7 @@ void nrLDPC_bnProc_BG1_generator_128(const char* dir, int R)
     idxBnGroup++;
 
     // Number of groups of 32 BNs or parallel processing
-    fprintf(fd, " M = (%d*Z + 15)>>4;\n", lut_numBnInBnGroups[1]);
+    fprintf(fd, " M = (%u*Z + 15)>>4;\n", lut_numBnInBnGroups[1]);
 
     // Set the offset to each CN within a group in terms of 16 Byte
     cnOffsetInGroup = (lut_numBnInBnGroups[1] * NR_LDPC_ZMAX) >> 4;
@@ -106,7 +106,8 @@ void nrLDPC_bnProc_BG1_generator_128(const char* dir, int R)
       // Loop over BNs
       fprintf(fd, "            for (i=0;i<M;i++) {\n");
       fprintf(fd,
-              "            ((simde__m128i*)bnProcBufRes)[%d + i ] = simde_mm_subs_epi8(((simde__m128i*)llrRes)[%d + i ], ((simde__m128i*) bnProcBuf)[%d + i]);\n",
+              "            ((simde__m128i*)bnProcBufRes)[%u + i ] = simde_mm_subs_epi8(((simde__m128i*)llrRes)[%d + i ], "
+              "((simde__m128i*) bnProcBuf)[%u + i]);\n",
               (lut_startAddrBnGroups[idxBnGroup] >> 4) + k * cnOffsetInGroup,
               (lut_startAddrBnGroupsLlr[idxBnGroup] >> 4),
               (lut_startAddrBnGroups[idxBnGroup] >> 4) + k * cnOffsetInGroup);
@@ -124,19 +125,20 @@ void nrLDPC_bnProc_BG1_generator_128(const char* dir, int R)
     idxBnGroup++;
 
     // Number of groups of 32 BNs for parallel processing
-    fprintf(fd, "       M = (%d*Z + 15)>>4;\n", lut_numBnInBnGroups[2]);
+    fprintf(fd, "       M = (%u*Z + 15)>>4;\n", lut_numBnInBnGroups[2]);
 
     // Set the offset to each CN within a group in terms of 16 Byte
     cnOffsetInGroup = (lut_numBnInBnGroups[2] * NR_LDPC_ZMAX) >> 4;
 
     // Set pointers to start of group 2
-    // fprintf(fd,"    ((simde__m128i*) bnProcBuf)     = ((simde__m128i*) &bnProcBuf)    [%d];\n",lut_startAddrBnGroups[idxBnGroup]);
+    // fprintf(fd,"    ((simde__m128i*) bnProcBuf)     = ((simde__m128i*) &bnProcBuf) [%u];\n",lut_startAddrBnGroups[idxBnGroup]);
 
     for (k = 0; k < 3; k++) {
       // Loop over BNs
       fprintf(fd, "            for (i=0;i<M;i++) {\n");
       fprintf(fd,
-              "            ((simde__m128i*)bnProcBufRes)[%d + i ] = simde_mm_subs_epi8(((simde__m128i*)llrRes)[%d + i ], ((simde__m128i*) bnProcBuf)[%d + i]);\n",
+              "            ((simde__m128i*)bnProcBufRes)[%u + i ] = simde_mm_subs_epi8(((simde__m128i*)llrRes)[%d + i ], "
+              "((simde__m128i*) bnProcBuf)[%u + i]);\n",
               (lut_startAddrBnGroups[idxBnGroup] >> 4) + k * cnOffsetInGroup,
               (lut_startAddrBnGroupsLlr[idxBnGroup] >> 4),
               (lut_startAddrBnGroups[idxBnGroup] >> 4) + k * cnOffsetInGroup);
@@ -154,7 +156,7 @@ void nrLDPC_bnProc_BG1_generator_128(const char* dir, int R)
     idxBnGroup++;
 
     // Number of groups of 32 BNs for parallel processing
-    fprintf(fd, "       M = (%d*Z + 15)>>4;\n", lut_numBnInBnGroups[3]);
+    fprintf(fd, "       M = (%u*Z + 15)>>4;\n", lut_numBnInBnGroups[3]);
 
     // Set the offset to each CN within a group in terms of 16 Byte
     cnOffsetInGroup = (lut_numBnInBnGroups[3] * NR_LDPC_ZMAX) >> 4;
@@ -165,7 +167,8 @@ void nrLDPC_bnProc_BG1_generator_128(const char* dir, int R)
       // Loop over BNs
       fprintf(fd, "            for (i=0;i<M;i++) {\n");
       fprintf(fd,
-              "            ((simde__m128i*)bnProcBufRes)[%d + i ] = simde_mm_subs_epi8(((simde__m128i*)llrRes)[%d + i ], ((simde__m128i*) bnProcBuf)[%d + i]);\n",
+              "            ((simde__m128i*)bnProcBufRes)[%u + i ] = simde_mm_subs_epi8(((simde__m128i*)llrRes)[%d + i ], "
+              "((simde__m128i*) bnProcBuf)[%u + i]);\n",
               ((lut_startAddrBnGroups[idxBnGroup] >> 4) + k * cnOffsetInGroup),
               (lut_startAddrBnGroupsLlr[idxBnGroup] >> 4),
               ((lut_startAddrBnGroups[idxBnGroup] >> 4) + k * cnOffsetInGroup));
@@ -183,7 +186,7 @@ void nrLDPC_bnProc_BG1_generator_128(const char* dir, int R)
     idxBnGroup++;
 
     // Number of groups of 32 BNs for parallel processing
-    fprintf(fd, "       M = (%d*Z + 15)>>4;\n", lut_numBnInBnGroups[4]);
+    fprintf(fd, "       M = (%u*Z + 15)>>4;\n", lut_numBnInBnGroups[4]);
 
     // Set the offset to each CN within a group in terms of 16 Byte
     cnOffsetInGroup = (lut_numBnInBnGroups[4] * NR_LDPC_ZMAX) >> 4;
@@ -195,7 +198,8 @@ void nrLDPC_bnProc_BG1_generator_128(const char* dir, int R)
       // Loop over BNs
       fprintf(fd, "            for (i=0;i<M;i++) {\n");
       fprintf(fd,
-              "            ((simde__m128i*)bnProcBufRes)[%d + i ] = simde_mm_subs_epi8(((simde__m128i*)llrRes)[%d + i ], ((simde__m128i*) bnProcBuf)[%d + i]);\n",
+              "            ((simde__m128i*)bnProcBufRes)[%u + i ] = simde_mm_subs_epi8(((simde__m128i*)llrRes)[%d + i ], "
+              "((simde__m128i*) bnProcBuf)[%u + i]);\n",
               (lut_startAddrBnGroups[idxBnGroup] >> 4) + k * cnOffsetInGroup,
               (lut_startAddrBnGroupsLlr[idxBnGroup] >> 4),
               (lut_startAddrBnGroups[idxBnGroup] >> 4) + k * cnOffsetInGroup);
@@ -215,7 +219,7 @@ void nrLDPC_bnProc_BG1_generator_128(const char* dir, int R)
     idxBnGroup++;
 
     // Number of groups of 32 BNs for parallel processing
-    fprintf(fd, "       M = (%d*Z + 15)>>4;\n", lut_numBnInBnGroups[5]);
+    fprintf(fd, "       M = (%u*Z + 15)>>4;\n", lut_numBnInBnGroups[5]);
 
     // Set the offset to each CN within a group in terms of 16 Byte
     cnOffsetInGroup = (lut_numBnInBnGroups[5] * NR_LDPC_ZMAX) >> 4;
@@ -227,7 +231,8 @@ void nrLDPC_bnProc_BG1_generator_128(const char* dir, int R)
       // Loop over BNs
       fprintf(fd, "            for (i=0;i<M;i++) {\n");
       fprintf(fd,
-              "            ((simde__m128i*)bnProcBufRes)[%d + i ] = simde_mm_subs_epi8(((simde__m128i*)llrRes)[%d + i ], ((simde__m128i*) bnProcBuf)[%d + i]);\n",
+              "            ((simde__m128i*)bnProcBufRes)[%u + i ] = simde_mm_subs_epi8(((simde__m128i*)llrRes)[%d + i ], "
+              "((simde__m128i*) bnProcBuf)[%u + i]);\n",
               (lut_startAddrBnGroups[idxBnGroup] >> 4) + k * cnOffsetInGroup,
               (lut_startAddrBnGroupsLlr[idxBnGroup] >> 4),
               (lut_startAddrBnGroups[idxBnGroup] >> 4) + k * cnOffsetInGroup);
@@ -247,7 +252,7 @@ void nrLDPC_bnProc_BG1_generator_128(const char* dir, int R)
     idxBnGroup++;
 
     // Number of groups of 32 BNs for parallel processing
-    fprintf(fd, "       M = (%d*Z + 15)>>4;\n", lut_numBnInBnGroups[6]);
+    fprintf(fd, "       M = (%u*Z + 15)>>4;\n", lut_numBnInBnGroups[6]);
 
     // Set the offset to each CN within a group in terms of 16 Byte
     cnOffsetInGroup = (lut_numBnInBnGroups[6] * NR_LDPC_ZMAX) >> 4;
@@ -259,7 +264,8 @@ void nrLDPC_bnProc_BG1_generator_128(const char* dir, int R)
       // Loop over BNs
       fprintf(fd, "            for (i=0;i<M;i++) {\n");
       fprintf(fd,
-              "            ((simde__m128i*)bnProcBufRes)[%d + i ] = simde_mm_subs_epi8(((simde__m128i*)llrRes)[%d + i ], ((simde__m128i*) bnProcBuf)[%d + i]);\n",
+              "            ((simde__m128i*)bnProcBufRes)[%u + i ] = simde_mm_subs_epi8(((simde__m128i*)llrRes)[%d + i ], "
+              "((simde__m128i*) bnProcBuf)[%u + i]);\n",
               (lut_startAddrBnGroups[idxBnGroup] >> 4) + k * cnOffsetInGroup,
               (lut_startAddrBnGroupsLlr[idxBnGroup] >> 4),
               (lut_startAddrBnGroups[idxBnGroup] >> 4) + k * cnOffsetInGroup);
@@ -279,7 +285,7 @@ void nrLDPC_bnProc_BG1_generator_128(const char* dir, int R)
     idxBnGroup++;
 
     // Number of groups of 32 BNs for parallel processing
-    fprintf(fd, "       M = (%d*Z + 15)>>4;\n", lut_numBnInBnGroups[7]);
+    fprintf(fd, "       M = (%u*Z + 15)>>4;\n", lut_numBnInBnGroups[7]);
 
     // Set the offset to each CN within a group in terms of 16 Byte
     cnOffsetInGroup = (lut_numBnInBnGroups[7] * NR_LDPC_ZMAX) >> 4;
@@ -291,7 +297,8 @@ void nrLDPC_bnProc_BG1_generator_128(const char* dir, int R)
       // Loop over BNs
       fprintf(fd, "            for (i=0;i<M;i++) {\n");
       fprintf(fd,
-              "            ((simde__m128i*)bnProcBufRes)[%d + i ] = simde_mm_subs_epi8(((simde__m128i*)llrRes)[%d + i ], ((simde__m128i*) bnProcBuf)[%d + i]);\n",
+              "            ((simde__m128i*)bnProcBufRes)[%u + i ] = simde_mm_subs_epi8(((simde__m128i*)llrRes)[%d + i ], "
+              "((simde__m128i*) bnProcBuf)[%u + i]);\n",
               (lut_startAddrBnGroups[idxBnGroup] >> 4) + k * cnOffsetInGroup,
               (lut_startAddrBnGroupsLlr[idxBnGroup] >> 4),
               (lut_startAddrBnGroups[idxBnGroup] >> 4) + k * cnOffsetInGroup);
@@ -311,7 +318,7 @@ void nrLDPC_bnProc_BG1_generator_128(const char* dir, int R)
     idxBnGroup++;
 
     // Number of groups of 32 BNs for parallel processing
-    fprintf(fd, "       M = (%d*Z + 15)>>4;\n", lut_numBnInBnGroups[8]);
+    fprintf(fd, "       M = (%u*Z + 15)>>4;\n", lut_numBnInBnGroups[8]);
 
     // Set the offset to each CN within a group in terms of 16 Byte
     cnOffsetInGroup = (lut_numBnInBnGroups[8] * NR_LDPC_ZMAX) >> 4;
@@ -323,7 +330,8 @@ void nrLDPC_bnProc_BG1_generator_128(const char* dir, int R)
       // Loop over BNs
       fprintf(fd, "            for (i=0;i<M;i++) {\n");
       fprintf(fd,
-              "            ((simde__m128i*)bnProcBufRes)[%d + i ] = simde_mm_subs_epi8(((simde__m128i*)llrRes)[%d + i ], ((simde__m128i*) bnProcBuf)[%d + i]);\n",
+              "            ((simde__m128i*)bnProcBufRes)[%u + i ] = simde_mm_subs_epi8(((simde__m128i*)llrRes)[%d + i ], "
+              "((simde__m128i*) bnProcBuf)[%u + i]);\n",
               (lut_startAddrBnGroups[idxBnGroup] >> 4) + k * cnOffsetInGroup,
               (lut_startAddrBnGroupsLlr[idxBnGroup] >> 4),
               (lut_startAddrBnGroups[idxBnGroup] >> 4) + k * cnOffsetInGroup);
@@ -343,7 +351,7 @@ void nrLDPC_bnProc_BG1_generator_128(const char* dir, int R)
     idxBnGroup++;
 
     // Number of groups of 32 BNs for parallel processing
-    fprintf(fd, "       M = (%d*Z + 15)>>4;\n", lut_numBnInBnGroups[9]);
+    fprintf(fd, "       M = (%u*Z + 15)>>4;\n", lut_numBnInBnGroups[9]);
 
     // Set the offset to each CN within a group in terms of 16 Byte
     cnOffsetInGroup = (lut_numBnInBnGroups[9] * NR_LDPC_ZMAX) >> 4;
@@ -355,7 +363,8 @@ void nrLDPC_bnProc_BG1_generator_128(const char* dir, int R)
       // Loop over BNs
       fprintf(fd, "            for (i=0;i<M;i++) {\n");
       fprintf(fd,
-              "            ((simde__m128i*)bnProcBufRes)[%d + i ] = simde_mm_subs_epi8(((simde__m128i*)llrRes)[%d + i ], ((simde__m128i*) bnProcBuf)[%d + i]);\n",
+              "            ((simde__m128i*)bnProcBufRes)[%u + i ] = simde_mm_subs_epi8(((simde__m128i*)llrRes)[%d + i ], "
+              "((simde__m128i*) bnProcBuf)[%u + i]);\n",
               (lut_startAddrBnGroups[idxBnGroup] >> 4) + k * cnOffsetInGroup,
               (lut_startAddrBnGroupsLlr[idxBnGroup] >> 4),
               (lut_startAddrBnGroups[idxBnGroup] >> 4) + k * cnOffsetInGroup);
@@ -373,7 +382,7 @@ void nrLDPC_bnProc_BG1_generator_128(const char* dir, int R)
     idxBnGroup++;
 
     // Number of groups of 32 BNs for parallel processing
-    fprintf(fd, "       M = (%d*Z + 15)>>4;\n", lut_numBnInBnGroups[10]);
+    fprintf(fd, "       M = (%u*Z + 15)>>4;\n", lut_numBnInBnGroups[10]);
     ;
 
     // Set the offset to each CN within a group in terms of 16 Byte
@@ -386,7 +395,8 @@ void nrLDPC_bnProc_BG1_generator_128(const char* dir, int R)
       // Loop over BNs
       fprintf(fd, "            for (i=0;i<M;i++) {\n");
       fprintf(fd,
-              "            ((simde__m128i*)bnProcBufRes)[%d + i ] = simde_mm_subs_epi8(((simde__m128i*)llrRes)[%d + i ], ((simde__m128i*) bnProcBuf)[%d + i]);\n",
+              "            ((simde__m128i*)bnProcBufRes)[%u + i ] = simde_mm_subs_epi8(((simde__m128i*)llrRes)[%d + i ], "
+              "((simde__m128i*) bnProcBuf)[%u + i]);\n",
               (lut_startAddrBnGroups[idxBnGroup] >> 4) + k * cnOffsetInGroup,
               (lut_startAddrBnGroupsLlr[idxBnGroup] >> 4),
               (lut_startAddrBnGroups[idxBnGroup] >> 4) + k * cnOffsetInGroup);
@@ -403,7 +413,7 @@ void nrLDPC_bnProc_BG1_generator_128(const char* dir, int R)
     idxBnGroup++;
 
     // Number of groups of 32 BNs for parallel processing
-    fprintf(fd, "       M = (%d*Z + 15)>>4;\n", lut_numBnInBnGroups[11]);
+    fprintf(fd, "       M = (%u*Z + 15)>>4;\n", lut_numBnInBnGroups[11]);
     ;
 
     // Set the offset to each CN within a group in terms of 16 Byte
@@ -416,7 +426,8 @@ void nrLDPC_bnProc_BG1_generator_128(const char* dir, int R)
       // Loop over BNs
       fprintf(fd, "            for (i=0;i<M;i++) {\n");
       fprintf(fd,
-              "            ((simde__m128i*)bnProcBufRes)[%d + i ] = simde_mm_subs_epi8(((simde__m128i*)llrRes)[%d + i ], ((simde__m128i*) bnProcBuf)[%d + i]);\n",
+              "            ((simde__m128i*)bnProcBufRes)[%u + i ] = simde_mm_subs_epi8(((simde__m128i*)llrRes)[%d + i ], "
+              "((simde__m128i*) bnProcBuf)[%u + i]);\n",
               (lut_startAddrBnGroups[idxBnGroup] >> 4) + k * cnOffsetInGroup,
               (lut_startAddrBnGroupsLlr[idxBnGroup] >> 4),
               (lut_startAddrBnGroups[idxBnGroup] >> 4) + k * cnOffsetInGroup);
@@ -434,7 +445,7 @@ void nrLDPC_bnProc_BG1_generator_128(const char* dir, int R)
     idxBnGroup++;
 
     // Number of groups of 32 BNs for parallel processing
-    fprintf(fd, "       M = (%d*Z + 15)>>4;\n", lut_numBnInBnGroups[12]);
+    fprintf(fd, "       M = (%u*Z + 15)>>4;\n", lut_numBnInBnGroups[12]);
     ;
 
     // Set the offset to each CN within a group in terms of 16 Byte
@@ -447,7 +458,8 @@ void nrLDPC_bnProc_BG1_generator_128(const char* dir, int R)
       // Loop over BNs
       fprintf(fd, "            for (i=0;i<M;i++) {\n");
       fprintf(fd,
-              "            ((simde__m128i*)bnProcBufRes)[%d + i ] = simde_mm_subs_epi8(((simde__m128i*)llrRes)[%d + i ], ((simde__m128i*) bnProcBuf)[%d + i]);\n",
+              "            ((simde__m128i*)bnProcBufRes)[%u + i ] = simde_mm_subs_epi8(((simde__m128i*)llrRes)[%d + i ], "
+              "((simde__m128i*) bnProcBuf)[%u + i]);\n",
               (lut_startAddrBnGroups[idxBnGroup] >> 4) + k * cnOffsetInGroup,
               (lut_startAddrBnGroupsLlr[idxBnGroup] >> 4),
               (lut_startAddrBnGroups[idxBnGroup] >> 4) + k * cnOffsetInGroup);
@@ -465,7 +477,7 @@ void nrLDPC_bnProc_BG1_generator_128(const char* dir, int R)
     idxBnGroup++;
 
     // Number of groups of 32 BNs for parallel processing
-    fprintf(fd, "       M = (%d*Z + 15)>>4;\n", lut_numBnInBnGroups[13]);
+    fprintf(fd, "       M = (%u*Z + 15)>>4;\n", lut_numBnInBnGroups[13]);
     ;
 
     // Set the offset to each CN within a group in terms of 16 Byte
@@ -478,7 +490,8 @@ void nrLDPC_bnProc_BG1_generator_128(const char* dir, int R)
       // Loop over BNs
       fprintf(fd, "            for (i=0;i<M;i++) {\n");
       fprintf(fd,
-              "            ((simde__m128i*)bnProcBufRes)[%d + i ] = simde_mm_subs_epi8(((simde__m128i*)llrRes)[%d + i ], ((simde__m128i*) bnProcBuf)[%d + i]);\n",
+              "            ((simde__m128i*)bnProcBufRes)[%u + i ] = simde_mm_subs_epi8(((simde__m128i*)llrRes)[%d + i ], "
+              "((simde__m128i*) bnProcBuf)[%u + i]);\n",
               (lut_startAddrBnGroups[idxBnGroup] >> 4) + k * cnOffsetInGroup,
               (lut_startAddrBnGroupsLlr[idxBnGroup] >> 4),
               (lut_startAddrBnGroups[idxBnGroup] >> 4) + k * cnOffsetInGroup);
@@ -496,7 +509,7 @@ void nrLDPC_bnProc_BG1_generator_128(const char* dir, int R)
     idxBnGroup++;
 
     // Number of groups of 32 BNs for parallel processing
-    fprintf(fd, "       M = (%d*Z + 15)>>4;\n", lut_numBnInBnGroups[14]);
+    fprintf(fd, "       M = (%u*Z + 15)>>4;\n", lut_numBnInBnGroups[14]);
     ;
 
     // Set the offset to each CN within a group in terms of 16 Byte
@@ -509,7 +522,8 @@ void nrLDPC_bnProc_BG1_generator_128(const char* dir, int R)
       // Loop over BNs
       fprintf(fd, "            for (i=0;i<M;i++) {\n");
       fprintf(fd,
-              "            ((simde__m128i*)bnProcBufRes)[%d + i ] = simde_mm_subs_epi8(((simde__m128i*)llrRes)[%d + i ], ((simde__m128i*) bnProcBuf)[%d + i]);\n",
+              "            ((simde__m128i*)bnProcBufRes)[%u + i ] = simde_mm_subs_epi8(((simde__m128i*)llrRes)[%d + i ], "
+              "((simde__m128i*) bnProcBuf)[%u + i]);\n",
               (lut_startAddrBnGroups[idxBnGroup] >> 4) + k * cnOffsetInGroup,
               (lut_startAddrBnGroupsLlr[idxBnGroup] >> 4),
               (lut_startAddrBnGroups[idxBnGroup] >> 4) + k * cnOffsetInGroup);
@@ -527,7 +541,7 @@ void nrLDPC_bnProc_BG1_generator_128(const char* dir, int R)
     idxBnGroup++;
 
     // Number of groups of 32 BNs for parallel processing
-    fprintf(fd, "       M = (%d*Z + 15)>>4;\n", lut_numBnInBnGroups[15]);
+    fprintf(fd, "       M = (%u*Z + 15)>>4;\n", lut_numBnInBnGroups[15]);
     ;
 
     // Set the offset to each CN within a group in terms of 16 Byte
@@ -540,7 +554,8 @@ void nrLDPC_bnProc_BG1_generator_128(const char* dir, int R)
       // Loop over BNs
       fprintf(fd, "            for (i=0;i<M;i++) {\n");
       fprintf(fd,
-              "            ((simde__m128i*)bnProcBufRes)[%d + i ] = simde_mm_subs_epi8(((simde__m128i*)llrRes)[%d + i ], ((simde__m128i*) bnProcBuf)[%d + i]);\n",
+              "            ((simde__m128i*)bnProcBufRes)[%u + i ] = simde_mm_subs_epi8(((simde__m128i*)llrRes)[%d + i ], "
+              "((simde__m128i*) bnProcBuf)[%u + i]);\n",
               (lut_startAddrBnGroups[idxBnGroup] >> 4) + k * cnOffsetInGroup,
               (lut_startAddrBnGroupsLlr[idxBnGroup] >> 4),
               (lut_startAddrBnGroups[idxBnGroup] >> 4) + k * cnOffsetInGroup);
@@ -561,7 +576,7 @@ void nrLDPC_bnProc_BG1_generator_128(const char* dir, int R)
     idxBnGroup++;
 
     // Number of groups of 32 BNs for parallel processing
-    fprintf(fd, "       M = (%d*Z + 15)>>4;\n", lut_numBnInBnGroups[16]);
+    fprintf(fd, "       M = (%u*Z + 15)>>4;\n", lut_numBnInBnGroups[16]);
     ;
 
     // Set the offset to each CN within a group in terms of 16 Byte
@@ -574,7 +589,8 @@ void nrLDPC_bnProc_BG1_generator_128(const char* dir, int R)
       // Loop over BNs
       fprintf(fd, "            for (i=0;i<M;i++) {\n");
       fprintf(fd,
-              "            ((simde__m128i*)bnProcBufRes)[%d + i ] = simde_mm_subs_epi8(((simde__m128i*)llrRes)[%d + i ], ((simde__m128i*) bnProcBuf)[%d + i]);\n",
+              "            ((simde__m128i*)bnProcBufRes)[%u + i ] = simde_mm_subs_epi8(((simde__m128i*)llrRes)[%d + i ], "
+              "((simde__m128i*) bnProcBuf)[%u + i]);\n",
               (lut_startAddrBnGroups[idxBnGroup] >> 4) + k * cnOffsetInGroup,
               (lut_startAddrBnGroupsLlr[idxBnGroup] >> 4),
               (lut_startAddrBnGroups[idxBnGroup] >> 4) + k * cnOffsetInGroup);
@@ -594,7 +610,7 @@ void nrLDPC_bnProc_BG1_generator_128(const char* dir, int R)
     idxBnGroup++;
 
     // Number of groups of 32 BNs for parallel processing
-    fprintf(fd, "       M = (%d*Z + 15)>>4;\n", lut_numBnInBnGroups[17]);
+    fprintf(fd, "       M = (%u*Z + 15)>>4;\n", lut_numBnInBnGroups[17]);
     ;
 
     // Set the offset to each CN within a group in terms of 16 Byte
@@ -607,7 +623,8 @@ void nrLDPC_bnProc_BG1_generator_128(const char* dir, int R)
       // Loop over BNs
       fprintf(fd, "            for (i=0;i<M;i++) {\n");
       fprintf(fd,
-              "            ((simde__m128i*)bnProcBufRes)[%d + i ] = simde_mm_subs_epi8(((simde__m128i*)llrRes)[%d + i ], ((simde__m128i*) bnProcBuf)[%d + i]);\n",
+              "            ((simde__m128i*)bnProcBufRes)[%u + i ] = simde_mm_subs_epi8(((simde__m128i*)llrRes)[%d + i ], "
+              "((simde__m128i*) bnProcBuf)[%u + i]);\n",
               (lut_startAddrBnGroups[idxBnGroup] >> 4) + k * cnOffsetInGroup,
               (lut_startAddrBnGroupsLlr[idxBnGroup] >> 4),
               (lut_startAddrBnGroups[idxBnGroup] >> 4) + k * cnOffsetInGroup);
@@ -625,7 +642,7 @@ void nrLDPC_bnProc_BG1_generator_128(const char* dir, int R)
     idxBnGroup++;
 
     // Number of groups of 32 BNs for parallel processing
-    fprintf(fd, "       M = (%d*Z + 15)>>4;\n", lut_numBnInBnGroups[18]);
+    fprintf(fd, "       M = (%u*Z + 15)>>4;\n", lut_numBnInBnGroups[18]);
     ;
 
     // Set the offset to each CN within a group in terms of 16 Byte
@@ -638,7 +655,8 @@ void nrLDPC_bnProc_BG1_generator_128(const char* dir, int R)
       // Loop over BNs
       fprintf(fd, "            for (i=0;i<M;i++) {\n");
       fprintf(fd,
-              "            ((simde__m128i*)bnProcBufRes)[%d + i ] = simde_mm_subs_epi8(((simde__m128i*)llrRes)[%d + i ], ((simde__m128i*) bnProcBuf)[%d + i]);\n",
+              "            ((simde__m128i*)bnProcBufRes)[%u + i ] = simde_mm_subs_epi8(((simde__m128i*)llrRes)[%d + i ], "
+              "((simde__m128i*) bnProcBuf)[%u + i]);\n",
               (lut_startAddrBnGroups[idxBnGroup] >> 4) + k * cnOffsetInGroup,
               (lut_startAddrBnGroupsLlr[idxBnGroup] >> 4),
               (lut_startAddrBnGroups[idxBnGroup] >> 4) + k * cnOffsetInGroup);
@@ -656,7 +674,7 @@ void nrLDPC_bnProc_BG1_generator_128(const char* dir, int R)
     idxBnGroup++;
 
     // Number of groups of 32 BNs for parallel processing
-    fprintf(fd, "       M = (%d*Z + 15)>>4;\n", lut_numBnInBnGroups[19]);
+    fprintf(fd, "       M = (%u*Z + 15)>>4;\n", lut_numBnInBnGroups[19]);
     ;
 
     // Set the offset to each CN within a group in terms of 16 Byte
@@ -669,7 +687,8 @@ void nrLDPC_bnProc_BG1_generator_128(const char* dir, int R)
       // Loop over BNs
       fprintf(fd, "            for (i=0;i<M;i++) {\n");
       fprintf(fd,
-              "            ((simde__m128i*)bnProcBufRes)[%d + i ] = simde_mm_subs_epi8(((simde__m128i*)llrRes)[%d + i ], ((simde__m128i*) bnProcBuf)[%d + i]);\n",
+              "            ((simde__m128i*)bnProcBufRes)[%u + i ] = simde_mm_subs_epi8(((simde__m128i*)llrRes)[%d + i ], "
+              "((simde__m128i*) bnProcBuf)[%u + i]);\n",
               (lut_startAddrBnGroups[idxBnGroup] >> 4) + k * cnOffsetInGroup,
               (lut_startAddrBnGroupsLlr[idxBnGroup] >> 4),
               (lut_startAddrBnGroups[idxBnGroup] >> 4) + k * cnOffsetInGroup);
@@ -687,7 +706,7 @@ void nrLDPC_bnProc_BG1_generator_128(const char* dir, int R)
     idxBnGroup++;
 
     // Number of groups of 32 BNs for parallel processing
-    fprintf(fd, "       M = (%d*Z + 15)>>4;\n", lut_numBnInBnGroups[20]);
+    fprintf(fd, "       M = (%u*Z + 15)>>4;\n", lut_numBnInBnGroups[20]);
     ;
 
     // Set the offset to each CN within a group in terms of 16 Byte
@@ -700,7 +719,8 @@ void nrLDPC_bnProc_BG1_generator_128(const char* dir, int R)
       // Loop over BNs
       fprintf(fd, "            for (i=0;i<M;i++) {\n");
       fprintf(fd,
-              "            ((simde__m128i*)bnProcBufRes)[%d + i ] = simde_mm_subs_epi8(((simde__m128i*)llrRes)[%d + i ], ((simde__m128i*) bnProcBuf)[%d + i]);\n",
+              "            ((simde__m128i*)bnProcBufRes)[%u + i ] = simde_mm_subs_epi8(((simde__m128i*)llrRes)[%d + i ], "
+              "((simde__m128i*) bnProcBuf)[%u + i]);\n",
               (lut_startAddrBnGroups[idxBnGroup] >> 4) + k * cnOffsetInGroup,
               (lut_startAddrBnGroupsLlr[idxBnGroup] >> 4),
               (lut_startAddrBnGroups[idxBnGroup] >> 4) + k * cnOffsetInGroup);
@@ -717,7 +737,7 @@ void nrLDPC_bnProc_BG1_generator_128(const char* dir, int R)
     idxBnGroup++;
 
     // Number of groups of 32 BNs for parallel processing
-    fprintf(fd, "       M = (%d*Z + 15)>>4;\n", lut_numBnInBnGroups[21]);
+    fprintf(fd, "       M = (%u*Z + 15)>>4;\n", lut_numBnInBnGroups[21]);
     ;
 
     // Set the offset to each CN within a group in terms of 16 Byte
@@ -730,7 +750,8 @@ void nrLDPC_bnProc_BG1_generator_128(const char* dir, int R)
       // Loop over BNs
       fprintf(fd, "            for (i=0;i<M;i++) {\n");
       fprintf(fd,
-              "            ((simde__m128i*)bnProcBufRes)[%d + i ] = simde_mm_subs_epi8(((simde__m128i*)llrRes)[%d + i ], ((simde__m128i*) bnProcBuf)[%d + i]);\n",
+              "            ((simde__m128i*)bnProcBufRes)[%u + i ] = simde_mm_subs_epi8(((simde__m128i*)llrRes)[%d + i ], "
+              "((simde__m128i*) bnProcBuf)[%u + i]);\n",
               (lut_startAddrBnGroups[idxBnGroup] >> 4) + k * cnOffsetInGroup,
               (lut_startAddrBnGroupsLlr[idxBnGroup] >> 4),
               (lut_startAddrBnGroups[idxBnGroup] >> 4) + k * cnOffsetInGroup);
@@ -748,7 +769,7 @@ void nrLDPC_bnProc_BG1_generator_128(const char* dir, int R)
     idxBnGroup++;
 
     // Number of groups of 32 BNs for parallel processing
-    fprintf(fd, "       M = (%d*Z + 15)>>4;\n", lut_numBnInBnGroups[22]);
+    fprintf(fd, "       M = (%u*Z + 15)>>4;\n", lut_numBnInBnGroups[22]);
     ;
 
     // Set the offset to each CN within a group in terms of 16 Byte
@@ -761,7 +782,8 @@ void nrLDPC_bnProc_BG1_generator_128(const char* dir, int R)
       // Loop over BNs
       fprintf(fd, "            for (i=0;i<M;i++) {\n");
       fprintf(fd,
-              "            ((simde__m128i*)bnProcBufRes)[%d + i ] = simde_mm_subs_epi8(((simde__m128i*)llrRes)[%d + i ], ((simde__m128i*) bnProcBuf)[%d + i]);\n",
+              "            ((simde__m128i*)bnProcBufRes)[%u + i ] = simde_mm_subs_epi8(((simde__m128i*)llrRes)[%d + i ], "
+              "((simde__m128i*) bnProcBuf)[%u + i]);\n",
               (lut_startAddrBnGroups[idxBnGroup] >> 4) + k * cnOffsetInGroup,
               (lut_startAddrBnGroupsLlr[idxBnGroup] >> 4),
               (lut_startAddrBnGroups[idxBnGroup] >> 4) + k * cnOffsetInGroup);
@@ -781,7 +803,7 @@ void nrLDPC_bnProc_BG1_generator_128(const char* dir, int R)
     idxBnGroup++;
 
     // Number of groups of 32 BNs for parallel processing
-    fprintf(fd, "       M = (%d*Z + 15)>>4;\n", lut_numBnInBnGroups[23]);
+    fprintf(fd, "       M = (%u*Z + 15)>>4;\n", lut_numBnInBnGroups[23]);
     ;
 
     // Set the offset to each CN within a group in terms of 16 Byte
@@ -794,7 +816,8 @@ void nrLDPC_bnProc_BG1_generator_128(const char* dir, int R)
       // Loop over BNs
       fprintf(fd, "            for (i=0;i<M;i++) {\n");
       fprintf(fd,
-              "            ((simde__m128i*)bnProcBufRes)[%d + i ] = simde_mm_subs_epi8(((simde__m128i*)llrRes)[%d + i ], ((simde__m128i*) bnProcBuf)[%d + i]);\n",
+              "            ((simde__m128i*)bnProcBufRes)[%u + i ] = simde_mm_subs_epi8(((simde__m128i*)llrRes)[%d + i ], "
+              "((simde__m128i*) bnProcBuf)[%u + i]);\n",
               (lut_startAddrBnGroups[idxBnGroup] >> 4) + k * cnOffsetInGroup,
               (lut_startAddrBnGroupsLlr[idxBnGroup] >> 4),
               (lut_startAddrBnGroups[idxBnGroup] >> 4) + k * cnOffsetInGroup);
@@ -812,7 +835,7 @@ void nrLDPC_bnProc_BG1_generator_128(const char* dir, int R)
     idxBnGroup++;
 
     // Number of groups of 32 BNs for parallel processing
-    fprintf(fd, "       M = (%d*Z + 15)>>4;\n", lut_numBnInBnGroups[24]);
+    fprintf(fd, "       M = (%u*Z + 15)>>4;\n", lut_numBnInBnGroups[24]);
     ;
 
     // Set the offset to each CN within a group in terms of 16 Byte
@@ -825,7 +848,8 @@ void nrLDPC_bnProc_BG1_generator_128(const char* dir, int R)
       // Loop over BNs
       fprintf(fd, "            for (i=0;i<M;i++) {\n");
       fprintf(fd,
-              "            ((simde__m128i*)bnProcBufRes)[%d + i ] = simde_mm_subs_epi8(((simde__m128i*)llrRes)[%d + i ], ((simde__m128i*) bnProcBuf)[%d + i]);\n",
+              "            ((simde__m128i*)bnProcBufRes)[%u + i ] = simde_mm_subs_epi8(((simde__m128i*)llrRes)[%d + i ], "
+              "((simde__m128i*) bnProcBuf)[%u + i]);\n",
               (lut_startAddrBnGroups[idxBnGroup] >> 4) + k * cnOffsetInGroup,
               (lut_startAddrBnGroupsLlr[idxBnGroup] >> 4),
               (lut_startAddrBnGroups[idxBnGroup] >> 4) + k * cnOffsetInGroup);
@@ -843,7 +867,7 @@ void nrLDPC_bnProc_BG1_generator_128(const char* dir, int R)
     idxBnGroup++;
 
     // Number of groups of 32 BNs for parallel processing
-    fprintf(fd, "       M = (%d*Z + 15)>>4;\n", lut_numBnInBnGroups[25]);
+    fprintf(fd, "       M = (%u*Z + 15)>>4;\n", lut_numBnInBnGroups[25]);
     ;
 
     // Set the offset to each CN within a group in terms of 16 Byte
@@ -856,7 +880,8 @@ void nrLDPC_bnProc_BG1_generator_128(const char* dir, int R)
       // Loop over BNs
       fprintf(fd, "            for (i=0;i<M;i++) {\n");
       fprintf(fd,
-              "            ((simde__m128i*)bnProcBufRes)[%d + i ] = simde_mm_subs_epi8(((simde__m128i*)llrRes)[%d + i ], ((simde__m128i*) bnProcBuf)[%d + i]);\n",
+              "            ((simde__m128i*)bnProcBufRes)[%u + i ] = simde_mm_subs_epi8(((simde__m128i*)llrRes)[%d + i ], "
+              "((simde__m128i*) bnProcBuf)[%u + i]);\n",
               (lut_startAddrBnGroups[idxBnGroup] >> 4) + k * cnOffsetInGroup,
               (lut_startAddrBnGroupsLlr[idxBnGroup] >> 4),
               (lut_startAddrBnGroups[idxBnGroup] >> 4) + k * cnOffsetInGroup);
@@ -876,7 +901,7 @@ void nrLDPC_bnProc_BG1_generator_128(const char* dir, int R)
     idxBnGroup++;
 
     // Number of groups of 32 BNs for parallel processing
-    fprintf(fd, "       M = (%d*Z + 15)>>4;\n", lut_numBnInBnGroups[26]);
+    fprintf(fd, "       M = (%u*Z + 15)>>4;\n", lut_numBnInBnGroups[26]);
     ;
 
     // Set the offset to each CN within a group in terms of 16 Byte
@@ -889,7 +914,8 @@ void nrLDPC_bnProc_BG1_generator_128(const char* dir, int R)
       // Loop over BNs
       fprintf(fd, "            for (i=0;i<M;i++) {\n");
       fprintf(fd,
-              "            ((simde__m128i*)bnProcBufRes)[%d + i ] = simde_mm_subs_epi8(((simde__m128i*)llrRes)[%d + i ], ((simde__m128i*) bnProcBuf)[%d + i]);\n",
+              "            ((simde__m128i*)bnProcBufRes)[%u + i ] = simde_mm_subs_epi8(((simde__m128i*)llrRes)[%d + i ], "
+              "((simde__m128i*) bnProcBuf)[%u + i]);\n",
               (lut_startAddrBnGroups[idxBnGroup] >> 4) + k * cnOffsetInGroup,
               (lut_startAddrBnGroupsLlr[idxBnGroup] >> 4),
               (lut_startAddrBnGroups[idxBnGroup] >> 4) + k * cnOffsetInGroup);
@@ -909,7 +935,7 @@ void nrLDPC_bnProc_BG1_generator_128(const char* dir, int R)
     idxBnGroup++;
 
     // Number of groups of 32 BNs for parallel processing
-    fprintf(fd, "       M = (%d*Z + 15)>>4;\n", lut_numBnInBnGroups[27]);
+    fprintf(fd, "       M = (%u*Z + 15)>>4;\n", lut_numBnInBnGroups[27]);
     ;
 
     // Set the offset to each CN within a group in terms of 16 Byte
@@ -922,7 +948,8 @@ void nrLDPC_bnProc_BG1_generator_128(const char* dir, int R)
       // Loop over BNs
       fprintf(fd, "            for (i=0;i<M;i++) {\n");
       fprintf(fd,
-              "            ((simde__m128i*)bnProcBufRes)[%d + i ] = simde_mm_subs_epi8(((simde__m128i*)llrRes)[%d + i ], ((simde__m128i*) bnProcBuf)[%d + i]);\n",
+              "            ((simde__m128i*)bnProcBufRes)[%u + i ] = simde_mm_subs_epi8(((simde__m128i*)llrRes)[%d + i ], "
+              "((simde__m128i*) bnProcBuf)[%u + i]);\n",
               (lut_startAddrBnGroups[idxBnGroup] >> 4) + k * cnOffsetInGroup,
               (lut_startAddrBnGroupsLlr[idxBnGroup] >> 4),
               (lut_startAddrBnGroups[idxBnGroup] >> 4) + k * cnOffsetInGroup);
@@ -942,7 +969,7 @@ void nrLDPC_bnProc_BG1_generator_128(const char* dir, int R)
     idxBnGroup++;
 
     // Number of groups of 32 BNs for parallel processing
-    fprintf(fd, "       M = (%d*Z + 15)>>4;\n", lut_numBnInBnGroups[28]);
+    fprintf(fd, "       M = (%u*Z + 15)>>4;\n", lut_numBnInBnGroups[28]);
     ;
 
     // Set the offset to each CN within a group in terms of 16 Byte
@@ -955,7 +982,8 @@ void nrLDPC_bnProc_BG1_generator_128(const char* dir, int R)
       // Loop over BNs
       fprintf(fd, "            for (i=0;i<M;i++) {\n");
       fprintf(fd,
-              "            ((simde__m128i*)bnProcBufRes)[%d + i ] = simde_mm_subs_epi8(((simde__m128i*)llrRes)[%d + i ], ((simde__m128i*) bnProcBuf)[%d + i]);\n",
+              "            ((simde__m128i*)bnProcBufRes)[%u + i ] = simde_mm_subs_epi8(((simde__m128i*)llrRes)[%d + i ], "
+              "((simde__m128i*) bnProcBuf)[%u + i]);\n",
               (lut_startAddrBnGroups[idxBnGroup] >> 4) + k * cnOffsetInGroup,
               (lut_startAddrBnGroupsLlr[idxBnGroup] >> 4),
               (lut_startAddrBnGroups[idxBnGroup] >> 4) + k * cnOffsetInGroup);
@@ -975,7 +1003,7 @@ void nrLDPC_bnProc_BG1_generator_128(const char* dir, int R)
     idxBnGroup++;
 
     // Number of groups of 32 BNs for parallel processing
-    fprintf(fd, "       M = (%d*Z + 15)>>4;\n", lut_numBnInBnGroups[29]);
+    fprintf(fd, "       M = (%u*Z + 15)>>4;\n", lut_numBnInBnGroups[29]);
     ;
 
     // Set the offset to each CN within a group in terms of 16 Byte
@@ -988,7 +1016,8 @@ void nrLDPC_bnProc_BG1_generator_128(const char* dir, int R)
       // Loop over BNs
       fprintf(fd, "            for (i=0;i<M;i++) {\n");
       fprintf(fd,
-              "            ((simde__m128i*)bnProcBufRes)[%d + i ] = simde_mm_subs_epi8(((simde__m128i*)llrRes)[%d + i ], ((simde__m128i*) bnProcBuf)[%d + i]);\n",
+              "            ((simde__m128i*)bnProcBufRes)[%u + i ] = simde_mm_subs_epi8(((simde__m128i*)llrRes)[%d + i ], "
+              "((simde__m128i*) bnProcBuf)[%u + i]);\n",
               (lut_startAddrBnGroups[idxBnGroup] >> 4) + k * cnOffsetInGroup,
               (lut_startAddrBnGroupsLlr[idxBnGroup] >> 4),
               (lut_startAddrBnGroups[idxBnGroup] >> 4) + k * cnOffsetInGroup);
