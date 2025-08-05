@@ -812,8 +812,9 @@ static inline void rotate_cpx_vector(const c16_t *const x, const c16_t *const al
     for (c16_t *xTail = (c16_t *)end; xTail < ((c16_t *)x) + N; xTail++, yLast++) {
       *yLast = c16mulShift(*xTail, *alpha16, output_shift);
     }
-  } else {
+  } else
 #endif
+  {
     // Multiply elementwise two complex vectors of N elements
     // x        - input 1    in the format  |Re0  Im0 |,......,|Re(N-1) Im(N-1)|
     //            We assume x1 with a dynamic of 15 bit maximum
@@ -859,9 +860,7 @@ static inline void rotate_cpx_vector(const c16_t *const x, const c16_t *const al
               shift));
       // print_ints("y_128[0]=", &y_128[0]);
     }
-#if defined(__x86__) || defined(__x86_64__)
   }
-#endif
 }
 
 /*!\fn int32_t sub_cpx_vector16(c16_t *x,c16_t *y, c16_t z, uint32_t N)
