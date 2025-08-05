@@ -358,14 +358,14 @@ void generate_mdci_top(PHY_VARS_eNB *eNB, int frame, int subframe, int16_t amp, 
     if (re_offset > fp->ofdm_symbol_size)
       re_offset -= (fp->ofdm_symbol_size - 1);
 
-    int32_t        *txF = &txdataF[0][symbol_offset+re_offset];
-    int32_t         yIQ;
+    c16_t *txF = (c16_t *)&txdataF[0][symbol_offset + re_offset];
+    c16_t yIQ;
 
     for (i = 0; i < (coded_bits >> 1); i++) {
       // QPSK modulation to yIQ
-      ((int16_t *) & yIQ)[0] = (*e_ptr == 1) ? -gain_lin_QPSK : gain_lin_QPSK;
+      yIQ.r = (*e_ptr == 1) ? -gain_lin_QPSK : gain_lin_QPSK;
       e_ptr++;
-      ((int16_t *) & yIQ)[1] = (*e_ptr == 1) ? -gain_lin_QPSK : gain_lin_QPSK;
+      yIQ.i = (*e_ptr == 1) ? -gain_lin_QPSK : gain_lin_QPSK;
       e_ptr++;
       txF[mpdcchtab[i]] = yIQ;
       /*
@@ -414,7 +414,7 @@ void generate_mdci_top(PHY_VARS_eNB *eNB, int frame, int subframe, int16_t amp, 
           if (re_offset > fp->ofdm_symbol_size)
             re_offset -= (fp->ofdm_symbol_size - 1);
 
-          txF = &txdataF[0][symbol_offset + re_offset + fp->ofdm_symbol_size*soffset[lprime]];
+          txF = (c16_t *)&txdataF[0][symbol_offset + re_offset + fp->ofdm_symbol_size * soffset[lprime]];
         }
 
         for (int mprime=0; mprime<3; mprime++,i+=2) {
@@ -426,8 +426,8 @@ void generate_mdci_top(PHY_VARS_eNB *eNB, int frame, int subframe, int16_t amp, 
           // select PRBs corresponding to narrowband
           if ((nprb>= first_prb) &&
               (nprb<= last_prb)) {
-            ((int16_t *) & yIQ)[0] = (((s >> (i & 0x1f)) & 1) == 1) ? -gain_lin_QPSK : gain_lin_QPSK;
-            ((int16_t *) & yIQ)[1] = (((s >> ((i + 1) & 0x1f)) & 1) == 1) ? -gain_lin_QPSK : gain_lin_QPSK;
+            yIQ.r = (((s >> (i & 0x1f)) & 1) == 1) ? -gain_lin_QPSK : gain_lin_QPSK;
+            yIQ.i = (((s >> ((i + 1) & 0x1f)) & 1) == 1) ? -gain_lin_QPSK : gain_lin_QPSK;
             AssertFatal(mdci->transmission_type==1,"transmission_type %d!=1, handle this ...\n",mdci->transmission_type);
 
             if (mdci->transmission_type==1) { // same thing on both 107 and 109
@@ -435,9 +435,9 @@ void generate_mdci_top(PHY_VARS_eNB *eNB, int frame, int subframe, int16_t amp, 
               txF[1+(5*mprime)] = yIQ;
             } else { // put on selected antenna port with w sequence
               if (((mprime+nprb)&1) == 0)
-                txF[off+(5*mprime)] = yIQ*w[lprime];
+                txF[off + (5 * mprime)] = (c16_t){yIQ.r * w[lprime], yIQ.i * w[lprime]};
               else
-                txF[off+(5*mprime)] = yIQ*w[3-lprime];
+                txF[off + (5 * mprime)] = (c16_t){yIQ.r * w[3 - lprime], yIQ.i * w[3 - lprime]};
             }
 
             /*
