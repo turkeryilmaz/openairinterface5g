@@ -301,10 +301,8 @@ void freq_equalization(LTE_DL_FRAME_PARMS *frame_parms,
   ul_ch_mag128      = (simde__m128i *)&ul_ch_mag[0][symbol*frame_parms->N_RB_DL*12];
   ul_ch_magb128      = (simde__m128i *)&ul_ch_magb[0][symbol*frame_parms->N_RB_DL*12];
 
-  AssertFatal(symbol<frame_parms->symbols_per_tti,"symbol %d >= %d\n",
-	      symbol,frame_parms->symbols_per_tti);
-  AssertFatal(Msc_RS<=frame_parms->N_RB_UL*12,"Msc_RS %d >= %d\n",
-	      Msc_RS,frame_parms->N_RB_UL*12);
+  AssertFatal(symbol < frame_parms->symbols_per_tti, "symbol %d >= %d\n", symbol, frame_parms->symbols_per_tti);
+  AssertFatal(Msc_RS <= frame_parms->N_RB_UL * 12, "Msc_RS %d >= %d\n", Msc_RS, frame_parms->N_RB_UL * 12);
 
   for (re=0; re<(Msc_RS>>2); re++) {
 

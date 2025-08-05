@@ -113,38 +113,36 @@ void add_dci_NB_IoT(DCI_PDU_NB_IoT    *DCI_pdu,
 
 
 /*Use the UL DCI Information to configure PHY and also Pack the DCI*/
-int generate_eNB_ulsch_params_from_dci_NB_IoT(PHY_VARS_eNB_NB_IoT     *eNB,
-                                              eNB_rxtx_proc_NB_IoT_t  *proc,
-                                              DCI_CONTENT             *DCI_Content,
-                                              uint16_t                rnti,
-                                              DCI_format_NB_IoT_t     dci_format,
-                                              uint8_t                 UE_id,
-                                              uint8_t                 aggregation,
-									                            uint8_t                 npdcch_start_symbol);
-
+int generate_eNB_ulsch_params_from_dci_NB_IoT(PHY_VARS_eNB_NB_IoT *eNB,
+                                              eNB_rxtx_proc_NB_IoT_t *proc,
+                                              DCI_CONTENT *DCI_Content,
+                                              uint16_t rnti,
+                                              DCI_format_NB_IoT_t dci_format,
+                                              uint8_t UE_id,
+                                              uint8_t aggregation,
+                                              uint8_t npdcch_start_symbol);
 
 /*Use the DL DCI Information to configure PHY and also Pack the DCI*/
-int generate_eNB_dlsch_params_from_dci_NB_IoT(PHY_VARS_eNB_NB_IoT    *eNB,
-                                              int                    frame,
-                                              uint8_t                subframe,
-                                              DCI_CONTENT            *DCI_Content,
-                                              uint16_t               rnti,
-                                              DCI_format_NB_IoT_t    dci_format,
-                                              NB_IoT_eNB_NDLSCH_t    *ndlsch,
-                                              NB_IoT_DL_FRAME_PARMS  *frame_parms,
-                                              uint8_t                aggregation,
-									                            uint8_t                npdcch_start_symbol);
-
+int generate_eNB_dlsch_params_from_dci_NB_IoT(PHY_VARS_eNB_NB_IoT *eNB,
+                                              int frame,
+                                              uint8_t subframe,
+                                              DCI_CONTENT *DCI_Content,
+                                              uint16_t rnti,
+                                              DCI_format_NB_IoT_t dci_format,
+                                              NB_IoT_eNB_NDLSCH_t *ndlsch,
+                                              NB_IoT_DL_FRAME_PARMS *frame_parms,
+                                              uint8_t aggregation,
+                                              uint8_t npdcch_start_symbol);
 
 /*Function for DCI encoding, scrambling, modulation*/
-uint8_t generate_dci_top_NB_IoT(NB_IoT_eNB_NPDCCH_t     *npdcch,
-						                    uint8_t                 Num_dci,
-                                DCI_ALLOC_NB_IoT_t      *dci_alloc,
-                                int16_t                 amp,
-                                NB_IoT_DL_FRAME_PARMS   *fp,
-                                int32_t                 **txdataF,
-                                uint32_t                subframe,
-						                    uint8_t                 npdcch_start_symbol);
+uint8_t generate_dci_top_NB_IoT(NB_IoT_eNB_NPDCCH_t *npdcch,
+                                uint8_t Num_dci,
+                                DCI_ALLOC_NB_IoT_t *dci_alloc,
+                                int16_t amp,
+                                NB_IoT_DL_FRAME_PARMS *fp,
+                                int32_t **txdataF,
+                                uint32_t subframe,
+                                uint8_t npdcch_start_symbol);
 
 /*!
   \brief Decoding of PUSCH/ACK/RI/ACK from 36-212.
@@ -227,19 +225,16 @@ void rx_ulsch_NB_IoT(PHY_VARS_eNB_NB_IoT      *phy_vars_eNB,
                      NB_IoT_eNB_NULSCH_t      **ulsch,
                      uint8_t                  cooperation_flag);
 
-
-
-
-void ulsch_extract_rbs_single_NB_IoT(int32_t                **rxdataF,
-                                     int32_t                **rxdataF_ext,
-                                     // uint32_t               first_rb, 
-                                     //uint32_t               UL_RB_ID_NB_IoT, // index of UL NB_IoT resource block 
-                                     uint8_t                N_sc_RU, // number of subcarriers in UL
-				     uint32_t               I_sc, // subcarrier indication field
-                                     uint32_t               nb_rb,
-                                     uint8_t                l,
-                                     uint8_t                Ns,
-                                     NB_IoT_DL_FRAME_PARMS  *frame_parms);
+void ulsch_extract_rbs_single_NB_IoT(int32_t **rxdataF,
+                                     int32_t **rxdataF_ext,
+                                     // uint32_t               first_rb,
+                                     // uint32_t               UL_RB_ID_NB_IoT, // index of UL NB_IoT resource block
+                                     uint8_t N_sc_RU, // number of subcarriers in UL
+                                     uint32_t I_sc, // subcarrier indication field
+                                     uint32_t nb_rb,
+                                     uint8_t l,
+                                     uint8_t Ns,
+                                     NB_IoT_DL_FRAME_PARMS *frame_parms);
 
 void extract_CQI_NB_IoT(void *o,UCI_format_NB_IoT_t uci_format,NB_IoT_eNB_UE_stats *stats,uint8_t N_RB_DL, uint16_t * crnti, uint8_t * access_mode);
 

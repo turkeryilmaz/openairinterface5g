@@ -443,7 +443,7 @@ nr_initial_sync_t nr_initial_sync(UE_nr_rxtx_proc_t *proc,
     // do a measurement on the best guess of the PSS
     // for (aarx=0; aarx<frame_parms->nb_antennas_rx; aarx++)
     //  rx_power += signal_energy(&ue->common_vars.rxdata[aarx][sync_pos2],
-    //			frame_parms->ofdm_symbol_size+frame_parms->nb_prefix_samples);
+    //            frame_parms->ofdm_symbol_size+frame_parms->nb_prefix_samples);
 
     /*
     // do a measurement on the full frame

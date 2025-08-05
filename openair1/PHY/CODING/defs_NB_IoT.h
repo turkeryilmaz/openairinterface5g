@@ -58,10 +58,10 @@ uint32_t sub_block_interleaving_cc_NB_IoT(uint32_t D, uint8_t *d,uint8_t *w);
 \param e This is a pointer to the e-sequence (rate matching output, channel input/output bits)
 \returns \f$E\f$, the number of coded bits per segment */
 
-uint32_t lte_rate_matching_cc_NB_IoT(uint32_t RCC,      // RRC = 2
-				     				 uint16_t E,        // E = 1600
-				     				 uint8_t *w,	// length
-				    				 uint8_t *e);	// length 1600
+uint32_t lte_rate_matching_cc_NB_IoT(uint32_t RCC, // RRC = 2
+                                     uint16_t E, // E = 1600
+                                     uint8_t *w, // length
+                                     uint8_t *e); // length 1600
 
 /** \fn void ccodelte_encode(int32_t numbits,uint8_t add_crc, uint8_t *inPtr,uint8_t *outPtr,uint16_t rnti)
 \brief This function implements the LTE convolutional code of rate 1/3
@@ -74,11 +74,7 @@ uint32_t lte_rate_matching_cc_NB_IoT(uint32_t RCC,      // RRC = 2
 @param rnti RNTI for CRC scrambling
 */
 
-void ccode_encode_NB_IoT (int32_t numbits,
-						  uint8_t add_crc,
-						  uint8_t *inPtr,
-						  uint8_t *outPtr,
-						  uint16_t rnti);
+void ccode_encode_NB_IoT(int32_t numbits, uint8_t add_crc, uint8_t *inPtr, uint8_t *outPtr, uint16_t rnti);
 
 /*!\fn void ccodelte_init(void)
 \brief This function initializes the generator polynomials for an LTE convolutional code.*/
@@ -117,15 +113,7 @@ uint32_t crc16_NB_IoT (uint8_t *inPtr, int32_t bitlen);
 @param bitlen length of inputs in bits*/
 uint32_t crc8_NB_IoT  (uint8_t *inPtr, int32_t bitlen);
 
-
-
-
-
-
-uint32_t crcbit_NB_IoT (uint8_t * ,
-                 		int32_t,
-                 		uint32_t);
-
+uint32_t crcbit_NB_IoT(uint8_t *, int32_t, uint32_t);
 
 /*!\fn void phy_viterbi_lte_sse2(int8_t *y, uint8_t *decoded_bytes, uint16_t n)
 \brief This routine performs a SIMD optmized Viterbi decoder for the LTE 64-state tail-biting convolutional code.
@@ -154,11 +142,7 @@ void sub_block_deinterleaving_cc_NB_IoT(uint32_t D,int8_t *d,int8_t *w);
 \param soft_input This is a pointer to the soft channel output
 \returns \f$E\f$, the number of coded bits per segment
 */
-void lte_rate_matching_cc_rx_NB_IoT(uint32_t RCC,
-                             		uint16_t E,
-                             		int8_t *w,
-                             		uint8_t *dummy_w,
-                             		int8_t *soft_input);
+void lte_rate_matching_cc_rx_NB_IoT(uint32_t RCC, uint16_t E, int8_t *w, uint8_t *dummy_w, int8_t *soft_input);
 
 /** \fn generate_dummy_w_cc(uint32_t D, uint8_t *w)
 \brief This function generates a dummy interleaved sequence (first row) for receiver (convolutionally-coded data), in order to identify the NULL positions used to make the matrix complete.
@@ -189,14 +173,14 @@ uint32_t generate_dummy_w_cc_NB_IoT(uint32_t D, uint8_t *w);
 @param F
 */
 int32_t lte_segmentation_NB_IoT(uint8_t *input_buffer,
-                         		uint8_t **output_buffers,
-                         		uint32_t B,
-                         		uint32_t *C,
-                         		uint32_t *Cplus,
-                         		uint32_t *Cminus,
-                         		uint32_t *Kplus,
-                         		uint32_t *Kminus,
-                         		uint32_t *F);
+                                uint8_t **output_buffers,
+                                uint32_t B,
+                                uint32_t *C,
+                                uint32_t *Cplus,
+                                uint32_t *Cminus,
+                                uint32_t *Kplus,
+                                uint32_t *Kminus,
+                                uint32_t *F);
 
 /** \fn void sub_block_deinterleaving_turbo(uint32_t D, int16_t *d,int16_t *w)
 \brief This is the subblock deinterleaving algorithm from 36-212 (Release 8, 8.6 2009-03), pages 15-16.
@@ -259,9 +243,6 @@ This function takes the w-sequence and generates the d-sequence.  The nu-sequenc
 //                                         uint8_t r,
 //                                         uint32_t *E_out);
 
-void ccode_encode_npdsch_NB_IoT (int32_t   numbits,
-								 uint8_t   *inPtr,
-								 uint8_t   *outPtr,
-								 uint32_t  crc);
+void ccode_encode_npdsch_NB_IoT(int32_t numbits, uint8_t *inPtr, uint8_t *outPtr, uint32_t crc);
 
 #endif /* OPENAIR1_PHY_CODING_DEFS_NB_IOT_H_ */

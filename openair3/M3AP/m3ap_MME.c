@@ -524,107 +524,104 @@ void *m3ap_MME_task(void *arg) {
 
     switch (ITTI_MSG_ID(received_msg)) {
       case MESSAGE_TEST:
-	LOG_W(M3AP,"MME Received MESSAGE_TEST Message\n");
-	//MessageDef * message_p = itti_alloc_new_message(TASK_M3AP_MME, 0, MESSAGE_TEST);
-        //itti_send_msg_to_task(TASK_M3AP, 1/*ctxt_pP->module_id*/, message_p);
-	break;
+        LOG_W(M3AP, "MME Received MESSAGE_TEST Message\n");
+        // MessageDef * message_p = itti_alloc_new_message(TASK_M3AP_MME, 0, MESSAGE_TEST);
+        // itti_send_msg_to_task(TASK_M3AP, 1/*ctxt_pP->module_id*/, message_p);
+        break;
       case TERMINATE_MESSAGE:
         M3AP_WARN(" *** Exiting M3AP thread\n");
         itti_exit_task();
         break;
 
-//      case M3AP_SUBFRAME_PROCESS:
-//        m3ap_check_timers(ITTI_MSG_DESTINATION_INSTANCE(received_msg));
-//        break;
-//
-//      case M3AP_REGISTER_MME_REQ:
-//	LOG_W(M3AP,"MME Received M3AP_REGISTER_MME_REQ Message\n");
-//        m3ap_MME_handle_register_MME(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-//                                     &M3AP_REGISTER_MME_REQ(received_msg));
-//        break;
-//
+        //      case M3AP_SUBFRAME_PROCESS:
+        //        m3ap_check_timers(ITTI_MSG_DESTINATION_INSTANCE(received_msg));
+        //        break;
+        //
+        //      case M3AP_REGISTER_MME_REQ:
+        //    LOG_W(M3AP,"MME Received M3AP_REGISTER_MME_REQ Message\n");
+        //        m3ap_MME_handle_register_MME(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
+        //                                     &M3AP_REGISTER_MME_REQ(received_msg));
+        //        break;
+        //
 
       case M3AP_MME_SCTP_REQ:
-  	MME_task_send_sctp_init_req(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-				    &M3AP_MME_SCTP_REQ(received_msg));
-	break;
+        MME_task_send_sctp_init_req(ITTI_MSG_DESTINATION_INSTANCE(received_msg), &M3AP_MME_SCTP_REQ(received_msg));
+        break;
 
       case M3AP_SETUP_RESP:
-	LOG_I(M3AP,"MME Received M3AP_SETUP_RESP Message\n");
-	MME_send_M3_SETUP_RESPONSE(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-				    &M3AP_SETUP_RESP(received_msg));
-	break;
-//	break;
-//
-//      case M3AP_SETUP_FAILURE:
-//	LOG_W(M3AP,"MME Received M3AP_SETUP_FAILURE Message\n");
-//	MME_send_M2_SETUP_FAILURE(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-//				    &M3AP_SETUP_FAILURE(received_msg));
-//	break;
-//
-//      case M3AP_MBMS_SCHEDULING_INFORMATION:
-//	LOG_W(M3AP,"MME Received M3AP_MBMS_SCHEDULING_INFORMATION Message\n");
-//        MME_send_MBMS_SCHEDULING_INFORMATION(0,
-//						&M3AP_MBMS_SCHEDULING_INFORMATION(received_msg));
-//
+        LOG_I(M3AP, "MME Received M3AP_SETUP_RESP Message\n");
+        MME_send_M3_SETUP_RESPONSE(ITTI_MSG_DESTINATION_INSTANCE(received_msg), &M3AP_SETUP_RESP(received_msg));
+        break;
+        //    break;
+        //
+        //      case M3AP_SETUP_FAILURE:
+        //    LOG_W(M3AP,"MME Received M3AP_SETUP_FAILURE Message\n");
+        //    MME_send_M2_SETUP_FAILURE(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
+        //                    &M3AP_SETUP_FAILURE(received_msg));
+        //    break;
+        //
+        //      case M3AP_MBMS_SCHEDULING_INFORMATION:
+        //    LOG_W(M3AP,"MME Received M3AP_MBMS_SCHEDULING_INFORMATION Message\n");
+        //        MME_send_MBMS_SCHEDULING_INFORMATION(0,
+        //                        &M3AP_MBMS_SCHEDULING_INFORMATION(received_msg));
+        //
        case M3AP_MBMS_SESSION_START_REQ:
-	LOG_I(M3AP,"MME Received M3AP_MBMS_SESSION_START_REQ Message\n");
-        MME_send_MBMS_SESSION_START_REQUEST(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-						&M3AP_MBMS_SESSION_START_REQ(received_msg));
-	break;
-//
+         LOG_I(M3AP, "MME Received M3AP_MBMS_SESSION_START_REQ Message\n");
+         MME_send_MBMS_SESSION_START_REQUEST(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
+                                             &M3AP_MBMS_SESSION_START_REQ(received_msg));
+         break;
+         //
        case M3AP_MBMS_SESSION_STOP_REQ:
-	LOG_I(M3AP,"MME Received M3AP_MBMS_SESSION_STOP_REQ Message\n");
-        MME_send_MBMS_SESSION_STOP_REQUEST(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-						&M3AP_MBMS_SESSION_STOP_REQ(received_msg));
-	break;
-//	
+         LOG_I(M3AP, "MME Received M3AP_MBMS_SESSION_STOP_REQ Message\n");
+         MME_send_MBMS_SESSION_STOP_REQUEST(ITTI_MSG_DESTINATION_INSTANCE(received_msg), &M3AP_MBMS_SESSION_STOP_REQ(received_msg));
+         break;
+         //
        case M3AP_MBMS_SESSION_UPDATE_REQ:
-	LOG_I(M3AP,"MME Received M3AP_MBMS_SESSION_UPDATE_REQ Message\n");
-       // MME_send_MBMS_SESSION_UPDATE_REQUEST(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-	//					&M3AP_MBMS_SESSION_UPDATE_REQ(received_msg));
-	break;
-//
-//       case M3AP_RESET:
-//	LOG_W(M3AP,"MME Received M3AP_RESET Message\n");
-//        MME_send_RESET(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-//						&M3AP_RESET(received_msg));
-//	break;
-//
-//       case M3AP_ENB_CONFIGURATION_UPDATE_ACK:
-//	LOG_W(M3AP,"MME Received M3AP_ENB_CONFIGURATION_UPDATE_ACK Message\n");
-//        MME_send_ENB_CONFIGURATION_UPDATE_ACKNOWLEDGE(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-//						&M3AP_ENB_CONFIGURATION_UPDATE_ACK(received_msg));
-//	break;
-//
-//       case M3AP_ENB_CONFIGURATION_UPDATE_FAILURE:
-//	LOG_W(M3AP,"MME Received M3AP_ENB_CONFIGURATION_UPDATE_FAILURE Message\n");
-//        MME_send_ENB_CONFIGURATION_UPDATE_FAILURE(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-//						&M3AP_ENB_CONFIGURATION_UPDATE_FAILURE(received_msg))//	break;
-//
-//
-//       case M3AP_MME_CONFIGURATION_UPDATE:
-//	LOG_W(M3AP,"MME Received M3AP_MME_CONFIGURATION_UPDATE Message\n");
-//        MME_send_MME_CONFIGURATION_UPDATE(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-//						&M3AP_MME_CONFIGURATION_UPDATE(received_msg));
-//	break;
-//
+         LOG_I(M3AP, "MME Received M3AP_MBMS_SESSION_UPDATE_REQ Message\n");
+         // MME_send_MBMS_SESSION_UPDATE_REQUEST(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
+         //                    &M3AP_MBMS_SESSION_UPDATE_REQ(received_msg));
+         break;
+         //
+         //       case M3AP_RESET:
+         //    LOG_W(M3AP,"MME Received M3AP_RESET Message\n");
+         //        MME_send_RESET(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
+         //                        &M3AP_RESET(received_msg));
+         //    break;
+         //
+         //       case M3AP_ENB_CONFIGURATION_UPDATE_ACK:
+         //    LOG_W(M3AP,"MME Received M3AP_ENB_CONFIGURATION_UPDATE_ACK Message\n");
+         //        MME_send_ENB_CONFIGURATION_UPDATE_ACKNOWLEDGE(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
+         //                        &M3AP_ENB_CONFIGURATION_UPDATE_ACK(received_msg));
+         //    break;
+         //
+         //       case M3AP_ENB_CONFIGURATION_UPDATE_FAILURE:
+         //    LOG_W(M3AP,"MME Received M3AP_ENB_CONFIGURATION_UPDATE_FAILURE Message\n");
+         //        MME_send_ENB_CONFIGURATION_UPDATE_FAILURE(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
+         //                        &M3AP_ENB_CONFIGURATION_UPDATE_FAILURE(received_msg))//    break;
+         //
+         //
+         //       case M3AP_MME_CONFIGURATION_UPDATE:
+         //    LOG_W(M3AP,"MME Received M3AP_MME_CONFIGURATION_UPDATE Message\n");
+         //        MME_send_MME_CONFIGURATION_UPDATE(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
+         //                        &M3AP_MME_CONFIGURATION_UPDATE(received_msg));
+         //    break;
+         //
 
-//      case M3AP_HANDOVER_REQ:
-//        m3ap_MME_handle_handover_req(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-//                                     &M3AP_HANDOVER_REQ(received_msg));
-//        break;
-//
-//      case M3AP_HANDOVER_REQ_ACK:
-//        m3ap_MME_handle_handover_req_ack(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-//                                         &M3AP_HANDOVER_REQ_ACK(received_msg));
-//        break;
-//
-//      case M3AP_UE_CONTEXT_RELEASE:
-//        m3ap_MME_ue_context_release(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-//                                                &M3AP_UE_CONTEXT_RELEASE(received_msg));
-//        break;
-//
+         //      case M3AP_HANDOVER_REQ:
+         //        m3ap_MME_handle_handover_req(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
+         //                                     &M3AP_HANDOVER_REQ(received_msg));
+         //        break;
+         //
+         //      case M3AP_HANDOVER_REQ_ACK:
+         //        m3ap_MME_handle_handover_req_ack(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
+         //                                         &M3AP_HANDOVER_REQ_ACK(received_msg));
+         //        break;
+         //
+         //      case M3AP_UE_CONTEXT_RELEASE:
+         //        m3ap_MME_ue_context_release(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
+         //                                                &M3AP_UE_CONTEXT_RELEASE(received_msg));
+         //        break;
+         //
       case SCTP_INIT_MSG_MULTI_CNF:
         LOG_E(M3AP,"MME Received SCTP_INIT_MSG_MULTI_CNF Message ... shoudn't be happening ... it doesn't at leaast with M2AP_MCEC\n");
         m3ap_MME_handle_sctp_init_msg_multi_cnf(ITTI_MSG_DESTINATION_INSTANCE(received_msg),

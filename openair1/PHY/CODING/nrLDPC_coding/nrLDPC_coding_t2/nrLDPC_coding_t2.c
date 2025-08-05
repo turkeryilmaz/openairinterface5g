@@ -780,7 +780,7 @@ int start_pmd_dec(struct active_device *ad,
   int ret = pmd_lcore_ldpc_dec(&t_params[0]);
   /* Master core is always used */
   // for (used_cores = 1; used_cores < num_lcores; used_cores++)
-  //	ret |= rte_eal_wait_lcore(t_params[used_cores].lcore_id);
+  //    ret |= rte_eal_wait_lcore(t_params[used_cores].lcore_id);
   rte_free(t_params);
   return ret;
 }

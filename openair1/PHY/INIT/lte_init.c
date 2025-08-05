@@ -446,7 +446,8 @@ int phy_init_lte_eNB(PHY_VARS_eNB *eNB,
         LOG_I(PHY,"[INIT] common_vars->txdataF[%d] = %p (%lu bytes)\n",
               i,common_vars->txdataF[i],
               fp->ofdm_symbol_size*fp->symbols_per_tti*10*sizeof(int32_t));
-	if (eNB->use_DTX==0 && i<fp->nb_antenna_ports_eNB) eNB->subframe_mask[i] = malloc16_clear(fp->ofdm_symbol_size*fp->symbols_per_tti*10*sizeof(int32_t) );
+        if (eNB->use_DTX == 0 && i < fp->nb_antenna_ports_eNB)
+          eNB->subframe_mask[i] = malloc16_clear(fp->ofdm_symbol_size * fp->symbols_per_tti * 10 * sizeof(int32_t));
       }
     }
 

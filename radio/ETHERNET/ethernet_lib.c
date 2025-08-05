@@ -71,12 +71,12 @@ int trx_eth_start(openair0_device *device)
           u[i] = malloc(sizeof(udp_ctx_t));
           u[i]->thread_id=i;
           u[i]->device = device;
-	  printf("UDP Read Thread %d on core %d\n",i,device->openair0_cfg->rxfh_cores[i]);
+          printf("UDP Read Thread %d on core %d\n", i, device->openair0_cfg->rxfh_cores[i]);
           threadCreate(&u[i]->pthread,udp_read_thread,u[i],"udp read thread",device->openair0_cfg->rxfh_cores[i],OAI_PRIORITY_RT_MAX);
           device->utx[i] = malloc(sizeof(udp_ctx_t));
           device->utx[i]->thread_id=i;
           device->utx[i]->device = device;
-	  printf("UDP Write Thread %d on core %d\n",i,device->openair0_cfg->txfh_cores[i]);
+          printf("UDP Write Thread %d on core %d\n", i, device->openair0_cfg->txfh_cores[i]);
           threadCreate(&device->utx[i]->pthread,udp_write_thread,device->utx[i],"udp write thread",device->openair0_cfg->txfh_cores[i],OAI_PRIORITY_RT_MAX);
        }
        device->sampling_rate_ratio_n=1;
@@ -84,39 +84,34 @@ int trx_eth_start(openair0_device *device)
        if (device->openair0_cfg->nr_flag==1) { // This check if RRU knows about NR numerologies
           if (device->openair0_cfg->num_rb_dl <= 162 && device->openair0_cfg->num_rb_dl > 106) {
              device->sampling_rate_ratio_n = 2;
-	     device->txrx_offset=5500;
-	  }
-          else if (device->openair0_cfg->num_rb_dl <= 106 && device->openair0_cfg->num_rb_dl > 51) {
-             device->sampling_rate_ratio_d=3;
-	     device->sampling_rate_ratio_n=4;
-	     device->txrx_offset=3750;
-	  }
-          else if (device->openair0_cfg->num_rb_dl == 51) {
-             device->sampling_rate_ratio_n=1;
-	     device->sampling_rate_ratio_d=1;
-	     device->txrx_offset=7500;
-	  }
-          else AssertFatal(1==0,"num_rb_dl %d not ok with ECPRI\n",device->openair0_cfg->num_rb_dl);
+             device->txrx_offset = 5500;
+          } else if (device->openair0_cfg->num_rb_dl <= 106 && device->openair0_cfg->num_rb_dl > 51) {
+            device->sampling_rate_ratio_d = 3;
+            device->sampling_rate_ratio_n = 4;
+            device->txrx_offset = 3750;
+          } else if (device->openair0_cfg->num_rb_dl == 51) {
+            device->sampling_rate_ratio_n = 1;
+            device->sampling_rate_ratio_d = 1;
+            device->txrx_offset = 7500;
+          } else
+            AssertFatal(1 == 0, "num_rb_dl %d not ok with ECPRI\n", device->openair0_cfg->num_rb_dl);
        }
        else {
           if (device->openair0_cfg->num_rb_dl == 100 || device->openair0_cfg->num_rb_dl == 51) {
              device->sampling_rate_ratio_d = 1;
-	     device->txrx_offset=7500;
-	  }
-          else if (device->openair0_cfg->num_rb_dl == 75) {
-             device->sampling_rate_ratio_d = 4; 
-	     device->sampling_rate_ratio_n=3;
-	     device->txrx_offset=7500;
-	  }
-          else if (device->openair0_cfg->num_rb_dl == 50) {
-             device->sampling_rate_ratio_d = 2;
-	     device->txrx_offset=7500;
-	  }
-          else if (device->openair0_cfg->num_rb_dl == 25) {
-             device->sampling_rate_ratio_d = 4;
-	     device->txrx_offset=7500;
-	  }
-          else AssertFatal(1==0,"num_rb_dl %d not ok with ECPRI\n",device->openair0_cfg->num_rb_dl);
+             device->txrx_offset = 7500;
+          } else if (device->openair0_cfg->num_rb_dl == 75) {
+            device->sampling_rate_ratio_d = 4;
+            device->sampling_rate_ratio_n = 3;
+            device->txrx_offset = 7500;
+          } else if (device->openair0_cfg->num_rb_dl == 50) {
+            device->sampling_rate_ratio_d = 2;
+            device->txrx_offset = 7500;
+          } else if (device->openair0_cfg->num_rb_dl == 25) {
+            device->sampling_rate_ratio_d = 4;
+            device->txrx_offset = 7500;
+          } else
+            AssertFatal(1 == 0, "num_rb_dl %d not ok with ECPRI\n", device->openair0_cfg->num_rb_dl);
        }
 #ifdef USE_TX_TPOOL       
        int threadCnt = device->openair0_cfg->tx_num_channels;
@@ -194,10 +189,7 @@ int trx_eth_start(openair0_device *device)
         */
 
         /* adjust MTU wrt number of samples per packet */
-	//        if(ethernet_tune (device,MTU_SIZE,UDP_IF4p5_PRACH_SIZE_BYTES)!=0)  return -1;
-
-
-
+        //        if(ethernet_tune (device,MTU_SIZE,UDP_IF4p5_PRACH_SIZE_BYTES)!=0)  return -1;
 
     } else {
         printf("Setting ETHERNET to UDP_IF5_MODE\n");
@@ -440,29 +432,29 @@ int ethernet_tune(openair0_device *device,
     case KERNEL_RCV_BUF_MAX_SIZE:
       ret=snprintf(system_cmd,sizeof(system_cmd),"sysctl -w net.core.rmem_max=%d;sysctl -w net.core.rmem_default=%d",value,value);
       if (ret > 0) {
-	ret=system(system_cmd);
-	if (ret == -1) {
-	  fprintf (stderr,"[ETHERNET] Can't start shell to execute %s %s",system_cmd, strerror(errno));
-	} else {
-	  printf ("[ETHERNET] status of %s is %d\n", system_cmd, WEXITSTATUS(ret));
-	}
-	printf("[ETHERNET] net core rmem %s\n",system_cmd);
+        ret = system(system_cmd);
+        if (ret == -1) {
+          fprintf(stderr, "[ETHERNET] Can't start shell to execute %s %s", system_cmd, strerror(errno));
+        } else {
+          printf("[ETHERNET] status of %s is %d\n", system_cmd, WEXITSTATUS(ret));
+        }
+        printf("[ETHERNET] net core rmem %s\n", system_cmd);
       } else {
-	perror("[ETHERNET] Can't set net core rmem\n");
+        perror("[ETHERNET] Can't set net core rmem\n");
       }
       break;
     case KERNEL_SND_BUF_MAX_SIZE:
       ret=snprintf(system_cmd,sizeof(system_cmd),"sysctl -w net.core.wmem_max=%d;sysctl -w net.core.wmem_default=%d;sysctl -w net.core.netdev_max_backlog=5000;sysctl -w net.core.optmem_max=524288;",value,value);
       if (ret > 0) {
-	ret=system(system_cmd);
-	if (ret == -1) {
-	  fprintf (stderr,"[ETHERNET] Can't start shell to execute %s %s",system_cmd, strerror(errno));
-	} else {
-	  printf ("[ETHERNET] status of %s is %d\n", system_cmd, WEXITSTATUS(ret));
-	}
-	printf("[ETHERNET] net core wmem %s\n",system_cmd);
+        ret = system(system_cmd);
+        if (ret == -1) {
+          fprintf(stderr, "[ETHERNET] Can't start shell to execute %s %s", system_cmd, strerror(errno));
+        } else {
+          printf("[ETHERNET] status of %s is %d\n", system_cmd, WEXITSTATUS(ret));
+        }
+        printf("[ETHERNET] net core wmem %s\n", system_cmd);
       } else {
-	perror("[ETHERNET] Can't set net core wmem\n");
+        perror("[ETHERNET] Can't set net core wmem\n");
       }
       break;
     default:
@@ -524,7 +516,8 @@ int transport_init(openair0_device *device,
         device->trx_ctlrecv_func = trx_eth_ctlrecv_udp;
         memset((void*)&device->fhstate,0,sizeof(device->fhstate));
         printf("Setting %d RX channels to waiting\n",openair0_cfg->rx_num_channels);
-	for (int i=openair0_cfg->rx_num_channels;i<8;i++) device->fhstate.r[i] = 1;
+        for (int i = openair0_cfg->rx_num_channels; i < 8; i++)
+          device->fhstate.r[i] = 1;
     } else if (eth->flags == ETH_RAW_IF4p5_MODE) {
         device->trx_write_func   = trx_eth_write_raw_IF4p5;
         device->trx_read_func    = trx_eth_read_raw_IF4p5;

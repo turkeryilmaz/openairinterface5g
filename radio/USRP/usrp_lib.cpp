@@ -423,12 +423,8 @@ static void trx_usrp_end(openair0_device *device) {
       @param antenna_id index of the antenna if the device has multiple antennas
       @param flags flags must be set to true if timestamp parameter needs to be applied
 */
-static int trx_usrp_write(openair0_device *device,
-			  openair0_timestamp timestamp,
-			  void **buff,
-			  int nsamps,
-			  int cc,
-			  int flags) {
+static int trx_usrp_write(openair0_device *device, openair0_timestamp timestamp, void **buff, int nsamps, int cc, int flags)
+{
   int ret=0;
   usrp_state_t *s = (usrp_state_t *)device->priv;
   timestamp -= device->openair0_cfg->command_line_sample_advance + device->openair0_cfg->tx_sample_advance;
@@ -1162,44 +1158,38 @@ extern "C" {
     s->usrp = uhd::usrp::multi_usrp::make(args);
 
     if (args.find("clock_source")==std::string::npos) {
-	if (openair0_cfg[0].clock_source == internal) {
-	  s->usrp->set_clock_source("internal");
-	  LOG_I(HW,"Setting clock source to internal\n");
-	}
-	else if (openair0_cfg[0].clock_source == external ) {
-	  s->usrp->set_clock_source("external");
-	  LOG_I(HW,"Setting clock source to external\n");
-	}
-	else if (openair0_cfg[0].clock_source==gpsdo) {
-	  s->usrp->set_clock_source("gpsdo");
-	  LOG_I(HW,"Setting clock source to gpsdo\n");
-	}
-	else {
-	  LOG_W(HW,"Clock source set neither in usrp_args nor on command line, using default!\n");
-	}
+      if (openair0_cfg[0].clock_source == internal) {
+        s->usrp->set_clock_source("internal");
+        LOG_I(HW, "Setting clock source to internal\n");
+      } else if (openair0_cfg[0].clock_source == external) {
+        s->usrp->set_clock_source("external");
+        LOG_I(HW, "Setting clock source to external\n");
+      } else if (openair0_cfg[0].clock_source == gpsdo) {
+        s->usrp->set_clock_source("gpsdo");
+        LOG_I(HW, "Setting clock source to gpsdo\n");
+      } else {
+        LOG_W(HW, "Clock source set neither in usrp_args nor on command line, using default!\n");
+      }
     }
     else {
-	if (openair0_cfg[0].clock_source != unset) {
-	  LOG_W(HW,"Clock source set in both usrp_args and in clock_source, ingnoring the latter!\n");
-	}
+      if (openair0_cfg[0].clock_source != unset) {
+        LOG_W(HW, "Clock source set in both usrp_args and in clock_source, ingnoring the latter!\n");
+      }
   }
 
     if (args.find("time_source")==std::string::npos) {
-	if (openair0_cfg[0].time_source == internal) {
-	  s->usrp->set_time_source("internal");
-	  LOG_I(HW,"Setting time source to internal\n");
-	}
-	else if (openair0_cfg[0].time_source == external ) {
-	  s->usrp->set_time_source("external");
-	  LOG_I(HW,"Setting time source to external\n");
-	}
-	else if (openair0_cfg[0].time_source==gpsdo) {
-	  s->usrp->set_time_source("gpsdo");
-	  LOG_I(HW,"Setting time source to gpsdo\n");
-	}
-	else {
-	  LOG_W(HW,"Time source set neither in usrp_args nor on command line, using default!\n");
-	}
+      if (openair0_cfg[0].time_source == internal) {
+        s->usrp->set_time_source("internal");
+        LOG_I(HW, "Setting time source to internal\n");
+      } else if (openair0_cfg[0].time_source == external) {
+        s->usrp->set_time_source("external");
+        LOG_I(HW, "Setting time source to external\n");
+      } else if (openair0_cfg[0].time_source == gpsdo) {
+        s->usrp->set_time_source("gpsdo");
+        LOG_I(HW, "Setting time source to gpsdo\n");
+      } else {
+        LOG_W(HW, "Time source set neither in usrp_args nor on command line, using default!\n");
+      }
     }
     else {
       if (openair0_cfg[0].time_source != unset) {
@@ -1226,10 +1216,10 @@ extern "C" {
 
     if (s->usrp->get_clock_source(0) == "external") {
       if (check_ref_locked(s,0)) {
-	LOG_I(HW,"USRP locked to external reference!\n");
+        LOG_I(HW, "USRP locked to external reference!\n");
       } else {
-	LOG_I(HW,"Failed to lock to external reference. Exiting.\n");
-	exit(EXIT_FAILURE);
+        LOG_I(HW, "Failed to lock to external reference. Exiting.\n");
+        exit(EXIT_FAILURE);
       }
     }
   }

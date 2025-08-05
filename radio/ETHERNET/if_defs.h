@@ -52,8 +52,8 @@
 #define NO_COMPRESS      0       
 #define ALAW_COMPRESS    1
 
-#define UDP_HEADER_SIZE_BYTES	8
-#define IPV4_HEADER_SIZE_BYTES	60	// This is the maximum IPv4 header length
+#define UDP_HEADER_SIZE_BYTES 8
+#define IPV4_HEADER_SIZE_BYTES 60 // This is the maximum IPv4 header length
 
 // Time domain RRH packet sizes
 #define MAC_HEADER_SIZE_BYTES (sizeof(struct ether_header))

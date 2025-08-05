@@ -647,7 +647,7 @@ int main ( int argc, char **argv )
      * threads have been stopped (they partially use the same memory) */
     for (int inst = 0; inst < NB_eNB_INST; inst++) {
       for (int cc_id = 0; cc_id < RC.nb_CC[inst]; cc_id++) {
-	free_transport(RC.eNB[inst][cc_id]);
+    free_transport(RC.eNB[inst][cc_id]);
         phy_free_lte_eNB(RC.eNB[inst][cc_id]);
       }
     }

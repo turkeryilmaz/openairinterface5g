@@ -468,11 +468,13 @@ uint8_t get_prach_fmt(int prach_ConfigIndex,int frame_type) {
 }
 
 uint8_t get_prach_prb_offset(int frame_type,
-			     int tdd_config,
+                             int tdd_config,
                              int N_RB_UL,
                              uint8_t prach_ConfigIndex,
                              uint8_t n_ra_prboffset,
-                             uint8_t tdd_mapindex, uint16_t Nf) {
+                             uint8_t tdd_mapindex,
+                             uint16_t Nf)
+{
   uint8_t n_ra_prb;
   uint8_t f_ra,t1_ra;
   uint8_t prach_fmt = get_prach_fmt(prach_ConfigIndex,frame_type);

@@ -36,10 +36,10 @@
 #include "common_lib.h"
 
 /* 3GPP glossary
-RES	RESponse
-XRES	eXpected RESponse
-HRES	Hash RESponse
-HXRES	Hash eXpected RESponse
+RES    RESponse
+XRES    eXpected RESponse
+HRES    Hash RESponse
+HXRES    Hash eXpected RESponse
 So, RES can be either milenage res, or received response, so hash of milenage res
 */
 

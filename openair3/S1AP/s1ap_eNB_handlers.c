@@ -1784,7 +1784,7 @@ static int s1ap_eNB_handle_s1_path_switch_request_failure(sctp_assoc_t assoc_id,
 static int s1ap_eNB_handle_s1_ENDC_e_rab_modification_confirm(sctp_assoc_t assoc_id, uint32_t stream, S1AP_S1AP_PDU_t *pdu)
 {
   LOG_I(S1AP, "Received S1AP E-RAB Modification confirm message \n");
-	return 0;
+  return 0;
 }
 
 //-----------------------------------------------------------------------------

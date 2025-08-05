@@ -167,8 +167,8 @@ void *pdcp_stats_thread(void *param) {
    int old_byte_cnt[MAX_MOBILES_PER_ENB][NB_RB_MAX],old_byte_cnt_rx[MAX_MOBILES_PER_ENB][NB_RB_MAX];
    for (int i=0;i<MAX_MOBILES_PER_ENB;i++)
      for (int j=0;j<NB_RB_MAX;j++) {
-	old_byte_cnt[i][j]=0;
-	old_byte_cnt_rx[i][j]=0;
+       old_byte_cnt[i][j] = 0;
+       old_byte_cnt_rx[i][j] = 0;
      }
    while (!oai_exit) {
      sleep(1);
@@ -1076,8 +1076,11 @@ bool pdcp_data_ind(const protocol_ctxt_t *const ctxt_pP,
 
       memcpy(pdcpHead + 1, &sdu_buffer_pP[payload_offset], sdu_buffer_sizeP - payload_offset);
       if( LOG_DEBUGFLAG(DEBUG_PDCP) )
-	log_dump(PDCP, pdcpHead+1, min(sdu_buffer_sizeP - payload_offset,30) , LOG_DUMP_CHAR,
-	         "Printing first bytes of PDCP SDU before adding it to the list: \n");
+        log_dump(PDCP,
+                 pdcpHead + 1,
+                 min(sdu_buffer_sizeP - payload_offset, 30),
+                 LOG_DUMP_CHAR,
+                 "Printing first bytes of PDCP SDU before adding it to the list: \n");
       pushNotifiedFIFO(&pdcp_sdu_list, new_sdu_p); 
 
     /* Print octets of incoming data in hexadecimal form */

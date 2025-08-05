@@ -426,12 +426,12 @@ static int pnf_nr_read_dispatch_message(pnf_t *pnf)
       NFAPI_TRACE(NFAPI_TRACE_INFO, "Failed to read sctp message size error %s errno:%d\n", strerror(tmp), tmp);
     } else {
 #if 0
-			// print the received message
-			printf("\n MESSAGE RECEIVED: \n");
-			for(int i=0; i<message_size; i++){
-				printf("read_buffer[%d] = 0x%02x\n",i, read_buffer[i]);
-			}
-			printf("\n");
+            // print the received message
+            printf("\n MESSAGE RECEIVED: \n");
+            for(int i=0; i<message_size; i++){
+                printf("read_buffer[%d] = 0x%02x\n",i, read_buffer[i]);
+            }
+            printf("\n");
 #endif
 
       if (flags & MSG_NOTIFICATION) {

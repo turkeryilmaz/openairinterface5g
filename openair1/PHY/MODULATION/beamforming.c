@@ -53,13 +53,13 @@
 #include "common/utils/LOG/vcd_signal_dumper.h"
 
 int beam_precoding(int32_t **txdataF,
-	           int32_t **txdataF_BF,
-		   int subframe,
+                   int32_t **txdataF_BF,
+                   int subframe,
                    LTE_DL_FRAME_PARMS *frame_parms,
-                   int32_t **beam_weights[NUMBER_OF_eNB_MAX+1][15],
+                   int32_t **beam_weights[NUMBER_OF_eNB_MAX + 1][15],
                    int symbol,
-		   int aa,
-		   int p,
+                   int aa,
+                   int p,
                    int l1_id)
 {
   int rb_offset_neg0 = frame_parms->ofdm_symbol_size - (6*frame_parms->N_RB_DL);
@@ -81,15 +81,13 @@ int beam_precoding(int32_t **txdataF,
   return 0;
 }
 
-
 int beam_precoding_one_eNB(int32_t **txdataF,
                            int32_t **txdataF_BF,
-                           int32_t **beam_weights[NUMBER_OF_eNB_MAX+1][15],
-						   int subframe,
-						   int nb_antenna_ports,
-						   int nb_tx, // total physical antenna
-						   LTE_DL_FRAME_PARMS *frame_parms
-						   )
+                           int32_t **beam_weights[NUMBER_OF_eNB_MAX + 1][15],
+                           int subframe,
+                           int nb_antenna_ports,
+                           int nb_tx, // total physical antenna
+                           LTE_DL_FRAME_PARMS *frame_parms)
 {
   int p, symbol, aa; // loop index
   int re_offset;
@@ -108,24 +106,23 @@ int beam_precoding_one_eNB(int32_t **txdataF,
     memset(txdataF_BF[aa],0,sizeof(int32_t)*(ofdm_symbol_size*symbols_per_tti));
     for(p=0;p<nb_antenna_ports;p++){
       if (p<nb_antenna_ports_eNB || p==5){
-	for (symbol=0; symbol<symbols_per_tti; symbol++){
-    multadd_cpx_vector((c16_t *)&txdataF[p][symbol * ofdm_symbol_size + re_offset],
-                       (c16_t *)beam_weights[0][p][aa],
-                       (c16_t *)&txdataF_BF[aa][symbol * ofdm_symbol_size],
-                       ofdm_symbol_size,
-                       15);
-  }
+        for (symbol = 0; symbol < symbols_per_tti; symbol++) {
+          multadd_cpx_vector((c16_t *)&txdataF[p][symbol * ofdm_symbol_size + re_offset],
+                             (c16_t *)beam_weights[0][p][aa],
+                             (c16_t *)&txdataF_BF[aa][symbol * ofdm_symbol_size],
+                             ofdm_symbol_size,
+                             15);
+        }
       }
     }
   }
   return 0;
 }
 
-
 void nr_beam_precoding(c16_t **txdataF,
-	               c16_t **txdataF_BF,
+                       c16_t **txdataF_BF,
                        NR_DL_FRAME_PARMS *frame_parms,
-	               int32_t ***beam_weights,
+                       int32_t ***beam_weights,
                        int slot,
                        int symbol,
                        int aa,

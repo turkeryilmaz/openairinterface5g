@@ -42,138 +42,139 @@
 #include "assertions.h"
 #include "conversions.h"
 
-//int m2ap_eNB_generate_m2_setup_request(
-//  m2ap_eNB_instance_t *instance_p, m2ap_eNB_data_t *m2ap_eNB_data_p)
+// int m2ap_eNB_generate_m2_setup_request(
+//   m2ap_eNB_instance_t *instance_p, m2ap_eNB_data_t *m2ap_eNB_data_p)
 //{
-//  module_id_t enb_mod_idP=0;
-//  module_id_t du_mod_idP=0;
+//   module_id_t enb_mod_idP=0;
+//   module_id_t du_mod_idP=0;
 //
-//  M2AP_M2AP_PDU_t          pdu;
-//  M2AP_M2SetupRequest_t    *out;
-//  M2AP_M2SetupRequest_Ies_t *ie;
+//   M2AP_M2AP_PDU_t          pdu;
+//   M2AP_M2SetupRequest_t    *out;
+//   M2AP_M2SetupRequest_Ies_t *ie;
 //
-//  uint8_t  *buffer;
-//  uint32_t  len;
-//  int       i = 0;
-//  int       j = 0;
+//   uint8_t  *buffer;
+//   uint32_t  len;
+//   int       i = 0;
+//   int       j = 0;
 //
-//  /* Create */
-//  /* 0. pdu Type */
-//  memset(&pdu, 0, sizeof(pdu));
-//  pdu.present = M2AP_M2AP_PDU_PR_initiatingMessage;
-//  //pdu.choice.initiatingMessage = (M2AP_InitiatingMessage_t *)calloc(1, sizeof(M2AP_InitiatingMessage_t));
-//  pdu.choice.initiatingMessage.procedureCode = M2AP_ProcedureCode_id_m2Setup;
-//  pdu.choice.initiatingMessage.criticality   = M2AP_Criticality_reject;
-//  pdu.choice.initiatingMessage.value.present = M2AP_InitiatingMessage__value_PR_M2SetupRequest;
-//  out = &pdu.choice.initiatingMessage.value.choice.M2SetupRequest;
+//   /* Create */
+//   /* 0. pdu Type */
+//   memset(&pdu, 0, sizeof(pdu));
+//   pdu.present = M2AP_M2AP_PDU_PR_initiatingMessage;
+//   //pdu.choice.initiatingMessage = (M2AP_InitiatingMessage_t *)calloc(1, sizeof(M2AP_InitiatingMessage_t));
+//   pdu.choice.initiatingMessage.procedureCode = M2AP_ProcedureCode_id_m2Setup;
+//   pdu.choice.initiatingMessage.criticality   = M2AP_Criticality_reject;
+//   pdu.choice.initiatingMessage.value.present = M2AP_InitiatingMessage__value_PR_M2SetupRequest;
+//   out = &pdu.choice.initiatingMessage.value.choice.M2SetupRequest;
 //
-//  /* mandatory */
-//  /* c1. GlobalENB_ID (integer value) */
-//  ie = (M2AP_M2SetupRequest_Ies_t *)calloc(1, sizeof(M2AP_M2SetupRequest_Ies_t));
-//  ie->id                        = M2AP_ProtocolIE_ID_id_GlobalENB_ID;
-//  ie->criticality               = M2AP_Criticality_reject;
-//  ie->value.present             = M2AP_M2SetupRequest_Ies__value_PR_GlobalENB_ID;
-//  //ie->value.choice.GlobalENB_ID.eNB_ID = 1;//M2AP_get_next_transaction_identifier(enb_mod_idP, du_mod_idP);
-//  MCC_MNC_TO_PLMNID(instance_p->mcc, instance_p->mnc, instance_p->mnc_digit_length,
-//                  &ie->value.choice.GlobalENB_ID.pLMN_Identity);
-//  ie->value.choice.GlobalENB_ID.eNB_ID.present = M2AP_ENB_ID_PR_macro_eNB_ID;
-//  MACRO_ENB_ID_TO_BIT_STRING(instance_p->eNB_id,
-//                           &ie->value.choice.GlobalENB_ID.eNB_ID.choice.macro_eNB_ID);
-//  M2AP_INFO("%d -> %02x%02x%02x\n", instance_p->eNB_id,
-//          ie->value.choice.GlobalENB_ID.eNB_ID.choice.macro_eNB_ID.buf[0],
-//          ie->value.choice.GlobalENB_ID.eNB_ID.choice.macro_eNB_ID.buf[1],
-//          ie->value.choice.GlobalENB_ID.eNB_ID.choice.macro_eNB_ID.buf[2]);
+//   /* mandatory */
+//   /* c1. GlobalENB_ID (integer value) */
+//   ie = (M2AP_M2SetupRequest_Ies_t *)calloc(1, sizeof(M2AP_M2SetupRequest_Ies_t));
+//   ie->id                        = M2AP_ProtocolIE_ID_id_GlobalENB_ID;
+//   ie->criticality               = M2AP_Criticality_reject;
+//   ie->value.present             = M2AP_M2SetupRequest_Ies__value_PR_GlobalENB_ID;
+//   //ie->value.choice.GlobalENB_ID.eNB_ID = 1;//M2AP_get_next_transaction_identifier(enb_mod_idP, du_mod_idP);
+//   MCC_MNC_TO_PLMNID(instance_p->mcc, instance_p->mnc, instance_p->mnc_digit_length,
+//                   &ie->value.choice.GlobalENB_ID.pLMN_Identity);
+//   ie->value.choice.GlobalENB_ID.eNB_ID.present = M2AP_ENB_ID_PR_macro_eNB_ID;
+//   MACRO_ENB_ID_TO_BIT_STRING(instance_p->eNB_id,
+//                            &ie->value.choice.GlobalENB_ID.eNB_ID.choice.macro_eNB_ID);
+//   M2AP_INFO("%d -> %02x%02x%02x\n", instance_p->eNB_id,
+//           ie->value.choice.GlobalENB_ID.eNB_ID.choice.macro_eNB_ID.buf[0],
+//           ie->value.choice.GlobalENB_ID.eNB_ID.choice.macro_eNB_ID.buf[1],
+//           ie->value.choice.GlobalENB_ID.eNB_ID.choice.macro_eNB_ID.buf[2]);
 //
-//  asn1cSeqAdd(&out->protocolIEs.list, ie);
+//   asn1cSeqAdd(&out->protocolIEs.list, ie);
 //
-//  ///* mandatory */
-//  ///* c2. GNB_eNB_ID (integrer value) */
-//  //ie = (M2AP_M2SetupRequest_Ies_t *)calloc(1, sizeof(M2AP_M2SetupRequest_Ies_t));
-//  //ie->id                        = M2AP_ProtocolIE_ID_id_gNB_eNB_ID;
-//  //ie->criticality               = M2AP_Criticality_reject;
-//  //ie->value.present             = M2AP_M2SetupRequestIEs__value_PR_GNB_eNB_ID;
-//  //asn_int642INTEGER(&ie->value.choice.GNB_eNB_ID, 0);
-//  //asn1cSeqAdd(&out->protocolIEs.list, ie);
+//   ///* mandatory */
+//   ///* c2. GNB_eNB_ID (integrer value) */
+//   //ie = (M2AP_M2SetupRequest_Ies_t *)calloc(1, sizeof(M2AP_M2SetupRequest_Ies_t));
+//   //ie->id                        = M2AP_ProtocolIE_ID_id_gNB_eNB_ID;
+//   //ie->criticality               = M2AP_Criticality_reject;
+//   //ie->value.present             = M2AP_M2SetupRequestIEs__value_PR_GNB_eNB_ID;
+//   //asn_int642INTEGER(&ie->value.choice.GNB_eNB_ID, 0);
+//   //asn1cSeqAdd(&out->protocolIEs.list, ie);
 //
-//  /* optional */
-//  /* c3. ENBname */
-//  if (m2ap_eNB_data_p->eNB_name != NULL) {
-//    ie = (M2AP_M2SetupRequest_Ies_t *)calloc(1, sizeof(M2AP_M2SetupRequest_Ies_t));
-//    ie->id                        = M2AP_ProtocolIE_ID_id_ENBname;
-//    ie->criticality               = M2AP_Criticality_ignore;
-//    ie->value.present             = M2AP_M2SetupRequest_Ies__value_PR_ENBname;
-//    //OCTET_STRING_fromBuf(&ie->value.choice.ENB_Name, m2ap_eNB_data_p->eNB_name,
-//                         //strlen(m2ap_eNB_data_p->eNB_name));
-//    asn1cSeqAdd(&out->protocolIEs.list, ie);
+//   /* optional */
+//   /* c3. ENBname */
+//   if (m2ap_eNB_data_p->eNB_name != NULL) {
+//     ie = (M2AP_M2SetupRequest_Ies_t *)calloc(1, sizeof(M2AP_M2SetupRequest_Ies_t));
+//     ie->id                        = M2AP_ProtocolIE_ID_id_ENBname;
+//     ie->criticality               = M2AP_Criticality_ignore;
+//     ie->value.present             = M2AP_M2SetupRequest_Ies__value_PR_ENBname;
+//     //OCTET_STRING_fromBuf(&ie->value.choice.ENB_Name, m2ap_eNB_data_p->eNB_name,
+//                          //strlen(m2ap_eNB_data_p->eNB_name));
+//     asn1cSeqAdd(&out->protocolIEs.list, ie);
+//   }
+//
+//   /* mandatory */
+//   /* c4. serverd cells list */
+//   ie = (M2AP_M2SetupRequest_Ies_t *)calloc(1, sizeof(M2AP_M2SetupRequest_Ies_t));
+//   ie->id                        = M2AP_ProtocolIE_ID_id_ENB_MBMS_Configuration_data_List;
+//   ie->criticality               = M2AP_Criticality_reject;
+//   ie->value.present             = M2AP_M2SetupRequest_Ies__value_PR_ENB_MBMS_Configuration_data_List;
+//
+//   int num_mbms_available = 1;//m2ap_du_data->num_mbms_available;
+//   LOG_D(M2AP, "num_mbms_available = %d \n", num_mbms_available);
+//
+//  for (i=0;
+//        i<num_mbms_available;
+//        i++) {
+//         /* mandatory */
+//         /* 4.1 serverd cells item */
+//
+//         M2AP_ENB_MBMS_Configuration_data_ItemIEs_t *mbms_configuration_data_list_item_ies;
+//         mbms_configuration_data_list_item_ies = (M2AP_ENB_MBMS_Configuration_data_ItemIEs_t *)calloc(1,
+//         sizeof(M2AP_ENB_MBMS_Configuration_data_ItemIEs_t)); mbms_configuration_data_list_item_ies->id =
+//         M2AP_ProtocolIE_ID_id_ENB_MBMS_Configuration_data_Item; mbms_configuration_data_list_item_ies->criticality =
+//         M2AP_Criticality_reject; mbms_configuration_data_list_item_ies->value.present =
+//         M2AP_ENB_MBMS_Configuration_data_ItemIEs__value_PR_ENB_MBMS_Configuration_data_Item;
+//
+//     M2AP_ENB_MBMS_Configuration_data_Item_t *mbms_configuration_data_item;
+//     mbms_configuration_data_item = &mbms_configuration_data_list_item_ies->value.choice.ENB_MBMS_Configuration_data_Item;
+//     {
+//         MCC_MNC_TO_PLMNID(instance_p->mcc, instance_p->mnc, instance_p->mnc_digit_length,
+//                   &mbms_configuration_data_item->eCGI.pLMN_Identity);
+//             MACRO_ENB_ID_TO_CELL_IDENTITY(instance_p->eNB_id,0,
+//                                    &mbms_configuration_data_item->eCGI.eUTRANcellIdentifier);
+//         M2AP_MBMS_Service_Area_t * mbms_service_area;
+//         mbms_service_area = (M2AP_MBMS_Service_Area_t*)calloc(1,sizeof(M2AP_MBMS_Service_Area_t));
+//         asn1cSeqAdd(&mbms_configuration_data_item->mbmsServiceAreaList.list,mbms_service_area);
+//
+//
+//     }
+//
+//
+//         //M2AP_ENB_MBMS_Configuration_data_Item_t mbms_configuration_data_item;
+//         //memset((void *)&mbms_configuration_data_item, 0, sizeof(M2AP_ENB_MBMS_Configuration_data_Item_t));
+//
+//     //M2AP_ECGI_t      eCGI;
+//         //M2AP_PLMN_Identity_t     pLMN_Identity;
+//         //M2AP_EUTRANCellIdentifier_t      eUTRANcellIdentifier
+//     //M2AP_MBSFN_SynchronisationArea_ID_t      mbsfnSynchronisationArea;
+//     //M2AP_MBMS_Service_Area_ID_List_t         mbmsServiceAreaList;
+//
+//
+//     asn1cSeqAdd(&ie->value.choice.ENB_MBMS_Configuration_data_List.list,mbms_configuration_data_list_item_ies);
+//
 //  }
+//   asn1cSeqAdd(&out->protocolIEs.list, ie);
 //
-//  /* mandatory */
-//  /* c4. serverd cells list */
-//  ie = (M2AP_M2SetupRequest_Ies_t *)calloc(1, sizeof(M2AP_M2SetupRequest_Ies_t));
-//  ie->id                        = M2AP_ProtocolIE_ID_id_ENB_MBMS_Configuration_data_List;
-//  ie->criticality               = M2AP_Criticality_reject;
-//  ie->value.present             = M2AP_M2SetupRequest_Ies__value_PR_ENB_MBMS_Configuration_data_List;
-//
-//  int num_mbms_available = 1;//m2ap_du_data->num_mbms_available;
-//  LOG_D(M2AP, "num_mbms_available = %d \n", num_mbms_available);
-//
-// for (i=0;
-//       i<num_mbms_available;
-//       i++) {
-//        /* mandatory */
-//        /* 4.1 serverd cells item */
-//
-//        M2AP_ENB_MBMS_Configuration_data_ItemIEs_t *mbms_configuration_data_list_item_ies;
-//        mbms_configuration_data_list_item_ies = (M2AP_ENB_MBMS_Configuration_data_ItemIEs_t *)calloc(1, sizeof(M2AP_ENB_MBMS_Configuration_data_ItemIEs_t));
-//        mbms_configuration_data_list_item_ies->id = M2AP_ProtocolIE_ID_id_ENB_MBMS_Configuration_data_Item;
-//        mbms_configuration_data_list_item_ies->criticality = M2AP_Criticality_reject;
-//        mbms_configuration_data_list_item_ies->value.present = M2AP_ENB_MBMS_Configuration_data_ItemIEs__value_PR_ENB_MBMS_Configuration_data_Item;
-//
-//	M2AP_ENB_MBMS_Configuration_data_Item_t *mbms_configuration_data_item;
-//	mbms_configuration_data_item = &mbms_configuration_data_list_item_ies->value.choice.ENB_MBMS_Configuration_data_Item;
-//	{
-//		MCC_MNC_TO_PLMNID(instance_p->mcc, instance_p->mnc, instance_p->mnc_digit_length,
-//                  &mbms_configuration_data_item->eCGI.pLMN_Identity);
-//        	MACRO_ENB_ID_TO_CELL_IDENTITY(instance_p->eNB_id,0,
-//                                   &mbms_configuration_data_item->eCGI.eUTRANcellIdentifier);
-//		M2AP_MBMS_Service_Area_t * mbms_service_area;
-//		mbms_service_area = (M2AP_MBMS_Service_Area_t*)calloc(1,sizeof(M2AP_MBMS_Service_Area_t));
-//		asn1cSeqAdd(&mbms_configuration_data_item->mbmsServiceAreaList.list,mbms_service_area);
+//   LOG_W(M2AP,"m2ap_eNB_data_p->assoc_id %d\n",m2ap_eNB_data_p->assoc_id);
+//   /* encode */
+//   if (m2ap_encode_pdu(&pdu, &buffer, &len) < 0) {
+//     LOG_E(M2AP, "Failed to encode M2 setup request\n");
+//     return -1;
+//   }
 //
 //
-//	}
+//   LOG_W(M2AP,"pdu.present %d\n",pdu.present);
+//   m2ap_eNB_itti_send_sctp_data_req(instance_p, m2ap_eNB_data_p->assoc_id, buffer, len, 0);
 //
+//   return 0;
 //
-//        //M2AP_ENB_MBMS_Configuration_data_Item_t mbms_configuration_data_item;
-//        //memset((void *)&mbms_configuration_data_item, 0, sizeof(M2AP_ENB_MBMS_Configuration_data_Item_t));
-//	
-//	//M2AP_ECGI_t      eCGI;
-//		//M2AP_PLMN_Identity_t     pLMN_Identity;
-//		//M2AP_EUTRANCellIdentifier_t      eUTRANcellIdentifier
-//	//M2AP_MBSFN_SynchronisationArea_ID_t      mbsfnSynchronisationArea;
-//	//M2AP_MBMS_Service_Area_ID_List_t         mbmsServiceAreaList;
-//
-//
-//	asn1cSeqAdd(&ie->value.choice.ENB_MBMS_Configuration_data_List.list,mbms_configuration_data_list_item_ies);
 //
 // }
-//  asn1cSeqAdd(&out->protocolIEs.list, ie);
-//
-//  LOG_W(M2AP,"m2ap_eNB_data_p->assoc_id %d\n",m2ap_eNB_data_p->assoc_id);
-//  /* encode */
-//  if (m2ap_encode_pdu(&pdu, &buffer, &len) < 0) {
-//    LOG_E(M2AP, "Failed to encode M2 setup request\n");
-//    return -1;
-//  }
-//
-// 
-//  LOG_W(M2AP,"pdu.present %d\n",pdu.present);
-//  m2ap_eNB_itti_send_sctp_data_req(instance_p, m2ap_eNB_data_p->assoc_id, buffer, len, 0);
-//
-//  return 0;
-//
-//
-//}
 
 //int m2ap_MCE_generate_m2_setup_response(m2ap_eNB_instance_t *instance_p, m2ap_eNB_data_t *m2ap_eNB_data_p)
 //{

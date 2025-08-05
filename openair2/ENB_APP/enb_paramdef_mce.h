@@ -81,14 +81,25 @@
 #define MCE_CONFIG_STRING_MCE_IPV4_ADDRESS_FOR_M3C "MCE_IPV4_ADDRESS_FOR_M3C"
 #define MCE_CONFIG_STRING_MCE_PORT_FOR_M3C "MCE_PORT_FOR_M3C"
 
-
-#define MCE_NETPARAMS_DESC {  \
-{MCE_CONFIG_STRING_MCE_IPV4_ADDRESS_FOR_M2C,             NULL,      0,         .strptr=&mce_ipv4_address_for_m2c,         .defstrval=NULL,      TYPE_STRING,      0},      \
-{MCE_CONFIG_STRING_MCE_PORT_FOR_M2C,                     NULL,      0,         .uptr=&mce_port_for_m2c,           	 .defintval=36443L,    TYPE_UINT,        0},      \
-{MCE_CONFIG_STRING_MCE_IPV4_ADDRESS_FOR_M3C,             NULL,      0,         .strptr=&mce_ipv4_address_for_m3c,         .defstrval=NULL,      TYPE_STRING,      0},      \
-{MCE_CONFIG_STRING_MCE_PORT_FOR_M3C,                     NULL,      0,         .uptr=&mce_port_for_m3c,           	 .defintval=36444L,    TYPE_UINT,        0},      \
-} 
-
+#define MCE_NETPARAMS_DESC                                                                                         \
+  {                                                                                                                \
+      {MCE_CONFIG_STRING_MCE_IPV4_ADDRESS_FOR_M2C,                                                                 \
+       NULL,                                                                                                       \
+       0,                                                                                                          \
+       .strptr = &mce_ipv4_address_for_m2c,                                                                        \
+       .defstrval = NULL,                                                                                          \
+       TYPE_STRING,                                                                                                \
+       0},                                                                                                         \
+      {MCE_CONFIG_STRING_MCE_PORT_FOR_M2C, NULL, 0, .uptr = &mce_port_for_m2c, .defintval = 36443L, TYPE_UINT, 0}, \
+      {MCE_CONFIG_STRING_MCE_IPV4_ADDRESS_FOR_M3C,                                                                 \
+       NULL,                                                                                                       \
+       0,                                                                                                          \
+       .strptr = &mce_ipv4_address_for_m3c,                                                                        \
+       .defstrval = NULL,                                                                                          \
+       TYPE_STRING,                                                                                                \
+       0},                                                                                                         \
+      {MCE_CONFIG_STRING_MCE_PORT_FOR_M3C, NULL, 0, .uptr = &mce_port_for_m3c, .defintval = 36444L, TYPE_UINT, 0}, \
+  }
 
 /*-------------------------------------------------------------------------------------------------------------------------------------*/
 /*                                            M3 configuration parameters                                                             */
@@ -107,35 +118,36 @@
 /*-----------------------------------------------------------------------------------------------------------------------------------*/
 /*                             MCCH related BCCH Configuration per MBSFN area configuration parameters                                                             */
 /* MCCH configuration parameters section */
-#define MCE_CONFIG_STRING_MCCH_CONFIG_PER_MBSFN_AREA                	"mcch_config_per_mbsfn_area"
+#define MCE_CONFIG_STRING_MCCH_CONFIG_PER_MBSFN_AREA "mcch_config_per_mbsfn_area"
 /* M3 configuration parameters names   */
-#define MCE_CONFIG_STRING_MCCH_MBSFN_AREA	                  	"mbsfn_area"
-#define MCE_CONFIG_STRING_MCCH_PDCCH_LENGTH              		"pdcch_length"
-#define MCE_CONFIG_STRING_MCCH_REPETITION_PERIOD     			"repetition_period"
-#define MCE_CONFIG_STRING_MCCH_OFFSET     				"offset"
-#define MCE_CONFIG_STRING_MCCH_MODIFICATION_PERIOD     			"modification_period"
-#define MCE_CONFIG_STRING_MCCH_SF_ALLOCATION_INFO     			"subframe_allocation_info"
-#define MCE_CONFIG_STRING_MCCH_MCS     					"mcs"
+#define MCE_CONFIG_STRING_MCCH_MBSFN_AREA "mbsfn_area"
+#define MCE_CONFIG_STRING_MCCH_PDCCH_LENGTH "pdcch_length"
+#define MCE_CONFIG_STRING_MCCH_REPETITION_PERIOD "repetition_period"
+#define MCE_CONFIG_STRING_MCCH_OFFSET "offset"
+#define MCE_CONFIG_STRING_MCCH_MODIFICATION_PERIOD "modification_period"
+#define MCE_CONFIG_STRING_MCCH_SF_ALLOCATION_INFO "subframe_allocation_info"
+#define MCE_CONFIG_STRING_MCCH_MCS "mcs"
 
 /*   optname                                          helpstr   paramflags    XXXptr       defXXXval         type           numelt     */
 
-#define MCCH_PARAMS_DESC {  \
-{MCE_CONFIG_STRING_MCCH_MBSFN_AREA,         NULL,      0,        .uptr=NULL,           	 .defuintval=0,    TYPE_UINT,        0},						\
-{MCE_CONFIG_STRING_MCCH_PDCCH_LENGTH,       NULL,      0,        .uptr=NULL,           	 .defuintval=0,    TYPE_UINT,        0},      \
-{MCE_CONFIG_STRING_MCCH_REPETITION_PERIOD,  NULL,      0,        .uptr=NULL,           	 .defuintval=0,    TYPE_UINT,        0},      \
-{MCE_CONFIG_STRING_MCCH_OFFSET,             NULL,      0,        .uptr=NULL,           	 .defuintval=0,    TYPE_UINT,        0},      \
-{MCE_CONFIG_STRING_MCCH_MODIFICATION_PERIOD,NULL,      0,        .uptr=NULL,           	 .defuintval=0,    TYPE_UINT,        0},      \
-{MCE_CONFIG_STRING_MCCH_SF_ALLOCATION_INFO, NULL,      0,        .uptr=NULL,       	 .defuintval=0,    TYPE_UINT,        0},      \
-{MCE_CONFIG_STRING_MCCH_MCS,                NULL,      0,        .uptr=NULL,           	 .defuintval=0,    TYPE_UINT,        0},      \
-}
+#define MCCH_PARAMS_DESC                                                                                  \
+  {                                                                                                       \
+      {MCE_CONFIG_STRING_MCCH_MBSFN_AREA, NULL, 0, .uptr = NULL, .defuintval = 0, TYPE_UINT, 0},          \
+      {MCE_CONFIG_STRING_MCCH_PDCCH_LENGTH, NULL, 0, .uptr = NULL, .defuintval = 0, TYPE_UINT, 0},        \
+      {MCE_CONFIG_STRING_MCCH_REPETITION_PERIOD, NULL, 0, .uptr = NULL, .defuintval = 0, TYPE_UINT, 0},   \
+      {MCE_CONFIG_STRING_MCCH_OFFSET, NULL, 0, .uptr = NULL, .defuintval = 0, TYPE_UINT, 0},              \
+      {MCE_CONFIG_STRING_MCCH_MODIFICATION_PERIOD, NULL, 0, .uptr = NULL, .defuintval = 0, TYPE_UINT, 0}, \
+      {MCE_CONFIG_STRING_MCCH_SF_ALLOCATION_INFO, NULL, 0, .uptr = NULL, .defuintval = 0, TYPE_UINT, 0},  \
+      {MCE_CONFIG_STRING_MCCH_MCS, NULL, 0, .uptr = NULL, .defuintval = 0, TYPE_UINT, 0},                 \
+  }
 
 #define MCCH_MBSFN_AREA_IDX          0
 #define MCCH_PDCCH_LENGTH_IDX        1
 #define MCCH_REPETITION_PERIOD_IDX   2
-#define MCCH_OFFSET_IDX 	     3
+#define MCCH_OFFSET_IDX 3
 #define MCCH_MODIFICATION_PERIOD_IDX 4
 #define MCCH_SF_ALLOCATION_INFO_IDX  5
-#define MCCH_MCS_IDX 		     6
+#define MCCH_MCS_IDX 6
 /*-------------------------------------------------------------------------------------------------------------------------------------*/
 /* M3 configuration parameters section name */
 #define MCE_CONFIG_STRING_PLMN                "plnm"
@@ -155,65 +167,68 @@
 #define MCE_CONFIG_STRING_MNC_LENGTH_IDX   2
 /*-------------------------------------------------------------------------------------------------------------------------------------*/
 
-#define MCE_CONFIG_STRING_MBMS_SCHEDULING_INFO			"mbms_sched_info"
+#define MCE_CONFIG_STRING_MBMS_SCHEDULING_INFO "mbms_sched_info"
 
-#define MCE_CONFIG_STRING_MCCH_UPDATE_TIME			"mcch_update_time"
+#define MCE_CONFIG_STRING_MCCH_UPDATE_TIME "mcch_update_time"
 #define MCE_MBMS_SCHEDULING_INFO_PARAMS_DESC {  \
 {MCE_CONFIG_STRING_MCCH_UPDATE_TIME,            NULL,      0,         .uptr=NULL,   .defuintval=0,   TYPE_UINT,   0},          \
 }
-#define MCE_CONFIG_STRING_MCCH_UPDATE_TIME_IDX	0
+#define MCE_CONFIG_STRING_MCCH_UPDATE_TIME_IDX 0
 
 ///*-------------------------------------------------------------------------------------------------------------------------------------*/
-#define MCE_CONFIG_STRING_MBMS_AREA_CONFIGURATION_LIST			"mbms_area_config_list"
+#define MCE_CONFIG_STRING_MBMS_AREA_CONFIGURATION_LIST "mbms_area_config_list"
 
-#define MCE_CONFIG_STRING_COMMON_SF_ALLOCATION_PERIOD			"common_sf_allocation_period"
-#define MCE_CONFIG_STRING_MBMS_AREA_ID					"mbms_area_id"
+#define MCE_CONFIG_STRING_COMMON_SF_ALLOCATION_PERIOD "common_sf_allocation_period"
+#define MCE_CONFIG_STRING_MBMS_AREA_ID "mbms_area_id"
 
-#define MCE_MBMS_AREA_CONFIGURATION_LIST_PARAMS_DESC {  \
-{MCE_CONFIG_STRING_COMMON_SF_ALLOCATION_PERIOD,         NULL,      0,         .uptr=NULL,           	 .defuintval=0,    TYPE_UINT,        0},      \
-{MCE_CONFIG_STRING_MBMS_AREA_ID,       			NULL,      0,         .uptr=NULL,           	 .defuintval=0,    TYPE_UINT,        0},      \
-}
-#define MCE_CONFIG_STRING_COMMON_SF_ALLOCATION_PERIOD_IDX	0
-#define MCE_CONFIG_STRING_MBMS_AREA_ID_IDX	1
+#define MCE_MBMS_AREA_CONFIGURATION_LIST_PARAMS_DESC                                                         \
+  {                                                                                                          \
+      {MCE_CONFIG_STRING_COMMON_SF_ALLOCATION_PERIOD, NULL, 0, .uptr = NULL, .defuintval = 0, TYPE_UINT, 0}, \
+      {MCE_CONFIG_STRING_MBMS_AREA_ID, NULL, 0, .uptr = NULL, .defuintval = 0, TYPE_UINT, 0},                \
+  }
+#define MCE_CONFIG_STRING_COMMON_SF_ALLOCATION_PERIOD_IDX 0
+#define MCE_CONFIG_STRING_MBMS_AREA_ID_IDX 1
 //
 ///*-------------------------------------------------------------------------------------------------------------------------------------*/
-#define MCE_CONFIG_STRING_PMCH_CONFIGURATION_LIST		"pmch_config_list"
+#define MCE_CONFIG_STRING_PMCH_CONFIGURATION_LIST "pmch_config_list"
 
-#define MCE_CONFIG_STRING_ALLOCATED_SF_END			"allocated_sf_end"
-#define MCE_CONFIG_STRING_DATA_MCS				"data_mcs"
-#define MCE_CONFIG_STRING_MCH_SCHEDULING_PERIOD			"mch_scheduling_period"
+#define MCE_CONFIG_STRING_ALLOCATED_SF_END "allocated_sf_end"
+#define MCE_CONFIG_STRING_DATA_MCS "data_mcs"
+#define MCE_CONFIG_STRING_MCH_SCHEDULING_PERIOD "mch_scheduling_period"
 
-#define MCE_MBMS_PMCH_CONFIGURATION_LIST_PARAMS_DESC {  \
-{MCE_CONFIG_STRING_ALLOCATED_SF_END,            NULL,      0,         .uptr=NULL,   .defuintval=0,   TYPE_UINT,   0},          \
-{MCE_CONFIG_STRING_DATA_MCS,            	NULL,      0,         .uptr=NULL,   .defuintval=0,   TYPE_UINT,   0},          \
-{MCE_CONFIG_STRING_MCH_SCHEDULING_PERIOD,       NULL,      0,         .uptr=NULL,   .defuintval=0,   TYPE_UINT,   0},          \
-}
-#define MCE_CONFIG_STRING_ALLOCATED_SF_END_IDX	0
-#define MCE_CONFIG_STRING_DATA_MCS_IDX			1
-#define MCE_CONFIG_STRING_MCH_SCHEDULING_PERIOD_IDX	2
+#define MCE_MBMS_PMCH_CONFIGURATION_LIST_PARAMS_DESC                                                   \
+  {                                                                                                    \
+      {MCE_CONFIG_STRING_ALLOCATED_SF_END, NULL, 0, .uptr = NULL, .defuintval = 0, TYPE_UINT, 0},      \
+      {MCE_CONFIG_STRING_DATA_MCS, NULL, 0, .uptr = NULL, .defuintval = 0, TYPE_UINT, 0},              \
+      {MCE_CONFIG_STRING_MCH_SCHEDULING_PERIOD, NULL, 0, .uptr = NULL, .defuintval = 0, TYPE_UINT, 0}, \
+  }
+#define MCE_CONFIG_STRING_ALLOCATED_SF_END_IDX 0
+#define MCE_CONFIG_STRING_DATA_MCS_IDX 1
+#define MCE_CONFIG_STRING_MCH_SCHEDULING_PERIOD_IDX 2
 /*-------------------------------------------------------------------------------------------------------------------------------------*/
-#define MCE_CONFIG_STRING_MBMS_SESSION_LIST			"mbms_session_list"
+#define MCE_CONFIG_STRING_MBMS_SESSION_LIST "mbms_session_list"
 
-#define MCE_CONFIG_STRING_MBMS_SERVICE_ID			"service_id"
-#define MCE_CONFIG_STRING_MBMS_LCID_ID				"lcid_id"
-#define MCE_CONFIG_STRING_MBMS_LCID				"lcid"
+#define MCE_CONFIG_STRING_MBMS_SERVICE_ID "service_id"
+#define MCE_CONFIG_STRING_MBMS_LCID_ID "lcid_id"
+#define MCE_CONFIG_STRING_MBMS_LCID "lcid"
 
-#define MCE_MBMS_MBMS_SESSION_LIST_DESC {  \
-{MCE_CONFIG_STRING_MBMS_SERVICE_ID,            	NULL,      0,         .uptr=NULL,   .defuintval=0,   TYPE_UINT32,   0},          \
-{MCE_CONFIG_STRING_MBMS_LCID_ID,            	NULL,      0,         .uptr=NULL,   .defuintval=0,   TYPE_UINT,   0},          \
-{MCE_CONFIG_STRING_MBMS_LCID,            	NULL,      0,         .uptr=NULL,   .defuintval=0,   TYPE_UINT,   0},          \
-}
-#define MCE_CONFIG_STRING_MBMS_SERVICE_ID_IDX	0
-#define MCE_CONFIG_STRING_MBMS_LCID_ID_IDX	1
-#define MCE_CONFIG_STRING_MBMS_LCID_IDX	2
+#define MCE_MBMS_MBMS_SESSION_LIST_DESC                                                            \
+  {                                                                                                \
+      {MCE_CONFIG_STRING_MBMS_SERVICE_ID, NULL, 0, .uptr = NULL, .defuintval = 0, TYPE_UINT32, 0}, \
+      {MCE_CONFIG_STRING_MBMS_LCID_ID, NULL, 0, .uptr = NULL, .defuintval = 0, TYPE_UINT, 0},      \
+      {MCE_CONFIG_STRING_MBMS_LCID, NULL, 0, .uptr = NULL, .defuintval = 0, TYPE_UINT, 0},         \
+  }
+#define MCE_CONFIG_STRING_MBMS_SERVICE_ID_IDX 0
+#define MCE_CONFIG_STRING_MBMS_LCID_ID_IDX 1
+#define MCE_CONFIG_STRING_MBMS_LCID_IDX 2
 
 /*-------------------------------------------------------------------------------------------------------------------------------------*/
-#define MCE_CONFIG_STRING_MBMS_SF_CONFIGURATION_LIST			"mbms_sf_config_list"
+#define MCE_CONFIG_STRING_MBMS_SF_CONFIGURATION_LIST "mbms_sf_config_list"
 
-#define MCE_CONFIG_STRING_RADIOFRAME_ALLOCATION_PERIOD			"radioframe_allocation_period"
-#define MCE_CONFIG_STRING_RADIOFRAME_ALLOOCATION_OFFSET			"radioframe_alloocation_offset"
-#define MCE_CONFIG_STRING_NUM_FRAME					"num_frame"
-#define MCE_CONFIG_STRING_SUBFRAME_ALLOCATION				"subframe_allocation"
+#define MCE_CONFIG_STRING_RADIOFRAME_ALLOCATION_PERIOD "radioframe_allocation_period"
+#define MCE_CONFIG_STRING_RADIOFRAME_ALLOOCATION_OFFSET "radioframe_alloocation_offset"
+#define MCE_CONFIG_STRING_NUM_FRAME "num_frame"
+#define MCE_CONFIG_STRING_SUBFRAME_ALLOCATION "subframe_allocation"
 
 #define MCE_MBMS_MBMS_SF_CONFIGURATION_LIST_PARAMS_DESC {  \
 {MCE_CONFIG_STRING_RADIOFRAME_ALLOCATION_PERIOD,            NULL,      0,         .uptr=NULL,   .defintval=0,   TYPE_UINT,   0},          \
@@ -222,8 +237,8 @@
 {MCE_CONFIG_STRING_SUBFRAME_ALLOCATION,            NULL,      0,        .uptr=NULL,   .defintval=0,   TYPE_UINT,   0},          \
 }
 #define MCE_CONFIG_STRING_RADIOFRAME_ALLOCATION_PERIOD_IDX 0
-#define MCE_CONFIG_STRING_RADIOFRAME_ALLOOCATION_OFFSET_IDX	1
-#define MCE_CONFIG_STRING_NUM_FRAME_IDX	2
-#define MCE_CONFIG_STRING_SUBFRAME_ALLOCATION_IDX	3
+#define MCE_CONFIG_STRING_RADIOFRAME_ALLOOCATION_OFFSET_IDX 1
+#define MCE_CONFIG_STRING_NUM_FRAME_IDX 2
+#define MCE_CONFIG_STRING_SUBFRAME_ALLOCATION_IDX 3
 
 #endif

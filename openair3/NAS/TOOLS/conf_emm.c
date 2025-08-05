@@ -67,22 +67,20 @@ void gen_emm_data(
 
 bool write_emm_data(const char *directory, int user_id, emm_nvdata_t *emm_data) {
     int rc;
-	char* filename = make_filename(directory, EMM_NVRAM_FILENAME, user_id);
-	rc = memory_write(filename, emm_data, sizeof(emm_nvdata_t));
-	free(filename);
-	if (rc != RETURNok) {
-		perror("ERROR\t: memory_write() failed");
-		exit(false);
-	}
+    char *filename = make_filename(directory, EMM_NVRAM_FILENAME, user_id);
+    rc = memory_write(filename, emm_data, sizeof(emm_nvdata_t));
+    free(filename);
+    if (rc != RETURNok) {
+      perror("ERROR\t: memory_write() failed");
+      exit(false);
+    }
     return(true);
 }
 
 int get_msin_parity(const char * msin, const char *mcc, const char *mnc) {
-	int imsi_size = strlen(msin) + strlen(mcc)
-			+ strlen(mnc);
-	int result = (imsi_size % 2 == 0) ? 0 : 1;
-	return result;
-
+  int imsi_size = strlen(msin) + strlen(mcc) + strlen(mnc);
+  int result = (imsi_size % 2 == 0) ? 0 : 1;
+  return result;
 }
 
 

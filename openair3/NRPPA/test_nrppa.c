@@ -38,14 +38,14 @@ protocolIEs  ProtocolIE-Container {{MeasurementRequest-IEs}},
 } */
 
   /* Protocl IE container
-  id-LMF-Measurement-ID			ProtocolIE-ID ::= 39
-  id-RAN-Measurement-ID			ProtocolIE-ID ::= 40
-  ID id-TRP-MeasurementRequestList	ProtocolIE-ID ::= 41
-  ID id-ReportCharacteristics		ProtocolIE-ID ::= 3
-  ID id-MeasurementPeriodicity		ProtocolIE-ID ::= 4
-  ID id-TRPMeasurementQuantities		ProtocolIE-ID ::= 52
+  id-LMF-Measurement-ID            ProtocolIE-ID ::= 39
+  id-RAN-Measurement-ID            ProtocolIE-ID ::= 40
+  ID id-TRP-MeasurementRequestList    ProtocolIE-ID ::= 41
+  ID id-ReportCharacteristics        ProtocolIE-ID ::= 3
+  ID id-MeasurementPeriodicity        ProtocolIE-ID ::= 4
+  ID id-TRPMeasurementQuantities        ProtocolIE-ID ::= 52
   */
-  //NRPPA_MeasurementRequest->protocolIEs;
+  // NRPPA_MeasurementRequest->protocolIEs;
 
   /* Context for parsing across buffer boundaries */
   //NRPPA_MeasurementRequest->_asn_ctx;

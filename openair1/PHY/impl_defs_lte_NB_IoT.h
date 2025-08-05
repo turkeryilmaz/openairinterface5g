@@ -484,9 +484,9 @@ typedef struct{
 
 /* DL-GapConfig-NB-r13 */
 typedef struct {
-	uint16_t	 dl_GapThreshold;
-	uint16_t	 dl_GapPeriodicity;
-	uint16_t	 dl_GapDurationCoeff;
+  uint16_t dl_GapThreshold;
+  uint16_t dl_GapPeriodicity;
+  uint16_t dl_GapDurationCoeff;
 } DL_GapConfig_NB_IoT;
 
 #define NBIOT_INBAND_LTEPCI 0

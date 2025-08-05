@@ -231,7 +231,7 @@ int RCconfig_m2_mcch(m2ap_setup_resp_t * m2ap_setup_resp, uint32_t i) {
         m2ap_setup_resp->mcch_config_per_mbsfn[l].mcs = *(MCCHParamList.paramarray[l][MCCH_MCS_IDX].uptr);
   }
   m2ap_setup_resp->num_mcch_config_per_mbsfn = MCCHParamList.numelt;
-	return 0;
+  return 0;
 }
 int RCconfig_M2_MCCH(MessageDef *msg_p, uint32_t i) {
   int l;
@@ -270,8 +270,7 @@ int RCconfig_M2_MCCH(MessageDef *msg_p, uint32_t i) {
   }
   M2AP_SETUP_RESP(msg_p).num_mcch_config_per_mbsfn = MCCHParamList.numelt;
 
-
-	return 0;
+  return 0;
 }
 int RCconfig_m2_scheduling(  m2ap_mbms_scheduling_information_t * m2ap_mbms_scheduling_information, uint32_t i) {
   int l,j,k/*,m*/;
@@ -297,13 +296,21 @@ int RCconfig_m2_scheduling(  m2ap_mbms_scheduling_information_t * m2ap_mbms_sche
 
   m2ap_mbms_scheduling_information->num_mbms_area_config_list = MBMS_AREA_CONFIGURATION_ParamList.numelt;
   for (l = 0; l < MBMS_AREA_CONFIGURATION_ParamList.numelt; l++) {
-	m2ap_mbms_scheduling_information->mbms_area_config_list[l].common_sf_allocation_period = *(MBMS_AREA_CONFIGURATION_ParamList.paramarray[l][MCE_CONFIG_STRING_COMMON_SF_ALLOCATION_PERIOD_IDX].uptr);
-	m2ap_mbms_scheduling_information->mbms_area_config_list[l].mbms_area_id=*(MBMS_AREA_CONFIGURATION_ParamList.paramarray[l][MCE_CONFIG_STRING_MBMS_AREA_ID_IDX].uptr);
-  	char mcepath2[MAX_OPTNAME_SIZE*2 + 8];
-  	paramdef_t PMCH_Params[]  = MCE_MBMS_PMCH_CONFIGURATION_LIST_PARAMS_DESC;
-  	paramlist_def_t PMCH_ParamList = {MCE_CONFIG_STRING_PMCH_CONFIGURATION_LIST,NULL,0};
-  	sprintf(mcepath2,"%s.[%u].%s.%s.[%i]","MCEs",i,MCE_CONFIG_STRING_MBMS_SCHEDULING_INFO,MCE_CONFIG_STRING_MBMS_AREA_CONFIGURATION_LIST,l);
-	//LOG_E(MCE_APP,"%s\n",mcepath2);
+    m2ap_mbms_scheduling_information->mbms_area_config_list[l].common_sf_allocation_period =
+        *(MBMS_AREA_CONFIGURATION_ParamList.paramarray[l][MCE_CONFIG_STRING_COMMON_SF_ALLOCATION_PERIOD_IDX].uptr);
+    m2ap_mbms_scheduling_information->mbms_area_config_list[l].mbms_area_id =
+        *(MBMS_AREA_CONFIGURATION_ParamList.paramarray[l][MCE_CONFIG_STRING_MBMS_AREA_ID_IDX].uptr);
+    char mcepath2[MAX_OPTNAME_SIZE * 2 + 8];
+    paramdef_t PMCH_Params[] = MCE_MBMS_PMCH_CONFIGURATION_LIST_PARAMS_DESC;
+    paramlist_def_t PMCH_ParamList = {MCE_CONFIG_STRING_PMCH_CONFIGURATION_LIST, NULL, 0};
+    sprintf(mcepath2,
+            "%s.[%u].%s.%s.[%i]",
+            "MCEs",
+            i,
+            MCE_CONFIG_STRING_MBMS_SCHEDULING_INFO,
+            MCE_CONFIG_STRING_MBMS_AREA_CONFIGURATION_LIST,
+            l);
+    // LOG_E(MCE_APP,"%s\n",mcepath2);
     config_getlist(config_get_if(), &PMCH_ParamList, PMCH_Params, sizeofArray(PMCH_Params), mcepath2);
     AssertFatal(PMCH_ParamList.numelt <= 8, "File wrong parsed\n");
     m2ap_mbms_scheduling_information->mbms_area_config_list[l].num_pmch_config_list = PMCH_ParamList.numelt;
@@ -316,78 +323,86 @@ int RCconfig_m2_scheduling(  m2ap_mbms_scheduling_information_t * m2ap_mbms_sche
         *(PMCH_ParamList.paramarray[j][MCE_CONFIG_STRING_MCH_SCHEDULING_PERIOD_IDX].uptr);
     char mcepath3[MAX_OPTNAME_SIZE * 2 + 8];
     paramdef_t MBMS_SESSION_LIST_Params[] = MCE_MBMS_MBMS_SESSION_LIST_DESC;
-		paramlist_def_t MBMS_SESSION_LIST_ParamList = {MCE_CONFIG_STRING_MBMS_SESSION_LIST,NULL,0};
-  		sprintf(mcepath3,"%s.[%u].%s.%s.[%i].%s.[%i]","MCEs",i,MCE_CONFIG_STRING_MBMS_SCHEDULING_INFO,MCE_CONFIG_STRING_MBMS_AREA_CONFIGURATION_LIST,l,MCE_CONFIG_STRING_PMCH_CONFIGURATION_LIST,j);
-      config_getlist(config_get_if(),
-                     &MBMS_SESSION_LIST_ParamList,
-                     MBMS_SESSION_LIST_Params,
-                     sizeofArray(MBMS_SESSION_LIST_Params),
-                     mcepath3);
-      // LOG_E(MCE_APP,"%s ---- %d\n",mcepath3, MBMS_SESSION_LIST_ParamList.numelt);
-      AssertFatal(MBMS_SESSION_LIST_ParamList.numelt <= 8, "File wrong parsed\n");
-      m2ap_mbms_scheduling_information->mbms_area_config_list[l].pmch_config_list[j].num_mbms_session_list =
-          MBMS_SESSION_LIST_ParamList.numelt;
-      for (k = 0; k < MBMS_SESSION_LIST_ParamList.numelt; k++) {
-        // char mcepath4[MAX_OPTNAME_SIZE*8 + 8];
-        // paramdef_t MBMS_SESSION_LIST_PER_PMCH_Params[] = MCE_MBMS_MBMS_SESSION_LIST_PER_PMCH_PARAMS_DESC;
-        // paramlist_def_t MBMS_SESSION_LIST_PER_PMCH_ParamList = {MCE_CONFIG_STRING_MBMS_SESSION_LIST_PER_PMCH,NULL,0};
-        // sprintf(mcepath4,"%s.[%i].%s.%s.[%i].%s.[%i].%s.[%i]","MCEs",i,MCE_CONFIG_STRING_MBMS_SCHEDULING_INFO,MCE_CONFIG_STRING_MBMS_AREA_CONFIGURATION_LIST,l,MCE_CONFIG_STRING_PMCH_CONFIGURATION_LIST,j,MCE_CONFIG_STRING_MBMS_SESSION_LIST,k);
-        // LOG_E(MCE_APP,"%s\n",mcepath4);
-        // config_getlist(config_get_if(),&MBMS_SESSION_LIST_PER_PMCH_ParamList,MBMS_SESSION_LIST_PER_PMCH_Params,sizeofArray(MBMS_SESSION_LIST_PER_PMCH_Params),mcepath4);
-        // m2ap_mbms_scheduling_information->mbms_area_config_list[l].pmch_config_list[j].mbms_session_list[k].num_mbms_session_per_pmch
-        // = MBMS_SESSION_LIST_PER_PMCH_ParamList.numelt; for(m = 0; m < MBMS_SESSION_LIST_PER_PMCH_ParamList.numelt; m++){
+    paramlist_def_t MBMS_SESSION_LIST_ParamList = {MCE_CONFIG_STRING_MBMS_SESSION_LIST, NULL, 0};
+    sprintf(mcepath3,
+            "%s.[%u].%s.%s.[%i].%s.[%i]",
+            "MCEs",
+            i,
+            MCE_CONFIG_STRING_MBMS_SCHEDULING_INFO,
+            MCE_CONFIG_STRING_MBMS_AREA_CONFIGURATION_LIST,
+            l,
+            MCE_CONFIG_STRING_PMCH_CONFIGURATION_LIST,
+            j);
+    config_getlist(config_get_if(),
+                   &MBMS_SESSION_LIST_ParamList,
+                   MBMS_SESSION_LIST_Params,
+                   sizeofArray(MBMS_SESSION_LIST_Params),
+                   mcepath3);
+    // LOG_E(MCE_APP,"%s ---- %d\n",mcepath3, MBMS_SESSION_LIST_ParamList.numelt);
+    AssertFatal(MBMS_SESSION_LIST_ParamList.numelt <= 8, "File wrong parsed\n");
+    m2ap_mbms_scheduling_information->mbms_area_config_list[l].pmch_config_list[j].num_mbms_session_list =
+        MBMS_SESSION_LIST_ParamList.numelt;
+    for (k = 0; k < MBMS_SESSION_LIST_ParamList.numelt; k++) {
+      // char mcepath4[MAX_OPTNAME_SIZE*8 + 8];
+      // paramdef_t MBMS_SESSION_LIST_PER_PMCH_Params[] = MCE_MBMS_MBMS_SESSION_LIST_PER_PMCH_PARAMS_DESC;
+      // paramlist_def_t MBMS_SESSION_LIST_PER_PMCH_ParamList = {MCE_CONFIG_STRING_MBMS_SESSION_LIST_PER_PMCH,NULL,0};
+      // sprintf(mcepath4,"%s.[%i].%s.%s.[%i].%s.[%i].%s.[%i]","MCEs",i,MCE_CONFIG_STRING_MBMS_SCHEDULING_INFO,MCE_CONFIG_STRING_MBMS_AREA_CONFIGURATION_LIST,l,MCE_CONFIG_STRING_PMCH_CONFIGURATION_LIST,j,MCE_CONFIG_STRING_MBMS_SESSION_LIST,k);
+      // LOG_E(MCE_APP,"%s\n",mcepath4);
+      // config_getlist(config_get_if(),&MBMS_SESSION_LIST_PER_PMCH_ParamList,MBMS_SESSION_LIST_PER_PMCH_Params,sizeofArray(MBMS_SESSION_LIST_PER_PMCH_Params),mcepath4);
+      // m2ap_mbms_scheduling_information->mbms_area_config_list[l].pmch_config_list[j].mbms_session_list[k].num_mbms_session_per_pmch
+      // = MBMS_SESSION_LIST_PER_PMCH_ParamList.numelt; for(m = 0; m < MBMS_SESSION_LIST_PER_PMCH_ParamList.numelt; m++){
 
-        m2ap_mbms_scheduling_information->mbms_area_config_list[l].pmch_config_list[j].mbms_session_list[k].service_id =
-            *(MBMS_SESSION_LIST_ParamList.paramarray[k][MCE_CONFIG_STRING_MBMS_SERVICE_ID_IDX].uptr);
-        uint32_t lcid = *(MBMS_SESSION_LIST_ParamList.paramarray[k][MCE_CONFIG_STRING_MBMS_LCID_IDX].uptr);
-        m2ap_mbms_scheduling_information->mbms_area_config_list[l].pmch_config_list[j].mbms_session_list[k].lcid = lcid;
-        // uint32_t service_id2=*(MBMS_SESSION_LIST_ParamList.paramarray[k][MCE_CONFIG_STRING_MBMS_LCID_IDX].uptr);
-        // m2ap_mbms_scheduling_information->mbms_area_config_list[l].pmch_config_list[j].mbms_session_list[k].service_id2
-        // =service_id2; LOG_E(MCE_APP,"lcid
-        // %ld\n",*(MBMS_SESSION_LIST_ParamList.paramarray[k][MCE_CONFIG_STRING_MBMS_LCID_IDX].uptr)); LOG_E(MCE_APP,"service_id
-        // %d\n",*(MBMS_SESSION_LIST_ParamList.paramarray[k][MCE_CONFIG_STRING_MBMS_SERVICE_ID_IDX].uptr));
+      m2ap_mbms_scheduling_information->mbms_area_config_list[l].pmch_config_list[j].mbms_session_list[k].service_id =
+          *(MBMS_SESSION_LIST_ParamList.paramarray[k][MCE_CONFIG_STRING_MBMS_SERVICE_ID_IDX].uptr);
+      uint32_t lcid = *(MBMS_SESSION_LIST_ParamList.paramarray[k][MCE_CONFIG_STRING_MBMS_LCID_IDX].uptr);
+      m2ap_mbms_scheduling_information->mbms_area_config_list[l].pmch_config_list[j].mbms_session_list[k].lcid = lcid;
+      // uint32_t service_id2=*(MBMS_SESSION_LIST_ParamList.paramarray[k][MCE_CONFIG_STRING_MBMS_LCID_IDX].uptr);
+      // m2ap_mbms_scheduling_information->mbms_area_config_list[l].pmch_config_list[j].mbms_session_list[k].service_id2
+      // =service_id2; LOG_E(MCE_APP,"lcid
+      // %ld\n",*(MBMS_SESSION_LIST_ParamList.paramarray[k][MCE_CONFIG_STRING_MBMS_LCID_IDX].uptr)); LOG_E(MCE_APP,"service_id
+      // %d\n",*(MBMS_SESSION_LIST_ParamList.paramarray[k][MCE_CONFIG_STRING_MBMS_SERVICE_ID_IDX].uptr));
 
-        char mcepath5[MAX_OPTNAME_SIZE * 8 + 8];
-        paramdef_t PLNMParams[] = MCE_PLMN_PARAMS_DESC;
-        sprintf(mcepath5,
-                "%s.[%u].%s.%s.[%i].%s.[%i].%s.[%i].%s",
-                "MCEs",
-                i,
-                MCE_CONFIG_STRING_MBMS_SCHEDULING_INFO,
-                MCE_CONFIG_STRING_MBMS_AREA_CONFIGURATION_LIST,
-                l,
-                MCE_CONFIG_STRING_PMCH_CONFIGURATION_LIST,
-                j,
-                MCE_CONFIG_STRING_MBMS_SESSION_LIST,
-                k,
-                MCE_CONFIG_STRING_PLMN);
-        config_get(config_get_if(), PLNMParams, sizeofArray(PLNMParams), mcepath5);
-        // LOG_E(MCE_APP,"PLNM %d\n",*(PLNMParams[MCE_CONFIG_STRING_MNC_LENGTH_IDX].uptr));
-        m2ap_mbms_scheduling_information->mbms_area_config_list[l].pmch_config_list[j].mbms_session_list[k].mcc =
-            *(PLNMParams[MCE_CONFIG_STRING_MCC_IDX].uptr);
-        m2ap_mbms_scheduling_information->mbms_area_config_list[l].pmch_config_list[j].mbms_session_list[k].mnc =
-            *(PLNMParams[MCE_CONFIG_STRING_MNC_IDX].uptr);
-        m2ap_mbms_scheduling_information->mbms_area_config_list[l].pmch_config_list[j].mbms_session_list[k].mnc_length =
-            *(PLNMParams[MCE_CONFIG_STRING_MNC_LENGTH_IDX].uptr);
+      char mcepath5[MAX_OPTNAME_SIZE * 8 + 8];
+      paramdef_t PLNMParams[] = MCE_PLMN_PARAMS_DESC;
+      sprintf(mcepath5,
+              "%s.[%u].%s.%s.[%i].%s.[%i].%s.[%i].%s",
+              "MCEs",
+              i,
+              MCE_CONFIG_STRING_MBMS_SCHEDULING_INFO,
+              MCE_CONFIG_STRING_MBMS_AREA_CONFIGURATION_LIST,
+              l,
+              MCE_CONFIG_STRING_PMCH_CONFIGURATION_LIST,
+              j,
+              MCE_CONFIG_STRING_MBMS_SESSION_LIST,
+              k,
+              MCE_CONFIG_STRING_PLMN);
+      config_get(config_get_if(), PLNMParams, sizeofArray(PLNMParams), mcepath5);
+      // LOG_E(MCE_APP,"PLNM %d\n",*(PLNMParams[MCE_CONFIG_STRING_MNC_LENGTH_IDX].uptr));
+      m2ap_mbms_scheduling_information->mbms_area_config_list[l].pmch_config_list[j].mbms_session_list[k].mcc =
+          *(PLNMParams[MCE_CONFIG_STRING_MCC_IDX].uptr);
+      m2ap_mbms_scheduling_information->mbms_area_config_list[l].pmch_config_list[j].mbms_session_list[k].mnc =
+          *(PLNMParams[MCE_CONFIG_STRING_MNC_IDX].uptr);
+      m2ap_mbms_scheduling_information->mbms_area_config_list[l].pmch_config_list[j].mbms_session_list[k].mnc_length =
+          *(PLNMParams[MCE_CONFIG_STRING_MNC_LENGTH_IDX].uptr);
 
-        //}
-        // LOG_E(MCE_APP,"MBMS_SESSION_LIST_PER_PMCH_ParamList.numelt %d\n",MBMS_SESSION_LIST_PER_PMCH_ParamList.numelt);
-        // AssertFatal(MBMS_SESSION_LIST_PER_PMCH_ParamList.numelt <= 8, "File wrong parsed\n");
+      //}
+      // LOG_E(MCE_APP,"MBMS_SESSION_LIST_PER_PMCH_ParamList.numelt %d\n",MBMS_SESSION_LIST_PER_PMCH_ParamList.numelt);
+      // AssertFatal(MBMS_SESSION_LIST_PER_PMCH_ParamList.numelt <= 8, "File wrong parsed\n");
 
-        // printf("%d\n",*(MBMS_SESSION_LIST_ParamList.paramarray[k][MCE_CONFIG_STRING_PLNM_IDENTITY_IDX].uptr));
-        // printf("%d\n",*(MBMS_SESSION_LIST_ParamList.paramarray[k][MCE_CONFIG_STRING_SERVICE_ID_IDX].uptr));
-        // printf("%d\n",*(MBMS_SESSION_LIST_ParamList.paramarray[k][MCE_CONFIG_STRING_LCID_IDX].uptr));
-        //*((MBMS_SESSION_LIST_ParamList[k][].uptr);
-        //*((MBMS_SESSION_LIST_ParamList[k][].uptr);
-        //*((MBMS_SESSION_LIST_ParamList[k][].uptr);
-        //*((MBMS_SESSION_LIST_ParamList[k][].uptr);
-        //*((MBMS_SESSION_LIST_ParamList[k][].uptr);
-      }
+      // printf("%d\n",*(MBMS_SESSION_LIST_ParamList.paramarray[k][MCE_CONFIG_STRING_PLNM_IDENTITY_IDX].uptr));
+      // printf("%d\n",*(MBMS_SESSION_LIST_ParamList.paramarray[k][MCE_CONFIG_STRING_SERVICE_ID_IDX].uptr));
+      // printf("%d\n",*(MBMS_SESSION_LIST_ParamList.paramarray[k][MCE_CONFIG_STRING_LCID_IDX].uptr));
+      //*((MBMS_SESSION_LIST_ParamList[k][].uptr);
+      //*((MBMS_SESSION_LIST_ParamList[k][].uptr);
+      //*((MBMS_SESSION_LIST_ParamList[k][].uptr);
+      //*((MBMS_SESSION_LIST_ParamList[k][].uptr);
+      //*((MBMS_SESSION_LIST_ParamList[k][].uptr);
+    }
     }
     paramdef_t MBSFN_SF_Params[] = MCE_MBMS_MBMS_SF_CONFIGURATION_LIST_PARAMS_DESC;
     paramlist_def_t MBSFN_SF_ParamList = {MCE_CONFIG_STRING_MBMS_SF_CONFIGURATION_LIST, NULL, 0};
     sprintf(mcepath2,"%s.[%u].%s.%s.[%i]","MCEs",i,MCE_CONFIG_STRING_MBMS_SCHEDULING_INFO,MCE_CONFIG_STRING_MBMS_AREA_CONFIGURATION_LIST,l);
-	//LOG_E(MCE_APP,"%s\n",mcepath2);
+    // LOG_E(MCE_APP,"%s\n",mcepath2);
     config_getlist(config_get_if(), &MBSFN_SF_ParamList, MBSFN_SF_Params, sizeofArray(MBSFN_SF_Params), mcepath2);
     AssertFatal(MBSFN_SF_ParamList.numelt <= 8, "File wrong parsed\n");
 
@@ -406,7 +421,7 @@ int RCconfig_m2_scheduling(  m2ap_mbms_scheduling_information_t * m2ap_mbms_sche
           *(MBSFN_SF_ParamList.paramarray[j][MCE_CONFIG_STRING_SUBFRAME_ALLOCATION_IDX].uptr);
     }
   }
-	return 0;
+  return 0;
 }
 int RCconfig_M2_SCHEDULING(MessageDef *msg_p, uint32_t i) {
   int l,j,k/*,m*/;
@@ -432,13 +447,21 @@ int RCconfig_M2_SCHEDULING(MessageDef *msg_p, uint32_t i) {
 
   M2AP_MBMS_SCHEDULING_INFORMATION(msg_p).num_mbms_area_config_list = MBMS_AREA_CONFIGURATION_ParamList.numelt;
   for (l = 0; l < MBMS_AREA_CONFIGURATION_ParamList.numelt; l++) {
-	M2AP_MBMS_SCHEDULING_INFORMATION(msg_p).mbms_area_config_list[l].common_sf_allocation_period = *(MBMS_AREA_CONFIGURATION_ParamList.paramarray[l][MCE_CONFIG_STRING_COMMON_SF_ALLOCATION_PERIOD_IDX].uptr);
-	M2AP_MBMS_SCHEDULING_INFORMATION(msg_p).mbms_area_config_list[l].mbms_area_id=*(MBMS_AREA_CONFIGURATION_ParamList.paramarray[l][MCE_CONFIG_STRING_MBMS_AREA_ID_IDX].uptr);
-  	char mcepath2[MAX_OPTNAME_SIZE*2 + 8];
-  	paramdef_t PMCH_Params[]  = MCE_MBMS_PMCH_CONFIGURATION_LIST_PARAMS_DESC;
-  	paramlist_def_t PMCH_ParamList = {MCE_CONFIG_STRING_PMCH_CONFIGURATION_LIST,NULL,0};
-  	sprintf(mcepath2,"%s.[%u].%s.%s.[%i]","MCEs",i,MCE_CONFIG_STRING_MBMS_SCHEDULING_INFO,MCE_CONFIG_STRING_MBMS_AREA_CONFIGURATION_LIST,l);
-	//LOG_E(MCE_APP,"%s\n",mcepath2);
+    M2AP_MBMS_SCHEDULING_INFORMATION(msg_p).mbms_area_config_list[l].common_sf_allocation_period =
+        *(MBMS_AREA_CONFIGURATION_ParamList.paramarray[l][MCE_CONFIG_STRING_COMMON_SF_ALLOCATION_PERIOD_IDX].uptr);
+    M2AP_MBMS_SCHEDULING_INFORMATION(msg_p).mbms_area_config_list[l].mbms_area_id =
+        *(MBMS_AREA_CONFIGURATION_ParamList.paramarray[l][MCE_CONFIG_STRING_MBMS_AREA_ID_IDX].uptr);
+    char mcepath2[MAX_OPTNAME_SIZE * 2 + 8];
+    paramdef_t PMCH_Params[] = MCE_MBMS_PMCH_CONFIGURATION_LIST_PARAMS_DESC;
+    paramlist_def_t PMCH_ParamList = {MCE_CONFIG_STRING_PMCH_CONFIGURATION_LIST, NULL, 0};
+    sprintf(mcepath2,
+            "%s.[%u].%s.%s.[%i]",
+            "MCEs",
+            i,
+            MCE_CONFIG_STRING_MBMS_SCHEDULING_INFO,
+            MCE_CONFIG_STRING_MBMS_AREA_CONFIGURATION_LIST,
+            l);
+    // LOG_E(MCE_APP,"%s\n",mcepath2);
     config_getlist(config_get_if(), &PMCH_ParamList, PMCH_Params, sizeofArray(PMCH_Params), mcepath2);
     AssertFatal(PMCH_ParamList.numelt <= 8, "File wrong parsed\n");
     M2AP_MBMS_SCHEDULING_INFORMATION(msg_p).mbms_area_config_list[l].num_pmch_config_list = PMCH_ParamList.numelt;
@@ -452,7 +475,15 @@ int RCconfig_M2_SCHEDULING(MessageDef *msg_p, uint32_t i) {
       char mcepath3[MAX_OPTNAME_SIZE * 2 + 8];
       paramdef_t MBMS_SESSION_LIST_Params[] = MCE_MBMS_MBMS_SESSION_LIST_DESC;
       paramlist_def_t MBMS_SESSION_LIST_ParamList = {MCE_CONFIG_STRING_MBMS_SESSION_LIST, NULL, 0};
-  		sprintf(mcepath3,"%s.[%u].%s.%s.[%i].%s.[%i]","MCEs",i,MCE_CONFIG_STRING_MBMS_SCHEDULING_INFO,MCE_CONFIG_STRING_MBMS_AREA_CONFIGURATION_LIST,l,MCE_CONFIG_STRING_PMCH_CONFIGURATION_LIST,j);
+      sprintf(mcepath3,
+              "%s.[%u].%s.%s.[%i].%s.[%i]",
+              "MCEs",
+              i,
+              MCE_CONFIG_STRING_MBMS_SCHEDULING_INFO,
+              MCE_CONFIG_STRING_MBMS_AREA_CONFIGURATION_LIST,
+              l,
+              MCE_CONFIG_STRING_PMCH_CONFIGURATION_LIST,
+              j);
       config_getlist(config_get_if(),
                      &MBMS_SESSION_LIST_ParamList,
                      MBMS_SESSION_LIST_Params,
@@ -522,7 +553,7 @@ int RCconfig_M2_SCHEDULING(MessageDef *msg_p, uint32_t i) {
     paramdef_t MBSFN_SF_Params[] = MCE_MBMS_MBMS_SF_CONFIGURATION_LIST_PARAMS_DESC;
     paramlist_def_t MBSFN_SF_ParamList = {MCE_CONFIG_STRING_MBMS_SF_CONFIGURATION_LIST, NULL, 0};
     sprintf(mcepath2,"%s.[%u].%s.%s.[%i]","MCEs",i,MCE_CONFIG_STRING_MBMS_SCHEDULING_INFO,MCE_CONFIG_STRING_MBMS_AREA_CONFIGURATION_LIST,l);
-	//LOG_E(MCE_APP,"%s\n",mcepath2);
+    // LOG_E(MCE_APP,"%s\n",mcepath2);
     config_getlist(config_get_if(), &MBSFN_SF_ParamList, MBSFN_SF_Params, sizeofArray(MBSFN_SF_Params), mcepath2);
     AssertFatal(MBSFN_SF_ParamList.numelt <= 8, "File wrong parsed\n");
 

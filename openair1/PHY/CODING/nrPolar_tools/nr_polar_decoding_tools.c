@@ -103,7 +103,7 @@ void updateLLR(uint8_t listSize,
   }
   llrU[row][col] = 1;
 
-  //	printf("LLR (a %f, b %f): llr[%d][%d] %f\n",32*a,32*b,col,row,32*llr[col][row]);
+  //    printf("LLR (a %f, b %f): llr[%d][%d] %f\n",32*a,32*b,col,row,32*llr[col][row]);
 }
 
 void updatePathMetric(double *pathMetric,
@@ -269,7 +269,7 @@ static inline void applyFtoleft(const t_nrPolar_params *pp, decoder_node_t *node
         int16_t absb = (b + maskb) ^ maskb;
         int16_t minabs = absa < absb ? absa : absb;
         alpha_l[i] = (maska ^ maskb) == 0 ? minabs : -minabs;
-        //	printf("alphal[%d] %d (%d,%d)\n",i,alpha_l[i],a,b);
+        //    printf("alphal[%d] %d (%d,%d)\n",i,alpha_l[i],a,b);
       }
     }
     if (sz == 1) { // apply hard decision on left node

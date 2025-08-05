@@ -213,7 +213,7 @@ void generate_ul_reference_signal_sequences(unsigned int scaling)
 
   
   for (Msc_RS=0; Msc_RS <= INDEX_SB_LESS_32; Msc_RS++) {
-  	v = 0;
+    v = 0;
     for (u=0; u < U_GROUP_NUMBER; u++) {
       rv_ul_ref_sig[u][v][Msc_RS] = base_sequence_less_than_36(ul_allocated_re[Msc_RS], u, scaling);
       dmrs_lowpaprtype1_ul_ref_sig[u][v][Msc_RS] = base_sequence_less_than_36(ul_allocated_re[Msc_RS], u, scaling);

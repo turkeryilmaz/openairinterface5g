@@ -890,38 +890,37 @@ eNB_dlsch_ulsch_scheduler(module_id_t module_idP,
 
   int id;
 
-	// clean ULSCH entries for rnti
-	id = find_ulsch(rnti,RC.eNB[module_idP][CC_id],SEARCH_EXIST);
-        if (id>=0) clean_eNb_ulsch(RC.eNB[module_idP][CC_id]->ulsch[id]);
+  // clean ULSCH entries for rnti
+  id = find_ulsch(rnti, RC.eNB[module_idP][CC_id], SEARCH_EXIST);
+  if (id >= 0)
+    clean_eNb_ulsch(RC.eNB[module_idP][CC_id]->ulsch[id]);
 
-	// clean DLSCH entries for rnti
-	id = find_dlsch(rnti,RC.eNB[module_idP][CC_id],SEARCH_EXIST);
-        if (id>=0) clean_eNb_dlsch(RC.eNB[module_idP][CC_id]->dlsch[id][0]);
+  // clean DLSCH entries for rnti
+  id = find_dlsch(rnti, RC.eNB[module_idP][CC_id], SEARCH_EXIST);
+  if (id >= 0)
+    clean_eNb_dlsch(RC.eNB[module_idP][CC_id]->dlsch[id][0]);
 
-          for (int j = 0; j < 10; j++) {
-            nfapi_ul_config_request_body_t *ul_req_tmp = NULL;
-            ul_req_tmp = &(eNB->UL_req_tmp[CC_id][j].ul_config_request_body);
+  for (int j = 0; j < 10; j++) {
+    nfapi_ul_config_request_body_t *ul_req_tmp = NULL;
+    ul_req_tmp = &(eNB->UL_req_tmp[CC_id][j].ul_config_request_body);
 
-            if (ul_req_tmp) {
-              int pdu_number = ul_req_tmp->number_of_pdus;
+    if (ul_req_tmp) {
+      int pdu_number = ul_req_tmp->number_of_pdus;
 
-              for (int pdu_index = pdu_number-1; pdu_index >= 0; pdu_index--) {
-                if (ul_req_tmp->ul_config_pdu_list[pdu_index].ulsch_pdu.ulsch_pdu_rel8.rnti == rnti) {
-                  LOG_I(MAC, "remove UE %x from ul_config_pdu_list %d/%d\n",
-                        rnti,
-                        pdu_index,
-                        pdu_number);
+      for (int pdu_index = pdu_number - 1; pdu_index >= 0; pdu_index--) {
+        if (ul_req_tmp->ul_config_pdu_list[pdu_index].ulsch_pdu.ulsch_pdu_rel8.rnti == rnti) {
+          LOG_I(MAC, "remove UE %x from ul_config_pdu_list %d/%d\n", rnti, pdu_index, pdu_number);
 
-                  if (pdu_index < pdu_number -1) {
-                    memcpy(&ul_req_tmp->ul_config_pdu_list[pdu_index],
-                           &ul_req_tmp->ul_config_pdu_list[pdu_index+1],
-                           (pdu_number-1-pdu_index) * sizeof(nfapi_ul_config_request_pdu_t));
-                  }
+          if (pdu_index < pdu_number - 1) {
+            memcpy(&ul_req_tmp->ul_config_pdu_list[pdu_index],
+                   &ul_req_tmp->ul_config_pdu_list[pdu_index + 1],
+                   (pdu_number - 1 - pdu_index) * sizeof(nfapi_ul_config_request_pdu_t));
+          }
 
-                  ul_req_tmp->number_of_pdus--;
-                }
-              } // end for pdu_index
-            } // end if (ul_req_tmp)
+          ul_req_tmp->number_of_pdus--;
+        }
+      } // end for pdu_index
+    } // end if (ul_req_tmp)
           } // end for j
 
           rrc_mac_remove_ue(module_idP,rnti);
@@ -946,12 +945,12 @@ eNB_dlsch_ulsch_scheduler(module_id_t module_idP,
       int(*schedule_mch)(module_id_t module_idP, uint8_t CC_id, frame_t frameP, sub_frame_t subframe) = NULL;
       schedule_mch = schedule_MBMS_NFAPI;
       if(schedule_mch){
-      	mbsfn_status[CC_id] = schedule_mch(module_idP, CC_id, frameP, subframeP);
+        mbsfn_status[CC_id] = schedule_mch(module_idP, CC_id, frameP, subframeP);
       }
       stop_meas(&RC.mac[module_idP]->schedule_mch);
     }
     if (cc[CC_id].FeMBMS_flag > 0) {
-	do_fembms_si = 1;
+      do_fembms_si = 1;
     }
 
   }

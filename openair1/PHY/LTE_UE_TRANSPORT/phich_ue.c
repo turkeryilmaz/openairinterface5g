@@ -59,10 +59,7 @@ uint8_t rv_table[4] = {0, 2, 3, 1};
 
 // This routine demodulates the PHICH and updates PUSCH/ULSCH parameters
 
-void rx_phich(PHY_VARS_UE *ue,
-	      UE_rxtx_proc_t *proc,
-              uint8_t subframe,
-              uint8_t eNB_id)
+void rx_phich(PHY_VARS_UE *ue, UE_rxtx_proc_t *proc, uint8_t subframe, uint8_t eNB_id)
 {
 
 

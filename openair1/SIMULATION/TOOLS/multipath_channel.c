@@ -34,14 +34,14 @@ uint8_t multipath_channel_nosigconv(channel_desc_t *desc)
 
 //#define CHANNEL_SSE
 #ifdef CHANNEL_SSE
-void __attribute__ ((no_sanitize_address)) multipath_channel(channel_desc_t *desc,
-                       double tx_sig_re[NB_ANTENNAS_TX][30720*2],
-                       double tx_sig_im[NB_ANTENANS_TX][30720*2],
-                       double rx_sig_re[NB_ANTENNAS_RX][30720*2],
-                       double rx_sig_im[NB_ANTENNAS_RX][30720*2],
-                       uint32_t length,
-                       uint8_t keep_channel,
-             		       int log_channel)
+void __attribute__((no_sanitize_address)) multipath_channel(channel_desc_t *desc,
+                                                            double tx_sig_re[NB_ANTENNAS_TX][30720 * 2],
+                                                            double tx_sig_im[NB_ANTENANS_TX][30720 * 2],
+                                                            double rx_sig_re[NB_ANTENNAS_RX][30720 * 2],
+                                                            double rx_sig_im[NB_ANTENNAS_RX][30720 * 2],
+                                                            uint32_t length,
+                                                            uint8_t keep_channel,
+                                                            int log_channel)
 {
 
   int i,ii,j,l;
@@ -143,14 +143,14 @@ void __attribute__ ((no_sanitize_address)) multipath_channel(channel_desc_t *des
 
 #else
 
-void __attribute__ ((no_sanitize_address)) multipath_channel(channel_desc_t *desc,
-                       double *tx_sig_re[NB_ANTENNAS_TX],
-                       double *tx_sig_im[NB_ANTENNAS_TX],
-                       double *rx_sig_re[NB_ANTENNAS_RX],
-                       double *rx_sig_im[NB_ANTENNAS_RX],
-                       uint32_t length,
-                       uint8_t keep_channel,
-		                   int log_channel)
+void __attribute__((no_sanitize_address)) multipath_channel(channel_desc_t *desc,
+                                                            double *tx_sig_re[NB_ANTENNAS_TX],
+                                                            double *tx_sig_im[NB_ANTENNAS_TX],
+                                                            double *rx_sig_re[NB_ANTENNAS_RX],
+                                                            double *rx_sig_im[NB_ANTENNAS_RX],
+                                                            uint32_t length,
+                                                            uint8_t keep_channel,
+                                                            int log_channel)
 {
 
   double path_loss = pow(10,desc->path_loss_dB/20);
@@ -195,8 +195,8 @@ void __attribute__ ((no_sanitize_address)) multipath_channel(channel_desc_t *des
           if (i==0 && log_channel == 1) {
             printf("channel[%d][%d][%d] = %f dB \t(%e, %e)\n",
                    ii, j, l, 10 * log10(pow(chan[l].r, 2.0) + pow(chan[l].i, 2.0)), chan[l].r, chan[l].i);
-	        }
-          #endif
+            }
+#endif
         } //l
       }  // j
 #if 0
@@ -216,9 +216,8 @@ void __attribute__ ((no_sanitize_address)) multipath_channel(channel_desc_t *des
       rx_sig_im[ii][i+dd] = rx_tmp.i*path_loss;
 #ifdef DEBUG_CH
       if ((i%32)==0) {
-	       printf("rx aa %d: %f, %f  =>  %e, %e\n",
-                ii,  rx_tmp.r, rx_tmp.i, rx_sig_re[ii][i-dd], rx_sig_im[ii][i-dd]);
-      }	
+        printf("rx aa %d: %f, %f  =>  %e, %e\n", ii, rx_tmp.r, rx_tmp.i, rx_sig_re[ii][i - dd], rx_sig_im[ii][i - dd]);
+      }
 #endif      
       //rx_sig_re[ii][i] = sqrt(.5)*(tx_sig_re[0][i] + tx_sig_re[1][i]);
       //rx_sig_im[ii][i] = sqrt(.5)*(tx_sig_im[0][i] + tx_sig_im[1][i]);

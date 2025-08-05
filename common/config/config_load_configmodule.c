@@ -222,9 +222,7 @@ int config_cmdlineonly_get(configmodule_interface_t *cfg, paramdef_t *cfgoptions
   return numdefvals;
 }
 
-configmodule_interface_t *load_configmodule(int argc,
-					    char **argv,
-					    uint32_t initflags)
+configmodule_interface_t *load_configmodule(int argc, char **argv, uint32_t initflags)
 {
   char *cfgparam=NULL;
   char *modeparams=NULL;
@@ -244,7 +242,7 @@ configmodule_interface_t *load_configmodule(int argc,
   /* first parse the command line to look for the -O option */
   for (i = 0; i<argc; i++) {
     if (strlen(argv[i]) < 2)
-    	continue;
+      continue;
 
     if ( argv[i][1] == 'O' && i < (argc -1)) {
       cfgparam = argv[i+1];

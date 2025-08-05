@@ -619,21 +619,21 @@ LTE_DRX_Config_t *do_DrxConfig(int CC_id,
   }
 
   /* Check the UE capabilities, CDRX not implemented for Coverage Extension */
-  LTE_UE_EUTRA_Capability_v920_IEs_t	*cap_920 = NULL;
-  LTE_UE_EUTRA_Capability_v940_IEs_t	*cap_940 = NULL;
-  LTE_UE_EUTRA_Capability_v1020_IEs_t	*cap_1020 = NULL;
-  LTE_UE_EUTRA_Capability_v1060_IEs_t	*cap_1060 = NULL;
-  LTE_UE_EUTRA_Capability_v1090_IEs_t	*cap_1090 = NULL;
-  LTE_UE_EUTRA_Capability_v1130_IEs_t	*cap_1130 = NULL;
-  LTE_UE_EUTRA_Capability_v1170_IEs_t	*cap_1170 = NULL;
-  LTE_UE_EUTRA_Capability_v1180_IEs_t	*cap_1180 = NULL;
-  LTE_UE_EUTRA_Capability_v11a0_IEs_t	*cap_11a0 = NULL;
-  LTE_UE_EUTRA_Capability_v1250_IEs_t	*cap_1250 = NULL;
-  LTE_UE_EUTRA_Capability_v1260_IEs_t	*cap_1260 = NULL;
-  LTE_UE_EUTRA_Capability_v1270_IEs_t	*cap_1270 = NULL;
-  LTE_UE_EUTRA_Capability_v1280_IEs_t	*cap_1280 = NULL;
-  LTE_UE_EUTRA_Capability_v1310_IEs_t	*cap_1310 = NULL;
-  LTE_CE_Parameters_r13_t	*CE_param = NULL;
+  LTE_UE_EUTRA_Capability_v920_IEs_t *cap_920 = NULL;
+  LTE_UE_EUTRA_Capability_v940_IEs_t *cap_940 = NULL;
+  LTE_UE_EUTRA_Capability_v1020_IEs_t *cap_1020 = NULL;
+  LTE_UE_EUTRA_Capability_v1060_IEs_t *cap_1060 = NULL;
+  LTE_UE_EUTRA_Capability_v1090_IEs_t *cap_1090 = NULL;
+  LTE_UE_EUTRA_Capability_v1130_IEs_t *cap_1130 = NULL;
+  LTE_UE_EUTRA_Capability_v1170_IEs_t *cap_1170 = NULL;
+  LTE_UE_EUTRA_Capability_v1180_IEs_t *cap_1180 = NULL;
+  LTE_UE_EUTRA_Capability_v11a0_IEs_t *cap_11a0 = NULL;
+  LTE_UE_EUTRA_Capability_v1250_IEs_t *cap_1250 = NULL;
+  LTE_UE_EUTRA_Capability_v1260_IEs_t *cap_1260 = NULL;
+  LTE_UE_EUTRA_Capability_v1270_IEs_t *cap_1270 = NULL;
+  LTE_UE_EUTRA_Capability_v1280_IEs_t *cap_1280 = NULL;
+  LTE_UE_EUTRA_Capability_v1310_IEs_t *cap_1310 = NULL;
+  LTE_CE_Parameters_r13_t *CE_param = NULL;
   long *ce_a_param = NULL;
 
   cap_920 = UEcap->nonCriticalExtension;

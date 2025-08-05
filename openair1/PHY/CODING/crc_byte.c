@@ -131,9 +131,8 @@ void crcTableInit (void)
     crc8Table[c] = crcbit(&c, 1, poly8) >> 24;
     crc6Table[c] = crcbit(&c, 1, poly6) >> 24;
   } while (++c);
-#if defined(__SSE4_1__) || defined(__aarch64__) 
-    crc_xmm_be_le_swap128 = simde_mm_setr_epi32(0x0c0d0e0f, 0x08090a0b,
-				    	        0x04050607, 0x00010203);
+#if defined(__SSE4_1__) || defined(__aarch64__)
+  crc_xmm_be_le_swap128 = simde_mm_setr_epi32(0x0c0d0e0f, 0x08090a0b, 0x04050607, 0x00010203);
 
 #endif
 }
@@ -341,9 +340,8 @@ int check_crc(uint8_t* decoded_bytes, uint32_t n, uint8_t crc_type)
     
   case CRC24_A:
     oldcrc&=0x00ffffff;
-    crc = crc24a(decoded_bytes,
-		 n-24)>>8;
-    
+    crc = crc24a(decoded_bytes, n - 24) >> 8;
+
     break;
     
   case CRC24_B:

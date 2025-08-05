@@ -22,16 +22,14 @@
 
 
 struct pnf_t {
+  nfapi_pnf_config_t _public;
 
-	nfapi_pnf_config_t _public;
+  int p5_sock;
+  uint8_t tx_message_buffer[NFAPI_MAX_PACKED_MESSAGE_SIZE];
 
-	int p5_sock;
-	uint8_t tx_message_buffer[NFAPI_MAX_PACKED_MESSAGE_SIZE];
+  uint8_t sctp;
 
-	uint8_t sctp;
-
-	uint8_t terminate;
-
+  uint8_t terminate;
 };
 
 

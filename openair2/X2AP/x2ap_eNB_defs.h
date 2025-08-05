@@ -182,7 +182,7 @@ typedef struct x2ap_eNB_instance_s {
 
 //#ifdef Rel15
   int32_t                 nr_band[MAX_NUM_CCs];
-  uint32_t				  tdd_nRARFCN[MAX_NUM_CCs];
+  uint32_t tdd_nRARFCN[MAX_NUM_CCs];
   int16_t                 nr_SCS[MAX_NUM_CCs];
 //#endif
 

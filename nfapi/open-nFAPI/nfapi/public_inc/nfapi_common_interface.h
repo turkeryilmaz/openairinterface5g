@@ -43,7 +43,7 @@ typedef struct nfapi_p7_codec_config {
   /*! Optional call back to allow the user to define the memory deallocator.
    *  \param ptr A poiner to a memory block allocated by the allocate callback
    *
-   *	If not set the client should use free
+   *    If not set the client should use free
    */
   void (*deallocate)(void* ptr);
 

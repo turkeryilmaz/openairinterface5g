@@ -41,8 +41,7 @@
 
 */
 
-void schedule_fembms_mib(module_id_t module_idP,
-		  frame_t frameP, sub_frame_t subframeP);
+void schedule_fembms_mib(module_id_t module_idP, frame_t frameP, sub_frame_t subframeP);
 
 /** \addtogroup _mac
  *  @{

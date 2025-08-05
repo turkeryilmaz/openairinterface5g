@@ -29,7 +29,7 @@
 
 //-------------------------------------------------------------------------------------------//
 // Defines to access message fields.
-#define M3AP_MME_SCTP_REQ(mSGpTR)		(mSGpTR)->ittiMsg.m3ap_mme_sctp_req
+#define M3AP_MME_SCTP_REQ(mSGpTR) (mSGpTR)->ittiMsg.m3ap_mme_sctp_req
 
 #define M3AP_REGISTER_MCE_REQ(mSGpTR)           (mSGpTR)->ittiMsg.m3ap_register_mce_req
 //#define M3AP_HANDOVER_REQ(mSGpTR)               (mSGpTR)->ittiMsg.m3ap_handover_req
@@ -39,26 +39,24 @@
 //#define M3AP_UE_CONTEXT_RELEASE(mSGpTR)         (mSGpTR)->ittiMsg.m3ap_ue_context_release
 //#define M3AP_HANDOVER_CANCEL(mSGpTR)            (mSGpTR)->ittiMsg.m3ap_handover_cancel
 
-
-#define M3AP_MBMS_SESSION_START_REQ(mSGpTR)            	(mSGpTR)->ittiMsg.m3ap_session_start_req
+#define M3AP_MBMS_SESSION_START_REQ(mSGpTR) (mSGpTR)->ittiMsg.m3ap_session_start_req
 #define M3AP_MBMS_SESSION_START_RESP(mSGpTR)            (mSGpTR)->ittiMsg.m3ap_session_start_resp
 #define M3AP_MBMS_SESSION_START_FAILURE(mSGpTR)         (mSGpTR)->ittiMsg.m3ap_session_start_failure
-#define M3AP_MBMS_SESSION_STOP_REQ(mSGpTR)            	(mSGpTR)->ittiMsg.m3ap_session_stop_req
-#define M3AP_MBMS_SESSION_STOP_RESP(mSGpTR)           	(mSGpTR)->ittiMsg.m3ap_session_stop_resp
+#define M3AP_MBMS_SESSION_STOP_REQ(mSGpTR) (mSGpTR)->ittiMsg.m3ap_session_stop_req
+#define M3AP_MBMS_SESSION_STOP_RESP(mSGpTR) (mSGpTR)->ittiMsg.m3ap_session_stop_resp
 #define M3AP_MBMS_SESSION_STOP_FAILURE(mSGpTR)          (mSGpTR)->ittiMsg.m3ap_session_stop_failure
-#define M3AP_ERROR_INDICATION(mSGpTR)          		(mSGpTR)->ittiMsg.m3ap_error_indication
-#define M3AP_RESET(mSGpTR)          			(mSGpTR)->ittiMsg.m3ap_reset
-#define M3AP_RESET_ACK(mSGpTR)          		(mSGpTR)->ittiMsg.m3ap_reset_ack
+#define M3AP_ERROR_INDICATION(mSGpTR) (mSGpTR)->ittiMsg.m3ap_error_indication
+#define M3AP_RESET(mSGpTR) (mSGpTR)->ittiMsg.m3ap_reset
+#define M3AP_RESET_ACK(mSGpTR) (mSGpTR)->ittiMsg.m3ap_reset_ack
 #define M3AP_MBMS_SESSION_UPDATE_REQ(mSGpTR)            (mSGpTR)->ittiMsg.m3ap_mbms_session_update_req
 #define M3AP_MBMS_SESSION_UPDATE_RESP(mSGpTR)           (mSGpTR)->ittiMsg.m3ap_mbms_session_update_resp
 #define M3AP_MBMS_SESSION_UPDATE_FAILURE(mSGpTR)        (mSGpTR)->ittiMsg.m3ap_mbms_session_update_failure
-#define M3AP_SETUP_REQ(mSGpTR)				(mSGpTR)->ittiMsg.m3ap_setup_req
-#define M3AP_SETUP_RESP(mSGpTR)				(mSGpTR)->ittiMsg.m3ap_setup_resp
-#define M3AP_SETUP_FAILURE(mSGpTR)			(mSGpTR)->ittiMsg.m3ap_setup_failure
-#define M3AP_MCE_CONFIGURATION_UPDATE(mSGpTR)		(mSGpTR)->ittiMsg.m3ap_mce_configuration_update
-#define M3AP_MCE_CONFIGURATION_UPDATE_ACK(mSGpTR)	(mSGpTR)->ittiMsg.m3ap_mce_configuration_update_ack
-#define M3AP_MCE_CONFIGURATION_UPDATE_FAILURE(mSGpTR)	(mSGpTR)->ittiMsg.m3ap_mce_configuration_update_failure
-
+#define M3AP_SETUP_REQ(mSGpTR) (mSGpTR)->ittiMsg.m3ap_setup_req
+#define M3AP_SETUP_RESP(mSGpTR) (mSGpTR)->ittiMsg.m3ap_setup_resp
+#define M3AP_SETUP_FAILURE(mSGpTR) (mSGpTR)->ittiMsg.m3ap_setup_failure
+#define M3AP_MCE_CONFIGURATION_UPDATE(mSGpTR) (mSGpTR)->ittiMsg.m3ap_mce_configuration_update
+#define M3AP_MCE_CONFIGURATION_UPDATE_ACK(mSGpTR) (mSGpTR)->ittiMsg.m3ap_mce_configuration_update_ack
+#define M3AP_MCE_CONFIGURATION_UPDATE_FAILURE(mSGpTR) (mSGpTR)->ittiMsg.m3ap_mce_configuration_update_failure
 
 #define M3AP_MAX_NB_MCE_IP_ADDRESS 2
 
@@ -265,11 +263,11 @@ typedef struct m3ap_deregistered_mce_ind_s {
 //
 
 typedef struct m3ap_mme_sctp_req_s {
-  	/* the local mce ip address to bind */
-	net_ip_address_t mme_m3_ip_address;
+  /* the local mce ip address to bind */
+  net_ip_address_t mme_m3_ip_address;
 
-  	/* enb port for m2c*/
-  	uint32_t mme_port_for_M3C;
+  /* enb port for m2c*/
+  uint32_t mme_port_for_M3C;
 }m3ap_mme_sctp_req_t;
 
 

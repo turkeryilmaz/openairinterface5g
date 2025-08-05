@@ -595,7 +595,7 @@ typedef struct NR_UE_MAC_INST_s {
   /// measurements from CSI-RS
   fapi_nr_csirs_measurements_t csirs_measurements;
 
-  ////	FAPI-like interface message
+  ////    FAPI-like interface message
   fapi_nr_ul_config_request_t *ul_config_request;
   fapi_nr_dl_config_request_t *dl_config_request;
 

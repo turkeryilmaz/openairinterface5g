@@ -282,7 +282,7 @@ typedef struct {
   resourceType_t resourceType;
   /// \brief The DCI "code point" upon which the UE shall transmit SRS according to this SRS resource set configuration.
   // Corresponds to L1 parameter 'AperiodicSRS-ResourceTrigger' (see 38.214, section 6.1.1.2)
-  uint8_t aperiodicSRS_ResourceTrigger;		 // INTEGER (0..maxNrofSRS-TriggerStates-1) : [0:3]
+  uint8_t aperiodicSRS_ResourceTrigger; // INTEGER (0..maxNrofSRS-TriggerStates-1) : [0:3]
   /// \brief ID of CSI-RS resource associated with this SRS resource set. (see 38.214, section 6.1.1.2).
   uint8_t NZP_CSI_RS_ResourceId;
   /// \brief An offset in number of slots between the triggering DCI and the actual transmission of this SRS-ResourceSet.

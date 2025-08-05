@@ -187,7 +187,7 @@ int emm_proc_authentication_request(nas_user_t *user, int native_ksi, int ksi,
      * REQUEST message OR if this is first time UE starting the
      * Authentication process
      */
-	authentication_data->auth_process_started = true;
+    authentication_data->auth_process_started = true;
     OctetString auts;
     auts.length = 0;
     auts.value = (uint8_t *)malloc(AUTH_AUTS_SIZE);

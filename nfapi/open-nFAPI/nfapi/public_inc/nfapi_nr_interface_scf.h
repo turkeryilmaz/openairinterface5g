@@ -268,7 +268,7 @@ typedef struct
 //3.3.2 CONFIG
 
 /*typedef struct {
-	nfapi_nr_config_errors_e error_code;
+    nfapi_nr_config_errors_e error_code;
   uint8_t number_of_invalid_tlvs_that_can_only_be_configured_in_idle;
   uint8_t unmber_of_missing_tlvs;
   //? ↓
@@ -531,59 +531,59 @@ typedef enum {    // Table 2-27
 
 //PNF P5 NR 
 typedef struct {
-	nfapi_nr_p4_p5_message_header_t header;
-	nfapi_vendor_extension_tlv_t vendor_extension;
+  nfapi_nr_p4_p5_message_header_t header;
+  nfapi_vendor_extension_tlv_t vendor_extension;
 } nfapi_nr_pnf_param_request_t;
 
 typedef struct {
-	nfapi_nr_p4_p5_message_header_t header;
-	uint8_t error_code;
+  nfapi_nr_p4_p5_message_header_t header;
+  uint8_t error_code;
   uint8_t num_tlvs;
-	nfapi_pnf_param_general_t pnf_param_general;
-	nfapi_pnf_phy_t pnf_phy;
-	nfapi_vendor_extension_tlv_t vendor_extension;
+  nfapi_pnf_param_general_t pnf_param_general;
+  nfapi_pnf_phy_t pnf_phy;
+  nfapi_vendor_extension_tlv_t vendor_extension;
 } nfapi_nr_pnf_param_response_t;
 
 typedef struct {
-	nfapi_nr_p4_p5_message_header_t header;
-	uint8_t num_tlvs;
-	nfapi_pnf_phy_rf_config_t pnf_phy_rf_config;
-	nfapi_vendor_extension_tlv_t vendor_extension;
+  nfapi_nr_p4_p5_message_header_t header;
+  uint8_t num_tlvs;
+  nfapi_pnf_phy_rf_config_t pnf_phy_rf_config;
+  nfapi_vendor_extension_tlv_t vendor_extension;
 } nfapi_nr_pnf_config_request_t;
 
 typedef struct {
-	nfapi_nr_p4_p5_message_header_t header;
-	uint8_t error_code;
-	nfapi_vendor_extension_tlv_t vendor_extension;
+  nfapi_nr_p4_p5_message_header_t header;
+  uint8_t error_code;
+  nfapi_vendor_extension_tlv_t vendor_extension;
 } nfapi_nr_pnf_config_response_t;
 
 typedef struct {
-	nfapi_nr_p4_p5_message_header_t header;
-	nfapi_vendor_extension_tlv_t vendor_extension;
+  nfapi_nr_p4_p5_message_header_t header;
+  nfapi_vendor_extension_tlv_t vendor_extension;
 } nfapi_nr_pnf_start_request_t;
 
 typedef struct {
-	nfapi_nr_p4_p5_message_header_t header;
-	uint32_t error_code;
-	nfapi_vendor_extension_tlv_t vendor_extension;
+  nfapi_nr_p4_p5_message_header_t header;
+  uint32_t error_code;
+  nfapi_vendor_extension_tlv_t vendor_extension;
 } nfapi_nr_pnf_start_response_t;
 
 typedef struct {
-	nfapi_nr_p4_p5_message_header_t header;
-	nfapi_vendor_extension_tlv_t vendor_extension;
+  nfapi_nr_p4_p5_message_header_t header;
+  nfapi_vendor_extension_tlv_t vendor_extension;
 } nfapi_nr_pnf_stop_request_t;
 
 typedef struct {
-	nfapi_nr_p4_p5_message_header_t header;
-	uint32_t error_code;
-	nfapi_vendor_extension_tlv_t vendor_extension;
+  nfapi_nr_p4_p5_message_header_t header;
+  uint32_t error_code;
+  nfapi_vendor_extension_tlv_t vendor_extension;
 } nfapi_nr_pnf_stop_response_t;
 
 
 /* PARAM.REQUEST */
 typedef struct {
   nfapi_nr_p4_p5_message_header_t  header;
-	nfapi_vendor_extension_tlv_t  vendor_extension;
+  nfapi_vendor_extension_tlv_t vendor_extension;
 } nfapi_nr_param_request_scf_t;
 
 /* PARAM.RESPONSE */
@@ -665,8 +665,8 @@ typedef struct {
 //3.3.3 START
 
 typedef struct {
-	nfapi_nr_p4_p5_message_header_t header;
-	nfapi_vendor_extension_tlv_t vendor_extension;
+  nfapi_nr_p4_p5_message_header_t header;
+  nfapi_vendor_extension_tlv_t vendor_extension;
 } nfapi_nr_start_request_scf_t;
 
 typedef struct {
@@ -1110,18 +1110,18 @@ typedef struct {
 
 
 typedef struct {
-	nfapi_nr_p7_message_header_t header;
-	uint32_t t1;
-	int32_t delta_sfn_slot;
-	nfapi_vendor_extension_tlv_t vendor_extension;
+  nfapi_nr_p7_message_header_t header;
+  uint32_t t1;
+  int32_t delta_sfn_slot;
+  nfapi_vendor_extension_tlv_t vendor_extension;
 } nfapi_nr_dl_node_sync_t;
 
 typedef struct {
-	nfapi_nr_p7_message_header_t header;
-	uint32_t t1;
-	uint32_t t2;
-	uint32_t t3;	
-	nfapi_vendor_extension_tlv_t vendor_extension;
+  nfapi_nr_p7_message_header_t header;
+  uint32_t t1;
+  uint32_t t2;
+  uint32_t t3;
+  nfapi_vendor_extension_tlv_t vendor_extension;
 } nfapi_nr_ul_node_sync_t;
 
 typedef struct {
@@ -1167,37 +1167,37 @@ typedef struct
   nfapi_nr_dl_tti_ssb_pdu_t* ssb_pdu;
 } nfapi_nr_dl_pdu_configuration_t;
 */
- /* 
-typedef struct 
+/*
+typedef struct
 {
-  uint16_t pdu_type;//0: PDCCH PDU 1: PDSCH PDU 2: CSI-RS PDU 3: SSB PDU, 
-  uint16_t pdu_size;//Size of the PDU control information (in bytes). This length value includes the 4 bytes required for the PDU type and PDU size parameters. Value 0 -> 65535
-  nfapi_nr_dl_pdu_configuration_t* dl_pdu_configuration;
+ uint16_t pdu_type;//0: PDCCH PDU 1: PDSCH PDU 2: CSI-RS PDU 3: SSB PDU,
+ uint16_t pdu_size;//Size of the PDU control information (in bytes). This length value includes the 4 bytes required for the PDU
+type and PDU size parameters. Value 0 -> 65535 nfapi_nr_dl_pdu_configuration_t* dl_pdu_configuration;
 
 } nfapi_nr_dl_tti_request_number_of_pdus_t;
-  
 
-typedef struct 
+
+typedef struct
 {
-  uint8_t  pdu_idx;//This value is an index for number of PDU identified by nPDU in this message Value: 0 -> 255
+ uint8_t  pdu_idx;//This value is an index for number of PDU identified by nPDU in this message Value: 0 -> 255
 
 } nfapi_nr_dl_tti_request_number_of_ue_t;
 
-typedef struct 
+typedef struct
 {
-  uint8_t  n_ue;//Number of UE in this group For SU-MIMO, one group includes one UE only. For MU-MIMO, one group includes up to 12 UEs. Value 1 -> 12
-  nfapi_nr_dl_tti_request_number_of_ue_t* ue_list;
+ uint8_t  n_ue;//Number of UE in this group For SU-MIMO, one group includes one UE only. For MU-MIMO, one group includes up to 12
+UEs. Value 1 -> 12 nfapi_nr_dl_tti_request_number_of_ue_t* ue_list;
 
 } nfapi_nr_dl_tti_request_number_of_groups_t;
 
 //3.4.2 dl_tti_request
 typedef struct {
-	uint16_t sfn; //0->1023   
-  uint16_t slot;//0->319
-  uint8_t n_pdus;//Number of PDUs that are included in this message. All PDUs in the message are numbered in order. Value 0 -> 255
-  uint8_t n_group;//Number of UE Groups included in this message. Value 0 -> 255
-  nfapi_nr_dl_tti_request_number_of_pdus_t* pdus_list;
-  nfapi_nr_dl_tti_request_number_of_groups_t* groups_list;
+   uint16_t sfn; //0->1023
+ uint16_t slot;//0->319
+ uint8_t n_pdus;//Number of PDUs that are included in this message. All PDUs in the message are numbered in order. Value 0 -> 255
+ uint8_t n_group;//Number of UE Groups included in this message. Value 0 -> 255
+ nfapi_nr_dl_tti_request_number_of_pdus_t* pdus_list;
+ nfapi_nr_dl_tti_request_number_of_groups_t* groups_list;
 
 } nfapi_nr_dl_tti_request_t;
 */
@@ -1582,7 +1582,7 @@ typedef struct
 } nfapi_nr_tx_data_request_t;
 
 typedef enum {
-	NFAPI_NR_DL_DATA_MSG_INVALID_STATE,
+  NFAPI_NR_DL_DATA_MSG_INVALID_STATE,
   NFAPI_NR_DL_DATA_MSG_INVALID_SFN,
   NFAPI_NR_DL_DATA_MSG_TX_ERR
 

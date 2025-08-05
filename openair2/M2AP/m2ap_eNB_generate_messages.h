@@ -32,10 +32,10 @@
 #include "m2ap_eNB_defs.h"
 #include "m2ap_common.h"
 
-//int m2ap_eNB_generate_m2_setup_request(m2ap_eNB_instance_t *instance_p,
-//				       m2ap_eNB_data_t *m2ap_eNB_data_p);
+// int m2ap_eNB_generate_m2_setup_request(m2ap_eNB_instance_t *instance_p,
+//                        m2ap_eNB_data_t *m2ap_eNB_data_p);
 //
-//int m2ap_MCE_generate_m2_setup_response(m2ap_eNB_instance_t *instance_p, m2ap_eNB_data_t *m2ap_eNB_data_p);
+// int m2ap_MCE_generate_m2_setup_response(m2ap_eNB_instance_t *instance_p, m2ap_eNB_data_t *m2ap_eNB_data_p);
 //
 /*int m2ap_MCE_generate_m2_setup_failure(instance_t instance,
                                        sctp_assoc_t assoc_id,

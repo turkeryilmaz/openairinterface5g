@@ -128,7 +128,7 @@ static void write_task_output(uint8_t *f,
 
   for (int i=0;i<E2;i+=16) {
     uint32_t Eoffset2 = Eoffset;
-    if (i<E) {	
+    if (i < E) {
       for (int j=0; j < E2_first_segment; j++) {
         uint32_t Eoffset2_byte = Eoffset2 >> 4;
         uint32_t Eoffset2_bit = Eoffset2 & 15;
@@ -259,13 +259,12 @@ static void ldpc8blocks(void *p)
   uint32_t Emax = E;
   for (int s=macro_segment;s<macro_segment_end;s++)
       if (nrLDPC_TB_encoding_parameters->segments[s].E != E) {
-	 E2=nrLDPC_TB_encoding_parameters->segments[s].E;
-         Eshift=true;
-         if(E2 > Emax)
-           Emax = E2;
-         break;
-      }	 
-    
+        E2 = nrLDPC_TB_encoding_parameters->segments[s].E;
+        Eshift = true;
+        if (E2 > Emax)
+          Emax = E2;
+        break;
+      }
 
   LOG_D(NR_PHY,
         "Rate Matching, Code segment %d...%d/%d (coded bits (G) %u, E %d, E2 %d Filler bits %d, Filler offset %d mod_order %d, nb_rb "
@@ -331,7 +330,7 @@ static void ldpc8blocks(void *p)
           "Rate Matching, Code segments %d...%d/%d (coded bits (G) %u, E %d, Kr %d, Filler bits %d, Filler offset %d mod_order %d, "
           "nb_rb %d)...\n",
           macro_segment,
-	  macro_segment_end,
+          macro_segment_end,
           impp->n_segments,
           G,
           E,

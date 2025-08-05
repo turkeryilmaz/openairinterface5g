@@ -33,8 +33,8 @@
 #define __RRC_PARAMSVALUES__H__
 /*    cell configuration section name */
 #define ENB_CONFIG_STRING_ENB_LIST                      "eNBs"
-/* component carriers configuration section name */		
-#define ENB_CONFIG_STRING_COMPONENT_CARRIERS                            "component_carriers"		 
+/* component carriers configuration section name */
+#define ENB_CONFIG_STRING_COMPONENT_CARRIERS "component_carriers"
 #define ENB_CONFIG_STRING_COMPONENT_BR_PARAMETERS                       "br_parameters"
 
 
@@ -71,7 +71,15 @@
 
 #define UETIMER_T300_OKVALUES                                   {100,200,300,400,600,1000,1500,2000}
 #define UETT300(A)                                              LTE_UE_TimersAndConstants__t300_ ## A
-#define UETIMER_T300_MODVALUES                                  { UETT300(ms100), UETT300(ms200),UETT300(ms300),UETT300(ms400),UETT300(ms600),UETT300(ms1000),UETT300(ms1500),UETT300(ms2000)}           		
+#define UETIMER_T300_MODVALUES \
+  {UETT300(ms100),             \
+   UETT300(ms200),             \
+   UETT300(ms300),             \
+   UETT300(ms400),             \
+   UETT300(ms600),             \
+   UETT300(ms1000),            \
+   UETT300(ms1500),            \
+   UETT300(ms2000)}
 
 #define UETIMER_T301_OKVALUES                                   {100,200,300,400,600,1000,1500,2000}
 #define UETT301(A)                                              LTE_UE_TimersAndConstants__t301_ ## A

@@ -249,34 +249,34 @@ int main ( int argc, char **argv )
 
       // Check if control port set
       if  (!(config_isparamset(RUParamList.paramarray[j],RU_REMOTE_PORTC_IDX)) ) {
-	printf("Removing control port for RU %d\n",j);
-	ru->has_ctrl_prt            = 0;
+        printf("Removing control port for RU %d\n", j);
+        ru->has_ctrl_prt = 0;
       } else {
-	ru->eth_params.my_portc                 = *(RUParamList.paramarray[j][RU_LOCAL_PORTC_IDX].uptr);
-	ru->eth_params.remote_portc             = *(RUParamList.paramarray[j][RU_REMOTE_PORTC_IDX].uptr);
-	printf(" Control port %u \n",ru->eth_params.my_portc);
+        ru->eth_params.my_portc = *(RUParamList.paramarray[j][RU_LOCAL_PORTC_IDX].uptr);
+        ru->eth_params.remote_portc = *(RUParamList.paramarray[j][RU_REMOTE_PORTC_IDX].uptr);
+        printf(" Control port %u \n", ru->eth_params.my_portc);
       }
 
       if (strcmp(*(RUParamList.paramarray[j][RU_TRANSPORT_PREFERENCE_IDX].strptr), "udp") == 0) {
-	ru->if_south                        = LOCAL_RF;
-	ru->function                        = NGFI_RRU_IF5;
-	ru->eth_params.transp_preference    = ETH_UDP_MODE;
-	printf("Setting function for RU %d to NGFI_RRU_IF5 (udp)\n",j);
+        ru->if_south = LOCAL_RF;
+        ru->function = NGFI_RRU_IF5;
+        ru->eth_params.transp_preference = ETH_UDP_MODE;
+        printf("Setting function for RU %d to NGFI_RRU_IF5 (udp)\n", j);
       } else if (strcmp(*(RUParamList.paramarray[j][RU_TRANSPORT_PREFERENCE_IDX].strptr), "raw") == 0) {
-	ru->if_south                        = LOCAL_RF;
-	ru->function                        = NGFI_RRU_IF5;
-	ru->eth_params.transp_preference    = ETH_RAW_MODE;
-	printf("Setting function for RU %d to NGFI_RRU_IF5 (raw)\n",j);
+        ru->if_south = LOCAL_RF;
+        ru->function = NGFI_RRU_IF5;
+        ru->eth_params.transp_preference = ETH_RAW_MODE;
+        printf("Setting function for RU %d to NGFI_RRU_IF5 (raw)\n", j);
       } else if (strcmp(*(RUParamList.paramarray[j][RU_TRANSPORT_PREFERENCE_IDX].strptr), "udp_if4p5") == 0) {
-	ru->if_south                        = LOCAL_RF;
-	ru->function                        = NGFI_RRU_IF4p5;
-	ru->eth_params.transp_preference    = ETH_UDP_IF4p5_MODE;
-	printf("Setting function for RU %d to NGFI_RRU_IF4p5 (udp)\n",j);
+        ru->if_south = LOCAL_RF;
+        ru->function = NGFI_RRU_IF4p5;
+        ru->eth_params.transp_preference = ETH_UDP_IF4p5_MODE;
+        printf("Setting function for RU %d to NGFI_RRU_IF4p5 (udp)\n", j);
       } else if (strcmp(*(RUParamList.paramarray[j][RU_TRANSPORT_PREFERENCE_IDX].strptr), "raw_if4p5") == 0) {
-	ru->if_south                        = LOCAL_RF;
-	ru->function                        = NGFI_RRU_IF4p5;
-	ru->eth_params.transp_preference    = ETH_RAW_IF4p5_MODE;
-	printf("Setting function for RU %d to NGFI_RRU_IF4p5 (raw)\n",j);
+        ru->if_south = LOCAL_RF;
+        ru->function = NGFI_RRU_IF4p5;
+        ru->eth_params.transp_preference = ETH_RAW_IF4p5_MODE;
+        printf("Setting function for RU %d to NGFI_RRU_IF4p5 (raw)\n", j);
       }
 
       printf("RU %d is_slave=%s\n",j,*(RUParamList.paramarray[j][RU_IS_SLAVE_IDX].strptr));

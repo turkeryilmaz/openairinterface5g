@@ -104,9 +104,9 @@ static inline unsigned long long rdtsc_oai(void) {
 static inline uint64_t rdtsc_oai(void) __attribute__((always_inline));
 static inline uint64_t rdtsc_oai(void)
 {
-	  uint64_t r = 0;
-	    asm volatile("mrs %0, cntvct_el0" : "=r"(r));
-	      return r;
+  uint64_t r = 0;
+  asm volatile("mrs %0, cntvct_el0" : "=r"(r));
+  return r;
 }
 
 #elif defined(__arm__) 

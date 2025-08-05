@@ -236,15 +236,15 @@ static int trx_sodera_read(openair0_device *device, openair0_timestamp *ptimesta
 
      for (int b=0;b<buffsize<<2;b+=stepSize) {
        for (int ch=0;ch<s->channelscount;ch++) {
-	 // I sample
-	 sampleI = (pktStart[b + 1 + 3*ch]&0x0F)<<8;
-	 sampleI |= (pktStart[b + 3*ch]&0xFF);
-	 sampleI = (sampleI<<4)>>4;
-	 // Q sample
-	 sampleQ = (pktStart[b + 2 + 3*ch]&0x0F)<<8;
-	 sampleQ |= (pktStart[b + 1 + 3*ch]&0xFF);
-	 sampleQ = (sampleQ<<4)>>4;
-	 ((uint32_t*)buff[ch])[ind] = ((uint32_t)sampleI) | (((uint32_t)sampleQ)<<16);
+         // I sample
+         sampleI = (pktStart[b + 1 + 3 * ch] & 0x0F) << 8;
+         sampleI |= (pktStart[b + 3 * ch] & 0xFF);
+         sampleI = (sampleI << 4) >> 4;
+         // Q sample
+         sampleQ = (pktStart[b + 2 + 3 * ch] & 0x0F) << 8;
+         sampleQ |= (pktStart[b + 1 + 3 * ch] & 0xFF);
+         sampleQ = (sampleQ << 4) >> 4;
+         ((uint32_t *)buff[ch])[ind] = ((uint32_t)sampleI) | (((uint32_t)sampleQ) << 16);
        }
        ind++;
      }
@@ -306,10 +306,10 @@ static int trx_sodera_read(openair0_device *device, openair0_timestamp *ptimesta
      }
      else { // check the timestamp
        if (i==0) {
-	 if ((s->rx_timestamp + ind) != p->counter) {
-	   printf("Error, RX timestamp error, got %lu, should be %llu\n",p->counter,s->rx_timestamp+ind);
-	   return(ind);
-	 }
+         if ((s->rx_timestamp + ind) != p->counter) {
+           printf("Error, RX timestamp error, got %lu, should be %llu\n", p->counter, s->rx_timestamp + ind);
+           return (ind);
+         }
        }
        *ptimestamp = s->rx_timestamp;
        s->rx_timestamp+=nsamps;
@@ -317,17 +317,17 @@ static int trx_sodera_read(openair0_device *device, openair0_timestamp *ptimesta
      pktStart = p->data;
      for (uint16_t b=0;b<sizeof(p->data);b+=stepSize) {
        for (int ch=0;ch < s->channelscount;ch++) {
-	 // I sample
-	 sampleI = (pktStart[b + 1 + 3*ch]&0x0F)<<8;
-	 sampleI |= (pktStart[b + 3*ch]&0xFF);
-	 sampleI = (sampleI<<4)>>4;
-	 // Q sample
-	 sampleQ = (pktStart[b + 2 + 3*ch]&0x0F)<<8;
-	 sampleQ |= (pktStart[b + 1 + 3*ch]&0xFF);
-	 sampleQ = (sampleQ<<4)>>4;
-	 ((uint32_t*)buff[ch])[ind] = ((uint32_t)sampleI) | (((uint32_t)sampleQ)<<16);
+         // I sample
+         sampleI = (pktStart[b + 1 + 3 * ch] & 0x0F) << 8;
+         sampleI |= (pktStart[b + 3 * ch] & 0xFF);
+         sampleI = (sampleI << 4) >> 4;
+         // Q sample
+         sampleQ = (pktStart[b + 2 + 3 * ch] & 0x0F) << 8;
+         sampleQ |= (pktStart[b + 1 + 3 * ch] & 0xFF);
+         sampleQ = (sampleQ << 4) >> 4;
+         ((uint32_t *)buff[ch])[ind] = ((uint32_t)sampleI) | (((uint32_t)sampleQ) << 16);
        }
-       ind++;	        
+       ind++;
      }
      samples_received+=spp;
      // schedule a new transmission for this index
@@ -378,22 +378,22 @@ int openair0_set_rx_frequencies(openair0_device* device, openair0_config_t *open
   
 }
 
-int trx_sodera_set_gains(openair0_device* device, 
-		       openair0_config_t *openair0_cfg) {
-
+int trx_sodera_set_gains(openair0_device *device, openair0_config_t *openair0_cfg)
+{
   sodera_t *s = (sodera_t*)device->priv;
 
   //  s->usrp->set_tx_gain(openair0_cfg[0].tx_gain[0]);
   //  ::uhd::gain_range_t gain_range = s->usrp->get_rx_gain_range(0);
   // limit to maximum gain
   /* if (openair0_cfg[0].rx_gain[0]-openair0_cfg[0].rx_gain_offset[0] > gain_range.stop()) {
-    
+
     printf("RX Gain 0 too high, reduce by %f dB\n",
-	   openair0_cfg[0].rx_gain[0]-openair0_cfg[0].rx_gain_offset[0] - gain_range.stop());	   
+       openair0_cfg[0].rx_gain[0]-openair0_cfg[0].rx_gain_offset[0] - gain_range.stop());
     exit(-1);
   }
   s->usrp->set_rx_gain(openair0_cfg[0].rx_gain[0]-openair0_cfg[0].rx_gain_offset[0]);
-  printf("Setting SODERA RX gain to %f (rx_gain %f,gain_range.stop() %f)\n", openair0_cfg[0].rx_gain[0]-openair0_cfg[0].rx_gain_offset[0],openair0_cfg[0].rx_gain[0],gain_range.stop());
+  printf("Setting SODERA RX gain to %f (rx_gain %f,gain_range.stop() %f)\n",
+  openair0_cfg[0].rx_gain[0]-openair0_cfg[0].rx_gain_offset[0],openair0_cfg[0].rx_gain[0],gain_range.stop());
   */
   return(0);
 }
@@ -444,9 +444,10 @@ void set_rx_gain_offset(openair0_config_t *openair0_cfg, int chain_index,int bw_
   while (openair0_cfg->rx_gain_calib_table[i].freq>0) {
     diff = fabs(openair0_cfg->rx_freq[chain_index] - openair0_cfg->rx_gain_calib_table[i].freq);
     printf("cal %d: freq %f, offset %f, diff %f\n",
-	   i,
-	   openair0_cfg->rx_gain_calib_table[i].freq,
-	   openair0_cfg->rx_gain_calib_table[i].offset,diff);
+           i,
+           openair0_cfg->rx_gain_calib_table[i].freq,
+           openair0_cfg->rx_gain_calib_table[i].offset,
+           diff);
     if (min_diff > diff) {
       min_diff = diff;
       openair0_cfg->rx_gain_offset[chain_index] = openair0_cfg->rx_gain_calib_table[i].offset+gain_adj;
@@ -487,11 +488,11 @@ int openair0_dev_init_sodera(openair0_device* device, openair0_config_t *openair
     }
     LMSinfo devInfo = s->Port.GetInfo();
     printf("Device %s, HW: %d, FW: %d, Protocol %d\n",
-	   GetDeviceName(devInfo.device),
-	   (int)devInfo.hardware,
-	   (int)devInfo.firmware,
-	   (int)devInfo.protocol);
-    
+           GetDeviceName(devInfo.device),
+           (int)devInfo.hardware,
+           (int)devInfo.firmware,
+           (int)devInfo.protocol);
+
     printf("Configuring Si5351C\n");
     s->Si.Initialize(&s->Port);
     s->Si.SetPLL(0, 25000000, 0);
@@ -503,8 +504,8 @@ int openair0_dev_init_sodera(openair0_device* device, openair0_config_t *openair
     Si5351C::Status status = s->Si.ConfigureClocks();
     if (status != Si5351C::SUCCESS)
       {
-	printf("Failed to configure Si5351C");
-	exit(-1);
+      printf("Failed to configure Si5351C");
+      exit(-1);
       }
     status = s->Si.UploadConfiguration();
     if (status != Si5351C::SUCCESS)
@@ -631,59 +632,61 @@ int openair0_dev_init_sodera(openair0_device* device, openair0_config_t *openair
       printf("Sample rate programming failed\n");
       exit(-1);
     }
-    
+
     /*
       ::uhd::gain_range_t gain_range = s->usrp->get_rx_gain_range(i);
       // limit to maximum gain
       if (openair0_cfg[0].rx_gain[i]-openair0_cfg[0].rx_gain_offset[i] > gain_range.stop()) {
-	
-        printf("RX Gain %lu too high, lower by %f dB\n",i,openair0_cfg[0].rx_gain[i]-openair0_cfg[0].rx_gain_offset[i] - gain_range.stop());
-	exit(-1);
+
+        printf("RX Gain %lu too high, lower by %f dB\n",i,openair0_cfg[0].rx_gain[i]-openair0_cfg[0].rx_gain_offset[i] -
+  gain_range.stop()); exit(-1);
       }
       s->usrp->set_rx_gain(openair0_cfg[0].rx_gain[i]-openair0_cfg[0].rx_gain_offset[i],i);
       printf("RX Gain %lu %f (%f) => %f (max %f)\n",i,
-	     openair0_cfg[0].rx_gain[i],openair0_cfg[0].rx_gain_offset[i],
-	     openair0_cfg[0].rx_gain[i]-openair0_cfg[0].rx_gain_offset[i],gain_range.stop());
+         openair0_cfg[0].rx_gain[i],openair0_cfg[0].rx_gain_offset[i],
+         openair0_cfg[0].rx_gain[i]-openair0_cfg[0].rx_gain_offset[i],gain_range.stop());
     }
   }
   for(i=0;i<s->usrp->get_tx_num_channels();i++) {
     if (i<openair0_cfg[0].tx_num_channels) {
       s->usrp->set_tx_rate(openair0_cfg[0].sample_rate,i);
       s->usrp->set_tx_bandwidth(openair0_cfg[0].tx_bw,i);
-      printf("Setting tx freq/gain on channel %lu/%lu: BW %f (readback %f)\n",i,s->usrp->get_tx_num_channels(),openair0_cfg[0].tx_bw/1e6,s->usrp->get_tx_bandwidth(i)/1e6);
+      printf("Setting tx freq/gain on channel %lu/%lu: BW %f (readback
+  %f)\n",i,s->usrp->get_tx_num_channels(),openair0_cfg[0].tx_bw/1e6,s->usrp->get_tx_bandwidth(i)/1e6);
       s->usrp->set_tx_freq(openair0_cfg[0].tx_freq[i],i);
       s->usrp->set_tx_gain(openair0_cfg[0].tx_gain[i],i);
     }
   }
   */
 
-  // create tx & rx streamer
+    // create tx & rx streamer
 
-  //stream_args_rx.args["spp"] = str(boost::format("%d") % 2048);//(openair0_cfg[0].rx_num_channels*openair0_cfg[0].samples_per_packet));
-  
-  /*
-  for (i=0;i<openair0_cfg[0].rx_num_channels;i++) {
-    if (i<openair0_cfg[0].rx_num_channels) {
-      printf("RX Channel %lu\n",i);
-      std::cout << boost::format("Actual RX sample rate: %fMSps...") % (s->usrp->get_rx_rate(i)/1e6) << std::endl;
-      std::cout << boost::format("Actual RX frequency: %fGHz...") % (s->usrp->get_rx_freq(i)/1e9) << std::endl;
-      std::cout << boost::format("Actual RX gain: %f...") % (s->usrp->get_rx_gain(i)) << std::endl;
-      std::cout << boost::format("Actual RX bandwidth: %fM...") % (s->usrp->get_rx_bandwidth(i)/1e6) << std::endl;
-      std::cout << boost::format("Actual RX antenna: %s...") % (s->usrp->get_rx_antenna(i)) << std::endl;
-    }
-  }
-  
-  for (i=0;i<openair0_cfg[0].tx_num_channels;i++) {
+    // stream_args_rx.args["spp"] = str(boost::format("%d") %
+    // 2048);//(openair0_cfg[0].rx_num_channels*openair0_cfg[0].samples_per_packet));
 
-    if (i<openair0_cfg[0].tx_num_channels) { 
-      printf("TX Channel %lu\n",i);
-      std::cout << std::endl<<boost::format("Actual TX sample rate: %fMSps...") % (s->usrp->get_tx_rate(i)/1e6) << std::endl;
-      std::cout << boost::format("Actual TX frequency: %fGHz...") % (s->usrp->get_tx_freq(i)/1e9) << std::endl;
-      std::cout << boost::format("Actual TX gain: %f...") % (s->usrp->get_tx_gain(i)) << std::endl;
-      std::cout << boost::format("Actual TX bandwidth: %fM...") % (s->usrp->get_tx_bandwidth(i)/1e6) << std::endl;
-      std::cout << boost::format("Actual TX antenna: %s...") % (s->usrp->get_tx_antenna(i)) << std::endl;
+    /*
+    for (i=0;i<openair0_cfg[0].rx_num_channels;i++) {
+      if (i<openair0_cfg[0].rx_num_channels) {
+        printf("RX Channel %lu\n",i);
+        std::cout << boost::format("Actual RX sample rate: %fMSps...") % (s->usrp->get_rx_rate(i)/1e6) << std::endl;
+        std::cout << boost::format("Actual RX frequency: %fGHz...") % (s->usrp->get_rx_freq(i)/1e9) << std::endl;
+        std::cout << boost::format("Actual RX gain: %f...") % (s->usrp->get_rx_gain(i)) << std::endl;
+        std::cout << boost::format("Actual RX bandwidth: %fM...") % (s->usrp->get_rx_bandwidth(i)/1e6) << std::endl;
+        std::cout << boost::format("Actual RX antenna: %s...") % (s->usrp->get_rx_antenna(i)) << std::endl;
+      }
     }
-  */
+
+    for (i=0;i<openair0_cfg[0].tx_num_channels;i++) {
+
+      if (i<openair0_cfg[0].tx_num_channels) {
+        printf("TX Channel %lu\n",i);
+        std::cout << std::endl<<boost::format("Actual TX sample rate: %fMSps...") % (s->usrp->get_tx_rate(i)/1e6) << std::endl;
+        std::cout << boost::format("Actual TX frequency: %fGHz...") % (s->usrp->get_tx_freq(i)/1e9) << std::endl;
+        std::cout << boost::format("Actual TX gain: %f...") % (s->usrp->get_tx_gain(i)) << std::endl;
+        std::cout << boost::format("Actual TX bandwidth: %fM...") % (s->usrp->get_tx_bandwidth(i)/1e6) << std::endl;
+        std::cout << boost::format("Actual TX antenna: %s...") % (s->usrp->get_tx_antenna(i)) << std::endl;
+      }
+    */
   }
   else {
     printf("Please connect SoDeRa\n");

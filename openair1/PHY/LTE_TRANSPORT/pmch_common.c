@@ -58,7 +58,6 @@ int is_fembms_cas_subframe(uint32_t frame, int subframe, LTE_DL_FRAME_PARMS *fra
            break;
       }
    }
-	
   }
 
   return (0);
@@ -123,9 +122,9 @@ int is_fembms_pmch_subframe(uint32_t frame, int subframe, LTE_DL_FRAME_PARMS *fr
 
     if ((frame % period) == frame_parms->NonMBSFN_config.radioframeAllocationOffset) {
       switch (subframe) {
- 	case 0:
-            return(0);
-  	  break;
+        case 0:
+          return (0);
+          break;
         case 1:
           if ((frame_parms->NonMBSFN_config.non_mbsfn_SubframeConfig & 0x100) > 0)
             return(0);

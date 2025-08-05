@@ -165,11 +165,7 @@ uint8_t nr_ue_pusch_common_procedures(PHY_VARS_NR_UE *UE,
 
 void clean_UE_harq(PHY_VARS_NR_UE *UE);
 
-void nr_dlsch_unscrambling(int16_t* llr,
-			   uint32_t size,
-			   uint8_t q,
-			   uint32_t Nid,
-			   uint32_t n_RNTI);
+void nr_dlsch_unscrambling(int16_t *llr, uint32_t size, uint8_t q, uint32_t Nid, uint32_t n_RNTI);
 
 void nr_rx_pdcch(PHY_VARS_NR_UE *ue,
                  const UE_nr_rxtx_proc_t *proc,

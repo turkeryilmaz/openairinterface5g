@@ -646,13 +646,17 @@ static void rx_rf(RU_t *ru, int *frame, int *slot)
   proc->frame_rx    = (proc->timestamp_rx / (fp->samples_per_subframe*10))&1023;
   proc->tti_rx = fp->get_slot_from_timestamp(proc->timestamp_rx,fp);
   // synchronize first reception to frame 0 subframe 0
-  LOG_D(PHY,"RU %d/%d TS %ld, GPS %f, SR %f, frame %d, slot %d.%d / %d\n",
+  LOG_D(PHY,
+        "RU %d/%d TS %ld, GPS %f, SR %f, frame %d, slot %d.%d / %d\n",
         ru->idx,
         0,
         ts, //(unsigned long long int)(proc->timestamp_rx+ru->ts_offset),
-	gps_sec,
-	cfg->sample_rate,
-        proc->frame_rx,proc->tti_rx,proc->tti_tx,fp->slots_per_frame);
+        gps_sec,
+        cfg->sample_rate,
+        proc->frame_rx,
+        proc->tti_rx,
+        proc->tti_tx,
+        fp->slots_per_frame);
 
   // dump VCD output for first RU in list
   if (ru == RC.ru[0]) {
@@ -1204,8 +1208,8 @@ void *ru_thread(void *param)
 
   // This is a forever while loop, it loops over subframes which are scheduled by incoming samples from HW devices
   struct timespec slot_start;
-	clock_gettime(CLOCK_MONOTONIC, &slot_start);
-  
+  clock_gettime(CLOCK_MONOTONIC, &slot_start);
+
   while (!oai_exit) {
     if (slot==(fp->slots_per_frame-1)) {
       slot=0;

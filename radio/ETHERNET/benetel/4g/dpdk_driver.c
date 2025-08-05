@@ -84,14 +84,16 @@ struct lcore_queue_conf {
 struct lcore_queue_conf lcore_queue_conf[RTE_MAX_LCORE];
 static struct rte_eth_dev_tx_buffer *tx_buffer[RTE_MAX_ETHPORTS];
 static struct rte_eth_conf port_conf = {
-        .rxmode = {
-                .split_hdr_size = 0,
-		.offloads       = DEV_RX_OFFLOAD_JUMBO_FRAME,
-		.split_hdr_size = 0,
-		.max_rx_pkt_len = 9500,	
+    .rxmode =
+        {
+            .split_hdr_size = 0,
+            .offloads = DEV_RX_OFFLOAD_JUMBO_FRAME,
+            .split_hdr_size = 0,
+            .max_rx_pkt_len = 9500,
         },
-        .txmode = {
-                .mq_mode = ETH_MQ_TX_NONE,
+    .txmode =
+        {
+            .mq_mode = ETH_MQ_TX_NONE,
         },
 };
 struct rte_mempool * l2fwd_pktmbuf_pool = NULL;
@@ -147,160 +149,152 @@ print_stats(void)
 static void
 l2fwd_simple_forward(struct rte_mbuf *m, unsigned portid, benetel_t *bs)
 {
-	unsigned char *buf, *buf_tx;
-	unsigned int len;
-	struct ether_hdr *eth;
+  unsigned char *buf, *buf_tx;
+  unsigned int len;
+  struct ether_hdr *eth;
 
-	unsigned dst_port;
-	int sent, prach_ctrl = 0;
-	struct rte_eth_dev_tx_buffer *buffer;
+  unsigned dst_port;
+  int sent, prach_ctrl = 0;
+  struct rte_eth_dev_tx_buffer *buffer;
 
-	unsigned char * IQ_ptr;
+  unsigned char *IQ_ptr;
 
-        ul_packet_t p;
+  ul_packet_t p;
 
-	buf = rte_pktmbuf_mtod(m, unsigned char *);
-	//rte_memdump(stdout, "Rx Packet",buf ,34);
-	eth = rte_pktmbuf_mtod(m, struct ether_hdr *);
-	len = rte_pktmbuf_data_len(m);
+  buf = rte_pktmbuf_mtod(m, unsigned char *);
+  // rte_memdump(stdout, "Rx Packet",buf ,34);
+  eth = rte_pktmbuf_mtod(m, struct ether_hdr *);
+  len = rte_pktmbuf_data_len(m);
 
-	IQ_ptr = &buf[34];
+  IQ_ptr = &buf[34];
 
-	//destination mac address (RRU MAC)
-	eth->d_addr.addr_bytes[0] = 0x02;
-	eth->d_addr.addr_bytes[1] = 0x00;
-	eth->d_addr.addr_bytes[2] = 0x5e;
-	eth->d_addr.addr_bytes[3] = 0x01;
-	eth->d_addr.addr_bytes[4] = 0x01;
-	eth->d_addr.addr_bytes[5] = 0x01;
+  // destination mac address (RRU MAC)
+  eth->d_addr.addr_bytes[0] = 0x02;
+  eth->d_addr.addr_bytes[1] = 0x00;
+  eth->d_addr.addr_bytes[2] = 0x5e;
+  eth->d_addr.addr_bytes[3] = 0x01;
+  eth->d_addr.addr_bytes[4] = 0x01;
+  eth->d_addr.addr_bytes[5] = 0x01;
 
-	//source mac address (DU MAC)
-	eth->s_addr.addr_bytes[0] = 0xdd;
-	eth->s_addr.addr_bytes[1] = 0xdd;
-	eth->s_addr.addr_bytes[2] = 0xdd;
-	eth->s_addr.addr_bytes[3] = 0xdd;
-	eth->s_addr.addr_bytes[4] = 0xdd;
-	eth->s_addr.addr_bytes[5] = 0xdd;
+  // source mac address (DU MAC)
+  eth->s_addr.addr_bytes[0] = 0xdd;
+  eth->s_addr.addr_bytes[1] = 0xdd;
+  eth->s_addr.addr_bytes[2] = 0xdd;
+  eth->s_addr.addr_bytes[3] = 0xdd;
+  eth->s_addr.addr_bytes[4] = 0xdd;
+  eth->s_addr.addr_bytes[5] = 0xdd;
 
-	dst_port = l2fwd_dst_ports[portid];
-         #if 1 
-	 
-		if (buf[18] == 0xAA) //msg1 check
-		{
-			printf("\nHandshake MSG 1 Received\n");
-			printf("\n====================================================\n");
+  dst_port = l2fwd_dst_ports[portid];
+#if 1
 
-			buf[18] = 0xBB;//change to msg2 after receive msg1
+  if (buf[18] == 0xAA) // msg1 check
+  {
+    printf("\nHandshake MSG 1 Received\n");
+    printf("\n====================================================\n");
 
-			printf("Handshake MSG 2 Sent\n");
-			printf("\n====================================================\n");
-		}
+    buf[18] = 0xBB; // change to msg2 after receive msg1
 
-         #else
-	// Handshake Condition
-	if (buf[18] == 0x01 || buf[18] == 0x03) // ORAN handshake msgs.
-	{
-		if (buf[18] == 0x01) //msg1 check
-		{
-			printf("\nHandshake MSG 1 Received\n");
-			printf("\n====================================================\n");
+    printf("Handshake MSG 2 Sent\n");
+    printf("\n====================================================\n");
+  }
 
-			buf[18] = 0x02;//change to msg2 after receive msg1
+#else
+  // Handshake Condition
+  if (buf[18] == 0x01 || buf[18] == 0x03) // ORAN handshake msgs.
+  {
+    if (buf[18] == 0x01) // msg1 check
+    {
+      printf("\nHandshake MSG 1 Received\n");
+      printf("\n====================================================\n");
 
-			printf("Handshake MSG 2 Sent\n");
-			printf("\n====================================================\n");
-		}
+      buf[18] = 0x02; // change to msg2 after receive msg1
 
-		else if(buf[18] == 0x03) //msg3 check
-		{
-			printf("Handshake MSG 3 Sent\n");
-			printf("\n====================================================\n");
+      printf("Handshake MSG 2 Sent\n");
+      printf("\n====================================================\n");
+    }
 
-			buf[18] = 0x04;
+    else if (buf[18] == 0x03) // msg3 check
+    {
+      printf("Handshake MSG 3 Sent\n");
+      printf("\n====================================================\n");
 
-			printf("Handshake MSG 4 Sent\n");
-			printf("\n====================================================\n");
-		}
-	}
-        #endif
-	// Trigger start send DL packets
-	if(PAYLOAD_1 == 0x12 && PAYLOAD_2 == 0xce && SYMBOL == 0x09 && ANT_NUM == 0x00 && dl_start == 0){
+      buf[18] = 0x04;
 
-		printf("\nU-Plane Started\n");
-		printf("\n====================================================\n");
+      printf("Handshake MSG 4 Sent\n");
+      printf("\n====================================================\n");
+    }
+  }
+#endif
+  // Trigger start send DL packets
+  if (PAYLOAD_1 == 0x12 && PAYLOAD_2 == 0xce && SYMBOL == 0x09 && ANT_NUM == 0x00 && dl_start == 0) {
+    printf("\nU-Plane Started\n");
+    printf("\n====================================================\n");
 
-		dl_start = 1;
-	}
+    dl_start = 1;
+  }
 
+  if (PAYLOAD_1 == 0x12 && PAYLOAD_2 == 0xce) {
+    p.frame = FRAME;
+    p.subframe = SUBFRAME >> 4;
+    p.slot = 0; /* unused */
+    p.symbol = SYMBOL;
+    p.antenna = ANT_NUM;
+    memcpy(p.iq, IQ_ptr, 4800);
+    store_ul(bs, &p);
+  }
 
-	if(PAYLOAD_1 == 0x12 && PAYLOAD_2 == 0xce) {
-          p.frame = FRAME;
-          p.subframe = SUBFRAME >> 4;
-          p.slot = 0; /* unused */
-          p.symbol = SYMBOL;
-          p.antenna = ANT_NUM;
-          memcpy(p.iq, IQ_ptr, 4800);
-          store_ul(bs, &p);
-        }
+  // U-PLANE UL PROCESSING
+  if (PAYLOAD_1 == 0x12 && PAYLOAD_2 == 0xce && dl_start == 1) {
+    int a = ANT_NUM;
+    int tx_frame = FRAME;
+    int tx_subframe = SUBFRAME >> 4;
+    int tx_symbol = SYMBOL + 5;
+    if (tx_symbol > 13) {
+      tx_symbol -= 14;
+      tx_subframe++;
+      if (tx_subframe == 10) {
+        tx_subframe = 0;
+        tx_frame = (tx_frame + 1) & 255;
+      }
+    }
 
-	// U-PLANE UL PROCESSING
-	if(PAYLOAD_1 == 0x12 && PAYLOAD_2 == 0xce && dl_start == 1)
-	{
-                int a = ANT_NUM;
-                int tx_frame = FRAME;
-                int tx_subframe = SUBFRAME >> 4;
-                int tx_symbol = SYMBOL + 5;
-                if (tx_symbol > 13) {
-                  tx_symbol -= 14;
-                  tx_subframe++;
-                  if (tx_subframe == 10) {
-                    tx_subframe = 0;
-                    tx_frame = (tx_frame + 1) & 255;
-                  }
-                }
+    //        ANT_NUM = 0x00;
+    //        SYMBOL = (SYMBOL + 5) % 14;
+    PAYLOAD_2 = 0xc8;
 
-//		ANT_NUM = 0x00;
-//		SYMBOL = (SYMBOL + 5) % 14;
-		PAYLOAD_2 = 0xc8;
+    FRAME = tx_frame;
+    SUBFRAME = tx_subframe << 4;
+    SYMBOL = tx_symbol;
 
-                FRAME = tx_frame;
-                SUBFRAME = tx_subframe << 4;
-                SYMBOL = tx_symbol;
+    /* send actual DL data (if available) */
+    lock_dl_buffer(bs->buffers, tx_subframe);
+    if (!(bs->buffers->dl_busy[a][tx_subframe] & (1 << tx_symbol))) {
+      printf("%s: warning, DL underflow (antenna %d sf.symbol %d.%d)\n", __FUNCTION__, a, tx_subframe, tx_symbol);
+      memset(IQ_ptr, 0, 1200 * 4);
+    } else {
+      memcpy(IQ_ptr, bs->buffers->dl[a][tx_subframe] + tx_symbol * 1200 * 4, 1200 * 4);
+    }
+    bs->buffers->dl_busy[a][tx_subframe] &= ~(1 << tx_symbol);
+    unlock_dl_buffer(bs->buffers, tx_subframe);
+  }
 
-                /* send actual DL data (if available) */
-                lock_dl_buffer(bs->buffers, tx_subframe);
-                if (!(bs->buffers->dl_busy[a][tx_subframe] & (1 << tx_symbol))) {
-                  printf("%s: warning, DL underflow (antenna %d sf.symbol %d.%d)\n",
-                         __FUNCTION__,
-                         a,
-                         tx_subframe, tx_symbol);
-                  memset(IQ_ptr, 0, 1200 * 4);
-                } else {
-                  memcpy(IQ_ptr, bs->buffers->dl[a][tx_subframe] + tx_symbol * 1200*4,
-                         1200*4);
-                }
-                bs->buffers->dl_busy[a][tx_subframe] &= ~(1 << tx_symbol);
-                unlock_dl_buffer(bs->buffers, tx_subframe);
-	}
+  // U-PLANE PRACH PROCESSING
+  else if (PAYLOAD_1 == 0x0d && PAYLOAD_2 == 0x28) {
+    if (ANT_NUM == 0) {
+      store_prach(bs, FRAME, SUBFRAME >> 4, IQ_ptr);
+    }
 
-	// U-PLANE PRACH PROCESSING
-	else if(PAYLOAD_1 == 0x0d && PAYLOAD_2 == 0x28){
-                if (ANT_NUM == 0) {
-                  store_prach(bs, FRAME, SUBFRAME>>4, IQ_ptr);
-                }
+    rte_pktmbuf_free(m);
+    return;
+  }
 
-		rte_pktmbuf_free(m);
-		return;
-	}
+  // Send Packets
+  buffer = tx_buffer[dst_port];
 
-	// Send Packets
-	buffer = tx_buffer[dst_port];
+  sent = rte_eth_tx_buffer(dst_port, 0, buffer, m);
 
-	sent = rte_eth_tx_buffer(dst_port, 0, buffer, m);
-
-	if (sent)
-		port_statistics[dst_port].tx += sent;
-
+  if (sent)
+    port_statistics[dst_port].tx += sent;
 }
 /* main processing loop */
 static void

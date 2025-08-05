@@ -182,16 +182,15 @@ typedef enum {
   MAX_OPT
 } eth_opt_t;
 
-
 /*
-#define SND_BUF_SIZE	1
-#define RCV_BUF_SIZE	1<<1
-#define SND_TIMEOUT	1<<2
-#define RCV_TIMEOUT	1<<3
+#define SND_BUF_SIZE    1
+#define RCV_BUF_SIZE    1<<1
+#define SND_TIMEOUT    1<<2
+#define RCV_TIMEOUT    1<<3
 #define MTU_SIZE        1<<4
-#define TX_Q_LEN	1<<5
-#define RING_PAR	1<<5
-#define COALESCE_PAR	1<<6
+#define TX_Q_LEN    1<<5
+#define RING_PAR    1<<5
+#define COALESCE_PAR    1<<6
 #define PAUSE_PAR       1<<7
 */
 

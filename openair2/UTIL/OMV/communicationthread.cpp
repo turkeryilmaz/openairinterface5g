@@ -31,8 +31,8 @@
 #include "communicationthread.h"
 
 typedef struct {
-    char *name;	/*!< \brief string name of item */
-    int value;	/*!< \brief integer value of mapping */
+  char *name; /*!< \brief string name of item */
+  int value; /*!< \brief integer value of mapping */
 } mapping;
 
 mapping omg_model_names[] = {
@@ -93,76 +93,84 @@ void CommunicationThread::run()
     while (counter > 0 && !end){
         switch( nread = read(pfd[0], &data, sizeof(Data_Flow_Unit))) {
         case -1 :
-	    if (counter < nb_frames)
-		end = 1;
-            perror( "read" );
-            break;
+          if (counter < nb_frames)
+            end = 1;
+          perror("read");
+          break;
         case 0 :
-	    if (counter < nb_frames)
-		end = 1;
-            perror( "EOF" );
-            break;
+          if (counter < nb_frames)
+            end = 1;
+          perror("EOF");
+          break;
         default :
             QString information, information_for_a_node, format_information;
-	    geo[nb_enb].mobility_type = data.geo[nb_enb].mobility_type;
-	    information.sprintf("\nFrame: %d\n\n",nb_frames - counter);
-	    
-	    format_information.sprintf("Format of Log: (<X> is X's value)\nFor eNb :: [eNb <Id>] at <Mob_type>(<Position>) with <nb_connected_ue> connected UE\nFor UE :: [UE <Id>][RNTI <rnti>][state <state>] at <Mob_type>(<Position>), PL=<Pathloss>, RSRP=<rsrp>, RSRQ=<rsrq>, from eNb <connected eNb>\n==========================================================\n");
-         
-	    information += format_information;
-	    
-	    end = data.end;
-            
+            geo[nb_enb].mobility_type = data.geo[nb_enb].mobility_type;
+            information.sprintf("\nFrame: %d\n\n", nb_frames - counter);
+
+            format_information.sprintf(
+                "Format of Log: (<X> is X's value)\nFor eNb :: [eNb <Id>] at <Mob_type>(<Position>) with <nb_connected_ue> "
+                "connected UE\nFor UE :: [UE <Id>][RNTI <rnti>][state <state>] at <Mob_type>(<Position>), PL=<Pathloss>, "
+                "RSRP=<rsrp>, RSRQ=<rsrq>, from eNb <connected eNb>\n==========================================================\n");
+
+            information += format_information;
+
+            end = data.end;
+
             for (int i = 0; i<nb_enb; i++){
 
                 geo[i].Neighbors = data.geo[i].Neighbors;
                 geo[i].x = data.geo[i].x;
-		geo[i].y = data.geo[i].y;
-		geo[i].node_type = data.geo[i].node_type;
-		geo[i].mobility_type = data.geo[i].mobility_type;
+                geo[i].y = data.geo[i].y;
+                geo[i].node_type = data.geo[i].node_type;
+                geo[i].mobility_type = data.geo[i].mobility_type;
 
-		information_for_a_node.sprintf("[eNb %d] at %s(%d,%d) with %d connected UE\n" , i, 
-						map_int_to_str(omg_model_names, geo[i].mobility_type),
-						  data.geo[i].x, data.geo[i].y,
-						  data.geo[i].Neighbors     );
-		information += information_for_a_node;		
+                information_for_a_node.sprintf("[eNb %d] at %s(%d,%d) with %d connected UE\n",
+                                               i,
+                                               map_int_to_str(omg_model_names, geo[i].mobility_type),
+                                               data.geo[i].x,
+                                               data.geo[i].y,
+                                               data.geo[i].Neighbors);
+                information += information_for_a_node;
 
                 for(int j = 0; j<data.geo[i].Neighbors; j++)
                     geo[i].Neighbor[j] = data.geo[i].Neighbor[j];
             }
-	    
-	    QString state_str;
-	    
-            
-	    for (int i = nb_enb; i<node_number; i++){
-	
-		geo[i].Neighbors = data.geo[i].Neighbors;
-                geo[i].x = data.geo[i].x;
-		geo[i].y = data.geo[i].y;
-		geo[i].node_type = data.geo[i].node_type;
-		geo[i].state = data.geo[i].state;
-		geo[i].connected_eNB = data.geo[i].connected_eNB;
-		geo[i].rnti = data.geo[i].rnti;
-		geo[i].RSRP = data.geo[i].RSRP;
-		geo[i].RSRQ = data.geo[i].RSRQ;
-		geo[i].Pathloss = data.geo[i].Pathloss;
-		geo[i].mobility_type = data.geo[i].mobility_type;
-	
-		for (int ant = 0; ant < nb_antennas_rx; ant++){
-		  geo[i].RSSI[ant] = data.geo[i].RSSI[ant];
-		}
-		
-		information_for_a_node.sprintf("[UE %d][RNTI %d][state %s] at %s(%d,%d), PL=%d, RSRP=%d, RSRQ=%d, from eNb %d\n" , 
-						i - nb_enb, geo[i].rnti,map_int_to_str(state_model_names, geo[i].state),
-						map_int_to_str(omg_model_names, geo[i].mobility_type),
-					       geo[i].x, geo[i].y,
-					      geo[i].Pathloss, geo[i].RSRP, geo[i].RSRQ, 
-					      geo[i].connected_eNB);
-		
-		information += information_for_a_node;		
 
-                for(int j = 0; j<data.geo[i].Neighbors; j++)
-                    geo[i].Neighbor[j] = data.geo[i].Neighbor[j];
+            QString state_str;
+
+            for (int i = nb_enb; i < node_number; i++) {
+              geo[i].Neighbors = data.geo[i].Neighbors;
+              geo[i].x = data.geo[i].x;
+              geo[i].y = data.geo[i].y;
+              geo[i].node_type = data.geo[i].node_type;
+              geo[i].state = data.geo[i].state;
+              geo[i].connected_eNB = data.geo[i].connected_eNB;
+              geo[i].rnti = data.geo[i].rnti;
+              geo[i].RSRP = data.geo[i].RSRP;
+              geo[i].RSRQ = data.geo[i].RSRQ;
+              geo[i].Pathloss = data.geo[i].Pathloss;
+              geo[i].mobility_type = data.geo[i].mobility_type;
+
+              for (int ant = 0; ant < nb_antennas_rx; ant++) {
+                geo[i].RSSI[ant] = data.geo[i].RSSI[ant];
+              }
+
+              information_for_a_node.sprintf("[UE %d][RNTI %d][state %s] at %s(%d,%d), PL=%d, RSRP=%d, RSRQ=%d, from eNb %d\n",
+                                             i - nb_enb,
+                                             geo[i].rnti,
+                                             map_int_to_str(state_model_names, geo[i].state),
+                                             map_int_to_str(omg_model_names, geo[i].mobility_type),
+                                             geo[i].x,
+                                             geo[i].y,
+                                             geo[i].Pathloss,
+                                             geo[i].RSRP,
+                                             geo[i].RSRQ,
+                                             geo[i].connected_eNB);
+
+              information += information_for_a_node;
+
+              for (int j = 0; j < data.geo[i].Neighbors; j++)
+                geo[i].Neighbor[j] = data.geo[i].Neighbor[j];
             }
 
             emit newData(information, nb_frames - counter);

@@ -34,20 +34,20 @@ class pool_config
 class memory_pool
 {
     std::mutex mutex;
-	std::map<size_t, std::queue<uint8_t*>> free_store;
-	std::map<size_t, uint16_t> allocated_store;
-	
+    std::map<size_t, std::queue<uint8_t*>> free_store;
+    std::map<size_t, uint16_t> allocated_store;
+
     void init(std::vector<pool_config> config)
     {
         printf("memory_pool::init\n");
-        		
+
         for(pool_config c : config)
         {
             // todo : use the initial count to allocate initial pool memory
             free_store.insert(std::pair<size_t, 
                                         std::queue<uint8_t*>>
                                             (c.size, std::queue<uint8_t*>()));
-			allocated_store.insert(std::pair<size_t, uint16_t>(c.size, 0));
+            allocated_store.insert(std::pair<size_t, uint16_t>(c.size, 0));
         }
     }
     
@@ -86,7 +86,7 @@ class memory_pool
         if(psize == 0)
         {
             ptr =  (uint8_t*)malloc(size + 4);
-			memset(ptr, 0, size + 4);	
+            memset(ptr, 0, size + 4);
         }
         else
         {
@@ -97,8 +97,8 @@ class memory_pool
             if(it == free_store.end())
             {
                 // Unknown pool size
-   				ptr =  (uint8_t*)malloc(psize + 4);
-				memcpy(ptr, &psize, 4);
+                ptr = (uint8_t*)malloc(psize + 4);
+                memcpy(ptr, &psize, 4);
             }
             else
             {
@@ -106,13 +106,13 @@ class memory_pool
                 {
                     // Take from the pool
                     ptr = (uint8_t*)(it->second.front());
-    				it->second.pop();
+                    it->second.pop();
                 }
                 else
                 {
                     // No memory left in pool
                     ptr =  (uint8_t*)malloc(psize + 4);
-				    memcpy(ptr, &psize, 4);
+                    memcpy(ptr, &psize, 4);
                 }
             }
             
@@ -124,36 +124,29 @@ class memory_pool
     
     void dealloc(uint8_t* ptr)
     {
-      	if(ptr == 0)
-			return;
-			
-		uint8_t* _ptr = (uint8_t*)ptr;
+      if (ptr == 0)
+        return;
 
-        size_t psize;
-		memcpy(&psize, _ptr - 4, 4);
-		
-		if(psize == 0)
-		{
-		    free(_ptr - 4);
-		}
-		else
-		{
-		    mutex.lock();
-		    
-		    auto it = free_store.find(psize);
-			if(it == free_store.end())
-			{
-			    free(_ptr - 4);
-			}
-			else
-			{
-			    assert((_ptr - 4) != 0);    
-			    it->second.push(_ptr - 4);
-			}
-		    
-		    mutex.unlock();
-		}
-  
+      uint8_t* _ptr = (uint8_t*)ptr;
+
+      size_t psize;
+      memcpy(&psize, _ptr - 4, 4);
+
+      if (psize == 0) {
+        free(_ptr - 4);
+      } else {
+        mutex.lock();
+
+        auto it = free_store.find(psize);
+        if (it == free_store.end()) {
+          free(_ptr - 4);
+        } else {
+          assert((_ptr - 4) != 0);
+          it->second.push(_ptr - 4);
+        }
+
+        mutex.unlock();
+      }
     }
     
     public:

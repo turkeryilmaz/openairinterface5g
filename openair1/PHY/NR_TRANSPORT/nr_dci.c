@@ -146,8 +146,7 @@ static void nr_generate_dci(PHY_VARS_gNB *gNB,
 #ifdef DEBUG_CHANNEL_CODING
 //debug dump dci
     printf("polar rnti %x,length %d, L %d\n",n_RNTI, dci_pdu->PayloadSizeBits,pdcch_pdu_rel15->dci_pdu->AggregationLevel);
-    printf("DCI PDU: [0]->0x%lx \t [1]->0x%lx\n",
-	   ((uint64_t*)dci_pdu->Payload)[0], ((uint64_t*)dci_pdu->Payload)[1]);
+    printf("DCI PDU: [0]->0x%lx \t [1]->0x%lx\n", ((uint64_t *)dci_pdu->Payload)[0], ((uint64_t *)dci_pdu->Payload)[1]);
     printf("Encoded Payload (length:%u dwords):\n", encoded_length>>5);
     
     for (int i=0; i<encoded_length>>5; i++)
@@ -159,10 +158,21 @@ static void nr_generate_dci(PHY_VARS_gNB *gNB,
     uint32_t scrambled_output[NR_MAX_DCI_SIZE_DWORD]= {0};
     nr_pdcch_scrambling(encoder_output, encoded_length, Nid, scrambling_RNTI, scrambled_output);
 #ifdef DEBUG_CHANNEL_CODING
-    printf("scrambled output: [0]->0x%08x \t [1]->0x%08x \t [2]->0x%08x \t [3]->0x%08x\t [4]->0x%08x\t [5]->0x%08x\t \
+    printf(
+        "scrambled output: [0]->0x%08x \t [1]->0x%08x \t [2]->0x%08x \t [3]->0x%08x\t [4]->0x%08x\t [5]->0x%08x\t \
 [6]->0x%08x \t [7]->0x%08x \t [8]->0x%08x \t [9]->0x%08x\t [10]->0x%08x\t [11]->0x%08x\n",
-	   scrambled_output[0], scrambled_output[1], scrambled_output[2], scrambled_output[3], scrambled_output[4],scrambled_output[5],
-	   scrambled_output[6], scrambled_output[7], scrambled_output[8], scrambled_output[9], scrambled_output[10],scrambled_output[11] );
+        scrambled_output[0],
+        scrambled_output[1],
+        scrambled_output[2],
+        scrambled_output[3],
+        scrambled_output[4],
+        scrambled_output[5],
+        scrambled_output[6],
+        scrambled_output[7],
+        scrambled_output[8],
+        scrambled_output[9],
+        scrambled_output[10],
+        scrambled_output[11]);
 #endif
     /// QPSK modulation
     c16_t mod_dci[NR_MAX_DCI_SIZE / 2] __attribute__((aligned(16)));
@@ -225,8 +235,8 @@ static void nr_generate_dci(PHY_VARS_gNB *gNB,
                   "PDCCH: l %d position %d => (%d,%d)\n",
                   l,
                   k,
-		  		  txdataF[l * frame_parms->ofdm_symbol_size + k].r,
-		  txdataF[l * frame_parms->ofdm_symbol_size + k].i;
+                    txdataF[l * frame_parms->ofdm_symbol_size + k].r,
+          txdataF[l * frame_parms->ofdm_symbol_size + k].i;
 #endif
 
             dci_idx++;

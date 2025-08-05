@@ -26,54 +26,53 @@
  * @enum ORI_Result_e
  * @brief ORI result codes enumeration.
  */
-typedef enum
-{
-	ORI_Result_SUCCESS = 0,								/**< */
-	ORI_Result_FAIL_SYNTAX_ERROR,						/**< */
-	ORI_Result_FAIL_UNRECOGNIZED_MESSAGE,				/**< */
-	ORI_Result_FAIL_RE_BUSY,							/**< */
-	ORI_Result_FAIL_MISSING_PARAMETER,					/**< */
-	ORI_Result_FAIL_PARAMETER_ERROR,					/**< */
-	ORI_Result_FAIL_FRAME_ERROR,						/**< */
-	ORI_Result_FAIL_INVALID_TIMEDATA,					/**< */
-	ORI_Result_SUCCESS_SOFTWARE_ALREADY_EXISTING,		/**< */
-	ORI_Result_FAIL_FTP_ERROR,							/**< */
-	ORI_Result_FAIL_BROKEN_IMAGE,						/**< */
-	ORI_Result_FAIL_NO_COMPATIBLE_IMAGE,				/**< */
-	ORI_Result_FAIL_CANNOT_STORE,						/**< */
-	ORI_Result_FAIL_NOSUCH_IMAGE,						/**< */
-	ORI_Result_FAIL_UNKNOWN_OBJECT,						/**< */
-	ORI_Result_FAIL_UNKNOWN_PARAM,						/**< */
-	ORI_Result_FAIL_PARAMETER_FAIL,						/**< */
-	ORI_Result_FAIL_NOSUCH_RESOURCE,					/**< */
-	ORI_Result_FAIL_PARAM_READONLY,						/**< */
-	ORI_Result_FAIL_PARAM_LOCKREQUIRED,					/**< */
-	ORI_Result_FAIL_VALUE_OUTOF_RANGE,					/**< */
-	ORI_Result_FAIL_VALUE_TYPE_ERROR,					/**< */
-	ORI_Result_FAIL_UNKNOWN_OBJTYPE,					/**< */
-	ORI_Result_FAIL_STATIC_OBJTYPE,						/**< */
-	ORI_Result_FAIL_CHILD_NOTALLOWED,					/**< */
-	ORI_Result_FAIL_OUTOF_RESOURCES,					/**< */
-	ORI_Result_FAIL_LOCKREQUIRED,						/**< */
-	ORI_Result_FAIL_UNKNOWN_STATETYPE,					/**< */
-	ORI_Result_FAIL_UNKNOWN_STATEVALUE,					/**< */
-	ORI_Result_FAIL_STATE_READONLY,						/**< */
-	ORI_Result_FAIL_RESOURCE_UNAVAILABLE,				/**< */
-	ORI_Result_FAIL_RESOURCE_INUSE,						/**< */
-	ORI_Result_FAIL_PARENT_CHILD_CONFLICT,				/**< */
-	ORI_Result_FAIL_PRECONDITION_NOTMET,				/**< */
-	ORI_Result_FAIL_NOSUCH_FILE,						/**< */
-	ORI_Result_FAIL_SIZE_LIMIT,							/**< */
-	ORI_Result_FAIL_ACTIVATION_ERROR,					/**< */
-	ORI_Result_FAIL_ALD_UNAVAILABLE,					/**< */
-	ORI_Result_FAIL_BUS_UNAVAILABLE,					/**< */
-	ORI_Result_OsError,									/**< */
-	ORI_Result_BadParameter,							/**< */
-	ORI_Result_InvalidIpAddress,						/**< */
-	ORI_Result_ConnectionFailed,						/**< */
-	ORI_Result_ConnectionTimedOut,						/**< */
-	ORI_Result_NotConnected,							/**< */
-	ORI_Result_Unknown,									/**< */
+typedef enum {
+  ORI_Result_SUCCESS = 0, /**< */
+  ORI_Result_FAIL_SYNTAX_ERROR, /**< */
+  ORI_Result_FAIL_UNRECOGNIZED_MESSAGE, /**< */
+  ORI_Result_FAIL_RE_BUSY, /**< */
+  ORI_Result_FAIL_MISSING_PARAMETER, /**< */
+  ORI_Result_FAIL_PARAMETER_ERROR, /**< */
+  ORI_Result_FAIL_FRAME_ERROR, /**< */
+  ORI_Result_FAIL_INVALID_TIMEDATA, /**< */
+  ORI_Result_SUCCESS_SOFTWARE_ALREADY_EXISTING, /**< */
+  ORI_Result_FAIL_FTP_ERROR, /**< */
+  ORI_Result_FAIL_BROKEN_IMAGE, /**< */
+  ORI_Result_FAIL_NO_COMPATIBLE_IMAGE, /**< */
+  ORI_Result_FAIL_CANNOT_STORE, /**< */
+  ORI_Result_FAIL_NOSUCH_IMAGE, /**< */
+  ORI_Result_FAIL_UNKNOWN_OBJECT, /**< */
+  ORI_Result_FAIL_UNKNOWN_PARAM, /**< */
+  ORI_Result_FAIL_PARAMETER_FAIL, /**< */
+  ORI_Result_FAIL_NOSUCH_RESOURCE, /**< */
+  ORI_Result_FAIL_PARAM_READONLY, /**< */
+  ORI_Result_FAIL_PARAM_LOCKREQUIRED, /**< */
+  ORI_Result_FAIL_VALUE_OUTOF_RANGE, /**< */
+  ORI_Result_FAIL_VALUE_TYPE_ERROR, /**< */
+  ORI_Result_FAIL_UNKNOWN_OBJTYPE, /**< */
+  ORI_Result_FAIL_STATIC_OBJTYPE, /**< */
+  ORI_Result_FAIL_CHILD_NOTALLOWED, /**< */
+  ORI_Result_FAIL_OUTOF_RESOURCES, /**< */
+  ORI_Result_FAIL_LOCKREQUIRED, /**< */
+  ORI_Result_FAIL_UNKNOWN_STATETYPE, /**< */
+  ORI_Result_FAIL_UNKNOWN_STATEVALUE, /**< */
+  ORI_Result_FAIL_STATE_READONLY, /**< */
+  ORI_Result_FAIL_RESOURCE_UNAVAILABLE, /**< */
+  ORI_Result_FAIL_RESOURCE_INUSE, /**< */
+  ORI_Result_FAIL_PARENT_CHILD_CONFLICT, /**< */
+  ORI_Result_FAIL_PRECONDITION_NOTMET, /**< */
+  ORI_Result_FAIL_NOSUCH_FILE, /**< */
+  ORI_Result_FAIL_SIZE_LIMIT, /**< */
+  ORI_Result_FAIL_ACTIVATION_ERROR, /**< */
+  ORI_Result_FAIL_ALD_UNAVAILABLE, /**< */
+  ORI_Result_FAIL_BUS_UNAVAILABLE, /**< */
+  ORI_Result_OsError, /**< */
+  ORI_Result_BadParameter, /**< */
+  ORI_Result_InvalidIpAddress, /**< */
+  ORI_Result_ConnectionFailed, /**< */
+  ORI_Result_ConnectionTimedOut, /**< */
+  ORI_Result_NotConnected, /**< */
+  ORI_Result_Unknown, /**< */
 } ORI_Result_e;
 
 /**
@@ -81,16 +80,14 @@ typedef enum
  * @param result The ::ORI_Result_e.
  * @return The describing string.
  */
-const char * 					ORI_Result_Print(ORI_Result_e result);
+const char *ORI_Result_Print(ORI_Result_e result);
 
 /**
  * @brief Get an ::ORI_Result_e from a string.
  * @param resultString The string to match.
  * @return The matched ::ORI_Result_e, or ::ORI_Result_Unknown if failure.
  */
-ORI_Result_e 					ORI_Result_Enum(const char * resultString);
-
-
+ORI_Result_e ORI_Result_Enum(const char *resultString);
 
 /*-----------------------------------------------------------------------------------------
  * ORI_INDICATIONTYPE ENUMERATION
@@ -100,16 +97,15 @@ ORI_Result_e 					ORI_Result_Enum(const char * resultString);
  * @enum ORI_IndicationType_e
  * @brief ORI indication type enumeration.
  */
-typedef enum
-{
-	ORI_IndicationType_FileTransferComplete = 0,		/**< */
-	ORI_IndicationType_ObjectStateChange,				/**< */
-	ORI_IndicationType_FaultChange,						/**< */
-	ORI_IndicationType_FileAvailable,					/**< */
-	ORI_IndicationType_UploadFileCmpl,					/**< */
-	ORI_IndicationType_AisgScanDeviceCompl,				/**< */
-	ORI_IndicationType_AisgAldRx,						/**< */
-	ORI_IndicationType_Unknown,							/**< */
+typedef enum {
+  ORI_IndicationType_FileTransferComplete = 0, /**< */
+  ORI_IndicationType_ObjectStateChange, /**< */
+  ORI_IndicationType_FaultChange, /**< */
+  ORI_IndicationType_FileAvailable, /**< */
+  ORI_IndicationType_UploadFileCmpl, /**< */
+  ORI_IndicationType_AisgScanDeviceCompl, /**< */
+  ORI_IndicationType_AisgAldRx, /**< */
+  ORI_IndicationType_Unknown, /**< */
 } ORI_IndicationType_e;
 
 /**
@@ -117,16 +113,14 @@ typedef enum
  * @param indicationType The ::ORI_IndicationType_e.
  * @return The describing string.
  */
-const char * 					ORI_IndicationType_Print(ORI_IndicationType_e indicationType);
+const char *ORI_IndicationType_Print(ORI_IndicationType_e indicationType);
 
 /**
  * @brief Get an ::ORI_IndicationType_e from a string.
  * @param indicationTypeString The string to match.
  * @return The matched ::ORI_IndicationType_e, or ::ORI_IndicationType_Unknown if failure.
  */
-ORI_IndicationType_e 			ORI_IndicationType_Enum(const char * indicationTypeString);
-
-
+ORI_IndicationType_e ORI_IndicationType_Enum(const char *indicationTypeString);
 
 /*-----------------------------------------------------------------------------------------
  * ORI_OBJECTTYPE ENUMERATION
@@ -136,32 +130,31 @@ ORI_IndicationType_e 			ORI_IndicationType_Enum(const char * indicationTypeStrin
  * @enum ORI_ObjectType_e
  * @brief ORI object type enumeration.
  */
-typedef enum
-{
-	ORI_ObjectType_RE = 0,								/**< */
-	ORI_ObjectType_AntennaPort,							/**< */
-	ORI_ObjectType_TxUtra,								/**< */
-	ORI_ObjectType_TxEUtraFDD,							/**< */
-	ORI_ObjectType_TxEUtraTDD,							/**< */
-	ORI_ObjectType_TxGSM,								/**< */
-	ORI_ObjectType_TxNRFDD,								/**< */
-	ORI_ObjectType_TxNRTDD,								/**< */
-	ORI_ObjectType_RxUtra,								/**< */
-	ORI_ObjectType_RxEUtraFDD,							/**< */
-	ORI_ObjectType_RxEUtraTDD,							/**< */
-	ORI_ObjectType_RxGSM,								/**< */
-	ORI_ObjectType_RxNRFDD,								/**< */
-	ORI_ObjectType_RxNRTDD,								/**< */
-	ORI_ObjectType_ORILink,								/**< */
-	ORI_ObjectType_ExternalEventPort,					/**< */
-	ORI_ObjectType_AISGPort,							/**< */
-	ORI_ObjectType_AISGALD,								/**< */
-	ORI_ObjectType_Log,									/**< */
-	ORI_ObjectType_DLRoutedIQData,						/**< */
-	ORI_ObjectType_ULRoutedIQData,						/**< */
-	ORI_ObjectType_DLRoutedCWBlock,						/**< */
-	ORI_ObjectType_ULRoutedCWBlock,						/**< */
-	ORI_ObjectType_Invalid,								/**< */
+typedef enum {
+  ORI_ObjectType_RE = 0, /**< */
+  ORI_ObjectType_AntennaPort, /**< */
+  ORI_ObjectType_TxUtra, /**< */
+  ORI_ObjectType_TxEUtraFDD, /**< */
+  ORI_ObjectType_TxEUtraTDD, /**< */
+  ORI_ObjectType_TxGSM, /**< */
+  ORI_ObjectType_TxNRFDD, /**< */
+  ORI_ObjectType_TxNRTDD, /**< */
+  ORI_ObjectType_RxUtra, /**< */
+  ORI_ObjectType_RxEUtraFDD, /**< */
+  ORI_ObjectType_RxEUtraTDD, /**< */
+  ORI_ObjectType_RxGSM, /**< */
+  ORI_ObjectType_RxNRFDD, /**< */
+  ORI_ObjectType_RxNRTDD, /**< */
+  ORI_ObjectType_ORILink, /**< */
+  ORI_ObjectType_ExternalEventPort, /**< */
+  ORI_ObjectType_AISGPort, /**< */
+  ORI_ObjectType_AISGALD, /**< */
+  ORI_ObjectType_Log, /**< */
+  ORI_ObjectType_DLRoutedIQData, /**< */
+  ORI_ObjectType_ULRoutedIQData, /**< */
+  ORI_ObjectType_DLRoutedCWBlock, /**< */
+  ORI_ObjectType_ULRoutedCWBlock, /**< */
+  ORI_ObjectType_Invalid, /**< */
 } ORI_ObjectType_e;
 
 /**
@@ -169,16 +162,14 @@ typedef enum
  * @param objectType The ::ORI_ObjectType_e.
  * @return The describing string.
  */
-const char * 					ORI_ObjectType_Print(ORI_ObjectType_e objectType);
+const char *ORI_ObjectType_Print(ORI_ObjectType_e objectType);
 
 /**
  * @brief Get an ::ORI_ObjectType_e from a string.
  * @param objectTypeString The string to match.
  * @return The matched ::ORI_ObjectType_e, or ::ORI_ObjectType_Invalid if failure.
  */
-ORI_ObjectType_e 				ORI_ObjectType_Enum(const char * objectTypeString);
-
-
+ORI_ObjectType_e ORI_ObjectType_Enum(const char *objectTypeString);
 
 /*-----------------------------------------------------------------------------------------
  * ORI_OBJECTPARAM ENUMERATION
@@ -191,113 +182,112 @@ ORI_ObjectType_e 				ORI_ObjectType_Enum(const char * objectTypeString);
  * All the parameters of all objects are in this list, but only once
  * (therefore some parameters will be used by several object types).
  */
-typedef enum
-{
-	ORI_ObjectParam_RE_VendorID = 0,					/**< */
-	ORI_ObjectParam_RE_ProductID,						/**< */
-	ORI_ObjectParam_RE_ProductRevision,					/**< */
-	ORI_ObjectParam_RE_SerialNumber,					/**< */
-	ORI_ObjectParam_RE_ProtocolVer,						/**< */
-	ORI_ObjectParam_RE_AGCTargetLevCfgGran,				/**< */
-	ORI_ObjectParam_RE_AGCSettlingTimeCfgGran,			/**< */
-	ORI_ObjectParam_RE_AGCSettlingTimeCap,				/**< */
-	ORI_ObjectParam_RE_AWS_uptime,						/**< */
-	ORI_ObjectParam_RE_AWS_inputVoltage,				/**< */
-	ORI_ObjectParam_RE_AWS_inputCurrent,				/**< */
-	ORI_ObjectParam_RE_AWS_productTemp,					/**< */
-	ORI_ObjectParam_RE_AWS_cpuTemp,						/**< */
-	ORI_ObjectParam_RE_AWS_paTemp,						/**< */
-	ORI_ObjectParam_RE_AWS_rxPwrOffset,					/**< */
-	ORI_ObjectParam_Port_portLabel,						/**< */
-	ORI_ObjectParam_Port_AWS_outputPwr,					/**< */
-	ORI_ObjectParam_Port_AWS_inputPwr,					/**< */
-	ORI_ObjectParam_Port_AWS_returnLoss,				/**< */
-	ORI_ObjectParam_SigPath_axcW,						/**< */
-	ORI_ObjectParam_SigPath_axcB,						/**< */
-	ORI_ObjectParam_SigPath_oriLink,					/**< */
-	ORI_ObjectParam_SigPath_uarfcn,						/**< */
-	ORI_ObjectParam_SigPath_antPort,					/**< */
-	ORI_ObjectParam_SigPath_chanBW,						/**< */
-	ORI_ObjectParam_SigPath_tddSpecialSFConfig,			/**< */
-	ORI_ObjectParam_SigPath_tddULDLConfig,				/**< */
-	ORI_ObjectParam_SigPath_earfcn,						/**< */
-	ORI_ObjectParam_SigPath_freqBandInd,				/**< */
-	ORI_ObjectParam_SigPath_sigmaIQ,					/**< */
-	ORI_ObjectParam_SigPath_AWS_enableCompRateChange,	/**< */
-	ORI_ObjectParam_SigPath_AWS_enableCompBitChange,	/**< */
-	ORI_ObjectParam_SigPath_AWS_measuredPwr,			/**< */
-	ORI_ObjectParam_SigPath_AWS_axcIncr,				/**< */
-	ORI_ObjectParam_SigPath_AWS_arfcn,					/**< */
-	ORI_ObjectParam_TxSigPath_t2a,						/**< */
-	ORI_ObjectParam_TxSigPath_maxTxPwr,					/**< */
-	ORI_ObjectParam_TxSigPath_dlCalRE,					/**< */
-	ORI_ObjectParam_TxSigPath_tddCPLengthDL,			/**< */
-	ORI_ObjectParam_TxSigPath_dlCalREMax,				/**< */
-	ORI_ObjectParam_TxSigPath_enableIQDLComp,			/**< */
-	ORI_ObjectParam_TxSigPath_AWS_enPeakCancel,			/**< */
-	ORI_ObjectParam_RxSigPath_ulCalREMax,				/**< */
-	ORI_ObjectParam_RxSigPath_ta3,						/**< */
-	ORI_ObjectParam_RxSigPath_ulCalRE,					/**< */
-	ORI_ObjectParam_RxSigPath_rtwpGroup,				/**< */
-	ORI_ObjectParam_RxSigPath_tddCPLengthUL,			/**< */
-	ORI_ObjectParam_RxSigPath_ulFeedAdj,				/**< */
-	ORI_ObjectParam_RxSigPath_ulTgtRMSLvl,				/**< */
-	ORI_ObjectParam_RxSigPath_ulAGCSetlgTime,			/**< */
-	ORI_ObjectParam_RxSigPath_TxSigPath,				/**< */
-	ORI_ObjectParam_RxSigPath_enableIQULComp,			/**< */
-	ORI_ObjectParam_ORILink_portRoleCapability,			/**< */
-	ORI_ObjectParam_ORILink_portRole,					/**< */
-	ORI_ObjectParam_ORILink_bitRateSupport,				/**< */
-	ORI_ObjectParam_ORILink_bitRateRequested,			/**< */
-	ORI_ObjectParam_ORILink_bitRateOperational,			/**< */
-	ORI_ObjectParam_ORILink_localPortID,				/**< */
-	ORI_ObjectParam_ORILink_remotePortID,				/**< */
-	ORI_ObjectParam_ORILink_toffset,					/**< */
-	ORI_ObjectParam_ORILink_oriLinkType,				/**< */
-	ORI_ObjectParam_ORILink_AWS_localMAC,				/**< */
-	ORI_ObjectParam_ORILink_AWS_remoteMAC,				/**< */
-	ORI_ObjectParam_ORILink_AWS_t14,					/**< */
-	ORI_ObjectParam_ORILink_AWS_sfpTxPow,				/**< */
-	ORI_ObjectParam_ORILink_AWS_sfpRxPow,				/**< */
-	ORI_ObjectParam_ORILink_AWS_remoteIP,				/**< */
-	ORI_ObjectParam_ORILink_AWS_localIP,				/**< */
-	ORI_ObjectParam_ORILink_AWS_remoteUdpPort,			/**< */
-	ORI_ObjectParam_ORILink_AWS_localUdpPort,			/**< */
-	ORI_ObjectParam_AISGPort_busPowerEnable,			/**< */
-	ORI_ObjectParam_AISGALD_deviceType,					/**< */
-	ORI_ObjectParam_AISGALD_UID,						/**< */
-	ORI_ObjectParam_AISGALD_releaseID,					/**< */
-	ORI_ObjectParam_AISGALD_aisgVersion,				/**< */
-	ORI_ObjectParam_AISGALD_deviceTypeVersion,			/**< */
-	ORI_ObjectParam_AISGALD_frameLength,				/**< */
-	ORI_ObjectParam_AISGALD_hdlcAdress,					/**< */
-	ORI_ObjectParam_Log_logTypeID,						/**< */
-	ORI_ObjectParam_Log_description,					/**< */
-	ORI_ObjectParam_Log_logCategory,					/**< */
-	ORI_ObjectParam_Log_maxREfileSize,					/**< */
-	ORI_ObjectParam_Log_maxRECfileSize,					/**< */
-	ORI_ObjectParam_Log_enableNotification,				/**< */
-	ORI_ObjectParam_Log_fileAvailable,					/**< */
-	ORI_ObjectParam_Log_overflowBehaviour,				/**< */
-	ORI_ObjectParam_Log_recordingEnabled,				/**< */
-	ORI_ObjectParam_Log_logPeriod,						/**< */
-	ORI_ObjectParam_Log_timerType,						/**< */
-	ORI_ObjectParam_Routed_MasterPortOriLink,			/**< */
-	ORI_ObjectParam_Routed_SlavePortOriLink,			/**< */
-	ORI_ObjectParam_RoutedIQData_IQsubBlockSize,		/**< */
-	ORI_ObjectParam_RoutedIQData_MasterPortIQblkW,		/**< */
-	ORI_ObjectParam_RoutedIQData_MasterPortIQblkB,		/**< */
-	ORI_ObjectParam_RoutedIQData_SlavePortIQW,			/**< */
-	ORI_ObjectParam_RoutedIQData_SlavePortIQB,			/**< */
-	ORI_ObjectParam_RoutedIQData_TBDelayDL,				/**< */
-	ORI_ObjectParam_RoutedIQData_TBDelayUL,				/**< */
-	ORI_ObjectParam_RoutedCWBlock_CtrlBlockSize,		/**< */
-	ORI_ObjectParam_RoutedCWBlock_SubChannelStart,		/**< */
-	ORI_ObjectParam_RoutedCWBlock_Ydepth,				/**< */
-	ORI_ObjectParam_RoutedCWBlock_SlavePortYoffset,		/**< */
-	ORI_ObjectParam_RoutedCWBlock_MasterPortYoffset,	/**< */
-	ORI_ObjectParam_All,								/**< */
-	ORI_ObjectParam_Invalid,							/**< */
+typedef enum {
+  ORI_ObjectParam_RE_VendorID = 0, /**< */
+  ORI_ObjectParam_RE_ProductID, /**< */
+  ORI_ObjectParam_RE_ProductRevision, /**< */
+  ORI_ObjectParam_RE_SerialNumber, /**< */
+  ORI_ObjectParam_RE_ProtocolVer, /**< */
+  ORI_ObjectParam_RE_AGCTargetLevCfgGran, /**< */
+  ORI_ObjectParam_RE_AGCSettlingTimeCfgGran, /**< */
+  ORI_ObjectParam_RE_AGCSettlingTimeCap, /**< */
+  ORI_ObjectParam_RE_AWS_uptime, /**< */
+  ORI_ObjectParam_RE_AWS_inputVoltage, /**< */
+  ORI_ObjectParam_RE_AWS_inputCurrent, /**< */
+  ORI_ObjectParam_RE_AWS_productTemp, /**< */
+  ORI_ObjectParam_RE_AWS_cpuTemp, /**< */
+  ORI_ObjectParam_RE_AWS_paTemp, /**< */
+  ORI_ObjectParam_RE_AWS_rxPwrOffset, /**< */
+  ORI_ObjectParam_Port_portLabel, /**< */
+  ORI_ObjectParam_Port_AWS_outputPwr, /**< */
+  ORI_ObjectParam_Port_AWS_inputPwr, /**< */
+  ORI_ObjectParam_Port_AWS_returnLoss, /**< */
+  ORI_ObjectParam_SigPath_axcW, /**< */
+  ORI_ObjectParam_SigPath_axcB, /**< */
+  ORI_ObjectParam_SigPath_oriLink, /**< */
+  ORI_ObjectParam_SigPath_uarfcn, /**< */
+  ORI_ObjectParam_SigPath_antPort, /**< */
+  ORI_ObjectParam_SigPath_chanBW, /**< */
+  ORI_ObjectParam_SigPath_tddSpecialSFConfig, /**< */
+  ORI_ObjectParam_SigPath_tddULDLConfig, /**< */
+  ORI_ObjectParam_SigPath_earfcn, /**< */
+  ORI_ObjectParam_SigPath_freqBandInd, /**< */
+  ORI_ObjectParam_SigPath_sigmaIQ, /**< */
+  ORI_ObjectParam_SigPath_AWS_enableCompRateChange, /**< */
+  ORI_ObjectParam_SigPath_AWS_enableCompBitChange, /**< */
+  ORI_ObjectParam_SigPath_AWS_measuredPwr, /**< */
+  ORI_ObjectParam_SigPath_AWS_axcIncr, /**< */
+  ORI_ObjectParam_SigPath_AWS_arfcn, /**< */
+  ORI_ObjectParam_TxSigPath_t2a, /**< */
+  ORI_ObjectParam_TxSigPath_maxTxPwr, /**< */
+  ORI_ObjectParam_TxSigPath_dlCalRE, /**< */
+  ORI_ObjectParam_TxSigPath_tddCPLengthDL, /**< */
+  ORI_ObjectParam_TxSigPath_dlCalREMax, /**< */
+  ORI_ObjectParam_TxSigPath_enableIQDLComp, /**< */
+  ORI_ObjectParam_TxSigPath_AWS_enPeakCancel, /**< */
+  ORI_ObjectParam_RxSigPath_ulCalREMax, /**< */
+  ORI_ObjectParam_RxSigPath_ta3, /**< */
+  ORI_ObjectParam_RxSigPath_ulCalRE, /**< */
+  ORI_ObjectParam_RxSigPath_rtwpGroup, /**< */
+  ORI_ObjectParam_RxSigPath_tddCPLengthUL, /**< */
+  ORI_ObjectParam_RxSigPath_ulFeedAdj, /**< */
+  ORI_ObjectParam_RxSigPath_ulTgtRMSLvl, /**< */
+  ORI_ObjectParam_RxSigPath_ulAGCSetlgTime, /**< */
+  ORI_ObjectParam_RxSigPath_TxSigPath, /**< */
+  ORI_ObjectParam_RxSigPath_enableIQULComp, /**< */
+  ORI_ObjectParam_ORILink_portRoleCapability, /**< */
+  ORI_ObjectParam_ORILink_portRole, /**< */
+  ORI_ObjectParam_ORILink_bitRateSupport, /**< */
+  ORI_ObjectParam_ORILink_bitRateRequested, /**< */
+  ORI_ObjectParam_ORILink_bitRateOperational, /**< */
+  ORI_ObjectParam_ORILink_localPortID, /**< */
+  ORI_ObjectParam_ORILink_remotePortID, /**< */
+  ORI_ObjectParam_ORILink_toffset, /**< */
+  ORI_ObjectParam_ORILink_oriLinkType, /**< */
+  ORI_ObjectParam_ORILink_AWS_localMAC, /**< */
+  ORI_ObjectParam_ORILink_AWS_remoteMAC, /**< */
+  ORI_ObjectParam_ORILink_AWS_t14, /**< */
+  ORI_ObjectParam_ORILink_AWS_sfpTxPow, /**< */
+  ORI_ObjectParam_ORILink_AWS_sfpRxPow, /**< */
+  ORI_ObjectParam_ORILink_AWS_remoteIP, /**< */
+  ORI_ObjectParam_ORILink_AWS_localIP, /**< */
+  ORI_ObjectParam_ORILink_AWS_remoteUdpPort, /**< */
+  ORI_ObjectParam_ORILink_AWS_localUdpPort, /**< */
+  ORI_ObjectParam_AISGPort_busPowerEnable, /**< */
+  ORI_ObjectParam_AISGALD_deviceType, /**< */
+  ORI_ObjectParam_AISGALD_UID, /**< */
+  ORI_ObjectParam_AISGALD_releaseID, /**< */
+  ORI_ObjectParam_AISGALD_aisgVersion, /**< */
+  ORI_ObjectParam_AISGALD_deviceTypeVersion, /**< */
+  ORI_ObjectParam_AISGALD_frameLength, /**< */
+  ORI_ObjectParam_AISGALD_hdlcAdress, /**< */
+  ORI_ObjectParam_Log_logTypeID, /**< */
+  ORI_ObjectParam_Log_description, /**< */
+  ORI_ObjectParam_Log_logCategory, /**< */
+  ORI_ObjectParam_Log_maxREfileSize, /**< */
+  ORI_ObjectParam_Log_maxRECfileSize, /**< */
+  ORI_ObjectParam_Log_enableNotification, /**< */
+  ORI_ObjectParam_Log_fileAvailable, /**< */
+  ORI_ObjectParam_Log_overflowBehaviour, /**< */
+  ORI_ObjectParam_Log_recordingEnabled, /**< */
+  ORI_ObjectParam_Log_logPeriod, /**< */
+  ORI_ObjectParam_Log_timerType, /**< */
+  ORI_ObjectParam_Routed_MasterPortOriLink, /**< */
+  ORI_ObjectParam_Routed_SlavePortOriLink, /**< */
+  ORI_ObjectParam_RoutedIQData_IQsubBlockSize, /**< */
+  ORI_ObjectParam_RoutedIQData_MasterPortIQblkW, /**< */
+  ORI_ObjectParam_RoutedIQData_MasterPortIQblkB, /**< */
+  ORI_ObjectParam_RoutedIQData_SlavePortIQW, /**< */
+  ORI_ObjectParam_RoutedIQData_SlavePortIQB, /**< */
+  ORI_ObjectParam_RoutedIQData_TBDelayDL, /**< */
+  ORI_ObjectParam_RoutedIQData_TBDelayUL, /**< */
+  ORI_ObjectParam_RoutedCWBlock_CtrlBlockSize, /**< */
+  ORI_ObjectParam_RoutedCWBlock_SubChannelStart, /**< */
+  ORI_ObjectParam_RoutedCWBlock_Ydepth, /**< */
+  ORI_ObjectParam_RoutedCWBlock_SlavePortYoffset, /**< */
+  ORI_ObjectParam_RoutedCWBlock_MasterPortYoffset, /**< */
+  ORI_ObjectParam_All, /**< */
+  ORI_ObjectParam_Invalid, /**< */
 } ORI_ObjectParam_e;
 
 /**
@@ -305,16 +295,14 @@ typedef enum
  * @param objectParam The ::ORI_ObjectParam_e.
  * @return The describing string.
  */
-const char * 					ORI_ObjectParam_Print(ORI_ObjectParam_e objectParam);
+const char *ORI_ObjectParam_Print(ORI_ObjectParam_e objectParam);
 
 /**
  * @brief Get an ::ORI_ObjectParam_e from a string.
  * @param objectParamString The string to match.
  * @return The matched ::ORI_ObjectParam_e, or ::ORI_ObjectParam_Invalid if failure.
  */
-ORI_ObjectParam_e 				ORI_ObjectParam_Enum(const char * objectParamString);
-
-
+ORI_ObjectParam_e ORI_ObjectParam_Enum(const char *objectParamString);
 
 /*-----------------------------------------------------------------------------------------
  * ORI_STATETYPE ENUMERATION
@@ -324,12 +312,11 @@ ORI_ObjectParam_e 				ORI_ObjectParam_Enum(const char * objectParamString);
  * @enum ORI_StateType_e
  * @brief ORI state type enumeration.
  */
-typedef enum
-{
-	ORI_StateType_AST = 0,								/**< */
-	ORI_StateType_FST,									/**< */
-	ORI_StateType_All,									/**< */
-	ORI_StateType_Invalid,								/**< */
+typedef enum {
+  ORI_StateType_AST = 0, /**< */
+  ORI_StateType_FST, /**< */
+  ORI_StateType_All, /**< */
+  ORI_StateType_Invalid, /**< */
 } ORI_StateType_e;
 
 /**
@@ -337,16 +324,14 @@ typedef enum
  * @param stateType The ::ORI_StateType_e.
  * @return The describing string.
  */
-const char * 					ORI_StateType_Print(ORI_StateType_e stateType);
+const char *ORI_StateType_Print(ORI_StateType_e stateType);
 
 /**
  * @brief Get an ::ORI_StateType_e from a string.
  * @param stateTypeString The string to match.
  * @return The matched ::ORI_StateType_e, or ::ORI_StateType_Invalid if failure.
  */
-ORI_StateType_e 				ORI_StateType_Enum(const char * stateTypeString);
-
-
+ORI_StateType_e ORI_StateType_Enum(const char *stateTypeString);
 
 /*-----------------------------------------------------------------------------------------
  * ORI_AST ENUMERATION
@@ -356,11 +341,10 @@ ORI_StateType_e 				ORI_StateType_Enum(const char * stateTypeString);
  * @enum ORI_AST_e
  * @brief ORI AST enumeration.
  */
-typedef enum
-{
-	ORI_AST_Locked = 0,									/**< */
-	ORI_AST_Unlocked,									/**< */
-	ORI_AST_Invalid,									/**< */
+typedef enum {
+  ORI_AST_Locked = 0, /**< */
+  ORI_AST_Unlocked, /**< */
+  ORI_AST_Invalid, /**< */
 } ORI_AST_e;
 
 /**
@@ -368,16 +352,14 @@ typedef enum
  * @param ast The ::ORI_AST_e.
  * @return The describing string.
  */
-const char * 					ORI_AST_Print(ORI_AST_e ast);
+const char *ORI_AST_Print(ORI_AST_e ast);
 
 /**
  * @brief Get an ::ORI_AST_e from a string.
  * @param astString The string to match.
  * @return The matched ::ORI_AST_e, or ::ORI_AST_Invalid if failure.
  */
-ORI_AST_e 						ORI_AST_Enum(const char * astString);
-
-
+ORI_AST_e ORI_AST_Enum(const char *astString);
 
 /*-----------------------------------------------------------------------------------------
  * ORI_FST ENUMERATION
@@ -387,15 +369,14 @@ ORI_AST_e 						ORI_AST_Enum(const char * astString);
  * @enum ORI_FST_e
  * @brief ORI FST enumeration.
  */
-typedef enum
-{
-	ORI_FST_PreOperational = 0,							/**< */
-	ORI_FST_Operational,								/**< */
-	ORI_FST_Degraded,									/**< */
-	ORI_FST_Failed,										/**< */
-	ORI_FST_NotOperational,								/**< */
-	ORI_FST_Disabled,									/**< */
-	ORI_FST_Invalid,									/**< */
+typedef enum {
+  ORI_FST_PreOperational = 0, /**< */
+  ORI_FST_Operational, /**< */
+  ORI_FST_Degraded, /**< */
+  ORI_FST_Failed, /**< */
+  ORI_FST_NotOperational, /**< */
+  ORI_FST_Disabled, /**< */
+  ORI_FST_Invalid, /**< */
 } ORI_FST_e;
 
 /**
@@ -403,16 +384,14 @@ typedef enum
  * @param fst The ::ORI_FST_e.
  * @return The describing string.
  */
-const char * 					ORI_FST_Print(ORI_FST_e fst);
+const char *ORI_FST_Print(ORI_FST_e fst);
 
 /**
  * @brief Get an ::ORI_FST_e from a string.
  * @param fstString The string to match.
  * @return The matched ::ORI_FST_e, or ::ORI_FST_Invalid if failure.
  */
-ORI_FST_e 						ORI_FST_Enum(const char * fstString);
-
-
+ORI_FST_e ORI_FST_Enum(const char *fstString);
 
 /*-----------------------------------------------------------------------------------------
  * ORI_AGCGRANULARITY ENUMERATION
@@ -422,11 +401,10 @@ ORI_FST_e 						ORI_FST_Enum(const char * fstString);
  * @enum ORI_agcGranularity_e
  * @brief AGC granularity capability enumeration.
  */
-typedef enum
-{
-	ORI_agcGranularity_RxSigPath = 0,					/**< */
-	ORI_agcGranularity_RE,								/**< */
-	ORI_agcGranularity_Invalid,							/**< */
+typedef enum {
+  ORI_agcGranularity_RxSigPath = 0, /**< */
+  ORI_agcGranularity_RE, /**< */
+  ORI_agcGranularity_Invalid, /**< */
 } ORI_agcGranularity_e;
 
 /**
@@ -434,16 +412,14 @@ typedef enum
  * @param agcGranularity The ::ORI_agcGranularity_e.
  * @return The describing string.
  */
-const char * 					ORI_agcGranularity_Print(ORI_agcGranularity_e agcGranularity);
+const char *ORI_agcGranularity_Print(ORI_agcGranularity_e agcGranularity);
 
 /**
  * @brief Get an ::ORI_agcGranularity_e from a string.
  * @param agcGranularityString The string to match.
  * @return The matched ::ORI_agcGranularity_e, or ::ORI_agcGranularity_Invalid if failure.
  */
-ORI_agcGranularity_e 			ORI_agcGranularity_Enum(const char * agcGranularityString);
-
-
+ORI_agcGranularity_e ORI_agcGranularity_Enum(const char *agcGranularityString);
 
 /*-----------------------------------------------------------------------------------------
  * ORI_TDDCPLENGTH ENUMERATION
@@ -453,11 +429,10 @@ ORI_agcGranularity_e 			ORI_agcGranularity_Enum(const char * agcGranularityStrin
  * @enum ORI_tddCPLength_e
  * @brief TDD cyclic prefix length enumeration.
  */
-typedef enum
-{
-	ORI_tddCPLength_Normal = 0,							/**< */
-	ORI_tddCPLength_Extended,							/**< */
-	ORI_tddCPLength_Invalid,							/**< */
+typedef enum {
+  ORI_tddCPLength_Normal = 0, /**< */
+  ORI_tddCPLength_Extended, /**< */
+  ORI_tddCPLength_Invalid, /**< */
 } ORI_tddCPLength_e;
 
 /**
@@ -465,16 +440,14 @@ typedef enum
  * @param tddCPLength The ::ORI_tddCPLength_e.
  * @return The describing string.
  */
-const char * 					ORI_tddCPLength_Print(ORI_tddCPLength_e tddCPLength);
+const char *ORI_tddCPLength_Print(ORI_tddCPLength_e tddCPLength);
 
 /**
  * @brief Get a ::ORI_tddCPLength_e from a string.
  * @param tddCPLengthString The string to match.
  * @return The matched ::ORI_tddCPLength_e, or ::ORI_tddCPLength_Invalid if failure.
  */
-ORI_tddCPLength_e 				ORI_tddCPLength_Enum(const char * tddCPLengthString);
-
-
+ORI_tddCPLength_e ORI_tddCPLength_Enum(const char *tddCPLengthString);
 
 /*-----------------------------------------------------------------------------------------
  * ORI_FREQBAND ENUMERATION
@@ -484,13 +457,12 @@ ORI_tddCPLength_e 				ORI_tddCPLength_Enum(const char * tddCPLengthString);
  * @enum ORI_freqBand_e
  * @brief GSM frequency band enumeration.
  */
-typedef enum
-{
-	ORI_freqBand_GSM850 = 0,							/**< */
-	ORI_freqBand_PGSM900,								/**< */
-	ORI_freqBand_DCS1800,								/**< */
-	ORI_freqBand_PCS1900,								/**< */
-	ORI_freqBand_Invalid,								/**< */
+typedef enum {
+  ORI_freqBand_GSM850 = 0, /**< */
+  ORI_freqBand_PGSM900, /**< */
+  ORI_freqBand_DCS1800, /**< */
+  ORI_freqBand_PCS1900, /**< */
+  ORI_freqBand_Invalid, /**< */
 } ORI_freqBand_e;
 
 /**
@@ -498,16 +470,14 @@ typedef enum
  * @param freqBand The ::ORI_freqBand_e.
  * @return The describing string.
  */
-const char * 					ORI_freqBand_Print(ORI_freqBand_e freqBand);
+const char *ORI_freqBand_Print(ORI_freqBand_e freqBand);
 
 /**
  * @brief Get a ::ORI_freqBand_e from a string.
  * @param freqBandString The string to match.
  * @return The matched ::ORI_freqBand_e, or ::ORI_freqBand_Invalid if failure.
  */
-ORI_freqBand_e 					ORI_freqBand_Enum(const char * freqBandString);
-
-
+ORI_freqBand_e ORI_freqBand_Enum(const char *freqBandString);
 
 /*-----------------------------------------------------------------------------------------
  * ORI_PORTROLE ENUMERATION
@@ -517,11 +487,10 @@ ORI_freqBand_e 					ORI_freqBand_Enum(const char * freqBandString);
  * @enum ORI_portRole_e
  * @brief ORI link port role enumeration.
  */
-typedef enum
-{
-	ORI_portRole_Master = 0,							/**< */
-	ORI_portRole_Slave,									/**< */
-	ORI_portRole_Invalid,								/**< */
+typedef enum {
+  ORI_portRole_Master = 0, /**< */
+  ORI_portRole_Slave, /**< */
+  ORI_portRole_Invalid, /**< */
 } ORI_portRole_e;
 
 /**
@@ -529,16 +498,14 @@ typedef enum
  * @param portRole The ::ORI_portRole_e.
  * @return The describing string.
  */
-const char * 					ORI_portRole_Print(ORI_portRole_e portRole);
+const char *ORI_portRole_Print(ORI_portRole_e portRole);
 
 /**
  * @brief Get a ::ORI_portRole_e from a string.
  * @param portRoleString The string to match.
  * @return The matched ::ORI_portRole_e, or ::ORI_portRole_Invalid if failure.
  */
-ORI_portRole_e 					ORI_portRole_Enum(const char * portRoleString);
-
-
+ORI_portRole_e ORI_portRole_Enum(const char *portRoleString);
 
 /*-----------------------------------------------------------------------------------------
  * ORI_PORTROLECAPABILITY ENUMERATION
@@ -548,12 +515,11 @@ ORI_portRole_e 					ORI_portRole_Enum(const char * portRoleString);
  * @enum ORI_portRoleCapability_e
  * @brief ORI Link port role capability enumeration.
  */
-typedef enum
-{
-	ORI_portRoleCapability_MO = 0,						/**< */
-	ORI_portRoleCapability_SO,							/**< */
-	ORI_portRoleCapability_MS,							/**< */
-	ORI_portRoleCapability_Invalid,						/**< */
+typedef enum {
+  ORI_portRoleCapability_MO = 0, /**< */
+  ORI_portRoleCapability_SO, /**< */
+  ORI_portRoleCapability_MS, /**< */
+  ORI_portRoleCapability_Invalid, /**< */
 } ORI_portRoleCapability_e;
 
 /**
@@ -561,16 +527,14 @@ typedef enum
  * @param portRoleCapability The ::ORI_portRoleCapability_e.
  * @return The describing string.
  */
-const char * 					ORI_portRoleCapability_Print(ORI_portRoleCapability_e portRoleCapability);
+const char *ORI_portRoleCapability_Print(ORI_portRoleCapability_e portRoleCapability);
 
 /**
  * @brief Get an ::ORI_portRoleCapability_e from a string.
  * @param portRoleCapabilityString The string to match.
  * @return The matched ::ORI_portRoleCapability_e, or ::ORI_portRoleCapability_Invalid if failure.
  */
-ORI_portRoleCapability_e 		ORI_portRoleCapability_Enum(const char * portRoleCapabilityString);
-
-
+ORI_portRoleCapability_e ORI_portRoleCapability_Enum(const char *portRoleCapabilityString);
 
 /*-----------------------------------------------------------------------------------------
  * ORI_LINKTYPE ENUMERATION
@@ -580,29 +544,25 @@ ORI_portRoleCapability_e 		ORI_portRoleCapability_Enum(const char * portRoleCapa
  * @enum ORI_linkType_e
  * @brief ORI Link type enumeration.
  */
-typedef enum
-{
-	ORI_linkType_Active = 0,							/**< */
-	ORI_linkType_Passive,								/**< */
-	ORI_linkType_Invalid,								/**< */
+typedef enum {
+  ORI_linkType_Active = 0, /**< */
+  ORI_linkType_Passive, /**< */
+  ORI_linkType_Invalid, /**< */
 } ORI_linkType_e;
-
 
 /**
  * @brief Get a string describing an ::ORI_linkType_e.
  * @param linkType The ::ORI_linkType_e.
  * @return The describing string.
  */
-const char * 					ORI_linkType_Print(ORI_linkType_e linkType);
+const char *ORI_linkType_Print(ORI_linkType_e linkType);
 
 /**
  * @brief Get an ::ORI_linkType_e from a string.
  * @param linkTypeString The string to match.
  * @return The matched ::ORI_linkType_e, or ::ORI_linkType_Invalid if failure.
  */
-ORI_linkType_e 					ORI_linkType_Enum(const char * linkTypeString);
-
-
+ORI_linkType_e ORI_linkType_Enum(const char *linkTypeString);
 
 /*-----------------------------------------------------------------------------------------
  * ORI_BOOLEAN ENUMERATION
@@ -612,11 +572,10 @@ ORI_linkType_e 					ORI_linkType_Enum(const char * linkTypeString);
  * @enum ORI_Boolean_e
  * @brief ORI boolean enumeration.
  */
-typedef enum
-{
-	ORI_Boolean_False = 0,								/**< */
-	ORI_Boolean_True,									/**< */
-	ORI_Boolean_Invalid,								/**< */
+typedef enum {
+  ORI_Boolean_False = 0, /**< */
+  ORI_Boolean_True, /**< */
+  ORI_Boolean_Invalid, /**< */
 } ORI_Boolean_e;
 
 /**
@@ -624,16 +583,14 @@ typedef enum
  * @param boolean The ::ORI_Boolean_e.
  * @return The describing string.
  */
-const char * 					ORI_Boolean_Print(ORI_Boolean_e boolean);
+const char *ORI_Boolean_Print(ORI_Boolean_e boolean);
 
 /**
  * @brief Get an ::ORI_Boolean_e from a string.
  * @param booleanString The string to match.
  * @return The matched ::ORI_Boolean_e, or ::ORI_Boolean_Invalid if failure.
  */
-ORI_Boolean_e 					ORI_Boolean_Enum(const char * booleanString);
-
-
+ORI_Boolean_e ORI_Boolean_Enum(const char *booleanString);
 
 /*-----------------------------------------------------------------------------------------
  * ORI_LOGCATEGORY ENUMERATION
@@ -644,16 +601,15 @@ ORI_Boolean_e 					ORI_Boolean_Enum(const char * booleanString);
  * @brief Log category enumeration.
  *
  */
-typedef enum
-{
-	ORI_logCategory_Fault = 0,							/**< */
-	ORI_logCategory_Perf,								/**< */
-	ORI_logCategory_System,								/**< */
-	ORI_logCategory_Crash,								/**< */
-	ORI_logCategory_Application,						/**< */
-	ORI_logCategory_Debug,								/**< */
-	ORI_logCategory_Other,								/**< */
-	ORI_logCategory_Invalid,							/**< */
+typedef enum {
+  ORI_logCategory_Fault = 0, /**< */
+  ORI_logCategory_Perf, /**< */
+  ORI_logCategory_System, /**< */
+  ORI_logCategory_Crash, /**< */
+  ORI_logCategory_Application, /**< */
+  ORI_logCategory_Debug, /**< */
+  ORI_logCategory_Other, /**< */
+  ORI_logCategory_Invalid, /**< */
 } ORI_logCategory_e;
 
 /**
@@ -661,16 +617,14 @@ typedef enum
  * @param logCategory The ::ORI_logCategory_e.
  * @return The describing string.
  */
-const char * 					ORI_logCategory_Print(ORI_logCategory_e logCategory);
+const char *ORI_logCategory_Print(ORI_logCategory_e logCategory);
 
 /**
  * @brief Get an ::ORI_logCategory_e from a string.
  * @param logCategoryString The string to match.
  * @return The matched ::ORI_logCategory_e, or ::ORI_logCategory_Invalid if failure.
  */
-ORI_logCategory_e 				ORI_logCategory_Enum(const char * logCategoryString);
-
-
+ORI_logCategory_e ORI_logCategory_Enum(const char *logCategoryString);
 
 /*-----------------------------------------------------------------------------------------
  * ORI_OVERFLOWBEHAVIOUR ENUMERATION
@@ -681,11 +635,10 @@ ORI_logCategory_e 				ORI_logCategory_Enum(const char * logCategoryString);
  * @brief Log overflow behaviour enumeration.
  *
  */
-typedef enum
-{
-	ORI_overflowBehaviour_Stop = 0,						/**< */
-	ORI_overflowBehaviour_Fifo,							/**< */
-	ORI_overflowBehaviour_Invalid,						/**< */
+typedef enum {
+  ORI_overflowBehaviour_Stop = 0, /**< */
+  ORI_overflowBehaviour_Fifo, /**< */
+  ORI_overflowBehaviour_Invalid, /**< */
 } ORI_overflowBehaviour_e;
 
 /**
@@ -693,16 +646,14 @@ typedef enum
  * @param overflowBehaviour The ::ORI_overflowBehaviour_e.
  * @return The describing string.
  */
-const char * 					ORI_overflowBehaviour_Print(ORI_overflowBehaviour_e overflowBehaviour);
+const char *ORI_overflowBehaviour_Print(ORI_overflowBehaviour_e overflowBehaviour);
 
 /**
  * @brief Get an ::ORI_overflowBehaviour_e from a string.
  * @param overflowBehaviourString The string to match.
  * @return The matched ::ORI_overflowBehaviour_e, or ::ORI_overflowBehaviour_Invalid if failure.
  */
-ORI_overflowBehaviour_e 		ORI_overflowBehaviour_Enum(const char * overflowBehaviourString);
-
-
+ORI_overflowBehaviour_e ORI_overflowBehaviour_Enum(const char *overflowBehaviourString);
 
 /*-----------------------------------------------------------------------------------------
  * ORI_TIMERTYPE ENUMERATION
@@ -712,11 +663,10 @@ ORI_overflowBehaviour_e 		ORI_overflowBehaviour_Enum(const char * overflowBehavi
  * @enum ORI_timerType_e
  * @brief Log timer type enumeration.
  */
-typedef enum
-{
-	ORI_timerType_OneShot = 0,							/**< */
-	ORI_timerType_Periodic,								/**< */
-	ORI_timerType_Invalid,								/**< */
+typedef enum {
+  ORI_timerType_OneShot = 0, /**< */
+  ORI_timerType_Periodic, /**< */
+  ORI_timerType_Invalid, /**< */
 } ORI_timerType_e;
 
 /**
@@ -724,40 +674,37 @@ typedef enum
  * @param timerType The ::ORI_timerType_e.
  * @return The describing string.
  */
-const char * 					ORI_timerType_Print(ORI_timerType_e timerType);
+const char *ORI_timerType_Print(ORI_timerType_e timerType);
 
 /**
  * @brief Get an ::ORI_timerType_e from a string.
  * @param timerTypeString The string to match.
  * @return The matched ::ORI_timerType_e, or ::ORI_timerType_Invalid if failure.
  */
-ORI_timerType_e 				ORI_timerType_Enum(const char * timerTypeString);
-
-
+ORI_timerType_e ORI_timerType_Enum(const char *timerTypeString);
 
 /*-----------------------------------------------------------------------------------------
- *	ORI_FAULTTYPE ENUMERATION
+ *    ORI_FAULTTYPE ENUMERATION
  *-----------------------------------------------------------------------------------------*/
 
 /**
  * @enum ORI_FaultType_e
  * @brief ORI fault types enumeration.
  */
-typedef enum
-{
-	ORI_FaultType_RE_ExtSupplyUnderVolt = 0,			/**< */
-	ORI_FaultType_RE_OverTemp,							/**< */
-	ORI_FaultType_RE_DigInOverdrive,					/**< */
-	ORI_FaultType_RE_RFOutOverdrive,					/**< */
-	ORI_FaultType_RE_TXGainFail,						/**< */
-	ORI_FaultType_RE_RXGainFail,						/**< */
-	ORI_FaultType_AntennaPort_VSWROutOfRange,			/**< */
-	ORI_FaultType_AntennaPort_NonAisgTmaMalfct,			/**< */
-	ORI_FaultType_ORILink_LinkFail,						/**< */
-	ORI_FaultType_ORILink_PortFail,						/**< */
-	ORI_FaultType_ORILink_SyncFail,						/**< */
-	ORI_FaultType_AISGPort_AisgMalfct,					/**< */
-	ORI_FaultType_Invalid,
+typedef enum {
+  ORI_FaultType_RE_ExtSupplyUnderVolt = 0, /**< */
+  ORI_FaultType_RE_OverTemp, /**< */
+  ORI_FaultType_RE_DigInOverdrive, /**< */
+  ORI_FaultType_RE_RFOutOverdrive, /**< */
+  ORI_FaultType_RE_TXGainFail, /**< */
+  ORI_FaultType_RE_RXGainFail, /**< */
+  ORI_FaultType_AntennaPort_VSWROutOfRange, /**< */
+  ORI_FaultType_AntennaPort_NonAisgTmaMalfct, /**< */
+  ORI_FaultType_ORILink_LinkFail, /**< */
+  ORI_FaultType_ORILink_PortFail, /**< */
+  ORI_FaultType_ORILink_SyncFail, /**< */
+  ORI_FaultType_AISGPort_AisgMalfct, /**< */
+  ORI_FaultType_Invalid,
 } ORI_FaultType_e;
 
 /**
@@ -765,16 +712,14 @@ typedef enum
  * @param faultType The ::ORI_FaultType_e.
  * @return The describing string.
  */
-const char * 					ORI_FaultType_Print(ORI_FaultType_e faultType);
+const char *ORI_FaultType_Print(ORI_FaultType_e faultType);
 
 /**
  * @brief Get an ::ORI_FaultType_e from a string.
  * @param faultTypeString The string to match.
  * @return The matched ::ORI_FaultType_e, or ::ORI_FaultType_Invalid if failure.
  */
-ORI_FaultType_e 				ORI_FaultType_Enum(const char * faultTypeString);
-
-
+ORI_FaultType_e ORI_FaultType_Enum(const char *faultTypeString);
 
 /*-----------------------------------------------------------------------------------------
  * ORI_FAULTSTATE ENUMERATION
@@ -784,11 +729,10 @@ ORI_FaultType_e 				ORI_FaultType_Enum(const char * faultTypeString);
  * @enum ORI_FaultState_e
  * @brief ORI RE fault state enumeration.
  */
-typedef enum
-{
-    ORI_FaultState_Cleared = 0,							/**< */
-    ORI_FaultState_Active,								/**< */
-    ORI_FaultState_Unknown,								/**< */
+typedef enum {
+  ORI_FaultState_Cleared = 0, /**< */
+  ORI_FaultState_Active, /**< */
+  ORI_FaultState_Unknown, /**< */
 } ORI_FaultState_e;
 
 /**
@@ -796,16 +740,14 @@ typedef enum
  * @param faultState The ::ORI_FaultState_e.
  * @return The describing string.
  */
-const char * 					ORI_FaultState_Print(ORI_FaultState_e faultState);
+const char *ORI_FaultState_Print(ORI_FaultState_e faultState);
 
 /**
  * @brief Get an ::ORI_FaultState_e from a string.
  * @param faultStateString The string to match.
  * @return The matched ::ORI_FaultState_e, or ::ORI_FaultState_Unknown if failure.
  */
-ORI_FaultState_e 				ORI_FaultState_Enum(const char * faultStateString);
-
-
+ORI_FaultState_e ORI_FaultState_Enum(const char *faultStateString);
 
 /*-----------------------------------------------------------------------------------------
  * ORI_FAULTSEVERITY ENUMERATION
@@ -815,12 +757,11 @@ ORI_FaultState_e 				ORI_FaultState_Enum(const char * faultStateString);
  * @enum ORI_FaultSeverity_e
  * @brief ORI RE fault severity enumeration.
  */
-typedef enum
-{
-	ORI_FaultSeverity_Failed = 0,						/**< */
-	ORI_FaultSeverity_Degraded,							/**< */
-	ORI_FaultSeverity_Warning,							/**< */
-	ORI_FaultSeverity_Unknown,							/**< */
+typedef enum {
+  ORI_FaultSeverity_Failed = 0, /**< */
+  ORI_FaultSeverity_Degraded, /**< */
+  ORI_FaultSeverity_Warning, /**< */
+  ORI_FaultSeverity_Unknown, /**< */
 } ORI_FaultSeverity_e;
 
 /**
@@ -828,16 +769,14 @@ typedef enum
  * @param faultSeverity The ::ORI_FaultSeverity_e.
  * @return The describing string.
  */
-const char * 					ORI_FaultSeverity_Print(ORI_FaultSeverity_e faultSeverity);
+const char *ORI_FaultSeverity_Print(ORI_FaultSeverity_e faultSeverity);
 
 /**
  * @brief Get an ::ORI_FaultSeverity_e from a string.
  * @param faultSeverityString The string to match.
  * @return The matched ::ORI_FaultSeverity_e, or ::ORI_FaultSeverity_Unknown if failure.
  */
-ORI_FaultSeverity_e 			ORI_FaultSeverity_Enum(const char * faultSeverityString);
-
-
+ORI_FaultSeverity_e ORI_FaultSeverity_Enum(const char *faultSeverityString);
 
 /*-----------------------------------------------------------------------------------------
  * ORI_EVENTDRIVENREPORT ENUMERATION
@@ -847,15 +786,12 @@ ORI_FaultSeverity_e 			ORI_FaultSeverity_Enum(const char * faultSeverityString);
  * @enum ORI_EventDrivenReport_e
  * @brief Event driven reporting enumeration.
  */
-typedef enum
-{
-	ORI_EventDrivenReport_NoModify = 0,					/**< */
-	ORI_EventDrivenReport_True,							/**< */
-	ORI_EventDrivenReport_False,						/**< */
-	ORI_EventDrivenReport_Invalid,						/**< */
+typedef enum {
+  ORI_EventDrivenReport_NoModify = 0, /**< */
+  ORI_EventDrivenReport_True, /**< */
+  ORI_EventDrivenReport_False, /**< */
+  ORI_EventDrivenReport_Invalid, /**< */
 } ORI_EventDrivenReport_e;
-
-
 
 /*-----------------------------------------------------------------------------------------
  * ORI_AISGLAYER7COMMAND ENUMERATION
@@ -865,46 +801,44 @@ typedef enum
  * @enum ORI_AisgLayer7Command_e
  * @brief Aisg Layer7 commands byte code enumeration.
  */
-typedef enum
-{
-	ORI_AisgLayer7Command_Unknown 					= 0,			/**< */
-	/* Common procedures */
-	ORI_AisgLayer7Command_Reset						= 0x03,			/**< */
-	ORI_AisgLayer7Command_GetAlarmStatus			= 0x04,			/**< */
-	ORI_AisgLayer7Command_GetInfo 					= 0x05,			/**< */
-	ORI_AisgLayer7Command_ClearActiveAlarms			= 0x06,			/**< */
-	ORI_AisgLayer7Command_SelfTest					= 0x0A,			/**< */
-	ORI_AisgLayer7Command_ReadUserData				= 0x10,			/**< */
-	ORI_AisgLayer7Command_WriteUserData				= 0x11,			/**< */
-	ORI_AisgLayer7Command_AlarmSubscribe			= 0x12,			/**< */
-	ORI_AisgLayer7Command_DownloadStart				= 0x40,			/**< */
-	ORI_AisgLayer7Command_DownloadApplication		= 0x41,			/**< */
-	ORI_AisgLayer7Command_DownloadEnd				= 0x42,			/**< */
-	/* Single Antenna RET procedures */
-	ORI_AisgLayer7Command_RetSingle_AlarmIndication	= 0x07,			/**< */
-	ORI_AisgLayer7Command_RetSingle_SetDeviceData	= 0x0E,			/**< */
-	ORI_AisgLayer7Command_RetSingle_GetDeviceData	= 0x0F,			/**< */
-	ORI_AisgLayer7Command_RetSingle_Calibrate 		= 0x31,			/**< */
-	ORI_AisgLayer7Command_RetSingle_SendConfigData	= 0x32,			/**< */
-	ORI_AisgLayer7Command_RetSingle_SetTilt 		= 0x33,			/**< */
-	ORI_AisgLayer7Command_RetSingle_GetTilt 		= 0x34,			/**< */
-	/* Multi Antenna RET procedures */
-	ORI_AisgLayer7Command_RetMulti_Calibrate 		= 0x80,			/**< */
-	ORI_AisgLayer7Command_RetMulti_SetTilt 			= 0x81,			/**< */
-	ORI_AisgLayer7Command_RetMulti_GetTilt 			= 0x82,			/**< */
-	ORI_AisgLayer7Command_RetMulti_SetDeviceData	= 0x83,			/**< */
-	ORI_AisgLayer7Command_RetMulti_GetDeviceData	= 0x84,			/**< */
-	ORI_AisgLayer7Command_RetMulti_AlarmIndication	= 0x85,			/**< */
-	ORI_AisgLayer7Command_RetMulti_ClearActiveAlarms= 0x86,			/**< */
-	ORI_AisgLayer7Command_RetMulti_GetAlarmStatus	= 0x87,			/**< */
-	ORI_AisgLayer7Command_RetMulti_GetNbrAntenna	= 0x88,			/**< */
-	ORI_AisgLayer7Command_RetMulti_SendConfigData	= 0x89,			/**< */
-	/* added specific command to check the existence of the aisg port from the model (this is not a real aisg command!) */
-	ORI_AisgLayer7Command_CheckAisgPortExist		= 0xFE,			/**< */
-	/* added specific command to get the aisg ALD device type from the model (this is not a real aisg command!) */
-	ORI_AisgLayer7Command_GetDeviceType				= 0xFF,			/**< */
+typedef enum {
+  ORI_AisgLayer7Command_Unknown = 0, /**< */
+  /* Common procedures */
+  ORI_AisgLayer7Command_Reset = 0x03, /**< */
+  ORI_AisgLayer7Command_GetAlarmStatus = 0x04, /**< */
+  ORI_AisgLayer7Command_GetInfo = 0x05, /**< */
+  ORI_AisgLayer7Command_ClearActiveAlarms = 0x06, /**< */
+  ORI_AisgLayer7Command_SelfTest = 0x0A, /**< */
+  ORI_AisgLayer7Command_ReadUserData = 0x10, /**< */
+  ORI_AisgLayer7Command_WriteUserData = 0x11, /**< */
+  ORI_AisgLayer7Command_AlarmSubscribe = 0x12, /**< */
+  ORI_AisgLayer7Command_DownloadStart = 0x40, /**< */
+  ORI_AisgLayer7Command_DownloadApplication = 0x41, /**< */
+  ORI_AisgLayer7Command_DownloadEnd = 0x42, /**< */
+  /* Single Antenna RET procedures */
+  ORI_AisgLayer7Command_RetSingle_AlarmIndication = 0x07, /**< */
+  ORI_AisgLayer7Command_RetSingle_SetDeviceData = 0x0E, /**< */
+  ORI_AisgLayer7Command_RetSingle_GetDeviceData = 0x0F, /**< */
+  ORI_AisgLayer7Command_RetSingle_Calibrate = 0x31, /**< */
+  ORI_AisgLayer7Command_RetSingle_SendConfigData = 0x32, /**< */
+  ORI_AisgLayer7Command_RetSingle_SetTilt = 0x33, /**< */
+  ORI_AisgLayer7Command_RetSingle_GetTilt = 0x34, /**< */
+  /* Multi Antenna RET procedures */
+  ORI_AisgLayer7Command_RetMulti_Calibrate = 0x80, /**< */
+  ORI_AisgLayer7Command_RetMulti_SetTilt = 0x81, /**< */
+  ORI_AisgLayer7Command_RetMulti_GetTilt = 0x82, /**< */
+  ORI_AisgLayer7Command_RetMulti_SetDeviceData = 0x83, /**< */
+  ORI_AisgLayer7Command_RetMulti_GetDeviceData = 0x84, /**< */
+  ORI_AisgLayer7Command_RetMulti_AlarmIndication = 0x85, /**< */
+  ORI_AisgLayer7Command_RetMulti_ClearActiveAlarms = 0x86, /**< */
+  ORI_AisgLayer7Command_RetMulti_GetAlarmStatus = 0x87, /**< */
+  ORI_AisgLayer7Command_RetMulti_GetNbrAntenna = 0x88, /**< */
+  ORI_AisgLayer7Command_RetMulti_SendConfigData = 0x89, /**< */
+  /* added specific command to check the existence of the aisg port from the model (this is not a real aisg command!) */
+  ORI_AisgLayer7Command_CheckAisgPortExist = 0xFE, /**< */
+  /* added specific command to get the aisg ALD device type from the model (this is not a real aisg command!) */
+  ORI_AisgLayer7Command_GetDeviceType = 0xFF, /**< */
 } ORI_AisgLayer7Command_e;
-
 
 /*-----------------------------------------------------------------------------------------
  * ORI_AISGRETURNCODE ENUMERATION
@@ -914,28 +848,27 @@ typedef enum
  * @enum ORI_AisgReturnCode_e
  * @brief Aisg return code enumeration.
  */
-typedef enum
-{
-	ORI_AisgReturnCode_OK 					= 0,			/**< */
-	ORI_AisgReturnCode_MotorJam				= 0x02,			/**< */
-	ORI_AisgReturnCode_ActuatorJam			= 0x03,			/**< */
-	ORI_AisgReturnCode_Busy 				= 0x05,			/**< */
-	ORI_AisgReturnCode_Checksum 			= 0x06,			/**< */
-	ORI_AisgReturnCode_FAIL 				= 0x0B,			/**< */
-	ORI_AisgReturnCode_NotCalibrated		= 0x0E,			/**< */
-	ORI_AisgReturnCode_NotConfigured		= 0x0F,			/**< */
-	ORI_AisgReturnCode_Hardware				= 0x11,			/**< */
-	ORI_AisgReturnCode_OutOfRange			= 0x13,			/**< */
-	ORI_AisgReturnCode_UnknownProcedure		= 0x19,			/**< */
-	ORI_AisgReturnCode_ReadOnly 			= 0x1D,			/**< */
-	ORI_AisgReturnCode_UnknownParameter		= 0x1E,			/**< */
-	ORI_AisgReturnCode_WorkingSWMissing		= 0x21,			/**< */
-	ORI_AisgReturnCode_InvalidFileContent	= 0x22,			/**< */
-	ORI_AisgReturnCode_FormatError 			= 0x24,			/**< */
-	ORI_AisgReturnCode_UnsupportedProcedure	= 0x25,			/**< */
-	ORI_AisgReturnCode_InvalidProcedureSeq	= 0x26,			/**< */
-	ORI_AisgReturnCode_ActuatorInterference	= 0x27,			/**< */
-	ORI_AisgReturnCode_Unknown,
+typedef enum {
+  ORI_AisgReturnCode_OK = 0, /**< */
+  ORI_AisgReturnCode_MotorJam = 0x02, /**< */
+  ORI_AisgReturnCode_ActuatorJam = 0x03, /**< */
+  ORI_AisgReturnCode_Busy = 0x05, /**< */
+  ORI_AisgReturnCode_Checksum = 0x06, /**< */
+  ORI_AisgReturnCode_FAIL = 0x0B, /**< */
+  ORI_AisgReturnCode_NotCalibrated = 0x0E, /**< */
+  ORI_AisgReturnCode_NotConfigured = 0x0F, /**< */
+  ORI_AisgReturnCode_Hardware = 0x11, /**< */
+  ORI_AisgReturnCode_OutOfRange = 0x13, /**< */
+  ORI_AisgReturnCode_UnknownProcedure = 0x19, /**< */
+  ORI_AisgReturnCode_ReadOnly = 0x1D, /**< */
+  ORI_AisgReturnCode_UnknownParameter = 0x1E, /**< */
+  ORI_AisgReturnCode_WorkingSWMissing = 0x21, /**< */
+  ORI_AisgReturnCode_InvalidFileContent = 0x22, /**< */
+  ORI_AisgReturnCode_FormatError = 0x24, /**< */
+  ORI_AisgReturnCode_UnsupportedProcedure = 0x25, /**< */
+  ORI_AisgReturnCode_InvalidProcedureSeq = 0x26, /**< */
+  ORI_AisgReturnCode_ActuatorInterference = 0x27, /**< */
+  ORI_AisgReturnCode_Unknown,
 } ORI_AisgReturnCode_e;
 
 /**
@@ -943,15 +876,14 @@ typedef enum
  * @param returnCode The ::ORI_AisgReturnCode_e.
  * @return The describing string.
  */
-const char * 					ORI_AisgReturnCode_Print(ORI_AisgReturnCode_e returnCode);
+const char *ORI_AisgReturnCode_Print(ORI_AisgReturnCode_e returnCode);
 
 /**
  * @brief Get an ::ORI_AisgReturnCode_e from a string.
  * @param returnCodeString The string to match.
  * @return The matched ::ORI_AisgReturnCode_e, or ::ORI_AisgReturnCode_Unknown if failure.
  */
-ORI_AisgReturnCode_e 			ORI_AisgReturnCode_Enum(const char * returnCodeString);
-
+ORI_AisgReturnCode_e ORI_AisgReturnCode_Enum(const char *returnCodeString);
 
 /*-----------------------------------------------------------------------------------------
  * ORI_AISGDEVICEDATA ENUMERATION
@@ -961,22 +893,21 @@ ORI_AisgReturnCode_e 			ORI_AisgReturnCode_Enum(const char * returnCodeString);
  * @enum ORI_AisgDeviceData_e
  * @brief Aisg device data fields enumeration.
  */
-typedef enum
-{
-	ORI_AisgDeviceData_AntennaModelNbr		= 1,			/**< */
-	ORI_AisgDeviceData_AntennaSerialNbr		= 2,			/**< */
-	ORI_AisgDeviceData_AntennaFreqBand		= 3,			/**< */
-	ORI_AisgDeviceData_BeamwidthBand		= 4,			/**< */
-	ORI_AisgDeviceData_GainBand				= 5,			/**< */
-	ORI_AisgDeviceData_MaxTilt				= 6,			/**< */
-	ORI_AisgDeviceData_MinTilt				= 7,			/**< */
-	ORI_AisgDeviceData_InstallationDate		= 0x21,			/**< */
-	ORI_AisgDeviceData_InstallerID			= 0x22,			/**< */
-	ORI_AisgDeviceData_BasestationID		= 0x23,			/**< */
-	ORI_AisgDeviceData_SectorID				= 0x24,			/**< */
-	ORI_AisgDeviceData_AntennaBearing		= 0x25,			/**< */
-	ORI_AisgDeviceData_MechanicalTilt		= 0x26,			/**< */
-	ORI_AisgDeviceData_Unknown,
+typedef enum {
+  ORI_AisgDeviceData_AntennaModelNbr = 1, /**< */
+  ORI_AisgDeviceData_AntennaSerialNbr = 2, /**< */
+  ORI_AisgDeviceData_AntennaFreqBand = 3, /**< */
+  ORI_AisgDeviceData_BeamwidthBand = 4, /**< */
+  ORI_AisgDeviceData_GainBand = 5, /**< */
+  ORI_AisgDeviceData_MaxTilt = 6, /**< */
+  ORI_AisgDeviceData_MinTilt = 7, /**< */
+  ORI_AisgDeviceData_InstallationDate = 0x21, /**< */
+  ORI_AisgDeviceData_InstallerID = 0x22, /**< */
+  ORI_AisgDeviceData_BasestationID = 0x23, /**< */
+  ORI_AisgDeviceData_SectorID = 0x24, /**< */
+  ORI_AisgDeviceData_AntennaBearing = 0x25, /**< */
+  ORI_AisgDeviceData_MechanicalTilt = 0x26, /**< */
+  ORI_AisgDeviceData_Unknown,
 } ORI_AisgDeviceData_e;
 
 /**
@@ -984,16 +915,14 @@ typedef enum
  * @param field The ::ORI_AisgDeviceData_e.
  * @return The describing string.
  */
-const char * 					ORI_AisgDeviceDataField_Print(ORI_AisgDeviceData_e field);
+const char *ORI_AisgDeviceDataField_Print(ORI_AisgDeviceData_e field);
 
 /**
  * @brief Get an ::ORI_AisgDeviceData_e from a string.
  * @param fieldString The string to match.
  * @return The matched ::ORI_AisgDeviceData_e, or ::ORI_AisgDeviceData_Unknown if failure.
  */
-ORI_AisgDeviceData_e 			ORI_AisgDeviceDataField_Enum(const char * fieldString);
-
-
+ORI_AisgDeviceData_e ORI_AisgDeviceDataField_Enum(const char *fieldString);
 
 /*-----------------------------------------------------------------------------------------
  * OBJECT TYPE REFERENCE
@@ -1011,8 +940,8 @@ typedef struct ORI_Object_s ORI_Object_s;
  */
  typedef struct
 {
-	ORI_Object_s *		parent;							/**< Parent object reference, may be NULL if no parent. */
-	ORI_ObjectType_e	type;							/**< Object type. */
+   ORI_Object_s *parent; /**< Parent object reference, may be NULL if no parent. */
+   ORI_ObjectType_e type; /**< Object type. */
 } ORI_ObjectTypeRef_s;
 
 
@@ -1029,21 +958,22 @@ typedef struct ORI_Object_s ORI_Object_s;
  */
 typedef struct
 {
-	char 					vendorID[4];				/**< RO. Vendor ID as signaled in DHCP code 201, normally 3 characters */
-	char 					productID[81];				/**< RO. RE product ID.*/
-	char 					productRev[81];				/**< RO. RE product revision. */
-	char 					serialNumber[41];			/**< RO. RE serial number. */
-	char 					protocolVer[11];			/**< RO. OCP protocol supported. */
-	ORI_agcGranularity_e	agcTargetLevCfgGran;		/**< RO. UL AGC target RMS level config granularity. */
-	ORI_agcGranularity_e 	agcSettlTimeCfgGran;		/**< RO. UL AGC settling time config granularity. */
-	uint16_t				agcSettlTimeCap;			/**< RO. UL AGC settling time capability. */
-	uint32_t				AWS_uptime;					/**< RO. AW2S Vendor specific: Uptime since boot in seconds. */
-	int32_t					AWS_inputVoltage;			/**< RO. AW2S Vendor specific: RE input voltage in mV. */
-	int32_t					AWS_inputCurrent;			/**< RO. AW2S Vendor specific: RE input current in mA. */
-	int16_t					AWS_productTemp;			/**< RO. AW2S Vendor specific: RE temperature in degC. */
-	int16_t					AWS_cpuTemp;				/**< RO. AW2S Vendor specific: CPU temperature in degC. */
-	int16_t					AWS_paTemp;					/**< RO. AW2S Vendor specific: Power amplifier temperature in degC. */
-	int16_t					AWS_rxPwrOffset;			/**< RO. AW2S Vendor specific: Receiver dBFS to dBm power conversion offset, unit is dB/10 (e.g. -340 for -34 dB). */
+  char vendorID[4]; /**< RO. Vendor ID as signaled in DHCP code 201, normally 3 characters */
+  char productID[81]; /**< RO. RE product ID.*/
+  char productRev[81]; /**< RO. RE product revision. */
+  char serialNumber[41]; /**< RO. RE serial number. */
+  char protocolVer[11]; /**< RO. OCP protocol supported. */
+  ORI_agcGranularity_e agcTargetLevCfgGran; /**< RO. UL AGC target RMS level config granularity. */
+  ORI_agcGranularity_e agcSettlTimeCfgGran; /**< RO. UL AGC settling time config granularity. */
+  uint16_t agcSettlTimeCap; /**< RO. UL AGC settling time capability. */
+  uint32_t AWS_uptime; /**< RO. AW2S Vendor specific: Uptime since boot in seconds. */
+  int32_t AWS_inputVoltage; /**< RO. AW2S Vendor specific: RE input voltage in mV. */
+  int32_t AWS_inputCurrent; /**< RO. AW2S Vendor specific: RE input current in mA. */
+  int16_t AWS_productTemp; /**< RO. AW2S Vendor specific: RE temperature in degC. */
+  int16_t AWS_cpuTemp; /**< RO. AW2S Vendor specific: CPU temperature in degC. */
+  int16_t AWS_paTemp; /**< RO. AW2S Vendor specific: Power amplifier temperature in degC. */
+  int16_t AWS_rxPwrOffset; /**< RO. AW2S Vendor specific: Receiver dBFS to dBm power conversion offset, unit is dB/10 (e.g. -340 for
+                              -34 dB). */
 } ORI_ObjectParams_RE_s;
 
 /**
@@ -1052,10 +982,12 @@ typedef struct
  */
 typedef struct
 {
-	char 		portLabel[81];							/**< RO. Physical antenna port label.*/
-	int16_t 	AWS_outputPwr;							/**< RO. AW2S Vendor specific: Measured output power for this antenna, unit is dBm/10 (e.g. 400 for 40 dBm). */
-	int16_t 	AWS_inputPwr;							/**< RO. AW2S Vendor specific: Measured input power for this antenna, unit is dBm/10 (e.g. -650 for -65 dBm). */
-	int16_t 	AWS_returnLoss;							/**< RO. AW2S Vendor specific: Measured return loss for this antenna, unit is dB/10 (e.g. 50 for 5 dB). */
+  char portLabel[81]; /**< RO. Physical antenna port label.*/
+  int16_t
+      AWS_outputPwr; /**< RO. AW2S Vendor specific: Measured output power for this antenna, unit is dBm/10 (e.g. 400 for 40 dBm). */
+  int16_t
+      AWS_inputPwr; /**< RO. AW2S Vendor specific: Measured input power for this antenna, unit is dBm/10 (e.g. -650 for -65 dBm). */
+  int16_t AWS_returnLoss; /**< RO. AW2S Vendor specific: Measured return loss for this antenna, unit is dB/10 (e.g. 50 for 5 dB). */
 } ORI_ObjectParams_AntennaPort_s;
 
 /**
@@ -1064,18 +996,19 @@ typedef struct
  */
 typedef struct
 {
-	uint16_t			dlCalREMax;						/**< RO. Max possible buffer in RE for DL timing calibration in Tc/16.*/
-	uint32_t			t2a;							/**< RO. RE time delay. */
-	uint16_t			dlCalRE;						/**< RW-Locked. Time delay to enable DL timing calibration in Tc/16. */
-	int16_t 			maxTxPwr;						/**< RW. Max tx power for this path, unit is dBm/10 (e.g. 400 for 40 dBm). */
-	uint8_t 			axcW;							/**< RW-Locked. AxC W parameter. */
-	uint8_t				axcB;							/**< RW-Locked. AxC B parameter. */
-	ORI_Object_s *		oriLink;						/**< RW-Locked. ORI Link on which the AxC is mapped. */
-	uint32_t			uarfcn;							/**< RW-Locked. Downlink UARFCN. */
-	ORI_Object_s *		antPort;						/**< RW-Locked. Reference Antenna port for this signal. */
-	int16_t 			AWS_measuredPwr;				/**< RO. AW2S Vendor specific: Measured Tx power for this path, unit is dBm/10 (e.g. 400 for 40 dBm). */
-	uint16_t 			AWS_axcIncr;					/**< RW-Locked. AW2S Vendor specific: AxC increment for each sample, 0 means auto (= packed, no interleaving). */
-	ORI_Boolean_e 		AWS_enPeakCancel;				/**< RW-Locked. AW2S Vendor specific: Peak-Cancellation CFR enablement. */
+  uint16_t dlCalREMax; /**< RO. Max possible buffer in RE for DL timing calibration in Tc/16.*/
+  uint32_t t2a; /**< RO. RE time delay. */
+  uint16_t dlCalRE; /**< RW-Locked. Time delay to enable DL timing calibration in Tc/16. */
+  int16_t maxTxPwr; /**< RW. Max tx power for this path, unit is dBm/10 (e.g. 400 for 40 dBm). */
+  uint8_t axcW; /**< RW-Locked. AxC W parameter. */
+  uint8_t axcB; /**< RW-Locked. AxC B parameter. */
+  ORI_Object_s *oriLink; /**< RW-Locked. ORI Link on which the AxC is mapped. */
+  uint32_t uarfcn; /**< RW-Locked. Downlink UARFCN. */
+  ORI_Object_s *antPort; /**< RW-Locked. Reference Antenna port for this signal. */
+  int16_t AWS_measuredPwr; /**< RO. AW2S Vendor specific: Measured Tx power for this path, unit is dBm/10 (e.g. 400 for 40 dBm). */
+  uint16_t
+      AWS_axcIncr; /**< RW-Locked. AW2S Vendor specific: AxC increment for each sample, 0 means auto (= packed, no interleaving). */
+  ORI_Boolean_e AWS_enPeakCancel; /**< RW-Locked. AW2S Vendor specific: Peak-Cancellation CFR enablement. */
 } ORI_ObjectParams_TxSigPathUtra_s;
 
 /**
@@ -1084,23 +1017,24 @@ typedef struct
  */
 typedef struct
 {
-	uint16_t 			chanBW;							/**< RW-Locked. Channel bandwith in MHz/10 (14 / 30 / 50 / 100 / 150 / 200). */
-	uint16_t			dlCalREMax;						/**< RO. Max possible buffer in RE for DL timing calibration in Tc/16.*/
-	uint32_t			t2a;							/**< RO. RE time delay. */
-	uint16_t 			dlCalRE;						/**< RW-Locked. Time delay to enable DL timing calibration in Tc/16. */
-	int16_t 			maxTxPwr;						/**< RW. Max tx power for this path, unit is dBm/10 (e.g. 400 for 40 dBm). */
-	uint8_t 			axcW;							/**< RW-Locked. AxC W parameter. */
-	uint8_t 			axcB;							/**< RW-Locked. AxC B parameter. */
-	ORI_Object_s * 		oriLink;						/**< RW-Locked. ORI Link on which the AxC is mapped. */
-	uint32_t 			earfcn;							/**< RW-Locked. Downlink EARFCN. */
-	ORI_Object_s *		antPort;						/**< RW-Locked. Reference Antenna port for this signal. */
-	ORI_Boolean_e		enableIQDLComp;					/**< RW-Locked. IQ data compression enablement. */
-	uint32_t			sigmaIQ;						/**< RW-Locked. Sigma IQ value for IQ data compression. */
-	ORI_Boolean_e		AWS_enableCompRateChange;		/**< RW-Locked. AW2S Vendor specific: Enable IQ data compression sample rate change. */
-	ORI_Boolean_e		AWS_enableCompBitChange;		/**< RW-Locked. AW2S Vendor specific: Enable IQ data compression bit width change. */
-	int16_t 			AWS_measuredPwr;				/**< RO. AW2S Vendor specific: Measured Tx power for this path, unit is dBm/10 (e.g. 400 for 40 dBm). */
-	uint16_t 			AWS_axcIncr;					/**< RW-Locked. AW2S Vendor specific: AxC increment for each sample, 0 means auto (= packed, no interleaving). */
-	ORI_Boolean_e 		AWS_enPeakCancel;				/**< RW-Locked. AW2S Vendor specific: Peak-Cancellation CFR enablement. */
+  uint16_t chanBW; /**< RW-Locked. Channel bandwith in MHz/10 (14 / 30 / 50 / 100 / 150 / 200). */
+  uint16_t dlCalREMax; /**< RO. Max possible buffer in RE for DL timing calibration in Tc/16.*/
+  uint32_t t2a; /**< RO. RE time delay. */
+  uint16_t dlCalRE; /**< RW-Locked. Time delay to enable DL timing calibration in Tc/16. */
+  int16_t maxTxPwr; /**< RW. Max tx power for this path, unit is dBm/10 (e.g. 400 for 40 dBm). */
+  uint8_t axcW; /**< RW-Locked. AxC W parameter. */
+  uint8_t axcB; /**< RW-Locked. AxC B parameter. */
+  ORI_Object_s *oriLink; /**< RW-Locked. ORI Link on which the AxC is mapped. */
+  uint32_t earfcn; /**< RW-Locked. Downlink EARFCN. */
+  ORI_Object_s *antPort; /**< RW-Locked. Reference Antenna port for this signal. */
+  ORI_Boolean_e enableIQDLComp; /**< RW-Locked. IQ data compression enablement. */
+  uint32_t sigmaIQ; /**< RW-Locked. Sigma IQ value for IQ data compression. */
+  ORI_Boolean_e AWS_enableCompRateChange; /**< RW-Locked. AW2S Vendor specific: Enable IQ data compression sample rate change. */
+  ORI_Boolean_e AWS_enableCompBitChange; /**< RW-Locked. AW2S Vendor specific: Enable IQ data compression bit width change. */
+  int16_t AWS_measuredPwr; /**< RO. AW2S Vendor specific: Measured Tx power for this path, unit is dBm/10 (e.g. 400 for 40 dBm). */
+  uint16_t
+      AWS_axcIncr; /**< RW-Locked. AW2S Vendor specific: AxC increment for each sample, 0 means auto (= packed, no interleaving). */
+  ORI_Boolean_e AWS_enPeakCancel; /**< RW-Locked. AW2S Vendor specific: Peak-Cancellation CFR enablement. */
 } ORI_ObjectParams_TxSigPathEUtraFDD_s;
 
 /**
@@ -1109,26 +1043,27 @@ typedef struct
  */
 typedef struct
 {
-	uint16_t 			chanBW;							/**< RW-Locked. Channel bandwith in MHz/10 (14 / 30 / 50 / 100 / 150 / 200). */
-	uint8_t				tddULDLConfig;					/**< RW-Locked. TDD UL/DL config. */
-	uint8_t				tddSpecialSFConfig;				/**< RW-Locked. TDD SSF config. */
-	ORI_tddCPLength_e	tddCPLengthDL;					/**< RW-Locked. TDD Cyclic prefix length. */
-	uint16_t 			dlCalREMax;						/**< RO. Max possible buffer in RE for DL timing calibration in Tc/16.*/
-	uint32_t 			t2a;							/**< RO. RE time delay. */
-	uint16_t 			dlCalRE;						/**< RW-Locked. Time delay to enable DL timing calibration in Tc/16. */
-	int16_t 			maxTxPwr;						/**< RW. Max tx power for this path, unit is dBm/10 (e.g. 400 for 40 dBm). */
-	uint8_t 			axcW;							/**< RW-Locked. AxC W parameter. */
-	uint8_t 			axcB;							/**< RW-Locked. AxC B parameter. */
-	ORI_Object_s * 		oriLink;						/**< RW-Locked. ORI Link on which the AxC is mapped. */
-	uint32_t 			earfcn;							/**< RW-Locked. Downlink EARFCN. */
-	ORI_Object_s *		antPort;						/**< RW-Locked. Reference Antenna port for this signal. */
-	ORI_Boolean_e		enableIQDLComp;					/**< RW-Locked. IQ data compression enablement. */
-	uint32_t			sigmaIQ;						/**< RW-Locked. Sigma IQ value for IQ data compression. */
-	ORI_Boolean_e		AWS_enableCompRateChange;		/**< RW-Locked. AW2S Vendor specific: Enable IQ data compression sample rate change. */
-	ORI_Boolean_e		AWS_enableCompBitChange;		/**< RW-Locked. AW2S Vendor specific: Enable IQ data compression bit width change. */
-	int16_t 			AWS_measuredPwr;				/**< RO. AW2S Vendor specific: Measured Tx power for this path, unit is dBm/10 (e.g. 400 for 40 dBm). */
-	uint16_t 			AWS_axcIncr;					/**< RW-Locked. AW2S Vendor specific: AxC increment for each sample, 0 means auto (= packed, no interleaving). */
-	ORI_Boolean_e 		AWS_enPeakCancel;				/**< RW-Locked. AW2S Vendor specific: Peak-Cancellation CFR enablement. */
+  uint16_t chanBW; /**< RW-Locked. Channel bandwith in MHz/10 (14 / 30 / 50 / 100 / 150 / 200). */
+  uint8_t tddULDLConfig; /**< RW-Locked. TDD UL/DL config. */
+  uint8_t tddSpecialSFConfig; /**< RW-Locked. TDD SSF config. */
+  ORI_tddCPLength_e tddCPLengthDL; /**< RW-Locked. TDD Cyclic prefix length. */
+  uint16_t dlCalREMax; /**< RO. Max possible buffer in RE for DL timing calibration in Tc/16.*/
+  uint32_t t2a; /**< RO. RE time delay. */
+  uint16_t dlCalRE; /**< RW-Locked. Time delay to enable DL timing calibration in Tc/16. */
+  int16_t maxTxPwr; /**< RW. Max tx power for this path, unit is dBm/10 (e.g. 400 for 40 dBm). */
+  uint8_t axcW; /**< RW-Locked. AxC W parameter. */
+  uint8_t axcB; /**< RW-Locked. AxC B parameter. */
+  ORI_Object_s *oriLink; /**< RW-Locked. ORI Link on which the AxC is mapped. */
+  uint32_t earfcn; /**< RW-Locked. Downlink EARFCN. */
+  ORI_Object_s *antPort; /**< RW-Locked. Reference Antenna port for this signal. */
+  ORI_Boolean_e enableIQDLComp; /**< RW-Locked. IQ data compression enablement. */
+  uint32_t sigmaIQ; /**< RW-Locked. Sigma IQ value for IQ data compression. */
+  ORI_Boolean_e AWS_enableCompRateChange; /**< RW-Locked. AW2S Vendor specific: Enable IQ data compression sample rate change. */
+  ORI_Boolean_e AWS_enableCompBitChange; /**< RW-Locked. AW2S Vendor specific: Enable IQ data compression bit width change. */
+  int16_t AWS_measuredPwr; /**< RO. AW2S Vendor specific: Measured Tx power for this path, unit is dBm/10 (e.g. 400 for 40 dBm). */
+  uint16_t
+      AWS_axcIncr; /**< RW-Locked. AW2S Vendor specific: AxC increment for each sample, 0 means auto (= packed, no interleaving). */
+  ORI_Boolean_e AWS_enPeakCancel; /**< RW-Locked. AW2S Vendor specific: Peak-Cancellation CFR enablement. */
 } ORI_ObjectParams_TxSigPathEUtraTDD_s;
 
 /**
@@ -1137,18 +1072,19 @@ typedef struct
  */
 typedef struct
 {
-	uint16_t 			dlCalREMax;						/**< RO. Max possible buffer in RE for DL timing calibration in Tc/16.*/
-	ORI_freqBand_e 		freqBandInd;					/**< GSM frequency band indicator. */
-	uint32_t 			t2a;							/**< RO. RE time delay. */
-	uint16_t 			dlCalRE;						/**< RW-Locked. Time delay to enable DL timing calibration in Tc/16. */
-	int16_t 			maxTxPwr;						/**< RW. Max tx power for this path, unit is dBm/10 (e.g. 400 for 40 dBm). */
-	uint8_t 			axcW;							/**< RW-Locked. AxC W parameter. */
-	uint8_t 			axcB;							/**< RW-Locked. AxC B parameter. */
-	ORI_Object_s * 		oriLink;						/**< RW-Locked. ORI Link on which the AxC is mapped. */
-	ORI_Object_s *		antPort;						/**< RW-Locked. Reference Antenna port for this signal. */
-	int16_t 			AWS_measuredPwr;				/**< RO. AW2S Vendor specific: Measured Tx power for this path, unit is dBm/10 (e.g. 400 for 40 dBm). */
-	uint16_t 			AWS_axcIncr;					/**< RW-Locked. AW2S Vendor specific: AxC increment for each sample, 0 means auto (= packed, no interleaving). */
-	ORI_Boolean_e 		AWS_enPeakCancel;				/**< RW-Locked. AW2S Vendor specific: Peak-Cancellation CFR enablement. */
+  uint16_t dlCalREMax; /**< RO. Max possible buffer in RE for DL timing calibration in Tc/16.*/
+  ORI_freqBand_e freqBandInd; /**< GSM frequency band indicator. */
+  uint32_t t2a; /**< RO. RE time delay. */
+  uint16_t dlCalRE; /**< RW-Locked. Time delay to enable DL timing calibration in Tc/16. */
+  int16_t maxTxPwr; /**< RW. Max tx power for this path, unit is dBm/10 (e.g. 400 for 40 dBm). */
+  uint8_t axcW; /**< RW-Locked. AxC W parameter. */
+  uint8_t axcB; /**< RW-Locked. AxC B parameter. */
+  ORI_Object_s *oriLink; /**< RW-Locked. ORI Link on which the AxC is mapped. */
+  ORI_Object_s *antPort; /**< RW-Locked. Reference Antenna port for this signal. */
+  int16_t AWS_measuredPwr; /**< RO. AW2S Vendor specific: Measured Tx power for this path, unit is dBm/10 (e.g. 400 for 40 dBm). */
+  uint16_t
+      AWS_axcIncr; /**< RW-Locked. AW2S Vendor specific: AxC increment for each sample, 0 means auto (= packed, no interleaving). */
+  ORI_Boolean_e AWS_enPeakCancel; /**< RW-Locked. AW2S Vendor specific: Peak-Cancellation CFR enablement. */
 } ORI_ObjectParams_TxSigPathGSM_s;
 
 /**
@@ -1157,20 +1093,21 @@ typedef struct
  */
 typedef struct
 {
-	uint16_t 			chanBW;							/**< RW-Locked. Channel bandwith in MHz/10. */
-	uint16_t			dlCalREMax;						/**< RO. Max possible buffer in RE for DL timing calibration in Tc/16.*/
-	uint32_t			t2a;							/**< RO. RE time delay. */
-	uint16_t 			dlCalRE;						/**< RW-Locked. Time delay to enable DL timing calibration in Tc/16. */
-	int16_t 			maxTxPwr;						/**< RW. Max tx power for this path, unit is dBm/10 (e.g. 400 for 40 dBm). */
-	uint8_t 			axcW;							/**< RW-Locked. AxC W parameter. */
-	uint8_t 			axcB;							/**< RW-Locked. AxC B parameter. */
-	ORI_Object_s * 		oriLink;						/**< RW-Locked. ORI Link on which the AxC is mapped. */
-	ORI_Object_s *		antPort;						/**< RW-Locked. Reference Antenna port for this signal. */
-	ORI_Boolean_e		AWS_enableCompRateChange;		/**< RW-Locked. AW2S Vendor specific: Enable IQ data compression sample rate change. */
-	int16_t 			AWS_measuredPwr;				/**< RO. AW2S Vendor specific: Measured Tx power for this path, unit is dBm/10 (e.g. 400 for 40 dBm). */
-	uint16_t 			AWS_axcIncr;					/**< RW-Locked. AW2S Vendor specific: AxC increment for each sample, 0 means auto (= packed, no interleaving). */
-	ORI_Boolean_e 		AWS_enPeakCancel;				/**< RW-Locked. AW2S Vendor specific: Peak-Cancellation CFR enablement. */
-	uint32_t 			AWS_arfcn;						/**< RW-Locked. ARFCN of the NR carrier. */
+  uint16_t chanBW; /**< RW-Locked. Channel bandwith in MHz/10. */
+  uint16_t dlCalREMax; /**< RO. Max possible buffer in RE for DL timing calibration in Tc/16.*/
+  uint32_t t2a; /**< RO. RE time delay. */
+  uint16_t dlCalRE; /**< RW-Locked. Time delay to enable DL timing calibration in Tc/16. */
+  int16_t maxTxPwr; /**< RW. Max tx power for this path, unit is dBm/10 (e.g. 400 for 40 dBm). */
+  uint8_t axcW; /**< RW-Locked. AxC W parameter. */
+  uint8_t axcB; /**< RW-Locked. AxC B parameter. */
+  ORI_Object_s *oriLink; /**< RW-Locked. ORI Link on which the AxC is mapped. */
+  ORI_Object_s *antPort; /**< RW-Locked. Reference Antenna port for this signal. */
+  ORI_Boolean_e AWS_enableCompRateChange; /**< RW-Locked. AW2S Vendor specific: Enable IQ data compression sample rate change. */
+  int16_t AWS_measuredPwr; /**< RO. AW2S Vendor specific: Measured Tx power for this path, unit is dBm/10 (e.g. 400 for 40 dBm). */
+  uint16_t
+      AWS_axcIncr; /**< RW-Locked. AW2S Vendor specific: AxC increment for each sample, 0 means auto (= packed, no interleaving). */
+  ORI_Boolean_e AWS_enPeakCancel; /**< RW-Locked. AW2S Vendor specific: Peak-Cancellation CFR enablement. */
+  uint32_t AWS_arfcn; /**< RW-Locked. ARFCN of the NR carrier. */
 } ORI_ObjectParams_TxSigPathNRFDD_s;
 
 /**
@@ -1179,20 +1116,21 @@ typedef struct
  */
 typedef struct
 {
-	uint16_t 			chanBW;							/**< RW-Locked. Channel bandwith in MHz/10. */
-	uint16_t			dlCalREMax;						/**< RO. Max possible buffer in RE for DL timing calibration in Tc/16.*/
-	uint32_t			t2a;							/**< RO. RE time delay. */
-	uint16_t 			dlCalRE;						/**< RW-Locked. Time delay to enable DL timing calibration in Tc/16. */
-	int16_t 			maxTxPwr;						/**< RW. Max tx power for this path, unit is dBm/10 (e.g. 400 for 40 dBm). */
-	uint8_t 			axcW;							/**< RW-Locked. AxC W parameter. */
-	uint8_t 			axcB;							/**< RW-Locked. AxC B parameter. */
-	ORI_Object_s * 		oriLink;						/**< RW-Locked. ORI Link on which the AxC is mapped. */
-	ORI_Object_s *		antPort;						/**< RW-Locked. Reference Antenna port for this signal. */
-	ORI_Boolean_e		AWS_enableCompRateChange;		/**< RW-Locked. AW2S Vendor specific: Enable IQ data compression sample rate change. */
-	int16_t 			AWS_measuredPwr;				/**< RO. AW2S Vendor specific: Measured Tx power for this path, unit is dBm/10 (e.g. 400 for 40 dBm). */
-	uint16_t 			AWS_axcIncr;					/**< RW-Locked. AW2S Vendor specific: AxC increment for each sample, 0 means auto (= packed, no interleaving). */
-	ORI_Boolean_e 		AWS_enPeakCancel;				/**< RW-Locked. AW2S Vendor specific: Peak-Cancellation CFR enablement. */
-	uint32_t 			AWS_arfcn;						/**< RW-Locked. ARFCN of the NR carrier. */
+  uint16_t chanBW; /**< RW-Locked. Channel bandwith in MHz/10. */
+  uint16_t dlCalREMax; /**< RO. Max possible buffer in RE for DL timing calibration in Tc/16.*/
+  uint32_t t2a; /**< RO. RE time delay. */
+  uint16_t dlCalRE; /**< RW-Locked. Time delay to enable DL timing calibration in Tc/16. */
+  int16_t maxTxPwr; /**< RW. Max tx power for this path, unit is dBm/10 (e.g. 400 for 40 dBm). */
+  uint8_t axcW; /**< RW-Locked. AxC W parameter. */
+  uint8_t axcB; /**< RW-Locked. AxC B parameter. */
+  ORI_Object_s *oriLink; /**< RW-Locked. ORI Link on which the AxC is mapped. */
+  ORI_Object_s *antPort; /**< RW-Locked. Reference Antenna port for this signal. */
+  ORI_Boolean_e AWS_enableCompRateChange; /**< RW-Locked. AW2S Vendor specific: Enable IQ data compression sample rate change. */
+  int16_t AWS_measuredPwr; /**< RO. AW2S Vendor specific: Measured Tx power for this path, unit is dBm/10 (e.g. 400 for 40 dBm). */
+  uint16_t
+      AWS_axcIncr; /**< RW-Locked. AW2S Vendor specific: AxC increment for each sample, 0 means auto (= packed, no interleaving). */
+  ORI_Boolean_e AWS_enPeakCancel; /**< RW-Locked. AW2S Vendor specific: Peak-Cancellation CFR enablement. */
+  uint32_t AWS_arfcn; /**< RW-Locked. ARFCN of the NR carrier. */
 } ORI_ObjectParams_TxSigPathNRTDD_s;
 
 /**
@@ -1201,20 +1139,22 @@ typedef struct
  */
 typedef struct
 {
-	uint16_t			ulCalREMax;						/**< RO. Max possible buffer in RE for UL timing calibration in Tc/2.*/
-	uint32_t 			ta3;							/**< RO. RE time delay. */
-	uint16_t 			ulCalRE;						/**< RW-Locked. Time delay to enable UL timing calibration in Tc/2. */
-	uint8_t 			axcW;							/**< RW-Locked. AxC W parameter. */
-	uint8_t 			axcB;							/**< RW-Locked. AxC B parameter. */
-	uint8_t 			rtwpGroup;						/**< RW-Locked. Location of the RTWP measurements for this AxC. */
-	ORI_Object_s * 		oriLink;						/**< RW-Locked. ORI Link on which the AxC is mapped. */
-	ORI_Object_s *		antPort;						/**< RW-Locked. Reference Antenna port for this signal. */
-	uint32_t			uarfcn;							/**< RW-Locked. Uplink UARFCN. */
-	int16_t 			ulFeedAdj;						/**< RW. Uplink feeder adjustment in dB/10 (e.g. 200 for 20 dB). */
-	uint8_t				ulTgtRMSLvl;					/**< RW-Locked. Uplink target RMS level. */
-	uint8_t				ulAGCSetlgTime;					/**< RW-Locked. Uplink AGC settling time. */
-	int16_t 			AWS_measuredPwr;				/**< RO. AW2S Vendor specific: Measured Rx power for this path, unit is dBm/10 (e.g. -650 for -65 dBm). */
-	uint16_t 			AWS_axcIncr;					/**< RW-Locked. AW2S Vendor specific: AxC increment for each sample, 0 means auto (= packed, no interleaving). */
+  uint16_t ulCalREMax; /**< RO. Max possible buffer in RE for UL timing calibration in Tc/2.*/
+  uint32_t ta3; /**< RO. RE time delay. */
+  uint16_t ulCalRE; /**< RW-Locked. Time delay to enable UL timing calibration in Tc/2. */
+  uint8_t axcW; /**< RW-Locked. AxC W parameter. */
+  uint8_t axcB; /**< RW-Locked. AxC B parameter. */
+  uint8_t rtwpGroup; /**< RW-Locked. Location of the RTWP measurements for this AxC. */
+  ORI_Object_s *oriLink; /**< RW-Locked. ORI Link on which the AxC is mapped. */
+  ORI_Object_s *antPort; /**< RW-Locked. Reference Antenna port for this signal. */
+  uint32_t uarfcn; /**< RW-Locked. Uplink UARFCN. */
+  int16_t ulFeedAdj; /**< RW. Uplink feeder adjustment in dB/10 (e.g. 200 for 20 dB). */
+  uint8_t ulTgtRMSLvl; /**< RW-Locked. Uplink target RMS level. */
+  uint8_t ulAGCSetlgTime; /**< RW-Locked. Uplink AGC settling time. */
+  int16_t
+      AWS_measuredPwr; /**< RO. AW2S Vendor specific: Measured Rx power for this path, unit is dBm/10 (e.g. -650 for -65 dBm). */
+  uint16_t
+      AWS_axcIncr; /**< RW-Locked. AW2S Vendor specific: AxC increment for each sample, 0 means auto (= packed, no interleaving). */
 } ORI_ObjectParams_RxSigPathUtra_s;
 
 /**
@@ -1224,21 +1164,23 @@ typedef struct
  */
 typedef struct
 {
-	uint16_t 			chanBW;							/**< RW-Locked. Channel bandwith in MHz/10 (14 / 30 / 50 / 100 / 150 / 200). */
-	uint16_t			ulCalREMax;						/**< RO. Max possible buffer in RE for UL timing calibration in Tc/2.*/
-	uint32_t  			ta3;							/**< RO. RE time delay. */
-	uint16_t 			ulCalRE;						/**< RW-Locked. Time delay to enable UL timing calibration in Tc/2. */
-	uint8_t 			axcW;							/**< RW-Locked. AxC W parameter. */
-	uint8_t 			axcB;							/**< RW-Locked. AxC B parameter. */
-	ORI_Object_s * 		oriLink;						/**< RW-Locked. ORI Link on which the AxC is mapped. */
-	ORI_Object_s *		antPort;						/**< RW-Locked. Reference Antenna port for this signal. */
-	uint32_t 			earfcn;							/**< RW-Locked. Uplink EARFCN. */
-	ORI_Boolean_e		enableIQULComp;					/**< RW-Locked. IQ data compression enablement. */
-	uint32_t			sigmaIQ;						/**< RW-Locked. Sigma IQ value for IQ data compression. */
-	ORI_Boolean_e		AWS_enableCompRateChange;		/**< RW-Locked. AW2S Vendor specific: Enable IQ data compression sample rate change. */
-	ORI_Boolean_e		AWS_enableCompBitChange;		/**< RW-Locked. AW2S Vendor specific: Enable IQ data compression bit width change. */
-	int16_t 			AWS_measuredPwr;				/**< RO. AW2S Vendor specific: Measured Rx power for this path, unit is dBm/10 (e.g. -650 for -65 dBm). */
-	uint16_t 			AWS_axcIncr;					/**< RW-Locked. AW2S Vendor specific: AxC increment for each sample, 0 means auto (= packed, no interleaving). */
+  uint16_t chanBW; /**< RW-Locked. Channel bandwith in MHz/10 (14 / 30 / 50 / 100 / 150 / 200). */
+  uint16_t ulCalREMax; /**< RO. Max possible buffer in RE for UL timing calibration in Tc/2.*/
+  uint32_t ta3; /**< RO. RE time delay. */
+  uint16_t ulCalRE; /**< RW-Locked. Time delay to enable UL timing calibration in Tc/2. */
+  uint8_t axcW; /**< RW-Locked. AxC W parameter. */
+  uint8_t axcB; /**< RW-Locked. AxC B parameter. */
+  ORI_Object_s *oriLink; /**< RW-Locked. ORI Link on which the AxC is mapped. */
+  ORI_Object_s *antPort; /**< RW-Locked. Reference Antenna port for this signal. */
+  uint32_t earfcn; /**< RW-Locked. Uplink EARFCN. */
+  ORI_Boolean_e enableIQULComp; /**< RW-Locked. IQ data compression enablement. */
+  uint32_t sigmaIQ; /**< RW-Locked. Sigma IQ value for IQ data compression. */
+  ORI_Boolean_e AWS_enableCompRateChange; /**< RW-Locked. AW2S Vendor specific: Enable IQ data compression sample rate change. */
+  ORI_Boolean_e AWS_enableCompBitChange; /**< RW-Locked. AW2S Vendor specific: Enable IQ data compression bit width change. */
+  int16_t
+      AWS_measuredPwr; /**< RO. AW2S Vendor specific: Measured Rx power for this path, unit is dBm/10 (e.g. -650 for -65 dBm). */
+  uint16_t
+      AWS_axcIncr; /**< RW-Locked. AW2S Vendor specific: AxC increment for each sample, 0 means auto (= packed, no interleaving). */
 } ORI_ObjectParams_RxSigPathEUtraFDD_s;
 
 /**
@@ -1248,24 +1190,26 @@ typedef struct
  */
 typedef struct
 {
-	uint16_t 			chanBW;							/**< RW-Locked. Channel bandwith in MHz/10 (14 / 30 / 50 / 100 / 150 / 200). */
-	uint8_t				tddULDLConfig;					/**< RW-Locked. TDD UL/DL config. */
-	uint8_t				tddSpecialSFConfig;				/**< RW-Locked. TDD SSF config. */
-	ORI_tddCPLength_e	tddCPLengthUL;					/**< RW-Locked. TDD Cyclic prefix length. */
-	uint16_t			ulCalREMax;						/**< RO. Max possible buffer in RE for UL timing calibration in Tc/2.*/
-	uint32_t  			ta3;							/**< RO. RE time delay. */
-	uint16_t 			ulCalRE;						/**< RW-Locked. Time delay to enable UL timing calibration in Tc/2. */
-	uint8_t 			axcW;							/**< RW-Locked. AxC W parameter. */
-	uint8_t 			axcB;							/**< RW-Locked. AxC B parameter. */
-	ORI_Object_s * 		oriLink;						/**< RW-Locked. ORI Link on which the AxC is mapped. */
-	ORI_Object_s *		antPort;						/**< RW-Locked. Reference Antenna port for this signal. */
-	uint32_t 			earfcn;							/**< RW-Locked. Uplink EARFCN. */
-	ORI_Boolean_e		enableIQULComp;					/**< RW-Locked. IQ data compression enablement. */
-	uint32_t			sigmaIQ;						/**< RW-Locked. Sigma IQ value for IQ data compression. */
-	ORI_Boolean_e		AWS_enableCompRateChange;		/**< RW-Locked. AW2S Vendor specific: Enable IQ data compression sample rate change. */
-	ORI_Boolean_e		AWS_enableCompBitChange;		/**< RW-Locked. AW2S Vendor specific: Enable IQ data compression bit width change. */
-	int16_t 			AWS_measuredPwr;				/**< RO. AW2S Vendor specific: Measured Rx power for this path, unit is dBm/10 (e.g. -650 for -65 dBm). */
-	uint16_t 			AWS_axcIncr;					/**< RW-Locked. AW2S Vendor specific: AxC increment for each sample, 0 means auto (= packed, no interleaving). */
+  uint16_t chanBW; /**< RW-Locked. Channel bandwith in MHz/10 (14 / 30 / 50 / 100 / 150 / 200). */
+  uint8_t tddULDLConfig; /**< RW-Locked. TDD UL/DL config. */
+  uint8_t tddSpecialSFConfig; /**< RW-Locked. TDD SSF config. */
+  ORI_tddCPLength_e tddCPLengthUL; /**< RW-Locked. TDD Cyclic prefix length. */
+  uint16_t ulCalREMax; /**< RO. Max possible buffer in RE for UL timing calibration in Tc/2.*/
+  uint32_t ta3; /**< RO. RE time delay. */
+  uint16_t ulCalRE; /**< RW-Locked. Time delay to enable UL timing calibration in Tc/2. */
+  uint8_t axcW; /**< RW-Locked. AxC W parameter. */
+  uint8_t axcB; /**< RW-Locked. AxC B parameter. */
+  ORI_Object_s *oriLink; /**< RW-Locked. ORI Link on which the AxC is mapped. */
+  ORI_Object_s *antPort; /**< RW-Locked. Reference Antenna port for this signal. */
+  uint32_t earfcn; /**< RW-Locked. Uplink EARFCN. */
+  ORI_Boolean_e enableIQULComp; /**< RW-Locked. IQ data compression enablement. */
+  uint32_t sigmaIQ; /**< RW-Locked. Sigma IQ value for IQ data compression. */
+  ORI_Boolean_e AWS_enableCompRateChange; /**< RW-Locked. AW2S Vendor specific: Enable IQ data compression sample rate change. */
+  ORI_Boolean_e AWS_enableCompBitChange; /**< RW-Locked. AW2S Vendor specific: Enable IQ data compression bit width change. */
+  int16_t
+      AWS_measuredPwr; /**< RO. AW2S Vendor specific: Measured Rx power for this path, unit is dBm/10 (e.g. -650 for -65 dBm). */
+  uint16_t
+      AWS_axcIncr; /**< RW-Locked. AW2S Vendor specific: AxC increment for each sample, 0 means auto (= packed, no interleaving). */
 } ORI_ObjectParams_RxSigPathEUtraTDD_s;
 
 /**
@@ -1274,18 +1218,20 @@ typedef struct
  */
 typedef struct
 {
-	uint16_t			ulCalREMax;						/**< RO. Max possible buffer in RE for UL timing calibration in Tc/2.*/
-	ORI_freqBand_e 		freqBandInd;					/**< GSM frequency band indicator. */
-	uint32_t  			ta3;							/**< RO. RE time delay. */
-	uint16_t 			ulCalRE;						/**< RW-Locked. Time delay to enable UL timing calibration in Tc/2. */
-	uint8_t 			axcW;							/**< RW-Locked. AxC W parameter. */
-	uint8_t 			axcB;							/**< RW-Locked. AxC B parameter. */
-	ORI_Object_s * 		oriLink;						/**< RW-Locked. ORI Link on which the AxC is mapped. */
-	ORI_Object_s *		antPort;						/**< RW-Locked. Reference Antenna port for this signal. */
-	int16_t 			ulFeedAdj;						/**< RW. Uplink feeder adjustment in dB/10 (e.g. 200 for 20 dB). */
-	ORI_Object_s *		TxSigPath;						/**< RW-Locked. Associated TxSigPath for frequency hopping information. */
-	int16_t 			AWS_measuredPwr;				/**< RO. AW2S Vendor specific: Measured Rx power for this path, unit is dBm/10 (e.g. -650 for -65 dBm). */
-	uint16_t 			AWS_axcIncr;					/**< RW-Locked. AW2S Vendor specific: AxC increment for each sample, 0 means auto (= packed, no interleaving). */
+  uint16_t ulCalREMax; /**< RO. Max possible buffer in RE for UL timing calibration in Tc/2.*/
+  ORI_freqBand_e freqBandInd; /**< GSM frequency band indicator. */
+  uint32_t ta3; /**< RO. RE time delay. */
+  uint16_t ulCalRE; /**< RW-Locked. Time delay to enable UL timing calibration in Tc/2. */
+  uint8_t axcW; /**< RW-Locked. AxC W parameter. */
+  uint8_t axcB; /**< RW-Locked. AxC B parameter. */
+  ORI_Object_s *oriLink; /**< RW-Locked. ORI Link on which the AxC is mapped. */
+  ORI_Object_s *antPort; /**< RW-Locked. Reference Antenna port for this signal. */
+  int16_t ulFeedAdj; /**< RW. Uplink feeder adjustment in dB/10 (e.g. 200 for 20 dB). */
+  ORI_Object_s *TxSigPath; /**< RW-Locked. Associated TxSigPath for frequency hopping information. */
+  int16_t
+      AWS_measuredPwr; /**< RO. AW2S Vendor specific: Measured Rx power for this path, unit is dBm/10 (e.g. -650 for -65 dBm). */
+  uint16_t
+      AWS_axcIncr; /**< RW-Locked. AW2S Vendor specific: AxC increment for each sample, 0 means auto (= packed, no interleaving). */
 } ORI_ObjectParams_RxSigPathGSM_s;
 
 /**
@@ -1295,18 +1241,20 @@ typedef struct
  */
 typedef struct
 {
-	uint16_t 			chanBW;							/**< RW-Locked. Channel bandwith in MHz/10. */
-	uint16_t			ulCalREMax;						/**< RO. Max possible buffer in RE for UL timing calibration in Tc/2.*/
-	uint32_t  			ta3;							/**< RO. RE time delay. */
-	uint16_t 			ulCalRE;						/**< RW-Locked. Time delay to enable UL timing calibration in Tc/2. */
-	uint8_t 			axcW;							/**< RW-Locked. AxC W parameter. */
-	uint8_t 			axcB;							/**< RW-Locked. AxC B parameter. */
-	ORI_Object_s * 		oriLink;						/**< RW-Locked. ORI Link on which the AxC is mapped. */
-	ORI_Object_s *		antPort;						/**< RW-Locked. Reference Antenna port for this signal. */
-	ORI_Boolean_e		AWS_enableCompRateChange;		/**< RW-Locked. AW2S Vendor specific: Enable IQ data compression sample rate change. */
-	int16_t 			AWS_measuredPwr;				/**< RO. AW2S Vendor specific: Measured Rx power for this path, unit is dBm/10 (e.g. -650 for -65 dBm). */
-	uint16_t 			AWS_axcIncr;					/**< RW-Locked. AW2S Vendor specific: AxC increment for each sample, 0 means auto (= packed, no interleaving). */
-	uint32_t 			AWS_arfcn;						/**< RW-Locked. ARFCN of the NR carrier. */
+  uint16_t chanBW; /**< RW-Locked. Channel bandwith in MHz/10. */
+  uint16_t ulCalREMax; /**< RO. Max possible buffer in RE for UL timing calibration in Tc/2.*/
+  uint32_t ta3; /**< RO. RE time delay. */
+  uint16_t ulCalRE; /**< RW-Locked. Time delay to enable UL timing calibration in Tc/2. */
+  uint8_t axcW; /**< RW-Locked. AxC W parameter. */
+  uint8_t axcB; /**< RW-Locked. AxC B parameter. */
+  ORI_Object_s *oriLink; /**< RW-Locked. ORI Link on which the AxC is mapped. */
+  ORI_Object_s *antPort; /**< RW-Locked. Reference Antenna port for this signal. */
+  ORI_Boolean_e AWS_enableCompRateChange; /**< RW-Locked. AW2S Vendor specific: Enable IQ data compression sample rate change. */
+  int16_t
+      AWS_measuredPwr; /**< RO. AW2S Vendor specific: Measured Rx power for this path, unit is dBm/10 (e.g. -650 for -65 dBm). */
+  uint16_t
+      AWS_axcIncr; /**< RW-Locked. AW2S Vendor specific: AxC increment for each sample, 0 means auto (= packed, no interleaving). */
+  uint32_t AWS_arfcn; /**< RW-Locked. ARFCN of the NR carrier. */
 } ORI_ObjectParams_RxSigPathNRFDD_s;
 
 /**
@@ -1316,18 +1264,20 @@ typedef struct
  */
 typedef struct
 {
-	uint16_t 			chanBW;							/**< RW-Locked. Channel bandwith in MHz/10. */
-	uint16_t			ulCalREMax;						/**< RO. Max possible buffer in RE for UL timing calibration in Tc/2.*/
-	uint32_t  			ta3;							/**< RO. RE time delay. */
-	uint16_t 			ulCalRE;						/**< RW-Locked. Time delay to enable UL timing calibration in Tc/2. */
-	uint8_t 			axcW;							/**< RW-Locked. AxC W parameter. */
-	uint8_t 			axcB;							/**< RW-Locked. AxC B parameter. */
-	ORI_Object_s * 		oriLink;						/**< RW-Locked. ORI Link on which the AxC is mapped. */
-	ORI_Object_s *		antPort;						/**< RW-Locked. Reference Antenna port for this signal. */
-	ORI_Boolean_e		AWS_enableCompRateChange;		/**< RW-Locked. AW2S Vendor specific: Enable IQ data compression sample rate change. */
-	int16_t 			AWS_measuredPwr;				/**< RO. AW2S Vendor specific: Measured Rx power for this path, unit is dBm/10 (e.g. -650 for -65 dBm). */
-	uint16_t 			AWS_axcIncr;					/**< RW-Locked. AW2S Vendor specific: AxC increment for each sample, 0 means auto (= packed, no interleaving). */
-	uint32_t 			AWS_arfcn;						/**< RW-Locked. ARFCN of the NR carrier. */
+  uint16_t chanBW; /**< RW-Locked. Channel bandwith in MHz/10. */
+  uint16_t ulCalREMax; /**< RO. Max possible buffer in RE for UL timing calibration in Tc/2.*/
+  uint32_t ta3; /**< RO. RE time delay. */
+  uint16_t ulCalRE; /**< RW-Locked. Time delay to enable UL timing calibration in Tc/2. */
+  uint8_t axcW; /**< RW-Locked. AxC W parameter. */
+  uint8_t axcB; /**< RW-Locked. AxC B parameter. */
+  ORI_Object_s *oriLink; /**< RW-Locked. ORI Link on which the AxC is mapped. */
+  ORI_Object_s *antPort; /**< RW-Locked. Reference Antenna port for this signal. */
+  ORI_Boolean_e AWS_enableCompRateChange; /**< RW-Locked. AW2S Vendor specific: Enable IQ data compression sample rate change. */
+  int16_t
+      AWS_measuredPwr; /**< RO. AW2S Vendor specific: Measured Rx power for this path, unit is dBm/10 (e.g. -650 for -65 dBm). */
+  uint16_t
+      AWS_axcIncr; /**< RW-Locked. AW2S Vendor specific: AxC increment for each sample, 0 means auto (= packed, no interleaving). */
+  uint32_t AWS_arfcn; /**< RW-Locked. ARFCN of the NR carrier. */
 } ORI_ObjectParams_RxSigPathNRTDD_s;
 
 /**
@@ -1336,25 +1286,25 @@ typedef struct
  */
 typedef struct
 {
-	char 						portLabel[81];			/**< RO. Physical ORI link port label. */
-	ORI_portRoleCapability_e	portRoleCapability;		/**< RO. Port role capability. */
-	ORI_portRole_e 				portRole;				/**< RW-Locked. Port role. */
-	int16_t						bitRateSupport;			/**< RO. Supported line bit rate. */
-	uint8_t 					bitRateRequested;		/**< RW-Locked. Requested line bit rate. 0 for auto-negotitation. */
-	uint8_t 					bitRateOperational;		/**< RO. Current line bit rate. 0 for link down. */
-	uint64_t 					localPortID;			/**< RO. Local end port ID. */
-	uint64_t 					remotePortID;			/**< RO. Remote end port ID. */
-	uint32_t 					toffset;				/**< RO. CPRI time delay component. */
-	ORI_linkType_e				oriLinkType;			/**< RW-Locked. ORI Link type. */
-	uint8_t						AWS_localMAC[6];		/**< R0. AW2S Vendor specific: Local MAC address of the ORI link. */
-	uint8_t						AWS_remoteMAC[6];		/**< RW. AW2S Vendor specific: Remote MAC address of the ORI link. */
-	uint32_t 					AWS_t14;				/**< RO. AW2S Vendor specific: CPRI time delay component. */
-	uint32_t 					AWS_sfpTxPow;			/**< RO. AW2S Vendor specific: SFP Tx power. */
-	uint32_t 					AWS_sfpRxPow;			/**< RO. AW2S Vendor specific: SFP Rx power. */
-	uint8_t						AWS_remoteIP[4];		/**< RW. AW2S Vendor specific: IP of REC for ECPRI Ethernet frame */
-	uint8_t						AWS_localIP[4];			/**< RW. AW2S Vendor specific: IP of RE for ECPRI Ethernet frame */
-	uint16_t					AWS_remoteUdpPort;		/**< RW. AW2S Vendor specific: UDP port of REC for ECPRI Ethernet frame */
-	uint16_t					AWS_localUdpPort;		/**< RO. AW2S Vendor specific: UDP port of RE for ECPRI Ethernet frame */
+  char portLabel[81]; /**< RO. Physical ORI link port label. */
+  ORI_portRoleCapability_e portRoleCapability; /**< RO. Port role capability. */
+  ORI_portRole_e portRole; /**< RW-Locked. Port role. */
+  int16_t bitRateSupport; /**< RO. Supported line bit rate. */
+  uint8_t bitRateRequested; /**< RW-Locked. Requested line bit rate. 0 for auto-negotitation. */
+  uint8_t bitRateOperational; /**< RO. Current line bit rate. 0 for link down. */
+  uint64_t localPortID; /**< RO. Local end port ID. */
+  uint64_t remotePortID; /**< RO. Remote end port ID. */
+  uint32_t toffset; /**< RO. CPRI time delay component. */
+  ORI_linkType_e oriLinkType; /**< RW-Locked. ORI Link type. */
+  uint8_t AWS_localMAC[6]; /**< R0. AW2S Vendor specific: Local MAC address of the ORI link. */
+  uint8_t AWS_remoteMAC[6]; /**< RW. AW2S Vendor specific: Remote MAC address of the ORI link. */
+  uint32_t AWS_t14; /**< RO. AW2S Vendor specific: CPRI time delay component. */
+  uint32_t AWS_sfpTxPow; /**< RO. AW2S Vendor specific: SFP Tx power. */
+  uint32_t AWS_sfpRxPow; /**< RO. AW2S Vendor specific: SFP Rx power. */
+  uint8_t AWS_remoteIP[4]; /**< RW. AW2S Vendor specific: IP of REC for ECPRI Ethernet frame */
+  uint8_t AWS_localIP[4]; /**< RW. AW2S Vendor specific: IP of RE for ECPRI Ethernet frame */
+  uint16_t AWS_remoteUdpPort; /**< RW. AW2S Vendor specific: UDP port of REC for ECPRI Ethernet frame */
+  uint16_t AWS_localUdpPort; /**< RO. AW2S Vendor specific: UDP port of RE for ECPRI Ethernet frame */
 } ORI_ObjectParams_ORILink_s;
 
 /**
@@ -1363,7 +1313,7 @@ typedef struct
  */
 typedef struct
 {
-	char 				portLabel[81];					/**< RO. External event port label. */
+  char portLabel[81]; /**< RO. External event port label. */
 } ORI_ObjectParams_ExternalEventPort_s;
 
 /**
@@ -1372,8 +1322,8 @@ typedef struct
  */
 typedef struct
 {
-	char 						portLabel[81];			/**< RO. AISG port label. */
-	ORI_Boolean_e 				busPowerEnable;			/**< RW-Locked. Bus power enablement. */
+  char portLabel[81]; /**< RO. AISG port label. */
+  ORI_Boolean_e busPowerEnable; /**< RW-Locked. Bus power enablement. */
 } ORI_ObjectParams_AISGPort_s;
 
 /**
@@ -1382,13 +1332,13 @@ typedef struct
  */
 typedef struct
 {
-	uint8_t 				deviceType;					/**< RW-Locked. Device type of the ALD. */
-	uint8_t 				UID[20];					/**< RW-Locked. Unique ID array. */
-	uint8_t					releaseID;					/**< RO. 3GPP protocol release. */
-	uint8_t					aisgVersion;				/**< RO. AISG protocol version. */
-	uint8_t					deviceTypeVersion[3];		/**< RO. Device type substance version. */
-	uint16_t				frameLength;				/**< RO. Maximum frame length for AISG Layer 7 message payload. */
-	uint8_t					hdlcAdress;					/**< RO. Actual HLDC address. */
+  uint8_t deviceType; /**< RW-Locked. Device type of the ALD. */
+  uint8_t UID[20]; /**< RW-Locked. Unique ID array. */
+  uint8_t releaseID; /**< RO. 3GPP protocol release. */
+  uint8_t aisgVersion; /**< RO. AISG protocol version. */
+  uint8_t deviceTypeVersion[3]; /**< RO. Device type substance version. */
+  uint16_t frameLength; /**< RO. Maximum frame length for AISG Layer 7 message payload. */
+  uint8_t hdlcAdress; /**< RO. Actual HLDC address. */
 } ORI_ObjectParams_AISGALD_s;
 
 /**
@@ -1397,17 +1347,17 @@ typedef struct
  */
 typedef struct
 {
-	char 						logTypeID[41];			/**< RO. Log type identifier. */
-	char 						description[81];		/**< RO. Log description. */
-	ORI_logCategory_e			logCategory;			/**< RO. Log category. */
-	uint32_t 					maxREfileSize;			/**< RO. Max RE file size in kB. */
-	uint32_t 					maxRECfileSize;			/**< RW. Max REC file size in kB. */
-	ORI_Boolean_e 				enableNotification;		/**< RW. Enable REC notification on file transfer availability. */
-	ORI_Boolean_e 				fileAvailable;			/**< RO. File is available. */
-	ORI_overflowBehaviour_e		overflowBehaviour;		/**< RW. Behaviour on overflow. */
-	ORI_Boolean_e				recordingEnabled;		/**< RW. Recording enablement. */
-	uint64_t					logPeriod;				/**< RW. Log expiration period in seconds. */
-	ORI_timerType_e				timerType;				/**< RW. Log expiration behaviour. */
+  char logTypeID[41]; /**< RO. Log type identifier. */
+  char description[81]; /**< RO. Log description. */
+  ORI_logCategory_e logCategory; /**< RO. Log category. */
+  uint32_t maxREfileSize; /**< RO. Max RE file size in kB. */
+  uint32_t maxRECfileSize; /**< RW. Max REC file size in kB. */
+  ORI_Boolean_e enableNotification; /**< RW. Enable REC notification on file transfer availability. */
+  ORI_Boolean_e fileAvailable; /**< RO. File is available. */
+  ORI_overflowBehaviour_e overflowBehaviour; /**< RW. Behaviour on overflow. */
+  ORI_Boolean_e recordingEnabled; /**< RW. Recording enablement. */
+  uint64_t logPeriod; /**< RW. Log expiration period in seconds. */
+  ORI_timerType_e timerType; /**< RW. Log expiration behaviour. */
 } ORI_ObjectParams_Log_s;
 
 /**
@@ -1416,14 +1366,14 @@ typedef struct
  */
 typedef struct
 {
-	uint16_t 			IQsubBlockSize;					/**< RW-Locked. Number of bits contained in the IQ data sub-block. */
-	ORI_Object_s *		MasterPortOriLink;				/**< RW-Locked. Reference to the master port ORI Link. */
-	uint8_t 			MasterPortIQblkW;				/**< RW-Locked. Sub-block start W parameter for master port. */
-	uint16_t 			MasterPortIQblkB;				/**< RW-Locked. Sub-block start B parameter for master port. */
-	ORI_Object_s *		SlavePortOriLink;				/**< RW-Locked. Reference to the slave port ORI Link. */
-	uint8_t				SlavePortIQW;					/**< RW-Locked. Sub-block start W parameter for slave port. */
-	uint16_t			SlavePortIQB;					/**< RW-Locked. Sub-block start B parameter for slave port. */
-	uint16_t			TBDelayDL;						/**< RO. Internal RE delay from slave port to master port. */
+  uint16_t IQsubBlockSize; /**< RW-Locked. Number of bits contained in the IQ data sub-block. */
+  ORI_Object_s *MasterPortOriLink; /**< RW-Locked. Reference to the master port ORI Link. */
+  uint8_t MasterPortIQblkW; /**< RW-Locked. Sub-block start W parameter for master port. */
+  uint16_t MasterPortIQblkB; /**< RW-Locked. Sub-block start B parameter for master port. */
+  ORI_Object_s *SlavePortOriLink; /**< RW-Locked. Reference to the slave port ORI Link. */
+  uint8_t SlavePortIQW; /**< RW-Locked. Sub-block start W parameter for slave port. */
+  uint16_t SlavePortIQB; /**< RW-Locked. Sub-block start B parameter for slave port. */
+  uint16_t TBDelayDL; /**< RO. Internal RE delay from slave port to master port. */
 } ORI_ObjectParams_DLRoutedIQData_s;
 
 /**
@@ -1432,14 +1382,14 @@ typedef struct
  */
 typedef struct
 {
-	uint16_t 			IQsubBlockSize;					/**< RW-Locked. Number of bits contained in the IQ data sub-block. */
-	ORI_Object_s *		MasterPortOriLink;				/**< RW-Locked. Reference to the master port ORI Link. */
-	uint8_t				MasterPortIQblkW;				/**< RW-Locked. Sub-block start W parameter for master port. */
-	uint16_t 			MasterPortIQblkB;				/**< RW-Locked. Sub-block start B parameter for master port. */
-	ORI_Object_s *		SlavePortOriLink;				/**< RW-Locked. Reference to the slave port ORI Link. */
-	uint8_t				SlavePortIQW;					/**< RW-Locked. Sub-block start W parameter for slave port. */
-	uint16_t			SlavePortIQB;					/**< RW-Locked. Sub-block start B parameter for slave port. */
-	uint16_t			TBDelayUL;						/**< RO. Internal RE delay from master port to slave port. */
+  uint16_t IQsubBlockSize; /**< RW-Locked. Number of bits contained in the IQ data sub-block. */
+  ORI_Object_s *MasterPortOriLink; /**< RW-Locked. Reference to the master port ORI Link. */
+  uint8_t MasterPortIQblkW; /**< RW-Locked. Sub-block start W parameter for master port. */
+  uint16_t MasterPortIQblkB; /**< RW-Locked. Sub-block start B parameter for master port. */
+  ORI_Object_s *SlavePortOriLink; /**< RW-Locked. Reference to the slave port ORI Link. */
+  uint8_t SlavePortIQW; /**< RW-Locked. Sub-block start W parameter for slave port. */
+  uint16_t SlavePortIQB; /**< RW-Locked. Sub-block start B parameter for slave port. */
+  uint16_t TBDelayUL; /**< RO. Internal RE delay from master port to slave port. */
 } ORI_ObjectParams_ULRoutedIQData_s;
 
 /**
@@ -1448,13 +1398,13 @@ typedef struct
  */
 typedef struct
 {
-	uint8_t				CtrlBlockSize;					/**< RW-Locked. Number of consecutive sub-channels in the CW block. */
-	uint8_t				SubChannelStart;				/**< RW-Locked. Lowest sub-channel of the CW block. */
-	uint8_t				Ydepth;							/**< RW-Locked. Number of consecutive Y locations of the sub-channels in the CW block. */
-	uint8_t				SlavePortYoffset;				/**< RW-Locked. Lowest Y location of the sub-channel(s) at the slave port. */
-	uint8_t				MasterPortYoffset;				/**< RW-Locked. Lowest Y location of the sub-channel(s) at the master port. */
-	ORI_Object_s *		SlavePortOriLink;				/**< RW-Locked. Reference to the slave port ORI Link. */
-	ORI_Object_s *		MasterPortOriLink;				/**< RW-Locked. Reference to the master port ORI Link. */
+  uint8_t CtrlBlockSize; /**< RW-Locked. Number of consecutive sub-channels in the CW block. */
+  uint8_t SubChannelStart; /**< RW-Locked. Lowest sub-channel of the CW block. */
+  uint8_t Ydepth; /**< RW-Locked. Number of consecutive Y locations of the sub-channels in the CW block. */
+  uint8_t SlavePortYoffset; /**< RW-Locked. Lowest Y location of the sub-channel(s) at the slave port. */
+  uint8_t MasterPortYoffset; /**< RW-Locked. Lowest Y location of the sub-channel(s) at the master port. */
+  ORI_Object_s *SlavePortOriLink; /**< RW-Locked. Reference to the slave port ORI Link. */
+  ORI_Object_s *MasterPortOriLink; /**< RW-Locked. Reference to the master port ORI Link. */
 } ORI_ObjectParams_DLRoutedCWBlock_s;
 
 /**
@@ -1463,13 +1413,13 @@ typedef struct
  */
 typedef struct
 {
-	uint8_t				CtrlBlockSize;					/**< RW-Locked. Number of consecutive sub-channels in the CW block. */
-	uint8_t				SubChannelStart;				/**< RW-Locked. Lowest sub-channel of the CW block. */
-	uint8_t				Ydepth;							/**< RW-Locked. Number of consecutive Y locations of the sub-channels in the CW block. */
-	uint8_t				SlavePortYoffset;				/**< RW-Locked. Lowest Y location of the sub-channel(s) at the slave port. */
-	uint8_t				MasterPortYoffset;				/**< RW-Locked. Lowest Y location of the sub-channel(s) at the master port. */
-	ORI_Object_s *		SlavePortOriLink;				/**< RW-Locked. Reference to the slave port ORI Link. */
-	ORI_Object_s *		MasterPortOriLink;				/**< RW-Locked. Reference to the master port ORI Link. */
+  uint8_t CtrlBlockSize; /**< RW-Locked. Number of consecutive sub-channels in the CW block. */
+  uint8_t SubChannelStart; /**< RW-Locked. Lowest sub-channel of the CW block. */
+  uint8_t Ydepth; /**< RW-Locked. Number of consecutive Y locations of the sub-channels in the CW block. */
+  uint8_t SlavePortYoffset; /**< RW-Locked. Lowest Y location of the sub-channel(s) at the slave port. */
+  uint8_t MasterPortYoffset; /**< RW-Locked. Lowest Y location of the sub-channel(s) at the master port. */
+  ORI_Object_s *SlavePortOriLink; /**< RW-Locked. Reference to the slave port ORI Link. */
+  ORI_Object_s *MasterPortOriLink; /**< RW-Locked. Reference to the master port ORI Link. */
 } ORI_ObjectParams_ULRoutedCWBlock_s;
 
 /**
@@ -1478,29 +1428,29 @@ typedef struct
  */
 typedef union
 {
-	ORI_ObjectParams_RE_s						RE;						/**< Parameters for ::ORI_ObjectType_RE. */
-	ORI_ObjectParams_AntennaPort_s				AntPort;				/**< Parameters for ::ORI_ObjectType_AntennaPort. */
-	ORI_ObjectParams_TxSigPathUtra_s	  		TxUtra;					/**< Parameters for ::ORI_ObjectType_TxUtra. */
-	ORI_ObjectParams_TxSigPathEUtraFDD_s		TxEUtraFDD;				/**< Parameters for ::ORI_ObjectType_TxEUtraFDD. */
-	ORI_ObjectParams_TxSigPathEUtraTDD_s		TxEUtraTDD;				/**< Parameters for ::ORI_ObjectType_TxEUtraTDD. */
-	ORI_ObjectParams_TxSigPathGSM_s				TxGSM;					/**< Parameters for ::ORI_ObjectType_TxGSM. */
-	ORI_ObjectParams_TxSigPathNRFDD_s			TxNRFDD;				/**< Parameters for ::ORI_ObjectType_TxNRFDD. */
-	ORI_ObjectParams_TxSigPathNRTDD_s			TxNRTDD;				/**< Parameters for ::ORI_ObjectType_TxNRTDD. */
-	ORI_ObjectParams_RxSigPathUtra_s	  		RxUtra;					/**< Parameters for ::ORI_ObjectType_RxUtra. */
-	ORI_ObjectParams_RxSigPathEUtraFDD_s		RxEUtraFDD;				/**< Parameters for ::ORI_ObjectType_RxEUtraFDD. */
-	ORI_ObjectParams_RxSigPathEUtraTDD_s		RxEUtraTDD;				/**< Parameters for ::ORI_ObjectType_RxEUtraTDD. */
-	ORI_ObjectParams_RxSigPathGSM_s				RxGSM;					/**< Parameters for ::ORI_ObjectType_RxGSM. */
-	ORI_ObjectParams_RxSigPathNRFDD_s			RxNRFDD;				/**< Parameters for ::ORI_ObjectType_RxNRFDD. */
-	ORI_ObjectParams_RxSigPathNRTDD_s			RxNRTDD;				/**< Parameters for ::ORI_ObjectType_RxNRTDD. */
-	ORI_ObjectParams_ORILink_s					ORILink;				/**< Parameters for ::ORI_ObjectType_ORILink. */
-	ORI_ObjectParams_ExternalEventPort_s		ExternalEventPort;		/**< Parameters for ::ORI_ObjectType_ExternalEventPort. */
-	ORI_ObjectParams_AISGPort_s					AISGPort;				/**< Parameters for ::ORI_ObjectType_AISGPort. */
-	ORI_ObjectParams_AISGALD_s					AISGALD;				/**< Parameters for ::ORI_ObjectType_AISGALD. */
-	ORI_ObjectParams_Log_s						Log;					/**< Parameters for ::ORI_ObjectType_Log. */
-	ORI_ObjectParams_DLRoutedIQData_s			DLRoutedIQData;			/**< Parameters for ::ORI_ObjectType_DLRoutedIQData. */
-	ORI_ObjectParams_ULRoutedIQData_s			ULRoutedIQData;			/**< Parameters for ::ORI_ObjectType_ULRoutedIQData. */
-	ORI_ObjectParams_DLRoutedCWBlock_s			DLRoutedCWBlock;		/**< Parameters for ::ORI_ObjectType_DLRoutedCWBlock. */
-	ORI_ObjectParams_ULRoutedCWBlock_s			ULRoutedCWBlock;		/**< Parameters for ::ORI_ObjectType_ULRoutedCWBlock. */
+  ORI_ObjectParams_RE_s RE; /**< Parameters for ::ORI_ObjectType_RE. */
+  ORI_ObjectParams_AntennaPort_s AntPort; /**< Parameters for ::ORI_ObjectType_AntennaPort. */
+  ORI_ObjectParams_TxSigPathUtra_s TxUtra; /**< Parameters for ::ORI_ObjectType_TxUtra. */
+  ORI_ObjectParams_TxSigPathEUtraFDD_s TxEUtraFDD; /**< Parameters for ::ORI_ObjectType_TxEUtraFDD. */
+  ORI_ObjectParams_TxSigPathEUtraTDD_s TxEUtraTDD; /**< Parameters for ::ORI_ObjectType_TxEUtraTDD. */
+  ORI_ObjectParams_TxSigPathGSM_s TxGSM; /**< Parameters for ::ORI_ObjectType_TxGSM. */
+  ORI_ObjectParams_TxSigPathNRFDD_s TxNRFDD; /**< Parameters for ::ORI_ObjectType_TxNRFDD. */
+  ORI_ObjectParams_TxSigPathNRTDD_s TxNRTDD; /**< Parameters for ::ORI_ObjectType_TxNRTDD. */
+  ORI_ObjectParams_RxSigPathUtra_s RxUtra; /**< Parameters for ::ORI_ObjectType_RxUtra. */
+  ORI_ObjectParams_RxSigPathEUtraFDD_s RxEUtraFDD; /**< Parameters for ::ORI_ObjectType_RxEUtraFDD. */
+  ORI_ObjectParams_RxSigPathEUtraTDD_s RxEUtraTDD; /**< Parameters for ::ORI_ObjectType_RxEUtraTDD. */
+  ORI_ObjectParams_RxSigPathGSM_s RxGSM; /**< Parameters for ::ORI_ObjectType_RxGSM. */
+  ORI_ObjectParams_RxSigPathNRFDD_s RxNRFDD; /**< Parameters for ::ORI_ObjectType_RxNRFDD. */
+  ORI_ObjectParams_RxSigPathNRTDD_s RxNRTDD; /**< Parameters for ::ORI_ObjectType_RxNRTDD. */
+  ORI_ObjectParams_ORILink_s ORILink; /**< Parameters for ::ORI_ObjectType_ORILink. */
+  ORI_ObjectParams_ExternalEventPort_s ExternalEventPort; /**< Parameters for ::ORI_ObjectType_ExternalEventPort. */
+  ORI_ObjectParams_AISGPort_s AISGPort; /**< Parameters for ::ORI_ObjectType_AISGPort. */
+  ORI_ObjectParams_AISGALD_s AISGALD; /**< Parameters for ::ORI_ObjectType_AISGALD. */
+  ORI_ObjectParams_Log_s Log; /**< Parameters for ::ORI_ObjectType_Log. */
+  ORI_ObjectParams_DLRoutedIQData_s DLRoutedIQData; /**< Parameters for ::ORI_ObjectType_DLRoutedIQData. */
+  ORI_ObjectParams_ULRoutedIQData_s ULRoutedIQData; /**< Parameters for ::ORI_ObjectType_ULRoutedIQData. */
+  ORI_ObjectParams_DLRoutedCWBlock_s DLRoutedCWBlock; /**< Parameters for ::ORI_ObjectType_DLRoutedCWBlock. */
+  ORI_ObjectParams_ULRoutedCWBlock_s ULRoutedCWBlock; /**< Parameters for ::ORI_ObjectType_ULRoutedCWBlock. */
 } ORI_ObjectParams_u;
 
 
@@ -1509,7 +1459,7 @@ typedef union
  * OBJECT FAULTS
  *-----------------------------------------------------------------------------------------*/
 
-#define FAULT_MAX_AFFECTED_OBJ		20
+#define FAULT_MAX_AFFECTED_OBJ 20
 
 /**
  * @struct ORI_Fault_s
@@ -1517,12 +1467,12 @@ typedef union
  */
 typedef struct
 {
-	ORI_FaultState_e		state;										/**< Current state of the fault. */
-	ORI_FaultSeverity_e		severity;									/**< Severity of the fault. */
-	char 					timestamp[256];								/**< Time stamp string of the fault (RE time reference). */
-	char					desc[256];									/**< Short text description associated to the fault. */
-	uint32_t				numAffectedObjects;							/**< Number of additional objects affected by the fault. */
-	ORI_Object_s *			affectedObjects[FAULT_MAX_AFFECTED_OBJ];	/**< List of additional objects affected by the fault. */
+  ORI_FaultState_e state; /**< Current state of the fault. */
+  ORI_FaultSeverity_e severity; /**< Severity of the fault. */
+  char timestamp[256]; /**< Time stamp string of the fault (RE time reference). */
+  char desc[256]; /**< Short text description associated to the fault. */
+  uint32_t numAffectedObjects; /**< Number of additional objects affected by the fault. */
+  ORI_Object_s *affectedObjects[FAULT_MAX_AFFECTED_OBJ]; /**< List of additional objects affected by the fault. */
 } ORI_Fault_s;
 
 /**
@@ -1531,12 +1481,12 @@ typedef struct
  */
 typedef struct
 {
-	ORI_Fault_s			extSuplyUndervolt;				/**< Power supply under voltage. FaultType is ::ORI_FaultType_RE_ExtSupplyUnderVolt */
-	ORI_Fault_s			overTemp;						/**< Over temperature. FaultType is ::ORI_FaultType_RE_OverTemp */
-	ORI_Fault_s			digInOverdrive;					/**< Input digital signal level overdrive. FaultType is ::ORI_FaultType_RE_DigInOverdrive */
-	ORI_Fault_s			rfOutOverdrive;					/**< RF output power overdrive. FaultType is ::ORI_FaultType_RE_RFOutOverdrive */
-	ORI_Fault_s			txGainFail;						/**< Tx gain control failure. FaultType is ::ORI_FaultType_RE_TXGainFail */
-	ORI_Fault_s			rxGainFail;						/**< Rx gain control failure. FaultType is ::ORI_FaultType_RE_RXGainFail */
+  ORI_Fault_s extSuplyUndervolt; /**< Power supply under voltage. FaultType is ::ORI_FaultType_RE_ExtSupplyUnderVolt */
+  ORI_Fault_s overTemp; /**< Over temperature. FaultType is ::ORI_FaultType_RE_OverTemp */
+  ORI_Fault_s digInOverdrive; /**< Input digital signal level overdrive. FaultType is ::ORI_FaultType_RE_DigInOverdrive */
+  ORI_Fault_s rfOutOverdrive; /**< RF output power overdrive. FaultType is ::ORI_FaultType_RE_RFOutOverdrive */
+  ORI_Fault_s txGainFail; /**< Tx gain control failure. FaultType is ::ORI_FaultType_RE_TXGainFail */
+  ORI_Fault_s rxGainFail; /**< Rx gain control failure. FaultType is ::ORI_FaultType_RE_RXGainFail */
 } ORI_ObjectFaults_RE_s;
 
 /**
@@ -1545,8 +1495,9 @@ typedef struct
  */
 typedef struct
 {
-	ORI_Fault_s			vswrOutOfRange;					/**< VSWR at the antenna port exceeded limit. FaultType is ::ORI_FaultType_AntennaPort_VSWROutOfRange */
-	ORI_Fault_s			nonAisgTmaMalfct;				/**< Non AISG TMA malfunction. FaultType is ::ORI_FaultType_AntennaPort_NonAisgTmaMalfct */
+  ORI_Fault_s
+      vswrOutOfRange; /**< VSWR at the antenna port exceeded limit. FaultType is ::ORI_FaultType_AntennaPort_VSWROutOfRange */
+  ORI_Fault_s nonAisgTmaMalfct; /**< Non AISG TMA malfunction. FaultType is ::ORI_FaultType_AntennaPort_NonAisgTmaMalfct */
 } ORI_ObjectFaults_AntennaPort_s;
 
 /**
@@ -1555,9 +1506,9 @@ typedef struct
  */
 typedef struct
 {
-	ORI_Fault_s			linkFailure;					/**< LOS, LOF, SDI or RAI received on the ORI Link. FaultType is ::ORI_FaultType_ORILink_LinkFail */
-	ORI_Fault_s			portFailure;					/**< Local ORI slave port failure. FaultType is ::ORI_FaultType_ORILink_PortFail */
-	ORI_Fault_s			syncFailure;					/**< Synchronization lost on slave port. FaultType is ::ORI_FaultType_ORILink_SyncFail */
+  ORI_Fault_s linkFailure; /**< LOS, LOF, SDI or RAI received on the ORI Link. FaultType is ::ORI_FaultType_ORILink_LinkFail */
+  ORI_Fault_s portFailure; /**< Local ORI slave port failure. FaultType is ::ORI_FaultType_ORILink_PortFail */
+  ORI_Fault_s syncFailure; /**< Synchronization lost on slave port. FaultType is ::ORI_FaultType_ORILink_SyncFail */
 } ORI_ObjectFaults_ORILink_s;
 
 /**
@@ -1566,7 +1517,7 @@ typedef struct
  */
 typedef struct
 {
-	ORI_Fault_s			aisgMalfct;						/**< Hardware malfunction on AISG port. FaultType is ::ORI_FaultType_AISGPort_AisgMalfct */
+  ORI_Fault_s aisgMalfct; /**< Hardware malfunction on AISG port. FaultType is ::ORI_FaultType_AISGPort_AisgMalfct */
 } ORI_ObjectFaults_AISGPort_s;
 
 /**
@@ -1575,10 +1526,10 @@ typedef struct
  */
 typedef union
 {
-	ORI_ObjectFaults_RE_s						RE;						/**< Faults for ::ORI_ObjectType_RE. */
-	ORI_ObjectFaults_AntennaPort_s				AntPort;				/**< Faults for ::ORI_ObjectType_AntennaPort. */
-	ORI_ObjectFaults_ORILink_s					ORILink;				/**< Faults for ::ORI_ObjectType_ORILink. */
-	ORI_ObjectFaults_AISGPort_s					AISGPort;				/**< Faults for ::ORI_ObjectType_AISGPort. */
+  ORI_ObjectFaults_RE_s RE; /**< Faults for ::ORI_ObjectType_RE. */
+  ORI_ObjectFaults_AntennaPort_s AntPort; /**< Faults for ::ORI_ObjectType_AntennaPort. */
+  ORI_ObjectFaults_ORILink_s ORILink; /**< Faults for ::ORI_ObjectType_ORILink. */
+  ORI_ObjectFaults_AISGPort_s AISGPort; /**< Faults for ::ORI_ObjectType_AISGPort. */
 } ORI_ObjectFaults_u;
 
 
@@ -1596,8 +1547,8 @@ typedef union
  */
 typedef struct
 {
-	ORI_Result_e 			result;						/**< Result of the file transfer. */
-	char 					failInfo[256];				/**< String indicating the file transfer failure reason, if applicable. */
+  ORI_Result_e result; /**< Result of the file transfer. */
+  char failInfo[256]; /**< String indicating the file transfer failure reason, if applicable. */
 } ORI_Ind_TransferFileCmplt_s;
 
 /**
@@ -1610,8 +1561,8 @@ typedef struct
  */
 typedef struct
 {
-	ORI_Object_s *			object;						/**< Object for which the state changed. */
-	ORI_StateType_e			stateType;					/**< Type of the state that changed. */
+  ORI_Object_s *object; /**< Object for which the state changed. */
+  ORI_StateType_e stateType; /**< Type of the state that changed. */
 } ORI_Ind_ObjectStateChange_s;
 
 /**
@@ -1623,9 +1574,9 @@ typedef struct
  */
 typedef struct
 {
-	ORI_Object_s *			object;						/**< Primary object affected by the fault. */
-	ORI_FaultType_e			faultType;					/**< Type of the fault that changed. */
-	ORI_Fault_s *			fault;						/**< Reference to the object's fault structure for the given fault type. */
+  ORI_Object_s *object; /**< Primary object affected by the fault. */
+  ORI_FaultType_e faultType; /**< Type of the fault that changed. */
+  ORI_Fault_s *fault; /**< Reference to the object's fault structure for the given fault type. */
 } ORI_Ind_FaultChange_s;
 
 /**
@@ -1636,7 +1587,7 @@ typedef struct
  */
 typedef struct
 {
-	ORI_Object_s *			object;						/**< Object concerned by file availability. Valid objects : Log:X. */
+  ORI_Object_s *object; /**< Object concerned by file availability. Valid objects : Log:X. */
 } ORI_Ind_FileAvailable_s;
 
 /**
@@ -1647,9 +1598,9 @@ typedef struct
  */
 typedef struct
 {
-	ORI_Result_e			result;						/**< Result of the file transfer. */
-	ORI_Object_s *			object;						/**< Object concerned by the file upload. Valid objects : RE:0 or Log:X. */
-	char 					failInfo[256];				/**< String indicating the file transfer failure reason, if applicable. */
+  ORI_Result_e result; /**< Result of the file transfer. */
+  ORI_Object_s *object; /**< Object concerned by the file upload. Valid objects : RE:0 or Log:X. */
+  char failInfo[256]; /**< String indicating the file transfer failure reason, if applicable. */
 } ORI_Ind_UploadFileCmpl_s;
 
 /**
@@ -1660,8 +1611,8 @@ typedef struct
  */
 typedef struct
 {
-	ORI_Object_s *			object;						/**< Object concerned by the device scan. Valid objects : aisgPort:X. */
-	int 					numAlds;					/**< integer indicating the number of ALDs found by the device scan. */
+  ORI_Object_s *object; /**< Object concerned by the device scan. Valid objects : aisgPort:X. */
+  int numAlds; /**< integer indicating the number of ALDs found by the device scan. */
 } ORI_Ind_DeviceScanCmpl_s;
 
 /**
@@ -1672,7 +1623,7 @@ typedef struct
  */
 typedef struct
 {
-	unsigned char			returnCode[16];	// returnCode, until 16 values supported
+  unsigned char returnCode[16]; // returnCode, until 16 values supported
 }ORI_Ind_L7respGetAlarm_s;
 
 /**
@@ -1683,19 +1634,19 @@ typedef struct
  */
 typedef struct
 {
-	int 					PNlen;		// Product Number's length
-	char 					PN[64];		// Product Number
-	int 					SNlen;		// Serial Number's length
-	char					SN[64];		// Serial Number
-	int						HWverLen;	// Hardware Version's length
-	char					HWver[64];	// Hardware Version
-	int						SWverLen;	// Software Version's length
-	char					SWver[64];	// Software Version
+  int PNlen; // Product Number's length
+  char PN[64]; // Product Number
+  int SNlen; // Serial Number's length
+  char SN[64]; // Serial Number
+  int HWverLen; // Hardware Version's length
+  char HWver[64]; // Hardware Version
+  int SWverLen; // Software Version's length
+  char SWver[64]; // Software Version
 }ORI_Ind_L7respGetInfo_s;
 
 typedef struct
 {
-	unsigned char			data[80];
+  unsigned char data[80];
 }ORI_Ind_L7respReadUserData_s;
 
 /**
@@ -1706,7 +1657,7 @@ typedef struct
 */
 typedef struct
 {
-	unsigned char			alarmCode[16];	// alarmCode, until 16 values supported
+  unsigned char alarmCode[16]; // alarmCode, until 16 values supported
 }ORI_Ind_L7respSelfTest_s;
 
 
@@ -1718,7 +1669,7 @@ typedef struct
  */
 typedef struct
 {
-	int 					Tilt;		// tilt value
+  int Tilt; // tilt value
 }ORI_Ind_L7respGetTilt_s;
 
 /**
@@ -1729,20 +1680,20 @@ typedef struct
  */
 typedef struct
 {
-	unsigned char			fieldNbr;
-	char 					antModelNbr[32];		// Antenna Model Number
-	char 					antSerialNbr[32];		// Antenna Serial Number
-	unsigned short			antFreqBand;			// Antenna Frequency Band
-	unsigned short			beamwidthBand[4];		// Beamwidth for each Band
-	unsigned char			gainBand[4];			// Gain for each Band
-	short					maxTilt;				// Maximum Supported Tilt
-	short					minTilt;				// Minimum Supported Tilt
-	char 					installationDate[32];	// Installation Date
-	char 					installerID[32];		// Installer ID
-	char 					basestationID[32];		// BaseStation ID
-	char 					sectorID[32];			// sector ID
-	unsigned short			antBearing;				// Antenna Bearing
-	short					mechanicalTilt;			// Mechanical Tilt
+  unsigned char fieldNbr;
+  char antModelNbr[32]; // Antenna Model Number
+  char antSerialNbr[32]; // Antenna Serial Number
+  unsigned short antFreqBand; // Antenna Frequency Band
+  unsigned short beamwidthBand[4]; // Beamwidth for each Band
+  unsigned char gainBand[4]; // Gain for each Band
+  short maxTilt; // Maximum Supported Tilt
+  short minTilt; // Minimum Supported Tilt
+  char installationDate[32]; // Installation Date
+  char installerID[32]; // Installer ID
+  char basestationID[32]; // BaseStation ID
+  char sectorID[32]; // sector ID
+  unsigned short antBearing; // Antenna Bearing
+  short mechanicalTilt; // Mechanical Tilt
 }ORI_Ind_L7respGetDeviceData_s;
 
 /**
@@ -1753,12 +1704,12 @@ typedef struct
  */
 typedef struct
 {
-	unsigned char			returnCode;
-	unsigned char			stateFlag;
+  unsigned char returnCode;
+  unsigned char stateFlag;
 }ret_alarm_s;
 typedef struct
 {
-	ret_alarm_s				alarm[32];
+  ret_alarm_s alarm[32];
 }ORI_Ind_L7indAlarmIndication_s;
 
 /**
@@ -1769,7 +1720,7 @@ typedef struct
  */
 typedef struct
 {
-	unsigned char			nbr;
+  unsigned char nbr;
 }ORI_Ind_L7respAntGetNbr_s;
 
 /**
@@ -1780,7 +1731,7 @@ typedef struct
  */
 typedef struct
 {
-	unsigned char 			deviceType;
+  unsigned char deviceType;
 }ORI_Ind_respGetParam_s;
 
 /**
@@ -1791,7 +1742,7 @@ typedef struct
  */
 typedef struct
 {
-	ORI_Boolean_e			exist;
+  ORI_Boolean_e exist;
 }ORI_Ind_respCheckPortExist_s;
 
 /**
@@ -1802,20 +1753,20 @@ typedef struct
  */
 typedef struct
 {
-	char							raw[256];
-	ORI_AisgLayer7Command_e			command;
-	ORI_AisgReturnCode_e			returnCode;
-	unsigned char					multiAntennaNbr;
-	ORI_Ind_L7respGetAlarm_s		getAlarm;
-	ORI_Ind_L7respGetInfo_s			getInfo;
-	ORI_Ind_L7respReadUserData_s	readUserData;
-	ORI_Ind_L7respSelfTest_s		selfTest;
-	ORI_Ind_L7respGetTilt_s			getTilt;
-	ORI_Ind_L7respGetDeviceData_s	getDeviceData;
-	ORI_Ind_L7indAlarmIndication_s	alarmIndication;
-	ORI_Ind_L7respAntGetNbr_s		getNbrAntennas;
-	ORI_Ind_respGetParam_s			getParam;
-	ORI_Ind_respCheckPortExist_s	checkAisgPortExist;
+  char raw[256];
+  ORI_AisgLayer7Command_e command;
+  ORI_AisgReturnCode_e returnCode;
+  unsigned char multiAntennaNbr;
+  ORI_Ind_L7respGetAlarm_s getAlarm;
+  ORI_Ind_L7respGetInfo_s getInfo;
+  ORI_Ind_L7respReadUserData_s readUserData;
+  ORI_Ind_L7respSelfTest_s selfTest;
+  ORI_Ind_L7respGetTilt_s getTilt;
+  ORI_Ind_L7respGetDeviceData_s getDeviceData;
+  ORI_Ind_L7indAlarmIndication_s alarmIndication;
+  ORI_Ind_L7respAntGetNbr_s getNbrAntennas;
+  ORI_Ind_respGetParam_s getParam;
+  ORI_Ind_respCheckPortExist_s checkAisgPortExist;
 }ORI_Ind_L7msg_s;
 
 /**
@@ -1826,8 +1777,8 @@ typedef struct
  */
 typedef struct
 {
-	ORI_Object_s *			object;						/**< Object concerned by the device scan. Valid objects : aisgPort:X/aisgALD:Y. */
-	ORI_Ind_L7msg_s			L7message;					/**< string of a layer7 message sent by the ALD. */
+  ORI_Object_s *object; /**< Object concerned by the device scan. Valid objects : aisgPort:X/aisgALD:Y. */
+  ORI_Ind_L7msg_s L7message; /**< string of a layer7 message sent by the ALD. */
 } ORI_Ind_AisgALDRx_s;
 
 /**
@@ -1838,13 +1789,17 @@ typedef struct
  */
 typedef union
 {
-	ORI_Ind_TransferFileCmplt_s transferFileCmplt;		/**< File transfer complete structure, access it on an ::ORI_IndicationType_FileTransferComplete. */
-	ORI_Ind_ObjectStateChange_s	objectStateChange;		/**< Object state change structure, access it on an ::ORI_IndicationType_ObjectStateChange. */
-	ORI_Ind_FaultChange_s		faultChange;			/**< Fault change structure, access it on an ::ORI_IndicationType_FaultChange. */
-	ORI_Ind_FileAvailable_s		fileAvailable;			/**< File available structure, access it on an ::ORI_IndicationType_FileAvailable. */
-	ORI_Ind_UploadFileCmpl_s	uploadFileCmpl;			/**< Upload file complete structure, access it on an ::ORI_IndicationType_UploadFileCmpl. */
-	ORI_Ind_DeviceScanCmpl_s	deviceScanCmpl;			/**< AISG device scan complete structure, access it on an ::ORI_IndicationType_AisgScanDeviceCompl. */
-	ORI_Ind_AisgALDRx_s			aisgALDRx;				/**< AISG ALD receive structure, access it on an ::ORI_IndicationType_AisgAldRx. */
+  ORI_Ind_TransferFileCmplt_s
+      transferFileCmplt; /**< File transfer complete structure, access it on an ::ORI_IndicationType_FileTransferComplete. */
+  ORI_Ind_ObjectStateChange_s
+      objectStateChange; /**< Object state change structure, access it on an ::ORI_IndicationType_ObjectStateChange. */
+  ORI_Ind_FaultChange_s faultChange; /**< Fault change structure, access it on an ::ORI_IndicationType_FaultChange. */
+  ORI_Ind_FileAvailable_s fileAvailable; /**< File available structure, access it on an ::ORI_IndicationType_FileAvailable. */
+  ORI_Ind_UploadFileCmpl_s
+      uploadFileCmpl; /**< Upload file complete structure, access it on an ::ORI_IndicationType_UploadFileCmpl. */
+  ORI_Ind_DeviceScanCmpl_s
+      deviceScanCmpl; /**< AISG device scan complete structure, access it on an ::ORI_IndicationType_AisgScanDeviceCompl. */
+  ORI_Ind_AisgALDRx_s aisgALDRx; /**< AISG ALD receive structure, access it on an ::ORI_IndicationType_AisgAldRx. */
 } ORI_IndicationValue_u;
 
 /**
@@ -1882,15 +1837,15 @@ typedef void (ORI_IndCallback_f) (void * userData, ORI_IndicationType_e type, OR
  */
 typedef struct
 {
-	char 		vendorID[64];							/**< Vendor ID as signaled in DHCP code 201, normally 3 characters */
-	char 		productID[64];							/**< */
-	char 		productRev[64];							/**< */
-	char 		serialNumber[64];						/**< */
-	char 		hardwareVer[64];						/**< */
-	char 		activeSwUpgradePkgVer[64];				/**< */
-	char 		activeSwImgVer[64];						/**< */
-	char 		passiveSwUpgradePkgVer[64];				/**< */
-	char 		passiveSwImgVer[64];					/**< */
+  char vendorID[64]; /**< Vendor ID as signaled in DHCP code 201, normally 3 characters */
+  char productID[64]; /**< */
+  char productRev[64]; /**< */
+  char serialNumber[64]; /**< */
+  char hardwareVer[64]; /**< */
+  char activeSwUpgradePkgVer[64]; /**< */
+  char activeSwImgVer[64]; /**< */
+  char passiveSwUpgradePkgVer[64]; /**< */
+  char passiveSwImgVer[64]; /**< */
 } ORI_REVersion_s;
 
 
@@ -1920,15 +1875,15 @@ typedef struct
  */
 struct ORI_Object_s
 {
-	ORI_ObjectTypeRef_s	typeRef;					/**< Type reference of the object. */
-	uint8_t				instanceNumber;				/**< Instance number of the object. */
-	ORI_Object_s *		prev;						/**< Previous sibling. */
-	ORI_Object_s *		next;						/**< Next sibling. */
-	ORI_Object_s *		children;					/**< First child reference. */
-	ORI_ObjectParams_u	params;						/**< Parameters union of this object. */
-	ORI_AST_e			ast;						/**< Administrative state. */
-	ORI_FST_e			fst;						/**< Functional state. */
-	ORI_ObjectFaults_u	faults;						/**< Faults union of this object. */
+  ORI_ObjectTypeRef_s typeRef; /**< Type reference of the object. */
+  uint8_t instanceNumber; /**< Instance number of the object. */
+  ORI_Object_s *prev; /**< Previous sibling. */
+  ORI_Object_s *next; /**< Next sibling. */
+  ORI_Object_s *children; /**< First child reference. */
+  ORI_ObjectParams_u params; /**< Parameters union of this object. */
+  ORI_AST_e ast; /**< Administrative state. */
+  ORI_FST_e fst; /**< Functional state. */
+  ORI_ObjectFaults_u faults; /**< Faults union of this object. */
 };
 
 
@@ -1947,8 +1902,8 @@ struct ORI_Object_s
  */
 typedef struct
 {
-	uint8_t					major;					/**< Version major number. */
-	uint8_t					minor;					/**< Version minor number. */
+  uint8_t major; /**< Version major number. */
+  uint8_t minor; /**< Version minor number. */
 } ORI_Version_s;
 
 /**
@@ -1965,9 +1920,11 @@ typedef struct
  */
 typedef struct
 {
-	void * 					opaque; 				/**< Set by the library, DO NOT MODIFY. */
-	ORI_IndCallback_f *		indicationCallback;		/**< Pointer to user set ORI indication callback, this function is called when an indication is received on the ORI Link. If @c NULL (default), indications are discarded. */
-	void *					userData;				/**< User data for passing into the ORI indication callback */
+  void *opaque; /**< Set by the library, DO NOT MODIFY. */
+  ORI_IndCallback_f
+      *indicationCallback; /**< Pointer to user set ORI indication callback, this function is called when an indication is received
+                              on the ORI Link. If @c NULL (default), indications are discarded. */
+  void *userData; /**< User data for passing into the ORI indication callback */
 } ORI_s;
 
 
@@ -1995,7 +1952,7 @@ ORI_Version_s ORI_LibVersion(void);
  *
  * @warning The returned ORI context must be free'd with a call to ORI_Free() when the user application is done with ORI.
  */
-ORI_s *	ORI_Create(void);
+ORI_s *ORI_Create(void);
 
 /**
  * @brief Delete an ORI context.
@@ -2152,8 +2109,13 @@ ORI_Result_e ORI_VersionQuery(ORI_s * ori, ORI_REVersion_s * REVersion, ORI_Resu
  * @param RE_result The RE response result of the procedure.
  * @return The result of the procedure.
  */
-ORI_Result_e ORI_SoftwareUpdatePrep(ORI_s * ori, const char * ftpSrvIpAddress, const char * ftpSrvUserName, const char * ftpSrvPassword,
-											const char * ftpSrvSwPkgDirPath, const char * SwUpgradePkgVer, ORI_Result_e * RE_result);
+ORI_Result_e ORI_SoftwareUpdatePrep(ORI_s *ori,
+                                    const char *ftpSrvIpAddress,
+                                    const char *ftpSrvUserName,
+                                    const char *ftpSrvPassword,
+                                    const char *ftpSrvSwPkgDirPath,
+                                    const char *SwUpgradePkgVer,
+                                    ORI_Result_e *RE_result);
 
 /**
  * @brief Perform a RE Software Activation procedure.
@@ -2216,10 +2178,13 @@ ORI_Result_e ORI_ObjectParamReport(ORI_s * ori, ORI_Object_s * object, int wildc
  * @param RE_globalResult The RE response global result of the procedure.
  * @return The result of the procedure.
  */
-ORI_Result_e ORI_ObjectParamModify(ORI_s * ori, ORI_Object_s * object, ORI_ObjectParams_u params, ORI_ObjectParam_e paramList[],
-										uint32_t numParams, ORI_Result_e paramResult[], ORI_Result_e * RE_globalResult);
-
-
+ORI_Result_e ORI_ObjectParamModify(ORI_s *ori,
+                                   ORI_Object_s *object,
+                                   ORI_ObjectParams_u params,
+                                   ORI_ObjectParam_e paramList[],
+                                   uint32_t numParams,
+                                   ORI_Result_e paramResult[],
+                                   ORI_Result_e *RE_globalResult);
 
 /*-----------------------------------------------------------------------------------------
  * OBJECT LIFECYCLE
@@ -2246,8 +2211,14 @@ ORI_Result_e ORI_ObjectParamModify(ORI_s * ori, ORI_Object_s * object, ORI_Objec
  * @param RE_globalResult The RE response global result of the procedure.
  * @return The result of the procedure.
  */
-ORI_Result_e ORI_ObjectCreation(ORI_s * ori, ORI_ObjectTypeRef_s typeRef, ORI_ObjectParams_u params, ORI_ObjectParam_e paramList[],
-										uint32_t numParams, ORI_Result_e paramResult[], ORI_Object_s ** newObject, ORI_Result_e * RE_globalResult);
+ORI_Result_e ORI_ObjectCreation(ORI_s *ori,
+                                ORI_ObjectTypeRef_s typeRef,
+                                ORI_ObjectParams_u params,
+                                ORI_ObjectParam_e paramList[],
+                                uint32_t numParams,
+                                ORI_Result_e paramResult[],
+                                ORI_Object_s **newObject,
+                                ORI_Result_e *RE_globalResult);
 
 /**
  * @brief Perform a RE Object Deletion procedure.
@@ -2294,8 +2265,12 @@ ORI_Result_e ORI_ObjectDeletion(ORI_s * ori, ORI_Object_s * object, ORI_Result_e
  * @param RE_result The RE response result of the procedure.
  * @return The result of the procedure.
  */
-ORI_Result_e ORI_ObjectStateReport(ORI_s * ori, ORI_Object_s * object, int wildcard, ORI_StateType_e stateType,
-											ORI_EventDrivenReport_e eventDrivenReport, ORI_Result_e * RE_result);
+ORI_Result_e ORI_ObjectStateReport(ORI_s *ori,
+                                   ORI_Object_s *object,
+                                   int wildcard,
+                                   ORI_StateType_e stateType,
+                                   ORI_EventDrivenReport_e eventDrivenReport,
+                                   ORI_Result_e *RE_result);
 
 /**
  * @brief Perform a RE Object State Modification procedure.
@@ -2367,9 +2342,15 @@ ORI_Result_e ORI_ObjectFaultReport(ORI_s * ori, ORI_Object_s * object, int wildc
  * @param RE_result The RE response result of the procedure.
  * @return The result of the procedure.
  */
-ORI_Result_e ORI_FileUpload(ORI_s * ori, ORI_Object_s * object, const char * ftpSrvIpAddress, const char * ftpSrvUserName, const char * ftpSrvPassword,
-										const char * ftpSrvFilePath, const char * REFilePath,  uint16_t maxUploadFileSize, ORI_Result_e * RE_result);
-
+ORI_Result_e ORI_FileUpload(ORI_s *ori,
+                            ORI_Object_s *object,
+                            const char *ftpSrvIpAddress,
+                            const char *ftpSrvUserName,
+                            const char *ftpSrvPassword,
+                            const char *ftpSrvFilePath,
+                            const char *REFilePath,
+                            uint16_t maxUploadFileSize,
+                            ORI_Result_e *RE_result);
 
 /*-----------------------------------------------------------------------------------------
  * AISG

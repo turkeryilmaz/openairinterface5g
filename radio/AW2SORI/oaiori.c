@@ -191,23 +191,26 @@ void cb(void * userData, ORI_IndicationType_e type, ORI_IndicationValue_u value)
   if(type == ORI_IndicationType_ObjectStateChange)
     {
       ORI_Object_s * obj = value.objectStateChange.object;
-      printf("State change for %s:%d -> %s : %s\n", ORI_ObjectType_Print(obj->typeRef.type), obj->instanceNumber,
-	     ORI_StateType_Print(value.objectStateChange.stateType),
-	     value.objectStateChange.stateType == ORI_StateType_AST ? ORI_AST_Print(obj->ast) : ORI_FST_Print(obj->fst));
+      printf("State change for %s:%d -> %s : %s\n",
+             ORI_ObjectType_Print(obj->typeRef.type),
+             obj->instanceNumber,
+             ORI_StateType_Print(value.objectStateChange.stateType),
+             value.objectStateChange.stateType == ORI_StateType_AST ? ORI_AST_Print(obj->ast) : ORI_FST_Print(obj->fst));
     }
   else if(type == ORI_IndicationType_FaultChange)
     {
       ORI_Object_s * obj = value.faultChange.object;
       ORI_Fault_s * fault = value.faultChange.fault;
-      printf("Fault change for %s:%d -> %s : %s\n", ORI_ObjectType_Print(obj->typeRef.type), obj->instanceNumber,
-	     ORI_FaultType_Print(value.faultChange.faultType),
-	     ORI_FaultState_Print(fault->state));
-      if(fault->state == ORI_FaultState_Active)
-	{
-	  printf("\t Fault severity: %s\n", ORI_FaultSeverity_Print(fault->severity));
-	  printf("\t Timestamp: %s\n", fault->timestamp);
-	  printf("\t Description: %s\n", fault->desc);
-	}
+      printf("Fault change for %s:%d -> %s : %s\n",
+             ORI_ObjectType_Print(obj->typeRef.type),
+             obj->instanceNumber,
+             ORI_FaultType_Print(value.faultChange.faultType),
+             ORI_FaultState_Print(fault->state));
+      if (fault->state == ORI_FaultState_Active) {
+        printf("\t Fault severity: %s\n", ORI_FaultSeverity_Print(fault->severity));
+        printf("\t Timestamp: %s\n", fault->timestamp);
+        printf("\t Description: %s\n", fault->desc);
+      }
     }
   printf("<============\n");
 }
@@ -424,14 +427,12 @@ uint32_t to_nrarfcn(int nr_bandP,
                     uint32_t bw);
 
 int aw2s_oriinit(openair0_device *device) {
-
-
-  ORI_s * 		ori;
-  ORI_Result_e	result;
-  ORI_Result_e	RE_result;
-  ORI_Object_s * 	objects[100];
-  uint32_t 		numObjects;
-  uint32_t		i;
+  ORI_s *ori;
+  ORI_Result_e result;
+  ORI_Result_e RE_result;
+  ORI_Object_s *objects[100];
+  uint32_t numObjects;
+  uint32_t i;
 
   eth_params_t *eth_params = device->eth_params;
 
@@ -454,7 +455,7 @@ int aw2s_oriinit(openair0_device *device) {
   device->thirdparty_priv = (void *)ori;
   ori->userData = (void *)ori;
   ori->indicationCallback = cb;
-	
+
   /* Connect... */
   printf("Trying to connect to AW2S device on %s : %d\n",eth_params->remote_addr, eth_params->remote_portc);
   result = ORI_Connect(ori, eth_params->remote_addr, eth_params->remote_portc, 3000, 0);
@@ -464,7 +465,7 @@ int aw2s_oriinit(openair0_device *device) {
       aw2s_oricleanup(device);
       return -1;
     }
-	
+
   /* First health check */
   result = ORI_HealthCheck(ori, 6000, &RE_result);
   if(result != ORI_Result_SUCCESS)
@@ -474,7 +475,7 @@ int aw2s_oriinit(openair0_device *device) {
       return -1;
     }
   printf("ORI_HealthCheck: %s\n", ORI_Result_Print(RE_result));
-	
+
   /* Set RE time */
   result = ORI_SetTime(ori, &RE_result);
   if(result != ORI_Result_SUCCESS)
@@ -557,7 +558,9 @@ int aw2s_oriinit(openair0_device *device) {
     txParams.TxEUtraTDD.maxTxPwr = 430-((int)openair0_cfg->tx_gain[0]*10);
 
     printf("AW2S: Configuring for LTE TDD, EARFCN %u, Power %d, BW %d\n",
-	txParams.TxEUtraTDD.earfcn,txParams.TxEUtraTDD.maxTxPwr,txParams.TxEUtraTDD.chanBW);
+           txParams.TxEUtraTDD.earfcn,
+           txParams.TxEUtraTDD.maxTxPwr,
+           txParams.TxEUtraTDD.chanBW);
   }
   else if (openair0_cfg->duplex_mode == duplex_mode_TDD && openair0_cfg->nr_flag == 1) {
     txParams.TxNRTDD.antPort = ORI_FindObject(ori, ORI_ObjectType_AntennaPort, 0, NULL);
@@ -568,7 +571,9 @@ int aw2s_oriinit(openair0_device *device) {
     txParams.TxNRTDD.maxTxPwr = 430-((int)openair0_cfg->tx_gain[0]*10);
 
     printf("AW2S: Configuring for NR TDD, NRARFCN %u, Power %d, BW %d\n",
-	txParams.TxNRTDD.AWS_arfcn,txParams.TxNRTDD.maxTxPwr,txParams.TxNRTDD.chanBW);
+           txParams.TxNRTDD.AWS_arfcn,
+           txParams.TxNRTDD.maxTxPwr,
+           txParams.TxNRTDD.chanBW);
   }
   else {
     aw2s_oricleanup(device);
@@ -577,15 +582,16 @@ int aw2s_oriinit(openair0_device *device) {
   result = ORI_ObjectCreation(ori, txTypeRef, txParams, txParamList, num_txparams, txParamResult, &tx0, &RE_result);
   if(RE_result != ORI_Result_SUCCESS)
     {
-      printf("ORI_ObjectCreation (txParams0.TxEUtra/NR/FDD/TDD) failed with error: %s (%s,%s,%s,%s,%s,%s\n", ORI_Result_Print(RE_result),
-	ORI_Result_Print(txParamResult[0]),
-        ORI_Result_Print(txParamResult[1]),
-        ORI_Result_Print(txParamResult[2]),
-        ORI_Result_Print(txParamResult[3]),
-        ORI_Result_Print(txParamResult[4]),
-        ORI_Result_Print(txParamResult[5]));
-      aw2s_oricleanup(device);
-      return -1;
+    printf("ORI_ObjectCreation (txParams0.TxEUtra/NR/FDD/TDD) failed with error: %s (%s,%s,%s,%s,%s,%s\n",
+           ORI_Result_Print(RE_result),
+           ORI_Result_Print(txParamResult[0]),
+           ORI_Result_Print(txParamResult[1]),
+           ORI_Result_Print(txParamResult[2]),
+           ORI_Result_Print(txParamResult[3]),
+           ORI_Result_Print(txParamResult[4]),
+           ORI_Result_Print(txParamResult[5]));
+    aw2s_oricleanup(device);
+    return -1;
     }
   printf("ORI_ObjectCreation (txParams0.TxEUtra/NR/FDD/TDD): %s\n", ORI_Result_Print(RE_result));
 
@@ -660,9 +666,12 @@ int aw2s_oriinit(openair0_device *device) {
                                            (openair0_cfg->nr_flag == 0 ? ORI_ObjectType_RxEUtraFDD : ORI_ObjectType_RxNRFDD ) :
                                            (openair0_cfg->nr_flag == 0 ? ORI_ObjectType_RxEUtraTDD : ORI_ObjectType_RxNRTDD)};
   ORI_ObjectParams_u rxParams;
-  ORI_ObjectParam_e rxParamList[5] = { ORI_ObjectParam_SigPath_antPort, ORI_ObjectParam_SigPath_axcW, ORI_ObjectParam_SigPath_axcB,
-				       ORI_ObjectParam_SigPath_chanBW, 
-                                       openair0_cfg->nr_flag == 0 ? ORI_ObjectParam_SigPath_earfcn : ORI_ObjectParam_SigPath_AWS_arfcn};
+  ORI_ObjectParam_e rxParamList[5] = {
+      ORI_ObjectParam_SigPath_antPort,
+      ORI_ObjectParam_SigPath_axcW,
+      ORI_ObjectParam_SigPath_axcB,
+      ORI_ObjectParam_SigPath_chanBW,
+      openair0_cfg->nr_flag == 0 ? ORI_ObjectParam_SigPath_earfcn : ORI_ObjectParam_SigPath_AWS_arfcn};
   ORI_Result_e rxParamResult[5];
   int num_rxparams = 5;
   /* Create rx0 */

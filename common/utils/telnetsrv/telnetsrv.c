@@ -785,24 +785,22 @@ void run_telnetclt(void) {
           memset(inbuf,0,sizeof(inbuf)); 
           rv = recv(sock , inbuf , sizeof(inbuf)-1 , 0);
           if (rv  > 0) {
-				 printf("%s",inbuf);
-			  }
-          else if (rv == 0) {
-              printf("Connection closed by the remote end\n\r");
-              break;
-          }
-          else {
-              perror("recv error");
-              break;            
+            printf("%s", inbuf);
+          } else if (rv == 0) {
+            printf("Connection closed by the remote end\n\r");
+            break;
+          } else {
+            perror("recv error");
+            break;
           }
       }       
       else if (FD_ISSET(STDIN_FILENO , &fds)) {
-		char *inbuf=NULL;  
-      	size_t inlen=0; 
+        char *inbuf = NULL;
+        size_t inlen = 0;
         inlen = getline( &inbuf,&inlen, stdin);
         if ( inlen > 0 ) {
-      	  if ( send(sock, inbuf,inlen, 0) < 0) 
-              break;
+          if (send(sock, inbuf, inlen, 0) < 0)
+            break;
           }
         free(inbuf); 
       }
@@ -813,14 +811,14 @@ void run_telnetclt(void) {
 } /* run_telnetclt */
 
 void poll_telnetcmdq(void *qid, void *arg) {
-	notifiedFIFO_elt_t *msg = pollNotifiedFIFO((notifiedFIFO_t *)qid);
-	
-	if (msg != NULL) {
-	  telnetsrv_qmsg_t *msgdata=NotifiedFifoData(msg);
-	  msgdata->cmdfunc(msgdata->cmdbuff,msgdata->debug,msgdata->prnt,arg);
-	  free(msgdata->cmdbuff);
-	  delNotifiedFIFO_elt(msg);
-	}
+  notifiedFIFO_elt_t *msg = pollNotifiedFIFO((notifiedFIFO_t *)qid);
+
+  if (msg != NULL) {
+    telnetsrv_qmsg_t *msgdata = NotifiedFifoData(msg);
+    msgdata->cmdfunc(msgdata->cmdbuff, msgdata->debug, msgdata->prnt, arg);
+    free(msgdata->cmdbuff);
+    delNotifiedFIFO_elt(msg);
+  }
 }
 /*------------------------------------------------------------------------------------------------*/
 /* load the commands delivered with the telnet server
@@ -956,7 +954,7 @@ int  telnetsrv_checkbuildver(char *mainexec_buildversion, char **shlib_buildvers
 }
 
 int telnetsrv_getfarray(loader_shlibfunc_t  **farray) {
-  int const num_func_tln_srv = 3;	
+  int const num_func_tln_srv = 3;
   *farray = malloc(sizeof(loader_shlibfunc_t) * num_func_tln_srv);
   (*farray)[0].fname=TELNET_ADDCMD_FNAME;
   (*farray)[0].fptr=(int (*)(void) )add_telnetcmd;

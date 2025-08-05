@@ -55,11 +55,7 @@ int dl_channel_level(c16_t *dl_ch, LTE_DL_FRAME_PARMS *frame_parms)
   return(avg);
 }
 
-int lte_est_freq_offset(int **dl_ch_estimates,
-                        LTE_DL_FRAME_PARMS *frame_parms,
-                        int l,
-                        int* freq_offset,
-			int reset)
+int lte_est_freq_offset(int **dl_ch_estimates, LTE_DL_FRAME_PARMS *frame_parms, int l, int *freq_offset, int reset)
 {
   int ch_offset;
   double phase_offset;

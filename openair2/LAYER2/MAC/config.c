@@ -1326,7 +1326,7 @@ void eNB_Config_Local_DRX(instance_t Mod_id,
   UE_scheduling_control->drx_longCycle_timer = 0;
 
   switch (choiceSetup->longDRX_CycleStartOffset.present) {
-    case 	LTE_DRX_Config__setup__longDRX_CycleStartOffset_PR_sf10:
+    case LTE_DRX_Config__setup__longDRX_CycleStartOffset_PR_sf10:
       UE_scheduling_control->drx_longCycle_timer_thres = 10;
       UE_scheduling_control->drx_start_offset = (uint16_t) choiceSetup->longDRX_CycleStartOffset.choice.sf10;
       break;

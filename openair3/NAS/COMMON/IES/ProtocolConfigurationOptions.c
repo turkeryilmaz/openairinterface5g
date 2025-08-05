@@ -111,8 +111,9 @@ int encode_protocol_configuration_options(ProtocolConfigurationOptions *protocol
     encoded++;
 
     if ((encode_result = encode_octet_string(&protocolconfigurationoptions->protocolidcontents[num_protocol_id_or_container_id],
-    		buffer + encoded,
-    		len - encoded)) < 0)
+                                             buffer + encoded,
+                                             len - encoded))
+        < 0)
       return encode_result;
     else
       encoded += encode_result;

@@ -50,7 +50,7 @@ int lte_dl_ue_spec(PHY_VARS_eNB *eNB,
                    int32_t *output,
                    short amp,
                    uint8_t Ns,
-		   uint8_t lprime,
+           uint8_t lprime,
                    uint8_t p,
                    int SS_flag)
 {
@@ -84,7 +84,7 @@ int lte_dl_ue_spec(PHY_VARS_eNB *eNB,
     if (SS_flag==0) {
       if (eNB->frame_parms.Ncp == NORMAL) {
       // this is 3GPP 36-211 6.10.3.2, NORMAL CP, p=5
-      
+
       nushift =  eNB->frame_parms.Nid_cell%3;
 
       if(lprime==0){
@@ -95,7 +95,7 @@ int lte_dl_ue_spec(PHY_VARS_eNB *eNB,
 
       k = kprime+eNB->frame_parms.first_carrier_offset;
       printf("lte_dl_ue_spec:k=%d\n",k);
- 
+
       for (mprime=0;mprime<3*nRB_PDSCH-1;mprime++) {
         ind = 3*lprime*nRB_PDSCH+mprime;
         ind_dword = ind>>4;
@@ -122,7 +122,6 @@ int lte_dl_ue_spec(PHY_VARS_eNB *eNB,
   return(0);
 }
 */
-
 
 int lte_dl_ue_spec_rx(PHY_VARS_UE *ue,
                       int32_t *output,

@@ -858,29 +858,30 @@ void schedule_response(Sched_Rsp_t *Sched_INFO, void *arg) {
 
       case NFAPI_DL_CONFIG_MCH_PDU_TYPE:{
         //      handle_nfapi_mch_dl_pdu(eNB,dl_config_pdu);
-	//AssertFatal(1==0,"OK\n");
+        // AssertFatal(1==0,"OK\n");
         nfapi_dl_config_mch_pdu_rel8_t *mch_pdu_rel8 = &dl_config_pdu->mch_pdu.mch_pdu_rel8;
-	int16_t pdu_index = mch_pdu_rel8->pdu_index;
-	uint16_t tx_pdus = TX_req->tx_request_body.number_of_pdus;
-	uint16_t invalid_pdu = pdu_index == -1;
-	uint8_t *sdu = invalid_pdu ? NULL : pdu_index >= tx_pdus ? NULL : TX_req->tx_request_body.tx_pdu_list[pdu_index].segments[0].segment_data;
+        int16_t pdu_index = mch_pdu_rel8->pdu_index;
+        uint16_t tx_pdus = TX_req->tx_request_body.number_of_pdus;
+        uint16_t invalid_pdu = pdu_index == -1;
+        uint8_t *sdu = invalid_pdu            ? NULL
+                       : pdu_index >= tx_pdus ? NULL
+                                              : TX_req->tx_request_body.tx_pdu_list[pdu_index].segments[0].segment_data;
         LOG_D(PHY,"%s() [PDU:%d] NFAPI_DL_CONFIG_MCH_PDU_TYPE SFN/SF:%04d%d TX:%d/%d RX:%d/%d pdu_index:%d sdu:%p\n",
               __FUNCTION__, i,
               NFAPI_SFNSF2SFN(DL_req->sfn_sf),NFAPI_SFNSF2SF(DL_req->sfn_sf),
               proc->frame_tx, proc->subframe_tx,
               proc->frame_rx, proc->subframe_rx,
               pdu_index, sdu);
-	if (sdu) { //sdu != NULL)
+        if (sdu) { // sdu != NULL)
           if (NFAPI_MODE!=NFAPI_MODE_VNF)
-		handle_nfapi_mch_pdu(eNB,NFAPI_SFNSF2SFN(DL_req->sfn_sf),NFAPI_SFNSF2SF(DL_req->sfn_sf),proc,dl_config_pdu, sdu);
+            handle_nfapi_mch_pdu(eNB, NFAPI_SFNSF2SFN(DL_req->sfn_sf), NFAPI_SFNSF2SF(DL_req->sfn_sf), proc, dl_config_pdu, sdu);
         } else {
           dont_send=1;
           LOG_E(MAC,"%s() NFAPI_DL_CONFIG_MCH_PDU_TYPE sdu is NULL DL_CFG:SFN/SF:%d:pdu_index:%d TX_REQ:SFN/SF:%d:pdus:%d\n", __FUNCTION__, NFAPI_SFNSF2DEC(DL_req->sfn_sf), pdu_index,
                 NFAPI_SFNSF2DEC(TX_req->sfn_sf), tx_pdus);
         }
-	do_oai=1;
-	}
-        break;
+        do_oai = 1;
+      } break;
 
       case NFAPI_DL_CONFIG_DLSCH_PDU_TYPE: {
         nfapi_dl_config_dlsch_pdu_rel8_t *dlsch_pdu_rel8 = &dl_config_pdu->dlsch_pdu.dlsch_pdu_rel8;

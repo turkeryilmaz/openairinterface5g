@@ -41,12 +41,7 @@
 \param reset_freq_est if non-zero it resets the frequency offset estimation loop
 */
 
-int slot_fep(PHY_VARS_UE *phy_vars_ue,
-             unsigned char l,
-             unsigned char Ns,
-             int sample_offset,
-             int no_prefix,
-	     int reset_freq_est);
+int slot_fep(PHY_VARS_UE *phy_vars_ue, unsigned char l, unsigned char Ns, int sample_offset, int no_prefix, int reset_freq_est);
 
 int nr_slot_fep(PHY_VARS_NR_UE *ue,
                 const NR_DL_FRAME_PARMS *frame_parms,

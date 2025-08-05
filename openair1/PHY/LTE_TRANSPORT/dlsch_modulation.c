@@ -720,10 +720,7 @@ int allocate_REs_in_RB_no_pilots_QPSK_tm2(PHY_VARS_eNB* phy_vars_eNB,
   uint64_t *txF1 = (uint64_t*)&txdataF[1][tti_offset]; 
 
   // 8-bits corresponds to 4 QPSK symbols input which generates 4 QPSK symbols on 2 TX antenna ports
-  qam4_table_offset=(((uint32_t)x0p[0]))|
-	            (((uint32_t)x0p[1])<<1)|
-                    (((uint32_t)x0p[2])<<2)|
-		    (((uint32_t)x0p[3])<<3);
+  qam4_table_offset = (((uint32_t)x0p[0])) | (((uint32_t)x0p[1]) << 1) | (((uint32_t)x0p[2]) << 2) | (((uint32_t)x0p[3]) << 3);
 
   memcpy(txF0, &qam_table4_0[qam4_table_offset], sizeof(*txF0));
   memcpy(txF1, &qam_table4_1[qam4_table_offset], sizeof(*txF1));
@@ -737,10 +734,7 @@ int allocate_REs_in_RB_no_pilots_QPSK_tm2(PHY_VARS_eNB* phy_vars_eNB,
   memcpy(txF1+1, &qam_table4_1[qam4_table_offset], sizeof(*txF1));
 
   x0p+=4;
-  qam4_table_offset=(((uint32_t)x0p[0]))|
-	            (((uint32_t)x0p[1])<<1)|
-                    (((uint32_t)x0p[2])<<2)|
-		    (((uint32_t)x0p[3])<<3);
+  qam4_table_offset = (((uint32_t)x0p[0])) | (((uint32_t)x0p[1]) << 1) | (((uint32_t)x0p[2]) << 2) | (((uint32_t)x0p[3]) << 3);
 
   memcpy(txF0+2, &qam_table4_0[qam4_table_offset], sizeof(*txF0));
   memcpy(txF1+2, &qam_table4_1[qam4_table_offset], sizeof(*txF1));
@@ -752,10 +746,7 @@ int allocate_REs_in_RB_no_pilots_QPSK_tm2(PHY_VARS_eNB* phy_vars_eNB,
       txF1 = (uint64_t*)&txdataF[1][tti_offset]; 
     }
     x0p+=4;
-    qam4_table_offset=(((uint32_t)x0p[0]))|
-	              (((uint32_t)x0p[1])<<1)|
-                      (((uint32_t)x0p[2])<<2)|
-	  	      (((uint32_t)x0p[3])<<3);
+    qam4_table_offset = (((uint32_t)x0p[0])) | (((uint32_t)x0p[1]) << 1) | (((uint32_t)x0p[2]) << 2) | (((uint32_t)x0p[3]) << 3);
 
     memcpy(txF0+3, &qam_table4_0[qam4_table_offset], sizeof(*txF0));
     memcpy(txF1+3, &qam_table4_1[qam4_table_offset], sizeof(*txF1));
@@ -768,10 +759,7 @@ int allocate_REs_in_RB_no_pilots_QPSK_tm2(PHY_VARS_eNB* phy_vars_eNB,
     memcpy(txF0+4, &qam_table4_0[qam4_table_offset], sizeof(*txF0));
     memcpy(txF1+4, &qam_table4_1[qam4_table_offset], sizeof(*txF1));
     x0p+=4;
-    qam4_table_offset=(((uint32_t)x0p[0]))|
-      	              (((uint32_t)x0p[1])<<1)|
-                      (((uint32_t)x0p[2])<<2)|
-		      (((uint32_t)x0p[3])<<3);
+    qam4_table_offset = (((uint32_t)x0p[0])) | (((uint32_t)x0p[1]) << 1) | (((uint32_t)x0p[2]) << 2) | (((uint32_t)x0p[3]) << 3);
     memcpy(txF0+5, &qam_table4_0[qam4_table_offset], sizeof(*txF0));
     memcpy(txF1+5, &qam_table4_1[qam4_table_offset], sizeof(*txF1));
   }
@@ -1068,36 +1056,24 @@ int allocate_REs_in_RB_pilots_QPSK_tm2(PHY_VARS_eNB* phy_vars_eNB,
   uint64_t tmp0[4] = {0};
   uint64_t tmp1[4] = {0};
 
-  qam4_table_offset=(((uint32_t)x0p[0]))|
-	             (((uint32_t)x0p[1])<<1)|
-                     (((uint32_t)x0p[2])<<2)|
-		     (((uint32_t)x0p[3])<<3);
+  qam4_table_offset = (((uint32_t)x0p[0])) | (((uint32_t)x0p[1]) << 1) | (((uint32_t)x0p[2]) << 2) | (((uint32_t)x0p[3]) << 3);
 
   tmp0[0]=qam_table4_0[qam4_table_offset];
   tmp1[0]=qam_table4_1[qam4_table_offset];
   x0p+=4;
-  qam4_table_offset=(((uint32_t)x0p[0]))|
-	            (((uint32_t)x0p[1])<<1)|
-                    (((uint32_t)x0p[2])<<2)|
-		    (((uint32_t)x0p[3])<<3);
+  qam4_table_offset = (((uint32_t)x0p[0])) | (((uint32_t)x0p[1]) << 1) | (((uint32_t)x0p[2]) << 2) | (((uint32_t)x0p[3]) << 3);
 
   tmp0[1]=qam_table4_0[qam4_table_offset];
   tmp1[1]=qam_table4_1[qam4_table_offset];
 
   if(skip_half==0) {
     x0p+=4;
-    qam4_table_offset=(((uint32_t)x0p[0]))|
-  	               (((uint32_t)x0p[1])<<1)|
-                       (((uint32_t)x0p[2])<<2)|
-	   	       (((uint32_t)x0p[3])<<3);
+    qam4_table_offset = (((uint32_t)x0p[0])) | (((uint32_t)x0p[1]) << 1) | (((uint32_t)x0p[2]) << 2) | (((uint32_t)x0p[3]) << 3);
 
     tmp0[2]=qam_table4_0[qam4_table_offset];
     tmp1[2]=qam_table4_1[qam4_table_offset];
     x0p+=4;
-    qam4_table_offset=(((uint32_t)x0p[0]))|
-	               (((uint32_t)x0p[1])<<1)|
-                       (((uint32_t)x0p[2])<<2)|
-		       (((uint32_t)x0p[3])<<3);
+    qam4_table_offset = (((uint32_t)x0p[0])) | (((uint32_t)x0p[1]) << 1) | (((uint32_t)x0p[2]) << 2) | (((uint32_t)x0p[3]) << 3);
 
     tmp0[3]=qam_table4_0[qam4_table_offset];
     tmp1[3]=qam_table4_1[qam4_table_offset];
@@ -1150,7 +1126,7 @@ int allocate_REs_in_RB_pilots_QPSK_tm2(PHY_VARS_eNB* phy_vars_eNB,
       txdataF[0][tti_offset+5]=((uint32_t*)tmp0)[7]; 
       txdataF[1][tti_offset+5]=((uint32_t*)tmp1)[7];
     }
-  } else { //pilots in 2,5,8,11	  
+  } else { // pilots in 2,5,8,11
     tti_offset=symbol_offset+re_offset+re;
     txdataF[0][tti_offset+0]=((uint32_t*)tmp0)[0]; 
     txdataF[1][tti_offset+0]=((uint32_t*)tmp1)[0];
@@ -1423,7 +1399,7 @@ int allocate_REs_in_RB_pilots_16QAM_tm2(PHY_VARS_eNB* phy_vars_eNB,
       txdataF[0][tti_offset+5]=((uint32_t*)tmp0)[7]; 
       txdataF[1][tti_offset+5]=((uint32_t*)tmp1)[7];
     }
-  } else { //pilots in 2,5,8,11	  
+  } else { // pilots in 2,5,8,11
     tti_offset=symbol_offset+re_offset+re;
     txdataF[0][tti_offset+0]=((uint32_t*)tmp0)[0]; 
     txdataF[1][tti_offset+0]=((uint32_t*)tmp1)[0];
@@ -1589,7 +1565,7 @@ int allocate_REs_in_RB_pilots_64QAM_tm2(PHY_VARS_eNB* phy_vars_eNB,
       txdataF[0][tti_offset+5]=((uint32_t*)tmp0)[7]; 
       txdataF[1][tti_offset+5]=((uint32_t*)tmp1)[7];
     }
-  } else { //pilots in 2,5,8,11	  
+  } else { // pilots in 2,5,8,11
     tti_offset=symbol_offset+re_offset+re;
     txdataF[0][tti_offset+0]=((uint32_t*)tmp0)[0]; 
     txdataF[1][tti_offset+0]=((uint32_t*)tmp1)[0];
@@ -1889,8 +1865,9 @@ int allocate_REs_in_RB(PHY_VARS_eNB* phy_vars_eNB,
           ((int16_t*)&tmp_sample2)[1] = (x0[*jj]==1) ? (-gain_lin_QPSK) : gain_lin_QPSK;
           *jj=*jj+1;
 
-	  //gain_lin_QPSK (=amp/sqrt(2)) is already contains the power offset from rho_a/rho_b, so here we do not need divide by sqrt(2) anymore
-          // normalization for 2 tx antennas
+          // gain_lin_QPSK (=amp/sqrt(2)) is already contains the power offset from rho_a/rho_b, so here we do not need divide by
+          // sqrt(2) anymore
+          //  normalization for 2 tx antennas
           ((int16_t*)&txdataF[0][tti_offset])[0] = (int16_t)((((int16_t*)&tmp_sample1)[0]));
           ((int16_t*)&txdataF[0][tti_offset])[1] = (int16_t)((((int16_t*)&tmp_sample1)[1]));
           ((int16_t*)&txdataF[1][tti_offset])[0] = (int16_t)((((int16_t*)&tmp_sample2)[0]));
@@ -1921,9 +1898,10 @@ int allocate_REs_in_RB(PHY_VARS_eNB* phy_vars_eNB,
 
           //((int16_t *)&txdataF[0][tti_offset])[0]+=(int16_t)(((int32_t)amp*qam16_table[qam16_table_offset_re])>>15);
           //((int16_t *)&txdataF[0][tti_offset])[1]+=(int16_t)(((int32_t)amp*qam16_table[qam16_table_offset_im])>>15);
-	  //gain_lin_QPSK (=amp/sqrt(2)) is already contains the power offset from rho_a/rho_b, so here we do not need divide by sqrt(2) anymore
-	  ((int16_t *)&txdataF[0][tti_offset])[0]=(qam_table_s0[qam16_table_offset_re]);
-	  ((int16_t *)&txdataF[0][tti_offset])[1]=(qam_table_s0[qam16_table_offset_im]);
+          // gain_lin_QPSK (=amp/sqrt(2)) is already contains the power offset from rho_a/rho_b, so here we do not need divide by
+          // sqrt(2) anymore
+          ((int16_t *)&txdataF[0][tti_offset])[0] = (qam_table_s0[qam16_table_offset_re]);
+          ((int16_t *)&txdataF[0][tti_offset])[1] = (qam_table_s0[qam16_table_offset_im]);
 
           // Antenna 1 position n Real part -> -x1*
 
@@ -1947,12 +1925,12 @@ int allocate_REs_in_RB(PHY_VARS_eNB* phy_vars_eNB,
 
           //((int16_t *)&txdataF[1][tti_offset])[0]+=-(int16_t)(((int32_t)amp*qam16_table[qam16_table_offset_re])>>15);
           //((int16_t *)&txdataF[1][tti_offset])[1]+=(int16_t)(((int32_t)amp*qam16_table[qam16_table_offset_im])>>15);
-	  //qam_table_s0 already contains the power offset from rho_a/rho_b, so here we do not need divide by sqrt(2) anymore
-	  ((int16_t *)&txdataF[1][tti_offset])[0]=-(qam_table_s0[qam16_table_offset_re]);
-	  ((int16_t *)&txdataF[1][tti_offset])[1]=(qam_table_s0[qam16_table_offset_im]);
+          // qam_table_s0 already contains the power offset from rho_a/rho_b, so here we do not need divide by sqrt(2) anymore
+          ((int16_t *)&txdataF[1][tti_offset])[0] = -(qam_table_s0[qam16_table_offset_re]);
+          ((int16_t *)&txdataF[1][tti_offset])[1] = (qam_table_s0[qam16_table_offset_im]);
 
-         //((int16_t *)&txdataF[1][tti_offset])[0]+=-qam_table_s0[qam16_table_offset_re];
-         //((int16_t *)&txdataF[1][tti_offset])[1]+=qam_table_s0[qam16_table_offset_im];
+          //((int16_t *)&txdataF[1][tti_offset])[0]+=-qam_table_s0[qam16_table_offset_re];
+          //((int16_t *)&txdataF[1][tti_offset])[1]+=qam_table_s0[qam16_table_offset_im];
 
           break;
 
@@ -1983,10 +1961,9 @@ int allocate_REs_in_RB(PHY_VARS_eNB* phy_vars_eNB,
 
           //((int16_t *)&txdataF[0][tti_offset])[0]+=(int16_t)(((int32_t)amp*qam64_table[qam64_table_offset_re])>>15);
           //((int16_t *)&txdataF[0][tti_offset])[1]+=(int16_t)(((int32_t)amp*qam64_table[qam64_table_offset_im])>>15);
-	  //qam_table_s0 already contains the power offset from rho_a/rho_b, so here we do not need divide by sqrt(2) anymore
-	  ((int16_t *)&txdataF[0][tti_offset])[0]=(qam_table_s0[qam64_table_offset_re]);
-	  ((int16_t *)&txdataF[0][tti_offset])[1]=(qam_table_s0[qam64_table_offset_im]);
-
+          // qam_table_s0 already contains the power offset from rho_a/rho_b, so here we do not need divide by sqrt(2) anymore
+          ((int16_t *)&txdataF[0][tti_offset])[0] = (qam_table_s0[qam64_table_offset_re]);
+          ((int16_t *)&txdataF[0][tti_offset])[1] = (qam_table_s0[qam64_table_offset_im]);
 
           // Antenna 1 => -x1*
           qam64_table_offset_re = 0;
@@ -2012,10 +1989,9 @@ int allocate_REs_in_RB(PHY_VARS_eNB* phy_vars_eNB,
 
           //((int16_t *)&txdataF[1][tti_offset])[0]+=-(int16_t)(((int32_t)amp*qam64_table[qam64_table_offset_re])>>15);
           //((int16_t *)&txdataF[1][tti_offset])[1]+=(int16_t)(((int32_t)amp*qam64_table[qam64_table_offset_im])>>15);
-	  //qam_table_s0 already contains the power offset from rho_a/rho_b, so here we do not need divide by sqrt(2) anymore
-	  ((int16_t *)&txdataF[1][tti_offset])[0]=-(qam_table_s0[qam64_table_offset_re]);
-	  ((int16_t *)&txdataF[1][tti_offset])[1]=(qam_table_s0[qam64_table_offset_im]);
-
+          // qam_table_s0 already contains the power offset from rho_a/rho_b, so here we do not need divide by sqrt(2) anymore
+          ((int16_t *)&txdataF[1][tti_offset])[0] = -(qam_table_s0[qam64_table_offset_re]);
+          ((int16_t *)&txdataF[1][tti_offset])[1] = (qam_table_s0[qam64_table_offset_im]);
 
           break;
         }
@@ -3055,54 +3031,52 @@ void init_modulation_LUT_qam4_tm2_p2() {
         rhoA_dB   = computeRhoA_eNB(pa, NULL, 1, 2);
         sqrt_rhoA = (int16_t)(pow(10,(0.05*rhoA_dB))*pow(2,13));
         amp_rho_a = (int16_t)(((int32_t)AMP*sqrt_rhoA)>>13);
-	s0 = &qam4_tm2_p2_0[pa][index];
-	s1 = &qam4_tm2_p2_1[pa][index];
+        s0 = &qam4_tm2_p2_0[pa][index];
+        s1 = &qam4_tm2_p2_1[pa][index];
         // Antenna 0
         qam4_table_offset_re = index&1;
         qam4_table_offset_im = (index>>1)&1;
 
-	((int16_t*)s0)[0]=(int16_t)(((int32_t)qpsk_table[qam4_table_offset_re]*amp_rho_a)>>15);
-	((int16_t*)s0)[1]=(int16_t)(((int32_t)qpsk_table[qam4_table_offset_im]*amp_rho_a)>>15);
+        ((int16_t *)s0)[0] = (int16_t)(((int32_t)qpsk_table[qam4_table_offset_re] * amp_rho_a) >> 15);
+        ((int16_t *)s0)[1] = (int16_t)(((int32_t)qpsk_table[qam4_table_offset_im] * amp_rho_a) >> 15);
 
         // Antenna 1 => -x1*
         qam4_table_offset_re = (index>>2)&1;
         qam4_table_offset_im = (index>>3)&1;
-      
-	((int16_t*)s1)[0]=-(int16_t)(((int32_t)qpsk_table[qam4_table_offset_re]*amp_rho_a)>>15);
-	((int16_t*)s1)[1]=(int16_t)(((int32_t)qpsk_table[qam4_table_offset_im]*amp_rho_a)>>15);
-        
-	((int16_t*)s0)[2] = -((int16_t*)s1)[0]; //=-x1*
+
+        ((int16_t *)s1)[0] = -(int16_t)(((int32_t)qpsk_table[qam4_table_offset_re] * amp_rho_a) >> 15);
+        ((int16_t *)s1)[1] = (int16_t)(((int32_t)qpsk_table[qam4_table_offset_im] * amp_rho_a) >> 15);
+
+        ((int16_t *)s0)[2] = -((int16_t *)s1)[0]; //=-x1*
         ((int16_t*)s0)[3] = ((int16_t*)s1)[1];
         ((int16_t*)s1)[2] = ((int16_t*)s0)[0];  //x0*
         ((int16_t*)s1)[3] = -((int16_t*)s0)[1];
-	for (int pb=0;pb<4;pb++) {
+        for (int pb = 0; pb < 4; pb++) {
           rhoB_dB   = computeRhoB_eNB(pa,pb, 2, NULL, 1);
           sqrt_rhoB = (int16_t)(pow(10,(0.05*rhoB_dB))*pow(2,13));
           amp_rho_b = (int16_t)(((int32_t)AMP*sqrt_rhoB)>>13);
-	  s0 = &qam4_tm2_p2_b0[pa][pb][index];
-	  s1 = &qam4_tm2_p2_b1[pa][pb][index];
+          s0 = &qam4_tm2_p2_b0[pa][pb][index];
+          s1 = &qam4_tm2_p2_b1[pa][pb][index];
           // Antenna 0
           qam4_table_offset_re = index&1;
           qam4_table_offset_im = (index>>1)&1;
 
-
-	  ((int16_t*)s0)[0]=(int16_t)(((int32_t)qpsk_table[qam4_table_offset_re]*amp_rho_b)>>15);
-	  ((int16_t*)s0)[1]=(int16_t)(((int32_t)qpsk_table[qam4_table_offset_im]*amp_rho_b)>>15);
-
+          ((int16_t *)s0)[0] = (int16_t)(((int32_t)qpsk_table[qam4_table_offset_re] * amp_rho_b) >> 15);
+          ((int16_t *)s0)[1] = (int16_t)(((int32_t)qpsk_table[qam4_table_offset_im] * amp_rho_b) >> 15);
 
           // Antenna 1 => -x1*
           qam4_table_offset_re = (index>>2)&1;
           qam4_table_offset_im = (index>>3)&1;
-      
-	  ((int16_t*)s1)[0]=-(int16_t)(((int32_t)qpsk_table[qam4_table_offset_re]*amp_rho_b)>>15);
-	  ((int16_t*)s1)[1]=(int16_t)(((int32_t)qpsk_table[qam4_table_offset_im]*amp_rho_b)>>15);
-        
-	  ((int16_t*)s0)[2] = -((int16_t*)s1)[0]; //=-x1*
+
+          ((int16_t *)s1)[0] = -(int16_t)(((int32_t)qpsk_table[qam4_table_offset_re] * amp_rho_b) >> 15);
+          ((int16_t *)s1)[1] = (int16_t)(((int32_t)qpsk_table[qam4_table_offset_im] * amp_rho_b) >> 15);
+
+          ((int16_t *)s0)[2] = -((int16_t *)s1)[0]; //=-x1*
           ((int16_t*)s0)[3] = ((int16_t*)s1)[1];
           ((int16_t*)s1)[2] = ((int16_t*)s0)[0];  //x0*
           ((int16_t*)s1)[3] = -((int16_t*)s0)[1];
-	}
-     }	
+        }
+     }
    }
 }
 void init_modulation_LUT_qam16_tm2_p2() {
@@ -3120,57 +3094,52 @@ void init_modulation_LUT_qam16_tm2_p2() {
         rhoA_dB   = computeRhoA_eNB(pa, NULL, 1, 2);
         sqrt_rhoA = (int16_t)(pow(10,(0.05*rhoA_dB))*pow(2,13));
         amp_rho_a = (int16_t)(((int32_t)AMP*sqrt_rhoA)>>13);
-	s0 = &qam16_tm2_p2_0[pa][index];
-	s1 = &qam16_tm2_p2_1[pa][index];
+        s0 = &qam16_tm2_p2_0[pa][index];
+        s1 = &qam16_tm2_p2_1[pa][index];
         // Antenna 0
         qam16_table_offset_re = index&3;
         qam16_table_offset_im = (index>>2)&3;
 
-
-	((int16_t*)s0)[0]=(int16_t)(((int32_t)qam16_table[qam16_table_offset_re]*amp_rho_a)>>15);
-	((int16_t*)s0)[1]=(int16_t)(((int32_t)qam16_table[qam16_table_offset_im]*amp_rho_a)>>15);
-
+        ((int16_t *)s0)[0] = (int16_t)(((int32_t)qam16_table[qam16_table_offset_re] * amp_rho_a) >> 15);
+        ((int16_t *)s0)[1] = (int16_t)(((int32_t)qam16_table[qam16_table_offset_im] * amp_rho_a) >> 15);
 
         // Antenna 1 => -x1*
         qam16_table_offset_re = (index>>4)&3;
         qam16_table_offset_im = (index>>6)&3;
-      
-	((int16_t*)s1)[0]=-(int16_t)(((int32_t)qam16_table[qam16_table_offset_re]*amp_rho_a)>>15);
-	((int16_t*)s1)[1]=(int16_t)(((int32_t)qam16_table[qam16_table_offset_im]*amp_rho_a)>>15);
-        
-	((int16_t*)s0)[2] = -((int16_t*)s1)[0]; //=-x1*
+
+        ((int16_t *)s1)[0] = -(int16_t)(((int32_t)qam16_table[qam16_table_offset_re] * amp_rho_a) >> 15);
+        ((int16_t *)s1)[1] = (int16_t)(((int32_t)qam16_table[qam16_table_offset_im] * amp_rho_a) >> 15);
+
+        ((int16_t *)s0)[2] = -((int16_t *)s1)[0]; //=-x1*
         ((int16_t*)s0)[3] = ((int16_t*)s1)[1];
         ((int16_t*)s1)[2] = ((int16_t*)s0)[0];  //x0*
         ((int16_t*)s1)[3] = -((int16_t*)s0)[1];
-	for (int pb=0;pb<4;pb++) {
+        for (int pb = 0; pb < 4; pb++) {
           rhoB_dB   = computeRhoB_eNB(pa,pb, 2, NULL, 1);
           sqrt_rhoB = (int16_t)(pow(10,(0.05*rhoB_dB))*pow(2,13));
           amp_rho_b = (int16_t)(((int32_t)AMP*sqrt_rhoB)>>13);
-	  s0 = &qam16_tm2_p2_b0[pa][pb][index];
-	  s1 = &qam16_tm2_p2_b1[pa][pb][index];
+          s0 = &qam16_tm2_p2_b0[pa][pb][index];
+          s1 = &qam16_tm2_p2_b1[pa][pb][index];
           // Antenna 0
           qam16_table_offset_re = index&3;
           qam16_table_offset_im = (index>>2)&3;
 
-
-	  ((int16_t*)s0)[0]=(int16_t)(((int32_t)qam16_table[qam16_table_offset_re]*amp_rho_b)>>15);
-	  ((int16_t*)s0)[1]=(int16_t)(((int32_t)qam16_table[qam16_table_offset_im]*amp_rho_b)>>15);
-
+          ((int16_t *)s0)[0] = (int16_t)(((int32_t)qam16_table[qam16_table_offset_re] * amp_rho_b) >> 15);
+          ((int16_t *)s0)[1] = (int16_t)(((int32_t)qam16_table[qam16_table_offset_im] * amp_rho_b) >> 15);
 
           // Antenna 1 => -x1*
           qam16_table_offset_re = (index>>4)&3;
           qam16_table_offset_im = (index>>6)&3;
-      
-	  ((int16_t*)s1)[0]=-(int16_t)(((int32_t)qam16_table[qam16_table_offset_re]*amp_rho_b)>>15);
-	  ((int16_t*)s1)[1]=(int16_t)(((int32_t)qam16_table[qam16_table_offset_im]*amp_rho_b)>>15);
-        
-	  ((int16_t*)s0)[2] = -((int16_t*)s1)[0]; //=-x1*
+
+          ((int16_t *)s1)[0] = -(int16_t)(((int32_t)qam16_table[qam16_table_offset_re] * amp_rho_b) >> 15);
+          ((int16_t *)s1)[1] = (int16_t)(((int32_t)qam16_table[qam16_table_offset_im] * amp_rho_b) >> 15);
+
+          ((int16_t *)s0)[2] = -((int16_t *)s1)[0]; //=-x1*
           ((int16_t*)s0)[3] = ((int16_t*)s1)[1];
           ((int16_t*)s1)[2] = ((int16_t*)s0)[0];  //x0*
           ((int16_t*)s1)[3] = -((int16_t*)s0)[1];
-
-	}
-     }	
+        }
+     }
    }
 }
 void init_modulation_LUT_qam64_tm2_p2() {
@@ -3188,57 +3157,52 @@ void init_modulation_LUT_qam64_tm2_p2() {
         rhoA_dB   = computeRhoA_eNB(pa, NULL, 1, 2);
         sqrt_rhoA = (int16_t)(pow(10,(0.05*rhoA_dB))*pow(2,13));
         amp_rho_a = (int16_t)(((int32_t)AMP*sqrt_rhoA)>>13);
-	s0 = &qam64_tm2_p2_0[pa][index];
-	s1 = &qam64_tm2_p2_1[pa][index];
+        s0 = &qam64_tm2_p2_0[pa][index];
+        s1 = &qam64_tm2_p2_1[pa][index];
         // Antenna 0
         qam64_table_offset_re = index&7;
         qam64_table_offset_im = (index>>3)&7;
 
-
-	((int16_t*)s0)[0]=(int16_t)(((int32_t)qam64_table[qam64_table_offset_re]*amp_rho_a)>>15);
-	((int16_t*)s0)[1]=(int16_t)(((int32_t)qam64_table[qam64_table_offset_im]*amp_rho_a)>>15);
-
+        ((int16_t *)s0)[0] = (int16_t)(((int32_t)qam64_table[qam64_table_offset_re] * amp_rho_a) >> 15);
+        ((int16_t *)s0)[1] = (int16_t)(((int32_t)qam64_table[qam64_table_offset_im] * amp_rho_a) >> 15);
 
         // Antenna 1 => -x1*
         qam64_table_offset_re = (index>>6)&7;
         qam64_table_offset_im = (index>>9)&7;
-      
-	((int16_t*)s1)[0]=-(int16_t)(((int32_t)qam64_table[qam64_table_offset_re]*amp_rho_a)>>15);
-	((int16_t*)s1)[1]=(int16_t)(((int32_t)qam64_table[qam64_table_offset_im]*amp_rho_a)>>15);
-        
-	((int16_t*)s0)[2] = -((int16_t*)s1)[0]; //=-x1*
+
+        ((int16_t *)s1)[0] = -(int16_t)(((int32_t)qam64_table[qam64_table_offset_re] * amp_rho_a) >> 15);
+        ((int16_t *)s1)[1] = (int16_t)(((int32_t)qam64_table[qam64_table_offset_im] * amp_rho_a) >> 15);
+
+        ((int16_t *)s0)[2] = -((int16_t *)s1)[0]; //=-x1*
         ((int16_t*)s0)[3] = ((int16_t*)s1)[1];
         ((int16_t*)s1)[2] = ((int16_t*)s0)[0];  //x0*
         ((int16_t*)s1)[3] = -((int16_t*)s0)[1];
-	for (int pb=0;pb<4;pb++) {
+        for (int pb = 0; pb < 4; pb++) {
           rhoB_dB   = computeRhoB_eNB(pa,pb, 2, NULL, 1);
           sqrt_rhoB = (int16_t)(pow(10,(0.05*rhoB_dB))*pow(2,13));
           amp_rho_b = (int16_t)(((int32_t)AMP*sqrt_rhoB)>>13);
-	  s0 = &qam64_tm2_p2_b0[pa][pb][index];
-	  s1 = &qam64_tm2_p2_b1[pa][pb][index];
+          s0 = &qam64_tm2_p2_b0[pa][pb][index];
+          s1 = &qam64_tm2_p2_b1[pa][pb][index];
           // Antenna 0
           qam64_table_offset_re = index&7;
           qam64_table_offset_im = (index>>3)&7;
 
-
-	  ((int16_t*)s0)[0]=(int16_t)(((int32_t)qam64_table[qam64_table_offset_re]*amp_rho_b)>>15);
-	  ((int16_t*)s0)[1]=(int16_t)(((int32_t)qam64_table[qam64_table_offset_im]*amp_rho_b)>>15);
-
+          ((int16_t *)s0)[0] = (int16_t)(((int32_t)qam64_table[qam64_table_offset_re] * amp_rho_b) >> 15);
+          ((int16_t *)s0)[1] = (int16_t)(((int32_t)qam64_table[qam64_table_offset_im] * amp_rho_b) >> 15);
 
           // Antenna 1 => -x1*
           qam64_table_offset_re = (index>>6)&7;
           qam64_table_offset_im = (index>>9)&7;
-      
-	  ((int16_t*)s1)[0]=-(int16_t)(((int32_t)qam64_table[qam64_table_offset_re]*amp_rho_b)>>15);
-	  ((int16_t*)s1)[1]=(int16_t)(((int32_t)qam64_table[qam64_table_offset_im]*amp_rho_b)>>15);
-        
-	  ((int16_t*)s0)[2] = -((int16_t*)s1)[0]; //=-x1*
+
+          ((int16_t *)s1)[0] = -(int16_t)(((int32_t)qam64_table[qam64_table_offset_re] * amp_rho_b) >> 15);
+          ((int16_t *)s1)[1] = (int16_t)(((int32_t)qam64_table[qam64_table_offset_im] * amp_rho_b) >> 15);
+
+          ((int16_t *)s0)[2] = -((int16_t *)s1)[0]; //=-x1*
           ((int16_t*)s0)[3] = ((int16_t*)s1)[1];
           ((int16_t*)s1)[2] = ((int16_t*)s0)[0];  //x0*
           ((int16_t*)s1)[3] = -((int16_t*)s0)[1];
-
-	}
-     }	
+        }
+     }
    }
 }
 
@@ -3498,20 +3462,18 @@ int dlsch_modulation(PHY_VARS_eNB* phy_vars_eNB,
       /*
       for (int ru_id=0;ru_id<RC.nb_RU;ru_id++) {
         RU_t *ru;
-	ru = RC.ru[ru_id];
-	for (int eNB_id=0;eNB_id<ru->num_eNB;eNB_id++){
-	  if (phy_vars_eNB == ru->eNB_list[eNB_id]) {
-	    for (int aa=0;aa<ru->nb_tx;aa++){
-              LOG_I(PHY,"ru_id:%d eNB_id:%d aa:%d memcpy(ru->beam_weights, dlsch0->ue_spec_bf_weights[ru_id][0],)\n", ru_id, eNB_id, aa);
-	      memcpy(ru->beam_weights[eNB_id][5][aa],
-		     dlsch0->ue_spec_bf_weights[ru_id][0],
-		     frame_parms->ofdm_symbol_size*sizeof(int32_t));
-	    }
-	  }
-	}
+    ru = RC.ru[ru_id];
+    for (int eNB_id=0;eNB_id<ru->num_eNB;eNB_id++){
+      if (phy_vars_eNB == ru->eNB_list[eNB_id]) {
+        for (int aa=0;aa<ru->nb_tx;aa++){
+              LOG_I(PHY,"ru_id:%d eNB_id:%d aa:%d memcpy(ru->beam_weights, dlsch0->ue_spec_bf_weights[ru_id][0],)\n", ru_id, eNB_id,
+    aa); memcpy(ru->beam_weights[eNB_id][5][aa], dlsch0->ue_spec_bf_weights[ru_id][0],
+             frame_parms->ofdm_symbol_size*sizeof(int32_t));
+        }
+      }
+    }
       }
       */
-
     }
 
     Ns = 2*subframe_offset+(l>=(nsymb>>1));
@@ -3521,14 +3483,14 @@ int dlsch_modulation(PHY_VARS_eNB* phy_vars_eNB,
 
     if (pilots>0) {  // compute pilot arrays, could be done statically if performance suffers
       if (frame_parms->nb_antenna_ports_eNB == 1) {
-	//	LOG_I(PHY,"l %d, nushift %d, offset %d\n",l,frame_parms->nushift,offset);
-	for (i=0,i2=0;i<12;i++) {
-	  if ((i!=(frame_parms->nushift+offset)) && (i!=((frame_parms->nushift+6+offset)%12)))
-	    P1_SHIFT[i2++]=1;
-	  else
-	    P1_SHIFT[i2++]=2;
-	}
-	P1_SHIFT[0]--;
+        //    LOG_I(PHY,"l %d, nushift %d, offset %d\n",l,frame_parms->nushift,offset);
+        for (i = 0, i2 = 0; i < 12; i++) {
+          if ((i != (frame_parms->nushift + offset)) && (i != ((frame_parms->nushift + 6 + offset) % 12)))
+            P1_SHIFT[i2++] = 1;
+          else
+            P1_SHIFT[i2++] = 2;
+        }
+        P1_SHIFT[0]--;
       }
       else {
         for (i=0,i2=0;i<12;i++) {
@@ -3550,79 +3512,73 @@ int dlsch_modulation(PHY_VARS_eNB* phy_vars_eNB,
     case 2:
       qam_table_s0 = NULL;
       if (pilots) {
-	if (dlsch0->harq_processes[harq_pid]->mimo_mode == SISO) {
+        if (dlsch0->harq_processes[harq_pid]->mimo_mode == SISO) {
           qam_table_s0 = qpsk_table_b0;
-          allocate_REs = allocate_REs_in_RB_pilots_QPSK_siso; 
-	}
-	else if (dlsch0->harq_processes[harq_pid]->mimo_mode == ALAMOUTI) {
+          allocate_REs = allocate_REs_in_RB_pilots_QPSK_siso;
+        } else if (dlsch0->harq_processes[harq_pid]->mimo_mode == ALAMOUTI) {
           qam_table_s0 = (int16_t*)qam4_tm2_p2_b0[dlsch0->pa][dlsch0->pb];
           qam_table_s1 = (int16_t*)qam4_tm2_p2_b1[dlsch0->pa][dlsch0->pb];
-	  P2_SHIFT[0]=nushiftmod3;
+          P2_SHIFT[0] = nushiftmod3;
           allocate_REs = allocate_REs_in_RB_pilots_QPSK_tm2;
-	}
+        }
       }
       else {
-	if (dlsch0->harq_processes[harq_pid]->mimo_mode == SISO) {
+        if (dlsch0->harq_processes[harq_pid]->mimo_mode == SISO) {
           qam_table_s0 = qpsk_table_a0;
           allocate_REs = allocate_REs_in_RB_no_pilots_QPSK_siso;
-	}
-	else if (dlsch0->harq_processes[harq_pid]->mimo_mode == ALAMOUTI) {
+        } else if (dlsch0->harq_processes[harq_pid]->mimo_mode == ALAMOUTI) {
           qam_table_s0 = (int16_t*)qam4_tm2_p2_0[dlsch0->pa];
           qam_table_s1 = (int16_t*)qam4_tm2_p2_1[dlsch0->pa];
-	  allocate_REs = allocate_REs_in_RB_no_pilots_QPSK_tm2;
-	}
+          allocate_REs = allocate_REs_in_RB_no_pilots_QPSK_tm2;
+        }
       }
       break;
     case 4:
       if (pilots) {
-	if (dlsch0->harq_processes[harq_pid]->mimo_mode == SISO) {
+        if (dlsch0->harq_processes[harq_pid]->mimo_mode == SISO) {
           qam_table_s0 = qam16_table_b0;
           allocate_REs = allocate_REs_in_RB_pilots_16QAM_siso;
-        }
-        else if (dlsch0->harq_processes[harq_pid]->mimo_mode == ALAMOUTI) {
+        } else if (dlsch0->harq_processes[harq_pid]->mimo_mode == ALAMOUTI) {
           qam_table_s0 = (int16_t*)qam16_tm2_p2_b0[dlsch0->pa][dlsch0->pb];
           qam_table_s1 = (int16_t*)qam16_tm2_p2_b1[dlsch0->pa][dlsch0->pb];
-	  P2_SHIFT[0]=nushiftmod3;
+          P2_SHIFT[0] = nushiftmod3;
           allocate_REs = allocate_REs_in_RB_pilots_16QAM_tm2;
-	}
+        }
       }
       else {
-	if (dlsch0->harq_processes[harq_pid]->mimo_mode == SISO) {
+        if (dlsch0->harq_processes[harq_pid]->mimo_mode == SISO) {
           qam_table_s0 = qam16_table_a0;
           allocate_REs = allocate_REs_in_RB_no_pilots_16QAM_siso;
-	}
-	else if (dlsch0->harq_processes[harq_pid]->mimo_mode == ALAMOUTI) {
+        } else if (dlsch0->harq_processes[harq_pid]->mimo_mode == ALAMOUTI) {
           qam_table_s0 = (int16_t*)qam16_tm2_p2_0[dlsch0->pa];
           qam_table_s1 = (int16_t*)qam16_tm2_p2_1[dlsch0->pa];
-	  allocate_REs = allocate_REs_in_RB_no_pilots_16QAM_tm2;
-	}
+          allocate_REs = allocate_REs_in_RB_no_pilots_16QAM_tm2;
+        }
       }
       break;
 
     case 6:
       if (pilots) {
-	if (dlsch0->harq_processes[harq_pid]->mimo_mode == SISO) {
+        if (dlsch0->harq_processes[harq_pid]->mimo_mode == SISO) {
           qam_table_s0 = qam64_table_b0;
           allocate_REs = allocate_REs_in_RB_pilots_64QAM_siso;
-        }
-	else if (dlsch0->harq_processes[harq_pid]->mimo_mode == ALAMOUTI) {
+        } else if (dlsch0->harq_processes[harq_pid]->mimo_mode == ALAMOUTI) {
           qam_table_s0 = (int16_t*)qam64_tm2_p2_b0[dlsch0->pa][dlsch0->pb];
           qam_table_s1 = (int16_t*)qam64_tm2_p2_b1[dlsch0->pa][dlsch0->pb];
-	  P2_SHIFT[0]=nushiftmod3;
+          P2_SHIFT[0] = nushiftmod3;
           allocate_REs = allocate_REs_in_RB_pilots_64QAM_tm2;
         }
       }
       else {
-	if (dlsch0->harq_processes[harq_pid]->mimo_mode == SISO) {
+        if (dlsch0->harq_processes[harq_pid]->mimo_mode == SISO) {
           qam_table_s0 = qam64_table_a0;
           allocate_REs = allocate_REs_in_RB_no_pilots_64QAM_siso;
-	}
-	else if (dlsch0->harq_processes[harq_pid]->mimo_mode == ALAMOUTI) {
-	  LOG_D(PHY,"Calling qam64_tm2 modulation no CS-RS pa %d\n",dlsch0->pa);
+        } else if (dlsch0->harq_processes[harq_pid]->mimo_mode == ALAMOUTI) {
+          LOG_D(PHY, "Calling qam64_tm2 modulation no CS-RS pa %d\n", dlsch0->pa);
           qam_table_s0 = (int16_t*)qam64_tm2_p2_0[dlsch0->pa];
           qam_table_s1 = (int16_t*)qam64_tm2_p2_1[dlsch0->pa];
-	  allocate_REs = allocate_REs_in_RB_no_pilots_64QAM_tm2;
-	}
+          allocate_REs = allocate_REs_in_RB_no_pilots_64QAM_tm2;
+        }
       }
       /* TODO: this is a quick hack to be removed. There is a problem
        * with above code that needs to be analyzed and fixed. In the

@@ -184,7 +184,7 @@ void phy_init_nr_gNB(PHY_VARS_gNB *gNB)
     for (int j = 0; j < Ptx; j++)
       common_vars->txdataF[i][j] = (c16_t*)malloc16_clear(fp->samples_per_frame_wCP * sizeof(c16_t));
   }
-  common_vars->debugBuff = (int32_t*)malloc16_clear(fp->samples_per_frame*sizeof(int32_t)*100);	
+  common_vars->debugBuff = (int32_t *)malloc16_clear(fp->samples_per_frame * sizeof(int32_t) * 100);
   common_vars->debugBuff_sample_offset = 0; 
 
   // PRACH
@@ -317,7 +317,7 @@ void nr_phy_config_request_sim(PHY_VARS_gNB *gNB,
   gNB_config->ssb_table.ssb_mask_list[1].ssb_mask.value = (rev_burst)&(0xFFFFFFFF);
   gNB_config->ssb_table.ssb_mask_list[0].ssb_mask.value = (rev_burst>>32)&(0xFFFFFFFF);
   gNB_config->cell_config.frame_duplex_type.value       = TDD;
-  gNB_config->ssb_table.ssb_period.value		= 1; //10ms
+  gNB_config->ssb_table.ssb_period.value = 1; // 10ms
   gNB_config->carrier_config.dl_grid_size[mu].value     = N_RB_DL;
   gNB_config->carrier_config.ul_grid_size[mu].value     = N_RB_UL;
   gNB_config->carrier_config.num_tx_ant.value           = fp->nb_antennas_tx;

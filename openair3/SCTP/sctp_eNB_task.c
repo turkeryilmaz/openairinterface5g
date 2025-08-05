@@ -318,10 +318,7 @@ sctp_handle_new_association_req_multi(
                            assoc_id, used_address);
             }
         } else {
-            SCTP_DEBUG("sctp_connectx SUCCESS, socket %d used %d addresses assoc_id %d\n",
-		       sd,
-                       used_address,
-                       assoc_id);
+          SCTP_DEBUG("sctp_connectx SUCCESS, socket %d used %d addresses assoc_id %d\n", sd, used_address, assoc_id);
         }
     }
 
@@ -949,9 +946,8 @@ static void sctp_eNB_process_itti_msg()
 
     /* Check if there is a packet to handle */
     if (received_msg != NULL) {
-      LOG_D(SCTP,"Received message %d:%s\n",
-		 ITTI_MSG_ID(received_msg), ITTI_MSG_NAME(received_msg));
-        switch (ITTI_MSG_ID(received_msg)) {
+      LOG_D(SCTP, "Received message %d:%s\n", ITTI_MSG_ID(received_msg), ITTI_MSG_NAME(received_msg));
+      switch (ITTI_MSG_ID(received_msg)) {
         case SCTP_INIT_MSG: {
             if (sctp_create_new_listener(
                         ITTI_MSG_DESTINATION_INSTANCE(received_msg),

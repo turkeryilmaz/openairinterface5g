@@ -84,7 +84,7 @@ int m3ap_handle_message(instance_t instance,
 
   int i=0; 
   for( i=0; i < data_length; i++)
-	printf("%02X",data[i]);
+    printf("%02X", data[i]);
   printf("\n");
 
   if (m3ap_decode_pdu(&pdu, data, data_length) < 0) {

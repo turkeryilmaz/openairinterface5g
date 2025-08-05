@@ -50,7 +50,7 @@ void drawMeter() {
     glVertex2d(3,0);
     glVertex2d(-3,0);
     glVertex2d(-3,-5);
-    glVertex2d(0,0);	
+    glVertex2d(0, 0);
     glVertex2d(0,-5);
     glVertex2d(3,0);
     glVertex2d(3,-5);
@@ -275,36 +275,38 @@ void OpenGLWidget::drawConnections(){
             }
 
             if(k < geo[i].Neighbors){
-	      	//glColor3d(255,255,255);
-	      	switch (link_color) {
-		  case 1:
-		  glColor3d(255,0,0);
-		  break;
-      
-		  case 2:
-		  glColor3d(0,0,255);
-		  break;
-      
-		  case 3:
-		  glColor3d(0,255,0);
-		  break;
-		  
-		  case 0:
-		  glColor3d(255,255,255);
-		  break;
-		}
-           
+              // glColor3d(255,255,255);
+              switch (link_color) {
+                case 1:
+                  glColor3d(255, 0, 0);
+                  break;
+
+                case 2:
+                  glColor3d(0, 0, 255);
+                  break;
+
+                case 3:
+                  glColor3d(0, 255, 0);
+                  break;
+
+                case 0:
+                  glColor3d(255, 255, 255);
+                  break;
+              }
+
                 //choose it according to the number of displayed nodes
                 glLineWidth(0.7);
                 glBegin(GL_LINES);
-		    if (geo[i].node_type == 0) 
-		      glVertex2d((int)(((float)geo[i].x/(float)x_area)*500),(int)(((float)(geo[i].y + 2 * sh)/(float)y_area)*500));
-		    else
-		      glVertex2d((int)(((float)geo[i].x/(float)x_area)*500),(int)(((float)geo[i].y/(float)y_area)*500));
-		    if (geo[j].node_type == 0)
-		      glVertex2d((int)(((float)geo[j].x/(float)x_area)*500),(int)(((float)(geo[j].y + 2 * sh)/(float)y_area)*500));
-		    else
-		      glVertex2d((int)(((float)geo[j].x/(float)x_area)*500),(int)(((float)geo[j].y/(float)y_area)*500));
+                if (geo[i].node_type == 0)
+                  glVertex2d((int)(((float)geo[i].x / (float)x_area) * 500),
+                             (int)(((float)(geo[i].y + 2 * sh) / (float)y_area) * 500));
+                else
+                  glVertex2d((int)(((float)geo[i].x / (float)x_area) * 500), (int)(((float)geo[i].y / (float)y_area) * 500));
+                if (geo[j].node_type == 0)
+                  glVertex2d((int)(((float)geo[j].x / (float)x_area) * 500),
+                             (int)(((float)(geo[j].y + 2 * sh) / (float)y_area) * 500));
+                else
+                  glVertex2d((int)(((float)geo[j].x / (float)x_area) * 500), (int)(((float)geo[j].y / (float)y_area) * 500));
                 glEnd();
             }
         }
@@ -319,28 +321,27 @@ void OpenGLWidget::drawNodes(){
 
         glTranslated((int)(((float)geo[0].x/(float)x_area)*500), (int)(((float)geo[0].y/(float)y_area)*500),0);
         //gluSphere(params,50,25,25);
-	
-	if (geo[0].node_type == 0){
-	    glColor3d(0,255,0);
-	    drawBaseStation(0);
-	}else{
-	    glColor3d(0,255,100);	
-	    drawSquare(0, 1, w, h, sw, sh);
-	}
-	
+
+        if (geo[0].node_type == 0) {
+          glColor3d(0, 255, 0);
+          drawBaseStation(0);
+        } else {
+          glColor3d(0, 255, 100);
+          drawSquare(0, 1, w, h, sw, sh);
+        }
+
         for (int i=1; i<node_number; i++){
+          glTranslated((int)(((float)geo[i].x / (float)x_area) * 500) - (int)(((float)geo[i - 1].x / (float)x_area) * 500),
+                       (int)(((float)geo[i].y / (float)y_area) * 500) - (int)(((float)geo[i - 1].y / (float)y_area) * 500),
+                       0);
 
-	    glTranslated((int)(((float)geo[i].x/(float)x_area)*500) - (int)(((float)geo[i-1].x/(float)x_area)*500),
-			(int)(((float)geo[i].y/(float)y_area)*500) - (int)(((float)geo[i-1].y/(float)y_area)*500),0);
-
-	    if (geo[i].node_type == 0){
-	        glColor3d(0,255,0);
-	        drawBaseStation(i);
-	    }else{
-	        glColor3d(0,255,100);	
-	        drawSquare(i - nb_enb, 1, w, h, sw, sh);
-	    }
-
+          if (geo[i].node_type == 0) {
+            glColor3d(0, 255, 0);
+            drawBaseStation(i);
+          } else {
+            glColor3d(0, 255, 100);
+            drawSquare(i - nb_enb, 1, w, h, sw, sh);
+          }
         }
 
         glTranslated(-(int)(((float)geo[node_number - 1].x/(float)x_area)*500),-(int)(((float)geo[node_number - 1].y/y_area)*500),0);
@@ -374,19 +375,19 @@ void OpenGLWidget::drawSquare(int digit, int back, int w, int h, int sw, int sh)
    
     if (back == 1)
       if (digit < 10 && digit >= 0) {
-	glBegin(GL_QUADS);
-	    glVertex2d(-sw/2,-sh/2);
-	    glVertex2d(-sw/2, sh/2);
-	    glVertex2d( sw/2, sh/2);
-	    glVertex2d( sw/2,-sh/2);
-	glEnd();
+        glBegin(GL_QUADS);
+        glVertex2d(-sw / 2, -sh / 2);
+        glVertex2d(-sw / 2, sh / 2);
+        glVertex2d(sw / 2, sh / 2);
+        glVertex2d(sw / 2, -sh / 2);
+        glEnd();
       } else {
-	glBegin(GL_QUADS);
-	    glVertex2d(-(sw*2)/3,-sh/2);
-	    glVertex2d(-(sw*2)/3, sh/2);
-	    glVertex2d( (sw*2)/3, sh/2);
-	    glVertex2d( (sw*2)/3,-sh/2);
-	glEnd();
+        glBegin(GL_QUADS);
+        glVertex2d(-(sw * 2) / 3, -sh / 2);
+        glVertex2d(-(sw * 2) / 3, sh / 2);
+        glVertex2d((sw * 2) / 3, sh / 2);
+        glVertex2d((sw * 2) / 3, -sh / 2);
+        glEnd();
       }
 
     //draw the digit
@@ -395,21 +396,21 @@ void OpenGLWidget::drawSquare(int digit, int back, int w, int h, int sw, int sh)
     
     if (back) 
       switch (node_color) {
-	case 0:
-	glColor3d(255,0,0);
-	break;
-      
-	case 1:
-	glColor3d(0,0,255);
-	break;
-      
-	case 2:
-	glColor3d(0,255,0);
-	break;
-	
-	case 3:
-	glColor3d(255,255,255);
-	break;
+        case 0:
+          glColor3d(255, 0, 0);
+          break;
+
+        case 1:
+          glColor3d(0, 0, 255);
+          break;
+
+        case 2:
+          glColor3d(0, 255, 0);
+          break;
+
+        case 3:
+          glColor3d(255, 255, 255);
+          break;
       }
      else
        glColor3d(255,0,0);
@@ -418,113 +419,113 @@ void OpenGLWidget::drawSquare(int digit, int back, int w, int h, int sw, int sh)
     if (digit < 10 && digit >= 0) {
       glBegin(GL_LINES);
       switch (digit){
-	 case 0:
-	  glVertex2d(-w/2,h/2);
-	  glVertex2d(w/2,h/2);
-	  glVertex2d(-w/2,-h/2);
-	  glVertex2d(w/2,-h/2);
-	  glVertex2d(w/2,-h/2);
-	  glVertex2d(w/2,h/2);
-	  glVertex2d(-w/2,-h/2);
-	  glVertex2d(-w/2,h/2);
-	  break;
-	
-	  case 1:
-	  glVertex2d(w/2,h/2);
-	  glVertex2d(w/2,-h/2);
-	  break;
+        case 0:
+          glVertex2d(-w / 2, h / 2);
+          glVertex2d(w / 2, h / 2);
+          glVertex2d(-w / 2, -h / 2);
+          glVertex2d(w / 2, -h / 2);
+          glVertex2d(w / 2, -h / 2);
+          glVertex2d(w / 2, h / 2);
+          glVertex2d(-w / 2, -h / 2);
+          glVertex2d(-w / 2, h / 2);
+          break;
 
-	  case 2:
-	  glVertex2d(-w/2,h/2);
-	  glVertex2d(w/2,h/2);
-	  glVertex2d(w/2,h/2);
-	  glVertex2d(w/2,0);	
-	  glVertex2d(-w/2,0);
-	  glVertex2d(w/2,0);
-	  glVertex2d(-w/2,-h/2);
-	  glVertex2d(-w/2,0);
-	  glVertex2d(-w/2,-h/2);
-	  glVertex2d(w/2,-h/2);
-	  break;
+        case 1:
+          glVertex2d(w / 2, h / 2);
+          glVertex2d(w / 2, -h / 2);
+          break;
 
-	  case 3:
-	  glVertex2d(w/2,h/2);
-	  glVertex2d(w/2,-h/2);
-	  glVertex2d(-w/2,h/2);
-	  glVertex2d(w/2,h/2);
-	  glVertex2d(w/2,0);	
-	  glVertex2d(-w/2,0);
-	  glVertex2d(-w/2,-h/2);
-	  glVertex2d(w/2,-h/2);
-	  break;
+        case 2:
+          glVertex2d(-w / 2, h / 2);
+          glVertex2d(w / 2, h / 2);
+          glVertex2d(w / 2, h / 2);
+          glVertex2d(w / 2, 0);
+          glVertex2d(-w / 2, 0);
+          glVertex2d(w / 2, 0);
+          glVertex2d(-w / 2, -h / 2);
+          glVertex2d(-w / 2, 0);
+          glVertex2d(-w / 2, -h / 2);
+          glVertex2d(w / 2, -h / 2);
+          break;
 
-	  case 4:
-	  glVertex2d(w/2,-h/2);
-	  glVertex2d(w/2,h/2);
-	  glVertex2d(-w/2,h/2);
-	  glVertex2d(-w/2,0);
-	  glVertex2d(-w/2,0);
-	  glVertex2d(w/2,0);
-	  break;
+        case 3:
+          glVertex2d(w / 2, h / 2);
+          glVertex2d(w / 2, -h / 2);
+          glVertex2d(-w / 2, h / 2);
+          glVertex2d(w / 2, h / 2);
+          glVertex2d(w / 2, 0);
+          glVertex2d(-w / 2, 0);
+          glVertex2d(-w / 2, -h / 2);
+          glVertex2d(w / 2, -h / 2);
+          break;
 
-	  case 5:
-	  glVertex2d(-w/2,h/2);
-	  glVertex2d(w/2,h/2);
-	  glVertex2d(-w/2,h/2);
-	  glVertex2d(-w/2,0);	
-	  glVertex2d(-w/2,0);
-	  glVertex2d(w/2,0);
-	  glVertex2d(w/2,-h/2);
-	  glVertex2d(w/2,0);
-	  glVertex2d(-w/2,-h/2);
-	  glVertex2d(w/2,-h/2);
-	  break;
+        case 4:
+          glVertex2d(w / 2, -h / 2);
+          glVertex2d(w / 2, h / 2);
+          glVertex2d(-w / 2, h / 2);
+          glVertex2d(-w / 2, 0);
+          glVertex2d(-w / 2, 0);
+          glVertex2d(w / 2, 0);
+          break;
 
-	  case 6:
-	  glVertex2d(-w/2,h/2);
-	  glVertex2d(w/2,h/2);
-	  glVertex2d(-w/2,h/2);
-	  glVertex2d(-w/2,-h/2);	
-	  glVertex2d(-w/2,0);
-	  glVertex2d(w/2,0);
-	  glVertex2d(w/2,-h/2);
-	  glVertex2d(w/2,0);
-	  glVertex2d(-w/2,-h/2);
-	  glVertex2d(w/2,-h/2);
-	  break;
+        case 5:
+          glVertex2d(-w / 2, h / 2);
+          glVertex2d(w / 2, h / 2);
+          glVertex2d(-w / 2, h / 2);
+          glVertex2d(-w / 2, 0);
+          glVertex2d(-w / 2, 0);
+          glVertex2d(w / 2, 0);
+          glVertex2d(w / 2, -h / 2);
+          glVertex2d(w / 2, 0);
+          glVertex2d(-w / 2, -h / 2);
+          glVertex2d(w / 2, -h / 2);
+          break;
 
-	  case 7:
-	  glVertex2d(w/2,h/2);
-	  glVertex2d(w/2,-h/2);
-	  glVertex2d(-w/2,h/2);
-	  glVertex2d(w/2,h/2);
-	  break;
-	  
-	  case 8:
-	  glVertex2d(-w/2,0);
-	  glVertex2d(w/2,0);
-	  glVertex2d(-w/2,h/2);
-	  glVertex2d(w/2,h/2);
-	  glVertex2d(-w/2,-h/2);
-	  glVertex2d(w/2,-h/2);
-	  glVertex2d(w/2,-h/2);
-	  glVertex2d(w/2,h/2);
-	  glVertex2d(-w/2,0);
-	  glVertex2d(-w/2,h/2);
-	  break;
-	  
-	  case 9:
-	  glVertex2d(-w/2,0);
-	  glVertex2d(w/2,0);
-	  glVertex2d(-w/2,h/2);
-	  glVertex2d(w/2,h/2);
-	  glVertex2d(-w/2,-h/2);
-	  glVertex2d(w/2,-h/2);
-	  glVertex2d(w/2,-h/2);
-	  glVertex2d(w/2,h/2);
-	  glVertex2d(-w/2,-h/2);
-	  glVertex2d(-w/2,h/2);
-	  break;
+        case 6:
+          glVertex2d(-w / 2, h / 2);
+          glVertex2d(w / 2, h / 2);
+          glVertex2d(-w / 2, h / 2);
+          glVertex2d(-w / 2, -h / 2);
+          glVertex2d(-w / 2, 0);
+          glVertex2d(w / 2, 0);
+          glVertex2d(w / 2, -h / 2);
+          glVertex2d(w / 2, 0);
+          glVertex2d(-w / 2, -h / 2);
+          glVertex2d(w / 2, -h / 2);
+          break;
+
+        case 7:
+          glVertex2d(w / 2, h / 2);
+          glVertex2d(w / 2, -h / 2);
+          glVertex2d(-w / 2, h / 2);
+          glVertex2d(w / 2, h / 2);
+          break;
+
+        case 8:
+          glVertex2d(-w / 2, 0);
+          glVertex2d(w / 2, 0);
+          glVertex2d(-w / 2, h / 2);
+          glVertex2d(w / 2, h / 2);
+          glVertex2d(-w / 2, -h / 2);
+          glVertex2d(w / 2, -h / 2);
+          glVertex2d(w / 2, -h / 2);
+          glVertex2d(w / 2, h / 2);
+          glVertex2d(-w / 2, 0);
+          glVertex2d(-w / 2, h / 2);
+          break;
+
+        case 9:
+          glVertex2d(-w / 2, 0);
+          glVertex2d(w / 2, 0);
+          glVertex2d(-w / 2, h / 2);
+          glVertex2d(w / 2, h / 2);
+          glVertex2d(-w / 2, -h / 2);
+          glVertex2d(w / 2, -h / 2);
+          glVertex2d(w / 2, -h / 2);
+          glVertex2d(w / 2, h / 2);
+          glVertex2d(-w / 2, -h / 2);
+          glVertex2d(-w / 2, h / 2);
+          break;
       }
       glEnd();
       
@@ -548,11 +549,11 @@ void OpenGLWidget::drawBaseStation(int digit){
     
     glLineWidth(2.0);
     glBegin(GL_TRIANGLES);
-	
-	glVertex2d(0,2*sh);
-	glVertex2d(-sw*2/3,-sh/2);
-	glVertex2d(sw*2/3,-sh/2);
-	
+
+    glVertex2d(0, 2 * sh);
+    glVertex2d(-sw * 2 / 3, -sh / 2);
+    glVertex2d(sw * 2 / 3, -sh / 2);
+
     glEnd();
     drawSquare(digit, 2, w, h, sw, sh);
 

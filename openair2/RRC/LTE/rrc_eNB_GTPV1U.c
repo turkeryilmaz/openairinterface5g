@@ -65,14 +65,17 @@ rrc_eNB_process_GTPV1U_CREATE_TUNNEL_RESP(
       ue_context_p->ue_context.enb_gtp_teid[inde_list[i]]  = create_tunnel_resp_pP->enb_S1u_teid[i];
       ue_context_p->ue_context.enb_gtp_addrs[inde_list[i]] = create_tunnel_resp_pP->enb_addr;
       ue_context_p->ue_context.enb_gtp_ebi[inde_list[i]]   = create_tunnel_resp_pP->eps_bearer_id[i];
-      LOG_I(RRC, PROTOCOL_RRC_CTXT_UE_FMT" rrc_eNB_process_GTPV1U_CREATE_TUNNEL_RESP tunnel (%u, %u) bearer UE context index %u, msg index %u, id %u, gtp addr len %d \n",
+      LOG_I(RRC,
+            PROTOCOL_RRC_CTXT_UE_FMT
+            " rrc_eNB_process_GTPV1U_CREATE_TUNNEL_RESP tunnel (%u, %u) bearer UE context index %u, msg index %u, id %u, gtp addr "
+            "len %d \n",
             PROTOCOL_RRC_CTXT_UE_ARGS(ctxt_pP),
             create_tunnel_resp_pP->enb_S1u_teid[i],
-            ue_context_p->ue_context.enb_gtp_teid[inde_list[i]],            
+            ue_context_p->ue_context.enb_gtp_teid[inde_list[i]],
             inde_list[i],
-	    i,
+            i,
             create_tunnel_resp_pP->eps_bearer_id[i],
-	    create_tunnel_resp_pP->enb_addr.length);
+            create_tunnel_resp_pP->enb_addr.length);
     }
 
         (void)rnti; /* avoid gcc warning "set but not used" */
@@ -112,14 +115,14 @@ bool gtpv_data_req(const protocol_ctxt_t*   const ctxt_pP,
     memcpy (message_buffer, buffer_pP, sdu_sizeP);
     
     message_p = itti_alloc_new_message (TASK_GTPV1_U, 0, GTPV1U_ENB_DATA_FORWARDING_IND);
-    GTPV1U_ENB_DATA_FORWARDING_IND (message_p).frame 	= ctxt_pP->frame;
-    GTPV1U_ENB_DATA_FORWARDING_IND (message_p).enb_flag	= ctxt_pP->enb_flag;
-    GTPV1U_ENB_DATA_FORWARDING_IND (message_p).rb_id 	= rb_idP;
-    GTPV1U_ENB_DATA_FORWARDING_IND (message_p).muip		= muiP;
-    GTPV1U_ENB_DATA_FORWARDING_IND (message_p).confirmp	= confirmP;
-    GTPV1U_ENB_DATA_FORWARDING_IND (message_p).sdu_size	= sdu_sizeP;
-    GTPV1U_ENB_DATA_FORWARDING_IND (message_p).sdu_p 	= message_buffer;
-    GTPV1U_ENB_DATA_FORWARDING_IND (message_p).mode		= modeP;
+    GTPV1U_ENB_DATA_FORWARDING_IND(message_p).frame = ctxt_pP->frame;
+    GTPV1U_ENB_DATA_FORWARDING_IND(message_p).enb_flag = ctxt_pP->enb_flag;
+    GTPV1U_ENB_DATA_FORWARDING_IND(message_p).rb_id = rb_idP;
+    GTPV1U_ENB_DATA_FORWARDING_IND(message_p).muip = muiP;
+    GTPV1U_ENB_DATA_FORWARDING_IND(message_p).confirmp = confirmP;
+    GTPV1U_ENB_DATA_FORWARDING_IND(message_p).sdu_size = sdu_sizeP;
+    GTPV1U_ENB_DATA_FORWARDING_IND(message_p).sdu_p = message_buffer;
+    GTPV1U_ENB_DATA_FORWARDING_IND(message_p).mode = modeP;
     GTPV1U_ENB_DATA_FORWARDING_IND (message_p).module_id = ctxt_pP->module_id;
     GTPV1U_ENB_DATA_FORWARDING_IND(message_p).rnti = ctxt_pP->rntiMaybeUEid;
     GTPV1U_ENB_DATA_FORWARDING_IND (message_p).eNB_index = ctxt_pP->eNB_index;
@@ -135,14 +138,14 @@ bool gtpv_data_req(const protocol_ctxt_t*   const ctxt_pP,
     memcpy (message_buffer, buffer_pP, sdu_sizeP);
     
     message_p = itti_alloc_new_message (TASK_GTPV1_U, 0, GTPV1U_ENB_END_MARKER_IND);
-    GTPV1U_ENB_END_MARKER_IND (message_p).frame 	= ctxt_pP->frame;
-    GTPV1U_ENB_END_MARKER_IND (message_p).enb_flag	= ctxt_pP->enb_flag;
-    GTPV1U_ENB_END_MARKER_IND (message_p).rb_id 	= rb_idP;
-    GTPV1U_ENB_END_MARKER_IND (message_p).muip	= muiP;
-    GTPV1U_ENB_END_MARKER_IND (message_p).confirmp	= confirmP;
-    GTPV1U_ENB_END_MARKER_IND (message_p).sdu_size	= sdu_sizeP;
-    GTPV1U_ENB_END_MARKER_IND (message_p).sdu_p 	= message_buffer;
-    GTPV1U_ENB_END_MARKER_IND (message_p).mode	= modeP;
+    GTPV1U_ENB_END_MARKER_IND(message_p).frame = ctxt_pP->frame;
+    GTPV1U_ENB_END_MARKER_IND(message_p).enb_flag = ctxt_pP->enb_flag;
+    GTPV1U_ENB_END_MARKER_IND(message_p).rb_id = rb_idP;
+    GTPV1U_ENB_END_MARKER_IND(message_p).muip = muiP;
+    GTPV1U_ENB_END_MARKER_IND(message_p).confirmp = confirmP;
+    GTPV1U_ENB_END_MARKER_IND(message_p).sdu_size = sdu_sizeP;
+    GTPV1U_ENB_END_MARKER_IND(message_p).sdu_p = message_buffer;
+    GTPV1U_ENB_END_MARKER_IND(message_p).mode = modeP;
     GTPV1U_ENB_END_MARKER_IND (message_p).module_id = ctxt_pP->module_id;
     GTPV1U_ENB_END_MARKER_IND(message_p).rnti = ctxt_pP->rntiMaybeUEid;
     GTPV1U_ENB_END_MARKER_IND (message_p).eNB_index = ctxt_pP->eNB_index;
@@ -218,31 +221,28 @@ bool gtpv_data_req_new(protocol_ctxt_t  *ctxt,
       // Is it from remote ENB
       // We have to push it to the UE ?
       if(ue_context_p->ue_context.handover_info->state != HO_COMPLETE) {
-	int result = pdcp_data_req(
-			       ctxt,
-			       srb_flagP,
-			       rb_idP,
-			       muiP, // mui
-			       confirmP, // confirm
-			        sdu_buffer_sizeP,
-			       sdu_buffer_pP,
-			       modeP,
-			       sourceL2Id,
-			       destinationL2Id
-			       );
-	ue_context_p->ue_context.handover_info->forwarding_state = FORWARDING_NO_EMPTY;
-	return result;
+        int result = pdcp_data_req(ctxt,
+                                   srb_flagP,
+                                   rb_idP,
+                                   muiP, // mui
+                                   confirmP, // confirm
+                                   sdu_buffer_sizeP,
+                                   sdu_buffer_pP,
+                                   modeP,
+                                   sourceL2Id,
+                                   destinationL2Id);
+        ue_context_p->ue_context.handover_info->forwarding_state = FORWARDING_NO_EMPTY;
+        return result;
       } else {  /* It is from from epc message */
-	/* in the source enb, UE in RRC_HO_EXECUTION mode */
-	// ?????
-	return true;
+        /* in the source enb, UE in RRC_HO_EXECUTION mode */
+        // ?????
+        return true;
       }
     }
   }
   LOG_E(RRC,"This function should return before the end\n");
   return false;
-}	
-
+}
 
 void rrc_eNB_send_GTPV1U_ENB_DELETE_TUNNEL_REQ(
   module_id_t enb_mod_idP,
@@ -264,13 +264,8 @@ void rrc_eNB_send_GTPV1U_ENB_DELETE_TUNNEL_REQ(
     tmp.eps_bearer_id[e_rab] = gtp_ebi;
   }
   gtpv1u_delete_s1u_tunnel(enb_mod_idP,&tmp);
-  if ( ue->ue_release_timer_rrc > 0
-       && (ue->handover_info == NULL ||
-	   (ue->handover_info->state != HO_RELEASE &&
-	    ue->handover_info->state != HO_CANCEL
-	   )
-       )
-    )
+  if (ue->ue_release_timer_rrc > 0
+      && (ue->handover_info == NULL || (ue->handover_info->state != HO_RELEASE && ue->handover_info->state != HO_CANCEL)))
     ue->ue_release_timer_rrc = ue->ue_release_timer_thres_rrc;
   
 }

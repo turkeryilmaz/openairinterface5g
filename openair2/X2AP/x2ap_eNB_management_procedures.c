@@ -246,7 +246,7 @@ x2ap_eNB_data_t  * x2ap_is_eNB_assoc_id_in_list (const uint32_t sctp_assoc_id)
     found = RB_FIND(x2ap_enb_map, &inst->x2ap_enb_head, &temp);
     if (found != NULL){
       if (found->assoc_id == sctp_assoc_id) {
-	return found;
+        return found;
       }
     }
   }

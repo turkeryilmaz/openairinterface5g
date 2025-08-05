@@ -178,8 +178,8 @@ int LDPCencoder(unsigned char **inputArray, unsigned char *outputArray, encoder_
         fprintf(fd,"\n//row: %d\n",i1);
         fprintf(fd2,"\n//row: %d\n",i1);
         AssertFatal(shift > 0 , "The result of the right shift is undefined because the right operand is negative\n");
-	fprintf(fd,"     d2[%d]=",(Zc*i1)>>shift);
-	fprintf(fd2,"     d2[%d]=",(Zc*i1)>>(shift-1));
+        fprintf(fd, "     d2[%d]=", (Zc * i1) >> shift);
+        fprintf(fd2, "     d2[%d]=", (Zc * i1) >> (shift - 1));
 
         nind=0;
 
@@ -187,29 +187,36 @@ int LDPCencoder(unsigned char **inputArray, unsigned char *outputArray, encoder_
         {
           temp_prime=i1 * ncols + i3;
 
-
-	  for (i4=0; i4 < no_shift_values[temp_prime]; i4++)
-	    {
-	          
-	      var=(int)((i3*Zc + (Gen_shift_values[ pointer_shift_values[temp_prime]+i4 ]+1)%Zc)/Zc);
-	      int index =var*2*Zc + (i3*Zc + (Gen_shift_values[ pointer_shift_values[temp_prime]+i4 ]+1)%Zc) % Zc;
-	      printf("var %d, i3 %d, i4 %d, index %d, shift %d, Zc %d, pointer_shift_values[%d] %d gen_shift_value %d\n",var,i3,i4,index,shift,Zc,temp_prime,pointer_shift_values[temp_prime],Gen_shift_values[pointer_shift_values[temp_prime]]);
-	      indlist[nind] = ((index&mask)*((2*Zc*ncols)>>shift)/* *Kb */)+(index>>shift);
-	      printf("indlist[%d] %d, index&mask %d, index>>shift %d\n",nind,indlist[nind],index&mask,index>>shift);
-	      indlist2[nind++] = ((index&(mask>>1))*((2*Zc*ncols)>>(shift-1))*Kb)+(index>>(shift-1));
-	    }
-	  
-
+          for (i4 = 0; i4 < no_shift_values[temp_prime]; i4++) {
+            var = (int)((i3 * Zc + (Gen_shift_values[pointer_shift_values[temp_prime] + i4] + 1) % Zc) / Zc);
+            int index = var * 2 * Zc + (i3 * Zc + (Gen_shift_values[pointer_shift_values[temp_prime] + i4] + 1) % Zc) % Zc;
+            printf("var %d, i3 %d, i4 %d, index %d, shift %d, Zc %d, pointer_shift_values[%d] %d gen_shift_value %d\n",
+                   var,
+                   i3,
+                   i4,
+                   index,
+                   shift,
+                   Zc,
+                   temp_prime,
+                   pointer_shift_values[temp_prime],
+                   Gen_shift_values[pointer_shift_values[temp_prime]]);
+            indlist[nind] = ((index & mask) * ((2 * Zc * ncols) >> shift) /* *Kb */) + (index >> shift);
+            printf("indlist[%d] %d, index&mask %d, index>>shift %d\n", nind, indlist[nind], index & mask, index >> shift);
+            indlist2[nind++] = ((index & (mask >> 1)) * ((2 * Zc * ncols) >> (shift - 1)) * Kb) + (index >> (shift - 1));
+          }
         }
-	for (i4=0;i4<nind-1;i4++) {
-	  fprintf(fd,"%s(c2[%d],",xor_command,indlist[i4]);
-	  fprintf(fd2,"%s(c2[%d],",xor_command,indlist2[i4]);
-	}
-	fprintf(fd,"c2[%d]",indlist[i4]);
-	fprintf(fd2,"c2[%d]",indlist2[i4]);
-	for (i4=0;i4<nind-1;i4++) { fprintf(fd,")"); fprintf(fd2,")"); }
-	fprintf(fd,";\n");
-  fprintf(fd2, ";\n");
+        for (i4 = 0; i4 < nind - 1; i4++) {
+          fprintf(fd, "%s(c2[%d],", xor_command, indlist[i4]);
+          fprintf(fd2, "%s(c2[%d],", xor_command, indlist2[i4]);
+        }
+        fprintf(fd, "c2[%d]", indlist[i4]);
+        fprintf(fd2, "c2[%d]", indlist2[i4]);
+        for (i4 = 0; i4 < nind - 1; i4++) {
+          fprintf(fd, ")");
+          fprintf(fd2, ")");
+        }
+        fprintf(fd, ";\n");
+        fprintf(fd2, ";\n");
       }
       fprintf(fd,"  }\n}\n");
       fprintf(fd2,"  }\n}\n");

@@ -525,7 +525,7 @@ typedef enum {
 
 #define ENB_CONFIG_STRING_PUSCH_MAX_NUM_REPETITION_CE_MODE_A_R13        "pusch_maxNumRepetitionCEmodeA_r13"
 #define ENB_CONFIG_STRING_PUSCH_MAX_NUM_REPETITION_CE_MODE_B_R13        "pusch_maxNumRepetitionCEmodeB_r13"
-#define ENB_CONFIG_STRING_PUSCH_REPETITION_LEVEL_CE_MODE_A_R13			"pusch_repetitionLevelCEmodeA_r13"
+#define ENB_CONFIG_STRING_PUSCH_REPETITION_LEVEL_CE_MODE_A_R13 "pusch_repetitionLevelCEmodeA_r13"
 #define ENB_CONFIG_STRING_PUSCH_HOPPING_OFFSET_V1310                    "pusch_HoppingOffset_v1310"
 
 
@@ -669,94 +669,95 @@ typedef struct ccparams_lte_s {
   int32_t           nr_scg_ssb_freq;
 } ccparams_lte_t;
 
-#define CCPARAMS_CHECK {                             \
-    { { NULL } } ,						     \
-    { { NULL } } ,						     \
-    { { NULL } } ,						     \
-    { { NULL } } ,						     \
-    { { NULL } } ,						     \
-    { { NULL } } ,						     \
-    { { NULL } } ,						     \
-    { { NULL } } ,						     \
-    { { NULL } } ,						     \
-    { { NULL } } ,						     \
-    { { NULL } } ,						     \
-    { { NULL } } ,						     \
-    { { NULL } } ,						     \
-    { { NULL } } ,						     \
-    { { NULL } } ,						     \
-    { { NULL } } ,						     \
-    { { NULL } } ,						     \
-    { { NULL } } ,						     \
-    { { NULL } } ,						     \
-    { { NULL } } ,						     \
-    { { NULL } } ,						     \
-    { { NULL } } ,						     \
-    { { NULL } } ,						     \
-    { { NULL } } ,						     \
-    { { NULL } } ,						     \
-    { { NULL } } ,						     \
-    { { NULL } } ,						     \
-    { { NULL } } ,						     \
-    { { NULL } } ,						     \
-    { { NULL } } ,						     \
-    { { NULL } } ,						     \
-    { { NULL } } ,						     \
-    { { NULL } } ,						     \
-    { { NULL } } ,						     \
-    { { NULL } } ,						     \
-    { { NULL } } ,						     \
-    { { NULL } } ,						     \
-    { { NULL } } ,						     \
-    { { NULL } } ,						     \
-    { { NULL } } ,						     \
-    { { NULL } } ,						     \
-    { { NULL } } ,						     \
-    { { NULL } } ,						     \
-    { { NULL } } ,						     \
-    { { NULL } } ,						     \
-    { { NULL } } ,						     \
-    { { NULL } } ,						     \
-    { { NULL } } ,						     \
-    { { NULL } } ,						     \
-    { { NULL } } ,						     \
-    { { NULL } } ,						     \
-    { { NULL } } ,						     \
-    { { NULL } } ,						     \
-    { { NULL } } ,						     \
-    { { NULL } } ,						     \
-    { { NULL } } ,						     \
-    { { NULL } } ,						     \
-    { { NULL } } ,						     \
-    { { NULL } } ,						     \
-    { { NULL } } ,						     \
-    { { NULL } } ,                             \
-    { { NULL } } ,						     \
-    { { NULL } } ,						     \
-    { { NULL } } ,						     \
-    { { NULL } } ,						     \
-    { { NULL } } ,						     \
-    { { NULL } } ,						     \
-    { { NULL } } ,						     \
-    { { NULL } } ,						     \
-    { .s1a= { config_check_modify_integer, UETIMER_T300_OKVALUES, UETIMER_T300_MODVALUES,8}} ,\
-    { .s1a= { config_check_modify_integer, UETIMER_T301_OKVALUES, UETIMER_T301_MODVALUES,8}} ,\
-    { .s1a= { config_check_modify_integer, UETIMER_T310_OKVALUES, UETIMER_T310_MODVALUES,7}} ,\
-    { .s1a= { config_check_modify_integer, UETIMER_T311_OKVALUES, UETIMER_T311_MODVALUES,7}} ,\
-    { .s1a= { config_check_modify_integer, UETIMER_N310_OKVALUES, UETIMER_N310_MODVALUES,8}} ,\
-    { .s1a= { config_check_modify_integer, UETIMER_N311_OKVALUES, UETIMER_N311_MODVALUES,8}} ,\
-    {  { NULL } } ,						     \
-    {  { NULL } } ,						     \
-    {  { NULL } } ,						     \
-    {  { NULL } } ,						     \
-}
+#define CCPARAMS_CHECK                                                                          \
+  {                                                                                             \
+      {{NULL}},                                                                                 \
+      {{NULL}},                                                                                 \
+      {{NULL}},                                                                                 \
+      {{NULL}},                                                                                 \
+      {{NULL}},                                                                                 \
+      {{NULL}},                                                                                 \
+      {{NULL}},                                                                                 \
+      {{NULL}},                                                                                 \
+      {{NULL}},                                                                                 \
+      {{NULL}},                                                                                 \
+      {{NULL}},                                                                                 \
+      {{NULL}},                                                                                 \
+      {{NULL}},                                                                                 \
+      {{NULL}},                                                                                 \
+      {{NULL}},                                                                                 \
+      {{NULL}},                                                                                 \
+      {{NULL}},                                                                                 \
+      {{NULL}},                                                                                 \
+      {{NULL}},                                                                                 \
+      {{NULL}},                                                                                 \
+      {{NULL}},                                                                                 \
+      {{NULL}},                                                                                 \
+      {{NULL}},                                                                                 \
+      {{NULL}},                                                                                 \
+      {{NULL}},                                                                                 \
+      {{NULL}},                                                                                 \
+      {{NULL}},                                                                                 \
+      {{NULL}},                                                                                 \
+      {{NULL}},                                                                                 \
+      {{NULL}},                                                                                 \
+      {{NULL}},                                                                                 \
+      {{NULL}},                                                                                 \
+      {{NULL}},                                                                                 \
+      {{NULL}},                                                                                 \
+      {{NULL}},                                                                                 \
+      {{NULL}},                                                                                 \
+      {{NULL}},                                                                                 \
+      {{NULL}},                                                                                 \
+      {{NULL}},                                                                                 \
+      {{NULL}},                                                                                 \
+      {{NULL}},                                                                                 \
+      {{NULL}},                                                                                 \
+      {{NULL}},                                                                                 \
+      {{NULL}},                                                                                 \
+      {{NULL}},                                                                                 \
+      {{NULL}},                                                                                 \
+      {{NULL}},                                                                                 \
+      {{NULL}},                                                                                 \
+      {{NULL}},                                                                                 \
+      {{NULL}},                                                                                 \
+      {{NULL}},                                                                                 \
+      {{NULL}},                                                                                 \
+      {{NULL}},                                                                                 \
+      {{NULL}},                                                                                 \
+      {{NULL}},                                                                                 \
+      {{NULL}},                                                                                 \
+      {{NULL}},                                                                                 \
+      {{NULL}},                                                                                 \
+      {{NULL}},                                                                                 \
+      {{NULL}},                                                                                 \
+      {{NULL}},                                                                                 \
+      {{NULL}},                                                                                 \
+      {{NULL}},                                                                                 \
+      {{NULL}},                                                                                 \
+      {{NULL}},                                                                                 \
+      {{NULL}},                                                                                 \
+      {{NULL}},                                                                                 \
+      {{NULL}},                                                                                 \
+      {{NULL}},                                                                                 \
+      {.s1a = {config_check_modify_integer, UETIMER_T300_OKVALUES, UETIMER_T300_MODVALUES, 8}}, \
+      {.s1a = {config_check_modify_integer, UETIMER_T301_OKVALUES, UETIMER_T301_MODVALUES, 8}}, \
+      {.s1a = {config_check_modify_integer, UETIMER_T310_OKVALUES, UETIMER_T310_MODVALUES, 7}}, \
+      {.s1a = {config_check_modify_integer, UETIMER_T311_OKVALUES, UETIMER_T311_MODVALUES, 7}}, \
+      {.s1a = {config_check_modify_integer, UETIMER_N310_OKVALUES, UETIMER_N310_MODVALUES, 8}}, \
+      {.s1a = {config_check_modify_integer, UETIMER_N311_OKVALUES, UETIMER_N311_MODVALUES, 8}}, \
+      {{NULL}},                                                                                 \
+      {{NULL}},                                                                                 \
+      {{NULL}},                                                                                 \
+      {{NULL}},                                                                                 \
+  }
 
 /*-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 /*                                     component carriers configuration parameters                                                                                                               */
 /*   optname                                                    helpstr    paramflags   XXXptr                                                   defXXXval                  type        numelt   */
 /*-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 // clang-format off
-#define CCPARAMS_DESC(ccparams) {					\
+#define CCPARAMS_DESC(ccparams) {                    \
   {ENB_CONFIG_STRING_FRAME_TYPE,                                   NULL,   0,           .strptr=&ccparams.frame_type,                             .defstrval="FDD",           TYPE_STRING,     0},  \
   {ENB_CONFIG_STRING_TDD_CONFIG,                                   NULL,   0,           .iptr=&ccparams.tdd_config,                               .defintval=3,               TYPE_UINT,       0},  \
   {ENB_CONFIG_STRING_TDD_CONFIG_S,                                 NULL,   0,           .iptr=&ccparams.tdd_config_s,                             .defintval=0,               TYPE_UINT,       0},  \

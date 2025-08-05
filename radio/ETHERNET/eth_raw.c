@@ -139,8 +139,8 @@ int trx_eth_write_raw(openair0_device *device, openair0_timestamp timestamp, voi
     pktsize = RAW_PACKET_SIZE_BYTES_ALAW(nsamps);
   } else {
     pktsize = RAW_PACKET_SIZE_BYTES(nsamps);
-  }   
-  for (i=0;i<cc;i++) {	
+  }
+  for (i = 0; i < cc; i++) {
     /* buff[i] points to the position in tx buffer where the payload to be sent is
        buff2 points to the position in tx buffer where the packet header will be placed */
     void *buff2 = (void*)(buff[i]-APP_HEADER_SIZE_BYTES-MAC_HEADER_SIZE_BYTES); 
@@ -162,21 +162,18 @@ int trx_eth_write_raw(openair0_device *device, openair0_timestamp timestamp, voi
 
       /* Send packet */
 
-      bytes_sent += send(eth->sockfdd[cc % eth->num_fd],
-			 buff2, 
-			 pktsize,
-			 sendto_flag);
+      bytes_sent += send(eth->sockfdd[cc % eth->num_fd], buff2, pktsize, sendto_flag);
       if ( bytes_sent == -1) {
-	eth->num_tx_errors++;
-	perror("ETHERNET WRITE: ");
-	exit(-1);
+        eth->num_tx_errors++;
+        perror("ETHERNET WRITE: ");
+        exit(-1);
       } else {
 
       eth->tx_actual_nsamps=bytes_sent>>2;
       eth->tx_count++;
       }
-    }    			    
-    
+    }
+
   /* tx buffer values restored */  
     *(struct ether_header *)buff2 = temp;
     *(int32_t *)(buff2 + MAC_HEADER_SIZE_BYTES) = temp0;
@@ -207,9 +204,8 @@ int trx_eth_write_raw_IF4p5(openair0_device *device, openair0_timestamp timestam
   }
   
   eth->tx_nsamps = nblocks;
-  
-  memcpy(buff[0], (void*)&eth->ehd, MAC_HEADER_SIZE_BYTES);	
 
+  memcpy(buff[0], (void *)&eth->ehd, MAC_HEADER_SIZE_BYTES);
 
   bytes_sent = send(eth->sockfdd[cc % eth->num_fd],
                     buff[0], 
@@ -224,8 +220,8 @@ int trx_eth_write_raw_IF4p5(openair0_device *device, openair0_timestamp timestam
     eth->tx_actual_nsamps = bytes_sent>>1;
     eth->tx_count++;
   }
-  
-  return (bytes_sent-MAC_HEADER_SIZE_BYTES);  	  
+
+  return (bytes_sent - MAC_HEADER_SIZE_BYTES);
 }
 
 
@@ -244,32 +240,29 @@ int trx_eth_read_raw(openair0_device *device, openair0_timestamp *timestamp, voi
   eth->rx_nsamps=nsamps;
 
   for (i=0;i<cc;i++) {
-      /* buff[i] points to the position in rx buffer where the payload to be received will be placed
-	 buff2 points to the position in rx buffer where the packet header will be placed */
-      void *buff2 = (void*)(buff[i]-APP_HEADER_SIZE_BYTES-MAC_HEADER_SIZE_BYTES); 
+    /* buff[i] points to the position in rx buffer where the payload to be received will be placed
+   buff2 points to the position in rx buffer where the packet header will be placed */
+    void *buff2 = (void *)(buff[i] - APP_HEADER_SIZE_BYTES - MAC_HEADER_SIZE_BYTES);
 
-      /* we don't want to ovewrite with the header info the previous rx buffer data so we store it*/
-      struct ether_header temp =  *(struct ether_header *)buff2;
-      int32_t temp0 = *(int32_t *)(buff2 + MAC_HEADER_SIZE_BYTES);
-      openair0_timestamp  temp1 = *(openair0_timestamp *)(buff2 + MAC_HEADER_SIZE_BYTES + sizeof(int32_t));
+    /* we don't want to ovewrite with the header info the previous rx buffer data so we store it*/
+    struct ether_header temp = *(struct ether_header *)buff2;
+    int32_t temp0 = *(int32_t *)(buff2 + MAC_HEADER_SIZE_BYTES);
+    openair0_timestamp temp1 = *(openair0_timestamp *)(buff2 + MAC_HEADER_SIZE_BYTES + sizeof(int32_t));
 
-      bytes_received=0;
-      int receive_bytes;
-      if (eth->compression == ALAW_COMPRESS) {
-        receive_bytes = RAW_PACKET_SIZE_BYTES_ALAW(nsamps);
-      } else {
-        receive_bytes = RAW_PACKET_SIZE_BYTES(nsamps);
-      }
+    bytes_received = 0;
+    int receive_bytes;
+    if (eth->compression == ALAW_COMPRESS) {
+      receive_bytes = RAW_PACKET_SIZE_BYTES_ALAW(nsamps);
+    } else {
+      receive_bytes = RAW_PACKET_SIZE_BYTES(nsamps);
+    }
       
       while(bytes_received < receive_bytes) {
       again:
-	ret = recv(eth->sockfdd[cc % eth->num_fd],
-			      buff2,
-			      receive_bytes,
-			      rcvfrom_flag);
+        ret = recv(eth->sockfdd[cc % eth->num_fd], buff2, receive_bytes, rcvfrom_flag);
 
-	if (ret ==-1) {
-	  eth->num_rx_errors++;
+        if (ret == -1) {
+          eth->num_rx_errors++;
           if (errno == EAGAIN) {
             again_cnt++;
             usleep(10);
@@ -296,23 +289,23 @@ int trx_eth_read_raw(openair0_device *device, openair0_timestamp *timestamp, voi
             exit(-1);
           }
 
-	} else {
-	  bytes_received+=ret;
-	  /* store the timestamp value from packet's header */
-	  *timestamp =  *(openair0_timestamp *)(buff2 + MAC_HEADER_SIZE_BYTES + sizeof(int32_t));  
-	  eth->rx_actual_nsamps=bytes_received>>2;   
-	  eth->rx_count++;
-	}
+        } else {
+          bytes_received += ret;
+          /* store the timestamp value from packet's header */
+          *timestamp = *(openair0_timestamp *)(buff2 + MAC_HEADER_SIZE_BYTES + sizeof(int32_t));
+          eth->rx_actual_nsamps = bytes_received >> 2;
+          eth->rx_count++;
+        }
       }
       
-#if DEBUG   
+#if DEBUG
       printf("------- RX------: nu=%x an_id=%d ts%d bytes_recv=%d \n",
-	     *(uint8_t *)(buff2+ETH_ALEN),
-	     *(int16_t *)(buff2 + MAC_HEADER_SIZE_BYTES + sizeof(int16_t)),
-	     *(openair0_timestamp *)(buff2 + MAC_HEADER_SIZE_BYTES + sizeof(int32_t)),
-	     bytes_received);
+             *(uint8_t *)(buff2 + ETH_ALEN),
+             *(int16_t *)(buff2 + MAC_HEADER_SIZE_BYTES + sizeof(int16_t)),
+             *(openair0_timestamp *)(buff2 + MAC_HEADER_SIZE_BYTES + sizeof(int32_t)),
+             bytes_received);
 
-      dump_packet((device->host_type == RAU_HOST)? "RAU":"RRU", buff2, RAW_PACKET_SIZE_BYTES(nsamps),RX_FLAG);	  
+      dump_packet((device->host_type == RAU_HOST) ? "RAU" : "RRU", buff2, RAW_PACKET_SIZE_BYTES(nsamps), RX_FLAG);
 
 #endif  
 
@@ -342,10 +335,7 @@ int trx_eth_read_raw_IF4p5(openair0_device *device, openair0_timestamp *timestam
 
   while (bytes_received < packet_size) {
   again:
-    ret = recv(eth->sockfdd[cc % eth->num_fd],
-	       buff[0],
-	       packet_size,
-	       MSG_PEEK);                        
+    ret = recv(eth->sockfdd[cc % eth->num_fd], buff[0], packet_size, MSG_PEEK);
     if (ret ==-1) {
       eth->num_rx_errors++;
       if (errno == EAGAIN) {
@@ -394,10 +384,7 @@ int trx_eth_read_raw_IF4p5(openair0_device *device, openair0_timestamp *timestam
   }  
   
   while(bytes_received < packet_size) {
-    ret = recv(eth->sockfdd[cc % eth->num_fd],
-	       buff[0],
-	       packet_size,
-	       0);
+    ret = recv(eth->sockfdd[cc % eth->num_fd], buff[0], packet_size, 0);
     if (ret ==-1) {
       eth->num_rx_errors++;
       perror("ETHERNET IF4p5 READ (payload): ");
@@ -417,7 +404,7 @@ int trx_eth_read_raw_IF4p5(openair0_device *device, openair0_timestamp *timestam
 int eth_set_dev_conf_raw(openair0_device *device) {
 
   eth_state_t *eth = (eth_state_t*)device->priv;
-  void 	      *msg;
+  void *msg;
   ssize_t      msg_len;
   
   /* a RAU client sends to RRU a set of configuration parameters (openair0_config_t)
@@ -427,14 +414,10 @@ int eth_set_dev_conf_raw(openair0_device *device) {
   msg = malloc(MAC_HEADER_SIZE_BYTES + sizeof(openair0_config_t));
   msg_len = MAC_HEADER_SIZE_BYTES + sizeof(openair0_config_t);
 
-  
-  memcpy(msg,(void*)&eth->ehc,MAC_HEADER_SIZE_BYTES);	
+  memcpy(msg, (void *)&eth->ehc, MAC_HEADER_SIZE_BYTES);
   memcpy((msg+MAC_HEADER_SIZE_BYTES),(void*)device->openair0_cfg,sizeof(openair0_config_t));
- 	  
-  if (send(eth->sockfdc,
-	   msg,
-	   msg_len,
-	   0)==-1) {
+
+  if (send(eth->sockfdc, msg, msg_len, 0) == -1) {
     perror("ETHERNET: ");
     exit(0);
   }
@@ -449,7 +432,7 @@ int eth_set_dev_conf_raw_IF4p5(openair0_device *device) {
   // use for cc_id info
 
   eth_state_t *eth = (eth_state_t*)device->priv;
-  void 	      *msg;
+  void *msg;
   ssize_t      msg_len;
   
   /* a RAU client sends to RRU a set of configuration parameters (openair0_config_t)
@@ -459,14 +442,10 @@ int eth_set_dev_conf_raw_IF4p5(openair0_device *device) {
   msg = malloc(MAC_HEADER_SIZE_BYTES + sizeof(openair0_config_t));
   msg_len = MAC_HEADER_SIZE_BYTES + sizeof(openair0_config_t);
 
-  
-  memcpy(msg,(void*)&eth->ehc,MAC_HEADER_SIZE_BYTES);	
+  memcpy(msg, (void *)&eth->ehc, MAC_HEADER_SIZE_BYTES);
   memcpy((msg+MAC_HEADER_SIZE_BYTES),(void*)device->openair0_cfg,sizeof(openair0_config_t));
- 	  
-  if (send(eth->sockfdc,
-	   msg,
-	   msg_len,
-	   0)==-1) {
+
+  if (send(eth->sockfdc, msg, msg_len, 0) == -1) {
     perror("ETHERNET: ");
     exit(0);
   }
@@ -479,27 +458,24 @@ int eth_set_dev_conf_raw_IF4p5(openair0_device *device) {
 int eth_get_dev_conf_raw(openair0_device *device) {
 
   eth_state_t   *eth = (eth_state_t*)device->priv;
-  void 		*msg;
-  ssize_t	msg_len;
-  
+  void *msg;
+  ssize_t msg_len;
+
   msg = malloc(MAC_HEADER_SIZE_BYTES + sizeof(openair0_config_t));
   msg_len = MAC_HEADER_SIZE_BYTES + sizeof(openair0_config_t);
   
   /* RRU receives from RAU openair0_config_t */
-  if (recv(eth->sockfdc,
-	   msg,
-	   msg_len,
-	   0)==-1) {
+  if (recv(eth->sockfdc, msg, msg_len, 0) == -1) {
     perror("ETHERNET: ");
     exit(0);
   }
-  
+
   /* RRU stores the remote MAC address */
-  memcpy(eth->ehd.ether_dhost,(msg+ETH_ALEN),ETH_ALEN);	
+  memcpy(eth->ehd.ether_dhost, (msg + ETH_ALEN), ETH_ALEN);
   //memcpy((void*)&device->openair0_cfg,(msg + MAC_HEADER_SIZE_BYTES), sizeof(openair0_config_t));
   device->openair0_cfg=(openair0_config_t *)(msg + MAC_HEADER_SIZE_BYTES);
   printf("[%s] binding mod to hardware address %x:%x:%x:%x:%x:%x           hardware address %x:%x:%x:%x:%x:%x\n",((device->host_type == RAU_HOST) ? "RAU": "RRU"),eth->ehd.ether_shost[0],eth->ehd.ether_shost[1],eth->ehd.ether_shost[2],eth->ehd.ether_shost[3],eth->ehd.ether_shost[4],eth->ehd.ether_shost[5],eth->ehd.ether_dhost[0],eth->ehd.ether_dhost[1],eth->ehd.ether_dhost[2],eth->ehd.ether_dhost[3],eth->ehd.ether_dhost[4],eth->ehd.ether_dhost[5]);
- 	  
+
   return 0;
 }
 
@@ -508,27 +484,24 @@ int eth_get_dev_conf_raw_IF4p5(openair0_device *device) {
   // use for cc_id info
 
   eth_state_t   *eth = (eth_state_t*)device->priv;
-  void 		*msg;
-  ssize_t	msg_len;
-  
+  void *msg;
+  ssize_t msg_len;
+
   msg = malloc(MAC_HEADER_SIZE_BYTES + sizeof(openair0_config_t));
   msg_len = MAC_HEADER_SIZE_BYTES + sizeof(openair0_config_t);
   
   /* RRU receives from RAU openair0_config_t */
-  if (recv(eth->sockfdc,
-	   msg,
-	   msg_len,
-	   0)==-1) {
+  if (recv(eth->sockfdc, msg, msg_len, 0) == -1) {
     perror("ETHERNET: ");
     exit(0);
   }
-  
+
   /* RRU stores the remote MAC address */
-  memcpy(eth->ehd.ether_dhost,(msg+ETH_ALEN),ETH_ALEN);	
+  memcpy(eth->ehd.ether_dhost, (msg + ETH_ALEN), ETH_ALEN);
   //memcpy((void*)&device->openair0_cfg,(msg + MAC_HEADER_SIZE_BYTES), sizeof(openair0_config_t));
   //device->openair0_cfg=(openair0_config_t *)(msg + MAC_HEADER_SIZE_BYTES);
   printf("[%s] binding mod to hardware address %x:%x:%x:%x:%x:%x           hardware address %x:%x:%x:%x:%x:%x\n",((device->host_type == RAU_HOST) ? "RAU": "RRU"),eth->ehd.ether_shost[0],eth->ehd.ether_shost[1],eth->ehd.ether_shost[2],eth->ehd.ether_shost[3],eth->ehd.ether_shost[4],eth->ehd.ether_shost[5],eth->ehd.ether_dhost[0],eth->ehd.ether_dhost[1],eth->ehd.ether_dhost[2],eth->ehd.ether_dhost[3],eth->ehd.ether_dhost[4],eth->ehd.ether_dhost[5]);
- 	  
+
   free(msg);
   return 0;
 }

@@ -247,7 +247,7 @@ m3ap_MCE_data_t  * m3ap_is_MCE_assoc_id_in_list (const uint32_t sctp_assoc_id)
     found = RB_FIND(m3ap_mce_map, &inst->m3ap_mce_head, &temp);
     if (found != NULL){
       if (found->assoc_id == sctp_assoc_id) {
-	return found;
+        return found;
       }
     }
   }

@@ -77,8 +77,9 @@ int slot_fep_ul(RU_t *ru,
     rx_offset = slot_offset +nb_prefix_samples0;
     if (l==0) {
 #ifdef DEBUG_FEP
-      LOG_D(PHY,"slot_fep: symbol 0 %d dB\n",
-	    dB_fixed(signal_energy(&common->rxdata_7_5kHz[aa][rx_offset],fp->ofdm_symbol_size)));
+      LOG_D(PHY,
+            "slot_fep: symbol 0 %d dB\n",
+            dB_fixed(signal_energy(&common->rxdata_7_5kHz[aa][rx_offset], fp->ofdm_symbol_size)));
 #endif
       dft( dftsize,(int16_t *)&common->rxdata_7_5kHz[aa][rx_offset],
            (int16_t *)&common->rxdataF[aa][fp->ofdm_symbol_size*symbol],
@@ -90,8 +91,8 @@ int slot_fep_ul(RU_t *ru,
       // check for 256-bit alignment of input buffer and do DFT directly, else do via intermediate buffer
       if( (rx_offset & 15) != 0){
         memcpy((void *)&tmp_dft_in,
-	       (void *)&common->rxdata_7_5kHz[aa][(rx_offset % frame_length_samples)],
-	       fp->ofdm_symbol_size*sizeof(int));
+               (void *)&common->rxdata_7_5kHz[aa][(rx_offset % frame_length_samples)],
+               fp->ofdm_symbol_size * sizeof(int));
         dft( dftsize,(short *) tmp_dft_in,
              (short*)  &common->rxdataF[aa][fp->ofdm_symbol_size*symbol],
              1

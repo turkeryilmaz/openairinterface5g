@@ -72,7 +72,8 @@ extern loader_data_t loader_data;
 
 /*----------------------------------------------------------------------------------------------------------------------------------------------------------*/
 /*                                       LOADER parameters                                                                                                  */
-/*   optname      helpstr   paramflags           XXXptr	                           defXXXval	              type       numelt   check func*/
+/*   optname      helpstr   paramflags           XXXptr                               defXXXval                  type       numelt
+ * check func*/
 /*----------------------------------------------------------------------------------------------------------------------------------------------------------*/
 // clang-format off
 #define LOADER_PARAMS_DESC {                                                                                                      \

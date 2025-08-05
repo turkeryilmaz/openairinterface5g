@@ -68,9 +68,7 @@ float_t get_nr_RSRP(module_id_t Mod_id,uint8_t CC_id,uint8_t gNB_index)
   PHY_VARS_NR_UE *ue = PHY_vars_UE_g[Mod_id][CC_id];
 
   if (ue)
-    return (10*log10(ue->measurements.rsrp[gNB_index])-
-	    get_nr_rx_total_gain_dB(Mod_id,0) -
-	    10*log10(20*12));
+    return (10 * log10(ue->measurements.rsrp[gNB_index]) - get_nr_rx_total_gain_dB(Mod_id, 0) - 10 * log10(20 * 12));
   return -140.0;
 }
 

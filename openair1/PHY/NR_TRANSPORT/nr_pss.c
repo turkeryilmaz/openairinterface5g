@@ -67,9 +67,12 @@ int nr_generate_pss(  c16_t *txdataF,
   }
 
 #ifdef NR_PSS_DEBUG
-  LOG_M("pss_0.m", "pss_0", 
-	(void*)&txdataF[0][ssb_start_symbol*frame_parms->ofdm_symbol_size], 
-	frame_parms->ofdm_symbol_size, 1, 1);
+  LOG_M("pss_0.m",
+        "pss_0",
+        (void *)&txdataF[0][ssb_start_symbol * frame_parms->ofdm_symbol_size],
+        frame_parms->ofdm_symbol_size,
+        1,
+        1);
 #endif
 
   return 0;

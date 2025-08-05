@@ -58,12 +58,7 @@
 @param N_RB_DL Number of downlink PRBs
 @param frame radio frame number
 @return size of encoded bit stream in bytes*/
-uint8_t do_MIB_NB_IoT(
-		rrc_eNB_carrier_data_NB_IoT_t *carrier,
-		uint32_t N_RB_DL,
-		uint32_t frame,
-    uint32_t hyper_frame);
-
+uint8_t do_MIB_NB_IoT(rrc_eNB_carrier_data_NB_IoT_t* carrier, uint32_t N_RB_DL, uint32_t frame, uint32_t hyper_frame);
 
 /**
 \brief Generate a default configuration for SIB1-NB (eNB).
@@ -73,12 +68,11 @@ uint8_t do_MIB_NB_IoT(
 @param configuration Pointer Configuration Request structure
 @return size of encoded bit stream in bytes*/
 
-uint8_t do_SIB1_NB_IoT(uint8_t Mod_id, 
+uint8_t do_SIB1_NB_IoT(uint8_t Mod_id,
                        int CC_id,
-				               rrc_eNB_carrier_data_NB_IoT_t *carrier,
-                       NbIoTRrcConfigurationReq *configuration,
-				               uint32_t frame
-                      );
+                       rrc_eNB_carrier_data_NB_IoT_t* carrier,
+                       NbIoTRrcConfigurationReq* configuration,
+                       uint32_t frame);
 
 /**
 \brief Generate a default configuration for SIB2/SIB3-NB in one System Information PDU (eNB).
@@ -255,12 +249,11 @@ do_RRCConnectionReject_NB_IoT(
 uint8_t do_RRCConnectionRelease_NB_IoT(uint8_t Mod_id, uint8_t *buffer, size_t buffer_size,
                                        int Transaction_id);
 
-uint8_t do_DLInformationTransfer_NB_IoT(
-		uint8_t Mod_id,
-		uint8_t **buffer,
-		uint8_t transaction_id,
-		uint32_t pdu_length,
-		uint8_t *pdu_buffer);
+uint8_t do_DLInformationTransfer_NB_IoT(uint8_t Mod_id,
+                                        uint8_t** buffer,
+                                        uint8_t transaction_id,
+                                        uint32_t pdu_length,
+                                        uint8_t* pdu_buffer);
 
 //for now not implemented since UE side
 //uint8_t do_ULInformationTransfer(uint8_t **buffer, uint32_t pdu_length, uint8_t *pdu_buffer);
@@ -274,14 +267,12 @@ uint8_t do_DLInformationTransfer_NB_IoT(
  *
  */
 
-uint8_t do_RRCConnectionReestablishment_NB_IoT(
-		uint8_t Mod_id,
-		uint8_t* buffer,
-		size_t buffer_size,
-		const uint8_t     Transaction_id,
-		const NB_IoT_DL_FRAME_PARMS* const frame_parms, //to be changed
-		SRB_ToAddModList_NB_r13_t**             SRB_configList_NB_IoT
-		 );
+uint8_t do_RRCConnectionReestablishment_NB_IoT(uint8_t Mod_id,
+                                               uint8_t* buffer,
+                                               size_t buffer_size,
+                                               const uint8_t Transaction_id,
+                                               const NB_IoT_DL_FRAME_PARMS* const frame_parms, // to be changed
+                                               SRB_ToAddModList_NB_r13_t** SRB_configList_NB_IoT);
 
 /**
 \brief Generate an RRCConnectionRelease-NB DL-DCCH-Message (eNB)

@@ -153,8 +153,8 @@ void _display_usage(const char* command)
   fprintf(stderr, "usage: %s [OPTION]\n", command);
   fprintf(stderr, "\t[--gen|-g]\tGenerate the NVRAM data file\n");
   fprintf(stderr, "\t[--print|-p]\tDisplay the content of the NVRAM data file\n");
-	fprintf(stderr, "\t[-c]\tConfig file to use\n");
-	fprintf(stderr, "\t[-o]\toutput file directory\n");
+  fprintf(stderr, "\t[-c]\tConfig file to use\n");
+  fprintf(stderr, "\t[-o]\toutput file directory\n");
   fprintf(stderr, "\t[--help|-h]\tDisplay this usage\n");
   const char* path = getenv("NVRAM_DIR");
 

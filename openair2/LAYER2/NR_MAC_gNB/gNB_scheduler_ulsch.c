@@ -1697,15 +1697,15 @@ static void nr_ue_max_mcs_min_rb(int mu,
 }
 
 static bool allocate_ul_retransmission(gNB_MAC_INST *nrmac,
-				       frame_t frame,
-				       slot_t slot,
-				       uint16_t *rballoc_mask,
-				       int *n_rb_sched,
-				       int dci_beam_idx,
-				       NR_UE_info_t* UE,
-				       int harq_pid,
-				       const NR_ServingCellConfigCommon_t *scc,
-				       const int tda)
+                                       frame_t frame,
+                                       slot_t slot,
+                                       uint16_t *rballoc_mask,
+                                       int *n_rb_sched,
+                                       int dci_beam_idx,
+                                       NR_UE_info_t *UE,
+                                       int harq_pid,
+                                       const NR_ServingCellConfigCommon_t *scc,
+                                       const int tda)
 {
   const int CC_id = 0;
   NR_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;

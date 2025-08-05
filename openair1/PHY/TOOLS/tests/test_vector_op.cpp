@@ -60,15 +60,15 @@ int main()
     
     for(auto it = input1.begin(); it != input1.end(); it++ ) {
       if (it->r == -32768)
-	it->r=-32767;
+        it->r = -32767;
       if (it->i == -32768)
-	it->i=-32767;
+        it->i = -32767;
     }
     for(auto it = input2.begin(); it != input2.end(); it++ ) {
       if (it->r == -32768)
-	it->r=-32767;
+        it->r = -32767;
       if (it->i == -32768)
-	it->i=-32767;
+        it->i = -32767;
     }
     AlignedVector512<c16_t> output;
     output.resize(vector_size);

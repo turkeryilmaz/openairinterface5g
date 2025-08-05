@@ -43,8 +43,8 @@
 
 void rx_prach0(PHY_VARS_eNB *eNB,
                RU_t *ru,
-	       int frame_prach,
-	       int subframe,
+               int frame_prach,
+               int subframe,
                uint16_t *max_preamble,
                uint16_t *max_preamble_energy,
                uint16_t *max_preamble_delay,
@@ -52,8 +52,8 @@ void rx_prach0(PHY_VARS_eNB *eNB,
                uint16_t Nf,
                uint8_t tdd_mapindex,
                uint8_t br_flag,
-               uint8_t ce_level
-              ) {
+               uint8_t ce_level)
+{
   int i;
   frame_type_t   frame_type;
   uint16_t           rootSequenceIndex;
@@ -620,9 +620,7 @@ void rx_prach0(PHY_VARS_eNB *eNB,
 
   if (eNB) stop_meas(&eNB->rx_prach);
   AssertFatal(exit_flag==0,"exiting\n");
-
 }
-
 
 void rx_prach(PHY_VARS_eNB *eNB,
               RU_t *ru,

@@ -359,7 +359,7 @@ static void nr_pdcch_extract_rbs_single(uint32_t rxdataF_sz,
             // we point at the 1st part of the rxdataF in symbol
             rxF = rxFbase + 12 * (c_rb + n_BWP_start - (frame_parms->N_RB_DL >> 1)) - 6;
         }
-	AssertFatal(rxF, "bug");
+        AssertFatal(rxF, "bug");
         int j = 0;
 
         for (int i = 0; i < 12; i++) {

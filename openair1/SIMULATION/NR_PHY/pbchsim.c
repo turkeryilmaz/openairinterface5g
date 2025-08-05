@@ -474,18 +474,18 @@ int main(int argc, char **argv)
   // computation of integer and fractional FO to compare with estimation results
   int IFO;
   if(eps!=0.0){
-	printf("Introducing a CFO of %lf relative to SCS of %d kHz\n",eps,(int)(scs/1000));
-	if (eps>0)	
-  	  IFO=(int)(eps+0.5);
-	else
-	  IFO=(int)(eps-0.5);
-	printf("FFO = %lf; IFO = %d\n",eps-IFO,IFO);
+    printf("Introducing a CFO of %lf relative to SCS of %d kHz\n", eps, (int)(scs / 1000));
+    if (eps > 0)
+      IFO = (int)(eps + 0.5);
+    else
+      IFO = (int)(eps - 0.5);
+    printf("FFO = %lf; IFO = %d\n", eps - IFO, IFO);
   }
 
   gNB2UE = new_channel_desc_scm(n_tx, n_rx, channel_model, fs, 0, txbw, 300e-9, 0.0, CORR_LEVEL_LOW, 0, 0, 0, 0);
 
   if (gNB2UE==NULL) {
-	printf("Problem generating channel model. Exiting.\n");
+    printf("Problem generating channel model. Exiting.\n");
     exit(-1);
   }
 
@@ -523,7 +523,7 @@ int main(int argc, char **argv)
   else                      UE->is_synchronized = 1;
                       
   if(eps!=0.0)
-	UE->UE_fo_compensation = 1; // if a frequency offset is set then perform fo estimation and compensation
+    UE->UE_fo_compensation = 1; // if a frequency offset is set then perform fo estimation and compensation
 
   if (init_nr_ue_signal(UE, 1) != 0) {
     printf("Error at UE NR initialisation\n");
@@ -620,11 +620,10 @@ int main(int argc, char **argv)
   if (output_fd) 
     fwrite(txdata[0],sizeof(int32_t),frame_length_complex_samples,output_fd);
 
-  /*int txlev = signal_energy(&txdata[0][5*frame_parms->ofdm_symbol_size + 4*frame_parms->nb_prefix_samples + frame_parms->nb_prefix_samples0],
-		  	  	  	  	    frame_parms->ofdm_symbol_size + frame_parms->nb_prefix_samples);
-  printf("txlev %d (%f)\n",txlev,10*log10(txlev));*/
+  /*int txlev = signal_energy(&txdata[0][5*frame_parms->ofdm_symbol_size + 4*frame_parms->nb_prefix_samples +
+  frame_parms->nb_prefix_samples0], frame_parms->ofdm_symbol_size + frame_parms->nb_prefix_samples); printf("txlev %d
+  (%f)\n",txlev,10*log10(txlev));*/
 
-  
   for (SNR = snr0; SNR < snr1 && !stop; SNR+=.2) {
 
     n_errors = 0;
@@ -648,24 +647,24 @@ int main(int argc, char **argv)
       //printf("sigma2 %f (%f dB), tx_lev %f (%f dB)\n",sigma2,sigma2_dB,txlev,10*log10((double)txlev));
 
       if(eps!=0.0)
-        rf_rx(r_re,  // real part of txdata
-           r_im,  // imag part of txdata
-           NULL,  // interference real part
-           NULL, // interference imag part
-           0,  // interference power
-           frame_parms->nb_antennas_rx,  // number of rx antennas
-           frame_length_complex_samples,  // number of samples in frame
-           1.0e9/fs,   //sampling time (ns)
-           cfo,	// frequency offset in Hz
-           0.0, // drift (not implemented)
-           0.0, // noise figure (not implemented)
-           0.0, // rx gain in dB ?
-           200, // 3rd order non-linearity in dB ?
-           &ip, // initial phase
-           30.0e3,  // phase noise cutoff in kHz
-           -500.0, // phase noise amplitude in dBc
-           0.0,  // IQ imbalance (dB),
-	   0.0); // IQ phase imbalance (rad)
+        rf_rx(r_re, // real part of txdata
+              r_im, // imag part of txdata
+              NULL, // interference real part
+              NULL, // interference imag part
+              0, // interference power
+              frame_parms->nb_antennas_rx, // number of rx antennas
+              frame_length_complex_samples, // number of samples in frame
+              1.0e9 / fs, // sampling time (ns)
+              cfo, // frequency offset in Hz
+              0.0, // drift (not implemented)
+              0.0, // noise figure (not implemented)
+              0.0, // rx gain in dB ?
+              200, // 3rd order non-linearity in dB ?
+              &ip, // initial phase
+              30.0e3, // phase noise cutoff in kHz
+              -500.0, // phase noise amplitude in dBc
+              0.0, // IQ imbalance (dB),
+              0.0); // IQ phase imbalance (rad)
 
       for (i=0; i<frame_length_complex_samples; i++) {
         for (aa=0; aa<frame_parms->nb_antennas_rx; aa++) {

@@ -28,10 +28,10 @@ typedef struct {
 } network_record_t;
 
 typedef struct {
-	const char *fullname;
-	const char *shortname;
-	const char *mnc;
-	const char *mcc;
+  const char *fullname;
+  const char *shortname;
+  const char *mnc;
+  const char *mcc;
 } plmn_conf_param_t;
 
 typedef struct {

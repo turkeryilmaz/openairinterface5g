@@ -210,9 +210,9 @@ time_stats_t *register_meas(char *name)
 void free_measurtbl(void) {
   for (int i=0; i<max_cpumeasur; i++) {
     if (measur_table[i] != NULL) {
-	  free(measur_table[i]->meas_name);
-	  delNotifiedFIFO_elt(measur_table[i]->tpoolmsg);
-	  free(measur_table[i]);
+      free(measur_table[i]->meas_name);
+      delNotifiedFIFO_elt(measur_table[i]->tpoolmsg);
+      free(measur_table[i]);
     }
   }
   //free the fifo...
@@ -298,7 +298,7 @@ void send_meas(time_stats_t *ts, int msgid) {
 
 void end_meas(void) {
     notifiedFIFO_elt_t *nfe = newNotifiedFIFO_elt(sizeof(time_stats_msg_t),0,NULL,NULL);
-	time_stats_msg_t *msg = (time_stats_msg_t *)NotifiedFifoData(nfe);
+    time_stats_msg_t *msg = (time_stats_msg_t *)NotifiedFifoData(nfe);
     msg->msgid = TIMESTAT_MSGID_END ;
     pushNotifiedFIFO(&measur_fifo, nfe);
 }

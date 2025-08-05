@@ -201,12 +201,9 @@ static void decode_MBMSCountingRequest(module_id_t module_idP, uint8_t eNB_index
 uint8_t rrc_ue_generate_SidelinkUEInformation( const protocol_ctxt_t *const ctxt_pP, const uint8_t eNB_index,LTE_SL_DestinationInfoList_r12_t  *destinationInfoList, long *discTxResourceReq,
     SL_TRIGGER_t mode);
 
-void
-rrc_ue_process_MBMSCountingRequest(
-  const protocol_ctxt_t *const ctxt_pP,
-  LTE_MBMSCountingRequest_r10_t *MBMSCountingRequest,
-  uint8_t eNB_index
-		);
+void rrc_ue_process_MBMSCountingRequest(const protocol_ctxt_t *const ctxt_pP,
+                                        LTE_MBMSCountingRequest_r10_t *MBMSCountingRequest,
+                                        uint8_t eNB_index);
 
 static void process_nr_nsa_msg(nsa_msg_t *msg, int msg_len);
 static void nsa_sendmsg_to_nrue(const void *message, size_t msg_len, Rrc_Msg_Type_t msg_type);
@@ -4700,23 +4697,21 @@ int decode_MCCH_Message( const protocol_ctxt_t *const ctxt_pP, const uint8_t eNB
       LOG_D(RRC,"[UE %d] Found mcch message \n",
             ctxt_pP->module_id);
         if(mcch->message.choice.later.present == LTE_MCCH_MessageType__later_PR_c2){
-		if(mcch->message.choice.later.choice.c2.present == LTE_MCCH_MessageType__later__c2_PR_mbmsCountingRequest_r10){
-        		LOG_I(RRC,"[UE %d] Frame %d : Found MBMSCountingRequest from eNB %d %p\n",
-              			ctxt_pP->module_id,
-              			ctxt_pP->frame,
-              			eNB_index,&mcch->message.choice.later.choice.c2.choice.mbmsCountingRequest_r10);
+          if (mcch->message.choice.later.choice.c2.present == LTE_MCCH_MessageType__later__c2_PR_mbmsCountingRequest_r10) {
+            LOG_I(RRC,
+                  "[UE %d] Frame %d : Found MBMSCountingRequest from eNB %d %p\n",
+                  ctxt_pP->module_id,
+                  ctxt_pP->frame,
+                  eNB_index,
+                  &mcch->message.choice.later.choice.c2.choice.mbmsCountingRequest_r10);
 
-  			rrc_ue_process_MBMSCountingRequest(ctxt_pP,&mcch->message.choice.later.choice.c2.choice.mbmsCountingRequest_r10,eNB_index);
+            rrc_ue_process_MBMSCountingRequest(ctxt_pP,
+                                               &mcch->message.choice.later.choice.c2.choice.mbmsCountingRequest_r10,
+                                               eNB_index);
 
-			decode_MBMSCountingRequest(
-          			ctxt_pP->module_id,
-          			eNB_index,
-          			ctxt_pP->frame,
-          			mbsfn_sync_area);
-
-
-		}
-	}
+            decode_MBMSCountingRequest(ctxt_pP->module_id, eNB_index, ctxt_pP->frame, mbsfn_sync_area);
+          }
+        }
     }
 
   }
@@ -4775,7 +4770,7 @@ void decode_MBSFNAreaConfiguration( module_id_t ue_mod_idP, uint8_t eNB_index, f
                         (LTE_MBSFN_AreaInfoList_r9_t *)NULL
                        );
   if(1/*UE_rrc_inst[ue_mod_idP].Info[eNB_index].State >= RRC_CONNECTED*/ /*|| UE_rrc_inst[ue_mod_idP].Info[eNB_index].State == RRC_RECONFIGURED*/)
-  	UE_rrc_inst[ue_mod_idP].Info[eNB_index].MCCHStatus[mbsfn_sync_area] = 1;
+    UE_rrc_inst[ue_mod_idP].Info[eNB_index].MCCHStatus[mbsfn_sync_area] = 1;
   PROTOCOL_CTXT_SET_BY_MODULE_ID(&ctxt, ue_mod_idP, ENB_FLAG_NO, UE_rrc_inst[ue_mod_idP].Info[eNB_index].rnti, frameP, 0,eNB_index);
   // Config Radio Bearer for MBMS user data (similar way to configure for eNB side in init_MBMS function)
   rrc_pdcp_config_asn1_req(&ctxt,

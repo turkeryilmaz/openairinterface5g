@@ -64,8 +64,8 @@ typedef struct rohc_context
     gboolean           rnd[MAX_CID+1];
     gboolean           udp_checkum_present[MAX_CID+1];
     guint16            profile[MAX_CID+1];
-	gboolean           rohc_context_init[MAX_CID+1];
-	gint               ir_frame_number[MAX_CID+1];        /* The frame number of the last IR packet seen */
+    gboolean rohc_context_init[MAX_CID + 1];
+    gint ir_frame_number[MAX_CID + 1]; /* The frame number of the last IR packet seen */
 
 } rohc_context;
 

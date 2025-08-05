@@ -94,9 +94,9 @@ typedef enum {
 } x2ap_handover_cancel_cause_t;
 
 typedef enum {
-	X2AP_RECONF_RESPONSE_SUCCESS,
-	X2AP_RECONF_RESPONSE_REJECT
-	/* Extensions may appear below */
+  X2AP_RECONF_RESPONSE_SUCCESS,
+  X2AP_RECONF_RESPONSE_REJECT
+  /* Extensions may appear below */
 
 } x2ap_sgNB_reconf_response_information_t;
 
@@ -278,44 +278,43 @@ typedef struct x2ap_handover_req_ack_s {
 } x2ap_handover_req_ack_t;
 
 typedef struct x2ap_senb_addition_req_s {
+  /* MeNB UE X2AP ID*/
+  int x2_MeNB_UE_id;
 
-	/* MeNB UE X2AP ID*/
-	int x2_MeNB_UE_id;
+  /*SCG Bearer option*/
+  security_capabilities_t UE_security_capabilities;
 
-	/*SCG Bearer option*/
-	security_capabilities_t UE_security_capabilities;
+  /*SCG Bearer option*/
+  uint8_t SeNB_security_key[256];
 
-	/*SCG Bearer option*/
-	uint8_t SeNB_security_key[256];
+  /*SeNB UE aggregate maximum bitrate */
+  ambr_t SeNB_ue_ambr;
 
-	/*SeNB UE aggregate maximum bitrate */
-	ambr_t SeNB_ue_ambr;
+  uint8_t total_nb_e_rabs_tobeadded;
 
-	uint8_t total_nb_e_rabs_tobeadded;
+  uint8_t nb_sCG_e_rabs_tobeadded;
 
-	uint8_t nb_sCG_e_rabs_tobeadded;
+  uint8_t nb_split_e_rabs_tobeadded;
 
-	uint8_t nb_split_e_rabs_tobeadded;
+  /*list of total e_rabs (SCG or split) to be added*/
+  // e_rab_setup_t total_e_rabs_tobeadded[S1AP_MAX_E_RAB];
 
-	/*list of total e_rabs (SCG or split) to be added*/
-    //e_rab_setup_t total_e_rabs_tobeadded[S1AP_MAX_E_RAB];
+  /* list of SCG e_rab to be added by RRC layers */
+  e_rab_setup_t e_sCG_rabs_tobeadded[S1AP_MAX_E_RAB];
 
-	/* list of SCG e_rab to be added by RRC layers */
-	e_rab_setup_t e_sCG_rabs_tobeadded[S1AP_MAX_E_RAB];
+  /* list of split e_rab to be added by RRC layers */
+  e_rab_setup_t e_split_rabs_tobeadded[S1AP_MAX_E_RAB];
 
-	/* list of split e_rab to be added by RRC layers */
-	e_rab_setup_t e_split_rabs_tobeadded[S1AP_MAX_E_RAB];
+  /* list of SCG e_rab to be added by RRC layers */
+  e_rab_t e_sCG_rab_param[S1AP_MAX_E_RAB];
 
-	/* list of SCG e_rab to be added by RRC layers */
-	e_rab_t  e_sCG_rab_param[S1AP_MAX_E_RAB];
+  /* list of split e_rab to be added by RRC layers */
+  e_rab_t e_split_rab_param[S1AP_MAX_E_RAB];
 
-	/* list of split e_rab to be added by RRC layers */
-	e_rab_t  e_split_rab_param[S1AP_MAX_E_RAB];
+  /*Used for the MeNB to SeNB Container to include the SCG-ConfigInfo as per 36.331*/
+  uint8_t rrc_buffer[1024 /* arbitrary, big enough */];
 
-	/*Used for the MeNB to SeNB Container to include the SCG-ConfigInfo as per 36.331*/
-	uint8_t rrc_buffer[1024 /* arbitrary, big enough */];
-
-	int rrc_buffer_size;
+  int rrc_buffer_size;
 
 }x2ap_senb_addition_req_t;
 
@@ -379,10 +378,9 @@ typedef struct x2ap_ENDC_sgnb_addition_req_s {
 
   int target_assoc_id;
 
-  	/*long int pDCPatSgNB = X2AP_EN_DC_ResourceConfiguration__pDCPatSgNB_present;
-  	long int mCGresources = X2AP_EN_DC_ResourceConfiguration__mCGresources_not_present;
-  	long int sCGresources = X2AP_EN_DC_ResourceConfiguration__sCGresources_not_present;*/
-
+  /*long int pDCPatSgNB = X2AP_EN_DC_ResourceConfiguration__pDCPatSgNB_present;
+  long int mCGresources = X2AP_EN_DC_ResourceConfiguration__mCGresources_not_present;
+  long int sCGresources = X2AP_EN_DC_ResourceConfiguration__sCGresources_not_present;*/
 
 } x2ap_ENDC_sgnb_addition_req_t;
 
@@ -411,10 +409,9 @@ typedef struct x2ap_ENDC_sgnb_addition_req_ACK_s {
 
   int target_assoc_id;
 
-  	/*long int pDCPatSgNB = X2AP_EN_DC_ResourceConfiguration__pDCPatSgNB_present;
-  	long int mCGresources = X2AP_EN_DC_ResourceConfiguration__mCGresources_not_present;
-  	long int sCGresources = X2AP_EN_DC_ResourceConfiguration__sCGresources_not_present;*/
-
+  /*long int pDCPatSgNB = X2AP_EN_DC_ResourceConfiguration__pDCPatSgNB_present;
+  long int mCGresources = X2AP_EN_DC_ResourceConfiguration__mCGresources_not_present;
+  long int sCGresources = X2AP_EN_DC_ResourceConfiguration__sCGresources_not_present;*/
 
 } x2ap_ENDC_sgnb_addition_req_ACK_t;
 
