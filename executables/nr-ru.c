@@ -942,7 +942,6 @@ static void fill_split7_2_config(split7_config_t *split7, const nfapi_nr_config_
 int setup_RU_buffers(RU_t *ru)
 {
   int card,ant;
-  //uint16_t N_TA_offset = 0;
   NR_DL_FRAME_PARMS *fp;
   nfapi_nr_config_request_scf_t *config = &ru->config;
 
@@ -954,8 +953,13 @@ int setup_RU_buffers(RU_t *ru)
 
   int mu = config->ssb_config.scs_common.value;
   int N_RB = config->carrier_config.dl_grid_size[config->ssb_config.scs_common.value].value;
+  int N_TA_offset[] = {0, 25600, 39936, 13792};
+  bool is_configured = config->cell_config.n_timing_advance_offset.tl.tag == NFAPI_NR_CONFIG_N_TIMING_ADVANCE_OFFSET_TAG;
+  bool is_FR2 = get_freq_range_from_freq(config->carrier_config.dl_frequency.value) == FR2;
+  // Use Table 7.1.2-2: The Value of N_TA_offset in the 3GPP TS 38.133. Coexistence config not available
+  int N_TA_offset_index = is_configured ? config->cell_config.n_timing_advance_offset.value : is_FR2 ? 3 : 1;
 
-  ru->N_TA_offset = set_default_nta_offset(fp->freq_range, fp->samples_per_subframe);
+  ru->N_TA_offset = (N_TA_offset[N_TA_offset_index] * fp->samples_per_subframe) / (4096 * 480);
   LOG_I(PHY,
         "RU %d Setting N_TA_offset to %d samples (UL Freq %d, N_RB %d, mu %d)\n",
         ru->idx, ru->N_TA_offset, config->carrier_config.uplink_frequency.value, N_RB, mu);
