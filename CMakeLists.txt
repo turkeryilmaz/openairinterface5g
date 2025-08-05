@@ -2235,15 +2235,6 @@ include_directories(${OPENAIR_CMAKE}/ran_build/build/openair3/NRPPA/MESSAGES)
 
 set(COMPONENTS_LIST "")
 
-install(DIRECTORY "${OPENAIR_DIR}/doc/"
-  DESTINATION share/doc/openairinterface
-  DIRECTORY_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE
-                        GROUP_READ GROUP_EXECUTE
-                        WORLD_READ WORLD_EXECUTE
-)
-
-
-
 set(CPACK_PACKAGE_VERSION "1.0.0")
 set(CPACK_PACKAGE_RELEASE "1")
 set(CPACK_PACKAGE_VENDOR "OpenAirInterface")
@@ -2252,6 +2243,8 @@ set(CPACK_PACKAGE_CONTACT "Calvin Peyron <calvin.peyron@open-cells.com>")
 set(CPACK_MONOLITHIC_INSTALL OFF)
 
 set(CPACK_DEBIAN_PACKAGE_MAINTAINER "Calvin Peyron <calvin.peyron@open-cells.com>")
+
+file(CHMOD "${OPENAIR_DIR}/cmake_targets/triggers" PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
 
 if(PACKAGING-RPM)
   set(CPACK_GENERATOR "RPM")
@@ -2341,17 +2334,18 @@ if(LTE_PACKAGE)
   list(APPEND COMPONENTS_LIST oai-lte)
 
   if(PACKAGING-RPM)
-    set(CPACK_COMPONENT_OAI-NR_SUMMARY "OpenAirInterface LTE package")
-    set(CPACK_COMPONENT_OAI-NR_DESCRIPTION "This package is dedicated for LTE executables")
+    set(CPACK_COMPONENT_OAI-LTE_SUMMARY "OpenAirInterface LTE package")
+    set(CPACK_COMPONENT_OAI-LTE_DESCRIPTION "This package is dedicated for LTE executables")
   else()
-    set(CPACK_DEBIAN_OAI-NR_SUMMARY "OpenAirInterface LTE package")
-    set(CPACK_DEBIAN_OAI-NR_DESCRIPTION "This package is dedicated for LTE executables
+    set(CPACK_DEBIAN_OAI-LTE_SUMMARY "OpenAirInterface LTE package")
+    set(CPACK_DEBIAN_OAI-LTE_DESCRIPTION "This package is dedicated for LTE executables
     .")
   endif()
 
+  install(FILES ${OPENAIR_DIR}/changelog.gz COMPONENT oai-lte DESTINATION share/doc/openairinterface-oai-lte)
   set(CPACK_COMPONENT_OAI-LTE_PACKAGE_NAME "oai-lte")
   set(CPACK_DEBIAN_OAI-LTE_FILE_NAME "oai-lte.deb")
-  set(CPACK_DEBIAN_OAI-LTE_PACKAGE_DEPENDS "liboai-common")
+  set(CPACK_DEBIAN_OAI-LTE_PACKAGE_DEPENDS "liboai-common, libc6")
 endif()
 
 
@@ -2425,9 +2419,10 @@ if(NR_PACKAGE)
     .")
   endif()
 
+  install(FILES ${OPENAIR_DIR}/changelog.gz COMPONENT oai-nr DESTINATION share/doc/openairinterface-oai-nr)
   set(CPACK_COMPONENT_OAI-NR_PACKAGE_NAME "oai-nr")
   set(CPACK_DEBIAN_OAI-NR_FILE_NAME "oai-nr.deb")
-  set(CPACK_DEBIAN_OAI-NR_PACKAGE_DEPENDS "liboai-common")
+  set(CPACK_DEBIAN_OAI-NR_PACKAGE_DEPENDS "liboai-common, libc6")
 endif()
 
 
@@ -2484,7 +2479,7 @@ if(OAI_USRP_PACKAGE)
         LIBRARY DESTINATION lib
         PERMISSIONS OWNER_READ OWNER_WRITE  GROUP_READ WORLD_READ
       )
-  install(FILES "${OPENAIR_DIR}/radio/USRP/README.md" DESTINATION share/doc/liboai-usrp COMPONENT liboai-usrp)
+  install(FILES "${OPENAIR_DIR}/radio/USRP/README.md" DESTINATION share/doc/openairinterface-liboai-usrp COMPONENT liboai-usrp)
   list(APPEND COMPONENTS_LIST liboai-usrp)
 
   if(PACKAGING-RPM)
@@ -2517,6 +2512,7 @@ if(OAI_USRP_PACKAGE)
     endforeach()    
     file(CHMOD "${CMAKE_CURRENT_BINARY_DIR}/usrp/conffiles" PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
     set(CPACK_DEBIAN_LIBOAI-USRP_PACKAGE_CONTROL_EXTRA "${CONFFILES_PATH_USRP};${OPENAIR_DIR}/cmake_targets/triggers;")
+    install(FILES ${OPENAIR_DIR}/changelog.gz COMPONENT liboai-usrp DESTINATION share/doc/openairinterface-liboai-usrp)
   endif()
 
     if(PACKAGING-RPM)
@@ -2586,7 +2582,7 @@ if(OAI_COMMON_PACKAGE)
     endforeach()    
     file(CHMOD "${CMAKE_CURRENT_BINARY_DIR}/liboai-common/conffiles" PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
     set(CPACK_DEBIAN_LIBOAI-COMMON_PACKAGE_CONTROL_EXTRA "${CONFFILES_PATH_COMMON};${OPENAIR_DIR}/cmake_targets/triggers;")
-    
+    install(FILES ${OPENAIR_DIR}/changelog.gz COMPONENT liboai-common DESTINATION share/doc/openairinterface-liboai-common)
   endif()
 
     if(PACKAGING-RPM)
@@ -2613,11 +2609,12 @@ foreach(component IN LISTS COMPONENTS_LIST)
     set(${postun_var} "${OPENAIR_CMAKE}/ldconfig-postun.sh")
   endif()
   install(FILES "${OPENAIR_DIR}/LICENSE" 
-          DESTINATION "share/doc/${component}"
+          DESTINATION "share/doc/openairinterface-${component}"
           COMPONENT ${component}
           PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
           )
 endforeach()
+
 
 
 INCLUDE(CPack)
