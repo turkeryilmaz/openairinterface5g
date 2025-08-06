@@ -41,31 +41,17 @@ RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install --yes \
         software-properties-common \
         procps \
-        pkg-config \
         libsctp1 \
         tzdata \
-        libblas3 \
         libconfig9 \
         openssl \
         net-tools \
-        iperf \
-        iproute2 \
-        iputils-ping \
         gdb \
         pciutils \
         libpcap-dev \
         libatomic1 \
-        xz-utils \ 
         libnuma-dev \
-        python3 \
-        python3-six \
-        python3-requests \
         libyaml-cpp-dev && \
-# if the --sanitize option was used to build, additional packages are required
-    /bin/bash -c 'if [[ "$BUILD_OPTION" = "--sanitize" ]]; then DEBIAN_FRONTEND=noninteractive apt-get install --yes \
-        libasan5 \
-        libubsan1 \
-        liblapacke; fi' && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /opt/oai-gnb/bin
@@ -75,7 +61,6 @@ COPY ./docker/scripts/gnb_entrypoint.sh ./entrypoint.sh
 COPY ./docker/scripts/check-prach-io.sh ./check-prach-io.sh
 
 COPY --from=gnb-build \
-    /oai-ran/cmake_targets/ran_build/build/librfsimulator.so \
     /oai-ran/cmake_targets/ran_build/build/liboai_transpro.so \
     /oai-ran/cmake_targets/ran_build/build/libcoding.so \
     /oai-ran/cmake_targets/ran_build/build/libparams_libconfig.so \
@@ -96,8 +81,7 @@ RUN ldconfig && \
     echo "---- ldd on nr-softmodem ----" && \
     ldd /opt/oai-gnb/bin/nr-softmodem && \
     echo "---- ldd on shared libraries ----" && \
-    ldd /usr/local/lib/librfsimulator.so \
-        /usr/local/lib/liboai_transpro.so \
+    ldd /usr/local/lib/liboai_transpro.so \
         /usr/local/lib/libcoding.so \
         /usr/local/lib/libparams_libconfig.so \
         /usr/local/lib/libdfts.so \
