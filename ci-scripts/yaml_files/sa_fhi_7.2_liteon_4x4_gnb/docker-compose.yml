@@ -9,7 +9,7 @@ services:
         container_name: oai-gnb
         environment:
             TZ: Europe/Paris
-            USE_ADDITIONAL_OPTIONS: --thread-pool 13,14,15,16,17,18,19,20 --loader.ldpc.shlibversion _t2 --nrLDPC_coding_t2.dpdk_dev 01:00.0 --nrLDPC_coding_t2.dpdk_core_list 22,23
+            USE_ADDITIONAL_OPTIONS: --thread-pool 13,14,15,16,17,18,19,20 --loader.ldpc.shlibversion _aal --nrLDPC_coding_aal.dpdk_dev 01:00.0 --nrLDPC_coding_aal.dpdk_core_list 22,23 --nrLDPC_coding_aal.is_t2 1
         devices:
             - /dev/vfio:/dev/vfio/
         volumes:
