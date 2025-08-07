@@ -116,40 +116,46 @@ void nrLDPC_cnProc_BG1_generator_AVX2(const char* dir, int R)
       
       for (j=0; j<3; j++)
         {
-	  // Set of results pointer to correct BN address
-	  //p_cnProcBufResBit = p_cnProcBufRes + (j*bitOffsetInGroup);
+        // Set of results pointer to correct BN address
+        // p_cnProcBufResBit = p_cnProcBufRes + (j*bitOffsetInGroup);
 
-	  // Loop over CNs
-	  //	  for (i=0; i<M; i++,iprime++)
-	  //            {
-	  
-	  fprintf(fd,"            for (int i=0;i<M;i++) {\n");
-	  // Abs and sign of 32 CNs (first BN)
-	  //                ymm0 = p_cnProcBuf[lut_idxCnProcG3[j][0] + i];
-	  fprintf(fd,"                ymm0 = ((simde__m256i*)cnProcBuf)[%d+i];\n",(lut_startAddrCnGroups[0]>>5)+lut_idxCnProcG3[j][0]);
-	  //                sgn  = simde_mm256_sign_epi8(ones, ymm0);
-	  fprintf(fd,"                sgn  = simde_mm256_sign_epi8(ones, ymm0);\n");
-	  //                min  = simde_mm256_abs_epi8(ymm0);
-	  fprintf(fd,"                min  = simde_mm256_abs_epi8(ymm0);\n");
-	  
-	  // 32 CNs of second BN
-	  //                ymm0 = p_cnProcBuf[lut_idxCnProcG3[j][1] + i];
-	  fprintf(fd,"                ymm0 = ((simde__m256i*)cnProcBuf)[%d+i];\n",(lut_startAddrCnGroups[0]>>5)+lut_idxCnProcG3[j][1]);
-	  
-	  //                min  = simde_mm256_min_epu8(min, simde_mm256_abs_epi8(ymm0));
-	  fprintf(fd,"                min  = simde_mm256_min_epu8(min, simde_mm256_abs_epi8(ymm0));\n");
-	  
-	  //                sgn  = simde_mm256_sign_epi8(sgn, ymm0);
-	  fprintf(fd,"                sgn  = simde_mm256_sign_epi8(sgn, ymm0);\n");
-	  // Store result
-	  //                min = simde_mm256_min_epu8(min, maxLLR); // 128 in epi8 is -127
+        // Loop over CNs
+        //      for (i=0; i<M; i++,iprime++)
+        //            {
+
+        fprintf(fd, "            for (int i=0;i<M;i++) {\n");
+        // Abs and sign of 32 CNs (first BN)
+        //                ymm0 = p_cnProcBuf[lut_idxCnProcG3[j][0] + i];
+        fprintf(fd,
+                "                ymm0 = ((simde__m256i*)cnProcBuf)[%d+i];\n",
+                (lut_startAddrCnGroups[0] >> 5) + lut_idxCnProcG3[j][0]);
+        //                sgn  = simde_mm256_sign_epi8(ones, ymm0);
+        fprintf(fd, "                sgn  = simde_mm256_sign_epi8(ones, ymm0);\n");
+        //                min  = simde_mm256_abs_epi8(ymm0);
+        fprintf(fd, "                min  = simde_mm256_abs_epi8(ymm0);\n");
+
+        // 32 CNs of second BN
+        //                ymm0 = p_cnProcBuf[lut_idxCnProcG3[j][1] + i];
+        fprintf(fd,
+                "                ymm0 = ((simde__m256i*)cnProcBuf)[%d+i];\n",
+                (lut_startAddrCnGroups[0] >> 5) + lut_idxCnProcG3[j][1]);
+
+        //                min  = simde_mm256_min_epu8(min, simde_mm256_abs_epi8(ymm0));
+        fprintf(fd, "                min  = simde_mm256_min_epu8(min, simde_mm256_abs_epi8(ymm0));\n");
+
+        //                sgn  = simde_mm256_sign_epi8(sgn, ymm0);
+        fprintf(fd, "                sgn  = simde_mm256_sign_epi8(sgn, ymm0);\n");
+        // Store result
+        //                min = simde_mm256_min_epu8(min, maxLLR); // 128 in epi8 is -127
 #ifndef DROP_MAXLLR
-	  fprintf(fd,"                min = simde_mm256_min_epu8(min, maxLLR);\n");
+        fprintf(fd, "                min = simde_mm256_min_epu8(min, maxLLR);\n");
 #endif
-	  //                *p_cnProcBufResBit = simde_mm256_sign_epi8(min, sgn);
-	  //                p_cnProcBufResBit++;
-	  fprintf(fd,"                ((simde__m256i*)cnProcBufRes)[%d+i] = simde_mm256_sign_epi8(min, sgn);\n",(lut_startAddrCnGroups[0]>>5)+(j*bitOffsetInGroup));
-	  fprintf(fd,"            }\n");
+        //                *p_cnProcBufResBit = simde_mm256_sign_epi8(min, sgn);
+        //                p_cnProcBufResBit++;
+        fprintf(fd,
+                "                ((simde__m256i*)cnProcBufRes)[%d+i] = simde_mm256_sign_epi8(min, sgn);\n",
+                (lut_startAddrCnGroups[0] >> 5) + (j * bitOffsetInGroup));
+        fprintf(fd, "            }\n");
         }
     }
   // =====================================================================
@@ -176,54 +182,60 @@ void nrLDPC_cnProc_BG1_generator_AVX2(const char* dir, int R)
       
       for (j=0; j<4; j++)
         {
-	  // Set of results pointer to correct BN address
-	  //p_cnProcBufResBit = p_cnProcBufRes + (j*bitOffsetInGroup);
+        // Set of results pointer to correct BN address
+        // p_cnProcBufResBit = p_cnProcBufRes + (j*bitOffsetInGroup);
 
-	  // Loop over CNs
-	  //	  for (i=0; i<M; i++,iprime++)
-	  //            {
-	  fprintf(fd,"            for (int i=0;i<M;i++) {\n");
-	  // Abs and sign of 32 CNs (first BN)
-	  //                ymm0 = p_cnProcBuf[lut_idxCnProcG3[j][0] + i];
-	  fprintf(fd,"                ymm0 = ((simde__m256i*)cnProcBuf)[%d+i];\n",(lut_startAddrCnGroups[1]>>5)+lut_idxCnProcG4[j][0]);
-	  //                sgn  = simde_mm256_sign_epi8(ones, ymm0);
-	  fprintf(fd,"                sgn  = simde_mm256_sign_epi8(ones, ymm0);\n");
-	  //                min  = simde_mm256_abs_epi8(ymm0);
-	  fprintf(fd,"                min  = simde_mm256_abs_epi8(ymm0);\n");
-	  
-	  
-	  // Loop over BNs
-	  for (k=1; k<3; k++)
-	    {
-	      fprintf(fd,"                ymm0 = ((simde__m256i*)cnProcBuf)[%d+i];\n",(lut_startAddrCnGroups[1]>>5)+lut_idxCnProcG4[j][k]);
-	      
-	      //                min  = simde_mm256_min_epu8(min, simde_mm256_abs_epi8(ymm0));
-	      fprintf(fd,"                min  = simde_mm256_min_epu8(min, simde_mm256_abs_epi8(ymm0));\n");
-	      
-	      //                sgn  = simde_mm256_sign_epi8(sgn, ymm0);
-	      fprintf(fd,"                sgn  = simde_mm256_sign_epi8(sgn, ymm0);\n");
-	    }
-	  
-	  // Store result
-	  //                min = simde_mm256_min_epu8(min, maxLLR); // 128 in epi8 is -127
-#ifndef DROP_MAXLLR
-	  fprintf(fd,"                min = simde_mm256_min_epu8(min, maxLLR);\n");
-#endif	  
-	  //                *p_cnProcBufResBit = simde_mm256_sign_epi8(min, sgn);
-	      //                p_cnProcBufResBit++;
-	  fprintf(fd,"                ((simde__m256i*)cnProcBufRes)[%d+i] = simde_mm256_sign_epi8(min, sgn);\n",(lut_startAddrCnGroups[1]>>5)+(j*bitOffsetInGroup));
-	  fprintf(fd,"            }\n");
+        // Loop over CNs
+        //      for (i=0; i<M; i++,iprime++)
+        //            {
+        fprintf(fd, "            for (int i=0;i<M;i++) {\n");
+        // Abs and sign of 32 CNs (first BN)
+        //                ymm0 = p_cnProcBuf[lut_idxCnProcG3[j][0] + i];
+        fprintf(fd,
+                "                ymm0 = ((simde__m256i*)cnProcBuf)[%d+i];\n",
+                (lut_startAddrCnGroups[1] >> 5) + lut_idxCnProcG4[j][0]);
+        //                sgn  = simde_mm256_sign_epi8(ones, ymm0);
+        fprintf(fd, "                sgn  = simde_mm256_sign_epi8(ones, ymm0);\n");
+        //                min  = simde_mm256_abs_epi8(ymm0);
+        fprintf(fd, "                min  = simde_mm256_abs_epi8(ymm0);\n");
+
+        // Loop over BNs
+        for (k = 1; k < 3; k++) {
+          fprintf(fd,
+                  "                ymm0 = ((simde__m256i*)cnProcBuf)[%d+i];\n",
+                  (lut_startAddrCnGroups[1] >> 5) + lut_idxCnProcG4[j][k]);
+
+          //                min  = simde_mm256_min_epu8(min, simde_mm256_abs_epi8(ymm0));
+          fprintf(fd, "                min  = simde_mm256_min_epu8(min, simde_mm256_abs_epi8(ymm0));\n");
+
+          //                sgn  = simde_mm256_sign_epi8(sgn, ymm0);
+          fprintf(fd, "                sgn  = simde_mm256_sign_epi8(sgn, ymm0);\n");
         }
-    }
+
+        // Store result
+        //                min = simde_mm256_min_epu8(min, maxLLR); // 128 in epi8 is -127
+#ifndef DROP_MAXLLR
+        fprintf(fd, "                min = simde_mm256_min_epu8(min, maxLLR);\n");
+#endif
+        //                *p_cnProcBufResBit = simde_mm256_sign_epi8(min, sgn);
+        //                p_cnProcBufResBit++;
+        fprintf(fd,
+                "                ((simde__m256i*)cnProcBufRes)[%d+i] = simde_mm256_sign_epi8(min, sgn);\n",
+                (lut_startAddrCnGroups[1] >> 5) + (j * bitOffsetInGroup));
+        fprintf(fd, "            }\n");
+      }
+  }
 
 
   // =====================================================================
   // Process group with 5 BNs
   fprintf(fd,"//Process group with 5 BNs\n");
   // Offset is 18*384/32 = 216
-  const uint16_t lut_idxCnProcG5[5][4] = {{216,432,648,864}, {0,432,648,864},
-					  {0,216,648,864}, {0,216,432,864}, {0,216,432,648}};
-
+  const uint16_t lut_idxCnProcG5[5][4] = {{216, 432, 648, 864},
+                                          {0, 432, 648, 864},
+                                          {0, 216, 648, 864},
+                                          {0, 216, 432, 864},
+                                          {0, 216, 432, 648}};
 
   if (lut_numCnInCnGroups[2] > 0)
     {
@@ -240,57 +252,62 @@ void nrLDPC_cnProc_BG1_generator_AVX2(const char* dir, int R)
       //p_cnProcBufRes = (simde__m256i*) &cnProcBufRes[lut_startAddrCnGroups[1]];
 
       // Loop over every BN
-      
-      for (j=0; j<5; j++)
-	{
-	  // Set of results pointer to correct BN address
-	  //p_cnProcBufResBit = p_cnProcBufRes + (j*bitOffsetInGroup);
 
-	  // Loop over CNs
-	  //	  for (i=0; i<M; i++,iprime++)
-	  //            {
-	  fprintf(fd,"            for (int i=0;i<M;i++) {\n");
-	  // Abs and sign of 32 CNs (first BN)
-	  //                ymm0 = p_cnProcBuf[lut_idxCnProcG3[j][0] + i];
-	  fprintf(fd,"                ymm0 = ((simde__m256i*)cnProcBuf)[%d+i];\n",(lut_startAddrCnGroups[2]>>5)+lut_idxCnProcG5[j][0]);
-	  //                sgn  = simde_mm256_sign_epi8(ones, ymm0);
-	  fprintf(fd,"                sgn  = simde_mm256_sign_epi8(ones, ymm0);\n");
-	  //                min  = simde_mm256_abs_epi8(ymm0);
-	  fprintf(fd,"                min  = simde_mm256_abs_epi8(ymm0);\n");
-	  
-	  
-	  // Loop over BNs
-	  for (k=1; k<4; k++)
-	    {
-	      fprintf(fd,"                ymm0 = ((simde__m256i*)cnProcBuf)[%d+i];\n",(lut_startAddrCnGroups[2]>>5)+lut_idxCnProcG5[j][k]);
-	      
-	      //                min  = simde_mm256_min_epu8(min, simde_mm256_abs_epi8(ymm0));
-	      fprintf(fd,"                min  = simde_mm256_min_epu8(min, simde_mm256_abs_epi8(ymm0));\n");
-	      
-	      //                sgn  = simde_mm256_sign_epi8(sgn, ymm0);
-	      fprintf(fd,"                sgn  = simde_mm256_sign_epi8(sgn, ymm0);\n");
-	    }
-	  
-	  // Store result
-	  //                min = simde_mm256_min_epu8(min, maxLLR); // 128 in epi8 is -127
-#ifndef DROP_MAXLLR
-	  fprintf(fd,"                min = simde_mm256_min_epu8(min, maxLLR);\n");
-#endif	  
-	  //                *p_cnProcBufResBit = simde_mm256_sign_epi8(min, sgn);
-	  //                p_cnProcBufResBit++;
-	  fprintf(fd,"                ((simde__m256i*)cnProcBufRes)[%d+i] = simde_mm256_sign_epi8(min, sgn);\n",(lut_startAddrCnGroups[2]>>5)+(j*bitOffsetInGroup));
-	  fprintf(fd,"           }\n");
+      for (j = 0; j < 5; j++) {
+        // Set of results pointer to correct BN address
+        // p_cnProcBufResBit = p_cnProcBufRes + (j*bitOffsetInGroup);
+
+        // Loop over CNs
+        //      for (i=0; i<M; i++,iprime++)
+        //            {
+        fprintf(fd, "            for (int i=0;i<M;i++) {\n");
+        // Abs and sign of 32 CNs (first BN)
+        //                ymm0 = p_cnProcBuf[lut_idxCnProcG3[j][0] + i];
+        fprintf(fd,
+                "                ymm0 = ((simde__m256i*)cnProcBuf)[%d+i];\n",
+                (lut_startAddrCnGroups[2] >> 5) + lut_idxCnProcG5[j][0]);
+        //                sgn  = simde_mm256_sign_epi8(ones, ymm0);
+        fprintf(fd, "                sgn  = simde_mm256_sign_epi8(ones, ymm0);\n");
+        //                min  = simde_mm256_abs_epi8(ymm0);
+        fprintf(fd, "                min  = simde_mm256_abs_epi8(ymm0);\n");
+
+        // Loop over BNs
+        for (k = 1; k < 4; k++) {
+          fprintf(fd,
+                  "                ymm0 = ((simde__m256i*)cnProcBuf)[%d+i];\n",
+                  (lut_startAddrCnGroups[2] >> 5) + lut_idxCnProcG5[j][k]);
+
+          //                min  = simde_mm256_min_epu8(min, simde_mm256_abs_epi8(ymm0));
+          fprintf(fd, "                min  = simde_mm256_min_epu8(min, simde_mm256_abs_epi8(ymm0));\n");
+
+          //                sgn  = simde_mm256_sign_epi8(sgn, ymm0);
+          fprintf(fd, "                sgn  = simde_mm256_sign_epi8(sgn, ymm0);\n");
         }
-    }
+
+        // Store result
+        //                min = simde_mm256_min_epu8(min, maxLLR); // 128 in epi8 is -127
+#ifndef DROP_MAXLLR
+        fprintf(fd, "                min = simde_mm256_min_epu8(min, maxLLR);\n");
+#endif
+        //                *p_cnProcBufResBit = simde_mm256_sign_epi8(min, sgn);
+        //                p_cnProcBufResBit++;
+        fprintf(fd,
+                "                ((simde__m256i*)cnProcBufRes)[%d+i] = simde_mm256_sign_epi8(min, sgn);\n",
+                (lut_startAddrCnGroups[2] >> 5) + (j * bitOffsetInGroup));
+        fprintf(fd, "           }\n");
+      }
+  }
 
   // =====================================================================
   // Process group with 6 BNs
   fprintf(fd,"//Process group with 6 BNs\n");
   // Offset is 8*384/32 = 96
-  const uint16_t lut_idxCnProcG6[6][5] = {{96,192,288,384,480}, {0,192,288,384,480},
-					  {0,96,288,384,480}, {0,96,192,384,480},
-					  {0,96,192,288,480}, {0,96,192,288,384}};
-
+  const uint16_t lut_idxCnProcG6[6][5] = {{96, 192, 288, 384, 480},
+                                          {0, 192, 288, 384, 480},
+                                          {0, 96, 288, 384, 480},
+                                          {0, 96, 192, 384, 480},
+                                          {0, 96, 192, 288, 480},
+                                          {0, 96, 192, 288, 384}};
 
   if (lut_numCnInCnGroups[3] > 0)
     {
@@ -310,57 +327,62 @@ void nrLDPC_cnProc_BG1_generator_AVX2(const char* dir, int R)
       
       for (j=0; j<6; j++)
         {
-	  // Set of results pointer to correct BN address
-	  //p_cnProcBufResBit = p_cnProcBufRes + (j*bitOffsetInGroup);
+        // Set of results pointer to correct BN address
+        // p_cnProcBufResBit = p_cnProcBufRes + (j*bitOffsetInGroup);
 
-	  // Loop over CNs
-	  //	  for (i=0; i<M; i++,iprime++)
-	  //            {
-	  fprintf(fd,"            for (int i=0;i<M;i++) {\n");
-	  // Abs and sign of 32 CNs (first BN)
-	  //                ymm0 = p_cnProcBuf[lut_idxCnProcG3[j][0] + i];
-	  fprintf(fd,"                ymm0 = ((simde__m256i*)cnProcBuf)[%d+i];\n",(lut_startAddrCnGroups[3]>>5)+lut_idxCnProcG6[j][0]);
-	  //                sgn  = simde_mm256_sign_epi8(ones, ymm0);
-	  fprintf(fd,"                sgn  = simde_mm256_sign_epi8(ones, ymm0);\n");
-	  //                min  = simde_mm256_abs_epi8(ymm0);
-	  fprintf(fd,"                min  = simde_mm256_abs_epi8(ymm0);\n");
-	  
-	  
-	  // Loop over BNs
-	  for (k=1; k<5; k++)
-	    {
-	      fprintf(fd,"                ymm0 = ((simde__m256i*)cnProcBuf)[%d+i];\n",(lut_startAddrCnGroups[3]>>5)+lut_idxCnProcG6[j][k]);
-	      
-	      //                min  = simde_mm256_min_epu8(min, simde_mm256_abs_epi8(ymm0));
-	      fprintf(fd,"                min  = simde_mm256_min_epu8(min, simde_mm256_abs_epi8(ymm0));\n");
-	      
-	      //                sgn  = simde_mm256_sign_epi8(sgn, ymm0);
-	      fprintf(fd,"                sgn  = simde_mm256_sign_epi8(sgn, ymm0);\n");
-	    }
-	  
-	  // Store result
-	  //                min = simde_mm256_min_epu8(min, maxLLR); // 128 in epi8 is -127
+        // Loop over CNs
+        //      for (i=0; i<M; i++,iprime++)
+        //            {
+        fprintf(fd, "            for (int i=0;i<M;i++) {\n");
+        // Abs and sign of 32 CNs (first BN)
+        //                ymm0 = p_cnProcBuf[lut_idxCnProcG3[j][0] + i];
+        fprintf(fd,
+                "                ymm0 = ((simde__m256i*)cnProcBuf)[%d+i];\n",
+                (lut_startAddrCnGroups[3] >> 5) + lut_idxCnProcG6[j][0]);
+        //                sgn  = simde_mm256_sign_epi8(ones, ymm0);
+        fprintf(fd, "                sgn  = simde_mm256_sign_epi8(ones, ymm0);\n");
+        //                min  = simde_mm256_abs_epi8(ymm0);
+        fprintf(fd, "                min  = simde_mm256_abs_epi8(ymm0);\n");
+
+        // Loop over BNs
+        for (k = 1; k < 5; k++) {
+          fprintf(fd,
+                  "                ymm0 = ((simde__m256i*)cnProcBuf)[%d+i];\n",
+                  (lut_startAddrCnGroups[3] >> 5) + lut_idxCnProcG6[j][k]);
+
+          //                min  = simde_mm256_min_epu8(min, simde_mm256_abs_epi8(ymm0));
+          fprintf(fd, "                min  = simde_mm256_min_epu8(min, simde_mm256_abs_epi8(ymm0));\n");
+
+          //                sgn  = simde_mm256_sign_epi8(sgn, ymm0);
+          fprintf(fd, "                sgn  = simde_mm256_sign_epi8(sgn, ymm0);\n");
+        }
+
+        // Store result
+        //                min = simde_mm256_min_epu8(min, maxLLR); // 128 in epi8 is -127
 #ifndef DROP_MAXLLR
-	  fprintf(fd,"                min = simde_mm256_min_epu8(min, maxLLR);\n");
-#endif	  
-	  //                *p_cnProcBufResBit = simde_mm256_sign_epi8(min, sgn);
-	  //                p_cnProcBufResBit++;
-	  fprintf(fd,"                ((simde__m256i*)cnProcBufRes)[%d+i] = simde_mm256_sign_epi8(min, sgn);\n",(lut_startAddrCnGroups[3]>>5)+(j*bitOffsetInGroup));
-	  fprintf(fd,"            }\n");
-	}
-    }
+        fprintf(fd, "                min = simde_mm256_min_epu8(min, maxLLR);\n");
+#endif
+        //                *p_cnProcBufResBit = simde_mm256_sign_epi8(min, sgn);
+        //                p_cnProcBufResBit++;
+        fprintf(fd,
+                "                ((simde__m256i*)cnProcBufRes)[%d+i] = simde_mm256_sign_epi8(min, sgn);\n",
+                (lut_startAddrCnGroups[3] >> 5) + (j * bitOffsetInGroup));
+        fprintf(fd, "            }\n");
+      }
+  }
 
 
   // =====================================================================
   // Process group with 7 BNs
   fprintf(fd,"//Process group with 7 BNs\n");
   // Offset is 5*384/32 = 60
-  const uint16_t lut_idxCnProcG7[7][6] = {{60,120,180,240,300,360}, {0,120,180,240,300,360},
-					  {0,60,180,240,300,360},   {0,60,120,240,300,360},
-					  {0,60,120,180,300,360},   {0,60,120,180,240,360},
-					  {0,60,120,180,240,300}};
-
-
+  const uint16_t lut_idxCnProcG7[7][6] = {{60, 120, 180, 240, 300, 360},
+                                          {0, 120, 180, 240, 300, 360},
+                                          {0, 60, 180, 240, 300, 360},
+                                          {0, 60, 120, 240, 300, 360},
+                                          {0, 60, 120, 180, 300, 360},
+                                          {0, 60, 120, 180, 240, 360},
+                                          {0, 60, 120, 180, 240, 300}};
 
   if (lut_numCnInCnGroups[4] > 0)
     {
@@ -380,58 +402,63 @@ void nrLDPC_cnProc_BG1_generator_AVX2(const char* dir, int R)
       
       for (j=0; j<7; j++)
         {
-	  // Set of results pointer to correct BN address
-	  //p_cnProcBufResBit = p_cnProcBufRes + (j*bitOffsetInGroup);
+        // Set of results pointer to correct BN address
+        // p_cnProcBufResBit = p_cnProcBufRes + (j*bitOffsetInGroup);
 
-	  // Loop over CNs
-	  //	  for (i=0; i<M; i++,iprime++)
-	  //            {
-	  fprintf(fd,"            for (int i=0;i<M;i++) {\n");
-	  // Abs and sign of 32 CNs (first BN)
-	  //                ymm0 = p_cnProcBuf[lut_idxCnProcG3[j][0] + i];
-	  fprintf(fd,"                ymm0 = ((simde__m256i*)cnProcBuf)[%d+i];\n",(lut_startAddrCnGroups[4]>>5)+lut_idxCnProcG7[j][0]);
-	  //                sgn  = simde_mm256_sign_epi8(ones, ymm0);
-	  fprintf(fd,"                sgn  = simde_mm256_sign_epi8(ones, ymm0);\n");
-	  //                min  = simde_mm256_abs_epi8(ymm0);
-	  fprintf(fd,"                min  = simde_mm256_abs_epi8(ymm0);\n");
-	  
-	  
-	  // Loop over BNs
-	  for (k=1; k<6; k++)
-	    {
-	      fprintf(fd,"                ymm0 = ((simde__m256i*)cnProcBuf)[%d+i];\n",(lut_startAddrCnGroups[4]>>5)+lut_idxCnProcG7[j][k]);
-	      
-	      //                min  = simde_mm256_min_epu8(min, simde_mm256_abs_epi8(ymm0));
-	      fprintf(fd,"                min  = simde_mm256_min_epu8(min, simde_mm256_abs_epi8(ymm0));\n");
-	      
-	      //                sgn  = simde_mm256_sign_epi8(sgn, ymm0);
-	      fprintf(fd,"                sgn  = simde_mm256_sign_epi8(sgn, ymm0);\n");
-	    }
-	  
-	  // Store result
-	  //                min = simde_mm256_min_epu8(min, maxLLR); // 128 in epi8 is -127
+        // Loop over CNs
+        //      for (i=0; i<M; i++,iprime++)
+        //            {
+        fprintf(fd, "            for (int i=0;i<M;i++) {\n");
+        // Abs and sign of 32 CNs (first BN)
+        //                ymm0 = p_cnProcBuf[lut_idxCnProcG3[j][0] + i];
+        fprintf(fd,
+                "                ymm0 = ((simde__m256i*)cnProcBuf)[%d+i];\n",
+                (lut_startAddrCnGroups[4] >> 5) + lut_idxCnProcG7[j][0]);
+        //                sgn  = simde_mm256_sign_epi8(ones, ymm0);
+        fprintf(fd, "                sgn  = simde_mm256_sign_epi8(ones, ymm0);\n");
+        //                min  = simde_mm256_abs_epi8(ymm0);
+        fprintf(fd, "                min  = simde_mm256_abs_epi8(ymm0);\n");
+
+        // Loop over BNs
+        for (k = 1; k < 6; k++) {
+          fprintf(fd,
+                  "                ymm0 = ((simde__m256i*)cnProcBuf)[%d+i];\n",
+                  (lut_startAddrCnGroups[4] >> 5) + lut_idxCnProcG7[j][k]);
+
+          //                min  = simde_mm256_min_epu8(min, simde_mm256_abs_epi8(ymm0));
+          fprintf(fd, "                min  = simde_mm256_min_epu8(min, simde_mm256_abs_epi8(ymm0));\n");
+
+          //                sgn  = simde_mm256_sign_epi8(sgn, ymm0);
+          fprintf(fd, "                sgn  = simde_mm256_sign_epi8(sgn, ymm0);\n");
+        }
+
+        // Store result
+        //                min = simde_mm256_min_epu8(min, maxLLR); // 128 in epi8 is -127
 #ifndef DROP_MAXLLR
-	  fprintf(fd,"                min = simde_mm256_min_epu8(min, maxLLR);\n");
-#endif	  
-	  //                *p_cnProcBufResBit = simde_mm256_sign_epi8(min, sgn);
-	  //                p_cnProcBufResBit++;
-	  fprintf(fd,"                ((simde__m256i*)cnProcBufRes)[%d+i] = simde_mm256_sign_epi8(min, sgn);\n",(lut_startAddrCnGroups[4]>>5)+(j*bitOffsetInGroup));
-	  fprintf(fd,"            }\n");
-	}
-    }
+        fprintf(fd, "                min = simde_mm256_min_epu8(min, maxLLR);\n");
+#endif
+        //                *p_cnProcBufResBit = simde_mm256_sign_epi8(min, sgn);
+        //                p_cnProcBufResBit++;
+        fprintf(fd,
+                "                ((simde__m256i*)cnProcBufRes)[%d+i] = simde_mm256_sign_epi8(min, sgn);\n",
+                (lut_startAddrCnGroups[4] >> 5) + (j * bitOffsetInGroup));
+        fprintf(fd, "            }\n");
+      }
+  }
 
 
   // =====================================================================
   // Process group with 8 BNs
   fprintf(fd,"//Process group with 8 BNs\n");
   // Offset is 2*384/32 = 24
-  const uint8_t lut_idxCnProcG8[8][7] = {{24,48,72,96,120,144,168}, {0,48,72,96,120,144,168},
-					 {0,24,72,96,120,144,168}, {0,24,48,96,120,144,168},
-					 {0,24,48,72,120,144,168}, {0,24,48,72,96,144,168},
-					 {0,24,48,72,96,120,168},  {0,24,48,72,96,120,144}};
-
-
-
+  const uint8_t lut_idxCnProcG8[8][7] = {{24, 48, 72, 96, 120, 144, 168},
+                                         {0, 48, 72, 96, 120, 144, 168},
+                                         {0, 24, 72, 96, 120, 144, 168},
+                                         {0, 24, 48, 96, 120, 144, 168},
+                                         {0, 24, 48, 72, 120, 144, 168},
+                                         {0, 24, 48, 72, 96, 144, 168},
+                                         {0, 24, 48, 72, 96, 120, 168},
+                                         {0, 24, 48, 72, 96, 120, 144}};
 
   if (lut_numCnInCnGroups[5] > 0)
     {
@@ -451,43 +478,47 @@ void nrLDPC_cnProc_BG1_generator_AVX2(const char* dir, int R)
       
       for (j=0; j<8; j++)
         {
-	  // Set of results pointer to correct BN address
-	  //p_cnProcBufResBit = p_cnProcBufRes + (j*bitOffsetInGroup);
+        // Set of results pointer to correct BN address
+        // p_cnProcBufResBit = p_cnProcBufRes + (j*bitOffsetInGroup);
 
-	  // Loop over CNs
-	  //	  for (i=0; i<M; i++,iprime++)
-	  //            {
-	  fprintf(fd,"            for (int i=0;i<M;i++) {\n");
-	  // Abs and sign of 32 CNs (first BN)
-	  //                ymm0 = p_cnProcBuf[lut_idxCnProcG3[j][0] + i];
-	  fprintf(fd,"                ymm0 = ((simde__m256i*)cnProcBuf)[%d+i];\n",(lut_startAddrCnGroups[5]>>5)+lut_idxCnProcG8[j][0]);
-	  //                sgn  = simde_mm256_sign_epi8(ones, ymm0);
-	  fprintf(fd,"                sgn  = simde_mm256_sign_epi8(ones, ymm0);\n");
-	  //                min  = simde_mm256_abs_epi8(ymm0);
-	  fprintf(fd,"                min  = simde_mm256_abs_epi8(ymm0);\n");
-	  
-	  
-	  // Loop over BNs
-	  for (k=1; k<7; k++)
-	    {
-	      fprintf(fd,"                ymm0 = ((simde__m256i*)cnProcBuf)[%d+i];\n",(lut_startAddrCnGroups[5]>>5)+lut_idxCnProcG8[j][k]);
-	      
-	      //                min  = simde_mm256_min_epu8(min, simde_mm256_abs_epi8(ymm0));
-	      fprintf(fd,"                min  = simde_mm256_min_epu8(min, simde_mm256_abs_epi8(ymm0));\n");
-	      
-	      //                sgn  = simde_mm256_sign_epi8(sgn, ymm0);
-	      fprintf(fd,"                sgn  = simde_mm256_sign_epi8(sgn, ymm0);\n");
-	    }
-	  
-	  // Store result
-	  //                min = simde_mm256_min_epu8(min, maxLLR); // 128 in epi8 is -127
+        // Loop over CNs
+        //      for (i=0; i<M; i++,iprime++)
+        //            {
+        fprintf(fd, "            for (int i=0;i<M;i++) {\n");
+        // Abs and sign of 32 CNs (first BN)
+        //                ymm0 = p_cnProcBuf[lut_idxCnProcG3[j][0] + i];
+        fprintf(fd,
+                "                ymm0 = ((simde__m256i*)cnProcBuf)[%d+i];\n",
+                (lut_startAddrCnGroups[5] >> 5) + lut_idxCnProcG8[j][0]);
+        //                sgn  = simde_mm256_sign_epi8(ones, ymm0);
+        fprintf(fd, "                sgn  = simde_mm256_sign_epi8(ones, ymm0);\n");
+        //                min  = simde_mm256_abs_epi8(ymm0);
+        fprintf(fd, "                min  = simde_mm256_abs_epi8(ymm0);\n");
+
+        // Loop over BNs
+        for (k = 1; k < 7; k++) {
+          fprintf(fd,
+                  "                ymm0 = ((simde__m256i*)cnProcBuf)[%d+i];\n",
+                  (lut_startAddrCnGroups[5] >> 5) + lut_idxCnProcG8[j][k]);
+
+          //                min  = simde_mm256_min_epu8(min, simde_mm256_abs_epi8(ymm0));
+          fprintf(fd, "                min  = simde_mm256_min_epu8(min, simde_mm256_abs_epi8(ymm0));\n");
+
+          //                sgn  = simde_mm256_sign_epi8(sgn, ymm0);
+          fprintf(fd, "                sgn  = simde_mm256_sign_epi8(sgn, ymm0);\n");
+        }
+
+        // Store result
+        //                min = simde_mm256_min_epu8(min, maxLLR); // 128 in epi8 is -127
 #ifndef DROP_MAXLLR
-	  fprintf(fd,"                min = simde_mm256_min_epu8(min, maxLLR);\n");
+        fprintf(fd, "                min = simde_mm256_min_epu8(min, maxLLR);\n");
 #endif
-	  //                *p_cnProcBufResBit = simde_mm256_sign_epi8(min, sgn);
-	  //                p_cnProcBufResBit++;
-	  fprintf(fd,"                ((simde__m256i*)cnProcBufRes)[%d+i] = simde_mm256_sign_epi8(min, sgn);\n",(lut_startAddrCnGroups[5]>>5)+(j*bitOffsetInGroup));
-	  fprintf(fd,"              }\n");
+        //                *p_cnProcBufResBit = simde_mm256_sign_epi8(min, sgn);
+        //                p_cnProcBufResBit++;
+        fprintf(fd,
+                "                ((simde__m256i*)cnProcBufRes)[%d+i] = simde_mm256_sign_epi8(min, sgn);\n",
+                (lut_startAddrCnGroups[5] >> 5) + (j * bitOffsetInGroup));
+        fprintf(fd, "              }\n");
         }
     }
 
@@ -495,15 +526,15 @@ void nrLDPC_cnProc_BG1_generator_AVX2(const char* dir, int R)
   // Process group with 9 BNs
   fprintf(fd,"//Process group with 9 BNs\n");
   // Offset is 2*384/32 = 24
-  const uint8_t lut_idxCnProcG9[9][8] = {{24,48,72,96,120,144,168,192}, {0,48,72,96,120,144,168,192},
-					 {0,24,72,96,120,144,168,192}, {0,24,48,96,120,144,168,192},
-					 {0,24,48,72,120,144,168,192}, {0,24,48,72,96,144,168,192},
-					 {0,24,48,72,96,120,168,192}, {0,24,48,72,96,120,144,192},
-					 {0,24,48,72,96,120,144,168}};
-
-
-
-
+  const uint8_t lut_idxCnProcG9[9][8] = {{24, 48, 72, 96, 120, 144, 168, 192},
+                                         {0, 48, 72, 96, 120, 144, 168, 192},
+                                         {0, 24, 72, 96, 120, 144, 168, 192},
+                                         {0, 24, 48, 96, 120, 144, 168, 192},
+                                         {0, 24, 48, 72, 120, 144, 168, 192},
+                                         {0, 24, 48, 72, 96, 144, 168, 192},
+                                         {0, 24, 48, 72, 96, 120, 168, 192},
+                                         {0, 24, 48, 72, 96, 120, 144, 192},
+                                         {0, 24, 48, 72, 96, 120, 144, 168}};
 
   if (lut_numCnInCnGroups[6] > 0)
     {
@@ -522,59 +553,64 @@ void nrLDPC_cnProc_BG1_generator_AVX2(const char* dir, int R)
      
       for (j=0; j<9; j++)
         {
-	  // Set of results pointer to correct BN address
-	  //p_cnProcBufResBit = p_cnProcBufRes + (j*bitOffsetInGroup);
+        // Set of results pointer to correct BN address
+        // p_cnProcBufResBit = p_cnProcBufRes + (j*bitOffsetInGroup);
 
-	  // Loop over CNs
-	  //	  for (i=0; i<M; i++,iprime++)
-	  //            {
-	  fprintf(fd,"            for (int i=0;i<M;i++) {\n");
-	  // Abs and sign of 32 CNs (first BN)
-	  //                ymm0 = p_cnProcBuf[lut_idxCnProcG3[j][0] + i];
-	  fprintf(fd,"                ymm0 = ((simde__m256i*)cnProcBuf)[%d+i];\n",(lut_startAddrCnGroups[6]>>5)+lut_idxCnProcG9[j][0]);
-	  //                sgn  = simde_mm256_sign_epi8(ones, ymm0);
-	  fprintf(fd,"                sgn  = simde_mm256_sign_epi8(ones, ymm0);\n");
-	  //                min  = simde_mm256_abs_epi8(ymm0);
-	  fprintf(fd,"                min  = simde_mm256_abs_epi8(ymm0);\n");
-	  
-	  
-	  // Loop over BNs
-	  for (k=1; k<8; k++)
-	    {
-	      fprintf(fd,"                ymm0 = ((simde__m256i*)cnProcBuf)[%d+i];\n",(lut_startAddrCnGroups[6]>>5)+lut_idxCnProcG9[j][k]);
-	      
-	      //                min  = simde_mm256_min_epu8(min, simde_mm256_abs_epi8(ymm0));
-	      fprintf(fd,"                min  = simde_mm256_min_epu8(min, simde_mm256_abs_epi8(ymm0));\n");
-	      
-	      //                sgn  = simde_mm256_sign_epi8(sgn, ymm0);
-	      fprintf(fd,"                sgn  = simde_mm256_sign_epi8(sgn, ymm0);\n");
-	    }
-	  
-	  // Store result
-	  //                min = simde_mm256_min_epu8(min, maxLLR); // 128 in epi8 is -127
+        // Loop over CNs
+        //      for (i=0; i<M; i++,iprime++)
+        //            {
+        fprintf(fd, "            for (int i=0;i<M;i++) {\n");
+        // Abs and sign of 32 CNs (first BN)
+        //                ymm0 = p_cnProcBuf[lut_idxCnProcG3[j][0] + i];
+        fprintf(fd,
+                "                ymm0 = ((simde__m256i*)cnProcBuf)[%d+i];\n",
+                (lut_startAddrCnGroups[6] >> 5) + lut_idxCnProcG9[j][0]);
+        //                sgn  = simde_mm256_sign_epi8(ones, ymm0);
+        fprintf(fd, "                sgn  = simde_mm256_sign_epi8(ones, ymm0);\n");
+        //                min  = simde_mm256_abs_epi8(ymm0);
+        fprintf(fd, "                min  = simde_mm256_abs_epi8(ymm0);\n");
+
+        // Loop over BNs
+        for (k = 1; k < 8; k++) {
+          fprintf(fd,
+                  "                ymm0 = ((simde__m256i*)cnProcBuf)[%d+i];\n",
+                  (lut_startAddrCnGroups[6] >> 5) + lut_idxCnProcG9[j][k]);
+
+          //                min  = simde_mm256_min_epu8(min, simde_mm256_abs_epi8(ymm0));
+          fprintf(fd, "                min  = simde_mm256_min_epu8(min, simde_mm256_abs_epi8(ymm0));\n");
+
+          //                sgn  = simde_mm256_sign_epi8(sgn, ymm0);
+          fprintf(fd, "                sgn  = simde_mm256_sign_epi8(sgn, ymm0);\n");
+        }
+
+        // Store result
+        //                min = simde_mm256_min_epu8(min, maxLLR); // 128 in epi8 is -127
 #ifndef DROP_MAXLLR
-	  fprintf(fd,"                min = simde_mm256_min_epu8(min, maxLLR);\n");
+        fprintf(fd, "                min = simde_mm256_min_epu8(min, maxLLR);\n");
 #endif
-	  //                *p_cnProcBufResBit = simde_mm256_sign_epi8(min, sgn);
-	  //                p_cnProcBufResBit++;
-	  fprintf(fd,"                ((simde__m256i*)cnProcBufRes)[%d+i] = simde_mm256_sign_epi8(min, sgn);\n",(lut_startAddrCnGroups[6]>>5)+(j*bitOffsetInGroup));
-	  fprintf(fd,"            }\n");
-	}
+        //                *p_cnProcBufResBit = simde_mm256_sign_epi8(min, sgn);
+        //                p_cnProcBufResBit++;
+        fprintf(fd,
+                "                ((simde__m256i*)cnProcBufRes)[%d+i] = simde_mm256_sign_epi8(min, sgn);\n",
+                (lut_startAddrCnGroups[6] >> 5) + (j * bitOffsetInGroup));
+        fprintf(fd, "            }\n");
+      }
     }
 
   // =====================================================================
   // Process group with 10 BNs
   fprintf(fd,"//Process group with 10 BNs\n");
   // Offset is 1*384/32 = 12
-  const uint8_t lut_idxCnProcG10[10][9] = {{12,24,36,48,60,72,84,96,108}, {0,24,36,48,60,72,84,96,108},
-					   {0,12,36,48,60,72,84,96,108}, {0,12,24,48,60,72,84,96,108},
-					   {0,12,24,36,60,72,84,96,108}, {0,12,24,36,48,72,84,96,108},
-					   {0,12,24,36,48,60,84,96,108}, {0,12,24,36,48,60,72,96,108},
-					   {0,12,24,36,48,60,72,84,108}, {0,12,24,36,48,60,72,84,96}};
-
-
-
-
+  const uint8_t lut_idxCnProcG10[10][9] = {{12, 24, 36, 48, 60, 72, 84, 96, 108},
+                                           {0, 24, 36, 48, 60, 72, 84, 96, 108},
+                                           {0, 12, 36, 48, 60, 72, 84, 96, 108},
+                                           {0, 12, 24, 48, 60, 72, 84, 96, 108},
+                                           {0, 12, 24, 36, 60, 72, 84, 96, 108},
+                                           {0, 12, 24, 36, 48, 72, 84, 96, 108},
+                                           {0, 12, 24, 36, 48, 60, 84, 96, 108},
+                                           {0, 12, 24, 36, 48, 60, 72, 96, 108},
+                                           {0, 12, 24, 36, 48, 60, 72, 84, 108},
+                                           {0, 12, 24, 36, 48, 60, 72, 84, 96}};
 
   if (lut_numCnInCnGroups[7] > 0)
     {
@@ -594,62 +630,75 @@ void nrLDPC_cnProc_BG1_generator_AVX2(const char* dir, int R)
       
       for (j=0; j<10; j++)
         {
-	  // Set of results pointer to correct BN address
-	  //p_cnProcBufResBit = p_cnProcBufRes + (j*bitOffsetInGroup);
+        // Set of results pointer to correct BN address
+        // p_cnProcBufResBit = p_cnProcBufRes + (j*bitOffsetInGroup);
 
-	  // Loop over CNs
-	  //	  for (i=0; i<M; i++,iprime++)
-	  //            {
-	  fprintf(fd,"            for (int i=0;i<M;i++) {\n");
-	  // Abs and sign of 32 CNs (first BN)
-	  //                ymm0 = p_cnProcBuf[lut_idxCnProcG3[j][0] + i];
-	  fprintf(fd,"                ymm0 = ((simde__m256i*)cnProcBuf)[%d+i];\n",(lut_startAddrCnGroups[7]>>5)+lut_idxCnProcG10[j][0]);
-	  //                sgn  = simde_mm256_sign_epi8(ones, ymm0);
-	  fprintf(fd,"                sgn  = simde_mm256_sign_epi8(ones, ymm0);\n");
-	  //                min  = simde_mm256_abs_epi8(ymm0);
-	  fprintf(fd,"                min  = simde_mm256_abs_epi8(ymm0);\n");
-	  
-	  
-	  // Loop over BNs
-	  for (k=1; k<9; k++)
-	    {
-	      fprintf(fd,"                ymm0 = ((simde__m256i*)cnProcBuf)[%d+i];\n",(lut_startAddrCnGroups[7]>>5)+lut_idxCnProcG10[j][k]);
-	      
-	      //                min  = simde_mm256_min_epu8(min, simde_mm256_abs_epi8(ymm0));
-	      fprintf(fd,"                min  = simde_mm256_min_epu8(min, simde_mm256_abs_epi8(ymm0));\n");
-	      
-	      //                sgn  = simde_mm256_sign_epi8(sgn, ymm0);
-	      fprintf(fd,"                sgn  = simde_mm256_sign_epi8(sgn, ymm0);\n");
-	    }
-	  
-	  // Store result
-	  //                min = simde_mm256_min_epu8(min, maxLLR); // 128 in epi8 is -127
-#ifndef DROP_MAXLLR
-	  fprintf(fd,"                min = simde_mm256_min_epu8(min, maxLLR);\n");
-#endif	  
-	  //                *p_cnProcBufResBit = simde_mm256_sign_epi8(min, sgn);
-	  //                p_cnProcBufResBit++;
-	  fprintf(fd,"                ((simde__m256i*)cnProcBufRes)[%d+i] = simde_mm256_sign_epi8(min, sgn);\n",(lut_startAddrCnGroups[7]>>5)+(j*bitOffsetInGroup));
-	  fprintf(fd,"            }\n");
+        // Loop over CNs
+        //      for (i=0; i<M; i++,iprime++)
+        //            {
+        fprintf(fd, "            for (int i=0;i<M;i++) {\n");
+        // Abs and sign of 32 CNs (first BN)
+        //                ymm0 = p_cnProcBuf[lut_idxCnProcG3[j][0] + i];
+        fprintf(fd,
+                "                ymm0 = ((simde__m256i*)cnProcBuf)[%d+i];\n",
+                (lut_startAddrCnGroups[7] >> 5) + lut_idxCnProcG10[j][0]);
+        //                sgn  = simde_mm256_sign_epi8(ones, ymm0);
+        fprintf(fd, "                sgn  = simde_mm256_sign_epi8(ones, ymm0);\n");
+        //                min  = simde_mm256_abs_epi8(ymm0);
+        fprintf(fd, "                min  = simde_mm256_abs_epi8(ymm0);\n");
+
+        // Loop over BNs
+        for (k = 1; k < 9; k++) {
+          fprintf(fd,
+                  "                ymm0 = ((simde__m256i*)cnProcBuf)[%d+i];\n",
+                  (lut_startAddrCnGroups[7] >> 5) + lut_idxCnProcG10[j][k]);
+
+          //                min  = simde_mm256_min_epu8(min, simde_mm256_abs_epi8(ymm0));
+          fprintf(fd, "                min  = simde_mm256_min_epu8(min, simde_mm256_abs_epi8(ymm0));\n");
+
+          //                sgn  = simde_mm256_sign_epi8(sgn, ymm0);
+          fprintf(fd, "                sgn  = simde_mm256_sign_epi8(sgn, ymm0);\n");
         }
-    }
+
+        // Store result
+        //                min = simde_mm256_min_epu8(min, maxLLR); // 128 in epi8 is -127
+#ifndef DROP_MAXLLR
+        fprintf(fd, "                min = simde_mm256_min_epu8(min, maxLLR);\n");
+#endif
+        //                *p_cnProcBufResBit = simde_mm256_sign_epi8(min, sgn);
+        //                p_cnProcBufResBit++;
+        fprintf(fd,
+                "                ((simde__m256i*)cnProcBufRes)[%d+i] = simde_mm256_sign_epi8(min, sgn);\n",
+                (lut_startAddrCnGroups[7] >> 5) + (j * bitOffsetInGroup));
+        fprintf(fd, "            }\n");
+      }
+  }
 
 
   // =====================================================================
   // Process group with 19 BNs
   fprintf(fd,"//Process group with 19 BNs\n");
   // Offset is 4*384/32 = 12
-  const uint16_t lut_idxCnProcG19[19][18] = {{48,96,144,192,240,288,336,384,432,480,528,576,624,672,720,768,816,864}, {0,96,144,192,240,288,336,384,432,480,528,576,624,672,720,768,816,864},
-					     {0,48,144,192,240,288,336,384,432,480,528,576,624,672,720,768,816,864}, {0,48,96,192,240,288,336,384,432,480,528,576,624,672,720,768,816,864},
-					     {0,48,96,144,240,288,336,384,432,480,528,576,624,672,720,768,816,864}, {0,48,96,144,192,288,336,384,432,480,528,576,624,672,720,768,816,864},
-					     {0,48,96,144,192,240,336,384,432,480,528,576,624,672,720,768,816,864}, {0,48,96,144,192,240,288,384,432,480,528,576,624,672,720,768,816,864},
-					     {0,48,96,144,192,240,288,336,432,480,528,576,624,672,720,768,816,864}, {0,48,96,144,192,240,288,336,384,480,528,576,624,672,720,768,816,864},
-					     {0,48,96,144,192,240,288,336,384,432,528,576,624,672,720,768,816,864}, {0,48,96,144,192,240,288,336,384,432,480,576,624,672,720,768,816,864},
-					     {0,48,96,144,192,240,288,336,384,432,480,528,624,672,720,768,816,864}, {0,48,96,144,192,240,288,336,384,432,480,528,576,672,720,768,816,864},
-					     {0,48,96,144,192,240,288,336,384,432,480,528,576,624,720,768,816,864}, {0,48,96,144,192,240,288,336,384,432,480,528,576,624,672,768,816,864},
-					     {0,48,96,144,192,240,288,336,384,432,480,528,576,624,672,720,816,864}, {0,48,96,144,192,240,288,336,384,432,480,528,576,624,672,720,768,864},
-					     {0,48,96,144,192,240,288,336,384,432,480,528,576,624,672,720,768,816}};
-
+  const uint16_t lut_idxCnProcG19[19][18] = {
+      {48, 96, 144, 192, 240, 288, 336, 384, 432, 480, 528, 576, 624, 672, 720, 768, 816, 864},
+      {0, 96, 144, 192, 240, 288, 336, 384, 432, 480, 528, 576, 624, 672, 720, 768, 816, 864},
+      {0, 48, 144, 192, 240, 288, 336, 384, 432, 480, 528, 576, 624, 672, 720, 768, 816, 864},
+      {0, 48, 96, 192, 240, 288, 336, 384, 432, 480, 528, 576, 624, 672, 720, 768, 816, 864},
+      {0, 48, 96, 144, 240, 288, 336, 384, 432, 480, 528, 576, 624, 672, 720, 768, 816, 864},
+      {0, 48, 96, 144, 192, 288, 336, 384, 432, 480, 528, 576, 624, 672, 720, 768, 816, 864},
+      {0, 48, 96, 144, 192, 240, 336, 384, 432, 480, 528, 576, 624, 672, 720, 768, 816, 864},
+      {0, 48, 96, 144, 192, 240, 288, 384, 432, 480, 528, 576, 624, 672, 720, 768, 816, 864},
+      {0, 48, 96, 144, 192, 240, 288, 336, 432, 480, 528, 576, 624, 672, 720, 768, 816, 864},
+      {0, 48, 96, 144, 192, 240, 288, 336, 384, 480, 528, 576, 624, 672, 720, 768, 816, 864},
+      {0, 48, 96, 144, 192, 240, 288, 336, 384, 432, 528, 576, 624, 672, 720, 768, 816, 864},
+      {0, 48, 96, 144, 192, 240, 288, 336, 384, 432, 480, 576, 624, 672, 720, 768, 816, 864},
+      {0, 48, 96, 144, 192, 240, 288, 336, 384, 432, 480, 528, 624, 672, 720, 768, 816, 864},
+      {0, 48, 96, 144, 192, 240, 288, 336, 384, 432, 480, 528, 576, 672, 720, 768, 816, 864},
+      {0, 48, 96, 144, 192, 240, 288, 336, 384, 432, 480, 528, 576, 624, 720, 768, 816, 864},
+      {0, 48, 96, 144, 192, 240, 288, 336, 384, 432, 480, 528, 576, 624, 672, 768, 816, 864},
+      {0, 48, 96, 144, 192, 240, 288, 336, 384, 432, 480, 528, 576, 624, 672, 720, 816, 864},
+      {0, 48, 96, 144, 192, 240, 288, 336, 384, 432, 480, 528, 576, 624, 672, 720, 768, 864},
+      {0, 48, 96, 144, 192, 240, 288, 336, 384, 432, 480, 528, 576, 624, 672, 720, 768, 816}};
 
   if (lut_numCnInCnGroups[8] > 0)
     {
@@ -669,45 +718,49 @@ void nrLDPC_cnProc_BG1_generator_AVX2(const char* dir, int R)
       
       for (j=0; j<19; j++)
         {
-	  // Set of results pointer to correct BN address
-	  //p_cnProcBufResBit = p_cnProcBufRes + (j*bitOffsetInGroup);
+        // Set of results pointer to correct BN address
+        // p_cnProcBufResBit = p_cnProcBufRes + (j*bitOffsetInGroup);
 
-	  // Loop over CNs
-	  //	  for (i=0; i<M; i++,iprime++)
-	  //            {
-	  fprintf(fd,"            for (int i=0;i<M;i++) {\n");
-	  // Abs and sign of 32 CNs (first BN)
-	  //                ymm0 = p_cnProcBuf[lut_idxCnProcG3[j][0] + i];
-	  fprintf(fd,"                ymm0 = ((simde__m256i*)cnProcBuf)[%d+i];\n",(lut_startAddrCnGroups[8]>>5)+lut_idxCnProcG19[j][0]);
-	  //                sgn  = simde_mm256_sign_epi8(ones, ymm0);
-	  fprintf(fd,"                sgn  = simde_mm256_sign_epi8(ones, ymm0);\n");
-	  //                min  = simde_mm256_abs_epi8(ymm0);
-	  fprintf(fd,"                min  = simde_mm256_abs_epi8(ymm0);\n");
-	  
-	  
-	  // Loop over BNs
-	  for (k=1; k<18; k++)
-	    {
-	      fprintf(fd,"                ymm0 = ((simde__m256i*)cnProcBuf)[%d+i];\n",(lut_startAddrCnGroups[8]>>5)+lut_idxCnProcG19[j][k]);
-	      
-	      //                min  = simde_mm256_min_epu8(min, simde_mm256_abs_epi8(ymm0));
-	      fprintf(fd,"                min  = simde_mm256_min_epu8(min, simde_mm256_abs_epi8(ymm0));\n");
-	      
-	      //                sgn  = simde_mm256_sign_epi8(sgn, ymm0);
-	      fprintf(fd,"                sgn  = simde_mm256_sign_epi8(sgn, ymm0);\n");
-	    }
-	  
-	  // Store result
-	  //                min = simde_mm256_min_epu8(min, maxLLR); // 128 in epi8 is -127
-#ifndef DROP_MAXLLR
-	  fprintf(fd,"                min = simde_mm256_min_epu8(min, maxLLR);\n");
-#endif	  
-	  //                *p_cnProcBufResBit = simde_mm256_sign_epi8(min, sgn);
-	  //                p_cnProcBufResBit++;
-	  fprintf(fd,"                ((simde__m256i*)cnProcBufRes)[%d+i] = simde_mm256_sign_epi8(min, sgn);\n",(lut_startAddrCnGroups[8]>>5)+(j*bitOffsetInGroup));
-	  fprintf(fd,"            }\n");
+        // Loop over CNs
+        //      for (i=0; i<M; i++,iprime++)
+        //            {
+        fprintf(fd, "            for (int i=0;i<M;i++) {\n");
+        // Abs and sign of 32 CNs (first BN)
+        //                ymm0 = p_cnProcBuf[lut_idxCnProcG3[j][0] + i];
+        fprintf(fd,
+                "                ymm0 = ((simde__m256i*)cnProcBuf)[%d+i];\n",
+                (lut_startAddrCnGroups[8] >> 5) + lut_idxCnProcG19[j][0]);
+        //                sgn  = simde_mm256_sign_epi8(ones, ymm0);
+        fprintf(fd, "                sgn  = simde_mm256_sign_epi8(ones, ymm0);\n");
+        //                min  = simde_mm256_abs_epi8(ymm0);
+        fprintf(fd, "                min  = simde_mm256_abs_epi8(ymm0);\n");
+
+        // Loop over BNs
+        for (k = 1; k < 18; k++) {
+          fprintf(fd,
+                  "                ymm0 = ((simde__m256i*)cnProcBuf)[%d+i];\n",
+                  (lut_startAddrCnGroups[8] >> 5) + lut_idxCnProcG19[j][k]);
+
+          //                min  = simde_mm256_min_epu8(min, simde_mm256_abs_epi8(ymm0));
+          fprintf(fd, "                min  = simde_mm256_min_epu8(min, simde_mm256_abs_epi8(ymm0));\n");
+
+          //                sgn  = simde_mm256_sign_epi8(sgn, ymm0);
+          fprintf(fd, "                sgn  = simde_mm256_sign_epi8(sgn, ymm0);\n");
         }
-    }
+
+        // Store result
+        //                min = simde_mm256_min_epu8(min, maxLLR); // 128 in epi8 is -127
+#ifndef DROP_MAXLLR
+        fprintf(fd, "                min = simde_mm256_min_epu8(min, maxLLR);\n");
+#endif
+        //                *p_cnProcBufResBit = simde_mm256_sign_epi8(min, sgn);
+        //                p_cnProcBufResBit++;
+        fprintf(fd,
+                "                ((simde__m256i*)cnProcBufRes)[%d+i] = simde_mm256_sign_epi8(min, sgn);\n",
+                (lut_startAddrCnGroups[8] >> 5) + (j * bitOffsetInGroup));
+        fprintf(fd, "            }\n");
+      }
+  }
 
   fprintf(fd,"}\n");
   fclose(fd);

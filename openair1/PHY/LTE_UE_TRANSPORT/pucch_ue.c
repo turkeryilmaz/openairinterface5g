@@ -41,18 +41,16 @@
 
 #include "../LTE_TRANSPORT/pucch_extern.h"
 
-
-
 void generate_pucch1x(int32_t **txdataF,
-		      LTE_DL_FRAME_PARMS *frame_parms,
-		      uint8_t ncs_cell[20][7],
-		      PUCCH_FMT_t fmt,
-		      PUCCH_CONFIG_DEDICATED *pucch_config_dedicated,
-		      uint16_t n1_pucch,
-		      uint8_t shortened_format,
-		      uint8_t *payload,
-		      int16_t amp,
-		      uint8_t subframe)
+                      LTE_DL_FRAME_PARMS *frame_parms,
+                      uint8_t ncs_cell[20][7],
+                      PUCCH_FMT_t fmt,
+                      PUCCH_CONFIG_DEDICATED *pucch_config_dedicated,
+                      uint16_t n1_pucch,
+                      uint8_t shortened_format,
+                      uint8_t *payload,
+                      int16_t amp,
+                      uint8_t subframe)
 {
 
   uint32_t u,v,n;
@@ -101,8 +99,14 @@ void generate_pucch1x(int32_t **txdataF,
   printf("[PHY] PUCCH: cNcs1/deltaPUCCH_Shift %d, Nprime %d, n1_pucch %d\n",thres,Nprime,n1_pucch);
 #endif
 
-  LOG_D(PHY,"[PHY] PUCCH: n1_pucch %d, thres %d Ncs1_div_deltaPUCCH_Shift %d (12/deltaPUCCH_Shift) %d Nprime_div_deltaPUCCH_Shift %d \n",
-		              n1_pucch, thres, Ncs1_div_deltaPUCCH_Shift, (int)(12/deltaPUCCH_Shift), Nprime_div_deltaPUCCH_Shift);
+  LOG_D(
+      PHY,
+      "[PHY] PUCCH: n1_pucch %d, thres %d Ncs1_div_deltaPUCCH_Shift %d (12/deltaPUCCH_Shift) %d Nprime_div_deltaPUCCH_Shift %d \n",
+      n1_pucch,
+      thres,
+      Ncs1_div_deltaPUCCH_Shift,
+      (int)(12 / deltaPUCCH_Shift),
+      Nprime_div_deltaPUCCH_Shift);
   LOG_D(PHY,"[PHY] PUCCH: deltaPUCCH_Shift %d, Nprime %d\n",deltaPUCCH_Shift,Nprime);
 
 
@@ -258,11 +262,11 @@ void generate_pucch1x(int32_t **txdataF,
             }
 
             break;
-	  case pucch_format1b_csA2:
-	  case pucch_format1b_csA3:
-	  case pucch_format1b_csA4:
-	    AssertFatal(1==0,"PUCCH format 1b_csX not supported yet\n");
-	    break;
+          case pucch_format1b_csA2:
+          case pucch_format1b_csA3:
+          case pucch_format1b_csA4:
+            AssertFatal(1 == 0, "PUCCH format 1b_csX not supported yet\n");
+            break;
           case pucch_format2:
           case pucch_format2a:
           case pucch_format2b:
@@ -362,26 +366,22 @@ inline void pucch2x_modulation(uint8_t *btilde,int16_t *d,int16_t amp) {
 
 }
 
-
-
-uint32_t pucch_code[13] = {0xFFFFF,0x5A933,0x10E5A,0x6339C,0x73CE0,
-			   0xFFC00,0xD8E64,0x4F6B0,0x218EC,0x1B746,
-			   0x0FFFF,0x33FFF,0x3FFFC};
-
+uint32_t pucch_code[13] =
+    {0xFFFFF, 0x5A933, 0x10E5A, 0x6339C, 0x73CE0, 0xFFC00, 0xD8E64, 0x4F6B0, 0x218EC, 0x1B746, 0x0FFFF, 0x33FFF, 0x3FFFC};
 
 void generate_pucch2x(int32_t **txdataF,
-		      LTE_DL_FRAME_PARMS *fp,
-		      uint8_t ncs_cell[20][7],
-		      PUCCH_FMT_t fmt,
-		      PUCCH_CONFIG_DEDICATED *pucch_config_dedicated,
-		      uint16_t n2_pucch,
-		      uint8_t *payload,
-		      int A,
-		      int B2,
-		      int16_t amp,
-		      uint8_t subframe,
-		      uint16_t rnti) {
-
+                      LTE_DL_FRAME_PARMS *fp,
+                      uint8_t ncs_cell[20][7],
+                      PUCCH_FMT_t fmt,
+                      PUCCH_CONFIG_DEDICATED *pucch_config_dedicated,
+                      uint16_t n2_pucch,
+                      uint8_t *payload,
+                      int A,
+                      int B2,
+                      int16_t amp,
+                      uint8_t subframe,
+                      uint16_t rnti)
+{
   int i,j;
   uint32_t B=0;
   uint8_t btilde[20] = {0};
@@ -510,7 +510,7 @@ void generate_pucch2x(int32_t **txdataF,
       zptr+=12;
 
       if ((l!=1)&&(l!=5))  //these are PUCCH data symbols so increment data index
-	     data_ind+=2;
+        data_ind += 2;
     } // l
   } //ns
 

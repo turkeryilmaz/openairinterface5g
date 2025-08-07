@@ -218,8 +218,8 @@ int trx_eth_read_udp_IF4p5(openair0_device *device, openair0_timestamp *timestam
     if (bytes_received ==-1) {
       eth->num_rx_errors++;
       if (errno == EAGAIN) {
-	printf("Lost IF4p5 connection with %s\n", inet_ntoa(eth->dest_addrd.sin_addr));
-	return -1;
+        printf("Lost IF4p5 connection with %s\n", inet_ntoa(eth->dest_addrd.sin_addr));
+        return -1;
       } else if (errno == EWOULDBLOCK) {
         block_cnt++;
         usleep(10);
@@ -230,7 +230,7 @@ int trx_eth_read_udp_IF4p5(openair0_device *device, openair0_timestamp *timestam
           goto again;
         }
       } else {
-	return(-1);
+        return (-1);
         //perror("ETHERNET IF4p5 READ");
         //printf("(%s):\n", strerror(errno));
       }
@@ -274,13 +274,9 @@ int trx_eth_write_udp_IF4p5(openair0_device *device, openair0_timestamp timestam
    
   eth->tx_nsamps = nblocks;
 
-  bytes_sent = sendto(eth->sockfdd[0/*cc%eth->num_fd*/],
-		      buff[0], 
-		      packet_size,
-		      0,
-		      (struct sockaddr*)&eth->dest_addrd,
-		      eth->addr_len);
-  
+  bytes_sent =
+      sendto(eth->sockfdd[0 /*cc%eth->num_fd*/], buff[0], packet_size, 0, (struct sockaddr *)&eth->dest_addrd, eth->addr_len);
+
   if (bytes_sent == -1) {
     eth->num_tx_errors++;
     perror("error writing to remote unit (user) : ");
@@ -289,7 +285,7 @@ int trx_eth_write_udp_IF4p5(openair0_device *device, openair0_timestamp timestam
     eth->tx_actual_nsamps = bytes_sent>>1;
     eth->tx_count++;
   }
-  return (bytes_sent);  	  
+  return (bytes_sent);
 }
 
 
@@ -336,9 +332,15 @@ void *trx_eth_write_udp_cmd(udpTXelem_t *udpTXelem) {
   TS -= device->txrx_offset; 
   int TSinc = (6*256*device->sampling_rate_ratio_d)/device->sampling_rate_ratio_n;
   int len=256;
-  LOG_D(NR_PHY,"in eth send: TS %llu (%llu),txrx_offset %d,d %d, n %d, buff[0] %p buff[1] %p\n",
-        (unsigned long long)TS,(unsigned long long)timestamp,device->txrx_offset,device->sampling_rate_ratio_d,device->sampling_rate_ratio_n,
-	buff[0],buff[1]);
+  LOG_D(NR_PHY,
+        "in eth send: TS %llu (%llu),txrx_offset %d,d %d, n %d, buff[0] %p buff[1] %p\n",
+        (unsigned long long)TS,
+        (unsigned long long)timestamp,
+        device->txrx_offset,
+        device->sampling_rate_ratio_d,
+        device->sampling_rate_ratio_n,
+        buff[0],
+        buff[1]);
   for (int offset=0;offset<nsamps;offset+=256,TS+=TSinc) {
     // OAI modified SEQ_ID (4 bytes)
     *(uint64_t *)(buff2 + 6) = TS;
@@ -372,9 +374,9 @@ void *trx_eth_write_udp_cmd(udpTXelem_t *udpTXelem) {
                           (struct sockaddr*)&eth->dest_addrd,
                           eth->addr_len);
       if ( bytes_sent == -1) {
-  	eth->num_tx_errors++;
-	perror("ETHERNET WRITE: ");
-	exit(-1);
+        eth->num_tx_errors++;
+        perror("ETHERNET WRITE: ");
+        exit(-1);
       } else {
         eth->tx_actual_nsamps=bytes_sent>>2;
         eth->tx_count++;
@@ -386,23 +388,34 @@ void *trx_eth_write_udp_cmd(udpTXelem_t *udpTXelem) {
   return(NULL);
 }
 
-int trx_eth_write_udp(openair0_device *device, openair0_timestamp timestamp, void **buff, int fd_ind, int nsamps, int flags, int nant) {	
-
-    union udpTXReqUnion id = {.s={(uint64_t)timestamp,nsamps,0}};
-    notifiedFIFO_elt_t *req=newNotifiedFIFO_elt(sizeof(udpTXelem_t), id.p, device->utx[fd_ind]->resp,NULL);
-    udpTXelem_t * udptxelem=(udpTXelem_t *) NotifiedFifoData(req);
-    udptxelem->device = device;
-    udptxelem->timestamp = timestamp;
-    udptxelem->buff = calloc(nant,sizeof(void*));
-    memcpy(udptxelem->buff,buff,nant*sizeof(void*));    
-    udptxelem->fd_ind = fd_ind;
-    udptxelem->nsamps = nsamps;
-    udptxelem->flags = flags;
-    udptxelem->nant = nant;
-    pushNotifiedFIFO(device->utx[fd_ind]->resp, req);
-    LOG_D(PHY,"Pushed to TX FH FIFO, TS %llu, nsamps %d, nant %d buffs[0] %p buffs[1] %p\n",
-          (unsigned long long)timestamp,nsamps,nant,udptxelem->buff[0],udptxelem->buff[1]);
-    return(0);
+int trx_eth_write_udp(openair0_device *device,
+                      openair0_timestamp timestamp,
+                      void **buff,
+                      int fd_ind,
+                      int nsamps,
+                      int flags,
+                      int nant)
+{
+  union udpTXReqUnion id = {.s = {(uint64_t)timestamp, nsamps, 0}};
+  notifiedFIFO_elt_t *req = newNotifiedFIFO_elt(sizeof(udpTXelem_t), id.p, device->utx[fd_ind]->resp, NULL);
+  udpTXelem_t *udptxelem = (udpTXelem_t *)NotifiedFifoData(req);
+  udptxelem->device = device;
+  udptxelem->timestamp = timestamp;
+  udptxelem->buff = calloc(nant, sizeof(void *));
+  memcpy(udptxelem->buff, buff, nant * sizeof(void *));
+  udptxelem->fd_ind = fd_ind;
+  udptxelem->nsamps = nsamps;
+  udptxelem->flags = flags;
+  udptxelem->nant = nant;
+  pushNotifiedFIFO(device->utx[fd_ind]->resp, req);
+  LOG_D(PHY,
+        "Pushed to TX FH FIFO, TS %llu, nsamps %d, nant %d buffs[0] %p buffs[1] %p\n",
+        (unsigned long long)timestamp,
+        nsamps,
+        nant,
+        udptxelem->buff[0],
+        udptxelem->buff[1]);
+  return (0);
 }
 void *udp_write_thread(void *arg) {
 
@@ -468,9 +481,9 @@ void *udp_read_thread(void *arg) {
       fhstate->TS[aid] =  TS;
       int64_t offset =  TS - fhstate->TS0;
       if (offset > 0) offset = offset % device->openair0_cfg->rxsize;
-      else offset = TS % device->openair0_cfg->rxsize + ((((uint64_t)1)<<63)-(fhstate->TS0-1)) % device->openair0_cfg->rxsize;   
+      else offset = TS % device->openair0_cfg->rxsize + ((((uint64_t)1)<<63)-(fhstate->TS0-1)) % device->openair0_cfg->rxsize;
       // need to do memcpy since there is no guarantee that aid is the same each time, otherwise we could have used
-      // zero-copy and corrected the header component.   	 
+      // zero-copy and corrected the header component.
 
       memcpy((void*)(device->openair0_cfg->rxbase[aid]+offset),
              (void*)&buffer[APP_HEADER_SIZE_BYTES],
@@ -525,22 +538,20 @@ int trx_eth_read_udp(openair0_device *device, openair0_timestamp *timestamp, uin
 
 
 int trx_eth_ctlsend_udp(openair0_device *device, void *msg, ssize_t msg_len) {
-
-  return(sendto(((eth_state_t*)device->priv)->sockfdc,
-		msg,
-		msg_len,
-		0,
-		(struct sockaddr *)&((eth_state_t*)device->priv)->dest_addrc,
-		((eth_state_t*)device->priv)->addr_len));
+  return (sendto(((eth_state_t *)device->priv)->sockfdc,
+                 msg,
+                 msg_len,
+                 0,
+                 (struct sockaddr *)&((eth_state_t *)device->priv)->dest_addrc,
+                 ((eth_state_t *)device->priv)->addr_len));
 }
 
 
 int trx_eth_ctlrecv_udp(openair0_device *device, void *msg, ssize_t msg_len) {
-  
-  return (recvfrom(((eth_state_t*)device->priv)->sockfdc,
-		   msg,
-		   msg_len,
-		   0,
-		   (struct sockaddr *)&((eth_state_t*)device->priv)->dest_addrc,
-		   (socklen_t *)&((eth_state_t*)device->priv)->addr_len));
+  return (recvfrom(((eth_state_t *)device->priv)->sockfdc,
+                   msg,
+                   msg_len,
+                   0,
+                   (struct sockaddr *)&((eth_state_t *)device->priv)->dest_addrc,
+                   (socklen_t *)&((eth_state_t *)device->priv)->addr_len));
 }

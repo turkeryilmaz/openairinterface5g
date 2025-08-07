@@ -453,7 +453,7 @@ uint8_t get_reset_ack(LTE_DL_FRAME_PARMS *frame_parms,
 
     LOG_D(PHY,"dl subframe %d send_harq_status %d cw_idx %d, reset %d\n",subframe_dl0, status, cw_idx, do_reset);
     if(do_reset)
-    	harq_ack[subframe_dl0].send_harq_status = 0;
+      harq_ack[subframe_dl0].send_harq_status = 0;
     //printf("get_ack: Getting ACK/NAK for PDSCH (subframe %d) => %d\n",subframe_dl,o_ACK[0]);
   } else {
     switch (frame_parms->tdd_config) {
@@ -580,9 +580,10 @@ uint8_t get_reset_ack(LTE_DL_FRAME_PARMS *frame_parms,
       pN_bundled[0] = harq_ack[subframe_rx].vDAI_UL;
       status = harq_ack[subframe_dl0].send_harq_status + harq_ack[subframe_dl1].send_harq_status;
 
-      //LOG_D(PHY,"TDD Config3 UL Sfn %d, dl Sfn0 %d status %d o_Ack %d, dl Sfn1 %d status %d o_Ack %d subframe_rx %d N_bundled %d \n",
-      //	  subframe_tx, subframe_dl0, harq_ack[subframe_dl0].send_harq_status,harq_ack[subframe_dl0].ack,
-      //    subframe_dl1, harq_ack[subframe_dl1].send_harq_status,harq_ack[subframe_dl1].ack, subframe_rx, pN_bundled[0]);
+      // LOG_D(PHY,"TDD Config3 UL Sfn %d, dl Sfn0 %d status %d o_Ack %d, dl Sfn1 %d status %d o_Ack %d subframe_rx %d N_bundled %d
+      // \n",
+      //       subframe_tx, subframe_dl0, harq_ack[subframe_dl0].send_harq_status,harq_ack[subframe_dl0].ack,
+      //     subframe_dl1, harq_ack[subframe_dl1].send_harq_status,harq_ack[subframe_dl1].ack, subframe_rx, pN_bundled[0]);
       if (do_reset) {
         // reset ACK/NACK status
         harq_ack[subframe_dl0].ack = 2;
@@ -750,8 +751,7 @@ int subframe_num(LTE_DL_FRAME_PARMS *frame_parms){
     }
 }
 
-lte_subframe_t subframe_select(LTE_DL_FRAME_PARMS *frame_parms,
-		                       unsigned char subframe)
+lte_subframe_t subframe_select(LTE_DL_FRAME_PARMS *frame_parms, unsigned char subframe)
 {
   // if FDD return dummy value
   if (frame_parms->frame_type == FDD)
@@ -999,38 +999,38 @@ void compute_srs_pos(frame_type_t frameType,uint16_t isrs,uint16_t *psrsPeriodic
 
       if((isrs>9)&&(isrs<15))
         {
-	  *psrsPeriodicity=5;
-	  *psrsOffset=isrs-10;
+        *psrsPeriodicity = 5;
+        *psrsOffset = isrs - 10;
         }
       if((isrs>14)&&(isrs<25))
         {
-	  *psrsPeriodicity=10;
-	  *psrsOffset=isrs-15;
+        *psrsPeriodicity = 10;
+        *psrsOffset = isrs - 15;
         }
       if((isrs>24)&&(isrs<45))
         {
-	  *psrsPeriodicity=20;
-	  *psrsOffset=isrs-25;
+        *psrsPeriodicity = 20;
+        *psrsOffset = isrs - 25;
         }
       if((isrs>44)&&(isrs<85))
         {
-	  *psrsPeriodicity=40;
-	  *psrsOffset=isrs-45;
+        *psrsPeriodicity = 40;
+        *psrsOffset = isrs - 45;
         }
       if((isrs>84)&&(isrs<165))
         {
-	  *psrsPeriodicity=80;
-	  *psrsOffset=isrs-85;
+        *psrsPeriodicity = 80;
+        *psrsOffset = isrs - 85;
         }
       if((isrs>164)&&(isrs<325))
         {
-	  *psrsPeriodicity=160;
-	  *psrsOffset=isrs-165;
+        *psrsPeriodicity = 160;
+        *psrsOffset = isrs - 165;
         }
       if((isrs>324)&&(isrs<645))
         {
-	  *psrsPeriodicity=320;
-	  *psrsOffset=isrs-325;
+        *psrsPeriodicity = 320;
+        *psrsOffset = isrs - 325;
         }
       
       AssertFatal(isrs<=644,"Isrs out of range %d>644\n",isrs);
@@ -1038,47 +1038,38 @@ void compute_srs_pos(frame_type_t frameType,uint16_t isrs,uint16_t *psrsPeriodic
     }
     else
       {
-        if(isrs<2)
-	  {
-            *psrsPeriodicity=2;
-            *psrsOffset=isrs;
-	  }
-        if((isrs>1)&&(isrs<7))
-	  {
-            *psrsPeriodicity=5;
-            *psrsOffset=isrs-2;
-        }
-        if((isrs>6)&&(isrs<17))
-	  {
-            *psrsPeriodicity=10;
-            *psrsOffset=isrs-7;
-	  }
-        if((isrs>16)&&(isrs<37))
-	  {
-            *psrsPeriodicity=20;
-            *psrsOffset=isrs-17;
-	  }
-        if((isrs>36)&&(isrs<77))
-	  {
-            *psrsPeriodicity=40;
-            *psrsOffset=isrs-37;
-	  }
-        if((isrs>76)&&(isrs<157))
-	  {
-            *psrsPeriodicity=80;
-            *psrsOffset=isrs-77;
-	  }
-        if((isrs>156)&&(isrs<317))
-	  {
-            *psrsPeriodicity=160;
-            *psrsOffset=isrs-157;
-        }
-        if((isrs>316)&&(isrs<637))
-	  {
-            *psrsPeriodicity=320;
-            *psrsOffset=isrs-317;
-	  }
-	AssertFatal(isrs<=636,"Isrs out of range %d>636\n",isrs);
-	
+      if (isrs < 2) {
+        *psrsPeriodicity = 2;
+        *psrsOffset = isrs;
+      }
+      if ((isrs > 1) && (isrs < 7)) {
+        *psrsPeriodicity = 5;
+        *psrsOffset = isrs - 2;
+      }
+      if ((isrs > 6) && (isrs < 17)) {
+        *psrsPeriodicity = 10;
+        *psrsOffset = isrs - 7;
+      }
+      if ((isrs > 16) && (isrs < 37)) {
+        *psrsPeriodicity = 20;
+        *psrsOffset = isrs - 17;
+      }
+      if ((isrs > 36) && (isrs < 77)) {
+        *psrsPeriodicity = 40;
+        *psrsOffset = isrs - 37;
+      }
+      if ((isrs > 76) && (isrs < 157)) {
+        *psrsPeriodicity = 80;
+        *psrsOffset = isrs - 77;
+      }
+      if ((isrs > 156) && (isrs < 317)) {
+        *psrsPeriodicity = 160;
+        *psrsOffset = isrs - 157;
+      }
+      if ((isrs > 316) && (isrs < 637)) {
+        *psrsPeriodicity = 320;
+        *psrsOffset = isrs - 317;
+      }
+      AssertFatal(isrs <= 636, "Isrs out of range %d>636\n", isrs);
       }
 }

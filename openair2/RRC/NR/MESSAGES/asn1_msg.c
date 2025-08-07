@@ -673,8 +673,7 @@ int do_NR_RRCReconfigurationComplete_for_nsa(
   rrc_complete_msg.rrc_TransactionIdentifier = Transaction_id;
   rrc_complete_msg.criticalExtensions.choice.rrcReconfigurationComplete =
         CALLOC(1, sizeof(*rrc_complete_msg.criticalExtensions.choice.rrcReconfigurationComplete));
-  rrc_complete_msg.criticalExtensions.present =
-	NR_RRCReconfigurationComplete__criticalExtensions_PR_rrcReconfigurationComplete;
+  rrc_complete_msg.criticalExtensions.present = NR_RRCReconfigurationComplete__criticalExtensions_PR_rrcReconfigurationComplete;
   rrc_complete_msg.criticalExtensions.choice.rrcReconfigurationComplete->nonCriticalExtension = NULL;
   rrc_complete_msg.criticalExtensions.choice.rrcReconfigurationComplete->lateNonCriticalExtension = NULL;
   if (0) {

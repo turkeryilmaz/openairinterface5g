@@ -88,7 +88,7 @@ else
   Z = (Kprime/Kb);
 
  LOG_D(PHY,"nr segmentation B %u Bprime %u Kprime %u z %u \n", B, Bprime, Kprime, Z);
-	  
+
   if (Z <= 2) {
     *K = 2;
   } else if (Z<=16) { // increase by 1 byte til here

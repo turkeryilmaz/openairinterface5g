@@ -84,8 +84,9 @@ int send_tick(RU_t *ru)
   rru_config_msg.len  = sizeof(RRU_CONFIG_msg_t)-MAX_RRU_CONFIG_SIZE;
 
   LOG_I(PHY,"Sending RAU tick to RRU %d\n",ru->idx);
-  AssertFatal((ru->ifdevice.trx_ctlsend_func(&ru->ifdevice,&rru_config_msg,rru_config_msg.len)!=-1),
-	      "RU %d cannot access remote radio\n",ru->idx);
+  AssertFatal((ru->ifdevice.trx_ctlsend_func(&ru->ifdevice, &rru_config_msg, rru_config_msg.len) != -1),
+              "RU %d cannot access remote radio\n",
+              ru->idx);
 
   return 0;
 }
@@ -97,22 +98,25 @@ int send_config(RU_t *ru,
   rru_config_msg.type = RRU_config;
   rru_config_msg.len  = sizeof(RRU_CONFIG_msg_t)-MAX_RRU_CONFIG_SIZE+sizeof(RRU_config_t);
 
-  LOG_I(PHY,"Sending Configuration to RRU %d (num_bands %d,band0 %d,txfreq %u,rxfreq %u,att_tx %d,att_rx %d,N_RB_DL %d,N_RB_UL %d,3/4FS %d, prach_FO %d, prach_CI %d\n",
-    ru->idx,
-	((RRU_config_t *)&rru_config_msg.msg[0])->num_bands,
-	((RRU_config_t *)&rru_config_msg.msg[0])->band_list[0],
-	((RRU_config_t *)&rru_config_msg.msg[0])->tx_freq[0],
-	((RRU_config_t *)&rru_config_msg.msg[0])->rx_freq[0],
-	((RRU_config_t *)&rru_config_msg.msg[0])->att_tx[0],
-	((RRU_config_t *)&rru_config_msg.msg[0])->att_rx[0],
-	((RRU_config_t *)&rru_config_msg.msg[0])->N_RB_DL[0],
-	((RRU_config_t *)&rru_config_msg.msg[0])->N_RB_UL[0],
-	((RRU_config_t *)&rru_config_msg.msg[0])->threequarter_fs[0],
-	((RRU_config_t *)&rru_config_msg.msg[0])->prach_FreqOffset[0],
-	((RRU_config_t *)&rru_config_msg.msg[0])->prach_ConfigIndex[0]);
+  LOG_I(PHY,
+        "Sending Configuration to RRU %d (num_bands %d,band0 %d,txfreq %u,rxfreq %u,att_tx %d,att_rx %d,N_RB_DL %d,N_RB_UL "
+        "%d,3/4FS %d, prach_FO %d, prach_CI %d\n",
+        ru->idx,
+        ((RRU_config_t *)&rru_config_msg.msg[0])->num_bands,
+        ((RRU_config_t *)&rru_config_msg.msg[0])->band_list[0],
+        ((RRU_config_t *)&rru_config_msg.msg[0])->tx_freq[0],
+        ((RRU_config_t *)&rru_config_msg.msg[0])->rx_freq[0],
+        ((RRU_config_t *)&rru_config_msg.msg[0])->att_tx[0],
+        ((RRU_config_t *)&rru_config_msg.msg[0])->att_rx[0],
+        ((RRU_config_t *)&rru_config_msg.msg[0])->N_RB_DL[0],
+        ((RRU_config_t *)&rru_config_msg.msg[0])->N_RB_UL[0],
+        ((RRU_config_t *)&rru_config_msg.msg[0])->threequarter_fs[0],
+        ((RRU_config_t *)&rru_config_msg.msg[0])->prach_FreqOffset[0],
+        ((RRU_config_t *)&rru_config_msg.msg[0])->prach_ConfigIndex[0]);
 
-  AssertFatal((ru->ifdevice.trx_ctlsend_func(&ru->ifdevice,&rru_config_msg,rru_config_msg.len)!=-1),
-	      "RU %d failed send configuration to remote radio\n",ru->idx);
+  AssertFatal((ru->ifdevice.trx_ctlsend_func(&ru->ifdevice, &rru_config_msg, rru_config_msg.len) != -1),
+              "RU %d failed send configuration to remote radio\n",
+              ru->idx);
 
   return 0;
 }
@@ -127,8 +131,14 @@ int send_capab(RU_t *ru)
   rru_config_msg.type = RRU_capabilities; 
   rru_config_msg.len  = sizeof(RRU_CONFIG_msg_t)-MAX_RRU_CONFIG_SIZE+sizeof(RRU_capabilities_t);
   cap                 = (RRU_capabilities_t*)&rru_config_msg.msg[0];
-  LOG_I(PHY,"Sending Capabilities (len %d, num_bands %d,max_pdschReferenceSignalPower %d, max_rxgain %d, nb_tx %d, nb_rx %d)\n",
-	(int)rru_config_msg.len,ru->num_bands,ru->max_pdschReferenceSignalPower,ru->max_rxgain,ru->nb_tx,ru->nb_rx);
+  LOG_I(PHY,
+        "Sending Capabilities (len %d, num_bands %d,max_pdschReferenceSignalPower %d, max_rxgain %d, nb_tx %d, nb_rx %d)\n",
+        (int)rru_config_msg.len,
+        ru->num_bands,
+        ru->max_pdschReferenceSignalPower,
+        ru->max_rxgain,
+        ru->nb_tx,
+        ru->nb_rx);
   switch (ru->function) {
   case NGFI_RRU_IF4p5:
     cap->FH_fmt                                   = OAI_IF4p5_only;
@@ -145,16 +155,22 @@ int send_capab(RU_t *ru)
   }
   cap->num_bands                                  = ru->num_bands;
   for (i=0;i<ru->num_bands;i++) {
-    LOG_I(PHY,"Band %d: nb_rx %d nb_tx %d pdschReferenceSignalPower %d rxgain %d\n",
-	  ru->band[i],ru->nb_rx,ru->nb_tx,ru->max_pdschReferenceSignalPower,ru->max_rxgain);
+    LOG_I(PHY,
+          "Band %d: nb_rx %d nb_tx %d pdschReferenceSignalPower %d rxgain %d\n",
+          ru->band[i],
+          ru->nb_rx,
+          ru->nb_tx,
+          ru->max_pdschReferenceSignalPower,
+          ru->max_rxgain);
     cap->band_list[i]                             = ru->band[i];
     cap->nb_rx[i]                                 = ru->nb_rx;
     cap->nb_tx[i]                                 = ru->nb_tx;
     cap->max_pdschReferenceSignalPower[i]         = ru->max_pdschReferenceSignalPower;
     cap->max_rxgain[i]                            = ru->max_rxgain;
   }
-  AssertFatal((ru->ifdevice.trx_ctlsend_func(&ru->ifdevice,&rru_config_msg,rru_config_msg.len)!=-1),
-	      "RU %d failed send capabilities to RAU\n",ru->idx);
+  AssertFatal((ru->ifdevice.trx_ctlsend_func(&ru->ifdevice, &rru_config_msg, rru_config_msg.len) != -1),
+              "RU %d failed send capabilities to RAU\n",
+              ru->idx);
 
   return 0;
 }
@@ -174,52 +190,56 @@ int attach_rru(RU_t *ru)
     rru_config_msg.type = RAU_tick; 
     rru_config_msg.len  = sizeof(RRU_CONFIG_msg_t)-MAX_RRU_CONFIG_SIZE;
     LOG_I(PHY,"Sending RAU tick to RRU %d\n",ru->idx);
-    AssertFatal((ru->ifdevice.trx_ctlsend_func(&ru->ifdevice,&rru_config_msg,rru_config_msg.len)!=-1),
-		"RU %d cannot access remote radio\n",ru->idx);
+    AssertFatal((ru->ifdevice.trx_ctlsend_func(&ru->ifdevice, &rru_config_msg, rru_config_msg.len) != -1),
+                "RU %d cannot access remote radio\n",
+                ru->idx);
 
     msg_len  = sizeof(RRU_CONFIG_msg_t)-MAX_RRU_CONFIG_SIZE+sizeof(RRU_capabilities_t);
 
-    // wait for answer with timeout  
-    if ((len = ru->ifdevice.trx_ctlrecv_func(&ru->ifdevice,
-					     &rru_config_msg,
-					     msg_len))<0) {
-      LOG_I(PHY,"Waiting for RRU %d\n",ru->idx);     
-    }
-    else if (rru_config_msg.type == RRU_capabilities) {
+    // wait for answer with timeout
+    if ((len = ru->ifdevice.trx_ctlrecv_func(&ru->ifdevice, &rru_config_msg, msg_len)) < 0) {
+      LOG_I(PHY,"Waiting for RRU %d\n",ru->idx);
+    } else if (rru_config_msg.type == RRU_capabilities) {
       AssertFatal(rru_config_msg.len==msg_len,"Received capabilities with incorrect length (%d!=%d)\n",(int)rru_config_msg.len,(int)msg_len);
-      LOG_I(PHY,"Received capabilities from RRU %d (len %d/%d, num_bands %d,max_pdschReferenceSignalPower %d, max_rxgain %d, nb_tx %d, nb_rx %d)\n",ru->idx,
-	    (int)rru_config_msg.len,(int)msg_len,
-	    ((RRU_capabilities_t*)&rru_config_msg.msg[0])->num_bands,
-	    ((RRU_capabilities_t*)&rru_config_msg.msg[0])->max_pdschReferenceSignalPower[0],
-	    ((RRU_capabilities_t*)&rru_config_msg.msg[0])->max_rxgain[0],
-	    ((RRU_capabilities_t*)&rru_config_msg.msg[0])->nb_tx[0],
-	    ((RRU_capabilities_t*)&rru_config_msg.msg[0])->nb_rx[0]);
+      LOG_I(PHY,
+            "Received capabilities from RRU %d (len %d/%d, num_bands %d,max_pdschReferenceSignalPower %d, max_rxgain %d, nb_tx %d, "
+            "nb_rx %d)\n",
+            ru->idx,
+            (int)rru_config_msg.len,
+            (int)msg_len,
+            ((RRU_capabilities_t *)&rru_config_msg.msg[0])->num_bands,
+            ((RRU_capabilities_t *)&rru_config_msg.msg[0])->max_pdschReferenceSignalPower[0],
+            ((RRU_capabilities_t *)&rru_config_msg.msg[0])->max_rxgain[0],
+            ((RRU_capabilities_t *)&rru_config_msg.msg[0])->nb_tx[0],
+            ((RRU_capabilities_t *)&rru_config_msg.msg[0])->nb_rx[0]);
       received_capabilities=1;
-    }
-    else {
-      LOG_E(PHY,"Received incorrect message %d from RRU %d\n",rru_config_msg.type,ru->idx); 
+    } else {
+      LOG_E(PHY,"Received incorrect message %d from RRU %d\n",rru_config_msg.type,ru->idx);
     }
   }
-  configure_ru(ru,
-	       (RRU_capabilities_t *)&rru_config_msg.msg[0]);
-		    
+  configure_ru(ru, (RRU_capabilities_t *)&rru_config_msg.msg[0]);
+
   rru_config_msg.type = RRU_config;
   rru_config_msg.len  = sizeof(RRU_CONFIG_msg_t)-MAX_RRU_CONFIG_SIZE+sizeof(RRU_config_t);
-  LOG_I(PHY,"Sending Configuration to RRU %d (num_bands %d,band0 %d,txfreq %u,rxfreq %u,att_tx %d,att_rx %d,N_RB_DL %d,N_RB_UL %d,3/4FS %d, prach_FO %d, prach_CI %d)\n",ru->idx,
-	((RRU_config_t *)&rru_config_msg.msg[0])->num_bands,
-	((RRU_config_t *)&rru_config_msg.msg[0])->band_list[0],
-	((RRU_config_t *)&rru_config_msg.msg[0])->tx_freq[0],
-	((RRU_config_t *)&rru_config_msg.msg[0])->rx_freq[0],
-	((RRU_config_t *)&rru_config_msg.msg[0])->att_tx[0],
-	((RRU_config_t *)&rru_config_msg.msg[0])->att_rx[0],
-	((RRU_config_t *)&rru_config_msg.msg[0])->N_RB_DL[0],
-	((RRU_config_t *)&rru_config_msg.msg[0])->N_RB_UL[0],
-	((RRU_config_t *)&rru_config_msg.msg[0])->threequarter_fs[0],
-	((RRU_config_t *)&rru_config_msg.msg[0])->prach_FreqOffset[0],
-	((RRU_config_t *)&rru_config_msg.msg[0])->prach_ConfigIndex[0]);
+  LOG_I(PHY,
+        "Sending Configuration to RRU %d (num_bands %d,band0 %d,txfreq %u,rxfreq %u,att_tx %d,att_rx %d,N_RB_DL %d,N_RB_UL "
+        "%d,3/4FS %d, prach_FO %d, prach_CI %d)\n",
+        ru->idx,
+        ((RRU_config_t *)&rru_config_msg.msg[0])->num_bands,
+        ((RRU_config_t *)&rru_config_msg.msg[0])->band_list[0],
+        ((RRU_config_t *)&rru_config_msg.msg[0])->tx_freq[0],
+        ((RRU_config_t *)&rru_config_msg.msg[0])->rx_freq[0],
+        ((RRU_config_t *)&rru_config_msg.msg[0])->att_tx[0],
+        ((RRU_config_t *)&rru_config_msg.msg[0])->att_rx[0],
+        ((RRU_config_t *)&rru_config_msg.msg[0])->N_RB_DL[0],
+        ((RRU_config_t *)&rru_config_msg.msg[0])->N_RB_UL[0],
+        ((RRU_config_t *)&rru_config_msg.msg[0])->threequarter_fs[0],
+        ((RRU_config_t *)&rru_config_msg.msg[0])->prach_FreqOffset[0],
+        ((RRU_config_t *)&rru_config_msg.msg[0])->prach_ConfigIndex[0]);
 
-  AssertFatal((ru->ifdevice.trx_ctlsend_func(&ru->ifdevice,&rru_config_msg,rru_config_msg.len)!=-1),
-	      "RU %d failed send configuration to remote radio\n",ru->idx);
+  AssertFatal((ru->ifdevice.trx_ctlsend_func(&ru->ifdevice, &rru_config_msg, rru_config_msg.len) != -1),
+              "RU %d failed send configuration to remote radio\n",
+              ru->idx);
 
   return 0;
 }
@@ -228,7 +248,7 @@ int attach_rru(RU_t *ru)
 int connect_rau(RU_t *ru)
 {
   RRU_CONFIG_msg_t   rru_config_msg;
-  ssize_t	     msg_len;
+  ssize_t msg_len;
   int                tick_received          = 0;
   int                configuration_received = 0;
   RRU_capabilities_t *cap;
@@ -240,15 +260,12 @@ int connect_rau(RU_t *ru)
 
     msg_len  = sizeof(RRU_CONFIG_msg_t)-MAX_RRU_CONFIG_SIZE;
 
-    if ((len = ru->ifdevice.trx_ctlrecv_func(&ru->ifdevice,
-					     &rru_config_msg,
-					     msg_len))<0) {
-      LOG_I(PHY,"Waiting for RAU\n");     
-    }
-    else {
+    if ((len = ru->ifdevice.trx_ctlrecv_func(&ru->ifdevice, &rru_config_msg, msg_len)) < 0) {
+      LOG_I(PHY,"Waiting for RAU\n");
+    } else {
       if (rru_config_msg.type == RAU_tick) {
-	LOG_I(PHY,"Tick received from RAU\n");
-	tick_received = 1;
+        LOG_I(PHY, "Tick received from RAU\n");
+        tick_received = 1;
       }
       else LOG_E(PHY,"Received erroneous message (%d)from RAU, expected RAU_tick\n",rru_config_msg.type);
     }
@@ -259,8 +276,14 @@ int connect_rau(RU_t *ru)
   rru_config_msg.type = RRU_capabilities; 
   rru_config_msg.len  = sizeof(RRU_CONFIG_msg_t)-MAX_RRU_CONFIG_SIZE+sizeof(RRU_capabilities_t);
   cap                 = (RRU_capabilities_t*)&rru_config_msg.msg[0];
-  LOG_I(PHY,"Sending Capabilities (len %d, num_bands %d,max_pdschReferenceSignalPower %d, max_rxgain %d, nb_tx %d, nb_rx %d)\n",
-	(int)rru_config_msg.len,ru->num_bands,ru->max_pdschReferenceSignalPower,ru->max_rxgain,ru->nb_tx,ru->nb_rx);
+  LOG_I(PHY,
+        "Sending Capabilities (len %d, num_bands %d,max_pdschReferenceSignalPower %d, max_rxgain %d, nb_tx %d, nb_rx %d)\n",
+        (int)rru_config_msg.len,
+        ru->num_bands,
+        ru->max_pdschReferenceSignalPower,
+        ru->max_rxgain,
+        ru->nb_tx,
+        ru->nb_rx);
   switch (ru->function) {
   case NGFI_RRU_IF4p5:
     cap->FH_fmt                                   = OAI_IF4p5_only;
@@ -277,42 +300,45 @@ int connect_rau(RU_t *ru)
   }
   cap->num_bands                                  = ru->num_bands;
   for (i=0;i<ru->num_bands;i++) {
-    LOG_I(PHY,"Band %d: nb_rx %d nb_tx %d pdschReferenceSignalPower %d rxgain %d\n",
-	  ru->band[i],ru->nb_rx,ru->nb_tx,ru->max_pdschReferenceSignalPower,ru->max_rxgain);
+    LOG_I(PHY,
+          "Band %d: nb_rx %d nb_tx %d pdschReferenceSignalPower %d rxgain %d\n",
+          ru->band[i],
+          ru->nb_rx,
+          ru->nb_tx,
+          ru->max_pdschReferenceSignalPower,
+          ru->max_rxgain);
     cap->band_list[i]                             = ru->band[i];
     cap->nb_rx[i]                                 = ru->nb_rx;
     cap->nb_tx[i]                                 = ru->nb_tx;
     cap->max_pdschReferenceSignalPower[i]         = ru->max_pdschReferenceSignalPower;
     cap->max_rxgain[i]                            = ru->max_rxgain;
   }
-  AssertFatal((ru->ifdevice.trx_ctlsend_func(&ru->ifdevice,&rru_config_msg,rru_config_msg.len)!=-1),
-	      "RU %d failed send capabilities to RAU\n",ru->idx);
+  AssertFatal((ru->ifdevice.trx_ctlsend_func(&ru->ifdevice, &rru_config_msg, rru_config_msg.len) != -1),
+              "RU %d failed send capabilities to RAU\n",
+              ru->idx);
 
   // wait for configuration
   rru_config_msg.len  = sizeof(RRU_CONFIG_msg_t)-MAX_RRU_CONFIG_SIZE+sizeof(RRU_config_t);
   while (configuration_received == 0) {
+    if ((len = ru->ifdevice.trx_ctlrecv_func(&ru->ifdevice, &rru_config_msg, rru_config_msg.len)) < 0) {
+      LOG_I(PHY,"Waiting for configuration from RAU\n");
+    } else {
+      LOG_I(PHY,
+            "Configuration received from RAU  (num_bands %d,band0 %d,txfreq %u,rxfreq %u,att_tx %d,att_rx %d,N_RB_DL %d,N_RB_UL "
+            "%d,3/4FS %d, prach_FO %d, prach_CI %d)\n",
+            ((RRU_config_t *)&rru_config_msg.msg[0])->num_bands,
+            ((RRU_config_t *)&rru_config_msg.msg[0])->band_list[0],
+            ((RRU_config_t *)&rru_config_msg.msg[0])->tx_freq[0],
+            ((RRU_config_t *)&rru_config_msg.msg[0])->rx_freq[0],
+            ((RRU_config_t *)&rru_config_msg.msg[0])->att_tx[0],
+            ((RRU_config_t *)&rru_config_msg.msg[0])->att_rx[0],
+            ((RRU_config_t *)&rru_config_msg.msg[0])->N_RB_DL[0],
+            ((RRU_config_t *)&rru_config_msg.msg[0])->N_RB_UL[0],
+            ((RRU_config_t *)&rru_config_msg.msg[0])->threequarter_fs[0],
+            ((RRU_config_t *)&rru_config_msg.msg[0])->prach_FreqOffset[0],
+            ((RRU_config_t *)&rru_config_msg.msg[0])->prach_ConfigIndex[0]);
 
-    if ((len = ru->ifdevice.trx_ctlrecv_func(&ru->ifdevice,
-					     &rru_config_msg,
-					     rru_config_msg.len))<0) {
-      LOG_I(PHY,"Waiting for configuration from RAU\n");     
-    }    
-    else {
-      LOG_I(PHY,"Configuration received from RAU  (num_bands %d,band0 %d,txfreq %u,rxfreq %u,att_tx %d,att_rx %d,N_RB_DL %d,N_RB_UL %d,3/4FS %d, prach_FO %d, prach_CI %d)\n",
-	    ((RRU_config_t *)&rru_config_msg.msg[0])->num_bands,
-	    ((RRU_config_t *)&rru_config_msg.msg[0])->band_list[0],
-	    ((RRU_config_t *)&rru_config_msg.msg[0])->tx_freq[0],
-	    ((RRU_config_t *)&rru_config_msg.msg[0])->rx_freq[0],
-	    ((RRU_config_t *)&rru_config_msg.msg[0])->att_tx[0],
-	    ((RRU_config_t *)&rru_config_msg.msg[0])->att_rx[0],
-	    ((RRU_config_t *)&rru_config_msg.msg[0])->N_RB_DL[0],
-	    ((RRU_config_t *)&rru_config_msg.msg[0])->N_RB_UL[0],
-	    ((RRU_config_t *)&rru_config_msg.msg[0])->threequarter_fs[0],
-	    ((RRU_config_t *)&rru_config_msg.msg[0])->prach_FreqOffset[0],
-	    ((RRU_config_t *)&rru_config_msg.msg[0])->prach_ConfigIndex[0]);
-      
-      configure_rru(ru,
-		    (void*)&rru_config_msg.msg[0]);
+      configure_rru(ru, (void *)&rru_config_msg.msg[0]);
       configuration_received = 1;
     }
   }
@@ -376,8 +402,10 @@ void configure_ru(void *ruu, void *arg)
 
   if (capabilities->FH_fmt < MAX_FH_FMTs) LOG_I(PHY, "RU FH options %s\n",rru_format_options[capabilities->FH_fmt]);
 
-  AssertFatal((ret=check_capabilities(ru,capabilities)) == 0,
-	      "Cannot configure RRU %d, check_capabilities returned %d\n", ru->idx,ret);
+  AssertFatal((ret = check_capabilities(ru, capabilities)) == 0,
+              "Cannot configure RRU %d, check_capabilities returned %d\n",
+              ru->idx,
+              ret);
   // take antenna capabilities of RRU
   ru->nb_tx                      = capabilities->nb_tx[0];
   ru->nb_rx                      = capabilities->nb_rx[0];
@@ -400,9 +428,11 @@ void configure_ru(void *ruu, void *arg)
   if (ru->if_south==REMOTE_IF4p5) {
     config->prach_FreqOffset[0]  = ru->frame_parms->prach_config_common.prach_ConfigInfo.prach_FreqOffset;
     config->prach_ConfigIndex[0] = ru->frame_parms->prach_config_common.prach_ConfigInfo.prach_ConfigIndex;
-    LOG_I(PHY,"REMOTE_IF4p5: prach_FrequOffset %d, prach_ConfigIndex %d\n",
-	  config->prach_FreqOffset[0],config->prach_ConfigIndex[0]);
-    
+    LOG_I(PHY,
+          "REMOTE_IF4p5: prach_FrequOffset %d, prach_ConfigIndex %d\n",
+          config->prach_FreqOffset[0],
+          config->prach_ConfigIndex[0]);
+
     int i;
     for (i=0;i<4;i++) {
       config->emtc_prach_CElevel_enable[0][i]  = ru->frame_parms->prach_emtc_config_common.prach_ConfigInfo.prach_CElevel_enable[i];
@@ -424,7 +454,7 @@ void configure_rru(void *ruu, void *arg)
   ru->frame_parms->dl_CarrierFreq                                           = config->tx_freq[0];
   ru->frame_parms->ul_CarrierFreq                                           = config->rx_freq[0];
   if (ru->frame_parms->dl_CarrierFreq == ru->frame_parms->ul_CarrierFreq) {
-	LOG_I(PHY,"Setting RRU to TDD frame type\n");
+    LOG_I(PHY, "Setting RRU to TDD frame type\n");
     ru->frame_parms->frame_type                                            = TDD;
     ru->frame_parms->tdd_config                                            = config->tdd_config[0];
     ru->frame_parms->tdd_config_S                                          = config->tdd_config_S[0];
@@ -441,8 +471,12 @@ void configure_rru(void *ruu, void *arg)
   if (ru->function==NGFI_RRU_IF4p5) {
     ru->frame_parms->att_rx = ru->att_rx;
     ru->frame_parms->att_tx = ru->att_tx;
-    LOG_I(PHY,"Setting ru->function to NGFI_RRU_IF4p5, prach_FrequOffset %d, prach_ConfigIndex %d, att (%d,%d)\n",
-	  config->prach_FreqOffset[0],config->prach_ConfigIndex[0],ru->att_tx,ru->att_rx);
+    LOG_I(PHY,
+          "Setting ru->function to NGFI_RRU_IF4p5, prach_FrequOffset %d, prach_ConfigIndex %d, att (%d,%d)\n",
+          config->prach_FreqOffset[0],
+          config->prach_ConfigIndex[0],
+          ru->att_tx,
+          ru->att_rx);
     ru->frame_parms->prach_config_common.prach_ConfigInfo.prach_FreqOffset  = config->prach_FreqOffset[0];
     ru->frame_parms->prach_config_common.prach_ConfigInfo.prach_ConfigIndex = config->prach_ConfigIndex[0];
     for (int i=0;i<4;i++) {
@@ -485,13 +519,12 @@ void* ru_thread_control( void* param )
   RRU_CONFIG_msg_t   rru_config_msg;
   ssize_t            msg_len;
   int                len;
-  int 		     ru_sf_update=0; // SF config update flag (MBSFN)
+  int ru_sf_update = 0; // SF config update flag (MBSFN)
 
   // Start IF device if any
   if (ru->start_if) {
     LOG_I(PHY,"Starting IF interface for RU %d\n",ru->idx);
-    AssertFatal(
-		ru->start_if(ru,NULL) 	== 0, "Could not start the IF device\n");
+    AssertFatal(ru->start_if(ru, NULL) == 0, "Could not start the IF device\n");
 
     if (ru->if_south != LOCAL_RF) wait_eNBs();
   }
@@ -505,257 +538,276 @@ void* ru_thread_control( void* param )
       msg_len  = sizeof(RRU_CONFIG_msg_t); // TODO : check what should be the msg len
 
       if (ru->state == RU_IDLE && ru->if_south != LOCAL_RF)
-	send_tick(ru);
+        send_tick(ru);
 
       if (ru->state == RU_RUN && ru->if_south != LOCAL_RF){
-	LTE_DL_FRAME_PARMS *fp = &ru->eNB_list[0]->frame_parms;	
-	LOG_D(PHY,"Check MBSFN SF changes\n");
-	if(fp->num_MBSFN_config != ru_sf_update){
-		ru_sf_update = fp->num_MBSFN_config;
-		LOG_W(PHY,"RU SF should be updated ... calling send_update_rru(ru)\n");
-		send_update_rru(ru,fp);
-	}
+        LTE_DL_FRAME_PARMS *fp = &ru->eNB_list[0]->frame_parms;
+        LOG_D(PHY, "Check MBSFN SF changes\n");
+        if (fp->num_MBSFN_config != ru_sf_update) {
+          ru_sf_update = fp->num_MBSFN_config;
+          LOG_W(PHY, "RU SF should be updated ... calling send_update_rru(ru)\n");
+          send_update_rru(ru, fp);
+        }
       }
 
-	
-      if ((len = ru->ifdevice.trx_ctlrecv_func(&ru->ifdevice,
-					       &rru_config_msg,
-					       msg_len))<0) {
-	LOG_D(PHY,"Waiting msg for RU %d\n", ru->idx);     
-      }
-      else
-	{
-	  switch(rru_config_msg.type)
-	    {
-	    case RAU_tick:  // RRU
-	      if (ru->if_south != LOCAL_RF){
-		LOG_I(PHY,"Received Tick msg...Ignoring\n");
-	      }else{
-		LOG_I(PHY,"Tick received from RAU\n");
-				
-		if (send_capab(ru) == 0) ru->state = RU_CONFIG;
-	      }				
-	      break;
+      if ((len = ru->ifdevice.trx_ctlrecv_func(&ru->ifdevice, &rru_config_msg, msg_len)) < 0) {
+        LOG_D(PHY, "Waiting msg for RU %d\n", ru->idx);
+      } else {
+        switch (rru_config_msg.type) {
+          case RAU_tick: // RRU
+            if (ru->if_south != LOCAL_RF) {
+              LOG_I(PHY, "Received Tick msg...Ignoring\n");
+            } else {
+              LOG_I(PHY, "Tick received from RAU\n");
 
-	    case RRU_capabilities: // RAU
-	      if (ru->if_south == LOCAL_RF) LOG_E(PHY,"Received RRU_capab msg...Ignoring\n");
-	      
-	      else{
-		msg_len  = sizeof(RRU_CONFIG_msg_t)-MAX_RRU_CONFIG_SIZE+sizeof(RRU_capabilities_t);
+              if (send_capab(ru) == 0)
+                ru->state = RU_CONFIG;
+            }
+            break;
 
-		AssertFatal(rru_config_msg.len==msg_len,"Received capabilities with incorrect length (%d!=%d)\n",(int)rru_config_msg.len,(int)msg_len);
-		LOG_I(PHY,"Received capabilities from RRU %d (len %d/%d, num_bands %d,max_pdschReferenceSignalPower %d, max_rxgain %d, nb_tx %d, nb_rx %d)\n",ru->idx,
-		      (int)rru_config_msg.len,(int)msg_len,
-		      ((RRU_capabilities_t*)&rru_config_msg.msg[0])->num_bands,
-		      ((RRU_capabilities_t*)&rru_config_msg.msg[0])->max_pdschReferenceSignalPower[0],
-		      ((RRU_capabilities_t*)&rru_config_msg.msg[0])->max_rxgain[0],
-		      ((RRU_capabilities_t*)&rru_config_msg.msg[0])->nb_tx[0],
-		      ((RRU_capabilities_t*)&rru_config_msg.msg[0])->nb_rx[0]);
+          case RRU_capabilities: // RAU
+            if (ru->if_south == LOCAL_RF)
+              LOG_E(PHY, "Received RRU_capab msg...Ignoring\n");
 
-		configure_ru(ru,(RRU_capabilities_t *)&rru_config_msg.msg[0]);
+            else {
+              msg_len = sizeof(RRU_CONFIG_msg_t) - MAX_RRU_CONFIG_SIZE + sizeof(RRU_capabilities_t);
 
-		// send config
-		if (send_config(ru,rru_config_msg) == 0) ru->state = RU_CONFIG;
-	      }
+              AssertFatal(rru_config_msg.len == msg_len,
+                          "Received capabilities with incorrect length (%d!=%d)\n",
+                          (int)rru_config_msg.len,
+                          (int)msg_len);
+              LOG_I(PHY,
+                    "Received capabilities from RRU %d (len %d/%d, num_bands %d,max_pdschReferenceSignalPower %d, max_rxgain %d, "
+                    "nb_tx %d, nb_rx %d)\n",
+                    ru->idx,
+                    (int)rru_config_msg.len,
+                    (int)msg_len,
+                    ((RRU_capabilities_t *)&rru_config_msg.msg[0])->num_bands,
+                    ((RRU_capabilities_t *)&rru_config_msg.msg[0])->max_pdschReferenceSignalPower[0],
+                    ((RRU_capabilities_t *)&rru_config_msg.msg[0])->max_rxgain[0],
+                    ((RRU_capabilities_t *)&rru_config_msg.msg[0])->nb_tx[0],
+                    ((RRU_capabilities_t *)&rru_config_msg.msg[0])->nb_rx[0]);
 
-	      break;
-				
-	    case RRU_config: // RRU
-	      if (ru->if_south == LOCAL_RF){
-		LOG_I(PHY,"Configuration received from RAU  (num_bands %d,band0 %d,txfreq %u,rxfreq %u,att_tx %d,att_rx %d,N_RB_DL %d,N_RB_UL %d,3/4FS %d, prach_FO %d, prach_CI %d)\n",
-		      ((RRU_config_t *)&rru_config_msg.msg[0])->num_bands,
-		      ((RRU_config_t *)&rru_config_msg.msg[0])->band_list[0],
-		      ((RRU_config_t *)&rru_config_msg.msg[0])->tx_freq[0],
-		      ((RRU_config_t *)&rru_config_msg.msg[0])->rx_freq[0],
-		      ((RRU_config_t *)&rru_config_msg.msg[0])->att_tx[0],
-		      ((RRU_config_t *)&rru_config_msg.msg[0])->att_rx[0],
-		      ((RRU_config_t *)&rru_config_msg.msg[0])->N_RB_DL[0],
-		      ((RRU_config_t *)&rru_config_msg.msg[0])->N_RB_UL[0],
-		      ((RRU_config_t *)&rru_config_msg.msg[0])->threequarter_fs[0],
-		      ((RRU_config_t *)&rru_config_msg.msg[0])->prach_FreqOffset[0],
-		      ((RRU_config_t *)&rru_config_msg.msg[0])->prach_ConfigIndex[0]);
-	      
-		ru->frame_parms = calloc(1, sizeof(*ru->frame_parms));
-		configure_rru(ru, (void*)&rru_config_msg.msg[0]);
+              configure_ru(ru, (RRU_capabilities_t *)&rru_config_msg.msg[0]);
 
- 					  
-		fill_rf_config(ru,ru->rf_config_file);
-		init_frame_parms(ru->frame_parms,1);
-		ru->frame_parms->nb_antennas_rx = ru->nb_rx;
-		phy_init_RU(ru);
-					 
-		//if (ru->is_slave == 1) lte_sync_time_init(&ru->frame_parms);
+              // send config
+              if (send_config(ru, rru_config_msg) == 0)
+                ru->state = RU_CONFIG;
+            }
 
-		if (ru->rfdevice.is_init != 1) openair0_device_load(&ru->rfdevice,&ru->openair0_cfg);
-		
-		if (ru->rfdevice.trx_config_func) AssertFatal((ru->rfdevice.trx_config_func(&ru->rfdevice,&ru->openair0_cfg)==0), 
-							      "Failed to configure RF device for RU %d\n",ru->idx);
+            break;
 
-		if (setup_RU_buffers(ru)!=0) {
-		  printf("Exiting, cannot initialize RU Buffers\n");
-		  exit(-1);
-		}
+          case RRU_config: // RRU
+            if (ru->if_south == LOCAL_RF) {
+              LOG_I(PHY,
+                    "Configuration received from RAU  (num_bands %d,band0 %d,txfreq %u,rxfreq %u,att_tx %d,att_rx %d,N_RB_DL "
+                    "%d,N_RB_UL %d,3/4FS %d, prach_FO %d, prach_CI %d)\n",
+                    ((RRU_config_t *)&rru_config_msg.msg[0])->num_bands,
+                    ((RRU_config_t *)&rru_config_msg.msg[0])->band_list[0],
+                    ((RRU_config_t *)&rru_config_msg.msg[0])->tx_freq[0],
+                    ((RRU_config_t *)&rru_config_msg.msg[0])->rx_freq[0],
+                    ((RRU_config_t *)&rru_config_msg.msg[0])->att_tx[0],
+                    ((RRU_config_t *)&rru_config_msg.msg[0])->att_rx[0],
+                    ((RRU_config_t *)&rru_config_msg.msg[0])->N_RB_DL[0],
+                    ((RRU_config_t *)&rru_config_msg.msg[0])->N_RB_UL[0],
+                    ((RRU_config_t *)&rru_config_msg.msg[0])->threequarter_fs[0],
+                    ((RRU_config_t *)&rru_config_msg.msg[0])->prach_FreqOffset[0],
+                    ((RRU_config_t *)&rru_config_msg.msg[0])->prach_ConfigIndex[0]);
 
-		// send CONFIG_OK
+              ru->frame_parms = calloc(1, sizeof(*ru->frame_parms));
+              configure_rru(ru, (void *)&rru_config_msg.msg[0]);
 
-		rru_config_msg.type = RRU_config_ok; 
-		rru_config_msg.len  = sizeof(RRU_CONFIG_msg_t);
-		LOG_I(PHY,"Sending CONFIG_OK to RAU %d\n", ru->idx);
+              fill_rf_config(ru, ru->rf_config_file);
+              init_frame_parms(ru->frame_parms, 1);
+              ru->frame_parms->nb_antennas_rx = ru->nb_rx;
+              phy_init_RU(ru);
 
-		AssertFatal((ru->ifdevice.trx_ctlsend_func(&ru->ifdevice,&rru_config_msg,rru_config_msg.len)!=-1),
-			    "RU %d failed send CONFIG_OK to RAU\n",ru->idx);
-                reset_proc(ru);
-		ru->state = RU_READY;
-	      } else LOG_E(PHY,"Received RRU_config msg...Ignoring\n");
-	      	
-	      break;	
+              // if (ru->is_slave == 1) lte_sync_time_init(&ru->frame_parms);
 
-	    case RRU_config_ok: // RAU
-	      if (ru->if_south == LOCAL_RF) LOG_E(PHY,"Received RRU_config_ok msg...Ignoring\n");
-	      else{
+              if (ru->rfdevice.is_init != 1)
+                openair0_device_load(&ru->rfdevice, &ru->openair0_cfg);
 
-		if (setup_RU_buffers(ru)!=0) {
-		  printf("Exiting, cannot initialize RU Buffers\n");
-		  exit(-1);
-		}
+              if (ru->rfdevice.trx_config_func)
+                AssertFatal((ru->rfdevice.trx_config_func(&ru->rfdevice, &ru->openair0_cfg) == 0),
+                            "Failed to configure RF device for RU %d\n",
+                            ru->idx);
 
-		// Set state to RUN for Master RU, Others on SYNC
-		ru->state = (ru->is_slave == 1) ? RU_SYNC : RU_RUN ;
-		ru->in_synch = 0;
-					
-
-		LOG_I(PHY, "Signaling main thread that RU %d (is_slave %d) is ready in state %s\n",ru->idx,ru->is_slave,ru_states[ru->state]);
-		pthread_mutex_lock(ru->ru_mutex);
-		*ru->ru_mask &= ~(1<<ru->idx);
-		pthread_cond_signal(ru->ru_cond);
-		pthread_mutex_unlock(ru->ru_mutex);
-					  
-		wait_sync("ru_thread_control");
-
-		// send start
-		rru_config_msg.type = RRU_start;
-		rru_config_msg.len  = sizeof(RRU_CONFIG_msg_t); // TODO: set to correct msg len
-
- 
-		LOG_I(PHY,"Sending Start to RRU %d\n", ru->idx);
-		AssertFatal((ru->ifdevice.trx_ctlsend_func(&ru->ifdevice,&rru_config_msg,rru_config_msg.len)!=-1),"Failed to send msg to RU %d\n",ru->idx);
-
-					
-		pthread_mutex_lock(&proc->mutex_ru);
-		proc->instance_cnt_ru = 1;
-		pthread_mutex_unlock(&proc->mutex_ru);
-		if (pthread_cond_signal(&proc->cond_ru_thread) != 0) {
-		  LOG_E( PHY, "ERROR pthread_cond_signal for RU %d\n",ru->idx);
-		  exit_fun( "ERROR pthread_cond_signal" );
-		  break;
-		}
-	      }		
-	      break;
-	    case RRU_config_update: //RRU
-	      if (ru->if_south == LOCAL_RF){
-		LOG_W(PHY,"Configuration update received from RAU \n");
-
-	    	msg_len  = sizeof(RRU_CONFIG_msg_t)-MAX_RRU_CONFIG_SIZE+sizeof(RRU_config_t);
-
-		LOG_W(PHY,"New MBSFN config received from RAU --- num_MBSFN_config %d\n",((RRU_config_t *)&rru_config_msg.msg[0])->num_MBSFN_config);
-	        ru->frame_parms->num_MBSFN_config = ((RRU_config_t *)&rru_config_msg.msg[0])->num_MBSFN_config;
-	        for(int i=0; i < ((RRU_config_t *)&rru_config_msg.msg[0])->num_MBSFN_config; i++){
-		 ru->frame_parms->MBSFN_config[i].mbsfn_SubframeConfig=((RRU_config_t *)&rru_config_msg.msg[0])->MBSFN_config[i].mbsfn_SubframeConfig;
-		  LOG_W(PHY,"Configuration received from RAU (num MBSFN %d, MBSFN_SubframeConfig[%d] pattern is %x )\n",
-		       ((RRU_config_t *)&rru_config_msg.msg[0])->num_MBSFN_config,
-		       i,
-		       ((RRU_config_t *)&rru_config_msg.msg[0])->MBSFN_config[i].mbsfn_SubframeConfig
-		       );
-		}
-	      } else LOG_E(PHY,"Received RRU_config msg...Ignoring\n");
-		break;
-	    case RRU_config_update_ok: //RAU
-	      if (ru->if_south == LOCAL_RF) LOG_E(PHY,"Received RRU_config_update_ok msg...Ignoring\n");
-	      else{
-			LOG_W(PHY,"Received RRU_config_update_ok msg...\n");
-	      }		
-	      break;
-
-	    case RRU_start: // RRU
-	      if (ru->if_south == LOCAL_RF){
-		LOG_I(PHY,"Start received from RAU\n");
-				
-		if (ru->state == RU_READY){
-
-		  LOG_I(PHY, "Signaling main thread that RU %d is ready\n",ru->idx);
-		  pthread_mutex_lock(ru->ru_mutex);
-		  *ru->ru_mask &= ~(1<<ru->idx);
-		  pthread_cond_signal(ru->ru_cond);
-		  pthread_mutex_unlock(ru->ru_mutex);
-						  
-		  wait_sync("ru_thread_control");
-						
-		  ru->state = (ru->is_slave == 1) ? RU_SYNC : RU_RUN ;
-	          ru->cmd   = EMPTY;			
-		  pthread_mutex_lock(&proc->mutex_ru);
-		  proc->instance_cnt_ru = 1;
-		  pthread_mutex_unlock(&proc->mutex_ru);
-		  if (pthread_cond_signal(&proc->cond_ru_thread) != 0) {
-		    LOG_E( PHY, "ERROR pthread_cond_signal for RU %d\n",ru->idx);
-		    exit_fun( "ERROR pthread_cond_signal" );
-		    break;
-		  }
-		}
-		else LOG_E(PHY,"RRU not ready, cannot start\n"); 
-		
-	      } else LOG_E(PHY,"Received RRU_start msg...Ignoring\n");
-	      
-
-	      break;
-
-	    case RRU_sync_ok: //RAU
-	      if (ru->if_south == LOCAL_RF) LOG_E(PHY,"Received RRU_sync_ok msg...Ignoring\n");
-	      else{
-		if (ru->is_slave == 1){
-                  printf("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Received RRU_sync_ok from RRU %d\n",ru->idx);
-		  // Just change the state of the RRU to unblock ru_thread()
-		  ru->state = RU_RUN;		
-		}else LOG_E(PHY,"Received RRU_sync_ok from a master RRU...Ignoring\n"); 	
-	      }
-	      break;
-            case RRU_frame_resynch: //RRU
-              if (ru->if_south != LOCAL_RF) LOG_E(PHY,"Received RRU frame resynch message, should not happen in RAU\n");
-              else {
-		LOG_I(PHY,"Received RRU_frame_resynch command\n");
-		ru->cmd = RU_FRAME_RESYNCH;
-		ru->cmdval = ((uint16_t*)&rru_config_msg.msg[0])[0];
-		LOG_I(PHY,"Received Frame Resynch message with value %d\n",ru->cmdval);
+              if (setup_RU_buffers(ru) != 0) {
+                printf("Exiting, cannot initialize RU Buffers\n");
+                exit(-1);
               }
-              break;
 
-	    case RRU_stop: // RRU
-	      if (ru->if_south == LOCAL_RF){
-		LOG_I(PHY,"Stop received from RAU\n");
+              // send CONFIG_OK
 
-		if (ru->state == RU_RUN || ru->state == RU_ERROR){
+              rru_config_msg.type = RRU_config_ok;
+              rru_config_msg.len = sizeof(RRU_CONFIG_msg_t);
+              LOG_I(PHY, "Sending CONFIG_OK to RAU %d\n", ru->idx);
 
-		  LOG_I(PHY,"Stopping RRU\n");
-		  ru->state = RU_READY;
-		  // TODO: stop ru_thread
-		}else{
-		  LOG_I(PHY,"RRU not running, can't stop\n"); 
-		}
-	      }else LOG_E(PHY,"Received RRU_stop msg...Ignoring\n");
-	      
-	      break;
+              AssertFatal((ru->ifdevice.trx_ctlsend_func(&ru->ifdevice, &rru_config_msg, rru_config_msg.len) != -1),
+                          "RU %d failed send CONFIG_OK to RAU\n",
+                          ru->idx);
+              reset_proc(ru);
+              ru->state = RU_READY;
+            } else
+              LOG_E(PHY, "Received RRU_config msg...Ignoring\n");
 
-	    default:
-	      if (ru->if_south != LOCAL_RF){
-		if (ru->state == RU_IDLE){
-		  // Keep sending TICK
-		  send_tick(ru);
-		}
-	      }
+            break;
 
-	      break;
-	    } // switch	
-	} //else
+          case RRU_config_ok: // RAU
+            if (ru->if_south == LOCAL_RF)
+              LOG_E(PHY, "Received RRU_config_ok msg...Ignoring\n");
+            else {
+              if (setup_RU_buffers(ru) != 0) {
+                printf("Exiting, cannot initialize RU Buffers\n");
+                exit(-1);
+              }
 
+              // Set state to RUN for Master RU, Others on SYNC
+              ru->state = (ru->is_slave == 1) ? RU_SYNC : RU_RUN;
+              ru->in_synch = 0;
+
+              LOG_I(PHY,
+                    "Signaling main thread that RU %d (is_slave %d) is ready in state %s\n",
+                    ru->idx,
+                    ru->is_slave,
+                    ru_states[ru->state]);
+              pthread_mutex_lock(ru->ru_mutex);
+              *ru->ru_mask &= ~(1 << ru->idx);
+              pthread_cond_signal(ru->ru_cond);
+              pthread_mutex_unlock(ru->ru_mutex);
+
+              wait_sync("ru_thread_control");
+
+              // send start
+              rru_config_msg.type = RRU_start;
+              rru_config_msg.len = sizeof(RRU_CONFIG_msg_t); // TODO: set to correct msg len
+
+              LOG_I(PHY, "Sending Start to RRU %d\n", ru->idx);
+              AssertFatal((ru->ifdevice.trx_ctlsend_func(&ru->ifdevice, &rru_config_msg, rru_config_msg.len) != -1),
+                          "Failed to send msg to RU %d\n",
+                          ru->idx);
+
+              pthread_mutex_lock(&proc->mutex_ru);
+              proc->instance_cnt_ru = 1;
+              pthread_mutex_unlock(&proc->mutex_ru);
+              if (pthread_cond_signal(&proc->cond_ru_thread) != 0) {
+                LOG_E(PHY, "ERROR pthread_cond_signal for RU %d\n", ru->idx);
+                exit_fun("ERROR pthread_cond_signal");
+                break;
+              }
+            }
+            break;
+          case RRU_config_update: // RRU
+            if (ru->if_south == LOCAL_RF) {
+              LOG_W(PHY, "Configuration update received from RAU \n");
+
+              msg_len = sizeof(RRU_CONFIG_msg_t) - MAX_RRU_CONFIG_SIZE + sizeof(RRU_config_t);
+
+              LOG_W(PHY,
+                    "New MBSFN config received from RAU --- num_MBSFN_config %d\n",
+                    ((RRU_config_t *)&rru_config_msg.msg[0])->num_MBSFN_config);
+              ru->frame_parms->num_MBSFN_config = ((RRU_config_t *)&rru_config_msg.msg[0])->num_MBSFN_config;
+              for (int i = 0; i < ((RRU_config_t *)&rru_config_msg.msg[0])->num_MBSFN_config; i++) {
+                ru->frame_parms->MBSFN_config[i].mbsfn_SubframeConfig =
+                    ((RRU_config_t *)&rru_config_msg.msg[0])->MBSFN_config[i].mbsfn_SubframeConfig;
+                LOG_W(PHY,
+                      "Configuration received from RAU (num MBSFN %d, MBSFN_SubframeConfig[%d] pattern is %x )\n",
+                      ((RRU_config_t *)&rru_config_msg.msg[0])->num_MBSFN_config,
+                      i,
+                      ((RRU_config_t *)&rru_config_msg.msg[0])->MBSFN_config[i].mbsfn_SubframeConfig);
+              }
+            } else
+              LOG_E(PHY, "Received RRU_config msg...Ignoring\n");
+            break;
+          case RRU_config_update_ok: // RAU
+            if (ru->if_south == LOCAL_RF)
+              LOG_E(PHY, "Received RRU_config_update_ok msg...Ignoring\n");
+            else {
+              LOG_W(PHY, "Received RRU_config_update_ok msg...\n");
+            }
+            break;
+
+          case RRU_start: // RRU
+            if (ru->if_south == LOCAL_RF) {
+              LOG_I(PHY, "Start received from RAU\n");
+
+              if (ru->state == RU_READY) {
+                LOG_I(PHY, "Signaling main thread that RU %d is ready\n", ru->idx);
+                pthread_mutex_lock(ru->ru_mutex);
+                *ru->ru_mask &= ~(1 << ru->idx);
+                pthread_cond_signal(ru->ru_cond);
+                pthread_mutex_unlock(ru->ru_mutex);
+
+                wait_sync("ru_thread_control");
+
+                ru->state = (ru->is_slave == 1) ? RU_SYNC : RU_RUN;
+                ru->cmd = EMPTY;
+                pthread_mutex_lock(&proc->mutex_ru);
+                proc->instance_cnt_ru = 1;
+                pthread_mutex_unlock(&proc->mutex_ru);
+                if (pthread_cond_signal(&proc->cond_ru_thread) != 0) {
+                  LOG_E(PHY, "ERROR pthread_cond_signal for RU %d\n", ru->idx);
+                  exit_fun("ERROR pthread_cond_signal");
+                  break;
+                }
+              } else
+                LOG_E(PHY, "RRU not ready, cannot start\n");
+
+            } else
+              LOG_E(PHY, "Received RRU_start msg...Ignoring\n");
+
+            break;
+
+          case RRU_sync_ok: // RAU
+            if (ru->if_south == LOCAL_RF)
+              LOG_E(PHY, "Received RRU_sync_ok msg...Ignoring\n");
+            else {
+              if (ru->is_slave == 1) {
+                printf("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Received RRU_sync_ok from RRU %d\n", ru->idx);
+                // Just change the state of the RRU to unblock ru_thread()
+                ru->state = RU_RUN;
+              } else
+                LOG_E(PHY, "Received RRU_sync_ok from a master RRU...Ignoring\n");
+            }
+            break;
+          case RRU_frame_resynch: // RRU
+            if (ru->if_south != LOCAL_RF)
+              LOG_E(PHY, "Received RRU frame resynch message, should not happen in RAU\n");
+            else {
+              LOG_I(PHY, "Received RRU_frame_resynch command\n");
+              ru->cmd = RU_FRAME_RESYNCH;
+              ru->cmdval = ((uint16_t *)&rru_config_msg.msg[0])[0];
+              LOG_I(PHY, "Received Frame Resynch message with value %d\n", ru->cmdval);
+            }
+            break;
+
+          case RRU_stop: // RRU
+            if (ru->if_south == LOCAL_RF) {
+              LOG_I(PHY, "Stop received from RAU\n");
+
+              if (ru->state == RU_RUN || ru->state == RU_ERROR) {
+                LOG_I(PHY, "Stopping RRU\n");
+                ru->state = RU_READY;
+                // TODO: stop ru_thread
+              } else {
+                LOG_I(PHY, "RRU not running, can't stop\n");
+              }
+            } else
+              LOG_E(PHY, "Received RRU_stop msg...Ignoring\n");
+
+            break;
+
+          default:
+            if (ru->if_south != LOCAL_RF) {
+              if (ru->state == RU_IDLE) {
+                // Keep sending TICK
+                send_tick(ru);
+              }
+            }
+
+            break;
+        } // switch
+      } // else
 
     }//while
   return(NULL);

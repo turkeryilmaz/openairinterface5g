@@ -6153,7 +6153,7 @@ is_dl_256QAM_supported(
 )
 //-----------------------------------------------------------------------------
 {
-  return c != NULL  // R8
+  return c != NULL // R8
          && c->NCE != NULL // R92
          && c->NCE->NCE != NULL // R94
          && c->NCE->NCE->NCE != NULL // R102
@@ -6164,12 +6164,16 @@ is_dl_256QAM_supported(
          && c->NCE->NCE->NCE->NCE->NCE->NCE->NCE->NCE != NULL // R118
          && c->NCE->NCE->NCE->NCE->NCE->NCE->NCE->NCE->NCE != NULL // R11a
          && c->NCE->NCE->NCE->NCE->NCE->NCE->NCE->NCE->NCE->NCE != NULL // R125
-	 && c->NCE->NCE->NCE->NCE->NCE->NCE->NCE->NCE->NCE->NCE->rf_Parameters_v1250 != NULL
+         && c->NCE->NCE->NCE->NCE->NCE->NCE->NCE->NCE->NCE->NCE->rf_Parameters_v1250 != NULL
          && c->NCE->NCE->NCE->NCE->NCE->NCE->NCE->NCE->NCE->NCE->rf_Parameters_v1250->supportedBandListEUTRA_v1250 != NULL
-         && c->NCE->NCE->NCE->NCE->NCE->NCE->NCE->NCE->NCE->NCE->rf_Parameters_v1250->supportedBandListEUTRA_v1250->list.array != NULL
-         && c->NCE->NCE->NCE->NCE->NCE->NCE->NCE->NCE->NCE->NCE->rf_Parameters_v1250->supportedBandListEUTRA_v1250->list.array[0]->dl_256QAM_r12 != NULL
-         && *c->NCE->NCE->NCE->NCE->NCE->NCE->NCE->NCE->NCE->NCE->rf_Parameters_v1250->supportedBandListEUTRA_v1250->list.array[0]->dl_256QAM_r12==LTE_SupportedBandEUTRA_v1250__dl_256QAM_r12_supported;
-
+         && c->NCE->NCE->NCE->NCE->NCE->NCE->NCE->NCE->NCE->NCE->rf_Parameters_v1250->supportedBandListEUTRA_v1250->list.array
+                != NULL
+         && c->NCE->NCE->NCE->NCE->NCE->NCE->NCE->NCE->NCE->NCE->rf_Parameters_v1250->supportedBandListEUTRA_v1250->list.array[0]
+                    ->dl_256QAM_r12
+                != NULL
+         && *c->NCE->NCE->NCE->NCE->NCE->NCE->NCE->NCE->NCE->NCE->rf_Parameters_v1250->supportedBandListEUTRA_v1250->list.array[0]
+                    ->dl_256QAM_r12
+                == LTE_SupportedBandEUTRA_v1250__dl_256QAM_r12_supported;
 }
 static int
 is_ul_256QAM_supported(
@@ -6482,7 +6486,7 @@ rrc_eNB_decode_dcch(
                   ue_context_p->ue_context.enb_gtp_ebi[i]  = 0;
                 }
               }
-	      gtpv1u_delete_s1u_tunnel(ctxt_pP->instance, &delete_tunnels);
+              gtpv1u_delete_s1u_tunnel(ctxt_pP->instance, &delete_tunnels);
               //S1AP_E_RAB_RELEASE_RESPONSE
               rrc_eNB_send_S1AP_E_RAB_RELEASE_RESPONSE(ctxt_pP,
                   ue_context_p,
@@ -7209,12 +7213,14 @@ void rrc_subframe_process(protocol_ctxt_t *const ctxt_pP, const int CC_id) {
         if (ue_context_p->ue_context.UE_Capability) {
           long catDL,catUL;
           get_ue_Category(ue_context_p->ue_context.UE_Capability,&catDL,&catUL);
-          fprintf(fd,"RRC UE cap: CatDL %ld, CatUL %ld, 64QAM UL %s, 256 QAM DL %s, 256 QAM UL %s, ENDC %s,\n",
-                catDL,catUL,
-		is_ul_64QAM_supported(ue_context_p->ue_context.UE_Capability) == 1 ? "yes" : "no",
-		is_dl_256QAM_supported(ue_context_p->ue_context.UE_Capability) == 1 ? "yes" : "no",
-                is_ul_256QAM_supported(ue_context_p->ue_context.UE_Capability) == 1 ? "yes" : "no",
-                is_en_dc_supported(ue_context_p->ue_context.UE_Capability) == 1 ? "yes" : "no");
+          fprintf(fd,
+                  "RRC UE cap: CatDL %ld, CatUL %ld, 64QAM UL %s, 256 QAM DL %s, 256 QAM UL %s, ENDC %s,\n",
+                  catDL,
+                  catUL,
+                  is_ul_64QAM_supported(ue_context_p->ue_context.UE_Capability) == 1 ? "yes" : "no",
+                  is_dl_256QAM_supported(ue_context_p->ue_context.UE_Capability) == 1 ? "yes" : "no",
+                  is_ul_256QAM_supported(ue_context_p->ue_context.UE_Capability) == 1 ? "yes" : "no",
+                  is_en_dc_supported(ue_context_p->ue_context.UE_Capability) == 1 ? "yes" : "no");
         }
         if (ue_context_p->ue_context.measResults) {
            fprintf(fd, "RRC PCell RSRP %ld, RSRQ %ld\n", ue_context_p->ue_context.measResults->measResultPCell.rsrpResult-140,

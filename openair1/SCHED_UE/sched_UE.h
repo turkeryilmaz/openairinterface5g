@@ -197,14 +197,11 @@ TDD, this routine computes the complex procedure described in Section 10.1 of 36
 @returns n1_pucch
 */
 uint16_t get_n1_pucch(PHY_VARS_UE *phy_vars_ue,
-		      UE_rxtx_proc_t *proc,
+                      UE_rxtx_proc_t *proc,
                       harq_status_t *harq_ack,
                       uint8_t eNB_id,
                       uint8_t *b,
                       uint8_t SR);
-
-
-
 
 /*! \brief This function retrieves the PHY UE mode. It is used as a helper function for the UE MAC.
   @param Mod_id Local UE index on which to act

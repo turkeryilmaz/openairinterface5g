@@ -199,7 +199,7 @@ void generate_pss_nr_time(const NR_DL_FRAME_PARMS *fp, const int N_ID_2, int ssb
 
     /* get pss in the time domain by applying an inverse FFT */
     dft((int16_t)get_dft(length),
-    	synchro_tmp,           /* complex input */
+        synchro_tmp,           /* complex input */
         synchroF_tmp,          /* complex output */
         1);                 /* scaling factor */
 
@@ -583,9 +583,9 @@ static int pss_search_time_nr(const c16_t **rxdata,
   }
   
   if (fo_flag){
-
-	  // fractional frequency offset computation according to Cross-correlation Synchronization Algorithm Using PSS
-	  // Shoujun Huang, Yongtao Su, Ying He and Shan Tang, "Joint time and frequency offset estimation in LTE downlink," 7th International Conference on Communications and Networking in China, 2012.
+    // fractional frequency offset computation according to Cross-correlation Synchronization Algorithm Using PSS
+    // Shoujun Huang, Yongtao Su, Ying He and Shan Tang, "Joint time and frequency offset estimation in LTE downlink," 7th
+    // International Conference on Communications and Networking in China, 2012.
 
     // Computing cross-correlation at peak on half the symbol size for first half of data
     c32_t r1 = dot_product(pssTime[pss_source],
@@ -603,7 +603,7 @@ static int pss_search_time_nr(const c16_t **rxdata,
     ffo_est = atan2(r1d.r * r2d.i - r2d.r * r1d.i, r1d.r * r2d.r + r1d.i * r2d.i) / M_PI;
 
 #ifdef DBG_PSS_NR
-	  printf("ffo %lf\n",ffo_est);
+    printf("ffo %lf\n", ffo_est);
 #endif
   }
 

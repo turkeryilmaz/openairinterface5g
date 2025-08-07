@@ -75,7 +75,7 @@ void dac(double *s_re[2],
     }
   }
 }
- 
+
 double dac_fixed_gain(double *s_re[2],
                       double *s_im[2],
                       int32_t **input,
@@ -86,8 +86,8 @@ double dac_fixed_gain(double *s_re[2],
                       uint32_t length_meas,
                       uint8_t B,
                       double txpwr_dBm,
-		      uint8_t do_amp_compute,
-		      double *amp1,
+                      uint8_t do_amp_compute,
+                      double *amp1,
                       int NB_RE)
 {
 
@@ -109,16 +109,17 @@ double dac_fixed_gain(double *s_re[2],
   AssertFatal(amp1p != NULL && *amp1p != 0.0, "Precondition to avoid UB\n");
 
 #ifdef DEBUG_DAC
-  LOG_I(OCM,"DAC: amp %f, amp1 %f dB (%d,%d), tx_power target %f (actual %f %f),length %d,pos %d\n",
-	  20*log10(amp),
-	  20*log10(*amp1p),
-	  input_offset,
-	  input_offset_meas,
-	  txpwr_dBm,
-	  10*log10((double)signal_energy((int32_t*)&input[0][input_offset_meas],length_meas)/NB_RE),
-	  10*log10((double)signal_energy((int32_t*)&input[1][input_offset_meas],length_meas)/NB_RE),
-	  length, 
-	  input_offset_meas);
+  LOG_I(OCM,
+        "DAC: amp %f, amp1 %f dB (%d,%d), tx_power target %f (actual %f %f),length %d,pos %d\n",
+        20 * log10(amp),
+        20 * log10(*amp1p),
+        input_offset,
+        input_offset_meas,
+        txpwr_dBm,
+        10 * log10((double)signal_energy((int32_t *)&input[0][input_offset_meas], length_meas) / NB_RE),
+        10 * log10((double)signal_energy((int32_t *)&input[1][input_offset_meas], length_meas) / NB_RE),
+        length,
+        input_offset_meas);
 
 #endif
 

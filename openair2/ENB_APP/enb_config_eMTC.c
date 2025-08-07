@@ -141,8 +141,9 @@ void fill_eMTC_configuration(RrcConfigurationReq *RRCcfg, ccparams_eMTC_t *eMTCc
     *RRCcfg->si_ValidityTime_r13[cc_idx] = 0;
   } else {
     AssertFatal(0,
-		"Failed to parse eNB configuration file %s, enb %d  si_ValidityTime_r13 unknown value!\n",
-		config_fname, cell_idx);
+                "Failed to parse eNB configuration file %s, enb %d  si_ValidityTime_r13 unknown value!\n",
+                config_fname,
+                cell_idx);
   }
 
 
@@ -168,9 +169,10 @@ void fill_eMTC_configuration(RrcConfigurationReq *RRCcfg, ccparams_eMTC_t *eMTCc
       } else if (!strcmp(eMTCconfig->mpdcch_pdsch_HoppingNB_r13, "nb4")) {
         *RRCcfg->mpdcch_pdsch_HoppingNB_r13[cc_idx] = 1;
       } else {
-	AssertFatal(0,
-		    "Failed to parse eNB configuration file %s, enb %d  mpdcch_pdsch_HoppingNB_r13 unknown value!\n",
-		    config_fname, cell_idx);
+        AssertFatal(0,
+                    "Failed to parse eNB configuration file %s, enb %d  mpdcch_pdsch_HoppingNB_r13 unknown value!\n",
+                    config_fname,
+                    cell_idx);
       }
 
       RRCcfg->mpdcch_pdsch_HoppingOffset_r13[cc_idx] = calloc(1, sizeof(long));
@@ -202,155 +204,207 @@ void fill_eMTC_configuration(RrcConfigurationReq *RRCcfg, ccparams_eMTC_t *eMTCc
   } else if (strcmp(eMTCconfig->ccparams.prach_high_speed, "DISABLE") == 0) {
     RRCcfg->radioresourceconfig_BR[cc_idx].prach_high_speed = false;
   } else
-    AssertFatal (0,
-		 "Failed to parse eNB configuration file %s, enb %d unknown value \"%s\" for prach_config choice: ENABLE,DISABLE !\n",
-		 config_fname, cell_idx,eMTCconfig->ccparams.prach_high_speed);
+    AssertFatal(
+        0,
+        "Failed to parse eNB configuration file %s, enb %d unknown value \"%s\" for prach_config choice: ENABLE,DISABLE !\n",
+        config_fname,
+        cell_idx,
+        eMTCconfig->ccparams.prach_high_speed);
 
   RRCcfg->radioresourceconfig_BR[cc_idx].prach_zero_correlation = eMTCconfig->ccparams.prach_zero_correlation;
 
   if ((eMTCconfig->ccparams.prach_zero_correlation <0) || (eMTCconfig->ccparams.prach_zero_correlation > 15))
-    AssertFatal (0,
-		 "Failed to parse eNB configuration file %s, enb %d unknown value \"%d\" for prach_zero_correlation choice: 0..15!\n",
-		 config_fname, cell_idx,eMTCconfig->ccparams.prach_zero_correlation);
+    AssertFatal(
+        0,
+        "Failed to parse eNB configuration file %s, enb %d unknown value \"%d\" for prach_zero_correlation choice: 0..15!\n",
+        config_fname,
+        cell_idx,
+        eMTCconfig->ccparams.prach_zero_correlation);
 
   RRCcfg->radioresourceconfig_BR[cc_idx].prach_freq_offset = eMTCconfig->ccparams.prach_freq_offset;
 
   if ((eMTCconfig->ccparams.prach_freq_offset <0) || (eMTCconfig->ccparams.prach_freq_offset > 94))
-    AssertFatal (0,
-		 "Failed to parse eNB configuration file %s, enb %d unknown value \"%d\" for prach_freq_offset choice: 0..94!\n",
-		 config_fname, cell_idx,eMTCconfig->ccparams.prach_freq_offset);
+    AssertFatal(0,
+                "Failed to parse eNB configuration file %s, enb %d unknown value \"%d\" for prach_freq_offset choice: 0..94!\n",
+                config_fname,
+                cell_idx,
+                eMTCconfig->ccparams.prach_freq_offset);
 
   RRCcfg->radioresourceconfig_BR[cc_idx].pucch_delta_shift = eMTCconfig->ccparams.pucch_delta_shift - 1;
 
   if ((eMTCconfig->ccparams.pucch_delta_shift <1) || (eMTCconfig->ccparams.pucch_delta_shift > 3))
-    AssertFatal (0,
-		 "Failed to parse eNB configuration file %s, enb %d unknown value \"%d\" for pucch_delta_shift choice: 1..3!\n",
-		 config_fname, cell_idx,eMTCconfig->ccparams.pucch_delta_shift);
+    AssertFatal(0,
+                "Failed to parse eNB configuration file %s, enb %d unknown value \"%d\" for pucch_delta_shift choice: 1..3!\n",
+                config_fname,
+                cell_idx,
+                eMTCconfig->ccparams.pucch_delta_shift);
 
   RRCcfg->radioresourceconfig_BR[cc_idx].pucch_nRB_CQI = eMTCconfig->ccparams.pucch_nRB_CQI;
 
   if ((eMTCconfig->ccparams.pucch_nRB_CQI <0) || (eMTCconfig->ccparams.pucch_nRB_CQI > 98))
-    AssertFatal (0,
-		 "Failed to parse eNB configuration file %s, enb %d unknown value \"%d\" for pucch_nRB_CQI choice: 0..98!\n",
-		 config_fname, cell_idx,eMTCconfig->ccparams.pucch_nRB_CQI);
+    AssertFatal(0,
+                "Failed to parse eNB configuration file %s, enb %d unknown value \"%d\" for pucch_nRB_CQI choice: 0..98!\n",
+                config_fname,
+                cell_idx,
+                eMTCconfig->ccparams.pucch_nRB_CQI);
 
   RRCcfg->radioresourceconfig_BR[cc_idx].pucch_nCS_AN = eMTCconfig->ccparams.pucch_nCS_AN;
 
   if ((eMTCconfig->ccparams.pucch_nCS_AN <0) || (eMTCconfig->ccparams.pucch_nCS_AN > 7))
-    AssertFatal (0,
-		 "Failed to parse eNB configuration file %s, enb %d unknown value \"%d\" for pucch_nCS_AN choice: 0..7!\n",
-		 config_fname, cell_idx,eMTCconfig->ccparams.pucch_nCS_AN);
+    AssertFatal(0,
+                "Failed to parse eNB configuration file %s, enb %d unknown value \"%d\" for pucch_nCS_AN choice: 0..7!\n",
+                config_fname,
+                cell_idx,
+                eMTCconfig->ccparams.pucch_nCS_AN);
 
   RRCcfg->radioresourceconfig_BR[cc_idx].pucch_n1_AN = eMTCconfig->ccparams.pucch_n1_AN;
 
   if ((eMTCconfig->ccparams.pucch_n1_AN <0) || (eMTCconfig->ccparams.pucch_n1_AN > 2047))
-    AssertFatal (0,
-		 "Failed to parse eNB configuration file %s, enb %d unknown value \"%d\" for pucch_n1_AN choice: 0..2047!\n",
-		 config_fname, cell_idx,eMTCconfig->ccparams.pucch_n1_AN);
+    AssertFatal(0,
+                "Failed to parse eNB configuration file %s, enb %d unknown value \"%d\" for pucch_n1_AN choice: 0..2047!\n",
+                config_fname,
+                cell_idx,
+                eMTCconfig->ccparams.pucch_n1_AN);
 
   //#endif
   RRCcfg->radioresourceconfig_BR[cc_idx].pdsch_referenceSignalPower = eMTCconfig->ccparams.pdsch_referenceSignalPower;
 
   if ((eMTCconfig->ccparams.pdsch_referenceSignalPower <-60) || (eMTCconfig->ccparams.pdsch_referenceSignalPower > 50))
-    AssertFatal (0,
-		 "Failed to parse eNB configuration file %s, enb %d unknown value \"%d\" for pdsch_referenceSignalPower choice:-60..50!\n",
-		 config_fname, cell_idx,eMTCconfig->ccparams.pdsch_referenceSignalPower);
+    AssertFatal(
+        0,
+        "Failed to parse eNB configuration file %s, enb %d unknown value \"%d\" for pdsch_referenceSignalPower choice:-60..50!\n",
+        config_fname,
+        cell_idx,
+        eMTCconfig->ccparams.pdsch_referenceSignalPower);
 
   RRCcfg->radioresourceconfig_BR[cc_idx].pdsch_p_b = eMTCconfig->ccparams.pdsch_p_b;
 
   if ((eMTCconfig->ccparams.pdsch_p_b <0) || (eMTCconfig->ccparams.pdsch_p_b > 3))
-    AssertFatal (0,
-		 "Failed to parse eNB configuration file %s, enb %d unknown value \"%d\" for pdsch_p_b choice: 0..3!\n",
-		 config_fname, cell_idx,eMTCconfig->ccparams.pdsch_p_b);
+    AssertFatal(0,
+                "Failed to parse eNB configuration file %s, enb %d unknown value \"%d\" for pdsch_p_b choice: 0..3!\n",
+                config_fname,
+                cell_idx,
+                eMTCconfig->ccparams.pdsch_p_b);
 
   RRCcfg->radioresourceconfig_BR[cc_idx].pusch_n_SB = eMTCconfig->ccparams.pusch_n_SB;
 
   if ((eMTCconfig->ccparams.pusch_n_SB <1) || (eMTCconfig->ccparams.pusch_n_SB > 4))
-    AssertFatal (0,
-		 "Failed to parse eNB configuration file %s, enb %d unknown value \"%d\" for pusch_n_SB choice: 1..4!\n",
-		 config_fname, cell_idx,eMTCconfig->ccparams.pusch_n_SB);
+    AssertFatal(0,
+                "Failed to parse eNB configuration file %s, enb %d unknown value \"%d\" for pusch_n_SB choice: 1..4!\n",
+                config_fname,
+                cell_idx,
+                eMTCconfig->ccparams.pusch_n_SB);
 
   if (!eMTCconfig->ccparams.pusch_hoppingMode)
-    AssertFatal (0,
-		 "Failed to parse eNB configuration file %s, enb %d define %s: interSubframe,intraAndInterSubframe!\n",
-		 config_fname, cell_idx,ENB_CONFIG_STRING_PUSCH_HOPPINGMODE);
+    AssertFatal(0,
+                "Failed to parse eNB configuration file %s, enb %d define %s: interSubframe,intraAndInterSubframe!\n",
+                config_fname,
+                cell_idx,
+                ENB_CONFIG_STRING_PUSCH_HOPPINGMODE);
   else if (strcmp(eMTCconfig->ccparams.pusch_hoppingMode,"interSubFrame")==0) {
     RRCcfg->radioresourceconfig_BR[cc_idx].pusch_hoppingMode = LTE_PUSCH_ConfigCommon__pusch_ConfigBasic__hoppingMode_interSubFrame;
   }  else if (strcmp(eMTCconfig->ccparams.pusch_hoppingMode,"intraAndInterSubFrame")==0) {
     RRCcfg->radioresourceconfig_BR[cc_idx].pusch_hoppingMode = LTE_PUSCH_ConfigCommon__pusch_ConfigBasic__hoppingMode_intraAndInterSubFrame;
   } else
-    AssertFatal (0,
-		 "Failed to parse eNB configuration file %s, enb %d unknown value \"%s\" for pusch_hoppingMode choice: interSubframe,intraAndInterSubframe!\n",
-		 config_fname, cell_idx,eMTCconfig->ccparams.pusch_hoppingMode);
+    AssertFatal(0,
+                "Failed to parse eNB configuration file %s, enb %d unknown value \"%s\" for pusch_hoppingMode choice: "
+                "interSubframe,intraAndInterSubframe!\n",
+                config_fname,
+                cell_idx,
+                eMTCconfig->ccparams.pusch_hoppingMode);
 
   RRCcfg->radioresourceconfig_BR[cc_idx].pusch_hoppingOffset = eMTCconfig->ccparams.pusch_hoppingOffset;
 
   if ((eMTCconfig->ccparams.pusch_hoppingOffset<0) || (eMTCconfig->ccparams.pusch_hoppingOffset>98))
-    AssertFatal (0,
-		 "Failed to parse eNB configuration file %s, enb %d unknown value \"%s\" for pusch_hoppingOffset choice: 0..98!\n",
-		 config_fname, cell_idx,eMTCconfig->ccparams.pusch_hoppingMode);
+    AssertFatal(0,
+                "Failed to parse eNB configuration file %s, enb %d unknown value \"%s\" for pusch_hoppingOffset choice: 0..98!\n",
+                config_fname,
+                cell_idx,
+                eMTCconfig->ccparams.pusch_hoppingMode);
 
   if (!eMTCconfig->ccparams.pusch_enable64QAM)
-    AssertFatal (0,
-		 "Failed to parse eNB configuration file %s, enb %d define %s: ENABLE,DISABLE!\n",
-		 config_fname, cell_idx,ENB_CONFIG_STRING_PUSCH_ENABLE64QAM);
+    AssertFatal(0,
+                "Failed to parse eNB configuration file %s, enb %d define %s: ENABLE,DISABLE!\n",
+                config_fname,
+                cell_idx,
+                ENB_CONFIG_STRING_PUSCH_ENABLE64QAM);
   else if (strcmp(eMTCconfig->ccparams.pusch_enable64QAM, "ENABLE") == 0) {
     RRCcfg->radioresourceconfig_BR[cc_idx].pusch_enable64QAM = true;
   }  else if (strcmp(eMTCconfig->ccparams.pusch_enable64QAM, "DISABLE") == 0) {
     RRCcfg->radioresourceconfig_BR[cc_idx].pusch_enable64QAM = false;
   } else
-    AssertFatal (0,
-		 "Failed to parse eNB configuration file %s, enb %d unknown value \"%s\" for pusch_enable64QAM choice: ENABLE,DISABLE!\n",
-		 config_fname, cell_idx,eMTCconfig->ccparams.pusch_enable64QAM);
+    AssertFatal(
+        0,
+        "Failed to parse eNB configuration file %s, enb %d unknown value \"%s\" for pusch_enable64QAM choice: ENABLE,DISABLE!\n",
+        config_fname,
+        cell_idx,
+        eMTCconfig->ccparams.pusch_enable64QAM);
 
   if (!eMTCconfig->ccparams.pusch_groupHoppingEnabled)
-    AssertFatal (0,
-		 "Failed to parse eNB configuration file %s, enb %d define %s: ENABLE,DISABLE!\n",
-		 config_fname, cell_idx,ENB_CONFIG_STRING_PUSCH_GROUP_HOPPING_EN);
+    AssertFatal(0,
+                "Failed to parse eNB configuration file %s, enb %d define %s: ENABLE,DISABLE!\n",
+                config_fname,
+                cell_idx,
+                ENB_CONFIG_STRING_PUSCH_GROUP_HOPPING_EN);
   else if (strcmp(eMTCconfig->ccparams.pusch_groupHoppingEnabled, "ENABLE") == 0) {
     RRCcfg->radioresourceconfig_BR[cc_idx].pusch_groupHoppingEnabled = true;
   }  else if (strcmp(eMTCconfig->ccparams.pusch_groupHoppingEnabled, "DISABLE") == 0) {
     RRCcfg->radioresourceconfig_BR[cc_idx].pusch_groupHoppingEnabled = false;
   } else
-    AssertFatal (0,
-		 "Failed to parse eNB configuration file %s, enb %d unknown value \"%s\" for pusch_groupHoppingEnabled choice: ENABLE,DISABLE!\n",
-		 config_fname, cell_idx,eMTCconfig->ccparams.pusch_groupHoppingEnabled);
+    AssertFatal(0,
+                "Failed to parse eNB configuration file %s, enb %d unknown value \"%s\" for pusch_groupHoppingEnabled choice: "
+                "ENABLE,DISABLE!\n",
+                config_fname,
+                cell_idx,
+                eMTCconfig->ccparams.pusch_groupHoppingEnabled);
 
   RRCcfg->radioresourceconfig_BR[cc_idx].pusch_groupAssignment = eMTCconfig->ccparams.pusch_groupAssignment;
 
   if ((eMTCconfig->ccparams.pusch_groupAssignment<0)||(eMTCconfig->ccparams.pusch_groupAssignment>29))
-    AssertFatal (0,
-		 "Failed to parse eNB configuration file %s, enb %d unknown value \"%d\" for pusch_groupAssignment choice: 0..29!\n",
-		 config_fname, cell_idx,eMTCconfig->ccparams.pusch_groupAssignment);
+    AssertFatal(0,
+                "Failed to parse eNB configuration file %s, enb %d unknown value \"%d\" for pusch_groupAssignment choice: 0..29!\n",
+                config_fname,
+                cell_idx,
+                eMTCconfig->ccparams.pusch_groupAssignment);
 
   if (!eMTCconfig->ccparams.pusch_sequenceHoppingEnabled)
-    AssertFatal (0,
-		 "Failed to parse eNB configuration file %s, enb %d define %s: ENABLE,DISABLE!\n",
-		 config_fname, cell_idx,ENB_CONFIG_STRING_PUSCH_SEQUENCE_HOPPING_EN);
+    AssertFatal(0,
+                "Failed to parse eNB configuration file %s, enb %d define %s: ENABLE,DISABLE!\n",
+                config_fname,
+                cell_idx,
+                ENB_CONFIG_STRING_PUSCH_SEQUENCE_HOPPING_EN);
   else if (strcmp(eMTCconfig->ccparams.pusch_sequenceHoppingEnabled, "ENABLE") == 0) {
     RRCcfg->radioresourceconfig_BR[cc_idx].pusch_sequenceHoppingEnabled = true;
   }  else if (strcmp(eMTCconfig->ccparams.pusch_sequenceHoppingEnabled, "DISABLE") == 0) {
     RRCcfg->radioresourceconfig_BR[cc_idx].pusch_sequenceHoppingEnabled = false;
   } else
-    AssertFatal (0,
-		 "Failed to parse eNB configuration file %s, enb %d unknown value \"%s\" for pusch_sequenceHoppingEnabled choice: ENABLE,DISABLE!\n",
-		 config_fname, cell_idx,eMTCconfig->ccparams.pusch_sequenceHoppingEnabled);
+    AssertFatal(0,
+                "Failed to parse eNB configuration file %s, enb %d unknown value \"%s\" for pusch_sequenceHoppingEnabled choice: "
+                "ENABLE,DISABLE!\n",
+                config_fname,
+                cell_idx,
+                eMTCconfig->ccparams.pusch_sequenceHoppingEnabled);
 
   RRCcfg->radioresourceconfig_BR[cc_idx].pusch_nDMRS1 = eMTCconfig->ccparams.pusch_nDMRS1; // cyclic_shift in RRC!
 
   if ((eMTCconfig->ccparams.pusch_nDMRS1 <0) || (eMTCconfig->ccparams.pusch_nDMRS1>7))
-    AssertFatal (0,
-		 "Failed to parse eNB configuration file %s, enb %d unknown value \"%d\" for pusch_nDMRS1 choice: 0..7!\n",
-		 config_fname, cell_idx,eMTCconfig->ccparams.pusch_nDMRS1);
+    AssertFatal(0,
+                "Failed to parse eNB configuration file %s, enb %d unknown value \"%d\" for pusch_nDMRS1 choice: 0..7!\n",
+                config_fname,
+                cell_idx,
+                eMTCconfig->ccparams.pusch_nDMRS1);
 
   if (strcmp(eMTCconfig->ccparams.phich_duration,"NORMAL")==0) {
     RRCcfg->radioresourceconfig_BR[cc_idx].phich_duration = LTE_PHICH_Config__phich_Duration_normal;
   } else if (strcmp(eMTCconfig->ccparams.phich_duration,"EXTENDED")==0) {
     RRCcfg->radioresourceconfig_BR[cc_idx].phich_duration = LTE_PHICH_Config__phich_Duration_extended;
   } else
-    AssertFatal (0,
-		 "Failed to parse eNB configuration file %s, enb %d unknown value \"%s\" for phich_duration choice: NORMAL,EXTENDED!\n",
-		 config_fname, cell_idx,eMTCconfig->ccparams.phich_duration);
+    AssertFatal(
+        0,
+        "Failed to parse eNB configuration file %s, enb %d unknown value \"%s\" for phich_duration choice: NORMAL,EXTENDED!\n",
+        config_fname,
+        cell_idx,
+        eMTCconfig->ccparams.phich_duration);
 
   if (strcmp(eMTCconfig->ccparams.phich_resource,"ONESIXTH")==0) {
     RRCcfg->radioresourceconfig_BR[cc_idx].phich_resource = LTE_PHICH_Config__phich_Resource_oneSixth;
@@ -361,9 +415,12 @@ void fill_eMTC_configuration(RrcConfigurationReq *RRCcfg, ccparams_eMTC_t *eMTCc
   } else if (strcmp(eMTCconfig->ccparams.phich_resource,"TWO")==0) {
     RRCcfg->radioresourceconfig_BR[cc_idx].phich_resource = LTE_PHICH_Config__phich_Resource_two;
   } else
-    AssertFatal (0,
-		 "Failed to parse eNB configuration file %s, enb %d unknown value \"%s\" for phich_resource choice: ONESIXTH,HALF,ONE,TWO!\n",
-		 config_fname, cell_idx,eMTCconfig->ccparams.phich_resource);
+    AssertFatal(0,
+                "Failed to parse eNB configuration file %s, enb %d unknown value \"%s\" for phich_resource choice: "
+                "ONESIXTH,HALF,ONE,TWO!\n",
+                config_fname,
+                cell_idx,
+                eMTCconfig->ccparams.phich_resource);
 
   printf("phich.resource eMTC %ld (%s), phich.duration eMTC %ld (%s)\n",
          RRCcfg->radioresourceconfig_BR[cc_idx].phich_resource,
@@ -376,49 +433,65 @@ void fill_eMTC_configuration(RrcConfigurationReq *RRCcfg, ccparams_eMTC_t *eMTCc
   } else if (strcmp(eMTCconfig->ccparams.srs_enable, "DISABLE") == 0) {
     RRCcfg->radioresourceconfig_BR[cc_idx].srs_enable = false;
   } else
-    AssertFatal (0,
-		 "Failed to parse eNB configuration file %s, enb %d unknown value \"%s\" for srs_BandwidthConfig choice: ENABLE,DISABLE !\n",
-		 config_fname, cell_idx,eMTCconfig->ccparams.srs_enable);
+    AssertFatal(
+        0,
+        "Failed to parse eNB configuration file %s, enb %d unknown value \"%s\" for srs_BandwidthConfig choice: ENABLE,DISABLE !\n",
+        config_fname,
+        cell_idx,
+        eMTCconfig->ccparams.srs_enable);
 
   if (RRCcfg->radioresourceconfig_BR[cc_idx].srs_enable == true) {
     RRCcfg->radioresourceconfig_BR[cc_idx].srs_BandwidthConfig = eMTCconfig->ccparams.srs_BandwidthConfig;
 
     if ((eMTCconfig->ccparams.srs_BandwidthConfig < 0) || (eMTCconfig->ccparams.srs_BandwidthConfig >7))
-      AssertFatal (0, "Failed to parse eNB configuration file %s, enb %d unknown value %d for srs_BandwidthConfig choice: 0...7\n",
-		   config_fname, cell_idx,eMTCconfig->ccparams.srs_BandwidthConfig);
+      AssertFatal(0,
+                  "Failed to parse eNB configuration file %s, enb %d unknown value %d for srs_BandwidthConfig choice: 0...7\n",
+                  config_fname,
+                  cell_idx,
+                  eMTCconfig->ccparams.srs_BandwidthConfig);
 
     RRCcfg->radioresourceconfig_BR[cc_idx].srs_SubframeConfig = eMTCconfig->ccparams.srs_SubframeConfig;
 
     if ((eMTCconfig->ccparams.srs_SubframeConfig<0) || (eMTCconfig->ccparams.srs_SubframeConfig>15))
-      AssertFatal (0,
-		   "Failed to parse eNB configuration file %s, enb %d unknown value \"%d\" for srs_SubframeConfig choice: 0..15 !\n",
-		   config_fname, cell_idx,eMTCconfig->ccparams.srs_SubframeConfig);
+      AssertFatal(0,
+                  "Failed to parse eNB configuration file %s, enb %d unknown value \"%d\" for srs_SubframeConfig choice: 0..15 !\n",
+                  config_fname,
+                  cell_idx,
+                  eMTCconfig->ccparams.srs_SubframeConfig);
 
     if (strcmp(eMTCconfig->ccparams.srs_ackNackST, "ENABLE") == 0) {
       RRCcfg->radioresourceconfig_BR[cc_idx].srs_ackNackST = true;
     } else if (strcmp(eMTCconfig->ccparams.srs_ackNackST, "DISABLE") == 0) {
       RRCcfg->radioresourceconfig_BR[cc_idx].srs_ackNackST = false;
     } else
-      AssertFatal (0,
-		   "Failed to parse eNB configuration file %s, enb %d unknown value \"%s\" for srs_BandwidthConfig choice: ENABLE,DISABLE !\n",
-		   config_fname, cell_idx,eMTCconfig->ccparams.srs_ackNackST);
+      AssertFatal(0,
+                  "Failed to parse eNB configuration file %s, enb %d unknown value \"%s\" for srs_BandwidthConfig choice: "
+                  "ENABLE,DISABLE !\n",
+                  config_fname,
+                  cell_idx,
+                  eMTCconfig->ccparams.srs_ackNackST);
 
     if (strcmp(eMTCconfig->ccparams.srs_MaxUpPts, "ENABLE") == 0) {
       RRCcfg->radioresourceconfig_BR[cc_idx].srs_MaxUpPts = true;
     } else if (strcmp(eMTCconfig->ccparams.srs_MaxUpPts, "DISABLE") == 0) {
       RRCcfg->radioresourceconfig_BR[cc_idx].srs_MaxUpPts = false;
     } else
-      AssertFatal (0,
-		   "Failed to parse eNB configuration file %s, enb %d unknown value \"%s\" for srs_MaxUpPts choice: ENABLE,DISABLE !\n",
-		   config_fname, cell_idx,eMTCconfig->ccparams.srs_MaxUpPts);
+      AssertFatal(
+          0,
+          "Failed to parse eNB configuration file %s, enb %d unknown value \"%s\" for srs_MaxUpPts choice: ENABLE,DISABLE !\n",
+          config_fname,
+          cell_idx,
+          eMTCconfig->ccparams.srs_MaxUpPts);
   }
 
   RRCcfg->radioresourceconfig_BR[cc_idx].pusch_p0_Nominal = eMTCconfig->ccparams.pusch_p0_Nominal;
 
   if ((eMTCconfig->ccparams.pusch_p0_Nominal<-126) || (eMTCconfig->ccparams.pusch_p0_Nominal>24))
-    AssertFatal (0,
-		 "Failed to parse eNB configuration file %s, enb %d unknown value \"%d\" for pusch_p0_Nominal choice: -126..24 !\n",
-		 config_fname, cell_idx,eMTCconfig->ccparams.pusch_p0_Nominal);
+    AssertFatal(0,
+                "Failed to parse eNB configuration file %s, enb %d unknown value \"%d\" for pusch_p0_Nominal choice: -126..24 !\n",
+                config_fname,
+                cell_idx,
+                eMTCconfig->ccparams.pusch_p0_Nominal);
 
   if (strcmp(eMTCconfig->ccparams.pusch_alpha,"AL0")==0) {
     RRCcfg->radioresourceconfig_BR[cc_idx].pusch_alpha = LTE_Alpha_r12_al0;
@@ -439,23 +512,30 @@ void fill_eMTC_configuration(RrcConfigurationReq *RRCcfg, ccparams_eMTC_t *eMTCc
   }
 
   else
-    AssertFatal (0,
-		 "Failed to parse eNB configuration file %s, enb %d unknown value \"%s\" for pucch_Alpha choice: AL0,AL04,AL05,AL06,AL07,AL08,AL09,AL1!\n",
-		 config_fname, cell_idx,eMTCconfig->ccparams.pusch_alpha);
+    AssertFatal(0,
+                "Failed to parse eNB configuration file %s, enb %d unknown value \"%s\" for pucch_Alpha choice: "
+                "AL0,AL04,AL05,AL06,AL07,AL08,AL09,AL1!\n",
+                config_fname,
+                cell_idx,
+                eMTCconfig->ccparams.pusch_alpha);
 
   RRCcfg->radioresourceconfig_BR[cc_idx].pucch_p0_Nominal = eMTCconfig->ccparams.pucch_p0_Nominal;
 
   if ((eMTCconfig->ccparams.pucch_p0_Nominal<-127) || (eMTCconfig->ccparams.pucch_p0_Nominal>-96))
-    AssertFatal (0,
-		 "Failed to parse eNB configuration file %s, enb %d unknown value \"%d\" for pucch_p0_Nominal choice: -127..-96 !\n",
-		 config_fname, cell_idx,eMTCconfig->ccparams.pucch_p0_Nominal);
+    AssertFatal(0,
+                "Failed to parse eNB configuration file %s, enb %d unknown value \"%d\" for pucch_p0_Nominal choice: -127..-96 !\n",
+                config_fname,
+                cell_idx,
+                eMTCconfig->ccparams.pucch_p0_Nominal);
 
   RRCcfg->radioresourceconfig_BR[cc_idx].msg3_delta_Preamble = eMTCconfig->ccparams.msg3_delta_Preamble;
 
   if ((eMTCconfig->ccparams.msg3_delta_Preamble<-1) || (eMTCconfig->ccparams.msg3_delta_Preamble>6))
-    AssertFatal (0,
-		 "Failed to parse eNB configuration file %s, enb %d unknown value \"%d\" for msg3_delta_Preamble choice: -1..6 !\n",
-		 config_fname, cell_idx,eMTCconfig->ccparams.msg3_delta_Preamble);
+    AssertFatal(0,
+                "Failed to parse eNB configuration file %s, enb %d unknown value \"%d\" for msg3_delta_Preamble choice: -1..6 !\n",
+                config_fname,
+                cell_idx,
+                eMTCconfig->ccparams.msg3_delta_Preamble);
 
   if (strcmp(eMTCconfig->ccparams.pucch_deltaF_Format1,"deltaF_2")==0) {
     RRCcfg->radioresourceconfig_BR[cc_idx].pucch_deltaF_Format1 = LTE_DeltaFList_PUCCH__deltaF_PUCCH_Format1_deltaF_2;
@@ -464,9 +544,12 @@ void fill_eMTC_configuration(RrcConfigurationReq *RRCcfg, ccparams_eMTC_t *eMTCc
   } else if (strcmp(eMTCconfig->ccparams.pucch_deltaF_Format1,"deltaF2")==0) {
     RRCcfg->radioresourceconfig_BR[cc_idx].pucch_deltaF_Format1 = LTE_DeltaFList_PUCCH__deltaF_PUCCH_Format1_deltaF2;
   } else
-    AssertFatal (0,
-		 "Failed to parse eNB configuration file %s, enb %d unknown value \"%s\" for pucch_deltaF_Format1 choice: deltaF_2,dltaF0,deltaF2!\n",
-		 config_fname, cell_idx,eMTCconfig->ccparams.pucch_deltaF_Format1);
+    AssertFatal(0,
+                "Failed to parse eNB configuration file %s, enb %d unknown value \"%s\" for pucch_deltaF_Format1 choice: "
+                "deltaF_2,dltaF0,deltaF2!\n",
+                config_fname,
+                cell_idx,
+                eMTCconfig->ccparams.pucch_deltaF_Format1);
 
   if (strcmp(eMTCconfig->ccparams.pucch_deltaF_Format1b,"deltaF1")==0) {
     RRCcfg->radioresourceconfig_BR[cc_idx].pucch_deltaF_Format1b = LTE_DeltaFList_PUCCH__deltaF_PUCCH_Format1b_deltaF1;
@@ -475,9 +558,12 @@ void fill_eMTC_configuration(RrcConfigurationReq *RRCcfg, ccparams_eMTC_t *eMTCc
   } else if (strcmp(eMTCconfig->ccparams.pucch_deltaF_Format1b,"deltaF5")==0) {
     RRCcfg->radioresourceconfig_BR[cc_idx].pucch_deltaF_Format1b = LTE_DeltaFList_PUCCH__deltaF_PUCCH_Format1b_deltaF5;
   } else
-    AssertFatal (0,
-		 "Failed to parse eNB configuration file %s, enb %d unknown value \"%s\" for pucch_deltaF_Format1b choice: deltaF1,dltaF3,deltaF5!\n",
-		 config_fname, cell_idx,eMTCconfig->ccparams.pucch_deltaF_Format1b);
+    AssertFatal(0,
+                "Failed to parse eNB configuration file %s, enb %d unknown value \"%s\" for pucch_deltaF_Format1b choice: "
+                "deltaF1,dltaF3,deltaF5!\n",
+                config_fname,
+                cell_idx,
+                eMTCconfig->ccparams.pucch_deltaF_Format1b);
 
   if (strcmp(eMTCconfig->ccparams.pucch_deltaF_Format2,"deltaF_2")==0) {
     RRCcfg->radioresourceconfig_BR[cc_idx].pucch_deltaF_Format2 = LTE_DeltaFList_PUCCH__deltaF_PUCCH_Format2_deltaF_2;
@@ -488,9 +574,12 @@ void fill_eMTC_configuration(RrcConfigurationReq *RRCcfg, ccparams_eMTC_t *eMTCc
   } else if (strcmp(eMTCconfig->ccparams.pucch_deltaF_Format2,"deltaF2")==0) {
     RRCcfg->radioresourceconfig_BR[cc_idx].pucch_deltaF_Format2 = LTE_DeltaFList_PUCCH__deltaF_PUCCH_Format2_deltaF2;
   } else
-    AssertFatal (0,
-		 "Failed to parse eNB configuration file %s, enb %d unknown value \"%s\" for pucch_deltaF_Format2 choice: deltaF_2,dltaF0,deltaF1,deltaF2!\n",
-		 config_fname, cell_idx,eMTCconfig->ccparams.pucch_deltaF_Format2);
+    AssertFatal(0,
+                "Failed to parse eNB configuration file %s, enb %d unknown value \"%s\" for pucch_deltaF_Format2 choice: "
+                "deltaF_2,dltaF0,deltaF1,deltaF2!\n",
+                config_fname,
+                cell_idx,
+                eMTCconfig->ccparams.pucch_deltaF_Format2);
 
   if (strcmp(eMTCconfig->ccparams.pucch_deltaF_Format2a,"deltaF_2")==0) {
     RRCcfg->radioresourceconfig_BR[cc_idx].pucch_deltaF_Format2a = LTE_DeltaFList_PUCCH__deltaF_PUCCH_Format2a_deltaF_2;
@@ -499,9 +588,12 @@ void fill_eMTC_configuration(RrcConfigurationReq *RRCcfg, ccparams_eMTC_t *eMTCc
   } else if (strcmp(eMTCconfig->ccparams.pucch_deltaF_Format2a,"deltaF2")==0) {
     RRCcfg->radioresourceconfig_BR[cc_idx].pucch_deltaF_Format2a = LTE_DeltaFList_PUCCH__deltaF_PUCCH_Format2a_deltaF2;
   } else
-    AssertFatal (0,
-		 "Failed to parse eNB configuration file %s, enb %d unknown value \"%s\" for pucch_deltaF_Format2a choice: deltaF_2,dltaF0,deltaF2!\n",
-		 config_fname, cell_idx,eMTCconfig->ccparams.pucch_deltaF_Format2a);
+    AssertFatal(0,
+                "Failed to parse eNB configuration file %s, enb %d unknown value \"%s\" for pucch_deltaF_Format2a choice: "
+                "deltaF_2,dltaF0,deltaF2!\n",
+                config_fname,
+                cell_idx,
+                eMTCconfig->ccparams.pucch_deltaF_Format2a);
 
   if (strcmp(eMTCconfig->ccparams.pucch_deltaF_Format2b,"deltaF_2")==0) {
     RRCcfg->radioresourceconfig_BR[cc_idx].pucch_deltaF_Format2b = LTE_DeltaFList_PUCCH__deltaF_PUCCH_Format2b_deltaF_2;
@@ -510,25 +602,34 @@ void fill_eMTC_configuration(RrcConfigurationReq *RRCcfg, ccparams_eMTC_t *eMTCc
   } else if (strcmp(eMTCconfig->ccparams.pucch_deltaF_Format2b,"deltaF2")==0) {
     RRCcfg->radioresourceconfig_BR[cc_idx].pucch_deltaF_Format2b = LTE_DeltaFList_PUCCH__deltaF_PUCCH_Format2b_deltaF2;
   } else
-    AssertFatal (0,
-		 "Failed to parse eNB configuration file %s, enb %d unknown value \"%s\" for pucch_deltaF_Format2b choice: deltaF_2,dltaF0,deltaF2!\n",
-		 config_fname, cell_idx,eMTCconfig->ccparams.pucch_deltaF_Format2b);
+    AssertFatal(0,
+                "Failed to parse eNB configuration file %s, enb %d unknown value \"%s\" for pucch_deltaF_Format2b choice: "
+                "deltaF_2,dltaF0,deltaF2!\n",
+                config_fname,
+                cell_idx,
+                eMTCconfig->ccparams.pucch_deltaF_Format2b);
 
   RRCcfg->radioresourceconfig_BR[cc_idx].rach_numberOfRA_Preambles = (eMTCconfig->ccparams.rach_numberOfRA_Preambles / 4) - 1;
 
   if ((eMTCconfig->ccparams.rach_numberOfRA_Preambles <4) || (eMTCconfig->ccparams.rach_numberOfRA_Preambles >64) || ((eMTCconfig->ccparams.rach_numberOfRA_Preambles&3)!=0))
-    AssertFatal (0,
-		 "Failed to parse eNB configuration file %s, enb %d unknown value \"%d\" for rach_numberOfRA_Preambles choice: 4,8,12,...,64!\n",
-		 config_fname, cell_idx,eMTCconfig->ccparams.rach_numberOfRA_Preambles);
+    AssertFatal(0,
+                "Failed to parse eNB configuration file %s, enb %d unknown value \"%d\" for rach_numberOfRA_Preambles choice: "
+                "4,8,12,...,64!\n",
+                config_fname,
+                cell_idx,
+                eMTCconfig->ccparams.rach_numberOfRA_Preambles);
 
   if (strcmp(eMTCconfig->ccparams.rach_preamblesGroupAConfig, "ENABLE") == 0) {
     RRCcfg->radioresourceconfig_BR[cc_idx].rach_preamblesGroupAConfig = true;
     RRCcfg->radioresourceconfig_BR[cc_idx].rach_sizeOfRA_PreamblesGroupA = (eMTCconfig->ccparams.rach_sizeOfRA_PreamblesGroupA / 4) - 1;
 
     if ((eMTCconfig->ccparams.rach_numberOfRA_Preambles <4) || (eMTCconfig->ccparams.rach_numberOfRA_Preambles>60) || ((eMTCconfig->ccparams.rach_numberOfRA_Preambles&3)!=0))
-      AssertFatal (0,
-		   "Failed to parse eNB configuration file %s, enb %d unknown value \"%d\" for rach_sizeOfRA_PreamblesGroupA choice: 4,8,12,...,60!\n",
-		   config_fname, cell_idx,eMTCconfig->ccparams.rach_sizeOfRA_PreamblesGroupA);
+      AssertFatal(0,
+                  "Failed to parse eNB configuration file %s, enb %d unknown value \"%d\" for rach_sizeOfRA_PreamblesGroupA "
+                  "choice: 4,8,12,...,60!\n",
+                  config_fname,
+                  cell_idx,
+                  eMTCconfig->ccparams.rach_sizeOfRA_PreamblesGroupA);
 
     switch (eMTCconfig->ccparams.rach_messageSizeGroupA) {
     case 56:
@@ -548,9 +649,12 @@ void fill_eMTC_configuration(RrcConfigurationReq *RRCcfg, ccparams_eMTC_t *eMTCc
       break;
 
     default:
-      AssertFatal (0,
-		   "Failed to parse eNB configuration file %s, enb %d unknown value \"%d\" for rach_messageSizeGroupA choice: 56,144,208,256!\n",
-		   config_fname, cell_idx,eMTCconfig->ccparams.rach_messageSizeGroupA);
+      AssertFatal(0,
+                  "Failed to parse eNB configuration file %s, enb %d unknown value \"%d\" for rach_messageSizeGroupA choice: "
+                  "56,144,208,256!\n",
+                  config_fname,
+                  cell_idx,
+                  eMTCconfig->ccparams.rach_messageSizeGroupA);
       break;
     }
 
@@ -571,29 +675,41 @@ void fill_eMTC_configuration(RrcConfigurationReq *RRCcfg, ccparams_eMTC_t *eMTCc
     } else if (strcmp(eMTCconfig->ccparams.rach_messagePowerOffsetGroupB,"dB18")==0) {
       RRCcfg->radioresourceconfig_BR[cc_idx].rach_messagePowerOffsetGroupB = LTE_RACH_ConfigCommon__preambleInfo__preamblesGroupAConfig__messagePowerOffsetGroupB_dB18;
     } else
-      AssertFatal (0,
-		   "Failed to parse eNB configuration file %s, enb %d unknown value \"%s\" for rach_messagePowerOffsetGroupB choice: minusinfinity,dB0,dB5,dB8,dB10,dB12,dB15,dB18!\n",
-		   config_fname, cell_idx,eMTCconfig->ccparams.rach_messagePowerOffsetGroupB);
+      AssertFatal(0,
+                  "Failed to parse eNB configuration file %s, enb %d unknown value \"%s\" for rach_messagePowerOffsetGroupB "
+                  "choice: minusinfinity,dB0,dB5,dB8,dB10,dB12,dB15,dB18!\n",
+                  config_fname,
+                  cell_idx,
+                  eMTCconfig->ccparams.rach_messagePowerOffsetGroupB);
   } else if (strcmp(eMTCconfig->ccparams.rach_preamblesGroupAConfig, "DISABLE") == 0) {
     RRCcfg->radioresourceconfig_BR[cc_idx].rach_preamblesGroupAConfig = false;
   } else
-    AssertFatal (0,
-		 "Failed to parse eNB configuration file %s, enb %d unknown value \"%s\" for rach_preamblesGroupAConfig choice: ENABLE,DISABLE !\n",
-		 config_fname, cell_idx,eMTCconfig->ccparams.rach_preamblesGroupAConfig);
+    AssertFatal(0,
+                "Failed to parse eNB configuration file %s, enb %d unknown value \"%s\" for rach_preamblesGroupAConfig choice: "
+                "ENABLE,DISABLE !\n",
+                config_fname,
+                cell_idx,
+                eMTCconfig->ccparams.rach_preamblesGroupAConfig);
 
   RRCcfg->radioresourceconfig_BR[cc_idx].rach_preambleInitialReceivedTargetPower = (eMTCconfig->ccparams.rach_preambleInitialReceivedTargetPower + 120) / 2;
 
   if ((eMTCconfig->ccparams.rach_preambleInitialReceivedTargetPower<-120) || (eMTCconfig->ccparams.rach_preambleInitialReceivedTargetPower>-90) || ((eMTCconfig->ccparams.rach_preambleInitialReceivedTargetPower&1)!=0))
-    AssertFatal (0,
-		 "Failed to parse eNB configuration file %s, enb %d unknown value \"%d\" for rach_preambleInitialReceivedTargetPower choice: -120,-118,...,-90 !\n",
-		 config_fname, cell_idx,eMTCconfig->ccparams.rach_preambleInitialReceivedTargetPower);
+    AssertFatal(0,
+                "Failed to parse eNB configuration file %s, enb %d unknown value \"%d\" for "
+                "rach_preambleInitialReceivedTargetPower choice: -120,-118,...,-90 !\n",
+                config_fname,
+                cell_idx,
+                eMTCconfig->ccparams.rach_preambleInitialReceivedTargetPower);
 
   RRCcfg->radioresourceconfig_BR[cc_idx].rach_powerRampingStep = eMTCconfig->ccparams.rach_powerRampingStep / 2;
 
   if ((eMTCconfig->ccparams.rach_powerRampingStep<0) || (eMTCconfig->ccparams.rach_powerRampingStep>6) || ((eMTCconfig->ccparams.rach_powerRampingStep&1)!=0))
-    AssertFatal (0,
-		 "Failed to parse eNB configuration file %s, enb %d unknown value \"%d\" for rach_powerRampingStep choice: 0,2,4,6 !\n",
-		 config_fname, cell_idx,eMTCconfig->ccparams.rach_powerRampingStep);
+    AssertFatal(
+        0,
+        "Failed to parse eNB configuration file %s, enb %d unknown value \"%d\" for rach_powerRampingStep choice: 0,2,4,6 !\n",
+        config_fname,
+        cell_idx,
+        eMTCconfig->ccparams.rach_powerRampingStep);
 
   switch (eMTCconfig->ccparams.rach_preambleTransMax) {
   case 3:
@@ -641,32 +757,43 @@ void fill_eMTC_configuration(RrcConfigurationReq *RRCcfg, ccparams_eMTC_t *eMTCc
     break;
 
   default:
-    AssertFatal (0,
-		 "Failed to parse eNB configuration file %s, enb %d unknown value \"%d\" for rach_preambleTransMax choice: 3,4,5,6,7,8,10,20,50,100,200!\n",
-		 config_fname, cell_idx,eMTCconfig->ccparams.rach_preambleTransMax);
+    AssertFatal(0,
+                "Failed to parse eNB configuration file %s, enb %d unknown value \"%d\" for rach_preambleTransMax choice: "
+                "3,4,5,6,7,8,10,20,50,100,200!\n",
+                config_fname,
+                cell_idx,
+                eMTCconfig->ccparams.rach_preambleTransMax);
     break;
   }
 
   RRCcfg->radioresourceconfig_BR[cc_idx].rach_raResponseWindowSize = (eMTCconfig->ccparams.rach_raResponseWindowSize == 10) ? 7 : eMTCconfig->ccparams.rach_raResponseWindowSize - 2;
 
   if ((eMTCconfig->ccparams.rach_raResponseWindowSize<0)||(eMTCconfig->ccparams.rach_raResponseWindowSize==9)||(eMTCconfig->ccparams.rach_raResponseWindowSize>10))
-    AssertFatal (0,
-		 "Failed to parse eNB configuration file %s, enb %d unknown value \"%d\" for rach_raResponseWindowSize choice: 2,3,4,5,6,7,8,10!\n",
-		 config_fname, cell_idx,eMTCconfig->ccparams.rach_raResponseWindowSize);
+    AssertFatal(0,
+                "Failed to parse eNB configuration file %s, enb %d unknown value \"%d\" for rach_raResponseWindowSize choice: "
+                "2,3,4,5,6,7,8,10!\n",
+                config_fname,
+                cell_idx,
+                eMTCconfig->ccparams.rach_raResponseWindowSize);
 
   RRCcfg->radioresourceconfig_BR[cc_idx].rach_macContentionResolutionTimer = (eMTCconfig->ccparams.rach_macContentionResolutionTimer / 8) - 1;
 
   if ((eMTCconfig->ccparams.rach_macContentionResolutionTimer<8) || (eMTCconfig->ccparams.rach_macContentionResolutionTimer>64) || ((eMTCconfig->ccparams.rach_macContentionResolutionTimer&7)!=0))
-    AssertFatal (0,
-		 "Failed to parse eNB configuration file %s, enb %d unknown value \"%d\" for rach_macContentionResolutionTimer choice: 8,16,...,56,64!\n",
-		 config_fname, cell_idx,eMTCconfig->ccparams.rach_macContentionResolutionTimer);
+    AssertFatal(0,
+                "Failed to parse eNB configuration file %s, enb %d unknown value \"%d\" for rach_macContentionResolutionTimer "
+                "choice: 8,16,...,56,64!\n",
+                config_fname,
+                cell_idx,
+                eMTCconfig->ccparams.rach_macContentionResolutionTimer);
 
   RRCcfg->radioresourceconfig_BR[cc_idx].rach_maxHARQ_Msg3Tx = eMTCconfig->ccparams.rach_maxHARQ_Msg3Tx;
 
   if ((eMTCconfig->ccparams.rach_maxHARQ_Msg3Tx<0) || (eMTCconfig->ccparams.rach_maxHARQ_Msg3Tx>8))
-    AssertFatal (0,
-		 "Failed to parse eNB configuration file %s, enb %d unknown value \"%d\" for rach_maxHARQ_Msg3Tx choice: 1..8!\n",
-		 config_fname, cell_idx,eMTCconfig->ccparams.rach_maxHARQ_Msg3Tx);
+    AssertFatal(0,
+                "Failed to parse eNB configuration file %s, enb %d unknown value \"%d\" for rach_maxHARQ_Msg3Tx choice: 1..8!\n",
+                config_fname,
+                cell_idx,
+                eMTCconfig->ccparams.rach_maxHARQ_Msg3Tx);
 
   switch (eMTCconfig->preambleTransMax_CE_r13) {
   case 3:
@@ -714,9 +841,12 @@ void fill_eMTC_configuration(RrcConfigurationReq *RRCcfg, ccparams_eMTC_t *eMTCc
     break;
 
   default:
-    AssertFatal (0,
-		 "Failed to parse eNB configuration file %s, enb %d unknown value \"%d\" for rach_preambleTransMax_CE_r13 choice: 3,4,5,6,7,8,10,20,50,100,200!\n",
-		 config_fname, cell_idx,eMTCconfig->preambleTransMax_CE_r13);
+    AssertFatal(0,
+                "Failed to parse eNB configuration file %s, enb %d unknown value \"%d\" for rach_preambleTransMax_CE_r13 choice: "
+                "3,4,5,6,7,8,10,20,50,100,200!\n",
+                config_fname,
+                cell_idx,
+                eMTCconfig->preambleTransMax_CE_r13);
     break;
   }
 
@@ -738,9 +868,12 @@ void fill_eMTC_configuration(RrcConfigurationReq *RRCcfg, ccparams_eMTC_t *eMTCc
     break;
 
   default:
-    AssertFatal (0,
-		 "Failed to parse eNB configuration file %s, enb %d unknown value \"%d\" for pcch_defaultPagingCycle choice: 32,64,128,256!\n",
-		 config_fname, cell_idx,eMTCconfig->ccparams.pcch_defaultPagingCycle);
+    AssertFatal(0,
+                "Failed to parse eNB configuration file %s, enb %d unknown value \"%d\" for pcch_defaultPagingCycle choice: "
+                "32,64,128,256!\n",
+                config_fname,
+                cell_idx,
+                eMTCconfig->ccparams.pcch_defaultPagingCycle);
     break;
   }
 
@@ -761,9 +894,12 @@ void fill_eMTC_configuration(RrcConfigurationReq *RRCcfg, ccparams_eMTC_t *eMTCc
   } else if (strcmp(eMTCconfig->ccparams.pcch_nB, "oneThirtySecondT") == 0) {
     RRCcfg->radioresourceconfig_BR[cc_idx].pcch_nB = LTE_PCCH_Config__nB_oneThirtySecondT;
   } else
-    AssertFatal (0,
-		 "Failed to parse eNB configuration file %s, enb %d unknown value \"%s\" for pcch_nB choice: fourT,twoT,oneT,halfT,quarterT,oneighthT,oneSixteenthT,oneThirtySecondT !\n",
-		 config_fname, cell_idx,eMTCconfig->ccparams.pcch_nB);
+    AssertFatal(0,
+                "Failed to parse eNB configuration file %s, enb %d unknown value \"%s\" for pcch_nB choice: "
+                "fourT,twoT,oneT,halfT,quarterT,oneighthT,oneSixteenthT,oneThirtySecondT !\n",
+                config_fname,
+                cell_idx,
+                eMTCconfig->ccparams.pcch_nB);
 
   switch (eMTCconfig->ccparams.bcch_modificationPeriodCoeff) {
   case 2:
@@ -783,9 +919,12 @@ void fill_eMTC_configuration(RrcConfigurationReq *RRCcfg, ccparams_eMTC_t *eMTCc
     break;
 
   default:
-    AssertFatal (0,
-		 "Failed to parse eNB configuration file %s, enb %d unknown value \"%d\" for bcch_modificationPeriodCoeff choice: 2,4,8,16",
-		 config_fname, cell_idx,eMTCconfig->ccparams.bcch_modificationPeriodCoeff);
+    AssertFatal(
+        0,
+        "Failed to parse eNB configuration file %s, enb %d unknown value \"%d\" for bcch_modificationPeriodCoeff choice: 2,4,8,16",
+        config_fname,
+        cell_idx,
+        eMTCconfig->ccparams.bcch_modificationPeriodCoeff);
     break;
   }
 
@@ -826,9 +965,12 @@ void fill_eMTC_configuration(RrcConfigurationReq *RRCcfg, ccparams_eMTC_t *eMTCc
     break;
 
   default:
-    AssertFatal (0,
-		 "Failed to parse eNB configuration file %s, enb %d unknown value \"%d\" for ue_TransmissionMode choice: 1,2,3,4,5,6,7",
-		 config_fname, cell_idx, eMTCconfig->ccparams.ue_TransmissionMode);
+    AssertFatal(
+        0,
+        "Failed to parse eNB configuration file %s, enb %d unknown value \"%d\" for ue_TransmissionMode choice: 1,2,3,4,5,6,7",
+        config_fname,
+        cell_idx,
+        eMTCconfig->ccparams.ue_TransmissionMode);
     break;
   }
 
@@ -862,8 +1004,9 @@ void fill_eMTC_configuration(RrcConfigurationReq *RRCcfg, ccparams_eMTC_t *eMTCc
       RRCcfg->radioresourceconfig_BR[cc_idx].mpdcch_startSF_CSS_RA_r13_val = 7;
     } else {
       AssertFatal(0,
-		  "Failed to parse eNB configuration file %s, enb %d mpdcch_startSF_CSS_RA_r13_val! Unknown Value !!\n",
-		  config_fname, cell_idx);
+                  "Failed to parse eNB configuration file %s, enb %d mpdcch_startSF_CSS_RA_r13_val! Unknown Value !!\n",
+                  config_fname,
+                  cell_idx);
     }
 
     RRCcfg->radioresourceconfig_BR[cc_idx].prach_HoppingOffset_r13 = calloc(1, sizeof(long));
@@ -878,9 +1021,7 @@ void fill_eMTC_configuration(RrcConfigurationReq *RRCcfg, ccparams_eMTC_t *eMTCc
   } else if (!strcmp(eMTCconfig->pdsch_maxNumRepetitionCEmodeA_r13, "r32")) {
     *RRCcfg->pdsch_maxNumRepetitionCEmodeA_r13[cc_idx] = 1;
   } else {
-    AssertFatal (0,
-		 "Failed to parse eNB configuration file %s, pdsch_maxNumRepetitionCEmodeA_r13 unknown value!\n",
-		 config_fname);
+    AssertFatal(0, "Failed to parse eNB configuration file %s, pdsch_maxNumRepetitionCEmodeA_r13 unknown value!\n", config_fname);
   }
 
   RRCcfg->pusch_maxNumRepetitionCEmodeA_r13[cc_idx] = CALLOC(1, sizeof(long));
@@ -891,9 +1032,7 @@ void fill_eMTC_configuration(RrcConfigurationReq *RRCcfg, ccparams_eMTC_t *eMTCc
   } else if (!strcmp(eMTCconfig->pusch_maxNumRepetitionCEmodeA_r13, "r32")) {
     *RRCcfg->pusch_maxNumRepetitionCEmodeA_r13[cc_idx] = 2;
   } else {
-    AssertFatal (0,
-		 "Failed to parse eNB configuration file %s, pusch_maxNumRepetitionCEmodeA_r13 unknown value!\n",
-		 config_fname);
+    AssertFatal(0, "Failed to parse eNB configuration file %s, pusch_maxNumRepetitionCEmodeA_r13 unknown value!\n", config_fname);
   }
 
   RRCcfg->pusch_repetitionLevelCEmodeA_r13[cc_idx] = CALLOC(1, sizeof(long));
@@ -948,8 +1087,7 @@ void fill_eMTC_configuration(RrcConfigurationReq *RRCcfg, ccparams_eMTC_t *eMTCc
       RRCcfg->ra_ResponseWindowSize_r13[cc_idx][rachCEInfoIndex] = LTE_RACH_CE_LevelInfo_r13__ra_ResponseWindowSize_r13_sf400;
       break;
     default:
-      AssertFatal(1==0,
-		"Illegal ra_ResponseWindowSize_r13 %d\n",eMTCconfig->ra_ResponseWindowSize_r13);
+      AssertFatal(1 == 0, "Illegal ra_ResponseWindowSize_r13 %d\n", eMTCconfig->ra_ResponseWindowSize_r13);
     }
 
 
@@ -979,14 +1117,14 @@ void fill_eMTC_configuration(RrcConfigurationReq *RRCcfg, ccparams_eMTC_t *eMTCc
       RRCcfg->mac_ContentionResolutionTimer_r13[cc_idx][rachCEInfoIndex] = LTE_RACH_CE_LevelInfo_r13__mac_ContentionResolutionTimer_r13_sf960;
       break;
     default:
-      AssertFatal(1==0,"Illegal mac_ContentionResolutionTimer_r13 %d\n",
-		  eMTCconfig->mac_ContentionResolutionTimer_r13);
+      AssertFatal(1 == 0, "Illegal mac_ContentionResolutionTimer_r13 %d\n", eMTCconfig->mac_ContentionResolutionTimer_r13);
       break;
     }
     RRCcfg->rar_HoppingConfig_r13[cc_idx][rachCEInfoIndex] = eMTCconfig->rar_HoppingConfig_r13;
 
-    AssertFatal(eMTCconfig->rar_HoppingConfig_r13 == 1 ,
-		            "illegal rar_HoppingConfig_r13 %d (should be 1 only for now, can be 0 when RAR frequency hopping is supported\n",eMTCconfig->rar_HoppingConfig_r13);
+    AssertFatal(eMTCconfig->rar_HoppingConfig_r13 == 1,
+                "illegal rar_HoppingConfig_r13 %d (should be 1 only for now, can be 0 when RAR frequency hopping is supported\n",
+                eMTCconfig->rar_HoppingConfig_r13);
   } // end for loop (rach ce level info)
 
   char rsrpRangeListPath[MAX_OPTNAME_SIZE * 2];
@@ -1040,8 +1178,7 @@ void fill_eMTC_configuration(RrcConfigurationReq *RRCcfg, ccparams_eMTC_t *eMTCc
       *RRCcfg->prach_StartingSubframe_r13[cc_idx][prachparamsindex] = LTE_PRACH_ParametersCE_r13__prach_StartingSubframe_r13_sf256;
       break;
     default:
-      AssertFatal(1==0,"prach_StartingSubframe_r13 %d is illegal\n",
-		  eMTCconfig->prach_StartingSubframe_r13);
+      AssertFatal(1 == 0, "prach_StartingSubframe_r13 %d is illegal\n", eMTCconfig->prach_StartingSubframe_r13);
       break;
     }
 
@@ -1050,10 +1187,10 @@ void fill_eMTC_configuration(RrcConfigurationReq *RRCcfg, ccparams_eMTC_t *eMTCc
       *RRCcfg->maxNumPreambleAttemptCE_r13[cc_idx][prachparamsindex] = 6;
     else
       *RRCcfg->maxNumPreambleAttemptCE_r13[cc_idx][prachparamsindex] = eMTCconfig->maxNumPreambleAttemptCE_r13 - 3;
-    AssertFatal(eMTCconfig->maxNumPreambleAttemptCE_r13 > 2 && eMTCconfig->maxNumPreambleAttemptCE_r13 <11,
-		"prachparamsindex %d: Illegal maxNumPreambleAttemptCE_r13 %d\n",
-		prachparamsindex,eMTCconfig->maxNumPreambleAttemptCE_r13);
-
+    AssertFatal(eMTCconfig->maxNumPreambleAttemptCE_r13 > 2 && eMTCconfig->maxNumPreambleAttemptCE_r13 < 11,
+                "prachparamsindex %d: Illegal maxNumPreambleAttemptCE_r13 %d\n",
+                prachparamsindex,
+                eMTCconfig->maxNumPreambleAttemptCE_r13);
 
     switch(eMTCconfig->numRepetitionPerPreambleAttempt_r13) {
     case 1:
@@ -1081,9 +1218,7 @@ void fill_eMTC_configuration(RrcConfigurationReq *RRCcfg, ccparams_eMTC_t *eMTCc
       RRCcfg->numRepetitionPerPreambleAttempt_r13[cc_idx][prachparamsindex] = LTE_PRACH_ParametersCE_r13__numRepetitionPerPreambleAttempt_r13_n128;
       break;
     default:
-      AssertFatal(1==0,
-		  "illegal numReptitionPerPreambleAttempt %d\n",
-		  eMTCconfig->numRepetitionPerPreambleAttempt_r13);
+      AssertFatal(1 == 0, "illegal numReptitionPerPreambleAttempt %d\n", eMTCconfig->numRepetitionPerPreambleAttempt_r13);
       break;
     }
     switch (eMTCconfig->mpdcch_NumRepetition_RA_r13) {
@@ -1115,17 +1250,15 @@ void fill_eMTC_configuration(RrcConfigurationReq *RRCcfg, ccparams_eMTC_t *eMTCc
       RRCcfg->mpdcch_NumRepetition_RA_r13[cc_idx][prachparamsindex] = LTE_PRACH_ParametersCE_r13__mpdcch_NumRepetition_RA_r13_r256;
       break;
     default:
-      AssertFatal (1==0,
-		 "illegal mpdcch_NumRepeition_RA_r13 %d\n",
-		   eMTCconfig->mpdcch_NumRepetition_RA_r13);
+      AssertFatal(1 == 0, "illegal mpdcch_NumRepeition_RA_r13 %d\n", eMTCconfig->mpdcch_NumRepetition_RA_r13);
       break;
     }
 
     RRCcfg->prach_HoppingConfig_r13[cc_idx][prachparamsindex] = eMTCconfig->prach_HoppingConfig_r13;
 
-    AssertFatal (eMTCconfig->prach_HoppingConfig_r13 >=0 && eMTCconfig->prach_HoppingConfig_r13 < 2,
-		 "Illegal prach_HoppingConfig_r13 %d\n",eMTCconfig->prach_HoppingConfig_r13);
-
+    AssertFatal(eMTCconfig->prach_HoppingConfig_r13 >= 0 && eMTCconfig->prach_HoppingConfig_r13 < 2,
+                "Illegal prach_HoppingConfig_r13 %d\n",
+                eMTCconfig->prach_HoppingConfig_r13);
 
     int maxavailablenarrowband_count = prachParams[7].numelt;
 
@@ -1156,18 +1289,13 @@ void fill_eMTC_configuration(RrcConfigurationReq *RRCcfg, ccparams_eMTC_t *eMTCc
   RRCcfg->paging_narrowbands_r13[cc_idx] = eMTCconfig->paging_narrowbands_r13;
   RRCcfg->mpdcch_numrepetition_paging_r13[cc_idx] = eMTCconfig->mpdcch_numrepetition_paging_r13;
 
-  AssertFatal (eMTCconfig->mpdcch_numrepetition_paging_r13 == 0 ||
-          eMTCconfig->mpdcch_numrepetition_paging_r13 == 1 ||
-	       eMTCconfig->mpdcch_numrepetition_paging_r13 == 2 ||
-	       eMTCconfig->mpdcch_numrepetition_paging_r13 == 4 ||
-	       eMTCconfig->mpdcch_numrepetition_paging_r13 == 8 ||
-	       eMTCconfig->mpdcch_numrepetition_paging_r13 == 16 ||
-	       eMTCconfig->mpdcch_numrepetition_paging_r13 == 32 ||
-	       eMTCconfig->mpdcch_numrepetition_paging_r13 == 64 ||
-	       eMTCconfig->mpdcch_numrepetition_paging_r13 == 128 ||
-	       eMTCconfig->mpdcch_numrepetition_paging_r13 == 256,
-	       "illegal mpdcch_numrepetition_paging_r13 %d\n",
-	       eMTCconfig->mpdcch_numrepetition_paging_r13);
+  AssertFatal(eMTCconfig->mpdcch_numrepetition_paging_r13 == 0 || eMTCconfig->mpdcch_numrepetition_paging_r13 == 1
+                  || eMTCconfig->mpdcch_numrepetition_paging_r13 == 2 || eMTCconfig->mpdcch_numrepetition_paging_r13 == 4
+                  || eMTCconfig->mpdcch_numrepetition_paging_r13 == 8 || eMTCconfig->mpdcch_numrepetition_paging_r13 == 16
+                  || eMTCconfig->mpdcch_numrepetition_paging_r13 == 32 || eMTCconfig->mpdcch_numrepetition_paging_r13 == 64
+                  || eMTCconfig->mpdcch_numrepetition_paging_r13 == 128 || eMTCconfig->mpdcch_numrepetition_paging_r13 == 256,
+              "illegal mpdcch_numrepetition_paging_r13 %d\n",
+              eMTCconfig->mpdcch_numrepetition_paging_r13);
 
   //                        RRCcfg->nb_v1310[cc_idx] = CALLOC(1, sizeof(long));
   //                        if (!strcmp(nb_v1310, "one64thT")) {
@@ -1193,9 +1321,9 @@ void fill_eMTC_configuration(RrcConfigurationReq *RRCcfg, ccparams_eMTC_t *eMTCc
   } else if (!strcmp(eMTCconfig->pucch_NumRepetitionCE_Msg4_Level0_r13, "n8")) {
     *RRCcfg->pucch_NumRepetitionCE_Msg4_Level0_r13[cc_idx] = 3;
   } else {
-    AssertFatal (0,
-		 "Failed to parse eNB configuration file %s, pucch_NumRepetitionCE_Msg4_Level0_r13 unknown value!\n",
-		 config_fname);
+    AssertFatal(0,
+                "Failed to parse eNB configuration file %s, pucch_NumRepetitionCE_Msg4_Level0_r13 unknown value!\n",
+                config_fname);
   }
 
 
@@ -1225,9 +1353,9 @@ void fill_eMTC_configuration(RrcConfigurationReq *RRCcfg, ccparams_eMTC_t *eMTCc
       RRCcfg->sib2_interval_ULHoppingConfigCommonModeA_r13_val[cc_idx] = 3;
       break;
     default:
-      AssertFatal(1==0,
-		  "illegal sib2_interval_ULHoppingConfigCommonModeA_r13_val %d\n",
-		  eMTCconfig->sib2_interval_ULHoppingConfigCommonModeA_r13_val);
+      AssertFatal(1 == 0,
+                  "illegal sib2_interval_ULHoppingConfigCommonModeA_r13_val %d\n",
+                  eMTCconfig->sib2_interval_ULHoppingConfigCommonModeA_r13_val);
     }
   } else if (!strcmp(eMTCconfig->sib2_interval_ULHoppingConfigCommonModeA_r13, "TDD")) {
     *RRCcfg->sib2_interval_ULHoppingConfigCommonModeA_r13[cc_idx] = 1;
@@ -1245,14 +1373,14 @@ void fill_eMTC_configuration(RrcConfigurationReq *RRCcfg, ccparams_eMTC_t *eMTCc
       RRCcfg->sib2_interval_ULHoppingConfigCommonModeA_r13_val[cc_idx] = 3;
       break;
     default:
-      AssertFatal(1==0,
-		  "illegal sib2_interval_ULHoppingConfigCommonModeA_r13_val %d\n",
-		  eMTCconfig->sib2_interval_ULHoppingConfigCommonModeA_r13_val);
+      AssertFatal(1 == 0,
+                  "illegal sib2_interval_ULHoppingConfigCommonModeA_r13_val %d\n",
+                  eMTCconfig->sib2_interval_ULHoppingConfigCommonModeA_r13_val);
       break;
     }
   } else {
-    AssertFatal (1==0,
-		 "Failed to parse eNB configuration file %s, sib2_interval_ULHoppingConfigCommonModeA_r13 unknown value !!\n",
-		 config_fname);
+    AssertFatal(1 == 0,
+                "Failed to parse eNB configuration file %s, sib2_interval_ULHoppingConfigCommonModeA_r13 unknown value !!\n",
+                config_fname);
   }
 }

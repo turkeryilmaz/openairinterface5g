@@ -50,8 +50,8 @@ extern int proccmd_websrv_getdata(char *cmdbuff, int debug, void *data, telnet_p
 telnetshell_vardef_t proc_vardef[] = {{"", 0, 0, NULL}};
 #define PROCCMD_LOG_HELP_STRING \
   " log sub commands: \n\
- show:  		     display current log configuration \n\
- online, noonline:	     enable or disable console logs \n\
+ show:               display current log configuration \n\
+ online, noonline:         enable or disable console logs \n\
  enable, disable id1-id2:    enable or disable logs for components index id1 to id2 \n\
  file, nofile id1-id2:       enable or disable redirecting logs to file for components index id1 to id2 \n\
                              logfile name depends on component name and is printed in the show command \n\

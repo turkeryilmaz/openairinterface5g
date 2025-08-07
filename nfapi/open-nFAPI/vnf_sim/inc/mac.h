@@ -27,12 +27,12 @@ typedef struct mac mac_t;
 
 typedef struct mac
 {
-	void* user_data;
+  void* user_data;
 
-	void (*dl_config_req)(mac_t* mac, nfapi_dl_config_request_t* req);
-	void (*ul_config_req)(mac_t* mac, nfapi_ul_config_request_t* req);
-	void (*hi_dci0_req)(mac_t* mac, nfapi_hi_dci0_request_t* req);
-	void (*tx_req)(mac_t* mac, nfapi_tx_request_t* req);
+  void (*dl_config_req)(mac_t* mac, nfapi_dl_config_request_t* req);
+  void (*ul_config_req)(mac_t* mac, nfapi_ul_config_request_t* req);
+  void (*hi_dci0_req)(mac_t* mac, nfapi_hi_dci0_request_t* req);
+  void (*tx_req)(mac_t* mac, nfapi_tx_request_t* req);
 } mac_t;
 
 mac_t* mac_create(uint8_t wireshark_test_mode);

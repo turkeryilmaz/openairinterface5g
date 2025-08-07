@@ -102,12 +102,12 @@ int pss_ch_est(PHY_VARS_UE *ue,
   return(0);
 }
 
-
 int _do_pss_sss_extract(PHY_VARS_UE *ue,
-                    int32_t pss_ext[4][72],
-                    int32_t sss_ext[4][72],
-                    uint8_t doPss, uint8_t doSss,
-					uint8_t subframe) // add flag to indicate extracting only PSS, only SSS, or both
+                        int32_t pss_ext[4][72],
+                        int32_t sss_ext[4][72],
+                        uint8_t doPss,
+                        uint8_t doSss,
+                        uint8_t subframe) // add flag to indicate extracting only PSS, only SSS, or both
 {
 
 
@@ -126,41 +126,34 @@ int _do_pss_sss_extract(PHY_VARS_UE *ue,
 
   //LOG_I(PHY,"do_pss_sss_extract subframe %d \n",subframe);
   for (aarx=0; aarx<frame_parms->nb_antennas_rx; aarx++) {
+    if (frame_parms->frame_type == FDD) {
+      pss_symb = 6 - frame_parms->Ncp;
+      sss_symb = pss_symb - 1;
 
-	  if (frame_parms->frame_type == FDD) {
-	    pss_symb = 6-frame_parms->Ncp;
-	    sss_symb = pss_symb-1;
+      rxdataF = ue->common_vars.common_vars_rx_data_per_thread[ue->current_thread_id[subframe]].rxdataF;
+      pss_rxF = &rxdataF[aarx][(rx_offset + (pss_symb * (frame_parms->ofdm_symbol_size)))];
+      sss_rxF = &rxdataF[aarx][(rx_offset + (sss_symb * (frame_parms->ofdm_symbol_size)))];
 
-	    rxdataF  =  ue->common_vars.common_vars_rx_data_per_thread[ue->current_thread_id[subframe]].rxdataF;
-	    pss_rxF  =  &rxdataF[aarx][(rx_offset + (pss_symb*(frame_parms->ofdm_symbol_size)))];
-	    sss_rxF  =  &rxdataF[aarx][(rx_offset + (sss_symb*(frame_parms->ofdm_symbol_size)))];
+    } else {
+      pss_symb = 2;
+      sss_symb = frame_parms->symbols_per_tti - 1;
 
-	  } else {
-	    pss_symb = 2;
-	    sss_symb = frame_parms->symbols_per_tti-1;
+      if (subframe == 5 || subframe == 0) {
+        rxdataF = ue->common_vars.common_vars_rx_data_per_thread[ue->current_thread_id[subframe]].rxdataF;
+        sss_rxF = &rxdataF[aarx][(rx_offset + (sss_symb * (frame_parms->ofdm_symbol_size)))];
 
-	    if(subframe==5 || subframe==0)
-	    {
-	    rxdataF  =  ue->common_vars.common_vars_rx_data_per_thread[ue->current_thread_id[subframe]].rxdataF;
-	    sss_rxF  =  &rxdataF[aarx][(rx_offset + (sss_symb*(frame_parms->ofdm_symbol_size)))];
+        rxdataF = ue->common_vars.common_vars_rx_data_per_thread[next_thread_id].rxdataF;
+        pss_rxF = &rxdataF[aarx][(rx_offset + (pss_symb * (frame_parms->ofdm_symbol_size)))];
+      } else if (subframe == 6 || subframe == 1) {
+        rxdataF = ue->common_vars.common_vars_rx_data_per_thread[ue->current_thread_id[subframe]].rxdataF;
+        pss_rxF = &rxdataF[aarx][(rx_offset + (pss_symb * (frame_parms->ofdm_symbol_size)))];
 
-	    rxdataF  =  ue->common_vars.common_vars_rx_data_per_thread[next_thread_id].rxdataF;
-	    pss_rxF  =  &rxdataF[aarx][(rx_offset + (pss_symb*(frame_parms->ofdm_symbol_size)))];
-	    }
-	    else if(subframe==6 || subframe==1)
-	    {
-		    rxdataF  =  ue->common_vars.common_vars_rx_data_per_thread[ue->current_thread_id[subframe]].rxdataF;
-		    pss_rxF  =  &rxdataF[aarx][(rx_offset + (pss_symb*(frame_parms->ofdm_symbol_size)))];
-
-		    rxdataF  =  ue->common_vars.common_vars_rx_data_per_thread[next_thread_id].rxdataF;
-		    sss_rxF  =  &rxdataF[aarx][(rx_offset + (sss_symb*(frame_parms->ofdm_symbol_size)))];
-	    }
-	    else
-	    {
-	    	AssertFatal(0,"");
-	    }
-
-	  }
+        rxdataF = ue->common_vars.common_vars_rx_data_per_thread[next_thread_id].rxdataF;
+        sss_rxF = &rxdataF[aarx][(rx_offset + (sss_symb * (frame_parms->ofdm_symbol_size)))];
+      } else {
+        AssertFatal(0, "");
+      }
+    }
     //printf("extract_rbs: symbol_mod=%d, rx_offset=%d, ch_offset=%d\n",symbol_mod,
     //   (rx_offset + (symbol*(frame_parms->ofdm_symbol_size)))*2,
     //   LTE_CE_OFFSET+ch_offset+(symbol_mod*(frame_parms->ofdm_symbol_size)));
@@ -178,26 +171,21 @@ int _do_pss_sss_extract(PHY_VARS_UE *ue,
         }
         else
         {
-        	if(subframe==5 || subframe==0)
-        	{
-    	    rxdataF  =  ue->common_vars.common_vars_rx_data_per_thread[ue->current_thread_id[subframe]].rxdataF;
-    	    sss_rxF  =  &rxdataF[aarx][(1 + (sss_symb*(frame_parms->ofdm_symbol_size)))];
+          if (subframe == 5 || subframe == 0) {
+            rxdataF = ue->common_vars.common_vars_rx_data_per_thread[ue->current_thread_id[subframe]].rxdataF;
+            sss_rxF = &rxdataF[aarx][(1 + (sss_symb * (frame_parms->ofdm_symbol_size)))];
 
-    	    rxdataF  =  ue->common_vars.common_vars_rx_data_per_thread[next_thread_id].rxdataF;
-    	    pss_rxF  =  &rxdataF[aarx][(1 + (pss_symb*(frame_parms->ofdm_symbol_size)))];
-        	}
-    	    else if(subframe==6 || subframe==1)
-    	    {
-    		    rxdataF  =  ue->common_vars.common_vars_rx_data_per_thread[ue->current_thread_id[subframe]].rxdataF;
-    		    pss_rxF  =  &rxdataF[aarx][(rx_offset + (pss_symb*(frame_parms->ofdm_symbol_size)))];
+            rxdataF = ue->common_vars.common_vars_rx_data_per_thread[next_thread_id].rxdataF;
+            pss_rxF = &rxdataF[aarx][(1 + (pss_symb * (frame_parms->ofdm_symbol_size)))];
+          } else if (subframe == 6 || subframe == 1) {
+            rxdataF = ue->common_vars.common_vars_rx_data_per_thread[ue->current_thread_id[subframe]].rxdataF;
+            pss_rxF = &rxdataF[aarx][(rx_offset + (pss_symb * (frame_parms->ofdm_symbol_size)))];
 
-    		    rxdataF  =  ue->common_vars.common_vars_rx_data_per_thread[next_thread_id].rxdataF;
-    		    sss_rxF  =  &rxdataF[aarx][(rx_offset + (sss_symb*(frame_parms->ofdm_symbol_size)))];
-    	    }
-    	    else
-    	    {
-    	    	AssertFatal(0,"");
-    	    }
+            rxdataF = ue->common_vars.common_vars_rx_data_per_thread[next_thread_id].rxdataF;
+            sss_rxF = &rxdataF[aarx][(rx_offset + (sss_symb * (frame_parms->ofdm_symbol_size)))];
+          } else {
+            AssertFatal(0, "");
+          }
         }
       }
 
@@ -217,10 +205,7 @@ int _do_pss_sss_extract(PHY_VARS_UE *ue,
   return(0);
 }
 
-int pss_sss_extract(PHY_VARS_UE *phy_vars_ue,
-                    int32_t pss_ext[4][72],
-                    int32_t sss_ext[4][72],
-					uint8_t subframe)
+int pss_sss_extract(PHY_VARS_UE *phy_vars_ue, int32_t pss_ext[4][72], int32_t sss_ext[4][72], uint8_t subframe)
 {
   return _do_pss_sss_extract(phy_vars_ue, pss_ext, sss_ext, 1 /* doPss */, 1 /* doSss */, subframe);
 }
@@ -256,18 +241,18 @@ int rx_sss(PHY_VARS_UE *ue,int32_t *tot_metric,uint8_t *flip_max,uint8_t *phase_
     // Do FFTs for SSS/PSS
     // SSS
     slot_fep(ue,
-             (frame_parms->symbols_per_tti/2)-2, // second to last symbol of
-             0,                                  // slot 0
+             (frame_parms->symbols_per_tti / 2) - 2, // second to last symbol of
+             0, // slot 0
              ue->rx_offset,
              0,
-	     1);
+             1);
     // PSS
     slot_fep(ue,
-             (frame_parms->symbols_per_tti/2)-1, // last symbol of
-             0,                                  // slot 0
+             (frame_parms->symbols_per_tti / 2) - 1, // last symbol of
+             0, // slot 0
              ue->rx_offset,
              0,
-	     1);
+             1);
   } else { // TDD
 #ifdef DEBUG_SSS
     if (ue->frame_parms->Ncp == NORMAL)
@@ -278,18 +263,18 @@ int rx_sss(PHY_VARS_UE *ue,int32_t *tot_metric,uint8_t *flip_max,uint8_t *phase_
 #endif
     // SSS
     slot_fep(ue,
-             (frame_parms->symbols_per_tti>>1)-1,  // last symbol of
-             1,                                    // slot 1
+             (frame_parms->symbols_per_tti >> 1) - 1, // last symbol of
+             1, // slot 1
              ue->rx_offset,
              0,
-	     1);
+             1);
     // PSS
     slot_fep(ue,
-             2,                                   // symbol 2 of
-             2,                                   // slot 2
+             2, // symbol 2 of
+             2, // slot 2
              ue->rx_offset,
              0,
-	     1);
+             1);
   }
   // pss sss extract for subframe 0
   pss_sss_extract(ue,
@@ -327,19 +312,9 @@ int rx_sss(PHY_VARS_UE *ue,int32_t *tot_metric,uint8_t *flip_max,uint8_t *phase_
              0,1);
   } else { // TDD
     // SSS
-    slot_fep(ue,
-             (frame_parms->symbols_per_tti>>1)-1,
-             11,
-             ue->rx_offset,
-             0,
-	     1);
+    slot_fep(ue, (frame_parms->symbols_per_tti >> 1) - 1, 11, ue->rx_offset, 0, 1);
     // PSS
-    slot_fep(ue,
-             2,
-             12,
-             ue->rx_offset,
-             0,
-	     1);
+    slot_fep(ue, 2, 12, ue->rx_offset, 0, 1);
   }
 
   // pss sss extract for subframe 5

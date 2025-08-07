@@ -123,9 +123,10 @@ void set_rx_gain_offset(openair0_config_t *openair0_cfg, int chain_index) {
   while (openair0_cfg->rx_gain_calib_table[i].freq>0) {
     diff = fabs(openair0_cfg->rx_freq[chain_index] - openair0_cfg->rx_gain_calib_table[i].freq);
     printf("cal %d: freq %f, offset %f, diff %f\n",
-	   i,
-	   openair0_cfg->rx_gain_calib_table[i].freq,
-	   openair0_cfg->rx_gain_calib_table[i].offset,diff);
+           i,
+           openair0_cfg->rx_gain_calib_table[i].freq,
+           openair0_cfg->rx_gain_calib_table[i].offset,
+           diff);
     if (min_diff > diff) {
       min_diff = diff;
       openair0_cfg->rx_gain_offset[chain_index] = openair0_cfg->rx_gain_calib_table[i].offset;

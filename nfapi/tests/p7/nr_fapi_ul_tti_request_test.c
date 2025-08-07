@@ -236,10 +236,10 @@ static void fill_ul_tti_request_pucch_pdu(nfapi_nr_pucch_pdu_t *pdu)
   } else {
     pdu->sr_flag = 0;
   }
-  //	Value:
-  //	0 = no HARQ bits
-  //	1->2 = Valid for Formats 0 and 1
-  //	2 -> 1706 = Valid for Formats 2, 3 and 4
+  //    Value:
+  //    0 = no HARQ bits
+  //    1->2 = Valid for Formats 0 and 1
+  //    2 -> 1706 = Valid for Formats 2, 3 and 4
   if (pdu->format_type == 0 || pdu->format_type == 1) {
     //{0,1,2}
     pdu->bit_len_harq = rand16_range(0, 2);

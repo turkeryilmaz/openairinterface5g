@@ -183,21 +183,21 @@ void s1ap_eNB_remove_mme_desc(s1ap_eNB_instance_t * instance)
       while (!STAILQ_EMPTY(&mme->served_gummei)) {
         gummeiInfo = STAILQ_FIRST(&mme->served_gummei);
         STAILQ_REMOVE_HEAD(&mme->served_gummei, next);
-	
+
         while (!STAILQ_EMPTY(&gummeiInfo->served_plmns)) {
-	  plmnInfo = STAILQ_FIRST(&gummeiInfo->served_plmns);
-	  STAILQ_REMOVE_HEAD(&gummeiInfo->served_plmns, next);
-	  free(plmnInfo);
+          plmnInfo = STAILQ_FIRST(&gummeiInfo->served_plmns);
+          STAILQ_REMOVE_HEAD(&gummeiInfo->served_plmns, next);
+          free(plmnInfo);
         }
         while (!STAILQ_EMPTY(&gummeiInfo->served_group_ids)) {
-	  groupInfo = STAILQ_FIRST(&gummeiInfo->served_group_ids);
-	  STAILQ_REMOVE_HEAD(&gummeiInfo->served_group_ids, next);
-	  free(groupInfo);
+          groupInfo = STAILQ_FIRST(&gummeiInfo->served_group_ids);
+          STAILQ_REMOVE_HEAD(&gummeiInfo->served_group_ids, next);
+          free(groupInfo);
         }
         while (!STAILQ_EMPTY(&gummeiInfo->mme_codes)) {
-	  mmeCode = STAILQ_FIRST(&gummeiInfo->mme_codes);
-	  STAILQ_REMOVE_HEAD(&gummeiInfo->mme_codes, next);
-	  free(mmeCode);
+          mmeCode = STAILQ_FIRST(&gummeiInfo->mme_codes);
+          STAILQ_REMOVE_HEAD(&gummeiInfo->mme_codes, next);
+          free(mmeCode);
         }
         free(gummeiInfo);
       }

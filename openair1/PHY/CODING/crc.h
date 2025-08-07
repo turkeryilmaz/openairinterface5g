@@ -310,11 +310,10 @@ simde__m128i crc32_folding_round(const simde__m128i data_block,
   simde__m128i tmp = _mm_clmulepi64_si128(fold, k1_k2, 0x11);
 
   return simde_mm_xor_si128(_mm_clmulepi64_si128(fold, k1_k2, 0x00), simde_mm_xor_si128(data_block, tmp));
-#else	
-        simde__m128i tmp = simde_mm_clmulepi64_si128(fold, k1_k2, 0x11);
+#else
+  simde__m128i tmp = simde_mm_clmulepi64_si128(fold, k1_k2, 0x11);
 
-        return simde_mm_xor_si128(simde_mm_clmulepi64_si128(fold, k1_k2, 0x00),
-                             simde_mm_xor_si128(data_block, tmp));
+  return simde_mm_xor_si128(simde_mm_clmulepi64_si128(fold, k1_k2, 0x00), simde_mm_xor_si128(data_block, tmp));
 #endif
 }
 
@@ -371,7 +370,7 @@ crc32_reduce_64_to_32(simde__m128i fold, const simde__m128i k3_q, const simde__m
                                     k3_q, 0x10 /* Q */);
         temp = simde_mm_srli_si128(simde_mm_xor_si128(temp, fold), 4);
         temp = simde_mm_clmulepi64_si128(temp, p_res, 0 /* P */);
-#endif	
+#endif
         return simde_mm_extract_epi32(simde_mm_xor_si128(temp, fold), 0);
 }
 

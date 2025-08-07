@@ -2012,9 +2012,9 @@ void fill_ulsch(PHY_VARS_eNB *eNB,int UE_id,nfapi_ul_config_ulsch_pdu *ulsch_pdu
   ulsch->ue_type = ulsch_pdu->ulsch_pdu_rel13.ue_type;
   AssertFatal(harq_pid ==0 || ulsch->ue_type == NOCE, "Harq PID is not zero for BL/CE UE\n");
 
-  if(ulsch_pdu->ulsch_pdu_rel13.repetition_number >1)	// Fill the Harq process parameters in the first Rep only
+  if (ulsch_pdu->ulsch_pdu_rel13.repetition_number > 1) // Fill the Harq process parameters in the first Rep only
   {
-	  return;
+    return;
   }
 
   ulsch->harq_processes[harq_pid]->frame                                 = frame;

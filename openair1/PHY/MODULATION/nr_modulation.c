@@ -482,14 +482,14 @@ void nr_layer_mapping(int nbCodes,
       // SIMDe doesn't handle this properly, gcc up to 14.2 neither
       for (; i < (n_symbs & ~3); i += 4) {
         uint32x4_t d4 = *(uint32x4_t *)(mod + i);
-        *(uint32_t *)tx0 = vgetq_lane_u32(d4, 0); 
-	tx0++;
-        *(uint32_t *)tx1 = vgetq_lane_u32(d4, 1); 
-	tx1++;
-        *(uint32_t *)tx2 = vgetq_lane_u32(d4, 0); 
-	tx2++;
-        *(uint32_t *)tx3 = vgetq_lane_u32(d4, 1); 
-	tx3++;
+        *(uint32_t *)tx0 = vgetq_lane_u32(d4, 0);
+        tx0++;
+        *(uint32_t *)tx1 = vgetq_lane_u32(d4, 1);
+        tx1++;
+        *(uint32_t *)tx2 = vgetq_lane_u32(d4, 0);
+        tx2++;
+        *(uint32_t *)tx3 = vgetq_lane_u32(d4, 1);
+        tx3++;
       }
 #endif
       for (; i < n_symbs; i += 4) {

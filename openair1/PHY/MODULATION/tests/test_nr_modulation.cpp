@@ -163,7 +163,8 @@ TEST(NrLayerPrecoderTest, Compare_CM_SIMD)
   std::vector<c16_t> buffer_out_simd(n_ants * symbol_size);
 
   for (int i = 0; i < n_layers * symbol_size; ++i) {
-	buffer_in[i] = {static_cast<int16_t>((rand() % (2 * SHRT_MAX + 1)) - SHRT_MAX), static_cast<int16_t>((rand() % (2 * SHRT_MAX + 1)) - SHRT_MAX)};
+    buffer_in[i] = {static_cast<int16_t>((rand() % (2 * SHRT_MAX + 1)) - SHRT_MAX),
+                    static_cast<int16_t>((rand() % (2 * SHRT_MAX + 1)) - SHRT_MAX)};
   }
   for (int i = 0; i < n_ants * symbol_size; ++i) {
     buffer_out_cm[i] = {static_cast<int16_t>(0), static_cast<int16_t>(0)};

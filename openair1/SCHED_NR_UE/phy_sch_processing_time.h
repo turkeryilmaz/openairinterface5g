@@ -23,7 +23,7 @@
  \brief         tables for UE PDSCH processing and UE PUSCH preparation procedure time
                 from TS 38.214 Physical procedures for data v15.6.0
  \author        Guido Casati
- \date 	        2019
+ \date             2019
  \version       0.1
  \company       Fraunhofer IIS
  \email:        guido.casati@iis.fraunhofer.de

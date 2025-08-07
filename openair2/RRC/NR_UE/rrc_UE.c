@@ -2335,11 +2335,11 @@ void *rrc_nrue(void *notUsed)
 
   case NR_RRC_DCCH_DATA_IND:
     nr_rrc_ue_decode_dcch(rrc,
-			  NR_RRC_DCCH_DATA_IND(msg_p).dcch_index,
-			  NR_RRC_DCCH_DATA_IND(msg_p).sdu_p,
-			  NR_RRC_DCCH_DATA_IND(msg_p).sdu_size,
-			  NR_RRC_DCCH_DATA_IND(msg_p).gNB_index,
-			  &NR_RRC_DCCH_DATA_IND(msg_p).msg_integrity);
+                          NR_RRC_DCCH_DATA_IND(msg_p).dcch_index,
+                          NR_RRC_DCCH_DATA_IND(msg_p).sdu_p,
+                          NR_RRC_DCCH_DATA_IND(msg_p).sdu_size,
+                          NR_RRC_DCCH_DATA_IND(msg_p).gNB_index,
+                          &NR_RRC_DCCH_DATA_IND(msg_p).msg_integrity);
     /* this is allocated by itti_malloc in PDCP task (deliver_sdu_srb)
        then passed to the RRC task and freed after use */
     free(NR_RRC_DCCH_DATA_IND(msg_p).sdu_p);

@@ -499,12 +499,12 @@ int main(int argc, char **argv)
                                     get_softmodem_params()->numerology,
                                     nr_band);
         } else {
-	  MessageDef *msg = NULL;
-	  do {
-	    itti_poll_msg(TASK_MAC_UE, &msg);
-	    if (msg)
-	      process_msg_rcc_to_mac(msg);
-	  } while (msg);
+          MessageDef *msg = NULL;
+          do {
+            itti_poll_msg(TASK_MAC_UE, &msg);
+            if (msg)
+              process_msg_rcc_to_mac(msg);
+          } while (msg);
           fapi_nr_config_request_t *nrUE_config = &UE[CC_id]->nrUE_config;
           nr_init_frame_parms_ue(&UE[CC_id]->frame_parms, nrUE_config, mac->nr_band);
         }

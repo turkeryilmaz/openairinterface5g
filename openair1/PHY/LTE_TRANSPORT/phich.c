@@ -699,10 +699,7 @@ void generate_phich(LTE_DL_FRAME_PARMS *frame_parms,
   } // normal/extended prefix
 }
 
-
-void generate_phich_top(PHY_VARS_eNB *eNB,
-                        L1_rxtx_proc_t *proc,
-			int16_t amp)
+void generate_phich_top(PHY_VARS_eNB *eNB, L1_rxtx_proc_t *proc, int16_t amp)
 {
 
 
@@ -733,29 +730,35 @@ void generate_phich_top(PHY_VARS_eNB *eNB,
   for (i=0; i<eNB->phich_vars[subframe&1].num_hi; i++) {
 
     phich = &eNB->phich_vars[subframe&1].config[i];
-    
-    ngroup_PHICH = (phich->first_rb +
-		    phich->n_DMRS)%Ngroup_PHICH;
-    
+
+    ngroup_PHICH = (phich->first_rb + phich->n_DMRS) % Ngroup_PHICH;
+
     if ((frame_parms->tdd_config == 0) && (frame_parms->frame_type == TDD) ) {
       
       if ((pusch_subframe == 4) || (pusch_subframe == 9))
-	ngroup_PHICH += Ngroup_PHICH;
+        ngroup_PHICH += Ngroup_PHICH;
     }
-    
-    nseq_PHICH = ((phich->first_rb/Ngroup_PHICH) +
-		  phich->n_DMRS)%(2*NSF_PHICH);
+
+    nseq_PHICH = ((phich->first_rb / Ngroup_PHICH) + phich->n_DMRS) % (2 * NSF_PHICH);
     harq_pid = subframe2harq_pid(frame_parms,phich_frame2_pusch_frame(frame_parms,proc->frame_tx,subframe),pusch_subframe);
-	if (harq_pid == 255) {
+    if (harq_pid == 255) {
       LOG_E(PHY,"FATAL ERROR: illegal harq_pid, returning\n");
-	  return;
-	}
-    LOG_D(PHY,"[eNB %d][PUSCH %d] Frame %d subframe %d Generating PHICH, AMP %d  ngroup_PHICH %d/%d, nseq_PHICH %d : HI %d, first_rb %d)\n",
-	  eNB->Mod_id,harq_pid,proc->frame_tx,
-	  subframe,amp,ngroup_PHICH,Ngroup_PHICH,nseq_PHICH,
-	  phich->hi,
-	  phich->first_rb);
-    
+      return;
+    }
+    LOG_D(PHY,
+          "[eNB %d][PUSCH %d] Frame %d subframe %d Generating PHICH, AMP %d  ngroup_PHICH %d/%d, nseq_PHICH %d : HI %d, first_rb "
+          "%d)\n",
+          eNB->Mod_id,
+          harq_pid,
+          proc->frame_tx,
+          subframe,
+          amp,
+          ngroup_PHICH,
+          Ngroup_PHICH,
+          nseq_PHICH,
+          phich->hi,
+          phich->first_rb);
+
     T(T_ENB_PHY_PHICH, T_INT(eNB->Mod_id), T_INT(proc->frame_tx), T_INT(subframe),
       T_INT(-1 /* TODO: rnti */), 
       T_INT(harq_pid),
@@ -764,14 +767,14 @@ void generate_phich_top(PHY_VARS_eNB *eNB,
       T_INT(phich->hi),
       T_INT(phich->first_rb),
       T_INT(phich->n_DMRS));
-    
+
     generate_phich(frame_parms,
-		   amp,//amp*2,
-		   nseq_PHICH,
-		   ngroup_PHICH,
-		   phich->hi,
-		   subframe,
-		   txdataF);
+                   amp, // amp*2,
+                   nseq_PHICH,
+                   ngroup_PHICH,
+                   phich->hi,
+                   subframe,
+                   txdataF);
   }//  for (i=0; i<eNB->phich_vars[subframe&1].num_hi; i++) { 
   eNB->phich_vars[subframe&1].num_hi=0;
 }

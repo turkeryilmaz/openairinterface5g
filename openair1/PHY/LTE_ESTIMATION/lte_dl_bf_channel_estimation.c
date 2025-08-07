@@ -54,11 +54,10 @@ int lte_dl_bf_channel_estimation(PHY_VARS_UE *phy_vars_ue,
   harq_pid    = dlsch_ue[0]->current_harq_pid;
   dlsch0_harq = dlsch_ue[0]->harq_processes[harq_pid];
 
-  if (((frame_parms->Ncp == NORMAL) && (symbol>=7)) ||
-		  ((frame_parms->Ncp == EXTENDED) && (symbol>=6)))
-	  rballoc = dlsch0_harq->rb_alloc_odd;
+  if (((frame_parms->Ncp == NORMAL) && (symbol >= 7)) || ((frame_parms->Ncp == EXTENDED) && (symbol >= 6)))
+    rballoc = dlsch0_harq->rb_alloc_odd;
   else
-	  rballoc = dlsch0_harq->rb_alloc_even;
+    rballoc = dlsch0_harq->rb_alloc_even;
 
   rxdataF = phy_vars_ue->common_vars.common_vars_rx_data_per_thread[phy_vars_ue->current_thread_id[Ns>>1]].rxdataF;
 
@@ -67,10 +66,9 @@ int lte_dl_bf_channel_estimation(PHY_VARS_UE *phy_vars_ue,
   beamforming_mode   = phy_vars_ue->transmission_mode[eNB_id]>6 ? phy_vars_ue->transmission_mode[eNB_id] : 0;
 
   if (phy_vars_ue->high_speed_flag == 0) // use second channel estimate position for temporary storage
-	  ch_offset     = frame_parms->ofdm_symbol_size;
+    ch_offset = frame_parms->ofdm_symbol_size;
   else
-	  ch_offset     = frame_parms->ofdm_symbol_size*symbol;
-
+    ch_offset = frame_parms->ofdm_symbol_size * symbol;
 
   uespec_nushift = frame_parms->Nid_cell%3;
   subframe = Ns>>1;
@@ -82,41 +80,41 @@ int lte_dl_bf_channel_estimation(PHY_VARS_UE *phy_vars_ue,
   //LOG_M("uespec_pilot_rx.m","uespec_pilot",uespec_pilot,300,1,1);
 
   if (frame_parms->Ncp==0){
-	  if (symbol==3 || symbol==6 || symbol==9 || symbol==12)
-		  uespec_pilots = 1;
+    if (symbol == 3 || symbol == 6 || symbol == 9 || symbol == 12)
+      uespec_pilots = 1;
   } else{
-	  if (symbol==4 || symbol==7 || symbol==10)
-		  uespec_pilots = 1;
+    if (symbol == 4 || symbol == 7 || symbol == 10)
+      uespec_pilots = 1;
   }
 
   if ((frame_parms->Ncp==0 && (symbol==6 ||symbol ==12)) || (frame_parms->Ncp==1 && symbol==7))
-	  uespec_poffset = 2;
+    uespec_poffset = 2;
 
   if (phy_vars_ue->frame_parms.Ncp == 0) { // normal prefix
-	  pilot0 = 3;
-	  pilot1 = 6;
-	  pilot2 = 9;
-	  pilot3 = 12;
+    pilot0 = 3;
+    pilot1 = 6;
+    pilot2 = 9;
+    pilot3 = 12;
   } else { // extended prefix
-	  pilot0 = 4;
-	  pilot1 = 7;
-	  pilot2 = 10;
+    pilot0 = 4;
+    pilot1 = 7;
+    pilot2 = 10;
   }
 
   //define the filter
   pil_offset = (uespec_nushift+uespec_poffset)%3;
   // printf("symbol=%d,pil_offset=%d\n",symbol,pil_offset);
   switch (pil_offset) {
-	  case 0:
-		  fl = filt16_l0;
-		  fm = filt16_m0;
-		  fr = filt16_r0;
-		  fl_dc = filt16_l0;
-		  fm_dc = filt16_m0;
-		  fr_dc = filt16_r0;
-		  f1 = filt16_1;
-		  f2l = filt16_2l0;
-		  f2r = filt16_2r0;
+    case 0:
+      fl = filt16_l0;
+      fm = filt16_m0;
+      fr = filt16_r0;
+      fl_dc = filt16_l0;
+      fm_dc = filt16_m0;
+      fr_dc = filt16_r0;
+      f1 = filt16_1;
+      f2l = filt16_2l0;
+      f2r = filt16_2r0;
       break;
 
     case 1:
@@ -327,12 +325,14 @@ int lte_dl_bf_channel_estimation(PHY_VARS_UE *phy_vars_ue,
                   multadd_real_vector_complex_scalar(fr, c16mulShift(*pil++, rxF[8], 15), dl_bf_ch, 16);
                }  
              } else {
-		LOG_E(PHY,"lte_dl_bf_channel_estimation(lte_dl_bf_channel_estimation.c):TM7 beamgforming channel estimation not supported for extented CP\n");
-		exit(-1);
+               LOG_E(PHY,
+                     "lte_dl_bf_channel_estimation(lte_dl_bf_channel_estimation.c):TM7 beamgforming channel estimation not "
+                     "supported for extented CP\n");
+               exit(-1);
              }
           
            } else {
-	      LOG_E(PHY,"lte_dl_bf_channel_estimation(lte_dl_bf_channel_estimation.c):transmission mode not supported.\n");
+             LOG_E(PHY, "lte_dl_bf_channel_estimation(lte_dl_bf_channel_estimation.c):transmission mode not supported.\n");
            }
           }
         }

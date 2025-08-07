@@ -62,7 +62,7 @@ extern bler_struct bler_data[NUM_MCS];
 extern nfapi_dl_config_request_t* dl_config_req;
 extern nfapi_ul_config_request_t* ul_config_req;
 extern nfapi_hi_dci0_request_t* hi_dci0_req;
-extern int	tx_req_num_elems;
+extern int tx_req_num_elems;
 
 // This function should return all the sched_response config messages which concern a specific UE. Inside this
 // function we should somehow make the translation of config message's rnti to Mod_ID.
@@ -114,8 +114,8 @@ void fill_ulsch_harq_indication_UE_MAC(int Mod_id, int frame,int subframe, UL_IN
 
 void fill_uci_harq_indication_UE_MAC(int Mod_id, int frame, int subframe, UL_IND_t *UL_INFO,nfapi_ul_config_harq_information *harq_information, uint16_t rnti,
                                     nfapi_ul_config_request_t *ul_config_req
-			      /*uint8_t tdd_mapping_mode,
-			      uint16_t tdd_multiplexing_mask*/);
+                  /*uint8_t tdd_mapping_mode,
+                  uint16_t tdd_multiplexing_mask*/);
 
 int ul_config_req_UE_MAC(nfapi_ul_config_request_t* req, int frame, int subframe, module_id_t Mod_id);
 

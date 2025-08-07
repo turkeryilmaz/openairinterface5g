@@ -24,19 +24,19 @@ char *get_emm_filename(const char *output_dir, int user_id) {
 }
 
 char *get_usim_filename(const char *output_dir, int user_id) {
-	return make_filename(output_dir, USIM_API_NVRAM_FILENAME, user_id);
+  return make_filename(output_dir, USIM_API_NVRAM_FILENAME, user_id);
 }
 
 char *make_filename(const char *output_dir, const char *filename, int ueid) {
-	size_t size;
-    char *str_ueid, *str;
+  size_t size;
+  char *str_ueid, *str;
 
-    str_ueid = itoa(ueid);
+  str_ueid = itoa(ueid);
 
-    if (str_ueid == NULL) {
-        perror("ERROR\t: itoa() failed");
-        exit(EXIT_FAILURE);
-    }
+  if (str_ueid == NULL) {
+    perror("ERROR\t: itoa() failed");
+    exit(EXIT_FAILURE);
+  }
 
     size = strlen(output_dir)+strlen(filename) + sizeof(ueid) + 1 + 1; // for \0 and for '/'
     str = malloc(size);

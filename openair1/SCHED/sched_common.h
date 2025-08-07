@@ -227,7 +227,7 @@ TDD, this routine computes the complex procedure described in Section 10.1 of 36
 @returns n1_pucch
 */
 uint16_t get_n1_pucch(PHY_VARS_UE *phy_vars_ue,
-		      UE_rxtx_proc_t *proc,
+                      UE_rxtx_proc_t *proc,
                       harq_status_t *harq_ack,
                       uint8_t eNB_id,
                       uint8_t *b,
@@ -247,13 +247,12 @@ TDD, this routine computes the procedure described in Section 10.1 of 36.213 (th
 @param n1_pucch3 Pointer to n1_pucch3
 */
 void get_n1_pucch_eNB(PHY_VARS_eNB *phy_vars_eNB,
-		      L1_rxtx_proc_t *proc,
+                      L1_rxtx_proc_t *proc,
                       uint8_t UE_id,
                       int16_t *n1_pucch0,
                       int16_t *n1_pucch1,
                       int16_t *n1_pucch2,
                       int16_t *n1_pucch3);
-
 
 /*! \brief This function retrieves the harq_pid of the corresponding DLSCH process and updates the error statistics of the DLSCH based on the received ACK info from UE along with the round index.  It also performs the fine-grain rate-adaptation based on the error statistics derived from the ACK/NAK process.
   @param UE_id Local UE index on which to act
@@ -266,7 +265,7 @@ void get_n1_pucch_eNB(PHY_VARS_eNB *phy_vars_eNB,
 */
 void process_HARQ_feedback(uint8_t UE_id,
                            PHY_VARS_eNB *phy_vars_eNB,
-			   L1_rxtx_proc_t *proc,
+                           L1_rxtx_proc_t *proc,
                            uint8_t pusch_flag,
                            uint8_t *pucch_payload,
                            uint8_t pucch_sel,

@@ -89,26 +89,22 @@ void dump_ue_list_NB_IoT(UE_list_NB_IoT_t *listP, int ul_flag);
 
 
 //defined in L2_interface
-void mac_eNB_rrc_ul_failure_NB_IoT(
-		const module_id_t mod_idP,
-	    const int CC_idP,
-	    const frame_t frameP,
-	    const sub_frame_t subframeP,
-	    const rnti_t rntiP);
+void mac_eNB_rrc_ul_failure_NB_IoT(const module_id_t mod_idP,
+                                   const int CC_idP,
+                                   const frame_t frameP,
+                                   const sub_frame_t subframeP,
+                                   const rnti_t rntiP);
 //------------------------------------------
 
 //defined in eNB_scheduler_primitives.c
-int rrc_mac_remove_ue_NB_IoT(
-		module_id_t mod_idP,
-		rnti_t rntiP);
+int rrc_mac_remove_ue_NB_IoT(module_id_t mod_idP, rnti_t rntiP);
 //------------------------------------------
 //defined in L2_interface
-void mac_eNB_rrc_ul_in_sync_NB_IoT(
-				const module_id_t mod_idP,
-			    const int CC_idP,
-			    const frame_t frameP,
-			    const sub_frame_t subframeP,
-			    const rnti_t rntiP);
+void mac_eNB_rrc_ul_in_sync_NB_IoT(const module_id_t mod_idP,
+                                   const int CC_idP,
+                                   const frame_t frameP,
+                                   const sub_frame_t subframeP,
+                                   const rnti_t rntiP);
 //------------------------------------------
 //defined in L2_interface
 int mac_eNB_get_rrc_status_NB_IoT(
@@ -191,17 +187,14 @@ void rrc_eNB_process_RRCConnectionReconfigurationComplete_NB_IoT(
   const uint8_t xid //transaction identifier
 );
 
+void // was under ITTI
+rrc_eNB_reconfigure_DRBs_NB_IoT(const protocol_ctxt_t* const ctxt_pP, rrc_eNB_ue_context_NB_IoT_t* ue_context_pP);
 
-void //was under ITTI
-rrc_eNB_reconfigure_DRBs_NB_IoT(const protocol_ctxt_t* const ctxt_pP,
-			       rrc_eNB_ue_context_NB_IoT_t*  ue_context_pP);
-
-void //was under ITTI
-rrc_eNB_generate_dedicatedRRCConnectionReconfiguration_NB_IoT(
-		const protocol_ctxt_t* const ctxt_pP,
-	    rrc_eNB_ue_context_NB_IoT_t*          const ue_context_pP
-//            const uint8_t      ho_state
-	     );
+void // was under ITTI
+rrc_eNB_generate_dedicatedRRCConnectionReconfiguration_NB_IoT(const protocol_ctxt_t* const ctxt_pP,
+                                                              rrc_eNB_ue_context_NB_IoT_t* const ue_context_pP
+                                                              //            const uint8_t      ho_state
+);
 
 void rrc_eNB_process_RRCConnectionSetupComplete_NB_IoT(
   const protocol_ctxt_t* const ctxt_pP,
@@ -220,17 +213,13 @@ void rrc_eNB_generate_UECapabilityEnquiry_NB_IoT(
 );
 
 void rrc_eNB_generate_defaultRRCConnectionReconfiguration_NB_IoT(const protocol_ctxt_t* const ctxt_pP,
-						                                                     rrc_eNB_ue_context_NB_IoT_t*          const ue_context_pP
-						                                                     //no HO flag
-						                                                    );
-
+                                                                 rrc_eNB_ue_context_NB_IoT_t* const ue_context_pP
+                                                                 // no HO flag
+);
 
 /// Utilities------------------------------------------------
 
-void rrc_eNB_free_UE_NB_IoT(
-		const module_id_t enb_mod_idP,
-		const struct rrc_eNB_ue_context_NB_IoT_s*        const ue_context_pP
-		);
+void rrc_eNB_free_UE_NB_IoT(const module_id_t enb_mod_idP, const struct rrc_eNB_ue_context_NB_IoT_s* const ue_context_pP);
 
 void rrc_eNB_free_mem_UE_context_NB_IoT(
   const protocol_ctxt_t*               const ctxt_pP,

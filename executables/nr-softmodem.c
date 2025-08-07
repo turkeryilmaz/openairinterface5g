@@ -267,8 +267,8 @@ static int create_gNB_tasks(ngran_node_t node_type, configmodule_interface_t *cf
   }
 
   if (get_softmodem_params()->nsa) { //&& !NODE_IS_DU(node_type)
-	  LOG_I(X2AP, "X2AP enabled \n");
-	  __attribute__((unused)) uint32_t x2_register_gnb_pending = gNB_app_register_x2 (gnb_id_start, gnb_id_end);
+    LOG_I(X2AP, "X2AP enabled \n");
+    __attribute__((unused)) uint32_t x2_register_gnb_pending = gNB_app_register_x2(gnb_id_start, gnb_id_end);
   }
 
   /* For the CU case the gNB registration with the AMF might have to take place after the F1 setup, as the PLMN info
@@ -681,7 +681,8 @@ int main( int argc, char **argv ) {
     for (ru_id=0; ru_id<RC.nb_RU; ru_id++) {
       RC.ru[ru_id]->rf_map.card=0;
       RC.ru[ru_id]->rf_map.chain=CC_id+chain_offset;
-      if (ru_id==0) sl_ahead = RC.ru[ru_id]->sl_ahead;	
+      if (ru_id == 0)
+        sl_ahead = RC.ru[ru_id]->sl_ahead;
       else AssertFatal(RC.ru[ru_id]->sl_ahead != RC.ru[0]->sl_ahead,"RU %d has different sl_ahead %d than RU 0 %d\n",ru_id,RC.ru[ru_id]->sl_ahead,RC.ru[0]->sl_ahead);
     }
     

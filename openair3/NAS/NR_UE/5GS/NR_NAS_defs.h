@@ -178,7 +178,7 @@ static const text_info_t cause_secu_text_info[] = {
 typedef enum {
   FOREACH_CAUSE_SECU(TO_ENUM)
 } cause_secu_id_t;
-								
+
 /**
  * Security protected 5GS NAS message header (9.1.1 of 3GPP TS 24.501)
  * either 5GMM or 5GSM

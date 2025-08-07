@@ -265,11 +265,11 @@ MyWindow::MyWindow() : QWidget()
     rssi->addWidget(new QLabel("<html><b>RSSI  </b></html>"));
     
     for (int ant = 0; ant < nb_antennas_rx; ant++){
-	rssi_tab[ant].setAlignment(Qt::AlignCenter);
-	rssi_tab[ant].setText("-1"); // to be taken from geo (struct) 
-	rssi_tab[ant].setFrameStyle( QFrame::Raised | QFrame::Box );
-	rssi_tab[ant].setFixedWidth(35);
-	rssi->addWidget(&rssi_tab[ant]);
+      rssi_tab[ant].setAlignment(Qt::AlignCenter);
+      rssi_tab[ant].setText("-1"); // to be taken from geo (struct)
+      rssi_tab[ant].setFrameStyle(QFrame::Raised | QFrame::Box);
+      rssi_tab[ant].setFixedWidth(35);
+      rssi->addWidget(&rssi_tab[ant]);
     }
     
     specific_layout->addRow(rssi);

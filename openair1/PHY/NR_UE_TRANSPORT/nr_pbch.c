@@ -95,7 +95,7 @@ static uint16_t nr_pbch_extract(uint32_t rxdataF_sz,
             rxF_ext[j]=rxF[rx_offset];
 #ifdef DEBUG_PBCH
             printf("rxF ext[%d] = (%d,%d) rxF [%u]= (%d,%d)\n",
-		   (9 * rb) + j,
+                   (9 * rb) + j,
                    rxF_ext[j].r,
                    rxF_ext[j].i,
                    rx_offset,
@@ -120,10 +120,10 @@ static uint16_t nr_pbch_extract(uint32_t rxdataF_sz,
 #ifdef DEBUG_PBCH
               printf("rxF ext[%d] = (%d,%d) rxF [%u]= (%d,%d)\n",
                      (rb < 4) ? (9 * rb) + j : (9 * (rb - 12)) + j,
-		     rxF_ext[j].r,
+                     rxF_ext[j].r,
                      rxF_ext[j].i,
                      rx_offset,
-		     rxF[rx_offset].r,
+                     rxF[rx_offset].r,
                      rxF[rx_offset].i);
 #endif
               j++;
@@ -414,9 +414,7 @@ int nr_rx_pbch(PHY_VARS_NR_UE *ue,
                          symbol);*/
 
     int nb=symbol==2 ? 144 : 360;
-    nr_pbch_quantize(pbch_e_rx+pbch_e_rx_idx,
-		     (short *)rxdataF_comp[0],
-		     nb);
+    nr_pbch_quantize(pbch_e_rx + pbch_e_rx_idx, (short *)rxdataF_comp[0], nb);
     memcpy(pbch_unClipped+pbch_e_rx_idx, rxdataF_comp[0], nb*sizeof(int16_t));
     pbch_e_rx_idx+=nb;
   }
@@ -435,8 +433,7 @@ int nr_rx_pbch(PHY_VARS_NR_UE *ue,
   uint32_t unscrambling_mask = (Lmax==64)?0x100006D:0x1000041;
   uint32_t pbch_a_interleaved=0;
   uint32_t pbch_a_prime=0;
-  nr_pbch_unscrambling(pbch_e_rx, Nid_cell, nushift, M, NR_POLAR_PBCH_E,
-		       0, 0,  pbch_a_prime, &pbch_a_interleaved);
+  nr_pbch_unscrambling(pbch_e_rx, Nid_cell, nushift, M, NR_POLAR_PBCH_E, 0, 0, pbch_a_prime, &pbch_a_interleaved);
   //polar decoding de-rate matching
   uint64_t tmp=0;
   const uint32_t decoderState = polar_decoder_int16(pbch_e_rx,
@@ -468,8 +465,15 @@ int nr_rx_pbch(PHY_VARS_NR_UE *ue,
   M = (Lmax == 64)? (NR_POLAR_PBCH_PAYLOAD_BITS - 6) : (NR_POLAR_PBCH_PAYLOAD_BITS - 3);
   nushift = ((pbch_a_prime>>24)&1) ^ (((pbch_a_prime>>6)&1)<<1);
   pbch_a_interleaved=0;
-  nr_pbch_unscrambling(pbch_e_rx, Nid_cell, nushift, M, NR_POLAR_PBCH_PAYLOAD_BITS,
-		       1, unscrambling_mask, pbch_a_prime, &pbch_a_interleaved);
+  nr_pbch_unscrambling(pbch_e_rx,
+                       Nid_cell,
+                       nushift,
+                       M,
+                       NR_POLAR_PBCH_PAYLOAD_BITS,
+                       1,
+                       unscrambling_mask,
+                       pbch_a_prime,
+                       &pbch_a_interleaved);
   //printf("nushift %d sfn 3rd %d 2nd %d", nushift,((pbch_a_prime>>6)&1), ((pbch_a_prime>>24)&1) );
   //payload deinterleaving
   //uint32_t in=0;

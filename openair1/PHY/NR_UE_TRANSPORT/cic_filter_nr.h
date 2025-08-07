@@ -85,7 +85,7 @@ typedef struct {
  * This low pass filter was designed based on the tool at http://t-filter.engineerjs.com/
  * with below parameters
  * sampling frequency 30.72 MHz
- * from 	to 	          gain 	ripple/att.
+ * from     to               gain     ripple/att.
  * 0 Hz     1.9 MHz        1     0.5 dB
  * 2 MHz     15 MHz        0     -20 dB
  */

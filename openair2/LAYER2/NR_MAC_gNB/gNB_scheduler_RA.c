@@ -68,8 +68,8 @@ static int16_t ssb_index_from_prach(module_id_t module_idP,
   uint8_t total_RApreambles = MAX_NUM_NR_PRACH_PREAMBLES;
   if (rach_ConfigCommon->totalNumberOfRA_Preambles != NULL)
     total_RApreambles = *rach_ConfigCommon->totalNumberOfRA_Preambles;
-  
-  float  num_ssb_per_RO = ssb_per_rach_occasion[cfg->prach_config.ssb_per_rach.value];	
+
+  float num_ssb_per_RO = ssb_per_rach_occasion[cfg->prach_config.ssb_per_rach.value];
   uint16_t start_symbol_index = 0;
   uint8_t temp_start_symbol = 0;
   uint16_t RA_sfn_index = -1;
@@ -175,7 +175,7 @@ void find_SSB_and_RO_available(gNB_MAC_INST *nrmac)
   frequency_range_t freq_range = get_freq_range_from_arfcn(scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencyPointA);
   nr_prach_info_t prach_info =  get_nr_prach_occasion_info_from_index(config_index, freq_range, cc->frame_type);
 
-  float num_ssb_per_RO = ssb_per_rach_occasion[cfg->prach_config.ssb_per_rach.value];	
+  float num_ssb_per_RO = ssb_per_rach_occasion[cfg->prach_config.ssb_per_rach.value];
   uint8_t fdm = cfg->prach_config.num_prach_fd_occasions.value;
   uint64_t L_ssb = (((uint64_t) cfg->ssb_table.ssb_mask_list[0].ssb_mask.value) << 32) | cfg->ssb_table.ssb_mask_list[1].ssb_mask.value;
   uint32_t total_RA_occasions = prach_info.N_RA_sfn * prach_info.N_t_slot * prach_info.N_RA_slot * fdm;

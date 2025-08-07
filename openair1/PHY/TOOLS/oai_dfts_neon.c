@@ -77,10 +77,12 @@ static inline void cmac(int16x8_t a,int16x8_t b, int32x4_t *re32, int32x4_t *im3
   ab_re1 = vmull_s16(((int16x4_t*)&a)[1],((int16x4_t*)&bconj)[1]);
   ab_im0 = vmull_s16(((int16x4_t*)&a)[0],((int16x4_t*)&bflip)[0]);
   ab_im1 = vmull_s16(((int16x4_t*)&a)[1],((int16x4_t*)&bflip)[1]);
-  *re32 = vqaddq_s32(*re32,vcombine_s32(vpadd_s32(((int32x2_t*)&ab_re0)[0],((int32x2_t*)&ab_re0)[1]),
-					vpadd_s32(((int32x2_t*)&ab_re1)[0],((int32x2_t*)&ab_re1)[1])));
-  *im32 = vqaddq_s32(*im32,vcombine_s32(vpadd_s32(((int32x2_t*)&ab_im0)[0],((int32x2_t*)&ab_im0)[1]),
-					vpadd_s32(((int32x2_t*)&ab_im1)[0],((int32x2_t*)&ab_im1)[1])));
+  *re32 = vqaddq_s32(*re32,
+                     vcombine_s32(vpadd_s32(((int32x2_t *)&ab_re0)[0], ((int32x2_t *)&ab_re0)[1]),
+                                  vpadd_s32(((int32x2_t *)&ab_re1)[0], ((int32x2_t *)&ab_re1)[1])));
+  *im32 = vqaddq_s32(*im32,
+                     vcombine_s32(vpadd_s32(((int32x2_t *)&ab_im0)[0], ((int32x2_t *)&ab_im0)[1]),
+                                  vpadd_s32(((int32x2_t *)&ab_im1)[0], ((int32x2_t *)&ab_im1)[1])));
 }
 
 static inline void cmacc(int16x8_t a,int16x8_t b, int32x4_t *re32, int32x4_t *im32) __attribute__((always_inline));
@@ -94,11 +96,12 @@ static inline void cmacc(int16x8_t a,int16x8_t b, int32x4_t *re32, int32x4_t *im
   ab_re1 = vmull_s16(((int16x4_t*)&a)[1],((int16x4_t*)&b)[1]);
   ab_im0 = vmull_s16(((int16x4_t*)&a)[0],((int16x4_t*)&bflip)[0]);
   ab_im1 = vmull_s16(((int16x4_t*)&a)[1],((int16x4_t*)&bflip)[1]);
-  *re32 = vqaddq_s32(*re32,vcombine_s32(vpadd_s32(((int32x2_t*)&ab_re0)[0],((int32x2_t*)&ab_re0)[1]),
-					vpadd_s32(((int32x2_t*)&ab_re1)[0],((int32x2_t*)&ab_re1)[1])));
-  *im32 = vqaddq_s32(*im32,vcombine_s32(vpadd_s32(((int32x2_t*)&ab_im0)[0],((int32x2_t*)&ab_im0)[1]),
-					vpadd_s32(((int32x2_t*)&ab_im1)[0],((int32x2_t*)&ab_im1)[1])));
-
+  *re32 = vqaddq_s32(*re32,
+                     vcombine_s32(vpadd_s32(((int32x2_t *)&ab_re0)[0], ((int32x2_t *)&ab_re0)[1]),
+                                  vpadd_s32(((int32x2_t *)&ab_re1)[0], ((int32x2_t *)&ab_re1)[1])));
+  *im32 = vqaddq_s32(*im32,
+                     vcombine_s32(vpadd_s32(((int32x2_t *)&ab_im0)[0], ((int32x2_t *)&ab_im0)[1]),
+                                  vpadd_s32(((int32x2_t *)&ab_im1)[0], ((int32x2_t *)&ab_im1)[1])));
 }
 
 static inline void cmult(int16x8_t a,int16x8_t b, int32x4_t *re32, int32x4_t *im32) __attribute__((always_inline));
@@ -152,11 +155,8 @@ static inline void cmultc(int16x8_t a,int16x8_t b, int32x4_t *re32, int32x4_t *i
   abi0l = vget_low_s32(ab_im0); abi0h = vget_high_s32(ab_im0);
   abi1l = vget_low_s32(ab_im1); abi1h = vget_high_s32(ab_im1);
 
-  *re32 = vcombine_s32(vpadd_s32(abr0l,abr0h),
-		       vpadd_s32(abr1l,abr1h));
-  *im32 = vcombine_s32(vpadd_s32(abi0l,abi0h),
-		       vpadd_s32(abi1l,abi1h));
-
+  *re32 = vcombine_s32(vpadd_s32(abr0l, abr0h), vpadd_s32(abr1l, abr1h));
+  *im32 = vcombine_s32(vpadd_s32(abi0l, abi0h), vpadd_s32(abi1l, abi1h));
 }
 
 
@@ -209,10 +209,10 @@ static inline int16x8_t packed_cmult2(int16x8_t a,int16x8_t b,  int16x8_t b2)
   ab_re1 = vmull_s16(((int16x4_t*)&a)[1],((int16x4_t*)&b)[1]);
   ab_im0 = vmull_s16(((int16x4_t*)&a)[0],((int16x4_t*)&b2)[0]);
   ab_im1 = vmull_s16(((int16x4_t*)&a)[1],((int16x4_t*)&b2)[1]);
-  cre = vcombine_s32(vpadd_s32(((int32x2_t*)&ab_re0)[0],((int32x2_t*)&ab_re0)[1]),
-		     vpadd_s32(((int32x2_t*)&ab_re1)[0],((int32x2_t*)&ab_re1)[1]));
-  cim = vcombine_s32(vpadd_s32(((int32x2_t*)&ab_im0)[0],((int32x2_t*)&ab_im0)[1]),
-		     vpadd_s32(((int32x2_t*)&ab_im1)[0],((int32x2_t*)&ab_im1)[1]));
+  cre = vcombine_s32(vpadd_s32(((int32x2_t *)&ab_re0)[0], ((int32x2_t *)&ab_re0)[1]),
+                     vpadd_s32(((int32x2_t *)&ab_re1)[0], ((int32x2_t *)&ab_re1)[1]));
+  cim = vcombine_s32(vpadd_s32(((int32x2_t *)&ab_im0)[0], ((int32x2_t *)&ab_im0)[1]),
+                     vpadd_s32(((int32x2_t *)&ab_im1)[0], ((int32x2_t *)&ab_im1)[1]));
   return(cpack(cre,cim));
 
 }
@@ -234,24 +234,22 @@ int16x8_t *W15 = (int16x8_t *)W15s;
 int16x8_t *W25 = (int16x8_t *)W25s;
 int16x8_t *W35 = (int16x8_t *)W35s;
 int16x8_t *W45 = (int16x8_t *)W45s;
-const static int16_t dft_norm_table[16] = {9459,  //12
-					   6689,//24
-					   5461,//36
-					   4729,//482
-					   4230,//60
-					   23170,//72
-					   3344,//96
-					   3153,//108
-					   2991,//120
-					   18918,//sqrt(3),//144
-					   18918,//sqrt(3),//180
-					   16384,//2, //192
-					   18918,//sqrt(3), // 216
-					   16384,//2, //240
-					   18918,//sqrt(3), // 288
-					   14654
-}; //sqrt(5) //300
-
+const static int16_t dft_norm_table[16] = {9459, // 12
+                                           6689, // 24
+                                           5461, // 36
+                                           4729, // 482
+                                           4230, // 60
+                                           23170, // 72
+                                           3344, // 96
+                                           3153, // 108
+                                           2991, // 120
+                                           18918, // sqrt(3),//144
+                                           18918, // sqrt(3),//180
+                                           16384, // 2, //192
+                                           18918, // sqrt(3), // 216
+                                           16384, // 2, //240
+                                           18918, // sqrt(3), // 288
+                                           14654}; // sqrt(5) //300
 
 static inline void bfly2(int16x8_t *x0, int16x8_t *x1,int16x8_t *y0, int16x8_t *y1,int16x8_t *tw)__attribute__((always_inline));
 
@@ -340,13 +338,12 @@ static inline void bfly3(int16x8_t *x0,int16x8_t *x1,int16x8_t *x2,
   *(y2) = vqaddq_s16(*(x0),*(y2));
 }
 
-static inline void ibfly3(int16x8_t *x0,int16x8_t *x1,int16x8_t *x2,
-			  int16x8_t *y0,int16x8_t *y1,int16x8_t *y2,
-			  int16x8_t *tw1,int16x8_t *tw2) __attribute__((always_inline));
+static inline void
+ibfly3(int16x8_t *x0, int16x8_t *x1, int16x8_t *x2, int16x8_t *y0, int16x8_t *y1, int16x8_t *y2, int16x8_t *tw1, int16x8_t *tw2)
+    __attribute__((always_inline));
 
-static inline void ibfly3(int16x8_t *x0,int16x8_t *x1,int16x8_t *x2,
-			  int16x8_t *y0,int16x8_t *y1,int16x8_t *y2,
-			  int16x8_t *tw1,int16x8_t *tw2)
+static inline void
+ibfly3(int16x8_t *x0, int16x8_t *x1, int16x8_t *x2, int16x8_t *y0, int16x8_t *y1, int16x8_t *y2, int16x8_t *tw1, int16x8_t *tw2)
 {
 
   int32x4_t tmpre,tmpim;
@@ -473,11 +470,12 @@ static inline void bfly4_tw1(int16x8_t *x0,int16x8_t *x1,int16x8_t *x2,int16x8_t
   *(y3)   = vqsubq_s16(*(x0),vqaddq_s16(x1_flip,vqsubq_s16(*(x2),x3_flip)));
 }
 
-static inline void ibfly4_tw1(int16x8_t *x0,int16x8_t *x1,int16x8_t *x2,int16x8_t *x3,
-			      int16x8_t *y0,int16x8_t *y1,int16x8_t *y2,int16x8_t *y3)__attribute__((always_inline));
+static inline void
+ibfly4_tw1(int16x8_t *x0, int16x8_t *x1, int16x8_t *x2, int16x8_t *x3, int16x8_t *y0, int16x8_t *y1, int16x8_t *y2, int16x8_t *y3)
+    __attribute__((always_inline));
 
-static inline void ibfly4_tw1(int16x8_t *x0,int16x8_t *x1,int16x8_t *x2,int16x8_t *x3,
-			      int16x8_t *y0,int16x8_t *y1,int16x8_t *y2,int16x8_t *y3)
+static inline void
+ibfly4_tw1(int16x8_t *x0, int16x8_t *x1, int16x8_t *x2, int16x8_t *x3, int16x8_t *y0, int16x8_t *y1, int16x8_t *y2, int16x8_t *y3)
 {
 
   register int16x8_t x1_flip,x3_flip;
@@ -522,15 +520,35 @@ static inline void bfly4_16(int16x8_t *x0,int16x8_t *x1,int16x8_t *x2,int16x8_t 
   *(y3)   = vqsubq_s16(x02t,x13t);  // x0 - x1f - x2 + x3f
 }
 
-static inline void ibfly4_16(int16x8_t *x0,int16x8_t *x1,int16x8_t *x2,int16x8_t *x3,
-			     int16x8_t *y0,int16x8_t *y1,int16x8_t *y2,int16x8_t *y3,
-			     int16x8_t *tw1,int16x8_t *tw2,int16x8_t *tw3,
-			     int16x8_t *tw1b,int16x8_t *tw2b,int16x8_t *tw3b)__attribute__((always_inline));
+static inline void ibfly4_16(int16x8_t *x0,
+                             int16x8_t *x1,
+                             int16x8_t *x2,
+                             int16x8_t *x3,
+                             int16x8_t *y0,
+                             int16x8_t *y1,
+                             int16x8_t *y2,
+                             int16x8_t *y3,
+                             int16x8_t *tw1,
+                             int16x8_t *tw2,
+                             int16x8_t *tw3,
+                             int16x8_t *tw1b,
+                             int16x8_t *tw2b,
+                             int16x8_t *tw3b) __attribute__((always_inline));
 
-static inline void ibfly4_16(int16x8_t *x0,int16x8_t *x1,int16x8_t *x2,int16x8_t *x3,
-			     int16x8_t *y0,int16x8_t *y1,int16x8_t *y2,int16x8_t *y3,
-			     int16x8_t *tw1,int16x8_t *tw2,int16x8_t *tw3,
-			     int16x8_t *tw1b,int16x8_t *tw2b,int16x8_t *tw3b)
+static inline void ibfly4_16(int16x8_t *x0,
+                             int16x8_t *x1,
+                             int16x8_t *x2,
+                             int16x8_t *x3,
+                             int16x8_t *y0,
+                             int16x8_t *y1,
+                             int16x8_t *y2,
+                             int16x8_t *y3,
+                             int16x8_t *tw1,
+                             int16x8_t *tw2,
+                             int16x8_t *tw3,
+                             int16x8_t *tw1b,
+                             int16x8_t *tw2b,
+                             int16x8_t *tw3b)
 {
 
   register int16x8_t x1t,x2t,x3t,x02t,x13t;
@@ -2936,9 +2954,14 @@ void idft6144(int16_t *input, int16_t *output,unsigned char scale)
   }
 #endif
   for (i=0,i2=0; i<4096; i+=8,i2+=4)  {
-    ibfly3((simd_q15_t*)(&tmpo[0][i2]),(simd_q15_t*)(&tmpo[1][i2]),((simd_q15_t*)&tmpo[2][i2]),
-	   (simd_q15_t*)(output+i),(simd_q15_t*)(output+4096+i),(simd_q15_t*)(output+8192+i),
-	   (simd_q15_t*)(twa6144+i),(simd_q15_t*)(twb6144+i));
+    ibfly3((simd_q15_t *)(&tmpo[0][i2]),
+           (simd_q15_t *)(&tmpo[1][i2]),
+           ((simd_q15_t *)&tmpo[2][i2]),
+           (simd_q15_t *)(output + i),
+           (simd_q15_t *)(output + 4096 + i),
+           (simd_q15_t *)(output + 8192 + i),
+           (simd_q15_t *)(twa6144 + i),
+           (simd_q15_t *)(twb6144 + i));
   }
 
 
@@ -3219,9 +3242,14 @@ void idft18432(int16_t *input, int16_t *output,unsigned char scale) {
   idft6144((int16_t*)(tmp[2]),(int16_t*)(tmpo[2]),scale);
 
   for (i=0,i2=0; i<12288; i+=8,i2+=4)  {
-    ibfly3((simd_q15_t*)(&tmpo[0][i2]),(simd_q15_t*)(&tmpo[1][i2]),(simd_q15_t*)(&tmpo[2][i2]),
-	   (simd_q15_t*)(output+i),(simd_q15_t*)(output+12288+i),(simd_q15_t*)(output+24576+i),
-	   (simd_q15_t*)(twa18432+i),(simd_q15_t*)(twb18432+i));
+    ibfly3((simd_q15_t *)(&tmpo[0][i2]),
+           (simd_q15_t *)(&tmpo[1][i2]),
+           (simd_q15_t *)(&tmpo[2][i2]),
+           (simd_q15_t *)(output + i),
+           (simd_q15_t *)(output + 12288 + i),
+           (simd_q15_t *)(output + 24576 + i),
+           (simd_q15_t *)(twa18432 + i),
+           (simd_q15_t *)(twb18432 + i));
   }
   if (scale==1) {
     for (i=0; i<288; i++) {
@@ -3550,9 +3578,14 @@ void idft49152(int16_t *input, int16_t *output,uint8_t scale) {
   idft16384((int16_t*)(tmp[2]),(int16_t*)(tmpo[2]),1);
 
   for (i=0,i2=0; i<32768; i+=8,i2+=4)  {
-    ibfly3((simd_q15_t*)(&tmpo[0][i2]),(simd_q15_t*)(&tmpo[1][i2]),((simd_q15_t*)&tmpo[2][i2]),
-	   (simd_q15_t*)(output+i),(simd_q15_t*)(output+32768+i),(simd_q15_t*)(output+65536+i),
-	   (simd_q15_t*)(twa49152+i),(simd_q15_t*)(twb49152+i));
+    ibfly3((simd_q15_t *)(&tmpo[0][i2]),
+           (simd_q15_t *)(&tmpo[1][i2]),
+           ((simd_q15_t *)&tmpo[2][i2]),
+           (simd_q15_t *)(output + i),
+           (simd_q15_t *)(output + 32768 + i),
+           (simd_q15_t *)(output + 65536 + i),
+           (simd_q15_t *)(twa49152 + i),
+           (simd_q15_t *)(twb49152 + i));
   }
   if (scale==1) {
     for (i=0; i<768; i++) {
@@ -3700,9 +3733,14 @@ void idft98304(int16_t *input, int16_t *output,uint8_t scale) {
   idft32768((int16_t*)(tmp[2]),(int16_t*)(tmpo[2]),1);
 
   for (i=0,i2=0; i<65536; i+=8,i2+=4)  {
-    ibfly3((simd_q15_t*)(&tmpo[0][i2]),(simd_q15_t*)(&tmpo[1][i2]),((simd_q15_t*)&tmpo[2][i2]),
-	   (simd_q15_t*)(output+i),(simd_q15_t*)(output+65536+i),(simd_q15_t*)(output+131072+i),
-	   (simd_q15_t*)(twa98304+i),(simd_q15_t*)(twb98304+i));
+    ibfly3((simd_q15_t *)(&tmpo[0][i2]),
+           (simd_q15_t *)(&tmpo[1][i2]),
+           ((simd_q15_t *)&tmpo[2][i2]),
+           (simd_q15_t *)(output + i),
+           (simd_q15_t *)(output + 65536 + i),
+           (simd_q15_t *)(output + 131072 + i),
+           (simd_q15_t *)(twa98304 + i),
+           (simd_q15_t *)(twb98304 + i));
   }
   if (scale==1) {
     for (i=0; i<1536; i++) {
@@ -8082,29 +8120,31 @@ int main(int argc, char**argv)
   LOG_M("y49152.m","y49152",y,49152,1,1);
   LOG_M("x49152.m","x49152",x,49152,1,1);
   /*
-  int dftsizes[33]={24,36,48,60,72,96,108,120,144,180,192,216,240,288,300,324,360,384,432,480,540,576,600,648,720,768,864,900,960,972,1080,1152,1200};
-  void (*dft)(int16_t *x,int16_t *y,uint8_t scale)[33] = {dft24,dft36,dft48,dft60,dft72,dft96,dft108,dft120,dft144,dft180,dft192,dft216,dft240,dft288,dft300,dft324,dft360,dft384,dft432,dft480,dft540,dft576,dft600,dft648,dft720,dft768,dft864,dft900,dft960,dft972,dft1080,dft1152,dft1200};
+  int
+  dftsizes[33]={24,36,48,60,72,96,108,120,144,180,192,216,240,288,300,324,360,384,432,480,540,576,600,648,720,768,864,900,960,972,1080,1152,1200};
+  void (*dft)(int16_t *x,int16_t *y,uint8_t scale)[33] =
+  {dft24,dft36,dft48,dft60,dft72,dft96,dft108,dft120,dft144,dft180,dft192,dft216,dft240,dft288,dft300,dft324,dft360,dft384,dft432,dft480,dft540,dft576,dft600,dft648,dft720,dft768,dft864,dft900,dft960,dft972,dft1080,dft1152,dft1200};
   for (int n=0;n<33;n++) {
     // 4xN-point DFT
     memset((void*)x,0,dftsizes[n]*8*sizeof(int16_t));
     for (i=0;i<dftsizes[n]*8;i+=8) {
       if ((taus() & 1)==0)
-	((int16_t*)x)[i]   = 364;
+    ((int16_t*)x)[i]   = 364;
       else
-	((int16_t*)x)[i]   = -364;
+    ((int16_t*)x)[i]   = -364;
       if ((taus() & 1)==0)
-	((int16_t*)x)[i+1] = 364;
+    ((int16_t*)x)[i+1] = 364;
       else
-	((int16_t*)x)[i+1] = -364;
+    ((int16_t*)x)[i+1] = -364;
     }
-    
+
     reset_meas(&ts);
     for (i=0; i<10000; i++) {
       start_meas(&ts);
       (dft[n])((int16_t *)x,(int16_t *)y,1);
       stop_meas(&ts);
     }
-    
+
     printf("\n\n4x%d-point(%f cycles)\n",dftsizes[n],(double)ts.diff/(double)ts.trials);
     char ystr[5],xstr[5],ystr2[5],xstr2[5];
     sprintf(ystr,"y%d.m",dftsizes[n]);

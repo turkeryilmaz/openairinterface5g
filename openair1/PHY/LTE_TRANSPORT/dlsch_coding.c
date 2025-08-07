@@ -252,34 +252,31 @@ static void TPencode(void * arg) {
     memset(tmp,LTE_NULL, TURBO_SIMD_SOFTBITS);
     start_meas(rdata->te_stats);
     encoder(rdata->input,
-	    rdata->Kr_bytes,
-	    tmp+96,//&dlsch->harq_processes[harq_pid]->d[r][96],
-	    rdata->filler);
+            rdata->Kr_bytes,
+            tmp + 96, //&dlsch->harq_processes[harq_pid]->d[r][96],
+            rdata->filler);
     stop_meas(rdata->te_stats);
     start_meas(rdata->i_stats);
-    hadlsch->RTC[rdata->r] =
-      sub_block_interleaving_turbo(4+(rdata->Kr_bytes*8),
-				   tmp+96,
-				   hadlsch->w[rdata->r]);
+    hadlsch->RTC[rdata->r] = sub_block_interleaving_turbo(4 + (rdata->Kr_bytes * 8), tmp + 96, hadlsch->w[rdata->r]);
     stop_meas(rdata->i_stats);
   }
   
   // Fill in the "e"-sequence from 36-212, V8.6 2009-03, p. 16-17 (for each "e") and concatenate the
   // outputs for each code segment, see Section 5.1.5 p.20
     start_meas(rdata->rm_stats);
-  lte_rate_matching_turbo(hadlsch->RTC[rdata->r],
-			  rdata->G,  //G
-			  hadlsch->w[rdata->r],
-			  hadlsch->eDL+rdata->r_offset,
-			  hadlsch->C, // C
-			  rdata->dlsch->Nsoft,                    // Nsoft,
-			  rdata->dlsch->Mdlharq,
-			  rdata->dlsch->Kmimo,
-			  hadlsch->rvidx,
-			  hadlsch->Qm,
-			  hadlsch->Nl,
-			  rdata->r,
-			  hadlsch->nb_rb);
+    lte_rate_matching_turbo(hadlsch->RTC[rdata->r],
+                            rdata->G, // G
+                            hadlsch->w[rdata->r],
+                            hadlsch->eDL + rdata->r_offset,
+                            hadlsch->C, // C
+                            rdata->dlsch->Nsoft, // Nsoft,
+                            rdata->dlsch->Mdlharq,
+                            rdata->dlsch->Kmimo,
+                            hadlsch->rvidx,
+                            hadlsch->Qm,
+                            hadlsch->Nl,
+                            rdata->r,
+                            hadlsch->nb_rb);
     stop_meas(rdata->rm_stats);
 
     // Task completed in parallel
@@ -314,12 +311,15 @@ int dlsch_encoding(PHY_VARS_eNB *eNB,
   else if(hadlsch->mimo_mode == TM9_10)
     beamforming_mode = 9;
 
-  unsigned int G = get_G(frame_parms,hadlsch->nb_rb,
-	    hadlsch->rb_alloc,
-	    hadlsch->Qm, // mod order
-	    hadlsch->Nl,
-	    num_pdcch_symbols,
-	    frame,subframe,beamforming_mode);
+  unsigned int G = get_G(frame_parms,
+                         hadlsch->nb_rb,
+                         hadlsch->rb_alloc,
+                         hadlsch->Qm, // mod order
+                         hadlsch->Nl,
+                         num_pdcch_symbols,
+                         frame,
+                         subframe,
+                         beamforming_mode);
 
   //  if (hadlsch->Ndi == 1) {  // this is a new packet
   if (hadlsch->round == 0) {  // this is a new packet
@@ -416,12 +416,15 @@ int dlsch_encoding_fembms_pmch(PHY_VARS_eNB *eNB,
   else if(hadlsch->mimo_mode == TM9_10)
     beamforming_mode = 9;
 
-  unsigned int G = get_G_khz_1dot25(frame_parms,hadlsch->nb_rb,
-	    hadlsch->rb_alloc,
-	    hadlsch->Qm, // mod order
-	    hadlsch->Nl,
-	    num_pdcch_symbols,
-	    frame,subframe,beamforming_mode);
+  unsigned int G = get_G_khz_1dot25(frame_parms,
+                                    hadlsch->nb_rb,
+                                    hadlsch->rb_alloc,
+                                    hadlsch->Qm, // mod order
+                                    hadlsch->Nl,
+                                    num_pdcch_symbols,
+                                    frame,
+                                    subframe,
+                                    beamforming_mode);
 
   //  if (hadlsch->Ndi == 1) {  // this is a new packet
   if (hadlsch->round == 0) {  // this is a new packet

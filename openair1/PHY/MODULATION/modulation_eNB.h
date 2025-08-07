@@ -49,13 +49,13 @@ antenna element and each carrier
     @param p logical antenna index
     @param l1_id L1 instance id*/
 int beam_precoding(int32_t **txdataF,
-	           int32_t **txdataF_BF,
-		   int subframe,
+                   int32_t **txdataF_BF,
+                   int subframe,
                    LTE_DL_FRAME_PARMS *frame_parms,
-                   int32_t **beam_weights[NUMBER_OF_eNB_MAX+1][15],
+                   int32_t **beam_weights[NUMBER_OF_eNB_MAX + 1][15],
                    int symbol,
-		   int aa,
-		   int p,
+                   int aa,
+                   int p,
                    int l1_id);
 
 /** \brief This function performs beamforming precoding for common
@@ -71,11 +71,11 @@ antenna element and each carrier
 */
 int beam_precoding_one_eNB(int32_t **txdataF,
                            int32_t **txdataF_BF,
-                           int32_t **beam_weights[NUMBER_OF_eNB_MAX+1][15],
-			   int subframe,
-			   int nb_antenna_ports,
-			   int nb_tx, // total physical antenna
-			   LTE_DL_FRAME_PARMS *frame_parms);
+                           int32_t **beam_weights[NUMBER_OF_eNB_MAX + 1][15],
+                           int subframe,
+                           int nb_antenna_ports,
+                           int nb_tx, // total physical antenna
+                           LTE_DL_FRAME_PARMS *frame_parms);
 
 int estimate_DLCSI_from_ULCSI(int32_t **calib_dl_ch_estimates, int32_t **ul_ch_estimates, int32_t **tdd_calib_coeffs, int nb_ant, int nb_freq);
 

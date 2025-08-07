@@ -227,14 +227,12 @@ void mac_init_cell_params(int Mod_idP, int CC_idP)
     //COMMON_channels_t *cc = &RC.mac[Mod_idP]->common_channels[CC_idP];
 
     memset(&RC.mac[Mod_idP]->eNB_stats, 0, sizeof(eNB_STATS));
-    UE_template =
-	(UE_TEMPLATE *) & RC.mac[Mod_idP]->UE_info.UE_template[CC_idP][0];
+    UE_template = (UE_TEMPLATE *)&RC.mac[Mod_idP]->UE_info.UE_template[CC_idP][0];
 
     for (j = 0; j < MAX_MOBILES_PER_ENB; j++) {
-	UE_template[j].rnti = 0;
-	// initiallize the eNB to UE statistics
-	memset(&RC.mac[Mod_idP]->UE_info.eNB_UE_stats[CC_idP][j], 0,
-	       sizeof(eNB_UE_STATS));
+      UE_template[j].rnti = 0;
+      // initiallize the eNB to UE statistics
+      memset(&RC.mac[Mod_idP]->UE_info.eNB_UE_stats[CC_idP][j], 0, sizeof(eNB_UE_STATS));
     }
 
 }
@@ -247,7 +245,7 @@ int rlcmac_init_global_param(void)
     LOG_I(MAC, "[MAIN] CALLING RLC_MODULE_INIT...\n");
 
     if (rlc_module_init(1) != 0) {
-	return (-1);
+      return (-1);
     }
 
     pdcp_layer_init();

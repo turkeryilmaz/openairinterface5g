@@ -50,14 +50,8 @@ extern uint16_t RIV_max6,RIV_max25,RIV_max50,RIV_max100;
 
 //#define DEBUG_RAR
 
-
-int generate_eNB_ulsch_params_from_rar(PHY_VARS_eNB *eNB,
-				       unsigned char *rar_pdu,
-                                       uint32_t frame,
-                                       unsigned char subframe){
-
-
-
+int generate_eNB_ulsch_params_from_rar(PHY_VARS_eNB *eNB, unsigned char *rar_pdu, uint32_t frame, unsigned char subframe)
+{
   LTE_DL_FRAME_PARMS *frame_parms = &eNB->frame_parms;
 
   //  RA_HEADER_RAPID *rarh = (RA_HEADER_RAPID *)rar_pdu;
@@ -78,8 +72,7 @@ int generate_eNB_ulsch_params_from_rar(PHY_VARS_eNB *eNB,
 
   rnti = (((uint16_t)rar[4])<<8)+rar[5];
 
-  AssertFatal((UE_id = find_ulsch(rnti,eNB,SEARCH_EXIST_OR_FREE))>=0,
-	      "Cannot get UE id for RAR (rnti %x)\n",rnti);
+  AssertFatal((UE_id = find_ulsch(rnti, eNB, SEARCH_EXIST_OR_FREE)) >= 0, "Cannot get UE id for RAR (rnti %x)\n", rnti);
 
   ulsch = eNB->ulsch[UE_id];
   ulsch_harq = ulsch->harq_processes[harq_pid];
@@ -164,12 +157,8 @@ int generate_eNB_ulsch_params_from_rar(PHY_VARS_eNB *eNB,
 
 
   ulsch->Msg3_active = 1;
-	      
-  get_Msg3_alloc(frame_parms,
-		 subframe,
-		 frame,
-		 &ulsch_harq->frame,
-		 &ulsch_harq->subframe);
+
+  get_Msg3_alloc(frame_parms, subframe, frame, &ulsch_harq->frame, &ulsch_harq->subframe);
 
   LOG_I(PHY,"Programming msg3 reception in (%d,%d) mcs:%d TBS:%d Qm:%d Mcs_intial:%d Nsymb_intial:%d round:%d\n",
       ulsch_harq->frame,ulsch_harq->subframe,
@@ -191,4 +180,3 @@ int generate_eNB_ulsch_params_from_rar(PHY_VARS_eNB *eNB,
 #endif
   return(0);
 }
-

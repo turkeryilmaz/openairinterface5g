@@ -37,7 +37,7 @@
 #include "SystemInformationBlockType2.h"
 #include "DL-GapConfig-NB-r13.h"
 #include "NPRACH-Parameters-NB-r13.h"
-#include "PowerRampingParameters.h"		  
+#include "PowerRampingParameters.h"
 #include "BCCH-Config-NB-r13.h"
 #include "PCCH-Config-NB-r13.h"
 #include "ACK-NACK-NumRepetitions-NB-r13.h"
@@ -60,32 +60,33 @@
 /*                                     component carriers configuration parameters                                                                                                                   */
 /*   optname                                                   helpstr   paramflags    XXXptr                                        defXXXval                    type         numelt  checked_param */
 /*---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
-#define NBIOT_LTECCPARAMS_CHECK_DESC { \
-             { .s3a= { config_checkstr_assign_integer,  FRAMETYPE_OKVALUES, FRAMETYPE_MODVALUES,2}} ,     \
-             { .s2=  { config_check_intrange,           TDDCONFIG_OKRANGE}},                              \
-             { .s2=  { config_check_intrange,           TDDCONFIGS_OKRANGE}},                             \
-             { .s3a= { config_checkstr_assign_integer,  PREFIX_OKVALUES,    PREFIX_MODVALUES,2}} ,        \
-             { .s3a= { config_checkstr_assign_integer,  PREFIXUL_OKVALUES,  PREFIXUL_MODVALUES,2}} ,      \
-             { .s5= {NULL }} ,						                                  \
-             { .s5= {NULL }} ,						                                  \
-             { .s5= {NULL }} ,						                                  \
-             { .s5= {NULL }} ,						                                  \
-             { .s1= { config_check_intval,              NRBDL_OKVALUES,6}} ,                              \
-}
+#define NBIOT_LTECCPARAMS_CHECK_DESC                                                         \
+  {                                                                                          \
+      {.s3a = {config_checkstr_assign_integer, FRAMETYPE_OKVALUES, FRAMETYPE_MODVALUES, 2}}, \
+      {.s2 = {config_check_intrange, TDDCONFIG_OKRANGE}},                                    \
+      {.s2 = {config_check_intrange, TDDCONFIGS_OKRANGE}},                                   \
+      {.s3a = {config_checkstr_assign_integer, PREFIX_OKVALUES, PREFIX_MODVALUES, 2}},       \
+      {.s3a = {config_checkstr_assign_integer, PREFIXUL_OKVALUES, PREFIXUL_MODVALUES, 2}},   \
+      {.s5 = {NULL}},                                                                        \
+      {.s5 = {NULL}},                                                                        \
+      {.s5 = {NULL}},                                                                        \
+      {.s5 = {NULL}},                                                                        \
+      {.s1 = {config_check_intval, NRBDL_OKVALUES, 6}},                                      \
+  }
 
-
-#define NBIOT_LTECCPARAMS_DESC { \
-{ENB_CONFIG_STRING_FRAME_TYPE,                        NULL,   0,	   strptr:NULL,       defstrval:"FDD",  	 TYPE_STRING,	  0},  \
-{ENB_CONFIG_STRING_TDD_CONFIG,                        NULL,   0,	   iptr:NULL,	      defintval:3,		 TYPE_UINT,	  0},  \
-{ENB_CONFIG_STRING_TDD_CONFIG_S,                      NULL,   0,	   iptr:NULL,	      defintval:0,		 TYPE_UINT,	  0},  \
-{ENB_CONFIG_STRING_PREFIX_TYPE,                       NULL,   0,	   strptr:NULL,       defstrval:"NORMAL",	 TYPE_STRING,	  0},  \
-{ENB_CONFIG_STRING_PREFIX_TYPE_UL,                    NULL,   0,	   strptr:NULL,       defstrval:"NORMAL",	 TYPE_STRING,	  0},  \
-{ENB_CONFIG_STRING_EUTRA_BAND,                        NULL,   0,	   iptr:NULL,	      defintval:7,		 TYPE_UINT,	  0},  \
-{ENB_CONFIG_STRING_DOWNLINK_FREQUENCY,                NULL,   0,	   i64ptr:NULL,       defint64val:2680000000,	 TYPE_UINT64,	  0},  \
-{ENB_CONFIG_STRING_UPLINK_FREQUENCY_OFFSET,           NULL,   0,	   iptr:NULL,	      defintval:-120000000,	 TYPE_INT,	  0},  \
-{ENB_CONFIG_STRING_NID_CELL,                          NULL,   0,	   iptr:NULL,	      defintval:0,		 TYPE_UINT,	  0},  \
-{ENB_CONFIG_STRING_N_RB_DL,                           NULL,   0,	   iptr:NULL,	      defintval:25,		 TYPE_UINT,	  0},  \
-}
+#define NBIOT_LTECCPARAMS_DESC                                                                                  \
+  {                                                                                                             \
+      {ENB_CONFIG_STRING_FRAME_TYPE, NULL, 0, strptr : NULL, defstrval : "FDD", TYPE_STRING, 0},                \
+      {ENB_CONFIG_STRING_TDD_CONFIG, NULL, 0, iptr : NULL, defintval : 3, TYPE_UINT, 0},                        \
+      {ENB_CONFIG_STRING_TDD_CONFIG_S, NULL, 0, iptr : NULL, defintval : 0, TYPE_UINT, 0},                      \
+      {ENB_CONFIG_STRING_PREFIX_TYPE, NULL, 0, strptr : NULL, defstrval : "NORMAL", TYPE_STRING, 0},            \
+      {ENB_CONFIG_STRING_PREFIX_TYPE_UL, NULL, 0, strptr : NULL, defstrval : "NORMAL", TYPE_STRING, 0},         \
+      {ENB_CONFIG_STRING_EUTRA_BAND, NULL, 0, iptr : NULL, defintval : 7, TYPE_UINT, 0},                        \
+      {ENB_CONFIG_STRING_DOWNLINK_FREQUENCY, NULL, 0, i64ptr : NULL, defint64val : 2680000000, TYPE_UINT64, 0}, \
+      {ENB_CONFIG_STRING_UPLINK_FREQUENCY_OFFSET, NULL, 0, iptr : NULL, defintval : -120000000, TYPE_INT, 0},   \
+      {ENB_CONFIG_STRING_NID_CELL, NULL, 0, iptr : NULL, defintval : 0, TYPE_UINT, 0},                          \
+      {ENB_CONFIG_STRING_N_RB_DL, NULL, 0, iptr : NULL, defintval : 25, TYPE_UINT, 0},                          \
+  }
 #define LTECCPARAMS_FRAME_TYPE_IDX                  0
 #define LTECCPARAMS_TDD_CONFIG_IDX                  1
 #define LTECCPARAMS_TDD_CONFIG_S_IDX                2
@@ -100,9 +101,8 @@
 
 /*-------------------------------------------------------------------------------------------------------------------*/
 
-/* NB-Iot RRC list section name */		
-#define NBIOT_RRCLIST_CONFIG_STRING          "NB-IoT_RRCs"		 
-
+/* NB-Iot RRC list section name */
+#define NBIOT_RRCLIST_CONFIG_STRING "NB-IoT_RRCs"
 
 #define RACH_RARESPONSEWINDOWSIZE_NB_OKVALUES                   {20,50,80,120,180,240,320,400}
 #define PREF1(A)                                                 RACH_CE_LevelInfo_r13__ra_ResponseWindowSize_r13_ ## A
@@ -166,13 +166,16 @@
 
 #define NPUSCH_GROUPASSIGNMENTNPUSCH_R13_OKRANGE                {0,29}
 
-#define DLGAPTHRESHOLD_OKVALUES	       {32,64,128,256}
+#define DLGAPTHRESHOLD_OKVALUES {32, 64, 128, 256}
 #define DLGAPTHRESHOLD_MODVALUES       { DL_GapConfig_NB_r13__dl_GapThreshold_r13_n32,  DL_GapConfig_NB_r13__dl_GapThreshold_r13_n64,  \
                                          DL_GapConfig_NB_r13__dl_GapThreshold_r13_n128, DL_GapConfig_NB_r13__dl_GapThreshold_r13_n256} \
 
 #define DLGAPPERIODICITY_OKVALUES      {64,128,256,512}
-#define DLGAPPERIODICITY_MODVALUES     { DL_GapConfig_NB_r13__dl_GapPeriodicity_r13_sf64, DL_GapConfig_NB_r13__dl_GapPeriodicity_r13_sf128, \
-          		 	       DL_GapConfig_NB_r13__dl_GapPeriodicity_r13_sf256,DL_GapConfig_NB_r13__dl_GapPeriodicity_r13_sf512}
+#define DLGAPPERIODICITY_MODVALUES                   \
+  {DL_GapConfig_NB_r13__dl_GapPeriodicity_r13_sf64,  \
+   DL_GapConfig_NB_r13__dl_GapPeriodicity_r13_sf128, \
+   DL_GapConfig_NB_r13__dl_GapPeriodicity_r13_sf256, \
+   DL_GapConfig_NB_r13__dl_GapPeriodicity_r13_sf512}
 
 #define DLGAPDURATION_OKVALUES         {"oneEighth","oneFourth","threeEighth","oneHalf"}
 #define DLGAPDURATION_MODVALUES        {DL_GapConfig_NB_r13__dl_GapDurationCoeff_r13_oneEighth,   DL_GapConfig_NB_r13__dl_GapDurationCoeff_r13_oneFourth, \
@@ -184,86 +187,91 @@
 #define NPUSCH_ALPHA_MODVALUES                                   { Alpha_r12_al0, Alpha_r12_al04,  Alpha_r12_al05,  Alpha_r12_al06, \
                                                                    Alpha_r12_al07, Alpha_r12_al08,  Alpha_r12_al09,  Alpha_r12_al1}
 
-#define DELTAPREAMBLEMSG3_OKRANGE                               {-1,6}	
+#define DELTAPREAMBLEMSG3_OKRANGE {-1, 6}
 
-
-
-
-
-#define NBIOT_RRCPARAMS_CHECK_DESC { \
-             { .s1a= { config_check_modify_integer,     RACH_RARESPONSEWINDOWSIZE_NB_OKVALUES,          RACH_RARESPONSEWINDOWSIZE_NB_MODVALUES,          8}}, 	 \
-             { .s1a= { config_check_modify_integer,     RACH_MACCONTENTIONRESOLUTIONTIMER_NB_OKVALUES,  RACH_MACCONTENTIONRESOLUTIONTIMER_NB_MODVALUES,  8}},	 \
-             { .s1a= { config_check_modify_integer,     RACH_POWERRAMPINGSTEP_NB_OKVALUES,              RACH_POWERRAMPINGSTEP_NB_MODVALUES,              4}} ,    \
-             { .s2=  { config_check_intrange,           RACH_PREAMBLEINITIALRECEIVEDTARGETPOWER_NB_OKRANGE}},   	    	  \
-             { .s1a= { config_check_modify_integer,     RACH_PREAMBLETRANSMAX_CE_NB_OKVALUES,           RACH_PREAMBLETRANSMAX_CE_NB_MODVALUES,          11}} ,    \
-             { .s1a= { config_check_modify_integer,     BCCH_MODIFICATIONPERIODCOEFF_NB_OKVALUES,       BCCH_MODIFICATIONPERIODCOEFF_NB_MODVALUES,       4}} ,    \
-             { .s1a= { config_check_modify_integer,     PCCH_DEFAULTPAGINGCYCLE_NB_OKVALUES,            PCCH_DEFAULTPAGINGCYCLE_NB_MODVALUES,            4}} ,    \
-             { .s1=  { NULL,		           NPRACH_CP_LENGTH_OKVALUES ,4}} ,			     	    	  \
-             { .s2=  { config_check_intrange,	        NPRACH_RSRP_RANGE_OKVALUES}} ,			     	    	  \
-             { .s3a= { config_checkstr_assign_integer,  MSG3RANGESTART_OKVALUES,                        MSG3RANGESTART_MODVALUES,                       4}} ,    \
-             { .s1a= { config_check_modify_integer,     MAXNUMPREAMBLEATTEMPTCE_OKVALUES,               MAXNUMPREAMBLEATTEMPTCE_MODVALUES,              7}} ,    \
-             { .s1=  { config_check_intval,             NPDSCH_NRS_POWER_OKRANGE,4}} ,			     	     	  \
-             { .s1a= { config_check_modify_integer,     NPUSCH_ACK_NACK_NUMREPETITIONS_NB_OKVALUES,     NPUSCH_ACK_NACK_NUMREPETITIONS_NB_MODVALUES,    8}} ,    \
-             { .s2=  { config_check_intrange,           NPUSCH_SRS_SUBFRAMECONFIG_NB_OKRANGE}} , 	             	     	  \
-             { .s2=  { config_check_intrange,           NPUSCH_THREETONE_CYCLICSHIFT_R13_OKRANGE}} ,	     	     	  \
-             { .s2=  { config_check_intrange,           NPUSCH_SIXTONE_CYCLICSHIFT_R13_OKRANGE}} ,	             	     	  \
-             { .s3a= { config_checkstr_assign_integer,  NPUSCH_GROUPHOPPINGENABLED_OKVALUES,          NPUSCH_GROUPHOPPINGENABLED_MODVALUES,            2}} ,    \
-             { .s2=  { config_check_intrange,           NPUSCH_GROUPASSIGNMENTNPUSCH_R13_OKRANGE}} ,	     	     	  \
-             { .s1a= { config_check_modify_integer,     DLGAPTHRESHOLD_OKVALUES,                       DLGAPTHRESHOLD_MODVALUES,                        4}} ,    \
-             { .s1a= { config_check_modify_integer,     DLGAPPERIODICITY_OKVALUES,                     DLGAPPERIODICITY_MODVALUES,                      4}} ,    \
-             { .s3a= { config_checkstr_assign_integer,  DLGAPDURATION_OKVALUES,                        DLGAPDURATION_MODVALUES ,                        4}} ,    \
-             { .s2=  { config_check_intrange,           NPUSCH_P0_NOMINALNPUSCH_OKRANGE}} ,		     	     	  \
-             { .s3a= { config_checkstr_assign_integer,  NPUSCH_ALPHA_OKVALUES,                        NPUSCH_ALPHA_MODVALUES,                          8}} ,    \
-             { .s2=  { config_check_intrange,           DELTAPREAMBLEMSG3_OKRANGE}} ,			     	     	  \
-             { .s1a= { config_check_modify_integer,    UETIMER_T300_OKVALUES, UETIMER_T300_MODVALUES,8}} ,	     \
-             { .s1a= { config_check_modify_integer,    UETIMER_T301_OKVALUES, UETIMER_T301_MODVALUES,8}} ,	     \
-             { .s1a= { config_check_modify_integer,    UETIMER_T310_OKVALUES, UETIMER_T310_MODVALUES,7}} ,	     \
-             { .s1a= { config_check_modify_integer,    UETIMER_T311_OKVALUES, UETIMER_T311_MODVALUES,7}} ,	     \
-             { .s1a= { config_check_modify_integer,    UETIMER_N310_OKVALUES, UETIMER_N310_MODVALUES,8}} ,	     \
-             { .s1a= { config_check_modify_integer,    UETIMER_N311_OKVALUES, UETIMER_N311_MODVALUES,8}} ,	     \
-}
+#define NBIOT_RRCPARAMS_CHECK_DESC                                                                                                 \
+  {                                                                                                                                \
+      {.s1a = {config_check_modify_integer, RACH_RARESPONSEWINDOWSIZE_NB_OKVALUES, RACH_RARESPONSEWINDOWSIZE_NB_MODVALUES, 8}},    \
+      {.s1a = {config_check_modify_integer,                                                                                        \
+               RACH_MACCONTENTIONRESOLUTIONTIMER_NB_OKVALUES,                                                                      \
+               RACH_MACCONTENTIONRESOLUTIONTIMER_NB_MODVALUES,                                                                     \
+               8}},                                                                                                                \
+      {.s1a = {config_check_modify_integer, RACH_POWERRAMPINGSTEP_NB_OKVALUES, RACH_POWERRAMPINGSTEP_NB_MODVALUES, 4}},            \
+      {.s2 = {config_check_intrange, RACH_PREAMBLEINITIALRECEIVEDTARGETPOWER_NB_OKRANGE}},                                         \
+      {.s1a = {config_check_modify_integer, RACH_PREAMBLETRANSMAX_CE_NB_OKVALUES, RACH_PREAMBLETRANSMAX_CE_NB_MODVALUES, 11}},     \
+      {.s1a =                                                                                                                      \
+           {config_check_modify_integer, BCCH_MODIFICATIONPERIODCOEFF_NB_OKVALUES, BCCH_MODIFICATIONPERIODCOEFF_NB_MODVALUES, 4}}, \
+      {.s1a = {config_check_modify_integer, PCCH_DEFAULTPAGINGCYCLE_NB_OKVALUES, PCCH_DEFAULTPAGINGCYCLE_NB_MODVALUES, 4}},        \
+      {.s1 = {NULL, NPRACH_CP_LENGTH_OKVALUES, 4}},                                                                                \
+      {.s2 = {config_check_intrange, NPRACH_RSRP_RANGE_OKVALUES}},                                                                 \
+      {.s3a = {config_checkstr_assign_integer, MSG3RANGESTART_OKVALUES, MSG3RANGESTART_MODVALUES, 4}},                             \
+      {.s1a = {config_check_modify_integer, MAXNUMPREAMBLEATTEMPTCE_OKVALUES, MAXNUMPREAMBLEATTEMPTCE_MODVALUES, 7}},              \
+      {.s1 = {config_check_intval, NPDSCH_NRS_POWER_OKRANGE, 4}},                                                                  \
+      {.s1a = {config_check_modify_integer,                                                                                        \
+               NPUSCH_ACK_NACK_NUMREPETITIONS_NB_OKVALUES,                                                                         \
+               NPUSCH_ACK_NACK_NUMREPETITIONS_NB_MODVALUES,                                                                        \
+               8}},                                                                                                                \
+      {.s2 = {config_check_intrange, NPUSCH_SRS_SUBFRAMECONFIG_NB_OKRANGE}},                                                       \
+      {.s2 = {config_check_intrange, NPUSCH_THREETONE_CYCLICSHIFT_R13_OKRANGE}},                                                   \
+      {.s2 = {config_check_intrange, NPUSCH_SIXTONE_CYCLICSHIFT_R13_OKRANGE}},                                                     \
+      {.s3a = {config_checkstr_assign_integer, NPUSCH_GROUPHOPPINGENABLED_OKVALUES, NPUSCH_GROUPHOPPINGENABLED_MODVALUES, 2}},     \
+      {.s2 = {config_check_intrange, NPUSCH_GROUPASSIGNMENTNPUSCH_R13_OKRANGE}},                                                   \
+      {.s1a = {config_check_modify_integer, DLGAPTHRESHOLD_OKVALUES, DLGAPTHRESHOLD_MODVALUES, 4}},                                \
+      {.s1a = {config_check_modify_integer, DLGAPPERIODICITY_OKVALUES, DLGAPPERIODICITY_MODVALUES, 4}},                            \
+      {.s3a = {config_checkstr_assign_integer, DLGAPDURATION_OKVALUES, DLGAPDURATION_MODVALUES, 4}},                               \
+      {.s2 = {config_check_intrange, NPUSCH_P0_NOMINALNPUSCH_OKRANGE}},                                                            \
+      {.s3a = {config_checkstr_assign_integer, NPUSCH_ALPHA_OKVALUES, NPUSCH_ALPHA_MODVALUES, 8}},                                 \
+      {.s2 = {config_check_intrange, DELTAPREAMBLEMSG3_OKRANGE}},                                                                  \
+      {.s1a = {config_check_modify_integer, UETIMER_T300_OKVALUES, UETIMER_T300_MODVALUES, 8}},                                    \
+      {.s1a = {config_check_modify_integer, UETIMER_T301_OKVALUES, UETIMER_T301_MODVALUES, 8}},                                    \
+      {.s1a = {config_check_modify_integer, UETIMER_T310_OKVALUES, UETIMER_T310_MODVALUES, 7}},                                    \
+      {.s1a = {config_check_modify_integer, UETIMER_T311_OKVALUES, UETIMER_T311_MODVALUES, 7}},                                    \
+      {.s1a = {config_check_modify_integer, UETIMER_N310_OKVALUES, UETIMER_N310_MODVALUES, 8}},                                    \
+      {.s1a = {config_check_modify_integer, UETIMER_N311_OKVALUES, UETIMER_N311_MODVALUES, 8}},                                    \
+  }
 /*-----------------------------------------------------------------------------------------------------------------------------------------*/
-/*                                                           NB-IoT RRC  configuration parameters                                          */
-/*   optname                                       helpstr   paramflags    XXXptr	 defXXXval		      type	   numelt  */
+/*                                                           NB-IoT RRC  configuration parameters */
+/*   optname                                       helpstr   paramflags    XXXptr     defXXXval              type       numelt  */
 /*-----------------------------------------------------------------------------------------------------------------------------------------*/
-#define NBIOTRRCPARAMS_DESC { \
-{"rach_raResponseWindowSize_NB",                   NULL,   0,		   uptr:NULL,	 defintval:20,  	TYPE_UINT,	 0},  \
-{"rach_macContentionResolutionTimer_NB",           NULL,   0,		   uptr:NULL,	 defintval:80,  	TYPE_UINT,	 0},  \
-{"rach_powerRampingStep_NB",                       NULL,   0,		   uptr:NULL,	 defintval:0,		TYPE_UINT,	 0},  \
-{"rach_preambleInitialReceivedTargetPower_NB",     NULL,   0,		   iptr:NULL,	 defintval:-112,	TYPE_INT32,	 0},  \
-{"rach_preambleTransMax_CE_NB",                    NULL,   0,		   uptr:NULL,	 defintval:3,		TYPE_UINT,	 0},  \
-{"bcch_modificationPeriodCoeff_NB",                NULL,   0,		   uptr:NULL,	 defintval:16,		TYPE_UINT,	 0},  \
-{"pcch_defaultPagingCycle_NB",                     NULL,   0,		   uptr:NULL,	 defintval:256,		TYPE_UINT,	 0},  \
-{"nprach_CP_Length",                               NULL,   0,		   uptr:NULL,	 defintval:0,		TYPE_UINT,	 0},  \
-{"nprach_rsrp_range",                              NULL,   0,		   uptr:NULL,	 defintval:0,		TYPE_UINT,	 0},  \
-{"nprach_SubcarrierMSG3_RangeStart",               NULL,   0,		   strptr:NULL,  defstrval:"one",	TYPE_STRING,	 0},  \
-{"maxNumPreambleAttemptCE_NB",                     NULL,   0,		   uptr:NULL,	 defintval:10,  	TYPE_UINT,	 0},  \
-{"npdsch_nrs_Power",                               NULL,   0,		   iptr:NULL,	 defintval:0,		TYPE_INT,	 0},  \
-{"npusch_ack_nack_numRepetitions_NB",              NULL,   0,		   uptr:NULL,	 defintval:1,		TYPE_UINT,	 0},  \
-{"npusch_srs_SubframeConfig_NB",                   NULL,   0,		   uptr:NULL,	 defintval:0,		TYPE_UINT,	 0},  \
-{"npusch_threeTone_CyclicShift_r13",               NULL,   0,		   uptr:NULL,	 defintval:0,		TYPE_UINT,	 0},  \
-{"npusch_sixTone_CyclicShift_r13",                 NULL,   0,		   uptr:NULL,	 defintval:0,		TYPE_UINT,	 0},  \
-{"npusch_groupHoppingEnabled",                     NULL,   0,              strptr:NULL,	 defstrval:"disable",	TYPE_STRING,	 0},  \
-{"npusch_groupAssignmentNPUSCH_r13",               NULL,   0,		   uptr:NULL,	 defintval:0,		TYPE_UINT,	 0},  \
-{"dl_GapThreshold_NB",                             NULL,   0,		   uptr:NULL,	 defintval:32,  	TYPE_UINT,	 0},  \
-{"dl_GapPeriodicity_NB",                           NULL,   0,		   uptr:NULL,	 defintval:64,  	TYPE_UINT,	 0},  \
-{"dl_GapDurationCoeff_NB",                         NULL,   0,		   strptr:NULL,  defstrval:"oneEighth", TYPE_STRING,	 0},  \
-{"npusch_p0_NominalNPUSCH",                        NULL,   0,		   iptr:NULL,	 defintval:0,		TYPE_INT32,	 0},  \
-{"npusch_alpha",                                   NULL,   0,		   strptr:NULL,	 defstrval:"AL0",  	TYPE_STRING,	 0},  \
-{"deltaPreambleMsg3",                              NULL,   0,		   iptr:NULL,	 defintval:0,		TYPE_INT32,	 0},  \
-{"ue_TimersAndConstants_t300_NB",                  NULL,   0,		   uptr:NULL,	 defintval:1000,	TYPE_UINT,	 0},  \
-{"ue_TimersAndConstants_t301_NB",                  NULL,   0,		   uptr:NULL,	 defintval:1000,	TYPE_UINT,	 0},  \
-{"ue_TimersAndConstants_t310_NB",                  NULL,   0,		   uptr:NULL,	 defintval:1000,	TYPE_UINT,	 0},  \
-{"ue_TimersAndConstants_t311_NB",                  NULL,   0,		   uptr:NULL,	 defintval:10000,	TYPE_UINT,	 0},  \
-{"ue_TimersAndConstants_n310_NB",                  NULL,   0,		   uptr:NULL,	 defintval:20,  	TYPE_UINT,	 0},  \
-{"ue_TimersAndConstants_n311_NB",                  NULL,   0,		   uptr:NULL,	 defintval:1,		TYPE_UINT,	 0},  \
-}								    
+#define NBIOTRRCPARAMS_DESC                                                                                  \
+  {                                                                                                          \
+      {"rach_raResponseWindowSize_NB", NULL, 0, uptr : NULL, defintval : 20, TYPE_UINT, 0},                  \
+      {"rach_macContentionResolutionTimer_NB", NULL, 0, uptr : NULL, defintval : 80, TYPE_UINT, 0},          \
+      {"rach_powerRampingStep_NB", NULL, 0, uptr : NULL, defintval : 0, TYPE_UINT, 0},                       \
+      {"rach_preambleInitialReceivedTargetPower_NB", NULL, 0, iptr : NULL, defintval : -112, TYPE_INT32, 0}, \
+      {"rach_preambleTransMax_CE_NB", NULL, 0, uptr : NULL, defintval : 3, TYPE_UINT, 0},                    \
+      {"bcch_modificationPeriodCoeff_NB", NULL, 0, uptr : NULL, defintval : 16, TYPE_UINT, 0},               \
+      {"pcch_defaultPagingCycle_NB", NULL, 0, uptr : NULL, defintval : 256, TYPE_UINT, 0},                   \
+      {"nprach_CP_Length", NULL, 0, uptr : NULL, defintval : 0, TYPE_UINT, 0},                               \
+      {"nprach_rsrp_range", NULL, 0, uptr : NULL, defintval : 0, TYPE_UINT, 0},                              \
+      {"nprach_SubcarrierMSG3_RangeStart", NULL, 0, strptr : NULL, defstrval : "one", TYPE_STRING, 0},       \
+      {"maxNumPreambleAttemptCE_NB", NULL, 0, uptr : NULL, defintval : 10, TYPE_UINT, 0},                    \
+      {"npdsch_nrs_Power", NULL, 0, iptr : NULL, defintval : 0, TYPE_INT, 0},                                \
+      {"npusch_ack_nack_numRepetitions_NB", NULL, 0, uptr : NULL, defintval : 1, TYPE_UINT, 0},              \
+      {"npusch_srs_SubframeConfig_NB", NULL, 0, uptr : NULL, defintval : 0, TYPE_UINT, 0},                   \
+      {"npusch_threeTone_CyclicShift_r13", NULL, 0, uptr : NULL, defintval : 0, TYPE_UINT, 0},               \
+      {"npusch_sixTone_CyclicShift_r13", NULL, 0, uptr : NULL, defintval : 0, TYPE_UINT, 0},                 \
+      {"npusch_groupHoppingEnabled", NULL, 0, strptr : NULL, defstrval : "disable", TYPE_STRING, 0},         \
+      {"npusch_groupAssignmentNPUSCH_r13", NULL, 0, uptr : NULL, defintval : 0, TYPE_UINT, 0},               \
+      {"dl_GapThreshold_NB", NULL, 0, uptr : NULL, defintval : 32, TYPE_UINT, 0},                            \
+      {"dl_GapPeriodicity_NB", NULL, 0, uptr : NULL, defintval : 64, TYPE_UINT, 0},                          \
+      {"dl_GapDurationCoeff_NB", NULL, 0, strptr : NULL, defstrval : "oneEighth", TYPE_STRING, 0},           \
+      {"npusch_p0_NominalNPUSCH", NULL, 0, iptr : NULL, defintval : 0, TYPE_INT32, 0},                       \
+      {"npusch_alpha", NULL, 0, strptr : NULL, defstrval : "AL0", TYPE_STRING, 0},                           \
+      {"deltaPreambleMsg3", NULL, 0, iptr : NULL, defintval : 0, TYPE_INT32, 0},                             \
+      {"ue_TimersAndConstants_t300_NB", NULL, 0, uptr : NULL, defintval : 1000, TYPE_UINT, 0},               \
+      {"ue_TimersAndConstants_t301_NB", NULL, 0, uptr : NULL, defintval : 1000, TYPE_UINT, 0},               \
+      {"ue_TimersAndConstants_t310_NB", NULL, 0, uptr : NULL, defintval : 1000, TYPE_UINT, 0},               \
+      {"ue_TimersAndConstants_t311_NB", NULL, 0, uptr : NULL, defintval : 10000, TYPE_UINT, 0},              \
+      {"ue_TimersAndConstants_n310_NB", NULL, 0, uptr : NULL, defintval : 20, TYPE_UINT, 0},                 \
+      {"ue_TimersAndConstants_n311_NB", NULL, 0, uptr : NULL, defintval : 1, TYPE_UINT, 0},                  \
+  }
 
-#define NBIOT_RACH_RARESPONSEWINDOWSIZE_NB_IDX                         0	   
+#define NBIOT_RACH_RARESPONSEWINDOWSIZE_NB_IDX 0
 #define NBIOT_RACH_MACCONTENTIONRESOLUTIONTIMER_NB_IDX                 1
 #define NBIOT_RACH_POWERRAMPINGSTEP_NB_IDX                             2
 #define NBIOT_RACH_PREAMBLEINITIALRECEIVEDTARGETPOWER_NB_IDX           3
-#define NBIOT_RACH_PREAMBLETRANSMAX_CE_NB_IDX                          4		   
+#define NBIOT_RACH_PREAMBLETRANSMAX_CE_NB_IDX 4
 #define NBIOT_BCCH_MODIFICATIONPERIODCOEFF_NB_IDX                      5
 #define NBIOT_PCCH_DEFAULTPAGINGCYCLE_NB_IDX                           6
 #define NBIOT_NPRACH_CP_LENGTH_IDX                                     7
@@ -290,16 +298,17 @@
 #define NBIOT_UE_TIMERSANDCONSTANTS_N310_NB_IDX                        28
 #define NBIOT_UE_TIMERSANDCONSTANTS_N311_NB_IDX                        29
 
-/* NB-Iot RRC: link to LTE RRC section name */		
+/* NB-Iot RRC: link to LTE RRC section name */
 #define NBIOT_LTERRCREF_CONFIG_STRING          "LTERRC_Ref"
 /*---------------------------------------------------------------------------------------------------------------*/
 /*          NB-IoT RRC configuration parameters to link to a LTE RRC instance (in-guard, in-band)                */
-/*   optname                        helpstr   paramflags    XXXptr	 defXXXval	   type	         numelt  */
+/*   optname                        helpstr   paramflags    XXXptr     defXXXval       type             numelt  */
 /*---------------------------------------------------------------------------------------------------------------*/
-#define NBIOTRRCPARAMS_RRCREF_DESC { \
-{"RRC_inst",                         NULL,   0,            uptr:NULL,     defintval:0,	  TYPE_UINT,	   0},  \
-{"CC_inst",                          NULL,   0,            uptr:NULL,     defintval:0, 	  TYPE_UINT,	   0},  \
-}
+#define NBIOTRRCPARAMS_RRCREF_DESC                                     \
+  {                                                                    \
+      {"RRC_inst", NULL, 0, uptr : NULL, defintval : 0, TYPE_UINT, 0}, \
+      {"CC_inst", NULL, 0, uptr : NULL, defintval : 0, TYPE_UINT, 0},  \
+  }
 /*--------------------------------------------------------------------------------------------------------------*/
 #define NBIOT_RRCINST_IDX             0
 #define NBIOT_CCINST_IDX              1
@@ -337,52 +346,68 @@
                                                        NPRACH_Parameters_NB_r13__numRepetitionsPerPreambleAttempt_r13_n64, NPRACH_Parameters_NB_r13__numRepetitionsPerPreambleAttempt_r13_n128} 
 
 #define  NPDCCHNUMREPETITIONSRA_OKVALUES  {1,2,4,8,16,32,64,128,256,512,1024,2048}
-#define  NPDCCHNUMREPETITIONSRA_MODVALUES {  NPRACH_Parameters_NB_r13__npdcch_NumRepetitions_RA_r13_r1,   NPRACH_Parameters_NB_r13__npdcch_NumRepetitions_RA_r13_r2,	\
-                                    	     NPRACH_Parameters_NB_r13__npdcch_NumRepetitions_RA_r13_r4,   NPRACH_Parameters_NB_r13__npdcch_NumRepetitions_RA_r13_r8,	\
-                                    	     NPRACH_Parameters_NB_r13__npdcch_NumRepetitions_RA_r13_r16,  NPRACH_Parameters_NB_r13__npdcch_NumRepetitions_RA_r13_r32,	\
-                                    	     NPRACH_Parameters_NB_r13__npdcch_NumRepetitions_RA_r13_r64,  NPRACH_Parameters_NB_r13__npdcch_NumRepetitions_RA_r13_r128,  \
-                                    	     NPRACH_Parameters_NB_r13__npdcch_NumRepetitions_RA_r13_r256, NPRACH_Parameters_NB_r13__npdcch_NumRepetitions_RA_r13_r512,  \
-                                    	     NPRACH_Parameters_NB_r13__npdcch_NumRepetitions_RA_r13_r1024,NPRACH_Parameters_NB_r13__npdcch_NumRepetitions_RA_r13_r2048}
+#define NPDCCHNUMREPETITIONSRA_MODVALUES                         \
+  {NPRACH_Parameters_NB_r13__npdcch_NumRepetitions_RA_r13_r1,    \
+   NPRACH_Parameters_NB_r13__npdcch_NumRepetitions_RA_r13_r2,    \
+   NPRACH_Parameters_NB_r13__npdcch_NumRepetitions_RA_r13_r4,    \
+   NPRACH_Parameters_NB_r13__npdcch_NumRepetitions_RA_r13_r8,    \
+   NPRACH_Parameters_NB_r13__npdcch_NumRepetitions_RA_r13_r16,   \
+   NPRACH_Parameters_NB_r13__npdcch_NumRepetitions_RA_r13_r32,   \
+   NPRACH_Parameters_NB_r13__npdcch_NumRepetitions_RA_r13_r64,   \
+   NPRACH_Parameters_NB_r13__npdcch_NumRepetitions_RA_r13_r128,  \
+   NPRACH_Parameters_NB_r13__npdcch_NumRepetitions_RA_r13_r256,  \
+   NPRACH_Parameters_NB_r13__npdcch_NumRepetitions_RA_r13_r512,  \
+   NPRACH_Parameters_NB_r13__npdcch_NumRepetitions_RA_r13_r1024, \
+   NPRACH_Parameters_NB_r13__npdcch_NumRepetitions_RA_r13_r2048}
 
 #define  NPDCCHSTARTSFCSSRA_OKVALUES  {1,2,4,8,16,32,48,64}
-#define  NPDCCHSTARTSFCSSRA_MODVALUES {  NPRACH_Parameters_NB_r13__npdcch_StartSF_CSS_RA_r13_v1dot5,  NPRACH_Parameters_NB_r13__npdcch_StartSF_CSS_RA_r13_v2,	\
-                                         NPRACH_Parameters_NB_r13__npdcch_StartSF_CSS_RA_r13_v4,      NPRACH_Parameters_NB_r13__npdcch_StartSF_CSS_RA_r13_v8,   \
-                                         NPRACH_Parameters_NB_r13__npdcch_StartSF_CSS_RA_r13_v16,     NPRACH_Parameters_NB_r13__npdcch_StartSF_CSS_RA_r13_v32,  \
-                                         NPRACH_Parameters_NB_r13__npdcch_StartSF_CSS_RA_r13_v48,     NPRACH_Parameters_NB_r13__npdcch_StartSF_CSS_RA_r13_v64}
+#define NPDCCHSTARTSFCSSRA_MODVALUES                           \
+  {NPRACH_Parameters_NB_r13__npdcch_StartSF_CSS_RA_r13_v1dot5, \
+   NPRACH_Parameters_NB_r13__npdcch_StartSF_CSS_RA_r13_v2,     \
+   NPRACH_Parameters_NB_r13__npdcch_StartSF_CSS_RA_r13_v4,     \
+   NPRACH_Parameters_NB_r13__npdcch_StartSF_CSS_RA_r13_v8,     \
+   NPRACH_Parameters_NB_r13__npdcch_StartSF_CSS_RA_r13_v16,    \
+   NPRACH_Parameters_NB_r13__npdcch_StartSF_CSS_RA_r13_v32,    \
+   NPRACH_Parameters_NB_r13__npdcch_StartSF_CSS_RA_r13_v48,    \
+   NPRACH_Parameters_NB_r13__npdcch_StartSF_CSS_RA_r13_v64}
 
 #define  NPDCCHOFFSETRA_OKVALUES    {"zero","oneEighth","oneFourth","threeEighth"}
-#define  NPDCCHOFFSETRA_MODVALUES   { NPRACH_Parameters_NB_r13__npdcch_Offset_RA_r13_zero,	NPRACH_Parameters_NB_r13__npdcch_Offset_RA_r13_oneEighth,     \
-                                      NPRACH_Parameters_NB_r13__npdcch_Offset_RA_r13_oneFourth, NPRACH_Parameters_NB_r13__npdcch_Offset_RA_r13_threeEighth}
+#define NPDCCHOFFSETRA_MODVALUES                             \
+  {NPRACH_Parameters_NB_r13__npdcch_Offset_RA_r13_zero,      \
+   NPRACH_Parameters_NB_r13__npdcch_Offset_RA_r13_oneEighth, \
+   NPRACH_Parameters_NB_r13__npdcch_Offset_RA_r13_oneFourth, \
+   NPRACH_Parameters_NB_r13__npdcch_Offset_RA_r13_threeEighth}
 
-
-
-#define NBIOT_RRCLIST_NPRACHPARAMSCHECK_DESC { \
-             { .s1a= { config_check_modify_integer,    NPRACH_PERIODICITY_OKVALUES,		  NPRACH_PERIODICITY_MODVALUES, 	     8 }},	\
-             { .s1a= { config_check_modify_integer,    NPRACH_STARTTIME_OKVALUES,		  NPRACH_STARTTIME_MODVALUES,  	             8 }},	\
-             { .s1a= { config_check_modify_integer,    NPRACH_SUBCARRIEROFFSET_OKVALUES,	  NPRACH_SUBCARRIEROFFSET_MODVALUES,	     7 }},	\
-             { .s1a= { config_check_modify_integer,    NPRACH_NUMSUBCARRIERS_OKVALUES,  	  NPRACH_NUMSUBCARRIERS_MODVALUES,	     4 }},	\
-             { .s1a= { config_check_modify_integer,    NUMREPETITIONSPERPREAMBLEATTEMPT_OKVALUES, NUMREPETITIONSPERPREAMBLEATTEMPT_MODVALUES,8 }},	\
-             { .s1a= { config_check_modify_integer,    NPDCCHNUMREPETITIONSRA_OKVALUES, 	  NPDCCHNUMREPETITIONSRA_MODVALUES,	     12}},	\
-             { .s1a= { config_check_modify_integer,    NPDCCHSTARTSFCSSRA_OKVALUES,		  NPDCCHSTARTSFCSSRA_MODVALUES,	             8 }},	\
-             { .s3a= { config_checkstr_assign_integer, NPDCCHOFFSETRA_OKVALUES,                   NPDCCHOFFSETRA_MODVALUES,                  4 }},	\
-}
-
-
+#define NBIOT_RRCLIST_NPRACHPARAMSCHECK_DESC                                                                          \
+  {                                                                                                                   \
+      {.s1a = {config_check_modify_integer, NPRACH_PERIODICITY_OKVALUES, NPRACH_PERIODICITY_MODVALUES, 8}},           \
+      {.s1a = {config_check_modify_integer, NPRACH_STARTTIME_OKVALUES, NPRACH_STARTTIME_MODVALUES, 8}},               \
+      {.s1a = {config_check_modify_integer, NPRACH_SUBCARRIEROFFSET_OKVALUES, NPRACH_SUBCARRIEROFFSET_MODVALUES, 7}}, \
+      {.s1a = {config_check_modify_integer, NPRACH_NUMSUBCARRIERS_OKVALUES, NPRACH_NUMSUBCARRIERS_MODVALUES, 4}},     \
+      {.s1a = {config_check_modify_integer,                                                                           \
+               NUMREPETITIONSPERPREAMBLEATTEMPT_OKVALUES,                                                             \
+               NUMREPETITIONSPERPREAMBLEATTEMPT_MODVALUES,                                                            \
+               8}},                                                                                                   \
+      {.s1a = {config_check_modify_integer, NPDCCHNUMREPETITIONSRA_OKVALUES, NPDCCHNUMREPETITIONSRA_MODVALUES, 12}},  \
+      {.s1a = {config_check_modify_integer, NPDCCHSTARTSFCSSRA_OKVALUES, NPDCCHSTARTSFCSSRA_MODVALUES, 8}},           \
+      {.s3a = {config_checkstr_assign_integer, NPDCCHOFFSETRA_OKVALUES, NPDCCHOFFSETRA_MODVALUES, 4}},                \
+  }
 
 /*------------------------------------------------------------------------------------------------------------------------------*/
 /* NB-IoT NPrach parameters, there will be three ocuurences of these parameters in each RRC instance                            */
- /*   optname                                helpstr   paramflags    XXXptr	 defXXXval		  type	        numelt  */
+/*   optname                                helpstr   paramflags    XXXptr     defXXXval          type            numelt  */
 /*------------------------------------------------------------------------------------------------------------------------------*/
-#define NBIOTRRC_NPRACH_PARAMS_DESC { \
-{"nprach_Periodicity",                        NULL,   0,            uptr:NULL,     defintval:320,	  TYPE_UINT,	   0},  \
-{"nprach_StartTime",                          NULL,   0,            uptr:NULL,     defintval:8, 	  TYPE_UINT,	   0},  \
-{"nprach_SubcarrierOffset",                   NULL,   0,            uptr:NULL,     defintval:0, 	  TYPE_UINT,	   0},  \
-{"nprach_NumSubcarriers",                     NULL,   0,            uptr:NULL,     defintval:12,	  TYPE_UINT,	   0},  \
-{"numRepetitionsPerPreambleAttempt",          NULL,   0,            uptr:NULL,     defintval:2, 	  TYPE_UINT,	   0},  \
-{"npdcch_NumRepetitions_RA",                  NULL,   0,            uptr:NULL,     defintval:16,	  TYPE_UINT,	   0},  \
-{"npdcch_StartSF_CSS_RA",                     NULL,   0,            uptr:NULL,     defintval:2,	          TYPE_UINT,       0},  \
-{"npdcch_Offset_RA",                          NULL,   0,            strptr:NULL,   defstrval:"zero",      TYPE_STRING,     0},  \
-}
+#define NBIOTRRC_NPRACH_PARAMS_DESC                                                            \
+  {                                                                                            \
+      {"nprach_Periodicity", NULL, 0, uptr : NULL, defintval : 320, TYPE_UINT, 0},             \
+      {"nprach_StartTime", NULL, 0, uptr : NULL, defintval : 8, TYPE_UINT, 0},                 \
+      {"nprach_SubcarrierOffset", NULL, 0, uptr : NULL, defintval : 0, TYPE_UINT, 0},          \
+      {"nprach_NumSubcarriers", NULL, 0, uptr : NULL, defintval : 12, TYPE_UINT, 0},           \
+      {"numRepetitionsPerPreambleAttempt", NULL, 0, uptr : NULL, defintval : 2, TYPE_UINT, 0}, \
+      {"npdcch_NumRepetitions_RA", NULL, 0, uptr : NULL, defintval : 16, TYPE_UINT, 0},        \
+      {"npdcch_StartSF_CSS_RA", NULL, 0, uptr : NULL, defintval : 2, TYPE_UINT, 0},            \
+      {"npdcch_Offset_RA", NULL, 0, strptr : NULL, defstrval : "zero", TYPE_STRING, 0},        \
+  }
 
 #define NBIOT_NPRACH_PERIODICITY_IDX                                   0
 #define NBIOT_NPRACH_STARTTIME_IDX                                     1

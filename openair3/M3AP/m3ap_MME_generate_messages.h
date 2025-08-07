@@ -32,8 +32,7 @@
 #include "m2ap_MCE_defs.h"
 #include "m2ap_common.h"
 
-int m2ap_MCE_generate_m2_setup_request(m2ap_MCE_instance_t *instance_p,
-				       m2ap_MCE_data_t *m2ap_MCE_data_p);
+int m2ap_MCE_generate_m2_setup_request(m2ap_MCE_instance_t *instance_p, m2ap_MCE_data_t *m2ap_MCE_data_p);
 
 int m2ap_MCE_generate_m2_setup_response(m2ap_MCE_instance_t *instance_p, m2ap_MCE_data_t *m2ap_MCE_data_p);
 

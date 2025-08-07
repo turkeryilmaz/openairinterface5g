@@ -396,7 +396,7 @@ int random_channel(channel_desc_t *desc, uint8_t abstraction_flag);
            double rx_sig_im[NB_ANTENNAS_RX],
            uint32_t length,
            uint8_t keep_channel,
-	   int log_channel)
+       int log_channel)
 
 \brief This function generates and applys a random frequency selective random channel model.
 @param desc Pointer to channel descriptor
@@ -416,7 +416,7 @@ void multipath_channel(channel_desc_t *desc,
                        double *rx_sig_im[NB_ANTENNAS_RX],
                        uint32_t length,
                        uint8_t keep_channel,
-		       int log_channel);
+                       int log_channel);
 /*
 \fn double compute_pbch_sinr(channel_desc_t *desc,
                              channel_desc_t *desc_i1,

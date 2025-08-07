@@ -182,15 +182,17 @@ void RCconfig_macrlc(void)
       RC.mac[j]->bler_upper = *(MacRLC_ParamList.paramarray[j][MACRLC_BLER_TARGET_UPPER_IDX ].dblptr);
       RC.mac[j]->max_ul_rb_index = *(MacRLC_ParamList.paramarray[j][MACRLC_MAX_UL_RB_INDEX_IDX ].iptr);
       RC.nb_mac_CC[j] = *(MacRLC_ParamList.paramarray[j][MACRLC_CC_IDX].iptr);
-      LOG_I(ENB_APP,"MAC instance %d parameters : pusch_snr %lf, pucch_snr %lf, ue_multiple_max %d, use_mcs_offset %d, bler_lower %lf, bler_upper %lf,max_ul_rb_index %d\n",
-	j,
-	RC.mac[j]->puSch10xSnr/10.0,
-	RC.mac[j]->puCch10xSnr/10.0,
-	RC.mac[j]->ue_multiple_max,
-	RC.mac[j]->use_mcs_offset,
-	RC.mac[j]->bler_lower,
-	RC.mac[j]->bler_upper,
-	RC.mac[j]->max_ul_rb_index);
+      LOG_I(ENB_APP,
+            "MAC instance %d parameters : pusch_snr %lf, pucch_snr %lf, ue_multiple_max %d, use_mcs_offset %d, bler_lower %lf, "
+            "bler_upper %lf,max_ul_rb_index %d\n",
+            j,
+            RC.mac[j]->puSch10xSnr / 10.0,
+            RC.mac[j]->puCch10xSnr / 10.0,
+            RC.mac[j]->ue_multiple_max,
+            RC.mac[j]->use_mcs_offset,
+            RC.mac[j]->bler_lower,
+            RC.mac[j]->bler_upper,
+            RC.mac[j]->max_ul_rb_index);
       if (strcmp(*(MacRLC_ParamList.paramarray[j][MACRLC_TRANSPORT_N_PREFERENCE_IDX].strptr), "local_RRC") == 0) {
         // check number of instances is same as RRC/PDCP
         LOG_I(ENB_APP,"Configuring local RRC for MACRLC\n");

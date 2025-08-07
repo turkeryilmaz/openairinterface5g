@@ -1087,20 +1087,20 @@ static int Gtpv1uHandleGpdu(int h,
       extension_header_length = msgBuf[offset];
       switch (next_extension_header_type) {
         case PDU_SESSION_CONTAINER: {
-	  if (offset + sizeof(PDUSessionContainerT) > msgBufLen ) {
-	    LOG_E(GTPU, "gtp-u received header is malformed, ignore gtp packet\n");
-	    return GTPNOK;
-	  }
+          if (offset + sizeof(PDUSessionContainerT) > msgBufLen) {
+            LOG_E(GTPU, "gtp-u received header is malformed, ignore gtp packet\n");
+            return GTPNOK;
+          }
           PDUSessionContainerT *pdusession_cntr = (PDUSessionContainerT *)(msgBuf + offset + 1);
           qfi = pdusession_cntr->QFI;
           rqi = pdusession_cntr->Reflective_QoS_activation;
           break;
         }
         case NR_RAN_CONTAINER: {
-	  if (offset + 1 > msgBufLen ) {
-	    LOG_E(GTPU, "gtp-u received header is malformed, ignore gtp packet\n");
-	    return GTPNOK;
-	  }
+          if (offset + 1 > msgBufLen) {
+            LOG_E(GTPU, "gtp-u received header is malformed, ignore gtp packet\n");
+            return GTPNOK;
+          }
           uint8_t PDU_type = (msgBuf[offset+1]>>4) & 0x0f;
           if (PDU_type == 0){ //DL USER Data Format
             int additional_offset = 6; //Additional offset capturing the first non-mandatory octet (TS 38.425, Figure 5.5.2.1-1)
@@ -1127,13 +1127,13 @@ static int Gtpv1uHandleGpdu(int h,
         }
         default:
           LOG_W(GTPU, "unhandled extension 0x%2.2x, skipping\n", next_extension_header_type);
-	  break;
+          break;
       }
 
       offset += extension_header_length * EXT_HDR_LNTH_OCTET_UNITS;
       if (offset > msgBufLen ) {
-	LOG_E(GTPU, "gtp-u received header is malformed, ignore gtp packet\n");
-	return GTPNOK;
+        LOG_E(GTPU, "gtp-u received header is malformed, ignore gtp packet\n");
+        return GTPNOK;
       }
       next_extension_header_type = msgBuf[offset - 1];
     }

@@ -25,7 +25,7 @@
 #include <stdint.h>
 
 /* maximum number of simultaneous handovers, do not set too high */
-#define M3AP_MAX_IDS	16
+#define M3AP_MAX_IDS 16
 
 /*
  * state:

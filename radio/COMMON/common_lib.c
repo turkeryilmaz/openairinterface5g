@@ -104,24 +104,24 @@ int load_lib(openair0_device *device,
     IS_SOFTMODEM_IQRECORDER = true; // softmodem has to know we use the iqrecorder to workaround randomized algorithms
   }
   if (openair0_cfg->recplay_mode == RECPLAY_REPLAYMODE) {
-  	  deflibname=OAI_IQPLAYER_LIBNAME;
-  	  shlib_fdesc[0].fname="device_init";
-      IS_SOFTMODEM_IQPLAYER = true; // softmodem has to know we use the iqplayer to workaround randomized algorithms
+    deflibname = OAI_IQPLAYER_LIBNAME;
+    shlib_fdesc[0].fname = "device_init";
+    IS_SOFTMODEM_IQPLAYER = true; // softmodem has to know we use the iqplayer to workaround randomized algorithms
   } else if (IS_SOFTMODEM_RFSIM && flag == RAU_LOCAL_RADIO_HEAD) {
-	  deflibname=OAI_RFSIM_LIBNAME;
-	  shlib_fdesc[0].fname="device_init";
+    deflibname = OAI_RFSIM_LIBNAME;
+    shlib_fdesc[0].fname = "device_init";
   } else if (flag == RAU_LOCAL_RADIO_HEAD) {
-	  if (IS_SOFTMODEM_RFSIM)
-		  deflibname="rfsimulator";
-	  else
-          deflibname=OAI_RF_LIBNAME;
-      shlib_fdesc[0].fname="device_init";
+    if (IS_SOFTMODEM_RFSIM)
+      deflibname = "rfsimulator";
+    else
+      deflibname = OAI_RF_LIBNAME;
+    shlib_fdesc[0].fname = "device_init";
   } else if (flag == RAU_REMOTE_THIRDPARTY_RADIO_HEAD) {
     deflibname=OAI_THIRDPARTY_TP_LIBNAME;
     shlib_fdesc[0].fname="transport_init";
   } else {
-	  deflibname=OAI_TP_LIBNAME;
-	  shlib_fdesc[0].fname="transport_init";
+    deflibname = OAI_TP_LIBNAME;
+    shlib_fdesc[0].fname = "transport_init";
   }
   
   char *devname=NULL;
@@ -133,8 +133,7 @@ int load_lib(openair0_device *device,
   config_get(config_get_if(), device_params, numparams, DEVICE_SECTION);
 
   ret=load_module_shlib(devname,shlib_fdesc,1,NULL);
-  AssertFatal( (ret >= 0),
-  	           "Library %s couldn't be loaded\n",devname);
+  AssertFatal((ret >= 0), "Library %s couldn't be loaded\n", devname);
 
   return ((devfunc_t)shlib_fdesc[0].fptr)(device,openair0_cfg,cfg);
 }
@@ -150,7 +149,7 @@ int openair0_device_load(openair0_device *device,
     if ( set_device(device) < 0) {
       LOG_E(HW, "%s %d:Unsupported radio head\n", __FILE__, __LINE__);
       return -1;
-	}
+    }
   } else
     AssertFatal(false, "can't open the radio device: %s\n", get_devname(device->type));
 

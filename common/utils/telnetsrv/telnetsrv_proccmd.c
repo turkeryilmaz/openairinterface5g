@@ -102,7 +102,7 @@ while (procfile_fields != NULL && fieldcnt < 42) {
       break;
     case 18: // priority column index 2 in tdata, -2 to -100 (1, min to 99, highest prio)
       priority = strtol(procfile_fields, NULL, 0);
-    case 19: // nice	  column index 3 in tdata  0 to 39 (-20, highest prio, to 19)
+    case 19: // nice      column index 3 in tdata  0 to 39 (-20, highest prio, to 19)
       if (tdata != NULL) {
         tdata->lines[tdata->numlines].val[fieldcnt - 16] = strdup(procfile_fields);
       }
@@ -451,7 +451,7 @@ int proccmd_show(char *buf, int debug, telnet_printfunc_t prnt)
        prnt("   %02i Ru(s)\n", RC.nb_RU);
        prnt("   %02i lte RRc(s),     %02i NbIoT RRC(s)\n",    RC.nb_inst, RC.nb_nb_iot_rrc_inst);
        prnt("   %02i lte MACRLC(s),  %02i NbIoT MACRLC(s)\n", RC.nb_macrlc_inst, RC.nb_nb_iot_macrlc_inst);
-       prnt("   %02i lte L1,	    %02i NbIoT L1\n",	     RC.nb_L1_inst, RC.nb_nb_iot_L1_inst);
+       prnt("   %02i lte L1,        %02i NbIoT L1\n", RC.nb_L1_inst, RC.nb_nb_iot_L1_inst);
 
        for(int i=0; i<RC.nb_inst; i++) {
            prnt("    lte RRC %i:     %02i CC(s) \n",i,((RC.nb_CC == NULL)?0:RC.nb_CC[i]));
@@ -543,11 +543,11 @@ int s = sscanf(buf,"%ms %i-%i\n",&logsubcmd, &idx1,&idx2);
    if (s == 1 && logsubcmd != NULL) {
       if (strcasestr(logsubcmd,"online") != NULL) {
           if (strcasestr(buf,"noonline") != NULL) {
-   	      set_glog_onlinelog(0);
-              prnt("online logging disabled\n",buf);
+            set_glog_onlinelog(0);
+            prnt("online logging disabled\n", buf);
           } else {
-   	      set_glog_onlinelog(1);
-              prnt("online logging enabled\n",buf);
+            set_glog_onlinelog(1);
+            prnt("online logging enabled\n", buf);
           }
       }
       else if (strcasestr(logsubcmd,"show") != NULL) {

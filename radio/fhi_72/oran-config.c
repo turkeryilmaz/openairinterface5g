@@ -667,8 +667,7 @@ static bool set_fh_init(void *mplane_api, struct xran_fh_init *fh_init, enum xra
 
   paramdef_t fhip[] = ORAN_GLOBALPARAMS_DESC;
   checkedparam_t fhip_CheckParams[] = ORAN_GLOBALPARAMS_CHECK_DESC;
-  static_assert(sizeofArray(fhip) == sizeofArray(fhip_CheckParams),
-		"fhip and fhip_CheckParams should have the same size");
+  static_assert(sizeofArray(fhip) == sizeofArray(fhip_CheckParams), "fhip and fhip_CheckParams should have the same size");
   int nump = sizeofArray(fhip);
   config_set_checkfunctions(fhip, fhip_CheckParams, nump);
   int ret = config_get(config_get_if(), fhip, nump, CONFIG_STRING_ORAN);

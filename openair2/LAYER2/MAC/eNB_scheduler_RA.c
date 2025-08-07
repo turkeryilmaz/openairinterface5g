@@ -1341,8 +1341,8 @@ initiate_ra_proc(module_id_t module_idP,
             abort();
 
           case 1 :
-	  case 3 :
-	  case 4 :
+          case 3:
+          case 4:
           case 5 :
             offset = 6;
             break;
@@ -1382,8 +1382,8 @@ initiate_ra_proc(module_id_t module_idP,
                                           0x4268,
                                           0x6978};
           for (int j=0; j<MAX_MOBILES_PER_ENB && j< (sizeof(drnti_def)/sizeof(int));j++)
-          	  drnti[i]=drnti_def[i];
-          
+            drnti[i] = drnti_def[i];
+
           int nb_ue = 0;
 
           for (int j = 0; j < MAX_MOBILES_PER_ENB; j++) {

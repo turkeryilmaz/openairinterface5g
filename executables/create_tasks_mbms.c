@@ -62,8 +62,8 @@ int create_tasks_mbms(uint32_t enb_nb) {
   AssertFatal(rc >= 0, "Create task for MME APP failed\n");
 
   if (is_m3ap_MME_enabled()) {
-	  rc = itti_create_task(TASK_M3AP_MME, m3ap_MME_task, NULL);
-	  AssertFatal(rc >= 0, "Create task for M3AP MME failed\n");
+    rc = itti_create_task(TASK_M3AP_MME, m3ap_MME_task, NULL);
+    AssertFatal(rc >= 0, "Create task for M3AP MME failed\n");
   }
 
   LOG_I(MCE_APP, "Creating MCE_APP eNB Task\n");

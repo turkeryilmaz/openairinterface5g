@@ -44,27 +44,28 @@ void dumpVarArray(varArray_t *input) {
 }
 void sumUpStats(time_stats_t * res, time_stats_t * src, int lastActive) {
   reset_meas(res);
-	for (int i=0; i<RX_NB_TH; i++) {
-	  res->diff+=src[i].diff;
-	  res->diff_square+=src[i].diff_square;
-	  res->trials+=src[i].trials;
-	  if (src[i].max > res->max)
-	    res->max=src[i].max;
-	}
-	res->p_time=src[lastActive].p_time;
+  for (int i = 0; i < RX_NB_TH; i++) {
+    res->diff += src[i].diff;
+    res->diff_square += src[i].diff_square;
+    res->trials += src[i].trials;
+    if (src[i].max > res->max)
+      res->max = src[i].max;
+  }
+  res->p_time = src[lastActive].p_time;
 }
 void sumUpStatsSlot(time_stats_t *res, time_stats_t src[RX_NB_TH][2], int lastActive) {
   reset_meas(res);
-	for (int i=0; i<RX_NB_TH; i++) {
-	  res->diff+=src[i][0].diff+src[i][1].diff;
-	  res->diff_square+=src[i][0].diff_square+src[i][1].diff_square;
-	  res->trials+=src[i][0].trials+src[i][1].trials;
-	  if (src[i][0].max > res->max)
-	    res->max=src[i][0].max;
-	  if (src[i][1].max > res->max)
-	    res->max=src[i][1].max;}
-	int last=src[lastActive][0].in < src[lastActive][1].in? 1 : 0 ;
-	res->p_time=src[lastActive][last].p_time;
+  for (int i = 0; i < RX_NB_TH; i++) {
+    res->diff += src[i][0].diff + src[i][1].diff;
+    res->diff_square += src[i][0].diff_square + src[i][1].diff_square;
+    res->trials += src[i][0].trials + src[i][1].trials;
+    if (src[i][0].max > res->max)
+      res->max = src[i][0].max;
+    if (src[i][1].max > res->max)
+      res->max = src[i][1].max;
+  }
+  int last = src[lastActive][0].in < src[lastActive][1].in ? 1 : 0;
+  res->p_time = src[lastActive][last].p_time;
 }
 
 double squareRoot(time_stats_t *ptr) {
@@ -104,17 +105,21 @@ void printStatIndent3(time_stats_t *ptr, char *txt) {
   double timeBase=1/(1000*get_cpu_freq_GHz());
   printf("        |__ %-30s %6.2f us (%3d trials)\n",
          txt,
-         ptr->trials?((double)ptr->diff)/ptr->trials*timeBase:0,
-	 ptr->trials);
+         ptr->trials ? ((double)ptr->diff) / ptr->trials * timeBase : 0,
+         ptr->trials);
 }
 
 
 void logDistribution(FILE* fd, time_stats_t *ptr, varArray_t *sortedList, int dropped) {
-  fprintf(fd,"%f;%f;%f;%f;%f;%f;%d;",
-	  squareRoot(ptr),
-	  (double)ptr->max, *(double*)dataArray(sortedList),
-	  median(sortedList),q1(sortedList),q3(sortedList),
-	  dropped);
+  fprintf(fd,
+          "%f;%f;%f;%f;%f;%f;%d;",
+          squareRoot(ptr),
+          (double)ptr->max,
+          *(double *)dataArray(sortedList),
+          median(sortedList),
+          q1(sortedList),
+          q3(sortedList),
+          dropped);
 }
 
 struct option * parse_oai_options(paramdef_t *options) {
@@ -131,24 +136,24 @@ struct option * parse_oai_options(paramdef_t *options) {
     if ( options[i].voidptr)
       switch (options[i].type) {
       case TYPE_INT:
-	*options[i].iptr=options[i].defintval;
-	break;
+        *options[i].iptr = options[i].defintval;
+        break;
 
       case TYPE_DOUBLE:
-	*options[i].dblptr=options[i].defdblval;
-	break;
+        *options[i].dblptr = options[i].defdblval;
+        break;
 
       case TYPE_UINT8:
-	*options[i].u8ptr=options[i].defintval;
-	break;
+        *options[i].u8ptr = options[i].defintval;
+        break;
 
       case TYPE_UINT16:
-	*options[i].u16ptr=options[i].defintval;
-	break;
+        *options[i].u16ptr = options[i].defintval;
+        break;
 
       default:
-	printf("not parsed type for default value %s\n", options[i].optname );
-	exit(1);
+        printf("not parsed type for default value %s\n", options[i].optname);
+        exit(1);
       }
 
     continue;
@@ -164,26 +169,26 @@ void display_options_values(paramdef_t *options, int verbose) {
       if ( (ptr->paramflags & PARAMFLAG_BOOL) )
         strcpy(varText, *(bool *)ptr->iptr ? "True": "False" );
       else  switch (ptr->type) {
-  	 case TYPE_INT:
-	   sprintf(varText,"%d",*ptr->iptr);
-	  break;
-	  
+          case TYPE_INT:
+            sprintf(varText, "%d", *ptr->iptr);
+            break;
+
           case TYPE_DOUBLE:
             sprintf(varText,"%.2f",*ptr->dblptr);
             break;
 
-	case TYPE_UINT8:
-	  sprintf(varText,"%d",(int)*ptr->u8ptr);
-	  break;
+          case TYPE_UINT8:
+            sprintf(varText, "%d", (int)*ptr->u8ptr);
+            break;
 
-	case TYPE_UINT16:
-	  sprintf(varText,"%d",(int)*ptr->u16ptr);
-	  break;
+          case TYPE_UINT16:
+            sprintf(varText, "%d", (int)*ptr->u16ptr);
+            break;
 
-	default:
-	  strcpy(varText,"Need specific display");
-	  printf("not decoded type\n");
-	  exit(1);
+          default:
+            strcpy(varText, "Need specific display");
+            printf("not decoded type\n");
+            exit(1);
         }
     }
 

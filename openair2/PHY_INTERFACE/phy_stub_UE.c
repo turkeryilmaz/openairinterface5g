@@ -371,12 +371,13 @@ void fill_ulsch_harq_indication_UE_MAC(
 }
 
 void fill_uci_harq_indication_UE_MAC(int Mod_id,
-			      int frame,
-			      int subframe,
-			      UL_IND_t *UL_INFO,
-			      nfapi_ul_config_harq_information *harq_information,
-			      uint16_t rnti,
-            nfapi_ul_config_request_t *ul_config_req) {
+                                     int frame,
+                                     int subframe,
+                                     UL_IND_t *UL_INFO,
+                                     nfapi_ul_config_harq_information *harq_information,
+                                     uint16_t rnti,
+                                     nfapi_ul_config_request_t *ul_config_req)
+{
   pthread_mutex_lock(&fill_ul_mutex.harq_mutex);
 
   nfapi_harq_indication_t *ind = &UL_INFO->harq_ind;
@@ -956,24 +957,27 @@ void dl_config_req_UE_MAC_mch(int sfn,
 
   for (int ue_id = 0; ue_id < num_ue; ue_id++) {
     if (UE_mac_inst[ue_id].UE_mode[0] == NOT_SYNCHED){
-	 LOG_D(MAC,
+      LOG_D(MAC,
             "%s(): Received MCH in NOT_SYNCHED: UE_mode: %d, sfn/sf: %d.%d\n",
             __func__,
             UE_mac_inst[ue_id].UE_mode[0],
             sfn,
             sf);
-	return;
+      return;
 
     } else {
-	 const int pdu_index = mch->mch_pdu.mch_pdu_rel8.pdu_index;
-	if (pdu_index < 0 || pdu_index >= tx_req_pdu_list->num_pdus) {
-    	LOG_E(MAC,
-          "%s(): Problem with receiving data: "
-          "sfn/sf:%d.%d PDU size:%d, TX_PDU index: %d\n",
-          __func__,
-          sfn, sf, mch->pdu_size, mch->mch_pdu.mch_pdu_rel8.pdu_index);
-    	return;
-  	}
+      const int pdu_index = mch->mch_pdu.mch_pdu_rel8.pdu_index;
+      if (pdu_index < 0 || pdu_index >= tx_req_pdu_list->num_pdus) {
+        LOG_E(MAC,
+              "%s(): Problem with receiving data: "
+              "sfn/sf:%d.%d PDU size:%d, TX_PDU index: %d\n",
+              __func__,
+              sfn,
+              sf,
+              mch->pdu_size,
+              mch->mch_pdu.mch_pdu_rel8.pdu_index);
+        return;
+      }
         ue_send_mch_sdu(ue_id, 0, sfn,
             tx_req_pdu_list->pdus[pdu_index].segments[0].segment_data,
             tx_req_pdu_list->pdus[pdu_index].segments[0].segment_length,
@@ -1100,18 +1104,15 @@ static bool is_my_hi_dci0_req(nfapi_hi_dci0_request_t *hi_dci0_req)
   return is_my_rnti;
 }
 
-int memcpy_hi_dci0_req (L1_rxtx_proc_t *proc,
-			nfapi_pnf_p7_config_t* pnf_p7,
-			nfapi_hi_dci0_request_t* req) {
-
+int memcpy_hi_dci0_req(L1_rxtx_proc_t *proc, nfapi_pnf_p7_config_t *pnf_p7, nfapi_hi_dci0_request_t *req)
+{
   if (!is_my_hi_dci0_req(req))
   {
     LOG_I(MAC, "Filtering hi_dci0_req\n");
     return 0;
   }
   nfapi_hi_dci0_request_t *p = (nfapi_hi_dci0_request_t *)malloc(sizeof(nfapi_hi_dci0_request_t));
-	//if(req!=0){
-
+  // if(req!=0){
 
   p->sfn_sf = req->sfn_sf;
   p->vendor_extension = req->vendor_extension;

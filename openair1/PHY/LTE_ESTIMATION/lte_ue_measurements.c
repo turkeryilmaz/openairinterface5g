@@ -123,9 +123,8 @@ double get_RSRP(module_id_t Mod_id,uint8_t CC_id,uint8_t eNB_index)
   PHY_VARS_UE *ue = PHY_vars_UE_g[Mod_id][CC_id];
 
   if (ue)
-    return ((dB_fixed_times10(ue->measurements.rsrp[eNB_index]))/10.0-
-	    get_rx_total_gain_dB(Mod_id,0) -
-	    10*log10(ue->frame_parms.N_RB_DL*12));
+    return ((dB_fixed_times10(ue->measurements.rsrp[eNB_index])) / 10.0 - get_rx_total_gain_dB(Mod_id, 0)
+            - 10 * log10(ue->frame_parms.N_RB_DL * 12));
   return -140.0;
 }
 
@@ -210,8 +209,10 @@ void ue_rrc_measurements(PHY_VARS_UE *ue,
             for (aarx=0; aarx<ue->frame_parms.nb_antennas_rx; aarx++) {
           if(ue->frame_parms.frame_type == FDD)
           {
-	      rxF_sss = (int16_t *)&ue->common_vars.common_vars_rx_data_per_thread[ue->current_thread_id[subframe]].rxdataF[aarx][(5*ue->frame_parms.ofdm_symbol_size)];
-	      rxF_pss = (int16_t *)&ue->common_vars.common_vars_rx_data_per_thread[ue->current_thread_id[subframe]].rxdataF[aarx][(6*ue->frame_parms.ofdm_symbol_size)];
+            rxF_sss = (int16_t *)&ue->common_vars.common_vars_rx_data_per_thread[ue->current_thread_id[subframe]]
+                          .rxdataF[aarx][(5 * ue->frame_parms.ofdm_symbol_size)];
+            rxF_pss = (int16_t *)&ue->common_vars.common_vars_rx_data_per_thread[ue->current_thread_id[subframe]]
+                          .rxdataF[aarx][(6 * ue->frame_parms.ofdm_symbol_size)];
           }
           else
           {
@@ -343,10 +344,10 @@ void ue_rrc_measurements(PHY_VARS_UE *ue,
 
       for (l=0,nu=0; l<=(4-ue->frame_parms.Ncp); l+=(4-ue->frame_parms.Ncp),nu=3) {
         k = (nu + nushift)%6;
-	//#ifdef DEBUG_MEAS_RRC
+        // #ifdef DEBUG_MEAS_RRC
         LOG_D(PHY,"[UE %d] Frame %d subframe %d Doing ue_rrc_measurements rsrp/rssi (Nid_cell %d, nushift %d, eNB_offset %d, k %d, l %d)\n",ue->Mod_id,ue->proc.proc_rxtx[subframe&1].frame_rx,subframe,Nid_cell,nushift,
               eNB_offset,k,l);
-	//#endif
+        // #endif
 
         for (aarx=0; aarx<ue->frame_parms.nb_antennas_rx; aarx++) {
           rxF = (int16_t *)&ue->common_vars.common_vars_rx_data_per_thread[ue->current_thread_id[subframe]].rxdataF[aarx][(l*ue->frame_parms.ofdm_symbol_size)];
@@ -426,7 +427,7 @@ void ue_rrc_measurements(PHY_VARS_UE *ue,
     //    if (slot == 0) {
 
       if (eNB_offset == 0)
-	
+
         LOG_D(PHY,"[UE %d] Frame %d, subframe %d RRC Measurements => rssi %3.1f dBm (digital: %3.1f dB, gain %d), N0 %d dBm\n",ue->Mod_id,
               ue->proc.proc_rxtx[subframe&1].frame_rx,subframe,10*log10(ue->measurements.rssi)-ue->rx_total_gain_dB,
               10*log10(ue->measurements.rssi),

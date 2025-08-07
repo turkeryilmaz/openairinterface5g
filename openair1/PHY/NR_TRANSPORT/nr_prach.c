@@ -220,11 +220,11 @@ void rx_nr_prach_ru(RU_t *ru,
   if (prach_sequence_length == 0) {
     LOG_D(PHY,
           "PRACH (ru %d) in %d.%d, format %d, msg1_frequencyStart %d\n",
-	  ru->idx,
-	  frame,
-	  slot2,
-	  prachFormat,
-	  msg1_frequencystart);
+          ru->idx,
+          frame,
+          slot2,
+          prachFormat,
+          msg1_frequencystart);
     switch (prachFormat) {
     case 0:
       reps = 1;
@@ -258,12 +258,12 @@ void rx_nr_prach_ru(RU_t *ru,
   else {
     LOG_D(PHY,
           "PRACH (ru %d) in %d.%d, format %s, msg1_frequencyStart %d,startSymbol %d\n",
-	  ru->idx,
-	  frame,
-	  slot,
-	  prachfmt[prachFormat],
-	  msg1_frequencystart,
-	  prachStartSymbol);
+          ru->idx,
+          frame,
+          slot,
+          prachfmt[prachFormat],
+          msg1_frequencystart,
+          prachStartSymbol);
     switch (prachFormat) {
     case 4: //A1
       reps = 2;
@@ -563,9 +563,9 @@ void rx_nr_prach(PHY_VARS_gNB *gNB,
           int index = (rootSequenceIndex + preamble_offset) % N_ZC;
 
           u = prach_root_sequence_map[index];
-	  
+
           uint16_t n_group_ra = 0;
-	  
+
           if ((nr_du[u] < (N_ZC / 3)) && (nr_du[u] >= NCS) ) {
             n_shift_ra = nr_du[u] / NCS;
             d_start = (nr_du[u] << 1) + (n_shift_ra * NCS);
@@ -636,13 +636,13 @@ void rx_nr_prach(PHY_VARS_gNB *gNB,
       }
 
       for (int aa = 0; aa < nb_rx; aa++) {
-	// Do componentwise product with Xu* on each antenna 
+        // Do componentwise product with Xu* on each antenna
 
         for (int offset = 0; offset < (N_ZC << 1); offset += 2) {
           prachF[offset] = (int16_t)(((int32_t)Xu[offset]*rxsigF[aa][offset] + (int32_t)Xu[offset+1]*rxsigF[aa][offset+1])>>15);
           prachF[offset+1] = (int16_t)(((int32_t)Xu[offset]*rxsigF[aa][offset+1] - (int32_t)Xu[offset+1]*rxsigF[aa][offset])>>15);
         }
-	
+
         // Now do IFFT of size 1024 (N_ZC=839) or 256 (N_ZC=139)
         if (N_ZC == 839) {
           idft(IDFT_1024, prachF, prach_ifft_tmp, 1);

@@ -49,9 +49,12 @@ void fill_SL_configuration(RrcConfigurationReq *RRCcfg, ccparams_sidelink_t *SLc
   } else if (strcmp(SLconfig->rxPool_sc_CP_Len,"extended")==0) {
     RRCcfg->rxPool_sc_CP_Len[cc_idx] = LTE_SL_CP_Len_r12_extended;
   } else
-    AssertFatal (0,
-		 "Failed to parse eNB configuration file %s, enb %d unknown value \"%s\" for rxPool_sc_CP_Len choice: normal,extended!\n",
-		 config_fname, cell_idx, SLconfig->rxPool_sc_CP_Len);
+    AssertFatal(
+        0,
+        "Failed to parse eNB configuration file %s, enb %d unknown value \"%s\" for rxPool_sc_CP_Len choice: normal,extended!\n",
+        config_fname,
+        cell_idx,
+        SLconfig->rxPool_sc_CP_Len);
 
   if (strcmp(SLconfig->rxPool_sc_Period,"sf40")==0) {
     RRCcfg->rxPool_sc_Period[cc_idx] = LTE_SL_PeriodComm_r12_sf40;
@@ -86,18 +89,24 @@ void fill_SL_configuration(RrcConfigurationReq *RRCcfg, ccparams_sidelink_t *SLc
   } else if (strcmp(SLconfig->rxPool_sc_Period,"spare")==0) {
     RRCcfg->rxPool_sc_Period[cc_idx] = LTE_SL_PeriodComm_r12_spare;
   } else
-    AssertFatal (0,
-		 "Failed to parse eNB configuration file %s, enb %d unknown value \"%s\" for rxPool_sc_Period choice: sf40,sf60,sf70,sf80,sf120,sf140,sf160,sf240,sf280,sf320,spare6,spare5,spare4,spare3,spare2,spare!\n",
-		 config_fname, cell_idx, SLconfig->rxPool_sc_Period);
+    AssertFatal(0,
+                "Failed to parse eNB configuration file %s, enb %d unknown value \"%s\" for rxPool_sc_Period choice: "
+                "sf40,sf60,sf70,sf80,sf120,sf140,sf160,sf240,sf280,sf320,spare6,spare5,spare4,spare3,spare2,spare!\n",
+                config_fname,
+                cell_idx,
+                SLconfig->rxPool_sc_Period);
 
   if (strcmp(SLconfig->rxPool_data_CP_Len,"normal")==0) {
     RRCcfg->rxPool_data_CP_Len[cc_idx] = LTE_SL_CP_Len_r12_normal;
   } else if (strcmp(SLconfig->rxPool_data_CP_Len,"extended")==0) {
     RRCcfg->rxPool_data_CP_Len[cc_idx] = LTE_SL_CP_Len_r12_extended;
   } else
-    AssertFatal (0,
-		 "Failed to parse eNB configuration file %s, enb %d unknown value \"%s\" for rxPool_data_CP_Len choice: normal,extended!\n",
-		 config_fname, cell_idx, SLconfig->rxPool_data_CP_Len);
+    AssertFatal(
+        0,
+        "Failed to parse eNB configuration file %s, enb %d unknown value \"%s\" for rxPool_data_CP_Len choice: normal,extended!\n",
+        config_fname,
+        cell_idx,
+        SLconfig->rxPool_data_CP_Len);
 
   RRCcfg->rxPool_ResourceConfig_prb_Num[cc_idx] = SLconfig->rxPool_ResourceConfig_prb_Num;
   RRCcfg->rxPool_ResourceConfig_prb_Start[cc_idx] = SLconfig->rxPool_ResourceConfig_prb_Start;
@@ -110,9 +119,12 @@ void fill_SL_configuration(RrcConfigurationReq *RRCcfg, ccparams_sidelink_t *SLc
   } else if (strcmp(SLconfig->rxPool_ResourceConfig_offsetIndicator_present,"prLarge")==0) {
     RRCcfg->rxPool_ResourceConfig_offsetIndicator_present[cc_idx] = LTE_SL_OffsetIndicator_r12_PR_large_r12;
   } else
-    AssertFatal (0,
-		 "Failed to parse eNB configuration file %s, enb %d unknown value \"%s\" for rxPool_ResourceConfig_offsetIndicator_present choice: prNothing,prSmal,prLarge!\n",
-		 config_fname, cell_idx, SLconfig->rxPool_ResourceConfig_offsetIndicator_present);
+    AssertFatal(0,
+                "Failed to parse eNB configuration file %s, enb %d unknown value \"%s\" for "
+                "rxPool_ResourceConfig_offsetIndicator_present choice: prNothing,prSmal,prLarge!\n",
+                config_fname,
+                cell_idx,
+                SLconfig->rxPool_ResourceConfig_offsetIndicator_present);
 
   RRCcfg->rxPool_ResourceConfig_offsetIndicator_choice[cc_idx] = SLconfig->rxPool_ResourceConfig_offsetIndicator_choice;
 
@@ -133,9 +145,12 @@ void fill_SL_configuration(RrcConfigurationReq *RRCcfg, ccparams_sidelink_t *SLc
   } else if (strcmp(SLconfig->rxPool_ResourceConfig_subframeBitmap_present,"prBs42")==0) {
     RRCcfg->rxPool_ResourceConfig_subframeBitmap_present[cc_idx] = LTE_SubframeBitmapSL_r12_PR_bs42_r12;
   } else
-    AssertFatal (0,
-		 "Failed to parse eNB configuration file %s, enb %d unknown value \"%s\" for rxPool_ResourceConfig_subframeBitmap_present choice: prNothing,prBs4,prBs8,prBs12,prBs16,prBs30,prBs40,prBs42!\n",
-		 config_fname, cell_idx, SLconfig->rxPool_ResourceConfig_subframeBitmap_present);
+    AssertFatal(0,
+                "Failed to parse eNB configuration file %s, enb %d unknown value \"%s\" for "
+                "rxPool_ResourceConfig_subframeBitmap_present choice: prNothing,prBs4,prBs8,prBs12,prBs16,prBs30,prBs40,prBs42!\n",
+                config_fname,
+                cell_idx,
+                SLconfig->rxPool_ResourceConfig_subframeBitmap_present);
 
   RRCcfg->rxPool_ResourceConfig_subframeBitmap_choice_bs_buf[cc_idx] = SLconfig->rxPool_ResourceConfig_subframeBitmap_choice_bs_buf;
   RRCcfg->rxPool_ResourceConfig_subframeBitmap_choice_bs_size[cc_idx] = SLconfig->rxPool_ResourceConfig_subframeBitmap_choice_bs_size;
@@ -147,9 +162,12 @@ void fill_SL_configuration(RrcConfigurationReq *RRCcfg, ccparams_sidelink_t *SLc
   } else if (strcmp(SLconfig->discRxPool_cp_Len,"extended")==0) {
     RRCcfg->discRxPool_cp_Len[cc_idx] = LTE_SL_CP_Len_r12_extended;
   } else
-    AssertFatal (0,
-		 "Failed to parse eNB configuration file %s, enb %d unknown value \"%s\" for discRxPool_cp_Len choice: normal,extended!\n",
-		 config_fname, cell_idx, SLconfig->discRxPool_cp_Len);
+    AssertFatal(
+        0,
+        "Failed to parse eNB configuration file %s, enb %d unknown value \"%s\" for discRxPool_cp_Len choice: normal,extended!\n",
+        config_fname,
+        cell_idx,
+        SLconfig->discRxPool_cp_Len);
 
   if (strcmp(SLconfig->discRxPool_discPeriod,"rf32")==0) {
     RRCcfg->discRxPool_discPeriod[cc_idx] = LTE_SL_DiscResourcePool_r12__discPeriod_r12_rf32;
@@ -168,9 +186,12 @@ void fill_SL_configuration(RrcConfigurationReq *RRCcfg, ccparams_sidelink_t *SLc
   } else if (strcmp(SLconfig->discRxPool_discPeriod,"spare")==0) {
     RRCcfg->discRxPool_discPeriod[cc_idx] = LTE_SL_DiscResourcePool_r12__discPeriod_r12_spare;
   } else
-    AssertFatal (0,
-		 "Failed to parse eNB configuration file %s, enb %d unknown value \"%s\" for discRxPool_discPeriod choice: rf32,rf64,rf128,rf512,rf1024,rf16,spare!\n",
-		 config_fname, cell_idx, SLconfig->discRxPool_discPeriod);
+    AssertFatal(0,
+                "Failed to parse eNB configuration file %s, enb %d unknown value \"%s\" for discRxPool_discPeriod choice: "
+                "rf32,rf64,rf128,rf512,rf1024,rf16,spare!\n",
+                config_fname,
+                cell_idx,
+                SLconfig->discRxPool_discPeriod);
 
   RRCcfg->discRxPool_numRetx[cc_idx] = SLconfig->discRxPool_numRetx;
   RRCcfg->discRxPool_numRepetition[cc_idx] = SLconfig->discRxPool_numRepetition;
@@ -185,9 +206,12 @@ void fill_SL_configuration(RrcConfigurationReq *RRCcfg, ccparams_sidelink_t *SLc
   } else if (strcmp(SLconfig->discRxPool_ResourceConfig_offsetIndicator_present,"prLarge")==0) {
     RRCcfg->discRxPool_ResourceConfig_offsetIndicator_present[cc_idx] = LTE_SL_OffsetIndicator_r12_PR_large_r12;
   } else
-    AssertFatal (0,
-		 "Failed to parse eNB configuration file %s, enb %d unknown value \"%s\" for discRxPool_ResourceConfig_offsetIndicator_present choice: prNothing,prSmal,prLarge!\n",
-		 config_fname, cell_idx, SLconfig->discRxPool_ResourceConfig_offsetIndicator_present);
+    AssertFatal(0,
+                "Failed to parse eNB configuration file %s, enb %d unknown value \"%s\" for "
+                "discRxPool_ResourceConfig_offsetIndicator_present choice: prNothing,prSmal,prLarge!\n",
+                config_fname,
+                cell_idx,
+                SLconfig->discRxPool_ResourceConfig_offsetIndicator_present);
 
   RRCcfg->discRxPool_ResourceConfig_offsetIndicator_choice[cc_idx] = SLconfig->discRxPool_ResourceConfig_offsetIndicator_choice;
 
@@ -208,9 +232,13 @@ void fill_SL_configuration(RrcConfigurationReq *RRCcfg, ccparams_sidelink_t *SLc
   } else if (strcmp(SLconfig->discRxPool_ResourceConfig_subframeBitmap_present,"prBs42")==0) {
     RRCcfg->discRxPool_ResourceConfig_subframeBitmap_present[cc_idx] = LTE_SubframeBitmapSL_r12_PR_bs42_r12;
   } else
-    AssertFatal (0,
-		 "Failed to parse eNB configuration file %s, enb %d unknown value \"%s\" for discRxPool_ResourceConfig_subframeBitmap_present choice: prNothing,prBs4,prBs8,prBs12,prBs16,prBs30,prBs40,prBs42!\n",
-		 config_fname, cell_idx, SLconfig->discRxPool_ResourceConfig_subframeBitmap_present);
+    AssertFatal(
+        0,
+        "Failed to parse eNB configuration file %s, enb %d unknown value \"%s\" for "
+        "discRxPool_ResourceConfig_subframeBitmap_present choice: prNothing,prBs4,prBs8,prBs12,prBs16,prBs30,prBs40,prBs42!\n",
+        config_fname,
+        cell_idx,
+        SLconfig->discRxPool_ResourceConfig_subframeBitmap_present);
 
   RRCcfg->discRxPool_ResourceConfig_subframeBitmap_choice_bs_buf[cc_idx] = SLconfig->discRxPool_ResourceConfig_subframeBitmap_choice_bs_buf;
   RRCcfg->discRxPool_ResourceConfig_subframeBitmap_choice_bs_size[cc_idx] = SLconfig->discRxPool_ResourceConfig_subframeBitmap_choice_bs_size;
@@ -222,9 +250,12 @@ void fill_SL_configuration(RrcConfigurationReq *RRCcfg, ccparams_sidelink_t *SLc
   } else if (strcmp(SLconfig->discRxPoolPS_cp_Len,"extended")==0) {
     RRCcfg->discRxPoolPS_cp_Len[cc_idx] = LTE_SL_CP_Len_r12_extended;
   } else
-    AssertFatal (0,
-		 "Failed to parse eNB configuration file %s, enb %d unknown value \"%s\" for discRxPoolPS_cp_Len choice: normal,extended!\n",
-		 config_fname, cell_idx, SLconfig->discRxPoolPS_cp_Len);
+    AssertFatal(
+        0,
+        "Failed to parse eNB configuration file %s, enb %d unknown value \"%s\" for discRxPoolPS_cp_Len choice: normal,extended!\n",
+        config_fname,
+        cell_idx,
+        SLconfig->discRxPoolPS_cp_Len);
 
   if (strcmp(SLconfig->discRxPoolPS_discPeriod,"rf32")==0) {
     RRCcfg->discRxPoolPS_discPeriod[cc_idx] = LTE_SL_DiscResourcePool_r12__discPeriod_r12_rf32;
@@ -243,9 +274,12 @@ void fill_SL_configuration(RrcConfigurationReq *RRCcfg, ccparams_sidelink_t *SLc
   } else if (strcmp(SLconfig->discRxPoolPS_discPeriod,"spare")==0) {
     RRCcfg->discRxPoolPS_discPeriod[cc_idx] = LTE_SL_DiscResourcePool_r12__discPeriod_r12_spare;
   } else
-    AssertFatal (0,
-		 "Failed to parse eNB configuration file %s, enb %d unknown value \"%s\" for discRxPoolPS_discPeriod choice: rf32,rf64,rf128,rf512,rf1024,rf16,spare!\n",
-		 config_fname, cell_idx, SLconfig->discRxPoolPS_discPeriod);
+    AssertFatal(0,
+                "Failed to parse eNB configuration file %s, enb %d unknown value \"%s\" for discRxPoolPS_discPeriod choice: "
+                "rf32,rf64,rf128,rf512,rf1024,rf16,spare!\n",
+                config_fname,
+                cell_idx,
+                SLconfig->discRxPoolPS_discPeriod);
 
   RRCcfg->discRxPoolPS_numRetx[cc_idx] = SLconfig->discRxPoolPS_numRetx;
   RRCcfg->discRxPoolPS_numRepetition[cc_idx] = SLconfig->discRxPoolPS_numRepetition;
@@ -260,9 +294,12 @@ void fill_SL_configuration(RrcConfigurationReq *RRCcfg, ccparams_sidelink_t *SLc
   } else if (strcmp(SLconfig->discRxPoolPS_ResourceConfig_offsetIndicator_present,"prLarge")==0) {
     RRCcfg->discRxPoolPS_ResourceConfig_offsetIndicator_present[cc_idx] = LTE_SL_OffsetIndicator_r12_PR_large_r12;
   } else
-    AssertFatal (0,
-		 "Failed to parse eNB configuration file %s, enb %d unknown value \"%s\" for discRxPoolPS_ResourceConfig_offsetIndicator_present choice: prNothing,prSmal,prLarge!\n",
-		 config_fname, cell_idx, SLconfig->discRxPoolPS_ResourceConfig_offsetIndicator_present);
+    AssertFatal(0,
+                "Failed to parse eNB configuration file %s, enb %d unknown value \"%s\" for "
+                "discRxPoolPS_ResourceConfig_offsetIndicator_present choice: prNothing,prSmal,prLarge!\n",
+                config_fname,
+                cell_idx,
+                SLconfig->discRxPoolPS_ResourceConfig_offsetIndicator_present);
 
   RRCcfg->discRxPoolPS_ResourceConfig_offsetIndicator_choice[cc_idx] = SLconfig->discRxPoolPS_ResourceConfig_offsetIndicator_choice;
 
@@ -283,9 +320,13 @@ void fill_SL_configuration(RrcConfigurationReq *RRCcfg, ccparams_sidelink_t *SLc
   } else if (strcmp(SLconfig->discRxPoolPS_ResourceConfig_subframeBitmap_present,"prBs42")==0) {
     RRCcfg->discRxPoolPS_ResourceConfig_subframeBitmap_present[cc_idx] = LTE_SubframeBitmapSL_r12_PR_bs42_r12;
   } else
-    AssertFatal (0,
-		 "Failed to parse eNB configuration file %s, enb %d unknown value \"%s\" for discRxPoolPS_ResourceConfig_subframeBitmap_present choice: prNothing,prBs4,prBs8,prBs12,prBs16,prBs30,prBs40,prBs42!\n",
-		 config_fname, cell_idx, SLconfig->discRxPoolPS_ResourceConfig_subframeBitmap_present);
+    AssertFatal(
+        0,
+        "Failed to parse eNB configuration file %s, enb %d unknown value \"%s\" for "
+        "discRxPoolPS_ResourceConfig_subframeBitmap_present choice: prNothing,prBs4,prBs8,prBs12,prBs16,prBs30,prBs40,prBs42!\n",
+        config_fname,
+        cell_idx,
+        SLconfig->discRxPoolPS_ResourceConfig_subframeBitmap_present);
 
   RRCcfg->discRxPoolPS_ResourceConfig_subframeBitmap_choice_bs_buf[cc_idx] = SLconfig->discRxPoolPS_ResourceConfig_subframeBitmap_choice_bs_buf;
   RRCcfg->discRxPoolPS_ResourceConfig_subframeBitmap_choice_bs_size[cc_idx] = SLconfig->discRxPoolPS_ResourceConfig_subframeBitmap_choice_bs_size;

@@ -199,7 +199,7 @@ void lte_gold_new(LTE_DL_FRAME_PARMS *frame_parms, uint32_t lte_gold_table[20][2
   uint32_t *dmrs_sequence =  calloc(CELL_DMRS_LENGTH, sizeof(uint32_t));
   if (dmrs_sequence == NULL) {
     msg("Fatal error: memory allocation problem \n");
-  	assert(0);
+    assert(0);
   }
   else
   {

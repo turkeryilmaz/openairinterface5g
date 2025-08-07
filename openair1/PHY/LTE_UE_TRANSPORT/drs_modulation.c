@@ -71,17 +71,17 @@ int generate_drs_pusch(PHY_VARS_UE *ue,
   uint8_t harq_pid = (proc == NULL) ? 0: subframe2harq_pid(fp,proc->frame_tx,subframe);
 
   if (ue!=NULL) {
-    cyclic_shift0 = (fp->pusch_config_common.ul_ReferenceSignalsPUSCH.cyclicShift +
-		     ue->ulsch[eNB_id]->harq_processes[harq_pid]->n_DMRS2 +
-		     fp->pusch_config_common.ul_ReferenceSignalsPUSCH.nPRS[subframe<<1]+
-		     ((ue->ulsch[0]->cooperation_flag==2)?10:0)+
-		     ant*6) % 12;
+    cyclic_shift0 =
+        (fp->pusch_config_common.ul_ReferenceSignalsPUSCH.cyclicShift + ue->ulsch[eNB_id]->harq_processes[harq_pid]->n_DMRS2
+         + fp->pusch_config_common.ul_ReferenceSignalsPUSCH.nPRS[subframe << 1] + ((ue->ulsch[0]->cooperation_flag == 2) ? 10 : 0)
+         + ant * 6)
+        % 12;
     //  printf("PUSCH.cyclicShift %d, n_DMRS2 %d, nPRS %d\n",frame_parms->pusch_config_common.ul_ReferenceSignalsPUSCH.cyclicShift,ue->ulsch[eNB_id]->n_DMRS2,ue->lte_frame_parms.pusch_config_common.ul_ReferenceSignalsPUSCH.nPRS[subframe<<1]);
-    cyclic_shift1 = (fp->pusch_config_common.ul_ReferenceSignalsPUSCH.cyclicShift +
-		     ue->ulsch[eNB_id]->harq_processes[harq_pid]->n_DMRS2 +
-		     fp->pusch_config_common.ul_ReferenceSignalsPUSCH.nPRS[(subframe<<1)+1]+
-		     ((ue->ulsch[0]->cooperation_flag==2)?10:0)+
-		     ant*6) % 12;
+    cyclic_shift1 =
+        (fp->pusch_config_common.ul_ReferenceSignalsPUSCH.cyclicShift + ue->ulsch[eNB_id]->harq_processes[harq_pid]->n_DMRS2
+         + fp->pusch_config_common.ul_ReferenceSignalsPUSCH.nPRS[(subframe << 1) + 1]
+         + ((ue->ulsch[0]->cooperation_flag == 2) ? 10 : 0) + ant * 6)
+        % 12;
   }
 
   

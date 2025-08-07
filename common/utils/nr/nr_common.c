@@ -627,12 +627,17 @@ uint32_t to_nrarfcn(int nr_bandP, uint64_t dl_CarrierFreq, uint8_t scs_index, ui
 
   AssertFatal(dl_CarrierFreq_by_1k >= nr_bandtable[i].dl_min,
               "Band %d, bw %u : DL carrier frequency %llu kHz < %llu\n",
-	      nr_bandP, bw, (long long unsigned int)dl_CarrierFreq_by_1k,
-	      (long long unsigned int)nr_bandtable[i].dl_min);
-  AssertFatal(dl_CarrierFreq_by_1k <= (nr_bandtable[i].dl_max - bw_kHz/2),
+              nr_bandP,
+              bw,
+              (long long unsigned int)dl_CarrierFreq_by_1k,
+              (long long unsigned int)nr_bandtable[i].dl_min);
+  AssertFatal(dl_CarrierFreq_by_1k <= (nr_bandtable[i].dl_max - bw_kHz / 2),
               "Band %d, dl_CarrierFreq %llu bw %u: DL carrier frequency %llu kHz > %llu\n",
-	      nr_bandP, (long long unsigned int)dl_CarrierFreq,bw, (long long unsigned int)dl_CarrierFreq_by_1k,
-	      (long long unsigned int)(nr_bandtable[i].dl_max - bw_kHz/2));
+              nr_bandP,
+              (long long unsigned int)dl_CarrierFreq,
+              bw,
+              (long long unsigned int)dl_CarrierFreq_by_1k,
+              (long long unsigned int)(nr_bandtable[i].dl_max - bw_kHz / 2));
 
   int deltaFglobal = 60;
   uint32_t N_REF_Offs = 2016667;
@@ -803,11 +808,11 @@ int get_nr_table_idx(int nr_bandP, uint8_t scs_index)
 int get_subband_size(int NPRB,int size) {
   // implements table  5.2.1.4-2 from 36.214
   //
-  //Bandwidth part (PRBs)	Subband size (PRBs)
-  // < 24	                   N/A
-  //24 – 72	                   4, 8
-  //73 – 144	                   8, 16
-  //145 – 275	                  16, 32
+  // Bandwidth part (PRBs)    Subband size (PRBs)
+  // < 24                       N/A
+  // 24 – 72                       4, 8
+  // 73 – 144                       8, 16
+  // 145 – 275                      16, 32
 
   if (NPRB<24) return(1);
   if (NPRB<72) return (size==0 ? 4 : 8);
@@ -978,7 +983,7 @@ void get_samplerate_and_bw(int mu,
 
     case 133 :
       if (threequarter_fs) {
-	AssertFatal(1==0,"N_RB %d cannot use 3/4 sampling\n",n_rb);
+        AssertFatal(1 == 0, "N_RB %d cannot use 3/4 sampling\n", n_rb);
       }
       else {
         *sample_rate=61.44e6;

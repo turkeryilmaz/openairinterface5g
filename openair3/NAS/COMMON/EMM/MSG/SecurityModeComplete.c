@@ -80,7 +80,7 @@ int encode_security_mode_complete(security_mode_complete_msg *security_mode_comp
 
   if ((security_mode_complete->presencemask & SECURITY_MODE_COMPLETE_IMEISV_PRESENT)
       == SECURITY_MODE_COMPLETE_IMEISV_PRESENT) {
-	  LOG_TRACE(INFO,"SECURITY MODE COMMAND COMPLETE: encode imeisv \n");
+    LOG_TRACE(INFO, "SECURITY MODE COMMAND COMPLETE: encode imeisv \n");
     if ((encode_result =
            encode_mobile_identity(&security_mode_complete->imeisv,
                                   SECURITY_MODE_COMPLETE_IMEISV_IEI, buffer + encoded, len -

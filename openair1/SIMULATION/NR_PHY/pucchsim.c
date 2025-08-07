@@ -206,18 +206,18 @@ int main(int argc, char **argv)
         break;
       case 'H':
         channel_model = TDL_C;
-	DS_TDL = .030; // 30 ns
-	break;
-  
+        DS_TDL = .030; // 30 ns
+        break;
+
       case 'I':
-	channel_model = TDL_C;
-	DS_TDL = .3;  // 300ns
+        channel_model = TDL_C;
+        DS_TDL = .3; // 300ns
         break;
      
       case 'J':
-	channel_model=TDL_D;
-	DS_TDL = .03;
-	break;
+        channel_model = TDL_D;
+        DS_TDL = .03;
+        break;
 
       default:
         printf("Unsupported channel model!\n");
@@ -405,9 +405,10 @@ int main(int argc, char **argv)
     exit(0); 
   }
 
-  AssertFatal(((format < 2)&&(nr_bit<3)&&(actual_payload<5)) ||
-	      ((format == 2)&&(nr_bit>2)&&(nr_bit<65)),"illegal combination format %d, nr_bit %d\n",
-	      format,nr_bit);
+  AssertFatal(((format < 2) && (nr_bit < 3) && (actual_payload < 5)) || ((format == 2) && (nr_bit > 2) && (nr_bit < 65)),
+              "illegal combination format %d, nr_bit %d\n",
+              format,
+              nr_bit);
   int do_DTX=0;
   if ((format < 2) && (actual_payload == 4)) do_DTX=1;
 
@@ -598,17 +599,17 @@ int main(int argc, char **argv)
         for (int re=0;re<N_RB_DL*12;re++) {
           i=i0+((gNB->frame_parms.first_carrier_offset + re)%gNB->frame_parms.ofdm_symbol_size);
           struct complexd phasor;
-	  phasor.r = cos(2*M_PI*phase*re);
+          phasor.r = cos(2 * M_PI * phase * re);
           phasor.i = sin(2*M_PI*phase*re);
           for (int aarx=0;aarx<n_rx;aarx++) {
             double txr = (double)(((int16_t *)txdataF[0])[(i<<1)]);
             double txi = (double)(((int16_t *)txdataF[0])[1+(i<<1)]);
-	    double rxr={0},rxi={0};
-	    for (int l = 0; l<UE2gNB->channel_length; l++) {
-	      rxr = txr*UE2gNB->chF[aarx][l].r - txi*UE2gNB->chF[aarx][l].i;
-	      rxi = txr*UE2gNB->chF[aarx][l].i + txi*UE2gNB->chF[aarx][l].r;
-	    }
-	    double rxr_tmp = rxr*phasor.r - rxi*phasor.i;
+            double rxr = {0}, rxi = {0};
+            for (int l = 0; l < UE2gNB->channel_length; l++) {
+              rxr = txr * UE2gNB->chF[aarx][l].r - txi * UE2gNB->chF[aarx][l].i;
+              rxi = txr * UE2gNB->chF[aarx][l].i + txi * UE2gNB->chF[aarx][l].r;
+            }
+            double rxr_tmp = rxr * phasor.r - rxi * phasor.i;
             rxi     = rxr*phasor.i + rxi*phasor.r;
             rxr = rxr_tmp;
             double nr = sqrt(sigma2/2)*gaussdouble(0.0,1.0);

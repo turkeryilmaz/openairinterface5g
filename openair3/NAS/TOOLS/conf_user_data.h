@@ -12,10 +12,10 @@
 #define PINCODE "PIN"
 
 typedef struct {
-	const char* imei;
-	const char* manufacturer;
-	const char* model;
-	const char* pin;
+  const char *imei;
+  const char *manufacturer;
+  const char *model;
+  const char *pin;
 } user_data_conf_t;
 
 void gen_user_data(user_data_conf_t *u, user_nvdata_t *user_data);

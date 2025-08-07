@@ -104,11 +104,12 @@ int32_t generate_prach( PHY_VARS_UE *ue, uint8_t eNB_id, uint8_t subframe, uint1
   }
 
   n_ra_prb = get_prach_prb_offset(ue->frame_parms.frame_type,
-				  ue->frame_parms.tdd_config,
-				  ue->frame_parms.N_RB_UL,
+                                  ue->frame_parms.tdd_config,
+                                  ue->frame_parms.N_RB_UL,
                                   ue->frame_parms.prach_config_common.prach_ConfigInfo.prach_ConfigIndex,
                                   ue->frame_parms.prach_config_common.prach_ConfigInfo.prach_FreqOffset,
-                                  tdd_mapindex, Nf);
+                                  tdd_mapindex,
+                                  Nf);
   prach_root_sequence_map = (prach_fmt<4) ? prach_root_sequence_map0_3 : prach_root_sequence_map4;
   /*
   // this code is not part of get_prach_prb_offset

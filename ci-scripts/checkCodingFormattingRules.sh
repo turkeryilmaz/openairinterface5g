@@ -58,17 +58,17 @@ then
     # in this file we previously had a list of files that were not properly
     # formatted. At the time of this MR, the Jenkinsfile expects this file, so
     # we simply produce an empty one
-    touch ./oai_rules_result.txt
+    touch oai_rules_result.txt
 
     # Testing Circular Dependencies protection
-    awk '/#[ \t]*ifndef/ { gsub("^.*ifndef *",""); if (names[$1]!="") print "files with same {define ", FILENAME, names[$1]; names[$1]=FILENAME } /#[ \t]*define/ { gsub("^.*define *",""); if(names[$1]!=FILENAME) print "error in declaration", FILENAME, $1, names[$1]; nextfile }' `find openair* common targets executables -name *.h |grep -v LFDS` > header-files-w-incorrect-define.txt
+    awk '/#[ \t]*ifndef/ { gsub("^.*ifndef *",""); if (names[$1]!="") print "files with same {define ", FILENAME, names[$1]; names[$1]=FILENAME } /#[ \t]*define/ { gsub("^.*define *",""); if(names[$1]!=FILENAME) print "error in declaration", FILENAME, $1, names[$1]; nextfile }' `find openair* common targets executables -name *.h` > header-files-w-incorrect-define.txt
 
     # Testing if explicit GNU GPL license banner
     grep -E -irl --exclude-dir=.git --include=*.cpp --include=*.c --include=*.h "General Public License" . | grep -E -v "openair3/NAS/COMMON/milenage.h" > files-w-gnu-gpl-license-banner.txt
 
     # Looking at exotic/suspect banner
     LIST_OF_FILES_W_BANNER=`grep -E -irl --exclude-dir=.git --include=*.cpp --include=*.c --include=*.h "Copyright|copyleft" .`
-    if [ -f ./files-w-suspect-banner.txt ]; then rm -f ./files-w-suspect-banner.txt; fi
+    rm -f files-w-suspect-banner.txt
     for FILE in $LIST_OF_FILES_W_BANNER
     do
        IS_NFAPI=`echo $FILE | grep -E -c "nfapi/open-nFAPI|nfapi/oai_integration/vendor_ext" || true`
@@ -80,10 +80,10 @@ then
        then
            if [ $IS_NFAPI -eq 0 ] && [ $IS_EXCEPTION -eq 0 ]
            then
-               echo $FILE >> ./files-w-suspect-banner.txt
+               echo $FILE >> files-w-suspect-banner.txt
            fi
        fi
-    done
+    done  
     exit 0
 fi
 
@@ -149,19 +149,9 @@ echo ""
 # Retrieve the list of modified files since the latest develop commit
 MODIFIED_FILES=`git log $TARGET_INIT_COMMIT..$MERGE_COMMMIT --oneline --name-status | grep -E "^M|^A" | sed -e "s@^M\t*@@" -e "s@^A\t*@@" | sort | uniq`
 NB_TO_FORMAT=0
-if [ -f header-files-w-incorrect-define.txt ]
-then
-    rm -f header-files-w-incorrect-define.txt
-fi
-if [ -f files-w-gnu-gpl-license-banner.txt ]
-then
-    rm -f files-w-gnu-gpl-license-banner.txt
-fi
-if [ -f files-w-suspect-banner.txt ]
-then
-    rm -f files-w-suspect-banner.txt
-fi
-awk '/#[ \t]*ifndef/ { gsub("^.*ifndef *",""); if (names[$1]!="") print "files with same {define ", FILENAME, names[$1]; names[$1]=FILENAME } /#[ \t]*define/ { gsub("^.*define *",""); if(names[$1]!=FILENAME) print "error in declaration", FILENAME, $1, names[$1]; nextfile }' `find openair* common targets executables -name *.h |grep -v LFDS` > header-files-w-incorrect-define-tmp.txt
+rm -f header-files-w-incorrect-define.txt files-w-gnu-gpl-license-banner.txt files-w-suspect-banner.txt files-w-tabs.txt
+
+awk '/#[ \t]*ifndef/ { gsub("^.*ifndef *",""); if (names[$1]!="") print "files with same {define ", FILENAME, names[$1]; names[$1]=FILENAME } /#[ \t]*define/ { gsub("^.*define *",""); if(names[$1]!=FILENAME) print "error in declaration", FILENAME, $1, names[$1]; nextfile }' `find openair* common targets executables -name *.h` > header-files-w-incorrect-define-tmp.txt
 
 for FULLFILE in $MODIFIED_FILES
 do
@@ -191,10 +181,13 @@ do
             then
                 if [ $IS_NFAPI -eq 0 ] && [ $IS_EXCEPTION -eq 0 ]
                 then
-                    echo $FULLFILE >> ./files-w-suspect-banner.txt
+                    echo $FULLFILE >> files-w-suspect-banner.txt
                 fi
             fi
         fi
+        
+        # Check TABS in source code
+        egrep -l $'\t' "$FULLFILE" >> files-w-tabs.txt
     fi
     # Testing Circular Dependencies protection
     if [ $EXT = "h" ] || [ $EXT = "hpp" ]
@@ -207,6 +200,6 @@ rm -f header-files-w-incorrect-define-tmp.txt
 # in this script we previously produced a list of files that were not properly
 # formatted. At the time of this MR, the Jenkinsfile expects this file, so
 # we simply produce an empty file
-touch ./oai_rules_result.txt
+touch oai_rules_result.txt
 
 exit 0

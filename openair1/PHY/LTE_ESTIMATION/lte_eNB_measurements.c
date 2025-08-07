@@ -55,10 +55,7 @@ void dump_I0_stats(FILE *fd,PHY_VARS_eNB *eNB) {
 
 
 }
-void lte_eNB_I0_measurements(PHY_VARS_eNB *eNB,
-			     int subframe,
-                             module_id_t eNB_id,
-                             unsigned char clear)
+void lte_eNB_I0_measurements(PHY_VARS_eNB *eNB, int subframe, module_id_t eNB_id, unsigned char clear)
 {
 
   LTE_eNB_COMMON *common_vars = &eNB->common_vars;
@@ -81,11 +78,14 @@ void lte_eNB_I0_measurements(PHY_VARS_eNB *eNB,
   if (common_vars->rxdata!=NULL) {
     for (aarx=0; aarx<frame_parms->nb_antennas_rx; aarx++) {
       if (clear == 1)
-	measurements->n0_power[aarx]=0;
-      
-      
-      measurements->n0_power[aarx] = ((k1*signal_energy(&common_vars->rxdata[aarx][(frame_parms->samples_per_tti<<1) -frame_parms->ofdm_symbol_size],
-							frame_parms->ofdm_symbol_size)) + k2*measurements->n0_power[aarx])>>10;
+        measurements->n0_power[aarx] = 0;
+
+      measurements->n0_power[aarx] =
+          ((k1
+            * signal_energy(&common_vars->rxdata[aarx][(frame_parms->samples_per_tti << 1) - frame_parms->ofdm_symbol_size],
+                            frame_parms->ofdm_symbol_size))
+           + k2 * measurements->n0_power[aarx])
+          >> 10;
       //measurements->n0_power[aarx] = (measurements->n0_power[aarx]) * 12*frame_parms->N_RB_DL)/(frame_parms->ofdm_symbol_size);
       measurements->n0_power_dB[aarx] = (unsigned short) dB_fixed(measurements->n0_power[aarx]);
       measurements->n0_power_tot +=  measurements->n0_power[aarx];
@@ -114,17 +114,15 @@ void lte_eNB_I0_measurements(PHY_VARS_eNB *eNB,
           offset = offset0 + (s*frame_parms->ofdm_symbol_size);
           ul_ch = (c16_t *)&common_vars->rxdataF[aarx][offset];
           len = 12;
-	// just do first half of middle PRB for odd number of PRBs
-	        if (((frame_parms->N_RB_UL&1) == 1) && 
-	            (rb==(frame_parms->N_RB_UL>>1))) {
-	           len=6;
-	        }
+          // just do first half of middle PRB for odd number of PRBs
+          if (((frame_parms->N_RB_UL & 1) == 1) && (rb == (frame_parms->N_RB_UL >> 1))) {
+            len = 6;
+          }
 
-	        AssertFatal(ul_ch, "RX signal buffer (freq) problem");
+          AssertFatal(ul_ch, "RX signal buffer (freq) problem");
 
+          measurements->n0_subband_power[aarx][rb] += signal_energy_nodc(ul_ch, len);
 
-	        measurements->n0_subband_power[aarx][rb] += signal_energy_nodc(ul_ch,len);
-	  
         } // symbol
         measurements->n0_subband_power[aarx][rb]/=(14-(frame_parms->Ncp<<1));
         measurements->n0_subband_power_dB[aarx][rb] = dB_fixed(measurements->n0_subband_power[aarx][rb]);

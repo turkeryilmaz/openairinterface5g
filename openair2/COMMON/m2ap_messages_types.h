@@ -31,7 +31,7 @@
 //-------------------------------------------------------------------------------------------//
 // Defines to access message fields.
 
-#define M2AP_MCE_SCTP_REQ(mSGpTR)		(mSGpTR)->ittiMsg.m2ap_mce_sctp_req
+#define M2AP_MCE_SCTP_REQ(mSGpTR) (mSGpTR)->ittiMsg.m2ap_mce_sctp_req
 
 #define M2AP_REGISTER_ENB_REQ(mSGpTR)           (mSGpTR)->ittiMsg.m2ap_register_enb_req
 //#define M2AP_HANDOVER_REQ(mSGpTR)               (mSGpTR)->ittiMsg.m2ap_handover_req
@@ -49,33 +49,31 @@
 
 #define M2AP_REGISTER_MCE_REQ(mSGpTR)           (mSGpTR)->ittiMsg.m2ap_register_mce_req
 
+#define M2AP_MBMS_SCHEDULING_INFORMATION(mSGpTR) (mSGpTR)->ittiMsg.m2ap_mbms_scheduling_information
+#define M2AP_MBMS_SCHEDULING_INFORMATION_RESP(mSGpTR) (mSGpTR)->ittiMsg.m2ap_mbms_scheduling_information_resp
+#define M2AP_MBMS_SESSION_START_REQ(mSGpTR) (mSGpTR)->ittiMsg.m2ap_session_start_req
+#define M2AP_MBMS_SESSION_START_RESP(mSGpTR) (mSGpTR)->ittiMsg.m2ap_session_start_resp
+#define M2AP_MBMS_SESSION_START_FAILURE(mSGpTR) (mSGpTR)->ittiMsg.m2ap_session_start_failure
+#define M2AP_MBMS_SESSION_STOP_REQ(mSGpTR) (mSGpTR)->ittiMsg.m2ap_session_stop_req
+#define M2AP_MBMS_SESSION_STOP_RESP(mSGpTR) (mSGpTR)->ittiMsg.m2ap_session_stop_resp
 
+#define M2AP_RESET(mSGpTR) (mSGpTR)->ittiMsg.m2ap_reset
+#define M2AP_ENB_CONFIGURATION_UPDATE(mSGpTR) (mSGpTR)->ittiMsg.m2ap_enb_configuration_update
+#define M2AP_ENB_CONFIGURATION_UPDATE_ACK(mSGpTR) (mSGpTR)->ittiMsg.m2ap_enb_configuration_update_ack
+#define M2AP_ENB_CONFIGURATION_UPDATE_FAILURE(mSGpTR) (mSGpTR)->ittiMsg.m2ap_enb_configuration_update_failure
+#define M2AP_MCE_CONFIGURATION_UPDATE(mSGpTR) (mSGpTR)->ittiMsg.m2ap_mce_configuration_update
+#define M2AP_MCE_CONFIGURATION_UPDATE_ACK(mSGpTR) (mSGpTR)->ittiMsg.m2ap_mce_configuration_update_ack
+#define M2AP_MCE_CONFIGURATION_UPDATE_FAILURE(mSGpTR) (mSGpTR)->ittiMsg.m2ap_mce_configuration_update_failure
 
-#define M2AP_MBMS_SCHEDULING_INFORMATION(mSGpTR) 	(mSGpTR)->ittiMsg.m2ap_mbms_scheduling_information
-#define M2AP_MBMS_SCHEDULING_INFORMATION_RESP(mSGpTR) 	(mSGpTR)->ittiMsg.m2ap_mbms_scheduling_information_resp
-#define M2AP_MBMS_SESSION_START_REQ(mSGpTR) 		(mSGpTR)->ittiMsg.m2ap_session_start_req
-#define M2AP_MBMS_SESSION_START_RESP(mSGpTR) 		(mSGpTR)->ittiMsg.m2ap_session_start_resp
-#define M2AP_MBMS_SESSION_START_FAILURE(mSGpTR) 	(mSGpTR)->ittiMsg.m2ap_session_start_failure
-#define M2AP_MBMS_SESSION_STOP_REQ(mSGpTR) 		(mSGpTR)->ittiMsg.m2ap_session_stop_req
-#define M2AP_MBMS_SESSION_STOP_RESP(mSGpTR) 		(mSGpTR)->ittiMsg.m2ap_session_stop_resp
-
-#define M2AP_RESET(mSGpTR)				(mSGpTR)->ittiMsg.m2ap_reset
-#define M2AP_ENB_CONFIGURATION_UPDATE(mSGpTR)		(mSGpTR)->ittiMsg.m2ap_enb_configuration_update
-#define M2AP_ENB_CONFIGURATION_UPDATE_ACK(mSGpTR)	(mSGpTR)->ittiMsg.m2ap_enb_configuration_update_ack
-#define M2AP_ENB_CONFIGURATION_UPDATE_FAILURE(mSGpTR)	(mSGpTR)->ittiMsg.m2ap_enb_configuration_update_failure
-#define M2AP_MCE_CONFIGURATION_UPDATE(mSGpTR)		(mSGpTR)->ittiMsg.m2ap_mce_configuration_update
-#define M2AP_MCE_CONFIGURATION_UPDATE_ACK(mSGpTR)	(mSGpTR)->ittiMsg.m2ap_mce_configuration_update_ack
-#define M2AP_MCE_CONFIGURATION_UPDATE_FAILURE(mSGpTR)	(mSGpTR)->ittiMsg.m2ap_mce_configuration_update_failure
-
-#define M2AP_ERROR_INDICATION(mSGpTR)			(mSGpTR)->ittiMsg.m2ap_error_indication
-#define M2AP_MBMS_SESSION_UPDATE_REQ(mSGpTR)		(mSGpTR)->ittiMsg.m2ap_mbms_session_update_req
-#define M2AP_MBMS_SESSION_UPDATE_RESP(mSGpTR)		(mSGpTR)->ittiMsg.m2ap_mbms_session_update_resp
-#define	M2AP_MBMS_SESSION_UPDATE_FAILURE(mSGpTR)	(mSGpTR)->ittiMsg.m2ap_mbms_session_update_failure
-#define M2AP_MBMS_SERVICE_COUNTING_REPORT(mSGpTR)	(mSGpTR)->ittiMsg.m2ap_mbms_service_counting_report
-#define M2AP_MBMS_OVERLOAD_NOTIFICATION(mSGpTR)		(mSGpTR)->ittiMsg.m2ap_mbms_overload_notification
-#define M2AP_MBMS_SERVICE_COUNTING_REQ(mSGpTR)		(mSGpTR)->ittiMsg.m2ap_mbms_service_counting_req
-#define M2AP_MBMS_SERVICE_COUNTING_RESP(mSGpTR)		(mSGpTR)->ittiMsg.m2ap_mbms_service_counting_resp
-#define M2AP_MBMS_SERVICE_COUNTING_FAILURE(mSGpTR)	(mSGpTR)->ittiMsg.m2ap_mbms_service_counting_failure
+#define M2AP_ERROR_INDICATION(mSGpTR) (mSGpTR)->ittiMsg.m2ap_error_indication
+#define M2AP_MBMS_SESSION_UPDATE_REQ(mSGpTR) (mSGpTR)->ittiMsg.m2ap_mbms_session_update_req
+#define M2AP_MBMS_SESSION_UPDATE_RESP(mSGpTR) (mSGpTR)->ittiMsg.m2ap_mbms_session_update_resp
+#define M2AP_MBMS_SESSION_UPDATE_FAILURE(mSGpTR) (mSGpTR)->ittiMsg.m2ap_mbms_session_update_failure
+#define M2AP_MBMS_SERVICE_COUNTING_REPORT(mSGpTR) (mSGpTR)->ittiMsg.m2ap_mbms_service_counting_report
+#define M2AP_MBMS_OVERLOAD_NOTIFICATION(mSGpTR) (mSGpTR)->ittiMsg.m2ap_mbms_overload_notification
+#define M2AP_MBMS_SERVICE_COUNTING_REQ(mSGpTR) (mSGpTR)->ittiMsg.m2ap_mbms_service_counting_req
+#define M2AP_MBMS_SERVICE_COUNTING_RESP(mSGpTR) (mSGpTR)->ittiMsg.m2ap_mbms_service_counting_resp
+#define M2AP_MBMS_SERVICE_COUNTING_FAILURE(mSGpTR) (mSGpTR)->ittiMsg.m2ap_mbms_service_counting_failure
 
 #define M2AP_MAX_NB_ENB_IP_ADDRESS 2
 #define M2AP_MAX_NB_MCE_IP_ADDRESS 2
@@ -136,9 +134,9 @@ typedef struct m2ap_setup_req_s {
   uint16_t eutran_cell_identifier[M2AP_MAX_NB_CELLS];
 
   struct{
-	  uint16_t mbsfn_sync_area;
-  	  uint16_t mbms_service_area_list[8];
-	  uint16_t num_mbms_service_area_list;
+    uint16_t mbsfn_sync_area;
+    uint16_t mbms_service_area_list[8];
+    uint16_t num_mbms_service_area_list;
   }mbms_configuration_data_list[8];
   uint16_t num_mbms_configuration_data_list;
 
@@ -405,9 +403,9 @@ typedef struct m2ap_register_enb_req_s {
   uint8_t  mnc_digit_length;
 
   struct{
-	  uint16_t mbsfn_sync_area;
-  	  uint16_t mbms_service_area_list[8];
-	  uint16_t num_mbms_service_area_list;
+    uint16_t mbsfn_sync_area;
+    uint16_t mbms_service_area_list[8];
+    uint16_t num_mbms_service_area_list;
   }mbms_configuration_data_list[8];
   uint16_t num_mbms_configuration_data_list;
 
@@ -472,70 +470,66 @@ typedef struct m2ap_deregistered_enb_ind_s {
 
 
 typedef struct m2ap_mbms_scheduling_information_s {
-	uint16_t mcch_update_time;
-	struct{
-		uint8_t common_sf_allocation_period;
-		uint8_t mbms_area_id;
-		struct{
-			uint16_t allocated_sf_end;
-                        uint8_t data_mcs;
-                        uint8_t mch_scheduling_period;
-			struct{
-				//struct{
-				uint32_t service_id;
-				uint16_t lcid;
-				uint8_t mcc;
-				uint8_t mnc;
-				uint8_t mnc_length;
-				//}mbms_session_per_pmch[8];
-				//int num_mbms_session_per_pmch;
-			}mbms_session_list[8];
-			int num_mbms_session_list;
-		}pmch_config_list[8];
-		int num_pmch_config_list;
+  uint16_t mcch_update_time;
+  struct {
+    uint8_t common_sf_allocation_period;
+    uint8_t mbms_area_id;
+    struct {
+      uint16_t allocated_sf_end;
+      uint8_t data_mcs;
+      uint8_t mch_scheduling_period;
+      struct {
+        // struct{
+        uint32_t service_id;
+        uint16_t lcid;
+        uint8_t mcc;
+        uint8_t mnc;
+        uint8_t mnc_length;
+        //}mbms_session_per_pmch[8];
+        // int num_mbms_session_per_pmch;
+      } mbms_session_list[8];
+      int num_mbms_session_list;
+    } pmch_config_list[8];
+    int num_pmch_config_list;
 
-		struct{
-			uint8_t radioframe_allocation_period;
-			uint8_t radioframe_allocation_offset;
-			uint8_t is_four_sf;
-			uint32_t subframe_allocation;
-		}mbms_sf_config_list[8];
-		int num_mbms_sf_config_list;
-		
-	}mbms_area_config_list[8];
-	uint8_t num_mbms_area_config_list;
+    struct {
+      uint8_t radioframe_allocation_period;
+      uint8_t radioframe_allocation_offset;
+      uint8_t is_four_sf;
+      uint32_t subframe_allocation;
+    } mbms_sf_config_list[8];
+    int num_mbms_sf_config_list;
 
+  } mbms_area_config_list[8];
+  uint8_t num_mbms_area_config_list;
 
+  uint16_t mcc[M2AP_MAX_NB_CELLS]; //[6];
+  uint16_t mnc[M2AP_MAX_NB_CELLS]; //[6];
+  uint8_t mnc_digit_length[M2AP_MAX_NB_CELLS]; //[6];
+  uint8_t TMGI[5]; // {4,3,2,1,0};
+  uint8_t is_one_frame;
+  uint8_t buf1; // i.e 0x38<<2
+  uint8_t buf2; // i.e 0x38<<2
+  uint8_t buf3; // i.e 0x38<<2
+  uint16_t common_subframe_allocation_period;
 
-
-
-  	uint16_t mcc[M2AP_MAX_NB_CELLS];//[6];
-  	uint16_t mnc[M2AP_MAX_NB_CELLS];//[6];
-  	uint8_t  mnc_digit_length[M2AP_MAX_NB_CELLS];//[6];
-	uint8_t  TMGI[5]; // {4,3,2,1,0};
-	uint8_t is_one_frame;
- 	uint8_t buf1; //i.e 0x38<<2
- 	uint8_t buf2; //i.e 0x38<<2
- 	uint8_t buf3; //i.e 0x38<<2
-	uint16_t common_subframe_allocation_period;
-	
 } m2ap_mbms_scheduling_information_t;
 
 
 typedef struct m2ap_mce_sctp_req_s {
-  	/* The local MCE IP address to bind */
-	net_ip_address_t mce_m2_ip_address;
+  /* The local MCE IP address to bind */
+  net_ip_address_t mce_m2_ip_address;
 
-  	/* eNB port for M2C*/
-  	uint32_t mce_port_for_M2C;
+  /* eNB port for M2C*/
+  uint32_t mce_port_for_M2C;
 }m2ap_mce_sctp_req_t;
 
 typedef struct m2ap_enb_sctp_req_s {
-  	/* The local MCE IP address to bind */
-	net_ip_address_t enb_m2_ip_address;
+  /* The local MCE IP address to bind */
+  net_ip_address_t enb_m2_ip_address;
 
-  	/* eNB port for M2C*/
-  	uint32_t enb_port_for_M2C;
+  /* eNB port for M2C*/
+  uint32_t enb_port_for_M2C;
 }m2ap_enb_sctp_req_t;
 
 

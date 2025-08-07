@@ -26,34 +26,33 @@ extern "C" {
 typedef struct fapi fapi_t;
 
 typedef struct fapi {
-	void* user_data;
+  void* user_data;
 } fapi_t;
 
 typedef struct {
-	int (*fapi_param_response)(fapi_t* fapi, fapi_param_resp_t* resp);
-	int (*fapi_config_response)(fapi_t* fapi, fapi_config_resp_t* resp);
+  int (*fapi_param_response)(fapi_t* fapi, fapi_param_resp_t* resp);
+  int (*fapi_config_response)(fapi_t* fapi, fapi_config_resp_t* resp);
 
-	int (*fapi_subframe_ind)(fapi_t* fapi, fapi_subframe_ind_t* ind);
+  int (*fapi_subframe_ind)(fapi_t* fapi, fapi_subframe_ind_t* ind);
 
-	int (*fapi_harq_ind)(fapi_t* fapi, fapi_harq_ind_t* ind);
-	int (*fapi_crc_ind)(fapi_t* fapi, fapi_crc_ind_t* ind);
-	int (*fapi_rx_ulsch_ind)(fapi_t* fapi, fapi_rx_ulsch_ind_t* ind);
-	int (*fapi_rx_cqi_ind)(fapi_t* fapi, fapi_rx_cqi_ind_t* ind);
-	int (*fapi_rx_sr_ind)(fapi_t* fapi, fapi_rx_sr_ind_t* ind);
-	int (*fapi_rach_ind)(fapi_t* fapi, fapi_rach_ind_t* ind);
-	int (*fapi_srs_ind)(fapi_t* fapi, fapi_srs_ind_t* ind);
-	
-	int (*fapi_lbt_dl_ind)(fapi_t* fapi, fapi_lbt_dl_ind_t* ind);
-	int (*fapi_nb_harq_ind)(fapi_t* fapi, fapi_nb_harq_ind_t* ind);
-	int (*fapi_nrach_ind)(fapi_t* fapi, fapi_nrach_ind_t* ind);
+  int (*fapi_harq_ind)(fapi_t* fapi, fapi_harq_ind_t* ind);
+  int (*fapi_crc_ind)(fapi_t* fapi, fapi_crc_ind_t* ind);
+  int (*fapi_rx_ulsch_ind)(fapi_t* fapi, fapi_rx_ulsch_ind_t* ind);
+  int (*fapi_rx_cqi_ind)(fapi_t* fapi, fapi_rx_cqi_ind_t* ind);
+  int (*fapi_rx_sr_ind)(fapi_t* fapi, fapi_rx_sr_ind_t* ind);
+  int (*fapi_rach_ind)(fapi_t* fapi, fapi_rach_ind_t* ind);
+  int (*fapi_srs_ind)(fapi_t* fapi, fapi_srs_ind_t* ind);
+
+  int (*fapi_lbt_dl_ind)(fapi_t* fapi, fapi_lbt_dl_ind_t* ind);
+  int (*fapi_nb_harq_ind)(fapi_t* fapi, fapi_nb_harq_ind_t* ind);
+  int (*fapi_nrach_ind)(fapi_t* fapi, fapi_nrach_ind_t* ind);
 
 } fapi_cb_t;
 
 typedef struct {
-
-	uint16_t duplex_mode;
-	uint16_t dl_channel_bw_support;
-	uint16_t ul_channel_bw_support;
+  uint16_t duplex_mode;
+  uint16_t dl_channel_bw_support;
+  uint16_t ul_channel_bw_support;
 } fapi_config_t;
 
 fapi_t* fapi_create(fapi_cb_t* callbacks, fapi_config_t* config);

@@ -1045,7 +1045,7 @@ schedule_ue_spec(module_id_t module_idP,
 
             if (snr > target_snr + PUCCH_PCHYST) {
               tpc = 0;  //-1
-	      ue_sched_ctrl->pucch_tpc_accumulated[CC_id]--;
+              ue_sched_ctrl->pucch_tpc_accumulated[CC_id]--;
             } else if (snr < target_snr - PUCCH_PCHYST) {
               tpc = 2;  //+1
               ue_sched_ctrl->pucch_tpc_accumulated[CC_id]--;
@@ -1053,13 +1053,15 @@ schedule_ue_spec(module_id_t module_idP,
               tpc = 1;  //0
             }
 
-            LOG_D(MAC, "[eNB %d] DLSCH scheduler: frame %d, subframe %d, harq_pid %d, tpc %d (accumulated %d), snr/target snr %d/%d (normal case)\n",
+            LOG_D(MAC,
+                  "[eNB %d] DLSCH scheduler: frame %d, subframe %d, harq_pid %d, tpc %d (accumulated %d), snr/target snr %d/%d "
+                  "(normal case)\n",
                   module_idP,
                   frameP,
                   subframeP,
                   harq_pid,
                   tpc,
-		  ue_sched_ctrl->pucch_tpc_accumulated[CC_id],
+                  ue_sched_ctrl->pucch_tpc_accumulated[CC_id],
                   snr,
                   target_snr);
           } // Po_PUCCH has been updated

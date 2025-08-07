@@ -279,21 +279,21 @@ fill_tx_req(nfapi_tx_request_body_t *tx_req_body,
   return (((absSF / 10) << 4) + (absSF % 10));
 }
 
-void
-fill_mch_config(nfapi_dl_config_request_body_t *dl_req,
-                  uint16_t length,
-                  uint16_t pdu_index,
-                  uint16_t rnti,
-                  uint8_t resource_allocation_type,
-                  uint16_t resource_block_coding,
-                  uint8_t modulation,
-                  uint16_t transmission_power,
-		  uint8_t mbsfn_area_id){
+void fill_mch_config(nfapi_dl_config_request_body_t *dl_req,
+                     uint16_t length,
+                     uint16_t pdu_index,
+                     uint16_t rnti,
+                     uint8_t resource_allocation_type,
+                     uint16_t resource_block_coding,
+                     uint8_t modulation,
+                     uint16_t transmission_power,
+                     uint8_t mbsfn_area_id)
+{
   nfapi_dl_config_request_pdu_t *dl_config_pdu =
     &dl_req->dl_config_pdu_list[dl_req->number_pdu];
   memset((void *) dl_config_pdu, 0,
          sizeof(nfapi_dl_config_request_pdu_t));
-  dl_config_pdu->pdu_type                          		             = NFAPI_DL_CONFIG_MCH_PDU_TYPE;
+  dl_config_pdu->pdu_type = NFAPI_DL_CONFIG_MCH_PDU_TYPE;
   dl_config_pdu->pdu_size                                                    = (uint8_t) (2 + sizeof(nfapi_dl_config_mch_pdu));
   dl_config_pdu->mch_pdu.mch_pdu_rel8.tl.tag                                 = NFAPI_DL_CONFIG_REQUEST_MCH_PDU_REL8_TAG;
   dl_config_pdu->mch_pdu.mch_pdu_rel8.length                                 = length;
@@ -303,7 +303,7 @@ fill_mch_config(nfapi_dl_config_request_body_t *dl_req,
   dl_config_pdu->mch_pdu.mch_pdu_rel8.resource_block_coding                  = resource_block_coding;
   dl_config_pdu->mch_pdu.mch_pdu_rel8.modulation                             = modulation;
   dl_config_pdu->mch_pdu.mch_pdu_rel8.transmission_power                     = transmission_power;
-  dl_config_pdu->mch_pdu.mch_pdu_rel8.mbsfn_area_id 		             = mbsfn_area_id;
+  dl_config_pdu->mch_pdu.mch_pdu_rel8.mbsfn_area_id = mbsfn_area_id;
   dl_req->number_pdu++;
 }
 
@@ -370,11 +370,11 @@ void fill_MCH(PHY_VARS_eNB *eNB,
               Sched_Rsp_t *sched_resp,
               uint8_t input_buffer[NUMBER_OF_UE_MAX][20000],
               int n_rnti,
-	      int common_flag,
-	      int NB_RB,
+              int common_flag,
+              int NB_RB,
               int TPC,
-              int mcs1){
-
+              int mcs1)
+{
   nfapi_dl_config_request_body_t *dl_req=&sched_resp->DL_req->dl_config_request_body;
   nfapi_dl_config_request_pdu_t  *dl_config_pdu;
   nfapi_tx_request_body_t        *TX_req=&sched_resp->TX_req->tx_request_body;
@@ -383,17 +383,16 @@ void fill_MCH(PHY_VARS_eNB *eNB,
   dl_req->number_pdu=0;
   TX_req->number_of_pdus=0;
   dl_req->tl.tag = NFAPI_DL_CONFIG_REQUEST_BODY_TAG;
-  fill_mch_config(
-                        dl_req,
-            		get_TBS_DL(mcs1,NB_RB4TBS),
-                        0,
-                        0xfffd,
-                        0,
-                        get_Qm(mcs1),
-                        mcs1,
-                        6000, //equal to RS power
-                        0 //mbsfn_area_id
-                        );
+  fill_mch_config(dl_req,
+                  get_TBS_DL(mcs1, NB_RB4TBS),
+                  0,
+                  0xfffd,
+                  0,
+                  get_Qm(mcs1),
+                  mcs1,
+                  6000, // equal to RS power
+                  0 // mbsfn_area_id
+  );
 
   fill_tx_req(TX_req,
            (frame * 10) + subframe,
@@ -463,56 +462,47 @@ void fill_DCI(PHY_VARS_eNB *eNB,
         dl_req->number_pdu++;
         dl_req->tl.tag = NFAPI_DL_CONFIG_REQUEST_BODY_TAG;
         AssertFatal(TPC>=0 && TPC<2, "TPC should be 0 or 1\n");
-	if(1){
-	  fill_mch_config(
-                        dl_req,
-            		get_TBS_DL(mcs1,NB_RB4TBS),
-                        0,
-                        0xfffd,
-                        0,
-                        get_Qm(mcs1),
-                        mcs1,
-                        6000, //equal to RS power
-                        0 //mbsfn_area_id
-                        );
-
-  	fill_tx_req(TX_req,
-           (frame * 10) + subframe,
-            get_TBS_DL(mcs1,NB_RB4TBS),
-            0,
-            input_buffer[0]);
-
-	}else{
-        fill_dlsch_config(dl_req,
-                          get_TBS_DL(mcs1,NB_RB4TBS),
-                          (retrans > 0) ? -1 : 0, /* retransmission, no pdu_index */
-                          (common_flag == 0) ? n_rnti : SI_RNTI,
-                          0,  // type 0 allocation from 7.1.6 in 36.213
-                          0,  // virtual_resource_block_assignment_flag, unused here
-                          DLSCH_RB_ALLOC, // resource_block_coding,
+        if (1) {
+          fill_mch_config(dl_req,
+                          get_TBS_DL(mcs1, NB_RB4TBS),
+                          0,
+                          0xfffd,
+                          0,
                           get_Qm(mcs1),
-                          rv, // redundancy version
-                          1,  // transport blocks
-                          0,  // transport block to codeword swap flag
-                          transmission_mode == 1 ? 0 : 1, // transmission_scheme
-                          1,  // number of layers
-                          1,  // number of subbands
-                          //                      uint8_t codebook_index,
-                          4,  // UE category capacity
-                          pa,    // pa
-                          0,  // delta_power_offset for TM5
-                          0,  // ngap
-                          0,  // nprb
-                          transmission_mode,
-                          0,  //number of PRBs treated as one subband, not used here
-                          0 // number of beamforming vectors, not used here
-                         );
-        fill_tx_req(TX_req,
-                    (frame * 10) + subframe,
-                    get_TBS_DL(mcs1,NB_RB4TBS),
-                    0,
-                    input_buffer[k]);
-	}
+                          mcs1,
+                          6000, // equal to RS power
+                          0 // mbsfn_area_id
+          );
+
+          fill_tx_req(TX_req, (frame * 10) + subframe, get_TBS_DL(mcs1, NB_RB4TBS), 0, input_buffer[0]);
+
+        } else {
+          fill_dlsch_config(dl_req,
+                            get_TBS_DL(mcs1, NB_RB4TBS),
+                            (retrans > 0) ? -1 : 0, /* retransmission, no pdu_index */
+                            (common_flag == 0) ? n_rnti : SI_RNTI,
+                            0, // type 0 allocation from 7.1.6 in 36.213
+                            0, // virtual_resource_block_assignment_flag, unused here
+                            DLSCH_RB_ALLOC, // resource_block_coding,
+                            get_Qm(mcs1),
+                            rv, // redundancy version
+                            1, // transport blocks
+                            0, // transport block to codeword swap flag
+                            transmission_mode == 1 ? 0 : 1, // transmission_scheme
+                            1, // number of layers
+                            1, // number of subbands
+                            //                      uint8_t codebook_index,
+                            4, // UE category capacity
+                            pa, // pa
+                            0, // delta_power_offset for TM5
+                            0, // ngap
+                            0, // nprb
+                            transmission_mode,
+                            0, // number of PRBs treated as one subband, not used here
+                            0 // number of beamforming vectors, not used here
+          );
+          fill_tx_req(TX_req, (frame * 10) + subframe, get_TBS_DL(mcs1, NB_RB4TBS), 0, input_buffer[k]);
+        }
         break;
 
       case 3:
@@ -1093,8 +1083,8 @@ int main(int argc, char **argv) {
   eNB_MAC_INST ** mac;
   mac = malloc16(1 * sizeof(eNB_MAC_INST *));
   for (int ii = 0;ii < 1; ii++) {
-	  mac[ii] = malloc16(sizeof(eNB_MAC_INST));
-	  bzero(mac[ii], sizeof(eNB_MAC_INST));
+    mac[ii] = malloc16(sizeof(eNB_MAC_INST));
+    bzero(mac[ii], sizeof(eNB_MAC_INST));
   }
   RC.mac = mac;
   COMMON_channels_t *cc = &RC.mac[0]->common_channels[0];
@@ -1103,7 +1093,7 @@ int main(int argc, char **argv) {
   printf("MCH_pdu.Pdu_size %d\n",cc->MCH_pdu.Pdu_size);
   cc->MCH_pdu.sync_area =0;
   for(int ii=0; ii <  cc->MCH_pdu.Pdu_size; ii++)
-	  cc->MCH_pdu.payload[ii] = (char)(taus() & 0xff);
+    cc->MCH_pdu.payload[ii] = (char)(taus() & 0xff);
   eNB->frame_parms.Nid_cell_mbsfn=0;
 #endif
 
@@ -1416,19 +1406,17 @@ int main(int argc, char **argv) {
 
   eNB->frame_parms.Nid_cell_mbsfn=0;
   if(enable_fembms){
-	  lte_gold_mbsfn_khz_1dot25 (&eNB->frame_parms, eNB->lte_gold_mbsfn_khz_1dot25_table, eNB->frame_parms.Nid_cell_mbsfn);
-	  eNB->frame_parms.NonMBSFN_config_flag=1;
-  }else{	  
-	  lte_gold_mbsfn (&eNB->frame_parms, eNB->lte_gold_mbsfn_table, eNB->frame_parms.Nid_cell_mbsfn);
-	  eNB->frame_parms.num_MBSFN_config=1;
-	  eNB->frame_parms.MBSFN_config[0].radioframeAllocationPeriod=0;
-	  eNB->frame_parms.MBSFN_config[0].fourFrames_flag=0;
-	  eNB->frame_parms.MBSFN_config[0].radioframeAllocationOffset=0;
-	  //eNB->frame_parms.MBSFN_config[0].mbsfn_SubframeConfig=0xC0;
-	  eNB->frame_parms.MBSFN_config[0].mbsfn_SubframeConfig=0xFC;
+    lte_gold_mbsfn_khz_1dot25(&eNB->frame_parms, eNB->lte_gold_mbsfn_khz_1dot25_table, eNB->frame_parms.Nid_cell_mbsfn);
+    eNB->frame_parms.NonMBSFN_config_flag = 1;
+  } else {
+    lte_gold_mbsfn(&eNB->frame_parms, eNB->lte_gold_mbsfn_table, eNB->frame_parms.Nid_cell_mbsfn);
+    eNB->frame_parms.num_MBSFN_config = 1;
+    eNB->frame_parms.MBSFN_config[0].radioframeAllocationPeriod = 0;
+    eNB->frame_parms.MBSFN_config[0].fourFrames_flag = 0;
+    eNB->frame_parms.MBSFN_config[0].radioframeAllocationOffset = 0;
+    // eNB->frame_parms.MBSFN_config[0].mbsfn_SubframeConfig=0xC0;
+    eNB->frame_parms.MBSFN_config[0].mbsfn_SubframeConfig = 0xFC;
   }
-
-
 
   snr_step = input_snr_step;
   UE->high_speed_flag = 1;
@@ -1574,14 +1562,20 @@ int main(int argc, char **argv) {
               }
             }
 
-//#ifdef ENABLE_MBMS_SIM
-//	    eNB->frame_parms.Nid_cell_mbsfn=0;
-//  	    lte_gold_mbsfn (&eNB->frame_parms, eNB->lte_gold_mbsfn_table, eNB->frame_parms.Nid_cell_mbsfn);
-//#endif	   
+            // #ifdef ENABLE_MBMS_SIM
+            //         eNB->frame_parms.Nid_cell_mbsfn=0;
+            //           lte_gold_mbsfn (&eNB->frame_parms, eNB->lte_gold_mbsfn_table, eNB->frame_parms.Nid_cell_mbsfn);
+            // #endif
 
-	     UE->measurements.n0_power_tot_dB =  10*log10((double)tx_lev) +10*log10((double)ru->frame_parms.ofdm_symbol_size/(double)(ru->frame_parms.N_RB_DL*12)) - SNR;
-            UE->measurements.n0_power_tot = pow(10,( 10*log10((double)tx_lev) +10*log10((double)ru->frame_parms.ofdm_symbol_size/(double)(ru->frame_parms.N_RB_DL*12)) - SNR)/10);		
- 
+            UE->measurements.n0_power_tot_dB =
+                10 * log10((double)tx_lev)
+                + 10 * log10((double)ru->frame_parms.ofdm_symbol_size / (double)(ru->frame_parms.N_RB_DL * 12)) - SNR;
+            UE->measurements.n0_power_tot =
+                pow(10,
+                    (10 * log10((double)tx_lev)
+                     + 10 * log10((double)ru->frame_parms.ofdm_symbol_size / (double)(ru->frame_parms.N_RB_DL * 12)) - SNR)
+                        / 10);
+
             proc_eNB->subframe_tx = subframe;
             sched_resp.subframe=subframe;
             sched_resp.frame=proc_eNB->frame_tx;
@@ -1612,11 +1606,11 @@ int main(int argc, char **argv) {
 
             start_meas(&eNB->ofdm_mod_stats);
             ru->proc.subframe_tx=subframe;
- 	    LOG_W(PHY,"eNB %d\n",eNB->frame_parms.num_MBSFN_config);
- 	    LOG_W(PHY,"eNB %d\n",eNB->frame_parms.NonMBSFN_config_flag);
+            LOG_W(PHY, "eNB %d\n", eNB->frame_parms.num_MBSFN_config);
+            LOG_W(PHY, "eNB %d\n", eNB->frame_parms.NonMBSFN_config_flag);
             memcpy((void *)&ru->frame_parms,(void *)&eNB->frame_parms,sizeof(LTE_DL_FRAME_PARMS));
- 	    LOG_W(PHY,"RU %d\n",ru->frame_parms.num_MBSFN_config);
- 	    LOG_W(PHY,"RU %d\n",ru->frame_parms.NonMBSFN_config_flag);
+            LOG_W(PHY, "RU %d\n", ru->frame_parms.num_MBSFN_config);
+            LOG_W(PHY, "RU %d\n", ru->frame_parms.NonMBSFN_config_flag);
             feptx_prec(ru);
             feptx_ofdm(ru);
             stop_meas(&eNB->ofdm_mod_stats);
@@ -1702,22 +1696,18 @@ int main(int argc, char **argv) {
             }
           }
 
-
-  	UE->frame_parms.Nid_cell_mbsfn=0;
-	if(enable_fembms){
-	  	lte_gold_mbsfn_khz_1dot25 (&UE->frame_parms, UE->lte_gold_mbsfn_khz_1dot25_table, UE->frame_parms.Nid_cell_mbsfn);
-		UE->frame_parms.NonMBSFN_config_flag=1;
-	}else{
-		lte_gold_mbsfn (&UE->frame_parms, UE->lte_gold_mbsfn_table, UE->frame_parms.Nid_cell_mbsfn);
-		UE->frame_parms.num_MBSFN_config=1;
-		UE->frame_parms.MBSFN_config[0].radioframeAllocationPeriod=0;
-		UE->frame_parms.MBSFN_config[0].fourFrames_flag=0;
-		UE->frame_parms.MBSFN_config[0].radioframeAllocationOffset=0;
-		UE->frame_parms.MBSFN_config[0].mbsfn_SubframeConfig=0xC0;
-	}
-
-
-
+          UE->frame_parms.Nid_cell_mbsfn = 0;
+          if (enable_fembms) {
+            lte_gold_mbsfn_khz_1dot25(&UE->frame_parms, UE->lte_gold_mbsfn_khz_1dot25_table, UE->frame_parms.Nid_cell_mbsfn);
+            UE->frame_parms.NonMBSFN_config_flag = 1;
+          } else {
+            lte_gold_mbsfn(&UE->frame_parms, UE->lte_gold_mbsfn_table, UE->frame_parms.Nid_cell_mbsfn);
+            UE->frame_parms.num_MBSFN_config = 1;
+            UE->frame_parms.MBSFN_config[0].radioframeAllocationPeriod = 0;
+            UE->frame_parms.MBSFN_config[0].fourFrames_flag = 0;
+            UE->frame_parms.MBSFN_config[0].radioframeAllocationOffset = 0;
+            UE->frame_parms.MBSFN_config[0].mbsfn_SubframeConfig = 0xC0;
+          }
 
           dci_received = UE->pdcch_vars[UE->current_thread_id[proc->subframe_rx]][eNB_id]->dci_received;
           phy_procedures_UE_RX(UE,proc,0,0,dci_flag,normal_txrx);

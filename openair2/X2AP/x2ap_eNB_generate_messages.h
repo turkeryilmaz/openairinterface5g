@@ -32,8 +32,7 @@
 #include "x2ap_eNB_defs.h"
 #include "x2ap_common.h"
 
-int x2ap_eNB_generate_x2_setup_request(x2ap_eNB_instance_t *instance_p,
-				       x2ap_eNB_data_t *x2ap_eNB_data_p);
+int x2ap_eNB_generate_x2_setup_request(x2ap_eNB_instance_t *instance_p, x2ap_eNB_data_t *x2ap_eNB_data_p);
 
 int x2ap_eNB_generate_x2_setup_response(x2ap_eNB_instance_t *instance_p, x2ap_eNB_data_t *x2ap_eNB_data_p);
 

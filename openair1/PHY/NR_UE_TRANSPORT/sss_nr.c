@@ -93,7 +93,7 @@ void init_context_sss_nr(int amp)
       /* Modulation of SSS is a BPSK TS 36.211 chapter 5.1.2 BPSK */
 #if 1
         d_sss[N_ID_2][N_ID_1][n]   = dss_current;// * amp;
-	(void) amp;
+        (void)amp;
 #else
         (void) amp;
         d_sss[N_ID_2][N_ID_1][n]   = (dss_current * SHRT_MAX)>>SCALING_PSS_NR;
@@ -481,7 +481,13 @@ bool rx_sss_nr(const NR_DL_FRAME_PARMS *frame_parms,
 
 #ifdef DEBUG_SSS_NR
 
-	LOG_D(PHY,"(phase,Nid1) (%d,%d), metric_phase %d tot_metric %d, phase_max %d \n",phase, Nid1, metric, *tot_metric, *phase_max);
+        LOG_D(PHY,
+              "(phase,Nid1) (%d,%d), metric_phase %d tot_metric %d, phase_max %d \n",
+              phase,
+              Nid1,
+              metric,
+              *tot_metric,
+              *phase_max);
 
 #endif
       }

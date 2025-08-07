@@ -100,7 +100,7 @@ void comb_stage(int32_t *input, int32_t *output, int length, int differential_de
   /* first sample is just copied */
   for (int i = 0; i < differential_delay; i++) {
     output[2*i]   = input[2*i];
-	output[2*i+1] = input[2*i+1];
+    output[2 * i + 1] = input[2 * i + 1];
   }
 
   /* then process all other samples */

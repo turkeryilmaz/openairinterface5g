@@ -530,419 +530,429 @@ int pnf_param_resp_cb(nfapi_vnf_config_t *config, int p5_idx, nfapi_pnf_param_re
 }
 int pnf_start_resp_cb(nfapi_vnf_config_t* config, int p5_idx, nfapi_pnf_start_response_t* resp)
 {
-	printf("[VNF_SIM] pnf start response idx:%d\n", p5_idx);
+  printf("[VNF_SIM] pnf start response idx:%d\n", p5_idx);
 
-	vnf_info* vnf = (vnf_info*)(config->user_data);
-	vnf_p7_info& p7_vnf = vnf->p7_vnfs[0];
+  vnf_info *vnf = (vnf_info *)(config->user_data);
+  vnf_p7_info &p7_vnf = vnf->p7_vnfs[0];
 
-	if(p7_vnf.thread_started == false)
-	{
-		pthread_t vnf_p7_thread;
-		pthread_create(&vnf_p7_thread, NULL, &vnf_p7_thread_start, &p7_vnf);
-		p7_vnf.thread_started = true;
-	}
-	else
-	{
-		// P7 thread already running. 
-	}
+  if (p7_vnf.thread_started == false) {
+    pthread_t vnf_p7_thread;
+    pthread_create(&vnf_p7_thread, NULL, &vnf_p7_thread_start, &p7_vnf);
+    p7_vnf.thread_started = true;
+  } else {
+    // P7 thread already running.
+  }
 
-	// start all the phys in the pnf.
-	
-	auto find_result = vnf->pnfs.find(p5_idx);
-	if(find_result != vnf->pnfs.end())
-	{
-		pnf_info& pnf = find_result->second;
+  // start all the phys in the pnf.
 
-		for(unsigned i = 0; i < pnf.phys.size(); ++i)
-		{
-			pnf_info& pnf = find_result->second;
+  auto find_result = vnf->pnfs.find(p5_idx);
+  if (find_result != vnf->pnfs.end()) {
+    pnf_info &pnf = find_result->second;
 
-			nfapi_param_request_t req;
-			memset(&req, 0, sizeof(req));
-			req.header.message_id = NFAPI_PARAM_REQUEST;
-			req.header.phy_id = pnf.phys[i].id;
-			nfapi_vnf_param_req(config, p5_idx, &req);
-		}
-	}
+    for (unsigned i = 0; i < pnf.phys.size(); ++i) {
+      pnf_info &pnf = find_result->second;
 
-	return 0;
+      nfapi_param_request_t req;
+      memset(&req, 0, sizeof(req));
+      req.header.message_id = NFAPI_PARAM_REQUEST;
+      req.header.phy_id = pnf.phys[i].id;
+      nfapi_vnf_param_req(config, p5_idx, &req);
+    }
+  }
+
+  return 0;
 }
 int param_resp_cb(nfapi_vnf_config_t* config, int p5_idx, nfapi_param_response_t* resp)
 {
-	printf("[VNF_SIM] param response idx:%d phy_id:%d\n", p5_idx, resp->header.phy_id);
+  printf("[VNF_SIM] param response idx:%d phy_id:%d\n", p5_idx, resp->header.phy_id);
 
-	vnf_info* vnf = (vnf_info*)(config->user_data);
+  vnf_info *vnf = (vnf_info *)(config->user_data);
 
-	auto find_result = vnf->pnfs.find(p5_idx);
-	if(find_result != vnf->pnfs.end())
-	{
-		pnf_info& pnf = find_result->second;
-		
-		
-		auto found = std::find_if(pnf.phys.begin(), pnf.phys.end(), [&](phy_info& item)
-								  { return item.id == resp->header.phy_id; });
+  auto find_result = vnf->pnfs.find(p5_idx);
+  if (find_result != vnf->pnfs.end()) {
+    pnf_info &pnf = find_result->second;
 
-		if(found != pnf.phys.end())
-		{
-			phy_info& phy = (*found);
+    auto found = std::find_if(pnf.phys.begin(), pnf.phys.end(), [&](phy_info &item) { return item.id == resp->header.phy_id; });
 
-			phy.remote_port = resp->nfapi_config.p7_pnf_port.value;
-			
-			struct sockaddr_in pnf_p7_sockaddr;
-			memcpy(&pnf_p7_sockaddr.sin_addr.s_addr, &(resp->nfapi_config.p7_pnf_address_ipv4.address[0]), 4);
+    if (found != pnf.phys.end()) {
+      phy_info &phy = (*found);
 
-			phy.remote_addr = inet_ntoa(pnf_p7_sockaddr.sin_addr);
+      phy.remote_port = resp->nfapi_config.p7_pnf_port.value;
 
-			// for now just 1
-			vnf_p7_info& p7_vnf = vnf->p7_vnfs[0];
+      struct sockaddr_in pnf_p7_sockaddr;
+      memcpy(&pnf_p7_sockaddr.sin_addr.s_addr, &(resp->nfapi_config.p7_pnf_address_ipv4.address[0]), 4);
 
-			printf("[VNF_SIM] %d.%d pnf p7 %s:%d timing %u %u %u %u\n", p5_idx, phy.id, phy.remote_addr.c_str(), phy.remote_port, p7_vnf.timing_window, p7_vnf.periodic_timing_period, p7_vnf.aperiodic_timing_enabled, p7_vnf.periodic_timing_period);
+      phy.remote_addr = inet_ntoa(pnf_p7_sockaddr.sin_addr);
 
+      // for now just 1
+      vnf_p7_info &p7_vnf = vnf->p7_vnfs[0];
 
-			nfapi_config_request_t req;
-			memset(&req, 0, sizeof(req));
-			req.header.message_id = NFAPI_CONFIG_REQUEST;
-			req.header.phy_id = phy.id;
+      printf("[VNF_SIM] %d.%d pnf p7 %s:%d timing %u %u %u %u\n",
+             p5_idx,
+             phy.id,
+             phy.remote_addr.c_str(),
+             phy.remote_port,
+             p7_vnf.timing_window,
+             p7_vnf.periodic_timing_period,
+             p7_vnf.aperiodic_timing_enabled,
+             p7_vnf.periodic_timing_period);
 
-			
-			req.nfapi_config.p7_vnf_port.tl.tag = NFAPI_NFAPI_P7_VNF_PORT_TAG;
-			req.nfapi_config.p7_vnf_port.value = p7_vnf.local_port;
-			req.num_tlv++;
+      nfapi_config_request_t req;
+      memset(&req, 0, sizeof(req));
+      req.header.message_id = NFAPI_CONFIG_REQUEST;
+      req.header.phy_id = phy.id;
 
-			req.nfapi_config.p7_vnf_address_ipv4.tl.tag = NFAPI_NFAPI_P7_VNF_ADDRESS_IPV4_TAG;
-			struct sockaddr_in vnf_p7_sockaddr;
-			vnf_p7_sockaddr.sin_addr.s_addr = inet_addr(p7_vnf.local_addr.c_str());
-			memcpy(&(req.nfapi_config.p7_vnf_address_ipv4.address[0]), &vnf_p7_sockaddr.sin_addr.s_addr, 4);
-			req.num_tlv++;
+      req.nfapi_config.p7_vnf_port.tl.tag = NFAPI_NFAPI_P7_VNF_PORT_TAG;
+      req.nfapi_config.p7_vnf_port.value = p7_vnf.local_port;
+      req.num_tlv++;
 
-			req.nfapi_config.timing_window.tl.tag = NFAPI_NFAPI_TIMING_WINDOW_TAG;
-			req.nfapi_config.timing_window.value = p7_vnf.timing_window;
-			req.num_tlv++;
+      req.nfapi_config.p7_vnf_address_ipv4.tl.tag = NFAPI_NFAPI_P7_VNF_ADDRESS_IPV4_TAG;
+      struct sockaddr_in vnf_p7_sockaddr;
+      vnf_p7_sockaddr.sin_addr.s_addr = inet_addr(p7_vnf.local_addr.c_str());
+      memcpy(&(req.nfapi_config.p7_vnf_address_ipv4.address[0]), &vnf_p7_sockaddr.sin_addr.s_addr, 4);
+      req.num_tlv++;
 
-			if(p7_vnf.periodic_timing_enabled || p7_vnf.aperiodic_timing_enabled)
-			{
-				req.nfapi_config.timing_info_mode.tl.tag = NFAPI_NFAPI_TIMING_INFO_MODE_TAG;
-				req.nfapi_config.timing_info_mode.value = (p7_vnf.aperiodic_timing_enabled << 1) | (p7_vnf.periodic_timing_enabled);
-				req.num_tlv++;
+      req.nfapi_config.timing_window.tl.tag = NFAPI_NFAPI_TIMING_WINDOW_TAG;
+      req.nfapi_config.timing_window.value = p7_vnf.timing_window;
+      req.num_tlv++;
 
-				if(p7_vnf.periodic_timing_enabled)
-				{
-					req.nfapi_config.timing_info_period.tl.tag = NFAPI_NFAPI_TIMING_INFO_PERIOD_TAG;
-					req.nfapi_config.timing_info_period.value = p7_vnf.periodic_timing_period;
-					req.num_tlv++;
-				}
-			}
+      if (p7_vnf.periodic_timing_enabled || p7_vnf.aperiodic_timing_enabled) {
+        req.nfapi_config.timing_info_mode.tl.tag = NFAPI_NFAPI_TIMING_INFO_MODE_TAG;
+        req.nfapi_config.timing_info_mode.value = (p7_vnf.aperiodic_timing_enabled << 1) | (p7_vnf.periodic_timing_enabled);
+        req.num_tlv++;
 
-			req.nfapi_config.earfcn.tl.tag = NFAPI_NFAPI_EARFCN_TAG;
-			req.nfapi_config.earfcn.value = phy.earfcn;
-			req.num_tlv++;
-			
-			
-			if(1)
-			{
-				// Poplate all tlv for wireshark testing
-				req.subframe_config.duplex_mode.tl.tag = NFAPI_SUBFRAME_CONFIG_DUPLEX_MODE_TAG;
-				req.num_tlv++;
-				
-				req.subframe_config.pcfich_power_offset.tl.tag = NFAPI_SUBFRAME_CONFIG_PCFICH_POWER_OFFSET_TAG;
-				req.num_tlv++;
-				req.subframe_config.pb.tl.tag = NFAPI_SUBFRAME_CONFIG_PB_TAG;
-				req.num_tlv++;
-				req.subframe_config.dl_cyclic_prefix_type.tl.tag = NFAPI_SUBFRAME_CONFIG_DL_CYCLIC_PREFIX_TYPE_TAG;
-				req.num_tlv++;
-				req.subframe_config.ul_cyclic_prefix_type.tl.tag = NFAPI_SUBFRAME_CONFIG_UL_CYCLIC_PREFIX_TYPE_TAG;
-				req.num_tlv++;
-	
-				req.rf_config.dl_channel_bandwidth.tl.tag = NFAPI_RF_CONFIG_DL_CHANNEL_BANDWIDTH_TAG;
-				req.num_tlv++;
-				req.rf_config.ul_channel_bandwidth.tl.tag = NFAPI_RF_CONFIG_UL_CHANNEL_BANDWIDTH_TAG;
-				req.num_tlv++;
-				req.rf_config.reference_signal_power.tl.tag = NFAPI_RF_CONFIG_REFERENCE_SIGNAL_POWER_TAG;
-				req.num_tlv++;
-				req.rf_config.tx_antenna_ports.tl.tag = NFAPI_RF_CONFIG_TX_ANTENNA_PORTS_TAG;
-				req.num_tlv++;
-				req.rf_config.rx_antenna_ports.tl.tag = NFAPI_RF_CONFIG_RX_ANTENNA_PORTS_TAG;		
-				req.num_tlv++;
-	
-				req.phich_config.phich_resource.tl.tag = NFAPI_PHICH_CONFIG_PHICH_RESOURCE_TAG;
-				req.num_tlv++;
-				req.phich_config.phich_duration.tl.tag = NFAPI_PHICH_CONFIG_PHICH_DURATION_TAG;
-				req.num_tlv++;
-				req.phich_config.phich_power_offset.tl.tag = NFAPI_PHICH_CONFIG_PHICH_POWER_OFFSET_TAG;	
-				req.num_tlv++;
-	
-				req.sch_config.primary_synchronization_signal_epre_eprers.tl.tag = NFAPI_SCH_CONFIG_PRIMARY_SYNCHRONIZATION_SIGNAL_EPRE_EPRERS_TAG;
-				req.num_tlv++;
-				req.sch_config.secondary_synchronization_signal_epre_eprers.tl.tag = NFAPI_SCH_CONFIG_SECONDARY_SYNCHRONIZATION_SIGNAL_EPRE_EPRERS_TAG;
-				req.num_tlv++;
-				req.sch_config.physical_cell_id.tl.tag = NFAPI_SCH_CONFIG_PHYSICAL_CELL_ID_TAG;				
-				req.num_tlv++;
-	
-				req.prach_config.configuration_index.tl.tag = NFAPI_PRACH_CONFIG_CONFIGURATION_INDEX_TAG;
-				req.num_tlv++;
-				req.prach_config.root_sequence_index.tl.tag = NFAPI_PRACH_CONFIG_ROOT_SEQUENCE_INDEX_TAG;
-				req.num_tlv++;
-				req.prach_config.zero_correlation_zone_configuration.tl.tag = NFAPI_PRACH_CONFIG_ZERO_CORRELATION_ZONE_CONFIGURATION_TAG;
-				req.num_tlv++;
-				req.prach_config.high_speed_flag.tl.tag = NFAPI_PRACH_CONFIG_HIGH_SPEED_FLAG_TAG;
-				req.num_tlv++;
-				req.prach_config.frequency_offset.tl.tag = NFAPI_PRACH_CONFIG_FREQUENCY_OFFSET_TAG;				
-				req.num_tlv++;
-	
-				req.pusch_config.hopping_mode.tl.tag = NFAPI_PUSCH_CONFIG_HOPPING_MODE_TAG;
-				req.num_tlv++;
-				req.pusch_config.hopping_offset.tl.tag = NFAPI_PUSCH_CONFIG_HOPPING_OFFSET_TAG;
-				req.num_tlv++;
-				req.pusch_config.number_of_subbands.tl.tag = NFAPI_PUSCH_CONFIG_NUMBER_OF_SUBBANDS_TAG;
-				req.num_tlv++;
-	
-				req.pucch_config.delta_pucch_shift.tl.tag = NFAPI_PUCCH_CONFIG_DELTA_PUCCH_SHIFT_TAG;
-				req.num_tlv++;
-				req.pucch_config.n_cqi_rb.tl.tag = NFAPI_PUCCH_CONFIG_N_CQI_RB_TAG;
-				req.num_tlv++;
-				req.pucch_config.n_an_cs.tl.tag = NFAPI_PUCCH_CONFIG_N_AN_CS_TAG;
-				req.num_tlv++;
-				req.pucch_config.n1_pucch_an.tl.tag = NFAPI_PUCCH_CONFIG_N1_PUCCH_AN_TAG;
-				req.num_tlv++;
-	
-				req.srs_config.bandwidth_configuration.tl.tag = NFAPI_SRS_CONFIG_BANDWIDTH_CONFIGURATION_TAG;
-				req.num_tlv++;
-				req.srs_config.max_up_pts.tl.tag = NFAPI_SRS_CONFIG_MAX_UP_PTS_TAG;
-				req.num_tlv++;
-				req.srs_config.srs_subframe_configuration.tl.tag = NFAPI_SRS_CONFIG_SRS_SUBFRAME_CONFIGURATION_TAG;
-				req.num_tlv++;
-				req.srs_config.srs_acknack_srs_simultaneous_transmission.tl.tag = NFAPI_SRS_CONFIG_SRS_ACKNACK_SRS_SIMULTANEOUS_TRANSMISSION_TAG;				
-				req.num_tlv++;
-	
-				req.uplink_reference_signal_config.uplink_rs_hopping.tl.tag = NFAPI_UPLINK_REFERENCE_SIGNAL_CONFIG_UPLINK_RS_HOPPING_TAG;
-				req.num_tlv++;
-				req.uplink_reference_signal_config.group_assignment.tl.tag = NFAPI_UPLINK_REFERENCE_SIGNAL_CONFIG_GROUP_ASSIGNMENT_TAG;
-				req.num_tlv++;
-				req.uplink_reference_signal_config.cyclic_shift_1_for_drms.tl.tag = NFAPI_UPLINK_REFERENCE_SIGNAL_CONFIG_CYCLIC_SHIFT_1_FOR_DRMS_TAG;				
-				req.num_tlv++;
-	
-				req.laa_config.ed_threshold_lbt_pdsch.tl.tag = NFAPI_LAA_CONFIG_ED_THRESHOLD_FOR_LBT_FOR_PDSCH_TAG;
-				req.num_tlv++;
-				req.laa_config.ed_threshold_lbt_drs.tl.tag = NFAPI_LAA_CONFIG_ED_THRESHOLD_FOR_LBT_FOR_DRS_TAG;
-				req.num_tlv++;
-				req.laa_config.pd_threshold.tl.tag = NFAPI_LAA_CONFIG_PD_THRESHOLD_TAG;
-				req.num_tlv++;
-				req.laa_config.multi_carrier_type.tl.tag = NFAPI_LAA_CONFIG_MULTI_CARRIER_TYPE_TAG;
-				req.num_tlv++;
-				req.laa_config.multi_carrier_tx.tl.tag = NFAPI_LAA_CONFIG_MULTI_CARRIER_TX_TAG;
-				req.num_tlv++;
-				req.laa_config.multi_carrier_freeze.tl.tag = NFAPI_LAA_CONFIG_MULTI_CARRIER_FREEZE_TAG;
-				req.num_tlv++;
-				req.laa_config.tx_antenna_ports_drs.tl.tag = NFAPI_LAA_CONFIG_TX_ANTENNA_PORTS_FOR_DRS_TAG;
-				req.num_tlv++;
-				req.laa_config.tx_power_drs.tl.tag = NFAPI_LAA_CONFIG_TRANSMISSION_POWER_FOR_DRS_TAG;				
-				req.num_tlv++;
-	
-				req.emtc_config.pbch_repetitions_enable_r13.tl.tag = NFAPI_EMTC_CONFIG_PBCH_REPETITIONS_ENABLE_R13_TAG;
-				req.num_tlv++;
-				req.emtc_config.prach_catm_root_sequence_index.tl.tag = NFAPI_EMTC_CONFIG_PRACH_CATM_ROOT_SEQUENCE_INDEX_TAG;
-				req.num_tlv++;
-				req.emtc_config.prach_catm_zero_correlation_zone_configuration.tl.tag = NFAPI_EMTC_CONFIG_PRACH_CATM_ZERO_CORRELATION_ZONE_CONFIGURATION_TAG;
-				req.num_tlv++;
-				req.emtc_config.prach_catm_high_speed_flag.tl.tag = NFAPI_EMTC_CONFIG_PRACH_CATM_HIGH_SPEED_FLAG;
-				req.num_tlv++;
-				req.emtc_config.prach_ce_level_0_enable.tl.tag = NFAPI_EMTC_CONFIG_PRACH_CE_LEVEL_0_ENABLE_TAG;
-				req.num_tlv++;
-				req.emtc_config.prach_ce_level_0_configuration_index.tl.tag = NFAPI_EMTC_CONFIG_PRACH_CE_LEVEL_0_CONFIGURATION_INDEX_TAG;
-				req.num_tlv++;
-				req.emtc_config.prach_ce_level_0_frequency_offset.tl.tag = NFAPI_EMTC_CONFIG_PRACH_CE_LEVEL_0_FREQUENCY_OFFSET_TAG;
-				req.num_tlv++;
-				req.emtc_config.prach_ce_level_0_number_of_repetitions_per_attempt.tl.tag = NFAPI_EMTC_CONFIG_PRACH_CE_LEVEL_0_NUMBER_OF_REPETITIONS_PER_ATTEMPT_TAG;
-				req.num_tlv++;
-				req.emtc_config.prach_ce_level_0_starting_subframe_periodicity.tl.tag = NFAPI_EMTC_CONFIG_PRACH_CE_LEVEL_0_STARTING_SUBFRAME_PERIODICITY_TAG;
-				req.num_tlv++;
-				req.emtc_config.prach_ce_level_0_hopping_enable.tl.tag = NFAPI_EMTC_CONFIG_PRACH_CE_LEVEL_0_HOPPING_ENABLE_TAG;
-				req.num_tlv++;
-				req.emtc_config.prach_ce_level_0_hopping_offset.tl.tag = NFAPI_EMTC_CONFIG_PRACH_CE_LEVEL_0_HOPPING_OFFSET_TAG;
-				req.num_tlv++;
-				req.emtc_config.prach_ce_level_1_enable.tl.tag = NFAPI_EMTC_CONFIG_PRACH_CE_LEVEL_1_ENABLE_TAG;
-				req.num_tlv++;
-				req.emtc_config.prach_ce_level_1_configuration_index.tl.tag = NFAPI_EMTC_CONFIG_PRACH_CE_LEVEL_1_CONFIGURATION_INDEX_TAG;
-				req.num_tlv++;
-				req.emtc_config.prach_ce_level_1_frequency_offset.tl.tag = NFAPI_EMTC_CONFIG_PRACH_CE_LEVEL_1_FREQUENCY_OFFSET_TAG;
-				req.num_tlv++;
-				req.emtc_config.prach_ce_level_1_number_of_repetitions_per_attempt.tl.tag = NFAPI_EMTC_CONFIG_PRACH_CE_LEVEL_1_NUMBER_OF_REPETITIONS_PER_ATTEMPT_TAG;
-				req.num_tlv++;
-				req.emtc_config.prach_ce_level_1_starting_subframe_periodicity.tl.tag = NFAPI_EMTC_CONFIG_PRACH_CE_LEVEL_1_STARTING_SUBFRAME_PERIODICITY_TAG;
-				req.num_tlv++;
-				req.emtc_config.prach_ce_level_1_hopping_enable.tl.tag = NFAPI_EMTC_CONFIG_PRACH_CE_LEVEL_1_HOPPING_ENABLE_TAG;
-				req.num_tlv++;
-				req.emtc_config.prach_ce_level_1_hopping_offset.tl.tag = NFAPI_EMTC_CONFIG_PRACH_CE_LEVEL_1_HOPPING_OFFSET_TAG;
-				req.num_tlv++;
-				req.emtc_config.prach_ce_level_2_enable.tl.tag = NFAPI_EMTC_CONFIG_PRACH_CE_LEVEL_2_ENABLE_TAG;
-				req.num_tlv++;
-				req.emtc_config.prach_ce_level_2_configuration_index.tl.tag = NFAPI_EMTC_CONFIG_PRACH_CE_LEVEL_2_CONFIGURATION_INDEX_TAG;
-				req.num_tlv++;
-				req.emtc_config.prach_ce_level_2_frequency_offset.tl.tag = NFAPI_EMTC_CONFIG_PRACH_CE_LEVEL_2_FREQUENCY_OFFSET_TAG;
-				req.num_tlv++;
-				req.emtc_config.prach_ce_level_2_number_of_repetitions_per_attempt.tl.tag = NFAPI_EMTC_CONFIG_PRACH_CE_LEVEL_2_NUMBER_OF_REPETITIONS_PER_ATTEMPT_TAG;
-				req.num_tlv++;
-				req.emtc_config.prach_ce_level_2_starting_subframe_periodicity.tl.tag = NFAPI_EMTC_CONFIG_PRACH_CE_LEVEL_2_STARTING_SUBFRAME_PERIODICITY_TAG;
-				req.num_tlv++;
-				req.emtc_config.prach_ce_level_2_hopping_enable.tl.tag = NFAPI_EMTC_CONFIG_PRACH_CE_LEVEL_2_HOPPING_ENABLE_TAG;
-				req.num_tlv++;
-				req.emtc_config.prach_ce_level_2_hopping_offset.tl.tag = NFAPI_EMTC_CONFIG_PRACH_CE_LEVEL_2_HOPPING_OFFSET_TAG;
-				req.num_tlv++;
-				req.emtc_config.prach_ce_level_3_enable.tl.tag = NFAPI_EMTC_CONFIG_PRACH_CE_LEVEL_3_ENABLE_TAG;
-				req.num_tlv++;
-				req.emtc_config.prach_ce_level_3_configuration_index.tl.tag = NFAPI_EMTC_CONFIG_PRACH_CE_LEVEL_3_CONFIGURATION_INDEX_TAG;
-				req.num_tlv++;
-				req.emtc_config.prach_ce_level_3_frequency_offset.tl.tag = NFAPI_EMTC_CONFIG_PRACH_CE_LEVEL_3_FREQUENCY_OFFSET_TAG;
-				req.num_tlv++;
-				req.emtc_config.prach_ce_level_3_number_of_repetitions_per_attempt.tl.tag = NFAPI_EMTC_CONFIG_PRACH_CE_LEVEL_3_NUMBER_OF_REPETITIONS_PER_ATTEMPT_TAG;
-				req.num_tlv++;
-				req.emtc_config.prach_ce_level_3_starting_subframe_periodicity.tl.tag = NFAPI_EMTC_CONFIG_PRACH_CE_LEVEL_3_STARTING_SUBFRAME_PERIODICITY_TAG;
-				req.num_tlv++;
-				req.emtc_config.prach_ce_level_3_hopping_enable.tl.tag = NFAPI_EMTC_CONFIG_PRACH_CE_LEVEL_3_HOPPING_ENABLE_TAG;
-				req.num_tlv++;
-				req.emtc_config.prach_ce_level_3_hopping_offset.tl.tag = NFAPI_EMTC_CONFIG_PRACH_CE_LEVEL_3_HOPPING_OFFSET_TAG;
-				req.num_tlv++;
-				req.emtc_config.pucch_interval_ulhoppingconfigcommonmodea.tl.tag = NFAPI_EMTC_CONFIG_PUCCH_INTERVAL_ULHOPPINGCONFIGCOMMONMODEA_TAG;
-				req.num_tlv++;
-				req.emtc_config.pucch_interval_ulhoppingconfigcommonmodeb.tl.tag = NFAPI_EMTC_CONFIG_PUCCH_INTERVAL_ULHOPPINGCONFIGCOMMONMODEB_TAG;			
-				req.num_tlv++;
-				
-				req.nb_iot_config.operating_mode.tl.tag = NFAPI_NB_IOT_CONFIG_OPERATING_MODE_TAG;
-				req.nb_iot_config.operating_mode.value = rand_range(0, 3);
-				req.num_tlv++;				
-				req.nb_iot_config.anchor.tl.tag = NFAPI_NB_IOT_CONFIG_ANCHOR_TAG;
-				req.nb_iot_config.anchor.value = rand_range(0, 1);
-				req.num_tlv++;
-				req.nb_iot_config.prb_index.tl.tag = NFAPI_NB_IOT_CONFIG_PRB_INDEX_TAG;
-				req.nb_iot_config.prb_index.value = rand_range(0, 0x1F);
-				req.num_tlv++;
-				req.nb_iot_config.control_region_size.tl.tag = NFAPI_NB_IOT_CONFIG_CONTROL_REGION_SIZE_TAG;
-				req.nb_iot_config.control_region_size.value = rand_range(1, 4);
-				req.num_tlv++;
-				req.nb_iot_config.assumed_crs_aps.tl.tag = NFAPI_NB_IOT_CONFIG_ASSUMED_CRS_APS_TAG;
-				req.nb_iot_config.assumed_crs_aps.value = rand_range(0, 1);
-				req.num_tlv++;
-				req.nb_iot_config.nprach_config_0_enabled.tl.tag = NFAPI_NB_IOT_CONFIG_NPRACH_CONFIG_0_ENABLED_TAG;
-				req.nb_iot_config.nprach_config_0_enabled.value = rand_range(0, 1);
-				req.num_tlv++;
-				req.nb_iot_config.nprach_config_0_sf_periodicity.tl.tag = NFAPI_NB_IOT_CONFIG_NPRACH_CONFIG_0_SF_PERIODICITY_TAG;
-				req.nb_iot_config.nprach_config_0_sf_periodicity.value = rand_range(0, 7);
-				req.num_tlv++;
-				req.nb_iot_config.nprach_config_0_start_time.tl.tag = NFAPI_NB_IOT_CONFIG_NPRACH_CONFIG_0_START_TIME_TAG;
-				req.nb_iot_config.nprach_config_0_start_time.value = rand_range(0, 7);
-				req.num_tlv++;
-				req.nb_iot_config.nprach_config_0_subcarrier_offset.tl.tag = NFAPI_NB_IOT_CONFIG_NPRACH_CONFIG_0_SUBCARRIER_OFFSET_TAG;
-				req.nb_iot_config.nprach_config_0_subcarrier_offset.value = rand_range(0, 6);
-				req.num_tlv++;
-				req.nb_iot_config.nprach_config_0_number_of_subcarriers.tl.tag = NFAPI_NB_IOT_CONFIG_NPRACH_CONFIG_0_NUMBER_OF_SUBCARRIERS_TAG;
-				req.nb_iot_config.nprach_config_0_number_of_subcarriers.value = rand_range(0, 3);
-				req.num_tlv++;
-				req.nb_iot_config.nprach_config_0_cp_length.tl.tag = NFAPI_NB_IOT_CONFIG_NPRACH_CONFIG_0_CP_LENGTH_TAG;
-				req.nb_iot_config.nprach_config_0_cp_length.value = rand_range(0, 1);
-				req.num_tlv++;
-				req.nb_iot_config.nprach_config_0_number_of_repetitions_per_attempt.tl.tag = NFAPI_NB_IOT_CONFIG_NPRACH_CONFIG_0_NUMBER_OF_REPETITIONS_PER_ATTEMPT_TAG;
-				req.nb_iot_config.nprach_config_0_number_of_repetitions_per_attempt.value = rand_range(0, 7);
-				req.num_tlv++;
-				req.nb_iot_config.nprach_config_1_enabled.tl.tag = NFAPI_NB_IOT_CONFIG_NPRACH_CONFIG_1_ENABLED_TAG;
-				req.nb_iot_config.nprach_config_1_enabled.value = rand_range(0, 1);
-				req.num_tlv++;
-				req.nb_iot_config.nprach_config_1_sf_periodicity.tl.tag = NFAPI_NB_IOT_CONFIG_NPRACH_CONFIG_1_SF_PERIODICITY_TAG;
-				req.nb_iot_config.nprach_config_1_sf_periodicity.value = rand_range(0, 7);
-				req.num_tlv++;
-				req.nb_iot_config.nprach_config_1_start_time.tl.tag = NFAPI_NB_IOT_CONFIG_NPRACH_CONFIG_1_START_TIME_TAG;
-				req.nb_iot_config.nprach_config_1_start_time.value = rand_range(0, 7);
-				req.num_tlv++;
-				req.nb_iot_config.nprach_config_1_subcarrier_offset.tl.tag = NFAPI_NB_IOT_CONFIG_NPRACH_CONFIG_1_SUBCARRIER_OFFSET_TAG;
-				req.nb_iot_config.nprach_config_1_subcarrier_offset.value = rand_range(0, 6);
-				req.num_tlv++;
-				req.nb_iot_config.nprach_config_1_number_of_subcarriers.tl.tag = NFAPI_NB_IOT_CONFIG_NPRACH_CONFIG_1_NUMBER_OF_SUBCARRIERS_TAG;
-				req.nb_iot_config.nprach_config_1_number_of_subcarriers.value = rand_range(0, 3);				
-				req.num_tlv++;
-				req.nb_iot_config.nprach_config_1_cp_length.tl.tag = NFAPI_NB_IOT_CONFIG_NPRACH_CONFIG_1_CP_LENGTH_TAG;
-				req.nb_iot_config.nprach_config_1_cp_length.value = rand_range(0, 1);
-				req.num_tlv++;
-				req.nb_iot_config.nprach_config_1_number_of_repetitions_per_attempt.tl.tag = NFAPI_NB_IOT_CONFIG_NPRACH_CONFIG_1_NUMBER_OF_REPETITIONS_PER_ATTEMPT_TAG;
-				req.nb_iot_config.nprach_config_1_number_of_repetitions_per_attempt.value = rand_range(0, 7);
-				req.num_tlv++;
-				req.nb_iot_config.nprach_config_2_enabled.tl.tag = NFAPI_NB_IOT_CONFIG_NPRACH_CONFIG_2_ENABLED_TAG;
-				req.nb_iot_config.nprach_config_2_enabled.value = rand_range(0, 1);
-				req.num_tlv++;
-				req.nb_iot_config.nprach_config_2_sf_periodicity.tl.tag = NFAPI_NB_IOT_CONFIG_NPRACH_CONFIG_2_SF_PERIODICITY_TAG;
-				req.nb_iot_config.nprach_config_2_sf_periodicity.value = rand_range(0, 7);
-				req.num_tlv++;
-				req.nb_iot_config.nprach_config_2_start_time.tl.tag = NFAPI_NB_IOT_CONFIG_NPRACH_CONFIG_2_START_TIME_TAG;
-				req.nb_iot_config.nprach_config_2_start_time.value = rand_range(0, 7);
-				req.num_tlv++;
-				req.nb_iot_config.nprach_config_2_subcarrier_offset.tl.tag = NFAPI_NB_IOT_CONFIG_NPRACH_CONFIG_2_SUBCARRIER_OFFSET_TAG;
-				req.nb_iot_config.nprach_config_2_subcarrier_offset.value = rand_range(0, 6);
-				req.num_tlv++;
-				req.nb_iot_config.nprach_config_2_number_of_subcarriers.tl.tag = NFAPI_NB_IOT_CONFIG_NPRACH_CONFIG_2_NUMBER_OF_SUBCARRIERS_TAG;
-				req.nb_iot_config.nprach_config_2_number_of_subcarriers.value = rand_range(0, 3);				
-				req.num_tlv++;
-				req.nb_iot_config.nprach_config_2_cp_length.tl.tag = NFAPI_NB_IOT_CONFIG_NPRACH_CONFIG_2_CP_LENGTH_TAG;
-				req.nb_iot_config.nprach_config_2_cp_length.value = rand_range(0, 1);
-				req.num_tlv++;
-				req.nb_iot_config.nprach_config_2_number_of_repetitions_per_attempt.tl.tag = NFAPI_NB_IOT_CONFIG_NPRACH_CONFIG_2_NUMBER_OF_REPETITIONS_PER_ATTEMPT_TAG;
-				req.nb_iot_config.nprach_config_2_number_of_repetitions_per_attempt.value = rand_range(0, 7);				
-				req.num_tlv++;
-				req.nb_iot_config.three_tone_base_sequence.tl.tag = NFAPI_NB_IOT_CONFIG_THREE_TONE_BASE_SEQUENCE_TAG;
-				req.nb_iot_config.three_tone_base_sequence.value = rand_range(0, 0x0F);				
-				req.num_tlv++;
-				req.nb_iot_config.six_tone_base_sequence.tl.tag = NFAPI_NB_IOT_CONFIG_SIX_TONE_BASE_SEQUENCE_TAG;
-				req.nb_iot_config.six_tone_base_sequence.value = rand_range(0, 0x03);				
-				req.num_tlv++;
-				req.nb_iot_config.twelve_tone_base_sequence.tl.tag = NFAPI_NB_IOT_CONFIG_TWELVE_TONE_BASE_SEQUENCE_TAG;
-				req.nb_iot_config.twelve_tone_base_sequence.value = rand_range(0, 0x1F);				
-				req.num_tlv++;
-				req.nb_iot_config.three_tone_cyclic_shift.tl.tag = NFAPI_NB_IOT_CONFIG_THREE_TONE_CYCLIC_SHIFT_TAG;
-				req.nb_iot_config.three_tone_cyclic_shift.value = rand_range(0, 5); // what is the max
-				req.num_tlv++;
-				req.nb_iot_config.six_tone_cyclic_shift.tl.tag = NFAPI_NB_IOT_CONFIG_SIX_TONE_CYCLIC_SHIFT_TAG;
-				req.nb_iot_config.six_tone_cyclic_shift.value = rand_range(0, 5); // what is the max
-				req.num_tlv++;
-				req.nb_iot_config.dl_gap_config_enable.tl.tag = NFAPI_NB_IOT_CONFIG_DL_GAP_CONFIG_ENABLE_TAG;
-				req.nb_iot_config.dl_gap_config_enable.value = rand_range(0, 1);
-				req.num_tlv++;
-				req.nb_iot_config.dl_gap_threshold.tl.tag = NFAPI_NB_IOT_CONFIG_DL_GAP_THRESHOLD_TAG;
-				req.nb_iot_config.dl_gap_threshold.value = rand_range(0, 3);
-				req.num_tlv++;
-				req.nb_iot_config.dl_gap_periodicity.tl.tag = NFAPI_NB_IOT_CONFIG_DL_GAP_PERIODICITY_TAG;
-				req.nb_iot_config.dl_gap_periodicity.value = rand_range(0, 3);
-				req.num_tlv++;
-				req.nb_iot_config.dl_gap_duration_coefficient.tl.tag = NFAPI_NB_IOT_CONFIG_DL_GAP_DURATION_COEFFICIENT_TAG;
-				req.nb_iot_config.dl_gap_duration_coefficient.value = rand_range(0, 3);
-				req.num_tlv++;
-				
-				req.tdd_frame_structure_config.subframe_assignment.tl.tag = NFAPI_TDD_FRAME_STRUCTURE_SUBFRAME_ASSIGNMENT_TAG;
-				req.num_tlv++;
-				req.tdd_frame_structure_config.special_subframe_patterns.tl.tag = NFAPI_TDD_FRAME_STRUCTURE_SPECIAL_SUBFRAME_PATTERNS_TAG;		
-				req.num_tlv++;
-				
-				req.l23_config.data_report_mode.tl.tag = NFAPI_L23_CONFIG_DATA_REPORT_MODE_TAG;
-				req.num_tlv++;
-				req.l23_config.sfnsf.tl.tag = NFAPI_L23_CONFIG_SFNSF_TAG;				
-				req.num_tlv++;
-			}
+        if (p7_vnf.periodic_timing_enabled) {
+          req.nfapi_config.timing_info_period.tl.tag = NFAPI_NFAPI_TIMING_INFO_PERIOD_TAG;
+          req.nfapi_config.timing_info_period.value = p7_vnf.periodic_timing_period;
+          req.num_tlv++;
+        }
+      }
 
-			vendor_ext_tlv_2 ve2;
-			memset(&ve2, 0, sizeof(ve2));
-			ve2.tl.tag = VENDOR_EXT_TLV_2_TAG;
-			ve2.dummy = 2016;
-			req.vendor_extension = &ve2.tl;
+      req.nfapi_config.earfcn.tl.tag = NFAPI_NFAPI_EARFCN_TAG;
+      req.nfapi_config.earfcn.value = phy.earfcn;
+      req.num_tlv++;
 
-			nfapi_vnf_config_req(config, p5_idx, &req);
-		}
-		else
-		{
-			printf("[VNF_SIM] param response failed to find pnf %d phy %d\n", p5_idx, resp->header.phy_id);
-		}
-	}
-	else
-	{
-		printf("[VNF_SIM] param response failed to find pnf %d\n", p5_idx);
-	}
+      if (1) {
+        // Poplate all tlv for wireshark testing
+        req.subframe_config.duplex_mode.tl.tag = NFAPI_SUBFRAME_CONFIG_DUPLEX_MODE_TAG;
+        req.num_tlv++;
 
-	return 0;
+        req.subframe_config.pcfich_power_offset.tl.tag = NFAPI_SUBFRAME_CONFIG_PCFICH_POWER_OFFSET_TAG;
+        req.num_tlv++;
+        req.subframe_config.pb.tl.tag = NFAPI_SUBFRAME_CONFIG_PB_TAG;
+        req.num_tlv++;
+        req.subframe_config.dl_cyclic_prefix_type.tl.tag = NFAPI_SUBFRAME_CONFIG_DL_CYCLIC_PREFIX_TYPE_TAG;
+        req.num_tlv++;
+        req.subframe_config.ul_cyclic_prefix_type.tl.tag = NFAPI_SUBFRAME_CONFIG_UL_CYCLIC_PREFIX_TYPE_TAG;
+        req.num_tlv++;
+
+        req.rf_config.dl_channel_bandwidth.tl.tag = NFAPI_RF_CONFIG_DL_CHANNEL_BANDWIDTH_TAG;
+        req.num_tlv++;
+        req.rf_config.ul_channel_bandwidth.tl.tag = NFAPI_RF_CONFIG_UL_CHANNEL_BANDWIDTH_TAG;
+        req.num_tlv++;
+        req.rf_config.reference_signal_power.tl.tag = NFAPI_RF_CONFIG_REFERENCE_SIGNAL_POWER_TAG;
+        req.num_tlv++;
+        req.rf_config.tx_antenna_ports.tl.tag = NFAPI_RF_CONFIG_TX_ANTENNA_PORTS_TAG;
+        req.num_tlv++;
+        req.rf_config.rx_antenna_ports.tl.tag = NFAPI_RF_CONFIG_RX_ANTENNA_PORTS_TAG;
+        req.num_tlv++;
+
+        req.phich_config.phich_resource.tl.tag = NFAPI_PHICH_CONFIG_PHICH_RESOURCE_TAG;
+        req.num_tlv++;
+        req.phich_config.phich_duration.tl.tag = NFAPI_PHICH_CONFIG_PHICH_DURATION_TAG;
+        req.num_tlv++;
+        req.phich_config.phich_power_offset.tl.tag = NFAPI_PHICH_CONFIG_PHICH_POWER_OFFSET_TAG;
+        req.num_tlv++;
+
+        req.sch_config.primary_synchronization_signal_epre_eprers.tl.tag =
+            NFAPI_SCH_CONFIG_PRIMARY_SYNCHRONIZATION_SIGNAL_EPRE_EPRERS_TAG;
+        req.num_tlv++;
+        req.sch_config.secondary_synchronization_signal_epre_eprers.tl.tag =
+            NFAPI_SCH_CONFIG_SECONDARY_SYNCHRONIZATION_SIGNAL_EPRE_EPRERS_TAG;
+        req.num_tlv++;
+        req.sch_config.physical_cell_id.tl.tag = NFAPI_SCH_CONFIG_PHYSICAL_CELL_ID_TAG;
+        req.num_tlv++;
+
+        req.prach_config.configuration_index.tl.tag = NFAPI_PRACH_CONFIG_CONFIGURATION_INDEX_TAG;
+        req.num_tlv++;
+        req.prach_config.root_sequence_index.tl.tag = NFAPI_PRACH_CONFIG_ROOT_SEQUENCE_INDEX_TAG;
+        req.num_tlv++;
+        req.prach_config.zero_correlation_zone_configuration.tl.tag = NFAPI_PRACH_CONFIG_ZERO_CORRELATION_ZONE_CONFIGURATION_TAG;
+        req.num_tlv++;
+        req.prach_config.high_speed_flag.tl.tag = NFAPI_PRACH_CONFIG_HIGH_SPEED_FLAG_TAG;
+        req.num_tlv++;
+        req.prach_config.frequency_offset.tl.tag = NFAPI_PRACH_CONFIG_FREQUENCY_OFFSET_TAG;
+        req.num_tlv++;
+
+        req.pusch_config.hopping_mode.tl.tag = NFAPI_PUSCH_CONFIG_HOPPING_MODE_TAG;
+        req.num_tlv++;
+        req.pusch_config.hopping_offset.tl.tag = NFAPI_PUSCH_CONFIG_HOPPING_OFFSET_TAG;
+        req.num_tlv++;
+        req.pusch_config.number_of_subbands.tl.tag = NFAPI_PUSCH_CONFIG_NUMBER_OF_SUBBANDS_TAG;
+        req.num_tlv++;
+
+        req.pucch_config.delta_pucch_shift.tl.tag = NFAPI_PUCCH_CONFIG_DELTA_PUCCH_SHIFT_TAG;
+        req.num_tlv++;
+        req.pucch_config.n_cqi_rb.tl.tag = NFAPI_PUCCH_CONFIG_N_CQI_RB_TAG;
+        req.num_tlv++;
+        req.pucch_config.n_an_cs.tl.tag = NFAPI_PUCCH_CONFIG_N_AN_CS_TAG;
+        req.num_tlv++;
+        req.pucch_config.n1_pucch_an.tl.tag = NFAPI_PUCCH_CONFIG_N1_PUCCH_AN_TAG;
+        req.num_tlv++;
+
+        req.srs_config.bandwidth_configuration.tl.tag = NFAPI_SRS_CONFIG_BANDWIDTH_CONFIGURATION_TAG;
+        req.num_tlv++;
+        req.srs_config.max_up_pts.tl.tag = NFAPI_SRS_CONFIG_MAX_UP_PTS_TAG;
+        req.num_tlv++;
+        req.srs_config.srs_subframe_configuration.tl.tag = NFAPI_SRS_CONFIG_SRS_SUBFRAME_CONFIGURATION_TAG;
+        req.num_tlv++;
+        req.srs_config.srs_acknack_srs_simultaneous_transmission.tl.tag =
+            NFAPI_SRS_CONFIG_SRS_ACKNACK_SRS_SIMULTANEOUS_TRANSMISSION_TAG;
+        req.num_tlv++;
+
+        req.uplink_reference_signal_config.uplink_rs_hopping.tl.tag = NFAPI_UPLINK_REFERENCE_SIGNAL_CONFIG_UPLINK_RS_HOPPING_TAG;
+        req.num_tlv++;
+        req.uplink_reference_signal_config.group_assignment.tl.tag = NFAPI_UPLINK_REFERENCE_SIGNAL_CONFIG_GROUP_ASSIGNMENT_TAG;
+        req.num_tlv++;
+        req.uplink_reference_signal_config.cyclic_shift_1_for_drms.tl.tag =
+            NFAPI_UPLINK_REFERENCE_SIGNAL_CONFIG_CYCLIC_SHIFT_1_FOR_DRMS_TAG;
+        req.num_tlv++;
+
+        req.laa_config.ed_threshold_lbt_pdsch.tl.tag = NFAPI_LAA_CONFIG_ED_THRESHOLD_FOR_LBT_FOR_PDSCH_TAG;
+        req.num_tlv++;
+        req.laa_config.ed_threshold_lbt_drs.tl.tag = NFAPI_LAA_CONFIG_ED_THRESHOLD_FOR_LBT_FOR_DRS_TAG;
+        req.num_tlv++;
+        req.laa_config.pd_threshold.tl.tag = NFAPI_LAA_CONFIG_PD_THRESHOLD_TAG;
+        req.num_tlv++;
+        req.laa_config.multi_carrier_type.tl.tag = NFAPI_LAA_CONFIG_MULTI_CARRIER_TYPE_TAG;
+        req.num_tlv++;
+        req.laa_config.multi_carrier_tx.tl.tag = NFAPI_LAA_CONFIG_MULTI_CARRIER_TX_TAG;
+        req.num_tlv++;
+        req.laa_config.multi_carrier_freeze.tl.tag = NFAPI_LAA_CONFIG_MULTI_CARRIER_FREEZE_TAG;
+        req.num_tlv++;
+        req.laa_config.tx_antenna_ports_drs.tl.tag = NFAPI_LAA_CONFIG_TX_ANTENNA_PORTS_FOR_DRS_TAG;
+        req.num_tlv++;
+        req.laa_config.tx_power_drs.tl.tag = NFAPI_LAA_CONFIG_TRANSMISSION_POWER_FOR_DRS_TAG;
+        req.num_tlv++;
+
+        req.emtc_config.pbch_repetitions_enable_r13.tl.tag = NFAPI_EMTC_CONFIG_PBCH_REPETITIONS_ENABLE_R13_TAG;
+        req.num_tlv++;
+        req.emtc_config.prach_catm_root_sequence_index.tl.tag = NFAPI_EMTC_CONFIG_PRACH_CATM_ROOT_SEQUENCE_INDEX_TAG;
+        req.num_tlv++;
+        req.emtc_config.prach_catm_zero_correlation_zone_configuration.tl.tag =
+            NFAPI_EMTC_CONFIG_PRACH_CATM_ZERO_CORRELATION_ZONE_CONFIGURATION_TAG;
+        req.num_tlv++;
+        req.emtc_config.prach_catm_high_speed_flag.tl.tag = NFAPI_EMTC_CONFIG_PRACH_CATM_HIGH_SPEED_FLAG;
+        req.num_tlv++;
+        req.emtc_config.prach_ce_level_0_enable.tl.tag = NFAPI_EMTC_CONFIG_PRACH_CE_LEVEL_0_ENABLE_TAG;
+        req.num_tlv++;
+        req.emtc_config.prach_ce_level_0_configuration_index.tl.tag = NFAPI_EMTC_CONFIG_PRACH_CE_LEVEL_0_CONFIGURATION_INDEX_TAG;
+        req.num_tlv++;
+        req.emtc_config.prach_ce_level_0_frequency_offset.tl.tag = NFAPI_EMTC_CONFIG_PRACH_CE_LEVEL_0_FREQUENCY_OFFSET_TAG;
+        req.num_tlv++;
+        req.emtc_config.prach_ce_level_0_number_of_repetitions_per_attempt.tl.tag =
+            NFAPI_EMTC_CONFIG_PRACH_CE_LEVEL_0_NUMBER_OF_REPETITIONS_PER_ATTEMPT_TAG;
+        req.num_tlv++;
+        req.emtc_config.prach_ce_level_0_starting_subframe_periodicity.tl.tag =
+            NFAPI_EMTC_CONFIG_PRACH_CE_LEVEL_0_STARTING_SUBFRAME_PERIODICITY_TAG;
+        req.num_tlv++;
+        req.emtc_config.prach_ce_level_0_hopping_enable.tl.tag = NFAPI_EMTC_CONFIG_PRACH_CE_LEVEL_0_HOPPING_ENABLE_TAG;
+        req.num_tlv++;
+        req.emtc_config.prach_ce_level_0_hopping_offset.tl.tag = NFAPI_EMTC_CONFIG_PRACH_CE_LEVEL_0_HOPPING_OFFSET_TAG;
+        req.num_tlv++;
+        req.emtc_config.prach_ce_level_1_enable.tl.tag = NFAPI_EMTC_CONFIG_PRACH_CE_LEVEL_1_ENABLE_TAG;
+        req.num_tlv++;
+        req.emtc_config.prach_ce_level_1_configuration_index.tl.tag = NFAPI_EMTC_CONFIG_PRACH_CE_LEVEL_1_CONFIGURATION_INDEX_TAG;
+        req.num_tlv++;
+        req.emtc_config.prach_ce_level_1_frequency_offset.tl.tag = NFAPI_EMTC_CONFIG_PRACH_CE_LEVEL_1_FREQUENCY_OFFSET_TAG;
+        req.num_tlv++;
+        req.emtc_config.prach_ce_level_1_number_of_repetitions_per_attempt.tl.tag =
+            NFAPI_EMTC_CONFIG_PRACH_CE_LEVEL_1_NUMBER_OF_REPETITIONS_PER_ATTEMPT_TAG;
+        req.num_tlv++;
+        req.emtc_config.prach_ce_level_1_starting_subframe_periodicity.tl.tag =
+            NFAPI_EMTC_CONFIG_PRACH_CE_LEVEL_1_STARTING_SUBFRAME_PERIODICITY_TAG;
+        req.num_tlv++;
+        req.emtc_config.prach_ce_level_1_hopping_enable.tl.tag = NFAPI_EMTC_CONFIG_PRACH_CE_LEVEL_1_HOPPING_ENABLE_TAG;
+        req.num_tlv++;
+        req.emtc_config.prach_ce_level_1_hopping_offset.tl.tag = NFAPI_EMTC_CONFIG_PRACH_CE_LEVEL_1_HOPPING_OFFSET_TAG;
+        req.num_tlv++;
+        req.emtc_config.prach_ce_level_2_enable.tl.tag = NFAPI_EMTC_CONFIG_PRACH_CE_LEVEL_2_ENABLE_TAG;
+        req.num_tlv++;
+        req.emtc_config.prach_ce_level_2_configuration_index.tl.tag = NFAPI_EMTC_CONFIG_PRACH_CE_LEVEL_2_CONFIGURATION_INDEX_TAG;
+        req.num_tlv++;
+        req.emtc_config.prach_ce_level_2_frequency_offset.tl.tag = NFAPI_EMTC_CONFIG_PRACH_CE_LEVEL_2_FREQUENCY_OFFSET_TAG;
+        req.num_tlv++;
+        req.emtc_config.prach_ce_level_2_number_of_repetitions_per_attempt.tl.tag =
+            NFAPI_EMTC_CONFIG_PRACH_CE_LEVEL_2_NUMBER_OF_REPETITIONS_PER_ATTEMPT_TAG;
+        req.num_tlv++;
+        req.emtc_config.prach_ce_level_2_starting_subframe_periodicity.tl.tag =
+            NFAPI_EMTC_CONFIG_PRACH_CE_LEVEL_2_STARTING_SUBFRAME_PERIODICITY_TAG;
+        req.num_tlv++;
+        req.emtc_config.prach_ce_level_2_hopping_enable.tl.tag = NFAPI_EMTC_CONFIG_PRACH_CE_LEVEL_2_HOPPING_ENABLE_TAG;
+        req.num_tlv++;
+        req.emtc_config.prach_ce_level_2_hopping_offset.tl.tag = NFAPI_EMTC_CONFIG_PRACH_CE_LEVEL_2_HOPPING_OFFSET_TAG;
+        req.num_tlv++;
+        req.emtc_config.prach_ce_level_3_enable.tl.tag = NFAPI_EMTC_CONFIG_PRACH_CE_LEVEL_3_ENABLE_TAG;
+        req.num_tlv++;
+        req.emtc_config.prach_ce_level_3_configuration_index.tl.tag = NFAPI_EMTC_CONFIG_PRACH_CE_LEVEL_3_CONFIGURATION_INDEX_TAG;
+        req.num_tlv++;
+        req.emtc_config.prach_ce_level_3_frequency_offset.tl.tag = NFAPI_EMTC_CONFIG_PRACH_CE_LEVEL_3_FREQUENCY_OFFSET_TAG;
+        req.num_tlv++;
+        req.emtc_config.prach_ce_level_3_number_of_repetitions_per_attempt.tl.tag =
+            NFAPI_EMTC_CONFIG_PRACH_CE_LEVEL_3_NUMBER_OF_REPETITIONS_PER_ATTEMPT_TAG;
+        req.num_tlv++;
+        req.emtc_config.prach_ce_level_3_starting_subframe_periodicity.tl.tag =
+            NFAPI_EMTC_CONFIG_PRACH_CE_LEVEL_3_STARTING_SUBFRAME_PERIODICITY_TAG;
+        req.num_tlv++;
+        req.emtc_config.prach_ce_level_3_hopping_enable.tl.tag = NFAPI_EMTC_CONFIG_PRACH_CE_LEVEL_3_HOPPING_ENABLE_TAG;
+        req.num_tlv++;
+        req.emtc_config.prach_ce_level_3_hopping_offset.tl.tag = NFAPI_EMTC_CONFIG_PRACH_CE_LEVEL_3_HOPPING_OFFSET_TAG;
+        req.num_tlv++;
+        req.emtc_config.pucch_interval_ulhoppingconfigcommonmodea.tl.tag =
+            NFAPI_EMTC_CONFIG_PUCCH_INTERVAL_ULHOPPINGCONFIGCOMMONMODEA_TAG;
+        req.num_tlv++;
+        req.emtc_config.pucch_interval_ulhoppingconfigcommonmodeb.tl.tag =
+            NFAPI_EMTC_CONFIG_PUCCH_INTERVAL_ULHOPPINGCONFIGCOMMONMODEB_TAG;
+        req.num_tlv++;
+
+        req.nb_iot_config.operating_mode.tl.tag = NFAPI_NB_IOT_CONFIG_OPERATING_MODE_TAG;
+        req.nb_iot_config.operating_mode.value = rand_range(0, 3);
+        req.num_tlv++;
+        req.nb_iot_config.anchor.tl.tag = NFAPI_NB_IOT_CONFIG_ANCHOR_TAG;
+        req.nb_iot_config.anchor.value = rand_range(0, 1);
+        req.num_tlv++;
+        req.nb_iot_config.prb_index.tl.tag = NFAPI_NB_IOT_CONFIG_PRB_INDEX_TAG;
+        req.nb_iot_config.prb_index.value = rand_range(0, 0x1F);
+        req.num_tlv++;
+        req.nb_iot_config.control_region_size.tl.tag = NFAPI_NB_IOT_CONFIG_CONTROL_REGION_SIZE_TAG;
+        req.nb_iot_config.control_region_size.value = rand_range(1, 4);
+        req.num_tlv++;
+        req.nb_iot_config.assumed_crs_aps.tl.tag = NFAPI_NB_IOT_CONFIG_ASSUMED_CRS_APS_TAG;
+        req.nb_iot_config.assumed_crs_aps.value = rand_range(0, 1);
+        req.num_tlv++;
+        req.nb_iot_config.nprach_config_0_enabled.tl.tag = NFAPI_NB_IOT_CONFIG_NPRACH_CONFIG_0_ENABLED_TAG;
+        req.nb_iot_config.nprach_config_0_enabled.value = rand_range(0, 1);
+        req.num_tlv++;
+        req.nb_iot_config.nprach_config_0_sf_periodicity.tl.tag = NFAPI_NB_IOT_CONFIG_NPRACH_CONFIG_0_SF_PERIODICITY_TAG;
+        req.nb_iot_config.nprach_config_0_sf_periodicity.value = rand_range(0, 7);
+        req.num_tlv++;
+        req.nb_iot_config.nprach_config_0_start_time.tl.tag = NFAPI_NB_IOT_CONFIG_NPRACH_CONFIG_0_START_TIME_TAG;
+        req.nb_iot_config.nprach_config_0_start_time.value = rand_range(0, 7);
+        req.num_tlv++;
+        req.nb_iot_config.nprach_config_0_subcarrier_offset.tl.tag = NFAPI_NB_IOT_CONFIG_NPRACH_CONFIG_0_SUBCARRIER_OFFSET_TAG;
+        req.nb_iot_config.nprach_config_0_subcarrier_offset.value = rand_range(0, 6);
+        req.num_tlv++;
+        req.nb_iot_config.nprach_config_0_number_of_subcarriers.tl.tag =
+            NFAPI_NB_IOT_CONFIG_NPRACH_CONFIG_0_NUMBER_OF_SUBCARRIERS_TAG;
+        req.nb_iot_config.nprach_config_0_number_of_subcarriers.value = rand_range(0, 3);
+        req.num_tlv++;
+        req.nb_iot_config.nprach_config_0_cp_length.tl.tag = NFAPI_NB_IOT_CONFIG_NPRACH_CONFIG_0_CP_LENGTH_TAG;
+        req.nb_iot_config.nprach_config_0_cp_length.value = rand_range(0, 1);
+        req.num_tlv++;
+        req.nb_iot_config.nprach_config_0_number_of_repetitions_per_attempt.tl.tag =
+            NFAPI_NB_IOT_CONFIG_NPRACH_CONFIG_0_NUMBER_OF_REPETITIONS_PER_ATTEMPT_TAG;
+        req.nb_iot_config.nprach_config_0_number_of_repetitions_per_attempt.value = rand_range(0, 7);
+        req.num_tlv++;
+        req.nb_iot_config.nprach_config_1_enabled.tl.tag = NFAPI_NB_IOT_CONFIG_NPRACH_CONFIG_1_ENABLED_TAG;
+        req.nb_iot_config.nprach_config_1_enabled.value = rand_range(0, 1);
+        req.num_tlv++;
+        req.nb_iot_config.nprach_config_1_sf_periodicity.tl.tag = NFAPI_NB_IOT_CONFIG_NPRACH_CONFIG_1_SF_PERIODICITY_TAG;
+        req.nb_iot_config.nprach_config_1_sf_periodicity.value = rand_range(0, 7);
+        req.num_tlv++;
+        req.nb_iot_config.nprach_config_1_start_time.tl.tag = NFAPI_NB_IOT_CONFIG_NPRACH_CONFIG_1_START_TIME_TAG;
+        req.nb_iot_config.nprach_config_1_start_time.value = rand_range(0, 7);
+        req.num_tlv++;
+        req.nb_iot_config.nprach_config_1_subcarrier_offset.tl.tag = NFAPI_NB_IOT_CONFIG_NPRACH_CONFIG_1_SUBCARRIER_OFFSET_TAG;
+        req.nb_iot_config.nprach_config_1_subcarrier_offset.value = rand_range(0, 6);
+        req.num_tlv++;
+        req.nb_iot_config.nprach_config_1_number_of_subcarriers.tl.tag =
+            NFAPI_NB_IOT_CONFIG_NPRACH_CONFIG_1_NUMBER_OF_SUBCARRIERS_TAG;
+        req.nb_iot_config.nprach_config_1_number_of_subcarriers.value = rand_range(0, 3);
+        req.num_tlv++;
+        req.nb_iot_config.nprach_config_1_cp_length.tl.tag = NFAPI_NB_IOT_CONFIG_NPRACH_CONFIG_1_CP_LENGTH_TAG;
+        req.nb_iot_config.nprach_config_1_cp_length.value = rand_range(0, 1);
+        req.num_tlv++;
+        req.nb_iot_config.nprach_config_1_number_of_repetitions_per_attempt.tl.tag =
+            NFAPI_NB_IOT_CONFIG_NPRACH_CONFIG_1_NUMBER_OF_REPETITIONS_PER_ATTEMPT_TAG;
+        req.nb_iot_config.nprach_config_1_number_of_repetitions_per_attempt.value = rand_range(0, 7);
+        req.num_tlv++;
+        req.nb_iot_config.nprach_config_2_enabled.tl.tag = NFAPI_NB_IOT_CONFIG_NPRACH_CONFIG_2_ENABLED_TAG;
+        req.nb_iot_config.nprach_config_2_enabled.value = rand_range(0, 1);
+        req.num_tlv++;
+        req.nb_iot_config.nprach_config_2_sf_periodicity.tl.tag = NFAPI_NB_IOT_CONFIG_NPRACH_CONFIG_2_SF_PERIODICITY_TAG;
+        req.nb_iot_config.nprach_config_2_sf_periodicity.value = rand_range(0, 7);
+        req.num_tlv++;
+        req.nb_iot_config.nprach_config_2_start_time.tl.tag = NFAPI_NB_IOT_CONFIG_NPRACH_CONFIG_2_START_TIME_TAG;
+        req.nb_iot_config.nprach_config_2_start_time.value = rand_range(0, 7);
+        req.num_tlv++;
+        req.nb_iot_config.nprach_config_2_subcarrier_offset.tl.tag = NFAPI_NB_IOT_CONFIG_NPRACH_CONFIG_2_SUBCARRIER_OFFSET_TAG;
+        req.nb_iot_config.nprach_config_2_subcarrier_offset.value = rand_range(0, 6);
+        req.num_tlv++;
+        req.nb_iot_config.nprach_config_2_number_of_subcarriers.tl.tag =
+            NFAPI_NB_IOT_CONFIG_NPRACH_CONFIG_2_NUMBER_OF_SUBCARRIERS_TAG;
+        req.nb_iot_config.nprach_config_2_number_of_subcarriers.value = rand_range(0, 3);
+        req.num_tlv++;
+        req.nb_iot_config.nprach_config_2_cp_length.tl.tag = NFAPI_NB_IOT_CONFIG_NPRACH_CONFIG_2_CP_LENGTH_TAG;
+        req.nb_iot_config.nprach_config_2_cp_length.value = rand_range(0, 1);
+        req.num_tlv++;
+        req.nb_iot_config.nprach_config_2_number_of_repetitions_per_attempt.tl.tag =
+            NFAPI_NB_IOT_CONFIG_NPRACH_CONFIG_2_NUMBER_OF_REPETITIONS_PER_ATTEMPT_TAG;
+        req.nb_iot_config.nprach_config_2_number_of_repetitions_per_attempt.value = rand_range(0, 7);
+        req.num_tlv++;
+        req.nb_iot_config.three_tone_base_sequence.tl.tag = NFAPI_NB_IOT_CONFIG_THREE_TONE_BASE_SEQUENCE_TAG;
+        req.nb_iot_config.three_tone_base_sequence.value = rand_range(0, 0x0F);
+        req.num_tlv++;
+        req.nb_iot_config.six_tone_base_sequence.tl.tag = NFAPI_NB_IOT_CONFIG_SIX_TONE_BASE_SEQUENCE_TAG;
+        req.nb_iot_config.six_tone_base_sequence.value = rand_range(0, 0x03);
+        req.num_tlv++;
+        req.nb_iot_config.twelve_tone_base_sequence.tl.tag = NFAPI_NB_IOT_CONFIG_TWELVE_TONE_BASE_SEQUENCE_TAG;
+        req.nb_iot_config.twelve_tone_base_sequence.value = rand_range(0, 0x1F);
+        req.num_tlv++;
+        req.nb_iot_config.three_tone_cyclic_shift.tl.tag = NFAPI_NB_IOT_CONFIG_THREE_TONE_CYCLIC_SHIFT_TAG;
+        req.nb_iot_config.three_tone_cyclic_shift.value = rand_range(0, 5); // what is the max
+        req.num_tlv++;
+        req.nb_iot_config.six_tone_cyclic_shift.tl.tag = NFAPI_NB_IOT_CONFIG_SIX_TONE_CYCLIC_SHIFT_TAG;
+        req.nb_iot_config.six_tone_cyclic_shift.value = rand_range(0, 5); // what is the max
+        req.num_tlv++;
+        req.nb_iot_config.dl_gap_config_enable.tl.tag = NFAPI_NB_IOT_CONFIG_DL_GAP_CONFIG_ENABLE_TAG;
+        req.nb_iot_config.dl_gap_config_enable.value = rand_range(0, 1);
+        req.num_tlv++;
+        req.nb_iot_config.dl_gap_threshold.tl.tag = NFAPI_NB_IOT_CONFIG_DL_GAP_THRESHOLD_TAG;
+        req.nb_iot_config.dl_gap_threshold.value = rand_range(0, 3);
+        req.num_tlv++;
+        req.nb_iot_config.dl_gap_periodicity.tl.tag = NFAPI_NB_IOT_CONFIG_DL_GAP_PERIODICITY_TAG;
+        req.nb_iot_config.dl_gap_periodicity.value = rand_range(0, 3);
+        req.num_tlv++;
+        req.nb_iot_config.dl_gap_duration_coefficient.tl.tag = NFAPI_NB_IOT_CONFIG_DL_GAP_DURATION_COEFFICIENT_TAG;
+        req.nb_iot_config.dl_gap_duration_coefficient.value = rand_range(0, 3);
+        req.num_tlv++;
+
+        req.tdd_frame_structure_config.subframe_assignment.tl.tag = NFAPI_TDD_FRAME_STRUCTURE_SUBFRAME_ASSIGNMENT_TAG;
+        req.num_tlv++;
+        req.tdd_frame_structure_config.special_subframe_patterns.tl.tag = NFAPI_TDD_FRAME_STRUCTURE_SPECIAL_SUBFRAME_PATTERNS_TAG;
+        req.num_tlv++;
+
+        req.l23_config.data_report_mode.tl.tag = NFAPI_L23_CONFIG_DATA_REPORT_MODE_TAG;
+        req.num_tlv++;
+        req.l23_config.sfnsf.tl.tag = NFAPI_L23_CONFIG_SFNSF_TAG;
+        req.num_tlv++;
+      }
+
+      vendor_ext_tlv_2 ve2;
+      memset(&ve2, 0, sizeof(ve2));
+      ve2.tl.tag = VENDOR_EXT_TLV_2_TAG;
+      ve2.dummy = 2016;
+      req.vendor_extension = &ve2.tl;
+
+      nfapi_vnf_config_req(config, p5_idx, &req);
+    } else {
+      printf("[VNF_SIM] param response failed to find pnf %d phy %d\n", p5_idx, resp->header.phy_id);
+    }
+  } else {
+    printf("[VNF_SIM] param response failed to find pnf %d\n", p5_idx);
+  }
+
+  return 0;
 }
 
 int pnf_config_resp_cb(nfapi_vnf_config_t *config, int p5_idx, nfapi_pnf_config_response_t *resp) {

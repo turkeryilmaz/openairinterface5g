@@ -147,18 +147,20 @@ rx_sdu(const module_id_t enb_mod_idP,
   if (UE_id != -1) {
     UE_scheduling_control = &UE_info->UE_sched_ctrl[UE_id];
     UE_template_ptr = &UE_info->UE_template[CC_idP][UE_id];
-    LOG_D(MAC, "[eNB %d][PUSCH %d] CC_id %d %d.%d Received ULSCH (%s) sdu round %d from PHY (rnti %x, UE_id %d) ul_cqi %d, timing_advance %d\n",
+    LOG_D(MAC,
+          "[eNB %d][PUSCH %d] CC_id %d %d.%d Received ULSCH (%s) sdu round %d from PHY (rnti %x, UE_id %d) ul_cqi %d, "
+          "timing_advance %d\n",
           enb_mod_idP,
           harq_pid,
           CC_idP,
           frameP,
           subframeP,
-          sduP==NULL ? "in error" : "OK",
+          sduP == NULL ? "in error" : "OK",
           UE_scheduling_control->round_UL[CC_idP][harq_pid],
           current_rnti,
           UE_id,
           ul_cqi,
-	  timing_advance);
+          timing_advance);
     AssertFatal(UE_scheduling_control->round_UL[CC_idP][harq_pid] < 8, "round >= 8\n");
 
     if (sduP != NULL) {
@@ -204,7 +206,8 @@ rx_sdu(const module_id_t enb_mod_idP,
       }
     } else {  // sduP == NULL => error
       UE_scheduling_control->pusch_rx_error_num[CC_idP]++;
-      LOG_D(MAC, "[eNB %d][PUSCH %d] CC_id %d %d.%d ULSCH in error in round %d, ul_cqi %d, UE_id %d, RNTI %x (len %d)\n",
+      LOG_D(MAC,
+            "[eNB %d][PUSCH %d] CC_id %d %d.%d ULSCH in error in round %d, ul_cqi %d, UE_id %d, RNTI %x (len %d)\n",
             enb_mod_idP,
             harq_pid,
             CC_idP,
@@ -214,7 +217,7 @@ rx_sdu(const module_id_t enb_mod_idP,
             ul_cqi,
             UE_id,
             current_rnti,
-	    sdu_lenP);
+            sdu_lenP);
 
       if (ul_cqi > 200) { // too high energy pattern
         UE_scheduling_control->pusch_snr[CC_idP] = (5 * ul_cqi - 640) / 10;
@@ -293,16 +296,18 @@ rx_sdu(const module_id_t enb_mod_idP,
     AssertFatal(mac->common_channels[CC_idP].radioResourceConfigCommon->rach_ConfigCommon.maxHARQ_Msg3Tx > 1,
                 "maxHARQ %d should be greater than 1\n",
                 (int) mac->common_channels[CC_idP].radioResourceConfigCommon->rach_ConfigCommon.maxHARQ_Msg3Tx);
-    LOG_D(MAC, "[eNB %d][PUSCH %d] CC_id %d [RAPROC Msg3] Received ULSCH sdu (%s) round %d from PHY (rnti %x, RA_id %d) ul_cqi %d, timing advance %d\n",
+    LOG_D(MAC,
+          "[eNB %d][PUSCH %d] CC_id %d [RAPROC Msg3] Received ULSCH sdu (%s) round %d from PHY (rnti %x, RA_id %d) ul_cqi %d, "
+          "timing advance %d\n",
           enb_mod_idP,
           harq_pid,
           CC_idP,
-	  sduP!=NULL ? "OK" : "in error",
+          sduP != NULL ? "OK" : "in error",
           ra->msg3_round,
           current_rnti,
           RA_id,
           ul_cqi,
-	  timing_advance);
+          timing_advance);
 
     first_rb = ra->msg3_first_rb;
 
@@ -332,7 +337,7 @@ rx_sdu(const module_id_t enb_mod_idP,
       if (ra->msg3_round >= mac->common_channels[CC_idP].radioResourceConfigCommon->rach_ConfigCommon.maxHARQ_Msg3Tx - 1) {
 
         // Release RNTI of LTE PHY when RA does not succeed
-	put_UE_in_freelist(enb_mod_idP, current_rnti, true);
+        put_UE_in_freelist(enb_mod_idP, current_rnti, true);
 
         cancel_ra_proc(enb_mod_idP, CC_idP, frameP, current_rnti);
         nfapi_hi_dci0_request_t *hi_dci0_req = NULL;
@@ -432,7 +437,9 @@ rx_sdu(const module_id_t enb_mod_idP,
       case POWER_HEADROOM:
         if (UE_id != -1) {
           /*UE_template_ptr->phr_info = (payload_ptr[0] & 0x3f) - PHR_MAPPING_OFFSET + (int8_t)(hundred_times_log10_NPRB[UE_template_ptr->nb_rb_ul[harq_pid] - 1] / 100);i*/
-	  UE_template_ptr->phr_info = (payload_ptr[0] & 0x3f) - PHR_MAPPING_OFFSET + estimate_ue_tx_power(0,sdu_lenP*8,UE_template_ptr->nb_rb_ul[harq_pid],0,mac->common_channels[CC_idP].Ncp,0);
+          UE_template_ptr->phr_info =
+              (payload_ptr[0] & 0x3f) - PHR_MAPPING_OFFSET
+              + estimate_ue_tx_power(0, sdu_lenP * 8, UE_template_ptr->nb_rb_ul[harq_pid], 0, mac->common_channels[CC_idP].Ncp, 0);
 
           if (UE_template_ptr->phr_info > 40) {
             UE_template_ptr->phr_info = 40;

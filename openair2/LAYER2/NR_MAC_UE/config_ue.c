@@ -2219,7 +2219,7 @@ static void configure_maccellgroup(NR_UE_MAC_INST_t *mac, const NR_MAC_CellGroup
         NR_SchedulingRequestToAddMod_t *sr = src->schedulingRequestToAddModList->list.array[i];
         nr_sr_info_t *sr_info = &si->sr_info[sr->schedulingRequestId];
         sr_info->active_SR_ID = true;
-        // NR_SchedulingRequestToAddMod__sr_TransMax_n4	= 0 and so on
+        // NR_SchedulingRequestToAddMod__sr_TransMax_n4    = 0 and so on
         // to obtain the value to configure we need to right shift 4 by the RRC parameter
         sr_info->maxTransmissions = 4 << sr->sr_TransMax;
         int target_ms = 0;

@@ -60,14 +60,14 @@ static int x2ap_eNB_decode_initiating_message(X2AP_X2AP_PDU_t *pdu)
       break;
 
     case X2AP_ProcedureCode_id_endcX2Setup:
-    	X2AP_INFO("X2AP_ProcedureCode_id_endcX2Setup message!\n");
-    	break;
+      X2AP_INFO("X2AP_ProcedureCode_id_endcX2Setup message!\n");
+      break;
     case X2AP_ProcedureCode_id_sgNBAdditionPreparation:
-    	X2AP_INFO("X2AP_ProcedureCode_id_sgNBAdditionPreparation message!\n");
-    break;
+      X2AP_INFO("X2AP_ProcedureCode_id_sgNBAdditionPreparation message!\n");
+      break;
     case X2AP_ProcedureCode_id_sgNBReconfigurationCompletion:
-        	X2AP_INFO("X2AP_ProcedureCode_id_sgNBReconfigurationCompletion message!\n");
-        break;
+      X2AP_INFO("X2AP_ProcedureCode_id_sgNBReconfigurationCompletion message!\n");
+      break;
 
     case X2AP_ProcedureCode_id_meNBinitiatedSgNBRelease:
       X2AP_INFO("X2AP_ProcedureCode_id_meNBinitiatedSgNBRelease message!\n");
@@ -104,12 +104,12 @@ static int x2ap_eNB_decode_successful_outcome(X2AP_X2AP_PDU_t *pdu)
       break;
 
     case X2AP_ProcedureCode_id_endcX2Setup:
-    	X2AP_INFO("x2ap_eNB_decode_successfuloutcome_message!\n");
-    	break;
+      X2AP_INFO("x2ap_eNB_decode_successfuloutcome_message!\n");
+      break;
 
     case X2AP_ProcedureCode_id_sgNBAdditionPreparation:
-    	X2AP_INFO("x2ap_eNB_decode_successfuloutcome_message!\n");
-    	break;
+      X2AP_INFO("x2ap_eNB_decode_successfuloutcome_message!\n");
+      break;
 
     case X2AP_ProcedureCode_id_meNBinitiatedSgNBRelease:
       X2AP_INFO("meNBinitiatedSgNBRelease successful outcome!\n");

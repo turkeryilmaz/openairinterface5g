@@ -82,24 +82,24 @@ int MCE_handle_MBMS_SESSION_START_REQUEST(instance_t instance, sctp_assoc_t asso
 
     itti_send_msg_to_task(TASK_MCE_APP, ENB_MODULE_ID_TO_INSTANCE(instance), message_p);
 
-//  if(1){
-//	MCE_send_MBMS_SESSION_START_RESPONSE(instance,assoc_id);
-//  }else
-//	MCE_send_MBMS_SESSION_START_FAILURE(instance,assoc_id);
-  return 0;
+    //  if(1){
+    //    MCE_send_MBMS_SESSION_START_RESPONSE(instance,assoc_id);
+    //  }else
+    //    MCE_send_MBMS_SESSION_START_FAILURE(instance,assoc_id);
+    return 0;
   
 }
 
 int MCE_send_MBMS_SESSION_START_RESPONSE(instance_t instance, m3ap_session_start_resp_t * m3ap_session_start_resp){
   //AssertFatal(1==0,"Not implemented yet\n");
 
-//	module_id_t mce_mod_idP;
-//  module_id_t enb_mod_idP;
-//
-//  // This should be fixed
-//  enb_mod_idP = (module_id_t)0;
-//  mce_mod_idP  = (module_id_t)0;
-//
+  //    module_id_t mce_mod_idP;
+  //  module_id_t enb_mod_idP;
+  //
+  //  // This should be fixed
+  //  enb_mod_idP = (module_id_t)0;
+  //  mce_mod_idP  = (module_id_t)0;
+  //
   M3AP_M3AP_PDU_t           pdu;
   M3AP_MBMSSessionStartResponse_t    *out;
   M3AP_MBMSSessionStartResponse_IEs_t *ie;
@@ -229,21 +229,21 @@ int MCE_handle_MBMS_SESSION_STOP_REQUEST(instance_t instance, sctp_assoc_t assoc
               assoc_id, stream);
   }
 
-  //if(1){
-	//MCE_send_MBMS_SESSION_STOP_RESPONSE(instance,assoc_id);
+  // if(1){
+  // MCE_send_MBMS_SESSION_STOP_RESPONSE(instance,assoc_id);
   //}else
-	//MCE_send_MBMS_SESSION_STOP_FAILURE(instance,assoc_id);
-    message_p = itti_alloc_new_message(TASK_M3AP_MCE, 0, M3AP_MBMS_SESSION_STOP_REQ);
+  // MCE_send_MBMS_SESSION_STOP_FAILURE(instance,assoc_id);
+  message_p = itti_alloc_new_message(TASK_M3AP_MCE, 0, M3AP_MBMS_SESSION_STOP_REQ);
 
-//
-//  /* M3 Setup Request == Non UE-related procedure -> stream 0 */
-//  if (stream != 0) {
-//    LOG_W(M3AP, "[SCTP %d] Received MMBS session start request on stream != 0 (%d)\n",
-//              assoc_id, stream);
-//  }
-//
+  //
+  //  /* M3 Setup Request == Non UE-related procedure -> stream 0 */
+  //  if (stream != 0) {
+  //    LOG_W(M3AP, "[SCTP %d] Received MMBS session start request on stream != 0 (%d)\n",
+  //              assoc_id, stream);
+  //  }
+  //
 
-    itti_send_msg_to_task(TASK_MCE_APP, ENB_MODULE_ID_TO_INSTANCE(instance), message_p);
+  itti_send_msg_to_task(TASK_MCE_APP, ENB_MODULE_ID_TO_INSTANCE(instance), message_p);
 
 
 
@@ -251,13 +251,13 @@ int MCE_handle_MBMS_SESSION_STOP_REQUEST(instance_t instance, sctp_assoc_t assoc
   
 }
 int MCE_send_MBMS_SESSION_STOP_RESPONSE(instance_t instance, m3ap_session_start_resp_t * m3ap_session_start_resp){
-//	module_id_t mce_mod_idP;
-//  module_id_t enb_mod_idP;
-//
-//  // This should be fixed
-//  enb_mod_idP = (module_id_t)0;
-//  mce_mod_idP  = (module_id_t)0;
-//
+  //    module_id_t mce_mod_idP;
+  //  module_id_t enb_mod_idP;
+  //
+  //  // This should be fixed
+  //  enb_mod_idP = (module_id_t)0;
+  //  mce_mod_idP  = (module_id_t)0;
+  //
   M3AP_M3AP_PDU_t           pdu;
   M3AP_MBMSSessionStopResponse_t    *out;
   M3AP_MBMSSessionStopResponse_IEs_t *ie;
@@ -331,26 +331,23 @@ int MCE_handle_MBMS_SESSION_UPDATE_REQUEST(instance_t instance, sctp_assoc_t ass
               assoc_id, stream);
   }
 
-  //if(1){
-	//MCE_send_MBMS_SESSION_STOP_RESPONSE(instance,assoc_id);
+  // if(1){
+  // MCE_send_MBMS_SESSION_STOP_RESPONSE(instance,assoc_id);
   //}else
-	//MCE_send_MBMS_SESSION_STOP_FAILURE(instance,assoc_id);
-    message_p = itti_alloc_new_message(TASK_M3AP_MCE, 0, M3AP_MBMS_SESSION_UPDATE_REQ);
+  // MCE_send_MBMS_SESSION_STOP_FAILURE(instance,assoc_id);
+  message_p = itti_alloc_new_message(TASK_M3AP_MCE, 0, M3AP_MBMS_SESSION_UPDATE_REQ);
 
-//
-//  /* M3 Setup Request == Non UE-related procedure -> stream 0 */
-//  if (stream != 0) {
-//    LOG_W(M3AP, "[SCTP %d] Received MMBS session start request on stream != 0 (%d)\n",
-//              assoc_id, stream);
-//  }
-//
+  //
+  //  /* M3 Setup Request == Non UE-related procedure -> stream 0 */
+  //  if (stream != 0) {
+  //    LOG_W(M3AP, "[SCTP %d] Received MMBS session start request on stream != 0 (%d)\n",
+  //              assoc_id, stream);
+  //  }
+  //
 
-    itti_send_msg_to_task(TASK_MCE_APP, ENB_MODULE_ID_TO_INSTANCE(instance), message_p);
+  itti_send_msg_to_task(TASK_MCE_APP, ENB_MODULE_ID_TO_INSTANCE(instance), message_p);
 
-
-
-
-	return 0;
+  return 0;
 }
 
 int MCE_send_MBMS_SESSION_UPDATE_RESPONSE(instance_t instance, m3ap_mbms_session_update_resp_t * m3ap_mbms_session_update_resp){
@@ -404,7 +401,7 @@ int MCE_send_MBMS_SESSION_UPDATE_RESPONSE(instance_t instance, m3ap_mbms_session
   return 0;
 }
 int MCE_send_MBMS_SESSION_UPDATE_FAILURE(instance_t instance, m3ap_mbms_session_update_failure_t * m3ap_mbms_session_update_failure){
-	return 0;
+  return 0;
 }
 
 /*
@@ -502,13 +499,13 @@ int MCE_send_M3_SETUP_REQUEST(m3ap_MCE_instance_t *instance_p, m3ap_MCE_data_t *
   }
 
   /* mandatory */ //but removed from asn definition (optional) since it crashes when decoding ???????????
-//	M3SetupRequestIEs M3AP-PROTOCOL-IES ::= {
-//		{ ID id-Global-MCE-ID                   CRITICALITY reject      TYPE Global-MCE-ID                                      PRESENCE mandatory}|
-//		{ ID id-MCEname                                 CRITICALITY ignore      TYPE MCEname                                            PRESENCE optional}|
-//		{ ID id-MBMSServiceAreaList             CRITICALITY reject      TYPE MBMSServiceAreaListItem            PRESENCE mandatory}, --> optional ??????????
-//		...
-//	}
-
+  //    M3SetupRequestIEs M3AP-PROTOCOL-IES ::= {
+  //        { ID id-Global-MCE-ID                   CRITICALITY reject      TYPE Global-MCE-ID PRESENCE mandatory}| { ID id-MCEname
+  //        CRITICALITY ignore      TYPE MCEname                                            PRESENCE optional}| { ID
+  //        id-MBMSServiceAreaList             CRITICALITY reject      TYPE MBMSServiceAreaListItem            PRESENCE mandatory},
+  //        --> optional ??????????
+  //        ...
+  //    }
 
   /* M3AP_MBMSServiceAreaListItem_t */
   ie = (M3AP_M3SetupRequestIEs_t *)calloc(1, sizeof(M3AP_M3SetupRequestIEs_t));
@@ -530,111 +527,112 @@ int MCE_send_M3_SETUP_REQUEST(m3ap_MCE_instance_t *instance_p, m3ap_MCE_data_t *
   
   //asn1cSeqAdd(&out->protocolIEs.list, ie);
 
-//
-//  /* mandatory */
-//  /* c4. serverd cells list */
-//  ie = (M3AP_M3SetupRequest_Ies_t *)calloc(1, sizeof(M3AP_M3SetupRequest_Ies_t));
-//  ie->id                        = M3AP_ProtocolIE_ID_id_MCE_MBMS_Configuration_data_List;
-//  ie->criticality               = M3AP_Criticality_reject;
-//  ie->value.present             = M3AP_M3SetupRequest_Ies__value_PR_MCE_MBMS_Configuration_data_List;
-//
-//  int num_mbms_available = 1;//m3ap_du_data->num_mbms_available;
-//  LOG_D(M3AP, "num_mbms_available = %d \n", num_mbms_available);
-//
-// for (i=0;
-//       i<num_mbms_available;
-//       i++) {
-//        /* mandatory */
-//        /* 4.1 serverd cells item */
-//
-//        M3AP_MCE_MBMS_Configuration_data_ItemIEs_t *mbms_configuration_data_list_item_ies;
-//        mbms_configuration_data_list_item_ies = (M3AP_MCE_MBMS_Configuration_data_ItemIEs_t *)calloc(1, sizeof(M3AP_MCE_MBMS_Configuration_data_ItemIEs_t));
-//        mbms_configuration_data_list_item_ies->id = M3AP_ProtocolIE_ID_id_MCE_MBMS_Configuration_data_Item;
-//        mbms_configuration_data_list_item_ies->criticality = M3AP_Criticality_reject;
-//        mbms_configuration_data_list_item_ies->value.present = M3AP_MCE_MBMS_Configuration_data_ItemIEs__value_PR_MCE_MBMS_Configuration_data_Item;
-//
-//        M3AP_MCE_MBMS_Configuration_data_Item_t *mbms_configuration_data_item;
-//        mbms_configuration_data_item = &mbms_configuration_data_list_item_ies->value.choice.MCE_MBMS_Configuration_data_Item;
-//        {
-//		/* M3AP_ECGI_t eCGI */
-//                MCC_MNC_TO_PLMNID(instance_p->mcc, instance_p->mnc, instance_p->mnc_digit_length,
-//                  &mbms_configuration_data_item->eCGI.pLMN_Identity);
-//                MACRO_MCE_ID_TO_CELL_IDENTITY(instance_p->MCE_id,0,
-//                                   &mbms_configuration_data_item->eCGI.eUTRANcellIdentifier);
-//		/* M3AP_MBSFN_SynchronisationArea_ID_t mbsfnSynchronisationArea */ 
-//		mbms_configuration_data_item->mbsfnSynchronisationArea=10000; //? long
-//		/* M3AP_MBMS_Service_Area_ID_List_t mbmsServiceAreaList */
-//                M3AP_MBMS_Service_Area_t * mbms_service_area,*mbms_service_area2;
-//                mbms_service_area = (M3AP_MBMS_Service_Area_t*)calloc(1,sizeof(M3AP_MBMS_Service_Area_t));
-//                mbms_service_area2 = (M3AP_MBMS_Service_Area_t*)calloc(1,sizeof(M3AP_MBMS_Service_Area_t));
-//		//memset(mbms_service_area,0,sizeof(OCTET_STRING_t));
-//		OCTET_STRING_fromBuf(mbms_service_area,"01",2);
-//                asn1cSeqAdd(&mbms_configuration_data_item->mbmsServiceAreaList.list,mbms_service_area);
-//		OCTET_STRING_fromBuf(mbms_service_area2,"02",2);
-//                asn1cSeqAdd(&mbms_configuration_data_item->mbmsServiceAreaList.list,mbms_service_area2);
-//
-//
-//        }
-//
-//
-//        //M3AP_MCE_MBMS_Configuration_data_Item_t mbms_configuration_data_item;
-//        //memset((void *)&mbms_configuration_data_item, 0, sizeof(M3AP_MCE_MBMS_Configuration_data_Item_t));
-//
-//        //M3AP_ECGI_t      eCGI;
-//                //M3AP_PLMN_Identity_t     pLMN_Identity;
-//                //M3AP_EUTRANCellIdentifier_t      eUTRANcellIdentifier
-//        //M3AP_MBSFN_SynchronisationArea_ID_t      mbsfnSynchronisationArea;
-//        //M3AP_MBMS_Service_Area_ID_List_t         mbmsServiceAreaList;
-//
-//
-//        asn1cSeqAdd(&ie->value.choice.MCE_MBMS_Configuration_data_List.list,mbms_configuration_data_list_item_ies);
-//
-// }
-//  asn1cSeqAdd(&out->protocolIEs.list, ie);
-//  
-// LOG_W(M3AP,"m3ap_MCE_data_p->assoc_id %d\n",m3ap_MCE_data_p->assoc_id);
-//  /* encode */
+  //
+  //  /* mandatory */
+  //  /* c4. serverd cells list */
+  //  ie = (M3AP_M3SetupRequest_Ies_t *)calloc(1, sizeof(M3AP_M3SetupRequest_Ies_t));
+  //  ie->id                        = M3AP_ProtocolIE_ID_id_MCE_MBMS_Configuration_data_List;
+  //  ie->criticality               = M3AP_Criticality_reject;
+  //  ie->value.present             = M3AP_M3SetupRequest_Ies__value_PR_MCE_MBMS_Configuration_data_List;
+  //
+  //  int num_mbms_available = 1;//m3ap_du_data->num_mbms_available;
+  //  LOG_D(M3AP, "num_mbms_available = %d \n", num_mbms_available);
+  //
+  // for (i=0;
+  //       i<num_mbms_available;
+  //       i++) {
+  //        /* mandatory */
+  //        /* 4.1 serverd cells item */
+  //
+  //        M3AP_MCE_MBMS_Configuration_data_ItemIEs_t *mbms_configuration_data_list_item_ies;
+  //        mbms_configuration_data_list_item_ies = (M3AP_MCE_MBMS_Configuration_data_ItemIEs_t *)calloc(1,
+  //        sizeof(M3AP_MCE_MBMS_Configuration_data_ItemIEs_t)); mbms_configuration_data_list_item_ies->id =
+  //        M3AP_ProtocolIE_ID_id_MCE_MBMS_Configuration_data_Item; mbms_configuration_data_list_item_ies->criticality =
+  //        M3AP_Criticality_reject; mbms_configuration_data_list_item_ies->value.present =
+  //        M3AP_MCE_MBMS_Configuration_data_ItemIEs__value_PR_MCE_MBMS_Configuration_data_Item;
+  //
+  //        M3AP_MCE_MBMS_Configuration_data_Item_t *mbms_configuration_data_item;
+  //        mbms_configuration_data_item = &mbms_configuration_data_list_item_ies->value.choice.MCE_MBMS_Configuration_data_Item;
+  //        {
+  //        /* M3AP_ECGI_t eCGI */
+  //                MCC_MNC_TO_PLMNID(instance_p->mcc, instance_p->mnc, instance_p->mnc_digit_length,
+  //                  &mbms_configuration_data_item->eCGI.pLMN_Identity);
+  //                MACRO_MCE_ID_TO_CELL_IDENTITY(instance_p->MCE_id,0,
+  //                                   &mbms_configuration_data_item->eCGI.eUTRANcellIdentifier);
+  //        /* M3AP_MBSFN_SynchronisationArea_ID_t mbsfnSynchronisationArea */
+  //        mbms_configuration_data_item->mbsfnSynchronisationArea=10000; //? long
+  //        /* M3AP_MBMS_Service_Area_ID_List_t mbmsServiceAreaList */
+  //                M3AP_MBMS_Service_Area_t * mbms_service_area,*mbms_service_area2;
+  //                mbms_service_area = (M3AP_MBMS_Service_Area_t*)calloc(1,sizeof(M3AP_MBMS_Service_Area_t));
+  //                mbms_service_area2 = (M3AP_MBMS_Service_Area_t*)calloc(1,sizeof(M3AP_MBMS_Service_Area_t));
+  //        //memset(mbms_service_area,0,sizeof(OCTET_STRING_t));
+  //        OCTET_STRING_fromBuf(mbms_service_area,"01",2);
+  //                asn1cSeqAdd(&mbms_configuration_data_item->mbmsServiceAreaList.list,mbms_service_area);
+  //        OCTET_STRING_fromBuf(mbms_service_area2,"02",2);
+  //                asn1cSeqAdd(&mbms_configuration_data_item->mbmsServiceAreaList.list,mbms_service_area2);
+  //
+  //
+  //        }
+  //
+  //
+  //        //M3AP_MCE_MBMS_Configuration_data_Item_t mbms_configuration_data_item;
+  //        //memset((void *)&mbms_configuration_data_item, 0, sizeof(M3AP_MCE_MBMS_Configuration_data_Item_t));
+  //
+  //        //M3AP_ECGI_t      eCGI;
+  //                //M3AP_PLMN_Identity_t     pLMN_Identity;
+  //                //M3AP_EUTRANCellIdentifier_t      eUTRANcellIdentifier
+  //        //M3AP_MBSFN_SynchronisationArea_ID_t      mbsfnSynchronisationArea;
+  //        //M3AP_MBMS_Service_Area_ID_List_t         mbmsServiceAreaList;
+  //
+  //
+  //        asn1cSeqAdd(&ie->value.choice.MCE_MBMS_Configuration_data_List.list,mbms_configuration_data_list_item_ies);
+  //
+  // }
+  //  asn1cSeqAdd(&out->protocolIEs.list, ie);
+  //
+  // LOG_W(M3AP,"m3ap_MCE_data_p->assoc_id %d\n",m3ap_MCE_data_p->assoc_id);
+  //  /* encode */
 
-//    xer_fprint(stdout, &asn_DEF_M3AP_M3AP_PDU, &pdu);
-//    xer_fprint(stdout, &asn_DEF_M3AP_M3SetupRequest, &pdu.choice.initiatingMessage.value.choice.M3SetupRequest);
-//    xer_fprint(stdout, &asn_DEF_M3AP_M3SetupRequest, out);
+  //    xer_fprint(stdout, &asn_DEF_M3AP_M3AP_PDU, &pdu);
+  //    xer_fprint(stdout, &asn_DEF_M3AP_M3SetupRequest, &pdu.choice.initiatingMessage.value.choice.M3SetupRequest);
+  //    xer_fprint(stdout, &asn_DEF_M3AP_M3SetupRequest, out);
 
- if (m3ap_encode_pdu(&pdu, &buffer, &len) < 0) {
-   LOG_E(M3AP, "Failed to encode M3 setup request\n");
-   return -1;
- }
+  if (m3ap_encode_pdu(&pdu, &buffer, &len) < 0) {
+    LOG_E(M3AP, "Failed to encode M3 setup request\n");
+    return -1;
+  }
 
  /* buffer = &m3ap_start_message[0];
   len=8*9+7; 
 
   buffer = &m3ap_m3setup_message[0];
   len=8*4+7; */
-//
-//
-//  LOG_W(M3AP,"pdu.present %d\n",pdu.present);
-//
-//
-////  buffer = &bytes[0];
-////  len = 40;
-////
-////  for(int i=0; i < len; i++ )
-////	printf("%02X",buffer[i]);
-////  printf("\n");
-////
+  //
+  //
+  //  LOG_W(M3AP,"pdu.present %d\n",pdu.present);
+  //
+  //
+  ////  buffer = &bytes[0];
+  ////  len = 40;
+  ////
+  ////  for(int i=0; i < len; i++ )
+  ////    printf("%02X",buffer[i]);
+  ////  printf("\n");
+  ////
 
-// M3AP_M3AP_PDU_t pdu2;
-//
-//  memset(&pdu2, 0, sizeof(pdu2));
-//
-//  for( i=0; i < len; i++)
-//        printf("%02X",buffer[i]);
-//  printf("\n");
-//
-//  if (m3ap_decode_pdu(&pdu2, buffer, len) < 0) {
-//    LOG_E(M3AP, "Failed to decode PDU\n");
-//    //return -1;
-//  }
-//
+  // M3AP_M3AP_PDU_t pdu2;
+  //
+  //  memset(&pdu2, 0, sizeof(pdu2));
+  //
+  //  for( i=0; i < len; i++)
+  //        printf("%02X",buffer[i]);
+  //  printf("\n");
+  //
+  //  if (m3ap_decode_pdu(&pdu2, buffer, len) < 0) {
+  //    LOG_E(M3AP, "Failed to decode PDU\n");
+  //    //return -1;
+  //  }
+  //
 
   //printf("m3ap_MCE_data_p->assoc_id %d\n",m3ap_MCE_data_p->assoc_id);
   m3ap_MCE_itti_send_sctp_data_req(instance_p->instance, m3ap_MCE_data_p->assoc_id, buffer, len, 0);
@@ -649,14 +647,13 @@ int MCE_handle_M3_SETUP_RESPONSE(instance_t instance, sctp_assoc_t assoc_id, uin
 
    LOG_D(M3AP, "MCE_handle_M3_SETUP_RESPONSE\n");
 
-   AssertFatal(pdu->present == M3AP_M3AP_PDU_PR_successfulOutcome,
-	       "pdu->present != M3AP_M3AP_PDU_PR_successfulOutcome\n");
-   AssertFatal(pdu->choice.successfulOutcome.procedureCode  == M3AP_ProcedureCode_id_m3Setup,
-	       "pdu->choice.successfulOutcome.procedureCode != M3AP_ProcedureCode_id_M3Setup\n");
-   AssertFatal(pdu->choice.successfulOutcome.criticality  == M3AP_Criticality_reject,
-	       "pdu->choice.successfulOutcome.criticality != M3AP_Criticality_reject\n");
-   AssertFatal(pdu->choice.successfulOutcome.value.present  == M3AP_SuccessfulOutcome__value_PR_M3SetupResponse,
-	       "pdu->choice.successfulOutcome.value.present != M3AP_SuccessfulOutcome__value_PR_M3SetupResponse\n");
+   AssertFatal(pdu->present == M3AP_M3AP_PDU_PR_successfulOutcome, "pdu->present != M3AP_M3AP_PDU_PR_successfulOutcome\n");
+   AssertFatal(pdu->choice.successfulOutcome.procedureCode == M3AP_ProcedureCode_id_m3Setup,
+               "pdu->choice.successfulOutcome.procedureCode != M3AP_ProcedureCode_id_M3Setup\n");
+   AssertFatal(pdu->choice.successfulOutcome.criticality == M3AP_Criticality_reject,
+               "pdu->choice.successfulOutcome.criticality != M3AP_Criticality_reject\n");
+   AssertFatal(pdu->choice.successfulOutcome.value.present == M3AP_SuccessfulOutcome__value_PR_M3SetupResponse,
+               "pdu->choice.successfulOutcome.value.present != M3AP_SuccessfulOutcome__value_PR_M3SetupResponse\n");
 
    //M3AP_M3SetupResponse_t    *in = &pdu->choice.successfulOutcome.value.choice.M3SetupResponse;
 

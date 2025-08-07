@@ -129,33 +129,29 @@ int m2ap_eNB_generate_m2_setup_request(
         mbms_configuration_data_list_item_ies->criticality = M2AP_Criticality_reject;
         mbms_configuration_data_list_item_ies->value.present = M2AP_ENB_MBMS_Configuration_data_ItemIEs__value_PR_ENB_MBMS_Configuration_data_Item;
 
-	M2AP_ENB_MBMS_Configuration_data_Item_t *mbms_configuration_data_item;
-	mbms_configuration_data_item = &mbms_configuration_data_list_item_ies->value.choice.ENB_MBMS_Configuration_data_Item;
-	{
-		MCC_MNC_TO_PLMNID(instance_p->mcc, instance_p->mnc, instance_p->mnc_digit_length,
-                  &mbms_configuration_data_item->eCGI.pLMN_Identity);
-        	MACRO_ENB_ID_TO_CELL_IDENTITY(instance_p->eNB_id,0,
-                                   &mbms_configuration_data_item->eCGI.eUTRANcellIdentifier);
-		M2AP_MBMS_Service_Area_t * mbms_service_area;
-		mbms_service_area = (M2AP_MBMS_Service_Area_t*)calloc(1,sizeof(M2AP_MBMS_Service_Area_t));
-		asn1cSeqAdd(&mbms_configuration_data_item->mbmsServiceAreaList.list,mbms_service_area);
-
-
-	}
-
+        M2AP_ENB_MBMS_Configuration_data_Item_t *mbms_configuration_data_item;
+        mbms_configuration_data_item = &mbms_configuration_data_list_item_ies->value.choice.ENB_MBMS_Configuration_data_Item;
+        {
+          MCC_MNC_TO_PLMNID(instance_p->mcc,
+                            instance_p->mnc,
+                            instance_p->mnc_digit_length,
+                            &mbms_configuration_data_item->eCGI.pLMN_Identity);
+          MACRO_ENB_ID_TO_CELL_IDENTITY(instance_p->eNB_id, 0, &mbms_configuration_data_item->eCGI.eUTRANcellIdentifier);
+          M2AP_MBMS_Service_Area_t *mbms_service_area;
+          mbms_service_area = (M2AP_MBMS_Service_Area_t *)calloc(1, sizeof(M2AP_MBMS_Service_Area_t));
+          asn1cSeqAdd(&mbms_configuration_data_item->mbmsServiceAreaList.list, mbms_service_area);
+        }
 
         //M2AP_ENB_MBMS_Configuration_data_Item_t mbms_configuration_data_item;
         //memset((void *)&mbms_configuration_data_item, 0, sizeof(M2AP_ENB_MBMS_Configuration_data_Item_t));
-	
-	//M2AP_ECGI_t      eCGI;
-		//M2AP_PLMN_Identity_t     pLMN_Identity;
-		//M2AP_EUTRANCellIdentifier_t      eUTRANcellIdentifier
-	//M2AP_MBSFN_SynchronisationArea_ID_t      mbsfnSynchronisationArea;
-	//M2AP_MBMS_Service_Area_ID_List_t         mbmsServiceAreaList;
 
+        // M2AP_ECGI_t      eCGI;
+        // M2AP_PLMN_Identity_t     pLMN_Identity;
+        // M2AP_EUTRANCellIdentifier_t      eUTRANcellIdentifier
+        // M2AP_MBSFN_SynchronisationArea_ID_t      mbsfnSynchronisationArea;
+        // M2AP_MBMS_Service_Area_ID_List_t         mbmsServiceAreaList;
 
-	asn1cSeqAdd(&ie->value.choice.ENB_MBMS_Configuration_data_List.list,mbms_configuration_data_list_item_ies);
-
+        asn1cSeqAdd(&ie->value.choice.ENB_MBMS_Configuration_data_List.list, mbms_configuration_data_list_item_ies);
  }
   asn1cSeqAdd(&out->protocolIEs.list, ie);
 

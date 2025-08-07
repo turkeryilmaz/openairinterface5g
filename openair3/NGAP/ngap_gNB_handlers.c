@@ -1370,7 +1370,7 @@ static int ngap_gNB_handle_ng_path_switch_request_failure(sctp_assoc_t assoc_id,
 static int ngap_gNB_handle_ng_ENDC_pdusession_modification_confirm(sctp_assoc_t assoc_id, uint32_t stream, NGAP_NGAP_PDU_t *pdu)
 {
   LOG_W(NGAP, "Implementation of NGAP Pdusession Modification confirm handler is pending...\n");
-	return 0;
+  return 0;
 }
 
 /* Handlers matrix. Only gNB related procedure present here */

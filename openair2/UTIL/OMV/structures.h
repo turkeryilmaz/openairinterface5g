@@ -33,10 +33,10 @@
 
 #include "common/openairinterface5g_limits.h"
 #ifndef __PHY_IMPLEMENTATION_DEFS_H__
-	#define Maxneighbor NUMBER_OF_UE_MAX
-	#ifndef NB_ANTENNAS_RX
-		#define NB_ANTENNAS_RX  4
-	#endif
+#define Maxneighbor NUMBER_OF_UE_MAX
+#ifndef NB_ANTENNAS_RX
+#define NB_ANTENNAS_RX 4
+#endif
 #endif
 //
 

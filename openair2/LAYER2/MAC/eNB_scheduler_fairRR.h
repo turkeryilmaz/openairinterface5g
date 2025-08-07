@@ -100,14 +100,9 @@ void dlsch_scheduler_pre_processor_fairRR (module_id_t   Mod_id,
                                     int           N_RBG[MAX_NUM_CCs],
                                     int           *mbsfn_flag);
 
-void fill_DLSCH_dci_fairRR(
-	       module_id_t module_idP,
-	       frame_t frameP,
-	       sub_frame_t subframeP,
-	       int* mbsfn_flagP);
+void fill_DLSCH_dci_fairRR(module_id_t module_idP, frame_t frameP, sub_frame_t subframeP, int *mbsfn_flagP);
 
-void schedule_ue_spec_fairRR(module_id_t module_idP,
-		 frame_t frameP, sub_frame_t subframeP, int *mbsfn_flag);
+void schedule_ue_spec_fairRR(module_id_t module_idP, frame_t frameP, sub_frame_t subframeP, int *mbsfn_flag);
 
 void ulsch_scheduler_pre_ue_select_fairRR(
     module_id_t       module_idP,
@@ -122,8 +117,7 @@ void ulsch_scheduler_pre_processor_fairRR(module_id_t module_idP,
                                    sub_frame_t sched_subframeP,
                                    ULSCH_UE_SELECT ulsch_ue_select[MAX_NUM_CCs]);
 
-void schedule_ulsch_fairRR(module_id_t module_idP, frame_t frameP,
-	       sub_frame_t subframeP);
+void schedule_ulsch_fairRR(module_id_t module_idP, frame_t frameP, sub_frame_t subframeP);
 
 void schedule_ulsch_rnti_fairRR(module_id_t   module_idP,
                          frame_t       frameP,

@@ -41,9 +41,7 @@
 #include "assertions.h"
 static const int8_t delta_PUSCH_msg2[8] = {-6, -4, -2, 0, 2, 4, 6, 8};
 
-int generate_ue_ulsch_params_from_rar(PHY_VARS_UE *ue,
-				      UE_rxtx_proc_t *proc,
-                                      unsigned char eNB_id )
+int generate_ue_ulsch_params_from_rar(PHY_VARS_UE *ue, UE_rxtx_proc_t *proc, unsigned char eNB_id)
 {
 
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PHY_PROCEDURES_UE_TX_ULSCH_RAR,VCD_FUNCTION_IN);

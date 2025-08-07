@@ -82,9 +82,9 @@ char allocated_read[24 * 1024 * 3] __attribute__((aligned(4096)));
 /*
  * man 2 write:
  * On Linux, write() (and similar system calls) will transfer at most
- * 	0x7ffff000 (2,147,479,552) bytes, returning the number of bytes
- *	actually transferred.  (This is true on both 32-bit and 64-bit
- *	systems.)
+ *     0x7ffff000 (2,147,479,552) bytes, returning the number of bytes
+ *    actually transferred.  (This is true on both 32-bit and 64-bit
+ *    systems.)
  */
 
 #define RW_MAX_SIZE 0x7ffff000

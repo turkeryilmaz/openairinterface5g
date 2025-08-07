@@ -75,41 +75,38 @@ void generate_mch(PHY_VARS_eNB *eNB,L1_rxtx_proc_t *proc,uint8_t *a)
   int frame    = proc->frame_tx;
 
   G = get_G(&eNB->frame_parms,
-	    eNB->frame_parms.N_RB_DL,
-	    eNB->dlsch_MCH->harq_processes[0]->rb_alloc,
-	    get_Qm(eNB->dlsch_MCH->harq_processes[0]->mcs),1,
-	    2,proc->frame_tx,subframe,0);
-  
-  eNB->dlsch_MCH->harq_processes[0]->Qm = get_Qm(eNB->dlsch_MCH->harq_processes[0]->mcs);
- 
-  generate_mbsfn_pilot(eNB,proc,
-		       eNB->common_vars.txdataF,
-		       AMP);
-  
-  AssertFatal(eNB->dlsch_MCH->harq_processes[0]->pdu != NULL, "attempt to encode a NULL harq PDU\n");
-  
-  AssertFatal(dlsch_encoding(eNB,
-			     proc,
-			    // a,
-			    eNB->dlsch_MCH->harq_processes[0]->pdu,
-			     1,
-			     eNB->dlsch_MCH,
-			     proc->frame_tx,
-			     subframe,
-			     &eNB->dlsch_rate_matching_stats,
-			     &eNB->dlsch_turbo_encoding_stats,
-			     &eNB->dlsch_interleaving_stats)==0,
-	      "problem in dlsch_encoding");
-  
-  dlsch_scrambling(&eNB->frame_parms,1,eNB->dlsch_MCH,0,G,0,frame,subframe<<1);
-  
-  
-  mch_modulation(eNB->common_vars.txdataF,
-		 AMP,
-		 subframe,
-		 &eNB->frame_parms,
-		 eNB->dlsch_MCH);
+            eNB->frame_parms.N_RB_DL,
+            eNB->dlsch_MCH->harq_processes[0]->rb_alloc,
+            get_Qm(eNB->dlsch_MCH->harq_processes[0]->mcs),
+            1,
+            2,
+            proc->frame_tx,
+            subframe,
+            0);
 
+  eNB->dlsch_MCH->harq_processes[0]->Qm = get_Qm(eNB->dlsch_MCH->harq_processes[0]->mcs);
+
+  generate_mbsfn_pilot(eNB, proc, eNB->common_vars.txdataF, AMP);
+
+  AssertFatal(eNB->dlsch_MCH->harq_processes[0]->pdu != NULL, "attempt to encode a NULL harq PDU\n");
+
+  AssertFatal(dlsch_encoding(eNB,
+                             proc,
+                             // a,
+                             eNB->dlsch_MCH->harq_processes[0]->pdu,
+                             1,
+                             eNB->dlsch_MCH,
+                             proc->frame_tx,
+                             subframe,
+                             &eNB->dlsch_rate_matching_stats,
+                             &eNB->dlsch_turbo_encoding_stats,
+                             &eNB->dlsch_interleaving_stats)
+                  == 0,
+              "problem in dlsch_encoding");
+
+  dlsch_scrambling(&eNB->frame_parms,1,eNB->dlsch_MCH,0,G,0,frame,subframe<<1);
+
+  mch_modulation(eNB->common_vars.txdataF, AMP, subframe, &eNB->frame_parms, eNB->dlsch_MCH);
 }
 
 void generate_mch_khz_1dot25(PHY_VARS_eNB *eNB,L1_rxtx_proc_t *proc,uint8_t *a)
@@ -134,20 +131,19 @@ void generate_mch_khz_1dot25(PHY_VARS_eNB *eNB,L1_rxtx_proc_t *proc,uint8_t *a)
                        eNB->common_vars.txdataF,
                        AMP);
 
-
   AssertFatal(dlsch_encoding_fembms_pmch(eNB,
-			    proc,
-                            // a,
-			     eNB->dlsch_MCH->harq_processes[0]->pdu,
-                             1,
-                             eNB->dlsch_MCH,
-                             proc->frame_tx,
-                             subframe,
-                             &eNB->dlsch_rate_matching_stats,
-                             &eNB->dlsch_turbo_encoding_stats,
-                             &eNB->dlsch_interleaving_stats)==0,
+                                         proc,
+                                         // a,
+                                         eNB->dlsch_MCH->harq_processes[0]->pdu,
+                                         1,
+                                         eNB->dlsch_MCH,
+                                         proc->frame_tx,
+                                         subframe,
+                                         &eNB->dlsch_rate_matching_stats,
+                                         &eNB->dlsch_turbo_encoding_stats,
+                                         &eNB->dlsch_interleaving_stats)
+                  == 0,
               "problem in dlsch_encoding");
-
 
   /*for(bits=0;bits<G;bits++)
         printf("%d",eNB->dlsch_MCH->harq_processes[0]->e[bits]);

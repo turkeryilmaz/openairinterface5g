@@ -64,7 +64,7 @@ uint8_t register_mac_inst(eNB_MAC_INST_NB_IoT *inst, uint8_t order);
 void init_tool(sib1_NB_IoT_sched_t *config);
 void UE_info_setting(UE_TEMPLATE_NB_IoT *UE_info);
 UE_TEMPLATE_NB_IoT *get_ue_from_rnti(eNB_MAC_INST_NB_IoT *inst, rnti_t rnti);
-	
+
 ///scheduler
 void eNB_dlsch_ulsch_scheduler_NB_IoT(eNB_MAC_INST_NB_IoT *mac_inst, uint32_t abs_subframe);
 void eNB_scheduler_computing_flag_NB_IoT(eNB_MAC_INST_NB_IoT *mac_inst, uint32_t abs_subframe, uint32_t *scheduler_flags, uint32_t *common_flags, uint32_t *max_subframe);
@@ -85,7 +85,7 @@ void print_schedule_result_DL(void);
 void print_schedule_result_UL(void);
 void add_ue(eNB_MAC_INST_NB_IoT *mac_inst, uint16_t rnti, ce_level_t ce, uint32_t PHR, uint32_t ul_total_buffer);
 void remove_ue(eNB_MAC_INST_NB_IoT *mac_inst, uint16_t rnti, ce_level_t ce);
-//	SIBs
+//    SIBs
 void schedule_sibs(eNB_MAC_INST_NB_IoT *mac_inst, uint32_t sibs_order, int start_subframe);
 
 //RA

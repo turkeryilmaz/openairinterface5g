@@ -66,10 +66,10 @@ int compareints (const void * a, const void * b)
 
 #define DEBUG_SRS
 int32_t generate_srs(LTE_DL_FRAME_PARMS *frame_parms,
-		     SOUNDINGRS_UL_CONFIG_DEDICATED *soundingrs_ul_config_dedicated,
-		     int32_t *txptr,
-		     int16_t amp,
-		     uint32_t subframe)
+                     SOUNDINGRS_UL_CONFIG_DEDICATED *soundingrs_ul_config_dedicated,
+                     int32_t *txptr,
+                     int16_t amp,
+                     uint32_t subframe)
 {
 
   uint16_t msrsb=0,Nb=0,nb,b,msrs0=0,k,Msc_RS,Msc_RS_idx,carrier_pos;

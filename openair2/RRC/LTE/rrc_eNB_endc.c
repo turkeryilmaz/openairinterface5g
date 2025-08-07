@@ -163,24 +163,24 @@ int rrc_eNB_generate_RRCConnectionReconfiguration_endc(protocol_ctxt_t *ctxt,
   OCTET_STRING_t dummy_scg_conf;
   unsigned char scg_conf_buf[4] = { 0, 0, 0, 0 };
   if (scg_group_config!=NULL) {
-	  nr.choice.setup.nr_SecondaryCellGroupConfig_r15 = scg_group_config; //&scg_conf;
-          LOG_E(RRC, "setting scg_group_config\n");
+    nr.choice.setup.nr_SecondaryCellGroupConfig_r15 = scg_group_config; //&scg_conf;
+    LOG_E(RRC, "setting scg_group_config\n");
   }
   else{
-	  nr.choice.setup.nr_SecondaryCellGroupConfig_r15 = &dummy_scg_conf;
-	  dummy_scg_conf.buf = scg_conf_buf;
-	  dummy_scg_conf.size = 4;
+    nr.choice.setup.nr_SecondaryCellGroupConfig_r15 = &dummy_scg_conf;
+    dummy_scg_conf.buf = scg_conf_buf;
+    dummy_scg_conf.size = 4;
   }
 
 #ifdef DEBUG_SCG_CONFIG
-	{
-		int size_s = nr.choice.setup.nr_SecondaryCellGroupConfig_r15->size;
-		int i;
-		LOG_I(RRC, "Dumping nr_SecondaryCellGroupConfig: %d", size_s);
-		for (i=0; i<size_s; i++) printf("%2.2x", (unsigned char)nr.choice.setup.nr_SecondaryCellGroupConfig_r15->buf[i]);
-		printf("\n");
-
-	}
+  {
+    int size_s = nr.choice.setup.nr_SecondaryCellGroupConfig_r15->size;
+    int i;
+    LOG_I(RRC, "Dumping nr_SecondaryCellGroupConfig: %d", size_s);
+    for (i = 0; i < size_s; i++)
+      printf("%2.2x", (unsigned char)nr.choice.setup.nr_SecondaryCellGroupConfig_r15->buf[i]);
+    printf("\n");
+  }
 #endif
 
 
@@ -191,23 +191,23 @@ int rrc_eNB_generate_RRCConnectionReconfiguration_endc(protocol_ctxt_t *ctxt,
   unsigned char nr1_buf[4] = { 0, 0, 0, 0 };
 
   if(scg_RB_config!=NULL) {
-	  cr_1510.nr_RadioBearerConfig1_r15 = scg_RB_config;
-          LOG_E(RRC, "setting scg_RB_config\n");
+    cr_1510.nr_RadioBearerConfig1_r15 = scg_RB_config;
+    LOG_E(RRC, "setting scg_RB_config\n");
   }
   else{
-	  cr_1510.nr_RadioBearerConfig1_r15 = &dummy_nr1_conf;
-	  dummy_nr1_conf.buf = nr1_buf;
-	  dummy_nr1_conf.size = 4;
+    cr_1510.nr_RadioBearerConfig1_r15 = &dummy_nr1_conf;
+    dummy_nr1_conf.buf = nr1_buf;
+    dummy_nr1_conf.size = 4;
   }
 
 #ifdef DEBUG_SCG_CONFIG
   {
-	  int size_s = cr_1510.nr_RadioBearerConfig1_r15->size;
-	  int i;
-	  LOG_I(RRC, "Dumping nr_RadioBearerConfig1: %d", size_s);
-	  for (i=0; i<size_s; i++) printf("%2.2x", (unsigned char)cr_1510.nr_RadioBearerConfig1_r15->buf[i]);
-	  printf("\n");
-
+    int size_s = cr_1510.nr_RadioBearerConfig1_r15->size;
+    int i;
+    LOG_I(RRC, "Dumping nr_RadioBearerConfig1: %d", size_s);
+    for (i = 0; i < size_s; i++)
+      printf("%2.2x", (unsigned char)cr_1510.nr_RadioBearerConfig1_r15->buf[i]);
+    printf("\n");
   }
 #endif
 

@@ -237,8 +237,8 @@ int measurcmd_async(char *buf, int debug, telnet_printfunc_t prnt) {
   int okcmd=0;
 
   if (buf == NULL) {
-	  measurcmd_async_help(prnt);
-	  return CMDSTATUS_FOUND;
+    measurcmd_async_help(prnt);
+    return CMDSTATUS_FOUND;
   }
   if (debug > 0)
     prnt(" measurcmd_async received %s\n",buf);
@@ -255,7 +255,7 @@ int measurcmd_async(char *buf, int debug, telnet_printfunc_t prnt) {
       okcmd=1;
     }
   } else if ( s == 3 ) {
-	int msgid;
+    int msgid;
     if ( strcmp(subcmd,"enable") == 0) {
       msgid = TIMESTAT_MSGID_ENABLE;
       okcmd=1;
@@ -268,14 +268,14 @@ int measurcmd_async(char *buf, int debug, telnet_printfunc_t prnt) {
     }
     if (okcmd) {
       notifiedFIFO_elt_t *nfe = newNotifiedFIFO_elt(sizeof(time_stats_msg_t),0,NULL,NULL);
-	  time_stats_msg_t *msg = (time_stats_msg_t *)NotifiedFifoData(nfe);
+      time_stats_msg_t *msg = (time_stats_msg_t *)NotifiedFifoData(nfe);
       msg->msgid = msgid ;
       msg->displayFunc = prnt;
-	  for(int i=idx1; i<idx2; i++) {
-		msg->timestat_id =i;
+      for (int i = idx1; i < idx2; i++) {
+        msg->timestat_id = i;
         pushNotifiedFIFO(&measur_fifo, nfe);
-	  }
-    }	  
+      }
+    }
   }
 
   if (!(okcmd)) {

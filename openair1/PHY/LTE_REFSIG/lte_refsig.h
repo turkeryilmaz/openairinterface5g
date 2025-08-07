@@ -90,7 +90,7 @@ int lte_dl_cell_spec(PHY_VARS_eNB *phy_vars_eNB,
                    int32_t *output,
                    short amp,
                    uint8_t Ns,
-		   uint8_t lprime,
+           uint8_t lprime,
                    uint8_t p,
                    int SS_flag);*/
 

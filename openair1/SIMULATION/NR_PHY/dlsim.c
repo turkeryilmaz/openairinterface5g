@@ -758,11 +758,11 @@ printf("%d\n", slot);
 
   printf("Decoding NR_RRCReconfiguration (%d bytes)\n",msg_len);
   asn_dec_rval_t dec_rval = uper_decode_complete( NULL,
-						  &asn_DEF_NR_RRCReconfiguration,
-						  (void **)&NR_RRCReconfiguration,
-						  (uint8_t *)buffer,
-						  msg_len); 
-  
+                          &asn_DEF_NR_RRCReconfiguration,
+                          (void **)&NR_RRCReconfiguration,
+                          (uint8_t *)buffer,
+                          msg_len);
+
   if ((dec_rval.code != RC_OK) && (dec_rval.consumed == 0)) {
     AssertFatal(1==0,"NR_RRCReConfiguration decode error\n");
     // free the memory
@@ -771,23 +771,24 @@ printf("%d\n", slot);
   }
   fclose(scg_fd);
 
-  AssertFatal(NR_RRCReconfiguration->criticalExtensions.present == NR_RRCReconfiguration__criticalExtensions_PR_rrcReconfiguration,"wrong NR_RRCReconfiguration->criticalExstions.present type\n");
+  AssertFatal(NR_RRCReconfiguration->criticalExtensions.present ==
+  NR_RRCReconfiguration__criticalExtensions_PR_rrcReconfiguration,"wrong NR_RRCReconfiguration->criticalExstions.present type\n");
 
   NR_RRCReconfiguration_IEs_t *reconfig_ies = NR_RRCReconfiguration->criticalExtensions.choice.rrcReconfiguration;
   NR_CellGroupConfig_t *secondaryCellGroup = NULL;
   dec_rval = uper_decode_complete( NULL,
-				   &asn_DEF_NR_CellGroupConfig,
-				   (void **)&secondaryCellGroup,
-				   (uint8_t *)reconfig_ies->secondaryCellGroup->buf,
-				   reconfig_ies->secondaryCellGroup->size); 
-  
+                   &asn_DEF_NR_CellGroupConfig,
+                   (void **)&secondaryCellGroup,
+                   (uint8_t *)reconfig_ies->secondaryCellGroup->buf,
+                   reconfig_ies->secondaryCellGroup->size);
+
   if ((dec_rval.code != RC_OK) && (dec_rval.consumed == 0)) {
     AssertFatal(1==0,"NR_CellGroupConfig decode error\n");
     // free the memory
     SEQUENCE_free( &asn_DEF_NR_CellGroupConfig, secondaryCellGroup, 1 );
     exit(-1);
   }
-  
+
   NR_ServingCellConfigCommon_t *scc = secondaryCellGroup->spCellConfig->reconfigurationWithSync->spCellConfigCommon;
   */
 
@@ -1270,23 +1271,21 @@ printf("%d\n", slot);
         estimated_output_bit = (unsigned char *)malloc16(sizeof(unsigned char) * TBS);
       }
       for (i = 0; i < TBS; i++) {
+        estimated_output_bit[i] = (UE->phy_sim_dlsch_b[i / 8] & (1 << (i & 7))) >> (i & 7);
+        test_input_bit[i] = (gNB_dlsch->harq_process.b[i / 8] & (1 << (i & 7))) >> (i & 7); // Further correct for multiple segments
 
-	estimated_output_bit[i] = (UE->phy_sim_dlsch_b[i/8] & (1 << (i & 7))) >> (i & 7);
-	test_input_bit[i]       = (gNB_dlsch->harq_process.b[i / 8] & (1 << (i & 7))) >> (i & 7); // Further correct for multiple segments
-	
-	if (estimated_output_bit[i] != test_input_bit[i]) {
-	  if(errors_bit == 0)
-	    LOG_D(PHY,"First bit in error in decoding = %d\n",i);
-	  errors_bit++;
-	}
-	
+        if (estimated_output_bit[i] != test_input_bit[i]) {
+          if (errors_bit == 0)
+            LOG_D(PHY, "First bit in error in decoding = %d\n", i);
+          errors_bit++;
+        }
       }
       ////////////////////////////////////////////////////////////
 
       if (errors_bit > 0) {
-	n_false_positive++;
-	if (n_trials == 1)
-	  printf("errors_bit = %u (trial %d)\n", errors_bit, trial);
+        n_false_positive++;
+        if (n_trials == 1)
+          printf("errors_bit = %u (trial %d)\n", errors_bit, trial);
       }
       roundStats += ((float)round);
       if (UE_harq_process->decodeResult)
@@ -1568,9 +1567,10 @@ void update_dmrs_config(NR_CellGroupConfig_t *scg, int8_t* dmrs_arg)
     printf("DLSIM: Allocated Mapping TypeB in RRC reconfig message\n");
   }
 
-  struct NR_SetupRelease_DMRS_DownlinkConfig	*dmrs_MappingtypeA = bwp->bwp_Dedicated->pdsch_Config->choice.setup->dmrs_DownlinkForPDSCH_MappingTypeA;
-  struct NR_SetupRelease_DMRS_DownlinkConfig	*dmrs_MappingtypeB = bwp->bwp_Dedicated->pdsch_Config->choice.setup->dmrs_DownlinkForPDSCH_MappingTypeB;
-
+  struct NR_SetupRelease_DMRS_DownlinkConfig *dmrs_MappingtypeA =
+      bwp->bwp_Dedicated->pdsch_Config->choice.setup->dmrs_DownlinkForPDSCH_MappingTypeA;
+  struct NR_SetupRelease_DMRS_DownlinkConfig *dmrs_MappingtypeB =
+      bwp->bwp_Dedicated->pdsch_Config->choice.setup->dmrs_DownlinkForPDSCH_MappingTypeB;
 
   NR_DMRS_DownlinkConfig_t *dmrs_config = (mapping_type == typeA) ? dmrs_MappingtypeA->choice.setup : dmrs_MappingtypeB->choice.setup;
 

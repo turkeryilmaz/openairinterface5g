@@ -159,7 +159,7 @@ int websrv_cpllrbuff_tomsg(OAIgraph_t *graph, int16_t *llrs, int n, int id, int 
   /* discard points which cannot be distinguished on graph: x and llr have almost identical values
     for ( int i=4; i<(newn-1); i=i+2) {
       for (int j=i+2 ; j<(i+(xres*2)) && j<(newn-1); j=j+2) {
-           if ( ((dptr[j] - dptr[i]) <  yres) || 	((dptr[i] - dptr[j]) <  yres) ) {
+           if ( ((dptr[j] - dptr[i]) <  yres) ||     ((dptr[i] - dptr[j]) <  yres) ) {
          newn=newn-2;
          for (int k = j; k< newn; k++) {
           ((int8_t *)(msg->data_xy))[k] = (int8_t)msg->data_xy[k+2];

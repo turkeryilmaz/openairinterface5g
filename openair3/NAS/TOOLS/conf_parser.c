@@ -7,21 +7,22 @@
 #include "conf_user_plmn.h"
 
 bool parse_config_file(const char *output_dir, const char *conf_filename, int output_flags) {
-	int rc = true;
-    int ret;
-    int ue_nb = 0;
-    config_setting_t *root_setting = NULL;
-    config_setting_t *ue_setting = NULL;
-    config_setting_t *all_plmn_setting = NULL;
-    char user[100];
-    config_t cfg;
+  int rc = true;
+  int ret;
+  int ue_nb = 0;
+  config_setting_t *root_setting = NULL;
+  config_setting_t *ue_setting = NULL;
+  config_setting_t *all_plmn_setting = NULL;
+  char user[100];
+  config_t cfg;
 
-	networks_t networks;;
+  networks_t networks;
+  ;
 
-    ret = get_config_from_file(conf_filename, &cfg);
-    if (ret == false) {
-        exit(1);
-    }
+  ret = get_config_from_file(conf_filename, &cfg);
+  if (ret == false) {
+    exit(1);
+  }
 
     root_setting = config_root_setting(&cfg);
     ue_nb = config_setting_length(root_setting) - 1;
@@ -37,23 +38,23 @@ bool parse_config_file(const char *output_dir, const char *conf_filename, int ou
     }
 
     for (int i = 0; i < ue_nb; i++) {
-	    emm_nvdata_t emm_data;
+      emm_nvdata_t emm_data;
 
-	    user_nvdata_t user_data;
-	    user_data_conf_t user_data_conf;
+      user_nvdata_t user_data;
+      user_data_conf_t user_data_conf;
 
-	    usim_data_t usim_data;
-	    usim_data_conf_t usim_data_conf;
+      usim_data_t usim_data;
+      usim_data_conf_t usim_data_conf;
 
-		user_plmns_t user_plmns;
+      user_plmns_t user_plmns;
 
-        sprintf(user, "%s%d", UE, i);
+      sprintf(user, "%s%d", UE, i);
 
-        ue_setting = config_setting_get_member(root_setting, user);
-        if (ue_setting == NULL) {
-            printf("Check UE%d settings\n", i);
-            return false;
-        }
+      ue_setting = config_setting_get_member(root_setting, user);
+      if (ue_setting == NULL) {
+        printf("Check UE%d settings\n", i);
+        return false;
+      }
 
         if ( parse_user_plmns_conf(ue_setting, i, &user_plmns, &usim_data_conf.hplmn, networks) == false ) {
             return false;
@@ -88,13 +89,12 @@ bool parse_config_file(const char *output_dir, const char *conf_filename, int ou
             write_emm_data(output_dir, i, &emm_data);
         }
 
-		user_plmns_free(&user_plmns);
-
+        user_plmns_free(&user_plmns);
      }
     free(networks.items);
-	networks.size=0;
+    networks.size = 0;
     config_destroy(&cfg);
-	return(true);
+    return (true);
 }
 
 bool get_config_from_file(const char *filename, config_t *config) {

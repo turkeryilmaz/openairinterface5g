@@ -591,8 +591,8 @@ void *s1ap_eNB_process_itti_msg(void *notUsed) {
     break;
 
     case S1AP_E_RAB_MODIFICATION_IND: {
-    	s1ap_eNB_generate_E_RAB_Modification_Indication(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-    	                               &S1AP_E_RAB_MODIFICATION_IND(received_msg));
+      s1ap_eNB_generate_E_RAB_Modification_Indication(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
+                                                      &S1AP_E_RAB_MODIFICATION_IND(received_msg));
     }
     break;
 

@@ -817,28 +817,27 @@ void nr_dlsch_deinterleaving(uint8_t symbol,
   printf("N_bundle %u L %d nb_rb_pdsch %d\n",N_bundle, L,nb_rb_pdsch);
 
   if (symbol==start_symbol)
-	  nb_re = 6;
+    nb_re = 6;
   else
-	  nb_re = 12;
-
+    nb_re = 12;
 
   AssertFatal(llr!=NULL,"nr_dlsch_deinterleaving: FATAL llr is Null\n");
 
 
   for (c =0; c< C; c++){
-	  for (r=0; r<R;r++){
-		  bundle_idx = r*C+c;
-		  bundle_deint[bundle_idx] = c*R+r;
-		  //printf("c %u r %u bundle_idx %u bundle_deinter %u\n", c, r, bundle_idx, bundle_deint[bundle_idx]);
-	  }
+    for (r = 0; r < R; r++) {
+      bundle_idx = r * C + c;
+      bundle_deint[bundle_idx] = c * R + r;
+      // printf("c %u r %u bundle_idx %u bundle_deinter %u\n", c, r, bundle_idx, bundle_deint[bundle_idx]);
+    }
   }
 
   for (k=0; k<N_bundle;k++)
   {
-	  for (m=0; m<nb_re*L;m++){
-		  llr_deint[bundle_deint[k]*nb_re*L+m]= llr[k*nb_re*L+m];
-		  //printf("k %d m %d bundle_deint %d llr_deint %d\n", k, m, bundle_deint[k], llr_deint[bundle_deint[k]*nb_re*L+m]);
-	  }
+    for (m = 0; m < nb_re * L; m++) {
+      llr_deint[bundle_deint[k] * nb_re * L + m] = llr[k * nb_re * L + m];
+      // printf("k %d m %d bundle_deint %d llr_deint %d\n", k, m, bundle_deint[k], llr_deint[bundle_deint[k]*nb_re*L+m]);
+    }
   }
 }
 

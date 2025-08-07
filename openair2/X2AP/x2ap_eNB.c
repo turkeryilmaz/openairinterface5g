@@ -164,9 +164,9 @@ void x2ap_eNB_handle_sctp_association_resp(instance_t instance, sctp_new_associa
   dump_trees();
   /* Prepare new x2 Setup Request */
   if(instance_p->cell_type == CELL_MACRO_GNB)
-	  x2ap_gNB_generate_ENDC_x2_setup_request(instance_p, x2ap_enb_data_p);
+    x2ap_gNB_generate_ENDC_x2_setup_request(instance_p, x2ap_enb_data_p);
   else
-	  x2ap_eNB_generate_x2_setup_request(instance_p, x2ap_enb_data_p);
+    x2ap_eNB_generate_x2_setup_request(instance_p, x2ap_enb_data_p);
 }
 
 static
@@ -491,9 +491,8 @@ void x2ap_eNB_handle_sgNB_add_req(instance_t instance,
       x2ap_eNB_data, ue_id);
 }
 
-static
-void x2ap_gNB_trigger_sgNB_add_req_ack(instance_t instance,
-		x2ap_ENDC_sgnb_addition_req_ACK_t *x2ap_ENDC_sgnb_addition_req_ACK)
+static void x2ap_gNB_trigger_sgNB_add_req_ack(instance_t instance,
+                                              x2ap_ENDC_sgnb_addition_req_ACK_t *x2ap_ENDC_sgnb_addition_req_ACK)
 {
   /* TODO: remove this hack (the goal is to find the correct
    * eNodeB structure for the other end) - we need a proper way for RRC
@@ -512,7 +511,7 @@ void x2ap_gNB_trigger_sgNB_add_req_ack(instance_t instance,
   DevAssert(instance_p != NULL);
   target = x2ap_get_eNB(NULL,x2ap_ENDC_sgnb_addition_req_ACK->target_assoc_id, 0);
   DevAssert(target != NULL);
-	
+
   /* allocate x2ap ID */
   id_manager = &instance_p->id_manager;
   ue_id = x2ap_allocate_new_id(id_manager);
@@ -537,7 +536,7 @@ void x2ap_gNB_trigger_sgNB_add_req_ack(instance_t instance,
 /**
  * @fn x2ap_eNB_trigger_sgnb_reconfiguration_complete
  *\brief:  Function triggers sgnb reconfiguration complete
- * @param	: IN instance, IN x2ap_reconf_complete
+ * @param    : IN instance, IN x2ap_reconf_complete
  **/
 static
 void x2ap_eNB_trigger_sgnb_reconfiguration_complete(instance_t instance,
@@ -628,8 +627,7 @@ void *x2ap_task(void *arg) {
 
   while (1) {
     itti_receive_msg(TASK_X2AP, &received_msg);
-    LOG_D(X2AP, "Received message %d:%s\n",
-	       ITTI_MSG_ID(received_msg), ITTI_MSG_NAME(received_msg));
+    LOG_D(X2AP, "Received message %d:%s\n", ITTI_MSG_ID(received_msg), ITTI_MSG_NAME(received_msg));
     switch (ITTI_MSG_ID(received_msg)) {
       case TERMINATE_MESSAGE:
         X2AP_WARN(" *** Exiting X2AP thread\n");
@@ -666,9 +664,9 @@ void *x2ap_task(void *arg) {
         break;
 
       case X2AP_ENDC_SGNB_ADDITION_REQ_ACK:
-    	  x2ap_gNB_trigger_sgNB_add_req_ack(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-    			  &X2AP_ENDC_SGNB_ADDITION_REQ_ACK(received_msg));
-    	break;
+        x2ap_gNB_trigger_sgNB_add_req_ack(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
+                                          &X2AP_ENDC_SGNB_ADDITION_REQ_ACK(received_msg));
+        break;
 
       case X2AP_ENDC_SGNB_RECONF_COMPLETE:
         x2ap_eNB_trigger_sgnb_reconfiguration_complete(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
@@ -736,7 +734,7 @@ int is_x2ap_enabled(void)
   /* TODO: do it per module - we check only first eNB */
   config_get(config_get_if(), p, sizeofArray(p), "eNBs.[0]");
   if (enable_x2 != NULL && strcmp(enable_x2, "yes") == 0){
-	  enabled = 1;
+    enabled = 1;
   }
 
   /*Consider also the case of enabling X2AP for a gNB by parsing a gNB configuration file*/

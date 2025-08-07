@@ -2,7 +2,7 @@
 /** iris_lib.cpp
  *
  * \authors: Rahman Doost-Mohammady : doost@rice.edu
- * 	    Clay Shepard : cws@rice.edu
+ *         Clay Shepard : cws@rice.edu
  */
 
 #include <string.h>
@@ -12,7 +12,7 @@
 #include <SoapySDR/Device.hpp>
 #include <SoapySDR/Formats.hpp>
 #include <SoapySDR/Time.hpp>
-//#include <boost/format.hpp>
+// #include <boost/format.hpp>
 #include <iostream>
 #include <complex>
 #include <fstream>

@@ -314,10 +314,7 @@ int nr_prs_channel_estimation(uint8_t gNB_id,
 
         //Start pilot
         c16_t ch = c16MulConjShift(*pil, *rxF, 15);
-        multadd_real_vector_complex_scalar(fl,
-	      	       ch,
-	      	       ch_tmp,
-	      	       16);
+        multadd_real_vector_complex_scalar(fl, ch, ch_tmp, 16);
 
         // SNR & RSRP estimation
         rsrp += squaredMod(*rxF);
@@ -330,10 +327,7 @@ int nr_prs_channel_estimation(uint8_t gNB_id,
         k   = (k+prs_cfg->CombSize) % frame_params->ofdm_symbol_size;
         rxF = &rxdataF[rxAnt][l * frame_params->ofdm_symbol_size + k];
         ch = c16MulConjShift(*pil, *rxF, 15);
-        multadd_real_vector_complex_scalar(fml,
-	      	       ch,
-	      	       ch_tmp,
-	      	       16);
+        multadd_real_vector_complex_scalar(fml, ch, ch_tmp, 16);
 
         // SNR & RSRP estimation
         rsrp += squaredMod(*rxF);
@@ -351,10 +345,7 @@ int nr_prs_channel_estimation(uint8_t gNB_id,
         for(int pIdx = 2; pIdx < num_pilots-2; pIdx++)
         {
           c16_t ch = c16MulConjShift(*pil, *rxF, 15);
-          multadd_real_vector_complex_scalar(fmm,
-	      	         ch,
-	      	         ch_tmp,
-	      	         16);
+          multadd_real_vector_complex_scalar(fmm, ch, ch_tmp, 16);
 
           // SNR & RSRP estimation
           rsrp += squaredMod(*rxF);
@@ -371,10 +362,7 @@ int nr_prs_channel_estimation(uint8_t gNB_id,
 
         //End pilot
         ch = c16MulConjShift(*pil, *rxF, 15);
-        multadd_real_vector_complex_scalar(fmr,
-	      	       ch,
-	      	       ch_tmp,
-	      	       16);
+        multadd_real_vector_complex_scalar(fmr, ch, ch_tmp, 16);
 
         // SNR & RSRP estimation
         rsrp += squaredMod(*rxF);
@@ -387,10 +375,7 @@ int nr_prs_channel_estimation(uint8_t gNB_id,
         k   = (k+prs_cfg->CombSize) % frame_params->ofdm_symbol_size;
         rxF = &rxdataF[rxAnt][l * frame_params->ofdm_symbol_size + k];
         ch = c16MulConjShift(*pil, *rxF, 15);
-        multadd_real_vector_complex_scalar(fr,
-	      	       ch,
-	      	       ch_tmp,
-	      	       16);
+        multadd_real_vector_complex_scalar(fr, ch, ch_tmp, 16);
 
         // SNR & RSRP estimation
         rsrp += squaredMod(*rxF);
@@ -577,8 +562,8 @@ c32_t nr_pbch_dmrs_correlation(const NR_DL_FRAME_PARMS *fp,
     for (int pilot_cnt = 3; pilot_cnt < (3 * 20); pilot_cnt += 3) {
       // in 2nd symbol, skip middle  REs (48 with DMRS,  144 for SSS, and another 48 with DMRS) 
       if (dmrss == 1 && pilot_cnt == 12) {
-	pilot_cnt=48;
-  re_offset = (re_offset + 144) % fp->ofdm_symbol_size;
+        pilot_cnt = 48;
+        re_offset = (re_offset + 144) % fp->ofdm_symbol_size;
       }
       computed_val = c32x16maddShift(*pil, rxF[re_offset], computed_val, 15);
 
@@ -732,8 +717,8 @@ int nr_pbch_channel_estimation(const NR_DL_FRAME_PARMS *fp,
     dl_ch += 12;
 
     for (int pilot_cnt = 3; pilot_cnt < (3 * num_rbs); pilot_cnt += 3) {
-      //	if (pilot_cnt == 30)
-      //	  rxF   = (int16_t *)&rxdataF[aarx][(symbol_offset+k)];
+      //    if (pilot_cnt == 30)
+      //      rxF   = (int16_t *)&rxdataF[aarx][(symbol_offset+k)];
 
       // in 2nd symbol, skip middle  REs (48 with DMRS,  144 for SSS, and another 48 with DMRS) 
       if (dmrss == 1 && pilot_cnt == 12) {

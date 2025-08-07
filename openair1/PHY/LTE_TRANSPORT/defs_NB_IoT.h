@@ -70,13 +70,13 @@
 //#define PMI_2A_1mj 3
 //
 //// for NB-IoT
-#define MAX_NUM_CHANNEL_BITS_NB_IoT 3360 			//14 symbols * 12 sub-carriers * 10 SF * 2bits/RE  // to check during real tests
-#define MAX_DL_SIZE_BITS_NB_IoT 680 				// in release 13 // in release 14 = 2048      // ??? **** not sure
-////#define MAX_NUM_CHANNEL_BITS_NB_IOT 3*680  			/// ??? ****not sure
+#define MAX_NUM_CHANNEL_BITS_NB_IoT 3360 // 14 symbols * 12 sub-carriers * 10 SF * 2bits/RE  // to check during real tests
+#define MAX_DL_SIZE_BITS_NB_IoT 680 // in release 13 // in release 14 = 2048      // ??? **** not sure
+////#define MAX_NUM_CHANNEL_BITS_NB_IOT 3*680              /// ??? ****not sure
 //
 //// to be created LTE_eNB_DLSCH_t --> is duplicated for each number of UE and then indexed in the table
 //
-//typedef struct {                              // LTE_DL_eNB_HARQ_t
+// typedef struct {                              // LTE_DL_eNB_HARQ_t
 //  /// Status Flag indicating for this DLSCH (idle,active,disabled)
 //  SCH_status_t status;
 //  /// Transport block size
