@@ -72,8 +72,8 @@ RUN /bin/sh oaienv && \
     cd cmake_targets && \
     mkdir -p log && \
     taskset -c 7-39 ./build_oai \
-      --gNB \
-      --build-lib "ldpc_t2" \
+      --gNB --ninja \
+      --build-lib "ldpc_aal" \
       -t oran_fhlib_5g --cmake-opt -Dxran_LOCATION=/opt/phy/fhi_lib/lib \
       $BUILD_OPTION && \
     # Mainly to see if the sanitize option was perfectly executed
