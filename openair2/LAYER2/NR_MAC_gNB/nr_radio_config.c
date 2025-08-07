@@ -1107,7 +1107,7 @@ void nr_rrc_config_ul_tda(NR_ServingCellConfigCommon_t *scc, int min_fb_delay, i
     NR_TDD_UL_DL_Pattern_t *p2 = scc->tdd_UL_DL_ConfigurationCommon->pattern2;
     if (p2 && p2->nrofUplinkSymbols)
       AssertFatal(p2->nrofUplinkSymbols == ul_symb,
-                  "nrofDownlinkSymbols in pattern1 %ld and pattern2 %ld must be the same in current implementation\n",
+                  "nrofDownlinkSymbols in pattern1 %d and pattern2 %ld must be the same in current implementation\n",
                   ul_symb,
                   p2->nrofUplinkSymbols);
     AssertFatal(!p2 || p2->nrofDownlinkSlots >= p2->nrofUplinkSlots,
