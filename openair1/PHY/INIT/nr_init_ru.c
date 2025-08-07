@@ -47,8 +47,8 @@ void nr_phy_init_RU(RU_t *ru)
 
   AssertFatal(ru->nb_log_antennas > 0 && ru->nb_log_antennas < 13, "ru->nb_log_antennas %d ! \n",ru->nb_log_antennas);
 
-  nfapi_nr_analog_beamforming_ve_t *analog_config = &cfg->analog_beamforming_ve;
-  ru->num_beams_period = analog_config->analog_bf_vendor_ext.value ? analog_config->num_beams_period_vendor_ext.value : 1;
+  nfapi_nr_timedomain_beamforming_ve_t *timedomain_config = &cfg->timedomain_beamforming_ve;
+  ru->num_beams_period = timedomain_config->timedomain_bf_vendor_ext.value ? timedomain_config->num_beams_period_vendor_ext.value : 1;
   int nb_tx_streams = ru->nb_tx * ru->num_beams_period;
   int nb_rx_streams = ru->nb_rx * ru->num_beams_period;
   LOG_I(NR_PHY, "nb_tx_streams %d, nb_rx_streams %d, num_Beams_period %d\n", nb_tx_streams, nb_rx_streams, ru->num_beams_period);

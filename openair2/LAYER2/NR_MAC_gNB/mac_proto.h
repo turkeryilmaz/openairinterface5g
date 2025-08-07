@@ -451,7 +451,7 @@ int get_mcs_from_bler(const NR_bler_options_t *bler_options,
 
 int ul_buffer_index(int frame, int slot, int slots_per_frame, int size);
 void UL_tti_req_ahead_initialization(gNB_MAC_INST *gNB, int n, int CCid, frame_t frameP, int slotP);
-void fapi_beam_index_allocation(NR_ServingCellConfigCommon_t *scc, gNB_MAC_INST *mac);
+void fapi_beam_index_allocation(NR_ServingCellConfigCommon_t *scc, const nr_mac_config_t *config, gNB_MAC_INST *mac);
 int get_fapi_beamforming_index(gNB_MAC_INST *mac, int ssb_idx);
 NR_beam_alloc_t beam_allocation_procedure(NR_beam_info_t *beam_info, int frame, int slot, int beam_index, int slots_per_frame);
 void reset_beam_status(NR_beam_info_t *beam_info, int frame, int slot, int beam_index, int slots_per_frame, bool new_beam);
@@ -491,6 +491,7 @@ bool nr_mac_remove_lcid(NR_UE_sched_ctrl_t *sched_ctrl, long lcid);
 
 bool nr_mac_get_new_rnti(NR_UEs_t *UEs, rnti_t *rnti);
 void nr_mac_update_pdcch_closed_loop_adjust(NR_UE_sched_ctrl_t *sched_ctrl, bool feedback_not_detected);
+void get_coreset_rb_params(const NR_ControlResourceSet_t *coreset, uint16_t *n_rb, uint16_t *rb_start);
 
 void prepare_du_configuration_update(gNB_MAC_INST *mac,
                                      f1ap_served_cell_info_t *info,
