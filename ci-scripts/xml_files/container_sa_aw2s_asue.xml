@@ -115,7 +115,7 @@
     <class>Custom_Command</class>
     <desc>Verify UE 2 is RedCap</desc>
     <node>avra</node>
-    <command>docker logs oai-gnb-aw2s | grep -m1 -E "UE with RNTI [0-9a-f]{4} is RedCap"</command>
+    <command>[ $(docker logs oai-gnb-aw2s | grep -m1 -E "UE with RNTI [0-9a-f]{4} is RedCap" | wc -l) -eq 1 ]</command>
   </testCase>
 
   <testCase id="102003">
