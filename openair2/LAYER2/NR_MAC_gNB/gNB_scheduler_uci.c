@@ -1107,7 +1107,7 @@ static void set_reset_pucch0_vrb_occupation(const NR_sched_pucch_t *pucch, uint1
   }
 }
 
-bool check_bits_vs_coderate_limit(NR_PUCCH_Config_t *pucch_Config, int O_uci, int pucch_resource)
+static bool check_bits_vs_coderate_limit(NR_PUCCH_Config_t *pucch_Config, int O_uci, int pucch_resource)
 {
   int resource_id = get_pucch_resourceid(pucch_Config, O_uci, pucch_resource);
   AssertFatal(pucch_Config->resourceToAddModList != NULL, "PUCCH resourceToAddModList is null\n");
@@ -1193,11 +1193,12 @@ int nr_acknack_scheduling(gNB_MAC_INST *mac, NR_UE_info_t *UE, frame_t frame, sl
     // if there is already a PUCCH in given frame and slot
     if (curr_pucch->active && curr_pucch->frame == pucch_frame && curr_pucch->ul_slot == pucch_slot) {
       LOG_D(NR_MAC,
-            "pucch_acknack DL %4d.%2d, UL_ACK %4d.%2d Bits already in current PUCCH: DAI_C %d CSI %d\n",
+            "pucch_acknack DL %4d.%2d, UL_ACK %4d.%2d Bits already in current PUCCH: SR %d DAI_C %d CSI %d\n",
             frame,
             slot,
             pucch_frame,
             pucch_slot,
+            curr_pucch->sr_flag,
             curr_pucch->dai_c,
             curr_pucch->csi_bits);
 
@@ -1209,9 +1210,9 @@ int nr_acknack_scheduling(gNB_MAC_INST *mac, NR_UE_info_t *UE, frame_t frame, sl
       // the number of bits in the check need to include possible SR (1 bit)
       // and the ack/nack bit to be scheduled (1 bit)
       // so the number of bits already scheduled in current pucch + SR flag + 1
-      if (!check_bits_vs_coderate_limit(pucch_Config,
-                                        curr_pucch->csi_bits + curr_pucch->dai_c + curr_pucch->sr_flag,
-                                        curr_pucch->resource_indicator))
+      int tot_bits = curr_pucch->csi_bits + curr_pucch->dai_c + curr_pucch->sr_flag + 1;
+      if (curr_pucch->csi_bits + curr_pucch->dai_c > 2
+          && !check_bits_vs_coderate_limit(pucch_Config, tot_bits, curr_pucch->resource_indicator))
         continue;
       // TODO temporarily limit ack/nak to 3 bits because of performances of polar for PUCCH (required for > 11 bits)
       if (curr_pucch->csi_bits > 0 && curr_pucch->dai_c >= 3)
