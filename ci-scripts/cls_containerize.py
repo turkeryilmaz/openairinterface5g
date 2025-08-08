@@ -231,17 +231,9 @@ class Containerize():
 		self.ranCommitID = ''
 		self.ranTargetBranch = ''
 		self.eNBIPAddress = ''
-		self.eNBUserName = ''
-		self.eNBPassword = ''
 		self.eNBSourceCodePath = ''
 		self.eNB1IPAddress = ''
-		self.eNB1UserName = ''
-		self.eNB1Password = ''
-		self.eNB1SourceCodePath = ''
 		self.eNB2IPAddress = ''
-		self.eNB2UserName = ''
-		self.eNB2Password = ''
-		self.eNB2SourceCodePath = ''
 		self.forcedWorkspaceCleanup = False
 		self.imageKind = ''
 		self.proxyCommit = None
@@ -270,9 +262,9 @@ class Containerize():
 		if server_id == '0':
 			ip, path = self.eNBIPAddress, self.eNBSourceCodePath
 		elif server_id == '1':
-			ip, path = self.eNB1IPAddress, self.eNB1SourceCodePath
+			ip, path = self.eNB1IPAddress, self.eNBSourceCodePath
 		elif server_id == '2':
-			ip, path = self.eNB2IPAddress, self.eNB2SourceCodePath
+			ip, path = self.eNB2IPAddress, self.eNBSourceCodePath
 		else:
 			raise ValueError(f"unknown server ID '{server_id}'")
 		if ip == '' or path == '':

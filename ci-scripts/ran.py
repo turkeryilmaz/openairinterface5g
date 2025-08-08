@@ -64,14 +64,6 @@ class RANManagement():
 		self.eNBUserName = ''
 		self.eNBPassword = ''
 		self.eNBSourceCodePath = ''
-		self.eNB1IPAddress = ''
-		self.eNB1UserName = ''
-		self.eNB1Password = ''
-		self.eNB1SourceCodePath = ''
-		self.eNB2IPAddress = ''
-		self.eNB2UserName = ''
-		self.eNB2Password = ''
-		self.eNB2SourceCodePath = ''
 		self.Build_eNB_args = ''
 		self.Build_eNB_forced_workspace_cleanup = False
 		self.Initialize_eNB_args = ''
@@ -107,15 +99,9 @@ class RANManagement():
 			lPassWord = self.eNBPassword
 			lSourcePath = self.eNBSourceCodePath
 		elif self.eNB_serverId[self.eNB_instance] == '1':
-			lIpAddr = self.eNB1IPAddress
-			lUserName = self.eNB1UserName
-			lPassWord = self.eNB1Password
-			lSourcePath = self.eNB1SourceCodePath
+			raise ValueError("cannot handle server ID 1")
 		elif self.eNB_serverId[self.eNB_instance] == '2':
-			lIpAddr = self.eNB2IPAddress
-			lUserName = self.eNB2UserName
-			lPassWord = self.eNB2Password
-			lSourcePath = self.eNB2SourceCodePath
+			raise ValueError("cannot handle server ID 2")
 		if lIpAddr == '' or lUserName == '' or lPassWord == '' or lSourcePath == '':
 			HELP.GenericHelp(CONST.Version)
 			sys.exit('Insufficient Parameter')
@@ -254,15 +240,9 @@ class RANManagement():
 			lPassWord = self.eNBPassword
 			lSourcePath = self.eNBSourceCodePath
 		elif self.eNB_serverId[self.eNB_instance] == '1':
-			lIpAddr = self.eNB1IPAddress
-			lUserName = self.eNB1UserName
-			lPassWord = self.eNB1Password
-			lSourcePath = self.eNB1SourceCodePath
+			raise ValueError("cannot handle server ID 1")
 		elif self.eNB_serverId[self.eNB_instance] == '2':
-			lIpAddr = self.eNB2IPAddress
-			lUserName = self.eNB2UserName
-			lPassWord = self.eNB2Password
-			lSourcePath = self.eNB2SourceCodePath
+			raise ValueError("cannot handle server ID 2")
 		if lIpAddr == '' or lUserName == '' or lPassWord == '' or lSourcePath == '':
 			HELP.GenericHelp(CONST.Version)
 			sys.exit('Insufficient Parameter')
