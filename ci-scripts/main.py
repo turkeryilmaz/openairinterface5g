@@ -252,14 +252,15 @@ def ExecuteActionWithParam(action, ctx):
 		core_op = getattr(cls_oaicitest.OaiCiTest, action)
 		success = core_op(cn_id, ctx, HTML)
 
-	elif action == 'Deploy_OC_Chart' or action == 'Undeploy_OC_Chart':
+	elif action == 'DeployWithScript' or action == 'UndeployWithScript':
 		node = test.findtext('node') if not force_local else 'localhost'
-		oc_namespace = test.findtext('oc_namespace')
-		oc_chart = test.findtext('oc_chart')
-		if action == 'Deploy_OC_Chart':
-			success = CLUSTER.deploy_oc_chart(HTML, node, oc_chart, oc_namespace)
-		elif action == 'Undeploy_OC_Chart':
-			success = CLUSTER.undeploy_oc_chart(HTML, node, oc_chart, oc_namespace)
+		script = test.findtext('script')
+		options = test.findtext('options')
+		if action == 'DeployWithScript':
+			deploymentTag = cls_containerize.CreateTag(RAN.ranCommitID, RAN.ranBranch, RAN.ranAllowMerge)
+			success = cls_oaicitest.DeployWithScript(HTML, node, script, options, deploymentTag)
+		elif action == 'UndeployWithScript':
+			success = cls_oaicitest.UndeployWithScript(HTML, ctx, node, script, options)
 
 	elif action == 'Deploy_Object' or action == 'Undeploy_Object' or action == "Create_Workspace":
 		node = test.findtext('node')

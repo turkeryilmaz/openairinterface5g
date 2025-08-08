@@ -31,5 +31,5 @@
   - Custom_Command
   - Custom_Script
   - Create_Workspace
-  - Deploy_OC_Chart
-  - Undeploy_OC_Chart
+  - DeployWithScript
+  - UndeployWithScript
