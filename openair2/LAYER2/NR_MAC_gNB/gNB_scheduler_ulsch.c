@@ -112,8 +112,12 @@ static void get_max_rb_range(const uint16_t *vrb_map_ul, const uint16_t *ulprbbl
     current_start = rb + 1; /* will start in next RB, or updated later */
     current_len = 0;
   }
+  if (current_len > best_len) {
+    best_start = current_start;
+    best_len = current_len;
+  }
   *rb_start = best_start;
-  *rb_len = max(current_len, best_len);
+  *rb_len = best_len;
 }
 
 const NR_tda_info_t *get_best_ul_tda(const gNB_MAC_INST *nrmac, int beam, const NR_tda_info_t *tdas, int n_tda, int frame, int slot, int *rb_start, int *rb_len)
