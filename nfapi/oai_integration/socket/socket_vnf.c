@@ -20,8 +20,53 @@
  */
 #include "socket_vnf.h"
 
+#include "common/utils/LOG/log.h"
 #include "nfapi.h"
+#include "nfapi_vnf.h"
 #include "nfapi/oai_integration/vendor_ext.h" //TODO: Remove this include when removing the Aerial transport stuff
+static nfapi_vnf_config_t *config;
+
+static vnf_info *get_p5_vnf()
+{
+  return config->user_data;
+}
+static vnf_p7_t *get_p7_vnf()
+{
+  vnf_info *vnf = get_p5_vnf();
+  return (vnf_p7_t *)vnf->p7_vnfs->config;
+}
+
+void socket_stop_nfapi_p5_p7()
+{
+  get_p7_vnf()->terminate = 1;
+  config->pnf_disconnect_indication = NULL;
+}
+
+void socket_nfapi_send_stop_request(vnf_t *vnf)
+{
+  nfapi_nr_stop_request_scf_t req;
+  memset(&req, 0, sizeof(req));
+  req.header.message_id = NFAPI_NR_PHY_MSG_TYPE_STOP_REQUEST;
+  req.header.phy_id = 0;
+  nfapi_nr_vnf_stop_req(&vnf->_public, 0, &req);
+  NFAPI_TRACE(NFAPI_TRACE_INFO, "Sent NFAPI STOP.request\n");
+  uint64_t counter = 0;
+  vnf_p7_t *p7_vnf = get_p7_vnf();
+  while (p7_vnf->terminate == 0 && counter < 50) {
+    NFAPI_TRACE(NFAPI_TRACE_DEBUG, "Not terminated yet, counter %ld\n", counter);
+    usleep(1000);
+    counter++;
+  }
+  if (p7_vnf->terminate == 0) {
+    NFAPI_TRACE(NFAPI_TRACE_ERROR, "STOP.indication timed out, exiting\n");
+    nfapi_nr_stop_indication_scf_t msg;
+    msg.header.message_id = NFAPI_NR_PHY_MSG_TYPE_STOP_INDICATION;
+    msg.header.phy_id = 0;
+    vnf->_public.nr_stop_ind(&vnf->_public, 0, &msg);
+  } else {
+    NFAPI_TRACE(NFAPI_TRACE_DEBUG, "Terminated, exiting\n");
+  }
+}
 
 static bool send_p5_msg(vnf_t *vnf, nfapi_vnf_pnf_info_t *pnf, const void *msg, int len, uint8_t stream)
 {
@@ -274,12 +319,12 @@ static int vnf_nr_read_dispatch_message(nfapi_vnf_config_t *config, nfapi_vnf_pn
   }
 }
 
-static int nfapi_nr_vnf_p5_start(nfapi_vnf_config_t *config)
+static int nfapi_nr_vnf_p5_start(nfapi_vnf_config_t *cfg)
 {
-  // Verify that config is not null
-  if (config == 0)
+  // Verify that cfg is not null
+  if (cfg == 0)
     return -1;
-
+  config = cfg;
   NFAPI_TRACE(NFAPI_TRACE_INFO, "%s()\n", __FUNCTION__);
 
   int p5ListenSock, p5Sock;
@@ -293,9 +338,9 @@ static int nfapi_nr_vnf_p5_start(nfapi_vnf_config_t *config)
   struct sctp_initmsg initMsg = {0};
   int noDelay;
 
-  vnf_t *vnf = (vnf_t *)(config);
+  vnf_t *vnf = (vnf_t *)(cfg);
 
-  NFAPI_TRACE(NFAPI_TRACE_INFO, "Starting P5 VNF connection on port %u\n", config->vnf_p5_port);
+  NFAPI_TRACE(NFAPI_TRACE_INFO, "Starting P5 VNF connection on port %u\n", cfg->vnf_p5_port);
 
   {
     int protocol;
@@ -306,7 +351,7 @@ static int nfapi_nr_vnf_p5_start(nfapi_vnf_config_t *config)
     else
       protocol = IPPROTO_IP;
 
-    if (config->vnf_ipv6) {
+    if (cfg->vnf_ipv6) {
       domain = PF_INET6;
     } else {
       domain = AF_INET;
@@ -362,10 +407,10 @@ static int nfapi_nr_vnf_p5_start(nfapi_vnf_config_t *config)
     }
   }
 
-  if (config->vnf_ipv6) {
-    NFAPI_TRACE(NFAPI_TRACE_INFO, "IPV6 binding to port %d %d\n", config->vnf_p5_port, p5ListenSock);
+  if (cfg->vnf_ipv6) {
+    NFAPI_TRACE(NFAPI_TRACE_INFO, "IPV6 binding to port %d %d\n", cfg->vnf_p5_port, p5ListenSock);
     addr6.sin6_family = AF_INET6;
-    addr6.sin6_port = htons(config->vnf_p5_port);
+    addr6.sin6_port = htons(cfg->vnf_p5_port);
     addr6.sin6_addr = in6addr_any;
 
     // bind to the configured address and port
@@ -374,10 +419,10 @@ static int nfapi_nr_vnf_p5_start(nfapi_vnf_config_t *config)
       close(p5ListenSock);
       return 0;
     }
-  } else if (config->vnf_ipv4) {
-    NFAPI_TRACE(NFAPI_TRACE_INFO, "IPV4 binding to port %d\n", config->vnf_p5_port);
+  } else if (cfg->vnf_ipv4) {
+    NFAPI_TRACE(NFAPI_TRACE_INFO, "IPV4 binding to port %d\n", cfg->vnf_p5_port);
     addr.sin_family = AF_INET;
-    addr.sin_port = htons(config->vnf_p5_port);
+    addr.sin_port = htons(cfg->vnf_p5_port);
     addr.sin_addr.s_addr = INADDR_ANY;
 
     // bind to the configured address and port
@@ -413,7 +458,7 @@ static int nfapi_nr_vnf_p5_start(nfapi_vnf_config_t *config)
     tv.tv_sec = 5;
     tv.tv_usec = 0;
 
-    nfapi_vnf_pnf_info_t *pnf = config->pnf_list;
+    nfapi_vnf_pnf_info_t *pnf = cfg->pnf_list;
     while (pnf != 0) {
       if (pnf->connected) {
         FD_SET(pnf->p5_sock, &read_fd_set);
@@ -454,13 +499,13 @@ static int nfapi_nr_vnf_p5_start(nfapi_vnf_config_t *config)
           pnf->p5_pnf_sockaddr = addr;
           pnf->connected = 1;
 
-          nfapi_vnf_pnf_list_add(config, pnf);
+          nfapi_vnf_pnf_list_add(cfg, pnf);
 
           // Inform mac that a pnf connection has been established
           // todo : allow mac to 'accept' the connection. i.e. to
           // reject it.
-          if (config->pnf_nr_connection_indication != 0) {
-            (config->pnf_nr_connection_indication)(config, pnf->p5_idx);
+          if (cfg->pnf_nr_connection_indication != 0) {
+            (cfg->pnf_nr_connection_indication)(cfg, pnf->p5_idx);
           }
 
           // check the connection status
@@ -482,12 +527,12 @@ static int nfapi_nr_vnf_p5_start(nfapi_vnf_config_t *config)
       } else {
         uint8_t delete_pnfs = 0;
 
-        nfapi_vnf_pnf_info_t *pnf = config->pnf_list;
+        nfapi_vnf_pnf_info_t *pnf = cfg->pnf_list;
         while (pnf != 0) {
           if (FD_ISSET(pnf->p5_sock, &read_fd_set)) {
-            if (vnf_nr_read_dispatch_message(config, pnf) == 0) {
-              if (config->pnf_disconnect_indication != 0) {
-                (config->pnf_disconnect_indication)(config, pnf->p5_idx);
+            if (vnf_nr_read_dispatch_message(cfg, pnf) == 0) {
+              if (cfg->pnf_disconnect_indication != 0) {
+                (cfg->pnf_disconnect_indication)(cfg, pnf->p5_idx);
               }
 
               close(pnf->p5_sock);
@@ -501,14 +546,14 @@ static int nfapi_nr_vnf_p5_start(nfapi_vnf_config_t *config)
         }
 
         if (delete_pnfs) {
-          nfapi_vnf_pnf_info_t *pnf = config->pnf_list;
+          nfapi_vnf_pnf_info_t *pnf = cfg->pnf_list;
           nfapi_vnf_pnf_info_t *prev = 0;
           while (pnf != 0) {
             nfapi_vnf_pnf_info_t *curr = pnf;
 
             if (pnf->to_delete == 1) {
               if (prev == 0) {
-                config->pnf_list = pnf->next;
+                cfg->pnf_list = pnf->next;
               } else {
                 prev->next = pnf->next;
               }
@@ -536,10 +581,10 @@ static int nfapi_nr_vnf_p5_start(nfapi_vnf_config_t *config)
 
   NFAPI_TRACE(NFAPI_TRACE_INFO, "Closing p5Sock socket's\n");
   {
-    nfapi_vnf_pnf_info_t *curr = config->pnf_list;
+    nfapi_vnf_pnf_info_t *curr = cfg->pnf_list;
     while (curr != NULL) {
-      if (config->pnf_disconnect_indication) {
-        (config->pnf_disconnect_indication)(config, curr->p5_idx);
+      if (cfg->pnf_disconnect_indication) {
+        (cfg->pnf_disconnect_indication)(cfg, curr->p5_idx);
       }
 
       close(curr->p5_sock);
@@ -748,7 +793,8 @@ static int nfapi_nr_vnf_p7_start(nfapi_vnf_p7_config_t *config)
 
   NFAPI_TRACE(NFAPI_TRACE_INFO, "%s()\n", __FUNCTION__);
 
-  vnf_p7_t *vnf_p7 = (vnf_p7_t *)config;
+  get_p5_vnf()->p7_vnfs->config = config;
+  vnf_p7_t *vnf_p7 = get_p7_vnf();
 
   // Create p7 receive udp port
   // todo : this needs updating for Ipv6
