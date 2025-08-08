@@ -35,10 +35,12 @@ class TestCaseCtx(NamedTuple):
         return f"{self.logPath}/{self.count}-{self.test_id:06d}"
 
 def archiveArtifact(cmd, ctx, remote_path):
-    base = os.path.basename(remote_path)
-    local = f"{ctx.baseFilename()}-{base}"
-    logging.info(f"Archive artifact '{local}'")
-    success = cmd.copyin(remote_path, local)
-    if success:
-        cmd.run(f'rm {remote_path}', silent=True)
-    return local if success else None
+	files = cmd.run(f'ls {remote_path}', silent=True).stdout.strip().splitlines()
+	for f in files:
+		base = os.path.basename(f)
+		local = f"{ctx.baseFilename()}-{base}"
+		logging.info(f"Archive artifact '{local}'")
+		success = cmd.copyin(f, local)
+		if success:
+			cmd.run(f'rm {f}', silent=True)
+	return local if success else None
