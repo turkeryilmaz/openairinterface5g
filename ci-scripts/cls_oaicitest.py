@@ -249,6 +249,33 @@ def IdleSleep(HTML, idle_sleep_time):
 	HTML.CreateHtmlTestRow(f"{idle_sleep_time} sec", 'OK', CONST.ALL_PROCESSES_OK)
 	return True
 
+def DeployWithScript(HTML, node, script, options, tag):
+	logging.debug(f'Deploy with script {script} on node: {node}')
+	opt = options.replace('%%image_tag%%', tag)
+	ret = cls_cmd.runScript(node, script, 600, opt)
+	logging.debug(f'"{script}" finished with code {ret.returncode}, output:\n{ret.stdout}')
+	param = f"on node {node}"
+	if ret.returncode == 0:
+		HTML.CreateHtmlTestRowQueue(param, 'OK', [f"Deployment on OC succeeded"])
+	else:
+		HTML.CreateHtmlTestRowQueue(param, 'KO', [f"Deployment on OC failed"])
+	return ret.returncode == 0
+
+def UndeployWithScript(HTML, ctx, node, script, options):
+	logging.debug(f'Undeploy with script {script} on node: {node}')
+	remote_dir = '/tmp/undeploy'
+	opt = options.replace('%%log_dir%%', remote_dir)
+	ret = cls_cmd.runScript(node, script, 600, opt)
+	logging.debug(f'"{script}" finished with code {ret.returncode}, output:\n{ret.stdout}')
+	with cls_cmd.getConnection(node) as ssh:
+		archiveArtifact(ssh, ctx, f'{remote_dir}/*.log')
+	param = f"on node {node}"
+	if ret.returncode == 0:
+		HTML.CreateHtmlTestRowQueue(param, 'OK', [f"Undeployment on OC succeeded"])
+	else:
+		HTML.CreateHtmlTestRowQueue(param, 'KO', [f"Undeployment on OC failed"])
+	return ret.returncode == 0
+
 #-----------------------------------------------------------
 # OaiCiTest Class Definition
 #-----------------------------------------------------------

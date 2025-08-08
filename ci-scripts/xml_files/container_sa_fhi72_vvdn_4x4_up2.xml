@@ -58,11 +58,11 @@
   </testCase>
 
   <testCase id="444100">
-    <class>Deploy_OC_Chart</class>
+    <class>DeployWithScript</class>
     <desc>Deploy CU</desc>
-    <oc_namespace>oaicicd-core-for-fhi72</oc_namespace>
-    <oc_chart>/opt/oai-cn5g-fed-develop-2025-jan/ci-scripts/charts/oai-cu/</oc_chart>
     <node>stonechat</node>
+    <script>scripts/oc-chart-deploy.sh</script>
+    <options>/opt/oai-cn5g-fed-develop-2025-jan/ci-scripts/charts/oai-cu/ oaicicd-core-for-fhi72 %%image_tag%%</options>
   </testCase>
 
   <testCase id="200000">
@@ -226,12 +226,12 @@
   </testCase>
 
   <testCase id="444300">
-    <class>Undeploy_OC_Chart</class>
+    <class>UndeployWithScript</class>
     <always_exec>true</always_exec>
     <desc>Undeploy CU on OC</desc>
-    <oc_namespace>oaicicd-core-for-fhi72</oc_namespace>
-    <oc_chart>/opt/oai-cn5g-fed-develop-2025-jan/ci-scripts/charts/oai-cu/</oc_chart>
     <node>stonechat</node>
+    <script>scripts/oc-chart-undeploy.sh</script>
+    <options>/opt/oai-cn5g-fed-develop-2025-jan/ci-scripts/charts/oai-cu/ oaicicd-core-for-fhi72 %%log_dir%%</options>
   </testCase>
 
   <testCase id="444400">
