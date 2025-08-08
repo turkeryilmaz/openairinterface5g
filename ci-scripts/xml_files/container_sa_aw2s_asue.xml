@@ -32,7 +32,9 @@
     120000
     102000
     102001
+    302001
     102002
+    302002
     102003
     102004
     102005
@@ -92,14 +94,28 @@
 
   <testCase id="102001">
     <class>Attach_UE</class>
-    <desc>Attach UE</desc>
+    <desc>Attach UE 1</desc>
     <id>amarisoft_ue_1</id>
+  </testCase>
+
+  <testCase id="302001">
+    <class>Custom_Command</class>
+    <desc>Verify UE 1 is normal (no RedCap)</desc>
+    <node>avra</node>
+    <command>[ $(docker logs oai-gnb-aw2s | grep -E "UE with RNTI [0-9a-f]{4} is RedCap" | wc -l) -eq 0 ]</command>
   </testCase>
 
   <testCase id="102002">
     <class>Attach_UE</class>
-    <desc>Attach UE</desc>
+    <desc>Attach UE 2</desc>
     <id>amarisoft_ue_2</id>
+  </testCase>
+
+  <testCase id="302002">
+    <class>Custom_Command</class>
+    <desc>Verify UE 2 is RedCap</desc>
+    <node>avra</node>
+    <command>[ $(docker logs oai-gnb-aw2s | grep -m1 -E "UE with RNTI [0-9a-f]{4} is RedCap" | wc -l) -eq 1 ]</command>
   </testCase>
 
   <testCase id="102003">
