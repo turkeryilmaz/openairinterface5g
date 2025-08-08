@@ -585,7 +585,7 @@ void nr_decode_pucch1(int n_rx,
     }
 
     for (int n=0; n<12; n++) {
-      const int current_subcarrier = l * 12 + n;
+      const int current_subcarrier = (l/2) * 12 + n;
       if (n == 6 && startingPRB == half_nb_rb_dl && !nb_rb_is_even) {
         // if number RBs in bandwidth is odd  and current PRB contains DC, we need to recalculate the offset when n=6 (for second half PRB)
         re_offset = ((l+startingSymbolIndex)*frame_parms->ofdm_symbol_size);
@@ -921,7 +921,7 @@ void nr_decode_pucch1(int n_rx,
     if (nr_bit == 1) // BPSK
     {
       dp1.r =  H[r].r + y[r].r;
-      dp1.i =  H[r].i + y[r].r;    
+      dp1.i =  H[r].i + y[r].i;    
       dm1.r = -H[r].r + y[r].r;
       dm1.i = -H[r].i + y[r].i;    
       dp1mag += squaredMod(dp1);
