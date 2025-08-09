@@ -998,6 +998,7 @@ void nr_decode_pucch1(int n_rx,
 		    d2.r,d2.i,d2mag,
 		    d3.r,d3.i,d3mag);
 		    */
+    if (r == n_rx-1) {
     if (d0mag > d2mag && d0mag > d3mag && d1mag > d2mag && d1mag > d3mag) {
         *payload = 0;
     } else if (d1mag > d2mag && d1mag > d0mag && d3mag > d2mag && d3mag > d0mag) {
@@ -1006,6 +1007,7 @@ void nr_decode_pucch1(int n_rx,
         *payload = 2;
     } else  if (d2mag > d0mag && d2mag > d1mag && d3mag > d0mag && d3mag > d2mag){
         *payload = 3;
+    }
     }
     }
 #endif
