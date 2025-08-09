@@ -53,6 +53,7 @@ from cls_ci_helper import archiveArtifact
 # (e.g., cls_cluster.py)
 #-----------------------------------------------------------
 IMAGES = ['oai-enb', 'oai-lte-ru', 'oai-lte-ue', 'oai-gnb', 'oai-nr-cuup', 'oai-gnb-aw2s', 'oai-nr-ue', 'oai-enb-asan', 'oai-gnb-asan', 'oai-lte-ue-asan', 'oai-nr-ue-asan', 'oai-nr-cuup-asan', 'oai-gnb-aerial', 'oai-gnb-fhi72']
+DEFAULT_REGISTRY = "gracehopper3-oai.sboai.cs.eurecom.fr"
 
 def CreateWorkspace(host, sourcePath, ranRepository, ranCommitID, ranTargetBranch, ranAllowMerge):
 	if ranCommitID == '':
@@ -662,7 +663,7 @@ class Containerize():
 		lIpAddr, lSourcePath = self.GetCredentials(svr_id)
 		logging.debug('Pushing images to server: ' + lIpAddr)
 		ssh = cls_cmd.getConnection(lIpAddr)
-		imagePrefix = 'porcepix.sboai.cs.eurecom.fr'
+		imagePrefix = DEFAULT_REGISTRY
 		ret = ssh.run(f'docker login -u oaicicd -p oaicicd {imagePrefix}')
 		if ret.returncode != 0:
 			msg = 'Could not log into local registry'
@@ -733,7 +734,7 @@ class Containerize():
 		msg = "Pulled Images:\n" + '\n'.join(pulled_images)
 		return True, msg
 
-	def Pull_Image_from_Registry(self, HTML, svr_id, images, tag=None, tag_prefix="", registry="porcepix.sboai.cs.eurecom.fr", username="oaicicd", password="oaicicd"):
+	def Pull_Image_from_Registry(self, HTML, svr_id, images, tag=None, tag_prefix="", registry=DEFAULT_REGISTRY, username="oaicicd", password="oaicicd"):
 		lIpAddr, lSourcePath = self.GetCredentials(svr_id)
 		logging.debug('\u001B[1m Pulling image(s) on server: ' + lIpAddr + '\u001B[0m')
 		if not tag:
