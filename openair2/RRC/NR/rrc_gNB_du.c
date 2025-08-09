@@ -51,6 +51,7 @@
 #include "uper_decoder.h"
 #include "utils.h"
 #include "xer_encoder.h"
+#include "ds/byte_array.h"
 
 int get_dl_band(const struct f1ap_served_cell_info_t *cell_info)
 {
@@ -414,9 +415,9 @@ void rrc_gNB_process_f1_setup_req(f1ap_setup_req_t *req, sctp_assoc_t assoc_id)
       switch (sib->SIB_type) {
         case 2: {
           NR_SSB_MTC_t *ssbmtc = get_ssb_mtc(mtc);
-          sib->SIB_size = do_SIB2_NR(&sib->SIB_buffer, ssbmtc);
-          cell.SI_msg[cell.num_SI].SI_container = sib->SIB_buffer;
-          cell.SI_msg[cell.num_SI].SI_container_length = sib->SIB_size;
+          sib->sib = do_SIB2_NR(ssbmtc);
+          cell.SI_msg[cell.num_SI].SI_container = sib->sib.buf;
+          cell.SI_msg[cell.num_SI].SI_container_length = sib->sib.len;
           cell.SI_msg[cell.num_SI].SI_type = sib->SIB_type;
           cell.num_SI++;
         } break;
