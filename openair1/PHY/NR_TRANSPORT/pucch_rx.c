@@ -948,32 +948,48 @@ void nr_decode_pucch1(int n_rx,
     }
     else if (nr_bit == 2) // QPSK
     {
-      d0.r =  H[r].r + y[r].r;  // Re(H.r + jH.i + 1^* x y)  
-      d0.i =  H[r].i + y[r].i;  // Im(H.r + jH.i + 1^* x y)   
-      d0mag += squaredMod(d0);				    
-      d1.r =  H[r].r + y[r].i;  // Re(H.r + jH.i + j^* x y)
-      d1.i =  H[r].i - y[r].r;  // Im(H.r + jH.i + j^* x y)
-      d1mag += squaredMod(d1);				    
-      d2.r = H[r].r - y[r].i;  // Re(H.r + jH.i - j^* x y)
-      d2.i = H[r].i + y[r].r;  // Im(H.r + jH.i - j^* x y)   
-      d2mag += squaredMod(d2);				    
-      d3.r = H[r].r - y[r].r;  // Re(H.r + jH.i - 1^* x y)
-      d3.i = H[r].i - y[r].i;  // Im(H.r + jH.i - 1^* x y)    
-      d3mag += squaredMod(d3);				    
-      if (intraSlotFrequencyHopping == true) {
-        d0.r =  H1[r].r + y1[r].r;  // Re(H.r + jH.i + 1^* x y)  
-        d0.i =  H1[r].i + y1[r].i;  // Im(H.r + jH.i + 1^* x y)   
-        d0mag += squaredMod(d0);				    
-        d1.r =  H1[r].r + y1[r].i;  // Re(H.r + jH.i + j^* x y)
-        d1.i =  H1[r].i - y1[r].r;  // Im(H.r + jH.i + j^* x y)
-        d1mag += squaredMod(d1);				    
-        d2.r = H1[r].r - y1[r].i;  // Re(H.r + jH.i - j^* x y)
-        d2.i = H1[r].i + y1[r].r;  // Im(H.r + jH.i - j^* x y)   
-        d2mag += squaredMod(d2);				    
-        d3.r = H1[r].r - y1[r].r;  // Re(H.r + jH.i - 1^* x y)
-        d3.i = H1[r].i - y1[r].i;  // Im(H.r + jH.i - 1^* x y)    
-        d3mag += squaredMod(d3);				    
-      }
+      // d0: +1 * y
+    d0.r = H[r].r + y[r].r;
+    d0.i = H[r].i + y[r].i;
+    d0mag += squaredMod(d0);
+
+    // d1: -j * y
+    d1.r = H[r].r + y[r].i;
+    d1.i = H[r].i - y[r].r;
+    d1mag += squaredMod(d1);
+
+    // d2: +j * y
+    d2.r = H[r].r - y[r].i;
+    d2.i = H[r].i + y[r].r;
+    d2mag += squaredMod(d2);
+
+    // d3: -1 * y
+    d3.r = H[r].r - y[r].r;
+    d3.i = H[r].i - y[r].i;
+    d3mag += squaredMod(d3);
+
+    // ----- If frequency hopping is enabled -----
+    if (intraSlotFrequencyHopping) {
+        // d0: +1 * y1
+        d0.r = H1[r].r + y1[r].r;
+        d0.i = H1[r].i + y1[r].i;
+        d0mag += squaredMod(d0);
+
+        // d1: -j * y1
+        d1.r = H1[r].r + y1[r].i;
+        d1.i = H1[r].i - y1[r].r;
+        d1mag += squaredMod(d1);
+
+        // d2: +j * y1
+        d2.r = H1[r].r - y1[r].i;
+        d2.i = H1[r].i + y1[r].r;
+        d2mag += squaredMod(d2);
+
+        // d3: -1 * y1
+        d3.r = H1[r].r - y1[r].r;
+        d3.i = H1[r].i - y1[r].i;
+        d3mag += squaredMod(d3);
+    }
       /*
       printf("y : (%f,%f) H (%f,%f) d0 : (%f,%f) : %f d1 : (%f,%f) : %f d2 : (%f,%f) : %f d3 : (%f,%f) : %f\n",
 		    y.r,y.i,H.r,H.i,
@@ -982,15 +998,15 @@ void nr_decode_pucch1(int n_rx,
 		    d2.r,d2.i,d2mag,
 		    d3.r,d3.i,d3mag);
 		    */
-      if (d0mag > d1mag && d0mag > d2mag && d0mag > d3mag) {
+    if (d0mag > d2mag && d0mag > d3mag && d1mag > d2mag && d1mag > d3mag) {
         *payload = 0;
-      } else if (d1mag > d0mag && d1mag > d2mag && d1mag > d3mag) {
+    } else if (d1mag > d2mag && d1mag > d0mag && d3mag > d2mag && d3mag > d0mag) {
         *payload = 1;
-      } else if (d2mag > d0mag && d2mag > d1mag && d2mag > d3mag) {
+    } else if (d0mag > d1mag && d0mag > d3mag && d2mag > d1mag && d2mag > d3mag) {
         *payload = 2;
-      } else {
+    } else  if (d2mag > d0mag && d2mag > d1mag && d3mag > d0mag && d3mag > d2mag){
         *payload = 3;
-      }
+    }
     }
 #endif
 #endif
