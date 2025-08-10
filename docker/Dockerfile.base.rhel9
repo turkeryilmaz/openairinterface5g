@@ -40,8 +40,24 @@ COPY ./etc-pki-entitlement /etc/pki/entitlement
 ENV SMDEV_CONTAINER_OFF=1
 #install developers pkg/repo
 RUN rm -f /etc/rhsm-host && \
-    subscription-manager repos --enable codeready-builder-for-rhel-9-x86_64-rpms && \
-    dnf update -y && \
+    subscription-manager repos --enable codeready-builder-for-rhel-9-x86_64-rpms
+
+# Remove any internet EPEL repo files that might exist
+RUN rm -f /etc/yum.repos.d/epel*.repo
+
+# Add local EPEL repo config pointing to your local-epel service
+RUN echo '[local-epel]' > /etc/yum.repos.d/local-epel.repo && \
+    echo 'name=Local EPEL Repository for RHEL 9' >> /etc/yum.repos.d/local-epel.repo && \
+    echo 'baseurl=http://local-epel.oai-epel-repo.svc.cluster.local/epel/epel-9/epel/' >> /etc/yum.repos.d/local-epel.repo && \
+    echo 'enabled=1' >> /etc/yum.repos.d/local-epel.repo && \
+    echo 'gpgcheck=0' >> /etc/yum.repos.d/local-epel.repo
+
+# Clean metadata cache to avoid stale data
+RUN dnf clean all && \
+    dnf makecache
+
+
+RUN dnf update -y && \
     cat /etc/os-release && \
     dnf install -y \
        #gcc needed for build_oai
@@ -95,3 +111,4 @@ RUN /bin/sh oaienv && \
     scl enable gcc-toolset-13 "\
     ./build_oai -I --install-optional-packages -w USRP" && \
     rm /etc/pki/entitlement/*pem
+
