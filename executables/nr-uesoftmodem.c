@@ -117,7 +117,7 @@ static int      tx_max_power[MAX_NUM_CCs] = {0};
 double          rx_gain_off = 0.0;
 
 uint64_t        downlink_frequency[MAX_NUM_CCs][4];
-int32_t         uplink_frequency_offset[MAX_NUM_CCs][4];
+int64_t         uplink_frequency_offset[MAX_NUM_CCs][4];
 uint64_t        sidelink_frequency[MAX_NUM_CCs][4];
 
 // UE and OAI config variables

@@ -122,7 +122,7 @@ extern int sync_var;
 
 
 extern uint64_t downlink_frequency[MAX_NUM_CCs][4];
-extern int32_t uplink_frequency_offset[MAX_NUM_CCs][4];
+extern int64_t uplink_frequency_offset[MAX_NUM_CCs][4];
 
 extern int oai_exit;
 
