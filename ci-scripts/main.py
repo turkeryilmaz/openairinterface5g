@@ -292,9 +292,7 @@ def ExecuteActionWithParam(action, ctx):
 		string_field=test.findtext('u_retx_th')
 		if (string_field is not None):
 			CONTAINERS.ran_checkers['u_retx_th'] = [float(x) for x in string_field.split(',')]
-		string_field = test.findtext('services')
-		if string_field is not None:
-			CONTAINERS.services[CONTAINERS.eNB_instance] = string_field
+		CONTAINERS.services = test.findtext('services')
 		CONTAINERS.num_attempts = int(test.findtext('num_attempts') or 1)
 		CONTAINERS.deploymentTag = cls_containerize.CreateTag(CONTAINERS.ranCommitID, CONTAINERS.ranBranch, CONTAINERS.ranAllowMerge)
 		if action == 'Deploy_Object':

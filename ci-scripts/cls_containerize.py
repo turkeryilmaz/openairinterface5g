@@ -248,7 +248,7 @@ class Containerize():
 		self.eNB_instance = 0
 		self.eNB_serverId = ['', '', '']
 		self.yamlPath = ''
-		self.services = ['', '', '']
+		self.services = ''
 		self.deploymentTag = ''
 
 		self.cli = ''
@@ -745,7 +745,7 @@ class Containerize():
 		wd = f'{lSourcePath}/{yaml}'
 		wd_yaml = f'{wd}/docker-compose.y*ml'
 		with cls_cmd.getConnection(node) as ssh:
-			services = GetServices(ssh, self.services[self.eNB_instance], wd_yaml)
+			services = GetServices(ssh, self.services, wd_yaml)
 			if services == [] or services == ' ' or services == None:
 				msg = 'Cannot determine services to start'
 				logging.error(msg)
