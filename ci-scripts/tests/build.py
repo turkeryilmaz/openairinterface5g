@@ -18,12 +18,9 @@ class TestBuild(unittest.TestCase):
 		self.html = cls_oai_html.HTMLManagement()
 		self.html.testCase_id = "000000"
 		self.cont = cls_containerize.Containerize()
-		self.cont.eNB_serverId[0] = '0'
-		self.cont.eNBIPAddress = 'localhost'
-		self.cont.eNBUserName = None
-		self.cont.eNBPassword = None
 		self._d = tempfile.mkdtemp()
 		logging.warning(f"temporary directory: {self._d}")
+		self.node = 'localhost'
 		self.cont.eNBSourceCodePath = self._d
 
 	def tearDown(self):
@@ -33,7 +30,7 @@ class TestBuild(unittest.TestCase):
 
 	def test_build_proxy(self):
 		self.cont.proxyCommit = "b64d9bce986b38ca59e8582864ade3fcdd05c0dc"
-		success = self.cont.BuildProxy(self.html)
+		success = self.cont.BuildProxy(self.node, self.html)
 		self.assertTrue(success)
 
 if __name__ == '__main__':
