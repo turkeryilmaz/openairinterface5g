@@ -124,7 +124,6 @@ def ArgsParse(argvs,CiTestObj,RAN,HTML,CONTAINERS,HELP,SCA,CLUSTER):
             if re.match(r'^\-\-eNBIPAddress=(.+)$', myArgv, re.IGNORECASE):
                 matchReg = re.match(r'^\-\-eNBIPAddress=(.+)$', myArgv, re.IGNORECASE)
                 RAN.eNBIPAddress=matchReg.group(1)
-                CONTAINERS.eNBIPAddress=matchReg.group(1)
             elif re.match(r'^\-\-eNB1IPAddress=(.+)$', myArgv, re.IGNORECASE):
                 print("parameter --eNB1IPAddress ignored")
             elif re.match(r'^\-\-eNB2IPAddress=(.+)$', myArgv, re.IGNORECASE):
@@ -133,7 +132,6 @@ def ArgsParse(argvs,CiTestObj,RAN,HTML,CONTAINERS,HELP,SCA,CLUSTER):
             if re.match(r'^\-\-eNBUserName=(.+)$', myArgv, re.IGNORECASE):
                 matchReg = re.match(r'^\-\-eNBUserName=(.+)$', myArgv, re.IGNORECASE)
                 RAN.eNBUserName=matchReg.group(1)
-                CONTAINERS.eNBUserName=matchReg.group(1)
             elif re.match(r'^\-\-eNB1UserName=(.+)$', myArgv, re.IGNORECASE):
                 print("parameter --eNB1UserName ignored")
             elif re.match(r'^\-\-eNB2UserName=(.+)$', myArgv, re.IGNORECASE):
@@ -142,7 +140,6 @@ def ArgsParse(argvs,CiTestObj,RAN,HTML,CONTAINERS,HELP,SCA,CLUSTER):
             if re.match(r'^\-\-eNBPassword=(.+)$', myArgv, re.IGNORECASE):
                 matchReg = re.match(r'^\-\-eNBPassword=(.+)$', myArgv, re.IGNORECASE)
                 RAN.eNBPassword=matchReg.group(1)
-                CONTAINERS.eNBPassword=matchReg.group(1)
             elif re.match(r'^\-\-eNB1Password=(.+)$', myArgv, re.IGNORECASE):
                 print("parameter --eNB1Password ignored")
             elif re.match(r'^\-\-eNB2Password=(.+)$', myArgv, re.IGNORECASE):
