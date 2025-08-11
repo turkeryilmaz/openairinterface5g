@@ -19,19 +19,19 @@ As of **2025**, this documentation provides instructions for setting up and usin
 
   #### Install the required packages
 
-    ###### Debian
+  ##### Debian
 
-    ```bash
-    sudo apt update
-    sudo apt install -y build-essential cmake git pkg-config libusb-1.0-0-dev libtecla-dev \
-                                                              libncurses5-dev libncursesw5-dev libcurl4-openssl-dev
-    ```   
+  ```bash
+  sudo apt update
+  sudo apt install -y build-essential cmake git pkg-config libusb-1.0-0-dev libtecla-dev \
+                                                            libncurses5-dev libncursesw5-dev libcurl4-openssl-dev
+  ```   
 
-    ###### RHL9
+  ##### RHL9
 
-    ```bash
-    sudo dnf install gcc gcc-c++ make cmake libusb1-devel ncurses-devel libcurl-devel
-    ```
+  ```bash
+  sudo dnf install gcc gcc-c++ make cmake libusb1-devel ncurses-devel libcurl-devel
+  ```
 
 ### &#x1F6A7; 2. [Building bladeRF libraries and tools from source](https://github.com/Nuand/bladeRF/wiki/Getting-Started%3A-Linux#building-bladerf-libraries-and-tools-from-source)
 
