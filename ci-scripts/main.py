@@ -285,9 +285,7 @@ def ExecuteActionWithParam(action, ctx):
 
 	elif action == 'Deploy_Object' or action == 'Undeploy_Object' or action == "Create_Workspace":
 		node = test.findtext('node')
-		string_field = test.findtext('yaml_path')
-		if (string_field is not None):
-			CONTAINERS.yamlPath[CONTAINERS.eNB_instance] = string_field
+		CONTAINERS.yamlPath = test.findtext('yaml_path')
 		string_field=test.findtext('d_retx_th')
 		if (string_field is not None):
 			CONTAINERS.ran_checkers['d_retx_th'] = [float(x) for x in string_field.split(',')]
