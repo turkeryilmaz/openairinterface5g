@@ -922,22 +922,22 @@ void nr_decode_pucch1(int n_rx,
 #else
     if (nr_bit == 1) // BPSK
     {
-      dp1.r =  H[r].r + y[r].r;
-      dp1.i =  H[r].i + y[r].i;    
-      dm1.r = -H[r].r + y[r].r;
-      dm1.i = -H[r].i + y[r].i;    
+      dp1.r =  H[r].r + inv_sqrt2*(y[r].r + y[r].i);
+      dp1.i =  H[r].i + inv_sqrt2*(y[r].i - y[r].r);   
+      dm1.r =  H[r].r + inv_sqrt2*(-y[r].r - y[r].i);
+      dm1.i =  H[r].i + inv_sqrt2*(y[r].r - y[r].i);  
       dp1mag += squaredMod(dp1);
       dm1mag += squaredMod(dm1);
-    /*
-    printf("y : (%f,%f) H (%f,%f) dp1 : (%f,%f) : %f dm1 : (%f,%f) : %f\n",
-		    y.r,y.i,H.r,H.i,dp1.r,dp1.i,dp1mag,dm1.r,dm1.i,dm1mag);
-*/
+    
+    printf("r %d y : (%f,%f) H (%f,%f) dp1 : (%f,%f) : %f dm1 : (%f,%f) : %f\n",
+		    r,y[r].r,y[r].i,H[r].r,H[r].i,dp1.r,dp1.i,dp1mag,dm1.r,dm1.i,dm1mag);
+
 
       if (intraSlotFrequencyHopping == true) {
-        dp1.r =  H1[r].r + y1[r].r;
-        dp1.i =  H1[r].i + y1[r].r;    
-        dm1.r = -H1[r].r + y1[r].r;
-        dm1.i = -H1[r].i + y1[r].i;    
+        dp1.r =  H1[r].r + inv_sqrt2*(y1[r].r + y1[r].i);
+        dp1.i =  H1[r].i + inv_sqrt2*(y1[r].i - y1[r].r);   
+        dm1.r =  H1[r].r + inv_sqrt2*(-y1[r].r - y1[r].i);
+        dm1.i =  H1[r].i + inv_sqrt2*(y1[r].r - y1[r].i);   
         dp1mag += squaredMod(dp1);
         dm1mag += squaredMod(dm1);
       }
@@ -953,7 +953,7 @@ void nr_decode_pucch1(int n_rx,
 
       // d0 = H + (1 - j)*y
       d0.r = H[r].r + inv_sqrt2*(y[r].r + y[r].i);
-      d0.i = H[r].i + inv_sqrt2*(-y[r].i + y[r].r);
+      d0.i = H[r].i + inv_sqrt2*(y[r].i - y[r].r);
       d0mag += squaredMod(d0);
 
       // d1 = H + (-1 - j)*y
@@ -971,10 +971,10 @@ void nr_decode_pucch1(int n_rx,
       d3.i = H[r].i + inv_sqrt2*(y[r].r - y[r].i);
       d3mag += squaredMod(d3);
 
-      // Avec frequency hopping
+      // with frequency hopping
       if (intraSlotFrequencyHopping == true) {
           d0.r = H1[r].r + inv_sqrt2*(y1[r].r + y1[r].i);
-          d0.i = H1[r].i + inv_sqrt2*(-y1[r].i + y1[r].r);
+          d0.i = H1[r].i + inv_sqrt2*(y1[r].i - y1[r].r);
           d0mag += squaredMod(d0);
 
           d1.r = H1[r].r + inv_sqrt2*(-y1[r].r + y1[r].i);
@@ -989,14 +989,14 @@ void nr_decode_pucch1(int n_rx,
           d3.i = H1[r].i + inv_sqrt2*(y1[r].r - y1[r].i);
           d3mag += squaredMod(d3);
       }
-      /*
-      printf("y : (%f,%f) H (%f,%f) d0 : (%f,%f) : %f d1 : (%f,%f) : %f d2 : (%f,%f) : %f d3 : (%f,%f) : %f\n",
-		    y.r,y.i,H.r,H.i,
+      
+      /*printf("r %d y : (%f,%f) H (%f,%f) d0 : (%f,%f) : %f d1 : (%f,%f) : %f d2 : (%f,%f) : %f d3 : (%f,%f) : %f\n",
+		    r,y[r].r,y[r].i,H[r].r,H[r].i,
 		    d0.r,d0.i,d0mag,
 		    d1.r,d1.i,d1mag,
 		    d2.r,d2.i,d2mag,
-		    d3.r,d3.i,d3mag);
-		    */
+		    d3.r,d3.i,d3mag);*/
+		    
     if (r == n_rx-1) {
     if (d0mag >= d1mag && d0mag >= d2mag && d0mag >= d3mag) {
         *payload = 0;
