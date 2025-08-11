@@ -540,7 +540,7 @@ int main(int argc, char **argv)
     pucch_tx_pdu.hopping_id = hopping_id;
     pucch_tx_pdu.group_hop_flag = 0;
     pucch_tx_pdu.sequence_hop_flag = 0;
-    pucch_tx_pdu.freq_hop_flag = 0;
+    pucch_tx_pdu.freq_hop_flag = 1;
     pucch_tx_pdu.initial_cyclic_shift = 0;
     pucch_tx_pdu.second_hop_prb = startingPRB_intraSlotHopping;
     pucch_tx_pdu.time_domain_occ_idx = 0;
@@ -689,13 +689,13 @@ int main(int argc, char **argv)
         pucch_pdu.prb_size              = 1;
         pucch_pdu.bwp_start             = 0;
         pucch_pdu.bwp_size              = N_RB_DL;
-	/*
+	
         if (nrofSymbols>1) {
           pucch_pdu.freq_hop_flag       = 1;
           pucch_pdu.second_hop_prb      = N_RB_DL-1;
         }
-        else */ 
-	pucch_pdu.freq_hop_flag = 0;
+        else 
+	        pucch_pdu.freq_hop_flag = 0;
 
         nr_decode_pucch0(gNB, rxdataF, nr_frame_tx, nr_slot_tx,&uci_pdu,&pucch_pdu);
         if(sr_flag==1){

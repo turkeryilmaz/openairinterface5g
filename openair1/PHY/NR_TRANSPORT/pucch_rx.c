@@ -547,6 +547,8 @@ void nr_decode_pucch1(int n_rx,
   // otherwise no intra-slot frequency hopping shall be assumed
   //uint8_t PUCCH_Frequency_Hopping = 0 ; // from higher layers
   const bool intraSlotFrequencyHopping = startingPRB != startingPRB_intraSlotHopping;
+  float inv_sqrt2 = 0.70710678118f; // 1 / sqrt(2)
+
 
 #ifdef DEBUG_NR_PUCCH_RX
   printf("\t [nr_decode_pucch1] intraSlotFrequencyHopping = %d \n",intraSlotFrequencyHopping);
@@ -781,7 +783,7 @@ void nr_decode_pucch1(int n_rx,
                 for (int n = 0; n < 12; n++) {
                   c16_t *zPtr = z_rx[r] + (mprime * 12 * N_SF_mprime0_PUCCH_1) + (m * 12) + n;
                   *zPtr = c16MulConjShift(table, *zPtr, 15);
-                  *zPtr = c16MulConjShift(r_u_v_alpha_delta[n], *zPtr, 16);
+                  *zPtr = c16MulConjShift(r_u_v_alpha_delta[n], *zPtr, 15);
                 }
 	      }
             }
@@ -799,7 +801,7 @@ void nr_decode_pucch1(int n_rx,
                   *zDmrsPtr = c16MulConjShift(table, *zDmrsPtr, 15);
                   // finding channel coeffcients by dividing received dmrs with actual dmrs and storing them in z_dmrs_re_rx and
                   // z_dmrs_im_rx arrays
-                  *zDmrsPtr = c16MulConjShift(r_u_v_alpha_delta_dmrs[n], *zDmrsPtr, 16);
+                  *zDmrsPtr = c16MulConjShift(r_u_v_alpha_delta_dmrs[n], *zDmrsPtr, 15);
                 }
 	      }
             }
@@ -948,7 +950,6 @@ void nr_decode_pucch1(int n_rx,
     }
     else if (nr_bit == 2) // QPSK
     {
-      float inv_sqrt2 = 0.70710678118f; // 1 / sqrt(2)
 
       // d0 = H + (1 - j)*y
       d0.r = H[r].r + inv_sqrt2*(y[r].r + y[r].i);
