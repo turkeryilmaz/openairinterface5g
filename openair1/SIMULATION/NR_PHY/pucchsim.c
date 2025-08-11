@@ -498,7 +498,7 @@ int main(int argc, char **argv)
     else AssertFatal(1==0,"Either nr_bit %d or sr_flag %d must be non-zero\n", nr_bit, sr_flag);
   }
 
-  startingPRB_intraSlotHopping = N_RB_DL-1;
+  startingPRB_intraSlotHopping = N_RB_DL-2; // FIXME: there is a problem with freq hopping when using N_RB_DL-1, if we pass txDataF to decode_pucch1, it works (z=1), problem somewhere in simulation not decoding
   uint32_t hopping_id = Nid_cell;
   uint32_t dmrs_scrambling_id = 0;
   uint32_t data_scrambling_id = 0;

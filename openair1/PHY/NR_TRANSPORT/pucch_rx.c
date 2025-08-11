@@ -563,7 +563,7 @@ void nr_decode_pucch1(int n_rx,
   const int half_nb_rb_dl = frame_parms->N_RB_DL >> 1;
   const bool nb_rb_is_even = (frame_parms->N_RB_DL & 1) == 0;
   for (int l = 0; l < nrofSymbols; l++) { // extracting data and dmrs from rxdataF
-    if (intraSlotFrequencyHopping && (l > floor(nrofSymbols / 2))) { // intra-slot hopping enabled, we need
+    if (intraSlotFrequencyHopping && (l >= floor(nrofSymbols / 2))) { // intra-slot hopping enabled, we need
                                                                      // to calculate new offset PRB
       startingPRB = /*startingPRB +*/ startingPRB_intraSlotHopping; // FIXME: should be bwpStart instead of startingPRB
     }
