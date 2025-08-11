@@ -20,7 +20,7 @@ class TestBuild(unittest.TestCase):
 		self.cont = cls_containerize.Containerize()
 		self._d = tempfile.mkdtemp()
 		logging.warning(f"temporary directory: {self._d}")
-		self.node = 'localhost'
+        self.node = 'localhost'
 		self.cont.eNBSourceCodePath = self._d
 
 	def tearDown(self):
@@ -30,6 +30,7 @@ class TestBuild(unittest.TestCase):
 
 	def test_build_proxy(self):
 		self.cont.proxyCommit = "b64d9bce986b38ca59e8582864ade3fcdd05c0dc"
+        # TODO create dir
 		success = self.cont.BuildProxy(self.node, self.html)
 		self.assertTrue(success)
 

@@ -499,11 +499,6 @@ class Containerize():
 		ret = ssh.run(f'docker image inspect --format=\'Size = {{{{.Size}}}} bytes\' proxy:{tag}')
 		buildProxy = ret.returncode != 0 # if no image, build new proxy
 		if buildProxy:
-			ssh.run(f'rm -Rf {lSourcePath}')
-			success = CreateWorkspace(lIpAddr, lSourcePath, self.ranRepository, self.ranCommitID, self.ranTargetBranch, self.ranAllowMerge)
-			if not success:
-				raise Exception("could not clone proxy repository")
-
 			fullpath = f'{lSourcePath}/proxy_build.log'
 
 			ssh.run(f'docker build --target oai-lte-multi-ue-proxy --tag proxy:{tag} --file {lSourcePath}/docker/Dockerfile.ubuntu18.04 {lSourcePath} > {fullpath} 2>&1')
