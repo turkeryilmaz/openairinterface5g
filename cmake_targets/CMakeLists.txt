@@ -1,1 +1,0 @@
-add_subdirectory(nas_sim_tools)

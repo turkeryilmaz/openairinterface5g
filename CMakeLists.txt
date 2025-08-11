@@ -106,7 +106,6 @@ set (NFAPI_USER_DIR  ${OPENAIR_DIR}/nfapi/oai_integration)
 set (OPENAIR1_DIR    ${OPENAIR_DIR}/openair1)
 set (OPENAIR2_DIR    ${OPENAIR_DIR}/openair2)
 set (OPENAIR3_DIR    ${OPENAIR_DIR}/openair3)
-set (OPENAIR3_DIR    ${OPENAIR_DIR}/openair3)
 set (OPENAIR_CMAKE   ${OPENAIR_DIR}/cmake_targets)
 
 project (OpenAirInterface)
@@ -2273,11 +2272,7 @@ endif()
 
 if(LTE_PACKAGE)
 
-  set(conf2uedata "${OPENAIR_CMAKE}/nas_sim_tools/build/conf2uedata")
-  set(nvram "${OPENAIR_CMAKE}/nas_sim_tools/build/nvram")
-  set(usim "${OPENAIR_CMAKE}/nas_sim_tools/build/usim")
-
-  install(TARGETS lte-softmodem lte-uesoftmodem
+  install(TARGETS lte-softmodem lte-uesoftmodem conf2uedata usim nvram
     COMPONENT oai-lte
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib
@@ -2289,14 +2284,6 @@ if(LTE_PACKAGE)
       COMMAND ${CMAKE_STRIP} --strip-unneeded $<TARGET_FILE:${lib}>
       COMMENT "Stripping unneeded symbols from ${lib}")
   endforeach()
-
-  install(PROGRAMS 
-      ${conf2uedata} 
-      ${nvram} 
-      ${usim}
-      COMPONENT oai-lte
-      DESTINATION bin
-  )
   
   if(PACKAGING-RPM)
     set(CPACK_RPM_OAI-LTE_PACKAGE_RELOCATABLE FALSE)
@@ -2342,8 +2329,8 @@ if(LTE_PACKAGE)
     .")
   endif()
 
-  install(FILES ${OPENAIR_DIR}/changelog.gz COMPONENT oai-lte DESTINATION share/doc/openairinterface-oai-lte)
-  set(CPACK_COMPONENT_OAI-LTE_PACKAGE_NAME "oai-lte")
+  install(FILES ${OPENAIR_DIR}/changelog.gz COMPONENT oai-lte DESTINATION share/doc/oai-lte)
+  set(CPACK_DEBIAN_OAI-LTE_PACKAGE_NAME "oai-lte")
   set(CPACK_DEBIAN_OAI-LTE_FILE_NAME "oai-lte.deb")
   set(CPACK_DEBIAN_OAI-LTE_PACKAGE_DEPENDS "liboai-common, libc6")
 endif()
@@ -2419,8 +2406,8 @@ if(NR_PACKAGE)
     .")
   endif()
 
-  install(FILES ${OPENAIR_DIR}/changelog.gz COMPONENT oai-nr DESTINATION share/doc/openairinterface-oai-nr)
-  set(CPACK_COMPONENT_OAI-NR_PACKAGE_NAME "oai-nr")
+  install(FILES ${OPENAIR_DIR}/changelog.gz COMPONENT oai-nr DESTINATION share/doc/oai-nr)
+  set(CPACK_DEBIAN_OAI-NR_PACKAGE_NAME "oai-nr")
   set(CPACK_DEBIAN_OAI-NR_FILE_NAME "oai-nr.deb")
   set(CPACK_DEBIAN_OAI-NR_PACKAGE_DEPENDS "liboai-common, libc6")
 endif()
@@ -2447,7 +2434,8 @@ if(OAI_PHYSIM_PACKAGE)
 
   set(CPACK_COMPONENT_OAI-PHYSIM_SUMMARY "OpenAirInterface PhySim package")
   set(CPACK_COMPONENT_OAI-PHYSIM_DESCRIPTION "This package contains every simulators")
-  set(CPACK_COMPONENT_OAI-PHYSIM_PACKAGE_NAME "openairinterface-oai-physim")
+  set(CPACK_DEBIAN_OAI-PHYSIM_PACKAGE_NAME "oai-physim")
+  set(CPACK_DEBIAN_OAI-PHYSIM_FILE_NAME "oai-physim.deb")
 endif()
 
 
@@ -2479,7 +2467,7 @@ if(OAI_USRP_PACKAGE)
         LIBRARY DESTINATION lib
         PERMISSIONS OWNER_READ OWNER_WRITE  GROUP_READ WORLD_READ
       )
-  install(FILES "${OPENAIR_DIR}/radio/USRP/README.md" DESTINATION share/doc/openairinterface-liboai-usrp COMPONENT liboai-usrp)
+  install(FILES "${OPENAIR_DIR}/radio/USRP/README.md" DESTINATION share/doc/liboai-usrp COMPONENT liboai-usrp)
   list(APPEND COMPONENTS_LIST liboai-usrp)
 
   if(PACKAGING-RPM)
@@ -2512,7 +2500,7 @@ if(OAI_USRP_PACKAGE)
     endforeach()    
     file(CHMOD "${CMAKE_CURRENT_BINARY_DIR}/usrp/conffiles" PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
     set(CPACK_DEBIAN_LIBOAI-USRP_PACKAGE_CONTROL_EXTRA "${CONFFILES_PATH_USRP};${OPENAIR_DIR}/cmake_targets/triggers;")
-    install(FILES ${OPENAIR_DIR}/changelog.gz COMPONENT liboai-usrp DESTINATION share/doc/openairinterface-liboai-usrp)
+    install(FILES ${OPENAIR_DIR}/changelog.gz COMPONENT liboai-usrp DESTINATION share/doc/liboai-usrp)
   endif()
 
     if(PACKAGING-RPM)
@@ -2524,7 +2512,7 @@ if(OAI_USRP_PACKAGE)
     .")
   endif()
 
-  set(CPACK_COMPONENT_LIBOAI-USRP_PACKAGE_NAME "liboai-usrp")
+  set(CPACK_DEBIAN_LIBOAI-USRP_PACKAGE_NAME "liboai-usrp")
   set(CPACK_DEBIAN_LIBOAI-USRP_FILE_NAME "liboai-usrp.deb")
 endif()
 
@@ -2582,7 +2570,7 @@ if(OAI_COMMON_PACKAGE)
     endforeach()    
     file(CHMOD "${CMAKE_CURRENT_BINARY_DIR}/liboai-common/conffiles" PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
     set(CPACK_DEBIAN_LIBOAI-COMMON_PACKAGE_CONTROL_EXTRA "${CONFFILES_PATH_COMMON};${OPENAIR_DIR}/cmake_targets/triggers;")
-    install(FILES ${OPENAIR_DIR}/changelog.gz COMPONENT liboai-common DESTINATION share/doc/openairinterface-liboai-common)
+    install(FILES ${OPENAIR_DIR}/changelog.gz COMPONENT liboai-common DESTINATION share/doc/liboai-common)
   endif()
 
     if(PACKAGING-RPM)
@@ -2594,7 +2582,7 @@ if(OAI_COMMON_PACKAGE)
     .")
   endif()
 
-  set(CPACK_COMPONENT_LIBOAI-COMMON_PACKAGE_NAME "liboai-common")
+  set(CPACK_DEBIAN_LIBOAI-COMMON_PACKAGE_NAME "liboai-common")
   set(CPACK_DEBIAN_LIBOAI-COMMON_FILE_NAME "liboai-common.deb")
 endif()
 
@@ -2609,7 +2597,7 @@ foreach(component IN LISTS COMPONENTS_LIST)
     set(${postun_var} "${OPENAIR_CMAKE}/ldconfig-postun.sh")
   endif()
   install(FILES "${OPENAIR_DIR}/LICENSE" 
-          DESTINATION "share/doc/openairinterface-${component}"
+          DESTINATION "share/doc/${component}"
           COMPONENT ${component}
           PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
           )
