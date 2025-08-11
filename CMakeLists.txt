@@ -63,6 +63,23 @@ endif()
 ###################################
 include(FindPkgConfig)
 
+
+option(PACKAGING-RPM "PACKAGING-RPM" OFF)
+option(NR_PACKAGE "NR-PACKAGE" OFF)
+option(LTE_PACKAGE "LTE-PACKAGE" OFF)
+option(OAI_COMMON_PACKAGE "OAI-COMMON-PACKAGE" OFF)
+option(OAI_USRP_PACKAGE "OAI-USRP-PACKAGE" OFF)
+option(OAI_LDPC_T2_PACKAGE "OAI-LDPC-T2-PACKAGE" OFF)
+option(OAI_PHYSIM_PACKAGE "OAI-PHYSIM-PACKAGE" OFF)
+
+if(NR_PACKAGE OR LTE_PACKAGE OR OAI_COMMON_PACKAGE OR OAI_USRP_PACKAGE OR OAI_LDPC_T2_PACKAGE OR OAI_PHYSIM_PACKAGE)
+  set(CMAKE_SKIP_INSTALL_RPATH TRUE)
+  set(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
+  set(CMAKE_INSTALL_RPATH "")
+  set(CMAKE_INSTALL_RPATH_USE_LINK_PATH FALSE)
+  set(CMAKE_SKIP_RPATH TRUE)
+endif()
+
 # Check if asn1c is installed, and check if it supports all options we need
 # a user can provide ASN1C_EXEC to override an asn1c to use (e.g., parallel
 # installation)
@@ -88,7 +105,6 @@ set (NFAPI_DIR       ${OPENAIR_DIR}/nfapi/open-nFAPI)
 set (NFAPI_USER_DIR  ${OPENAIR_DIR}/nfapi/oai_integration)
 set (OPENAIR1_DIR    ${OPENAIR_DIR}/openair1)
 set (OPENAIR2_DIR    ${OPENAIR_DIR}/openair2)
-set (OPENAIR3_DIR    ${OPENAIR_DIR}/openair3)
 set (OPENAIR3_DIR    ${OPENAIR_DIR}/openair3)
 set (OPENAIR_CMAKE   ${OPENAIR_DIR}/cmake_targets)
 
@@ -228,7 +244,11 @@ endif()
 add_definitions("-DASN_DISABLE_OER_SUPPORT -DHAVE_CONFIG_H -DHAVE_CONFIG_H_")
 
 #########################
+if(NR_PACKAGE OR LTE_PACKAGE OR OAI_COMMON_PACKAGE OR OAI_USRP_PACKAGE OR OAI_LDPC_T2_PACKAGE OR OAI_PHYSIM_PACKAGE)
+  set(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} -ggdb2")
+else()
 set(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} -ggdb2 -Wl,-rpath -Wl,${CMAKE_CURRENT_BINARY_DIR}")
+endif()
 #########################
 # set a flag for changes in the source code
 # these changes are related to hardcoded path to include .h files
@@ -496,9 +516,11 @@ target_link_libraries(CONFIG_LIB PRIVATE config_internals dl UTIL)
 # CONFIG_LIB is a wrapper around a particular config implementation, default is
 # libconfig in params_libconfig below
 pkg_check_modules(libconfig REQUIRED libconfig)
-add_library(params_libconfig MODULE ${CONFIG_ROOTDIR}/libconfig/config_libconfig.c)
+add_library(params_libconfig SHARED ${CONFIG_ROOTDIR}/libconfig/config_libconfig.c)
 target_include_directories(params_libconfig PRIVATE ${libconfig_INCLUDE_DIRS})
 target_link_libraries(params_libconfig PRIVATE config_internals ${libconfig_LIBRARIES})
+target_link_options(params_libconfig PRIVATE -Wl,--hash-style=gnu)
+set_target_properties(params_libconfig PROPERTIES VERSION 1.0.0 SOVERSION 1)
 
 # shared library loader
 add_library(shlib_loader OBJECT common/utils/load_module_shlib.c)
@@ -807,7 +829,9 @@ set(PHY_NRLDPC_CODINGIF
   ${OPENAIR1_DIR}/PHY/CODING/nrLDPC_coding/nrLDPC_coding_interface_load.c
 )
 
-add_library(dfts MODULE ${OPENAIR1_DIR}/PHY/TOOLS/oai_dfts.c ${OPENAIR1_DIR}/PHY/TOOLS/oai_dfts_neon.c)
+add_library(dfts SHARED ${OPENAIR1_DIR}/PHY/TOOLS/oai_dfts.c ${OPENAIR1_DIR}/PHY/TOOLS/oai_dfts_neon.c)
+target_link_options(dfts PRIVATE -Wl,--hash-style=gnu)
+set_target_properties(dfts PROPERTIES VERSION 1.0.0 SOVERSION 1)
 
 add_library(crc_byte OBJECT ${OPENAIR1_DIR}/PHY/CODING/crc_byte.c)
 
@@ -1046,6 +1070,7 @@ target_link_libraries(PHY_COMMON
   PUBLIC UTIL
 )
 add_dependencies(PHY_COMMON dfts)
+target_link_options(PHY_COMMON PRIVATE -Wl,--hash-style=gnu)
 
 add_library(PHY ${PHY_SRC})
 target_link_libraries(PHY PRIVATE asn1_lte_rrc_hdrs asn1_nr_rrc_hdrs)
@@ -1712,9 +1737,12 @@ include_directories("${NFAPI_DIR}/nfapi/inc")
 include_directories("${NFAPI_DIR}/sim_common/inc")
 include_directories("${NFAPI_DIR}/pnf_sim/inc")
 
-add_library(oai_iqplayer MODULE
+add_library(oai_iqplayer SHARED
 	${OPENAIR_DIR}/radio/iqplayer/iqplayer_lib.c
 	)
+set(CMAKE_MODULE_PATH "${OPENAIR_DIR}/cmake_targets/tools/MODULES" "${CMAKE_MODULE_PATH}")
+target_link_options(oai_iqplayer PRIVATE -Wl,--hash-style=gnu)
+set_target_properties(oai_iqplayer PROPERTIES VERSION 1.0.0 SOVERSION 1)
 
 #################################
 # add executables for operation
@@ -1726,7 +1754,7 @@ target_link_libraries(minimal_lib PUBLIC pthread dl ${T_LIB} LOG)
 
 add_executable(nfapi_test
   ${OPENAIR_DIR}/openair2/NR_PHY_INTERFACE/nfapi_5g_test.c
-  )
+)
 
 add_executable(measurement_display
   ${OPENAIR_DIR}/common/utils/threadPool/measurement_display.c)
@@ -1934,7 +1962,7 @@ target_link_libraries(nr-uesoftmodem PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
 target_link_libraries(nr-uesoftmodem PRIVATE
                       asn1_lte_rrc asn1_nr_rrc asn1_s1ap asn1_ngap asn1_m2ap asn1_m3ap asn1_x2ap asn1_f1ap asn1_lpp)
 
-###################################"
+                      ###################################"
 # Addexecutables for tests
 ####################################
 
@@ -1968,6 +1996,7 @@ target_link_libraries(polartest PRIVATE
   -Wl,--start-group UTIL SIMU PHY_COMMON PHY_NR PHY_NR_COMMON PHY_NR_UE CONFIG_LIB -Wl,--end-group
   m pthread dl ${T_LIB}
   )
+set_target_properties(polartest PROPERTIES  VERSION 1.0.0 SOVERSION 1)
 
 add_executable(smallblocktest
   ${OPENAIR1_DIR}/PHY/CODING/TESTBENCH/smallblocktest.c
@@ -1977,6 +2006,7 @@ target_link_libraries(smallblocktest PRIVATE
   -Wl,--start-group UTIL SIMU PHY_NR PHY_COMMON PHY_NR_COMMON -Wl,--end-group
   m pthread dl shlib_loader ${T_LIB}
 )
+set_target_properties(smallblocktest PROPERTIES VERSION 1.0.0 SOVERSION 1)
 
 
 add_executable(ldpctest
@@ -1991,6 +2021,7 @@ target_link_libraries(ldpctest PRIVATE
   # --whole-archive links 'check_crc' in the executable even though it is note used, see 'man ld'
   -Wl,--whole-archive crc_byte -Wl,--no-whole-archive
 )
+set_target_properties(ldpctest PROPERTIES VERSION 1.0.0 SOVERSION 1)
 
 add_library(physim_common OBJECT ${OPENAIR1_DIR}/SIMULATION/NR_PHY/nr_unitary_common.c)
 target_link_libraries(physim_common PRIVATE UTIL)
@@ -2001,6 +2032,7 @@ target_link_libraries(nr_dlschsim PRIVATE
   m pthread ${T_LIB} ITTI dl shlib_loader physim_common
   )
 target_link_libraries(nr_dlschsim PRIVATE asn1_nr_rrc_hdrs)
+set_target_properties(nr_dlschsim PROPERTIES VERSION 1.0.0 SOVERSION 1)
 
 add_executable(nr_pbchsim ${OPENAIR1_DIR}/SIMULATION/NR_PHY/pbchsim.c)
 target_link_libraries(nr_pbchsim PRIVATE
@@ -2022,6 +2054,7 @@ target_link_libraries(nr_psbchsim PRIVATE
   m pthread ${T_LIB} ITTI dl shlib_loader physim_common
   )
 target_link_libraries(nr_psbchsim PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
+set_target_properties(nr_psbchsim PROPERTIES VERSION 1.0.0 SOVERSION 1)
 
 add_executable(nr_pucchsim ${OPENAIR1_DIR}/SIMULATION/NR_PHY/pucchsim.c)
 target_link_libraries(nr_pucchsim PRIVATE
@@ -2029,6 +2062,7 @@ target_link_libraries(nr_pucchsim PRIVATE
   m pthread ${T_LIB} ITTI dl shlib_loader physim_common
 )
 target_link_libraries(nr_pucchsim PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
+set_target_properties(nr_pucchsim PROPERTIES VERSION 1.0.0 SOVERSION 1)
 
 add_executable(nr_dlsim
   ${OPENAIR1_DIR}/SIMULATION/NR_PHY/dlsim.c
@@ -2043,12 +2077,14 @@ target_link_libraries(nr_dlsim PRIVATE
   m pthread ${T_LIB} ITTI dl shlib_loader nr_ue_phy_meas physim_common
   )
 target_link_libraries(nr_dlsim PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
+set_target_properties(nr_dlsim PROPERTIES VERSION 1.0.0 SOVERSION 1)
 
 add_executable(nr_prachsim ${OPENAIR1_DIR}/SIMULATION/NR_PHY/prachsim.c)
 target_link_libraries(nr_prachsim PRIVATE
   -Wl,--start-group UTIL SIMU PHY_COMMON PHY_NR_COMMON PHY_NR PHY_RU PHY_NR_UE MAC_NR_COMMON SCHED_NR_LIB CONFIG_LIB -lz -Wl,--end-group
   m pthread ${T_LIB} ITTI dl shlib_loader physim_common)
 target_link_libraries(nr_prachsim PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
+set_target_properties(nr_prachsim PROPERTIES VERSION 1.0.0 SOVERSION 1)
 
 add_executable(nr_ulschsim
   ${OPENAIR1_DIR}/SIMULATION/NR_PHY/ulschsim.c
@@ -2059,6 +2095,7 @@ target_link_libraries(nr_ulschsim PRIVATE
   m pthread ${T_LIB} ITTI dl shlib_loader physim_common
 )
 target_link_libraries(nr_ulschsim PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
+set_target_properties(nr_ulschsim PROPERTIES VERSION 1.0.0 SOVERSION 1)
 
 add_executable(nr_ulsim
   ${OPENAIR1_DIR}/SIMULATION/NR_PHY/ulsim.c
@@ -2074,6 +2111,7 @@ target_link_libraries(nr_ulsim PRIVATE
   m pthread ${T_LIB} ITTI dl shlib_loader nr_ue_phy_meas physim_common
   )
 target_link_libraries(nr_ulsim PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
+set_target_properties(nr_ulsim PROPERTIES VERSION 1.0.0 SOVERSION 1)
 
 foreach(myExe dlsim dlsim_tm7 ulsim pbchsim scansim mbmssim pdcchsim pucchsim prachsim syncsim)
 
@@ -2121,6 +2159,7 @@ if (${T_TRACER})
         ulsim pbchsim scansim mbmssim pdcchsim pucchsim prachsim
         syncsim nr_ulsim nr_dlsim nr_dlschsim nr_pbchsim nr_pucchsim
         nr_ulschsim ldpctest polartest smallblocktest cu_test du_test
+        usim nvram conf2uedata 
         #all "add_library" definitions
         ITTI lte_rrc nr_rrc s1ap x2ap m2ap m3ap f1ap
         params_libconfig oai_usrpdevif oai_bladerfdevif oai_lmssdrdevif oai_iqplayer
@@ -2186,3 +2225,384 @@ add_subdirectory(openair2)
 add_subdirectory(openair3)
 add_subdirectory(radio)
 add_subdirectory(tests)
+
+
+include_directories(${OPENAIR_CMAKE}/ran_build/build/openair2/RRC/LTE/MESSAGES)
+include_directories(${OPENAIR_CMAKE}/ran_build/build/openair2/RRC/NR/MESSAGES)
+include_directories(${OPENAIR_CMAKE}/ran_build/build/openair3/S1AP/MESSAGES)
+include_directories(${OPENAIR_CMAKE}/ran_build/build/openair3/NRPPA/MESSAGES)
+
+set(COMPONENTS_LIST "")
+
+set(CPACK_PACKAGE_VERSION "1.0.0")
+set(CPACK_PACKAGE_RELEASE "1")
+set(CPACK_PACKAGE_VENDOR "OpenAirInterface")
+set(CPACK_PACKAGE_MAINTAINER "OpenAirInterface")
+set(CPACK_PACKAGE_CONTACT "Calvin Peyron <calvin.peyron@open-cells.com>")
+set(CPACK_MONOLITHIC_INSTALL OFF)
+
+set(CPACK_DEBIAN_PACKAGE_MAINTAINER "Calvin Peyron <calvin.peyron@open-cells.com>")
+
+file(CHMOD "${OPENAIR_DIR}/cmake_targets/triggers" PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
+
+if(PACKAGING-RPM)
+  set(CPACK_GENERATOR "RPM")
+  set(CPACK_RPM_DEFAULT_DIR_PERMISSIONS
+    OWNER_READ OWNER_WRITE OWNER_EXECUTE
+    GROUP_READ GROUP_EXECUTE
+    WORLD_READ WORLD_EXECUTE)
+  set(CPACK_RPM_FILE_NAME "%{name}-%{version}-%{release}.%{arch}.rpm")
+  set(CPACK_RPM_COMPONENT_INSTALL ON)
+  set(CPACK_RPM_PACKAGE_SECTION "net")
+  set(CPACK_RPM_PACKAGE_PRIORITY "optional")
+  set(CPACK_RPM_ARCHITECTURE ${CMAKE_SYSTEM_PROCESSOR})
+  set(CPACK_RPM_PACKAGE_URL "https://openairinterface.org")
+  set(CPACK_RPM_PACKAGE_LICENSE "Custom")
+  set(CPACK_RPM_PACKAGE_GROUP "Development/Tools")
+  set(CPACK_RPM_PACKAGE_CONTACT "Calvin Peyron <calvin.peyron@open-cells.com>")
+else()
+  set(CPACK_GENERATOR "DEB")
+  set(CPACK_DEB_COMPONENT_INSTALL ON)
+  set(CPACK_DEBIAN_PACKAGE_SECTION "net")
+  set(CPACK_DEBIAN_PACKAGE_PRIORITY "optional")
+  set(CPACK_DEBIAN_ARCHITECTURE ${CMAKE_SYSTEM_PROCESSOR})
+  set(CPACK_DEBIAN_PACKAGE_HOMEPAGE "https://openairinterface.org")
+  set(CPACK_DEBIAN_PACKAGE_LICENSE "Custom")
+endif()
+
+if(LTE_PACKAGE)
+
+  install(TARGETS lte-softmodem lte-uesoftmodem conf2uedata usim nvram
+    COMPONENT oai-lte
+    RUNTIME DESTINATION bin
+    LIBRARY DESTINATION lib
+    PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
+  )
+
+  foreach(lib lte-softmodem lte-uesoftmodem)
+    add_custom_command(TARGET ${lib} 
+      COMMAND ${CMAKE_STRIP} --strip-unneeded $<TARGET_FILE:${lib}>
+      COMMENT "Stripping unneeded symbols from ${lib}")
+  endforeach()
+  
+  if(PACKAGING-RPM)
+    set(CPACK_RPM_OAI-LTE_PACKAGE_RELOCATABLE FALSE)
+  endif()
+
+  set(CONFIG_FILELIST_LTE "")
+  set(CONFIG_FILENAME_LIST_LTE "")
+  file(GLOB LTE_LIBS "${OPENAIR_DIR}/ci-scripts/conf_files/*lte*.conf")
+  foreach(file ${LTE_LIBS})
+    get_filename_component(fname ${file} NAME)
+    list(APPEND CONFIG_FILENAME_LIST_LTE ${fname})
+  endforeach()
+  foreach(config ${CONFIG_FILENAME_LIST_LTE})
+    install(FILES "${OPENAIR_DIR}/ci-scripts/conf_files/${config}" DESTINATION /etc/openairinterface/lte COMPONENT oai-lte)
+    if(PACKAGING-RPM)
+      list(APPEND CONFIG_FILELIST_LTE "%config(noreplace) /etc/openairinterface/lte/${config}")
+    else()
+      list(APPEND CONFIG_FILELIST_LTE "/etc/openairinterface/lte/${config}")
+    endif()
+  endforeach()
+
+  if(PACKAGING-RPM)
+    set(CPACK_RPM_OAI-LTE_USER_FILELIST "${CONFIG_FILELIST_LTE}")
+  else()
+    set(CONFFILES_PATH_LTE "${CMAKE_CURRENT_BINARY_DIR}/lte/conffiles")
+    file(WRITE "${CONFFILES_PATH_LTE}" "")
+    foreach(cfg IN LISTS CONFIG_FILELIST_LTE)
+        file(APPEND "${CONFFILES_PATH_LTE}" "${cfg}\n")
+    endforeach()    
+    file(CHMOD "${CMAKE_CURRENT_BINARY_DIR}/lte/conffiles" PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
+    set(CPACK_DEBIAN_OAI-LTE_PACKAGE_CONTROL_EXTRA "${CONFFILES_PATH_LTE}")
+  endif()
+
+
+  list(APPEND COMPONENTS_LIST oai-lte)
+
+  if(PACKAGING-RPM)
+    set(CPACK_COMPONENT_OAI-LTE_SUMMARY "OpenAirInterface LTE package")
+    set(CPACK_COMPONENT_OAI-LTE_DESCRIPTION "This package is dedicated for LTE executables")
+  else()
+    set(CPACK_DEBIAN_OAI-LTE_SUMMARY "OpenAirInterface LTE package")
+    set(CPACK_DEBIAN_OAI-LTE_DESCRIPTION "This package is dedicated for LTE executables
+    .")
+  endif()
+
+  install(FILES ${OPENAIR_DIR}/changelog.gz COMPONENT oai-lte DESTINATION share/doc/oai-lte)
+  set(CPACK_DEBIAN_OAI-LTE_PACKAGE_NAME "oai-lte")
+  set(CPACK_DEBIAN_OAI-LTE_FILE_NAME "oai-lte.deb")
+  set(CPACK_DEBIAN_OAI-LTE_PACKAGE_DEPENDS "liboai-common, libc6")
+endif()
+
+
+if(NR_PACKAGE)
+  install(TARGETS nr-softmodem nr-cuup nr-uesoftmodem
+    COMPONENT oai-nr
+    RUNTIME DESTINATION bin
+    LIBRARY DESTINATION lib
+    PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
+  )
+
+  foreach(lib nr-softmodem nr-cuup nr-uesoftmodem)
+    add_custom_command(TARGET ${lib} 
+      COMMAND ${CMAKE_STRIP} --strip-unneeded $<TARGET_FILE:${lib}>
+      COMMENT "Stripping unneeded symbols from ${lib}")
+  endforeach()
+
+
+  if(PACKAGING-RPM)
+    set(CPACK_RPM_OAI-NR_PACKAGE_RELOCATABLE FALSE)
+  endif()
+
+  set(CONFIG_FILELIST_NR "")
+  set(CONFIG_FILENAME_LIST_NR "")
+  file(GLOB NR_LIBS "${OPENAIR_DIR}/ci-scripts/conf_files/*nr*.conf")
+  file(GLOB CUUP_LIBS "${OPENAIR_DIR}/ci-scripts/conf_files/*cuup*.conf")
+  foreach(file ${NR_LIBS} ${CUUP_LIBS})
+    get_filename_component(fname ${file} NAME)
+    list(APPEND CONFIG_FILENAME_LIST_NR ${fname})
+  endforeach()
+  install(FILES "${OPENAIR_DIR}/doc/tutorial_resources/oai-cn5g/conf/config.yaml" DESTINATION /etc/openairinterface/nr COMPONENT oai-nr)
+  foreach(config ${CONFIG_FILENAME_LIST_NR})
+    install(FILES "${OPENAIR_DIR}/ci-scripts/conf_files/${config}" DESTINATION /etc/openairinterface/nr COMPONENT oai-nr)
+    if(PACKAGING-RPM)
+      list(APPEND CONFIG_FILELIST_NR "%config(noreplace) /etc/openairinterface/nr/${config}")
+    else()
+      list(APPEND CONFIG_FILELIST_NR "/etc/openairinterface/nr/${config}")
+    endif()
+  endforeach()
+
+  if(PACKAGING-RPM)
+    list(APPEND CONFIG_FILELIST_NR "%config(noreplace) /etc/openairinterface/nr/config.yaml")
+  else()
+    list(APPEND CONFIG_FILELIST_NR "/etc/openairinterface/nr/config.yaml")
+  endif()
+
+  if(PACKAGING-RPM)
+    set(CPACK_RPM_OAI-NR_USER_FILELIST "${CONFIG_FILELIST_NR}")
+  else()
+    set(CONFFILES_PATH_NR "${CMAKE_CURRENT_BINARY_DIR}/nr/conffiles")
+    file(WRITE "${CONFFILES_PATH_NR}" "")
+    foreach(cfg IN LISTS CONFIG_FILELIST_NR)
+        file(APPEND "${CONFFILES_PATH_NR}" "${cfg}\n")
+    endforeach()    
+    file(CHMOD "${CMAKE_CURRENT_BINARY_DIR}/nr/conffiles" PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
+    set(CPACK_DEBIAN_OAI-NR_PACKAGE_CONTROL_EXTRA "${CONFFILES_PATH_NR}")
+  endif()
+
+  foreach(document NR_SA_Tutorial_COTS_UE NR_SA_Tutorial_OAI_CN5G NR_SA_Tutorial_OAI_multi_UE NR_SA_Tutorial_OAI_nrUE)
+      install(FILES "${OPENAIR_DIR}/doc/${document}.md" DESTINATION share/doc/oai-nr COMPONENT oai-nr)
+  endforeach()
+
+  list(APPEND COMPONENTS_LIST oai-nr)
+
+  if(PACKAGING-RPM)
+  set(CPACK_COMPONENT_OAI-NR_SUMMARY "OpenAirInterface NR package")
+  set(CPACK_COMPONENT_OAI-NR_DESCRIPTION "This package is dedicated for NR executables")
+  else()
+    set(CPACK_DEBIAN_OAI-NR_SUMMARY "OpenAirInterface NR package")
+    set(CPACK_DEBIAN_OAI-NR_DESCRIPTION "This package is dedicated for NR executables
+    .")
+  endif()
+
+  install(FILES ${OPENAIR_DIR}/changelog.gz COMPONENT oai-nr DESTINATION share/doc/oai-nr)
+  set(CPACK_DEBIAN_OAI-NR_PACKAGE_NAME "oai-nr")
+  set(CPACK_DEBIAN_OAI-NR_FILE_NAME "oai-nr.deb")
+  set(CPACK_DEBIAN_OAI-NR_PACKAGE_DEPENDS "liboai-common, libc6")
+endif()
+
+
+if(OAI_PHYSIM_PACKAGE)
+  #TO BE FIXED BEFORE ADDED: pbchsim mbmssim pdcchsim pucchsim prachsim syncsim dlsim ulsim scansim 
+  install(FILES "${OPENAIR_DIR}/doc/physical-simulators.md" DESTINATION share/doc/ COMPONENT oai-physim)
+
+  foreach(lib polartest smallblocktest ldpctest nr_dlschsim nr_psbchsim nr_pucchsim nr_dlsim nr_prachsim nr_ulschsim nr_ulsim)
+    add_custom_command(TARGET ${lib} 
+      COMMAND ${CMAKE_STRIP} --strip-unneeded $<TARGET_FILE:${lib}>
+      COMMENT "Stripping unneeded symbols from ${lib}")
+  endforeach()
+
+  install(TARGETS polartest smallblocktest ldpctest nr_dlschsim nr_psbchsim nr_pucchsim nr_dlsim nr_prachsim nr_ulschsim nr_ulsim 
+          COMPONENT oai-physim
+          RUNTIME DESTINATION bin
+          LIBRARY DESTINATION lib
+          PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
+        )
+
+  list(APPEND COMPONENTS_LIST oai-physim)
+
+  set(CPACK_COMPONENT_OAI-PHYSIM_SUMMARY "OpenAirInterface PhySim package")
+  set(CPACK_COMPONENT_OAI-PHYSIM_DESCRIPTION "This package contains every simulators")
+  set(CPACK_DEBIAN_OAI-PHYSIM_PACKAGE_NAME "oai-physim")
+  set(CPACK_DEBIAN_OAI-PHYSIM_FILE_NAME "oai-physim.deb")
+endif()
+
+
+if(OAI_LDPC_T2_PACKAGE)
+  set(CPACK_COMPONENT_LIBOAI-LDPC-T2_SUMMARY "OpenAirInterface T2 accelerator package")
+  set(CPACK_COMPONENT_LIBOAI-LDPC-T2_DESCRIPTION "This package is dedicated for T2 accelerator library")
+  install(TARGETS ldpc_t2
+        COMPONENT liboai-ldpc-t2
+        RUNTIME DESTINATION bin
+        LIBRARY DESTINATION lib
+        PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
+      )
+  install(FILES "${OPENAIR_DIR}/doc/LDPC_T2_OFFLOAD_SETUP.md" DESTINATION share/doc/ COMPONENT liboai-ldpc-t2)
+  list(APPEND COMPONENTS_LIST liboai-ldpc-t2)
+endif()
+
+
+if(OAI_USRP_PACKAGE)
+
+  if(PACKAGING-RPM)
+    set(CPACK_RPM_LIBOAI-USRP_PACKAGE_REQUIRES "boost-chrono, boost-date-time, boost-filesystem, boost-program-options, boost-thread, boost-test, boost-regex, python3-mako, python3-docutils, python3-pip, glibc")
+  else()
+    set(CPACK_DEBIAN_LIBOAI-USRP_PACKAGE_DEPENDS "doxygen, python3-docutils, python3-mako, python3-numpy, python3-requests, python3-setuptools, ninja-build, libc6")
+  endif()
+
+  install(TARGETS oai_usrpdevif
+        COMPONENT liboai-usrp
+        RUNTIME DESTINATION bin
+        LIBRARY DESTINATION lib
+        PERMISSIONS OWNER_READ OWNER_WRITE  GROUP_READ WORLD_READ
+      )
+  install(FILES "${OPENAIR_DIR}/radio/USRP/README.md" DESTINATION share/doc/liboai-usrp COMPONENT liboai-usrp)
+  list(APPEND COMPONENTS_LIST liboai-usrp)
+
+  if(PACKAGING-RPM)
+    set(CPACK_RPM_LIBOAI-USRP_PACKAGE_RELOCATABLE FALSE)
+  endif()
+
+  set(CONFIG_FILELIST_USRP "")
+  set(CONFIG_FILENAME_LIST_USRP "")
+  file(GLOB USRP_LIBS "${OPENAIR_DIR}/ci-scripts/conf_files/*usrp*.conf")
+  foreach(file ${USRP_LIBS})
+    get_filename_component(fname ${file} NAME)
+    list(APPEND CONFIG_FILENAME_LIST_USRP ${fname})
+  endforeach()
+  foreach(config ${CONFIG_FILENAME_LIST_USRP})
+    install(FILES "${OPENAIR_DIR}/ci-scripts/conf_files/${config}" DESTINATION /etc/openairinterface/usrp COMPONENT liboai-usrp)
+    if(PACKAGING-RPM)
+      list(APPEND CONFIG_FILELIST_USRP "%config(noreplace) /etc/openairinterface/usrp/${config}")
+    else()
+      list(APPEND CONFIG_FILELIST_USRP "/etc/openairinterface/usrp/${config}")
+    endif()
+  endforeach()
+
+  if(PACKAGING-RPM)
+    set(CPACK_RPM_LIBOAI-USRP_USER_FILELIST "${CONFIG_FILELIST_USRP}")
+  else()
+    set(CONFFILES_PATH_USRP "${CMAKE_CURRENT_BINARY_DIR}/usrp/conffiles")
+    file(WRITE "${CONFFILES_PATH_USRP}" "")
+    foreach(cfg IN LISTS CONFIG_FILELIST_USRP)
+        file(APPEND "${CONFFILES_PATH_USRP}" "${cfg}\n")
+    endforeach()    
+    file(CHMOD "${CMAKE_CURRENT_BINARY_DIR}/usrp/conffiles" PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
+    set(CPACK_DEBIAN_LIBOAI-USRP_PACKAGE_CONTROL_EXTRA "${CONFFILES_PATH_USRP};${OPENAIR_DIR}/cmake_targets/triggers;")
+    install(FILES ${OPENAIR_DIR}/changelog.gz COMPONENT liboai-usrp DESTINATION share/doc/liboai-usrp)
+  endif()
+
+    if(PACKAGING-RPM)
+    set(CPACK_COMPONENT_LIBOAI-USRP_SUMMARY "OpenAirInterface USRP package")
+    set(CPACK_COMPONENT_LIBOAI-USRP_DESCRIPTION "This package is dedicated for USRP library")
+  else()
+    set(CPACK_DEBIAN_LIBOAI-USRP_SUMMARY "OpenAirInterface USRP package")
+    set(CPACK_DEBIAN_LIBOAI-USRP_DESCRIPTION "This package is dedicated for USRP library
+    .")
+  endif()
+
+  set(CPACK_DEBIAN_LIBOAI-USRP_PACKAGE_NAME "liboai-usrp")
+  set(CPACK_DEBIAN_LIBOAI-USRP_FILE_NAME "liboai-usrp.deb")
+endif()
+
+
+if(OAI_COMMON_PACKAGE)
+
+  if(PACKAGING-RPM)
+    set(CPACK_RPM_LIBOAI-COMMON_PACKAGE_REQUIRES "automake, gcc, gcc-c++, git, pkgconfig, lksctp-tools, ninja-build, make, patch, lapack, blas, vim-common, glibc")
+  else()
+    set(CPACK_DEBIAN_LIBOAI-COMMON_PACKAGE_DEPENDS "automake, build-essential, pkgconf, git, patch, openssl, xxd, libc6")
+  endif()
+
+  foreach(lib params_libconfig dfts oai_iqplayer)
+    add_custom_command(TARGET ${lib} 
+      COMMAND ${CMAKE_STRIP} --strip-unneeded $<TARGET_FILE:${lib}>
+      COMMENT "Stripping unneeded symbols from ${lib}")
+  endforeach()
+  
+  install(TARGETS params_libconfig dfts oai_iqplayer params_yaml telnetsrv coding rfsimulator ldpc_orig ldpc vrtsim
+          COMPONENT liboai-common
+          RUNTIME DESTINATION bin
+          LIBRARY DESTINATION lib
+          PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
+        )
+    list(APPEND COMPONENTS_LIST liboai-common)
+
+    if(PACKAGING-RPM)
+    set(CPACK_RPM_LIBOAI-COMMON_PACKAGE_RELOCATABLE FALSE)
+  endif()
+
+  set(CONFIG_FILELIST_COMMON "")
+  set(CONFIG_FILENAME_LIST_COMMON "")
+  file(GLOB COMMON_LIBS_PATH "${OPENAIR_DIR}/ci-scripts/conf_files/*rfsim*.conf")
+  foreach(file ${COMMON_LIBS_PATH})
+    get_filename_component(fname ${file} NAME)
+    list(APPEND CONFIG_FILENAME_LIST_COMMON ${fname})
+  endforeach()
+
+  foreach(config ${CONFIG_FILENAME_LIST_COMMON})
+    install(FILES "${OPENAIR_DIR}/ci-scripts/conf_files/${config}" DESTINATION /etc/openairinterface/liboai-common COMPONENT liboai-common)
+    if(PACKAGING-RPM)
+      list(APPEND CONFIG_FILELIST_COMMON "%config(noreplace) /etc/openairinterface/liboai-common/${config}")
+    else()
+      list(APPEND CONFIG_FILELIST_COMMON "/etc/openairinterface/liboai-common/${config}")
+    endif()
+  endforeach()
+
+  if(PACKAGING-RPM)
+    set(CPACK_RPM_LIBOAI-COMMON_USER_FILELIST "${CONFIG_FILELIST_COMMON}")
+  else()
+    set(CONFFILES_PATH_COMMON "${CMAKE_CURRENT_BINARY_DIR}/liboai-common/conffiles")
+    file(WRITE "${CONFFILES_PATH_COMMON}" "")
+    foreach(cfg IN LISTS CONFIG_FILELIST_COMMON)
+        file(APPEND "${CONFFILES_PATH_COMMON}" "${cfg}\n")
+    endforeach()    
+    file(CHMOD "${CMAKE_CURRENT_BINARY_DIR}/liboai-common/conffiles" PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
+    set(CPACK_DEBIAN_LIBOAI-COMMON_PACKAGE_CONTROL_EXTRA "${CONFFILES_PATH_COMMON};${OPENAIR_DIR}/cmake_targets/triggers;")
+    install(FILES ${OPENAIR_DIR}/changelog.gz COMPONENT liboai-common DESTINATION share/doc/liboai-common)
+  endif()
+
+    if(PACKAGING-RPM)
+    set(CPACK_COMPONENT_LIBOAI-COMMON_SUMMARY "OpenAirInterface shared libraries package")
+    set(CPACK_COMPONENT_LIBOAI-COMMON_DESCRIPTION "This package contains shared libraries for other packages")
+  else()
+    set(CPACK_DEBIAN_LIBOAI-COMMON_SUMMARY "OpenAirInterface shared libraries package")
+    set(CPACK_DEBIAN_LIBOAI-COMMON_DESCRIPTION "This package contains shared libraries for other packages
+    .")
+  endif()
+
+  set(CPACK_DEBIAN_LIBOAI-COMMON_PACKAGE_NAME "liboai-common")
+  set(CPACK_DEBIAN_LIBOAI-COMMON_FILE_NAME "liboai-common.deb")
+endif()
+
+
+set(CPACK_RESOURCE_FILE_LICENSE "${OPENAIR_DIR}/LICENSE")
+foreach(component IN LISTS COMPONENTS_LIST)
+  if(PACKAGING-RPM)
+    set(postin_var "CPACK_RPM_${component}_POST_INSTALL_SCRIPT_FILE")
+    set(postun_var "CPACK_RPM_${component}_POST_UNINSTALL_SCRIPT_FILE")
+
+    set(${postin_var} "${OPENAIR_CMAKE}/ldconfig-postin.sh")
+    set(${postun_var} "${OPENAIR_CMAKE}/ldconfig-postun.sh")
+  endif()
+  install(FILES "${OPENAIR_DIR}/LICENSE" 
+          DESTINATION "share/doc/${component}"
+          COMPONENT ${component}
+          PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
+          )
+endforeach()
+
+
+
+INCLUDE(CPack)

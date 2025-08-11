@@ -30,12 +30,11 @@
 #include <string.h>
 #include <inttypes.h>
 
-#include "log.h"
 #include "assertions.h"
 #include "intertask_interface.h"
 #include "s1ap_eNB.h"
 #include "sctp_eNB_task.h"
-#include "SystemInformationBlockType2.h"
+#include "LTE_SystemInformationBlockType2.h"
 
 #include "PHY/phy_extern.h"
 #include "radio/ETHERNET/ethernet_lib.h"
@@ -53,7 +52,7 @@ void RCconfig_NbIoTL1(void) {
   paramlist_def_t NbIoT_L1_ParamList = {NBIOT_L1LIST_CONFIG_STRING,NULL,0};
   /* No component carrier for NbIoT, ignore number of CC */
   //  NbIoT_L1_Params[L1_CC_IDX ].paramflags = PARAMFLAG_DONOTREAD;
-  config_getlist(&NbIoT_L1_ParamList, NbIoT_L1_Params, sizeofArray(NbIoT_L1_Params), NULL);
+  config_getlist(config_get_if(), &NbIoT_L1_ParamList, NbIoT_L1_Params, sizeofArray(NbIoT_L1_Params), NULL);
 
   if (NbIoT_L1_ParamList.numelt > 0) {
     if (RC.L1_NB_IoT == NULL) {
@@ -71,7 +70,7 @@ void RCconfig_NbIoTL1(void) {
 
       if (strcmp(*(NbIoT_L1_ParamList.paramarray[j][L1_TRANSPORT_N_PREFERENCE_IDX].strptr), "local_mac") == 0) {
       } else if (strcmp(*(NbIoT_L1_ParamList.paramarray[j][L1_TRANSPORT_N_PREFERENCE_IDX].strptr), "nfapi") == 0) {
-        RC.L1_NB_IoT[j]->eth_params_n.local_if_name        = strdup(*(NbIoT_L1_ParamList.paramarray[j][L1_LOCAL_N_IF_NAME_IDX].strptr));
+        // RC.L1_NB_IoT[j]->eth_params_n.local_if_name        = strdup(*(NbIoT_L1_ParamList.paramarray[j][L1_LOCAL_N_IF_NAME_IDX].strptr));
         RC.L1_NB_IoT[j]->eth_params_n.my_addr         = strdup(*(NbIoT_L1_ParamList.paramarray[j][L1_LOCAL_N_ADDRESS_IDX].strptr));
         RC.L1_NB_IoT[j]->eth_params_n.remote_addr       = strdup(*(NbIoT_L1_ParamList.paramarray[j][L1_REMOTE_N_ADDRESS_IDX].strptr));
         RC.L1_NB_IoT[j]->eth_params_n.my_portc          = *(NbIoT_L1_ParamList.paramarray[j][L1_LOCAL_N_PORTC_IDX].iptr);
@@ -95,7 +94,7 @@ void RCconfig_NbIoTmacrlc(void) {
   paramlist_def_t NbIoT_MacRLC_ParamList = {NBIOT_MACRLCLIST_CONFIG_STRING,NULL,0};
   /* No component carrier for NbIoT, ignore number of CC */
   //  NbIoT_MacRLC_Params[MACRLC_CC_IDX ].paramflags = PARAMFLAG_DONOTREAD;
-  config_getlist(&NbIoT_MacRLC_ParamList, NbIoT_MacRLC_Params, sizeofArray(NbIoT_MacRLC_Params), NULL);
+  config_getlist(config_get_if(), &NbIoT_MacRLC_ParamList, NbIoT_MacRLC_Params, sizeofArray(NbIoT_MacRLC_Params), NULL);
 
   if ( NbIoT_MacRLC_ParamList.numelt > 0) {
     mac_top_init_eNB_NB_IoT();
@@ -104,7 +103,7 @@ void RCconfig_NbIoTmacrlc(void) {
       if (strcmp(*(NbIoT_MacRLC_ParamList.paramarray[j][MACRLC_TRANSPORT_N_PREFERENCE_IDX].strptr), "local_RRC") == 0) {
         // check number of instances is same as RRC/PDCP
       } else if (strcmp(*(NbIoT_MacRLC_ParamList.paramarray[j][MACRLC_TRANSPORT_N_PREFERENCE_IDX].strptr), "cudu") == 0) {
-        RC.nb_iot_mac[j]->eth_params_n.local_if_name            = strdup(*(NbIoT_MacRLC_ParamList.paramarray[j][MACRLC_LOCAL_N_IF_NAME_IDX].strptr));
+      //  RC.nb_iot_mac[j]->eth_params_n.local_if_name            = strdup(*(NbIoT_MacRLC_ParamList.paramarray[j][MACRLC_LOCAL_N_IF_NAME_IDX].strptr));
         RC.nb_iot_mac[j]->eth_params_n.my_addr                  = strdup(*(NbIoT_MacRLC_ParamList.paramarray[j][MACRLC_LOCAL_N_ADDRESS_IDX].strptr));
         RC.nb_iot_mac[j]->eth_params_n.remote_addr              = strdup(*(NbIoT_MacRLC_ParamList.paramarray[j][MACRLC_REMOTE_N_ADDRESS_IDX].strptr));
         RC.nb_iot_mac[j]->eth_params_n.my_portc                 = *(NbIoT_MacRLC_ParamList.paramarray[j][MACRLC_LOCAL_N_PORTC_IDX].iptr);
@@ -118,7 +117,7 @@ void RCconfig_NbIoTmacrlc(void) {
 
       if (strcmp(*(NbIoT_MacRLC_ParamList.paramarray[j][MACRLC_TRANSPORT_S_PREFERENCE_IDX].strptr), "local_L1") == 0) {
       } else if (strcmp(*(NbIoT_MacRLC_ParamList.paramarray[j][MACRLC_TRANSPORT_S_PREFERENCE_IDX].strptr), "nfapi") == 0) {
-        RC.nb_iot_mac[j]->eth_params_s.local_if_name    = strdup(*(NbIoT_MacRLC_ParamList.paramarray[j][MACRLC_LOCAL_S_IF_NAME_IDX].strptr));
+      //  RC.nb_iot_mac[j]->eth_params_s.local_if_name    = strdup(*(NbIoT_MacRLC_ParamList.paramarray[j][MACRLC_LOCAL_S_IF_NAME_IDX].strptr));
         RC.nb_iot_mac[j]->eth_params_s.my_addr      = strdup(*(NbIoT_MacRLC_ParamList.paramarray[j][MACRLC_LOCAL_S_ADDRESS_IDX].strptr));
         RC.nb_iot_mac[j]->eth_params_s.remote_addr    = strdup(*(NbIoT_MacRLC_ParamList.paramarray[j][MACRLC_REMOTE_S_ADDRESS_IDX].strptr));
         RC.nb_iot_mac[j]->eth_params_s.my_portc     = *(NbIoT_MacRLC_ParamList.paramarray[j][MACRLC_LOCAL_S_PORTC_IDX].iptr);
@@ -191,7 +190,7 @@ int RCconfig_NbIoTRRC(MessageDef *msg_p, int nbiotrrc_id,eNB_RRC_INST_NB_IoT *nb
   NBIoTParams[NBIOT_UE_TIMERSANDCONSTANTS_N310_NB_IDX].uptr              = (uint32_t *)&(NBIOTRRC_CONFIGURATION_REQ (msg_p).ue_TimersAndConstants_n310_NB);
   NBIoTParams[NBIOT_UE_TIMERSANDCONSTANTS_N311_NB_IDX].uptr              = (uint32_t *)&(NBIOTRRC_CONFIGURATION_REQ (msg_p).ue_TimersAndConstants_n311_NB);
   sprintf(instprefix, NBIOT_RRCLIST_CONFIG_STRING ".[%i]",nbiotrrc_id);
-  config_get( NBIoTParams,sizeofArray(NBIoTParams),instprefix);
+  config_get(config_get_if(), NBIoTParams,sizeofArray(NBIoTParams),instprefix);
   NBIOTRRC_CONFIGURATION_REQ (msg_p).nprach_SubcarrierMSG3_RangeStart    = config_get_processedint(config_get_if(), &(NBIoTParams[NBIOT_NPRACH_SUBCARRIERMSG3_RANGESTART_IDX]) );
   NBIOTRRC_CONFIGURATION_REQ (msg_p).npusch_groupHoppingEnabled          = config_get_processedint(config_get_if(), &(NBIoTParams[NBIOT_NPUSCH_GROUPHOPPINGENABLED_IDX]      ) );
   NBIOTRRC_CONFIGURATION_REQ (msg_p).dl_GapDurationCoeff_NB              = config_get_processedint(config_get_if(), &(NBIoTParams[NBIOT_DL_GAPDURATIONCOEFF_NB_IDX]          ) );
@@ -208,14 +207,14 @@ int RCconfig_NbIoTRRC(MessageDef *msg_p, int nbiotrrc_id,eNB_RRC_INST_NB_IoT *nb
     NBIoTParams[NBIOT_NPDCCH_STARTSF_CSS_RA_IDX].uptr              = (uint32_t *)&(NBIOTRRC_CONFIGURATION_REQ (msg_p).npdcch_StartSF_CSS_RA[i]);
     NBIoTParams[NBIOT_NPDCCH_OFFSET_RA_IDX].strptr         = &tmpptr;
     sprintf(instprefix, "%s.[%i].%s.[%i]",NBIOT_RRCLIST_CONFIG_STRING, nbiotrrc_id,NBIOT_RRCLIST_NPRACHPARAMS_CONFIG_STRING,i);
-    config_get(NBIoTPrachParams, sizeofArray(NBIoTPrachParams), instprefix);
+    config_get(config_get_if(), NBIoTPrachParams, sizeofArray(NBIoTPrachParams), instprefix);
     NBIOTRRC_CONFIGURATION_REQ(msg_p).npdcch_Offset_RA[i] =
         config_get_processedint(config_get_if(), &(NBIoTPrachParams[NBIOT_NPDCCH_OFFSET_RA_IDX]));
   }
 
   /* get the LTE RRC and CC this NB-IoT RRC instance is attached to */
   sprintf(instprefix, NBIOT_RRCLIST_CONFIG_STRING ".[%i]." NBIOT_LTERRCREF_CONFIG_STRING, nbiotrrc_id );
-  config_get( NBIoTRRCRefParams,sizeofArray(NBIoTRRCRefParams),instprefix);
+  config_get(config_get_if(), NBIoTRRCRefParams,sizeofArray(NBIoTRRCRefParams),instprefix);
   /* read SIB1 parameters in the LTE RRC and CC sections */
   sprintf(instprefix, ENB_CONFIG_STRING_ENB_LIST ".[%i]."  ENB_CONFIG_STRING_COMPONENT_CARRIERS ".[%i]",
           *(NBIoTRRCRefParams[NBIOT_RRCINST_IDX].uptr), *(NBIoTRRCRefParams[NBIOT_CCINST_IDX].uptr));
@@ -231,7 +230,7 @@ int RCconfig_NbIoTRRC(MessageDef *msg_p, int nbiotrrc_id,eNB_RRC_INST_NB_IoT *nb
     NBIoTLteCCParams[i].chkPptr = &(NBIoTLteCCCheckParams[i]);
   }
 
-  config_get( NBIoTLteCCParams,sizeofArray(NBIoTLteCCParams),instprefix);
+  config_get(config_get_if(), NBIoTLteCCParams,sizeofArray(NBIoTLteCCParams),instprefix);
   NBIOTRRC_CONFIGURATION_REQ (msg_p).frame_type = config_get_processedint(config_get_if(), &(NBIoTLteCCParams[LTECCPARAMS_FRAME_TYPE_IDX]) );
   NBIOTRRC_CONFIGURATION_REQ (msg_p).prefix_type = config_get_processedint(config_get_if(), &(NBIoTLteCCParams[LTECCPARAMS_PREFIX_TYPE_IDX]) );
   NBIOTRRC_CONFIGURATION_REQ (msg_p).prefix_type = config_get_processedint(config_get_if(), &(NBIoTLteCCParams[LTECCPARAMS_PREFIX_TYPE_UL_IDX]) );
@@ -242,11 +241,11 @@ void RCConfig_NbIoT(RAN_CONTEXT_t *RC) {
   paramlist_def_t NbIoT_MACRLCParamList = {NBIOT_MACRLCLIST_CONFIG_STRING,NULL,0};
   paramlist_def_t NbIoT_L1ParamList = {NBIOT_L1LIST_CONFIG_STRING,NULL,0};
   paramlist_def_t NbIoT_ParamList = {NBIOT_RRCLIST_CONFIG_STRING,NULL,0};
-  config_getlist( &NbIoT_ParamList,NULL,0,NULL);
+  config_getlist(config_get_if(),  &NbIoT_ParamList,NULL,0,NULL);
   RC->nb_nb_iot_rrc_inst = NbIoT_ParamList.numelt;
-  config_getlist( &NbIoT_MACRLCParamList,NULL,0, NULL);
+  config_getlist(config_get_if(),  &NbIoT_MACRLCParamList,NULL,0, NULL);
   RC->nb_nb_iot_macrlc_inst  = NbIoT_MACRLCParamList.numelt;
   // Get num L1 instances
-  config_getlist( &NbIoT_L1ParamList,NULL,0, NULL);
+  config_getlist(config_get_if(),  &NbIoT_L1ParamList,NULL,0, NULL);
   RC->nb_nb_iot_L1_inst = NbIoT_L1ParamList.numelt;
 }
