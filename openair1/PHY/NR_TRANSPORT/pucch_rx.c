@@ -565,7 +565,7 @@ void nr_decode_pucch1(int n_rx,
   for (int l = 0; l < nrofSymbols; l++) { // extracting data and dmrs from rxdataF
     if (intraSlotFrequencyHopping && (l > floor(nrofSymbols / 2))) { // intra-slot hopping enabled, we need
                                                                      // to calculate new offset PRB
-      startingPRB = startingPRB + startingPRB_intraSlotHopping;
+      startingPRB = /*startingPRB +*/ startingPRB_intraSlotHopping; // FIXME: should be bwpStart instead of startingPRB
     }
     int re_offset = (l + startingSymbolIndex) * frame_parms->ofdm_symbol_size;
 
