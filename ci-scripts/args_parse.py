@@ -121,29 +121,11 @@ def ArgsParse(argvs,CiTestObj,RAN,HTML,CONTAINERS,HELP,SCA,CLUSTER):
             SCA.ranTargetBranch=matchReg.group(1)
             CLUSTER.ranTargetBranch=matchReg.group(1)
         elif re.match(r'^\-\-eNBIPAddress=(.+)$|^\-\-eNB[1-2]IPAddress=(.+)$', myArgv, re.IGNORECASE):
-            if re.match(r'^\-\-eNBIPAddress=(.+)$', myArgv, re.IGNORECASE):
-                matchReg = re.match(r'^\-\-eNBIPAddress=(.+)$', myArgv, re.IGNORECASE)
-                RAN.eNBIPAddress=matchReg.group(1)
-            elif re.match(r'^\-\-eNB1IPAddress=(.+)$', myArgv, re.IGNORECASE):
-                print("parameter --eNB1IPAddress ignored")
-            elif re.match(r'^\-\-eNB2IPAddress=(.+)$', myArgv, re.IGNORECASE):
-                print("parameter --eNB2IPAddress ignored")
+            print("parameters --eNB*IPAddress ignored")
         elif re.match(r'^\-\-eNBUserName=(.+)$|^\-\-eNB[1-2]UserName=(.+)$', myArgv, re.IGNORECASE):
-            if re.match(r'^\-\-eNBUserName=(.+)$', myArgv, re.IGNORECASE):
-                matchReg = re.match(r'^\-\-eNBUserName=(.+)$', myArgv, re.IGNORECASE)
-                RAN.eNBUserName=matchReg.group(1)
-            elif re.match(r'^\-\-eNB1UserName=(.+)$', myArgv, re.IGNORECASE):
-                print("parameter --eNB1UserName ignored")
-            elif re.match(r'^\-\-eNB2UserName=(.+)$', myArgv, re.IGNORECASE):
-                print("parameter --eNB2UserName ignored")
+            print("parameters --eNB*UserName ignored")
         elif re.match(r'^\-\-eNBPassword=(.+)$|^\-\-eNB[1-2]Password=(.+)$', myArgv, re.IGNORECASE):
-            if re.match(r'^\-\-eNBPassword=(.+)$', myArgv, re.IGNORECASE):
-                matchReg = re.match(r'^\-\-eNBPassword=(.+)$', myArgv, re.IGNORECASE)
-                RAN.eNBPassword=matchReg.group(1)
-            elif re.match(r'^\-\-eNB1Password=(.+)$', myArgv, re.IGNORECASE):
-                print("parameter --eNB1Password ignored")
-            elif re.match(r'^\-\-eNB2Password=(.+)$', myArgv, re.IGNORECASE):
-                print("parameter --eNB2PPassword ignored")
+            print("parameter --eNB*Password ignored")
         elif re.match(r'^\-\-eNBSourceCodePath=(.+)$|^\-\-eNB[1-2]SourceCodePath=(.+)$', myArgv, re.IGNORECASE):
             if re.match(r'^\-\-eNBSourceCodePath=(.+)$', myArgv, re.IGNORECASE):
                 matchReg = re.match(r'^\-\-eNBSourceCodePath=(.+)$', myArgv, re.IGNORECASE)
