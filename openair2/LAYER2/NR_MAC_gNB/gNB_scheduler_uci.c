@@ -983,8 +983,9 @@ void handle_nr_uci_pucch_2_3_4(module_id_t mod_id, frame_t frame, slot_t slot, c
     sched_ctrl->tpc1 = nr_limit_tpc(sched_ctrl->tpc1, uci_234->rssi, rssi_threshold);
   }
 
-  // TODO: handle SR
   if (uci_234->pduBitmap & 0x1) {
+    if (uci_234->sr.sr_payload[0])
+      sched_ctrl->SR = true;
     free(uci_234->sr.sr_payload);
   }
 
