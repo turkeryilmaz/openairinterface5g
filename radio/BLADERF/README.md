@@ -111,7 +111,7 @@ This command retrieves the file hostedxA4-latest.rbf from the specified URL and 
 After downloading, you can load the FPGA image onto your bladeRF device using the bladeRF-cli tool:
 
 ```
-bladeRF-cli --load-fpga hostedxA4-latest.rbf
+bladeRF-cli --load-fpga hostedxA4.rbf
 ```
 
 This command loads the FPGA image into the bladeRF device, preparing it for operation. ￼
