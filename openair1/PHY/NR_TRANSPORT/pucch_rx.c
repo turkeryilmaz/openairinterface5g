@@ -929,8 +929,8 @@ void nr_decode_pucch1(int n_rx,
       dp1mag += squaredMod(dp1);
       dm1mag += squaredMod(dm1);
     
-    printf("r %d y : (%f,%f) H (%f,%f) dp1 : (%f,%f) : %f dm1 : (%f,%f) : %f\n",
-		    r,y[r].r,y[r].i,H[r].r,H[r].i,dp1.r,dp1.i,dp1mag,dm1.r,dm1.i,dm1mag);
+    /*printf("r %d y : (%f,%f) H (%f,%f) dp1 : (%f,%f) : %f dm1 : (%f,%f) : %f\n",
+		    r,y[r].r,y[r].i,H[r].r,H[r].i,dp1.r,dp1.i,dp1mag,dm1.r,dm1.i,dm1mag);*/
 
 
       if (intraSlotFrequencyHopping == true) {
