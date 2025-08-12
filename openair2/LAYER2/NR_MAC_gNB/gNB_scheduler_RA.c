@@ -1926,7 +1926,7 @@ static void nr_generate_Msg4_MsgB(module_id_t module_idP,
     TX_req->SFN = frameP;
     TX_req->Number_of_PDUs++;
     TX_req->Slot = slotP;
-
+    LOG_I(NR_MAC, "TX (sfn,slot) (%d,%d)\n", TX_req->SFN, TX_req->Slot);
     // Mark the corresponding symbols and RBs as used
     fill_pdcch_vrb_map(nr_mac,
                        CC_id,
