@@ -19,7 +19,7 @@
  *      contact@openairinterface.org
  */
 
-/*! \file radio/dummy/dummy_rf.c
+/*! \file radio/emulator/rf_emulator.c
  * \brief RF library that does nothing to be used in benchmarks with phy-test without RF
  */
 
@@ -34,12 +34,12 @@
 #include "simde/x86/avx512.h"
 #include "SIMULATION/TOOLS/sim.h"
 
-#define DUMMY_SECTION "dummy_rf"
+#define RF_EMULATOR_SECTION "rf_emulator"
 // clang-format off
-#define DUMMY_PARAMS_DESC \
+#define RF_EMULATOR_PARAMS_DESC \
   { \
-     {"enable_noise",     "Enable noise injection", 0, .iptr = &dummy_state->enable_noise,     .defintval = 1,                  TYPE_INT, 0},\
-     {"noise_level_dBFS", "Noise level",            0, .iptr = &dummy_state->noise_level_dBFS, .defintval = INVALID_DBFS_VALUE, TYPE_INT, 0},\
+     {"enable_noise",     "Enable noise injection", 0, .iptr = &emulator_state->enable_noise,     .defintval = 1,                  TYPE_INT, 0},\
+     {"noise_level_dBFS", "Noise level",            0, .iptr = &emulator_state->noise_level_dBFS, .defintval = INVALID_DBFS_VALUE, TYPE_INT, 0},\
   };
 // clang-format on
 
@@ -50,50 +50,50 @@ typedef struct {
   pthread_cond_t cond;
   uint64_t late_reads;
   uint64_t late_writes;
-} dummy_timestamp_t;
+} emulator_timestamp_t;
 
 typedef struct {
   uint64_t last_received_sample;
   double timescale;
   double sample_rate;
-  dummy_timestamp_t dummy_timestamp;
+  emulator_timestamp_t emulator_timestamp;
   pthread_t timing_thread;
   bool run_timing_thread;
   int enable_noise;
   int noise_level_dBFS;
-} dummy_state_t;
+} emulator_state_t;
 
-static void *dummy_timing_job(void *arg)
+static void *emulator_timing_job(void *arg)
 {
-  dummy_state_t *dummy_state = (dummy_state_t *)arg;
+  emulator_state_t *emulator_state = (emulator_state_t *)arg;
   struct timespec timestamp;
   if (clock_gettime(CLOCK_REALTIME, &timestamp)) {
     LOG_E(UTIL, "clock_gettime failed\n");
     exit(1);
   }
   double leftover_samples = 0;
-  while (dummy_state->run_timing_thread) {
+  while (emulator_state->run_timing_thread) {
     struct timespec current_time;
     if (clock_gettime(CLOCK_REALTIME, &current_time)) {
       LOG_E(UTIL, "clock_gettime failed\n");
       exit(1);
     }
 
-    dummy_timestamp_t *dummy_timestamp = &dummy_state->dummy_timestamp;
+    emulator_timestamp_t *emulator_timestamp = &emulator_state->emulator_timestamp;
     if (current_time.tv_sec != timestamp.tv_sec) {
-      if (dummy_timestamp->late_reads != 0) {
-        LOG_W(HW, "%ld RF reads were late\n", dummy_timestamp->late_reads);
+      if (emulator_timestamp->late_reads != 0) {
+        LOG_W(HW, "%ld RF reads were late\n", emulator_timestamp->late_reads);
       }
-      dummy_timestamp->late_reads = 0;
-      if (dummy_timestamp->late_writes != 0) {
-        LOG_W(HW, "%ld RF writes were late\n", dummy_timestamp->late_writes);
+      emulator_timestamp->late_reads = 0;
+      if (emulator_timestamp->late_writes != 0) {
+        LOG_W(HW, "%ld RF writes were late\n", emulator_timestamp->late_writes);
       }
-      dummy_timestamp->late_writes = 0;
+      emulator_timestamp->late_writes = 0;
     }
 
     uint64_t diff = (current_time.tv_sec - timestamp.tv_sec) * 1000000000 + (current_time.tv_nsec - timestamp.tv_nsec);
     timestamp = current_time;
-    double samples_to_produce = dummy_state->sample_rate * dummy_state->timescale * diff / 1e9;
+    double samples_to_produce = emulator_state->sample_rate * emulator_state->timescale * diff / 1e9;
 
     // Attempt to correct compounding rounding error
     leftover_samples += samples_to_produce - (uint64_t)samples_to_produce;
@@ -102,10 +102,10 @@ static void *dummy_timing_job(void *arg)
       leftover_samples -= 1;
     }
 
-    mutexlock(dummy_timestamp->mutex);
-    dummy_timestamp->timestamp += samples_to_produce;
-    condbroadcast(dummy_timestamp->cond);
-    mutexunlock(dummy_timestamp->mutex);
+    mutexlock(emulator_timestamp->mutex);
+    emulator_timestamp->timestamp += samples_to_produce;
+    condbroadcast(emulator_timestamp->cond);
+    mutexunlock(emulator_timestamp->mutex);
 
     usleep(1);
   }
@@ -115,13 +115,13 @@ static void *dummy_timing_job(void *arg)
 /*! \brief Called to start the RF transceiver. Return 0 if OK, < 0 if error
  * \param device pointer to the device structure specific to the RF hardware target
  */
-static int dummy_start(openair0_device *device)
+static int emulator_start(openair0_device *device)
 {
   // Start the timing thread
-  dummy_state_t *dummy_state = (dummy_state_t *)device->priv;
-  if (!dummy_state->run_timing_thread) {
-    dummy_timestamp_t *dummy_timestamp = &dummy_state->dummy_timestamp;
-    memset(dummy_timestamp, 0, sizeof(dummy_timestamp_t));
+  emulator_state_t *emulator_state = (emulator_state_t *)device->priv;
+  if (!emulator_state->run_timing_thread) {
+    emulator_timestamp_t *emulator_timestamp = &emulator_state->emulator_timestamp;
+    memset(emulator_timestamp, 0, sizeof(emulator_timestamp_t));
 
     pthread_mutexattr_t mutex_attr;
     pthread_condattr_t cond_attr;
@@ -137,14 +137,14 @@ static int dummy_start(openair0_device *device)
     ret = pthread_condattr_setpshared(&cond_attr, PTHREAD_PROCESS_SHARED);
     AssertFatal(ret == 0, "pthread_condattr_setpshared() failed: errno %d, %s\n", errno, strerror(errno));
 
-    ret = pthread_mutex_init(&dummy_timestamp->mutex, &mutex_attr);
+    ret = pthread_mutex_init(&emulator_timestamp->mutex, &mutex_attr);
     AssertFatal(ret == 0, "pthread_mutex_init() failed: errno %d, %s\n", errno, strerror(errno));
 
-    ret = pthread_cond_init(&dummy_timestamp->cond, &cond_attr);
+    ret = pthread_cond_init(&emulator_timestamp->cond, &cond_attr);
     AssertFatal(ret == 0, "pthread_cond_init() failed: errno %d, %s\n", errno, strerror(errno));
 
-    dummy_state->run_timing_thread = true;
-    ret = pthread_create(&dummy_state->timing_thread, NULL, dummy_timing_job, dummy_state);
+    emulator_state->run_timing_thread = true;
+    ret = pthread_create(&emulator_state->timing_thread, NULL, emulator_timing_job, emulator_state);
     AssertFatal(ret == 0, "pthread_create() failed: errno: %d, %s\n", errno, strerror(errno));
   }
 
@@ -155,7 +155,7 @@ static int dummy_start(openair0_device *device)
  * \param device pointer to the device structure specific to the RF hardware target
  * \returns  0 on success
  */
-int dummy_get_stats(openair0_device *device)
+int emulator_get_stats(openair0_device *device)
 {
   return (0);
 }
@@ -164,7 +164,7 @@ int dummy_get_stats(openair0_device *device)
  * \param device pointer to the device structure specific to the RF hardware target
  * \returns  0 on success
  */
-int dummy_reset_stats(openair0_device *device)
+int emulator_reset_stats(openair0_device *device)
 {
   return (0);
 }
@@ -172,13 +172,13 @@ int dummy_reset_stats(openair0_device *device)
 /*! \brief Terminate operation of the RF transceiver -- free all associated resources (if any)
  * \param pointer to the device structure specific to the RF hardware target
  */
-static void dummy_end(openair0_device *device)
+static void emulator_end(openair0_device *device)
 {
   // Stop the timing thread
-  dummy_state_t *dummy_state = (dummy_state_t *)device->priv;
-  if (dummy_state->run_timing_thread) {
-    dummy_state->run_timing_thread = false;
-    int ret = pthread_join(dummy_state->timing_thread, NULL);
+  emulator_state_t *emulator_state = (emulator_state_t *)device->priv;
+  if (emulator_state->run_timing_thread) {
+    emulator_state->run_timing_thread = false;
+    int ret = pthread_join(emulator_state->timing_thread, NULL);
     AssertFatal(ret == 0, "pthread_join() failed: errno: %d, %s\n", errno, strerror(errno));
   }
 }
@@ -186,7 +186,7 @@ static void dummy_end(openair0_device *device)
 /*! \brief Stop RF
  * \param device pointer to the device structure specific to the RF hardware target
  */
-int dummy_stop(openair0_device *device)
+int emulator_stop(openair0_device *device)
 {
   return (0);
 }
@@ -196,7 +196,7 @@ int dummy_stop(openair0_device *device)
  * \param openair0_cfg RF frontend parameters set by application
  * \returns 0 in success
  */
-int dummy_set_gains(openair0_device *device, openair0_config_t *openair0_cfg)
+int emulator_set_gains(openair0_device *device, openair0_config_t *openair0_cfg)
 {
   return (0);
 }
@@ -206,12 +206,12 @@ int dummy_set_gains(openair0_device *device, openair0_config_t *openair0_cfg)
  * \param openair0_cfg RF frontend parameters set by application
  * \returns 0 in success
  */
-int dummy_set_freq(openair0_device *device, openair0_config_t *openair0_cfg)
+int emulator_set_freq(openair0_device *device, openair0_config_t *openair0_cfg)
 {
   return (0);
 }
 
-int dummy_write_init(openair0_device *device)
+int emulator_write_init(openair0_device *device)
 {
   return (0);
 }
@@ -224,17 +224,17 @@ int dummy_write_init(openair0_device *device)
  * \param nbAnt number of antennas
  * \param flags flags must be set to true if timestamp parameter needs to be applied
  */
-static int dummy_write(openair0_device *device, openair0_timestamp timestamp, void **buff, int nsamps, int nbAnt, int flags)
+static int emulator_write(openair0_device *device, openair0_timestamp timestamp, void **buff, int nsamps, int nbAnt, int flags)
 {
-  dummy_state_t *dummy_state = (dummy_state_t *)device->priv;
+  emulator_state_t *emulator_state = (emulator_state_t *)device->priv;
 
   // timestamp in the past
-  dummy_timestamp_t *dummy_timestamp = &dummy_state->dummy_timestamp;
-  uint64_t current_timestamp = dummy_timestamp->timestamp;
+  emulator_timestamp_t *emulator_timestamp = &emulator_state->emulator_timestamp;
+  uint64_t current_timestamp = emulator_timestamp->timestamp;
   if (timestamp < current_timestamp) {
-    mutexlock(dummy_timestamp->mutex);
-    dummy_timestamp->late_writes++;
-    mutexunlock(dummy_timestamp->mutex);
+    mutexlock(emulator_timestamp->mutex);
+    emulator_timestamp->late_writes++;
+    mutexunlock(emulator_timestamp->mutex);
   }
 
   return 0;
@@ -286,29 +286,29 @@ static void read_noise(void *buff, int nsamps)
  * \param nbAnt number of antennas
  * \returns the number of samples read
  */
-static int dummy_read(openair0_device *device, openair0_timestamp *ptimestamp, void **buff, int nsamps, int nbAnt)
+static int emulator_read(openair0_device *device, openair0_timestamp *ptimestamp, void **buff, int nsamps, int nbAnt)
 {
-  dummy_state_t *dummy_state = (dummy_state_t *)device->priv;
+  emulator_state_t *emulator_state = (emulator_state_t *)device->priv;
 
-  dummy_timestamp_t *dummy_timestamp = &dummy_state->dummy_timestamp;
-  uint64_t timestamp = dummy_state->last_received_sample + nsamps;
-  uint64_t current_timestamp = dummy_timestamp->timestamp;
+  emulator_timestamp_t *emulator_timestamp = &emulator_state->emulator_timestamp;
+  uint64_t timestamp = emulator_state->last_received_sample + nsamps;
+  uint64_t current_timestamp = emulator_timestamp->timestamp;
   if (current_timestamp < timestamp) {
-    mutexlock(dummy_timestamp->mutex);
+    mutexlock(emulator_timestamp->mutex);
     while (current_timestamp < timestamp) {
-      condwait(dummy_timestamp->cond, dummy_timestamp->mutex);
-      current_timestamp = dummy_timestamp->timestamp;
+      condwait(emulator_timestamp->cond, emulator_timestamp->mutex);
+      current_timestamp = emulator_timestamp->timestamp;
     }
-    mutexunlock(dummy_timestamp->mutex);
+    mutexunlock(emulator_timestamp->mutex);
   } else {
-    mutexlock(dummy_timestamp->mutex);
-    dummy_timestamp->late_reads++;
-    mutexunlock(dummy_timestamp->mutex);
+    mutexlock(emulator_timestamp->mutex);
+    emulator_timestamp->late_reads++;
+    mutexunlock(emulator_timestamp->mutex);
   }
-  *ptimestamp = dummy_state->last_received_sample;
-  dummy_state->last_received_sample += nsamps;
+  *ptimestamp = emulator_state->last_received_sample;
+  emulator_state->last_received_sample += nsamps;
 
-  if (dummy_state->enable_noise > 0) {
+  if (emulator_state->enable_noise > 0) {
     for (int i = 0; i < nbAnt; i++) {
       read_noise(buff[i], nsamps);
     }
@@ -321,43 +321,43 @@ static int dummy_read(openair0_device *device, openair0_timestamp *ptimestamp, v
   return nsamps;
 }
 
-static void dummy_readconfig(dummy_state_t *dummy_state)
+static void emulator_readconfig(emulator_state_t *emulator_state)
 {
-  paramdef_t dummy_params[] = DUMMY_PARAMS_DESC;
-  int ret = config_get(config_get_if(), dummy_params, sizeofArray(dummy_params), DUMMY_SECTION);
+  paramdef_t emulator_params[] = RF_EMULATOR_PARAMS_DESC;
+  int ret = config_get(config_get_if(), emulator_params, sizeofArray(emulator_params), RF_EMULATOR_SECTION);
   AssertFatal(ret >= 0, "configuration couldn't be performed\n");
 }
 
 int device_init(openair0_device *device, openair0_config_t *openair0_cfg)
 {
-  LOG_I(HW, "This is dummy RF that does nothing\n");
+  LOG_I(HW, "This is emulator RF that does nothing\n");
 
-  dummy_state_t *dummy_state = calloc_or_fail(1, sizeof(dummy_state_t));
-  dummy_state->last_received_sample = 0;
-  dummy_state->timescale = 1.0;
-  dummy_state->sample_rate = openair0_cfg->sample_rate;
-  dummy_state->run_timing_thread = false;
+  emulator_state_t *emulator_state = calloc_or_fail(1, sizeof(emulator_state_t));
+  emulator_state->last_received_sample = 0;
+  emulator_state->timescale = 1.0;
+  emulator_state->sample_rate = openair0_cfg->sample_rate;
+  emulator_state->run_timing_thread = false;
 
-  device->priv = dummy_state;
+  device->priv = emulator_state;
   device->openair0_cfg = openair0_cfg;
-  device->trx_start_func = dummy_start;
-  device->trx_get_stats_func = dummy_get_stats;
-  device->trx_reset_stats_func = dummy_reset_stats;
-  device->trx_end_func = dummy_end;
-  device->trx_stop_func = dummy_stop;
-  device->trx_set_freq_func = dummy_set_freq;
-  device->trx_set_gains_func = dummy_set_gains;
-  device->trx_write_init = dummy_write_init;
+  device->trx_start_func = emulator_start;
+  device->trx_get_stats_func = emulator_get_stats;
+  device->trx_reset_stats_func = emulator_reset_stats;
+  device->trx_end_func = emulator_end;
+  device->trx_stop_func = emulator_stop;
+  device->trx_set_freq_func = emulator_set_freq;
+  device->trx_set_gains_func = emulator_set_gains;
+  device->trx_write_init = emulator_write_init;
   device->type = USRP_X400_DEV;
-  device->trx_write_func = dummy_write;
-  device->trx_read_func = dummy_read;
+  device->trx_write_func = emulator_write;
+  device->trx_read_func = emulator_read;
 
-  dummy_readconfig(dummy_state);
+  emulator_readconfig(emulator_state);
 
-  if (dummy_state->enable_noise > 0) {
-    int16_t noise_level = dummy_state->noise_level_dBFS == INVALID_DBFS_VALUE
+  if (emulator_state->enable_noise > 0) {
+    int16_t noise_level = emulator_state->noise_level_dBFS == INVALID_DBFS_VALUE
                               ? 0
-                              : (int16_t)(32767.0 / powf(10.0, .05 * -(dummy_state->noise_level_dBFS)));
+                              : (int16_t)(32767.0 / powf(10.0, .05 * -(emulator_state->noise_level_dBFS)));
     init_noise_device(noise_level);
   }
 
