@@ -426,7 +426,10 @@ static int nr_ulsch_procedures(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx, boo
       }
     }
 
+    DevAssert(UL_INFO->crc_ind.number_crcs == UL_INFO->rx_ind.number_of_pdus);
+    DevAssert(UL_INFO->crc_ind.number_crcs < sizeofArray(UL_INFO->crc_pdu_list));
     nfapi_nr_crc_t *crc = &UL_INFO->crc_ind.crc_list[UL_INFO->crc_ind.number_crcs++];
+    DevAssert(UL_INFO->rx_ind.number_of_pdus < sizeofArray(UL_INFO->rx_pdu_list));
     nfapi_nr_rx_data_pdu_t *pdu = &UL_INFO->rx_ind.pdu_list[UL_INFO->rx_ind.number_of_pdus++];
     if (crc_valid && !check_abort(&ulsch_harq->abort_decode) && !pusch->DTX) {
       LOG_D(NR_PHY,
@@ -888,7 +891,10 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx, N
         if (!get_softmodem_params()->phy_test) {
           /* in case of phy_test mode, we still want to decode to measure execution time.
              Therefore, we don't yet call nr_fill_indication, it will be called later */
+	   DevAssert(UL_INFO->crc_ind.number_crcs == UL_INFO->rx_ind.number_of_pdus);
+	   DevAssert(UL_INFO->crc_ind.number_crcs < sizeofArray(UL_INFO->crc_pdu_list));
           nfapi_nr_crc_t *crc = &UL_INFO->crc_ind.crc_list[UL_INFO->crc_ind.number_crcs++];
+	   DevAssert(UL_INFO->rx_ind.number_of_pdus < sizeofArray(UL_INFO->rx_pdu_list));
           nfapi_nr_rx_data_pdu_t *pdu = &UL_INFO->rx_ind.pdu_list[UL_INFO->rx_ind.number_of_pdus++];
           nr_fill_indication(gNB, frame_rx, slot_rx, ULSCH_id, ulsch->harq_pid, 1, 1, crc, pdu);
           pusch_DTX++;

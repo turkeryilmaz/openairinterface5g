@@ -54,7 +54,7 @@
 #define MAX_NUM_SRS_IND 100
 
 #define MAX_NUM_NR_RX_RACH_PDUS 4
-#define MAX_UL_PDUS_PER_SLOT 8
+#define MAX_UL_PDUS_PER_SLOT 16
 #define MAX_NUM_NR_SRS_PDUS 8
 #define MAX_NUM_NR_UCI_PDUS MAX_MOBILES_PER_GNB
 typedef struct {
