@@ -1072,3 +1072,43 @@ int nr_pdcp_get_num_ues(ue_id_t *ue_list, int len)
   
   return num_ues;
 }
+
+/** @brief Compute shortMAC-I for an RRC UE (SRB1). */
+bool nr_pdcp_compute_shortmac_ue(ue_id_t ue_id, byte_array_t msg, uint8_t short_mac[2])
+{
+  DevAssert(msg.buf);
+  DevAssert(short_mac);
+
+  nr_pdcp_manager_lock(nr_pdcp_ue_manager);
+
+  nr_pdcp_ue_t *ue = nr_pdcp_manager_get_ue(nr_pdcp_ue_manager, ue_id);
+  if (!ue) {
+    nr_pdcp_manager_unlock(nr_pdcp_ue_manager);
+    return false;
+  }
+
+  nr_pdcp_entity_t *rb = ue->srb[0];
+  if (!rb) {
+    nr_pdcp_manager_unlock(nr_pdcp_ue_manager);
+    return false;
+  }
+
+  if (!rb->has_integrity || !rb->integrity || !rb->integrity_context) {
+    nr_pdcp_manager_unlock(nr_pdcp_ue_manager);
+    return false;
+  }
+
+  const uint32_t count = 0xFFFFFFFFu; // all ones
+  const int bearer = 0x1F; // all ones
+  const int direction = 1; // one
+  unsigned char mac[PDCP_INTEGRITY_SIZE] = {0};
+
+  rb->integrity(rb->integrity_context, mac, msg.buf, msg.len, bearer, count, direction);
+
+  // shortMAC-I = 16 LSBs of MAC-I, big-endian
+  short_mac[0] = mac[2];
+  short_mac[1] = mac[3];
+
+  nr_pdcp_manager_unlock(nr_pdcp_ue_manager);
+  return true;
+}

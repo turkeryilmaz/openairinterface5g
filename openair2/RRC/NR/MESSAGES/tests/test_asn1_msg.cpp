@@ -73,8 +73,10 @@ TEST(nr_asn1, ul_information_transfer)
 TEST(nr_asn1, rrc_reestablishment_request)
 {
   const uint16_t c_rnti = 1;
-  const uint32_t cell_id = 177;
-  byte_array_t ba = do_RRCReestablishmentRequest(NR_ReestablishmentCause_reconfigurationFailure, cell_id, c_rnti);
+  const uint32_t pci = 177;
+  uint8_t buf[2] = { 0x12, 0x34 };
+  byte_array_t shortMAC_I = create_byte_array(2, buf);
+  byte_array_t ba = do_RRCReestablishmentRequest(NR_ReestablishmentCause_reconfigurationFailure, pci, c_rnti, shortMAC_I);
   EXPECT_GT(ba.len, 0);
   EXPECT_NE(ba.buf, nullptr);
   free_byte_array(ba);

@@ -72,6 +72,8 @@
 #include "nr_nas_msg.h"
 #include "openair2/SDAP/nr_sdap/nr_sdap_entity.h"
 
+#define SHORT_MAC_I_LEN 2
+
 static NR_UE_RRC_INST_t *NR_UE_rrc_inst;
 /* NAS Attach request with IMSI */
 static const char nr_nas_attach_req_imsi_dummy_NSA_case[] = {
@@ -988,9 +990,29 @@ static void nr_rrc_ue_decode_NR_BCCH_BCH_Message(NR_UE_RRC_INST_t *rrc,
   return;
 }
 
+/** @brief Build VarShortMAC-Input and compute shortMAC-I via PDCP SRB1 (38.331 §5.3.7.4) */
+byte_array_t rrc_fill_shortmac_i(ue_id_t ue_id, uint32_t target_cell_id, uint16_t source_c_rnti, uint16_t source_pci)
+{
+  // input used to generate the shortMAC-I
+  byte_array_t input = generate_VarShortMAC_input(source_pci, source_c_rnti, target_cell_id);
+
+  // PDCP (SRB1): compute ShortMAC-I (16 LSBs of MAC-I, big-endian)
+  uint8_t sm[SHORT_MAC_I_LEN];
+  bool ok = nr_pdcp_compute_shortmac_ue(ue_id, input, sm);
+  free_byte_array(input);
+  if (!ok) {
+    LOG_E(NR_RRC, "Failed to compute shortMAC-I\n");
+    return (byte_array_t){ .buf = NULL, .len = 0 };
+  }
+
+  return create_byte_array(SHORT_MAC_I_LEN, sm);
+}
+
 static void nr_rrc_ue_prepare_RRCReestablishmentRequest(NR_UE_RRC_INST_t *rrc)
 {
-  byte_array_t ba = do_RRCReestablishmentRequest(rrc->reestablishment_cause, rrc->phyCellID, rrc->rnti); // old rnti
+  byte_array_t shortMAC_I = rrc_fill_shortmac_i(rrc->ue_id, rrc->selected_plmn_identity, rrc->rnti, rrc->phyCellID);
+  AssertFatal(shortMAC_I.buf && shortMAC_I.len == 2, "shortMAC-I build failed\n");
+  byte_array_t ba = do_RRCReestablishmentRequest(rrc->reestablishment_cause, rrc->phyCellID, rrc->rnti, shortMAC_I);
   if (ba.len <= 0) {
     LOG_E(NR_RRC, "do_RRCReestablishmentRequest failed (UE %04lx)\n", rrc->ue_id);
     return;

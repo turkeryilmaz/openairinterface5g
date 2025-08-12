@@ -82,6 +82,7 @@
 #include "NR_UE-CapabilityRequestFilterNR.h"
 #include "NR_HandoverPreparationInformation.h"
 #include "NR_HandoverPreparationInformation-IEs.h"
+#include "NR_VarShortMAC-Input.h"
 #include "common/utils/nr/nr_common.h"
 #if defined(NR_Rel16)
   #include "NR_SCS-SpecificCarrier.h"
@@ -742,7 +743,24 @@ byte_array_t do_NR_ULInformationTransfer(uint32_t pdu_length, uint8_t *pdu_buffe
   return ba;
 }
 
-byte_array_t do_RRCReestablishmentRequest(NR_ReestablishmentCause_t cause, uint32_t cell_id, uint16_t c_rnti)
+/** @brief Build VarShortMAC-Input */
+byte_array_t generate_VarShortMAC_input(uint32_t pci, uint16_t c_rnti, uint32_t cell_id)
+{
+  byte_array_t ba = {.buf = NULL, .len = 0};
+  NR_VarShortMAC_Input_t vsm = {.source_c_RNTI = c_rnti, .sourcePhysCellId = pci };
+  INT32_TO_BIT_STRING(cell_id, &vsm.targetCellIdentity);
+  ASN_ENCODE_OR_FAIL(asn_DEF_NR_VarShortMAC_Input, &vsm, ba);
+  return ba;
+}
+
+
+/** @brief Generate ASN.1 RRCReestablishmentRequest
+ * @param cause cause that triggered RRCReestablishmentRequest
+ * @param pci PhysCellId of the PCell the UE was connected to prior to the reestablishment
+ * @param cell_id cellIdentity of the first PLMN-Identity in the PLMN-IdentityInfoList broadcasted
+ *        in SIB1 of the target cell i.e. the cell the UE is trying to reestablish the connection
+ * @param c_rnti C-RNTI that the UE had in the PCell it was connected to prior to the reestablishment */
+byte_array_t do_RRCReestablishmentRequest(NR_ReestablishmentCause_t cause, uint32_t pci, uint16_t c_rnti, byte_array_t shortMAC_I)
 {
   byte_array_t ba = {.buf = NULL, .len = 0};
   NR_UL_CCCH_Message_t ul_ccch_msg = {0};
@@ -757,11 +775,14 @@ byte_array_t do_RRCReestablishmentRequest(NR_ReestablishmentCause_t cause, uint3
 
   NR_ReestabUE_Identity_t	*ue_Identity = &rrcReestablishmentRequest->rrcReestablishmentRequest.ue_Identity;
   ue_Identity->c_RNTI = c_rnti;
-  ue_Identity->physCellId = cell_id;
+  ue_Identity->physCellId = pci;
 
-  // TODO properly setting shortMAC-I (see 5.3.7.4 of 331)
-  uint16_t buf = 0x0832;
-  INT16_TO_BIT_STRING(buf, &ue_Identity->shortMAC_I);
+  // shortMAC-I (see 5.3.7.4 of 38.331)
+  ue_Identity->shortMAC_I.bits_unused = 0;
+  ue_Identity->shortMAC_I.buf = calloc_or_fail(2, sizeof(ue_Identity->shortMAC_I.buf[0]));
+  ue_Identity->shortMAC_I.buf[0] = shortMAC_I.buf[0];
+  ue_Identity->shortMAC_I.buf[1] = shortMAC_I.buf[1];
+  ue_Identity->shortMAC_I.size = 2;
 
   ASN_ENCODE_OR_FAIL(asn_DEF_NR_UL_CCCH_Message, &ul_ccch_msg, ba);
 

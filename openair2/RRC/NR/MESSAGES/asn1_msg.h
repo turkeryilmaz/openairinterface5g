@@ -132,7 +132,7 @@ byte_array_t do_NR_DLInformationTransfer(uint8_t transaction_id, uint32_t pdu_le
 
 byte_array_t do_NR_ULInformationTransfer(uint32_t pdu_length, uint8_t *pdu_buffer);
 
-byte_array_t do_RRCReestablishmentRequest(NR_ReestablishmentCause_t cause, uint32_t cell_id, uint16_t c_rnti);
+byte_array_t do_RRCReestablishmentRequest(NR_ReestablishmentCause_t cause, uint32_t pci, uint16_t c_rnti, byte_array_t shortMAC_I);
 
 byte_array_t do_RRCReestablishment(int8_t nh_ncc, const uint8_t Transaction_id);
 
@@ -147,5 +147,7 @@ NR_MeasConfig_t *get_MeasConfig(const NR_MeasTiming_t *mt,
                                 seq_arr_t *neigh_seq);
 void free_MeasConfig(NR_MeasConfig_t *mc);
 byte_array_t do_NR_Paging(uint8_t Mod_id, uint32_t tmsi);
+
+byte_array_t generate_VarShortMAC_input(uint32_t pci, uint16_t c_rnti, uint32_t cell_id);
 
 #endif  /* __RRC_NR_MESSAGES_ASN1_MSG__H__ */
