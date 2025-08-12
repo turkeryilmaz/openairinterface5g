@@ -535,6 +535,7 @@ check_install_oai_software() {
     $SUDO $INSTALLER install -y \
       automake \
       $CMAKE \
+      rpm-build \
       gcc \
       gcc-c++ \
       git \
@@ -559,6 +560,23 @@ check_install_oai_software() {
 
     install_asn1c_from_source $1
     install_simde_from_source $1
+}
+
+install_libconfig_from_source(){
+    echo_info "\n Installing libconfig from source"
+    if [[ "$OS_BASEDISTRO" == "fedora" ]]; then    
+        $SUDO $INSTALLER install -y libconfig-devel wget make gcc autoconf automake libtool
+    elif [[ "$OS_BASEDISTRO" == "debian" ]]; then
+        $SUDO $INSTALLER install -y libconfig-dev wget make gcc autoconf automake libtool
+    fi
+    wget https://github.com/hyperrealm/libconfig/releases/download/v1.7.3/libconfig-1.7.3.tar.gz
+    tar xf libconfig-1.7.3.tar.gz
+    cd libconfig-1.7.3
+    ./configure CFLAGS="-fPIC" CXXFLAGS="-fPIC" --disable-shared --enable-static
+    make CFLAGS="-fPIC" CXXFLAGS="-fPIC" -j$(nproc)
+    $SUDO make install
+    $SUDO ldconfig
+    cd ..
 }
 
 install_asn1c_from_source(){
