@@ -198,13 +198,15 @@ size_t dump_mac_stats(gNB_MAC_INST *gNB, char *output, size_t strlen, bool reset
                        UE->mac_stats.NPRB,
                        sched_ctrl->pusch_snrx10 / 10,
                        sched_ctrl->pusch_snrx10 % 10);
-    output += snprintf(output,
+   /* output += snprintf(output,
                        end - output,
                        "UE %04x: MAC:    TX %14"PRIu64" RX %14"PRIu64" bytes\n",
-                       UE->rnti, stats->dl.total_bytes, stats->ul.total_bytes);
+                       UE->rnti, stats->dl.total_bytes, stats->ul.total_bytes); */
 
     for (int i = 0; i < seq_arr_size(&sched_ctrl->lc_config); i++) {
       const nr_lc_config_t *c = seq_arr_at(&sched_ctrl->lc_config, i);
+      if (c->lcid < 4)
+        continue;
       output += snprintf(output,
                          end - output,
                          "UE %04x: LCID %d: TX %14"PRIu64" RX %14"PRIu64" bytes\n",
