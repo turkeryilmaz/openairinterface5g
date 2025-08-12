@@ -656,6 +656,23 @@ int main(int argc, char **argv)
 
       // set UL mask for pucch allocation
       uint32_t rb_mask_ul[14][9] = {0};
+
+      if (format == 1){
+      for (int s=0;s<frame_parms->symbols_per_slot;s++){
+        if (s>=startingSymbolIndex && s<(startingSymbolIndex+nrofSymbols/2))
+          for (int rb=0; rb<N_RB; rb++) {
+            int rb2 = rb+startingPRB;
+            rb_mask_ul[s][rb2 >> 5] |= (1 << (rb2 & 31));
+          }
+          else if ( s>=(startingSymbolIndex+nrofSymbols/2) && s < startingSymbolIndex+nrofSymbols)
+          for (int rb=0; rb<N_RB; rb++) {
+            int rb2 = rb+startingPRB_intraSlotHopping;
+            rb_mask_ul[s][rb2 >> 5] |= (1 << (rb2 & 31));
+          }
+      }
+    }
+    else
+    {
       for (int s=0;s<frame_parms->symbols_per_slot;s++){
         if (s>=startingSymbolIndex && s<(startingSymbolIndex+nrofSymbols))
           for (int rb=0; rb<N_RB; rb++) {
@@ -663,6 +680,7 @@ int main(int argc, char **argv)
             rb_mask_ul[s][rb2 >> 5] |= (1 << (rb2 & 31));
           }
       }
+    }
 
       // noise measurement (all PRBs)
       gNB_I0_measurements(gNB, nr_slot_tx, 0, gNB->frame_parms.symbols_per_slot, rb_mask_ul);

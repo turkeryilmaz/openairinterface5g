@@ -562,7 +562,15 @@ void nr_decode_pucch1(PHY_VARS_gNB *gNB,
   uint8_t nb_re_pucch = pucch_pdu->prb_size*12;
   pucch_GroupHopping_t pucch_GroupHopping = pucch_pdu->group_hop_flag + (pucch_pdu->sequence_hop_flag<<1);
   int16_t amp=0x7FFF;
+  int xrtmag_dBtimes10 = 0;
 
+  NR_gNB_UCI_STATS_t stack_uci_stats = {0};
+  NR_gNB_UCI_STATS_t *uci_stats = &stack_uci_stats;
+  NR_gNB_PHY_STATS_t *phy_stats = get_phy_stats(gNB, pucch_pdu->rnti);
+  if (phy_stats != NULL) {
+    phy_stats->frame = frame;
+    uci_stats = &phy_stats->uci_stats;
+  }
 
 
 #ifdef DEBUG_NR_PUCCH_RX
@@ -611,10 +619,16 @@ void nr_decode_pucch1(PHY_VARS_gNB *gNB,
 
       if (l % 2 == 1) // mapping PUCCH or DM-RS according to TS38.211 subclause 6.4.1.3.1
         for (int r=0;r<n_rx;r++)
-          z[r][n] = z_rx[r][current_subcarrier] = rxdataF[r][soffset + re_offset];
+        {
+          z_rx[r][current_subcarrier] = rxdataF[r][soffset + re_offset];
+          z[r][n] = z_rx[r][current_subcarrier];
+        }
       else
 	      for (int r=0;r<n_rx;r++)
-          z[r][n] = z_dmrs_rx[r][current_subcarrier] = rxdataF[r][soffset + re_offset];
+        {
+          z_dmrs_rx[r][current_subcarrier] = rxdataF[r][soffset + re_offset];
+          z[r][n] = z_dmrs_rx[r][current_subcarrier];
+        }
 
 #ifdef DEBUG_NR_PUCCH_RX
       printf(
@@ -652,8 +666,20 @@ void nr_decode_pucch1(PHY_VARS_gNB *gNB,
   int pucch_power_dBtimes10 = 10 * dB_fixed(signal_energy);
   int max_n0 =
       max(gNB->measurements.n0_subband_power_tot_dB[pucch_pdu->bwp_start+pucch_pdu->prb_start], gNB->measurements.n0_subband_power_tot_dB[pucch_pdu->bwp_start+pucch_pdu->second_hop_prb]);
+int mean_n0 =
+      (gNB->measurements.n0_subband_power_tot_dB[pucch_pdu->bwp_start+pucch_pdu->prb_start] + gNB->measurements.n0_subband_power_tot_dB[pucch_pdu->bwp_start+pucch_pdu->second_hop_prb])/2;
+
+
   const int SNRtimes10 = pucch_power_dBtimes10 - (10 * max_n0);
 
+  printf("signal_energy %d signal_energy_ant0 %d pucch_power_dBtimes10 %d max_n0 %d SNRtimes10 %d\n",signal_energy,signal_energy_ant0,pucch_power_dBtimes10,max_n0,SNRtimes10);
+  int cqi;
+  if (SNRtimes10 < -640)
+    cqi = 0;
+  else if (SNRtimes10 > 635)
+    cqi = 255;
+  else
+    cqi = (640 + SNRtimes10) / 5;
 
 #ifndef NEWRX
   cd_t y_n[16][12] = {0}, y1_n[16][12] = {0};
@@ -981,11 +1007,16 @@ void nr_decode_pucch1(PHY_VARS_gNB *gNB,
       }
       if (r == n_rx-1) {
         if (dp1mag > dm1mag) 
-          //*payload = 0;
+        {
           uci_pdu->harq.harq_list[0].harq_value = 1;
+          xrtmag_dBtimes10 = 10*(int)dB_fixed64(dp1mag/(12*pucch_pdu->nr_of_symbols));
+        }
         else
+        {
           //*payload = 1;
           uci_pdu->harq.harq_list[0].harq_value = 0;
+          xrtmag_dBtimes10 = 10*(int)dB_fixed64(dm1mag/(12*pucch_pdu->nr_of_symbols));
+        }
       }
     }
     else if (pucch_pdu->bit_len_harq == 2) // QPSK
@@ -1041,21 +1072,123 @@ void nr_decode_pucch1(PHY_VARS_gNB *gNB,
     if (d0mag >= d1mag && d0mag >= d2mag && d0mag >= d3mag) {
         uci_pdu->harq.harq_list[0].harq_value = 1;
         uci_pdu->harq.harq_list[1].harq_value = 1;
+        xrtmag_dBtimes10 = 10*(int)dB_fixed64(d0mag/(12*pucch_pdu->nr_of_symbols));
     } else if (d1mag >= d0mag && d1mag >= d2mag && d1mag >= d3mag) {
         uci_pdu->harq.harq_list[0].harq_value = 1;
         uci_pdu->harq.harq_list[1].harq_value = 0;
+        xrtmag_dBtimes10 = 10*(int)dB_fixed64(d1mag/(12*pucch_pdu->nr_of_symbols));
     } else if (d2mag >= d0mag && d2mag >= d1mag && d2mag >= d3mag) {
         uci_pdu->harq.harq_list[0].harq_value = 0;
         uci_pdu->harq.harq_list[1].harq_value = 1;
+        xrtmag_dBtimes10 = 10*(int)dB_fixed64(d2mag/(12*pucch_pdu->nr_of_symbols));
     } else {
         uci_pdu->harq.harq_list[0].harq_value = 0;
         uci_pdu->harq.harq_list[1].harq_value = 0;
+        xrtmag_dBtimes10 = 10*(int)dB_fixed64(d3mag/(12*pucch_pdu->nr_of_symbols));
+
     }
     }
     }
 #endif
 #endif
-  }  
+  }
+  
+  bool no_conf=false;
+  if (pucch_pdu->bit_len_harq > 0 || pucch_pdu->sr_flag > 0) {
+    if (/*xrtmag_dBtimes10 < (30+xrtmag_next_dBtimes10) ||*/ SNRtimes10 <= gNB->pucch0_thres) {
+      no_conf=true;
+      LOG_D(PHY,
+            "%d.%d PUCCH bad confidence: %d threshold, %d,\n",
+            frame,
+            slot,
+            gNB->pucch0_thres,
+            SNRtimes10);
+    }
+  }
+  gNB->bad_pucch += no_conf;
+  // first bit of bitmap for sr presence and second bit for acknack presence
+  uci_pdu->pduBitmap = pucch_pdu->sr_flag | ((pucch_pdu->bit_len_harq>0)<<1);
+  uci_pdu->pucch_format = 1; // format 1
+  uci_pdu->rnti = pucch_pdu->rnti;
+  uci_pdu->ul_cqi = cqi;
+  uci_pdu->timing_advance = 0xffff; // currently not valid
+  uci_pdu->rssi = 1280 - (10 * dB_fixed(32767 * 32767) - dB_fixed_times10(signal_energy_ant0));
+
+  printf("before\n");
+  if (pucch_pdu->bit_len_harq==0) {
+      printf("before 0\n");
+
+    uci_pdu->sr.sr_confidence_level = SNRtimes10 < gNB->pucch0_thres;
+    uci_stats->pucch0_sr_trials++;
+    if (xrtmag_dBtimes10 >=(10*max_n0/*+100*/)) {
+      uci_pdu->sr.sr_indication = 1;
+      uci_stats->pucch0_positive_SR++;
+      LOG_D(PHY,"PUCCH0 got positive SR. Cumulative number of positive SR %d\n", uci_stats->pucch0_positive_SR);
+    } else {
+      uci_pdu->sr.sr_indication = 0;
+    }
+  }
+  else if (pucch_pdu->bit_len_harq==1) {
+      printf("before 1\n");
+
+    uci_pdu->harq.num_harq = 1;
+    uci_pdu->harq.harq_confidence_level = no_conf;
+    //LOG_I(PHY,
+          printf("[PUCCH F1] %d.%d HARQ %s with confidence level %s"
+          " xrtmag_dBtimes10 %d pucch_power_dBtimes10 %d n0 %d "
+          "pucch0_thres %d, "
+          "cqi %d, SNRtimes10 %d, energy %f\n",
+          frame,
+          slot,
+          uci_pdu->harq.harq_list[0].harq_value == 0 ? "ACK" : "NACK",
+          uci_pdu->harq.harq_confidence_level == 0 ? "good" : "bad",
+          xrtmag_dBtimes10,
+          pucch_power_dBtimes10,
+          max_n0,
+          gNB->pucch0_thres,
+          cqi,
+          SNRtimes10,
+          10 * log10((double)signal_energy_ant0));
+
+    if (pucch_pdu->sr_flag == 1) {
+      uci_pdu->sr.sr_indication = 0;  // FIXME: how to assert SR or not according to if PUCCH resource is SR resource or not
+      uci_pdu->sr.sr_confidence_level = no_conf;
+      if(uci_pdu->sr.sr_indication == 1 && uci_pdu->sr.sr_confidence_level == 0) {
+        uci_stats->pucch0_positive_SR++;
+        LOG_D(PHY,"PUCCH F1 got positive SR. Cumulative number of positive SR %d\n", uci_stats->pucch0_positive_SR);
+      }
+    }
+    uci_stats->pucch01_trials++;
+  }
+  else {
+      printf("before 2\n");
+
+    uci_pdu->harq.num_harq = 2;
+    uci_pdu->harq.harq_confidence_level = no_conf;
+    printf("[PUCCH F1] %d.%d HARQ values (%s, %s) with confidence level %s, xrtmag_dBtimes10 %d pucch_power_dBtimes10 %d n0 %d "
+          "pucch0_thres %d, cqi %d, SNRtimes10 %d\n",
+          frame,
+          slot,
+          uci_pdu->harq.harq_list[1].harq_value == 0 ? "ACK" : "NACK",
+          uci_pdu->harq.harq_list[0].harq_value == 0 ? "ACK" : "NACK",
+          uci_pdu->harq.harq_confidence_level == 0 ? "good" : "bad",
+          xrtmag_dBtimes10,
+          pucch_power_dBtimes10,
+          max_n0,
+          gNB->pucch0_thres,
+          cqi,
+          SNRtimes10);
+    if (pucch_pdu->sr_flag == 1) {
+      uci_pdu->sr.sr_indication = 0;  // FIXME: how to assert SR or not according to if PUCCH resource is SR resource or not
+      uci_pdu->sr.sr_confidence_level = no_conf;
+      if(uci_pdu->sr.sr_indication == 1 && uci_pdu->sr.sr_confidence_level == 0) {
+        uci_stats->pucch0_positive_SR++;
+        LOG_D(PHY,"PUCCH F1 got positive SR. Cumulative number of positive SR %d\n", uci_stats->pucch0_positive_SR);
+      }
+    }
+  }
+
+
 }
 
 typedef struct {c16_t cw[16];} cw_t;
