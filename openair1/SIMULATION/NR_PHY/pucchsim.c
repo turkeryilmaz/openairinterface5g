@@ -541,7 +541,7 @@ int main(int argc, char **argv)
     pucch_tx_pdu.group_hop_flag = 0;
     pucch_tx_pdu.sequence_hop_flag = 0;
     pucch_tx_pdu.freq_hop_flag = 1;
-    pucch_tx_pdu.initial_cyclic_shift = 0;
+    pucch_tx_pdu.initial_cyclic_shift = m0;
     pucch_tx_pdu.second_hop_prb = startingPRB_intraSlotHopping;
     pucch_tx_pdu.time_domain_occ_idx = 0;
   }
@@ -618,7 +618,7 @@ int main(int argc, char **argv)
         for (int re=0;re<N_RB_DL*12;re++) {
           i=i0+((gNB->frame_parms.first_carrier_offset + re)%gNB->frame_parms.ofdm_symbol_size);
           struct complexd phasor;
-	  phasor.r = cos(2*M_PI*phase*re);
+	        phasor.r = cos(2*M_PI*phase*re);
           phasor.i = sin(2*M_PI*phase*re);
           for (int aarx=0;aarx<n_rx;aarx++) {
             double txr = (double)(((int16_t *)txdataF[0])[(i<<1)]);
@@ -730,23 +730,41 @@ int main(int argc, char **argv)
         pucch_pdu.sr_flag               = sr_flag;
         pucch_pdu.nr_of_symbols         = nrofSymbols;
         pucch_pdu.hopping_id            = hopping_id;
-        pucch_pdu.initial_cyclic_shift  = 0;
+        pucch_pdu.initial_cyclic_shift  = m0;
         pucch_pdu.start_symbol_index    = startingSymbolIndex;
         pucch_pdu.prb_start             = startingPRB;
         pucch_pdu.prb_size              = 1;
         pucch_pdu.bwp_start             = 0;
         pucch_pdu.bwp_size              = N_RB_DL;
-        pucch_pdu.freq_hop_flag         = 0;
-        pucch_pdu.second_hop_prb        = 0;
+        pucch_pdu.freq_hop_flag         = 1;
+        pucch_pdu.second_hop_prb        = N_RB_DL - 2;
+        pucch_tx_pdu.time_domain_occ_idx = timeDomainOCC;
 
-        nr_decode_pucch1(n_rx,(c16_t **)rxdataF,PUCCH_GroupHopping,hopping_id,
+        /*nr_decode_pucch1(n_rx,(c16_t **)rxdataF,PUCCH_GroupHopping,hopping_id,
                          &(payload_received),frame_parms,amp,nr_slot_tx,
                          m0,nrofSymbols,startingSymbolIndex,startingPRB,
-                         startingPRB_intraSlotHopping,timeDomainOCC,nr_bit);
-        if(nr_bit==1)
+                         startingPRB_intraSlotHopping,timeDomainOCC,nr_bit);*/
+
+        nr_decode_pucch1(gNB, rxdataF, nr_frame_tx, nr_slot_tx,&uci_pdu,&pucch_pdu);
+        /*if(nr_bit==1)
           ack_nack_errors+=((actual_payload^payload_received)&1);
         else
-          ack_nack_errors+=((actual_payload^payload_received)&1) + (((actual_payload^payload_received)&2)>>1);
+          ack_nack_errors+=((actual_payload^payload_received)&1) + (((actual_payload^payload_received)&2)>>1);*/
+        // harq value 0 -> pass
+        nfapi_nr_harq_t *harq_list = uci_pdu.harq.harq_list;
+        // confidence value 0 -> good confidence
+        const int confidence_lvl = uci_pdu.harq.harq_confidence_level;
+        if(nr_bit>0){
+          if (nr_bit==1 && do_DTX == 0)
+            ack_nack_errors+=(actual_payload^(!harq_list[0].harq_value));
+          else if (do_DTX == 0)
+            ack_nack_errors+=(((actual_payload&1)^(!harq_list[1].harq_value))+((actual_payload>>1)^(!harq_list[0].harq_value)));
+          else if ((!confidence_lvl && !harq_list[0].harq_value) ||
+                   (!confidence_lvl && nr_bit == 2 && !harq_list[1].harq_value))
+            ack_nack_errors++;
+        }
+
+
       }
       else if (format==2) {
         nfapi_nr_uci_pucch_pdu_format_2_3_4_t uci_pdu={0};

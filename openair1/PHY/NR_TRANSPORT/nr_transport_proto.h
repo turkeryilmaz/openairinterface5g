@@ -251,7 +251,7 @@ int get_nr_prach_duration(uint8_t prach_format);
 
 void free_nr_prach_entry(PHY_VARS_gNB *gNB, int prach_id);
 
-void nr_decode_pucch1(int n_rx,
+/*void nr_decode_pucch1(int n_rx,
 		      c16_t **rxdataF,
                       pucch_GroupHopping_t pucch_GroupHopping,
                       uint32_t n_id,       // hoppingID higher layer parameter
@@ -265,7 +265,15 @@ void nr_decode_pucch1(int n_rx,
                       uint16_t startingPRB,
                       uint16_t startingPRB_intraSlotHopping,
                       uint8_t timeDomainOCC,
-                      uint8_t nr_bit);
+                      uint8_t nr_bit);*/
+
+void nr_decode_pucch1(PHY_VARS_gNB *gNB,
+                      c16_t **rxdataF,
+                      int frame,
+                      int slot,
+                      nfapi_nr_uci_pucch_pdu_format_0_1_t *uci_pdu,
+                      nfapi_nr_pucch_pdu_t *pucch_pdu);
+
 
 void nr_decode_pucch2(PHY_VARS_gNB *gNB,
                       c16_t **rxdataF,
