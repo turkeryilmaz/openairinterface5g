@@ -98,6 +98,7 @@
 #include "NR_DL-DCCH-Message.h"
 #include "ds/byte_array.h"
 #include "alg/find.h"
+#include "NR_HandoverCommand.h"
 
 #ifdef E2_AGENT
 #include "openair2/E2AP/RAN_FUNCTION/O-RAN/ran_func_rc_extern.h"
@@ -307,7 +308,7 @@ unsigned int rrc_gNB_get_next_transaction_identifier(module_id_t gnb_mod_idP)
   * for the radio bearer changes, with some expections for SRB1 (i.e. when resuming
   * an RRC connection, or at the first reconfiguration after RRC connection
   * reestablishment in NR, do not re-establish PDCP) */
-static NR_SRB_ToAddModList_t *createSRBlist(gNB_RRC_UE_t *ue, uint8_t reestablish)
+NR_SRB_ToAddModList_t *createSRBlist(gNB_RRC_UE_t *ue, uint8_t reestablish)
 {
   if (!ue->Srb[SRB1].Active) {
     LOG_E(NR_RRC, "Call SRB list while SRB1 doesn't exist\n");
@@ -328,7 +329,7 @@ static NR_SRB_ToAddModList_t *createSRBlist(gNB_RRC_UE_t *ue, uint8_t reestablis
   return list;
 }
 
-static NR_DRB_ToAddModList_t *createDRBlist(gNB_RRC_UE_t *ue, bool reestablish)
+NR_DRB_ToAddModList_t *createDRBlist(gNB_RRC_UE_t *ue, bool reestablish)
 {
   NR_DRB_ToAddMod_t *DRB_config = NULL;
   NR_DRB_ToAddModList_t *DRB_configList = CALLOC(sizeof(*DRB_configList), 1);
@@ -349,12 +350,12 @@ static NR_DRB_ToAddModList_t *createDRBlist(gNB_RRC_UE_t *ue, bool reestablish)
   return DRB_configList;
 }
 
-static void freeSRBlist(NR_SRB_ToAddModList_t *l)
+void freeSRBlist(NR_SRB_ToAddModList_t *l)
 {
   ASN_STRUCT_FREE(asn_DEF_NR_SRB_ToAddModList, l);
 }
 
-static void activate_srb(gNB_RRC_UE_t *UE, int srb_id)
+void activate_srb(gNB_RRC_UE_t *UE, int srb_id)
 {
   AssertFatal(srb_id == 1 || srb_id == 2, "handling only SRB 1 or 2\n");
   if (UE->Srb[srb_id].Active == 1) {
@@ -635,6 +636,11 @@ NR_MeasConfig_t *nr_rrc_get_measconfig(const gNB_RRC_INST *rrc, uint64_t nr_cell
 nr_rrc_reconfig_param_t get_RRCReconfiguration_params(gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE, uint8_t srb_reest_bitmap, bool drb_reestablish)
 {
   uint8_t xid = rrc_gNB_get_next_transaction_identifier(rrc->module_id);
+
+  if (UE->ho_context && UE->ho_context->target && UE->ue_ho_prep_info.len) {
+    // Mark source gNB's measurement configuration for removal in UE->measConfig
+    fill_removal_lists_from_source_measConfig(UE->measConfig, UE->ue_ho_prep_info);
+  }
 
   // Re-establish PDCP for SRB2 only
   NR_SRB_ToAddModList_t *SRBs = createSRBlist(UE, srb_reest_bitmap);
@@ -1376,6 +1382,7 @@ static void process_Event_Based_Measurement_Report(gNB_RRC_INST *rrc,
   int servingCellRSRP = 0;
   int neighbourCellRSRP = 0;
   int scell_pci = -1;
+  int best_rsrp = -10000;
 
   switch (event_triggered->eventId.present) {
     case NR_EventTriggerConfig__eventId_PR_eventA2:
@@ -1411,6 +1418,7 @@ static void process_Event_Based_Measurement_Report(gNB_RRC_INST *rrc,
       for (int neigh_meas_idx = 0; neigh_meas_idx < measResultListNR->list.count; neigh_meas_idx++) {
         const NR_MeasResultNR_t *meas_result_neigh_cell = (measResultListNR->list.array[neigh_meas_idx]);
         const int neighbour_pci = *(meas_result_neigh_cell->physCellId);
+        gNB_RRC_INST *rrc = RC.nrrrc[0];
 
         // TS 138 133 Table 10.1.6.1-1: SS-RSRP and CSI-RSRP measurement report mapping
         const struct NR_MeasResultNR__measResult__cellResults *cellResults = &(meas_result_neigh_cell->measResult.cellResults);
@@ -1436,14 +1444,20 @@ static void process_Event_Based_Measurement_Report(gNB_RRC_INST *rrc,
           // No F1 connection but static neighbour configuration is available
           const nr_a3_event_t *a3_event_configuration = get_a3_configuration(rrc, neighbour->physicalCellId);
           // Additional check - This part can be modified according to additional cell specific Handover Margin
+          // a3-Offset: The actual value is field value * 0.5 dB.
           if (a3_event_configuration
-              && ((a3_event_configuration->a3_offset + a3_event_configuration->hysteresis)
+              && (((a3_event_configuration->a3_offset * 0.5) + a3_event_configuration->hysteresis)
                   < (neighbourCellRSRP - servingCellRSRP))) {
+            if (neighbourCellRSRP > best_rsrp) {
+              // UE can send multiple neighbour cells A3 event report in 1 Meas Report. So, we need to find the best neighbour
+              best_rsrp = neighbourCellRSRP;
+              LOG_I(NR_RRC, "HO LOG: Serving Cell RSRP: %d - Best Neighbor RSRP: %d ! Trigger N2 HO\n", servingCellRSRP, best_rsrp);
+              nr_rrc_trigger_n2_ho(rrc, ue, scell_pci, neighbour);
+            }
             LOG_D(NR_RRC, "HO LOG: Trigger N2 HO for the neighbour gnb: %u cell: %lu\n", neighbour->gNB_ID, neighbour->nrcell_id);
           }
         } else if (neigh_cell && neighbour) {
           /* we know the cell and are connected to the DU! */
-          gNB_RRC_INST *rrc = RC.nrrrc[0];
           nr_rrc_du_container_t *source_du = get_du_by_cell_id(rrc, serving_cell->nr_cellid);
           DevAssert(source_du);
           nr_rrc_du_container_t *target_du = get_du_by_cell_id(rrc, neigh_cell->nr_cellid);
@@ -1452,7 +1466,6 @@ static void process_Event_Based_Measurement_Report(gNB_RRC_INST *rrc,
           LOG_W(NR_RRC, "UE %d: received A3 event for stronger neighbor PCI %d, but no such neighbour in configuration\n", ue->rrc_ue_id, neighbour_pci);
         }
       }
-
     } break;
     default:
       LOG_D(NR_RRC, "NR_EventTriggerConfig__eventId_PR_NOTHING or Other event report\n");
@@ -1593,21 +1606,14 @@ static void handle_ueCapabilityInformation(gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE, 
           UE->UE_Capability_nr = 0;
         }
 
-        asn_dec_rval_t dec_rval = uper_decode(NULL,
-                                              &asn_DEF_NR_UE_NR_Capability,
-                                              (void **)&UE->UE_Capability_nr,
-                                              ue_cap_container->ue_CapabilityRAT_Container.buf,
-                                              ue_cap_container->ue_CapabilityRAT_Container.size,
-                                              0,
-                                              0);
-        if (LOG_DEBUGFLAG(DEBUG_ASN1)) {
-          xer_fprint(stdout, &asn_DEF_NR_UE_NR_Capability, UE->UE_Capability_nr);
+        UE->UE_Capability_nr = decode_nr_ue_capability(UE->rnti, ue_CapabilityRAT_ContainerList);
+        if (!UE->UE_Capability_nr) {
+          LOG_E(NR_RRC, "UE %d: NR capability decoding failed\n", UE->rrc_ue_id);
+          return;
         }
 
-        if ((dec_rval.code != RC_OK) && (dec_rval.consumed == 0)) {
-          LOG_E(NR_RRC, "UE %d: Failed to decode nr UE capabilities (%zu bytes)\n", UE->rrc_ue_id, dec_rval.consumed);
-          ASN_STRUCT_FREE(asn_DEF_NR_UE_NR_Capability, UE->UE_Capability_nr);
-          UE->UE_Capability_nr = 0;
+        if (LOG_DEBUGFLAG(DEBUG_ASN1)) {
+          xer_fprint(stdout, &asn_DEF_NR_UE_NR_Capability, UE->UE_Capability_nr);
         }
 
         const NR_RedCapParameters_r17_t *redcap_p = get_redcapparam_r17(UE->UE_Capability_nr);
@@ -2537,6 +2543,13 @@ void rrc_gNB_process_e1_bearer_context_setup_resp(e1ap_bearer_setup_resp_t *resp
     }
   }
 
+  // If HO Preparation Info is stored, N2 handover is ongoing
+  if (!UE->ho_context && UE->ue_ho_prep_info.buf) {
+    LOG_I(NR_RRC, "Received Bearer Context Setup Response for UE %d with valid HO Context\n", UE->rrc_ue_id);
+    nr_rrc_trigger_n2_ho_target(rrc, UE);
+    return;
+  }
+
   if (!UE->f1_ue_context_active)
     rrc_gNB_generate_UeContextSetupRequest(rrc, ue_context_p, resp);
   else
@@ -2806,6 +2819,10 @@ void *rrc_gnb_task(void *args_p) {
         rrc_gNB_process_NGAP_PDUSESSION_RELEASE_COMMAND(msg_p, instance);
         break;
 
+      case NGAP_DL_RAN_STATUS_TRANSFER:
+        rrc_gNB_process_NGAP_DL_RAN_STATUS_TRANSFER(msg_p, instance);
+        break;
+
       /* Messages from F1AP task */
       case F1AP_SETUP_REQ:
         AssertFatal(!NODE_IS_DU(RC.nrrrc[instance]->node_type), "should not receive F1AP_SETUP_REQUEST in DU!\n");
@@ -2923,6 +2940,16 @@ void *rrc_gnb_task(void *args_p) {
 
       case NGAP_PAGING_IND:
         rrc_gNB_process_PAGING_IND(msg_p, instance);
+        break;
+
+      case NGAP_HANDOVER_REQUEST:
+        rrc_gNB_process_Handover_Request(RC.nrrrc[instance], instance, &NGAP_HANDOVER_REQUEST(msg_p));
+        rrc_gNB_free_Handover_Request(&NGAP_HANDOVER_REQUEST(msg_p)); // Free transfered NG message
+        break;
+
+      case NGAP_HANDOVER_COMMAND:
+        rrc_gNB_process_HandoverCommand(RC.nrrrc[instance], &NGAP_HANDOVER_COMMAND(msg_p));
+        rrc_gNB_free_Handover_Command(&NGAP_HANDOVER_COMMAND(msg_p)); // Free transfered NG message
         break;
 
       default:

@@ -1072,3 +1072,117 @@ int nr_pdcp_get_num_ues(ue_id_t *ue_list, int len)
   
   return num_ues;
 }
+
+void nr_pdcp_update_ran_status(ue_id_t ue_id,
+                               rb_id_t drb_id,
+                               uint32_t ul_sn,
+                               uint32_t ul_hfn,
+                               uint32_t dl_sn,
+                               uint32_t dl_hfn,
+                               bool is_sn_len_18)
+{
+  nr_pdcp_manager_lock(nr_pdcp_ue_manager);
+
+  nr_pdcp_ue_t *ue = nr_pdcp_manager_get_ue(nr_pdcp_ue_manager, ue_id);
+  if (ue == NULL) {
+    LOG_E(PDCP, "UE %ld not found in PDCP manager\n", ue_id);
+    nr_pdcp_manager_unlock(nr_pdcp_ue_manager);
+    return;
+  }
+
+  nr_pdcp_entity_t *entity = nr_pdcp_get_rb(ue, drb_id, false);
+  if (entity == NULL) {
+    LOG_E(PDCP, "No PDCP entity found for UE %ld DRB %ld\n", ue_id, drb_id);
+    nr_pdcp_manager_unlock(nr_pdcp_ue_manager);
+    return;
+  }
+
+  // SN length in bits
+  const uint8_t sn_bits = is_sn_len_18 ? 18 : 12;
+  const uint32_t sn_mask = (1 << sn_bits) - 1;
+
+  // Compose COUNT values for tx_next (DL) and rx_next (UL)
+  uint32_t tx_count = (ul_hfn << sn_bits) | (ul_sn & sn_mask);
+  uint32_t rx_count = (dl_hfn << sn_bits) | (dl_sn & sn_mask);
+
+  // Apply the COUNT values
+  entity->tx_next = tx_count;
+  entity->rx_next = rx_count + 1;
+  entity->rx_deliv = rx_count;
+
+  LOG_I(PDCP,
+        "UE %ld DRB %ld: Applied RAN Status Transfer\n"
+        "  UL COUNT - SN: %u HFN: %u (COUNT=%u)\n"
+        "  DL COUNT - SN: %u HFN: %u (COUNT=%u)\n"
+        "  SN length: %s\n"
+        "   PDCP entity state after update:\n"
+        "     tx_next  = %u\n"
+        "     rx_next  = %u\n"
+        "     rx_deliv = %u\n"
+        "     sn_size  = %d\n"
+        "     sn_max   = %u\n"
+        "     window   = %u\n",
+        ue_id,
+        drb_id,
+        ul_sn,
+        ul_hfn,
+        rx_count,
+        dl_sn,
+        dl_hfn,
+        tx_count,
+        is_sn_len_18 ? "18-bit" : "12-bit",
+        entity->tx_next,
+        entity->rx_next,
+        entity->rx_deliv,
+        entity->sn_size,
+        entity->sn_max,
+        entity->window_size);
+
+  nr_pdcp_manager_unlock(nr_pdcp_ue_manager);
+}
+
+/** * @brief Get PDCP COUNT values (PDCP-SN and HFN) for UL and DL from the PDCP entity
+ * @param[in]  ue_id          Unique UE ID
+ * @param[in]  rb_id          Radio Bearer ID
+ * @param[out] ul_sn          UL PDCP SN (tx_next SN part)
+ * @param[out] ul_hfn         UL HFN
+ * @param[out] dl_sn          DL PDCP SN (rx_deliv SN part)
+ * @param[out] dl_hfn         DL HFN
+ * @param[out] sn_length_18   true if SN length is 18 bits, false if 12 bits
+ * @return true if values successfully retrieved, false otherwise */
+bool nr_pdcp_get_drb_count_values(ue_id_t ue_id,
+                                  rb_id_t rb_id,
+                                  uint32_t *ul_sn,
+                                  uint32_t *ul_hfn,
+                                  uint32_t *dl_sn,
+                                  uint32_t *dl_hfn,
+                                  bool *sn_length_18)
+{
+  nr_pdcp_manager_lock(nr_pdcp_ue_manager);
+
+  nr_pdcp_ue_t *ue = nr_pdcp_manager_get_ue(nr_pdcp_ue_manager, ue_id);
+  if (ue == NULL)
+    goto unlock;
+
+  nr_pdcp_entity_t *entity = nr_pdcp_get_rb(ue, rb_id, false);
+  if (entity == NULL)
+    goto unlock;
+
+  const int sn_bits = entity->sn_size;
+  *sn_length_18 = (sn_bits == 18);
+
+  const uint32_t sn_mask = entity->sn_max;
+
+  *ul_sn = entity->tx_next & sn_mask;
+  *ul_hfn = entity->tx_next >> sn_bits;
+
+  *dl_sn = entity->rx_deliv & sn_mask;
+  *dl_hfn = entity->rx_deliv >> sn_bits;
+
+  nr_pdcp_manager_unlock(nr_pdcp_ue_manager);
+  return true;
+
+unlock:
+  nr_pdcp_manager_unlock(nr_pdcp_ue_manager);
+  return false;
+}

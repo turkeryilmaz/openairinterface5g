@@ -125,4 +125,20 @@ int nr_pdcp_get_num_ues(ue_id_t *ue_list, int len);
 
 bool nr_pdcp_get_statistics(ue_id_t ue_id, int srb_flag, int rb_id, nr_pdcp_statistics_t *out);
 
+void nr_pdcp_update_ran_status(ue_id_t ue_id,
+                               rb_id_t drb_id,
+                               uint32_t ul_sn,
+                               uint32_t ul_hfn,
+                               uint32_t dl_sn,
+                               uint32_t dl_hfn,
+                               bool is_sn_len_18);
+
+bool nr_pdcp_get_drb_count_values(ue_id_t ue_id,
+                                  rb_id_t rb_id,
+                                  uint32_t *ul_sn,
+                                  uint32_t *ul_hfn,
+                                  uint32_t *dl_sn,
+                                  uint32_t *dl_hfn,
+                                  bool *sn_length_18);
+
 #endif /* NR_PDCP_OAI_API_H */
