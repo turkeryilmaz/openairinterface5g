@@ -125,6 +125,9 @@ check_supported_distribution() {
         "rhel9.5")     return 0 ;;
         "rhel9.6")     return 0 ;;
         "rhel9.7")     return 0 ;;
+        "rhel9.8")     return 0 ;;
+        "rhel9.9")     return 0 ;;
+        "rhel10.0")    return 0 ;;
         "centos9")     return 0 ;; # CentOS stream
         "rocky8.7")    return 0 ;;
         "rocky8.8")    return 0 ;;
