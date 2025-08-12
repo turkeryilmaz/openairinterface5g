@@ -242,9 +242,6 @@ void mac_top_init_gNB(ngran_node_t node_type,
                       const nr_mac_config_t *config,
                       const nr_rlc_configuration_t *default_rlc_config)
 {
-  module_id_t     i;
-  gNB_MAC_INST    *nrmac;
-
   AssertFatal(RC.nb_nr_macrlc_inst == 1, "what is the point of calling %s() if you don't need exactly one MAC?\n", __func__);
 
   if (RC.nb_nr_macrlc_inst > 0) {
@@ -255,7 +252,7 @@ void mac_top_init_gNB(ngran_node_t node_type,
                 RC.nb_nr_macrlc_inst * sizeof(gNB_MAC_INST *),
                 RC.nb_nr_macrlc_inst, sizeof(gNB_MAC_INST));
 
-    for (i = 0; i < RC.nb_nr_macrlc_inst; i++) {
+    for (module_id_t i = 0; i < RC.nb_nr_macrlc_inst; i++) {
 
       RC.nrmac[i] = (gNB_MAC_INST *) malloc16(sizeof(gNB_MAC_INST));
       
@@ -268,6 +265,7 @@ void mac_top_init_gNB(ngran_node_t node_type,
       bzero(RC.nrmac[i], sizeof(gNB_MAC_INST));
       
       RC.nrmac[i]->Mod_id = i;
+      RC.nrmac[i]->print_ue_help_cmdline_log = true;
 
       RC.nrmac[i]->tag = (NR_TAG_t*)malloc(sizeof(NR_TAG_t));
       memset((void*)RC.nrmac[i]->tag,0,sizeof(NR_TAG_t));
@@ -315,8 +313,8 @@ void mac_top_init_gNB(ngran_node_t node_type,
   }
 
   // Initialize Linked-List for Active UEs
-  for (i = 0; i < RC.nb_nr_macrlc_inst; i++) {
-    nrmac = RC.nrmac[i];
+  for (module_id_t i = 0; i < RC.nb_nr_macrlc_inst; i++) {
+    gNB_MAC_INST *nrmac = RC.nrmac[i];
     nrmac->if_inst = NR_IF_Module_init(i);
     memset(&nrmac->UE_info, 0, sizeof(nrmac->UE_info));
   }

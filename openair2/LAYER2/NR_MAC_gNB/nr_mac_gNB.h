@@ -920,6 +920,7 @@ typedef struct gNB_MAC_INST_s {
   nr_mac_rrc_ul_if_t mac_rrc;
   f1_config_t f1_config;
   int16_t frame;
+  bool print_ue_help_cmdline_log;
 
   pthread_mutex_t sched_lock;
 
