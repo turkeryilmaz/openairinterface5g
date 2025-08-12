@@ -2669,7 +2669,7 @@ static void nr_ulsch_preprocessor(gNB_MAC_INST *nr_mac, post_process_pusch_t *pp
     /* go to the next UL slot, skipping DL if necessary */
     *next = fs_get_max(fs, *next, min_next);
     while (!is_ul_slot(next->s, fs))
-      *next = fs_add_delta(fs, get_first_ul_slot(fs, true), *next);
+      *next = fs_add_delta(fs, 1, *next);
     if (!is_dl_slot(current.s, fs)) // if current slot is not DL, nothing to do
       break;
 
