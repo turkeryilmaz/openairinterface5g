@@ -1,0 +1,5 @@
+#!/bin/sh
+systemctl daemon-reload >/dev/null 2>&1 || true
+systemctl enable conf2uedata.service >/dev/null 2>&1 
+systemctl enable lte-softmodem.service >/dev/null 2>&1 || true
+systemctl start lte-softmodem.service >/dev/null 2>&1 || true

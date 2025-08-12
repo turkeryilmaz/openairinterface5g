@@ -1,0 +1,5 @@
+#!/bin/sh
+systemctl stop nr-cuup.service >/dev/null 2>&1 || true
+systemctl disable nr-cuup.service >/dev/null 2>&1 || true
+systemctl stop nr-softmodem.service >/dev/null 2>&1 || true
+systemctl disable nr-softmodem.service >/dev/null 2>&1 || true

@@ -473,6 +473,9 @@ function main() {
     eval $cmd
     ret=$?
 
+    cd $DIR/$BUILD_DIR/build
+    cpack
+
     if [ "$UE" = 1 ] ; then
       echo_info "Generate LTE USIM default sim content UE specific part"
       # generate USIM data
