@@ -931,6 +931,7 @@ static void _nr_rx_sdu(const module_id_t gnb_mod_idP,
       if (ul_cqi == 0xff || ul_cqi <= 128) {
         UE->UE_sched_ctrl.pusch_consecutive_dtx_cnt++;
         UE->mac_stats.ulsch_DTX++;
+        LOG_W(NR_MAC, "%4d.%2d DTX for UE %04x\n", frameP, slotP, UE->rnti);
       }
 
       if (!get_softmodem_params()->phy_test && UE->UE_sched_ctrl.pusch_consecutive_dtx_cnt >= pusch_failure_thres) {
