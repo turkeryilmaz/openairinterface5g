@@ -906,8 +906,10 @@ void handle_nr_uci_pucch_0_1(module_id_t mod_id, frame_t frame, slot_t slot, con
           return;
         }
       }
-      if (harq_confidence == 1)
+      if (harq_confidence == 1) {
+        LOG_W(NR_MAC, "%4d.%2d PUCCH DTX UE %04x\n", frame, slot, UE->rnti);
         UE->mac_stats.pucch0_DTX++;
+      }
     }
 
     // tpc (power control) only if we received AckNack
