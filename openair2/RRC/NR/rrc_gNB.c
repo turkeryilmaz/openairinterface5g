@@ -1839,7 +1839,10 @@ static void rrc_gNB_generate_UECapabilityEnquiry(gNB_RRC_INST *rrc, gNB_RRC_UE_t
   uint8_t xid = rrc_gNB_get_next_transaction_identifier(rrc->module_id);
   ue->xids[xid] = RRC_UECAPABILITY_ENQUIRY;
 
-  byte_array_t ba = do_NR_SA_UECapabilityEnquiry(xid);
+  nr_rrc_du_container_t *du = get_du_by_cell_id((gNB_RRC_INST *)rrc, rrc->nr_cellid);
+  DevAssert(du != NULL);
+  DevAssert(du->mtc != NULL);
+  byte_array_t ba = do_NR_SA_UECapabilityEnquiry(xid, get_dl_band(&du->setup_req->cell[0].info));
   if (ba.len <= 0) {
     LOG_E(NR_RRC, "UE %d: Failed to generate UECapabilityEnquiry (bytes %ld, xid %d)\n", ue->rrc_ue_id, ba.len, xid);
     return;

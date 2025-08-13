@@ -47,7 +47,7 @@ TEST(nr_asn1, rrc_reject)
 
 TEST(nr_asn1, sa_capability_enquiry)
 {
-  byte_array_t ba = do_NR_SA_UECapabilityEnquiry(0);
+  byte_array_t ba = do_NR_SA_UECapabilityEnquiry(0, 78);
   EXPECT_GT(ba.len, 0);
   EXPECT_NE(ba.buf, nullptr);
   free_byte_array(ba);

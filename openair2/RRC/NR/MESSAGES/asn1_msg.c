@@ -384,48 +384,46 @@ byte_array_t do_NR_SecurityModeCommand(const uint8_t Transaction_id,
   return ba;
 }
 
-byte_array_t do_NR_SA_UECapabilityEnquiry(const uint8_t Transaction_id)
+byte_array_t do_NR_SA_UECapabilityEnquiry(const uint8_t Transaction_id, const uint8_t band)
 {
-  NR_FreqBandList_t *sa_band_list;
-  NR_FreqBandInformation_t *sa_band_info;
-  NR_FreqBandInformationNR_t *sa_band_infoNR;
+  // NR_DL_DCCH_Message
+  NR_DL_DCCH_Message_t dl_dcch_msg = {0};
+  dl_dcch_msg.message.present = NR_DL_DCCH_MessageType_PR_c1;
+  asn1cCalloc(dl_dcch_msg.message.choice.c1, c1);
+  c1->present = NR_DL_DCCH_MessageType__c1_PR_ueCapabilityEnquiry;
 
-  NR_DL_DCCH_Message_t dl_dcch_msg;
-  NR_UE_CapabilityRAT_Request_t *ue_capabilityrat_request;
-
-  memset(&dl_dcch_msg,0,sizeof(NR_DL_DCCH_Message_t));
-  dl_dcch_msg.message.present           = NR_DL_DCCH_MessageType_PR_c1;
-  dl_dcch_msg.message.choice.c1 = CALLOC(1,sizeof(struct NR_DL_DCCH_MessageType__c1));
-  dl_dcch_msg.message.choice.c1->present = NR_DL_DCCH_MessageType__c1_PR_ueCapabilityEnquiry;
-  asn1cCalloc(dl_dcch_msg.message.choice.c1->choice.ueCapabilityEnquiry, uce);
+  // ueCapabilityEnquiry
+  asn1cCalloc(c1->choice.ueCapabilityEnquiry, uce);
   uce->rrc_TransactionIdentifier = Transaction_id;
   uce->criticalExtensions.present = NR_UECapabilityEnquiry__criticalExtensions_PR_ueCapabilityEnquiry;
   asn1cCalloc(uce->criticalExtensions.choice.ueCapabilityEnquiry, uce_ext);
-  ue_capabilityrat_request =  CALLOC(1,sizeof(NR_UE_CapabilityRAT_Request_t));
-  memset(ue_capabilityrat_request,0,sizeof(NR_UE_CapabilityRAT_Request_t));
-  ue_capabilityrat_request->rat_Type = NR_RAT_Type_nr;
 
-  sa_band_infoNR = (NR_FreqBandInformationNR_t*)calloc(1,sizeof(NR_FreqBandInformationNR_t));
-  sa_band_infoNR->bandNR = 78;
-  sa_band_info = (NR_FreqBandInformation_t*)calloc(1,sizeof(NR_FreqBandInformation_t));
+  // ue_CapabilityRAT_RequestList
+  NR_UE_CapabilityRAT_Request_t *rat_req = calloc_or_fail(1, sizeof(*rat_req));
+  rat_req->rat_Type = NR_RAT_Type_nr;
+  rat_req->capabilityRequestFilter = calloc_or_fail(1, sizeof(*rat_req->capabilityRequestFilter));
+
+  // frequencyBandListFilter
+  NR_FreqBandList_t *sa_band_list = calloc_or_fail(1, sizeof(*sa_band_list));
+  NR_FreqBandInformation_t *sa_band_info = calloc_or_fail(1, sizeof(*sa_band_info));
   sa_band_info->present = NR_FreqBandInformation_PR_bandInformationNR;
+  NR_FreqBandInformationNR_t *sa_band_infoNR = calloc_or_fail(1, sizeof(*sa_band_infoNR));
+  sa_band_infoNR->bandNR = band;
   sa_band_info->choice.bandInformationNR = sa_band_infoNR;
-  
-  sa_band_list = (NR_FreqBandList_t *)calloc(1, sizeof(NR_FreqBandList_t));
   asn1cSeqAdd(&sa_band_list->list, sa_band_info);
 
-  // capabilityRequestFilter IE
-  NR_UE_CapabilityRequestFilterNR_t sa_band_filter = {0};
-  sa_band_filter.frequencyBandListFilter = sa_band_list;
+  // capabilityRequestFilter
+  NR_UE_CapabilityRequestFilterNR_t sa_band_filter = {.frequencyBandListFilter = sa_band_list};
   byte_array_t crf = {.buf = NULL, .len = 0};
   ASN_ENCODE_OR_FAIL(asn_DEF_NR_UE_CapabilityRequestFilterNR, &sa_band_filter, crf);
-  ue_capabilityrat_request->capabilityRequestFilter = calloc_or_fail(1, sizeof(*ue_capabilityrat_request->capabilityRequestFilter));
-  OCTET_STRING_fromBuf(ue_capabilityrat_request->capabilityRequestFilter, (char *)crf.buf, crf.len);
-  asn1cSeqAdd(&uce_ext->ue_CapabilityRAT_RequestList.list, ue_capabilityrat_request);
+  OCTET_STRING_fromBuf(rat_req->capabilityRequestFilter, (char *)crf.buf, crf.len);
+  free_byte_array(crf);
+  asn1cSeqAdd(&uce_ext->ue_CapabilityRAT_RequestList.list, rat_req);
 
   // Encode dcch message
   byte_array_t dcch = {.buf = NULL, .len = 0};
   ASN_ENCODE_OR_FAIL(asn_DEF_NR_DL_DCCH_Message, &dl_dcch_msg, dcch);
+
   return dcch;
 }
 
