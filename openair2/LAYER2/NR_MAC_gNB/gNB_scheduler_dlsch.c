@@ -630,7 +630,7 @@ static void pf_dl(module_id_t module_id,
     sched_pdsch->dl_harq_pid = sched_ctrl->retrans_dl_harq.head;
 
     /* Calculate Throughput */
-    const float a = 0.05f;
+    const float a = 0.01f;
     const uint32_t b = UE->mac_stats.dl.current_bytes;
     UE->dl_thr_ue = (1 - a) * UE->dl_thr_ue + a * b;
 
