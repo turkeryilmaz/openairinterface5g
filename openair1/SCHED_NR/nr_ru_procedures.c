@@ -187,7 +187,6 @@ void nr_feptx_prec(RU_t *ru, int frame_tx, int slot_tx)
 
   if (gNB->common_vars.analog_bf) {
     for (int i = 0; i < ru->num_beams_period; i++) {
-      LOG_I(HW, "mjoang nr_feptx_prec %d:%d\n", frame_tx, slot_tx);
       memcpy((void*) &ru->common.beam_id[i][slot_tx * fp->symbols_per_slot],
              (void*) &gNB->common_vars.beam_id[i][slot_tx * fp->symbols_per_slot],
              (fp->symbols_per_slot) * sizeof(int));
