@@ -687,8 +687,6 @@ extern int read_recplayconfig(recplay_conf_t **recplay_conf, recplay_state_t **r
 /*! \brief store recorded iqs from memory to file. */
 extern void iqrecorder_end(openair0_device_t *device);
 
-int openair0_write_reorder(openair0_device_t *device, openair0_timestamp_t timestamp, void **txp, int nsamps, int nbAnt, int flags);
-void openair0_write_reorder_clear_context(openair0_device_t *device);
 #include <unistd.h>
 #ifndef gettid
 #define gettid() syscall(__NR_gettid)

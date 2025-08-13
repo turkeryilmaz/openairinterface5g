@@ -81,6 +81,7 @@ unsigned short config_frames[4] = {2,9,11,13};
 // current status is that every UE has a DL scope for a SINGLE eNB (eNB_id=0)
 #include "PHY/TOOLS/phy_scope_interface.h"
 #include "PHY/TOOLS/nr_phy_scope.h"
+#include <executables/nr-ue-ru.h>
 #include <executables/nr-uesoftmodem.h>
 #include "executables/softmodem-common.h"
 #include "executables/thread-common.h"
@@ -117,9 +118,9 @@ int32_t         uplink_frequency_offset[MAX_NUM_CCs][4];
 uint64_t        sidelink_frequency[MAX_NUM_CCs][4];
 
 // UE and OAI config variables
-openair0_config_t openair0_cfg[MAX_CARDS];
-openair0_device_t openair0_dev[MAX_CARDS];
-NR_DL_FRAME_PARMS cell_fp[MAX_CARDS];
+extern openair0_config_t openair0_cfg[MAX_CARDS];
+extern openair0_device_t openair0_dev[MAX_CARDS];
+extern NR_DL_FRAME_PARMS cell_fp[MAX_CARDS];
 int16_t           node_synch_ref[MAX_NUM_CCs];
 int               otg_enabled;
 double            cpuf;
@@ -162,14 +163,7 @@ void exit_function(const char *file, const char *function, const int line, const
 
   oai_exit = 1;
 
-  for (int card = 0; card < MAX_CARDS; card++) {
-    if (openair0_dev[card].trx_end_func) {
-      if (openair0_dev[card].trx_get_stats_func) {
-        openair0_dev[card].trx_get_stats_func(&openair0_dev[card]);
-      }
-      openair0_dev[card].trx_end_func(&openair0_dev[card]);
-    }
-  }
+  nr_ue_ru_end();
 
   if (assert) {
     abort();
@@ -762,12 +756,7 @@ int main(int argc, char **argv)
     }
   }
 
-  for (int card = 0; card < MAX_CARDS; card++) {
-    if (openair0_dev[card].trx_get_stats_func)
-      openair0_dev[card].trx_get_stats_func(&openair0_dev[card]);
-    if (openair0_dev[card].trx_end_func)
-      openair0_dev[card].trx_end_func(&openair0_dev[card]);
-  }
+  nr_ue_ru_end();
 
   free_nrLDPC_coding_interface(&nrLDPC_coding_interface);
 
