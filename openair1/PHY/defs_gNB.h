@@ -139,8 +139,6 @@ typedef struct {
   /// second index: rx antenna [0..63] (hard coded) \note Hard coded array size indexed by \c nb_antennas_rx.
   /// third index: frequency-domain sample [0..ofdm_symbol_size*12[
   int16_t **rxsigF;
-  /// \brief local buffer to compute prach_ifft
-  int32_t *prach_ifft;
   prach_list_t list;
 } NR_gNB_PRACH;
 
