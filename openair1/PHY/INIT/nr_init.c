@@ -188,8 +188,7 @@ void phy_init_nr_gNB(PHY_VARS_gNB *gNB)
   common_vars->debugBuff_sample_offset = 0; 
 
   // PRACH
-  prach_vars->rxsigF = (int16_t **)malloc16_clear(Prx*sizeof(int16_t*));
-  prach_vars->prach_ifft       = (int32_t *)malloc16_clear(1024*2*sizeof(int32_t));
+  prach_vars->rxsigF = (int16_t **)malloc16_clear(Prx * sizeof(int16_t *));
 
   init_prach_list(&gNB->prach_vars.list, prach_upper);
 
@@ -263,10 +262,6 @@ void phy_free_nr_gNB(PHY_VARS_gNB *gNB)
   free_and_zero(common_vars->beam_id);
 
   free_and_zero(common_vars->debugBuff);
-
-  NR_gNB_PRACH* prach_vars = &gNB->prach_vars;
-  free_and_zero(prach_vars->rxsigF);
-  free_and_zero(prach_vars->prach_ifft);
 
   for (int ULSCH_id = 0; ULSCH_id < gNB->max_nb_pusch; ULSCH_id++) {
     NR_gNB_PUSCH *pusch_vars = &gNB->pusch_vars[ULSCH_id];
