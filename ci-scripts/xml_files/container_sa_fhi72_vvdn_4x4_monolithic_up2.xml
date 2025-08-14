@@ -59,30 +59,28 @@
     <class>Custom_Script</class>
     <desc>Setup sriov and network interfaces VVDN</desc>
     <node>stonechat</node>
-    <script>yaml_files/sa_fhi_7.2_vvdn_4x4_gnb_monolithic/setup_sriov_vvdn.sh</script>
+    <script>yaml_files/sa_fhi_7.2_vvdn_4x4_monolithic_gnb/setup_sriov_vvdn.sh</script>
   </testCase>
 
   <testCase id="110000">
     <class>Pull_Local_Registry</class>
     <desc>Pull Images from Local Registry</desc>
-    <svr_id>0</svr_id>
+    <node>stonechat</node>
     <images>oai-gnb-fhi72-t2</images>
   </testCase>
 
   <testCase id="800813">
     <class>Create_Workspace</class>
     <desc>Create new Workspace for server 0</desc>
-    <eNB_instance>0</eNB_instance>
-    <eNB_serverId>0</eNB_serverId>
+    <node>stonechat</node>
   </testCase>
 
   <testCase id="120000">
     <class>Deploy_Object</class>
     <desc>Deploy gNB (TDD/Band77/100MHz/VVDN) in a container</desc>
-    <yaml_path>ci-scripts/yaml_files/sa_fhi_7.2_vvdn_4x4_gnb_monolithic</yaml_path>
+    <yaml_path>ci-scripts/yaml_files/sa_fhi_7.2_vvdn_4x4_monolithic_gnb</yaml_path>
     <services>oai-gnb-monolithic</services>
-    <eNB_instance>0</eNB_instance>
-    <eNB_serverId>0</eNB_serverId>
+    <node>stonechat</node>
     <num_attempts>2</num_attempts>
   </testCase>
 
@@ -193,17 +191,16 @@
     <class>Undeploy_Object</class>
     <always_exec>true</always_exec>
     <desc>Undeploy gNB</desc>
-    <yaml_path>ci-scripts/yaml_files/sa_fhi_7.2_vvdn_4x4_gnb_monolithic</yaml_path>
-     <services>oai-gnb-monolithic</services>
-    <eNB_instance>0</eNB_instance>
-    <eNB_serverId>0</eNB_serverId>
+    <yaml_path>ci-scripts/yaml_files/sa_fhi_7.2_vvdn_4x4_monolithic_gnb</yaml_path>
+    <services>oai-gnb-monolithic</services>
+    <node>stonechat</node>
   </testCase>
 
   <testCase id="777777">
     <class>Clean_Test_Server_Images</class>
     <always_exec>true</always_exec>
     <desc>Clean Test Images on Test Server</desc>
-    <svr_id>0</svr_id>
+    <node>stonechat</node>
     <images>oai-gnb-fhi72-t2</images>
   </testCase>
 
@@ -212,7 +209,7 @@
     <always_exec>true</always_exec>
     <desc>Set CPU to idle state, set kernel parameters to default values</desc>
     <node>stonechat</node>
-    <script>yaml_files/sa_fhi_7.2_vvdn_4x4_gnb_monolithic/setup_cleanup.sh</script>
+    <script>yaml_files/sa_fhi_7.2_vvdn_4x4_monolithic_gnb/setup_cleanup.sh</script>
   </testCase>
 
   <testCase id="444400">
