@@ -1137,11 +1137,10 @@ static nr_dci_format_t handle_dci(NR_UE_MAC_INST_t *mac,
   return nr_ue_process_dci_indication_pdu(mac, frame, slot, dci);
 }
 
-static void handle_ssb_meas(NR_UE_MAC_INST_t *mac, uint8_t ssb_index, int16_t rsrp_dbm, float_t sinr_dB)
+static void handle_ssb_meas(NR_UE_MAC_INST_t *mac, int ssb_index, int16_t rsrp_dbm, float_t sinr_dB)
 {
-  mac->ssb_measurements.ssb_index = ssb_index;
-  mac->ssb_measurements.ssb_rsrp_dBm = rsrp_dbm;
-  mac->ssb_measurements.ssb_sinr_dB = sinr_dB;
+  mac->ssb_measurements[ssb_index].ssb_rsrp_dBm = rsrp_dbm;
+  mac->ssb_measurements[ssb_index].ssb_sinr_dB = sinr_dB;
 }
 
 // L2 Abstraction Layer
