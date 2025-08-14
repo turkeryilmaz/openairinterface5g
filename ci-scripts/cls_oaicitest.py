@@ -267,8 +267,12 @@ def UndeployWithScript(HTML, ctx, node, script, options):
 	opt = options.replace('%%log_dir%%', remote_dir)
 	ret = cls_cmd.runScript(node, script, 600, opt)
 	logging.debug(f'"{script}" finished with code {ret.returncode}, output:\n{ret.stdout}')
+	log_files = []
 	with cls_cmd.getConnection(node) as ssh:
-		archiveArtifact(ssh, ctx, f'{remote_dir}/*.log')
+		ret_ls = ssh.run(f'ls -1 {remote_dir}')
+		log_files = ret_ls.stdout.strip().split("\n")
+		for lf in log_files:
+			archiveArtifact(ssh, ctx, f'{remote_dir}/{lf}')
 	param = f"on node {node}"
 	if ret.returncode == 0:
 		HTML.CreateHtmlTestRowQueue(param, 'OK', [f"Undeployment on OC succeeded"])
