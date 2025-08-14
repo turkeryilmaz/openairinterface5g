@@ -24,15 +24,17 @@
 
 #include "stdbool.h"
 #include "stdint.h"
-
-#define MAX_QOS_FLOWS 64
+#include "common/platform_constants.h" // for MAX_QOS_FLOWS
+#include "common/5g_platform_types.h" // for pdusession_level_qos_parameter_t
 
 typedef struct {
   int pdu_session_id;
+  // SDAP Headers
   bool header_dl_absent;
   bool header_ul_absent;
-  int mapped_qos_flows[MAX_QOS_FLOWS];
-  int nb_qos;
+  // PDU Session level QoS
+  uint8_t nb_qos;
+  pdusession_level_qos_parameter_t qos[MAX_QOS_FLOWS];
 } nr_sdap_configuration_t;
 
 #endif /* _NR_SDAP_CONFIGURATION_H_ */

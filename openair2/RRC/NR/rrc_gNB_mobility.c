@@ -79,8 +79,9 @@ static int fill_drb_to_be_setup(const gNB_RRC_INST *rrc, gNB_RRC_UE_t *ue, f1ap_
 
     // for the moment, we only support one QoS flow. Put a reminder in case
     // this changes
-    AssertFatal(pdu->param.nb_qos == 1, "only 1 Qos flow supported\n");
-    int qfi = pdu->param.qos[0].qfi;
+    nr_sdap_configuration_t *sdap = &pdu->param.sdap_config;
+    AssertFatal(sdap->nb_qos == 1, "only 1 Qos flow supported\n");
+    int qfi = sdap->qos[0].qfi;
     pdusession_level_qos_parameter_t *qos_param = get_qos_characteristics(qfi, &pdu->param);
 
     drb->id = rrc_drb->drb_id;

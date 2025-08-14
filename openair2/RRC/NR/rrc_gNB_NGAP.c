@@ -170,9 +170,10 @@ static void cp_pdusession_resource_item_to_pdusession(pdusession_t *dst, const p
 {
   dst->pdusession_id = src->pdusession_id;
   dst->nas_pdu = src->nas_pdu;
-  dst->nb_qos = src->pdusessionTransfer.nb_qos;
-  for (uint8_t i = 0; i < src->pdusessionTransfer.nb_qos && i < QOSFLOW_MAX_VALUE; ++i) {
-    dst->qos[i] = src->pdusessionTransfer.qos[i];
+  dst->sdap_config.pdu_session_id = src->pdusession_id;
+  dst->sdap_config.nb_qos = src->pdusessionTransfer.nb_qos;
+  for (uint8_t i = 0; i < src->pdusessionTransfer.nb_qos && i < MAX_QOS_FLOWS; ++i) {
+    dst->sdap_config.qos[i] = src->pdusessionTransfer.qos[i];
   }
   dst->pdu_session_type = src->pdusessionTransfer.pdu_session_type;
   dst->n3_incoming = src->pdusessionTransfer.n3_incoming;
@@ -260,17 +261,18 @@ static DRB_nGRAN_to_setup_t fill_drb_ngran_tosetup(const drb_t *rrc_drb, const p
     drb_ngran.cellGroupList[k] = MCG; // 1 cellGroup only
   }
 
-  drb_ngran.numQosFlow2Setup = session->nb_qos;
+  const nr_sdap_configuration_t *sdap = &session->sdap_config;
+  drb_ngran.numQosFlow2Setup = session->sdap_config.nb_qos;
   for (int k = 0; k < drb_ngran.numQosFlow2Setup; k++) {
     qos_flow_to_setup_t *qos_flow = &drb_ngran.qosFlows[k];
-    qos_flow->qfi = session->qos[k].qfi;
-    qos_flow->qos_params.alloc_reten_priority.preemption_capability = session->qos[k].allocation_retention_priority.pre_emp_capability;
-    qos_flow->qos_params.alloc_reten_priority.preemption_vulnerability = session->qos[k].allocation_retention_priority.pre_emp_vulnerability;
-    qos_flow->qos_params.alloc_reten_priority.priority_level = session->qos[k].allocation_retention_priority.priority_level;
-    if (session->qos[k].fiveQI_type == NON_DYNAMIC)
-      qos_flow->qos_params.qos_characteristics.non_dynamic.fiveqi = session->qos[k].fiveQI;
+    qos_flow->qfi = sdap->qos[k].qfi;
+    qos_flow->qos_params.alloc_reten_priority.preemption_capability = sdap->qos[k].arp.pre_emp_capability;
+    qos_flow->qos_params.alloc_reten_priority.preemption_vulnerability = sdap->qos[k].arp.pre_emp_vulnerability;
+    qos_flow->qos_params.alloc_reten_priority.priority_level = sdap->qos[k].arp.priority_level;
+    if (sdap->qos[k].fiveQI_type == NON_DYNAMIC)
+      qos_flow->qos_params.qos_characteristics.non_dynamic.fiveqi = sdap->qos[k].fiveQI;
     else
-      qos_flow->qos_params.qos_characteristics.dynamic.fiveqi = session->qos[k].fiveQI;
+      qos_flow->qos_params.qos_characteristics.dynamic.fiveqi = sdap->qos[k].fiveQI;
     // dyn/nondynamic missing fields
   }
 
@@ -308,6 +310,9 @@ bool trigger_bearer_setup(gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE, int n, pdusession
       return false;
     }
     pdusession_t *session = &pduSession->param;
+    // Enable SDAP headers
+    session->sdap_config.header_dl_absent = !rrc->configuration.enable_sdap;
+    session->sdap_config.header_ul_absent = !rrc->configuration.enable_sdap;
     LOG_I(NR_RRC, "Add PDU Session %d (total nb of sessions = %ld)\n", session->pdusession_id, seq_arr_size(&UE->pduSessions));
     // Fill E1 Bearer Context Modification Request
     bearer_req.gNB_cu_cp_ue_id = UE->rrc_ue_id;
@@ -492,9 +497,10 @@ void rrc_gNB_send_NGAP_INITIAL_CONTEXT_SETUP_RESP(gNB_RRC_INST *rrc, gNB_RRC_UE_
     if (session->status == PDU_SESSION_STATUS_DONE) {
       resp->pdusessions[pdu_sessions_done].pdusession_id = session->param.pdusession_id;
       resp->pdusessions[pdu_sessions_done].n3_outgoing = cp_gtp_tunnel(session->param.n3_outgoing);
-      resp->pdusessions[pdu_sessions_done].nb_of_qos_flow = session->param.nb_qos;
-      for (int qos_flow_index = 0; qos_flow_index < session->param.nb_qos; qos_flow_index++) {
-        resp->pdusessions[pdu_sessions_done].associated_qos_flows[qos_flow_index].qfi = session->param.qos[qos_flow_index].qfi;
+      nr_sdap_configuration_t *sdap = &session->param.sdap_config;
+      resp->pdusessions[pdu_sessions_done].nb_of_qos_flow = sdap->nb_qos;
+      for (int qos_flow_index = 0; qos_flow_index < sdap->nb_qos; qos_flow_index++) {
+        resp->pdusessions[pdu_sessions_done].associated_qos_flows[qos_flow_index].qfi = sdap->qos[qos_flow_index].qfi;
         resp->pdusessions[pdu_sessions_done].associated_qos_flows[qos_flow_index].qos_flow_mapping_ind = QOSFLOW_MAPPING_INDICATION_DL;
       }
       pdu_sessions_done++;
@@ -681,12 +687,13 @@ void rrc_gNB_send_NGAP_PDUSESSION_SETUP_RESP(gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE
     if (session->status == PDU_SESSION_STATUS_DONE) {
       pdusession_setup_t *tmp = &resp->pdusessions[pdu_sessions_done];
       tmp->pdusession_id = session->param.pdusession_id;
-      tmp->nb_of_qos_flow = session->param.nb_qos;
+      nr_sdap_configuration_t *sdap = &session->param.sdap_config;
+      tmp->nb_of_qos_flow = sdap->nb_qos;
       tmp->n3_outgoing = cp_gtp_tunnel(session->param.n3_outgoing);
       tmp->pdu_session_type = session->param.pdu_session_type;
 
       for (int qos_flow_index = 0; qos_flow_index < tmp->nb_of_qos_flow; qos_flow_index++) {
-        tmp->associated_qos_flows[qos_flow_index].qfi = session->param.qos[qos_flow_index].qfi;
+        tmp->associated_qos_flows[qos_flow_index].qfi = sdap->qos[qos_flow_index].qfi;
         tmp->associated_qos_flows[qos_flow_index].qos_flow_mapping_ind = QOSFLOW_MAPPING_INDICATION_DL;
       }
 
@@ -951,11 +958,11 @@ int rrc_gNB_send_NGAP_PDUSESSION_MODIFY_RESP(gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE
       session->cause.type = NGAP_CAUSE_NOTHING;
       // Fill response
       resp->pdusessions[pdu_sessions_done].pdusession_id = session->param.pdusession_id;
-      for (int qos_flow_index = 0; qos_flow_index < session->param.nb_qos; qos_flow_index++) {
-        resp->pdusessions[pdu_sessions_done].qos[qos_flow_index].qfi = session->param.qos[qos_flow_index].qfi;
+      nr_sdap_configuration_t *sdap = &session->param.sdap_config;
+      resp->pdusessions[pdu_sessions_done].nb_of_qos_flow = sdap->nb_qos;
+      for (int qos_flow_index = 0; qos_flow_index < sdap->nb_qos; qos_flow_index++) {
+        resp->pdusessions[pdu_sessions_done].qos[qos_flow_index].qfi = sdap->qos[qos_flow_index].qfi;
       }
-      resp->pdusessions[pdu_sessions_done].pdusession_id = session->param.pdusession_id;
-      resp->pdusessions[pdu_sessions_done].nb_of_qos_flow = session->param.nb_qos;
       LOG_I(NR_RRC,
             "Modify Resp (msg index %d, status %d, xid %d): nb_of_pduSessions %ld, pdusession_id %d \n ",
             pdu_sessions_done,

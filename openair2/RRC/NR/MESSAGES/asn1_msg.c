@@ -319,7 +319,7 @@ NR_DRB_ToAddMod_t *get_DRB_ToAddMod(const int rb_id,
     asn1cCalloc(sc->mappedQoS_FlowsToAdd, mappedQoS_FlowsToAdd);
     for (int q = 0; q < sdap_config->nb_qos; q++) {
       NR_QFI_t *qfi = calloc_or_fail(1, sizeof(*qfi));
-      *qfi = sdap_config->mapped_qos_flows[q];
+      *qfi = sdap_config->qos[q].qfi;
       LOG_D(NR_RRC, "Adding QFI %ld to DRB %d\n", *qfi, rb_id);
       asn1cSeqAdd(&mappedQoS_FlowsToAdd->list, qfi);
     }

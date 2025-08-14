@@ -330,17 +330,6 @@ static NR_SRB_ToAddModList_t *createSRBlist(gNB_RRC_UE_t *ue, uint8_t reestablis
   return list;
 }
 
-static nr_sdap_configuration_t get_sdap_config(pdusession_t *pduSession, int pdusession_id, const bool enable_sdap)
-{
-  nr_sdap_configuration_t sdap = {.pdu_session_id = pdusession_id, .nb_qos = pduSession->nb_qos};
-  for (int q = 0; q < sdap.nb_qos; q++) {
-    sdap.mapped_qos_flows[q] = pduSession->qos[q].qfi;
-  }
-  sdap.header_dl_absent = !enable_sdap;
-  sdap.header_ul_absent = !enable_sdap;
-  return sdap;
-}
-
 static NR_DRB_ToAddModList_t *createDRBlist(gNB_RRC_UE_t *ue, bool reestablish)
 {
   gNB_RRC_INST *rrc = RC.nrrrc[0];
@@ -354,8 +343,8 @@ static NR_DRB_ToAddModList_t *createDRBlist(gNB_RRC_UE_t *ue, bool reestablish)
       LOG_D(NR_RRC, "PDU Session %d not found, skip\n", drb->pdusession_id);
       continue;
     }
-    nr_sdap_configuration_t sdap = get_sdap_config(&pduSession->param, drb->pdusession_id, rrc->configuration.enable_sdap);
-    NR_DRB_ToAddMod_t *DRB_ToAddMod = get_DRB_ToAddMod(drb->drb_id, do_integrity, do_ciphering, reestablish, &sdap, NULL, &drb->pdcp_config);
+    nr_sdap_configuration_t *sdap = &pduSession->param.sdap_config;
+    NR_DRB_ToAddMod_t *DRB_ToAddMod = get_DRB_ToAddMod(drb->drb_id, do_integrity, do_ciphering, reestablish, sdap, NULL, &drb->pdcp_config);
     DevAssert(DRB_ToAddMod);
     asn1cSeqAdd(&DRB_configList->list, DRB_ToAddMod);
   }
@@ -744,8 +733,9 @@ void rrc_gNB_modify_dedicatedRRCReconfiguration(gNB_RRC_INST *rrc, gNB_RRC_UE_t 
     }
 
     // Reference TS23501 Table 5.7.4-1: Standardized 5QI to QoS characteristics mapping
-    for (qos_flow_index = 0; qos_flow_index < session->nb_qos; qos_flow_index++) {
-      pdusession_level_qos_parameter_t *qos = &session->qos[qos_flow_index];
+    nr_sdap_configuration_t *sdap = &session->sdap_config;
+    for (qos_flow_index = 0; qos_flow_index < sdap->nb_qos; qos_flow_index++) {
+      pdusession_level_qos_parameter_t *qos = &sdap->qos[qos_flow_index];
       switch (qos->fiveQI) {
         case 1: //100ms
         case 2: //150ms
@@ -2420,9 +2410,10 @@ unsigned int mask_flip(unsigned int x) {
 
 pdusession_level_qos_parameter_t *get_qos_characteristics(const int qfi, pdusession_t *pdu)
 {
-  for (int i = 0; i < pdu->nb_qos; i++) {
-    if (qfi == pdu->qos[i].qfi)
-      return &pdu->qos[i];
+  nr_sdap_configuration_t *sdap = &pdu->sdap_config;
+  for (int i = 0; i < sdap->nb_qos; i++) {
+    if (qfi == sdap->qos[i].qfi)
+      return &sdap->qos[i];
   }
   AssertFatal(1 == 0, "The pdu session %d does not contain a qos flow with qfi = %d\n", pdu->pdusession_id, qfi);
   return NULL;
@@ -2442,13 +2433,12 @@ f1ap_qos_flow_param_t get_qos_char_from_qos_flow_param(const pdusession_level_qo
     qos_char.qos_type = NON_DYNAMIC;
     qos_char.nondyn.fiveQI = qos_param->fiveQI;
   }
-  const ngap_allocation_retention_priority_t *a = &qos_param->allocation_retention_priority;
+  const qos_arp_t *a = &qos_param->arp;
   qos_char.arp.prio = a->priority_level;
-  qos_char.arp.preempt_cap = a->pre_emp_capability == NGAP_PRE_EMPTION_CAPABILITY_MAY_TRIGGER_PREEMPTION
+  qos_char.arp.preempt_cap = a->pre_emp_capability == PEC_MAY_TRIGGER_PREEMPTION
                                  ? MAY_TRIGGER_PREEMPTION
                                  : SHALL_NOT_TRIGGER_PREEMPTION;
-  qos_char.arp.preempt_vuln =
-      a->pre_emp_vulnerability == NGAP_PRE_EMPTION_VULNERABILITY_PREEMPTABLE ? PREEMPTABLE : NOT_PREEMPTABLE;
+  qos_char.arp.preempt_vuln = a->pre_emp_vulnerability == PEV_PREEMPTABLE ? PREEMPTABLE : NOT_PREEMPTABLE;
   return qos_char;
 }
 
