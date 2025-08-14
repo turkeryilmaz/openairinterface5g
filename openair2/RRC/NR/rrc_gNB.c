@@ -355,7 +355,7 @@ static NR_DRB_ToAddModList_t *createDRBlist(gNB_RRC_UE_t *ue, bool reestablish)
       continue;
     }
     nr_sdap_configuration_t sdap = get_sdap_config(&pduSession->param, drb->pdusession_id, rrc->configuration.enable_sdap);
-    NR_DRB_ToAddMod_t *DRB_ToAddMod = get_DRB_ToAddMod(drb->drb_id, do_integrity, do_ciphering, reestablish, &sdap, NULL, &rrc->pdcp_config);
+    NR_DRB_ToAddMod_t *DRB_ToAddMod = get_DRB_ToAddMod(drb->drb_id, do_integrity, do_ciphering, reestablish, &sdap, NULL, &drb->pdcp_config);
     DevAssert(DRB_ToAddMod);
     asn1cSeqAdd(&DRB_configList->list, DRB_ToAddMod);
   }
@@ -900,7 +900,7 @@ static void cuup_notify_reestablishment(gNB_RRC_INST *rrc, gNB_RRC_UE_t *ue_p)
     /* PDCP configuration */
     if (!drb_e1->pdcp_config)
       drb_e1->pdcp_config = malloc_or_fail(sizeof(*drb_e1->pdcp_config));
-    *drb_e1->pdcp_config = set_bearer_context_pdcp_config(rrc->pdcp_config, rrc->configuration.um_on_default_drb, ue_p->redcap_cap);
+    *drb_e1->pdcp_config = set_bearer_context_pdcp_config(drb->pdcp_config, rrc->configuration.um_on_default_drb, ue_p->redcap_cap);
     drb_e1->pdcp_config->pDCP_Reestablishment = true;
     /* increase DRB to modify counter */
     pdu_e1->numDRB2Modify += 1;
@@ -2467,6 +2467,7 @@ static int fill_drb_to_be_setup_from_e1_resp(const gNB_RRC_INST *rrc,
     for (int i = 0; i < pduSession[p].numDRBSetup; i++) {
       const DRB_nGRAN_setup_t *drb_config = &pduSession[p].DRBnGRanList[i];
       drb_t *rrc_drb = get_drb(&UE->drbs, pduSession[p].DRBnGRanList[i].id);
+      nr_pdcp_configuration_t pdcp = rrc_drb->pdcp_config;
       DevAssert(rrc_drb);
 
       f1ap_drb_to_setup_t *drb = &drbs[nb_drb];
@@ -2500,11 +2501,11 @@ static int fill_drb_to_be_setup_from_e1_resp(const gNB_RRC_INST *rrc,
       drb->up_ul_tnl[0].teid = drb_config->UpParamList[0].tl_info.teId;
       drb->up_ul_tnl_len = 1;
       drb->rlc_mode = rrc->configuration.um_on_default_drb ? F1AP_RLC_MODE_UM_BIDIR : F1AP_RLC_MODE_AM;
-      DevAssert(rrc->pdcp_config.drb.sn_size == 18 || rrc->pdcp_config.drb.sn_size == 12);
+      DevAssert(pdcp.drb.sn_size == 18 || pdcp.drb.sn_size == 12);
       drb->dl_pdcp_sn_len = malloc_or_fail(sizeof(*drb->dl_pdcp_sn_len));
-      *drb->dl_pdcp_sn_len = rrc->pdcp_config.drb.sn_size == 18 ? F1AP_PDCP_SN_18B : F1AP_PDCP_SN_12B;
+      *drb->dl_pdcp_sn_len = pdcp.drb.sn_size == 18 ? F1AP_PDCP_SN_18B : F1AP_PDCP_SN_12B;
       drb->ul_pdcp_sn_len = malloc_or_fail(sizeof(*drb->ul_pdcp_sn_len));
-      *drb->ul_pdcp_sn_len = rrc->pdcp_config.drb.sn_size == 18 ? F1AP_PDCP_SN_18B : F1AP_PDCP_SN_12B;
+      *drb->ul_pdcp_sn_len = pdcp.drb.sn_size == 18 ? F1AP_PDCP_SN_18B : F1AP_PDCP_SN_12B;
 
       nb_drb++;
     }

@@ -130,6 +130,8 @@ typedef struct drb_s {
   gtpu_tunnel_t du_tunnel_config;
   // F1-U Uplink Tunnel Config (on CU-UP side)
   gtpu_tunnel_t cuup_tunnel_config;
+  // DRB-specific PDCP configuration
+  nr_pdcp_configuration_t pdcp_config;
 } drb_t;
 
 typedef enum {
@@ -376,6 +378,7 @@ typedef struct gNB_RRC_INST_s {
   RB_HEAD(rrc_cuup_tree, nr_rrc_cuup_container_t) cuups; // CU-UPs, indexed by assoc_id
   size_t num_cuups;
 
+  // PDCP configuration parameters loaded during startup
   nr_pdcp_configuration_t pdcp_config;
   nr_rlc_configuration_t rlc_config;
 } gNB_RRC_INST;

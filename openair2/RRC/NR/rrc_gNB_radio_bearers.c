@@ -90,7 +90,7 @@ rrc_pdu_session_param_t *add_pduSession(seq_arr_t *sessions_ptr, const int rrc_u
 }
 
 /** @brief Add drb_t item in the UE context list for @param pdusession_id */
-drb_t *nr_rrc_add_drb(seq_arr_t *drb_ptr, int pdusession_id)
+drb_t *nr_rrc_add_drb(seq_arr_t *drb_ptr, int pdusession_id, nr_pdcp_configuration_t *pdcp)
 {
   DevAssert(drb_ptr);
 
@@ -102,7 +102,7 @@ drb_t *nr_rrc_add_drb(seq_arr_t *drb_ptr, int pdusession_id)
   }
 
   // Add item to the list
-  drb_t in = {.drb_id = drb_id, .pdusession_id = pdusession_id};
+  drb_t in = {.drb_id = drb_id, .pdusession_id = pdusession_id, .pdcp_config = *pdcp};
   seq_arr_push_back(drb_ptr, &in, sizeof(drb_t));
   drb_t *out = get_drb(drb_ptr, drb_id);
   DevAssert(out);

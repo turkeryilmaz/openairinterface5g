@@ -44,7 +44,7 @@ void cp_pdusession(pdusession_t *dst, const pdusession_t *src);
 
 void free_pdusession(void *ptr);
 
-drb_t *nr_rrc_add_drb(seq_arr_t *drb_ptr, int pdusession_id);
+drb_t *nr_rrc_add_drb(seq_arr_t *drb_ptr, int pdusession_id, nr_pdcp_configuration_t *pdcp);
 
 void free_drb(void *ptr);
 

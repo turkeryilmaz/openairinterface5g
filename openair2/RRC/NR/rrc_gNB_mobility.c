@@ -70,6 +70,7 @@ static int fill_drb_to_be_setup(const gNB_RRC_INST *rrc, gNB_RRC_UE_t *ue, f1ap_
 
   FOR_EACH_SEQ_ARR(drb_t *, rrc_drb, &ue->drbs) {
     f1ap_drb_to_setup_t *drb = &drbs[nb_drb];
+    nr_pdcp_configuration_t *pdcp = &rrc_drb->pdcp_config;
     nb_drb++;
     /* fetch an existing PDU session for this DRB */
 
@@ -99,11 +100,11 @@ static int fill_drb_to_be_setup(const gNB_RRC_INST *rrc, gNB_RRC_UE_t *ue, f1ap_
     drb->up_ul_tnl_len = 1;
 
     drb->rlc_mode = rrc->configuration.um_on_default_drb ? F1AP_RLC_MODE_UM_BIDIR : F1AP_RLC_MODE_AM;
-    DevAssert(rrc->pdcp_config.drb.sn_size == 18 || rrc->pdcp_config.drb.sn_size == 12);
+    DevAssert(pdcp->drb.sn_size == 18 || pdcp->drb.sn_size == 12);
     drb->dl_pdcp_sn_len = malloc_or_fail(sizeof(*drb->dl_pdcp_sn_len));
-    *drb->dl_pdcp_sn_len = rrc->pdcp_config.drb.sn_size == 18 ? F1AP_PDCP_SN_18B : F1AP_PDCP_SN_12B;
+    *drb->dl_pdcp_sn_len = pdcp->drb.sn_size == 18 ? F1AP_PDCP_SN_18B : F1AP_PDCP_SN_12B;
     drb->ul_pdcp_sn_len = malloc_or_fail(sizeof(*drb->ul_pdcp_sn_len));
-    *drb->ul_pdcp_sn_len = rrc->pdcp_config.drb.sn_size == 18 ? F1AP_PDCP_SN_18B : F1AP_PDCP_SN_12B;
+    *drb->ul_pdcp_sn_len = pdcp->drb.sn_size == 18 ? F1AP_PDCP_SN_18B : F1AP_PDCP_SN_12B;
   }
   return nb_drb;
 }

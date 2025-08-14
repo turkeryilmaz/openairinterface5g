@@ -253,7 +253,7 @@ static DRB_nGRAN_to_setup_t fill_drb_ngran_tosetup(const drb_t *rrc_drb, const p
   drb_ngran.sdap_config.sDAP_Header_UL = rrc->configuration.enable_sdap ? 0 : 1;
   drb_ngran.sdap_config.sDAP_Header_DL = rrc->configuration.enable_sdap ? 0 : 1;
 
-  drb_ngran.pdcp_config = set_bearer_context_pdcp_config(rrc->pdcp_config, rrc->configuration.um_on_default_drb, redcap_cap);
+  drb_ngran.pdcp_config = set_bearer_context_pdcp_config(rrc_drb->pdcp_config, rrc->configuration.um_on_default_drb, redcap_cap);
 
   drb_ngran.numCellGroups = 1;
   for (int k = 0; k < drb_ngran.numCellGroups; k++) {
@@ -338,7 +338,7 @@ bool trigger_bearer_setup(gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE, int n, pdusession
 
     pdu->numDRB2Setup = 1; // One DRB per PDU Session. TODO: Remove hardcoding
     for (int j = 0; j < pdu->numDRB2Setup; j++) {
-      drb_t *rrc_drb = nr_rrc_add_drb(&UE->drbs, session->pdusession_id); // consider &rrc->pdcp_config);
+      drb_t *rrc_drb = nr_rrc_add_drb(&UE->drbs, session->pdusession_id, &rrc->pdcp_config);
       if (!rrc_drb) {
         LOG_E(NR_RRC, "UE %d: failed to add DRB for PDU session ID %d\n", UE->rrc_ue_id, session->pdusession_id);
         return false;
