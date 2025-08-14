@@ -37,6 +37,7 @@
 #include "LAYER2/nr_rlc/nr_rlc_oai_api.h"
 
 //#define SRS_IND_DEBUG
+//#define SRS_IND_DEBUG_VERBOSE
 
 int get_ul_tda(gNB_MAC_INST *nrmac, int frame, int slot)
 {
@@ -1036,6 +1037,14 @@ static uint8_t get_max_tpmi(const NR_PUSCH_Config_t *pusch_Config,
   long *ul_FullPowerTransmission = pusch_Config->ext1 ? pusch_Config->ext1->ul_FullPowerTransmission_r16 : NULL;
   long *codebookSubset = pusch_Config->codebookSubset;
 
+#ifdef SRS_IND_DEBUG
+  LOG_I(NR_MAC,"get_max_tpmi %p, %lu, %u, %u %u %lu %lu %u\n",
+		  pusch_Config,
+		  *pusch_Config->txConfig,NR_PUSCH_Config__txConfig_nonCodebook,
+		  num_ue_srs_ports,*nrOfLayers, max_rank,
+		  *codebookSubset,NR_PUSCH_Config__codebookSubset_nonCoherent);
+#endif
+
   if (num_ue_srs_ports == 2) {
 
     if (max_rank == 1) {
@@ -1333,7 +1342,6 @@ static int nr_srs_tpmi_estimation(const NR_PUSCH_Config_t *pusch_Config,
     LOG_D(NR_MAC, "TPMI computation for ul_ri %i is not implemented yet!\n", ul_ri);
     return 0;
   }
-
   uint8_t tpmi_sel = 0;
   const uint8_t nrOfLayers = ul_ri + 1;
   int16_t precoded_channel_matrix_re[num_prgs * num_gnb_antenna_elements];
@@ -1345,6 +1353,10 @@ static int nr_srs_tpmi_estimation(const NR_PUSCH_Config_t *pusch_Config,
 
   uint8_t max_tpmi = get_max_tpmi(pusch_Config, num_ue_srs_ports, &nrOfLayers, &additional_max_tpmi);
   uint8_t end_tpmi_loop = additional_max_tpmi > max_tpmi ? additional_max_tpmi : max_tpmi;
+#ifdef SRS_IND_DEBUG
+  LOG_I(NR_MAC, "Running TPMI computations with: %ld %u %u %u %u %u %u %u %u\n",
+		 transform_precoding, normalized_iq_representation, num_gnb_antenna_elements, num_ue_srs_ports, prg_size, num_prgs, ul_ri, max_tpmi, end_tpmi_loop);
+#endif
 
   //                      channel_matrix                          x   precoder_matrix
   // [ (gI=0,uI=0) (gI=0,uI=1) ... (gI=0,uI=num_ue_srs_ports-1) ] x   [uI=0]
@@ -1372,14 +1384,14 @@ static int nr_srs_tpmi_estimation(const NR_PUSCH_Config_t *pusch_Config,
             precoded_channel_matrix_re[index_gI_pI] += h_times_w.r;
             precoded_channel_matrix_im[index_gI_pI] += h_times_w.i;
 
-#ifdef SRS_IND_DEBUG
+#ifdef SRS_IND_DEBUG_VERBOSE
             LOG_I(NR_MAC, "(pI %i, gI %i,  uI %i, layer_idx %i) w = %c, channel_matrix --> real %i, imag %i\n",
                   pI, gI, uI, layer_idx, w, channel_matrix16[index].r, channel_matrix16[index].i);
 #endif
           }
         }
 
-#ifdef SRS_IND_DEBUG
+#ifdef SRS_IND_DEBUG_VERBOSE
         LOG_I(NR_MAC, "(pI %i, gI %i) precoded_channel_coef --> real %i, imag %i\n",
               pI, gI, precoded_channel_matrix_re[index_gI_pI], precoded_channel_matrix_im[index_gI_pI]);
 #endif
@@ -1501,6 +1513,8 @@ void handle_nr_srs_measurements(const module_id_t module_id,
       LOG_I(NR_MAC, "nr_srs_channel_iq_matrix.num_ue_srs_ports = %i\n", nr_srs_channel_iq_matrix.num_ue_srs_ports);
       LOG_I(NR_MAC, "nr_srs_channel_iq_matrix.prg_size = %i\n", nr_srs_channel_iq_matrix.prg_size);
       LOG_I(NR_MAC, "nr_srs_channel_iq_matrix.num_prgs = %i\n", nr_srs_channel_iq_matrix.num_prgs);
+#endif
+#ifdef SRS_IND_DEBUG_VERBOSE
       c16_t *channel_matrix16 = (c16_t *)nr_srs_channel_iq_matrix.channel_matrix;
       c8_t *channel_matrix8 = (c8_t *)nr_srs_channel_iq_matrix.channel_matrix;
       for (int uI = 0; uI < nr_srs_channel_iq_matrix.num_ue_srs_ports; uI++) {
@@ -1518,6 +1532,19 @@ void handle_nr_srs_measurements(const module_id_t module_id,
         }
       }
 #endif
+      T(T_GNB_MAC_UL_FREQ_CHANNEL_ESTIMATE,
+        T_INT(0),
+        T_INT(srs_ind->rnti),
+        T_INT(frame),
+        T_INT(slot),
+        T_INT(nr_srs_channel_iq_matrix.num_gnb_antenna_elements),
+        T_INT(nr_srs_channel_iq_matrix.num_ue_srs_ports),
+        T_BUFFER(nr_srs_channel_iq_matrix.channel_matrix, 
+	        nr_srs_channel_iq_matrix.num_gnb_antenna_elements
+	        *nr_srs_channel_iq_matrix.num_ue_srs_ports
+	        *nr_srs_channel_iq_matrix.num_prgs
+	        *(nr_srs_channel_iq_matrix.normalized_iq_representation==0?2:4))
+       );
 
       NR_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
       NR_UE_UL_BWP_t *current_BWP = &UE->current_UL_BWP;
@@ -1538,7 +1565,6 @@ void handle_nr_srs_measurements(const module_id_t module_id,
                                                              nr_srs_channel_iq_matrix.num_prgs,
                                                              sched_ctrl->srs_feedback.ul_ri);
       stop_meas(&nr_mac->nr_srs_tpmi_computation_timer);
-
       sprintf(stats->srs_stats, "UL-RI %d, TPMI %d", sched_ctrl->srs_feedback.ul_ri + 1, sched_ctrl->srs_feedback.tpmi);
 
       break;

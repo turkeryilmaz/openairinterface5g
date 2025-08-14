@@ -35,6 +35,7 @@ FROM ubuntu:jammy AS oai-gnb
 ARG BUILD_OPTION
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=Europe/Paris
+ENV PATH="$PATH:/opt/oai-gnb/bin"
 
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get upgrade --yes && \
@@ -92,7 +93,10 @@ RUN case "${TARGETPLATFORM}" in \
 
 WORKDIR /opt/oai-gnb/bin
 COPY --from=gnb-build \
-    /oai-ran/cmake_targets/ran_build/build/nr-softmodem ./
+    /oai-ran/cmake_targets/ran_build/build/nr-softmodem ./ \
+    /oai-ran/cmake_targets/ran_build/build/common/utils/T/tracer/record ./ \
+    /oai-ran/cmake_targets/ran_build/build/common/utils/T/tracer/extract ./
+
 COPY ./docker/scripts/gnb_entrypoint.sh ./entrypoint.sh
 COPY ./docker/scripts/check-prach-io.sh ./check-prach-io.sh
 
@@ -138,6 +142,7 @@ RUN /bin/bash -c "ln -s /usr/local/lib/liboai_usrpdevif.so /usr/local/lib/liboai
         /usr/local/lib/libuhd.so.4.8.0
 
 WORKDIR /opt/oai-gnb
+COPY --from=gnb-build /oai-ran/common/utils/T/T_messages.txt ./
 #EXPOSE 2152/udp  # S1U, GTP/UDP
 #EXPOSE 22100/tcp # ?
 #EXPOSE 36412/udp # S1C, SCTP/UDP
