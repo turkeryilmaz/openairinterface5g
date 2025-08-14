@@ -191,7 +191,7 @@ void phy_init_nr_gNB(PHY_VARS_gNB *gNB)
   prach_vars->rxsigF = (int16_t **)malloc16_clear(Prx*sizeof(int16_t*));
   prach_vars->prach_ifft       = (int32_t *)malloc16_clear(1024*2*sizeof(int32_t));
 
-  init_prach_list(gNB);
+  init_prach_list(&gNB->prach_vars.list, prach_upper);
 
   int N_RB_UL = cfg->carrier_config.ul_grid_size[cfg->ssb_config.scs_common.value].value;
   int n_buf = Prx*max_ul_mimo_layers;
