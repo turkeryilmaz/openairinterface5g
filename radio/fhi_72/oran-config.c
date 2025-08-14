@@ -124,7 +124,7 @@ static void print_fh_init_io_cfg(const struct xran_io_cfg *io_cfg)
       io_cfg->one_vf_cu_plane);
   print_fh_eowd_cmn(io_cfg->id, &io_cfg->eowd_cmn[io_cfg->id]);
   printf("eowd_port (filled within xran library)\n");
-#ifdef F_RELEASE
+#if defined(F_RELEASE) || defined(K_RELEASE)
   printf("\
     bbu_offload %d\n",
       io_cfg->bbu_offload);
@@ -170,7 +170,11 @@ void print_fh_init(const struct xran_fh_init *fh_init)
 {
   printf("xran_fh_init:\n");
   print_fh_init_io_cfg(&fh_init->io_cfg);
+#ifdef K_RELEASE
+  print_fh_init_eaxcid_conf(&fh_init->eAxCId_conf[0]);
+#elif defined(E_RELEASE) || defined(F_RELEASE)
   print_fh_init_eaxcid_conf(&fh_init->eAxCId_conf);
+#endif
   printf("\
   xran_ports %d\n\
   dpdkBasebandFecMode %d\n\
@@ -188,7 +192,7 @@ void print_fh_init(const struct xran_fh_init *fh_init)
   printf("\
   totalBfWeights %d\n",
       fh_init->totalBfWeights);
-#ifdef F_RELEASE
+#if defined(F_RELEASE) || defined(K_RELEASE)
   printf("\
   mlogxranenable %d\n\
   dlCpProcBurst %d\n",
@@ -200,22 +204,48 @@ void print_fh_init(const struct xran_fh_init *fh_init)
 static void print_prach_config(const struct xran_prach_config *prach_conf)
 {
   printf("\
-  prach_config:\n\
-    nPrachConfIdx %d\n\
-    nPrachSubcSpacing %d\n\
-    nPrachZeroCorrConf %d\n\
-    nPrachRestrictSet %d\n\
-    nPrachRootSeqIdx %d\n\
-    nPrachFreqStart %d\n\
-    nPrachFreqOffset %d\n\
-    nPrachFilterIdx %d\n\
-    startSymId %d\n\
-    lastSymId %d\n\
-    startPrbc %d\n\
-    numPrbc %d\n\
-    timeOffset %d\n\
-    freqOffset %d\n\
-    eAxC_offset %d\n",
+"
+#ifdef K_RELEASE
+"    prach_config:\n\
+       nPrachConfIdx %d\n\
+       nPrachSubcSpacing %d\n\
+       nPrachZeroCorrConf %d\n\
+       nPrachRestrictSet %d\n\
+       nPrachRootSeqIdx %d\n\
+       nPrachFreqStart %d\n\
+       nPrachFreqOffset %d\n\
+       nPrachFilterIdx %d\n\
+       startSymId %d\n\
+       lastSymId %d\n\
+       startPrbc %d\n\
+       numPrbc %d\n\
+       timeOffset %d\n\
+       freqOffset %d\n\
+       prachEaxcOffset %d\n\
+       nprachformat %d\n\
+       periodicity %d\n\
+       startTime %d\n\
+       suboffset %d\n\
+       numSubCarriers %d\n\
+       nRep %d\n",
+#elif defined(E_RELEASE) || defined(F_RELEASE)
+"  prach_config:\n\
+     nPrachConfIdx %d\n\
+     nPrachSubcSpacing %d\n\
+     nPrachZeroCorrConf %d\n\
+     nPrachRestrictSet %d\n\
+     nPrachRootSeqIdx %d\n\
+     nPrachFreqStart %d\n\
+     nPrachFreqOffset %d\n\
+     nPrachFilterIdx %d\n\
+     startSymId %d\n\
+     lastSymId %d\n\
+     startPrbc %d\n\
+     numPrbc %d\n\
+     timeOffset %d\n\
+     freqOffset %d\n\
+     eAxC_offset %d\n",
+#endif
       prach_conf->nPrachConfIdx,
       prach_conf->nPrachSubcSpacing,
       prach_conf->nPrachZeroCorrConf,
@@ -230,8 +260,19 @@ static void print_prach_config(const struct xran_prach_config *prach_conf)
       prach_conf->numPrbc,
       prach_conf->timeOffset,
       prach_conf->freqOffset,
-      prach_conf->eAxC_offset);
-#ifdef F_RELEASE
+#ifdef K_RELEASE
+      prach_conf->prachEaxcOffset,
+      prach_conf->nprachformat,
+      prach_conf->periodicity,
+      prach_conf->startTime,
+      prach_conf->suboffset,
+      prach_conf->numSubCarriers,
+      prach_conf->nRep
+#elif defined(E_RELEASE) || defined(F_RELEASE)
+      prach_conf->eAxC_offset
+#endif
+      );
+#if defined(F_RELEASE) || defined(K_RELEASE)
   printf("\
     nPrachConfIdxLTE %d\n",
       prach_conf->nPrachConfIdxLTE);
@@ -242,21 +283,34 @@ static void print_srs_config(const struct xran_srs_config *srs_conf)
 {
   printf("\
   srs_config:\n\
-    symbMask %04x\n\
-    eAxC_offset %d\n",
+    symbMask %04x\n"
+#ifdef K_RELEASE
+"    srsEaxcOffset %d\n",
+#elif defined(E_RELEASE) || defined(F_RELEASE)
+"    eAxC_offset %d\n",
+#endif
       srs_conf->symbMask,
-      srs_conf->eAxC_offset);
+#ifdef K_RELEASE
+      srs_conf->srsEaxcOffset
+#elif defined(E_RELEASE) || defined(F_RELEASE)
+      srs_conf->eAxC_offset
+#endif
+      );
 }
 
 static void print_frame_config(const struct xran_frame_config *frame_conf)
 {
   printf("\
   frame_conf:\n\
-    nFrameDuplexType %s\n\
-    nNumerology %d\n\
-    nTddPeriod %d\n",
+    nFrameDuplexType %s\n"
+#if defined(E_RELEASE) || defined(F_RELEASE)
+"    nNumerology %d\n"
+#endif
+"    nTddPeriod %d\n",
       frame_conf->nFrameDuplexType == XRAN_TDD ? "TDD" : "FDD",
+#if defined(E_RELEASE) || defined(F_RELEASE)
       frame_conf->nNumerology,
+#endif
       frame_conf->nTddPeriod);
   for (int i = 0; i < frame_conf->nTddPeriod; ++i) {
     printf("    sSlotConfig[%d]: ", i);
@@ -268,7 +322,11 @@ static void print_frame_config(const struct xran_frame_config *frame_conf)
   }
 }
 
-static void print_ru_config(const struct xran_ru_config *ru_conf)
+static void print_ru_config(
+#ifdef K_RELEASE
+                            uint8_t mu_number,
+#endif
+                                               const struct xran_ru_config *ru_conf)
 {
   printf("\
   ru_config:\n\
@@ -278,9 +336,13 @@ static void print_ru_config(const struct xran_ru_config *ru_conf)
     iqWidth %d\n\
     compMeth %d\n\
     iqWidth_PRACH %d\n\
-    compMeth_PRACH %d\n\
-    fftSize %d\n\
-    byteOrder %s\n\
+    compMeth_PRACH %d\n"
+#ifdef K_RELEASE
+"    fftSize[mu_number] %d\n"
+#elif defined(E_RELEASE) || defined(F_RELEASE)
+"    fftSize %d\n"
+#endif
+"    byteOrder %s\n\
     iqOrder %s\n\
     xran_max_frame %d\n",
       ru_conf->xranTech == XRAN_RAN_5GNR ? "NR" : "LTE",
@@ -290,27 +352,106 @@ static void print_ru_config(const struct xran_ru_config *ru_conf)
       ru_conf->compMeth,
       ru_conf->iqWidth_PRACH,
       ru_conf->compMeth_PRACH,
+#ifdef K_RELEASE
+      ru_conf->fftSize[mu_number],
+#elif defined(E_RELEASE) || defined(F_RELEASE)
       ru_conf->fftSize,
+#endif
       ru_conf->byteOrder == XRAN_NE_BE_BYTE_ORDER ? "network/BE" : "CPU/LE",
       ru_conf->iqOrder == XRAN_I_Q_ORDER ? "I_Q" : "Q_I",
       ru_conf->xran_max_frame);
 }
 
+#ifdef K_RELEASE
+void print_fh_per_mu_cfg(const struct xran_fh_per_mu_cfg *perMu)
+{
+  printf("\
+  perMu:\n\
+    nDLBandwidth %d\n\
+    nULBandwidth %d\n",
+      perMu->nDLBandwidth,
+      perMu->nULBandwidth);
+
+  print_prach_config(&perMu->prach_conf);
+
+  printf("\
+    freqOffset %d\n\
+    nDLFftSize %d\n\
+    nULFftSize %d\n\
+    eaxcOffset %d\n\
+    nDLRBs %d\n\
+    nULRBs %d\n\
+    Tadv_cp_dl %d\n\
+    T2a_min_cp_dl %d\n\
+    T2a_max_cp_dl %d\n\
+    T2a_min_cp_ul %d\n\
+    T2a_max_cp_ul %d\n\
+    T2a_min_up %d\n\
+    T2a_max_up %d\n\
+    Ta3_min %d\n\
+    Ta3_max %d\n\
+    T1a_min_cp_dl %d\n\
+    T1a_max_cp_dl %d\n\
+    T1a_min_cp_ul %d\n\
+    T1a_max_cp_ul %d\n\
+    T1a_min_up %d\n\
+    T1a_max_up %d\n\
+    Ta4_min %d\n\
+    Ta4_max %d\n\
+    prachEnable %d\n\
+    prachConfigIndex %d\n\
+    prachConfigIndexLTE %d\n\
+    nbIotUlScs %d\n\
+    adv_tx_time %d\n",
+      perMu->freqOffset,
+      perMu->nDLFftSize,
+      perMu->nULFftSize,
+      perMu->eaxcOffset,
+      perMu->nDLRBs,
+      perMu->nULRBs,
+      perMu->Tadv_cp_dl,
+      perMu->T2a_min_cp_dl,
+      perMu->T2a_max_cp_dl,
+      perMu->T2a_min_cp_ul,
+      perMu->T2a_max_cp_ul,
+      perMu->T2a_min_up,
+      perMu->T2a_max_up,
+      perMu->Ta3_min,
+      perMu->Ta3_max,
+      perMu->T1a_min_cp_dl,
+      perMu->T1a_max_cp_dl,
+      perMu->T1a_min_cp_ul,
+      perMu->T1a_max_cp_ul,
+      perMu->T1a_min_up,
+      perMu->T1a_max_up,
+      perMu->Ta4_min,
+      perMu->Ta4_max,
+      perMu->prachEnable,
+      perMu->prachConfigIndex,
+      perMu->prachConfigIndexLTE,
+      perMu->nbIotUlScs,
+      perMu->adv_tx_time);
+}
+#endif
+
 void print_fh_config(const struct xran_fh_config *fh_config)
 {
   printf("xran_fh_config:\n");
+
   printf("\
   dpdk_port %d\n\
   sector_id %d\n\
   nCC %d\n\
   neAxc %d\n\
   neAxcUl %d\n\
-  nAntElmTRx %d\n\
-  nDLFftSize %d\n\
+  nAntElmTRx %d\n"
+#if defined(E_RELEASE) || defined(F_RELEASE)
+"  nDLFftSize %d\n\
   nULFftSize %d\n\
   nDLRBs %d\n\
-  nULRBs %d\n\
-  nDLAbsFrePointA %d\n\
+  nULRBs %d\n"
+#endif
+"  nDLAbsFrePointA %d\n\
   nULAbsFrePointA %d\n\
   nDLCenterFreqARFCN %d\n\
   nULCenterFreqARFCN %d\n\
@@ -322,17 +463,23 @@ void print_fh_config(const struct xran_fh_config *fh_config)
       fh_config->neAxc,
       fh_config->neAxcUl,
       fh_config->nAntElmTRx,
+#if defined(E_RELEASE) || defined(F_RELEASE)
       fh_config->nDLFftSize,
       fh_config->nULFftSize,
       fh_config->nDLRBs,
       fh_config->nULRBs,
+#endif
       fh_config->nDLAbsFrePointA,
       fh_config->nULAbsFrePointA,
       fh_config->nDLCenterFreqARFCN,
       fh_config->nULCenterFreqARFCN,
       fh_config->ttiCb,
       fh_config->ttiCbParam);
-
+#ifdef K_RELEASE
+  uint8_t mu_number = fh_config->mu_number[0];
+  print_fh_per_mu_cfg(&fh_config->perMu[mu_number]);
+#endif
+#if defined(E_RELEASE) || defined(F_RELEASE)
   printf("\
   Tadv_cp_dl %d\n\
   T2a_min_cp_dl %d\n\
@@ -368,34 +515,34 @@ void print_fh_config(const struct xran_fh_config *fh_config)
       fh_config->T1a_max_up,
       fh_config->Ta4_min,
       fh_config->Ta4_max);
-
+#endif
   printf("\
-  enableCP %d\n\
-  prachEnable %d\n\
-  srsEnable %d\n\
+  enableCP %d\n"
+#if defined(E_RELEASE) || defined(F_RELEASE)
+"  prachEnable %d\n"
+#endif
+"  srsEnable %d\n\
   puschMaskEnable %d\n\
   puschMaskSlot %d\n\
-  cp_vlan_tag %d\n\
-  up_vlan_tag %d\n\
   debugStop %d\n\
   debugStopCount %d\n\
   DynamicSectionEna %d\n\
   GPS_Alpha %d\n\
   GPS_Beta %d\n",
       fh_config->enableCP,
+#if defined(E_RELEASE) || defined(F_RELEASE)
       fh_config->prachEnable,
+#endif
       fh_config->srsEnable,
       fh_config->puschMaskEnable,
       fh_config->puschMaskSlot,
-      fh_config->cp_vlan_tag,
-      fh_config->up_vlan_tag,
       fh_config->debugStop,
       fh_config->debugStopCount,
       fh_config->DynamicSectionEna,
       fh_config->GPS_Alpha,
       fh_config->GPS_Beta);
 
-#ifdef F_RELEASE
+#if defined(F_RELEASE) || defined(K_RELEASE)
   printf("\
   srsEnableCp %d\n\
   SrsDelaySym %d\n",
@@ -403,10 +550,16 @@ void print_fh_config(const struct xran_fh_config *fh_config)
       fh_config->SrsDelaySym);
 #endif
 
+#if defined(E_RELEASE) || defined(F_RELEASE)
   print_prach_config(&fh_config->prach_conf);
+#endif
   print_srs_config(&fh_config->srs_conf);
   print_frame_config(&fh_config->frame_conf);
-  print_ru_config(&fh_config->ru_conf);
+  print_ru_config(
+#ifdef K_RELEASE
+                  mu_number,
+#endif
+                             &fh_config->ru_conf);
 
   printf("\
   bbdev_enc %p\n\
@@ -428,7 +581,7 @@ void print_fh_config(const struct xran_fh_config *fh_config)
       fh_config->max_sections_per_slot,
       fh_config->max_sections_per_symbol);
 
-#ifdef F_RELEASE
+#if defined(F_RELEASE) || defined(K_RELEASE)
   printf("\
   RunSlotPrbMapBySymbolEnable %d\n\
   dssEnable %d\n\
@@ -437,6 +590,16 @@ void print_fh_config(const struct xran_fh_config *fh_config)
       fh_config->RunSlotPrbMapBySymbolEnable,
       fh_config->dssEnable,
       fh_config->dssPeriod);
+#endif
+
+#ifdef K_RELEASE
+  printf("\
+  numMUs %d\n\
+  mu_number[0] %d\n\
+  nNumerology[0] %d\n",
+      fh_config->numMUs,
+      fh_config->mu_number[0],
+      fh_config->nNumerology[0]);
 #endif
 }
 
@@ -535,6 +698,10 @@ static bool set_fh_io_cfg(struct xran_io_cfg *io_cfg, const paramdef_t *fhip, in
   io_cfg->io_sleep = 0; // enable sleep on PMD cores; 0 -> no sleep
   io_cfg->nEthLinePerPort = *gpd(fhip, nump, ORAN_CONFIG_NETHPERPORT)->uptr; // 1, 2, 3 total number of links per O-RU (Fronthaul Ethernet link)
   io_cfg->nEthLineSpeed = *gpd(fhip, nump, ORAN_CONFIG_NETHSPEED)->uptr; // 10G,25G,40G,100G speed of Physical connection on O-RU
+#ifdef K_RELEASE
+  io_cfg->num_mbuf_alloc = NUM_MBUFS; // number of mbuf allocated by DPDK (optimal is n = (2^q - 1))
+  io_cfg->num_mbuf_vf_alloc = NUM_MBUFS_VF; // number of mbuf allocated by DPDK (optimal is n = (2^q - 1))
+#endif
   io_cfg->one_vf_cu_plane = (io_cfg->num_vfs == num_rus); // C-plane and U-plane use one VF
 
   /* eCPRI One-Way Delay Measurements common settings for O-DU and O-RU;
@@ -560,7 +727,7 @@ static bool set_fh_io_cfg(struct xran_io_cfg *io_cfg, const paramdef_t *fhip, in
   /* eCPRI OWDM per port variables for O-DU; this parameter is filled within xran library */
   // eowd_port[0][XRAN_VF_MAX]
 
-#ifdef F_RELEASE
+#if defined(F_RELEASE) || defined(K_RELEASE)
   io_cfg->bbu_offload = 0; // enable packet handling on BBU cores
 #endif
 
@@ -599,7 +766,7 @@ static bool set_fh_eaxcid_conf_mplane(struct xran_eaxcid_config *eaxcid_conf, en
   return true;
 }
 #else
-static bool set_fh_eaxcid_conf(struct xran_eaxcid_config *eaxcid_conf, enum xran_category cat)
+static bool __attribute__((unused)) set_fh_eaxcid_conf(struct xran_eaxcid_config *eaxcid_conf, enum xran_category cat)
 {
   /* CUS specification, section 3.1.3.1.6
     DU_port_ID - used to differentiate processing units at O-DU (e.g., different baseband cards).
@@ -690,7 +857,11 @@ static bool set_fh_init(void *mplane_api, struct xran_fh_init *fh_init, enum xra
   fh_init->xran_ports = num_rus; // since we use xran as O-DU, xran_ports is set to the number of RUs
   if (!set_fh_io_cfg(&fh_init->io_cfg, fhip, nump, num_rus))
     return false;
+#ifdef K_RELEASE
+  if (!set_fh_eaxcid_conf_mplane(&fh_init->eAxCId_conf[0], xran_cat, ru_session_list))
+#elif defined(E_RELEASE) || defined(F_RELEASE)
   if (!set_fh_eaxcid_conf_mplane(&fh_init->eAxCId_conf, xran_cat, ru_session_list))
+#endif
     return false;
   /* maximum transmission unit (MTU) is the size of the largest protocol data unit (PDU) that can be
     communicated in a single xRAN network layer transaction. Supported 1500 bytes and 9600 bytes (Jumbo Frame);
@@ -714,8 +885,13 @@ static bool set_fh_init(void *mplane_api, struct xran_fh_init *fh_init, enum xra
   fh_init->xran_ports = num_rus; // since we use xran as O-DU, xran_ports is set to the number of RUs
   if (!set_fh_io_cfg(&fh_init->io_cfg, fhip, nump, num_rus))
     return false;
+#ifdef K_RELEASE
+  if (!set_fh_eaxcid_conf(&fh_init->eAxCId_conf[0], xran_cat))
+    return false;
+#elif defined(E_RELEASE) || defined(F_RELEASE)
   if (!set_fh_eaxcid_conf(&fh_init->eAxCId_conf, xran_cat))
     return false;
+#endif
   /* maximum transmission unit (MTU) is the size of the largest protocol data unit (PDU) that can be
     communicated in a single xRAN network layer transaction. Supported 1500 bytes and 9600 bytes (Jumbo Frame);
     xran only checks if (MTU <= 1500), therefore setting any value > 1500, xran assumes 9600 value is used */
@@ -741,7 +917,7 @@ static bool set_fh_init(void *mplane_api, struct xran_fh_init *fh_init, enum xra
   fh_init->p_o_du_addr = NULL; // DPDK retreives DU MAC address within the xran library with rte_eth_macaddr_get() function
   fh_init->totalBfWeights = 0; // only used if id = O_RU (for emulation); C-plane extension types; section 5.4.6 of CUS spec
 
-#ifdef F_RELEASE
+#if defined(F_RELEASE) || defined(K_RELEASE)
   fh_init->mlogxranenable = 0; // enable mlog; 0 -> disabled
   fh_init->dlCpProcBurst = 0; /* 1 -> DL CP processing will be done on single symbol,
                                  0 -> DL CP processing will be spread across all allowed symbols and multiple cores to reduce burstiness */
@@ -774,7 +950,7 @@ static bool set_fh_prach_config(void *mplane_api,
   prach_config->nPrachRootSeqIdx = 0; // PRACH Root Sequence Index; should be saved from config file; 1 = 839, 2 = 139; not used in xran
   prach_config->nPrachFreqStart = s7cfg->prach_freq_start; // PRACH frequency start (MSG1)
   prach_config->nPrachFreqOffset = (s7cfg->prach_freq_start * 12 - oai0->num_rb_dl * 6) * 2; // PRACH frequency offset
-  prach_config->nPrachFilterIdx = 0; /* PRACH filter index; not used in xran;
+  prach_config->nPrachFilterIdx = XRAN_FILTERINDEX_PRACH_ABC; /* PRACH filter index; not used in xran;
                                         in E release hardcoded to XRAN_FILTERINDEX_PRACH_ABC (preamble format A1~3, B1~4, C0, C2)
                                         in F release properly calculated */
 
@@ -785,7 +961,7 @@ static bool set_fh_prach_config(void *mplane_api,
   prach_config->numPrbc = 0;
   prach_config->timeOffset = 0;
   prach_config->freqOffset = 0;
-#ifdef F_RELEASE
+#if defined(F_RELEASE) || defined(K_RELEASE)
   prach_config->nPrachConfIdxLTE = 0; // used only if DSS enabled and technology is XRAN_RAN_LTE
 #endif
 
@@ -796,10 +972,18 @@ static bool set_fh_prach_config(void *mplane_api,
      Please note that this approach only applies to the RUs that support this functionality, e.g. LITEON RU. */
 #ifdef OAI_MPLANE
   xran_mplane_t *xran_mplane = (xran_mplane_t *)mplane_api;
+#ifdef K_RELEASE
+  prach_config->prachEaxcOffset = xran_mplane->prach_offset;
+#elif defined(E_RELEASE) || defined(F_RELEASE)
   prach_config->eAxC_offset = xran_mplane->prach_offset;
+#endif
 #else
   uint8_t offset = *gpd(prachp, nprach, ORAN_PRACH_CONFIG_EAXC_OFFSET)->u8ptr;
+#ifdef K_RELEASE
+  prach_config->prachEaxcOffset = (offset != 0) ? offset : max_num_ant;
+#elif defined(E_RELEASE) || defined(F_RELEASE)
   prach_config->eAxC_offset = (offset != 0) ? offset : max_num_ant;
+#endif
 #endif
 
   g_kbar = *gpd(prachp, nprach, ORAN_PRACH_CONFIG_KBAR)->uptr;
@@ -811,8 +995,10 @@ static bool set_fh_frame_config(const openair0_config_t *oai0, struct xran_frame
 {
   const split7_config_t *s7cfg = &oai0->split7;
   frame_config->nFrameDuplexType = oai0->duplex_mode == duplex_mode_TDD ? XRAN_TDD : XRAN_FDD; // Frame Duplex type:  0 -> FDD, 1 -> TDD
+#if defined(E_RELEASE) || defined(F_RELEASE)
   frame_config->nNumerology = oai0->nr_scs_for_raster; /* 0 -> 15kHz,  1 -> 30kHz,  2 -> 60kHz
                                                           3 -> 120kHz, 4 -> 240kHz */
+#endif
 
   if (frame_config->nFrameDuplexType == XRAN_FDD)
     return true;
@@ -829,7 +1015,11 @@ static bool set_fh_frame_config(const openair0_config_t *oai0, struct xran_frame
   return true;
 }
 
-static bool set_fh_ru_config(void *mplane_api, const paramdef_t *rup, uint16_t fftSize, int nru, enum xran_category xran_cat, struct xran_ru_config *ru_config)
+static bool set_fh_ru_config(void *mplane_api, const paramdef_t *rup, uint16_t fftSize, int nru, enum xran_category xran_cat
+#ifdef K_RELEASE
+                                                                                                                            , uint8_t mu_number
+#endif
+                                                                                                                                               , struct xran_ru_config *ru_config)
 {
   ru_config->xranTech = XRAN_RAN_5GNR; // 5GNR or LTE
   ru_config->xranCat = xran_cat; // mode: Catergory A or Category B
@@ -848,7 +1038,11 @@ static bool set_fh_ru_config(void *mplane_api, const paramdef_t *rup, uint16_t f
   ru_config->compMeth_PRACH = ru_config->iqWidth_PRACH < 16 ? XRAN_COMPMETHOD_BLKFLOAT : XRAN_COMPMETHOD_NONE; // compression method for PRACH
 
   AssertFatal(fftSize > 0, "FFT size cannot be 0\n");
+#ifdef K_RELEASE
+  ru_config->fftSize[mu_number] = fftSize; // FFT Size
+#elif defined(E_RELEASE) || defined(F_RELEASE)
   ru_config->fftSize = fftSize; // FFT Size
+#endif
   ru_config->byteOrder = XRAN_NE_BE_BYTE_ORDER; // order of bytes in int16_t in buffer; big or little endian
   ru_config->iqOrder = XRAN_I_Q_ORDER; // order of IQs in the buffer
   ru_config->xran_max_frame = 0; // max frame number supported; if not specified, default of 1023 is used
@@ -871,6 +1065,83 @@ static bool set_maxmin_pd(const paramdef_t *pd, int num, const char *name, uint1
   return true;
 }
 
+#ifdef K_RELEASE
+static bool set_fh_per_mu_cfg(void *mplane_api, int ru_idx, int num_rus, const openair0_config_t *oai0, struct xran_fh_per_mu_cfg *perMu)
+{
+  char aprefix[MAX_OPTNAME_SIZE] = {0};
+
+  paramdef_t FHconfigs[] = ORAN_FH_DESC;
+  paramlist_def_t FH_ConfigList = {CONFIG_STRING_ORAN_FH};
+  sprintf(aprefix, "%s", CONFIG_STRING_ORAN);
+  const int nfh = sizeofArray(FHconfigs);
+  config_getlist(config_get_if(), &FH_ConfigList, FHconfigs, nfh, aprefix);
+  if (FH_ConfigList.numelt == 0) {
+    printf("No configuration section \"%s\" found inside \"%s\": cannot initialize fhi_lib!\n", CONFIG_STRING_ORAN_FH, aprefix);
+    return false;
+  }
+  paramdef_t *fhp = FH_ConfigList.paramarray[ru_idx];
+
+  paramdef_t prachp[] = ORAN_PRACH_DESC;
+  int nprach = sizeofArray(prachp);
+  sprintf(aprefix, "%s.%s.[%d].%s", CONFIG_STRING_ORAN, CONFIG_STRING_ORAN_FH, ru_idx, CONFIG_STRING_ORAN_PRACH);
+  int ret = config_get(config_get_if(), prachp, nprach, aprefix);
+  if (ret < 0) {
+    printf("No configuration section \"%s\": cannot initialize fhi_lib!\n", aprefix);
+    return false;
+  }
+
+  perMu->nDLBandwidth = 0; // Carrier bandwidth for in MHz. Value: 5->400. Not used in K release
+  perMu->nULBandwidth = 0; // Carrier bandwidth for in MHz. Value: 5->400. Not used in K release
+  if (!set_fh_prach_config(mplane_api, oai0, RTE_MAX(oai0->tx_num_channels / num_rus, oai0->rx_num_channels / num_rus), prachp, nprach, &perMu->prach_conf))
+    return false;
+  perMu->freqOffset = 0;
+
+  perMu->nDLFftSize = 0; // DL FFT size
+  perMu->nULFftSize = 0; // UL FFT size
+
+  perMu->eaxcOffset = 0; // Starting value of Eaxc for PDSCH, PUSCH packets (Absolute value) of this numerology. Should be unique across all numerologies for the RU
+
+  perMu->nDLRBs = oai0->num_rb_dl; // DL PRB
+  perMu->nULRBs = oai0->num_rb_dl; // UL PRB
+
+  /* DU delay profile */
+  if (!set_maxmin_pd(fhp, nfh, ORAN_FH_CONFIG_T1A_CP_DL, &perMu->T1a_min_cp_dl, &perMu->T1a_max_cp_dl)) // E - min not used in xran, max yes; F - both min and max are used in xran
+    return false;
+  if (!set_maxmin_pd(fhp, nfh, ORAN_FH_CONFIG_T1A_CP_UL, &perMu->T1a_min_cp_ul, &perMu->T1a_max_cp_ul)) // both E and F - min not used in xran, max yes
+    return false;
+  if (!set_maxmin_pd(fhp, nfh, ORAN_FH_CONFIG_T1A_UP, &perMu->T1a_min_up, &perMu->T1a_max_up)) // both E and F - min not used in xran, max yes
+    return false;
+  if (!set_maxmin_pd(fhp, nfh, ORAN_FH_CONFIG_TA4, &perMu->Ta4_min, &perMu->Ta4_max)) // both E and F - min not used in xran, max yes
+    return false;
+
+  perMu->prachEnable = 1; // enable PRACH
+  const split7_config_t *s7cfg = &oai0->split7;
+  perMu->prachConfigIndex = s7cfg->prach_index; // TS36.211 - Table 5.7.1-2 : PRACH Configuration Index
+  perMu->prachConfigIndexLTE = 0; // PRACH Configuration Index for LTE in dss case
+
+  perMu->nbIotUlScs = XRAN_NBIOT_UL_SCS_15; /* Applicable only for NB-IOT (mu=4). NBIOT supports asymmetric SCS usage in
+                 downlink and uplink directions. xran library will use this parameter to derive
+                 slot-duration for UL NB-IOT:
+                 XRAN_NBIOT_UL_SCS_15: slot-duration=1ms
+                 XRAN_NBIOT_UL_SCS_3_75: slot-duration=2ms */
+  perMu->adv_tx_time = 0; // Time by which the packet should be transmitted in advance (microseconds)
+  return true;
+}
+
+xran_active_numerologies_per_tti activeMUs;
+
+static bool set_activeMUs(xran_active_numerologies_per_tti *p_activeMUs, uint8_t mu)
+{
+  for (int i = 0; i < XRAN_N_FE_BUF_LEN; i++) {
+    for (int j = 0; j < XRAN_MAX_NUM_MU; j++) {
+      p_activeMUs->numerology[i][j] = false;
+    }
+    p_activeMUs->numerology[i][mu] = true;
+  }
+  return true;
+}
+#endif
+
 static bool set_fh_config(void *mplane_api, int ru_idx, int num_rus, enum xran_category xran_cat, const openair0_config_t *oai0, struct xran_fh_config *fh_config)
 {
   AssertFatal(num_rus == 1 || num_rus == 2, "only support 1 or 2 RUs as of now\n");
@@ -886,9 +1157,10 @@ static bool set_fh_config(void *mplane_api, int ru_idx, int num_rus, enum xran_c
   DevAssert(oai0->nr_band > 0);
   AssertFatal(oai0->threequarter_fs == 0, "cannot use three-quarter sampling with O-RAN 7.2 split\n");
 
+  char aprefix[MAX_OPTNAME_SIZE] = {0};
+#if defined(E_RELEASE) || defined(F_RELEASE)
   paramdef_t FHconfigs[] = ORAN_FH_DESC;
   paramlist_def_t FH_ConfigList = {CONFIG_STRING_ORAN_FH};
-  char aprefix[MAX_OPTNAME_SIZE] = {0};
   sprintf(aprefix, "%s", CONFIG_STRING_ORAN);
   const int nfh = sizeofArray(FHconfigs);
   config_getlist(config_get_if(), &FH_ConfigList, FHconfigs, nfh, aprefix);
@@ -897,6 +1169,7 @@ static bool set_fh_config(void *mplane_api, int ru_idx, int num_rus, enum xran_c
     return false;
   }
   paramdef_t *fhp = FH_ConfigList.paramarray[ru_idx];
+#endif
 
   paramdef_t rup[] = ORAN_RU_DESC;
   int nru = sizeofArray(rup);
@@ -906,6 +1179,7 @@ static bool set_fh_config(void *mplane_api, int ru_idx, int num_rus, enum xran_c
     printf("No configuration section \"%s\": cannot initialize fhi_lib!\n", aprefix);
     return false;
   }
+#if defined(E_RELEASE) || defined(F_RELEASE)
   paramdef_t prachp[] = ORAN_PRACH_DESC;
   int nprach = sizeofArray(prachp);
   sprintf(aprefix, "%s.%s.[%d].%s", CONFIG_STRING_ORAN, CONFIG_STRING_ORAN_FH, ru_idx, CONFIG_STRING_ORAN_PRACH);
@@ -914,6 +1188,7 @@ static bool set_fh_config(void *mplane_api, int ru_idx, int num_rus, enum xran_c
     printf("No configuration section \"%s\": cannot initialize fhi_lib!\n", aprefix);
     return false;
   }
+#endif
 
   memset(fh_config, 0, sizeof(*fh_config));
 
@@ -921,12 +1196,18 @@ static bool set_fh_config(void *mplane_api, int ru_idx, int num_rus, enum xran_c
   fh_config->sector_id = 0; // Band sector ID for FH; not used in xran
   fh_config->nCC = 1; // number of Component carriers supported on FH; M-plane info
   fh_config->neAxc = RTE_MAX(oai0->num_distributed_ru * oai0->tx_num_channels / num_rus, oai0->num_distributed_ru * oai0->rx_num_channels / num_rus); // number of eAxc supported on one CC = max(PDSCH, PUSCH)
+#ifdef K_RELEASE
+  fh_config->neAxcUl = RTE_MAX(oai0->num_distributed_ru * oai0->tx_num_channels / num_rus, oai0->num_distributed_ru * oai0->rx_num_channels / num_rus); // number of eAxc supported on one CC for UL direction = PUSCH
+#elif defined(E_RELEASE) || defined(F_RELEASE)
   fh_config->neAxcUl = 0; // number of eAxc supported on one CC for UL direction = PUSCH; used only if XRAN_CATEGORY_B
+#endif
   fh_config->nAntElmTRx = 0; // number of antenna elements for TX and RX = SRS; used only if XRAN_CATEGORY_B
+#if defined(E_RELEASE) || defined(F_RELEASE)
   fh_config->nDLFftSize = 0; // DL FFT size; not used in xran
   fh_config->nULFftSize = 0; // UL FFT size; not used in xran
   fh_config->nDLRBs = oai0->num_rb_dl; // DL PRB; used in oaioran.c/oran-init.c; not used in xran, neither in E nor in F release
   fh_config->nULRBs = oai0->num_rb_dl; // UL PRB; used in oaioran.c/oran-init.c; in xran E release not used so the patch fixes it, but in xran F release this value is properly used
+#endif
   fh_config->nDLAbsFrePointA = 0; // Abs Freq Point A of the Carrier Center Frequency for in KHz Value; not used in xran
   fh_config->nULAbsFrePointA = 0; // Abs Freq Point A of the Carrier Center Frequency for in KHz Value; not used in xran
   fh_config->nDLCenterFreqARFCN = 0; // center frequency for DL in NR-ARFCN; not used in xran
@@ -934,6 +1215,13 @@ static bool set_fh_config(void *mplane_api, int ru_idx, int num_rus, enum xran_c
   fh_config->ttiCb = NULL; // check tti_to_phy_cb(), tx_cp_dl_cb() and tx_cp_ul_cb => first_call
   fh_config->ttiCbParam = NULL; // check tti_to_phy_cb(), tx_cp_dl_cb() and tx_cp_ul_cb => first_call
 
+#ifdef K_RELEASE
+  uint8_t mu_number = oai0->nr_scs_for_raster;
+  if(!set_fh_per_mu_cfg(mplane_api, ru_idx, num_rus, oai0, &fh_config->perMu[mu_number]))
+    return false;
+#endif
+
+#if defined(E_RELEASE) || defined(F_RELEASE)
   /* DU delay profile */
   if (!set_maxmin_pd(fhp, nfh, ORAN_FH_CONFIG_T1A_CP_DL, &fh_config->T1a_min_cp_dl, &fh_config->T1a_max_cp_dl)) // E - min not used in xran, max yes; F - both min and max are used in xran
     return false;
@@ -943,32 +1231,49 @@ static bool set_fh_config(void *mplane_api, int ru_idx, int num_rus, enum xran_c
     return false;
   if (!set_maxmin_pd(fhp, nfh, ORAN_FH_CONFIG_TA4, &fh_config->Ta4_min, &fh_config->Ta4_max)) // both E and F - min not used in xran, max yes
     return false;
+#endif
 
   fh_config->enableCP = 1; // enable C-plane
+#if defined(E_RELEASE) || defined(F_RELEASE)
   fh_config->prachEnable = 1; // enable PRACH
+#endif
   fh_config->srsEnable = 0; // enable SRS; used only if XRAN_CATEGORY_B
-#ifdef F_RELEASE
+#if defined(F_RELEASE) || defined(K_RELEASE)
   fh_config->srsEnableCp = 0; // enable SRS CP; used only if XRAN_CATEGORY_B
   fh_config->SrsDelaySym = 0; // number of SRS delay symbols; used only if XRAN_CATEGORY_B
 #endif
   fh_config->puschMaskEnable = 0; // enable PUSCH mask; only used if id = O_RU
   fh_config->puschMaskSlot = 0; // specific which slot PUSCH channel masked; only used if id = O_RU
+#ifdef K_RELEASE
+  fh_config->csirsEnable = 0; // enable CSI-RS (Cat B specific)
+#elif defined(E_RELEASE) || defined(F_RELEASE)
   fh_config->cp_vlan_tag = 0; // C-plane VLAN tag; not used in xran; needed for M-plane
   fh_config->up_vlan_tag = 0; // U-plane VLAN tag; not used in xran; needed for M-plane
+#endif
   fh_config->debugStop = 0; // enable auto stop; only used if id = O_RU
   fh_config->debugStopCount = 0; // enable auto stop after number of Tx packets; not used in xran
   fh_config->DynamicSectionEna = 0; // enable dynamic C-Plane section allocation
   fh_config->GPS_Alpha = 0; // refers to alpha as defined in section 9.7.2 of ORAN spec. this value should be alpha*(1/1.2288ns), range 0 - 1e7 (ns); offset_nsec = (pConf->GPS_Beta - offset_sec * 100) * 1e7 + pConf->GPS_Alpha
   fh_config->GPS_Beta = 0; // beta value as defined in section 9.7.2 of ORAN spec. range -32767 ~ +32767; offset_sec = pConf->GPS_Beta / 100
-
+#ifdef K_RELEASE
+  fh_config->numMUs = 1;
+  fh_config->mu_number[0] = mu_number; /* 0 -> 15kHz,  1 -> 30kHz,  2 -> 60kHz, 3 -> 120kHz, 4 -> 240kHz */
+  fh_config->nNumerology[0] = mu_number; /* 0 -> 15kHz,  1 -> 30kHz,  2 -> 60kHz, 3 -> 120kHz, 4 -> 240kHz */
+#elif defined(E_RELEASE) || defined(F_RELEASE)
   if (!set_fh_prach_config(mplane_api, oai0, fh_config->neAxc, prachp, nprach, &fh_config->prach_conf))
     return false;
+#endif
+
   /* SRS only used if XRAN_CATEGORY_B
     Note: srs_config->eAxC_offset >= prach_config->eAxC_offset + PRACH */
   // fh_config->srs_conf = {0};
   if (!set_fh_frame_config(oai0, &fh_config->frame_conf))
     return false;
-  if (!set_fh_ru_config(mplane_api, rup, oai0->split7.fftSize, nru, xran_cat, &fh_config->ru_conf))
+  if (!set_fh_ru_config(mplane_api, rup, oai0->split7.fftSize, nru, xran_cat
+#ifdef K_RELEASE
+                                                                            , mu_number
+#endif
+                                                                                       , &fh_config->ru_conf))
     return false;
 
   fh_config->bbdev_enc = NULL; // call back to poll BBDev encoder
@@ -992,12 +1297,17 @@ static bool set_fh_config(void *mplane_api, int ru_idx, int num_rus, enum xran_c
   fh_config->max_sections_per_slot = 0; // not used in xran
   fh_config->max_sections_per_symbol = 0; // not used in xran
 
-#ifdef F_RELEASE
+#if defined(F_RELEASE) || defined(K_RELEASE)
   fh_config->RunSlotPrbMapBySymbolEnable = 0; // enable PRB mapping by symbol with multisection
 
   fh_config->dssEnable = 0; // enable DSS (extension-9)
   fh_config->dssPeriod = 0; // DSS pattern period for LTE/NR
   // fh_config->technology[XRAN_MAX_DSS_PERIODICITY] // technology array represents slot is LTE(0)/NR(1); used only if DSS enabled
+#endif
+#ifdef K_RELEASE
+  if (!set_activeMUs(&activeMUs, mu_number))
+    return false;
+  fh_config->activeMUs = &activeMUs;
 #endif
 
   return true;
