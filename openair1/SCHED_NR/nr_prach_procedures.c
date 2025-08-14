@@ -63,7 +63,7 @@ void L1_nr_prach_procedures(PHY_VARS_gNB *gNB, int frame, int slot, nfapi_nr_rac
 
   ru=gNB->RU_list[0];
 
-  prach_item_t *prach_id = find_nr_prach(gNB, frame, slot, SEARCH_EXIST);
+  prach_item_t *prach_id = find_nr_prach(&gNB->prach_vars.list, frame, slot, SEARCH_EXIST);
   if (!prach_id) {
     return;
   }
@@ -86,7 +86,7 @@ void L1_nr_prach_procedures(PHY_VARS_gNB *gNB, int frame, int slot, nfapi_nr_rac
 
     rx_nr_prach(gNB, prach_pdu, prach_oc, frame, slot, &max_preamble[0], &max_preamble_energy[0], &max_preamble_delay[0]);
     LOG_D(NR_PHY, "Freeing PRACH entry\n");
-    free_nr_prach_entry(gNB, prach_id);
+    free_nr_prach_entry(&gNB->prach_vars.list, prach_id);
     LOG_D(NR_PHY,
           "[RAPROC] Frame %d, slot %d, occasion %d (prachStartSymbol %d) : Most likely preamble %d, energy %d.%d dB delay %d "
           "(prach_energy counter %d)\n",

@@ -141,7 +141,7 @@ typedef struct {
   int16_t **rxsigF;
   /// \brief local buffer to compute prach_ifft
   int32_t *prach_ifft;
-  prach_item_t list[NUMBER_OF_NR_PRACH_MAX];
+  prach_list_t list;
 } NR_gNB_PRACH;
 
 typedef struct {
