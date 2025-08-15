@@ -26,7 +26,7 @@
 extern PHY_VARS_NR_UE ***PHY_vars_UE_g;
 
 extern uint64_t downlink_frequency[MAX_NUM_CCs][4];
-extern int32_t uplink_frequency_offset[MAX_NUM_CCs][4];
+extern int64_t uplink_frequency_offset[MAX_NUM_CCs][4];
 extern uint64_t sidelink_frequency[MAX_NUM_CCs][4];
 
 #endif /*__PHY_EXTERN_H__ */
