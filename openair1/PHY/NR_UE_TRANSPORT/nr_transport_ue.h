@@ -66,6 +66,8 @@ typedef struct {
   uint32_t C;
   /// Number of bits in code segments
   uint32_t K;
+  ///
+  uint32_t Kb;
   /// Total number of bits across all segments
   uint32_t sumKr;
   /// Number of "Filler" bits
