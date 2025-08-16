@@ -115,6 +115,8 @@ void nr_ue_dl_scheduler(NR_UE_MAC_INST_t *mac, nr_downlink_indication_t *dl_info
 
 csi_payload_t nr_ue_aperiodic_csi_reporting(NR_UE_MAC_INST_t *mac, dci_field_t csi_request, int tda, long *K2);
 
+csi_payload_t nr_ue_periodic_csi_reporting(NR_UE_MAC_INST_t *mac, const int frame, const int slot);
+
 nr_dci_format_t nr_ue_process_dci_indication_pdu(NR_UE_MAC_INST_t *mac, frame_t frame, int slot, fapi_nr_dci_indication_pdu_t *dci);
 
 int8_t nr_ue_process_csirs_measurements(NR_UE_MAC_INST_t *mac,
@@ -363,4 +365,11 @@ void nr_ue_sidelink_scheduler(nr_sidelink_indication_t *sl_ind, NR_UE_MAC_INST_t
 
 NR_SearchSpace_t *get_common_search_space(const NR_UE_MAC_INST_t *mac, const NR_SearchSpaceId_t ss_id);
 
+void get_pusch_frame_slot(const int current_frame,
+                          const int current_slot,
+                          const int k2,
+                          const int delta,
+                          const int slots_per_frame,
+                          frame_t *frame_tx,
+                          int *slot_tx);
 #endif

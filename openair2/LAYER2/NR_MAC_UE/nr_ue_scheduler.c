@@ -558,8 +558,8 @@ int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
 
   } else if (dci) {
     pusch_config_pdu->ulsch_indicator = dci->ulsch_indicator;
-    if (dci->csi_request.nbits > 0 && dci->csi_request.val > 0) {
-      AssertFatal(csi_report, "CSI report needs to be present in case of CSI request\n");
+    // CSI on PUSCH
+    if (csi_report) {
       pusch_config_pdu->pusch_uci.csi_part1_bit_length = csi_report->p1_bits;
       pusch_config_pdu->pusch_uci.csi_part1_payload = csi_report->part1_payload;
       pusch_config_pdu->pusch_uci.csi_part2_bit_length = csi_report->p2_bits;
@@ -579,10 +579,6 @@ int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
                                                      *beta_offsets->betaOffsetCSI_Part2_Index1 :
                                                      *beta_offsets->betaOffsetCSI_Part2_Index2;
       pusch_config_pdu->pusch_uci.alpha_scaling = onPusch->scaling;
-    }
-    else {
-      pusch_config_pdu->pusch_uci.csi_part1_bit_length = 0;
-      pusch_config_pdu->pusch_uci.csi_part2_bit_length = 0;
     }
 
     pusch_config_pdu->pusch_uci.harq_ack_bit_length = 0;
@@ -918,8 +914,8 @@ csi_payload_t nr_ue_aperiodic_csi_reporting(NR_UE_MAC_INST_t *mac, dci_field_t c
         if (report_config->reportConfigId == id) {
           struct NR_CSI_ReportConfig__reportConfigType__aperiodic__reportSlotOffsetList *offset_list = &report_config->reportConfigType.choice.aperiodic->reportSlotOffsetList;
           AssertFatal(tda < offset_list->list.count, "TDA index from DCI %d exceeds slot offset list %d\n", tda, offset_list->list.count);
-          if (k2 == NULL || *k2 < *offset_list->list.array[tda])
-            k2 = offset_list->list.array[tda];
+          if (k2 != NULL && *k2 < *offset_list->list.array[tda])
+            *k2 = *offset_list->list.array[tda];
           found = c;
           break;
         }
@@ -928,6 +924,33 @@ csi_payload_t nr_ue_aperiodic_csi_reporting(NR_UE_MAC_INST_t *mac, dci_field_t c
       num_trig++;
       csi = nr_get_csi_payload(mac, found, ON_PUSCH, csi_measconfig);
     }
+  }
+  return csi;
+}
+
+csi_payload_t nr_ue_periodic_csi_reporting(NR_UE_MAC_INST_t *mac, const int frame, const int slot)
+{
+  csi_payload_t csi = {0};
+  if (!mac->sc_info.csi_MeasConfig)
+    return csi;
+
+  const NR_CSI_MeasConfig_t *csi_measconfig = mac->sc_info.csi_MeasConfig;
+  for (int csi_report_id = 0; csi_report_id < csi_measconfig->csi_ReportConfigToAddModList->list.count; csi_report_id++) {
+    AssertFatal(csi_report_id == 0, "Only one pediodic CSI report supported for now\n");
+    const NR_CSI_ReportConfig_t *csirep = csi_measconfig->csi_ReportConfigToAddModList->list.array[csi_report_id];
+
+    if (csirep->reportConfigType.present != NR_CSI_ReportConfig__reportConfigType_PR_periodic) {
+      continue;
+    }
+
+    int period, offset;
+    csi_period_offset(csirep, NULL, &period, &offset);
+    const int n_slots_frame = mac->frame_structure.numb_slots_frame;
+    if (((n_slots_frame * frame + slot - offset) % period)) {
+      continue;
+    }
+
+    csi = nr_get_csi_payload(mac, csi_report_id, ON_PUSCH, csi_measconfig);
   }
   return csi;
 }
@@ -1541,6 +1564,18 @@ static uint8_t nr_locate_BsrIndexByBufferSize(int size, int value)
   }
 }
 
+void get_pusch_frame_slot(const int current_frame,
+                          const int current_slot,
+                          const int k2,
+                          const int delta,
+                          const int slots_per_frame,
+                          frame_t *frame_tx,
+                          int *slot_tx)
+{
+  *slot_tx = (current_slot + k2 + delta) % slots_per_frame;
+  *frame_tx = (current_frame + (current_slot + k2 + delta) / slots_per_frame) % MAX_FRAME_NUMBER;
+}
+
 // PUSCH scheduler:
 // - Calculate the slot in which ULSCH should be scheduled. This is current slot + K2,
 // - where K2 is the offset between the slot in which UL DCI is received and the slot
@@ -1578,8 +1613,7 @@ int nr_ue_pusch_scheduler(const NR_UE_MAC_INST_t *mac,
                 GET_DURATION_RX_TO_TX(&mac->ntn_ta, mu),
                 GET_DURATION_RX_TO_TX(&mac->ntn_ta, mu));
 
-    *slot_tx = (current_slot + k2 + delta) % slots_per_frame;
-    *frame_tx = (current_frame + (current_slot + k2 + delta) / slots_per_frame) % MAX_FRAME_NUMBER;
+    get_pusch_frame_slot(current_frame, current_slot, k2, delta, slots_per_frame, frame_tx, slot_tx);
   } else {
     AssertFatal(k2 >= GET_DURATION_RX_TO_TX(&mac->ntn_ta, mu),
                 "Slot offset K2 (%ld) needs to be higher than DURATION_RX_TO_TX (%ld). Please set min_rxtxtime at least to %ld in "
@@ -1595,8 +1629,7 @@ int nr_ue_pusch_scheduler(const NR_UE_MAC_INST_t *mac,
     }
 
     // Calculate TX slot and frame
-    *slot_tx = (current_slot + k2) % slots_per_frame;
-    *frame_tx = (current_frame + (current_slot + k2) / slots_per_frame) % MAX_FRAME_NUMBER;
+    get_pusch_frame_slot(current_frame, current_slot, k2, 0, slots_per_frame, frame_tx, slot_tx);
   }
 
   LOG_D(NR_MAC, "[%04d.%02d] UL transmission in [%04d.%02d] (k2 %ld delta %d)\n", current_frame, current_slot, *frame_tx, *slot_tx, k2, delta);
@@ -1703,7 +1736,9 @@ static bool schedule_uci_on_pusch(NR_UE_MAC_INST_t *mac,
       LOG_E(NR_MAC, "UCI on PUSCH need to be configured to schedule UCI on PUSCH\n");
     }
   }
-  if (pusch_pdu->pusch_uci.csi_part1_bit_length == 0 && pusch_pdu->pusch_uci.csi_part2_bit_length == 0) {
+  if (pusch_pdu->pusch_uci.csi_part1_bit_length > 0 && pusch_pdu->pusch_uci.csi_part2_bit_length == 0) {
+    pusch_pdu->pusch_uci.csi_part1_payload = pucch->csi_part1_payload;
+  } else if (pusch_pdu->pusch_uci.csi_part2_bit_length > 0) {
     // To support this we would need to shift some bits into CSI part2 -> need to change the logic
     AssertFatal(pucch->n_csi == 0, "Multiplexing periodic CSI on PUSCH not supported\n");
   }

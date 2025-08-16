@@ -204,6 +204,7 @@ int main(int argc, char *argv[])
   int print_perf = 0;
   cpuf = get_cpu_freq_GHz();
   int msg3_flag = 0;
+  bool uci_on_pusch = false;
   int rv_index = 0;
   float roundStats;
   double effRate;
@@ -250,7 +251,7 @@ int main(int argc, char *argv[])
   int c;
   bool setAffinity=false;
   char gNBthreads[128]="n";
-  while ((c = getopt(argc, argv, "--:O:a:b:c:d:ef:g:h:i:jk:m:n:p:q:r:s:t:u:v:w:y:z:A:C:F:G:H:I:M:N:PR:S:T:U:L:ZW:E:X:Y:")) != -1) {
+  while ((c = getopt(argc, argv, "--:O:a:b:c:d:ef:g:h:i:jk:m:n:op:q:r:s:t:u:v:w:y:z:A:C:F:G:H:I:M:N:PR:S:T:U:L:ZW:E:X:Y:")) != -1) {
     /* ignore long options starting with '--', option '-O' and their arguments that are handled by configmodule */
     /* with this opstring getopt returns 1 for non-option arguments, refer to 'man 3 getopt' */
     if (c == 1 || c == '-' || c == 'O')
@@ -356,6 +357,10 @@ int main(int argc, char *argv[])
 
     case 'm':
       Imcs = atoi(optarg);
+      break;
+
+    case 'o':
+      uci_on_pusch = true;
       break;
 
     case 'W':
@@ -537,6 +542,7 @@ int main(int argc, char *argv[])
       printf("-k 3/4 sampling\n");
       printf("-m MCS value\n");
       printf("-n Number of trials to simulate\n");
+      printf("-o Enable UCI on PUSCH\n");
       printf("-p Use extended prefix mode\n");
       printf("-q MCS table\n");
       printf("-r Number of allocated resource blocks for PUSCH\n");
@@ -1220,6 +1226,15 @@ int main(int argc, char *argv[])
           pusch_config_pdu->dfts_ofdm.low_papr_sequence_number = 0; // V as defined in 38.211 section 6.4.1.1.1.2
           // pusch_config_pdu->pdu_bit_map |= PUSCH_PDU_BITMAP_DFTS_OFDM;
           pusch_config_pdu->num_dmrs_cdm_grps_no_data = num_dmrs_cdm_grps_no_data;
+        }
+        if (uci_on_pusch) {
+          const nfapi_nr_ue_pusch_uci_t pusch_uci = {.alpha_scaling = 3,
+                                                     .beta_offset_csi1 = 13,
+                                                     .beta_offset_csi2 = 13,
+                                                     .beta_offset_harq_ack = 6,
+                                                     .csi_part1_bit_length = 4,
+                                                     .csi_part1_payload = 15};
+          pusch_config_pdu->pusch_uci = pusch_uci;
         }
 
         if (do_SRS == 1) {
