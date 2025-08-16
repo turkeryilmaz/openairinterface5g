@@ -1148,6 +1148,7 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
       LOG_E(PHY, "[UCI_ON_PUSCH] Failed to allocate memory for temporary codeword\n");
       uci_mapping_template = NULL;
     } else {
+      start_meas_nr_ue_phy(UE, UCI_ON_PUSCH_MAPPING);
       nr_data_control_mapping(pusch_pdu,
                               template_buffer,
                               G[pusch_id],
@@ -1157,6 +1158,7 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
                               G_initial_total_pusch_bits,
                               harq_process_ul_ue->f,
                               b);
+      stop_meas_nr_ue_phy(UE, UCI_ON_PUSCH_MAPPING);
 
       memcpy(harq_process_ul_ue->f, temp_codeword, G_initial_total_pusch_bits);
       free(temp_codeword);
