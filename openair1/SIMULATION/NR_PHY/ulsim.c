@@ -1489,8 +1489,8 @@ int main(int argc, char *argv[])
         }
 
         for (i = 0; i < available_bits; i++) {
-          if (((UE->ul_harq_processes[harq_pid].f[i] == 0) && (pusch_vars->llr[i] <= 0))
-              || ((UE->ul_harq_processes[harq_pid].f[i] == 1) && (pusch_vars->llr[i] >= 0))) {
+          if ((((UE->ul_harq_processes[harq_pid].f[i / 8] >> (i % 8) & 1) == 0) && (pusch_vars->llr[i] <= 0))
+              || (((UE->ul_harq_processes[harq_pid].f[i / 8] >> (i % 8) & 1) == 1) && (pusch_vars->llr[i] >= 0))) {
             /*if(errors_scrambling == 0)
               printf("\x1B[34m" "[frame %d][trial %d]\t1st bit in error in unscrambling = %d\n" "\x1B[0m", frame, trial, i);*/
             errors_scrambling[round]++;
