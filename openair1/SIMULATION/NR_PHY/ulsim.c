@@ -205,6 +205,7 @@ int main(int argc, char *argv[])
   cpuf = get_cpu_freq_GHz();
   int msg3_flag = 0;
   bool uci_on_pusch = false;
+  bool no_phase_pre_comp = false;
   int rv_index = 0;
   float roundStats;
   double effRate;
@@ -361,6 +362,9 @@ int main(int argc, char *argv[])
 
     case 'o':
       uci_on_pusch = true;
+      // UCI on PUSCH is not implemented in OAI gNB yet.
+      // So this flag is needed to verify in MATLAB
+      no_phase_pre_comp = true;
       break;
 
     case 'W':
@@ -542,7 +546,7 @@ int main(int argc, char *argv[])
       printf("-k 3/4 sampling\n");
       printf("-m MCS value\n");
       printf("-n Number of trials to simulate\n");
-      printf("-o Enable UCI on PUSCH\n");
+      printf("-o Enable UCI on PUSCH. Only used to verify waveform in MATLAB. This feature is not yet available in gNB\n");
       printf("-p Use extended prefix mode\n");
       printf("-q MCS table\n");
       printf("-r Number of allocated resource blocks for PUSCH\n");
@@ -794,7 +798,8 @@ int main(int argc, char *argv[])
   UE->if_inst->phy_config_request = nr_ue_phy_config_request;
   UE->if_inst->dl_indication = nr_ue_dl_indication;
   UE->if_inst->ul_indication = nr_ue_ul_indication;
-  
+  UE->no_phase_pre_comp = no_phase_pre_comp;
+
   UE_mac->if_module = nr_ue_if_module_init(0);
 
   initFloatingCoresTpool(threadCnt, &nrUE_params.Tpool, false, "UE-tpool");
@@ -1228,12 +1233,16 @@ int main(int argc, char *argv[])
           pusch_config_pdu->num_dmrs_cdm_grps_no_data = num_dmrs_cdm_grps_no_data;
         }
         if (uci_on_pusch) {
-          const nfapi_nr_ue_pusch_uci_t pusch_uci = {.alpha_scaling = 3,
-                                                     .beta_offset_csi1 = 13,
-                                                     .beta_offset_csi2 = 13,
-                                                     .beta_offset_harq_ack = 6,
-                                                     .csi_part1_bit_length = 4,
-                                                     .csi_part1_payload = 15};
+          const nfapi_nr_ue_pusch_uci_t pusch_uci = {
+              .alpha_scaling = 3,
+              .beta_offset_csi1 = 13,
+              .beta_offset_csi2 = 13,
+              .beta_offset_harq_ack = 11,
+              //.harq_ack_bit_length = 3,
+              //.harq_payload = 3,
+              .csi_part1_bit_length = 4,
+              .csi_part1_payload = 15
+          };
           pusch_config_pdu->pusch_uci = pusch_uci;
         }
 
