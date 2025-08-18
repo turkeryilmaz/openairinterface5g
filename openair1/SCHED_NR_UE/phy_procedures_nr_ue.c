@@ -176,8 +176,6 @@ void nr_fill_rx_indication(fapi_nr_rx_indication_t *rx_ind,
         rx->ssb_pdu.ssb_length = frame_parms->Lmax;
         rx->ssb_pdu.cell_id = frame_parms->Nid_cell;
         rx->ssb_pdu.ssb_start_subcarrier = frame_parms->ssb_start_subcarrier;
-        rx->ssb_pdu.rsrp_dBm = ue->measurements.ssb_rsrp_dBm[frame_parms->ssb_index];
-        rx->ssb_pdu.sinr_dB = ue->measurements.ssb_sinr_dB[frame_parms->ssb_index];
         rx->ssb_pdu.arfcn = get_ssb_arfcn(frame_parms);
         rx->ssb_pdu.radiolink_monitoring = RLM_in_sync; // TODO to be removed from here
         rx->ssb_pdu.decoded_pdu = true;
@@ -186,6 +184,12 @@ void nr_fill_rx_indication(fapi_nr_rx_indication_t *rx_ind,
         rx->ssb_pdu.decoded_pdu = false;
       }
     } break;
+    case FAPI_NR_RX_PDU_TYPE_SSB_MEAS : {
+      int *ssb_index = (int *)typeSpecific;
+      rx->ssb_meas_pdu.ssb_index = *ssb_index;
+      rx->ssb_meas_pdu.rsrp_dBm = ue->measurements.ssb_rsrp_dBm[*ssb_index];
+      rx->ssb_meas_pdu.sinr_dB = ue->measurements.ssb_sinr_dB[*ssb_index];
+    }  break;
     case FAPI_NR_CSIRS_IND:
       memcpy(&rx->csirs_measurements, typeSpecific, sizeof(fapi_nr_csirs_measurements_t));
       break;
