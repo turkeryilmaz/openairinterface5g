@@ -85,6 +85,7 @@
 #include "s1ap_messages_types.h"
 #include "uper_encoder.h"
 #include "common/utils/alg/find.h"
+#include "openair2/E1AP/e1ap_helpers.h"
 
 #ifdef E2_AGENT
 #include "openair2/E2AP/RAN_FUNCTION/O-RAN/ran_func_rc_extern.h"
@@ -254,26 +255,16 @@ static DRB_nGRAN_to_setup_t fill_drb_ngran_tosetup(const drb_t *rrc_drb, const p
   drb_ngran.sdap_config.sDAP_Header_UL = rrc->configuration.enable_sdap ? 0 : 1;
   drb_ngran.sdap_config.sDAP_Header_DL = rrc->configuration.enable_sdap ? 0 : 1;
 
-  drb_ngran.pdcp_config = set_bearer_context_pdcp_config(rrc_drb->pdcp_config, rrc->configuration.um_on_default_drb, redcap_cap);
+  drb_ngran.pdcp_config = e1_fill_bearer_context_pdcp_config(&rrc_drb->pdcp_config, rrc->configuration.um_on_default_drb, redcap_cap);
 
   drb_ngran.numCellGroups = 1;
   for (int k = 0; k < drb_ngran.numCellGroups; k++) {
     drb_ngran.cellGroupList[k] = MCG; // 1 cellGroup only
   }
 
-  const nr_sdap_configuration_t *sdap = &session->sdap_config;
   drb_ngran.numQosFlow2Setup = session->sdap_config.nb_qos;
   for (int k = 0; k < drb_ngran.numQosFlow2Setup; k++) {
-    qos_flow_to_setup_t *qos_flow = &drb_ngran.qosFlows[k];
-    qos_flow->qfi = sdap->qos[k].qfi;
-    qos_flow->qos_params.alloc_reten_priority.preemption_capability = sdap->qos[k].arp.pre_emp_capability;
-    qos_flow->qos_params.alloc_reten_priority.preemption_vulnerability = sdap->qos[k].arp.pre_emp_vulnerability;
-    qos_flow->qos_params.alloc_reten_priority.priority_level = sdap->qos[k].arp.priority_level;
-    if (sdap->qos[k].fiveQI_type == NON_DYNAMIC)
-      qos_flow->qos_params.qos_characteristics.non_dynamic.fiveqi = sdap->qos[k].fiveQI;
-    else
-      qos_flow->qos_params.qos_characteristics.dynamic.fiveqi = sdap->qos[k].fiveQI;
-    // dyn/nondynamic missing fields
+    drb_ngran.qosFlows[k] = e1_fill_qos_flow_to_setup(&session->sdap_config.qos[k]);
   }
 
   return drb_ngran;

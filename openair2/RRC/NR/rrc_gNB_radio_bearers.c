@@ -144,23 +144,3 @@ rrc_pdu_session_param_t *find_pduSession_from_drbId(gNB_RRC_UE_t *ue, int drb_id
   int id = drb->pdusession_id;
   return find_pduSession(&ue->pduSessions, id);
 }
-
-bearer_context_pdcp_config_t set_bearer_context_pdcp_config(const nr_pdcp_configuration_t pdcp,
-                                                            bool um_on_default_drb,
-                                                            const nr_redcap_ue_cap_t *redcap_cap)
-{
-  bearer_context_pdcp_config_t out = {0};
-  if (redcap_cap && redcap_cap->support_of_redcap_r17 && !redcap_cap->pdcp_drb_long_sn_redcap_r17) {
-    LOG_I(NR_RRC, "UE is RedCap without long PDCP SN support: overriding PDCP SN size to 12\n");
-    out.pDCP_SN_Size_DL = NR_PDCP_Config__drb__pdcp_SN_SizeDL_len12bits;
-    out.pDCP_SN_Size_UL = NR_PDCP_Config__drb__pdcp_SN_SizeUL_len12bits;
-  } else {
-    out.pDCP_SN_Size_DL = encode_sn_size_dl(pdcp.drb.sn_size);
-    out.pDCP_SN_Size_UL = encode_sn_size_ul(pdcp.drb.sn_size);
-  }
-  out.discardTimer = encode_discard_timer(pdcp.drb.discard_timer);
-  out.reorderingTimer = encode_t_reordering(pdcp.drb.t_reordering);
-  out.rLC_Mode = um_on_default_drb ? E1AP_RLC_Mode_rlc_um_bidirectional : E1AP_RLC_Mode_rlc_am;
-  out.pDCP_Reestablishment = false;
-  return out;
-}

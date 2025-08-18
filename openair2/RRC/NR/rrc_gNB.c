@@ -76,6 +76,7 @@
 #include "nr_pdcp/nr_pdcp_oai_api.h"
 #include "nr_rrc_defs.h"
 #include "oai_asn1.h"
+#include "openair2/E1AP/e1ap_helpers.h"
 #include "openair2/F1AP/f1ap_common.h"
 #include "openair2/F1AP/f1ap_ids.h"
 #include "openair2/F1AP/lib/f1ap_rrc_message_transfer.h"
@@ -890,7 +891,7 @@ static void cuup_notify_reestablishment(gNB_RRC_INST *rrc, gNB_RRC_UE_t *ue_p)
     /* PDCP configuration */
     if (!drb_e1->pdcp_config)
       drb_e1->pdcp_config = malloc_or_fail(sizeof(*drb_e1->pdcp_config));
-    *drb_e1->pdcp_config = set_bearer_context_pdcp_config(drb->pdcp_config, rrc->configuration.um_on_default_drb, ue_p->redcap_cap);
+    *drb_e1->pdcp_config = e1_fill_bearer_context_pdcp_config(&drb->pdcp_config, rrc->configuration.um_on_default_drb, ue_p->redcap_cap);
     drb_e1->pdcp_config->pDCP_Reestablishment = true;
     /* increase DRB to modify counter */
     pdu_e1->numDRB2Modify += 1;
