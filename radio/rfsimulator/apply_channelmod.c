@@ -51,8 +51,6 @@ void rxAddInput(const c16_t *input_sig,
                 uint32_t CirSize,
                 bool add_noise)
 {
-  static uint64_t last_TS = 0;
-
   if ((channelDesc->sat_height > 0) && (channelDesc->enable_dynamic_delay || channelDesc->enable_dynamic_Doppler)) { // model for transparent satellite on circular orbit
     /* assumptions:
        - The Earth is spherical, the ground station is static, and that the Earth does not rotate.
@@ -124,8 +122,7 @@ void rxAddInput(const c16_t *input_sig,
       if (channelDesc->enable_dynamic_Doppler)
         channelDesc->Doppler_phase_inc = 2 * M_PI * f_Doppler_shift_ue_sat / channelDesc->sampling_rate;
 
-      if(TS - last_TS >= channelDesc->sampling_rate) {
-        last_TS = TS;
+      if (TS / (unsigned int)channelDesc->sampling_rate != (TS + nbSamples) / (unsigned int)channelDesc->sampling_rate) {
         LOG_I(HW, "Satellite orbit: time %f s, Position = (%f, %f, %f), Velocity = (%f, %f, %f)\n", t, pos_sat_x, pos_sat_y, pos_sat_z, vel_sat_x, vel_sat_y, vel_sat_z);
         LOG_I(HW, "Uplink delay %f ms, Doppler shift UE->SAT %f kHz\n", prop_delay * 1000, f_Doppler_shift_ue_sat / 1000);
         LOG_I(HW, "Satellite velocity towards gNB: %f m/s, acceleration towards gNB: %f m/s²\n", vel_sat_gnb, acc_sat_gnb);
@@ -183,8 +180,7 @@ void rxAddInput(const c16_t *input_sig,
       if (channelDesc->enable_dynamic_Doppler)
         channelDesc->Doppler_phase_inc = 2 * M_PI * f_Doppler_shift_sat_ue / channelDesc->sampling_rate;
 
-      if(TS - last_TS >= channelDesc->sampling_rate) {
-        last_TS = TS;
+      if (TS / (unsigned int)channelDesc->sampling_rate != (TS + nbSamples) / (unsigned int)channelDesc->sampling_rate) {
         LOG_I(HW, "Satellite orbit: time %f s, Position = (%f, %f, %f), Velocity = (%f, %f, %f)\n", t, pos_sat_x, pos_sat_y, pos_sat_z, vel_sat_x, vel_sat_y, vel_sat_z);
         LOG_I(HW, "Downlink delay %f ms, Doppler shift SAT->UE %f kHz\n", prop_delay * 1000, f_Doppler_shift_sat_ue / 1000);
       }
