@@ -428,6 +428,9 @@ struct openair0_device {
   /* !brief RF frontend parameters set by application */
   openair0_config_t *openair0_cfg;
 
+  /* !brief timestamp of first read */
+  openair0_timestamp_t firstTS;
+
   /* !brief RF-Simulator params */
   rfsim_params_t rfsim_params;
 

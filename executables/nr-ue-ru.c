@@ -27,17 +27,23 @@ openair0_config_t openair0_cfg[MAX_CARDS];
 openair0_device_t openair0_dev[MAX_CARDS];
 NR_DL_FRAME_PARMS cell_fp[MAX_CARDS];
 
-void nr_ue_ru_start(PHY_VARS_NR_UE *UE)
+static int firstTS_initialized = 0;
+
+void nr_ue_ru_start(void)
 {
-  openair0_config_t *cfg0 = &openair0_cfg[UE->rf_map.card];
-  openair0_device_t *dev0 = &openair0_dev[UE->rf_map.card];
-  int tmp = openair0_device_load(dev0, cfg0);
-  AssertFatal(tmp == 0, "Could not load the device\n");
-  dev0->host_type = RAU_HOST;
-  int tmp2 = dev0->trx_start_func(dev0);
-  AssertFatal(tmp2 == 0, "Could not start the device\n");
-  if (usrp_tx_thread == 1)
-    dev0->trx_write_init(dev0);
+  for (int card = 0; card < MAX_CARDS; card++) {
+    openair0_config_t *cfg0 = &openair0_cfg[card];
+    openair0_device_t *dev0 = &openair0_dev[card];
+    if (cfg0->sample_rate == 0)
+      continue;
+    int tmp = openair0_device_load(dev0, cfg0);
+    AssertFatal(tmp == 0, "Could not load the device %d\n", card);
+    dev0->host_type = RAU_HOST;
+    int tmp2 = dev0->trx_start_func(dev0);
+    AssertFatal(tmp2 == 0, "Could not start the device %d\n", card);
+    if (usrp_tx_thread == 1)
+      dev0->trx_write_init(dev0);
+  }
 }
 
 void nr_ue_ru_end(void)
@@ -52,6 +58,23 @@ void nr_ue_ru_end(void)
 
 void nr_ue_ru_set_freq(PHY_VARS_NR_UE *UE, uint64_t ul_carrier, uint64_t dl_carrier, int freq_offset)
 {
+  NR_DL_FRAME_PARMS *fp0 = &cell_fp[UE->rf_map.card];
+  uint64_t carrier_distance =
+      (fp0->dl_CarrierFreq > dl_carrier ? fp0->dl_CarrierFreq - dl_carrier : dl_carrier - fp0->dl_CarrierFreq) +
+      (fp0->ul_CarrierFreq > ul_carrier ? fp0->ul_CarrierFreq - ul_carrier : ul_carrier - fp0->ul_CarrierFreq);
+  for (int card = 0; carrier_distance != 0 && card < MAX_CARDS; card++) {
+    fp0 = &cell_fp[card];
+    if (fp0->samples_per_subframe == 0)
+      continue;
+    uint64_t this_carrier_distance =
+        (fp0->dl_CarrierFreq > dl_carrier ? fp0->dl_CarrierFreq - dl_carrier : dl_carrier - fp0->dl_CarrierFreq) +
+        (fp0->ul_CarrierFreq > ul_carrier ? fp0->ul_CarrierFreq - ul_carrier : ul_carrier - fp0->ul_CarrierFreq);
+    if (this_carrier_distance < carrier_distance) {
+      UE->rf_map.card = card;
+      carrier_distance = this_carrier_distance;
+    }
+  }
+
   openair0_config_t *cfg0 = &openair0_cfg[UE->rf_map.card];
   openair0_device_t *dev0 = &openair0_dev[UE->rf_map.card];
   nr_rf_card_config_freq(cfg0, ul_carrier, dl_carrier, freq_offset);
@@ -84,13 +107,49 @@ int nr_ue_ru_adjust_rx_gain(PHY_VARS_NR_UE *UE, int gain_change)
 int nr_ue_ru_read(PHY_VARS_NR_UE *UE, openair0_timestamp_t *ptimestamp, void **buff, int nsamps, int num_antennas)
 {
   openair0_device_t *dev0 = &openair0_dev[UE->rf_map.card];
-  return dev0->trx_read_func(dev0, ptimestamp, buff, nsamps, num_antennas);
+  openair0_timestamp_t tmp_timestamp;
+  int ret = dev0->trx_read_func(dev0, &tmp_timestamp, buff, nsamps, num_antennas);
+  if (!firstTS_initialized)
+    dev0->firstTS = tmp_timestamp;
+  *ptimestamp = tmp_timestamp - dev0->firstTS;
+
+  void *tmp_buf[num_antennas];
+  uint32_t tmp_samples[nsamps];
+  for (int ant = 0; ant < num_antennas; ant++)
+    tmp_buf[ant] = tmp_samples;
+
+  for (int card = 0; card < MAX_CARDS; card++) {
+    dev0 = &openair0_dev[card];
+    if (card == UE->rf_map.card || dev0->trx_read_func == NULL)
+      continue;
+    dev0->trx_read_func(dev0, &tmp_timestamp, tmp_buf, nsamps, num_antennas);
+    if (!firstTS_initialized)
+      dev0->firstTS = tmp_timestamp;
+  }
+
+  firstTS_initialized = 1;
+
+  return ret;
 }
 
 int nr_ue_ru_write(PHY_VARS_NR_UE *UE, openair0_timestamp_t timestamp, void **buff, int nsamps, int num_antennas, int flags)
 {
   openair0_device_t *dev0 = &openair0_dev[UE->rf_map.card];
-  return dev0->trx_write_func(dev0, timestamp, buff, nsamps, num_antennas, flags);
+  int ret = dev0->trx_write_func(dev0, timestamp + dev0->firstTS, buff, nsamps, num_antennas, flags);
+
+  void *tmp_buf[num_antennas];
+  uint32_t tmp_samples[nsamps];
+  memset(tmp_samples, 0, sizeof(tmp_samples));
+  for (int ant = 0; ant < num_antennas; ant++)
+    tmp_buf[ant] = tmp_samples;
+
+  for (int card = 0; card < MAX_CARDS; card++) {
+    dev0 = &openair0_dev[card];
+    if (card == UE->rf_map.card || dev0->trx_write_func == NULL)
+      continue;
+    dev0->trx_write_func(dev0, timestamp + dev0->firstTS, tmp_buf, nsamps, num_antennas, flags);
+  }
+  return ret;
 }
 
 static void writerEnqueue(re_order_t *ctx, openair0_timestamp_t timestamp, void **txp, int nsamps, int nbAnt, int flags)

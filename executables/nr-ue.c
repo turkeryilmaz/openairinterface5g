@@ -949,7 +949,7 @@ void *UE_thread(void *arg)
   }
 
   UE->is_synchronized = 0;
-  nr_ue_ru_start(UE);
+  nr_ue_ru_start();
   InitSinLUT();
 
   notifiedFIFO_t nf;

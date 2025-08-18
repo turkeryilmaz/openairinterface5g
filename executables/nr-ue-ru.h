@@ -25,7 +25,7 @@
 #include "PHY/defs_nr_UE.h"
 #include "radio/COMMON/common_lib.h"
 
-void nr_ue_ru_start(PHY_VARS_NR_UE *UE);
+void nr_ue_ru_start(void);
 void nr_ue_ru_end(void);
 void nr_ue_ru_set_freq(PHY_VARS_NR_UE *UE, uint64_t ul_carrier, uint64_t dl_carrier, int freq_offset);
 int nr_ue_ru_adjust_rx_gain(PHY_VARS_NR_UE *UE, int gain_change);
