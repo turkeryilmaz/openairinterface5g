@@ -285,7 +285,15 @@ static void fh_if4p5_south_in(RU_t *ru, int *frame, int *slot)
                          0,
                          fp->Ncp == EXTENDED ? 12 : 14);
   }
-  ru->proc = s->ru.proc;
+
+  RU_proc_t *proc = &ru->proc;
+  int slots_per_frame = fp->slots_per_frame;
+  proc->tti_rx = *slot;
+  proc->frame_rx = *frame;
+  proc->tti_tx = (*slot + ru->sl_ahead) % slots_per_frame;
+  proc->frame_tx = (*slot > (slots_per_frame - 1 - ru->sl_ahead)) ? (*frame + 1) & 1023 : *frame;
+  proc->first_rx = 0;
+
   stop_meas(&ru->rx_fhaul);
 }
 
@@ -310,7 +318,17 @@ static void fh_if4p5_south_out(RU_t *ru, int frame, int slot, uint64_t timestamp
     nr_feptx0(ru_lower, slot, 0, 14, i);
   }
   LOG_D(HW, "FHI_ADAPTER: fh_if4p5_south_out: frame %d, slot %d, timestamp %lu\n", frame, slot, timestamp);
-  tx_rf(ru_lower, frame, slot, timestamp);
+  // Assume this function called in order
+  static int frame_tx_unwrap = 0;
+  static int last_frame = 0;
+  if (frame < last_frame) {
+    frame_tx_unwrap += 1024;
+  }
+  last_frame = frame;
+
+  uint64_t timestamp_tx = (frame + frame_tx_unwrap) * fp->samples_per_subframe * 10 + fp->get_samples_slot_timestamp(slot, fp, 0);
+
+  tx_rf(ru_lower, frame, slot, timestamp_tx);
   // ru->proc = ru_lower->proc; // Copy the RU proc structure back
   stop_meas(&ru_lower->tx_fhaul);
 }
