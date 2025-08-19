@@ -76,17 +76,15 @@ void run_channel_pipeline_cuda_batched(
 );
 
 void run_channel_pipeline_cuda_streamed(
-    float **tx_sig_re, float **tx_sig_im,
-    // todo: implement interleaved version
-    // float **tx_sig_interleaved,
+    float **tx_sig_interleaved,
     int nb_tx, int nb_rx, int channel_length, uint32_t num_samples,
     float path_loss, float *h_channel_coeffs,
     float sigma2, double ts,
     uint16_t pdu_bit_map, uint16_t ptrs_bit_map,
-    void *d_tx_sig, void *d_intermediate_sig, void* d_final_output,
-    void *d_curand_states, void* h_tx_sig_pinned,
-    void *d_channel_coeffs,
-    void* stream
+    void *d_tx_sig_void, void *d_intermediate_sig_void, void *d_final_output_void,
+    void *d_curand_states_void, void* h_tx_sig_pinned_void,
+    void *d_channel_coeffs_void,
+    void* stream_void
 );
 
 void multipath_channel_cuda(

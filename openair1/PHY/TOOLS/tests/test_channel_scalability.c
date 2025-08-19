@@ -19,14 +19,14 @@ void exit_function(const char *file, const char *function, const int line, const
     exit(1);
 }
 
-void generate_random_signal(float **sig_re, float **sig_im, int nb_ant, int num_samples) {
-    for (int i = 0; i < nb_ant; i++) {
-        for (int j = 0; j < num_samples; j++) {
-            sig_re[i][j] = (float)((rand() % 2000) - 1000);
-            sig_im[i][j] = (float)((rand() % 2000) - 1000);
-        }
-    }
-}
+void generate_random_signal_interleaved(float **sig_interleaved, int nb_ant, int num_samples) { 
+     for (int i = 0; i < nb_ant; i++) {
+         for (int j = 0; j < num_samples; j++) {
+            sig_interleaved[i][2*j]   = (float)((rand() % 2000) - 1000); // Real part (I)
+            sig_interleaved[i][2*j+1] = (float)((rand() % 2000) - 1000); // Imaginary part (Q)
+         }
+     }
+ }
 
 channel_desc_t* create_manual_channel_desc(int nb_tx, int nb_rx, int channel_length) {
     channel_desc_t* desc = (channel_desc_t*)calloc(1, sizeof(channel_desc_t));
@@ -114,14 +114,12 @@ int main(int argc, char **argv) {
     // --- MEMORY ALLOCATION ---
     // HOST MEMORY
     int num_tx_signals = sum_outputs ? num_channels : 1;
-    float ***tx_sig_re = malloc(num_tx_signals * sizeof(float**));
-    float ***tx_sig_im = malloc(num_tx_signals * sizeof(float**));
+    float ***tx_sig_interleaved = malloc(num_tx_signals * sizeof(float**));
+
     for(int i=0; i<num_tx_signals; i++){
-        tx_sig_re[i] = malloc(nb_tx * sizeof(float*));
-        tx_sig_im[i] = malloc(nb_tx * sizeof(float*));
+        tx_sig_interleaved[i] = malloc(nb_tx * sizeof(float*));
         for(int j=0; j<nb_tx; j++){
-            tx_sig_re[i][j] = malloc(num_samples * sizeof(float));
-            tx_sig_im[i][j] = malloc(num_samples * sizeof(float));
+            tx_sig_interleaved[i][j] = malloc(num_samples * 2 * sizeof(float));
         }
     }
     
@@ -278,7 +276,7 @@ int main(int argc, char **argv) {
     // --- MAIN TIMING LOOP ---
     for (int t = 0; t < num_trials; t++) {
         for(int i=0; i<num_tx_signals; i++) {
-            generate_random_signal(tx_sig_re[i], tx_sig_im[i], nb_tx, num_samples);
+            generate_random_signal_interleaved(tx_sig_interleaved[i], nb_tx, num_samples);
         }
         for(int c=0; c<num_channels; c++) random_channel(channels[c], 0);
 
@@ -326,13 +324,11 @@ int main(int argc, char **argv) {
             #if defined(USE_UNIFIED_MEMORY)
                     float2* tx_batch_ptr = (float2*)d_tx_sig_batch;
                     for (int c = 0; c < num_channels; c++) {
-                        float** current_tx_re = sum_outputs ? tx_sig_re[c] : tx_sig_re[0];
-                        float** current_tx_im = sum_outputs ? tx_sig_im[c] : tx_sig_im[0];
+                        float** current_tx = sum_outputs ? tx_sig_interleaved[c] : tx_sig_interleaved[0];
                         for (int j = 0; j < nb_tx; j++) {
                             for (int i = 0; i < num_samples; i++) {
                                 int batch_idx = (c * nb_tx + j) * num_samples + i;
-                                tx_batch_ptr[batch_idx].x = current_tx_re[j][i];
-                                tx_batch_ptr[batch_idx].y = current_tx_im[j][i];
+                                tx_batch_ptr[batch_idx] = make_float2(current_tx[j][2*i], current_tx[j][2*i+1]);
                             }
                         }
                     }
@@ -341,13 +337,11 @@ int main(int argc, char **argv) {
             #elif defined(USE_ATS_MEMORY)
                     float2* tx_batch_ptr_ats = (float2*)d_tx_sig_batch;
                     for (int c = 0; c < num_channels; c++) {
-                        float** current_tx_re = sum_outputs ? tx_sig_re[c] : tx_sig_re[0];
-                        float** current_tx_im = sum_outputs ? tx_sig_im[c] : tx_sig_im[0];
+                        float** current_tx = sum_outputs ? tx_sig_interleaved[c] : tx_sig_interleaved[0];
                         for (int j = 0; j < nb_tx; j++) {
                             for (int i = 0; i < num_samples; i++) {
                                 int batch_idx = (c * nb_tx + j) * num_samples + i;
-                                tx_batch_ptr_ats[batch_idx].x = current_tx_re[j][i];
-                                tx_batch_ptr_ats[batch_idx].y = current_tx_im[j][i];
+                                tx_batch_ptr_ats[batch_idx] = make_float2(current_tx[j][2*i], current_tx[j][2*i+1]);
                             }
                          }
                     }
@@ -356,13 +350,11 @@ int main(int argc, char **argv) {
             // #else // EXPLICIT COPY
                     float2* h_tx_sig_batch_interleaved = (float2*)malloc(num_channels * nb_tx * num_samples * sizeof(float2));
                     for (int c = 0; c < num_channels; c++) {
-                        float** current_tx_re = sum_outputs ? tx_sig_re[c] : tx_sig_re[0];
-                        float** current_tx_im = sum_outputs ? tx_sig_im[c] : tx_sig_im[0];
+                        float** current_tx = sum_outputs ? tx_sig_interleaved[c] : tx_sig_interleaved[0];
                         for (int j = 0; j < nb_tx; j++) {
                             for (int i = 0; i < num_samples; i++) {
                                 int batch_idx = (c * nb_tx + j) * num_samples + i;
-                                h_tx_sig_batch_interleaved[batch_idx].x = current_tx_re[j][i];
-                                h_tx_sig_batch_interleaved[batch_idx].y = current_tx_im[j][i];
+                                h_tx_sig_batch_interleaved[batch_idx] = make_float2(current_tx[j][2*i], current_tx[j][2*i+1]);
                             }
                         }
                     }
@@ -404,8 +396,7 @@ int main(int argc, char **argv) {
                 }
                 
                 run_channel_pipeline_cuda_streamed(
-                    sum_outputs ? tx_sig_re[c] : tx_sig_re[0],
-                    sum_outputs ? tx_sig_im[c] : tx_sig_im[0],
+                    sum_outputs ? tx_sig_interleaved[c] : tx_sig_interleaved[0],
                     nb_tx, nb_rx, channels[c]->channel_length, num_samples,
                     path_loss, h_channel_coeffs, 0.1, 0, 0xFFFF, 0xFFFF,
                     d_tx_sig, d_rx_sig, d_individual_gpu_outputs[c], d_curand_states,
@@ -437,8 +428,7 @@ int main(int argc, char **argv) {
                     }
                 }
                 run_channel_pipeline_cuda(
-                    sum_outputs ? tx_sig_re[c] : tx_sig_re[0],
-                    sum_outputs ? tx_sig_im[c] : tx_sig_im[0],
+                    sum_outputs ? tx_sig_interleaved[c] : tx_sig_interleaved[0],
                     output_gpu_serial,
                     nb_tx, nb_rx, channels[c]->channel_length, num_samples, path_loss, h_channel_coeffs, 0.1, 0, 
                     0xFFFF, 0xFFFF, 0, 0, 
@@ -490,13 +480,11 @@ int main(int argc, char **argv) {
     // --- Cleanup ---
     for(int i=0; i<num_tx_signals; i++){
         for(int j=0; j<nb_tx; j++){
-            free(tx_sig_re[i][j]);
-            free(tx_sig_im[i][j]);
+           free(tx_sig_interleaved[i][j]);
         }
-        free(tx_sig_re[i]);
-        free(tx_sig_im[i]);
+        free(tx_sig_interleaved[i]);
     }
-    free(tx_sig_re); free(tx_sig_im);
+    free(tx_sig_interleaved);
 
     for (int i=0; i<nb_rx; i++) { free(rx_multipath_re_cpu[i]); free(rx_multipath_im_cpu[i]); }
     free(rx_multipath_re_cpu); free(rx_multipath_im_cpu);
