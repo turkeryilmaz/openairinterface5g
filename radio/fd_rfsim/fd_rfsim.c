@@ -463,7 +463,7 @@ static bool configure_fd_rfsim(openair0_device *device, openair0_config_t *opena
   oru_config oru_cfg = {
       .scs = 1,
       .freq_range = FR1,
-      .nr_band = 77,
+      .nr_band = openair0_config->nr_band,
       .ofdm_offset_divisor = 8, // Default value
       .dl_CarrierFreq = openair0_config->tx_freq[0],
       .ul_CarrierFreq = openair0_config->rx_freq[0],
