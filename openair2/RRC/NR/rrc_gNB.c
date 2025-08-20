@@ -2596,10 +2596,16 @@ void rrc_gNB_process_e1_bearer_context_modif_resp(const e1ap_bearer_modif_resp_t
     return;
   }
 
-  // there is not really anything to do here as of now
   for (int i = 0; i < resp->numPDUSessionsMod; ++i) {
     const pdu_session_modif_t *pdu = &resp->pduSessionMod[i];
     LOG_I(RRC, "UE %d: PDU session ID %ld modified %d bearers\n", resp->gNB_cu_cp_ue_id, pdu->id, pdu->numDRBModified);
+    for (int  j = 0; j < pdu->numDRBModified; j++) {
+      // Trigger UL RAN Status Transfer
+      if (pdu->DRBnGRanModList[j].pdcp_status) {
+        LOG_I(NR_RRC, "UE %d: received PDU Status Info - send UL RAN Status Transfer\n", resp->gNB_cu_cp_ue_id);
+        rrc_gNB_send_NGAP_ul_ran_status_transfer(rrc, &ue_context_p->ue_context, pdu->DRBnGRanModList[j].pdcp_status);
+      }
+    }
   }
 }
 
