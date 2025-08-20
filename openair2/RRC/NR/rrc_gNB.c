@@ -2074,9 +2074,31 @@ static void store_du_f1u_tunnel(const f1ap_drb_setup_t *drbs, int n, gNB_RRC_UE_
   }
 }
 
-/* \brief use list of DRBs and send the corresponding bearer update message via
- * E1 to the CU of this UE. Also updates TEID info internally */
-static void e1_send_bearer_updates(gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE, int n, f1ap_drb_setup_t *drbs)
+static void fill_e1_bearer_modif_pdcp_status(gNB_RRC_UE_t *UE,
+                                             DRB_nGRAN_to_mod_t *drb_to_mod,
+                                             const int drb_id,
+                                             const bool um_on_default_drb,
+                                             const bool n2_source,
+                                             const ngap_drb_status_t *drb_status)
+{
+  drb_to_mod->id = drb_id;
+  // PDCP SN Status Request
+  drb_to_mod->pdcp_sn_status_requested = n2_source ? true : false;
+  // PDCP SN Status Information
+  if (drb_status) {
+    drb_to_mod->pdcp_config = calloc_or_fail(1, sizeof(*drb_to_mod->pdcp_config));
+    set_bearer_context_pdcp_config(drb_to_mod->pdcp_config, get_drb(UE, drb_id), um_on_default_drb);
+    drb_to_mod->pdcp_status = malloc_or_fail(sizeof(*drb_to_mod->pdcp_status));
+    drb_to_mod->pdcp_status->dl_count.hfn = drb_status->dl_count.hfn;
+    drb_to_mod->pdcp_status->dl_count.sn = drb_status->dl_count.pdcp_sn;
+    drb_to_mod->pdcp_status->ul_count.hfn = drb_status->ul_count.hfn;
+    drb_to_mod->pdcp_status->ul_count.sn = drb_status->ul_count.pdcp_sn;
+  }
+}
+
+/** @brief Fill and send Bearer Context Modification Request with:
+ * (1) from F1 UE Context DRB to setup list, or (2) with PDCP Status Request */
+void e1_send_bearer_updates(gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE, int n, f1ap_drb_setup_t *drbs, const ngap_drb_status_t *drb_status)
 {
   // Quit bearer updates if no CU-UP is associated
   if (!is_cuup_associated(rrc)) {
@@ -2100,13 +2122,11 @@ static void e1_send_bearer_updates(gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE, int n, f
       const f1ap_drb_setup_t *drb_f1 = &drbs[i];
       drb_id = drb_f1->id;
       fill_e1_bearer_modif(&drb_to_mod, drb_f1);
-    } else if (n2_source) {
+    } else if (n2_source || drb_status) {
       /* On-going handover: send PDCP Status Request */
       if (UE->established_drbs[i].status == DRB_INACTIVE)
         continue;
-      drb_to_mod.id = drb_id;
-      // PDCP SN Status Request
-      drb_to_mod.pdcp_sn_status_requested = n2_source ? true : false;
+      fill_e1_bearer_modif_pdcp_status(UE, &drb_to_mod, drb_id, rrc->configuration.um_on_default_drb, n2_source, drb_status);
     }
     rrc_pdu_session_param_t *pdu = find_pduSession_from_drbId(UE, drb_id);
     if (!pdu)
@@ -2180,7 +2200,7 @@ static void rrc_CU_process_ue_context_setup_response(MessageDef *msg_p, instance
     AssertFatal(UE->Srb[1].Active && UE->Srb[2].Active, "SRBs 1 and 2 must be active during DRB Establishment");
     store_du_f1u_tunnel(resp->drbs, resp->drbs_len, UE);
     if (num_drb == 0)
-      e1_send_bearer_updates(rrc, UE, resp->drbs_len, resp->drbs);
+      e1_send_bearer_updates(rrc, UE, resp->drbs_len, resp->drbs, NULL);
     else
       cuup_notify_reestablishment(rrc, UE);
   }
@@ -2314,7 +2334,7 @@ static void rrc_CU_process_ue_context_modification_response(MessageDef *msg_p, i
   bool is_inter_cu_ho = UE->ho_context && UE->ho_context->source && !UE->ho_context->target;
   if (resp->drbs_len > 0 || is_inter_cu_ho) {
     store_du_f1u_tunnel(resp->drbs, resp->drbs_len, UE);
-    e1_send_bearer_updates(rrc, UE, resp->drbs_len, resp->drbs);
+    e1_send_bearer_updates(rrc, UE, resp->drbs_len, resp->drbs, NULL);
   }
 
   if (resp->du_to_cu_rrc_info) {
