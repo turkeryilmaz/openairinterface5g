@@ -149,7 +149,6 @@ int nr_pdsch_dmrs_rx(const PHY_VARS_NR_UE *ue,
 }
 
 int nr_pdcch_dmrs_rx(const PHY_VARS_NR_UE *ue,
-                     unsigned int Ns,
                      const unsigned int *nr_gold_pdcch,
                      c16_t *output,
                      unsigned short p,
