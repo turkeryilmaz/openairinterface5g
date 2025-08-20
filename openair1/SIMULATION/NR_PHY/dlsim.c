@@ -1410,14 +1410,14 @@ printf("%d\n", slot);
               bzero(r_im[aa], slot_length * sizeof(float));
             }
             start_meas(&channel_stats);
-            // multipath_channel_float(gNB2UE, s_re, s_im, r_re, r_im, slot_length, 0, (n_trials == 1) ? 1 : 0);
-            // stop_meas(&channel_stats);
+            multipath_channel_float(gNB2UE, s_interleaved, r_re, r_im, slot_length, 0, (n_trials == 1) ? 1 : 0);
+            stop_meas(&channel_stats);
 
-            // start_meas(&noise_stats);
-            // add_noise_float(
-            //     UE->common_vars.rxdata, (const float **)r_re, (const float **)r_im,
-            //     (float)sigma2, slot_length, slot_offset, ts, delay,
-            //     pdu_bit_map, 0x1, UE->frame_parms.nb_antennas_rx);
+            start_meas(&noise_stats);
+            add_noise_float(
+                UE->common_vars.rxdata, (const float **)r_re, (const float **)r_im,
+                (float)sigma2, slot_length, slot_offset, ts, delay,
+                pdu_bit_map, 0x1, UE->frame_parms.nb_antennas_rx);
             stop_meas(&noise_stats);
         }
 

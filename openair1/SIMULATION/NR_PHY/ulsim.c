@@ -1432,27 +1432,27 @@ int main(int argc, char *argv[])
             );
             cudaDeviceSynchronize();
             stop_meas(&pipeline_stats);
-        } else
+          } else
 #endif
         { // Original CPU Path
             start_meas(&channel_stats);
-            // multipath_channel_float(UE2gNB, s_re, s_im, r_re, r_im, slot_length, 0, (n_trials == 1) ? 1 : 0);
-            // stop_meas(&channel_stats);
+            multipath_channel_float(UE2gNB, s_interleaved, r_re, r_im, slot_length, 0, (n_trials == 1) ? 1 : 0);
+            stop_meas(&channel_stats);
           
-            // start_meas(&noise_stats);
-            // add_noise_float(rxdata,
-            //         (const float **)r_re,
-            //         (const float **)r_im,
-            //         (float)sigma,
-            //         slot_length,
-            //         slot_offset,
-            //         ts,
-            //         delay,
-            //         pdu_bit_map, 
-            //         PUSCH_PDU_BITMAP_PUSCH_PTRS,
-            //         gNB->frame_parms.nb_antennas_rx);
+            start_meas(&noise_stats);
+            add_noise_float(rxdata,
+                    (const float **)r_re,
+                    (const float **)r_im,
+                    (float)sigma,
+                    slot_length,
+                    slot_offset,
+                    ts,
+                    delay,
+                    pdu_bit_map, 
+                    PUSCH_PDU_BITMAP_PUSCH_PTRS,
+                    gNB->frame_parms.nb_antennas_rx);
             stop_meas(&noise_stats);
-        }
+        }}
         /*End input_fd */
 
         //----------------------------------------------------------
@@ -1825,5 +1825,4 @@ int main(int argc, char *argv[])
   #endif
 
   return ret;
-}
 }

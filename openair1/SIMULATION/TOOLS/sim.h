@@ -420,10 +420,8 @@ void multipath_channel(channel_desc_t *desc,
                        uint8_t keep_channel,
 		       int log_channel);
 
-
 void multipath_channel_float(channel_desc_t *desc,
-                             float **tx_sig_re,
-                             float **tx_sig_im,
+                             float **tx_sig_interleaved,
                              float **rx_sig_re,
                              float **rx_sig_im,
                              uint32_t length,

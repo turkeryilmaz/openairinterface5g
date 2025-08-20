@@ -145,27 +145,22 @@ int main(int argc, char **argv) {
             }
         }
 
-        // todo: remove this once the interleaved version is implemented
         struct timespec start, end;
-        float **s_re_temp = malloc(nb_tx * sizeof(float*));
-        float **s_im_temp = malloc(nb_tx * sizeof(float*));
-        for (int i=0; i<nb_tx; i++) { s_re_temp[i] = malloc(num_samples * sizeof(float)); s_im_temp[i] = malloc(num_samples * sizeof(float)); }
 
         generate_random_signal_interleaved(s_interleaved, nb_tx, num_samples);
 
-        // De-interleave the signal for the CPU-only reference function
-        for (int i=0; i<nb_tx; i++) for (int j=0; j<num_samples; j++) {
-            s_re_temp[i][j] = s_interleaved[i][2*j];
-            s_im_temp[i][j] = s_interleaved[i][2*j+1];
-        }
+        // Run CPU path once to get reference result
+        multipath_channel_float(chan_desc, s_interleaved, r_re_cpu, r_im_cpu, num_samples, 1, 0);
 
-        multipath_channel_float(chan_desc, s_re_temp, s_im_temp, r_re_cpu, r_im_cpu, num_samples, 1, 0);
-
+        // Time CPU path
         clock_gettime(CLOCK_MONOTONIC, &start);
-        for (int t = 0; t < num_trials; t++) multipath_channel_float(chan_desc, s_re_temp, s_im_temp, r_re_cpu, r_im_cpu, num_samples, 1, 0);
+        for (int t = 0; t < num_trials; t++) {
+            multipath_channel_float(chan_desc, s_interleaved, r_re_cpu, r_im_cpu, num_samples, 1, 0);
+        }
         clock_gettime(CLOCK_MONOTONIC, &end);
         total_cpu_ns = (end.tv_sec - start.tv_sec) * 1e9 + (end.tv_nsec - start.tv_nsec);
 
+        // Time GPU path
         clock_gettime(CLOCK_MONOTONIC, &start);
         for (int t = 0; t < num_trials; t++) {
             multipath_channel_cuda(s_interleaved, r_re_gpu, r_im_gpu, nb_tx, nb_rx, channel_length, num_samples, chan_desc->channel_offset, path_loss, h_channel_coeffs, d_tx_sig, d_rx_sig, d_channel_coeffs_gpu, h_tx_sig_pinned);
@@ -186,11 +181,9 @@ int main(int argc, char **argv) {
         free(h_channel_coeffs);
         for (int i=0; i<nb_tx; i++) {
             free(s_interleaved[i]);
-            free(s_re_temp[i]);
-            free(s_im_temp[i]);
         }
         for (int i=0; i<nb_rx; i++) { free(r_re_cpu[i]); free(r_im_cpu[i]); free(r_re_gpu[i]); free(r_im_gpu[i]); }
-        free(s_interleaved); free(s_re_temp); free(s_im_temp);
+        free(s_interleaved);
         free(r_re_cpu); free(r_im_cpu); free(r_re_gpu); free(r_im_gpu);
         #if defined(USE_UNIFIED_MEMORY)
                 cudaFree(d_tx_sig); 

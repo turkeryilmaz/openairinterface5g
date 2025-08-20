@@ -266,9 +266,7 @@ int main(int argc, char **argv) {
         h_channel_coeffs = malloc(nb_tx * nb_rx * max_taps * sizeof(float2));
     }
 
-    // todo: stabilize curand states
     d_curand_states = create_and_init_curand_states_cuda(nb_rx * num_samples, time(NULL));
-    // d_curand_states = create_and_init_curand_states_cuda(num_channels * nb_rx * num_samples, time(NULL));
     
     double total_cpu_ns = 0;
     double total_gpu_ns = 0;
@@ -285,9 +283,8 @@ int main(int argc, char **argv) {
         // --- CPU RUN ---
         clock_gettime(CLOCK_MONOTONIC, &start);
         // for(int c=0; c<num_channels; c++){
-        //     float** current_tx_re = sum_outputs ? tx_sig_re[c] : tx_sig_re[0];
-        //     float** current_tx_im = sum_outputs ? tx_sig_im[c] : tx_sig_im[0];
-        //     multipath_channel_float(channels[c], current_tx_re, current_tx_im, rx_multipath_re_cpu, rx_multipath_im_cpu, num_samples, 1, 0);
+        //     float** current_tx = sum_outputs ? tx_sig_interleaved[c] : tx_sig_interleaved[0];
+        //     multipath_channel_float(channels[c], current_tx, rx_multipath_re_cpu, rx_multipath_im_cpu, num_samples, 1, 0);
         //     add_noise_float(output_cpu[c], (const float **)rx_multipath_re_cpu, (const float **)rx_multipath_im_cpu, 0.1, num_samples, 0, 0, 0, 0, 0, nb_rx);
         // }
         // if (sum_outputs) {
@@ -347,7 +344,7 @@ int main(int argc, char **argv) {
                     }
                 cudaMemcpy(d_channel_coeffs_batch, h_channel_coeffs_batch, num_channels * nb_tx * nb_rx * channel_length * sizeof(float2), cudaMemcpyHostToDevice);
                 cudaMemcpy(d_path_loss_batch, h_path_loss_batch, num_channels * sizeof(float), cudaMemcpyHostToDevice);
-            // #else // EXPLICIT COPY
+            #else // EXPLICIT COPY
                     float2* h_tx_sig_batch_interleaved = (float2*)malloc(num_channels * nb_tx * num_samples * sizeof(float2));
                     for (int c = 0; c < num_channels; c++) {
                         float** current_tx = sum_outputs ? tx_sig_interleaved[c] : tx_sig_interleaved[0];
@@ -370,8 +367,6 @@ int main(int argc, char **argv) {
             cudaDeviceSynchronize();
 
             if (sum_outputs) {
-                // This doesn't allocate new memory. It creates an array of host-side pointers
-                // that will point to locations inside the big GPU output buffer.
                 d_individual_gpu_outputs = malloc(num_channels * sizeof(void*));
                 for (int c = 0; c < num_channels; c++) {
                     d_individual_gpu_outputs[c] = d_final_output_batch + c * nb_rx * num_samples * sizeof(short2);

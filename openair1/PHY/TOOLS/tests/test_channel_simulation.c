@@ -60,7 +60,6 @@ int main(int argc, char **argv) {
     logInit();
     randominit(0);
     
-
     int nb_tx_configs[] = {1, 2, 4, 8};
     int nb_rx_configs[] = {1, 2, 4, 8};
     int num_samples_configs[] = {30720, 61440, 122880};
@@ -150,22 +149,14 @@ int main(int argc, char **argv) {
             generate_random_signal_interleaved(tx_sig_interleaved, nb_tx, num_samples);
             struct timespec start, end;
 
-            // todo: remove this when interleaved version is implemented
-            // Create temporary de-interleaved buffers for the CPU-only path
-            float **tx_sig_re_temp = malloc(nb_tx * sizeof(float*));
-            float **tx_sig_im_temp = malloc(nb_tx * sizeof(float*));
-            for(int i=0; i<nb_tx; i++) { tx_sig_re_temp[i] = malloc(num_samples * sizeof(float)); tx_sig_im_temp[i] = malloc(num_samples * sizeof(float)); }
-            for(int i=0; i<nb_tx; i++) for(int j=0; j<num_samples; j++) {
-                tx_sig_re_temp[i][j] = tx_sig_interleaved[i][2*j];
-                tx_sig_im_temp[i][j] = tx_sig_interleaved[i][2*j+1];
-            }
-
+            // Time the CPU Path
             clock_gettime(CLOCK_MONOTONIC, &start);
-            multipath_channel_float(chan_desc, tx_sig_re_temp, tx_sig_im_temp, rx_multipath_re_cpu, rx_multipath_im_cpu, num_samples, 1, 0);
+            multipath_channel_float(chan_desc, tx_sig_interleaved, rx_multipath_re_cpu, rx_multipath_im_cpu, num_samples, 1, 0);
             add_noise_float(output_cpu, (const float **)rx_multipath_re_cpu, (const float **)rx_multipath_im_cpu, sigma2, num_samples, 0, ts, 0, 0, 0, nb_rx);
             clock_gettime(CLOCK_MONOTONIC, &end);
             total_cpu_ns += (end.tv_sec - start.tv_sec) * 1e9 + (end.tv_nsec - start.tv_nsec);
 
+            // Time the GPU Path
             clock_gettime(CLOCK_MONOTONIC, &start);
             run_channel_pipeline_cuda(
                 tx_sig_interleaved, output_gpu,
@@ -179,8 +170,6 @@ int main(int argc, char **argv) {
             cudaDeviceSynchronize();
             clock_gettime(CLOCK_MONOTONIC, &end);
             total_gpu_ns += (end.tv_sec - start.tv_sec) * 1e9 + (end.tv_nsec - start.tv_nsec);
-            for(int i=0; i<nb_tx; i++) { free(tx_sig_re_temp[i]); free(tx_sig_im_temp[i]); }
-            free(tx_sig_re_temp); free(tx_sig_im_temp);
         }
         
         double avg_cpu_us = (total_cpu_ns / num_trials) / 1000.0;
