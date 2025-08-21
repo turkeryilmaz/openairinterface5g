@@ -428,6 +428,12 @@ void multipath_channel_float(channel_desc_t *desc,
                              uint8_t keep_channel,
                              int log_channel);
 
+void interleave_channel_output(float **rx_sig_re,
+                               float **rx_sig_im,
+                               float **output_interleaved,
+                               int nb_rx,
+                               int num_samples);
+
 void add_noise_float(c16_t **rxdata,
                      const float **r_re,
                      const float **r_im,

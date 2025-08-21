@@ -32,6 +32,20 @@ uint8_t multipath_channel_nosigconv(channel_desc_t *desc)
   return(1);
 }
 
+void interleave_channel_output(float **rx_sig_re,
+                               float **rx_sig_im,
+                               float **output_interleaved,
+                               int nb_rx,
+                               int num_samples)
+{
+    for (int i = 0; i < nb_rx; i++) {
+        for (int j = 0; j < num_samples; j++) {
+            output_interleaved[i][2 * j]     = rx_sig_re[i][j];
+            output_interleaved[i][2 * j + 1] = rx_sig_im[i][j];
+        }
+    }
+}
+
 //#define CHANNEL_SSE
 
 #ifdef CHANNEL_SSE

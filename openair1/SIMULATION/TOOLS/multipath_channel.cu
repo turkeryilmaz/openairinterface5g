@@ -21,7 +21,17 @@ __device__ __forceinline__ float2 complex_add(float2 a, float2 b) {
     return make_float2(a.x + b.x, a.y + b.y);
 }
 
-
+__global__ void interleave_output_kernel(const float* __restrict__ rx_re,
+                                         const float* __restrict__ rx_im,
+                                         float2* __restrict__ output_interleaved,
+                                         int num_total_samples)
+{
+    const int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < num_total_samples) {
+        output_interleaved[i].x = rx_re[i];
+        output_interleaved[i].y = rx_im[i];
+    }
+}
 
 __global__ void multipath_channel_kernel(
     const float2* __restrict__ d_channel_coeffs,
@@ -220,6 +230,50 @@ void multipath_channel_cuda(
             }
             free(h_rx_sig);
     #endif
+}
+
+
+void interleave_channel_output_cuda(float **rx_sig_re,
+                                    float **rx_sig_im,
+                                    float2 **output_interleaved,
+                                    int nb_rx,
+                                    int num_samples)
+{
+    int num_total_samples = nb_rx * num_samples;
+    size_t total_bytes_per_plane = num_total_samples * sizeof(float);
+    size_t total_bytes_interleaved = num_total_samples * sizeof(float2);
+
+    float *h_re_flat = (float*)malloc(total_bytes_per_plane);
+    float *h_im_flat = (float*)malloc(total_bytes_per_plane);
+    float2 *h_out_flat = (float2*)malloc(total_bytes_interleaved);
+
+    for (int i = 0; i < nb_rx; i++) {
+        memcpy(h_re_flat + i * num_samples, rx_sig_re[i], num_samples * sizeof(float));
+        memcpy(h_im_flat + i * num_samples, rx_sig_im[i], num_samples * sizeof(float));
+    }
+    float *d_re, *d_im;
+    float2 *d_out;
+    CHECK_CUDA( cudaMalloc((void**)&d_re, total_bytes_per_plane) );
+    CHECK_CUDA( cudaMalloc((void**)&d_im, total_bytes_per_plane) );
+    CHECK_CUDA( cudaMalloc((void**)&d_out, total_bytes_interleaved) );
+    CHECK_CUDA( cudaMemcpy(d_re, h_re_flat, total_bytes_per_plane, cudaMemcpyHostToDevice) );
+    CHECK_CUDA( cudaMemcpy(d_im, h_im_flat, total_bytes_per_plane, cudaMemcpyHostToDevice) );
+
+    int threadsPerBlock = 512;
+    int blocksPerGrid = (num_total_samples + threadsPerBlock - 1) / threadsPerBlock;
+    interleave_output_kernel<<<blocksPerGrid, threadsPerBlock>>>(d_re, d_im, d_out, num_total_samples);
+
+    CHECK_CUDA( cudaMemcpy(h_out_flat, d_out, total_bytes_interleaved, cudaMemcpyDeviceToHost) );
+    
+    for (int i = 0; i < nb_rx; i++) {
+        memcpy(output_interleaved[i], h_out_flat + i * num_samples, num_samples * sizeof(float2));
+    }
+    free(h_re_flat);
+    free(h_im_flat);
+    free(h_out_flat);
+    CHECK_CUDA( cudaFree(d_re) );
+    CHECK_CUDA( cudaFree(d_im) );
+    CHECK_CUDA( cudaFree(d_out) );
 }
 
 } // extern "C"

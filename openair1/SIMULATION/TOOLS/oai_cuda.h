@@ -13,6 +13,12 @@
     #include "PHY/TOOLS/tools_defs.h"
 #endif
 
+#if !defined(__NVCC__) && !defined(__CUDA_RUNTIME_H__)
+    typedef struct {
+        float x;
+        float y;
+    } float2;
+#endif
 
 #ifdef __NVCC__
     #include <curand_kernel.h>
@@ -127,6 +133,12 @@ void sum_channel_outputs_cuda(
     int nb_rx,
     int num_samples
 );
+
+void interleave_channel_output_cuda(float **rx_sig_re,
+                                    float **rx_sig_im,
+                                    float2 **output_interleaved,
+                                    int nb_rx,
+                                    int num_samples);
 
 void* create_and_init_curand_states_cuda(int num_elements, unsigned long long seed);
 void destroy_curand_states_cuda(void* d_curand_states);

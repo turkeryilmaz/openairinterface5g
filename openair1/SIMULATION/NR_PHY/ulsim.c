@@ -93,8 +93,8 @@
 
 
 #ifdef ENABLE_CUDA
-#include "SIMULATION/TOOLS/oai_cuda.h"
 #include <cuda_runtime.h>
+#include "SIMULATION/TOOLS/oai_cuda.h"
 #endif
 
 //#define DEBUG_ULSIM
