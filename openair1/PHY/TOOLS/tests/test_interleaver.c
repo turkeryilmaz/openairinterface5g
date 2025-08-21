@@ -15,7 +15,7 @@
 // Forward declaration for our new GPU function
 void interleave_channel_output_cuda(float **rx_sig_re,
                                     float **rx_sig_im,
-                                    float2 **output_interleaved,
+                                    void **output_interleaved_void,
                                     int nb_rx,
                                     int num_samples);
 
@@ -139,13 +139,18 @@ int main(int argc, char **argv) {
     
     // Note: The CPU version outputs to a float**, which we will cast to float2** for verification
     float **output_cpu_temp = malloc(nb_rx * sizeof(float *));
+    for (int i = 0; i < nb_rx; i++) {
+        output_cpu_temp[i] = malloc(num_samples * 2 * sizeof(float)); // float** format
+    }
+    // Allocate as float2** but pass as void**
     float2 **output_gpu = malloc(nb_rx * sizeof(float2 *));
+    for (int i = 0; i < nb_rx; i++) {
+        output_gpu[i] = malloc(num_samples * sizeof(float2));
+    }
 
     for (int i = 0; i < nb_rx; i++) {
         rx_sig_re[i] = malloc(num_samples * sizeof(float));
         rx_sig_im[i] = malloc(num_samples * sizeof(float));
-        output_cpu_temp[i] = malloc(num_samples * 2 * sizeof(float)); // float** format
-        output_gpu[i] = malloc(num_samples * sizeof(float2));      // float2** format
     }
 
     // --- 2. Generate Random Input Data ---
@@ -168,7 +173,7 @@ int main(int argc, char **argv) {
 
     // --- 4. Run GPU Version ---
     printf("Running GPU interleaver...\n");
-    interleave_channel_output_cuda(rx_sig_re, rx_sig_im, output_gpu, nb_rx, num_samples);
+    interleave_channel_output_cuda(rx_sig_re, rx_sig_im, (void**)output_gpu, nb_rx, num_samples);
 
     // --- 4.5. Display Sample Output Data ---
     display_output_samples(output_cpu, output_gpu, nb_rx, num_samples);

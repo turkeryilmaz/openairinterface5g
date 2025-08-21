@@ -13,13 +13,6 @@
     #include "PHY/TOOLS/tools_defs.h"
 #endif
 
-#if !defined(__NVCC__) && !defined(__CUDA_RUNTIME_H__)
-    typedef struct {
-        float x;
-        float y;
-    } float2;
-#endif
-
 #ifdef __NVCC__
     #include <curand_kernel.h>
 
@@ -136,9 +129,13 @@ void sum_channel_outputs_cuda(
 
 void interleave_channel_output_cuda(float **rx_sig_re,
                                     float **rx_sig_im,
-                                    float2 **output_interleaved,
+                                    void **output_interleaved,  // Changed from float2**
                                     int nb_rx,
                                     int num_samples);
+
+// Note: output_interleaved should point to arrays that can hold float2 data
+// Each output_interleaved[i] should be allocated as: malloc(num_samples * sizeof(float2))
+// The caller can safely cast to (float2**) after the function returns
 
 void* create_and_init_curand_states_cuda(int num_elements, unsigned long long seed);
 void destroy_curand_states_cuda(void* d_curand_states);

@@ -235,10 +235,13 @@ void multipath_channel_cuda(
 
 void interleave_channel_output_cuda(float **rx_sig_re,
                                     float **rx_sig_im,
-                                    float2 **output_interleaved,
+                                    void **output_interleaved_void,
                                     int nb_rx,
                                     int num_samples)
 {
+    // Cast back to the proper type inside the implementation
+    float2 **output_interleaved = (float2**)output_interleaved_void;
+    
     int num_total_samples = nb_rx * num_samples;
     size_t total_bytes_per_plane = num_total_samples * sizeof(float);
     size_t total_bytes_interleaved = num_total_samples * sizeof(float2);

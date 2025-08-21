@@ -5,10 +5,10 @@
 #include <time.h>
 #include "PHY/TOOLS/tools_defs.h"
 #include "SIMULATION/TOOLS/sim.h"
+#include <cuda_runtime.h>
 #include "SIMULATION/TOOLS/oai_cuda.h"
 #include "common/utils/LOG/log.h"
 #include "common/utils/utils.h"
-#include <cuda_runtime.h>
 
 configmodule_interface_t *uniqCfg = NULL;
 
