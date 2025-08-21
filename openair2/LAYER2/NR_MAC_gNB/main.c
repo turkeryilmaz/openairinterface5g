@@ -126,6 +126,7 @@ size_t dump_mac_stats(gNB_MAC_INST *gNB, char *output, size_t strlen, bool reset
     NR_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
     NR_mac_stats_t *stats = &UE->mac_stats;
     const int avg_rsrp = stats->num_rsrp_meas > 0 ? stats->cumul_rsrp / stats->num_rsrp_meas : 0;
+    const int avg_sinrx10 = stats->num_sinr_meas > 0 ? stats->cumul_sinrx10 / stats->num_sinr_meas : 0;
 
     output += snprintf(output, end - output, "UE RNTI %04x CU-UE-ID ", UE->rnti);
     if (du_exists_f1_ue_data(UE->rnti)) {
@@ -138,12 +139,15 @@ size_t dump_mac_stats(gNB_MAC_INST *gNB, char *output, size_t strlen, bool reset
     bool in_sync = !sched_ctrl->ul_failure;
     output += snprintf(output,
                        end - output,
-                       " %s PH %d dB PCMAX %d dBm, average RSRP %d (%d meas)\n",
+                       " %s PH %d dB PCMAX %d dBm, average RSRP %d (%d meas), average SINR %d.%d (%d meas)\n",
                        in_sync ? "in-sync" : "out-of-sync",
                        sched_ctrl->ph,
                        sched_ctrl->pcmax,
                        avg_rsrp,
-                       stats->num_rsrp_meas);
+                       stats->num_rsrp_meas,
+                       avg_sinrx10 / 10,
+                       avg_sinrx10 % 10,
+                       stats->num_sinr_meas);
 
     if(sched_ctrl->CSI_report.cri_ri_li_pmi_cqi_report.print_report)
       output += snprintf(output,
@@ -178,6 +182,8 @@ size_t dump_mac_stats(gNB_MAC_INST *gNB, char *output, size_t strlen, bool reset
     if (reset_rsrp) {
       stats->num_rsrp_meas = 0;
       stats->cumul_rsrp = 0;
+      stats->num_sinr_meas = 0;
+      stats->cumul_sinrx10 = 0;
     }
     output += snprintf(output,
                        end - output,
