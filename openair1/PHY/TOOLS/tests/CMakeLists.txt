@@ -77,54 +77,16 @@ set_target_properties(test_cpu_sse PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
 )
 
-
-
-
-
-
-
-# ===================================================================
-# Interleaver Function Test
-# ===================================================================
-add_executable(test_interleaver test_interleaver.c)
-# Link the new test against the main CUDA library and other dependencies
-target_link_libraries(test_interleaver PRIVATE UTIL SIMU PHY_NR PHY_COMMON T m)
-set_target_properties(test_interleaver PROPERTIES
-  RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
-)
-# ===================================================================
-
-
-
-
-
-
-
-
-
-
-
 if (TARGET oai_cuda_lib)
     target_link_libraries(test_channel_scalability PRIVATE oai_cuda_lib ${CUDAToolkit_LIBRARIES})
     target_link_libraries(test_multipath PRIVATE oai_cuda_lib ${CUDAToolkit_LIBRARIES})
     target_link_libraries(test_noise PRIVATE oai_cuda_lib ${CUDAToolkit_LIBRARIES})
     target_link_libraries(test_channel_simulation PRIVATE oai_cuda_lib ${CUDAToolkit_LIBRARIES})
 
-
-
- target_link_libraries(test_interleaver PRIVATE oai_cuda_lib ${CUDAToolkit_LIBRARIES})
-
-
     target_compile_definitions(test_channel_scalability PRIVATE ENABLE_CUDA)
     target_compile_definitions(test_multipath PRIVATE ENABLE_CUDA)
     target_compile_definitions(test_noise PRIVATE ENABLE_CUDA)
     target_compile_definitions(test_channel_simulation PRIVATE ENABLE_CUDA)
-
-
-
-
-
-    target_compile_definitions(test_interleaver PRIVATE ENABLE_CUDA)
 endif()
 
 

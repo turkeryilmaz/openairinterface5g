@@ -129,7 +129,7 @@ void sum_channel_outputs_cuda(
 
 void interleave_channel_output_cuda(float **rx_sig_re,
                                     float **rx_sig_im,
-                                    void **output_interleaved,  // Changed from float2**
+                                    void **output_interleaved,
                                     int nb_rx,
                                     int num_samples);
 
