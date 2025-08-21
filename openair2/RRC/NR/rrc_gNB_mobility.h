@@ -64,6 +64,8 @@ typedef struct nr_ho_target_cu {
   uint32_t du_ue_id;
   /// new (target) RNTI (as for du_ue_id)
   rnti_t new_rnti;
+  /// Handover Preparation Buffer
+  byte_array_t ue_ho_prep_info;
   /// function pointer to announce handover request acknowledgment
   ho_req_ack_t ho_req_ack;
   /// function pointer to announce handover success
@@ -76,6 +78,9 @@ typedef struct nr_handover_context_s {
   nr_ho_source_cu_t *source;
   nr_ho_target_cu_t *target;
 } nr_handover_context_t;
+
+typedef enum { HO_CTX_BOTH, HO_CTX_SOURCE, HO_CTX_TARGET } ho_ctx_type_t;
+nr_handover_context_t *alloc_ho_ctx(ho_ctx_type_t type);
 
 void nr_rrc_trigger_f1_ho(gNB_RRC_INST *rrc, gNB_RRC_UE_t *ue, nr_rrc_du_container_t *source_du, nr_rrc_du_container_t *target_du);
 void nr_rrc_finalize_ho(gNB_RRC_UE_t *ue);

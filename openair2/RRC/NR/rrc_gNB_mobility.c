@@ -42,8 +42,7 @@
 #include "openair2/E2AP/RAN_FUNCTION/O-RAN/ran_func_rc_extern.h"
 #endif
 
-typedef enum { HO_CTX_BOTH, HO_CTX_SOURCE, HO_CTX_TARGET } ho_ctx_type_t;
-static nr_handover_context_t *alloc_ho_ctx(ho_ctx_type_t type)
+nr_handover_context_t *alloc_ho_ctx(ho_ctx_type_t type)
 {
   nr_handover_context_t *ho_ctx = calloc_or_fail(1, sizeof(*ho_ctx));
   if (type == HO_CTX_SOURCE || type == HO_CTX_BOTH) {
@@ -505,16 +504,9 @@ void nr_rrc_trigger_n2_ho_target(gNB_RRC_INST *rrc, gNB_RRC_UE_t *ue)
   ho_cancel_t cancel = nr_rrc_n2_ho_cancel;
   ho_failure_t failure = nr_rrc_n2_ho_failure;
 
-  // allocate context for target
-  if (ue->ho_context != NULL) {
-    LOG_E(NR_RRC, "Ongoing handover for UE %d, cannot trigger new\n", ue->rrc_ue_id);
-    return;
-  }
-  ue->ho_context = alloc_ho_ctx(HO_CTX_TARGET);
-
   const nr_rrc_du_container_t *target_du = get_du_for_ue(rrc, ue->rrc_ue_id);
-  nr_initiate_handover(rrc, ue, NULL, target_du, &ue->ue_ho_prep_info, ack, success, cancel, failure);
-  FREE_AND_ZERO_BYTE_ARRAY(ue->ue_ho_prep_info);
+  nr_initiate_handover(rrc, ue, NULL, target_du, &ue->ho_context->target->ue_ho_prep_info, ack, success, cancel, failure);
+  FREE_AND_ZERO_BYTE_ARRAY(ue->ho_context->target->ue_ho_prep_info);
 
   NR_UE_NR_Capability_t *ue_cap = get_ue_nr_capability(ue->rnti, ue->ue_cap_buffer.buf, ue->ue_cap_buffer.len);
   ue->UE_Capability_nr = ue_cap;

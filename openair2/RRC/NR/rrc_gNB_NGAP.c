@@ -1104,10 +1104,17 @@ int rrc_gNB_process_Handover_Request(gNB_RRC_INST *rrc, instance_t instance, nga
   rrc_gNB_ue_context_t *ue_context_p = rrc_gNB_create_ue_context(curr_assoc_id, UINT16_MAX, rrc, UINT64_MAX, UINT32_MAX);
   gNB_RRC_UE_t *UE = &ue_context_p->ue_context;
 
+  // allocate context for target
+  if (UE->ho_context != NULL) {
+    LOG_E(NR_RRC, "Ongoing handover for UE %d, cannot trigger new\n", UE->rrc_ue_id);
+    return -1;
+  }
+  UE->ho_context = alloc_ho_ctx(HO_CTX_TARGET);
+
   // Store IDs in UE context
   UE->amf_ue_ngap_id = msg->amf_ue_ngap_id;
   UE->ue_guami = msg->guami;
-  UE->ue_ho_prep_info = copy_byte_array(msg->ue_ho_prep_info);
+  UE->ho_context->target->ue_ho_prep_info = copy_byte_array(msg->ue_ho_prep_info);
   // store the received UE Security Capabilities in the UE context
   free(UE->ue_cap_buffer.buf);
   UE->ue_cap_buffer = copy_byte_array(msg->ue_cap);
