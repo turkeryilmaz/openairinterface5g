@@ -211,7 +211,9 @@ void remove_ip_if(nr_sdap_entity_t *entity)
   // Close the socket: read() will get EBADF and exit
   close(entity->pdusession_sock);
 
-  int ret = pthread_join(entity->pdusession_thread, NULL);
+  int ret = pthread_cancel(entity->pdusession_thread);
+  AssertFatal(ret == 0, "pthread_cancel() failed, errno: %d, %s\n", errno, strerror(errno));
+  ret = pthread_join(entity->pdusession_thread, NULL);
   AssertFatal(ret == 0, "pthread_join() failed, errno: %d, %s\n", errno, strerror(errno));
   // Bring down the IP interface
   int default_pdu = get_softmodem_params()->default_pdu_session_id;
