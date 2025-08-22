@@ -20,12 +20,12 @@ echo "Monitoring logs for 'FINISHED' in pod '$POD_ID'"
 oc logs -f -n ${OC_NS} "$POD_ID" | while read -r line; do
   if [[ "$line" == *"FINISHED"* ]]; then
     echo "'FINISHED' detected in logs. Copying logs..."
-    oc logs -n ${OC_NS} "$POD_ID" >> ${OAI_DIR}/ci-scripts/physim_log.txt
-    oc describe pod $POD_ID >> ${OAI_DIR}/ci-scripts/physim_pods_summary.txt
-    oc cp "$POD_ID":/opt/oai-physim/Testing/Temporary/LastTestsFailed.log ${OAI_DIR}/ci-scripts/LastTestsFailed.log
-    oc cp "$POD_ID":/opt/oai-physim/Testing/Temporary/LastTest.log ${OAI_DIR}/ci-scripts/LastTest.log
-    oc cp "$POD_ID":/opt/oai-physim/${OC_RELEASE}-tests.json ${OAI_DIR}/ci-scripts/${OC_RELEASE}-tests.json
-    oc cp "$POD_ID":/opt/oai-physim/${OC_RELEASE}-run.xml ${OAI_DIR}/ci-scripts/${OC_RELEASE}-run.xml
+    oc logs -n ${OC_NS} "$POD_ID" >> ${OAI_DIR}/physim_log.txt
+    oc describe pod $POD_ID >> ${OAI_DIR}/physim_log.txt
+    oc cp "$POD_ID":/opt/oai-physim/Testing/Temporary/LastTestsFailed.log ${OAI_DIR}/LastTestsFailed.log
+    oc cp "$POD_ID":/opt/oai-physim/Testing/Temporary/LastTest.log ${OAI_DIR}/LastTest.log
+    oc cp "$POD_ID":/opt/oai-physim/${OC_RELEASE}-tests.json ${OAI_DIR}/desc-tests.json
+    oc cp "$POD_ID":/opt/oai-physim/${OC_RELEASE}-run.xml ${OAI_DIR}/results-run.xml
     break
   fi
 done
