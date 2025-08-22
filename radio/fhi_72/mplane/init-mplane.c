@@ -199,7 +199,8 @@ bool manage_ru(ru_session_t *ru_session, const openair0_config_t *oai, const siz
     free(content);
   }
 
-  const char *usage_state = get_ru_xml_node(operational_ds, "usage-state");
+  //const char *usage_state = get_ru_xml_node(operational_ds, "usage-state");
+  const char *usage_state = "busy";
   MP_LOG_I("Usage state = \"%s\" for RU \"%s\".\n", usage_state, ru_session->ru_ip_add);
   if (strcmp(usage_state, "busy") == 0) { // carriers are already activated
     ru_session->ru_notif.rx_carrier_state = true;
@@ -213,6 +214,8 @@ bool manage_ru(ru_session_t *ru_session, const openair0_config_t *oai, const siz
 
   free(operational_ds);
   free(watchdog_answer);
+
+  sleep(100);
 
   return true;
 }

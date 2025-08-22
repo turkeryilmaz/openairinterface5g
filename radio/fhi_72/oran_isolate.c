@@ -330,7 +330,7 @@ __attribute__((__visibility__("default"))) int transport_init(openair0_device *d
     AssertFatal(false, "[MPLANE] Stopping M-plane.\n");
   }
 
-  while (true) {
+/* while (true) {
     sleep(1);
     bool all_rus_ready = true;
     for (int i = 0; i < ru_session_list.num_rus; i++) {
@@ -351,7 +351,7 @@ __attribute__((__visibility__("default"))) int transport_init(openair0_device *d
     if (all_rus_ready) {
       break;
     }
-  }
+  } */
 
   eth->mplane_priv = (void *)&ru_session_list;
 
