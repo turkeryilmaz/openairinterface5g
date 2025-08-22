@@ -1349,55 +1349,18 @@ printf("%d\n", slot);
           }
         }
 
-        // --- NEW PADDED BUFFER PREPARATION (applies to all memory models) ---
-
-        // 1. Calculate the precise padding needed for THIS channel
         const int padding_len = gNB2UE->channel_length - 1;
         const int padded_slot_length = slot_length + padding_len;
-
-        // Get the base pointer to our pre-allocated (and now larger) host buffer.
-        // For UM, h_tx_sig_pinned is just an alias to the managed buffer.
         float* h_tx_ptr = (float*)h_tx_sig_pinned;
         size_t total_padded_bytes_for_slot = n_tx * padded_slot_length * 2 * sizeof(float);
-
-        // 2. Zero out the buffer region we are about to use to ensure padding is clean
         memset(h_tx_ptr, 0, total_padded_bytes_for_slot);
 
-        // 3. Copy each antenna's signal data to its correct offset within the padded buffer
         for (int j = 0; j < n_tx; j++) {
-            // Pointer to the start of this antenna's data (AFTER its padding)
             float* data_start_ptr = h_tx_ptr + (j * padded_slot_length + padding_len) * 2;
-
-            // s_interleaved[j] holds the raw signal data just generated
             memcpy(data_start_ptr,
                   s_interleaved[j],
                   slot_length * 2 * sizeof(float));
         }
-        // --- END of new preparation block ---
-
-
-
-
-        // ======================== INPUT DEBUG PRINT ========================
-        if (trial == 0 && round == 0) {
-            printf("\n--- gpu DEBUG DLSIM: Input Signal (h_tx_sig_pinned, First 5 Samples, Ant0) ---\n");
-            
-            // 1. Cast the void pointer to a float pointer to give it a type.
-            float* h_tx_ptr = (float*)h_tx_sig_pinned;
-
-            // 2. Calculate the offset to the start of the actual data for antenna 0 (after the padding).
-            const int padding_len = gNB2UE->channel_length - 1;
-            float* ant0_data_start_ptr = h_tx_ptr + (padding_len * 2);
-
-            for (int sample = 0; sample < 5; sample++) {
-                // 3. Access the data as a 1D array from the calculated start pointer.
-                printf(" (%.1f, %.1f)", ant0_data_start_ptr[sample * 2], ant0_data_start_ptr[sample * 2 + 1]);
-            }
-            printf("\n-------------------------------------------------------------------------\n\n");
-        }
-        // ===================================================================
- 
-
 
         double ts = 1.0/(frame_parms->subcarrier_spacing * frame_parms->ofdm_symbol_size);
         //Compute AWGN variance
@@ -1442,33 +1405,9 @@ printf("%d\n", slot);
             );
             cudaDeviceSynchronize();
             stop_meas(&pipeline_stats);
-
-
-
-
-
-            // ======================== GPU OUTPUT DEBUG PRINT =======================
-            if (trial == 0 && round == 0) {
-                printf("\n--- DEBUG DLSIM: GPU Final Output (UE->common_vars.rxdata, First 5 Samples, Ant0) ---\n");
-                for (int sample = 0; sample < 5; sample++) {
-                    printf(" (%d, %d)", UE->common_vars.rxdata[0][slot_offset + sample].r, UE->common_vars.rxdata[0][slot_offset + sample].i);
-                }
-                printf("\n-------------------------------------------------------------------------------------\n\n");
-            }
-            // ===================================================================
-
-
-
-
-
-
-
         } else
 #endif
-        { // This is the original CPU Path
-
-
-
+        {
             float **tx_sig_for_cpu = malloc(n_tx * sizeof(float*));
             float* h_tx_ptr = (float*)h_tx_sig_pinned;
             const int padding_len = gNB2UE->channel_length - 1;
@@ -1477,40 +1416,6 @@ printf("%d\n", slot);
             for (int j = 0; j < n_tx; j++) {
                 tx_sig_for_cpu[j] = h_tx_ptr + (j * padded_slot_length + padding_len) * 2;
             }
-
-
-
-
-        // ======================== CORRECTED GPU INPUT DEBUG PRINT ========================
-        if (trial == 0 && round == 0) {
-            printf("\n--- DEBUG DLSIM: GPU Input Signal (h_tx_sig_pinned, First 5 Samples, Ant0) ---\n");
-            
-            // 1. Cast the void pointer to a float pointer to give it a type.
-            float* h_tx_ptr = (float*)h_tx_sig_pinned;
-
-            // 2. Calculate the offset to the start of the actual data for antenna 0 (after the padding).
-            const int padding_len = gNB2UE->channel_length - 1;
-            float* ant0_data_start_ptr = h_tx_ptr + (padding_len * 2);
-
-            for (int sample = 0; sample < 5; sample++) {
-                // 3. Access the data as a 1D array.
-                printf(" (%.1f, %.1f)", ant0_data_start_ptr[sample * 2], ant0_data_start_ptr[sample * 2 + 1]);
-            }
-            printf("\n-----------------------------------------------------------------------------------\n\n");
-        }
-        // =================================================================================
-
-
-
-
-
-
-
-
-
-
-
-
 
             for (aa = 0; aa < n_rx; aa++) {
               bzero(r_re[aa], slot_length * sizeof(float));
@@ -1528,22 +1433,6 @@ printf("%d\n", slot);
                 (float)sigma2, slot_length, slot_offset, ts, delay,
                 pdu_bit_map, 0x1, UE->frame_parms.nb_antennas_rx);
             stop_meas(&noise_stats);
-
-
-
-            // ======================== CPU OUTPUT DEBUG PRINT =======================
-            if (trial == 0 && round == 0) {
-                printf("\n--- DEBUG DLSIM: CPU Final Output (UE->common_vars.rxdata, First 5 Samples, Ant0) ---\n");
-                for (int sample = 0; sample < 5; sample++) {
-                    printf(" (%d, %d)", UE->common_vars.rxdata[0][slot_offset + sample].r, UE->common_vars.rxdata[0][slot_offset + sample].i);
-                }
-                printf("\n-------------------------------------------------------------------------------------\n\n");
-            }
-            // ===================================================================
-    
-
-
-            
         }
 
 
