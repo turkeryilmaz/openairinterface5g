@@ -49,7 +49,6 @@ __global__ void sum_outputs_kernel(
 extern "C" {
 
 void run_channel_pipeline_cuda(
-    // float **tx_sig_re, float **tx_sig_im,
     float **tx_sig_interleaved,
     c16_t **output_signal,
     int nb_tx, int nb_rx, int channel_length, uint32_t num_samples,
@@ -96,6 +95,47 @@ void run_channel_pipeline_cuda(
             kernel_input_ptr = d_tx_sig;
     #endif
 
+
+
+
+ 
+
+    // ======================== NEW INPUT DEBUG PRINT =======================
+    // This block prints the input signal for the first call to this function.
+    static bool first_run = true;
+    if (first_run) {
+
+        int num_samples_to_print = 10;
+        if (num_samples < num_samples_to_print) num_samples_to_print = num_samples;
+
+        printf("\n--- *******************DEBUG: GPU Pipeline Input (First %d Samples, Ant0) ---\n", num_samples_to_print);
+        for (int i = 0; i < num_samples_to_print; i++) {
+            // Input is interleaved float: I, Q, I, Q, ...
+            printf(" (%.4f, %.4f)", kernel_input_ptr[i * 2], kernel_input_ptr[i * 2 + 1]);
+        }
+        printf("\n---------------------------------------------------------------\n\n");
+        first_run = false;
+    }
+    // ======================================================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     size_t channel_size_bytes = nb_tx * nb_rx * channel_length * sizeof(float2);
     CHECK_CUDA( cudaMemcpy(d_channel_coeffs, h_channel_coeffs, channel_size_bytes, cudaMemcpyHostToDevice) );
 
@@ -105,6 +145,12 @@ void run_channel_pipeline_cuda(
     multipath_channel_kernel<<<blocks_multipath, threads_multipath, sharedMemSize>>>(
         d_channel_coeffs,
         kernel_input_ptr, d_intermediate_sig, num_samples, channel_length, nb_tx, nb_rx);
+
+
+
+
+
+
 
     dim3 threads_noise(256, 1);
     dim3 blocks_noise((num_samples + threads_noise.x - 1) / threads_noise.x, nb_rx);
@@ -116,6 +162,46 @@ void run_channel_pipeline_cuda(
     );
 
     cudaDeviceSynchronize();
+
+
+
+
+
+
+// ======================== INSERT DEBUG CODE HERE ========================
+    // This block is for debugging only. It synchronizes and copies data back to the host.
+    // It should be removed for final performance measurements.
+    {
+        cudaDeviceSynchronize(); // Wait for kernels to finish
+        int num_samples_to_print = 10;
+        if (num_samples < num_samples_to_print) num_samples_to_print = num_samples;
+        
+        size_t debug_bytes = num_samples_to_print * sizeof(short2);
+        short2* h_debug_output = (short2*)malloc(debug_bytes);
+
+        // Copy the first few samples of the first antenna's output
+        cudaMemcpy(h_debug_output, d_final_output, debug_bytes, cudaMemcpyDeviceToHost);
+
+        printf("\n--- DEBUG: GPU Pipeline Output (First %d Samples, Ant0) ---\n", num_samples_to_print);
+        for (int i = 0; i < num_samples_to_print; i++) {
+            printf(" (%d, %d)", h_debug_output[i].x, h_debug_output[i].y);
+        }
+        printf("\n----------------------------------------------------------------\n\n");
+        
+        free(h_debug_output);
+    }
+    // ======================================================================
+
+
+
+
+
+
+
+
+
+
+
 
     // If output_signal is NULL, the caller intends to keep the data on the GPU
     // for further processing (e.g., summing outputs). Otherwise, copy back to host.

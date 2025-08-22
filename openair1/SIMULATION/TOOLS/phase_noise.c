@@ -82,7 +82,6 @@ void add_noise_float(c16_t **rxdata,
             c16_t *rxd = &rxdata[ap][slot_offset + i + delay];
             rxd->r = (int16_t)(r_re[ap][i] + (gaussZiggurat(0.0, 1.0) * sqrt_sigma_div2));
             rxd->i = (int16_t)(r_im[ap][i] + (gaussZiggurat(0.0, 1.0) * sqrt_sigma_div2));
-            
             if (pdu_bit_map & ptrs_bit_map) {
                 phase_noise(ts, &rxd->r, &rxd->i);
             }
