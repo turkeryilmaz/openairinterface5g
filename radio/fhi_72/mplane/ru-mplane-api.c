@@ -33,6 +33,13 @@ static void free_match_list(char **match_list, size_t count)
   free(match_list);
 }
 
+static void fix_metanoia_setting(xran_mplane_t *xran_mplane, const uint32_t interface_mtu, const uint16_t first_iq_width, const int max_num_ant)
+{
+  xran_mplane->mtu = interface_mtu;
+  xran_mplane->iq_width = first_iq_width;
+  xran_mplane->prach_offset = max_num_ant;
+}
+
 static void fix_benetel_setting(xran_mplane_t *xran_mplane, const uint32_t interface_mtu, const int16_t first_iq_width, const int max_num_ant, const char *model_name)
 {
   if (interface_mtu == 1500) {
@@ -116,10 +123,11 @@ bool get_config_for_xran(const char *buffer, const int max_num_ant, xran_mplane_
   // Model name
   const char *model_name = get_ru_xml_node(buffer, "model-name");
 
-  if (strcasecmp(ru_vendor, "BENETEL") == 0 /* || strcmp(ru_vendor, "VVDN-LPRU") == 0 || strcmp(ru_vendor, "Metanoia") == 0 */) {
+  if (ru_vendor && strcasecmp(ru_vendor, "BENETEL") == 0) {
     fix_benetel_setting(xran_mplane, interface_mtu, first_iq_width, max_num_ant, model_name);
   } else {
-    AssertError(false, return false, "[MPLANE] %s RU currently not supported.\n", ru_vendor);
+    fix_metanoia_setting(xran_mplane, interface_mtu, first_iq_width, max_num_ant);
+   //AssertError(false, return false, "[MPLANE] %s RU currently not supported.\n", ru_vendor);
   }
 
   MP_LOG_I("Storing the following information to forward to xran:\n\

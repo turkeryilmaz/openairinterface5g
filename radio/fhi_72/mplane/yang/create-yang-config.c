@@ -156,6 +156,11 @@ static LY_ERR fill_uplane_ch_common_v2(const bool rx_dir, const xran_mplane_t *x
     // VERIFY_SUCCESS(ret == LY_SUCCESS, "[MPLANE] Failed to create \"compression-method\" node.\n");
   }
 
+  if (rx_dir == true) {
+    ret = lyd_new_term(compression_node, NULL, "fs-offset", "8", 0, NULL);
+    VERIFY_SUCCESS(ret == LY_SUCCESS, "[MPLANE] Failed to create \"fs-offset\" node.\n");
+  }
+
   struct lyd_node *eaxc_conf = NULL;
   ret = lyd_new_inner(*root, NULL, "e-axcid", 0, &eaxc_conf);
   VERIFY_SUCCESS(ret == LY_SUCCESS, "[MPLANE] Failed to create \"e-axcid\" node.\n");
