@@ -149,6 +149,25 @@ int main(int argc, char **argv) {
             generate_random_signal_interleaved(tx_sig_interleaved, nb_tx, num_samples);
             struct timespec start, end;
 
+            float* h_tx_ptr = (float*)h_tx_sig_pinned;
+            for (int j = 0; j < nb_tx; j++) {
+                memcpy(h_tx_ptr + j * num_samples * 2,  
+                       tx_sig_interleaved[j],              
+                       num_samples * 2 * sizeof(float));     
+            }
+    
+
+            // ======================== INPUT DEBUG PRINT ========================
+            // Print the input signal for the first configuration and first trial
+            if (c == 0 && s == 0 && m == 0 && t == 0) {
+                printf("\n--- DEBUG: Input Signal (First 5 Samples, Ant0) ---\n");
+                for (int sample = 0; sample < 5; sample++) {
+                    printf(" (%.4f, %.4f)", tx_sig_interleaved[0][sample * 2], tx_sig_interleaved[0][sample * 2 + 1]);
+                }
+                printf("\n-------------------------------------------------------\n");
+            }
+            // =================================================================
+
             // Time the CPU Path
             clock_gettime(CLOCK_MONOTONIC, &start);
             multipath_channel_float(chan_desc, tx_sig_interleaved, rx_multipath_re_cpu, rx_multipath_im_cpu, num_samples, 1, 0);
@@ -170,6 +189,22 @@ int main(int argc, char **argv) {
             cudaDeviceSynchronize();
             clock_gettime(CLOCK_MONOTONIC, &end);
             total_gpu_ns += (end.tv_sec - start.tv_sec) * 1e9 + (end.tv_nsec - start.tv_nsec);
+
+            // ======================== OUTPUT DEBUG PRINT =======================
+            // Print the output signals for the first configuration and first trial
+            if (c == 0 && s == 0 && m == 0 && t == 0) {
+                printf("\n--- DEBUG: Output Comparison (First 5 Samples, Ant0) ---\n");
+                printf("  Sample |    CPU (I, Q)    |    GPU (I, Q)\n");
+                printf("  ------------------------------------------------\n");
+                for (int sample = 0; sample < 5; sample++) {
+                    printf("  %6d | (%6d, %6d) | (%6d, %6d)\n",
+                           sample,
+                           output_cpu[0][sample].r, output_cpu[0][sample].i,
+                           output_gpu[0][sample].r, output_gpu[0][sample].i);
+                }
+                printf("----------------------------------------------------------\n\n");
+            }
+            // =================================================================
         }
         
         double avg_cpu_us = (total_cpu_ns / num_trials) / 1000.0;
