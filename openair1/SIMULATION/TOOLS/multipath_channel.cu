@@ -46,6 +46,8 @@ __global__ void multipath_channel_kernel(
     extern __shared__ float2 tx_shared[];
     const int i = blockIdx.x * blockDim.x + threadIdx.x;
     const int ii = blockIdx.y;
+    const int padding_len = channel_length - 1;
+    const int padded_num_samples = num_samples + padding_len;
 
     if (i >= num_samples) return;
 
@@ -57,15 +59,18 @@ __global__ void multipath_channel_kernel(
         const int shared_mem_size = blockDim.x + channel_length - 1;
 
         for (int k = tid; k < shared_mem_size; k += blockDim.x) {
-            int load_idx = block_start_idx + k - (channel_length - 1);
-            if (load_idx >= 0 && load_idx < num_samples) {
-                // tx_shared[k] = tx_sig[j * num_samples + load_idx];
-                // --- CHANGED: Read two floats and construct a float2 ---
-                int interleaved_idx = 2 * (j * num_samples + load_idx);
-                tx_shared[k] = make_float2(tx_sig[interleaved_idx], tx_sig[interleaved_idx + 1]);
-            } else {
-                tx_shared[k] = make_float2(0.0f, 0.0f);
-            }
+            // int load_idx = block_start_idx + k - (channel_length - 1);
+            // if (load_idx >= 0 && load_idx < num_samples) {
+            //     // tx_shared[k] = tx_sig[j * num_samples + load_idx];
+            //     // --- CHANGED: Read two floats and construct a float2 ---
+            //     int interleaved_idx = 2 * (j * num_samples + load_idx);
+            //     tx_shared[k] = make_float2(tx_sig[interleaved_idx], tx_sig[interleaved_idx + 1]);
+            // } else {
+            //     tx_shared[k] = make_float2(0.0f, 0.0f);
+            // }
+            int load_idx = block_start_idx + k;
+            int interleaved_idx = 2 * (j * padded_num_samples + load_idx);
+            tx_shared[k] = make_float2(tx_sig[interleaved_idx], tx_sig[interleaved_idx + 1]);
         }
         __syncthreads();
 
@@ -155,7 +160,6 @@ void multipath_channel_cuda(
     float2 *d_rx_sig = (float2*)d_rx_sig_void;
     float2 *d_channel_coeffs = (float2*)d_channel_coeffs_void;
     int num_samples = length - (int)channel_offset;
-    // float2* kernel_input_ptr;
     float* kernel_input_ptr;
 
     #if defined(USE_UNIFIED_MEMORY)

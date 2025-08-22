@@ -49,7 +49,6 @@ __global__ void sum_outputs_kernel(
 extern "C" {
 
 void run_channel_pipeline_cuda(
-    float **tx_sig_interleaved,
     c16_t **output_signal,
     int nb_tx, int nb_rx, int channel_length, uint32_t num_samples,
     float *h_channel_coeffs,
@@ -67,7 +66,10 @@ void run_channel_pipeline_cuda(
     curandState_t *d_curand_states = (curandState_t*)d_curand_states_void;
     float2 *d_channel_coeffs = (float2*)d_channel_coeffs_void;
 
-    // float2* kernel_input_ptr;
+    const int padding_len = channel_length - 1;
+    const size_t padded_stride_bytes = (num_samples + padding_len) * 2 * sizeof(float);
+    const size_t total_padded_tx_bytes = nb_tx * padded_stride_bytes;
+
     float* kernel_input_ptr;
     #if defined(USE_UNIFIED_MEMORY) || defined(USE_ATS_MEMORY)
             // kernel_input_ptr = (float2*)h_tx_sig_pinned_void;
@@ -85,13 +87,8 @@ void run_channel_pipeline_cuda(
 
             float *d_tx_sig = (float*)d_tx_sig_void;
             float* h_tx_sig_pinned = (float*)h_tx_sig_pinned_void;
-            for (int j = 0; j < nb_tx; j++) {
-                memcpy(h_tx_sig_pinned + j * num_samples * 2,  
-                    tx_sig_interleaved[j],              
-                    num_samples * 2 * sizeof(float));     
-            }
-            CHECK_CUDA( cudaMemcpy(d_tx_sig, h_tx_sig_pinned, nb_tx * num_samples * 2 * sizeof(float), cudaMemcpyHostToDevice) );
-
+            CHECK_CUDA( cudaMemcpy(d_tx_sig, h_tx_sig_pinned, total_padded_tx_bytes, cudaMemcpyHostToDevice) );
+            
             kernel_input_ptr = d_tx_sig;
     #endif
 

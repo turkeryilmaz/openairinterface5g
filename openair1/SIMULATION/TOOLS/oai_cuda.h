@@ -47,9 +47,6 @@ extern "C" {
 #endif
 
 void run_channel_pipeline_cuda(
-    // float **tx_sig_re, float **tx_sig_im,
-    // todo: implement interleaved version
-    float **tx_sig_interleaved,
     c16_t **output_signal,
     int nb_tx, int nb_rx, int channel_length, uint32_t num_samples, // Note: This is the number of IQ pairs
     float *h_channel_coeffs,
