@@ -28,19 +28,6 @@ void generate_random_signal_interleaved(float **sig_interleaved, int nb_ant, int
      }
  }
 
-
-// void generate_random_signal_interleaved(float **sig_interleaved, int nb_ant, int num_samples) { 
-//      for (int i = 0; i < nb_ant; i++) {
-//          for (int j = 0; j < num_samples; j++) {
-//             // Generate a normalized signal in the range [-1.0, 1.0].
-//             // The previous large integer values were causing overflow when converting to short.
-//             sig_interleaved[i][2*j]   = (2.0f * (float)rand() / (float)RAND_MAX) - 1.0f;
-//             sig_interleaved[i][2*j+1] = (2.0f * (float)rand() / (float)RAND_MAX) - 1.0f;
-//          }
-//      }
-//  }
-
-
 channel_desc_t* create_manual_channel_desc(int nb_tx, int nb_rx, int channel_length) {
     channel_desc_t* desc = (channel_desc_t*)calloc(1, sizeof(channel_desc_t));
     desc->nb_tx = nb_tx;
@@ -314,164 +301,25 @@ int main(int argc, char **argv) {
 
         struct timespec start, end;
 
-
-
-
-// ======================== INSERT DEBUG CODE HERE ========================
-    // This block prints the TX signal for the first trial only
-    if (t == 0) {
-        printf("\n--- DEBUG: TX Input Signal (First 5 Samples) ---\n");
-        int num_samples_to_print = 5;
-        if (num_samples < num_samples_to_print) {
-            num_samples_to_print = num_samples;
-        }
-
-        // Loop through each channel's unique input signal 
-        // (num_tx_signals is 1 unless --sum-outputs is used)
-        for (int c = 0; c < num_tx_signals; c++) {
-            printf("--- Channel Input %d ---\n", c);
-            // Loop through each transmit antenna
-            for (int tx = 0; tx < nb_tx; tx++) {
-                printf("  Antenna %d: ", tx);
-                // Loop through the first few samples to print them
-                for (int s = 0; s < num_samples_to_print; s++) {
-                    // Access interleaved I/Q data, accounting for the halo offset
-                    float I = tx_sig_interleaved[0][tx][(s) * 2];
-                    float Q = tx_sig_interleaved[0][tx][(s) * 2 + 1];
-                    printf(" (%.1f, %.1f)", I, Q);
-                }
-                printf("\n");
-            }
-        }
-        printf("------------------------------------------------\n\n");
-    // ======================================================================
-
-    // ...existing code for printing TX input signal...
-printf("------------------------------------------------\n\n");
-
-// Print channel coefficients for the first channel
-printf("--- DEBUG: Channel Coefficients (First 5 Taps per Link, Channel 0) ---\n");
-int num_links = nb_tx * nb_rx;
-int num_coeffs_to_print = 5;
-if (channel_length < num_coeffs_to_print) num_coeffs_to_print = channel_length;
-for (int link = 0; link < num_links; link++) {
-    int tx = link / nb_rx;
-    int rx = link % nb_rx;
-    printf("  Link TX%d→RX%d: ", tx, rx);
-    for (int l = 0; l < num_coeffs_to_print; l++) {
-        double r = channels[0]->ch[link][l].r;
-        double i = channels[0]->ch[link][l].i;
-        printf(" (%.4f, %.4f)", r, i);
-    }
-    printf("\n");
-}
-printf("------------------------------------------------\n\n");
-    }
-
-
-
-
-
-
-
-
-
-
-
         // --- CPU RUN ---
         clock_gettime(CLOCK_MONOTONIC, &start);
-        for(int c=0; c<num_channels; c++){
-            float** current_tx = sum_outputs ? tx_sig_interleaved[c] : tx_sig_interleaved[0];
-            multipath_channel_float(channels[c], current_tx, rx_multipath_re_cpu, rx_multipath_im_cpu, num_samples, 1, 0);
-            add_noise_float(output_cpu[c], (const float **)rx_multipath_re_cpu, (const float **)rx_multipath_im_cpu, 0.1, num_samples, 0, 0, 0, 0, 0, nb_rx);
-        
-        
-        
-        
-        
-        
-        
-                        // ======================== NEW CPU INPUT DEBUG PRINT =======================
-            if (t == 0 && c == 0) {
-                printf("\n--- DEBUG: CPU Input Signal (current_tx, First 5 Samples, Channel 0) ---\n");
-                int num_samples_to_print = 5;
-                if (num_samples < num_samples_to_print) num_samples_to_print = num_samples;
-
-                for (int tx = 0; tx < nb_tx; tx++) {
-                    printf("  Antenna %d: ", tx);
-                    for (int s = 0; s < num_samples_to_print; s++) {
-                        float I = current_tx[tx][s * 2];
-                        float Q = current_tx[tx][s * 2 + 1];
-                        printf(" (%.4f, %.4f)", I, Q);
-                    }
-                    printf("\n");
-                }
-                printf("--------------------------------------------------------------------------\n\n");
-            }
-            // ======================================================================
-        
-        
-        
-        
-// ======================== CORRECTED CPU DEBUG PRINT ========================
-            // This block prints the CPU output signal for the first trial and first channel
-            if (t == 0 && c == 0) {
-                printf("\n--- DEBUG: CPU Output Signal (First 50 Samples, Channel 0) ---\n");
-                int num_samples_to_print = 50;
-                if (num_samples < num_samples_to_print) num_samples_to_print = num_samples;
-
-                // Loop through each receive antenna
-                for (int rx = 0; rx < nb_rx; rx++) {
-                    printf("  Antenna %d: ", rx);
-                    for (int s = 0; s < num_samples_to_print; s++) {
-                        // Access the I/Q short values from the CPU output buffer
-                        short I = output_cpu[c][rx][s].r;
-                        short Q = output_cpu[c][rx][s].i;
-                        printf(" (%d, %d)", I, Q);
-                    }
-                    printf("\n");
-                }
-                printf("------------------------------------------------------------\n\n");
-            }
-            // ======================================================================
-
-    
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        }
-        if (sum_outputs) {
-            c16_t* final_sum_cpu = calloc(nb_rx * num_samples, sizeof(c16_t));
-            for (int c = 0; c < num_channels; c++) {
-                for (int i = 0; i < nb_rx * num_samples; i++) {
-                    final_sum_cpu[i].r += output_cpu[c][0][i].r;
-                    final_sum_cpu[i].i += output_cpu[c][0][i].i;
-                }
-            }
-            free(final_sum_cpu);
-        }
+        // for(int c=0; c<num_channels; c++){
+        //     float** current_tx = sum_outputs ? tx_sig_interleaved[c] : tx_sig_interleaved[0];
+        //     multipath_channel_float(channels[c], current_tx, rx_multipath_re_cpu, rx_multipath_im_cpu, num_samples, 1, 0);
+        //     add_noise_float(output_cpu[c], (const float **)rx_multipath_re_cpu, (const float **)rx_multipath_im_cpu, 0.1, num_samples, 0, 0, 0, 0, 0, nb_rx);
+        // }
+        // if (sum_outputs) {
+        //     c16_t* final_sum_cpu = calloc(nb_rx * num_samples, sizeof(c16_t));
+        //     for (int c = 0; c < num_channels; c++) {
+        //         for (int i = 0; i < nb_rx * num_samples; i++) {
+        //             final_sum_cpu[i].r += output_cpu[c][0][i].r;
+        //             final_sum_cpu[i].i += output_cpu[c][0][i].i;
+        //         }
+        //     }
+        //     free(final_sum_cpu);
+        // }
         clock_gettime(CLOCK_MONOTONIC, &end);
         total_cpu_ns += (end.tv_sec - start.tv_sec) * 1e9 + (end.tv_nsec - start.tv_nsec);
-
-
-
-
-
-
-
-
-
-
-
-
-
 
         // --- GPU RUN ---
         if (strcmp(mode_str, "batch") == 0) {
@@ -602,47 +450,6 @@ printf("------------------------------------------------\n\n");
                         ((float2*)h_channel_coeffs)[idx].y = (float)channels[c]->ch[link][l].i;
                     }
                 }
-
-
-
-
-
-
-
-            // ======================== NEW CPU INPUT DEBUG PRINT =======================
-            if (t == 0 && c == 0) {
-                printf("\n--- ###DEBUG: GPU Input Signal (current_tx, First 5 Samples, Channel 0) ---\n");
-                int num_samples_to_print = 5;
-                if (num_samples < num_samples_to_print) num_samples_to_print = num_samples;
-
-                for (int tx = 0; tx < nb_tx; tx++) {
-                    printf("  Antenna %d: ", tx);
-                    for (int s = 0; s < num_samples_to_print; s++) {
-                        float I = tx_sig_interleaved[0][tx][s * 2];
-                        float Q = tx_sig_interleaved[0][tx][s * 2 + 1];
-                        printf(" (%.4f, %.4f)", I, Q);
-                    }
-                    printf("\n");
-                }
-                printf("--------------------------------------------------------------------------\n\n");
-            }
-            // ======================================================================
-        
-        
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                 run_channel_pipeline_cuda(
                     sum_outputs ? tx_sig_interleaved[c] : tx_sig_interleaved[0],
                     output_gpu_serial,
@@ -653,62 +460,6 @@ printf("------------------------------------------------\n\n");
                     d_channel_coeffs_gpu
                 );
             }
-
-
-
-
-
-
-    if (t == 0) {
-            // ======================== INSERT DEBUG CODE HERE ========================
-            // This block prints the output signal for the first trial and first channel
-            if (t == 0) {
-                printf("\n--- DEBUG: GPU Output Signal (First 50 Samples) ---\n");
-                
-                // We need to copy the result from GPU back to CPU to print it.
-                // h_output_sig_pinned is already allocated for serial mode.
-                cudaMemcpy(h_output_sig_pinned, d_individual_gpu_outputs[0], nb_rx * num_samples * sizeof(short2), cudaMemcpyDeviceToHost);
-                
-                short2* h_output = (short2*)h_output_sig_pinned;
-                int num_samples_to_print = 50;
-
-                // Loop through each receive antenna
-                for (int rx = 0; rx < nb_rx; rx++) {
-                    printf("  Antenna %d: ", rx);
-                    for (int s = 0; s < num_samples_to_print; s++) {
-                        // Access the interleaved I/Q short values
-                        short I = h_output[rx * num_samples + s].x;
-                        short Q = h_output[rx * num_samples + s].y;
-                        printf(" (%d, %d)", I, Q);
-                    }
-                    printf("\n");
-                }
-                printf("--------------------------------------------------\n\n");
-            }
-            // ======================================================================
-    }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             free(output_gpu_serial[0]);
             free(output_gpu_serial);
         }

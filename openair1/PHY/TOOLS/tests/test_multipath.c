@@ -168,7 +168,7 @@ int main(int argc, char **argv) {
         cudaDeviceSynchronize();
         clock_gettime(CLOCK_MONOTONIC, &end);
         total_gpu_ns = (end.tv_sec - start.tv_sec) * 1e9 + (end.tv_nsec - start.tv_nsec);
-        
+
         int verification_passed = (verify_results(r_re_cpu, r_im_cpu, r_re_gpu, r_im_gpu, nb_rx, num_samples) == 0);
         double avg_cpu_us = (total_cpu_ns / num_trials) / 1000.0;
         double avg_gpu_us = (total_gpu_ns / num_trials) / 1000.0;

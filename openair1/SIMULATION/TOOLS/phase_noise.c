@@ -82,22 +82,7 @@ void add_noise_float(c16_t **rxdata,
             c16_t *rxd = &rxdata[ap][slot_offset + i + delay];
             rxd->r = (int16_t)(r_re[ap][i] + (gaussZiggurat(0.0, 1.0) * sqrt_sigma_div2));
             rxd->i = (int16_t)(r_im[ap][i] + (gaussZiggurat(0.0, 1.0) * sqrt_sigma_div2));
-
- // ======================== DEBUG PRINT ========================
-            // This prints the first 5 samples for the first antenna on the first call
-            if (ap == 0 && i < 5) {
-                if (i == 0) {
-                    printf("\n--- DEBUG: add_noise_float (Input vs. Output) ---\n");
-                    printf("  Sample |  Input (I, Q)   |  Output (I, Q)\n");
-                    printf("  --------------------------------------------------\n");
-                }
-                printf("  %6d | (%8.4f, %8.4f) | (%6d, %6d)\n",
-                       i, r_re[ap][i], r_im[ap][i], rxd->r, rxd->i);
-            }
-            // ===========================================================
-
             
-
             if (pdu_bit_map & ptrs_bit_map) {
                 phase_noise(ts, &rxd->r, &rxd->i);
             }
