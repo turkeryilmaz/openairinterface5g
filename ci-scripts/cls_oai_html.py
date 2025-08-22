@@ -86,8 +86,6 @@ class HTMLManagement():
 			self.htmlFile.write('<head>\n')
 			self.htmlFile.write('  <meta name="viewport" content="width=device-width, initial-scale=1">\n')
 			self.htmlFile.write('  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">\n')
-			self.htmlFile.write('  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>\n')
-			self.htmlFile.write('  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>\n')
 			self.htmlFile.write('  <title>Test Results for TEMPLATE_JOB_NAME job build #TEMPLATE_BUILD_ID</title>\n')
 			self.htmlFile.write('</head>\n')
 			self.htmlFile.write('<body><div class="container-fluid" style="margin-left:1em; margin-right:1em">\n')
