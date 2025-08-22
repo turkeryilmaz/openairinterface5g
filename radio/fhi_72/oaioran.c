@@ -533,7 +533,7 @@ int xran_fh_tx_send_slot(ru_info_t *ru, int frame, int slot, uint64_t timestamp)
             pRbElm->nBeamIndex = ru->beam_id[ant_id / (ru->nb_rx / ru->num_beams_period)][slot * XRAN_NUM_OF_SYMBOL_PER_SLOT + sym_idx];
             // In phy-f-1.0/fhi_lib/lib/api/xran_pkt_cp.h, beamId:15 is of 15bit. -1 set extension bit ef:1 to 1 mistakenly.
             if (pRbElm->nBeamIndex == -1) {
-              pRbElm->nBeamIndex = 32766;
+              pRbElm->nBeamIndex = 0;
             } else {
               first = 0;
             }
@@ -585,7 +585,7 @@ int xran_fh_tx_send_slot(ru_info_t *ru, int frame, int slot, uint64_t timestamp)
               p_prbMapElm->nBeamIndex = ru->beam_id[ant_id / (ru->nb_tx / ru->num_beams_period)][slot * XRAN_NUM_OF_SYMBOL_PER_SLOT];
               // In phy-f-1.0/fhi_lib/lib/api/xran_pkt_cp.h, beamId:15 is of 15bit. -1 set extension bit ef:1 to 1 mistakenly.
               if (p_prbMapElm->nBeamIndex == -1)
-                p_prbMapElm->nBeamIndex = 32767;
+                p_prbMapElm->nBeamIndex = 0;
             }
 
             // assumes one fragment per symbol
