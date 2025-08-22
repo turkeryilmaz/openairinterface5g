@@ -97,6 +97,7 @@ pthread_mutex_t sync_mutex;
 int sync_var=-1; //!< protected by mutex \ref sync_mutex.
 int config_sync_var=-1;
 int oai_exit = 0;
+int is_l1_ready = 0;
 
 unsigned int mmapped_dma=0;
 
@@ -702,7 +703,7 @@ int main( int argc, char **argv ) {
 
     if (NFAPI_MODE != NFAPI_MODE_PNF && NFAPI_MODE != NFAPI_MODE_VNF && NFAPI_MODE != NFAPI_MODE_AERIAL) {
       init_eNB_afterRU();
-    }
+    }    
 
     // connect the TX/RX buffers
     pthread_mutex_lock(&sync_mutex);
@@ -710,6 +711,7 @@ int main( int argc, char **argv ) {
     pthread_cond_broadcast(&sync_cond);
     pthread_mutex_unlock(&sync_mutex);
   }
+  is_l1_ready = 1;
 
   // wait for end of program
   printf("TYPE <CTRL-C> TO TERMINATE\n");
