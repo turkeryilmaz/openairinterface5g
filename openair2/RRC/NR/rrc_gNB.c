@@ -428,26 +428,23 @@ static void rrc_gNB_generate_RRCReject(gNB_RRC_INST *rrc, rrc_gNB_ue_context_t *
   gNB_RRC_UE_t *ue_p = &ue_context_pP->ue_context;
   LOG_A(NR_RRC, "Send RRCReject to RNTI %04x\n", ue_p->rnti);
 
-  unsigned char buf[1024];
-  int size = do_RRCReject(buf);
-  AssertFatal(size > 0, "do_RRCReject failed\n");
-  AssertFatal(size <= 1024, "memory corruption\n");
-
-  LOG_DUMPMSG(NR_RRC, DEBUG_RRC,
-              (char *)buf,
-              size,
-              "[MSG] RRCReject \n");
-  LOG_I(NR_RRC, " [RAPROC] ue %04x Logical Channel DL-CCCH, Generating NR_RRCReject (bytes %d)\n", ue_p->rnti, size);
+  byte_array_t ba = do_RRCReject();
+  if (ba.len <= 0) {
+    LOG_E(NR_RRC, "RRCReject generation failed (RNTI %04x)\n", ue_p->rnti);
+    return;
+  }
+  LOG_DUMPMSG(NR_RRC, DEBUG_RRC, (char *)ba.buf, ba.len, "[MSG] RRCReject \n");
+  LOG_I(NR_RRC, " [RAPROC] ue %04x Logical Channel DL-CCCH, Generating NR_RRCReject (bytes=%ld)\n", ue_p->rnti, ba.len);
 
   f1_ue_data_t ue_data = cu_get_f1_ue_data(ue_p->rrc_ue_id);
   RETURN_IF_INVALID_ASSOC_ID(ue_data.du_assoc_id);
   int srbid = 0;
   f1ap_dl_rrc_message_t dl_rrc = {
-    .gNB_CU_ue_id = ue_p->rrc_ue_id,
-    .gNB_DU_ue_id = ue_data.secondary_ue,
-    .rrc_container = buf,
-    .rrc_container_length = size,
-    .srb_id = srbid,
+      .gNB_CU_ue_id = ue_p->rrc_ue_id,
+      .gNB_DU_ue_id = ue_data.secondary_ue,
+      .rrc_container = ba.buf,
+      .rrc_container_length = ba.len,
+      .srb_id = srbid,
   };
   rrc->mac_rrc.dl_rrc_message_transfer(ue_data.du_assoc_id, &dl_rrc);
   /* release the created UE context, we rejected the UE */
@@ -924,7 +921,6 @@ static void rrc_gNB_generate_RRCReestablishment(rrc_gNB_ue_context_t *ue_context
   module_id_t module_id = 0;
   gNB_RRC_INST *rrc = RC.nrrrc[module_id];
   gNB_RRC_UE_t *ue_p = &ue_context_pP->ue_context;
-  uint8_t buffer[NR_RRC_BUF_SIZE] = {0};
   uint8_t xid = rrc_gNB_get_next_transaction_identifier(module_id);
   ue_p->xids[xid] = RRC_REESTABLISH;
   const f1ap_served_cell_info_t *cell_info = &du->setup_req->cell[0].info;
@@ -932,9 +928,13 @@ static void rrc_gNB_generate_RRCReestablishment(rrc_gNB_ue_context_t *ue_context
   LOG_I(NR_RRC, "Reestablishment update key pci=%d, earfcn_dl=%u\n", cell_info->nr_pci, ssb_arfcn);
   nr_derive_key_ng_ran_star(cell_info->nr_pci, ssb_arfcn, ue_p->nh_ncc >= 0 ? ue_p->nh : ue_p->kgnb, ue_p->kgnb);
   ue_p->kgnb_ncc = 0;
-  int size = do_RRCReestablishment(ue_context_pP->ue_context.nh_ncc, buffer, NR_RRC_BUF_SIZE, xid);
+  byte_array_t ba = do_RRCReestablishment(ue_context_pP->ue_context.nh_ncc, xid);
+  if (ba.len <= 0) {
+    LOG_E(NR_RRC, "UE %d: Failed to generate RRCReconfiguration\n", ue_p->rrc_ue_id);
+    return;
+  }
 
-  LOG_A(NR_RRC, "Send RRCReestablishment [%d bytes] to RNTI %04x\n", size, ue_p->rnti);
+  LOG_A(NR_RRC, "Send RRCReestablishment [%ld bytes] to RNTI %04x\n", ba.len, ue_p->rnti);
 
   /* Ciphering and Integrity according to TS 33.501 */
   nr_pdcp_entity_security_keys_and_algos_t security_parameters;
@@ -973,10 +973,16 @@ static void rrc_gNB_generate_RRCReestablishment(rrc_gNB_ue_context_t *ue_context
                                   .srb_id = DL_SCH_LCID_DCCH,
                                   .old_gNB_DU_ue_id = &old_gNB_DU_ue_id};
   deliver_dl_rrc_message_data_t data = {.rrc = rrc, .dl_rrc = &dl_rrc, .assoc_id = ue_data.du_assoc_id};
-  nr_pdcp_data_req_srb(ue_p->rrc_ue_id, DL_SCH_LCID_DCCH, rrc_gNB_mui++, size, (unsigned char *const)buffer, rrc_deliver_dl_rrc_message, &data);
+  nr_pdcp_data_req_srb(ue_p->rrc_ue_id,
+                       DL_SCH_LCID_DCCH,
+                       rrc_gNB_mui++,
+                       ba.len,
+                       (unsigned char *const)ba.buf,
+                       rrc_deliver_dl_rrc_message,
+                       &data);
 
 #ifdef E2_AGENT
-  E2_AGENT_SIGNAL_DL_DCCH_RRC_MSG(buffer, size, NR_DL_DCCH_MessageType__c1_PR_rrcReestablishment);
+  E2_AGENT_SIGNAL_DL_DCCH_RRC_MSG(ba.buf, ba.len, NR_DL_DCCH_MessageType__c1_PR_rrcReestablishment);
 #endif
 
   /* RRCReestablishment has been generated, let's enable ciphering now. */
@@ -1545,13 +1551,16 @@ void rrc_forward_ue_nas_message(gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE)
 
   LOG_UE_DL_EVENT(UE, "Send DL Information Transfer [%ld bytes]\n", UE->nas_pdu.len);
 
-  uint8_t buffer[4096];
   unsigned int xid = rrc_gNB_get_next_transaction_identifier(rrc->module_id);
-  uint32_t length = do_NR_DLInformationTransfer(buffer, sizeof(buffer), xid, UE->nas_pdu.len, UE->nas_pdu.buf);
-  LOG_DUMPMSG(NR_RRC, DEBUG_RRC, buffer, length, "[MSG] RRC DL Information Transfer\n");
+  byte_array_t ba = do_NR_DLInformationTransfer(xid, UE->nas_pdu.len, UE->nas_pdu.buf);
+  if (ba.len <= 0) {
+    LOG_E(NR_RRC, "UE %d: do_NR_DLInformationTransfer failed\n", UE->rrc_ue_id);
+    return;
+  }
+  LOG_DUMPMSG(NR_RRC, DEBUG_RRC, ba.buf, ba.len, "[MSG] RRC DL Information Transfer\n");
   rb_id_t srb_id = UE->Srb[2].Active ? DL_SCH_LCID_DCCH1 : DL_SCH_LCID_DCCH;
   const uint32_t msg_id = NR_DL_DCCH_MessageType__c1_PR_dlInformationTransfer;
-  nr_rrc_transfer_protected_rrc_message(rrc, UE, srb_id, msg_id, buffer, length);
+  nr_rrc_transfer_protected_rrc_message(rrc, UE, srb_id, msg_id, ba.buf, ba.len);
   // no need to free UE->nas_pdu.buf, do_NR_DLInformationTransfer() did that
   UE->nas_pdu.buf = NULL;
   UE->nas_pdu.len = 0;
@@ -1826,18 +1835,23 @@ static void handle_rrcReconfigurationComplete(gNB_RRC_INST *rrc, gNB_RRC_UE_t *U
 
 static void rrc_gNB_generate_UECapabilityEnquiry(gNB_RRC_INST *rrc, gNB_RRC_UE_t *ue)
 {
-  uint8_t buffer[100];
-
   T(T_ENB_RRC_UE_CAPABILITY_ENQUIRY, T_INT(rrc->module_id), T_INT(0), T_INT(0), T_INT(ue->rrc_ue_id));
   uint8_t xid = rrc_gNB_get_next_transaction_identifier(rrc->module_id);
   ue->xids[xid] = RRC_UECAPABILITY_ENQUIRY;
-  int size = do_NR_SA_UECapabilityEnquiry(buffer, xid);
-  LOG_I(NR_RRC, "UE %d: Logical Channel DL-DCCH, Generate NR UECapabilityEnquiry (bytes %d, xid %d)\n", ue->rrc_ue_id, size, xid);
 
+  nr_rrc_du_container_t *du = get_du_by_cell_id((gNB_RRC_INST *)rrc, rrc->nr_cellid);
+  DevAssert(du != NULL);
+  DevAssert(du->mtc != NULL);
+  byte_array_t ba = do_NR_SA_UECapabilityEnquiry(xid, get_dl_band(&du->setup_req->cell[0].info));
+  if (ba.len <= 0) {
+    LOG_E(NR_RRC, "UE %d: Failed to generate UECapabilityEnquiry (bytes %ld, xid %d)\n", ue->rrc_ue_id, ba.len, xid);
+    return;
+  }
+  LOG_I(NR_RRC, "UE %d: DL-DCCH, Generate NR UECapabilityEnquiry (bytes %ld, xid %d)\n", ue->rrc_ue_id, ba.len, xid);
   AssertFatal(!NODE_IS_DU(rrc->node_type), "illegal node type DU!\n");
 
   const uint32_t msg_id = NR_DL_DCCH_MessageType__c1_PR_ueCapabilityEnquiry;
-  nr_rrc_transfer_protected_rrc_message(rrc, ue, DL_SCH_LCID_DCCH, msg_id, buffer, size);
+  nr_rrc_transfer_protected_rrc_message(rrc, ue, DL_SCH_LCID_DCCH, msg_id, ba.buf, ba.len);
 }
 
 static int rrc_gNB_decode_dcch(gNB_RRC_INST *rrc, const f1ap_ul_rrc_message_t *msg)
@@ -2191,8 +2205,11 @@ static void rrc_CU_process_ue_context_release_request(MessageDef *msg_p, sctp_as
   if (!ue_context_p || ue_context_p->ue_context.amf_ue_ngap_id >= (1LL << 40)) {
     const char *reason = !ue_context_p ? "could not find UE context" : "no AMF";
     LOG_W(RRC, "%s for CU UE ID %u: auto-generate release command\n", reason, req->gNB_CU_ue_id);
-    uint8_t buffer[NR_RRC_BUF_SIZE] = {0};
-    int size = do_NR_RRCRelease(buffer, NR_RRC_BUF_SIZE, rrc_gNB_get_next_transaction_identifier(0));
+    byte_array_t ba = do_NR_RRCRelease(rrc_gNB_get_next_transaction_identifier(0));
+    if (ba.len <= 0) {
+      LOG_E(NR_RRC, "%s for CU UE ID %u: RRCRelease generation failed\n", reason, req->gNB_CU_ue_id);
+      return;
+    }
     RETURN_IF_INVALID_ASSOC_ID(assoc_id);
     f1ap_ue_context_rel_cmd_t ue_context_release_cmd = {
         .gNB_CU_ue_id = req->gNB_CU_ue_id,
@@ -2202,7 +2219,7 @@ static void rrc_CU_process_ue_context_release_request(MessageDef *msg_p, sctp_as
         .srb_id = &srbid, // C-ifRRCContainer => is added below
     };
     deliver_ue_ctxt_release_data_t data = {.rrc = rrc, .release_cmd = &ue_context_release_cmd, .assoc_id = assoc_id};
-    nr_pdcp_data_req_srb(req->gNB_CU_ue_id, srbid, rrc_gNB_mui++, size, buffer, rrc_deliver_ue_ctxt_release_cmd, &data);
+    nr_pdcp_data_req_srb(req->gNB_CU_ue_id, srbid, rrc_gNB_mui++, ba.len, ba.buf, rrc_deliver_ue_ctxt_release_cmd, &data);
     return;
   }
 
@@ -2942,24 +2959,25 @@ void *rrc_gnb_task(void *args_p) {
   }
 }
 
-//-----------------------------------------------------------------------------
 void rrc_gNB_generate_SecurityModeCommand(gNB_RRC_INST *rrc, gNB_RRC_UE_t *ue_p)
-//-----------------------------------------------------------------------------
 {
-  uint8_t buffer[100];
   AssertFatal(!ue_p->as_security_active, "logic error: security already active\n");
 
   T(T_ENB_RRC_SECURITY_MODE_COMMAND, T_INT(0), T_INT(0), T_INT(0), T_INT(ue_p->rrc_ue_id));
   NR_IntegrityProtAlgorithm_t integrity_algorithm = (NR_IntegrityProtAlgorithm_t)ue_p->integrity_algorithm;
-  int size = do_NR_SecurityModeCommand(buffer,
-                                       rrc_gNB_get_next_transaction_identifier(rrc->module_id),
-                                       ue_p->ciphering_algorithm,
-                                       integrity_algorithm);
-  LOG_DUMPMSG(NR_RRC, DEBUG_RRC, (char *)buffer, size, "[MSG] RRC Security Mode Command\n");
-  LOG_I(NR_RRC, "UE %u Logical Channel DL-DCCH, Generate SecurityModeCommand (bytes %d)\n", ue_p->rrc_ue_id, size);
+  byte_array_t ba = do_NR_SecurityModeCommand(rrc_gNB_get_next_transaction_identifier(rrc->module_id),
+                                              ue_p->ciphering_algorithm,
+                                              integrity_algorithm);
+  if (ba.len <= 0) {
+    LOG_E(NR_RRC, "UE %d: do_NR_SecurityModeCommand failed\n", ue_p->rrc_ue_id);
+    return;
+  }
+
+  LOG_DUMPMSG(NR_RRC, DEBUG_RRC, (char *)ba.buf, ba.len, "[MSG] RRC Security Mode Command\n");
+  LOG_I(NR_RRC, "UE %u Logical Channel DL-DCCH, Generate SecurityModeCommand (bytes=%ld)\n", ue_p->rrc_ue_id, ba.len);
 
   const uint32_t msg_id = NR_DL_DCCH_MessageType__c1_PR_securityModeCommand;
-  nr_rrc_transfer_protected_rrc_message(rrc, ue_p, DL_SCH_LCID_DCCH, msg_id, buffer, size);
+  nr_rrc_transfer_protected_rrc_message(rrc, ue_p, DL_SCH_LCID_DCCH, msg_id, ba.buf, ba.len);
 }
 
 //-----------------------------------------------------------------------------
@@ -2969,9 +2987,11 @@ void rrc_gNB_generate_SecurityModeCommand(gNB_RRC_INST *rrc, gNB_RRC_UE_t *ue_p)
 */
 void rrc_gNB_generate_RRCRelease(gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE)
 {
-  uint8_t buffer[NR_RRC_BUF_SIZE] = {0};
-  int size = do_NR_RRCRelease(buffer, NR_RRC_BUF_SIZE, rrc_gNB_get_next_transaction_identifier(rrc->module_id));
-
+  byte_array_t ba = do_NR_RRCRelease(rrc_gNB_get_next_transaction_identifier(rrc->module_id));
+  if (ba.len <= 0) {
+    LOG_E(NR_RRC, "%s for CU UE ID %u: RRCRelease generation failed\n", __func__, UE->rrc_ue_id);
+    return;
+  }
   LOG_UE_DL_EVENT(UE, "Send RRC Release\n");
   f1_ue_data_t ue_data = cu_get_f1_ue_data(UE->rrc_ue_id);
   RETURN_IF_INVALID_ASSOC_ID(ue_data.du_assoc_id);
@@ -2984,10 +3004,10 @@ void rrc_gNB_generate_RRCRelease(gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE)
     .srb_id = &srbid, // C-ifRRCContainer => is added below
   };
   deliver_ue_ctxt_release_data_t data = {.rrc = rrc, .release_cmd = &ue_context_release_cmd, .assoc_id = ue_data.du_assoc_id};
-  nr_pdcp_data_req_srb(UE->rrc_ue_id, DL_SCH_LCID_DCCH, rrc_gNB_mui++, size, buffer, rrc_deliver_ue_ctxt_release_cmd, &data);
+  nr_pdcp_data_req_srb(UE->rrc_ue_id, DL_SCH_LCID_DCCH, rrc_gNB_mui++, ba.len, ba.buf, rrc_deliver_ue_ctxt_release_cmd, &data);
 
 #ifdef E2_AGENT
-  E2_AGENT_SIGNAL_DL_DCCH_RRC_MSG(buffer, size, NR_DL_DCCH_MessageType__c1_PR_rrcRelease);
+  E2_AGENT_SIGNAL_DL_DCCH_RRC_MSG(ba.buf, ba.len, NR_DL_DCCH_MessageType__c1_PR_rrcRelease);
 #endif
 }
 
@@ -3001,7 +3021,6 @@ int rrc_gNB_generate_pcch_msg(sctp_assoc_t assoc_id, const NR_SIB1_t *sib1, uint
   uint32_t N;  /* N: min(T,nB). total count of PF in one DRX cycle */
   uint32_t Ns = 0;  /* Ns: max(1,nB/T) */
   uint32_t T;  /* DRX cycle */
-  uint8_t buffer[NR_RRC_BUF_SIZE];
 
   /* get default DRX cycle from configuration */
   Tc = sib1->servingCellConfigCommon->downlinkConfigCommon.pcch_Config.defaultPagingCycle;
@@ -3065,9 +3084,8 @@ int rrc_gNB_generate_pcch_msg(sctp_assoc_t assoc_id, const NR_SIB1_t *sib1, uint
   (void) pfoffset; /* not used, suppress warning */
 
   /* Create message for PDCP (DLInformationTransfer_t) */
-  int length = do_NR_Paging(instance, buffer, tmsi);
-
-  if (length == -1) {
+  byte_array_t ba = do_NR_Paging(instance, tmsi);
+  if (ba.len <= 0) {
     LOG_I(NR_RRC, "do_Paging error\n");
     return -1;
   }

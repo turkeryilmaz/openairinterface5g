@@ -81,9 +81,9 @@ typedef struct {
  */
 int xer_sprint_NR(char *string, size_t string_size, struct asn_TYPE_descriptor_s *td, void *sptr);
 
-int do_SIB2_NR(uint8_t **msg_SIB2, NR_SSB_MTC_t *ssbmtc);
+byte_array_t do_SIB2_NR(NR_SSB_MTC_t *ssbmtc);
 
-int do_RRCReject(uint8_t *const buffer);
+byte_array_t do_RRCReject();
 
 NR_RadioBearerConfig_t *get_default_rbconfig(int eps_bearer_id,
                                              int rb_id,
@@ -99,56 +99,44 @@ int do_RRCSetup(uint8_t *const buffer,
                 const gNB_RrcConfigurationReq *configuration,
                 NR_SRB_ToAddModList_t *SRBs);
 
-int do_NR_SecurityModeCommand(uint8_t *const buffer,
-                              const uint8_t Transaction_id,
-                              const uint8_t cipheringAlgorithm,
-                              NR_IntegrityProtAlgorithm_t integrityProtAlgorithm);
+byte_array_t do_NR_SecurityModeCommand(const uint8_t Transaction_id,
+                                       const uint8_t cipheringAlgorithm,
+                                       NR_IntegrityProtAlgorithm_t integrityProtAlgorithm);
 
-int do_NR_SA_UECapabilityEnquiry(uint8_t *const buffer, const uint8_t Transaction_id);
+byte_array_t do_NR_SA_UECapabilityEnquiry(const uint8_t Transaction_id, const uint8_t band);
 
-int do_NR_RRCRelease(uint8_t *buffer, size_t buffer_size, uint8_t Transaction_id);
+byte_array_t do_NR_RRCRelease(uint8_t Transaction_id);
 
 byte_array_t do_RRCReconfiguration(const nr_rrc_reconfig_param_t *params);
 
-int do_RRCSetupComplete(uint8_t *buffer,
-                        size_t buffer_size,
-                        const uint8_t Transaction_id,
-                        uint8_t sel_plmn_id,
-                        bool is_rrc_connection_setup,
-                        uint64_t fiveG_S_TMSI,
-                        const int dedicatedInfoNASLength,
-                        const char *dedicatedInfoNAS);
+byte_array_t do_RRCSetupComplete(const uint8_t Transaction_id,
+                                 uint8_t sel_plmn_id,
+                                 bool is_rrc_connection_setup,
+                                 uint64_t fiveG_S_TMSI,
+                                 const int dedicatedInfoNASLength,
+                                 const char *dedicatedInfoNAS);
 
-int do_NR_HandoverPreparationInformation(const uint8_t *uecap_buf, int uecap_buf_size, uint8_t *buf, int buf_size);
+byte_array_t do_NR_HandoverPreparationInformation(const byte_array_t uecap);
 
 int do_NR_MeasConfig(const NR_MeasConfig_t *measconfig, uint8_t *buf, int buf_size);
 
 int do_NR_MeasurementTimingConfiguration(const NR_MeasurementTimingConfiguration_t *mtc, uint8_t *buf, int buf_size);
 
-int do_RRCSetupRequest(uint8_t *buffer, size_t buffer_size, uint8_t *rv, uint64_t fiveG_S_TMSI_part1);
+byte_array_t do_RRCSetupRequest(uint8_t *rv, uint64_t fiveG_S_TMSI_part1);
 
-int do_NR_RRCReconfigurationComplete_for_nsa(uint8_t *buffer, size_t buffer_size, NR_RRC_TransactionIdentifier_t Transaction_id);
+byte_array_t do_NR_RRCReconfigurationComplete_for_nsa(NR_RRC_TransactionIdentifier_t Transaction_id);
 
-int do_NR_RRCReconfigurationComplete(uint8_t *buffer, size_t buffer_size, const uint8_t Transaction_id);
+byte_array_t do_NR_RRCReconfigurationComplete(const uint8_t Transaction_id);
 
-int do_NR_DLInformationTransfer(uint8_t *buffer,
-                                size_t buffer_len,
-                                uint8_t transaction_id,
-                                uint32_t pdu_length,
-                                uint8_t *pdu_buffer);
+byte_array_t do_NR_DLInformationTransfer(uint8_t transaction_id, uint32_t pdu_length, uint8_t *pdu_buffer);
 
-int do_NR_ULInformationTransfer(uint8_t **buffer,
-                                uint32_t pdu_length,
-                                uint8_t *pdu_buffer);
+byte_array_t do_NR_ULInformationTransfer(uint32_t pdu_length, uint8_t *pdu_buffer);
 
-int do_RRCReestablishmentRequest(uint8_t *buffer,
-                                 NR_ReestablishmentCause_t cause,
-                                 uint32_t cell_id,
-                                 uint16_t c_rnti);
+byte_array_t do_RRCReestablishmentRequest(NR_ReestablishmentCause_t cause, uint32_t pci, uint16_t c_rnti, byte_array_t shortMAC_I);
 
-int do_RRCReestablishment(int8_t nh_ncc, uint8_t *const buffer, size_t buffer_size, const uint8_t Transaction_id);
+byte_array_t do_RRCReestablishment(int8_t nh_ncc, const uint8_t Transaction_id);
 
-int do_RRCReestablishmentComplete(uint8_t *buffer, size_t buffer_size, int64_t rrc_TransactionIdentifier);
+byte_array_t do_RRCReestablishmentComplete(int64_t rrc_TransactionIdentifier);
 
 NR_MeasConfig_t *get_MeasConfig(const NR_MeasTiming_t *mt,
                                 int band,
@@ -158,6 +146,8 @@ NR_MeasConfig_t *get_MeasConfig(const NR_MeasTiming_t *mt,
                                 seq_arr_t *rc_A3_seq,
                                 seq_arr_t *neigh_seq);
 void free_MeasConfig(NR_MeasConfig_t *mc);
-int do_NR_Paging(uint8_t Mod_id, uint8_t *buffer, uint32_t tmsi);
+byte_array_t do_NR_Paging(uint8_t Mod_id, uint32_t tmsi);
+
+byte_array_t generate_VarShortMAC_input(uint32_t pci, uint16_t c_rnti, uint32_t cell_id);
 
 #endif  /* __RRC_NR_MESSAGES_ASN1_MSG__H__ */

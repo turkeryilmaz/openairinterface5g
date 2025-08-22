@@ -352,8 +352,7 @@ void nr_rrc_trigger_f1_ho(gNB_RRC_INST *rrc, gNB_RRC_UE_t *ue, nr_rrc_du_contain
   DevAssert(rrc != NULL);
   DevAssert(ue != NULL);
 
-  uint8_t buf[NR_RRC_BUF_SIZE];
-  int size = do_NR_HandoverPreparationInformation(ue->ue_cap_buffer.buf, ue->ue_cap_buffer.len, buf, sizeof buf);
+  byte_array_t hpi = do_NR_HandoverPreparationInformation(ue->ue_cap_buffer);
 
   // corresponds to a "handover request", 38.300 Sec 9.3.2.3
   // see also 38.413 Sec 9.3.1.29 for information on source-CU to target-CU
@@ -364,7 +363,6 @@ void nr_rrc_trigger_f1_ho(gNB_RRC_INST *rrc, gNB_RRC_UE_t *ue, nr_rrc_du_contain
   ho_req_ack_t ack = nr_rrc_f1_ho_acknowledge;
   ho_success_t success = nr_rrc_f1_ho_complete;
   ho_cancel_t cancel = nr_rrc_cancel_f1_ho;
-  byte_array_t hpi = {.buf = buf, .len = size};
   nr_initiate_handover(rrc, ue, source_du, target_du, &hpi, ack, success, cancel);
 }
 

@@ -31,6 +31,7 @@
 #include "nr_pdcp/nr_pdcp_entity.h"
 #include "nr_pdcp/nr_pdcp_integrity_data.h"
 #include "nr_pdcp_ue_manager.h"
+#include "ds/byte_array.h"
 struct NR_DRB_ToAddMod;
 struct NR_SRB_ToAddMod;
 
@@ -124,5 +125,7 @@ nr_pdcp_ue_manager_t *nr_pdcp_sdap_get_ue_manager();
 int nr_pdcp_get_num_ues(ue_id_t *ue_list, int len);
 
 bool nr_pdcp_get_statistics(ue_id_t ue_id, int srb_flag, int rb_id, nr_pdcp_statistics_t *out);
+
+bool nr_pdcp_compute_shortmac_ue(ue_id_t ue_id, byte_array_t msg, uint8_t short_mac[2]);
 
 #endif /* NR_PDCP_OAI_API_H */
