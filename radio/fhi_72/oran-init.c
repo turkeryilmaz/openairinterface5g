@@ -360,10 +360,10 @@ static void oran_allocate_buffers(void *handle,
 #ifdef E_RELEASE
   uint32_t size_of_prb_map = sizeof(struct xran_prb_map) + sizeof(struct xran_prb_elm) * (xran_max_sections_per_slot - 1);
 #elif defined F_RELEASE
-// For non-Liteon with w/o RunSlotPrbMapBySymbolEnable,  xran_prb_map will have xran_prb_elm prbMap[1]
+// For non-Liteon w/o RunSlotPrbMapBySymbolEnable, xran_prb_map will have xran_prb_elm prbMap[1]
 //  uint32_t numPrbElm = xran_get_num_prb_elm(&dlPm, mtu);
 //  uint32_t size_of_prb_map  = sizeof(struct xran_prb_map) + sizeof(struct xran_prb_elm) * (numPrbElm);
-// For Liteon FR2 with RunSlotPrbMapBySymbolEnable xran_prb_map will have xran_prb_elm prbMap[14]
+// For Liteon FR2 with RunSlotPrbMapBySymbolEnable, xran_prb_map will have xran_prb_elm prbMap[14]
   uint32_t size_of_prb_map  = sizeof(struct xran_prb_map) + sizeof(struct xran_prb_elm) * (XRAN_NUM_OF_SYMBOL_PER_SLOT);
 #endif
 
