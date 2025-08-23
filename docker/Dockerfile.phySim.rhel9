@@ -94,6 +94,12 @@ RUN ldconfig && \
         /usr/local/lib/libdfts.so \
         /usr/local/lib/libldpc*.so
 
+# Copy test vectors used by phySim
+WORKDIR /opt/oai-physim/
+COPY --from=phy-sim-build \
+    /oai-ran/cmake_targets/ran_build/build/openair1/PHY/CODING/tests/*.bin \
+    /opt/oai-physim/
+
 # Copy the relevant configuration files for phySim
 WORKDIR /opt/oai-physim/
 
