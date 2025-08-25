@@ -252,6 +252,16 @@ def ExecuteActionWithParam(action, ctx):
 		core_op = getattr(cls_oaicitest.OaiCiTest, action)
 		success = core_op(cn_id, ctx, HTML)
 
+	elif action == 'DeployWithScript' or action == 'UndeployWithScript':
+		node = test.findtext('node') if not force_local else 'localhost'
+		script = test.findtext('script')
+		options = test.findtext('options')
+		if action == 'DeployWithScript':
+			deploymentTag = cls_containerize.CreateTag(RAN.ranCommitID, RAN.ranBranch, RAN.ranAllowMerge)
+			success = cls_oaicitest.DeployWithScript(HTML, node, script, options, deploymentTag)
+		elif action == 'UndeployWithScript':
+			success = cls_oaicitest.UndeployWithScript(HTML, ctx, node, script, options)
+
 	elif action == 'Deploy_Object' or action == 'Undeploy_Object' or action == "Create_Workspace":
 		node = test.findtext('node')
 		CONTAINERS.yamlPath = test.findtext('yaml_path')
