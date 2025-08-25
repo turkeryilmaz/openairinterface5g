@@ -30,5 +30,4 @@ sudo ./nr-uesoftmodem -C 4049760000 -r 106 --numerology 1 --ssb 516  --band 77 -
 
 ## Limitations & known issues
 
- - PRACH configuration is hardcoded
- - Observer low success rate for UE connection establishment, breaking at MSG5
+ - PRACH configuration is hardcoded (only supports PRACH Config index 159)
