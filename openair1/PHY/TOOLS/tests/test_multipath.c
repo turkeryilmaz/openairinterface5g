@@ -166,7 +166,6 @@ int main(int argc, char **argv) {
 
         // Create temporary offset pointers for the CPU path
         float **tx_sig_for_cpu = malloc(nb_tx * sizeof(float*));
-        float* h_tx_ptr = (float*)h_tx_sig_pinned;
         for (int j = 0; j < nb_tx; j++) {
             tx_sig_for_cpu[j] = h_tx_ptr + (j * padded_num_samples + padding_len) * 2;
         }
