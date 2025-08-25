@@ -259,31 +259,34 @@ static void fh_if4p5_south_in(RU_t *ru, int *frame, int *slot)
   // rxDataF here: ru_info.rxdataF = ru->common.rxdataF;
   /// PRACH data here: ru_info.prach_buf = ru->prach_rxsigF[0]; // index: [prach_oca][ant_id]
   s->ru.common.rxdataF = ru->common.rxdataF;
+
+  NR_DL_FRAME_PARMS *fp = s->ru.nr_frame_parms;
   start_meas(&ru->rx_fhaul);
   rx_rf(&s->ru, frame, slot);
-
-  if (*slot == 9 || *slot == 19) {
-    s->ru.prach_rxsigF[0] = ru->prach_rxsigF[0]; // index: [prach_oca][ant_id]
-    int prach_fmt = 9; // TODO: get this from RU config
-    int numRA = 0; // TODO: get this from RU config
-    int beam = 0; // TODO: Set to 0 for now
-    int prachStartSymbol = 8; // TODO: get this from RU config
-    int prachStartSlot = *slot; // TODO: get this from RU config
-    int prachOccasion = 0; // TODO: get this from RU config
-    rx_nr_prach_ru(&s->ru, prach_fmt, numRA, beam, prachStartSymbol, prachStartSlot, prachOccasion, *frame, *slot);
-  }
-  nr_fep_tp(&s->ru, *slot);
-  NR_DL_FRAME_PARMS *fp = s->ru.nr_frame_parms;
-  int soffset = (*slot & 3) * fp->symbols_per_slot * fp->ofdm_symbol_size;
-  for (int aa = 0; aa < fp->nb_antennas_rx; aa++) {
-    apply_nr_rotation_RX(fp,
-                         (c16_t *)s->ru.common.rxdataF[aa],
-                         fp->symbol_rotation[1],
-                         *slot,
-                         fp->N_RB_UL,
-                         soffset,
-                         0,
-                         fp->Ncp == EXTENDED ? 12 : 14);
+  int rx_slot_type = nr_slot_select(&s->ru.config, *frame, *slot);
+  if (rx_slot_type == NR_UPLINK_SLOT || rx_slot_type == NR_MIXED_SLOT) {
+    if (*slot == 19) {
+      s->ru.prach_rxsigF[0] = ru->prach_rxsigF[0]; // index: [prach_oca][ant_id]
+      int prach_fmt = 8; // TODO: get this from RU config
+      int numRA = 0; // TODO: get this from RU config
+      int beam = 0; // TODO: Set to 0 for now
+      int prachStartSymbol = 0; // TODO: get this from RU config
+      int prachStartSlot = *slot; // TODO: get this from RU config
+      int prachOccasion = 0; // TODO: get this from RU config
+      rx_nr_prach_ru(&s->ru, prach_fmt, numRA, beam, prachStartSymbol, prachStartSlot, prachOccasion, *frame, *slot);
+    }
+    nr_fep_tp(&s->ru, *slot);
+    int soffset = (*slot & 3) * fp->symbols_per_slot * fp->ofdm_symbol_size;
+    for (int aa = 0; aa < fp->nb_antennas_rx; aa++) {
+      apply_nr_rotation_RX(fp,
+                           (c16_t *)s->ru.common.rxdataF[aa],
+                           fp->symbol_rotation[1],
+                           *slot,
+                           fp->N_RB_UL,
+                           soffset,
+                           0,
+                           fp->Ncp == EXTENDED ? 12 : 14);
+    }
   }
 
   RU_proc_t *proc = &ru->proc;
