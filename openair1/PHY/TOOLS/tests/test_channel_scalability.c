@@ -115,31 +115,32 @@ int main(int argc, char **argv) {
     // --- MEMORY ALLOCATION ---
     // HOST MEMORY
     int num_tx_signals = sum_outputs ? num_channels : 1;
+    float *tx_sig_data = malloc(num_tx_signals * nb_tx * num_samples * 2 * sizeof(float));
     float ***tx_sig_interleaved = malloc(num_tx_signals * sizeof(float**));
-
     for(int i=0; i<num_tx_signals; i++){
         tx_sig_interleaved[i] = malloc(nb_tx * sizeof(float*));
         for(int j=0; j<nb_tx; j++){
-            tx_sig_interleaved[i][j] = malloc(num_samples * 2 * sizeof(float));
+            tx_sig_interleaved[i][j] = tx_sig_data + (i * nb_tx + j) * num_samples * 2;
         }
     }
-    
+
+    float *rx_multipath_data = malloc(nb_rx * num_samples * 2 * sizeof(float));
     float **rx_multipath_re_cpu = malloc(nb_rx * sizeof(float *));
     float **rx_multipath_im_cpu = malloc(nb_rx * sizeof(float *));
     for (int i=0; i<nb_rx; i++) {
-        rx_multipath_re_cpu[i] = malloc(num_samples * sizeof(float));
-        rx_multipath_im_cpu[i] = malloc(num_samples * sizeof(float));
+        rx_multipath_re_cpu[i] = rx_multipath_data + i * num_samples;
+        rx_multipath_im_cpu[i] = rx_multipath_data + (nb_rx + i) * num_samples;
     }
-    
+
+    c16_t *output_cpu_data = malloc(num_channels * nb_rx * num_samples * sizeof(c16_t));
     c16_t ***output_cpu = malloc(num_channels * sizeof(c16_t**));
     for(int c=0; c<num_channels; c++){
         output_cpu[c] = malloc(nb_rx * sizeof(c16_t*));
-        output_cpu[c][0] = malloc(nb_rx * num_samples * sizeof(c16_t));
-        for(int i=1; i<nb_rx; i++) {
-            output_cpu[c][i] = output_cpu[c][0] + i * num_samples;
+        for(int i=0; i<nb_rx; i++) {
+            output_cpu[c][i] = output_cpu_data + (c * nb_rx + i) * num_samples;
         }
     }
-    
+        
     channel_desc_t **channels = malloc(num_channels * sizeof(channel_desc_t*));
     
     // Define some realistic default values for the channel model
@@ -300,6 +301,9 @@ int main(int argc, char **argv) {
 
     // --- MAIN TIMING LOOP ---
     for (int t = 0; t < num_trials; t++) {
+        if (sum_outputs) {
+            d_individual_gpu_outputs = malloc(num_channels * sizeof(void*));
+        }
         for(int i=0; i<num_tx_signals; i++) {
             generate_random_signal_interleaved(tx_sig_interleaved[i], nb_tx, num_samples);
         }
@@ -392,7 +396,6 @@ int main(int argc, char **argv) {
             cudaDeviceSynchronize();
 
             if (sum_outputs) {
-                d_individual_gpu_outputs = malloc(num_channels * sizeof(void*));
                 for (int c = 0; c < num_channels; c++) {
                     d_individual_gpu_outputs[c] = d_final_output_batch + c * nb_rx * num_samples * sizeof(short2);
                 }
