@@ -106,6 +106,7 @@ The functions within this file, such as `run_channel_pipeline_cuda`, implement a
 
 *The external API of these pipeline functions has been streamlined. The function signatures no longer require a separate `tx_sig_interleaved` parameter, instead relying on a single, pre-padded host buffer (`h_tx_sig_pinned`) as the authoritative source for the input signal, which simplifies the data flow from the simulators.*
 
+---
 
 ## 3\. Memory Management Models
 
@@ -125,17 +126,23 @@ This is the traditional CUDA programming model. The host and device have separat
 
 -----
 
-## 4\. Project Integration
+Excellent. Let's refine the **Project Integration Section**.
+
+This section is already in good shape, but we need to update the description of the CPU and GPU paths to reflect the new, fairer benchmarking methodology we implemented. I've integrated the new logic into the existing text.
+
+***
+
+## 4. Project Integration
 
 To ensure the feature is modular, the integration into the OAI project was handled at both the build system and source code levels. All of the new CUDA source files (`channel_pipeline.cu`, `multipath_channel.cu`, `phase_noise.cu`) are compiled into a single static library named `oai_cuda_lib`. This is defined in the main `CMakeLists.txt` file and is controlled by the `CUDA_ENABLE` CMake option, which is disabled by default. When this option is activated (`-DCUDA_ENABLE=ON`), the build system compiles the CUDA library and also defines a global `ENABLE_CUDA` preprocessor macro that is visible to the rest of the project.
 
 This `ENABLE_CUDA` macro is then used within the simulator files, such as `nr_dlsim.c` and `nr_ulsim.c`, to conditionally compile all CUDA-related code. This approach allows for the inclusion of the `oai_cuda.h` header, the addition of the `--cuda` runtime flag, and the pre-allocation of GPU memory at startup, all without affecting the standard CPU-only build.
 
-Inside the main processing loop, an `if (use_cuda)` statement acts as the primary runtime switch. To enable a direct comparison, timing measurement calls have been added to both the GPU and CPU execution paths. The CPU path was also refined to use the `float` versions of the channel functions, ensuring a fair comparison against the single-precision GPU code. To execute the simulation on the GPU, the `--cuda` flag must be provided at runtime; otherwise, the program defaults to this refined CPU implementation.
+Inside the main processing loop, an `if (use_cuda)` statement acts as the primary runtime switch. To enable a direct comparison, timing measurement calls have been added to both the GPU and CPU execution paths. Also, both paths now source their data from the same common, pre-padded host buffer. The GPU path receives a pointer to the entire padded buffer and leverages its optimized kernel, while the CPU path uses a temporary array of offset pointers to work on the same data without being aware of the padding. This ensures both computations operate on the exact same source data, isolating the performance measurement to the channel processing itself. To execute the simulation on the GPU, the `--cuda` flag must be provided at runtime; otherwise, the program defaults to this refined CPU implementation.
 
 Finally, the build system links the `nr_dlsim` and `nr_ulsim` executables against the `oai_cuda_lib` only when the feature is enabled, creating a clean separation between the two codebases.
 
------
+---
 
 ## 5\. Benchmark and Analysis Suite
 
