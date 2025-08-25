@@ -997,6 +997,9 @@ static void nr_rrc_prepare_msg3_payload(NR_UE_RRC_INST_t *rrc)
 {
   if (!IS_SA_MODE(get_softmodem_params()))
     return;
+  if (rrc->ra_trigger == RA_NOT_RUNNING) {
+    rrc->ra_trigger = RRC_CONNECTION_SETUP;
+  }
   switch (rrc->ra_trigger) {
     case RRC_CONNECTION_SETUP:
       // preparing RRC setup request payload in advance
