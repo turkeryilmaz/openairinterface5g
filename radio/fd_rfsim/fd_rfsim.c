@@ -329,7 +329,8 @@ static void fh_if4p5_south_out(RU_t *ru, int frame, int slot, uint64_t timestamp
   }
   last_frame = frame;
 
-  uint64_t timestamp_tx = (frame + frame_tx_unwrap) * fp->samples_per_subframe * 10 + fp->get_samples_slot_timestamp(slot, fp, 0);
+  uint64_t timestamp_tx =
+      (uint64_t)(frame + frame_tx_unwrap) * fp->samples_per_subframe * 10 + fp->get_samples_slot_timestamp(slot, fp, 0);
 
   tx_rf(ru_lower, frame, slot, timestamp_tx);
   // ru->proc = ru_lower->proc; // Copy the RU proc structure back
