@@ -531,7 +531,7 @@ int xran_fh_tx_send_slot(ru_info_t *ru, int frame, int slot, uint64_t timestamp)
             int pos_len = 0;
             int neg_len = 0;
 
-            if (p_prbMapElm->nRBStart < (nPRBs >> 1)) // there are PRBs left of DC
+            if (p_prbMapElm->nRBStart <= (nPRBs >> 1)) // there are PRBs left of DC
               neg_len = min((nPRBs * 6) - (p_prbMapElm->nRBStart * 12), p_prbMapElm->nRBSize * N_SC_PER_PRB);
             pos_len = (p_prbMapElm->nRBSize * N_SC_PER_PRB) - neg_len;
             // Calculation of the pointer for the section in the buffer.
