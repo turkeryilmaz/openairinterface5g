@@ -37,6 +37,7 @@
 #include <sys/types.h>
 #include <openair1/PHY/TOOLS/tools_defs.h>
 #include "record_player.h"
+#include "sniffer_config.h"
 #include "common/utils/threadPool/notified_fifo.h"
 
 /* default name of shared library implementing the radio front end */
@@ -291,6 +292,8 @@ typedef struct openair0_config {
   //! record player configuration, definition in record_player.h
   uint32_t       recplay_mode;
   recplay_conf_t *recplay_conf;
+  //! sniffer file input: configuration
+  sniffer_configuration_t *sniffer_conf;
   //! number of samples per tti
   unsigned int  samples_per_tti;
   //! the sample rate for receive.

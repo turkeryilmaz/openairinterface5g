@@ -385,6 +385,7 @@ static void fill_mib_in_rx_ind(nfapi_nr_dl_tti_request_pdu_t *pdu_list, fapi_nr_
 
 static bool is_my_dci(NR_UE_MAC_INST_t *mac, nfapi_nr_dl_dci_pdu_t *received_pdu)
 {
+LOG_E(NR_MAC, "is_my_dci rnti %4.4x mac->ra.ra_state %d nrRA_WAIT_RAR %d\n", received_pdu->RNTI, mac->ra.ra_state, nrRA_WAIT_RAR);
   /* For multiple UEs, we need to be able to filter the rx'd messages by
      the RNTI. The filtering is different between NSA mode and SA mode.
      NSA mode has a two step CFRA procedure and SA has a 4 step procedure.
@@ -442,7 +443,7 @@ static void copy_dl_tti_req_to_dl_info(nr_downlink_indication_t *dl_info, nfapi_
 
         if (pdu_list->PDUType == NFAPI_NR_DL_TTI_PDCCH_PDU_TYPE)
         {
-            LOG_D(NR_PHY, "[%d, %d] PDCCH DCI PDU (Format for incoming PDSCH PDU)\n",
+            LOG_E(NR_PHY, "[%d, %d] PDCCH DCI PDU (Format for incoming PDSCH PDU)\n",
                 dl_tti_request->SFN, dl_tti_request->Slot);
             uint16_t num_dcis = pdu_list->pdcch_pdu.pdcch_pdu_rel15.numDlDci;
             if (num_dcis > 0)
@@ -1160,8 +1161,14 @@ static int8_t handle_dlsch(NR_UE_MAC_INST_t *mac, nr_downlink_indication_t *dl_i
     update_harq_status(mac,
                        dl_info->rx_ind->rx_indication_body[pdu_id].pdsch_pdu.harq_pid,
                        dl_info->rx_ind->rx_indication_body[pdu_id].pdsch_pdu.ack_nack);
+extern int sniffer;
+if (sniffer) {
+  /* this one sends RAR to MAC layer */
+  nr_ue_send_sdu(mac, dl_info, pdu_id);
+} else {
   if(dl_info->rx_ind->rx_indication_body[pdu_id].pdsch_pdu.ack_nack)
     nr_ue_send_sdu(mac, dl_info, pdu_id);
+}
 
   return 0;
 }

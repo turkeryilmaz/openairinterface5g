@@ -104,6 +104,9 @@ NR_ControlResourceSet_t *ue_get_coreset(const NR_BWP_PDCCH_t *config, const int 
   return coreset;
 }
 
+static int rrra_rnti = 0;
+int rnti_to_monitor;
+
 static void config_dci_pdu(NR_UE_MAC_INST_t *mac,
                            fapi_nr_dl_config_request_t *dl_config,
                            const int rnti_type,
@@ -117,7 +120,9 @@ static void config_dci_pdu(NR_UE_MAC_INST_t *mac,
 
   fapi_nr_dl_config_dci_dl_pdu_rel15_t *rel15 = &dl_config->dl_config_list[dl_config->number_pdus].dci_config_pdu.dci_config_rel15;
 
-  const int coreset_id = *ss->controlResourceSetId;
+  int coreset_id = *ss->controlResourceSetId;
+extern int sniffer;
+if (sniffer) coreset_id = 0;
   NR_ControlResourceSet_t *coreset;
   if(coreset_id > 0) {
     coreset = ue_get_coreset(pdcch_config, coreset_id);
@@ -261,6 +266,10 @@ static void config_dci_pdu(NR_UE_MAC_INST_t *mac,
       sps = current_DL_BWP->cyclicprefix == NULL ? 14 : 12;
       monitoringSymbolsWithinSlot = (ss->monitoringSymbolsWithinSlot->buf[0]<<(sps-8)) | (ss->monitoringSymbolsWithinSlot->buf[1]>>(16-sps));
       rel15->rnti = mac->ra.ra_rnti;
+extern int sniffer;
+if (sniffer) {
+rel15->rnti = rrra_rnti; //mac->ra.ra_rnti;
+}
       rel15->SubcarrierSpacing = current_DL_BWP->scs;
       break;
     case TYPE_MSGB_RNTI_:
@@ -280,6 +289,10 @@ static void config_dci_pdu(NR_UE_MAC_INST_t *mac,
       sps = current_DL_BWP->cyclicprefix == NULL ? 14 : 12;
       monitoringSymbolsWithinSlot = (ss->monitoringSymbolsWithinSlot->buf[0]<<(sps-8)) | (ss->monitoringSymbolsWithinSlot->buf[1]>>(16-sps));
       rel15->rnti = mac->ra.t_crnti;
+if (sniffer) {
+  if (rnti_to_monitor)
+    rel15->rnti = rnti_to_monitor;
+}
       rel15->SubcarrierSpacing = current_DL_BWP->scs;
       break;
     case TYPE_SP_CSI_RNTI_:
@@ -424,6 +437,7 @@ static bool monitor_dci_for_other_SI(NR_UE_MAC_INST_t *mac,
   return false;
 }
 
+/* this is important function for hacking UE: ue_dci_configuration */
 void ue_dci_configuration(NR_UE_MAC_INST_t *mac, fapi_nr_dl_config_request_t *dl_config, const frame_t frame, const int slot)
 {
   const NR_UE_DL_BWP_t *current_DL_BWP = mac->current_DL_BWP;
@@ -476,8 +490,17 @@ void ue_dci_configuration(NR_UE_MAC_INST_t *mac, fapi_nr_dl_config_request_t *dl
     }
   }
   RA_config_t *ra = &mac->ra;
-  if (mac->state == UE_PERFORMING_RA && ra->ra_state >= nrRA_WAIT_RAR) {
+extern int sniffer;
+  if (sniffer || (mac->state == UE_PERFORMING_RA && ra->ra_state >= nrRA_WAIT_RAR)) {
     const NR_SearchSpace_t *ra_SS = get_common_search_space(mac, pdcch_config->ra_SS_id);
+if (sniffer) {
+rrra_rnti = 0x10b;
+config_dci_pdu(mac, dl_config, TYPE_RA_RNTI_, slot, ra_SS);
+rrra_rnti = 0x10f;
+config_dci_pdu(mac, dl_config, TYPE_RA_RNTI_, slot, ra_SS);
+if (rnti_to_monitor)
+  config_dci_pdu(mac, dl_config, TYPE_TC_RNTI_, slot, ra_SS);
+}
     // if RA is ongoing use RA search space
     if (is_ss_monitor_occasion(frame, slot, slots_per_frame, ra_SS)) {
       nr_rnti_type_t rnti_type = 0;
@@ -486,6 +509,7 @@ void ue_dci_configuration(NR_UE_MAC_INST_t *mac, fapi_nr_dl_config_request_t *dl
       } else {
         rnti_type = TYPE_MSGB_RNTI_;
       }
+if (!sniffer)
       config_dci_pdu(mac, dl_config, rnti_type, slot, ra_SS);
     }
   } else if (mac->state == UE_CONNECTED) {

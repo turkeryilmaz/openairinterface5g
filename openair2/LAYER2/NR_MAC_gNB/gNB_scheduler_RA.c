@@ -1351,7 +1351,7 @@ static void prepare_dl_pdus(gNB_MAC_INST *nr_mac,
                                                        tb_scaling,
                                                        false);
 
-  LOG_D(NR_MAC,
+  LOG_E(NR_MAC,
         "DCI 1_0 payload: freq_alloc %d (%d,%d,%d), time_alloc %d, vrb to prb %d, mcs %d tb_scaling %d pucchres %d harqtiming %d\n",
         dci_payload.frequency_domain_assignment.val,
         pdsch_pdu_rel15->rbStart,
@@ -1364,7 +1364,7 @@ static void prepare_dl_pdus(gNB_MAC_INST *nr_mac,
         dci_payload.pucch_resource_indicator,
         dci_payload.pdsch_to_harq_feedback_timing_indicator.val);
 
-  LOG_D(NR_MAC,
+  LOG_E(NR_MAC,
         "DCI params: rnti 0x%x, rnti_type %d, dci_format %d coreset params: FreqDomainResource %llx, start_symbol %d  "
         "n_symb %d, BWPsize %d\n",
         dci_pdu->RNTI,
@@ -1388,21 +1388,21 @@ static void prepare_dl_pdus(gNB_MAC_INST *nr_mac,
                      0, // parameter not needed for DCI 1_0
                      nr_mac->cset0_bwp_size);
 
-  LOG_D(NR_MAC, "BWPSize: %i\n", pdcch_pdu_rel15->BWPSize);
-  LOG_D(NR_MAC, "BWPStart: %i\n", pdcch_pdu_rel15->BWPStart);
-  LOG_D(NR_MAC, "SubcarrierSpacing: %i\n", pdcch_pdu_rel15->SubcarrierSpacing);
-  LOG_D(NR_MAC, "CyclicPrefix: %i\n", pdcch_pdu_rel15->CyclicPrefix);
-  LOG_D(NR_MAC, "StartSymbolIndex: %i\n", pdcch_pdu_rel15->StartSymbolIndex);
-  LOG_D(NR_MAC, "DurationSymbols: %i\n", pdcch_pdu_rel15->DurationSymbols);
+  LOG_E(NR_MAC, "BWPSize: %i\n", pdcch_pdu_rel15->BWPSize);
+  LOG_E(NR_MAC, "BWPStart: %i\n", pdcch_pdu_rel15->BWPStart);
+  LOG_E(NR_MAC, "SubcarrierSpacing: %i\n", pdcch_pdu_rel15->SubcarrierSpacing);
+  LOG_E(NR_MAC, "CyclicPrefix: %i\n", pdcch_pdu_rel15->CyclicPrefix);
+  LOG_E(NR_MAC, "StartSymbolIndex: %i\n", pdcch_pdu_rel15->StartSymbolIndex);
+  LOG_E(NR_MAC, "DurationSymbols: %i\n", pdcch_pdu_rel15->DurationSymbols);
   for (int n = 0; n < 6; n++)
-    LOG_D(NR_MAC, "FreqDomainResource[%i]: %x\n", n, pdcch_pdu_rel15->FreqDomainResource[n]);
-  LOG_D(NR_MAC, "CceRegMappingType: %i\n", pdcch_pdu_rel15->CceRegMappingType);
-  LOG_D(NR_MAC, "RegBundleSize: %i\n", pdcch_pdu_rel15->RegBundleSize);
-  LOG_D(NR_MAC, "InterleaverSize: %i\n", pdcch_pdu_rel15->InterleaverSize);
-  LOG_D(NR_MAC, "CoreSetType: %i\n", pdcch_pdu_rel15->CoreSetType);
-  LOG_D(NR_MAC, "ShiftIndex: %i\n", pdcch_pdu_rel15->ShiftIndex);
-  LOG_D(NR_MAC, "precoderGranularity: %i\n", pdcch_pdu_rel15->precoderGranularity);
-  LOG_D(NR_MAC, "numDlDci: %i\n", pdcch_pdu_rel15->numDlDci);
+    LOG_E(NR_MAC, "FreqDomainResource[%i]: %x\n", n, pdcch_pdu_rel15->FreqDomainResource[n]);
+  LOG_E(NR_MAC, "CceRegMappingType: %i\n", pdcch_pdu_rel15->CceRegMappingType);
+  LOG_E(NR_MAC, "RegBundleSize: %i\n", pdcch_pdu_rel15->RegBundleSize);
+  LOG_E(NR_MAC, "InterleaverSize: %i\n", pdcch_pdu_rel15->InterleaverSize);
+  LOG_E(NR_MAC, "CoreSetType: %i\n", pdcch_pdu_rel15->CoreSetType);
+  LOG_E(NR_MAC, "ShiftIndex: %i\n", pdcch_pdu_rel15->ShiftIndex);
+  LOG_E(NR_MAC, "precoderGranularity: %i\n", pdcch_pdu_rel15->precoderGranularity);
+  LOG_E(NR_MAC, "numDlDci: %i\n", pdcch_pdu_rel15->numDlDci);
 }
 
 static void nr_generate_Msg2(module_id_t module_idP,
@@ -1468,6 +1468,7 @@ static void nr_generate_Msg2(module_id_t module_idP,
   const int coresetid = coreset->controlResourceSetId;
   // Calculate number of symbols
   int time_domain_assignment = get_dl_tda(nr_mac, slotP);
+LOG_E(NR_MAC, "RA time_domain_assignment %d\n", time_domain_assignment);
 
   NR_Type0_PDCCH_CSS_config_t *type0_PDCCH_CSS_config = &nr_mac->type0_PDCCH_CSS_config[cc->ssb_index[UE->UE_beam_index]];
   int mux_pattern = type0_PDCCH_CSS_config ? type0_PDCCH_CSS_config->type0_pdcch_ss_mux_pattern : 1;
@@ -1523,7 +1524,7 @@ static void nr_generate_Msg2(module_id_t module_idP,
     return;
   }
 
-  LOG_D(NR_MAC, "Msg2 startSymbolIndex.nrOfSymbols %d.%d\n", tda_info.startSymbolIndex, tda_info.nrOfSymbols);
+  LOG_E(NR_MAC, "Msg2 startSymbolIndex.nrOfSymbols %d.%d\n", tda_info.startSymbolIndex, tda_info.nrOfSymbols);
 
   // Distance calculation according to SCF222.10.02 RACH.indication (table 3-74) and 38.213 4.2/38.211 4.3.1
   // T_c according to 38.211 4.1
@@ -1598,6 +1599,8 @@ static void nr_generate_Msg2(module_id_t module_idP,
                   0,
                   tb_scaling,
                   pduindex);
+LOG_E(NR_MAC, "RAR mcs %d TBS %d rbStart %d rbSize %d\n",
+      mcsIndex, TBS, rbStart, rbSize);
 
   // DL TX request
   nfapi_nr_pdu_t *tx_req = &TX_req->pdu_list[TX_req->Number_of_PDUs];

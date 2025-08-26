@@ -26,6 +26,7 @@ char *uecap_file;
 #include <executables/nr-softmodem.h>
 
 int read_recplayconfig(recplay_conf_t **recplay_conf, recplay_state_t **recplay_state) {return 0;}
+sniffer_configuration_t *read_sniffer_configuration(void) { return 0; }
 void nfapi_setmode(nfapi_mode_t nfapi_mode) {}
 void set_taus_seed(unsigned int seed_init){};
 configmodule_interface_t *uniqCfg = NULL;

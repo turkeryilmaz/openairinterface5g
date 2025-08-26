@@ -1407,6 +1407,11 @@ static void generateRegistrationComplete(nr_ue_nas_t *nas,
     return;
   }
 
+extern int sniffer;
+if (sniffer) {
+  LOG_E(NAS, "sniffer mode: do nothing\n");
+  return;
+}
   encode_registration_complete(mm_msg, initialNasMsg->nas_data + encoded, length - encoded);
 
   /* ciphering */
@@ -1716,6 +1721,11 @@ static void generatePduSessionEstablishRequest(nr_ue_nas_t *nas, as_nas_info_t *
   free(mm_msg->dnn.value);
   free(mm_msg->snssai.value);
 
+extern int sniffer;
+if (sniffer) {
+  LOG_E(NAS, "sniffer mode: do nothing\n");
+  return;
+}
   /* ciphering */
   uint8_t buf[initialNasMsg->length - 7];
   stream_cipher.context = nas->security_container->ciphering_context;
