@@ -184,6 +184,7 @@ typedef struct NR_UE_Timers_Constants_s {
   uint32_t N311_k;
   NR_UE_TimersAndConstants_t *sib1_TimersAndConstants;
   NR_timer_t TA2;
+  NR_timer_t periodic_report_timer;
 } NR_UE_Timers_Constants_t;
 
 typedef enum {
@@ -200,6 +201,9 @@ typedef struct l3_measurements_s {
   long trigger_to_measid;
   long trigger_quantity;
   long rs_type;
+  int reports_sent;
+  int max_reports;
+  long report_interval_ms;
 } l3_measurements_t;
 
 typedef struct rrcPerNB {
