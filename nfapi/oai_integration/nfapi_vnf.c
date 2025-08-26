@@ -1745,6 +1745,51 @@ void vnf_start_thread(void *ptr) {
   nfapi_vnf_start((nfapi_vnf_config_t *)ptr);
 }
 
+static bool has_stop_ind = false;
+static bool waiting_stop_ind = false;
+int nr_stop_ind_cb(nfapi_vnf_config_t *config, int p5_idx, nfapi_nr_stop_indication_scf_t *resp)
+{
+  NFAPI_TRACE(NFAPI_TRACE_INFO, "[VNF] Received NFAPI_STOP_IND idx:%d phy_id:%d\n", p5_idx, resp->header.phy_id);
+#ifdef ENABLE_AERIAL
+  nvIPC_Stop(vnf_p5_init_and_receive_pthread);
+#endif
+#ifdef ENABLE_SOCKET
+  nfapi_vnf_p7_stop(get_p7_vnf()->config);
+#endif
+#ifdef ENABLE_WLS
+  wls_vnf_stop(vnf_p5_init_and_receive_pthread);
+#endif
+  has_stop_ind = true;
+  if (!waiting_stop_ind) {
+    // hasn't been initialized yet, means the PNF stopped before the VNF did
+    // raise a SIGINT to stop the VNF
+    raise(SIGINT);
+  }
+  return 0;
+}
+
+void stop_nr_nfapi_vnf()
+{
+  if (has_stop_ind) {
+    // If it got here with the STOP.indication flag already set, it means it was triggered by the PNF,
+    // no need to send a STOP.request
+    return;
+  }
+#ifdef ENABLE_WLS
+  wls_vnf_send_stop_request();
+#endif
+#ifdef ENABLE_AERIAL
+  nvIPC_send_stop_request();
+#endif
+#ifdef ENABLE_SOCKET
+  socket_nfapi_send_stop_request((vnf_t *)config);
+#endif
+  waiting_stop_ind = true;
+  while (!has_stop_ind) {
+    usleep(1000);
+  }
+}
+
 void configure_nr_nfapi_vnf(eth_params_t params)
 {
 #ifndef ENABLE_AERIAL
@@ -1786,6 +1831,7 @@ void configure_nr_nfapi_vnf(eth_params_t params)
   config->nr_param_resp = &nr_param_resp_cb;
   config->nr_config_resp = &nr_config_resp_cb;
   config->nr_start_resp = &nr_start_resp_cb;
+  config->nr_stop_ind = &nr_stop_ind_cb;
   config->nr_error_ind = &nr_error_ind_cb;
   config->vendor_ext = &vendor_nr_ext_cb;
   config->user_data = vnf;

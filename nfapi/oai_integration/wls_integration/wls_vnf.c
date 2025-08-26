@@ -21,25 +21,39 @@
 #include "wls_vnf.h"
 
 #include "vnf_p7.h"
-
+#include "common/utils/LOG/log.h"
+#include "wls_lib.h"
 #include <rte_eal.h>
 #include <rte_string_fns.h>
 #include <rte_common.h>
 #include <rte_lcore.h>
-#include <rte_debug.h>
 #include <nr_fapi_p5.h>
+#include "common/utils/LOG/log.h"
+#include <rte_errno.h>
+#include <unistd.h>
 #include <common/platform_constants.h>
+#include <sys/wait.h>
+#include "nfapi_vnf.h"
 
 static nfapi_vnf_config_t *config;
 static WLS_MAC_CTX wls_mac_iface;
 vnf_t *_vnf = NULL;
+
+static vnf_info *get_p5_vnf()
+{
+  return config->user_data;
+}
+static vnf_p7_t *get_p7_vnf()
+{
+  vnf_info *vnf = get_p5_vnf();
+  return (vnf_p7_t *)vnf->p7_vnfs->config;
+}
+
 // A copy of the VNF P7 config is needed for the message processing thread, in other transport mechanisms where P7 is handled in a
 // different thread, the config is passed to it upon the thread creation
-nfapi_vnf_p7_config_t *wls_vnf_p7_config = NULL;
-
 void wls_vnf_set_p7_config(void *p7_config)
 {
-  wls_vnf_p7_config = (nfapi_vnf_p7_config_t *)p7_config;
+  get_p5_vnf()->p7_vnfs->config = (nfapi_vnf_p7_config_t *)p7_config;
 }
 
 static PWLS_MAC_CTX wls_mac_get_ctx(void)
@@ -99,17 +113,37 @@ static bool wls_mac_create_mem_array(PWLS_MAC_MEM_SRUCT pMemArray, void *pMemArr
   return true;
 }
 
-void mac_dpdk_init()
+bool mac_dpdk_init()
 {
-  char *my_argv[] = {"OAI_VNF", "-c3", "--proc-type=auto", "--file-prefix", WLS_DEV_NAME, "--iova-mode=pa"};
+  char *my_argv[] = {"OAI_VNF", "-c3", "--proc-type=secondary", "--file-prefix", WLS_DEV_NAME, "--iova-mode=pa"};
   printf("\nCalling rte_eal_init: ");
-  for (unsigned long i = 0; i < RTE_DIM(my_argv); i++) {
+  for (int i = 0; i < RTE_DIM(my_argv); i++) {
     printf("%s ", my_argv[i]);
   }
   printf("\n");
-
-  if (rte_eal_init(RTE_DIM(my_argv), my_argv) < 0)
-    rte_panic("\nCannot init EAL\n");
+  pid_t pid;
+  while (1) {
+    pid = fork();
+    if (pid == 0) {
+      // Child: do rte_eal_init
+      rte_eal_init(RTE_DIM(my_argv), my_argv);
+      if (rte_dev_probe(WLS_DEV_NAME) < 0) {
+        if (rte_errno == ECONNREFUSED) {
+          _exit(1); // fail
+        } else {
+          _exit(0); // success
+        }
+      }
+    }
+    int status;
+    waitpid(pid, &status, 0);
+    if (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
+      break; // success
+    }
+    NFAPI_TRACE(NFAPI_TRACE_INFO, " WLS not available yet, retrying in 1 second...\n");
+    sleep(1);
+  }
+  return rte_eal_init(RTE_DIM(my_argv), my_argv) >= 0;
 }
 
 static uint32_t wls_mac_alloc_mem_array(PWLS_MAC_MEM_SRUCT pMemArray, void **ppBlock)
@@ -258,7 +292,7 @@ for(int i = 0 ; i< pWls->nTotalBlocks; i++){
   void* pMsg =  wls_mac_alloc_buffer(pWls, 0, i);
    /* Enqueue all blocks */
   nBlocks += WLS_EnqueueBlock(pWls->hWls, WLS_VA2PA(pWls->hWls, pMsg));
-}  
+}
   NFAPI_TRACE(NFAPI_TRACE_INFO, "\nAllocated %d Blocks \n", nBlocks);
   return true;
 }
@@ -272,6 +306,50 @@ static int vnf_wls_init()
   }
 
   return 1;
+}
+
+void wls_vnf_stop(pthread_t p5_thread)
+{
+  vnf_p7_t *p7_vnf = get_p7_vnf();
+  _vnf->terminate = 1;
+  p7_vnf->terminate = 1;
+  pthread_join(p5_thread, NULL);
+}
+
+void wls_vnf_send_stop_request()
+{
+  PWLS_MAC_CTX pWls = wls_mac_get_ctx();
+  nfapi_nr_stop_request_scf_t req;
+  memset(&req, 0, sizeof(req));
+  req.header.message_id = NFAPI_NR_PHY_MSG_TYPE_STOP_REQUEST;
+  req.header.phy_id = 0;
+  vnf_p7_t *p7_vnf = get_p7_vnf();
+  if (p7_vnf == NULL || pWls->hWls == NULL) {
+    nfapi_nr_stop_indication_scf_t msg;
+    msg.header.message_id = NFAPI_NR_PHY_MSG_TYPE_STOP_INDICATION;
+    msg.header.phy_id = 0;
+    config->nr_stop_ind(config, 0, &msg);
+    return;
+  }
+
+  if (pWls->hWls != NULL) {
+    nfapi_nr_vnf_stop_req(config, 0, &req);
+  }
+  uint64_t counter = 0;
+  while (p7_vnf->terminate == 0 && counter < 50) {
+    NFAPI_TRACE(NFAPI_TRACE_DEBUG, "Not terminated yet, counter %ld\n", counter);
+    usleep(1000);
+    counter++;
+  }
+  if (p7_vnf->terminate == 0) {
+    NFAPI_TRACE(NFAPI_TRACE_ERROR, "STOP.indication timed out, exiting\n");
+    nfapi_nr_stop_indication_scf_t msg;
+    msg.header.message_id = NFAPI_NR_PHY_MSG_TYPE_STOP_INDICATION;
+    msg.header.phy_id = 0;
+    config->nr_stop_ind(config, 0, &msg);
+  } else {
+    NFAPI_TRACE(NFAPI_TRACE_DEBUG, "Terminated, exiting\n");
+  }
 }
 
 void *wls_fapi_vnf_nr_start_thread(void *ptr)
@@ -298,7 +376,7 @@ static void procPhyMessages(uint32_t msg_size, void *msg_buf, uint16_t msg_id)
       break;
 
     case NFAPI_NR_PHY_MSG_TYPE_DL_TTI_REQUEST ... NFAPI_NR_PHY_MSG_TYPE_RACH_INDICATION: {
-      vnf_nr_handle_p7_message(msg_buf, msg_size + NFAPI_NR_P7_HEADER_LENGTH, (vnf_p7_t *)wls_vnf_p7_config);
+      vnf_nr_handle_p7_message(msg_buf, msg_size + NFAPI_NR_P7_HEADER_LENGTH, get_p7_vnf());
       break;
     }
     default:
@@ -333,7 +411,7 @@ int wls_fapi_nr_vnf_start(nfapi_vnf_config_t *cfg)
   PWLS_MAC_CTX pWls = wls_mac_get_ctx();
   while (_vnf->terminate == 0) {
     int numMsgToGet = WLS_Wait(pWls->hWls);
-    if (numMsgToGet == 0) {
+    if (numMsgToGet == 0 || _vnf->terminate) {
       continue;
     }
 
@@ -350,6 +428,9 @@ int wls_fapi_nr_vnf_start(nfapi_vnf_config_t *cfg)
         uint32_t len = msgt[7] | (msgt[6] << 8) | (msgt[5] << 16) | (msgt[4] << 24);
         procPhyMessages(len, (void *)(msg + 1), msg->msg_type);
       }
+    }
+    if (_vnf->terminate) {
+      break;
     }
     for (int i = 0; i < pa_idx; i++) {
       if (WLS_EnqueueBlock(pWls->hWls, PAs[i]) == -1) {
@@ -403,7 +484,7 @@ bool wls_vnf_nr_send_p7_message(vnf_p7_t *vnf_p7, nfapi_nr_p7_message_header_t *
   AssertFatal(fapiMsgElem, "WLS_PA2VA failed for fapiMsgElem\n");
   //memcpy((uint8_t *)(fapiMsgElem + 1), message, packed_len + NFAPI_HEADER_LENGTH);
   const uint8_t wls_header[] = {1, 0}; // num_messages ,  opaque_handle
- 
+
   fill_fapi_list_elem(headerElem, fapiMsgElem, FAPI_VENDOR_MSG_HEADER_IND, 1, 2);
   memcpy((uint8_t *)(headerElem + 1), wls_header, 2);
   int packed_len = ((nfapi_vnf_p7_config_t *)vnf_p7)->pack_func(msg, (fapiMsgElem + 1), NFAPI_MAX_PACKED_MESSAGE_SIZE, NULL);
