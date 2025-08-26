@@ -484,32 +484,33 @@ int xran_fh_tx_send_slot(ru_info_t *ru, int frame, int slot, uint64_t timestamp)
   int nPRBs = fh_cfg->nDLRBs;
   int fftsize = 1 << fh_cfg->ru_conf.fftSize;
   int nb_tx_per_ru = ru->nb_tx / fh_init->xran_ports;
+  uint8_t *last_data_pointer[ru->nb_tx][XRAN_NUM_OF_SYMBOL_PER_SLOT];
+  memset(last_data_pointer, 0, sizeof(last_data_pointer));
 
   for (uint16_t cc_id = 0; cc_id < 1 /*nSectorNum*/; cc_id++) { // OAI does not support multiple CC yet.
     for (uint8_t ant_id = 0; ant_id < ru->nb_tx; ant_id++) {
       oran_buf_list_t *bufs = get_xran_buffers(ant_id / nb_tx_per_ru);
-      // This loop would better be more inner to avoid confusion and maybe also errors.
-      for (int32_t sym_idx = 0; sym_idx < XRAN_NUM_OF_SYMBOL_PER_SLOT; sym_idx++) {
-        uint8_t *pData =
-            bufs->src[ant_id % nb_tx_per_ru][tti % XRAN_N_FE_BUF_LEN].pBuffers[sym_idx % XRAN_NUM_OF_SYMBOL_PER_SLOT].pData;
-        uint8_t *pPrbMapData = bufs->srccp[ant_id % nb_tx_per_ru][tti % XRAN_N_FE_BUF_LEN].pBuffers->pData;
-        struct xran_prb_map *pPrbMap = (struct xran_prb_map *)pPrbMapData;
-        ptr = pData;
-        pos = &ru->txdataF_BF[ant_id][sym_idx * fftsize];
+      uint8_t *pPrbMapData = bufs->srccp[ant_id % nb_tx_per_ru][tti % XRAN_N_FE_BUF_LEN].pBuffers->pData;
+      struct xran_prb_map *pPrbMap = (struct xran_prb_map *)pPrbMapData;
+      struct xran_prb_map *pRbMap = pPrbMap;
+      for (int_fast32_t idxElm = 0; idxElm < pRbMap->nPrbElm; idxElm++) {
+        for (int32_t sym_idx = 0; sym_idx < XRAN_NUM_OF_SYMBOL_PER_SLOT; sym_idx++) {
+          uint8_t *pData =
+              bufs->src[ant_id % nb_tx_per_ru][tti % XRAN_N_FE_BUF_LEN].pBuffers[sym_idx % XRAN_NUM_OF_SYMBOL_PER_SLOT].pData;
+          ptr = pData;
+          pos = &ru->txdataF_BF[ant_id][sym_idx * fftsize];
 
-        uint8_t *u8dptr;
-        struct xran_prb_map *pRbMap = pPrbMap;
-        int32_t sym_id = sym_idx % XRAN_NUM_OF_SYMBOL_PER_SLOT;
-        if (ptr && pos) {
-          uint32_t idxElm = 0;
-          u8dptr = (uint8_t *)ptr;
-          int16_t payload_len = 0;
+          uint8_t *u8dptr;
+          int32_t sym_id = sym_idx % XRAN_NUM_OF_SYMBOL_PER_SLOT;
+          if (ptr && pos) {
+            u8dptr = (uint8_t *)ptr;
+            int16_t payload_len = 0;
 
-          uint8_t *dst = (uint8_t *)u8dptr;
+            uint8_t *dst = (uint8_t *)u8dptr;
+            dst = last_data_pointer[ant_id][sym_idx] != NULL ? last_data_pointer[ant_id][sym_idx] : dst;
 
-          struct xran_prb_elm *p_prbMapElm = &pRbMap->prbMap[idxElm];
+            struct xran_prb_elm *p_prbMapElm = &pRbMap->prbMap[idxElm];
 
-          for (idxElm = 0; idxElm < pRbMap->nPrbElm; idxElm++) {
             struct xran_section_desc *p_sec_desc = NULL;
             p_prbMapElm = &pRbMap->prbMap[idxElm];
             // assumes one fragment per symbol
@@ -581,14 +582,15 @@ int xran_fh_tx_send_slot(ru_info_t *ru, int frame, int slot, uint64_t timestamp)
 
             dst += payload_len;
             dst = xran_add_hdr_offset(dst, p_prbMapElm->compMethod);
+            last_data_pointer[ant_id][sym_idx] = dst;
+
+            // The tti should be updated as it increased.
+            pRbMap->tti_id = tti;
+
+          } else {
+            printf("ptr ==NULL\n");
+            exit(-1); // fails here??
           }
-
-          // The tti should be updated as it increased.
-          pRbMap->tti_id = tti;
-
-        } else {
-          printf("ptr ==NULL\n");
-          exit(-1); // fails here??
         }
       }
     }
