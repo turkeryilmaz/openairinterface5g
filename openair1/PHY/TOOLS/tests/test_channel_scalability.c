@@ -152,19 +152,21 @@ int main(int argc, char **argv) {
 
     for (int c=0; c<num_channels; c++) {
         // Use the full channel descriptor initialization with all 13 arguments
-        channels[c] = new_channel_desc_scm(nb_tx,
-                                           nb_rx,
-                                           TDL_A,                 // channel_model
-                                           sampling_rate,
-                                           center_freq,
-                                           channel_bandwidth,
-                                           1e-7,                  // DS_TDL (Delay Spread)
-                                           max_doppler,           // maxDoppler
-                                           CORR_LEVEL_LOW,        // corr_level
-                                           0.0,                   // forgetting_factor
-                                           0,                     // channel_offset
-                                           0.0,                   // path_loss_dB
-                                           -100.0);               // noise_power_dB
+        // channels[c] = new_channel_desc_scm(nb_tx,
+        //                                    nb_rx,
+        //                                    TDL_A,                 // channel_model
+        //                                    sampling_rate,
+        //                                    center_freq,
+        //                                    channel_bandwidth,
+        //                                    1e-7,                  // DS_TDL (Delay Spread)
+        //                                    max_doppler,           // maxDoppler
+        //                                    CORR_LEVEL_LOW,        // corr_level
+        //                                    0.0,                   // forgetting_factor
+        //                                    0,                     // channel_offset
+        //                                    0.0,                   // path_loss_dB
+        //                                    -100.0);               // noise_power_dB
+        
+        channels[c] = create_manual_channel_desc(nb_tx, nb_rx, channel_length);
         if (!channels[c]) {
             fprintf(stderr, "Error creating channel descriptor %d\n", c);
             exit(1);
@@ -337,7 +339,7 @@ int main(int argc, char **argv) {
             for (int c = 0; c < num_channels; c++) {
                 for (int link = 0; link < nb_tx * nb_rx; link++) {
                     for (int l = 0; l < channel_length; l++) {
-                        int batch_idx = (c * nb_tx * nb_rx + link) * channel_length + l;
+                        int batch_idx = (c * nb_tx * nb_rx * max_taps) + (link * max_taps) + l;
                         h_channel_coeffs_batch[batch_idx].x = (float)channels[c]->ch[link][l].r;
                         h_channel_coeffs_batch[batch_idx].y = (float)channels[c]->ch[link][l].i;
                     }
@@ -418,7 +420,7 @@ int main(int argc, char **argv) {
 
                             for (int link = 0; link < nb_tx * nb_rx; link++) {
                                 for (int l = 0; l < channels[c]->channel_length; l++) {
-                                    int idx = link * channels[c]->channel_length + l;
+                                    int idx = link * max_taps + l;
                                     ((float2*)h_channel_coeffs)[idx].x = (float)channels[c]->ch[link][l].r;
                                     ((float2*)h_channel_coeffs)[idx].y = (float)channels[c]->ch[link][l].i;
                                 }
@@ -453,7 +455,7 @@ int main(int argc, char **argv) {
                         for(int c=0; c<num_channels; c++){
                             for (int link = 0; link < nb_tx * nb_rx; link++) {
                                 for (int l = 0; l < channels[c]->channel_length; l++) {
-                                    int idx = link * channels[c]->channel_length + l;
+                                    int idx = link * max_taps + l;
                                     ((float2*)h_channel_coeffs)[idx].x = (float)channels[c]->ch[link][l].r;
                                     ((float2*)h_channel_coeffs)[idx].y = (float)channels[c]->ch[link][l].i;
                                 }
@@ -508,22 +510,21 @@ int main(int argc, char **argv) {
     printf("| %-32s | %-24.3f |\n", "GPU Throughput (GSPS)", gpu_throughput_gsps);
     printf("+----------------------------------+--------------------------+\n");
 
-
     // --- Cleanup ---
+    free(tx_sig_data);
     for(int i=0; i<num_tx_signals; i++){
-        for(int j=0; j<nb_tx; j++){
-           free(tx_sig_interleaved[i][j]);
-        }
         free(tx_sig_interleaved[i]);
     }
     free(tx_sig_interleaved);
 
-    for (int i=0; i<nb_rx; i++) { free(rx_multipath_re_cpu[i]); free(rx_multipath_im_cpu[i]); }
-    free(rx_multipath_re_cpu); free(rx_multipath_im_cpu);
+    free(rx_multipath_data);
+    free(rx_multipath_re_cpu); 
+    free(rx_multipath_im_cpu);
 
+    free(output_cpu_data);
     for (int c=0; c<num_channels; c++) {
-        free(output_cpu[c][0]);
         free(output_cpu[c]);
+        // free_channel_desc_scm(channels[c]);
         free_manual_channel_desc(channels[c]);
     }
     free(output_cpu); 
@@ -531,18 +532,20 @@ int main(int argc, char **argv) {
 
     if (strcmp(mode_str, "batch") == 0) {
         free(h_channel_coeffs_batch);
+        if (sum_outputs) {
+            cudaFree(d_summed_gpu_output);
+        }
         #if defined(USE_ATS_MEMORY)
-                free(d_tx_sig_batch);
+            free(d_tx_sig_batch);
         #else
-                cudaFree(d_tx_sig_batch);
-                if (h_tx_sig_batch_interleaved) free(h_tx_sig_batch_interleaved);
+            cudaFree(d_tx_sig_batch);
+            if (h_tx_sig_batch_interleaved) free(h_tx_sig_batch_interleaved);
         #endif
         cudaFree(d_intermediate_sig_batch);
         cudaFree(d_final_output_batch);
         cudaFree(d_channel_coeffs_batch);
-    } else { 
+    } else { // Serial & Stream Cleanup
         free(h_channel_coeffs);
-        cudaFree(d_channel_coeffs_gpu);
         for (int c=0; c<num_channels; c++) {
             cudaFree(d_individual_gpu_outputs[c]);
         }
@@ -550,42 +553,36 @@ int main(int argc, char **argv) {
         if (sum_outputs) {
             cudaFree(d_summed_gpu_output);
         }
+
         #if defined(USE_UNIFIED_MEMORY)
-                cudaFree(d_tx_sig);
-                cudaFree(d_rx_sig);
-                if (strcmp(mode_str, "serial") == 0) {
-                    if (h_output_sig_pinned) cudaFreeHost(h_output_sig_pinned);
-                    if (output_gpu) {
-                        free(output_gpu[0]);
-                        free(output_gpu);
-                    }
-                }
+            cudaFree(d_tx_sig);
+            cudaFree(d_rx_sig);
         #elif defined(USE_ATS_MEMORY)
-                cudaFree(d_rx_sig);
-                free(h_tx_sig_pinned);
-                if (strcmp(mode_str, "serial") == 0) {
-                    if (h_output_sig_pinned) free(h_output_sig_pinned);
-                    if (output_gpu) {
-                    free(output_gpu[0]);
-                    free(output_gpu);
-                    }
-                }
-        #else
-                cudaFree(d_tx_sig);
-                cudaFree(d_rx_sig);
-                cudaFreeHost(h_tx_sig_pinned);
-                if (strcmp(mode_str, "serial") == 0) {
-                    if (h_output_sig_pinned) cudaFreeHost(h_output_sig_pinned);
-                    if (output_gpu) {
-                        free(output_gpu[0]);
-                        free(output_gpu);
-                    }
-                }
+            cudaFree(d_rx_sig);
+            free(h_tx_sig_pinned);
+        #else // EXPLICIT COPY
+            cudaFree(d_tx_sig);
+            cudaFree(d_rx_sig);
+            cudaFreeHost(h_tx_sig_pinned);
         #endif
     }
 
+    if (strcmp(mode_str, "serial") == 0) {
+        if (h_output_sig_pinned) {
+            #if defined(USE_ATS_MEMORY)
+                free(h_output_sig_pinned);
+            #else
+                cudaFreeHost(h_output_sig_pinned);
+            #endif
+        }
+        if (output_gpu) {
+            free(output_gpu[0]);
+            free(output_gpu);
+        }
+    }
+
     destroy_curand_states_cuda(d_curand_states);
-        
-    printf("Benchmark finished.\n");
-    return 0;
+            
+        printf("Benchmark finished.\n");
+        return 0;
 }
