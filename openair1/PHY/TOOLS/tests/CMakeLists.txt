@@ -39,3 +39,12 @@ target_link_libraries(test_sse_intrinsics PRIVATE GTest::gtest LOG minimal_lib)
 add_dependencies(tests test_sse_intrinsics)
 add_test(NAME test_sse_intrinsics
   COMMAND ./test_sse_intrinsics)
+
+
+
+
+add_executable(test_scm_stability test_scm_stability.c ../../../SIMULATION/TOOLS/random_channel.c)
+target_link_libraries(test_scm_stability PRIVATE UTIL SIMU PHY_COMMON LOG T CONFIG_LIB shlib_loader m)
+set_target_properties(test_scm_stability PROPERTIES
+  RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+)
