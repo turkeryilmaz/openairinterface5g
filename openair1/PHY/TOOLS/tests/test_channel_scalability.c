@@ -183,6 +183,7 @@ int main(int argc, char **argv) {
          *d_channel_coeffs_batch = NULL;
     float2 *h_channel_coeffs_batch = NULL;
     float *h_channel_coeffs = NULL;
+    float2* h_tx_sig_batch_interleaved = NULL; 
 
     const int max_taps = 256;
     const int padding_len = max_taps - 1;
@@ -220,7 +221,7 @@ int main(int argc, char **argv) {
             cudaMalloc(&d_intermediate_sig_batch, intermediate_batch_bytes);
             cudaMalloc(&d_final_output_batch, final_batch_bytes);
             cudaMalloc(&d_channel_coeffs_batch, channel_batch_bytes);
-            float2* h_tx_sig_batch_interleaved = (float2*)malloc(tx_batch_bytes);
+            h_tx_sig_batch_interleaved = (float2*)malloc(tx_batch_bytes);
     #endif
 
     if (sum_outputs) {
