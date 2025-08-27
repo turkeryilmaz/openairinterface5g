@@ -85,6 +85,17 @@ int beam_index_allocation(bool das,
   return idx;
 }
 
+void update_ofh_section_info(struct oai_ofh_section *tx_s, int beam_id, int start_rb, int num_rb, int start_symb, int num_symb)
+{
+  struct oai_ofh_section_def *sec = tx_s->sec + tx_s->num_sections;
+  sec->beam_id = beam_id;
+  sec->start_prb = start_rb;
+  sec->num_prb = num_rb;
+  sec->start_symbol = start_symb;
+  sec->num_symbols = num_symb;
+  tx_s->num_sections++;
+}
+
 void nr_common_signal_procedures(PHY_VARS_gNB *gNB, int frame, int slot, nfapi_nr_dl_tti_ssb_pdu ssb_pdu)
 {
   NR_DL_FRAME_PARMS *fp = &gNB->frame_parms;
@@ -181,6 +192,14 @@ void nr_common_signal_procedures(PHY_VARS_gNB *gNB, int frame, int slot, nfapi_n
                    frame,
                    cfg,
                    fp);
+
+  // update section info for 7.2 interface
+  update_ofh_section_info(&gNB->common_vars.tx_sections,
+                          pb->prgs_list[0].dig_bf_interface_list[0].beam_idx,
+                          fp->ssb_start_subcarrier / NR_NB_SC_PER_RB,
+                          20 + (fp->ssb_start_subcarrier % NR_NB_SC_PER_RB != 0),
+                          ssb_start_symbol,
+                          4);
 }
 
 // clearing beam information to be provided to RU for all slots (DL and UL)

@@ -291,6 +291,7 @@ typedef struct {
   bool analog_bf;
   int32_t *debugBuff;
   int32_t debugBuff_sample_offset;
+  struct oai_ofh_section tx_sections;
 } NR_gNB_COMMON;
 
 typedef struct {

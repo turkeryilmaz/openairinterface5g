@@ -490,10 +490,20 @@ int xran_fh_tx_send_slot(ru_info_t *ru, int frame, int slot, uint64_t timestamp)
     for (uint8_t ant_id = 0; ant_id < ru->nb_tx; ant_id++) {
       oran_buf_list_t *bufs = get_xran_buffers(ant_id / nb_tx_per_ru);
       uint8_t *pPrbMapData = bufs->srccp[ant_id % nb_tx_per_ru][tti % XRAN_N_FE_BUF_LEN].pBuffers->pData;
-      struct xran_prb_map *pPrbMap = (struct xran_prb_map *)pPrbMapData;
-      struct xran_prb_map *pRbMap = pPrbMap;
+      struct xran_prb_map *pRbMap = (struct xran_prb_map *)pPrbMapData;
+      struct xran_prb_map *txd = (struct xran_prb_map *)bufs->bufs.tx_prbmap[ant_id % nb_tx_per_ru][tti % XRAN_N_FE_BUF_LEN].pData;
+      pRbMap->nPrbElm = ru->tx_sections.num_sections;
       for (int_fast32_t idxElm = 0; idxElm < pRbMap->nPrbElm; idxElm++) {
-        for (int32_t sym_idx = 0; sym_idx < XRAN_NUM_OF_SYMBOL_PER_SLOT; sym_idx++) {
+        struct xran_prb_elm *p_prbMapElm = &pRbMap->prbMap[idxElm];
+        struct oai_ofh_section_def *l1_s = ru->tx_sections.sec + idxElm;
+        p_prbMapElm->nRBStart = l1_s->start_prb;
+        p_prbMapElm->nRBSize = l1_s->num_prb;
+        p_prbMapElm->nStartSymb = l1_s->start_symbol;
+        p_prbMapElm->numSymb = l1_s->num_symbols;
+        p_prbMapElm->nBeamIndex = l1_s->beam_id;
+        p_prbMapElm->compMethod = fh_cfg->ru_conf.compMeth;
+        p_prbMapElm->iqWidth = fh_cfg->ru_conf.iqWidth;
+        for (int32_t sym_idx = p_prbMapElm->nStartSymb; sym_idx < p_prbMapElm->nStartSymb + p_prbMapElm->numSymb; sym_idx++) {
           uint8_t *pData =
               bufs->src[ant_id % nb_tx_per_ru][tti % XRAN_N_FE_BUF_LEN].pBuffers[sym_idx % XRAN_NUM_OF_SYMBOL_PER_SLOT].pData;
           ptr = pData;
@@ -508,10 +518,8 @@ int xran_fh_tx_send_slot(ru_info_t *ru, int frame, int slot, uint64_t timestamp)
             uint8_t *dst = (uint8_t *)u8dptr;
             dst = last_data_pointer[sym_idx] != NULL ? last_data_pointer[sym_idx] : dst;
 
-            struct xran_prb_elm *p_prbMapElm = &pRbMap->prbMap[idxElm];
 
             struct xran_section_desc *p_sec_desc = NULL;
-            p_prbMapElm = &pRbMap->prbMap[idxElm];
             // assumes one fragment per symbol
 #ifdef E_RELEASE
             p_sec_desc = p_prbMapElm->p_sec_desc[sym_id][0];
@@ -592,6 +600,7 @@ int xran_fh_tx_send_slot(ru_info_t *ru, int frame, int slot, uint64_t timestamp)
           }
         }
       }
+      xran_init_PrbMap_from_cfg(pRbMap, txd, fh_init->mtu);
     }
   }
   return (0);

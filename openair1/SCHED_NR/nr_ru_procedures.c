@@ -196,6 +196,9 @@ void nr_feptx_prec(RU_t *ru, int frame_tx, int slot_tx)
     }
   }
 
+  memcpy(&ru->common.tx_sections, &gNB->common_vars.tx_sections, sizeof(ru->common.tx_sections));
+  memset(&gNB->common_vars.tx_sections, 0, sizeof(gNB->common_vars.tx_sections));
+
   // If there is no digital beamforming we just need to copy the data to RU
   if (ru->config.dbt_config.num_dig_beams == 0 || ru->gNB_list[0]->common_vars.analog_bf) {
     for (int b = 0; b < ru->num_beams_period; b++) {

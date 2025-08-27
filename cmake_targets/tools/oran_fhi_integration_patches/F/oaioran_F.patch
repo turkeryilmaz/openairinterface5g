@@ -193,6 +193,9 @@ index bacf597..1dd6d66 100644
      int32_t bbdev_mode;      /**< DPDK for BBDev */
      uint32_t dpdkIoVaMode;   /**< IOVA Mode */
      uint32_t dpdkMemorySize; /**< DPDK max memory allocation */
+@@ -555,7 +556,7 @@ struct xran_prb_map {
+-    struct xran_prb_elm prbMap[1];
++    struct xran_prb_elm prbMap[2/*XRAN_MIN_SECTIONS_PER_SLOT*/];
 @@ -1193,6 +1194,31 @@ int32_t xran_reg_physide_cb_by_dev_id(void *pHandle, xran_fh_tti_callback_fn Cb,
   */
  int32_t xran_get_slot_idx (uint32_t PortId, uint32_t *nFrameIdx, uint32_t *nSubframeIdx,  uint32_t *nSlotIdx, uint64_t *nSecond);
@@ -702,6 +705,11 @@ index 789c6fd..a768efb 100644
  
  #include <rte_common.h>
  #include <rte_eal.h>
+@@ -297,12 +300,16 @@ xran_cp_create_and_send_section(void *pHandle, uint8_t ru_port_id, int dir, int
++                if(prbMap->nPrbElm==0){
++                    print_dbg("No symbol to process\n");
++                    return (-1);
++                }
 diff --git a/fhi_lib/lib/src/xran_delay_measurement.c b/fhi_lib/lib/src/xran_delay_measurement.c
 index 4c943c8..7db51a8 100644
 --- a/fhi_lib/lib/src/xran_delay_measurement.c

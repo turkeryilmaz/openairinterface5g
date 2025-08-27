@@ -269,6 +269,7 @@ void oran_fh_if4p5_south_out(RU_t *ru, int frame, int slot, uint64_t timestamp)
   ru_info_t ru_info;
   ru_info.nb_tx = ru->nb_tx * ru->num_beams_period;
   ru_info.txdataF_BF = ru->common.txdataF_BF;
+  memcpy(&ru_info.tx_sections, &ru->common.tx_sections, sizeof(ru_info.tx_sections));
   // printf("south_out:\tframe=%d\tslot=%d\ttimestamp=%ld\n",frame,slot,timestamp);
 
   int ret = xran_fh_tx_send_slot(&ru_info, frame, slot, timestamp);
