@@ -201,8 +201,10 @@ drb_t *generateDRB(gNB_RRC_UE_t *ue,
     est_drb->cnAssociation.sdap_config.sdap_HeaderDL = NR_SDAP_Config__sdap_HeaderDL_absent;
     est_drb->cnAssociation.sdap_config.sdap_HeaderUL = NR_SDAP_Config__sdap_HeaderUL_absent;
   }
-  for (int qos_flow_index = 0; qos_flow_index < pduSession->nb_qos; qos_flow_index++) {
-    est_drb->cnAssociation.sdap_config.mappedQoS_FlowsToAdd[qos_flow_index] = pduSession->qos[qos_flow_index].qfi;
+  int qos_flow_index = 0;
+  FOR_EACH_SEQ_ARR(nr_rrc_qos_t *, qos_session, &pduSession->qos) {
+    qos_session->drb_id = est_drb->drb_id; // Map DRB to Qos
+    est_drb->cnAssociation.sdap_config.mappedQoS_FlowsToAdd[qos_flow_index++] = qos_session->qos.qfi;
   }
   /* PDCP Configuration */
   set_default_drb_pdcp_config(&est_drb->pdcp_config, do_drb_integrity, do_drb_ciphering, pdcp_config, ue->redcap_cap);
@@ -258,4 +260,50 @@ NR_DRB_ToAddMod_t *generateDRB_ASN1(const drb_t *drb_asn1)
   }
 
   return DRB_config;
+}
+
+static bool eq_qfi(const void *vval, const void *vit)
+{
+  const int id = *(const int *)vval;
+  const nr_rrc_qos_t *elem = (const nr_rrc_qos_t *)vit;
+  return elem->qos.qfi == id;
+}
+
+/** @brief Retrieves mapped QoS in UE context for the input @param qfi
+ *  @return pointer to the found QoS, NULL if not found */
+nr_rrc_qos_t *find_qos(seq_arr_t *seq, int qfi)
+{
+  DevAssert(seq);
+  elm_arr_t elm = find_if(seq, &qfi, eq_qfi);
+  if (elm.found)
+    return (nr_rrc_qos_t *)elm.it;
+  return NULL;
+}
+
+/** @brief Adds a new QoS @param in to UE context the list
+ *  @note A UE can have up to 64 QoS flows which can be multiplexed
+ *  into one or more DRBs. The QFI is the unique ID of the mapping.
+ *  @return pointer to the newly added QoS */
+nr_rrc_qos_t *add_qos(seq_arr_t *qos, const pdusession_level_qos_parameter_t *in)
+{
+  DevAssert(qos);
+  DevAssert(in);
+
+  if (seq_arr_size(qos) == QOSFLOW_MAX_VALUE) {
+    LOG_W(NR_RRC, "Reached maximum number of QoS flows = %ld\n", seq_arr_size(qos));
+    return NULL;
+  }
+
+  nr_rrc_qos_t item = { .qos = *in };
+  seq_arr_push_back(qos, &item, sizeof(nr_rrc_qos_t));
+
+  // Double check successful add
+  nr_rrc_qos_t *added = find_qos(qos, in->qfi);
+  DevAssert(added);
+  LOG_I(NR_RRC, "Added QoS flow with qfi=%d, total number of QoS flows = %ld\n", in->qfi, seq_arr_size(qos));
+
+  // Only one QoS flow is supported
+  AssertFatal(seq_arr_size(qos) == 1, "only 1 Qos flow supported\n");
+
+  return added;
 }

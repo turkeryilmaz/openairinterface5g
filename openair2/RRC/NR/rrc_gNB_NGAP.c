@@ -163,18 +163,22 @@ static nr_guami_t get_guami(const uint32_t amf_Id, const plmn_id_t plmn)
   return guami;
 }
 
-/** @brief Copy NGAP PDU Session Resource item to RRC pdusession_t struct */
+/** @brief Copy NGAP PDU Session Resource item to RRC pdusession_t struct to setup */
 static void cp_pdusession_resource_item_to_pdusession(pdusession_t *dst, const pdusession_resource_item_t *src)
 {
   dst->pdusession_id = src->pdusession_id;
   dst->nas_pdu = src->nas_pdu;
-  dst->nb_qos = src->pdusessionTransfer.nb_qos;
-  for (uint8_t i = 0; i < src->pdusessionTransfer.nb_qos && i < QOSFLOW_MAX_VALUE; ++i) {
-    dst->qos[i] = src->pdusessionTransfer.qos[i];
-  }
   dst->pdu_session_type = src->pdusessionTransfer.pdu_session_type;
   dst->n3_incoming = src->pdusessionTransfer.n3_incoming;
   dst->nssai = src->nssai;
+  /* QoS handling */
+  DevAssert(!dst->qos.data);
+  // Initialise mapped QoS list per PDU Session
+  seq_arr_init(&dst->qos, sizeof(nr_rrc_qos_t));
+  // Add QoS flow to list
+  for (uint8_t i = 0; i < src->pdusessionTransfer.nb_qos && i < QOSFLOW_MAX_VALUE; ++i) {
+    add_qos(&dst->qos, &src->pdusessionTransfer.qos[i]);
+  }
 }
 
 /**
@@ -330,11 +334,9 @@ bool trigger_bearer_setup(gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE, int n, pdusession
         *cellGroup = MCG;
       }
 
-      drb->numQosFlow2Setup = session->nb_qos;
-      for (int k=0; k < drb->numQosFlow2Setup; k++) {
-        qos_flow_to_setup_t *qos_flow = drb->qosFlows + k;
-        pdusession_level_qos_parameter_t *qos_session = session->qos + k;
-
+      FOR_EACH_SEQ_ARR(nr_rrc_qos_t *, qos, &session->qos) {
+        pdusession_level_qos_parameter_t *qos_session = &qos->qos;
+        qos_flow_to_setup_t *qos_flow = &drb->qosFlows[drb->numQosFlow2Setup++];
         qos_characteristics_t *qos_char = &qos_flow->qos_params.qos_characteristics;
         qos_flow->qfi = qos_session->qfi;
         qos_char->qos_type = qos_session->fiveQI_type;
@@ -491,10 +493,10 @@ static pdusession_setup_t fill_ngap_pdusession_setup(pdusession_t *session)
   out.pdusession_id = session->pdusession_id;
   out.pdu_session_type = session->pdu_session_type;
   out.n3_outgoing = cp_gtp_tunnel(session->n3_outgoing);
-  out.nb_of_qos_flow = session->nb_qos;
-  for (int q = 0; q < session->nb_qos; q++) {
-    out.associated_qos_flows[q].qfi = session->qos[q].qfi;
-    out.associated_qos_flows[q].qos_flow_mapping_ind = QOSFLOW_MAPPING_INDICATION_DL;
+  FOR_EACH_SEQ_ARR(nr_rrc_qos_t *, qos_session, &session->qos) {
+    pdusession_associate_qosflow_t *q = &out.associated_qos_flows[out.nb_of_qos_flow++];
+    q->qfi = qos_session->qos.qfi;
+    q->qos_flow_mapping_ind = QOSFLOW_MAPPING_INDICATION_DL;
   }
   char ip_str[INET_ADDRSTRLEN] = {0};
   inet_ntop(AF_INET, out.n3_outgoing.addr.buffer, ip_str, sizeof(ip_str));
@@ -854,6 +856,33 @@ void rrc_gNB_process_NGAP_PDUSESSION_SETUP_REQ(MessageDef *msg_p, instance_t ins
   }
 }
 
+/** @brief Update existing QoS Flow mapped in the UE context */
+static void nr_rrc_update_qos(seq_arr_t *list, const int nb_qos, const pdusession_level_qos_parameter_t *in_qos)
+{
+  DevAssert(nb_qos == 1);
+  for (uint8_t i = 0; i < nb_qos && i < QOSFLOW_MAX_VALUE; ++i) {
+    nr_rrc_qos_t *qos = find_qos(list, in_qos[i].qfi);
+    if (qos) {
+      AssertFatal(qos->qos.qfi == in_qos[i].qfi, "QoS Flow to modify must match existing one");
+      LOG_I(NR_RRC, "Updating QoS for QFI=%d\n", in_qos[i].qfi);
+      qos->qos = in_qos[i];
+    }
+  }
+}
+
+/** @brief Update stored pdusession_t in list from NGAP PDU Session Resource item */
+static void nr_rrc_update_pdusession(pdusession_t *dst, const pdusession_resource_item_t *src)
+{
+  dst->pdusession_id = src->pdusession_id;
+  dst->nas_pdu = src->nas_pdu;
+  dst->pdu_session_type = src->pdusessionTransfer.pdu_session_type;
+  dst->n3_incoming = src->pdusessionTransfer.n3_incoming;
+  dst->nssai = src->nssai;
+  DevAssert(dst->qos.data); // QoS list has to be initialized at this stage
+  // Update QoS flow
+  nr_rrc_update_qos(&dst->qos, src->pdusessionTransfer.nb_qos, src->pdusessionTransfer.qos);
+}
+
 //------------------------------------------------------------------------------
 int rrc_gNB_process_NGAP_PDUSESSION_MODIFY_REQ(MessageDef *msg_p, instance_t instance)
 //------------------------------------------------------------------------------
@@ -886,7 +915,7 @@ int rrc_gNB_process_NGAP_PDUSESSION_MODIFY_REQ(MessageDef *msg_p, instance_t ins
       all_failed = false;
       session->status = PDU_SESSION_STATUS_NEW;
       session->cause.type = NGAP_CAUSE_NOTHING;
-      cp_pdusession_resource_item_to_pdusession(&session->param, sessMod);
+      nr_rrc_update_pdusession(&session->param, sessMod);
     }
   }
 
@@ -954,12 +983,13 @@ int rrc_gNB_send_NGAP_PDUSESSION_MODIFY_RESP(gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE
       session->status = PDU_SESSION_STATUS_ESTABLISHED;
       session->cause.type = NGAP_CAUSE_NOTHING;
       // Fill response
-      resp->pdusessions[pdu_sessions_done].pdusession_id = session->param.pdusession_id;
-      for (int qos_flow_index = 0; qos_flow_index < session->param.nb_qos; qos_flow_index++) {
-        resp->pdusessions[pdu_sessions_done].qos[qos_flow_index].qfi = session->param.qos[qos_flow_index].qfi;
+      pdusession_modify_t *p = &resp->pdusessions[pdu_sessions_done++];
+      p->pdusession_id = session->param.pdusession_id;
+      FOR_EACH_SEQ_ARR(nr_rrc_qos_t *, qos_session, &session->param.qos) {
+        qos_flow_tobe_modified_t *q = &p->qos[p->nb_of_qos_flow++];
+        q->qfi = qos_session->qos.qfi;
       }
       resp->pdusessions[pdu_sessions_done].pdusession_id = session->param.pdusession_id;
-      resp->pdusessions[pdu_sessions_done].nb_of_qos_flow = session->param.nb_qos;
       LOG_I(NR_RRC,
             "Modify Resp (msg index %d, status %d, xid %d): nb_of_pduSessions %ld, pdusession_id %d \n ",
             pdu_sessions_done,
@@ -967,7 +997,6 @@ int rrc_gNB_send_NGAP_PDUSESSION_MODIFY_RESP(gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE
             xid,
             seq_arr_size(&UE->pduSessions),
             resp->pdusessions[pdu_sessions_done].pdusession_id);
-      pdu_sessions_done++;
     } else if ((session->status == PDU_SESSION_STATUS_NEW) || (session->status == PDU_SESSION_STATUS_ESTABLISHED)) {
       LOG_D(NR_RRC, "PDU SESSION is NEW or already ESTABLISHED\n");
     } else if (session->status == PDU_SESSION_STATUS_FAILED) {
