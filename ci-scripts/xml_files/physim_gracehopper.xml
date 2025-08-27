@@ -33,13 +33,13 @@
         <testCase id="800813">
                 <class>Create_Workspace</class>
                 <desc>Create new Workspace</desc>
-                <node>gracehopper3-oai</node>
+                <node>localhost</node>
         </testCase>
 
         <testCase id="010201">
                 <class>Deploy_Run_Docker_PhySim</class>
                 <desc>Deploy and Run PhySim</desc>
-                <node>gracehopper3-oai</node>
+                <node>localhost</node>
                 <ctest-opt>-R 5g -j16</ctest-opt>
         </testCase>
 
