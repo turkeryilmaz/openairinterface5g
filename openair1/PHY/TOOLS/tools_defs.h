@@ -903,6 +903,9 @@ static inline void rotate_cpx_vector(const c16_t *const x, const c16_t *const al
 #ifdef __aarch64__
     }
 #endif //__aarch64__
+#if defined(__x86_64__) || defined(__i386__)
+  }
+#endif
 }
 
 /*!\fn int32_t sub_cpx_vector16(c16_t *x,c16_t *y, c16_t z, uint32_t N)
