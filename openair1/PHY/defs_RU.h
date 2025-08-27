@@ -91,6 +91,20 @@ typedef enum {
   synch_to_mobipass_standalone  // special case for mobipass in standalone mode
 } node_timing_t;
 
+struct oai_ofh_section_def {
+  uint16_t start_symbol;
+  uint16_t num_symbols;
+  uint16_t start_prb;
+  uint16_t num_prb;
+  uint16_t re_offset;
+  uint16_t beam_id;
+};
+
+#define NR_MAX_OFH_SECTIONS 6
+struct oai_ofh_section {
+  uint16_t num_sections;
+  struct oai_ofh_section_def sec[NR_MAX_OFH_SECTIONS];
+};
 
 typedef struct {
   /// \brief Holds the transmit data in the frequency domain (1 frame).
@@ -133,8 +147,9 @@ typedef struct {
   /// - first index: concurrent beam
   /// - second index: beam_id [0.. symbols_per_frame[
   int **beam_id;
+  /// \brief Holds tx data section details relevant for xran interface
+  struct oai_ofh_section tx_sections;
 } RU_COMMON;
-
 
 typedef struct {
   /// \brief Received frequency-domain signal after extraction.

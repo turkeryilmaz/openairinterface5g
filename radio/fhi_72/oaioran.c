@@ -467,6 +467,25 @@ int xran_fh_rx_read_slot(ru_info_t *ru, int *frame, int *slot)
   return (0);
 }
 
+#define MAX_NR_PRBS 273
+/* numPrbc can range only till 255. If more than 255 PRBs used, the section
+is split into two */
+static void fragment_sections_if_needed(struct oai_ofh_section *s)
+{
+  const uint8_t max_numPrbc = UINT8_MAX;
+  for (int_fast16_t i = 0; i < s->num_sections; i++) {
+    if (s->sec[i].num_prb == MAX_NR_PRBS)
+      continue;
+    else if (s->sec[i].num_prb > max_numPrbc) {
+      s->sec[s->num_sections] = s->sec[i];
+      s->sec[s->num_sections].num_prb -= max_numPrbc;
+      s->sec[s->num_sections].start_prb = max_numPrbc;
+      s->sec[i].num_prb = max_numPrbc;
+      s->num_sections++;
+    }
+  }
+}
+
 /** @details Write PDSCH IQ-data from OAI txdataF_BF buffer to xran buffers. If
  * I/Q compression (bitwidth < 16 bits) is configured, compresses the data
  * before writing. */
@@ -487,14 +506,25 @@ int xran_fh_tx_send_slot(ru_info_t *ru, int frame, int slot, uint64_t timestamp)
   uint8_t *last_data_pointer[ru->nb_tx][XRAN_NUM_OF_SYMBOL_PER_SLOT];
   memset(last_data_pointer, 0, sizeof(last_data_pointer));
 
+  fragment_sections_if_needed(&ru->tx_sections);
   for (uint16_t cc_id = 0; cc_id < 1 /*nSectorNum*/; cc_id++) { // OAI does not support multiple CC yet.
     for (uint8_t ant_id = 0; ant_id < ru->nb_tx; ant_id++) {
       oran_buf_list_t *bufs = get_xran_buffers(ant_id / nb_tx_per_ru);
       uint8_t *pPrbMapData = bufs->srccp[ant_id % nb_tx_per_ru][tti % XRAN_N_FE_BUF_LEN].pBuffers->pData;
-      struct xran_prb_map *pPrbMap = (struct xran_prb_map *)pPrbMapData;
-      struct xran_prb_map *pRbMap = pPrbMap;
+      struct xran_prb_map *pRbMap = (struct xran_prb_map *)pPrbMapData;
+      struct xran_prb_map *txd = (struct xran_prb_map *)bufs->bufs.tx_prbmap[ant_id % nb_tx_per_ru][tti % XRAN_N_FE_BUF_LEN].pData;
+      pRbMap->nPrbElm = ru->tx_sections.num_sections;
       for (int_fast32_t idxElm = 0; idxElm < pRbMap->nPrbElm; idxElm++) {
-        for (int32_t sym_idx = 0; sym_idx < XRAN_NUM_OF_SYMBOL_PER_SLOT; sym_idx++) {
+        struct xran_prb_elm *p_prbMapElm = &pRbMap->prbMap[idxElm];
+        struct oai_ofh_section_def *l1_s = ru->tx_sections.sec + idxElm;
+        p_prbMapElm->nRBStart = l1_s->start_prb;
+        p_prbMapElm->nRBSize = l1_s->num_prb;
+        p_prbMapElm->nStartSymb = l1_s->start_symbol;
+        p_prbMapElm->numSymb = l1_s->num_symbols;
+        p_prbMapElm->nBeamIndex = l1_s->beam_id;
+        p_prbMapElm->compMethod = fh_cfg->ru_conf.compMeth;
+        p_prbMapElm->iqWidth = fh_cfg->ru_conf.iqWidth;
+        for (int32_t sym_idx = p_prbMapElm->nStartSymb; sym_idx < p_prbMapElm->nStartSymb + p_prbMapElm->numSymb; sym_idx++) {
           uint8_t *pData =
               bufs->src[ant_id % nb_tx_per_ru][tti % XRAN_N_FE_BUF_LEN].pBuffers[sym_idx % XRAN_NUM_OF_SYMBOL_PER_SLOT].pData;
           ptr = pData;
@@ -509,10 +539,8 @@ int xran_fh_tx_send_slot(ru_info_t *ru, int frame, int slot, uint64_t timestamp)
             uint8_t *dst = (uint8_t *)u8dptr;
             dst = last_data_pointer[ant_id][sym_idx] != NULL ? last_data_pointer[ant_id][sym_idx] : dst;
 
-            struct xran_prb_elm *p_prbMapElm = &pRbMap->prbMap[idxElm];
 
             struct xran_section_desc *p_sec_desc = NULL;
-            p_prbMapElm = &pRbMap->prbMap[idxElm];
             // assumes one fragment per symbol
 #ifdef E_RELEASE
             p_sec_desc = p_prbMapElm->p_sec_desc[sym_id][0];
@@ -593,6 +621,7 @@ int xran_fh_tx_send_slot(ru_info_t *ru, int frame, int slot, uint64_t timestamp)
           }
         }
       }
+      xran_init_PrbMap_from_cfg(pRbMap, txd, fh_init->mtu);
     }
   }
   return (0);

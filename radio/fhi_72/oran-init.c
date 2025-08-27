@@ -94,16 +94,19 @@ static struct xran_prb_map get_xran_prb_map(const struct xran_fh_config *f, cons
       .cc_id = 0,
       .ru_port_id = 0,
       .tti_id = 0,
-      .nPrbElm = 1,
+      .nPrbElm = XRAN_MIN_SECTIONS_PER_SLOT,
   };
-  struct xran_prb_elm *e = &prbmap.prbMap[0];
-  e->nStartSymb = start_sym;
-  e->numSymb = num_sym;
-  e->nRBStart = 0;
-  e->nRBSize = (dir == XRAN_DIR_DL) ? f->nDLRBs : f->nULRBs;
-  e->nBeamIndex = 0;
-  e->compMethod = f->ru_conf.compMeth;
-  e->iqWidth = f->ru_conf.iqWidth;
+  for (int i = 0; i < prbmap.nPrbElm; i++) {
+    struct xran_prb_elm *e = &prbmap.prbMap[0];
+    e->nStartSymb = start_sym;
+    e->numSymb = num_sym;
+    e->nRBStart = 0;
+    e->nRBSize = 0;
+    e->nBeamIndex = 0;
+    e->compMethod = f->ru_conf.compMeth;
+    e->iqWidth = f->ru_conf.iqWidth;
+  }
+
   return prbmap;
 }
 

@@ -29,6 +29,8 @@
 
 #include "xran_fh_o_du.h"
 
+#include "openair1/PHY/defs_RU.h"
+
 /*
  * Structure added to bear the information needed from OAI RU
  */
@@ -43,6 +45,7 @@ typedef struct ru_info_s {
 
   // Needed for Prach
   int16_t **prach_buf;
+  struct oai_ofh_section tx_sections;
 } ru_info_t;
 
 /** @brief Reads RX data (PRACH/PUSCH) of next slot.
