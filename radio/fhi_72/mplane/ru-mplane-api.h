@@ -32,6 +32,13 @@
 #define MP_LOG_W(x, args...) LOG_W(HW, "[MPLANE] " x, ##args)
 
 typedef struct {
+  bool oper_state;  // "enabled", "disabled"
+  bool admin_state; // "unlocked", "shutting-down", "locked"
+  bool avail_state; // "NORMAL", "DEGRADED", "FAULTY"
+} hardware_notif_t;
+
+typedef struct {
+  hardware_notif_t hardware;
   bool ptp_state;
   bool rx_carrier_state;
   bool tx_carrier_state;
