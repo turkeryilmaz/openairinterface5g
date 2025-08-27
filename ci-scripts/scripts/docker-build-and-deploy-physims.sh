@@ -1,3 +1,4 @@
+#!/bin/bash
 
 function die() { echo $@; exit 1; }
 [ $# -ge 1 ] || die "usage: $0 <directory> [ctest-options]"
