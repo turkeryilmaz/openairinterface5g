@@ -262,8 +262,9 @@ static void config_common_ue_sa(NR_UE_MAC_INST_t *mac, NR_ServingCellConfigCommo
                                                                 mac->frequency_range);
     //prach_fd_occasion->num_unused_root_sequences = ???
   }
-  cfg->prach_config.ssb_per_rach = rach_ConfigCommon->ssb_perRACH_OccasionAndCB_PreamblesPerSSB->present-1;
-
+  if (rach_ConfigCommon->ssb_perRACH_OccasionAndCB_PreamblesPerSSB) {
+    cfg->prach_config.ssb_per_rach = rach_ConfigCommon->ssb_perRACH_OccasionAndCB_PreamblesPerSSB->present - 1;
+  }
 }
 
 // computes round-trip-time between ue and sat based on SIB19 ephemeris data
@@ -547,7 +548,9 @@ static void config_common_ue(NR_UE_MAC_INST_t *mac, NR_ServingCellConfigCommon_t
       prach_fd_occasion->num_root_sequences =
           compute_nr_root_seq(rach_ConfigCommon, nb_preambles, frame_type, mac->frequency_range);
 
-      cfg->prach_config.ssb_per_rach = rach_ConfigCommon->ssb_perRACH_OccasionAndCB_PreamblesPerSSB->present - 1;
+      if (rach_ConfigCommon->ssb_perRACH_OccasionAndCB_PreamblesPerSSB) {
+        cfg->prach_config.ssb_per_rach = rach_ConfigCommon->ssb_perRACH_OccasionAndCB_PreamblesPerSSB->present - 1;
+      }
       // prach_fd_occasion->num_unused_root_sequences = ???
     }
   }
@@ -914,6 +917,12 @@ static void nr_configure_lc_config(NR_UE_MAC_INST_t *mac,
 static nr_lcid_rb_t configure_lcid_rb(NR_RLC_BearerConfig_t *rlc_bearer)
 {
   nr_lcid_rb_t rb;
+  if (!rlc_bearer->servedRadioBearer) {
+    LOG_W(NR_MAC, "RLC bearer config does not contain servedRadioBearer.\n");
+    rb.type = NR_LCID_NONE;
+    return rb;
+  }
+
   if (rlc_bearer->servedRadioBearer->present == NR_RLC_BearerConfig__servedRadioBearer_PR_srb_Identity) {
     rb.type = NR_LCID_SRB;
     rb.choice.srb_id = rlc_bearer->servedRadioBearer->choice.srb_Identity;
