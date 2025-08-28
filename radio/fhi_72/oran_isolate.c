@@ -53,6 +53,7 @@ typedef struct {
 } oran_eth_state_t;
 
 notifiedFIFO_t oran_sync_fifo;
+notifiedFIFO_t ru_dl_sync_fifo;
 
 int trx_oran_start(openair0_device *device)
 {
@@ -210,6 +211,16 @@ int trx_oran_ctlrecv(openair0_device *device, void *msg, ssize_t msg_len)
   return 0;
 }
 
+void oran_fh_if4p5_north_in(RU_t *ru, int *frame, int *slot) {
+  ru_info_t ru_info;
+  ru_info.nb_rx = ru->nb_rx * ru->num_beams_period;
+  ru_info.txdataF_BF = ru->common.txdataF_BF;
+  start_meas(&ru->rx_fhaul);
+  int ret = xran_fh_tx_read_slot(&ru_info, frame, slot);
+  stop_meas(&ru->rx_fhaul);
+  AssertFatal(ret == 0, "ORAN: Error reading slot");
+}
+
 void oran_fh_if4p5_south_in(RU_t *ru, int *frame, int *slot)
 {
   ru_info_t ru_info;
@@ -286,6 +297,8 @@ void *get_internal_parameter(char *name)
     return (void *)oran_fh_if4p5_south_in;
   if (!strcmp(name, "fh_if4p5_south_out"))
     return (void *)oran_fh_if4p5_south_out;
+  if (!strcmp(name, "fh_if4p5_north_in"))
+    return (void *)oran_fh_if4p5_north_in;
 
   return NULL;
 }

@@ -56,6 +56,8 @@ static int DEFBANDS[] = {7};
 static int DEFENBS[] = {0};
 static int DEFBFW[] = {0x00007fff};
 static int DEFRUTPCORES[] = {-1,-1,-1,-1};
+static int DEFBW[] = {273};
+static int DEFCARRIER[] = {3430560};
 
 #include "ENB_APP/enb_paramdef.h"
 #include "GNB_APP/gnb_paramdef.h"
@@ -1487,6 +1489,7 @@ void set_function_spec_param(RU_t *ru)
         reset_meas(&ru->tx_fhaul);
         reset_meas(&ru->compression);
         reset_meas(&ru->transport);
+        LOG_I(NR_PHY,"Setting IF4p5 (7.2 split)\n");
       } else if (ru->function == gNodeB_3GPP) {
         ru->do_prach             = 0;                       // no prach processing in RU
         ru->feprx                = nr_fep_tp;     // this is frequency-shift + DFTs
@@ -1578,8 +1581,13 @@ void init_NR_RU(configmodule_interface_t *cfg, char *rf_config_file)
       }
     }
 
-    PHY_VARS_gNB *gNB_RC = RC.gNB[0];
-    PHY_VARS_gNB *gNB0 = ru->gNB_list[0];
+
+    PHY_VARS_gNB *gNB_RC = NULL;
+    PHY_VARS_gNB *gNB0 = NULL;
+    if (RC.nb_nr_L1_inst > 0) {
+      gNB_RC = RC.gNB[0];
+      gNB0 = ru->gNB_list[0];
+    }
     LOG_D(PHY, "RU FUnction:%d ru->if_south:%d\n", ru->function, ru->if_south);
 
     if (gNB0) {
@@ -1594,6 +1602,9 @@ void init_NR_RU(configmodule_interface_t *cfg, char *rf_config_file)
           gNB0->RU_list[gNB0->num_RU++] = ru;
         }
       }
+    }
+    else {
+       nr_ru_init_frame_parms(ru);
     }
     set_function_spec_param(ru);
     init_RU_proc(ru);
@@ -1621,9 +1632,8 @@ void init_NR_RU(configmodule_interface_t *cfg, char *rf_config_file)
   LOG_D(HW,"[nr-softmodem.c] RU threads created\n");
 }
 
-void start_NR_RU()
+void start_NR_RU(RU_t *ru)
 {
-  RU_t *ru = RC.ru[0];
   start_RU_proc(ru);
 }
 
@@ -1814,8 +1824,23 @@ static void NRRCconfig_RU(configmodule_interface_t *cfg)
     ru->if_freq_offset = *param[RU_IF_FREQ_OFFSET].iptr;
     ru->sl_ahead = *param[RU_SL_AHEAD].iptr;
     ru->num_bands = param[RU_BAND_LIST_IDX].numelt;
-    for (int i = 0; i < ru->num_bands; i++)
+    for (int i = 0; i < ru->num_bands; i++) {
       ru->band[i] = param[RU_BAND_LIST_IDX].iptr[i];
+      ru->bw_tx[i] = param[RU_TX_BW_LIST_IDX].iptr[i];
+      ru->bw_rx[i] = param[RU_RX_BW_LIST_IDX].iptr[i];
+      ru->carrier_freq_tx[i] = param[RU_TX_CARRIER_LIST_IDX].iptr[i];
+      ru->carrier_freq_rx[i] = param[RU_RX_CARRIER_LIST_IDX].iptr[i];
+    }
+    ru->frame_type = *param[RU_FRAME_TYPE_IDX].iptr;
+    ru->prach_config_index = *param[RU_PRACH_MSG1FREQ_IDX].iptr;
+    ru->prach_msg1_freq = *param[RU_PRACH_MSG1FREQ_IDX].iptr;
+    ru->numerology = *param[RU_NUMEROLOGY_IDX].iptr;
+    ru->tdd_period = *param[RU_TDD_PERIOD_IDX].iptr;
+    ru->num_DL_slots = *param[RU_NUM_DL_SLOTS_IDX].iptr;
+    ru->num_UL_slots = *param[RU_NUM_UL_SLOTS_IDX].iptr;
+    ru->num_DL_symbols = *param[RU_NUM_DL_SYMBOLS_IDX].iptr;
+    ru->num_UL_symbols = *param[RU_NUM_UL_SYMBOLS_IDX].iptr;
+
     ru->openair0_cfg.nr_flag = *param[RU_NR_FLAG].iptr;
     ru->openair0_cfg.nr_band = ru->band[0];
     ru->openair0_cfg.nr_scs_for_raster = *param[RU_NR_SCS_FOR_RASTER].iptr;
@@ -1838,3 +1863,80 @@ static void NRRCconfig_RU(configmodule_interface_t *cfg)
   return;
 }
 
+void *oru_north_read_thread(void *arg)
+{
+  ORU_t *oru = (ORU_t *)arg;
+
+  RU_t               *ru      = (RU_t *)oru->ru;
+  NR_DL_FRAME_PARMS  *fp      = ru->nr_frame_parms;
+  char               threadname[40];
+  sprintf(threadname,"oru_thread %u",ru->idx);
+  //nr_init_frame_parms(&ru->config, fp);
+  nr_dump_frame_parms(fp);
+  nr_phy_init_RU(ru);
+  fill_rf_config(ru, ru->rf_config_file);
+  fill_split7_2_config(&ru->openair0_cfg.split7, &ru->config, fp->slots_per_frame, fp->ofdm_symbol_size);
+
+  // Start IF device if any
+  if (ru->nr_start_if) {
+    LOG_I(PHY, "starting transport\n");
+    int ret = openair0_transport_load(&ru->ifdevice, &ru->openair0_cfg, &ru->eth_params);
+    AssertFatal(ret == 0, "RU %u: openair0_transport_init() ret %d: cannot initialize transport protocol\n", ru->idx, ret);
+
+    if (ru->ifdevice.get_internal_parameter != NULL) {
+      /* it seems the device can "overwrite" (request?) to set the callbacks
+        * for fh_south_in()/fh_south_out() differently */
+      void *t = ru->ifdevice.get_internal_parameter("fh_if4p5_north_in");
+      if (t != NULL)
+        ru->fh_north_in = t;
+      t = ru->ifdevice.get_internal_parameter("fh_if4p5_north_out");
+      if (t != NULL)
+        ru->fh_north_out = t;
+    }
+
+    int cpu = sched_getcpu();
+    if (ru->ru_thread_core > -1 && cpu != ru->ru_thread_core) {
+      /* we start the ru_thread using threadCreate(), which already sets CPU
+        * affinity; let's force it here again as per feature request #732 */
+      cpu_set_t cpuset;
+      CPU_ZERO(&cpuset);
+      CPU_SET(ru->ru_thread_core, &cpuset);
+      int ret = pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
+      AssertFatal(ret == 0, "Error in pthread_getaffinity_np(): ret: %d, errno: %d", ret, errno);
+      LOG_I(PHY, "RU %d: manually set CPU affinity to CPU %d\n", ru->idx, ru->ru_thread_core);
+    }
+
+    LOG_I(PHY,"Starting IF interface for RU %d, nb_rx %d\n",ru->idx,ru->nb_rx);
+    AssertFatal(ru->nr_start_if(ru,NULL) == 0, "Could not start the IF device\n");
+
+    if (ru->has_ctrl_prt > 0) {
+      ret = attach_rru(ru);
+      AssertFatal(ret==0,"Cannot connect to remote radio\n");
+    }
+
+  }
+  else {
+    AssertFatal(false, "RU %d: no IF device and no local RF\n", ru->idx);
+  }
+
+  if (setup_RU_buffers(ru)!=0) {
+    LOG_E(PHY, "Exiting, cannot initialize RU Buffers\n");
+    exit(-1);
+  }
+
+  LOG_I(PHY, "Signaling main thread that RU %d is ready, sl_ahead %d\n",ru->idx,ru->sl_ahead);
+  pthread_mutex_lock(&RC.ru_mutex);
+  RC.ru_mask &= ~(1<<ru->idx);
+  pthread_cond_signal(&RC.ru_cond);
+  pthread_mutex_unlock(&RC.ru_mutex);
+  wait_sync("ru_thread");
+
+  AssertFatal(ru->fh_north_in != NULL, "No fronthaul interface at north port");
+  int frame = 0, slot = 0;
+  while (!oai_exit) {
+    ru->fh_north_in(ru, &frame, &slot);
+    LOG_I(PHY,"[RU_thread] read data: frame_rx = %d, tti_rx = %d\n", frame, slot);
+    // TODO: Trigger TX. Use FIFOs / Actors
+  }
+  return NULL;
+}

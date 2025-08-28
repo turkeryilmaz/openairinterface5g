@@ -54,4 +54,8 @@ int xran_fh_rx_read_slot(ru_info_t *ru, int *frame, int *slot);
 /** @brief Writes TX data (PDSCH) of given slot. */
 int xran_fh_tx_send_slot(ru_info_t *ru, int frame, int slot, uint64_t timestamp);
 
+/** @brief Read PDSCH data from xran buffers on the O-RU
+ */
+int xran_fh_tx_read_slot(ru_info_t *ru, int *frame, int *slot);
+
 #endif /* _ORAN_ISOLATE_H_ */
