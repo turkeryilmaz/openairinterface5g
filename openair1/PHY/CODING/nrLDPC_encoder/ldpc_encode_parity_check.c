@@ -110,7 +110,7 @@ static void encode_parity_check_part_optim(uint8_t *cc, uint8_t *d, short BG,sho
     memcpy(&c[(2 * i1 + 1) * Zc], &cc[i1 * Zc], Zc * sizeof(unsigned char));
   }
 #if (defined(USE_PERMUTEX)&&defined(__AVX512VBMI__)) || defined(USE_ALIGNR)
-  if (Zc<384) 
+  if (Zc<384 || BG==2) 
 #endif
   {
     for (int i1 = 1; i1 < simd_size; i1++) {
