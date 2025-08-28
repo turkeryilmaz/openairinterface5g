@@ -403,7 +403,7 @@ static void rrc_gNB_generate_RRCSetup(instance_t instance,
   ue_p->xids[xid] = RRC_SETUP;
   NR_SRB_ToAddModList_t *SRBs = createSRBlist(ue_p, false);
 
-  int size = do_RRCSetup(buf, sizeof(buf), xid, masterCellGroup, masterCellGroup_len, &rrc->configuration, SRBs);
+  int size = do_RRCSetup(buf, sizeof(buf), xid, masterCellGroup, masterCellGroup_len, SRBs);
   AssertFatal(size > 0, "do_RRCSetup failed\n");
   AssertFatal(size <= 1024, "memory corruption\n");
 
@@ -585,6 +585,127 @@ void free_RRCReconfiguration_params(nr_rrc_reconfig_param_t params)
     FREE_AND_ZERO_BYTE_ARRAY(params.dedicated_NAS_msg_list[i]);
 }
 
+static NR_MeasIdToAddMod_t *get_MeasId(NR_MeasId_t measId, NR_ReportConfigId_t reportConfigId, NR_MeasObjectId_t measObjectId)
+{
+  NR_MeasIdToAddMod_t *measid = calloc_or_fail(1, sizeof(NR_MeasIdToAddMod_t));
+  measid->measId = measId;
+  measid->reportConfigId = reportConfigId;
+  measid->measObjectId = measObjectId;
+  return measid;
+}
+
+static NR_MeasObjectToAddMod_t *get_MeasObject(const struct NR_MeasTiming__frequencyAndTiming *ft,
+                                               int band,
+                                               NR_ARFCN_ValueNR_t ssbFrequency,
+                                               NR_MeasObjectId_t measObjectId)
+{
+  const NR_SSB_MTC_t *ssb_mtc = &ft->ssb_MeasurementTimingConfiguration;
+  NR_MeasObjectToAddMod_t *mo = calloc_or_fail(1, sizeof(*mo));
+  mo->measObjectId = measObjectId;
+  mo->measObject.present = NR_MeasObjectToAddMod__measObject_PR_measObjectNR;
+  NR_MeasObjectNR_t *monr = calloc_or_fail(1, sizeof(*monr));
+  asn1cCallocOne(monr->ssbFrequency, ssbFrequency);
+  asn1cCallocOne(monr->ssbSubcarrierSpacing, ft->ssbSubcarrierSpacing);
+  monr->referenceSignalConfig.ssb_ConfigMobility = calloc_or_fail(1, sizeof(*monr->referenceSignalConfig.ssb_ConfigMobility));
+  monr->referenceSignalConfig.ssb_ConfigMobility->deriveSSB_IndexFromCell = true;
+  monr->absThreshSS_BlocksConsolidation = calloc_or_fail(1, sizeof(*monr->absThreshSS_BlocksConsolidation));
+  asn1cCallocOne(monr->absThreshSS_BlocksConsolidation->thresholdRSRP, 36);
+  asn1cCallocOne(monr->nrofSS_BlocksToAverage, 8);
+  monr->smtc1 = calloc_or_fail(1, sizeof(*monr->smtc1));
+  monr->smtc1->periodicityAndOffset = ssb_mtc->periodicityAndOffset;
+  monr->smtc1->duration = ssb_mtc->duration;
+  monr->quantityConfigIndex = 1;
+  monr->ext1 = calloc_or_fail(1, sizeof(*monr->ext1));
+  asn1cCallocOne(monr->ext1->freqBandIndicatorNR, band);
+  mo->measObject.choice.measObjectNR = monr;
+  return mo;
+}
+
+static NR_MeasConfig_t *get_MeasConfig(const NR_MeasTiming_t *mt,
+                                       int band,
+                                       int scs,
+                                       NR_ReportConfigToAddMod_t *rc_PER,
+                                       NR_ReportConfigToAddMod_t *rc_A2,
+                                       seq_arr_t *rc_A3_seq,
+                                       seq_arr_t *neigh_seq)
+{
+  NR_MeasConfig_t *mc = calloc_or_fail(1, sizeof(*mc));
+  mc->measObjectToAddModList = calloc_or_fail(1, sizeof(*mc->measObjectToAddModList));
+  mc->reportConfigToAddModList = calloc_or_fail(1, sizeof(*mc->reportConfigToAddModList));
+  mc->measIdToAddModList = calloc_or_fail(1, sizeof(*mc->measIdToAddModList));
+
+  if (rc_PER)
+    asn1cSeqAdd(&mc->reportConfigToAddModList->list, rc_PER);
+
+  if (rc_A2)
+    asn1cSeqAdd(&mc->reportConfigToAddModList->list, rc_A2);
+
+  if (rc_A3_seq) {
+    for (int i = 0; i < rc_A3_seq->size; i++) {
+      NR_ReportConfigToAddMod_t *rc_A3 = (NR_ReportConfigToAddMod_t *)seq_arr_at(rc_A3_seq, i);
+      asn1cSeqAdd(&mc->reportConfigToAddModList->list, rc_A3);
+    }
+  }
+
+  DevAssert(mt != NULL && mt->frequencyAndTiming != NULL);
+  const struct NR_MeasTiming__frequencyAndTiming *ft = mt->frequencyAndTiming;
+
+  // Measurement Objects: Specifies what is to be measured. For NR and inter-RAT E-UTRA measurements, this may include
+  // cell-specific offsets, blacklisted cells to be ignored and whitelisted cells to consider for measurements.
+  NR_MeasObjectToAddMod_t *mo1 = get_MeasObject(ft, band, ft->carrierFreq, 1);
+  if (neigh_seq) {
+    NR_MeasObjectNR_t *monr1 = mo1->measObject.choice.measObjectNR;
+    if (monr1->cellsToAddModList == NULL)
+      monr1->cellsToAddModList = calloc_or_fail(1, sizeof(*monr1->cellsToAddModList));
+    FOR_EACH_SEQ_ARR(nr_neighbour_cell_t *, n, neigh_seq) {
+      NR_CellsToAddMod_t *cell = calloc_or_fail(1, sizeof(*cell));
+      cell->physCellId = n->physicalCellId;
+      ASN_SEQUENCE_ADD(&monr1->cellsToAddModList->list, cell);
+    }
+  }
+  asn1cSeqAdd(&mc->measObjectToAddModList->list, mo1);
+
+  // Preparation of measId
+  uint8_t reportIdx = 0;
+  for (; reportIdx < mc->reportConfigToAddModList->list.count; reportIdx++) {
+    const NR_ReportConfigId_t reportId = mc->reportConfigToAddModList->list.array[reportIdx]->reportConfigId;
+    NR_MeasIdToAddMod_t *measid = get_MeasId(reportIdx + 1, reportId, 1);
+    asn1cSeqAdd(&mc->measIdToAddModList->list, measid);
+  }
+
+  // Preparation of measId for neighbour cells for periodic report
+  if (neigh_seq) {
+    int mo_id = 2;
+    FOR_EACH_SEQ_ARR(nr_neighbour_cell_t *, neigh_cell, neigh_seq) {
+      NR_MeasObjectToAddMod_t *mo_neighbour = get_MeasObject(ft, band, neigh_cell->absoluteFrequencySSB, mo_id);
+      NR_MeasObjectNR_t *monr = mo_neighbour->measObject.choice.measObjectNR;
+      monr->cellsToAddModList = calloc_or_fail(1, sizeof(*monr->cellsToAddModList));
+      NR_CellsToAddMod_t *cell = calloc_or_fail(1, sizeof(*cell));
+      cell->physCellId = neigh_cell->physicalCellId;
+      ASN_SEQUENCE_ADD(&monr->cellsToAddModList->list, cell);
+      asn1cSeqAdd(&mc->measObjectToAddModList->list, mo_neighbour);
+      NR_MeasIdToAddMod_t *measid = get_MeasId(reportIdx + 1, rc_PER->reportConfigId, mo_id);
+      asn1cSeqAdd(&mc->measIdToAddModList->list, measid);
+      reportIdx++;
+      mo_id++;
+    }
+  }
+
+  mc->quantityConfig = calloc_or_fail(1, sizeof(*mc->quantityConfig));
+  mc->quantityConfig->quantityConfigNR_List = calloc_or_fail(1, sizeof(*mc->quantityConfig->quantityConfigNR_List));
+  NR_QuantityConfigNR_t *qcnr = calloc_or_fail(1, sizeof(*qcnr));
+  asn1cCallocOne(qcnr->quantityConfigCell.ssb_FilterConfig.filterCoefficientRSRP, NR_FilterCoefficient_fc6);
+  asn1cCallocOne(qcnr->quantityConfigCell.csi_RS_FilterConfig.filterCoefficientRSRP, NR_FilterCoefficient_fc6);
+  asn1cSeqAdd(&mc->quantityConfig->quantityConfigNR_List->list, qcnr);
+
+  return mc;
+}
+
+void free_MeasConfig(NR_MeasConfig_t *mc)
+{
+  ASN_STRUCT_FREE(asn_DEF_NR_MeasConfig, mc);
+}
+
 NR_MeasConfig_t *nr_rrc_get_measconfig(const gNB_RRC_INST *rrc, uint64_t nr_cellid)
 {
   nr_rrc_du_container_t *du = get_du_by_cell_id((gNB_RRC_INST *)rrc, nr_cellid);
@@ -666,9 +787,65 @@ nr_rrc_reconfig_param_t get_RRCReconfiguration_params(gNB_RRC_INST *rrc, gNB_RRC
   return params;
 }
 
+/** @brief Build RRCReconfiguration message (3GPP TS 38.331) */
+static NR_RRCReconfiguration_IEs_t *build_RRCReconfiguration_IEs(const nr_rrc_reconfig_param_t *params)
+{
+  NR_RRCReconfiguration_IEs_t *ie = calloc_or_fail(1, sizeof(*ie));
+  // radioBearerConfig
+  if ((params->srb_config_list && params->srb_config_list->list.size)
+      || (params->drb_config_list && params->drb_config_list->list.size)) {
+    ie->radioBearerConfig = calloc_or_fail(1, sizeof(*ie->radioBearerConfig));
+    struct NR_RadioBearerConfig *cfg = ie->radioBearerConfig;
+    cfg->srb_ToAddModList = params->srb_config_list;
+    cfg->drb_ToAddModList = params->drb_config_list;
+    cfg->securityConfig = params->security_config;
+    cfg->srb3_ToRelease = NULL;
+    cfg->drb_ToReleaseList = params->drb_release_list;
+  }
+  /* measConfig */
+  ie->measConfig = params->meas_config;
+  /* nonCriticalExtension, RRCReconfiguration-v1530-IEs */
+  if (params->cell_group_config || params->num_nas_msg) {
+    // Allocate memory for extension IE
+    ie->nonCriticalExtension = calloc_or_fail(1, sizeof(*ie->nonCriticalExtension));
+  }
+  // Configure Cell Group Config
+  if (ie->nonCriticalExtension) {
+    if (params->num_nas_msg) {
+      asn1cCalloc(ie->nonCriticalExtension->dedicatedNAS_MessageList, list);
+      /* dedicatedNAS-MessageList: The field is absent in case of reconfiguration with sync
+        otherwise it is optionally present */
+      for (int i = 0; i < params->num_nas_msg; i++) {
+        asn1cSequenceAdd(list->list, NR_DedicatedNAS_Message_t, msg);
+        OCTET_STRING_fromBuf(msg, (char *)params->dedicated_NAS_msg_list[i].buf, params->dedicated_NAS_msg_list[i].len);
+      }
+    }
+    /* masterCellGroup */
+    if (params->cell_group_config) {
+      // Encode in extension IE (Master cell group)
+      uint8_t *buf = NULL;
+      ssize_t len = uper_encode_to_new_buffer(&asn_DEF_NR_CellGroupConfig, NULL, params->cell_group_config, (void **)&buf);
+      AssertFatal(len > 0, "ASN1 message encoding failed (%lu)!\n", len);
+      if (LOG_DEBUGFLAG(DEBUG_ASN1)) {
+        xer_fprint(stdout, &asn_DEF_NR_CellGroupConfig, (const void *)params->cell_group_config);
+      }
+      ie->nonCriticalExtension->masterCellGroup = calloc_or_fail(1, sizeof(*ie->nonCriticalExtension->masterCellGroup));
+      *ie->nonCriticalExtension->masterCellGroup = (OCTET_STRING_t){.buf = buf, .size = len};
+    }
+    /* masterKeyUpdate */
+    if (params->masterKeyUpdate) {
+      ie->nonCriticalExtension->masterKeyUpdate = calloc_or_fail(1, sizeof(*ie->nonCriticalExtension->masterKeyUpdate));
+      ie->nonCriticalExtension->masterKeyUpdate->keySetChangeIndicator = false;
+      ie->nonCriticalExtension->masterKeyUpdate->nextHopChainingCount = params->nextHopChainingCount;
+    }
+  }
+  return ie;
+}
+
 byte_array_t rrc_gNB_encode_RRCReconfiguration(gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE, nr_rrc_reconfig_param_t params)
 {
-  byte_array_t msg = do_RRCReconfiguration(&params);
+  NR_RRCReconfiguration_IEs_t *ie = build_RRCReconfiguration_IEs(&params);
+  byte_array_t msg = do_RRCReconfiguration(ie, params.transaction_id);
   if (msg.len <= 0) {
     LOG_E(NR_RRC, "UE %d: Failed to generate RRCReconfiguration\n", UE->rrc_ue_id);
     return msg;
@@ -770,8 +947,8 @@ void rrc_gNB_modify_dedicatedRRCReconfiguration(gNB_RRC_INST *rrc, gNB_RRC_UE_t 
     session->status = PDU_SESSION_STATUS_DONE;
     session->xid = params.transaction_id;
   }
-
-  byte_array_t msg = do_RRCReconfiguration(&params);
+  NR_RRCReconfiguration_IEs_t *ie = build_RRCReconfiguration_IEs(&params);
+  byte_array_t msg = do_RRCReconfiguration(ie, params.transaction_id);
   if (msg.len <= 0) {
     LOG_E(NR_RRC, "UE %d: Failed to generate RRCReconfiguration\n", ue_p->rrc_ue_id);
     return;
@@ -806,7 +983,8 @@ void rrc_gNB_generate_dedicatedRRCReconfiguration_release(gNB_RRC_INST *rrc,
     params.dedicated_NAS_msg_list[params.num_nas_msg].buf = nas_buffer;
     params.dedicated_NAS_msg_list[params.num_nas_msg++].len = nas_length;
   }
-  byte_array_t msg = do_RRCReconfiguration(&params);
+  NR_RRCReconfiguration_IEs_t *ie = build_RRCReconfiguration_IEs(&params);
+  byte_array_t msg = do_RRCReconfiguration(ie, params.transaction_id);
   if (msg.len <= 0) {
     LOG_E(NR_RRC, "UE %d: Failed to generate RRCReconfiguration\n", ue_p->rrc_ue_id);
     return;
@@ -1064,7 +1242,8 @@ static void rrc_gNB_process_RRCReestablishmentComplete(gNB_RRC_INST *rrc, gNB_RR
                                     .drb_config_list = DRBs,
                                     .srb_config_list = SRBs,
                                     .transaction_id = new_xid};
-  byte_array_t msg = do_RRCReconfiguration(&params);
+  NR_RRCReconfiguration_IEs_t *ie = build_RRCReconfiguration_IEs(&params);
+  byte_array_t msg = do_RRCReconfiguration(ie, params.transaction_id);
   if (msg.len <= 0) {
     LOG_E(NR_RRC, "UE %d: Failed to generate RRCReconfiguration\n", ue_p->rrc_ue_id);
     return;
@@ -1097,7 +1276,8 @@ int nr_rrc_reconfiguration_req(gNB_RRC_INST *rrc, gNB_RRC_UE_t *ue_p, const int 
   }
 
   nr_rrc_reconfig_param_t params = {.cell_group_config = masterCellGroup, .transaction_id = xid};
-  byte_array_t msg = do_RRCReconfiguration(&params);
+  NR_RRCReconfiguration_IEs_t *ie = build_RRCReconfiguration_IEs(&params);
+  byte_array_t msg = do_RRCReconfiguration(ie, params.transaction_id);
   if (msg.len <= 0) {
     LOG_E(NR_RRC, "UE %d: Failed to generate RRCReconfiguration\n", ue_p->rrc_ue_id);
     return -1;
@@ -3065,7 +3245,7 @@ int rrc_gNB_generate_pcch_msg(sctp_assoc_t assoc_id, const NR_SIB1_t *sib1, uint
   (void) pfoffset; /* not used, suppress warning */
 
   /* Create message for PDCP (DLInformationTransfer_t) */
-  int length = do_NR_Paging(instance, buffer, tmsi);
+  int length = do_NR_Paging(instance, buffer, NR_RRC_BUF_SIZE, tmsi);
 
   if (length == -1) {
     LOG_I(NR_RRC, "do_Paging error\n");
