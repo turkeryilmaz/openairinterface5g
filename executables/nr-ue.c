@@ -591,10 +591,11 @@ static void RU_write(nr_rxtx_thread_data_t *rxtxD, bool sl_tx_action, c16_t **tx
   }
 
 extern int sniffer;
-if (!sniffer) {
+if (sniffer) {
+  memset(txp[0], 0, 4 * writeBlockSize);
+}
   int tmp = openair0_write_reorder(&UE->rfdevice, writeTimestamp, (void **)txp, writeBlockSize, fp->nb_antennas_tx, flags);
   AssertFatal(tmp == writeBlockSize, "");
-}
 }
 
 void processSlotTX(void *arg)
@@ -669,7 +670,7 @@ void processSlotTX(void *arg)
   } else {
     dynamic_barrier_join(rxtxD->next_barrier);
   }
-  //RU_write(rxtxD, sl_tx_action, txp);
+  RU_write(rxtxD, sl_tx_action, txp);
   TracyCZoneEnd(ctx);
 }
 
