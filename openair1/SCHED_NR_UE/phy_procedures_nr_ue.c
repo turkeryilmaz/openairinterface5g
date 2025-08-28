@@ -773,8 +773,13 @@ if (sniffer) if (dlsch[0].rnti < 1000) dlsch[0].rnti_type = TYPE_RA_RNTI_;
     nb_re_dmrs = 4 * dlsch[0].dlsch_config.n_dmrs_cdm_groups;
   }
 
+  LOG_D(PHY, "AbsSubframe %d.%d Start LDPC Decoder for CW0 [harq_pid %d] ? %d \n", frame_rx % 1024, nr_slot_rx, harq_pid, is_cw0_active);
+  LOG_D(PHY, "AbsSubframe %d.%d Start LDPC Decoder for CW1 [harq_pid %d] ? %d \n", frame_rx % 1024, nr_slot_rx, harq_pid, is_cw1_active);
+extern int sniffer;
+if (sniffer) {
   LOG_E(PHY, "AbsSubframe %d.%d Start LDPC Decoder for CW0 [harq_pid %d] ? %d \n", frame_rx % 1024, nr_slot_rx, harq_pid, is_cw0_active);
   LOG_E(PHY, "AbsSubframe %d.%d Start LDPC Decoder for CW1 [harq_pid %d] ? %d \n", frame_rx % 1024, nr_slot_rx, harq_pid, is_cw1_active);
+}
 
   // exit dlsch procedures as there are no active dlsch
   if (is_cw0_active != ACTIVE && is_cw1_active != ACTIVE) {
@@ -811,7 +816,10 @@ if (sniffer) if (dlsch[0].rnti < 1000) dlsch[0].rnti_type = TYPE_RA_RNTI_;
     G[DLSCH_id] = nr_get_G(dlsch_config->number_rbs, nb_symb_sch, nb_re_dmrs, dmrs_len, unav_res, dlsch_config->qamModOrder, dlsch[DLSCH_id].Nl);
 
     start_meas_nr_ue_phy(ue, DLSCH_UNSCRAMBLING_STATS);
+extern int sniffer;
+if (sniffer) {
 LOG_E(NR_MAC, "nr_dlsch_unscrambling scrambling ID %d rnti 0x%4.4x\n", dlsch[DLSCH_id].dlsch_config.dlDataScramblingId, dlsch[DLSCH_id].rnti);
+}
     nr_dlsch_unscrambling(llr[DLSCH_id], G[DLSCH_id], 0, dlsch[DLSCH_id].dlsch_config.dlDataScramblingId, dlsch[DLSCH_id].rnti);
     stop_meas_nr_ue_phy(ue, DLSCH_UNSCRAMBLING_STATS);
 
@@ -822,19 +830,23 @@ LOG_E(NR_MAC, "nr_dlsch_unscrambling scrambling ID %d rnti 0x%4.4x\n", dlsch[DLS
   nr_dlsch_decoding(ue, proc, dlsch, llr, p_b, G, nb_dlsch, DLSCH_ids);
   stop_meas_nr_ue_phy(ue, DLSCH_DECODING_STATS);
 
+extern int sniffer;
   int ind_type = -1;
   switch (dlsch[0].rnti_type) {
     case TYPE_RA_RNTI_:
+if (sniffer)
 LOG_E(NR_MAC, "TYPE_RA_RNTI_\n");
       ind_type = FAPI_NR_RX_PDU_TYPE_RAR;
       break;
 
     case TYPE_SI_RNTI_:
+if (sniffer)
 LOG_E(NR_MAC, "TYPE_SI_RNTI_\n");
       ind_type = FAPI_NR_RX_PDU_TYPE_SIB;
       break;
 
     case TYPE_C_RNTI_:
+if (sniffer)
 LOG_E(NR_MAC, "TYPE_C_RNTI_\n");
       ind_type = FAPI_NR_RX_PDU_TYPE_DLSCH;
       break;
@@ -1074,6 +1086,8 @@ void pdsch_processing(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, nr_phy_
   NR_UE_DLSCH_t *dlsch = &phy_data->dlsch[0];
   // do procedures for C-RNTI
 
+extern int sniffer;
+if (sniffer)
 if (dlsch->dlsch_config.BWPSize) {
 LOG_E(NR_MAC, "pdsch_processing: bwpstart %d bwp size %d\n", dlsch->dlsch_config.BWPStart, dlsch->dlsch_config.BWPSize);
 LOG_E(NR_MAC, "start_rb %d number_rbs %d start_symbol %d number_symbols %d rb_offset %d mcs %d rv %d TBS %d\n",

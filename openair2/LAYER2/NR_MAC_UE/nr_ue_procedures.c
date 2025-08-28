@@ -806,9 +806,10 @@ if (sniffer) {
   }
 
   dlsch_pdu->rb_offset = dlsch_pdu->start_rb + dlsch_pdu->BWPStart;
+extern int sniffer;
+if (sniffer)
 LOG_E(NR_MAC, "%s: dlsch_pdu->rb_offset %d dlsch_pdu->start_rb %d dlsch_pdu->BWPStart %d\n", __FUNCTION__, dlsch_pdu->rb_offset, dlsch_pdu->start_rb, dlsch_pdu->BWPStart);
 
-extern int sniffer;
 if (sniffer) {
   if (rnti_type == TYPE_SI_RNTI_)
   if (mac->get_sib1)
@@ -1151,6 +1152,8 @@ static int nr_ue_process_dci_dl_11(NR_UE_MAC_INST_t *mac,
     return -1;
   }
   dlsch_pdu->rb_offset = dlsch_pdu->start_rb + dlsch_pdu->BWPStart;
+extern int sniffer;
+if (sniffer)
 LOG_E(NR_MAC, "%s: dlsch_pdu->rb_offset %d dlsch_pdu->start_rb %d dlsch_pdu->BWPStart %d\n", __FUNCTION__, dlsch_pdu->rb_offset, dlsch_pdu->start_rb, dlsch_pdu->BWPStart);
   /* TIME_DOM_RESOURCE_ASSIGNMENT */
   int dmrs_typeA_pos = mac->dmrs_TypeA_Position;
@@ -1478,6 +1481,15 @@ static int8_t nr_ue_process_dci(NR_UE_MAC_INST_t *mac,
 
 nr_dci_format_t nr_ue_process_dci_indication_pdu(NR_UE_MAC_INST_t *mac, frame_t frame, int slot, fapi_nr_dci_indication_pdu_t *dci)
 {
+  LOG_D(NR_MAC,
+        "Received dci indication (rnti %x, dci format %d, n_CCE %d, payloadSize %d, payload %llx)\n",
+        dci->rnti,
+        dci->dci_format,
+        dci->n_CCE,
+        dci->payloadSize,
+        *(unsigned long long *)dci->payloadBits);
+extern int sniffer;
+if (sniffer) {
   LOG_I(NR_MAC,
         "Received dci indication (rnti %x, dci format %d, n_CCE %d, payloadSize %d, payload %llx)\n",
         dci->rnti,
@@ -1485,6 +1497,7 @@ nr_dci_format_t nr_ue_process_dci_indication_pdu(NR_UE_MAC_INST_t *mac, frame_t 
         dci->n_CCE,
         dci->payloadSize,
         *(unsigned long long *)dci->payloadBits);
+}
   const nr_dci_format_t format =
       nr_extract_dci_info(mac, dci->dci_format, dci->payloadSize, dci->rnti, dci->ss_type, dci->payloadBits, slot);
   if (format == NR_DCI_NONE)
@@ -3194,6 +3207,8 @@ static void extract_10_ra_rnti(dci_pdu_rel15_t *dci_pdu_rel15, const uint8_t *dc
   EXTRACT_DCI_ITEM(dci_pdu_rel15->mcs, 5);
   // TB scaling
   EXTRACT_DCI_ITEM(dci_pdu_rel15->tb_scaling, 2);
+extern int sniffer;
+if (sniffer)
 LOG_E(NR_MAC_DCI, "   FDA %d TDA %d vrb2prb %d mcs %d tb_scaling %d\n",
       dci_pdu_rel15->frequency_domain_assignment.val,
       dci_pdu_rel15->time_domain_assignment.val,
@@ -3504,13 +3519,17 @@ static nr_dci_format_t nr_extract_dci_00_10(NR_UE_MAC_INST_t *mac,
   int format_indicator = -1;
   int n_RB = 0;
 
+extern int sniffer;
+if (sniffer)
 LOG_E(NR_MAC_DCI, "nr_extract_dci_00_10 DCI value %lb\n", *(uint64_t *)dci_pdu);
   switch (rnti_type) {
     case TYPE_RA_RNTI_ :
+if (sniffer)
 LOG_E(NR_MAC_DCI, "slot %d extract DCI for RA-RNTI\n", slot);
       format = NR_DL_DCI_FORMAT_1_0;
       dci_pdu_rel15 = &mac->def_dci_pdu_rel15[slot][format];
       n_RB = get_nrb_for_dci(mac, format, ss_type);
+if (sniffer)
 LOG_E(NR_MAC_DCI, "   DCI for RA-RNTI n_RB %d\n", n_RB);
       if (n_RB == 0)
         return NR_DCI_NONE;
@@ -3531,6 +3550,7 @@ LOG_E(NR_MAC_DCI, "   DCI for RA-RNTI n_RB %d\n", n_RB);
         return NR_DCI_NONE;
       break;
     case TYPE_C_RNTI_ :
+if (sniffer)
 LOG_E(NR_MAC_DCI, "slot %d extract DCI for TYPE_C_RNTI_\n", slot);
       // Identifier for DCI formats
       EXTRACT_DCI_ITEM(format_indicator, 1);
@@ -3553,6 +3573,7 @@ LOG_E(NR_MAC_DCI, "slot %d extract DCI for TYPE_C_RNTI_\n", slot);
       break;
     case TYPE_TC_RNTI_ :
     case TYPE_MSGB_RNTI_:
+if (sniffer)
 LOG_E(NR_MAC_DCI, "slot %d extract DCI for TYPE_TC_RNTI_\n", slot);
       // Identifier for DCI formats
       EXTRACT_DCI_ITEM(format_indicator, 1);
@@ -3585,7 +3606,11 @@ static nr_dci_format_t nr_extract_dci_info(NR_UE_MAC_INST_t *mac,
                                            const uint8_t *dci_pdu,
                                            const int slot)
 {
+  LOG_D(NR_MAC_DCI,"nr_extract_dci_info : dci_pdu %lx, size %d, format %d\n", *(uint64_t *)dci_pdu, dci_size, dci_format);
+extern int sniffer;
+if (sniffer) {
   LOG_I(NR_MAC_DCI,"nr_extract_dci_info : dci_pdu %lx, size %d, format %d\n", *(uint64_t *)dci_pdu, dci_size, dci_format);
+}
   int rnti_type = get_rnti_type(mac, rnti);
   int pos = dci_size;
 
@@ -3787,6 +3812,15 @@ static void nr_ue_process_mac_pdu(NR_UE_MAC_INST_t *mac, nr_downlink_indication_
 
   T(T_NRUE_MAC_DL_PDU_WITH_DATA, T_INT(mac->crnti), T_INT(frameP), T_INT(slot), T_INT(pdsch_pdu->harq_pid), T_BUFFER(pduP, pdu_len));
 
+  LOG_D(MAC,
+        "[%d.%d]: processing PDU %d (with length %d) of %d total number of PDUs...\n",
+        frameP,
+        slot,
+        pdu_id,
+        pdu_len,
+        dl_info->rx_ind->number_pdus);
+extern int sniffer;
+if (sniffer)
   LOG_I(MAC,
         "[%d.%d]: processing PDU %d (with length %d) of %d total number of PDUs...\n",
         frameP,
@@ -3795,9 +3829,11 @@ static void nr_ue_process_mac_pdu(NR_UE_MAC_INST_t *mac, nr_downlink_indication_
         pdu_len,
         dl_info->rx_ind->number_pdus);
 
+if (sniffer) {
 printf("got pdu[%d]:", pdu_len);
 for (int i = 0; i < pdu_len; i++) printf(" %2.2x", pduP[i]);
 printf("\n"); fflush(stdout);
+}
   if (ra->ra_type == RA_2_STEP && ra->ra_state == nrRA_WAIT_MSGB) {
     int n = nr_ue_validate_successrar(pduP, pdu_len, mac, gNB_index, frameP, slot);
     pduP += n;
@@ -3809,7 +3845,10 @@ printf("\n"); fflush(stdout);
     uint16_t mac_subheader_len = 0x0001; //  default to fixed-length subheader = 1-oct
     uint8_t rx_lcid = ((NR_MAC_SUBHEADER_FIXED *)pduP)->LCID;
 
+    LOG_D(MAC, "[UE] LCID %d, PDU length %d\n", rx_lcid, pdu_len);
+if (sniffer) {
     LOG_E(MAC, "[UE] LCID %d, PDU length %d\n", rx_lcid, pdu_len);
+}
     bool ret;
     switch (rx_lcid) {
       //  MAC CE

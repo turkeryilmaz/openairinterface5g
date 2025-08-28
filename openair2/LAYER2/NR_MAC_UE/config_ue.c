@@ -1787,7 +1787,10 @@ static void configure_timeAlignmentTimer(NR_timer_t *time_alignment_timer, NR_Ti
 
 void nr_rrc_mac_config_req_reset(module_id_t module_id, NR_UE_MAC_reset_cause_t cause)
 {
+extern int sniffer;
+if (sniffer) {
 LOG_I(MAC, "nr_rrc_mac_config_req_reset cause %d\n", (int)cause); abort();
+}
   NR_UE_MAC_INST_t *mac = get_mac_inst(module_id);
   int ret = pthread_mutex_lock(&mac->if_mutex);
   AssertFatal(!ret, "mutex failed %d\n", ret);
@@ -1905,8 +1908,9 @@ static void configure_si_schedulingInfo(NR_UE_MAC_INST_t *mac,
 
 void nr_rrc_mac_config_req_sib1(module_id_t module_id, int cc_idP, NR_SIB1_t *sib1, bool can_start_ra)
 {
-LOG_I(MAC, "nr_rrc_mac_config_req_sib1\n");
 extern int sniffer;
+if (sniffer)
+LOG_I(MAC, "nr_rrc_mac_config_req_sib1\n");
 if (sniffer) can_start_ra = 0;
   NR_UE_MAC_INST_t *mac = get_mac_inst(module_id);
   int ret = pthread_mutex_lock(&mac->if_mutex);

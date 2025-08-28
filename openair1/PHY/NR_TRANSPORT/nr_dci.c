@@ -99,7 +99,7 @@ static void nr_generate_dci(PHY_VARS_gNB *gNB,
     uint32_t dmrs_length = (n_rb+pdcch_pdu_rel15->BWPStart)*6; //2(QPSK)*3(per RB)*6(REG per CCE)
     uint32_t encoded_length = dci_pdu->AggregationLevel*108; //2(QPSK)*9(per RB)*6(REG per CCE)
     if (dci_pdu->RNTI != 0xFFFF)
-      LOG_E(NR_PHY_DCI,
+      LOG_D(NR_PHY_DCI,
             "DL_DCI : rb_offset %d, nb_rb %d, DMRS length per symbol %d\t DCI encoded length %d (precoder_granularity %d, "
             "reg_mapping %d), Scrambling_Id %d, ScramblingRNTI %x, PayloadSizeBits %d AggregationLevel %d\n",
             rb_offset,
@@ -141,7 +141,6 @@ static void nr_generate_dci(PHY_VARS_gNB *gNB,
     uint16_t Nid    = dci_pdu->ScramblingId;
     uint16_t scrambling_RNTI = dci_pdu->ScramblingRNTI;
 
-LOG_E(NR_MAC, "slot %d dci pdu %lb size %d\n", slot, *(uint64_t *)dci_pdu->Payload, (int)dci_pdu->PayloadSizeBits);
     polar_encoder_fast((uint64_t*)dci_pdu->Payload, (void*)encoder_output, n_RNTI, 1, 
                        NR_POLAR_DCI_MESSAGE_TYPE, dci_pdu->PayloadSizeBits, dci_pdu->AggregationLevel);
 #ifdef DEBUG_CHANNEL_CODING

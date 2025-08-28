@@ -792,14 +792,12 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
     NR_DL_gNB_HARQ_t *harq = &dlsch->harq_process;
     nfapi_nr_dl_tti_pdsch_pdu_rel15_t *rel15 = &harq->pdsch_pdu.pdsch_pdu_rel15;
 
-    LOG_E(PHY,
+    LOG_D(PHY,
           "pdsch: BWPStart %d, BWPSize %d, rbStart %d, rbsize %d\n",
           rel15->BWPStart,
           rel15->BWPSize,
           rel15->rbStart,
           rel15->rbSize);
-
-LOG_E(NR_MAC, "nb of symbols %d, start symbol %d\n", rel15->NrOfSymbols, rel15->StartSymbolIndex);
 
     const int Qm = rel15->qamModOrder[0];
 
