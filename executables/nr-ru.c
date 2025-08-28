@@ -70,7 +70,7 @@ static int DEFCARRIER[] = {3430560};
 #include <nfapi/oai_integration/vendor_ext.h>
 #include "executables/nr-softmodem-common.h"
 
-static void NRRCconfig_RU(configmodule_interface_t *cfg);
+void NRRCconfig_RU(configmodule_interface_t *cfg);
 
 /*************************************************************/
 /* Functions to attach and configure RRU                     */
@@ -1637,7 +1637,7 @@ void stop_RU(int nb_ru) {
 
 /* --------------------------------------------------------*/
 /* from here function to use configuration module          */
-static void NRRCconfig_RU(configmodule_interface_t *cfg)
+void NRRCconfig_RU(configmodule_interface_t *cfg)
 {
   paramdef_t RUParams[] = RUPARAMS_DESC;
   paramlist_def_t RUParamList = {CONFIG_STRING_RU_LIST, NULL, 0};
@@ -1854,6 +1854,35 @@ static void NRRCconfig_RU(configmodule_interface_t *cfg)
   return;
 }
 
+void oru_downlink_processing(RU_t *ru, int slot, int frame) {
+  start_meas(&ru->tx_fhaul);
+  NR_DL_FRAME_PARMS *fp = ru->nr_frame_parms;
+  for (int i = 0; i < ru->nb_tx; i++) {
+    apply_nr_rotation_TX(fp,
+                         (c16_t *)ru->common.txdataF_BF[i],
+                         fp->symbol_rotation[0],
+                         slot,
+                         fp->N_RB_DL,
+                         0,
+                         fp->Ncp == EXTENDED ? 12 : 14);
+    nr_feptx0(ru, slot, 0, 14, i);
+  }
+  // Assume this function called in order
+  static int frame_tx_unwrap = 0;
+  static int last_frame = 0;
+  if (frame < last_frame) {
+    frame_tx_unwrap += 1024;
+  }
+  last_frame = frame;
+
+  uint64_t timestamp_tx =
+      (uint64_t)(frame + frame_tx_unwrap) * fp->samples_per_subframe * 10 + fp->get_samples_slot_timestamp(slot, fp, 0);
+
+  // TODO: prepare tx here
+  // tx_rf(ru, frame, slot, timestamp_tx);
+  stop_meas(&ru->tx_fhaul);
+}
+
 void *oru_north_read_thread(void *arg)
 {
   ORU_t *oru = (ORU_t *)arg;
@@ -1864,50 +1893,47 @@ void *oru_north_read_thread(void *arg)
   sprintf(threadname,"oru_thread %u",ru->idx);
   //nr_init_frame_parms(&ru->config, fp);
   nr_dump_frame_parms(fp);
+
+  // Hack: Force nr_phy_init to allocate buffer for TD IQ
+  ru->if_south = LOCAL_RF;
+  ru->function = NGFI_RRU_IF4p5;
   nr_phy_init_RU(ru);
   fill_rf_config(ru, ru->rf_config_file);
   fill_split7_2_config(&ru->openair0_cfg.split7, &ru->config, fp->slots_per_frame, fp->ofdm_symbol_size);
 
-  // Start IF device if any
-  if (ru->nr_start_if) {
-    LOG_I(PHY, "starting transport\n");
-    int ret = openair0_transport_load(&ru->ifdevice, &ru->openair0_cfg, &ru->eth_params);
-    AssertFatal(ret == 0, "RU %u: openair0_transport_init() ret %d: cannot initialize transport protocol\n", ru->idx, ret);
+  LOG_I(PHY, "starting transport\n");
+  int ret = openair0_transport_load(&ru->ifdevice, &ru->openair0_cfg, &ru->eth_params);
+  AssertFatal(ret == 0, "RU %u: openair0_transport_init() ret %d: cannot initialize transport protocol\n", ru->idx, ret);
 
-    if (ru->ifdevice.get_internal_parameter != NULL) {
-      /* it seems the device can "overwrite" (request?) to set the callbacks
-        * for fh_south_in()/fh_south_out() differently */
-      void *t = ru->ifdevice.get_internal_parameter("fh_if4p5_north_in");
-      if (t != NULL)
-        ru->fh_north_in = t;
-      t = ru->ifdevice.get_internal_parameter("fh_if4p5_north_out");
-      if (t != NULL)
-        ru->fh_north_out = t;
-    }
-
-    int cpu = sched_getcpu();
-    if (ru->ru_thread_core > -1 && cpu != ru->ru_thread_core) {
-      /* we start the ru_thread using threadCreate(), which already sets CPU
-        * affinity; let's force it here again as per feature request #732 */
-      cpu_set_t cpuset;
-      CPU_ZERO(&cpuset);
-      CPU_SET(ru->ru_thread_core, &cpuset);
-      int ret = pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
-      AssertFatal(ret == 0, "Error in pthread_getaffinity_np(): ret: %d, errno: %d", ret, errno);
-      LOG_I(PHY, "RU %d: manually set CPU affinity to CPU %d\n", ru->idx, ru->ru_thread_core);
-    }
-
-    LOG_I(PHY,"Starting IF interface for RU %d, nb_rx %d\n",ru->idx,ru->nb_rx);
-    AssertFatal(ru->nr_start_if(ru,NULL) == 0, "Could not start the IF device\n");
-
-    if (ru->has_ctrl_prt > 0) {
-      ret = attach_rru(ru);
-      AssertFatal(ret==0,"Cannot connect to remote radio\n");
-    }
-
+  if (ru->ifdevice.get_internal_parameter != NULL) {
+    /* it seems the device can "overwrite" (request?) to set the callbacks
+      * for fh_south_in()/fh_south_out() differently */
+    void *t = ru->ifdevice.get_internal_parameter("fh_if4p5_north_in");
+    if (t != NULL)
+      ru->fh_north_in = t;
+    t = ru->ifdevice.get_internal_parameter("fh_if4p5_north_out");
+    if (t != NULL)
+      ru->fh_north_out = t;
   }
-  else {
-    AssertFatal(false, "RU %d: no IF device and no local RF\n", ru->idx);
+
+  int cpu = sched_getcpu();
+  if (ru->ru_thread_core > -1 && cpu != ru->ru_thread_core) {
+    /* we start the ru_thread using threadCreate(), which already sets CPU
+      * affinity; let's force it here again as per feature request #732 */
+    cpu_set_t cpuset;
+    CPU_ZERO(&cpuset);
+    CPU_SET(ru->ru_thread_core, &cpuset);
+    int ret = pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
+    AssertFatal(ret == 0, "Error in pthread_getaffinity_np(): ret: %d, errno: %d", ret, errno);
+    LOG_I(PHY, "RU %d: manually set CPU affinity to CPU %d\n", ru->idx, ru->ru_thread_core);
+  }
+
+  LOG_I(PHY,"Starting IF interface for RU %d, nb_rx %d\n",ru->idx,ru->nb_rx);
+  AssertFatal(ru->ifdevice.trx_start_func(&ru->ifdevice) == 0, "Could not start the IF device\n");
+
+  if (ru->has_ctrl_prt > 0) {
+    ret = attach_rru(ru);
+    AssertFatal(ret==0,"Cannot connect to remote radio\n");
   }
 
   if (setup_RU_buffers(ru)!=0) {
@@ -1915,19 +1941,12 @@ void *oru_north_read_thread(void *arg)
     exit(-1);
   }
 
-  LOG_I(PHY, "Signaling main thread that RU %d is ready, sl_ahead %d\n",ru->idx,ru->sl_ahead);
-  pthread_mutex_lock(&RC.ru_mutex);
-  RC.ru_mask &= ~(1<<ru->idx);
-  pthread_cond_signal(&RC.ru_cond);
-  pthread_mutex_unlock(&RC.ru_mutex);
-  wait_sync("ru_thread");
-
   AssertFatal(ru->fh_north_in != NULL, "No fronthaul interface at north port");
   int frame = 0, slot = 0;
   while (!oai_exit) {
     ru->fh_north_in(ru, &frame, &slot);
     LOG_I(PHY,"[RU_thread] read data: frame_rx = %d, tti_rx = %d\n", frame, slot);
-    // TODO: Trigger TX. Use FIFOs / Actors
+    oru_downlink_processing(ru, slot, frame);
   }
   return NULL;
 }

@@ -53,6 +53,7 @@
 #include "nfapi/oai_integration/vendor_ext.h"
 #include <executables/softmodem-common.h>
 #include <executables/thread-common.h>
+#include "openair1/PHY/INIT/nr_phy_init.h"
 
 pthread_cond_t sync_cond;
 pthread_mutex_t sync_mutex;
@@ -140,6 +141,7 @@ configmodule_interface_t *uniqCfg = NULL;
 THREAD_STRUCT thread_struct;
 
 void *oru_north_read_thread(void *arg);
+void NRRCconfig_RU(configmodule_interface_t *cfg);
 
 int main ( int argc, char **argv )
 {
@@ -171,23 +173,15 @@ int main ( int argc, char **argv )
 
   lock_memory_to_ram();
 
-  RC.nb_RU=1;
-  RC.ru = malloc(sizeof(RC.ru));
-
-  init_NR_RU(config_get_if(),NULL);
+  RC.nb_RU = 1;
+  NRRCconfig_RU(config_get_if());
+  RU_t *ru = RC.ru[0];
+  nr_ru_init_frame_parms(ru);
   load_dftslib();
 
-  RU_t *ru = RC.ru[0];
   ORU_t oru;
   oru.ru = ru;
   pthread_create(&oru.thread, NULL, oru_north_read_thread, (void *)&oru);
-
-  LOG_I(PHY,"RU configured, unlocking threads\n");
-  config_sync_var=0;
-  pthread_mutex_lock(&sync_mutex);
-  sync_var=0;
-  pthread_cond_broadcast(&sync_cond);
-  pthread_mutex_unlock(&sync_mutex);
 
   while (oai_exit==0) sleep(1);
   // stop threads
