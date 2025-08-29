@@ -2518,7 +2518,7 @@ void set_max_fb_time(NR_UE_UL_BWP_t *UL_BWP, const NR_UE_DL_BWP_t *DL_BWP)
 {
   UL_BWP->max_fb_time = 8; // default value
   // take the maximum in dl_DataToUL_ACK list
-  if (DL_BWP->dci_format != NR_DL_DCI_FORMAT_1_0 && UL_BWP->pucch_Config) {
+  if (UL_BWP->pucch_Config) {
     const struct NR_PUCCH_Config__dl_DataToUL_ACK *fb_times = UL_BWP->pucch_Config->dl_DataToUL_ACK;
     for (int i = 0; i < fb_times->list.count; i++) {
       if(*fb_times->list.array[i] > UL_BWP->max_fb_time)
@@ -3445,10 +3445,11 @@ void nr_measgap_scheduling(gNB_MAC_INST *nr_mac, frame_t frame, sub_frame_t slot
 void nr_mac_clean_cellgroup(NR_CellGroupConfig_t *cell_group)
 {
   DevAssert(cell_group != NULL);
+  NR_SpCellConfig_t *spCellConfig = cell_group->spCellConfig;
   /* remove a reconfigurationWithSync, we don't need it anymore */
-  if (cell_group->spCellConfig && cell_group->spCellConfig->reconfigurationWithSync != NULL) {
-    ASN_STRUCT_FREE(asn_DEF_NR_ReconfigurationWithSync, cell_group->spCellConfig->reconfigurationWithSync);
-    cell_group->spCellConfig->reconfigurationWithSync = NULL;
+  if (spCellConfig && spCellConfig->reconfigurationWithSync != NULL) {
+    ASN_STRUCT_FREE(asn_DEF_NR_ReconfigurationWithSync, spCellConfig->reconfigurationWithSync);
+    spCellConfig->reconfigurationWithSync = NULL;
   }
   /* remove the rlc_BearerToReleaseList, we don't need it anymore */
   if (cell_group->rlc_BearerToReleaseList != NULL) {
@@ -3460,6 +3461,43 @@ void nr_mac_clean_cellgroup(NR_CellGroupConfig_t *cell_group)
   /* remove reestablishRLC, we don't need it anymore */
   for (int i = 0; i < cell_group->rlc_BearerToAddModList->list.count; ++i)
     free_and_zero(cell_group->rlc_BearerToAddModList->list.array[i]->reestablishRLC);
+  /* clean BWP structures */
+  if (spCellConfig->spCellConfigDedicated->downlinkBWP_ToReleaseList) {
+    int num_rel = spCellConfig->spCellConfigDedicated->downlinkBWP_ToReleaseList->list.count;
+    int num_add = spCellConfig->spCellConfigDedicated->downlinkBWP_ToAddModList->list.count;
+    for (int i = 0; i < num_rel; i++) {
+      NR_BWP_Id_t *rel_id = spCellConfig->spCellConfigDedicated->downlinkBWP_ToReleaseList->list.array[i];
+      for (int j = 0; j < num_add; j++) {
+        NR_BWP_Downlink_t *dl_bwp = spCellConfig->spCellConfigDedicated->downlinkBWP_ToAddModList->list.array[j];
+        if (*rel_id == dl_bwp->bwp_Id) {
+          asn_sequence_del(&spCellConfig->spCellConfigDedicated->downlinkBWP_ToAddModList->list, j, 1);
+        }
+      }
+      asn_sequence_del(&spCellConfig->spCellConfigDedicated->downlinkBWP_ToReleaseList->list, i, 1);
+    }
+    if (spCellConfig->spCellConfigDedicated->downlinkBWP_ToReleaseList->list.count == 0)
+      free_and_zero(spCellConfig->spCellConfigDedicated->downlinkBWP_ToReleaseList);
+    if (spCellConfig->spCellConfigDedicated->downlinkBWP_ToAddModList->list.count == 0)
+      free_and_zero(spCellConfig->spCellConfigDedicated->downlinkBWP_ToAddModList);
+  }
+  if (spCellConfig->spCellConfigDedicated->uplinkConfig->uplinkBWP_ToReleaseList) {
+    int num_rel = spCellConfig->spCellConfigDedicated->uplinkConfig->uplinkBWP_ToReleaseList->list.count;
+    int num_add = spCellConfig->spCellConfigDedicated->uplinkConfig->uplinkBWP_ToAddModList->list.count;
+    for (int i = 0; i < num_rel; i++) {
+      NR_BWP_Id_t *rel_id = spCellConfig->spCellConfigDedicated->uplinkConfig->uplinkBWP_ToReleaseList->list.array[i];
+      for (int j = 0; j < num_add; j++) {
+        NR_BWP_Uplink_t *ul_bwp = spCellConfig->spCellConfigDedicated->uplinkConfig->uplinkBWP_ToAddModList->list.array[j];
+        if (*rel_id == ul_bwp->bwp_Id) {
+          asn_sequence_del(&spCellConfig->spCellConfigDedicated->uplinkConfig->uplinkBWP_ToAddModList->list, j, 1);
+        }
+      }
+      asn_sequence_del(&spCellConfig->spCellConfigDedicated->uplinkConfig->uplinkBWP_ToReleaseList->list, i, 1);
+    }
+    if (spCellConfig->spCellConfigDedicated->uplinkConfig->uplinkBWP_ToReleaseList->list.count == 0)
+      free_and_zero(spCellConfig->spCellConfigDedicated->uplinkConfig->uplinkBWP_ToReleaseList);
+    if (spCellConfig->spCellConfigDedicated->uplinkConfig->uplinkBWP_ToAddModList->list.count == 0)
+      free_and_zero(spCellConfig->spCellConfigDedicated->uplinkConfig->uplinkBWP_ToAddModList);
+  }
 }
 
 int nr_mac_get_reconfig_delay_slots(NR_SubcarrierSpacing_t scs)
@@ -3745,8 +3783,7 @@ bool prepare_initial_ul_rrc_message(gNB_MAC_INST *mac, NR_UE_info_t *UE)
   int CC_id = 0;
   int srb_id = 1;
   const NR_ServingCellConfigCommon_t *scc = mac->common_channels[CC_id].ServingCellConfigCommon;
-  const NR_ServingCellConfig_t *sccd = UE->is_redcap ? NULL : mac->common_channels[CC_id].pre_ServingCellConfig;
-  NR_CellGroupConfig_t *cellGroupConfig = get_initial_cellGroupConfig(UE->uid, scc, sccd, &mac->radio_config, &mac->rlc_config);
+  NR_CellGroupConfig_t *cellGroupConfig = get_initial_cellGroupConfig(UE->uid, scc, &mac->radio_config, &mac->rlc_config);
   ASN_STRUCT_FREE(asn_DEF_NR_CellGroupConfig, UE->CellGroup);
   UE->CellGroup = cellGroupConfig;
 
@@ -3842,9 +3879,22 @@ bool nr_mac_check_ul_failure(gNB_MAC_INST *nrmac, int rnti, NR_UE_sched_ctrl_t *
   return false;
 }
 
-void nr_mac_trigger_reconfiguration(const gNB_MAC_INST *nrmac, const NR_UE_info_t *UE)
+void nr_mac_trigger_reconfiguration(const gNB_MAC_INST *nrmac, const NR_UE_info_t *UE, int new_bwp_id)
 {
   DevAssert(UE->CellGroup != NULL);
+  if (new_bwp_id >= 0) {
+    AssertFatal(UE->current_DL_BWP.bwp_id == UE->current_UL_BWP.bwp_id, "We only support same BWP for UL and DL\n");
+    if (new_bwp_id == UE->current_DL_BWP.bwp_id)
+      LOG_E(NR_MAC, "Source BWP ID and target BWP ID are the same, can't perform switch\n");
+    else
+      update_cellGroupConfig_for_BWP_switch(UE->CellGroup,
+                                            &nrmac->radio_config,
+                                            UE->capability,
+                                            nrmac->common_channels[0].ServingCellConfigCommon,
+                                            UE->uid,
+                                            UE->current_DL_BWP.bwp_id,
+                                            new_bwp_id);
+  }
   uint8_t buf[2048];
   asn_enc_rval_t enc_rval = uper_encode_to_buffer(&asn_DEF_NR_CellGroupConfig, NULL, UE->CellGroup, buf, sizeof(buf));
   AssertFatal(enc_rval.encoded > 0, "ASN1 encoding of CellGroupConfig failed, failed type %s\n", enc_rval.failed_type->name);
