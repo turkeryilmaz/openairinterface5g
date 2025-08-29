@@ -63,6 +63,7 @@ target_link_libraries(test_channel_scalability PRIVATE UTIL SIMU PHY_COMMON LOG 
 set_target_properties(test_channel_scalability PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
 )
+add_dependencies(tests test_channel_scalability)
 
 add_executable(test_cpu_std test_SSE.c channel_io.c)
 target_link_libraries(test_cpu_std PRIVATE UTIL SIMU PHY_COMMON LOG T CONFIG_LIB shlib_loader m)
@@ -89,5 +90,11 @@ if (TARGET oai_cuda_lib)
     target_compile_definitions(test_channel_simulation PRIVATE ENABLE_CUDA)
 endif()
 
-
-
+if(ENABLE_TESTS AND CUDA_ENABLE)
+  find_package(PythonInterp REQUIRED)
+  add_test(
+  NAME benchmark_gpu_scaling_suite
+  COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_SOURCE_DIR}/ci-scripts/tests/nr_physim_gpu_benchmark/gpu_test_driver.py
+    --executable $<TARGET_FILE:test_channel_scalability>
+)
+endif()

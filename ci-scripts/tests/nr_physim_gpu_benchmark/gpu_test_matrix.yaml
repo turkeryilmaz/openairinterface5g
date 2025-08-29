@@ -1,0 +1,34 @@
+tests:
+  # --- Test Suite 1: Scalability vs. Channel Count ---
+  - name: "Channels_16_Batch"
+    args: "-c 16 -t 4 -r 4 -s 122880 -l 32 -m batch -n 25"
+
+  - name: "Channels_256_Batch"
+    args: "-c 256 -t 4 -r 4 -s 122880 -l 32 -m batch -n 25"
+
+  - name: "Channels_1024_Batch"
+    args: "-c 1024 -t 4 -r 4 -s 122880 -l 32 -m batch -n 25"
+
+  # --- Test Suite 2: Performance vs. Channel Complexity ---
+  - name: "Length_16_Batch"
+    args: "-c 1024 -t 4 -r 4 -s 122880 -l 16 -m batch -n 25"
+
+  - name: "Length_64_Batch"
+    args: "-c 1024 -t 4 -r 4 -s 122880 -l 64 -m batch -n 25"
+
+  - name: "Length_128_Batch"
+    args: "-c 1024 -t 4 -r 4 -s 122880 -l 128 -m batch -n 25"
+
+  # --- Test Suite 3: Performance vs. MIMO Configuration ---
+  - name: "MIMO_2x2_Batch"
+    args: "-c 1024 -t 2 -r 2 -s 122880 -l 32 -m batch -n 25"
+
+  - name: "MIMO_8x8_Batch"
+    args: "-c 1024 -t 8 -r 8 -s 122880 -l 32 -m batch -n 25"
+
+  # --- Test Suite 4: Performance vs. Signal Samples ---
+  - name: "Samples_30720_Batch"
+    args: "-c 1024 -t 4 -r 4 -s 30720 -l 32 -m batch -n 25"
+
+  - name: "Samples_61440_Batch"
+    args: "-c 1024 -t 4 -r 4 -s 61440 -l 32 -m batch -n 25"
