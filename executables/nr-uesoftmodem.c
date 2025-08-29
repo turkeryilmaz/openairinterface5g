@@ -710,6 +710,8 @@ int main(int argc, char **argv)
       load_module_shlib("imscope_record", NULL, 0, PHY_vars_UE_g[0][0]);
     }
 
+    nr_ue_ru_start();
+
     for (int inst = 0; inst < NB_UE_INST; inst++) {
       LOG_I(PHY,"Intializing UE Threads for instance %d ...\n", inst);
       init_NR_UE_threads(PHY_vars_UE_g[inst][0]);
