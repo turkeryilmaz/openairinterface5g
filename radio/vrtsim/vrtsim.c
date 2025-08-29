@@ -628,6 +628,12 @@ static int vrtsim_set_freq(openair0_device *device, openair0_config_t *openair0_
   return 0;
 }
 
+openair0_timestamp vrtsim_get_current_time(openair0_device *device)
+{
+  vrtsim_state_t *vrtsim_state = (vrtsim_state_t *)device->priv;
+  return shm_td_iq_channel_get_current_sample(vrtsim_state->channel);
+}
+
 __attribute__((__visibility__("default"))) int device_init(openair0_device *device, openair0_config_t *openair0_cfg)
 {
   vrtsim_state_t *vrtsim_state = calloc_or_fail(1, sizeof(vrtsim_state_t));
@@ -643,6 +649,7 @@ __attribute__((__visibility__("default"))) int device_init(openair0_device *devi
   device->trx_set_gains_func = vrtsim_stub2;
   device->trx_write_func = vrtsim_write;
   device->trx_read_func = vrtsim_read;
+  device->get_current_time = vrtsim_get_current_time;
 
   device->type = RFSIMULATOR;
   device->openair0_cfg = &openair0_cfg[0];

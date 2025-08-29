@@ -548,6 +548,10 @@ struct openair0_device_t {
    */
   int (*trx_stop_func)(openair0_device *device);
 
+  /*! \brief Get current time as sample index
+  */
+  openair0_timestamp (*get_current_time)(openair0_device *device);
+
   /* Functions API related to UE*/
 
   /*! \brief Set RX feaquencies
