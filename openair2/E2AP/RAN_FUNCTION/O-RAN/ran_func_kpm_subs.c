@@ -46,7 +46,10 @@ static nr_pdcp_statistics_t get_pdcp_stats_per_drb(const uint32_t rrc_ue_id, con
 
 /* 3GPP TS 28.522 - section 5.1.2.1.1.1
   note: this measurement is calculated as per spec */
-static meas_record_lst_t fill_DRB_PdcpSduVolumeDL(__attribute__((unused))uint32_t gran_period_ms, cudu_ue_info_pair_t ue_info, const size_t ue_idx)
+static meas_record_lst_t fill_DRB_PdcpSduVolumeDL(__attribute__((unused))const kpm_act_def_format_1_t* act_def,
+                                                  __attribute__((unused))const size_t meas_info_idx,
+                                                  cudu_ue_info_pair_t ue_info,
+                                                  const size_t ue_idx)
 {
   meas_record_lst_t meas_record = {0};
 
@@ -65,7 +68,10 @@ static meas_record_lst_t fill_DRB_PdcpSduVolumeDL(__attribute__((unused))uint32_
 
 /* 3GPP TS 28.522 - section 5.1.2.1.2.1
   note: this measurement is calculated as per spec */
-static meas_record_lst_t fill_DRB_PdcpSduVolumeUL(__attribute__((unused))uint32_t gran_period_ms, cudu_ue_info_pair_t ue_info, const size_t ue_idx)
+static meas_record_lst_t fill_DRB_PdcpSduVolumeUL(__attribute__((unused))const kpm_act_def_format_1_t* act_def,
+                                                  __attribute__((unused))const size_t meas_info_idx,
+                                                  cudu_ue_info_pair_t ue_info,
+                                                  const size_t ue_idx)
 {
   meas_record_lst_t meas_record = {0};
 
@@ -103,7 +109,10 @@ static nr_rlc_statistics_t get_rlc_stats_per_drb(const rnti_t rnti, const int rb
 
 /* 3GPP TS 28.522 - section 5.1.3.3.3
   note: by default this measurement is calculated for previous 100ms (openair2/LAYER2/nr_rlc/nr_rlc_entity.c:118, 173, 213); please, update according to your needs */
-static meas_record_lst_t fill_DRB_RlcSduDelayDl(__attribute__((unused))uint32_t gran_period_ms, cudu_ue_info_pair_t ue_info, __attribute__((unused))const size_t ue_idx)
+static meas_record_lst_t fill_DRB_RlcSduDelayDl(__attribute__((unused))const kpm_act_def_format_1_t* act_def,
+                                                __attribute__((unused))const size_t meas_info_idx,
+                                                cudu_ue_info_pair_t ue_info,
+                                                __attribute__((unused))const size_t ue_idx)
 {
   meas_record_lst_t meas_record = {0};
   
@@ -122,7 +131,10 @@ static meas_record_lst_t fill_DRB_RlcSduDelayDl(__attribute__((unused))uint32_t 
 /* 3GPP TS 28.522 - section 5.1.1.3.1
   note: per spec, average UE throughput in DL (taken into consideration values from all UEs, and averaged)
         here calculated as: UE specific throughput in DL */
-static meas_record_lst_t fill_DRB_UEThpDl(uint32_t gran_period_ms, cudu_ue_info_pair_t ue_info, const size_t ue_idx)
+static meas_record_lst_t fill_DRB_UEThpDl(const kpm_act_def_format_1_t* act_def,
+                                          __attribute__((unused))const size_t meas_info_idx,
+                                          cudu_ue_info_pair_t ue_info,
+                                          const size_t ue_idx)
 {
   meas_record_lst_t meas_record = {0};
   
@@ -132,7 +144,7 @@ static meas_record_lst_t fill_DRB_UEThpDl(uint32_t gran_period_ms, cudu_ue_info_
   meas_record.value = REAL_MEAS_VALUE;
 
   // Calculate DL Thp
-  meas_record.real_val = (double)(rlc.txpdu_bytes - last_rlc_pdu_total_bytes[ue_idx].dl)*8/gran_period_ms;  // [kbps]
+  meas_record.real_val = (double)(rlc.txpdu_bytes - last_rlc_pdu_total_bytes[ue_idx].dl)*8/act_def->gran_period_ms;  // [kbps]
   last_rlc_pdu_total_bytes[ue_idx].dl = rlc.txpdu_bytes;
 
   return meas_record;
@@ -141,7 +153,10 @@ static meas_record_lst_t fill_DRB_UEThpDl(uint32_t gran_period_ms, cudu_ue_info_
 /* 3GPP TS 28.522 - section 5.1.1.3.3
   note: per spec, average UE throughput in UL (taken into consideration values from all UEs, and averaged)
         here calculated as: UE specific throughput in UL */
-static meas_record_lst_t fill_DRB_UEThpUl(uint32_t gran_period_ms, cudu_ue_info_pair_t ue_info, const size_t ue_idx)
+static meas_record_lst_t fill_DRB_UEThpUl(const kpm_act_def_format_1_t* act_def,
+                                          __attribute__((unused))const size_t meas_info_idx,
+                                          cudu_ue_info_pair_t ue_info,
+                                          const size_t ue_idx)
 {
   meas_record_lst_t meas_record = {0};
   
@@ -152,7 +167,7 @@ static meas_record_lst_t fill_DRB_UEThpUl(uint32_t gran_period_ms, cudu_ue_info_
   meas_record.value = REAL_MEAS_VALUE;
 
   // Calculate UL Thp
-  meas_record.real_val = (double)(rlc.rxpdu_bytes - last_rlc_pdu_total_bytes[ue_idx].ul)*8/gran_period_ms;  // [kbps]
+  meas_record.real_val = (double)(rlc.rxpdu_bytes - last_rlc_pdu_total_bytes[ue_idx].ul)*8/act_def->gran_period_ms;  // [kbps]
   last_rlc_pdu_total_bytes[ue_idx].ul = rlc.rxpdu_bytes;
   
   return meas_record;
@@ -161,7 +176,10 @@ static meas_record_lst_t fill_DRB_UEThpUl(uint32_t gran_period_ms, cudu_ue_info_
 /* 3GPP TS 28.522 - section 5.1.1.2.1
   note: per spec, DL PRB usage [%] = (total used PRBs for DL traffic / total available PRBs for DL traffic) * 100   
         here calculated as: aggregated DL PRBs (t) - aggregated DL PRBs (t-gran_period) */
-static meas_record_lst_t fill_RRU_PrbTotDl(__attribute__((unused))uint32_t gran_period_ms, cudu_ue_info_pair_t ue_info, const size_t ue_idx)
+static meas_record_lst_t fill_RRU_PrbTotDl(__attribute__((unused))const kpm_act_def_format_1_t* act_def,
+                                           __attribute__((unused))const size_t meas_info_idx,
+                                           cudu_ue_info_pair_t ue_info,
+                                           const size_t ue_idx)
 {
   meas_record_lst_t meas_record = {0};
   
@@ -177,7 +195,10 @@ static meas_record_lst_t fill_RRU_PrbTotDl(__attribute__((unused))uint32_t gran_
 /* 3GPP TS 28.522 - section 5.1.1.2.2
   note: per spec, UL PRB usage [%] = (total used PRBs for UL traffic / total available PRBs for UL traffic) * 100   
         here calculated as: aggregated UL PRBs (t) - aggregated UL PRBs (t-gran_period) */
-static meas_record_lst_t fill_RRU_PrbTotUl(__attribute__((unused))uint32_t gran_period_ms, cudu_ue_info_pair_t ue_info, const size_t ue_idx)
+static meas_record_lst_t fill_RRU_PrbTotUl(__attribute__((unused))const kpm_act_def_format_1_t* act_def,
+                                           __attribute__((unused))const size_t meas_info_idx,
+                                           cudu_ue_info_pair_t ue_info,
+                                           const size_t ue_idx)
 {
   meas_record_lst_t meas_record = {0};
 
@@ -217,16 +238,19 @@ void init_kpm_subs_data(void)
   }
 }
 
-meas_record_lst_t get_kpm_meas_value(char* kpm_meas_name, uint32_t gran_period_ms, cudu_ue_info_pair_t ue_info, const size_t ue_idx)
+meas_record_lst_t get_kpm_meas_value(const kpm_act_def_format_1_t* act_def, const size_t meas_info_idx, cudu_ue_info_pair_t ue_info, const size_t ue_idx)
 {
-  assert(kpm_meas_name != NULL);
+  const meas_info_format_1_lst_t* meas_info = &act_def->meas_info_lst[meas_info_idx];
+  assert(meas_info->meas_type.type == NAME_MEAS_TYPE && "Only NAME supported");
 
+  char* kpm_meas_name = cp_ba_to_str(meas_info->meas_type.name);
   ENTRY search_entry = {.key = kpm_meas_name};
   ENTRY *found_entry = hsearch(search_entry, FIND);
   assert(found_entry != NULL && "Unsupported KPM measurement name");
+  free(kpm_meas_name);
 
   kv_measure_t *kv_found = (kv_measure_t *)found_entry->data;
-  meas_record_lst_t meas_record = kv_found->value(gran_period_ms, ue_info, ue_idx);
+  meas_record_lst_t meas_record = kv_found->value(act_def, meas_info_idx, ue_info, ue_idx);
 
   return meas_record;
 }

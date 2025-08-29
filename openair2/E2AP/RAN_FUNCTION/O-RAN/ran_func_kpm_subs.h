@@ -34,7 +34,7 @@ typedef struct {
 
 } cudu_ue_info_pair_t;
 
-typedef meas_record_lst_t (*kpm_meas_fp)(uint32_t gran_period_ms, cudu_ue_info_pair_t ue_info, const size_t ue_idx);
+typedef meas_record_lst_t (*kpm_meas_fp)(const kpm_act_def_format_1_t* act_def, const size_t meas_info_idx, cudu_ue_info_pair_t ue_info, const size_t ue_idx);
 
 typedef struct{ 
   char* key; 
@@ -44,6 +44,6 @@ typedef struct{
 
 void init_kpm_subs_data(void);
 
-meas_record_lst_t get_kpm_meas_value(char* kpm_meas_name, uint32_t gran_period_ms, cudu_ue_info_pair_t ue_info, const size_t ue_idx);
+meas_record_lst_t get_kpm_meas_value(const kpm_act_def_format_1_t* act_def, const size_t meas_info_idx, cudu_ue_info_pair_t ue_info, const size_t ue_idx);
 
 #endif

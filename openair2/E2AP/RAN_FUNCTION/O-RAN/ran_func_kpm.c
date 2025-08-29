@@ -57,25 +57,21 @@ typedef struct {
   NR_UE_info_t** ue_info_list;
 }arr_ue_id_t;
 
-static meas_data_lst_t fill_kpm_meas_data_item(const meas_info_format_1_lst_t* meas_info_lst, const size_t len, const uint32_t gran_period_ms, cudu_ue_info_pair_t ue_info, const size_t ue_idx)
+static meas_data_lst_t fill_kpm_meas_data_item(const kpm_act_def_format_1_t* act_def_fr_1, cudu_ue_info_pair_t ue_info, const size_t ue_idx)
 {
+  assert(act_def_fr_1 != NULL);
+  const size_t len = act_def_fr_1->meas_info_lst_len;
+
   meas_data_lst_t data_item = {0};
 
   // Measurement Record
-  data_item.meas_record_len = len;  // record data list length corresponds to info list length from action definition
+  data_item.meas_record_len = len; // record data list length corresponds to info list length from action definition
 
   data_item.meas_record_lst = calloc(len, sizeof(meas_record_lst_t));
   assert(data_item.meas_record_lst != NULL && "Memory exhausted");
 
   for (size_t i = 0; i < len; i++) {
-    // Measurement Type as requested in Action Definition
-    assert(meas_info_lst[i].meas_type.type == NAME_MEAS_TYPE && "Only NAME supported");
-
-    char* meas_info_name_str = cp_ba_to_str(meas_info_lst[i].meas_type.name);
-
-    data_item.meas_record_lst[i] = get_kpm_meas_value(meas_info_name_str, gran_period_ms, ue_info, ue_idx);
-
-    free(meas_info_name_str);
+    data_item.meas_record_lst[i] = get_kpm_meas_value(act_def_fr_1, i, ue_info, ue_idx);
   }
 
   return data_item;
@@ -92,9 +88,7 @@ static kpm_ind_msg_format_1_t fill_kpm_ind_msg_frm_1(cudu_ue_info_pair_t ue_info
   msg_frm_1.meas_data_lst = calloc(msg_frm_1.meas_data_lst_len, sizeof(*msg_frm_1.meas_data_lst));
   assert(msg_frm_1.meas_data_lst != NULL && "Memory exhausted" );
 
-  msg_frm_1.meas_data_lst[0] = fill_kpm_meas_data_item(act_def_fr_1->meas_info_lst,
-                                                       act_def_fr_1->meas_info_lst_len,
-                                                       act_def_fr_1->gran_period_ms,
+  msg_frm_1.meas_data_lst[0] = fill_kpm_meas_data_item(act_def_fr_1,
                                                        ue_info,
                                                        ue_idx);
 
