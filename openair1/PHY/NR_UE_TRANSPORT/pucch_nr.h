@@ -72,6 +72,8 @@ void nr_generate_pucch3_4(const PHY_VARS_NR_UE *ue,
                           const int nr_slot_tx,
                           const fapi_nr_ul_config_pucch_pdu *pucch_pdu);
 
+void nr_uci_encoding(uint64_t payload, uint8_t nr_bit, uint8_t nrofPRB, bool uci_on_pusch, uint16_t E, uint8_t Qm, uint64_t *b);
+
 // tables for mcs values for different payloads 
  static const uint8_t table1_mcs[]={0,6,3,9};
  static const uint8_t table2_mcs[]={0,3,9,6,1,4,10,7};
