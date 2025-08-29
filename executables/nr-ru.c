@@ -815,7 +815,7 @@ void tx_rf(RU_t *ru, int frame,int slot, uint64_t timestamp)
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_TRX_WRITE, 0);
 }
 
-static void fill_rf_config(RU_t *ru, char *rf_config_file)
+void fill_rf_config(RU_t *ru, char *rf_config_file)
 {
   NR_DL_FRAME_PARMS *fp   = ru->nr_frame_parms;
   nfapi_nr_config_request_scf_t *config = &ru->config; //tmp index
@@ -880,7 +880,7 @@ static void fill_rf_config(RU_t *ru, char *rf_config_file)
   }
 }
 
-static void fill_split7_2_config(split7_config_t *split7, const nfapi_nr_config_request_scf_t *config, int slots_per_frame, uint16_t ofdm_symbol_size)
+void fill_split7_2_config(split7_config_t *split7, const nfapi_nr_config_request_scf_t *config, int slots_per_frame, uint16_t ofdm_symbol_size)
 {
   const nfapi_nr_prach_config_t *prach_config = &config->prach_config;
   const nfapi_nr_tdd_table_t *tdd_table = &config->tdd_table;
@@ -1854,9 +1854,19 @@ void NRRCconfig_RU(configmodule_interface_t *cfg)
   return;
 }
 
-void oru_downlink_processing(RU_t *ru, int slot, int frame) {
-  start_meas(&ru->tx_fhaul);
+void oru_downlink_processing(ORU_t *oru, int slot, int frame) {
+  RU_t *ru = oru->ru;
   NR_DL_FRAME_PARMS *fp = ru->nr_frame_parms;
+  static int last_frame = 0;
+  if (!oru->is_clock_synced) {
+    uint64_t ts = (uint64_t)frame * fp->samples_per_subframe * 10 + fp->get_samples_slot_timestamp(slot, fp, 0);
+    openair0_timestamp current_time = oru->ru->rfdevice.get_current_time(&oru->ru->rfdevice);
+    oru->first_slot_offset = current_time - ts;
+    oru->is_clock_synced = true;
+    last_frame = frame;
+    LOG_I(PHY, "O-RU synced, first_slot_offset = %ld, current_time %lu ts %lu frame, slot %d.%d\n", oru->first_slot_offset, current_time, ts, frame, slot);
+  }
+  start_meas(&ru->tx_fhaul);
   for (int i = 0; i < ru->nb_tx; i++) {
     apply_nr_rotation_TX(fp,
                          (c16_t *)ru->common.txdataF_BF[i],
@@ -1869,17 +1879,19 @@ void oru_downlink_processing(RU_t *ru, int slot, int frame) {
   }
   // Assume this function called in order
   static int frame_tx_unwrap = 0;
-  static int last_frame = 0;
   if (frame < last_frame) {
     frame_tx_unwrap += 1024;
   }
   last_frame = frame;
 
-  uint64_t timestamp_tx =
+  uint64_t ts =
       (uint64_t)(frame + frame_tx_unwrap) * fp->samples_per_subframe * 10 + fp->get_samples_slot_timestamp(slot, fp, 0);
+  // Normalize timestamp
+  uint64_t timestamp_tx = ts + oru->first_slot_offset;
+  // TODO: This comes from T1a. Set empirically. Should come from the config
+  timestamp_tx += fp->ofdm_symbol_size * 3;
 
-  // TODO: prepare tx here
-  // tx_rf(ru, frame, slot, timestamp_tx);
+  tx_rf(ru, frame, slot, timestamp_tx);
   stop_meas(&ru->tx_fhaul);
 }
 
@@ -1888,33 +1900,8 @@ void *oru_north_read_thread(void *arg)
   ORU_t *oru = (ORU_t *)arg;
 
   RU_t               *ru      = (RU_t *)oru->ru;
-  NR_DL_FRAME_PARMS  *fp      = ru->nr_frame_parms;
   char               threadname[40];
   sprintf(threadname,"oru_thread %u",ru->idx);
-  //nr_init_frame_parms(&ru->config, fp);
-  nr_dump_frame_parms(fp);
-
-  // Hack: Force nr_phy_init to allocate buffer for TD IQ
-  ru->if_south = LOCAL_RF;
-  ru->function = NGFI_RRU_IF4p5;
-  nr_phy_init_RU(ru);
-  fill_rf_config(ru, ru->rf_config_file);
-  fill_split7_2_config(&ru->openair0_cfg.split7, &ru->config, fp->slots_per_frame, fp->ofdm_symbol_size);
-
-  LOG_I(PHY, "starting transport\n");
-  int ret = openair0_transport_load(&ru->ifdevice, &ru->openair0_cfg, &ru->eth_params);
-  AssertFatal(ret == 0, "RU %u: openair0_transport_init() ret %d: cannot initialize transport protocol\n", ru->idx, ret);
-
-  if (ru->ifdevice.get_internal_parameter != NULL) {
-    /* it seems the device can "overwrite" (request?) to set the callbacks
-      * for fh_south_in()/fh_south_out() differently */
-    void *t = ru->ifdevice.get_internal_parameter("fh_if4p5_north_in");
-    if (t != NULL)
-      ru->fh_north_in = t;
-    t = ru->ifdevice.get_internal_parameter("fh_if4p5_north_out");
-    if (t != NULL)
-      ru->fh_north_out = t;
-  }
 
   int cpu = sched_getcpu();
   if (ru->ru_thread_core > -1 && cpu != ru->ru_thread_core) {
@@ -1932,21 +1919,40 @@ void *oru_north_read_thread(void *arg)
   AssertFatal(ru->ifdevice.trx_start_func(&ru->ifdevice) == 0, "Could not start the IF device\n");
 
   if (ru->has_ctrl_prt > 0) {
-    ret = attach_rru(ru);
+    int ret = attach_rru(ru);
     AssertFatal(ret==0,"Cannot connect to remote radio\n");
-  }
-
-  if (setup_RU_buffers(ru)!=0) {
-    LOG_E(PHY, "Exiting, cannot initialize RU Buffers\n");
-    exit(-1);
   }
 
   AssertFatal(ru->fh_north_in != NULL, "No fronthaul interface at north port");
   int frame = 0, slot = 0;
   while (!oai_exit) {
     ru->fh_north_in(ru, &frame, &slot);
-    LOG_I(PHY,"[RU_thread] read data: frame_rx = %d, tti_rx = %d\n", frame, slot);
-    oru_downlink_processing(ru, slot, frame);
+    int slot_type = nr_slot_select(&ru->config, frame, slot);
+    if (slot_type == NR_DOWNLINK_SLOT || slot_type == NR_MIXED_SLOT) {
+      oru_downlink_processing(oru, slot, frame);
+    }
+    if (frame == 0 && slot == 0) {
+      LOG_I(HW, "RU processing slot 0 frame 0\n");
+    }
   }
+  return NULL;
+}
+
+void *oru_south_read_thread(void *arg) {
+  ORU_t *oru = (ORU_t *)arg;
+  RU_t               *ru      = (RU_t *)oru->ru;
+
+  const int dummy_samples = 3000;
+  c16_t throwaway_samples[ru->nb_rx][dummy_samples];
+  void* rxp[ru->nb_rx];
+  for (int i = 0; i < ru->nb_rx; i++) {
+    rxp[i] = throwaway_samples[i];
+  }
+  openair0_timestamp timestamp;
+  while (!oai_exit) {
+    ru->rfdevice.trx_read_func(&ru->rfdevice, &timestamp, rxp, dummy_samples, ru->nb_rx);
+  }
+
+  // Perform RX processing
   return NULL;
 }

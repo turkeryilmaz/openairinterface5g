@@ -82,26 +82,6 @@ void exit_function(const char *file, const char *function, const int line, const
   }
   close_log_mem();
   oai_exit = 1;
-  RU_t *ru = RC.ru[0];
-
-  if (ru->rfdevice.trx_end_func) {
-    ru->rfdevice.trx_end_func(&ru->rfdevice);
-    ru->rfdevice.trx_end_func = NULL;
-  }
-
-  if (ru->ifdevice.trx_end_func) {
-    ru->ifdevice.trx_end_func(&ru->ifdevice);
-    ru->ifdevice.trx_end_func = NULL;
-  }
-
-  pthread_mutex_destroy(ru->ru_mutex);
-  pthread_cond_destroy(ru->ru_cond);
-  if (assert) {
-    abort();
-  } else {
-    sleep(1); // allow lte-softmodem threads to exit first
-    exit(EXIT_SUCCESS);
-  }
 }
 
 static void get_options(configmodule_interface_t *cfg)
@@ -141,7 +121,15 @@ configmodule_interface_t *uniqCfg = NULL;
 THREAD_STRUCT thread_struct;
 
 void *oru_north_read_thread(void *arg);
+void *oru_south_read_thread(void *arg);
 void NRRCconfig_RU(configmodule_interface_t *cfg);
+void nr_phy_init_RU(RU_t *ru);
+void fill_rf_config(RU_t *ru, char *rf_config_file);
+void fill_split7_2_config(split7_config_t *split7, const nfapi_nr_config_request_scf_t *config, int slots_per_frame, uint16_t ofdm_symbol_size);
+
+void stop_ru(int sig) {
+  exit_function(__FILE__, __FUNCTION__, __LINE__, "interrupted", false);
+}
 
 int main ( int argc, char **argv )
 {
@@ -149,6 +137,8 @@ int main ( int argc, char **argv )
   if ((uniqCfg = load_configmodule(argc, argv, 0)) == NULL) {
     exit_fun("[SOFTMODEM] Error, configuration module init failed\n");
   }
+
+  signal(SIGINT, stop_ru);
 
   logInit();
   printf("Reading in command-line options\n");
@@ -179,16 +169,44 @@ int main ( int argc, char **argv )
   nr_ru_init_frame_parms(ru);
   load_dftslib();
 
-  ORU_t oru;
-  oru.ru = ru;
-  pthread_create(&oru.thread, NULL, oru_north_read_thread, (void *)&oru);
+  ORU_t oru = {.is_clock_synced = false, .ru = ru};
+  cpu_meas_enabled = 1;
+  NR_DL_FRAME_PARMS *fp = ru->nr_frame_parms;
+  nr_dump_frame_parms(ru->nr_frame_parms);
+  ru->N_TA_offset = set_default_nta_offset(fp->freq_range, fp->samples_per_subframe);
+
+  // Hack: Force nr_phy_init to allocate buffer for TD IQ
+  ru->if_south = LOCAL_RF;
+  ru->function = NGFI_RRU_IF4p5;
+  nr_phy_init_RU(ru);
+  fill_rf_config(ru, ru->rf_config_file);
+  fill_split7_2_config(&ru->openair0_cfg.split7, &ru->config, fp->slots_per_frame, fp->ofdm_symbol_size);
+  ru->threadPool = malloc(sizeof(*ru->threadPool));
+  initFloatingCoresTpool(8, ru->threadPool, false, NULL);
+
+  LOG_I(PHY, "starting vrtsim\n");
+  int ret = openair0_load(&ru->rfdevice, "vrtsim", &ru->openair0_cfg, NULL);
+  AssertFatal(ret == 0, "RU %u: openair0_load() ret %d: cannot initialize vrtsim\n", ru->idx, ret);
+  ret = ru->rfdevice.trx_start_func(&ru->rfdevice);
+  AssertFatal(ret == 0, "RU %u: trx_start_func() ret %d: cannot start vrtsim\n", ru->idx, ret);
+
+  LOG_I(PHY, "starting transport\n");
+  ret = openair0_transport_load(&ru->ifdevice, &ru->openair0_cfg, &ru->eth_params);
+  AssertFatal(ret == 0, "RU %u: openair0_transport_init() ret %d: cannot initialize transport protocol\n", ru->idx, ret);
+
+  ru->fh_north_in = ru->ifdevice.get_internal_parameter("fh_if4p5_north_in");
+
+  pthread_create(&oru.north_read_thread, NULL, oru_north_read_thread, (void *)&oru);
+  pthread_create(&oru.south_read_thread, NULL, oru_south_read_thread, (void *)&oru);
 
   while (oai_exit==0) sleep(1);
   // stop threads
+  ret = pthread_join(oru.north_read_thread, NULL);
+  AssertFatal(ret == 0, "RU %u: pthread_join() ret %d\n", ru->idx, ret);
+  ret = pthread_join(oru.south_read_thread, NULL);
+  AssertFatal(ret == 0, "RU %u: pthread_join() ret %d\n", ru->idx, ret);
 
-  kill_NR_RU_proc(0);
-
-  end_configmodule(uniqCfg);
+  print_meas(&ru->tx_fhaul, "TX FRONTHAUL", NULL, NULL);
 
   if (ru->rfdevice.trx_end_func) {
     ru->rfdevice.trx_end_func(&ru->rfdevice);
@@ -199,6 +217,9 @@ int main ( int argc, char **argv )
     ru->ifdevice.trx_end_func(&ru->ifdevice);
     ru->ifdevice.trx_end_func = NULL;
   }
+  abortTpool(ru->threadPool);
+
+  end_configmodule(uniqCfg);
 
   logClean();
   printf("Bye.\n");

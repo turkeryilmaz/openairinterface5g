@@ -682,8 +682,11 @@ typedef struct RU_t_s {
 } RU_t;
 
 typedef struct {
-  pthread_t thread;
+  pthread_t north_read_thread;
+  pthread_t south_read_thread;
   RU_t *ru;
+  bool is_clock_synced;
+  int64_t first_slot_offset;
 } ORU_t;
 
 typedef enum {
