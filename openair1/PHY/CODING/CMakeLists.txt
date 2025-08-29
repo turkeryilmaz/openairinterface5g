@@ -1,4 +1,4 @@
-add_library(coding MODULE
+add_library(coding SHARED
             3gpplte_sse.c
             3gpplte.c
             3gpplte_turbo_decoder_sse_8bit.c
@@ -6,23 +6,32 @@ add_library(coding MODULE
             3gpplte_turbo_decoder_avx2_16bit.c
             3gpplte_turbo_decoder.c
 )
-set_target_properties(coding PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+
+add_custom_command(TARGET coding
+  COMMAND ${CMAKE_STRIP} --strip-unneeded $<TARGET_FILE:coding>
+  COMMENT "Stripping unneeded symbols from coding"
+  )
+
+set_target_properties(coding PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR} VERSION 1.0.0 SOVERSION 1)
 #ensure that the T header files are generated before targets depending on them
 target_link_libraries(coding PRIVATE log_headers)
+target_link_options(coding PRIVATE -Wl,--hash-style=gnu)
 
-add_library(ldpc_orig MODULE
+add_library(ldpc_orig SHARED
             nrLDPC_decoder/nrLDPC_decoder.c
             nrLDPC_encoder/ldpc_encoder.c
 )
-set_target_properties(ldpc_orig PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+set_target_properties(ldpc_orig PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR} VERSION 1.0.0 SOVERSION 1)
 target_link_libraries(ldpc_orig PRIVATE ldpc_segment ldpc_gen_HEADERS)
+target_link_options(ldpc_orig PRIVATE -Wl,--hash-style=gnu)
 
-add_library(ldpc MODULE
+add_library(ldpc SHARED
             nrLDPC_decoder/nrLDPC_decoder.c
             nrLDPC_encoder/ldpc_encoder_optim8segmulti.c
 )
-set_target_properties(ldpc PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+set_target_properties(ldpc PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR} VERSION 1.0.0 SOVERSION 1)
 target_link_libraries(ldpc PRIVATE ldpc_segment ldpc_gen_HEADERS)
+target_link_options(ldpc PRIVATE -Wl,--hash-style=gnu)
 
 add_dependencies(ldpctest ldpc ldpc_orig)
 add_dependencies(nr-softmodem ldpc ldpc_orig)
@@ -72,3 +81,11 @@ add_subdirectory(nrLDPC_coding)
 if(ENABLE_PHYSIM_TESTS)
   add_subdirectory(tests)
 endif()
+
+
+
+foreach(lib ldpc_orig ldpc)
+  add_custom_command(TARGET ${lib}
+    COMMAND ${CMAKE_STRIP} --strip-unneeded $<TARGET_FILE:${lib}>
+    COMMENT "Stripping unneeded symbols from ${lib}")
+endforeach()

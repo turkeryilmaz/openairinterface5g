@@ -46,10 +46,10 @@ void rrc_mac_config_req_NB_IoT(
     int                                     CC_idP,
     int                                     rntiP,
     rrc_eNB_carrier_data_NB_IoT_t           *carrier,
-    SystemInformationBlockType1_NB_t        *sib1_NB_IoT,
-    RadioResourceConfigCommonSIB_NB_r13_t   *radioResourceConfigCommon,
-    PhysicalConfigDedicated_NB_r13_t        *physicalConfigDedicated,
-    LogicalChannelConfig_NB_r13_t           *logicalChannelConfig,            //FIXME: decide how to use it
+    LTE_SystemInformationBlockType1_NB_t        *sib1_NB_IoT,
+    LTE_RadioResourceConfigCommonSIB_NB_r13_t   *radioResourceConfigCommon,
+    LTE_PhysicalConfigDedicated_NB_r13_t        *physicalConfigDedicated,
+    LTE_LogicalChannelConfig_NB_r13_t           *logicalChannelConfig,            //FIXME: decide how to use it
     uint8_t                                 ded_flag,
     uint8_t                                 ue_list_ded_num);
 
