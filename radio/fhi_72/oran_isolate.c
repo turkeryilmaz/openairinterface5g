@@ -214,11 +214,15 @@ void oran_fh_if4p5_south_in(RU_t *ru, int *frame, int *slot)
 {
   ru_info_t ru_info;
   ru_info.nb_rx = ru->nb_rx * ru->num_beams_period;
+  ru_info.nb_tx = ru->nb_rx * ru->num_beams_period;
   ru_info.rxdataF = ru->common.rxdataF;
+  ru_info.beam_id = ru->common.beam_id;
+  ru_info.num_beams_period = ru->num_beams_period;
   ru_info.prach_buf = ru->prach_rxsigF[0]; // index: [prach_oca][ant_id]
 
   RU_proc_t *proc = &ru->proc;
-  int f, sl;
+  int f = *frame;
+  int sl = *slot;
   LOG_D(HW, "Read rxdataF %p,%p\n", ru_info.rxdataF[0], ru_info.rxdataF[1]);
   start_meas(&ru->rx_fhaul);
   int ret = xran_fh_rx_read_slot(&ru_info, &f, &sl);
@@ -267,8 +271,12 @@ void oran_fh_if4p5_south_out(RU_t *ru, int frame, int slot, uint64_t timestamp)
 {
   start_meas(&ru->tx_fhaul);
   ru_info_t ru_info;
+  ru_info.nb_rx = ru->nb_rx * ru->num_beams_period;
   ru_info.nb_tx = ru->nb_tx * ru->num_beams_period;
   ru_info.txdataF_BF = ru->common.txdataF_BF;
+  ru_info.beam_id = ru->common.beam_id;
+  ru_info.num_beams_period = ru->num_beams_period;
+
   // printf("south_out:\tframe=%d\tslot=%d\ttimestamp=%ld\n",frame,slot,timestamp);
 
   int ret = xran_fh_tx_send_slot(&ru_info, frame, slot, timestamp);

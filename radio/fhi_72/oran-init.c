@@ -335,6 +335,7 @@ static void oran_allocate_buffers(void *handle,
   struct xran_prb_map dlPmMixed = {0};
   struct xran_prb_map ulPmMixed = {0};
   uint32_t idx = 0;
+
   if (fh_config->frame_conf.nFrameDuplexType == XRAN_TDD) {
     oran_mixed_slot_t info = get_mixed_slot_info(&fh_config->frame_conf);
     dlPmMixed = get_xran_prb_map(fh_config, XRAN_DIR_DL, 0, info.num_dlsym);
