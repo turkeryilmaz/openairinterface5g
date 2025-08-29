@@ -432,6 +432,7 @@ static const char* kpm_meas_du[] = {
   "DRB.UEThpUl",
   "RRU.PrbTotDl",
   "RRU.PrbTotUl",
+  "CARR.PDSCHMCSDist", 
   NULL,
 };
 
@@ -443,6 +444,7 @@ static const char* kpm_meas_gnb[] = {
   "DRB.UEThpUl",
   "RRU.PrbTotDl",
   "RRU.PrbTotUl",
+  "CARR.PDSCHMCSDist",
   NULL,
 };
 

@@ -210,6 +210,34 @@ static meas_record_lst_t fill_RRU_PrbTotUl(__attribute__((unused))const kpm_act_
 
   return meas_record;
 }
+
+/* 3GPP TS 28.552 - section 5.1.1.12.1*/
+static meas_record_lst_t fill_CARR_PDSCHMCSDist(const kpm_act_def_format_1_t* act_def,
+                                               const size_t meas_info_idx,
+                                               __attribute__((unused)) cudu_ue_info_pair_t ue_info,
+                                               __attribute__((unused)) const size_t ue_idx)
+{
+    const meas_info_format_1_lst_t* meas_info = &act_def->meas_info_lst[meas_info_idx];
+    meas_record_lst_t meas_record = {.value = INTEGER_MEAS_VALUE};
+
+    uint32_t bin_x = 0, bin_y = 0, bin_z = 0;
+
+    if (meas_info->label_info_lst_len > 0) {
+        const label_info_lst_t* label = &meas_info->label_info_lst[0];
+        if (label->distBinX) bin_x = *label->distBinX;
+        if (label->distBinY) bin_y = *label->distBinY;
+        if (label->distBinZ) bin_z = *label->distBinZ;
+    }
+
+    NR_du_stats_t* du_stats = &RC.nrmac[0]->du_stats;
+
+    if (bin_x < 8 && bin_y < 4 && bin_z < 32) {
+        meas_record.int_val = du_stats->pdsch_mcs_dist[bin_x][bin_y][bin_z];
+    } else {
+        meas_record.int_val = 0;
+    }
+    return meas_record;
+}
 #endif
 
 static kv_measure_t lst_measure[] = {
@@ -221,6 +249,7 @@ static kv_measure_t lst_measure[] = {
   {.key = "DRB.UEThpUl", .value =  fill_DRB_UEThpUl }, 
   {.key = "RRU.PrbTotDl", .value =  fill_RRU_PrbTotDl }, 
   {.key = "RRU.PrbTotUl", .value =  fill_RRU_PrbTotUl }, 
+  {.key = "CARR.PDSCHMCSDist", .value = fill_CARR_PDSCHMCSDist },
 #endif
 }; 
 
