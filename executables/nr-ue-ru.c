@@ -23,6 +23,11 @@
 #include "PHY/defs_nr_common.h"
 #include "PHY/NR_UE_TRANSPORT/nr_transport_proto_ue.h"
 
+int nrue_cell_count;
+nrUE_cell_params_t *nrue_cells;
+int nrue_ru_count;
+nrUE_RU_params_t *nrue_rus;
+
 openair0_config_t openair0_cfg[MAX_CARDS];
 openair0_device_t openair0_dev[MAX_CARDS];
 NR_DL_FRAME_PARMS cell_fp[MAX_CARDS];

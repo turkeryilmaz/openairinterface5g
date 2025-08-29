@@ -588,13 +588,10 @@ int main(int argc, char **argv)
     init_pdcp(mode_offset + ue_id_g);
   nas_init_nrue(NB_UE_INST);
 
-  nrUE_RU_params_t *RUs;
-  int nrue_ru_count = get_nrUE_RU_params(uniqCfg, &RUs);
+  nrue_ru_count = get_nrUE_RU_params(uniqCfg, &nrue_rus);
+  nrue_cell_count = get_nrUE_cell_params(uniqCfg, &nrue_cells);
 
-  nrUE_cell_params_t *cells;
-  int nrue_cell_count = get_nrUE_cell_params(uniqCfg, &cells);
-
-  init_NR_UE(NB_UE_INST, get_nrUE_params()->uecap_file, get_nrUE_params()->reconfig_file, get_nrUE_params()->rbconfig_file, cells[0].numerology);
+  init_NR_UE(NB_UE_INST, get_nrUE_params()->uecap_file, get_nrUE_params()->reconfig_file, get_nrUE_params()->rbconfig_file, nrue_cells[0].numerology);
 
   if (get_softmodem_params()->emulate_l1) {
     RCconfig_nr_ue_macrlc();
@@ -621,14 +618,14 @@ int main(int argc, char **argv)
 
   // initialize per-cell frame parameters
   for (int cell_id = 0; cell_id < nrue_cell_count; cell_id++) {
-    int rf_port = cells[cell_id].rf_port;
+    int rf_port = nrue_cells[cell_id].rf_port;
     AssertFatal(rf_port >= 0 && rf_port < nrue_ru_count, "Invalid rf_port (%d) for cell %d. Should be >= 0 and < %d\n", rf_port, cell_id, nrue_ru_count);
-    AssertFatal(RUs[rf_port].used_by_cell == -1, "RU %d is already used by cell %d and therefore cannot also be used by cell %d\n", rf_port, RUs[rf_port].used_by_cell, cell_id);
-    RUs[rf_port].used_by_cell = cell_id;
+    AssertFatal(nrue_rus[rf_port].used_by_cell == -1, "RU %d is already used by cell %d and therefore cannot also be used by cell %d\n", rf_port, nrue_rus[rf_port].used_by_cell, cell_id);
+    nrue_rus[rf_port].used_by_cell = cell_id;
 
-    set_fp_options(&cell_fp[cell_id], &RUs[rf_port]);
+    set_fp_options(&cell_fp[cell_id], &nrue_rus[rf_port]);
     if (IS_SA_MODE(get_softmodem_params()) || get_softmodem_params()->sl_mode)
-      nr_init_frame_parms_ue_sa(&cell_fp[cell_id], &cells[cell_id]);
+      nr_init_frame_parms_ue_sa(&cell_fp[cell_id], &nrue_cells[cell_id]);
   }
 
   if (!get_softmodem_params()->emulate_l1) {
@@ -638,7 +635,7 @@ int main(int argc, char **argv)
                   "There are not enough cell definitions for all UEs! NB_UE_INST = %d, nrue_cell_count = %d\n",
                   NB_UE_INST,
                   nrue_cell_count);
-      nrUE_cell_params_t *cell = &cells[cell_id];
+      nrUE_cell_params_t *cell = &nrue_cells[cell_id];
       AssertFatal(cell->used_by_ue == -1,
                   "Cell %d is already used by UE %d and therefore cannot also be used by UE %d\n",
                   cell_id,
@@ -647,7 +644,7 @@ int main(int argc, char **argv)
       cell->used_by_ue = inst;
 
       int rf_port = cell->rf_port;
-      nrUE_RU_params_t *RU = &RUs[rf_port];
+      nrUE_RU_params_t *RU = &nrue_rus[rf_port];
 
       for (int CC_id = 0; CC_id < MAX_NUM_CCs; CC_id++) {
         PHY_VARS_NR_UE *UE_CC = PHY_vars_UE_g[inst][CC_id];
@@ -707,7 +704,7 @@ int main(int argc, char **argv)
       }
     }
 
-    init_openair0(RUs, nrue_ru_count);
+    init_openair0(nrue_rus, nrue_ru_count);
 
     lock_memory_to_ram();
 

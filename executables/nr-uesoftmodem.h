@@ -177,29 +177,6 @@ extern nrUE_params_t *get_nrUE_params(void);
 #define NRUE_RU_RFSIM_DELAY_IDX    15
 // clang-format on
 
-typedef struct {
-  unsigned int nb_tx;
-  unsigned int nb_rx;
-  unsigned int att_tx;
-  unsigned int att_rx;
-  int max_rxgain;
-  char *sdr_addrs;
-  char *tx_subdev;
-  char *rx_subdev;
-  clock_source_t clock_source;
-  clock_source_t time_source;
-  double tune_offset;
-  uint64_t if_frequency;
-  int if_freq_offset;
-
-  // Parameters for RF-Simulator
-  char *rfsim_serveraddr;
-  uint16_t rfsim_serverport;
-  double rfsim_prop_delay;
-
-  int used_by_cell;
-}  nrUE_RU_params_t;
-
 /* NR UE cell configuration section name */
 #define CONFIG_STRING_NRUE_CELL_LIST "cells"
 

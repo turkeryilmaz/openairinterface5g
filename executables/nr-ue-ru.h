@@ -25,6 +25,11 @@
 #include "PHY/defs_nr_UE.h"
 #include "radio/COMMON/common_lib.h"
 
+extern int nrue_cell_count;
+extern nrUE_cell_params_t *nrue_cells;
+extern int nrue_ru_count;
+extern nrUE_RU_params_t *nrue_rus;
+
 void nr_ue_ru_start(void);
 void nr_ue_ru_end(void);
 void nr_ue_ru_set_freq(PHY_VARS_NR_UE *UE, uint64_t ul_carrier, uint64_t dl_carrier, int freq_offset);
