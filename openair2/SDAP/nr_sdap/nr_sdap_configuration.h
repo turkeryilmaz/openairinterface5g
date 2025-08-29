@@ -19,33 +19,22 @@
  *      contact@openairinterface.org
  */
 
-#ifndef _RRC_GNB_DRBS_H_
-#define _RRC_GNB_DRBS_H_
+#ifndef _NR_SDAP_CONFIGURATION_H_
+#define _NR_SDAP_CONFIGURATION_H_
 
-#include <stdbool.h>
-#include <stdint.h>
-#include "e1ap_messages_types.h"
-#include "nr_rrc_defs.h"
+#include "stdbool.h"
+#include "stdint.h"
+#include "common/platform_constants.h" // for MAX_QOS_FLOWS
+#include "common/5g_platform_types.h" // for pdusession_level_qos_parameter_t
 
-/// @brief retrieve the data structure representing DRB with ID drb_id of UE ue
-drb_t *get_drb(seq_arr_t *seq, int id);
+typedef struct {
+  int pdu_session_id;
+  // SDAP Headers
+  bool header_dl_absent;
+  bool header_ul_absent;
+  // PDU Session level QoS
+  uint8_t nb_qos;
+  pdusession_level_qos_parameter_t qos[MAX_QOS_FLOWS];
+} nr_sdap_configuration_t;
 
-/// @brief retrieve PDU session of UE ue with ID id
-rrc_pdu_session_param_t *find_pduSession(seq_arr_t *seq, int id);
-
-/// @brief Add a new PDU session for UE @param ue and configuration @param in
-rrc_pdu_session_param_t *add_pduSession(seq_arr_t *sessions_ptr, const int rrc_ue_id, const pdusession_t *in);
-
-/// @brief get PDU session of UE ue through the DRB drb_id
-rrc_pdu_session_param_t *find_pduSession_from_drbId(gNB_RRC_UE_t *ue, int drb_id);
-
-/// @brief Deep copy an instance of struct pdusession_t
-void cp_pdusession(pdusession_t *dst, const pdusession_t *src);
-
-void free_pdusession(void *ptr);
-
-drb_t *nr_rrc_add_drb(seq_arr_t *drb_ptr, int pdusession_id, nr_pdcp_configuration_t *pdcp);
-
-void free_drb(void *ptr);
-
-#endif
+#endif /* _NR_SDAP_CONFIGURATION_H_ */
