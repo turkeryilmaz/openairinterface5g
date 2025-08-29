@@ -1913,6 +1913,7 @@ add_executable(nr-uesoftmodem
   ${OPENAIR_DIR}/radio/COMMON/record_player.c
   ${OPENAIR2_DIR}/LAYER2/NR_MAC_COMMON/nr_mac_common.c
   ${OPENAIR2_DIR}/LAYER2/NR_MAC_COMMON/nr_mac_common_tdd.c
+  ${OPENAIR2_DIR}/LAYER2/NR_MAC_UE/nr_rlc_ue_helper.c
   ${OPENAIR1_DIR}/PHY/TOOLS/phy_scope_interface.c
   ${NFAPI_USER_DIR}/nfapi.c
   ${PHY_INTERFACE_DIR}/queue_t.c
