@@ -125,6 +125,15 @@ event new_event(int type, int length, char *buffer, void *database)
       e.e[i].bsize = len;
       e.e[i].b = &buffer[offset+sizeof(int)];
       offset += len+sizeof(int);
+    } else if (!strcmp(f.type[i], "buffer_dB")) {
+      if (offset + sizeof(int) > length) goto fatal;
+      int len;
+      e.e[i].type = EVENT_BUFFER_dB;
+      len = *(int *)(&buffer[offset]);
+      if (len <= 0 || offset + len + sizeof(int16_t) > length) goto fatal;
+      e.e[i].bsize = len;
+      e.e[i].b = &buffer[offset+sizeof(int)];
+      offset += len+sizeof(int16_t);
     } else {
       printf("unhandled type '%s'\n", f.type[i]);
       abort();
