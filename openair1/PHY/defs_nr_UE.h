@@ -342,6 +342,7 @@ typedef struct {
   int numerology;
   int N_RB_DL;
   int ssb_start;
+  int used_by_ue;
 }  nrUE_cell_params_t;
 
 /// Top-level PHY Data Structure for UE

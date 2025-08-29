@@ -295,7 +295,8 @@ static int get_nrUE_cell_params(configmodule_interface_t *cfg, nrUE_cell_params_
       .rf_freq_offset = uplink_frequency_offset[0][0],
       .numerology     = get_softmodem_params()->numerology,
       .N_RB_DL        = nrUE_params.N_RB_DL,
-      .ssb_start      = nrUE_params.ssb_start_subcarrier
+      .ssb_start      = nrUE_params.ssb_start_subcarrier,
+      .used_by_ue     = -1
     };
     return 1;
   }
@@ -312,6 +313,7 @@ static int get_nrUE_cell_params(configmodule_interface_t *cfg, nrUE_cell_params_
     cell->numerology     = *(cellParamList.paramarray[j][NRUE_CELL_NUMEROLOGY_IDX].iptr);
     cell->N_RB_DL        = *(cellParamList.paramarray[j][NRUE_CELL_N_RB_DL_IDX].iptr);
     cell->ssb_start      = *(cellParamList.paramarray[j][NRUE_CELL_SSB_START_IDX].iptr);
+    cell->used_by_ue     = -1;
   }
 
   return cellParamList.numelt;
@@ -629,13 +631,24 @@ int main(int argc, char **argv)
       nr_init_frame_parms_ue_sa(&cell_fp[cell_id], &cells[cell_id]);
   }
 
-  int cell_id = 0; // initially connect all UEs to cell 0
-  nrUE_cell_params_t *cell = &cells[cell_id];
-  int rf_port = cell->rf_port;
-  nrUE_RU_params_t *RU = &RUs[rf_port];
-
   if (!get_softmodem_params()->emulate_l1) {
     for (int inst = 0; inst < NB_UE_INST; inst++) {
+      int cell_id = inst; // initially connect each UE to its own cell
+      AssertFatal(cell_id >= 0 && cell_id < nrue_cell_count,
+                  "There are not enough cell definitions for all UEs! NB_UE_INST = %d, nrue_cell_count = %d\n",
+                  NB_UE_INST,
+                  nrue_cell_count);
+      nrUE_cell_params_t *cell = &cells[cell_id];
+      AssertFatal(cell->used_by_ue == -1,
+                  "Cell %d is already used by UE %d and therefore cannot also be used by UE %d\n",
+                  cell_id,
+                  cell->used_by_ue,
+                  inst);
+      cell->used_by_ue = inst;
+
+      int rf_port = cell->rf_port;
+      nrUE_RU_params_t *RU = &RUs[rf_port];
+
       for (int CC_id = 0; CC_id < MAX_NUM_CCs; CC_id++) {
         PHY_VARS_NR_UE *UE_CC = PHY_vars_UE_g[inst][CC_id];
 
