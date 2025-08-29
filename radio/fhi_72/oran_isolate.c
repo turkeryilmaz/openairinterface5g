@@ -214,6 +214,7 @@ int trx_oran_ctlrecv(openair0_device *device, void *msg, ssize_t msg_len)
 void oran_fh_if4p5_north_in(RU_t *ru, int *frame, int *slot) {
   ru_info_t ru_info;
   ru_info.nb_rx = ru->nb_rx * ru->num_beams_period;
+  ru_info.nb_tx = ru->nb_tx * ru->num_beams_period;
   ru_info.txdataF_BF = ru->common.txdataF_BF;
   start_meas(&ru->rx_fhaul);
   int ret = xran_fh_tx_read_slot(&ru_info, frame, slot);
