@@ -178,3 +178,7 @@ void *rrc_nrue(void *notUsed)
 {
   return NULL;
 }
+
+void trs_freq_correction(PHY_VARS_NR_UE *ue)
+{
+}
