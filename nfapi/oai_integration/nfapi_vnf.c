@@ -70,9 +70,19 @@
 #endif
 
 #define TEST
-
+static nfapi_vnf_config_t *config;
 extern RAN_CONTEXT_t RC;
 extern UL_RCC_IND_t  UL_RCC_INFO;
+
+static vnf_info *get_p5_vnf()
+{
+  return config->user_data;
+}
+static vnf_p7_info *get_p7_vnf()
+{
+  vnf_info *vnf = get_p5_vnf();
+  return vnf->p7_vnfs;
+}
 
 int vnf_pack_vendor_extension_tlv(void *ve, uint8_t **ppWritePackedMsg, uint8_t *end, nfapi_p4_p5_codec_config_t *codec) {
   //NFAPI_TRACE(NFAPI_TRACE_INFO, "vnf_pack_vendor_extension_tlv\n");
@@ -1735,32 +1745,75 @@ void vnf_start_thread(void *ptr) {
   nfapi_vnf_start((nfapi_vnf_config_t *)ptr);
 }
 
-static vnf_info vnf;
+static bool has_stop_ind = false;
+static bool waiting_stop_ind = false;
+int nr_stop_ind_cb(nfapi_vnf_config_t *config, int p5_idx, nfapi_nr_stop_indication_scf_t *resp)
+{
+  NFAPI_TRACE(NFAPI_TRACE_INFO, "[VNF] Received NFAPI_STOP_IND idx:%d phy_id:%d\n", p5_idx, resp->header.phy_id);
+#ifdef ENABLE_AERIAL
+  nvIPC_Stop(vnf_p5_init_and_receive_pthread);
+#endif
+#ifdef ENABLE_SOCKET
+  nfapi_vnf_p7_stop(get_p7_vnf()->config);
+#endif
+#ifdef ENABLE_WLS
+  wls_vnf_stop(vnf_p5_init_and_receive_pthread);
+#endif
+  has_stop_ind = true;
+  if (!waiting_stop_ind) {
+    // hasn't been initialized yet, means the PNF stopped before the VNF did
+    // raise a SIGINT to stop the VNF
+    raise(SIGINT);
+  }
+  return 0;
+}
+
+void stop_nr_nfapi_vnf()
+{
+  if (has_stop_ind) {
+    // If it got here with the STOP.indication flag already set, it means it was triggered by the PNF,
+    // no need to send a STOP.request
+    return;
+  }
+#ifdef ENABLE_WLS
+  wls_vnf_send_stop_request();
+#endif
+#ifdef ENABLE_AERIAL
+  nvIPC_send_stop_request();
+#endif
+#ifdef ENABLE_SOCKET
+  socket_nfapi_send_stop_request((vnf_t *)config);
+#endif
+  waiting_stop_ind = true;
+  while (!has_stop_ind) {
+    usleep(1000);
+  }
+}
 
 void configure_nr_nfapi_vnf(eth_params_t params)
 {
 #ifndef ENABLE_AERIAL
   nfapi_setmode(NFAPI_MODE_VNF);
 #endif
-  memset(&vnf, 0, sizeof(vnf));
-  memset(vnf.p7_vnfs, 0, sizeof(vnf.p7_vnfs));
-  vnf.p7_vnfs[0].timing_window = 30;
-  vnf.p7_vnfs[0].periodic_timing_enabled = 0;
-  vnf.p7_vnfs[0].aperiodic_timing_enabled = 0;
-  vnf.p7_vnfs[0].periodic_timing_period = 1;
-  vnf.p7_vnfs[0].config = nfapi_vnf_p7_config_create();
+  vnf_info *vnf = calloc(1, sizeof(vnf_info));
+  memset(vnf->p7_vnfs, 0, sizeof(vnf->p7_vnfs));
+  vnf->p7_vnfs[0].timing_window = 30;
+  vnf->p7_vnfs[0].periodic_timing_enabled = 0;
+  vnf->p7_vnfs[0].aperiodic_timing_enabled = 0;
+  vnf->p7_vnfs[0].periodic_timing_period = 1;
+  vnf->p7_vnfs[0].config = nfapi_vnf_p7_config_create();
 #ifndef ENABLE_AERIAL
   NFAPI_TRACE(NFAPI_TRACE_INFO,
-              "[VNF] %s() vnf.p7_vnfs[0].config:%p VNF ADDRESS:%s:%d\n",
+              "[VNF] %s() vnf->p7_vnfs[0].config:%p VNF ADDRESS:%s:%d\n",
               __FUNCTION__,
-              vnf.p7_vnfs[0].config,
+              vnf->p7_vnfs[0].config,
               params.my_addr,
               params.my_portc);
-  strcpy(vnf.p7_vnfs[0].local_addr, params.my_addr);
-  vnf.p7_vnfs[0].local_port = params.my_portd;
+  strcpy(vnf->p7_vnfs[0].local_addr, params.my_addr);
+  vnf->p7_vnfs[0].local_port = params.my_portd;
 #endif
-  vnf.p7_vnfs[0].mac = (mac_t *)malloc(sizeof(mac_t));
-  nfapi_vnf_config_t *config = nfapi_vnf_config_create();
+  vnf->p7_vnfs[0].mac = malloc(sizeof(mac_t));
+  config = nfapi_vnf_config_create();
   config->malloc = malloc;
   config->free = free;
   config->vnf_p5_port = params.my_portc;
@@ -1778,9 +1831,10 @@ void configure_nr_nfapi_vnf(eth_params_t params)
   config->nr_param_resp = &nr_param_resp_cb;
   config->nr_config_resp = &nr_config_resp_cb;
   config->nr_start_resp = &nr_start_resp_cb;
+  config->nr_stop_ind = &nr_stop_ind_cb;
   config->nr_error_ind = &nr_error_ind_cb;
   config->vendor_ext = &vendor_nr_ext_cb;
-  config->user_data = &vnf;
+  config->user_data = vnf;
   // To allow custom vendor extentions to be added to nfapi
   config->codec_config.unpack_vendor_extension_tlv = &vnf_nr_unpack_vendor_extension_tlv;
   config->codec_config.pack_vendor_extension_tlv = &vnf_nr_pack_vendor_extension_tlv;
@@ -1826,7 +1880,6 @@ void configure_nr_nfapi_vnf(eth_params_t params)
   pnf->connected = 1;
   // Add needed parameters
 
-  vnf_info *vnf = (vnf_info *)(config->user_data);
   pnf_info *pnf_info = vnf->pnfs;
 
   for (int i = 0; i < 1; ++i) {
@@ -1863,18 +1916,23 @@ void configure_nr_nfapi_vnf(eth_params_t params)
 
 void configure_nfapi_vnf(char *vnf_addr, int vnf_p5_port, char *pnf_ip_addr, int pnf_p7_port, int vnf_p7_port) {
   nfapi_setmode(NFAPI_MODE_VNF);
-  memset(&vnf, 0, sizeof(vnf));
-  memset(vnf.p7_vnfs, 0, sizeof(vnf.p7_vnfs));
-  vnf.p7_vnfs[0].timing_window = 32;
-  vnf.p7_vnfs[0].periodic_timing_enabled = 1;
-  vnf.p7_vnfs[0].aperiodic_timing_enabled = 0;
-  vnf.p7_vnfs[0].periodic_timing_period = 10;
-  vnf.p7_vnfs[0].config = nfapi_vnf_p7_config_create();
-  NFAPI_TRACE(NFAPI_TRACE_INFO, "[VNF] %s() vnf.p7_vnfs[0].config:%p VNF ADDRESS:%s:%d\n", __FUNCTION__, vnf.p7_vnfs[0].config, vnf_addr, vnf_p5_port);
-  strcpy(vnf.p7_vnfs[0].local_addr, vnf_addr);
-  vnf.p7_vnfs[0].local_port = vnf_p7_port;
-  vnf.p7_vnfs[0].mac = (mac_t *)malloc(sizeof(mac_t));
-  nfapi_vnf_config_t *config = nfapi_vnf_config_create();
+  vnf_info *vnf = calloc(1, sizeof(vnf_info));
+  memset(vnf->p7_vnfs, 0, sizeof(vnf->p7_vnfs));
+  vnf->p7_vnfs[0].timing_window = 32;
+  vnf->p7_vnfs[0].periodic_timing_enabled = 1;
+  vnf->p7_vnfs[0].aperiodic_timing_enabled = 0;
+  vnf->p7_vnfs[0].periodic_timing_period = 10;
+  vnf->p7_vnfs[0].config = nfapi_vnf_p7_config_create();
+  NFAPI_TRACE(NFAPI_TRACE_INFO,
+              "[VNF] %s() vnf.p7_vnfs[0].config:%p VNF ADDRESS:%s:%d\n",
+              __FUNCTION__,
+              vnf->p7_vnfs[0].config,
+              vnf_addr,
+              vnf_p5_port);
+  strcpy(vnf->p7_vnfs[0].local_addr, vnf_addr);
+  vnf->p7_vnfs[0].local_port = vnf_p7_port;
+  vnf->p7_vnfs[0].mac = malloc(sizeof(mac_t));
+  config = nfapi_vnf_config_create();
   config->malloc = malloc;
   config->free = free;
   config->vnf_p5_port = vnf_p5_port;
@@ -1893,7 +1951,7 @@ void configure_nfapi_vnf(char *vnf_addr, int vnf_p5_port, char *pnf_ip_addr, int
   config->config_resp = &config_resp_cb;
   config->start_resp = &start_resp_cb;
   config->vendor_ext = &vendor_ext_cb;
-  config->user_data = &vnf;
+  config->user_data = vnf;
   // To allow custom vendor extentions to be added to nfapi
   config->codec_config.unpack_vendor_extension_tlv = &vnf_unpack_vendor_extension_tlv;
   config->codec_config.pack_vendor_extension_tlv = &vnf_pack_vendor_extension_tlv;
@@ -1910,7 +1968,7 @@ void configure_nfapi_vnf(char *vnf_addr, int vnf_p5_port, char *pnf_ip_addr, int
 }
 
 int oai_nfapi_dl_config_req(nfapi_dl_config_request_t *dl_config_req) {
-  nfapi_vnf_p7_config_t *p7_config = vnf.p7_vnfs[0].config;
+  nfapi_vnf_p7_config_t *p7_config = get_p7_vnf()->config;
   dl_config_req->header.phy_id = 1; // HACK TODO FIXME - need to pass this around!!!!
   dl_config_req->header.message_id = NFAPI_DL_CONFIG_REQUEST;
   LOG_D(PHY, "[VNF] %s() DL_CONFIG_REQ sfn_sf:%d_%d number_of_pdus:%d\n", __FUNCTION__,
@@ -1946,7 +2004,7 @@ int oai_nfapi_dl_config_req(nfapi_dl_config_request_t *dl_config_req) {
 int oai_nfapi_dl_tti_req(nfapi_nr_dl_tti_request_t *dl_config_req)
 {
   LOG_D(NR_PHY, "Entering oai_nfapi_nr_dl_config_req sfn:%d,slot:%d\n", dl_config_req->SFN, dl_config_req->Slot);
-  nfapi_vnf_p7_config_t *p7_config = vnf.p7_vnfs[0].config;
+  nfapi_vnf_p7_config_t *p7_config = get_p7_vnf()->config;
   dl_config_req->header.message_id= NFAPI_NR_PHY_MSG_TYPE_DL_TTI_REQUEST;
   dl_config_req->header.phy_id = 1; // HACK TODO FIXME - need to pass this around!!!!
 
@@ -1965,7 +2023,7 @@ int oai_nfapi_dl_tti_req(nfapi_nr_dl_tti_request_t *dl_config_req)
 int oai_nfapi_tx_data_req(nfapi_nr_tx_data_request_t *tx_data_req)
 {
   LOG_D(NR_PHY, "Entering oai_nfapi_nr_tx_data_req sfn:%d,slot:%d\n", tx_data_req->SFN, tx_data_req->Slot);
-  nfapi_vnf_p7_config_t *p7_config = vnf.p7_vnfs[0].config;
+  nfapi_vnf_p7_config_t *p7_config = get_p7_vnf()->config;
   tx_data_req->header.phy_id = 1; // HACK TODO FIXME - need to pass this around!!!!
   tx_data_req->header.message_id = NFAPI_NR_PHY_MSG_TYPE_TX_DATA_REQUEST;
   //LOG_D(PHY, "[VNF] %s() TX_REQ sfn_sf:%d number_of_pdus:%d\n", __FUNCTION__, NFAPI_SFNSF2DEC(tx_req->sfn_sf), tx_req->tx_request_body.number_of_pdus);
@@ -1982,7 +2040,7 @@ int oai_nfapi_tx_data_req(nfapi_nr_tx_data_request_t *tx_data_req)
 
 int oai_nfapi_tx_req(nfapi_tx_request_t *tx_req)
 {
-  nfapi_vnf_p7_config_t *p7_config = vnf.p7_vnfs[0].config;
+  nfapi_vnf_p7_config_t *p7_config = get_p7_vnf()->config;
   tx_req->header.phy_id = 1; // HACK TODO FIXME - need to pass this around!!!!
   tx_req->header.message_id = NFAPI_TX_REQUEST;
   //LOG_D(PHY, "[VNF] %s() TX_REQ sfn_sf:%d number_of_pdus:%d\n", __FUNCTION__, NFAPI_SFNSF2DEC(tx_req->sfn_sf), tx_req->tx_request_body.number_of_pdus);
@@ -1998,7 +2056,7 @@ int oai_nfapi_tx_req(nfapi_tx_request_t *tx_req)
 }
 
 int oai_nfapi_ul_dci_req(nfapi_nr_ul_dci_request_t *ul_dci_req) {
-  nfapi_vnf_p7_config_t *p7_config = vnf.p7_vnfs[0].config;
+  nfapi_vnf_p7_config_t *p7_config = get_p7_vnf()->config;
   ul_dci_req->header.phy_id = 1; // HACK TODO FIXME - need to pass this around!!!!
   ul_dci_req->header.message_id = NFAPI_NR_PHY_MSG_TYPE_UL_DCI_REQUEST;
   //LOG_D(PHY, "[VNF] %s() HI_DCI0_REQ sfn_sf:%d dci:%d hi:%d\n", __FUNCTION__, NFAPI_SFNSF2DEC(hi_dci0_req->sfn_sf), hi_dci0_req->hi_dci0_request_body.number_of_dci, hi_dci0_req->hi_dci0_request_body.number_of_hi);
@@ -2014,7 +2072,7 @@ int oai_nfapi_ul_dci_req(nfapi_nr_ul_dci_request_t *ul_dci_req) {
 }
 
 int oai_nfapi_hi_dci0_req(nfapi_hi_dci0_request_t *hi_dci0_req) {
-  nfapi_vnf_p7_config_t *p7_config = vnf.p7_vnfs[0].config;
+  nfapi_vnf_p7_config_t *p7_config = get_p7_vnf()->config;
   hi_dci0_req->header.phy_id = 1; // HACK TODO FIXME - need to pass this around!!!!
   hi_dci0_req->header.message_id = NFAPI_HI_DCI0_REQUEST;
   //LOG_D(PHY, "[VNF] %s() HI_DCI0_REQ sfn_sf:%d dci:%d hi:%d\n", __FUNCTION__, NFAPI_SFNSF2DEC(hi_dci0_req->sfn_sf), hi_dci0_req->hi_dci0_request_body.number_of_dci, hi_dci0_req->hi_dci0_request_body.number_of_hi);
@@ -2050,7 +2108,7 @@ static void remove_ul_config_req_pdu(int index, nfapi_ul_config_request_t *ul_co
 }
 
 int oai_nfapi_ul_tti_req(nfapi_nr_ul_tti_request_t *ul_tti_req) {
-  nfapi_vnf_p7_config_t *p7_config = vnf.p7_vnfs[0].config;
+  nfapi_vnf_p7_config_t *p7_config = get_p7_vnf()->config;
 
   ul_tti_req->header.phy_id = 1; // HACK TODO FIXME - need to pass this around!!!!
   ul_tti_req->header.message_id = NFAPI_NR_PHY_MSG_TYPE_UL_TTI_REQUEST;
@@ -2070,7 +2128,7 @@ int oai_nfapi_ul_tti_req(nfapi_nr_ul_tti_request_t *ul_tti_req) {
 }
 
 int oai_nfapi_ul_config_req(nfapi_ul_config_request_t *ul_config_req) {
-  nfapi_vnf_p7_config_t *p7_config = vnf.p7_vnfs[0].config;
+  nfapi_vnf_p7_config_t *p7_config = get_p7_vnf()->config;
   ul_config_req->header.phy_id = 1; // HACK TODO FIXME - need to pass this around!!!!
   ul_config_req->header.message_id = NFAPI_UL_CONFIG_REQUEST;
   //LOG_D(PHY, "[VNF] %s() header message_id:%02x\n", __FUNCTION__, ul_config_req->header.message_id);
@@ -2130,7 +2188,7 @@ int oai_nfapi_ul_config_req(nfapi_ul_config_request_t *ul_config_req) {
 int oai_nfapi_ue_release_req(nfapi_ue_release_request_t *release_req){
     if(release_req->ue_release_request_body.number_of_TLVs <= 0)
         return 0;
-    nfapi_vnf_p7_config_t *p7_config = vnf.p7_vnfs[0].config;
+    nfapi_vnf_p7_config_t *p7_config = get_p7_vnf()->config;
 
     release_req->header.phy_id = 1; // HACK TODO FIXME - need to pass this around!!!!
     release_req->header.message_id = NFAPI_UE_RELEASE_REQUEST;
