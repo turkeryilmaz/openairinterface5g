@@ -85,6 +85,18 @@ static void log_v2_pm_info(const char *ru_ip_add, struct lyd_node_inner *stats)
 		  meas_list[7], count_list[7]);
 }
 
+static void get_hardware_states(struct lyd_node_inner *op, ru_notif_t *answer)
+{
+  struct lyd_node *child = NULL;
+  LY_LIST_FOR(op->child, child) {
+    if (strcmp(child->schema->name, "admin-state") == 0) {
+      answer->hardware.admin_state = (strcmp((char *)lyd_get_value(child), "unlocked") == 0) ? true : false;
+    } else if (strcmp(child->schema->name, "availability-state") == 0) {
+      answer->hardware.avail_state = (strcmp((char *)lyd_get_value(child), "NORMAL") == 0) ? true : false;
+    }
+  }
+}
+
 static void recv_notif_v2(struct lyd_node_inner *op, ru_notif_t *answer)
 {
   const char *notif = op->schema->name;
@@ -112,6 +124,12 @@ static void recv_notif_v2(struct lyd_node_inner *op, ru_notif_t *answer)
     }
   } else if (strcmp(notif, "netconf-config-change") == 0) {
     answer->config_change = true;
+  } else if (strcmp(notif, "hardware-state-oper-enabled") == 0) {
+    answer->hardware.oper_state = true;
+    get_hardware_states(op, answer);
+  } else if (strcmp(notif, "hardware-state-oper-disabled") == 0) {
+    answer->hardware.oper_state = false;
+    get_hardware_states(op, answer);
   }
 }
 
