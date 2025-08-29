@@ -26,6 +26,9 @@ extern uint16_t ue_id_g;
 #define  CONFIG_HLP_NUM_UL_ACTORS          "Number of UL actors to use. Set to 0 to disable UL actor framework and do processing inline\n"
 #define  CONFIG_HLP_NUM_DL_ACTORS          "Number of DL actors to use. Set to 0 to disable DL actor framework and do processing inline\n"
 #define  CONFIG_HLP_EXTRA_PDU_ID           "ID of an additional PDU session to configure alongside default PDU session\n"
+#define  CONFIG_HLP_RFSIM_SERVADDR         "RF-Simulator server IP address to connect to\n"
+#define  CONFIG_HLP_RFSIM_SERVPORT         "RF-Simulator server port number to connect to\n"
+#define  CONFIG_HLP_RFSIM_DELAY            "RF-Simulator DL propagation delay in ms\n"
 
 /***************************************************************************************************************************************/
 /* command line options definitions, CMDLINE_XXXX_DESC macros are used to initialize paramdef_t arrays which are then used as argument
@@ -56,7 +59,6 @@ extern uint16_t ue_id_g;
   {"reconfig-file",            CONFIG_HLP_RE_CFG_FILE,         0,               .strptr=&nrUE_params.reconfig_file,         .defstrval="./reconfig.raw",     TYPE_STRING,   0}, \
   {"rbconfig-file",            CONFIG_HLP_RB_CFG_FILE,         0,               .strptr=&nrUE_params.rbconfig_file,         .defstrval="./rbconfig.raw",     TYPE_STRING,   0}, \
   {"ue-rxgain",                    CONFIG_HLP_UERXG,           0,               .dblptr=&nrUE_params.rx_gain,               .defdblval=110,    TYPE_DOUBLE,   0}, \
-  {"ue-rxgain-off",                CONFIG_HLP_UERXGOFF,        0,               .dblptr=&nrUE_params.rx_gain_off,           .defdblval=0,      TYPE_DOUBLE,   0}, \
   {"ue-txgain",                    CONFIG_HLP_UETXG,           0,               .dblptr=&nrUE_params.tx_gain,               .defdblval=0,      TYPE_DOUBLE,   0}, \
   {"ue-nb-ant-rx",                 CONFIG_HLP_UENANTR,         0,               .iptr=&(nrUE_params.nb_antennas_rx),        .defuintval=1,     TYPE_UINT8,    0}, \
   {"ue-nb-ant-tx",                 CONFIG_HLP_UENANTT,         0,               .iptr=&(nrUE_params.nb_antennas_tx),        .defuintval=1,     TYPE_UINT8,    0}, \
@@ -65,12 +67,12 @@ extern uint16_t ue_id_g;
   {"ue-max-power",                 NULL,                       0,               .iptr=&(nrUE_params.tx_max_power),            .defintval=90,     TYPE_INT,      0}, \
   {"r"  ,                          CONFIG_HLP_PRB_SA,          0,               .iptr=&(nrUE_params.N_RB_DL),                .defintval=106,    TYPE_UINT,     0}, \
   {"ssb",                          CONFIG_HLP_SSC,             0,               .iptr=&(nrUE_params.ssb_start_subcarrier), .defintval=516,    TYPE_UINT16,   0}, \
-  {"if_freq" ,                     CONFIG_HLP_IF_FREQ,         0,               .u64ptr=&(nrUE_params.if_freq),              .defuintval=0,     TYPE_UINT64,   0}, \
+  {"if_freq" ,                     CONFIG_HLP_IF_FREQ,         0,               .u64ptr=&(nrUE_params.if_freq),              .defint64val=0,    TYPE_UINT64,   0}, \
   {"if_freq_off" ,                 CONFIG_HLP_IF_FREQ_OFF,     0,               .iptr=&(nrUE_params.if_freq_off),            .defuintval=0,     TYPE_INT,      0}, \
   {"chest-freq",                   CONFIG_HLP_CHESTFREQ,       0,               .iptr=&(nrUE_params.chest_freq),             .defintval=0,      TYPE_INT,      0}, \
   {"chest-time",                   CONFIG_HLP_CHESTTIME,       0,               .iptr=&(nrUE_params.chest_time),             .defintval=0,      TYPE_INT,      0}, \
   {"ue-timing-correction-disable", CONFIG_HLP_DISABLETIMECORR, PARAMFLAG_BOOL,  .iptr=&(nrUE_params.no_timing_correction),   .defintval=0,      TYPE_INT,      0}, \
-  {"SLC",                          CONFIG_HLP_SLF,             0,               .u64ptr=&(sidelink_frequency[0][0]),         .defuintval=2600000000,TYPE_UINT64,0}, \
+  {"SLC",                          CONFIG_HLP_SLF,             0,               .u64ptr=&(sidelink_frequency[0][0]),         .defint64val=2600000000,TYPE_UINT64,0}, \
   {"num-ues",                      NULL,                       0,               .iptr=&(NB_UE_INST),                         .defuintval=1,     TYPE_INT,      0}, \
   {"time-sync-P",                  CONFIG_HLP_TIME_SYNC_P,     0,               .dblptr=&(nrUE_params.time_sync_P),          .defdblval=0.5,    TYPE_DOUBLE,   0}, \
   {"time-sync-I",                  CONFIG_HLP_TIME_SYNC_I,     0,               .dblptr=&(nrUE_params.time_sync_I),          .defdblval=0.0,    TYPE_DOUBLE,   0}, \
@@ -120,7 +122,6 @@ typedef struct {
   char *uecap_file;
   double tx_gain;
   double rx_gain;
-  double rx_gain_off;
   int vcdflag;
   int tx_max_power;
   int num_ul_actors;
@@ -131,11 +132,82 @@ extern uint64_t get_nrUE_optmask(void);
 extern uint64_t set_nrUE_optmask(uint64_t bitmask);
 extern nrUE_params_t *get_nrUE_params(void);
 
+/* NR UE RU configuration section name */
+#define CONFIG_STRING_NRUE_RU_LIST "RUs"
+
+/*---------------------------------------------------------------------------------------------------------------------------------------------------*/
+/*                                                     NR UE RU configuration parameters                                                             */
+/*  optname                        helpstr                     paramflags       XXXptr            defXXXval                     type         numelt  */
+/*---------------------------------------------------------------------------------------------------------------------------------------------------*/
+// clang-format off
+#define NRUE_RU_PARAMS_DESC { \
+  {"nb_tx",                        CONFIG_HLP_UENANTT,         0,               .uptr=NULL,       .defuintval=1,                TYPE_UINT,        0}, \
+  {"nb_rx",                        CONFIG_HLP_UENANTR,         0,               .uptr=NULL,       .defuintval=1,                TYPE_UINT,        0}, \
+  {"att_tx",                       NULL,                       0,               .uptr=NULL,       .defuintval=0,                TYPE_UINT,        0}, \
+  {"att_rx",                       NULL,                       0,               .uptr=NULL,       .defuintval=0,                TYPE_UINT,        0}, \
+  {"max_rxgain",                   NULL,                       0,               .iptr=NULL,       .defintval=120,               TYPE_INT,         0}, \
+  {"sdr_addrs",                    CONFIG_HLP_USRP_ARGS,       0,               .strptr=NULL,     .defstrval="type=b200",       TYPE_STRING,      0}, \
+  {"tx_subdev",                    CONFIG_HLP_TX_SUBDEV,       0,               .strptr=NULL,     .defstrval="",                TYPE_STRING,      0}, \
+  {"rx_subdev",                    CONFIG_HLP_RX_SUBDEV,       0,               .strptr=NULL,     .defstrval="",                TYPE_STRING,      0}, \
+  {"clock_src",                    NULL,                       0,               .strptr=NULL,     .defstrval="internal",        TYPE_STRING,      0}, \
+  {"time_src",                     NULL,                       0,               .strptr=NULL,     .defstrval="internal",        TYPE_STRING,      0}, \
+  {"tune_offset",                  CONFIG_HLP_TUNE_OFFSET,     0,               .dblptr=NULL,     .defdblval=0.0,               TYPE_DOUBLE,      0},  \
+  {"if_freq",                      CONFIG_HLP_IF_FREQ,         0,               .u64ptr=NULL,     .defint64val=0,               TYPE_UINT64,      0}, \
+  {"if_offset",                    CONFIG_HLP_IF_FREQ_OFF,     0,               .iptr=NULL,       .defintval=0,                 TYPE_INT,         0}, \
+  {"rfsim_serveraddr",             CONFIG_HLP_RFSIM_SERVADDR,  0,               .strptr=NULL,     .defstrval=NULL,              TYPE_STRING,      0}, \
+  {"rfsim_serverport",             CONFIG_HLP_RFSIM_SERVPORT,  0,               .u16ptr=NULL,     .defuintval=0,                TYPE_UINT16,      0}, \
+  {"rfsim_prop_delay",             CONFIG_HLP_RFSIM_DELAY,     0,               .dblptr=NULL,     .defdblval=0.0,               TYPE_DOUBLE,      0}, \
+}
+
+#define NRUE_RU_NB_TX_IDX           0
+#define NRUE_RU_NB_RX_IDX           1
+#define NRUE_RU_ATT_TX_IDX          2
+#define NRUE_RU_ATT_RX_IDX          3
+#define NRUE_RU_MAX_RXGAIN_IDX      4
+#define NRUE_RU_SDR_ADDRS_IDX       5
+#define NRUE_RU_TX_SUBDEV_IDX       6
+#define NRUE_RU_RX_SUBDEV_IDX       7
+#define NRUE_RU_CLOCK_SRC_IDX       8
+#define NRUE_RU_TIME_SRC_IDX        9
+#define NRUE_RU_TUNE_OFFSET_IDX    10
+#define NRUE_RU_IF_FREQUENCY_IDX   11
+#define NRUE_RU_IF_FREQ_OFFSET_IDX 12
+#define NRUE_RU_RFSIM_SERVADDR_IDX 13
+#define NRUE_RU_RFSIM_SERVPORT_IDX 14
+#define NRUE_RU_RFSIM_DELAY_IDX    15
+// clang-format on
+
+/* NR UE cell configuration section name */
+#define CONFIG_STRING_NRUE_CELL_LIST "cells"
+
+/*---------------------------------------------------------------------------------------------------------------------------------------------------*/
+/*                                                    NR UE cell configuration parameters                                                            */
+/*  optname                        helpstr                     paramflags       XXXptr            defXXXval                     type         numelt  */
+/*---------------------------------------------------------------------------------------------------------------------------------------------------*/
+// clang-format off
+#define NRUE_CELL_PARAMS_DESC { \
+  {"rf_port",                      NULL,                       0,               .iptr=NULL,       .defintval=0,                 TYPE_INT,         0}, \
+  {"band",                         CONFIG_HLP_BAND,            0,               .iptr=NULL,       .defintval=78,                TYPE_INT,         0}, \
+  {"rf_freq",                      CONFIG_HLP_DLF,             0,               .u64ptr=NULL,     .defint64val=0,               TYPE_UINT64,      0}, \
+  {"rf_offset",                    CONFIG_HLP_ULF,             0,               .iptr=NULL,       .defintval=0,                 TYPE_INT,         0}, \
+  {"numerology",                   CONFIG_HLP_NUMEROLOGY,      0,               .iptr=NULL,       .defintval=1,                 TYPE_INT,         0}, \
+  {"N_RB_DL",                      CONFIG_HLP_PRB_SA,          0,               .iptr=NULL,       .defintval=106,               TYPE_INT,         0}, \
+  {"ssb_start",                    CONFIG_HLP_SSC,             0,               .iptr=NULL,       .defintval=516,               TYPE_INT,         0}, \
+}
+
+#define NRUE_CELL_RF_PORT_IDX         0
+#define NRUE_CELL_BAND_IDX            1
+#define NRUE_CELL_RF_FREQUENCY_IDX    2
+#define NRUE_CELL_RF_FREQ_OFFSET_IDX  3
+#define NRUE_CELL_NUMEROLOGY_IDX      4
+#define NRUE_CELL_N_RB_DL_IDX         5
+#define NRUE_CELL_SSB_START_IDX       6
+// clang-format on
 
 // In nr-ue.c
 extern int setup_nr_ue_buffers(PHY_VARS_NR_UE **phy_vars_ue, openair0_config_t *openair0_cfg);
 extern void fill_ue_band_info(void);
-extern void init_NR_UE(int, char *, char *, char *);
+extern void init_NR_UE(int, char *, char *, char *, int);
 extern void init_NR_UE_threads(PHY_VARS_NR_UE *ue);
 void start_oai_nrue_threads(void);
 void *UE_thread(void *arg);

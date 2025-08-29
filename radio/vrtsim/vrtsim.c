@@ -278,7 +278,7 @@ static client_info_t client_read_info(char *descriptor_file)
   return client_info;
 }
 
-static int vrtsim_connect(openair0_device *device)
+static int vrtsim_connect(openair0_device_t *device)
 {
   vrtsim_state_t *vrtsim_state = (vrtsim_state_t *)device->priv;
 
@@ -340,7 +340,7 @@ static int vrtsim_connect(openair0_device *device)
 }
 
 static int vrtsim_write_internal(vrtsim_state_t *vrtsim_state,
-                                 openair0_timestamp timestamp,
+                                 openair0_timestamp_t timestamp,
                                  c16_t *samples,
                                  int nsamps,
                                  int aarx,
@@ -369,7 +369,7 @@ static int vrtsim_write_internal(vrtsim_state_t *vrtsim_state,
 
 typedef struct {
   vrtsim_state_t *vrtsim_state;
-  openair0_timestamp timestamp;
+  openair0_timestamp_t timestamp;
   c16_t *samples[MAX_NUM_ANTENNAS_TX];
   int nsamps;
   int nbAnt;
@@ -463,7 +463,7 @@ static void perform_channel_modelling(void *arg)
 }
 
 static int vrtsim_write_with_chanmod(vrtsim_state_t *vrtsim_state,
-                                     openair0_timestamp timestamp,
+                                     openair0_timestamp_t timestamp,
                                      void **samplesVoid,
                                      int nsamps,
                                      int nbAnt,
@@ -504,7 +504,12 @@ static int vrtsim_write_with_chanmod(vrtsim_state_t *vrtsim_state,
   return nsamps;
 }
 
-static int vrtsim_write(openair0_device *device, openair0_timestamp timestamp, void **samplesVoid, int nsamps, int nbAnt, int flags)
+static int vrtsim_write(openair0_device_t *device,
+                        openair0_timestamp_t timestamp,
+                        void **samplesVoid,
+                        int nsamps,
+                        int nbAnt,
+                        int flags)
 {
   AssertFatal(nsamps > 0, "Number of samples must be greater than 0\n");
   AssertFatal(nbAnt > 0 && nbAnt <= MAX_NUM_ANTENNAS_TX,
@@ -519,7 +524,7 @@ static int vrtsim_write(openair0_device *device, openair0_timestamp timestamp, v
                            : vrtsim_write_internal(vrtsim_state, timestamp, (c16_t *)samplesVoid[0], nsamps, 0, flags, 0);
 }
 
-static int vrtsim_read(openair0_device *device, openair0_timestamp *ptimestamp, void **samplesVoid, int nsamps, int nbAnt)
+static int vrtsim_read(openair0_device_t *device, openair0_timestamp_t *ptimestamp, void **samplesVoid, int nsamps, int nbAnt)
 {
   vrtsim_state_t *vrtsim_state = (vrtsim_state_t *)device->priv;
   if (shm_td_iq_channel_is_aborted(vrtsim_state->channel)) {
@@ -558,7 +563,7 @@ static int vrtsim_read(openair0_device *device, openair0_timestamp *ptimestamp, 
   return nsamps;
 }
 
-static void vrtsim_end(openair0_device *device)
+static void vrtsim_end(openair0_device_t *device)
 {
   vrtsim_state_t *vrtsim_state = (vrtsim_state_t *)device->priv;
   if (vrtsim_state->role == ROLE_SERVER && vrtsim_state->run_timing_thread) {
@@ -612,23 +617,24 @@ static void vrtsim_end(openair0_device *device)
   }
 }
 
-static int vrtsim_stub(openair0_device *device)
-{
-  return 0;
-}
-static int vrtsim_stub2(openair0_device *device, openair0_config_t *openair0_cfg)
+static int vrtsim_stub(openair0_device_t *device)
 {
   return 0;
 }
 
-static int vrtsim_set_freq(openair0_device *device, openair0_config_t *openair0_cfg)
+static int vrtsim_stub2(openair0_device_t *device, openair0_config_t *openair0_cfg)
+{
+  return 0;
+}
+
+static int vrtsim_set_freq(openair0_device_t *device, openair0_config_t *openair0_cfg)
 {
   vrtsim_state_t *s = device->priv;
   s->rx_freq = openair0_cfg->rx_freq[0];
   return 0;
 }
 
-__attribute__((__visibility__("default"))) int device_init(openair0_device *device, openair0_config_t *openair0_cfg)
+__attribute__((__visibility__("default"))) int device_init(openair0_device_t *device, openair0_config_t *openair0_cfg)
 {
   vrtsim_state_t *vrtsim_state = calloc_or_fail(1, sizeof(vrtsim_state_t));
   vrtsim_readconfig(vrtsim_state);

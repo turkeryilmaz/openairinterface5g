@@ -37,74 +37,60 @@ typedef struct {
   char                  *dpdk_main_command_line;
 } benetel_eth_state_t;
 
-int trx_benetel_start(openair0_device *device)
+int trx_benetel_start(openair0_device_t *device)
 {
   printf("BENETEL: %s\n", __FUNCTION__);
   return 0;
 }
 
-
-void trx_benetel_end(openair0_device *device)
+void trx_benetel_end(openair0_device_t *device)
 {
   printf("BENETEL: %s\n", __FUNCTION__);
 }
 
-
-int trx_benetel_stop(openair0_device *device)
-{
-  printf("BENETEL: %s\n", __FUNCTION__);
-  return(0);
-}
-
-
-int trx_benetel_set_freq(openair0_device* device, openair0_config_t *openair0_cfg)
+int trx_benetel_stop(openair0_device_t *device)
 {
   printf("BENETEL: %s\n", __FUNCTION__);
   return(0);
 }
 
-
-int trx_benetel_set_gains(openair0_device* device,
-                          openair0_config_t *openair0_cfg)
+int trx_benetel_set_freq(openair0_device_t *device, openair0_config_t *openair0_cfg)
 {
   printf("BENETEL: %s\n", __FUNCTION__);
   return(0);
 }
 
-
-int trx_benetel_get_stats(openair0_device* device)
+int trx_benetel_set_gains(openair0_device_t *device, openair0_config_t *openair0_cfg)
 {
   printf("BENETEL: %s\n", __FUNCTION__);
   return(0);
 }
 
-
-int trx_benetel_reset_stats(openair0_device* device)
+int trx_benetel_get_stats(openair0_device_t *device)
 {
   printf("BENETEL: %s\n", __FUNCTION__);
   return(0);
 }
 
+int trx_benetel_reset_stats(openair0_device_t *device)
+{
+  printf("BENETEL: %s\n", __FUNCTION__);
+  return(0);
+}
 
-int ethernet_tune(openair0_device *device,
-                  unsigned int option,
-                  int value)
+int ethernet_tune(openair0_device_t *device, unsigned int option, int value)
 {
   printf("BENETEL: %s\n", __FUNCTION__);
   return 0;
 }
 
-int trx_benetel_write_raw(openair0_device *device,
-                          openair0_timestamp timestamp,
-                          void **buff, int nsamps, int cc, int flags)
+int trx_benetel_write_raw(openair0_device_t *device, openair0_timestamp_t timestamp, void **buff, int nsamps, int cc, int flags)
 {
   printf("BENETEL: %s\n", __FUNCTION__);
   return nsamps*4;
 }
 
-int trx_benetel_read_raw(openair0_device *device,
-                         openair0_timestamp *timestamp,
-                         void **buff, int nsamps, int cc)
+int trx_benetel_read_raw(openair0_device_t *device, openair0_timestamp_t *timestamp, void **buff, int nsamps, int cc)
 {
   printf("BENETEL: %s\n", __FUNCTION__);
   return nsamps*4;
@@ -131,7 +117,7 @@ char *msg_type(int t)
   return s[t];
 }
 
-int trx_benetel_ctlsend(openair0_device *device, void *msg, ssize_t msg_len)
+int trx_benetel_ctlsend(openair0_device_t *device, void *msg, ssize_t msg_len)
 {
   RRU_CONFIG_msg_t *rru_config_msg = msg;
   benetel_eth_state_t *s = device->priv;
@@ -146,7 +132,7 @@ int trx_benetel_ctlsend(openair0_device *device, void *msg, ssize_t msg_len)
   return msg_len;
 }
 
-int trx_benetel_ctlrecv(openair0_device *device, void *msg, ssize_t msg_len)
+int trx_benetel_ctlrecv(openair0_device_t *device, void *msg, ssize_t msg_len)
 {
   RRU_CONFIG_msg_t *rru_config_msg = msg;
   benetel_eth_state_t *s = device->priv;
@@ -336,10 +322,9 @@ void *get_internal_parameter(char *name)
   return NULL;
 }
 
-__attribute__((__visibility__("default")))
-int transport_init(openair0_device *device,
-                   openair0_config_t *openair0_cfg,
-                   eth_params_t * eth_params )
+__attribute__((__visibility__("default"))) int transport_init(openair0_device_t *device,
+                                                              openair0_config_t *openair0_cfg,
+                                                              eth_params_t *eth_params)
 {
   benetel_eth_state_t *eth;
 

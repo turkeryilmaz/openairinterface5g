@@ -113,7 +113,7 @@ typedef struct {
   /// Component Carrier index
   uint8_t              CC_id;
   /// Last RX timestamp
-  openair0_timestamp timestamp_rx;
+  openair0_timestamp_t timestamp_rx;
 } UE_nr_proc_t;
 
 typedef enum {
@@ -334,15 +334,48 @@ typedef struct {
   fapi_nr_dl_ntn_config_command_pdu ntn_config_params;
 } ntn_config_message_t;
 
+typedef struct {
+  unsigned int nb_tx;
+  unsigned int nb_rx;
+  unsigned int att_tx;
+  unsigned int att_rx;
+  int max_rxgain;
+  char *sdr_addrs;
+  char *tx_subdev;
+  char *rx_subdev;
+  clock_source_t clock_source;
+  clock_source_t time_source;
+  double tune_offset;
+  uint64_t if_frequency;
+  int if_freq_offset;
+
+  // Parameters for RF-Simulator
+  char *rfsim_serveraddr;
+  uint16_t rfsim_serverport;
+  double rfsim_prop_delay;
+
+  int used_by_cell;
+}  nrUE_RU_params_t;
+
+typedef struct {
+  int rf_port;
+  int band;
+  uint64_t rf_frequency;
+  int rf_freq_offset;
+  int numerology;
+  int N_RB_DL;
+  int ssb_start;
+  int used_by_ue;
+}  nrUE_cell_params_t;
+
 /// Top-level PHY Data Structure for UE
 typedef struct PHY_VARS_NR_UE_s {
-  openair0_config_t openair0_cfg[MAX_CARDS];
   /// \brief Module ID indicator for this instance
   uint8_t Mod_id;
   /// \brief Component carrier ID for this PHY instance
   uint8_t CC_id;
   /// \brief Mapping of CC_id antennas to cards
-  openair0_rf_map      rf_map;
+  openair0_rf_map_t rf_map;
   /// \brief Indicator that UE should perform band scanning
   int UE_scan;
   /// \brief Indicator that UE should perform coarse scanning around carrier
@@ -496,9 +529,6 @@ typedef struct PHY_VARS_NR_UE_s {
   time_stats_t ue_ul_indication_stats;
   nr_ue_phy_cpu_stat_t phy_cpu_stats;
 
-  /// RF and Interface devices per CC
-  openair0_device rfdevice;
-
   void* scopeData;
   // Pointers to hold PDSCH data only for phy simulators
   void *phy_sim_rxdataF;
@@ -526,7 +556,7 @@ typedef struct PHY_VARS_NR_UE_s {
 } PHY_VARS_NR_UE;
 
 typedef struct {
-  openair0_timestamp timestamp_tx;
+  openair0_timestamp_t timestamp_tx;
   int gNB_id;
   /// NR slot index within frame_tx [0 .. slots_per_frame - 1] to act upon for transmission
   int nr_slot_tx;

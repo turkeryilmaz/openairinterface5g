@@ -234,25 +234,15 @@ nr_initial_sync_t nr_initial_sync(UE_nr_rxtx_proc_t *proc,
   @param dl_Carrier Pointer to DL carrier to be set
   @param ul_Carrier Pointer to UL carrier to be set
 */
-void nr_get_carrier_frequencies(PHY_VARS_NR_UE *ue,
+void nr_get_carrier_frequencies(const PHY_VARS_NR_UE *ue,
                                 uint64_t *dl_Carrier,
                                 uint64_t *ul_Carrier);
 
 /*!
-  \brief This function gets the carrier frequencies either from FP or command-line-set global variables, depending on the availability of the latter
-  @param ue         Pointer to PHY UE
-  @param sl_Carrier Pointer to SL carrier to be set
-*/
-void nr_get_carrier_frequencies_sl(PHY_VARS_NR_UE *ue,
-                                   uint64_t *sl_Carrier);
-
-/*!
   \brief This function sets the OAI RF card rx/tx params
   @param openair0_cfg   Pointer OAI config for a specific card
-  @param rx_gain_off    Rx gain offset
 */
-void nr_rf_card_config_gain(openair0_config_t *openair0_cfg,
-                            double rx_gain_off);
+void nr_rf_card_config_gain(openair0_config_t *openair0_cfg);
 
 void nr_rf_card_config_freq(openair0_config_t *openair0_cfg,
                             uint64_t ul_Carrier,
