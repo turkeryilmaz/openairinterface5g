@@ -152,9 +152,7 @@ int main(int argc, char **argv){
 
   NR_DL_FRAME_PARMS *frame_parms;
   nfapi_nr_prach_config_t *prach_config;
-  nfapi_nr_prach_pdu_t *prach_pdu;
   fapi_nr_prach_config_t *ue_prach_config;
-  fapi_nr_ul_config_prach_pdu *ue_prach_pdu;
 
   channel_desc_t *UE2gNB;
   SCM_t channel_model = Rayleigh1;
@@ -418,7 +416,6 @@ int main(int argc, char **argv){
   ru           = RC.ru[0];
   frame_parms  = &gNB->frame_parms;
   prach_config = &gNB->gNB_config.prach_config;
-  prach_pdu    = &gNB->prach_vars.list[0].pdu;
   frame_parms  = &gNB->frame_parms; //to be initialized I suppose (maybe not necessary for PBCH)
 
   s_re = malloc(2*sizeof(double*));
@@ -562,9 +559,6 @@ int main(int argc, char **argv){
   prach_config->restricted_set_config.value                                              = restrictedSetConfig;
   prach_config->prach_sequence_length.value                                              = prach_sequence_length;
   prach_config->prach_sub_c_spacing.value                                                = mu;
-  prach_pdu->num_cs                                                                      = get_NCS(NCS_config, format0, restrictedSetConfig);
-  prach_config->num_prach_fd_occasions_list[fd_occasion].num_root_sequences.value        = 1+(64/(N_ZC/prach_pdu->num_cs));
-  prach_pdu->prach_format                                                                = prach_format;
 
   memcpy((void*)&ru->config,(void*)&RC.gNB[0]->gNB_config,sizeof(ru->config));
   RC.nb_nr_L1_inst=1;
@@ -574,6 +568,10 @@ int main(int argc, char **argv){
 
   phy_init_nr_gNB(gNB);
   nr_phy_init_RU(ru);
+  nfapi_nr_prach_pdu_t *prach_pdu = &gNB->prach_list.list[0].pdu;
+  prach_pdu->num_cs                                                                      = get_NCS(NCS_config, format0, restrictedSetConfig);
+  prach_config->num_prach_fd_occasions_list[fd_occasion].num_root_sequences.value        = 1+(64/(N_ZC/prach_pdu->num_cs));
+  prach_pdu->prach_format                                                                = prach_format;
 
   // Configure UE
   UE = malloc(sizeof(PHY_VARS_NR_UE));
@@ -589,7 +587,7 @@ int main(int argc, char **argv){
     exit(-1);
   }
 
-  ue_prach_pdu           = &UE->prach_vars[0]->prach_pdu;
+  fapi_nr_ul_config_prach_pdu *ue_prach_pdu = &UE->prach_vars[0]->prach_pdu;
   ue_prach_config        = &UE->nrUE_config.prach_config;
   txdata = UE->common_vars.txData;
 
@@ -772,25 +770,28 @@ int main(int argc, char **argv){
       nr_slot_fep_ul(frame_parms, ru->common.rxdata[aa], ru->common.rxdataF[aa], l, slot, ru->N_TA_offset);
     }
   }
+  rx_nr_prach_ru(ru, prach_format, numRA, 0, prachStartSymbol, slot, prachOccasion, frame, slot);
+  c16_t *rxsigF[ru->nb_rx];
+  for (int i = 0; i < ru->nb_rx; ++i)
+    rxsigF[i] = (c16_t *)ru->prach_rxsigF[prachOccasion][i];
+  if (n_frames == 1)
+    LOG_I(PHY,
+          "ncs %d,num_seq %d\n",
+          prach_pdu->num_cs,
+          prach_config->num_prach_fd_occasions_list[fd_occasion].num_root_sequences.value);
+  rx_nr_prach(gNB, prach_pdu, prachOccasion, frame, subframe, &preamble_rx, &preamble_energy, &preamble_delay, rxsigF);
 
-        rx_nr_prach_ru(ru, prach_format, numRA, 0, prachStartSymbol, slot, prachOccasion, frame, slot);
+  //        printf(" preamble_energy %d preamble_rx %d preamble_tx %d \n", preamble_energy, preamble_rx, preamble_tx);
 
-        for (int i = 0; i < ru->nb_rx; ++i)
-          gNB->prach_vars.rxsigF[i] = ru->prach_rxsigF[prachOccasion][i];
-	if (n_frames == 1) printf("ncs %d,num_seq %d\n",prach_pdu->num_cs,  prach_config->num_prach_fd_occasions_list[fd_occasion].num_root_sequences.value);
-        rx_nr_prach(gNB, prach_pdu, prachOccasion, frame, subframe, &preamble_rx, &preamble_energy, &preamble_delay);
+  if (preamble_rx != preamble_tx)
+    prach_errors++;
+  else
+    delay_avg += (double)preamble_delay;
 
-	//        printf(" preamble_energy %d preamble_rx %d preamble_tx %d \n", preamble_energy, preamble_rx, preamble_tx);
+  N_ZC = (prach_sequence_length) ? 139 : 839;
 
-        if (preamble_rx != preamble_tx)
-          prach_errors++;
-        else
-          delay_avg += (double)preamble_delay;
-
-        N_ZC = (prach_sequence_length) ? 139 : 839;
-
-        if (n_frames==1) {
-          printf("preamble %d (tx %d) : energy %d, delay %d\n",preamble_rx,preamble_tx,preamble_energy,preamble_delay);
+  if (n_frames == 1) {
+    printf("preamble %d (tx %d) : energy %d, delay %d\n", preamble_rx, preamble_tx, preamble_energy, preamble_delay);
 #ifdef NR_PRACH_DEBUG
           LOG_M("prach0.m","prach0", &txdata[0][prach_start], frame_parms->samples_per_subframe, 1, 1);
           LOG_M("rxsig0.m","rxs0", &ru->common.rxdata[0][subframe*frame_parms->samples_per_subframe], frame_parms->samples_per_subframe, 1, 1);
@@ -800,7 +801,7 @@ int main(int argc, char **argv){
           LOG_M("prach_preamble.m","prachp", &gNB->X_u[0], N_ZC, 1, 1);
           LOG_M("ue_prach_preamble.m","prachp", &UE->X_u[0], N_ZC, 1, 1);
 #endif
-        }
+  }
       }
 
       printf("SNR %f dB, UE Speed %f km/h: errors %u/%d (delay %f)\n", SNR, ue_speed, prach_errors, n_frames, delay_avg/(double)(n_frames-prach_errors));

@@ -72,7 +72,7 @@
 
 #include "types.h"
 #include "nfapi_interface.h"
-
+#include "nfapi_nr_interface_scf.h"
 #define RX_NB_TH_MAX 2
 #define RX_NB_TH 2
 #define RX_NB_TH_DL 14
@@ -997,6 +997,23 @@ typedef struct {
   pthread_mutex_t mutex_failure;
   bool failed;
 } decode_abort_t;
+
+#define NUMBER_OF_NR_PRACH_MAX 8
+typedef struct {
+  int frame;
+  int slot;
+  int num_slots; // prach duration in slots
+  int beams[NFAPI_MAX_NUM_BG_IF];
+  nfapi_nr_prach_pdu_t pdu;
+} prach_item_t;
+
+typedef struct {
+  /// prach commands
+  prach_item_t list[NUMBER_OF_NR_PRACH_MAX];
+  /// mutex for prach_list access
+  pthread_mutex_t prach_list_mutex;
+} prach_list_t;
+void init_prach_list(prach_list_t *);
 
 static inline void init_abort(decode_abort_t *ab)
 {

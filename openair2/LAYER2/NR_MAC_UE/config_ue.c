@@ -1823,6 +1823,7 @@ void nr_rrc_mac_config_req_reset(module_id_t module_id, NR_UE_MAC_reset_cause_t 
       nr_ue_mac_default_configs(mac);
       nr_ue_reset_sync_state(mac);
       release_mac_configuration(mac, cause);
+      LOG_W(PHY,"UE enter re-establishment and lock all LCIDs\n");
       // suspend all RBs except SRB0
       for (int j = 0; j < mac->lc_ordered_list.count; j++) {
         nr_lcordered_info_t *lc = mac->lc_ordered_list.array[j];
