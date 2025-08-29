@@ -52,7 +52,7 @@ static void initialize_agent(ngran_node_t node_type, e2_agent_args_t oai_args)
 
   printf("After RCconfig_NR_E2agent %s %s \n",oai_args.sm_dir, oai_args.ip  );
 
-  fr_args_t args = { .ip = oai_args.ip }; // init_fr_args(0, NULL);
+  fr_args_t args = { .ip = (char*)oai_args.ip }; // init_fr_args(0, NULL);
   memcpy(args.libs_dir, oai_args.sm_dir, 128);
 
   sleep(1);
