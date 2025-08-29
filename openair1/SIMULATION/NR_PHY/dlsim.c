@@ -463,6 +463,9 @@ int main(int argc, char **argv)
         printf("Unsupported nr Of Layers %d\n", g_nrOfLayers);
         exit(-1);
       }
+      if (g_nrOfLayers == 2) g_pmi=40;
+      else if (g_nrOfLayers ==3) g_pmi=80;
+      else if (g_nrOfLayers ==4) g_pmi=106;
       break;
 
     case 'p':
@@ -1034,6 +1037,8 @@ printf("%d\n", slot);
     reset_meas(&gNB->dlsch_segmentation_stats);
     reset_meas(&gNB->dlsch_modulation_stats);
     reset_meas(&gNB->dlsch_precoding_stats);
+    reset_meas(&gNB->dlsch_layer_mapping_stats);
+    reset_meas(&gNB->dlsch_resource_mapping_stats);
     reset_meas(&gNB->dlsch_encoding_stats);
     reset_meas(&gNB->dci_generation_stats);
     reset_meas(&gNB->tinput);
@@ -1346,6 +1351,10 @@ printf("%d\n", slot);
       printStatIndent3(&gNB->dlsch_interleaving_stats,  "DLSCH Interleaving time");
       printStatIndent2(&gNB->dlsch_modulation_stats,"DLSCH modulation time");
       printStatIndent2(&gNB->dlsch_scrambling_stats, "DLSCH scrambling time");
+      printStatIndent2(&gNB->dlsch_layer_mapping_stats,"DLSCH Layer Mapping time");
+      gNB->dlsch_resource_mapping_stats.trials = gNB->dlsch_layer_mapping_stats.trials;
+      printStatIndent2(&gNB->dlsch_resource_mapping_stats,"DLSCH Resource Mapping time");
+      gNB->dlsch_precoding_stats.trials = gNB->dlsch_layer_mapping_stats.trials;
       printStatIndent2(&gNB->dlsch_precoding_stats,"DLSCH Mapping/Precoding time");
       if (gNB->phase_comp)
         printStatIndent2(&gNB->phase_comp_stats, "Phase Compensation");
