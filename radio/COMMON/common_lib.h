@@ -427,6 +427,9 @@ struct openair0_device {
   /* !brief timestamp of first read */
   openair0_timestamp_t firstTS;
 
+  /* !brief flag indicating that firstTS was initialized */
+  bool firstTS_initialized;
+
   /* !brief RF-Simulator params */
   rfsim_params_t rfsim_params;
 

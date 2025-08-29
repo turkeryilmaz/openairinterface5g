@@ -32,8 +32,6 @@ openair0_config_t openair0_cfg[MAX_CARDS];
 openair0_device_t openair0_dev[MAX_CARDS];
 NR_DL_FRAME_PARMS cell_fp[MAX_CARDS];
 
-static int firstTS_initialized = 0;
-
 void nr_ue_ru_start(void)
 {
   for (int card = 0; card < MAX_CARDS; card++) {
@@ -63,22 +61,32 @@ void nr_ue_ru_end(void)
 
 void nr_ue_ru_set_freq(PHY_VARS_NR_UE *UE, uint64_t ul_carrier, uint64_t dl_carrier, int freq_offset)
 {
-  NR_DL_FRAME_PARMS *fp0 = &cell_fp[UE->rf_map.card];
+  int current_cell_id = nrue_rus[UE->rf_map.card].used_by_cell;
+  NR_DL_FRAME_PARMS *fp0 = &cell_fp[current_cell_id];
   uint64_t carrier_distance =
       (fp0->dl_CarrierFreq > dl_carrier ? fp0->dl_CarrierFreq - dl_carrier : dl_carrier - fp0->dl_CarrierFreq) +
       (fp0->ul_CarrierFreq > ul_carrier ? fp0->ul_CarrierFreq - ul_carrier : ul_carrier - fp0->ul_CarrierFreq);
-  for (int card = 0; carrier_distance != 0 && card < MAX_CARDS; card++) {
-    fp0 = &cell_fp[card];
-    if (fp0->samples_per_subframe == 0)
+
+  for (int ru_id = 0; carrier_distance != 0 && ru_id < nrue_ru_count; ru_id++) {
+    int cell_id = nrue_rus[ru_id].used_by_cell;
+    if (cell_id < 0) // skip RUs that have no cell definition
       continue;
+    if (nrue_cells[cell_id].used_by_ue >= 0) // skip cells that are already used by an UE
+      continue;
+
+    fp0 = &cell_fp[cell_id];
     uint64_t this_carrier_distance =
         (fp0->dl_CarrierFreq > dl_carrier ? fp0->dl_CarrierFreq - dl_carrier : dl_carrier - fp0->dl_CarrierFreq) +
         (fp0->ul_CarrierFreq > ul_carrier ? fp0->ul_CarrierFreq - ul_carrier : ul_carrier - fp0->ul_CarrierFreq);
     if (this_carrier_distance < carrier_distance) {
-      UE->rf_map.card = card;
+      UE->rf_map.card = ru_id;
       carrier_distance = this_carrier_distance;
     }
   }
+
+  nrue_cells[current_cell_id].used_by_ue = -1;
+  current_cell_id = nrue_rus[UE->rf_map.card].used_by_cell;
+  nrue_cells[current_cell_id].used_by_ue = UE->Mod_id;
 
   openair0_config_t *cfg0 = &openair0_cfg[UE->rf_map.card];
   openair0_device_t *dev0 = &openair0_dev[UE->rf_map.card];
@@ -114,25 +122,37 @@ int nr_ue_ru_read(PHY_VARS_NR_UE *UE, openair0_timestamp_t *ptimestamp, void **b
   openair0_device_t *dev0 = &openair0_dev[UE->rf_map.card];
   openair0_timestamp_t tmp_timestamp;
   int ret = dev0->trx_read_func(dev0, &tmp_timestamp, buff, nsamps, num_antennas);
-  if (!firstTS_initialized)
+  if (!dev0->firstTS_initialized) {
     dev0->firstTS = tmp_timestamp;
+    dev0->firstTS_initialized = true;
+  }
   *ptimestamp = tmp_timestamp - dev0->firstTS;
+
+  if (UE->Mod_id != 0)
+    return ret;
+
+  // UE 0 needs to read from all RUs that are not used by any other UE
 
   void *tmp_buf[num_antennas];
   uint32_t tmp_samples[nsamps];
   for (int ant = 0; ant < num_antennas; ant++)
     tmp_buf[ant] = tmp_samples;
 
-  for (int card = 0; card < MAX_CARDS; card++) {
-    dev0 = &openair0_dev[card];
-    if (card == UE->rf_map.card || dev0->trx_read_func == NULL)
+  for (int ru_id = 0; ru_id < nrue_ru_count; ru_id++) {
+    int cell_id = nrue_rus[ru_id].used_by_cell;
+    if (cell_id < 0) // skip RUs that have no cell definition
       continue;
-    dev0->trx_read_func(dev0, &tmp_timestamp, tmp_buf, nsamps, num_antennas);
-    if (!firstTS_initialized)
-      dev0->firstTS = tmp_timestamp;
-  }
+    int ue_id = nrue_cells[cell_id].used_by_ue;
+    if (ue_id >= 0) // skip cells that are already used by an UE
+      continue;
 
-  firstTS_initialized = 1;
+    dev0 = &openair0_dev[ru_id];
+    dev0->trx_read_func(dev0, &tmp_timestamp, tmp_buf, nsamps, num_antennas);
+    if (!dev0->firstTS_initialized) {
+      dev0->firstTS = tmp_timestamp;
+      dev0->firstTS_initialized = true;
+    }
+  }
 
   return ret;
 }
@@ -142,16 +162,26 @@ int nr_ue_ru_write(PHY_VARS_NR_UE *UE, openair0_timestamp_t timestamp, void **bu
   openair0_device_t *dev0 = &openair0_dev[UE->rf_map.card];
   int ret = dev0->trx_write_func(dev0, timestamp + dev0->firstTS, buff, nsamps, num_antennas, flags);
 
+  if (UE->Mod_id != 0)
+    return ret;
+
+  // UE 0 needs to write to all RUs that are not used by any other UE
+
   void *tmp_buf[num_antennas];
   uint32_t tmp_samples[nsamps];
   memset(tmp_samples, 0, sizeof(tmp_samples));
   for (int ant = 0; ant < num_antennas; ant++)
     tmp_buf[ant] = tmp_samples;
 
-  for (int card = 0; card < MAX_CARDS; card++) {
-    dev0 = &openair0_dev[card];
-    if (card == UE->rf_map.card || dev0->trx_write_func == NULL)
+  for (int ru_id = 0; ru_id < nrue_ru_count; ru_id++) {
+    int cell_id = nrue_rus[ru_id].used_by_cell;
+    if (cell_id < 0) // skip RUs that have no cell definition
       continue;
+    int ue_id = nrue_cells[cell_id].used_by_ue;
+    if (ue_id >= 0) // skip cells that are already used by an UE
+      continue;
+
+    dev0 = &openair0_dev[ru_id];
     dev0->trx_write_func(dev0, timestamp + dev0->firstTS, tmp_buf, nsamps, num_antennas, flags);
   }
   return ret;
