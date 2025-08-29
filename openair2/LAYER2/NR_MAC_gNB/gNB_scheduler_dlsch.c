@@ -1379,6 +1379,12 @@ void nr_schedule_ue_spec(module_id_t module_id,
         T_INT(frame), T_INT(slot), T_INT(current_harq_pid), T_BUFFER(harq->transportBlock.buf, TBS));
     }
 
+    DevAssert(nrOfLayers >= 1 && nrOfLayers <= 8);
+    DevAssert(current_BWP->mcsTableIdx >= 0 && current_BWP->mcsTableIdx <= 3);
+    DevAssert(sched_pdsch->mcs >= 0 && sched_pdsch->mcs <= 31);
+    NR_du_stats_t *stats = &gNB_mac->du_stats;
+    stats->pdsch_mcs_dist[nrOfLayers - 1][current_BWP->mcsTableIdx][sched_pdsch->mcs] += sched_pdsch->rbSize;
+
     const int ntx_req = TX_req->Number_of_PDUs;
     nfapi_nr_pdu_t *tx_req = &TX_req->pdu_list[ntx_req];
     tx_req->PDU_index  = pduindex;

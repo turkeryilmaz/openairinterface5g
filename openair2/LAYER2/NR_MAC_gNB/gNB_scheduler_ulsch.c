@@ -2557,6 +2557,12 @@ void nr_schedule_ulsch(module_id_t module_id, frame_t frame, slot_t slot, nfapi_
           sched_ctrl->sched_ul_bytes,
           sched_ctrl->estimated_ul_buffer - sched_ctrl->sched_ul_bytes,
           sched_ctrl->tpc0);
+    
+    DevAssert(sched_pusch->nrOfLayers >= 1 && sched_pusch->nrOfLayers <= 8);
+    DevAssert(current_BWP->mcs_table >= 0 && current_BWP->mcs_table <= 1);
+    DevAssert(sched_pusch->mcs >= 0 && sched_pusch->mcs <= 31);
+    NR_du_stats_t *stats = &nr_mac->du_stats;
+    stats->pusch_mcs_dist[sched_pusch->nrOfLayers - 1][current_BWP->mcs_table][sched_pusch->mcs] += sched_pusch->rbSize;
 
     /* PUSCH in a later slot, but corresponding DCI now! */
     const int index = ul_buffer_index(sched_pusch->frame,
