@@ -505,11 +505,46 @@ static int get_ulsyncvalidityduration_enum_value(int val)
   return retval;
 }
 
+static void determine_initial_BWP(NR_ServingCellConfigCommon_t *scc)
+{
+  long scs = *scc->ssbSubcarrierSpacing;
+  NR_FrequencyInfoDL_t *frequencyInfoDL = scc->downlinkConfigCommon->frequencyInfoDL;
+  frequency_range_t frequency_range = get_freq_range_from_band(*frequencyInfoDL->frequencyBandList.list.array[0]);
+  int off_pA = get_ssb_offset_to_pointA(*frequencyInfoDL->absoluteFrequencySSB,
+                                        frequencyInfoDL->absoluteFrequencyPointA,
+                                        scs,
+                                        frequency_range);
+  int ssb_prb_offset_pointA = frequency_range == FR1 ? off_pA >> scs : off_pA >> (scs - 2);
+  int start_rb, nb_rb;
+  if (IS_SA_MODE(get_softmodem_params())) {
+    NR_PDCCH_ConfigCommon_t *pdcch_configcommon = scc->downlinkConfigCommon->initialDownlinkBWP->pdcch_ConfigCommon->choice.setup;
+    NR_ControlResourceSetZero_t *csetZero = pdcch_configcommon->controlResourceSetZero;
+    AssertFatal(csetZero, "Coreset0 index not available\n");
+    int ssb_offset =  get_ssb_subcarrier_offset(*frequencyInfoDL->absoluteFrequencySSB,
+                                                frequencyInfoDL->absoluteFrequencyPointA,
+                                                *scc->ssbSubcarrierSpacing);
+    int nr_band = *scc->downlinkConfigCommon->frequencyInfoDL->frequencyBandList.list.array[0];
+    NR_Type0_PDCCH_CSS_config_t type0_PDCCH_CSS_config = {0};
+    // TODO assuming SSB and PDCCH SCS are the same
+    get_info_from_cset_tables(&type0_PDCCH_CSS_config, scs, scs, ssb_offset, *csetZero, nr_band);
+    start_rb = ssb_prb_offset_pointA - type0_PDCCH_CSS_config.rb_offset;
+    nb_rb = type0_PDCCH_CSS_config.num_rbs;
+  } else {
+    // for NSA we make the arbitrary choice to have an initial BWP of 24 PRBs
+    // it is more than the 20 PRBs of SSB and equal to the smaller BW normally used in NR
+    nb_rb = 24;
+    start_rb = ssb_prb_offset_pointA < 4 ? 0 : ssb_prb_offset_pointA - 4;
+  }
+  int riv = PRBalloc_to_locationandbandwidth(nb_rb, start_rb);
+  LOG_I(GNB_APP, "Initial BWP RIV %d nb PRBs %d start PRB %d\n", riv, nb_rb, start_rb);
+  scc->downlinkConfigCommon->initialDownlinkBWP->genericParameters.locationAndBandwidth = riv;
+  scc->uplinkConfigCommon->initialUplinkBWP->genericParameters.locationAndBandwidth = riv;
+}
+
 void fix_scc(NR_ServingCellConfigCommon_t *scc, uint64_t ssbmap)
 {
   scc->ssb_PositionsInBurst->present = get_ssb_len(scc);
   uint8_t curr_bit;
-
   // changing endianicity of ssbmap and filling the ssb_PositionsInBurst buffers
   if(scc->ssb_PositionsInBurst->present == NR_ServingCellConfigCommon__ssb_PositionsInBurst_PR_shortBitmap) {
     scc->ssb_PositionsInBurst->choice.shortBitmap.size = 1;
@@ -620,6 +655,8 @@ void fix_scc(NR_ServingCellConfigCommon_t *scc, uint64_t ssbmap)
   AssertFatal(*scc->uplinkConfigCommon->initialUplinkBWP->pucch_ConfigCommon->choice.setup->pucch_ResourceCommon < 2,
 	      "pucch_ResourceConfig should be 0 or 1 for now\n");
 
+  determine_initial_BWP(scc);
+
   if (*scc->ext2->ntn_Config_r17->ntn_UlSyncValidityDuration_r17 == 0) {
     free(scc->ext2->ntn_Config_r17->ntn_UlSyncValidityDuration_r17);
     scc->ext2->ntn_Config_r17->ntn_UlSyncValidityDuration_r17 = NULL;
@@ -668,13 +705,6 @@ void prepare_scd(NR_ServingCellConfig_t *scd) {
   scd->uplinkConfig = calloc_or_fail(1, sizeof(*scd->uplinkConfig));
   scd->uplinkConfig->uplinkBWP_ToAddModList = calloc_or_fail(1, sizeof(*scd->uplinkConfig->uplinkBWP_ToAddModList));
   scd->bwp_InactivityTimer = calloc_or_fail(1, sizeof(*scd->bwp_InactivityTimer));
-  scd->uplinkConfig->firstActiveUplinkBWP_Id = calloc_or_fail(1, sizeof(*scd->uplinkConfig->firstActiveUplinkBWP_Id));
-  scd->firstActiveDownlinkBWP_Id = calloc_or_fail(1, sizeof(*scd->firstActiveDownlinkBWP_Id));
-  *scd->firstActiveDownlinkBWP_Id = 1;
-  *scd->uplinkConfig->firstActiveUplinkBWP_Id = 1;
-  scd->defaultDownlinkBWP_Id = calloc_or_fail(1, sizeof(*scd->defaultDownlinkBWP_Id));
-  *scd->defaultDownlinkBWP_Id = 0;
-
   for (int j = 0; j < NR_MAX_NUM_BWP; j++) {
 
     // Downlink bandwidth part
@@ -765,11 +795,11 @@ void prepare_scd(NR_ServingCellConfig_t *scd) {
 }
 
 /* This function checks dedicated serving cell configuration and performs fixes as needed */
-void fix_scd(NR_ServingCellConfig_t *scd) {
-
+void fix_scd(NR_ServingCellConfig_t *scd)
+{
   // Remove unused BWPs
   int b = 0;
-  while (b<scd->downlinkBWP_ToAddModList->list.count) {
+  while (b < scd->downlinkBWP_ToAddModList->list.count) {
     if (scd->downlinkBWP_ToAddModList->list.array[b]->bwp_Common->genericParameters.locationAndBandwidth == 0) {
       ASN_STRUCT_FREE(asn_DEF_NR_BWP_Downlink, scd->downlinkBWP_ToAddModList->list.array[b]);
       asn_sequence_del(&scd->downlinkBWP_ToAddModList->list,b,1);
@@ -779,7 +809,7 @@ void fix_scd(NR_ServingCellConfig_t *scd) {
   }
 
   b = 0;
-  while (b<scd->uplinkConfig->uplinkBWP_ToAddModList->list.count) {
+  while (b < scd->uplinkConfig->uplinkBWP_ToAddModList->list.count) {
     if (scd->uplinkConfig->uplinkBWP_ToAddModList->list.array[b]->bwp_Common->genericParameters.locationAndBandwidth == 0) {
       ASN_STRUCT_FREE(asn_DEF_NR_BWP_Uplink, scd->uplinkConfig->uplinkBWP_ToAddModList->list.array[b]);
       asn_sequence_del(&scd->uplinkConfig->uplinkBWP_ToAddModList->list,b,1);
@@ -1261,7 +1291,23 @@ static NR_ServingCellConfigCommon_t *get_scc_config(configmodule_interface_t *cf
   return scc;
 }
 
-static NR_ServingCellConfig_t *get_scd_config(configmodule_interface_t *cfg)
+static void configure_full_bwp(NR_ServingCellConfigCommon_t *scc, NR_ServingCellConfig_t *scd)
+{
+  NR_BWP_DownlinkCommon_t *initialDownlinkBWP = scc->downlinkConfigCommon->initialDownlinkBWP;
+  NR_FrequencyInfoDL_t *frequencyInfoDL = scc->downlinkConfigCommon->frequencyInfoDL;
+  NR_BWP_Downlink_t *dl_bwp = scd->downlinkBWP_ToAddModList->list.array[0];
+  dl_bwp->bwp_Id = 1;
+  dl_bwp->bwp_Common->genericParameters.subcarrierSpacing = initialDownlinkBWP->genericParameters.subcarrierSpacing;
+  int riv = PRBalloc_to_locationandbandwidth(frequencyInfoDL->scs_SpecificCarrierList.list.array[0]->carrierBandwidth, 0);
+  dl_bwp->bwp_Common->genericParameters.locationAndBandwidth = riv;
+  NR_BWP_Uplink_t *ul_bwp = scd->uplinkConfig->uplinkBWP_ToAddModList->list.array[0];
+  ul_bwp->bwp_Id = 1;
+  NR_BWP_UplinkCommon_t *initialUplinkBWP = scc->uplinkConfigCommon->initialUplinkBWP;
+  ul_bwp->bwp_Common->genericParameters.subcarrierSpacing = initialUplinkBWP->genericParameters.subcarrierSpacing;
+  ul_bwp->bwp_Common->genericParameters.locationAndBandwidth = riv;
+}
+
+static NR_ServingCellConfig_t *get_scd_config(configmodule_interface_t *cfg, NR_ServingCellConfigCommon_t *scc)
 {
   NR_ServingCellConfig_t *scd = calloc(1, sizeof(*scd));
   prepare_scd(scd);
@@ -1278,19 +1324,21 @@ static NR_ServingCellConfig_t *get_scd_config(configmodule_interface_t *cfg)
         bwp_Dedicated->pusch_Config->choice.setup->dmrs_UplinkForPUSCH_MappingTypeB->choice.setup->phaseTrackingRS->choice.setup;
     LOG_I(RRC,
           "Read in ServingCellConfigDedicated UL (FreqDensity_0 %ld, FreqDensity_1 %ld, TimeDensity_0 %ld, TimeDensity_1 %ld, "
-          "TimeDensity_2 %ld, RE offset %ld, First_active_BWP_ID %ld SCS %ld, LocationandBW %ld\n",
+          "TimeDensity_2 %ld, RE offset %ld, SCS %ld, LocationandBW %ld\n",
           *setup->transformPrecoderDisabled->frequencyDensity->list.array[0],
           *setup->transformPrecoderDisabled->frequencyDensity->list.array[1],
           *setup->transformPrecoderDisabled->timeDensity->list.array[0],
           *setup->transformPrecoderDisabled->timeDensity->list.array[1],
           *setup->transformPrecoderDisabled->timeDensity->list.array[2],
           *setup->transformPrecoderDisabled->resourceElementOffset,
-          *scd->firstActiveDownlinkBWP_Id,
           scd->downlinkBWP_ToAddModList->list.array[0]->bwp_Common->genericParameters.subcarrierSpacing,
           scd->downlinkBWP_ToAddModList->list.array[0]->bwp_Common->genericParameters.locationAndBandwidth);
   }
+  // configure BWP1 as full BWP only if BWP 1 is not selected via config file
+  if (scd->downlinkBWP_ToAddModList->list.array[0]->bwp_Common->genericParameters.locationAndBandwidth == 0
+      && scd->uplinkConfig->uplinkBWP_ToAddModList->list.array[0]->bwp_Common->genericParameters.locationAndBandwidth == 0)
+    configure_full_bwp(scc, scd);
   fix_scd(scd);
-
   return scd;
 }
 
@@ -1612,6 +1660,8 @@ void RCconfig_nr_macrlc(configmodule_interface_t *cfg)
   }
   config.minRXTXTIME = *GNBParamList.paramarray[0][GNB_MINRXTXTIME_IDX].iptr;
   LOG_I(GNB_APP, "minTXRXTIME %d\n", config.minRXTXTIME);
+  config.first_active_BWP = *GNBParamList.paramarray[0][GNB_1ST_BWP_IDX].iptr;
+  LOG_I(GNB_APP, "1st active BWP %d\n", config.first_active_BWP);
   config.sib1_tda = *GNBParamList.paramarray[0][GNB_SIB1_TDA_IDX].iptr;
   LOG_I(GNB_APP, "SIB1 TDA %d\n", config.sib1_tda);
   config.do_CSIRS = *GNBParamList.paramarray[0][GNB_DO_CSIRS_IDX].iptr;
@@ -1694,7 +1744,7 @@ void RCconfig_nr_macrlc(configmodule_interface_t *cfg)
 
   NR_ServingCellConfigCommon_t *scc = get_scc_config(cfg, config.minRXTXTIME, config.do_SRS);
   //xer_fprint(stdout, &asn_DEF_NR_ServingCellConfigCommon, scc);
-  NR_ServingCellConfig_t *scd = get_scd_config(cfg);
+  NR_ServingCellConfig_t *scd = get_scd_config(cfg, scc);
 
   if (MacRLC_ParamList.numelt > 0) {
     /* NR RLC config is needed by mac_top_init_gNB() */
