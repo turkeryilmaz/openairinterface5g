@@ -1123,24 +1123,25 @@ The assumed configuration is that with N RUs each having an M×M configuration,
 we effectively reach an (N×M)×(N×M) configuration.
 
 Some caveats:
-- Since it's a distributed antenna, this implies that this setup will deploy a
+- Even in case of a distributed antenna, this setup will deploy a
   single cell only -- multiple cells on different RUs are not supported.
 - All RUs should use the same MTU, so either "normal" (1500 byte) MTU or jumbo
   frames, but not a mix of both.
 - We tested only two RUs as of now, i.e., an 8×8 configuration.
-- Testing is currently limited to 4 logical antenna ports in DL; in UL, up to 8 can be used.
+- In case of a single array is currently limited to 4 logical antenna ports in DL;
+  in UL, up to 8 can be used.
 
-For two RUs each using a 4x4 configuration, make sure to configure the 8x8
-configuration, i.e., set `nb_tx` and `nb_rx` under `RUs` to 8 each (NOT two
-`RUs`!). Also, set the antenna port information as listed above, i.e.,
+For two RUs each using a 4x4 configuration, i.e. a distributed antenna system (DAS),
+please refer to [this document](https://gitlab.eurecom.fr/oai/openairinterface5g/-/blob/develop/doc/analog_beamforming.md)
+for help in setting the configuration. It is important to note that you should
+set the configuration file as a 4x4 scenario and each RU would be set with a
+different beam. Here below an example of the `MACRLC` parameters for a DAS with two RUs:
 
 ```
-pdsch_AntennaPorts_XP = 2;
-pdsch_AntennaPorts_N1 = 2;
-pusch_AntennaPorts    = 8;
-maxMIMO_layers        = 2;
+set_analog_beamforming = 1;
+beam_duration = 1;
+beams_per_period = 2;
 ```
-Once testing for 8 antenna ports in DL is complete, we will change pdsch_AntennaPorts_N1 to 4.
 
 Next, configure the `fhi_72` section as indicated below:
 
