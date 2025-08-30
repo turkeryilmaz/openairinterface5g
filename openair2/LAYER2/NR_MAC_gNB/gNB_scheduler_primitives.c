@@ -248,6 +248,28 @@ uint16_t get_pm_index(const gNB_MAC_INST *nrmac,
   }
 }
 
+// look-up table for AMC. Based on BLER vs SNR curves from the nr_dlsim simulation
+// SNR Thresholds for MCS 0 - 28; with a resolution of 0.2dB; to maintain a BLER of 10^-3;
+static const int SINRx10_MCS_mapping[29] = {
+  -10,  -4,   6,  16,  24,  34,  42,  50,  56,  62, //  0..9
+   86,  92,  98, 104, 112, 118, 124, 140, 146, 154, // 10..19
+  162, 170, 178, 186, 194, 202, 212, 220, 245       // 20..28
+};
+
+int get_mcs_from_SINRx10(int mcs_table, int SINRx10)
+{
+  if (mcs_table != 0) {
+    LOG_W(MAC, "mcs_table = %d, but get_mcs_from_SINRx10() only supports MCS table 0 (TS 38.214 - Table 5.1.3.1-1)\n", mcs_table);
+    return 28;
+  }
+  for (int i = 28; i >= 0; i--) {
+    if (SINRx10 >= SINRx10_MCS_mapping[i])
+      return i;
+  }
+  LOG_W(MAC, "SINR (%d.%d dB) too low, no MCS possible to achieve BLER of 10^-3\n", SINRx10 / 10, SINRx10 % 10);
+  return 0;
+}
+
 uint8_t get_mcs_from_cqi(int mcs_table, int cqi_table, int cqi_idx)
 {
   if (cqi_idx <= 0) {
