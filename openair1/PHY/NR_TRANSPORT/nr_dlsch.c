@@ -646,6 +646,7 @@ static int do_one_dlsch(unsigned char *input_ptr, PHY_VARS_gNB *gNB, NR_gNB_DLSC
 #endif
   }
 
+  start_meas(&gNB->dlsch_pdsch_generation_stats);
   /// Resource mapping
   // Non interleaved VRB to PRB mapping
   uint16_t start_sc = frame_parms->first_carrier_offset + (rel15->rbStart + rel15->BWPStart) * NR_NB_SC_PER_RB;
@@ -769,7 +770,7 @@ static int do_one_dlsch(unsigned char *input_ptr, PHY_VARS_gNB *gNB, NR_gNB_DLSC
     }
     stop_meas(&gNB->dlsch_precoding_stats);
   }
-
+  stop_meas(&gNB->dlsch_pdsch_generation_stats);
   /* output and its parts for each dlsch should be aligned on 64 bytes (or 8 * 64 bits)
    * should remain a multiple of 8 * 64 with enough offset to fit each dlsch
    */
