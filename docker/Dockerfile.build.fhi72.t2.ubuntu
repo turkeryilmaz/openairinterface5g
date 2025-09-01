@@ -53,7 +53,7 @@ RUN wget http://fast.dpdk.org/rel/dpdk-$DPDK_VERSION.tar.xz && \
     cd dpdk-$DPDK_VERSION && \
     patch -p1 < /opt/$T2_PATCH && \
     meson build && \
-    taskset -c 7-39 ninja -C build && \
+    taskset -c 0-$(grep ^processor /proc/cpuinfo | wc -l) ninja -C build && \
     ninja install -C build
 
 ## Build Fronthaul library
@@ -70,7 +70,7 @@ FROM ran-base AS ran-build-fhi72-t2
 RUN /bin/sh oaienv && \ 
     cd cmake_targets && \
     mkdir -p log && \
-    taskset -c 7-39 ./build_oai \
+    taskset -c 0-$(grep ^processor /proc/cpuinfo | wc -l) ./build_oai \
       --gNB --ninja \
       --build-lib "ldpc_aal" \
       -t oran_fhlib_5g --cmake-opt -Dxran_LOCATION=/opt/phy/fhi_lib/lib \
