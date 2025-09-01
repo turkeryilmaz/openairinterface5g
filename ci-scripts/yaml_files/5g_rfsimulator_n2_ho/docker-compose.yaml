@@ -83,9 +83,9 @@ services:
             timeout: 5s
             retries: 5
 
-    oai-cu-pci0:
+    oai-cucp-0:
         image: ${REGISTRY:-oaisoftwarealliance}/${GNB_IMG:-oai-gnb}:${TAG:-develop}
-        container_name: rfsim5g-oai-cu-pci0
+        container_name: rfsim5g-oai-cucp-0
         cap_drop:
             - ALL
         environment:
@@ -96,13 +96,13 @@ services:
                                     --log_config.global_log_options level,nocolor,time
             ASAN_OPTIONS: detect_leaks=0:detect_odr_violation=0
         depends_on:
-            - oai-nr-ue
+            - oai-amf
         networks:
             public_net:
                 ipv4_address: 192.168.71.150
         volumes:
           - ../../conf_files/neighbour-config.conf:/opt/oai-gnb/etc/neighbour-config.conf
-          - ../../conf_files/gnb-cu.sa.band78.106prb.conf:/opt/oai-gnb/etc/gnb.conf
+          - ../../conf_files/gnb-cucp.sa.e1-ho-n2.conf:/opt/oai-gnb/etc/gnb.conf
         healthcheck:
             test: /bin/bash -c "pgrep nr-softmodem"
             start_period: 10s
@@ -111,9 +111,37 @@ services:
             timeout: 5s
             retries: 5
 
-    oai-du-pci0:
+    oai-cuup-0:
+        image: ${REGISTRY:-oaisoftwarealliance}/${NRCUUP_IMG:-oai-nr-cuup}:${TAG:-develop}
+        container_name: rfsim5g-oai-cuup-0
+        cap_drop:
+            - ALL
+        environment:
+            USE_ADDITIONAL_OPTIONS: --log_config.global_log_options level,nocolor,time
+                                    --gNBs.[0].E1_INTERFACE.[0].ipv4_cucp 192.168.71.150
+                                    --gNBs.[0].E1_INTERFACE.[0].ipv4_cuup 192.168.71.151
+                                    --gNBs.[0].NETWORK_INTERFACES.GNB_IPV4_ADDRESS_FOR_NGU 192.168.71.151
+                                    --gNBs.[0].local_s_address 192.168.71.151
+            ASAN_OPTIONS: detect_leaks=0
+        depends_on:
+            - oai-cucp-0
+        networks:
+            public_net:
+                ipv4_address: 192.168.71.151
+        volumes:
+            - ../../conf_files/gnb-cuup.sa.f1.conf:/opt/oai-gnb/etc/gnb.conf
+        healthcheck:
+            test: /bin/bash -c "pgrep nr-cuup"
+            start_period: 10s
+            start_interval: 500ms
+            interval: 10s
+            timeout: 5s
+            retries: 5
+
+
+    oai-du-0:
         image: ${REGISTRY:-oaisoftwarealliance}/${GNB_IMG:-oai-gnb}:${TAG:-develop}
-        container_name: rfsim5g-oai-du-pci0
+        container_name: rfsim5g-oai-du-0
         cap_drop:
             - ALL
         environment:
@@ -126,8 +154,7 @@ services:
                                     --gNBs.[0].servingCellConfigCommon.[0].ra_ResponseWindow 5
             ASAN_OPTIONS: detect_leaks=0:detect_odr_violation=0
         depends_on:
-            - oai-cu-pci0
-            - oai-nr-ue
+            - oai-cucp-0
         networks:
             public_net:
                 ipv4_address: 192.168.71.171
@@ -168,15 +195,17 @@ services:
             timeout: 5s
             retries: 5
 
-    oai-cu-pci1:
+    oai-cucp-1:
         image: ${REGISTRY:-oaisoftwarealliance}/${GNB_IMG:-oai-gnb}:${TAG:-develop}
-        container_name: rfsim5g-oai-cu-pci1
+        container_name: rfsim5g-oai-cucp-1
         cap_drop:
             - ALL
         environment:
             USE_ADDITIONAL_OPTIONS: --rfsim --rfsimulator.serveraddr 192.168.71.190
                                     --telnetsrv --telnetsrv.shrmod ci
                                     --telnetsrv.listenaddr 192.168.71.180
+                                    --gNBs.[0].E1_INTERFACE.[0].ipv4_cucp 192.168.71.180
+                                    --gNBs.[0].E1_INTERFACE.[0].ipv4_cuup 192.168.71.181
                                     --gNBs.[0].local_s_address 192.168.71.180
                                     --gNBs.[0].remote_s_address 192.168.71.181
                                     --gNBs.[0].gNB_ID 0xb00
@@ -185,14 +214,12 @@ services:
                                     --gNBs.[0].NETWORK_INTERFACES.GNB_IPV4_ADDRESS_FOR_NGU 192.168.71.180
                                     --log_config.global_log_options level,nocolor,time
             ASAN_OPTIONS: detect_leaks=0:detect_odr_violation=0
-        depends_on:
-            - oai-nr-ue
         networks:
             public_net:
                 ipv4_address: 192.168.71.180
         volumes:
           - ../../conf_files/neighbour-config.conf:/opt/oai-gnb/etc/neighbour-config.conf
-          - ../../conf_files/gnb-cu.sa.band78.106prb.conf:/opt/oai-gnb/etc/gnb.conf
+          - ../../conf_files/gnb-cucp.sa.e1-ho-n2.conf:/opt/oai-gnb/etc/gnb.conf
         healthcheck:
             test: /bin/bash -c "pgrep nr-softmodem"
             start_period: 10s
@@ -201,10 +228,36 @@ services:
             timeout: 5s
             retries: 5
 
+    oai-cuup-1:
+        image: ${REGISTRY:-oaisoftwarealliance}/${NRCUUP_IMG:-oai-nr-cuup}:${TAG:-develop}
+        container_name: rfsim5g-oai-cuup-1
+        cap_drop:
+            - ALL
+        environment:
+            USE_ADDITIONAL_OPTIONS: --log_config.global_log_options level,nocolor,time
+                                    --gNBs.[0].E1_INTERFACE.[0].ipv4_cucp 192.168.71.180
+                                    --gNBs.[0].E1_INTERFACE.[0].ipv4_cuup 192.168.71.181
+                                    --gNBs.[0].NETWORK_INTERFACES.GNB_IPV4_ADDRESS_FOR_NGU 192.168.71.181
+                                    --gNBs.[0].local_s_address 192.168.71.181
+            ASAN_OPTIONS: detect_leaks=0
+        depends_on:
+            - oai-cucp-0
+        networks:
+            public_net:
+                ipv4_address: 192.168.71.181
+        volumes:
+            - ../../conf_files/gnb-cuup.sa.f1.conf:/opt/oai-gnb/etc/gnb.conf
+        healthcheck:
+            test: /bin/bash -c "pgrep nr-cuup"
+            start_period: 10s
+            start_interval: 500ms
+            interval: 10s
+            timeout: 5s
+            retries: 5
 
-    oai-du-pci1:
+    oai-du-1:
         image: ${REGISTRY:-oaisoftwarealliance}/${GNB_IMG:-oai-gnb}:${TAG:-develop}
-        container_name: rfsim5g-oai-du-pci1
+        container_name: rfsim5g-oai-du-1
         cap_drop:
             - ALL
         environment:
@@ -217,15 +270,14 @@ services:
                                     --gNBs.[0].servingCellConfigCommon.[0].physCellId 1
                                     --gNBs.[0].servingCellConfigCommon.[0].absoluteFrequencySSB 621312
                                     --gNBs.[0].servingCellConfigCommon.[0].dl_absoluteFrequencyPointA 620040
-                                    --MACRLCs.[0].local_n_address 192.168.71.181
+                                    --MACRLCs.[0].local_n_address 192.168.71.182
                                     --MACRLCs.[0].remote_n_address 192.168.71.180
             ASAN_OPTIONS: detect_leaks=0:detect_odr_violation=0
         depends_on:
-            - oai-cu-pci1
-            - oai-nr-ue
+            - oai-cucp-1
         networks:
             public_net:
-                ipv4_address: 192.168.71.181
+                ipv4_address: 192.168.71.182
         volumes:
             - ../../conf_files/neighbour-config.conf:/opt/oai-gnb/etc/neighbour-config.conf
             - ../../conf_files/gnb-du.sa.band78.106prb.rfsim.conf:/opt/oai-gnb/etc/gnb.conf

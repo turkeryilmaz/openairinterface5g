@@ -73,9 +73,9 @@
 
         <testCase id="000002">
                 <class>Deploy_Object</class>
-                <desc>Deploy OAI 5G CU/DU PCI 0 + UE RFsim SA</desc>
+                <desc>Deploy OAI 5G CU-CP/CU-UP/DU 0 + UE RFsim SA</desc>
                 <yaml_path>ci-scripts/yaml_files/5g_rfsimulator_n2_ho</yaml_path>
-                <services>oai-cu-pci0 oai-du-pci0 oai-nr-ue</services>
+                <services>oai-cucp-0 oai-cuup-0 oai-du-0 oai-nr-ue</services>
                 <eNB_instance>0</eNB_instance>
                 <eNB_serverId>0</eNB_serverId>
         </testCase>
@@ -89,9 +89,9 @@
 
         <testCase id="000004">
                 <class>Deploy_Object</class>
-                <desc>Deploy OAI 5G CU/DU PCI 1 RFsim SA</desc>
+                <desc>Deploy OAI 5G CU-CP/CU-UP/DU 1 RFsim SA</desc>
                 <yaml_path>ci-scripts/yaml_files/5g_rfsimulator_n2_ho</yaml_path>
-                <services>oai-cu-pci1 oai-du-pci1</services>
+                <services>oai-cucp-1 oai-cuup-1oai-du-1</services>
                 <eNB_instance>0</eNB_instance>
                 <eNB_serverId>0</eNB_serverId>
         </testCase>
