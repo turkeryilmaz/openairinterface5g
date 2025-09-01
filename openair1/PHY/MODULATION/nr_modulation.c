@@ -948,8 +948,6 @@ void nr_layer_precoder_simd(const int n_layers,
 
     for (; sc < sc_offset + (re_cnt_align8); sc += sizeof(simde__m256i) / sizeof(prec_weight)) {
       const simde__m256i x0 = simde_mm256_loadu_si256(&txdataF_res_mapped[0][sc]);
-
-      const simde__m256i x1 = simde_mm256_loadu_si256(&txdataF_res_mapped[1][sc]);
       // Accumulate the product
       y = cmac0_prec256(x0,w_c0,w_s0);
       // Store the result to txdataF
