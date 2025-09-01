@@ -116,8 +116,8 @@ fprintf(fd,  "// Process group with 2 CNs \n");
           // Loop over BNs
         fprintf(fd,"            for (i=0;i<M;i++) {\n");
         fprintf(fd,
-                "            ((simde__m512i*)bnProcBufRes)[%d + i ] = simde_mm512_subs_epi8(((simde__m512i*)llrRes)[%d + i ], "
-                "((simde__m512i*) bnProcBuf)[%d + i]);\n",
+                "            ((simde__m512i*)bnProcBufRes)[%u + i ] = simde_mm512_subs_epi8(((simde__m512i*)llrRes)[%d + i ], "
+                "((simde__m512i*) bnProcBuf)[%u + i]);\n",
                 (lut_startAddrBnGroups[idxBnGroup] >> 6) + k * cnOffsetInGroup,
                 (lut_startAddrBnGroupsLlr[idxBnGroup] >> 6),
                 (lut_startAddrBnGroups[idxBnGroup] >> 6) + k * cnOffsetInGroup);
@@ -158,8 +158,8 @@ fprintf(fd,  "// Process group with 3 CNs \n");
           // Loop over BNs
        fprintf(fd,"            for (i=0;i<M;i++) {\n");
        fprintf(fd,
-               "            ((simde__m512i*)bnProcBufRes)[%d + i ] = simde_mm512_subs_epi8(((simde__m512i*)llrRes)[%d + i ], "
-               "((simde__m512i*) bnProcBuf)[%d + i]);\n",
+               "            ((simde__m512i*)bnProcBufRes)[%u + i ] = simde_mm512_subs_epi8(((simde__m512i*)llrRes)[%d + i ], "
+               "((simde__m512i*) bnProcBuf)[%u + i]);\n",
                (lut_startAddrBnGroups[idxBnGroup] >> 6) + k * cnOffsetInGroup,
                (lut_startAddrBnGroupsLlr[idxBnGroup] >> 6),
                (lut_startAddrBnGroups[idxBnGroup] >> 6) + k * cnOffsetInGroup);
@@ -198,8 +198,8 @@ fprintf(fd,  "// Process group with 4 CNs \n");
           // Loop over BNs
         fprintf(fd,"            for (i=0;i<M;i++) {\n");
         fprintf(fd,
-                "            ((simde__m512i*)bnProcBufRes)[%d + i ] = simde_mm512_subs_epi8(((simde__m512i*)llrRes)[%d + i ], "
-                "((simde__m512i*) bnProcBuf)[%d + i]);\n",
+                "            ((simde__m512i*)bnProcBufRes)[%u + i ] = simde_mm512_subs_epi8(((simde__m512i*)llrRes)[%d + i ], "
+                "((simde__m512i*) bnProcBuf)[%u + i]);\n",
                 ((lut_startAddrBnGroups[idxBnGroup] >> 6) + k * cnOffsetInGroup),
                 (lut_startAddrBnGroupsLlr[idxBnGroup] >> 6),
                 ((lut_startAddrBnGroups[idxBnGroup] >> 6) + k * cnOffsetInGroup));
@@ -237,8 +237,8 @@ fprintf(fd,  "// Process group with 4 CNs \n");
           // Loop over BNs
        fprintf(fd,"            for (i=0;i<M;i++) {\n");
        fprintf(fd,
-               "            ((simde__m512i*)bnProcBufRes)[%d + i ] = simde_mm512_subs_epi8(((simde__m512i*)llrRes)[%d + i ], "
-               "((simde__m512i*) bnProcBuf)[%d + i]);\n",
+               "            ((simde__m512i*)bnProcBufRes)[%u + i ] = simde_mm512_subs_epi8(((simde__m512i*)llrRes)[%d + i ], "
+               "((simde__m512i*) bnProcBuf)[%u + i]);\n",
                (lut_startAddrBnGroups[idxBnGroup] >> 6) + k * cnOffsetInGroup,
                (lut_startAddrBnGroupsLlr[idxBnGroup] >> 6),
                (lut_startAddrBnGroups[idxBnGroup] >> 6) + k * cnOffsetInGroup);
@@ -277,8 +277,8 @@ fprintf(fd,  "// Process group with 6 CNs \n");
           // Loop over BNs
        fprintf(fd,"            for (i=0;i<M;i++) {\n");
        fprintf(fd,
-               "            ((simde__m512i*)bnProcBufRes)[%d + i ] = simde_mm512_subs_epi8(((simde__m512i*)llrRes)[%d + i ], "
-               "((simde__m512i*) bnProcBuf)[%d + i]);\n",
+               "            ((simde__m512i*)bnProcBufRes)[%u + i ] = simde_mm512_subs_epi8(((simde__m512i*)llrRes)[%d + i ], "
+               "((simde__m512i*) bnProcBuf)[%u + i]);\n",
                (lut_startAddrBnGroups[idxBnGroup] >> 6) + k * cnOffsetInGroup,
                (lut_startAddrBnGroupsLlr[idxBnGroup] >> 6),
                (lut_startAddrBnGroups[idxBnGroup] >> 6) + k * cnOffsetInGroup);
@@ -316,8 +316,8 @@ fprintf(fd,  "// Process group with 7 CNs \n");
           // Loop over BNs
        fprintf(fd,"            for (i=0;i<M;i++) {\n");
        fprintf(fd,
-               "            ((simde__m512i*)bnProcBufRes)[%d + i ] = simde_mm512_subs_epi8(((simde__m512i*)llrRes)[%d + i ], "
-               "((simde__m512i*) bnProcBuf)[%d + i]);\n",
+               "            ((simde__m512i*)bnProcBufRes)[%u + i ] = simde_mm512_subs_epi8(((simde__m512i*)llrRes)[%d + i ], "
+               "((simde__m512i*) bnProcBuf)[%u + i]);\n",
                (lut_startAddrBnGroups[idxBnGroup] >> 6) + k * cnOffsetInGroup,
                (lut_startAddrBnGroupsLlr[idxBnGroup] >> 6),
                (lut_startAddrBnGroups[idxBnGroup] >> 6) + k * cnOffsetInGroup);
@@ -355,8 +355,8 @@ fprintf(fd,  "// Process group with 8 CNs \n");
           // Loop over BNs
        fprintf(fd,"            for (i=0;i<M;i++) {\n");
        fprintf(fd,
-               "            ((simde__m512i*)bnProcBufRes)[%d + i ] = simde_mm512_subs_epi8(((simde__m512i*)llrRes)[%d + i ], "
-               "((simde__m512i*) bnProcBuf)[%d + i]);\n",
+               "            ((simde__m512i*)bnProcBufRes)[%u + i ] = simde_mm512_subs_epi8(((simde__m512i*)llrRes)[%d + i ], "
+               "((simde__m512i*) bnProcBuf)[%u + i]);\n",
                (lut_startAddrBnGroups[idxBnGroup] >> 6) + k * cnOffsetInGroup,
                (lut_startAddrBnGroupsLlr[idxBnGroup] >> 6),
                (lut_startAddrBnGroups[idxBnGroup] >> 6) + k * cnOffsetInGroup);
@@ -393,8 +393,8 @@ fprintf(fd,  "// Process group with 9 CNs \n");
           // Loop over BNs
        fprintf(fd,"            for (i=0;i<M;i++) {\n");
        fprintf(fd,
-               "            ((simde__m512i*)bnProcBufRes)[%d + i ] = simde_mm512_subs_epi8(((simde__m512i*)llrRes)[%d + i ], "
-               "((simde__m512i*) bnProcBuf)[%d + i]);\n",
+               "            ((simde__m512i*)bnProcBufRes)[%u + i ] = simde_mm512_subs_epi8(((simde__m512i*)llrRes)[%d + i ], "
+               "((simde__m512i*) bnProcBuf)[%u + i]);\n",
                (lut_startAddrBnGroups[idxBnGroup] >> 6) + k * cnOffsetInGroup,
                (lut_startAddrBnGroupsLlr[idxBnGroup] >> 6),
                (lut_startAddrBnGroups[idxBnGroup] >> 6) + k * cnOffsetInGroup);
@@ -431,8 +431,8 @@ fprintf(fd,  "// Process group with 10 CNs \n");
           // Loop over BNs
        fprintf(fd,"            for (i=0;i<M;i++) {\n");
        fprintf(fd,
-               "            ((simde__m512i*)bnProcBufRes)[%d + i ] = simde_mm512_subs_epi8(((simde__m512i*)llrRes)[%d + i ], "
-               "((simde__m512i*) bnProcBuf)[%d + i]);\n",
+               "            ((simde__m512i*)bnProcBufRes)[%u + i ] = simde_mm512_subs_epi8(((simde__m512i*)llrRes)[%d + i ], "
+               "((simde__m512i*) bnProcBuf)[%u + i]);\n",
                (lut_startAddrBnGroups[idxBnGroup] >> 6) + k * cnOffsetInGroup,
                (lut_startAddrBnGroupsLlr[idxBnGroup] >> 6),
                (lut_startAddrBnGroups[idxBnGroup] >> 6) + k * cnOffsetInGroup);
@@ -468,8 +468,8 @@ fprintf(fd,  "// Process group with 11 CNs \n");
           // Loop over BNs
        fprintf(fd,"            for (i=0;i<M;i++) {\n");
        fprintf(fd,
-               "            ((simde__m512i*)bnProcBufRes)[%d + i ] = simde_mm512_subs_epi8(((simde__m512i*)llrRes)[%d + i ], "
-               "((simde__m512i*) bnProcBuf)[%d + i]);\n",
+               "            ((simde__m512i*)bnProcBufRes)[%u + i ] = simde_mm512_subs_epi8(((simde__m512i*)llrRes)[%d + i ], "
+               "((simde__m512i*) bnProcBuf)[%u + i]);\n",
                (lut_startAddrBnGroups[idxBnGroup] >> 6) + k * cnOffsetInGroup,
                (lut_startAddrBnGroupsLlr[idxBnGroup] >> 6),
                (lut_startAddrBnGroups[idxBnGroup] >> 6) + k * cnOffsetInGroup);
@@ -505,8 +505,8 @@ fprintf(fd,  "// Process group with 12 CNs \n");
           // Loop over BNs
        fprintf(fd,"            for (i=0;i<M;i++) {\n");
        fprintf(fd,
-               "            ((simde__m512i*)bnProcBufRes)[%d + i ] = simde_mm512_subs_epi8(((simde__m512i*)llrRes)[%d + i ], "
-               "((simde__m512i*) bnProcBuf)[%d + i]);\n",
+               "            ((simde__m512i*)bnProcBufRes)[%u + i ] = simde_mm512_subs_epi8(((simde__m512i*)llrRes)[%d + i ], "
+               "((simde__m512i*) bnProcBuf)[%u + i]);\n",
                (lut_startAddrBnGroups[idxBnGroup] >> 6) + k * cnOffsetInGroup,
                (lut_startAddrBnGroupsLlr[idxBnGroup] >> 6),
                (lut_startAddrBnGroups[idxBnGroup] >> 6) + k * cnOffsetInGroup);
@@ -544,8 +544,8 @@ fprintf(fd,  "// Process group with 13 CNs \n");
           // Loop over BNs
        fprintf(fd,"            for (i=0;i<M;i++) {\n");
        fprintf(fd,
-               "            ((simde__m512i*)bnProcBufRes)[%d + i ] = simde_mm512_subs_epi8(((simde__m512i*)llrRes)[%d + i ], "
-               "((simde__m512i*) bnProcBuf)[%d + i]);\n",
+               "            ((simde__m512i*)bnProcBufRes)[%u + i ] = simde_mm512_subs_epi8(((simde__m512i*)llrRes)[%d + i ], "
+               "((simde__m512i*) bnProcBuf)[%u + i]);\n",
                (lut_startAddrBnGroups[idxBnGroup] >> 6) + k * cnOffsetInGroup,
                (lut_startAddrBnGroupsLlr[idxBnGroup] >> 6),
                (lut_startAddrBnGroups[idxBnGroup] >> 6) + k * cnOffsetInGroup);
@@ -584,8 +584,8 @@ fprintf(fd,  "// Process group with 14 CNs \n");
           // Loop over BNs
        fprintf(fd,"            for (i=0;i<M;i++) {\n");
        fprintf(fd,
-               "            ((simde__m512i*)bnProcBufRes)[%d + i ] = simde_mm512_subs_epi8(((simde__m512i*)llrRes)[%d + i ], "
-               "((simde__m512i*) bnProcBuf)[%d + i]);\n",
+               "            ((simde__m512i*)bnProcBufRes)[%u + i ] = simde_mm512_subs_epi8(((simde__m512i*)llrRes)[%d + i ], "
+               "((simde__m512i*) bnProcBuf)[%u + i]);\n",
                (lut_startAddrBnGroups[idxBnGroup] >> 6) + k * cnOffsetInGroup,
                (lut_startAddrBnGroupsLlr[idxBnGroup] >> 6),
                (lut_startAddrBnGroups[idxBnGroup] >> 6) + k * cnOffsetInGroup);
@@ -623,8 +623,8 @@ fprintf(fd,  "// Process group with 15 CNs \n");
           // Loop over BNs
        fprintf(fd,"            for (i=0;i<M;i++) {\n");
        fprintf(fd,
-               "            ((simde__m512i*)bnProcBufRes)[%d + i ] = simde_mm512_subs_epi8(((simde__m512i*)llrRes)[%d + i ], "
-               "((simde__m512i*) bnProcBuf)[%d + i]);\n",
+               "            ((simde__m512i*)bnProcBufRes)[%u + i ] = simde_mm512_subs_epi8(((simde__m512i*)llrRes)[%d + i ], "
+               "((simde__m512i*) bnProcBuf)[%u + i]);\n",
                (lut_startAddrBnGroups[idxBnGroup] >> 6) + k * cnOffsetInGroup,
                (lut_startAddrBnGroupsLlr[idxBnGroup] >> 6),
                (lut_startAddrBnGroups[idxBnGroup] >> 6) + k * cnOffsetInGroup);
@@ -663,8 +663,8 @@ fprintf(fd,  "// Process group with 16 CNs \n");
           // Loop over BNs
        fprintf(fd,"            for (i=0;i<M;i++) {\n");
        fprintf(fd,
-               "            ((simde__m512i*)bnProcBufRes)[%d + i ] = simde_mm512_subs_epi8(((simde__m512i*)llrRes)[%d + i ], "
-               "((simde__m512i*) bnProcBuf)[%d + i]);\n",
+               "            ((simde__m512i*)bnProcBufRes)[%u + i ] = simde_mm512_subs_epi8(((simde__m512i*)llrRes)[%d + i ], "
+               "((simde__m512i*) bnProcBuf)[%u + i]);\n",
                (lut_startAddrBnGroups[idxBnGroup] >> 6) + k * cnOffsetInGroup,
                (lut_startAddrBnGroupsLlr[idxBnGroup] >> 6),
                (lut_startAddrBnGroups[idxBnGroup] >> 6) + k * cnOffsetInGroup);
@@ -702,8 +702,8 @@ fprintf(fd,  "// Process group with 17 CNs \n");
           // Loop over BNs
        fprintf(fd,"            for (i=0;i<M;i++) {\n");
        fprintf(fd,
-               "            ((simde__m512i*)bnProcBufRes)[%d + i ] = simde_mm512_subs_epi8(((simde__m512i*)llrRes)[%d + i ], "
-               "((simde__m512i*) bnProcBuf)[%d + i]);\n",
+               "            ((simde__m512i*)bnProcBufRes)[%u + i ] = simde_mm512_subs_epi8(((simde__m512i*)llrRes)[%d + i ], "
+               "((simde__m512i*) bnProcBuf)[%u + i]);\n",
                (lut_startAddrBnGroups[idxBnGroup] >> 6) + k * cnOffsetInGroup,
                (lut_startAddrBnGroupsLlr[idxBnGroup] >> 6),
                (lut_startAddrBnGroups[idxBnGroup] >> 6) + k * cnOffsetInGroup);
@@ -741,8 +741,8 @@ fprintf(fd,  "// Process group with 18 CNs \n");
           // Loop over BNs
        fprintf(fd,"            for (i=0;i<M;i++) {\n");
        fprintf(fd,
-               "            ((simde__m512i*)bnProcBufRes)[%d + i ] = simde_mm512_subs_epi8(((simde__m512i*)llrRes)[%d + i ], "
-               "((simde__m512i*) bnProcBuf)[%d + i]);\n",
+               "            ((simde__m512i*)bnProcBufRes)[%u + i ] = simde_mm512_subs_epi8(((simde__m512i*)llrRes)[%d + i ], "
+               "((simde__m512i*) bnProcBuf)[%u + i]);\n",
                (lut_startAddrBnGroups[idxBnGroup] >> 6) + k * cnOffsetInGroup,
                (lut_startAddrBnGroupsLlr[idxBnGroup] >> 6),
                (lut_startAddrBnGroups[idxBnGroup] >> 6) + k * cnOffsetInGroup);
@@ -779,8 +779,8 @@ fprintf(fd,  "// Process group with 19 CNs \n");
           // Loop over BNs
        fprintf(fd,"            for (i=0;i<M;i++) {\n");
        fprintf(fd,
-               "            ((simde__m512i*)bnProcBufRes)[%d + i ] = simde_mm512_subs_epi8(((simde__m512i*)llrRes)[%d + i ], "
-               "((simde__m512i*) bnProcBuf)[%d + i]);\n",
+               "            ((simde__m512i*)bnProcBufRes)[%u + i ] = simde_mm512_subs_epi8(((simde__m512i*)llrRes)[%d + i ], "
+               "((simde__m512i*) bnProcBuf)[%u + i]);\n",
                (lut_startAddrBnGroups[idxBnGroup] >> 6) + k * cnOffsetInGroup,
                (lut_startAddrBnGroupsLlr[idxBnGroup] >> 6),
                (lut_startAddrBnGroups[idxBnGroup] >> 6) + k * cnOffsetInGroup);
@@ -818,8 +818,8 @@ fprintf(fd,  "// Process group with 20 CNs \n");
           // Loop over BNs
        fprintf(fd,"            for (i=0;i<M;i++) {\n");
        fprintf(fd,
-               "            ((simde__m512i*)bnProcBufRes)[%d + i ] = simde_mm512_subs_epi8(((simde__m512i*)llrRes)[%d + i ], "
-               "((simde__m512i*) bnProcBuf)[%d + i]);\n",
+               "            ((simde__m512i*)bnProcBufRes)[%u + i ] = simde_mm512_subs_epi8(((simde__m512i*)llrRes)[%d + i ], "
+               "((simde__m512i*) bnProcBuf)[%u + i]);\n",
                (lut_startAddrBnGroups[idxBnGroup] >> 6) + k * cnOffsetInGroup,
                (lut_startAddrBnGroupsLlr[idxBnGroup] >> 6),
                (lut_startAddrBnGroups[idxBnGroup] >> 6) + k * cnOffsetInGroup);
@@ -861,8 +861,8 @@ fprintf(fd,  "// Process group with 21 CNs \n");
           // Loop over BNs
        fprintf(fd,"            for (i=0;i<M;i++) {\n");
        fprintf(fd,
-               "            ((simde__m512i*)bnProcBufRes)[%d + i ] = simde_mm512_subs_epi8(((simde__m512i*)llrRes)[%d + i ], "
-               "((simde__m512i*) bnProcBuf)[%d + i]);\n",
+               "            ((simde__m512i*)bnProcBufRes)[%u + i ] = simde_mm512_subs_epi8(((simde__m512i*)llrRes)[%d + i ], "
+               "((simde__m512i*) bnProcBuf)[%u + i]);\n",
                (lut_startAddrBnGroups[idxBnGroup] >> 6) + k * cnOffsetInGroup,
                (lut_startAddrBnGroupsLlr[idxBnGroup] >> 6),
                (lut_startAddrBnGroups[idxBnGroup] >> 6) + k * cnOffsetInGroup);
@@ -898,8 +898,8 @@ fprintf(fd,  "// Process group with 22 CNs \n");
           // Loop over BNs
        fprintf(fd,"            for (i=0;i<M;i++) {\n");
        fprintf(fd,
-               "            ((simde__m512i*)bnProcBufRes)[%d + i ] = simde_mm512_subs_epi8(((simde__m512i*)llrRes)[%d + i ], "
-               "((simde__m512i*) bnProcBuf)[%d + i]);\n",
+               "            ((simde__m512i*)bnProcBufRes)[%u + i ] = simde_mm512_subs_epi8(((simde__m512i*)llrRes)[%d + i ], "
+               "((simde__m512i*) bnProcBuf)[%u + i]);\n",
                (lut_startAddrBnGroups[idxBnGroup] >> 6) + k * cnOffsetInGroup,
                (lut_startAddrBnGroupsLlr[idxBnGroup] >> 6),
                (lut_startAddrBnGroups[idxBnGroup] >> 6) + k * cnOffsetInGroup);
@@ -937,8 +937,8 @@ fprintf(fd,  "// Process group with <23 CNs \n");
           // Loop over BNs
        fprintf(fd,"            for (i=0;i<M;i++) {\n");
        fprintf(fd,
-               "            ((simde__m512i*)bnProcBufRes)[%d + i ] = simde_mm512_subs_epi8(((simde__m512i*)llrRes)[%d + i ], "
-               "((simde__m512i*) bnProcBuf)[%d + i]);\n",
+               "            ((simde__m512i*)bnProcBufRes)[%u + i ] = simde_mm512_subs_epi8(((simde__m512i*)llrRes)[%d + i ], "
+               "((simde__m512i*) bnProcBuf)[%u + i]);\n",
                (lut_startAddrBnGroups[idxBnGroup] >> 6) + k * cnOffsetInGroup,
                (lut_startAddrBnGroupsLlr[idxBnGroup] >> 6),
                (lut_startAddrBnGroups[idxBnGroup] >> 6) + k * cnOffsetInGroup);
@@ -977,8 +977,8 @@ fprintf(fd,  "// Process group with 24 CNs \n");
           // Loop over BNs
        fprintf(fd,"            for (i=0;i<M;i++) {\n");
        fprintf(fd,
-               "            ((simde__m512i*)bnProcBufRes)[%d + i ] = simde_mm512_subs_epi8(((simde__m512i*)llrRes)[%d + i ], "
-               "((simde__m512i*) bnProcBuf)[%d + i]);\n",
+               "            ((simde__m512i*)bnProcBufRes)[%u + i ] = simde_mm512_subs_epi8(((simde__m512i*)llrRes)[%d + i ], "
+               "((simde__m512i*) bnProcBuf)[%u + i]);\n",
                (lut_startAddrBnGroups[idxBnGroup] >> 6) + k * cnOffsetInGroup,
                (lut_startAddrBnGroupsLlr[idxBnGroup] >> 6),
                (lut_startAddrBnGroups[idxBnGroup] >> 6) + k * cnOffsetInGroup);
@@ -1016,8 +1016,8 @@ fprintf(fd,  "// Process group with 25 CNs \n");
           // Loop over BNs
        fprintf(fd,"            for (i=0;i<M;i++) {\n");
        fprintf(fd,
-               "            ((simde__m512i*)bnProcBufRes)[%d + i ] = simde_mm512_subs_epi8(((simde__m512i*)llrRes)[%d + i ], "
-               "((simde__m512i*) bnProcBuf)[%d + i]);\n",
+               "            ((simde__m512i*)bnProcBufRes)[%u + i ] = simde_mm512_subs_epi8(((simde__m512i*)llrRes)[%d + i ], "
+               "((simde__m512i*) bnProcBuf)[%u + i]);\n",
                (lut_startAddrBnGroups[idxBnGroup] >> 6) + k * cnOffsetInGroup,
                (lut_startAddrBnGroupsLlr[idxBnGroup] >> 6),
                (lut_startAddrBnGroups[idxBnGroup] >> 6) + k * cnOffsetInGroup);
@@ -1056,8 +1056,8 @@ fprintf(fd,  "// Process group with 26 CNs \n");
           // Loop over BNs
        fprintf(fd,"            for (i=0;i<M;i++) {\n");
        fprintf(fd,
-               "            ((simde__m512i*)bnProcBufRes)[%d + i ] = simde_mm512_subs_epi8(((simde__m512i*)llrRes)[%d + i ], "
-               "((simde__m512i*) bnProcBuf)[%d + i]);\n",
+               "            ((simde__m512i*)bnProcBufRes)[%u + i ] = simde_mm512_subs_epi8(((simde__m512i*)llrRes)[%d + i ], "
+               "((simde__m512i*) bnProcBuf)[%u + i]);\n",
                (lut_startAddrBnGroups[idxBnGroup] >> 6) + k * cnOffsetInGroup,
                (lut_startAddrBnGroupsLlr[idxBnGroup] >> 6),
                (lut_startAddrBnGroups[idxBnGroup] >> 6) + k * cnOffsetInGroup);
@@ -1095,8 +1095,8 @@ fprintf(fd,  "// Process group with 27 CNs \n");
           // Loop over BNs
        fprintf(fd,"            for (i=0;i<M;i++) {\n");
        fprintf(fd,
-               "            ((simde__m512i*)bnProcBufRes)[%d + i ] = simde_mm512_subs_epi8(((simde__m512i*)llrRes)[%d + i ], "
-               "((simde__m512i*) bnProcBuf)[%d + i]);\n",
+               "            ((simde__m512i*)bnProcBufRes)[%u + i ] = simde_mm512_subs_epi8(((simde__m512i*)llrRes)[%d + i ], "
+               "((simde__m512i*) bnProcBuf)[%u + i]);\n",
                (lut_startAddrBnGroups[idxBnGroup] >> 6) + k * cnOffsetInGroup,
                (lut_startAddrBnGroupsLlr[idxBnGroup] >> 6),
                (lut_startAddrBnGroups[idxBnGroup] >> 6) + k * cnOffsetInGroup);
@@ -1134,8 +1134,8 @@ fprintf(fd,  "// Process group with 28 CNs \n");
           // Loop over BNs
        fprintf(fd,"            for (i=0;i<M;i++) {\n");
        fprintf(fd,
-               "            ((simde__m512i*)bnProcBufRes)[%d + i ] = simde_mm512_subs_epi8(((simde__m512i*)llrRes)[%d + i ], "
-               "((simde__m512i*) bnProcBuf)[%d + i]);\n",
+               "            ((simde__m512i*)bnProcBufRes)[%u + i ] = simde_mm512_subs_epi8(((simde__m512i*)llrRes)[%d + i ], "
+               "((simde__m512i*) bnProcBuf)[%u + i]);\n",
                (lut_startAddrBnGroups[idxBnGroup] >> 6) + k * cnOffsetInGroup,
                (lut_startAddrBnGroupsLlr[idxBnGroup] >> 6),
                (lut_startAddrBnGroups[idxBnGroup] >> 6) + k * cnOffsetInGroup);
@@ -1171,8 +1171,8 @@ fprintf(fd,  "// Process group with 29 CNs \n");
           // Loop over BNs
        fprintf(fd,"            for (i=0;i<M;i++) {\n");
        fprintf(fd,
-               "            ((simde__m512i*)bnProcBufRes)[%d + i ] = simde_mm512_subs_epi8(((simde__m512i*)llrRes)[%d + i ], "
-               "((simde__m512i*) bnProcBuf)[%d + i]);\n",
+               "            ((simde__m512i*)bnProcBufRes)[%u + i ] = simde_mm512_subs_epi8(((simde__m512i*)llrRes)[%d + i ], "
+               "((simde__m512i*) bnProcBuf)[%u + i]);\n",
                (lut_startAddrBnGroups[idxBnGroup] >> 6) + k * cnOffsetInGroup,
                (lut_startAddrBnGroupsLlr[idxBnGroup] >> 6),
                (lut_startAddrBnGroups[idxBnGroup] >> 6) + k * cnOffsetInGroup);
@@ -1209,8 +1209,8 @@ fprintf(fd,  "// Process group with 30 CNs \n");
           // Loop over BNs
        fprintf(fd,"            for (i=0;i<M;i++) {\n");
        fprintf(fd,
-               "            ((simde__m512i*)bnProcBufRes)[%d + i ] = simde_mm512_subs_epi8(((simde__m512i*)llrRes)[%d + i ], "
-               "((simde__m512i*) bnProcBuf)[%d + i]);\n",
+               "            ((simde__m512i*)bnProcBufRes)[%u + i ] = simde_mm512_subs_epi8(((simde__m512i*)llrRes)[%d + i ], "
+               "((simde__m512i*) bnProcBuf)[%u + i]);\n",
                (lut_startAddrBnGroups[idxBnGroup] >> 6) + k * cnOffsetInGroup,
                (lut_startAddrBnGroupsLlr[idxBnGroup] >> 6),
                (lut_startAddrBnGroups[idxBnGroup] >> 6) + k * cnOffsetInGroup);

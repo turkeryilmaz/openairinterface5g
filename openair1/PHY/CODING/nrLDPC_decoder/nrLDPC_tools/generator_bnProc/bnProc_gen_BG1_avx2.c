@@ -106,7 +106,8 @@ void nrLDPC_bnProc_BG1_generator_AVX2(const char* dir, int R)
       // Loop over BNs
       fprintf(fd, "            for (i=0;i<M;i++) {\n");
       fprintf(fd,
-              "            ((simde__m256i*)bnProcBufRes)[%d + i ] = simde_mm256_subs_epi8(((simde__m256i*)llrRes)[%d + i ], ((simde__m256i*) bnProcBuf)[%d + i]);\n",
+              "            ((simde__m256i*)bnProcBufRes)[%u + i ] = simde_mm256_subs_epi8(((simde__m256i*)llrRes)[%d + i ], "
+              "((simde__m256i*) bnProcBuf)[%u + i]);\n",
               (lut_startAddrBnGroups[idxBnGroup] >> 5) + k * cnOffsetInGroup,
               (lut_startAddrBnGroupsLlr[idxBnGroup] >> 5),
               (lut_startAddrBnGroups[idxBnGroup] >> 5) + k * cnOffsetInGroup);
@@ -136,7 +137,8 @@ void nrLDPC_bnProc_BG1_generator_AVX2(const char* dir, int R)
       // Loop over BNs
       fprintf(fd, "            for (i=0;i<M;i++) {\n");
       fprintf(fd,
-              "            ((simde__m256i*)bnProcBufRes)[%d + i ] = simde_mm256_subs_epi8(((simde__m256i*)llrRes)[%d + i ], ((simde__m256i*) bnProcBuf)[%d + i]);\n",
+              "            ((simde__m256i*)bnProcBufRes)[%u + i ] = simde_mm256_subs_epi8(((simde__m256i*)llrRes)[%d + i ], "
+              "((simde__m256i*) bnProcBuf)[%u + i]);\n",
               (lut_startAddrBnGroups[idxBnGroup] >> 5) + k * cnOffsetInGroup,
               (lut_startAddrBnGroupsLlr[idxBnGroup] >> 5),
               (lut_startAddrBnGroups[idxBnGroup] >> 5) + k * cnOffsetInGroup);
@@ -165,7 +167,8 @@ void nrLDPC_bnProc_BG1_generator_AVX2(const char* dir, int R)
       // Loop over BNs
       fprintf(fd, "            for (i=0;i<M;i++) {\n");
       fprintf(fd,
-              "            ((simde__m256i*)bnProcBufRes)[%d + i ] = simde_mm256_subs_epi8(((simde__m256i*)llrRes)[%d + i ], ((simde__m256i*) bnProcBuf)[%d + i]);\n",
+              "            ((simde__m256i*)bnProcBufRes)[%u + i ] = simde_mm256_subs_epi8(((simde__m256i*)llrRes)[%d + i ], "
+              "((simde__m256i*) bnProcBuf)[%u + i]);\n",
               ((lut_startAddrBnGroups[idxBnGroup] >> 5) + k * cnOffsetInGroup),
               (lut_startAddrBnGroupsLlr[idxBnGroup] >> 5),
               ((lut_startAddrBnGroups[idxBnGroup] >> 5) + k * cnOffsetInGroup));
@@ -195,7 +198,8 @@ void nrLDPC_bnProc_BG1_generator_AVX2(const char* dir, int R)
       // Loop over BNs
       fprintf(fd, "            for (i=0;i<M;i++) {\n");
       fprintf(fd,
-              "            ((simde__m256i*)bnProcBufRes)[%d + i ] = simde_mm256_subs_epi8(((simde__m256i*)llrRes)[%d + i ], ((simde__m256i*) bnProcBuf)[%d + i]);\n",
+              "            ((simde__m256i*)bnProcBufRes)[%u + i ] = simde_mm256_subs_epi8(((simde__m256i*)llrRes)[%d + i ], "
+              "((simde__m256i*) bnProcBuf)[%u + i]);\n",
               (lut_startAddrBnGroups[idxBnGroup] >> 5) + k * cnOffsetInGroup,
               (lut_startAddrBnGroupsLlr[idxBnGroup] >> 5),
               (lut_startAddrBnGroups[idxBnGroup] >> 5) + k * cnOffsetInGroup);
@@ -227,7 +231,8 @@ void nrLDPC_bnProc_BG1_generator_AVX2(const char* dir, int R)
       // Loop over BNs
       fprintf(fd, "            for (i=0;i<M;i++) {\n");
       fprintf(fd,
-              "            ((simde__m256i*)bnProcBufRes)[%d + i ] = simde_mm256_subs_epi8(((simde__m256i*)llrRes)[%d + i ], ((simde__m256i*) bnProcBuf)[%d + i]);\n",
+              "            ((simde__m256i*)bnProcBufRes)[%u + i ] = simde_mm256_subs_epi8(((simde__m256i*)llrRes)[%d + i ], "
+              "((simde__m256i*) bnProcBuf)[%u + i]);\n",
               (lut_startAddrBnGroups[idxBnGroup] >> 5) + k * cnOffsetInGroup,
               (lut_startAddrBnGroupsLlr[idxBnGroup] >> 5),
               (lut_startAddrBnGroups[idxBnGroup] >> 5) + k * cnOffsetInGroup);
@@ -259,7 +264,8 @@ void nrLDPC_bnProc_BG1_generator_AVX2(const char* dir, int R)
       // Loop over BNs
       fprintf(fd, "            for (i=0;i<M;i++) {\n");
       fprintf(fd,
-              "            ((simde__m256i*)bnProcBufRes)[%d + i ] = simde_mm256_subs_epi8(((simde__m256i*)llrRes)[%d + i ], ((simde__m256i*) bnProcBuf)[%d + i]);\n",
+              "            ((simde__m256i*)bnProcBufRes)[%u + i ] = simde_mm256_subs_epi8(((simde__m256i*)llrRes)[%d + i ], "
+              "((simde__m256i*) bnProcBuf)[%u + i]);\n",
               (lut_startAddrBnGroups[idxBnGroup] >> 5) + k * cnOffsetInGroup,
               (lut_startAddrBnGroupsLlr[idxBnGroup] >> 5),
               (lut_startAddrBnGroups[idxBnGroup] >> 5) + k * cnOffsetInGroup);
@@ -291,7 +297,8 @@ void nrLDPC_bnProc_BG1_generator_AVX2(const char* dir, int R)
       // Loop over BNs
       fprintf(fd, "            for (i=0;i<M;i++) {\n");
       fprintf(fd,
-              "            ((simde__m256i*)bnProcBufRes)[%d + i ] = simde_mm256_subs_epi8(((simde__m256i*)llrRes)[%d + i ], ((simde__m256i*) bnProcBuf)[%d + i]);\n",
+              "            ((simde__m256i*)bnProcBufRes)[%u + i ] = simde_mm256_subs_epi8(((simde__m256i*)llrRes)[%d + i ], "
+              "((simde__m256i*) bnProcBuf)[%u + i]);\n",
               (lut_startAddrBnGroups[idxBnGroup] >> 5) + k * cnOffsetInGroup,
               (lut_startAddrBnGroupsLlr[idxBnGroup] >> 5),
               (lut_startAddrBnGroups[idxBnGroup] >> 5) + k * cnOffsetInGroup);
@@ -323,7 +330,8 @@ void nrLDPC_bnProc_BG1_generator_AVX2(const char* dir, int R)
       // Loop over BNs
       fprintf(fd, "            for (i=0;i<M;i++) {\n");
       fprintf(fd,
-              "            ((simde__m256i*)bnProcBufRes)[%d + i ] = simde_mm256_subs_epi8(((simde__m256i*)llrRes)[%d + i ], ((simde__m256i*) bnProcBuf)[%d + i]);\n",
+              "            ((simde__m256i*)bnProcBufRes)[%u + i ] = simde_mm256_subs_epi8(((simde__m256i*)llrRes)[%d + i ], "
+              "((simde__m256i*) bnProcBuf)[%u + i]);\n",
               (lut_startAddrBnGroups[idxBnGroup] >> 5) + k * cnOffsetInGroup,
               (lut_startAddrBnGroupsLlr[idxBnGroup] >> 5),
               (lut_startAddrBnGroups[idxBnGroup] >> 5) + k * cnOffsetInGroup);
@@ -355,7 +363,8 @@ void nrLDPC_bnProc_BG1_generator_AVX2(const char* dir, int R)
       // Loop over BNs
       fprintf(fd, "            for (i=0;i<M;i++) {\n");
       fprintf(fd,
-              "            ((simde__m256i*)bnProcBufRes)[%d + i ] = simde_mm256_subs_epi8(((simde__m256i*)llrRes)[%d + i ], ((simde__m256i*) bnProcBuf)[%d + i]);\n",
+              "            ((simde__m256i*)bnProcBufRes)[%u + i ] = simde_mm256_subs_epi8(((simde__m256i*)llrRes)[%d + i ], "
+              "((simde__m256i*) bnProcBuf)[%u + i]);\n",
               (lut_startAddrBnGroups[idxBnGroup] >> 5) + k * cnOffsetInGroup,
               (lut_startAddrBnGroupsLlr[idxBnGroup] >> 5),
               (lut_startAddrBnGroups[idxBnGroup] >> 5) + k * cnOffsetInGroup);
@@ -386,7 +395,8 @@ void nrLDPC_bnProc_BG1_generator_AVX2(const char* dir, int R)
       // Loop over BNs
       fprintf(fd, "            for (i=0;i<M;i++) {\n");
       fprintf(fd,
-              "            ((simde__m256i*)bnProcBufRes)[%d + i ] = simde_mm256_subs_epi8(((simde__m256i*)llrRes)[%d + i ], ((simde__m256i*) bnProcBuf)[%d + i]);\n",
+              "            ((simde__m256i*)bnProcBufRes)[%u + i ] = simde_mm256_subs_epi8(((simde__m256i*)llrRes)[%d + i ], "
+              "((simde__m256i*) bnProcBuf)[%u + i]);\n",
               (lut_startAddrBnGroups[idxBnGroup] >> 5) + k * cnOffsetInGroup,
               (lut_startAddrBnGroupsLlr[idxBnGroup] >> 5),
               (lut_startAddrBnGroups[idxBnGroup] >> 5) + k * cnOffsetInGroup);
@@ -416,7 +426,8 @@ void nrLDPC_bnProc_BG1_generator_AVX2(const char* dir, int R)
       // Loop over BNs
       fprintf(fd, "            for (i=0;i<M;i++) {\n");
       fprintf(fd,
-              "            ((simde__m256i*)bnProcBufRes)[%d + i ] = simde_mm256_subs_epi8(((simde__m256i*)llrRes)[%d + i ], ((simde__m256i*) bnProcBuf)[%d + i]);\n",
+              "            ((simde__m256i*)bnProcBufRes)[%u + i ] = simde_mm256_subs_epi8(((simde__m256i*)llrRes)[%d + i ], "
+              "((simde__m256i*) bnProcBuf)[%u + i]);\n",
               (lut_startAddrBnGroups[idxBnGroup] >> 5) + k * cnOffsetInGroup,
               (lut_startAddrBnGroupsLlr[idxBnGroup] >> 5),
               (lut_startAddrBnGroups[idxBnGroup] >> 5) + k * cnOffsetInGroup);
@@ -447,7 +458,8 @@ void nrLDPC_bnProc_BG1_generator_AVX2(const char* dir, int R)
       // Loop over BNs
       fprintf(fd, "            for (i=0;i<M;i++) {\n");
       fprintf(fd,
-              "            ((simde__m256i*)bnProcBufRes)[%d + i ] = simde_mm256_subs_epi8(((simde__m256i*)llrRes)[%d + i ], ((simde__m256i*) bnProcBuf)[%d + i]);\n",
+              "            ((simde__m256i*)bnProcBufRes)[%u + i ] = simde_mm256_subs_epi8(((simde__m256i*)llrRes)[%d + i ], "
+              "((simde__m256i*) bnProcBuf)[%u + i]);\n",
               (lut_startAddrBnGroups[idxBnGroup] >> 5) + k * cnOffsetInGroup,
               (lut_startAddrBnGroupsLlr[idxBnGroup] >> 5),
               (lut_startAddrBnGroups[idxBnGroup] >> 5) + k * cnOffsetInGroup);
@@ -478,7 +490,8 @@ void nrLDPC_bnProc_BG1_generator_AVX2(const char* dir, int R)
       // Loop over BNs
       fprintf(fd, "            for (i=0;i<M;i++) {\n");
       fprintf(fd,
-              "            ((simde__m256i*)bnProcBufRes)[%d + i ] = simde_mm256_subs_epi8(((simde__m256i*)llrRes)[%d + i ], ((simde__m256i*) bnProcBuf)[%d + i]);\n",
+              "            ((simde__m256i*)bnProcBufRes)[%u + i ] = simde_mm256_subs_epi8(((simde__m256i*)llrRes)[%d + i ], "
+              "((simde__m256i*) bnProcBuf)[%u + i]);\n",
               (lut_startAddrBnGroups[idxBnGroup] >> 5) + k * cnOffsetInGroup,
               (lut_startAddrBnGroupsLlr[idxBnGroup] >> 5),
               (lut_startAddrBnGroups[idxBnGroup] >> 5) + k * cnOffsetInGroup);
@@ -509,7 +522,8 @@ void nrLDPC_bnProc_BG1_generator_AVX2(const char* dir, int R)
       // Loop over BNs
       fprintf(fd, "            for (i=0;i<M;i++) {\n");
       fprintf(fd,
-              "            ((simde__m256i*)bnProcBufRes)[%d + i ] = simde_mm256_subs_epi8(((simde__m256i*)llrRes)[%d + i ], ((simde__m256i*) bnProcBuf)[%d + i]);\n",
+              "            ((simde__m256i*)bnProcBufRes)[%u + i ] = simde_mm256_subs_epi8(((simde__m256i*)llrRes)[%d + i ], "
+              "((simde__m256i*) bnProcBuf)[%u + i]);\n",
               (lut_startAddrBnGroups[idxBnGroup] >> 5) + k * cnOffsetInGroup,
               (lut_startAddrBnGroupsLlr[idxBnGroup] >> 5),
               (lut_startAddrBnGroups[idxBnGroup] >> 5) + k * cnOffsetInGroup);
@@ -540,7 +554,8 @@ void nrLDPC_bnProc_BG1_generator_AVX2(const char* dir, int R)
       // Loop over BNs
       fprintf(fd, "            for (i=0;i<M;i++) {\n");
       fprintf(fd,
-              "            ((simde__m256i*)bnProcBufRes)[%d + i ] = simde_mm256_subs_epi8(((simde__m256i*)llrRes)[%d + i ], ((simde__m256i*) bnProcBuf)[%d + i]);\n",
+              "            ((simde__m256i*)bnProcBufRes)[%u + i ] = simde_mm256_subs_epi8(((simde__m256i*)llrRes)[%d + i ], "
+              "((simde__m256i*) bnProcBuf)[%u + i]);\n",
               (lut_startAddrBnGroups[idxBnGroup] >> 5) + k * cnOffsetInGroup,
               (lut_startAddrBnGroupsLlr[idxBnGroup] >> 5),
               (lut_startAddrBnGroups[idxBnGroup] >> 5) + k * cnOffsetInGroup);
@@ -574,7 +589,8 @@ void nrLDPC_bnProc_BG1_generator_AVX2(const char* dir, int R)
       // Loop over BNs
       fprintf(fd, "            for (i=0;i<M;i++) {\n");
       fprintf(fd,
-              "            ((simde__m256i*)bnProcBufRes)[%d + i ] = simde_mm256_subs_epi8(((simde__m256i*)llrRes)[%d + i ], ((simde__m256i*) bnProcBuf)[%d + i]);\n",
+              "            ((simde__m256i*)bnProcBufRes)[%u + i ] = simde_mm256_subs_epi8(((simde__m256i*)llrRes)[%d + i ], "
+              "((simde__m256i*) bnProcBuf)[%u + i]);\n",
               (lut_startAddrBnGroups[idxBnGroup] >> 5) + k * cnOffsetInGroup,
               (lut_startAddrBnGroupsLlr[idxBnGroup] >> 5),
               (lut_startAddrBnGroups[idxBnGroup] >> 5) + k * cnOffsetInGroup);
@@ -607,7 +623,8 @@ void nrLDPC_bnProc_BG1_generator_AVX2(const char* dir, int R)
       // Loop over BNs
       fprintf(fd, "            for (i=0;i<M;i++) {\n");
       fprintf(fd,
-              "            ((simde__m256i*)bnProcBufRes)[%d + i ] = simde_mm256_subs_epi8(((simde__m256i*)llrRes)[%d + i ], ((simde__m256i*) bnProcBuf)[%d + i]);\n",
+              "            ((simde__m256i*)bnProcBufRes)[%u + i ] = simde_mm256_subs_epi8(((simde__m256i*)llrRes)[%d + i ], "
+              "((simde__m256i*) bnProcBuf)[%u + i]);\n",
               (lut_startAddrBnGroups[idxBnGroup] >> 5) + k * cnOffsetInGroup,
               (lut_startAddrBnGroupsLlr[idxBnGroup] >> 5),
               (lut_startAddrBnGroups[idxBnGroup] >> 5) + k * cnOffsetInGroup);
@@ -638,7 +655,8 @@ void nrLDPC_bnProc_BG1_generator_AVX2(const char* dir, int R)
       // Loop over BNs
       fprintf(fd, "            for (i=0;i<M;i++) {\n");
       fprintf(fd,
-              "            ((simde__m256i*)bnProcBufRes)[%d + i ] = simde_mm256_subs_epi8(((simde__m256i*)llrRes)[%d + i ], ((simde__m256i*) bnProcBuf)[%d + i]);\n",
+              "            ((simde__m256i*)bnProcBufRes)[%u + i ] = simde_mm256_subs_epi8(((simde__m256i*)llrRes)[%d + i ], "
+              "((simde__m256i*) bnProcBuf)[%u + i]);\n",
               (lut_startAddrBnGroups[idxBnGroup] >> 5) + k * cnOffsetInGroup,
               (lut_startAddrBnGroupsLlr[idxBnGroup] >> 5),
               (lut_startAddrBnGroups[idxBnGroup] >> 5) + k * cnOffsetInGroup);
@@ -669,7 +687,8 @@ void nrLDPC_bnProc_BG1_generator_AVX2(const char* dir, int R)
       // Loop over BNs
       fprintf(fd, "            for (i=0;i<M;i++) {\n");
       fprintf(fd,
-              "            ((simde__m256i*)bnProcBufRes)[%d + i ] = simde_mm256_subs_epi8(((simde__m256i*)llrRes)[%d + i ], ((simde__m256i*) bnProcBuf)[%d + i]);\n",
+              "            ((simde__m256i*)bnProcBufRes)[%u + i ] = simde_mm256_subs_epi8(((simde__m256i*)llrRes)[%d + i ], "
+              "((simde__m256i*) bnProcBuf)[%u + i]);\n",
               (lut_startAddrBnGroups[idxBnGroup] >> 5) + k * cnOffsetInGroup,
               (lut_startAddrBnGroupsLlr[idxBnGroup] >> 5),
               (lut_startAddrBnGroups[idxBnGroup] >> 5) + k * cnOffsetInGroup);
@@ -700,7 +719,8 @@ void nrLDPC_bnProc_BG1_generator_AVX2(const char* dir, int R)
       // Loop over BNs
       fprintf(fd, "            for (i=0;i<M;i++) {\n");
       fprintf(fd,
-              "            ((simde__m256i*)bnProcBufRes)[%d + i ] = simde_mm256_subs_epi8(((simde__m256i*)llrRes)[%d + i ], ((simde__m256i*) bnProcBuf)[%d + i]);\n",
+              "            ((simde__m256i*)bnProcBufRes)[%u + i ] = simde_mm256_subs_epi8(((simde__m256i*)llrRes)[%d + i ], "
+              "((simde__m256i*) bnProcBuf)[%u + i]);\n",
               (lut_startAddrBnGroups[idxBnGroup] >> 5) + k * cnOffsetInGroup,
               (lut_startAddrBnGroupsLlr[idxBnGroup] >> 5),
               (lut_startAddrBnGroups[idxBnGroup] >> 5) + k * cnOffsetInGroup);
@@ -730,7 +750,8 @@ void nrLDPC_bnProc_BG1_generator_AVX2(const char* dir, int R)
       // Loop over BNs
       fprintf(fd, "            for (i=0;i<M;i++) {\n");
       fprintf(fd,
-              "            ((simde__m256i*)bnProcBufRes)[%d + i ] = simde_mm256_subs_epi8(((simde__m256i*)llrRes)[%d + i ], ((simde__m256i*) bnProcBuf)[%d + i]);\n",
+              "            ((simde__m256i*)bnProcBufRes)[%u + i ] = simde_mm256_subs_epi8(((simde__m256i*)llrRes)[%d + i ], "
+              "((simde__m256i*) bnProcBuf)[%u + i]);\n",
               (lut_startAddrBnGroups[idxBnGroup] >> 5) + k * cnOffsetInGroup,
               (lut_startAddrBnGroupsLlr[idxBnGroup] >> 5),
               (lut_startAddrBnGroups[idxBnGroup] >> 5) + k * cnOffsetInGroup);
@@ -761,7 +782,8 @@ void nrLDPC_bnProc_BG1_generator_AVX2(const char* dir, int R)
       // Loop over BNs
       fprintf(fd, "            for (i=0;i<M;i++) {\n");
       fprintf(fd,
-              "            ((simde__m256i*)bnProcBufRes)[%d + i ] = simde_mm256_subs_epi8(((simde__m256i*)llrRes)[%d + i ], ((simde__m256i*) bnProcBuf)[%d + i]);\n",
+              "            ((simde__m256i*)bnProcBufRes)[%u + i ] = simde_mm256_subs_epi8(((simde__m256i*)llrRes)[%d + i ], "
+              "((simde__m256i*) bnProcBuf)[%u + i]);\n",
               (lut_startAddrBnGroups[idxBnGroup] >> 5) + k * cnOffsetInGroup,
               (lut_startAddrBnGroupsLlr[idxBnGroup] >> 5),
               (lut_startAddrBnGroups[idxBnGroup] >> 5) + k * cnOffsetInGroup);
@@ -794,7 +816,8 @@ void nrLDPC_bnProc_BG1_generator_AVX2(const char* dir, int R)
       // Loop over BNs
       fprintf(fd, "            for (i=0;i<M;i++) {\n");
       fprintf(fd,
-              "            ((simde__m256i*)bnProcBufRes)[%d + i ] = simde_mm256_subs_epi8(((simde__m256i*)llrRes)[%d + i ], ((simde__m256i*) bnProcBuf)[%d + i]);\n",
+              "            ((simde__m256i*)bnProcBufRes)[%u + i ] = simde_mm256_subs_epi8(((simde__m256i*)llrRes)[%d + i ], "
+              "((simde__m256i*) bnProcBuf)[%u + i]);\n",
               (lut_startAddrBnGroups[idxBnGroup] >> 5) + k * cnOffsetInGroup,
               (lut_startAddrBnGroupsLlr[idxBnGroup] >> 5),
               (lut_startAddrBnGroups[idxBnGroup] >> 5) + k * cnOffsetInGroup);
@@ -825,7 +848,8 @@ void nrLDPC_bnProc_BG1_generator_AVX2(const char* dir, int R)
       // Loop over BNs
       fprintf(fd, "            for (i=0;i<M;i++) {\n");
       fprintf(fd,
-              "            ((simde__m256i*)bnProcBufRes)[%d + i ] = simde_mm256_subs_epi8(((simde__m256i*)llrRes)[%d + i ], ((simde__m256i*) bnProcBuf)[%d + i]);\n",
+              "            ((simde__m256i*)bnProcBufRes)[%u + i ] = simde_mm256_subs_epi8(((simde__m256i*)llrRes)[%d + i ], "
+              "((simde__m256i*) bnProcBuf)[%u + i]);\n",
               (lut_startAddrBnGroups[idxBnGroup] >> 5) + k * cnOffsetInGroup,
               (lut_startAddrBnGroupsLlr[idxBnGroup] >> 5),
               (lut_startAddrBnGroups[idxBnGroup] >> 5) + k * cnOffsetInGroup);
@@ -856,7 +880,8 @@ void nrLDPC_bnProc_BG1_generator_AVX2(const char* dir, int R)
       // Loop over BNs
       fprintf(fd, "            for (i=0;i<M;i++) {\n");
       fprintf(fd,
-              "            ((simde__m256i*)bnProcBufRes)[%d + i ] = simde_mm256_subs_epi8(((simde__m256i*)llrRes)[%d + i ], ((simde__m256i*) bnProcBuf)[%d + i]);\n",
+              "            ((simde__m256i*)bnProcBufRes)[%u + i ] = simde_mm256_subs_epi8(((simde__m256i*)llrRes)[%d + i ], "
+              "((simde__m256i*) bnProcBuf)[%u + i]);\n",
               (lut_startAddrBnGroups[idxBnGroup] >> 5) + k * cnOffsetInGroup,
               (lut_startAddrBnGroupsLlr[idxBnGroup] >> 5),
               (lut_startAddrBnGroups[idxBnGroup] >> 5) + k * cnOffsetInGroup);
@@ -889,7 +914,8 @@ void nrLDPC_bnProc_BG1_generator_AVX2(const char* dir, int R)
       // Loop over BNs
       fprintf(fd, "            for (i=0;i<M;i++) {\n");
       fprintf(fd,
-              "            ((simde__m256i*)bnProcBufRes)[%d + i ] = simde_mm256_subs_epi8(((simde__m256i*)llrRes)[%d + i ], ((simde__m256i*) bnProcBuf)[%d + i]);\n",
+              "            ((simde__m256i*)bnProcBufRes)[%u + i ] = simde_mm256_subs_epi8(((simde__m256i*)llrRes)[%d + i ], "
+              "((simde__m256i*) bnProcBuf)[%u + i]);\n",
               (lut_startAddrBnGroups[idxBnGroup] >> 5) + k * cnOffsetInGroup,
               (lut_startAddrBnGroupsLlr[idxBnGroup] >> 5),
               (lut_startAddrBnGroups[idxBnGroup] >> 5) + k * cnOffsetInGroup);
@@ -922,7 +948,8 @@ void nrLDPC_bnProc_BG1_generator_AVX2(const char* dir, int R)
       // Loop over BNs
       fprintf(fd, "            for (i=0;i<M;i++) {\n");
       fprintf(fd,
-              "            ((simde__m256i*)bnProcBufRes)[%d + i ] = simde_mm256_subs_epi8(((simde__m256i*)llrRes)[%d + i ], ((simde__m256i*) bnProcBuf)[%d + i]);\n",
+              "            ((simde__m256i*)bnProcBufRes)[%u + i ] = simde_mm256_subs_epi8(((simde__m256i*)llrRes)[%d + i ], "
+              "((simde__m256i*) bnProcBuf)[%u + i]);\n",
               (lut_startAddrBnGroups[idxBnGroup] >> 5) + k * cnOffsetInGroup,
               (lut_startAddrBnGroupsLlr[idxBnGroup] >> 5),
               (lut_startAddrBnGroups[idxBnGroup] >> 5) + k * cnOffsetInGroup);
@@ -955,7 +982,8 @@ void nrLDPC_bnProc_BG1_generator_AVX2(const char* dir, int R)
       // Loop over BNs
       fprintf(fd, "            for (i=0;i<M;i++) {\n");
       fprintf(fd,
-              "            ((simde__m256i*)bnProcBufRes)[%d + i ] = simde_mm256_subs_epi8(((simde__m256i*)llrRes)[%d + i ], ((simde__m256i*) bnProcBuf)[%d + i]);\n",
+              "            ((simde__m256i*)bnProcBufRes)[%u + i ] = simde_mm256_subs_epi8(((simde__m256i*)llrRes)[%d + i ], "
+              "((simde__m256i*) bnProcBuf)[%u + i]);\n",
               (lut_startAddrBnGroups[idxBnGroup] >> 5) + k * cnOffsetInGroup,
               (lut_startAddrBnGroupsLlr[idxBnGroup] >> 5),
               (lut_startAddrBnGroups[idxBnGroup] >> 5) + k * cnOffsetInGroup);
@@ -988,7 +1016,8 @@ void nrLDPC_bnProc_BG1_generator_AVX2(const char* dir, int R)
       // Loop over BNs
       fprintf(fd, "            for (i=0;i<M;i++) {\n");
       fprintf(fd,
-              "            ((simde__m256i*)bnProcBufRes)[%d + i ] = simde_mm256_subs_epi8(((simde__m256i*)llrRes)[%d + i ], ((simde__m256i*) bnProcBuf)[%d + i]);\n",
+              "            ((simde__m256i*)bnProcBufRes)[%u + i ] = simde_mm256_subs_epi8(((simde__m256i*)llrRes)[%d + i ], "
+              "((simde__m256i*) bnProcBuf)[%u + i]);\n",
               (lut_startAddrBnGroups[idxBnGroup] >> 5) + k * cnOffsetInGroup,
               (lut_startAddrBnGroupsLlr[idxBnGroup] >> 5),
               (lut_startAddrBnGroups[idxBnGroup] >> 5) + k * cnOffsetInGroup);
