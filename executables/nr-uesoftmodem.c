@@ -645,20 +645,15 @@ int main(int argc, char **argv)
 
       int rf_port = cell->rf_port;
       nrUE_RU_params_t *RU = &nrue_rus[rf_port];
+      NR_UE_MAC_INST_t *mac = get_mac_inst(inst);
 
       for (int CC_id = 0; CC_id < MAX_NUM_CCs; CC_id++) {
         PHY_VARS_NR_UE *UE_CC = PHY_vars_UE_g[inst][CC_id];
 
         set_UE_options(CC_id, UE_CC, rf_port, RU);
-        UE_CC->frame_parms = cell_fp[cell_id];
-        NR_UE_MAC_INST_t *mac = get_mac_inst(inst);
         init_nr_ue_phy_cpu_stats(&UE_CC->phy_cpu_stats);
 
-        if (IS_SA_MODE(get_softmodem_params()) || get_softmodem_params()->sl_mode) {
-          mac->nr_band = cell->band;
-          mac->ssb_start_subcarrier = cell->ssb_start;
-          mac->dl_frequency = cell->rf_frequency;
-        } else {
+        if (!IS_SA_MODE(get_softmodem_params()) && !get_softmodem_params()->sl_mode) {
           do {
             notifiedFIFO_elt_t *elt = pollNotifiedFIFO(&mac->input_nf);
             if (!elt) {
@@ -668,8 +663,20 @@ int main(int argc, char **argv)
             delNotifiedFIFO_elt(elt);
           } while (true);
           fapi_nr_config_request_t *nrUE_config = &UE_CC->nrUE_config;
-          nr_init_frame_parms_ue(&UE_CC->frame_parms, nrUE_config, mac->nr_band);
+          nr_init_frame_parms_ue(&cell_fp[cell_id], nrUE_config, mac->nr_band);
+
+          cell->band = cell_fp[cell_id].nr_band;
+          cell->rf_frequency = cell_fp[cell_id].dl_CarrierFreq;
+          cell->rf_freq_offset = cell_fp[cell_id].ul_CarrierFreq - cell_fp[cell_id].dl_CarrierFreq;
+          cell->numerology = cell_fp[cell_id].numerology_index;
+          cell->N_RB_DL = cell_fp[cell_id].N_RB_DL;
+          cell->ssb_start = cell_fp[cell_id].ssb_start_subcarrier;
         }
+
+        UE_CC->frame_parms = cell_fp[cell_id];
+        mac->nr_band = cell->band;
+        mac->ssb_start_subcarrier = cell->ssb_start;
+        mac->dl_frequency = cell->rf_frequency;
 
         UE_CC->sl_mode = get_softmodem_params()->sl_mode;
         init_actor(&UE_CC->sync_actor, "SYNC_", -1);
