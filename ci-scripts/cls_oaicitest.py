@@ -255,10 +255,7 @@ def DeployWithScript(HTML, node, script, options, tag):
 	ret = cls_cmd.runScript(node, script, 600, opt)
 	logging.debug(f'"{script}" finished with code {ret.returncode}, output:\n{ret.stdout}')
 	param = f"on node {node}"
-	if ret.returncode == 0:
-		HTML.CreateHtmlTestRowQueue(param, 'OK', [f"Deployment on OC succeeded"])
-	else:
-		HTML.CreateHtmlTestRowQueue(param, 'KO', [f"Deployment on OC failed"])
+	HTML.CreateHtmlTestRowQueue(f'on node {node}', 'OK' if ret.returncode == 0 else 'KO', [f'{ret.stdout}'])
 	return ret.returncode == 0
 
 def UndeployWithScript(HTML, ctx, node, script, options):
@@ -267,17 +264,15 @@ def UndeployWithScript(HTML, ctx, node, script, options):
 	opt = options.replace('%%log_dir%%', remote_dir)
 	ret = cls_cmd.runScript(node, script, 600, opt)
 	logging.debug(f'"{script}" finished with code {ret.returncode}, output:\n{ret.stdout}')
-	log_files = []
 	with cls_cmd.getConnection(node) as ssh:
 		ret_ls = ssh.run(f'ls -1 {remote_dir}')
-		log_files = ret_ls.stdout.strip().split("\n")
-		for lf in log_files:
-			archiveArtifact(ssh, ctx, f'{remote_dir}/{lf}')
-	param = f"on node {node}"
-	if ret.returncode == 0:
-		HTML.CreateHtmlTestRowQueue(param, 'OK', [f"Undeployment on OC succeeded"])
-	else:
-		HTML.CreateHtmlTestRowQueue(param, 'KO', [f"Undeployment on OC failed"])
+		files = ret_ls.stdout.strip().split("\n")
+		log_files = []
+		for lf in files:
+			name = archiveArtifact(ssh, ctx, f'{remote_dir}/{lf}')
+			log_files.append(name)
+	msg = "Log files:\n" + "\n".join([os.path.basename(lf) for lf in log_files])
+	HTML.CreateHtmlTestRowQueue(f'on node {node}', 'OK' if ret.returncode == 0 else 'KO', [f'{ret.stdout}\n\n{msg}'])
 	return ret.returncode == 0
 
 #-----------------------------------------------------------

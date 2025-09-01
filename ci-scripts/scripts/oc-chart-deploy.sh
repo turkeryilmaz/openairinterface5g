@@ -12,5 +12,5 @@ OC_RELEASE=$(basename "${OC_DIR}")
 
 cat ${OC_DIR}/oc-password | oc login -u oaicicd --server https://api.oai.cs.eurecom.fr:6443 > /dev/null
 oc project ${OC_NS} > /dev/null
-helm install --wait --timeout 120s ${OC_RELEASE} --set nfimage.version=${IMAGE_TAG} ${OC_DIR}/.
+helm install --wait --timeout 120s ${OC_RELEASE} --set nfimage.version=${IMAGE_TAG} --hide-notes ${OC_DIR}/.
 oc logout > /dev/null
