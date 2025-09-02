@@ -2078,12 +2078,12 @@ static void fill_e1_bearer_modif_pdcp_status(gNB_RRC_UE_t *UE,
                                              DRB_nGRAN_to_mod_t *drb_to_mod,
                                              const int drb_id,
                                              const bool um_on_default_drb,
-                                             const bool n2_source,
+                                             const bool is_inter_cu_ho,
                                              const ngap_drb_status_t *drb_status)
 {
   drb_to_mod->id = drb_id;
   // PDCP SN Status Request
-  drb_to_mod->pdcp_sn_status_requested = n2_source ? true : false;
+  drb_to_mod->pdcp_sn_status_requested = is_inter_cu_ho;
   // PDCP SN Status Information
   if (drb_status) {
     drb_to_mod->pdcp_config = calloc_or_fail(1, sizeof(*drb_to_mod->pdcp_config));
