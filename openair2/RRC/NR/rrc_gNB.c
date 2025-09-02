@@ -2111,7 +2111,7 @@ void e1_send_bearer_updates(gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE, int n, f1ap_drb
     .gNB_cu_up_ue_id = UE->rrc_ue_id,
   };
 
-  bool n2_source = UE->ho_context && UE->ho_context->source && !UE->ho_context->target;
+  bool is_inter_cu_ho = UE->ho_context && UE->ho_context->source && !UE->ho_context->target;
   for (int i = 0; i < MAX_DRBS_PER_UE; i++) {
     int drb_id = i + 1;
     DRB_nGRAN_to_mod_t drb_to_mod = {0};
@@ -2122,11 +2122,11 @@ void e1_send_bearer_updates(gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE, int n, f1ap_drb
       const f1ap_drb_setup_t *drb_f1 = &drbs[i];
       drb_id = drb_f1->id;
       fill_e1_bearer_modif(&drb_to_mod, drb_f1);
-    } else if (n2_source || drb_status) {
+    } else if (is_inter_cu_ho || drb_status) {
       /* On-going handover: send PDCP Status Request */
       if (UE->established_drbs[i].status == DRB_INACTIVE)
         continue;
-      fill_e1_bearer_modif_pdcp_status(UE, &drb_to_mod, drb_id, rrc->configuration.um_on_default_drb, n2_source, drb_status);
+      fill_e1_bearer_modif_pdcp_status(UE, &drb_to_mod, drb_id, rrc->configuration.um_on_default_drb, is_inter_cu_ho, drb_status);
     }
     rrc_pdu_session_param_t *pdu = find_pduSession_from_drbId(UE, drb_id);
     if (!pdu)
