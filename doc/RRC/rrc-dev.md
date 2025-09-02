@@ -304,7 +304,8 @@ sequenceDiagram
   amf->>tcucp: HANDOVER REQUEST
   Note over tcucp: rrc_gNB_process_Handover_Request
   Note over tcucp: trigger_bearer_setup
-  tcucp<<->>tcuup: Bearer Context Setup
+  tcucp->>tcuup: Bearer Context Setup Request
+  tcuup->>tcucp: Bearer Context Setup Response
   Note over tcucp: rrc_gNB_process_e1_bearer_context_setup_resp
   Note over tcucp: nr_rrc_trigger_n2_ho_target() ("on target CU")
   Note over tcucp: nr_initiate_handover()
@@ -347,7 +348,8 @@ sequenceDiagram
   note over scucp: rrc_CU_process_ue_context_release_complete
   alt F1
     Note over scucp: rrc_gNB_generate_RRCRelease
-    scucp<<->>sdu: F1 UE Context Release
+    scucp->>sdu: F1 UE Context Release Command
+    sdu->>scucp: F1 UE Context Release Complete
   else
     note over scucp: rrc_gNB_send_NGAP_UE_CONTEXT_RELEASE_COMPLETE
     scucp->>amf: NG UE Context Release Complete
