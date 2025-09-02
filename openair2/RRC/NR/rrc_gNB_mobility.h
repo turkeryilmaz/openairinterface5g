@@ -58,6 +58,7 @@ typedef struct nr_ho_source_cu {
 typedef void (*ho_req_ack_t)(gNB_RRC_INST *rrc, gNB_RRC_UE_t *ue);
 typedef void (*ho_success_t)(gNB_RRC_INST *rrc, gNB_RRC_UE_t *ue);
 typedef void (*ho_failure_t)(gNB_RRC_INST *rrc, uint32_t gnb_ue_id, ngap_handover_failure_t *msg);
+typedef void (*ho_trigger_t)(gNB_RRC_INST *rrc, gNB_RRC_UE_t *ue);
 
 typedef struct nr_ho_target_cu {
   /// pointer to the (target) DU structure
@@ -70,6 +71,8 @@ typedef struct nr_ho_target_cu {
   rnti_t new_rnti;
   /// Handover Preparation Buffer
   byte_array_t ue_ho_prep_info;
+  /// function pointer to trigger handover on target gNB
+  ho_trigger_t ho_trigger;
   /// function pointer to announce handover request acknowledgment
   ho_req_ack_t ho_req_ack;
   /// function pointer to announce handover success

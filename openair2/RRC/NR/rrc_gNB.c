@@ -2580,7 +2580,7 @@ void rrc_gNB_process_e1_bearer_context_setup_resp(e1ap_bearer_setup_resp_t *resp
   // If HO Preparation Info is stored, N2 handover is ongoing
   if (UE->ho_context) {
     LOG_I(NR_RRC, "Received Bearer Context Setup Response for UE %d with valid HO Context\n", UE->rrc_ue_id);
-    nr_rrc_trigger_n2_ho_target(rrc, UE);
+    UE->ho_context->target->ho_trigger(rrc, UE);
     return;
   }
 
