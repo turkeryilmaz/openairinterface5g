@@ -2617,21 +2617,23 @@ void rrc_gNB_process_e1_bearer_context_modif_resp(const e1ap_bearer_modif_resp_t
     return;
   }
 
+  int n_drb_mod = 0;
+  e1_pdcp_status_info_t pdcp_status[MAX_DRBS_PER_UE] = {0};
   for (int i = 0; i < resp->numPDUSessionsMod; ++i) {
     const pdu_session_modif_t *pdu = &resp->pduSessionMod[i];
     LOG_I(RRC, "UE %d: PDU session ID %ld modified %d bearers\n", resp->gNB_cu_cp_ue_id, pdu->id, pdu->numDRBModified);
-    bool pdcp_Status = false;
     for (int  j = 0; j < pdu->numDRBModified; j++) {
       // Trigger UL RAN Status Transfer
       if (pdu->DRBnGRanModList[j].pdcp_status) {
-        pdcp_Status = true;
-        break;
+        pdcp_status[n_drb_mod++] = *pdu->DRBnGRanModList[j].pdcp_status;
       }
     }
-    if (pdcp_Status) {
-      LOG_I(NR_RRC, "UE %d: received PDU Status Info - send UL RAN Status Transfer\n", resp->gNB_cu_cp_ue_id);
-      rrc_gNB_send_NGAP_ul_ran_status_transfer(rrc, &ue_context_p->ue_context, pdu->numDRBModified, pdu->DRBnGRanModList);
-    }
+  }
+  if (n_drb_mod) {
+    LOG_I(NR_RRC, "UE %d: received PDU Status Info - send UL RAN Status Transfer\n", resp->gNB_cu_cp_ue_id);
+    gNB_RRC_UE_t *ue = &ue_context_p->ue_context;
+    if (ue->ho_context && ue->ho_context->source)
+      ue->ho_context->source->ho_status_transfer(rrc, ue, n_drb_mod, pdcp_status);
   }
 }
 

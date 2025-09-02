@@ -1165,7 +1165,7 @@ void rrc_gNB_free_Handover_Request(ngap_handover_request_t *msg)
 
 /** @brief Send NG Uplink RAN Status Transfer message (8.4.6 3GPP TS 38.413)
  * Direction: source NG-RAN node -> AMF */
-int rrc_gNB_send_NGAP_ul_ran_status_transfer(gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE, const int n_to_mod, const DRB_nGRAN_modified_t *mod)
+int rrc_gNB_send_NGAP_ul_ran_status_transfer(gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE, const int n_to_mod, const e1_pdcp_status_info_t *pdcp_status)
 {
   AssertFatal(UE != NULL, "UE context is NULL\n");
 
@@ -1190,9 +1190,8 @@ int rrc_gNB_send_NGAP_ul_ran_status_transfer(gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE
     ngap_drb_status_t *item = &msg.ran_status.drb_status_list[msg.ran_status.nb_drb++];
     item->drb_id = drb->drb_id;
 
-    e1_pdcp_status_info_t *pdcp_status = mod[i].pdcp_status;
-    e1_pdcp_count_t *ul_pdcp = &pdcp_status->ul_count;
-    e1_pdcp_count_t *dl_pdcp = &pdcp_status->dl_count;
+    const e1_pdcp_count_t *ul_pdcp = &pdcp_status[i].ul_count;
+    const e1_pdcp_count_t *dl_pdcp = &pdcp_status[i].dl_count;
 
     item->ul_count.pdcp_sn = ul_pdcp->sn;
     item->ul_count.hfn = ul_pdcp->hfn;
