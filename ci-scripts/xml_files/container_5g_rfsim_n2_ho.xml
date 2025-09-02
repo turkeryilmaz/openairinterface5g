@@ -43,6 +43,12 @@
  020002
  030001
  030002
+ 050003
+ 040001
+ 050004
+ 050001
+ 040001
+ 050002
  100001
  222222
         </TestCaseRequestedList>
@@ -161,6 +167,21 @@
                 <desc>UE (1) connected to DU-PCI 1?</desc>
                 <node>acamas</node>
                 <command>echo ci fetch_du_by_ue_id 1 | ncat 192.168.71.180 9090 | grep "1234"</command>
+        </testCase>
+
+        <testCase id="050003">
+                <class>Custom_Command</class>
+                <desc>Trigger N2 Handover</desc>
+                <node>acamas</node>
+                <command>echo ci trigger_n2_ho 0,1 | ncat 192.168.71.180 9090</command>
+                <command_fail>yes</command_fail>
+        </testCase>
+
+        <testCase id="050004">
+                <class>Custom_Command</class>
+                <desc>UE (1) connected to DU-PCI 0?</desc>
+                <node>acamas</node>
+                <command>echo ci fetch_du_by_ue_id 1 | ncat 192.168.71.150 9090 | grep "3584"</command>
         </testCase>
 
         <testCase id="100001">
