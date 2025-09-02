@@ -413,6 +413,9 @@ static byte_array_t rrc_gNB_generate_HandoverPreparationInformation(gNB_RRC_INST
 
 static byte_array_t rrc_gNB_encode_HandoverCommand(gNB_RRC_UE_t *UE, gNB_RRC_INST *rrc)
 {
+  DevAssert(UE->ho_context);
+  DevAssert(UE->ho_context->target);
+
   NR_SecurityConfig_t *sec = calloc_or_fail(1, sizeof(*sec));
   sec->keyToUse = calloc_or_fail(1, sizeof(*sec->keyToUse));
   *sec->keyToUse = NR_SecurityConfig__keyToUse_master;
@@ -421,6 +424,11 @@ static byte_array_t rrc_gNB_encode_HandoverCommand(gNB_RRC_UE_t *UE, gNB_RRC_INS
   alg->cipheringAlgorithm = UE->ciphering_algorithm;
   alg->integrityProtAlgorithm = calloc_or_fail(1, sizeof(*alg->integrityProtAlgorithm));
   *alg->integrityProtAlgorithm = UE->integrity_algorithm;
+
+  // Mark source gNB's measurement configuration for removal in UE->measConfig
+  if (UE->ho_context->target->ue_ho_prep_info.len) {
+    fill_removal_lists_from_source_measConfig(UE->measConfig, UE->ho_context->target->ue_ho_prep_info);
+  }
 
   /* 3GPP TS 38.331 RadioBearerConfig: re-establish PDCP whenever
   the security key used for this radio bearer changes, e.g. for SRB2
@@ -433,6 +441,12 @@ static byte_array_t rrc_gNB_encode_HandoverCommand(gNB_RRC_UE_t *UE, gNB_RRC_INS
   params.masterKeyUpdate = true;
   params.nextHopChainingCount = UE->nh_ncc;
   byte_array_t out = get_HandoverCommandMessage(&params);
+
+  // Free remove lists in UE->measConfig
+  ASN_STRUCT_FREE(asn_DEF_NR_MeasIdToRemoveList, UE->measConfig->measIdToRemoveList);
+  ASN_STRUCT_FREE(asn_DEF_NR_ReportConfigToRemoveList, UE->measConfig->reportConfigToRemoveList);
+  ASN_STRUCT_FREE(asn_DEF_NR_MeasObjectToRemoveList, UE->measConfig->measObjectToRemoveList);
+
   free_RRCReconfiguration_params(params);
   return out;
 }

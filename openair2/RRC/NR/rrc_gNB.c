@@ -637,11 +637,6 @@ nr_rrc_reconfig_param_t get_RRCReconfiguration_params(gNB_RRC_INST *rrc, gNB_RRC
 {
   uint8_t xid = rrc_gNB_get_next_transaction_identifier(rrc->module_id);
 
-  if (UE->ho_context && UE->ho_context->target && UE->ho_context->target->ue_ho_prep_info.len) {
-    // Mark source gNB's measurement configuration for removal in UE->measConfig
-    fill_removal_lists_from_source_measConfig(UE->measConfig, UE->ho_context->target->ue_ho_prep_info);
-  }
-
   // Re-establish PDCP for SRB2 only
   NR_SRB_ToAddModList_t *SRBs = createSRBlist(UE, srb_reest_bitmap);
   NR_DRB_ToAddModList_t *DRBs = createDRBlist(UE, drb_reestablish);
