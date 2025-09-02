@@ -553,11 +553,15 @@ void as_security_key_update(NR_UE_RRC_INST_t *rrc, NR_MasterKeyUpdate_t *mku)
     /* derive or update the K gNB key based on the current K gNB key or the NH, using the nextHopChainingCount
        value indicated in the received masterKeyUpdate, as specified in 6.9.2.3.3 3GPP TS 33.501 */
     if (mku->nextHopChainingCount != rrc->nhcc) {
-      LOG_A(NR_RRC, "Received masterKeyUpdate (nextHopChainingCount %ld): update security keys\n", mku->nextHopChainingCount);
       // - If the UE received an NCC value that was different from the NCC associated with the currently active
       // K gNB/K eNB, the UE shall first synchronize the locally kept NH parameter by computing the function defined in
       // Annex A.10 iteratively (and increasing the NCC value until it matches the NCC value received from the source
       // ng-eNB/gNB via the HO command message.
+      LOG_A(NR_RRC, "Received masterKeyUpdate (nextHopChainingCount %ld): update security keys\n", mku->nextHopChainingCount);
+      /** @todo: The KAMF should be obtained from NAS. This exchange over ITTI must be synchronized
+       * with the rest of the RRCReconfiguration procedure, in particular, the RadioBearerConfig
+       * processing that triggers bearer modifications. Security configueration of bearers must
+       * complete using the newly derived keys. As a workaround NAS is directly accessed here. */
       nr_ue_nas_t *nas = get_ue_nas_info(rrc->ue_id);
       uint8_t *kamf = nas->security.kamf;
       log_hex_buffer("Stored kamf", kamf, SECURITY_KEY_LEN);
@@ -566,8 +570,7 @@ void as_security_key_update(NR_UE_RRC_INST_t *rrc, NR_MasterKeyUpdate_t *mku)
         log_hex_buffer("Sync input = derived kgnb", rrc->kgnb, SECURITY_KEY_LEN);
         nr_rrc_nh_update(rrc, kamf, rrc->kgnb);
       }
-      // Following derivations
-      for (int i = rrc->nhcc; i < mku->nextHopChainingCount; i++) {
+      for (int i = rrc->nhcc; i < mku->nextHopChainingCount; i++) { // Following derivations
         LOG_D(NR_RRC, "Derive keys for ChainingCount = %d\n", i);
         nr_rrc_nh_update(rrc, kamf, rrc->nh);
       }
