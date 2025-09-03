@@ -967,6 +967,11 @@ void dl_rrc_message_transfer(const f1ap_dl_rrc_message_t *dl_rrc)
     ASN_STRUCT_FREE(asn_DEF_NR_CellGroupConfig, UE->CellGroup);
     UE->CellGroup = oldUE->CellGroup;
     oldUE->CellGroup = NULL;
+    /* the BSR of the UE before reestablishment might be large. We want to
+     * avoid scheduling this UE too much (all the RBs except SRB1 are
+     * suspended) and only SRB1 should be scheduled. */
+    UE->UE_sched_ctrl.estimated_ul_buffer = 0;
+    UE->UE_sched_ctrl.sched_ul_bytes = 0;
     UE->mac_stats = oldUE->mac_stats;
     UE->measgap_config = oldUE->measgap_config;
     /* 38.331 5.3.7.2 says that the UE releases the spCellConfig, so we drop it
