@@ -478,6 +478,7 @@ static int nr_process_mac_pdu(instance_t module_idP,
 
         const nr_lc_config_t *srbc = nr_mac_get_lc_config(sched_ctrl, lcid);
         if (!srbc || srbc->suspended) {
+          /* TODO retransmission of this data should be requested? */
           LOG_I(NR_MAC, "RNTI %04x LCID %d: ignoring %d bytes\n", UE->rnti, lcid, mac_len);
         } else {
           nr_mac_rlc_data_ind(module_idP, UE->rnti, true, lcid, (char *)(pduP + mac_subheader_len), mac_len);
