@@ -575,7 +575,7 @@ install_libconfig_from_source(){
     wget https://github.com/hyperrealm/libconfig/releases/download/v1.7.3/libconfig-1.7.3.tar.gz
     tar xf libconfig-1.7.3.tar.gz
     cd libconfig-1.7.3
-    ./configure CFLAGS="-fPIC" CXXFLAGS="-fPIC" --disable-shared --enable-static
+    ./configure --disable-shared --enable-static
     make CFLAGS="-fPIC" CXXFLAGS="-fPIC" -j$(nproc)
     $SUDO make install
     $SUDO ldconfig
