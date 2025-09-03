@@ -69,6 +69,13 @@ int nr_est_timing_advance_srs(uint16_t ofdm_symbol_size,
                               uint8_t N_ap,
                               const c16_t srs_estimated_channel_time[][N_ap][ofdm_symbol_size]);
 
+int16_t nr_est_toa_ns_srs(uint16_t ofdm_symbol_size,
+                          uint8_t N_arx,
+                          uint8_t N_ap,
+                          uint32_t samples_per_frame,
+                          c16_t srs_estimated_channel_freq[N_arx][N_ap][ofdm_symbol_size],
+                          int16_t *srs_toa_ns);
+
 void nr_pusch_ptrs_processing(PHY_VARS_gNB *gNB,
                               NR_DL_FRAME_PARMS *frame_parms,
                               nfapi_nr_pusch_pdu_t *rel15_ul,

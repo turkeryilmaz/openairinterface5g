@@ -1071,11 +1071,20 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx, N
         nfapi_nr_srs_indication_pdu_t *srs_indication = UL_INFO->srs_pdu_list + UL_INFO->srs_ind.number_of_pdus++;
         srs_indication->handle = srs_pdu->handle;
         srs_indication->rnti = srs_pdu->rnti;
+
+        int16_t srs_toa_ns[nb_antennas_rx];
+
         start_meas(&gNB->srs_timing_advance_stats);
         srs_indication->timing_advance_offset =
             srs_est >= 0 ? nr_est_timing_advance_srs(ofdm_symbol_size, N_ap, srs_estimated_channel_time) : 0xFFFF;
         stop_meas(&gNB->srs_timing_advance_stats);
-        srs_indication->timing_advance_offset_nsec = srs_est >= 0 ? (int16_t)((((int32_t)srs_indication->timing_advance_offset - 31) * ((int32_t)TC_NSEC_x32768)) >> 15) : 0xFFFF;
+        srs_indication->timing_advance_offset_nsec = srs_est >= 0 ? nr_est_toa_ns_srs(ofdm_symbol_size,
+                                                                                      nb_antennas_rx,
+                                                                                      N_ap,
+                                                                                      frame_parms->samples_per_frame,
+                                                                                      srs_estimated_channel_freq,
+                                                                                      srs_toa_ns)
+                                                                  : 0x8000;
         switch (srs_pdu->srs_parameters_v4.usage) {
           case 0:
             LOG_W(NR_PHY, "SRS report was not requested by MAC\n");
