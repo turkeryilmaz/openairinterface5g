@@ -97,7 +97,7 @@
                 <class>Deploy_Object</class>
                 <desc>Deploy OAI 5G CU-CP/CU-UP/DU 1 RFsim SA</desc>
                 <yaml_path>ci-scripts/yaml_files/5g_rfsimulator_n2_ho</yaml_path>
-                <services>oai-cucp-1 oai-cuup-1oai-du-1</services>
+                <services>oai-cucp-1 oai-cuup-1 oai-du-1</services>
                 <eNB_instance>0</eNB_instance>
                 <eNB_serverId>0</eNB_serverId>
         </testCase>
