@@ -2,7 +2,7 @@
   <tr style="border-collapse: collapse; border: none;">
     <td style="border-collapse: collapse; border: none;">
       <a href="http://www.openairinterface.org/">
-         <img src="./images/oai_final_logo.png" alt="" border=3 height=50 width=150>
+         <img src="../images/oai_final_logo.png" alt="" border=3 height=50 width=150>
          </img>
       </a>
     </td>
@@ -67,7 +67,7 @@ This is the current status:
 
 ### F1AP messages
 
-Refer to [FEATURE_SET.md](FEATURE_SET.md#gNB-F1AP) to learn about the current F1AP implementation status.
+Refer to [FEATURE_SET.md](../FEATURE_SET.md#gnb-f1ap) to learn about the current F1AP implementation status.
 
 ### High-level F1-C code structure
 
@@ -190,7 +190,7 @@ sudo cmake_targets/ran_build/build/nr-softmodem -O ci-scripts/conf_files/gnb-du.
 ```
 
 These files are tested in the CI, and are configured for use in docker,
-see [this `docker-compose` file](../ci-scripts/yaml_files/5g_f1_rfsimulator/docker-compose.yaml).
+see [this `docker-compose` file](../../ci-scripts/yaml_files/5g_f1_rfsimulator/docker-compose.yaml).
 
 The rules to decide if a config triggers a start of a DU, CU, or monolithic
 gNB, are, in order:
