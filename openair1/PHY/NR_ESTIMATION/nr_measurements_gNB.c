@@ -36,18 +36,17 @@
 
 #define I0_SKIP_DC 1
 
-int nr_est_timing_advance_srs(const NR_DL_FRAME_PARMS *frame_parms,
-                              const c16_t srs_estimated_channel_time[][frame_parms->ofdm_symbol_size])
+int nr_est_timing_advance_srs(uint16_t ofdm_symbol_size,
+                              uint8_t N_ap_srs,
+                              const c16_t srs_estimated_channel_time[][N_ap_srs][ofdm_symbol_size])
 {
   int timing_advance = 0;
-  int max_val = 0;
+  int64_t max_val = 0;
 
-  for (int i = 0; i < frame_parms->ofdm_symbol_size; i++) {
-    int temp = 0;
-    for (int aa = 0; aa < frame_parms->nb_antennas_rx; aa++) {
-      int Re = ((c16_t*)srs_estimated_channel_time[aa])[i].r;
-      int Im = ((c16_t*)srs_estimated_channel_time[aa])[i].i;
-      temp += (Re*Re/2) + (Im*Im/2);
+  for (int i = 0; i < ofdm_symbol_size; i++) {
+    int64_t temp = 0;
+    for (int aa = 0; aa < N_ap_srs; aa++) {
+      temp += squaredMod(srs_estimated_channel_time[0][aa][i]); // computing for the first receive antenna
     }
     if (temp > max_val) {
       timing_advance = i;
@@ -55,12 +54,12 @@ int nr_est_timing_advance_srs(const NR_DL_FRAME_PARMS *frame_parms,
     }
   }
 
-  if (timing_advance > frame_parms->ofdm_symbol_size/2) {
-    timing_advance = timing_advance - frame_parms->ofdm_symbol_size;
+  if (timing_advance > ofdm_symbol_size / 2) {
+    timing_advance = timing_advance - ofdm_symbol_size;
   }
 
   // Scale the 16 factor in N_TA calculation in 38.213 section 4.2 according to the used FFT size
-  const uint16_t bw_scaling = frame_parms->ofdm_symbol_size >> 7;
+  const uint16_t bw_scaling = ofdm_symbol_size >> 7;
 
   // do some integer rounding to improve TA accuracy
   int sync_pos_rounded;
