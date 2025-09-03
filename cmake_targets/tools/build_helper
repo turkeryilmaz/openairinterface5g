@@ -512,7 +512,7 @@ check_install_oai_software() {
 	liblapack-dev \
 	liblapacke-dev \
 	libreadline-dev \
-	libconfig-dev \
+    libconfig-dev \
 	libsctp-dev  \
 	libssl-dev  \
 	libtool  \
@@ -521,6 +521,8 @@ check_install_oai_software() {
 	zlib1g-dev \
 	xxd \
 	libyaml-cpp-dev
+
+    install_libconfig_from_source $1
 
   elif [[ "$OS_BASEDISTRO" == "fedora" ]]; then
     if [[ "$OS_DISTRO" == "rhel" ]] || [[ "$OS_DISTRO" == "centos" ]] || [[ "$OS_DISTRO" == "rocky" ]]; then
@@ -558,6 +560,7 @@ check_install_oai_software() {
       yaml-cpp-devel
   fi
 
+    install_libconfig_from_source $1
     install_asn1c_from_source $1
     install_simde_from_source $1
 }
@@ -577,6 +580,8 @@ install_libconfig_from_source(){
     $SUDO make install
     $SUDO ldconfig
     cd ..
+    $SUDO rm -r libconfig-1.7.3/
+    $SUDO rm libconfig-1.7.3.tar.gz
 }
 
 install_asn1c_from_source(){
