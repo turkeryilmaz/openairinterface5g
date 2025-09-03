@@ -1234,11 +1234,12 @@ int rrc_gNB_process_NGAP_PDUSESSION_RELEASE_COMMAND(MessageDef *msg_p, instance_
     return -1;
   }
 
-  LOG_I(NR_RRC, "[gNB %ld] gNB_ue_ngap_id %u \n", instance, gNB_ue_ngap_id);
   gNB_RRC_UE_t *UE = &ue_context_p->ue_context;
-  LOG_I(
-      NR_RRC, "PDU Session Release Command: AMF_UE_NGAP_ID %lu  rrc_ue_id %u release_pdusessions %d \n", cmd->amf_ue_ngap_id, gNB_ue_ngap_id, cmd->nb_pdusessions_torelease);
-  bool found = false;
+  LOG_I(NR_RRC, "PDU Session Release: AMF_UE_NGAP_ID %lu  rrc_ue_id %u release_pdusessions %d \n",
+        cmd->amf_ue_ngap_id,
+        gNB_ue_ngap_id,
+        cmd->nb_pdusessions_torelease);
+  e1ap_bearer_mod_req_t req = {0};
   uint8_t xid = rrc_gNB_get_next_transaction_identifier(rrc->module_id);
   UE->xids[xid] = RRC_PDUSESSION_RELEASE;
   for (int pdusession = 0; pdusession < cmd->nb_pdusessions_torelease; pdusession++) {
@@ -1252,16 +1253,23 @@ int rrc_gNB_process_NGAP_PDUSESSION_RELEASE_COMMAND(MessageDef *msg_p, instance_
       continue;
     }
     if (pduSession->status == PDU_SESSION_STATUS_ESTABLISHED) {
-      found = true;
-      LOG_I(NR_RRC, "RELEASE pdusession %d \n", pduSession->param.pdusession_id);
+      LOG_I(NR_RRC, "NG Release PDU Session %d \n", pduSession->param.pdusession_id);
+      pdu_session_to_remove_t *release = &req.pduSessionRem[req.numPDUSessionsRem++];
+      release->sessionId = pduSession->param.pdusession_id;
+      release->cause.type = E1AP_CAUSE_RADIO_NETWORK;
+      release->cause.value = E1AP_RADIO_CAUSE_NORMAL_RELEASE;
       pduSession->status = PDU_SESSION_STATUS_TORELEASE;
       pduSession->xid = xid;
     }
   }
 
-  if (found) {
-    // TODO RRCReconfiguration To UE
-    LOG_I(NR_RRC, "Send RRCReconfiguration To UE \n");
+  if (req.numPDUSessionsRem > 0) {
+    if (ue_associated_to_cuup(rrc, UE)) {
+      req.gNB_cu_cp_ue_id = UE->rrc_ue_id;
+      req.gNB_cu_up_ue_id = UE->rrc_ue_id;
+      sctp_assoc_t assoc_id = get_existing_cuup_for_ue(rrc, UE);
+      rrc->cucp_cuup.bearer_context_mod(assoc_id, &req);
+    }
     rrc_gNB_generate_dedicatedRRCReconfiguration_release(rrc, UE, xid, cmd->nas_pdu.len, cmd->nas_pdu.buf);
   } else {
     // gtp tunnel delete
