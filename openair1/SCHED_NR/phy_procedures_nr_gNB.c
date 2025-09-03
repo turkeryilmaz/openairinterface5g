@@ -1047,21 +1047,27 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx, N
           srs_est = -1;
         }
 
-        T(T_GNB_PHY_UL_FREQ_CHANNEL_ESTIMATE,
-          T_INT(0),
-          T_INT(srs_pdu->rnti),
-          T_INT(frame_rx),
-          T_INT(0),
-          T_INT(0),
-          T_BUFFER(srs_estimated_channel_freq[0][0], frame_parms->ofdm_symbol_size * sizeof(int32_t)));
+        for (int ant_rx = 0; ant_rx < nb_antennas_rx; ant_rx++) {
+          for (int p_index = 0; p_index < N_ap; p_index++) {
+            T(T_GNB_PHY_UL_FREQ_CHANNEL_ESTIMATE,
+              T_INT(gNB->Mod_id),
+              T_INT(srs_pdu->rnti),
+              T_INT(frame_rx),
+              T_INT(slot_rx),
+              T_INT(ant_rx),
+              T_INT(p_index),
+              T_BUFFER(srs_estimated_channel_freq[ant_rx][p_index], ofdm_symbol_size * sizeof(c16_t)));
 
-        T(T_GNB_PHY_UL_TIME_CHANNEL_ESTIMATE,
-          T_INT(0),
-          T_INT(srs_pdu->rnti),
-          T_INT(frame_rx),
-          T_INT(0),
-          T_INT(0),
-          T_BUFFER(srs_estimated_channel_time_shifted[0][0], frame_parms->ofdm_symbol_size * sizeof(int32_t)));
+            T(T_GNB_PHY_UL_TIME_CHANNEL_ESTIMATE,
+              T_INT(gNB->Mod_id),
+              T_INT(srs_pdu->rnti),
+              T_INT(frame_rx),
+              T_INT(slot_rx),
+              T_INT(ant_rx),
+              T_INT(p_index),
+              T_BUFFER(srs_estimated_channel_time_shifted[ant_rx][p_index], ofdm_symbol_size * sizeof(c16_t)));
+          }
+        }
 
         UL_INFO->srs_ind.sfn = frame_rx;
         UL_INFO->srs_ind.slot = slot_rx;
@@ -1085,6 +1091,14 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx, N
                                                                                       srs_estimated_channel_freq,
                                                                                       srs_toa_ns)
                                                                   : 0x8000;
+
+        T(T_GNB_PHY_UL_SRS_TOA_NS,
+          T_INT(gNB->Mod_id),
+          T_INT(srs_pdu->rnti),
+          T_INT(frame_rx),
+          T_INT(slot_rx),
+          T_BUFFER(srs_toa_ns, nb_antennas_rx * sizeof(int16_t)));
+
         switch (srs_pdu->srs_parameters_v4.usage) {
           case 0:
             LOG_W(NR_PHY, "SRS report was not requested by MAC\n");
