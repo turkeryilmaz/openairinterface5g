@@ -21,7 +21,7 @@
 #---------------------------------------------------------------------
 #
 # Dockerfile for the Open-Air-Interface 7.2 Fronthaul 
-#      Valid for Ubuntu22.04
+#      Valid for Ubuntu24.04
 #
 #---------------------------------------------------------------------
 
@@ -31,7 +31,7 @@ FROM ran-build-fhi72-t2:latest AS gnb-build
 
 
 #start from scratch for target executable
-FROM ubuntu:jammy AS oai-gnb
+FROM ubuntu:noble AS oai-gnb
 ARG BUILD_OPTION
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=Europe
