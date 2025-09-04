@@ -2686,8 +2686,7 @@ void configure_UE_BWP(gNB_MAC_INST *nr_mac,
       AssertFatal(dl_bwp_switch == ul_bwp_switch, "Different UL and DL BWP not supported\n");
       DL_BWP->bwp_id = dl_bwp_switch;
       UL_BWP->bwp_id = ul_bwp_switch;
-    }
-    else {
+    } else {
       // (re)configuring BWP
       // TODO BWP switching not via RRC reconfiguration
       // via RRC if firstActiveXlinkBWP_Id is NULL, MAC stays on the same BWP as before
@@ -2736,8 +2735,7 @@ void configure_UE_BWP(gNB_MAC_INST *nr_mac,
     UL_BWP->pusch_Config = ubwpd->pusch_Config->choice.setup;
     UL_BWP->pucch_Config = ubwpd->pucch_Config->choice.setup;
     UL_BWP->srs_Config = ubwpd->srs_Config->choice.setup;
-  }
-  else {
+  } else {
     DL_BWP->bwp_id = 0;
     UL_BWP->bwp_id = 0;
     DL_BWP->pdsch_Config = NULL;
@@ -2798,6 +2796,13 @@ void configure_UE_BWP(gNB_MAC_INST *nr_mac,
   } else {
     UL_BWP->pucch_ConfigCommon = scc->uplinkConfigCommon->initialUplinkBWP->pucch_ConfigCommon->choice.setup;
     UL_BWP->rach_ConfigCommon = scc->uplinkConfigCommon->initialUplinkBWP->rach_ConfigCommon->choice.setup;
+  }
+
+  // if PRACH occasions are not configured for the active UL BWP
+  // switch the active UL BWP to BWP indicated by initialUplinkBWP
+  if (is_RA && !UL_BWP->rach_ConfigCommon) {
+    configure_UE_BWP(nr_mac, scc, UE, is_RA,target_ss, 0, 0);
+    return;
   }
 
   NR_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
