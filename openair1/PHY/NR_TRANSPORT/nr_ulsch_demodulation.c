@@ -1206,8 +1206,11 @@ int nr_rx_pusch_tp(PHY_VARS_gNB *gNB,
           memset(rxFext_slot_mem, 0, sizeof(c16_t) * buffer_length_slot * nb_rx_ant);
         }
   }
-  else
-    LOG_W(PHY, "Data Recording based on T_TRACER for UL PUSCH only supported for 1 Rx antenna\n");
+  else if (T_ACTIVE(T_GNB_PHY_UL_FD_DMRS) ||
+        T_ACTIVE(T_GNB_PHY_UL_FD_CHAN_EST_DMRS_POS) ||
+        T_ACTIVE(T_GNB_PHY_UL_FD_CHAN_EST_DMRS_INTERPL) ||
+        T_ACTIVE(T_GNB_PHY_UL_FD_PUSCH_IQ))
+    LOG_W(PHY, "Error: Data Recording App based on T_TRACER for UL PUSCH supports only 1 Rx antenna\n");
 
 #endif
 
