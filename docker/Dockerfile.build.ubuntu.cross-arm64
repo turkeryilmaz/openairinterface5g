@@ -42,7 +42,17 @@ RUN /bin/sh oaienv && \
     echo "====== End of log for host-tools ======" && \
     cd ../build-cross/ && \
     # install missing libyaml-cpp-dev for arm64
-    apt install -y libyaml-cpp-dev:arm64 && \
+    apt install -y libyaml-cpp-dev:arm64 wget:arm64 && \
+    wget https://github.com/hyperrealm/libconfig/releases/download/v1.7.3/libconfig-1.7.3.tar.gz && \
+    tar xf libconfig-1.7.3.tar.gz &&\
+    cd libconfig-1.7.3 &&\
+    ./configure --disable-shared --enable-static &&\
+    make CFLAGS="-fPIC" CXXFLAGS="-fPIC" -j$(nproc) &&\
+    make install &&\
+    ldconfig &&\
+    cd .. &&\
+    rm -r libconfig-1.7.3/ &&\
+    rm libconfig-1.7.3.tar.gz &&\
     cmake ../../.. -GNinja -DENABLE_TELNETSRV=ON \
       -DCMAKE_TOOLCHAIN_FILE=../../../cmake_targets/cross-arm.cmake -DNATIVE_DIR=../build \
       -DCMAKE_C_FLAGS="-Werror" -DCMAKE_CXX_FLAGS="-Werror" && \
