@@ -3380,7 +3380,7 @@ void fapi_beam_index_allocation(NR_ServingCellConfigCommon_t *scc, const nr_mac_
       mac->fapi_beam_index[i] = fapi_index;
       index++;
     } else
-      mac->fapi_beam_index[i] = -1;
+      mac->fapi_beam_index[i] = 0;
   }
 }
 
@@ -3399,7 +3399,7 @@ NR_beam_alloc_t beam_allocation_procedure(NR_beam_info_t *beam_info, int frame, 
   for (int i = 0; i < beam_info->beams_per_period; i++) {
     NR_beam_alloc_t beam_struct = {.new_beam = false, .idx = i};
     int *beam = &beam_info->beam_allocation[i][index];
-    if (*beam == -1) {
+    if (*beam == 0) { // beamId 0 is no BF as per O-RAN spec
       beam_struct.new_beam = true;
       *beam = beam_index;
     }
@@ -3410,6 +3410,13 @@ NR_beam_alloc_t beam_allocation_procedure(NR_beam_info_t *beam_info, int frame, 
   }
 
   return (NR_beam_alloc_t) {.new_beam = false, .idx = -1};
+}
+
+int get_allocated_beam(const NR_beam_info_t *beam_info, int frame, int slot, int slots_per_frame, int beam_number_in_period)
+{
+  const int index = get_beam_index(beam_info, frame, slot, slots_per_frame);
+  uint16_t beam_idx = beam_info->beam_allocation[beam_number_in_period][index];
+  return (beam_info->beam_mode == LOPHY_BEAM_IDX) ? SET_BIT(beam_idx, 15) : beam_idx;
 }
 
 void reset_beam_status(NR_beam_info_t *beam_info, int frame, int slot, int beam_index, int slots_per_frame, bool new_beam)

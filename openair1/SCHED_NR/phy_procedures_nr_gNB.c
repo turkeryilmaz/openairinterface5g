@@ -53,35 +53,51 @@ int beam_index_allocation(bool das,
                           NR_gNB_COMMON *common_vars,
                           int slot,
                           int symbols_per_slot,
-                          int bitmap_symbols)
+                          int start_rb,
+                          int num_rb,
+                          int start_symb,
+                          int num_symb)
 {
-  if (!common_vars->beam_id)
-    return 0;
   if (das)
     return fapi_beam_index;
 
-  int ru_beam_idx =  analog_bf->analog_beam_list[fapi_beam_index].value;
   int idx = -1;
-  for (int j = 0; j < common_vars->num_beams_period; j++) {
-    // L2 analog beam implementation is slot based, so we need to verify occupancy for the whole slot
-    for (int i = 0; i < symbols_per_slot; i++) {
-      int current_beam = common_vars->beam_id[j][slot * symbols_per_slot + i];
-      if (current_beam == -1 || current_beam == ru_beam_idx)
-        idx = j;
-      else {
-        idx = -1;
-        break;
+  /* According to SCF nfapi spec, MSB of beam-Id indicates if beamforming is
+  applied at L1 or if it should be passed down to RU */
+  const bool is_lophy_bf = IS_BIT_SET(fapi_beam_index, 15);
+  if (!is_lophy_bf) {
+    /* Only analog BF for now because of L2 implementation. This could also be digital BF
+    in which case L1 has to apply the pre-defined beam weights before OFDM modulation or
+    sending freq domain data to RU. */
+    AssertFatal(common_vars->beam_id, "L1 should do beamforming but no weights preconfigured: slot %d, beam id %d\n", slot, fapi_beam_index);
+    int ru_beam_idx = analog_bf->analog_beam_list[fapi_beam_index].value;
+    int idx = -1;
+    for (int j = 0; j < common_vars->num_beams_period; j++) {
+      // L2 analog beam implementation is slot based, so we need to verify occupancy for the whole slot
+      for (int i = 0; i < symbols_per_slot; i++) {
+        int current_beam = common_vars->beam_id[j][slot * symbols_per_slot + i];
+        if (current_beam <= 0 || current_beam == ru_beam_idx)
+          idx = j;
+        else {
+          idx = -1;
+          break;
+        }
       }
+      if (idx != -1)
+        break;
     }
-    if (idx != -1)
-      break;
-  }
-  AssertFatal(idx >= 0, "Couldn't allocate beam ID %d\n", ru_beam_idx);
-  for (int j = 0; j < symbols_per_slot; j++) {
-    if (((bitmap_symbols >> j) & 0x01))
+    AssertFatal(idx >= 0, "Couldn't allocate beam ID %d\n", ru_beam_idx);
+    for (int j = start_symb; j < start_symb + num_symb; j++) {
       common_vars->beam_id[idx][slot * symbols_per_slot + j] = ru_beam_idx;
+    }
+    LOG_D(PHY, "Allocating beam_id[%d] %d in slot %d\n", idx, ru_beam_idx, slot);
+  } else {
+    // Digital or analog BF we don't care because L1 has to pass the beam index down to O-RU
+    int ru_beam_idx = (fapi_beam_index & 0x7fff);
+    update_ofh_section_info(&common_vars->tx_sections, ru_beam_idx, start_rb, num_rb, start_symb, num_symb);
+    // in this case the beam number is not relevant for L1 as mulitple beams are handled in multiple sections
+    idx = 0;
   }
-  LOG_D(PHY, "Allocating beam_id[%d] %d in slot %d\n", idx, ru_beam_idx, slot);
   return idx;
 }
 
@@ -151,14 +167,16 @@ void nr_common_signal_procedures(PHY_VARS_gNB *gNB, int frame, int slot, nfapi_n
   c16_t ***txdataF = gNB->common_vars.txdataF;
   int txdataF_offset = slot * fp->samples_per_slot_wCP;
   // beam number in a scenario with multiple concurrent beams
-  int bitmap = SL_to_bitmap(ssb_start_symbol, 4); // 4 ssb symbols
   int beam_nb = beam_index_allocation(gNB->enable_analog_das,
                                       pb->prgs_list[0].dig_bf_interface_list[0].beam_idx,
                                       &cfg->analog_beamforming_ve,
                                       &gNB->common_vars,
                                       slot,
                                       fp->symbols_per_slot,
-                                      bitmap);
+                                      fp->ssb_start_subcarrier / NR_NB_SC_PER_RB,
+                                      20 + (fp->ssb_start_subcarrier % NR_NB_SC_PER_RB != 0),
+                                      ssb_start_symbol,
+                                      4);
 
   nr_generate_pss(&txdataF[beam_nb][0][txdataF_offset], gNB->TX_AMP, ssb_start_symbol, cfg, fp);
   nr_generate_sss(&txdataF[beam_nb][0][txdataF_offset], gNB->TX_AMP, ssb_start_symbol, cfg, fp);
@@ -184,22 +202,7 @@ void nr_common_signal_procedures(PHY_VARS_gNB *gNB, int frame, int slot, nfapi_n
   }
 #endif
 
-  nr_generate_pbch(gNB,
-                   &ssb_pdu,
-                   &txdataF[beam_nb][0][txdataF_offset],
-                   ssb_start_symbol,
-                   n_hf,
-                   frame,
-                   cfg,
-                   fp);
-
-  // update section info for 7.2 interface
-  update_ofh_section_info(&gNB->common_vars.tx_sections,
-                          pb->prgs_list[0].dig_bf_interface_list[0].beam_idx,
-                          fp->ssb_start_subcarrier / NR_NB_SC_PER_RB,
-                          20 + (fp->ssb_start_subcarrier % NR_NB_SC_PER_RB != 0),
-                          ssb_start_symbol,
-                          4);
+  nr_generate_pbch(gNB, &ssb_pdu, &txdataF[beam_nb][0][txdataF_offset], ssb_start_symbol, n_hf, frame, cfg, fp);
 }
 
 // clearing beam information to be provided to RU for all slots (DL and UL)
@@ -299,17 +302,20 @@ void phy_procedures_gNB_TX(processingData_L1tx_t *msgTx,
                                                                 csi_params->symb_l0,
                                                                 csi_params->symb_l1);
       nfapi_nr_tx_precoding_and_beamforming_t *pb = &csi_params->precodingAndBeamforming;
-      int csi_bitmap = 0;
       int lprime_num = mapping_parms.lprime + 1;
-      for (int j = 0; j < mapping_parms.size; j++)
-        csi_bitmap |= ((1 << lprime_num) - 1) << mapping_parms.loverline[j];
-      int beam_nb = beam_index_allocation(gNB->enable_analog_das,
-                                          pb->prgs_list[0].dig_bf_interface_list[0].beam_idx,
-                                          &cfg->analog_beamforming_ve,
-                                          &gNB->common_vars,
-                                          slot,
-                                          fp->symbols_per_slot,
-                                          csi_bitmap);
+      int beam_nb = 0;
+      for (int j = 0; j < mapping_parms.size; j++) {
+        beam_nb = beam_index_allocation(gNB->enable_analog_das,
+                                        pb->prgs_list[0].dig_bf_interface_list[0].beam_idx,
+                                        &cfg->analog_beamforming_ve,
+                                        &gNB->common_vars,
+                                        slot,
+                                        fp->symbols_per_slot,
+                                        csi_params->start_rb,
+                                        csi_params->nr_of_rbs,
+                                        mapping_parms.loverline[j],
+                                        lprime_num);
+      }
 
       nr_generate_csi_rs(&gNB->frame_parms,
                          &mapping_parms,

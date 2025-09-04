@@ -53,6 +53,9 @@ int beam_index_allocation(bool das,
                           NR_gNB_COMMON *common_vars,
                           int slot,
                           int symbols_per_slot,
-                          int bitmap_symbols);
+                          int start_rb,
+                          int num_rb,
+                          int start_symb,
+                          int num_symb);
 void update_ofh_section_info(struct oai_ofh_section *tx_s, int beam_id, int start_rb, int num_rb, int start_symb, int num_symb);
 #endif

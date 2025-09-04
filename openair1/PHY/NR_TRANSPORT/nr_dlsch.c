@@ -679,20 +679,16 @@ static int do_one_dlsch(unsigned char *input_ptr, PHY_VARS_gNB *gNB, NR_gNB_DLSC
   start_meas(&gNB->dlsch_precoding_stats);
   nfapi_nr_tx_precoding_and_beamforming_t *pb = &rel15->precodingAndBeamforming;
   // beam number in multi-beam scenario (concurrent beams)
-  int bitmap = SL_to_bitmap(rel15->StartSymbolIndex, rel15->NrOfSymbols);
   int beam_nb = beam_index_allocation(gNB->enable_analog_das,
                                       pb->prgs_list[0].dig_bf_interface_list[0].beam_idx,
                                       &gNB->gNB_config.analog_beamforming_ve,
                                       &gNB->common_vars,
                                       slot,
                                       frame_parms->symbols_per_slot,
-                                      bitmap);
-  update_ofh_section_info(&gNB->common_vars.tx_sections,
-                          pb->prgs_list[0].dig_bf_interface_list[0].beam_idx,
-                          rel15->rbStart,
-                          rel15->rbSize,
-                          rel15->StartSymbolIndex,
-                          rel15->NrOfSymbols);
+                                      rel15->rbStart,
+                                      rel15->rbSize,
+                                      rel15->StartSymbolIndex,
+                                      rel15->NrOfSymbols);
 
   c16_t **txdataF = gNB->common_vars.txdataF[beam_nb];
 

@@ -84,14 +84,17 @@ int nr_fill_prach(PHY_VARS_gNB *gNB, int SFN, int Slot, nfapi_nr_prach_pdu_t *pr
     for (int i = 0; i < prach_pdu->beamforming.dig_bf_interface; i++) {
       int fapi_beam_idx = prach_pdu->beamforming.prgs_list[0].dig_bf_interface_list[i].beam_idx;
       int start_symb = prach_pdu->prach_start_symbol + i * n_symb;
-      int bitmap = SL_to_bitmap(start_symb, n_symb);
       prach->beam_nb[i] = beam_index_allocation(gNB->enable_analog_das,
                                                 fapi_beam_idx,
                                                 &gNB->gNB_config.analog_beamforming_ve,
                                                 &gNB->common_vars,
                                                 Slot,
                                                 NR_NUMBER_OF_SYMBOLS_PER_SLOT,
-                                                bitmap);
+                                                // tmp: no dbf for prach
+                                                0,
+                                                273,
+                                                start_symb,
+                                                n_symb);
     }
   }
   LOG_D(NR_PHY,"Copying prach pdu %d bytes to index %d\n", (int)sizeof(*prach_pdu), prach_id);

@@ -524,6 +524,15 @@ int xran_fh_tx_send_slot(ru_info_t *ru, int frame, int slot, uint64_t timestamp)
         p_prbMapElm->nBeamIndex = l1_s->beam_id;
         p_prbMapElm->compMethod = fh_cfg->ru_conf.compMeth;
         p_prbMapElm->iqWidth = fh_cfg->ru_conf.iqWidth;
+        LOG_D(PHY,
+              "%d.%d sec id:%ld, start rb:%d, num rb:%d, start sym:%d, num sym:%d\n",
+              frame,
+              slot,
+              idxElm,
+              p_prbMapElm->nRBStart,
+              p_prbMapElm->nRBSize,
+              p_prbMapElm->nStartSymb,
+              p_prbMapElm->numSymb);
         for (int32_t sym_idx = p_prbMapElm->nStartSymb; sym_idx < p_prbMapElm->nStartSymb + p_prbMapElm->numSymb; sym_idx++) {
           uint8_t *pData =
               bufs->src[ant_id % nb_tx_per_ru][tti % XRAN_N_FE_BUF_LEN].pBuffers[sym_idx % XRAN_NUM_OF_SYMBOL_PER_SLOT].pData;
