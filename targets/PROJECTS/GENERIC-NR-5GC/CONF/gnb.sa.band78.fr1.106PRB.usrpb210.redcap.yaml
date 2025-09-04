@@ -19,6 +19,7 @@ gNBs:
     # Physical parameters:
     do_CSIRS: 1
     do_SRS: 1
+    first_active_BWP: 2
     #uess_agg_levels: [0,1,1,1,1]
     servingCellConfigCommon:
       #spCellConfigCommon
@@ -38,8 +39,6 @@ gNBs:
         dl_carrierBandwidth: 106
         #initialDownlinkBWP
         #genericParameters
-        # this is RBstart=0,L=51 (275*(L-1))+RBstart
-        initialDLBWPlocationAndBandwidth: 13750
         # subcarrierSpacing
         # 0=kHz15, 1=kHz30, 2=kHz60, 3=kHz120
         initialDLBWPsubcarrierSpacing: 1
@@ -58,7 +57,6 @@ gNBs:
         pMax: 20
         #initialUplinkBWP
         #genericParameters
-        initialULBWPlocationAndBandwidth: 13750
         # subcarrierSpacing
         # 0=kHz15, 1=kHz30, 2=kHz60, 3=kHz120
         initialULBWPsubcarrierSpacing: 1
@@ -133,15 +131,12 @@ gNBs:
         ssPBCH_BlockPower: -25
 
     servingCellConfigDedicated:
-      - dl_bwp-Id_1: 1
+      - dl_bwp-Id_1: 2
         dl_bwp1_locationAndBandwidth: 28875
         dl_bwp1_subcarrierSpacing: 1
-        firstActiveDownlinkBWP-Id: 1
-        defaultDownlinkBWP-Id: 1
-        ul_bwp-Id_1: 1
+        ul_bwp-Id_1: 2
         ul_bwp1_locationAndBandwidth: 28875
         ul_bwp1_subcarrierSpacing: 1
-        firstActiveUplinkBWP-Id: 1
 
     RedCap:
       cellBarredRedCap1Rx_r17: 1

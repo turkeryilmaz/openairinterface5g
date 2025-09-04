@@ -160,6 +160,7 @@ typedef struct nr_mac_config_t {
   nr_pdsch_AntennaPorts_t pdsch_AntennaPorts;
   int pusch_AntennaPorts;
   int minRXTXTIME;
+  int first_active_BWP;
   int do_CSIRS;
   int do_SRS;
   bool force_256qam_off;
