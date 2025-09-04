@@ -73,9 +73,13 @@ RUN apt-get update && \
       gcc-aarch64-linux-gnu \
       g++-aarch64-linux-gnu && \
     apt-get clean &&\
+    rm -f /usr/local/lib/libconfig.a &&\
+    ldconfig &&\
     wget https://github.com/hyperrealm/libconfig/releases/download/v1.7.3/libconfig-1.7.3.tar.gz && \
     tar xf libconfig-1.7.3.tar.gz &&\
     cd libconfig-1.7.3 &&\
+    # prevent host bison/flex from running
+    touch lib/grammar.c lib/scanner.c && \
     ./configure \
       --host=aarch64-linux-gnu \
       --disable-shared \
