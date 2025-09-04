@@ -37,6 +37,7 @@
 #include "PHY/phy_extern_nr_ue.h"
 #include "common/utils/LOG/log.h"
 #include "PHY/sse_intrin.h"
+#include "openair1/SCHED_NR_UE/defs.h"
 
 //#define k1 1000
 #define k1 ((long long int) 1000)
@@ -247,6 +248,14 @@ void nr_ue_ssb_rsrp_measurements(PHY_VARS_NR_UE *ue,
   uint32_t signal_pwr = rsrp_avg > ue->measurements.n0_power_avg ? rsrp_avg - ue->measurements.n0_power_avg : 0;
   int SNRtimes10 = dB_fixed_x10(signal_pwr) - dB_fixed_x10(ue->measurements.n0_power_avg);
   ue->measurements.ssb_sinr_dB[ssb_index] = SNRtimes10 / 10.0;
+
+  nr_downlink_indication_t dl_indication;
+  fapi_nr_rx_indication_t rx_ind = {0};
+  nr_fill_dl_indication(&dl_indication, NULL, &rx_ind, proc, ue, NULL);
+  nr_fill_rx_indication(&rx_ind, FAPI_NR_RX_PDU_TYPE_SSB_MEAS, ue, NULL, NULL, 1, proc, (void *)&ssb_index, NULL);
+
+  if (ue->if_inst && ue->if_inst->dl_indication)
+    ue->if_inst->dl_indication(&dl_indication);
 
   LOG_D(PHY,
         "[UE %d] ssb %d SS-RSRP: %d dBm/RE (%f dB/RE), SS-SINR: %f dB\n",

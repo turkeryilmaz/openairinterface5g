@@ -126,12 +126,15 @@ typedef struct {
   uint8_t ssb_length;
   uint16_t cell_id;
   uint16_t ssb_start_subcarrier;
-  short rsrp_dBm;
   long arfcn;
   rlm_t radiolink_monitoring; // -1 no monitoring, 0 out_of_sync, 1 in_sync
-  // SINR value times 10 as reporting granularity is 0.5
-  float sinr_dB;
 } fapi_nr_ssb_pdu_t;
+
+typedef struct {
+  int ssb_index;
+  int rsrp_dBm;
+  float sinr_dB;  
+} fapi_nr_ssb_measurements_t;
 
 typedef struct {
   uint32_t pdu_length;
@@ -145,6 +148,7 @@ typedef struct {
     fapi_nr_pdsch_pdu_t pdsch_pdu;
     fapi_nr_ssb_pdu_t ssb_pdu;
     fapi_nr_sib_pdu_t sib_pdu;
+    fapi_nr_ssb_measurements_t ssb_meas_pdu;
     fapi_nr_csirs_measurements_t csirs_measurements;
   };
 } fapi_nr_rx_indication_body_t;
