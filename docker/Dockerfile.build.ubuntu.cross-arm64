@@ -47,11 +47,18 @@ RUN /bin/sh oaienv && \
     wget https://github.com/hyperrealm/libconfig/releases/download/v1.7.3/libconfig-1.7.3.tar.gz && \
     tar xf libconfig-1.7.3.tar.gz &&\
     cd libconfig-1.7.3 &&\
+    # Prevent bison regeneration with host architecture
+    touch lib/grammar.c lib/scanner.c &&\
     ./configure \
       --host=aarch64-linux-gnu \
       --disable-shared \
       --enable-static \
-      --prefix=/usr && \
+      --prefix=/usr \
+      CC=aarch64-linux-gnu-gcc \
+      CXX=aarch64-linux-gnu-g++ \
+      CFLAGS="-fPIC" \
+      CXXFLAGS="-fPIC" \
+      LDFLAGS="-no-pie" &&\
     make CFLAGS="-fPIC" CXXFLAGS="-fPIC" CC=aarch64-linux-gnu-gcc CXX=aarch64-linux-gnu-g++ -j$(nproc) && \
     make DESTDIR=/opt/arm-sysroot install && \
     cd .. &&\
