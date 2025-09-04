@@ -41,15 +41,19 @@ RUN /bin/sh oaienv && \
     ninja ldpc_generators generate_T > ../../log/host-tools.txt 2>&1 && \
     echo "====== End of log for host-tools ======" && \
     cd ../build-cross/ && \
+    apt install wget &&\
     # install missing libyaml-cpp-dev for arm64
-    apt install -y libyaml-cpp-dev:arm64 wget:arm64 && \
+    apt install -y libyaml-cpp-dev:arm64 && \
     wget https://github.com/hyperrealm/libconfig/releases/download/v1.7.3/libconfig-1.7.3.tar.gz && \
     tar xf libconfig-1.7.3.tar.gz &&\
     cd libconfig-1.7.3 &&\
-    ./configure --disable-shared --enable-static &&\
-    make CFLAGS="-fPIC" CXXFLAGS="-fPIC" -j$(nproc) &&\
-    make install &&\
-    ldconfig &&\
+    ./configure \
+      --host=aarch64-linux-gnu \
+      --disable-shared \
+      --enable-static \
+      --prefix=/usr && \
+    make CFLAGS="-fPIC" CXXFLAGS="-fPIC" CC=aarch64-linux-gnu-gcc CXX=aarch64-linux-gnu-g++ -j$(nproc) && \
+    make DESTDIR=/opt/arm-sysroot install && \
     cd .. &&\
     rm -r libconfig-1.7.3/ &&\
     rm libconfig-1.7.3.tar.gz &&\
