@@ -1028,7 +1028,7 @@ static void nr_rrc_prepare_msg3_payload(NR_UE_RRC_INST_t *rrc)
       nr_rrc_ue_prepare_RRCReestablishmentRequest(rrc);
       break;
     default:
-      AssertFatal(false, "RA trigger not implemented\n");
+      LOG_E(NR_RRC, "RRC asked to prepared msg3 payload, in a un-expected state %d, a new RACH will occur\n", rrc->ra_trigger);
   }
 }
 
