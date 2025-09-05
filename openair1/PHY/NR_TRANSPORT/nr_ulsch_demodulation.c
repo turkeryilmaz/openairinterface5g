@@ -1168,30 +1168,50 @@ int nr_rx_pusch_tp(PHY_VARS_gNB *gNB,
   int nb_layer = rel15_ul->nrOfLayers;
 
   // Initialize memory for DMRS signals
-  c16_t pusch_dmrs_slot_mem[nb_layer * buffer_length_slot] __attribute__((aligned(32)));
+  c16_t *pusch_dmrs_slot_mem = NULL;
   // Initialize memory for channel estimates based on DMRS positions
-  c16_t pusch_ch_est_dmrs_pos_slot_mem[buffer_length_slot * nb_layer * nb_rx_ant] __attribute__((aligned(32)));
+  c16_t *pusch_ch_est_dmrs_pos_slot_mem = NULL;
   // memory to store slot grid with channel coefficients based on DMRS positions after interpolation
-  c16_t pusch_ch_est_dmrs_interpl_slot_mem[buffer_length_slot * nb_layer * nb_rx_ant] __attribute__((aligned(32)));
+  c16_t *pusch_ch_est_dmrs_interpl_slot_mem = NULL;
   // memory to store extracted data including PUSCH + DMRS
-  c16_t rxFext_slot_mem[nb_rx_ant * buffer_length_slot] __attribute__((aligned(32)));
+  c16_t *rxFext_slot_mem = NULL;
 
 #if T_TRACER
-  // Initialize memory for DMRS signals
-  if (T_ACTIVE(T_GNB_PHY_UL_FD_DMRS))
-    memset(pusch_dmrs_slot_mem, 0, sizeof(c16_t) * nb_layer * buffer_length_slot);
+  if (nb_rx_ant == 1) {
+    // Initialize memory for DMRS signals
+    if (T_ACTIVE(T_GNB_PHY_UL_FD_DMRS))
+      if (pusch_dmrs_slot_mem == NULL){
+            pusch_dmrs_slot_mem = aligned_alloc(32, nb_layer * buffer_length_slot * sizeof(c16_t));
+            memset(pusch_dmrs_slot_mem, 0, sizeof(c16_t) * nb_layer * buffer_length_slot);
+          }
 
-  // Initialize memory for channel estimates based on DMRS positions
-  if (T_ACTIVE(T_GNB_PHY_UL_FD_CHAN_EST_DMRS_POS))
-    memset(pusch_ch_est_dmrs_pos_slot_mem, 0, sizeof(c16_t) * buffer_length_slot * nb_layer * nb_rx_ant);
+    // Initialize memory for channel estimates based on DMRS positions
+    if (T_ACTIVE(T_GNB_PHY_UL_FD_CHAN_EST_DMRS_POS))
+      if (pusch_ch_est_dmrs_pos_slot_mem == NULL){
+            pusch_ch_est_dmrs_pos_slot_mem = aligned_alloc(32, buffer_length_slot * nb_layer * nb_rx_ant * sizeof(c16_t));
+            memset(pusch_ch_est_dmrs_pos_slot_mem, 0, sizeof(c16_t) * buffer_length_slot * nb_layer * nb_rx_ant);
+          }
 
-  // memory to store slot grid with channel coefficients based on DMRS positions after interpolation
-  if (T_ACTIVE(T_GNB_PHY_UL_FD_CHAN_EST_DMRS_INTERPL))
-    memset(pusch_ch_est_dmrs_interpl_slot_mem, 0, sizeof(c16_t) * buffer_length_slot * nb_layer * nb_rx_ant);
+    // memory to store slot grid with channel coefficients based on DMRS positions after interpolation
+    if (T_ACTIVE(T_GNB_PHY_UL_FD_CHAN_EST_DMRS_INTERPL))
+      if (pusch_ch_est_dmrs_interpl_slot_mem == NULL){
+        pusch_ch_est_dmrs_interpl_slot_mem = aligned_alloc(32, buffer_length_slot * nb_layer * nb_rx_ant * sizeof(c16_t));
+        memset(pusch_ch_est_dmrs_interpl_slot_mem, 0, sizeof(c16_t) * buffer_length_slot * nb_layer * nb_rx_ant);
+      }
 
-  // memory to store extracted data including PUSCH + DMRS
-  if (T_ACTIVE(T_GNB_PHY_UL_FD_PUSCH_IQ))
-    memset(rxFext_slot_mem, 0, sizeof(c16_t) * buffer_length_slot * nb_rx_ant);
+    // memory to store extracted data including PUSCH + DMRS
+    if (T_ACTIVE(T_GNB_PHY_UL_FD_PUSCH_IQ))
+      if (rxFext_slot_mem == NULL){
+          rxFext_slot_mem = aligned_alloc(32, buffer_length_slot * nb_rx_ant * sizeof(c16_t));
+          memset(rxFext_slot_mem, 0, sizeof(c16_t) * buffer_length_slot * nb_rx_ant);
+        }
+  }
+  else if (T_ACTIVE(T_GNB_PHY_UL_FD_DMRS) ||
+        T_ACTIVE(T_GNB_PHY_UL_FD_CHAN_EST_DMRS_POS) ||
+        T_ACTIVE(T_GNB_PHY_UL_FD_CHAN_EST_DMRS_INTERPL) ||
+        T_ACTIVE(T_GNB_PHY_UL_FD_PUSCH_IQ))
+    LOG_W(PHY, "Error: Data Recording App based on T_TRACER for UL PUSCH supports only 1 Rx antenna\n");
+
 #endif
 
   //----------------------------------------------------------
@@ -1646,6 +1666,20 @@ int nr_rx_pusch_tp(PHY_VARS_gNB *gNB,
       T_BUFFER(
           (c16_t *)pusch_ch_est_dmrs_interpl_slot_mem,
           rel15_ul->rb_size * NR_NB_SC_PER_RB * rel15_ul->nr_of_symbols * frame_parms->nb_antennas_rx * rel15_ul->nrOfLayers * 4));
+  }
+#endif
+
+// Free the memory after T tracer logging
+#if T_TRACER
+  if (nb_rx_ant == 1) {
+    if (pusch_dmrs_slot_mem)
+      free (pusch_dmrs_slot_mem);
+    if (pusch_ch_est_dmrs_pos_slot_mem)
+      free (pusch_ch_est_dmrs_pos_slot_mem);
+    if (pusch_ch_est_dmrs_interpl_slot_mem)
+      free (pusch_ch_est_dmrs_interpl_slot_mem);
+    if (rxFext_slot_mem)
+      free (rxFext_slot_mem);
   }
 #endif
 
