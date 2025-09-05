@@ -20,8 +20,53 @@
  */
 #include "socket_vnf.h"
 
+#include "common/utils/LOG/log.h"
 #include "nfapi.h"
+#include "nfapi_vnf.h"
 #include "nfapi/oai_integration/vendor_ext.h" //TODO: Remove this include when removing the Aerial transport stuff
+static nfapi_vnf_config_t *config;
+
+static vnf_info *get_p5_vnf()
+{
+  return config->user_data;
+}
+static vnf_p7_t *get_p7_vnf()
+{
+  vnf_info *vnf = get_p5_vnf();
+  return (vnf_p7_t *)vnf->p7_vnfs->config;
+}
+
+void socket_stop_nfapi_p5_p7()
+{
+  get_p7_vnf()->terminate = 1;
+  config->pnf_disconnect_indication = NULL;
+}
+
+void socket_nfapi_send_stop_request(vnf_t *vnf)
+{
+  nfapi_nr_stop_request_scf_t req;
+  memset(&req, 0, sizeof(req));
+  req.header.message_id = NFAPI_NR_PHY_MSG_TYPE_STOP_REQUEST;
+  req.header.phy_id = 0;
+  nfapi_nr_vnf_stop_req(&vnf->_public, 0, &req);
+  NFAPI_TRACE(NFAPI_TRACE_INFO, "Sent NFAPI STOP.request\n");
+  uint64_t counter = 0;
+  vnf_p7_t *p7_vnf = get_p7_vnf();
+  while (p7_vnf->terminate == 0 && counter < 50) {
+    NFAPI_TRACE(NFAPI_TRACE_DEBUG, "Not terminated yet, counter %ld\n", counter);
+    usleep(1000);
+    counter++;
+  }
+  if (p7_vnf->terminate == 0) {
+    NFAPI_TRACE(NFAPI_TRACE_ERROR, "STOP.indication timed out, exiting\n");
+    nfapi_nr_stop_indication_scf_t msg;
+    msg.header.message_id = NFAPI_NR_PHY_MSG_TYPE_STOP_INDICATION;
+    msg.header.phy_id = 0;
+    vnf->_public.nr_stop_ind(&vnf->_public, 0, &msg);
+  } else {
+    NFAPI_TRACE(NFAPI_TRACE_DEBUG, "Terminated, exiting\n");
+  }
+}
 
 static bool send_p5_msg(vnf_t *vnf, nfapi_vnf_pnf_info_t *pnf, const void *msg, int len, uint8_t stream)
 {
@@ -274,12 +319,12 @@ static int vnf_nr_read_dispatch_message(nfapi_vnf_config_t *config, nfapi_vnf_pn
   }
 }
 
-static int nfapi_nr_vnf_p5_start(nfapi_vnf_config_t *config)
+static int nfapi_nr_vnf_p5_start(nfapi_vnf_config_t *cfg)
 {
-  // Verify that config is not null
-  if (config == 0)
+  // Verify that cfg is not null
+  if (cfg == 0)
     return -1;
-
+  config = cfg;
   NFAPI_TRACE(NFAPI_TRACE_INFO, "%s()\n", __FUNCTION__);
 
   int p5ListenSock, p5Sock;
@@ -748,7 +793,8 @@ static int nfapi_nr_vnf_p7_start(nfapi_vnf_p7_config_t *config)
 
   NFAPI_TRACE(NFAPI_TRACE_INFO, "%s()\n", __FUNCTION__);
 
-  vnf_p7_t *vnf_p7 = (vnf_p7_t *)config;
+  get_p5_vnf()->p7_vnfs->config = config;
+  vnf_p7_t *vnf_p7 = get_p7_vnf();
 
   // Create p7 receive udp port
   // todo : this needs updating for Ipv6
