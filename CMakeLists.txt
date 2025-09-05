@@ -23,6 +23,41 @@
 
 cmake_minimum_required (VERSION 3.16)
 project (OpenAirInterface LANGUAGES C CXX)
+
+
+
+option(CUDA_ENABLE "Enable CUDA accelerated channel simulation" OFF)
+if(CUDA_ENABLE)
+    find_package(CUDA REQUIRED)
+    find_package(CUDAToolkit REQUIRED)
+    message(STATUS "CUDA explicitly enabled, building with GPU acceleration support.")
+    
+    enable_language(CUDA)
+
+    if(CMAKE_SYSTEM_PROCESSOR STREQUAL "aarch64")
+        set(CMAKE_CUDA_ARCHITECTURES 90)
+    endif()
+
+    option(USE_UNIFIED_MEMORY "Enable CUDA Unified Memory path" OFF)
+    option(USE_ATS_MEMORY "Enable ATS Hybrid Memory path" ON)
+
+    if(USE_UNIFIED_MEMORY AND USE_ATS_MEMORY)
+        message(FATAL_ERROR "Cannot enable both USE_UNIFIED_MEMORY and USE_ATS_MEMORY at the same time.")
+    endif()
+
+    if(USE_UNIFIED_MEMORY)
+        add_compile_definitions(USE_UNIFIED_MEMORY)
+        message(STATUS "CUDA Unified Memory path enabled.")
+    elseif(USE_ATS_MEMORY)
+        add_compile_definitions(USE_ATS_MEMORY)
+        message(STATUS "CUDA ATS Hybrid Memory path enabled.")
+    else()
+        message(STATUS "CUDA Explicit Copy path enabled (default ATS was overridden).")
+    endif()
+
+    add_compile_definitions(ENABLE_CUDA)
+endif()
+
 set(CMAKE_CXX_STANDARD 17)
 
 #########################################################
@@ -270,6 +305,22 @@ if(GIT_FOUND)
     OUTPUT_VARIABLE GIT_COMMIT_DATE
     OUTPUT_STRIP_TRAILING_WHITESPACE
   )
+endif()
+
+option(USE_UNIFIED_MEMORY "Enable CUDA Unified Memory path instead of explicit copies" OFF)
+
+option(USE_ATS_MEMORY "Enable Hybrid ATS (CPU->GPU) and Explicit Copy (GPU->CPU) path" OFF)
+
+if(USE_UNIFIED_MEMORY AND USE_ATS_MEMORY)
+  message(FATAL_ERROR "Cannot enable both USE_UNIFIED_MEMORY and USE_ATS_MEMORY at the same time.")
+endif()
+
+if(USE_UNIFIED_MEMORY)
+  add_compile_definitions(USE_UNIFIED_MEMORY)
+  message(STATUS "CUDA Unified Memory path enabled.")
+elseif(USE_ATS_MEMORY)
+  add_compile_definitions(USE_ATS_MEMORY)
+  message(STATUS "CUDA ATS Hybrid Memory path enabled.")
 endif()
 
 # Debug related options
@@ -1703,8 +1754,20 @@ set (SIMUSRC
   ${OPENAIR1_DIR}/SIMULATION/RF/dac.c
   ${OPENAIR1_DIR}/SIMULATION/RF/adc.c
 )
+
 add_library(SIMU STATIC ${SIMUSRC} )
 target_include_directories(SIMU PUBLIC ${OPENAIR1_DIR}/SIMULATION/TOOLS ${OPENAIR1_DIR}/SIMULATION/RF)
+
+option(CHANNEL_SSE "Enable SSE optimizations for channel simulation" OFF)
+if(CHANNEL_SSE)
+    message(STATUS "SSE-optimized channel simulation enabled.")
+    target_compile_definitions(SIMU PRIVATE CHANNEL_SSE)
+endif()
+
+if(CUDA_FOUND)
+  set_property(TARGET SIMU PROPERTY CUDA_ARCHITECTURES ${CMAKE_CUDA_ARCHITECTURES})
+  set_property(TARGET SIMU PROPERTY LINKER_LANGUAGE CXX)
+endif()
 
 include_directories("${NFAPI_DIR}/nfapi/public_inc")
 include_directories("${NFAPI_DIR}/common/public_inc")
@@ -2076,6 +2139,16 @@ target_link_libraries(nr_ulsim PRIVATE
   )
 target_link_libraries(nr_ulsim PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
 
+if(CUDA_ENABLE)
+  if (TARGET oai_cuda_lib)
+      target_link_libraries(nr_dlsim PRIVATE oai_cuda_lib)
+      target_link_libraries(nr_ulsim PRIVATE oai_cuda_lib)
+
+      target_compile_definitions(nr_dlsim PRIVATE ENABLE_CUDA)
+      target_compile_definitions(nr_ulsim PRIVATE ENABLE_CUDA)
+  endif()
+endif()
+
 foreach(myExe dlsim dlsim_tm7 ulsim pbchsim scansim mbmssim pdcchsim pucchsim prachsim syncsim)
 
   add_executable(${myExe}
@@ -2187,3 +2260,9 @@ add_subdirectory(openair2)
 add_subdirectory(openair3)
 add_subdirectory(radio)
 add_subdirectory(tests)
+
+if(TARGET oai_cuda_lib)
+    message(STATUS "CUDA library 'oai_cuda_lib' found, linking to targets...")
+    target_link_libraries(nr_dlsim PRIVATE oai_cuda_lib)
+    target_link_libraries(nr_ulsim PRIVATE oai_cuda_lib)
+endif()
