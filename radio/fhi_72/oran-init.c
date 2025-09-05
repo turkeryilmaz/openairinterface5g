@@ -101,7 +101,7 @@ static struct xran_prb_map get_xran_prb_map(const struct xran_fh_config *f, cons
   e->numSymb = num_sym;
   e->nRBStart = 0;
   e->nRBSize = (dir == XRAN_DIR_DL) ? f->nDLRBs : f->nULRBs;
-  e->nBeamIndex = 0;
+  e->nBeamIndex = 0; //1 for debugging
   e->compMethod = f->ru_conf.compMeth;
   e->iqWidth = f->ru_conf.iqWidth;
   return prbmap;
@@ -223,7 +223,7 @@ static void oran_allocate_cplane_buffers(void *instHandle,
 
   uint32_t poolPrb;
   uint32_t numBufsPrb = next_power_2(XRAN_N_FE_BUF_LEN * ant * XRAN_NUM_OF_SYMBOL_PER_SLOT) - 1;
-  uint32_t bufSizePrb = size_of_prb_map;
+  uint32_t bufSizePrb = size_of_prb_map * 2;
   status = xran_bm_init(instHandle, &poolPrb, numBufsPrb, bufSizePrb);
   AssertFatal(XRAN_STATUS_SUCCESS == status, "Failed at xran_bm_init(), status %d\n", status);
   printf("xran_bm_init() hInstance %p poolIdx %u elements %u size %u\n", instHandle, poolPrb, numBufsPrb, bufSizePrb);
@@ -237,6 +237,8 @@ static void oran_allocate_cplane_buffers(void *instHandle,
       fb->nOffsetInBytes = 0;
       void *ptr;
       void *mb;
+      printf("mjoang a:j %d %d\n", a, j);
+      fflush(stdout);
       status = xran_bm_allocate_buffer(instHandle, poolPrb, &ptr, &mb);
       AssertFatal(XRAN_STATUS_SUCCESS == status && ptr != NULL && mb != NULL,
                   "Failed at xran_bm_allocate_buffer(), status %d\n",
@@ -365,6 +367,9 @@ static void oran_allocate_buffers(void *handle,
 //  uint32_t size_of_prb_map  = sizeof(struct xran_prb_map) + sizeof(struct xran_prb_elm) * (numPrbElm);
 // For Liteon FR2 with RunSlotPrbMapBySymbolEnable, xran_prb_map will have xran_prb_elm prbMap[14]
   uint32_t size_of_prb_map  = sizeof(struct xran_prb_map) + sizeof(struct xran_prb_elm) * (XRAN_NUM_OF_SYMBOL_PER_SLOT);
+  printf("mjoang xran_prb_map %d %ld %ld %d\n", size_of_prb_map, sizeof(struct xran_prb_map), sizeof(struct xran_prb_elm), XRAN_NUM_OF_SYMBOL_PER_SLOT);
+  printf("mjoang XRAN_MAX_FRAGMENT %d XRAN_MAX_SET_BFWS %d %ld %ld %ld %ld\n", XRAN_MAX_FRAGMENT, XRAN_MAX_SET_BFWS,
+    sizeof(struct rte_ether_hdr), sizeof (struct xran_ecpri_hdr),sizeof (struct radio_app_common_hdr), sizeof(struct data_section_hdr));
 #endif
 
   // PDSCH
