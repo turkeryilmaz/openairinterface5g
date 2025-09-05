@@ -1087,6 +1087,8 @@ void nr_rrc_config_ul_tda(NR_ServingCellConfigCommon_t *scc, int min_fb_delay, i
       scc->uplinkConfigCommon->initialUplinkBWP->pusch_ConfigCommon->choice.setup->pusch_TimeDomainAllocationList;
   AssertFatal(tda_list->list.count == 0, "already have pusch_TimeDomainAllocationList members\n");
 
+  /* TODO ensure we can always have DCI in mixed slot */
+
   const int k2 = min_fb_delay;
   const int mu = scc->uplinkConfigCommon->initialUplinkBWP->genericParameters.subcarrierSpacing;
 
