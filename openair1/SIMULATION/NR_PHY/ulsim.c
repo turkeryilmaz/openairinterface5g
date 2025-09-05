@@ -1321,6 +1321,10 @@ int main(int argc, char *argv[])
                     gNB->frame_parms.nb_antennas_rx);
 
         } /*End input_fd */
+        int sigenergy = 0;
+        for (int aarx = 0; aarx < n_rx; aarx++) {
+          sigenergy += signal_energy((int32_t *)(rxdata[aarx] + slot_offset), slot_length) / n_rx;
+        }
 
         //----------------------------------------------------------
         //------------------- gNB phy procedures -------------------
@@ -1336,7 +1340,8 @@ int main(int argc, char *argv[])
                            (int32_t *)gNB->common_vars.rxdataF[0][aa],
                            symbol,
                            slot,
-                           0);
+                           0,
+                           dB_fixed(sigenergy) + 9);
         }
         int offset = (slot & 3) * gNB->frame_parms.symbols_per_slot * gNB->frame_parms.ofdm_symbol_size;
         for (int aa = 0; aa < gNB->frame_parms.nb_antennas_rx; aa++)  {

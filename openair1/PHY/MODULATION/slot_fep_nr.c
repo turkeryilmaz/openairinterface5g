@@ -123,7 +123,8 @@ int nr_slot_fep_ul(NR_DL_FRAME_PARMS *frame_parms,
                    int32_t *rxdataF,
                    unsigned char symbol,
                    unsigned char Ns,
-                   int sample_offset)
+                   int sample_offset,
+                   uint32_t levdB)
 {
   unsigned int nb_prefix_samples  = frame_parms->nb_prefix_samples;
   unsigned int nb_prefix_samples0 = frame_parms->nb_prefix_samples0;

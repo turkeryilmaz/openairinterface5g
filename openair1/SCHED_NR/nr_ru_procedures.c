@@ -333,13 +333,8 @@ void nr_fep(void* arg)
 
   int idx = aid + beam * ru->nb_rx;
   int offset = (slot % RU_RX_SLOT_DEPTH) * fp->symbols_per_slot * fp->ofdm_symbol_size;
-  for (int l = startSymbol; l <= endSymbol; l++) 
-      nr_slot_fep_ul(fp,
-                     ru->common.rxdata[idx],
-                     &ru->common.rxdataF[idx][offset],
-                     l,
-                     slot,
-                     ru->N_TA_offset);
+  for (int l = startSymbol; l <= endSymbol; l++)
+    nr_slot_fep_ul(fp, ru->common.rxdata[idx], &ru->common.rxdataF[idx][offset], l, slot, ru->N_TA_offset, ru->dft_in_levdB);
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PHY_PROCEDURES_RU_FEPRX+aid, 0);
 
   // Task completed in //
