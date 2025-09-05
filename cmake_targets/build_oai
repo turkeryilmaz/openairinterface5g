@@ -319,6 +319,10 @@ function main() {
             TARGET_LIST="$TARGET_LIST dlsim ulsim ldpctest polartest smallblocktest nr_pbchsim nr_dlschsim nr_ulschsim nr_dlsim nr_ulsim nr_pucchsim nr_prachsim nr_psbchsim"
             echo_info "Will compile dlsim, ulsim, ..."
             shift;;
+       --libconfig-cross-compilation)
+            LIBCONFIG_CC=1
+            echo "Will install libconfig from source"
+            shift;;
        --RPM)
             CMAKE_CMD="$CMAKE_CMD -DPACKAGING-RPM=ON"
             echo_info "Set Packaging to RPM"
@@ -469,6 +473,11 @@ function main() {
   if [ "$INSTALL_EXTERNAL" = "1" ] ; then
     echo_info "Installing packages"
     check_install_oai_software
+    if [ "$LIBCONFIG_CC" = "1" ] ; then
+      install_libconfig_from_source "1"
+    else
+      install_libconfig_from_source "0"
+    fi
     if [ "$USE_LTTNG" = "1" ] ; then
       echo_info "installing LTTng"
       install_lttng $1
