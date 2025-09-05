@@ -104,6 +104,24 @@ void oai_xran_fh_rx_callback(void *pCallbackTag, xran_status_t status)
           for (uint32_t sym_id = 0; sym_id < XRAN_NUM_OF_SYMBOL_PER_SLOT; sym_id++) {
             for (uint32_t idxElm = 0; idxElm < pRbMap->nPrbElm; idxElm++ ) {
               struct xran_prb_elm *pRbElm = &pRbMap->prbMap[idxElm];
+              u_int8_t section_id_tmp = pRbMap->nPrbElm < 20 ? sym_id - 10: sym_id;
+              if (section_id_tmp != pRbElm->nSectId) {
+                LOG_D(HW,
+                      "prbMap[%d] : PRBstart %d nPRBs %d nSectId %d != sym_idx %d%d\n",
+                      idxElm,
+                      pRbMap->prbMap[idxElm].nRBStart,
+                      pRbMap->prbMap[idxElm].nRBSize,
+                      pRbMap->prbMap[idxElm].nSectId, sym_id, section_id_tmp
+                      );
+                continue;
+              }
+              LOG_D(HW,
+                    "prbMap[%d] : PRBstart %d nPRBs %d nSectId %d != sym_idx %d:%d\n",
+                    idxElm,
+                    pRbMap->prbMap[idxElm].nRBStart,
+                    pRbMap->prbMap[idxElm].nRBSize,
+                    pRbMap->prbMap[idxElm].nSectId, sym_id, section_id_tmp
+                    );
               pRbElm->nSecDesc[sym_id] = 0; // number of section descriptors per symbol; M-plane info <supported-section-types>
             }
           }
@@ -544,25 +562,27 @@ int xran_fh_tx_send_slot(ru_info_t *ru, int frame, int slot, uint64_t timestamp)
           // For Liteon FR2 with RunSlotPrbMapBySymbolEnable xran_prb_map will have xran_prb_elm prbMap[14], each idxElm matches to sym_idx.
           u_int8_t section_id_tmp = pPrbMap->nPrbElm < 20 ? sym_idx - 10: sym_idx;
           if (section_id_tmp != pRbElm->nSectId) {
-              LOG_D(HW,
-                "prbMap[%d] : PRBstart %d nPRBs %d nSectId %d != sym_idx %d\n",
+              LOG_I(HW,
+                "prbMap[%d] cb : PRBstart %d:%d nPRBs %d:%d nSectId %d != sym_idx %d\n",
                 idxElm,
-                pRbMap->prbMap[idxElm].nRBStart,
-                pRbMap->prbMap[idxElm].nRBSize,
+                pRbMap->prbMap[idxElm].nRBStart, pRbMap->prbMap[idxElm].UP_nRBStart,
+                pRbMap->prbMap[idxElm].nRBSize, pRbMap->prbMap[idxElm].UP_nRBSize,
                 pRbMap->prbMap[idxElm].nSectId, sym_idx
-              );
+                );
             continue;
           }
-          LOG_D(HW,
-                "prbMap[%d] : PRBstart %d nPRBs %d\n",
+          LOG_I(HW,
+                "prbMap[%d] cb : PRBstart %d:%d nPRBs %d:%d nSectId %d sym_idx %d\n",
                 idxElm,
-                pRbMap->prbMap[idxElm].nRBStart,
-                pRbMap->prbMap[idxElm].nRBSize);
+                pRbMap->prbMap[idxElm].nRBStart, pRbMap->prbMap[idxElm].UP_nRBStart,
+                pRbMap->prbMap[idxElm].nRBSize, pRbMap->prbMap[idxElm].UP_nRBSize,
+                pRbMap->prbMap[idxElm].nSectId, sym_idx
+                );
 
           // ant_id / no of antenna per beam gives the beam_nb
           pRbElm->nBeamIndex = ru->beam_id[ant_id / (ru->nb_rx / ru->num_beams_period)][slot * XRAN_NUM_OF_SYMBOL_PER_SLOT];
           // In phy-f-1.0/fhi_lib/lib/api/xran_pkt_cp.h, beamId:15 is of 15bit. -1 set extension bit ef:1 to 1 mistakenly.
-          //pRbElm->nBeamIndex = 1; //mjoang hardcode beamindex for debugging
+          pRbElm->nBeamIndex = 1; //mjoang hardcode beamindex for debugging
           if (pRbElm->nBeamIndex == -1)
             pRbElm->nBeamIndex = 0;
         }
@@ -613,7 +633,7 @@ int xran_fh_tx_send_slot(ru_info_t *ru, int frame, int slot, uint64_t timestamp)
             // ant_id / no of antenna per beam gives the beam_nb
             p_prbMapElm->nBeamIndex = ru->beam_id[ant_id / (ru->nb_tx / ru->num_beams_period)][slot * XRAN_NUM_OF_SYMBOL_PER_SLOT];
             // In phy-f-1.0/fhi_lib/lib/api/xran_pkt_cp.h, beamId:15 is of 15bit. -1 set extension bit ef:1 to 1 mistakenly.
-            //p_prbMapElm->nBeamIndex = 1; //mjoang hardcode beamindex for debugging
+            p_prbMapElm->nBeamIndex = 1; //mjoang hardcode beamindex for debugging
             if (p_prbMapElm->nBeamIndex == -1)
               p_prbMapElm->nBeamIndex = 0;
 
