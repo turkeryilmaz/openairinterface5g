@@ -402,3 +402,13 @@ pattern2: {
     nrofUplinkSymbols2             = 0;
 };
 ```
+
+#### UL-heavy TDD patterns
+
+"UL-heavy TDD patterns", i.e., TDD patterns that have many UL slots are
+supported. Examples for such patterns would be DSUUU or DDDSUUUUUU.
+
+Note that you should increase the aggregation level candidates as described in
+[the corresponding section above](#pdcch-aggregation-level). This is because the
+scheduler has to schedule multiple DCIs in a single DL slots for multiple UL
+slots. As a suggestion, you could try `uess_agg_levels = [4, 2, 2, 0, 0]`.
