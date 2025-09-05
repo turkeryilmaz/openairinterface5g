@@ -970,6 +970,7 @@ void dl_rrc_message_transfer(const f1ap_dl_rrc_message_t *dl_rrc)
     /* the BSR of the UE before reestablishment might be large. We want to
      * avoid scheduling this UE too much (all the RBs except SRB1 are
      * suspended) and only SRB1 should be scheduled. */
+    DevAssert(UE->UE_sched_ctrl.estimated_ul_buffer == 0 && UE->UE_sched_ctrl.sched_ul_bytes == 0);
     UE->UE_sched_ctrl.estimated_ul_buffer = 0;
     UE->UE_sched_ctrl.sched_ul_bytes = 0;
     UE->mac_stats = oldUE->mac_stats;
