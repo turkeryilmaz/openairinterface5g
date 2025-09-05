@@ -72,7 +72,7 @@ COPY --from=lte-ue-build \
     /usr/local/lib/
 
 COPY --from=lte-ue-base \
-    /lib64/libconfig.so.11 \
+    /usr/local/lib/libconfig.a \
     /lib64/libblas.so.3 \
     /lib64/libcblas.so.3 \
     /lib64/liblapack.so.3 \
