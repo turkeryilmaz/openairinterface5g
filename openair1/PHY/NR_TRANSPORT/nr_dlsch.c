@@ -476,7 +476,7 @@ static inline void do_txdataF(c16_t **txdataF,
     // If pmi of next RB and pmi of current RB are the same, we do 2 RB in a row
     // if pmi differs, or current rb is the end (rel15->rbSize - 1), than we do 1 RB in a row
     int rb_step0 = pmi == pmi2 ? 2 : 1;
-    const int rb_step = rb_step0==2 && pmi3==pmi && pmi4==pmi ? 4 : 2;
+    const int rb_step = rb_step0==2 && pmi3==pmi && pmi4==pmi ? 4 : rb_step0;
     const int re_cnt = NR_NB_SC_PER_RB * rb_step;
 
     if (pmi == 0) { // unitary Precoding
