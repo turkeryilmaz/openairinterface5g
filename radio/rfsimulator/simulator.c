@@ -127,7 +127,7 @@ typedef c16_t sample_t; // 2*16 bits complex number
 
 typedef struct buffer_s {
   int conn_sock;
-  openair0_timestamp lastReceivedTS;
+  openair0_timestamp_t lastReceivedTS;
   bool headerMode;
   bool trashingPacket;
   samplesBlockHeader_t th;
@@ -141,9 +141,10 @@ typedef struct buffer_s {
 typedef struct {
   int listen_sock, epollfd;
   pthread_mutex_t Sockmutex;
+  unsigned int card;
   unsigned int nb_cnx;
-  openair0_timestamp nextRxTstamp;
-  openair0_timestamp lastWroteTS;
+  openair0_timestamp_t nextRxTstamp;
+  openair0_timestamp_t lastWroteTS;
   simuRole role;
   char *ip;
   uint16_t port;
@@ -218,7 +219,7 @@ static buffer_t *allocCirBuf(rfsimulator_state_t *bridge, int sock)
              sizeofArray(modelname),
              "rfsimu_channel_%s%d",
              (bridge->role == SIMU_ROLE_SERVER) ? "ue" : "enB",
-             bridge->nb_cnx - 1);
+             (bridge->role == SIMU_ROLE_SERVER) ? bridge->nb_cnx - 1 : bridge->card);
     ptr->channel_model = find_channel_desc_fromname(modelname); // path_loss in dB
     if (!ptr->channel_model) {
       // Use legacy method to find channel model - this will use the same channel model for all clients
@@ -523,13 +524,13 @@ static int rfsimu_getdistance_cmd(char *buff, int debug, telnet_printfunc_t prnt
 static int rfsimu_vtime_cmd(char *buff, int debug, telnet_printfunc_t prnt, void *arg)
 {
   rfsimulator_state_t *t = (rfsimulator_state_t *)arg;
-  const openair0_timestamp ts = t->nextRxTstamp;
+  const openair0_timestamp_t ts = t->nextRxTstamp;
   const double sample_rate = t->sample_rate;
   prnt("%s: vtime measurement: TS %llu sample_rate %.3f\n", __func__, ts, sample_rate);
   return CMDSTATUS_FOUND;
 }
 
-static int startServer(openair0_device *device)
+static int startServer(openair0_device_t *device)
 {
   int sock = -1;
   struct addrinfo *results = NULL;
@@ -639,7 +640,7 @@ static int client_try_connect(const char *host, uint16_t port)
   return sock;
 }
 
-static int startClient(openair0_device *device)
+static int startClient(openair0_device_t *device)
 {
   rfsimulator_state_t *t = device->priv;
   t->role = SIMU_ROLE_CLIENT;
@@ -682,7 +683,7 @@ static int startClient(openair0_device *device)
 }
 
 static int rfsimulator_write_internal(rfsimulator_state_t *t,
-                                      openair0_timestamp timestamp,
+                                      openair0_timestamp_t timestamp,
                                       void **samplesVoid,
                                       int nsamps,
                                       int nbAnt,
@@ -740,8 +741,8 @@ static int rfsimulator_write_internal(rfsimulator_state_t *t,
   return nsamps;
 }
 
-static int rfsimulator_write(openair0_device *device,
-                             openair0_timestamp timestamp,
+static int rfsimulator_write(openair0_device_t *device,
+                             openair0_timestamp_t timestamp,
                              void **samplesVoid,
                              int nsamps,
                              int nbAnt,
@@ -909,7 +910,7 @@ static bool flushInput(rfsimulator_state_t *t, int timeout, bool first_time)
   return nfds > 0;
 }
 
-static int rfsimulator_read(openair0_device *device, openair0_timestamp *ptimestamp, void **samplesVoid, int nsamps, int nbAnt)
+static int rfsimulator_read(openair0_device_t *device, openair0_timestamp_t *ptimestamp, void **samplesVoid, int nsamps, int nbAnt)
 {
   rfsimulator_state_t *t = device->priv;
   LOG_D(HW,
@@ -1084,13 +1085,17 @@ static int rfsimulator_read(openair0_device *device, openair0_timestamp *ptimest
   return nsamps;
 }
 
-static int rfsimulator_get_stats(openair0_device *device) {
+static int rfsimulator_get_stats(openair0_device_t *device)
+{
   return 0;
 }
-static int rfsimulator_reset_stats(openair0_device *device) {
+
+static int rfsimulator_reset_stats(openair0_device_t *device)
+{
   return 0;
 }
-static void rfsimulator_end(openair0_device *device) {
+static void rfsimulator_end(openair0_device_t *device)
+{
   rfsimulator_state_t *s = device->priv;
   for (int i = 0; i < MAX_FD_RFSIMU; i++) {
     buffer_t *b = &s->buf[i];
@@ -1100,7 +1105,8 @@ static void rfsimulator_end(openair0_device *device) {
   close(s->epollfd);
   free(s);
 }
-static void stopServer(openair0_device *device)
+
+static void stopServer(openair0_device_t *device)
 {
   rfsimulator_state_t *t = (rfsimulator_state_t *)device->priv;
   DevAssert(t != NULL);
@@ -1108,23 +1114,30 @@ static void stopServer(openair0_device *device)
   rfsimulator_end(device);
 }
 
-static int rfsimulator_stop(openair0_device *device) {
+static int rfsimulator_stop(openair0_device_t *device)
+{
   return 0;
 }
-static int rfsimulator_set_freq(openair0_device *device, openair0_config_t *openair0_cfg) {
+
+static int rfsimulator_set_freq(openair0_device_t *device, openair0_config_t *openair0_cfg)
+{
   rfsimulator_state_t *s = device->priv;
   s->rx_freq = openair0_cfg->rx_freq[0];
   return 0;
 }
-static int rfsimulator_set_gains(openair0_device *device, openair0_config_t *openair0_cfg) {
-  return 0;
-}
-static int rfsimulator_write_init(openair0_device *device) {
+
+static int rfsimulator_set_gains(openair0_device_t *device, openair0_config_t *openair0_cfg)
+{
   return 0;
 }
 
-__attribute__((__visibility__("default")))
-int device_init(openair0_device *device, openair0_config_t *openair0_cfg) {
+static int rfsimulator_write_init(openair0_device_t *device)
+{
+  return 0;
+}
+
+__attribute__((__visibility__("default"))) int device_init(openair0_device_t *device, openair0_config_t *openair0_cfg)
+{
   // to change the log level, use this on command line
   // --log_config.hw_log_level debug
   rfsimulator_state_t *rfsimulator = calloc(sizeof(rfsimulator_state_t), 1);
@@ -1135,6 +1148,15 @@ int device_init(openair0_device *device, openair0_config_t *openair0_cfg) {
   rfsimulator->rx_freq = openair0_cfg->rx_freq[0];
   rfsimulator->tx_bw = openair0_cfg->tx_bw;
   rfsimulator_readconfig(rfsimulator);
+
+  rfsimulator->card = device->rfsim_params.card;
+  if (device->rfsim_params.serveraddr)
+    rfsimulator->ip = device->rfsim_params.serveraddr;
+  if (device->rfsim_params.serverport)
+    rfsimulator->port = device->rfsim_params.serverport;
+  if (device->rfsim_params.prop_delay_ms)
+    rfsimulator->prop_delay_ms = device->rfsim_params.prop_delay_ms;
+
   if (rfsimulator->prop_delay_ms > 0.0)
     rfsimulator->chan_offset = ceil(rfsimulator->sample_rate * rfsimulator->prop_delay_ms / 1000);
   if (rfsimulator->chan_offset != 0) {

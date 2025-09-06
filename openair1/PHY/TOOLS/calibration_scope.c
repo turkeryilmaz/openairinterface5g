@@ -18,7 +18,7 @@ typedef struct {
 #define SquaredNorm(VaR) ((VaR).r*(VaR).r+(VaR).i*(VaR).i)
 typedef struct {
   void ** samplesRx;
-  openair0_device *rfdevice;
+  openair0_device_t *rfdevice;
 } calibData_t;
 
 typedef struct OAIgraph {
@@ -378,7 +378,8 @@ static void *scopeThread(void *arg) {
   return NULL;
 }
 
-void CalibrationInitScope(void ** samplesRx,openair0_device *rfdevice) {
+void CalibrationInitScope(void **samplesRx, openair0_device_t *rfdevice)
+{
   pthread_t forms_thread;
   calibData_t * tmp=(calibData_t *) malloc(sizeof(*tmp));
   tmp->samplesRx=samplesRx;

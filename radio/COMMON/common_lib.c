@@ -43,7 +43,6 @@
 //#include "targets/RT/USER/lte-softmodem.h"
 #include "executables/softmodem-common.h"
 
-#define MAX_GAP 100ULL
 const char *const devtype_names[MAX_RF_DEV_TYPE] =
     {"", "USRP B200", "USRP X300", "USRP N300", "USRP X400", "BLADERF", "LMSSDR", "IRIS", "No HW", "UEDv2", "RFSIMULATOR"};
 
@@ -53,7 +52,7 @@ const char *get_devname(int devtype) {
   return "none";
 }
 
-int set_device(openair0_device *device)
+int set_device(openair0_device_t *device)
 {
   const char *devname = get_devname(device->type);
     if (strcmp(devname,"none") != 0) {
@@ -65,7 +64,7 @@ int set_device(openair0_device *device)
   return 0;
 }
 
-int set_transport(openair0_device *device)
+int set_transport(openair0_device_t *device)
 {
   switch (device->transp_type) {
     case ETHERNET_TP:
@@ -85,14 +84,10 @@ int set_transport(openair0_device *device)
   }
 }
 
-typedef int(*devfunc_t)(openair0_device *, openair0_config_t *, eth_params_t *);
-
+typedef int (*devfunc_t)(openair0_device_t *, openair0_config_t *, eth_params_t *);
 
 /* look for the interface library and load it */
-int load_lib(openair0_device *device,
-             openair0_config_t *openair0_cfg,
-             eth_params_t *cfg,
-             uint8_t flag)
+int load_lib(openair0_device_t *device, openair0_config_t *openair0_cfg, eth_params_t *cfg, uint8_t flag)
 {
   loader_shlibfunc_t shlib_fdesc[1];
   int ret=0;
@@ -139,9 +134,7 @@ int load_lib(openair0_device *device,
   return ((devfunc_t)shlib_fdesc[0].fptr)(device,openair0_cfg,cfg);
 }
 
-
-int openair0_device_load(openair0_device *device,
-                         openair0_config_t *openair0_cfg)
+int openair0_device_load(openair0_device_t *device, openair0_config_t *openair0_cfg)
 {
   int rc=0;
   rc=load_lib(device, openair0_cfg, NULL,RAU_LOCAL_RADIO_HEAD );
@@ -157,10 +150,7 @@ int openair0_device_load(openair0_device *device,
   return rc;
 }
 
-
-int openair0_transport_load(openair0_device *device,
-                            openair0_config_t *openair0_cfg,
-                            eth_params_t *eth_params)
+int openair0_transport_load(openair0_device_t *device, openair0_config_t *openair0_cfg, eth_params_t *eth_params)
 {
   int rc;
   rc=load_lib(device, openair0_cfg, eth_params, RAU_REMOTE_RADIO_HEAD);
@@ -173,116 +163,4 @@ int openair0_transport_load(openair0_device *device,
   }
 
   return rc;
-}
-
-static void writerEnqueue(re_order_t *ctx, openair0_timestamp timestamp, void **txp, int nsamps, int nbAnt, int flags)
-{
-  pthread_mutex_lock(&ctx->mutex_store);
-  LOG_D(HW, "Enqueue write for TS: %lu\n", timestamp);
-  int i;
-  for (i = 0; i < WRITE_QUEUE_SZ; i++)
-    if (!ctx->queue[i].active) {
-      ctx->queue[i].timestamp = timestamp;
-      ctx->queue[i].active = true;
-      ctx->queue[i].nsamps = nsamps;
-      ctx->queue[i].nbAnt = nbAnt;
-      ctx->queue[i].flags = flags;
-      AssertFatal(nbAnt <= NB_ANTENNAS_TX, "");
-      for (int j = 0; j < nbAnt; j++)
-        ctx->queue[i].txp[j] = txp[j];
-      break;
-    }
-  AssertFatal(i < WRITE_QUEUE_SZ, "Write queue full\n");
-  pthread_mutex_unlock(&ctx->mutex_store);
-}
-
-static void writerProcessWaitingQueue(openair0_device *device)
-{
-  bool found = false;
-  re_order_t *ctx = &device->reOrder;
-  do {
-    found = false;
-    pthread_mutex_lock(&ctx->mutex_store);
-    for (int i = 0; i < WRITE_QUEUE_SZ; i++) {
-      if (ctx->queue[i].active && llabs(ctx->queue[i].timestamp - ctx->nextTS) < MAX_GAP) {
-        openair0_timestamp timestamp = ctx->queue[i].timestamp;
-        LOG_D(HW, "Dequeue write for TS: %lu\n", timestamp);
-        int nsamps = ctx->queue[i].nsamps;
-        int nbAnt = ctx->queue[i].nbAnt;
-        int flags = ctx->queue[i].flags;
-        void *txp[NB_ANTENNAS_TX];
-        AssertFatal(nbAnt <= NB_ANTENNAS_TX, "");
-        for (int j = 0; j < nbAnt; j++)
-          txp[j] = ctx->queue[i].txp[j];
-        ctx->queue[i].active = false;
-        pthread_mutex_unlock(&ctx->mutex_store);
-        found = true;
-        if (flags || IS_SOFTMODEM_RFSIM) {
-          int wroteSamples = device->trx_write_func(device, timestamp, txp, nsamps, nbAnt, flags);
-          if (wroteSamples != nsamps)
-            LOG_E(HW, "Failed to write to rf\n");
-        }
-        ctx->nextTS = timestamp + nsamps;
-        pthread_mutex_lock(&ctx->mutex_store);
-      }
-    }
-    pthread_mutex_unlock(&ctx->mutex_store);
-  } while (found);
-}
-
-// We assume the data behind *txp are permanently allocated
-// When we will go further, we can remove all RC.xxx.txdata buffers in xNB, in UE
-// but to make zerocopy and agnostic design, we need to make a proper ring buffer with mutex protection
-// mutex (or atomic flags) will be mandatory because this out order system root cause is there are several writer threads
-
-int openair0_write_reorder(openair0_device *device, openair0_timestamp timestamp, void **txp, int nsamps, int nbAnt, int flags)
-{
-  int wroteSamples = 0;
-  re_order_t *ctx = &device->reOrder;
-  LOG_D(HW, "received write order ts: %lu, nb samples %d, next ts %luflags %d\n", timestamp, nsamps, timestamp + nsamps, flags);
-  if (!ctx->initDone) {
-    ctx->nextTS = timestamp;
-    pthread_mutex_init(&ctx->mutex_write, NULL);
-    pthread_mutex_init(&ctx->mutex_store, NULL);
-    ctx->initDone = true;
-  }
-  if (pthread_mutex_trylock(&ctx->mutex_write) == 0) {
-    // We have the write exclusivity
-    if (llabs(timestamp - ctx->nextTS) < MAX_GAP) { // We are writing in sequence of the previous write
-      if (flags || IS_SOFTMODEM_RFSIM)
-        wroteSamples = device->trx_write_func(device, timestamp, txp, nsamps, nbAnt, flags);
-      else
-        wroteSamples = nsamps;
-      ctx->nextTS = timestamp + nsamps;
-
-    } else {
-      writerEnqueue(ctx, timestamp, txp, nsamps, nbAnt, flags);
-    }
-    writerProcessWaitingQueue(device);
-    pthread_mutex_unlock(&ctx->mutex_write);
-    return wroteSamples ? wroteSamples : nsamps;
-  }
-  writerEnqueue(ctx, timestamp, txp, nsamps, nbAnt, flags);
-  if (pthread_mutex_trylock(&ctx->mutex_write) == 0) {
-    writerProcessWaitingQueue(device);
-    pthread_mutex_unlock(&ctx->mutex_write);
-  }
-  return nsamps;
-}
-
-void openair0_write_reorder_clear_context(openair0_device *device)
-{
-  LOG_I(HW, "received write reorder clear context\n");
-  re_order_t *ctx = &device->reOrder;
-  if (!ctx->initDone)
-    return;
-  if (pthread_mutex_trylock(&ctx->mutex_write) != 0)
-    LOG_E(HW, "write_reorder_clear_context call while still writing on the device\n");
-  pthread_mutex_destroy(&ctx->mutex_write);
-  pthread_mutex_lock(&ctx->mutex_store);
-  for (int i = 0; i < WRITE_QUEUE_SZ; i++)
-    ctx->queue[i].active = false;
-  pthread_mutex_unlock(&ctx->mutex_store);
-  pthread_mutex_destroy(&ctx->mutex_store);
-  ctx->initDone = false;
 }

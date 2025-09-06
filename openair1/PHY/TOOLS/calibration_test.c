@@ -134,7 +134,7 @@ int main(int argc, char **argv) {
     .threequarter_fs=0,
   };
   //-----------------------
-  openair0_device rfdevice= {
+  openair0_device_t rfdevice= {
     /*!tx write thread*/
     //.write_thread={0},
     /*!brief Module ID of this device */
@@ -315,7 +315,7 @@ int main(int argc, char **argv) {
   }
 
   CalibrationInitScope(samplesRx, &rfdevice);
-  openair0_timestamp timestamp=0;
+  openair0_timestamp_t timestamp=0;
   rfdevice.trx_start_func(&rfdevice);
   
   while(!oai_exit) {

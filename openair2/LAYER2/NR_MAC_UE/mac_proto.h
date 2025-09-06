@@ -95,7 +95,7 @@ void nr_rrc_mac_resume_rb(module_id_t module_id, bool is_srb, int rb_id);
 void nr_rrc_mac_config_req_reset(module_id_t module_id, NR_UE_MAC_reset_cause_t cause);
 
 /**\brief initialization NR UE MAC instance(s)*/
-NR_UE_MAC_INST_t * nr_l2_init_ue(int nb_inst);
+NR_UE_MAC_INST_t * nr_l2_init_ue(int nb_inst, int numerology);
 
 /**\brief fetch MAC instance by module_id
    \param module_id index of MAC instance(s)*/
