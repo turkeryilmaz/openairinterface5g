@@ -103,6 +103,7 @@ To define a new test or modify existing ones, update the following file:
 openair1/SIMULATION/tests/CMakeLists.txt
 ```
 
+## `add_physim_test()`
 
 Use the `add_physim_test()` macro with the following arguments:
 
@@ -122,6 +123,30 @@ For instance, a PRACHsim looks like this:
 
 These tests are run automatically as part of the following
 pipelines: [RAN-PhySim-Cluster-4G](https://jenkins-oai.eurecom.fr/job/RAN-PhySim-Cluster-4G/) and [RAN-PhySim-Cluster-5G](https://jenkins-oai.eurecom.fr/job/RAN-PhySim-Cluster-5G/)
+
+## `add_timed_physim_test()`
+
+Use the `add_timed_physim_test()` macro to add a test the same way as with
+`add_physim_test()` above. Additionally, it allows to check for thresholds with
+`check_physim_threshold()`:
+
+    check_physim_threshold(<test_name> <threshold> <condition>)
+
+where:
+- `<test_name>` is any test that must have been added with
+  `add_timed_physim_test()`
+- `<threshold>` is a threshold to check for, e.g., `PHY tx proc`, and
+- `<condition>` a condition to check, e.g. `< 200`
+
+Thus upon execution of the test, the test will be run, but additionally ctest
+will check for a match of `PHY tx proc <NUMBER>` (where `<NUMBER> is of format
+`[0-9]+(\.[0-9]+)?`), and a matching number will be checked against condition
+`< 200`.
+
+For instance, this could look like this:
+
+    add_timed_physim_test(physim.5g.nr_dlsim.test3 "Some description" nr_dlsim -P)
+    check_physim_threshold(physim.5g.nr_dlsim.test3 "DLSCH encoding time" "< 50")
 
 ### How to rerun failed CI tests using `ctest`
 

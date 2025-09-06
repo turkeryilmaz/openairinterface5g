@@ -17,6 +17,55 @@ macro(add_physim_test test_name test_description test_exec)
   add_dependencies(tests ${test_exec})
 endmacro()
 
+define_property(TEST PROPERTY CHECK_COUNT BRIEF_DOCS "helper property to enumerate checks in environment")
+macro(add_timed_physim_test test_name test_description test_exec)
+  # catch all the arguments past the last expected arqument and store them in the options_list
+  if (NOT TARGET ${test_exec})
+    message(FATAL_ERROR "test executable ${test_exec} is not an executable")
+  endif()
+  set(test_invocation $<TARGET_FILE:${test_exec}> ${ARGN})
+  add_test(
+    NAME ${test_name}
+    COMMAND ${CMAKE_COMMAND} "-DTEST_CMD=${test_invocation}" "-DCHECK_SCRIPT=${CMAKE_CURRENT_SOURCE_DIR}/analyze-timing.sh" -P ${CMAKE_CURRENT_SOURCE_DIR}/RunTimedTest.cmake
+  )
+  set_tests_properties(${test_name} PROPERTIES
+    LABELS "${test_exec}"
+    TEST_DESCRIPTION "${test_description}"
+    # pass test description also through environment variable: for cmake < 3.30,
+    # in JSON export, we cannot recover the description otherwise
+    # see also https://gitlab.kitware.com/cmake/cmake/-/issues/21490
+    ENVIRONMENT "LD_LIBRARY_PATH=.;TEST_DESCRIPTION=${test_description}"
+  )
+  set_tests_properties(${test_name} PROPERTIES CHECK_COUNT 0)
+endmacro()
+
+macro(check_physim_threshold testname threshold condition)
+  # check that threshold and condition don't have a colon (;), because that
+  # would interfere with cmake's list management
+  string(FIND "${threshold}" ";" pos)
+  if (pos GREATER -1)
+    message(FATAL_ERROR "colon not allowed in threshold, but have \"${threshold}\"")
+  endif()
+  string(FIND "${condition}" ";" pos)
+  if (pos GREATER -1)
+    message(FATAL_ERROR "colon not allowed in condition, but have \"${condition}\"")
+  endif()
+  set(THRCOND "${threshold}\;${condition}")
+
+  get_test_property(${testname} CHECK_COUNT count)
+  #message(STATUS "add check ${count} ${THRCOND}")
+  if (${count} GREATER 10)
+    message(FATAL_ERROR "only maximum of 10 checks per test allowed")
+  endif()
+
+  # add a new environment variable CHECK_X with this threshold+condition, then
+  # increase test property regarding check count
+  set_property(TEST ${testname} APPEND PROPERTY ENVIRONMENT "CHECK_${count}=${THRCOND}")
+  MATH(EXPR count "${count}+1")
+  set_tests_properties(${testname} PROPERTIES CHECK_COUNT ${count})
+endmacro()
+
+
 ####################################################################################
 ######                           dlsim unit test                              ######
 ####################################################################################
