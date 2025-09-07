@@ -345,15 +345,10 @@ sequenceDiagram
   note over scucp: rrc_gNB_process_NGAP_UE_CONTEXT_RELEASE_COMMAND
   scucp->>scuup: E1 Bearer Context Release Command
   scuup->>scucp: E1 Bearer Context Release Complete
+  Note over scucp: rrc_gNB_generate_RRCRelease
+  scucp->>sdu: F1 UE Context Release Command
+  sdu->>scucp: F1 UE Context Release Complete
   note over scucp: rrc_CU_process_ue_context_release_complete
-  alt F1
-    Note over scucp: rrc_gNB_generate_RRCRelease
-    scucp->>sdu: F1 UE Context Release Command
-    sdu->>scucp: F1 UE Context Release Complete
-  else
-    note over scucp: rrc_gNB_send_NGAP_UE_CONTEXT_RELEASE_COMPLETE
-    scucp->>amf: NG UE Context Release Complete
-  end
   note over scucp: rrc_remove_ue
   Note over ue,tdu: UE active on target DU
 ```
