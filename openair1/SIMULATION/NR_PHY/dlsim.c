@@ -463,9 +463,6 @@ int main(int argc, char **argv)
         printf("Unsupported nr Of Layers %d\n", g_nrOfLayers);
         exit(-1);
       }
-      if (g_nrOfLayers == 2) g_pmi=40;
-      else if (g_nrOfLayers ==3) g_pmi=80;
-      else if (g_nrOfLayers ==4) g_pmi=106;
       break;
 
     case 'p':
