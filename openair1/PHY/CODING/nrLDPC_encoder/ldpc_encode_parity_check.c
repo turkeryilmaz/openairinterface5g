@@ -103,6 +103,7 @@
 #include "ldpc_BG2_Zc80_byte.c"
 #include "ldpc_BG2_Zc72_byte.c"
 
+
 static void encode_parity_check_part_optim(uint8_t *cc, uint8_t *d, short BG,short Zc,short Kb, int simd_size, int ncols)
 {
   unsigned char c[2 * 22 * Zc * simd_size] __attribute__((aligned(64))); //double size matrix of c

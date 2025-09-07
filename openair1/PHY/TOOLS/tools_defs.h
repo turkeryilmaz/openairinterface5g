@@ -885,8 +885,7 @@ static inline void rotate_cpx_vector(const c16_t *const x, const c16_t *const al
     ((int16_t *)&alpha_128)[6] = alpha->i;
     ((int16_t *)&alpha_128)[7] = alpha->r;
     y_128 = (simd_q15_t *)y;
-
-    for (i = 0; i < N >> 2; i++) {
+   for (i = 0; i < N >> 2; i++) {
       y_128[i] = simde_mm_packs_epi32( // pack in 16bit integers with saturation [re im re im re im re im]
           simde_mm_sra_epi32( // shift right by shift in order to  compensate for the input amplitude
               simde_mm_madd_epi16( // complex multiply. result is 32bit [Re Im Re Im]
