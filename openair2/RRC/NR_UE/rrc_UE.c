@@ -1250,7 +1250,47 @@ void nr_rrc_cellgroup_configuration(NR_UE_RRC_INST_t *rrc, NR_CellGroupConfig_t 
         rrc->dl_bwp_id = *spCellConfig->spCellConfigDedicated->firstActiveDownlinkBWP_Id;
       if (spCellConfig->spCellConfigDedicated->uplinkConfig &&
           spCellConfig->spCellConfigDedicated->uplinkConfig->firstActiveUplinkBWP_Id)
-        rrc->dl_bwp_id = *spCellConfig->spCellConfigDedicated->uplinkConfig->firstActiveUplinkBWP_Id;
+        rrc->ul_bwp_id = *spCellConfig->spCellConfigDedicated->uplinkConfig->firstActiveUplinkBWP_Id;
+
+      if (spCellConfig->reconfigurationWithSync) {
+        bool get_sib1 = false;
+        if (rrc->dl_bwp_id == 0) {
+          // Check initial DL BWP for searchSpaceSIB1
+          if (spCellConfig->reconfigurationWithSync->spCellConfigCommon
+              && spCellConfig->reconfigurationWithSync->spCellConfigCommon->downlinkConfigCommon
+              && spCellConfig->reconfigurationWithSync->spCellConfigCommon->downlinkConfigCommon->initialDownlinkBWP
+              && spCellConfig->reconfigurationWithSync->spCellConfigCommon->downlinkConfigCommon->initialDownlinkBWP
+                     ->pdcch_ConfigCommon
+              && spCellConfig->reconfigurationWithSync->spCellConfigCommon->downlinkConfigCommon->initialDownlinkBWP
+                         ->pdcch_ConfigCommon->present
+                     == NR_SetupRelease_PDCCH_ConfigCommon_PR_setup
+              && spCellConfig->reconfigurationWithSync->spCellConfigCommon->downlinkConfigCommon->initialDownlinkBWP
+                     ->pdcch_ConfigCommon->choice.setup->searchSpaceSIB1) {
+            get_sib1 = true;
+          }
+        } else {
+          // Check dedicated DL BWP for searchSpaceSIB1
+          if (spCellConfig->spCellConfigDedicated->downlinkBWP_ToAddModList) {
+            for (int i = 0; i < spCellConfig->spCellConfigDedicated->downlinkBWP_ToAddModList->list.count; i++) {
+              NR_BWP_Downlink_t *bwp = spCellConfig->spCellConfigDedicated->downlinkBWP_ToAddModList->list.array[i];
+              if (bwp->bwp_Id == rrc->dl_bwp_id && bwp->bwp_Common && bwp->bwp_Common->pdcch_ConfigCommon
+                  && bwp->bwp_Common->pdcch_ConfigCommon->present == NR_SetupRelease_PDCCH_ConfigCommon_PR_setup
+                  && bwp->bwp_Common->pdcch_ConfigCommon->choice.setup->searchSpaceSIB1) {
+                get_sib1 = true;
+                break;
+              }
+            }
+          }
+        }
+
+        if (get_sib1) {
+          LOG_I(NR_RRC, "Target cell has searchSpaceSIB1 configured on active DL BWP %ld, acquiring SIB1\n", rrc->dl_bwp_id);
+          nr_mac_rrc_message_t rrc_msg = {0};
+          rrc_msg.payload_type = NR_MAC_RRC_CONFIG_MIB;
+          rrc_msg.payload.config_mib.get_sib = 1;
+          nr_rrc_send_msg_to_mac(rrc, &rrc_msg);
+        }
+      }
     }
   }
 

@@ -626,6 +626,7 @@ typedef struct NR_UE_MAC_INST_s {
   int ssb_start_subcarrier;
 
   NR_SSB_meas_t ssb_measurements;
+  ssb_ro_preambles_t ssb_ro_preambles;
 
   dci_pdu_rel15_t def_dci_pdu_rel15[NR_MAX_SLOTS_PER_FRAME][8];
 

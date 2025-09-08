@@ -262,8 +262,6 @@ static void config_common_ue_sa(NR_UE_MAC_INST_t *mac, NR_ServingCellConfigCommo
                                                                 mac->frequency_range);
     //prach_fd_occasion->num_unused_root_sequences = ???
   }
-  cfg->prach_config.ssb_per_rach = rach_ConfigCommon->ssb_perRACH_OccasionAndCB_PreamblesPerSSB->present-1;
-
 }
 
 // computes round-trip-time between ue and sat based on SIB19 ephemeris data
@@ -547,7 +545,6 @@ static void config_common_ue(NR_UE_MAC_INST_t *mac, NR_ServingCellConfigCommon_t
       prach_fd_occasion->num_root_sequences =
           compute_nr_root_seq(rach_ConfigCommon, nb_preambles, frame_type, mac->frequency_range);
 
-      cfg->prach_config.ssb_per_rach = rach_ConfigCommon->ssb_perRACH_OccasionAndCB_PreamblesPerSSB->present - 1;
       // prach_fd_occasion->num_unused_root_sequences = ???
     }
   }
@@ -886,7 +883,8 @@ static void nr_configure_lc_config(NR_UE_MAC_INST_t *mac,
                                    nr_lcid_rb_t rb)
 {
   NR_LC_SCHEDULING_INFO *lc_sched_info = get_scheduling_info_from_lcid(mac, lc_info->lcid);
-  lc_info->rb = rb;
+  if (rb.type != NR_LCID_NONE)
+    lc_info->rb = rb;
   lc_info->rb_suspended = false;
   if (rb.type == NR_LCID_SRB && !mac_lc_config->ul_SpecificParameters) {
     // release configuration and reset to default
@@ -914,6 +912,12 @@ static void nr_configure_lc_config(NR_UE_MAC_INST_t *mac,
 static nr_lcid_rb_t configure_lcid_rb(NR_RLC_BearerConfig_t *rlc_bearer)
 {
   nr_lcid_rb_t rb;
+  if (!rlc_bearer->servedRadioBearer) {
+    LOG_W(NR_MAC, "RLC bearer config does not contain servedRadioBearer.\n");
+    rb.type = NR_LCID_NONE;
+    return rb;
+  }
+
   if (rlc_bearer->servedRadioBearer->present == NR_RLC_BearerConfig__servedRadioBearer_PR_srb_Identity) {
     rb.type = NR_LCID_SRB;
     rb.choice.srb_id = rlc_bearer->servedRadioBearer->choice.srb_Identity;
@@ -953,8 +957,6 @@ static void configure_logicalChannelBearer(NR_UE_MAC_INST_t *mac,
     for (int i = 0; i < rlc_toadd_list->list.count; i++) {
       NR_RLC_BearerConfig_t *rlc_bearer = rlc_toadd_list->list.array[i];
       nr_lcid_rb_t rb = configure_lcid_rb(rlc_bearer);
-      if (rb.type == NR_LCID_NONE)
-        continue;
       int lc_identity = rlc_bearer->logicalChannelIdentity;
       NR_LogicalChannelConfig_t *mac_lc_config = rlc_bearer->mac_LogicalChannelConfig;
       int j;
@@ -1713,10 +1715,13 @@ static void configure_common_BWP_ul(NR_UE_MAC_INST_t *mac, int bwp_id, NR_BWP_Up
       mac->sc_info.initial_ul_BWPStart = bwp->BWPStart;
     }
     if (ul_common->rach_ConfigCommon) {
-      HANDLE_SETUPRELEASE_DIRECT(bwp->rach_ConfigCommon,
-                                 ul_common->rach_ConfigCommon,
-                                 NR_RACH_ConfigCommon_t,
-                                 asn_DEF_NR_RACH_ConfigCommon);
+      // ssb_perRACH_OccasionAndCB_PreamblesPerSSB is need M
+      // if NULL we need to maintain the information
+      NR_SetupRelease_RACH_ConfigCommon_t *rachcommon = ul_common->rach_ConfigCommon;
+      if (rachcommon->present == NR_SetupRelease_RACH_ConfigCommon_PR_setup
+          && rachcommon->choice.setup->ssb_perRACH_OccasionAndCB_PreamblesPerSSB)
+        mac->ssb_ro_preambles = get_ssb_ro_preambles_4step(rachcommon->choice.setup->ssb_perRACH_OccasionAndCB_PreamblesPerSSB);
+      HANDLE_SETUPRELEASE_DIRECT(bwp->rach_ConfigCommon, rachcommon, NR_RACH_ConfigCommon_t, asn_DEF_NR_RACH_ConfigCommon);
     }
     if (ul_common->ext1 && ul_common->ext1->msgA_ConfigCommon_r16) {
       HANDLE_SETUPRELEASE_DIRECT(bwp->msgA_ConfigCommon_r16,
@@ -1974,11 +1979,22 @@ static void handle_reconfiguration_with_sync(NR_UE_MAC_INST_t *mac,
   LOG_I(NR_MAC, "Configuring CRNTI %x\n", mac->crnti);
 
   RA_config_t *ra = &mac->ra;
+  bool is_cfra = false;
   if (reconfWithSync->rach_ConfigDedicated) {
     AssertFatal(reconfWithSync->rach_ConfigDedicated->present == NR_ReconfigurationWithSync__rach_ConfigDedicated_PR_uplink,
                 "RACH on supplementaryUplink not supported\n");
-    UPDATE_IE(ra->rach_ConfigDedicated, reconfWithSync->rach_ConfigDedicated->choice.uplink, NR_RACH_ConfigDedicated_t);
+    NR_RACH_ConfigDedicated_t *rach_ConfigDedicated = reconfWithSync->rach_ConfigDedicated->choice.uplink;
+    if (rach_ConfigDedicated->cfra)
+      is_cfra = true;
+    if (rach_ConfigDedicated->ext1 && rach_ConfigDedicated->ext1->cfra_TwoStep_r16)
+      is_cfra = true;
+    UPDATE_IE(ra->rach_ConfigDedicated, rach_ConfigDedicated, NR_RACH_ConfigDedicated_t);
   }
+
+  // in case of CBRA and reconfiguration with sync (handover)
+  // the UE sends MSG3 with C-RNTI to identify itself
+  if (!is_cfra)
+    mac->msg3_C_RNTI = true;
 
   if (reconfWithSync->spCellConfigCommon) {
     NR_ServingCellConfigCommon_t *scc = reconfWithSync->spCellConfigCommon;
