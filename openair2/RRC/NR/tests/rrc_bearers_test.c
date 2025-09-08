@@ -57,6 +57,7 @@ static void test_add_and_find_pduSession(void)
   AssertFatal(found != NULL, "Could not find PDU Session\n");
   AssertFatal(found == session, "Found PDU Session mismatch\n");
 
+  seq_arr_free(&ue.drbs, free_drb);
   seq_arr_free(&ue.pduSessions, free_pdusession);
 }
 
@@ -81,6 +82,7 @@ static void test_duplicate_add_pduSession(void)
   AssertFatal(s2 == s1, "Duplicate add_pduSession returned different pointer\\n");
   AssertFatal(s2->param.n3_incoming.teid == input1.n3_incoming.teid, "Original TEID should be retained\\n");
 
+  seq_arr_free(&ue.drbs, free_drb);
   seq_arr_free(&ue.pduSessions, free_pdusession);
 }
 
@@ -127,6 +129,7 @@ static void test_add_rrc_drb(void)
   drb_t *found = get_drb(&drbs, 1);
   AssertFatal(found && found == added, "get_drb failed");
 
+  seq_arr_free(&pduSessions, free_pdusession);
   seq_arr_free(&drbs, free_drb);
 }
 
@@ -149,6 +152,7 @@ static void test_get_drb(void)
   drb_t *got = get_drb(&drbs, 1);
   AssertFatal(got && got->drb_id == 1, "get_drb failed");
 
+  seq_arr_free(&pduSessions, free_pdusession);
   seq_arr_free(&drbs, free_drb);
 }
 
@@ -171,6 +175,7 @@ static void test_find_drb(void)
   drb_t *found = get_drb(&drbs, 1);
   AssertFatal(found && found->drb_id == 1, "get_drb failed");
 
+  seq_arr_free(&pduSessions, free_pdusession);
   seq_arr_free(&drbs, free_drb);
 }
 
