@@ -367,4 +367,6 @@ add_timed_physim_test(physim.5g-offload.nr_ulsim.testT2.20  "T2 LDPC offload: SN
 add_timed_physim_test(physim.5g-offload.nr_ulsim.testCPU.21 "CPU: SNR = 30, MCS = 25, 273 PRBs, 2 layers"             nr_ulsim -n1000 -s30 -S30.2 -m25 -r273 -R273 -C10 -W2 -z2 -y2 -P)
 add_timed_physim_test(physim.5g-offload.nr_ulsim.testT2.21  "T2 LDPC offload: SNR = 30, MCS = 25, 273 PRBs, 2 layers" nr_ulsim -n1000 -s30 -S30.2 -m25 -r273 -R273 -C10 -W2 -z2 -y2 -P --loader.ldpc.shlibversion _aal --nrLDPC_coding_aal.dpdk_dev af:00.0 --nrLDPC_coding_aal.dpdk_core_list 11-12 --nrLDPC_coding_aal.is_t2 1)
 
+include(ThresholdsOffload.cmake)
+
 endif()
