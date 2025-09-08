@@ -65,6 +65,9 @@ macro(check_physim_threshold testname threshold condition)
   set_tests_properties(${testname} PROPERTIES CHECK_COUNT ${count})
 endmacro()
 
+# Example use:
+add_timed_physim_test(robert "Run nr_dlsim with CPU: SNR = 30, MCS = 5, 106 PRBs, 1 layer" nr_dlsim -n10 -s30 -S30.2 -e5 -b106 -R106 -X 8,9,10,11,12 -P)
+include(SampleTimings.cmake)
 
 ####################################################################################
 ######                           dlsim unit test                              ######
