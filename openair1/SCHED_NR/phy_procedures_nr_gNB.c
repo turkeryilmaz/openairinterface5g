@@ -1007,13 +1007,13 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx, N
         NR_DL_FRAME_PARMS *frame_parms = &gNB->frame_parms;
         nfapi_nr_srs_pdu_t *srs_pdu = &srs->srs_pdu;
         uint8_t N_symb_SRS = 1 << srs_pdu->num_symbols;
-        c16_t srs_received_signal[frame_parms->nb_antennas_rx][frame_parms->ofdm_symbol_size * N_symb_SRS];
-        c16_t srs_estimated_channel_freq[frame_parms->nb_antennas_rx][1 << srs_pdu->num_ant_ports]
-                                        [frame_parms->ofdm_symbol_size * N_symb_SRS] __attribute__((aligned(32)));
-        c16_t srs_estimated_channel_time[frame_parms->nb_antennas_rx][1 << srs_pdu->num_ant_ports][frame_parms->ofdm_symbol_size]
-            __attribute__((aligned(32)));
-        c16_t srs_estimated_channel_time_shifted[frame_parms->nb_antennas_rx][1 << srs_pdu->num_ant_ports]
-                                                [frame_parms->ofdm_symbol_size];
+        uint8_t N_ap = 1 << srs_pdu->num_ant_ports;
+        uint8_t nb_antennas_rx = frame_parms->nb_antennas_rx;
+        uint16_t ofdm_symbol_size = frame_parms->ofdm_symbol_size;
+        c16_t srs_received_signal[nb_antennas_rx][ofdm_symbol_size * N_symb_SRS];
+        c16_t srs_estimated_channel_freq[nb_antennas_rx][N_ap][ofdm_symbol_size * N_symb_SRS] __attribute__((aligned(32)));
+        c16_t srs_estimated_channel_time[nb_antennas_rx][N_ap][ofdm_symbol_size] __attribute__((aligned(32)));
+        c16_t srs_estimated_channel_time_shifted[nb_antennas_rx][N_ap][ofdm_symbol_size];
         int8_t snr_per_rb[srs_pdu->bwp_size];
 
         start_meas(&gNB->generate_srs_stats);
@@ -1047,21 +1047,27 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx, N
           srs_est = -1;
         }
 
-        T(T_GNB_PHY_UL_FREQ_CHANNEL_ESTIMATE,
-          T_INT(0),
-          T_INT(srs_pdu->rnti),
-          T_INT(frame_rx),
-          T_INT(0),
-          T_INT(0),
-          T_BUFFER(srs_estimated_channel_freq[0][0], frame_parms->ofdm_symbol_size * sizeof(int32_t)));
+        for (int ant_rx = 0; ant_rx < nb_antennas_rx; ant_rx++) {
+          for (int p_index = 0; p_index < N_ap; p_index++) {
+            T(T_GNB_PHY_UL_FREQ_CHANNEL_ESTIMATE,
+              T_INT(gNB->Mod_id),
+              T_INT(srs_pdu->rnti),
+              T_INT(frame_rx),
+              T_INT(slot_rx),
+              T_INT(ant_rx),
+              T_INT(p_index),
+              T_BUFFER(srs_estimated_channel_freq[ant_rx][p_index], ofdm_symbol_size * sizeof(c16_t)));
 
-        T(T_GNB_PHY_UL_TIME_CHANNEL_ESTIMATE,
-          T_INT(0),
-          T_INT(srs_pdu->rnti),
-          T_INT(frame_rx),
-          T_INT(0),
-          T_INT(0),
-          T_BUFFER(srs_estimated_channel_time_shifted[0][0], frame_parms->ofdm_symbol_size * sizeof(int32_t)));
+            T(T_GNB_PHY_UL_TIME_CHANNEL_ESTIMATE,
+              T_INT(gNB->Mod_id),
+              T_INT(srs_pdu->rnti),
+              T_INT(frame_rx),
+              T_INT(slot_rx),
+              T_INT(ant_rx),
+              T_INT(p_index),
+              T_BUFFER(srs_estimated_channel_time_shifted[ant_rx][p_index], ofdm_symbol_size * sizeof(c16_t)));
+          }
+        }
 
         UL_INFO->srs_ind.sfn = frame_rx;
         UL_INFO->srs_ind.slot = slot_rx;
@@ -1071,10 +1077,28 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx, N
         nfapi_nr_srs_indication_pdu_t *srs_indication = UL_INFO->srs_pdu_list + UL_INFO->srs_ind.number_of_pdus++;
         srs_indication->handle = srs_pdu->handle;
         srs_indication->rnti = srs_pdu->rnti;
+
+        int16_t srs_toa_ns[nb_antennas_rx];
+
         start_meas(&gNB->srs_timing_advance_stats);
-        srs_indication->timing_advance_offset = srs_est >= 0 ? nr_est_timing_advance_srs(frame_parms, srs_estimated_channel_time[0]) : 0xFFFF;
+        srs_indication->timing_advance_offset =
+            srs_est >= 0 ? nr_est_timing_advance_srs(ofdm_symbol_size, N_ap, srs_estimated_channel_time) : 0xFFFF;
         stop_meas(&gNB->srs_timing_advance_stats);
-        srs_indication->timing_advance_offset_nsec = srs_est >= 0 ? (int16_t)((((int32_t)srs_indication->timing_advance_offset - 31) * ((int32_t)TC_NSEC_x32768)) >> 15) : 0xFFFF;
+        srs_indication->timing_advance_offset_nsec = srs_est >= 0 ? nr_est_toa_ns_srs(ofdm_symbol_size,
+                                                                                      nb_antennas_rx,
+                                                                                      N_ap,
+                                                                                      frame_parms->samples_per_frame,
+                                                                                      srs_estimated_channel_freq,
+                                                                                      srs_toa_ns)
+                                                                  : 0x8000;
+
+        T(T_GNB_PHY_UL_SRS_TOA_NS,
+          T_INT(gNB->Mod_id),
+          T_INT(srs_pdu->rnti),
+          T_INT(frame_rx),
+          T_INT(slot_rx),
+          T_BUFFER(srs_toa_ns, nb_antennas_rx * sizeof(int16_t)));
+
         switch (srs_pdu->srs_parameters_v4.usage) {
           case 0:
             LOG_W(NR_PHY, "SRS report was not requested by MAC\n");
@@ -1116,9 +1140,9 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx, N
             start_meas(&gNB->srs_beam_report_stats);
             nfapi_nr_srs_beamforming_report_t nr_srs_bf_report;
             nr_srs_bf_report.prg_size = srs_pdu->beamforming.prg_size;
-            nr_srs_bf_report.num_symbols = 1 << srs_pdu->num_symbols;
+            nr_srs_bf_report.num_symbols = N_symb_SRS;
             nr_srs_bf_report.wide_band_snr = srs_est >= 0 ? (gNB->srs->snr + 64) << 1 : 0xFF; // 0xFF will be set if this field is invalid
-            nr_srs_bf_report.num_reported_symbols = 1 << srs_pdu->num_symbols;
+            nr_srs_bf_report.num_reported_symbols = N_symb_SRS;
             AssertFatal(nr_srs_bf_report.num_reported_symbols == 1,
                         "nr_srs_bf_report.num_reported_symbols %i not handled yet!\n",
                         nr_srs_bf_report.num_reported_symbols);
@@ -1148,7 +1172,7 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx, N
             start_meas(&gNB->srs_iq_matrix_stats);
             nfapi_nr_srs_normalized_channel_iq_matrix_t nr_srs_channel_iq_matrix;
             nr_srs_channel_iq_matrix.normalized_iq_representation = srs_pdu->srs_parameters_v4.iq_representation;
-            nr_srs_channel_iq_matrix.num_gnb_antenna_elements = gNB->frame_parms.nb_antennas_rx;
+            nr_srs_channel_iq_matrix.num_gnb_antenna_elements = nb_antennas_rx;
             nr_srs_channel_iq_matrix.num_ue_srs_ports = srs_pdu->srs_parameters_v4.num_total_ue_antennas;
             nr_srs_channel_iq_matrix.prg_size = srs_pdu->srs_parameters_v4.prg_size;
             nr_srs_channel_iq_matrix.num_prgs = srs_pdu->srs_parameters_v4.srs_bandwidth_size / srs_pdu->srs_parameters_v4.prg_size;

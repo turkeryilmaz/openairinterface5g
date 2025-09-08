@@ -42,6 +42,75 @@
 
 #define NO_INTERP 1
 #define dBc(x, y) (dB_fixed(((int32_t)(x)) * (x) + ((int32_t)(y)) * (y)))
+#define NR_SRS_IDFT_OVERSAMP_FACTOR 8
+
+/* Generic function to find the peak of channel estimation buffer */
+int16_t nr_est_toa_ns_srs(uint16_t ofdm_symbol_size,
+                          uint8_t N_arx,
+                          uint8_t N_ap,
+                          uint32_t samples_per_frame,
+                          c16_t srs_estimated_channel_freq[N_arx][N_ap][ofdm_symbol_size],
+                          int16_t *srs_toa_ns)
+{
+  c16_t chT_interpol[N_ap][NR_SRS_IDFT_OVERSAMP_FACTOR * ofdm_symbol_size] __attribute__((aligned(32)));
+
+  int ofdm_size_half = ofdm_symbol_size >> 1;
+  int16_t start_offset = (NR_SRS_IDFT_OVERSAMP_FACTOR * ofdm_symbol_size) - ofdm_size_half;
+
+  for (int arx_index = 0; arx_index < N_arx; arx_index++) {
+    for (int ap_index = 0; ap_index < N_ap; ap_index++) {
+      c16_t chF_interpol[NR_SRS_IDFT_OVERSAMP_FACTOR * ofdm_symbol_size] __attribute__((aligned(32)));
+      memset(chF_interpol, 0, sizeof(chF_interpol));
+
+      // Place SRS channel estimates in FFT shifted format for oversampling
+      memcpy(&chF_interpol[0], &srs_estimated_channel_freq[arx_index][ap_index][0], ofdm_size_half * sizeof(c16_t));
+      memcpy(&chF_interpol[start_offset],
+             &srs_estimated_channel_freq[arx_index][ap_index][ofdm_size_half],
+             ofdm_size_half * sizeof(c16_t));
+
+      // Convert to time domain oversampled
+      freq2time(ofdm_symbol_size * NR_SRS_IDFT_OVERSAMP_FACTOR, (int16_t *)chF_interpol, (int16_t *)chT_interpol[ap_index]);
+    }
+
+    int64_t mean_val = 0;
+    int64_t max_val = 0;
+    int32_t max_idx = 0;
+    for (int k = 0; k < NR_SRS_IDFT_OVERSAMP_FACTOR * ofdm_symbol_size; k++) {
+      int64_t abs_val = 0;
+      for (int p_index = 0; p_index < N_ap; p_index++) {
+        abs_val += squaredMod(chT_interpol[p_index][k]);
+      }
+      mean_val += abs_val;
+      if (abs_val > max_val) {
+        max_val = abs_val;
+        max_idx = k;
+      }
+    }
+    max_val = max_val / N_ap;
+    mean_val = mean_val / (N_ap * NR_SRS_IDFT_OVERSAMP_FACTOR * ofdm_symbol_size);
+
+    if (max_idx > NR_SRS_IDFT_OVERSAMP_FACTOR * ofdm_size_half)
+      max_idx = max_idx - NR_SRS_IDFT_OVERSAMP_FACTOR * ofdm_symbol_size;
+
+    // Check for detection threshold
+    if ((mean_val != 0) && (max_val / mean_val > 100)) {
+      srs_toa_ns[arx_index] = (max_idx * 1e9) / (NR_SRS_IDFT_OVERSAMP_FACTOR * samples_per_frame * 100);
+    } else {
+      srs_toa_ns[arx_index] = 0x8000;
+    }
+
+    LOG_D(PHY,
+          "SRS estimatd ToA [RX ant %d]: %d ns (max_val %ld, mean_val %ld, max_idx %d)\n",
+          arx_index,
+          srs_toa_ns[arx_index],
+          max_val,
+          mean_val,
+          max_idx);
+  } // Antenna loop
+
+  // TODO currently we are reporting ns for single antenna
+  return srs_toa_ns[0];
+}
 
 typedef struct puschAntennaProc_s {
   unsigned char Ns;
@@ -1015,7 +1084,7 @@ int nr_srs_channel_estimation(
   uint32_t signal_power = max(signal_energy_nodc(ch, arr_len), 1);
 
 #ifdef SRS_DEBUG
-  LOG_I(NR_PHY, "signal_power = %u\n", signal_power);
+  LOG_I(NR_PHY, "signal_power = %d dB\n", dB_fixed(signal_power));
 #endif
 
   if (signal_power == 0) {
