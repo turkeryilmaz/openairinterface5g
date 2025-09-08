@@ -1,0 +1,14 @@
+[Unit]
+Description=nr-cuup
+After=network.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+ExecStart=/usr/bin/nr-cuup -O /etc/openairinterface/nr/gnb-cuup.sa.f1.conf
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target

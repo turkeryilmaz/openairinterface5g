@@ -77,7 +77,7 @@ COPY --from=gnb-build \
     /usr/local/lib/
 
 COPY --from=gnb-base \
-    /lib64/libconfig.so.11 \
+    /usr/local/lib/libconfig.a \
     /lib64/libforms.so.2 \
     /lib64/libboost_chrono.so.1.75.0 \
     /lib64/libboost_date_time.so.1.75.0 \

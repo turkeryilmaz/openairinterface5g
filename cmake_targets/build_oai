@@ -86,6 +86,18 @@ Options:
    Makes the UE specific parts (usim, nvram) from the given configuration file
 --nrUE
   Makes the NR UE softmodem
+--NR-packaging
+  Produces NR package
+--LTE-packaging
+  Produces LTE package
+--OAI-COMMON-packaging
+  Produces a package with common executables
+--OAI-USRP-packaging
+  Produces a package with exerything for USRP
+--OAI-LDPC-T2-packaging
+  Produces a package with exerything for T2 accelerator
+--OAI-PHYSIM-packaging
+  Produces a package with exerything for simulators
 --UE-conf-nvram [configuration file]
    Specify conf_nvram_path (default \"$conf_nvram_path\")
 -w | --hardware
@@ -307,6 +319,50 @@ function main() {
             TARGET_LIST="$TARGET_LIST dlsim ulsim ldpctest polartest smallblocktest nr_pbchsim nr_dlschsim nr_ulschsim nr_dlsim nr_ulsim nr_pucchsim nr_prachsim nr_psbchsim"
             echo_info "Will compile dlsim, ulsim, ..."
             shift;;
+       --libconfig-cross-compilation)
+            LIBCONFIG_CC=1
+            echo "Will install libconfig from source"
+            shift;;
+       --RPM)
+            CMAKE_CMD="$CMAKE_CMD -DPACKAGING-RPM=ON"
+            echo_info "Set Packaging to RPM"
+            shift;;
+       --NR-packaging)
+            shift
+            set -- --nrUE --gNB "$@"
+            CMAKE_CMD="$CMAKE_CMD -DNR_PACKAGE=ON"
+            echo_info "Will create a NR package"
+            ;;
+       --LTE-packaging)
+            shift
+            set -- --UE --eNB "$@"
+            CMAKE_CMD="$CMAKE_CMD -DLTE_PACKAGE=ON"
+            echo_info "Will create a LTE package"
+            ;;
+       --OAI-COMMON-packaging)
+            shift
+            set -- --build-lib "telnetsrv" "$@"
+            CMAKE_CMD="$CMAKE_CMD -DOAI_COMMON_PACKAGE=ON"
+            echo_info "Will create a OAI COMMON package"
+            ;;
+       --OAI-USRP-packaging)
+            shift
+            set -- -w USRP "$@"
+            CMAKE_CMD="$CMAKE_CMD -DOAI_USRP_PACKAGE=ON"
+            echo_info "Will create a OAI USRP package"
+            ;;
+       --OAI-LDPC-T2-packaging)
+            shift
+            set -- --build-lib "ldpc_t2"
+            CMAKE_CMD="$CMAKE_CMD -DOAI_LDPC_T2_PACKAGE=ON"
+            echo_info "Will create a OAI LDPC T2 package"
+            ;;
+       --OAI-PHYSIM-packaging)
+            shift
+            set -- -P "$@"
+            CMAKE_CMD="$CMAKE_CMD -DOAI_PHYSIM_PACKAGE=ON"
+            echo_info "Will create a OAI PHYSIM package"
+            ;;
        -V | --vcd)
             echo_info "Setting gtk-wave output"
             CMAKE_CMD="$CMAKE_CMD -DENABLE_VCD_FIFO=True"
@@ -417,6 +473,11 @@ function main() {
   if [ "$INSTALL_EXTERNAL" = "1" ] ; then
     echo_info "Installing packages"
     check_install_oai_software
+    if [ "$LIBCONFIG_CC" = "1" ] ; then
+      install_libconfig_from_source "1"
+    else
+      install_libconfig_from_source "0"
+    fi
     if [ "$USE_LTTNG" = "1" ] ; then
       echo_info "installing LTTng"
       install_lttng $1
@@ -472,6 +533,9 @@ function main() {
     echo_info "Running \"${cmd}\"" $green
     eval $cmd
     ret=$?
+
+    cd $DIR/$BUILD_DIR/build
+    cpack
 
     if [ "$UE" = 1 ] ; then
       echo_info "Generate LTE USIM default sim content UE specific part"

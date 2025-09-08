@@ -1,0 +1,6 @@
+#!/bin/sh
+systemctl daemon-reload >/dev/null 2>&1 || true
+systemctl enable nr-cuup.service >/dev/null 2>&1 || true
+systemctl start nr-cuup.service >/dev/null 2>&1 || true
+systemctl enable nr-softmodem.service >/dev/null 2>&1 || true
+systemctl start nr-softmodem.service >/dev/null 2>&1 || true

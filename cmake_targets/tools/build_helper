@@ -278,7 +278,7 @@ check_install_usrp_uhd_driver(){
             x=$((x + 1))
         done
         $SUDO apt-get update
-        $SUDO apt-get -y install python-tk  $boost_libs_ubuntu libusb-1.0-0-dev
+        $SUDO apt-get -y install python3-tk  $boost_libs_ubuntu libusb-1.0-0-dev
         case "$(get_distribution_release)" in
           "ubuntu20.04" | "ubuntu22.04")
             $SUDO apt-get -y install libuhd-dev libuhd4.5.0 uhd-host
@@ -288,7 +288,7 @@ check_install_usrp_uhd_driver(){
         boost_libs_fedora="boost-chrono boost-date-time boost-filesystem boost-program-options boost-thread boost-test boost-regex boost-devel"
         if [ $IS_CONTAINER -eq 0 ]
         then
-            $SUDO $INSTALLER -y install python3 $boost_libs_fedora libusb-devel libusbx-devel  python3-mako python3-docutils python3-pip $CMAKE
+            $SUDO $INSTALLER -y install python3 $boost_libs_fedora libusb1-devel libusbx-devel  python3-mako python3-docutils python3-pip $CMAKE
             $SUDO pip3 install requests
         else
             $SUDO $INSTALLER -y install $boost_libs_fedora $CMAKE
@@ -512,7 +512,6 @@ check_install_oai_software() {
 	liblapack-dev \
 	liblapacke-dev \
 	libreadline-dev \
-	libconfig-dev \
 	libsctp-dev  \
 	libssl-dev  \
 	libtool  \
@@ -535,11 +534,11 @@ check_install_oai_software() {
     $SUDO $INSTALLER install -y \
       automake \
       $CMAKE \
+      rpm-build \
       gcc \
       gcc-c++ \
       git \
       pkgconfig \
-      libconfig-devel \
       lksctp-tools \
       lksctp-tools-devel \
       libtool \
@@ -559,6 +558,42 @@ check_install_oai_software() {
 
     install_asn1c_from_source $1
     install_simde_from_source $1
+}
+
+install_libconfig_from_source(){
+    echo_info "\n Installing libconfig from source"
+    if [[ "$OS_BASEDISTRO" == "fedora" ]]; then    
+        $SUDO $INSTALLER install -y wget make gcc autoconf automake libtool
+    elif [[ "$OS_BASEDISTRO" == "debian" ]]; then
+        $SUDO $INSTALLER install -y wget make gcc autoconf automake libtool
+    fi
+    wget https://github.com/hyperrealm/libconfig/releases/download/v1.7.3/libconfig-1.7.3.tar.gz
+    tar xf libconfig-1.7.3.tar.gz
+    cd libconfig-1.7.3
+    if [[ $1 == "1" ]] ; then
+      echo "Cross compilation is used for libconfig"
+      ./configure \
+        --host=aarch64-linux-gnu \
+        --disable-shared \
+        --enable-static \
+        --prefix=/usr \
+        CC=aarch64-linux-gnu-gcc \
+        CXX=aarch64-linux-gnu-g++ \
+        CFLAGS="-fPIC" \
+        CXXFLAGS="-fPIC" \
+        LDFLAGS="-no-pie"
+    else
+      echo "Normal compilation is used for libconfig"
+      ./configure \
+        --enable-static \
+        --disable-shared 
+    fi
+    make CFLAGS="-fPIC" CXXFLAGS="-fPIC" -j$(nproc)
+    $SUDO make install
+    $SUDO ldconfig
+    cd ..
+    $SUDO rm -r libconfig-1.7.3/
+    $SUDO rm libconfig-1.7.3.tar.gz
 }
 
 install_asn1c_from_source(){

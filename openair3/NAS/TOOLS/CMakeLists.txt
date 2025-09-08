@@ -14,23 +14,29 @@ add_library(conf2uedata_lib OBJECT
     ${OPENAIR_DIR}/common/utils/utils.c
 )
 
-add_executable(conf2uedata conf2uedata.c)
+add_executable(conf2uedata ${OPENAIR3_DIR}/NAS/TOOLS/conf2uedata.c)
 target_link_libraries(conf2uedata PRIVATE conf2uedata_lib)
 set_target_properties(conf2uedata PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
-target_link_libraries(conf2uedata PRIVATE LOG minimal_lib ${libconfig_LIBRARIES})
+target_link_libraries(conf2uedata PRIVATE LOG minimal_lib ${LIBCONFIG_STATIC})
 
-add_executable(usim usim.c)
+add_executable(usim ${OPENAIR3_DIR}/NAS/TOOLS/usim.c)
 target_link_libraries(usim PRIVATE conf2uedata_lib)
 set_target_properties(usim PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
-target_link_libraries(usim PRIVATE LOG minimal_lib ${libconfig_LIBRARIES})
+target_link_libraries(usim PRIVATE LOG minimal_lib ${LIBCONFIG_STATIC})
 
-add_executable(nvram nvram.c)
+add_executable(nvram ${OPENAIR3_DIR}/NAS/TOOLS/nvram.c)
 target_link_libraries(nvram PRIVATE conf2uedata_lib)
 set_target_properties(nvram PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
-target_link_libraries(nvram PRIVATE LOG minimal_lib ${libconfig_LIBRARIES})
+target_link_libraries(nvram PRIVATE LOG minimal_lib ${LIBCONFIG_STATIC})
 
 if (${T_TRACER})
   add_dependencies(conf2uedata generate_T)
   add_dependencies(usim generate_T)
   add_dependencies(nvram generate_T)
 endif (${T_TRACER})
+
+foreach(lib conf2uedata usim nvram)
+  add_custom_command(TARGET ${lib} 
+    COMMAND ${CMAKE_STRIP} --strip-unneeded $<TARGET_FILE:${lib}>
+    COMMENT "Stripping unneeded symbols from ${lib}")
+endforeach()
