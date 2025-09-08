@@ -434,7 +434,13 @@ int nr_init_frame_parms_ue(NR_DL_FRAME_PARMS *fp,
 }
 
 void nr_init_frame_parms_ue_sa(NR_DL_FRAME_PARMS *frame_parms, uint64_t downlink_frequency, int32_t delta_duplex, uint8_t mu, uint16_t nr_band) {
-
+  // Set DL freq from band if center freq not provided
+  if (downlink_frequency == 0) {
+    const nr_bandentry_t b = get_band_entry(nr_band, mu);
+    /* Set center of the band for radio initialization. Center will be reconfigured
+    during cell search and after SIB1 reception */
+    downlink_frequency = (b.dl_min + (b.dl_max - b.dl_min) / 2) * 1000;
+  }
   LOG_I(PHY,"SA init parameters. DL freq %lu UL offset %d SSB numerology %d N_RB_DL %d\n",
         downlink_frequency,
         delta_duplex,
