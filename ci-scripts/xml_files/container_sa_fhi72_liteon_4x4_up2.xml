@@ -25,6 +25,7 @@
   <htmlTabName>100 MHz 4x4 TDD SA LiteON</htmlTabName>
   <htmlTabIcon>tasks</htmlTabIcon>
   <TestCaseRequestedList>
+    555555
     444000
     444100
     200000
@@ -49,6 +50,14 @@
     444400
   </TestCaseRequestedList>
   <TestCaseExclusionList></TestCaseExclusionList>
+
+  <testCase id="555555">
+    <class>Custom_Script</class>
+    <always_exec>true</always_exec>
+    <desc>Verify LiteON RU status</desc>
+    <node>cacofonix</node>
+    <script>scripts/liteon-status-check.sh</script>
+  </testCase>
 
   <testCase id="444000">
     <class>DeployCoreNetwork</class>
