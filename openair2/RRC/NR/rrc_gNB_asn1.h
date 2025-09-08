@@ -19,6 +19,9 @@
  *      contact@openairinterface.org
  */
 
+#ifndef _RRC_GNB_ASN1_H_
+#define _RRC_GNB_ASN1_H_
+
 #include <stdbool.h>
 #include "seq_arr.h"
 #include "NR_DRB-ToAddMod.h"
@@ -36,3 +39,5 @@ void get_pdcp_config_ie(NR_DRB_ToAddMod_t *drb_ToAddMod,
                         const bool do_drb_ciphering,
                         const bool reestablish,
                         const nr_pdcp_configuration_t *pdcp_config);
+
+#endif
