@@ -110,11 +110,14 @@ static bool nr_sdap_tx_entity(nr_sdap_entity_t *entity,
   uint8_t sdap_buf[SDAP_MAX_PDU];
   int pdcp_entity = entity->qfi2drb_map(entity, qfi);
 
-  if(pdcp_entity){
+  if (pdcp_entity != SDAP_MAP_RULE_EMPTY) {
     sdap_drb_id = pdcp_entity;
     sdap_ul_tx = entity->qfi2drb_table[qfi].entity_role & SDAP_UL_TX; // UE TX entity
     sdap_dl_tx = entity->qfi2drb_table[qfi].entity_role & SDAP_DL_TX; // gNB TX entity
     LOG_D(SDAP, "TX - QFI: %u is mapped to DRB ID: %d\n", qfi, entity->qfi2drb_table[qfi].drb_id);
+  } else {
+    LOG_E(SDAP, "DRB not mapped, quit tx!\n");
+    return false;
   }
 
   if (!sdap_ul_tx && !sdap_dl_tx) {
