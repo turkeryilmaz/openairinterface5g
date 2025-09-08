@@ -249,6 +249,32 @@ def IdleSleep(HTML, idle_sleep_time):
 	HTML.CreateHtmlTestRow(f"{idle_sleep_time} sec", 'OK', CONST.ALL_PROCESSES_OK)
 	return True
 
+def DeployWithScript(HTML, node, script, options, tag):
+	logging.debug(f'Deploy with script {script} on node: {node}')
+	opt = options.replace('%%image_tag%%', tag)
+	ret = cls_cmd.runScript(node, script, 600, opt)
+	logging.debug(f'"{script}" finished with code {ret.returncode}, output:\n{ret.stdout}')
+	param = f"on node {node}"
+	HTML.CreateHtmlTestRowQueue(f'on node {node}', 'OK' if ret.returncode == 0 else 'KO', [f'{ret.stdout}'])
+	return ret.returncode == 0
+
+def UndeployWithScript(HTML, ctx, node, script, options):
+	logging.debug(f'Undeploy with script {script} on node: {node}')
+	remote_dir = '/tmp/undeploy'
+	opt = options.replace('%%log_dir%%', remote_dir)
+	ret = cls_cmd.runScript(node, script, 600, opt)
+	logging.debug(f'"{script}" finished with code {ret.returncode}, output:\n{ret.stdout}')
+	with cls_cmd.getConnection(node) as ssh:
+		ret_ls = ssh.run(f'ls -1 {remote_dir}')
+		files = ret_ls.stdout.strip().split("\n")
+		log_files = []
+		for lf in files:
+			name = archiveArtifact(ssh, ctx, f'{remote_dir}/{lf}')
+			log_files.append(name)
+	msg = "Log files:\n" + "\n".join([os.path.basename(lf) for lf in log_files])
+	HTML.CreateHtmlTestRowQueue(f'on node {node}', 'OK' if ret.returncode == 0 else 'KO', [f'{ret.stdout}\n\n{msg}'])
+	return ret.returncode == 0
+
 #-----------------------------------------------------------
 # OaiCiTest Class Definition
 #-----------------------------------------------------------
