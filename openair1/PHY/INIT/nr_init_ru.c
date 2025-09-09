@@ -131,6 +131,8 @@ void nr_phy_init_RU(RU_t *ru)
   } // !=IF5
 
   init_prach_ru_list(ru);
+
+  ru->dft_in_levdB = -1;
 }
 
 void nr_phy_free_RU(RU_t *ru)
