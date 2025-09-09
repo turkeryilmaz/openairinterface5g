@@ -91,6 +91,8 @@
 //       (0  + 0 * 20) % 512 = 0
 #define NUM_PROCESS_SLOT_TX_BARRIERS 512
 
+#define INIT_SYNC_FRAMES 2
+
 #include "impl_defs_top.h"
 #include "impl_defs_nr.h"
 #include "time_meas.h"
@@ -552,7 +554,7 @@ typedef struct {
   int frame_id;
 } nr_initial_sync_t;
 
-typedef struct {
+typedef struct nr_ue_ssb_scan {
   nr_gscn_info_t gscnInfo;
   int foFlag;
   int targetNidCell;
@@ -573,6 +575,12 @@ typedef struct {
   int adjust_rxgain;
   task_ans_t *ans;
 } nr_ue_ssb_scan_t;
+
+#define MAX_DECODED_SSB 64
+struct decoded_ssb_list {
+  int num_ssb;
+  struct nr_ue_ssb_scan ssb[MAX_DECODED_SSB];
+};
 
 typedef struct nr_phy_data_tx_s {
   NR_UE_ULSCH_t ulsch;

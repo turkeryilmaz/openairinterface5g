@@ -388,6 +388,7 @@ typedef struct {
   nr_gscn_info_t gscnInfo[MAX_GSCN_BAND];
   int numGscn;
   int rx_offset;
+  struct decoded_ssb_list *decoded_ssb;
 } syncData_t;
 
 static int nr_ue_adjust_rx_gain(PHY_VARS_NR_UE *UE, openair0_config_t *cfg0, int gain_change)
@@ -427,6 +428,7 @@ static void UE_synch(void *arg) {
   uint64_t dl_carrier, ul_carrier;
   NR_DL_FRAME_PARMS *fp = &UE->frame_parms;
   nr_initial_sync_t ret = {false, 0, 0};
+  struct decoded_ssb_list *ssb_list = syncD->decoded_ssb;
   if (UE->sl_mode == 2) {
     fp = &UE->SL_UE_PHY_PARAMS.sl_frame_params;
     dl_carrier = fp->sl_CarrierFreq;
@@ -434,15 +436,25 @@ static void UE_synch(void *arg) {
     ret = sl_nr_slss_search(UE, &syncD->proc, SL_NR_SSB_REPETITION_IN_FRAMES);
   } else {
     nr_get_carrier_frequencies(UE, &dl_carrier, &ul_carrier);
-    ret = nr_initial_sync(&syncD->proc, UE, 2, IS_SA_MODE(get_softmodem_params()), syncD->gscnInfo, syncD->numGscn);
+    nr_ue_ssb_scan_t ssb_scan_common_info = {.fp = fp,
+                                             .proc = &syncD->proc,
+                                             .syncRes.cell_detected = false,
+                                             .nFrames = INIT_SYNC_FRAMES,
+                                             .foFlag = UE->UE_fo_compensation,
+                                             .freqOffset = UE->initial_fo,
+                                             .targetNidCell = UE->target_Nid_cell};
+    ret =
+        nr_initial_sync(&UE->frame_parms, ssb_scan_common_info, UE->common_vars.rxdata, ssb_list, syncD->gscnInfo, syncD->numGscn);
   }
 
   if (ret.cell_detected) {
-    syncD->rx_offset = ret.rx_offset;
+    DevAssert(ssb_list->num_ssb == 1 && syncD->numGscn == 1);
+    set_detected_cell_params(UE, &syncD->proc, &ssb_list->ssb[0]); // updates syncRes too
+    const int rx_offset = ssb_list->ssb[0].syncRes.rx_offset;
+    syncD->rx_offset = rx_offset;
     const int freq_offset = UE->common_vars.freq_offset; // frequency offset computed with pss in initial sync
-    const int hw_slot_offset =
-        ((ret.rx_offset << 1) / fp->samples_per_subframe * fp->slots_per_subframe)
-        + round((float)((ret.rx_offset << 1) % fp->samples_per_subframe) / fp->samples_per_slot0);
+    const int hw_slot_offset = ((rx_offset << 1) / fp->samples_per_subframe * fp->slots_per_subframe)
+                               + round((float)((rx_offset << 1) % fp->samples_per_subframe) / fp->samples_per_slot0);
 
     if (get_nrUE_params()->cont_fo_comp) {
       UE->freq_offset = freq_offset;
@@ -985,6 +997,18 @@ static inline void apply_ntn_config(PHY_VARS_NR_UE *UE,
   }
 }
 
+static void cell_search_indication_mac(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, const struct decoded_ssb_list *ssb_res)
+{
+  nr_downlink_indication_t dl_indication;
+  fapi_nr_rx_indication_t rx_ind = {0};
+  uint16_t number_pdus = 1;
+  nr_fill_dl_indication(&dl_indication, NULL, &rx_ind, proc, ue, NULL);
+  nr_fill_rx_indication(&rx_ind, FAPI_NR_RX_PDU_TYPE_SSB, ue, NULL, NULL, number_pdus, proc, (const void *)&ssb_res->ssb[0], NULL);
+
+  if (ue->if_inst && ue->if_inst->dl_indication)
+    ue->if_inst->dl_indication(&dl_indication);
+}
+
 void *UE_thread(void *arg)
 {
   //this thread should be over the processing thread to keep in real time
@@ -1050,6 +1074,7 @@ void *UE_thread(void *arg)
   int first_scanned_gscn = -1;
   int last_scanned_gscn = -1;
   int num_scans = 0;
+  struct decoded_ssb_list cell_search_res = {0};
 
   while (!oai_exit) {
     if (syncRunning) {
@@ -1104,6 +1129,7 @@ void *UE_thread(void *arg)
       notifiedFIFO_elt_t *Msg = newNotifiedFIFO_elt(sizeof(syncData_t), 0, &nf, UE_synch);
       syncData_t *syncMsg = (syncData_t *)NotifiedFifoData(Msg);
       *syncMsg = (syncData_t){0};
+      syncMsg->decoded_ssb = &cell_search_res;
       NR_DL_FRAME_PARMS *fp = &UE->frame_parms;
       if (fp->dl_CarrierFreq % 1000)
         LOG_E(PHY, "Center frequency %lu is not multiple of kHz\n", fp->dl_CarrierFreq);
@@ -1121,16 +1147,23 @@ void *UE_thread(void *arg)
                                                  syncMsg->gscnInfo);
       } else if (UE->UE_scan_carrier == SCAN_BAND) {
         // Get list of GSCN after last scanned GSCN in this band
-        LOG_W(PHY, "UE set to scan full NR band\n");
         uint32_t dlFreq = 0;
-        syncMsg->numGscn = get_scan_ssb_first_sc(&dlFreq,
-                                                 fp->N_RB_DL,
-                                                 fp->nr_band,
-                                                 fp->numerology_index,
-                                                 num_scans,
-                                                 first_scanned_gscn,
-                                                 last_scanned_gscn,
-                                                 syncMsg->gscnInfo);
+        const int numGscn = get_scan_ssb_first_sc(&dlFreq,
+                                                  fp->N_RB_DL,
+                                                  fp->nr_band,
+                                                  fp->numerology_index,
+                                                  num_scans,
+                                                  first_scanned_gscn,
+                                                  last_scanned_gscn,
+                                                  syncMsg->gscnInfo);
+        // Scan is complete
+        if (numGscn == 0) {
+          cell_search_indication_mac(UE, &syncMsg->proc, &cell_search_res);
+          UE->is_synchronized = 1;
+          LOG_W(PHY, "UE cell search completed. Waiting for higher layers to select cell...\n");
+          continue;
+        }
+        syncMsg->numGscn = numGscn;
         num_scans++;
         // save last gscn from current list to continune in next scan
         first_scanned_gscn = syncMsg->gscnInfo[0].gscn;
@@ -1140,6 +1173,7 @@ void *UE_thread(void *arg)
         nr_rf_card_config_freq(&UE->openair0_cfg[UE->rf_map.card], fp->dl_CarrierFreq, fp->dl_CarrierFreq, 0);
         UE->rfdevice.trx_set_freq_func(&UE->rfdevice, &UE->openair0_cfg[0]);
         init_symbol_rotation(fp);
+        LOG_W(PHY, "UE set to scan full NR band\n");
       } else {
         LOG_W(PHY, "SSB position provided\n");
         nr_gscn_info_t *g = syncMsg->gscnInfo;
@@ -1211,8 +1245,11 @@ void *UE_thread(void *arg)
     }
 
     /* check if MAC has sent sync request */
-    if (handle_sync_req_from_mac(UE) == 0)
+    if (handle_sync_req_from_mac(UE) == 0) {
+      // clear cell search result buffer
+      memset(&cell_search_res, 0, sizeof(cell_search_res));
       continue;
+    }
 
     // start of normal case, the UE is in sync
     absolute_slot++;

@@ -1360,8 +1360,8 @@ int get_scan_ssb_first_sc(uint32_t *fc_khz_p,
     else
       first_gscn = (lastScannedGscn == -1) ? tmpRaster->first_gscn : lastScannedGscn + tmpRaster->step_gscn;
     if (first_gscn > tmpRaster->last_gscn) {
-      // Repeat search
-      first_gscn = tmpRaster->first_gscn;
+      // search complete
+      return 0;
     }
     const uint32_t firstSSRef = get_ssref_from_gscn(first_gscn);
     const int ssbRBs = 20;
