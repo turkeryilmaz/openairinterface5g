@@ -416,8 +416,8 @@ void generate_mdci_top(PHY_VARS_eNB *eNB, int frame, int subframe, int16_t amp, 
           txF = (c16_t *)&txdataF[0][symbol_offset + re_offset + fp->ofdm_symbol_size * soffset[lprime]];
         }
 
-        for (int mprime=0; mprime<3; mprime++,i+=2) {
-          if ((i & 0x1f) == 0) {
+        for (int mprime=0; mprime<3; mprime++,ii+=2) {
+          if ((ii & 0x1f) == 0) {
             s = lte_gold_generic(&x1, &x2, reset);
             reset = 0;
           }
