@@ -22,7 +22,7 @@
 -->
 <testCaseList>
   <htmlTabRef>TEST-SA-FR1-N310-2x2-60MHz</htmlTabRef>
-  <htmlTabName>60 MHz 2x2 TDD SA</htmlTabName>
+  <htmlTabName>60 MHz 2x2 TDD SA DSUUU</htmlTabName>
   <htmlTabIcon>tasks</htmlTabIcon>
   <TestCaseRequestedList>
     100000
@@ -114,8 +114,8 @@
 
   <testCase id="071000">
     <class>Iperf</class>
-    <desc>iperf (DL/200Mbps/UDP)(30 sec)(single-ue profile)</desc>
-    <iperf_args>-u -b 200M -t 30 -R</iperf_args>
+    <desc>iperf (DL/150Mbps/UDP)(30 sec)(single-ue profile)</desc>
+    <iperf_args>-u -b 150M -t 30 -R</iperf_args>
     <svr_id>matix-cn5g</svr_id>
     <id>up2</id>
     <iperf_packetloss_threshold>25</iperf_packetloss_threshold>
@@ -124,8 +124,8 @@
 
   <testCase id="071001">
     <class>Iperf</class>
-    <desc>iperf (UL/180Mbps/UDP)(30 sec)(single-ue profile)</desc>
-    <iperf_args>-u -b 180M -t 30</iperf_args>
+    <desc>iperf (UL/250Mbps/UDP)(30 sec)(single-ue profile)</desc>
+    <iperf_args>-u -b 250M -t 30</iperf_args>
     <svr_id>matix-cn5g</svr_id>
     <id>up2</id>
     <iperf_packetloss_threshold>10</iperf_packetloss_threshold>

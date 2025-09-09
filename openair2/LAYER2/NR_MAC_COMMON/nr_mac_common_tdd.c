@@ -174,6 +174,8 @@ static void config_tdd_patterns(const NR_TDD_UL_DL_ConfigCommon_t *tdd, frame_st
         num_of_patterns,
         nb_slots_p1,
         nb_slots_p2);
+
+  // TODO: add asserts()
 }
 
 /**
