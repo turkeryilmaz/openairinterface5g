@@ -141,7 +141,6 @@ telnetsrv_enb
 test_nrppa
 tests
 uescope
-tests/nr-cuup
 textlog
 thread-pool
 ulsim
