@@ -19,7 +19,7 @@ function build_target() {
   local dir=$(mktemp -p. -d)
   ( cmake -GNinja -B ${dir} && ninja -C ${dir} ${target} ) > results/${target}.log 2>&1
   local result=$([ $? -eq 0 ] && echo built || echo failed)
-  echo -e "$result\t$t" | tee -a results.txt
+  echo -e "${result}\t${target}$t" | tee -a results.txt
   rm -rf ${dir}
 }
 export -f build_target
