@@ -16,7 +16,7 @@ mkdir results
 function build_target() {
   [ $# -eq 1 ] || die "need target"
   local target=$1
-  local dir=$(mktemp -p. -d)
+  local dir=$(mktemp -p. -d).${target}
   ( cmake -GNinja -B ${dir} && ninja -C ${dir} ${target} ) > results/${target}.log 2>&1
   local result=$([ $? -eq 0 ] && echo built || echo failed)
   echo -e "${result}\t${target}$t" | tee -a results.txt
@@ -24,4 +24,4 @@ function build_target() {
 }
 export -f build_target
 
-parallel -j4 build_target ::: "${ALL_TARGETS}"
+parallel -j8 build_target ::: "${ALL_TARGETS}"

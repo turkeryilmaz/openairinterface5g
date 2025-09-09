@@ -99,7 +99,7 @@ noise_device
 nr-softmodem
 lte-softmodem
 lte-uesoftmodem
-oai_ru
+oai-ru
 nr-uesoftmodem
 nr_dlschsim
 nr_dlsim
