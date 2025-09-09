@@ -1,0 +1,16 @@
+{
+  "cells": [
+    {"nr_cellid": 12345678, "is_active": true,  "switch_off_prob": 1.0},
+    {"nr_cellid": 87654321, "is_active": true}
+  ],
+  "overrides": [
+    {
+      "ue_rnti": "any",
+      "serv_cellid": 12345678,
+      "targ_cellid": 87654321,
+      "serv": {"rb_usage_ue": 12.0},
+      "targ": {"sinr_db": 7.0, "delay_ms": 15.0, "rb_usage_ue": 10.0}
+    }
+  ]
+}
+

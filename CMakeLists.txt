@@ -1164,6 +1164,8 @@ set(L2_NR_SRC
   ${NR_PDCP_SRC}
   ${NR_SDAP_SRC}
   ${NR_RRC_DIR}/rrc_gNB.c
+  ${NR_RRC_DIR}/rrc_gNB_energy_ho.c
+  ${NR_RRC_DIR}/rrc_gNB_energy_ho_inject.c
   ${NR_RRC_DIR}/mac_rrc_dl_direct.c
   ${NR_RRC_DIR}/mac_rrc_dl_f1ap.c
   ${NR_RRC_DIR}/rrc_gNB_nsa.c

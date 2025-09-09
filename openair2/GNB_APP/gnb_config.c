@@ -78,6 +78,7 @@
 #include "uper_encoder.h"
 #include "utils.h"
 #include "x2ap_messages_types.h"
+#include "openair2/RRC/NR/rrc_gNB_energy_ho.h" // EnergyHO config singleton
 
 
 static int DEFBANDS[] = {7};
@@ -2150,6 +2151,124 @@ static void fill_measurement_configuration(uint8_t gnb_idx, gNB_RRC_INST *rrc)
   }
 }
 
+/*
+ * EnergyHO configuration parser (CU side)
+ * --------------------------------------
+ * Reads optional EnergyHO block from gNB config under path:
+ *   gNBs.[<idx>].EnergyHO
+ * and (optionally) nested injection sub-block:
+ *   gNBs.[<idx>].EnergyHO.injection
+ *
+ * If the section is absent, built-in defaults (see rrc_gNB_energy_ho.c) remain in effect.
+ */
+static void parse_energy_ho_config(uint8_t gnb_idx)
+{
+  char aprefix[MAX_OPTNAME_SIZE * 2 + 16];
+  snprintf(aprefix, sizeof(aprefix), "%s.[%u].%s", GNB_CONFIG_STRING_GNB_LIST, gnb_idx, "EnergyHO");
+
+  enum {
+    EHO_ENABLE,
+    EHO_SIMPLE_MODE,
+    EHO_HYST_MARGIN,
+    EHO_SINR_TH,
+    EHO_SOP_TH,
+    EHO_UE_DLY_REQ,
+    EHO_TWIN_MS,
+    EHO_GUARD_MS,
+    EHO_K_CONS,
+    EHO_DEBUG,
+    EHO_N_TRX,
+    EHO_P_IDLE,
+    EHO_DELTA_P,
+    EHO_P_RB,
+    EHO_PARAM_COUNT
+  };
+
+  paramdef_t eho_params[EHO_PARAM_COUNT] = {
+    {"enable",                  NULL, PARAMFLAG_BOOL, .iptr=NULL, .defintval=1,       TYPE_INT,    0},
+    {"simple_mode",            NULL, PARAMFLAG_BOOL, .iptr=NULL, .defintval=0,       TYPE_INT,    0},
+    {"hysteresis_margin_mw",   NULL, 0,              .dblptr=NULL,.defdblval=1500.0, TYPE_DOUBLE, 0},
+    {"sinr_threshold_db",      NULL, 0,              .dblptr=NULL,.defdblval=-3.0,   TYPE_DOUBLE, 0},
+    {"switch_off_prob_threshold", NULL, 0,           .dblptr=NULL,.defdblval=0.8,    TYPE_DOUBLE, 0},
+    {"default_ue_delay_req_ms",NULL, 0,              .dblptr=NULL,.defdblval=25.0,   TYPE_DOUBLE, 0},
+    {"t_win_ms",               NULL, 0,              .uptr=NULL,  .defuintval=200,   TYPE_UINT,   0},
+    {"guard_ms",               NULL, 0,              .uptr=NULL,  .defuintval=2000,  TYPE_UINT,   0},
+    {"k_consecutive",          NULL, 0,              .uptr=NULL,  .defuintval=1,     TYPE_UINT,   0},
+    {"debug_logs",             NULL, PARAMFLAG_BOOL, .iptr=NULL,  .defintval=1,      TYPE_INT,    0},
+    {"n_trx",                  NULL, 0,              .uptr=NULL,  .defuintval=4,     TYPE_UINT,   0},
+    {"p_idle_mw",              NULL, 0,              .dblptr=NULL,.defdblval=8000.0, TYPE_DOUBLE, 0},
+    {"delta_p",                NULL, 0,              .dblptr=NULL,.defdblval=4.0,    TYPE_DOUBLE, 0},
+    {"p_rb_mw",                NULL, 0,              .dblptr=NULL,.defdblval=50.0,   TYPE_DOUBLE, 0},
+  };
+
+  int ret = config_get(config_get_if(), eho_params, sizeofArray(eho_params), aprefix);
+  if (ret < 0) {
+    // Section absent; keep defaults
+    return;
+  }
+
+  energy_ho_cfg_t cfg = *energy_ho_get_cfg();
+
+  cfg.enable                   = *eho_params[EHO_ENABLE].iptr;
+  cfg.simple_mode              = *eho_params[EHO_SIMPLE_MODE].iptr;
+  cfg.hysteresis_margin_mw     = *eho_params[EHO_HYST_MARGIN].dblptr;
+  cfg.sinr_threshold_db        = *eho_params[EHO_SINR_TH].dblptr;
+  cfg.switch_off_prob_threshold= *eho_params[EHO_SOP_TH].dblptr;
+  cfg.default_ue_delay_req_ms  = *eho_params[EHO_UE_DLY_REQ].dblptr;
+  cfg.t_win_ms                 = *eho_params[EHO_TWIN_MS].uptr;
+  cfg.guard_ms                 = *eho_params[EHO_GUARD_MS].uptr;
+  cfg.k_consecutive            = (uint8_t)*eho_params[EHO_K_CONS].uptr;
+  cfg.debug_logs               = *eho_params[EHO_DEBUG].iptr;
+  cfg.default_n_trx            = (uint8_t)*eho_params[EHO_N_TRX].uptr;
+  cfg.default_p_idle_mw        = *eho_params[EHO_P_IDLE].dblptr;
+  cfg.default_delta_p          = *eho_params[EHO_DELTA_P].dblptr;
+  cfg.default_p_rb_mw          = *eho_params[EHO_P_RB].dblptr;
+
+  // Nested injection block
+  char injprefix[MAX_OPTNAME_SIZE * 2 + 32];
+  snprintf(injprefix, sizeof(injprefix), "%s.[%u].%s.%s", GNB_CONFIG_STRING_GNB_LIST, gnb_idx, "EnergyHO", "injection");
+  enum { INJ_ENABLE, INJ_JSON_PATH, INJ_POLL_MS, INJ_PARAM_COUNT };
+  paramdef_t inj_params[INJ_PARAM_COUNT] = {
+    {"enable",        NULL, PARAMFLAG_BOOL, .iptr=NULL,    .defintval=1,                         TYPE_INT,    0},
+    {"json_path",     NULL, 0,              .strptr=NULL,  .defstrval="oai_energy_ho.json",      TYPE_STRING, 0},
+    {"poll_period_ms",NULL, 0,              .uptr=NULL,    .defuintval=100,                      TYPE_UINT,   0},
+  };
+  int injret = config_get(config_get_if(), inj_params, sizeofArray(inj_params), injprefix);
+  if (injret >= 0) {
+    cfg.injection_enable = *inj_params[INJ_ENABLE].iptr;
+    if (inj_params[INJ_JSON_PATH].strptr && *inj_params[INJ_JSON_PATH].strptr) {
+      const char *val = *inj_params[INJ_JSON_PATH].strptr;
+      if (val[0] == '/') {
+        // Absolute path provided
+        strncpy(cfg.injection_json_path, val, sizeof(cfg.injection_json_path)-1);
+      } else {
+        // Resolve relative to the directory of the CU config file
+        const char *cfgfile = RC.config_file_name;
+        if (cfgfile && cfgfile[0]) {
+          char dirbuf[1024];
+          strncpy(dirbuf, cfgfile, sizeof(dirbuf)-1);
+          dirbuf[sizeof(dirbuf)-1] = '\0';
+          char *slash = strrchr(dirbuf, '/');
+          if (slash) *slash = '\0'; else strcpy(dirbuf, ".");
+          snprintf(cfg.injection_json_path, sizeof(cfg.injection_json_path), "%s/%s", dirbuf, val);
+        } else {
+          // Fallback: keep as relative; depends on process CWD
+          strncpy(cfg.injection_json_path, val, sizeof(cfg.injection_json_path)-1);
+        }
+      }
+    }
+    cfg.injection_poll_period_ms = *inj_params[INJ_POLL_MS].uptr;
+  }
+
+  energy_ho_set_cfg(&cfg);
+  LOG_I(GNB_APP, "EnergyHO: enable=%d simple=%d HYST=%.0fmW SINRthr=%.1fdB UEdelay=%.1fms NTRX=%u p_idle=%.0fmW delta_p=%.2f p_rb=%.1fmW\n",
+        cfg.enable, cfg.simple_mode, cfg.hysteresis_margin_mw, cfg.sinr_threshold_db,
+        cfg.default_ue_delay_req_ms, cfg.default_n_trx, cfg.default_p_idle_mw,
+        cfg.default_delta_p, cfg.default_p_rb_mw);
+  if (cfg.injection_enable)
+    LOG_I(GNB_APP, "EnergyHO: injection enabled, json_path=%s poll=%ums\n", cfg.injection_json_path, cfg.injection_poll_period_ms);
+}
+
 /**
  * @brief Allocates and initializes RRC instances
  *        Currently assuming 1 instance
@@ -2253,6 +2372,8 @@ gNB_RRC_INST *RCconfig_NRRRC()
       }//
     }//End for (k=0; k <num_gnbs ; k++)
     openair_rrc_gNB_configuration(rrc, &nrrrc_config);
+    // EnergyHO config (optional); applies defaults if section is absent
+    parse_energy_ho_config(i);
   }//End if (num_gnbs>0)
 
   if (!NODE_IS_DU(rrc->node_type))

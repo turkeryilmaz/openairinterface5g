@@ -98,6 +98,24 @@
 #include "NR_DL-DCCH-Message.h"
 #include "ds/byte_array.h"
 #include "alg/find.h"
+// Energy-Efficiency-Driven HO: include evaluator and injection API
+#include "openair2/RRC/NR/rrc_gNB_energy_ho.h"
+#include "openair2/RRC/NR/rrc_gNB_energy_ho_inject.h"
+
+/*
+ * Helper: count the number of UEs currently associated with a given NR cell ID.
+ * This function is pure C (no C++ lambdas) and iterates the RRC UE context tree.
+ */
+static uint32_t eho_count_ues_for_cell(gNB_RRC_INST *rrc_inst, uint64_t cellid)
+{
+  uint32_t cnt = 0;
+  rrc_gNB_ue_context_t *uec = NULL;
+  RB_FOREACH(uec, rrc_nr_ue_tree_s, &rrc_inst->rrc_ue_head) {
+    if (uec->ue_context.nr_cellid == cellid)
+      cnt++;
+  }
+  return cnt;
+}
 
 #ifdef E2_AGENT
 #include "openair2/E2AP/RAN_FUNCTION/O-RAN/ran_func_rc_extern.h"
@@ -1442,12 +1460,95 @@ static void process_Event_Based_Measurement_Report(gNB_RRC_INST *rrc,
             LOG_D(NR_RRC, "HO LOG: Trigger N2 HO for the neighbour gnb: %u cell: %lu\n", neighbour->gNB_ID, neighbour->nrcell_id);
           }
         } else if (neigh_cell && neighbour) {
-          /* we know the cell and are connected to the DU! */
+          /*
+           * Energy-Efficiency-Driven HO gating
+           * We have both the serving DU and the target DU connected via F1. Before
+           * triggering the existing F1 HO, evaluate the energy/quality constraints.
+           *
+           * The evaluator consumes:
+           *  - Serving/target cell energy parameters and live metrics
+           *  - UE requirements (delay), and guard/hysteresis settings
+           *
+           * For initial RFsim validation, target SINR and delay can be injected via
+           * JSON at /tmp/oai_energy_ho.json. If injection is absent, we fall back to
+           * the legacy behaviour to avoid blocking HOs.
+           */
+
           gNB_RRC_INST *rrc = RC.nrrrc[0];
           nr_rrc_du_container_t *source_du = get_du_by_cell_id(rrc, serving_cell->nr_cellid);
           DevAssert(source_du);
           nr_rrc_du_container_t *target_du = get_du_by_cell_id(rrc, neigh_cell->nr_cellid);
-          nr_rrc_trigger_f1_ho(rrc, ue, source_du, target_du);
+
+          const energy_ho_cfg_t *E = energy_ho_get_cfg();
+
+          bool trigger_legacy_ho = true; // default to legacy if EnergyHO disabled or metrics not ready
+
+          if (E->enable) {
+            // Build serving and target energy descriptors with conservative defaults
+            energy_cell_t serv = {0}, targ = {0};
+            serv.cell_id = (uint32_t)serving_cell->nr_cellid;
+            targ.cell_id = (uint32_t)neigh_cell->nr_cellid;
+            serv.n_trx = E->default_n_trx; targ.n_trx = E->default_n_trx;
+            serv.p_idle_mw = E->default_p_idle_mw; targ.p_idle_mw = E->default_p_idle_mw;
+            serv.delta_p = E->default_delta_p; targ.delta_p = E->default_delta_p;
+            serv.p_rb_mw = E->default_p_rb_mw; targ.p_rb_mw = E->default_p_rb_mw;
+            serv.is_active = true; // serving is active by definition
+            targ.is_active = true; // assume active; injector can flip to false to emulate activation cost
+            serv.connected_ues = eho_count_ues_for_cell(rrc, serving_cell->nr_cellid);
+            targ.connected_ues = eho_count_ues_for_cell(rrc, neigh_cell->nr_cellid);
+            // Initial policy: switch-off is possible if this UE is the last one
+            serv.switch_off_prob = (serv.connected_ues <= 1) ? 1.0f : 0.0f;
+
+            // Provide a minimal UE requirement descriptor (delay requirement defaults)
+            energy_ue_req_t uereq = {0};
+            uereq.ue_id = ue->rrc_ue_id;
+            uereq.rnti = ue->rnti;
+            uereq.delay_req_ms = E->default_ue_delay_req_ms;
+            uereq.bitrate_mbps = 2.0f; // a modest default; can be overridden via injection
+            // last_ho_ms tracking could be improved by storing per-UE state; set to 0 for initial runs
+            uereq.last_ho_ms = 0;
+
+            // Allow JSON injection to override rb_usage_ue, target SINR/delay, and booleans
+            if (E->injection_enable) {
+              (void)energy_ho_try_override(E->injection_json_path,
+                                           uereq.rnti,
+                                           serv.cell_id,
+                                           targ.cell_id,
+                                           &serv, &targ, &uereq);
+            }
+
+            // Require target SINR and delay to be available; otherwise, stay legacy
+            if (energy_ho_metrics_ready(&serv, &targ, &uereq)) {
+              energy_ho_dbg_t dbg = {0};
+              bool pass = false;
+              if (E->simple_mode)
+                pass = evaluate_simple_energy_ho(&serv, &targ, &uereq, &dbg);
+              else
+                pass = energy_ho_evaluate(&serv, &targ, &uereq, &dbg);
+
+              // Summarize decision in logs
+              if (E->debug_logs) {
+                LOG_I(NR_RRC,
+                      "EHO: UE rnti=0x%04x s=%u t=%u dP=%.0fmW (serv:%.0f targ:%.0f) SINR=%.1fdB delay=%.1fms ok=%d\n",
+                      uereq.rnti, serv.cell_id, targ.cell_id,
+                      dbg.deltaP_mw, dbg.deltaP_serv_mw, dbg.deltaP_targ_mw,
+                      targ.sinr_db, targ.delay_ms, pass ? 1 : 0);
+              }
+
+              if (pass) {
+                trigger_legacy_ho = false; // we will call HO explicitly below
+                nr_rrc_trigger_f1_ho(rrc, ue, source_du, target_du);
+              } else {
+                // Do not HO on energy grounds; keep legacy trigger suppressed for this report
+                trigger_legacy_ho = false;
+              }
+            }
+          }
+
+          if (trigger_legacy_ho) {
+            // Fall back to the legacy trigger if EnergyHO is disabled or metrics not ready
+            nr_rrc_trigger_f1_ho(rrc, ue, source_du, target_du);
+          }
         } else {
           LOG_W(NR_RRC, "UE %d: received A3 event for stronger neighbor PCI %d, but no such neighbour in configuration\n", ue->rrc_ue_id, neighbour_pci);
         }
