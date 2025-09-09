@@ -220,12 +220,14 @@ double nr_ue_pbch_freq_offset(const NR_DL_FRAME_PARMS *frame_parms,
 @param n_frames
   @param sa current running mode
 */
-nr_initial_sync_t nr_initial_sync(UE_nr_rxtx_proc_t *proc,
-                                  PHY_VARS_NR_UE *phy_vars_ue,
-                                  int n_frames,
-                                  int sa,
+nr_initial_sync_t nr_initial_sync(NR_DL_FRAME_PARMS *fp,
+                                  nr_ue_ssb_scan_t ssb_scan_info,
+                                  c16_t **rxdata,
+                                  struct decoded_ssb_list *ssb_list,
                                   nr_gscn_info_t gscnInfo[MAX_GSCN_BAND],
                                   int numGscn);
+
+void set_detected_cell_params(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, struct nr_ue_ssb_scan *res);
 
 /*!
   \brief This function gets the carrier frequencies either from FP or command-line-set global variables, depending on the

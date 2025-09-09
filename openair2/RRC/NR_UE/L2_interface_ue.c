@@ -136,13 +136,15 @@ void process_msg_rcc_to_mac(nr_mac_rrc_message_t *msg, int instance_id)
                                 0,
                                 msg->payload.config_mib.bcch->message.choice.mib,
                                 msg->payload.config_mib.get_sib,
-                                msg->payload.config_mib.access_barred);
+                                msg->payload.config_mib.access_barred,
+                                msg->payload.config_mib.ssb_arfcn);
       ASN_STRUCT_FREE(asn_DEF_NR_BCCH_BCH_Message, msg->payload.config_mib.bcch);
       break;
     case NR_MAC_RRC_CONFIG_SIB1: {
       NR_SIB1_t *sib1 = msg->payload.config_sib1.sib1;
       bool can_start_ra = msg->payload.config_sib1.can_start_ra;
-      nr_rrc_mac_config_req_sib1(instance_id, 0, sib1, can_start_ra);
+      int ssb_arfcn = msg->payload.config_sib1.ssb_arfcn;
+      nr_rrc_mac_config_req_sib1(instance_id, 0, sib1, can_start_ra, ssb_arfcn);
       SEQUENCE_free(&asn_DEF_NR_SIB1, msg->payload.config_sib1.sib1, ASFM_FREE_EVERYTHING);
     } break;
     case NR_MAC_RRC_CONFIG_OTHER_SIB: {

@@ -91,6 +91,8 @@
 //       (0  + 0 * 20) % 512 = 0
 #define NUM_PROCESS_SLOT_TX_BARRIERS 512
 
+#define INIT_SYNC_FRAMES 2
+
 #include "impl_defs_top.h"
 #include "impl_defs_nr.h"
 #include "time_meas.h"
@@ -334,6 +336,12 @@ typedef struct {
   fapi_nr_dl_ntn_config_command_pdu ntn_config_params;
 } ntn_config_message_t;
 
+typedef enum {
+  NO_SCAN = 0,
+  SCAN_BW,
+  SCAN_BAND,
+} nr_ue_scan_enum_t;
+
 /// Top-level PHY Data Structure for UE
 typedef struct PHY_VARS_NR_UE_s {
   openair0_config_t openair0_cfg[MAX_CARDS];
@@ -346,7 +354,7 @@ typedef struct PHY_VARS_NR_UE_s {
   /// \brief Indicator that UE should perform band scanning
   int UE_scan;
   /// \brief Indicator that UE should perform coarse scanning around carrier
-  int UE_scan_carrier;
+  nr_ue_scan_enum_t UE_scan_carrier;
   /// \brief Indicator that UE should enable estimation and compensation of frequency offset
   int UE_fo_compensation;
   /// IF frequency for RF
@@ -397,7 +405,6 @@ typedef struct PHY_VARS_NR_UE_s {
   NR_UE_COMMON    common_vars;
 
   nr_ue_if_module_t *if_inst;
-  bool received_config_request;
   fapi_nr_config_request_t nrUE_config;
   nr_synch_request_t synch_request;
 
@@ -547,7 +554,7 @@ typedef struct {
   int frame_id;
 } nr_initial_sync_t;
 
-typedef struct {
+typedef struct nr_ue_ssb_scan {
   nr_gscn_info_t gscnInfo;
   int foFlag;
   int targetNidCell;
@@ -568,6 +575,12 @@ typedef struct {
   int adjust_rxgain;
   task_ans_t *ans;
 } nr_ue_ssb_scan_t;
+
+#define MAX_DECODED_SSB 64
+struct decoded_ssb_list {
+  int num_ssb;
+  struct nr_ue_ssb_scan ssb[MAX_DECODED_SSB];
+};
 
 typedef struct nr_phy_data_tx_s {
   NR_UE_ULSCH_t ulsch;

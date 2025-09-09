@@ -296,15 +296,14 @@ void nr_scan_ssb(void *arg)
   completed_task_ans(ssbInfo->ans);
 }
 
-nr_initial_sync_t nr_initial_sync(UE_nr_rxtx_proc_t *proc,
-                                  PHY_VARS_NR_UE *ue,
-                                  int n_frames,
-                                  int sa,
+/* Performs SSB scan for a list of GSCN.*/
+nr_initial_sync_t nr_initial_sync(NR_DL_FRAME_PARMS *fp,
+                                  nr_ue_ssb_scan_t ssb_scan_info,
+                                  c16_t **rxdata,
+                                  struct decoded_ssb_list *ssb_list,
                                   nr_gscn_info_t gscnInfo[MAX_GSCN_BAND],
                                   int numGscn)
 {
-  NR_DL_FRAME_PARMS *fp = &ue->frame_parms;
-
   // Perform SSB scanning in parallel. One GSCN per thread.
   LOG_I(NR_PHY,
         "Starting cell search with center freq: %ld, bandwidth: %d. Scanning for %d number of GSCN.\n",
@@ -317,22 +316,16 @@ nr_initial_sync_t nr_initial_sync(UE_nr_rxtx_proc_t *proc,
   nr_ue_ssb_scan_t ssb_info[numGscn];
   for (int s = 0; s < numGscn; s++) {
     nr_ue_ssb_scan_t *ssbInfo = &ssb_info[s];
-    *ssbInfo = (nr_ue_ssb_scan_t){.gscnInfo = gscnInfo[s],
-                                  .fp = &ue->frame_parms,
-                                  .proc = proc,
-                                  .syncRes.cell_detected = false,
-                                  .nFrames = n_frames,
-                                  .foFlag = ue->UE_fo_compensation,
-                                  .freqOffset = ue->initial_fo,
-                                  .targetNidCell = ue->target_Nid_cell};
+    *ssbInfo = ssb_scan_info;
+    ssbInfo->gscnInfo = gscnInfo[s];
     ssbInfo->rxdata = malloc16_clear(fp->nb_antennas_rx * sizeof(c16_t *));
     for (int ant = 0; ant < fp->nb_antennas_rx; ant++) {
       ssbInfo->rxdata[ant] = malloc16(sizeof(c16_t) * (fp->samples_per_frame * 2 + fp->ofdm_symbol_size));
-      memcpy(ssbInfo->rxdata[ant], ue->common_vars.rxdata[ant], sizeof(c16_t) * fp->samples_per_frame * 2);
+      memcpy(ssbInfo->rxdata[ant], rxdata[ant], sizeof(c16_t) * fp->samples_per_frame * 2);
       memset(ssbInfo->rxdata[ant] + fp->samples_per_frame * 2, 0, fp->ofdm_symbol_size * sizeof(c16_t));
     }
     LOG_I(NR_PHY,
-          "Scanning GSCN: %d, with SSB offset: %d, SSB Freq: %lf\n",
+          "Scanning GSCN: %d, with SSB offset: %d, SSB Freq: %u kHz\n",
           ssbInfo->gscnInfo.gscn,
           ssbInfo->gscnInfo.ssbFirstSC,
           ssbInfo->gscnInfo.ssRef);
@@ -342,39 +335,47 @@ nr_initial_sync_t nr_initial_sync(UE_nr_rxtx_proc_t *proc,
   }
 
   // Collect the scan results
-  nr_ue_ssb_scan_t *res = NULL;
-  join_task_ans(&ans);
-  for (int i = 0; i < numGscn; i++) {
-    nr_ue_ssb_scan_t *ssbInfo = &ssb_info[i];
-    if (ssbInfo->syncRes.cell_detected) {
-      LOG_I(NR_PHY,
-            "Cell Detected with GSCN: %d, SSB SC offset: %d, SSB Ref: %lf, PSS Corr peak: %d dB, PSS Corr Average: %d\n",
-            ssbInfo->gscnInfo.gscn,
-            ssbInfo->gscnInfo.ssbFirstSC,
-            ssbInfo->gscnInfo.ssRef,
-            ssbInfo->pssCorrPeakPower,
-            ssbInfo->pssCorrAvgPower);
-      // take the first cell detected
-      if (!res)
-        res = ssbInfo;
+  if (numGscn > 0) {
+    join_task_ans(&ans);
+    for (int i = 0; i < numGscn; i++) {
+      nr_ue_ssb_scan_t *ssbInfo = &ssb_info[i];
+      if (ssbInfo->syncRes.cell_detected) {
+        LOG_I(NR_PHY,
+              "Cell Detected with GSCN: %d, SSB SC offset: %d, SSB Ref: %u kHz, PSS Corr peak: %d dB, PSS Corr Average: %d\n",
+              ssbInfo->gscnInfo.gscn,
+              ssbInfo->gscnInfo.ssbFirstSC,
+              ssbInfo->gscnInfo.ssRef,
+              ssbInfo->pssCorrPeakPower,
+              ssbInfo->pssCorrAvgPower);
+        ssb_list->ssb[ssb_list->num_ssb++] = *ssbInfo;
+      }
+      for (int ant = 0; ant < fp->nb_antennas_rx; ant++) {
+        free(ssbInfo->rxdata[ant]);
+      }
+      free(ssbInfo->rxdata);
+      ssbInfo->rxdata = NULL;
     }
-    for (int ant = 0; ant < fp->nb_antennas_rx; ant++) {
-      free(ssbInfo->rxdata[ant]);
-    }
-    free(ssbInfo->rxdata);
-    ssbInfo->rxdata = NULL;
   }
 
+  VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_NR_INITIAL_UE_SYNC, VCD_FUNCTION_OUT);
+  // return true only if ssb position is known
+  if (ssb_list->num_ssb == 1 && numGscn == 1)
+    return ssb_list->ssb[0].syncRes;
+  else // cell search: return list of ssb and continue search
+    return (nr_initial_sync_t){.cell_detected = false};
+}
+
+void set_detected_cell_params(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, struct nr_ue_ssb_scan *res)
+{
+  NR_DL_FRAME_PARMS *fp = &ue->frame_parms;
   // Set globals based on detected cell
-  if (res) {
-    fp->Nid_cell = res->nidCell;
-    fp->ssb_start_subcarrier = res->gscnInfo.ssbFirstSC;
-    fp->half_frame_bit = res->halfFrameBit;
-    fp->ssb_index = res->ssbIndex;
-    ue->symbol_offset = res->symbolOffset;
-    ue->common_vars.freq_offset = res->freqOffset;
-    ue->adjust_rxgain = res->adjust_rxgain;
-  }
+  fp->Nid_cell = res->nidCell;
+  fp->ssb_start_subcarrier = res->gscnInfo.ssbFirstSC;
+  fp->half_frame_bit = res->halfFrameBit;
+  fp->ssb_index = res->ssbIndex;
+  ue->symbol_offset = res->symbolOffset;
+  ue->common_vars.freq_offset = res->freqOffset;
+  ue->adjust_rxgain = res->adjust_rxgain;
 
   // In initial sync, we indicate PBCH to MAC after the scan is complete.
   nr_downlink_indication_t dl_indication;
@@ -388,7 +389,7 @@ nr_initial_sync_t nr_initial_sync(UE_nr_rxtx_proc_t *proc,
                         NULL,
                         number_pdus,
                         proc,
-                        res ? (void *)&res->pbchResult : NULL,
+                        res->syncRes.cell_detected ? (void *)res : NULL,
                         NULL);
 
   if (ue->if_inst && ue->if_inst->dl_indication)
@@ -397,13 +398,7 @@ nr_initial_sync_t nr_initial_sync(UE_nr_rxtx_proc_t *proc,
 
   LOG_D(PHY, "nr_initial sync ue RB_DL %d\n", fp->N_RB_DL);
 
-  if (res) {
-    // digital compensation of FFO for SSB symbols
-    if (res->freqOffset && ue->UE_fo_compensation) {
-      // In SA we need to perform frequency offset correction until the end of buffer because we need to decode SIB1
-      // and we do not know yet in which slot it goes.
-      compensate_freq_offset(ue->common_vars.rxdata, fp, res->freqOffset, res->syncRes.frame_id);
-    }
+  if (res->syncRes.cell_detected) {
     // sync at symbol ue->symbol_offset
     // computing the offset wrt the beginning of the frame
     int mu = fp->numerology_index;
@@ -414,7 +409,7 @@ nr_initial_sync_t nr_initial_sync(UE_nr_rxtx_proc_t *proc,
                                + (res->symbolOffset - n_symb_prefix0) * (fp->ofdm_symbol_size + fp->nb_prefix_samples);
     // for a correct computation of frame number to sync with the one decoded at MIB we need to take into account in which of
     // the n_frames we got sync
-    ue->init_sync_frame = n_frames - 1 - res->syncRes.frame_id;
+    ue->init_sync_frame = INIT_SYNC_FRAMES - 1 - res->syncRes.frame_id;
 
     // we also need to take into account the shift by samples_per_frame in case the if is true
     if (res->ssbOffset < sync_pos_frame) {
@@ -424,7 +419,7 @@ nr_initial_sync_t nr_initial_sync(UE_nr_rxtx_proc_t *proc,
       res->syncRes.rx_offset = res->ssbOffset - sync_pos_frame;
   }
 
-  if (res) {
+  if (res->syncRes.cell_detected) {
     LOG_I(PHY, "[UE%d] In synch, rx_offset %d samples\n", ue->Mod_id, res->syncRes.rx_offset);
     LOG_I(PHY, "[UE %d] Measured Carrier Frequency offset %d Hz\n", ue->Mod_id, res->freqOffset);
   } else {
@@ -437,7 +432,7 @@ nr_initial_sync_t nr_initial_sync(UE_nr_rxtx_proc_t *proc,
   }
 
   // gain control
-  if (!res) { // we are not synched, so we cannot use rssi measurement (which is based on channel estimates)
+  if (!res->syncRes.cell_detected) { // we are not synched, so we cannot use rssi measurement (which is based on channel estimates)
     int rx_power = 0;
 
     // do a measurement on the best guess of the PSS
@@ -463,10 +458,4 @@ nr_initial_sync_t nr_initial_sync(UE_nr_rxtx_proc_t *proc,
   } else {
     LOG_A(PHY, "Initial sync successful, PCI: %d\n", fp->Nid_cell);
   }
-  //  exit_fun("debug exit");
-  VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_NR_INITIAL_UE_SYNC, VCD_FUNCTION_OUT);
-  if (res)
-    return res->syncRes;
-  else
-    return (nr_initial_sync_t){.cell_detected = false};
 }

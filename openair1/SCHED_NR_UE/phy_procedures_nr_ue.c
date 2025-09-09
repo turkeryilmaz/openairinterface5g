@@ -119,6 +119,7 @@ static uint32_t get_ssb_arfcn(NR_DL_FRAME_PARMS *frame_parms)
   uint64_t ssb_freq = frame_parms->dl_CarrierFreq - (band_size_hz / 2) + frame_parms->subcarrier_spacing * ssb_center_sc;
   return to_nrarfcn(frame_parms->nr_band, ssb_freq, frame_parms->numerology_index, band_size_hz);
 }
+
 void nr_fill_rx_indication(fapi_nr_rx_indication_t *rx_ind,
                            uint8_t pdu_type,
                            PHY_VARS_NR_UE *ue,
@@ -126,7 +127,7 @@ void nr_fill_rx_indication(fapi_nr_rx_indication_t *rx_ind,
                            NR_UE_DLSCH_t *dlsch1,
                            uint16_t n_pdus,
                            const UE_nr_rxtx_proc_t *proc,
-                           void *typeSpecific,
+                           const void *typeSpecific,
                            uint8_t *b)
 {
   if (n_pdus > 1){
@@ -169,16 +170,29 @@ void nr_fill_rx_indication(fapi_nr_rx_indication_t *rx_ind,
     case FAPI_NR_RX_PDU_TYPE_SSB: {
       if (typeSpecific) {
         NR_DL_FRAME_PARMS *frame_parms = &ue->frame_parms;
-        fapiPbch_t *pbch = (fapiPbch_t *)typeSpecific;
-        memcpy(rx->ssb_pdu.pdu, pbch->decoded_output, sizeof(pbch->decoded_output));
-        rx->ssb_pdu.additional_bits = pbch->xtra_byte;
-        rx->ssb_pdu.ssb_index = (frame_parms->ssb_index) & 0x7;
+        if (ue->is_synchronized) {
+          fapiPbch_t *pbch = (fapiPbch_t *)typeSpecific;
+          memcpy(rx->ssb_pdu.pdu, pbch->decoded_output, sizeof(pbch->decoded_output));
+          rx->ssb_pdu.additional_bits = pbch->xtra_byte;
+          rx->ssb_pdu.ssb_index = (frame_parms->ssb_index) & 0x7;
+          rx->ssb_pdu.cell_id = frame_parms->Nid_cell;
+          rx->ssb_pdu.ssb_start_subcarrier = frame_parms->ssb_start_subcarrier;
+          rx->ssb_pdu.arfcn = get_ssb_arfcn(frame_parms);
+        } else {
+          nr_ue_ssb_scan_t *ssb = (nr_ue_ssb_scan_t *)typeSpecific;
+          memcpy(rx->ssb_pdu.pdu, ssb->pbchResult.decoded_output, sizeof(ssb->pbchResult.decoded_output));
+          rx->ssb_pdu.additional_bits = ssb->pbchResult.xtra_byte;
+          rx->ssb_pdu.ssb_index = (ssb->ssbIndex) & 0x7;
+          rx->ssb_pdu.cell_id = ssb->nidCell;
+          rx->ssb_pdu.ssb_start_subcarrier = ssb->gscnInfo.ssbFirstSC;
+          rx->ssb_pdu.arfcn = to_nrarfcn(frame_parms->nr_band,
+                                         ssb->gscnInfo.ssRef * 1000,
+                                         frame_parms->numerology_index,
+                                         frame_parms->N_RB_DL * 12 * frame_parms->subcarrier_spacing);
+        }
         rx->ssb_pdu.ssb_length = frame_parms->Lmax;
-        rx->ssb_pdu.cell_id = frame_parms->Nid_cell;
-        rx->ssb_pdu.ssb_start_subcarrier = frame_parms->ssb_start_subcarrier;
         rx->ssb_pdu.rsrp_dBm = ue->measurements.ssb_rsrp_dBm[frame_parms->ssb_index];
         rx->ssb_pdu.sinr_dB = ue->measurements.ssb_sinr_dB[frame_parms->ssb_index];
-        rx->ssb_pdu.arfcn = get_ssb_arfcn(frame_parms);
         rx->ssb_pdu.radiolink_monitoring = RLM_in_sync; // TODO to be removed from here
         rx->ssb_pdu.decoded_pdu = true;
       } else {
@@ -412,6 +426,17 @@ static int nr_ue_pbch_procedures(PHY_VARS_NR_UE *ue,
                    &symb_offset,
                    ue->frame_parms.samples_per_frame_wCP,
                    rxdataF);
+
+  nr_downlink_indication_t dl_indication;
+  fapi_nr_rx_indication_t rx_ind = {0};
+  const uint16_t number_pdus = 1;
+
+  void *pbch_result = ret ? NULL : &result;
+  nr_fill_dl_indication(&dl_indication, NULL, &rx_ind, proc, ue, NULL);
+  nr_fill_rx_indication(&rx_ind, FAPI_NR_RX_PDU_TYPE_SSB, ue, NULL, NULL, number_pdus, proc, pbch_result, NULL);
+
+  if (ue->if_inst && ue->if_inst->dl_indication)
+    ue->if_inst->dl_indication(&dl_indication);
 
   if (ret==0) {
     T(T_NRUE_PHY_MIB, T_INT(frame_rx), T_INT(nr_slot_rx),
@@ -882,10 +907,10 @@ static void nr_ue_dlsch_procedures(PHY_VARS_NR_UE *ue,
 
 static bool is_ssb_index_transmitted(const PHY_VARS_NR_UE *ue, const int index)
 {
-  if (ue->received_config_request) {
-    const fapi_nr_config_request_t *cfg = &ue->nrUE_config;
+  const fapi_nr_config_request_t *cfg = &ue->nrUE_config;
+  if (GETBIT(cfg->config_mask, PHY_CONFIG_BIT_MASK_SSB)) {
     const uint32_t curr_mask = cfg->ssb_table.ssb_mask_list[index / 32].ssb_mask;
-    return ((curr_mask >> (31 - (index % 32))) & 0x01);
+    return GETBIT(curr_mask, (31 - (index % 32)));
   } else
     return ue->frame_parms.ssb_index == index;
 }
@@ -911,7 +936,9 @@ int pbch_pdcch_processing(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, nr_
   // checking if current frame is compatible with SSB periodicity
 
   const int default_ssb_period = 2;
-  const int ssb_period = ue->received_config_request ? ue->nrUE_config.ssb_table.ssb_period : default_ssb_period;
+  const fapi_nr_config_request_t *cfg = &ue->nrUE_config;
+  const int ssb_period =
+      GETBIT(cfg->config_mask, PHY_CONFIG_BIT_MASK_SSB) ? ue->nrUE_config.ssb_table.ssb_period : default_ssb_period;
   if (ssb_period == 0 || !(frame_rx % (1 << (ssb_period - 1)))) {
     const int estimateSz = fp->symbols_per_slot * fp->ofdm_symbol_size;
     // loop over SSB blocks
