@@ -1483,6 +1483,7 @@ static void start_periodical_report(rrcPerNB_t *rrc, NR_PeriodicalReportConfig_t
 
   params->reports_sent = 0;
   params->report_rsrp = periodical_config->reportQuantityCell.rsrp;
+  params->max_report_cells = periodical_config->maxReportCells;
 
   // Start the periodic report timer
   if (!nr_timer_is_active(&params->periodic_report_timer)) {
@@ -3024,6 +3025,7 @@ static void setup_meas_trigger(l3_measurements_t *l3_measurements,
                     neighbor_cell_valid);
 
   params->report_rsrp = event_config->reportQuantityCell.rsrp;
+  params->max_report_cells = event_config->maxReportCells;
 }
 
 static void start_meas_event(l3_measurements_t *l3_measurements,
@@ -3287,7 +3289,7 @@ static void nr_rrc_handle_meas_indication(NR_UE_RRC_INST_t *rrc, NRRrcMacMeasDat
   }
 
   if (meas_ind->is_neighboring_cell && meas_ind->rsrp_dBm == INT_MAX) {
-    LOG_W(NR_RRC, "[Nid_cell %i] Neighboring cell not detected. L3 measurements will be reset.\n", meas_ind->Nid_cell);
+    LOG_D(NR_RRC, "[Nid_cell %i] Neighboring cell not detected. L3 measurements will be reset.\n", meas_ind->Nid_cell);
     meas_cell->Nid_cell = meas_ind->Nid_cell;
     nr_ue_meas_reset(meas_cell, meas_ind->is_csi_meas);
   } else {
@@ -3868,32 +3870,59 @@ void rrc_ue_generate_measurementReport(rrcPerNB_t *rrc, instance_t ue_id, int me
   meas_report_params_t *params = &l3m->meas_report[meas_id];
   int rsrp_dBm = params->rs_type == NR_NR_RS_Type_ssb ? l3m->serving_cell.ss_rsrp_dBm.val : l3m->serving_cell.csi_rsrp_dBm.val;
   int rsrp_index = get_rsrp_index(rsrp_dBm);
-  uint16_t neighbor_pci = 0;
-  int neighbor_rsrp_index = 0;
-  bool neighbor_valid = false;
+  uint16_t neighbor_pcis[NUMBER_OF_NEIGHBORING_CELLS_MAX];
+  int neighbor_rsrp_indexes[NUMBER_OF_NEIGHBORING_CELLS_MAX];
+  int num_neighbors = 0;
 
-  // Check if neighbor cell measurement is actually available
   if (params->neighbor_cell_valid) {
-    bool is_valid = (params->rs_type == NR_NR_RS_Type_ssb) ? l3m->neighboring_cell[0].ss_rsrp_dBm.init
-                                                            : l3m->neighboring_cell[0].csi_rsrp_dBm.init;
+    for (int i = 0; i < NUMBER_OF_NEIGHBORING_CELLS_MAX; i++) {
+      bool is_valid = false;
 
-    if (is_valid) {
-      neighbor_pci = l3m->neighboring_cell[0].Nid_cell;
-      int neighbor_rsrp_dBm = (params->rs_type == NR_NR_RS_Type_ssb) ? l3m->neighboring_cell[0].ss_rsrp_dBm.val
-                                                                      : l3m->neighboring_cell[0].csi_rsrp_dBm.val;
-      neighbor_rsrp_index = get_rsrp_index(neighbor_rsrp_dBm);
-      neighbor_valid = true;
+      // Check if this neighboring cell has valid measurements
+      if (params->rs_type == NR_NR_RS_Type_ssb) {
+        is_valid = l3m->neighboring_cell[i].ss_rsrp_dBm.init;
+      } else {
+        is_valid = l3m->neighboring_cell[i].csi_rsrp_dBm.init;
+      }
+
+      if (is_valid) {
+        neighbor_pcis[num_neighbors] = l3m->neighboring_cell[i].Nid_cell;
+        int neighbor_rsrp_dBm = params->rs_type == NR_NR_RS_Type_ssb ? l3m->neighboring_cell[i].ss_rsrp_dBm.val
+                                                                     : l3m->neighboring_cell[i].csi_rsrp_dBm.val;
+        neighbor_rsrp_indexes[num_neighbors] = get_rsrp_index(neighbor_rsrp_dBm);
+        num_neighbors++;
+      }
     }
+
+    // Sort neighbors in decreasing order of RSRP index per TS 38.331 5.5.5
+    for (int i = 0; i < num_neighbors - 1; i++) {
+      for (int j = i + 1; j < num_neighbors; j++) {
+        if (neighbor_rsrp_indexes[j] > neighbor_rsrp_indexes[i]) {
+          int tmp_rsrp = neighbor_rsrp_indexes[i];
+          neighbor_rsrp_indexes[i] = neighbor_rsrp_indexes[j];
+          neighbor_rsrp_indexes[j] = tmp_rsrp;
+          uint16_t tmp_pci = neighbor_pcis[i];
+          neighbor_pcis[i] = neighbor_pcis[j];
+          neighbor_pcis[j] = tmp_pci;
+        }
+      }
+    }
+
+    if (params->max_report_cells > 0 && num_neighbors > params->max_report_cells)
+      num_neighbors = params->max_report_cells;
   }
+
+  LOG_D(NR_RRC, "Generating MeasurementReport with %d neighboring cells\n", num_neighbors);
+
   uint8_t size = do_nrMeasurementReport_SA(meas_id,
                                            params->trigger_quantity,
                                            params->report_rsrp,
                                            params->rs_type,
                                            l3m->serving_cell.Nid_cell,
                                            rsrp_index,
-                                           neighbor_valid,
-                                           neighbor_pci,
-                                           neighbor_rsrp_index,
+                                           num_neighbors,
+                                           neighbor_pcis,
+                                           neighbor_rsrp_indexes,
                                            buffer,
                                            sizeof(buffer));
 

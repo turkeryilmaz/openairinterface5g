@@ -175,6 +175,7 @@ typedef struct meas_report_params_s {
   long rs_type;
   int reports_sent;
   int max_reports;
+  int max_report_cells;
   long report_interval_ms;
   bool neighbor_cell_valid;
   bool report_rsrp;
