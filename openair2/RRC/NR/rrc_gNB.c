@@ -83,6 +83,7 @@
 #include "rrc_gNB_NRPPA.h"
 #include "openair2/F1AP/lib/f1ap_positioning.h"
 #include "openair3/NRPPA/nrppa_gNB_location_information_transfer.h"
+#include "openair3/NRPPA/nrppa_gNB_measurement_information_transfer.h"
 
 #ifdef E2_AGENT
 #include "openair2/E2AP/RAN_FUNCTION/O-RAN/ran_func_rc_extern.h"
@@ -3800,6 +3801,16 @@ void *rrc_gnb_task(void *args_p)
       case F1AP_POSITIONING_ACTIVATION_RESP:
         rrc_CU_process_positioning_activation_response(&F1AP_POSITIONING_ACTIVATION_RESP(msg_p));
         free_positioning_activation_resp(&F1AP_POSITIONING_ACTIVATION_RESP(msg_p));
+        break;
+
+      case NRPPA_MEASUREMENT_REQ:
+        rrc_gNB_process_positioning_measurement_request(RC.nrrrc[instance], &NRPPA_MEASUREMENT_REQ(msg_p));
+        free_nrppa_measurement_request(&NRPPA_MEASUREMENT_REQ(msg_p));
+        break;
+
+      case F1AP_POSITIONING_MEASUREMENT_RESP:
+        rrc_CU_process_positioning_measurement_response(&F1AP_POSITIONING_MEASUREMENT_RESP(msg_p));
+        free_positioning_measurement_resp(&F1AP_POSITIONING_MEASUREMENT_RESP(msg_p));
         break;
 
       default:
