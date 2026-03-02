@@ -620,6 +620,64 @@ void fill_pdcch_vrb_map(gNB_MAC_INST *mac,
   }
 }
 
+bool update_rb_mcs_tbs(NR_sched_pdsch_t *pdsch, uint32_t num_total_bytes, uint16_t *vrb_map)
+{
+  const NR_tda_info_t *tda_info = &pdsch->tda_info;
+
+  // Calculate number of PRB_DMRS
+  uint8_t N_PRB_DMRS = pdsch->dmrs_parms.N_PRB_DMRS;
+  LOG_D(MAC, "dlDmrsSymbPos %x\n", pdsch->dmrs_parms.dl_dmrs_symb_pos);
+  int mcsTableIdx = 0;
+  const uint16_t slbitmap = SL_to_bitmap(tda_info->startSymbolIndex, tda_info->nrOfSymbols);
+  int bwpSize = pdsch->bwp_info.bwpSize;
+  int bwpStart = pdsch->bwp_info.bwpStart;
+
+  for (pdsch->mcs = 0; pdsch->mcs < 10; pdsch->mcs++) {
+    pdsch->Qm = nr_get_Qm_dl(pdsch->mcs, mcsTableIdx);
+    pdsch->R = nr_get_code_rate_dl(pdsch->mcs, mcsTableIdx);
+    if (!nr_find_nb_rb(pdsch->Qm,
+                       pdsch->R,
+                       1, // no transform precoding for DL
+                       1, // single layer
+                       tda_info->nrOfSymbols,
+                       pdsch->dmrs_parms.N_PRB_DMRS * pdsch->dmrs_parms.N_DMRS_SLOT,
+                       num_total_bytes,
+                       1, // min_rbSize
+                       bwpSize, // max_rbSize,
+                       &pdsch->tb_size,
+                       &pdsch->rbSize))
+      continue;
+    int rbStart, rbSize;
+    if (get_rb_alloc(pdsch->rbSize, pdsch->rbSize, bwpStart, bwpSize, vrb_map, slbitmap, &rbStart, &rbSize)) {
+      pdsch->rbStart = rbStart;
+      pdsch->rbSize = rbSize;
+      break;
+    }
+  }
+
+  if (pdsch->mcs >= 10 || pdsch->tb_size < num_total_bytes) {
+    LOG_D(NR_MAC,
+          "Couldn't allocate enough resources for %d bytes in SIB PDSCH (rbStart %d, rbSize %d, bwpSize %d)\n",
+          num_total_bytes,
+          pdsch->rbStart,
+          pdsch->rbSize,
+          bwpSize);
+    return false;
+  }
+
+  LOG_D(NR_MAC,
+        "mcs=%i, startSymbolIndex = %i, nrOfSymbols = %i, rbSize = %i, TBS = %i, dmrs_length %d, N_PRB_DMRS = %d, mappingtype = %d\n",
+        pdsch->mcs,
+        tda_info->startSymbolIndex,
+        tda_info->nrOfSymbols,
+        pdsch->rbSize,
+        pdsch->tb_size,
+        pdsch->dmrs_parms.N_DMRS_SLOT,
+        N_PRB_DMRS,
+        tda_info->mapping_type);
+  return true;
+}
+
 static bool multiple_2_3_5(int rb)
 {
   while (rb % 2 == 0)
