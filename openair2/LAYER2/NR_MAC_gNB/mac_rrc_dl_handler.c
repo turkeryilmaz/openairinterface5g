@@ -952,6 +952,7 @@ void ue_context_modification_refuse(const f1ap_ue_context_modif_refuse_t *refuse
    * request the release of the UE.  */
   bool release = UE->cm_info.trigger_info == MSG3_CRNTI;
   ASN_STRUCT_FREE(asn_DEF_NR_CellGroupConfig, UE->reconfigCellGroup);
+  UE->reconfigCellGroup = NULL;
   UE->cm_info.trigger_info = NO_TRIGGER;
   NR_SCHED_UNLOCK(&mac->sched_lock);
 
