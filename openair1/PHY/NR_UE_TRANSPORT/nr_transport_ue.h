@@ -54,9 +54,6 @@ typedef struct {
   nfapi_nr_ue_pusch_pdu_t pusch_pdu;
   /// Cell ID
   int     Nid_cell;
-  /// bit mask of PT-RS ofdm symbol indicies
-  uint16_t ptrs_symbols;
-  int n_ptrs;
 } NR_UE_ULSCH_t;
 
 typedef struct {
