@@ -475,7 +475,6 @@ typedef struct puschSymbolProc_s {
   NR_DL_FRAME_PARMS *frame_parms;
   const nfapi_nr_pusch_pdu_t *rel15_ul;
   NR_gNB_PUSCH *pusch_vars;
-  rate_match_info_uci_t *uci_info;
   nr_uci_mapping_t *map_uci;
   int slot;
   int startSymbol;
@@ -500,10 +499,10 @@ typedef struct puschSymbolProc_s {
 static void symbol_unscrambling_demux(puschSymbolProc_t *rdata, int ue_idx, int s, int size, int16_t llr_in[size])
 {
   const nfapi_nr_pusch_pdu_t *rel15_ul = rdata->rel15_ul_group[ue_idx];
-  const rate_match_info_uci_t *uci_info = &rdata->uci_info[ue_idx];
   const nr_uci_mapping_t *map_uci = &rdata->map_uci[ue_idx];
   NR_gNB_PUSCH *joint_pusch_vars = rdata->pusch_vars;
   NR_gNB_PUSCH *ue_pusch_vars = rdata->pusch_vars_group[ue_idx];
+  const rate_match_info_uci_t *uci_info = &ue_pusch_vars->uci_info;
   int16_t *s_seq = rdata->scrambling_sequences[ue_idx] + (joint_pusch_vars->llr_offset[s] * rel15_ul->nrOfLayers);
   uint32_t bits_per_re = rel15_ul->nrOfLayers * rel15_ul->qam_mod_order;
   uint32_t a_idx = map_uci->ack_offset[s];
@@ -511,7 +510,6 @@ static void symbol_unscrambling_demux(puschSymbolProc_t *rdata, int ue_idx, int 
   uint32_t c2_idx = map_uci->csi2_offset[s];
   uint32_t u_idx = map_uci->ulsch_offset[s];
 
-  // unscrambling and UCI demultiplexing
   // Per-symbol remaining counts: private to this task
   uint32_t rem_ack = map_uci->q_ack[s];
   uint32_t rem_rvd = map_uci->q_ack_rvd[s];
@@ -1073,11 +1071,10 @@ int nr_rx_pusch_group_tp(PHY_VARS_gNB *gNB,
   else if (joint_pv->log2_maxh > 14)
     joint_pv->log2_maxh = 14;
 
-  rate_match_info_uci_t uci_info[group_size];
   nr_uci_mapping_t map_uci[group_size];
   for (int u = 0; u < group_size; u++) {
-    uci_info[u] = get_uci_on_pusch_info(rel15_ul_group[u], &ptrs_info, G[u]);
-    map_uci[u] = init_nr_uci_pusch_demux(rel15_ul_group[u], &uci_info[u], frame_parms, joint_pv);
+    pusch_vars_group[u]->uci_info = get_uci_on_pusch_info(rel15_ul_group[u], &ptrs_info, G[u]);
+    map_uci[u] = init_nr_uci_pusch_demux(rel15_ul_group[u], &pusch_vars_group[u]->uci_info, frame_parms, joint_pv);
   }
   stop_meas(&gNB->rx_pusch_init_stats);
 
@@ -1132,7 +1129,6 @@ int nr_rx_pusch_group_tp(PHY_VARS_gNB *gNB,
       rdata->scrambling_sequences = scrambling_sequences_arr;
       rdata->layer_offsets = layer_offset;
       rdata->layers_attenuation = total_layers ? log2_approx(max_ch >> 11) : 0;
-      rdata->uci_info = uci_info;
       rdata->map_uci = map_uci;
 
       if (rel15_ul_ref->pdu_bit_map & PUSCH_PDU_BITMAP_PUSCH_PTRS) {
