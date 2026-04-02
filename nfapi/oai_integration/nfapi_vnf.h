@@ -4,7 +4,6 @@
 
 #ifndef NFAPI_VNF_H_
 #define NFAPI_VNF_H_
-#include <common_lib.h>
 
 #include "nfapi_vnf_interface.h"
 typedef struct {

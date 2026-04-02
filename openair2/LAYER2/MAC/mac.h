@@ -52,8 +52,6 @@
 #include "PHY/defs_common.h" // for PRACH_RESOURCES_t
 #include "PHY/LTE_TRANSPORT/transport_common.h"
 
-#include "radio/COMMON/common_lib.h"
-
 /** @defgroup _mac  MAC
  * @ingroup _oai2
  * @{

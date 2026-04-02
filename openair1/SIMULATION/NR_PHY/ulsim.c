@@ -58,7 +58,6 @@
 #include "common/utils/nr/nr_common.h"
 #include "common/utils/threadPool/thread-pool.h"
 #include "common/utils/var_array.h"
-#include "common_lib.h"
 #include "e1ap_messages_types.h"
 #include "executables/nr-uesoftmodem.h"
 #include "fapi_nr_ue_constants.h"

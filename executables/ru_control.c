@@ -24,7 +24,6 @@
 #include "PHY/types.h"
 
 #include "PHY/defs_common.h"
-#include "radio/COMMON/common_lib.h"
 #include "radio/ETHERNET/ethernet_lib.h"
 
 #include "PHY/if4_tools.h"

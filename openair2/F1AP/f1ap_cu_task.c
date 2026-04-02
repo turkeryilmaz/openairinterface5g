@@ -14,6 +14,7 @@
 #include "f1ap_cu_task.h"
 #include "openair2/RRC/NR/nr_rrc_defs.h"
 #include <openair3/ocp-gtpu/gtp_itf.h>
+#include "common_lib.h"
 
 static instance_t cu_task_create_gtpu_instance(const char *bind_addr, uint16_t local_port, uint16_t remote_port)
 {

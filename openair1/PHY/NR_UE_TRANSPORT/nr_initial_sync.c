@@ -12,7 +12,6 @@
 #include "SCHED_NR_UE/defs.h"
 #include "common/utils/nr/nr_common.h"
 
-#include "common_lib.h"
 #include <math.h>
 
 #include "PHY/NR_REFSIG/pss_nr.h"
