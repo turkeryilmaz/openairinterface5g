@@ -127,7 +127,7 @@ int8_t polar_decoder(double *input,
                      uint16_t messageLength,
                      uint8_t aggregation_level);
 
-uint32_t polar_decoder_int16(int16_t *input,
+uint32_t polar_decoder_int16(const int16_t *input,
                              uint64_t *out,
                              uint8_t ones_flag,
                              int8_t messageType,
