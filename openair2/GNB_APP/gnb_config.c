@@ -1671,15 +1671,22 @@ void RCconfig_nr_macrlc(configmodule_interface_t *cfg)
       } else if (strcmp(*gpd(params, np, MACRLC_TRANSPORT_N_PREFERENCE)->strptr, "f1") == 0
                  || strcmp(*gpd(params, np, MACRLC_TRANSPORT_N_PREFERENCE)->strptr, "cudu") == 0) {
         char **f1caddr = gpd(params, np, MACRLC_LOCAL_N_ADDRESS)->strptr;
-        RC.nrmac[j]->eth_params_n.my_addr = strdup(*f1caddr);
         char **f1uaddr = gpd(params, np, MACRLC_LOCAL_N_ADDRESS_F1U)->strptr;
-        RC.nrmac[j]->f1u_addr = f1uaddr != NULL ? strdup(*f1uaddr) : strdup(*f1caddr);
-        RC.nrmac[j]->eth_params_n.remote_addr = strdup(*gpd(params, np, MACRLC_REMOTE_N_ADDRESS)->strptr);
-        RC.nrmac[j]->eth_params_n.my_portc = 0; // not used
-        RC.nrmac[j]->eth_params_n.remote_portc = 0; // not used
-        RC.nrmac[j]->eth_params_n.my_portd = *gpd(params, np, MACRLC_LOCAL_N_PORTD)->iptr;
-        RC.nrmac[j]->eth_params_n.remote_portd = *gpd(params, np, MACRLC_REMOTE_N_PORTD)->iptr;
-        RC.nrmac[j]->eth_params_n.transp_preference = ETH_UDP_MODE;
+        f1ap_net_config_t nc = {
+          .CU_f1_ip_address = strdup(*gpd(params, np, MACRLC_REMOTE_N_ADDRESS)->strptr),
+          .DU_f1c_ip_address = strdup(*f1caddr),
+          .DU_f1u_ip_address = f1uaddr != NULL ? strdup(*f1uaddr) : strdup(*f1caddr),
+          .DUport = *gpd(params, np, MACRLC_LOCAL_N_PORTD)->iptr,
+          .CUport = *gpd(params, np, MACRLC_REMOTE_N_PORTD)->iptr,
+        };
+        RC.nrmac[j]->net_config = nc;
+        LOG_I(F1AP,
+              "F1-C DU IPaddr %s, connect to F1-C CU %s, binding GTP to %s ports local %d remote %d\n",
+              nc.DU_f1c_ip_address,
+              nc.CU_f1_ip_address,
+              nc.DU_f1u_ip_address,
+              nc.DUport,
+              nc.CUport);
       } else { // other midhaul
         AssertFatal(1 == 0, "MACRLC %d: %s unknown northbound midhaul\n", j, *gpd(params, np, MACRLC_TRANSPORT_N_PREFERENCE)->strptr);
       }
