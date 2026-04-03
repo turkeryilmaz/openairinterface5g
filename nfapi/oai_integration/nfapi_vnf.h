@@ -130,7 +130,7 @@ typedef struct {
 } vnf_info;
 
 void configure_nfapi_vnf(char *vnf_addr, int vnf_p5_port, char *pnf_ip_addr, int pnf_p7_port, int vnf_p7_port);
-void configure_nr_nfapi_vnf(eth_params_t params);
+void configure_nr_nfapi_vnf(const char *vnf_addr, uint16_t vnf_p5_port, uint16_t vnf_p7_port);
 void stop_nr_nfapi_vnf();
 nfapi_vnf_config_t *get_config();
 vnf_p7_t *get_p7_vnf();

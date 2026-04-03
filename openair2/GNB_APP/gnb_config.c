@@ -1686,15 +1686,10 @@ void RCconfig_nr_macrlc(configmodule_interface_t *cfg)
 
       if (strcmp(*gpd(params, np, MACRLC_TRANSPORT_S_PREFERENCE)->strptr, "local_L1") == 0) {
       } else if (strcmp(*gpd(params, np, MACRLC_TRANSPORT_S_PREFERENCE)->strptr, "nfapi") == 0) {
-        eth_params_t p = {
-          .my_addr = strdup(*gpd(params, np, MACRLC_LOCAL_S_ADDRESS)->strptr),
-          .remote_addr = strdup(*gpd(params, np, MACRLC_REMOTE_S_ADDRESS)->strptr),
-          .my_portc = *gpd(params, np, MACRLC_LOCAL_S_PORTC)->iptr,
-          .remote_portc = 0, // not used
-          .my_portd = *gpd(params, np, MACRLC_LOCAL_S_PORTD)->iptr,
-          .remote_portd = 0, // not used
-        };
-        configure_nr_nfapi_vnf(p);
+        const char *vnf_addr = *gpd(params, np, MACRLC_LOCAL_S_ADDRESS)->strptr;
+        uint16_t p5_port = *gpd(params, np, MACRLC_LOCAL_S_PORTC)->iptr;
+        uint16_t p7_port = *gpd(params, np, MACRLC_LOCAL_S_PORTD)->iptr;
+        configure_nr_nfapi_vnf(vnf_addr, p5_port, p7_port);
       } else if(strcmp(*gpd(params, np, MACRLC_TRANSPORT_S_PREFERENCE)->strptr, "aerial") == 0){
 #ifdef ENABLE_AERIAL
         nvipc_params_t nvipc_p = {
@@ -1703,8 +1698,8 @@ void RCconfig_nr_macrlc(configmodule_interface_t *cfg)
         };
         RC.nrmac[j]->nvipc_params_s = nvipc_p;
         LOG_I(GNB_APP, "Configuring VNF for Aerial connection with prefix %s\n", nvipc_p.nvipc_shm_prefix);
-        eth_params_t p = {0}; // not actually used but API requires it
-        configure_nr_nfapi_vnf(p);
+        // parameters are for socket-based communication, irrelevant for Aerial
+        configure_nr_nfapi_vnf(NULL, 0xffff, 0xffff);
 
 #endif
       } else { // other midhaul
