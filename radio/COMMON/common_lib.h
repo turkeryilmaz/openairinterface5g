@@ -384,15 +384,6 @@ struct openair0_device {
   /*!brief pointer to FH state, used in ECPRI split 8*/
   fhstate_t fhstate;
 
-  /*!brief Used in ECPRI split 8 to indicate numerator of sampling rate ratio*/
-  int sampling_rate_ratio_n;
-
-  /*!brief Used in ECPRI split 8 to indicate denominator of sampling rate ratio*/
-  int sampling_rate_ratio_d;
-
-  /*!brief Used in ECPRI split 8 to indicate the TX/RX timing offset*/
-  int txrx_offset;
-
   /* Functions API, which are called by the application*/
 
   /*! \brief Called to start the transceiver. Return 0 if OK, < 0 if error

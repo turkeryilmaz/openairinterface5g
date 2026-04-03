@@ -96,6 +96,13 @@ typedef struct {
   /*!\brief number of errors in interface's transmitter */ 
   int num_tx_errors;
 
+  /*!brief numerator of sampling rate ratio*/
+  int sampling_rate_ratio_n;
+  /*!brief denominator of sampling rate ratio*/
+  int sampling_rate_ratio_d;
+  /*!brief the TX/RX timing offset*/
+  int txrx_offset;
+
   /*!\brief current TX timestamp */
   openair0_timestamp_t tx_current_ts;
   /*!\brief socket file desc */

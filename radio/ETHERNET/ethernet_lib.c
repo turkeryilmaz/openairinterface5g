@@ -63,36 +63,36 @@ int trx_eth_start(openair0_device_t *device)
                    device->openair0_cfg->txfh_cores[i],
                    OAI_PRIORITY_RT_MAX);
     }
-    device->sampling_rate_ratio_n = 1;
-    device->sampling_rate_ratio_d = 1;
+    eth->sampling_rate_ratio_n = 1;
+    eth->sampling_rate_ratio_d = 1;
     if (device->openair0_cfg->nr_flag == 1) { // This check if RRU knows about NR numerologies
       if (device->openair0_cfg->num_rb_dl <= 162 && device->openair0_cfg->num_rb_dl > 106) {
-        device->sampling_rate_ratio_n = 2;
-        device->txrx_offset = 5500;
+        eth->sampling_rate_ratio_n = 2;
+        eth->txrx_offset = 5500;
       } else if (device->openair0_cfg->num_rb_dl <= 106 && device->openair0_cfg->num_rb_dl > 51) {
-        device->sampling_rate_ratio_d = 3;
-        device->sampling_rate_ratio_n = 4;
-        device->txrx_offset = 3750;
+        eth->sampling_rate_ratio_d = 3;
+        eth->sampling_rate_ratio_n = 4;
+        eth->txrx_offset = 3750;
       } else if (device->openair0_cfg->num_rb_dl == 51) {
-        device->sampling_rate_ratio_n = 1;
-        device->sampling_rate_ratio_d = 1;
-        device->txrx_offset = 7500;
+        eth->sampling_rate_ratio_n = 1;
+        eth->sampling_rate_ratio_d = 1;
+        eth->txrx_offset = 7500;
       } else
         AssertFatal(1 == 0, "num_rb_dl %d not ok with ECPRI\n", device->openair0_cfg->num_rb_dl);
     } else {
       if (device->openair0_cfg->num_rb_dl == 100 || device->openair0_cfg->num_rb_dl == 51) {
-        device->sampling_rate_ratio_d = 1;
-        device->txrx_offset = 7500;
+        eth->sampling_rate_ratio_d = 1;
+        eth->txrx_offset = 7500;
       } else if (device->openair0_cfg->num_rb_dl == 75) {
-        device->sampling_rate_ratio_d = 4;
-        device->sampling_rate_ratio_n = 3;
-        device->txrx_offset = 7500;
+        eth->sampling_rate_ratio_d = 4;
+        eth->sampling_rate_ratio_n = 3;
+        eth->txrx_offset = 7500;
       } else if (device->openair0_cfg->num_rb_dl == 50) {
-        device->sampling_rate_ratio_d = 2;
-        device->txrx_offset = 7500;
+        eth->sampling_rate_ratio_d = 2;
+        eth->txrx_offset = 7500;
       } else if (device->openair0_cfg->num_rb_dl == 25) {
-        device->sampling_rate_ratio_d = 4;
-        device->txrx_offset = 7500;
+        eth->sampling_rate_ratio_d = 4;
+        eth->txrx_offset = 7500;
       } else
         AssertFatal(1 == 0, "num_rb_dl %d not ok with ECPRI\n", device->openair0_cfg->num_rb_dl);
     }
