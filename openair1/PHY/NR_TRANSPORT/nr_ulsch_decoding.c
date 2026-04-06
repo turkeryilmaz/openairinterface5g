@@ -123,6 +123,8 @@ int nr_ulsch_decoding(PHY_VARS_gNB *phy_vars_gNB,
     const nfapi_nr_pusch_pdu_t *pusch_pdu = &harq_process->ulsch_pdu;
     uint8_t harq_pid = ulsch->harq_pid;
 
+    if (!(pusch_pdu->pdu_bit_map & PUSCH_PDU_BITMAP_PUSCH_DATA))
+      continue;
     nrLDPC_TB_decoding_parameters_t *TB_parameters = &TBs[pusch_id];
 
     if (!harq_process) {
@@ -232,6 +234,10 @@ int nr_ulsch_decoding(PHY_VARS_gNB *phy_vars_gNB,
     uint8_t ULSCH_id = ULSCH_ids[pusch_id];
     NR_gNB_ULSCH_t *ulsch = &phy_vars_gNB->ulsch[ULSCH_id];
     NR_UL_gNB_HARQ_t *harq_process = ulsch->harq_process;
+    const nfapi_nr_pusch_pdu_t *pusch_pdu = &harq_process->ulsch_pdu;
+    if (!(pusch_pdu->pdu_bit_map & PUSCH_PDU_BITMAP_PUSCH_DATA))
+      continue;
+
 #ifdef LDPC_CUDA
     int16_t *ulsch_llr = phy_vars_gNB->pusch_vars[ULSCH_id].llr_dev;
 #else
@@ -286,7 +292,9 @@ int nr_ulsch_decoding(PHY_VARS_gNB *phy_vars_gNB,
     uint8_t ULSCH_id = ULSCH_ids[pusch_id];
     NR_gNB_ULSCH_t *ulsch = &phy_vars_gNB->ulsch[ULSCH_id];
     NR_UL_gNB_HARQ_t *harq_process = ulsch->harq_process;
-
+    const nfapi_nr_pusch_pdu_t *pusch_pdu = &harq_process->ulsch_pdu;
+    if (!(pusch_pdu->pdu_bit_map & PUSCH_PDU_BITMAP_PUSCH_DATA))
+      continue;
     nrLDPC_TB_decoding_parameters_t *TB_parameters = &TBs[pusch_id];
 
     uint32_t offset = 0, r_offset = 0;
