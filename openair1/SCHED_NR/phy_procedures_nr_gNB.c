@@ -959,31 +959,33 @@ static void handle_pucch(PHY_VARS_gNB *gNB, c16_t **rxdataF, const NR_gNB_PUCCH_
 }
 
 #ifdef DEBUG_RXDATA
-static void dump_pusch_rx_data(PHY_VARS_gNB *gNB, NR_gNB_ULSCH_t *ulsch, const nfapi_nr_pusch_pdu_t *pdu)
+static void dump_pusch_rx_data(PHY_VARS_gNB *gNB, const nfapi_nr_pusch_pdu_t *pdu, uint8_t slot, int ue_idx)
 {
   NR_DL_FRAME_PARMS *frame_parms = &gNB->frame_parms;
   RU_t *ru = gNB->RU_list[0];
-  int slot_offset = get_samples_slot_timestamp(frame_parms, ulsch->slot);
+  int slot_offset = get_samples_slot_timestamp(frame_parms, slot);
   slot_offset -= ru->N_TA_offset;
   int32_t sample_offset = gNB->common_vars.debugBuff_sample_offset;
   int16_t *buf = (int16_t *)&gNB->common_vars.debugBuff[sample_offset];
-  buf[0] = (int16_t)ulsch->rnti;
+  buf[0] = (int16_t)pdu->rnti;
   buf[1] = (int16_t)pdu->rb_size;
   buf[2] = (int16_t)pdu->rb_start;
   buf[3] = (int16_t)pdu->nr_of_symbols;
   buf[4] = (int16_t)pdu->start_symbol_index;
   buf[5] = (int16_t)pdu->mcs_index;
   buf[6] = (int16_t)pdu->pusch_data.rv_index;
-  buf[7] = (int16_t)ulsch->harq_pid;
+  buf[7] = (int16_t)pdu->pusch_data.harq_process_id;
   memcpy(&gNB->common_vars.debugBuff[gNB->common_vars.debugBuff_sample_offset + 4],
          &ru->common.rxdata[0][slot_offset],
-         get_samples_per_slot(ulsch->slot, frame_parms) * sizeof(int32_t));
-  gNB->common_vars.debugBuff_sample_offset += (get_samples_per_slot(ulsch->slot, frame_parms) + 1000 + 4);
-  if (gNB->common_vars.debugBuff_sample_offset > ((get_samples_per_slot(ulsch->slot, frame_parms) + 1000 + 2) * 20)) {
-    FILE *f = fopen("rxdata_buff.raw", "w");
+         get_samples_per_slot(slot, frame_parms) * sizeof(int32_t));
+  gNB->common_vars.debugBuff_sample_offset += (get_samples_per_slot(slot, frame_parms) + 1000 + 4);
+  if (gNB->common_vars.debugBuff_sample_offset > ((get_samples_per_slot(slot, frame_parms) + 1000 + 2) * 20)) {
+    char fname[64];
+    snprintf(fname, sizeof(fname), "rxdata_buff_ue%d.raw", ue_idx);
+    FILE *f = fopen(fname, "w");
     if (f == NULL)
       exit(1);
-    fwrite((int16_t *)gNB->common_vars.debugBuff, 2, (get_samples_per_slot(ulsch->slot, frame_parms) + 1000 + 4) * 20 * 2, f);
+    fwrite((int16_t *)gNB->common_vars.debugBuff, 2, (get_samples_per_slot(slot, frame_parms) + 1000 + 4) * 20 * 2, f);
     fclose(f);
     exit(-1);
   }
@@ -992,31 +994,22 @@ static void dump_pusch_rx_data(PHY_VARS_gNB *gNB, NR_gNB_ULSCH_t *ulsch, const n
 
 static void handle_pusch_rx_group_trigger(PHY_VARS_gNB *gNB,
                                           NR_gNB_PUSCH **pusch_vars_group,
-                                          NR_gNB_ULSCH_t **ulsch_group,
-                                          int group_size)
+                                          const nfapi_nr_pusch_pdu_t **ulsch_pdu_group,
+                                          uint32_t **ret_unav_res_group,
+                                          int group_size,
+                                          uint32_t frame,
+                                          uint8_t slot)
 {
-  for (int u = 0; u < group_size; u++) {
-    NR_gNB_PUSCH *pusch_vars = pusch_vars_group[u];
-    NR_gNB_ULSCH_t *ulsch = ulsch_group[u];
-    NR_UL_gNB_HARQ_t *ulsch_harq = ulsch->harq_process;
-    AssertFatal(ulsch_harq != NULL, "harq_pid %d is not allocated\n", ulsch->harq_pid);
-    const nfapi_nr_pusch_pdu_t *pdu = &ulsch_harq->ulsch_pdu;
-
 #ifdef DEBUG_RXDATA
-    dump_pusch_rx_data(gNB, ulsch, pdu);
+  // Dumping only ue index 0 for now
+  int ue_idx = 0;
+  const nfapi_nr_pusch_pdu_t *pdu = ulsch_pdu_group[ue_idx];
+  dump_pusch_rx_data(gNB, pdu, slot, ue_idx);
 #endif
 
-    start_meas(&gNB->rx_pusch_stats);
-    nr_rx_pusch_tp(gNB, pusch_vars, pdu, &ulsch->unav_res, ulsch->frame, ulsch->slot);
-    pusch_vars->ulsch_power_tot = 0;
-    pusch_vars->ulsch_noise_power_tot = 0;
-    const uint8_t num_sp_streams = pdu->param_v4.numSpatialStreamIndices;
-    for (int aarx = 0; aarx < num_sp_streams; aarx++) {
-      pusch_vars->ulsch_power_tot += pusch_vars->ulsch_power[aarx];
-      pusch_vars->ulsch_noise_power_tot += pusch_vars->ulsch_noise_power[aarx];
-    }
-    stop_meas(&gNB->rx_pusch_stats);
-  }
+  start_meas(&gNB->rx_pusch_stats);
+  nr_rx_pusch_group_tp(gNB, pusch_vars_group, ulsch_pdu_group, ret_unav_res_group, group_size, frame, slot);
+  stop_meas(&gNB->rx_pusch_stats);
 }
 
 static bool pusch_signal_detected(PHY_VARS_gNB *gNB, NR_gNB_PUSCH *pusch_vars, NR_gNB_ULSCH_t *ulsch)
@@ -1241,18 +1234,19 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx, N
   for (int i = 0; i < pusch_groups.n_active_groups; i++) {
     int g = pusch_groups.active_groups[i];
     int gsz = pusch_groups.size[g];
-    AssertFatal(gsz == 1, "Cannot handle group size > 1\n");
-
+    AssertFatal(gsz <= NR_MAX_NB_LAYERS, "Cannot handle group size > %d\n", NR_MAX_NB_LAYERS);
     NR_gNB_PUSCH *pusch_vars_group[gsz];
-    NR_gNB_ULSCH_t *ulsch_group[gsz];
+    const nfapi_nr_pusch_pdu_t *ulsch_pdu_group[gsz];
+    uint32_t *unav_res_group[gsz];
     // store pusch vars and ulsch pdu for group based processing
     for (int u = 0; u < gsz; u++) {
       int ulsch_id = pusch_groups.jobs[g][u];
       pusch_vars_group[u] = &gNB->pusch_vars[ulsch_id];
-      ulsch_group[u] = &gNB->ulsch[ulsch_id];
+      ulsch_pdu_group[u] = &gNB->ulsch[ulsch_id].harq_process->ulsch_pdu;
+      unav_res_group[u] = &gNB->ulsch[ulsch_id].unav_res;
     }
 
-    handle_pusch_rx_group_trigger(gNB, pusch_vars_group, ulsch_group, gsz);
+    handle_pusch_rx_group_trigger(gNB, pusch_vars_group, ulsch_pdu_group, unav_res_group, gsz, frame_rx, slot_rx);
 
     for (int u = 0; u < gsz; u++) {
       int ULSCH_id = pusch_groups.jobs[g][u];
