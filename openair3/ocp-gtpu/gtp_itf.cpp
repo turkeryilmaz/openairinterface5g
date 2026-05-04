@@ -249,10 +249,8 @@ static int gtpv1uCreateAndSendMsg(gtpv1u_bearer_t *bearer,
                                   gtpu_extension_header_t *extensions,
                                   int extensions_count)
 {
-  DevAssert(msgLen + HDR_MAX < 65536); // maximum size of UDP packet
-  uint8_t buffer[msgLen + HDR_MAX];
-  uint8_t *curPtr = buffer;
-  Gtpv1uMsgHeaderT *msgHdr = (Gtpv1uMsgHeaderT *)buffer;
+  uint8_t header[HDR_MAX];
+  Gtpv1uMsgHeaderT *msgHdr = (Gtpv1uMsgHeaderT *)header;
   // N should be 0 for us (it was used only in 2G and 3G)
   msgHdr->PN = npduNumFlag;
   msgHdr->S = seqNumFlag;
@@ -264,8 +262,7 @@ static int gtpv1uCreateAndSendMsg(gtpv1u_bearer_t *bearer,
   msgHdr->msgType = msgType;
   msgHdr->teid = htonl(bearer->teid_outgoing);
 
-  curPtr += sizeof(Gtpv1uMsgHeaderT);
-
+  uint8_t *curPtr = header + sizeof(Gtpv1uMsgHeaderT);
   if (msgHdr->PN || msgHdr->S || msgHdr->E) {
     *(uint16_t *)curPtr = seqNumFlag ? bearer->seqNum : 0x0000;
     curPtr += sizeof(uint16_t);
@@ -276,7 +273,7 @@ static int gtpv1uCreateAndSendMsg(gtpv1u_bearer_t *bearer,
   }
 
   for (int i = 0; i < extensions_count; i++) {
-    int available_size = sizeof(buffer) - (curPtr - buffer);
+    int available_size = sizeof(header) - (curPtr - header);
     gtpu_extension_header_type_t next = i == extensions_count - 1 ? GTPU_EXT_NONE : extensions[i + 1].type;
     int len = serialize_extension(&extensions[i], next, curPtr, available_size);
     if (len == -1) {
@@ -286,18 +283,8 @@ static int gtpv1uCreateAndSendMsg(gtpv1u_bearer_t *bearer,
     curPtr += len;
   }
 
-  if (Msg != NULL) {
-    int available_size = sizeof(buffer) - (curPtr - buffer);
-    if (msgLen > available_size) {
-      LOG_E(GTPU, "GTP message creation: buffer too small\n");
-      return GTPNOK;
-    }
-    memcpy(curPtr, Msg, msgLen);
-    curPtr += msgLen;
-  }
-
-  msgHdr->msgLength = htons(curPtr - (buffer + sizeof(Gtpv1uMsgHeaderT)));
-  AssertFatal(curPtr - (buffer + msgLen) < HDR_MAX, "fixed max size of all headers too short");
+  size_t hdr_len = curPtr - header;
+  msgHdr->msgLength = htons(hdr_len - sizeof(Gtpv1uMsgHeaderT) + msgLen);
 
   // Fix me: add IPv6 support
   DevAssert(bearer->ip.ss_family == AF_INET);
@@ -307,14 +294,20 @@ static int gtpv1uCreateAndSendMsg(gtpv1u_bearer_t *bearer,
         IPV4_ADDR_FORMAT(to->sin_addr.s_addr),
         htons(to->sin_port),
         bearer->teid_outgoing);
-  int ret = sendto(bearer->sock_fd, buffer, curPtr - buffer, 0, (struct sockaddr *)to, sizeof(*to));
-  if (ret != curPtr - buffer) {
-    LOG_E(GTPU,
-          "[SD %d] Failed to send data buffer size %lu, ret: %d, errno: %d\n",
-          bearer->sock_fd,
-          curPtr - buffer,
-          ret,
-          errno);
+
+  struct iovec iov[2] = {
+      { .iov_base = msgHdr, .iov_len = hdr_len, },
+      { .iov_base = Msg, .iov_len = (size_t) msgLen, },
+  };
+  struct msghdr m = {
+    .msg_name = to,
+    .msg_namelen = sizeof(*to),
+    .msg_iov = iov,
+    .msg_iovlen = Msg ? 2U : 1U,
+  };
+  ssize_t ret = sendmsg(bearer->sock_fd, &m, 0);
+  if (ret != (ssize_t) (hdr_len + msgLen)) {
+    LOG_E(GTPU, "[SD %d] Failed to send data, ret: %ld, errno: %d\n", bearer->sock_fd, ret, errno);
     return GTPNOK;
   }
 
