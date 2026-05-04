@@ -1448,11 +1448,21 @@ int main(int argc, char **argv)
       printStatIndent2(&gNB->dlsch_modulation_stats,"DLSCH modulation time");
       printStatIndent2(&gNB->dlsch_scrambling_stats, "DLSCH scrambling time");
       printStatIndent2(&gNB->dlsch_pdsch_generation_stats,"DLSCH PDSCH Generation time");
-      printStatIndent3(&gNB->dlsch_layer_mapping_stats,"DLSCH Layer Mapping time");
-      gNB->dlsch_resource_mapping_stats.trials = gNB->dlsch_layer_mapping_stats.trials;
-      printStatIndent3(&gNB->dlsch_resource_mapping_stats,"DLSCH Resource Mapping time");
-      gNB->dlsch_precoding_stats.trials = gNB->dlsch_layer_mapping_stats.trials;
-      printStatIndent3(&gNB->dlsch_precoding_stats,"DLSCH Precoding time");
+      printStatIndent3(&gNB->dlsch_scrambling_stats, "DLSCH scrambling time");
+      if (gNB->dlsch_layer_mapping_stats.trials > 0) {
+        printStatIndent3(&gNB->dlsch_modulation_stats, "DLSCH modulation time");
+        printStatIndent3(&gNB->dlsch_layer_mapping_stats, "DLSCH Layer Mapping time");
+      } else {
+        printStatIndent3(&gNB->dlsch_modulation_stats, "DLSCH mod/lm time");
+      }
+      if (num_pdsch_symbols_per_thread == 0) {
+        gNB->dlsch_resource_mapping_stats.trials = gNB->dlsch_modulation_stats.trials;
+        if (gNB->dlsch_precoding_stats.trials > 0)
+          printStatIndent3(&gNB->dlsch_resource_mapping_stats, "DLSCH Resource Mapping time");
+        gNB->dlsch_precoding_stats.trials = gNB->dlsch_modulation_stats.trials;
+        if (gNB->dlsch_precoding_stats.trials > 0)
+          printStatIndent3(&gNB->dlsch_precoding_stats, "DLSCH Precoding time");
+      }
 
       if (use_cuda) {
         printStatIndent(&pipeline_stats, "GPU Channel Pipeline");

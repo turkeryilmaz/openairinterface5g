@@ -217,6 +217,154 @@ void nr_modulation(const uint32_t *in, uint32_t length, uint16_t mod_order, int1
   AssertFatal(false, "Invalid or unsupported modulation order %d\n", mod_order);
 }
 
+static inline uint8_t get_packed_symbol(const uint8_t *in_bytes, uint32_t length, uint16_t mod_order, uint32_t symbol_idx)
+{
+  const uint32_t bit_offset = symbol_idx * mod_order;
+  const uint32_t byte_offset = bit_offset >> 3;
+  const uint32_t bit_shift = bit_offset & 0x7;
+  const uint32_t num_bytes = (length + 7) >> 3;
+  uint16_t packed = in_bytes[byte_offset];
+  if (bit_shift > 8 - mod_order && byte_offset + 1 < num_bytes)
+    packed |= (uint16_t)in_bytes[byte_offset + 1] << 8;
+  return (packed >> bit_shift) & ((1U << mod_order) - 1);
+}
+
+static inline uint64_t get_packed_bits(const uint8_t *in_bytes, uint32_t length, uint32_t bit_offset, uint8_t width)
+{
+  const uint32_t byte_offset = bit_offset >> 3;
+  const uint32_t bit_shift = bit_offset & 0x7;
+  const uint32_t num_bytes = (length + 7) >> 3;
+  const uint32_t bytes_needed = (bit_shift + width + 7) >> 3;
+  uint64_t packed = 0;
+  for (uint32_t i = 0; i < bytes_needed && byte_offset + i < num_bytes; i++)
+    packed |= (uint64_t)in_bytes[byte_offset + i] << (i << 3);
+  return (packed >> bit_shift) & ((UINT64_C(1) << width) - 1);
+}
+
+bool nr_modulation_layer_mapping(const uint32_t *in,
+                                 uint32_t length,
+                                 uint16_t mod_order,
+                                 uint8_t n_layers,
+                                 int layerSz,
+                                 c16_t tx_layers[][layerSz])
+{
+  if (n_layers < 1 || n_layers > 4)
+    return false;
+
+  const uint32_t n_symbs = length / mod_order;
+  if ((n_symbs % n_layers) != 0)
+    return false;
+
+  // Implementation selection (single entry point, chosen internally):
+  // For 1-2 layers the vectorised "modulate then deinterleave" path
+  // (nr_modulation + nr_layer_mapping) is faster than the fused scalar
+  // per-symbol loop below. The fused path only pays off for 3-4 layers, where
+  // the intermediate symbol buffer is large enough to be memory-bound and the
+  // separate layer mapping is itself poorly vectorised. For 1-2 layers the
+  // buffer stays in cache, so the scalar per-symbol modulation (which costs one
+  // bit-extract + table lookup per symbol, i.e. scales with symbol count and
+  // hurts most at low modulation orders) loses to SIMD modulation.
+  if (n_layers == 1) {
+    nr_modulation(in, length, mod_order, (int16_t *)tx_layers[0]);
+    return true;
+  }
+  if (n_layers == 2) {
+    c16_t mod_symbs[n_symbs] __attribute__((aligned(64)));
+    nr_modulation(in, length, mod_order, (int16_t *)mod_symbs);
+    c16_t (*ms)[n_symbs] = &mod_symbs;
+    nr_layer_mapping(1, n_symbs, ms, n_layers, layerSz, n_symbs, tx_layers);
+    return true;
+  }
+
+  const uint8_t *in_bytes = (const uint8_t *)in;
+
+  switch (mod_order) {
+    case 2: {
+      const c16_t *nr_mod_table = nr_qpsk_mod_table;
+      for (uint32_t sym = 0, layer_sym = 0; sym < n_symbs; sym += n_layers, layer_sym++) {
+        for (uint8_t layer = 0; layer < n_layers; layer++) {
+          const uint8_t idx = get_packed_symbol(in_bytes, length, mod_order, sym + layer);
+          tx_layers[layer][layer_sym] = nr_mod_table[idx];
+        }
+      }
+      return true;
+    }
+
+    case 4: {
+      const int32_t *nr_mod_table = nr_16qam_mod_table;
+      for (uint32_t sym = 0, layer_sym = 0; sym < n_symbs; sym += n_layers, layer_sym++) {
+        for (uint8_t layer = 0; layer < n_layers; layer++) {
+          const uint8_t idx = get_packed_symbol(in_bytes, length, mod_order, sym + layer);
+          ((int32_t *)tx_layers[layer])[layer_sym] = nr_mod_table[idx];
+        }
+      }
+      return true;
+    }
+
+    case 6: {
+      const c16_t *nr_mod_table = (const c16_t *)nr_64qam_mod_table;
+      if (n_layers == 3) {
+        c16_t *tx0 = tx_layers[0];
+        c16_t *tx1 = tx_layers[1];
+        c16_t *tx2 = tx_layers[2];
+        uint32_t sym = 0;
+        uint32_t layer_sym = 0;
+        for (; sym + 6 <= n_symbs; sym += 6, layer_sym += 2) {
+          const uint64_t bits = get_packed_bits(in_bytes, length, sym * mod_order, 36);
+          const uint16_t idx0 = bits & 0xfff;
+          const uint16_t idx1 = (bits >> 12) & 0xfff;
+          const uint16_t idx2 = (bits >> 24) & 0xfff;
+          tx0[layer_sym] = nr_mod_table[idx0 * 2];
+          tx1[layer_sym] = nr_mod_table[idx0 * 2 + 1];
+          tx2[layer_sym] = nr_mod_table[idx1 * 2];
+          tx0[layer_sym + 1] = nr_mod_table[idx1 * 2 + 1];
+          tx1[layer_sym + 1] = nr_mod_table[idx2 * 2];
+          tx2[layer_sym + 1] = nr_mod_table[idx2 * 2 + 1];
+        }
+        if (sym < n_symbs) {
+          for (uint8_t layer = 0; layer < 3; layer++) {
+            const uint8_t idx = get_packed_symbol(in_bytes, length, mod_order, sym + layer);
+            tx_layers[layer][layer_sym] = nr_mod_table[idx * 2];
+          }
+        }
+        return true;
+      }
+
+      if (n_layers == 4) {
+        c16_t *tx0 = tx_layers[0];
+        c16_t *tx1 = tx_layers[1];
+        c16_t *tx2 = tx_layers[2];
+        c16_t *tx3 = tx_layers[3];
+        for (uint32_t sym = 0, layer_sym = 0; sym < n_symbs; sym += 4, layer_sym++) {
+          const uint64_t bits = get_packed_bits(in_bytes, length, sym * mod_order, 24);
+          const uint16_t idx0 = bits & 0xfff;
+          const uint16_t idx1 = (bits >> 12) & 0xfff;
+          tx0[layer_sym] = nr_mod_table[idx0 * 2];
+          tx1[layer_sym] = nr_mod_table[idx0 * 2 + 1];
+          tx2[layer_sym] = nr_mod_table[idx1 * 2];
+          tx3[layer_sym] = nr_mod_table[idx1 * 2 + 1];
+        }
+        return true;
+      }
+      return false;
+    }
+
+    case 8: {
+      const int32_t *nr_mod_table = nr_256qam_mod_table;
+      for (uint32_t sym = 0, layer_sym = 0; sym < n_symbs; sym += n_layers, layer_sym++) {
+        for (uint8_t layer = 0; layer < n_layers; layer++) {
+          const uint8_t idx = get_packed_symbol(in_bytes, length, mod_order, sym + layer);
+          ((int32_t *)tx_layers[layer])[layer_sym] = nr_mod_table[idx];
+        }
+      }
+      return true;
+    }
+
+    default:
+      return false;
+  }
+}
+
 void nr_layer_mapping(int nbCodes,
                       int encoded_len,
                       c16_t mod_symbs[nbCodes][encoded_len],
@@ -259,16 +407,12 @@ void nr_layer_mapping(int nbCodes,
       }
 #endif
 #if defined(__aarch64__) && defined(USE_NEON)
-      // SIMDe doesn't handle this properly, gcc up to 14.2 neither
-      uint8_t const perm0[16] = {0, 1, 2, 3, 8, 9, 10, 11, 4, 5, 6, 7, 12, 13, 14, 15};
-      uint8x16_t perm = vld1q_u8(perm0);
-      uint8x16_t d;
-      for (; i < (n_symbs & (~3)); i += 4) {
-        d = vqtbl1q_u8(*(uint8x16_t *)(mod + i), perm);
-        *(int64_t *)tx0 = vgetq_lane_u64((uint64x2_t)d, 0);
-        *(int64_t *)tx1 = vgetq_lane_u64((uint64x2_t)d, 1);
-        tx0 += 2;
-        tx1 += 2;
+      for (; i < (n_symbs & ~7); i += 8) {
+        uint32x4x2_t d = vld2q_u32((const uint32_t *)(mod + i));
+        vst1q_u32((uint32_t *)tx0, d.val[0]);
+        vst1q_u32((uint32_t *)tx1, d.val[1]);
+        tx0 += 4;
+        tx1 += 4;
       }
 #endif
       for (; i < n_symbs; i += 2) {
@@ -378,6 +522,17 @@ void nr_layer_mapping(int nbCodes,
         }
       }
 #endif
+#if defined(__aarch64__) && defined(USE_NEON)
+      for (; i < (n_symbs & ~11); i += 12) {
+        uint32x4x3_t d = vld3q_u32((const uint32_t *)(mod + i));
+        vst1q_u32((uint32_t *)tx0, d.val[0]);
+        vst1q_u32((uint32_t *)tx1, d.val[1]);
+        vst1q_u32((uint32_t *)tx2, d.val[2]);
+        tx0 += 4;
+        tx1 += 4;
+        tx2 += 4;
+      }
+#endif
       for (; i < n_symbs; i += 3) {
         *tx0++ = mod[i];
         *tx1++ = mod[i + 1];
@@ -450,17 +605,16 @@ void nr_layer_mapping(int nbCodes,
       }
 #endif
 #if defined(__aarch64__) && defined(USE_NEON)
-      // SIMDe doesn't handle this properly, gcc up to 14.2 neither
-      for (; i < (n_symbs & ~3); i += 4) {
-        uint32x4_t d4 = *(uint32x4_t *)(mod + i);
-        *(uint32_t *)tx0 = vgetq_lane_u32(d4, 0); 
-	tx0++;
-        *(uint32_t *)tx1 = vgetq_lane_u32(d4, 1); 
-	tx1++;
-        *(uint32_t *)tx2 = vgetq_lane_u32(d4, 2); 
-	tx2++;
-        *(uint32_t *)tx3 = vgetq_lane_u32(d4, 3); 
-	tx3++;
+      for (; i < (n_symbs & ~15); i += 16) {
+        uint32x4x4_t d = vld4q_u32((const uint32_t *)(mod + i));
+        vst1q_u32((uint32_t *)tx0, d.val[0]);
+        vst1q_u32((uint32_t *)tx1, d.val[1]);
+        vst1q_u32((uint32_t *)tx2, d.val[2]);
+        vst1q_u32((uint32_t *)tx3, d.val[3]);
+        tx0 += 4;
+        tx1 += 4;
+        tx2 += 4;
+        tx3 += 4;
       }
 #endif
       for (; i < n_symbs; i += 4) {
@@ -773,7 +927,6 @@ static inline __attribute__((always_inline)) int16x8_t cmac0_prec128(int16x8_t x
     // real = ar*br - ai*bi  (Q15 scaling via high-half doubling muls)
     int16x8_t real = vqdmulhq_s16(xr, wr);      // ≈ round((2*xr*wr)/2^16)
     real = vqrdmlshq_s16(real, xi, wi);         // real -= round((2*xi*wi)/2^16)
-    //
     // imag = ar*bi + ai*br
     int16x8_t imag = vqdmulhq_s16(xr, wi);
     imag = vqrdmlahq_s16(imag, xi, wr);         // imag += round((2*xi*wr)/2^16)
@@ -794,13 +947,14 @@ static inline __attribute__((always_inline)) int16x8_t cmac0_prec128(int16x8_t x
 #endif
     // Re-interleave [real, imag]
     int16x8x2_t produ = vzipq_s16(real, imag);
-    return produ.val[0];        
+    return produ.val[0];
 }
 static inline __attribute__((always_inline)) int16x8_t cmac_prec128(int16x8_t y, int16x8_t x, int16x8_t wr, int16x8_t wi) {
   int16x8_t produ = cmac0_prec128(x, wr, wi);
   return vaddq_s16(y, produ);
 }
-#else
+
+#else // __x86 128-bit
 static inline __attribute__((always_inline)) simde__m128i cmac0_prec128(simde__m128i x, simde__m128i w_c, simde__m128i w_s)
 {
   // Multiplication and shift
@@ -998,7 +1152,6 @@ void nr_layer_precoder_simd(const int n_layers,
       const int16x8_t x2 = vld1q_s16((const int16_t *)in2++);
       // Accumulate the product
       int16x8_t y = cmac0_prec128(x0, w_c0, w_s0);
-      ;
       y = cmac_prec128(y, x1, w_c1, w_s1);
       y = cmac_prec128(y, x2, w_c2, w_s2);
       // Store the result to txdataF
@@ -1016,7 +1169,6 @@ void nr_layer_precoder_simd(const int n_layers,
       const int16x8_t x3 = vld1q_s16((const int16_t *)in3++);
       // Accumulate the product
       int16x8_t y = cmac0_prec128(x0, w_c0, w_s0);
-      ;
       y = cmac_prec128(y, x1, w_c1, w_s1);
       y = cmac_prec128(y, x2, w_c2, w_s2);
       y = cmac_prec128(y, x3, w_c3, w_s3);
