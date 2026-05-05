@@ -113,6 +113,11 @@ typedef struct Gtpv1uExtHeader {
  * Used when there is no UL PDU Session Information (SDAP header) present */
 #define NO_QFI (-1)
 
+/** number of packets to receive at once in recvmmsg() */
+#define VLEN 8
+/** buffer size for each packet */
+#define BUFSIZE 65536
+
 /** GTP bearer context: for sending data */
 typedef struct gtpv1u_bearer_s {
   int sock_fd;
@@ -1288,21 +1293,30 @@ static int Gtpv1uHandleGpdu(int h, uint8_t *msgBuf, uint32_t msgBufLen, const st
   return !GTPNOK;
 }
 
-static bool gtpv1uReceiveHandleMessage(int h)
+static bool gtpv1uReceiveHandleMessage(int h, uint8_t buf[VLEN][BUFSIZE])
 {
-  uint8_t udpData[65536];
-  int udpDataLen;
-  socklen_t from_len;
-  struct sockaddr_in addr;
-  from_len = (socklen_t)sizeof(struct sockaddr_in);
+  struct iovec iovecs[VLEN];
+  struct mmsghdr msgs[VLEN];
+  struct sockaddr_in addr[VLEN];
 
-  if ((udpDataLen = recvfrom(h, udpData, sizeof(udpData), 0, (struct sockaddr *)&addr, &from_len)) < 0) {
+  for (size_t i = 0; i < VLEN; ++i) {
+    iovecs[i].iov_base = buf[i];
+    iovecs[i].iov_len = BUFSIZE;
+    msgs[i].msg_hdr.msg_iov = &iovecs[i];
+    msgs[i].msg_hdr.msg_iovlen = 1;
+    msgs[i].msg_hdr.msg_name = &addr[i];
+    msgs[i].msg_hdr.msg_namelen = (socklen_t)sizeof(struct sockaddr_in);
+  };
+
+  int ret = recvmmsg(h, msgs, VLEN, MSG_WAITFORONE, NULL);
+  if (ret < 0) {
     LOG_E(GTPU, "[%d] Recvfrom failed (%s)\n", h, strerror(errno));
     return false;
-  } else if (udpDataLen == 0) {
-    LOG_W(GTPU, "[%d] Recvfrom returned 0\n", h);
-    return true;
-  } else {
+  }
+
+  for (int i = 0; i < ret; ++i) {
+    int udpDataLen = msgs[i].msg_len;
+    uint8_t *udpData = buf[i];
     if (udpDataLen < (int)sizeof(Gtpv1uMsgHeaderT)) {
       LOG_W(GTPU, "[%d] received malformed gtp packet \n", h);
       return true;
@@ -1318,7 +1332,7 @@ static bool gtpv1uReceiveHandleMessage(int h)
         break;
 
       case GTP_ECHO_REQ:
-        Gtpv1uHandleEchoReq(h, udpData, &addr);
+        Gtpv1uHandleEchoReq(h, udpData, &addr[i]);
         break;
 
       case GTP_ERROR_INDICATION:
@@ -1334,7 +1348,7 @@ static bool gtpv1uReceiveHandleMessage(int h)
         break;
 
       case GTP_GPDU:
-        Gtpv1uHandleGpdu(h, udpData, udpDataLen, &addr);
+        Gtpv1uHandleGpdu(h, udpData, udpDataLen, &addr[i]);
         break;
 
       default:
@@ -1348,7 +1362,9 @@ static bool gtpv1uReceiveHandleMessage(int h)
 static void* gtpv1uReceiver(void *thr)
 {
   gtpThread_t *gt = (gtpThread_t *)thr;
-  while (gtpv1uReceiveHandleMessage(gt->h)) {
+  /* this buffer is 1MB large, ok because at the bottom of the stack */
+  uint8_t buf[VLEN][BUFSIZE];
+  while (gtpv1uReceiveHandleMessage(gt->h, buf)) {
   }
   LOG_W(GTPU, "exiting thread\n");
   return NULL;
