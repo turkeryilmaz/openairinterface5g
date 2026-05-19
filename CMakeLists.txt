@@ -1769,24 +1769,25 @@ target_link_libraries(lte-uesoftmodem PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs
 # force the generation of ASN.1 so that we don't need to wait during the build
 target_link_libraries(lte-uesoftmodem PRIVATE
                       asn1_lte_rrc asn1_s1ap asn1_m2ap asn1_m3ap asn1_x2ap)
-# nr RRU
-add_executable(nr-oru
-  ${OPENAIR_DIR}/executables/nr-ru.c
-  ${OPENAIR_DIR}/openair1/PHY/INIT/nr_parms.c
-  ${OPENAIR_DIR}/openair1/SCHED_NR/phy_frame_config_nr.c
-  ${OPENAIR_DIR}/openair1/SCHED_NR/nr_prach_procedures.c
-  ${OPENAIR_DIR}/openair1/SCHED_NR/nr_ru_procedures.c
-  ${OPENAIR_DIR}/openair1/SCHED/phy_procedures_lte_common.c
-  ${OPENAIR_DIR}/executables/main_nr_ru.c
-  ${OPENAIR_DIR}/executables/nr-oru.c
-)
-target_link_libraries(nr-oru PRIVATE
-  UTIL NR_PHY_RU PHY_NR shlib_loader dl
-  radio_common softmodem_common nfapi_pnf_lib)
-target_link_libraries(nr-oru PRIVATE pthread m CONFIG_LIB rt ${T_LIB} utils
-  barrier actor nfapi_user_lib)
-target_link_libraries(nr-oru PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs nr_phy_common time_management)
 
+if (OAI_RU_FRONTHAUL)
+  add_executable(nr-oru
+    ${OPENAIR_DIR}/executables/nr-ru.c
+    ${OPENAIR_DIR}/openair1/PHY/INIT/nr_parms.c
+    ${OPENAIR_DIR}/openair1/SCHED_NR/phy_frame_config_nr.c
+    ${OPENAIR_DIR}/openair1/SCHED_NR/nr_prach_procedures.c
+    ${OPENAIR_DIR}/openair1/SCHED_NR/nr_ru_procedures.c
+    ${OPENAIR_DIR}/openair1/SCHED/phy_procedures_lte_common.c
+    ${OPENAIR_DIR}/executables/main_nr_ru.c
+    ${OPENAIR_DIR}/executables/nr-oru.c
+  )
+  target_link_libraries(nr-oru PRIVATE
+    UTIL NR_PHY_RU PHY_NR shlib_loader dl oru_fh
+    radio_common softmodem_common nfapi_pnf_lib)
+  target_link_libraries(nr-oru PRIVATE pthread m CONFIG_LIB rt ${T_LIB} utils
+    barrier actor nfapi_user_lib)
+  target_link_libraries(nr-oru PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs nr_phy_common time_management)
+endif()
 # nr-softmodem
 ###################################################
 
