@@ -854,6 +854,183 @@ static inline void nrLDPC_cnProc_BG1(t_nrLDPC_lut* p_lut, int8_t* cnProcBuf, int
 
 }
 
+// =============================================================================
+// Two-pass min1/min2 CN processing
+//
+// Replaces the LUT-exclude-self approach above with a two-pass algorithm:
+//
+//   Pass 1: read all numBN inputs once to collect:
+//             vmin1    — minimum |vk| across all k (SIMD, 32 CNs in parallel)
+//             vmin2    — second minimum |vk|
+//             vsgn_all — XOR-product of all signs (accumulated via sign_epi8)
+//
+//   Pass 2: read all numBN inputs a second time; for each k:
+//             out_mag = (|vk| == vmin1) ? vmin2 : vmin1  (tie case: use min2)
+//             out_sgn = sign_epi8(vsgn_all, vk)           (removes self sign)
+//             result  = sign_epi8(out_mag, out_sgn)
+//
+// Memory reads per CN group: 2 × numBN  vs  numBN × (numBN-1) for LUT approach:
+//
+//   numBN= 3:  6  vs   6   (break-even)
+//   numBN= 4:  8  vs  12   (1.5×  fewer)
+//   numBN= 7: 14  vs  42   (3.0×  fewer)
+//   numBN=10: 20  vs  90   (4.5×  fewer)
+//   numBN=19: 38  vs 342   (9.0×  fewer)
+//
+// Tie approximation: when two or more BNs share min1, all receive min2 in pass 2.
+// This is the standard min-sum tie approximation; effect on convergence is negligible.
+// =============================================================================
+
+/**
+ * \brief Generic two-pass min-sum CN processor — one degree group.
+ *
+ * \param cnProcBuf    Start of this group in the CN proc buffer (256-bit aligned).
+ * \param cnProcBufRes Start of this group in the CN proc result buffer.
+ * \param numBN        Number of BNs per CN in this degree group.
+ * \param M            Number of 32-CN SIMD chunks: ceil(numCN × Z / 32).
+ * \param off          BN-to-BN stride in units of sizeof(simde__m256i) = 32 bytes.
+ */
+static inline void nrLDPC_cnProc_group_2pass(simde__m256i *cnProcBuf,
+                                             simde__m256i *cnProcBufRes,
+                                             uint32_t      numBN,
+                                             uint32_t      M,
+                                             uint32_t      off)
+{
+    const simde__m256i maxLLR = *(const simde__m256i *)maxLLR256_epi8;
+    const simde__m256i zeros  = simde_mm256_setzero_si256();
+
+    for (uint32_t i = 0; i < M; i++) {
+
+        // ------------------------------------------------------------------
+        // Pass 1: accumulate vmin1, vmin2 (unsigned) and sign parity via XOR
+        //
+        // Sign is tracked by XOR-ing raw input bytes; only bit 7 (the sign bit)
+        // matters. XOR with 0 is identity, so zero-valued inputs do NOT corrupt
+        // the sign accumulator — unlike sign_epi8() which zeroes its output when
+        // its second argument is 0.
+        // ------------------------------------------------------------------
+        simde__m256i vmin1   = maxLLR;
+        simde__m256i vmin2   = maxLLR;
+        simde__m256i vsgn_xor = zeros;   // XOR of all input bytes; bit 7 = sign parity
+
+        for (uint32_t k = 0; k < numBN; k++) {
+            simde__m256i vk  = cnProcBuf[k * off + i];
+            simde__m256i vak = simde_mm256_abs_epi8(vk);
+
+            vsgn_xor = simde_mm256_xor_si256(vsgn_xor, vk);  // XOR accumulates sign parity
+
+            // Rolling min1 / min2 update (unsigned comparison)
+            simde__m256i new_min1 = simde_mm256_min_epu8(vmin1, vak);
+            simde__m256i new_min2 = simde_mm256_min_epu8(vmin2,
+                                        simde_mm256_max_epu8(vmin1, vak));
+            vmin1 = new_min1;
+            vmin2 = new_min2;
+        }
+
+        // ------------------------------------------------------------------
+        // Pass 2: compute and store output for each BN k
+        // ------------------------------------------------------------------
+        for (uint32_t k = 0; k < numBN; k++) {
+            simde__m256i vk  = cnProcBuf[k * off + i];
+            simde__m256i vak = simde_mm256_abs_epi8(vk);
+
+            // Magnitude: min2 where self equals min1, min1 everywhere else
+            simde__m256i mask    = simde_mm256_cmpeq_epi8(vak, vmin1);
+            simde__m256i out_mag = simde_mm256_blendv_epi8(vmin1, vmin2, mask);
+            out_mag = simde_mm256_min_epu8(out_mag, maxLLR);
+
+            // Sign: remove self via XOR (XOR is self-inverse; zero inputs are safe)
+            // other_xor bit 7 = XOR of sign bits of all OTHER inputs
+            simde__m256i other_xor = simde_mm256_xor_si256(vsgn_xor, vk);
+
+            // Convert sign parity (bit 7) to ±out_mag using mask trick:
+            //   sign_mask = 0xFF where bit 7 = 1 (odd # of negatives → negative output)
+            //              = 0x00 where bit 7 = 0 (even # of negatives → positive output)
+            //   result = (out_mag XOR sign_mask) - sign_mask
+            //          = out_mag   when sign_mask = 0x00
+            //          = -out_mag  when sign_mask = 0xFF  (2's-complement, exact for [0,127])
+            simde__m256i sign_mask = simde_mm256_cmpgt_epi8(zeros, other_xor);
+            simde__m256i result    = simde_mm256_sub_epi8(
+                                         simde_mm256_xor_si256(out_mag, sign_mask),
+                                         sign_mask);
+
+            cnProcBufRes[k * off + i] = result;
+        }
+    }
+}
+
+/**
+ * \brief Two-pass min-sum CN processing for BG1 — drop-in for nrLDPC_cnProc_BG1.
+ *
+ * Handles all 9 degree groups (3,4,5,6,7,8,9,10,19) with 2×numBN memory reads
+ * per group instead of numBN² for the LUT-exclude-self reference. No per-output
+ * LUT tables are needed.
+ *
+ * \param p_lut        Pointer to decoder LUTs
+ * \param cnProcBuf    CN processing buffer
+ * \param cnProcBufRes CN processing result buffer
+ * \param Z            Lifting size
+ */
+static inline void nrLDPC_cnProc_BG1_2pass(t_nrLDPC_lut *p_lut,
+                                            int8_t       *cnProcBuf,
+                                            int8_t       *cnProcBufRes,
+                                            uint16_t      Z)
+{
+    const uint8_t  *lut_numCnInCnGroups   = p_lut->numCnInCnGroups;
+    const uint32_t *lut_startAddrCnGroups = p_lut->startAddrCnGroups;
+
+    // BG1 degree groups in LUT index order
+    static const uint8_t numBN_per_group[9] = {3, 4, 5, 6, 7, 8, 9, 10, 19};
+
+    for (int grp = 0; grp < 9; grp++) {
+        if (lut_numCnInCnGroups[grp] == 0)
+            continue;
+
+        uint32_t M   = ((uint32_t)lut_numCnInCnGroups[grp] * Z + 31) >> 5;
+        uint32_t off = (lut_numCnInCnGroups_BG1_R13[grp] * NR_LDPC_ZMAX) >> 5;
+
+        nrLDPC_cnProc_group_2pass(
+            (simde__m256i *)&cnProcBuf   [lut_startAddrCnGroups[grp]],
+            (simde__m256i *)&cnProcBufRes[lut_startAddrCnGroups[grp]],
+            numBN_per_group[grp], M, off);
+    }
+}
+
+/**
+ * \brief Two-pass min-sum CN processing for BG2 — drop-in for nrLDPC_cnProc_BG2.
+ *
+ * Handles all 6 degree groups (3,4,5,6,8,10).
+ *
+ * \param p_lut        Pointer to decoder LUTs
+ * \param cnProcBuf    CN processing buffer
+ * \param cnProcBufRes CN processing result buffer
+ * \param Z            Lifting size
+ */
+static inline void nrLDPC_cnProc_BG2_2pass(t_nrLDPC_lut *p_lut,
+                                            int8_t       *cnProcBuf,
+                                            int8_t       *cnProcBufRes,
+                                            uint16_t      Z)
+{
+    const uint8_t  *lut_numCnInCnGroups   = p_lut->numCnInCnGroups;
+    const uint32_t *lut_startAddrCnGroups = p_lut->startAddrCnGroups;
+
+    // BG2 degree groups in LUT index order
+    static const uint8_t numBN_per_group[6] = {3, 4, 5, 6, 8, 10};
+
+    for (int grp = 0; grp < 6; grp++) {
+        if (lut_numCnInCnGroups[grp] == 0)
+            continue;
+
+        uint32_t M   = ((uint32_t)lut_numCnInCnGroups[grp] * Z + 31) >> 5;
+        uint32_t off = (lut_numCnInCnGroups_BG2_R15[grp] * NR_LDPC_ZMAX) >> 5;
+
+        nrLDPC_cnProc_group_2pass(
+            (simde__m256i *)&cnProcBuf   [lut_startAddrCnGroups[grp]],
+            (simde__m256i *)&cnProcBufRes[lut_startAddrCnGroups[grp]],
+            numBN_per_group[grp], M, off);
+    }
+}
+
 #endif
 
 /**
