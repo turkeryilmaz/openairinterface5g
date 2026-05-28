@@ -504,6 +504,19 @@ typedef struct puschSymbolProc_s {
   int layers_attenuation;
 } puschSymbolProc_t;
 
+static inline void unscramble_helper(const int16_t *llr_in, const int16_t *seq, int16_t *llr_out, int num_llr)
+{
+  int i = 0;
+  for (; (i + 16) <= num_llr; i += 16) {
+    simde__m256i v_llr = simde_mm256_loadu_si256((const simde__m256i *)&llr_in[i]);
+    simde__m256i v_s = simde_mm256_loadu_si256((const simde__m256i *)&seq[i]);
+    simde_mm256_storeu_si256((simde__m256i *)&llr_out[i], simde_mm256_mullo_epi16(v_llr, v_s));
+  }
+  // scalar tail (fewer than 16 elements left)
+  for (; i < num_llr; i++)
+    llr_out[i] = llr_in[i] * seq[i];
+}
+
 static void symbol_unscrambling_demux(puschSymbolProc_t *rdata, int ue_idx, int s, int size, int16_t llr_in[size])
 {
   const nfapi_nr_pusch_pdu_t *rel15_ul = rdata->rel15_ul_group[ue_idx];
@@ -517,6 +530,15 @@ static void symbol_unscrambling_demux(puschSymbolProc_t *rdata, int ue_idx, int 
   uint32_t c1_idx = map_uci->csi1_offset[s];
   uint32_t c2_idx = map_uci->csi2_offset[s];
   uint32_t u_idx = map_uci->ulsch_offset[s];
+
+  // Fast path: uncrambling only no UCI multiplexed on this symbol
+  bool no_uci = (map_uci->d_ack[s] == 0 && map_uci->d_csi1[s] == 0 && map_uci->d_csi2[s] == 0);
+  if (no_uci) {
+    const int end = joint_pusch_vars->ul_valid_re_per_slot[s] * bits_per_re;
+    int16_t *llr = &ue_pusch_vars->ulsch_llrs[u_idx];
+    unscramble_helper(llr_in, s_seq, llr, end);
+    return;
+  }
 
   // Per-symbol remaining counts: private to this task
   uint32_t rem_ack = map_uci->q_ack[s];
@@ -585,14 +607,7 @@ static void symbol_unscrambling_demux(puschSymbolProc_t *rdata, int ue_idx, int 
       rem_csi2--;
       continue;
     }
-    int b = 0;
-    for (; (b + 16) <= bits_per_re; b += 16) {
-      simde__m256i v_llr = simde_mm256_loadu_si256((simde__m256i *)&curr_re_llr[b]);
-      simde__m256i v_s = simde_mm256_loadu_si256((simde__m256i *)&curr_re_s[b]);
-      simde_mm256_storeu_si256((simde__m256i *)&ue_pusch_vars->ulsch_llrs[u_idx + b], simde_mm256_mullo_epi16(v_llr, v_s));
-    }
-    for (; b < bits_per_re; b++)
-      ue_pusch_vars->ulsch_llrs[u_idx + b] = curr_re_llr[b] * curr_re_s[b];
+    unscramble_helper(curr_re_llr, curr_re_s, &ue_pusch_vars->ulsch_llrs[u_idx], bits_per_re);
     u_idx += bits_per_re;
   }
 }
