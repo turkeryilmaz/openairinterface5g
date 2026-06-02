@@ -46,9 +46,9 @@ pipeline {
     stage ("Push to DockerHub") {
       steps {
         script {
-          WEEK_REF = sh returnStdout: true, script: 'date +"%Y.w%V"'
+          def WEEK_REF = sh returnStdout: true, script: 'date +"%Y.w%V"'
           WEEK_REF = WEEK_REF.trim()
-          WEEK_TAG = sh returnStdout: true, script: 'python3 ./ci-scripts/provideUniqueImageTag.py --start_tag ' + WEEK_REF
+          def WEEK_TAG = sh returnStdout: true, script: 'python3 ./ci-scripts/provideUniqueImageTag.py --start_tag ' + WEEK_REF
           WEEK_TAG = WEEK_TAG.trim()
           if ((params.forceTag != null) && (params.tagToUse != null)) {
             if (params.forceTag) {
@@ -56,7 +56,7 @@ pipeline {
               echo "Forced Tag is ${WEEK_TAG}"
             }
           }
-          WEEK_SHA = sh returnStdout: true, script: 'git log -n1 --pretty=format:"%H" origin/develop'
+          def WEEK_SHA = sh returnStdout: true, script: 'git log -n1 --pretty=format:"%H" origin/develop'
           WEEK_SHA = WEEK_SHA.trim()
 
           withCredentials([
