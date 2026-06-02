@@ -3,6 +3,12 @@
  * SPDX-License-Identifier: LicenseRef-CSSL-1.0
  */
 
+import groovy.transform.Field
+
+@Field def branch = ''
+@Field def gitLocalBranch = ''
+@Field def downstreamResults = [:]
+
 // Location of the executor node
 def nodeExecutor = params.nodeExecutor
 
@@ -12,13 +18,44 @@ def do4Gtest = false
 def do5Gtest = false
 def do5GUeTest = false
 
-//
-def gitCommitAuthorEmailAddr
-
 // list of failing stages
 def failingStages = ""
+def mrValidationWarning = ""
 
-OAI_Registry = "gracehopper3-oai.sboai.cs.eurecom.fr"
+// Globally scoped status result variables for downstream jobs.
+def ubuntuBuildStatus = ''
+def ubuntuArmBuildStatus = ''
+def ubuntuJetsonBuildStatus = ''
+def rhelBuildStatus = ''
+def armBuildStatus = ''
+
+def physim5GStatus = ''
+def physimGH5GStatus = ''
+def channelSimStatus = ''
+def vrtSim5GStatus = ''
+def rfSim5GStatus = ''
+def flexricRAN5GStatus = ''
+
+def physim4GStatus = ''
+def rfSim4GStatus = ''
+def l2Sim4GStatus = ''
+def lteTDDB200Status = ''
+def lteFDDB200OAIUEStatus = ''
+def lteFDDB200Status = ''
+def lteTDD2x2N3xxStatus = ''
+
+def nsaTDDB200Status = ''
+def saTDDB200Status = ''
+def phytestLDPCoffloadStatus = ''
+def saAW2SStatus = ''
+def cn5gCOTSUESanityCheck = ''
+def saAERIALStatus = ''
+def saMultiAntennaStatus = ''
+def saFHI72Status = ''
+def saFHI72MplaneStatus = ''
+def saHandoverStatus = ''
+def saAERIALOAIUEStatus = ''
+def saOAIUEStatus = ''
 
 pipeline {
   agent {
@@ -26,77 +63,100 @@ pipeline {
   }
   options {
     timestamps()
-    gitLabConnection('OAI GitLab')
     ansiColor('xterm')
   }
 
   stages {
-    stage ("Verify Parameters") {
+    stage ("Get Parameters") {
       steps {
         script {
+          echo '\u2705 \u001B[32mGet Parameters\u001B[0m'
+          // GIT_BRANCH is prefixed with "origin/" by Jenkins - stripped version for use in tags and params in case of PUSH event
+          gitLocalBranch = env.GIT_BRANCH.replace('origin/', '')
+          if (env.GITHUB_PR_NUMBER) {
+            echo "PR number           :   ${env.GITHUB_PR_NUMBER}"
+            echo "Source Repository   :   ${env.GITHUB_PR_URL}"
+            echo "Source Branch       :   ${env.GITHUB_PR_SOURCE_BRANCH}"
+            echo "Commit ID           :   ${env.GITHUB_PR_HEAD_SHA}"
+            echo "Target Repo         :   ${env.GIT_URL}"
+            echo "Target Branch       :   ${env.GITHUB_PR_TARGET_BRANCH}"
+            echo "Label               :   ${env.GITHUB_PR_LABELS}"
+            branch = "${env.GITHUB_PR_SOURCE_BRANCH.replace('/', '-').replace('+', '-')}-${env.GITHUB_PR_HEAD_SHA}"
+          } else {
+            echo "Branch              :   ${gitLocalBranch}"
+            echo "Commit ID           :   ${env.GIT_COMMIT}"
+            branch = "${gitLocalBranch}-${env.GIT_COMMIT}"
+          }
           env.JOB_TIMESTAMP = sh(returnStdout: true, script: 'date --utc --rfc-3339=seconds | sed -e "s#+00:00##"').trim()
-          echo '\u2705 \u001B[32mVerify Parameters\u001B[0m'
-          def allParametersPresent = true
-
-          echo '\u2705 \u001B[32mVerify Labels\u001B[0m'
-          if ("MERGE".equals(env.gitlabActionType)) {
-            LABEL_CHECK = sh returnStdout: true, script: 'ci-scripts/checkGitLabMergeRequestLabels.sh --mr-id ' + env.gitlabMergeRequestIid
-            LABEL_CHECK = LABEL_CHECK.trim()
-            if (LABEL_CHECK == 'NONE') {
-              def message = "OAI " + JOB_NAME + " build (" + BUILD_ID + "): Your merge request should have one of the mandatory labels:\n\n"
-              message += " - ~documentation (don't perform any stages)\n"
-              message += " - ~BUILD-ONLY (execute only build stages)\n"
-              message += " - ~4G-LTE (perform 4G tests)\n"
-              message += " - ~5G-NR (perform 5G tests)\n"
-              message += " - ~CI (perform both 4G and 5G tests)\n"
-              message += " - ~nrUE (perform only 5G-UE related tests including physims excluding LDPC tests)\n\n"
-              message += "Not performing CI due to lack of labels"
-              addGitLabMRComment comment: message
-              error('Not performing CI due to lack of labels')
-            } else if (LABEL_CHECK == 'FULL') {
+        }
+      }
+    }
+    stage ("Verify Labels") {
+      steps {
+        echo '\u2705 \u001B[32mVerify Labels\u001B[0m'
+        script {
+          if (env.GITHUB_PR_NUMBER) {
+            if (!(env.GITHUB_PR_LABELS)) {
+              def gitBaseUrl = env.GIT_URL.trim().replace('.git', '')
+              def message = "**CI Build:** [#${env.BUILD_NUMBER}](${BUILD_URL}) | Not performing CI due to the absence of one of the following mandatory labels:\n"
+              message += "- ${gitBaseUrl}/labels/documentation (don't perform any stages)\n"
+              message += "- ${gitBaseUrl}/labels/BUILD-ONLY (execute only build stages)\n"
+              message += "- ${gitBaseUrl}/labels/4G-LTE (perform 4G tests)\n"
+              message += "- ${gitBaseUrl}/labels/5G-NR (perform 5G tests)\n"
+              message += "- ${gitBaseUrl}/labels/nrUE (perform only 5G-UE related tests including physims excluding LDPC tests)\n"
+              message += "- ${gitBaseUrl}/labels/CI (perform both 4G and 5G tests)\n"
+              githubPRComment comment: githubPRMessage(message)
+              error('Not performing CI due to lack of mandatory labels')
+            }
+            if (env.GITHUB_PR_LABELS.contains('CI')) {
               do4Gtest = true
               do5Gtest = true
               do5GUeTest = true
-            } else if (LABEL_CHECK == "SHORTEN-4G") {
+            }
+            if (env.GITHUB_PR_LABELS.contains('4G-LTE')) {
               do4Gtest = true
-            } else if (LABEL_CHECK == 'SHORTEN-5G') {
+            }
+            if (env.GITHUB_PR_LABELS.contains('5G-NR')) {
               do5Gtest = true
-            } else if (LABEL_CHECK == 'SHORTEN-5G-UE') {
+            }
+            if (env.GITHUB_PR_LABELS.contains('nrUE')) {
               do5GUeTest = true
-            } else if (LABEL_CHECK == 'SHORTEN-4G-5G-UE') {
-              do4Gtest = true
-              do5GUeTest = true
-            } else if (LABEL_CHECK == 'documentation') {
+            }
+            if (env.GITHUB_PR_LABELS.contains('documentation')) {
               doBuild = false
-            } else {
-              // is "BUILD-ONLY", will only build
             }
           } else {
+            // PUSH event
             do4Gtest = true
             do5Gtest = true
           }
+          echo """
+            CI decision summary:
+            doBuild     = ${doBuild}
+            do4Gtest    = ${do4Gtest}
+            do5Gtest    = ${do5Gtest}
+            do5GUeTest  = ${do5GUeTest}
+          """
         }
       }
     }
     stage ("Verify Guidelines") {
       steps {
-        echo "Git URL     is ${GIT_URL}"
-        echo "GitLab Act    is ${env.gitlabActionType}"
+        echo "Git URL          is ${GIT_URL}"
+        echo "Job Name         is ${JOB_NAME}"
+        echo "Build Id         is ${BUILD_ID}"
         script {
-          if ("MERGE".equals(env.gitlabActionType)) {
-            // since a bit, in push events, gitlabUserEmail is not populated
-            gitCommitAuthorEmailAddr = env.gitlabUserEmail
-            echo "GitLab Usermail is ${gitCommitAuthorEmailAddr}"
+          if (env.GITHUB_PR_NUMBER) {
             // Validate MR commits: checks for missing Signed-off-by and merge commits
             def mrValidationLog = "signedCommit_${env.BUILD_NUMBER}.log"
             def mrValidationExitCode = sh(
-                script: "bash ./ci-scripts/pre-ci-check.sh -s origin/${env.gitlabSourceBranch} -t origin/${env.gitlabTargetBranch} > ${mrValidationLog} 2>&1",
+                script: "bash ./ci-scripts/pre-ci-check.sh -s ${env.GITHUB_PR_HEAD_SHA} -t origin/${env.GITHUB_PR_TARGET_BRANCH} > ${mrValidationLog} 2>&1",
                 returnStatus: true
             )
             def mrValidationMessage = readFile(mrValidationLog).trim()
             sh "rm -f ${mrValidationLog}"
             if (mrValidationExitCode >= 1) {
-              addGitLabMRComment comment: "${mrValidationMessage}"
+              mrValidationWarning = mrValidationMessage
             }
             if (mrValidationExitCode >= 2) {
               error("${mrValidationMessage}")
@@ -104,26 +164,21 @@ pipeline {
           } else {
             echo "Git Branch    is ${GIT_BRANCH}"
             echo "Git Commit    is ${GIT_COMMIT}"
-            // since a bit, in push events, gitlabUserEmail is not populated
-            gitCommitAuthorEmailAddr = sh returnStdout: true, script: 'git log -n1 --pretty=format:%ae ${GIT_COMMIT}'
-            gitCommitAuthorEmailAddr = gitCommitAuthorEmailAddr.trim()
-            echo "GitLab Usermail is ${gitCommitAuthorEmailAddr}"
           }
         }
       }
     }
-    stage ("Local-Repo-Push") {
+    stage ("Internal-Repo-Push") {
       steps {
         script {
-          triggerDownstreamJob ('RAN-Local-Repo-Push', 'Local-Repo-Push')
+          triggerDownstreamJob ('RAN-Internal-Repo-Push')
         }
       }
       post {
         failure {
           script {
-            def message = "OAI " + JOB_NAME + " build (" + BUILD_ID + "): Cannot perform CI - merge validation failed (merge conflict, git operation failure, or internal CI error)."
-            addGitLabMRComment comment: message
             currentBuild.result = 'FAILURE'
+            failingStages += '\n * Internal-Repo-Push - merge validation failed (merge conflict, git operation failure, or internal CI error)'
           }
         }
       }
@@ -135,7 +190,7 @@ pipeline {
         stage ("Ubuntu-Image-Builder") {
           steps {
             script {
-              triggerDownstreamJob ('RAN-Ubuntu18-Image-Builder', 'Ubuntu-Image-Builder')
+              triggerDownstreamJob ('RAN-Ubuntu-Image-Builder')
             }
           }
           post {
@@ -143,7 +198,7 @@ pipeline {
               script {
                 // Using a unique variable name for each test stage to avoid overwriting on a global variable
                 // due to parallel-time concurrency
-                ubuntuBuildStatus = finalizeDownstreamJob('RAN-Ubuntu18-Image-Builder')
+                ubuntuBuildStatus = finalizeDownstreamJob('RAN-Ubuntu-Image-Builder')
               }
             }
             failure {
@@ -157,7 +212,7 @@ pipeline {
         stage ("Ubuntu-ARM-Image-Builder") {
           steps {
             script {
-              triggerDownstreamJob ('RAN-Ubuntu-ARM-Image-Builder', 'Ubuntu-ARM-Image-Builder')
+              triggerDownstreamJob ('RAN-Ubuntu-ARM-Image-Builder')
             }
           }
           post {
@@ -179,7 +234,7 @@ pipeline {
         stage ("Ubuntu-Jetson-Image-Builder") {
           steps {
             script {
-              triggerDownstreamJob ('RAN-Ubuntu-Jetson-Image-Builder', 'Ubuntu-Jetson-Image-Builder')
+              triggerDownstreamJob ('RAN-Ubuntu-Jetson-Image-Builder')
             }
           }
           post {
@@ -201,7 +256,7 @@ pipeline {
         stage ("RHEL-Cluster-Image-Builder") {
           steps {
             script {
-              triggerDownstreamJob ('RAN-RHEL8-Cluster-Image-Builder', 'RHEL-Cluster-Image-Builder')
+              triggerDownstreamJob ('RAN-RHEL-Cluster-Image-Builder')
             }
           }
           post {
@@ -209,7 +264,7 @@ pipeline {
               script {
                 // Using a unique variable name for each test stage to avoid overwriting on a global variable
                 // due to parallel-time concurrency
-                rhelBuildStatus = finalizeDownstreamJob('RAN-RHEL8-Cluster-Image-Builder')
+                rhelBuildStatus = finalizeDownstreamJob('RAN-RHEL-Cluster-Image-Builder')
               }
             }
             failure {
@@ -223,7 +278,7 @@ pipeline {
         stage ("ARM-Cross-Compile") {
           steps {
             script {
-              triggerDownstreamJob ('RAN-ARM-Cross-Compile-Builder', 'ARM-Cross-Compilation')
+              triggerDownstreamJob ('RAN-ARM-Cross-Compile-Builder')
             }
           }
           post {
@@ -245,11 +300,11 @@ pipeline {
       }
     }
     stage ("DockerHub-Push") {
-      when { expression {doBuild && "PUSH".equals(env.gitlabActionType)} }
+      when { expression {doBuild && !(env.GITHUB_PR_NUMBER)} }
       steps {
         script {
           catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
-            triggerDownstreamJob ('RAN-DockerHub-Push', 'DockerHub-Push')
+            triggerDownstreamJob ('RAN-DockerHub-Push')
           }
         }
       }
@@ -269,7 +324,7 @@ pipeline {
           when { expression {do5Gtest || do5GUeTest} }
           steps {
             script {
-              triggerDownstreamJob ('RAN-PhySim-Cluster-5G', 'PhySim-Cluster-5G')
+              triggerDownstreamJob ('RAN-PhySim-Cluster-5G')
             }
           }
           post {
@@ -292,7 +347,7 @@ pipeline {
           when { expression {do5Gtest || do5GUeTest} }
           steps {
             script {
-              triggerDownstreamJob ('RAN-PhySim-GraceHopper-5G', 'PhySim-GraceHopper-5G')
+              triggerDownstreamJob ('RAN-PhySim-GraceHopper-5G')
             }
           }
           post {
@@ -315,7 +370,7 @@ pipeline {
           when { expression {do5Gtest || do5GUeTest} }
           steps {
             script {
-              triggerDownstreamJob ('RAN-Channel-Simulation', 'Channel-Simulation')
+              triggerDownstreamJob ('RAN-Channel-Simulation')
             }
           }
           post {
@@ -338,7 +393,7 @@ pipeline {
           when { expression {do4Gtest} }
           steps {
             script {
-              triggerDownstreamJob ('RAN-PhySim-Cluster-4G', 'PhySim-Cluster-4G')
+              triggerDownstreamJob ('RAN-PhySim-Cluster-4G')
             }
           }
           post {
@@ -361,7 +416,7 @@ pipeline {
           when { expression {do4Gtest} }
           steps {
             script {
-              triggerDownstreamJob ('RAN-RF-Sim-Test-4G', 'RF-Sim-Test-4G')
+              triggerDownstreamJob ('RAN-RF-Sim-Test-4G')
             }
           }
           post {
@@ -384,7 +439,7 @@ pipeline {
           when { expression {do5Gtest || do5GUeTest} }
           steps {
             script {
-              triggerDownstreamJob ('RAN-VRT-Sim-Test-5G', 'VRT-Sim-Test-5G')
+              triggerDownstreamJob ('RAN-VRT-Sim-Test-5G')
             }
           }
           post {
@@ -407,7 +462,7 @@ pipeline {
           when { expression {do5Gtest || do5GUeTest} }
           steps {
             script {
-              triggerDownstreamJob ('RAN-RF-Sim-Test-5G', 'RF-Sim-Test-5G')
+              triggerDownstreamJob ('RAN-RF-Sim-Test-5G')
             }
           }
           post {
@@ -430,7 +485,7 @@ pipeline {
           when { expression {do5Gtest || do5GUeTest} }
           steps {
             script {
-              triggerDownstreamJob ('OAI-FLEXRIC-RAN-Integration-Test', 'OAI-FLEXRIC-RAN-Integration-Test')
+              triggerDownstreamJob ('OAI-FLEXRIC-RAN-Integration-Test')
             }
           }
           post {
@@ -453,7 +508,7 @@ pipeline {
           when { expression {do4Gtest} }
           steps {
             script {
-              triggerDownstreamJob ('RAN-L2-Sim-Test-4G', 'L2-Sim-Test-4G')
+              triggerDownstreamJob ('RAN-L2-Sim-Test-4G')
             }
           }
           post {
@@ -476,7 +531,7 @@ pipeline {
           when { expression {do4Gtest} }
           steps {
             script {
-              triggerDownstreamJob ('RAN-LTE-FDD-LTEBOX-Container', 'LTE-FDD-LTEBOX-Container')
+              triggerDownstreamJob ('RAN-LTE-FDD-LTEBOX-Container')
             }
           }
           post {
@@ -484,13 +539,13 @@ pipeline {
               script {
                 // Using a unique variable name for each test stage to avoid overwriting on a global variable
                 // due to parallel-time concurrency
-                lteTDDB200Status = finalizeDownstreamJob('RAN-LTE-FDD-LTEBOX-Container')
+                lteFDDB200Status = finalizeDownstreamJob('RAN-LTE-FDD-LTEBOX-Container')
               }
             }
             failure {
               script {
                 currentBuild.result = 'FAILURE'
-                failingStages += lteTDDB200Status
+                failingStages += lteFDDB200Status
               }
             }
           }
@@ -500,7 +555,7 @@ pipeline {
           when { expression {do4Gtest} }
           steps {
             script {
-              triggerDownstreamJob ('RAN-LTE-FDD-OAIUE-OAICN4G-Container', 'LTE-FDD-OAIUE-OAICN4G-Container')
+              triggerDownstreamJob ('RAN-LTE-FDD-OAIUE-OAICN4G-Container')
             }
           }
           post {
@@ -523,7 +578,7 @@ pipeline {
           when { expression {do4Gtest} }
           steps {
             script {
-              triggerDownstreamJob ('RAN-LTE-TDD-LTEBOX-Container', 'LTE-TDD-LTEBOX-Container')
+              triggerDownstreamJob ('RAN-LTE-TDD-LTEBOX-Container')
             }
           }
           post {
@@ -531,13 +586,13 @@ pipeline {
               script {
                 // Using a unique variable name for each test stage to avoid overwriting on a global variable
                 // due to parallel-time concurrency
-                lteFDDB200Status = finalizeDownstreamJob('RAN-LTE-TDD-LTEBOX-Container')
+                lteTDDB200Status = finalizeDownstreamJob('RAN-LTE-TDD-LTEBOX-Container')
               }
             }
             failure {
               script {
                 currentBuild.result = 'FAILURE'
-                failingStages += lteFDDB200Status
+                failingStages += lteTDDB200Status
               }
             }
           }
@@ -546,7 +601,7 @@ pipeline {
           when { expression {do4Gtest || do5Gtest} }
           steps {
             script {
-              triggerDownstreamJob ('RAN-NSA-B200-Module-LTEBOX-Container', 'NSA-B200-Module-LTEBOX-Container')
+              triggerDownstreamJob ('RAN-NSA-B200-Module-LTEBOX-Container')
             }
           }
           post {
@@ -569,7 +624,7 @@ pipeline {
           when { expression {do5Gtest} }
           steps {
             script {
-              triggerDownstreamJob ('RAN-SA-B200-Module-SABOX-Container', 'SA-B200-Module-SABOX-Container')
+              triggerDownstreamJob ('RAN-SA-B200-Module-SABOX-Container')
             }
           }
           post {
@@ -592,7 +647,7 @@ pipeline {
           when { expression {do5Gtest} }
           steps {
             script {
-              triggerDownstreamJob ('RAN-gNB-N300-Timing-Phytest-LDPC', 'gNB-N300-Timing-Phytest-LDPC')
+              triggerDownstreamJob ('RAN-gNB-N300-Timing-Phytest-LDPC')
             }
           }
           post {
@@ -615,7 +670,7 @@ pipeline {
           when { expression {do4Gtest} }
           steps {
             script {
-              triggerDownstreamJob ('RAN-LTE-TDD-2x2-Container', 'LTE-TDD-2x2-Container')
+              triggerDownstreamJob ('RAN-LTE-TDD-2x2-Container')
             }
           }
           post {
@@ -638,7 +693,7 @@ pipeline {
           when { expression {do5Gtest} }
           steps {
             script {
-              triggerDownstreamJob ('RAN-SA-AW2S-CN5G', 'SA-AW2S-CN5G')
+              triggerDownstreamJob ('RAN-SA-AW2S-CN5G')
             }
           }
           post {
@@ -661,7 +716,7 @@ pipeline {
           when { expression {do5Gtest} }
           steps {
             script {
-              triggerCN5GDownstreamJob ('OAI-CN5G-COTS-UE-Test', 'OAI-CN5G-COTS-UE-Test')
+              triggerCN5GDownstreamJob ('OAI-CN5G-COTS-UE-Test')
             }
           }
           post {
@@ -684,7 +739,7 @@ pipeline {
           when { expression {do5Gtest} }
           steps {
             script {
-              triggerDownstreamJob ('RAN-SA-AERIAL-CN5G', 'SA-AERIAL-CN5G')
+              triggerDownstreamJob ('RAN-SA-AERIAL-CN5G')
             }
           }
           post {
@@ -707,7 +762,7 @@ pipeline {
           when { expression {do5Gtest} }
           steps {
             script {
-              triggerDownstreamJob ('RAN-SA-Multi-Antenna-CN5G', 'SA-Multi-Antenna-CN5G')
+              triggerDownstreamJob ('RAN-SA-Multi-Antenna-CN5G')
             }
           }
           post {
@@ -730,7 +785,7 @@ pipeline {
           when { expression {do5Gtest} }
           steps {
             script {
-              triggerDownstreamJob ('RAN-SA-FHI72-CN5G', 'SA-FHI72-CN5G')
+              triggerDownstreamJob ('RAN-SA-FHI72-CN5G')
             }
           }
           post {
@@ -753,7 +808,7 @@ pipeline {
           when { expression {do5Gtest} }
           steps {
             script {
-              triggerDownstreamJob ('RAN-SA-FHI72-MPLANE-CN5G', 'SA-FHI72-MPLANE-CN5G')
+              triggerDownstreamJob ('RAN-SA-FHI72-MPLANE-CN5G')
             }
           }
           post {
@@ -776,7 +831,7 @@ pipeline {
           when { expression {do5Gtest} }
           steps {
             script {
-              triggerDownstreamJob ('RAN-SA-Handover-CN5G', 'SA-Handover-CN5G')
+              triggerDownstreamJob ('RAN-SA-Handover-CN5G')
             }
           }
           post {
@@ -799,7 +854,7 @@ pipeline {
           when { expression {do5Gtest || do5GUeTest} }
           steps {
             script {
-              triggerDownstreamJob ('RAN-SA-AERIAL-OAIUE-CN5G', 'SA-AERIAL-OAIUE-CN5G')
+              triggerDownstreamJob ('RAN-SA-AERIAL-OAIUE-CN5G')
             }
           }
           post {
@@ -822,7 +877,7 @@ pipeline {
           when { expression {do5Gtest || do5GUeTest} }
           steps {
             script {
-              triggerDownstreamJob ('RAN-SA-OAIUE-CN5G', 'SA-OAIUE-CN5G')
+              triggerDownstreamJob ('RAN-SA-OAIUE-CN5G')
             }
           }
           post {
@@ -847,21 +902,47 @@ pipeline {
   post {
     success {
       script {
-        def message = "OAI " + JOB_NAME + " build (" + BUILD_ID + "): passed (" + BUILD_URL + ")"
-        if ("MERGE".equals(env.gitlabActionType)) {
-          addGitLabMRComment comment: message
-          def message2 = message + " -- MergeRequest #" + env.gitlabMergeRequestIid + " (" + env.gitlabMergeRequestTitle + ")"
+        if (env.GITHUB_PR_NUMBER) {
+          if (mrValidationWarning) {
+            def message = "**CI Build:** [#${env.BUILD_NUMBER}](${BUILD_URL}) | **Passed**"
+            message +=  "\n\n**Validation:** " + mrValidationWarning
+            githubPRComment comment: githubPRMessage(message)
+          }
+          githubNotify account: params.gitAccount,
+                       repo: params.gitRepo,
+                       credentialsId: 'github-jenkins-duranta',
+                       sha: env.GITHUB_PR_HEAD_SHA,
+                       status: 'SUCCESS',
+                       description: 'Build success',
+                       targetUrl: BUILD_URL,
+                       context: 'Jenkins Duranta CI'
         }
         echo "Pipeline is SUCCESSFUL"
       }
     }
     failure {
       script {
-        def message = "OAI " + JOB_NAME + " build (" + BUILD_ID + "): failed (" + BUILD_URL + ")"
-        if ("MERGE".equals(env.gitlabActionType)) {
-          def fullMessage = message + '\n\nList of failing test stages:' + failingStages
-          addGitLabMRComment comment: fullMessage
-          def message2 = message + " -- MergeRequest #" + env.gitlabMergeRequestIid + " (" + env.gitlabMergeRequestTitle + ")"
+        if (env.GITHUB_PR_NUMBER) {
+          def message = "**CI Build:** [#${env.BUILD_NUMBER}](${BUILD_URL}) | **Failed** on the following stages:"
+          if (failingStages) {
+            message += failingStages
+          } else {
+            message += "\nThe pipeline may have failed due to CI, validation, or scripting error. See the build for more details."
+          }
+          if (mrValidationWarning) {
+            message += '\n\n**Validation:** ' + mrValidationWarning
+          }
+          if (env.GITHUB_PR_LABELS) {
+            githubPRComment comment: githubPRMessage(message)
+          }
+          githubNotify account: params.gitAccount,
+                       repo: params.gitRepo,
+                       credentialsId: 'github-jenkins-duranta',
+                       sha: env.GITHUB_PR_HEAD_SHA,
+                       status: 'FAILURE',
+                       description: 'Build failed',
+                       targetUrl: BUILD_URL,
+                       context: 'Jenkins Duranta CI'
         }
         echo "Pipeline FAILED"
       }
@@ -871,41 +952,35 @@ pipeline {
 
 // ----  Slave Job functions
 
-def triggerDownstreamJob (jobName, gitlabStatusName) {
-  def MR_NUMBER = "MERGE".equals(env.gitlabActionType) ? env.gitlabMergeRequestIid : 'develop'
-  // Workaround for the "cancelled" GitLab pipeline notification
+def triggerDownstreamJob (jobName) {
+  // Workaround for the "cancelled" pipeline notification
   // The downstream job is triggered with the propagate false so the following commands are executed
   // Its status is now PASS/SUCCESS from a stage pipeline point of view
   // localStatus variable MUST be analyzed to properly assess the status
   def localStatus = build job: jobName,
     parameters: [
-      string(name: 'targetRepo', value: String.valueOf(env.gitlabTargetRepoHttpUrl)),
-      string(name: 'sourceRepo', value: String.valueOf(env.gitlabSourceRepoHttpUrl)),
-      string(name: 'sourceBranch', value: String.valueOf(env.gitlabSourceBranch)),
-      string(name: 'sourceCommit', value: String.valueOf(env.gitlabMergeRequestLastCommit)),
-      string(name: 'requestNumber', value: String.valueOf(MR_NUMBER)),
-      booleanParam(name: 'mergeWithTarget', value: "MERGE".equals(env.gitlabActionType)),
-      string(name: 'targetBranch', value: String.valueOf(env.gitlabTargetBranch)),
+      string(name: 'targetRepo', value: String.valueOf(env.GIT_URL)),
+      string(name: 'sourceRepo', value: String.valueOf(env.GITHUB_PR_URL ?: env.GIT_URL)),
+      string(name: 'sourceBranch', value: String.valueOf(env.GITHUB_PR_SOURCE_BRANCH ?: gitLocalBranch)),
+      string(name: 'sourceCommit', value: String.valueOf(env.GITHUB_PR_HEAD_SHA ?: env.GIT_COMMIT)),
+      string(name: 'requestNumber', value: String.valueOf(env.GITHUB_PR_NUMBER ?: gitLocalBranch)),
+      booleanParam(name: 'mergeWithTarget', value: env.GITHUB_PR_NUMBER != null),
+      string(name: 'targetBranch', value: (env.GITHUB_PR_TARGET_BRANCH ?: gitLocalBranch)),
       string(name: 'repository', value: String.valueOf(params.ciRepositoryURL)),
-      string(name: 'branch', value: "${env.gitlabSourceBranch.replace('/', '-')}-${env.gitlabMergeRequestLastCommit}")
+      string(name: 'branch', value: String.valueOf(branch))
     ], propagate: false
   def localResult = localStatus.getResult()
   echo "${jobName} Slave Job status is ${localResult}"
-  gitlabCommitStatus(name: gitlabStatusName) {
-    if (localStatus.resultIsBetterOrEqualTo('SUCCESS')) {
-       echo "${jobName} Slave Job is OK"
-    } else {
-       error "${jobName} Slave Job is KO"
-    }
+  downstreamResults[jobName] = localStatus.resultIsBetterOrEqualTo('SUCCESS') ? 'SUCCESS' : 'FAILURE'
+  if (localStatus.resultIsBetterOrEqualTo('SUCCESS')) {
+    echo "${jobName} Slave Job is OK"
+  } else {
+    error "${jobName} Slave Job is KO"
   }
 }
 
-def triggerCN5GDownstreamJob (jobName, gitlabStatusName) {
-  if ("MERGE".equals(env.gitlabActionType)) {
-    fullRanTag = OAI_Registry + '/oai-gnb:' + "${env.gitlabSourceBranch.replace('/', '-')}-${env.gitlabMergeRequestLastCommit}"
-  } else {
-    fullRanTag = OAI_Registry + '/oai-gnb:develop-' + env.GIT_COMMIT
-  }
+def triggerCN5GDownstreamJob (jobName) {
+  def fullRanTag = params.internalRegistry + '/oai-gnb:' + "${branch}"
   // Workaround for the "cancelled" GitLab pipeline notification
   // The downstream job is triggered with the propagate false so the following commands are executed
   // Its status is now PASS/SUCCESS from a stage pipeline point of view
@@ -916,12 +991,11 @@ def triggerCN5GDownstreamJob (jobName, gitlabStatusName) {
     ], propagate: false
   def localResult = localStatus.getResult()
   echo "${jobName} Slave Job status is ${localResult}"
-  gitlabCommitStatus(name: gitlabStatusName) {
-    if (localStatus.resultIsBetterOrEqualTo('SUCCESS')) {
-       echo "${jobName} Slave Job is OK"
-    } else {
-       error "${jobName} Slave Job is KO"
-    }
+  downstreamResults[jobName] = localStatus.resultIsBetterOrEqualTo('SUCCESS') ? 'SUCCESS' : 'FAILURE'
+  if (localStatus.resultIsBetterOrEqualTo('SUCCESS')) {
+    echo "${jobName} Slave Job is OK"
+  } else {
+    error "${jobName} Slave Job is KO"
   }
 }
 
@@ -929,12 +1003,13 @@ def finalizeDownstreamJob(jobName) {
   lock ('Parent-Lock') {
     // In case of any non-success, we are retrieving the HTML report of the last completed
     // downstream job. The only drop-back is that we may retrieve the HTML report of a previous build
+    def fileName
     if (jobName == 'OAI-CN5G-COTS-UE-Test') {
       fileName = "test_results_oai_cn5g_cots_ue.html"
     } else {
       fileName = "test_results-${jobName}.html"
     }
-    artifactUrl = BUILD_URL
+    def artifactUrl = BUILD_URL
     if (!fileExists(fileName)) {
       copyArtifacts(projectName: jobName,
         filter: 'test_results*.html',
@@ -949,6 +1024,15 @@ def finalizeDownstreamJob(jobName) {
       // BUILD_URL is like  http://server:port/jenkins/job/foo/15/
       // no need to add a prefixed '/'
       artifactUrl += 'artifact/' + fileName
+    }
+    if (env.GITHUB_PR_NUMBER) {
+      githubNotify account: params.gitAccount,
+                   repo: params.gitRepo,
+                   credentialsId: "github-jenkins-duranta",
+                   sha: env.GITHUB_PR_HEAD_SHA,
+                   status: downstreamResults.getOrDefault(jobName, 'FAILURE'),
+                   targetUrl: "${artifactUrl}",
+                   context: jobName
     }
     artifactUrl = "\n * [${jobName}](${artifactUrl})"
     return artifactUrl
