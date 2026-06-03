@@ -570,6 +570,9 @@ static int nr_ue_pdsch_procedures(PHY_VARS_NR_UE *ue,
   allocCast3D(dl_ch_magb, c16_t, toFree4, NR_SYMBOLS_PER_SLOT, dlsch->cw_info.Nl, rx_size_symbol, false);
   fourDimArray_t *toFree5 = NULL;
   allocCast3D(dl_ch_magr, c16_t, toFree5, NR_SYMBOLS_PER_SLOT, dlsch->cw_info.Nl, rx_size_symbol, false);
+  fourDimArray_t *toFreeRho = NULL;
+  allocCast3D(rho_dl, c16_t, toFreeRho, NR_SYMBOLS_PER_SLOT, dlsch->cw_info.Nl * dlsch->cw_info.Nl, rx_size_symbol, false);
+
   for (int m = dlschCfg->start_symbol; m < (dlschCfg->number_symbols + dlschCfg->start_symbol); m++) {
     bool first_symbol_flag = false;
     if (m == first_symbol_with_data)
@@ -601,7 +604,8 @@ static int nr_ue_pdsch_procedures(PHY_VARS_NR_UE *ue,
                     ptrs_phase_per_slot,
                     ptrs_re_per_slot,
                     nvar,
-                    &scope_req)
+                    &scope_req,
+                    rho_dl)
         < 0) {
       if (scope_req.copy_chanest_to_scope) {
         UEunlockScopeData(ue, pdschChanEstimates);
@@ -624,6 +628,7 @@ static int nr_ue_pdsch_procedures(PHY_VARS_NR_UE *ue,
   free(toFree3);
   free(toFree4);
   free(toFree5);
+  free(toFreeRho);
   return 0;
 }
 
