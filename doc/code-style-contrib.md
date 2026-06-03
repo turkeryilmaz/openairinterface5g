@@ -210,13 +210,13 @@ during its lifetime in the sidebar on the right. Following options:
 - _no milestone_: not ready for review yet and is generally used to wait for a
   first CI run that the author will inspect and fix problems detected by the CI
   (please limit the time in which your code is in that phase)
-- %REVIEW_CAN_START: the reviewer can start the review
-- %REVIEW_IN_PROGRESS: the reviewer is currently doing review, and might
+- [REVIEW_CAN_START](https://github.com/duranta-project/openairinterface5g/milestone/2): the reviewer can start the review
+- [REVIEW_IN_PROGRESS](https://github.com/duranta-project/openairinterface5g/milestone/4): the reviewer is currently doing review, and might
   request changes to the code that the author should include (or refute with
   justification)
-- %REVIEW_COMPLETED_AND_APPROVED: the reviewer is happy with code changes
+- [REVIEW_COMPLETED_AND_APPROVED](https://github.com/duranta-project/openairinterface5g/milestone/3): the reviewer is happy with code changes
   (*open comments still have to be addressed!*)
-- %OK_TO_BE_MERGED: the OAI team plans to merge this; *do not push any changes
+- [OK_TO_BE_MERGED](https://github.com/duranta-project/openairinterface5g/milestone/1): the OAI team plans to merge this; *do not push any changes
   anymore at this point*.
 
 ## Review Form
