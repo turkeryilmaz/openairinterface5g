@@ -201,6 +201,43 @@ general free-form format is (from the documentation):
 This means that the trimmed <key> and <value> will be separated by ": " (one colon followed by one space).
 ```
 
+### AI Assistants
+
+These guidelines are mostly based on [linux kernel
+guidelines](https://docs.kernel.org/process/coding-assistants.html)
+
+This document provides guidance for AI tools and developers using AI assistance
+when contributing to the respository.
+
+AI tools helping with openairinterface development should follow the standard
+openairinterface developement procedure. They should comply with Duranta OAI’s
+licensing requirements:
+
+- All code must be compatible with CSSL v1.0
+- Use appropriate SPDX license identifiers
+
+AI agents MUST NOT add `Signed-off-by` nor `Co-authored-by` tags.  Only humans
+can legally certify the Developer Certificate of Origin (DCO).  The human
+submitter is responsible for:
+
+- Reviewing all AI-generated code
+- Ensuring compliance with licensing requirements
+- Adding their own Signed-off-by tag to certify the DCO
+- Taking full responsibility for the contribution
+
+When AI tools contribute to openairinterface,
+proper commit message helps track the evolving role of AI in the development process.
+Contributions should include an `Assisted-by` tag in the following format:
+
+    Assisted-by: AGENT_NAME:MODEL_VERSION
+
+- `AGENT_NAME` is the name of the AI tool or framework
+- `MODEL_VERSION` is the specific model version used
+
+Example:
+
+    Assisted-by: Claude:claude-3-opus
+
 ## Pull Requests
 
 A pull request (PR) can be submitted as soon as the code is considered stable
