@@ -10,23 +10,24 @@ review is performed.
 
 ## General
 
-OpenAirInterface employs both human review and automated CI tests to judge
-whether a code contribution is ready to be merged.
+Duranta OpenAirInterface employs both human review and automated CI tests to
+judge whether a code contribution is ready to be merged.
 
 The contributor has to sign a contributor license agreement (CLA) as described
-in [`CONTRIBUTING.md`](../CONTRIBUTING.md). After creating an account on the
-Eurecom Gitlab, the contributor can open a merge request: he becomes the
-"author" of such code contribution. A senior OAI member will review this work,
-and make suggestions for possible improvements. Each week, we discuss the
-progress of the merge requests in a [weekly external developer
-call](https://gitlab.eurecom.fr/oai/openairinterface5g/-/wikis/OpenAirDevMeetings),
-and discuss which merge requests can be merged.
+in [`CONTRIBUTING.md`](../CONTRIBUTING.md). After creating an account on
+Github, the contributor can open a pull request from a fork: he becomes the
+"author" of such code contribution. A senior Duranta OAI member will review
+this work, and make suggestions for possible improvements. Each week, we
+discuss the progress of the pull requests in a [weekly developer
+call](https://github.com/duranta-project/openairinterface5g/wiki/Developer-Meetings),
+and discuss which pull requests can be merged.
 
-The CI consists in various Jenkins pipelines that run on each merge request.
+The CI consists in various Jenkins pipelines that run on each pull request.
 See [`TESTBenches.md`](./TESTBenches.md) for more details about the CI setup.
 
-There is the official [Gitlab Help](https://docs.gitlab.com/) that can help you
-with any questions regarding Gitlab. We recommend reading the [Git
+There is the official [Github Help](https://docs.github.com/) that can help you
+with any questions regarding Github. Note that unlike Gitlab, password-based
+code pushes are not allowed. Also, we recommend reading the [Git
 Book](https://git-scm.com/book/en/v2) to use Git properly.
 
 ## Basic coding rules
@@ -58,7 +59,7 @@ A number of high-level comments:
 - Do not do premature optimization; measure the code before writing SIMD
   instructions by hand, and measure again to show it is faster.
 
-If in doubt, check out code that has been recently written (e.g., use the merge
+If in doubt, check out code that has been recently written (e.g., use the pull
 requests page to check for code that has recently been added) and follow that
 style. Checking surrounding code is usually not the best idea, as OAI has a
 long history in which coding rules were not really enforced.
@@ -75,7 +76,7 @@ that might be useful; if this document and `.clang-format` contradict,
 You should be familiar with git branching, merging, and rebasing.
 
 The target branch for every contribution, and the general development branch,
-is `develop`. Typically every week, we collect multiple merge requests in an
+is `develop`. Typically every week, we collect multiple pull requests in an
 "integration branch" that gets tested by the CI individually. If everything is
 fine, we merge to develop and tag it `YYYY.wXX` with `YYYY` the current year,
 and `XX` the week number.
@@ -157,21 +158,21 @@ Once you rebased, push the changes to the remote
 $ git push origin my-new-feature --force-with-lease # force with lease let's you only overwrite what you also have locally in origin/my-new-feature
 ```
 
-## Merge Requests
+## Pull Requests
 
-A merge request (MR) can be submitted as soon as the code is considered stable
+A pull request (PR) can be submitted as soon as the code is considered stable
 and reviewable. The idea is to start the review early enough so that the code
-author (the MR owner) can incorporate fixes while the reviewer is giving
-feedback. Note that while it should not be common, a refusal of a merge request
-is a valid outcome of a merge request review (subject to proper justification).
+author (the PR owner) can incorporate fixes while the reviewer is giving
+feedback. Note that while it should not be common, a refusal of a pull request
+is a valid outcome of a pull request review (subject to proper justification).
 
 When preparing a contribution that is large, the developer is responsible for
-warning the OAI team, so that the review work can start as early as possible
+warning the maintainers team, so that the review work can start as early as possible
 and run in parallel to the contribution finalization. Failing to do so, there
 is a risk that the work will take a long time to be merged or might even not be
-merged at all if judged too complex by the OAI team. Also, note that big
+merged at all if judged too complex by the maintainers team. Also, note that big
 contributions should be cut into small commits each containing a logical
-change, as described above. Finally, as a rule of thumb, the smaller the merge
+change, as described above. Finally, as a rule of thumb, the smaller the pull
 request, the easier it will be to review and merge.
 
 The reviewer comments on code changes ("open comments") that should be
@@ -180,31 +181,36 @@ resolved by themselves to double check the modifications and close such
 comments. As an author, please don't resolve open comments (don't click the
 "Resolve thread" button) unless explicitly instructed by the reviewer.
 
-Note that the _merge request author_ asks for inclusion of code, so _they
+Note that the _pull request author_ asks for inclusion of code, so _they
 should make the review easy_; in particular, if facilitating review incurs
 extra work to make a simpler code review (e.g., rewriting entire commits or
 their order), this extra work is justified. This particularly(!) applies for
-big merge requests.
+big pull requests.
 
-When opening a merge requests, the author should select `develop` as the target
-branch, and add at least one of these labels when opening the merge request:
+When opening a pull requests, the author should select `develop` as the target
+branch, and add at least one of these labels when opening the pull request:
 
-- ~documentation: don't perform any testing stages, for documentation
-- ~BUILD-ONLY: execute only build stages, for code improvements without impact
-  on 4G or 5G code
-- ~4G-LTE: perform 4G tests
-- ~5G-NR: perform 5G tests
+- https://github.com/duranta-project/openairinterface5g/labels/documentation:
+  don't perform any testing stages, for documentation
+- https://github.com/duranta-project/openairinterface5g/labels/BUILD-ONLY:
+  execute only build stages, for code improvements without impact on 4G or 5G
+  code
+- https://github.com/duranta-project/openairinterface5g/labels/4G-LTE: perform
+  4G tests
+- https://github.com/duranta-project/openairinterface5g/labels/5G-NR: perform
+  5G tests
+- https://github.com/duranta-project/openairinterface5g/labels/nrUE: perform
+  only 5G-UE related tests including physims
 
-Failure to add a label will prevent the CI from running. You can add both
-~4G-LTE and ~5G-NR together; if in doubt about the right label, add both. The
-CI posts the results in the comments section of the merge request. Both merge
-request authors and reviewers are responsible for manual inspection and
-pre-filtering of the CI results. An overview of the CI tests is in
-[`TESTBenches.md`](./TESTBenches.md).
+Failure to add a label will prevent the CI from running. If in doubt about the
+right label, add both 4G and 5G labels. The CI posts the results in the
+comments section of the pull request. Both pull request authors and reviewers
+are responsible for manual inspection and pre-filtering of the CI results. An
+overview of the CI tests is in [`TESTBenches.md`](./TESTBenches.md).
 
 To communicate the review progress both between author and reviewer, as well as
-to the outside world, we (ab-)use the milestones feature of Gitlab to track the
-current progress. The milestone can be set when opening the merge request, and
+to the outside world, we (ab-)use the milestones feature of Github to track the
+current progress. The milestone can be set when opening the pull request, and
 during its lifetime in the sidebar on the right. Following options:
 
 - _no milestone_: not ready for review yet and is generally used to wait for a
@@ -216,14 +222,14 @@ during its lifetime in the sidebar on the right. Following options:
   justification)
 - [REVIEW_COMPLETED_AND_APPROVED](https://github.com/duranta-project/openairinterface5g/milestone/3): the reviewer is happy with code changes
   (*open comments still have to be addressed!*)
-- [OK_TO_BE_MERGED](https://github.com/duranta-project/openairinterface5g/milestone/1): the OAI team plans to merge this; *do not push any changes
+- [OK_TO_BE_MERGED](https://github.com/duranta-project/openairinterface5g/milestone/1): the maintainers team plans to merge this; *do not push any changes
   anymore at this point*.
 
 ## Review Form
 
 The following is a check list that might be used by a reviewer to check that
 code contribution fulfils minimum standard w.r.t. formatting, data types,
-assertions, etc. The reviewer might copy/paste this form into a merge request,
+assertions, etc. The reviewer might copy/paste this form into a pull request,
 or simply check that all have been filled.
 
 All points should be marked to complete a review.
@@ -252,9 +258,9 @@ Additional optional questions in case they apply:
 
 Please report only true bugs in the [issue tracker](../../issues). Do not
 report general user problems; use the [mailing
-lists](https://gitlab.eurecom.fr/oai/openairinterface5g/-/wikis/MailingList)
+lists](https://github.com/duranta-project/openairinterface5g/wiki/MailingList)
 instead.  If in doubt, prefer the mailing lists and if needed and requested by
-the OAI team, an issue will be opened.
+the maintainers team, an issue will be opened.
 
 When reporting a bug, please clearly
 - explain the problem,
@@ -265,4 +271,4 @@ When reporting a bug, please clearly
 
 You are encouraged to use these bullet points to structure your issue for easy
 understanding.  Use code tags (the "insert code" button with symbol &lt;/&gt; in
-the gitlab editor) for logs and small code snippets.
+the github editor) for logs and small code snippets.
