@@ -103,7 +103,7 @@ information on how the images are built.
   - orion: Cross-compilation from Intel to ARM
   - base image from `Dockerfile.base.ubuntu.cross-arm64`
   - build image from `Dockerfile.build.ubuntu.cross-arm64` (no target images)
-- [RAN-RHEL8-Cluster-Image-Builder](https://jenkins-oai.eurecom.fr/job/RAN-RHEL8-Cluster-Image-Builder/)
+- [RAN-RHEL-Cluster-Image-Builder](https://jenkins-oai.eurecom.fr/job/RAN-RHEL-Cluster-Image-Builder/)
   https://github.com/duranta-project/openairinterface5g/labels/BUILD-ONLY
   https://github.com/duranta-project/openairinterface5g/labels/4G-LTE
   https://github.com/duranta-project/openairinterface5g/labels/5G-NR
@@ -122,13 +122,13 @@ information on how the images are built.
   - build image from `Dockerfile.phySim.rhel9` (creates as direct target physical simulator
     image)
   - build image from `Dockerfile.clang.rhel9` (compilation only, artifacts not used currently)
-- [RAN-Ubuntu18-Image-Builder](https://jenkins-oai.eurecom.fr/job/RAN-Ubuntu18-Image-Builder/)
+- [RAN-Ubuntu-Image-Builder](https://jenkins-oai.eurecom.fr/job/RAN-Ubuntu-Image-Builder/)
   https://github.com/duranta-project/openairinterface5g/labels/BUILD-ONLY
   https://github.com/duranta-project/openairinterface5g/labels/4G-LTE
   https://github.com/duranta-project/openairinterface5g/labels/5G-NR
   https://github.com/duranta-project/openairinterface5g/labels/nrUE
   - run formatting check from `ci-scripts/docker/Dockerfile.formatting.ubuntu`
-  - obelix: Ubuntu image build using docker (Note: builds Ubuntu images of newer version while pipeline is named U18!)
+  - obelix: Ubuntu image build using docker
   - base image from `Dockerfile.base.ubuntu`
   - build image from `Dockerfile.build.ubuntu`, followed by
     - target image from `Dockerfile.eNB.ubuntu`
