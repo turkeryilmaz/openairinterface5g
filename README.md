@@ -43,7 +43,7 @@ under the Collaborative Standards Software License (CSSL).
 
 The source code is distributed under [**CSSL v1.0**](LICENSE).
 Some files, such as for orchestration, are distributed under
-[MIT license](preferred)(MIT.txt). Documentation is distributed under
+[MIT license](./LICENSES/preferred/MIT.txt). Documentation is distributed under
 [Creative Commons Attribution 4.0 International license](LICENSES/preferred/CC-BY-4.0.txt).
 
 All the files without an explicit copyright header have an implicit "Copyright
