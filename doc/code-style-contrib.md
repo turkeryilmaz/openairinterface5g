@@ -158,6 +158,46 @@ Once you rebased, push the changes to the remote
 $ git push origin my-new-feature --force-with-lease # force with lease let's you only overwrite what you also have locally in origin/my-new-feature
 ```
 
+### Use of git commit trailers
+
+As noted in the [contribution guidelines](../CONTRIBUTING.md), you have to sign
+all your commits. Thus, every commit must have a git commit trailer that reads
+
+```
+Signed-off-by: Full Name <email-for-cla>
+```
+
+There are additional commit trailers that you can or should use:
+
+- `Assisted-by: <Name>:<model>`: if you have been assisted by an AI/LLM, you
+  must disclose this by indicating both the LLM name and model. Note that LLMs
+  do not author, as _the submission is under your name_ (i.e., NEVER add an LLM
+  through `Co-authored:by:`). The [Linux kernel documentation on AI
+  assistents](https://docs.kernel.org/process/coding-assistants.html)
+  might be helpful.
+- `Reviewed-by: Full Name <email>` for a person that reviewed a code. We attach
+  this trailer to the merge commit for people that reviewed a pull request.
+- `Co-authored-by: Full Name <email>` for a person that significantly
+  contributed to a commit and has co-authorship.
+- `Fixes: <commit> ("<title>")` if a given commit fixes bug in an earlier,
+  referenced commit. For ease-of-use, please include the commit title, and only
+  the commit SHA, not a link.
+- `Closes: #Issue` if a specific commit closes a bug. If the pull request
+  description includes this, we add this to the merge commit.
+- `Reported-by: Full Name <email>` if a person reported a bug or other useful
+  information that led to this commit.
+- `Tested-By: Full Name <email>` if a person tested a given patch.
+
+This list is non-exhaustive, and you might attach more trailers. Please also
+check the documentation via `man git-interpret-trailers`, and note that the
+general free-form format is (from the documentation):
+
+```
+   key: value
+
+This means that the trimmed <key> and <value> will be separated by ": " (one colon followed by one space).
+```
+
 ## Pull Requests
 
 A pull request (PR) can be submitted as soon as the code is considered stable
