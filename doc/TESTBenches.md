@@ -275,14 +275,6 @@ information on how the images are built.
   - FHI 7.2 testing with 40 MHz, 4x4 MIMO configuration and 100 MHz, 2x2 MIMO configuration
   - FHI 7.2 Configuration and Performance Management via NETCONF session of an O-RU
 
-### RAN-CI-NSA-Trigger
-
-***DEFUNCT***: longer-running over-the-air LTE, NSA, and SA tests. To be integrated into RAN-Container-Parent.
-
-- [RAN-NSA-2x2-Module-OAIEPC](https://jenkins-oai.eurecom.fr/job/RAN-NSA-2x2-Module-OAIEPC/)
-  - obelix + N310 (eNB), asterix + N310 (gNB), nrmodule2 + Quectel, porcepix w/ Magma EPC
-  - LTE 2x2 and NR 2x2 (non-standalone)
-
 ## How to reproduce CI results
 
 The CI builds docker images at the beginning of every test run. To see the
