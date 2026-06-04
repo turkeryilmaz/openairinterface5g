@@ -136,7 +136,7 @@ class TestDeploymentMethods(unittest.TestCase):
 
 	def test_create_workspace(self):
 		self.cont.workspace = tempfile.mkdtemp()
-		self.cont.repository = "https://gitlab.eurecom.fr/oai/openairinterface5g.git"
+		self.cont.repository = "https://github.com/duranta-project/openairinterface5g.git"
 		self.cont.branch = "develop"
 		ws = self.cont.Create_Workspace(self.node, self.html)
 		with cls_cmd.LocalCmd() as cmd:

@@ -15,7 +15,7 @@ sudo apt-get install git
 
 ## Clone the Git repository (for OAI Users without login to gitlab server)
 
-The [openairinterface5g repository](https://gitlab.eurecom.fr/oai/openairinterface5g.git)
+The [openairinterface5g repository](https://github.com/duranta-project/openairinterface5g.git)
 holds the source code for the RAN (4G and 5G).
 
 ### All users, anonymous access
@@ -23,7 +23,7 @@ holds the source code for the RAN (4G and 5G).
 Clone the RAN repository:
 
 ```shell
-git clone https://gitlab.eurecom.fr/oai/openairinterface5g.git
+git clone https://github.com/duranta-project/openairinterface5g.git
 ```
 
 ### For contributors
@@ -46,7 +46,7 @@ More information can be found in [the contributing page](../CONTRIBUTING.md).
   recommended and default branch.**
 - `master`: contains a known stable version.
 
-You can find the latest stable tag release [here](https://gitlab.eurecom.fr/oai/openairinterface5g/tags).
+You can find the latest stable tag release [here](https://github.com/duranta-project/openairinterface5g/releases).
 
 The tag naming conventions are:
 
