@@ -58,6 +58,9 @@ A number of high-level comments:
   put output variables (via a pointer) last
 - Do not do premature optimization; measure the code before writing SIMD
   instructions by hand, and measure again to show it is faster.
+- Avoid variables marked with `extern`. Function prototypes must be in one
+  unique header file that should be included by all source files that define
+  this function or use it.
 
 If in doubt, check out code that has been recently written (e.g., use the pull
 requests page to check for code that has recently been added) and follow that
