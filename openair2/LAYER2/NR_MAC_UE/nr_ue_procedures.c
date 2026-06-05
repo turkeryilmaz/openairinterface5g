@@ -1953,333 +1953,245 @@ bool check_overlapping_resources(PUCCH_sched_t *pucch, int j, int o)
     return true;
 }
 
-// 38.213 section 9.2.5
-void merge_resources(PUCCH_sched_t *res, int num_res, NR_PUCCH_Config_t *pucch_Config)
+/* Helpers for PUCCH resource multiplexing. */
+
+static bool is_f0_or_f1(const NR_PUCCH_Resource_t *r)
 {
-  PUCCH_sched_t empty = {0};
-  for (int i = 0; i < num_res - 1; i++) {
-    NR_PUCCH_Resource_t *curr_resource = res[i].pucch_resource;
-    NR_PUCCH_Resource_t *next_resource = res[i + 1].pucch_resource;
-    switch (curr_resource->format.present) {
-      case NR_PUCCH_Resource__format_PR_format0:
-        switch (next_resource->format.present) {
-          case NR_PUCCH_Resource__format_PR_format0:
-            if (res[i].n_sr > 0 && res[i].n_harq == 0 && res[i + 1].n_sr == 0 && res[i + 1].n_harq > 0) {
-              // we multiplex SR and HARQ in the HARQ resource
-              res[i + 1].n_sr = res[i].n_sr;
-              res[i + 1].sr_payload = res[i].sr_payload;
-              res[i] = empty;
-            } else if (res[i].n_sr == 0 && res[i].n_harq > 0 && res[i + 1].n_sr > 0 && res[i + 1].n_harq == 0) {
-              // we multiplex SR and HARQ in the HARQ resource and move it to the i+1 spot
-              res[i].n_sr = res[i + 1].n_sr;
-              res[i].sr_payload = res[i + 1].sr_payload;
-              res[i + 1] = res[i];
-              res[i] = empty;
-            } else
-              AssertFatal(
-                  false,
-                  "We cannot multiplex more than 1 SR into a PUCCH F0 and we don't expect more than 1 PUCCH with HARQ per slot\n");
-            break;
-          case NR_PUCCH_Resource__format_PR_format1:
-            if (res[i].n_sr > 0 && res[i].n_harq == 0 && res[i + 1].n_sr == 0 && res[i + 1].n_harq > 0)
-              // we transmit only HARQ in F1
-              res[i] = empty;
-            else if (res[i].n_sr == 0 && res[i].n_harq > 0 && res[i + 1].n_sr > 0 && res[i + 1].n_harq == 0) {
-              // we multiplex SR and HARQ in the HARQ F0 resource and move it to the i+1 spot
-              res[i].n_sr = res[i + 1].n_sr;
-              res[i].sr_payload = res[i + 1].sr_payload;
-              res[i + 1] = res[i];
-              res[i] = empty;
-            } else
-              AssertFatal(
-                  false,
-                  "We cannot multiplex more than 1 SR into a PUCCH F0 and we don't expect more than 1 PUCCH with HARQ per slot\n");
-            break;
-          case NR_PUCCH_Resource__format_PR_format2:
-          case NR_PUCCH_Resource__format_PR_format3:
-          case NR_PUCCH_Resource__format_PR_format4:
-            if (res[i].n_sr > 0 && res[i].n_harq == 0) {
-              AssertFatal(res[i + 1].n_sr == 0, "We don't support multiple SR in a slot\n");
-              // we multiplex SR in the F2 or above resource
-              res[i + 1].n_sr = res[i].n_sr;
-              res[i + 1].sr_payload = res[i].sr_payload;
-              res[i] = empty;
-            } else if (res[i].n_harq > 0) {
-              AssertFatal(res[i + 1].n_harq == 0, "The standard doesn't allow for more the 1 PUCCH in a slot with HARQ\n");
-              if (check_mux_acknack_csi(next_resource, pucch_Config)) {
-                // we multiplex what in F0 to CSI resource
-                if (res[i + 1].n_sr == 0) {
-                  res[i + 1].n_sr = res[i].n_sr;
-                  res[i + 1].sr_payload = res[i].sr_payload;
-                } else
-                  AssertFatal(res[i].n_sr == 0, "We don't support more than 1 SR in a slot\n");
-                res[i + 1].n_harq = res[i].n_harq;
-                res[i + 1].ack_payload = res[i].ack_payload;
-                res[i] = empty;
-              } else {
-                // if we can't multiplex HARQ and CSI we discard CSI
-                if (res[i + 1].n_sr == 0) {
-                  res[i + 1] = res[i];
-                  res[i] = empty;
-                } else {
-                  AssertFatal(res[i].n_sr == 0, "We don't support more than 1 SR in a slot\n");
-                  // we take SR from F2 or above into F0 and drop CSI
-                  res[i].n_sr = res[i + 1].n_sr;
-                  res[i].sr_payload = res[i + 1].sr_payload;
-                  res[i + 1] = res[i];
-                  res[i] = empty;
-                }
-              }
-            }
-            break;
-          default:
-            AssertFatal(false, "Invalid PUCCH format %d\n", next_resource->format.present);
-        }
-        break;
-      case NR_PUCCH_Resource__format_PR_format1:
-        switch (next_resource->format.present) {
-          case NR_PUCCH_Resource__format_PR_format0:
-            if (res[i].n_sr > 0 && res[i].n_harq == 0 && res[i + 1].n_sr == 0 && res[i + 1].n_harq > 0) {
-              // we multiplex SR and HARQ in the HARQ F0 resource and move it to the i+1 spot
-              res[i + 1].n_sr = res[i].n_sr;
-              res[i + 1].sr_payload = res[i].sr_payload;
-              res[i] = empty;
-            } else if (res[i].n_sr == 0 && res[i].n_harq > 0 && res[i + 1].n_sr > 0 && res[i + 1].n_harq == 0) {
-              // we transmit only HARQ in F1
-              res[i + 1] = res[i];
-              res[i] = empty;
-            } else
-              AssertFatal(
-                  false,
-                  "We cannot multiplex more than 1 SR into a PUCCH F0 and we don't expect more than 1 PUCCH with HARQ per slot\n");
-            break;
-          case NR_PUCCH_Resource__format_PR_format1:
-            if (res[i].n_sr > 0 && res[i].n_harq == 0 && res[i + 1].n_sr == 0 && res[i + 1].n_harq > 0) {
-              if (res[i].sr_payload == 0) {
-                // negative SR -> transmit HARQ only in HARQ resource
-                res[i] = empty;
-              } else {
-                // positive SR -> transmit HARQ only in SR resource
-                res[i].n_harq = res[i + 1].n_harq;
-                res[i].ack_payload = res[i + 1].ack_payload;
-                res[i].n_sr = 0;
-                res[i].sr_payload = 0;
-                res[i + 1] = res[i];
-                res[i] = empty;
-              }
-            } else if (res[i].n_sr == 0 && res[i].n_harq > 0 && res[i + 1].n_sr > 0 && res[i + 1].n_harq == 0) {
-              if (res[i].sr_payload == 0) {
-                // negative SR -> transmit HARQ only in HARQ resource
-                res[i + 1] = res[i];
-                res[i] = empty;
-              } else {
-                // positive SR -> transmit HARQ only in SR resource
-                res[i + 1].n_harq = res[i].n_harq;
-                res[i + 1].ack_payload = res[i].ack_payload;
-                res[i + 1].n_sr = 0;
-                res[i + 1].sr_payload = 0;
-                res[i] = empty;
-              }
-            } else
-              AssertFatal(
-                  false,
-                  "We cannot multiplex more than 1 SR into a PUCCH F0 and we don't expect more than 1 PUCCH with HARQ per slot\n");
-            break;
-          case NR_PUCCH_Resource__format_PR_format2:
-          case NR_PUCCH_Resource__format_PR_format4:
-          case NR_PUCCH_Resource__format_PR_format3:
-            if (res[i].n_sr > 0 && res[i].n_harq == 0) {
-              AssertFatal(res[i + 1].n_sr == 0, "We don't support multiple SR in a slot\n");
-              // we multiplex SR in the F2 or above resource
-              res[i + 1].n_sr = res[i].n_sr;
-              res[i + 1].sr_payload = res[i].sr_payload;
-              res[i] = empty;
-            } else if (res[i].n_harq > 0) {
-              AssertFatal(res[i + 1].n_harq == 0, "The standard doesn't allow for more the 1 PUCCH in a slot with HARQ\n");
-              if (check_mux_acknack_csi(next_resource, pucch_Config)) {
-                // we multiplex what in F0 to CSI resource
-                if (res[i + 1].n_sr == 0) {
-                  res[i + 1].n_sr = res[i].n_sr;
-                  res[i + 1].sr_payload = res[i].sr_payload;
-                } else
-                  AssertFatal(res[i].n_sr == 0, "We don't support more than 1 SR in a slot\n");
-                res[i + 1].n_harq = res[i].n_harq;
-                res[i + 1].ack_payload = res[i].ack_payload;
-                res[i] = empty;
-              } else {
-                // if we can't multiplex HARQ and CSI we discard CSI
-                if (res[i + 1].n_sr == 0) {
-                  res[i + 1] = res[i];
-                  res[i] = empty;
-                } else {
-                  AssertFatal(res[i].n_sr == 0, "We don't support more than 1 SR in a slot\n");
-                  if (res[i + 1].n_sr > 0)
-                    LOG_E(MAC, "Not sure what to do here because you can't easily mux HARQ and SR in F1\n");
-                  res[i + 1] = res[i];
-                  res[i] = empty;
-                }
-              }
-            }
-            break;
-          default:
-            AssertFatal(false, "Invalid PUCCH format %d\n", next_resource->format.present);
-        }
-        break;
-      case NR_PUCCH_Resource__format_PR_format2:
-      case NR_PUCCH_Resource__format_PR_format4:
-      case NR_PUCCH_Resource__format_PR_format3:
-        switch (next_resource->format.present) {
-          case NR_PUCCH_Resource__format_PR_format0:
-            if (res[i + 1].n_sr > 0 && res[i + 1].n_harq == 0) {
-              AssertFatal(res[i].n_sr == 0, "We don't support multiple SR in a slot\n");
-              // we multiplex SR in the F2 or above resource
-              res[i].n_sr = res[i + 1].n_sr;
-              res[i].sr_payload = res[i + 1].sr_payload;
-              res[i + 1] = res[i];
-              res[i] = empty;
-            } else if (res[i + 1].n_harq > 0) {
-              AssertFatal(res[i].n_harq == 0, "The standard doesn't allow for more the 1 PUCCH in a slot with HARQ\n");
-              if (check_mux_acknack_csi(curr_resource, pucch_Config)) {
-                // we multiplex what in F0 to CSI resource
-                if (res[i].n_sr == 0) {
-                  res[i].n_sr = res[i + 1].n_sr;
-                  res[i].sr_payload = res[i + 1].sr_payload;
-                } else
-                  AssertFatal(res[i + 1].n_sr == 0, "We don't support more than 1 SR in a slot\n");
-                res[i].n_harq = res[i + 1].n_harq;
-                res[i].ack_payload = res[i + 1].ack_payload;
-                res[i + 1] = res[i];
-                res[i] = empty;
-              } else {
-                // if we can't multiplex HARQ and CSI we discard CSI
-                if (res[i].n_sr == 0)
-                  res[i] = empty;
-                else {
-                  AssertFatal(res[i + 1].n_sr == 0, "We don't support more than 1 SR in a slot\n");
-                  // we take SR from F2 or above into F0 and drop CSI
-                  res[i + 1].n_sr = res[i].n_sr;
-                  res[i + 1].sr_payload = res[i].sr_payload;
-                  res[i] = empty;
-                }
-              }
-            }
-            break;
-          case NR_PUCCH_Resource__format_PR_format1:
-            if (res[i + 1].n_sr > 0 && res[i + 1].n_harq == 0) {
-              AssertFatal(res[i].n_sr == 0, "We don't support multiple SR in a slot\n");
-              // we multiplex SR in the F2 or above resource
-              res[i].n_sr = res[i + 1].n_sr;
-              res[i].sr_payload = res[i + 1].sr_payload;
-              res[i + 1] = res[i];
-              res[i] = empty;
-            } else if (res[i + 1].n_harq > 0) {
-              AssertFatal(res[i].n_harq == 0, "The standard doesn't allow for more the 1 PUCCH in a slot with HARQ\n");
-              if (check_mux_acknack_csi(curr_resource, pucch_Config)) {
-                // we multiplex what in F0 to CSI resource
-                if (res[i].n_sr == 0) {
-                  res[i].n_sr = res[i + 1].n_sr;
-                  res[i].sr_payload = res[i + 1].sr_payload;
-                } else
-                  AssertFatal(res[i + 1].n_sr == 0, "We don't support more than 1 SR in a slot\n");
-                res[i].n_harq = res[i + 1].n_harq;
-                res[i].ack_payload = res[i + 1].ack_payload;
-                res[i + 1] = res[i];
-                res[i] = empty;
-              } else {
-                // if we can't multiplex HARQ and CSI we discard CSI
-                if (res[i].n_sr == 0)
-                  res[i] = empty;
-                else {
-                  AssertFatal(res[i + 1].n_sr == 0, "We don't support more than 1 SR in a slot\n");
-                  if (res[i].n_sr > 0)
-                    LOG_E(MAC, "Not sure what to do here because you can't easily mux HARQ and SR in F1\n");
-                  res[i] = empty;
-                }
-              }
-            }
-            break;
-          case NR_PUCCH_Resource__format_PR_format2:
-          case NR_PUCCH_Resource__format_PR_format4:
-          case NR_PUCCH_Resource__format_PR_format3:
-            if (res[i + 1].csi_payload.p1_bits > 0) {
-              AssertFatal(res[i].csi_payload.p1_bits == 0, "Multiplexing multiple CSI report in a single PUCCH not supported yet\n");
-              AssertFatal(res[i].n_harq > 0 && res[i + 1].n_harq == 0,
-                          "There is CSI in next F2 or above resource, since there is no CSI in current one, we expect HARQ in "
-                          "there and not in next\n");
-              // the UE expects to be provided a same configuration for simultaneousHARQ-ACK-CSI each of PUCCH formats 2, 3, and 4
-              // we can check next or current
-              if (check_mux_acknack_csi(next_resource, pucch_Config)) {
-                // We need to use HARQ resource
-                if (res[i + 1].n_sr > 0) {
-                  AssertFatal(res[i].n_sr == 0, "We don't support more than 1 SR in a slot\n");
-                  res[i].n_sr = res[i + 1].n_sr;
-                  res[i].sr_payload = res[i + 1].sr_payload;
-                }
-                res[i].csi_payload.p1_bits = res[i + 1].csi_payload.p1_bits;
-                res[i].csi_payload.part1_payload = res[i + 1].csi_payload.part1_payload;
-                res[i + 1] = res[i];
-                res[i] = empty;
-              } else {
-                if (res[i].n_sr > 0) {
-                  AssertFatal(res[i + 1].n_sr == 0, "We don't support more than 1 SR in a slot\n");
-                  // if we can't multiplex HARQ and CSI we discard CSI
-                  res[i + 1] = res[i];
-                  res[i] = empty;
-                } else if (res[i + 1].n_sr == 0) {
-                  // if we can't multiplex HARQ and CSI we discard CSI
-                  res[i + 1] = res[i];
-                  res[i] = empty;
-                } else {
-                  // we move SR (assuming it was previously multiplexed with CSI) into HARQ resource and discard CSI
-                  res[i].n_sr = res[i + 1].n_sr;
-                  res[i].sr_payload = res[i + 1].sr_payload;
-                  res[i + 1] = res[i];
-                  res[i] = empty;
-                }
-              }
-            } else if (res[i].csi_payload.p1_bits > 0) {
-              AssertFatal(res[i + 1].csi_payload.p1_bits == 0, "Multiplexing multiple CSI report in a single PUCCH not supported yet\n");
-              AssertFatal(res[i + 1].n_harq > 0 && res[i].n_harq == 0,
-                          "There is CSI in next F2 or above resource, since there is no CSI in current one, we expect HARQ in "
-                          "there and not in next\n");
-              // the UE expects to be provided a same configuration for simultaneousHARQ-ACK-CSI each of PUCCH formats 2, 3, and 4
-              // we can check next or current
-              if (check_mux_acknack_csi(next_resource, pucch_Config)) {
-                // We need to use HARQ resource
-                if (res[i].n_sr > 0) {
-                  AssertFatal(res[i + 1].n_sr == 0, "We don't support more than 1 SR in a slot\n");
-                  res[i + 1].n_sr = res[i].n_sr;
-                  res[i + 1].sr_payload = res[i].sr_payload;
-                }
-                res[i + 1].csi_payload.p1_bits = res[i].csi_payload.p1_bits;
-                res[i + 1].csi_payload.part1_payload = res[i].csi_payload.part1_payload;
-                res[i] = empty;
-              } else {
-                if (res[i + 1].n_sr > 0) {
-                  AssertFatal(res[i].n_sr == 0, "We don't support more than 1 SR in a slot\n");
-                  // if we can't multiplex HARQ and CSI we discard CSI
-                  res[i] = empty;
-                } else if (res[i].n_sr == 0) {
-                  // if we can't multiplex HARQ and CSI we discard CSI
-                  res[i] = empty;
-                } else {
-                  // we move SR (assuming it was previously multiplexed with CSI) into HARQ resource and discard CSI
-                  res[i + 1].n_sr = res[i].n_sr;
-                  res[i + 1].sr_payload = res[i].sr_payload;
-                  res[i] = empty;
-                }
-              }
-            } else
-              AssertFatal(false, "We expect at least one of the 2 PUCCH F2 or above resources with CSI\n");
-            break;
-          default:
-            AssertFatal(false, "Invalid PUCCH format %d\n", next_resource->format.present);
-        }
-        break;
-      default:
-        AssertFatal(false, "Invalid PUCCH format %d\n", curr_resource->format.present);
-    }
+  return r->format.present == NR_PUCCH_Resource__format_PR_format0 || r->format.present == NR_PUCCH_Resource__format_PR_format1;
+}
+
+static bool is_f1(const NR_PUCCH_Resource_t *r)
+{
+  return r->format.present == NR_PUCCH_Resource__format_PR_format1;
+}
+
+static bool is_f2_or_above(const NR_PUCCH_Resource_t *r)
+{
+  return r->format.present == NR_PUCCH_Resource__format_PR_format2 || r->format.present == NR_PUCCH_Resource__format_PR_format3
+         || r->format.present == NR_PUCCH_Resource__format_PR_format4;
+}
+
+/*
+ * Move the payload fields of src into dst, then zero src.
+ * Does NOT touch pucch_resource pointers.
+ */
+static void absorb_payload(PUCCH_sched_t *dst, PUCCH_sched_t *src)
+{
+  if (src->n_sr > 0 && dst->n_sr == 0) {
+    dst->n_sr = src->n_sr;
+    dst->sr_payload = src->sr_payload;
+    src->n_sr = 0;
+    src->sr_payload = 0;
   }
+  if (src->n_harq > 0 && dst->n_harq == 0) {
+    dst->n_harq = src->n_harq;
+    dst->ack_payload = src->ack_payload;
+    src->n_harq = 0;
+    src->ack_payload = 0;
+  }
+  if (src->csi_payload.p1_bits > 0 && dst->csi_payload.p1_bits == 0) {
+    dst->csi_payload = src->csi_payload;
+    src->csi_payload = (typeof(src->csi_payload)){0};
+  }
+}
+
+/*
+ * Keep 'winner', place it in index i+1, clear index i.
+ * winner must point to either res[i] or res[i+1].
+ */
+static void keep(PUCCH_sched_t *res, int i, PUCCH_sched_t *winner)
+{
+  static const PUCCH_sched_t empty = {0};
+  if (winner == &res[i]) {
+    res[i + 1] = res[i];
+  }
+  /* if winner is already res[i+1] there's nothing to copy */
+  res[i] = empty;
+}
+
+/* SR + HARQ merging for F0
+ *
+ * For F0 (and when F0 holds HARQ and the other index holds SR):
+ * the HARQ resource wins; copy SR into it.
+ */
+static void merge_sr_harq_into_harq_resource(PUCCH_sched_t *res, int i, PUCCH_sched_t *harq_sch, PUCCH_sched_t *sr_sch)
+{
+  AssertFatal(harq_sch->n_harq > 0 && sr_sch->n_sr > 0, "Expected one HARQ-only and one SR-only resource\n");
+  harq_sch->n_sr = sr_sch->n_sr;
+  harq_sch->sr_payload = sr_sch->sr_payload;
+  keep(res, i, harq_sch);
+}
+
+/*
+ * Positive-SR rule for F1+F1: HARQ goes into the SR resource.
+ */
+static void merge_f1_f1_positive_sr(PUCCH_sched_t *res, int i, PUCCH_sched_t *harq_sch, PUCCH_sched_t *sr_sch)
+{
+  sr_sch->n_harq = harq_sch->n_harq;
+  sr_sch->ack_payload = harq_sch->ack_payload;
+  sr_sch->n_sr = 0;
+  sr_sch->sr_payload = 0;
+  keep(res, i, sr_sch);
+}
+
+/* Merge HARQ (low format) with CSI (F2+)
+ *
+ * harq_res: resource carrying HARQ (F0 or F1), lives in *harq_sch
+ * csi_slot: resource carrying CSI (F2+),       lives in *csi_sch
+ *
+ * If mux is allowed -> merge everything into the CSI resource.
+ * If mux is denied  -> drop CSI; HARQ (+ any SR) survives.
+ */
+static void merge_harq_with_csi(PUCCH_sched_t *res,
+                                int i,
+                                PUCCH_sched_t *harq_sch,
+                                PUCCH_sched_t *csi_sch,
+                                NR_PUCCH_Resource_t *csi_res,
+                                NR_PUCCH_Config_t *pucch_Config)
+{
+  AssertFatal(harq_sch->n_harq > 0, "Expected HARQ in harq_sch\n");
+  AssertFatal(csi_sch->n_harq == 0, "Standard disallows >1 PUCCH with HARQ per slot\n");
+
+  if (check_mux_acknack_csi(csi_res, pucch_Config)) {
+    /* merge HARQ (and any SR from harq_sch) into the CSI resource */
+    absorb_payload(csi_sch, harq_sch);
+    keep(res, i, csi_sch);
+  } else {
+    /* drop CSI; HARQ resource survives */
+    if (csi_sch->n_sr > 0) {
+      /* pull SR that was co-located with CSI over to the HARQ resource */
+      AssertFatal(harq_sch->n_sr == 0, "We don't support more than 1 SR in a slot\n");
+      if (is_f1(harq_sch->pucch_resource)) {
+        LOG_E(MAC, "Not sure what to do here\n");
+      }
+      harq_sch->n_sr = csi_sch->n_sr;
+      harq_sch->sr_payload = csi_sch->sr_payload;
+    }
+    keep(res, i, harq_sch);
+  }
+}
+
+/* Merge two F2+ resources
+ *
+ * One carries CSI, the other carries HARQ (enforced by AssertFatal).
+ */
+static void merge_f2p_f2p(PUCCH_sched_t *res, int i, NR_PUCCH_Config_t *pucch_Config)
+{
+  PUCCH_sched_t *harq_sch, *csi_sch;
+
+  if (res[i + 1].csi_payload.p1_bits > 0) {
+    AssertFatal(res[i].csi_payload.p1_bits == 0, "Multiplexing multiple CSI reports in a single PUCCH not supported yet\n");
+    AssertFatal(res[i].n_harq > 0 && res[i + 1].n_harq == 0, "Expected HARQ in res[i] when CSI is in res[i+1]\n");
+    harq_sch = &res[i];
+    csi_sch = &res[i + 1];
+  } else {
+    AssertFatal(res[i].csi_payload.p1_bits > 0, "We expect at least one of the 2 PUCCH F2+ resources to carry CSI\n");
+    AssertFatal(res[i + 1].csi_payload.p1_bits == 0, "Multiplexing multiple CSI reports in a single PUCCH not supported yet\n");
+    AssertFatal(res[i + 1].n_harq > 0 && res[i].n_harq == 0, "Expected HARQ in res[i+1] when CSI is in res[i]\n");
+    harq_sch = &res[i + 1];
+    csi_sch = &res[i];
+  }
+
+  /* re-use the HARQ resource pointer for the mux check (standard says
+   * simultaneousHARQ-ACK-CSI must be the same for F2/3/4, so either works) */
+  merge_harq_with_csi(res, i, harq_sch, csi_sch, harq_sch->pucch_resource, pucch_Config);
+}
+
+/* Top-level pair merger */
+
+static void merge_pair(PUCCH_sched_t *res, int i, NR_PUCCH_Config_t *pucch_Config)
+{
+  static const PUCCH_sched_t empty = {0};
+
+  NR_PUCCH_Resource_t *cr = res[i].pucch_resource;
+  NR_PUCCH_Resource_t *nr = res[i + 1].pucch_resource;
+
+  bool curr_low = is_f0_or_f1(cr);
+  bool next_low = is_f0_or_f1(nr);
+  bool curr_high = is_f2_or_above(cr);
+  bool next_high = is_f2_or_above(nr);
+
+  /* both low-format */
+  if (curr_low && next_low) {
+    bool curr_sr = res[i].n_sr > 0 && res[i].n_harq == 0;
+    bool curr_harq = res[i].n_sr == 0 && res[i].n_harq > 0;
+    bool next_sr = res[i + 1].n_sr > 0 && res[i + 1].n_harq == 0;
+    bool next_harq = res[i + 1].n_sr == 0 && res[i + 1].n_harq > 0;
+
+    AssertFatal(curr_sr != curr_harq && next_sr != next_harq,
+                "Expected one SR-only and one HARQ-only resource in the low-format pair\n");
+    AssertFatal(curr_sr != next_sr, "We cannot have two SR resources or two HARQ resources here\n");
+
+    bool f1_sr = is_f1(curr_sr ? cr : nr);
+    bool f1_harq = is_f1(curr_harq ? cr : nr);
+
+    PUCCH_sched_t *sr_sch = curr_sr ? &res[i] : &res[i + 1];
+    PUCCH_sched_t *harq_sch = curr_harq ? &res[i] : &res[i + 1];
+
+    if (!f1_sr && !f1_harq) {
+      /* F0+F0 or F0+F1(SR) + F0(HARQ): HARQ resource wins, absorb SR */
+      merge_sr_harq_into_harq_resource(res, i, harq_sch, sr_sch);
+    } else if (f1_harq && !f1_sr) {
+      /* F1(HARQ) + F0(SR): HARQ resource wins, SR just disappears (only HARQ sent) */
+      keep(res, i, harq_sch);
+    } else if (!f1_harq && f1_sr) {
+      /* F0(HARQ) + F1(SR) or F1(SR) + F0(HARQ): HARQ resource wins */
+      merge_sr_harq_into_harq_resource(res, i, harq_sch, sr_sch);
+    } else {
+      /* F1+F1 */
+      if (sr_sch->sr_payload == 0) {
+        /* negative SR -> HARQ only in HARQ resource */
+        keep(res, i, harq_sch);
+      } else {
+        /* positive SR -> HARQ only in SR resource */
+        merge_f1_f1_positive_sr(res, i, harq_sch, sr_sch);
+      }
+    }
+    return;
+  }
+
+  /* low + high */
+  if (curr_low && next_high) {
+    if (res[i].n_sr > 0 && res[i].n_harq == 0) {
+      /* SR in low format -> into high-format resource */
+      AssertFatal(res[i + 1].n_sr == 0, "We don't support multiple SR in a slot\n");
+      res[i + 1].n_sr = res[i].n_sr;
+      res[i + 1].sr_payload = res[i].sr_payload;
+      res[i] = empty;
+    } else if (res[i].n_harq > 0) {
+      merge_harq_with_csi(res, i, &res[i], &res[i + 1], nr, pucch_Config);
+    }
+    return;
+  }
+
+  /* high + low */
+  if (curr_high && next_low) {
+    if (res[i + 1].n_sr > 0 && res[i + 1].n_harq == 0) {
+      /* SR in low format -> into high-format resource */
+      AssertFatal(res[i].n_sr == 0, "We don't support multiple SR in a slot\n");
+      res[i].n_sr = res[i + 1].n_sr;
+      res[i].sr_payload = res[i + 1].sr_payload;
+      keep(res, i, &res[i]);
+    } else if (res[i + 1].n_harq > 0) {
+      merge_harq_with_csi(res, i, &res[i + 1], &res[i], cr, pucch_Config);
+    }
+    return;
+  }
+
+  /* both high-format */
+  if (curr_high && next_high) {
+    merge_f2p_f2p(res, i, pucch_Config);
+    return;
+  }
+
+  AssertFatal(false, "Invalid PUCCH format combination: curr=%d next=%d\n", cr->format.present, nr->format.present);
+}
+
+// 38.213 section 9.2.5
+static void merge_resources(PUCCH_sched_t *res, int num_res, NR_PUCCH_Config_t *pucch_Config)
+{
+  for (int i = 0; i < num_res - 1; i++)
+    merge_pair(res, i, pucch_Config);
 }
 
 void multiplex_pucch_resource(NR_UE_MAC_INST_t *mac, PUCCH_sched_t *pucch, int num_res)
