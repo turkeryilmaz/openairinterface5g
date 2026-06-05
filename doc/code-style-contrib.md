@@ -78,15 +78,8 @@ that might be useful; if this document and `.clang-format` contradict,
 
 You should be familiar with git branching, merging, and rebasing.
 
-The target branch for every contribution, and the general development branch,
-is `develop`. Typically every week, we collect multiple pull requests in an
-"integration branch" that gets tested by the CI individually. If everything is
-fine, we merge to develop and tag it `YYYY.wXX` with `YYYY` the current year,
-and `XX` the week number.
-
-Note that the above includes a lot of merging, making the Git history difficult
-to understand. To not needlessly increase the complexity, please keep your
-branch history linear (i.e., no merges).  Each commit should be able to
+To make branches simple to read for a reviewer, developer, or anyone interested
+in the code, please keep your branch history linear (i.e., no merges).  Each commit should be able to
 compile, and ideally be able to run an End-to-End test of gNB/UE using RFsim.
 This can be achieved by making each commit a **logical change** to be applied to
 the code base, which also facilitates the review of your changes. The Linux
@@ -112,14 +105,16 @@ A commit message can (and often should) take several lines.  One-line commit
 messages should be reserved for very simple changes. If in doubt, prefer to
 explain your work more than less.
 
-The workflow of the integration branch has its weaknesses; we might revise this
-in the future towards a workflow using rebase to integrate work of different
-people, in order to simplify the history, and allow the usage of tools such as
-`git bisect` to search for bugs.
+### Release Strategy
 
-After some time, we make a stable release. For this, we simply merge develop
-into master, and give a semantic versioning number, e.g., `v1.1`. We target to
-make releases bi-yearly.
+The target branch for every contribution, and the general development branch,
+is `develop`. Typically every week, we collect multiple pull requests in an
+"integration branch" that gets tested by the CI individually. If everything is
+fine, we merge to develop and tag it `YYYY.wXX` with `YYYY` the current year,
+and `XX` the week number.
+
+After some time, we make a stable release using a semantic version number,
+e.g., `v3.0`. We target to make releases bi-yearly.
 
 ### How to manage your own branch
 
