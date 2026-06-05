@@ -286,6 +286,7 @@ typedef struct {
 typedef struct {
   NR_PUCCH_Resource_t *pucch_resource;
   uint32_t ack_payload;
+  int harq_ack_pucch_res_ind;
   uint8_t sr_payload;
   nfapi_nr_ue_csi_payload_t csi_payload;
   int n_sr;

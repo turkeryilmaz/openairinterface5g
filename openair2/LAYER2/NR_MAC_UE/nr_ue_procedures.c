@@ -2034,12 +2034,12 @@ static void merge_f1_f1_positive_sr(PUCCH_sched_t *res, int i, PUCCH_sched_t *ha
   keep(res, i, sr_sch);
 }
 
-/* Merge HARQ (low format) with CSI (F2+)
+/* Merge HARQ (any format) with CSI (F2+)
  *
- * harq_res: resource carrying HARQ (F0 or F1), lives in *harq_sch
- * csi_slot: resource carrying CSI (F2+),       lives in *csi_sch
+ * harq_res: resource carrying HARQ (any format), lives in *harq_sch
+ * csi_slot: resource carrying CSI (F2+),         lives in *csi_sch
  *
- * If mux is allowed -> merge everything into the CSI resource.
+ * If mux is allowed -> merge everything into the HARQ resource after reselecting the resource set.
  * If mux is denied  -> drop CSI; HARQ (+ any SR) survives.
  */
 static void merge_harq_with_csi(PUCCH_sched_t *res,
@@ -2053,9 +2053,23 @@ static void merge_harq_with_csi(PUCCH_sched_t *res,
   AssertFatal(csi_sch->n_harq == 0, "Standard disallows >1 PUCCH with HARQ per slot\n");
 
   if (check_mux_acknack_csi(csi_res, pucch_Config)) {
-    /* merge HARQ (and any SR from harq_sch) into the CSI resource */
-    absorb_payload(csi_sch, harq_sch);
-    keep(res, i, csi_sch);
+    /* merge CSI (and any SR from csi_sch) into the HARQ resource */
+    absorb_payload(harq_sch, csi_sch);
+
+    if (!is_f2_or_above(harq_sch->pucch_resource)) {
+      /* A PUCCH resource with CSI report means format >= 2. Hence the resource for
+      multiplexed HARQ ACK and CSI report is chosen by HARQ ACK resource indicator
+      from resource set id >= 1. As per 38.213 9.5.2. */
+      int o_uci = harq_sch->n_harq + harq_sch->csi_payload.p1_bits + harq_sch->csi_payload.p2_bits;
+      int res_set_id = find_pucch_resource_set(pucch_Config, o_uci);
+      AssertFatal(res_set_id > 0, "Resource set id can't be 0 when multiplexing CSI and HARQ ACK and/or SR\n");
+      const NR_PUCCH_ResourceSet_t *res_set = pucch_Config->resourceSetToAddModList->list.array[res_set_id];
+      DevAssert(harq_sch->harq_ack_pucch_res_ind >= 0);
+      long res_id = *res_set->resourceList.list.array[harq_sch->harq_ack_pucch_res_ind];
+      harq_sch->pucch_resource = find_pucch_resource_from_list(pucch_Config->resourceToAddModList, res_id);
+    }
+
+    keep(res, i, harq_sch);
   } else {
     /* drop CSI; HARQ resource survives */
     if (csi_sch->n_sr > 0) {
@@ -2338,6 +2352,7 @@ bool get_downlink_ack(NR_UE_MAC_INST_t *mac, frame_t frame, int slot, PUCCH_sche
                         temp_ind,
                         res_ind);
             res_ind = temp_ind;
+            pucch->harq_ack_pucch_res_ind = temp_ind;
             pucch->n_CCE = current_harq->n_CCE;
             pucch->N_CCE = current_harq->N_CCE;
             LOG_D(NR_MAC,"%4d.%2d Sent %d ack on harq pid %d\n", frame, slot, current_harq->ack, dl_harq_pid);
