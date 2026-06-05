@@ -30,7 +30,7 @@ keywords:
   - 5G
 
 sources:
-  - https://gitlab.eurecom.fr/oai/openairinterface5g
+  - https://github.com/duranta-project/openairinterface5g
 
 maintainers:
   - name:  OPENAIRINTERFACE

@@ -92,7 +92,7 @@ pipeline {
             sourceBranch = selected_ref.replaceFirst("^origin/", "")
             commitID = sh(script: "git rev-parse ${selected_ref}", returnStdout: true).trim()
             echo "Found branch ${sourceBranch}, commit ${commitID}"
-            testBranch = "${sourceBranch}"
+            testBranch = "${sourceBranch}-${commitID}"
 	  }
 
           echo "CI executor node    :   ${pythonExecutor}"

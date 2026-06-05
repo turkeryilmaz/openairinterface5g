@@ -400,7 +400,7 @@ sudo ninja deinstall -C build
 Clone OAI code base in a suitable repository, here we are cloning in `~/openairinterface5g` directory,
 
 ```bash
-git clone https://gitlab.eurecom.fr/oai/openairinterface5g.git ~/openairinterface5g
+git clone https://github.com/duranta-project/openairinterface5g.git ~/openairinterface5g
 cd ~/openairinterface5g/
 ```
 
@@ -2084,7 +2084,7 @@ Compiled libraries:
 
 #### Using build_oai script
 ```bash
-git clone https://gitlab.eurecom.fr/oai/openairinterface5g.git ~/openairinterface5g
+git clone https://github.com/duranta-project/openairinterface5g.git ~/openairinterface5g
 cd ~/openairinterface5g/cmake_targets/
 ./build_oai -I  # if you never installed OAI, use this command once before the next line
 ./build_oai --install-optional-packages  # for pcre/libpcre3, libssh, and libxml2 library installation
@@ -2095,7 +2095,7 @@ PKG_CONFIG_PATH=/opt/mplane-v2/lib/pkgconfig ./build_oai --gNB --ninja -t oran_f
 
 #### Using cmake directly
 ```bash
-git clone https://gitlab.eurecom.fr/oai/openairinterface5g.git ~/openairinterface5g
+git clone https://github.com/duranta-project/openairinterface5g.git ~/openairinterface5g
 cd ~/openairinterface5g/
 mkdir build && cd build
 cmake .. -GNinja -DOAI_FHI72=ON -DOAI_FHI72_MPLANE=ON -Dxran_LOCATION=$HOME/phy/fhi_lib/lib
@@ -3705,7 +3705,7 @@ sudo ./nr-softmodem -O <without-mplane-configuration file> --thread-pool <list o
 
 ## Contact in case of questions
 
-You can ask your question on the [mailing lists](https://gitlab.eurecom.fr/oai/openairinterface5g/-/wikis/MailingList).
+You can ask your question on the [mailing lists](https://github.com/duranta-project/openairinterface5g/wiki/MailingList).
 
 Your email should contain below information:
 
@@ -3718,4 +3718,4 @@ Your email should contain below information:
 - RU Vendor and Version.
 - In case your question is related to performance, include a small description of the machine (CPU, RAM and networking card) and diagram of your testing environment. 
 - If you have any issues related to PTP or synchronization, then first check the section "Debugging PTP issues". Then share your problem with PTP version you are using, switch details and master clock.
-- Known/open issues are present on [GitLab](https://gitlab.eurecom.fr/oai/openairinterface5g/-/issues), so keep checking.
+- Known/open issues are present on [Github](https://github.com/duranta-project/openairinterface5g/issues), so keep checking.

@@ -1,0 +1,133 @@
+name: Duranta Jenkins Dispatch
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+  push:
+    branches:
+      - develop
+
+concurrency:
+  group: ${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-24.04
+
+    if: |
+      github.event.action != 'labeled' ||
+      github.event.label.name == vars.RETRIGGER_CI_LABEL
+
+    outputs:
+      protected_files_changed: ${{ steps.filter.outputs.protected }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check changed files
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            protected:
+              - 'ci-scripts/**'
+              - '.github/workflows/**'
+              - '.github/actions/**'
+
+  require-maintainer-approval:
+    needs: detect-changes
+
+    if: needs.detect-changes.outputs.protected_files_changed == 'true'
+
+    runs-on: ubuntu-24.04
+
+    environment:
+      name: ci-approval
+
+    steps:
+      - run: echo "Maintainer has approved the changes"
+
+  trigger-jenkins:
+    needs:
+      - detect-changes
+      - require-maintainer-approval
+
+    if: |
+      always() &&
+      (
+        needs.detect-changes.outputs.protected_files_changed == 'false' ||
+        needs.require-maintainer-approval.result == 'success'
+      )
+
+    runs-on: ubuntu-24.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Trigger Jenkins
+        run: |
+          # Write payload to a temp file to avoid shell escaping issues
+          cat << 'EOF' > /tmp/payload.json
+          ${{ toJson(github.event) }}
+          EOF
+
+          # Filter and send
+          jq -c 'del(.pull_request.body)' /tmp/payload.json > /tmp/filtered_payload.json
+
+          curl -X POST "https://${{ secrets.J_USER }}:${{ secrets.J_PASS }}@${{ secrets.J_URL }}" \
+            -H "Accept: */*" \
+            -H "Content-Type: application/json" \
+            -H "User-Agent: GitHub-Hookshot/${{ secrets.H_AGENT }}" \
+            -H "X-Github-Delivery: ${{ secrets.GITHUB_TOKEN }}" \
+            -H "X-Github-Event: ${{ github.event_name }}" \
+            -H "X-Github-Hook-Id: ${{ secrets.H_ID }}" \
+            -H "X-Github-Hook-Installation-Target-Id: ${{ secrets.H_TARGET }}" \
+            -H "X-Github-Hook-Installation-Target-Type: repository" \
+            --data @/tmp/filtered_payload.json
+
+      - name: Remove retrigger-ci label
+        if: always() && github.event.action == 'labeled' && github.event.label.name == vars.RETRIGGER_CI_LABEL
+        run: gh pr edit ${{ github.event.pull_request.number }} --remove-label "${{ vars.RETRIGGER_CI_LABEL }}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  welcome-first-time-contributor:
+    runs-on: ubuntu-24.04
+    if: github.event_name == 'pull_request' && github.event.action == 'opened'
+
+    steps:
+      - name: Post welcome message
+        uses: actions/first-interaction@v1
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          pr-message: |
+            Welcome @${{ github.event.pull_request.user.login }}! Thanks for opening your first PR in this project!
+
+            Here are a few things to help you get started:
+            - Read the [Contributing Guide](https://github.com/${{ github.repository }}/blob/develop/CONTRIBUTING.md) to understand our development process.
+            - Check the [issues page](https://github.com/duranta-project/openairinterface5g/issues) to see if your PR is related to an existing issue.
+            - Add a [label](https://github.com/duranta-project/openairinterface5g/labels/) to categorize your PR so reviewers can triage it faster.
+
+  pr-retrigger-ci-instructions:
+    runs-on: ubuntu-24.04
+    if: github.event_name == 'pull_request' && github.event.action == 'opened'
+
+    steps:
+      - name: Post CI retrigger instructions
+        run: |
+          gh pr comment ${{ github.event.pull_request.number }} --repo ${{ github.repository }} --body "$(cat <<'EOF'
+          The CI pipeline runs automatically when this pull request is opened or updated.
+
+          To manually retrigger the CI pipeline without making any changes to the pull request, add the https://github.com/duranta-project/openairinterface5g/labels/retrigger-ci label to this PR.
+
+          The label will be removed automatically after the pipeline is triggered.
+          EOF
+          )"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

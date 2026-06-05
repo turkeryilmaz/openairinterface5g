@@ -8,13 +8,13 @@ rm -f ${file}
 cd ../../
 python3 main.py \
   --mode=InitiateHtml \
-  --repository=https://gitlab.eurecom.fr/oai/openairinterface5g.git \
+  --repository=https://github.com/duranta-project/openairinterface5g.git \
   --branch=${branch} \
   --XMLTestFile=tests/test-runner/test.xml
 
 python3 main.py \
   --mode=TesteNB \
-  --repository=https://gitlab.eurecom.fr/oai/openairinterface5g.git \
+  --repository=https://github.com/duranta-project/openairinterface5g.git \
   --branch=${branch} \
   --ranAllowMerge=true \
   --targetBranch=develop \
