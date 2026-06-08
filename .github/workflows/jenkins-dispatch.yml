@@ -1,14 +1,15 @@
 name: Duranta Jenkins Dispatch
 
 on:
-  pull_request:
+  pull_request_target:
     types: [opened, synchronize, reopened, labeled]
+    branches: [develop]
   push:
     branches:
       - develop
 
 concurrency:
-  group: ${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  group: ${{ github.event_name }}-${{ github.event.action }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -69,6 +70,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.ref }}
 
       - name: Trigger Jenkins
         run: |
@@ -80,12 +83,18 @@ jobs:
           # Filter and send
           jq -c 'del(.pull_request.body)' /tmp/payload.json > /tmp/filtered_payload.json
 
+          # Remap pull_request_target -> pull_request for Jenkins compatibility
+          EVENT_NAME="${{ github.event_name }}"
+          if [ "$EVENT_NAME" = "pull_request_target" ]; then
+            EVENT_NAME="pull_request"
+          fi
+
           curl -X POST "https://${{ secrets.J_USER }}:${{ secrets.J_PASS }}@${{ secrets.J_URL }}" \
             -H "Accept: */*" \
             -H "Content-Type: application/json" \
             -H "User-Agent: GitHub-Hookshot/${{ secrets.H_AGENT }}" \
             -H "X-Github-Delivery: ${{ secrets.GITHUB_TOKEN }}" \
-            -H "X-Github-Event: ${{ github.event_name }}" \
+            -H "X-Github-Event: $EVENT_NAME" \
             -H "X-Github-Hook-Id: ${{ secrets.H_ID }}" \
             -H "X-Github-Hook-Installation-Target-Id: ${{ secrets.H_TARGET }}" \
             -H "X-Github-Hook-Installation-Target-Type: repository" \
@@ -99,7 +108,7 @@ jobs:
 
   welcome-first-time-contributor:
     runs-on: ubuntu-24.04
-    if: github.event_name == 'pull_request' && github.event.action == 'opened'
+    if: github.event_name == 'pull_request_target' && github.event.action == 'opened'
 
     steps:
       - name: Post welcome message
@@ -113,21 +122,3 @@ jobs:
             - Read the [Contributing Guide](https://github.com/${{ github.repository }}/blob/develop/CONTRIBUTING.md) to understand our development process.
             - Check the [issues page](https://github.com/duranta-project/openairinterface5g/issues) to see if your PR is related to an existing issue.
             - Add a [label](https://github.com/duranta-project/openairinterface5g/labels/) to categorize your PR so reviewers can triage it faster.
-
-  pr-retrigger-ci-instructions:
-    runs-on: ubuntu-24.04
-    if: github.event_name == 'pull_request' && github.event.action == 'opened'
-
-    steps:
-      - name: Post CI retrigger instructions
-        run: |
-          gh pr comment ${{ github.event.pull_request.number }} --repo ${{ github.repository }} --body "$(cat <<'EOF'
-          The CI pipeline runs automatically when this pull request is opened or updated.
-
-          To manually retrigger the CI pipeline without making any changes to the pull request, add the https://github.com/duranta-project/openairinterface5g/labels/retrigger-ci label to this PR.
-
-          The label will be removed automatically after the pipeline is triggered.
-          EOF
-          )"
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
