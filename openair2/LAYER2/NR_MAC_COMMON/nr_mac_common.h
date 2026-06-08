@@ -59,6 +59,13 @@ static const uint16_t table_7_3_1_1_2_32[3][15] = {
     {0, 1, 2, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 };
 
+#define MAX_FRONTLOAD_SYMB 2
+#define MAX_CDM_GROUPS 3
+#define MAX_TYPE1_DMRS_MASK 256
+#define MAX_TYPE2_DMRS_MASK 4096
+
+int get_dci_antenna_ports_val(uint8_t rank, uint16_t dmrs_ports, uint8_t cdm, int dmrs_type, uint8_t front_load, int tp);
+
 typedef enum {
   pusch_dmrs_pos0 = 0,
   pusch_dmrs_pos1 = 1,
