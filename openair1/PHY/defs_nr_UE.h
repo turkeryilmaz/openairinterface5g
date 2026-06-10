@@ -412,6 +412,10 @@ typedef struct PHY_VARS_NR_UE_s {
   /// Phase precompensation flag
   bool no_phase_pre_comp;
 
+  /// Enable ML-based LLR computation for 2-layer MIMO (QPSK/16QAM/64QAM).
+  /// When false (default), MMSE equalization is used for all configurations.
+  bool do_ml;
+
   void* scopeData;
   // Pointers to hold PDSCH data only for phy simulators
   void *phy_sim_rxdataF;
