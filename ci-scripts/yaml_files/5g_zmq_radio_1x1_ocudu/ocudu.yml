@@ -20,6 +20,8 @@ ru_sdr:
   srate: 23.04
   tx_gain: 25
   rx_gain: 25
+  amplitude_control:
+    tx_gain_backoff: 22
 
 cell_cfg:
   dl_arfcn: 632628
