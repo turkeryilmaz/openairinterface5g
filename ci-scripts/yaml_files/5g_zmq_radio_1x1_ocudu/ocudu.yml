@@ -44,7 +44,7 @@ cell_cfg:
     nof_cell_csi_res: 0
 
 log:
-  filename: gnb.log
+  filename: stdout
   all_level: info
 
 pcap:
