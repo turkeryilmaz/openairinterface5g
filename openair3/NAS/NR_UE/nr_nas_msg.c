@@ -2104,6 +2104,9 @@ static int process_gprs_timer(gprs_timer_t *timer)
 static void handle_service_accept(nr_ue_nas_t *nas, const byte_array_t *buffer)
 {
   LOG_I(NAS, "Received NAS Service Accept message\n");
+  /** TS 24.501 §5.6.1.4: SERVICE ACCEPT - successful service request,
+   * exit 5GMM-SERVICE-REQUEST-INITIATED, enter 5GMM-REGISTERED (§5.1.3.2.1.2.6). */
+  nas->fiveGMM_state = FGS_REGISTERED;
   fgs_service_accept_msg_t msg = {0};
   decode_fgs_service_accept(&msg, buffer);
   // Extract timer t3448 in seconds (optional IE)
@@ -2118,6 +2121,9 @@ static void handle_service_accept(nr_ue_nas_t *nas, const byte_array_t *buffer)
 
 static void handle_service_reject(nr_ue_nas_t *nas, const byte_array_t *buffer)
 {
+  /* TS 24.501 §5.6.1.5: abort service request: enter 5GMM-REGISTERED */
+  if (nas->fiveGMM_state == FGS_SERVICE_REQUEST_INITIATED)
+    nas->fiveGMM_state = FGS_REGISTERED;
   fgs_service_reject_msg_t msg = {0};
   decode_fgs_service_reject(&msg, buffer);
   // Extract timer t3448 in seconds (optional IE)
@@ -2294,7 +2300,10 @@ void *nas_nrue(void *args_p)
         LOG_I(NAS, "[UE %ld] Received %s: cause %s\n",
               nas->UE_id, ITTI_MSG_NAME (msg_p), nr_release_cause_desc[NR_NAS_CONN_RELEASE_IND (msg_p).cause]);
         /* In N1 mode, upon indication from lower layers that the access stratum connection has been released,
-           the UE shall enter 5GMM-IDLE mode and consider the N1 NAS signalling connection released (3GPP TS 24.501) */
+           the UE shall enter 5GMM-IDLE mode and consider the N1 NAS signalling connection released (TS 24.501 §5.3.1.3).
+           If SR incomplete (5GMM-SERVICE-REQUEST-INITIATED) §5.6.1.7 l): abort SR, enter 5GMM-REGISTERED (TODO: stop T3517). */
+        if (nas->fiveGMM_state == FGS_SERVICE_REQUEST_INITIATED)
+          nas->fiveGMM_state = FGS_REGISTERED;
         nas->fiveGMM_mode = FGS_IDLE;
         // TODO handle connection release
         if (nas->termination_procedure) {
