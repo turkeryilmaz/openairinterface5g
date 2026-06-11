@@ -938,9 +938,13 @@ nfapi_nr_dl_tti_pdsch_pdu_rel15_t *prepare_pdsch_pdu(nfapi_nr_dl_tti_request_pdu
   pdsch_pdu->numDmrsCdmGrpsNoData = dmrs_parms->numDmrsCdmGrpsNoData;
   pdsch_pdu->dmrsPorts = (1 << sched_pdsch->nrOfLayers) - 1;  // FIXME with a better implementation
   // Pdsch Allocation in frequency domain
-  pdsch_pdu->resourceAlloc = 1;
-  pdsch_pdu->rbStart = sched_pdsch->rbStart;
-  pdsch_pdu->rbSize = sched_pdsch->rbSize;
+  pdsch_pdu->resourceAlloc = sched_pdsch->alloc_type;
+  if (sched_pdsch->alloc_type == PDSCH_TYPE1) {
+    pdsch_pdu->rbStart = sched_pdsch->rbStart;
+    pdsch_pdu->rbSize = sched_pdsch->rbSize;
+  } else {
+    memcpy(pdsch_pdu->rbBitmap, sched_pdsch->rbBitmap, sizeof(pdsch_pdu->rbBitmap));
+  }
   pdsch_pdu->VRBtoPRBMapping = 0; // non-interleaved
   // Resource Allocation in time domain
   const NR_tda_info_t *tda_info = &sched_pdsch->tda_info;

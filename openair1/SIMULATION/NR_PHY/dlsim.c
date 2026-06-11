@@ -210,6 +210,7 @@ void nr_dlsim_preprocessor(gNB_MAC_INST *nr_mac, post_process_pdsch_t *pp_pdsch)
   NR_sched_pdsch_t sched_pdsch = {
       .rbStart = g_rbStart,
       .rbSize = g_rbSize,
+      .alloc_type = PDSCH_TYPE1,
       .bwp_info = get_pdsch_bwp_start_size(nr_mac, UE_info),
       .mcs = g_mcsIndex,
       .nrOfLayers = g_nrOfLayers,
