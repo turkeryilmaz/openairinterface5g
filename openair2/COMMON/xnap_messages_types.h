@@ -382,4 +382,12 @@ typedef struct {
   uint32_t t_ng_node_ue_xnap_id;
 } xnap_ue_context_release_t;
 
+/* 3GPP TS 38.423 9.1.1.6 – Handover Cancel */
+typedef struct {
+  /* Source NG-RAN node UE XnAP ID (M) */
+  uint32_t s_ng_node_ue_xnap_id;
+  /* Cause (M) */
+  xnap_cause_t cause;
+} xnap_handover_cancel_t;
+
 #endif /* XNAP_MESSAGES_TYPES_H_ */
