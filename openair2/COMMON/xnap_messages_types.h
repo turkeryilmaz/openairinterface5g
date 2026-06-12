@@ -390,4 +390,14 @@ typedef struct {
   xnap_cause_t cause;
 } xnap_handover_cancel_t;
 
+/* 3GPP TS 38.423 9.1.1.12 – Handover Success */
+typedef struct {
+  /* Source NG-RAN node UE XnAP ID (M) */
+  uint32_t s_ng_node_ue_xnap_id;
+  /* Target NG-RAN node UE XnAP ID (M) */
+  uint32_t t_ng_node_ue_xnap_id;
+  /* Requested Target Cell Global ID (M) */
+  xnap_ngran_cgi_t target_cgi;
+} xnap_handover_success_t;
+
 #endif /* XNAP_MESSAGES_TYPES_H_ */
