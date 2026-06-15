@@ -85,6 +85,51 @@ static meas_record_lst_t fill_DRB_PdcpSduVolumeUL(__attribute__((unused)) const 
   return meas_record;
 }
 
+/* L1M.SS-RSRP — 3GPP TS 28.552 - section 5.1.1.22.1 */
+static meas_record_lst_t fill_L1M_SS_RSRP(const label_info_lst_t label,
+                                          __attribute__((unused)) uint32_t gran_period_ms,
+                                          __attribute__((unused)) cudu_ue_info_pair_t ue_info,
+                                          __attribute__((unused)) const size_t ue_idx,
+                                          __attribute__((unused)) e2_node_level_stats_t* node_stats)
+{
+  meas_record_lst_t meas_record = {0};
+
+  if (label.distBinX == NULL) {
+    printf("[E2 AGENT][E2SM-KPM] L1M.SS-RSRP requested without distBinX label; "
+           "TS 28.552 5.1.1.22.1 is a distribution with no aggregate value, reporting NO_VALUE\n");
+    meas_record.value = NO_VALUE_MEAS_VALUE;
+    return meas_record;
+  }
+
+  if (*label.distBinX > NR_KPM_SS_RSRP_NB_LEVELS - 1) {
+    printf("[E2 AGENT][E2SM-KPM] L1M.SS-RSRP: distBinX %u out of range [0..127], reporting NO_VALUE\n", *label.distBinX);
+    meas_record.value = NO_VALUE_MEAS_VALUE;
+    return meas_record;
+  }
+  const uint32_t bin = *label.distBinX;
+
+  const NR_du_stats_t *du_stats = &RC.nrmac[0]->du_stats;
+
+  uint64_t count = 0;
+  if (label.ssbIndex != NULL) {
+    const uint32_t ssb_wire = *label.ssbIndex;
+    if (ssb_wire > NR_KPM_NB_SSB - 1) {
+      printf("[E2 AGENT][E2SM-KPM] L1M.SS-RSRP: ssbIndex %u out of range [0..63], reporting NO_VALUE\n", ssb_wire);
+      meas_record.value = NO_VALUE_MEAS_VALUE;
+      return meas_record;
+    }
+    const uint32_t ssb = ssb_wire;
+    count = du_stats->ss_rsrp_ssb_dist[ssb][bin];
+  } else {
+    for (int s = 0; s < NR_KPM_NB_SSB; s++)
+      count += du_stats->ss_rsrp_ssb_dist[s][bin];
+  }
+
+  meas_record.value = INTEGER_MEAS_VALUE;
+  meas_record.int_val = (int64_t)count;
+  return meas_record;
+}
+
 #if defined (NGRAN_GNB_DU)
 static uldlcounter_t last_rlc_pdu_total_bytes[MAX_MOBILES_PER_GNB] = {0};
 static uldlcounter_t last_total_prbs[MAX_MOBILES_PER_GNB] = {0};
@@ -280,8 +325,9 @@ static meas_record_lst_t fill_CARR_PUSCHMCSDist(const label_info_lst_t label,
 #endif
 
 static kv_measure_t lst_measure[] = {
-  {.key = "DRB.PdcpSduVolumeDL", .value = fill_DRB_PdcpSduVolumeDL }, 
+  {.key = "DRB.PdcpSduVolumeDL", .value = fill_DRB_PdcpSduVolumeDL },
   {.key = "DRB.PdcpSduVolumeUL", .value = fill_DRB_PdcpSduVolumeUL },
+  {.key = "L1M.SS-RSRP",         .value = fill_L1M_SS_RSRP },
 #if defined (NGRAN_GNB_DU)
   {.key = "DRB.RlcSduDelayDl", .value =  fill_DRB_RlcSduDelayDl }, 
   {.key = "DRB.UEThpDl", .value =  fill_DRB_UEThpDl }, 

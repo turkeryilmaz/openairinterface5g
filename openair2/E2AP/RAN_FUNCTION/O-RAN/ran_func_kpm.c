@@ -441,12 +441,14 @@ bool read_kpm_sm(void* data)
 static const char* kpm_node_meas_du[] = {
   "CARR.PDSCHMCSDist",
   "CARR.PUSCHMCSDist",
+  "L1M.SS-RSRP",
   NULL,
 };
 
 static const char* kpm_node_meas_gnb[] = {
   "CARR.PDSCHMCSDist",
   "CARR.PUSCHMCSDist",
+  "L1M.SS-RSRP",
   NULL,
 };
 

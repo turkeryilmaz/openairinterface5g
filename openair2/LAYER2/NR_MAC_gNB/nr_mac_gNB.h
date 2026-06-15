@@ -1145,6 +1145,10 @@ typedef struct {
 #define NR_KPM_NB_MCS_TABLE_UL  4  /* PUSCH MCS tables: 0, 1, 3  */
 #define NR_KPM_NB_MCS           32 /* MCS index: 0..31          */
 
+/* Dimensions of the L1M.SS-RSRP histogram (3GPP TS 28.552 §5.1.1.22.1). */
+#define NR_KPM_NB_SSB            64  /* SS/PBCH block index: 0..63              */
+#define NR_KPM_SS_RSRP_NB_LEVELS 128 /* SS-RSRP report level: 0..127, TS 38.133 */
+
 typedef struct NR_du_stats {
   /// cell-wide wide-band CQI distribution, see 28.552 5.1.1.11.1;
   /// 0-15 CQI, 1-8 RI, 1-3 CQI table
@@ -1157,6 +1161,10 @@ typedef struct NR_du_stats {
   /// cell-wide MCS distribution in PUSCH, see 28.552 5.1.1.12.1
   /// 1-8 RI, MCS table (0, 1, 3), 0-31 MCS value
   uint32_t pusch_mcs_dist[NR_KPM_MAX_LAYERS][NR_KPM_NB_MCS_TABLE_UL][NR_KPM_NB_MCS];
+
+  /// cell-wide L1 SS-RSRP distribution per SSB beam, see 28.552 5.1.1.22.1
+  /// 0-63 SSB index, 0-127 SS-RSRP report level (TS 38.133)
+  uint32_t ss_rsrp_ssb_dist[NR_KPM_NB_SSB][NR_KPM_SS_RSRP_NB_LEVELS];
 } NR_du_stats_t;
 
 /*! \brief top level eNB MAC structure */
