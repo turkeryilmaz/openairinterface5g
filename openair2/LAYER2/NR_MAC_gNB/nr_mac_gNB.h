@@ -1139,6 +1139,11 @@ typedef struct {
   NR_ControlResourceSet_t coreset;
 } NR_sched_ctrl_sib1_t;
 
+/* Dimensions of the per-cell MCS distribution histograms (3GPP TS 28.552 §5.1.1.12). */
+#define NR_KPM_MAX_LAYERS       8  /* RI: 1..8                  */
+#define NR_KPM_NB_MCS_TABLE_DL  3  /* PDSCH MCS tables: 1..3    */
+#define NR_KPM_NB_MCS           32 /* MCS index: 0..31          */
+
 typedef struct NR_du_stats {
   /// cell-wide wide-band CQI distribution, see 28.552 5.1.1.11.1;
   /// 0-15 CQI, 1-8 RI, 1-3 CQI table
@@ -1146,7 +1151,7 @@ typedef struct NR_du_stats {
 
   /// cell-wide MCS distribution in PDSCH, see 28.552 5.1.1.12.1
   /// 1-8 RI, 1-3 MCS table, 0-31 MCS value
-  uint32_t pdsch_mcs_dist[8][3][32];
+  uint32_t pdsch_mcs_dist[NR_KPM_MAX_LAYERS][NR_KPM_NB_MCS_TABLE_DL][NR_KPM_NB_MCS];
 
   /// cell-wide MCS distribution in PUSCH, see 28.552 5.1.1.12.1
   /// 1-8 RI, 1-2 MCS table, 0-31 MCS value

@@ -1261,6 +1261,11 @@ void post_process_dlsch(gNB_MAC_INST *nr_mac,
         tpc);
   DevAssert(sched_pdsch->rbSize > 0);
 
+  DevAssert(nrOfLayers >= 1 && nrOfLayers <= NR_KPM_MAX_LAYERS);
+  DevAssert(current_BWP->mcsTableIdx >= 0 && current_BWP->mcsTableIdx < NR_KPM_NB_MCS_TABLE_DL);
+  DevAssert(sched_pdsch->mcs < NR_KPM_NB_MCS);
+  nr_mac->du_stats.pdsch_mcs_dist[nrOfLayers - 1][current_BWP->mcsTableIdx][sched_pdsch->mcs] += sched_pdsch->rbSize;
+
   const int bwp_id = current_BWP->bwp_id;
   const int coresetid = sched_ctrl->coreset->controlResourceSetId;
 

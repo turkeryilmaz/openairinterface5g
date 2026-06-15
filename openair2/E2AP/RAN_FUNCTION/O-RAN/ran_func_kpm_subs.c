@@ -219,19 +219,29 @@ static meas_record_lst_t fill_CARR_PDSCHMCSDist(const label_info_lst_t label,
                                                 __attribute__((unused)) const size_t ue_idx,
                                                 __attribute__((unused))e2_node_level_stats_t* node_stats)
 {
-  meas_record_lst_t meas_record = {.value = INTEGER_MEAS_VALUE};
+  meas_record_lst_t meas_record = {0};
 
-  uint32_t bin_x = *label.distBinX, bin_y = *label.distBinY, bin_z = *label.distBinZ;
-
-  NR_du_stats_t* du_stats = &RC.nrmac[0]->du_stats;
-
-  if (bin_x <= 8 && bin_y <= 3 && bin_z <= 31) {
-    meas_record.int_val = du_stats->pdsch_mcs_dist[bin_x - 1][bin_y - 1][bin_z];
-  } else {
-    printf("[E2 AGENT] Unknown binX %d, binY %d, binZ %d for \"CARR.PDSCHMCSDist\" measurement\n", bin_x, bin_y, bin_z);
-    meas_record.int_val = 0;
+  if (label.distBinX == NULL || label.distBinY == NULL || label.distBinZ == NULL) {
+    printf("[E2 AGENT][E2SM-KPM] CARR.PDSCHMCSDist requested without distBinX/Y/Z labels; "
+           "TS 28.552 5.1.1.12.1 defines no aggregate value, reporting NO_VALUE\n");
+    meas_record.value = NO_VALUE_MEAS_VALUE;
+    return meas_record;
   }
 
+  const uint32_t bin_x = *label.distBinX;
+  const uint32_t bin_y = *label.distBinY;
+  const uint32_t bin_z = *label.distBinZ;
+
+  if (bin_x < 1 || bin_x > NR_KPM_MAX_LAYERS || bin_y < 1 || bin_y > NR_KPM_NB_MCS_TABLE_DL || bin_z > NR_KPM_NB_MCS - 1) {
+    printf("[E2 AGENT][E2SM-KPM] CARR.PDSCHMCSDist: bin out of range (X=%u Y=%u Z=%u), reporting NO_VALUE\n",
+           bin_x, bin_y, bin_z);
+    meas_record.value = NO_VALUE_MEAS_VALUE;
+    return meas_record;
+  }
+
+  const NR_du_stats_t* du_stats = &RC.nrmac[0]->du_stats;
+  meas_record.value = INTEGER_MEAS_VALUE;
+  meas_record.int_val = du_stats->pdsch_mcs_dist[bin_x - 1][bin_y - 1][bin_z];
   return meas_record;
 }
 #endif

@@ -101,6 +101,7 @@ From 3GPP TS 28.552, we support the following list:
   * `DRB.UEThpUl`
   * `RRU.PrbTotDl`
   * `RRU.PrbTotUl`
+  * `CARR.PDSCHMCSDist`
 
 From `O-RAN.WG3.E2SM-KPM-version` specification, we implemented:
   * REPORT Service Style 4 ("Common condition-based, UE-level" - section 7.4.5) - fetch above measurements per each UE based on the common S-NSSAI `(1, 0xffffff)` condition
