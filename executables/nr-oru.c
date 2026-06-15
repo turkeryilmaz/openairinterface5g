@@ -391,6 +391,39 @@ static void dl_symbol_process(RU_t *ru, int frame, int slot, int symbol, c16_t *
   tx_rf_symbols(ru, frame, slot, timestamp, symbol, 1);
 }
 
+static pthread_mutex_t south_read_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t south_read_cond = PTHREAD_COND_INITIALIZER;
+static bool south_read_ready = false;
+static uint64_t notified_hyper_frame = 0;
+static uint32_t notified_start_frame = 0;
+static uint32_t notified_start_slot = 0;
+static openair0_timestamp_t notified_timestamp = 0;
+
+void notify_north_read(uint64_t hyper_frame, uint32_t start_frame, uint32_t start_slot, openair0_timestamp_t timestamp)
+{
+  pthread_mutex_lock(&south_read_mutex);
+  notified_hyper_frame = hyper_frame;
+  notified_start_frame = start_frame;
+  notified_start_slot = start_slot;
+  notified_timestamp = timestamp;
+  south_read_ready = true;
+  pthread_cond_signal(&south_read_cond);
+  pthread_mutex_unlock(&south_read_mutex);
+}
+
+void wait_for_south_read(uint64_t *hyper_frame, uint32_t *start_frame, uint32_t *start_slot, int64_t *timestamp)
+{
+  pthread_mutex_lock(&south_read_mutex);
+  while (!south_read_ready) {
+    pthread_cond_wait(&south_read_cond, &south_read_mutex);
+  }
+  *hyper_frame = notified_hyper_frame;
+  *start_frame = notified_start_frame;
+  *start_slot = notified_start_slot;
+  *timestamp = notified_timestamp;
+  pthread_mutex_unlock(&south_read_mutex);
+}
+
 void *oru_north_read_thread(void *arg)
 {
   ORU_t *oru = (ORU_t *)arg;
@@ -406,11 +439,15 @@ void *oru_north_read_thread(void *arg)
   }
   uint32_t start_frame, start_slot;
   uint64_t start_hyper_frame;
-  struct timespec utc_anchor_point;
-  oru_fh_get_utc_anchor_point(oru->fronthaul, &start_hyper_frame, &start_frame, &start_slot, &utc_anchor_point);
-  AssertFatal(ru->rfdevice.get_timestamp != NULL, "rfdevice has no capability to translate UTC timestamp to sample index\n");
-  int64_t start_timestamp = ru->rfdevice.get_timestamp(&ru->rfdevice, &utc_anchor_point);
-  // subtract the start_frame and start_slot from the timestamp simplify calculation below.
+  int64_t start_timestamp;
+  if (ru->rfdevice.get_timestamp) {
+    struct timespec utc_anchor_point;
+    oru_fh_get_utc_anchor_point(oru->fronthaul, &start_hyper_frame, &start_frame, &start_slot, &utc_anchor_point);
+    start_timestamp = ru->rfdevice.get_timestamp(&ru->rfdevice, &utc_anchor_point);
+  } else {
+    wait_for_south_read(&start_hyper_frame, &start_frame, &start_slot, &start_timestamp);
+  }
+    // subtract the start_frame and start_slot from the timestamp simplify calculation below.
   start_timestamp -= (start_frame * fp->samples_per_frame + get_samples_slot_timestamp(fp, start_slot));
   // Now start_timestamp points to the start sample of the frame 0 slot 0 symbol 0 of hyperframe 0
   LOG_A(PHY, "DL thread started: start_timestamp %ld, start_frame %d, start_slot %d\n", start_timestamp, start_frame, start_slot);
@@ -593,45 +630,63 @@ void *oru_south_read_thread(void *arg)
   ORU_t *oru = arg;
   RU_t *ru = oru->ru;
   NR_DL_FRAME_PARMS *fp = ru->nr_frame_parms;
+  int slot, frame;
+  uint32_t start_frame = 0, start_slot = 0;
+  uint64_t hyper_frame = 0;
   struct timespec utc_anchor_point;
-  AssertFatal(ru->rfdevice.get_timestamp != NULL, "rfdevice has no capability to translate UTC timestamp to sample index\n");
-  uint32_t start_frame, start_slot;
-  uint64_t hyper_frame;
-  oru_fh_get_utc_anchor_point(oru->fronthaul, &hyper_frame, &start_frame, &start_slot, &utc_anchor_point);
-  int64_t start_timestamp = ru->rfdevice.get_timestamp(&ru->rfdevice, &utc_anchor_point);
+  if (ru->rfdevice.get_timestamp) {
+    AssertFatal(ru->rfdevice.get_timestamp != NULL, "rfdevice has no capability to translate UTC timestamp to sample index\n");
+    oru_fh_get_utc_anchor_point(oru->fronthaul, &hyper_frame, &start_frame, &start_slot, &utc_anchor_point);
+    int64_t start_timestamp = ru->rfdevice.get_timestamp(&ru->rfdevice, &utc_anchor_point);
 
-  const int num_samples = 3000;
-  c16_t throwaway_samples[ru->nb_rx][num_samples];
-  void *rxp[ru->nb_rx];
-  for (int i = 0; i < ru->nb_rx; i++)
-    rxp[i] = throwaway_samples[i];
+    const int num_samples = 3000;
+    c16_t throwaway_samples[ru->nb_rx][num_samples];
+    void *rxp[ru->nb_rx];
+    for (int i = 0; i < ru->nb_rx; i++)
+      rxp[i] = throwaway_samples[i];
 
-  openair0_timestamp_t timestamp;
-  int num_samples_read = ru->rfdevice.trx_read_func(&ru->rfdevice, &timestamp, rxp, num_samples, ru->nb_rx);
-  AssertFatal(num_samples_read == num_samples, "Unexpected number of samples received\n");
-  openair0_timestamp_t next_timestamp = timestamp + num_samples_read;
-  while (next_timestamp > start_timestamp) {
-    start_timestamp += get_samples_slot_duration(fp, start_slot, 1);
-    start_slot++;
-    if (start_slot == fp->slots_per_frame) {
-      start_slot = 0;
-      start_frame++;
-      if (start_frame == 1024) {
-        start_frame = 0;
+    openair0_timestamp_t timestamp;
+    int num_samples_read = ru->rfdevice.trx_read_func(&ru->rfdevice, &timestamp, rxp, num_samples, ru->nb_rx);
+    AssertFatal(num_samples_read == num_samples, "Unexpected number of samples received\n");
+    openair0_timestamp_t next_timestamp = timestamp + num_samples_read;
+    while (next_timestamp > start_timestamp) {
+      start_timestamp += get_samples_slot_duration(fp, start_slot, 1);
+      start_slot++;
+      if (start_slot == fp->slots_per_frame) {
+        start_slot = 0;
+        start_frame++;
+        if (start_frame == 1024) {
+          start_frame = 0;
+        }
       }
     }
-  }
-  while (next_timestamp < start_timestamp) {
-    int num_samples_to_read = min(num_samples, (int)(start_timestamp - next_timestamp));
-    int num_samples_read = ru->rfdevice.trx_read_func(&ru->rfdevice, &timestamp, rxp, num_samples_to_read, ru->nb_rx);
-    AssertFatal(num_samples_read == num_samples_to_read, "Unexpected number of samples received\n");
-    next_timestamp += num_samples_read;
-  }
+    while (next_timestamp < start_timestamp) {
+      int num_samples_to_read = min(num_samples, (int)(start_timestamp - next_timestamp));
+      int num_samples_read = ru->rfdevice.trx_read_func(&ru->rfdevice, &timestamp, rxp, num_samples_to_read, ru->nb_rx);
+      AssertFatal(num_samples_read == num_samples_to_read, "Unexpected number of samples received\n");
+      next_timestamp += num_samples_read;
+    }
 
-  AssertFatal(next_timestamp == start_timestamp, "O-RU South thread could not sync to UTC anchor point\n");
-
-  int slot = start_slot;
-  int frame = start_frame;
+    AssertFatal(next_timestamp == start_timestamp, "O-RU South thread could not sync to UTC anchor point\n");
+  } else {
+    int num_iter = 100;
+    const int num_samples = 3000;
+    openair0_timestamp_t timestamp;
+    c16_t throwaway_samples[ru->nb_rx][num_samples];
+    void *rxp[ru->nb_rx];
+    for (int i = 0; i < ru->nb_rx; i++) {
+      rxp[i] = throwaway_samples[i];
+    }
+    while (!oai_exit && num_iter-- > 0) {
+      int num_samples_read = ru->rfdevice.trx_read_func(&ru->rfdevice, &timestamp, rxp, num_samples, ru->nb_rx);
+      AssertFatal(num_samples_read == num_samples, "Unexpected number of samples received\n");
+    }
+    oru_fh_get_utc_anchor_point(oru->fronthaul, &hyper_frame, &start_frame, &start_slot, &utc_anchor_point);
+    timestamp += num_samples;
+    notify_north_read(hyper_frame, start_frame, start_slot, timestamp);
+  }
+  slot = start_slot;
+  frame = start_frame;
 
   // Worker pool: one thread per RX antenna so all antennas in a symbol process in parallel.
   const int num_workers = ru->nb_rx;
