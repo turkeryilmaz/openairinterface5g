@@ -3514,6 +3514,18 @@ static bool write_rrc_stats(const gNB_RRC_INST *rrc)
   return true;
 }
 
+static void nr_rrc_sample_conn_count(gNB_RRC_INST *rrc)
+{
+  if (rrc == NULL)
+    return;
+  uint32_t count = 0;
+  rrc_gNB_ue_context_t *ue_context_p = NULL;
+  RB_FOREACH(ue_context_p, rrc_nr_ue_tree_s, &rrc->rrc_ue_head)
+    count++;
+  rrc->rrc_conn_count_sum += count;
+  rrc->rrc_conn_count_samples += 1;
+}
+
 void *rrc_gnb_task(void *args_p)
 {
   UNUSED(args_p);
@@ -3553,6 +3565,7 @@ void *rrc_gnb_task(void *args_p)
 
       case TIMER_HAS_EXPIRED:
         if (TIMER_HAS_EXPIRED(msg_p).timer_id == stats_timer_id) {
+          nr_rrc_sample_conn_count(RC.nrrrc[0]);
           if (!write_rrc_stats(RC.nrrrc[0]))
             timer_remove(stats_timer_id);
         } else {

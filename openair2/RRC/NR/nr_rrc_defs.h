@@ -652,6 +652,9 @@ typedef struct gNB_RRC_INST_s {
   /// cell-wide NR serving-cell SS-SINR distribution, see 28.552 5.1.1.32
   /// 0-127 SS-SINR report level (TS 38.133)
   uint32_t ss_sinr_cell_dist[NR_KPM_SS_SINR_NB_LEVELS];
+
+  uint64_t rrc_conn_count_sum;
+  uint64_t rrc_conn_count_samples;
 } gNB_RRC_INST;
 
 /** Forward declaration for UE log macros */

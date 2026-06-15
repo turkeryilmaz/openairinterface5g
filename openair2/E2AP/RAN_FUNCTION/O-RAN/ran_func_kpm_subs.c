@@ -15,6 +15,8 @@ e2_node_level_stats_t cp_node_level_stats(const e2_node_level_stats_t *src)
     .mac_stats.dl.used_prb_aggregate = src->mac_stats.dl.used_prb_aggregate,
     .mac_stats.ul.total_prb_aggregate = src->mac_stats.ul.total_prb_aggregate,
     .mac_stats.ul.used_prb_aggregate = src->mac_stats.ul.used_prb_aggregate,
+    .rrc_conn_count_sum = src->rrc_conn_count_sum,
+    .rrc_conn_count_samples = src->rrc_conn_count_samples,
   };
 
   return dst;
@@ -157,6 +159,35 @@ static meas_record_lst_t fill_MR_NRScSSSINR(const label_info_lst_t label,
 
   meas_record.value = INTEGER_MEAS_VALUE;
   meas_record.int_val = RC.nrrrc[0]->ss_sinr_cell_dist[bin];
+  return meas_record;
+}
+
+/* RRC.ConnMean — 3GPP TS 28.552 - section 5.1.1.4.1 */
+static meas_record_lst_t fill_RRC_ConnMean(__attribute__((unused)) const label_info_lst_t label,
+                                           __attribute__((unused)) uint32_t gran_period_ms,
+                                           __attribute__((unused)) cudu_ue_info_pair_t ue_info,
+                                           __attribute__((unused)) const size_t ue_idx,
+                                           e2_node_level_stats_t* node_stats)
+{
+  meas_record_lst_t meas_record = {.value = INTEGER_MEAS_VALUE};
+
+  node_stats[1].rrc_conn_count_sum     = RC.nrrrc[0]->rrc_conn_count_sum;
+  node_stats[1].rrc_conn_count_samples = RC.nrrrc[0]->rrc_conn_count_samples;
+
+  const uint64_t d_sum     = node_stats[1].rrc_conn_count_sum     - node_stats[0].rrc_conn_count_sum;
+  const uint64_t d_samples = node_stats[1].rrc_conn_count_samples - node_stats[0].rrc_conn_count_samples;
+
+  if (d_samples > 0) {
+    meas_record.int_val = (long)((d_sum + d_samples / 2) / d_samples);
+    node_stats[0].rrc_conn_count_sum     = node_stats[1].rrc_conn_count_sum;
+    node_stats[0].rrc_conn_count_samples = node_stats[1].rrc_conn_count_samples;
+  } else if (node_stats[1].rrc_conn_count_samples > 0) {
+    meas_record.int_val = (long)((node_stats[1].rrc_conn_count_sum + node_stats[1].rrc_conn_count_samples / 2)
+                                 / node_stats[1].rrc_conn_count_samples);
+  } else {
+    meas_record.int_val = 0;
+  }
+
   return meas_record;
 }
 
@@ -359,6 +390,7 @@ static kv_measure_t lst_measure[] = {
   {.key = "DRB.PdcpSduVolumeUL", .value = fill_DRB_PdcpSduVolumeUL },
   {.key = "L1M.SS-RSRP",         .value = fill_L1M_SS_RSRP },
   {.key = "MR.NRScSSSINR",       .value = fill_MR_NRScSSSINR },
+  {.key = "RRC.ConnMean",        .value = fill_RRC_ConnMean },
 #if defined (NGRAN_GNB_DU)
   {.key = "DRB.RlcSduDelayDl", .value =  fill_DRB_RlcSduDelayDl }, 
   {.key = "DRB.UEThpDl", .value =  fill_DRB_UEThpDl }, 

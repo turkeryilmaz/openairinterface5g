@@ -447,6 +447,7 @@ static const char* kpm_node_meas_du[] = {
 
 static const char* kpm_node_meas_cu[] = {
   "MR.NRScSSSINR",
+  "RRC.ConnMean",
   NULL,
 };
 
@@ -455,6 +456,7 @@ static const char* kpm_node_meas_gnb[] = {
   "CARR.PUSCHMCSDist",
   "L1M.SS-RSRP",
   "MR.NRScSSSINR",
+  "RRC.ConnMean",
   NULL,
 };
 
