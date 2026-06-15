@@ -244,6 +244,39 @@ static meas_record_lst_t fill_CARR_PDSCHMCSDist(const label_info_lst_t label,
   meas_record.int_val = du_stats->pdsch_mcs_dist[bin_x - 1][bin_y - 1][bin_z];
   return meas_record;
 }
+
+/* CARR.PUSCHMCSDist — 3GPP TS 28.552 - section 5.1.1.12.2 */
+static meas_record_lst_t fill_CARR_PUSCHMCSDist(const label_info_lst_t label,
+                                                __attribute__((unused)) uint32_t gran_period_ms,
+                                                __attribute__((unused)) cudu_ue_info_pair_t ue_info,
+                                                __attribute__((unused)) const size_t ue_idx,
+                                                __attribute__((unused))e2_node_level_stats_t* node_stats)
+{
+  meas_record_lst_t meas_record = {0};
+
+  if (label.distBinX == NULL || label.distBinY == NULL || label.distBinZ == NULL) {
+    printf("[E2 AGENT][E2SM-KPM] CARR.PUSCHMCSDist requested without distBinX/Y/Z labels; "
+           "TS 28.552 5.1.1.12.2 defines no aggregate value, reporting NO_VALUE\n");
+    meas_record.value = NO_VALUE_MEAS_VALUE;
+    return meas_record;
+  }
+
+  const uint32_t bin_x = *label.distBinX;
+  const uint32_t bin_y = *label.distBinY;
+  const uint32_t bin_z = *label.distBinZ;
+
+  if (bin_x < 1 || bin_x > NR_KPM_MAX_LAYERS || bin_y > NR_KPM_NB_MCS_TABLE_UL - 1 || bin_z > NR_KPM_NB_MCS - 1) {
+    printf("[E2 AGENT][E2SM-KPM] CARR.PUSCHMCSDist: bin out of range (X=%u Y=%u Z=%u), reporting NO_VALUE\n",
+           bin_x, bin_y, bin_z);
+    meas_record.value = NO_VALUE_MEAS_VALUE;
+    return meas_record;
+  }
+
+  const NR_du_stats_t* du_stats = &RC.nrmac[0]->du_stats;
+  meas_record.value = INTEGER_MEAS_VALUE;
+  meas_record.int_val = du_stats->pusch_mcs_dist[bin_x - 1][bin_y][bin_z];
+  return meas_record;
+}
 #endif
 
 static kv_measure_t lst_measure[] = {
@@ -256,6 +289,7 @@ static kv_measure_t lst_measure[] = {
   {.key = "RRU.PrbTotDl", .value =  fill_RRU_PrbTotDl }, 
   {.key = "RRU.PrbTotUl", .value =  fill_RRU_PrbTotUl }, 
   {.key = "CARR.PDSCHMCSDist", .value = fill_CARR_PDSCHMCSDist },
+  {.key = "CARR.PUSCHMCSDist", .value = fill_CARR_PUSCHMCSDist },
 #endif
 }; 
 

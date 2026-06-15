@@ -1142,6 +1142,7 @@ typedef struct {
 /* Dimensions of the per-cell MCS distribution histograms (3GPP TS 28.552 §5.1.1.12). */
 #define NR_KPM_MAX_LAYERS       8  /* RI: 1..8                  */
 #define NR_KPM_NB_MCS_TABLE_DL  3  /* PDSCH MCS tables: 1..3    */
+#define NR_KPM_NB_MCS_TABLE_UL  4  /* PUSCH MCS tables: 0, 1, 3  */
 #define NR_KPM_NB_MCS           32 /* MCS index: 0..31          */
 
 typedef struct NR_du_stats {
@@ -1154,8 +1155,8 @@ typedef struct NR_du_stats {
   uint32_t pdsch_mcs_dist[NR_KPM_MAX_LAYERS][NR_KPM_NB_MCS_TABLE_DL][NR_KPM_NB_MCS];
 
   /// cell-wide MCS distribution in PUSCH, see 28.552 5.1.1.12.1
-  /// 1-8 RI, 1-2 MCS table, 0-31 MCS value
-  uint32_t pusch_mcs_dist[8][2][32];
+  /// 1-8 RI, MCS table (0, 1, 3), 0-31 MCS value
+  uint32_t pusch_mcs_dist[NR_KPM_MAX_LAYERS][NR_KPM_NB_MCS_TABLE_UL][NR_KPM_NB_MCS];
 } NR_du_stats_t;
 
 /*! \brief top level eNB MAC structure */
