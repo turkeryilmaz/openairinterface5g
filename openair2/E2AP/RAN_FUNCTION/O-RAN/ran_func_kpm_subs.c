@@ -6,6 +6,8 @@
 
 #include <search.h>
 
+#include "openair2/RRC/NR/rrc_gNB_UE_context.h"
+
 e2_node_level_stats_t cp_node_level_stats(const e2_node_level_stats_t *src)
 {
   e2_node_level_stats_t dst = {
@@ -127,6 +129,34 @@ static meas_record_lst_t fill_L1M_SS_RSRP(const label_info_lst_t label,
 
   meas_record.value = INTEGER_MEAS_VALUE;
   meas_record.int_val = (int64_t)count;
+  return meas_record;
+}
+
+/* MR.NRScSSSINR — 3GPP TS 28.552 - section 5.1.1.32 */
+static meas_record_lst_t fill_MR_NRScSSSINR(const label_info_lst_t label,
+                                            __attribute__((unused)) uint32_t gran_period_ms,
+                                            __attribute__((unused)) cudu_ue_info_pair_t ue_info,
+                                            __attribute__((unused)) const size_t ue_idx,
+                                            __attribute__((unused)) e2_node_level_stats_t* node_stats)
+{
+  meas_record_lst_t meas_record = {0};
+
+  if (label.distBinX == NULL) {
+    printf("[E2 AGENT][E2SM-KPM] MR.NRScSSSINR requested without distBinX label; "
+           "TS 28.552 5.1.1.32 is a distribution with no aggregate value, reporting NO_VALUE\n");
+    meas_record.value = NO_VALUE_MEAS_VALUE;
+    return meas_record;
+  }
+
+  if (*label.distBinX > NR_KPM_SS_SINR_NB_LEVELS - 1) {
+    printf("[E2 AGENT][E2SM-KPM] MR.NRScSSSINR: distBinX %u out of range [0..127], reporting NO_VALUE\n", *label.distBinX);
+    meas_record.value = NO_VALUE_MEAS_VALUE;
+    return meas_record;
+  }
+  const uint32_t bin = *label.distBinX;
+
+  meas_record.value = INTEGER_MEAS_VALUE;
+  meas_record.int_val = RC.nrrrc[0]->ss_sinr_cell_dist[bin];
   return meas_record;
 }
 
@@ -328,6 +358,7 @@ static kv_measure_t lst_measure[] = {
   {.key = "DRB.PdcpSduVolumeDL", .value = fill_DRB_PdcpSduVolumeDL },
   {.key = "DRB.PdcpSduVolumeUL", .value = fill_DRB_PdcpSduVolumeUL },
   {.key = "L1M.SS-RSRP",         .value = fill_L1M_SS_RSRP },
+  {.key = "MR.NRScSSSINR",       .value = fill_MR_NRScSSSINR },
 #if defined (NGRAN_GNB_DU)
   {.key = "DRB.RlcSduDelayDl", .value =  fill_DRB_RlcSduDelayDl }, 
   {.key = "DRB.UEThpDl", .value =  fill_DRB_UEThpDl }, 

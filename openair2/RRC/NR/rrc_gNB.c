@@ -1633,6 +1633,27 @@ fallback_rrc_setup:
   return;
 }
 
+static void nr_rrc_count_ss_sinr_dist(gNB_RRC_INST *rrc, const NR_MeasResults_t *mr)
+{
+  if (rrc == NULL || mr == NULL)
+    return;
+  if (mr->measResultServingMOList.list.count == 0 || mr->measResultServingMOList.list.array == NULL)
+    return;
+
+  for (int i = 0; i < mr->measResultServingMOList.list.count; i++) {
+    const NR_MeasResultServMO_t *serv_mo = mr->measResultServingMOList.list.array[i];
+    if (serv_mo == NULL)
+      continue;
+    const struct NR_MeasResultNR__measResult__cellResults *cr =
+        &serv_mo->measResultServingCell.measResult.cellResults;
+    if (cr->resultsSSB_Cell == NULL || cr->resultsSSB_Cell->sinr == NULL)
+      continue;
+    const long encoded = *cr->resultsSSB_Cell->sinr;
+    if (encoded >= 0 && encoded < NR_KPM_SS_SINR_NB_LEVELS)
+      rrc->ss_sinr_cell_dist[encoded]++;
+  }
+}
+
 static void process_Periodical_Measurement_Report(gNB_RRC_UE_t *ue_ctxt, NR_MeasurementReport_t *measurementReport)
 {
   ASN_STRUCT_FREE(asn_DEF_NR_MeasResults, ue_ctxt->measResults);
@@ -1815,8 +1836,11 @@ static void rrc_gNB_process_MeasurementReport(gNB_RRC_INST *rrc, gNB_RRC_UE_t *U
     return;
   }
 
-  if (report_config->choice.reportConfigNR->reportType.present == NR_ReportConfigNR__reportType_PR_periodical)
-    return process_Periodical_Measurement_Report(UE, measurementReport);
+  if (report_config->choice.reportConfigNR->reportType.present == NR_ReportConfigNR__reportType_PR_periodical) {
+    nr_rrc_count_ss_sinr_dist(rrc, &measurementReport->criticalExtensions.choice.measurementReport->measResults);
+    process_Periodical_Measurement_Report(UE, measurementReport);
+    return;
+  }
 
   if (report_config->choice.reportConfigNR->reportType.present == NR_ReportConfigNR__reportType_PR_eventTriggered)
     return process_Event_Based_Measurement_Report(rrc, UE, report_config->choice.reportConfigNR, measurementReport);

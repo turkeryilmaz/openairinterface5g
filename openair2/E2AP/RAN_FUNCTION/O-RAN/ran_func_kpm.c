@@ -445,10 +445,16 @@ static const char* kpm_node_meas_du[] = {
   NULL,
 };
 
+static const char* kpm_node_meas_cu[] = {
+  "MR.NRScSSSINR",
+  NULL,
+};
+
 static const char* kpm_node_meas_gnb[] = {
   "CARR.PDSCHMCSDist",
   "CARR.PUSCHMCSDist",
   "L1M.SS-RSRP",
+  "MR.NRScSSSINR",
   NULL,
 };
 
@@ -486,11 +492,11 @@ static const meas_list ran_def_kpm[END_NGRAN_NODE_TYPE][END_RIC_SERVICE_REPORT] 
   {kpm_node_meas_gnb, NULL, NULL, kpm_meas_gnb, NULL},
   {NULL, NULL, NULL, NULL, NULL},
   {NULL, NULL, NULL, NULL, NULL},
-  {NULL, NULL, NULL, kpm_meas_cuup, NULL}, // at the moment, for CU, we use the same function as for CU-UP
+  {kpm_node_meas_cu, NULL, NULL, kpm_meas_cuup, NULL},
   {NULL, NULL, NULL, NULL, NULL},
   {kpm_node_meas_du, NULL, NULL, kpm_meas_du, NULL},
   {NULL, NULL, NULL, NULL, NULL},
-  {NULL, NULL, NULL, NULL, NULL}, // at the moment, no measurement is implemented in CU-CP
+  {kpm_node_meas_cu, NULL, NULL, NULL, NULL},
   {NULL, NULL, NULL, kpm_meas_cuup, NULL}
 };
 
