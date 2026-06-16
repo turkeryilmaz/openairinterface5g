@@ -732,3 +732,95 @@ NGAP_NGAP_PDU_t *encode_ng_ul_ran_status_transfer(const ngap_ran_status_transfer
 
   return pdu;
 }
+
+/** @brief Encode NGAP Path Switch Request (9.2.3.8 3GPP TS 38.413) NG-RAN node -> AMF */
+NGAP_NGAP_PDU_t *encode_ng_path_switch_request(const ngap_path_switch_req_t *msg)
+{
+  NGAP_NGAP_PDU_t *pdu = calloc_or_fail(1,sizeof(*pdu));
+
+  /* Prepare the NGAP message to encode */
+  pdu->present = NGAP_NGAP_PDU_PR_initiatingMessage;
+  asn1cCalloc(pdu->choice.initiatingMessage, head);
+  head->procedureCode = NGAP_ProcedureCode_id_PathSwitchRequest;
+  head->criticality = NGAP_Criticality_reject;
+  head->value.present = NGAP_InitiatingMessage__value_PR_PathSwitchRequest;
+  NGAP_PathSwitchRequest_t *out = &head->value.choice.PathSwitchRequest;
+
+  // RAN UE NGAP ID (M)
+  asn1cSequenceAdd(out->protocolIEs.list, NGAP_PathSwitchRequestIEs_t, ie1);
+  ie1->id = NGAP_ProtocolIE_ID_id_RAN_UE_NGAP_ID;
+  ie1->criticality = NGAP_Criticality_reject;
+  ie1->value.present = NGAP_PathSwitchRequestIEs__value_PR_RAN_UE_NGAP_ID;
+  ie1->value.choice.RAN_UE_NGAP_ID = msg->gNB_ue_ngap_id;
+
+  // Source AMF UE NGAP ID (M)
+  asn1cSequenceAdd(out->protocolIEs.list, NGAP_PathSwitchRequestIEs_t, ie2);
+  ie2->id = NGAP_ProtocolIE_ID_id_SourceAMF_UE_NGAP_ID;
+  ie2->criticality = NGAP_Criticality_reject;
+  ie2->value.present = NGAP_PathSwitchRequestIEs__value_PR_AMF_UE_NGAP_ID;
+  asn_uint642INTEGER(&ie2->value.choice.AMF_UE_NGAP_ID, msg->amf_ue_ngap_id);
+
+  // User Location Information (M)
+  {
+    asn1cSequenceAdd(out->protocolIEs.list, NGAP_PathSwitchRequestIEs_t, ie3);
+    ie3->id = NGAP_ProtocolIE_ID_id_UserLocationInformation;
+    ie3->criticality = NGAP_Criticality_ignore;
+    ie3->value.present = NGAP_PathSwitchRequestIEs__value_PR_UserLocationInformation;
+    ie3->value.choice.UserLocationInformation.present = NGAP_UserLocationInformation_PR_userLocationInformationNR;
+    asn1cCalloc(ie3->value.choice.UserLocationInformation.choice.userLocationInformationNR, userinfo_nr_p);
+
+    // NR user location information
+    const target_ran_node_id_t *target = &msg->user_info.target_ng_ran;
+    // CGI (M)
+    MACRO_GNB_ID_TO_CELL_IDENTITY(target->targetgNBId, msg->user_info.nrCellIdentity, &userinfo_nr_p->nR_CGI.nRCellIdentity);
+    MCC_MNC_TO_TBCD(target->plmn_identity.mcc,
+                    target->plmn_identity.mnc,
+                    target->plmn_identity.mnc_digit_length,
+                    &userinfo_nr_p->nR_CGI.pLMNIdentity);
+    // TAI (M)
+    INT24_TO_OCTET_STRING(target->tac, &userinfo_nr_p->tAI.tAC);
+    MCC_MNC_TO_PLMNID(target->plmn_identity.mcc,
+                      target->plmn_identity.mnc,
+                      target->plmn_identity.mnc_digit_length,
+                      &userinfo_nr_p->tAI.pLMNIdentity);
+  }
+
+  // UE Security Capabilities (M)
+  asn1cSequenceAdd(out->protocolIEs.list, NGAP_PathSwitchRequestIEs_t, ie4);
+  ie4->id = NGAP_ProtocolIE_ID_id_UESecurityCapabilities;
+  ie4->criticality = NGAP_Criticality_ignore;
+  ie4->value.present = NGAP_PathSwitchRequestIEs__value_PR_UESecurityCapabilities;
+  encode_ngap_security_capabilities(&ie4->value.choice.UESecurityCapabilities, &msg->security_capabilities);
+
+  // PDU Session Resource to be Switched in Downlink List (M)
+  {
+    asn1cSequenceAdd(out->protocolIEs.list, NGAP_PathSwitchRequestIEs_t, ie5);
+    ie5->id = NGAP_ProtocolIE_ID_id_PDUSessionResourceToBeSwitchedDLList;
+    ie5->criticality = NGAP_Criticality_reject;
+    ie5->value.present = NGAP_PathSwitchRequestIEs__value_PR_PDUSessionResourceToBeSwitchedDLList;
+
+    for (const pdusession_setup_t *pdu = msg->pdusessions_tobeswitched; pdu < msg->pdusessions_tobeswitched + msg->nb_of_pdusessions; pdu++) {
+      asn1cSequenceAdd(ie5->value.choice.PDUSessionResourceToBeSwitchedDLList.list, NGAP_PDUSessionResourceToBeSwitchedDLItem_t, item);
+      item->pDUSessionID = pdu->pdusession_id;
+      /* dLQoSFlowPerTNLInformation */
+      NGAP_PathSwitchRequestTransfer_t transfer = {0};
+      transfer.dL_NGU_UP_TNLInformation.present = NGAP_UPTransportLayerInformation_PR_gTPTunnel;
+      asn1cCalloc(transfer.dL_NGU_UP_TNLInformation.choice.gTPTunnel, tmp);
+      GTP_TEID_TO_ASN1(pdu->n3_outgoing.teid, &tmp->gTP_TEID);
+      tnl_to_bitstring(&tmp->transportLayerAddress, pdu->n3_outgoing.addr);
+      for (int j = 0; j < pdu->nb_of_qos_flow; j++) {
+        asn1cSequenceAdd(transfer.qosFlowAcceptedList.list, NGAP_QosFlowAcceptedItem_t, qosItem);
+        qosItem->qosFlowIdentifier = pdu->associated_qos_flows[j].qfi;
+      }
+
+      void *buf;
+      ssize_t encoded = aper_encode_to_new_buffer(&asn_DEF_NGAP_PathSwitchRequestTransfer, NULL, &transfer, &buf);
+      AssertFatal(encoded > 0, "ASN1 message encoding failed !\n");
+      item->pathSwitchRequestTransfer.buf = buf;
+      item->pathSwitchRequestTransfer.size = encoded;
+
+      ASN_STRUCT_FREE_CONTENTS_ONLY(asn_DEF_NGAP_PathSwitchRequestTransfer, &transfer);
+    }
+  }
+  return pdu;
+}

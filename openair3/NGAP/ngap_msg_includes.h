@@ -97,4 +97,7 @@
 #include "NGAP_DRBStatusDL12.h"
 #include "NGAP_QosFlowListWithCause.h"
 #include "NGAP_QosFlowWithCauseItem.h"
+#include "NGAP_PDUSessionResourceToBeSwitchedDLItem.h"
+#include "NGAP_QosFlowAcceptedItem.h"
+#include "NGAP_PathSwitchRequestTransfer.h"
 #endif // NGAP_MSG_INCLUDES_H
