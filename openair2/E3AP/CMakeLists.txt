@@ -23,7 +23,7 @@ endif()
 
 message(STATUS "E3AP encoding format: ${E3_ENCODING_FORMAT}")
 
-add_library(e3ap config/e3_config.c)
+add_library(e3ap e3_agent.c config/e3_config.c)
 
 # target_link_libraries(e3ap PUBLIC OCP_ITTI) # TODO
 
