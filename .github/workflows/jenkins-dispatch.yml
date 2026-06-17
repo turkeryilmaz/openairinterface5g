@@ -17,12 +17,43 @@ permissions:
   pull-requests: write
 
 jobs:
+  check-labels:
+    runs-on: ubuntu-24.04
+
+    if: github.event_name == 'pull_request_target'
+
+    steps:
+      - name: Check for mandatory CI label
+        run: |
+          PR_LABELS=$(echo '${{ toJson(github.event.pull_request.labels) }}' | jq -r '.[].name')
+
+          for label in \
+            "${{ vars.BUILD_ONLY_LABEL }}" \
+            "${{ vars.DOC_LABEL }}" \
+            "${{ vars.NR_LABEL }}" \
+            "${{ vars.NRUE_LABEL }}" \
+            "${{ vars.LTE_LABEL }}" \
+            "${{ vars.CI_LABEL }}" \
+            "${{ vars.RETRIGGER_CI_LABEL }}"; do
+            if echo "$PR_LABELS" | grep -qxF "$label"; then
+              exit 0
+            fi
+          done
+
+          exit 1
+
   detect-changes:
+    needs: check-labels
     runs-on: ubuntu-24.04
 
     if: |
-      github.event.action != 'labeled' ||
-      github.event.label.name == vars.RETRIGGER_CI_LABEL
+      always() && (
+        github.event_name == 'push' ||
+        needs.check-labels.result == 'success'
+      ) && (
+        github.event.action != 'labeled' ||
+        github.event.label.name == vars.RETRIGGER_CI_LABEL
+      )
 
     outputs:
       protected_files_changed: ${{ steps.filter.outputs.protected }}
@@ -61,6 +92,7 @@ jobs:
 
   trigger-jenkins:
     needs:
+      - check-labels
       - detect-changes
       - require-maintainer-approval
 
