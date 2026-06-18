@@ -166,8 +166,24 @@ jobs:
             -H "X-Github-Hook-Installation-Target-Type: repository" \
             --data @/tmp/filtered_payload.json
 
+  cleanup:
+    needs:
+      - verify-signed-commits
+      - check-labels
+      - detect-changes
+      - require-maintainer-approval
+      - trigger-jenkins
+
+    if: always() && github.event_name == 'pull_request_target'
+
+    runs-on: ubuntu-24.04
+
+    steps:
       - name: Remove retrigger-ci label
-        if: always() && github.event.action == 'labeled' && github.event.label.name == vars.RETRIGGER_CI_LABEL
-        run: gh pr edit ${{ github.event.pull_request.number }} --remove-label "${{ vars.RETRIGGER_CI_LABEL }}"
+        run: |
+          PR_LABELS=$(echo '${{ toJson(github.event.pull_request.labels) }}' | jq -r '.[].name')
+          if echo "$PR_LABELS" | grep -qxF "${{ vars.RETRIGGER_CI_LABEL }}"; then
+            gh pr edit ${{ github.event.pull_request.number }} --remove-label "${{ vars.RETRIGGER_CI_LABEL }}" --repo ${{ github.repository }}
+          fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
