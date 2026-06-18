@@ -260,11 +260,6 @@ void fh_if4p5_north_in(RU_t *ru,int *frame,int *slot)
   } while (symbol_mask != symbol_mask_full);
 }
 
-void fh_if5_north_asynch_in(RU_t *ru, int *frame, int *slot)
-{
-  AssertFatal(1 == 0, "Shouldn't get here\n");
-}
-
 void fh_if4p5_north_asynch_in(RU_t *ru,int *frame,int *slot) {
   NR_DL_FRAME_PARMS *fp = ru->nr_frame_parms;
   nfapi_nr_config_request_scf_t *cfg = &ru->config;
@@ -321,12 +316,6 @@ void fh_if4p5_north_asynch_in(RU_t *ru,int *frame,int *slot) {
 
   if (ru->fh_south_out)
     ru->fh_south_out(ru, frame_tx, slot_tx, proc->timestamp_tx);
-}
-
-void fh_if5_north_out(RU_t *ru)
-{
-  /// **** send_IF5 of rxdata to BBU **** ///
-  AssertFatal(1 == 0, "Shouldn't get here\n");
 }
 
 // RRU IF4p5 northbound interface (RX)
@@ -1088,94 +1077,59 @@ void set_function_spec_param(RU_t *ru)
   switch (ru->if_south) {
     case LOCAL_RF:   // this is an RU with integrated RF (RRU, gNB)
       reset_meas(&ru->rx_fhaul);
-      if (ru->function ==  NGFI_RRU_IF5) {                 // IF5 RRU
-        ru->do_prach              = 0;                      // no prach processing in RU
-        ru->fh_north_in           = NULL;                   // no shynchronous incoming fronthaul from north
-        ru->fh_north_out          = fh_if5_north_out;       // need only to do send_IF5  reception
-        ru->fh_south_out          = tx_rf;                  // send output to RF
-        ru->fh_north_asynch_in    = fh_if5_north_asynch_in; // TX packets come asynchronously
-        ru->feprx                 = NULL;                   // nothing (this is a time-domain signal)
-        ru->feptx_ofdm            = NULL;                   // nothing (this is a time-domain signal)
-        ru->feptx_prec            = NULL;                   // nothing (this is a time-domain signal)
-        ru->nr_start_if           = nr_start_if;            // need to start the if interface for if5
-        ru->ifdevice.host_type    = RRU_HOST;
-        ru->rfdevice.host_type    = RRU_HOST;
-        ru->ifdevice.eth_params   = &ru->eth_params;
-        reset_meas(&ru->rx_fhaul);
-        reset_meas(&ru->tx_fhaul);
-        reset_meas(&ru->compression);
-        reset_meas(&ru->transport);
-      } else if (ru->function == NGFI_RRU_IF4p5) {
-        ru->do_prach              = 1;                        // do part of prach processing in RU
-        ru->fh_north_in           = NULL;                     // no synchronous incoming fronthaul from north
-        ru->fh_north_out          = fh_if4p5_north_out;       // send_IF4p5 on reception
-        ru->fh_south_out          = tx_rf;                    // send output to RF
-        ru->fh_north_asynch_in    = fh_if4p5_north_asynch_in; // TX packets come asynchronously
-        ru->feprx                 = nr_fep_tp;     // this is frequency-shift + DFTs
-        ru->feptx_ofdm            = nr_feptx_tp; // this is fep with idft only (no precoding in RRU)
-        ru->feptx_prec            = NULL;
-        ru->nr_start_if           = nr_start_if;              // need to start the if interface for if4p5
-        ru->ifdevice.host_type    = RRU_HOST;
-        ru->rfdevice.host_type    = RRU_HOST;
-        ru->ifdevice.eth_params   = &ru->eth_params;
-        reset_meas(&ru->tx_fhaul);
-        reset_meas(&ru->compression);
-        reset_meas(&ru->transport);
-      } else if (ru->function == gNodeB_3GPP) {
-        ru->do_prach             = 0;                       // no prach processing in RU
-        ru->feprx                = nr_fep_tp;     // this is frequency-shift + DFTs
-        ru->feptx_ofdm           = nr_feptx_tp;             // this is fep with idft and precoding
-        ru->feptx_prec           = NULL;                    
-        ru->fh_north_in          = NULL;                    // no incoming fronthaul from north
-        ru->fh_north_out         = NULL;                    // no outgoing fronthaul to north
-        ru->nr_start_if          = NULL;                    // no if interface
-        ru->rfdevice.host_type   = RAU_HOST;
-        ru->fh_south_in            = rx_rf;                 // local synchronous RF RX
-        ru->fh_south_out           = tx_rf;                 // local synchronous RF TX
-        ru->start_rf               = start_rf;              // need to start the local RF interface
-        ru->stop_rf                = stop_rf;
-        ru->start_write_thread     = start_write_thread;                  // starting RF TX in different thread
-      }
+      AssertFatal(ru->function == gNodeB_3GPP, "ru->function %d not supported for LOCAL_RF\n", ru->function);
+      ru->do_prach = 0; // no prach processing in RU
+      ru->feprx = nr_fep_tp; // this is frequency-shift + DFTs
+      ru->feptx_ofdm = nr_feptx_tp; // this is fep with idft and precoding
+      ru->feptx_prec = NULL;
+      ru->fh_north_in = NULL; // no incoming fronthaul from north
+      ru->fh_north_out = NULL; // no outgoing fronthaul to north
+      ru->nr_start_if = NULL; // no if interface
+      ru->rfdevice.host_type = RAU_HOST;
+      ru->fh_south_in = rx_rf; // local synchronous RF RX
+      ru->fh_south_out = tx_rf; // local synchronous RF TX
+      ru->start_rf = start_rf; // need to start the local RF interface
+      ru->stop_rf = stop_rf;
+      ru->start_write_thread = start_write_thread; // starting RF TX in different thread
       break;
 
     case REMOTE_IF5: // the remote unit is IF5 RRU
-      ru->do_prach               = 0;
-      ru->txfh_in_fep            = 0;
-      ru->feprx                  = nr_fep_tp;     // this is frequency-shift + DFTs
-      ru->feptx_prec             = NULL;          // need to do transmit Precoding + IDFTs
-      ru->feptx_ofdm             = nr_feptx_tp; // need to do transmit Precoding + IDFTs
-      ru->fh_south_in            = fh_if5_south_in;     // synchronous IF5 reception
-      ru->fh_south_out           = (ru->txfh_in_fep>0) ? NULL : fh_if5_south_out;    // synchronous IF5 transmission
-      ru->fh_south_asynch_in     = NULL;                // no asynchronous UL
-      ru->start_rf               = ru->eth_params.transp_preference == ETH_UDP_IF5_ECPRI_MODE ? start_streaming : NULL;
-      ru->stop_rf                = NULL;
-      ru->start_write_thread     = NULL;
-      ru->nr_start_if            = nr_start_if;         // need to start if interface for IF5
-      ru->ifdevice.host_type     = RAU_HOST;
-      ru->ifdevice.eth_params    = &ru->eth_params;
-
+      ru->do_prach = 0;
+      ru->txfh_in_fep = 0;
+      ru->feprx = nr_fep_tp; // this is frequency-shift + DFTs
+      ru->feptx_prec = NULL; // need to do transmit Precoding + IDFTs
+      ru->feptx_ofdm = nr_feptx_tp; // need to do transmit Precoding + IDFTs
+      ru->fh_south_in = fh_if5_south_in; // synchronous IF5 reception
+      ru->fh_south_out = (ru->txfh_in_fep > 0) ? NULL : fh_if5_south_out; // synchronous IF5 transmission
+      ru->fh_south_asynch_in = NULL; // no asynchronous UL
+      ru->start_rf = ru->eth_params.transp_preference == ETH_UDP_IF5_ECPRI_MODE ? start_streaming : NULL;
+      ru->stop_rf = NULL;
+      ru->start_write_thread = NULL;
+      ru->nr_start_if = nr_start_if; // need to start if interface for IF5
+      ru->ifdevice.host_type = RAU_HOST;
+      ru->ifdevice.eth_params = &ru->eth_params;
       break;
 
     case REMOTE_IF4p5:
-      ru->do_prach               = 0;
-      ru->feprx                  = NULL;                // DFTs
-      ru->feptx_prec             = nr_feptx_prec;       // Precoding operation
-      ru->feptx_ofdm             = NULL;                // no OFDM mod
-      ru->fh_south_in            = fh_if4p5_south_in;   // synchronous IF4p5 reception
-      ru->fh_south_out           = fh_if4p5_south_out;  // synchronous IF4p5 transmission
-      ru->fh_south_asynch_in     = (ru->if_timing == synch_to_other) ? fh_if4p5_south_in : NULL;                // asynchronous UL if synch_to_other
-      ru->fh_north_out           = NULL;
-      ru->fh_north_asynch_in     = NULL;
-      ru->start_rf               = NULL;                // no local RF
-      ru->stop_rf                = NULL;
-      ru->start_write_thread     = NULL;
-      ru->nr_start_if            = nr_start_if;         // need to start if interface for IF4p5
-      ru->ifdevice.host_type     = RAU_HOST;
-      ru->ifdevice.eth_params    = &ru->eth_params;
+      ru->do_prach = 0;
+      ru->feprx = NULL; // DFTs
+      ru->feptx_prec = nr_feptx_prec; // Precoding operation
+      ru->feptx_ofdm = NULL; // no OFDM mod
+      ru->fh_south_in = fh_if4p5_south_in; // synchronous IF4p5 reception
+      ru->fh_south_out = fh_if4p5_south_out; // synchronous IF4p5 transmission
+      ru->fh_south_asynch_in = (ru->if_timing == synch_to_other) ? fh_if4p5_south_in : NULL; // asynchronous UL if synch_to_other
+      ru->fh_north_out = NULL;
+      ru->fh_north_asynch_in = NULL;
+      ru->start_rf = NULL; // no local RF
+      ru->stop_rf = NULL;
+      ru->start_write_thread = NULL;
+      ru->nr_start_if = nr_start_if; // need to start if interface for IF4p5
+      ru->ifdevice.host_type = RAU_HOST;
+      ru->ifdevice.eth_params = &ru->eth_params;
       break;
 
     default:
-      LOG_E(PHY,"RU with invalid or unknown southbound interface type %d\n",ru->if_south);
+      LOG_E(PHY, "RU with invalid or unknown southbound interface type %d\n", ru->if_south);
       break;
   } // switch on interface type
 }
@@ -1369,47 +1323,14 @@ static void NRRCconfig_RU(configmodule_interface_t *cfg)
     ru->openair0_cfg.tune_offset = get_softmodem_params()->tune_offset;
 
     if (strcmp(*param[RU_LOCAL_RF_IDX].strptr, "yes") == 0) {
-      if (!config_isparamset(param, RU_LOCAL_IF_NAME_IDX)) {
-        ru->if_south = LOCAL_RF;
-        ru->function = gNodeB_3GPP;
-        LOG_D(PHY, "Setting function for RU %d to gNodeB_3GPP\n", j);
-      } else {
-        ru->eth_params.local_if_name = strdup(*param[RU_LOCAL_IF_NAME_IDX].strptr);
-        ru->eth_params.my_addr = strdup(*param[RU_LOCAL_ADDRESS_IDX].strptr);
-        ru->eth_params.remote_addr = strdup(*param[RU_REMOTE_ADDRESS_IDX].strptr);
-        ru->eth_params.my_portc = *param[RU_LOCAL_PORTC_IDX].uptr;
-        ru->eth_params.remote_portc = *param[RU_REMOTE_PORTC_IDX].uptr;
-        ru->eth_params.my_portd = *param[RU_LOCAL_PORTD_IDX].uptr;
-        ru->eth_params.remote_portd = *param[RU_REMOTE_PORTD_IDX].uptr;
-        char *str = *param[RU_TRANSPORT_PREFERENCE_IDX].strptr;
-        if (strcmp(str, "udp") == 0) {
-          ru->if_south = LOCAL_RF;
-          ru->function = NGFI_RRU_IF5;
-          ru->eth_params.transp_preference = ETH_UDP_MODE;
-          LOG_D(PHY, "Setting function for RU %d to NGFI_RRU_IF5 (udp)\n", j);
-        } else if (strcmp(str, "raw") == 0) {
-          ru->if_south = LOCAL_RF;
-          ru->function = NGFI_RRU_IF5;
-          ru->eth_params.transp_preference = ETH_RAW_MODE;
-          LOG_D(PHY, "Setting function for RU %d to NGFI_RRU_IF5 (raw)\n", j);
-        } else if (strcmp(str, "udp_if4p5") == 0) {
-          ru->if_south = LOCAL_RF;
-          ru->function = NGFI_RRU_IF4p5;
-          ru->eth_params.transp_preference = ETH_UDP_IF4p5_MODE;
-          LOG_D(PHY, "Setting function for RU %d to NGFI_RRU_IF4p5 (udp)\n", j);
-        } else if (strcmp(str, "raw_if4p5") == 0) {
-          ru->if_south = LOCAL_RF;
-          ru->function = NGFI_RRU_IF4p5;
-          ru->eth_params.transp_preference = ETH_RAW_IF4p5_MODE;
-          LOG_D(PHY, "Setting function for RU %d to NGFI_RRU_IF4p5 (raw)\n", j);
-        }
-      }
-
+      AssertFatal(!config_isparamset(param, RU_LOCAL_IF_NAME_IDX), "RU_TRANSPORT_PREFERENCE not supported for local RF\n");
+      ru->if_south = LOCAL_RF;
+      ru->function = gNodeB_3GPP;
+      LOG_D(PHY, "Setting function for RU %d to gNodeB_3GPP\n", j);
       ru->max_pdschReferenceSignalPower = *param[RU_MAX_RS_EPRE_IDX].uptr;
       ru->max_rxgain = *param[RU_MAX_RXGAIN_IDX].uptr;
       ru->sf_extension = *param[RU_SF_EXTENSION_IDX].uptr;
-    } // strcmp(local_rf, "yes") == 0
-    else {
+    } else { // strcmp(local_rf, "yes") == 0
       char *str = *param[RU_TRANSPORT_PREFERENCE_IDX].strptr;
       LOG_D(PHY, "RU %d: Transport %s\n", j, str);
       ru->eth_params.local_if_name = strdup(*param[RU_LOCAL_IF_NAME_IDX].strptr);
@@ -1432,10 +1353,6 @@ static void NRRCconfig_RU(configmodule_interface_t *cfg)
         ru->if_south = REMOTE_IF5;
         ru->function = NGFI_RAU_IF5;
         ru->eth_params.transp_preference = ETH_RAW_MODE;
-      } else if (strcmp(str, "udp_if4p5") == 0) {
-        ru->if_south = REMOTE_IF4p5;
-        ru->function = NGFI_RAU_IF4p5;
-        ru->eth_params.transp_preference = ETH_UDP_IF4p5_MODE;
       } else if (strcmp(str, "raw_if4p5") == 0) {
         ru->if_south = REMOTE_IF4p5;
         ru->function = NGFI_RAU_IF4p5;
