@@ -87,9 +87,13 @@ void nr_sdap_tun_attach(nr_sdap_entity_t *entity)
   }
 
   int d = dup(iface->sock);
-  AssertFatal(d >= 0, "dup(tun sock) failed: errno %d %s\n", errno, strerror(errno));
-  reblock_tun_socket(d);
+  if (d < 0)
+    LOG_W(SDAP, "dup(tun sock) failed: errno %d %s\n", errno, strerror(errno));
+  else
+    reblock_tun_socket(d);
   entity->pdusession_sock = d;
+  if (d < 0)
+    return;
   entity->stop_thread = false;
 
   char thread_name[64];
