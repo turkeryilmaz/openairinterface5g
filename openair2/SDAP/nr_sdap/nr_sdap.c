@@ -213,14 +213,6 @@ static void *sdap_tun_read_thread(void *arg)
 
     LOG_D(SDAP, "read data of size %d\n", len);
 
-    if (!entity->is_gnb && entity->enable_sdap && (entity->qfi < 0 || entity->qfi >= SDAP_MAX_QFI)) {
-      LOG_W(SDAP,
-            "Dropping UL SDU for UE %ld PDU session %d: no QoS rule QFI available for SDAP header\n",
-            entity->ue_id,
-            entity->pdusession_id);
-      continue;
-    }
-
     protocol_ctxt_t ctxt = {.enb_flag = entity->is_gnb, .rntiMaybeUEid = entity->ue_id};
 
     bool dc = entity->is_gnb ? false : SDAP_HDR_UL_DATA_PDU;
