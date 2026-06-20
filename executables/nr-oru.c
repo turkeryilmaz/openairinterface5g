@@ -73,6 +73,8 @@
 #define CONFIG_STRING_T2A_UP "T2a_up"
 #define CONFIG_STRING_T2A_CP "T2a_cp"
 #define CONFIG_STRING_PRACH_EAXC_OFFSET "prach_eaxc_offset"
+#define CONFIG_STRING_PRACH_KBAR "prach_kbar"
+#define CONFIG_STRING_COMP_TYPE         "comp_type"
 
 #define HLP_DPDK_DEVICES "DPDK devices to use for the O-RU."
 #define HLP_RX_CORE "The CPU core to be used to deploy dpdk RX worker for O-RU."
@@ -80,6 +82,14 @@
 #define HLP_DU_MAC_ADDRESSES "DU MAC addreses, used to prepare Ethernet headers."
 #define HLP_MTU "MTU for RX and TX."
 #define HLP_PRACH_EAXC_OFFSET "PRACH eAxC offset."
+#define HLP_PRACH_KBAR "PRACH kbar offset."
+#define HLP_COMP_TYPE         "DL U-plane compression method: none, bfp, blkscale, or ulaw."
+
+#define COMP_TYPE_CHECK                                                               \
+  &(checkedparam_t)                                                                   \
+  {                                                                                   \
+    .s3a = { config_checkstr_assign_integer, {"none", "bfp", "blkscale", "ulaw"}, {0, 1, 2, 3}, 4 } \
+  }
 
 // clang-format off
 #define CMDLINE_PARAMS_DESC_ORU_FH \
@@ -91,7 +101,9 @@
   {CONFIG_STRING_MTU,                        HLP_MTU,               0,                      .iptr=NULL,       .defintval=9600,              TYPE_INT,          0}, \
   {CONFIG_STRING_T2A_UP,                     "",                    0,                      .iptr=NULL,       .defintarrayval=NULL,         TYPE_INTARRAY,     0}, \
   {CONFIG_STRING_T2A_CP,                     "",                    0,                      .iptr=NULL,       .defintarrayval=NULL,         TYPE_INTARRAY,     0}, \
-  {CONFIG_STRING_PRACH_EAXC_OFFSET,          HLP_PRACH_EAXC_OFFSET, 0,                      .iptr=NULL,       .defintval=0,                 TYPE_INT,          0}  \
+  {CONFIG_STRING_PRACH_EAXC_OFFSET,          HLP_PRACH_EAXC_OFFSET, 0,                      .u8ptr=NULL,      .defuintval=0,                TYPE_UINT8,        0}, \
+  {CONFIG_STRING_PRACH_KBAR,                 HLP_PRACH_KBAR,        0,                      .uptr=NULL,       .defuintval=4,                TYPE_UINT,         0}, \
+  {CONFIG_STRING_COMP_TYPE,                  HLP_COMP_TYPE,         0,                      .strptr=NULL,     .defstrval="none",           TYPE_STRING,       0, COMP_TYPE_CHECK}  \
 }
 // clang-format on
 
@@ -232,12 +244,15 @@ int get_oru_options(ORU_t *oru)
     fh_cfg->du_mac_addrs[i] = gpd(fh_param, nump, CONFIG_STRING_DU_MAC_ADDRESSES)->strlistptr[i];
     AssertFatal(strlen(fh_cfg->du_mac_addrs[i]) == 17, "Invalid MAC address\n");
   }
-  fh_cfg->enable_compression = false;
+  int comp_type_idx = config_paramidx_fromname(fh_param, nump, CONFIG_STRING_COMP_TYPE);
+  AssertFatal(comp_type_idx >= 0, "Index for %s config option not found!\n", CONFIG_STRING_COMP_TYPE);
+  fh_cfg->comp_type = (fh_comp_method_t)config_get_processedint(config_get_if(), &fh_param[comp_type_idx]);
   fh_cfg->rx_core = *gpd(fh_param, nump, CONFIG_STRING_RX_CORE)->iptr;
   fh_cfg->mtu = *gpd(fh_param, nump, CONFIG_STRING_MTU)->iptr;
   fh_cfg->num_prbs = oru->bw_tx[0];
   fh_cfg->numerology = oru->numerology;
-  fh_cfg->prach_eaxc_offset = *gpd(fh_param, nump, CONFIG_STRING_PRACH_EAXC_OFFSET)->iptr;
+  fh_cfg->prach_eaxc_offset = *gpd(fh_param, nump, CONFIG_STRING_PRACH_EAXC_OFFSET)->u8ptr;
+  fh_cfg->prach_kbar = *gpd(fh_param, nump, CONFIG_STRING_PRACH_KBAR)->uptr;
 
   AssertFatal(gpd(fh_param, nump, CONFIG_STRING_T2A_UP)->numelt == 2, "Two parameters required for %s\n", CONFIG_STRING_T2A_UP);
   fh_cfg->T2a_up_min_uS = gpd(fh_param, nump, CONFIG_STRING_T2A_UP)->iptr[0];

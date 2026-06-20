@@ -7,6 +7,7 @@
 
 #include "oru_io.h"
 #include <stdint.h>
+#include "fh_compression.h"
 #include "oru_packet_processor.h"
 
 typedef struct {
@@ -25,8 +26,7 @@ typedef struct {
 } oru_fh_tdd_pattern_t;
 
 typedef struct {
-  // Compression configuration
-  bool enable_compression;
+  fh_comp_method_t comp_type;
   int numerology;
   uint16_t num_prbs;
   // MTU configuration
@@ -44,6 +44,7 @@ typedef struct {
   uint32_t T2a_cp_max_uS;
   oru_fh_tdd_pattern_t tdd_pattern;
   int prach_eaxc_offset;
+  int prach_kbar;
 } oru_fh_config_t;
 
 /**
