@@ -886,18 +886,22 @@ void pdcch_processing(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, nr_phy_
     memcpy(ue->phy_sim_rxdataF, rxdataF[0], sizeof(int32_t) * max_nb_symb_pdcch * fp->ofdm_symbol_size);
 }
 
-int is_ssb_in_symbol(const PHY_VARS_NR_UE *ue, const int symbIdxInFrame, const int slot, const int ssbMask, const int ssbIndex)
+int is_ssb_in_symbol(const PHY_VARS_NR_UE *ue,
+                     const int symbIdxInFrame,
+                     const int slot,
+                     const int ssbMask,
+                     const int ssbIndex,
+                     const int ssb_period)
 {
   const NR_DL_FRAME_PARMS *fp = &ue->frame_parms;
-  const fapi_nr_config_request_t *cfg = &ue->nrUE_config;
   // Skip if current SSB index is not transmitted
   if (!is_ssb_index_transmitted(ue, ssbIndex)) {
     return false;
   }
 
   const int startPbchSymb = nr_get_ssb_start_symbol(fp, ssbIndex) + 1;
-  const int startPbchSymbHf = (cfg->ssb_table.ssb_period == 0) ? (startPbchSymb + (fp->slots_per_frame * NR_SYMBOLS_PER_SLOT / 2))
-                                                               : (fp->slots_per_frame * NR_SYMBOLS_PER_SLOT);
+  const int startPbchSymbHf = (ssb_period == 0) ? (startPbchSymb + (fp->slots_per_frame * NR_SYMBOLS_PER_SLOT / 2))
+                                                : (fp->slots_per_frame * NR_SYMBOLS_PER_SLOT);
 
   // Skip if no SSB in current symbol
   if ((symbIdxInFrame >= startPbchSymb && symbIdxInFrame < (startPbchSymb + NB_SYMBOLS_PBCH))
@@ -922,7 +926,7 @@ int get_ssb_index_in_symbol(const PHY_VARS_NR_UE *ue, const int symbIdxInFrame, 
   // Find the SSB index corresponding to current symbol
   for (int ssbIndex = 0; ssbIndex < fp->Lmax; ssbIndex++) {
     const int ssbMask = cfg->ssb_table.ssb_mask_list[ssbIndex / 32].ssb_mask;
-    if (is_ssb_in_symbol(ue, symbIdxInFrame, slot, ssbMask, ssbIndex))
+    if (is_ssb_in_symbol(ue, symbIdxInFrame, slot, ssbMask, ssbIndex, ssb_period))
       return ssbIndex;
   }
 
