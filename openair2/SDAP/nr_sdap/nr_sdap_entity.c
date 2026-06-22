@@ -344,11 +344,12 @@ static void nr_sdap_rx_entity(nr_sdap_entity_t *entity,
         }
 
         /*
-         * TS 37.324 5.3 QoS flow to DRB Mapping 
-         * 5.3.2 Reflective mapping
-         * store the QoS flow to DRB mapping of the DL SDAP data PDU as the QoS flow to DRB mapping rule for the UL. 
-         */ 
+         * TS 37.324 §5.3.2 Reflective mapping: store the DL QoS flow to DRB mapping
+         * as the UL mapping rule. sdap-HeaderUL/DL are per DRB: copy the
+         * receiving DRB role onto the QFI row together with drb_id.
+         */
         entity->qfi2drb_table[sdap_hdr->QFI].drb_id = pdcp_entity;
+        entity->qfi2drb_table[sdap_hdr->QFI].entity_role = drb_role;
       }
 
       /*
