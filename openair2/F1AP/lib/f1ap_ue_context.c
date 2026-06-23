@@ -434,7 +434,12 @@ static bool decode_qos_flow_param(const F1AP_QoSFlowLevelQoSParameters_t *f1ap, 
   if (f1ap->qoS_Characteristics.present == F1AP_QoS_Characteristics_PR_non_Dynamic_5QI) {
     out->qos_type = NON_DYNAMIC;
     const F1AP_NonDynamic5QIDescriptor_t *nondyn = f1ap->qoS_Characteristics.choice.non_Dynamic_5QI;
-    out->nondyn.fiveQI = nondyn->fiveQI;
+    const int fiveqi = nondyn->fiveQI;
+    if (fiveqi < MIN_FIVEQI || fiveqi > MAX_FIVEQI) {
+      PRINT_ERROR("non-dynamic fiveQI %d out of range %d..%d\n", fiveqi, MIN_FIVEQI, MAX_FIVEQI);
+      return false;
+    }
+    out->nondyn.fiveQI = fiveqi;
   } else {
     _EQ_CHECK_INT(f1ap->qoS_Characteristics.present, F1AP_QoS_Characteristics_PR_dynamic_5QI);
     const F1AP_Dynamic5QIDescriptor_t *d = f1ap->qoS_Characteristics.choice.dynamic_5QI;
