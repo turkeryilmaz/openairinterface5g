@@ -897,7 +897,6 @@ void set_function_spec_param(RU_t *ru)
       ru->feprx = nr_fep_tp; // this is frequency-shift + DFTs
       ru->feptx_ofdm = nr_feptx_tp; // this is fep with idft and precoding
       ru->feptx_prec = NULL;
-      ru->fh_north_in = NULL; // no incoming fronthaul from north
       ru->fh_north_out = NULL; // no outgoing fronthaul to north
       ru->nr_start_if = NULL; // no if interface
       ru->rfdevice.host_type = RAU_HOST;
