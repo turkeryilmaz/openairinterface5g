@@ -556,10 +556,10 @@ void ru_tx_func(void *param)
     ru->feptx_prec(ru,frame_tx,slot_tx);
 
   // do OFDM with/without TX front-end processing  if needed
-  if (ru->fh_north_asynch_in == NULL && ru->feptx_ofdm)
+  if (ru->feptx_ofdm)
     ru->feptx_ofdm(ru, frame_tx, slot_tx);
 
-  if (ru->fh_north_asynch_in == NULL && ru->fh_south_out)
+  if (ru->fh_south_out)
     ru->fh_south_out(ru, frame_tx, slot_tx, info->timestamp_tx);
 }
 
@@ -924,7 +924,6 @@ void set_function_spec_param(RU_t *ru)
       ru->feptx_ofdm = NULL; // no OFDM mod
       ru->fh_south_in = NULL;
       ru->fh_south_out = NULL;
-      ru->fh_north_asynch_in = NULL;
       ru->start_rf = NULL; // no local RF
       ru->stop_rf = NULL;
       ru->start_write_thread = NULL;
