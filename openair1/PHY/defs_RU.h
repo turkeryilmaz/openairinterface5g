@@ -449,8 +449,6 @@ typedef struct RU_t_s {
   int sf_ahead;
   /// TX processing advance in slots (for NR)
   int sl_ahead;
-  /// flag to indicate TX FH is embedded in TX FEP
-  int txfh_in_fep;
   /// flag to indicate half-slot parallelization
   int half_slot_parallelization;
   /// FAPI confiuration
