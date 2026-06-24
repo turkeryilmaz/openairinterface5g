@@ -310,6 +310,7 @@ __attribute__((__visibility__("default"))) int transport_init(openair0_device_t 
   eth->nCC = fh_config->nCC;
   eth->num_ports = fh_init.xran_ports;
 
+  device->host_type = RAU_HOST;
   device->transp_type = ETHERNET_TP;
   device->trx_start_func = trx_oran_start;
   device->trx_get_stats_func = trx_oran_get_stats;

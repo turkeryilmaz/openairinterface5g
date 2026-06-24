@@ -896,7 +896,6 @@ void set_function_spec_param(RU_t *ru)
       ru->feptx_ofdm = nr_feptx_tp; // this is fep with idft and precoding
       ru->feptx_prec = NULL;
       ru->nr_start_if = NULL; // no if interface
-      ru->rfdevice.host_type = RAU_HOST;
       ru->fh_south_in = rx_rf; // local synchronous RF RX
       ru->fh_south_out = tx_rf; // local synchronous RF TX
       ru->start_rf = start_rf; // need to start the local RF interface
@@ -914,8 +913,6 @@ void set_function_spec_param(RU_t *ru)
       ru->stop_rf = NULL;
       ru->start_write_thread = NULL;
       ru->nr_start_if = nr_start_if; // need to start if interface for IF5
-      ru->ifdevice.host_type = RAU_HOST;
-      ru->ifdevice.eth_params = &ru->eth_params;
       break;
 
     case REMOTE_IF4p5:
@@ -928,8 +925,6 @@ void set_function_spec_param(RU_t *ru)
       ru->stop_rf = NULL;
       ru->start_write_thread = NULL;
       ru->nr_start_if = nr_start_if; // need to start if interface for IF4p5
-      ru->ifdevice.host_type = RAU_HOST;
-      ru->ifdevice.eth_params = &ru->eth_params;
       break;
 
     default:
@@ -1160,7 +1155,6 @@ static void NRRCconfig_RU(configmodule_interface_t *cfg)
       } else if (strcmp(str, "raw_if4p5") == 0) {
         ru->if_south = REMOTE_IF4p5;
         ru->function = NGFI_RAU_IF4p5;
-        ru->eth_params.transp_preference = ETH_RAW_IF4p5_MODE;
       }
     } /* strcmp(local_rf, "yes") != 0 */
 

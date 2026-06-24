@@ -888,6 +888,8 @@ int aw2s_oriinit(openair0_device_t *device)
 int transport_init(openair0_device_t *device, openair0_config_t *openair0_cfg, eth_params_t *eth_params)
 {
   printf("Initializing AW2S (%p,%p,%p)\n",aw2s_oriinit,aw2s_oricleanup,aw2s_startstreaming); 
+  device->host_type = RAU_HOST;
+  device->eth_params = eth_params;
   device->thirdparty_init           = aw2s_oriinit;
   device->thirdparty_cleanup        = aw2s_oricleanup;
   device->thirdparty_startstreaming = aw2s_startstreaming;
