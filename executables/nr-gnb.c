@@ -254,10 +254,6 @@ static size_t dump_L1_meas_stats(PHY_VARS_gNB *gNB, RU_t *ru, char *output, size
 
   output += print_meas_log(&ru->tx_fhaul,"tx_fhaul",NULL,NULL, output, end - output);
 
-  if (ru->fh_north_out) {
-    output += print_meas_log(&ru->compression,"compression",NULL,NULL, output, end - output);
-    output += print_meas_log(&ru->transport,"transport",NULL,NULL, output, end - output);
-  }
   return output - begin;
 }
 

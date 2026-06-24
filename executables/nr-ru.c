@@ -561,8 +561,6 @@ void ru_tx_func(void *param)
 
   if (ru->fh_north_asynch_in == NULL && ru->fh_south_out)
     ru->fh_south_out(ru, frame_tx, slot_tx, info->timestamp_tx);
-  if (ru->fh_north_out)
-    ru->fh_north_out(ru);
 }
 
 /* @brief wait for the next RX TTI to be free
@@ -897,7 +895,6 @@ void set_function_spec_param(RU_t *ru)
       ru->feprx = nr_fep_tp; // this is frequency-shift + DFTs
       ru->feptx_ofdm = nr_feptx_tp; // this is fep with idft and precoding
       ru->feptx_prec = NULL;
-      ru->fh_north_out = NULL; // no outgoing fronthaul to north
       ru->nr_start_if = NULL; // no if interface
       ru->rfdevice.host_type = RAU_HOST;
       ru->fh_south_in = rx_rf; // local synchronous RF RX
@@ -929,7 +926,6 @@ void set_function_spec_param(RU_t *ru)
       ru->fh_south_in = NULL;
       ru->fh_south_out = NULL;
       ru->fh_south_asynch_in = NULL;
-      ru->fh_north_out = NULL;
       ru->fh_north_asynch_in = NULL;
       ru->start_rf = NULL; // no local RF
       ru->stop_rf = NULL;
