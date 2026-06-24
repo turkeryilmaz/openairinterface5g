@@ -894,7 +894,6 @@ void set_function_spec_param(RU_t *ru)
     case LOCAL_RF:   // this is an RU with integrated RF (RRU, gNB)
       reset_meas(&ru->rx_fhaul);
       AssertFatal(ru->function == gNodeB_3GPP, "ru->function %d not supported for LOCAL_RF\n", ru->function);
-      ru->do_prach = 0; // no prach processing in RU
       ru->feprx = nr_fep_tp; // this is frequency-shift + DFTs
       ru->feptx_ofdm = nr_feptx_tp; // this is fep with idft and precoding
       ru->feptx_prec = NULL;
@@ -910,7 +909,6 @@ void set_function_spec_param(RU_t *ru)
       break;
 
     case REMOTE_IF5: // the remote unit is IF5 RRU
-      ru->do_prach = 0;
       ru->txfh_in_fep = 0;
       ru->feprx = nr_fep_tp; // this is frequency-shift + DFTs
       ru->feptx_prec = NULL; // need to do transmit Precoding + IDFTs
@@ -927,7 +925,6 @@ void set_function_spec_param(RU_t *ru)
       break;
 
     case REMOTE_IF4p5:
-      ru->do_prach = 0;
       ru->feprx = NULL; // DFTs
       ru->feptx_prec = nr_feptx_prec; // Precoding operation
       ru->feptx_ofdm = NULL; // no OFDM mod
