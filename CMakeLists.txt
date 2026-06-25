@@ -855,7 +855,6 @@ set(NR_PHY_SRC_RU
   ${OPENAIR1_DIR}/PHY/MODULATION/nr_beamforming.c
   ${OPENAIR1_DIR}/PHY/MODULATION/slot_fep_nr.c
   ${OPENAIR1_DIR}/PHY/INIT/nr_init_ru.c
-  ${OPENAIR1_DIR}/PHY/if4_tools.c
   )
 
 set(PHY_SRC_UE
