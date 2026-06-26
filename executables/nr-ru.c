@@ -841,12 +841,6 @@ int start_write_thread(RU_t *ru) {
   return ru->rfdevice.trx_write_init(&ru->rfdevice);
 }
 
-void start_RU_proc(RU_t *ru)
-{
-  threadCreate(&ru->proc.pthread_FH, ru_thread, (void *)ru, "ru_thread", ru->ru_thread_core, OAI_PRIORITY_RT_MAX);
-}
-
-
 void kill_NR_RU_proc(int inst) {
   RU_t *ru = RC.ru[inst];
   RU_proc_t *proc = &ru->proc;
@@ -1012,7 +1006,7 @@ void init_NR_RU(configmodule_interface_t *cfg, char *rf_config_file)
 void start_NR_RU()
 {
   RU_t *ru = RC.ru[0];
-  start_RU_proc(ru);
+  threadCreate(&ru->proc.pthread_FH, ru_thread, ru, "ru_thread", ru->ru_thread_core, OAI_PRIORITY_RT_MAX);
 }
 
 void stop_RU(int nb_ru) {
@@ -1040,7 +1034,6 @@ static void NRRCconfig_RU(configmodule_interface_t *cfg)
     RU_t *ru = RC.ru[j] = calloc(1, sizeof(*RC.ru[j]));
     ru->idx = j;
     ru->nr_frame_parms = calloc(1, sizeof(*ru->nr_frame_parms));
-    ru->frame_parms = calloc(1, sizeof(*ru->frame_parms));
     paramdef_t *param = RUParamList.paramarray[j];
     if (RC.nb_nr_L1_inst > 0)
       ru->num_gNB = param[RU_ENB_LIST_IDX].numelt;
@@ -1126,7 +1119,7 @@ static void NRRCconfig_RU(configmodule_interface_t *cfg)
       ru->max_pdschReferenceSignalPower = *param[RU_MAX_RS_EPRE_IDX].uptr;
       ru->max_rxgain = *param[RU_MAX_RXGAIN_IDX].uptr;
       ru->sf_extension = *param[RU_SF_EXTENSION_IDX].uptr;
-    } else { // strcmp(local_rf, "yes") == 0
+    } else {
       char *str = *param[RU_TRANSPORT_PREFERENCE_IDX].strptr;
       LOG_D(PHY, "RU %d: Transport %s\n", j, str);
       ru->ifdevice.eth_params.local_if_name = strdup(*param[RU_LOCAL_IF_NAME_IDX].strptr);
@@ -1153,7 +1146,7 @@ static void NRRCconfig_RU(configmodule_interface_t *cfg)
         ru->if_south = REMOTE_IF4p5;
         ru->function = NGFI_RAU_IF4p5;
       }
-    } /* strcmp(local_rf, "yes") != 0 */
+    }
 
     ru->nb_tx = *param[RU_NB_TX_IDX].uptr;
     ru->nb_rx = *param[RU_NB_RX_IDX].uptr;
