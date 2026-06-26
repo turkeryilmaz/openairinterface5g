@@ -841,12 +841,6 @@ int start_write_thread(RU_t *ru) {
   return ru->rfdevice.trx_write_init(&ru->rfdevice);
 }
 
-void init_RU_proc(RU_t *ru)
-{
-  ru->proc = (RU_proc_t){.ru = ru, .first_rx = 1, .first_tx = 1};
-  LOG_I(PHY, "Initialized RU proc %d (%s,%s),\n", ru->idx, NB_functions[ru->function], NB_timing[ru->if_timing]);
-}
-
 void start_RU_proc(RU_t *ru)
 {
   threadCreate(&ru->proc.pthread_FH, ru_thread, (void *)ru, "ru_thread", ru->ru_thread_core, OAI_PRIORITY_RT_MAX);
@@ -985,8 +979,12 @@ void init_NR_RU(configmodule_interface_t *cfg, char *rf_config_file)
         }
       }
     }
+
     set_function_spec_param(ru);
-    init_RU_proc(ru);
+
+    // init RU_proc -> needed for timing alignment
+    ru->proc = (RU_proc_t){.ru = ru, .first_rx = 1, .first_tx = 1};
+
     if (ru->if_south != REMOTE_IF4p5) {
       int threadCnt = ru->num_tpcores;
       if (threadCnt < 2)
@@ -1043,7 +1041,6 @@ static void NRRCconfig_RU(configmodule_interface_t *cfg)
     ru->idx = j;
     ru->nr_frame_parms = calloc(1, sizeof(*ru->nr_frame_parms));
     ru->frame_parms = calloc(1, sizeof(*ru->frame_parms));
-    ru->if_timing = synch_to_ext_device;
     paramdef_t *param = RUParamList.paramarray[j];
     if (RC.nb_nr_L1_inst > 0)
       ru->num_gNB = param[RU_ENB_LIST_IDX].numelt;
