@@ -938,6 +938,7 @@ nfapi_nr_dl_dci_pdu_t *prepare_dci_pdu(nfapi_nr_dl_tti_pdcch_pdu_rel15_t *pdcch_
                                        int beam_index,
                                        int rnti)
 {
+  DevAssert(pdcch_pdu->numDlDci < MAX_DCI_CORESET);
   nfapi_nr_dl_dci_pdu_t *dci_pdu = &pdcch_pdu->dci_pdu[pdcch_pdu->numDlDci];
   dci_pdu->RNTI = rnti;
   dci_pdu->AggregationLevel = aggregation_level;
