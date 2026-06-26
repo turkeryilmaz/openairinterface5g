@@ -40,6 +40,20 @@ typedef struct {
 
   pthread_t north_read_thread;
   pthread_t south_read_thread;
+  pthread_t south_write_thread;
+
+  // South (Split 8) write thread: CPU affinity, and the mutex/cond pair used to hand off the TX
+  // timing anchor and the latest-written-symbol watermark to oru_south_write_thread().
+  struct {
+    int core;
+    pthread_mutex_t mutex;
+    pthread_cond_t cond;
+    uint64_t latest_written_symbol_index;
+    int64_t start_timestamp;
+    uint64_t start_symbol_index;
+    bool initialized;
+  } tx_write;
+
   oru_fh_config_t fh_config;
   void *fronthaul;
 
@@ -54,6 +68,7 @@ int get_oru_options(ORU_t *oru);
 void oru_init_frame_parms(ORU_t *oru);
 void *oru_north_read_thread(void *arg);
 void *oru_south_read_thread(void *arg);
+void *oru_south_write_thread(void *arg);
 void prepare_prach_item(ORU_t *oru);
 
 #endif
