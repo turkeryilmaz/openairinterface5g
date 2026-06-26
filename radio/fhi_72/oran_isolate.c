@@ -87,7 +87,9 @@ void trx_oran_end(openair0_device_t *device)
   printf("ORAN: %s\n", __FUNCTION__);
   oran_eth_state_t *s = device->priv;
   xran_shutdown(s->oran_priv);
-  xran_close(s->oran_priv);
+  for (int32_t port_id = 0; port_id < s->num_ports; port_id++) {
+    xran_close(((void **)s->oran_priv)[port_id]);
+  }
   xran_cleanup();
   xran_mem_mgr_leak_detector_destroy();
 }
