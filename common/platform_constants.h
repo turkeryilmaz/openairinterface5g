@@ -45,6 +45,8 @@
 
 #define NR_MAX_NB_PDU_SESSIONS (256)
 
+#define NR_MAX_NB_ALLOWED_SNSSAI (8) /* Maximum number of allowed S-NSSAI in TS 38.413 */
+
 #define MAX_DRBS_PER_UE         (32)  /* Maximum number of Data Radio Bearers per UE
                                        * defined for NGAP in TS 38.413 - maxnoofDRBs */
 #define MAX_PDUS_PER_UE         (8)   /* Maximum number of PDU Sessions per UE */
