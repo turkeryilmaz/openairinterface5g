@@ -180,7 +180,7 @@ bool nr_sdap_delete_ue_entities(ue_id_t ue_id);
  */
 void nr_reconfigure_sdap_entity(NR_SDAP_Config_t *sdap_config, ue_id_t ue_id, int pdusession_id, int drb_id);
 
-void nr_sdap_entity_update_qos_flows(ue_id_t ue_id, int pdusession_id, int drb_id, const uint8_t *qfis, int n_qfis);
+void nr_sdap_entity_update_qos_flows(ue_id_t ue_id, sdap_config_t *sdap);
 
 void set_qfi(uint8_t qfi, uint8_t pduid, ue_id_t ue_id);
 #endif

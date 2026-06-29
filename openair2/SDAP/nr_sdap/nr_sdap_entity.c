@@ -681,54 +681,46 @@ void nr_sdap_release_drb(ue_id_t ue_id, int drb_id, int pdusession_id)
  * On E1 Bearer Context Modification (CP to UP), Flow Mapping Information in DRB To Modify
  * carries the QoS Flow QoS Parameters List for that DRB. Per TS 38.463, when present the
  * CU-UP replaces the previous mapping for that DRB.
- * Remove every QFI currently mapped to the DRB that is absent from the list of QFIs to be mapped.
- * @param qfis[] list of QFIs to be mapped to the DRB
- * @param n_qfis number of QFIs in the list
- * @param drb_id the DRB ID to be mapped */
-void nr_sdap_entity_update_qos_flows(ue_id_t ue_id, int pdusession_id, int drb_id, const uint8_t *qfis, int n_qfis)
+ * @param sdap mapped QoS flows to add */
+void nr_sdap_entity_update_qos_flows(ue_id_t ue_id, sdap_config_t *sdap)
 {
-  nr_sdap_entity_t *entity = nr_sdap_get_entity(ue_id, pdusession_id);
+  DevAssert(sdap);
+  nr_sdap_entity_t *entity = nr_sdap_get_entity(ue_id, sdap->pdusession_id);
   if (!entity) {
-    LOG_W(SDAP, "gNB SDAP: no entity for UE %lu PDU session %d when updating QoS flows for DRB %d\n", ue_id, pdusession_id, drb_id);
+    LOG_W(SDAP, "No entity when updating QoS flows for DRB %d (pdu_session=%d)\n", sdap->drb_id, sdap->pdusession_id);
     return;
   }
 
-  const qfi2drb_t *drb_map = nr_sdap_drb_lookup(entity, drb_id);
+  const qfi2drb_t *drb_map = nr_sdap_drb_lookup(entity, sdap->drb_id);
   if (!drb_map) {
-    LOG_W(SDAP, "DRB %d: no qfi2drb_table entry, skip QoS-flow mapping update (pdu_session=%d)\n", drb_id, pdusession_id);
+    LOG_E(SDAP, "DRB %d: no qfi2drb_table entry, skip QoS-flow mapping update (pdu_session=%d)\n", sdap->drb_id, sdap->pdusession_id);
     return;
   }
-  sdap_config_t sdap = {.pdusession_id = pdusession_id,
-                        .drb_id = drb_id,
-                        .role = drb_map->entity_role,
-                        .defaultDRB = (entity->default_drb.drb_id == drb_id),
-                        .mappedQFIs2AddCount = n_qfis};
+  /* TS 38.331: sdap-HeaderUL/DL cannot change after DRB establishment */
+  sdap->role = drb_map->entity_role;
+  sdap->defaultDRB = (entity->default_drb.drb_id == sdap->drb_id);
 
-  /* Build list of QFIs to be released */
+  /* TS 37.324 clause 5.3.1 mappedQoS-FlowsToRelease: QFIs on this DRB not in the new list */
   for (int q = 0; q < SDAP_MAX_QFI; q++) {
-    if (entity->qfi2drb_table[q].drb_id != drb_id)
+    if (entity->qfi2drb_table[q].drb_id != sdap->drb_id)
       continue;
     bool keep = false;
-    for (int i = 0; i < n_qfis; i++) {
-      if (qfis[i] == q) {
+    for (int i = 0; i < sdap->mappedQFIs2AddCount; i++) {
+      if (sdap->mappedQFIs2Add[i] == q) {
         keep = true;
         break;
       }
     }
     if (!keep) {
-      DevAssert(sdap.mappedQFIs2ReleaseCount < SDAP_MAX_QFI);
-      sdap.mappedQFIs2Release[sdap.mappedQFIs2ReleaseCount++] = q;
-      LOG_I(SDAP, "gNB SDAP mapping update: UE %lu pduSession %d DRB %d release_qfi=%d\n", ue_id, pdusession_id, drb_id, q);
+      DevAssert(sdap->mappedQFIs2ReleaseCount < SDAP_MAX_QFI);
+      sdap->mappedQFIs2Release[sdap->mappedQFIs2ReleaseCount++] = q;
+      LOG_I(SDAP, "Update: release QFI %d from DRB %d (pdu_session=%d)\n", q, sdap->drb_id, sdap->pdusession_id);
     }
   }
 
-  /* Build list of QFIs to be added */
-  for (int i = 0; i < n_qfis; i++)
-    sdap.mappedQFIs2Add[i] = qfis[i];
-
-  LOG_I(SDAP, "gNB SDAP mapping update: UE %lu pduSession %d DRB %d n_qfis=%d\n", ue_id, pdusession_id, drb_id, n_qfis);
-
-  entity->qfi2drb_map_update(entity, &sdap);
+  LOG_I(SDAP, "Update: add %d QFIs to DRB %d (pdu_session=%d)\n", sdap->mappedQFIs2AddCount, sdap->drb_id, sdap->pdusession_id);
+  /* TS 37.324 clause 5.3.1: mappedQoS-FlowsToAdd and apply mapping on the DRB */
+  entity->qfi2drb_map_update(entity, sdap);
 }
 
 bool nr_sdap_delete_entity(ue_id_t ue_id, int pdusession_id)
