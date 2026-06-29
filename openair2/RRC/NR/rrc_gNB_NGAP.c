@@ -1080,6 +1080,7 @@ static void nr_rrc_apply_qos_add_modify(gNB_RRC_INST *rrc,
     const non_dynamic_5qi_t *in_non_dynamic = &q_in->qos_characteristics.non_dynamic;
     const dynamic_5qi_t *in_dynamic = &q_in->qos_characteristics.dynamic;
     if (q_in->fiveQI_type == NON_DYNAMIC && !is_5qi_standardized(in_non_dynamic->fiveQI)) {
+      // This is a pre-configured 5QI, not a standardized non-dynamic value: not implemented
       LOG_W(NR_RRC,
             "QoS flow QFI=%d: 5QI %u is not a standardized value (1-9, 65-90). Skipping QoS flow.\n",
             q_in->qfi,
