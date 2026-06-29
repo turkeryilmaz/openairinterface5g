@@ -376,8 +376,6 @@ struct openair0_device {
   eth_params_t *eth_params;
   //! record player data, definition in record_player.h
   recplay_state_t *recplay_state;
-  /* !brief Indicates if device already initialized */
-  int is_init;
   /*!brief Can be used by driver to hold internal structure*/
   void *priv;
 
