@@ -320,19 +320,6 @@ typedef struct {
   bool write_thread_exit;
 } openair0_thread_t;
 
-typedef struct fhstate_s {
-  openair0_timestamp_t TS[8];
-  openair0_timestamp_t TS0;
-  openair0_timestamp_t olddeltaTS[8];
-  openair0_timestamp_t oldTS[8];
-  openair0_timestamp_t TS_read;
-  int first_read;
-  uint32_t *buff[8];
-  uint32_t buff_size;
-  int r[8];
-  int active;
-} fhstate_t;
-
 #define WRITE_QUEUE_SZ 20
 typedef struct {
   bool initDone;
@@ -378,9 +365,6 @@ struct openair0_device {
   recplay_state_t *recplay_state;
   /*!brief Can be used by driver to hold internal structure*/
   void *priv;
-
-  /*!brief pointer to FH state, used in ECPRI split 8*/
-  fhstate_t fhstate;
 
   /* Functions API, which are called by the application*/
 

@@ -280,7 +280,7 @@ void *trx_eth_write_udp_cmd(udpTXelem_t *udpTXelem)
   int bytes_sent=0;
   eth_state_t *eth = (eth_state_t*)device->priv;
   int sendto_flag =0;
-  fhstate_t *fhstate = &device->fhstate;
+  fhstate_t *fhstate = &eth->fhstate;
 
   //sendto_flag|=flags;
   eth->tx_nsamps=nsamps;
@@ -413,7 +413,7 @@ void *udp_read_thread(void *arg)
   udp_ctx_t *u = (udp_ctx_t *)arg;
   openair0_device_t *device=u->device;
   eth_state_t *eth = device->priv;
-  fhstate_t *fhstate = &device->fhstate;
+  fhstate_t *fhstate = &eth->fhstate;
   char buffer[UDP_PACKET_SIZE_BYTES(256)];
   int first_read=0;
   while (oai_exit == 0) {
@@ -476,7 +476,8 @@ void *udp_read_thread(void *arg)
 
 int trx_eth_read_udp(openair0_device_t *device, openair0_timestamp_t *timestamp, uint32_t **buff, int nsamps)
 {
-  fhstate_t *fhstate = &device->fhstate;
+  eth_state_t *eth = device->priv;
+  fhstate_t *fhstate = &eth->fhstate;
   openair0_timestamp_t prev_read_TS= fhstate->TS_read;
   volatile openair0_timestamp_t min_TS;
   // block until FH is ready

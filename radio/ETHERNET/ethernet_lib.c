@@ -492,10 +492,10 @@ int transport_init(openair0_device_t *device, openair0_config_t *openair0_cfg, e
     device->trx_read_func2 = trx_eth_read_udp;
     device->trx_ctlsend_func = trx_eth_ctlsend_udp;
     device->trx_ctlrecv_func = trx_eth_ctlrecv_udp;
-    memset((void *)&device->fhstate, 0, sizeof(device->fhstate));
+    memset(&eth->fhstate, 0, sizeof(eth->fhstate));
     printf("Setting %d RX channels to waiting\n", openair0_cfg->rx_num_channels);
     for (int i = openair0_cfg->rx_num_channels; i < 8; i++)
-      device->fhstate.r[i] = 1;
+      eth->fhstate.r[i] = 1;
   } else if (eth->flags == ETH_RAW_IF4p5_MODE) {
     device->trx_write_func = trx_eth_write_raw_IF4p5;
     device->trx_read_func = trx_eth_read_raw_IF4p5;
