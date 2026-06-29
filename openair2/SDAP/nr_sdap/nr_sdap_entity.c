@@ -231,40 +231,35 @@ static void nr_sdap_rx_entity(nr_sdap_entity_t *entity,
   const int drb_role = map->entity_role;
   bool sdap_header_rx = is_gnb ? (drb_role & SDAP_UL_RX) : (drb_role & SDAP_DL_RX);
 
-  if (is_gnb && sdap_header_rx) {
-    /** Extract QFI from SDAP header for gNB UL RX
-     * Per TS 37.324 §6.2.2, QFI is carried in SDAP header when SDAP header is present
-     * This QFI will be used in GTP-U extension header (PDU Session Container)
-     * for N3-U tunnel (the first 6 bits in the first octet) */
-    qfi = buf[0] & 0x3F;
-    if (qfi >= SDAP_MAX_QFI) {
-      LOG_E(SDAP, "Invalid QFI %d received in SDAP header\n", qfi);
-      return;
-    }
-    // Accept SDAP packets only for QFIs that still have an active mapping.
-    const qfi2drb_t *mapping = &entity->qfi2drb_table[qfi];
-    /* If the QFI has no active mapping, drop the packet: it can happen
-     * after QoS-flow removal/reconfiguration due to packets that were already enqueued in PDCP */
-    if (mapping->drb_id == SDAP_NO_MAPPING_RULE) {
-      LOG_W(SDAP,
-            "Dropping UL SDAP PDU with unmapped QFI=%d (ue=%ld pdu_session=%d drb=%d)\n",
-            qfi,
-            ue_id,
-            pdusession_id,
-            pdcp_entity);
-      return;
-    }
-  }
+  if (is_gnb) {
+    if (sdap_header_rx) {
+     /** Extract QFI from SDAP header for gNB UL RX
+      * Per TS 37.324 §6.2.2, QFI is carried in SDAP header when SDAP header is present
+      * This QFI will be used in GTP-U extension header (PDU Session Container)
+      * for N3-U tunnel (the first 6 bits in the first octet) */
+      const nr_sdap_ul_hdr_t *sdap_hdr = (const nr_sdap_ul_hdr_t *)buf;
+      qfi = sdap_hdr->QFI;
+      if (qfi >= SDAP_MAX_QFI) {
+        LOG_E(SDAP, "Invalid QFI %d received in SDAP header\n", qfi);
+        return;
+      }
+      /* TS 37.324 §5.2.1: with no stored rule, map to the default DRB when configured
+       * TS 38.331: default DRB always has a UL SDAP header
+       * Drop only when neither a stored rule nor default DRB applies to this QFI */
+      const qfi2drb_t *qfi_map = entity->qfi2drb_map(entity, qfi);
+      if (!qfi_map || qfi_map->drb_id != pdcp_entity) {
+        LOG_W(SDAP,
+              "Dropping UL PDU: QFI=%d %s (ue=%ld, pdu_session=%d, receiving_drb=%d)\n",
+              qfi,
+              !qfi_map ? "no rule/default DRB" : "wrong DRB",
+              ue_id,
+              pdusession_id,
+              pdcp_entity);
+        return;
+      }
 
-  if (is_gnb) { // gNB
-    /** QFI extracted from SDAP header for UL direction (N3-U tunnel)
-     * QFI range: 0..63 (6 bits) */
-    if (sdap_header_rx) { // UL Data/Control PDU with SDAP header
-      DevAssert(qfi >= 0 && qfi < SDAP_MAX_QFI);
       int offset = SDAP_HDR_LENGTH;
-      nr_sdap_ul_hdr_t *sdap_hdr = (nr_sdap_ul_hdr_t *)buf;
-      DevAssert(sdap_hdr->QFI == qfi);
-      LOG_D(SDAP, "RX Entity Received QFI:    %u\n", qfi);
+      LOG_D(SDAP, "RX Entity Received QFI:    %u\n", sdap_hdr->QFI);
       LOG_D(SDAP, "RX Entity Received R bit:  %u\n", sdap_hdr->R);
       LOG_D(SDAP, "RX Entity Received DC bit: %u\n", sdap_hdr->DC);
 
