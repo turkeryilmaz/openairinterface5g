@@ -1269,8 +1269,6 @@ typedef struct {
 /*! \brief top level eNB MAC structure */
 
 typedef struct eNB_MAC_INST_s {
-  /// Ethernet parameters for fronthaul interface
-  eth_params_t eth_params_s;
   ///
   module_id_t Mod_id;
   /// frame counter
