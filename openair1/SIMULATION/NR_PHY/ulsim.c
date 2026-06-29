@@ -122,17 +122,6 @@ int8_t nr_rrc_RA_succeeded(const module_id_t mod_id, const uint8_t gNB_index) {
   return 0;
 }
 
-int DU_send_INITIAL_UL_RRC_MESSAGE_TRANSFER(module_id_t     module_idP,
-                                            int             CC_idP,
-                                            int             UE_id,
-                                            rnti_t          rntiP,
-                                            const uint8_t   *sduP,
-                                            sdu_size_t      sdu_lenP,
-                                            const uint8_t   *sdu2P,
-                                            sdu_size_t      sdu2_lenP) {
-  return 0;
-}
-
 void nr_derive_key(int alg_type, uint8_t alg_id, const uint8_t key[32], uint8_t out[16])
 {
   (void)alg_type;
