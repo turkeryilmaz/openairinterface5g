@@ -214,18 +214,13 @@ static bool nr_sdap_tx_entity(nr_sdap_entity_t *entity,
   return ret;
 }
 
-static void nr_sdap_rx_entity(nr_sdap_entity_t *entity,
-                              int pdcp_entity,
-                              int is_gnb,
-                              int pdusession_id,
-                              ue_id_t ue_id,
-                              char *buf,
-                              int size)
+static void
+nr_sdap_rx_entity(nr_sdap_entity_t *entity, int drb_id, int is_gnb, int pdusession_id, ue_id_t ue_id, char *buf, int size)
 {
   int qfi = -1;
-  const qfi2drb_t *map = nr_sdap_drb_lookup(entity, pdcp_entity);
+  const qfi2drb_t *map = nr_sdap_drb_lookup(entity, drb_id);
   if (!map) {
-    LOG_W(SDAP, "Dropping RX payload: DRB %d has no qfi2drb_table entry (ue=%ld, pdu_session=%d)\n", pdcp_entity, ue_id, pdusession_id);
+    LOG_W(SDAP, "Dropping RX payload: DRB %d has no qfi2drb_table entry (ue=%ld, pdu_session=%d)\n", drb_id, ue_id, pdusession_id);
     return;
   }
   const int drb_role = map->entity_role;
@@ -247,14 +242,14 @@ static void nr_sdap_rx_entity(nr_sdap_entity_t *entity,
        * TS 38.331: default DRB always has a UL SDAP header
        * Drop only when neither a stored rule nor default DRB applies to this QFI */
       const qfi2drb_t *qfi_map = entity->qfi2drb_map(entity, qfi);
-      if (!qfi_map || qfi_map->drb_id != pdcp_entity) {
+      if (!qfi_map || qfi_map->drb_id != drb_id) {
         LOG_W(SDAP,
               "Dropping UL PDU: QFI=%d %s (ue=%ld, pdu_session=%d, receiving_drb=%d)\n",
               qfi,
               !qfi_map ? "no rule/default DRB" : "wrong DRB",
               ue_id,
               pdusession_id,
-              pdcp_entity);
+              drb_id);
         return;
       }
 
@@ -337,7 +332,7 @@ static void nr_sdap_rx_entity(nr_sdap_entity_t *entity,
          * the DRB according to the stored QoS flow to DRB mapping rule is configured by RRC
          * with the presence of UL SDAP header
          */
-        if (pdcp_entity != entity->qfi2drb_table[sdap_hdr->QFI].drb_id) {
+        if (drb_id != entity->qfi2drb_table[sdap_hdr->QFI].drb_id) {
           nr_sdap_ul_hdr_t sdap_ctrl_pdu = entity->sdap_construct_ctrl_pdu(sdap_hdr->QFI);
           int sdap_ctrl_pdu_drb = entity->sdap_map_ctrl_pdu(entity, SDAP_CTRL_PDU_MAP_RULE_DRB, sdap_hdr->QFI);
           entity->sdap_submit_ctrl_pdu(ue_id, sdap_ctrl_pdu_drb, sdap_ctrl_pdu);
@@ -348,7 +343,7 @@ static void nr_sdap_rx_entity(nr_sdap_entity_t *entity,
          * as the UL mapping rule. sdap-HeaderUL/DL are per DRB: copy the
          * receiving DRB role onto the QFI row together with drb_id.
          */
-        entity->qfi2drb_table[sdap_hdr->QFI].drb_id = pdcp_entity;
+        entity->qfi2drb_table[sdap_hdr->QFI].drb_id = drb_id;
         entity->qfi2drb_table[sdap_hdr->QFI].entity_role = drb_role;
       }
 

@@ -162,7 +162,7 @@ bool sdap_data_req(protocol_ctxt_t *ctxt_p,
                                 rqi);
 }
 
-void sdap_data_ind(int pdcp_entity, int is_gnb, int pdusession_id, ue_id_t ue_id, char *buf, int size)
+void sdap_data_ind(int drb_id, int is_gnb, int pdusession_id, ue_id_t ue_id, char *buf, int size)
 {
   nr_sdap_entity_t *sdap_entity;
   sdap_entity = nr_sdap_get_entity(ue_id, pdusession_id);
@@ -172,13 +172,7 @@ void sdap_data_ind(int pdcp_entity, int is_gnb, int pdusession_id, ue_id_t ue_id
     return;
   }
 
-  sdap_entity->rx_entity(sdap_entity,
-                         pdcp_entity,
-                         is_gnb,
-                         pdusession_id,
-                         ue_id,
-                         buf,
-                         size);
+  sdap_entity->rx_entity(sdap_entity, drb_id, is_gnb, pdusession_id, ue_id, buf, size);
 }
 
 static void *sdap_tun_read_thread(void *arg)

@@ -114,13 +114,7 @@ typedef struct nr_sdap_entity_s {
                     const uint8_t qfi,
                     const bool rqi);
 
-  void (*rx_entity)(struct nr_sdap_entity_s *entity,
-                    int pdcp_entity,
-                    int is_gnb,
-                    int pdusession_id,
-                    ue_id_t ue_id,
-                    char *buf,
-                    int size);
+  void (*rx_entity)(struct nr_sdap_entity_s *entity, int drb_id, int is_gnb, int pdusession_id, ue_id_t ue_id, char *buf, int size);
 
   /* List of entities */
   struct nr_sdap_entity_s *next_entity;
