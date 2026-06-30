@@ -90,16 +90,15 @@ static void poll_thread(zmq_state_t *s)
       if (!reply_requested[i]) {
         continue;
       }
-      std::vector<cf_t> samples(1024);
-      size_t num_popped = chan->buffer_.pop_samples(samples.data(), 1024);
-      if (num_popped == 0) {
-        continue;
+      zmq_msg_t msg;
+      if (chan->pop_message(&msg)) {
+        int rc = zmq_msg_send(&msg, chan->socket_, 0);
+        if (rc < 0) {
+          LOG_E(HW, "[ZMQ] poll_thread zmq_msg_send for TX antenna %d failed: %s\n", (int)i, zmq_strerror(errno));
+        }
+        zmq_msg_close(&msg);
+        reply_requested[i] = false;
       }
-      int rc = zmq_send(chan->socket_, samples.data(), num_popped * sizeof(cf_t), 0);
-      if (rc < 0) {
-        LOG_E(HW, "[ZMQ] poll_thread zmq_send for TX antenna %d failed: %s\n", (int)i, zmq_strerror(errno));
-      }
-      reply_requested[i] = false;
     }
 
     int rc = zmq_poll(items.data(), num_channels, 10); // 10ms timeout
