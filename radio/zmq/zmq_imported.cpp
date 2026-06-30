@@ -63,17 +63,12 @@ bool zmq_tx_channel::align(uint64_t timestamp, std::chrono::milliseconds timeout
 void zmq_rx_channel::receive(c16_t *samples, size_t nsamps)
 {
   size_t samples_popped = 0;
-  cf_t samples_float[nsamps];
   while (samples_popped < (size_t)nsamps && !stopped_) {
-    size_t popped_now = buffer_.pop_samples(samples_float + samples_popped, nsamps - samples_popped);
+    size_t popped_now = buffer_.pop_samples(samples + samples_popped, nsamps - samples_popped);
     samples_popped += popped_now;
     if (popped_now == 0) {
       usleep(100); // wait for more samples to arrive
     }
-  }
-  for (size_t i = 0; i < nsamps; i++) {
-    samples[i].r = samples_float[i].r * c16_t_to_cf_t_factor + 0.5;
-    samples[i].i = samples_float[i].i * c16_t_to_cf_t_factor + 0.5;
   }
 }
 void zmq_rx_channel::stop()

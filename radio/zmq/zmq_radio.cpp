@@ -40,6 +40,7 @@
 #include <ring_buffer.h>
 #include <zmq.h>
 #include "zmq_imported.h"
+#include "zmq_simd.h"
 
 #define ZMQ_SECTION "zmq"
 #define ZMQ_TX_CHANNELS "tx_channels"
@@ -68,6 +69,7 @@ static void poll_thread(zmq_state_t *s)
 {
   s->poll_thread_running = true;
   unsigned char *rx_buffer = static_cast<unsigned char *>(malloc(rx_buffer_size));
+  c16_t *rx_buffer_c16 = static_cast<c16_t *>(malloc(rx_buffer_size / sizeof(cf_t) * sizeof(c16_t)));
   const auto num_tx_channels = s->tx_stream.channels_.size();
   const auto num_rx_channels = s->rx_stream.channels_.size();
   std::vector<zmq_pollitem_t> items(num_tx_channels + num_rx_channels);
@@ -145,7 +147,11 @@ static void poll_thread(zmq_state_t *s)
           }
           size_t num_samples_received = std::min(received_bytes, rx_buffer_size) / sizeof(cf_t);
           cf_t *samples = reinterpret_cast<cf_t *>(rx_buffer);
-          size_t overflow = chan->buffer_.push_samples(samples, num_samples_received);
+          convert_samples_avx512_rx(reinterpret_cast<const float *>(samples),
+                                    reinterpret_cast<int16_t *>(rx_buffer_c16),
+                                    num_samples_received * 2,
+                                    c16_t_to_cf_t_factor);
+          size_t overflow = chan->buffer_.push_samples(rx_buffer_c16, num_samples_received);
           if (rx_buffer_size < received_bytes) {
             overflow += chan->buffer_.push_zeros((received_bytes - rx_buffer_size) / sizeof(cf_t));
           }
@@ -162,6 +168,7 @@ static void poll_thread(zmq_state_t *s)
     }
   }
   free(rx_buffer);
+  free(rx_buffer_c16);
 }
 
 static int zmq_write(openair0_device_t *device, openair0_timestamp_t timestamp, void **buff, int nsamps, int cc, int flags)
