@@ -2592,6 +2592,73 @@ int get_dci_antenna_ports_val(uint8_t rank, uint16_t dmrs_ports, uint8_t cdm, in
   return val ? val - 1 : -1;
 }
 
+// Returns 0 on success, -1 on invalid val. Fills cdm groups, dmrs port mask, front load symbols.
+int decode_dci_antenna_ports_val(uint8_t rank,
+                                 const long *dmrs_type,
+                                 long tp,
+                                 uint8_t val,
+                                 uint8_t *cdm,
+                                 uint16_t *dmrs_ports,
+                                 int *front_load)
+{
+  const dci_port_rev_t *tbl;
+  int size;
+
+  if (tp == NR_PUSCH_Config__transformPrecoder_enabled) {
+    tbl = lut_tp_rev;
+    size = sizeofArray(lut_tp_rev);
+  } else if (dmrs_type == NULL) {
+    switch (rank) {
+      case 1:
+        tbl = lut_rev_t1_r1;
+        size = sizeofArray(lut_rev_t1_r1);
+        break;
+      case 2:
+        tbl = lut_rev_t1_r2;
+        size = sizeofArray(lut_rev_t1_r2);
+        break;
+      case 3:
+        tbl = lut_rev_t1_r3;
+        size = sizeofArray(lut_rev_t1_r3);
+        break;
+      case 4:
+        tbl = lut_rev_t1_r4;
+        size = sizeofArray(lut_rev_t1_r4);
+        break;
+      default:
+        return -1;
+    }
+  } else {
+    switch (rank) {
+      case 1:
+        tbl = lut_rev_t2_r1;
+        size = sizeofArray(lut_rev_t2_r1);
+        break;
+      case 2:
+        tbl = lut_rev_t2_r2;
+        size = sizeofArray(lut_rev_t2_r2);
+        break;
+      case 3:
+        tbl = lut_rev_t2_r3;
+        size = sizeofArray(lut_rev_t2_r3);
+        break;
+      case 4:
+        tbl = lut_rev_t2_r4;
+        size = sizeofArray(lut_rev_t2_r4);
+        break;
+      default:
+        return -1;
+    }
+  }
+
+  if (val >= size)
+    return -1;
+  *cdm = tbl[val].cdm_groups;
+  *dmrs_ports = tbl[val].port_mask;
+  *front_load = tbl[val].num_front_load_symb;
+  return 0;
+}
+
 int srs_codebook_nb_res(NR_SRS_Config_t *srs_config)
 {
   int count = 0;
