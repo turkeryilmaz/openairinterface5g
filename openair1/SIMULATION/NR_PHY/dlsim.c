@@ -173,7 +173,7 @@ void update_ptrs_config(NR_BWP_Downlink_t *bwp, int *rbSize, uint8_t *mcsIndex,i
 void update_dmrs_config(NR_BWP_Downlink_t *bwp, int8_t *dmrs_arg);
 
 /* specific dlsim DL preprocessor: uses rbStart/rbSize/mcs/nrOfLayers from command line of dlsim */
-int g_mcsIndex = -1, g_mcsTableIdx = 0, g_rbStart = -1, g_rbSize = -1, g_nrOfLayers = 1, g_pmi = 0, g_nb_rb_ranges = 0, N_RB_DL = 106;
+int g_mcsIndex = 9, g_mcsTableIdx = 0, g_rbStart = 0, g_rbSize = 0, g_nrOfLayers = 1, g_pmi = 0, g_nb_rb_ranges = 0, N_RB_DL = 106;
 nr_pdsch_allocation_type_t alloc_type = PDSCH_TYPE1;
 #define MAX_RB_RANGES 16
 typedef struct {
@@ -864,11 +864,8 @@ int main(int argc, char **argv)
   /* nr_mac_add_test_ue() has created one user, so set the scheduling
    * parameters from command line in global variables that will be picked up by
    * scheduling preprocessor */
-  if (g_mcsIndex < 0)
-    g_mcsIndex = 9;
-  if (g_rbStart < 0)
-    g_rbStart=0;
-  if (g_rbSize < 0)
+  AssertFatal(N_RB_DL > g_rbStart, "rbStart %d exceeds BWP size %d\n", g_rbStart, N_RB_DL);
+  if (g_rbSize == 0)
     g_rbSize = N_RB_DL - g_rbStart;
 
   /* -U option modify DMRS */
