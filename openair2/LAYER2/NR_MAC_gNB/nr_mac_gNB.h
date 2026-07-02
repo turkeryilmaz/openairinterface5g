@@ -497,10 +497,18 @@ typedef struct NR_pdsch_dmrs {
 struct NR_UE_info;
 struct gNB_MAC_INST_s;
 typedef void (*feedback_action_t)(struct gNB_MAC_INST_s *mac, struct NR_UE_info *ue);
+
+typedef enum {
+  PDSCH_TYPE0 = 0,
+  PDSCH_TYPE1 = 1
+} nr_pdsch_allocation_type_t;
+
 typedef struct NR_sched_pdsch {
   /// RB allocation within active BWP
+  nr_pdsch_allocation_type_t alloc_type;
   uint16_t rbSize;
   uint16_t rbStart;
+  uint8_t rbBitmap[36];
 
   /// MCS-related infos
   uint8_t mcs;
