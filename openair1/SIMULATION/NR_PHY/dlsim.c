@@ -57,7 +57,6 @@
 #include "common/utils/T/T.h"
 #include "common/utils/nr/nr_common.h"
 #include "common/utils/var_array.h"
-#include "common_lib.h"
 #include "e1ap_messages_types.h"
 #include "fapi_nr_ue_interface.h"
 #include "nfapi_interface.h"

@@ -60,7 +60,6 @@ unsigned short config_frames[4] = {2,9,11,13};
 #include "nr-softmodem-common.h"
 #include "openair2/E1AP/e1ap_common.h"
 #include "pdcp.h"
-#include "radio/COMMON/common_lib.h"
 #include "s1ap_eNB.h"
 #include "sctp_eNB_task.h"
 #include "system.h"

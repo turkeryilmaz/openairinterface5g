@@ -42,7 +42,7 @@
   } while (0)
 
 /* Commmon */
-#include "radio/COMMON/common_lib.h"
+#include "COMMON/f1ap_messages_types.h"
 #include "common/platform_constants.h"
 #include "common/ran_context.h"
 #include "collection/linear_alloc.h"
@@ -1174,10 +1174,8 @@ typedef struct NR_du_stats {
 
 /*! \brief top level eNB MAC structure */
 typedef struct gNB_MAC_INST_s {
-  /// Ethernet parameters for northbound midhaul interface
-  eth_params_t                    eth_params_n;
-  /// address for F1U to bind, ports in eth_params_n
-  char *f1u_addr;
+  /// F1-C/U network configuration (addresses and ports)
+  f1ap_net_config_t net_config;
   /// Nvipc parameters for FAPI interface with Aerial
   nvipc_params_t nvipc_params_s;
   /// Module
