@@ -76,7 +76,7 @@ void schedule_nr_other_sib(module_id_t module_idP,
                            slot_t slot,
                            nfapi_nr_dl_tti_request_t *DL_req,
                            nfapi_nr_tx_data_request_t *TX_req);
-                    
+
 struct NR_SchedulingInfo2_r17* find_sib19_sched_info(const struct NR_SI_SchedulingInfo_v1700*);
 
 void schedule_nr_mib(module_id_t module_idP, frame_t frameP, slot_t slotP, nfapi_nr_dl_tti_request_t *DL_req);
@@ -201,7 +201,7 @@ int nr_acknack_scheduling(gNB_MAC_INST *mac,
 int get_pdsch_to_harq_feedback(NR_PUCCH_Config_t *pucch_Config,
                                nr_dci_format_t dci_format,
                                uint8_t *pdsch_to_harq_feedback);
-  
+
 int nr_get_pucch_resource(NR_ControlResourceSet_t *coreset,
                           NR_PUCCH_Config_t *pucch_Config,
                           int CCEIndex);

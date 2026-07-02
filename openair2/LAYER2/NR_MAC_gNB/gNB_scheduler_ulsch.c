@@ -1022,7 +1022,7 @@ static void _nr_rx_sdu(const module_id_t gnb_mod_idP,
       }
     }
     handle_nr_ul_harq(gNB_mac, UE, current_rnti, harq_pid, sduP == NULL);
-  } else { 
+  } else {
     nr_rx_ra_sdu(gnb_mod_idP, CC_idP, frameP, slotP, current_rnti, sduP, sdu_lenP, harq_pid, timing_advance, ul_cqi, rssi);
   }
 }

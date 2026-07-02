@@ -423,7 +423,7 @@ static void get_coreset_rb_params(const NR_ControlResourceSet_t *coreset, uint16
   AssertFatal(!coreset->ext1 || !coreset->ext1->rb_Offset_r16, "rb-Offset in coreset configuration not handled\n");
   *n_rb = 0;
   *rb_start = 0;
-  
+
   for (int i = 0; i < 6; i++) {
     for (int t = 0; t < 8; t++) {
       if ((coreset->frequencyDomainResources.buf[i] >> (7 - t)) & 1) {
@@ -2458,11 +2458,11 @@ int get_spf(nfapi_nr_config_request_scf_t *cfg) {
   AssertFatal(mu>=0&&mu<4,"Illegal scs %d\n",mu);
 
   return(10 * (1<<mu));
-} 
+}
 
 int to_absslot(nfapi_nr_config_request_scf_t *cfg,int frame,int slot) {
 
-  return(get_spf(cfg)*frame) + slot; 
+  return(get_spf(cfg)*frame) + slot;
 
 }
 
@@ -3747,7 +3747,7 @@ void nr_mac_trigger_release_complete(gNB_MAC_INST *mac, int rnti)
   // table. This can happen, e.g., on Msg.3 with C-RNTI, where we create a UE
   // MAC context, decode the PDU, find the C-RNTI MAC CE, and then throw the
   // newly created context away. See also in _nr_rx_sdu() and commit 93f59a3c6e56f
-  if (!du_exists_f1_ue_data(rnti)) 
+  if (!du_exists_f1_ue_data(rnti))
     return;
 
   // unlock the scheduler temporarily to prevent possible deadlocks with
