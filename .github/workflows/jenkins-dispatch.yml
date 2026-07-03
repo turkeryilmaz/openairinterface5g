@@ -109,8 +109,9 @@ jobs:
   require-maintainer-approval:
     needs: detect-changes
 
-    if: needs.detect-changes.outputs.protected_files_changed == 'true'
-
+    if: |
+      always() &&
+      needs.detect-changes.outputs.protected_files_changed == 'true'
     runs-on: ubuntu-24.04
 
     environment:
