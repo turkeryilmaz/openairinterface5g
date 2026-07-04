@@ -39,7 +39,6 @@
 #include "common/platform_constants.h"
 #include "common/ran_context.h"
 #include "common/utils/nr/nr_common.h"
-#include "common_lib.h"
 #include "constr_SEQUENCE.h"
 #include "constr_TYPE.h"
 #include "cucp_cuup_if.h"

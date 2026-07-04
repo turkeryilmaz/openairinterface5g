@@ -480,6 +480,7 @@ bool commit_alloc(const nr_dl_sched_params_t *params, nr_dl_candidate_t *cand);
 // marks scheduled; continues on failure, returns on max_num_ue.
 #define COMMIT_ALLOC(params, cand, rb_start_, rb_size_, mcs_, n_sched) \
   do {                                                                 \
+    (cand)->sched_pdsch.alloc_type = PDSCH_TYPE1;                      \
     (cand)->sched_pdsch.rbStart = (rb_start_);                         \
     (cand)->sched_pdsch.rbSize = (rb_size_);                           \
     (cand)->sched_pdsch.mcs = (mcs_);                                  \

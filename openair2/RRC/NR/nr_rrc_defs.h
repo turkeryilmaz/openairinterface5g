@@ -606,7 +606,6 @@ typedef struct gNB_RRC_INST_s {
   uint32_t                                            node_id;
   char                                               *node_name;
   int                                                 module_id;
-  eth_params_t                                        eth_params_s;
   uid_allocator_t                                     uid_allocator;
   RB_HEAD(rrc_nr_ue_tree_s, rrc_gNB_ue_context_s) rrc_ue_head; // ue_context tree key search by rnti
 

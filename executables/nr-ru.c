@@ -18,7 +18,6 @@
 #include "common/utils/fsn.h"
 #include "common/ran_context.h"
 
-#include "radio/COMMON/common_lib.h"
 #include "radio/ETHERNET/ethernet_lib.h"
 
 #include "PHY/defs_nr_common.h"

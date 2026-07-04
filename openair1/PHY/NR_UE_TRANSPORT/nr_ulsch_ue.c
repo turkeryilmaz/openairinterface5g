@@ -882,6 +882,10 @@ static void map_overlapped_ack(uci_on_pusch_bit_type_t *template,
     const int32_t num_ack_remaining = G_ack - ack_bits_marked;
     if (num_ack_remaining <= 0)
       continue;
+    AssertFatal(num_reserved_bits_on_sym % Qm == 0,
+                "reserved bits on symbol (%u) not a multiple of Qm (%d)\n",
+                num_reserved_bits_on_sym,
+                Qm);
     const uint32_t num_reserved_re = num_reserved_bits_on_sym / Qm;
     const uint32_t num_ack_re_remaining = num_ack_remaining / Qm;
     const uint32_t d_factor_re = get_d_factor_re(num_ack_re_remaining, num_reserved_re);

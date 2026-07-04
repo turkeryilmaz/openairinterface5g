@@ -25,7 +25,6 @@
 #include <malloc.h>
 #include <string.h>
 #include <math.h>
-#include "common_lib.h"
 #include "fapi_nr_ue_interface.h"
 #include "assertions.h"
 #include "common/utils/barrier/barrier.h"
@@ -71,7 +70,6 @@
 #endif
 
 #include <pthread.h>
-#include "radio/COMMON/common_lib.h"
 #include "NR_IF_Module.h"
 
 /// Context data structure for gNB subframe processing

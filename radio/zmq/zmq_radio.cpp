@@ -54,7 +54,7 @@
 const size_t sample_size = sizeof(cf_t);
 const size_t rx_buffer_size = sample_size * 300000;
 
-typedef struct {
+struct zmq_state_t {
   void *context;
   zmq_tx_stream tx_stream;
   zmq_rx_stream rx_stream;
@@ -62,7 +62,7 @@ typedef struct {
   std::atomic<bool> poll_thread_running;
   bool stopped = false;
   double sample_rate;
-} zmq_state_t;
+};
 
 static void poll_thread(zmq_state_t *s)
 {
