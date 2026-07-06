@@ -764,9 +764,9 @@ typedef struct NR_mac_stats {
   uint64_t ulsch_total_bytes_scheduled;
   uint32_t pucch0_DTX;
   int cumul_rsrp;
-  uint8_t num_rsrp_meas;
+  uint32_t num_rsrp_meas;
   int cumul_sinrx10;
-  uint8_t num_sinr_meas;
+  uint32_t num_sinr_meas;
   char srs_stats[50]; // Statistics may differ depending on SRS usage
   int deltaMCS;
   int NPRB;
