@@ -332,6 +332,8 @@ static void nr_scan_ssb(void *arg)
       continue;
     }
 
+    ssbInfo->pssCorrAvgPower = search_params.pss_res.avg;
+    ssbInfo->pssCorrPeakPower = search_params.pss_res.peak;
     ssbInfo->ssbOffset = search_params.pss_res.pos - search_params.nb_prefix_samples;
     ssbInfo->nidCell = search_params.sss_res.nid_cell;
 
