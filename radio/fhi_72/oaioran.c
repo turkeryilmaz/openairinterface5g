@@ -766,9 +766,6 @@ int xran_fh_rx_read_slot(ru_info_t *ru, int *frame, int *slot)
  * before writing. */
 int xran_fh_tx_send_slot(ru_info_t *ru, int frame, int slot, uint64_t timestamp)
 {
-  int tti = /*frame*SUBFRAMES_PER_SYSTEMFRAME*SLOTNUM_PER_SUBFRAME+*/ 20 * frame
-            + slot; // commented out temporarily to check that compilation of oran 5g is working.
-
   void *ptr = NULL;
   int32_t *pos = NULL;
   int idx = 0;
@@ -778,9 +775,12 @@ int xran_fh_tx_send_slot(ru_info_t *ru, int frame, int slot, uint64_t timestamp)
 #if defined K_RELEASE
   uint8_t mu_number = fh_cfg->mu_number[0];
   int fftsize = 1 << fh_cfg->perMu[mu_number].nDLFftSize;
+  int slots_per_frame = 10 << mu_number;
 #elif defined F_RELEASE
   int fftsize = 1 << fh_cfg->nDLFftSize;
+  int slots_per_frame = 10 << fh_cfg->frame_conf.nNumerology;
 #endif
+  int tti = slots_per_frame * frame + slot;
   int nb_tx_per_ru = ru->nb_tx / fh_init->xran_ports;
   int nb_rx_per_ru = ru->nb_rx / fh_init->xran_ports;
 
