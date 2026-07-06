@@ -1557,7 +1557,10 @@ Edit the sample OAI gNB configuration file and check following parameters:
 
 * `RUs` section
   * Set an isolated core for RU thread `ru_thread_core`, in our environment we are using CPU 6
-
+  * If testing with a numerology different than 1 (e.g., FDD with numerology 0),
+    set `nr_scs_for_raster` to the used numerology, and adapt `sl_ahead`: it must be
+    strictly less than the number of slots in a frame (e.g., 5 for numerology 0).
+  
 * `fhi_72` (FrontHaul Interface) section: this config follows the structure
   that is employed by the xRAN library (`xran_fh_init` and `xran_fh_config`
   structs in the code):
