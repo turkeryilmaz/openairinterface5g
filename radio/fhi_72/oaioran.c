@@ -518,9 +518,6 @@ int xran_fh_rx_prach_read_slot(PHY_VARS_gNB *gNB, ru_info_t *ru, int *frame, int
  * @param sym_idx the current symbol index */
 static bool is_tdd_ul_symbol(const struct xran_frame_config *frame_conf, int slot, int sym_idx)
 {
-  /* in FDD, every symbol is also UL */
-  if (frame_conf->nFrameDuplexType == XRAN_FDD)
-    return true;
   int tdd_period = frame_conf->nTddPeriod;
   int slot_in_period = slot % tdd_period;
   /* check if symbol is UL */
@@ -534,9 +531,6 @@ static bool is_tdd_ul_symbol(const struct xran_frame_config *frame_conf, int slo
  * @param sym_idx the current symbol index */
 static bool is_tdd_dl_symbol(const struct xran_frame_config *frame_conf, int slot, int sym_idx)
 {
-  /* in FDD, every symbol is also UL */
-  if (frame_conf->nFrameDuplexType == XRAN_FDD)
-    return true;
   int tdd_period = frame_conf->nTddPeriod;
   int slot_in_period = slot % tdd_period;
   /* check if symbol is UL */
@@ -633,13 +627,13 @@ int xran_fh_rx_read_slot(ru_info_t *ru, int *frame, int *slot)
       start_ptr = rx_data + (slot_size * slot_offset_rxdata);
       const struct xran_frame_config *frame_conf = &get_xran_fh_config(ant_id / nb_rx_per_ru)->frame_conf;
       // skip processing this slot is TX (no RX in this slot)
-      if (!is_tdd_ul_guard_slot(frame_conf, *slot))
+      if (frame_conf->nFrameDuplexType != XRAN_FDD && !is_tdd_ul_guard_slot(frame_conf, *slot))
         continue;
       // This loop would better be more inner to avoid confusion and maybe also errors.
       for (int32_t sym_idx = 0; sym_idx < XRAN_NUM_OF_SYMBOL_PER_SLOT; sym_idx++) {
         /* the callback is for mixed and UL slots. In mixed, we have to
          * skip DL and guard symbols. */
-        if (!is_tdd_ul_symbol(frame_conf, *slot, sym_idx))
+        if (frame_conf->nFrameDuplexType != XRAN_FDD && !is_tdd_ul_symbol(frame_conf, *slot, sym_idx))
           continue;
 
         oran_buf_list_t *bufs = get_xran_buffers(ant_id / nb_rx_per_ru);
@@ -791,13 +785,13 @@ int xran_fh_tx_send_slot(ru_info_t *ru, int frame, int slot, uint64_t timestamp)
     for (uint8_t ant_id = 0; ant_id < ru->nb_rx; ant_id++) {
       const struct xran_frame_config *frame_conf = &get_xran_fh_config(ant_id / nb_rx_per_ru)->frame_conf;
       // skip processing this slot is TX (no RX in this slot)
-      if (!is_tdd_ul_guard_slot(frame_conf, slot)) {
+      if (frame_conf->nFrameDuplexType != XRAN_FDD && !is_tdd_ul_guard_slot(frame_conf, slot)) {
         continue;
       }
       // This loop would better be more inner to avoid confusion and maybe also errors.
       for (int32_t sym_idx = 0; sym_idx < XRAN_NUM_OF_SYMBOL_PER_SLOT; sym_idx++) {
         /* skip DL and guard symbols. */
-        if (!is_tdd_ul_symbol(frame_conf, slot, sym_idx)) {
+        if (frame_conf->nFrameDuplexType != XRAN_FDD && !is_tdd_ul_symbol(frame_conf, slot, sym_idx)) {
           continue;
         }
         oran_buf_list_t *bufs = get_xran_buffers(ant_id / nb_rx_per_ru);
@@ -832,7 +826,7 @@ int xran_fh_tx_send_slot(ru_info_t *ru, int frame, int slot, uint64_t timestamp)
       oran_buf_list_t *bufs = get_xran_buffers(ant_id / nb_tx_per_ru);
       const struct xran_frame_config *frame_conf = &get_xran_fh_config(ant_id / nb_tx_per_ru)->frame_conf;
       // skip processing this slot is TX (no TX in this slot)
-      if (!is_tdd_dl_guard_slot(frame_conf, slot)) {
+      if (frame_conf->nFrameDuplexType != XRAN_FDD && !is_tdd_dl_guard_slot(frame_conf, slot)) {
         continue;
       }
 
@@ -848,7 +842,7 @@ int xran_fh_tx_send_slot(ru_info_t *ru, int frame, int slot, uint64_t timestamp)
             break;
           }
         }
-        if (is_tdd_guard_slot(frame_conf, slot))
+        if (frame_conf->nFrameDuplexType != XRAN_FDD && is_tdd_guard_slot(frame_conf, slot))
           pRbMap->nPrbElm = dl_sym_end;
         else
           pRbMap->nPrbElm = XRAN_NUM_OF_SYMBOL_PER_SLOT;
@@ -857,7 +851,7 @@ int xran_fh_tx_send_slot(ru_info_t *ru, int frame, int slot, uint64_t timestamp)
       // This loop would better be more inner to avoid confusion and maybe also errors.
       for (int32_t sym_idx = 0; sym_idx < XRAN_NUM_OF_SYMBOL_PER_SLOT; sym_idx++) {
         /* skip UL and guard symbols. */
-        if (!is_tdd_dl_symbol(frame_conf, slot, sym_idx)) {
+        if (frame_conf->nFrameDuplexType != XRAN_FDD && !is_tdd_dl_symbol(frame_conf, slot, sym_idx)) {
           continue;
         }
         uint8_t *pData =
