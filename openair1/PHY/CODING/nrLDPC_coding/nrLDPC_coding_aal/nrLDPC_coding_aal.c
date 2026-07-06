@@ -784,7 +784,7 @@ static int retrieve_ldpc_enc_op(struct rte_bbdev_enc_op **ops, nrLDPC_slot_encod
           simde__m64 current = *((simde__m64 *)data);
           data += 8;
           current = simde_mm_srli_si64(current, 8 - bit_offset);
-          *(simde__m64 *)&p_out[byte_offset + i] = current;
+          memcpy(&p_out[byte_offset + i], &current, sizeof(simde__m64));
         }
         for (; i < data_len; i++) {
           uint8_t current = *data++;
