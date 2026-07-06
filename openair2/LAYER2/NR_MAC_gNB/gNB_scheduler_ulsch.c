@@ -14,8 +14,32 @@
 #include <openair2/UTIL/OPT/opt.h>
 #include "LAYER2/nr_rlc/nr_rlc_oai_api.h"
 
+static const uint16_t NR_TRANSFORM_PRECODE_RB_LUT[274] = {
+    0,   1,   2,   3,   4,   5,   6,   6,   8,   9,   10,  10,  12,  12,  12,  15,  16,  16,  18,  18,  20,  20,  20,  20,  24,
+    25,  25,  27,  27,  27,  30,  30,  32,  32,  32,  32,  36,  36,  36,  36,  40,  40,  40,  40,  40,  45,  45,  45,  48,  48,
+    50,  50,  50,  50,  54,  54,  54,  54,  54,  54,  60,  60,  60,  60,  64,  64,  64,  64,  64,  64,  64,  64,  72,  72,  72,
+    75,  75,  75,  75,  75,  80,  81,  81,  81,  81,  81,  81,  81,  81,  81,  90,  90,  90,  90,  90,  90,  96,  96,  96,  96,
+    100, 100, 100, 100, 100, 100, 100, 100, 108, 108, 108, 108, 108, 108, 108, 108, 108, 108, 108, 108, 120, 120, 120, 120, 120,
+    125, 125, 125, 128, 128, 128, 128, 128, 128, 128, 135, 135, 135, 135, 135, 135, 135, 135, 135, 144, 144, 144, 144, 144, 144,
+    150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 160, 160, 162, 162, 162, 162, 162, 162, 162, 162, 162, 162, 162, 162, 162,
+    162, 162, 162, 162, 162, 180, 180, 180, 180, 180, 180, 180, 180, 180, 180, 180, 180, 192, 192, 192, 192, 192, 192, 192, 192,
+    200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 216, 216, 216, 216, 216, 216, 216, 216, 216,
+    225, 225, 225, 225, 225, 225, 225, 225, 225, 225, 225, 225, 225, 225, 225, 240, 240, 240, 243, 243, 243, 243, 243, 243, 243,
+    250, 250, 250, 250, 250, 250, 256, 256, 256, 256, 256, 256, 256, 256, 256, 256, 256, 256, 256, 256, 270, 270, 270, 270};
+
 //#define SRS_IND_DEBUG
 #define MAX_NUM_DATA_IND 1024
+
+// With SC-FDMA the scheduler in uplink needs to schedule N_PRB=2^x3^y5^z
+// Check 6.3.1.4 of 38.211
+int check_sc_fdma_rbsize(long transform_precoding, uint16_t rb)
+{
+  DevAssert(rb < 274);
+  if (transform_precoding == NR_PUSCH_Config__transformPrecoder_enabled) {
+    return NR_TRANSFORM_PRECODE_RB_LUT[rb];
+  }
+  return rb;
+}
 
 /* \brief Get the number of UL TDAs that could be used in slot, reachable
  * via specific k2. The output parameter first_idx is a pointer to the first
@@ -1760,11 +1784,11 @@ static int apply_ul_retransmission(gNB_MAC_INST *nrmac,
   } else {
     /* TDA changed vs original retx: recompute DMRS and TB size for new TDA */
     NR_pusch_dmrs_t dmrs_info = get_ul_dmrs_params(scc, current_BWP, tda_info, nrOfLayers);
-    new_sched.rbSize = cand->sched_pusch.rbSize;
+    new_sched.rbSize = check_sc_fdma_rbsize(current_BWP->transform_precoding, cand->sched_pusch.rbSize);
     new_sched.rbStart = cand->sched_pusch.rbStart;
     new_sched.tb_size = nr_compute_tbs(retInfo->Qm,
                                        retInfo->R,
-                                       cand->sched_pusch.rbSize,
+                                       new_sched.rbSize,
                                        tda_info->nrOfSymbols,
                                        dmrs_info.N_PRB_DMRS * dmrs_info.num_dmrs_symb,
                                        0,
@@ -1819,6 +1843,7 @@ static int apply_ul_new_transmission(gNB_MAC_INST *nrmac,
    * time_domain_allocation, tda_info already set by pipeline stages).
    * Fill remaining dispatch fields: R, Qm, tb_size, dmrs_info, bwp_info. */
   NR_sched_pusch_t sched = cand->sched_pusch;
+  sched.rbSize = check_sc_fdma_rbsize(current_BWP->transform_precoding, sched.rbSize);
   sched.frame = sched_frame;
   sched.slot = sched_slot;
   sched.ul_harq_pid = -1;
@@ -2625,6 +2650,7 @@ bool nr_ul_check_phr(const nr_ul_sched_params_t *params,
   pot.dmrs_info = dmrs_info;
   pot.nrOfLayers = cand->sched_pusch.nrOfLayers;
   pot.rbSize = rbSize;
+  pot.rbSize = check_sc_fdma_rbsize(current_BWP->transform_precoding, pot.rbSize);
   pot.mcs = mcs;
 
   uint16_t R;
@@ -2646,8 +2672,9 @@ bool nr_ul_check_phr(const nr_ul_sched_params_t *params,
     NR_sched_pusch_t p1 = pot;
     int tp = tx_power;
 
-    while (cand->ph < tp && p1.rbSize > params->min_rb) {
-      p1.rbSize--;
+    while (cand->ph < tp && p1.rbSize > params->min_rb
+           && check_sc_fdma_rbsize(current_BWP->transform_precoding, p1.rbSize - 1) >= params->min_rb) {
+      p1.rbSize = check_sc_fdma_rbsize(current_BWP->transform_precoding, --p1.rbSize);
       p1.tb_size = nr_compute_tbs(p1.Qm, p1.R, p1.rbSize, p1.tda_info.nrOfSymbols, n_dmrs, 0, 0, p1.nrOfLayers) >> 3;
       tp = compute_ph_rb_factor(current_BWP->scs, p1.rbSize) + (hasDeltaMCS ? compute_ph_mcs_factor(&p1) : 0);
     }

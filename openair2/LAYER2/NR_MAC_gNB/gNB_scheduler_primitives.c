@@ -678,18 +678,6 @@ bool update_rb_mcs_tbs(NR_sched_pdsch_t *pdsch, uint32_t num_total_bytes, uint16
   return true;
 }
 
-static bool multiple_2_3_5(int rb)
-{
-  while (rb % 2 == 0)
-    rb /= 2;
-  while (rb % 3 == 0)
-    rb /= 3;
-  while (rb % 5 == 0)
-    rb /= 5;
-
-  return (rb == 1);
-}
-
 bool nr_find_nb_rb(uint16_t Qm,
                    uint16_t R,
                    long transform_precoding,
@@ -702,10 +690,6 @@ bool nr_find_nb_rb(uint16_t Qm,
                    uint32_t *tbs,
                    uint16_t *nb_rb)
 {
-  // for transform precoding only RB = 2^a_2 * 3^a_3 * 5^a_5 is allowed with a non-negative
-  while (transform_precoding == NR_PUSCH_Config__transformPrecoder_enabled && !multiple_2_3_5(nb_rb_max))
-    nb_rb_max--;
-
   /* is the maximum (not even) enough? */
   *nb_rb = nb_rb_max;
   *tbs = nr_compute_tbs(Qm, R, *nb_rb, nb_symb_sch, nb_dmrs_prb, 0, 0, nrOfLayers) >> 3;
@@ -727,11 +711,6 @@ bool nr_find_nb_rb(uint16_t Qm,
   int hi = nb_rb_max;
   int lo = nb_rb_min;
   for (int p = (hi + lo) / 2; lo + 1 < hi; p = (hi + lo) / 2) {
-    // for transform precoding only RB = 2^a_2 * 3^a_3 * 5^a_5 is allowed with a non-negative
-    while(transform_precoding == NR_PUSCH_Config__transformPrecoder_enabled &&
-          !multiple_2_3_5(p))
-      p++;
-
     // If by increasing p for transform precoding we already hit the high, break to avoid infinite loop
     if (p == hi)
       break;

@@ -1733,6 +1733,21 @@ void RCconfig_nr_macrlc(configmodule_interface_t *cfg)
       else
         ul_bler_options->harq_round_max = *gpd(params, np, MACRLC_UL_HARQ_ROUND_MAX)->u8ptr;
       RC.nrmac[j]->min_grant_prb = *gpd(params, np, MACRLC_MIN_GRANT_PRB)->u16ptr;
+      long sc_fdma = NR_PUSCH_Config__transformPrecoder_enabled;
+      NR_BWP_UplinkCommon_t *bwp = RC.nrmac[j]->common_channels[0].ServingCellConfigCommon->uplinkConfigCommon->initialUplinkBWP;
+      if (bwp->rach_ConfigCommon->choice.setup->msg3_transformPrecoder != NULL)
+        sc_fdma = *bwp->rach_ConfigCommon->choice.setup->msg3_transformPrecoder;
+      int new_min = check_sc_fdma_rbsize(sc_fdma, RC.nrmac[j]->min_grant_prb);
+      // NR_PUSCH_Config__transformPrecoder_enabled	= 0 |	NR_PUSCH_Config__transformPrecoder_disabled	= 1, so !uses_sc_fdma should
+      // be used
+      if (sc_fdma == NR_PUSCH_Config__transformPrecoder_enabled && RC.nrmac[j]->min_grant_prb != new_min) {
+        LOG_W(NR_MAC,
+              "min_rb value is set as %d. In SC-FDMA, it should be under format 2^x*3^y*5^z and has been automatically decreased "
+              "to %d.\n",
+              RC.nrmac[j]->min_grant_prb,
+              new_min);
+        RC.nrmac[j]->min_grant_prb = new_min;
+      }
       RC.nrmac[j]->identity_pm = *gpd(params, np, MACRLC_IDENTITY_PM)->u8ptr;
       // PRB Blacklist
       uint16_t prbbl[MAX_BWP_SIZE] = {0};
