@@ -1563,7 +1563,7 @@ void handle_nr_srs_measurements(const module_id_t module_id,
       for (int uI = 0; uI < nr_srs_channel_iq_matrix.num_ue_srs_ports; uI++) {
         for (int gI = 0; gI < nr_srs_channel_iq_matrix.num_gnb_antenna_elements; gI++) {
           for (int pI = 0; pI < nr_srs_channel_iq_matrix.num_prgs; pI++) {
-            uint16_t index = uI * nr_srs_channel_iq_matrix.num_gnb_antenna_elements * nr_srs_channel_iq_matrix.num_prgs + gI * nr_srs_channel_iq_matrix.num_prgs + pI;
+            uint32_t index = (uint32_t)uI * nr_srs_channel_iq_matrix.num_gnb_antenna_elements * nr_srs_channel_iq_matrix.num_prgs + gI * nr_srs_channel_iq_matrix.num_prgs + pI;
             LOG_I(NR_MAC,
                   "(uI %i, gI %i, pI %i) channel_matrix --> real %i, imag %i\n",
                   uI,
