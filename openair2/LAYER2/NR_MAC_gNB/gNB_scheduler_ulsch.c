@@ -2501,11 +2501,9 @@ void nr_ulsch_preprocessor(gNB_MAC_INST *nr_mac, post_process_pusch_t *pp_pusch)
   int num_beams = nr_mac->beam_info.beam_allocation ? nr_mac->beam_info.beams_per_period : 1;
   int bw = scc->uplinkConfigCommon->frequencyInfoUL->scs_SpecificCarrierList.list.array[0]->carrierBandwidth;
 
-  int average_agg_level = 4; // TODO find a better estimation
-  int max_dci = bw / (average_agg_level * NR_NB_REG_PER_CCE);
-
   // FAPI cannot handle more than MAX_DCI_CORESET DCIs
-  max_dci = min(max_dci, MAX_DCI_CORESET);
+  static_assert(4 < MAX_DCI_CORESET, "cannot have more concurrent UEs than MAX_DCI_CORESET\n");
+  int max_dci = 4;
 
   fsn_t current = {frame, slot, *scc->ssbSubcarrierSpacing};
   fsn_t min_next = fsn_add_delta(current, min_rxtx);
