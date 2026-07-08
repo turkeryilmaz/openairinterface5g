@@ -59,6 +59,7 @@ unsigned short config_frames[4] = {2,9,11,13};
 #include "executables/nr-ue-ru.h"
 #include <executables/nr-uesoftmodem.h>
 #include "executables/softmodem-common.h"
+#include "common/utils/oai_profiler.h"
 #include "executables/thread-common.h"
 
 #include "nr_nas_msg.h"
@@ -110,6 +111,8 @@ void exit_function(const char *file, const char *function, const int line, const
 
   nrue_ru_stop();
   nrue_ru_end();
+
+  oai_profiler_shutdown();
 
   if (assert) {
     abort();
@@ -248,6 +251,14 @@ int main(int argc, char **argv)
           "no SYS_NICE capability: cannot set thread priority and affinity, consider running with sudo for optimum performance\n");
 
   cpuf=get_cpu_freq_GHz();
+  softmodem_params_t *softmodem_params = get_softmodem_params();
+  oai_profiler_init("nr-uesoftmodem",
+                    argc,
+                    argv,
+                    softmodem_params->oai_profile,
+                    softmodem_params->oai_profile_dir,
+                    softmodem_params->oai_profile_buffer_records,
+                    softmodem_params->oai_profile_flush_us);
   itti_init(TASK_MAX, tasks_info);
 
   init_opt();
@@ -478,6 +489,7 @@ int main(int argc, char **argv)
   time_manager_finish();
 
   free(pckg);
+  oai_profiler_shutdown();
   printf("Bye.\n");
   return 0;
 }

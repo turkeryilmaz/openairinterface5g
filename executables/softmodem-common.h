@@ -45,6 +45,10 @@ extern "C"
 #define CONFIG_HLP_SOFTS         "Enable soft scope and L1 and L2 stats (Xforms)\n"
 #define CONFIG_HLP_DLMCS         "Set the maximum downlink MCS\n"
 #define CONFIG_HLP_STMON         "Enable processing timing measurement of lte softmodem on per subframe basis \n"
+#define CONFIG_HLP_OAI_PROFILE "Enable archival OAI profiling records for selected nrUE/gNB runtime events\n"
+#define CONFIG_HLP_OAI_PROFILE_DIR "Directory for archival OAI profiling output files\n"
+#define CONFIG_HLP_OAI_PROFILE_BUF "Per-thread profiler ring-buffer record capacity\n"
+#define CONFIG_HLP_OAI_PROFILE_FLUSH "Profiler writer flush period in microseconds\n"
 #define CONFIG_HLP_CHESTFREQ     "Set channel estimation type in frequency domain. 0-Linear interpolation (default). 1-PRB based averaging of channel estimates in frequency. \n"
 #define CONFIG_HLP_CHESTTIME     "Set channel estimation type in time domain. 0-Symbols take estimates of the last preceding DMRS symbol (default). 1-Symbol based averaging of channel estimates in time. \n"
 #define CONFIG_HLP_IMSCOPE       "Enable phy scope based on imgui and implot"
@@ -142,6 +146,10 @@ extern int usrp_tx_thread;
   {"imscope" ,              CONFIG_HLP_IMSCOPE,       PARAMFLAG_BOOL, .uptr=&enable_imscope,                   .defintval=0,            TYPE_UINT,   0}, \
   {"imscope-record" ,       CONFIG_HLP_IMSCOPE_RECORD,PARAMFLAG_BOOL, .uptr=&enable_imscope_record,            .defintval=0,            TYPE_UINT,   0}, \
   {"default-pdu-id",        NULL,                     0,              .iptr=&DEFAULT_PDU_ID,                   .defintval=-1,           TYPE_INT,    0}, \
+  {"P",                     CONFIG_HLP_OAI_PROFILE,    PARAMFLAG_BOOL, .iptr=&softmodem_params.oai_profile,      .defintval=0,            TYPE_INT,    0}, \
+  {"oai-profile-dir",       CONFIG_HLP_OAI_PROFILE_DIR,0,              .strptr=&softmodem_params.oai_profile_dir,.defstrval=NULL,        TYPE_STRING, 0}, \
+  {"oai-profile-buffer-records", CONFIG_HLP_OAI_PROFILE_BUF, 0,        .uptr=&softmodem_params.oai_profile_buffer_records, .defuintval=131072, TYPE_UINT, 0}, \
+  {"oai-profile-flush-us",  CONFIG_HLP_OAI_PROFILE_FLUSH, 0,           .uptr=&softmodem_params.oai_profile_flush_us, .defuintval=100000, TYPE_UINT, 0}, \
 }
 // clang-format on
 
@@ -176,6 +184,10 @@ extern int usrp_tx_thread;
                {"MONOLITHIC", "PNF", "VNF", "AERIAL","UE_STUB_PNF","UE_STUB_OFFNET","STANDALONE_PNF"}, \
                {NFAPI_MONOLITHIC, NFAPI_MODE_PNF, NFAPI_MODE_VNF, NFAPI_MODE_AERIAL,NFAPI_UE_STUB_PNF,NFAPI_UE_STUB_OFFNET,NFAPI_MODE_STANDALONE_PNF}, \
                7 } }, \
+    { .s5 = { NULL } },                     \
+    { .s5 = { NULL } },                     \
+    { .s5 = { NULL } },                     \
+    { .s5 = { NULL } },                     \
     { .s5 = { NULL } },                     \
     { .s5 = { NULL } },                     \
     { .s5 = { NULL } },                     \
@@ -292,6 +304,10 @@ typedef struct {
   uint32_t       sync_ref;
   int no_itti;
   int threequarter_fs;
+  int oai_profile;
+  char *oai_profile_dir;
+  uint32_t oai_profile_buffer_records;
+  uint32_t oai_profile_flush_us;
   int default_pdu_session_id;
   int extra_pdu_session_id;
 } softmodem_params_t;

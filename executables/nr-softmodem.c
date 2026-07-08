@@ -56,6 +56,7 @@ unsigned short config_frames[4] = {2,9,11,13};
 #include "common/utils/LOG/log.h"
 #include "e1ap_messages_types.h"
 #include "executables/softmodem-common.h"
+#include "common/utils/oai_profiler.h"
 #include "gnb_config.h"
 #include "gnb_paramdef.h"
 #include "intertask_interface.h"
@@ -129,8 +130,10 @@ void exit_function(const char *file, const char *function, const int line, const
     printf("%s:%d %s() Exiting OAI softmodem: %s\n",file,line, function, s);
   }
 
-  if (RC.ru == NULL)
+  if (RC.ru == NULL) {
+    oai_profiler_shutdown();
     exit(-1); // likely init not completed, prevent crash or hang, exit now...
+  }
 
   for (ru_id=0; ru_id<RC.nb_RU; ru_id++) {
     if (RC.ru[ru_id] == NULL) {
@@ -164,6 +167,7 @@ void exit_function(const char *file, const char *function, const int line, const
   }
 
   oai_exit = 1;
+  oai_profiler_shutdown();
 
   if (assert) {
     abort();
@@ -538,6 +542,14 @@ int main( int argc, char **argv ) {
   set_taus_seed (0);
 
   cpuf=get_cpu_freq_GHz();
+  softmodem_params_t *softmodem_params = get_softmodem_params();
+  oai_profiler_init("nr-softmodem",
+                    argc,
+                    argv,
+                    softmodem_params->oai_profile,
+                    softmodem_params->oai_profile_dir,
+                    softmodem_params->oai_profile_buffer_records,
+                    softmodem_params->oai_profile_flush_us);
   itti_init(TASK_MAX, tasks_info);
   // initialize mscgen log after ITTI
   init_opt();
@@ -744,6 +756,7 @@ int main( int argc, char **argv ) {
 #endif // E3_AGENT
 
   free(pckg);
+  oai_profiler_shutdown();
   logClean();
   printf("Bye.\n");
   return 0;

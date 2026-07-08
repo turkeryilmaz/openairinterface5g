@@ -14,6 +14,7 @@
 #include "SCHED_NR_UE/defs.h"
 #include "PHY/NR_UE_TRANSPORT/nr_transport_proto_ue.h"
 #include "executables/softmodem-common.h"
+#include "common/utils/oai_profiler.h"
 #include "radio/COMMON/common_lib.h"
 #include "LAYER2/nr_pdcp/nr_pdcp_oai_api.h"
 #include "LAYER2/nr_rlc/nr_rlc_oai_api.h"
@@ -321,6 +322,14 @@ static void RU_write(nr_rxtx_thread_data_t *rxtxD, bool sl_tx_action, c16_t **tx
     }
     uint64_t current_time_us = current_time.tv_sec * 1e6 + current_time.tv_nsec / 1e3;
     if (current_time_us > deadline_us) {
+      OAI_PROFILE_MARK(OAI_PROFILE_EVENT_UE_TX_DEADLINE_MISS,
+                       proc->frame_tx,
+                       proc->nr_slot_tx,
+                       current_time_us,
+                       deadline_us,
+                       current_time_us - deadline_us,
+                       0,
+                       0);
       static unsigned int deadline_warning_rate_limit = 0;
       if (deadline_warning_rate_limit % 1000 == 0) {
         LOG_W(PHY,
@@ -340,7 +349,17 @@ static void RU_write(nr_rxtx_thread_data_t *rxtxD, bool sl_tx_action, c16_t **tx
   const int maxWriteBlockSize = get_samples_per_slot(proc->nr_slot_tx, fp);
   while (writeBlockSize > maxWriteBlockSize) {
     const int dummyBlockSize = min(writeBlockSize - maxWriteBlockSize, maxWriteBlockSize);
+    OAI_PROFILE_START(ue_rf_write_dummy_start);
     int tmp = nrue_ru_write_reorder(UE, writeTimestamp, (void **)txp, dummyBlockSize, fp->nb_antennas_tx, flags);
+    OAI_PROFILE_STOP(OAI_PROFILE_EVENT_UE_RF_WRITE,
+                     ue_rf_write_dummy_start,
+                     proc->frame_tx,
+                     proc->nr_slot_tx,
+                     dummyBlockSize,
+                     fp->nb_antennas_tx,
+                     flags,
+                     tmp,
+                     1);
     AssertFatal(tmp == dummyBlockSize, "");
 
     writeTimestamp += dummyBlockSize;
@@ -363,15 +382,27 @@ static void RU_write(nr_rxtx_thread_data_t *rxtxD, bool sl_tx_action, c16_t **tx
                          writeBlockSize);
   }
 
+  OAI_PROFILE_START(ue_rf_write_start);
   int tmp = nrue_ru_write_reorder(UE, writeTimestamp, (void **)txp, writeBlockSize, fp->nb_antennas_tx, flags);
+  OAI_PROFILE_STOP(OAI_PROFILE_EVENT_UE_RF_WRITE,
+                   ue_rf_write_start,
+                   proc->frame_tx,
+                   proc->nr_slot_tx,
+                   writeBlockSize,
+                   fp->nb_antennas_tx,
+                   flags,
+                   tmp,
+                   0);
   AssertFatal(tmp == writeBlockSize, "");
 }
 
 void processSlotTX(void *arg)
 {
   TracyCZone(ctx, true);
+  oai_profiler_register_thread();
   nr_rxtx_thread_data_t *rxtxD = arg;
   const UE_nr_rxtx_proc_t *proc = &rxtxD->proc;
+  OAI_PROFILE_START(ue_tx_slot_start);
   PHY_VARS_NR_UE *UE = rxtxD->UE;
   nr_phy_data_tx_t phy_data = {0};
   bool sl_tx_action = false;
@@ -404,17 +435,47 @@ void processSlotTX(void *arg)
                                                   .slot_type = SIDELINK_SLOT_TYPE_TX,
                                                   .phy_data = &phy_data};
 
+        OAI_PROFILE_START(ue_tx_ul_indication_start);
         UE->if_inst->sl_indication(&sl_indication);
+        OAI_PROFILE_STOP(OAI_PROFILE_EVENT_UE_TX_UL_INDICATION,
+                         ue_tx_ul_indication_start,
+                         proc->frame_tx,
+                         proc->nr_slot_tx,
+                         phy_data.sl_tx_action,
+                         0,
+                         0,
+                         0,
+                         1);
         stop_meas(&UE->ue_ul_indication_stats);
       }
+      OAI_PROFILE_START(ue_tx_barrier_sl_start);
       dynamic_barrier_join(rxtxD->next_barrier);
+      OAI_PROFILE_STOP(OAI_PROFILE_EVENT_UE_TX_BARRIER_WAIT,
+                       ue_tx_barrier_sl_start,
+                       proc->frame_tx,
+                       proc->nr_slot_tx,
+                       0,
+                       0,
+                       0,
+                       0,
+                       1);
 
       if (phy_data.sl_tx_action) {
 
         AssertFatal((phy_data.sl_tx_action >= SL_NR_CONFIG_TYPE_TX_PSBCH &&
                      phy_data.sl_tx_action < SL_NR_CONFIG_TYPE_TX_MAXIMUM), "Incorrect SL TX Action Scheduled\n");
 
+        OAI_PROFILE_START(ue_tx_phy_sl_start);
         phy_procedures_nrUE_SL_TX(UE, proc, &phy_data, txp);
+        OAI_PROFILE_STOP(OAI_PROFILE_EVENT_UE_TX_PHY_PROCEDURES,
+                         ue_tx_phy_sl_start,
+                         proc->frame_tx,
+                         proc->nr_slot_tx,
+                         phy_data.sl_tx_action,
+                         0,
+                         0,
+                         0,
+                         1);
 
         sl_tx_action = true;
       }
@@ -431,17 +492,52 @@ void processSlotTX(void *arg)
                                                 .slot = proc->nr_slot_tx,
                                                 .phy_data = &phy_data};
 
+        OAI_PROFILE_START(ue_tx_ul_indication_start);
         UE->if_inst->ul_indication(&ul_indication);
+        OAI_PROFILE_STOP(OAI_PROFILE_EVENT_UE_TX_UL_INDICATION,
+                         ue_tx_ul_indication_start,
+                         proc->frame_tx,
+                         proc->nr_slot_tx,
+                         0,
+                         0,
+                         0,
+                         0,
+                         0);
         stop_meas(&UE->ue_ul_indication_stats);
       }
+      OAI_PROFILE_START(ue_tx_barrier_start);
       dynamic_barrier_join(rxtxD->next_barrier);
+      OAI_PROFILE_STOP(OAI_PROFILE_EVENT_UE_TX_BARRIER_WAIT, ue_tx_barrier_start, proc->frame_tx, proc->nr_slot_tx, 0, 0, 0, 0, 0);
 
+      OAI_PROFILE_START(ue_tx_phy_start);
       phy_procedures_nrUE_TX(UE, proc, &phy_data, txp);
+      OAI_PROFILE_STOP(OAI_PROFILE_EVENT_UE_TX_PHY_PROCEDURES, ue_tx_phy_start, proc->frame_tx, proc->nr_slot_tx, 0, 0, 0, 0, 0);
     }
   } else {
+    OAI_PROFILE_START(ue_tx_barrier_dl_start);
     dynamic_barrier_join(rxtxD->next_barrier);
+    OAI_PROFILE_STOP(OAI_PROFILE_EVENT_UE_TX_BARRIER_WAIT, ue_tx_barrier_dl_start, proc->frame_tx, proc->nr_slot_tx, 0, 0, 0, 0, 2);
   }
+  OAI_PROFILE_START(ue_tx_ru_write_start);
   RU_write(rxtxD, sl_tx_action, txp);
+  OAI_PROFILE_STOP(OAI_PROFILE_EVENT_UE_TX_RU_WRITE,
+                   ue_tx_ru_write_start,
+                   proc->frame_tx,
+                   proc->nr_slot_tx,
+                   rxtxD->writeBlockSize,
+                   sl_tx_action,
+                   0,
+                   0,
+                   0);
+  OAI_PROFILE_STOP(OAI_PROFILE_EVENT_UE_TX_SLOT,
+                   ue_tx_slot_start,
+                   proc->frame_tx,
+                   proc->nr_slot_tx,
+                   proc->frame_rx,
+                   proc->nr_slot_rx,
+                   rxtxD->writeBlockSize,
+                   proc->tx_slot_type,
+                   0);
   TracyCZoneEnd(ctx);
 }
 
@@ -608,13 +704,24 @@ static int UE_dl_preprocessing(PHY_VARS_NR_UE *UE,
 
 void UE_dl_processing(void *arg) {
   TracyCZone(ctx, true);;
+  oai_profiler_register_thread();
   nr_rxtx_thread_data_t *rxtxD = (nr_rxtx_thread_data_t *) arg;
   UE_nr_rxtx_proc_t *proc = &rxtxD->proc;
   PHY_VARS_NR_UE    *UE   = rxtxD->UE;
   nr_phy_data_t *phy_data = &rxtxD->phy_data;
 
+  OAI_PROFILE_START(ue_dl_processing_start);
   if (!UE->sl_mode)
     pdsch_processing(UE, proc, phy_data);
+  OAI_PROFILE_STOP(OAI_PROFILE_EVENT_UE_DL_PROCESSING,
+                   ue_dl_processing_start,
+                   proc->frame_rx,
+                   proc->nr_slot_rx,
+                   proc->frame_tx,
+                   proc->nr_slot_tx,
+                   proc->rx_slot_type,
+                   UE->sl_mode,
+                   0);
 
   TracyCZoneEnd(ctx);
 }
@@ -733,6 +840,7 @@ void *UE_thread(void *arg)
 {
   //this thread should be over the processing thread to keep in real time
   PHY_VARS_NR_UE *UE = (PHY_VARS_NR_UE *)arg;
+  oai_profiler_register_thread();
   const NR_DL_FRAME_PARMS *fp = &UE->frame_parms;
   //  int tx_enabled = 0;
   enum stream_status_e stream_status = STREAM_STATUS_UNSYNC;
@@ -924,6 +1032,7 @@ void *UE_thread(void *arg)
     // start of normal case, the UE is in sync
     absolute_slot++;
     TracyCFrameMark;
+    OAI_PROFILE_START(ue_slot_loop_start);
 
     // pretend we have 1 iq sample per slot
     // and so nb_slot_frame * 100 iq samples per second (1 frame being 10ms)
@@ -976,10 +1085,31 @@ void *UE_thread(void *arg)
 
     const int readBlockSize = get_readBlockSize(slot_nr, fp) - iq_shift_to_apply;
     openair0_timestamp_t rx_timestamp;
+    OAI_PROFILE_START(ue_rf_read_start);
     int tmp = nrue_ru_read(UE, &rx_timestamp, (void **)rxp, readBlockSize, fp->nb_antennas_rx);
+    OAI_PROFILE_STOP(OAI_PROFILE_EVENT_UE_RF_READ,
+                     ue_rf_read_start,
+                     curMsg.proc.frame_rx,
+                     curMsg.proc.nr_slot_rx,
+                     readBlockSize,
+                     fp->nb_antennas_rx,
+                     tmp,
+                     rx_timestamp,
+                     0);
     metadata meta = {.slot =  curMsg.proc.nr_slot_rx, .frame =  curMsg.proc.frame_rx};
+    OAI_PROFILE_START(ue_scope_copy_start);
     UEscopeCopyWithMetadata(UE, ueTimeDomainSamples, rxp[0] - firstSymSamp, sizeof(c16_t), 1, readBlockSize, 0, &meta);
+    OAI_PROFILE_STOP(OAI_PROFILE_EVENT_UE_SCOPE_COPY,
+                     ue_scope_copy_start,
+                     curMsg.proc.frame_rx,
+                     curMsg.proc.nr_slot_rx,
+                     readBlockSize,
+                     0,
+                     0,
+                     0,
+                     0);
     AssertFatal(readBlockSize == tmp, "");
+    OAI_PROFILE_START(ue_timing_compute_start);
     struct timespec current_time;
     if (clock_gettime(CLOCK_REALTIME, &current_time)) {
       LOG_E(PHY, "clock_gettime failed\n");
@@ -991,7 +1121,17 @@ void *UE_thread(void *arg)
 
       if (first_symbols > 0) {
         openair0_timestamp_t ignore_timestamp;
+        OAI_PROFILE_START(ue_rf_read_drift_start);
         int tmp = nrue_ru_read(UE, &ignore_timestamp, (void **)UE->common_vars.rxdata, first_symbols, fp->nb_antennas_rx);
+        OAI_PROFILE_STOP(OAI_PROFILE_EVENT_UE_RF_READ_DRIFT,
+                         ue_rf_read_drift_start,
+                         curMsg.proc.frame_rx,
+                         curMsg.proc.nr_slot_rx,
+                         first_symbols,
+                         fp->nb_antennas_rx,
+                         tmp,
+                         ignore_timestamp,
+                         0);
         AssertFatal(first_symbols == tmp, "");
 
       } else
@@ -1025,6 +1165,15 @@ void *UE_thread(void *arg)
       LOG_I(PHY, "writeBlockSize is %d, setting it to 0 and changing timing_advance to %d\n", writeBlockSize, timing_advance);
       writeBlockSize = 0;
     }
+    OAI_PROFILE_STOP(OAI_PROFILE_EVENT_UE_TIMING_COMPUTE,
+                     ue_timing_compute_start,
+                     curMsg.proc.frame_rx,
+                     curMsg.proc.nr_slot_rx,
+                     writeBlockSize,
+                     timing_advance,
+                     UE->N_TA_offset,
+                     absolute_deadline_us,
+                     0);
 
     if (curMsg.proc.nr_slot_rx == 0)
       nr_ue_rrc_timer_trigger(UE->Mod_id, curMsg.proc.hfn_rx, curMsg.proc.frame_rx, curMsg.proc.gNB_id);
@@ -1033,16 +1182,37 @@ void *UE_thread(void *arg)
     notifiedFIFO_elt_t *newRx = newNotifiedFIFO_elt(sizeof(nr_rxtx_thread_data_t), curMsg.proc.nr_slot_tx, NULL, UE_dl_processing);
     nr_rxtx_thread_data_t *curMsgRx = (nr_rxtx_thread_data_t *)NotifiedFifoData(newRx);
     *curMsgRx = (nr_rxtx_thread_data_t){.proc = curMsg.proc, .UE = UE};
+    OAI_PROFILE_START(ue_dl_preprocess_start);
     int ret = UE_dl_preprocessing(UE, &curMsgRx->proc, tx_wait_for_dlsch, &curMsgRx->phy_data, &stats_printed);
+    OAI_PROFILE_STOP(OAI_PROFILE_EVENT_UE_DL_PREPROCESS,
+                     ue_dl_preprocess_start,
+                     curMsg.proc.frame_rx,
+                     curMsg.proc.nr_slot_rx,
+                     ret,
+                     curMsg.proc.rx_slot_type,
+                     curMsg.proc.tx_slot_type,
+                     0,
+                     0);
     if (ret != INT_MAX)
       shiftForNextFrame = ret;
+    OAI_PROFILE_START(ue_dl_actor_dispatch_start);
     if (get_nrUE_params()->num_dl_actors > 0) {
       pushNotifiedFIFO(&UE->dl_actors[curMsg.proc.nr_slot_rx % get_nrUE_params()->num_dl_actors].fifo, newRx);
     } else {
       newRx->processingFunc(curMsgRx);
     }
+    OAI_PROFILE_STOP(OAI_PROFILE_EVENT_UE_DL_ACTOR_DISPATCH,
+                     ue_dl_actor_dispatch_start,
+                     curMsg.proc.frame_rx,
+                     curMsg.proc.nr_slot_rx,
+                     get_nrUE_params()->num_dl_actors,
+                     ret,
+                     0,
+                     0,
+                     0);
 
     // apply new NTN timing information
+    OAI_PROFILE_START(ue_ntn_config_apply_start);
     apply_ntn_config(UE,
                      fp,
                      curMsg.proc.hfn_rx,
@@ -1052,9 +1222,19 @@ void *UE_thread(void *arg)
                      &timing_advance,
                      &ntn_koffset,
                      &ntn_targetcell);
+    OAI_PROFILE_STOP(OAI_PROFILE_EVENT_UE_NTN_CONFIG_APPLY,
+                     ue_ntn_config_apply_start,
+                     curMsg.proc.frame_rx,
+                     curMsg.proc.nr_slot_rx,
+                     duration_rx_to_tx,
+                     timing_advance,
+                     ntn_koffset,
+                     ntn_targetcell,
+                     0);
 
     // Start TX slot processing here. It runs in parallel with RX slot processing
     // in current code, DURATION_RX_TO_TX constant is the limit to get UL data to encode from a RX slot
+    OAI_PROFILE_START(ue_tx_schedule_start);
     notifiedFIFO_elt_t *newTx = newNotifiedFIFO_elt(sizeof(nr_rxtx_thread_data_t), 0, 0, processSlotTX);
     nr_rxtx_thread_data_t *curMsgTx = NotifiedFifoData(newTx);
     memset(curMsgTx, 0, sizeof(*curMsgTx));
@@ -1068,6 +1248,7 @@ void *UE_thread(void *arg)
     int slot_and_frame = slot + curMsgTx->proc.frame_tx * nb_slot_frame;
     int next_tx_slot_and_frame = absolute_slot + duration_rx_to_tx + 1;
     int wait_for_prev_slot = stream_status == STREAM_STATUS_SYNCED ? 1 : 0;
+    int tx_wait_for_dlsch_before_reset = tx_wait_for_dlsch[slot];
 
     dynamic_barrier_t *next_barrier = &UE->process_slot_tx_barriers[next_tx_slot_and_frame % NUM_PROCESS_SLOT_TX_BARRIERS];
     curMsgTx->next_barrier = next_barrier;
@@ -1077,6 +1258,24 @@ void *UE_thread(void *arg)
                            newTx);
     stream_status = STREAM_STATUS_SYNCED;
     tx_wait_for_dlsch[slot] = 0;
+    OAI_PROFILE_STOP(OAI_PROFILE_EVENT_UE_TX_SCHEDULE,
+                     ue_tx_schedule_start,
+                     curMsg.proc.frame_tx,
+                     curMsg.proc.nr_slot_tx,
+                     writeBlockSize,
+                     wait_for_prev_slot,
+                     tx_wait_for_dlsch_before_reset,
+                     duration_rx_to_tx,
+                     0);
+    OAI_PROFILE_STOP(OAI_PROFILE_EVENT_UE_SLOT_LOOP,
+                     ue_slot_loop_start,
+                     curMsg.proc.frame_rx,
+                     curMsg.proc.nr_slot_rx,
+                     duration_rx_to_tx,
+                     readBlockSize,
+                     writeBlockSize,
+                     timing_advance,
+                     0);
   }
   LOG_W(NR_PHY, "UE main thread is ending\n");
   return NULL;

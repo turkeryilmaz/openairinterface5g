@@ -30,6 +30,7 @@
 #include "common/utils/time_manager/time_manager.h"
 
 #include <executables/softmodem-common.h>
+#include "common/utils/oai_profiler.h"
 /* these variables have to be defined before including ENB_APP/enb_paramdef.h and GNB_APP/gnb_paramdef.h */
 static int DEFBANDS[] = {7};
 static int DEFENBS[] = {0};
@@ -155,7 +156,9 @@ static void rx_rf(RU_t *ru, int *frame, int *slot)
 
   openair0_timestamp_t ts;
   unsigned int rxs;
+  OAI_PROFILE_START(gnb_rf_read_start);
   rxs = ru->rfdevice.trx_read_func(&ru->rfdevice, &ts, rxp, samples_per_slot, nb);
+  OAI_PROFILE_STOP(OAI_PROFILE_EVENT_GNB_RF_READ, gnb_rf_read_start, *frame, *slot, samples_per_slot, nb, rxs, ts, 0);
   proc->timestamp_rx = ts-ru->ts_offset;
 
   if (rxs != samples_per_slot)
@@ -230,7 +233,17 @@ static void rx_rf(RU_t *ru, int *frame, int *slot)
       LOG_A(NR_PHY, "Aligning to the slot boundary %lu\n", samples_to_slot_boundary);
 
       // Read and discard the samples in the first_rx to align to the slot boundary
+      OAI_PROFILE_START(gnb_rf_read_align_start);
       rxs = ru->rfdevice.trx_read_func(&ru->rfdevice, &ts, rxp, samples_to_slot_boundary, nb);
+      OAI_PROFILE_STOP(OAI_PROFILE_EVENT_GNB_RF_READ_ALIGN,
+                       gnb_rf_read_align_start,
+                       *frame,
+                       *slot,
+                       samples_to_slot_boundary,
+                       nb,
+                       rxs,
+                       ts,
+                       0);
       if (rxs != samples_to_slot_boundary)
         LOG_E(PHY, "rx_rf: Asked for %ld samples, got %d from USRP\n", samples_to_slot_boundary, rxs);
 
@@ -367,12 +380,14 @@ void tx_rf_symbols(RU_t *ru, int frame, int slot, uint64_t timestamp, int start_
     txp[i] = (void *)&ru->common.txdata[i][time_offset] - sf_extension * sizeof(int32_t);
 
   // prepare tx buffer pointers
+  OAI_PROFILE_START(gnb_rf_write_start);
   uint32_t txs = ru->rfdevice.trx_write_func(&ru->rfdevice,
                                              timestamp + ru->ts_offset - sf_extension,
                                              txp,
                                              siglen + sf_extension,
                                              nt,
                                              flags);
+  OAI_PROFILE_STOP(OAI_PROFILE_EVENT_GNB_RF_WRITE, gnb_rf_write_start, frame, slot, siglen + sf_extension, nt, flags, txs, 0);
   LOG_D(PHY,
         "[TXPATH] RU %d tx_rf, writing to TS %lu, %d.%d, unwrapped_frame %d, slot %d, flags %d, siglen+sf_extension %d, "
         "returned %d, E %f\n",

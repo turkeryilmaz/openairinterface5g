@@ -36,6 +36,7 @@
 #include "common/ran_context.h"
 #include "common/utils/LOG/log.h"
 #include "executables/softmodem-common.h"
+#include "common/utils/oai_profiler.h"
 #include "nfapi/oai_integration/vendor_ext.h"
 #include "nfapi_nr_interface_scf.h"
 #include "notified_fifo.h"
@@ -73,13 +74,16 @@ static void tx_func(processingData_L1tx_t *info)
   // to not overflow the stack while still having it in local (function) scope
   // also, tx_func() is only executed by one thread, serially
   static NR_Sched_Rsp_t sched_response;
+  OAI_PROFILE_START(gnb_slot_indication_start);
   ifi->NR_slot_indication(&ind, &sched_response);
+  OAI_PROFILE_STOP(OAI_PROFILE_EVENT_GNB_SLOT_INDICATION, gnb_slot_indication_start, frame_tx, slot_tx, frame_rx, slot_rx, 0, 0, 0);
   stop_meas(&gNB->slot_indication_stats);
 
   info->gNB = gNB;
 
   // At this point, MAC scheduler just ran, including scheduling
   // PRACH/PUCCH/PUSCH, so trigger RX chain processing
+  OAI_PROFILE_START(gnb_rx_trigger_start);
   nr_save_ul_tti_req(gNB, &sched_response.UL_tti_req);
   LOG_D(NR_PHY, "Trigger RX for %d.%d\n", frame_rx, slot_rx);
   notifiedFIFO_elt_t *res = newNotifiedFIFO_elt(sizeof(processingData_L1_t), 0, &gNB->resp_L1, NULL);
@@ -90,13 +94,24 @@ static void tx_func(processingData_L1tx_t *info)
   syncMsg->timestamp_tx = info->timestamp_tx;
   res->key = slot_rx;
   pushNotifiedFIFO(&gNB->resp_L1, res);
+  OAI_PROFILE_STOP(OAI_PROFILE_EVENT_GNB_RX_TRIGGER,
+                   gnb_rx_trigger_start,
+                   frame_rx,
+                   slot_rx,
+                   frame_tx,
+                   slot_tx,
+                   info->timestamp_tx,
+                   0,
+                   0);
 
   int tx_slot_type = nr_slot_select(cfg, frame_tx, slot_tx);
   // TODO check for analog_bf_vendor_ext set to 1 is a workaround while no beam API for beam selection is implemented
   if (tx_slot_type == NR_DOWNLINK_SLOT || tx_slot_type == NR_MIXED_SLOT || get_softmodem_params()->continuous_tx
       || IS_SOFTMODEM_RFSIM || cfg->analog_beamforming_ve.analog_bf_vendor_ext.value) {
     start_meas(&info->gNB->phy_proc_tx);
-    phy_procedures_gNB_TX(info->gNB, &sched_response.DL_req, &sched_response.TX_req, &sched_response.UL_dci_req, frame_tx,slot_tx);
+    OAI_PROFILE_START(gnb_phy_tx_start);
+    phy_procedures_gNB_TX(info->gNB, &sched_response.DL_req, &sched_response.TX_req, &sched_response.UL_dci_req, frame_tx, slot_tx);
+    OAI_PROFILE_STOP(OAI_PROFILE_EVENT_GNB_PHY_TX, gnb_phy_tx_start, frame_tx, slot_tx, tx_slot_type, 0, 0, 0, 0);
 
     PHY_VARS_gNB *gNB = info->gNB;
     processingData_RU_t syncMsgRU;
@@ -105,7 +120,9 @@ static void tx_func(processingData_L1tx_t *info)
     syncMsgRU.ru = gNB->RU_list[0];
     syncMsgRU.timestamp_tx = info->timestamp_tx;
     LOG_D(PHY, "gNB: %d.%d : calling RU TX function\n", syncMsgRU.frame_tx, syncMsgRU.slot_tx);
+    OAI_PROFILE_START(gnb_ru_tx_start);
     ru_tx_func((void *)&syncMsgRU);
+    OAI_PROFILE_STOP(OAI_PROFILE_EVENT_GNB_RU_TX, gnb_ru_tx_start, frame_tx, slot_tx, info->timestamp_tx, 0, 0, 0, 0);
     stop_meas(&info->gNB->phy_proc_tx);
   }
 }
@@ -113,6 +130,7 @@ static void tx_func(processingData_L1tx_t *info)
 void *L1_rx_thread(void *arg) 
 {
   PHY_VARS_gNB *gNB = (PHY_VARS_gNB*)arg;
+  oai_profiler_register_thread();
 
   while (oai_exit == 0) {
      notifiedFIFO_elt_t *res = pullNotifiedFIFO(&gNB->resp_L1);
@@ -120,7 +138,9 @@ void *L1_rx_thread(void *arg)
        break;
      processingData_L1_t *info = (processingData_L1_t *)NotifiedFifoData(res);
      start_meas(&gNB->l1_rx_proc);
+     OAI_PROFILE_START(gnb_l1_rx_start);
      rx_func(info);
+     OAI_PROFILE_STOP(OAI_PROFILE_EVENT_GNB_L1_RX_JOB, gnb_l1_rx_start, info->frame_rx, info->slot_rx, 0, 0, 0, 0, 0);
      stop_meas(&gNB->l1_rx_proc);
      delNotifiedFIFO_elt(res);
   }
@@ -129,6 +149,7 @@ void *L1_rx_thread(void *arg)
 // Added for URLLC, requires MAC scheduling to be split from UL indication
 void *L1_tx_thread(void *arg) {
   PHY_VARS_gNB *gNB = (PHY_VARS_gNB*)arg;
+  oai_profiler_register_thread();
 
   while (oai_exit == 0) {
      notifiedFIFO_elt_t *res = pullNotifiedFIFO(&gNB->L1_tx_out);
@@ -136,7 +157,17 @@ void *L1_tx_thread(void *arg) {
        break;
      processingData_L1tx_t *info = (processingData_L1tx_t *)NotifiedFifoData(res);
      start_meas(&gNB->l1_tx_proc);
+     OAI_PROFILE_START(gnb_l1_tx_start);
      tx_func(info);
+     OAI_PROFILE_STOP(OAI_PROFILE_EVENT_GNB_L1_TX_JOB,
+                      gnb_l1_tx_start,
+                      info->frame,
+                      info->slot,
+                      info->frame_rx,
+                      info->slot_rx,
+                      0,
+                      0,
+                      0);
      stop_meas(&gNB->l1_tx_proc);
      delNotifiedFIFO_elt(res);
   }
@@ -165,11 +196,25 @@ static void rx_func(processingData_L1_t *info)
     // even if processing is late, we might collect all PRACH
     // the last PRACH's frame/slot is when all UE's appear to have accessed
     prach_item_t p;
-    while (spsc_q_get(&gNB->prach_l1rx_queue, &p, sizeof(p)))
+    int prach_queue_items = 0;
+    OAI_PROFILE_START(gnb_prach_queue_start);
+    while (spsc_q_get(&gNB->prach_l1rx_queue, &p, sizeof(p))) {
+      prach_queue_items++;
       L1_nr_prach_procedures(gNB, &p, &UL_INFO.rach_ind);
+    }
+    OAI_PROFILE_STOP(OAI_PROFILE_EVENT_GNB_PRACH_QUEUE_DRAIN,
+                     gnb_prach_queue_start,
+                     frame_rx,
+                     slot_rx,
+                     prach_queue_items,
+                     UL_INFO.rach_ind.number_of_pdus,
+                     0,
+                     0,
+                     0);
 
     //WA: comment rotation in tx/rx
     if (gNB->phase_comp) {
+      OAI_PROFILE_START(gnb_phase_comp_start);
       //apply the rx signal rotation here
       int soffset = (slot_rx % RU_RX_SLOT_DEPTH) * gNB->frame_parms.symbols_per_slot * gNB->frame_parms.ofdm_symbol_size;
       const NR_DL_FRAME_PARMS *fp = &gNB->frame_parms;
@@ -186,12 +231,41 @@ static void rx_func(processingData_L1_t *info)
                                       slot_rx,
                                       sym);
       }
+      OAI_PROFILE_STOP(OAI_PROFILE_EVENT_GNB_PHASE_COMP,
+                       gnb_phase_comp_start,
+                       frame_rx,
+                       slot_rx,
+                       fp->nb_antennas_rx,
+                       fp->N_RB_UL,
+                       0,
+                       0,
+                       0);
     }
+    OAI_PROFILE_START(gnb_uespec_rx_start);
     phy_procedures_gNB_uespec_RX(gNB, frame_rx, slot_rx, &UL_INFO);
+    OAI_PROFILE_STOP(OAI_PROFILE_EVENT_GNB_PHY_UESPEC_RX,
+                     gnb_uespec_rx_start,
+                     frame_rx,
+                     slot_rx,
+                     UL_INFO.rx_ind.number_of_pdus,
+                     UL_INFO.crc_ind.number_crcs,
+                     UL_INFO.uci_ind.num_ucis,
+                     0,
+                     0);
 
     // Call the scheduler
     start_meas(&gNB->ul_indication_stats);
+    OAI_PROFILE_START(gnb_ul_indication_start);
     gNB->if_inst->NR_UL_indication(&UL_INFO);
+    OAI_PROFILE_STOP(OAI_PROFILE_EVENT_GNB_UL_INDICATION,
+                     gnb_ul_indication_start,
+                     frame_rx,
+                     slot_rx,
+                     UL_INFO.rx_ind.number_of_pdus,
+                     UL_INFO.crc_ind.number_crcs,
+                     UL_INFO.rach_ind.number_of_pdus,
+                     0,
+                     0);
     stop_meas(&gNB->ul_indication_stats);
 
     notifiedFIFO_elt_t *res = newNotifiedFIFO_elt(sizeof(processingData_L1_t), 0, &gNB->L1_rx_out, NULL);
