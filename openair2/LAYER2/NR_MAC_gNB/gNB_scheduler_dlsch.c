@@ -886,11 +886,9 @@ void nr_dlsch_preprocessor(gNB_MAC_INST *mac, post_process_pdsch_t *pp_pdsch)
   for (int i = 0; i < num_beams; i++)
     n_rb_sched[i] = bw;
 
-  int average_agg_level = 4; // TODO find a better estimation
-  int max_sched_ues = bw / (average_agg_level * NR_NB_REG_PER_CCE);
-
   // FAPI cannot handle more than MAX_DCI_CORESET DCIs
-  max_sched_ues = min(max_sched_ues, MAX_DCI_CORESET);
+  static_assert(4 < MAX_DCI_CORESET, "cannot have more concurrent UEs than MAX_DCI_CORESET\n");
+  int max_sched_ues = 4;
 
   nr_dl_schedule(mac, pp_pdsch, UE_info->connected_ue_list, max_sched_ues, num_beams, n_rb_sched);
 }
