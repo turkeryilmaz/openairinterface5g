@@ -2435,7 +2435,7 @@ gNB_RRC_INST *RCconfig_NRRRC()
 
         nrrrc_config.num_plmn = set_plmn_config(nrrrc_config.plmn, k);
         nrrrc_config.enable_sdap = *GNBParamList.paramarray[i][GNB_ENABLE_SDAP_IDX].iptr;
-        LOG_I(GNB_APP, "SDAP layer is %s\n", nrrrc_config.enable_sdap ? "enabled" : "disabled");
+        LOG_I(GNB_APP, "SDAP UL/DL headers in RRC are %s\n", nrrrc_config.enable_sdap ? "present" : "absent");
         nrrrc_config.um_on_default_drb = *(GNBParamList.paramarray[i][GNB_UMONDEFAULTDRB_IDX].uptr);
 
       }//
