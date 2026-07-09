@@ -13,7 +13,7 @@ ENV TZ=Europe
 RUN rm -Rf /oai-ran
 WORKDIR /oai-ran
 
-ARG xran_VERSION=11.1.2
+ARG xran_VERSION=11.1.3
 
 ## Download and build DPDK
 RUN wget --no-verbose http://fast.dpdk.org/rel/dpdk-24.11.4.tar.xz && \

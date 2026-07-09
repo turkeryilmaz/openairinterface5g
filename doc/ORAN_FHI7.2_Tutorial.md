@@ -421,15 +421,14 @@ git apply ~/openairinterface5g/cmake_targets/tools/oran_fhi_integration_patches/
 ```bash
 git clone https://github.com/openairinterface/o-du-phy.git ~/phy
 cd ~/phy
-git checkout 11.1.2 # the tag points to the `main` branch which has all patches applied that are relevant for OAI integration; the tag matches the value of cmake variable `K_VERSION`
+git checkout 11.1.3 # the tag points to the `main` branch which has all patches applied that are relevant for OAI integration; the tag matches the value of cmake variable `K_VERSION`
 ```
 or use `xran_DOWNLOAD` option when compiling OAI gNB.
 
 Compile the fronthaul interface library by calling `make` and the option
 `XRAN_LIB_SO=1` to have it build a shared object. Note that we provide two
 environment variables `RTE_SDK` for the path to the source tree of DPDK, and
-`XRAN_DIR` to set the path to the fronthaul library. For building for a Arm
-target, set as well the environment variable `TARGET=armv8`.
+`XRAN_DIR` to set the path to the fronthaul library.
 
 **Note**: you need at least gcc-11 and g++-11.
 
