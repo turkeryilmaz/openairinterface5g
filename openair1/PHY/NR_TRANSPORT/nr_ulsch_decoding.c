@@ -226,11 +226,13 @@ int nr_ulsch_decoding(PHY_VARS_gNB *phy_vars_gNB,
     }
 
     nrLDPC_TB_decoding_parameters_t *TB_parameters = &TBs[pusch_id];
-
+    int E = nr_get_E(TB_parameters->G, TB_parameters->C, TB_parameters->Qm, TB_parameters->nb_layers, 0);
+    if (E < 0)
+      return -1;
     TB_parameters->llr = ulsch_llr;
     TB_parameters->d = harq_process->d;
     TB_parameters->c = harq_process->c;
-    TB_parameters->E = nr_get_E(TB_parameters->G, TB_parameters->C, TB_parameters->Qm, TB_parameters->nb_layers, 0);
+    TB_parameters->E = E;
     TB_parameters->first_rE2 = TB_parameters->C;
     TB_parameters->E2 = TB_parameters->E;
     TB_parameters->R = nr_get_R_ldpc_decoder(TB_parameters->rv_index,
