@@ -4324,8 +4324,7 @@ int get_f3_dmrs_symbols(NR_PUCCH_Resource_t *pucchres, NR_PUCCH_Config_t *pucch_
   return f3_dmrs_symbols;
 }
 
-uint16_t compute_pucch_prb_size(uint8_t format,
-                                uint8_t nr_prbs,
+uint16_t compute_pucch_prb_size(uint8_t nr_prbs,
                                 uint16_t O_csi,
                                 uint16_t O_ack,
                                 uint8_t O_sr,

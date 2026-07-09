@@ -1609,8 +1609,7 @@ void nr_configure_pucch(nfapi_nr_pucch_pdu_t *pucch_pdu,
             pucch_pdu->start_symbol_index = pucchres->format.choice.format2->startingSymbolIndex;
             pucch_pdu->data_scrambling_id = pusch_id ? *pusch_id : *scc->physCellId;
             pucch_pdu->dmrs_scrambling_id = id0 ? *id0 : *scc->physCellId;
-            pucch_pdu->prb_size = compute_pucch_prb_size(2,
-                                                         pucchres->format.choice.format2->nrofPRBs,
+            pucch_pdu->prb_size = compute_pucch_prb_size(pucchres->format.choice.format2->nrofPRBs,
                                                          O_csi,
                                                          O_ack,
                                                          O_sr,
@@ -1635,8 +1634,7 @@ void nr_configure_pucch(nfapi_nr_pucch_pdu_t *pucch_pdu,
               pucch_pdu->add_dmrs_flag = pucchfmt->additionalDMRS ? 1 : 0;
             }
             int f3_dmrs_symbols = get_f3_dmrs_symbols(pucchres, pucch_Config);
-            pucch_pdu->prb_size = compute_pucch_prb_size(3,
-                                                         pucchres->format.choice.format3->nrofPRBs,
+            pucch_pdu->prb_size = compute_pucch_prb_size(pucchres->format.choice.format3->nrofPRBs,
                                                          O_csi,
                                                          O_ack,
                                                          O_sr,
