@@ -176,7 +176,7 @@ install elsewhere, using one of these two methods:
 cmake .. -GNinja -DASN1C_EXEC=/opt/asn1c/bin/asn1c
 ```
 
-### Installing UHD from source
+### Installing UHD
 
 Previously for Ubuntu distributions, when installing the pre-requisites, most of the packages are installed from PPA.
 
@@ -186,9 +186,11 @@ Now, when installing the pre-requisites, especially the `UHD` driver, you can no
 
 - For `fedora`-based OS, it was already the case all the time. But now you can specify which version to install.
 - For `ubuntu` OS, you can still install from the Ettus PPA or select a version to install from source.
-  * In case of PPA installation, you do nothing special, the script will install the latest version available on the PPA.
+  * In case of PPA installation, you do nothing special; the script installs the distribution-specific UHD version from the PPA.
     - `./build_oai -I -w USRP`
-  * In case of a installation from source, you do as followed:
+- For Debian 13, `build_oai` installs the distribution-provided `libuhd-dev` and `uhd-host` packages by default.
+  - `./build_oai -I -w USRP`
+- To install UHD from source on Ubuntu or Debian 13, set the following environment variables:
 
 ```bash
 export BUILD_UHD_FROM_SOURCE=True
