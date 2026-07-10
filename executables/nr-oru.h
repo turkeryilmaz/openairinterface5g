@@ -63,6 +63,13 @@ typedef struct {
   time_stats_t rx;
   prach_item_t prach_item;
   bool threequarter_fs;
+
+  // Real-time Self-diagnosis metrics
+  uint64_t dl_packed_stats; // upper 32 bits: count, lower 32 bits: total_time_us in SQ4
+  uint64_t dl_symbol_time_max_us; // in SQ4
+
+  uint64_t ul_packed_stats; // upper 32 bits: count, lower 32 bits: total_time_us in SQ4
+  uint64_t ul_ant_time_max_us; // in SQ4
 } ORU_t;
 
 int get_oru_options(ORU_t *oru);
@@ -71,5 +78,6 @@ void *oru_north_read_thread(void *arg);
 void *oru_south_read_thread(void *arg);
 void *oru_south_write_thread(void *arg);
 void prepare_prach_item(ORU_t *oru);
+void oru_self_diagnosis(ORU_t *oru);
 
 #endif

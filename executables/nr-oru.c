@@ -9,6 +9,7 @@
 #include "PHY/NR_TRANSPORT/nr_transport_proto.h"
 #include "oru_packet_processor.h"
 #include <time.h>
+#include <unistd.h>
 #include "openair1/PHY/MODULATION/nr_modulation.h"
 #include "openair1/SCHED_NR/sched_nr.h"
 #include "openair1/PHY/MODULATION/modulation_common.h"
@@ -382,6 +383,9 @@ void fft_and_cp_insertion(NR_DL_FRAME_PARMS *fp, c16_t *txdataF, c16_t *txdata, 
 
 static void dl_symbol_process(ORU_t *oru, int frame, int slot, int symbol, c16_t **txDataF, int64_t timestamp, uint64_t abs_symbol)
 {
+  struct timespec start, end;
+  clock_gettime(CLOCK_MONOTONIC, &start);
+
   RU_t *ru = oru->ru;
   NR_DL_FRAME_PARMS *fp = ru->nr_frame_parms;
   uint32_t slot_offset = get_samples_slot_timestamp(fp, slot);
@@ -403,6 +407,19 @@ static void dl_symbol_process(ORU_t *oru, int frame, int slot, int symbol, c16_t
                          (c16_t *)&ru->common.txdata[aatx][slot_offset + symbol_offset],
                          slot,
                          symbol);
+  }
+
+  clock_gettime(CLOCK_MONOTONIC, &end);
+  uint64_t elapsed_ns = (end.tv_sec - start.tv_sec) * 1000000000UL + (end.tv_nsec - start.tv_nsec);
+  uint64_t elapsed_sq4 = (elapsed_ns * 16ULL) / 1000;
+  uint64_t add_val = ((uint64_t)1 << 32) | (elapsed_sq4 & 0xFFFFFFFFULL);
+  __atomic_fetch_add(&oru->dl_packed_stats, add_val, __ATOMIC_RELAXED);
+
+  uint64_t current_max = __atomic_load_n(&oru->dl_symbol_time_max_us, __ATOMIC_RELAXED);
+  while (elapsed_sq4 > current_max) {
+    if (__atomic_compare_exchange_n(&oru->dl_symbol_time_max_us, &current_max, elapsed_sq4, false, __ATOMIC_RELAXED, __ATOMIC_RELAXED)) {
+      break;
+    }
   }
 
   pthread_mutex_lock(&oru->tx_write.mutex);
@@ -561,6 +578,9 @@ typedef struct {
 
 static void receive_pusch(ORU_t *oru, int frame, int slot, int symbol, ul_job_t *job)
 {
+  struct timespec start, end;
+  clock_gettime(CLOCK_MONOTONIC, &start);
+
   RU_t *ru = oru->ru;
   NR_DL_FRAME_PARMS *fp = ru->nr_frame_parms;
   int aarx = job->antenna_id;
@@ -597,6 +617,19 @@ static void receive_pusch(ORU_t *oru, int frame, int slot, int symbol, ul_job_t 
   memcpy(rxdataF + num_samp_half, rxdataF_fft, num_samp_half * sizeof(c16_t));
 
   oru_fh_rx_send_pusch(oru->fronthaul, (uint32_t *)rxdataF, symbol, job);
+
+  clock_gettime(CLOCK_MONOTONIC, &end);
+  uint64_t elapsed_ns = (end.tv_sec - start.tv_sec) * 1000000000UL + (end.tv_nsec - start.tv_nsec);
+  uint64_t elapsed_sq4 = (elapsed_ns * 16ULL) / 1000;
+  uint64_t add_val = ((uint64_t)1 << 32) | (elapsed_sq4 & 0xFFFFFFFFULL);
+  __atomic_fetch_add(&oru->ul_packed_stats, add_val, __ATOMIC_RELAXED);
+
+  uint64_t current_max = __atomic_load_n(&oru->ul_ant_time_max_us, __ATOMIC_RELAXED);
+  while (elapsed_sq4 > current_max) {
+    if (__atomic_compare_exchange_n(&oru->ul_ant_time_max_us, &current_max, elapsed_sq4, false, __ATOMIC_RELAXED, __ATOMIC_RELAXED)) {
+      break;
+    }
+  }
 }
 
 #define UL_WORK_QUEUE_DEPTH 128
@@ -923,6 +956,7 @@ void *oru_south_read_thread(void *arg)
       frame++;
       if (frame == 1024) {
         frame = 0;
+        oru_self_diagnosis(oru);
       }
     }
   }
@@ -938,4 +972,103 @@ void *oru_south_read_thread(void *arg)
   pthread_mutex_destroy(&work_queue.lock);
 
   return NULL;
+}
+
+void oru_self_diagnosis(ORU_t *oru)
+{
+  RU_t *ru = oru->ru;
+  NR_DL_FRAME_PARMS *fp = ru->nr_frame_parms;
+
+  uint64_t dl_packed = __atomic_exchange_n(&oru->dl_packed_stats, 0, __ATOMIC_RELAXED);
+  uint64_t dl_count = dl_packed >> 32;
+  uint64_t dl_time_total = dl_packed & 0xFFFFFFFFULL;
+  uint64_t dl_time_max = __atomic_exchange_n(&oru->dl_symbol_time_max_us, 0, __ATOMIC_RELAXED);
+
+  uint64_t ul_packed = __atomic_exchange_n(&oru->ul_packed_stats, 0, __ATOMIC_RELAXED);
+  uint64_t ul_count = ul_packed >> 32;
+  uint64_t ul_time_total = ul_packed & 0xFFFFFFFFULL;
+  uint64_t ul_time_max = __atomic_exchange_n(&oru->ul_ant_time_max_us, 0, __ATOMIC_RELAXED);
+
+  if (dl_count == 0 && ul_count == 0) {
+    return;
+  }
+
+  double t_sym_avg_us = 1000.0 / (14.0 * (1 << fp->numerology_index));
+  long num_cores = sysconf(_SC_NPROCESSORS_ONLN);
+  int num_ul_workers = ru->nb_rx;
+
+  LOG_I(PHY, "=================== O-RU Real-Time Self-Diagnosis Report ===================\n");
+  LOG_I(PHY, "Configuration: numerology=%d, DL bandwidth=%d PRBs, UL bandwidth=%d PRBs\n",
+        fp->numerology_index, fp->N_RB_DL, fp->N_RB_UL);
+  LOG_I(PHY, "Antennas: TX=%d, RX=%d\n", fp->nb_antennas_tx, fp->nb_antennas_rx);
+  LOG_I(PHY, "Physical Symbol Duration (average): %.2f us\n", t_sym_avg_us);
+  LOG_I(PHY, "CPU Cores Online: %ld, UL Worker Threads: %d\n", num_cores, num_ul_workers);
+  LOG_I(PHY, "----------------------------------------------------------------------------\n");
+
+  bool pass = true;
+
+  if (dl_count > 0) {
+    double dl_avg_us = (double)dl_time_total / (dl_count * 16.0);
+    double dl_max_us = (double)dl_time_max / 16.0;
+    double dl_margin = ((t_sym_avg_us - dl_avg_us) / t_sym_avg_us) * 100.0;
+
+    LOG_I(PHY, "DL (Single-threaded OFDM Modulation + phase rotation for %d antennas):\n", fp->nb_antennas_tx);
+    LOG_I(PHY, "  Processed: %lu symbols\n", dl_count);
+    LOG_I(PHY, "  Processing Time: Avg = %.2f us, Max = %.2f us\n", dl_avg_us, dl_max_us);
+    LOG_I(PHY, "  Safety Margin (based on Avg): %.2f%%\n", dl_margin);
+
+    if (dl_avg_us >= t_sym_avg_us) {
+      LOG_E(PHY, "  [DIAGNOSIS] DL CRITICAL: Processing time (%.2f us) exceeds symbol budget (%.2f us)!\n",
+            dl_avg_us, t_sym_avg_us);
+      pass = false;
+    } else if (dl_margin < 20.0) {
+      LOG_W(PHY, "  [DIAGNOSIS] DL WARNING: Safety margin is low (%.2f%% < 20%%). Risk of RT jitter.\n", dl_margin);
+    } else {
+      LOG_I(PHY, "  [DIAGNOSIS] DL PASS\n");
+    }
+  } else {
+    LOG_I(PHY, "DL: No symbols processed in this window.\n");
+  }
+
+  LOG_I(PHY, "----------------------------------------------------------------------------\n");
+
+  if (ul_count > 0) {
+    double ul_ant_avg_us = (double)ul_time_total / (ul_count * 16.0);
+    double ul_ant_max_us = (double)ul_time_max / 16.0;
+
+    double effective_workers = (num_ul_workers < num_cores) ? num_ul_workers : num_cores;
+    if (effective_workers < 1.0) effective_workers = 1.0;
+
+    int ceil_steps = (fp->nb_antennas_rx + (int)effective_workers - 1) / (int)effective_workers;
+    double ul_eff_avg_us = ceil_steps * ul_ant_avg_us;
+    double ul_eff_max_us = ceil_steps * ul_ant_max_us;
+    double ul_margin = ((t_sym_avg_us - ul_eff_avg_us) / t_sym_avg_us) * 100.0;
+
+    LOG_I(PHY, "UL (Parallel FFT + phase de-rotation for %d antennas):\n", fp->nb_antennas_rx);
+    LOG_I(PHY, "  Processed: %lu antenna-symbols\n", ul_count);
+    LOG_I(PHY, "  Per-Antenna Time: Avg = %.2f us, Max = %.2f us\n", ul_ant_avg_us, ul_ant_max_us);
+    LOG_I(PHY, "  Effective Symbol Processing Time (with %d threads on %ld cores): Avg = %.2f us, Max = %.2f us\n",
+          num_ul_workers, num_cores, ul_eff_avg_us, ul_eff_max_us);
+    LOG_I(PHY, "  Safety Margin (based on Avg): %.2f%%\n", ul_margin);
+
+    if (ul_eff_avg_us >= t_sym_avg_us) {
+      LOG_E(PHY, "  [DIAGNOSIS] UL CRITICAL: Effective processing time (%.2f us) exceeds symbol budget (%.2f us)!\n",
+            ul_eff_avg_us, t_sym_avg_us);
+      pass = false;
+    } else if (ul_margin < 20.0) {
+      LOG_W(PHY, "  [DIAGNOSIS] UL WARNING: Safety margin is low (%.2f%% < 20%%). Risk of RT jitter.\n", ul_margin);
+    } else {
+      LOG_I(PHY, "  [DIAGNOSIS] UL PASS\n");
+    }
+  } else {
+    LOG_I(PHY, "UL: No symbols processed in this window.\n");
+  }
+
+  LOG_I(PHY, "----------------------------------------------------------------------------\n");
+  if (pass) {
+    LOG_I(PHY, "OVERALL STATUS: PASS\n");
+  } else {
+    LOG_E(PHY, "OVERALL STATUS: FAIL (Hardware configuration insufficient for real-time operation)\n");
+  }
+  LOG_I(PHY, "============================================================================\n");
 }
