@@ -675,18 +675,6 @@ static void nr_dlsch_mmse(uint32_t rx_size_symbol,
   }
 }
 
-/* Constant MO lets the compiler inline memcpy as fixed-size vector stores */
-static inline void layer_demapping(uint8_t Nl, int nb_re, int16_t **layer_ptrs, int16_t *llr_out, int MO)
-{
-  int k = 0;
-  for (int j = 0; j < nb_re; j++) {
-    for (int l = 0; l < Nl; l++) {
-      memcpy(llr_out + k, layer_ptrs[l] + j * MO, MO * sizeof(int16_t));
-      k += MO;
-    }
-  }
-}
-
 static void nr_dlsch_layer_demapping(const uint8_t Nl,
                                      const uint8_t mod_order,
                                      const int llrLayerSize,
@@ -697,42 +685,13 @@ static void nr_dlsch_layer_demapping(const uint8_t Nl,
 {
   const int s0 = dlsch_config->start_symbol;
   const int s1 = dlsch_config->number_symbols;
-
   int k = 0;
 
-  if (Nl == 1) {
-    /* Single layer: one contiguous memcpy per symbol, no interleaving needed. */
-    for (int i = s0; i < (s0 + s1); i++) {
-      memcpy(llr + k, llr_layers[i][0], re_len[i] * mod_order * sizeof(int16_t));
-      k += re_len[i] * mod_order;
-    }
-    return;
-  }
-
-  AssertFatal(Nl <= 4, "Not supported number of layers %d\n", Nl);
-
-  /* Switch on mod_order so MO is a compile-time literal, enabling the compiler
-   * to inline memcpy as fixed-size vector stores. */
   for (int i = s0; i < (s0 + s1); i++) {
     int16_t *p_layer[Nl];
     for (int l = 0; l < Nl; l++)
       p_layer[l] = (int16_t *)llr_layers[i][l];
-    switch (mod_order) {
-      case 2:
-        layer_demapping(Nl, re_len[i], p_layer, llr + k, 2);
-        break;
-      case 4:
-        layer_demapping(Nl, re_len[i], p_layer, llr + k, 4);
-        break;
-      case 6:
-        layer_demapping(Nl, re_len[i], p_layer, llr + k, 6);
-        break;
-      case 8:
-        layer_demapping(Nl, re_len[i], p_layer, llr + k, 8);
-        break;
-      default:
-        AssertFatal(0, "Unknown mod_order %d\n", mod_order);
-    }
+    nr_layer_demapping(Nl, mod_order, re_len[i], p_layer, llr + k);
     k += re_len[i] * mod_order * Nl;
   }
 }
