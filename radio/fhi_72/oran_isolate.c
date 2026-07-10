@@ -227,8 +227,7 @@ void *get_internal_parameter(char *name)
 }
 
 __attribute__((__visibility__("default"))) int transport_init(openair0_device_t *device,
-                                                              openair0_config_t *openair0_cfg,
-                                                              eth_params_t *eth_params)
+                                                              openair0_config_t *openair0_cfg)
 {
   oran_eth_state_t *eth = calloc_or_fail(1, sizeof(*eth));
 

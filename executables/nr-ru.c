@@ -635,7 +635,7 @@ void *ru_thread(void *param)
   // Start IF device if any
   if (ru->nr_start_if) {
     LOG_I(PHY, "starting transport\n");
-    ret = openair0_transport_load(&ru->ifdevice, &ru->openair0_cfg, &ru->eth_params);
+    ret = openair0_transport_load(&ru->ifdevice, &ru->openair0_cfg);
     AssertFatal(ret == 0, "RU %u: openair0_transport_init() ret %d: cannot initialize transport protocol\n", ru->idx, ret);
 
     if (ru->ifdevice.get_internal_parameter) {
@@ -909,7 +909,7 @@ void set_function_spec_param(RU_t *ru)
       ru->feptx_ofdm = nr_feptx_tp; // need to do transmit Precoding + IDFTs
       ru->fh_south_in = fh_if5_south_in; // synchronous IF5 reception
       ru->fh_south_out = fh_if5_south_out; // synchronous IF5 transmission
-      ru->start_rf = ru->eth_params.transp_preference == ETH_UDP_IF5_ECPRI_MODE ? start_streaming : NULL;
+      ru->start_rf = ru->ifdevice.eth_params.transp_preference == ETH_UDP_IF5_ECPRI_MODE ? start_streaming : NULL;
       ru->stop_rf = NULL;
       ru->start_write_thread = NULL;
       ru->nr_start_if = nr_start_if; // need to start if interface for IF5
@@ -1132,26 +1132,26 @@ static void NRRCconfig_RU(configmodule_interface_t *cfg)
     } else { // strcmp(local_rf, "yes") == 0
       char *str = *param[RU_TRANSPORT_PREFERENCE_IDX].strptr;
       LOG_D(PHY, "RU %d: Transport %s\n", j, str);
-      ru->eth_params.local_if_name = strdup(*param[RU_LOCAL_IF_NAME_IDX].strptr);
-      ru->eth_params.my_addr = strdup(*param[RU_LOCAL_ADDRESS_IDX].strptr);
-      ru->eth_params.remote_addr = strdup(*param[RU_REMOTE_ADDRESS_IDX].strptr);
-      ru->eth_params.my_portc = *param[RU_LOCAL_PORTC_IDX].uptr;
-      ru->eth_params.remote_portc = *param[RU_REMOTE_PORTC_IDX].uptr;
-      ru->eth_params.my_portd = *param[RU_LOCAL_PORTD_IDX].uptr;
-      ru->eth_params.remote_portd = *param[RU_REMOTE_PORTD_IDX].uptr;
+      ru->ifdevice.eth_params.local_if_name = strdup(*param[RU_LOCAL_IF_NAME_IDX].strptr);
+      ru->ifdevice.eth_params.my_addr = strdup(*param[RU_LOCAL_ADDRESS_IDX].strptr);
+      ru->ifdevice.eth_params.remote_addr = strdup(*param[RU_REMOTE_ADDRESS_IDX].strptr);
+      ru->ifdevice.eth_params.my_portc = *param[RU_LOCAL_PORTC_IDX].uptr;
+      ru->ifdevice.eth_params.remote_portc = *param[RU_REMOTE_PORTC_IDX].uptr;
+      ru->ifdevice.eth_params.my_portd = *param[RU_LOCAL_PORTD_IDX].uptr;
+      ru->ifdevice.eth_params.remote_portd = *param[RU_REMOTE_PORTD_IDX].uptr;
 
       if (strcmp(str, "udp") == 0) {
         ru->if_south = REMOTE_IF5;
         ru->function = NGFI_RAU_IF5;
-        ru->eth_params.transp_preference = ETH_UDP_MODE;
+        ru->ifdevice.eth_params.transp_preference = ETH_UDP_MODE;
       } else if (strcmp(str, "udp_ecpri_if5") == 0) {
         ru->if_south = REMOTE_IF5;
         ru->function = NGFI_RAU_IF5;
-        ru->eth_params.transp_preference = ETH_UDP_IF5_ECPRI_MODE;
+        ru->ifdevice.eth_params.transp_preference = ETH_UDP_IF5_ECPRI_MODE;
       } else if (strcmp(str, "raw") == 0) {
         ru->if_south = REMOTE_IF5;
         ru->function = NGFI_RAU_IF5;
-        ru->eth_params.transp_preference = ETH_RAW_MODE;
+        ru->ifdevice.eth_params.transp_preference = ETH_RAW_MODE;
       } else if (strcmp(str, "raw_if4p5") == 0) {
         ru->if_south = REMOTE_IF4p5;
         ru->function = NGFI_RAU_IF4p5;

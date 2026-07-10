@@ -397,8 +397,6 @@ typedef struct RU_t_s {
   node_timing_t if_timing;
   /// function
   node_function_t function;
-  /// Ethernet parameters for fronthaul interface
-  eth_params_t eth_params;
   /// numerology index
   int numerology;
   /// flag to indicate the RU is in sync with a master reference
