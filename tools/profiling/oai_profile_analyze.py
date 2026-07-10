@@ -60,6 +60,45 @@ class GroupStats:
         self.cpu_migrations += parse_int(row.get("cpu_migrated")) != 0
 
 
+@dataclass(slots=True)
+class HierarchyRecord:
+    schema_version: str
+    seq: int
+    tid: int
+    thread_name: str
+    event_name: str
+    event_kind: str
+    nesting_depth: int
+    frame: int
+    slot: int
+    absolute_slot: int
+    correlation_id: int
+    span_id: int
+    parent_id: int
+    cpu_start: int
+    cpu_end: int
+    cpu_migrated: int
+    start_tick: int
+    duration_tick: int
+    duration_us: float
+
+    @property
+    def end_tick(self) -> int:
+        return self.start_tick + self.duration_tick
+
+
+@dataclass
+class ExclusiveStats:
+    inclusive_us: list[float] = field(default_factory=list)
+    exclusive_us: list[float] = field(default_factory=list)
+    child_union_us: list[float] = field(default_factory=list)
+    total_count: int = 0
+    valid_count: int = 0
+    overlapping_children_count: int = 0
+    noncontained_children: int = 0
+    correlation_mismatches: int = 0
+
+
 def quantile(sorted_values: list[float], q: float) -> float:
     if not sorted_values:
         return math.nan
@@ -121,6 +160,12 @@ def one_or_mixed(values: set[str], default: str = "") -> str:
     if not nonempty:
         return default
     return nonempty[0] if len(nonempty) == 1 else "mixed"
+
+
+def resolve_event_role(descriptor_role: str, process_role: str) -> str:
+    if descriptor_role in {"shared", "nrUE/gNB"} and process_role:
+        return process_role
+    return descriptor_role or process_role or "unknown"
 
 
 def read_drop_diagnostics(profile_dir: Path) -> dict[str, int]:
@@ -187,7 +232,7 @@ def normalize_event_row(
         "start_tick": "0",
         "duration_tick": "0",
         "duration_us": "0",
-        "event_role": descriptor.get("role") or metadata.get("role") or "unknown",
+        "event_role": resolve_event_role(descriptor.get("role", ""), metadata.get("role", "")),
         "subsystem": descriptor.get("subsystem") or "unknown",
         "event_class": descriptor.get("event_class") or "unknown",
         "detail_level": descriptor.get("detail_level") or "boundary",
@@ -466,6 +511,318 @@ def iter_event_rows(
                 yield profile_dir, normalized
 
 
+def hierarchy_record_from_row(row: dict[str, str]) -> HierarchyRecord | None:
+    if row.get("schema_version") != "2":
+        return None
+    span_id = parse_int(row.get("span_id"))
+    if span_id <= 0:
+        return None
+    try:
+        duration_us = float(row.get("duration_us", "0") or 0)
+    except ValueError:
+        duration_us = 0.0
+    return HierarchyRecord(
+        schema_version=row["schema_version"],
+        seq=parse_int(row.get("seq")),
+        tid=parse_int(row.get("tid")),
+        thread_name=row.get("thread_name", "unknown"),
+        event_name=row.get("event_name", "UNKNOWN"),
+        event_kind=row.get("event_kind", "unknown"),
+        nesting_depth=parse_int(row.get("nesting_depth")),
+        frame=parse_int(row.get("frame"), -1),
+        slot=parse_int(row.get("slot"), -1),
+        absolute_slot=parse_int(row.get("absolute_slot"), -1),
+        correlation_id=parse_int(row.get("correlation_id")),
+        span_id=span_id,
+        parent_id=parse_int(row.get("parent_id")),
+        cpu_start=parse_int(row.get("cpu_start"), -1),
+        cpu_end=parse_int(row.get("cpu_end"), -1),
+        cpu_migrated=parse_int(row.get("cpu_migrated")),
+        start_tick=parse_int(row.get("start_tick")),
+        duration_tick=parse_int(row.get("duration_tick")),
+        duration_us=duration_us,
+    )
+
+
+def interval_union_ticks(intervals: list[tuple[int, int]]) -> tuple[int, int]:
+    positive = sorted((start, end) for start, end in intervals if end > start)
+    if not positive:
+        return 0, 0
+    duration_sum = sum(end - start for start, end in positive)
+    union = 0
+    current_start, current_end = positive[0]
+    for start, end in positive[1:]:
+        if start <= current_end:
+            current_end = max(current_end, end)
+        else:
+            union += current_end - current_start
+            current_start, current_end = start, end
+    union += current_end - current_start
+    return union, duration_sum - union
+
+
+def parent_relation(record: HierarchyRecord, by_span: dict[int, HierarchyRecord]) -> tuple[str, HierarchyRecord | None]:
+    if record.parent_id == 0:
+        return "root", None
+    parent = by_span.get(record.parent_id)
+    if parent is None:
+        return "missing_parent", None
+    if record.correlation_id and parent.correlation_id and record.correlation_id != parent.correlation_id:
+        return "correlation_mismatch", parent
+    if record.start_tick >= parent.start_tick and record.end_tick <= parent.end_tick:
+        return "temporally_contained", parent
+    return "causal_noncontained", parent
+
+
+def build_hierarchy_outputs(
+    profile_dir: str,
+    records: list[HierarchyRecord],
+    counter_hz: int,
+) -> tuple[
+    list[dict[str, object]],
+    list[dict[str, object]],
+    dict[str, object],
+    list[dict[str, object]],
+    dict[tuple[str, str], ExclusiveStats],
+]:
+    by_span: dict[int, HierarchyRecord] = {}
+    duplicate_span_ids: set[int] = set()
+    for record in records:
+        if record.span_id in by_span:
+            duplicate_span_ids.add(record.span_id)
+        else:
+            by_span[record.span_id] = record
+
+    children: dict[int, list[HierarchyRecord]] = defaultdict(list)
+    for record in records:
+        if record.parent_id > 0:
+            children[record.parent_id].append(record)
+
+    hierarchy_rows: list[dict[str, object]] = []
+    anomaly_rows: list[dict[str, object]] = []
+    exclusive_groups: dict[tuple[str, str], ExclusiveStats] = defaultdict(ExclusiveStats)
+    relations: dict[int, tuple[str, HierarchyRecord | None]] = {}
+    for record in records:
+        relation, parent = parent_relation(record, by_span)
+        relations[record.span_id] = (relation, parent)
+        if relation in {"missing_parent", "correlation_mismatch", "causal_noncontained"}:
+            anomaly_rows.append(
+                {
+                    "profile_dir": profile_dir,
+                    "seq": record.seq,
+                    "event_name": record.event_name,
+                    "span_id": record.span_id,
+                    "parent_id": record.parent_id,
+                    "relation": relation,
+                    "correlation_id": record.correlation_id,
+                    "parent_correlation_id": parent.correlation_id if parent else 0,
+                    "absolute_slot": record.absolute_slot,
+                    "parent_absolute_slot": parent.absolute_slot if parent else -1,
+                    "start_tick": record.start_tick,
+                    "end_tick": record.end_tick,
+                    "parent_start_tick": parent.start_tick if parent else 0,
+                    "parent_end_tick": parent.end_tick if parent else 0,
+                }
+            )
+
+    for span_id in sorted(duplicate_span_ids):
+        record = by_span[span_id]
+        anomaly_rows.append(
+            {
+                "profile_dir": profile_dir,
+                "seq": record.seq,
+                "event_name": record.event_name,
+                "span_id": span_id,
+                "parent_id": record.parent_id,
+                "relation": "duplicate_span_id",
+                "correlation_id": record.correlation_id,
+                "parent_correlation_id": 0,
+                "absolute_slot": record.absolute_slot,
+                "parent_absolute_slot": -1,
+                "start_tick": record.start_tick,
+                "end_tick": record.end_tick,
+                "parent_start_tick": 0,
+                "parent_end_tick": 0,
+            }
+        )
+
+    for record in records:
+        if record.event_kind != "duration":
+            continue
+        direct_children = children.get(record.span_id, [])
+        contained_intervals: list[tuple[int, int]] = []
+        duration_children = 0
+        contained_children = 0
+        noncontained_children = 0
+        correlation_mismatches = 0
+        instant_children = 0
+        child_duration_sum_us = 0.0
+        for child in direct_children:
+            if child.event_kind != "duration":
+                instant_children += 1
+                continue
+            duration_children += 1
+            child_duration_sum_us += child.duration_us
+            relation, _ = relations[child.span_id]
+            if relation == "temporally_contained":
+                contained_children += 1
+                contained_intervals.append((child.start_tick, child.end_tick))
+            elif relation == "correlation_mismatch":
+                correlation_mismatches += 1
+            else:
+                noncontained_children += 1
+
+        child_union_tick, child_overlap_tick = interval_union_ticks(contained_intervals)
+        tick_to_us = record.duration_us / record.duration_tick if record.duration_tick > 0 else 0.0
+        child_union_us = child_union_tick * tick_to_us
+        child_overlap_us = child_overlap_tick * tick_to_us
+        exclusive_tick = max(0, record.duration_tick - child_union_tick)
+        exclusive_us = exclusive_tick * tick_to_us
+        exclusive_valid = (
+            record.duration_tick >= 0
+            and record.span_id not in duplicate_span_ids
+            and noncontained_children == 0
+            and correlation_mismatches == 0
+        )
+        relation, parent = relations[record.span_id]
+        absolute_slot_delta = (
+            record.absolute_slot - parent.absolute_slot
+            if parent is not None and record.absolute_slot >= 0 and parent.absolute_slot >= 0
+            else 0
+        )
+        hierarchy_rows.append(
+            {
+                "profile_dir": profile_dir,
+                "seq": record.seq,
+                "tid": record.tid,
+                "thread_name": record.thread_name,
+                "event_name": record.event_name,
+                "frame": record.frame,
+                "slot": record.slot,
+                "absolute_slot": record.absolute_slot,
+                "correlation_id": record.correlation_id,
+                "span_id": record.span_id,
+                "parent_id": record.parent_id,
+                "parent_event_name": parent.event_name if parent else "",
+                "parent_relation": relation,
+                "absolute_slot_delta_from_parent": absolute_slot_delta,
+                "nesting_depth": record.nesting_depth,
+                "inclusive_us": record.duration_us,
+                "direct_children": len(direct_children),
+                "duration_children": duration_children,
+                "instant_children": instant_children,
+                "contained_duration_children": contained_children,
+                "noncontained_duration_children": noncontained_children,
+                "correlation_mismatch_children": correlation_mismatches,
+                "child_duration_sum_us": child_duration_sum_us,
+                "child_interval_union_us": child_union_us,
+                "child_overlap_us": child_overlap_us,
+                "exclusive_us": exclusive_us,
+                "exclusive_valid": int(exclusive_valid),
+            }
+        )
+        stats = exclusive_groups[(profile_dir, record.event_name)]
+        stats.total_count += 1
+        stats.inclusive_us.append(record.duration_us)
+        stats.noncontained_children += noncontained_children
+        stats.correlation_mismatches += correlation_mismatches
+        stats.overlapping_children_count += child_overlap_tick > 0
+        if exclusive_valid:
+            stats.valid_count += 1
+            stats.exclusive_us.append(exclusive_us)
+            stats.child_union_us.append(child_union_us)
+
+    relation_counts: dict[str, int] = defaultdict(int)
+    absolute_slot_mismatches = 0
+    for record in records:
+        relation, parent = relations[record.span_id]
+        relation_counts[relation] += 1
+        if parent is not None and record.absolute_slot >= 0 and parent.absolute_slot >= 0:
+            absolute_slot_mismatches += record.absolute_slot != parent.absolute_slot
+    integrity = {
+        "profile_dir": profile_dir,
+        "schema2_records": len(records),
+        "duration_records": sum(record.event_kind == "duration" for record in records),
+        "instant_records": sum(record.event_kind == "instant" for record in records),
+        "unique_span_ids": len(by_span),
+        "duplicate_span_ids": len(duplicate_span_ids),
+        "root_records": relation_counts["root"],
+        "parented_records": len(records) - relation_counts["root"],
+        "temporally_contained_edges": relation_counts["temporally_contained"],
+        "causal_noncontained_edges": relation_counts["causal_noncontained"],
+        "missing_parent_edges": relation_counts["missing_parent"],
+        "correlation_mismatch_edges": relation_counts["correlation_mismatch"],
+        "absolute_slot_mismatch_edges": absolute_slot_mismatches,
+        "unknown_correlation_records": sum(record.correlation_id == 0 for record in records),
+        "unknown_absolute_slot_records": sum(record.absolute_slot < 0 for record in records),
+        "max_nesting_depth": max((record.nesting_depth for record in records), default=0),
+        "counter_hz": counter_hz,
+    }
+
+    correlation_groups: dict[int, list[HierarchyRecord]] = defaultdict(list)
+    for record in records:
+        if record.correlation_id > 0:
+            correlation_groups[record.correlation_id].append(record)
+    correlation_rows: list[dict[str, object]] = []
+    for correlation_id, group in sorted(correlation_groups.items()):
+        first_tick = min(record.start_tick for record in group)
+        last_tick = max(record.end_tick for record in group)
+        absolute_slots = [record.absolute_slot for record in group if record.absolute_slot >= 0]
+        root_events = sorted({record.event_name for record in group if record.parent_id == 0})
+        missing_parents = sum(relations[record.span_id][0] == "missing_parent" for record in group)
+        correlation_rows.append(
+            {
+                "profile_dir": profile_dir,
+                "correlation_id": correlation_id,
+                "absolute_slot_min": min(absolute_slots) if absolute_slots else -1,
+                "absolute_slot_max": max(absolute_slots) if absolute_slots else -1,
+                "first_tick": first_tick,
+                "last_tick": last_tick,
+                "elapsed_us": (last_tick - first_tick) * 1e6 / counter_hz if counter_hz > 0 else math.nan,
+                "event_count": len(group),
+                "duration_count": sum(record.event_kind == "duration" for record in group),
+                "instant_count": sum(record.event_kind == "instant" for record in group),
+                "root_count": sum(record.parent_id == 0 for record in group),
+                "parented_count": sum(record.parent_id > 0 for record in group),
+                "missing_parent_count": missing_parents,
+                "max_nesting_depth": max(record.nesting_depth for record in group),
+                "thread_count": len({record.tid for record in group}),
+                "cpu_migrations": sum(record.cpu_migrated != 0 for record in group),
+                "root_events": ";".join(root_events),
+            }
+        )
+
+    return hierarchy_rows, anomaly_rows, integrity, correlation_rows, exclusive_groups
+
+
+def build_exclusive_summary(groups: dict[tuple[str, str], ExclusiveStats]) -> list[dict[str, object]]:
+    rows: list[dict[str, object]] = []
+    for (profile_dir, event_name), stats in sorted(groups.items()):
+        inclusive = sorted(stats.inclusive_us)
+        exclusive = sorted(stats.exclusive_us)
+        child_union = sorted(stats.child_union_us)
+        rows.append(
+            {
+                "profile_dir": profile_dir,
+                "event_name": event_name,
+                "total_count": stats.total_count,
+                "exclusive_valid_count": stats.valid_count,
+                "exclusive_invalid_count": stats.total_count - stats.valid_count,
+                "inclusive_mean_us": mean(inclusive),
+                "inclusive_p50_us": quantile(inclusive, 0.5),
+                "inclusive_p99_us": quantile(inclusive, 0.99),
+                "exclusive_mean_us": mean(exclusive),
+                "exclusive_p50_us": quantile(exclusive, 0.5),
+                "exclusive_p99_us": quantile(exclusive, 0.99),
+                "child_union_mean_us": mean(child_union),
+                "parents_with_overlapping_children": stats.overlapping_children_count,
+                "noncontained_children": stats.noncontained_children,
+                "correlation_mismatch_children": stats.correlation_mismatches,
+            }
+        )
+    return rows
+
+
 def write_summary(path: Path | None, rows: list[dict[str, object]]) -> None:
     fields = [
         "profile_dir",
@@ -669,9 +1026,19 @@ def main() -> int:
     thread_groups: dict[tuple[str, str, str], GroupStats] = defaultdict(GroupStats)
     deadline_rows: list[dict[str, str]] = []
     migration_rows: list[dict[str, str]] = []
+    collect_hierarchy = args.output_dir is not None
+    hierarchy_records_by_dir: dict[str, list[HierarchyRecord]] = (
+        {str(profile_dir): [] for profile_dir in profile_dirs} if collect_hierarchy else {}
+    )
 
-    for profile_dir, row in iter_event_rows(profile_dirs, event_filter, metadata_by_dir, catalogs_by_dir):
+    for profile_dir, row in iter_event_rows(profile_dirs, None, metadata_by_dir, catalogs_by_dir):
         profile_key = str(profile_dir)
+        if collect_hierarchy:
+            hierarchy_record = hierarchy_record_from_row(row)
+            if hierarchy_record is not None:
+                hierarchy_records_by_dir[profile_key].append(hierarchy_record)
+        if event_filter and row["event_name"] not in event_filter:
+            continue
         event_groups[(profile_key, row["event_name"])].add(row)
         thread_groups[(profile_key, row["thread_name"], row["event_name"])].add(row)
         if row["event_name"] == "UE_TX_DEADLINE_MISS":
@@ -747,7 +1114,28 @@ def main() -> int:
                 "cpu_migrations": stats.cpu_migrations,
                 "cpu_migration_rate": cpu_migration_rate,
             }
-        )
+            )
+
+    hierarchy_rows: list[dict[str, object]] = []
+    hierarchy_anomaly_rows: list[dict[str, object]] = []
+    hierarchy_integrity_rows: list[dict[str, object]] = []
+    correlation_rows: list[dict[str, object]] = []
+    exclusive_groups: dict[tuple[str, str], ExclusiveStats] = {}
+    if collect_hierarchy:
+        for profile_dir in profile_dirs:
+            profile_key = str(profile_dir)
+            counter_hz = parse_int(metadata_by_dir[profile_key].get("counter_hz"))
+            run_hierarchy, run_anomalies, run_integrity, run_correlations, run_exclusive = build_hierarchy_outputs(
+                profile_key,
+                hierarchy_records_by_dir[profile_key],
+                counter_hz,
+            )
+            hierarchy_rows.extend(run_hierarchy)
+            hierarchy_anomaly_rows.extend(run_anomalies)
+            hierarchy_integrity_rows.append(run_integrity)
+            correlation_rows.extend(run_correlations)
+            exclusive_groups.update(run_exclusive)
+    exclusive_summary_rows = build_exclusive_summary(exclusive_groups)
 
     if args.output_dir:
         args.output_dir.mkdir(parents=True, exist_ok=True)
@@ -755,6 +1143,126 @@ def main() -> int:
         write_by_thread(args.output_dir / "by_thread.csv", thread_rows)
         write_deadline_misses(args.output_dir / "deadline_misses.csv", deadline_rows)
         write_migrations(args.output_dir / "migrations.csv", migration_rows)
+        write_rows(
+            args.output_dir / "hierarchy.csv",
+            [
+                "profile_dir",
+                "seq",
+                "tid",
+                "thread_name",
+                "event_name",
+                "frame",
+                "slot",
+                "absolute_slot",
+                "correlation_id",
+                "span_id",
+                "parent_id",
+                "parent_event_name",
+                "parent_relation",
+                "absolute_slot_delta_from_parent",
+                "nesting_depth",
+                "inclusive_us",
+                "direct_children",
+                "duration_children",
+                "instant_children",
+                "contained_duration_children",
+                "noncontained_duration_children",
+                "correlation_mismatch_children",
+                "child_duration_sum_us",
+                "child_interval_union_us",
+                "child_overlap_us",
+                "exclusive_us",
+                "exclusive_valid",
+            ],
+            hierarchy_rows,
+        )
+        write_rows(
+            args.output_dir / "exclusive_summary.csv",
+            [
+                "profile_dir",
+                "event_name",
+                "total_count",
+                "exclusive_valid_count",
+                "exclusive_invalid_count",
+                "inclusive_mean_us",
+                "inclusive_p50_us",
+                "inclusive_p99_us",
+                "exclusive_mean_us",
+                "exclusive_p50_us",
+                "exclusive_p99_us",
+                "child_union_mean_us",
+                "parents_with_overlapping_children",
+                "noncontained_children",
+                "correlation_mismatch_children",
+            ],
+            exclusive_summary_rows,
+        )
+        write_rows(
+            args.output_dir / "hierarchy_anomalies.csv",
+            [
+                "profile_dir",
+                "seq",
+                "event_name",
+                "span_id",
+                "parent_id",
+                "relation",
+                "correlation_id",
+                "parent_correlation_id",
+                "absolute_slot",
+                "parent_absolute_slot",
+                "start_tick",
+                "end_tick",
+                "parent_start_tick",
+                "parent_end_tick",
+            ],
+            hierarchy_anomaly_rows,
+        )
+        write_rows(
+            args.output_dir / "hierarchy_integrity.csv",
+            [
+                "profile_dir",
+                "schema2_records",
+                "duration_records",
+                "instant_records",
+                "unique_span_ids",
+                "duplicate_span_ids",
+                "root_records",
+                "parented_records",
+                "temporally_contained_edges",
+                "causal_noncontained_edges",
+                "missing_parent_edges",
+                "correlation_mismatch_edges",
+                "absolute_slot_mismatch_edges",
+                "unknown_correlation_records",
+                "unknown_absolute_slot_records",
+                "max_nesting_depth",
+                "counter_hz",
+            ],
+            hierarchy_integrity_rows,
+        )
+        write_rows(
+            args.output_dir / "correlations.csv",
+            [
+                "profile_dir",
+                "correlation_id",
+                "absolute_slot_min",
+                "absolute_slot_max",
+                "first_tick",
+                "last_tick",
+                "elapsed_us",
+                "event_count",
+                "duration_count",
+                "instant_count",
+                "root_count",
+                "parented_count",
+                "missing_parent_count",
+                "max_nesting_depth",
+                "thread_count",
+                "cpu_migrations",
+                "root_events",
+            ],
+            correlation_rows,
+        )
         write_rows(
             args.output_dir / "runs.csv",
             [

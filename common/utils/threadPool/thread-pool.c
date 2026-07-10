@@ -16,11 +16,31 @@ typedef struct {
   int idx;
 } task_thread_args_t;
 
+static task_t capture_task_context(task_t task)
+{
+  task.profile_work = (oai_profile_work_t){.context.absolute_slot = OAI_PROFILE_ABSOLUTE_SLOT_UNKNOWN};
+  if (oai_profiler_is_enabled())
+    task.profile_work = oai_profiler_capture_work(OAI_PROFILE_ABSOLUTE_SLOT_UNKNOWN);
+  return task;
+}
+
+static void execute_task(task_t task)
+{
+  if (task.profile_work.dispatch_tick == 0) {
+    task.func(task.args);
+    return;
+  }
+  const oai_profile_context_t previous_context = oai_profiler_enter_work(task.profile_work);
+  task.func(task.args);
+  oai_profiler_leave_work(previous_context);
+}
+
 void pushTpool(tpool_t* tpool, task_t task)
 {
   DevAssert(tpool != NULL);
+  task = capture_task_context(task);
   if (tpool->len_thr == 0) {
-    task.func(task.args);
+    execute_task(task);
     return;
   }
 
@@ -42,8 +62,9 @@ void pushTpool(tpool_t* tpool, task_t task)
 void pushTpool_mask(tpool_t* tpool, task_t task, uint64_t mask)
 {
   DevAssert(tpool != NULL);
+  task = capture_task_context(task);
   if (tpool->len_thr == 0) {
-    task.func(task.args);
+    execute_task(task);
     return;
   }
 
@@ -111,7 +132,7 @@ static void* worker_thread(void* arg)
       pushTpool_mask(tpool, (task_t){.args = NULL, .func = NULL}, tpool->dead_mask);
       break;
     }
-    ret.t.func(ret.t.args);
+    execute_task(ret.t);
   }
 
   free(args);

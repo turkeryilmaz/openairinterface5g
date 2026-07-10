@@ -8,6 +8,7 @@
 
 #include "common/utils/LOG/log.h"
 #include "common/utils/nr/nr_common.h"
+#include "common/utils/oai_profiler.h"
 #include "UTIL/OPT/opt.h"
 
 #include "openair2/X2AP/x2ap_eNB.h"
@@ -138,7 +139,10 @@ void gNB_dlsch_ulsch_scheduler(module_id_t module_idP, frame_t frame, slot_t slo
   NR_COMMON_channels_t *cc = gNB->common_channels;
   NR_ServingCellConfigCommon_t *scc = cc->ServingCellConfigCommon;
 
+  OAI_PROFILE_START(gnb_mac_sched_lock_wait_start);
   NR_SCHED_LOCK(&gNB->sched_lock);
+  OAI_PROFILE_STOP(OAI_PROFILE_EVENT_GNB_MAC_SCHED_LOCK_WAIT, gnb_mac_sched_lock_wait_start, frame, slot, module_idP, 0, 0, 0, 0);
+  OAI_PROFILE_START(gnb_mac_sched_prepare_start);
   int slots_frame = gNB->frame_structure.numb_slots_frame;
   clear_beam_information(&gNB->beam_info, frame, slot, slots_frame);
 
@@ -161,9 +165,19 @@ void gNB_dlsch_ulsch_scheduler(module_id_t module_idP, frame_t frame, slot_t slo
     }
     clear_nr_nfapi_information(gNB, CC_id, frame, slot);
   }
+  OAI_PROFILE_STOP(OAI_PROFILE_EVENT_GNB_MAC_SCHED_PREPARE,
+                   gnb_mac_sched_prepare_start,
+                   frame,
+                   slot,
+                   MAX_NUM_CCs,
+                   slots_frame,
+                   gNB->beam_info.beam_mode,
+                   gNB->beam_info.beams_per_period,
+                   0);
 
   bool wait_prach_completed = gNB->num_scheduled_prach_rx >= NUM_PRACH_RX_FOR_NOISE_ESTIMATE;
   if (gNB->print_ue_stats && (wait_prach_completed || get_softmodem_params()->phy_test) && (slot == 0) && (frame & 127) == 0) {
+    OAI_PROFILE_START(gnb_mac_sched_stats_start);
     char stats_output[32656] = {0};
     dump_mac_stats(gNB, stats_output, sizeof(stats_output), true);
     LOG_I(NR_MAC, "Frame.Slot %d.%d\n%s\n", frame, slot, stats_output);
@@ -180,11 +194,23 @@ void gNB_dlsch_ulsch_scheduler(module_id_t module_idP, frame_t frame, slot_t slo
             "periodical UE stats deactivated after reaching %d UEs, please check nrMAC_stats.log, or increase MACRLCs.[0].stats_max_ue\n",
             gNB->stats_max_ue);
     }
+    OAI_PROFILE_STOP(OAI_PROFILE_EVENT_GNB_MAC_SCHED_STATS,
+                     gnb_mac_sched_stats_start,
+                     frame,
+                     slot,
+                     gNB->stats_max_ue,
+                     128,
+                     0,
+                     0,
+                     gNB->print_ue_stats);
   }
 
+  OAI_PROFILE_START(gnb_mac_sched_timers_start);
   nr_measgap_scheduling(gNB, frame, slot);
   nr_mac_update_timers(module_idP);
+  OAI_PROFILE_STOP(OAI_PROFILE_EVENT_GNB_MAC_SCHED_TIMERS, gnb_mac_sched_timers_start, frame, slot, module_idP, 0, 0, 0, 0);
 
+  OAI_PROFILE_START(gnb_mac_sched_common_start);
   if (wait_prach_completed || get_softmodem_params()->phy_test) {
     // This schedules MIB
     schedule_nr_mib(module_idP, frame, slot, &sched_info->DL_req);
@@ -197,9 +223,19 @@ void gNB_dlsch_ulsch_scheduler(module_id_t module_idP, frame_t frame, slot_t slo
       schedule_nr_pcch(gNB, frame, slot, &sched_info->DL_req, &sched_info->TX_req);
     }
   }
+  OAI_PROFILE_STOP(OAI_PROFILE_EVENT_GNB_MAC_SCHED_COMMON,
+                   gnb_mac_sched_common_start,
+                   frame,
+                   slot,
+                   sched_info->DL_req.dl_tti_request_body.nPDUs,
+                   sched_info->TX_req.Number_of_PDUs,
+                   IS_SA_MODE(get_softmodem_params()),
+                   0,
+                   wait_prach_completed || get_softmodem_params()->phy_test);
 
   // This schedule PRACH if we are not in phy_test mode
   if (get_softmodem_params()->phy_test == 0) {
+    OAI_PROFILE_START(gnb_mac_sched_prach_start);
     /* we need to make sure that resources for PRACH are free. To avoid that
        e.g. PUSCH has already been scheduled, make sure we schedule before
        anything else: below, we simply assume an advance one frame (minus
@@ -210,8 +246,18 @@ void gNB_dlsch_ulsch_scheduler(module_id_t module_idP, frame_t frame, slot_t slo
     const frame_t f = (frame + (slot + n_slots_ahead) / slots_frame) % 1024;
     const slot_t s = (slot + n_slots_ahead) % slots_frame;
     schedule_nr_prach(module_idP, f, s);
+    OAI_PROFILE_STOP(OAI_PROFILE_EVENT_GNB_MAC_SCHED_PRACH,
+                     gnb_mac_sched_prach_start,
+                     frame,
+                     slot,
+                     f,
+                     s,
+                     cc->prach_len,
+                     get_NTN_Koffset(scc),
+                     0);
   }
 
+  OAI_PROFILE_START(gnb_mac_sched_csi_srs_start);
   // Schedule CSI-RS transmission
   nr_csirs_scheduling(module_idP, frame, slot, &sched_info->DL_req);
 
@@ -219,27 +265,69 @@ void gNB_dlsch_ulsch_scheduler(module_id_t module_idP, frame_t frame, slot_t slo
   nr_csi_meas_reporting(module_idP, frame, slot);
 
   nr_schedule_periodic_srs(module_idP, frame, slot);
+  OAI_PROFILE_STOP(OAI_PROFILE_EVENT_GNB_MAC_SCHED_CSI_SRS,
+                   gnb_mac_sched_csi_srs_start,
+                   frame,
+                   slot,
+                   sched_info->DL_req.dl_tti_request_body.nPDUs,
+                   module_idP,
+                   0,
+                   0,
+                   0);
 
   // This schedule RA procedure if not in phy_test mode
   // Otherwise consider 5G already connected
   if (get_softmodem_params()->phy_test == 0) {
+    OAI_PROFILE_START(gnb_mac_sched_ra_start);
     nr_schedule_RA(module_idP, frame, slot, &sched_info->UL_dci_req, &sched_info->DL_req, &sched_info->TX_req);
+    OAI_PROFILE_STOP(OAI_PROFILE_EVENT_GNB_MAC_SCHED_RA,
+                     gnb_mac_sched_ra_start,
+                     frame,
+                     slot,
+                     sched_info->UL_dci_req.numPdus,
+                     sched_info->DL_req.dl_tti_request_body.nPDUs,
+                     sched_info->TX_req.Number_of_PDUs,
+                     0,
+                     0);
   }
 
   // This schedules the DCI for Uplink and subsequently PUSCH
+  OAI_PROFILE_START(gnb_mac_sched_ulsch_start);
   start_meas(&gNB->schedule_ulsch);
   nr_schedule_ulsch(module_idP, frame, slot, &sched_info->UL_dci_req);
   stop_meas(&gNB->schedule_ulsch);
+  OAI_PROFILE_STOP(OAI_PROFILE_EVENT_GNB_MAC_SCHED_ULSCH,
+                   gnb_mac_sched_ulsch_start,
+                   frame,
+                   slot,
+                   sched_info->UL_dci_req.numPdus,
+                   module_idP,
+                   0,
+                   0,
+                   0);
 
   // This schedules the DCI for Downlink and PDSCH
+  OAI_PROFILE_START(gnb_mac_sched_dlsch_start);
   start_meas(&gNB->schedule_dlsch);
   nr_schedule_ue_spec(module_idP, frame, slot, &sched_info->DL_req, &sched_info->TX_req);
   stop_meas(&gNB->schedule_dlsch);
+  OAI_PROFILE_STOP(OAI_PROFILE_EVENT_GNB_MAC_SCHED_DLSCH,
+                   gnb_mac_sched_dlsch_start,
+                   frame,
+                   slot,
+                   sched_info->DL_req.dl_tti_request_body.nPDUs,
+                   sched_info->TX_req.Number_of_PDUs,
+                   module_idP,
+                   0,
+                   0);
 
+  OAI_PROFILE_START(gnb_mac_sched_pucch_start);
   nr_sr_reporting(gNB, frame, slot);
 
   nr_schedule_pucch(gNB, frame, slot);
+  OAI_PROFILE_STOP(OAI_PROFILE_EVENT_GNB_MAC_SCHED_PUCCH, gnb_mac_sched_pucch_start, frame, slot, module_idP, 0, 0, 0, 0);
 
+  OAI_PROFILE_START(gnb_mac_sched_finalize_start);
   /* TODO: we copy from gNB->UL_tti_req_ahead[0][current_index], ie. CC_id == 0,
    * is more than 1 CC supported?
    */
@@ -248,6 +336,15 @@ void gNB_dlsch_ulsch_scheduler(module_id_t module_idP, frame_t frame, slot_t slo
   copy_ul_tti_req(&sched_info->UL_tti_req, &gNB->UL_tti_req_ahead[0][current_index]);
 
   nr_fill_pusch_fapi_groups(&sched_info->UL_tti_req);
+  OAI_PROFILE_STOP(OAI_PROFILE_EVENT_GNB_MAC_SCHED_FINALIZE,
+                   gnb_mac_sched_finalize_start,
+                   frame,
+                   slot,
+                   sched_info->UL_tti_req.n_pdus,
+                   sched_info->UL_tti_req.n_group,
+                   sched_info->DL_req.dl_tti_request_body.nPDUs,
+                   sched_info->TX_req.Number_of_PDUs,
+                   0);
 
   stop_meas(&gNB->gNB_scheduler);
   NR_SCHED_UNLOCK(&gNB->sched_lock);

@@ -146,12 +146,68 @@ ANALYSIS_DIR=/home/turker/Documents/OpenAirInterface/PerformanceProfiles/Analysi
   --output-dir "$ANALYSIS_DIR"
 ```
 
-The analyzer writes `summary.csv`, `by_thread.csv`, `deadline_misses.csv`,
-`migrations.csv`, `runs.csv`, `pairs.csv`, and `host_summary.csv`. It
-accepts both Phase 1/schema-1 and Phase 2A/schema-2 archives. Schema-1 rows are
-reported with unknown event kind, absolute slot, and CPU plus zero causal IDs,
-rather than having absent fields inferred retrospectively. The analyzer uses
-only the Python standard library.
+The analyzer writes:
+
+- `summary.csv` and `by_thread.csv`: inclusive per-event distributions.
+- `hierarchy.csv`: one schema-2 duration row with its parent relation,
+  direct-child interval union, overlap, and validated exclusive duration.
+- `exclusive_summary.csv`: per-event exclusive distributions using valid
+  hierarchy rows only.
+- `hierarchy_anomalies.csv`: missing parents, correlation mismatches, and
+  causal children outside their parent's time interval.
+- `hierarchy_integrity.csv`: per-process identity, parent, correlation,
+  absolute-slot, and nesting diagnostics.
+- `correlations.csv`: one process-local radio-work correlation with its slot
+  range, elapsed interval, roots, threads, depth, and migrations.
+- `deadline_misses.csv`, `migrations.csv`, `runs.csv`, `pairs.csv`, and
+  `host_summary.csv`: deadline, execution, archive, pairing, and host-health
+  reports.
+
+It accepts Phase 1/schema-1 and schema-2 archives. Schema-1 rows are reported
+with unknown event kind, absolute slot, and CPU plus zero causal IDs, rather
+than having absent fields inferred retrospectively. Hierarchy reports contain
+schema-2 records only. The analyzer uses only the Python standard library.
+
+## Phase 2B hierarchy semantics
+
+Phase 2B adds Stage events for nrUE MAC/PBCH/PDCCH/PDSCH/DLSCH and uplink
+generation, gNB MAC/DL/PDSCH and UL/PUSCH/ULSCH processing, RU front ends,
+PRACH/PUCCH/SRS, and shared LDPC decoder and encoder workers. Event descriptors
+in `event_catalog.csv` are authoritative for auxiliary-field names and units.
+Shared `nrUE/gNB` LDPC descriptors resolve to the process role from
+`metadata.txt` during analysis.
+
+On current grouped gNB PUSCH processing, one `GNB_RX_PUSCH_FRONTEND` span
+covers the shared group front end and its per-UE detection checks. Its
+`layers` field is the total number of jointly processed layers and its `dtx`
+flag means at least one UE in the group was classified as DTX. For a one-UE
+group these retain their original single-PDU meanings. Demapping and
+unscrambling remain separate per-UE child spans.
+
+`UE_TX_DEADLINE_MISS` and `GNB_RU_TX_NORTH` are reserved compatibility
+descriptors without current production producers. The former preserves the
+legacy deadline event, while the latter preserves the event ID for the NR RU
+north callback removed upstream. They must not be interpreted as measured
+zero when absent from a run.
+
+All recorded durations are inclusive. Exclusive time is valid only when every
+direct duration child has the same correlation and lies inside the parent
+interval. Parallel child durations are not summed: the analyzer subtracts the
+union of their intervals, records their overlap separately, and therefore does
+not double-subtract concurrent PDSCH, PUSCH, or LDPC workers.
+
+A propagated child can legitimately start after its short dispatch parent has
+ended. Such an edge is reported as `causal_noncontained`; it is useful for
+dispatch-to-start analysis but is not subtracted from the dispatch duration.
+Likewise, a child can intentionally carry a future transmit absolute slot.
+Absolute-slot deltas are preserved and do not by themselves invalidate a
+causal edge. Missing parents and correlation mismatches are integrity
+failures. Nonzero `drops.csv` or span-stack diagnostics invalidate claims of
+complete hierarchy coverage and must be reported with any result.
+
+The `--event` option limits legacy summary/deadline/migration aggregation.
+Hierarchy construction still reads all events so a selected event's ancestors
+and children are not silently discarded.
 
 ## Profiling roadmap
 
@@ -160,9 +216,9 @@ only the Python standard library.
 - Phase 2A establishes the schema-2 semantic substrate: descriptors, absolute
   work position, correlation and parent identity, nested spans, event kind,
   CPU endpoints, migration reports, and race-free producer/writer publication.
-- Phase 2B will instrument deeper nrUE and gNB processing stages using the same
-  IDs and context, so end-to-end slot critical paths can be decomposed without
-  inventing another trace format.
+- Phase 2B instruments deeper nrUE, gNB, RU, and shared LDPC processing stages
+  using the same IDs and context, and adds overlap-safe hierarchy, exclusive
+  time, integrity, and per-correlation analysis.
 - Phase 3 is the complete microarchitectural campaign: PMU
   cycles/instructions/branches/cache and memory events, scheduler/IRQ
   interference, and USB/UHD transport internals, with counter availability,

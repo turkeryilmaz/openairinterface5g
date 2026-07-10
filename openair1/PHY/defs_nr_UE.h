@@ -29,6 +29,7 @@
 #include "assertions.h"
 #include "common/utils/barrier/barrier.h"
 #include "common/utils/actor/actor.h"
+#include "common/utils/oai_profiler.h"
 //#include "openair1/SCHED_NR_UE/defs.h"
 
 #define msg(aRGS...) LOG_D(PHY, ##aRGS)
@@ -589,6 +590,7 @@ typedef struct nr_rxtx_thread_data_s {
   nr_phy_data_t phy_data;
   dynamic_barrier_t* next_barrier;
   uint64_t absolute_deadline_us;
+  oai_profile_work_t profile_work;
 } nr_rxtx_thread_data_t;
 
 typedef struct LDPCDecode_ue_s {

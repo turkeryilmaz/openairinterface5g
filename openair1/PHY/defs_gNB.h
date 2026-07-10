@@ -19,6 +19,7 @@
 #include "PHY/CODING/nrLDPC_decoder/nrLDPC_types.h"
 #include "nfapi_nr_interface_scf.h"
 #include "common/utils/threadPool/task_ans.h"
+#include "common/utils/oai_profiler.h"
 #include "openair1/PHY/defs_RU.h"
 #include "common/utils/ds/spsc_q.h"
 
@@ -550,6 +551,7 @@ typedef struct processingData_L1 {
   openair0_timestamp_t timestamp_tx;
   PHY_VARS_gNB *gNB;
   notifiedFIFO_elt_t *elt;
+  oai_profile_work_t profile_work;
 } processingData_L1_t;
 
 typedef struct processingData_L1tx {
@@ -559,6 +561,8 @@ typedef struct processingData_L1tx {
   int slot_rx;
   openair0_timestamp_t timestamp_tx;
   PHY_VARS_gNB *gNB;
+  int64_t profile_rx_absolute_slot;
+  oai_profile_work_t profile_work;
 } processingData_L1tx_t;
 
 typedef struct processingData_L1rx {

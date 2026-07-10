@@ -28,6 +28,7 @@ class AnalyzerSchemaCompatibilityTest(unittest.TestCase):
             v1 = root / "v1_nrUE"
             v2 = root / "v2_nrUE"
             output = root / "analysis"
+            filtered_output = root / "analysis_filtered"
             v1.mkdir()
             v2.mkdir()
 
@@ -52,7 +53,7 @@ class AnalyzerSchemaCompatibilityTest(unittest.TestCase):
 
             write_text(
                 v2 / "metadata.txt",
-                "schema_version=2\nevent_record_size_bytes=120\nmax_nesting_depth=64\n"
+                "schema_version=2\nevent_record_size_bytes=120\nmax_nesting_depth=64\ncounter_hz=10000000\n"
                 "process_name=nr-uesoftmodem\nrole=nrUE\nrun_id=v2\n"
                 "start_realtime_ns=3000000000\nend_realtime_ns=4000000000\nclean_shutdown=1\n",
             )
@@ -66,7 +67,21 @@ class AnalyzerSchemaCompatibilityTest(unittest.TestCase):
                 "2,1,20,ue-v2,2,UE_RF_READ,duration,1,10,3,203,77,281474976710658,"
                 "281474976710657,1,2,1,0,512,1,512,2000,1020,50,5.000\n"
                 "2,2,20,ue-v2,17,UE_TX_DEADLINE_MISS,instant,1,10,3,203,77,281474976710659,"
-                "281474976710657,2,2,0,0,200,190,10,0,1080,0,0.000\n",
+                "281474976710657,2,2,0,0,200,190,10,0,1080,0,0.000\n"
+                "2,3,20,ue-v2,100,TEST_PARALLEL_ROOT,duration,0,10,4,204,78,1000,0,1,1,0,0,"
+                "0,0,0,0,2000,1000,100.000\n"
+                "2,4,21,worker-a,101,TEST_PARALLEL_CHILD_A,duration,1,10,4,204,78,1001,1000,2,2,0,0,"
+                "0,0,0,0,2100,500,50.000\n"
+                "2,5,22,worker-b,102,TEST_PARALLEL_CHILD_B,duration,1,10,4,204,78,1002,1000,3,3,0,0,"
+                "0,0,0,0,2300,500,50.000\n"
+                "2,6,20,ue-v2,103,TEST_DISPATCH,duration,0,10,5,205,79,2000,0,1,1,0,0,"
+                "0,0,0,0,4000,10,1.000\n"
+                "2,7,21,worker-a,104,TEST_ASYNC_WORKER,duration,1,10,5,205,79,2001,2000,2,2,0,0,"
+                "0,0,0,0,4100,100,10.000\n"
+                "2,8,22,worker-b,105,TEST_ORPHAN,duration,1,10,6,206,80,3000,9999,3,3,0,0,"
+                "0,0,0,0,5000,10,1.000\n"
+                "2,9,21,worker-a,106,LDPC_DECODER_SEGMENT,duration,0,10,7,207,81,4000,0,2,2,0,1,"
+                "0,0,0,0,6000,100,10.000\n",
             )
             write_text(
                 v2 / "event_catalog.csv",
@@ -77,7 +92,15 @@ class AnalyzerSchemaCompatibilityTest(unittest.TestCase):
                 "2,2,UE_RF_READ,nrUE,radio,io,duration,boundary,requested_samples,sample,antenna_count,"
                 "count,returned_samples,sample,device_timestamp,sample,\n"
                 "2,17,UE_TX_DEADLINE_MISS,nrUE,timing,deadline,instant,boundary,current_time,us,"
-                "deadline,us,lateness,us,,,\n",
+                "deadline,us,lateness,us,,,\n"
+                "2,100,TEST_PARALLEL_ROOT,nrUE,test,root,duration,stage,,,,,,,,,\n"
+                "2,101,TEST_PARALLEL_CHILD_A,nrUE,test,worker,duration,stage,,,,,,,,,\n"
+                "2,102,TEST_PARALLEL_CHILD_B,nrUE,test,worker,duration,stage,,,,,,,,,\n"
+                "2,103,TEST_DISPATCH,nrUE,test,dispatch,duration,stage,,,,,,,,,\n"
+                "2,104,TEST_ASYNC_WORKER,nrUE,test,worker,duration,stage,,,,,,,,,\n"
+                "2,105,TEST_ORPHAN,nrUE,test,worker,duration,stage,,,,,,,,,\n"
+                "2,106,LDPC_DECODER_SEGMENT,nrUE/gNB,ldpc_decoder,segment,duration,stage,"
+                "transport_block_index,index,segment,index,segments,count,transport_block,bit,decode_success\n",
             )
             write_text(
                 v2 / "drops.csv",
@@ -117,6 +140,13 @@ class AnalyzerSchemaCompatibilityTest(unittest.TestCase):
             self.assertEqual(v2_rf["span_stack_overflows"], "2")
             self.assertEqual(v2_rf["span_stack_mismatches"], "3")
 
+            ldpc = next(
+                row
+                for row in summary
+                if row["profile_dir"] == str(v2) and row["event_name"] == "LDPC_DECODER_SEGMENT"
+            )
+            self.assertEqual(ldpc["event_role"], "nrUE")
+
             deadlines = read_rows(output / "deadline_misses.csv")
             v1_deadline = next(row for row in deadlines if row["profile_dir"] == str(v1))
             v2_deadline = next(row for row in deadlines if row["profile_dir"] == str(v2))
@@ -145,8 +175,67 @@ class AnalyzerSchemaCompatibilityTest(unittest.TestCase):
                 "runs.csv",
                 "pairs.csv",
                 "host_summary.csv",
+                "hierarchy.csv",
+                "exclusive_summary.csv",
+                "hierarchy_anomalies.csv",
+                "hierarchy_integrity.csv",
+                "correlations.csv",
             }
             self.assertEqual(expected_outputs, {path.name for path in output.iterdir()})
+            for report in output.iterdir():
+                with report.open(newline="") as stream:
+                    header = next(csv.reader(stream))
+                self.assertEqual(len(header), len(set(header)), f"duplicate columns in {report.name}")
+
+            hierarchy = read_rows(output / "hierarchy.csv")
+            parallel_root = next(row for row in hierarchy if row["event_name"] == "TEST_PARALLEL_ROOT")
+            self.assertEqual(parallel_root["duration_children"], "2")
+            self.assertAlmostEqual(float(parallel_root["child_duration_sum_us"]), 100.0)
+            self.assertAlmostEqual(float(parallel_root["child_interval_union_us"]), 70.0)
+            self.assertAlmostEqual(float(parallel_root["child_overlap_us"]), 30.0)
+            self.assertAlmostEqual(float(parallel_root["exclusive_us"]), 30.0)
+            self.assertEqual(parallel_root["exclusive_valid"], "1")
+
+            dispatch = next(row for row in hierarchy if row["event_name"] == "TEST_DISPATCH")
+            self.assertEqual(dispatch["noncontained_duration_children"], "1")
+            self.assertEqual(dispatch["exclusive_valid"], "0")
+
+            anomalies = read_rows(output / "hierarchy_anomalies.csv")
+            anomaly_relations = {(row["event_name"], row["relation"]) for row in anomalies}
+            self.assertIn(("TEST_ASYNC_WORKER", "causal_noncontained"), anomaly_relations)
+            self.assertIn(("TEST_ORPHAN", "missing_parent"), anomaly_relations)
+
+            integrity = next(
+                row for row in read_rows(output / "hierarchy_integrity.csv") if row["profile_dir"] == str(v2)
+            )
+            self.assertEqual(integrity["schema2_records"], "10")
+            self.assertEqual(integrity["duration_records"], "9")
+            self.assertEqual(integrity["instant_records"], "1")
+            self.assertEqual(integrity["causal_noncontained_edges"], "1")
+            self.assertEqual(integrity["missing_parent_edges"], "1")
+
+            correlations = read_rows(output / "correlations.csv")
+            parallel_correlation = next(row for row in correlations if row["correlation_id"] == "78")
+            self.assertEqual(parallel_correlation["event_count"], "3")
+            self.assertEqual(parallel_correlation["thread_count"], "3")
+            self.assertAlmostEqual(float(parallel_correlation["elapsed_us"]), 100.0)
+
+            subprocess.run(
+                [
+                    sys.executable,
+                    str(ANALYZER),
+                    str(root),
+                    "--event",
+                    "LDPC_DECODER_SEGMENT",
+                    "--output-dir",
+                    str(filtered_output),
+                ],
+                check=True,
+            )
+            filtered_summary = read_rows(filtered_output / "summary.csv")
+            self.assertEqual({row["event_name"] for row in filtered_summary}, {"LDPC_DECODER_SEGMENT"})
+            filtered_hierarchy = read_rows(filtered_output / "hierarchy.csv")
+            self.assertIn("TEST_PARALLEL_ROOT", {row["event_name"] for row in filtered_hierarchy})
 
 
 if __name__ == "__main__":

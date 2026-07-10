@@ -12,6 +12,7 @@
 #include "PHY/defs_nr_common.h"
 #include "PHY/nr_phy_common/inc/nr_phy_common.h"
 #include "common/utils/nr/nr_common.h"
+#include "common/utils/oai_profiler.h"
 #include <openair1/PHY/TOOLS/phy_scope_interface.h>
 #include "PHY/sse_intrin.h"
 #include "T.h"
@@ -186,6 +187,7 @@ static int get_nb_re_pusch (NR_DL_FRAME_PARMS *frame_parms, const nfapi_nr_pusch
 }
 
 static void inner_rx(PHY_VARS_gNB *gNB,
+                     int frame,
                      int slot,
                      NR_DL_FRAME_PARMS *frame_parms,
                      NR_gNB_PUSCH *pusch_vars,
@@ -219,6 +221,7 @@ static void inner_rx(PHY_VARS_gNB *gNB,
     dmrs_symbol = get_next_dmrs_symbol_in_slot(rel15_ul->ul_dmrs_symb_pos, rel15_ul->start_symbol_index, end_symbol);
   }
 
+  OAI_PROFILE_START(gnb_pusch_extraction_start);
   for (int aarx = 0; aarx < nb_rx_ant; aarx++) {
     for (int aatx = 0; aatx < nb_layer; aatx++) {
       start_meas(pusch_extr);
@@ -247,6 +250,16 @@ static void inner_rx(PHY_VARS_gNB *gNB,
 #endif
     }
   }
+  OAI_PROFILE_STOP(OAI_PROFILE_EVENT_GNB_PUSCH_EXTRACTION,
+                   gnb_pusch_extraction_start,
+                   frame,
+                   slot,
+                   symbol,
+                   pusch_vars->ul_valid_re_per_slot[symbol],
+                   nb_rx_ant,
+                   nb_layer,
+                   dmrs_symbol_flag);
+  OAI_PROFILE_START(gnb_pusch_channel_compensation_start);
   start_meas(pusch_ch_comp);
   c16_t rho[nb_layer][nb_layer][buffer_length] __attribute__((aligned(64)));
   c16_t rxF_ch_maga[nb_layer][buffer_length] __attribute__((aligned(64)));
@@ -294,6 +307,16 @@ static void inner_rx(PHY_VARS_gNB *gNB,
     nr_pusch_ptrs_processing(gNB, frame_parms, rel15_ul, pusch_vars, slot, symbol, 1, buffer_length);
     pusch_vars->ul_valid_re_per_slot[symbol] -= pusch_vars->ptrs_re_per_slot;
   }
+  OAI_PROFILE_STOP(OAI_PROFILE_EVENT_GNB_PUSCH_CHANNEL_COMPENSATION,
+                   gnb_pusch_channel_compensation_start,
+                   frame,
+                   slot,
+                   symbol,
+                   pusch_vars->ul_valid_re_per_slot[symbol],
+                   rel15_ul->qam_mod_order,
+                   nb_layer,
+                   0);
+  OAI_PROFILE_START(gnb_pusch_llr_start);
   start_meas(ulsch_llr);
   if (nb_layer == 2) {
     if (rel15_ul->qam_mod_order <= 6) {
@@ -337,6 +360,15 @@ static void inner_rx(PHY_VARS_gNB *gNB,
                      symbol,
                      rel15_ul->qam_mod_order);
   stop_meas(ulsch_llr);
+  OAI_PROFILE_STOP(OAI_PROFILE_EVENT_GNB_PUSCH_LLR,
+                   gnb_pusch_llr_start,
+                   frame,
+                   slot,
+                   symbol,
+                   pusch_vars->ul_valid_re_per_slot[symbol],
+                   rel15_ul->qam_mod_order,
+                   nb_layer,
+                   0);
 }
 
 typedef struct puschSymbolProc_s {
@@ -344,6 +376,7 @@ typedef struct puschSymbolProc_s {
   NR_DL_FRAME_PARMS *frame_parms;
   const nfapi_nr_pusch_pdu_t *rel15_ul;
   NR_gNB_PUSCH *pusch_vars;
+  int frame;
   int slot;
   int startSymbol;
   int numSymbols;
@@ -376,6 +409,7 @@ static void nr_pusch_symbol_processing(void *arg)
   const nfapi_nr_pusch_pdu_t *rel15_ul = rdata->rel15_ul;
   int slot = rdata->slot;
   NR_gNB_PUSCH *pusch_vars = rdata->pusch_vars;
+  OAI_PROFILE_START(gnb_pusch_symbol_task_start);
   for (int symbol = rdata->startSymbol; symbol < rdata->startSymbol + rdata->numSymbols; symbol++) {
     if (pusch_vars->ul_valid_re_per_slot[symbol] == 0)
       continue;
@@ -387,6 +421,7 @@ static void nr_pusch_symbol_processing(void *arg)
       llrss[l] = llrs[l];
 
     inner_rx(gNB,
+             rdata->frame,
              slot,
              frame_parms,
              pusch_vars,
@@ -426,6 +461,7 @@ static void nr_pusch_symbol_processing(void *arg)
       // demapping: bring elements into order such that unscrambling is a linear operation
       // e.g., from "RE0-l0, RE1-l0, ..., REn-l0, RE0-l1, ..." to "RE0-l0, Re0-l1, RE1-l0, ..."
       // Each REn-ln = q LLRs (q = QAM order {2,4,6,8}, one LLR/bit).
+      OAI_PROFILE_START(gnb_pusch_layer_demapping_start);
       start_meas(&rdata->ul_demap);
       if (ue_layers == 1) {
         // no demapping needed
@@ -435,8 +471,18 @@ static void nr_pusch_symbol_processing(void *arg)
         src = llr_dest;
       }
       stop_meas(&rdata->ul_demap);
+      OAI_PROFILE_STOP(OAI_PROFILE_EVENT_GNB_PUSCH_LAYER_DEMAPPING,
+                       gnb_pusch_layer_demapping_start,
+                       rdata->frame,
+                       slot,
+                       symbol,
+                       nb_re_pusch,
+                       ue_layers,
+                       qam,
+                       0);
 
       // unscrambling
+      OAI_PROFILE_START(gnb_pusch_unscrambling_start);
       start_meas(&rdata->ul_unscram);
       int k = 0;
       for (; k + 16 <= n; k += 16) {
@@ -447,9 +493,27 @@ static void nr_pusch_symbol_processing(void *arg)
       for (; k < n; k++)
         llr_dest[k] = src[k] * s_seq[k];
       stop_meas(&rdata->ul_unscram);
+      OAI_PROFILE_STOP(OAI_PROFILE_EVENT_GNB_PUSCH_UNSCRAMBLING,
+                       gnb_pusch_unscrambling_start,
+                       rdata->frame,
+                       slot,
+                       symbol,
+                       n,
+                       ue_pdu->rnti,
+                       ue_pdu->data_scrambling_id,
+                       0);
     }
   }
 
+  OAI_PROFILE_STOP(OAI_PROFILE_EVENT_GNB_PUSCH_SYMBOL_TASK,
+                   gnb_pusch_symbol_task_start,
+                   rdata->frame,
+                   slot,
+                   rdata->startSymbol,
+                   rdata->numSymbols,
+                   rel15_ul->rb_size,
+                   rel15_ul->nrOfLayers,
+                   0);
   // Task running in // completed
   completed_task_ans(rdata->ans);
 }
@@ -572,6 +636,7 @@ int nr_rx_pusch_group_tp(PHY_VARS_gNB *gNB,
   //----------------------------------------------------------
   //------------------- Channel estimation -------------------
   //----------------------------------------------------------
+  OAI_PROFILE_START(gnb_pusch_channel_estimation_start);
   start_meas(&gNB->ulsch_channel_estimation_stats);
   int max_ch = 0;
   uint32_t nvar = 0;
@@ -670,7 +735,17 @@ int nr_rx_pusch_group_tp(PHY_VARS_gNB *gNB,
           joint_pv->ulsch_noise_power[aa_pusch]);
   }
   stop_meas(&gNB->ulsch_channel_estimation_stats);
+  OAI_PROFILE_STOP(OAI_PROFILE_EVENT_GNB_PUSCH_CHANNEL_ESTIMATION,
+                   gnb_pusch_channel_estimation_start,
+                   frame,
+                   slot,
+                   rel15_ul_ref->rb_size,
+                   rel15_ul_ref->nr_of_symbols,
+                   dmrs_symb_idx,
+                   total_layers,
+                   0);
 
+  OAI_PROFILE_START(gnb_pusch_initialization_start);
   start_meas(&gNB->rx_pusch_init_stats);
 
   // Calculate number of unavailable resources due to PTRS
@@ -696,9 +771,11 @@ int nr_rx_pusch_group_tp(PHY_VARS_gNB *gNB,
   int nb_re_dmrs = factor * rel15_ul_ref->num_dmrs_cdm_grps_no_data;
 
   int max_G = 0;
+  int total_G = 0;
   for (int u = 0; u < group_size; u++) {
     const nfapi_nr_pusch_pdu_t *p = rel15_ul_group[u];
     int G_u = nr_get_G(p->rb_size, p->nr_of_symbols, nb_re_dmrs, number_dmrs_symbols, unav_res, p->qam_mod_order, p->nrOfLayers);
+    total_G += G_u;
     if (G_u > max_G)
       max_G = G_u;
   }
@@ -788,7 +865,17 @@ int nr_rx_pusch_group_tp(PHY_VARS_gNB *gNB,
     joint_pv->log2_maxh = 0;
 
   stop_meas(&gNB->rx_pusch_init_stats);
+  OAI_PROFILE_STOP(OAI_PROFILE_EVENT_GNB_PUSCH_INITIALIZATION,
+                   gnb_pusch_initialization_start,
+                   frame,
+                   slot,
+                   total_G,
+                   nb_re_pusch,
+                   num_sp_streams,
+                   total_layers,
+                   rel15_ul_ref->pdu_bit_map & PUSCH_PDU_BITMAP_PUSCH_PTRS);
 
+  OAI_PROFILE_START(gnb_pusch_symbol_processing_start);
   start_meas(&gNB->rx_pusch_symbol_processing_stats);
   int numSymbols = gNB->num_pusch_symbols_per_thread;
   int total_res = 0;
@@ -824,6 +911,7 @@ int nr_rx_pusch_group_tp(PHY_VARS_gNB *gNB,
       rdata->gNB = gNB;
       rdata->frame_parms = frame_parms;
       rdata->rel15_ul = &joint_pdu;
+      rdata->frame = frame;
       rdata->slot = slot;
       rdata->startSymbol = symbol;
       // Last task processes remainder symbols
@@ -924,6 +1012,15 @@ int nr_rx_pusch_group_tp(PHY_VARS_gNB *gNB,
     }
   }
   stop_meas(&gNB->rx_pusch_symbol_processing_stats);
+  OAI_PROFILE_STOP(OAI_PROFILE_EVENT_GNB_PUSCH_SYMBOL_PROCESSING,
+                   gnb_pusch_symbol_processing_start,
+                   frame,
+                   slot,
+                   sz_arr,
+                   rel15_ul_ref->nr_of_symbols,
+                   numSymbols,
+                   rel15_ul_ref->rb_size,
+                   rel15_ul_ref->pdu_bit_map & PUSCH_PDU_BITMAP_PUSCH_PTRS);
 
   // Copy the data to the scope. This cannot be performed in one call to gNBscopeCopy because the data is not contiguous in the
   // buffer due to reference symbol extraction and padding. The gNBscopeCopy call is broken up into steps: trylock, copy, unlock.

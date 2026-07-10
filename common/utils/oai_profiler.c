@@ -471,6 +471,1207 @@ static const oai_profile_event_descriptor_t event_descriptors[OAI_PROFILE_EVENT_
                        "sample"),
             .flags_name = "",
         },
+    [OAI_PROFILE_EVENT_UE_DL_DISPATCH_TO_START] =
+        {
+            .name = "UE_DL_DISPATCH_TO_START",
+            .role = "nrUE",
+            .subsystem = "scheduling",
+            .event_class = "dispatch_wait",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("actor_count", "count", "rx_slot_type", "enum", "tx_frame", "frame", "tx_slot", "slot"),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_UE_TX_DISPATCH_TO_START] =
+        {
+            .name = "UE_TX_DISPATCH_TO_START",
+            .role = "nrUE",
+            .subsystem = "scheduling",
+            .event_class = "dispatch_wait",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("actor_count", "count", "tx_slot_type", "enum", "write_samples", "sample", "deadline", "us"),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_GNB_RU_SLOT_LOOP] =
+        {
+            .name = "GNB_RU_SLOT_LOOP",
+            .role = "gNB",
+            .subsystem = "orchestration",
+            .event_class = "loop",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_BOUNDARY,
+            AUX_FIELDS("tx_frame", "frame", "tx_slot", "slot", "slot_type", "enum", "tx_timestamp", "sample"),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_GNB_L1_TX_DISPATCH_TO_START] =
+        {
+            .name = "GNB_L1_TX_DISPATCH_TO_START",
+            .role = "gNB",
+            .subsystem = "scheduling",
+            .event_class = "dispatch_wait",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("rx_frame", "frame", "rx_slot", "slot", "tx_timestamp", "sample", "", ""),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_GNB_L1_RX_DISPATCH_TO_START] =
+        {
+            .name = "GNB_L1_RX_DISPATCH_TO_START",
+            .role = "gNB",
+            .subsystem = "scheduling",
+            .event_class = "dispatch_wait",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("tx_timestamp", "sample", "", "", "", "", "", ""),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_GNB_RU_RX_TTI_WAIT] =
+        {
+            .name = "GNB_RU_RX_TTI_WAIT",
+            .role = "gNB",
+            .subsystem = "scheduling",
+            .event_class = "wait",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("slot_depth_index", "index", "waited", "boolean", "", "", "", ""),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_UE_MAC_SLOT_INDICATION] =
+        {
+            .name = "UE_MAC_SLOT_INDICATION",
+            .role = "nrUE",
+            .subsystem = "mac",
+            .event_class = "callback",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("module_id", "index", "rx_slot_type", "enum", "tx_slot_type", "enum", "", ""),
+            .flags_name = "downlink",
+        },
+    [OAI_PROFILE_EVENT_UE_MAC_DL_INDICATION] =
+        {
+            .name = "UE_MAC_DL_INDICATION",
+            .role = "nrUE",
+            .subsystem = "mac",
+            .event_class = "callback",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("module_id", "index", "search_spaces", "count", "dlsch_codewords", "count", "", ""),
+            .flags_name = "interface_present",
+        },
+    [OAI_PROFILE_EVENT_UE_DL_PBCH] =
+        {
+            .name = "UE_DL_PBCH",
+            .role = "nrUE",
+            .subsystem = "phy_dl_pbch",
+            .event_class = "procedure",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("sample_shift", "sample", "ssb_index", "index", "symbols", "count", "rx_antennas", "count"),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_UE_PBCH_FFT] =
+        {
+            .name = "UE_PBCH_FFT",
+            .role = "nrUE",
+            .subsystem = "phy_dl_pbch",
+            .event_class = "fft",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("symbol", "index", "fft_size", "sample", "rx_antennas", "count", "ssb_index", "index"),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_UE_PBCH_CHANNEL_ESTIMATION] =
+        {
+            .name = "UE_PBCH_CHANNEL_ESTIMATION",
+            .role = "nrUE",
+            .subsystem = "phy_dl_pbch",
+            .event_class = "channel_estimation",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("relative_symbol", "index", "ssb_index", "index", "rx_antennas", "count", "fft_size", "sample"),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_UE_PBCH_LLR] =
+        {
+            .name = "UE_PBCH_LLR",
+            .role = "nrUE",
+            .subsystem = "phy_dl_pbch",
+            .event_class = "demodulation",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("ssb_symbol", "index", "ssb_index", "index", "coded_bits", "bit", "rx_antennas", "count"),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_UE_PBCH_DECODING] =
+        {
+            .name = "UE_PBCH_DECODING",
+            .role = "nrUE",
+            .subsystem = "phy_dl_pbch",
+            .event_class = "decoding",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("ssb_index", "index", "half_frame_bit", "bit", "decoded_ssb_index", "index", "symbol_offset", "symbol"),
+            .flags_name = "decode_failed",
+        },
+    [OAI_PROFILE_EVENT_UE_PBCH_MEASUREMENTS] =
+        {
+            .name = "UE_PBCH_MEASUREMENTS",
+            .role = "nrUE",
+            .subsystem = "measurements",
+            .event_class = "measurement",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("ssb_index", "index", "rx_antennas", "count", "fft_size", "sample", "", ""),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_UE_DL_PDCCH] =
+        {
+            .name = "UE_DL_PDCCH",
+            .role = "nrUE",
+            .subsystem = "phy_dl_pdcch",
+            .event_class = "procedure",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("search_spaces", "count", "rx_antennas", "count", "fft_size", "sample", "", ""),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_UE_PDCCH_FFT] =
+        {
+            .name = "UE_PDCCH_FFT",
+            .role = "nrUE",
+            .subsystem = "phy_dl_pdcch",
+            .event_class = "fft",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("symbol", "index", "fft_size", "sample", "rx_antennas", "count", "", ""),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_UE_PDCCH_LLR] =
+        {
+            .name = "UE_PDCCH_LLR",
+            .role = "nrUE",
+            .subsystem = "phy_dl_pdcch",
+            .event_class = "demodulation",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("symbol", "index", "search_spaces", "count", "llr_per_symbol", "count", "monitoring_occasions", "count"),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_UE_PDCCH_DCI] =
+        {
+            .name = "UE_PDCCH_DCI",
+            .role = "nrUE",
+            .subsystem = "phy_dl_pdcch",
+            .event_class = "decoding",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("search_spaces", "count", "llr_count", "count", "monitoring_occasions", "count", "max_symbols", "count"),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_UE_DL_CSI_IM] =
+        {
+            .name = "UE_DL_CSI_IM",
+            .role = "nrUE",
+            .subsystem = "phy_dl_csi",
+            .event_class = "measurement",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("fft_symbols", "count", "rx_antennas", "count", "fft_size", "sample", "", ""),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_UE_DL_CSI_RS] =
+        {
+            .name = "UE_DL_CSI_RS",
+            .role = "nrUE",
+            .subsystem = "phy_dl_csi",
+            .event_class = "measurement",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("fft_symbols", "count", "rx_antennas", "count", "fft_size", "sample", "row", "index"),
+            .flags_name = "resource_index",
+        },
+    [OAI_PROFILE_EVENT_UE_PDSCH_FFT] =
+        {
+            .name = "UE_PDSCH_FFT",
+            .role = "nrUE",
+            .subsystem = "phy_dl_pdsch",
+            .event_class = "fft",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("symbol", "index", "fft_size", "sample", "rx_antennas", "count", "codeword", "index"),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_UE_PDSCH_PROCEDURES] =
+        {
+            .name = "UE_PDSCH_PROCEDURES",
+            .role = "nrUE",
+            .subsystem = "phy_dl_pdsch",
+            .event_class = "procedure",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("codeword", "index", "coded_bits", "bit", "resource_blocks", "count", "harq_pid", "index"),
+            .flags_name = "failed",
+        },
+    [OAI_PROFILE_EVENT_UE_PDSCH_CHANNEL_ESTIMATION] =
+        {
+            .name = "UE_PDSCH_CHANNEL_ESTIMATION",
+            .role = "nrUE",
+            .subsystem = "phy_dl_pdsch",
+            .event_class = "channel_estimation",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("resource_blocks", "count", "symbols", "count", "layers", "count", "rx_antennas", "count"),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_UE_PDSCH_DEMODULATION] =
+        {
+            .name = "UE_PDSCH_DEMODULATION",
+            .role = "nrUE",
+            .subsystem = "phy_dl_pdsch",
+            .event_class = "demodulation",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("symbol", "index", "resource_blocks", "count", "modulation_order", "bit_per_symbol", "layers", "count"),
+            .flags_name = "failed",
+        },
+    [OAI_PROFILE_EVENT_UE_DLSCH_PROCEDURES] =
+        {
+            .name = "UE_DLSCH_PROCEDURES",
+            .role = "nrUE",
+            .subsystem = "phy_dl_dlsch",
+            .event_class = "procedure",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("codeword", "index", "coded_bits", "bit", "resource_blocks", "count", "harq_pid", "index"),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_UE_DLSCH_UNSCRAMBLING] =
+        {
+            .name = "UE_DLSCH_UNSCRAMBLING",
+            .role = "nrUE",
+            .subsystem = "phy_dl_dlsch",
+            .event_class = "unscrambling",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("codeword", "index", "coded_bits", "bit", "rnti", "value", "scrambling_id", "value"),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_UE_DLSCH_DECODING] =
+        {
+            .name = "UE_DLSCH_DECODING",
+            .role = "nrUE",
+            .subsystem = "phy_dl_dlsch",
+            .event_class = "decoding",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("codeword", "index", "coded_bits", "bit", "transport_block", "bit", "harq_pid", "index"),
+            .flags_name = "decode_success",
+        },
+    [OAI_PROFILE_EVENT_UE_DLSCH_MAC_INDICATION] =
+        {
+            .name = "UE_DLSCH_MAC_INDICATION",
+            .role = "nrUE",
+            .subsystem = "mac",
+            .event_class = "callback",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("pdu_type", "enum", "transport_block", "bit", "harq_pid", "index", "codeword", "index"),
+            .flags_name = "decode_success",
+        },
+    [OAI_PROFILE_EVENT_UE_TX_BUFFER_CLEAR] =
+        {
+            .name = "UE_TX_BUFFER_CLEAR",
+            .role = "nrUE",
+            .subsystem = "phy_ul",
+            .event_class = "memory",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("frequency_samples", "sample", "tx_antennas", "count", "bytes", "byte", "", ""),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_UE_TX_ULSCH] =
+        {
+            .name = "UE_TX_ULSCH",
+            .role = "nrUE",
+            .subsystem = "phy_ul_ulsch",
+            .event_class = "procedure",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("resource_blocks",
+                       "count",
+                       "symbols",
+                       "count",
+                       "modulation_order",
+                       "bit_per_symbol",
+                       "transport_block",
+                       "byte"),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_UE_ULSCH_PRE_ENCODING] =
+        {
+            .name = "UE_ULSCH_PRE_ENCODING",
+            .role = "nrUE",
+            .subsystem = "phy_ul_ulsch",
+            .event_class = "coding",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("harq_pid", "index", "coded_bits", "bit", "transport_block", "byte", "resource_blocks", "count"),
+            .flags_name = "failed",
+        },
+    [OAI_PROFILE_EVENT_UE_ULSCH_ENCODING] =
+        {
+            .name = "UE_ULSCH_ENCODING",
+            .role = "nrUE",
+            .subsystem = "phy_ul_ulsch",
+            .event_class = "coding",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("harq_pid", "index", "coded_bits", "bit", "transport_block", "byte", "resource_blocks", "count"),
+            .flags_name = "failed",
+        },
+    [OAI_PROFILE_EVENT_UE_ULSCH_UCI] =
+        {
+            .name = "UE_ULSCH_UCI",
+            .role = "nrUE",
+            .subsystem = "phy_ul_uci",
+            .event_class = "coding_mapping",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("ack_bits", "bit", "csi1_bits", "bit", "csi2_bits", "bit", "coded_bits", "bit"),
+            .flags_name = "present",
+        },
+    [OAI_PROFILE_EVENT_UE_ULSCH_SCRAMBLING] =
+        {
+            .name = "UE_ULSCH_SCRAMBLING",
+            .role = "nrUE",
+            .subsystem = "phy_ul_ulsch",
+            .event_class = "scrambling",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("coded_bits", "bit", "rnti", "value", "scrambling_id", "value", "harq_pid", "index"),
+            .flags_name = "uci_present",
+        },
+    [OAI_PROFILE_EVENT_UE_ULSCH_MODULATION] =
+        {
+            .name = "UE_ULSCH_MODULATION",
+            .role = "nrUE",
+            .subsystem = "phy_ul_ulsch",
+            .event_class = "modulation",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("coded_bits", "bit", "modulation_order", "bit_per_symbol", "layers", "count", "resource_elements", "count"),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_UE_ULSCH_TRANSFORM_PRECODING] =
+        {
+            .name = "UE_ULSCH_TRANSFORM_PRECODING",
+            .role = "nrUE",
+            .subsystem = "phy_ul_ulsch",
+            .event_class = "transform_precoding",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("resource_blocks", "count", "data_symbols", "count", "layers", "count", "dft_size", "sample"),
+            .flags_name = "enabled",
+        },
+    [OAI_PROFILE_EVENT_UE_ULSCH_RE_MAPPING] =
+        {
+            .name = "UE_ULSCH_RE_MAPPING",
+            .role = "nrUE",
+            .subsystem = "phy_ul_ulsch",
+            .event_class = "resource_mapping",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("resource_blocks", "count", "symbols", "count", "layers", "count", "dmrs_symbols", "count"),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_UE_ULSCH_PRECODING] =
+        {
+            .name = "UE_ULSCH_PRECODING",
+            .role = "nrUE",
+            .subsystem = "phy_ul_ulsch",
+            .event_class = "precoding",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("resource_blocks", "count", "symbols", "count", "layers", "count", "tx_antennas", "count"),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_UE_TX_SRS] =
+        {
+            .name = "UE_TX_SRS",
+            .role = "nrUE",
+            .subsystem = "phy_ul_srs",
+            .event_class = "generation",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("resource_blocks", "count", "symbols", "count", "tx_antennas", "count", "config_index", "index"),
+            .flags_name = "generated",
+        },
+    [OAI_PROFILE_EVENT_UE_TX_PUCCH] =
+        {
+            .name = "UE_TX_PUCCH",
+            .role = "nrUE",
+            .subsystem = "phy_ul_pucch",
+            .event_class = "generation",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("format", "enum", "resource_blocks", "count", "symbols", "count", "payload_bits", "bit"),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_UE_TX_PHASE_ROTATION] =
+        {
+            .name = "UE_TX_PHASE_ROTATION",
+            .role = "nrUE",
+            .subsystem = "phy_ul",
+            .event_class = "phase_rotation",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("used_symbols", "count", "tx_antennas", "count", "resource_blocks", "count", "fft_size", "sample"),
+            .flags_name = "disabled",
+        },
+    [OAI_PROFILE_EVENT_UE_TX_OFDM] =
+        {
+            .name = "UE_TX_OFDM",
+            .role = "nrUE",
+            .subsystem = "phy_ul",
+            .event_class = "ofdm",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("used_symbols", "count", "tx_antennas", "count", "fft_size", "sample", "cyclic_prefix", "enum"),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_UE_TX_PRACH] =
+        {
+            .name = "UE_TX_PRACH",
+            .role = "nrUE",
+            .subsystem = "phy_ul_prach",
+            .event_class = "generation",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("preamble_index", "index", "format", "enum", "tx_power", "dBm", "digital_power", "dBW"),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_UE_ULSCH_LAYER_MAPPING] =
+        {
+            .name = "UE_ULSCH_LAYER_MAPPING",
+            .role = "nrUE",
+            .subsystem = "phy_ul_ulsch",
+            .event_class = "layer_mapping",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("modulated_symbols", "count", "layers", "count", "modulation_order", "bit_per_symbol", "coded_bits", "bit"),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_GNB_MAC_SCHED_LOCK_WAIT] =
+        {
+            .name = "GNB_MAC_SCHED_LOCK_WAIT",
+            .role = "gNB",
+            .subsystem = "mac_scheduler",
+            .event_class = "lock_wait",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("module_id", "index", "", "", "", "", "", ""),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_GNB_MAC_SCHED_PREPARE] =
+        {
+            .name = "GNB_MAC_SCHED_PREPARE",
+            .role = "gNB",
+            .subsystem = "mac_scheduler",
+            .event_class = "preparation",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("component_carriers", "count", "slots_per_frame", "count", "beam_mode", "enum", "beams_per_period", "count"),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_GNB_MAC_SCHED_STATS] =
+        {
+            .name = "GNB_MAC_SCHED_STATS",
+            .role = "gNB",
+            .subsystem = "mac_scheduler",
+            .event_class = "observability",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("stats_max_ue", "count", "frame_period", "frame", "", "", "", ""),
+            .flags_name = "enabled_after",
+        },
+    [OAI_PROFILE_EVENT_GNB_MAC_SCHED_TIMERS] =
+        {
+            .name = "GNB_MAC_SCHED_TIMERS",
+            .role = "gNB",
+            .subsystem = "mac_scheduler",
+            .event_class = "timers",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("module_id", "index", "", "", "", "", "", ""),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_GNB_MAC_SCHED_COMMON] =
+        {
+            .name = "GNB_MAC_SCHED_COMMON",
+            .role = "gNB",
+            .subsystem = "mac_scheduler",
+            .event_class = "common_channels",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("dl_pdus", "count", "tx_pdus", "count", "sa_mode", "boolean", "", ""),
+            .flags_name = "prach_ready_or_phy_test",
+        },
+    [OAI_PROFILE_EVENT_GNB_MAC_SCHED_PRACH] =
+        {
+            .name = "GNB_MAC_SCHED_PRACH",
+            .role = "gNB",
+            .subsystem = "mac_scheduler",
+            .event_class = "random_access",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("target_frame", "frame", "target_slot", "slot", "prach_length", "slot", "ntn_koffset", "slot"),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_GNB_MAC_SCHED_CSI_SRS] =
+        {
+            .name = "GNB_MAC_SCHED_CSI_SRS",
+            .role = "gNB",
+            .subsystem = "mac_scheduler",
+            .event_class = "csi_srs",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("dl_pdus", "count", "module_id", "index", "", "", "", ""),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_GNB_MAC_SCHED_RA] =
+        {
+            .name = "GNB_MAC_SCHED_RA",
+            .role = "gNB",
+            .subsystem = "mac_scheduler",
+            .event_class = "random_access",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("ul_dci_pdus", "count", "dl_pdus", "count", "tx_pdus", "count", "", ""),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_GNB_MAC_SCHED_ULSCH] =
+        {
+            .name = "GNB_MAC_SCHED_ULSCH",
+            .role = "gNB",
+            .subsystem = "mac_scheduler",
+            .event_class = "ulsch",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("ul_dci_pdus", "count", "module_id", "index", "", "", "", ""),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_GNB_MAC_SCHED_DLSCH] =
+        {
+            .name = "GNB_MAC_SCHED_DLSCH",
+            .role = "gNB",
+            .subsystem = "mac_scheduler",
+            .event_class = "dlsch",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("dl_pdus", "count", "tx_pdus", "count", "module_id", "index", "", ""),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_GNB_MAC_SCHED_PUCCH] =
+        {
+            .name = "GNB_MAC_SCHED_PUCCH",
+            .role = "gNB",
+            .subsystem = "mac_scheduler",
+            .event_class = "pucch",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("module_id", "index", "", "", "", "", "", ""),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_GNB_MAC_SCHED_FINALIZE] =
+        {
+            .name = "GNB_MAC_SCHED_FINALIZE",
+            .role = "gNB",
+            .subsystem = "mac_scheduler",
+            .event_class = "publication",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("ul_pdus", "count", "ul_groups", "count", "dl_pdus", "count", "tx_pdus", "count"),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_GNB_TX_BUFFER_CLEAR] =
+        {
+            .name = "GNB_TX_BUFFER_CLEAR",
+            .role = "gNB",
+            .subsystem = "phy_dl",
+            .event_class = "memory",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("frequency_samples", "sample", "tx_antennas", "count", "bytes", "byte", "dl_pdus", "count"),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_GNB_TX_PRS] =
+        {
+            .name = "GNB_TX_PRS",
+            .role = "gNB",
+            .subsystem = "phy_dl_prs",
+            .event_class = "generation",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("resource_id", "index", "repetition_index", "index", "prs_slot", "slot", "repetitions", "count"),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_GNB_TX_PDCCH] =
+        {
+            .name = "GNB_TX_PDCCH",
+            .role = "gNB",
+            .subsystem = "phy_dl_pdcch",
+            .event_class = "generation",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("pdu_index", "index", "source", "enum", "source_pdus", "count", "dl_pdus", "count"),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_GNB_TX_SSB] =
+        {
+            .name = "GNB_TX_SSB",
+            .role = "gNB",
+            .subsystem = "phy_dl_ssb",
+            .event_class = "generation",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("pdu_index", "index", "dl_pdus", "count", "tx_antennas", "count", "fft_size", "sample"),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_GNB_TX_CSI_RS] =
+        {
+            .name = "GNB_TX_CSI_RS",
+            .role = "gNB",
+            .subsystem = "phy_dl_csi",
+            .event_class = "generation",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("pdu_index", "index", "dl_pdus", "count", "tx_antennas", "count", "fft_size", "sample"),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_GNB_TX_PDSCH] =
+        {
+            .name = "GNB_TX_PDSCH",
+            .role = "gNB",
+            .subsystem = "phy_dl_pdsch",
+            .event_class = "procedure",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("pdsch_pdus", "count", "tx_pdus", "count", "tx_antennas", "count", "fft_size", "sample"),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_GNB_TX_PHASE_ROTATION] =
+        {
+            .name = "GNB_TX_PHASE_ROTATION",
+            .role = "gNB",
+            .subsystem = "phy_dl",
+            .event_class = "phase_rotation",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("tx_antennas", "count", "frequency_samples", "sample", "resource_blocks", "count", "symbols", "count"),
+            .flags_name = "enabled",
+        },
+    [OAI_PROFILE_EVENT_GNB_PDSCH_ENCODING] =
+        {
+            .name = "GNB_PDSCH_ENCODING",
+            .role = "gNB",
+            .subsystem = "phy_dl_pdsch",
+            .event_class = "coding",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("pdsch_pdus", "count", "transport_blocks", "count", "output_bits", "bit", "output_bytes", "byte"),
+            .flags_name = "failed",
+        },
+    [OAI_PROFILE_EVENT_GNB_PDSCH_SCRAMBLING] =
+        {
+            .name = "GNB_PDSCH_SCRAMBLING",
+            .role = "gNB",
+            .subsystem = "phy_dl_pdsch",
+            .event_class = "scrambling",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("codeword", "index", "coded_bits", "bit", "rnti", "value", "scrambling_id", "value"),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_GNB_PDSCH_MODULATION] =
+        {
+            .name = "GNB_PDSCH_MODULATION",
+            .role = "gNB",
+            .subsystem = "phy_dl_pdsch",
+            .event_class = "modulation",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("codeword",
+                       "index",
+                       "coded_bits",
+                       "bit",
+                       "modulation_order",
+                       "bit_per_symbol",
+                       "modulated_symbols",
+                       "count"),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_GNB_PDSCH_LAYER_MAPPING] =
+        {
+            .name = "GNB_PDSCH_LAYER_MAPPING",
+            .role = "gNB",
+            .subsystem = "phy_dl_pdsch",
+            .event_class = "layer_mapping",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("coded_bits", "bit", "resource_elements", "count", "layers", "count", "resource_blocks", "count"),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_GNB_PDSCH_SYMBOL_PROCESSING] =
+        {
+            .name = "GNB_PDSCH_SYMBOL_PROCESSING",
+            .role = "gNB",
+            .subsystem = "phy_dl_pdsch",
+            .event_class = "dispatch_join",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("tasks", "count", "symbols", "count", "symbols_per_task", "count", "resource_blocks", "count"),
+            .flags_name = "thread_pool_enabled",
+        },
+    [OAI_PROFILE_EVENT_GNB_PDSCH_SYMBOL_TASK] =
+        {
+            .name = "GNB_PDSCH_SYMBOL_TASK",
+            .role = "gNB",
+            .subsystem = "phy_dl_pdsch",
+            .event_class = "worker",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("start_symbol", "index", "symbols", "count", "resource_blocks", "count", "layers", "count"),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_GNB_PDSCH_RESOURCE_MAPPING] =
+        {
+            .name = "GNB_PDSCH_RESOURCE_MAPPING",
+            .role = "gNB",
+            .subsystem = "phy_dl_pdsch",
+            .event_class = "resource_mapping",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("symbol", "index", "resource_blocks", "count", "layers", "count", "dmrs", "boolean"),
+            .flags_name = "ptrs",
+        },
+    [OAI_PROFILE_EVENT_GNB_PDSCH_PRECODING] =
+        {
+            .name = "GNB_PDSCH_PRECODING",
+            .role = "gNB",
+            .subsystem = "phy_dl_pdsch",
+            .event_class = "precoding",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("symbol", "index", "resource_blocks", "count", "layers", "count", "logical_ports", "count"),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_GNB_RU_RX_FRONTEND] =
+        {
+            .name = "GNB_RU_RX_FRONTEND",
+            .role = "gNB",
+            .subsystem = "ru_rx",
+            .event_class = "frontend",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("rx_antennas", "count", "fft_size", "sample", "symbols", "count", "slot_depth", "count"),
+            .flags_name = "callback_present",
+        },
+    [OAI_PROFILE_EVENT_GNB_RU_PRACH_FRONTEND] =
+        {
+            .name = "GNB_RU_PRACH_FRONTEND",
+            .role = "gNB",
+            .subsystem = "ru_rx_prach",
+            .event_class = "frontend",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("occasion_index", "index", "frequency_index", "index", "start_symbol", "index", "sequence_length", "enum"),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_GNB_RU_TX_PRECODING] =
+        {
+            .name = "GNB_RU_TX_PRECODING",
+            .role = "gNB",
+            .subsystem = "ru_tx",
+            .event_class = "precoding",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("tx_antennas", "count", "fft_size", "sample", "symbols", "count", "ru_index", "index"),
+            .flags_name = "callback_present",
+        },
+    [OAI_PROFILE_EVENT_GNB_RU_TX_OFDM] =
+        {
+            .name = "GNB_RU_TX_OFDM",
+            .role = "gNB",
+            .subsystem = "ru_tx",
+            .event_class = "ofdm",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("tx_antennas", "count", "fft_size", "sample", "symbols", "count", "ru_index", "index"),
+            .flags_name = "callback_present",
+        },
+    [OAI_PROFILE_EVENT_GNB_RU_TX_SOUTH] =
+        {
+            .name = "GNB_RU_TX_SOUTH",
+            .role = "gNB",
+            .subsystem = "ru_tx",
+            .event_class = "fronthaul_or_rf",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("tx_timestamp", "sample", "tx_antennas", "count", "ru_index", "index", "", ""),
+            .flags_name = "callback_present",
+        },
+    [OAI_PROFILE_EVENT_GNB_RU_TX_NORTH] =
+        {
+            .name = "GNB_RU_TX_NORTH",
+            .role = "gNB",
+            .subsystem = "ru_tx",
+            .event_class = "fronthaul",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("ru_index", "index", "", "", "", "", "", ""),
+            .flags_name = "callback_present",
+        },
+    [OAI_PROFILE_EVENT_GNB_RX_NOISE_MEASUREMENT] =
+        {
+            .name = "GNB_RX_NOISE_MEASUREMENT",
+            .role = "gNB",
+            .subsystem = "phy_ul",
+            .event_class = "measurement",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("first_symbol", "index", "symbols", "count", "pucch_pdus", "count", "pusch_pdus", "count"),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_GNB_RX_PUCCH] =
+        {
+            .name = "GNB_RX_PUCCH",
+            .role = "gNB",
+            .subsystem = "phy_ul_pucch",
+            .event_class = "decoding",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("format", "enum", "resource_blocks", "count", "symbols", "count", "rnti", "value"),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_GNB_RX_PUSCH_FRONTEND] =
+        {
+            .name = "GNB_RX_PUSCH_FRONTEND",
+            .role = "gNB",
+            .subsystem = "phy_ul_pusch",
+            .event_class = "procedure",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("resource_blocks", "count", "symbols", "count", "modulation_order", "bit_per_symbol", "layers", "count"),
+            .flags_name = "dtx",
+        },
+    [OAI_PROFILE_EVENT_GNB_RX_ULSCH_DECODING] =
+        {
+            .name = "GNB_RX_ULSCH_DECODING",
+            .role = "gNB",
+            .subsystem = "phy_ul_ulsch",
+            .event_class = "decoding",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("pusch_pdus", "count", "max_iterations", "count", "crc_before", "count", "rx_pdus_before", "count"),
+            .flags_name = "failed",
+        },
+    [OAI_PROFILE_EVENT_GNB_RX_ULSCH_CRC] =
+        {
+            .name = "GNB_RX_ULSCH_CRC",
+            .role = "gNB",
+            .subsystem = "phy_ul_ulsch",
+            .event_class = "crc_indication",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("ulsch_id", "index", "transport_block", "byte", "segments", "count", "harq_round", "count"),
+            .flags_name = "crc_valid",
+        },
+    [OAI_PROFILE_EVENT_GNB_RX_SRS] =
+        {
+            .name = "GNB_RX_SRS",
+            .role = "gNB",
+            .subsystem = "phy_ul_srs",
+            .event_class = "procedure",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("resource_blocks", "count", "symbols", "count", "antenna_ports", "count", "rx_streams", "count"),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_GNB_RX_PRACH_DETECTION] =
+        {
+            .name = "GNB_RX_PRACH_DETECTION",
+            .role = "gNB",
+            .subsystem = "phy_ul_prach",
+            .event_class = "detection",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("queue_index", "index", "rapid_pdus_before", "count", "rapid_pdus_after", "count", "antenna_start", "index"),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_GNB_SRS_CHANNEL_ESTIMATION] =
+        {
+            .name = "GNB_SRS_CHANNEL_ESTIMATION",
+            .role = "gNB",
+            .subsystem = "phy_ul_srs",
+            .event_class = "channel_estimation",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("resource_blocks", "count", "symbols", "count", "antenna_ports", "count", "rx_streams", "count"),
+            .flags_name = "detected",
+        },
+    [OAI_PROFILE_EVENT_GNB_SRS_REPORT] =
+        {
+            .name = "GNB_SRS_REPORT",
+            .role = "gNB",
+            .subsystem = "phy_ul_srs",
+            .event_class = "report",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("usage", "enum", "report_type", "enum", "report_bytes", "byte", "snr", "dB"),
+            .flags_name = "detected",
+        },
+    [OAI_PROFILE_EVENT_GNB_PUSCH_CHANNEL_ESTIMATION] =
+        {
+            .name = "GNB_PUSCH_CHANNEL_ESTIMATION",
+            .role = "gNB",
+            .subsystem = "phy_ul_pusch",
+            .event_class = "channel_estimation",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("resource_blocks", "count", "symbols", "count", "dmrs_symbols", "count", "layers", "count"),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_GNB_PUSCH_INITIALIZATION] =
+        {
+            .name = "GNB_PUSCH_INITIALIZATION",
+            .role = "gNB",
+            .subsystem = "phy_ul_pusch",
+            .event_class = "initialization",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("coded_bits", "bit", "resource_elements", "count", "spatial_streams", "count", "layers", "count"),
+            .flags_name = "ptrs",
+        },
+    [OAI_PROFILE_EVENT_GNB_PUSCH_SYMBOL_PROCESSING] =
+        {
+            .name = "GNB_PUSCH_SYMBOL_PROCESSING",
+            .role = "gNB",
+            .subsystem = "phy_ul_pusch",
+            .event_class = "dispatch_join",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("tasks", "count", "symbols", "count", "symbols_per_task", "count", "resource_blocks", "count"),
+            .flags_name = "ptrs_inline",
+        },
+    [OAI_PROFILE_EVENT_GNB_PUSCH_SYMBOL_TASK] =
+        {
+            .name = "GNB_PUSCH_SYMBOL_TASK",
+            .role = "gNB",
+            .subsystem = "phy_ul_pusch",
+            .event_class = "worker",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("start_symbol", "index", "symbols", "count", "resource_blocks", "count", "layers", "count"),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_GNB_PUSCH_EXTRACTION] =
+        {
+            .name = "GNB_PUSCH_EXTRACTION",
+            .role = "gNB",
+            .subsystem = "phy_ul_pusch",
+            .event_class = "extraction",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("symbol", "index", "resource_elements", "count", "spatial_streams", "count", "layers", "count"),
+            .flags_name = "dmrs",
+        },
+    [OAI_PROFILE_EVENT_GNB_PUSCH_CHANNEL_COMPENSATION] =
+        {
+            .name = "GNB_PUSCH_CHANNEL_COMPENSATION",
+            .role = "gNB",
+            .subsystem = "phy_ul_pusch",
+            .event_class = "equalization",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("symbol", "index", "resource_elements", "count", "modulation_order", "bit_per_symbol", "layers", "count"),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_GNB_PUSCH_LLR] =
+        {
+            .name = "GNB_PUSCH_LLR",
+            .role = "gNB",
+            .subsystem = "phy_ul_pusch",
+            .event_class = "demodulation",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("symbol", "index", "resource_elements", "count", "modulation_order", "bit_per_symbol", "layers", "count"),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_GNB_PUSCH_LAYER_DEMAPPING] =
+        {
+            .name = "GNB_PUSCH_LAYER_DEMAPPING",
+            .role = "gNB",
+            .subsystem = "phy_ul_pusch",
+            .event_class = "layer_demapping",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("symbol", "index", "resource_elements", "count", "layers", "count", "modulation_order", "bit_per_symbol"),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_GNB_PUSCH_UNSCRAMBLING] =
+        {
+            .name = "GNB_PUSCH_UNSCRAMBLING",
+            .role = "gNB",
+            .subsystem = "phy_ul_pusch",
+            .event_class = "unscrambling",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("symbol", "index", "soft_bits", "count", "rnti", "value", "scrambling_id", "value"),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_LDPC_DECODER_SEGMENT] =
+        {
+            .name = "LDPC_DECODER_SEGMENT",
+            .role = "nrUE/gNB",
+            .subsystem = "ldpc_decoder",
+            .event_class = "segment",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("transport_block_index", "index", "segment", "index", "segments", "count", "transport_block", "bit"),
+            .flags_name = "decode_success",
+        },
+    [OAI_PROFILE_EVENT_LDPC_DECODER_DEINTERLEAVE] =
+        {
+            .name = "LDPC_DECODER_DEINTERLEAVE",
+            .role = "nrUE/gNB",
+            .subsystem = "ldpc_decoder",
+            .event_class = "deinterleave",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("transport_block_index",
+                       "index",
+                       "segment",
+                       "index",
+                       "input_llrs",
+                       "count",
+                       "modulation_order",
+                       "bit_per_symbol"),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_LDPC_DECODER_RATE_RECOVERY] =
+        {
+            .name = "LDPC_DECODER_RATE_RECOVERY",
+            .role = "nrUE/gNB",
+            .subsystem = "ldpc_decoder",
+            .event_class = "rate_recovery",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("transport_block_index", "index", "segment", "index", "input_llrs", "count", "redundancy_version", "index"),
+            .flags_name = "failed",
+        },
+    [OAI_PROFILE_EVENT_LDPC_DECODER_SEGMENT_PREPARATION] =
+        {
+            .name = "LDPC_DECODER_SEGMENT_PREPARATION",
+            .role = "nrUE/gNB",
+            .subsystem = "ldpc_decoder",
+            .event_class = "preparation",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("transport_block_index", "index", "segment", "index", "code_block", "bit", "lifting_size", "bit"),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_LDPC_DECODER_KERNEL] =
+        {
+            .name = "LDPC_DECODER_KERNEL",
+            .role = "nrUE/gNB",
+            .subsystem = "ldpc_decoder",
+            .event_class = "iterative_decode",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("transport_block_index", "index", "segment", "index", "base_graph", "index", "iterations", "count"),
+            .flags_name = "decode_success",
+        },
+    [OAI_PROFILE_EVENT_LDPC_ENCODER_DISPATCH_JOIN] =
+        {
+            .name = "LDPC_ENCODER_DISPATCH_JOIN",
+            .role = "nrUE/gNB",
+            .subsystem = "ldpc_encoder",
+            .event_class = "dispatch_join",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("transport_blocks", "count", "tasks", "count", "segments", "count", "max_segment_output", "bit"),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_LDPC_ENCODER_TASK] =
+        {
+            .name = "LDPC_ENCODER_TASK",
+            .role = "nrUE/gNB",
+            .subsystem = "ldpc_encoder",
+            .event_class = "segment_group",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("transport_block_index", "index", "first_segment", "index", "task_segments", "count", "segments", "count"),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_LDPC_ENCODER_KERNEL] =
+        {
+            .name = "LDPC_ENCODER_KERNEL",
+            .role = "nrUE/gNB",
+            .subsystem = "ldpc_encoder",
+            .event_class = "encode",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("transport_block_index", "index", "first_segment", "index", "task_segments", "count", "base_graph", "index"),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_LDPC_ENCODER_RATE_MATCHING] =
+        {
+            .name = "LDPC_ENCODER_RATE_MATCHING",
+            .role = "nrUE/gNB",
+            .subsystem = "ldpc_encoder",
+            .event_class = "rate_matching",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("transport_block_index",
+                       "index",
+                       "first_segment",
+                       "index",
+                       "max_segment_output",
+                       "bit",
+                       "redundancy_version",
+                       "index"),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_LDPC_ENCODER_INTERLEAVING] =
+        {
+            .name = "LDPC_ENCODER_INTERLEAVING",
+            .role = "nrUE/gNB",
+            .subsystem = "ldpc_encoder",
+            .event_class = "interleave",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("transport_block_index",
+                       "index",
+                       "first_segment",
+                       "index",
+                       "segment_output",
+                       "bit",
+                       "second_segment_output",
+                       "bit"),
+            .flags_name = "output_size_shift",
+        },
+    [OAI_PROFILE_EVENT_LDPC_ENCODER_CONCATENATION] =
+        {
+            .name = "LDPC_ENCODER_CONCATENATION",
+            .role = "nrUE/gNB",
+            .subsystem = "ldpc_encoder",
+            .event_class = "concatenation",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_STAGE,
+            AUX_FIELDS("transport_blocks", "count", "tasks", "count", "segments", "count", "max_segment_output", "bit"),
+            .flags_name = "",
+        },
 };
 
 #undef AUX_FIELDS
@@ -1574,6 +2775,33 @@ uint64_t oai_profiler_next_correlation_id(void)
   if (correlation_id == 0)
     correlation_id = __atomic_add_fetch(&global_correlation_seq, 1, __ATOMIC_RELAXED);
   return correlation_id;
+}
+
+oai_profile_work_t oai_profiler_capture_work(int64_t absolute_slot)
+{
+  oai_profile_work_t work = {
+      .context.absolute_slot = OAI_PROFILE_ABSOLUTE_SLOT_UNKNOWN,
+  };
+  if (!oai_profiler_is_enabled())
+    return work;
+
+  work.context = oai_profiler_get_context();
+  if (absolute_slot != OAI_PROFILE_ABSOLUTE_SLOT_UNKNOWN)
+    work.context.absolute_slot = absolute_slot;
+  work.dispatch_tick = rdtsc_oai();
+  return work;
+}
+
+oai_profile_context_t oai_profiler_enter_work(oai_profile_work_t work)
+{
+  const oai_profile_context_t previous_context = oai_profiler_get_context();
+  oai_profiler_set_context(work.context);
+  return previous_context;
+}
+
+void oai_profiler_leave_work(oai_profile_context_t previous_context)
+{
+  oai_profiler_set_context(previous_context);
 }
 
 static uint64_t next_span_id(oai_profile_thread_buffer_t *tb, int thread_index)

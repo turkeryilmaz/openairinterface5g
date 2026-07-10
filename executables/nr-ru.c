@@ -567,15 +567,48 @@ void ru_tx_func(void *param)
   int slot_tx = info->slot_tx;
 
   // do TX front-end processing if needed (precoding and/or IDFTs)
-  if (ru->feptx_prec)
+  if (ru->feptx_prec) {
+    OAI_PROFILE_START(gnb_ru_tx_precoding_start);
     ru->feptx_prec(ru,frame_tx,slot_tx);
+    OAI_PROFILE_STOP(OAI_PROFILE_EVENT_GNB_RU_TX_PRECODING,
+                     gnb_ru_tx_precoding_start,
+                     frame_tx,
+                     slot_tx,
+                     ru->nb_tx,
+                     ru->nr_frame_parms->ofdm_symbol_size,
+                     ru->nr_frame_parms->symbols_per_slot,
+                     ru->idx,
+                     1);
+  }
 
   // do OFDM with/without TX front-end processing  if needed
-  if (ru->feptx_ofdm)
+  if (ru->feptx_ofdm) {
+    OAI_PROFILE_START(gnb_ru_tx_ofdm_start);
     ru->feptx_ofdm(ru, frame_tx, slot_tx);
+    OAI_PROFILE_STOP(OAI_PROFILE_EVENT_GNB_RU_TX_OFDM,
+                     gnb_ru_tx_ofdm_start,
+                     frame_tx,
+                     slot_tx,
+                     ru->nb_tx,
+                     ru->nr_frame_parms->ofdm_symbol_size,
+                     ru->nr_frame_parms->symbols_per_slot,
+                     ru->idx,
+                     1);
+  }
 
-  if (ru->fh_south_out)
+  if (ru->fh_south_out) {
+    OAI_PROFILE_START(gnb_ru_tx_south_start);
     ru->fh_south_out(ru, frame_tx, slot_tx, info->timestamp_tx);
+    OAI_PROFILE_STOP(OAI_PROFILE_EVENT_GNB_RU_TX_SOUTH,
+                     gnb_ru_tx_south_start,
+                     frame_tx,
+                     slot_tx,
+                     info->timestamp_tx,
+                     ru->nb_tx,
+                     ru->idx,
+                     0,
+                     1);
+  }
 }
 
 /* @brief wait for the next RX TTI to be free
@@ -598,6 +631,8 @@ void ru_tx_func(void *param)
 static bool wait_free_rx_tti(notifiedFIFO_t *L1_rx_out, bool rx_tti_busy[RU_RX_SLOT_DEPTH], int frame_rx, int slot_rx)
 {
   int idx = slot_rx % RU_RX_SLOT_DEPTH;
+  const bool waited = rx_tti_busy[idx];
+  OAI_PROFILE_START(gnb_ru_rx_tti_wait_start);
   if (rx_tti_busy[idx]) {
     bool not_done = true;
     LOG_D(NR_PHY, "%d.%d Waiting to access RX slot %d\n", frame_rx, slot_rx, idx);
@@ -605,8 +640,10 @@ static bool wait_free_rx_tti(notifiedFIFO_t *L1_rx_out, bool rx_tti_busy[RU_RX_S
     // as we can get other slots, we loop on the queue
     while (not_done) {
       notifiedFIFO_elt_t *res = pullNotifiedFIFO(L1_rx_out);
-      if (!res)
+      if (!res) {
+        OAI_PROFILE_STOP(OAI_PROFILE_EVENT_GNB_RU_RX_TTI_WAIT, gnb_ru_rx_tti_wait_start, frame_rx, slot_rx, idx, waited, 0, 0, 1);
         return false;
+      }
       processingData_L1_t *info = NotifiedFifoData(res);
       LOG_D(NR_PHY, "%d.%d Got access to RX slot %d.%d (%d)\n", frame_rx, slot_rx, info->frame_rx, info->slot_rx, idx);
       rx_tti_busy[info->slot_rx % RU_RX_SLOT_DEPTH] = false;
@@ -617,6 +654,7 @@ static bool wait_free_rx_tti(notifiedFIFO_t *L1_rx_out, bool rx_tti_busy[RU_RX_S
   }
   // set the tti to busy: the caller will process this slot now
   rx_tti_busy[idx] = true;
+  OAI_PROFILE_STOP(OAI_PROFILE_EVENT_GNB_RU_RX_TTI_WAIT, gnb_ru_rx_tti_wait_start, frame_rx, slot_rx, idx, waited, 0, 0, 0);
   return true;
 }
 
@@ -627,11 +665,13 @@ void *ru_thread(void *param)
   RU_proc_t          *proc    = &ru->proc;
   NR_DL_FRAME_PARMS  *fp      = ru->nr_frame_parms;
   PHY_VARS_gNB *gNB = RC.gNB[0]; // this RU main loop handes only one RU
+  oai_profiler_register_thread();
   int                ret;
   int                slot     = fp->slots_per_frame-1;
   int                frame    = 1023;
   char               threadname[40];
   int initial_wait = 0;
+  int64_t profile_absolute_slot = -1;
 
   bool rx_tti_busy[RU_RX_SLOT_DEPTH] = {false};
   // set default return value
@@ -729,6 +769,14 @@ void *ru_thread(void *param)
     } else {
       slot++;
     }
+    profile_absolute_slot++;
+    const oai_profile_context_t previous_profile_context = oai_profiler_get_context();
+    oai_profiler_set_context((oai_profile_context_t){
+        .absolute_slot = profile_absolute_slot,
+        .correlation_id = oai_profiler_next_correlation_id(),
+        .parent_id = 0,
+    });
+    OAI_PROFILE_START(gnb_ru_slot_loop_start);
 
     // pretend we have 1 iq sample per slot
     // and so slots_per_frame * 100 iq samples per second (1 frame being 10ms)
@@ -746,6 +794,16 @@ void *ru_thread(void *param)
         print_meas(&ru->rx_fhaul, "rx_fhaul", NULL, NULL);
         reset_meas(&ru->rx_fhaul);
       }
+      OAI_PROFILE_STOP(OAI_PROFILE_EVENT_GNB_RU_SLOT_LOOP,
+                       gnb_ru_slot_loop_start,
+                       frame,
+                       slot,
+                       proc->frame_tx,
+                       proc->tti_tx,
+                       -1,
+                       proc->timestamp_tx,
+                       1);
+      oai_profiler_leave_work(previous_profile_context);
       continue;
     }
     if (proc->frame_rx>=300)  {
@@ -778,10 +836,31 @@ void *ru_thread(void *param)
     // do RX front-end processing (frequency-shift, dft) if needed
     int slot_type = nr_slot_select(&ru->config, proc->frame_rx, proc->tti_rx);
     if (slot_type == NR_UPLINK_SLOT || slot_type == NR_MIXED_SLOT) {
-      if (!wait_free_rx_tti(&gNB->L1_rx_out, rx_tti_busy, proc->frame_rx, proc->tti_rx))
+      if (!wait_free_rx_tti(&gNB->L1_rx_out, rx_tti_busy, proc->frame_rx, proc->tti_rx)) {
+        OAI_PROFILE_STOP(OAI_PROFILE_EVENT_GNB_RU_SLOT_LOOP,
+                         gnb_ru_slot_loop_start,
+                         proc->frame_rx,
+                         proc->tti_rx,
+                         proc->frame_tx,
+                         proc->tti_tx,
+                         slot_type,
+                         proc->timestamp_tx,
+                         2);
+        oai_profiler_leave_work(previous_profile_context);
         break; // nothing to wait for: we have to stop
+      }
       if (ru->feprx) {
+        OAI_PROFILE_START(gnb_ru_rx_frontend_start);
         ru->feprx(ru,proc->tti_rx);
+        OAI_PROFILE_STOP(OAI_PROFILE_EVENT_GNB_RU_RX_FRONTEND,
+                         gnb_ru_rx_frontend_start,
+                         proc->frame_rx,
+                         proc->tti_rx,
+                         ru->nb_rx,
+                         fp->ofdm_symbol_size,
+                         fp->symbols_per_slot,
+                         RU_RX_SLOT_DEPTH,
+                         1);
         LOG_D(NR_PHY, "Setting %d.%d (%d) to busy\n", proc->frame_rx, proc->tti_rx, proc->tti_rx % RU_RX_SLOT_DEPTH);
         //LOG_M("rxdata.m","rxs",ru->common.rxdata[0],1228800,1,1);
         LOG_D(PHY,"RU proc: frame_rx = %d, tti_rx = %d\n", proc->frame_rx, proc->tti_rx);
@@ -798,7 +877,17 @@ void *ru_thread(void *param)
         prach_item_t p;
         while (get_next_nr_prach(&gNB->prach_ru_queue, &now, &p)) {
           // need to extract RACH data for later processing by rx_nr_prach()
+          OAI_PROFILE_START(gnb_ru_prach_frontend_start);
           rx_nr_prach_ru(&p, ru->common.rxdata, ru->nr_frame_parms, ru->N_TA_offset, gNB->enable_analog_das);
+          OAI_PROFILE_STOP(OAI_PROFILE_EVENT_GNB_RU_PRACH_FRONTEND,
+                           gnb_ru_prach_frontend_start,
+                           proc->frame_rx,
+                           proc->tti_rx,
+                           p.pdu.num_ra,
+                           p.msg1_frequencystart,
+                           p.pdu.prach_start_symbol,
+                           p.prach_sequence_length,
+                           0);
           bool success = spsc_q_put(&gNB->prach_l1rx_queue, &p, sizeof(p));
           // assume prach_l1rx_queue never full: prach_ru_queue filled at
           // constant pace, but prach_l1rx_queue emptied as fast as possible,
@@ -816,8 +905,20 @@ void *ru_thread(void *param)
                                          .slot = proc->tti_tx,
                                          .frame_rx = proc->frame_rx,
                                          .slot_rx = proc->tti_rx,
-                                         .timestamp_tx = proc->timestamp_tx};
+                                         .timestamp_tx = proc->timestamp_tx,
+                                         .profile_rx_absolute_slot = profile_absolute_slot,
+                                         .profile_work = oai_profiler_capture_work(profile_absolute_slot + ru->sl_ahead)};
     pushNotifiedFIFO(&gNB->L1_tx_out, resTx);
+    OAI_PROFILE_STOP(OAI_PROFILE_EVENT_GNB_RU_SLOT_LOOP,
+                     gnb_ru_slot_loop_start,
+                     proc->frame_rx,
+                     proc->tti_rx,
+                     proc->frame_tx,
+                     proc->tti_tx,
+                     slot_type,
+                     proc->timestamp_tx,
+                     0);
+    oai_profiler_leave_work(previous_profile_context);
   }
 
   ru_thread_status = 0;
@@ -1193,4 +1294,3 @@ static void NRRCconfig_RU(configmodule_interface_t *cfg)
   } // j=0..num_rus
   return;
 }
-

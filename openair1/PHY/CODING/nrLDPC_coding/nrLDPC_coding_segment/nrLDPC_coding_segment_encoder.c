@@ -13,6 +13,7 @@
 #include "PHY/CODING/nrLDPC_extern.h"
 #include "common/utils/LOG/log.h"
 #include "common/utils/nr/nr_common.h"
+#include "common/utils/oai_profiler.h"
 #include <openair2/UTIL/OPT/opt.h>
 
 #include <syscall.h>
@@ -189,6 +190,9 @@ static void write_task_output(uint8_t *f,
 typedef struct ldpc8blocks_args_s {
   nrLDPC_TB_encoding_parameters_t *nrLDPC_TB_encoding_parameters;
   encoder_implemparams_t impp;
+  int frame;
+  int slot;
+  int tb_index;
   uint8_t *f;
   uint8_t *f2;
 } ldpc8blocks_args_t;
@@ -196,6 +200,7 @@ typedef struct ldpc8blocks_args_s {
 static void ldpc8blocks(void *p)
 {
   ldpc8blocks_args_t *args = (ldpc8blocks_args_t *)p;
+  OAI_PROFILE_START(ldpc_encoder_task_start);
   nrLDPC_TB_encoding_parameters_t *nrLDPC_TB_encoding_parameters = args->nrLDPC_TB_encoding_parameters;
   encoder_implemparams_t *impp = &args->impp;
 
@@ -217,9 +222,19 @@ static void ldpc8blocks(void *p)
   macro_segment_end = (impp->n_segments > impp->first_seg + 8) ? impp->first_seg + 8 : impp->n_segments;
   for (int r = 0; r < nrLDPC_TB_encoding_parameters->C; r++)
     c[r] = nrLDPC_TB_encoding_parameters->segments[r].c;
+  OAI_PROFILE_START(ldpc_encoder_kernel_start);
   start_meas(&nrLDPC_TB_encoding_parameters->segments[impp->first_seg].ts_ldpc_encode);
   LDPCencoder(c, d, impp);
   stop_meas(&nrLDPC_TB_encoding_parameters->segments[impp->first_seg].ts_ldpc_encode);
+  OAI_PROFILE_STOP(OAI_PROFILE_EVENT_LDPC_ENCODER_KERNEL,
+                   ldpc_encoder_kernel_start,
+                   args->frame,
+                   args->slot,
+                   args->tb_index,
+                   macro_segment,
+                   macro_segment_end - macro_segment,
+                   impp->BG,
+                   0);
   // Compute where to place in output buffer that is concatenation of all segments
 
 #ifdef DEBUG_LDPC_ENCODING
@@ -277,6 +292,7 @@ static void ldpc8blocks(void *p)
   if (Eshift) {
     bzero(f2, ceil_mod(E2, 64));
   }
+  OAI_PROFILE_START(ldpc_encoder_rate_matching_start);
   start_meas(&nrLDPC_TB_encoding_parameters->segments[macro_segment].ts_rate_match);
   nr_rate_matching_ldpc(Tbslbrm,
                         impp->BG,
@@ -290,6 +306,15 @@ static void ldpc8blocks(void *p)
                         Emax);
 
   stop_meas(&nrLDPC_TB_encoding_parameters->segments[macro_segment].ts_rate_match);
+  OAI_PROFILE_STOP(OAI_PROFILE_EVENT_LDPC_ENCODER_RATE_MATCHING,
+                   ldpc_encoder_rate_matching_start,
+                   args->frame,
+                   args->slot,
+                   args->tb_index,
+                   macro_segment,
+                   Emax,
+                   nrLDPC_TB_encoding_parameters->rv_index,
+                   0);
   if (impp->K - impp->F - 2 * impp->Zc > E) {
     LOG_E(PHY,
           "dlsch coding A %d  Kr %d G %d (nb_rb %d, mod_order %d)\n",
@@ -313,6 +338,7 @@ static void ldpc8blocks(void *p)
           mod_order,
           nb_rb);
   }
+  OAI_PROFILE_START(ldpc_encoder_interleaving_start);
   start_meas(&nrLDPC_TB_encoding_parameters->segments[macro_segment].ts_interleave);
   nr_interleaving_ldpc(E,
                        mod_order,
@@ -324,7 +350,25 @@ static void ldpc8blocks(void *p)
                          e,
                          f2);
   stop_meas(&nrLDPC_TB_encoding_parameters->segments[macro_segment].ts_interleave);
+  OAI_PROFILE_STOP(OAI_PROFILE_EVENT_LDPC_ENCODER_INTERLEAVING,
+                   ldpc_encoder_interleaving_start,
+                   args->frame,
+                   args->slot,
+                   args->tb_index,
+                   macro_segment,
+                   E,
+                   E2,
+                   Eshift);
 
+  OAI_PROFILE_STOP(OAI_PROFILE_EVENT_LDPC_ENCODER_TASK,
+                   ldpc_encoder_task_start,
+                   args->frame,
+                   args->slot,
+                   args->tb_index,
+                   macro_segment,
+                   macro_segment_end - macro_segment,
+                   impp->n_segments,
+                   0);
   completed_task_ans(impp->ans);
 }
 
@@ -363,6 +407,9 @@ static int nrLDPC_launch_TB_encoding(nrLDPC_slot_encoding_parameters_t *nrLDPC_s
     perJobImpp->impp.first_seg = j * 8;
     perJobImpp->impp.ans = t_info->ans;
     perJobImpp->nrLDPC_TB_encoding_parameters = nrLDPC_TB_encoding_parameters;
+    perJobImpp->frame = nrLDPC_slot_encoding_parameters->frame;
+    perJobImpp->slot = nrLDPC_slot_encoding_parameters->slot;
+    perJobImpp->tb_index = dlsch_id;
     perJobImpp->f = f[j];
     perJobImpp->f2 = f2[j];
 
@@ -375,11 +422,13 @@ static int nrLDPC_launch_TB_encoding(nrLDPC_slot_encoding_parameters_t *nrLDPC_s
 int nrLDPC_coding_encoder(nrLDPC_slot_encoding_parameters_t *nrLDPC_slot_encoding_parameters)
 {
   int nbTasks = 0;
+  int totalSegments = 0;
 
   uint32_t Emax = 0;
   for (int dlsch_id = 0; dlsch_id < nrLDPC_slot_encoding_parameters->nb_TBs; dlsch_id++) {
     // Compute number of tasks to encode TB
     nrLDPC_TB_encoding_parameters_t *nrLDPC_TB_encoding_parameters = &nrLDPC_slot_encoding_parameters->TBs[dlsch_id];
+    totalSegments += nrLDPC_TB_encoding_parameters->C;
     size_t n_seg = (nrLDPC_TB_encoding_parameters->C / 8 + ((nrLDPC_TB_encoding_parameters->C & 7) == 0 ? 0 : 1));
     nbTasks += n_seg;
 
@@ -400,6 +449,7 @@ int nrLDPC_coding_encoder(nrLDPC_slot_encoding_parameters_t *nrLDPC_slot_encodin
   init_task_ans(&ans, nbTasks);
   thread_info_tm_t t_info = {.buf = (uint8_t *)arr, .len = 0, .cap = nbTasks, .ans = &ans};
 
+  OAI_PROFILE_START(ldpc_encoder_dispatch_join_start);
   int nbEncode = 0;
   nbTasks = 0;
   for (int dlsch_id = 0; dlsch_id < nrLDPC_slot_encoding_parameters->nb_TBs; dlsch_id++) {
@@ -424,8 +474,18 @@ int nrLDPC_coding_encoder(nrLDPC_slot_encoding_parameters_t *nrLDPC_slot_encodin
   }
   // Execute thread pool tasks
   join_task_ans(&ans);
+  OAI_PROFILE_STOP(OAI_PROFILE_EVENT_LDPC_ENCODER_DISPATCH_JOIN,
+                   ldpc_encoder_dispatch_join_start,
+                   nrLDPC_slot_encoding_parameters->frame,
+                   nrLDPC_slot_encoding_parameters->slot,
+                   nrLDPC_slot_encoding_parameters->nb_TBs,
+                   nbTasks,
+                   totalSegments,
+                   Emax,
+                   0);
 
   // Write output
+  OAI_PROFILE_START(ldpc_encoder_concatenation_start);
   time_stats_t *tconcat = nrLDPC_slot_encoding_parameters->tconcat;
   if (tconcat != NULL)
     start_meas(tconcat);
@@ -469,6 +529,15 @@ int nrLDPC_coding_encoder(nrLDPC_slot_encoding_parameters_t *nrLDPC_slot_encodin
   }
   if (tconcat != NULL)
     stop_meas(tconcat);
+  OAI_PROFILE_STOP(OAI_PROFILE_EVENT_LDPC_ENCODER_CONCATENATION,
+                   ldpc_encoder_concatenation_start,
+                   nrLDPC_slot_encoding_parameters->frame,
+                   nrLDPC_slot_encoding_parameters->slot,
+                   nrLDPC_slot_encoding_parameters->nb_TBs,
+                   nbTasks,
+                   totalSegments,
+                   Emax,
+                   0);
 
   return 0;
 }

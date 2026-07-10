@@ -25,6 +25,7 @@
 #include "openair1/PHY/NR_UE_ESTIMATION/nr_estimation.h"
 #include <openair1/PHY/impl_defs_nr.h>
 #include <common/utils/nr/nr_common.h>
+#include "common/utils/oai_profiler.h"
 #include "SCHED_NR_UE/defs.h"
 #include "SCHED_NR_UE/harq_nr.h"
 
@@ -158,6 +159,7 @@ void pucch_procedures_ue_nr(PHY_VARS_NR_UE *ue,
 
       LOG_D(PHY,"Generation of PUCCH format %d at frame.slot %d.%d\n",pucch_pdu->format_type,proc->frame_tx,nr_slot_tx);
 
+      OAI_PROFILE_START(ue_tx_pucch_start);
       switch(pucch_pdu->format_type) {
         case 0:
           nr_generate_pucch0(txdataF, &ue->frame_parms, tx_amp, nr_slot_tx, pucch_pdu);
@@ -173,6 +175,15 @@ void pucch_procedures_ue_nr(PHY_VARS_NR_UE *ue,
           nr_generate_pucch3_4(txdataF, &ue->frame_parms, tx_amp, nr_slot_tx, pucch_pdu);
           break;
       }
+      OAI_PROFILE_STOP(OAI_PROFILE_EVENT_UE_TX_PUCCH,
+                       ue_tx_pucch_start,
+                       proc->frame_tx,
+                       nr_slot_tx,
+                       pucch_pdu->format_type,
+                       pucch_pdu->prb_size,
+                       pucch_pdu->nr_of_symbols,
+                       pucch_pdu->n_bit,
+                       0);
     }
     pucch_vars->active[i] = false;
   }

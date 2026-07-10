@@ -92,6 +92,7 @@ static void tx_func(processingData_L1tx_t *info)
   syncMsg->frame_rx = frame_rx;
   syncMsg->slot_rx = slot_rx;
   syncMsg->timestamp_tx = info->timestamp_tx;
+  syncMsg->profile_work = oai_profiler_capture_work(info->profile_rx_absolute_slot);
   res->key = slot_rx;
   pushNotifiedFIFO(&gNB->resp_L1, res);
   OAI_PROFILE_STOP(OAI_PROFILE_EVENT_GNB_RX_TRIGGER,
@@ -137,11 +138,22 @@ void *L1_rx_thread(void *arg)
      if (res == NULL)
        break;
      processingData_L1_t *info = (processingData_L1_t *)NotifiedFifoData(res);
+     const oai_profile_context_t previous_profile_context = oai_profiler_enter_work(info->profile_work);
+     oai_profiler_record_duration(OAI_PROFILE_EVENT_GNB_L1_RX_DISPATCH_TO_START,
+                                  info->profile_work.dispatch_tick,
+                                  info->frame_rx,
+                                  info->slot_rx,
+                                  info->timestamp_tx,
+                                  0,
+                                  0,
+                                  0,
+                                  0);
      start_meas(&gNB->l1_rx_proc);
      OAI_PROFILE_START(gnb_l1_rx_start);
      rx_func(info);
      OAI_PROFILE_STOP(OAI_PROFILE_EVENT_GNB_L1_RX_JOB, gnb_l1_rx_start, info->frame_rx, info->slot_rx, 0, 0, 0, 0, 0);
      stop_meas(&gNB->l1_rx_proc);
+     oai_profiler_leave_work(previous_profile_context);
      delNotifiedFIFO_elt(res);
   }
   return NULL;
@@ -156,6 +168,16 @@ void *L1_tx_thread(void *arg) {
      if (res == NULL) // stopping condition, happens only when queue is freed
        break;
      processingData_L1tx_t *info = (processingData_L1tx_t *)NotifiedFifoData(res);
+     const oai_profile_context_t previous_profile_context = oai_profiler_enter_work(info->profile_work);
+     oai_profiler_record_duration(OAI_PROFILE_EVENT_GNB_L1_TX_DISPATCH_TO_START,
+                                  info->profile_work.dispatch_tick,
+                                  info->frame,
+                                  info->slot,
+                                  info->frame_rx,
+                                  info->slot_rx,
+                                  info->timestamp_tx,
+                                  0,
+                                  0);
      start_meas(&gNB->l1_tx_proc);
      OAI_PROFILE_START(gnb_l1_tx_start);
      tx_func(info);
@@ -169,6 +191,7 @@ void *L1_tx_thread(void *arg) {
                       0,
                       0);
      stop_meas(&gNB->l1_tx_proc);
+     oai_profiler_leave_work(previous_profile_context);
      delNotifiedFIFO_elt(res);
   }
   return NULL;
@@ -200,7 +223,18 @@ static void rx_func(processingData_L1_t *info)
     OAI_PROFILE_START(gnb_prach_queue_start);
     while (spsc_q_get(&gNB->prach_l1rx_queue, &p, sizeof(p))) {
       prach_queue_items++;
+      const int rapid_pdus_before = UL_INFO.rach_ind.number_of_pdus;
+      OAI_PROFILE_START(gnb_rx_prach_detection_start);
       L1_nr_prach_procedures(gNB, &p, &UL_INFO.rach_ind);
+      OAI_PROFILE_STOP(OAI_PROFILE_EVENT_GNB_RX_PRACH_DETECTION,
+                       gnb_rx_prach_detection_start,
+                       p.frame,
+                       p.slot,
+                       prach_queue_items - 1,
+                       rapid_pdus_before,
+                       UL_INFO.rach_ind.number_of_pdus,
+                       p.ant_start,
+                       0);
     }
     OAI_PROFILE_STOP(OAI_PROFILE_EVENT_GNB_PRACH_QUEUE_DRAIN,
                      gnb_prach_queue_start,

@@ -402,6 +402,16 @@ void processSlotTX(void *arg)
   oai_profiler_register_thread();
   nr_rxtx_thread_data_t *rxtxD = arg;
   const UE_nr_rxtx_proc_t *proc = &rxtxD->proc;
+  const oai_profile_context_t previous_profile_context = oai_profiler_enter_work(rxtxD->profile_work);
+  oai_profiler_record_duration(OAI_PROFILE_EVENT_UE_TX_DISPATCH_TO_START,
+                               rxtxD->profile_work.dispatch_tick,
+                               proc->frame_tx,
+                               proc->nr_slot_tx,
+                               get_nrUE_params()->num_ul_actors,
+                               proc->tx_slot_type,
+                               rxtxD->writeBlockSize,
+                               rxtxD->absolute_deadline_us,
+                               0);
   OAI_PROFILE_START(ue_tx_slot_start);
   PHY_VARS_NR_UE *UE = rxtxD->UE;
   nr_phy_data_tx_t phy_data = {0};
@@ -538,6 +548,7 @@ void processSlotTX(void *arg)
                    rxtxD->writeBlockSize,
                    proc->tx_slot_type,
                    0);
+  oai_profiler_leave_work(previous_profile_context);
   TracyCZoneEnd(ctx);
 }
 
@@ -636,8 +647,19 @@ static int UE_dl_preprocessing(PHY_VARS_NR_UE *UE,
     delNotifiedFIFO_elt(elt);
   } while (true);
 
-  if (UE->if_inst)
+  if (UE->if_inst) {
+    OAI_PROFILE_START(ue_mac_slot_indication_start);
     UE->if_inst->slot_indication(UE->Mod_id, false);
+    OAI_PROFILE_STOP(OAI_PROFILE_EVENT_UE_MAC_SLOT_INDICATION,
+                     ue_mac_slot_indication_start,
+                     proc->frame_rx,
+                     proc->nr_slot_rx,
+                     UE->Mod_id,
+                     proc->rx_slot_type,
+                     proc->tx_slot_type,
+                     0,
+                     1);
+  }
 
   bool dl_slot = false;
   if (proc->rx_slot_type == NR_DOWNLINK_SLOT || proc->rx_slot_type == NR_MIXED_SLOT) {
@@ -652,11 +674,41 @@ static int UE_dl_preprocessing(PHY_VARS_NR_UE *UE,
           .slot = proc->nr_slot_rx,
           .phy_data = phy_data,
       };
+      OAI_PROFILE_START(ue_mac_dl_indication_start);
       UE->if_inst->dl_indication(&dl_indication);
+      OAI_PROFILE_STOP(OAI_PROFILE_EVENT_UE_MAC_DL_INDICATION,
+                       ue_mac_dl_indication_start,
+                       proc->frame_rx,
+                       proc->nr_slot_rx,
+                       UE->Mod_id,
+                       phy_data->phy_pdcch_config.nb_search_space,
+                       phy_data->n_dlsch_codewords,
+                       0,
+                       1);
     }
 
+    OAI_PROFILE_START(ue_dl_pbch_start);
     sampleShift = pbch_processing(UE, proc, phy_data);
+    OAI_PROFILE_STOP(OAI_PROFILE_EVENT_UE_DL_PBCH,
+                     ue_dl_pbch_start,
+                     proc->frame_rx,
+                     proc->nr_slot_rx,
+                     sampleShift,
+                     fp->ssb_index,
+                     fp->symbols_per_slot,
+                     fp->nb_antennas_rx,
+                     0);
+    OAI_PROFILE_START(ue_dl_pdcch_start);
     pdcch_processing(UE, proc, phy_data);
+    OAI_PROFILE_STOP(OAI_PROFILE_EVENT_UE_DL_PDCCH,
+                     ue_dl_pdcch_start,
+                     proc->frame_rx,
+                     proc->nr_slot_rx,
+                     phy_data->phy_pdcch_config.nb_search_space,
+                     fp->nb_antennas_rx,
+                     fp->ofdm_symbol_size,
+                     0,
+                     0);
     if (phy_data->dlsch[0].active
         && (phy_data->dlsch[0].rnti_type == TYPE_C_RNTI_ || phy_data->dlsch[0].rnti_type == TYPE_RA_RNTI_)) {
       // indicate to tx thread to wait for DLSCH decoding
@@ -709,6 +761,16 @@ void UE_dl_processing(void *arg) {
   UE_nr_rxtx_proc_t *proc = &rxtxD->proc;
   PHY_VARS_NR_UE    *UE   = rxtxD->UE;
   nr_phy_data_t *phy_data = &rxtxD->phy_data;
+  const oai_profile_context_t previous_profile_context = oai_profiler_enter_work(rxtxD->profile_work);
+  oai_profiler_record_duration(OAI_PROFILE_EVENT_UE_DL_DISPATCH_TO_START,
+                               rxtxD->profile_work.dispatch_tick,
+                               proc->frame_rx,
+                               proc->nr_slot_rx,
+                               get_nrUE_params()->num_dl_actors,
+                               proc->rx_slot_type,
+                               proc->frame_tx,
+                               proc->nr_slot_tx,
+                               0);
 
   OAI_PROFILE_START(ue_dl_processing_start);
   if (!UE->sl_mode)
@@ -723,6 +785,7 @@ void UE_dl_processing(void *arg) {
                    UE->sl_mode,
                    0);
 
+  oai_profiler_leave_work(previous_profile_context);
   TracyCZoneEnd(ctx);
 }
 
@@ -1032,6 +1095,12 @@ void *UE_thread(void *arg)
     // start of normal case, the UE is in sync
     absolute_slot++;
     TracyCFrameMark;
+    const oai_profile_context_t previous_profile_context = oai_profiler_get_context();
+    oai_profiler_set_context((oai_profile_context_t){
+        .absolute_slot = absolute_slot,
+        .correlation_id = oai_profiler_next_correlation_id(),
+        .parent_id = 0,
+    });
     OAI_PROFILE_START(ue_slot_loop_start);
 
     // pretend we have 1 iq sample per slot
@@ -1196,6 +1265,7 @@ void *UE_thread(void *arg)
     if (ret != INT_MAX)
       shiftForNextFrame = ret;
     OAI_PROFILE_START(ue_dl_actor_dispatch_start);
+    curMsgRx->profile_work = oai_profiler_capture_work(absolute_slot);
     if (get_nrUE_params()->num_dl_actors > 0) {
       pushNotifiedFIFO(&UE->dl_actors[curMsg.proc.nr_slot_rx % get_nrUE_params()->num_dl_actors].fifo, newRx);
     } else {
@@ -1243,6 +1313,7 @@ void *UE_thread(void *arg)
     curMsgTx->proc.timestamp_tx = writeTimestamp;
     curMsgTx->UE = UE;
     curMsgTx->absolute_deadline_us = absolute_deadline_us;
+    curMsgTx->profile_work = oai_profiler_capture_work(absolute_slot + duration_rx_to_tx);
 
     int slot = curMsgTx->proc.nr_slot_tx;
     int slot_and_frame = slot + curMsgTx->proc.frame_tx * nb_slot_frame;
@@ -1276,6 +1347,7 @@ void *UE_thread(void *arg)
                      writeBlockSize,
                      timing_advance,
                      0);
+    oai_profiler_leave_work(previous_profile_context);
   }
   LOG_W(NR_PHY, "UE main thread is ending\n");
   return NULL;

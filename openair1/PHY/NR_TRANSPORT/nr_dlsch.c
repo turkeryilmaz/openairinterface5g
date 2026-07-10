@@ -13,6 +13,7 @@
 #include "PHY/NR_REFSIG/dmrs_nr.h"
 #include "PHY/NR_REFSIG/ptrs_nr.h"
 #include "common/utils/nr/nr_common.h"
+#include "common/utils/oai_profiler.h"
 #include "PHY/NR_TRANSPORT/nr_transport_common_proto.h"
 #include "executables/softmodem-common.h"
 #include "SCHED_NR/sched_nr.h"
@@ -492,6 +493,7 @@ typedef struct pdschSymbolProc_s {
   NR_DL_FRAME_PARMS *frame_parms;
   const nfapi_nr_dl_tti_pdsch_pdu_rel15_t *rel15;
   freq_alloc_bitmap_t *freq_alloc;
+  int frame;
   unsigned int slot;
   unsigned int startSymbol;
   unsigned int numSymbols;
@@ -525,8 +527,10 @@ static void nr_pdsch_symbol_processing(void *arg)
   const int symbol_sz = frame_parms->ofdm_symbol_size;
 
   c16_t **txdataF = gNB->common_vars.txdataF;
+  OAI_PROFILE_START(gnb_pdsch_symbol_task_start);
 
   for (int l_symbol = rdata->startSymbol; l_symbol < rdata->startSymbol + rdata->numSymbols; l_symbol++) {
+    OAI_PROFILE_START(gnb_pdsch_resource_mapping_start);
     start_meas(&rdata->dlsch_resource_mapping_stats);
     int l_prime = 0; // single symbol layer 0
     int l_overline = get_l0(rel15->dlDmrsSymbPos);
@@ -576,7 +580,17 @@ static void nr_pdsch_symbol_processing(void *arg)
                   mod_dmrs + dmrs_idx);
     } // layer loop
     stop_meas(&rdata->dlsch_resource_mapping_stats);
+    OAI_PROFILE_STOP(OAI_PROFILE_EVENT_GNB_PDSCH_RESOURCE_MAPPING,
+                     gnb_pdsch_resource_mapping_start,
+                     rdata->frame,
+                     slot,
+                     l_symbol,
+                     freq_alloc->num_rbs,
+                     rel15->nrOfLayers,
+                     (rel15->dlDmrsSymbPos >> l_symbol) & 1,
+                     is_ptrs_symbol(l_symbol, rdata->dlPtrsSymPos));
 
+    OAI_PROFILE_START(gnb_pdsch_precoding_start);
     start_meas(&rdata->dlsch_precoding_stats);
     const size_t txdataF_offset_per_symbol = l_symbol * symbol_sz;
     const uint16_t num_log_ports =
@@ -598,12 +612,30 @@ static void nr_pdsch_symbol_processing(void *arg)
       }
     }
     stop_meas(&rdata->dlsch_precoding_stats);
+    OAI_PROFILE_STOP(OAI_PROFILE_EVENT_GNB_PDSCH_PRECODING,
+                     gnb_pdsch_precoding_start,
+                     rdata->frame,
+                     slot,
+                     l_symbol,
+                     freq_alloc->num_rbs,
+                     rel15->nrOfLayers,
+                     num_log_ports,
+                     0);
   }
+  OAI_PROFILE_STOP(OAI_PROFILE_EVENT_GNB_PDSCH_SYMBOL_TASK,
+                   gnb_pdsch_symbol_task_start,
+                   rdata->frame,
+                   slot,
+                   rdata->startSymbol,
+                   rdata->numSymbols,
+                   freq_alloc->num_rbs,
+                   rel15->nrOfLayers,
+                   0);
   // Task running in // completed
   completed_task_ans(rdata->ans);
 }
 
-static int do_one_dlsch(unsigned char *input_ptr, PHY_VARS_gNB *gNB, NR_gNB_DLSCH_t *dlsch, int slot)
+static int do_one_dlsch(unsigned char *input_ptr, PHY_VARS_gNB *gNB, NR_gNB_DLSCH_t *dlsch, int frame, int slot)
 {
   NR_DL_FRAME_PARMS *frame_parms = &gNB->frame_parms;
 
@@ -655,6 +687,7 @@ static int do_one_dlsch(unsigned char *input_ptr, PHY_VARS_gNB *gNB, NR_gNB_DLSC
   c16_t mod_symbs[rel15->NrOfCodewords][encoded_length] __attribute__((aligned(64)));
   for (int codeWord = 0; codeWord < rel15->NrOfCodewords; codeWord++) {
     /// scrambling
+    OAI_PROFILE_START(gnb_pdsch_scrambling_start);
     start_meas(dlsch_scrambling_stats);
     uint32_t scrambled_output[(encoded_length >> 5) + 4]; // modulator acces by 4 bytes in some cases
     memset(scrambled_output, 0, sizeof(scrambled_output));
@@ -670,10 +703,29 @@ static int do_one_dlsch(unsigned char *input_ptr, PHY_VARS_gNB *gNB, NR_gNB_DLSC
 #endif
 
     stop_meas(dlsch_scrambling_stats);
+    OAI_PROFILE_STOP(OAI_PROFILE_EVENT_GNB_PDSCH_SCRAMBLING,
+                     gnb_pdsch_scrambling_start,
+                     frame,
+                     slot,
+                     codeWord,
+                     encoded_length,
+                     rel15->rnti,
+                     rel15->dataScramblingId,
+                     0);
     /// Modulation
+    OAI_PROFILE_START(gnb_pdsch_modulation_start);
     start_meas(dlsch_modulation_stats);
     nr_modulation(scrambled_output, encoded_length, Qm, (int16_t *)mod_symbs[codeWord]);
     stop_meas(dlsch_modulation_stats);
+    OAI_PROFILE_STOP(OAI_PROFILE_EVENT_GNB_PDSCH_MODULATION,
+                     gnb_pdsch_modulation_start,
+                     frame,
+                     slot,
+                     codeWord,
+                     encoded_length,
+                     Qm,
+                     encoded_length / Qm,
+                     0);
 #ifdef DEBUG_DLSCH
     printf("PDSCH Modulation: Qm %d(%d)\n", Qm, nb_re);
     for (int i = 0; i < nb_re; i += 8) {
@@ -692,6 +744,7 @@ static int do_one_dlsch(unsigned char *input_ptr, PHY_VARS_gNB *gNB, NR_gNB_DLSC
   AssertFatal(n_dmrs, "n_dmrs can't be 0\n");
   // make a large enough tail to process all re with SIMD regardless a garbadge filler
 
+  OAI_PROFILE_START(gnb_pdsch_layer_mapping_start);
   start_meas(&gNB->dlsch_layer_mapping_stats);
   int layerSz2 = (layerSz + 63) & ~63;
   c16_t tx_layers[rel15->nrOfLayers][layerSz2] __attribute__((aligned(64)));
@@ -726,9 +779,19 @@ static int do_one_dlsch(unsigned char *input_ptr, PHY_VARS_gNB *gNB, NR_gNB_DLSC
                           gNB->common_vars.beam_id);
   }
   stop_meas(&gNB->dlsch_layer_mapping_stats);
+  OAI_PROFILE_STOP(OAI_PROFILE_EVENT_GNB_PDSCH_LAYER_MAPPING,
+                   gnb_pdsch_layer_mapping_start,
+                   frame,
+                   slot,
+                   encoded_length,
+                   nb_re,
+                   rel15->nrOfLayers,
+                   freq_alloc->num_rbs,
+                   0);
 
   // spawn symbol threads
 
+  OAI_PROFILE_START(gnb_pdsch_symbol_processing_start);
   int nb_tasks = 1;
   int num_pdsch_symbols_per_task = rel15->NrOfSymbols;
   if (gNB->num_pdsch_symbols_per_thread > 0) {
@@ -754,6 +817,7 @@ static int do_one_dlsch(unsigned char *input_ptr, PHY_VARS_gNB *gNB, NR_gNB_DLSC
     rdata->frame_parms = frame_parms;
     rdata->freq_alloc = freq_alloc;
     rdata->rel15 = rel15;
+    rdata->frame = frame;
     rdata->slot = slot;
     rdata->startSymbol = l_symbol;
     res = rel15->NrOfSymbols - (l_symbol - rel15->StartSymbolIndex);
@@ -791,6 +855,15 @@ static int do_one_dlsch(unsigned char *input_ptr, PHY_VARS_gNB *gNB, NR_gNB_DLSC
     merge_meas(&gNB->dlsch_precoding_stats, &arr[i].dlsch_precoding_stats);
   }
   stop_meas(&gNB->dlsch_pdsch_generation_stats);
+  OAI_PROFILE_STOP(OAI_PROFILE_EVENT_GNB_PDSCH_SYMBOL_PROCESSING,
+                   gnb_pdsch_symbol_processing_start,
+                   frame,
+                   slot,
+                   nb_tasks,
+                   rel15->NrOfSymbols,
+                   num_pdsch_symbols_per_task,
+                   freq_alloc->num_rbs,
+                   gNB->num_pdsch_symbols_per_thread > 0);
   /* output and its parts for each dlsch should be aligned on 64 bytes (or 8 * 64 bits)
    * should remain a multiple of 8 * 64 with enough offset to fit each dlsch
    */
@@ -861,30 +934,40 @@ void nr_generate_pdsch(PHY_VARS_gNB *gNB, int n_dlsch, NR_gNB_DLSCH_t *dlsch_arr
   unsigned char output[size_output >> 3] __attribute__((aligned(64)));
   bzero(output, sizeof(output));
 
+  OAI_PROFILE_START(gnb_pdsch_encoding_start);
   start_meas(dlsch_encoding_stats);
-  if (nr_dlsch_encoding(gNB,
-                        n_dlsch,
-                        dlsch_array,
-                        frame,
-                        slot,
-                        output,
-                        tinput,
-                        tinput_memcpy,
-                        tprep,
-                        tparity,
-                        toutput,
-                        tconcat,
-                        dlsch_rate_matching_stats,
-                        dlsch_interleaving_stats,
-                        dlsch_segmentation_stats)
-      == -1) {
+  const int encoding_result = nr_dlsch_encoding(gNB,
+                                                n_dlsch,
+                                                dlsch_array,
+                                                frame,
+                                                slot,
+                                                output,
+                                                tinput,
+                                                tinput_memcpy,
+                                                tprep,
+                                                tparity,
+                                                toutput,
+                                                tconcat,
+                                                dlsch_rate_matching_stats,
+                                                dlsch_interleaving_stats,
+                                                dlsch_segmentation_stats);
+  OAI_PROFILE_STOP(OAI_PROFILE_EVENT_GNB_PDSCH_ENCODING,
+                   gnb_pdsch_encoding_start,
+                   frame,
+                   slot,
+                   n_dlsch,
+                   n_dlsch,
+                   size_output,
+                   size_output >> 3,
+                   encoding_result == -1);
+  if (encoding_result == -1) {
     return;
   }
   stop_meas(dlsch_encoding_stats);
 
   unsigned char *output_ptr = output;
   for (int i = 0; i < n_dlsch; i++) {
-    output_ptr += do_one_dlsch(output_ptr, gNB, &dlsch_array[i], slot);
+    output_ptr += do_one_dlsch(output_ptr, gNB, &dlsch_array[i], frame, slot);
   }
 }
 

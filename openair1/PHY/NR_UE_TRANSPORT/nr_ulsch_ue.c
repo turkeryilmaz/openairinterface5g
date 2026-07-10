@@ -14,6 +14,7 @@
 #include "PHY/MODULATION/nr_modulation.h"
 #include "PHY/MODULATION/modulation_common.h"
 #include "common/utils/assertions.h"
+#include "common/utils/oai_profiler.h"
 #include "common/utils/nr/nr_common.h"
 #include "PHY/NR_TRANSPORT/nr_transport_common_proto.h"
 #include "PHY/NR_TRANSPORT/nr_sch_dmrs.h"
@@ -1147,7 +1148,18 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
   /////////////////////////ULSCH coding/////////////////////////
 
   rate_match_info_uci_t rm_info = {0};
-  if(nr_ulsch_pre_encoding(UE, ulsch_ue, frame, slot, G, 1, ULSCH_ids) != 0) {
+  OAI_PROFILE_START(ue_ulsch_pre_encoding_start);
+  const int pre_encoding_result = nr_ulsch_pre_encoding(UE, ulsch_ue, frame, slot, G, 1, ULSCH_ids);
+  OAI_PROFILE_STOP(OAI_PROFILE_EVENT_UE_ULSCH_PRE_ENCODING,
+                   ue_ulsch_pre_encoding_start,
+                   frame,
+                   slot,
+                   harq_pid,
+                   G[pusch_id],
+                   tb_size,
+                   nb_rb,
+                   pre_encoding_result != 0);
+  if (pre_encoding_result != 0) {
     LOG_E(PHY, "Error pre-encoding\n");
     return;
   }
@@ -1157,7 +1169,18 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
     rm_info = calc_rate_match_info_uci(ulsch_ue, harq_process_ul_ue, &G[pusch_id]);
   }
 
-  if (nr_ulsch_encoding(UE, ulsch_ue, frame, slot, G, 1, ULSCH_ids) == -1) {
+  OAI_PROFILE_START(ue_ulsch_encoding_start);
+  const int encoding_result = nr_ulsch_encoding(UE, ulsch_ue, frame, slot, G, 1, ULSCH_ids);
+  OAI_PROFILE_STOP(OAI_PROFILE_EVENT_UE_ULSCH_ENCODING,
+                   ue_ulsch_encoding_start,
+                   frame,
+                   slot,
+                   harq_pid,
+                   G[pusch_id],
+                   tb_size,
+                   nb_rb,
+                   encoding_result == -1);
+  if (encoding_result == -1) {
     stop_meas_nr_ue_phy(UE, PUSCH_PROC_STATS);
     return;
   }
@@ -1171,9 +1194,21 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
   // b is the block of bits transmitted on the physical channel after payload coding
   uint64_t b_ack[16] = {0}; // limit to 1024-bit encoded length
 
+  oai_profile_span_t ue_ulsch_uci_start = {0};
+  if (uci_present)
+    ue_ulsch_uci_start = oai_profiler_span_start();
   if (pusch_pdu->pusch_uci.harq_ack_bit_length != 0) {
     if (pucch_pdu == NULL) {
       LOG_E(PHY, "nr_ue_ulsch_procedures: pucch_pdu is NULL but HARQ-ACK is present. Cannot proceed with UCI encoding.\n");
+      OAI_PROFILE_STOP(OAI_PROFILE_EVENT_UE_ULSCH_UCI,
+                       ue_ulsch_uci_start,
+                       frame,
+                       slot,
+                       pusch_pdu->pusch_uci.harq_ack_bit_length,
+                       pusch_pdu->pusch_uci.csi_payload.p1_bits,
+                       pusch_pdu->pusch_uci.csi_payload.p2_bits,
+                       G_initial_total_pusch_bits,
+                       1);
       stop_meas_nr_ue_phy(UE, PUSCH_PROC_STATS);
       return;
     }
@@ -1229,6 +1264,15 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
     stop_meas_nr_ue_phy(UE, UCI_ON_PUSCH_MAPPING);
     memcpy(harq_process_ul_ue->f, temp_codeword, (G_initial_total_pusch_bits + 7) / 8);
     uci_mapping_template = template_buffer;
+    OAI_PROFILE_STOP(OAI_PROFILE_EVENT_UE_ULSCH_UCI,
+                     ue_ulsch_uci_start,
+                     frame,
+                     slot,
+                     pusch_pdu->pusch_uci.harq_ack_bit_length,
+                     pusch_pdu->pusch_uci.csi_payload.p1_bits,
+                     pusch_pdu->pusch_uci.csi_payload.p2_bits,
+                     G_initial_total_pusch_bits,
+                     1);
   }
 
   uint16_t start_rb = pusch_pdu->rb_start;
@@ -1277,6 +1321,7 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
   uint32_t scrambled_output[scrambled_output_len_u32];
   memset(scrambled_output, 0, sizeof(scrambled_output));
 
+  OAI_PROFILE_START(ue_ulsch_scrambling_start);
   nr_pusch_codeword_scrambling(harq_process_ul_ue->f,
                                available_bits,
                                pusch_pdu->data_scrambling_id,
@@ -1284,6 +1329,15 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
                                rnti,
                                uci_mapping_template,
                                scrambled_output);
+  OAI_PROFILE_STOP(OAI_PROFILE_EVENT_UE_ULSCH_SCRAMBLING,
+                   ue_ulsch_scrambling_start,
+                   frame,
+                   slot,
+                   available_bits,
+                   rnti,
+                   pusch_pdu->data_scrambling_id,
+                   harq_pid,
+                   uci_present);
   if (UE->phy_sim_test_buf) {
     memcpy(UE->phy_sim_test_buf, scrambled_output, (available_bits + 7) / 8);
   }
@@ -1302,17 +1356,37 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
   int max_num_re = Nl * number_of_symbols * nb_rb * NR_NB_SC_PER_RB;
   c16_t d_mod[max_num_re] __attribute__((aligned(16)));
 
+  OAI_PROFILE_START(ue_ulsch_modulation_start);
   nr_modulation(scrambled_output, // assume one codeword for the moment
                 available_bits,
                 mod_order,
                 (int16_t *)d_mod);
+  OAI_PROFILE_STOP(OAI_PROFILE_EVENT_UE_ULSCH_MODULATION,
+                   ue_ulsch_modulation_start,
+                   frame,
+                   slot,
+                   available_bits,
+                   mod_order,
+                   Nl,
+                   max_num_re,
+                   0);
 
   /////////////////////////ULSCH layer mapping/////////////////////////
 
   const int sz = available_bits / mod_order / Nl;
   c16_t ulsch_mod[Nl][sz];
 
+  OAI_PROFILE_START(ue_ulsch_layer_mapping_start);
   nr_ue_layer_mapping(d_mod, Nl, sz, ulsch_mod);
+  OAI_PROFILE_STOP(OAI_PROFILE_EVENT_UE_ULSCH_LAYER_MAPPING,
+                   ue_ulsch_layer_mapping_start,
+                   frame,
+                   slot,
+                   sz,
+                   Nl,
+                   mod_order,
+                   available_bits,
+                   0);
 
   //////////////////////// ULSCH transform precoding ////////////////////////
 
@@ -1323,6 +1397,7 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
   memset(ulsch_mod_tp, 0, sizeof(ulsch_mod_tp));
 
   if (pusch_pdu->transform_precoding == transformPrecoder_enabled) {
+    OAI_PROFILE_START(ue_ulsch_transform_precoding_start);
     uint32_t nb_re_pusch = nb_rb * NR_NB_SC_PER_RB;
     uint32_t y_offset = 0;
     uint16_t num_dmrs_res_per_symbol = nb_rb * (NR_NB_SC_PER_RB / 2);
@@ -1376,6 +1451,15 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
     LOG_M("DEBUG_IDFT_SYMBOLS.m", "UE_Debug_IDFT", debug_symbols, number_of_symbols * nb_re_pusch, 1, 1);
     LOG_M("UE_DMRS_SEQ.m", "UE_DMRS_SEQ", dmrs_seq, nb_re_pusch, 1, 1);
 #endif
+    OAI_PROFILE_STOP(OAI_PROFILE_EVENT_UE_ULSCH_TRANSFORM_PRECODING,
+                     ue_ulsch_transform_precoding_start,
+                     frame,
+                     slot,
+                     nb_rb,
+                     number_of_symbols - number_dmrs_symbols,
+                     Nl,
+                     nb_re_pusch,
+                     1);
   }
 
   /////////////////////////ULSCH RE mapping/////////////////////////
@@ -1384,6 +1468,7 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
   c16_t tx_precoding[Nl][slot_sz];
   memset(tx_precoding, 0, sizeof(tx_precoding));
 
+  OAI_PROFILE_START(ue_ulsch_re_mapping_start);
   for (int nl = 0; nl < Nl; nl++) {
 #ifdef DEBUG_PUSCH_MAPPING
     printf("NR_ULSCH_UE: Value of CELL ID %d /t, u %d \n", frame_parms->Nid_cell, u);
@@ -1426,6 +1511,15 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
     map_symbols(params, slot, dmrs_seq, data, tx_precoding[nl]);
 
   } // for (nl=0; nl < Nl; nl++)
+  OAI_PROFILE_STOP(OAI_PROFILE_EVENT_UE_ULSCH_RE_MAPPING,
+                   ue_ulsch_re_mapping_start,
+                   frame,
+                   slot,
+                   nb_rb,
+                   number_of_symbols,
+                   Nl,
+                   number_dmrs_symbols,
+                   0);
 
   /////////////////////////ULSCH precoding/////////////////////////
 
@@ -1436,6 +1530,7 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
   //        pmi = prgs_list[rbidx/prg_size].pm_idx, rbidx =0,...,rbSize-1
 
   // The Precoding matrix:
+  OAI_PROFILE_START(ue_ulsch_precoding_start);
   for (int ap = 0; ap < frame_parms->nb_antennas_tx; ap++) {
     for (int l = start_symbol; l < start_symbol + number_of_symbols; l++) {
       uint16_t k = start_sc;
@@ -1511,6 +1606,15 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
       } // RB loop
     } // symbol loop
   } // port loop
+  OAI_PROFILE_STOP(OAI_PROFILE_EVENT_UE_ULSCH_PRECODING,
+                   ue_ulsch_precoding_start,
+                   frame,
+                   slot,
+                   nb_rb,
+                   number_of_symbols,
+                   Nl,
+                   frame_parms->nb_antennas_tx,
+                   0);
 
   stop_meas_nr_ue_phy(UE, PUSCH_PROC_STATS);
 }
@@ -1525,8 +1629,14 @@ void nr_tx_rotation_and_ofdm_mod(const uint8_t slot,
                                  bool no_phase_pre_comp)
 {
   int N_RB = (linktype == link_type_sl) ? frame_parms->N_RB_SL : frame_parms->N_RB_UL;
+  int used_symbols = 0;
+  if (oai_profiler_is_enabled()) {
+    for (int i = 0; i < frame_parms->symbols_per_slot; i++)
+      used_symbols += was_symbol_used[i];
+  }
 
   if (!no_phase_pre_comp) {
+    OAI_PROFILE_START(ue_tx_phase_rotation_start);
     for (int i = 0; i < frame_parms->symbols_per_slot; i++) {
       if (was_symbol_used[i] == false)
         continue;
@@ -1541,8 +1651,18 @@ void nr_tx_rotation_and_ofdm_mod(const uint8_t slot,
                              1);
       }
     }
+    OAI_PROFILE_STOP(OAI_PROFILE_EVENT_UE_TX_PHASE_ROTATION,
+                     ue_tx_phase_rotation_start,
+                     -1,
+                     slot,
+                     used_symbols,
+                     n_antenna_ports,
+                     N_RB,
+                     frame_parms->ofdm_symbol_size,
+                     0);
   }
 
+  OAI_PROFILE_START(ue_tx_ofdm_start);
   for (int ap = 0; ap < n_antenna_ports; ap++) {
     if (frame_parms->Ncp == 1) { // extended cyclic prefix
       for (int i = 0; i < frame_parms->symbols_per_slot; i++) {
@@ -1563,4 +1683,13 @@ void nr_tx_rotation_and_ofdm_mod(const uint8_t slot,
       nr_normal_prefix_mod(txdataF[ap], txdata[ap], frame_parms->symbols_per_slot, frame_parms, slot, was_symbol_used);
     }
   }
+  OAI_PROFILE_STOP(OAI_PROFILE_EVENT_UE_TX_OFDM,
+                   ue_tx_ofdm_start,
+                   -1,
+                   slot,
+                   used_symbols,
+                   n_antenna_ports,
+                   frame_parms->ofdm_symbol_size,
+                   frame_parms->Ncp,
+                   0);
 }

@@ -12,6 +12,7 @@
 #include "PHY/NR_ESTIMATION/nr_ul_estimation.h"
 #include "nfapi/open-nFAPI/nfapi/public_inc/nfapi_interface.h"
 #include "common/utils/LOG/log.h"
+#include "common/utils/oai_profiler.h"
 #include "PHY/INIT/nr_phy_init.h"
 #include "PHY/MODULATION/nr_modulation.h"
 #include "T.h"
@@ -236,9 +237,19 @@ void phy_procedures_gNB_TX(PHY_VARS_gNB *gNB,
     return;
 
   // clear the transmit data array and beam index for the current slot
+  OAI_PROFILE_START(gnb_tx_buffer_clear_start);
   for (int aa = 0; aa < fp->nb_antennas_tx; aa++) {
     memset(gNB->common_vars.txdataF[aa], 0, fp->samples_per_slot_wCP * sizeof(**gNB->common_vars.txdataF));
   }
+  OAI_PROFILE_STOP(OAI_PROFILE_EVENT_GNB_TX_BUFFER_CLEAR,
+                   gnb_tx_buffer_clear_start,
+                   frame,
+                   slot,
+                   fp->samples_per_slot_wCP,
+                   fp->nb_antennas_tx,
+                   fp->samples_per_slot_wCP * fp->nb_antennas_tx * sizeof(**gNB->common_vars.txdataF),
+                   DL_req->dl_tti_request_body.nPDUs,
+                   0);
 
   // Check for PRS slot - section 7.4.1.7.4 in 3GPP rel16 38.211
   for(int rsc_id = 0; rsc_id < gNB->prs_vars.NumPRSResources; rsc_id++)
@@ -250,27 +261,78 @@ void phy_procedures_gNB_TX(PHY_VARS_gNB *gNB,
       {
         int slot_prs = (slot - i * prs_config->PRSResourceTimeGap + fp->slots_per_frame) % fp->slots_per_frame;
         LOG_D(PHY,"gNB_TX: frame %d, slot %d, slot_prs %d, PRS Resource ID %d\n",frame, slot, slot_prs, rsc_id);
+        OAI_PROFILE_START(gnb_tx_prs_start);
         nr_generate_prs(slot_prs, gNB->common_vars.txdataF[0], AMP, prs_config, fp);
+        OAI_PROFILE_STOP(OAI_PROFILE_EVENT_GNB_TX_PRS,
+                         gnb_tx_prs_start,
+                         frame,
+                         slot,
+                         rsc_id,
+                         i,
+                         slot_prs,
+                         prs_config->PRSResourceRepetition,
+                         0);
       }
     }
   }
 
-  for (int i = 0; i < UL_dci_req->numPdus; ++i)
+  for (int i = 0; i < UL_dci_req->numPdus; ++i) {
+    OAI_PROFILE_START(gnb_tx_ul_pdcch_start);
     nr_generate_dci(gNB, &UL_dci_req->ul_dci_pdu_list[i].pdcch_pdu.pdcch_pdu_rel15, &gNB->frame_parms, slot);
+    OAI_PROFILE_STOP(OAI_PROFILE_EVENT_GNB_TX_PDCCH,
+                     gnb_tx_ul_pdcch_start,
+                     frame,
+                     slot,
+                     i,
+                     1,
+                     UL_dci_req->numPdus,
+                     DL_req->dl_tti_request_body.nPDUs,
+                     0);
+  }
 
   int num_pdsch = 0;
   for (int i = 0; i < DL_req->dl_tti_request_body.nPDUs; ++i) {
     const nfapi_nr_dl_tti_request_pdu_t *dl_tti_pdu = &DL_req->dl_tti_request_body.dl_tti_pdu_list[i];
     switch (dl_tti_pdu->PDUType) {
-      case NFAPI_NR_DL_TTI_SSB_PDU_TYPE:
+      case NFAPI_NR_DL_TTI_SSB_PDU_TYPE: {
+        OAI_PROFILE_START(gnb_tx_ssb_start);
         nr_common_signal_procedures(gNB, frame, slot, &dl_tti_pdu->ssb_pdu);
-        break;
-      case NFAPI_NR_DL_TTI_PDCCH_PDU_TYPE:
+        OAI_PROFILE_STOP(OAI_PROFILE_EVENT_GNB_TX_SSB,
+                         gnb_tx_ssb_start,
+                         frame,
+                         slot,
+                         i,
+                         DL_req->dl_tti_request_body.nPDUs,
+                         fp->nb_antennas_tx,
+                         fp->ofdm_symbol_size,
+                         0);
+      } break;
+      case NFAPI_NR_DL_TTI_PDCCH_PDU_TYPE: {
+        OAI_PROFILE_START(gnb_tx_dl_pdcch_start);
         nr_generate_dci(gNB, &dl_tti_pdu->pdcch_pdu.pdcch_pdu_rel15, &gNB->frame_parms, slot);
-        break;
-      case NFAPI_NR_DL_TTI_CSI_RS_PDU_TYPE:
+        OAI_PROFILE_STOP(OAI_PROFILE_EVENT_GNB_TX_PDCCH,
+                         gnb_tx_dl_pdcch_start,
+                         frame,
+                         slot,
+                         i,
+                         0,
+                         DL_req->dl_tti_request_body.nPDUs,
+                         DL_req->dl_tti_request_body.nPDUs,
+                         0);
+      } break;
+      case NFAPI_NR_DL_TTI_CSI_RS_PDU_TYPE: {
+        OAI_PROFILE_START(gnb_tx_csi_rs_start);
         nr_generate_csi_rs_gNB(gNB, slot, &dl_tti_pdu->csi_rs_pdu);
-        break;
+        OAI_PROFILE_STOP(OAI_PROFILE_EVENT_GNB_TX_CSI_RS,
+                         gnb_tx_csi_rs_start,
+                         frame,
+                         slot,
+                         i,
+                         DL_req->dl_tti_request_body.nPDUs,
+                         fp->nb_antennas_tx,
+                         fp->ofdm_symbol_size,
+                         0);
+      } break;
       case NFAPI_NR_DL_TTI_PDSCH_PDU_TYPE: {
         int tx_data_idx = dl_tti_pdu->pdsch_pdu.pdsch_pdu_rel15.pduIndex;
         if (tx_data_idx < TX_req->Number_of_PDUs && TX_req->pdu_list[tx_data_idx].PDU_index == tx_data_idx) {
@@ -294,10 +356,21 @@ void phy_procedures_gNB_TX(PHY_VARS_gNB *gNB,
  
   if (num_pdsch > 0) {
     LOG_D(PHY, "PDSCH generation started (%d) in frame %d.%d\n", num_pdsch, frame, slot);
+    OAI_PROFILE_START(gnb_tx_pdsch_start);
     nr_generate_pdsch(gNB, num_pdsch, gNB->dlsch, frame, slot);
+    OAI_PROFILE_STOP(OAI_PROFILE_EVENT_GNB_TX_PDSCH,
+                     gnb_tx_pdsch_start,
+                     frame,
+                     slot,
+                     num_pdsch,
+                     TX_req->Number_of_PDUs,
+                     fp->nb_antennas_tx,
+                     fp->ofdm_symbol_size,
+                     0);
   }
 
   //apply the OFDM symbol rotation here
+  OAI_PROFILE_START(gnb_tx_phase_rotation_start);
   start_meas(&gNB->phase_comp_stats);
   for (int aa = 0; aa < fp->nb_antennas_tx; aa++) {
     if (gNB->phase_comp) {
@@ -318,6 +391,15 @@ void phy_procedures_gNB_TX(PHY_VARS_gNB *gNB,
       T_BUFFER(gNB->common_vars.txdataF[aa], fp->samples_per_slot_wCP * sizeof(int32_t)));
   }
   stop_meas(&gNB->phase_comp_stats);
+  OAI_PROFILE_STOP(OAI_PROFILE_EVENT_GNB_TX_PHASE_ROTATION,
+                   gnb_tx_phase_rotation_start,
+                   frame,
+                   slot,
+                   fp->nb_antennas_tx,
+                   fp->samples_per_slot_wCP,
+                   fp->N_RB_DL,
+                   fp->Ncp == NR_EXTENDED ? 12 : 14,
+                   gNB->phase_comp);
 }
 
 static int nr_ulsch_procedures(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx, int *ulsch_to_decode, int nb_pusch, NR_UL_IND_t *UL_INFO)
@@ -329,7 +411,19 @@ static int nr_ulsch_procedures(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx, int
   //--------------------- ULSCH decoding ---------------------
   //----------------------------------------------------------
 
+  const int crc_before = UL_INFO->crc_ind.number_crcs;
+  const int rx_pdus_before = UL_INFO->rx_ind.number_of_pdus;
+  OAI_PROFILE_START(gnb_rx_ulsch_decoding_start);
   int ret_nr_ulsch_decoding = nr_ulsch_decoding(gNB, frame_parms, frame_rx, slot_rx, ulsch_to_decode, nb_pusch);
+  OAI_PROFILE_STOP(OAI_PROFILE_EVENT_GNB_RX_ULSCH_DECODING,
+                   gnb_rx_ulsch_decoding_start,
+                   frame_rx,
+                   slot_rx,
+                   nb_pusch,
+                   gNB->ulsch[ulsch_to_decode[0]].max_ldpc_iterations,
+                   crc_before,
+                   rx_pdus_before,
+                   ret_nr_ulsch_decoding != 0);
 
   // CRC check per uplink shared channel
   for (int pusch_id = 0; pusch_id < nb_pusch; pusch_id++) {
@@ -340,7 +434,9 @@ static int nr_ulsch_procedures(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx, int
     NR_gNB_PHY_STATS_t *stats = get_phy_stats(gNB, ulsch->rnti);
     const nfapi_nr_pusch_pdu_t *pusch_pdu = &ulsch_harq->ulsch_pdu;
 
+    OAI_PROFILE_START(gnb_rx_ulsch_crc_start);
     bool crc_valid = false;
+    const int profile_harq_round = ulsch_harq->round;
 
     // if all segments are done
     if (ulsch_harq->processedSegments == ulsch_harq->C) {
@@ -411,6 +507,15 @@ static int nr_ulsch_procedures(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx, int
       LOG_D(PHY, "ULSCH %d in error\n",ULSCH_id);
       ulsch->last_iteration_cnt = ulsch->max_ldpc_iterations; // Setting to max_ldpc_iterations is sufficient given that this variable is only used for checking for failure
     }
+    OAI_PROFILE_STOP(OAI_PROFILE_EVENT_GNB_RX_ULSCH_CRC,
+                     gnb_rx_ulsch_crc_start,
+                     frame_rx,
+                     slot_rx,
+                     ULSCH_id,
+                     pusch_pdu->pusch_data.tb_size,
+                     ulsch_harq->C,
+                     profile_harq_round,
+                     crc_valid);
   }
 
   return ret_nr_ulsch_decoding;
@@ -835,13 +940,14 @@ static void handle_srs(fsn_t now, PHY_VARS_gNB *gNB, const NR_gNB_SRS_job_t *srs
   uint8_t N_symb_SRS = 1 << srs_pdu->num_symbols;
   uint8_t N_ap = 1 << srs_pdu->num_ant_ports;
   int16_t snr_per_rb[srs_pdu->bwp_size];
-  uint16_t timing_advance_offset;
+  uint16_t timing_advance_offset = 0;
   int16_t timing_advance_offset_nsec[nb_antennas_rx];
-  int srs_est;
+  int srs_est = -1;
 
   c16_t srs_estimated_channel_freq[nb_antennas_rx][N_ap][ofdm_symbol_size * N_symb_SRS] __attribute__((aligned(32)));
 
-  int8_t snr;
+  int8_t snr = INT8_MIN;
+  OAI_PROFILE_START(gnb_srs_channel_estimation_start);
   nr_srs_info_t srs_info = nr_srs_rx_procedures(gNB,
                                                 now.f,
                                                 now.s,
@@ -860,6 +966,15 @@ static void handle_srs(fsn_t now, PHY_VARS_gNB *gNB, const NR_gNB_SRS_job_t *srs
   if ((snr * 10) < gNB->srs_thres) {
     srs_est = -1;
   }
+  OAI_PROFILE_STOP(OAI_PROFILE_EVENT_GNB_SRS_CHANNEL_ESTIMATION,
+                   gnb_srs_channel_estimation_start,
+                   now.f,
+                   now.s,
+                   srs_pdu->bwp_size,
+                   N_symb_SRS,
+                   N_ap,
+                   nb_antennas_rx,
+                   srs_est >= 0);
 
   srs_indication->handle = srs_pdu->handle;
   srs_indication->rnti = srs_pdu->rnti;
@@ -891,6 +1006,7 @@ static void handle_srs(fsn_t now, PHY_VARS_gNB *gNB, const NR_gNB_SRS_job_t *srs
   report_tlv->tag = 0;
   report_tlv->length = 0;
 
+  OAI_PROFILE_START(gnb_srs_report_start);
   start_meas(&gNB->srs_report_tlv_stats);
   switch (srs_indication->srs_usage) {
     case NFAPI_NR_SRS_BEAMMANAGEMENT: {
@@ -934,6 +1050,15 @@ static void handle_srs(fsn_t now, PHY_VARS_gNB *gNB, const NR_gNB_SRS_job_t *srs
       AssertFatal(1 == 0, "Invalid SRS usage\n");
   }
   stop_meas(&gNB->srs_report_tlv_stats);
+  OAI_PROFILE_STOP(OAI_PROFILE_EVENT_GNB_SRS_REPORT,
+                   gnb_srs_report_start,
+                   now.f,
+                   now.s,
+                   srs_indication->srs_usage,
+                   srs_indication->report_type,
+                   report_tlv->length,
+                   snr,
+                   srs_est >= 0);
 }
 
 static void handle_pucch(PHY_VARS_gNB *gNB, c16_t **rxdataF, const NR_gNB_PUCCH_job_t *pucch, nfapi_nr_uci_t *uci)
@@ -1183,6 +1308,7 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx, N
 
   LOG_D(PHY,"phy_procedures_gNB_uespec_RX frame %d, slot %d\n",frame_rx,slot_rx);
   {
+    OAI_PROFILE_START(gnb_rx_noise_measurement_start);
     // Mask of occupied RBs, per symbol and PRB
     uint32_t rb_mask_ul[14][MAX_BWP_SIZE] = {0};
     fill_ul_rb_mask(gNB, rb_mask_ul, pucch, n_pucch, pusch, n_pusch_jobs, srs, n_srs);
@@ -1201,6 +1327,15 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx, N
       num_symb = frame_parms->symbols_per_slot;
     }
     gNB_I0_measurements(gNB, slot_rx, first_symb, num_symb, rb_mask_ul);
+    OAI_PROFILE_STOP(OAI_PROFILE_EVENT_GNB_RX_NOISE_MEASUREMENT,
+                     gnb_rx_noise_measurement_start,
+                     frame_rx,
+                     slot_rx,
+                     first_symb,
+                     num_symb,
+                     n_pucch,
+                     n_pusch_jobs,
+                     0);
   }
 
   start_meas(&gNB->phy_proc_rx);
@@ -1216,7 +1351,17 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx, N
                                                 pucch[i].pucch_pdu.beamforming.prgs_list[0].dig_bf_interface_list[0].beam_idx,
                                                 p->numSpatialStreamIndices > 0 ? p->spatialStreamIndices[0] : 0);
     c16_t **rxdataF = gNB->common_vars.rxdataF + ant_port;
+    OAI_PROFILE_START(gnb_rx_pucch_start);
     handle_pucch(gNB, rxdataF, &pucch[i], uci++);
+    OAI_PROFILE_STOP(OAI_PROFILE_EVENT_GNB_RX_PUCCH,
+                     gnb_rx_pucch_start,
+                     frame_rx,
+                     slot_rx,
+                     pucch[i].pucch_pdu.format_type,
+                     pucch[i].pucch_pdu.prb_size,
+                     pucch[i].pucch_pdu.nr_of_symbols,
+                     pucch[i].pucch_pdu.rnti,
+                     0);
   }
 
   UL_INFO->crc_ind.sfn = frame_rx;
@@ -1246,14 +1391,23 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx, N
       unav_res_group[u] = &gNB->ulsch[ulsch_id].unav_res;
     }
 
+    const nfapi_nr_pusch_pdu_t *profile_pdu = ulsch_pdu_group[0];
+    int profile_layers = 0;
+    for (int u = 0; u < gsz; u++)
+      profile_layers += ulsch_pdu_group[u]->nrOfLayers;
+
+    OAI_PROFILE_START(gnb_rx_pusch_frontend_start);
     handle_pusch_rx_group_trigger(gNB, pusch_vars_group, ulsch_pdu_group, unav_res_group, gsz, frame_rx, slot_rx);
 
+    bool any_dtx = false;
     for (int u = 0; u < gsz; u++) {
       int ULSCH_id = pusch_groups.jobs[g][u];
       NR_gNB_PUSCH *pusch_vars = &gNB->pusch_vars[ULSCH_id];
       NR_gNB_ULSCH_t *ulsch = &gNB->ulsch[ULSCH_id];
 
-      if (pusch_signal_detected(gNB, pusch_vars, ulsch) || get_softmodem_params()->phy_test) {
+      const bool process_pusch = pusch_signal_detected(gNB, pusch_vars, ulsch);
+      any_dtx |= pusch_vars->DTX != 0;
+      if (process_pusch || get_softmodem_params()->phy_test) {
         ulsch_idx_to_decode[num_pusch++] = ULSCH_id;
       } else {
         AssertFatal(ulsch->harq_process != NULL, "harq_pid %d is not allocated\n", ulsch->harq_pid);
@@ -1266,6 +1420,15 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx, N
         gNBdumpScopeData(gNB, ulsch->slot, ulsch->frame, "ULSCH_DTX");
       }
     }
+    OAI_PROFILE_STOP(OAI_PROFILE_EVENT_GNB_RX_PUSCH_FRONTEND,
+                     gnb_rx_pusch_frontend_start,
+                     frame_rx,
+                     slot_rx,
+                     profile_pdu->rb_size,
+                     profile_pdu->nr_of_symbols,
+                     profile_pdu->qam_mod_order,
+                     profile_layers,
+                     any_dtx);
   }
 
   start_meas(&gNB->ulsch_decoding_stats);
@@ -1281,9 +1444,20 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx, N
   UL_INFO->srs_ind.pdu_list = UL_INFO->srs_pdu_list;
   UL_INFO->srs_ind.number_of_pdus = n_srs;
   for (int i = 0; i < n_srs; ++i) {
+    const nfapi_nr_srs_pdu_t *srs_pdu = &srs[i].srs_pdu;
+    OAI_PROFILE_START(gnb_rx_srs_start);
     start_meas(&gNB->rx_srs_stats);
     handle_srs(now, gNB, &srs[i], &UL_INFO->srs_ind.pdu_list[i]);
     stop_meas(&gNB->rx_srs_stats);
+    OAI_PROFILE_STOP(OAI_PROFILE_EVENT_GNB_RX_SRS,
+                     gnb_rx_srs_start,
+                     frame_rx,
+                     slot_rx,
+                     srs_pdu->bwp_size,
+                     1 << srs_pdu->num_symbols,
+                     1 << srs_pdu->num_ant_ports,
+                     srs_pdu->srs_parameters_v4.num_ul_spatial_streams_ports,
+                     0);
   }
 
   stop_meas(&gNB->phy_proc_rx);

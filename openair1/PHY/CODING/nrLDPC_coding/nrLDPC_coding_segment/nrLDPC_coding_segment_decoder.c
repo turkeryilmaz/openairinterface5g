@@ -14,6 +14,7 @@
 #include "PHY/CODING/nrLDPC_extern.h"
 #include "defs.h"
 #include "common/utils/LOG/log.h"
+#include "common/utils/oai_profiler.h"
 
 #include <stdalign.h>
 #include <stdint.h>
@@ -82,6 +83,9 @@ typedef struct nrLDPC_decoding_parameters_s {
   uint32_t C;
 
   int E;
+  int frame;
+  int slot;
+  int tb_index;
   short *llr;
   int16_t *d;
   bool d_to_be_cleared;
@@ -99,6 +103,7 @@ typedef struct nrLDPC_decoding_parameters_s {
 static void nr_process_decode_segment(void *arg)
 {
   nrLDPC_decoding_parameters_t *rdata = (nrLDPC_decoding_parameters_t *)arg;
+  OAI_PROFILE_START(ldpc_decoder_segment_start);
   t_nrLDPC_dec_params *p_decoderParms = &rdata->decoderParms;
   const int K = rdata->K;
   const int Kprime = K - rdata->F;
@@ -119,6 +124,7 @@ static void nr_process_decode_segment(void *arg)
 
   //////////////////////////// ulsch_llr =====> ulsch_harq->e //////////////////////////////
 
+  OAI_PROFILE_START(ldpc_decoder_deinterleave_start);
   start_meas(&rdata->ts_deinterleave);
 
   /// code blocks after bit selection in rate matching for LDPC code (38.212 V15.4.0 section 5.4.2.1)
@@ -129,7 +135,17 @@ static void nr_process_decode_segment(void *arg)
   //////////////////////////////////////////////////////////////////////////////////////////
 
   stop_meas(&rdata->ts_deinterleave);
+  OAI_PROFILE_STOP(OAI_PROFILE_EVENT_LDPC_DECODER_DEINTERLEAVE,
+                   ldpc_decoder_deinterleave_start,
+                   rdata->frame,
+                   rdata->slot,
+                   rdata->tb_index,
+                   rdata->r,
+                   E,
+                   Qm,
+                   0);
 
+  OAI_PROFILE_START(ldpc_decoder_rate_recovery_start);
   start_meas(&rdata->ts_rate_unmatch);
 
   //////////////////////////////////////////////////////////////////////////////////////////
@@ -138,19 +154,37 @@ static void nr_process_decode_segment(void *arg)
 
   ///////////////////////// ulsch_harq->e =====> ulsch_harq->d /////////////////////////
 
-  if (nr_rate_matching_ldpc_rx(rdata->tbslbrm,
-                               p_decoderParms->BG,
-                               p_decoderParms->Z,
-                               rdata->d,
-                               harq_e,
-                               rdata->C,
-                               rv_index,
-                               rdata->d_to_be_cleared,
-                               E,
-                               rdata->F,
-                               K - rdata->F - 2 * (p_decoderParms->Z))
-      == -1) {
+  const int rate_recovery_result = nr_rate_matching_ldpc_rx(rdata->tbslbrm,
+                                                            p_decoderParms->BG,
+                                                            p_decoderParms->Z,
+                                                            rdata->d,
+                                                            harq_e,
+                                                            rdata->C,
+                                                            rv_index,
+                                                            rdata->d_to_be_cleared,
+                                                            E,
+                                                            rdata->F,
+                                                            K - rdata->F - 2 * (p_decoderParms->Z));
+  if (rate_recovery_result == -1) {
     stop_meas(&rdata->ts_rate_unmatch);
+    OAI_PROFILE_STOP(OAI_PROFILE_EVENT_LDPC_DECODER_RATE_RECOVERY,
+                     ldpc_decoder_rate_recovery_start,
+                     rdata->frame,
+                     rdata->slot,
+                     rdata->tb_index,
+                     rdata->r,
+                     E,
+                     rv_index,
+                     1);
+    OAI_PROFILE_STOP(OAI_PROFILE_EVENT_LDPC_DECODER_SEGMENT,
+                     ldpc_decoder_segment_start,
+                     rdata->frame,
+                     rdata->slot,
+                     rdata->tb_index,
+                     rdata->r,
+                     rdata->C,
+                     A,
+                     0);
     LOG_E(PHY,
           "nrLDPC_coding_segment_decoder.c: Problem in rate_matching BG %d, Z %d, C %d, rv_index %d, E %d, F %d, K%d, K-F-2*Z %d\n",
           p_decoderParms->BG,
@@ -167,6 +201,15 @@ static void nr_process_decode_segment(void *arg)
     return;
   }
   stop_meas(&rdata->ts_rate_unmatch);
+  OAI_PROFILE_STOP(OAI_PROFILE_EVENT_LDPC_DECODER_RATE_RECOVERY,
+                   ldpc_decoder_rate_recovery_start,
+                   rdata->frame,
+                   rdata->slot,
+                   rdata->tb_index,
+                   rdata->r,
+                   E,
+                   rv_index,
+                   0);
 
   p_decoderParms->crc_type = crcType(rdata->C, A);
   p_decoderParms->Kprime = lenWithCrc(rdata->C, A);
@@ -175,7 +218,7 @@ static void nr_process_decode_segment(void *arg)
 
   int16_t z[68 * 384 + 16] __attribute__((aligned(16)));
 
-
+  OAI_PROFILE_START(ldpc_decoder_segment_preparation_start);
   start_meas(&rdata->ts_seg_prep);
   memset(z, 0, 2 * rdata->Z * sizeof(*z));
   // set Filler bits
@@ -192,6 +235,15 @@ static void nr_process_decode_segment(void *arg)
     pl[j] = simde_mm_packs_epi16(pv[i], pv[i + 1]);
   }
   stop_meas(&rdata->ts_seg_prep);
+  OAI_PROFILE_STOP(OAI_PROFILE_EVENT_LDPC_DECODER_SEGMENT_PREPARATION,
+                   ldpc_decoder_segment_preparation_start,
+                   rdata->frame,
+                   rdata->slot,
+                   rdata->tb_index,
+                   rdata->r,
+                   K,
+                   rdata->Z,
+                   0);
   //////////////////////////////////////////////////////////////////////////////////////////
 
   //////////////////////////////////////////////////////////////////////////////////////////
@@ -199,10 +251,12 @@ static void nr_process_decode_segment(void *arg)
   //////////////////////////////////////////////////////////////////////////////////////////
 
   ////////////////////////////////// pl =====> llrProcBuf //////////////////////////////////
+  OAI_PROFILE_START(ldpc_decoder_kernel_start);
   start_meas(&rdata->ts_ldpc_decode);
   int decodeIterations = LDPCdecoder(p_decoderParms, l, (uint8_t *)llrProcBuf, p_procTime, rdata->abort_decode);
   AssertFatal(rdata->c, "rdata->c is null, A %d, K %d\n", rdata->A, rdata->K);
-  if (decodeIterations < p_decoderParms->numMaxIter) {
+  const bool decode_success = decodeIterations < p_decoderParms->numMaxIter;
+  if (decode_success) {
     memcpy(rdata->c, llrProcBuf, K >> 3);
     *rdata->decodeSuccess = true;
   } else {
@@ -211,6 +265,24 @@ static void nr_process_decode_segment(void *arg)
     *rdata->decodeSuccess = false;
   }
   stop_meas(&rdata->ts_ldpc_decode);
+  OAI_PROFILE_STOP(OAI_PROFILE_EVENT_LDPC_DECODER_KERNEL,
+                   ldpc_decoder_kernel_start,
+                   rdata->frame,
+                   rdata->slot,
+                   rdata->tb_index,
+                   rdata->r,
+                   p_decoderParms->BG,
+                   decodeIterations,
+                   decode_success);
+  OAI_PROFILE_STOP(OAI_PROFILE_EVENT_LDPC_DECODER_SEGMENT,
+                   ldpc_decoder_segment_start,
+                   rdata->frame,
+                   rdata->slot,
+                   rdata->tb_index,
+                   rdata->r,
+                   rdata->C,
+                   A,
+                   decode_success);
 
   // Task completed
   completed_task_ans(rdata->ans);
@@ -246,6 +318,9 @@ int nrLDPC_prepare_TB_decoding(nrLDPC_slot_decoding_parameters_t *nrLDPC_slot_de
                    + (r - nrLDPC_TB_decoding_parameters->first_rE2) * rdata->E;
     }
     rdata->r = r;
+    rdata->frame = nrLDPC_slot_decoding_parameters->frame;
+    rdata->slot = nrLDPC_slot_decoding_parameters->slot;
+    rdata->tb_index = pusch_id;
     rdata->decoderParms = decParams;
     rdata->Kc = decParams.BG == 2 ? 52 : 68;
     rdata->C = nrLDPC_TB_decoding_parameters->C;
