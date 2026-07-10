@@ -10,6 +10,7 @@
 #include <sys/resource.h>
 #include "UTIL/OPT/opt.h"
 #include "common/config/config_userapi.h"
+#include "common/utils/oai_profiler.h"
 #include "common/utils/load_module_shlib.h"
 #include "common/utils/telnetsrv/telnetsrv.h"
 #include "executables/thread-common.h"
@@ -27,6 +28,24 @@ static struct timespec start;
 static softmodem_params_t softmodem_params;
 softmodem_params_t *get_softmodem_params(void) {
   return &softmodem_params;
+}
+
+void record_oai_profiler_common_settings(void)
+{
+  if (!oai_profiler_enabled)
+    return;
+
+  oai_profiler_record_setting_int("softmodem.usrp_tx_thread", usrp_tx_thread, "effective");
+  oai_profiler_record_setting_int("softmodem.continuous_tx", softmodem_params.continuous_tx, "effective");
+  oai_profiler_record_setting_int("softmodem.sample_advance", softmodem_params.command_line_sample_advance, "effective");
+  oai_profiler_record_setting_int("softmodem.threequarter_fs", softmodem_params.threequarter_fs, "effective");
+  oai_profiler_record_setting_int("softmodem.clock_source", softmodem_params.clock_source, "effective");
+  oai_profiler_record_setting_int("softmodem.time_source", softmodem_params.timing_source, "effective");
+  oai_profiler_record_setting_int("softmodem.rfsim", IS_SOFTMODEM_RFSIM, "effective");
+  oai_profiler_record_setting_int("softmodem.scope_enabled", IS_SOFTMODEM_DOSCOPE, "effective");
+  oai_profiler_record_setting("softmodem.thread_pool",
+                              softmodem_params.threadPoolConfig ? softmodem_params.threadPoolConfig : "",
+                              "effective");
 }
 
 char *get_softmodem_function(void)

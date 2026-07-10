@@ -550,6 +550,7 @@ int main( int argc, char **argv ) {
                     softmodem_params->oai_profile_dir,
                     softmodem_params->oai_profile_buffer_records,
                     softmodem_params->oai_profile_flush_us);
+  record_oai_profiler_common_settings();
   itti_init(TASK_MAX, tasks_info);
   // initialize mscgen log after ITTI
   init_opt();
@@ -570,6 +571,8 @@ int main( int argc, char **argv ) {
     // Initialize Positioning Reference Signal configuration
     if(NFAPI_MODE != NFAPI_MODE_PNF && NFAPI_MODE != NFAPI_MODE_AERIAL)
       RCconfig_nr_prs();
+    if (RC.nrmac != NULL && RC.nrmac[0] != NULL)
+      oai_profiler_record_setting_int("gnb.min_rxtxtime", RC.nrmac[0]->radio_config.minRXTXTIME, "effective");
   }
 
   // don't create if node doesn't connect to RRC/S1/GTP

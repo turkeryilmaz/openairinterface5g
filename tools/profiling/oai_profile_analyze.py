@@ -72,6 +72,26 @@ def read_metadata(profile_dir: Path) -> dict[str, str]:
     return metadata
 
 
+def read_settings(profile_dir: Path) -> dict[str, str]:
+    settings: dict[str, str] = {}
+    settings_path = profile_dir / "settings.csv"
+    if not settings_path.exists():
+        return settings
+    with settings_path.open(newline="") as f:
+        for row in csv.DictReader(f):
+            key = row.get("key", "")
+            if key:
+                settings[key] = row.get("value", "")
+    return settings
+
+
+def parse_int(value: str | None, default: int = 0) -> int:
+    try:
+        return int(value or "")
+    except ValueError:
+        return default
+
+
 def read_drops(profile_dir: Path) -> int:
     drops_path = profile_dir / "drops.csv"
     if not drops_path.exists():
@@ -81,6 +101,241 @@ def read_drops(profile_dir: Path) -> int:
         for row in csv.DictReader(f):
             total += int(row.get("dropped_records", "0") or 0)
     return total
+
+
+def discover_profile_dirs(inputs: Iterable[Path]) -> list[Path]:
+    discovered: set[Path] = set()
+    for input_path in inputs:
+        path = input_path.resolve()
+        if (path / "events.csv").is_file() and (path / "metadata.txt").is_file():
+            discovered.add(path)
+            continue
+        if not path.is_dir():
+            raise FileNotFoundError(path)
+        for metadata_path in path.rglob("metadata.txt"):
+            profile_dir = metadata_path.parent
+            if (profile_dir / "events.csv").is_file():
+                discovered.add(profile_dir.resolve())
+    if not discovered:
+        raise FileNotFoundError("no profiler directories containing metadata.txt and events.csv were found")
+    return sorted(discovered)
+
+
+def read_sync_bounds(profile_dir: Path) -> tuple[int, int]:
+    sync_path = profile_dir / "sync.csv"
+    first = 0
+    last = 0
+    if not sync_path.exists():
+        return first, last
+    with sync_path.open(newline="") as f:
+        for row in csv.DictReader(f):
+            realtime_ns = parse_int(row.get("realtime_ns"))
+            if realtime_ns <= 0:
+                continue
+            if first == 0:
+                first = realtime_ns
+            last = realtime_ns
+    return first, last
+
+
+def finite_max(current: float, value: str | None) -> float:
+    try:
+        parsed = float(value or "")
+    except ValueError:
+        return current
+    return parsed if math.isnan(current) or parsed > current else current
+
+
+def finite_min(current: float, value: str | None) -> float:
+    try:
+        parsed = float(value or "")
+    except ValueError:
+        return current
+    if parsed < 0:
+        return current
+    return parsed if math.isnan(current) or parsed < current else current
+
+
+def summarize_host_metrics(profile_dir: Path) -> dict[str, object]:
+    result: dict[str, object] = {
+        "profile_dir": str(profile_dir),
+        "samples": 0,
+        "temperature_max_millicelsius": math.nan,
+        "rpi_throttled_valid_samples": 0,
+        "rpi_throttled_or": 0,
+        "cpu_frequency_min_khz": math.nan,
+        "cpu_frequency_mean_khz": math.nan,
+        "cpu_frequency_max_khz": math.nan,
+        "cpu_busy_max_percent": math.nan,
+        "load1_max": math.nan,
+        "mem_available_min_kb": math.nan,
+        "process_rss_max_kb": math.nan,
+        "involuntary_context_switches_max": math.nan,
+    }
+    metrics_path = profile_dir / "host_metrics.csv"
+    if not metrics_path.exists():
+        return result
+
+    frequency_sum = 0.0
+    frequency_count = 0
+    with metrics_path.open(newline="") as f:
+        for row in csv.DictReader(f):
+            result["samples"] = int(result["samples"]) + 1
+            result["temperature_max_millicelsius"] = finite_max(
+                float(result["temperature_max_millicelsius"]), row.get("thermal_max_millicelsius")
+            )
+            if parse_int(row.get("rpi_throttled_valid")):
+                result["rpi_throttled_valid_samples"] = int(result["rpi_throttled_valid_samples"]) + 1
+                result["rpi_throttled_or"] = int(result["rpi_throttled_or"]) | parse_int(row.get("rpi_throttled_raw"))
+            result["cpu_frequency_min_khz"] = finite_min(
+                float(result["cpu_frequency_min_khz"]), row.get("cpu_frequency_min_khz")
+            )
+            result["cpu_frequency_max_khz"] = finite_max(
+                float(result["cpu_frequency_max_khz"]), row.get("cpu_frequency_max_khz")
+            )
+            frequency = float(row.get("cpu_frequency_avg_khz", "-1") or -1)
+            if frequency >= 0:
+                frequency_sum += frequency
+                frequency_count += 1
+            result["cpu_busy_max_percent"] = finite_max(
+                float(result["cpu_busy_max_percent"]), row.get("cpu_busy_percent")
+            )
+            result["load1_max"] = finite_max(float(result["load1_max"]), row.get("load1"))
+            result["mem_available_min_kb"] = finite_min(
+                float(result["mem_available_min_kb"]), row.get("mem_available_kb")
+            )
+            result["process_rss_max_kb"] = finite_max(
+                float(result["process_rss_max_kb"]), row.get("process_rss_kb")
+            )
+            result["involuntary_context_switches_max"] = finite_max(
+                float(result["involuntary_context_switches_max"]), row.get("involuntary_context_switches")
+            )
+    if frequency_count:
+        result["cpu_frequency_mean_khz"] = frequency_sum / frequency_count
+    return result
+
+
+def build_run_inventory(
+    profile_dirs: Iterable[Path],
+    metadata_by_dir: dict[str, dict[str, str]],
+    settings_by_dir: dict[str, dict[str, str]],
+    drops_by_dir: dict[str, int],
+    host_by_dir: dict[str, dict[str, object]],
+) -> list[dict[str, object]]:
+    runs: list[dict[str, object]] = []
+    for profile_dir in profile_dirs:
+        key = str(profile_dir)
+        metadata = metadata_by_dir[key]
+        settings = settings_by_dir[key]
+        sync_start, sync_end = read_sync_bounds(profile_dir)
+        start_ns = parse_int(metadata.get("start_realtime_ns"), sync_start)
+        end_ns = parse_int(metadata.get("end_realtime_ns"), sync_end or start_ns)
+        if end_ns < start_ns:
+            end_ns = start_ns
+        process_name = metadata.get("process_name", "unknown")
+        role = metadata.get("role", "")
+        if not role:
+            role = "nrUE" if "uesoftmodem" in process_name else "gNB" if "softmodem" in process_name else "unknown"
+        runs.append(
+            {
+                "profile_dir": key,
+                "run_id": metadata.get("run_id", profile_dir.name),
+                "experiment_id": metadata.get("experiment_id", ""),
+                "role": role,
+                "process_name": process_name,
+                "hostname": metadata.get("hostname", "unknown"),
+                "start_realtime_ns": start_ns,
+                "end_realtime_ns": end_ns,
+                "duration_s": (end_ns - start_ns) / 1e9,
+                "clean_shutdown": metadata.get("clean_shutdown", "0"),
+                "config_source": metadata.get("config_source", ""),
+                "build_oai_version": metadata.get("build_oai_version", metadata.get("oai_version", "")),
+                "runtime_git_branch": metadata.get("runtime_git_branch", ""),
+                "runtime_git_head": metadata.get("runtime_git_head", ""),
+                "runtime_git_dirty": metadata.get("runtime_git_dirty", ""),
+                "min_rxtxtime": settings.get("gnb.min_rxtxtime", ""),
+                "usrp_tx_thread": settings.get("softmodem.usrp_tx_thread", ""),
+                "continuous_tx": settings.get("softmodem.continuous_tx", ""),
+                "sample_advance": settings.get("softmodem.sample_advance", ""),
+                "thread_pool": settings.get("softmodem.thread_pool", ""),
+                "drops_total": drops_by_dir[key],
+                "host_metric_samples": host_by_dir[key]["samples"],
+            }
+        )
+    return sorted(runs, key=lambda row: (int(row["start_realtime_ns"]), str(row["role"]), str(row["profile_dir"])))
+
+
+def run_overlap_ns(gnb: dict[str, object], ue: dict[str, object]) -> int:
+    return max(
+        0,
+        min(int(gnb["end_realtime_ns"]), int(ue["end_realtime_ns"]))
+        - max(int(gnb["start_realtime_ns"]), int(ue["start_realtime_ns"])),
+    )
+
+
+def paired_row(
+    status: str,
+    method: str,
+    gnb: dict[str, object] | None,
+    ue: dict[str, object] | None,
+    notes: str = "",
+) -> dict[str, object]:
+    gnb_start = int(gnb["start_realtime_ns"]) if gnb else 0
+    ue_start = int(ue["start_realtime_ns"]) if ue else 0
+    overlap_ns = run_overlap_ns(gnb, ue) if gnb and ue else 0
+    return {
+        "status": status,
+        "method": method,
+        "experiment_id": (ue or gnb or {}).get("experiment_id", ""),
+        "gnb_run_id": gnb.get("run_id", "") if gnb else "",
+        "ue_run_id": ue.get("run_id", "") if ue else "",
+        "gnb_profile_dir": gnb.get("profile_dir", "") if gnb else "",
+        "ue_profile_dir": ue.get("profile_dir", "") if ue else "",
+        "start_delta_ms": (ue_start - gnb_start) / 1e6 if gnb and ue else math.nan,
+        "overlap_s": overlap_ns / 1e9,
+        "notes": notes,
+    }
+
+
+def build_pairs(runs: list[dict[str, object]]) -> list[dict[str, object]]:
+    gnbs = [run for run in runs if run["role"] == "gNB"]
+    ues = [run for run in runs if run["role"] == "nrUE"]
+    rows: list[dict[str, object]] = []
+    paired_gnb_dirs: set[str] = set()
+
+    for ue in ues:
+        experiment_id = str(ue["experiment_id"])
+        exact = [gnb for gnb in gnbs if experiment_id and gnb["experiment_id"] == experiment_id]
+        if len(exact) == 1:
+            rows.append(paired_row("paired", "experiment_id", exact[0], ue))
+            paired_gnb_dirs.add(str(exact[0]["profile_dir"]))
+            continue
+        if len(exact) > 1:
+            candidates = ";".join(str(gnb["profile_dir"]) for gnb in exact)
+            rows.append(paired_row("ambiguous", "experiment_id", None, ue, f"gNB candidates: {candidates}"))
+            continue
+
+        overlapping = [gnb for gnb in gnbs if run_overlap_ns(gnb, ue) > 0]
+        if len(overlapping) == 1:
+            rows.append(paired_row("paired", "wallclock_overlap", overlapping[0], ue))
+            paired_gnb_dirs.add(str(overlapping[0]["profile_dir"]))
+        elif len(overlapping) > 1:
+            candidates = ";".join(str(gnb["profile_dir"]) for gnb in overlapping)
+            rows.append(paired_row("ambiguous", "wallclock_overlap", None, ue, f"gNB candidates: {candidates}"))
+        else:
+            rows.append(paired_row("unmatched", "none", None, ue, "no overlapping gNB profile"))
+
+    for gnb in gnbs:
+        if str(gnb["profile_dir"]) not in paired_gnb_dirs:
+            rows.append(paired_row("unmatched", "none", gnb, None, "no uniquely paired nrUE profile"))
+    return rows
+
+
+def write_rows(path: Path, fields: list[str], rows: list[dict[str, object]]) -> None:
+    with path.open("w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=fields)
+        writer.writeheader()
+        writer.writerows(rows)
 
 
 def iter_event_rows(profile_dirs: Iterable[Path], event_filter: set[str] | None) -> Iterable[tuple[Path, dict[str, str]]]:
@@ -179,16 +434,25 @@ def build_rows(groups: dict[tuple[str, str], GroupStats], metadata_by_dir: dict[
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Summarize OAI profiler CSV output directories")
-    parser.add_argument("profile_dir", nargs="+", type=Path, help="Directory containing events.csv, metadata.txt, and drops.csv")
+    parser = argparse.ArgumentParser(description="Summarize OAI profiler process directories or archive roots")
+    parser.add_argument(
+        "profile_dir",
+        nargs="+",
+        type=Path,
+        help="A process profile directory or a root containing profile directories",
+    )
     parser.add_argument("--event", action="append", help="Event name to include; may be given multiple times")
-    parser.add_argument("--output-dir", type=Path, help="Write summary.csv, by_thread.csv, and deadline_misses.csv here")
+    parser.add_argument("--output-dir", type=Path, help="Write all CSV analysis outputs here")
     args = parser.parse_args()
 
-    profile_dirs = [p.resolve() for p in args.profile_dir]
+    profile_dirs = discover_profile_dirs(args.profile_dir)
     event_filter = set(args.event) if args.event else None
     metadata_by_dir = {str(p): read_metadata(p) for p in profile_dirs}
+    settings_by_dir = {str(p): read_settings(p) for p in profile_dirs}
     drops_by_dir = {str(p): read_drops(p) for p in profile_dirs}
+    host_by_dir = {str(p): summarize_host_metrics(p) for p in profile_dirs}
+    run_rows = build_run_inventory(profile_dirs, metadata_by_dir, settings_by_dir, drops_by_dir, host_by_dir)
+    pair_rows = build_pairs(run_rows)
 
     event_groups: dict[tuple[str, str], GroupStats] = defaultdict(GroupStats)
     thread_groups: dict[tuple[str, str, str], GroupStats] = defaultdict(GroupStats)
@@ -237,6 +501,69 @@ def main() -> int:
         write_summary(args.output_dir / "summary.csv", summary_rows)
         write_by_thread(args.output_dir / "by_thread.csv", thread_rows)
         write_deadline_misses(args.output_dir / "deadline_misses.csv", deadline_rows)
+        write_rows(
+            args.output_dir / "runs.csv",
+            [
+                "profile_dir",
+                "run_id",
+                "experiment_id",
+                "role",
+                "process_name",
+                "hostname",
+                "start_realtime_ns",
+                "end_realtime_ns",
+                "duration_s",
+                "clean_shutdown",
+                "config_source",
+                "build_oai_version",
+                "runtime_git_branch",
+                "runtime_git_head",
+                "runtime_git_dirty",
+                "min_rxtxtime",
+                "usrp_tx_thread",
+                "continuous_tx",
+                "sample_advance",
+                "thread_pool",
+                "drops_total",
+                "host_metric_samples",
+            ],
+            run_rows,
+        )
+        write_rows(
+            args.output_dir / "pairs.csv",
+            [
+                "status",
+                "method",
+                "experiment_id",
+                "gnb_run_id",
+                "ue_run_id",
+                "gnb_profile_dir",
+                "ue_profile_dir",
+                "start_delta_ms",
+                "overlap_s",
+                "notes",
+            ],
+            pair_rows,
+        )
+        write_rows(
+            args.output_dir / "host_summary.csv",
+            [
+                "profile_dir",
+                "samples",
+                "temperature_max_millicelsius",
+                "rpi_throttled_valid_samples",
+                "rpi_throttled_or",
+                "cpu_frequency_min_khz",
+                "cpu_frequency_mean_khz",
+                "cpu_frequency_max_khz",
+                "cpu_busy_max_percent",
+                "load1_max",
+                "mem_available_min_kb",
+                "process_rss_max_kb",
+                "involuntary_context_switches_max",
+            ],
+            [host_by_dir[str(profile_dir)] for profile_dir in profile_dirs],
+        )
     else:
         write_summary(None, summary_rows)
 

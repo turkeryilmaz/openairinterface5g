@@ -318,6 +318,7 @@ void softmodem_verify_mode(const softmodem_params_t *p);
 #define get_softmodem_optmask() (&(get_softmodem_params()->optmask))
 softmodem_params_t *get_softmodem_params(void);
 void get_common_options(configmodule_interface_t *cfg);
+void record_oai_profiler_common_settings(void);
 char *get_softmodem_function(void);
 #define SOFTMODEM_RTSIGNAL  (SIGRTMIN+1)
 void set_softmodem_sighandler(void);

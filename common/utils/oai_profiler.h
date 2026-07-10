@@ -62,6 +62,8 @@ void oai_profiler_init(const char *process_name,
                        uint32_t flush_us);
 void oai_profiler_shutdown(void);
 const char *oai_profiler_event_name(oai_profile_event_id_t event_id);
+void oai_profiler_record_setting(const char *key, const char *value, const char *source);
+void oai_profiler_record_setting_int(const char *key, int64_t value, const char *source);
 void oai_profiler_register_thread(void);
 
 static inline uint64_t oai_profiler_start(void)
