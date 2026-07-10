@@ -38,20 +38,29 @@
 #define OAI_PROFILE_RPI_GET_THROTTLED 0x00030046U
 #define OAI_PROFILE_RPI_MAILBOX_PROPERTY _IOWR(100, 0, char *)
 
-volatile int oai_profiler_enabled = 0;
+int oai_profiler_enabled = 0;
 
 typedef struct {
   uint64_t seq;
   uint64_t start_tick;
   uint64_t duration_tick;
+  uint64_t span_id;
+  uint64_t parent_id;
+  uint64_t correlation_id;
+  int64_t absolute_slot;
   uint32_t event_id;
   int32_t frame;
   int32_t slot;
+  int32_t cpu_start;
+  int32_t cpu_end;
   int64_t aux0;
   int64_t aux1;
   int64_t aux2;
   int64_t aux3;
   uint32_t flags;
+  uint16_t nesting_depth;
+  uint8_t event_kind;
+  uint8_t reserved;
 } oai_profile_record_t;
 
 typedef struct {
@@ -60,44 +69,411 @@ typedef struct {
   char name[OAI_PROFILE_THREAD_NAME_LEN];
   oai_profile_record_t *records;
   uint32_t capacity;
-  volatile uint64_t write_count;
-  volatile uint64_t read_count;
+  uint64_t write_count;
+  uint64_t read_count;
   uint64_t dropped_records;
+  uint64_t next_span_sequence;
+  uint64_t span_stack_overflows;
+  uint64_t span_stack_mismatches;
 } oai_profile_thread_buffer_t;
 
-static const char *const event_names[OAI_PROFILE_EVENT_MAX] = {
-    [OAI_PROFILE_EVENT_UNSPEC] = "UNSPEC",
-    [OAI_PROFILE_EVENT_UE_SLOT_LOOP] = "UE_SLOT_LOOP",
-    [OAI_PROFILE_EVENT_UE_RF_READ] = "UE_RF_READ",
-    [OAI_PROFILE_EVENT_UE_RF_READ_DRIFT] = "UE_RF_READ_DRIFT",
-    [OAI_PROFILE_EVENT_UE_SCOPE_COPY] = "UE_SCOPE_COPY",
-    [OAI_PROFILE_EVENT_UE_TIMING_COMPUTE] = "UE_TIMING_COMPUTE",
-    [OAI_PROFILE_EVENT_UE_DL_PREPROCESS] = "UE_DL_PREPROCESS",
-    [OAI_PROFILE_EVENT_UE_DL_PROCESSING] = "UE_DL_PROCESSING",
-    [OAI_PROFILE_EVENT_UE_DL_ACTOR_DISPATCH] = "UE_DL_ACTOR_DISPATCH",
-    [OAI_PROFILE_EVENT_UE_NTN_CONFIG_APPLY] = "UE_NTN_CONFIG_APPLY",
-    [OAI_PROFILE_EVENT_UE_TX_SCHEDULE] = "UE_TX_SCHEDULE",
-    [OAI_PROFILE_EVENT_UE_TX_SLOT] = "UE_TX_SLOT",
-    [OAI_PROFILE_EVENT_UE_TX_UL_INDICATION] = "UE_TX_UL_INDICATION",
-    [OAI_PROFILE_EVENT_UE_TX_BARRIER_WAIT] = "UE_TX_BARRIER_WAIT",
-    [OAI_PROFILE_EVENT_UE_TX_PHY_PROCEDURES] = "UE_TX_PHY_PROCEDURES",
-    [OAI_PROFILE_EVENT_UE_TX_RU_WRITE] = "UE_TX_RU_WRITE",
-    [OAI_PROFILE_EVENT_UE_RF_WRITE] = "UE_RF_WRITE",
-    [OAI_PROFILE_EVENT_UE_TX_DEADLINE_MISS] = "UE_TX_DEADLINE_MISS",
-    [OAI_PROFILE_EVENT_GNB_SLOT_INDICATION] = "GNB_SLOT_INDICATION",
-    [OAI_PROFILE_EVENT_GNB_RX_TRIGGER] = "GNB_RX_TRIGGER",
-    [OAI_PROFILE_EVENT_GNB_PHY_TX] = "GNB_PHY_TX",
-    [OAI_PROFILE_EVENT_GNB_RU_TX] = "GNB_RU_TX",
-    [OAI_PROFILE_EVENT_GNB_L1_TX_JOB] = "GNB_L1_TX_JOB",
-    [OAI_PROFILE_EVENT_GNB_L1_RX_JOB] = "GNB_L1_RX_JOB",
-    [OAI_PROFILE_EVENT_GNB_PRACH_QUEUE_DRAIN] = "GNB_PRACH_QUEUE_DRAIN",
-    [OAI_PROFILE_EVENT_GNB_PHASE_COMP] = "GNB_PHASE_COMP",
-    [OAI_PROFILE_EVENT_GNB_PHY_UESPEC_RX] = "GNB_PHY_UESPEC_RX",
-    [OAI_PROFILE_EVENT_GNB_UL_INDICATION] = "GNB_UL_INDICATION",
-    [OAI_PROFILE_EVENT_GNB_RF_READ] = "GNB_RF_READ",
-    [OAI_PROFILE_EVENT_GNB_RF_READ_ALIGN] = "GNB_RF_READ_ALIGN",
-    [OAI_PROFILE_EVENT_GNB_RF_WRITE] = "GNB_RF_WRITE",
+#define AUX_FIELDS(name0, unit0, name1, unit1, name2, unit2, name3, unit3) \
+  .aux_name = {name0, name1, name2, name3}, .aux_unit = {unit0, unit1, unit2, unit3}
+
+static const oai_profile_event_descriptor_t event_descriptors[OAI_PROFILE_EVENT_MAX] = {
+    [OAI_PROFILE_EVENT_UNSPEC] =
+        {
+            .name = "UNSPEC",
+            .role = "common",
+            .subsystem = "unknown",
+            .event_class = "unknown",
+            .default_kind = OAI_PROFILE_EVENT_KIND_UNKNOWN,
+            .detail = OAI_PROFILE_DETAIL_BOUNDARY,
+            AUX_FIELDS("", "", "", "", "", "", "", ""),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_UE_SLOT_LOOP] =
+        {
+            .name = "UE_SLOT_LOOP",
+            .role = "nrUE",
+            .subsystem = "orchestration",
+            .event_class = "loop",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_BOUNDARY,
+            AUX_FIELDS("duration_rx_to_tx",
+                       "slot",
+                       "read_samples",
+                       "sample",
+                       "write_samples",
+                       "sample",
+                       "timing_advance",
+                       "sample"),
+            .flags_name = "variant",
+        },
+    [OAI_PROFILE_EVENT_UE_RF_READ] =
+        {
+            .name = "UE_RF_READ",
+            .role = "nrUE",
+            .subsystem = "radio",
+            .event_class = "io",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_BOUNDARY,
+            AUX_FIELDS("requested_samples",
+                       "sample",
+                       "antenna_count",
+                       "count",
+                       "returned_samples",
+                       "sample",
+                       "device_timestamp",
+                       "sample"),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_UE_RF_READ_DRIFT] =
+        {
+            .name = "UE_RF_READ_DRIFT",
+            .role = "nrUE",
+            .subsystem = "radio",
+            .event_class = "io",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_BOUNDARY,
+            AUX_FIELDS("requested_samples",
+                       "sample",
+                       "antenna_count",
+                       "count",
+                       "returned_samples",
+                       "sample",
+                       "device_timestamp",
+                       "sample"),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_UE_SCOPE_COPY] =
+        {
+            .name = "UE_SCOPE_COPY",
+            .role = "nrUE",
+            .subsystem = "observability",
+            .event_class = "copy",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_BOUNDARY,
+            AUX_FIELDS("sample_count", "sample", "", "", "", "", "", ""),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_UE_TIMING_COMPUTE] =
+        {
+            .name = "UE_TIMING_COMPUTE",
+            .role = "nrUE",
+            .subsystem = "timing",
+            .event_class = "compute",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_BOUNDARY,
+            AUX_FIELDS("write_samples", "sample", "timing_advance", "sample", "n_ta_offset", "sample", "absolute_deadline", "us"),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_UE_DL_PREPROCESS] =
+        {
+            .name = "UE_DL_PREPROCESS",
+            .role = "nrUE",
+            .subsystem = "phy_dl",
+            .event_class = "compute",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_BOUNDARY,
+            AUX_FIELDS("preprocess_result", "sample", "rx_slot_type", "enum", "tx_slot_type", "enum", "", ""),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_UE_DL_PROCESSING] =
+        {
+            .name = "UE_DL_PROCESSING",
+            .role = "nrUE",
+            .subsystem = "phy_dl",
+            .event_class = "compute",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_BOUNDARY,
+            AUX_FIELDS("tx_frame", "frame", "tx_slot", "slot", "rx_slot_type", "enum", "sidelink_mode", "boolean"),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_UE_DL_ACTOR_DISPATCH] =
+        {
+            .name = "UE_DL_ACTOR_DISPATCH",
+            .role = "nrUE",
+            .subsystem = "scheduling",
+            .event_class = "dispatch",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_BOUNDARY,
+            AUX_FIELDS("actor_count", "count", "preprocess_result", "sample", "", "", "", ""),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_UE_NTN_CONFIG_APPLY] =
+        {
+            .name = "UE_NTN_CONFIG_APPLY",
+            .role = "nrUE",
+            .subsystem = "ntn",
+            .event_class = "configuration",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_BOUNDARY,
+            AUX_FIELDS("duration_rx_to_tx", "slot", "timing_advance", "sample", "koffset", "slot", "target_cell", "boolean"),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_UE_TX_SCHEDULE] =
+        {
+            .name = "UE_TX_SCHEDULE",
+            .role = "nrUE",
+            .subsystem = "scheduling",
+            .event_class = "dispatch",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_BOUNDARY,
+            AUX_FIELDS("write_samples", "sample", "wait_previous", "count", "dlsch_waiters", "count", "duration_rx_to_tx", "slot"),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_UE_TX_SLOT] =
+        {
+            .name = "UE_TX_SLOT",
+            .role = "nrUE",
+            .subsystem = "phy_ul",
+            .event_class = "compute",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_BOUNDARY,
+            AUX_FIELDS("rx_frame", "frame", "rx_slot", "slot", "write_samples", "sample", "tx_slot_type", "enum"),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_UE_TX_UL_INDICATION] =
+        {
+            .name = "UE_TX_UL_INDICATION",
+            .role = "nrUE",
+            .subsystem = "mac",
+            .event_class = "callback",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_BOUNDARY,
+            AUX_FIELDS("tx_action", "enum", "", "", "", "", "", ""),
+            .flags_name = "path",
+        },
+    [OAI_PROFILE_EVENT_UE_TX_BARRIER_WAIT] =
+        {
+            .name = "UE_TX_BARRIER_WAIT",
+            .role = "nrUE",
+            .subsystem = "scheduling",
+            .event_class = "wait",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_BOUNDARY,
+            AUX_FIELDS("", "", "", "", "", "", "", ""),
+            .flags_name = "path",
+        },
+    [OAI_PROFILE_EVENT_UE_TX_PHY_PROCEDURES] =
+        {
+            .name = "UE_TX_PHY_PROCEDURES",
+            .role = "nrUE",
+            .subsystem = "phy_ul",
+            .event_class = "compute",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_BOUNDARY,
+            AUX_FIELDS("tx_action", "enum", "", "", "", "", "", ""),
+            .flags_name = "path",
+        },
+    [OAI_PROFILE_EVENT_UE_TX_RU_WRITE] =
+        {
+            .name = "UE_TX_RU_WRITE",
+            .role = "nrUE",
+            .subsystem = "radio",
+            .event_class = "dispatch",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_BOUNDARY,
+            AUX_FIELDS("write_samples", "sample", "sidelink_action", "boolean", "", "", "", ""),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_UE_RF_WRITE] =
+        {
+            .name = "UE_RF_WRITE",
+            .role = "nrUE",
+            .subsystem = "radio",
+            .event_class = "io",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_BOUNDARY,
+            AUX_FIELDS("requested_samples",
+                       "sample",
+                       "antenna_count",
+                       "count",
+                       "tx_flags",
+                       "bitmask",
+                       "returned_samples",
+                       "sample"),
+            .flags_name = "dummy_block",
+        },
+    [OAI_PROFILE_EVENT_UE_TX_DEADLINE_MISS] =
+        {
+            .name = "UE_TX_DEADLINE_MISS",
+            .role = "nrUE",
+            .subsystem = "timing",
+            .event_class = "deadline",
+            .default_kind = OAI_PROFILE_EVENT_KIND_INSTANT,
+            .detail = OAI_PROFILE_DETAIL_BOUNDARY,
+            AUX_FIELDS("current_time", "us", "deadline", "us", "lateness", "us", "", ""),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_GNB_SLOT_INDICATION] =
+        {
+            .name = "GNB_SLOT_INDICATION",
+            .role = "gNB",
+            .subsystem = "mac",
+            .event_class = "callback",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_BOUNDARY,
+            AUX_FIELDS("frame_rx", "frame", "slot_rx", "slot", "", "", "", ""),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_GNB_RX_TRIGGER] =
+        {
+            .name = "GNB_RX_TRIGGER",
+            .role = "gNB",
+            .subsystem = "scheduling",
+            .event_class = "dispatch",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_BOUNDARY,
+            AUX_FIELDS("frame_tx", "frame", "slot_tx", "slot", "tx_timestamp", "sample", "", ""),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_GNB_PHY_TX] =
+        {
+            .name = "GNB_PHY_TX",
+            .role = "gNB",
+            .subsystem = "phy_dl",
+            .event_class = "compute",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_BOUNDARY,
+            AUX_FIELDS("tx_slot_type", "enum", "", "", "", "", "", ""),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_GNB_RU_TX] =
+        {
+            .name = "GNB_RU_TX",
+            .role = "gNB",
+            .subsystem = "radio",
+            .event_class = "compute",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_BOUNDARY,
+            AUX_FIELDS("tx_timestamp", "sample", "", "", "", "", "", ""),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_GNB_L1_TX_JOB] =
+        {
+            .name = "GNB_L1_TX_JOB",
+            .role = "gNB",
+            .subsystem = "scheduling",
+            .event_class = "job",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_BOUNDARY,
+            AUX_FIELDS("rx_frame", "frame", "rx_slot", "slot", "", "", "", ""),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_GNB_L1_RX_JOB] =
+        {
+            .name = "GNB_L1_RX_JOB",
+            .role = "gNB",
+            .subsystem = "scheduling",
+            .event_class = "job",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_BOUNDARY,
+            AUX_FIELDS("", "", "", "", "", "", "", ""),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_GNB_PRACH_QUEUE_DRAIN] =
+        {
+            .name = "GNB_PRACH_QUEUE_DRAIN",
+            .role = "gNB",
+            .subsystem = "prach",
+            .event_class = "queue",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_BOUNDARY,
+            AUX_FIELDS("dequeued_items", "count", "rach_indications", "count", "", "", "", ""),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_GNB_PHASE_COMP] =
+        {
+            .name = "GNB_PHASE_COMP",
+            .role = "gNB",
+            .subsystem = "phy_ul",
+            .event_class = "compute",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_BOUNDARY,
+            AUX_FIELDS("antenna_count", "count", "prb_count", "count", "", "", "", ""),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_GNB_PHY_UESPEC_RX] =
+        {
+            .name = "GNB_PHY_UESPEC_RX",
+            .role = "gNB",
+            .subsystem = "phy_ul",
+            .event_class = "compute",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_BOUNDARY,
+            AUX_FIELDS("rx_pdu_count", "count", "crc_count", "count", "uci_count", "count", "", ""),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_GNB_UL_INDICATION] =
+        {
+            .name = "GNB_UL_INDICATION",
+            .role = "gNB",
+            .subsystem = "mac",
+            .event_class = "callback",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_BOUNDARY,
+            AUX_FIELDS("rx_pdu_count", "count", "crc_count", "count", "rach_count", "count", "", ""),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_GNB_RF_READ] =
+        {
+            .name = "GNB_RF_READ",
+            .role = "gNB",
+            .subsystem = "radio",
+            .event_class = "io",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_BOUNDARY,
+            AUX_FIELDS("requested_samples",
+                       "sample",
+                       "antenna_count",
+                       "count",
+                       "returned_samples",
+                       "sample",
+                       "device_timestamp",
+                       "sample"),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_GNB_RF_READ_ALIGN] =
+        {
+            .name = "GNB_RF_READ_ALIGN",
+            .role = "gNB",
+            .subsystem = "radio",
+            .event_class = "io",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_BOUNDARY,
+            AUX_FIELDS("requested_samples",
+                       "sample",
+                       "antenna_count",
+                       "count",
+                       "returned_samples",
+                       "sample",
+                       "device_timestamp",
+                       "sample"),
+            .flags_name = "",
+        },
+    [OAI_PROFILE_EVENT_GNB_RF_WRITE] =
+        {
+            .name = "GNB_RF_WRITE",
+            .role = "gNB",
+            .subsystem = "radio",
+            .event_class = "io",
+            .default_kind = OAI_PROFILE_EVENT_KIND_DURATION,
+            .detail = OAI_PROFILE_DETAIL_BOUNDARY,
+            AUX_FIELDS("requested_samples",
+                       "sample",
+                       "antenna_count",
+                       "count",
+                       "tx_flags",
+                       "bitmask",
+                       "returned_samples",
+                       "sample"),
+            .flags_name = "",
+        },
 };
+
+#undef AUX_FIELDS
 
 static oai_profile_thread_buffer_t thread_buffers[OAI_PROFILE_MAX_THREADS];
 static pthread_mutex_t registry_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -105,12 +481,20 @@ static pthread_mutex_t lifecycle_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_t writer_thread;
 static bool profiler_initialized;
 static bool writer_started;
-static volatile bool profiler_shutdown_requested;
+static bool profiler_shutdown_requested;
 static __thread int thread_buffer_index = -1;
+static __thread oai_profile_context_t thread_context = {
+    .absolute_slot = OAI_PROFILE_ABSOLUTE_SLOT_UNKNOWN,
+    .correlation_id = 0,
+    .parent_id = 0,
+};
+static __thread uint64_t thread_span_stack[OAI_PROFILE_MAX_NESTING_DEPTH];
+static __thread uint16_t thread_span_depth;
 static uint32_t global_buffer_records = OAI_PROFILE_DEFAULT_BUFFER_RECORDS;
 static uint32_t global_flush_us = OAI_PROFILE_DEFAULT_FLUSH_US;
 static uint32_t global_host_metrics_us = OAI_PROFILE_DEFAULT_HOST_METRICS_US;
 static uint64_t global_seq;
+static uint64_t global_correlation_seq;
 static uint64_t counter_hz;
 static uint64_t profile_start_realtime_ns;
 static uint64_t previous_cpu_total;
@@ -137,9 +521,43 @@ static int rpi_mailbox_fd = -1;
 
 const char *oai_profiler_event_name(oai_profile_event_id_t event_id)
 {
-  if (event_id <= OAI_PROFILE_EVENT_UNSPEC || event_id >= OAI_PROFILE_EVENT_MAX || event_names[event_id] == NULL)
+  const oai_profile_event_descriptor_t *descriptor = oai_profiler_event_descriptor(event_id);
+  if (descriptor == NULL)
     return "UNKNOWN";
-  return event_names[event_id];
+  return descriptor->name;
+}
+
+const oai_profile_event_descriptor_t *oai_profiler_event_descriptor(oai_profile_event_id_t event_id)
+{
+  if (event_id <= OAI_PROFILE_EVENT_UNSPEC || event_id >= OAI_PROFILE_EVENT_MAX || event_descriptors[event_id].name == NULL)
+    return NULL;
+  return &event_descriptors[event_id];
+}
+
+const char *oai_profiler_event_kind_name(oai_profile_event_kind_t kind)
+{
+  switch (kind) {
+    case OAI_PROFILE_EVENT_KIND_DURATION:
+      return "duration";
+    case OAI_PROFILE_EVENT_KIND_INSTANT:
+      return "instant";
+    default:
+      return "unknown";
+  }
+}
+
+static const char *event_detail_name(oai_profile_detail_t detail)
+{
+  switch (detail) {
+    case OAI_PROFILE_DETAIL_BOUNDARY:
+      return "boundary";
+    case OAI_PROFILE_DETAIL_STAGE:
+      return "stage";
+    case OAI_PROFILE_DETAIL_KERNEL:
+      return "kernel";
+    default:
+      return "unknown";
+  }
 }
 
 static uint64_t read_counter_hz(void)
@@ -426,9 +844,33 @@ static void write_event_catalog(void)
   FILE *file = NULL;
   if (open_profile_file(&file, "event_catalog.csv", "w") != 0)
     return;
-  fprintf(file, "event_id,event_name\n");
-  for (int i = 1; i < OAI_PROFILE_EVENT_MAX; i++)
-    fprintf(file, "%d,%s\n", i, oai_profiler_event_name(i));
+  fprintf(file,
+          "schema_version,event_id,event_name,role,subsystem,event_class,default_kind,detail_level,"
+          "aux0_name,aux0_unit,aux1_name,aux1_unit,aux2_name,aux2_unit,aux3_name,aux3_unit,flags_name\n");
+  for (int i = 1; i < OAI_PROFILE_EVENT_MAX; i++) {
+    const oai_profile_event_descriptor_t *descriptor = oai_profiler_event_descriptor(i);
+    if (descriptor == NULL)
+      continue;
+    fprintf(file,
+            "%u,%d,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n",
+            OAI_PROFILE_SCHEMA_VERSION,
+            i,
+            descriptor->name,
+            descriptor->role,
+            descriptor->subsystem,
+            descriptor->event_class,
+            oai_profiler_event_kind_name(descriptor->default_kind),
+            event_detail_name(descriptor->detail),
+            descriptor->aux_name[0],
+            descriptor->aux_unit[0],
+            descriptor->aux_name[1],
+            descriptor->aux_unit[1],
+            descriptor->aux_name[2],
+            descriptor->aux_unit[2],
+            descriptor->aux_name[3],
+            descriptor->aux_unit[3],
+            descriptor->flags_name);
+  }
   fclose(file);
 }
 
@@ -599,6 +1041,10 @@ static void write_metadata(const char *process_name,
   char runtime_git_branch[PATH_MAX];
   char runtime_git_head[128];
   read_runtime_git_identity(runtime_git_branch, sizeof(runtime_git_branch), runtime_git_head, sizeof(runtime_git_head));
+  fprintf(file, "schema_version=%u\n", OAI_PROFILE_SCHEMA_VERSION);
+  fprintf(file, "event_record_size_bytes=%zu\n", sizeof(oai_profile_record_t));
+  fprintf(file, "max_nesting_depth=%u\n", OAI_PROFILE_MAX_NESTING_DEPTH);
+  fprintf(file, "counter_semantics=elapsed_time_counter\n");
   fprintf(file, "process_name=%s\n", process_name ? process_name : "unknown");
   fprintf(file, "role=%s\n", profile_role);
   fprintf(file, "run_id=%s\n", profile_run_id);
@@ -682,7 +1128,7 @@ static void write_setting(const char *key, const char *value, const char *source
 
 void oai_profiler_record_setting(const char *key, const char *value, const char *source)
 {
-  if (!oai_profiler_enabled)
+  if (!oai_profiler_is_enabled())
     return;
   pthread_mutex_lock(&settings_mutex);
   write_setting(key, value, source);
@@ -960,20 +1406,32 @@ static void write_sync_sample(void)
 
 static void drain_thread_buffer(oai_profile_thread_buffer_t *tb)
 {
-  uint64_t read_count = tb->read_count;
-  const uint64_t write_count = tb->write_count;
+  uint64_t read_count = __atomic_load_n(&tb->read_count, __ATOMIC_RELAXED);
+  const uint64_t write_count = __atomic_load_n(&tb->write_count, __ATOMIC_ACQUIRE);
   while (read_count < write_count) {
     const oai_profile_record_t *r = &tb->records[read_count % tb->capacity];
     const double duration_us = counter_hz == 0 ? 0.0 : ((double)r->duration_tick * 1000000.0) / (double)counter_hz;
+    const bool cpu_migrated = r->cpu_start >= 0 && r->cpu_end >= 0 && r->cpu_start != r->cpu_end;
     fprintf(events_file,
-            "%" PRIu64 ",%ld,%s,%u,%s,%d,%d,%u,%" PRId64 ",%" PRId64 ",%" PRId64 ",%" PRId64 ",%" PRIu64 ",%" PRIu64 ",%.3f\n",
+            "%u,%" PRIu64 ",%ld,%s,%u,%s,%s,%u,%d,%d,%" PRId64 ",%" PRIu64 ",%" PRIu64 ",%" PRIu64 ",%d,%d,%d,%u,%" PRId64
+            ",%" PRId64 ",%" PRId64 ",%" PRId64 ",%" PRIu64 ",%" PRIu64 ",%.3f\n",
+            OAI_PROFILE_SCHEMA_VERSION,
             r->seq,
             (long)tb->tid,
             tb->name,
             r->event_id,
             oai_profiler_event_name((oai_profile_event_id_t)r->event_id),
+            oai_profiler_event_kind_name((oai_profile_event_kind_t)r->event_kind),
+            r->nesting_depth,
             r->frame,
             r->slot,
+            r->absolute_slot,
+            r->correlation_id,
+            r->span_id,
+            r->parent_id,
+            r->cpu_start,
+            r->cpu_end,
+            cpu_migrated,
             r->flags,
             r->aux0,
             r->aux1,
@@ -984,7 +1442,7 @@ static void drain_thread_buffer(oai_profile_thread_buffer_t *tb)
             duration_us);
     read_count++;
   }
-  tb->read_count = read_count;
+  __atomic_store_n(&tb->read_count, read_count, __ATOMIC_RELEASE);
 }
 
 static void drain_all_buffers(void)
@@ -1005,15 +1463,17 @@ static void write_drop_summary(void)
 {
   if (drops_file == NULL)
     return;
-  fprintf(drops_file, "thread_index,tid,thread_name,dropped_records\n");
+  fprintf(drops_file, "thread_index,tid,thread_name,dropped_records,span_stack_overflows,span_stack_mismatches\n");
   for (int i = 0; i < OAI_PROFILE_MAX_THREADS; i++) {
     if (thread_buffers[i].active)
       fprintf(drops_file,
-              "%d,%ld,%s,%" PRIu64 "\n",
+              "%d,%ld,%s,%" PRIu64 ",%" PRIu64 ",%" PRIu64 "\n",
               i,
               (long)thread_buffers[i].tid,
               thread_buffers[i].name,
-              thread_buffers[i].dropped_records);
+              __atomic_load_n(&thread_buffers[i].dropped_records, __ATOMIC_RELAXED),
+              __atomic_load_n(&thread_buffers[i].span_stack_overflows, __ATOMIC_RELAXED),
+              __atomic_load_n(&thread_buffers[i].span_stack_mismatches, __ATOMIC_RELAXED));
   }
   fflush(drops_file);
 }
@@ -1023,7 +1483,7 @@ static void *profiler_writer_thread(void *arg)
   (void)arg;
   pthread_setname_np(pthread_self(), "oai_profile");
   uint64_t next_host_metrics_ns = 0;
-  while (!profiler_shutdown_requested) {
+  while (!__atomic_load_n(&profiler_shutdown_requested, __ATOMIC_ACQUIRE)) {
     drain_all_buffers();
     write_sync_sample();
     struct timespec now = {0};
@@ -1079,9 +1539,206 @@ static int register_thread_buffer(void)
 
 void oai_profiler_register_thread(void)
 {
-  if (!oai_profiler_enabled)
+  if (!oai_profiler_is_enabled())
     return;
   (void)register_thread_buffer();
+}
+
+void oai_profiler_set_context(oai_profile_context_t context)
+{
+  thread_context = context;
+}
+
+oai_profile_context_t oai_profiler_get_context(void)
+{
+  oai_profile_context_t context = thread_context;
+  if (thread_span_depth > 0)
+    context.parent_id = thread_span_stack[thread_span_depth - 1];
+  return context;
+}
+
+void oai_profiler_clear_context(void)
+{
+  thread_context = (oai_profile_context_t){
+      .absolute_slot = OAI_PROFILE_ABSOLUTE_SLOT_UNKNOWN,
+      .correlation_id = 0,
+      .parent_id = 0,
+  };
+}
+
+uint64_t oai_profiler_next_correlation_id(void)
+{
+  if (!oai_profiler_is_enabled())
+    return 0;
+  uint64_t correlation_id = __atomic_add_fetch(&global_correlation_seq, 1, __ATOMIC_RELAXED);
+  if (correlation_id == 0)
+    correlation_id = __atomic_add_fetch(&global_correlation_seq, 1, __ATOMIC_RELAXED);
+  return correlation_id;
+}
+
+static uint64_t next_span_id(oai_profile_thread_buffer_t *tb, int thread_index)
+{
+  const uint64_t sequence_mask = UINT64_C(0x0000ffffffffffff);
+  uint64_t sequence = (++tb->next_span_sequence) & sequence_mask;
+  if (sequence == 0)
+    sequence = (++tb->next_span_sequence) & sequence_mask;
+  return ((uint64_t)(thread_index + 1) << 48) | sequence;
+}
+
+oai_profile_span_t oai_profiler_span_start_enabled(void)
+{
+  oai_profile_span_t span = {
+      .absolute_slot = OAI_PROFILE_ABSOLUTE_SLOT_UNKNOWN,
+      .cpu_start = -1,
+  };
+  if (!oai_profiler_is_enabled())
+    return span;
+
+  const int idx = register_thread_buffer();
+  if (idx < 0)
+    return span;
+
+  oai_profile_thread_buffer_t *tb = &thread_buffers[idx];
+  span.span_id = next_span_id(tb, idx);
+  span.parent_id = thread_span_depth > 0 ? thread_span_stack[thread_span_depth - 1] : thread_context.parent_id;
+  span.correlation_id = thread_context.correlation_id;
+  span.absolute_slot = thread_context.absolute_slot;
+  span.depth = thread_span_depth;
+  span.thread_index = (uint16_t)idx;
+  if (thread_span_depth < OAI_PROFILE_MAX_NESTING_DEPTH) {
+    thread_span_stack[thread_span_depth++] = span.span_id;
+    span.stack_registered = 1;
+  } else {
+    __atomic_fetch_add(&tb->span_stack_overflows, 1, __ATOMIC_RELAXED);
+  }
+  span.cpu_start = sched_getcpu();
+  span.start_tick = rdtsc_oai();
+  return span;
+}
+
+static void retire_span(oai_profile_thread_buffer_t *tb, int thread_index, oai_profile_span_t span)
+{
+  if (!span.stack_registered)
+    return;
+  if (span.thread_index != thread_index) {
+    __atomic_fetch_add(&tb->span_stack_mismatches, 1, __ATOMIC_RELAXED);
+    return;
+  }
+  if (thread_span_depth > 0 && thread_span_stack[thread_span_depth - 1] == span.span_id) {
+    thread_span_depth--;
+    return;
+  }
+
+  __atomic_fetch_add(&tb->span_stack_mismatches, 1, __ATOMIC_RELAXED);
+  int found = -1;
+  for (int i = (int)thread_span_depth - 1; i >= 0; i--) {
+    if (thread_span_stack[i] == span.span_id) {
+      found = i;
+      break;
+    }
+  }
+  if (found < 0)
+    return;
+  for (uint16_t i = (uint16_t)found; i + 1 < thread_span_depth; i++)
+    thread_span_stack[i] = thread_span_stack[i + 1];
+  thread_span_depth--;
+}
+
+static void publish_record(oai_profile_thread_buffer_t *tb,
+                           oai_profile_event_id_t event_id,
+                           oai_profile_event_kind_t event_kind,
+                           uint64_t start_tick,
+                           uint64_t duration_tick,
+                           uint64_t span_id,
+                           uint64_t parent_id,
+                           uint64_t correlation_id,
+                           int64_t absolute_slot,
+                           uint16_t nesting_depth,
+                           int cpu_start,
+                           int cpu_end,
+                           int frame,
+                           int slot,
+                           int64_t aux0,
+                           int64_t aux1,
+                           int64_t aux2,
+                           int64_t aux3,
+                           uint32_t flags)
+{
+  const uint64_t write_count = __atomic_load_n(&tb->write_count, __ATOMIC_RELAXED);
+  const uint64_t read_count = __atomic_load_n(&tb->read_count, __ATOMIC_ACQUIRE);
+  if (write_count - read_count >= tb->capacity) {
+    __atomic_fetch_add(&tb->dropped_records, 1, __ATOMIC_RELAXED);
+    return;
+  }
+
+  oai_profile_record_t *r = &tb->records[write_count % tb->capacity];
+  r->seq = __atomic_fetch_add(&global_seq, 1, __ATOMIC_RELAXED);
+  r->start_tick = start_tick;
+  r->duration_tick = duration_tick;
+  r->span_id = span_id;
+  r->parent_id = parent_id;
+  r->correlation_id = correlation_id;
+  r->absolute_slot = absolute_slot;
+  r->event_id = event_id;
+  r->frame = frame;
+  r->slot = slot;
+  r->cpu_start = cpu_start;
+  r->cpu_end = cpu_end;
+  r->aux0 = aux0;
+  r->aux1 = aux1;
+  r->aux2 = aux2;
+  r->aux3 = aux3;
+  r->flags = flags;
+  r->nesting_depth = nesting_depth;
+  r->event_kind = event_kind;
+  r->reserved = 0;
+  __atomic_store_n(&tb->write_count, write_count + 1, __ATOMIC_RELEASE);
+}
+
+void oai_profiler_record_span(oai_profile_event_id_t event_id,
+                              oai_profile_span_t span,
+                              int frame,
+                              int slot,
+                              int64_t aux0,
+                              int64_t aux1,
+                              int64_t aux2,
+                              int64_t aux3,
+                              uint32_t flags)
+{
+  if (!oai_profiler_is_enabled() || span.start_tick == 0)
+    return;
+
+  const uint64_t end_tick = rdtsc_oai();
+  const int cpu_end = sched_getcpu();
+  int idx = thread_buffer_index;
+  if (idx < 0)
+    idx = register_thread_buffer();
+  if (idx < 0)
+    return;
+  oai_profile_thread_buffer_t *tb = &thread_buffers[idx];
+  retire_span(tb, idx, span);
+  if (event_id <= OAI_PROFILE_EVENT_UNSPEC || event_id >= OAI_PROFILE_EVENT_MAX)
+    return;
+
+  publish_record(tb,
+                 event_id,
+                 OAI_PROFILE_EVENT_KIND_DURATION,
+                 span.start_tick,
+                 end_tick - span.start_tick,
+                 span.span_id,
+                 span.parent_id,
+                 span.correlation_id,
+                 span.absolute_slot,
+                 span.depth,
+                 span.cpu_start,
+                 cpu_end,
+                 frame,
+                 slot,
+                 aux0,
+                 aux1,
+                 aux2,
+                 aux3,
+                 flags);
 }
 
 void oai_profiler_record_duration(oai_profile_event_id_t event_id,
@@ -1094,33 +1751,34 @@ void oai_profiler_record_duration(oai_profile_event_id_t event_id,
                                   int64_t aux3,
                                   uint32_t flags)
 {
-  if (!oai_profiler_enabled || start_tick == 0 || event_id <= OAI_PROFILE_EVENT_UNSPEC || event_id >= OAI_PROFILE_EVENT_MAX)
+  if (!oai_profiler_is_enabled() || start_tick == 0 || event_id <= OAI_PROFILE_EVENT_UNSPEC || event_id >= OAI_PROFILE_EVENT_MAX)
     return;
   const uint64_t end_tick = rdtsc_oai();
+  const int cpu_end = sched_getcpu();
   const int idx = register_thread_buffer();
   if (idx < 0)
     return;
   oai_profile_thread_buffer_t *tb = &thread_buffers[idx];
-  const uint64_t write_count = tb->write_count;
-  const uint64_t read_count = tb->read_count;
-  if (write_count - read_count >= tb->capacity) {
-    tb->dropped_records++;
-    return;
-  }
-  oai_profile_record_t *r = &tb->records[write_count % tb->capacity];
-  r->seq = __sync_fetch_and_add(&global_seq, 1);
-  r->start_tick = start_tick;
-  r->duration_tick = end_tick - start_tick;
-  r->event_id = event_id;
-  r->frame = frame;
-  r->slot = slot;
-  r->aux0 = aux0;
-  r->aux1 = aux1;
-  r->aux2 = aux2;
-  r->aux3 = aux3;
-  r->flags = flags;
-  __sync_synchronize();
-  tb->write_count = write_count + 1;
+  const uint64_t parent_id = thread_span_depth > 0 ? thread_span_stack[thread_span_depth - 1] : thread_context.parent_id;
+  publish_record(tb,
+                 event_id,
+                 OAI_PROFILE_EVENT_KIND_DURATION,
+                 start_tick,
+                 end_tick - start_tick,
+                 next_span_id(tb, idx),
+                 parent_id,
+                 thread_context.correlation_id,
+                 thread_context.absolute_slot,
+                 thread_span_depth,
+                 -1,
+                 cpu_end,
+                 frame,
+                 slot,
+                 aux0,
+                 aux1,
+                 aux2,
+                 aux3,
+                 flags);
 }
 
 void oai_profiler_record_instant(oai_profile_event_id_t event_id,
@@ -1132,8 +1790,34 @@ void oai_profiler_record_instant(oai_profile_event_id_t event_id,
                                  int64_t aux3,
                                  uint32_t flags)
 {
-  uint64_t tick = oai_profiler_start();
-  oai_profiler_record_duration(event_id, tick, frame, slot, aux0, aux1, aux2, aux3, flags);
+  if (!oai_profiler_is_enabled() || event_id <= OAI_PROFILE_EVENT_UNSPEC || event_id >= OAI_PROFILE_EVENT_MAX)
+    return;
+  const int idx = register_thread_buffer();
+  if (idx < 0)
+    return;
+  oai_profile_thread_buffer_t *tb = &thread_buffers[idx];
+  const uint64_t parent_id = thread_span_depth > 0 ? thread_span_stack[thread_span_depth - 1] : thread_context.parent_id;
+  const int cpu = sched_getcpu();
+  const uint64_t tick = rdtsc_oai();
+  publish_record(tb,
+                 event_id,
+                 OAI_PROFILE_EVENT_KIND_INSTANT,
+                 tick,
+                 0,
+                 next_span_id(tb, idx),
+                 parent_id,
+                 thread_context.correlation_id,
+                 thread_context.absolute_slot,
+                 thread_span_depth,
+                 cpu,
+                 cpu,
+                 frame,
+                 slot,
+                 aux0,
+                 aux1,
+                 aux2,
+                 aux3,
+                 flags);
 }
 
 void oai_profiler_init(const char *process_name,
@@ -1191,7 +1875,9 @@ void oai_profiler_init(const char *process_name,
   }
 
   fprintf(events_file,
-          "seq,tid,thread_name,event_id,event_name,frame,slot,flags,aux0,aux1,aux2,aux3,start_tick,duration_tick,duration_us\n");
+          "schema_version,seq,tid,thread_name,event_id,event_name,event_kind,nesting_depth,frame,slot,"
+          "absolute_slot,correlation_id,span_id,parent_id,cpu_start,cpu_end,cpu_migrated,flags,"
+          "aux0,aux1,aux2,aux3,start_tick,duration_tick,duration_us\n");
   fprintf(sync_file, "realtime_ns,monotonic_raw_ns,tick\n");
   fprintf(settings_file, "realtime_ns,key,value,source\n");
   write_host_metrics_header();
@@ -1209,14 +1895,14 @@ void oai_profiler_init(const char *process_name,
   write_sync_sample();
   write_host_metrics_sample();
 
-  profiler_shutdown_requested = false;
+  __atomic_store_n(&profiler_shutdown_requested, false, __ATOMIC_RELEASE);
   profiler_initialized = true;
-  oai_profiler_enabled = 1;
+  __atomic_store_n(&oai_profiler_enabled, 1, __ATOMIC_RELEASE);
   if (pthread_create(&writer_thread, NULL, profiler_writer_thread, NULL) == 0) {
     writer_started = true;
     LOG_I(UTIL, "OAI profiler enabled, writing to %s\n", output_dir);
   } else {
-    oai_profiler_enabled = 0;
+    __atomic_store_n(&oai_profiler_enabled, 0, __ATOMIC_RELEASE);
     profiler_initialized = false;
     LOG_W(UTIL, "OAI profiler disabled: cannot create writer thread\n");
     fclose(events_file);
@@ -1243,8 +1929,8 @@ void oai_profiler_shutdown(void)
     pthread_mutex_unlock(&lifecycle_mutex);
     return;
   }
-  oai_profiler_enabled = 0;
-  profiler_shutdown_requested = true;
+  __atomic_store_n(&oai_profiler_enabled, 0, __ATOMIC_RELEASE);
+  __atomic_store_n(&profiler_shutdown_requested, true, __ATOMIC_RELEASE);
   const bool join_writer = writer_started;
   pthread_t writer = writer_thread;
   pthread_mutex_unlock(&lifecycle_mutex);
@@ -1278,9 +1964,12 @@ void oai_profiler_shutdown(void)
   rpi_mailbox_fd = -1;
   writer_started = false;
   profiler_initialized = false;
-  profiler_shutdown_requested = false;
+  __atomic_store_n(&profiler_shutdown_requested, false, __ATOMIC_RELEASE);
   previous_cpu_times_valid = false;
-  global_seq = 0;
+  __atomic_store_n(&global_seq, 0, __ATOMIC_RELAXED);
+  __atomic_store_n(&global_correlation_seq, 0, __ATOMIC_RELAXED);
   thread_buffer_index = -1;
+  thread_span_depth = 0;
+  oai_profiler_clear_context();
   pthread_mutex_unlock(&lifecycle_mutex);
 }

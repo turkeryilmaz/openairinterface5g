@@ -1,8 +1,10 @@
 # OAI nrUE/gNB archival profiler
 
 This directory contains the offline utilities for the explicitly enabled
-nrUE/gNB boundary-event profiler. Profiling remains disabled unless `-P` or
-`OAI_PROFILE` enables it.
+nrUE/gNB profiler. Schema 2 records boundary durations and instant events with
+causal and execution context that later stage, kernel, and microarchitectural
+probes can share. Profiling remains disabled unless `-P` or `OAI_PROFILE`
+enables it.
 
 ## Default archive layout
 
@@ -62,14 +64,39 @@ as `gnb.min_rxtxtime` and the USRP transmit-thread mode are recorded in
 Each process directory contains:
 
 ```text
-events.csv          Per-occurrence boundary-event durations
-event_catalog.csv   Stable event ID/name mapping
+events.csv          Per-occurrence duration/instant records and causal identity
+event_catalog.csv   Stable IDs plus role, subsystem, class, kind, and aux units
 sync.csv            Realtime, monotonic, and hardware-counter anchors
-drops.csv           Producer-buffer drop counts
-metadata.txt        Run, host, source, config-path, and lifecycle identity
+drops.csv           Producer drops and span-stack integrity diagnostics
+metadata.txt        Schema, record, run, host, source, config, and lifecycle data
 settings.csv        Effective softmodem/profiler settings
 host_metrics.csv    Temperature, throttling, CPU, memory, and process metrics
 ```
+
+Schema 2 retains the existing numeric event IDs and names. Important event
+fields are:
+
+- `absolute_slot`: non-wrapping work position when the caller provides it;
+  `-1` means unknown.
+- `correlation_id`: identity shared by records belonging to one logical work
+  item; `0` means that a current call site has not yet established context.
+- `span_id` and `parent_id`: unique record identity and local or propagated
+  ancestry. A root can therefore retain the span that dispatched it from
+  another thread.
+- `nesting_depth`: fixed-storage local nesting depth. The implementation does
+  not allocate while entering or leaving a registered-thread span.
+- `cpu_start` and `cpu_end`: CPUs observed at duration endpoints.
+  `cpu_migrated=1` proves an endpoint change; zero does not prove that the
+  task never migrated away and back during the interval.
+- `event_kind`: `duration` or `instant`. Instant events have zero duration.
+
+`metadata.txt` is authoritative for `schema_version`,
+`event_record_size_bytes`, counter frequency, and counter semantics. The
+validated schema-2 record is 120 bytes on x86-64. At the default 131072-record
+capacity this is 15 MiB per registered producer thread. Buffers are allocated
+lazily for active producer threads, not for all 256 registry entries. Record
+the actual process RSS and drop counters when selecting a capacity for a
+campaign.
 
 On Raspberry Pi, `host_metrics.csv` reads the firmware throttling status
 directly through `/dev/vcio`; no `vcgencmd` subprocess is started. Host sampling
@@ -120,8 +147,38 @@ ANALYSIS_DIR=/home/turker/Documents/OpenAirInterface/PerformanceProfiles/Analysi
 ```
 
 The analyzer writes `summary.csv`, `by_thread.csv`, `deadline_misses.csv`,
-`runs.csv`, `pairs.csv`, and `host_summary.csv`. It uses only the Python
-standard library.
+`migrations.csv`, `runs.csv`, `pairs.csv`, and `host_summary.csv`. It
+accepts both Phase 1/schema-1 and Phase 2A/schema-2 archives. Schema-1 rows are
+reported with unknown event kind, absolute slot, and CPU plus zero causal IDs,
+rather than having absent fields inferred retrospectively. The analyzer uses
+only the Python standard library.
+
+## Profiling roadmap
+
+- Phase 1 established opt-in archival boundary timing, host health, collection,
+  pairing, and offline percentile analysis.
+- Phase 2A establishes the schema-2 semantic substrate: descriptors, absolute
+  work position, correlation and parent identity, nested spans, event kind,
+  CPU endpoints, migration reports, and race-free producer/writer publication.
+- Phase 2B will instrument deeper nrUE and gNB processing stages using the same
+  IDs and context, so end-to-end slot critical paths can be decomposed without
+  inventing another trace format.
+- Phase 3 is the complete microarchitectural campaign: PMU
+  cycles/instructions/branches/cache and memory events, scheduler/IRQ
+  interference, and USB/UHD transport internals, with counter availability,
+  multiplexing, scaling, and measurement overhead reported explicitly.
+
+The elapsed-time counter in Phase 1/2A is not a retired CPU-cycle counter.
+M5Stack power samples are also intentionally external for now. Future ingestion
+can align them through the shared experiment ID, realtime interval, and
+`sync.csv` anchors without changing event identity.
+
+Run analyzer schema-regression tests from the repository root:
+
+```bash
+PYTHONPYCACHEPREFIX=/tmp/oai-profile-pycache \
+  python3 -m unittest discover -s tools/profiling/tests -v
+```
 
 ## Overrides
 

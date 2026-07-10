@@ -27,6 +27,17 @@ class GroupStats:
     aux1_values: list[int] = field(default_factory=list)
     aux2_values: list[int] = field(default_factory=list)
     aux3_values: list[int] = field(default_factory=list)
+    schema_versions: set[str] = field(default_factory=set)
+    event_roles: set[str] = field(default_factory=set)
+    subsystems: set[str] = field(default_factory=set)
+    event_classes: set[str] = field(default_factory=set)
+    event_kinds: set[str] = field(default_factory=set)
+    detail_levels: set[str] = field(default_factory=set)
+    correlated_count: int = 0
+    parented_count: int = 0
+    absolute_slot_count: int = 0
+    cpu_observed_count: int = 0
+    cpu_migrations: int = 0
 
     def add(self, row: dict[str, str]) -> None:
         self.durations_us.append(float(row["duration_us"]))
@@ -34,6 +45,19 @@ class GroupStats:
         self.aux1_values.append(int(row["aux1"]))
         self.aux2_values.append(int(row["aux2"]))
         self.aux3_values.append(int(row["aux3"]))
+        self.schema_versions.add(row["schema_version"])
+        self.event_roles.add(row["event_role"])
+        self.subsystems.add(row["subsystem"])
+        self.event_classes.add(row["event_class"])
+        self.event_kinds.add(row["event_kind"])
+        self.detail_levels.add(row["detail_level"])
+        self.correlated_count += parse_int(row.get("correlation_id")) > 0
+        self.parented_count += parse_int(row.get("parent_id")) > 0
+        self.absolute_slot_count += parse_int(row.get("absolute_slot"), -1) >= 0
+        cpu_start = parse_int(row.get("cpu_start"), -1)
+        cpu_end = parse_int(row.get("cpu_end"), -1)
+        self.cpu_observed_count += cpu_start >= 0 and cpu_end >= 0
+        self.cpu_migrations += parse_int(row.get("cpu_migrated")) != 0
 
 
 def quantile(sorted_values: list[float], q: float) -> float:
@@ -92,15 +116,90 @@ def parse_int(value: str | None, default: int = 0) -> int:
         return default
 
 
-def read_drops(profile_dir: Path) -> int:
+def one_or_mixed(values: set[str], default: str = "") -> str:
+    nonempty = sorted(value for value in values if value)
+    if not nonempty:
+        return default
+    return nonempty[0] if len(nonempty) == 1 else "mixed"
+
+
+def read_drop_diagnostics(profile_dir: Path) -> dict[str, int]:
+    diagnostics = {
+        "dropped_records": 0,
+        "span_stack_overflows": 0,
+        "span_stack_mismatches": 0,
+    }
     drops_path = profile_dir / "drops.csv"
     if not drops_path.exists():
-        return 0
-    total = 0
+        return diagnostics
     with drops_path.open(newline="") as f:
         for row in csv.DictReader(f):
-            total += int(row.get("dropped_records", "0") or 0)
-    return total
+            for key in diagnostics:
+                diagnostics[key] += parse_int(row.get(key))
+    return diagnostics
+
+
+def read_event_catalog(profile_dir: Path) -> dict[str, dict[str, str]]:
+    catalog_path = profile_dir / "event_catalog.csv"
+    if not catalog_path.exists():
+        return {}
+    catalog: dict[str, dict[str, str]] = {}
+    with catalog_path.open(newline="") as f:
+        for row in csv.DictReader(f):
+            event_name = row.get("event_name", "")
+            if event_name:
+                catalog[event_name] = row
+    return catalog
+
+
+def normalize_event_row(
+    row: dict[str, str],
+    metadata: dict[str, str],
+    catalog: dict[str, dict[str, str]],
+) -> dict[str, str]:
+    normalized = dict(row)
+    event_name = normalized.get("event_name") or "UNKNOWN"
+    descriptor = catalog.get(event_name, {})
+    schema_version = normalized.get("schema_version") or metadata.get("schema_version") or "1"
+    default_kind = descriptor.get("default_kind") or ("unknown" if schema_version == "1" else "duration")
+    defaults = {
+        "schema_version": schema_version,
+        "seq": "0",
+        "tid": "0",
+        "thread_name": "unknown",
+        "event_id": "0",
+        "event_name": event_name,
+        "event_kind": default_kind,
+        "nesting_depth": "0",
+        "frame": "-1",
+        "slot": "-1",
+        "absolute_slot": "-1",
+        "correlation_id": "0",
+        "span_id": "0",
+        "parent_id": "0",
+        "cpu_start": "-1",
+        "cpu_end": "-1",
+        "flags": "0",
+        "aux0": "0",
+        "aux1": "0",
+        "aux2": "0",
+        "aux3": "0",
+        "start_tick": "0",
+        "duration_tick": "0",
+        "duration_us": "0",
+        "event_role": descriptor.get("role") or metadata.get("role") or "unknown",
+        "subsystem": descriptor.get("subsystem") or "unknown",
+        "event_class": descriptor.get("event_class") or "unknown",
+        "detail_level": descriptor.get("detail_level") or "boundary",
+    }
+    for key, value in defaults.items():
+        if not normalized.get(key):
+            normalized[key] = value
+    if not normalized.get("cpu_migrated"):
+        cpu_start = parse_int(normalized.get("cpu_start"), -1)
+        cpu_end = parse_int(normalized.get("cpu_end"), -1)
+        normalized["cpu_migrated"] = str(int(cpu_start >= 0 and cpu_end >= 0 and cpu_start != cpu_end))
+    return normalized
 
 
 def discover_profile_dirs(inputs: Iterable[Path]) -> list[Path]:
@@ -220,6 +319,7 @@ def build_run_inventory(
     metadata_by_dir: dict[str, dict[str, str]],
     settings_by_dir: dict[str, dict[str, str]],
     drops_by_dir: dict[str, int],
+    drop_diagnostics_by_dir: dict[str, dict[str, int]],
     host_by_dir: dict[str, dict[str, object]],
 ) -> list[dict[str, object]]:
     runs: list[dict[str, object]] = []
@@ -239,6 +339,9 @@ def build_run_inventory(
         runs.append(
             {
                 "profile_dir": key,
+                "schema_version": metadata.get("schema_version", "1"),
+                "event_record_size_bytes": metadata.get("event_record_size_bytes", ""),
+                "max_nesting_depth": metadata.get("max_nesting_depth", ""),
                 "run_id": metadata.get("run_id", profile_dir.name),
                 "experiment_id": metadata.get("experiment_id", ""),
                 "role": role,
@@ -259,6 +362,8 @@ def build_run_inventory(
                 "sample_advance": settings.get("softmodem.sample_advance", ""),
                 "thread_pool": settings.get("softmodem.thread_pool", ""),
                 "drops_total": drops_by_dir[key],
+                "span_stack_overflows": drop_diagnostics_by_dir[key]["span_stack_overflows"],
+                "span_stack_mismatches": drop_diagnostics_by_dir[key]["span_stack_mismatches"],
                 "host_metric_samples": host_by_dir[key]["samples"],
             }
         )
@@ -338,7 +443,12 @@ def write_rows(path: Path, fields: list[str], rows: list[dict[str, object]]) -> 
         writer.writerows(rows)
 
 
-def iter_event_rows(profile_dirs: Iterable[Path], event_filter: set[str] | None) -> Iterable[tuple[Path, dict[str, str]]]:
+def iter_event_rows(
+    profile_dirs: Iterable[Path],
+    event_filter: set[str] | None,
+    metadata_by_dir: dict[str, dict[str, str]],
+    catalogs_by_dir: dict[str, dict[str, dict[str, str]]],
+) -> Iterable[tuple[Path, dict[str, str]]]:
     for profile_dir in profile_dirs:
         events_path = profile_dir / "events.csv"
         if not events_path.exists():
@@ -346,16 +456,27 @@ def iter_event_rows(profile_dirs: Iterable[Path], event_filter: set[str] | None)
         with events_path.open(newline="") as f:
             reader = csv.DictReader(f)
             for row in reader:
-                if event_filter and row["event_name"] not in event_filter:
+                normalized = normalize_event_row(
+                    row,
+                    metadata_by_dir[str(profile_dir)],
+                    catalogs_by_dir[str(profile_dir)],
+                )
+                if event_filter and normalized["event_name"] not in event_filter:
                     continue
-                yield profile_dir, row
+                yield profile_dir, normalized
 
 
 def write_summary(path: Path | None, rows: list[dict[str, object]]) -> None:
     fields = [
         "profile_dir",
         "process_name",
+        "schema_version",
         "event_name",
+        "event_role",
+        "subsystem",
+        "event_class",
+        "event_kind",
+        "detail_level",
         "count",
         "min_us",
         "p50_us",
@@ -366,7 +487,15 @@ def write_summary(path: Path | None, rows: list[dict[str, object]]) -> None:
         "max_us",
         "mean_us",
         "stdev_us",
+        "correlated_count",
+        "parented_count",
+        "absolute_slot_count",
+        "cpu_observed_count",
+        "cpu_migrations",
+        "cpu_migration_rate",
         "drops_total",
+        "span_stack_overflows",
+        "span_stack_mismatches",
     ]
     if path is None:
         writer = csv.DictWriter(__import__("sys").stdout, fieldnames=fields)
@@ -380,7 +509,22 @@ def write_summary(path: Path | None, rows: list[dict[str, object]]) -> None:
 
 
 def write_by_thread(path: Path, rows: list[dict[str, object]]) -> None:
-    fields = ["profile_dir", "process_name", "thread_name", "event_name", "count", "mean_us", "p99_us", "max_us"]
+    fields = [
+        "profile_dir",
+        "process_name",
+        "schema_version",
+        "thread_name",
+        "event_name",
+        "event_kind",
+        "detail_level",
+        "count",
+        "mean_us",
+        "p99_us",
+        "max_us",
+        "cpu_observed_count",
+        "cpu_migrations",
+        "cpu_migration_rate",
+    ]
     with path.open("w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=fields)
         writer.writeheader()
@@ -390,11 +534,19 @@ def write_by_thread(path: Path, rows: list[dict[str, object]]) -> None:
 def write_deadline_misses(path: Path, rows: list[dict[str, str]]) -> None:
     fields = [
         "profile_dir",
+        "schema_version",
         "seq",
         "tid",
         "thread_name",
         "frame",
         "slot",
+        "absolute_slot",
+        "correlation_id",
+        "span_id",
+        "parent_id",
+        "cpu_start",
+        "cpu_end",
+        "cpu_migrated",
         "current_time_us",
         "deadline_us",
         "miss_us",
@@ -406,18 +558,58 @@ def write_deadline_misses(path: Path, rows: list[dict[str, str]]) -> None:
         writer.writerows(rows)
 
 
-def build_rows(groups: dict[tuple[str, str], GroupStats], metadata_by_dir: dict[str, dict[str, str]], drops_by_dir: dict[str, int]) -> list[dict[str, object]]:
+def write_migrations(path: Path, rows: list[dict[str, str]]) -> None:
+    fields = [
+        "profile_dir",
+        "schema_version",
+        "seq",
+        "tid",
+        "thread_name",
+        "event_name",
+        "event_kind",
+        "frame",
+        "slot",
+        "absolute_slot",
+        "correlation_id",
+        "span_id",
+        "parent_id",
+        "nesting_depth",
+        "cpu_start",
+        "cpu_end",
+        "start_tick",
+        "duration_tick",
+        "duration_us",
+    ]
+    with path.open("w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=fields)
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+def build_rows(
+    groups: dict[tuple[str, str], GroupStats],
+    metadata_by_dir: dict[str, dict[str, str]],
+    drop_diagnostics_by_dir: dict[str, dict[str, int]],
+) -> list[dict[str, object]]:
     rows: list[dict[str, object]] = []
     for (profile_dir, event_name), stats in sorted(groups.items()):
         durations = sorted(stats.durations_us)
         avg = mean(durations)
         q = {name: quantile(durations, value) for name, value in [("p50", 0.5), ("p90", 0.9), ("p95", 0.95), ("p99", 0.99), ("p99_9", 0.999)]}
+        diagnostics = drop_diagnostics_by_dir[profile_dir]
+        count = len(durations)
         rows.append(
             {
                 "profile_dir": profile_dir,
                 "process_name": metadata_by_dir.get(profile_dir, {}).get("process_name", "unknown"),
+                "schema_version": one_or_mixed(stats.schema_versions, "1"),
                 "event_name": event_name,
-                "count": len(durations),
+                "event_role": one_or_mixed(stats.event_roles, "unknown"),
+                "subsystem": one_or_mixed(stats.subsystems, "unknown"),
+                "event_class": one_or_mixed(stats.event_classes, "unknown"),
+                "event_kind": one_or_mixed(stats.event_kinds, "unknown"),
+                "detail_level": one_or_mixed(stats.detail_levels, "boundary"),
+                "count": count,
                 "min_us": durations[0] if durations else math.nan,
                 "p50_us": q["p50"],
                 "p90_us": q["p90"],
@@ -427,7 +619,17 @@ def build_rows(groups: dict[tuple[str, str], GroupStats], metadata_by_dir: dict[
                 "max_us": durations[-1] if durations else math.nan,
                 "mean_us": avg,
                 "stdev_us": stdev(durations, avg),
-                "drops_total": drops_by_dir.get(profile_dir, 0),
+                "correlated_count": stats.correlated_count,
+                "parented_count": stats.parented_count,
+                "absolute_slot_count": stats.absolute_slot_count,
+                "cpu_observed_count": stats.cpu_observed_count,
+                "cpu_migrations": stats.cpu_migrations,
+                "cpu_migration_rate": stats.cpu_migrations / stats.cpu_observed_count
+                if stats.cpu_observed_count
+                else math.nan,
+                "drops_total": diagnostics["dropped_records"],
+                "span_stack_overflows": diagnostics["span_stack_overflows"],
+                "span_stack_mismatches": diagnostics["span_stack_mismatches"],
             }
         )
     return rows
@@ -449,16 +651,26 @@ def main() -> int:
     event_filter = set(args.event) if args.event else None
     metadata_by_dir = {str(p): read_metadata(p) for p in profile_dirs}
     settings_by_dir = {str(p): read_settings(p) for p in profile_dirs}
-    drops_by_dir = {str(p): read_drops(p) for p in profile_dirs}
+    catalogs_by_dir = {str(p): read_event_catalog(p) for p in profile_dirs}
+    drop_diagnostics_by_dir = {str(p): read_drop_diagnostics(p) for p in profile_dirs}
+    drops_by_dir = {key: diagnostics["dropped_records"] for key, diagnostics in drop_diagnostics_by_dir.items()}
     host_by_dir = {str(p): summarize_host_metrics(p) for p in profile_dirs}
-    run_rows = build_run_inventory(profile_dirs, metadata_by_dir, settings_by_dir, drops_by_dir, host_by_dir)
+    run_rows = build_run_inventory(
+        profile_dirs,
+        metadata_by_dir,
+        settings_by_dir,
+        drops_by_dir,
+        drop_diagnostics_by_dir,
+        host_by_dir,
+    )
     pair_rows = build_pairs(run_rows)
 
     event_groups: dict[tuple[str, str], GroupStats] = defaultdict(GroupStats)
     thread_groups: dict[tuple[str, str, str], GroupStats] = defaultdict(GroupStats)
     deadline_rows: list[dict[str, str]] = []
+    migration_rows: list[dict[str, str]] = []
 
-    for profile_dir, row in iter_event_rows(profile_dirs, event_filter):
+    for profile_dir, row in iter_event_rows(profile_dirs, event_filter, metadata_by_dir, catalogs_by_dir):
         profile_key = str(profile_dir)
         event_groups[(profile_key, row["event_name"])].add(row)
         thread_groups[(profile_key, row["thread_name"], row["event_name"])].add(row)
@@ -466,33 +678,74 @@ def main() -> int:
             deadline_rows.append(
                 {
                     "profile_dir": profile_key,
+                    "schema_version": row["schema_version"],
                     "seq": row["seq"],
                     "tid": row["tid"],
                     "thread_name": row["thread_name"],
                     "frame": row["frame"],
                     "slot": row["slot"],
+                    "absolute_slot": row["absolute_slot"],
+                    "correlation_id": row["correlation_id"],
+                    "span_id": row["span_id"],
+                    "parent_id": row["parent_id"],
+                    "cpu_start": row["cpu_start"],
+                    "cpu_end": row["cpu_end"],
+                    "cpu_migrated": row["cpu_migrated"],
                     "current_time_us": row["aux0"],
                     "deadline_us": row["aux1"],
                     "miss_us": row["aux2"],
                     "start_tick": row["start_tick"],
                 }
             )
+        if parse_int(row.get("cpu_migrated")):
+            migration_rows.append(
+                {
+                    "profile_dir": profile_key,
+                    "schema_version": row["schema_version"],
+                    "seq": row["seq"],
+                    "tid": row["tid"],
+                    "thread_name": row["thread_name"],
+                    "event_name": row["event_name"],
+                    "event_kind": row["event_kind"],
+                    "frame": row["frame"],
+                    "slot": row["slot"],
+                    "absolute_slot": row["absolute_slot"],
+                    "correlation_id": row["correlation_id"],
+                    "span_id": row["span_id"],
+                    "parent_id": row["parent_id"],
+                    "nesting_depth": row["nesting_depth"],
+                    "cpu_start": row["cpu_start"],
+                    "cpu_end": row["cpu_end"],
+                    "start_tick": row["start_tick"],
+                    "duration_tick": row["duration_tick"],
+                    "duration_us": row["duration_us"],
+                }
+            )
 
-    summary_rows = build_rows(event_groups, metadata_by_dir, drops_by_dir)
+    summary_rows = build_rows(event_groups, metadata_by_dir, drop_diagnostics_by_dir)
     thread_rows: list[dict[str, object]] = []
     for (profile_dir, thread_name, event_name), stats in sorted(thread_groups.items()):
         durations = sorted(stats.durations_us)
         avg = mean(durations)
+        cpu_migration_rate = (
+            stats.cpu_migrations / stats.cpu_observed_count if stats.cpu_observed_count else math.nan
+        )
         thread_rows.append(
             {
                 "profile_dir": profile_dir,
                 "process_name": metadata_by_dir.get(profile_dir, {}).get("process_name", "unknown"),
+                "schema_version": one_or_mixed(stats.schema_versions, "1"),
                 "thread_name": thread_name,
                 "event_name": event_name,
+                "event_kind": one_or_mixed(stats.event_kinds, "unknown"),
+                "detail_level": one_or_mixed(stats.detail_levels, "boundary"),
                 "count": len(durations),
                 "mean_us": avg,
                 "p99_us": quantile(durations, 0.99),
                 "max_us": durations[-1] if durations else math.nan,
+                "cpu_observed_count": stats.cpu_observed_count,
+                "cpu_migrations": stats.cpu_migrations,
+                "cpu_migration_rate": cpu_migration_rate,
             }
         )
 
@@ -501,10 +754,14 @@ def main() -> int:
         write_summary(args.output_dir / "summary.csv", summary_rows)
         write_by_thread(args.output_dir / "by_thread.csv", thread_rows)
         write_deadline_misses(args.output_dir / "deadline_misses.csv", deadline_rows)
+        write_migrations(args.output_dir / "migrations.csv", migration_rows)
         write_rows(
             args.output_dir / "runs.csv",
             [
                 "profile_dir",
+                "schema_version",
+                "event_record_size_bytes",
+                "max_nesting_depth",
                 "run_id",
                 "experiment_id",
                 "role",
@@ -525,6 +782,8 @@ def main() -> int:
                 "sample_advance",
                 "thread_pool",
                 "drops_total",
+                "span_stack_overflows",
+                "span_stack_mismatches",
                 "host_metric_samples",
             ],
             run_rows,

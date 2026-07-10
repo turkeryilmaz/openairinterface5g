@@ -32,7 +32,7 @@ softmodem_params_t *get_softmodem_params(void) {
 
 void record_oai_profiler_common_settings(void)
 {
-  if (!oai_profiler_enabled)
+  if (!oai_profiler_is_enabled())
     return;
 
   oai_profiler_record_setting_int("softmodem.usrp_tx_thread", usrp_tx_thread, "effective");
