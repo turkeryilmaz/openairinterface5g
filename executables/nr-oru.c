@@ -8,6 +8,7 @@
 #include "openair1/PHY/defs_nr_common.h"
 #include "PHY/NR_TRANSPORT/nr_transport_proto.h"
 #include "oru_packet_processor.h"
+#include "common/utils/threadPool/thread-pool.h"
 #include <time.h>
 #include <unistd.h>
 #include "openair1/PHY/MODULATION/nr_modulation.h"
@@ -634,57 +635,55 @@ static void receive_pusch(ORU_t *oru, int frame, int slot, int symbol, ul_job_t 
 
 #define UL_WORK_QUEUE_DEPTH 128
 
+typedef struct ul_work_queue_s ul_work_queue_t;
+
 typedef struct {
   ORU_t *oru;
   int frame;
   int slot;
   int symbol;
   ul_job_t job;
-} ul_work_item_t;
+  ul_work_queue_t *queue;
+} __attribute__((aligned(64))) ul_work_item_t;
 
-typedef struct {
-  ul_work_item_t ring[UL_WORK_QUEUE_DEPTH];
-  int head;
-  int tail;
-  int count;
-  pthread_mutex_t lock;
-  pthread_cond_t work_available;
-  pthread_cond_t space_available;
-  bool running;
-} ul_work_queue_t;
+struct ul_work_queue_s {
+  __attribute__((aligned(64))) ul_work_item_t ring[UL_WORK_QUEUE_DEPTH];
+  __attribute__((aligned(64))) uint32_t prod_head;
+  __attribute__((aligned(64))) _Atomic(uint32_t) pending_tasks;
+};
 
-static void *ul_worker_thread(void *arg)
+static void ul_worker_pool_task(void *args)
 {
-  ul_work_queue_t *q = arg;
-  while (1) {
-    pthread_mutex_lock(&q->lock);
-    while (q->count == 0 && q->running)
-      pthread_cond_wait(&q->work_available, &q->lock);
-    if (!q->running && q->count == 0) {
-      pthread_mutex_unlock(&q->lock);
-      break;
-    }
-    ul_work_item_t item = q->ring[q->head];
-    q->head = (q->head + 1) % UL_WORK_QUEUE_DEPTH;
-    q->count--;
-    pthread_cond_signal(&q->space_available);
-    pthread_mutex_unlock(&q->lock);
-
-    receive_pusch(item.oru, item.frame, item.slot, item.symbol, &item.job);
-  }
-  return NULL;
+  ul_work_item_t *item = args;
+  receive_pusch(item->oru, item->frame, item->slot, item->symbol, &item->job);
+  __atomic_fetch_sub(&item->queue->pending_tasks, 1, __ATOMIC_RELEASE);
 }
 
 static void dispatch_ul_work(ul_work_queue_t *q, ORU_t *oru, int frame, int slot, int symbol, const ul_job_t *job)
 {
-  pthread_mutex_lock(&q->lock);
-  while (q->count == UL_WORK_QUEUE_DEPTH)
-    pthread_cond_wait(&q->space_available, &q->lock);
-  q->ring[q->tail] = (ul_work_item_t){.oru = oru, .frame = frame, .slot = slot, .symbol = symbol, .job = *job};
-  q->tail = (q->tail + 1) % UL_WORK_QUEUE_DEPTH;
-  q->count++;
-  pthread_cond_signal(&q->work_available);
-  pthread_mutex_unlock(&q->lock);
+  if (__atomic_load_n(&q->pending_tasks, __ATOMIC_ACQUIRE) >= UL_WORK_QUEUE_DEPTH) {
+    __atomic_fetch_add(&oru->ul_dropped_jobs, 1, __ATOMIC_RELAXED);
+    return;
+  }
+
+  uint32_t idx = q->prod_head & (UL_WORK_QUEUE_DEPTH - 1);
+  q->ring[idx] = (ul_work_item_t){
+    .oru = oru,
+    .frame = frame,
+    .slot = slot,
+    .symbol = symbol,
+    .job = *job,
+    .queue = q
+  };
+
+  __atomic_fetch_add(&q->pending_tasks, 1, __ATOMIC_RELEASE);
+  q->prod_head++;
+
+  task_t task = {
+    .args = &q->ring[idx],
+    .func = ul_worker_pool_task
+  };
+  pushTpool(oru->ru->threadPool, task);
 }
 
 // O-RU-specific TX thread: TDD-aware (skips writes in UL slots) and uses a simpler
@@ -847,20 +846,10 @@ void *oru_south_read_thread(void *arg)
   slot = start_slot;
   frame = start_frame;
 
-  // Worker pool: one thread per RX antenna so all antennas in a symbol process in parallel.
-  const int num_workers = ru->nb_rx;
-  pthread_t workers[num_workers];
   ul_work_queue_t work_queue = {
-    .lock = PTHREAD_MUTEX_INITIALIZER,
-    .work_available = PTHREAD_COND_INITIALIZER,
-    .space_available = PTHREAD_COND_INITIALIZER,
-    .running = true,
+    .prod_head = 0,
+    .pending_tasks = 0,
   };
-  for (int i = 0; i < num_workers; i++) {
-    char name[32];
-    snprintf(name, sizeof(name), "ul_worker_%d", i);
-    threadCreate(&workers[i], ul_worker_thread, &work_queue, name, -1, OAI_PRIORITY_RT_MAX);
-  }
 
   ul_pending_t pending_ul[MAX_PENDING_UL_JOBS] = {0};
 
@@ -961,16 +950,6 @@ void *oru_south_read_thread(void *arg)
     }
   }
 
-  pthread_mutex_lock(&work_queue.lock);
-  work_queue.running = false;
-  pthread_cond_broadcast(&work_queue.work_available);
-  pthread_mutex_unlock(&work_queue.lock);
-  for (int i = 0; i < num_workers; i++)
-    pthread_join(workers[i], NULL);
-  pthread_cond_destroy(&work_queue.work_available);
-  pthread_cond_destroy(&work_queue.space_available);
-  pthread_mutex_destroy(&work_queue.lock);
-
   return NULL;
 }
 
@@ -988,8 +967,9 @@ void oru_self_diagnosis(ORU_t *oru)
   uint64_t ul_count = ul_packed >> 32;
   uint64_t ul_time_total = ul_packed & 0xFFFFFFFFULL;
   uint64_t ul_time_max = __atomic_exchange_n(&oru->ul_ant_time_max_us, 0, __ATOMIC_RELAXED);
+  uint64_t ul_dropped = __atomic_exchange_n(&oru->ul_dropped_jobs, 0, __ATOMIC_RELAXED);
 
-  if (dl_count == 0 && ul_count == 0) {
+  if (dl_count == 0 && ul_count == 0 && ul_dropped == 0) {
     return;
   }
 
@@ -1032,9 +1012,9 @@ void oru_self_diagnosis(ORU_t *oru)
 
   LOG_I(PHY, "----------------------------------------------------------------------------\n");
 
-  if (ul_count > 0) {
-    double ul_ant_avg_us = (double)ul_time_total / (ul_count * 16.0);
-    double ul_ant_max_us = (double)ul_time_max / 16.0;
+  if (ul_count > 0 || ul_dropped > 0) {
+    double ul_ant_avg_us = ul_count > 0 ? (double)ul_time_total / (ul_count * 16.0) : 0.0;
+    double ul_ant_max_us = ul_count > 0 ? (double)ul_time_max / 16.0 : 0.0;
 
     double effective_workers = (num_ul_workers < num_cores) ? num_ul_workers : num_cores;
     if (effective_workers < 1.0) effective_workers = 1.0;
@@ -1046,22 +1026,32 @@ void oru_self_diagnosis(ORU_t *oru)
 
     LOG_I(PHY, "UL (Parallel FFT + phase de-rotation for %d antennas):\n", fp->nb_antennas_rx);
     LOG_I(PHY, "  Processed: %lu antenna-symbols\n", ul_count);
-    LOG_I(PHY, "  Per-Antenna Time: Avg = %.2f us, Max = %.2f us\n", ul_ant_avg_us, ul_ant_max_us);
-    LOG_I(PHY, "  Effective Symbol Processing Time (with %d threads on %ld cores): Avg = %.2f us, Max = %.2f us\n",
-          num_ul_workers, num_cores, ul_eff_avg_us, ul_eff_max_us);
-    LOG_I(PHY, "  Safety Margin (based on Avg): %.2f%%\n", ul_margin);
+    LOG_I(PHY, "  Dropped: %lu jobs due to threadpool queue full\n", ul_dropped);
+    if (ul_count > 0) {
+      LOG_I(PHY, "  Per-Antenna Time: Avg = %.2f us, Max = %.2f us\n", ul_ant_avg_us, ul_ant_max_us);
+      LOG_I(PHY, "  Effective Symbol Processing Time (with %d threads on %ld cores): Avg = %.2f us, Max = %.2f us\n",
+            num_ul_workers, num_cores, ul_eff_avg_us, ul_eff_max_us);
+      LOG_I(PHY, "  Safety Margin (based on Avg): %.2f%%\n", ul_margin);
 
-    if (ul_eff_avg_us >= t_sym_avg_us) {
-      LOG_E(PHY, "  [DIAGNOSIS] UL CRITICAL: Effective processing time (%.2f us) exceeds symbol budget (%.2f us)!\n",
-            ul_eff_avg_us, t_sym_avg_us);
-      pass = false;
-    } else if (ul_margin < 20.0) {
-      LOG_W(PHY, "  [DIAGNOSIS] UL WARNING: Safety margin is low (%.2f%% < 20%%). Risk of RT jitter.\n", ul_margin);
+      if (ul_eff_avg_us >= t_sym_avg_us) {
+        LOG_E(PHY, "  [DIAGNOSIS] UL CRITICAL: Effective processing time (%.2f us) exceeds symbol budget (%.2f us)!\n",
+              ul_eff_avg_us, t_sym_avg_us);
+        pass = false;
+      } else if (ul_margin < 20.0) {
+        LOG_W(PHY, "  [DIAGNOSIS] UL WARNING: Safety margin is low (%.2f%% < 20%%). Risk of RT jitter.\n", ul_margin);
+      } else {
+        LOG_I(PHY, "  [DIAGNOSIS] UL PASS\n");
+      }
     } else {
-      LOG_I(PHY, "  [DIAGNOSIS] UL PASS\n");
+      LOG_I(PHY, "  No symbols successfully processed in this window.\n");
+    }
+
+    if (ul_dropped > 0) {
+      LOG_E(PHY, "  [DIAGNOSIS] UL CRITICAL: Dropped %lu jobs because the threadpool queue was full!\n", ul_dropped);
+      pass = false;
     }
   } else {
-    LOG_I(PHY, "UL: No symbols processed in this window.\n");
+    LOG_I(PHY, "UL: No symbols processed or dropped in this window.\n");
   }
 
   LOG_I(PHY, "----------------------------------------------------------------------------\n");
