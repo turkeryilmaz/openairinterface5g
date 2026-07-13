@@ -3470,7 +3470,7 @@ void handle_RRCRelease(NR_UE_RRC_INST_t *rrc)
     if (rrcReleaseIEs->cellReselectionPriorities)
       LOG_E(NR_RRC, "cellReselectionPriorities in RRCRelease not handled\n");
     if (rrcReleaseIEs->deprioritisationReq)
-      LOG_E(NR_RRC, "deprioritisationReq in RRCRelease not handled\n");
+      LOG_I(NR_RRC, "deprioritisationReq in RRCRelease not applied, UE doesn't support release with deprioritisation\n");
     if (rrcReleaseIEs->suspendConfig) {
       suspend = true;
       // procedures to go in INACTIVE state
