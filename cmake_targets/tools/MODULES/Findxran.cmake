@@ -6,7 +6,7 @@
 # Finds the xran library. Note that the library number is as follows:
 # - oran_e_maintenance_release_v1.5 -> 5.1.6
 # - oran_f_release_v1.3 -> 6.1.4
-# - oran_k_release_v1.3 -> 11.1.3
+# - oran_k_release_v1.4 -> 11.1.4
 #
 # Required options
 # ^^^^^^^^^^^^^^^^

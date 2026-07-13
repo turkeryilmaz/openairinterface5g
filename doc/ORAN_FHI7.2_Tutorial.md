@@ -74,11 +74,10 @@ Supported libxran releases:
 
 | Vendor                                  |
 |-----------------------------------------|
-| `oran_f_release_v1.0`                   |
 | `oran_k_release_v1.0`                   |
 
-**Note**: The libxran driver of OAI identifies the above F release version as
-"6.1.0" (F is the sixth letter, then 1.0), and the above K release as "11.1.0".
+**Note**: The libxran driver of OAI identifies the above K release as "11.1.0".
+E/F releases not supported starting from tags `2026.w08`/`2026.w28`, respectively.
 
 ### Configure your server
 
@@ -307,7 +306,7 @@ timedatectl set-ntp false
 
 ### DPDK (Data Plane Development Kit)
 
-Download DPDK version 20.11.9 (F release) or 24.11.4 (K release).
+Download DPDK version 22.11.11 (K release).
 
 ```bash
 # on debian
@@ -315,15 +314,13 @@ sudo apt install wget xz-utils libnuma-dev libibverbs-dev rdma-core python3-pyel
 # on Fedora/RHEL
 sudo dnf install wget xz numactl-devel rdma-core-devel libibverbs-devel python3-pyelftools meson
 cd
-wget http://fast.dpdk.org/rel/dpdk-20.11.9.tar.xz # F release
-wget http://fast.dpdk.org/rel/dpdk-24.11.4.tar.xz # K release
+wget http://fast.dpdk.org/rel/dpdk-22.11.11.tar.xz # K release
 ```
 
 #### DPDK Compilation and Installation
 
 ```bash
-tar xvf dpdk-20.11.9.tar.xz && cd dpdk-stable-20.11.9 # F release
-tar xvf dpdk-24.11.4.tar.xz && cd dpdk-stable-24.11.4 # K release
+tar xvf dpdk-22.11.11.tar.xz && cd dpdk-stable-22.11.11 # K release
 
 meson build
 ninja -C build
@@ -390,8 +387,7 @@ pkg-config --libs libdpdk --static
 Go back to the version folder you used to build and install
 
 ```
-cd ~/dpdk-stable-20.11.9 # F release
-cd ~/dpdk-stable-24.11.4 # K release
+cd ~/dpdk-stable-22.11.11 # K release
 sudo ninja deinstall -C build
 ```
 
@@ -406,22 +402,11 @@ cd ~/openairinterface5g/
 
 ### Build ORAN Fronthaul Interface Library
 
-Download ORAN FHI DU library, checkout the correct version, and apply the correct patch (available in `oai_folder/cmake_targets/tools/oran_fhi_integration_patches`).
-
-#### F release
-
-```bash
-git clone https://github.com/openairinterface/o-du-phy.git ~/phy
-cd ~/phy
-git checkout oran_f_release_v1.0
-git apply ~/openairinterface5g/cmake_targets/tools/oran_fhi_integration_patches/F/oaioran_F.patch
-```
-
 #### K release
 ```bash
 git clone https://github.com/openairinterface/o-du-phy.git ~/phy
 cd ~/phy
-git checkout 11.1.3 # the tag points to the `main` branch which has all patches applied that are relevant for OAI integration; the tag matches the value of cmake variable `K_VERSION`
+git checkout 11.1.4 # the tag points to the `main` branch which has all patches applied that are relevant for OAI integration; the tag matches the value of cmake variable `K_VERSION`
 ```
 or use `xran_DOWNLOAD` option when compiling OAI gNB.
 
@@ -435,8 +420,7 @@ environment variables `RTE_SDK` for the path to the source tree of DPDK, and
 ```bash
 cd ~/phy/fhi_lib/lib
 make clean
-WIRELESS_SDK_TOOLCHAIN=gcc RTE_SDK=~/dpdk-stable-20.11.9/ XRAN_DIR=~/phy/fhi_lib make XRAN_LIB_SO=1 # F release
-WIRELESS_SDK_TOOLCHAIN=gcc RTE_SDK=~/dpdk-stable-24.11.4/ XRAN_DIR=~/phy/fhi_lib make XRAN_LIB_SO=1 # K release
+WIRELESS_SDK_TOOLCHAIN=gcc RTE_SDK=~/dpdk-stable-22.11.11/ XRAN_DIR=~/phy/fhi_lib make XRAN_LIB_SO=1 # K release
 ...
 [AR] build/libxran.so
 ./build/libxran.so
@@ -522,7 +506,7 @@ Note that you might also call cmake directly instead of using `build_oai`:
 ```
 cd ~/openairinterface5g
 mkdir build && cd build
-# build RAN after manually building xran F or K release
+# build RAN after manually building xran K release
 cmake .. -GNinja -DOAI_FHI72=ON -Dxran_LOCATION=$HOME/phy/fhi_lib/lib
 # build RAN and xran K release automatically
 cmake .. -GNinja -DOAI_FHI72=ON -Dxran_DOWNLOAD=ON

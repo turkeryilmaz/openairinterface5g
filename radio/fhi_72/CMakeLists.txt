@@ -18,17 +18,16 @@ add_library(oran_fhlib_5g MODULE
             oran-init.c
 )
 
-set(F_VERSION 6.1.9)
-set(K_VERSION 11.1.3)
+set(K_VERSION 11.1.4)
 
 add_boolean_option(xran_DOWNLOAD ON "Download and build xran library if not found in xran_LOCATION" OFF)
 
 find_package(xran)
 if(xran_FOUND)
   if(xran_VERSION VERSION_GREATER_EQUAL 5 AND xran_VERSION VERSION_LESS 6)
-    message(FATAL_ERROR "xran E release not supported starting from tag 2026.w08.\nPlease switch to F version ${F_VERSION} or K version ${K_VERSION}")
-  elseif(xran_VERSION VERSION_EQUAL F_VERSION)
-    target_compile_definitions(oran_fhlib_5g PRIVATE F_RELEASE)
+    message(FATAL_ERROR "xran E release not supported starting from tag 2026.w08.\nPlease switch to K version ${K_VERSION}")
+  elseif(xran_VERSION VERSION_GREATER_EQUAL 6 AND xran_VERSION VERSION_LESS 7)
+    message(FATAL_ERROR "xran F release not supported starting from tag 2026.w28.\nPlease switch to K version ${K_VERSION}")
   elseif(xran_VERSION VERSION_EQUAL K_VERSION)
     if(dpdk_VERSION VERSION_LESS 22)
       message(FATAL_ERROR "DPDK version miniminum 22 required for K release, but found ${dpdk_VERSION}")
