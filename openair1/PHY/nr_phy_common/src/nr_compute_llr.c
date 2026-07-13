@@ -2924,7 +2924,7 @@ uint8_t nr_mmse_2layers(c16_t **rxdataF_comp,
 
   // Add noise_var such that: H^h * H + noise_var * I
   if (noise_var != 0) {
-    simde__m128i nvar_128i = simde_mm_set1_epi32(noise_var);
+    simde__m128i nvar_128i = simde_mm_set1_epi32(noise_var >> shift);
     simde__m128i *af_mf_00_128i = (simde__m128i *)af_mf_00;
     simde__m128i *af_mf_11_128i = (simde__m128i *)af_mf_11;
     for (int k = 0; k < 3 * nb_rb_0; k++) {
