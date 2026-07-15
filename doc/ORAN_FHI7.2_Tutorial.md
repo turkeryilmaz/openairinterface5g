@@ -77,7 +77,7 @@ Supported libxran releases:
 | `oran_k_release_v1.0`                   |
 
 **Note**: The libxran driver of OAI identifies the above K release as "11.1.0".
-E/F releases not supported starting from tags `2026.w08`/`2026.w28`, respectively.
+E/F releases not supported starting from tags `2026.w08`/`2026.w29`, respectively.
 
 ### Configure your server
 
