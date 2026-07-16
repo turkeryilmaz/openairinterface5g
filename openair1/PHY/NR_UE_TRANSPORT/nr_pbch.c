@@ -284,7 +284,8 @@ void nr_generate_pbch_llr(const PHY_VARS_NR_UE *ue,
                           const int ssb_start_subcarrier,
                           const c16_t rxdataF[frame_parms->nb_antennas_rx][frame_parms->ofdm_symbol_size],
                           const c16_t dl_ch_estimates[frame_parms->nb_antennas_rx][frame_parms->ofdm_symbol_size],
-                          int16_t pbch_e_rx[NR_POLAR_PBCH_E])
+                          int16_t pbch_e_rx[NR_POLAR_PBCH_E],
+                          uint8_t *log2_maxh)
 {
   const int symbol_offset = nr_get_ssb_start_symbol(frame_parms, i_ssb) % (NR_SYMBOLS_PER_SLOT);
   const int nb_re = (symbolSSB == 2) ? 72 : 180;
@@ -307,23 +308,22 @@ void nr_generate_pbch_llr(const PHY_VARS_NR_UE *ue,
   LOG_I(PHY, "[PHY] PBCH starting channel_level\n");
 #endif
 
-  double log2_maxh = 0;
-  uint32_t max_h = 0;
   if (symbolSSB == 1) {
     int avg[frame_parms->nb_antennas_rx];
     nr_channel_level(0, PBCH_MAX_RE_PER_SYMBOL, dl_ch_estimates_ext, frame_parms->nb_antennas_rx, 1, avg, nb_re);
-    max_h = avg[0];
+    uint32_t max_h = avg[0];
     for (int i = 1; i < frame_parms->nb_antennas_rx; i++)
       max_h = cmax(avg[i], max_h);
-    log2_maxh = 3 + (log2_approx(max_h) / 2);
-  }
+    *log2_maxh = 3 + (log2_approx(max_h) / 2);
 
 #ifdef DEBUG_PBCH
-  LOG_I(PHY, "[PHY] PBCH log2_maxh = %f (%d)\n", log2_maxh, max_h);
+    LOG_I(PHY, "[PHY] PBCH log2_maxh = %f (%d)\n", log2_maxh, max_h);
 #endif
+  }
+
   __attribute__((aligned(32))) struct complex16 rxdataF_comp[frame_parms->nb_antennas_rx][PBCH_MAX_RE_PER_SYMBOL];
   nr_pbch_channel_compensation(rxdataF_ext, dl_ch_estimates_ext, nb_re, rxdataF_comp, frame_parms,
-                               log2_maxh); // log2_maxh+I0_shift
+                               *log2_maxh); // log2_maxh+I0_shift
 
   /*if (frame_parms->nb_antennas_rx > 1)
     pbch_detection_mrc(frame_parms,
