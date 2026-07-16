@@ -15,7 +15,7 @@ message(STATUS "  hugetlbfs library found in ${hugetlbfs_LIB}")
 
 pkg_check_modules(dpdk REQUIRED libdpdk)
 if(dpdk_VERSION VERSION_LESS 22.11)
-    message(FATAL_ERROR "DPDK version miniminum 22 required for K release, but found ${dpdk_VERSION}")
+    message(FATAL_ERROR "We require min DPDK version 22.11, but found ${dpdk_VERSION}")
 endif()
 target_link_libraries(wls_integration_lib PRIVATE ${dpdk_LINK_LIBRARIES})
 target_include_directories(wls_integration_lib PRIVATE ${dpdk_INCLUDE_DIRS})
