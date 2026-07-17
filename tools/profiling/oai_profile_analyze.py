@@ -16,6 +16,16 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Iterable
 
+from oai_profile_clock import ClockMapper, EVENT_TIMELINE_FIELDS, event_timeline_row
+from oai_profile_deadlines import (
+    DEADLINE_CHECK_FIELDS,
+    DEADLINE_EVENT_NAMES,
+    DEADLINE_SUMMARY_FIELDS,
+    build_deadline_reports,
+)
+from oai_profile_reports import build_extended_reports, discover_run_dirs
+
+
 
 QUANTILES = (0.5, 0.9, 0.95, 0.99, 0.999)
 
@@ -229,6 +239,14 @@ def normalize_event_row(
         "aux1": "0",
         "aux2": "0",
         "aux3": "0",
+        "aux0_name": descriptor.get("aux0_name") or "",
+        "aux0_unit": descriptor.get("aux0_unit") or "",
+        "aux1_name": descriptor.get("aux1_name") or "",
+        "aux1_unit": descriptor.get("aux1_unit") or "",
+        "aux2_name": descriptor.get("aux2_name") or "",
+        "aux2_unit": descriptor.get("aux2_unit") or "",
+        "aux3_name": descriptor.get("aux3_name") or "",
+        "aux3_unit": descriptor.get("aux3_unit") or "",
         "start_tick": "0",
         "duration_tick": "0",
         "duration_us": "0",
@@ -260,26 +278,55 @@ def discover_profile_dirs(inputs: Iterable[Path]) -> list[Path]:
             profile_dir = metadata_path.parent
             if (profile_dir / "events.csv").is_file():
                 discovered.add(profile_dir.resolve())
-    if not discovered:
-        raise FileNotFoundError("no profiler directories containing metadata.txt and events.csv were found")
     return sorted(discovered)
 
 
-def read_sync_bounds(profile_dir: Path) -> tuple[int, int]:
+def read_sync_bounds(profile_dir: Path) -> tuple[int, int, int, int]:
     sync_path = profile_dir / "sync.csv"
-    first = 0
-    last = 0
+    first_realtime = 0
+    last_realtime = 0
+    first_monotonic = 0
+    last_monotonic = 0
     if not sync_path.exists():
-        return first, last
+        return first_realtime, last_realtime, first_monotonic, last_monotonic
     with sync_path.open(newline="") as f:
         for row in csv.DictReader(f):
             realtime_ns = parse_int(row.get("realtime_ns"))
-            if realtime_ns <= 0:
-                continue
-            if first == 0:
-                first = realtime_ns
-            last = realtime_ns
-    return first, last
+            monotonic_ns = parse_int(row.get("monotonic_raw_ns"))
+            if realtime_ns > 0:
+                if first_realtime == 0:
+                    first_realtime = realtime_ns
+                last_realtime = realtime_ns
+            if monotonic_ns > 0:
+                if first_monotonic == 0:
+                    first_monotonic = monotonic_ns
+                last_monotonic = monotonic_ns
+    return first_realtime, last_realtime, first_monotonic, last_monotonic
+
+
+def elapsed_duration(
+    start_monotonic_ns: int,
+    end_monotonic_ns: int,
+    start_realtime_ns: int,
+    end_realtime_ns: int,
+) -> tuple[float, str, str]:
+    if start_monotonic_ns > 0 or end_monotonic_ns > 0:
+        if start_monotonic_ns > 0 and end_monotonic_ns >= start_monotonic_ns:
+            return (
+                (end_monotonic_ns - start_monotonic_ns) / 1e9,
+                "CLOCK_MONOTONIC_RAW",
+                "valid",
+            )
+        return math.nan, "CLOCK_MONOTONIC_RAW", "invalid_monotonic_bounds"
+    if start_realtime_ns > 0 or end_realtime_ns > 0:
+        if start_realtime_ns > 0 and end_realtime_ns >= start_realtime_ns:
+            return (
+                (end_realtime_ns - start_realtime_ns) / 1e9,
+                "CLOCK_REALTIME",
+                "legacy_realtime_fallback",
+            )
+        return math.nan, "CLOCK_REALTIME", "invalid_realtime_bounds"
+    return math.nan, "unavailable", "unavailable"
 
 
 def finite_max(current: float, value: str | None) -> float:
@@ -372,11 +419,17 @@ def build_run_inventory(
         key = str(profile_dir)
         metadata = metadata_by_dir[key]
         settings = settings_by_dir[key]
-        sync_start, sync_end = read_sync_bounds(profile_dir)
+        sync_start, sync_end, sync_monotonic_start, sync_monotonic_end = read_sync_bounds(profile_dir)
         start_ns = parse_int(metadata.get("start_realtime_ns"), sync_start)
-        end_ns = parse_int(metadata.get("end_realtime_ns"), sync_end or start_ns)
-        if end_ns < start_ns:
-            end_ns = start_ns
+        end_ns = parse_int(metadata.get("end_realtime_ns"), sync_end)
+        start_monotonic_ns = parse_int(metadata.get("start_monotonic_raw_ns"), sync_monotonic_start)
+        end_monotonic_ns = parse_int(metadata.get("end_monotonic_raw_ns"), sync_monotonic_end)
+        duration_s, duration_clock, duration_status = elapsed_duration(
+            start_monotonic_ns,
+            end_monotonic_ns,
+            start_ns,
+            end_ns,
+        )
         process_name = metadata.get("process_name", "unknown")
         role = metadata.get("role", "")
         if not role:
@@ -389,12 +442,20 @@ def build_run_inventory(
                 "max_nesting_depth": metadata.get("max_nesting_depth", ""),
                 "run_id": metadata.get("run_id", profile_dir.name),
                 "experiment_id": metadata.get("experiment_id", ""),
+                "campaign_id": metadata.get("campaign_id", ""),
+                "variant": metadata.get("variant", ""),
+                "trial": metadata.get("trial", ""),
                 "role": role,
                 "process_name": process_name,
                 "hostname": metadata.get("hostname", "unknown"),
                 "start_realtime_ns": start_ns,
                 "end_realtime_ns": end_ns,
-                "duration_s": (end_ns - start_ns) / 1e9,
+                "start_monotonic_raw_ns": start_monotonic_ns,
+                "end_monotonic_raw_ns": end_monotonic_ns,
+                "duration_s": duration_s,
+                "duration_clock": duration_clock,
+                "duration_status": duration_status,
+                "realtime_clock_regressed": int(start_ns > 0 and end_ns < start_ns),
                 "clean_shutdown": metadata.get("clean_shutdown", "0"),
                 "config_source": metadata.get("config_source", ""),
                 "build_oai_version": metadata.get("build_oai_version", metadata.get("oai_version", "")),
@@ -416,11 +477,19 @@ def build_run_inventory(
 
 
 def run_overlap_ns(gnb: dict[str, object], ue: dict[str, object]) -> int:
+    if not realtime_bounds_valid(gnb) or not realtime_bounds_valid(ue):
+        return 0
     return max(
         0,
         min(int(gnb["end_realtime_ns"]), int(ue["end_realtime_ns"]))
         - max(int(gnb["start_realtime_ns"]), int(ue["start_realtime_ns"])),
     )
+
+
+def realtime_bounds_valid(run: dict[str, object]) -> bool:
+    start_ns = int(run["start_realtime_ns"])
+    end_ns = int(run["end_realtime_ns"])
+    return start_ns > 0 and end_ns >= start_ns
 
 
 def paired_row(
@@ -429,10 +498,13 @@ def paired_row(
     gnb: dict[str, object] | None,
     ue: dict[str, object] | None,
     notes: str = "",
+    gnb_candidate_count: int = 0,
+    ue_candidate_count: int = 0,
 ) -> dict[str, object]:
     gnb_start = int(gnb["start_realtime_ns"]) if gnb else 0
     ue_start = int(ue["start_realtime_ns"]) if ue else 0
     overlap_ns = run_overlap_ns(gnb, ue) if gnb and ue else 0
+    realtime_valid = bool(gnb and ue and realtime_bounds_valid(gnb) and realtime_bounds_valid(ue))
     return {
         "status": status,
         "method": method,
@@ -441,7 +513,11 @@ def paired_row(
         "ue_run_id": ue.get("run_id", "") if ue else "",
         "gnb_profile_dir": gnb.get("profile_dir", "") if gnb else "",
         "ue_profile_dir": ue.get("profile_dir", "") if ue else "",
-        "start_delta_ms": (ue_start - gnb_start) / 1e6 if gnb and ue else math.nan,
+        "gnb_candidate_count": gnb_candidate_count,
+        "ue_candidate_count": ue_candidate_count,
+        "clock_domain": "CLOCK_REALTIME" if gnb and ue else "not_applicable",
+        "clock_status": "bounds_valid_alignment_unverified" if realtime_valid else "invalid_or_unavailable",
+        "start_delta_ms": (ue_start - gnb_start) / 1e6 if realtime_valid else math.nan,
         "overlap_s": overlap_ns / 1e9,
         "notes": notes,
     }
@@ -451,33 +527,138 @@ def build_pairs(runs: list[dict[str, object]]) -> list[dict[str, object]]:
     gnbs = [run for run in runs if run["role"] == "gNB"]
     ues = [run for run in runs if run["role"] == "nrUE"]
     rows: list[dict[str, object]] = []
-    paired_gnb_dirs: set[str] = set()
+    identified: dict[str, dict[str, list[dict[str, object]]]] = defaultdict(
+        lambda: {"gNB": [], "nrUE": []}
+    )
+    for run in (*gnbs, *ues):
+        experiment_id = str(run["experiment_id"])
+        if experiment_id:
+            identified[experiment_id][str(run["role"])].append(run)
 
-    for ue in ues:
-        experiment_id = str(ue["experiment_id"])
-        exact = [gnb for gnb in gnbs if experiment_id and gnb["experiment_id"] == experiment_id]
-        if len(exact) == 1:
-            rows.append(paired_row("paired", "experiment_id", exact[0], ue))
-            paired_gnb_dirs.add(str(exact[0]["profile_dir"]))
+    for experiment_id, members in sorted(identified.items()):
+        experiment_gnbs = members["gNB"]
+        experiment_ues = members["nrUE"]
+        if len(experiment_gnbs) == 1 and len(experiment_ues) == 1:
+            rows.append(
+                paired_row(
+                    "paired",
+                    "experiment_id",
+                    experiment_gnbs[0],
+                    experiment_ues[0],
+                    gnb_candidate_count=1,
+                    ue_candidate_count=1,
+                )
+            )
             continue
-        if len(exact) > 1:
-            candidates = ";".join(str(gnb["profile_dir"]) for gnb in exact)
-            rows.append(paired_row("ambiguous", "experiment_id", None, ue, f"gNB candidates: {candidates}"))
+        status = "ambiguous" if len(experiment_gnbs) > 1 or len(experiment_ues) > 1 else "unmatched"
+        notes = (
+            f"experiment_id group contains {len(experiment_gnbs)} gNB and {len(experiment_ues)} nrUE runs; "
+            "nonempty experiment IDs do not use wallclock fallback"
+        )
+        for ue in experiment_ues:
+            rows.append(
+                paired_row(
+                    status,
+                    "experiment_id",
+                    None,
+                    ue,
+                    notes,
+                    len(experiment_gnbs),
+                    len(experiment_ues),
+                )
+            )
+        for gnb in experiment_gnbs:
+            rows.append(
+                paired_row(
+                    status,
+                    "experiment_id",
+                    gnb,
+                    None,
+                    notes,
+                    len(experiment_gnbs),
+                    len(experiment_ues),
+                )
+            )
+
+    legacy_gnbs = [gnb for gnb in gnbs if not str(gnb["experiment_id"])]
+    legacy_ues = [ue for ue in ues if not str(ue["experiment_id"])]
+    gnb_candidates = {
+        str(gnb["profile_dir"]): [ue for ue in legacy_ues if run_overlap_ns(gnb, ue) > 0]
+        for gnb in legacy_gnbs
+    }
+    ue_candidates = {
+        str(ue["profile_dir"]): [gnb for gnb in legacy_gnbs if run_overlap_ns(gnb, ue) > 0]
+        for ue in legacy_ues
+    }
+    paired_gnbs: set[str] = set()
+    paired_ues: set[str] = set()
+    for ue in legacy_ues:
+        ue_key = str(ue["profile_dir"])
+        candidates = ue_candidates[ue_key]
+        if len(candidates) != 1:
             continue
+        gnb = candidates[0]
+        gnb_key = str(gnb["profile_dir"])
+        if len(gnb_candidates[gnb_key]) != 1:
+            continue
+        rows.append(
+            paired_row(
+                "paired",
+                "wallclock_overlap_mutual_unique",
+                gnb,
+                ue,
+                "legacy fallback; realtime clock synchronization quality is unverified",
+                1,
+                1,
+            )
+        )
+        paired_gnbs.add(gnb_key)
+        paired_ues.add(ue_key)
 
-        overlapping = [gnb for gnb in gnbs if run_overlap_ns(gnb, ue) > 0]
-        if len(overlapping) == 1:
-            rows.append(paired_row("paired", "wallclock_overlap", overlapping[0], ue))
-            paired_gnb_dirs.add(str(overlapping[0]["profile_dir"]))
-        elif len(overlapping) > 1:
-            candidates = ";".join(str(gnb["profile_dir"]) for gnb in overlapping)
-            rows.append(paired_row("ambiguous", "wallclock_overlap", None, ue, f"gNB candidates: {candidates}"))
-        else:
-            rows.append(paired_row("unmatched", "none", None, ue, "no overlapping gNB profile"))
-
-    for gnb in gnbs:
-        if str(gnb["profile_dir"]) not in paired_gnb_dirs:
-            rows.append(paired_row("unmatched", "none", gnb, None, "no uniquely paired nrUE profile"))
+    for ue in legacy_ues:
+        ue_key = str(ue["profile_dir"])
+        if ue_key in paired_ues:
+            continue
+        candidates = ue_candidates[ue_key]
+        status = "unmatched" if not candidates else "ambiguous"
+        notes = (
+            "no overlapping gNB profile with valid realtime bounds"
+            if not candidates
+            else "wallclock overlap is not reciprocal and unique"
+        )
+        rows.append(
+            paired_row(
+                status,
+                "wallclock_overlap_mutual_unique" if candidates else "none",
+                None,
+                ue,
+                notes,
+                len(candidates),
+                0,
+            )
+        )
+    for gnb in legacy_gnbs:
+        gnb_key = str(gnb["profile_dir"])
+        if gnb_key in paired_gnbs:
+            continue
+        candidates = gnb_candidates[gnb_key]
+        status = "unmatched" if not candidates else "ambiguous"
+        notes = (
+            "no overlapping nrUE profile with valid realtime bounds"
+            if not candidates
+            else "wallclock overlap is not reciprocal and unique"
+        )
+        rows.append(
+            paired_row(
+                status,
+                "wallclock_overlap_mutual_unique" if candidates else "none",
+                gnb,
+                None,
+                notes,
+                0,
+                len(candidates),
+            )
+        )
     return rows
 
 
@@ -509,6 +690,38 @@ def iter_event_rows(
                 if event_filter and normalized["event_name"] not in event_filter:
                     continue
                 yield profile_dir, normalized
+
+
+def write_event_timeline(
+    path: Path,
+    profile_dirs: list[Path],
+    metadata_by_dir: dict[str, dict[str, str]],
+    catalogs_by_dir: dict[str, dict[str, dict[str, str]]],
+) -> None:
+    mappers = {
+        str(profile_dir): ClockMapper.from_sync(
+            profile_dir / "sync.csv",
+            parse_int(metadata_by_dir[str(profile_dir)].get("counter_hz")),
+        )
+        for profile_dir in profile_dirs
+    }
+    with path.open("w", newline="") as stream:
+        writer = csv.DictWriter(stream, fieldnames=EVENT_TIMELINE_FIELDS)
+        writer.writeheader()
+        for profile_dir, row in iter_event_rows(
+            profile_dirs,
+            None,
+            metadata_by_dir,
+            catalogs_by_dir,
+        ):
+            writer.writerow(
+                event_timeline_row(
+                    profile_dir,
+                    metadata_by_dir[str(profile_dir)],
+                    row,
+                    mappers[str(profile_dir)],
+                )
+            )
 
 
 def hierarchy_record_from_row(row: dict[str, str]) -> HierarchyRecord | None:
@@ -952,7 +1165,8 @@ def build_rows(
     for (profile_dir, event_name), stats in sorted(groups.items()):
         durations = sorted(stats.durations_us)
         avg = mean(durations)
-        q = {name: quantile(durations, value) for name, value in [("p50", 0.5), ("p90", 0.9), ("p95", 0.95), ("p99", 0.99), ("p99_9", 0.999)]}
+        quantiles = [("p50", 0.5), ("p90", 0.9), ("p95", 0.95), ("p99", 0.99), ("p99_9", 0.999)]
+        q = {name: quantile(durations, value) for name, value in quantiles}
         diagnostics = drop_diagnostics_by_dir[profile_dir]
         count = len(durations)
         rows.append(
@@ -1005,6 +1219,9 @@ def main() -> int:
     args = parser.parse_args()
 
     profile_dirs = discover_profile_dirs(args.profile_dir)
+    run_dirs = discover_run_dirs(args.profile_dir, profile_dirs)
+    if not run_dirs:
+        raise FileNotFoundError("no profiler or campaign run directories were found")
     event_filter = set(args.event) if args.event else None
     metadata_by_dir = {str(p): read_metadata(p) for p in profile_dirs}
     settings_by_dir = {str(p): read_settings(p) for p in profile_dirs}
@@ -1022,10 +1239,14 @@ def main() -> int:
     )
     pair_rows = build_pairs(run_rows)
 
-    event_groups: dict[tuple[str, str], GroupStats] = defaultdict(GroupStats)
+    all_event_groups: dict[tuple[str, str], GroupStats] = defaultdict(GroupStats)
     thread_groups: dict[tuple[str, str, str], GroupStats] = defaultdict(GroupStats)
     deadline_rows: list[dict[str, str]] = []
     migration_rows: list[dict[str, str]] = []
+    transport_fault_rows: list[dict[str, str]] = []
+    deadline_event_rows_by_dir: dict[str, list[dict[str, str]]] = {
+        str(profile_dir): [] for profile_dir in profile_dirs
+    }
     collect_hierarchy = args.output_dir is not None
     hierarchy_records_by_dir: dict[str, list[HierarchyRecord]] = (
         {str(profile_dir): [] for profile_dir in profile_dirs} if collect_hierarchy else {}
@@ -1037,9 +1258,14 @@ def main() -> int:
             hierarchy_record = hierarchy_record_from_row(row)
             if hierarchy_record is not None:
                 hierarchy_records_by_dir[profile_key].append(hierarchy_record)
+        if row["subsystem"] == "rf_usrp" and row["event_kind"] == "instant":
+            transport_fault_rows.append({"profile_dir": profile_key, **row})
+        all_event_groups[(profile_key, row["event_name"])].add(row)
+        if row["event_name"] in DEADLINE_EVENT_NAMES:
+            deadline_event_rows_by_dir[profile_key].append(row)
+
         if event_filter and row["event_name"] not in event_filter:
             continue
-        event_groups[(profile_key, row["event_name"])].add(row)
         thread_groups[(profile_key, row["thread_name"], row["event_name"])].add(row)
         if row["event_name"] == "UE_TX_DEADLINE_MISS":
             deadline_rows.append(
@@ -1089,7 +1315,10 @@ def main() -> int:
                 }
             )
 
-    summary_rows = build_rows(event_groups, metadata_by_dir, drop_diagnostics_by_dir)
+    all_summary_rows = build_rows(all_event_groups, metadata_by_dir, drop_diagnostics_by_dir)
+    summary_rows = (
+        [row for row in all_summary_rows if row["event_name"] in event_filter] if event_filter else all_summary_rows
+    )
     thread_rows: list[dict[str, object]] = []
     for (profile_dir, thread_name, event_name), stats in sorted(thread_groups.items()):
         durations = sorted(stats.durations_us)
@@ -1136,12 +1365,40 @@ def main() -> int:
             correlation_rows.extend(run_correlations)
             exclusive_groups.update(run_exclusive)
     exclusive_summary_rows = build_exclusive_summary(exclusive_groups)
+    deadline_reports = build_deadline_reports(deadline_event_rows_by_dir, metadata_by_dir)
+    extended_reports = (
+        build_extended_reports(
+            profile_dirs,
+            run_dirs,
+            metadata_by_dir,
+            settings_by_dir,
+            all_summary_rows,
+            transport_fault_rows,
+        )
+        if args.output_dir else {}
+    )
 
     if args.output_dir:
         args.output_dir.mkdir(parents=True, exist_ok=True)
+        write_event_timeline(
+            args.output_dir / "event_timeline.csv",
+            profile_dirs,
+            metadata_by_dir,
+            catalogs_by_dir,
+        )
         write_summary(args.output_dir / "summary.csv", summary_rows)
         write_by_thread(args.output_dir / "by_thread.csv", thread_rows)
         write_deadline_misses(args.output_dir / "deadline_misses.csv", deadline_rows)
+        write_rows(
+            args.output_dir / "deadline_checks.csv",
+            DEADLINE_CHECK_FIELDS,
+            deadline_reports.check_rows,
+        )
+        write_rows(
+            args.output_dir / "deadline_summary.csv",
+            DEADLINE_SUMMARY_FIELDS,
+            deadline_reports.summary_rows,
+        )
         write_migrations(args.output_dir / "migrations.csv", migration_rows)
         write_rows(
             args.output_dir / "hierarchy.csv",
@@ -1272,12 +1529,20 @@ def main() -> int:
                 "max_nesting_depth",
                 "run_id",
                 "experiment_id",
+                "campaign_id",
+                "variant",
+                "trial",
                 "role",
                 "process_name",
                 "hostname",
                 "start_realtime_ns",
                 "end_realtime_ns",
+                "start_monotonic_raw_ns",
+                "end_monotonic_raw_ns",
                 "duration_s",
+                "duration_clock",
+                "duration_status",
+                "realtime_clock_regressed",
                 "clean_shutdown",
                 "config_source",
                 "build_oai_version",
@@ -1306,6 +1571,10 @@ def main() -> int:
                 "ue_run_id",
                 "gnb_profile_dir",
                 "ue_profile_dir",
+                "gnb_candidate_count",
+                "ue_candidate_count",
+                "clock_domain",
+                "clock_status",
                 "start_delta_ms",
                 "overlap_s",
                 "notes",
@@ -1331,6 +1600,8 @@ def main() -> int:
             ],
             [host_by_dir[str(profile_dir)] for profile_dir in profile_dirs],
         )
+        for filename, report in extended_reports.items():
+            write_rows(args.output_dir / filename, report.fields, report.rows)
     else:
         write_summary(None, summary_rows)
 

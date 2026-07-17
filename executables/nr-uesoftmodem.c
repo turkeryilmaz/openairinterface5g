@@ -243,7 +243,6 @@ int main(int argc, char **argv)
 #if T_TRACER
   T_Config_Init();
 #endif
-  initTpool(get_softmodem_params()->threadPoolConfig, &(nrUE_params.Tpool), cpumeas(CPUMEAS_GETSTATE));
   set_taus_seed (0);
 
   if (!has_cap_sys_nice())
@@ -258,8 +257,11 @@ int main(int argc, char **argv)
                     softmodem_params->oai_profile,
                     softmodem_params->oai_profile_dir,
                     softmodem_params->oai_profile_buffer_records,
-                    softmodem_params->oai_profile_flush_us);
+                    softmodem_params->oai_profile_flush_us,
+                    softmodem_params->oai_profile_pmu,
+                    softmodem_params->oai_profile_pmu_sample_us);
   record_oai_profiler_common_settings();
+  initTpool(softmodem_params->threadPoolConfig, &(nrUE_params.Tpool), cpumeas(CPUMEAS_GETSTATE));
   itti_init(TASK_MAX, tasks_info);
 
   init_opt();

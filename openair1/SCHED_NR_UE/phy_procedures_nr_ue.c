@@ -528,9 +528,20 @@ static int nr_ue_pdsch_procedures(PHY_VARS_NR_UE *ue,
                    ue->frame_parms.nb_antennas_rx,
                    0);
   nvar /= (dlschCfg->number_symbols * dlsch->cw_info.Nl * ue->frame_parms.nb_antennas_rx);
+  OAI_PROFILE_START(ue_pdsch_measurements_start);
   nr_ue_measurement_procedures(2, ue, proc, freq_alloc->num_rbs, pdsch_est_size, pdsch_dl_ch_estimates);
+  OAI_PROFILE_STOP(OAI_PROFILE_EVENT_UE_PDSCH_MEASUREMENTS,
+                   ue_pdsch_measurements_start,
+                   frame_rx,
+                   nr_slot_rx,
+                   freq_alloc->num_rbs,
+                   dlsch->cw_info.Nl,
+                   ue->frame_parms.nb_antennas_rx,
+                   nvar,
+                   0);
 
   if (ue->chest_time == 1) { // averaging time domain channel estimates
+    OAI_PROFILE_START(ue_pdsch_channel_averaging_start);
     nr_chest_time_domain_avg(&ue->frame_parms,
                              (int32_t **)pdsch_dl_ch_estimates,
                              dlschCfg->number_symbols,
@@ -539,6 +550,15 @@ static int nr_ue_pdsch_procedures(PHY_VARS_NR_UE *ue,
                              freq_alloc->num_rbs,
                              dlsch->cw_info.Nl,
                              ue->frame_parms.nb_antennas_rx);
+    OAI_PROFILE_STOP(OAI_PROFILE_EVENT_UE_PDSCH_CHANNEL_AVERAGING,
+                     ue_pdsch_channel_averaging_start,
+                     frame_rx,
+                     nr_slot_rx,
+                     freq_alloc->num_rbs,
+                     dlschCfg->number_symbols,
+                     dlsch->cw_info.Nl,
+                     ue->frame_parms.nb_antennas_rx,
+                     0);
   }
 
   uint16_t first_symbol_with_data = dlschCfg->start_symbol;

@@ -20,6 +20,7 @@
 #include "PHY/nr_phy_common/inc/nr_phy_common.h"
 #include "PHY/sse_intrin.h"
 #include "common/utils/nr/nr_common.h"
+#include "common/utils/oai_profiler.h"
 #include <openair1/PHY/TOOLS/phy_scope_interface.h>
 #include "PHY/NR_UE_ESTIMATION/nr_estimation.h"
 
@@ -327,9 +328,20 @@ static void nr_rx_pdcch_symbol(PHY_VARS_NR_UE *ue,
     dmrs_ref = phy_pdcch_config->pdcch_config[ss_idx].BWPStart;
   // generate pilot
   c16_t pilot[(n_rb + rb_offset + dmrs_ref) * 3] __attribute__((aligned(16)));
+  OAI_PROFILE_START(ue_pdcch_dmrs_generation_start);
   // Note: pilot returned by the following function is already the complex conjugate of the transmitted DMRS
   const uint32_t *gold = nr_gold_pdcch(fp->N_RB_DL, fp->symbols_per_slot, scrambling_id, proc->nr_slot_rx, symbol);
   nr_pdcch_dmrs_ref(gold, pilot, n_rb + rb_offset + dmrs_ref);
+  OAI_PROFILE_STOP(OAI_PROFILE_EVENT_UE_PDCCH_DMRS_GENERATION,
+                   ue_pdcch_dmrs_generation_start,
+                   proc->frame_rx,
+                   proc->nr_slot_rx,
+                   symbol,
+                   ss_idx,
+                   n_rb,
+                   (n_rb + rb_offset + dmrs_ref) * 3,
+                   coreset->CoreSetType);
+  OAI_PROFILE_START(ue_pdcch_channel_estimation_start);
   nr_pdcch_channel_estimation(ue,
                               n_rb,
                               rb_offset,
@@ -340,11 +352,21 @@ static void nr_rx_pdcch_symbol(PHY_VARS_NR_UE *ue,
                               pdcch_dl_ch_estimates,
                               rxdataF,
                               pilot);
+  OAI_PROFILE_STOP(OAI_PROFILE_EVENT_UE_PDCCH_CHANNEL_ESTIMATION,
+                   ue_pdcch_channel_estimation_start,
+                   proc->frame_rx,
+                   proc->nr_slot_rx,
+                   symbol,
+                   ss_idx,
+                   n_rb,
+                   fp->nb_antennas_rx,
+                   0);
 
   const int32_t rx_size = ceil_mod(fp->N_RB_DL * 12, 32);
   __attribute__((aligned(32))) c16_t rxdataF_ext[fp->nb_antennas_rx][rx_size];
   __attribute__((aligned(32))) c16_t pdcch_dl_ch_estimates_ext[fp->nb_antennas_rx][rx_size];
 
+  OAI_PROFILE_START(ue_pdcch_rb_extraction_start);
   nr_pdcch_extract_rbs_single(fp->ofdm_symbol_size,
                               rxdataF,
                               pdcch_est_size,
@@ -357,16 +379,36 @@ static void nr_rx_pdcch_symbol(PHY_VARS_NR_UE *ue,
                               rb_offset,
                               n_rb,
                               phy_pdcch_config->pdcch_config[ss_idx].BWPStart);
+  OAI_PROFILE_STOP(OAI_PROFILE_EVENT_UE_PDCCH_RB_EXTRACTION,
+                   ue_pdcch_rb_extraction_start,
+                   proc->frame_rx,
+                   proc->nr_slot_rx,
+                   symbol,
+                   ss_idx,
+                   n_rb,
+                   fp->nb_antennas_rx,
+                   0);
 
   LOG_D(NR_PHY_DCI, "in channel level function (dl_ch_estimates_ext -> dl_ch_estimates_ext)\n");
+  OAI_PROFILE_START(ue_pdcch_channel_level_start);
   int avg[fp->nb_antennas_rx];
   nr_channel_level(0, rx_size, pdcch_dl_ch_estimates_ext, fp->nb_antennas_rx, 1, avg, n_rb * RE_PER_RB_OUT_DMRS);
   int avgs = avg[0];
   for (int i = 1; i < fp->nb_antennas_rx; i++)
       avgs = cmax(avgs, avg[i]);
   const int log2_maxh = (log2_approx(avgs) / 2) + 5; //+frame_parms->nb_antennas_rx;
+  OAI_PROFILE_STOP(OAI_PROFILE_EVENT_UE_PDCCH_CHANNEL_LEVEL,
+                   ue_pdcch_channel_level_start,
+                   proc->frame_rx,
+                   proc->nr_slot_rx,
+                   symbol,
+                   ss_idx,
+                   n_rb,
+                   log2_maxh,
+                   fp->nb_antennas_rx);
   int rx_comp_sz = ceil_mod(llr_size_symbol, 4);
   __attribute__((aligned(32))) c16_t rxdataF_comp[fp->nb_antennas_rx][rx_comp_sz];
+  OAI_PROFILE_START(ue_pdcch_channel_compensation_start);
   memset(rxdataF_comp, 0, sizeof(rxdataF_comp));
   nr_pdcch_channel_compensation(rx_comp_sz,
                                 rx_size,
@@ -375,12 +417,53 @@ static void nr_rx_pdcch_symbol(PHY_VARS_NR_UE *ue,
                                 rxdataF_comp,
                                 fp->nb_antennas_rx,
                                 log2_maxh); // log2_maxh+I0_shift
+  OAI_PROFILE_STOP(OAI_PROFILE_EVENT_UE_PDCCH_CHANNEL_COMPENSATION,
+                   ue_pdcch_channel_compensation_start,
+                   proc->frame_rx,
+                   proc->nr_slot_rx,
+                   symbol,
+                   ss_idx,
+                   llr_size_symbol,
+                   fp->nb_antennas_rx,
+                   0);
 
   if (fp->nb_antennas_rx > 1) {
+    OAI_PROFILE_START(ue_pdcch_mrc_start);
     nr_pdcch_detection_mrc(fp->nb_antennas_rx, rx_comp_sz, rxdataF_comp);
+    OAI_PROFILE_STOP(OAI_PROFILE_EVENT_UE_PDCCH_MRC,
+                     ue_pdcch_mrc_start,
+                     proc->frame_rx,
+                     proc->nr_slot_rx,
+                     symbol,
+                     ss_idx,
+                     llr_size_symbol,
+                     fp->nb_antennas_rx,
+                     0);
   }
-  UEscopeCopy(ue, pdcchRxdataF_comp, rxdataF_comp[0], sizeof(c16_t), 1, llr_size_symbol, 0);
+  if (ue->scopeData) {
+    OAI_PROFILE_START(ue_pdcch_scope_copy_start);
+    UEscopeCopy(ue, pdcchRxdataF_comp, rxdataF_comp[0], sizeof(c16_t), 1, llr_size_symbol, 0);
+    OAI_PROFILE_STOP(OAI_PROFILE_EVENT_UE_PDCCH_SCOPE_COPY,
+                     ue_pdcch_scope_copy_start,
+                     proc->frame_rx,
+                     proc->nr_slot_rx,
+                     (uint64_t)sizeof(c16_t) * llr_size_symbol,
+                     0,
+                     symbol,
+                     ss_idx,
+                     0);
+  }
+  OAI_PROFILE_START(ue_pdcch_llr_kernel_start);
   nr_pdcch_llr(llr_size_symbol, rxdataF_comp[0], llr);
+  OAI_PROFILE_STOP(OAI_PROFILE_EVENT_UE_PDCCH_LLR_KERNEL,
+                   ue_pdcch_llr_kernel_start,
+                   proc->frame_rx,
+                   proc->nr_slot_rx,
+                   symbol,
+                   ss_idx,
+                   llr_size_symbol,
+                   fp->nb_antennas_rx,
+                   0);
 }
 
 static bool is_start_symbol_in_ss(const fapi_nr_dl_config_dci_dl_pdu_rel15_t *ss, const int symbol, const int nb_symb_slot)
@@ -529,13 +612,33 @@ static void nr_dci_decoding_procedure(const UE_nr_rxtx_proc_t *proc,
             rel15->dci_format_options[k]);
 
       int16_t tmp_e[16 * 108];
+      OAI_PROFILE_START(ue_pdcch_unscrambling_start);
       nr_pdcch_unscrambling(&pdcch_e_rx[e_rx_cand_idx],
                             rel15->coreset.scrambling_rnti,
                             L * 108,
                             rel15->coreset.pdcch_dmrs_scrambling_id,
                             tmp_e);
+      OAI_PROFILE_STOP(OAI_PROFILE_EVENT_UE_PDCCH_UNSCRAMBLING,
+                       ue_pdcch_unscrambling_start,
+                       proc->frame_rx,
+                       proc->nr_slot_rx,
+                       j,
+                       L,
+                       dci_length,
+                       rel15->coreset.scrambling_rnti,
+                       k);
 
+      OAI_PROFILE_START(ue_pdcch_polar_decoding_start);
       const uint32_t crc = polar_decoder_int16(tmp_e, dci_estimation, 1, NR_POLAR_DCI_MESSAGE_TYPE, dci_length, L);
+      OAI_PROFILE_STOP(OAI_PROFILE_EVENT_UE_PDCCH_POLAR_DECODING,
+                       ue_pdcch_polar_decoding_start,
+                       proc->frame_rx,
+                       proc->nr_slot_rx,
+                       j,
+                       L,
+                       dci_length,
+                       rel15->dci_format_options[k],
+                       crc == rel15->rnti);
 
       rnti_t n_rnti = rel15->rnti;
       if (crc == n_rnti) {
@@ -603,6 +706,7 @@ void nr_pdcch_dci_indication(const UE_nr_rxtx_proc_t *proc,
       /// PDCCH/DCI e-sequence (input to rate matching).
       c16_t pdcch_e_rx[NR_MAX_PDCCH_SIZE];
 
+      OAI_PROFILE_START(ue_pdcch_candidate_demapping_start);
       nr_pdcch_demapping_deinterleaving(n_rb,
                                         llr[ss_idx][m],
                                         pdcch_e_rx,
@@ -614,6 +718,15 @@ void nr_pdcch_dci_indication(const UE_nr_rxtx_proc_t *proc,
                                         rel15->CCE,
                                         rel15->L,
                                         llr_stride);
+      OAI_PROFILE_STOP(OAI_PROFILE_EVENT_UE_PDCCH_CANDIDATE_DEMAPPING,
+                       ue_pdcch_candidate_demapping_start,
+                       proc->frame_rx,
+                       proc->nr_slot_rx,
+                       ss_idx,
+                       m,
+                       n_rb,
+                       rel15->number_of_candidates,
+                       0);
 
       nr_dci_decoding_procedure(proc, pdcch_e_rx, rel15, &dci_ind);
     }

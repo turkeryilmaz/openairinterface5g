@@ -17,6 +17,7 @@
 #include "PHY/NR_REFSIG/nr_refsig.h"
 #include "PHY/NR_REFSIG/dmrs_nr.h"
 #include "common/utils/nr/nr_common.h"
+#include "common/utils/oai_profiler.h"
 #include <complex.h>
 #include "openair1/PHY/TOOLS/phy_scope_interface.h"
 #include "nfapi/open-nFAPI/nfapi/public_inc/nfapi_nr_interface.h"
@@ -818,6 +819,7 @@ int nr_rx_pdsch(PHY_VARS_NR_UE *ue,
   const bool meas_enabled = cpumeas(CPUMEAS_GETSTATE);
   int nb_rb_pdsch = freq_alloc->num_rbs;
 
+  OAI_PROFILE_START(ue_pdsch_rb_extraction_start);
   start_meas_nr_ue_phy(ue, DLSCH_EXTRACT_RBS_STATS);
   __attribute__((aligned(32))) c16_t rxdataF_ext[nbRx][rx_size_symbol];
   memset(rxdataF_ext, 0, sizeof(rxdataF_ext));
@@ -841,11 +843,30 @@ int nr_rx_pdsch(PHY_VARS_NR_UE *ue,
                        csi_res_bitmap,
                        ue->chest_time);
   stop_meas_nr_ue_phy(ue, DLSCH_EXTRACT_RBS_STATS);
+  OAI_PROFILE_STOP(OAI_PROFILE_EVENT_UE_PDSCH_RB_EXTRACTION,
+                   ue_pdsch_rb_extraction_start,
+                   frame,
+                   nr_slot_rx,
+                   symbol,
+                   nb_rb_pdsch,
+                   pilots,
+                   nbRx,
+                   csi_res_bitmap != 0);
   if (scope_req->copy_chanest_to_scope) {
     size_t size = sizeof(c16_t) * nb_rb_pdsch * NR_NB_SC_PER_RB;
     int copy_index = symbol - dlsch_config->start_symbol;
     int offset = copy_index * size;
+    OAI_PROFILE_START(ue_pdsch_scope_chanest_start);
     UEscopeCopyUnsafe(ue, pdschChanEstimates, dl_ch_estimates_ext[0], size, offset, copy_index);
+    OAI_PROFILE_STOP(OAI_PROFILE_EVENT_UE_PDSCH_SCOPE_COPY,
+                     ue_pdsch_scope_chanest_start,
+                     frame,
+                     nr_slot_rx,
+                     size,
+                     0,
+                     symbol,
+                     nl,
+                     1);
   }
   if (meas_enabled) {
     LOG_D(PHY,
@@ -891,15 +912,27 @@ int nr_rx_pdsch(PHY_VARS_NR_UE *ue,
   if (scope_req->copy_rxdataF_to_scope) {
     size_t size = sizeof(c16_t) * nb_re_pdsch;
     int copy_index = symbol - dlsch_config->start_symbol;
+    OAI_PROFILE_START(ue_pdsch_scope_rx_start);
     UEscopeCopyUnsafe(ue, pdschRxdataF, rxdataF_ext[0], size, scope_req->scope_rxdataF_offset, copy_index);
+    OAI_PROFILE_STOP(OAI_PROFILE_EVENT_UE_PDSCH_SCOPE_COPY, ue_pdsch_scope_rx_start, frame, nr_slot_rx, size, 1, symbol, nl, 1);
     scope_req->scope_rxdataF_offset += size;
   }
   //----------------------------------------------------------
   //--------------------- Channel Scaling --------------------
   //----------------------------------------------------------
+  OAI_PROFILE_START(ue_pdsch_channel_scaling_start);
   start_meas_nr_ue_phy(ue, DLSCH_CHANNEL_SCALE_STATS);
   nr_scale_channel(rx_size_symbol, dl_ch_estimates_ext, 0, nb_re_pdsch, nl, nbRx, 0);
   stop_meas_nr_ue_phy(ue, DLSCH_CHANNEL_SCALE_STATS);
+  OAI_PROFILE_STOP(OAI_PROFILE_EVENT_UE_PDSCH_CHANNEL_SCALING,
+                   ue_pdsch_channel_scaling_start,
+                   frame,
+                   nr_slot_rx,
+                   symbol,
+                   nb_re_pdsch,
+                   nl,
+                   nbRx,
+                   0);
   if (meas_enabled) {
     LOG_D(PHY,
           "[AbsSFN %u.%d] Slot%d Symbol %d: Channel Scale  %5.2f \n",
@@ -915,6 +948,7 @@ int nr_rx_pdsch(PHY_VARS_NR_UE *ue,
   //----------------------------------------------------------
   start_meas_nr_ue_phy(ue, DLSCH_CHANNEL_LEVEL_STATS);
   if (first_symbol_flag) {
+    OAI_PROFILE_START(ue_pdsch_channel_level_start);
     int32_t avg[nl * nbRx];
     if (nb_re_pdsch)
       nr_channel_level(0, rx_size_symbol, (c16_t (*)[rx_size_symbol])dl_ch_estimates_ext, nbRx, nl, avg, nb_re_pdsch);
@@ -955,6 +989,15 @@ int nr_rx_pdsch(PHY_VARS_NR_UE *ue,
       T_INT(nl > 1 ? avg[nbRx] : 0), // layer 1, antenna 0
       T_INT(nl > 1 && nbRx > 1 ? avg[nbRx + 1] : 0)); // layer 1, antenna 1
 #endif
+    OAI_PROFILE_STOP(OAI_PROFILE_EVENT_UE_PDSCH_CHANNEL_LEVEL,
+                     ue_pdsch_channel_level_start,
+                     frame,
+                     nr_slot_rx,
+                     symbol,
+                     nb_re_pdsch,
+                     nl,
+                     *log2_maxh,
+                     nbRx);
   }
   stop_meas_nr_ue_phy(ue, DLSCH_CHANNEL_LEVEL_STATS);
   if (meas_enabled) {
@@ -971,6 +1014,7 @@ int nr_rx_pdsch(PHY_VARS_NR_UE *ue,
   //----------------------------------------------------------
   //--------------------- channel compensation ---------------
   //----------------------------------------------------------
+  OAI_PROFILE_START(ue_pdsch_channel_compensation_start);
   start_meas_nr_ue_phy(ue, DLSCH_CHANNEL_COMPENSATION_STATS);
   nr_channel_compensation(rx_size_symbol,
                           pdsch_buf_size_max,
@@ -987,6 +1031,15 @@ int nr_rx_pdsch(PHY_VARS_NR_UE *ue,
                           0, // symbol already baked into p_rxComp
                           *log2_maxh);
   stop_meas_nr_ue_phy(ue, DLSCH_CHANNEL_COMPENSATION_STATS);
+  OAI_PROFILE_STOP(OAI_PROFILE_EVENT_UE_PDSCH_CHANNEL_COMPENSATION,
+                   ue_pdsch_channel_compensation_start,
+                   frame,
+                   nr_slot_rx,
+                   symbol,
+                   nb_re_pdsch,
+                   dlsch->cw_info.qamModOrder,
+                   nl,
+                   need_rho);
   if (meas_enabled) {
     LOG_D(PHY,
           "[AbsSFN %u.%d] Slot%d Symbol %d log2_maxh %d Channel Comp  %5.2f \n",
@@ -1013,11 +1066,14 @@ int nr_rx_pdsch(PHY_VARS_NR_UE *ue,
 #endif
 
   // MRC is performed inline by nr_channel_compensation; apply MMSE for multi-layer
+  OAI_PROFILE_START(ue_pdsch_mrc_mmse_start);
   start_meas_nr_ue_phy(ue, DLSCH_MRC_MMSE_STATS);
+  const uint8_t qamModOrder = dlsch->cw_info.qamModOrder;
+  const bool use_joint_ml = nl == 2 && qamModOrder <= 6 && do_ml;
+  int equalizer_mode = 0;
   if (nb_re_pdsch) {
-    const uint8_t qamModOrder = dlsch->cw_info.qamModOrder;
-
     if ((nl > 2) || (nl == 2 && !do_ml)) {
+      equalizer_mode = 1;
       nr_dlsch_mmse(pdsch_buf_size_max,
                     rx_size_symbol,
                     nbRx,
@@ -1032,6 +1088,7 @@ int nr_rx_pdsch(PHY_VARS_NR_UE *ue,
                     nb_re_pdsch,
                     nvar);
     } else if ((nl == 2) && (qamModOrder > 6) && do_ml) {
+      equalizer_mode = 2;
       nr_mmse_2layers(p_rxComp,
                       rx_size_symbol,
                       pdsch_buf_size_max,
@@ -1050,6 +1107,15 @@ int nr_rx_pdsch(PHY_VARS_NR_UE *ue,
     }
   }
   stop_meas_nr_ue_phy(ue, DLSCH_MRC_MMSE_STATS);
+  OAI_PROFILE_STOP(OAI_PROFILE_EVENT_UE_PDSCH_MRC_MMSE,
+                   ue_pdsch_mrc_mmse_start,
+                   frame,
+                   nr_slot_rx,
+                   symbol,
+                   nb_re_pdsch,
+                   nl,
+                   equalizer_mode,
+                   use_joint_ml);
 
   if (meas_enabled) {
     LOG_D(PHY,
@@ -1080,6 +1146,8 @@ int nr_rx_pdsch(PHY_VARS_NR_UE *ue,
   estimation and apply PTRS phase compensation in nr_channel_compensationi() */
   /* Check for PTRS bitmap and process it respectively */
   if((pduBitmap & 0x1) && (dlsch->rnti_type == TYPE_C_RNTI_)) {
+    const uint32_t valid_re_before_ptrs = dl_valid_re[symbol];
+    OAI_PROFILE_START(ue_pdsch_ptrs_start);
     nr_pdsch_ptrs_processing(1, // rxdataF_comp is MRCed so no point in processing all antenna ports. Fixme.
                              ptrs_phase_per_slot,
                              ptrs_re_per_slot,
@@ -1095,6 +1163,15 @@ int nr_rx_pdsch(PHY_VARS_NR_UE *ue,
                              &dlsch->ptrs_symbols,
                              &dlsch->ptrs_symbol_index);
     dl_valid_re[symbol] -= ptrs_re_per_slot[0][symbol];
+    OAI_PROFILE_STOP(OAI_PROFILE_EVENT_UE_PDSCH_PTRS,
+                     ue_pdsch_ptrs_start,
+                     frame,
+                     nr_slot_rx,
+                     symbol,
+                     valid_re_before_ptrs,
+                     ptrs_re_per_slot[0][symbol],
+                     nl,
+                     1);
   }
 
   /* at last symbol in a slot calculate LLR's for whole slot */
@@ -1104,14 +1181,15 @@ int nr_rx_pdsch(PHY_VARS_NR_UE *ue,
     GET_ARRAY_MAX(dl_valid_re, NR_SYMBOLS_PER_SLOT, max_symb_re);
     const int llr_per_symbol = max_symb_re * dlsch->cw_info.qamModOrder;
     __attribute__((aligned(32))) int16_t layer_llr[NR_SYMBOLS_PER_SLOT][nl][llr_per_symbol];
-
+    uint32_t total_valid_res = 0;
     // Generate LLR from PTRS compensated signal
     const uint8_t qamModOrder = dlsch->cw_info.qamModOrder;
+    OAI_PROFILE_START(ue_pdsch_llr_start);
     start_meas_nr_ue_phy(ue, DLSCH_LLR_STATS);
     for (int llr_sym = startSymbIdx; llr_sym < startSymbIdx + nbSymb; llr_sym++) {
-      if (nl == 2 && qamModOrder <= 6 && do_ml) {
+      if (use_joint_ml) {
         // 2-layer QPSK/16QAM/64QAM: joint ML-LLR using inter-layer Tx correlation
-        // rho_dl[llr_sym] is laid out as [nl*nl][rx_size_symbol]:
+        // rho_dl[llr_sym] is laid out as [nl*nl][pdsch_buf_size_max]:
         // index 1 = rho[0][1], index nl (=2) = rho[1][0]
         nr_compute_ML_llr(rxdataF_comp[llr_sym][0],
                           rxdataF_comp[llr_sym][1],
@@ -1136,28 +1214,66 @@ int nr_rx_pdsch(PHY_VARS_NR_UE *ue,
                      layer_llr[llr_sym]);
       }
     }
+    if (ue_pdsch_llr_start.start_tick != 0 || UEScopeHasTryLock(ue))
+      for (int i = startSymbIdx; i < startSymbIdx + nbSymb; i++)
+        total_valid_res += dl_valid_re[i];
     stop_meas_nr_ue_phy(ue, DLSCH_LLR_STATS);
+    OAI_PROFILE_STOP(OAI_PROFILE_EVENT_UE_PDSCH_LLR,
+                     ue_pdsch_llr_start,
+                     frame,
+                     nr_slot_rx,
+                     total_valid_res,
+                     qamModOrder,
+                     nl,
+                     nbSymb,
+                     use_joint_ml);
+    OAI_PROFILE_START(ue_pdsch_layer_demapping_start);
     start_meas_nr_ue_phy(ue, DLSCH_LAYER_DEMAPPING);
     nr_dlsch_layer_demapping(nl, dlsch->cw_info.qamModOrder, llr_per_symbol, layer_llr, dlsch_config, dl_valid_re, llr);
     stop_meas_nr_ue_phy(ue, DLSCH_LAYER_DEMAPPING);
+    OAI_PROFILE_STOP(OAI_PROFILE_EVENT_UE_PDSCH_LAYER_DEMAPPING,
+                     ue_pdsch_layer_demapping_start,
+                     frame,
+                     nr_slot_rx,
+                     (uint64_t)total_valid_res * qamModOrder * nl,
+                     qamModOrder,
+                     nl,
+                     nbSymb,
+                     0);
 
     if (UEScopeHasTryLock(ue)) {
-      metadata mt = {.frame = proc->frame_rx, .slot = proc->nr_slot_rx };
-      int total_valid_res = 0;
-      for (int i = startSymbIdx; i < startSymbIdx + nbSymb; i++) {
-        total_valid_res += dl_valid_re[i];
-      }
+      metadata mt = {.frame = proc->frame_rx, .slot = proc->nr_slot_rx};
       if (UETryLockScopeData(ue, pdschRxdataF_comp, sizeof(c16_t), 1,  total_valid_res, &mt)) {
+        OAI_PROFILE_START(ue_pdsch_scope_compensated_start);
         size_t offset = 0;
         for (int i = startSymbIdx; i < startSymbIdx + nbSymb; i++) {
           size_t data_size = sizeof(c16_t) * dl_valid_re[i];
           UEscopeCopyUnsafe(ue, pdschRxdataF_comp, &rxdataF_comp[i][0][0], data_size, offset, i);
           offset += data_size;
         }
+        OAI_PROFILE_STOP(OAI_PROFILE_EVENT_UE_PDSCH_SCOPE_COPY,
+                         ue_pdsch_scope_compensated_start,
+                         frame,
+                         nr_slot_rx,
+                         (uint64_t)sizeof(c16_t) * total_valid_res,
+                         2,
+                         symbol,
+                         nl,
+                         1);
         UEunlockScopeData(ue, pdschRxdataF_comp)
       }
-    } else {
+    } else if (ue->scopeData) {
+      OAI_PROFILE_START(ue_pdsch_scope_fallback_start);
       UEscopeCopy(ue, pdschRxdataF_comp, rxdataF_comp[0], sizeof(c16_t), nl, pdsch_buf_size_max, 0);
+      OAI_PROFILE_STOP(OAI_PROFILE_EVENT_UE_PDSCH_SCOPE_COPY,
+                       ue_pdsch_scope_fallback_start,
+                       frame,
+                       nr_slot_rx,
+                       (uint64_t)sizeof(c16_t) * nl * pdsch_buf_size_max,
+                       3,
+                       symbol,
+                       nl,
+                       0);
     }
   }
 

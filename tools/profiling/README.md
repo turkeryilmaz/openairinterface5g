@@ -64,14 +64,32 @@ as `gnb.min_rxtxtime` and the USRP transmit-thread mode are recorded in
 Each process directory contains:
 
 ```text
-events.csv          Per-occurrence duration/instant records and causal identity
-event_catalog.csv   Stable IDs plus role, subsystem, class, kind, and aux units
-sync.csv            Realtime, monotonic, and hardware-counter anchors
-drops.csv           Producer drops and span-stack integrity diagnostics
-metadata.txt        Schema, record, run, host, source, config, and lifecycle data
-settings.csv        Effective softmodem/profiler settings
-host_metrics.csv    Temperature, throttling, CPU, memory, and process metrics
+events.csv                       Duration/instant records and causal identity
+event_catalog.csv                Stable event IDs and auxiliary-field units
+sync.csv                         Realtime, monotonic, and counter anchors
+clock_catalog.csv                Clock domains, units, scopes, and resolutions
+drops.csv                        Ring and span-stack integrity diagnostics
+metadata.txt                     Schema, run, host, source, and lifecycle data
+settings.csv                     Effective softmodem/profiler settings
+host_metrics.csv                 Thermal, throttle, CPU, memory, and process data
+pmu_catalog.csv                  Requested portable perf-event definitions
+pmu_availability.csv             Per-thread PMU support and permission results
+pmu_samples.csv                  Raw/scaled per-thread interval counters
+pmu_read_overhead.csv            PMU collection cost and read-error counts
+thread_metrics.csv               Per-thread scheduler, fault, and CPU-frequency data
+kernel_activity.csv              Process-wide scheduler/kernel activity
+interrupts.csv                   Per-CPU hard-IRQ deltas and descriptions
+softirqs.csv                     Per-CPU soft-IRQ deltas
+system_catalog.csv               System-stream metric definitions
+system_read_overhead.csv         Writer-thread /proc collection cost
+profiler_primitive_overhead.csv  Startup calibration for profiler primitives
+external_sources.csv             Sidecar/power provenance and alignment state
 ```
+
+PMU, scheduler, kernel, and host sampling are performed by the profiler writer
+thread. Producer paths publish only fixed-size profiler records. A stream can
+be header-only when it is disabled or unavailable; absence is not converted
+into a zero measurement.
 
 Schema 2 retains the existing numeric event IDs and names. Important event
 fields are:
@@ -135,6 +153,106 @@ laptop and atomically renamed into the archive after `scp` succeeds. The
 collector transfers timestamped nrUE process directories only; it does not copy
 `configs/nrUE`.
 
+## Run a controlled paired campaign
+
+`campaign_laptop_cm5.example.json` defines the current Band 28, 25 PRB
+laptop-gNB/CM5-nrUE protocol. Its one case, seven observer variants, and five
+trials expand to 35 paired experiments and 70 process runs:
+
+- `disabled`: profiler off; process-level observer baseline.
+- `in-process`: event profiler on, PMU off; event-level observer baseline.
+- `pmu-software`: in-process events plus software perf counters.
+- `pmu-all`: software, hardware, and cache/TLB counter requests.
+- `perf-stat`: aggregate external perf-stat sidecar.
+- `perf-record`: sampled call paths in binary `perf.data`.
+- `perf-sched`: binary scheduler trace with alignment left pending.
+
+The default is a read-only, redacted dry run:
+
+```bash
+CAMPAIGN=tools/profiling/campaign_laptop_cm5.example.json
+./tools/profiling/oai_profile_campaign.py "$CAMPAIGN"
+```
+
+Inspect one experiment before enabling the full matrix:
+
+```bash
+selection=(--case band28-25prb-minrxtx3 --variant in-process --trial 1)
+./tools/profiling/oai_profile_campaign.py "$CAMPAIGN" "${selection[@]}"
+```
+
+Execution is opt-in. Use the same selection for the first hardware smoke run:
+
+```bash
+./tools/profiling/oai_profile_campaign.py "$CAMPAIGN" --execute "${selection[@]}"
+```
+
+When a role has `"sudo": true`, the runner deliberately requires
+non-interactive `sudo -n`; it does not wait for a password after the peer radio
+has started. SSH, archive-tool, sidecar, ownership, and sudo preflight complete
+before either softmodem launches. Roles then start in the declared order with
+their configured launch delay. Stop escalation is SIGINT, SIGTERM, then
+SIGKILL. A partial launch or nonzero exit is preserved as an explicit result;
+prepared run directories are not silently deleted.
+
+Each role receives one common campaign/experiment/variant/trial identity and an
+explicit `OAI_PROFILE_DIR`. The run contains `campaign_run.json`, process
+stdout/stderr, optional sidecar output, profiler output when enabled, and a
+final immutable manifest. Laptop-side control logs and
+`campaign_results.csv` live under the configured campaign control root.
+`campaign_run.json` labels launch and stop timestamps as either
+`measured_host` or `orchestrator`. For remote roles, these process bounds use
+the laptop orchestrator clock and are therefore left blank in the remote
+`external_sources.csv`; they are not relabeled as CM5-local anchors.
+`perf-record --clockid mono_raw` samples still use the remote source host's
+`CLOCK_MONOTONIC_RAW` and can be aligned to that run's `sync.csv`.
+Commands and environments are archived in redacted form; password/token/key
+fragments and IMSI/SUPI/IMEI subscriber identifiers are never retained.
+`--keep-going` continues the matrix after a failed paired experiment; without
+it, the runner stops after preserving and finalizing the failed experiment.
+
+## Finalize and verify archives
+
+Finalize only after all profiler, campaign, sidecar, and external-source files
+have been written:
+
+```bash
+./tools/profiling/oai_profile_archive.py finalize /path/to/process-run
+./tools/profiling/oai_profile_archive.py verify /path/to/process-run
+```
+
+`archive_manifest.csv` binds every regular file to size, nanosecond mtime,
+SHA-256, run identity, and artifact class. Verification detects changed,
+missing, extra, duplicated, unsafe, and symlinked artifacts. The manifest
+protects archive consistency against accidental modification; it is not proof
+of authorship or custody. Sign or store the manifest in a trusted external
+system when authenticity is required.
+
+M5Stack ingestion is intentionally deferred, but a raw future artifact can be
+registered before finalization without inventing alignment:
+
+```bash
+RUN=/path/to/process-run
+POWER=/path/to/raw-m5stack-export.csv
+power_source=(
+  "$RUN"
+  --source-id m5stack-va
+  --source-type m5stack_voltage_current
+  --artifact "$POWER"
+  --copy-artifact
+  --clock-domain device_clock
+  --clock-unit unknown
+  --tool-version '<firmware and export-tool versions>'
+  --status recorded
+  --alignment-method unresolved
+  --notes 'Raw voltage/current/power evidence; no clock transform applied'
+)
+./tools/profiling/oai_profile_archive.py register-external "${power_source[@]}"
+```
+
+This preserves provenance while preventing unmeasured clock offset, drift, or
+resampling assumptions from entering the analysis.
+
 ## Analyze an archive
 
 Run analysis on the laptop:
@@ -159,14 +277,87 @@ The analyzer writes:
   absolute-slot, and nesting diagnostics.
 - `correlations.csv`: one process-local radio-work correlation with its slot
   range, elapsed interval, roots, threads, depth, and migrations.
-- `deadline_misses.csv`, `migrations.csv`, `runs.csv`, `pairs.csv`, and
-  `host_summary.csv`: deadline, execution, archive, pairing, and host-health
-  reports.
+- `deadline_misses.csv`: legacy realtime deadline-miss events retained for
+  archive compatibility. Current binaries retain the event ID and descriptor
+  but emit monotonic compute/check evidence instead, so this file can be
+  header-only and must not be interpreted as evidence that no deadline was
+  missed.
+- `deadline_checks.csv`: one nrUE hardware-TX check per occurrence, preserving
+  runtime monotonic validity, signed lateness/headroom, paired compute evidence,
+  radio-anchor provenance, independent radio-tick reconstruction, and
+  classification agreement.
+- `deadline_summary.csv`: per-process deadline event cardinality, validity,
+  miss rates, reconstruction coverage, anchor provenance, agreement, and
+  lateness/headroom/bias distributions.
+- `migrations.csv`, `runs.csv`, `pairs.csv`, and `host_summary.csv`:
+  execution, pairing, and host-health reports.
+- `profiler_primitive_overhead_summary.csv`: setup, warm-up, and measurement
+  distributions. The reported excess is a difference of phase medians, not a
+  per-record correction.
+- `pmu_availability_summary.csv`, `pmu_summary.csv`, and `pmu_quality.csv`:
+  requested/support/permission state, valid scaled rates, read errors, and
+  interval multiplex quality.
+- `thread_scheduler_summary.csv`: runtime, run-queue wait, timeslices, faults,
+  context switches, CPU changes, and sampled frequency.
+- `kernel_interference_summary.csv`: process/kernel activity and per-CPU
+  hardirq/softirq rates, including USB/network relevance labels.
+- `transport_summary.csv` and `transport_faults.csv`: outer RF plus nested
+  UHD timing and raw short-transfer/overflow/async-event evidence.
+- `collection_overhead_summary.csv`: PMU, system, and primitive collection
+  cost distributions with explicit error counts.
+- `archive_integrity.csv` and `external_sources.csv`: per-artifact manifest
+  verification plus source/provenance/alignment state.
+- `perf_stat_summary.csv`: tolerant aggregation of registered semicolon
+  perf-stat text, including unsupported/uncounted rows and running percentage.
+- `campaign_runs.csv` and `campaign_completeness.csv`: disabled and profiled
+  role states, anchors, exits, manifests, and paired completeness.
+- `observer_effect_summary.csv`: repeated-run process outcomes relative to
+  `disabled`, and per-run event medians relative to `in-process`.
 
 It accepts Phase 1/schema-1 and schema-2 archives. Schema-1 rows are reported
 with unknown event kind, absolute slot, and CPU plus zero causal IDs, rather
 than having absent fields inferred retrospectively. Hierarchy reports contain
 schema-2 records only. The analyzer uses only the Python standard library.
+
+In-process PMU rows are periodic per-thread sampling intervals, not exact
+function measurements. A rate is emitted only when `delta_valid=1`,
+`scaling_valid=1`, the interval is positive, and the scaled delta is finite.
+Multiplex ratios use those same valid intervals. Join these interval samples to
+OAI event time ranges only as interval attribution; use the separately
+manifested `perf-record` call paths for sampled symbol/call-chain attribution.
+
+Binary `perf.data` and perf-sched artifacts are inventoried and integrity
+checked, but the analyzer does not silently symbolize them or transform their
+clocks. Perform those host/tool-version-dependent operations explicitly and
+register the derived artifact as another external source.
+
+## nrUE hardware transmit deadline semantics
+
+`UE_TX_DEADLINE_COMPUTE` records the end-of-radio-read sample timestamp, the
+target transmit sample timestamp, samples per subframe, and the corresponding
+`CLOCK_MONOTONIC_RAW` anchor. `UE_TX_DEADLINE_CHECK` records the current and
+deadline `CLOCK_MONOTONIC_RAW` values, signed lateness in nanoseconds, error
+code, and validity flags. A positive signed lateness is a miss; zero is on
+time. Clock or checked-arithmetic failure clears validity and remains an
+invalid row rather than becoming a fabricated hit or miss.
+
+Offline reconstruction is independent of the runtime monotonic comparison. It
+pairs a check only with a preceding compute event having the same positive
+correlation ID and transmit frame/slot. It then selects only a receive endpoint
+from that correlation: a parent-linked or temporally contained
+`USRP_RX_RECV` is preferred, followed by an explicitly labeled outer
+`UE_RF_READ_DRIFT` or `UE_RF_READ` fallback. The signed radio-sample offset
+is converted to profiler ticks with checked integer round-to-nearest using the
+archive's `counter_hz` and samples-per-subframe value.
+
+`deadline_checks.csv` reports runtime and reconstruction validity separately.
+Classification agreement and reconstruction-minus-runtime bias exist only
+when both paths are valid. Missing correlations, frame/slot mismatches,
+missing anchors, malformed monotonic identities, invalid rates, and arithmetic
+flags remain explicit. They are never replaced with nearby events or inferred
+values. A schema-1 archive containing only `UE_TX_DEADLINE_MISS` is labeled
+`legacy_only` in `deadline_summary.csv`; no monotonic evidence is inferred
+retrospectively.
 
 ## Phase 2B hierarchy semantics
 
@@ -184,11 +375,25 @@ flag means at least one UE in the group was classified as DTX. For a one-UE
 group these retain their original single-PDU meanings. Demapping and
 unscrambling remain separate per-UE child spans.
 
-`UE_TX_DEADLINE_MISS` and `GNB_RU_TX_NORTH` are reserved compatibility
-descriptors without current production producers. The former preserves the
-legacy deadline event, while the latter preserves the event ID for the NR RU
-north callback removed upstream. They must not be interpreted as measured
-zero when absent from a run.
+For `UE_PDSCH_MRC_MMSE`, `equalizer_mode=0` means that no separate MMSE
+kernel ran in this measured block, `1` selects general multi-layer MMSE, and
+`2` selects the specialized two-layer MMSE kernel. Its `ml_enabled` flag,
+and the same flag on `UE_PDSCH_LLR`, identify the joint two-layer
+QPSK/16QAM/64QAM ML-LLR path that executes later in the LLR stage.
+`UE_PDSCH_SCOPE_COPY.copy_kind` values `0`, `1`, `2`, and `3` denote
+channel-estimate, extracted-RX, compensated try-lock, and compensated fallback
+copies, respectively. Scope-copy events exist only when a corresponding scope
+operation is requested or available.
+
+`UE_TX_DEADLINE_MISS`, `GNB_RU_TX_NORTH`,
+`UE_PDSCH_WORKSPACE_ALLOCATION`, and `UE_PDSCH_WORKSPACE_FREE` are reserved
+compatibility descriptors without current production producers. The first
+preserves the legacy deadline event; the second preserves the event ID for the
+NR RU north callback removed upstream; and the workspace descriptors preserve
+archives from revisions that allocated and freed PDSCH scratch per slot.
+Current PDSCH scratch is allocated persistently per actor outside the measured
+slot path. Absence of any reserved event must not be interpreted as measured
+zero.
 
 All recorded durations are inclusive. Exclusive time is valid only when every
 direct duration child has the same correlation and lies inside the parent
@@ -205,29 +410,41 @@ causal edge. Missing parents and correlation mismatches are integrity
 failures. Nonzero `drops.csv` or span-stack diagnostics invalidate claims of
 complete hierarchy coverage and must be reported with any result.
 
-The `--event` option limits legacy summary/deadline/migration aggregation.
-Hierarchy construction still reads all events so a selected event's ancestors
-and children are not silently discarded.
+The `--event` option limits `summary.csv`, `by_thread.csv`, legacy
+`deadline_misses.csv`, and `migrations.csv`. The authoritative
+`deadline_checks.csv` and `deadline_summary.csv`, hierarchy, and other
+publication-level reports still read the complete relevant event set so
+compute/check pairs, radio anchors, ancestors, children, transport faults, and
+observer-control evidence are not silently discarded.
 
-## Profiling roadmap
+## Implemented phases and remaining hardware gates
 
 - Phase 1 established opt-in archival boundary timing, host health, collection,
   pairing, and offline percentile analysis.
-- Phase 2A establishes the schema-2 semantic substrate: descriptors, absolute
+- Phase 2A established the schema-2 semantic substrate: descriptors, absolute
   work position, correlation and parent identity, nested spans, event kind,
   CPU endpoints, migration reports, and race-free producer/writer publication.
-- Phase 2B instruments deeper nrUE, gNB, RU, and shared LDPC processing stages
+- Phase 2B instruments deep nrUE, gNB, RU, and shared LDPC processing stages
   using the same IDs and context, and adds overlap-safe hierarchy, exclusive
   time, integrity, and per-correlation analysis.
-- Phase 3 is the complete microarchitectural campaign: PMU
-  cycles/instructions/branches/cache and memory events, scheduler/IRQ
-  interference, and USB/UHD transport internals, with counter availability,
-  multiplexing, scaling, and measurement overhead reported explicitly.
+- Phase 2C/2D and Phase 3 software support now add the archival/clock contract,
+  grouped portable PMU events, scheduler/IRQ evidence, nested USB/UHD
+  transport, startup calibration, external perf sidecars, transactional paired
+  campaigns, immutable manifests, and publication-oriented reports.
 
-The elapsed-time counter in Phase 1/2A is not a retired CPU-cycle counter.
-M5Stack power samples are also intentionally external for now. Future ingestion
-can align them through the shared experiment ID, realtime interval, and
-`sync.csv` anchors without changing event identity.
+Software support is not hardware validation. Before scientific use, run the
+focused paired campaign on the laptop/B210 gNB and CM5/B205mini-i nrUE and
+verify: clean shutdown and zero drops, PMU availability/permissions, acceptable
+multiplexing, stable primitive/collector overhead, sidecar compatibility,
+USB-transfer fault semantics, scheduler/IRQ attribution, thermal/throttling
+state, and observer-effect distributions across repeated trials. Cross-host
+causal joins require measured clock quality; shared wall-clock timestamps alone
+do not prove sub-slot synchronization.
+
+The event elapsed-time counter is not a retired CPU-cycle counter. M5Stack
+power samples remain external. Their later ingestion can use campaign identity,
+clock catalogs, realtime/monotonic anchors, and explicit uncertainty without
+renumbering events or changing archived event records.
 
 Run analyzer schema-regression tests from the repository root:
 
@@ -246,6 +463,17 @@ PYTHONPYCACHEPREFIX=/tmp/oai-profile-pycache \
   producer ring capacity.
 - `--oai-profile-flush-us` and `OAI_PROFILE_FLUSH_US` change writer flushing.
 - `OAI_PROFILE_HOST_METRICS_US` changes host sampling; the minimum is 100000 us.
+- `--oai-profile-pmu off|auto|software|hardware|all` or `OAI_PROFILE_PMU`
+  selects portable PMU requests. Unsupported or denied counters remain explicit
+  in `pmu_availability.csv`.
+- `--oai-profile-pmu-sample-us` or `OAI_PROFILE_PMU_SAMPLE_US` changes PMU
+  and per-thread system sampling; the minimum is 100000 us.
+- `OAI_PROFILE_CALIBRATION_WARMUP` and
+  `OAI_PROFILE_CALIBRATION_SAMPLES` change bounded startup calibration
+  repetitions; defaults are 64 and 1024, and the maximum for either is 65536.
+- `OAI_PROFILE_CAMPAIGN_ID`, `OAI_PROFILE_VARIANT`, and
+  `OAI_PROFILE_TRIAL` preserve manual campaign identity. The campaign runner
+  sets these automatically.
 
 When setting an override under `sudo`, use `sudo env NAME=value ...` unless the
 local sudo policy explicitly preserves that variable.

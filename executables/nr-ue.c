@@ -4,6 +4,10 @@
 
 #include "PHY/defs_nr_common.h"
 #define _GNU_SOURCE // For pthread_setname_np
+#include <errno.h>
+#include <inttypes.h>
+#include <limits.h>
+#include <stdint.h>
 #include <pthread.h>
 #include "executables/nr-ue-ru.h"
 #include "executables/nr-uesoftmodem.h"
@@ -272,6 +276,188 @@ static int nr_ue_slot_select(const fapi_nr_config_request_t *cfg, int nr_slot)
   return NR_DOWNLINK_SLOT;
 }
 
+typedef struct {
+  openair0_timestamp_t radio_timestamp;
+  uint64_t monotonic_raw_ns;
+  uint64_t realtime_ns;
+  bool radio_valid;
+  bool monotonic_valid;
+  bool realtime_requested;
+  bool realtime_valid;
+  int error_code;
+  int realtime_error_code;
+} nr_ue_tx_deadline_anchor_t;
+
+typedef struct {
+  openair0_timestamp_t radio_anchor_timestamp;
+  openair0_timestamp_t radio_deadline_timestamp;
+  uint64_t anchor_monotonic_raw_ns;
+  uint64_t absolute_deadline_monotonic_ns;
+  uint64_t absolute_deadline_realtime_us;
+  uint32_t flags;
+  int error_code;
+} nr_ue_tx_deadline_t;
+
+static bool timespec_to_ns(const struct timespec *timestamp, uint64_t *nanoseconds)
+{
+  if (timestamp->tv_sec < 0 || timestamp->tv_nsec < 0 || timestamp->tv_nsec >= 1000000000L)
+    return false;
+
+  const uint64_t seconds = timestamp->tv_sec;
+  if (seconds > (UINT64_MAX - (uint64_t)timestamp->tv_nsec) / UINT64_C(1000000000))
+    return false;
+
+  *nanoseconds = seconds * UINT64_C(1000000000) + timestamp->tv_nsec;
+  return true;
+}
+
+static nr_ue_tx_deadline_anchor_t capture_tx_deadline_anchor(openair0_timestamp_t first_sample_timestamp,
+                                                             int sample_count,
+                                                             bool capture_realtime)
+{
+  nr_ue_tx_deadline_anchor_t anchor = {
+      .radio_timestamp = first_sample_timestamp,
+      .monotonic_raw_ns = 0,
+      .realtime_ns = 0,
+      .radio_valid = false,
+      .monotonic_valid = false,
+      .realtime_requested = capture_realtime,
+      .realtime_valid = false,
+      .error_code = 0,
+      .realtime_error_code = 0,
+  };
+
+  if (sample_count < 0
+      || __builtin_add_overflow(first_sample_timestamp, (openair0_timestamp_t)sample_count, &anchor.radio_timestamp)) {
+    anchor.error_code = EOVERFLOW;
+  } else {
+    anchor.radio_valid = true;
+  }
+
+  struct timespec timestamp = {0};
+  if (clock_gettime(CLOCK_MONOTONIC_RAW, &timestamp) != 0) {
+    if (anchor.error_code == 0)
+      anchor.error_code = errno;
+  } else if (!timespec_to_ns(&timestamp, &anchor.monotonic_raw_ns)) {
+    if (anchor.error_code == 0)
+      anchor.error_code = EOVERFLOW;
+  } else {
+    anchor.monotonic_valid = true;
+  }
+
+  if (capture_realtime) {
+    if (clock_gettime(CLOCK_REALTIME, &timestamp) != 0) {
+      anchor.realtime_error_code = errno;
+    } else if (!timespec_to_ns(&timestamp, &anchor.realtime_ns)) {
+      anchor.realtime_error_code = EOVERFLOW;
+    } else {
+      anchor.realtime_valid = true;
+    }
+  }
+
+  return anchor;
+}
+
+static bool sample_offset_to_ns(int64_t sample_offset, int samples_per_subframe, int64_t *nanoseconds)
+{
+  if (samples_per_subframe <= 0)
+    return false;
+
+  __int128 numerator = (__int128)sample_offset * INT64_C(1000000);
+  const __int128 rounding = samples_per_subframe / 2;
+  numerator += numerator >= 0 ? rounding : -rounding;
+  const __int128 result = numerator / samples_per_subframe;
+  if (result < INT64_MIN || result > INT64_MAX)
+    return false;
+
+  *nanoseconds = result;
+  return true;
+}
+
+static bool add_signed_nanoseconds(uint64_t anchor_ns, int64_t offset_ns, uint64_t *result_ns)
+{
+  if (offset_ns >= 0) {
+    const uint64_t offset = offset_ns;
+    if (offset > UINT64_MAX - anchor_ns)
+      return false;
+    *result_ns = anchor_ns + offset;
+    return true;
+  }
+
+  const uint64_t magnitude = (uint64_t)(-(offset_ns + 1)) + 1;
+  if (magnitude > anchor_ns)
+    return false;
+  *result_ns = anchor_ns - magnitude;
+  return true;
+}
+
+static nr_ue_tx_deadline_t compute_tx_deadline(const nr_ue_tx_deadline_anchor_t *anchor,
+                                               openair0_timestamp_t write_timestamp,
+                                               int guard_samples,
+                                               int samples_per_subframe)
+{
+  nr_ue_tx_deadline_t deadline = {
+      .radio_anchor_timestamp = anchor->radio_timestamp,
+      .radio_deadline_timestamp = 0,
+      .anchor_monotonic_raw_ns = anchor->monotonic_raw_ns,
+      .absolute_deadline_monotonic_ns = 0,
+      .absolute_deadline_realtime_us = 0,
+      .flags = 0,
+      .error_code = anchor->error_code,
+  };
+
+  if (!anchor->monotonic_valid)
+    deadline.flags |= OAI_PROFILE_UE_TX_DEADLINE_FLAG_COMPUTE_CLOCK_ERROR;
+  if (!anchor->radio_valid || guard_samples < 0
+      || __builtin_sub_overflow(write_timestamp, (openair0_timestamp_t)guard_samples, &deadline.radio_deadline_timestamp)) {
+    deadline.flags |= OAI_PROFILE_UE_TX_DEADLINE_FLAG_ARITHMETIC_ERROR;
+    if (deadline.error_code == 0)
+      deadline.error_code = EOVERFLOW;
+  }
+
+  int64_t sample_offset = 0;
+  int64_t offset_ns = 0;
+  if ((deadline.flags & OAI_PROFILE_UE_TX_DEADLINE_FLAG_ARITHMETIC_ERROR) == 0
+      && __builtin_sub_overflow(deadline.radio_deadline_timestamp, deadline.radio_anchor_timestamp, &sample_offset)) {
+    deadline.flags |= OAI_PROFILE_UE_TX_DEADLINE_FLAG_ARITHMETIC_ERROR;
+    if (deadline.error_code == 0)
+      deadline.error_code = EOVERFLOW;
+  }
+  if (sample_offset < 0)
+    deadline.flags |= OAI_PROFILE_UE_TX_DEADLINE_FLAG_BEFORE_ANCHOR;
+  if ((deadline.flags & OAI_PROFILE_UE_TX_DEADLINE_FLAG_ARITHMETIC_ERROR) == 0
+      && !sample_offset_to_ns(sample_offset, samples_per_subframe, &offset_ns)) {
+    deadline.flags |= OAI_PROFILE_UE_TX_DEADLINE_FLAG_ARITHMETIC_ERROR;
+    if (deadline.error_code == 0)
+      deadline.error_code = EINVAL;
+  }
+
+  const uint32_t invalid_flags =
+      OAI_PROFILE_UE_TX_DEADLINE_FLAG_COMPUTE_CLOCK_ERROR | OAI_PROFILE_UE_TX_DEADLINE_FLAG_ARITHMETIC_ERROR;
+  if ((deadline.flags & invalid_flags) == 0
+      && add_signed_nanoseconds(anchor->monotonic_raw_ns, offset_ns, &deadline.absolute_deadline_monotonic_ns)) {
+    deadline.flags |= OAI_PROFILE_UE_TX_DEADLINE_FLAG_VALID;
+  } else if ((deadline.flags & invalid_flags) == 0) {
+    deadline.flags |= OAI_PROFILE_UE_TX_DEADLINE_FLAG_ARITHMETIC_ERROR;
+    if (deadline.error_code == 0)
+      deadline.error_code = EOVERFLOW;
+  }
+
+  if (anchor->realtime_requested) {
+    uint64_t realtime_deadline_ns = 0;
+    if (!anchor->realtime_valid || (deadline.flags & OAI_PROFILE_UE_TX_DEADLINE_FLAG_ARITHMETIC_ERROR) != 0
+        || !add_signed_nanoseconds(anchor->realtime_ns, offset_ns, &realtime_deadline_ns)) {
+      deadline.flags |= OAI_PROFILE_UE_TX_DEADLINE_FLAG_LEGACY_REALTIME_ERROR;
+      if (deadline.error_code == 0)
+        deadline.error_code = anchor->realtime_error_code != 0 ? anchor->realtime_error_code : EOVERFLOW;
+    } else {
+      deadline.absolute_deadline_realtime_us = realtime_deadline_ns / UINT64_C(1000);
+    }
+  }
+
+  return deadline;
+}
+
 static void RU_write(nr_rxtx_thread_data_t *rxtxD, bool sl_tx_action, c16_t **txp)
 {
   int writeBlockSize = rxtxD->writeBlockSize;
@@ -293,8 +479,8 @@ static void RU_write(nr_rxtx_thread_data_t *rxtxD, bool sl_tx_action, c16_t **tx
   if (UE->received_config_request) {
     if (fp->frame_type == FDD || get_softmodem_params()->continuous_tx) {
       flags = TX_BURST_MIDDLE;
-    // In case of Sidelink, USRP write needed only in case transmission
-    // needs to be done in this slot and not based on tdd ULDL configuration.
+      // In case of Sidelink, USRP write needed only in case transmission
+      // needs to be done in this slot and not based on tdd ULDL configuration.
     } else if (UE->sl_mode == 2) {
       if (sl_tx_action)
         flags = TX_BURST_START_AND_END;
@@ -315,32 +501,68 @@ static void RU_write(nr_rxtx_thread_data_t *rxtxD, bool sl_tx_action, c16_t **tx
   }
 
   if (!IS_SOFTMODEM_RFSIM) {
-    uint64_t deadline_us = rxtxD->absolute_deadline_us;
-    struct timespec current_time;
-    if (clock_gettime(CLOCK_REALTIME, &current_time)) {
-      LOG_E(PHY, "clock_gettime failed\n");
+    uint32_t deadline_flags = rxtxD->deadline_flags & ~OAI_PROFILE_UE_TX_DEADLINE_FLAG_MISSED;
+    uint64_t current_monotonic_ns = 0;
+    int64_t signed_lateness_ns = 0;
+    int deadline_error_code = rxtxD->deadline_error_code;
+    struct timespec current_time = {0};
+    if (clock_gettime(CLOCK_MONOTONIC_RAW, &current_time) != 0) {
+      deadline_flags &= ~OAI_PROFILE_UE_TX_DEADLINE_FLAG_VALID;
+      deadline_flags |= OAI_PROFILE_UE_TX_DEADLINE_FLAG_CHECK_CLOCK_ERROR;
+      deadline_error_code = errno;
+    } else if (!timespec_to_ns(&current_time, &current_monotonic_ns)) {
+      deadline_flags &= ~OAI_PROFILE_UE_TX_DEADLINE_FLAG_VALID;
+      deadline_flags |= OAI_PROFILE_UE_TX_DEADLINE_FLAG_CHECK_CLOCK_ERROR;
+      deadline_error_code = EOVERFLOW;
     }
-    uint64_t current_time_us = current_time.tv_sec * 1e6 + current_time.tv_nsec / 1e3;
-    if (current_time_us > deadline_us) {
-      OAI_PROFILE_MARK(OAI_PROFILE_EVENT_UE_TX_DEADLINE_MISS,
-                       proc->frame_tx,
-                       proc->nr_slot_tx,
-                       current_time_us,
-                       deadline_us,
-                       current_time_us - deadline_us,
-                       0,
-                       0);
-      static unsigned int deadline_warning_rate_limit = 0;
-      if (deadline_warning_rate_limit % 1000 == 0) {
+
+    if ((deadline_flags & OAI_PROFILE_UE_TX_DEADLINE_FLAG_VALID) != 0) {
+      if (current_monotonic_ns >= rxtxD->absolute_deadline_monotonic_ns) {
+        const uint64_t lateness = current_monotonic_ns - rxtxD->absolute_deadline_monotonic_ns;
+        if (lateness > INT64_MAX) {
+          deadline_flags &= ~OAI_PROFILE_UE_TX_DEADLINE_FLAG_VALID;
+          deadline_flags |= OAI_PROFILE_UE_TX_DEADLINE_FLAG_ARITHMETIC_ERROR;
+          deadline_error_code = EOVERFLOW;
+        } else {
+          signed_lateness_ns = lateness;
+          if (signed_lateness_ns > 0)
+            deadline_flags |= OAI_PROFILE_UE_TX_DEADLINE_FLAG_MISSED;
+        }
+      } else {
+        const uint64_t headroom = rxtxD->absolute_deadline_monotonic_ns - current_monotonic_ns;
+        if (headroom > INT64_MAX) {
+          deadline_flags &= ~OAI_PROFILE_UE_TX_DEADLINE_FLAG_VALID;
+          deadline_flags |= OAI_PROFILE_UE_TX_DEADLINE_FLAG_ARITHMETIC_ERROR;
+          deadline_error_code = EOVERFLOW;
+        } else {
+          signed_lateness_ns = -(int64_t)headroom;
+        }
+      }
+    }
+
+    OAI_PROFILE_MARK(OAI_PROFILE_EVENT_UE_TX_DEADLINE_CHECK,
+                     proc->frame_tx,
+                     proc->nr_slot_tx,
+                     current_monotonic_ns,
+                     rxtxD->absolute_deadline_monotonic_ns,
+                     signed_lateness_ns,
+                     deadline_error_code,
+                     deadline_flags);
+
+    if ((deadline_flags & (OAI_PROFILE_UE_TX_DEADLINE_FLAG_VALID | OAI_PROFILE_UE_TX_DEADLINE_FLAG_MISSED))
+        == (OAI_PROFILE_UE_TX_DEADLINE_FLAG_VALID | OAI_PROFILE_UE_TX_DEADLINE_FLAG_MISSED)) {
+      static uint64_t deadline_warning_rate_limit = 0;
+      const uint64_t warning_index = __atomic_fetch_add(&deadline_warning_rate_limit, 1, __ATOMIC_RELAXED);
+      if (warning_index % 1000 == 0) {
         LOG_W(PHY,
-              "Deadline missed for tx slot %d.%d (current time %lu us, deadline %lu us, missed by %lu)\n",
+              "Deadline missed for tx slot %d.%d (monotonic now %" PRIu64 " ns, deadline %" PRIu64 " ns, missed by %" PRId64
+              " ns)\n",
               proc->frame_tx,
               proc->nr_slot_tx,
-              current_time_us,
-              deadline_us,
-              current_time_us - deadline_us);
+              current_monotonic_ns,
+              rxtxD->absolute_deadline_monotonic_ns,
+              signed_lateness_ns);
       }
-      deadline_warning_rate_limit++;
     }
   }
 
@@ -1156,6 +1378,7 @@ void *UE_thread(void *arg)
     openair0_timestamp_t rx_timestamp;
     OAI_PROFILE_START(ue_rf_read_start);
     int tmp = nrue_ru_read(UE, &rx_timestamp, (void **)rxp, readBlockSize, fp->nb_antennas_rx);
+    nr_ue_tx_deadline_anchor_t deadline_anchor = capture_tx_deadline_anchor(rx_timestamp, tmp, oai_profiler_is_enabled());
     OAI_PROFILE_STOP(OAI_PROFILE_EVENT_UE_RF_READ,
                      ue_rf_read_start,
                      curMsg.proc.frame_rx,
@@ -1165,7 +1388,7 @@ void *UE_thread(void *arg)
                      tmp,
                      rx_timestamp,
                      0);
-    metadata meta = {.slot =  curMsg.proc.nr_slot_rx, .frame =  curMsg.proc.frame_rx};
+    metadata meta = {.slot = curMsg.proc.nr_slot_rx, .frame = curMsg.proc.frame_rx};
     OAI_PROFILE_START(ue_scope_copy_start);
     UEscopeCopyWithMetadata(UE, ueTimeDomainSamples, rxp[0] - firstSymSamp, sizeof(c16_t), 1, readBlockSize, 0, &meta);
     OAI_PROFILE_STOP(OAI_PROFILE_EVENT_UE_SCOPE_COPY,
@@ -1178,13 +1401,8 @@ void *UE_thread(void *arg)
                      0,
                      0);
     AssertFatal(readBlockSize == tmp, "");
-    OAI_PROFILE_START(ue_timing_compute_start);
-    struct timespec current_time;
-    if (clock_gettime(CLOCK_REALTIME, &current_time)) {
-      LOG_E(PHY, "clock_gettime failed\n");
-    }
 
-    if(slot_nr == (nb_slot_frame - 1)) {
+    if (slot_nr == (nb_slot_frame - 1)) {
       // read in first symbol of next frame and adjust for timing drift
       int first_symbols = fp->ofdm_symbol_size + fp->nb_prefix_samples0; // first symbol of every frames
 
@@ -1192,6 +1410,7 @@ void *UE_thread(void *arg)
         openair0_timestamp_t ignore_timestamp;
         OAI_PROFILE_START(ue_rf_read_drift_start);
         int tmp = nrue_ru_read(UE, &ignore_timestamp, (void **)UE->common_vars.rxdata, first_symbols, fp->nb_antennas_rx);
+        deadline_anchor = capture_tx_deadline_anchor(ignore_timestamp, tmp, oai_profiler_is_enabled());
         OAI_PROFILE_STOP(OAI_PROFILE_EVENT_UE_RF_READ_DRIFT,
                          ue_rf_read_drift_start,
                          curMsg.proc.frame_rx,
@@ -1204,17 +1423,29 @@ void *UE_thread(void *arg)
         AssertFatal(first_symbols == tmp, "");
 
       } else
-        LOG_E(PHY,"can't compensate: diff =%d\n", first_symbols);
+        LOG_E(PHY, "can't compensate: diff =%d\n", first_symbols);
     }
 
+    OAI_PROFILE_START(ue_timing_compute_start);
     // use previous timing_advance value to compute writeTimestamp
     const openair0_timestamp_t writeTimestamp =
         rx_timestamp + get_samples_slot_duration(fp, slot_nr, duration_rx_to_tx) - firstSymSamp - UE->N_TA_offset - timing_advance;
 
-    // Calculate TX deadline, approximately 1 symbol before the first sample should be written
-    const uint64_t samples_diff = writeTimestamp - rx_timestamp - fp->ofdm_symbol_size;
-    const float deadline_us = samples_diff * 1e3 / fp->samples_per_subframe;
-    const uint64_t absolute_deadline_us = current_time.tv_sec * 1e6 + current_time.tv_nsec * 1e-3 + deadline_us;
+    // Classify the TX deadline on a monotonic host clock, anchored to the end of the last radio read.
+    const nr_ue_tx_deadline_t tx_deadline =
+        compute_tx_deadline(&deadline_anchor, writeTimestamp, fp->ofdm_symbol_size, fp->samples_per_subframe);
+    if ((tx_deadline.flags & OAI_PROFILE_UE_TX_DEADLINE_FLAG_VALID) == 0) {
+      static uint64_t deadline_compute_error_rate_limit = 0;
+      const uint64_t warning_index = __atomic_fetch_add(&deadline_compute_error_rate_limit, 1, __ATOMIC_RELAXED);
+      if (warning_index % 1000 == 0)
+        LOG_E(PHY,
+              "Cannot compute monotonic TX deadline for slot %d.%d (flags 0x%x, error %d: %s)\n",
+              curMsg.proc.frame_tx,
+              curMsg.proc.nr_slot_tx,
+              tx_deadline.flags,
+              tx_deadline.error_code,
+              strerror(tx_deadline.error_code));
+    }
 
     // but use current UE->timing_advance value to compute writeBlockSize
     int writeBlockSize = get_samples_per_slot((slot_nr + duration_rx_to_tx) % nb_slot_frame, fp) - iq_shift_to_apply;
@@ -1234,6 +1465,14 @@ void *UE_thread(void *arg)
       LOG_I(PHY, "writeBlockSize is %d, setting it to 0 and changing timing_advance to %d\n", writeBlockSize, timing_advance);
       writeBlockSize = 0;
     }
+    OAI_PROFILE_MARK(OAI_PROFILE_EVENT_UE_TX_DEADLINE_COMPUTE,
+                     curMsg.proc.frame_tx,
+                     curMsg.proc.nr_slot_tx,
+                     tx_deadline.radio_anchor_timestamp,
+                     tx_deadline.radio_deadline_timestamp,
+                     fp->samples_per_subframe,
+                     tx_deadline.anchor_monotonic_raw_ns,
+                     tx_deadline.flags);
     OAI_PROFILE_STOP(OAI_PROFILE_EVENT_UE_TIMING_COMPUTE,
                      ue_timing_compute_start,
                      curMsg.proc.frame_rx,
@@ -1241,7 +1480,7 @@ void *UE_thread(void *arg)
                      writeBlockSize,
                      timing_advance,
                      UE->N_TA_offset,
-                     absolute_deadline_us,
+                     tx_deadline.absolute_deadline_realtime_us,
                      0);
 
     if (curMsg.proc.nr_slot_rx == 0)
@@ -1312,7 +1551,10 @@ void *UE_thread(void *arg)
     curMsgTx->writeBlockSize = writeBlockSize;
     curMsgTx->proc.timestamp_tx = writeTimestamp;
     curMsgTx->UE = UE;
-    curMsgTx->absolute_deadline_us = absolute_deadline_us;
+    curMsgTx->absolute_deadline_us = tx_deadline.absolute_deadline_realtime_us;
+    curMsgTx->absolute_deadline_monotonic_ns = tx_deadline.absolute_deadline_monotonic_ns;
+    curMsgTx->deadline_flags = tx_deadline.flags;
+    curMsgTx->deadline_error_code = tx_deadline.error_code;
     curMsgTx->profile_work = oai_profiler_capture_work(absolute_slot + duration_rx_to_tx);
 
     int slot = curMsgTx->proc.nr_slot_tx;

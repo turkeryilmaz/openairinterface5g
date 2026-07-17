@@ -108,6 +108,7 @@ static void* worker_thread(void* arg)
   not_q_t* q_arr = (not_q_t*)tpool->q_arr;
 
   init_not_q(&q_arr[idx], idx);
+  oai_profiler_register_thread();
   // Synchronize all threads
   pthread_barrier_wait(&tpool->barrier);
 
@@ -207,7 +208,6 @@ void initFloatingCoresTpool(int nbThreads, tpool_t* pool, bool performanceMeas, 
   threads[sizeof(threads) - 1] = 0;
   initNamedTpool(threads, pool, performanceMeas, name);
 }
-
 
 void abortTpool(tpool_t* tpool)
 {

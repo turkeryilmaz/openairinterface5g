@@ -28,6 +28,7 @@
 #include "common/utils/LOG/log.h"
 #include "common_lib.h"
 #include "assertions.h"
+#include "common/utils/oai_profiler.h"
 #include "system.h"
 
 #include "common/utils/LOG/vcd_signal_dumper.h"
@@ -84,7 +85,34 @@ typedef struct {
   //int first_rx;
   //! timestamp of RX packet
   openair0_timestamp_t rx_timestamp;
+
+  oai_profile_work_t tx_profile_work[MAX_WRITE_THREAD_PACKAGE];
+  pthread_t async_metadata_thread;
+  bool async_metadata_thread_started;
+  int async_metadata_thread_exit;
 } usrp_state_t;
+
+enum {
+  USRP_PROFILE_TX_WORKER = 1U << 0,
+  USRP_PROFILE_TX_START_OF_BURST = 1U << 1,
+  USRP_PROFILE_TX_END_OF_BURST = 1U << 2,
+  USRP_PROFILE_RX_OUT_OF_SEQUENCE = 1U << 0,
+  USRP_PROFILE_RX_MORE_FRAGMENTS = 1U << 1,
+  USRP_PROFILE_RX_HAS_TIME_SPEC = 1U << 2,
+};
+
+static uint32_t usrp_profile_tx_flags(bool worker, bool start_of_burst, bool end_of_burst)
+{
+  return (worker ? USRP_PROFILE_TX_WORKER : 0U) | (start_of_burst ? USRP_PROFILE_TX_START_OF_BURST : 0U)
+         | (end_of_burst ? USRP_PROFILE_TX_END_OF_BURST : 0U);
+}
+
+static uint32_t usrp_profile_rx_flags(const uhd::rx_metadata_t &metadata)
+{
+  return (metadata.out_of_sequence ? USRP_PROFILE_RX_OUT_OF_SEQUENCE : 0U)
+         | (metadata.more_fragments ? USRP_PROFILE_RX_MORE_FRAGMENTS : 0U)
+         | (metadata.has_time_spec ? USRP_PROFILE_RX_HAS_TIME_SPEC : 0U);
+}
 
 //void print_notes(void)
 //{
@@ -359,6 +387,94 @@ static void trx_usrp_finish_rx(usrp_state_t *s)
   } while (samples > 0);
 }
 
+static void *trx_usrp_async_metadata(void *arg)
+{
+  usrp_state_t *s = (usrp_state_t *)arg;
+  pthread_setname_np(pthread_self(), "usrp_async");
+  oai_profiler_register_thread();
+
+  while (!__atomic_load_n(&s->async_metadata_thread_exit, __ATOMIC_ACQUIRE)) {
+    uhd::async_metadata_t metadata;
+    try {
+      if (!s->tx_stream->recv_async_msg(metadata, 0.1))
+        continue;
+    } catch (const std::exception &exception) {
+      LOG_W(HW, "USRP asynchronous metadata receiver stopped: %s\n", exception.what());
+      break;
+    }
+
+    const int64_t device_timestamp = metadata.has_time_spec ? metadata.time_spec.to_ticks(s->sample_rate) : -1;
+    const int64_t user_payload0 =
+        metadata.event_code == uhd::async_metadata_t::EVENT_CODE_USER_PAYLOAD ? metadata.user_payload[0] : 0;
+    const uint32_t error_event = metadata.event_code != uhd::async_metadata_t::EVENT_CODE_BURST_ACK
+                                 && metadata.event_code != uhd::async_metadata_t::EVENT_CODE_USER_PAYLOAD;
+    OAI_PROFILE_MARK(OAI_PROFILE_EVENT_USRP_TX_ASYNC_EVENT,
+                     -1,
+                     -1,
+                     metadata.event_code,
+                     metadata.channel,
+                     device_timestamp,
+                     user_payload0,
+                     error_event);
+
+    if ((metadata.event_code & uhd::async_metadata_t::EVENT_CODE_UNDERFLOW)
+        || (metadata.event_code & uhd::async_metadata_t::EVENT_CODE_UNDERFLOW_IN_PACKET))
+      __atomic_fetch_add(&s->num_underflows, 1, __ATOMIC_RELAXED);
+    if ((metadata.event_code & uhd::async_metadata_t::EVENT_CODE_SEQ_ERROR)
+        || (metadata.event_code & uhd::async_metadata_t::EVENT_CODE_SEQ_ERROR_IN_BURST))
+      __atomic_fetch_add(&s->num_seq_errors, 1, __ATOMIC_RELAXED);
+  }
+
+  return NULL;
+}
+
+static void trx_usrp_start_async_metadata(usrp_state_t *s)
+{
+  if (!oai_profiler_is_enabled())
+    return;
+
+  pthread_attr_t attributes;
+  int rc = pthread_attr_init(&attributes);
+  const bool attributes_initialized = rc == 0;
+  if (rc == 0)
+    rc = pthread_attr_setinheritsched(&attributes, PTHREAD_EXPLICIT_SCHED);
+  if (rc == 0)
+    rc = pthread_attr_setschedpolicy(&attributes, SCHED_OTHER);
+  struct sched_param scheduling = {};
+  if (rc == 0)
+    rc = pthread_attr_setschedparam(&attributes, &scheduling);
+  if (rc != 0) {
+    if (attributes_initialized)
+      pthread_attr_destroy(&attributes);
+    oai_profiler_record_setting_int("usrp.async_metadata_observer", 0, "runtime");
+    oai_profiler_record_setting_int("usrp.async_metadata_observer_error", rc, "runtime");
+    LOG_W(HW, "Could not configure USRP asynchronous metadata profiler thread: %s\n", strerror(rc));
+    return;
+  }
+
+  __atomic_store_n(&s->async_metadata_thread_exit, 0, __ATOMIC_RELEASE);
+  rc = pthread_create(&s->async_metadata_thread, &attributes, trx_usrp_async_metadata, s);
+  pthread_attr_destroy(&attributes);
+  if (rc != 0) {
+    oai_profiler_record_setting_int("usrp.async_metadata_observer", 0, "runtime");
+    oai_profiler_record_setting_int("usrp.async_metadata_observer_error", rc, "runtime");
+    LOG_W(HW, "Could not create USRP asynchronous metadata profiler thread: %s\n", strerror(rc));
+    return;
+  }
+  s->async_metadata_thread_started = true;
+  oai_profiler_record_setting_int("usrp.async_metadata_observer", 1, "runtime");
+}
+
+static void trx_usrp_stop_async_metadata(usrp_state_t *s)
+{
+  if (!s->async_metadata_thread_started)
+    return;
+
+  __atomic_store_n(&s->async_metadata_thread_exit, 1, __ATOMIC_RELEASE);
+  pthread_join(s->async_metadata_thread, NULL);
+  s->async_metadata_thread_started = false;
+}
+
 static void trx_usrp_write_reset(openair0_thread_t *wt);
 
 /*! \brief Terminate operation of the USRP transceiver -- free all associated resources
@@ -380,6 +496,7 @@ static void trx_usrp_end(openair0_device_t *device)
 
   /* finish tx and rx */
   trx_usrp_send_end_of_burst(s);
+  trx_usrp_stop_async_metadata(s);
   trx_usrp_finish_rx(s);
   /* set tx_stream, rx_stream, and usrp to NULL to clear/free them */
   s->tx_stream = NULL;
@@ -460,9 +577,12 @@ static int trx_usrp_write(openair0_device_t *device,
     if (usrp_tx_thread == 0) {
       nsamps2 = (nsamps+7)>>3;
       simde__m256i buff_tx[cc < 2 ? 2 : cc][nsamps2];
+      const bool start_of_burst = s->tx_count == 0 ? true : first_packet_state;
+      const uint32_t profile_flags = usrp_profile_tx_flags(false, start_of_burst, last_packet_state);
 
       // bring TX data into 16 MSBs, assuming it is on the 12 LSB  after OAI computation
       const int shift = 4;
+      OAI_PROFILE_START(usrp_tx_conversion_start);
       for (int i = 0; i < cc; i++) {
         for (int j = 0; j < nsamps2; j++) {
           if ((((uintptr_t)buff[i]) & 0x1F) == 0) {
@@ -473,9 +593,18 @@ static int trx_usrp_write(openair0_device_t *device,
           }
         }
       }
+      OAI_PROFILE_STOP(OAI_PROFILE_EVENT_USRP_TX_CONVERSION,
+                       usrp_tx_conversion_start,
+                       -1,
+                       -1,
+                       nsamps,
+                       cc,
+                       nsamps2,
+                       shift,
+                       profile_flags);
 
       s->tx_md.has_time_spec = true;
-      s->tx_md.start_of_burst = (s->tx_count == 0) ? true : first_packet_state;
+      s->tx_md.start_of_burst = start_of_burst;
       s->tx_md.end_of_burst = last_packet_state;
       s->tx_md.time_spec = uhd::time_spec_t::from_ticks(timestamp, s->sample_rate);
       s->tx_count++;
@@ -490,6 +619,7 @@ static int trx_usrp_write(openair0_device_t *device,
       }
       VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_BEAM_SWITCHING_GPIO, 0);
 
+      OAI_PROFILE_START(usrp_tx_send_start);
       if (cc > 1) {
         std::vector<void *> buff_ptrs;
 
@@ -500,15 +630,37 @@ static int trx_usrp_write(openair0_device_t *device,
       } else {
         ret = (int)s->tx_stream->send(&(((int16_t *)buff_tx[0])[0]), nsamps, s->tx_md);
       }
+      OAI_PROFILE_STOP(OAI_PROFILE_EVENT_USRP_TX_SEND, usrp_tx_send_start, -1, -1, nsamps, ret, cc, timestamp, profile_flags);
 
       if (ret != nsamps) {
+        OAI_PROFILE_MARK(OAI_PROFILE_EVENT_USRP_TX_SHORT_WRITE, -1, -1, nsamps, ret, cc, timestamp, profile_flags);
         LOG_E(HW, "[xmit] tx samples %d != %d\n", ret, nsamps);
       }
       return ret;
     } else {
+      const uint32_t profile_flags = usrp_profile_tx_flags(true, first_packet_state, last_packet_state);
+      OAI_PROFILE_START(usrp_tx_enqueue_start);
+      OAI_PROFILE_START(usrp_tx_queue_lock_start);
       pthread_mutex_lock(&write_thread->mutex_write);
+      OAI_PROFILE_STOP(OAI_PROFILE_EVENT_USRP_TX_QUEUE_LOCK_WAIT,
+                       usrp_tx_queue_lock_start,
+                       -1,
+                       -1,
+                       write_thread->count_write,
+                       MAX_WRITE_THREAD_PACKAGE,
+                       nsamps,
+                       cc,
+                       profile_flags);
 
       if (write_thread->count_write >= MAX_WRITE_THREAD_PACKAGE) {
+        OAI_PROFILE_MARK(OAI_PROFILE_EVENT_USRP_TX_QUEUE_OVERFLOW,
+                         -1,
+                         -1,
+                         write_thread->count_write,
+                         MAX_WRITE_THREAD_PACKAGE,
+                         write_thread->start,
+                         write_thread->end,
+                         1);
         LOG_W(HW,
               "Buffer overflow, count_write = %d, start = %d end = %d, resetting write package\n",
               write_thread->count_write,
@@ -525,13 +677,25 @@ static int trx_usrp_write(openair0_device_t *device,
       write_package[end].first_packet = first_packet_state;
       write_package[end].last_packet = last_packet_state;
       write_package[end].flags_gpio = flags_gpio;
+      if (oai_profiler_is_enabled())
+        s->tx_profile_work[end] = oai_profiler_capture_work(OAI_PROFILE_ABSOLUTE_SLOT_UNKNOWN);
       for (int i = 0; i < cc; i++)
         write_package[end].buff[i] = buff[i];
       write_thread->count_write++;
+      const int queue_depth = write_thread->count_write;
       write_thread->end = (write_thread->end + 1) % MAX_WRITE_THREAD_PACKAGE;
       LOG_D(HW, "Signaling TX TS %llu\n", (unsigned long long)timestamp);
       pthread_cond_signal(&write_thread->cond_write);
       pthread_mutex_unlock(&write_thread->mutex_write);
+      OAI_PROFILE_STOP(OAI_PROFILE_EVENT_USRP_TX_QUEUE_ENQUEUE,
+                       usrp_tx_enqueue_start,
+                       -1,
+                       -1,
+                       queue_depth,
+                       MAX_WRITE_THREAD_PACKAGE,
+                       nsamps,
+                       cc,
+                       profile_flags);
       return nsamps;
     }
 }
@@ -564,6 +728,7 @@ void *trx_usrp_write_thread(void * arg)
   int         flags_gpio;
 
   printf("trx_usrp_write_thread started on cpu %d\n",sched_getcpu());
+  oai_profiler_register_thread();
   while(1){
     pthread_mutex_lock(&write_thread->mutex_write);
     while (write_thread->count_write == 0) {
@@ -574,6 +739,9 @@ void *trx_usrp_write_thread(void * arg)
     VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME( VCD_SIGNAL_DUMPER_FUNCTIONS_TRX_WRITE_THREAD, 1 );
     s = (usrp_state_t *)device->priv;
     start = write_thread->start;
+    oai_profile_work_t profile_work = {};
+    if (oai_profiler_is_enabled())
+      profile_work = s->tx_profile_work[start];
     timestamp    = write_package[start].timestamp;
     buff         = write_package[start].buff;
     nsamps       = write_package[start].nsamps;
@@ -583,61 +751,108 @@ void *trx_usrp_write_thread(void * arg)
     flags_gpio    = write_package[start].flags_gpio;
     write_thread->start = (write_thread->start + 1)% MAX_WRITE_THREAD_PACKAGE;
     write_thread->count_write--;
+    const int queue_depth = write_thread->count_write;
     pthread_mutex_unlock(&write_thread->mutex_write);
     /*if(write_thread->count_write != 0){
       LOG_W(HW,"count write = %d, start = %d, end = %d\n", write_thread->count_write, write_thread->start, write_thread->end);
     }*/
 
-        nsamps2 = (nsamps+7)>>3;
-        simde__m256i buff_tx[cc < 2 ? 2 : cc][nsamps2];
-        // bring TX data into 16 MSBs, assuming it is on the 12 LSB  after OAI computation
-        const int shift = 4;
-        for (int i = 0; i < cc; i++) {
-          for (int j = 0; j < nsamps2; j++) {
-            if ((((uintptr_t) buff[i])&0x1F)==0) {
-              buff_tx[i][j] = simde_mm256_slli_epi16(((simde__m256i *)buff[i])[j], shift);
-            }
-            else
-            {
-              simde__m256i tmp = simde_mm256_loadu_si256(((simde__m256i *)buff[i]) + j);
-              buff_tx[i][j] = simde_mm256_slli_epi16(tmp, shift);
-            }
-          }
-        }
+    oai_profile_context_t previous_profile_context = {};
+    const bool has_profile_work = profile_work.dispatch_tick != 0;
+    if (has_profile_work) {
+      previous_profile_context = oai_profiler_enter_work(profile_work);
+      oai_profiler_record_duration(OAI_PROFILE_EVENT_USRP_TX_DISPATCH_TO_START,
+                                   profile_work.dispatch_tick,
+                                   -1,
+                                   -1,
+                                   queue_depth,
+                                   nsamps,
+                                   cc,
+                                   timestamp,
+                                   usrp_profile_tx_flags(true, first_packet, last_packet));
+    }
+    OAI_PROFILE_START(usrp_tx_worker_start);
 
-    s->tx_md.has_time_spec  = true;
-    s->tx_md.start_of_burst = (s->tx_count==0) ? true : first_packet;
-    s->tx_md.end_of_burst   = last_packet;
-    s->tx_md.time_spec      = uhd::time_spec_t::from_ticks(timestamp, s->sample_rate);
-    LOG_D(PHY,"usrp_tx_write: tx_count %llu SoB %d, EoB %d, TS %llu\n",(unsigned long long)s->tx_count,s->tx_md.start_of_burst,s->tx_md.end_of_burst,(unsigned long long)timestamp); 
+    nsamps2 = (nsamps + 7) >> 3;
+    simde__m256i buff_tx[cc < 2 ? 2 : cc][nsamps2];
+    const bool start_of_burst = s->tx_count == 0 ? true : first_packet;
+    const uint32_t profile_flags = usrp_profile_tx_flags(true, start_of_burst, last_packet);
+    // bring TX data into 16 MSBs, assuming it is on the 12 LSB  after OAI computation
+    const int shift = 4;
+    OAI_PROFILE_START(usrp_tx_conversion_start);
+    for (int i = 0; i < cc; i++) {
+      for (int j = 0; j < nsamps2; j++) {
+        if ((((uintptr_t)buff[i]) & 0x1F) == 0) {
+          buff_tx[i][j] = simde_mm256_slli_epi16(((simde__m256i *)buff[i])[j], shift);
+        } else {
+          simde__m256i tmp = simde_mm256_loadu_si256(((simde__m256i *)buff[i]) + j);
+          buff_tx[i][j] = simde_mm256_slli_epi16(tmp, shift);
+        }
+      }
+    }
+    OAI_PROFILE_STOP(OAI_PROFILE_EVENT_USRP_TX_CONVERSION,
+                     usrp_tx_conversion_start,
+                     -1,
+                     -1,
+                     nsamps,
+                     cc,
+                     nsamps2,
+                     shift,
+                     profile_flags);
+
+    s->tx_md.has_time_spec = true;
+    s->tx_md.start_of_burst = start_of_burst;
+    s->tx_md.end_of_burst = last_packet;
+    s->tx_md.time_spec = uhd::time_spec_t::from_ticks(timestamp, s->sample_rate);
+    LOG_D(PHY,
+          "usrp_tx_write: tx_count %llu SoB %d, EoB %d, TS %llu\n",
+          (unsigned long long)s->tx_count,
+          s->tx_md.start_of_burst,
+          s->tx_md.end_of_burst,
+          (unsigned long long)timestamp);
     s->tx_count++;
 
     // bit 3 enables gpio (for backward compatibility)
-    if (flags_gpio&0x1000) {
-      // push GPIO bits 
+    if (flags_gpio & 0x1000) {
+      // push GPIO bits
       s->usrp->set_command_time(s->tx_md.time_spec);
       s->usrp->set_gpio_attr(s->gpio_bank, "OUT", flags_gpio, MAN_MASK);
       s->usrp->clear_command_time();
     }
 
-    if (cc>1) {
+    OAI_PROFILE_START(usrp_tx_send_start);
+    if (cc > 1) {
       std::vector<void *> buff_ptrs;
 
-      for (int i=0; i<cc; i++)
+      for (int i = 0; i < cc; i++)
         buff_ptrs.push_back(&(((int16_t *)buff_tx[i])[0]));
 
       ret = (int)s->tx_stream->send(buff_ptrs, nsamps, s->tx_md);
-    }
-    else {
+    } else {
       ret = (int)s->tx_stream->send(&(((int16_t *)buff_tx[0])[0]), nsamps, s->tx_md);
     }
+    OAI_PROFILE_STOP(OAI_PROFILE_EVENT_USRP_TX_SEND, usrp_tx_send_start, -1, -1, nsamps, ret, cc, timestamp, profile_flags);
 
-    T(T_USRP_TX_ANT0, T_INT(timestamp), T_BUFFER(buff_tx[0], nsamps*4));
+    T(T_USRP_TX_ANT0, T_INT(timestamp), T_BUFFER(buff_tx[0], nsamps * 4));
 
-    if (ret != nsamps) LOG_E(HW,"[xmit] tx samples %d != %d\n",ret,nsamps);
+    if (ret != nsamps) {
+      OAI_PROFILE_MARK(OAI_PROFILE_EVENT_USRP_TX_SHORT_WRITE, -1, -1, nsamps, ret, cc, timestamp, profile_flags);
+      LOG_E(HW, "[xmit] tx samples %d != %d\n", ret, nsamps);
+    }
     VCD_SIGNAL_DUMPER_DUMP_VARIABLE_BY_NAME( VCD_SIGNAL_DUMPER_VARIABLES_USRP_SEND_RETURN, ret );
     VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME( VCD_SIGNAL_DUMPER_FUNCTIONS_TRX_WRITE_THREAD, 0 );
 
+    OAI_PROFILE_STOP(OAI_PROFILE_EVENT_USRP_TX_WORKER,
+                     usrp_tx_worker_start,
+                     -1,
+                     -1,
+                     nsamps,
+                     cc,
+                     timestamp,
+                     queue_depth,
+                     profile_flags);
+    if (has_profile_work)
+      oai_profiler_leave_work(previous_profile_context);
   }
 
   return NULL;
@@ -713,18 +928,48 @@ static int trx_usrp_read(openair0_device_t *device, openair0_timestamp_t *ptimes
 
   samples_received=0;
   while (samples_received != nsamps) {
+    const int accumulated_before = samples_received;
+    const int requested_samples = nsamps - samples_received;
+    int received_samples = 0;
+    OAI_PROFILE_START(usrp_rx_recv_start);
 
     if (cc>1) {
       // receive multiple channels (e.g. RF A and RF B)
       std::vector<void *> buff_ptrs;
 
       for (int i=0; i<cc; i++) buff_ptrs.push_back(buff_tmp[i]+samples_received);
-      samples_received += s->rx_stream->recv(buff_ptrs, nsamps-samples_received, s->rx_md);
+      received_samples = (int)s->rx_stream->recv(buff_ptrs, requested_samples, s->rx_md);
     } else {
       // receive a single channel (e.g. from connector RF A)
 
-      samples_received += s->rx_stream->recv((void*)((int32_t*)buff_tmp[0]+samples_received),
-                                             nsamps-samples_received, s->rx_md);
+      received_samples = (int)s->rx_stream->recv((void *)((int32_t *)buff_tmp[0] + samples_received), requested_samples, s->rx_md);
+    }
+    OAI_PROFILE_STOP(OAI_PROFILE_EVENT_USRP_RX_RECV,
+                     usrp_rx_recv_start,
+                     -1,
+                     -1,
+                     requested_samples,
+                     received_samples,
+                     cc,
+                     accumulated_before,
+                     usrp_profile_rx_flags(s->rx_md));
+    samples_received += received_samples;
+
+    if (s->rx_md.error_code != uhd::rx_metadata_t::ERROR_CODE_NONE) {
+      OAI_PROFILE_MARK(OAI_PROFILE_EVENT_USRP_RX_METADATA,
+                       -1,
+                       -1,
+                       s->rx_md.error_code,
+                       received_samples,
+                       nsamps,
+                       s->rx_md.fragment_offset,
+                       usrp_profile_rx_flags(s->rx_md));
+      if (s->rx_md.error_code == uhd::rx_metadata_t::ERROR_CODE_OVERFLOW) {
+        if (s->rx_md.out_of_sequence)
+          __atomic_fetch_add(&s->num_seq_errors, 1, __ATOMIC_RELAXED);
+        else
+          __atomic_fetch_add(&s->num_overflows, 1, __ATOMIC_RELAXED);
+      }
     }
     if  ((s->wait_for_first_pps == 0) && (s->rx_md.error_code!=uhd::rx_metadata_t::ERROR_CODE_NONE))
       break;
@@ -736,6 +981,7 @@ static int trx_usrp_read(openair0_device_t *device, openair0_timestamp_t *ptimes
   if (samples_received == nsamps) s->wait_for_first_pps=0;
 
   // bring RX data into 12 LSBs for softmodem RX
+  OAI_PROFILE_START(usrp_rx_conversion_start);
   for (int i=0; i<cc; i++) {
     for (int j = 0; j < nsamps2; j++) {
       // bring RX data into 12 LSBs for softmodem RX,
@@ -750,8 +996,17 @@ static int trx_usrp_read(openair0_device_t *device, openair0_timestamp_t *ptimes
       }
     }
   }
+  OAI_PROFILE_STOP(OAI_PROFILE_EVENT_USRP_RX_CONVERSION, usrp_rx_conversion_start, -1, -1, nsamps, cc, nsamps2, rxshift, 0);
 
   if (samples_received < nsamps) {
+    OAI_PROFILE_MARK(OAI_PROFILE_EVENT_USRP_RX_SHORT_READ,
+                     -1,
+                     -1,
+                     nsamps,
+                     samples_received,
+                     cc,
+                     s->rx_md.error_code,
+                     usrp_profile_rx_flags(s->rx_md));
     LOG_E(HW,"[recv] received %d samples out of %d\n",samples_received,nsamps);
   }
 
@@ -1521,6 +1776,14 @@ extern "C" {
   device->trx_write_func = trx_usrp_write;
   device->trx_read_func  = trx_usrp_read;
   s->sample_rate = openair0_cfg[0].sample_rate;
+  oai_profiler_record_setting("uhd.version", uhd::get_version_string().c_str(), "runtime");
+  oai_profiler_record_setting_int("usrp.device_type", device->type, "runtime");
+  oai_profiler_record_setting_int("usrp.sample_rate_hz", s->sample_rate, "runtime");
+  oai_profiler_record_setting_int("usrp.rx_channels", openair0_cfg[0].rx_num_channels, "runtime");
+  oai_profiler_record_setting_int("usrp.tx_channels", openair0_cfg[0].tx_num_channels, "runtime");
+  oai_profiler_record_setting_int("usrp.rx_max_samples_per_packet", s->rx_stream->get_max_num_samps(), "runtime");
+  oai_profiler_record_setting_int("usrp.tx_max_samples_per_packet", s->tx_stream->get_max_num_samps(), "runtime");
+  trx_usrp_start_async_metadata(s);
 
   // TODO:
   // init tx_forward_nsamps based usrp_time_offset ex

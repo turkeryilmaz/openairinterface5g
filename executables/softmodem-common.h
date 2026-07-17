@@ -49,6 +49,8 @@ extern "C"
 #define CONFIG_HLP_OAI_PROFILE_DIR "Directory for archival OAI profiling output files\n"
 #define CONFIG_HLP_OAI_PROFILE_BUF "Per-thread profiler ring-buffer record capacity\n"
 #define CONFIG_HLP_OAI_PROFILE_FLUSH "Profiler writer flush period in microseconds\n"
+#define CONFIG_HLP_OAI_PROFILE_PMU "PMU mode: off, auto, software, hardware, or all\n"
+#define CONFIG_HLP_OAI_PROFILE_PMU_SAMPLE "PMU and per-thread system sampling period in microseconds\n"
 #define CONFIG_HLP_CHESTFREQ     "Set channel estimation type in frequency domain. 0-Linear interpolation (default). 1-PRB based averaging of channel estimates in frequency. \n"
 #define CONFIG_HLP_CHESTTIME     "Set channel estimation type in time domain. 0-Symbols take estimates of the last preceding DMRS symbol (default). 1-Symbol based averaging of channel estimates in time. \n"
 #define CONFIG_HLP_IMSCOPE       "Enable phy scope based on imgui and implot"
@@ -150,6 +152,8 @@ extern int usrp_tx_thread;
   {"oai-profile-dir",       CONFIG_HLP_OAI_PROFILE_DIR,0,              .strptr=&softmodem_params.oai_profile_dir,.defstrval=NULL,        TYPE_STRING, 0}, \
   {"oai-profile-buffer-records", CONFIG_HLP_OAI_PROFILE_BUF, 0,        .uptr=&softmodem_params.oai_profile_buffer_records, .defuintval=131072, TYPE_UINT, 0}, \
   {"oai-profile-flush-us",  CONFIG_HLP_OAI_PROFILE_FLUSH, 0,           .uptr=&softmodem_params.oai_profile_flush_us, .defuintval=100000, TYPE_UINT, 0}, \
+  {"oai-profile-pmu",       CONFIG_HLP_OAI_PROFILE_PMU, 0,             .strptr=&softmodem_params.oai_profile_pmu, .defstrval="auto", TYPE_STRING, 0}, \
+  {"oai-profile-pmu-sample-us", CONFIG_HLP_OAI_PROFILE_PMU_SAMPLE, 0,  .uptr=&softmodem_params.oai_profile_pmu_sample_us, .defuintval=1000000, TYPE_UINT, 0}, \
 }
 // clang-format on
 
@@ -184,6 +188,8 @@ extern int usrp_tx_thread;
                {"MONOLITHIC", "PNF", "VNF", "AERIAL","UE_STUB_PNF","UE_STUB_OFFNET","STANDALONE_PNF"}, \
                {NFAPI_MONOLITHIC, NFAPI_MODE_PNF, NFAPI_MODE_VNF, NFAPI_MODE_AERIAL,NFAPI_UE_STUB_PNF,NFAPI_UE_STUB_OFFNET,NFAPI_MODE_STANDALONE_PNF}, \
                7 } }, \
+    { .s5 = { NULL } },                     \
+    { .s5 = { NULL } },                     \
     { .s5 = { NULL } },                     \
     { .s5 = { NULL } },                     \
     { .s5 = { NULL } },                     \
@@ -308,6 +314,8 @@ typedef struct {
   char *oai_profile_dir;
   uint32_t oai_profile_buffer_records;
   uint32_t oai_profile_flush_us;
+  char *oai_profile_pmu;
+  uint32_t oai_profile_pmu_sample_us;
   int default_pdu_session_id;
   int extra_pdu_session_id;
 } softmodem_params_t;

@@ -549,7 +549,9 @@ int main( int argc, char **argv ) {
                     softmodem_params->oai_profile,
                     softmodem_params->oai_profile_dir,
                     softmodem_params->oai_profile_buffer_records,
-                    softmodem_params->oai_profile_flush_us);
+                    softmodem_params->oai_profile_flush_us,
+                    softmodem_params->oai_profile_pmu,
+                    softmodem_params->oai_profile_pmu_sample_us);
   record_oai_profiler_common_settings();
   itti_init(TASK_MAX, tasks_info);
   // initialize mscgen log after ITTI

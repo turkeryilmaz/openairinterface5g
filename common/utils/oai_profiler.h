@@ -18,6 +18,13 @@ extern "C" {
 #define OAI_PROFILE_MAX_THREADS 256
 #define OAI_PROFILE_MAX_NESTING_DEPTH 64U
 #define OAI_PROFILE_ABSOLUTE_SLOT_UNKNOWN INT64_C(-1)
+#define OAI_PROFILE_UE_TX_DEADLINE_FLAG_VALID (1U << 0)
+#define OAI_PROFILE_UE_TX_DEADLINE_FLAG_MISSED (1U << 1)
+#define OAI_PROFILE_UE_TX_DEADLINE_FLAG_BEFORE_ANCHOR (1U << 2)
+#define OAI_PROFILE_UE_TX_DEADLINE_FLAG_COMPUTE_CLOCK_ERROR (1U << 3)
+#define OAI_PROFILE_UE_TX_DEADLINE_FLAG_CHECK_CLOCK_ERROR (1U << 4)
+#define OAI_PROFILE_UE_TX_DEADLINE_FLAG_ARITHMETIC_ERROR (1U << 5)
+#define OAI_PROFILE_UE_TX_DEADLINE_FLAG_LEGACY_REALTIME_ERROR (1U << 6)
 
 typedef enum {
   OAI_PROFILE_EVENT_KIND_UNKNOWN = 0,
@@ -169,6 +176,46 @@ typedef enum {
   OAI_PROFILE_EVENT_LDPC_ENCODER_RATE_MATCHING,
   OAI_PROFILE_EVENT_LDPC_ENCODER_INTERLEAVING,
   OAI_PROFILE_EVENT_LDPC_ENCODER_CONCATENATION,
+  OAI_PROFILE_EVENT_USRP_RX_RECV,
+  OAI_PROFILE_EVENT_USRP_RX_CONVERSION,
+  OAI_PROFILE_EVENT_USRP_RX_METADATA,
+  OAI_PROFILE_EVENT_USRP_RX_SHORT_READ,
+  OAI_PROFILE_EVENT_USRP_TX_CONVERSION,
+  OAI_PROFILE_EVENT_USRP_TX_QUEUE_LOCK_WAIT,
+  OAI_PROFILE_EVENT_USRP_TX_QUEUE_ENQUEUE,
+  OAI_PROFILE_EVENT_USRP_TX_DISPATCH_TO_START,
+  OAI_PROFILE_EVENT_USRP_TX_WORKER,
+  OAI_PROFILE_EVENT_USRP_TX_SEND,
+  OAI_PROFILE_EVENT_USRP_TX_SHORT_WRITE,
+  OAI_PROFILE_EVENT_USRP_TX_QUEUE_OVERFLOW,
+  OAI_PROFILE_EVENT_USRP_TX_ASYNC_EVENT,
+  OAI_PROFILE_EVENT_UE_PDSCH_WORKSPACE_ALLOCATION,
+  OAI_PROFILE_EVENT_UE_PDSCH_MEASUREMENTS,
+  OAI_PROFILE_EVENT_UE_PDSCH_CHANNEL_AVERAGING,
+  OAI_PROFILE_EVENT_UE_PDSCH_RB_EXTRACTION,
+  OAI_PROFILE_EVENT_UE_PDSCH_SCOPE_COPY,
+  OAI_PROFILE_EVENT_UE_PDSCH_CHANNEL_SCALING,
+  OAI_PROFILE_EVENT_UE_PDSCH_CHANNEL_LEVEL,
+  OAI_PROFILE_EVENT_UE_PDSCH_CHANNEL_COMPENSATION,
+  OAI_PROFILE_EVENT_UE_PDSCH_MRC_MMSE,
+  OAI_PROFILE_EVENT_UE_PDSCH_PTRS,
+  OAI_PROFILE_EVENT_UE_PDSCH_LLR,
+  OAI_PROFILE_EVENT_UE_PDSCH_LAYER_DEMAPPING,
+  OAI_PROFILE_EVENT_UE_PDSCH_WORKSPACE_FREE,
+  OAI_PROFILE_EVENT_UE_PDCCH_DMRS_GENERATION,
+  OAI_PROFILE_EVENT_UE_PDCCH_CHANNEL_ESTIMATION,
+  OAI_PROFILE_EVENT_UE_PDCCH_RB_EXTRACTION,
+  OAI_PROFILE_EVENT_UE_PDCCH_CHANNEL_LEVEL,
+  OAI_PROFILE_EVENT_UE_PDCCH_CHANNEL_COMPENSATION,
+  OAI_PROFILE_EVENT_UE_PDCCH_MRC,
+  OAI_PROFILE_EVENT_UE_PDCCH_LLR_KERNEL,
+  OAI_PROFILE_EVENT_UE_PDCCH_CANDIDATE_DEMAPPING,
+  OAI_PROFILE_EVENT_UE_PDCCH_UNSCRAMBLING,
+  OAI_PROFILE_EVENT_UE_PDCCH_POLAR_DECODING,
+  OAI_PROFILE_EVENT_UE_PDCCH_SCOPE_COPY,
+  OAI_PROFILE_EVENT_PROFILER_PRIMITIVE_CALIBRATION,
+  OAI_PROFILE_EVENT_UE_TX_DEADLINE_COMPUTE,
+  OAI_PROFILE_EVENT_UE_TX_DEADLINE_CHECK,
   OAI_PROFILE_EVENT_MAX
 } oai_profile_event_id_t;
 
@@ -212,7 +259,26 @@ extern int oai_profiler_enabled;
 
 static inline bool oai_profiler_is_enabled(void)
 {
-  return __atomic_load_n(&oai_profiler_enabled, __ATOMIC_ACQUIRE) != 0;
+  return __atomic_load_n(&oai_profiler_enabled, __ATOMIC_SEQ_CST) != 0;
+}
+
+static inline uint64_t oai_profiler_read_tick(void)
+{
+#if (defined(__x86_64__) || defined(__i386__)) && (defined(__GNUC__) || defined(__clang__))
+  uint32_t low = 0;
+  uint32_t high = 0;
+  __asm__ volatile("lfence\n\trdtsc\n\tlfence" : "=a"(low), "=d"(high) : : "memory");
+  return ((uint64_t)high << 32U) | low;
+#elif defined(__aarch64__) && (defined(__GNUC__) || defined(__clang__))
+  uint64_t tick = 0;
+  __asm__ volatile("isb\n\tmrs %0, cntvct_el0\n\tisb" : "=r"(tick) : : "memory");
+  return tick;
+#else
+  __asm__ volatile("" : : : "memory");
+  const uint64_t tick = rdtsc_oai();
+  __asm__ volatile("" : : : "memory");
+  return tick;
+#endif
 }
 
 void oai_profiler_init(const char *process_name,
@@ -221,7 +287,9 @@ void oai_profiler_init(const char *process_name,
                        bool enable_from_cli,
                        const char *profile_dir,
                        uint32_t buffer_records,
-                       uint32_t flush_us);
+                       uint32_t flush_us,
+                       const char *pmu_mode,
+                       uint32_t pmu_sample_us);
 void oai_profiler_shutdown(void);
 const char *oai_profiler_event_name(oai_profile_event_id_t event_id);
 const oai_profile_event_descriptor_t *oai_profiler_event_descriptor(oai_profile_event_id_t event_id);
@@ -248,7 +316,7 @@ static inline oai_profile_span_t oai_profiler_span_start(void)
 
 static inline uint64_t oai_profiler_start(void)
 {
-  return oai_profiler_is_enabled() ? rdtsc_oai() : 0;
+  return oai_profiler_is_enabled() ? oai_profiler_read_tick() : 0;
 }
 
 void oai_profiler_record_span(oai_profile_event_id_t event_id,

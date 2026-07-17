@@ -146,7 +146,7 @@ static void free_not_q(not_q_t* q)
 static bool try_push_not_q(not_q_t* q, task_t t)
 {
   DevAssert(q != NULL);
-
+  DevAssert(t.func != NULL || t.args == NULL);
 
   if (mutextrylock(q->mtx) != 0)
     return false;
@@ -166,7 +166,7 @@ static bool try_push_not_q(not_q_t* q, task_t t)
 static void push_not_q(not_q_t* q, task_t t)
 {
   DevAssert(q != NULL);
-  DevAssert(t.func != NULL);
+  DevAssert(t.func != NULL || t.args == NULL);
 
   mutexlock(q->mtx);
 

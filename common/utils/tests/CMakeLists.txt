@@ -13,3 +13,18 @@ add_test(NAME test_fsn COMMAND ./test_fsn)
 add_executable(test_bits test_bits.c)
 add_dependencies(tests test_bits)
 add_test(NAME test_bits COMMAND ./test_bits)
+
+add_executable(test_oai_profiler_pmu test_oai_profiler_pmu.c)
+add_dependencies(tests test_oai_profiler_pmu)
+target_link_libraries(test_oai_profiler_pmu PRIVATE utils)
+add_test(NAME test_oai_profiler_pmu COMMAND ./test_oai_profiler_pmu)
+
+add_executable(test_oai_profiler_system test_oai_profiler_system.c)
+add_dependencies(tests test_oai_profiler_system)
+target_link_libraries(test_oai_profiler_system PRIVATE utils)
+add_test(NAME test_oai_profiler_system COMMAND ./test_oai_profiler_system)
+
+add_executable(test_oai_profiler_archive test_oai_profiler_archive.c)
+add_dependencies(tests test_oai_profiler_archive)
+target_link_libraries(test_oai_profiler_archive PRIVATE utils minimal_lib pthread)
+add_test(NAME test_oai_profiler_archive COMMAND ./test_oai_profiler_archive)
