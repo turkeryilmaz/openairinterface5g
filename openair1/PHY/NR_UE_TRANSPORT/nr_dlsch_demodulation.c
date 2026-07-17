@@ -685,34 +685,14 @@ static void nr_dlsch_layer_demapping(const uint8_t Nl,
 {
   const int s0 = dlsch_config->start_symbol;
   const int s1 = dlsch_config->number_symbols;
-
   int k = 0;
-  switch (Nl) {
-    case 1:
-      for (int i = s0; i < (s0 + s1); i++) {
-        memcpy(llr + k, llr_layers[i][0], re_len[i] * mod_order * sizeof(int16_t));
-        k += re_len[i] * mod_order;
-      }
-      break;
 
-    case 2:
-    case 3:
-    case 4:
-      for (int i = s0; i < (s0 + s1); i++) {
-        int m = 0;
-        for (int j = 0; j < re_len[i]; j++) {
-          for (int l = 0; l < Nl; l++) {
-            memcpy(llr + k, llr_layers[i][l] + m * mod_order, sizeof(int16_t) * mod_order);
-            k += mod_order;
-            // if (i<4) printf("length%d: llr_layers[l%d][m%d]=%d: \n",length,l,m,llr_layers[l][i*mod_order+m]);
-          }
-          m++;
-        }
-      }
-      break;
-
-    default:
-      AssertFatal(0, "Not supported number of layers %d\n", Nl);
+  for (int i = s0; i < (s0 + s1); i++) {
+    int16_t *p_layer[Nl];
+    for (int l = 0; l < Nl; l++)
+      p_layer[l] = (int16_t *)llr_layers[i][l];
+    nr_layer_demapping(Nl, mod_order, re_len[i], p_layer, llr + k);
+    k += re_len[i] * mod_order * Nl;
   }
 }
 

@@ -217,7 +217,7 @@ sss_detection_result_t rx_sss_nr(nr_sss_params_t *params,
   int Nid1_start = 0;
   int Nid1_end = N_ID_1_NUMBER;
   if (target_Nid_cell != -1) {
-    if (GET_NID1(target_Nid_cell) != pss->nid2) {
+    if (GET_NID2(target_Nid_cell) != pss->nid2) {
       LOG_E(PHY, "calling sss detection with incoherent context %d, %d\n", pss->nid2, target_Nid_cell);
     } else {
       Nid1_start = GET_NID1(target_Nid_cell);

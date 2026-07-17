@@ -274,28 +274,21 @@ int nr_ulsch_decoding(PHY_VARS_gNB *phy_vars_gNB,
     nrLDPC_TB_decoding_parameters_t *TB_parameters = &TBs[pusch_id];
 
     uint32_t offset = 0, r_offset = 0;
-    bool crcok = true;
     LOG_D(PHY, "C = %d\n", TB_parameters->C);
     for (int r = 0; r < TB_parameters->C; r++) {
       LOG_D(PHY, "Segment %d %d\n", r, TB_parameters->decodeSuccess[r]);
-      if (TB_parameters->decodeSuccess[r] == false) {
+      uint32_t seg_len = (harq_process->K >> 3) - (harq_process->F >> 3) - ((harq_process->C > 1) ? 3 : 0);
+      if (TB_parameters->decodeSuccess[r]) {
+        memcpy(harq_process->b + offset, harq_process->c + r_offset, seg_len);
+      } else {
         LOG_D(PHY, "Segment %d/%d in error\n", r, TB_parameters->C);
-        crcok = false;
-        break;
       }
+      offset += seg_len;
+      r_offset += (harq_process->K >> 3);
     }
-    if (crcok) {
-      for (int r = 0; r < TB_parameters->C; r++) {
-        // Copy c to b in case of decoding success
-        memcpy(harq_process->b + offset,
-               harq_process->c + r_offset,
-               (harq_process->K >> 3) - (harq_process->F >> 3) - ((harq_process->C > 1) ? 3 : 0));
-        offset += ((harq_process->K >> 3) - (harq_process->F >> 3) - ((harq_process->C > 1) ? 3 : 0));
-        r_offset += (harq_process->K >> 3);
-      }
-    } else {
+    bool crcok = (harq_process->processedSegments == TB_parameters->C);
+    if (!crcok)
       LOG_D(PHY, "ULSCH %d in error\n", ULSCH_id);
-    }
     merge_meas(&phy_vars_gNB->ts_deinterleave, &TB_parameters->ts_deinterleave);
     merge_meas(&phy_vars_gNB->ts_rate_unmatch, &TB_parameters->ts_rate_unmatch);
     merge_meas(&phy_vars_gNB->ts_seg_prep, &TB_parameters->ts_seg_prep);

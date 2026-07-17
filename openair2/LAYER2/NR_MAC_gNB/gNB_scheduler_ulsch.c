@@ -1587,7 +1587,7 @@ void handle_nr_srs_measurements(const module_id_t module_id,
       for (int uI = 0; uI < nr_srs_channel_iq_matrix.num_ue_srs_ports; uI++) {
         for (int gI = 0; gI < nr_srs_channel_iq_matrix.num_gnb_antenna_elements; gI++) {
           for (int pI = 0; pI < nr_srs_channel_iq_matrix.num_prgs; pI++) {
-            uint16_t index = uI * nr_srs_channel_iq_matrix.num_gnb_antenna_elements * nr_srs_channel_iq_matrix.num_prgs + gI * nr_srs_channel_iq_matrix.num_prgs + pI;
+            uint32_t index = (uint32_t)uI * nr_srs_channel_iq_matrix.num_gnb_antenna_elements * nr_srs_channel_iq_matrix.num_prgs + gI * nr_srs_channel_iq_matrix.num_prgs + pI;
             LOG_I(NR_MAC,
                   "(uI %i, gI %i, pI %i) channel_matrix --> real %i, imag %i\n",
                   uI,
@@ -2226,9 +2226,9 @@ void post_process_ulsch(gNB_MAC_INST *nr_mac,
 
   T(T_GNB_MAC_UL, T_INT(UE->rnti), T_INT(frame), T_INT(slot), T_INT(sched_pusch->mcs), T_INT(sched_pusch->tb_size));
 
-  DevAssert(sched_pusch->nrOfLayers >= 1 && sched_pusch->nrOfLayers <= 8);
+  DevAssert(sched_pusch->nrOfLayers >= 1 && sched_pusch->nrOfLayers <= NR_KPM_MAX_LAYERS);
   DevAssert(current_BWP->mcs_table == 0 || current_BWP->mcs_table == 1 || current_BWP->mcs_table == 3);
-  DevAssert(sched_pusch->mcs >= 0 && sched_pusch->mcs <= 31);
+  DevAssert(sched_pusch->mcs < NR_KPM_NB_MCS);
   NR_du_stats_t *stats = &nr_mac->du_stats;
   stats->pusch_mcs_dist[sched_pusch->nrOfLayers - 1][current_BWP->mcs_table][sched_pusch->mcs] += sched_pusch->rbSize;
 
@@ -2526,11 +2526,9 @@ void nr_ulsch_preprocessor(gNB_MAC_INST *nr_mac, post_process_pusch_t *pp_pusch)
   int num_beams = nr_mac->beam_info.beam_allocation ? nr_mac->beam_info.beams_per_period : 1;
   int bw = scc->uplinkConfigCommon->frequencyInfoUL->scs_SpecificCarrierList.list.array[0]->carrierBandwidth;
 
-  int average_agg_level = 4; // TODO find a better estimation
-  int max_dci = bw / (average_agg_level * NR_NB_REG_PER_CCE);
-
   // FAPI cannot handle more than MAX_DCI_CORESET DCIs
-  max_dci = min(max_dci, MAX_DCI_CORESET);
+  static_assert(4 < MAX_DCI_CORESET, "cannot have more concurrent UEs than MAX_DCI_CORESET\n");
+  int max_dci = 4;
 
   fsn_t current = {frame, slot, *scc->ssbSubcarrierSpacing};
   fsn_t min_next = fsn_add_delta(current, min_rxtx);
