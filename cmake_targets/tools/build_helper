@@ -382,6 +382,7 @@ check_install_additional_tools (){
         iperf3 \
         libforms-bin \
         libforms-dev \
+        libglfw3-dev \
         libxft-dev \
         $pcre_package \
         libssh-dev \
