@@ -410,7 +410,9 @@ check_install_oai_software() {
     fi
     $SUDO $INSTALLER update -y
   if [[ "$OS_BASEDISTRO" == "debian" ]]; then
-    $SUDO apt install -y software-properties-common
+    if [[ "$(get_distribution_release)" != "debian13" ]]; then
+      $SUDO apt install -y software-properties-common
+    fi
     case "$(get_distribution_release)" in
          "debian11" | "debian12" | "debian13" )
             specific_packages="libz-dev"
