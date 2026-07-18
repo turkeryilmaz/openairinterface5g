@@ -3706,6 +3706,16 @@ void nr_rrc_going_to_IDLE(NR_UE_RRC_INST_t *rrc,
   nr_timer_stop(&tac->T311);
   nr_timer_stop(&tac->T319);
 
+  for (int i = 0; i < NB_CNX_UE; i++) {
+    l3_measurements_t *l3m = &rrc->perNB[i].l3_measurements;
+    for (int j = 0; j < MAX_MEAS_ID; j++) {
+      meas_report_params_t *p = &l3m->meas_report[j];
+      nr_timer_stop(&p->TA2);
+      nr_timer_stop(&p->TA3);
+      nr_timer_stop(&p->periodic_report_timer);
+    }
+  }
+
   // discard the UE Inactive AS context
   // TODO there is no inactive AS context
 
