@@ -1339,13 +1339,6 @@ target_link_libraries(NR_L2_UE PRIVATE nr_rlc)
 target_link_libraries(NR_L2_UE PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs nr_common nr_ue_power_procedures nr_ue_ra_procedures)
 target_link_libraries(NR_L2_UE PRIVATE nr_nas)
 
-add_library(MAC_NR_COMMON
-            ${OPENAIR2_DIR}/LAYER2/NR_MAC_COMMON/nr_mac_common.c
-            ${OPENAIR2_DIR}/LAYER2/NR_MAC_COMMON/nr_mac_common_tdd.c
-            ${OPENAIR2_DIR}/LAYER2/NR_MAC_COMMON/nr_compute_tbs_common.c
-)
-target_link_libraries(MAC_NR_COMMON PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
-
 include_directories("${OPENAIR2_DIR}/NR_UE_PHY_INTERFACE")
 include_directories("${OPENAIR2_DIR}/LAYER2")
 include_directories("${OPENAIR1_DIR}/SCHED_NR_UE")

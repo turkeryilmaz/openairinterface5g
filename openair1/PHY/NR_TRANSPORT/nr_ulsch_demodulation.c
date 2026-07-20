@@ -84,6 +84,15 @@ static void nr_ulsch_extract_rbs(c16_t* const rxdataF,
                                  NR_DL_FRAME_PARMS *frame_parms)
 {
   uint8_t delta = 0;
+  if (is_dmrs_symbol) {
+    uint8_t max_cdm = (pusch_pdu->dmrs_config_type == pusch_dmrs_type1 ? 2 : 3);
+    AssertFatal(pusch_pdu->num_dmrs_cdm_grps_no_data <= max_cdm,
+                "cdm group no data %d cannot be greater than %d\n",
+                pusch_pdu->num_dmrs_cdm_grps_no_data,
+                max_cdm);
+    int first_port = get_dmrs_port(0, pusch_pdu->dmrs_ports);
+    delta = get_delta(first_port, pusch_pdu->dmrs_config_type);
+  }
   int start_re = (frame_parms->first_carrier_offset + (pusch_pdu->rb_start + pusch_pdu->bwp_start) * NR_NB_SC_PER_RB)%frame_parms->ofdm_symbol_size;
   int nb_re_pusch = NR_NB_SC_PER_RB * pusch_pdu->rb_size;
   c16_t *rxF = &rxdataF[rxoffset];
