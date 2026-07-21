@@ -32,6 +32,7 @@
 #define CONFIG_STRING_ORU_NUM_DL_SYMBOLS "num_dl_symbols"
 #define CONFIG_STRING_ORU_NUM_UL_SYMBOLS "num_ul_symbols"
 #define CONFIG_STRING_ORU_TX_CORE "tx_core"
+#define CONFIG_STRING_ORU_NUM_DL_THREADS "num_dl_threads"
 
 #define HLP_ORU_TX_BW "set the TX bandwidth list per component carrier"
 #define HLP_ORU_RX_BW "set the RX bandwidth list per component carrier"
@@ -65,6 +66,7 @@
   {CONFIG_STRING_ORU_NUM_DL_SYMBOLS,            HLP_ORU_NUM_DL_SYMBOLS,             0,    .uptr=NULL,       .defintval=7,                 TYPE_UINT,         0}, \
   {CONFIG_STRING_ORU_NUM_UL_SYMBOLS,            HLP_ORU_NUM_UL_SYMBOLS,             0,    .uptr=NULL,       .defintval=3,                 TYPE_UINT,         0}, \
   {CONFIG_STRING_ORU_TX_CORE,                   "The CPU core to be used to deploy south write thread for O-RU.", 0, .iptr=NULL, .defintval=-1, TYPE_INT, 0}, \
+  {CONFIG_STRING_ORU_NUM_DL_THREADS,            "Number of parallel DL reader threads for O-RU.", 0, .iptr=NULL, .defintval=1, TYPE_INT, 0}, \
 }
 
 #define CMDLINE_PARAMS_DESC_ORU_COMMON \
@@ -216,6 +218,11 @@ int get_oru_options(ORU_t *oru)
   oru->num_DL_symbols = *gpd(param, nump, CONFIG_STRING_ORU_NUM_DL_SYMBOLS)->iptr;
   oru->num_UL_symbols = *gpd(param, nump, CONFIG_STRING_ORU_NUM_UL_SYMBOLS)->iptr;
   oru->tx_write.core = *gpd(param, nump, CONFIG_STRING_ORU_TX_CORE)->iptr;
+  oru->num_dl_read_threads = *gpd(param, nump, CONFIG_STRING_ORU_NUM_DL_THREADS)->iptr;
+  AssertFatal(oru->num_dl_read_threads > 0 && oru->num_dl_read_threads <= MAX_DL_READ_THREADS,
+              "Invalid number of DL read threads (%d), must be in [1, %d]\n",
+              oru->num_dl_read_threads,
+              MAX_DL_READ_THREADS);
 
   paramdef_t fh_param[] = CMDLINE_PARAMS_DESC_ORU_FH;
   nump = sizeofArray(fh_param);
@@ -382,6 +389,14 @@ void fft_and_cp_insertion(NR_DL_FRAME_PARMS *fp, c16_t *txdataF, c16_t *txdata, 
   PHY_ofdm_mod((int *)txdataF, (int *)txdata, fp->ofdm_symbol_size, 1, nb_prefix_samples, CYCLIC_PREFIX);
 }
 
+static void dl_symbol_completed(ORU_t *oru, uint64_t abs_symbol)
+{
+  // symbol_reorder_advance() publishes the new contiguous high-water mark and wakes
+  // oru_south_write_thread() (blocked in symbol_reorder_wait_at_least()) internally - no separate
+  // publish step or mutex needed here.
+  symbol_reorder_advance(oru->dl_reorder, abs_symbol, 1);
+}
+
 static void dl_symbol_process(ORU_t *oru, int frame, int slot, int symbol, c16_t **txDataF, int64_t timestamp, uint64_t abs_symbol)
 {
   struct timespec start, end;
@@ -423,10 +438,7 @@ static void dl_symbol_process(ORU_t *oru, int frame, int slot, int symbol, c16_t
     }
   }
 
-  pthread_mutex_lock(&oru->tx_write.mutex);
-  oru->tx_write.latest_written_symbol_index = abs_symbol;
-  pthread_cond_signal(&oru->tx_write.cond);
-  pthread_mutex_unlock(&oru->tx_write.mutex);
+  dl_symbol_completed(oru, abs_symbol);
 }
 
 static pthread_mutex_t south_read_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -445,7 +457,9 @@ void notify_north_read(uint64_t hyper_frame, uint32_t start_frame, uint32_t star
   notified_start_slot = start_slot;
   notified_timestamp = timestamp;
   south_read_ready = true;
-  pthread_cond_signal(&south_read_cond);
+  // Broadcast, not signal: multiple DL reader threads may be blocked here at startup, and every
+  // one of them needs to wake up and read the notified anchor values.
+  pthread_cond_broadcast(&south_read_cond);
   pthread_mutex_unlock(&south_read_mutex);
 }
 
@@ -462,7 +476,12 @@ void wait_for_south_read(uint64_t *hyper_frame, uint32_t *start_frame, uint32_t 
   pthread_mutex_unlock(&south_read_mutex);
 }
 
-void *oru_north_read_thread(void *arg)
+// Runs concurrently as several DL reader threads (see oru.num_dl_read_threads). Each thread
+// independently derives the same start_timestamp/start_hyper_frame/start_symbol_index from the
+// deterministic HW UTC anchor (or the shared wait_for_south_read() notification), then only the
+// first thread to arrive actually publishes them to ORU_t and creates the shared dl_reorder -
+// later threads see tx_write.initialized already set and just use their own local values below.
+void *oru_north_read_worker(void *arg)
 {
   ORU_t *oru = (ORU_t *)arg;
 
@@ -491,11 +510,17 @@ void *oru_north_read_thread(void *arg)
   LOG_A(PHY, "DL thread started: start_timestamp %ld, start_frame %d, start_slot %d\n", start_timestamp, start_frame, start_slot);
 
   pthread_mutex_lock(&oru->tx_write.mutex);
-  oru->tx_write.start_timestamp = start_timestamp;
-  oru->tx_write.start_symbol_index = start_frame * (fp->slots_per_frame * fp->symbols_per_slot) + start_slot * fp->symbols_per_slot;
-  oru->tx_write.latest_written_symbol_index = oru->tx_write.start_symbol_index - 1;
-  oru->tx_write.initialized = true;
-  pthread_cond_signal(&oru->tx_write.cond);
+  if (!oru->tx_write.initialized) {
+    oru->tx_write.start_timestamp = start_timestamp;
+    oru->tx_write.start_hyper_frame = start_hyper_frame;
+    oru->tx_write.start_symbol_index = start_frame * (fp->slots_per_frame * fp->symbols_per_slot) + start_slot * fp->symbols_per_slot;
+    const uint8_t *dl_symbol_bitmask;
+    uint16_t bitmask_bit_length;
+    oru_fh_get_dl_symbol_bitmask(oru->fronthaul, &dl_symbol_bitmask, &bitmask_bit_length);
+    oru->dl_reorder = symbol_reorder_create(oru->tx_write.start_symbol_index, dl_symbol_bitmask, bitmask_bit_length);
+    oru->tx_write.initialized = true;
+    pthread_cond_broadcast(&oru->tx_write.cond);
+  }
   pthread_mutex_unlock(&oru->tx_write.mutex);
 
   while (!oai_exit) {
@@ -710,21 +735,14 @@ void *oru_south_write_thread(void *arg)
     return NULL;
   }
   uint64_t next_symbol_to_send = oru->tx_write.start_symbol_index;
+  int64_t start_ts = oru->tx_write.start_timestamp;
   pthread_mutex_unlock(&oru->tx_write.mutex);
 
   while (!oai_exit) {
-    pthread_mutex_lock(&oru->tx_write.mutex);
-    while (oru->tx_write.latest_written_symbol_index < next_symbol_to_send && !oai_exit) {
-      pthread_cond_wait(&oru->tx_write.cond, &oru->tx_write.mutex);
-    }
+    uint64_t latest = symbol_reorder_wait_at_least(oru->dl_reorder, next_symbol_to_send, &oai_exit);
     if (oai_exit) {
-      pthread_mutex_unlock(&oru->tx_write.mutex);
       break;
     }
-
-    uint64_t latest = oru->tx_write.latest_written_symbol_index;
-    int64_t start_ts = oru->tx_write.start_timestamp;
-    pthread_mutex_unlock(&oru->tx_write.mutex);
 
     // Process all symbols from next_symbol_to_send to latest
     while (next_symbol_to_send <= latest) {
@@ -975,6 +993,7 @@ void oru_self_diagnosis(ORU_t *oru)
 
   double t_sym_avg_us = 1000.0 / (14.0 * (1 << fp->numerology_index));
   long num_cores = sysconf(_SC_NPROCESSORS_ONLN);
+  int num_dl_workers = oru->num_dl_read_threads;
   int num_ul_workers = ru->nb_rx;
 
   LOG_I(PHY, "=================== O-RU Real-Time Self-Diagnosis Report ===================\n");
@@ -982,7 +1001,7 @@ void oru_self_diagnosis(ORU_t *oru)
         fp->numerology_index, fp->N_RB_DL, fp->N_RB_UL);
   LOG_I(PHY, "Antennas: TX=%d, RX=%d\n", fp->nb_antennas_tx, fp->nb_antennas_rx);
   LOG_I(PHY, "Physical Symbol Duration (average): %.2f us\n", t_sym_avg_us);
-  LOG_I(PHY, "CPU Cores Online: %ld, UL Worker Threads: %d\n", num_cores, num_ul_workers);
+  LOG_I(PHY, "CPU Cores Online: %ld, DL Worker Threads: %d, UL Worker Threads: %d\n", num_cores, num_dl_workers, num_ul_workers);
   LOG_I(PHY, "----------------------------------------------------------------------------\n");
 
   bool pass = true;
@@ -990,16 +1009,28 @@ void oru_self_diagnosis(ORU_t *oru)
   if (dl_count > 0) {
     double dl_avg_us = (double)dl_time_total / (dl_count * 16.0);
     double dl_max_us = (double)dl_time_max / 16.0;
-    double dl_margin = ((t_sym_avg_us - dl_avg_us) / t_sym_avg_us) * 100.0;
 
-    LOG_I(PHY, "DL (Single-threaded OFDM Modulation + phase rotation for %d antennas):\n", fp->nb_antennas_tx);
+    // DL symbols are now pipelined across num_dl_workers independent reader threads (each fully
+    // processes one absolute symbol at a time, then hands off to the symbol reorder buffer), rather
+    // than one thread processing every symbol serially - so the sustainable per-symbol-slot cost is
+    // the per-thread time divided by however many of those threads a core can actually run at once.
+    double effective_dl_workers = (num_dl_workers < num_cores) ? num_dl_workers : num_cores;
+    if (effective_dl_workers < 1.0) effective_dl_workers = 1.0;
+    double dl_eff_avg_us = dl_avg_us / effective_dl_workers;
+    double dl_eff_max_us = dl_max_us / effective_dl_workers;
+    double dl_margin = ((t_sym_avg_us - dl_eff_avg_us) / t_sym_avg_us) * 100.0;
+
+    LOG_I(PHY, "DL (Pipelined OFDM Modulation + phase rotation across %d reader threads, %d antennas):\n",
+          num_dl_workers, fp->nb_antennas_tx);
     LOG_I(PHY, "  Processed: %lu symbols\n", dl_count);
-    LOG_I(PHY, "  Processing Time: Avg = %.2f us, Max = %.2f us\n", dl_avg_us, dl_max_us);
+    LOG_I(PHY, "  Per-Thread Symbol Time: Avg = %.2f us, Max = %.2f us\n", dl_avg_us, dl_max_us);
+    LOG_I(PHY, "  Effective Symbol Processing Time (with %d threads on %ld cores): Avg = %.2f us, Max = %.2f us\n",
+          num_dl_workers, num_cores, dl_eff_avg_us, dl_eff_max_us);
     LOG_I(PHY, "  Safety Margin (based on Avg): %.2f%%\n", dl_margin);
 
-    if (dl_avg_us >= t_sym_avg_us) {
-      LOG_E(PHY, "  [DIAGNOSIS] DL CRITICAL: Processing time (%.2f us) exceeds symbol budget (%.2f us)!\n",
-            dl_avg_us, t_sym_avg_us);
+    if (dl_eff_avg_us >= t_sym_avg_us) {
+      LOG_E(PHY, "  [DIAGNOSIS] DL CRITICAL: Effective processing time (%.2f us) exceeds symbol budget (%.2f us)!\n",
+            dl_eff_avg_us, t_sym_avg_us);
       pass = false;
     } else if (dl_margin < 20.0) {
       LOG_W(PHY, "  [DIAGNOSIS] DL WARNING: Safety margin is low (%.2f%% < 20%%). Risk of RT jitter.\n", dl_margin);

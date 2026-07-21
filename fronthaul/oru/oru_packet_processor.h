@@ -107,6 +107,7 @@ void get_packet_processor_stats(void *context, oru_packet_processor_stats_t *out
 void read_dl_iq(void *context, uint32_t **txdataF, int nb_tx, uint64_t *hyper_frame, int *frame, int *slot, int *symbol);
 int get_ready_job_count(void *context);
 int poll_ul_job(void *context, ul_job_t *job);
+void get_dl_symbol_bitmask(void *context, const uint8_t **bitmask, uint16_t *bit_length);
 
 #ifdef __cplusplus
 }

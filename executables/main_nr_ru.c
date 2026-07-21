@@ -233,7 +233,6 @@ int main(int argc, char **argv)
   AssertFatal(rc == 0, "pthread_mutex_init() failed: %d, %s\n", rc, strerror(rc));
   rc = pthread_cond_init(&oru.tx_write.cond, NULL);
   AssertFatal(rc == 0, "pthread_cond_init() failed: %d, %s\n", rc, strerror(rc));
-  oru.tx_write.latest_written_symbol_index = 0;
   oru.tx_write.initialized = false;
 
   AssertFatal(ru->num_tpcores > 0, "RU %u: num_tp_cores must be > 0\n", ru->idx);
@@ -246,7 +245,11 @@ int main(int argc, char **argv)
   ru->threadPool = malloc(sizeof(tpool_t));
   initNamedTpool(pool, ru->threadPool, false, "ul_worker");
 
-  threadCreate(&oru.north_read_thread, oru_north_read_thread, (void *)&oru, "north_read_thread", -1, OAI_PRIORITY_RT_MAX);
+  for (int i = 0; i < oru.num_dl_read_threads; i++) {
+    char thread_name[32];
+    snprintf(thread_name, sizeof(thread_name), "north_read_%d", i);
+    threadCreate(&oru.dl_read_threads[i], oru_north_read_worker, (void *)&oru, thread_name, -1, OAI_PRIORITY_RT_MAX);
+  }
   threadCreate(&oru.south_read_thread, oru_south_read_thread, (void *)&oru, "south_read_thread", -1, OAI_PRIORITY_RT_MAX);
   threadCreate(&oru.south_write_thread, oru_south_write_thread, (void *)&oru, "south_write_thread", oru.tx_write.core, OAI_PRIORITY_RT_MAX);
   usleep(1000);
@@ -263,8 +266,15 @@ int main(int argc, char **argv)
   pthread_mutex_lock(&oru.tx_write.mutex);
   pthread_cond_signal(&oru.tx_write.cond);
   pthread_mutex_unlock(&oru.tx_write.mutex);
+  if (oru.dl_reorder) {
+    // Wakes oru_south_write_thread() if it's blocked in symbol_reorder_wait_at_least() rather than
+    // the tx_write.cond startup wait above.
+    symbol_reorder_notify_all(oru.dl_reorder);
+  }
 
-  pthread_join(oru.north_read_thread, NULL);
+  for (int i = 0; i < oru.num_dl_read_threads; i++) {
+    pthread_join(oru.dl_read_threads[i], NULL);
+  }
   pthread_join(oru.south_read_thread, NULL);
   pthread_join(oru.south_write_thread, NULL);
 
@@ -276,6 +286,9 @@ int main(int argc, char **argv)
 
   pthread_mutex_destroy(&oru.tx_write.mutex);
   pthread_cond_destroy(&oru.tx_write.cond);
+  if (oru.dl_reorder) {
+    symbol_reorder_destroy(oru.dl_reorder);
+  }
 
   oru_fh_stop(oru.fronthaul);
 

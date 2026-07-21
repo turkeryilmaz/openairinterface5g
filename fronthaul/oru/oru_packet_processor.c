@@ -93,7 +93,7 @@ typedef struct {
   bool was_dl_symbol_completed[NUM_CONCURRENT_DL_SYMBOL_WINDOWS];
   prach_job_t prach_jobs[MAX_SLOTS_PER_FRAME][MAX_ANTENNAS];
   uint64_t current_absolute_symbol;
-  uint64_t last_pushed_symbol;
+  uint64_t window_tail_symbol;
   struct rte_ring *dl_free_jobs;
   struct rte_ring *dl_ready_jobs;
   struct rte_ring *ul_free_jobs;
@@ -226,61 +226,64 @@ void cleanup_packet_processor(void *context)
   }
 }
 
-// happens when all packets for one symbol are collected
-void try_push_symbol_job(oru_packet_processor_context_t *ctx, uint64_t absolute_symbol)
+// Releases a single symbol job the instant it individually completes, independent of any other
+// symbol's state (sliding window: no head-of-line blocking on neighboring, still-incomplete jobs).
+void release_completed_symbol_job(oru_packet_processor_context_t *ctx, uint64_t absolute_symbol)
 {
-  while (ctx->last_pushed_symbol <= absolute_symbol) {
-    if (!test_bit(ctx->dl_symbol_bitmask, ctx->last_pushed_symbol % ctx->symbol_bitmask_length)) {
-      // skip non-dl symbols
-      ctx->last_pushed_symbol++;
-      continue;
-    }
-
-    uint32_t job_index = ctx->last_pushed_symbol % NUM_CONCURRENT_DL_SYMBOL_WINDOWS;
-    dl_symbol_job_t *job = ctx->dl_symbol_rx_window[job_index];
-    if (!job) {
-      break;
-    }
-    if (job->expected_iq != job->received_iq) {
-      // Only push finished jobs from here
-      break;
-    }
-    ctx->dl_symbol_rx_window[job_index] = NULL;
-    int ret = rte_ring_enqueue(ctx->dl_ready_jobs, (void *)job);
-    if (ret != 0) {
-      ctx->stats.application_too_slow++;
-    }
-    ctx->last_pushed_symbol++;
+  uint32_t job_index = absolute_symbol % NUM_CONCURRENT_DL_SYMBOL_WINDOWS;
+  dl_symbol_job_t *job = ctx->dl_symbol_rx_window[job_index];
+  if (!job || job->absolute_symbol != absolute_symbol) {
+    return;
+  }
+  ctx->dl_symbol_rx_window[job_index] = NULL;
+  ctx->was_dl_symbol_completed[job_index] = true;
+  int ret = rte_ring_enqueue(ctx->dl_ready_jobs, (void *)job);
+  if (ret != 0) {
+    ctx->stats.application_too_slow++;
   }
 }
 
-// Happens during timer expiry
+// Happens during timer expiry: slides the trailing edge of the window forward, forcibly evicting
+// any slot that fell behind (reclaiming it for the job pool) so every DL symbol eventually reaches
+// dl_ready_jobs even if it was never released early via release_completed_symbol_job().
 void push_symbol_job(oru_packet_processor_context_t *ctx, uint64_t absolute_symbol)
 {
-  while (ctx->last_pushed_symbol <= absolute_symbol) {
-    if (!test_bit(ctx->dl_symbol_bitmask, ctx->last_pushed_symbol % ctx->symbol_bitmask_length)) {
+  while (ctx->window_tail_symbol <= absolute_symbol) {
+    if (!test_bit(ctx->dl_symbol_bitmask, ctx->window_tail_symbol % ctx->symbol_bitmask_length)) {
       // skip non-dl symbols
-      ctx->last_pushed_symbol++;
+      ctx->window_tail_symbol++;
       continue;
     }
 
-    uint32_t job_index = ctx->last_pushed_symbol % NUM_CONCURRENT_DL_SYMBOL_WINDOWS;
+    uint32_t job_index = ctx->window_tail_symbol % NUM_CONCURRENT_DL_SYMBOL_WINDOWS;
     dl_symbol_job_t *job = ctx->dl_symbol_rx_window[job_index];
-    if (!job) {
+    if (job) {
+      // Still sitting in the window (incomplete or never checked) - force flush whatever is there.
+      ctx->dl_symbol_rx_window[job_index] = NULL;
+      ctx->was_dl_symbol_completed[job_index] = false;
+      int ret = rte_ring_enqueue(ctx->dl_ready_jobs, (void *)job);
+      if (ret != 0) {
+        ctx->stats.application_too_slow++;
+      }
+    } else if (ctx->was_dl_symbol_completed[job_index]) {
+      // Already released early for this exact symbol - nothing to do.
+      ctx->was_dl_symbol_completed[job_index] = false;
+    } else {
+      // Never got a single C-plane packet for this symbol - push an empty placeholder so the
+      // consumer still sees every DL symbol.
       int ret = rte_ring_dequeue(ctx->dl_free_jobs, (void **)&job);
       if (ret != 0) {
         ctx->stats.application_too_slow++;
         return;
       }
       memset(job, 0, sizeof(*job));
-      job->absolute_symbol = absolute_symbol;
+      job->absolute_symbol = ctx->window_tail_symbol;
+      ret = rte_ring_enqueue(ctx->dl_ready_jobs, (void *)job);
+      if (ret != 0) {
+        ctx->stats.application_too_slow++;
+      }
     }
-    ctx->dl_symbol_rx_window[job_index] = NULL;
-    int ret = rte_ring_enqueue(ctx->dl_ready_jobs, (void *)job);
-    if (ret != 0) {
-      ctx->stats.application_too_slow++;
-    }
-    ctx->last_pushed_symbol++;
+    ctx->window_tail_symbol++;
   }
 }
 
@@ -289,11 +292,18 @@ void handle_absolute_symbol_tick(void *context, uint64_t absolute_symbol)
   oru_packet_processor_context_t *ctx = (oru_packet_processor_context_t *)context;
   if (ctx->current_absolute_symbol == 0) {
     ctx->current_absolute_symbol = absolute_symbol - 1;
-    ctx->last_pushed_symbol = absolute_symbol - 1;
+    ctx->window_tail_symbol = absolute_symbol - 1;
   }
   ctx->current_absolute_symbol = absolute_symbol;
   uint64_t window_expiry_symbol = ctx->current_absolute_symbol + ctx->T2a_min_up_dl_sym_diff;
   push_symbol_job(ctx, window_expiry_symbol);
+}
+
+void get_dl_symbol_bitmask(void *context, const uint8_t **bitmask, uint16_t *bit_length)
+{
+  oru_packet_processor_context_t *ctx = (oru_packet_processor_context_t *)context;
+  *bitmask = ctx->dl_symbol_bitmask;
+  *bit_length = ctx->symbol_bitmask_length;
 }
 
 void handle_uplane_packet(void *context, void *pkt)
@@ -420,7 +430,7 @@ void handle_uplane_packet(void *context, void *pkt)
   }
   job->received_iq += num_prbu == 0 ? ctx->num_prb : num_prbu;
   if (job->expected_iq == job->received_iq) {
-    try_push_symbol_job(ctx, target_absolute_symbol);
+    release_completed_symbol_job(ctx, target_absolute_symbol);
   }
   return;
 }
@@ -483,6 +493,7 @@ static void handle_dl_cplane_packet(oru_packet_processor_context_t *ctx,
         }
       }
       ctx->dl_symbol_rx_window[job_index] = job;
+      ctx->was_dl_symbol_completed[job_index] = false;
     } else {
       if (job->absolute_symbol != target_absolute_symbol + i) {
         ctx->stats.cplane_err_late++;

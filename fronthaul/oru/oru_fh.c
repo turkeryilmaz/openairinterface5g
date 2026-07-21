@@ -274,6 +274,13 @@ int oru_fh_poll_ul_job(void *handle, ul_job_t *job) {
   return poll_ul_job(fh->packet_processor, job);
 }
 
+void oru_fh_get_dl_symbol_bitmask(void *handle, const uint8_t **bitmask, uint16_t *bit_length)
+{
+  oru_fh_t *fh = (oru_fh_t *)handle;
+  AssertFatal(fh, "Invalid handle\n");
+  get_dl_symbol_bitmask(fh->packet_processor, bitmask, bit_length);
+}
+
 void oru_fh_rx_send_pusch(void *handle, uint32_t *puschF, int symbol_index, const ul_job_t *job)
 {
   oru_fh_t *fh = (oru_fh_t *)handle;
