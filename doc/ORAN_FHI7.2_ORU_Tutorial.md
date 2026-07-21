@@ -64,6 +64,7 @@ An example configuration file can be found at
 | `num_dl_symbols` | Integer | Number of DL symbols in the mixed slot | `7` |
 | `num_ul_symbols` | Integer | Number of UL symbols in the mixed slot | `3` |
 | `tx_core` | Integer | CPU core for the South (Split 8) write thread | `-1` |
+| `num_dl_threads` | Integer | Number of parallel DL reader threads (max `8`) | `1` |
 
 ### `ORUs.[0].fronthaul` parameters
 
@@ -77,6 +78,17 @@ An example configuration file can be found at
 | `mtu` | Integer | Maximum Transmission Unit (MTU) | `9600` |
 | `prach_eaxc_offset`| Integer | Offset for PRACH eAxC ID mapping | `0` |
 | `extra_eal_args` | String List | EAL arguments passed to DPDK | `[]` |
+
+### `RUs.[0]` threadpool parameters
+
+Uplink symbol processing (see [Parallel Uplink Processing](#ii-parallel-uplink-processing))
+is dispatched onto `RU_t`'s standard threadpool, so it is configured the same way as any other
+OAI RU threadpool:
+
+| Parameter | Type | Description | Default / Mandatory |
+| :--- | :--- | :--- | :--- |
+| `num_tp_cores` | Integer | Number of UL worker threads in the threadpool | **Mandatory** |
+| `tp_cores` | Integer Array | CPU core affinity per worker thread (`-1` = unpinned), length `>= num_tp_cores` | **Mandatory** |
 
 ---
 
@@ -133,11 +145,34 @@ a static latency per call.
 For received U-plane symbols (PUSCH/PRACH), the O-RU must perform cyclic
 prefix (CP) removal, FFT, link-level phase compensation (conjugate
 rotation), and contiguous format packing.
-* To handle this in real-time, the O-RU implements a work queue structure
-  (`ul_work_queue_t`) with a worker pool containing **one worker thread
-  per RX antenna**.
-* Symbols are processed in parallel across all RX antennas, ensuring the
-  data is processed and sent back to the O-DU within the timing budget.
+* Each antenna-symbol is dispatched as a task onto `RU_t`'s shared
+  threadpool (configured via `num_tp_cores`/`tp_cores`, see
+  [RUs threadpool parameters](#rus0-threadpool-parameters)) instead of a
+  dedicated per-antenna worker thread pool.
+* Tasks are queued in a lock-free ring (`UL_WORK_QUEUE_DEPTH` = 128 entries).
+  If the threadpool falls behind and the ring fills up, new UL jobs are
+  **dropped** rather than blocking the reader thread; dropped jobs are
+  counted and reported by the [self-diagnostic report](#6-self-diagnostic-report).
+* All RX antennas for a symbol are processed in parallel across the
+  threadpool's worker threads, ensuring the data is processed and sent
+  back to the O-DU within the timing budget.
+
+### III. Parallel Downlink Processing
+For transmitted DL symbols, the O-RU must perform phase rotation, an
+FFT-shift, and cyclic prefix (CP) insertion before handing samples to the
+South (Split 8) write thread.
+* Instead of a single DL reader thread, `num_dl_threads` independent
+  `oru_north_read_worker` threads run concurrently, each executing the
+  full read/process/publish loop for a symbol.
+* Because several threads complete symbols concurrently, completions can
+  arrive out of order. A generic reorder buffer
+  (`common/utils/symbol_reorder`) tracks completions by absolute symbol
+  index and reports a contiguous high-water mark; each symbol is released
+  to `oru_south_write_thread` as soon as it individually completes,
+  instead of being held back (head-of-line-blocked) behind an earlier,
+  still-incomplete neighbor.
+* `oru_south_write_thread` blocks on `symbol_reorder_wait_at_least()` and
+  is woken directly whenever the contiguous frontier advances.
 
 ---
 
@@ -150,7 +185,32 @@ The O-RU supports large delay profiles and lookaheads **greater than 5ms**.
 
 ---
 
-## 6. Existing Limitations
+## 6. Self-Diagnostic Report
+
+`nr-oru` continuously measures the wall-clock time spent processing each DL
+symbol and each UL antenna-symbol, and once per hyperframe (every 1024
+frames) logs a report (`oru_self_diagnosis`) comparing that measured cost
+against the real-time symbol budget.
+
+The report includes, per direction (DL/UL):
+* Number of symbols (or antenna-symbols) processed in the window.
+* Per-thread processing time (Avg/Max).
+* **Effective** processing time — the per-thread time scaled by how many
+  worker threads (`num_dl_threads` for DL, `num_tp_cores` for UL) actually
+  run concurrently on the available CPU cores.
+* A safety margin relative to the physical symbol duration, with a
+  `PASS` / `WARNING` (margin < 20%) / `CRITICAL` (budget exceeded)
+  diagnosis.
+* For UL, the number of jobs dropped because the threadpool queue was
+  full — any nonzero count is reported as `CRITICAL`.
+
+The report ends with an `OVERALL STATUS: PASS` or `OVERALL STATUS: FAIL`
+line, letting a deployment be validated for real-time operation just by
+watching the log (`LOG_I`/`LOG_W`/`LOG_E`, component `PHY`).
+
+---
+
+## 7. Existing Limitations
 
 When configuring and deploying `nr-oru`, be aware of the following design and
 implementation constraints:
@@ -174,7 +234,7 @@ implementation constraints:
 
 ---
 
-## 7. Execution Examples
+## 8. Execution Examples
 
 ### Running the O-RU
 
