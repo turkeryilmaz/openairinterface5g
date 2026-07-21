@@ -4073,10 +4073,15 @@ bool prepare_initial_ul_rrc_message(gNB_MAC_INST *mac, NR_UE_info_t *UE)
   int srb_id = 1;
   const NR_ServingCellConfigCommon_t *scc = mac->common_channels[CC_id].ServingCellConfigCommon;
   int ssb_index = get_ssbidx_from_beam(mac, UE->UE_beam_index);
-  NR_CellGroupConfig_t *cellGroupConfig = get_initial_cellGroupConfig(UE->uid, scc, &mac->radio_config, &mac->rlc_config, ssb_index);
+  NR_CellGroupConfig_t *cellGroupConfig = get_initial_cellGroupConfig(UE->uid,
+                                                                      UE->is_redcap,
+                                                                      scc,
+                                                                      &mac->radio_config,
+                                                                      &mac->rlc_config,
+                                                                      ssb_index);
   ASN_STRUCT_FREE(asn_DEF_NR_CellGroupConfig, UE->CellGroup);
   UE->CellGroup = cellGroupConfig;
-  UE->local_bwp_id = mac->radio_config.first_active_bwp;
+  UE->local_bwp_id = UE->is_redcap ? 0 : mac->radio_config.first_active_bwp;
 
   if (!cellGroupConfig)
     return true;
