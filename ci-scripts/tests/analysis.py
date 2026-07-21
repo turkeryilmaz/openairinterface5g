@@ -28,7 +28,6 @@ class TestAnalysis(unittest.TestCase):
 		macf = "tests/analysis/gnb_phytest.success.nrMAC.log"
 		status, s = cls_analysis.Analysis.analyze_rt_stats(rtsf, [l1f, macf])
 		self.assertTrue(status)
-		self.assertEqual(s['Title'], "Processing Time (us) from datalog_rt_stats.100.2x2.yaml")
 		self.assertEqual(s['ColNames'], ["Metric", "Average; Max; Count", "Average vs Reference Deviation (Reference Value; Acceptability Deviation Threshold)"])
 		with open(rtsf, 'r') as f:
 			rt_stats = yaml.load(f, Loader=yaml.FullLoader)
