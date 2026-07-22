@@ -90,8 +90,6 @@ int main(int argc, char **argv) {
     .host_type=MIN_HOST_TYPE,
     /* !brief RF frontend parameters set by application */
     .openair0_cfg=NULL, //set by device_init
-    /* !brief ETH params set by application */
-    .eth_params=NULL,
     //! record player data, definition in record_player.h
     .recplay_state=NULL,
     /*!brief Can be used by driver to hold internal structure*/
