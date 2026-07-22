@@ -34,6 +34,16 @@ xnap_peer_t *xnap_get_peer_by_assoc(xnap_gnb_inst_t *inst, sctp_assoc_t assoc_id
   return RB_FIND(xnap_peer_map, &inst->peers, &temp);
 }
 
+xnap_peer_t *xnap_get_connected_peer_by_remote_gnb_id(xnap_gnb_inst_t *inst, uint32_t remote_gnb_id, sctp_assoc_t excl_assoc_id)
+{
+  xnap_peer_t *p;
+  RB_FOREACH(p, xnap_peer_map, &inst->peers) {
+    if (p->assoc_id != excl_assoc_id && p->state == XNAP_PEER_STATE_CONNECTED && p->remote_gnb_id == remote_gnb_id)
+      return p;
+  }
+  return NULL;
+}
+
 xnap_peer_t *xnap_add_peer(instance_t instance, xnap_gnb_inst_t *inst, sctp_assoc_t assoc_id, uint16_t in_streams, uint16_t out_streams)
 {
   xnap_peer_t *peer = calloc_or_fail(1, sizeof(*peer));

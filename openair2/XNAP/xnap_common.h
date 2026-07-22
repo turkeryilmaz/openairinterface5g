@@ -46,6 +46,11 @@ xnap_gnb_inst_t *xnap_get_inst(instance_t instance);
 /* Lookup a connected/connecting peer by its (unique) assoc_id. */
 xnap_peer_t *xnap_get_peer_by_assoc(xnap_gnb_inst_t *inst, sctp_assoc_t assoc_id);
 
+/* Lookup a CONNECTED peer already holding remote_gnb_id, other than
+ * excl_assoc_id. Used to detect a duplicate Xn association to the same
+ * remote gNB, e.g. when both sides dial each other simultaneously. */
+xnap_peer_t *xnap_get_connected_peer_by_remote_gnb_id(xnap_gnb_inst_t *inst, uint32_t remote_gnb_id, sctp_assoc_t excl_assoc_id);
+
 /* Allocate a peer for a newly-up SCTP association, insert it in the tree
  * keyed by assoc_id, and return it. AssertFatal()s if assoc_id is already
  * present (would indicate an SCTP/ITTI-layer bug). */
