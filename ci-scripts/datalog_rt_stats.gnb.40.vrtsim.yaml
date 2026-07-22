@@ -10,7 +10,6 @@ Ref :
   L1 Rx processing : 235.0
   UL segments decoding : 120.0
   PUSCH inner-receiver : 150.0
-  UL Indication : 2.0
   Slot Indication : 10.0
   feprx : 40.0
   feptx_ofdm (per port, half_slot) : 30
@@ -21,7 +20,6 @@ DeviationThreshold :
   L1 Rx processing : 0.25
   UL segments decoding : 0.25
   PUSCH inner-receiver : 0.25
-  UL Indication : 1.00
   Slot Indication : 0.50
   feprx : 0.25
   feptx_ofdm (per port, half_slot) : 0.25

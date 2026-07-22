@@ -14,7 +14,6 @@ Ref :
   L1 Rx processing : 345.0
   PUSCH inner-receiver : 155.0
   DL & UL scheduling timing : 8.0
-  UL Indication : 3.0
   Slot Indication : 9.0
   feprx : 50.0
   feptx_ofdm (per port, half_slot) : 31
@@ -29,7 +28,6 @@ DeviationThreshold :
   L1 Rx processing : 0.25
   PUSCH inner-receiver : 0.25
   DL & UL scheduling timing : 0.35
-  UL Indication : 1.00
   Slot Indication : 0.35
   feprx : 0.25
   feptx_ofdm (per port, half_slot) : 0.25

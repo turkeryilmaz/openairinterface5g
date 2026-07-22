@@ -45,7 +45,6 @@ class TestAnalysis(unittest.TestCase):
 		self.assertEqual(s['Data']['L1 Tx processing'], ['476', '872', '102933', '1.00'])
 		self.assertEqual(s['Data']['DLSCH encoding'], ['216', '544', '77201', '1.08'])
 		self.assertEqual(s['Data']['L1 Rx processing'], ['488', '868', '38598', '0.92'])
-		self.assertEqual(s['Data']['UL Indication'], ['1', '10', '38598', '0.76'])
 		self.assertEqual(s['Data']['Slot Indication'], ['18', '94', '128667', '1.38'])
 		self.assertEqual(s['Data']['PUSCH inner-receiver'], ['307', '530', '25730', '0.85'])
 		self.assertEqual(s['Data']['feprx'], ['169', '310', '38600', '1.12'])
