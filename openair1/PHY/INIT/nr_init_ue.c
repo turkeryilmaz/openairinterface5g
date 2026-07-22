@@ -368,6 +368,8 @@ void free_nr_ue_pdsch_buffers(pdsch_scratch_t *buffers, int num_actors)
     free_and_zero(buffers[i].dl_ch_magr);
     free_and_zero(buffers[i].rho_dl);
     free_and_zero(buffers[i].pdsch_dl_ch_estimates);
+    for (int c = 0; c < 2; c++)
+      free_and_zero(buffers[i].llr[c]);
   }
 }
 
@@ -452,18 +454,22 @@ void nr_init_pdsch_buffers(pdsch_scratch_t *buffers, int num_actors, const NR_DL
 {
   const uint32_t pdsch_buf_size_max = (fp->N_RB_DL * NR_NB_SC_PER_RB + 15) & ~15;
   const uint32_t pdsch_est_size = fp->symbols_per_slot * fp->ofdm_symbol_size;
+  const uint32_t llr_buf_max = NR_NB_SC_PER_RB * NR_SYMBOLS_PER_SLOT * fp->N_RB_DL * 8 * NR_MAX_NB_LAYERS;
   const size_t comp_elems = (size_t)NR_SYMBOLS_PER_SLOT * NR_MAX_NB_LAYERS * pdsch_buf_size_max;
   const size_t rho_elems  = (size_t)NR_SYMBOLS_PER_SLOT * NR_MAX_NB_LAYERS * NR_MAX_NB_LAYERS * pdsch_buf_size_max;
   const size_t ch_est_elems = (size_t)fp->nb_antennas_rx * NR_MAX_NB_LAYERS * pdsch_est_size;
   for (int i = 0; i < num_actors; i++) {
     buffers[i].pdsch_buf_size_max           = pdsch_buf_size_max;
     buffers[i].pdsch_est_size        = pdsch_est_size;
+    buffers[i].llr_buf_max           = llr_buf_max;
     buffers[i].rxdataF_comp          = malloc16_clear(comp_elems   * sizeof(c16_t));
     buffers[i].dl_ch_mag             = malloc16_clear(comp_elems   * sizeof(c16_t));
     buffers[i].dl_ch_magb            = malloc16_clear(comp_elems   * sizeof(c16_t));
     buffers[i].dl_ch_magr            = malloc16_clear(comp_elems   * sizeof(c16_t));
     buffers[i].rho_dl                = malloc16_clear(rho_elems    * sizeof(c16_t));
     buffers[i].pdsch_dl_ch_estimates = malloc16_clear(ch_est_elems * sizeof(int32_t));
+    for (int c = 0; c < 2; c++)
+      buffers[i].llr[c]              = malloc16(llr_buf_max * sizeof(int16_t));
   }
 }
 
