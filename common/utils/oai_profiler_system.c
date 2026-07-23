@@ -498,6 +498,25 @@ static bool is_radio_relevant(const char *label, const char *description)
   return false;
 }
 
+static bool is_global_interrupt_scalar(const char *source, const char *label, const char *values, uint32_t cpu_count)
+{
+  if (cpu_count <= 1 || strcmp(source, "hardirq") != 0 || (strcasecmp(label, "ERR") != 0 && strcasecmp(label, "MIS") != 0))
+    return false;
+
+  while (isspace((unsigned char)*values))
+    values++;
+  if (!isdigit((unsigned char)*values))
+    return false;
+  errno = 0;
+  char *end = NULL;
+  (void)strtoull(values, &end, 10);
+  if (errno != 0 || end == values)
+    return false;
+  while (isspace((unsigned char)*end))
+    end++;
+  return *end == '\0';
+}
+
 static void emit_activity(oai_profile_activity_state_t *state,
                           const char *source,
                           const char *label,
@@ -551,7 +570,7 @@ static oai_profile_activity_result_t collect_activity(const char *path,
 {
   oai_profile_activity_result_t result = {0};
   set_status(result.status, sizeof(result.status), "unavailable");
-  if (callback == NULL) {
+  if (path == NULL || source == NULL || callback == NULL) {
     result.error_code = EINVAL;
     return result;
   }
@@ -596,6 +615,8 @@ static oai_profile_activity_result_t collect_activity(const char *path,
     if (line[0] == '\0')
       continue;
     char *cursor = colon + 1;
+    if (is_global_interrupt_scalar(source, line, cursor, result.cpu_count))
+      continue;
     bool parsed = true;
     for (uint32_t cpu = 0; cpu < result.cpu_count; cpu++) {
       while (isspace((unsigned char)*cursor))
@@ -612,6 +633,7 @@ static oai_profile_activity_result_t collect_activity(const char *path,
     }
     if (!parsed) {
       result.parse_errors++;
+      preserve_error(&result.error_code, EPROTO);
       continue;
     }
     while (isspace((unsigned char)*cursor))
@@ -631,12 +653,21 @@ static oai_profile_activity_result_t collect_activity(const char *path,
   return result;
 }
 
+oai_profile_activity_result_t oai_profile_collect_interrupts_path(const char *path,
+                                                                  oai_profile_activity_state_t *state,
+                                                                  uint64_t monotonic_ns,
+                                                                  oai_profile_activity_callback_t callback,
+                                                                  void *opaque)
+{
+  return collect_activity(path, "hardirq", state, monotonic_ns, callback, opaque);
+}
+
 oai_profile_activity_result_t oai_profile_collect_interrupts(oai_profile_activity_state_t *state,
                                                              uint64_t monotonic_ns,
                                                              oai_profile_activity_callback_t callback,
                                                              void *opaque)
 {
-  return collect_activity("/proc/interrupts", "hardirq", state, monotonic_ns, callback, opaque);
+  return oai_profile_collect_interrupts_path("/proc/interrupts", state, monotonic_ns, callback, opaque);
 }
 
 oai_profile_activity_result_t oai_profile_collect_softirqs(oai_profile_activity_state_t *state,

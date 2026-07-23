@@ -141,6 +141,12 @@ typedef struct {
 
 oai_profile_activity_state_t *oai_profile_activity_state_create(void);
 void oai_profile_activity_state_destroy(oai_profile_activity_state_t *state);
+/* Alternate-path seam for deterministic /proc/interrupts parser tests. */
+oai_profile_activity_result_t oai_profile_collect_interrupts_path(const char *path,
+                                                                  oai_profile_activity_state_t *state,
+                                                                  uint64_t monotonic_ns,
+                                                                  oai_profile_activity_callback_t callback,
+                                                                  void *opaque);
 oai_profile_activity_result_t oai_profile_collect_interrupts(oai_profile_activity_state_t *state,
                                                              uint64_t monotonic_ns,
                                                              oai_profile_activity_callback_t callback,
