@@ -20,7 +20,7 @@
       "command": [
         "./nr-softmodem",
         "-O",
-        "/home/turker/Documents/OpenAirInterface/PerformanceProfiles/configs/gNB/gnb.conf"
+        "/home/turker/Documents/OpenAirInterface/PerformanceProfiles/configs/gNB/gnb.n28.fr1.25PRB.b210.perf.conf"
       ]
     },
     "nrUE": {
@@ -29,12 +29,15 @@
       "profile_root": "/mnt/ssd/Documents/OpenAirInterface/PerformanceProfiles",
       "cwd": "/mnt/ssd/Documents/OpenAirInterface/RPiCM5/cmake_targets/ran_build/build",
       "sudo": true,
+      "environment": {
+        "UHD_IMAGES_DIR": "/usr/share/uhd/4.8.0/images"
+      },
       "archive_tool": "/mnt/ssd/Documents/OpenAirInterface/RPiCM5/tools/profiling/oai_profile_archive.py",
       "launch_delay_s": 5,
       "command": [
         "./nr-uesoftmodem",
         "-O",
-        "/mnt/ssd/Documents/OpenAirInterface/PerformanceProfiles/configs/nrUE/nrue.conf"
+        "/mnt/ssd/Documents/OpenAirInterface/PerformanceProfiles/configs/nrUE/nrue.n28.fr1.25PRB.b205.perf.conf"
       ]
     }
   },
