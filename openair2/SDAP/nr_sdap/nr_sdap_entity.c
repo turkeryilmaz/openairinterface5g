@@ -670,7 +670,7 @@ nr_sdap_entity_t *nr_sdap_get_entity(ue_id_t ue_id, int pdusession_id)
   sdap_entity = sdap_info.sdap_entity_llist;
 
   if (sdap_entity == NULL) {
-    LOG_W(SDAP, " Could not find SDAP entity: entity list empty (ue_id=%ld pdu_session_id=%d)\n", ue_id, pdusession_id);
+    LOG_D(SDAP, "Could not find SDAP entity: entity list empty (ue_id=%ld pdu_session_id=%d)\n", ue_id, pdusession_id);
     return NULL;
   }
 

@@ -459,6 +459,14 @@ typedef struct nas_pdu_session_req_s {
   char dnn[103]; /* 24.501 §9.11.2.1A: max length 102 + 0-byte */
 } nas_pdu_session_req_t;
 
+/*
+ * SDAP->RRC->NAS - MO UL data pending while UE has no SDAP entity (e.g. 5GMM-IDLE)
+ * Distinct from paging: NAS may start Service Request (TS 24.501 §5.6.1)
+ */
+typedef struct nas_mo_ul_data_ind_s {
+  char dummy;
+} nas_mo_ul_data_ind_t;
+
 /* NAS->RRC - UE TUN reader lifecycle for a NAS-provided PSI list
  * (sock/qfi/reader_thread point at NAS pdu_tun state) */
 #define NAS_TUN_LIST_MAX 16 /* MAX_NUM_PSI */

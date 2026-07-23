@@ -45,5 +45,6 @@ void nr_sdap_generate_gnb_tun_ifname(char *ifname, ue_id_t ue_id);
 void nr_sdap_tun_bind(struct nr_sdap_entity_s *entity, int sock, int qfi);
 void nr_sdap_tun_stop_reader(pthread_t *thread);
 void nr_sdap_tun_start_reader(struct nr_sdap_entity_s *entity, pthread_t *thread, char *name);
+void nr_sdap_tun_start_idle_listener(ue_id_t ue_id, int pdu_session_id, int sock, pthread_t *thread);
 
 #endif

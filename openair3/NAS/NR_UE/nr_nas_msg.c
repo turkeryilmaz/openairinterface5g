@@ -1031,7 +1031,7 @@ void generateRegistrationRequest(as_nas_info_t *initialNasMsg, nr_ue_nas_t *nas,
   }
 }
 
-void generateServiceRequest(as_nas_info_t *initialNasMsg, nr_ue_nas_t *nas)
+void generateServiceRequest(as_nas_info_t *initialNasMsg, nr_ue_nas_t *nas, bool mo_ul_data)
 {
   LOG_I(NAS, "Generate initial NAS message: Service Request\n");
   int size = 0;
@@ -1066,6 +1066,10 @@ void generateServiceRequest(as_nas_info_t *initialNasMsg, nr_ue_nas_t *nas)
       continue;
     pdu_session_status[pdu_id] = PDU_SESSION_ACTIVE;
     has_pdu_session_status = true;
+    if (mo_ul_data) {
+      uplink_data_status[pdu_id] = PDU_SESSION_ACTIVE;
+      has_uplink_data_status = true;
+    }
   }
   const bool has_non_cleartext_ies = has_pdu_session_status || has_uplink_data_status;
 
@@ -2050,8 +2054,9 @@ static void send_nas_initial_ul_transfer_req(nr_ue_nas_t *nas, const as_nas_info
   itti_send_msg_to_task(TASK_RRC_NRUE, nas->UE_id, msg);
 }
 
-/** @brief Initiate Service Request and send it as initial NAS UL to RRC */
-static bool initiate_service_request(nr_ue_nas_t *nas)
+/** @brief Initiate Service Request and send it as initial NAS UL to RRC
+ * Used for MT paging and MO UL-data indication */
+static bool initiate_service_request(nr_ue_nas_t *nas, bool mo_ul_data)
 {
   if (!nas->guti) {
     LOG_W(NAS, "[UE %ld] no GUTI available, cannot generate Service Request\n", nas->UE_id);
@@ -2077,7 +2082,7 @@ static bool initiate_service_request(nr_ue_nas_t *nas)
   }
 
   as_nas_info_t initialNasMsg = {0};
-  generateServiceRequest(&initialNasMsg, nas);
+  generateServiceRequest(&initialNasMsg, nas, mo_ul_data);
   if (initialNasMsg.length <= 0) {
     LOG_E(NAS, "[UE %ld] Failed to generate Service Request\n", nas->UE_id);
     return false;
@@ -2253,6 +2258,17 @@ static int process_gprs_timer(gprs_timer_t *timer)
   return timer->value * factor;
 }
 
+/** @brief Abort an ongoing Service Request and return to 5GMM-REGISTERED
+ * When fiveGMM_state is 5GMM-SERVICE-REQUEST-INITIATED, set it to 5GMM-REGISTERED
+ * (TS 24.501 clause 5.6.1.5 Service Reject, clause 5.6.1.7 abnormal cases)
+ * @note Does not stop T3517 (not implemented yet) */
+static void abort_service_request(nr_ue_nas_t *nas)
+{
+  DevAssert(nas != NULL);
+  if (nas->fiveGMM_state == FGS_SERVICE_REQUEST_INITIATED)
+    nas->fiveGMM_state = FGS_REGISTERED;
+}
+
 static void handle_service_accept(nr_ue_nas_t *nas, const byte_array_t *buffer)
 {
   LOG_I(NAS, "Received NAS Service Accept message\n");
@@ -2274,9 +2290,7 @@ static void handle_service_accept(nr_ue_nas_t *nas, const byte_array_t *buffer)
 
 static void handle_service_reject(nr_ue_nas_t *nas, const byte_array_t *buffer)
 {
-  /* TS 24.501 §5.6.1.5: abort service request: enter 5GMM-REGISTERED */
-  if (nas->fiveGMM_state == FGS_SERVICE_REQUEST_INITIATED)
-    nas->fiveGMM_state = FGS_REGISTERED;
+  abort_service_request(nas);
   fgs_service_reject_msg_t msg = {0};
   decode_fgs_service_reject(&msg, buffer);
   // Extract timer t3448 in seconds (optional IE)
@@ -2408,7 +2422,15 @@ void *nas_nrue(void *args_p)
          *  - Add explicit "suspend indication" handling for the 5GMM-IDLE-with-suspend case
          *    as per TS 24.501 §5.6.2.2.1 ("proceed as specified in subclause 5.3.1.5") */
         LOG_I(NAS, "[UE %ld] Paging: initiate Service Request\n", nas->UE_id);
-        initiate_service_request(nas);
+        initiate_service_request(nas, false);
+        break;
+      }
+
+      case NAS_MO_UL_DATA_IND: {
+        /** MO Service Request for pending UL user data (TS 24.501 clause 5.6.1 case d)
+         * initiate Service Request and include Uplink data status */
+        LOG_D(NAS, "[UE %ld] MO UL data: request Service Request\n", nas->UE_id);
+        initiate_service_request(nas, true);
         break;
       }
 
@@ -2472,9 +2494,8 @@ void *nas_nrue(void *args_p)
               nas->UE_id, ITTI_MSG_NAME (msg_p), nr_release_cause_desc[NR_NAS_CONN_RELEASE_IND (msg_p).cause]);
         /* In N1 mode, upon indication from lower layers that the access stratum connection has been released,
            the UE shall enter 5GMM-IDLE mode and consider the N1 NAS signalling connection released (TS 24.501 §5.3.1.3).
-           If SR incomplete (5GMM-SERVICE-REQUEST-INITIATED) §5.6.1.7 l): abort SR, enter 5GMM-REGISTERED (TODO: stop T3517). */
-        if (nas->fiveGMM_state == FGS_SERVICE_REQUEST_INITIATED)
-          nas->fiveGMM_state = FGS_REGISTERED;
+           If SR incomplete (5GMM-SERVICE-REQUEST-INITIATED) §5.6.1.7 l): abort SR, enter 5GMM-REGISTERED */
+        abort_service_request(nas);
         nas->fiveGMM_mode = FGS_IDLE;
         // TODO handle connection release
         if (nas->termination_procedure) {
