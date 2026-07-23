@@ -26,5 +26,5 @@ add_test(NAME test_oai_profiler_system COMMAND ./test_oai_profiler_system)
 
 add_executable(test_oai_profiler_archive test_oai_profiler_archive.c)
 add_dependencies(tests test_oai_profiler_archive)
-target_link_libraries(test_oai_profiler_archive PRIVATE utils minimal_lib pthread)
+target_link_libraries(test_oai_profiler_archive PRIVATE utils pthread LOG minimal_lib)
 add_test(NAME test_oai_profiler_archive COMMAND ./test_oai_profiler_archive)
