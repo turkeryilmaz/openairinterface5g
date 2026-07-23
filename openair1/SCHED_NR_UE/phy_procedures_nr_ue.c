@@ -430,19 +430,22 @@ static int nr_ue_pdsch_procedures(PHY_VARS_NR_UE *ue,
         dlschCfg->dlDmrsSymbPos,
         dlsch->cw_info.Nl);
 
-  const uint32_t pdsch_est_size = ((ue->frame_parms.symbols_per_slot * ue->frame_parms.ofdm_symbol_size + 15) / 16) * 16;
-  fourDimArray_t *toFree = NULL;
-  allocCast2D(pdsch_dl_ch_estimates, int32_t, toFree, ue->frame_parms.nb_antennas_rx * dlsch->cw_info.Nl, pdsch_est_size, false);
+  const int actor_idx = proc->nr_slot_rx % ue->pdsch_num_actors;
+  pdsch_scratch_t *scratch = &ue->pdsch_scratch[actor_idx];
+  const uint32_t pdsch_est_size = scratch->pdsch_est_size;
+  const uint32_t pdsch_buf_size_max = scratch->pdsch_buf_size_max;
+  int32_t (*pdsch_dl_ch_estimates)[pdsch_est_size] = (int32_t (*)[pdsch_est_size])scratch->pdsch_dl_ch_estimates;
+  c16_t (*rxdataF_comp)[NR_MAX_NB_LAYERS][pdsch_buf_size_max] = (c16_t (*)[NR_MAX_NB_LAYERS][pdsch_buf_size_max])scratch->rxdataF_comp;
+  c16_t (*dl_ch_mag)[NR_MAX_NB_LAYERS][pdsch_buf_size_max]    = (c16_t (*)[NR_MAX_NB_LAYERS][pdsch_buf_size_max])scratch->dl_ch_mag;
+  c16_t (*dl_ch_magb)[NR_MAX_NB_LAYERS][pdsch_buf_size_max]   = (c16_t (*)[NR_MAX_NB_LAYERS][pdsch_buf_size_max])scratch->dl_ch_magb;
+  c16_t (*dl_ch_magr)[NR_MAX_NB_LAYERS][pdsch_buf_size_max]   = (c16_t (*)[NR_MAX_NB_LAYERS][pdsch_buf_size_max])scratch->dl_ch_magr;
+  c16_t (*rho_dl)[NR_MAX_NB_LAYERS * NR_MAX_NB_LAYERS][pdsch_buf_size_max] = (c16_t (*)[NR_MAX_NB_LAYERS * NR_MAX_NB_LAYERS][pdsch_buf_size_max])scratch->rho_dl;
 
   c16_t ptrs_phase_per_slot[ue->frame_parms.nb_antennas_rx][NR_SYMBOLS_PER_SLOT];
   memset(ptrs_phase_per_slot, 0, sizeof(ptrs_phase_per_slot));
 
   int32_t ptrs_re_per_slot[ue->frame_parms.nb_antennas_rx][NR_SYMBOLS_PER_SLOT];
   memset(ptrs_re_per_slot, 0, sizeof(ptrs_re_per_slot));
-
-  const uint32_t rx_size_symbol = (freq_alloc->num_rbs * NR_NB_SC_PER_RB + 15) & ~15;
-  fourDimArray_t *toFree2 = NULL;
-  allocCast3D(rxdataF_comp, c16_t, toFree2, ue->frame_parms.symbols_per_slot, dlsch->cw_info.Nl, rx_size_symbol, false);
 
   uint32_t nvar = 0;
 
@@ -525,19 +528,6 @@ static int nr_ue_pdsch_procedures(PHY_VARS_NR_UE *ue,
                                                          freq_alloc->num_rbs * NR_NB_SC_PER_RB * dlschCfg->number_symbols,
                                                          &mt);
   }
-  fourDimArray_t *toFree3 = NULL;
-  allocCast3D(dl_ch_mag, c16_t, toFree3, NR_SYMBOLS_PER_SLOT, dlsch->cw_info.Nl, rx_size_symbol, false);
-  fourDimArray_t *toFree4 = NULL;
-  allocCast3D(dl_ch_magb, c16_t, toFree4, NR_SYMBOLS_PER_SLOT, dlsch->cw_info.Nl, rx_size_symbol, false);
-  fourDimArray_t *toFree5 = NULL;
-  allocCast3D(dl_ch_magr, c16_t, toFree5, NR_SYMBOLS_PER_SLOT, dlsch->cw_info.Nl, rx_size_symbol, false);
-  fourDimArray_t *toFreeRho = NULL;
-  const bool need_rho = ue->do_ml && dlsch->cw_info.Nl == 2 && dlsch->cw_info.qamModOrder <= 6;
-  c16_t(*rho_dl)[dlsch->cw_info.Nl * dlsch->cw_info.Nl][rx_size_symbol] = NULL;
-  if (need_rho) {
-    allocCast3D(rho_dl_buf, c16_t, toFreeRho, NR_SYMBOLS_PER_SLOT, dlsch->cw_info.Nl * dlsch->cw_info.Nl, rx_size_symbol, false);
-    rho_dl = rho_dl_buf;
-  }
 
   for (int m = dlschCfg->start_symbol; m < (dlschCfg->number_symbols + dlschCfg->start_symbol); m++) {
     bool first_symbol_flag = false;
@@ -561,7 +551,7 @@ static int nr_ue_pdsch_procedures(PHY_VARS_NR_UE *ue,
                     dl_valid_re,
                     rxdataF,
                     &log2_maxh,
-                    rx_size_symbol,
+                    pdsch_buf_size_max,
                     ue->frame_parms.nb_antennas_rx,
                     rxdataF_comp,
                     dl_ch_mag,
@@ -589,12 +579,6 @@ static int nr_ue_pdsch_procedures(PHY_VARS_NR_UE *ue,
   if (scope_req.copy_rxdataF_to_scope) {
     UEunlockScopeData(ue, pdschRxdataF);
   }
-  free(toFree);
-  free(toFree2);
-  free(toFree3);
-  free(toFree4);
-  free(toFree5);
-  free(toFreeRho);
   return 0;
 }
 
@@ -1185,7 +1169,8 @@ void pdsch_processing(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, nr_phy_
     }
   }
 
-  int16_t *llr[2];
+  const int actor_idx_llr = proc->nr_slot_rx % ue->pdsch_num_actors;
+  int16_t **llr = ue->pdsch_scratch[actor_idx_llr].llr;
   fapi_nr_dl_config_dlsch_pdu_rel15_t *dlsch_config = &phy_data->dlsch_config;
   for (int c = 0; c < phy_data->n_dlsch_codewords; c++) {
     NR_UE_DLSCH_t *dlsch = &phy_data->dlsch[c];
@@ -1234,7 +1219,6 @@ void pdsch_processing(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, nr_phy_
                      dlsch->cw_info.qamModOrder,
                      dlsch->cw_info.Nl);
     const uint32_t rx_llr_buf_sz = ALIGNARRAYSIZE(G, 32); // each LLR is 2 bytes hence 64 byte aligned
-    llr[c] = (int16_t *)malloc16_clear(rx_llr_buf_sz * sizeof(int16_t));
 
     // dlsch_harq contains the previous transmissions data for this harq pid
     NR_DL_UE_HARQ_t *harq = &ue->dl_harq_processes[c][dlsch_config->harq_process_nbr];
@@ -1271,7 +1255,6 @@ void pdsch_processing(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, nr_phy_
     if (ue->phy_sim_pdsch_llr)
       memcpy(ue->phy_sim_pdsch_llr, llr[c], sizeof(int16_t) * rx_llr_buf_sz);
 
-    free(llr[c]);
   }
 
   if (nr_slot_rx==9) {
