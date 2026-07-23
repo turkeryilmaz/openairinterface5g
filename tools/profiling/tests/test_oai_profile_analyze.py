@@ -2,12 +2,16 @@
 # SPDX-License-Identifier: LicenseRef-CSSL-1.0
 
 import csv
+import hashlib
 import json
+import math
 import subprocess
 import sys
 import tempfile
 import unittest
+from array import array
 from pathlib import Path
+from unittest import mock
 
 
 ANALYZER = Path(__file__).resolve().parents[1] / "oai_profile_analyze.py"
@@ -16,7 +20,14 @@ ARCHIVE_TOOL = Path(__file__).resolve().parents[1] / "oai_profile_archive.py"
 sys.path.insert(0, str(ANALYZER.parent))
 
 from oai_profile_deadlines import build_deadline_reports, round_div_signed  # noqa: E402
-from oai_profile_analyze import build_pairs  # noqa: E402
+import oai_profile_analyze as analyze_module  # noqa: E402
+from oai_profile_analyze import (  # noqa: E402
+    ExclusiveStats,
+    GroupStats,
+    build_exclusive_summary,
+    build_pairs,
+    build_rows,
+)
 from oai_profile_reports import (  # noqa: E402
     campaign_completeness_report,
     external_sources_report,
@@ -571,6 +582,8 @@ class AnalyzerSchemaCompatibilityTest(unittest.TestCase):
             v1 = root / "v1_nrUE"
             v2 = root / "v2_nrUE"
             output = root / "analysis"
+            explicit_full_output = root / "analysis_explicit_full"
+            publication_output = root / "analysis_publication"
             filtered_output = root / "analysis_filtered"
             v1.mkdir()
             v2.mkdir()
@@ -670,6 +683,30 @@ class AnalyzerSchemaCompatibilityTest(unittest.TestCase):
 
             subprocess.run(
                 [sys.executable, str(ANALYZER), str(root), "--output-dir", str(output)],
+                check=True,
+            )
+            subprocess.run(
+                [
+                    sys.executable,
+                    str(ANALYZER),
+                    str(root),
+                    "--output-profile",
+                    "full",
+                    "--output-dir",
+                    str(explicit_full_output),
+                ],
+                check=True,
+            )
+            subprocess.run(
+                [
+                    sys.executable,
+                    str(ANALYZER),
+                    str(root),
+                    "--output-profile",
+                    "publication",
+                    "--output-dir",
+                    str(publication_output),
+                ],
                 check=True,
             )
 
@@ -778,8 +815,130 @@ class AnalyzerSchemaCompatibilityTest(unittest.TestCase):
                 "correlations.csv",
                 "clock_quality.csv",
                 "event_timeline.csv",
+                "analysis_inputs.csv",
+                "analysis_provenance.csv",
+                "analysis_manifest.csv",
             }
             self.assertEqual(expected_outputs, {path.name for path in output.iterdir()})
+            self.assertEqual(expected_outputs, {path.name for path in explicit_full_output.iterdir()})
+            invocation_dependent_outputs = {
+                "analysis_provenance.csv",
+                "analysis_manifest.csv",
+            }
+            for filename in expected_outputs - invocation_dependent_outputs:
+                self.assertEqual(
+                    (output / filename).read_bytes(),
+                    (explicit_full_output / filename).read_bytes(),
+                    f"default and explicit full differ for {filename}",
+                )
+
+            expected_publication_outputs = (
+                expected_outputs - {"event_timeline.csv", "hierarchy.csv"}
+            ) | {"causal_edges_summary.csv"}
+            self.assertEqual(
+                expected_publication_outputs,
+                {path.name for path in publication_output.iterdir()},
+            )
+            for filename in expected_outputs - {
+                "event_timeline.csv",
+                "hierarchy.csv",
+                "hierarchy_anomalies.csv",
+                "analysis_provenance.csv",
+                "analysis_manifest.csv",
+            }:
+                self.assertEqual(
+                    (output / filename).read_bytes(),
+                    (publication_output / filename).read_bytes(),
+                    f"full/publication canonical output differs for {filename}",
+                )
+
+            publication_anomalies = read_rows(publication_output / "hierarchy_anomalies.csv")
+            self.assertEqual(
+                {(row["event_name"], row["relation"]) for row in publication_anomalies},
+                {("TEST_ORPHAN", "missing_parent")},
+            )
+            causal_edges = read_rows(publication_output / "causal_edges_summary.csv")
+            self.assertEqual(len(causal_edges), 1)
+            self.assertEqual(causal_edges[0]["parent_event_name"], "TEST_DISPATCH")
+            self.assertEqual(causal_edges[0]["event_name"], "TEST_ASYNC_WORKER")
+            self.assertEqual(causal_edges[0]["relation"], "causal_noncontained")
+            self.assertEqual(causal_edges[0]["absolute_slot_delta_from_parent"], "0")
+            self.assertEqual(causal_edges[0]["temporal_shape"], "starts_after_parent")
+            self.assertEqual(causal_edges[0]["count"], "1")
+            self.assertAlmostEqual(float(causal_edges[0]["boundary_distance_p50_us"]), 9.0)
+
+            publication_manifest = {
+                row["artifact"]: row
+                for row in read_rows(publication_output / "analysis_manifest.csv")
+            }
+            for omitted in ("event_timeline.csv", "hierarchy.csv"):
+                self.assertEqual(
+                    publication_manifest[omitted]["status"],
+                    "omitted_by_output_profile",
+                )
+                self.assertEqual(publication_manifest[omitted]["sha256"], "")
+            summary_manifest = publication_manifest["summary.csv"]
+            self.assertEqual(summary_manifest["status"], "generated")
+            self.assertEqual(
+                int(summary_manifest["row_count"]),
+                len(read_rows(publication_output / "summary.csv")),
+            )
+            self.assertEqual(
+                int(summary_manifest["size_bytes"]),
+                (publication_output / "summary.csv").stat().st_size,
+            )
+            self.assertEqual(
+                summary_manifest["sha256"],
+                hashlib.sha256((publication_output / "summary.csv").read_bytes()).hexdigest(),
+            )
+            provenance_manifest = publication_manifest["analysis_provenance.csv"]
+            self.assertEqual(provenance_manifest["status"], "generated")
+            self.assertEqual(
+                provenance_manifest["sha256"],
+                hashlib.sha256(
+                    (publication_output / "analysis_provenance.csv").read_bytes()
+                ).hexdigest(),
+            )
+            provenance = {
+                (row["record_type"], row["name"]): row
+                for row in read_rows(publication_output / "analysis_provenance.csv")
+            }
+            self.assertEqual(
+                provenance[("invocation", "output_profile")]["value"],
+                "publication",
+            )
+            self.assertEqual(
+                json.loads(provenance[("invocation", "input_arguments_json")]["value"]),
+                [str(root)],
+            )
+            self.assertEqual(
+                json.loads(provenance[("invocation", "event_filter_json")]["value"]),
+                [],
+            )
+            self.assertEqual(
+                provenance[("invocation", "python_version")]["value"],
+                sys.version,
+            )
+            expected_modules = {
+                "oai_profile_analyze",
+                "oai_profile_clock",
+                "oai_profile_deadlines",
+                "oai_profile_reports",
+                "oai_profile_archive",
+            }
+            module_rows = {
+                name: row
+                for (record_type, name), row in provenance.items()
+                if record_type == "module"
+            }
+            self.assertEqual(set(module_rows), expected_modules)
+            for row in module_rows.values():
+                module_path = Path(row["path"])
+                self.assertTrue(module_path.is_file())
+                self.assertEqual(
+                    row["sha256"],
+                    hashlib.sha256(module_path.read_bytes()).hexdigest(),
+                )
             for report in output.iterdir():
                 with report.open(newline="") as stream:
                     header = next(csv.reader(stream))
@@ -858,6 +1017,445 @@ class AnalyzerSchemaCompatibilityTest(unittest.TestCase):
 
             filtered_transport = read_rows(filtered_output / "transport_summary.csv")
             self.assertIn("UE_RF_READ", {row["event_name"] for row in filtered_transport})
+            filtered_provenance = {
+                (row["record_type"], row["name"]): row
+                for row in read_rows(filtered_output / "analysis_provenance.csv")
+            }
+            self.assertEqual(
+                json.loads(
+                    filtered_provenance[("invocation", "event_filter_json")][
+                        "value"
+                    ]
+                ),
+                ["LDPC_DECODER_SEGMENT"],
+            )
+
+    def test_array_backed_statistics_are_exact(self) -> None:
+        stats = GroupStats()
+        for value in (0.125, 0.5, 1.25, 8.0):
+            stats.add(
+                {
+                    "duration_us": str(value),
+                    "schema_version": "2",
+                    "event_role": "nrUE",
+                    "subsystem": "test",
+                    "event_class": "duration",
+                    "event_kind": "duration",
+                    "detail_level": "stage",
+                    "correlation_id": "1",
+                    "parent_id": "0",
+                    "absolute_slot": "1",
+                    "cpu_start": "0",
+                    "cpu_end": "0",
+                    "cpu_migrated": "0",
+                }
+            )
+        self.assertIsInstance(stats.durations_us, array)
+        self.assertEqual(stats.durations_us.typecode, "d")
+        self.assertEqual(stats.durations_us.itemsize, 8)
+        for name in ("aux0_values", "aux1_values", "aux2_values", "aux3_values"):
+            self.assertFalse(hasattr(stats, name))
+        row = build_rows(
+            {("/profile", "TEST"): stats},
+            {"/profile": {"process_name": "nr-uesoftmodem"}},
+            {
+                "/profile": {
+                    "dropped_records": 0,
+                    "span_stack_overflows": 0,
+                    "span_stack_mismatches": 0,
+                }
+            },
+        )[0]
+        values = [0.125, 0.5, 1.25, 8.0]
+        average = sum(values) / len(values)
+        expected_stdev = math.sqrt(
+            sum((value - average) ** 2 for value in values) / (len(values) - 1)
+        )
+        self.assertEqual(row["count"], 4)
+        self.assertEqual(row["min_us"], 0.125)
+        self.assertEqual(row["max_us"], 8.0)
+        self.assertEqual(row["mean_us"], average)
+        self.assertAlmostEqual(float(row["p50_us"]), 0.875)
+        self.assertAlmostEqual(float(row["p99_us"]), 7.7975)
+        self.assertAlmostEqual(float(row["stdev_us"]), expected_stdev)
+
+        exclusive = ExclusiveStats()
+        exclusive.inclusive_us.extend(values)
+        exclusive.exclusive_us.extend((0.125, 0.25, 1.0, 4.0))
+        exclusive.child_union_us.extend((0.0, 0.25, 0.25, 4.0))
+        exclusive.total_count = 4
+        exclusive.valid_count = 4
+        for samples in (
+            exclusive.inclusive_us,
+            exclusive.exclusive_us,
+            exclusive.child_union_us,
+        ):
+            self.assertIsInstance(samples, array)
+            self.assertEqual(samples.typecode, "d")
+            self.assertEqual(samples.itemsize, 8)
+        exclusive_row = build_exclusive_summary({("/profile", "TEST"): exclusive})[0]
+        self.assertEqual(exclusive_row["inclusive_mean_us"], average)
+        self.assertAlmostEqual(float(exclusive_row["inclusive_p50_us"]), 0.875)
+        self.assertAlmostEqual(float(exclusive_row["exclusive_mean_us"]), 1.34375)
+        self.assertAlmostEqual(float(exclusive_row["child_union_mean_us"]), 1.125)
+
+    def test_publication_hard_anomalies_and_profile_isolation(self) -> None:
+        event_fields = [
+            "schema_version",
+            "seq",
+            "tid",
+            "thread_name",
+            "event_id",
+            "event_name",
+            "event_kind",
+            "nesting_depth",
+            "frame",
+            "slot",
+            "absolute_slot",
+            "correlation_id",
+            "span_id",
+            "parent_id",
+            "cpu_start",
+            "cpu_end",
+            "cpu_migrated",
+            "flags",
+            "aux0",
+            "aux1",
+            "aux2",
+            "aux3",
+            "start_tick",
+            "duration_tick",
+            "duration_us",
+        ]
+
+        def event(
+            seq: int,
+            name: str,
+            span_id: int,
+            parent_id: int,
+            correlation_id: int,
+            start_tick: int,
+            duration_tick: int = 10,
+        ) -> dict[str, object]:
+            return {
+                "schema_version": 2,
+                "seq": seq,
+                "tid": 10 + seq,
+                "thread_name": f"thread-{seq}",
+                "event_id": 100 + seq,
+                "event_name": name,
+                "event_kind": "duration",
+                "nesting_depth": int(parent_id != 0),
+                "frame": 1,
+                "slot": 1,
+                "absolute_slot": 21,
+                "correlation_id": correlation_id,
+                "span_id": span_id,
+                "parent_id": parent_id,
+                "cpu_start": 0,
+                "cpu_end": 0,
+                "cpu_migrated": 0,
+                "flags": 0,
+                "aux0": 0,
+                "aux1": 0,
+                "aux2": 0,
+                "aux3": 0,
+                "start_tick": start_tick,
+                "duration_tick": duration_tick,
+                "duration_us": duration_tick / 10.0,
+            }
+
+        with tempfile.TemporaryDirectory(prefix="oai-profile-hierarchy-isolation-") as temporary:
+            root = Path(temporary)
+            profile_a = root / "a_nrUE"
+            profile_b = root / "b_nrUE"
+            output = root / "analysis"
+            profile_a.mkdir()
+            profile_b.mkdir()
+            for profile, role, process in (
+                (profile_a, "nrUE", "nr-uesoftmodem"),
+                (profile_b, "gNB", "nr-softmodem"),
+            ):
+                write_text(
+                    profile / "metadata.txt",
+                    "schema_version=2\ncounter_hz=10000000\n"
+                    f"process_name={process}\nrole={role}\n"
+                    f"run_id={profile.name}\n",
+                )
+            write_csv_rows(
+                profile_a / "events.csv",
+                event_fields,
+                [
+                    event(1, "A_ROOT", 1, 0, 10, 100, 100),
+                    event(2, "A_CHILD", 2, 1, 10, 110),
+                    event(3, "A_ASYNC", 3, 1, 10, 250),
+                    event(4, "A_MISSING", 4, 999, 10, 130),
+                    event(5, "A_CORRELATION_MISMATCH", 5, 1, 11, 140),
+                    event(6, "A_DUPLICATE_FIRST", 6, 1, 10, 150),
+                    event(7, "A_DUPLICATE_SECOND", 6, 1, 10, 160),
+                ],
+            )
+            write_csv_rows(
+                profile_b / "events.csv",
+                event_fields,
+                [
+                    event(1, "B_ROOT", 1, 0, 20, 100, 100),
+                    event(2, "B_CHILD", 2, 1, 20, 110),
+                    event(3, "UE_TX_DEADLINE_MISS", 3, 0, 20, 300, 0),
+                ],
+            )
+
+            subprocess.run(
+                [
+                    sys.executable,
+                    str(ANALYZER),
+                    str(root),
+                    "--output-profile",
+                    "publication",
+                    "--output-dir",
+                    str(output),
+                ],
+                check=True,
+            )
+
+            anomalies = read_rows(output / "hierarchy_anomalies.csv")
+            anomalies_a = [row for row in anomalies if row["profile_dir"] == str(profile_a)]
+            anomalies_b = [row for row in anomalies if row["profile_dir"] == str(profile_b)]
+            self.assertEqual(
+                {row["relation"] for row in anomalies_a},
+                {"missing_parent", "correlation_mismatch", "duplicate_span_id"},
+            )
+            self.assertEqual(anomalies_b, [])
+            self.assertNotIn("causal_noncontained", {row["relation"] for row in anomalies})
+
+            causal = read_rows(output / "causal_edges_summary.csv")
+            self.assertEqual(len(causal), 1)
+            self.assertEqual(causal[0]["profile_dir"], str(profile_a))
+            self.assertEqual(causal[0]["parent_event_name"], "A_ROOT")
+            self.assertEqual(causal[0]["event_name"], "A_ASYNC")
+
+            integrity = {
+                row["profile_dir"]: row
+                for row in read_rows(output / "hierarchy_integrity.csv")
+            }
+            self.assertEqual(integrity[str(profile_a)]["duplicate_span_ids"], "1")
+            self.assertEqual(integrity[str(profile_b)]["duplicate_span_ids"], "0")
+            self.assertEqual(integrity[str(profile_b)]["temporally_contained_edges"], "1")
+            correlation_profiles = {
+                row["profile_dir"] for row in read_rows(output / "correlations.csv")
+            }
+            self.assertEqual(correlation_profiles, {str(profile_a), str(profile_b)})
+            self.assertIn(
+                "UE_TX_DEADLINE_MISS",
+                {
+                    row["event_name"]
+                    for row in read_rows(output / "summary.csv")
+                    if row["profile_dir"] == str(profile_b)
+                },
+            )
+            self.assertNotIn(
+                str(profile_b),
+                {
+                    row["profile_dir"]
+                    for row in read_rows(output / "deadline_misses.csv")
+                },
+            )
+            self.assertNotIn(
+                str(profile_b),
+                {
+                    row["profile_dir"]
+                    for row in read_rows(output / "deadline_summary.csv")
+                },
+            )
+
+    def test_output_refusal_and_incomplete_staging(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="oai-profile-incomplete-") as temporary:
+            root = Path(temporary)
+            profile = root / "bad_nrUE"
+            profile.mkdir()
+            write_text(
+                profile / "metadata.txt",
+                "schema_version=2\ncounter_hz=10000000\n"
+                "process_name=nr-uesoftmodem\nrole=nrUE\nrun_id=bad\n",
+            )
+            write_text(
+                profile / "events.csv",
+                "schema_version,seq,tid,thread_name,event_name,event_kind,span_id,"
+                "start_tick,duration_tick,duration_us\n"
+                "2,1,1,bad,TEST,duration,1,100,10,not-a-number\n",
+            )
+
+            existing = root / "existing"
+            existing.mkdir()
+            refusal = subprocess.run(
+                [
+                    sys.executable,
+                    str(ANALYZER),
+                    str(profile),
+                    "--output-dir",
+                    str(existing),
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            self.assertNotEqual(refusal.returncode, 0)
+            self.assertEqual(list(existing.iterdir()), [])
+            self.assertEqual(list(root.glob(".existing.partial-*")), [])
+
+            requested = root / "analysis"
+            failure = subprocess.run(
+                [
+                    sys.executable,
+                    str(ANALYZER),
+                    str(profile),
+                    "--output-profile",
+                    "publication",
+                    "--output-dir",
+                    str(requested),
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            self.assertNotEqual(failure.returncode, 0)
+            self.assertFalse(requested.exists())
+            partials = list(root.glob(".analysis.partial-*"))
+            self.assertEqual(len(partials), 1)
+            marker = partials[0] / "ANALYSIS_INCOMPLETE.txt"
+            self.assertTrue(marker.is_file())
+            marker_text = marker.read_text()
+            self.assertIn("output_profile=publication", marker_text)
+            self.assertIn("error_type=ValueError", marker_text)
+            self.assertIn("publication_state=unpublished_partial", marker_text)
+
+    def test_writer_initialization_and_post_rename_failures_are_marked(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="oai-profile-transaction-") as temporary:
+            root = Path(temporary)
+            profile = root / "nrUE"
+            profile.mkdir()
+            write_text(
+                profile / "metadata.txt",
+                "schema_version=2\ncounter_hz=10000000\n"
+                "process_name=nr-uesoftmodem\nrole=nrUE\nrun_id=transaction\n",
+            )
+            write_text(
+                profile / "events.csv",
+                "schema_version,seq,tid,thread_name,event_name,event_kind,span_id,"
+                "start_tick,duration_tick,duration_us\n"
+                "2,1,1,test,TEST,duration,1,100,10,1.0\n",
+            )
+
+            sink = analyze_module._HashingTextSink(root / "constructor.csv")
+            with mock.patch.object(
+                analyze_module,
+                "_HashingTextSink",
+                return_value=sink,
+            ), mock.patch.object(
+                sink,
+                "write",
+                side_effect=OSError("injected header failure"),
+            ):
+                with self.assertRaisesRegex(OSError, "injected header failure"):
+                    analyze_module.TrackedCsvWriter(
+                        root / "ignored.csv",
+                        ["value"],
+                    )
+            self.assertTrue(sink._closed)
+            self.assertTrue(sink._stream.closed)
+
+            real_writer = analyze_module.TrackedCsvWriter
+            opened_writers: list[analyze_module.TrackedCsvWriter] = []
+
+            def fail_second_writer(
+                path: Path,
+                fields: list[str],
+            ) -> analyze_module.TrackedCsvWriter:
+                if opened_writers:
+                    raise KeyboardInterrupt("injected writer initialization interrupt")
+                writer = real_writer(path, fields)
+                opened_writers.append(writer)
+                return writer
+
+            initialization_output = root / "initialization_failure"
+            with mock.patch.object(
+                analyze_module,
+                "TrackedCsvWriter",
+                side_effect=fail_second_writer,
+            ), mock.patch.object(
+                sys,
+                "argv",
+                [
+                    str(ANALYZER),
+                    str(profile),
+                    "--output-dir",
+                    str(initialization_output),
+                ],
+            ):
+                with self.assertRaisesRegex(
+                    KeyboardInterrupt,
+                    "injected writer initialization interrupt",
+                ):
+                    analyze_module.main()
+            self.assertEqual(len(opened_writers), 1)
+            self.assertTrue(opened_writers[0].closed)
+            self.assertFalse(initialization_output.exists())
+            initialization_partials = list(
+                root.glob(".initialization_failure.partial-*")
+            )
+            self.assertEqual(len(initialization_partials), 1)
+            initialization_marker = (
+                initialization_partials[0] / "ANALYSIS_INCOMPLETE.txt"
+            ).read_text()
+            self.assertIn(
+                "publication_state=unpublished_partial",
+                initialization_marker,
+            )
+            self.assertIn(
+                "error_type=KeyboardInterrupt",
+                initialization_marker,
+            )
+
+            fsync_calls = 0
+            real_fsync_directory = analyze_module.fsync_directory
+
+            def fail_parent_fsync(path: Path) -> None:
+                nonlocal fsync_calls
+                fsync_calls += 1
+                if fsync_calls == 2:
+                    raise OSError("injected parent fsync failure")
+                real_fsync_directory(path)
+
+            published_output = root / "published_failure"
+            with mock.patch.object(
+                analyze_module,
+                "fsync_directory",
+                side_effect=fail_parent_fsync,
+            ), mock.patch.object(
+                sys,
+                "argv",
+                [
+                    str(ANALYZER),
+                    str(profile),
+                    "--output-dir",
+                    str(published_output),
+                ],
+            ):
+                with self.assertRaisesRegex(
+                    OSError,
+                    "injected parent fsync failure",
+                ):
+                    analyze_module.main()
+            self.assertTrue(published_output.is_dir())
+            published_marker = (
+                published_output / "ANALYSIS_INCOMPLETE.txt"
+            ).read_text()
+            self.assertIn(
+                "publication_state=published_incomplete",
+                published_marker,
+            )
+            self.assertIn("error_type=OSError", published_marker)
+            self.assertEqual(list(root.glob(".published_failure.partial-*")), [])
 
 
     def test_publication_reports_and_campaign_only_runs(self) -> None:
@@ -1317,6 +1915,24 @@ class AnalyzerSchemaCompatibilityTest(unittest.TestCase):
                 finalize_archive(run_dir)
 
             subprocess.run([sys.executable, str(ANALYZER), str(root), "--output-dir", str(output)], check=True)
+
+            inputs = {
+                row["input_path"]: row
+                for row in read_rows(output / "analysis_inputs.csv")
+            }
+            self.assertEqual(
+                set(inputs),
+                {str(disabled_gnb), str(disabled_ue), str(profiled_gnb), str(profiled_ue)},
+            )
+            for run_dir in (disabled_gnb, disabled_ue, profiled_gnb, profiled_ue):
+                row = inputs[str(run_dir)]
+                manifest = run_dir / "archive_manifest.csv"
+                self.assertEqual(row["archive_manifest_status"], "present")
+                self.assertEqual(row["archive_manifest_path"], str(manifest))
+                self.assertEqual(
+                    row["archive_manifest_sha256"],
+                    hashlib.sha256(manifest.read_bytes()).hexdigest(),
+                )
 
             campaigns = read_rows(output / "campaign_runs.csv")
             self.assertEqual(len(campaigns), 4)

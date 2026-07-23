@@ -10,7 +10,13 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
+import json
 import math
+import os
+import sys
+import tempfile
+from array import array
 from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -22,21 +28,172 @@ from oai_profile_deadlines import (
     DEADLINE_EVENT_NAMES,
     DEADLINE_SUMMARY_FIELDS,
     build_deadline_reports,
+    is_nrue_profile,
 )
 from oai_profile_reports import build_extended_reports, discover_run_dirs
 
 
 
 QUANTILES = (0.5, 0.9, 0.95, 0.99, 0.999)
+HIERARCHY_FIELDS = [
+    "profile_dir",
+    "seq",
+    "tid",
+    "thread_name",
+    "event_name",
+    "frame",
+    "slot",
+    "absolute_slot",
+    "correlation_id",
+    "span_id",
+    "parent_id",
+    "parent_event_name",
+    "parent_relation",
+    "absolute_slot_delta_from_parent",
+    "nesting_depth",
+    "inclusive_us",
+    "direct_children",
+    "duration_children",
+    "instant_children",
+    "contained_duration_children",
+    "noncontained_duration_children",
+    "correlation_mismatch_children",
+    "child_duration_sum_us",
+    "child_interval_union_us",
+    "child_overlap_us",
+    "exclusive_us",
+    "exclusive_valid",
+]
+HIERARCHY_ANOMALY_FIELDS = [
+    "profile_dir",
+    "seq",
+    "event_name",
+    "span_id",
+    "parent_id",
+    "relation",
+    "correlation_id",
+    "parent_correlation_id",
+    "absolute_slot",
+    "parent_absolute_slot",
+    "start_tick",
+    "end_tick",
+    "parent_start_tick",
+    "parent_end_tick",
+]
+CORRELATION_FIELDS = [
+    "profile_dir",
+    "correlation_id",
+    "absolute_slot_min",
+    "absolute_slot_max",
+    "first_tick",
+    "last_tick",
+    "elapsed_us",
+    "event_count",
+    "duration_count",
+    "instant_count",
+    "root_count",
+    "parented_count",
+    "missing_parent_count",
+    "max_nesting_depth",
+    "thread_count",
+    "cpu_migrations",
+    "root_events",
+]
+CAUSAL_EDGE_SUMMARY_FIELDS = [
+    "profile_dir",
+    "parent_event_name",
+    "event_name",
+    "relation",
+    "absolute_slot_delta_from_parent",
+    "temporal_shape",
+    "count",
+    "correlation_match_count",
+    "correlation_unknown_count",
+    "boundary_distance_min_us",
+    "boundary_distance_p50_us",
+    "boundary_distance_p90_us",
+    "boundary_distance_p99_us",
+    "boundary_distance_p99_9_us",
+    "boundary_distance_max_us",
+    "boundary_distance_mean_us",
+]
+ANALYSIS_INPUT_FIELDS = [
+    "input_path",
+    "input_kind",
+    "run_id",
+    "experiment_id",
+    "campaign_id",
+    "variant",
+    "trial",
+    "role",
+    "hostname",
+    "schema_version",
+    "archive_manifest_status",
+    "archive_manifest_path",
+    "archive_manifest_sha256",
+]
+ANALYSIS_MANIFEST_FIELDS = [
+    "artifact",
+    "status",
+    "row_count",
+    "size_bytes",
+    "sha256",
+    "output_profile",
+    "notes",
+]
+ANALYSIS_PROVENANCE_FIELDS = [
+    "record_type",
+    "name",
+    "value",
+    "path",
+    "sha256",
+]
+DEADLINE_MISS_FIELDS = [
+    "profile_dir",
+    "schema_version",
+    "seq",
+    "tid",
+    "thread_name",
+    "frame",
+    "slot",
+    "absolute_slot",
+    "correlation_id",
+    "span_id",
+    "parent_id",
+    "cpu_start",
+    "cpu_end",
+    "cpu_migrated",
+    "current_time_us",
+    "deadline_us",
+    "miss_us",
+    "start_tick",
+]
+MIGRATION_FIELDS = [
+    "profile_dir",
+    "schema_version",
+    "seq",
+    "tid",
+    "thread_name",
+    "event_name",
+    "event_kind",
+    "frame",
+    "slot",
+    "absolute_slot",
+    "correlation_id",
+    "span_id",
+    "parent_id",
+    "nesting_depth",
+    "cpu_start",
+    "cpu_end",
+    "start_tick",
+    "duration_tick",
+    "duration_us",
+]
 
 
 @dataclass
 class GroupStats:
-    durations_us: list[float] = field(default_factory=list)
-    aux0_values: list[int] = field(default_factory=list)
-    aux1_values: list[int] = field(default_factory=list)
-    aux2_values: list[int] = field(default_factory=list)
-    aux3_values: list[int] = field(default_factory=list)
+    durations_us: array[float] = field(default_factory=lambda: array("d"))
     schema_versions: set[str] = field(default_factory=set)
     event_roles: set[str] = field(default_factory=set)
     subsystems: set[str] = field(default_factory=set)
@@ -51,10 +208,6 @@ class GroupStats:
 
     def add(self, row: dict[str, str]) -> None:
         self.durations_us.append(float(row["duration_us"]))
-        self.aux0_values.append(int(row["aux0"]))
-        self.aux1_values.append(int(row["aux1"]))
-        self.aux2_values.append(int(row["aux2"]))
-        self.aux3_values.append(int(row["aux3"]))
         self.schema_versions.add(row["schema_version"])
         self.event_roles.add(row["event_role"])
         self.subsystems.add(row["subsystem"])
@@ -99,14 +252,145 @@ class HierarchyRecord:
 
 @dataclass
 class ExclusiveStats:
-    inclusive_us: list[float] = field(default_factory=list)
-    exclusive_us: list[float] = field(default_factory=list)
-    child_union_us: list[float] = field(default_factory=list)
+    inclusive_us: array[float] = field(default_factory=lambda: array("d"))
+    exclusive_us: array[float] = field(default_factory=lambda: array("d"))
+    child_union_us: array[float] = field(default_factory=lambda: array("d"))
     total_count: int = 0
     valid_count: int = 0
     overlapping_children_count: int = 0
     noncontained_children: int = 0
     correlation_mismatches: int = 0
+
+
+@dataclass
+class CorrelationStats:
+    absolute_slot_min: int = -1
+    absolute_slot_max: int = -1
+    first_tick: int = 0
+    last_tick: int = 0
+    event_count: int = 0
+    duration_count: int = 0
+    instant_count: int = 0
+    root_count: int = 0
+    parented_count: int = 0
+    missing_parent_count: int = 0
+    max_nesting_depth: int = 0
+    tids: set[int] = field(default_factory=set)
+    cpu_migrations: int = 0
+    root_events: set[str] = field(default_factory=set)
+
+    def add(self, record: HierarchyRecord, relation: str) -> None:
+        if self.event_count == 0:
+            self.first_tick = record.start_tick
+            self.last_tick = record.end_tick
+            self.max_nesting_depth = record.nesting_depth
+        else:
+            self.first_tick = min(self.first_tick, record.start_tick)
+            self.last_tick = max(self.last_tick, record.end_tick)
+        if record.absolute_slot >= 0:
+            if self.absolute_slot_min < 0:
+                self.absolute_slot_min = record.absolute_slot
+                self.absolute_slot_max = record.absolute_slot
+            else:
+                self.absolute_slot_min = min(self.absolute_slot_min, record.absolute_slot)
+                self.absolute_slot_max = max(self.absolute_slot_max, record.absolute_slot)
+        self.event_count += 1
+        self.duration_count += record.event_kind == "duration"
+        self.instant_count += record.event_kind == "instant"
+        self.root_count += record.parent_id == 0
+        self.parented_count += record.parent_id > 0
+        self.missing_parent_count += relation == "missing_parent"
+        self.max_nesting_depth = max(self.max_nesting_depth, record.nesting_depth)
+        self.tids.add(record.tid)
+        self.cpu_migrations += record.cpu_migrated != 0
+        if record.parent_id == 0:
+            self.root_events.add(record.event_name)
+
+
+@dataclass
+class CausalEdgeStats:
+    boundary_distance_us: array[float] = field(default_factory=lambda: array("d"))
+    correlation_match_count: int = 0
+    correlation_unknown_count: int = 0
+
+
+@dataclass(frozen=True)
+class ArtifactInfo:
+    artifact: str
+    row_count: int
+    size_bytes: int
+    sha256: str
+
+
+class _HashingTextSink:
+    def __init__(self, path: Path) -> None:
+        self._stream = path.open("wb")
+        self._hash = hashlib.sha256()
+        self.size_bytes = 0
+        self._closed = False
+
+    def write(self, value: str) -> int:
+        data = value.encode("utf-8")
+        self._stream.write(data)
+        self._hash.update(data)
+        self.size_bytes += len(data)
+        return len(value)
+
+    def close(self) -> str:
+        if self._closed:
+            raise RuntimeError("hashing sink already closed")
+        try:
+            self._stream.flush()
+            os.fsync(self._stream.fileno())
+            return self._hash.hexdigest()
+        finally:
+            self._stream.close()
+            self._closed = True
+
+    def abort(self) -> None:
+        if not self._closed:
+            self._stream.close()
+            self._closed = True
+
+
+class TrackedCsvWriter:
+    def __init__(self, path: Path, fields: list[str]) -> None:
+        self.path = path
+        self.fields = fields
+        self.row_count = 0
+        self._closed = True
+        self._sink: _HashingTextSink | None = None
+        try:
+            self._sink = _HashingTextSink(path)
+            self._writer = csv.DictWriter(self._sink, fieldnames=fields)
+            self._writer.writeheader()
+            self._closed = False
+        except BaseException:
+            if self._sink is not None:
+                self._sink.abort()
+            raise
+
+    @property
+    def closed(self) -> bool:
+        return self._closed
+
+    def writerow(self, row: dict[str, object]) -> None:
+        self._writer.writerow(row)
+        self.row_count += 1
+
+    def writerows(self, rows: Iterable[dict[str, object]]) -> None:
+        for row in rows:
+            self.writerow(row)
+
+    def close(self) -> ArtifactInfo:
+        if self._closed:
+            raise RuntimeError(f"CSV writer already closed: {self.path}")
+        assert self._sink is not None
+        try:
+            digest = self._sink.close()
+            return ArtifactInfo(self.path.name, self.row_count, self._sink.size_bytes, digest)
+        finally:
+            self._closed = True
 
 
 def quantile(sorted_values: list[float], q: float) -> float:
@@ -662,11 +946,22 @@ def build_pairs(runs: list[dict[str, object]]) -> list[dict[str, object]]:
     return rows
 
 
-def write_rows(path: Path, fields: list[str], rows: list[dict[str, object]]) -> None:
-    with path.open("w", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=fields)
-        writer.writeheader()
+def write_rows(
+    path: Path,
+    fields: list[str],
+    rows: Iterable[dict[str, object]],
+) -> ArtifactInfo:
+    writer = TrackedCsvWriter(path, fields)
+    try:
         writer.writerows(rows)
+        return writer.close()
+    except BaseException:
+        if not writer.closed:
+            try:
+                writer.close()
+            except BaseException:
+                pass
+        raise
 
 
 def iter_event_rows(
@@ -697,7 +992,7 @@ def write_event_timeline(
     profile_dirs: list[Path],
     metadata_by_dir: dict[str, dict[str, str]],
     catalogs_by_dir: dict[str, dict[str, dict[str, str]]],
-) -> None:
+) -> ArtifactInfo:
     mappers = {
         str(profile_dir): ClockMapper.from_sync(
             profile_dir / "sync.csv",
@@ -705,9 +1000,8 @@ def write_event_timeline(
         )
         for profile_dir in profile_dirs
     }
-    with path.open("w", newline="") as stream:
-        writer = csv.DictWriter(stream, fieldnames=EVENT_TIMELINE_FIELDS)
-        writer.writeheader()
+    writer = TrackedCsvWriter(path, EVENT_TIMELINE_FIELDS)
+    try:
         for profile_dir, row in iter_event_rows(
             profile_dirs,
             None,
@@ -722,6 +1016,14 @@ def write_event_timeline(
                     mappers[str(profile_dir)],
                 )
             )
+        return writer.close()
+    except BaseException:
+        if not writer.closed:
+            try:
+                writer.close()
+            except BaseException:
+                pass
+        raise
 
 
 def hierarchy_record_from_row(row: dict[str, str]) -> HierarchyRecord | None:
@@ -787,17 +1089,54 @@ def parent_relation(record: HierarchyRecord, by_span: dict[int, HierarchyRecord]
     return "causal_noncontained", parent
 
 
+def hierarchy_anomaly_row(
+    profile_dir: str,
+    record: HierarchyRecord,
+    relation: str,
+    parent: HierarchyRecord | None,
+) -> dict[str, object]:
+    return {
+        "profile_dir": profile_dir,
+        "seq": record.seq,
+        "event_name": record.event_name,
+        "span_id": record.span_id,
+        "parent_id": record.parent_id,
+        "relation": relation,
+        "correlation_id": record.correlation_id,
+        "parent_correlation_id": parent.correlation_id if parent else 0,
+        "absolute_slot": record.absolute_slot,
+        "parent_absolute_slot": parent.absolute_slot if parent else -1,
+        "start_tick": record.start_tick,
+        "end_tick": record.end_tick,
+        "parent_start_tick": parent.start_tick if parent else 0,
+        "parent_end_tick": parent.end_tick if parent else 0,
+    }
+
+
+def causal_edge_shape(record: HierarchyRecord, parent: HierarchyRecord) -> tuple[str, int]:
+    if record.start_tick >= parent.end_tick:
+        return "starts_after_parent", record.start_tick - parent.end_tick
+    if record.end_tick <= parent.start_tick:
+        return "ends_before_parent", parent.start_tick - record.end_tick
+    if record.start_tick < parent.start_tick and record.end_tick > parent.end_tick:
+        return (
+            "encloses_parent",
+            max(parent.start_tick - record.start_tick, record.end_tick - parent.end_tick),
+        )
+    if record.start_tick < parent.start_tick:
+        return "starts_before_parent", parent.start_tick - record.start_tick
+    return "overruns_parent", record.end_tick - parent.end_tick
+
+
 def build_hierarchy_outputs(
     profile_dir: str,
     records: list[HierarchyRecord],
     counter_hz: int,
-) -> tuple[
-    list[dict[str, object]],
-    list[dict[str, object]],
-    dict[str, object],
-    list[dict[str, object]],
-    dict[tuple[str, str], ExclusiveStats],
-]:
+    hierarchy_writer: TrackedCsvWriter | None,
+    anomaly_writer: TrackedCsvWriter,
+    correlation_writer: TrackedCsvWriter,
+    causal_writer: TrackedCsvWriter | None,
+) -> tuple[dict[str, object], dict[tuple[str, str], ExclusiveStats]]:
     by_span: dict[int, HierarchyRecord] = {}
     duplicate_span_ids: set[int] = set()
     for record in records:
@@ -811,52 +1150,35 @@ def build_hierarchy_outputs(
         if record.parent_id > 0:
             children[record.parent_id].append(record)
 
-    hierarchy_rows: list[dict[str, object]] = []
-    anomaly_rows: list[dict[str, object]] = []
     exclusive_groups: dict[tuple[str, str], ExclusiveStats] = defaultdict(ExclusiveStats)
-    relations: dict[int, tuple[str, HierarchyRecord | None]] = {}
+    causal_groups: dict[tuple[str, str, int | None, str], CausalEdgeStats] = defaultdict(
+        CausalEdgeStats
+    )
     for record in records:
         relation, parent = parent_relation(record, by_span)
-        relations[record.span_id] = (relation, parent)
         if relation in {"missing_parent", "correlation_mismatch", "causal_noncontained"}:
-            anomaly_rows.append(
-                {
-                    "profile_dir": profile_dir,
-                    "seq": record.seq,
-                    "event_name": record.event_name,
-                    "span_id": record.span_id,
-                    "parent_id": record.parent_id,
-                    "relation": relation,
-                    "correlation_id": record.correlation_id,
-                    "parent_correlation_id": parent.correlation_id if parent else 0,
-                    "absolute_slot": record.absolute_slot,
-                    "parent_absolute_slot": parent.absolute_slot if parent else -1,
-                    "start_tick": record.start_tick,
-                    "end_tick": record.end_tick,
-                    "parent_start_tick": parent.start_tick if parent else 0,
-                    "parent_end_tick": parent.end_tick if parent else 0,
-                }
-            )
+            if relation != "causal_noncontained" or causal_writer is None:
+                anomaly_writer.writerow(hierarchy_anomaly_row(profile_dir, record, relation, parent))
+            if relation == "causal_noncontained" and parent is not None and causal_writer is not None:
+                slot_delta = (
+                    record.absolute_slot - parent.absolute_slot
+                    if record.absolute_slot >= 0 and parent.absolute_slot >= 0
+                    else None
+                )
+                shape, boundary_distance_tick = causal_edge_shape(record, parent)
+                stats = causal_groups[(parent.event_name, record.event_name, slot_delta, shape)]
+                stats.boundary_distance_us.append(
+                    boundary_distance_tick * 1e6 / counter_hz if counter_hz > 0 else math.nan
+                )
+                if record.correlation_id > 0 and record.correlation_id == parent.correlation_id:
+                    stats.correlation_match_count += 1
+                else:
+                    stats.correlation_unknown_count += 1
 
     for span_id in sorted(duplicate_span_ids):
         record = by_span[span_id]
-        anomaly_rows.append(
-            {
-                "profile_dir": profile_dir,
-                "seq": record.seq,
-                "event_name": record.event_name,
-                "span_id": span_id,
-                "parent_id": record.parent_id,
-                "relation": "duplicate_span_id",
-                "correlation_id": record.correlation_id,
-                "parent_correlation_id": 0,
-                "absolute_slot": record.absolute_slot,
-                "parent_absolute_slot": -1,
-                "start_tick": record.start_tick,
-                "end_tick": record.end_tick,
-                "parent_start_tick": 0,
-                "parent_end_tick": 0,
-            }
+        anomaly_writer.writerow(
+            hierarchy_anomaly_row(profile_dir, record, "duplicate_span_id", None)
         )
 
     for record in records:
@@ -876,7 +1198,7 @@ def build_hierarchy_outputs(
                 continue
             duration_children += 1
             child_duration_sum_us += child.duration_us
-            relation, _ = relations[child.span_id]
+            relation, _ = parent_relation(child, by_span)
             if relation == "temporally_contained":
                 contained_children += 1
                 contained_intervals.append((child.start_tick, child.end_tick))
@@ -897,14 +1219,15 @@ def build_hierarchy_outputs(
             and noncontained_children == 0
             and correlation_mismatches == 0
         )
-        relation, parent = relations[record.span_id]
+        relation, parent = parent_relation(record, by_span)
         absolute_slot_delta = (
             record.absolute_slot - parent.absolute_slot
             if parent is not None and record.absolute_slot >= 0 and parent.absolute_slot >= 0
             else 0
         )
-        hierarchy_rows.append(
-            {
+        if hierarchy_writer is not None:
+            hierarchy_writer.writerow(
+                {
                 "profile_dir": profile_dir,
                 "seq": record.seq,
                 "tid": record.tid,
@@ -932,8 +1255,8 @@ def build_hierarchy_outputs(
                 "child_overlap_us": child_overlap_us,
                 "exclusive_us": exclusive_us,
                 "exclusive_valid": int(exclusive_valid),
-            }
-        )
+                }
+            )
         stats = exclusive_groups[(profile_dir, record.event_name)]
         stats.total_count += 1
         stats.inclusive_us.append(record.duration_us)
@@ -947,11 +1270,14 @@ def build_hierarchy_outputs(
 
     relation_counts: dict[str, int] = defaultdict(int)
     absolute_slot_mismatches = 0
+    correlation_groups: dict[int, CorrelationStats] = defaultdict(CorrelationStats)
     for record in records:
-        relation, parent = relations[record.span_id]
+        relation, parent = parent_relation(record, by_span)
         relation_counts[relation] += 1
         if parent is not None and record.absolute_slot >= 0 and parent.absolute_slot >= 0:
             absolute_slot_mismatches += record.absolute_slot != parent.absolute_slot
+        if record.correlation_id > 0:
+            correlation_groups[record.correlation_id].add(record, relation)
     integrity = {
         "profile_dir": profile_dir,
         "schema2_records": len(records),
@@ -972,40 +1298,66 @@ def build_hierarchy_outputs(
         "counter_hz": counter_hz,
     }
 
-    correlation_groups: dict[int, list[HierarchyRecord]] = defaultdict(list)
-    for record in records:
-        if record.correlation_id > 0:
-            correlation_groups[record.correlation_id].append(record)
-    correlation_rows: list[dict[str, object]] = []
-    for correlation_id, group in sorted(correlation_groups.items()):
-        first_tick = min(record.start_tick for record in group)
-        last_tick = max(record.end_tick for record in group)
-        absolute_slots = [record.absolute_slot for record in group if record.absolute_slot >= 0]
-        root_events = sorted({record.event_name for record in group if record.parent_id == 0})
-        missing_parents = sum(relations[record.span_id][0] == "missing_parent" for record in group)
-        correlation_rows.append(
+    for correlation_id, stats in sorted(correlation_groups.items()):
+        correlation_writer.writerow(
             {
                 "profile_dir": profile_dir,
                 "correlation_id": correlation_id,
-                "absolute_slot_min": min(absolute_slots) if absolute_slots else -1,
-                "absolute_slot_max": max(absolute_slots) if absolute_slots else -1,
-                "first_tick": first_tick,
-                "last_tick": last_tick,
-                "elapsed_us": (last_tick - first_tick) * 1e6 / counter_hz if counter_hz > 0 else math.nan,
-                "event_count": len(group),
-                "duration_count": sum(record.event_kind == "duration" for record in group),
-                "instant_count": sum(record.event_kind == "instant" for record in group),
-                "root_count": sum(record.parent_id == 0 for record in group),
-                "parented_count": sum(record.parent_id > 0 for record in group),
-                "missing_parent_count": missing_parents,
-                "max_nesting_depth": max(record.nesting_depth for record in group),
-                "thread_count": len({record.tid for record in group}),
-                "cpu_migrations": sum(record.cpu_migrated != 0 for record in group),
-                "root_events": ";".join(root_events),
+                "absolute_slot_min": stats.absolute_slot_min,
+                "absolute_slot_max": stats.absolute_slot_max,
+                "first_tick": stats.first_tick,
+                "last_tick": stats.last_tick,
+                "elapsed_us": (stats.last_tick - stats.first_tick) * 1e6 / counter_hz
+                if counter_hz > 0
+                else math.nan,
+                "event_count": stats.event_count,
+                "duration_count": stats.duration_count,
+                "instant_count": stats.instant_count,
+                "root_count": stats.root_count,
+                "parented_count": stats.parented_count,
+                "missing_parent_count": stats.missing_parent_count,
+                "max_nesting_depth": stats.max_nesting_depth,
+                "thread_count": len(stats.tids),
+                "cpu_migrations": stats.cpu_migrations,
+                "root_events": ";".join(sorted(stats.root_events)),
             }
         )
 
-    return hierarchy_rows, anomaly_rows, integrity, correlation_rows, exclusive_groups
+    if causal_writer is not None:
+        causal_items = sorted(
+            causal_groups.items(),
+            key=lambda item: (
+                item[0][0],
+                item[0][1],
+                item[0][2] is None,
+                item[0][2] or 0,
+                item[0][3],
+            ),
+        )
+        for (parent_event, event_name, slot_delta, shape), stats in causal_items:
+            distances = sorted(stats.boundary_distance_us)
+            causal_writer.writerow(
+                {
+                    "profile_dir": profile_dir,
+                    "parent_event_name": parent_event,
+                    "event_name": event_name,
+                    "relation": "causal_noncontained",
+                    "absolute_slot_delta_from_parent": "" if slot_delta is None else slot_delta,
+                    "temporal_shape": shape,
+                    "count": len(distances),
+                    "correlation_match_count": stats.correlation_match_count,
+                    "correlation_unknown_count": stats.correlation_unknown_count,
+                    "boundary_distance_min_us": distances[0] if distances else math.nan,
+                    "boundary_distance_p50_us": quantile(distances, 0.5),
+                    "boundary_distance_p90_us": quantile(distances, 0.9),
+                    "boundary_distance_p99_us": quantile(distances, 0.99),
+                    "boundary_distance_p99_9_us": quantile(distances, 0.999),
+                    "boundary_distance_max_us": distances[-1] if distances else math.nan,
+                    "boundary_distance_mean_us": mean(distances),
+                }
+            )
+
+    return integrity, exclusive_groups
 
 
 def build_exclusive_summary(groups: dict[tuple[str, str], ExclusiveStats]) -> list[dict[str, object]]:
@@ -1036,7 +1388,7 @@ def build_exclusive_summary(groups: dict[tuple[str, str], ExclusiveStats]) -> li
     return rows
 
 
-def write_summary(path: Path | None, rows: list[dict[str, object]]) -> None:
+def write_summary(path: Path | None, rows: list[dict[str, object]]) -> ArtifactInfo | None:
     fields = [
         "profile_dir",
         "process_name",
@@ -1071,14 +1423,11 @@ def write_summary(path: Path | None, rows: list[dict[str, object]]) -> None:
         writer = csv.DictWriter(__import__("sys").stdout, fieldnames=fields)
         writer.writeheader()
         writer.writerows(rows)
-        return
-    with path.open("w", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=fields)
-        writer.writeheader()
-        writer.writerows(rows)
+        return None
+    return write_rows(path, fields, rows)
 
 
-def write_by_thread(path: Path, rows: list[dict[str, object]]) -> None:
+def write_by_thread(path: Path, rows: list[dict[str, object]]) -> ArtifactInfo:
     fields = [
         "profile_dir",
         "process_name",
@@ -1095,65 +1444,15 @@ def write_by_thread(path: Path, rows: list[dict[str, object]]) -> None:
         "cpu_migrations",
         "cpu_migration_rate",
     ]
-    with path.open("w", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=fields)
-        writer.writeheader()
-        writer.writerows(rows)
+    return write_rows(path, fields, rows)
 
 
-def write_deadline_misses(path: Path, rows: list[dict[str, str]]) -> None:
-    fields = [
-        "profile_dir",
-        "schema_version",
-        "seq",
-        "tid",
-        "thread_name",
-        "frame",
-        "slot",
-        "absolute_slot",
-        "correlation_id",
-        "span_id",
-        "parent_id",
-        "cpu_start",
-        "cpu_end",
-        "cpu_migrated",
-        "current_time_us",
-        "deadline_us",
-        "miss_us",
-        "start_tick",
-    ]
-    with path.open("w", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=fields)
-        writer.writeheader()
-        writer.writerows(rows)
+def write_deadline_misses(path: Path, rows: list[dict[str, str]]) -> ArtifactInfo:
+    return write_rows(path, DEADLINE_MISS_FIELDS, rows)
 
 
-def write_migrations(path: Path, rows: list[dict[str, str]]) -> None:
-    fields = [
-        "profile_dir",
-        "schema_version",
-        "seq",
-        "tid",
-        "thread_name",
-        "event_name",
-        "event_kind",
-        "frame",
-        "slot",
-        "absolute_slot",
-        "correlation_id",
-        "span_id",
-        "parent_id",
-        "nesting_depth",
-        "cpu_start",
-        "cpu_end",
-        "start_tick",
-        "duration_tick",
-        "duration_us",
-    ]
-    with path.open("w", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=fields)
-        writer.writeheader()
-        writer.writerows(rows)
+def write_migrations(path: Path, rows: list[dict[str, str]]) -> ArtifactInfo:
+    return write_rows(path, MIGRATION_FIELDS, rows)
 
 
 def build_rows(
@@ -1206,7 +1505,228 @@ def build_rows(
     return rows
 
 
+def build_thread_rows(
+    groups: dict[tuple[str, str, str], GroupStats],
+    metadata_by_dir: dict[str, dict[str, str]],
+) -> list[dict[str, object]]:
+    rows: list[dict[str, object]] = []
+    for (profile_dir, thread_name, event_name), stats in sorted(groups.items()):
+        durations = sorted(stats.durations_us)
+        avg = mean(durations)
+        rows.append(
+            {
+                "profile_dir": profile_dir,
+                "process_name": metadata_by_dir.get(profile_dir, {}).get("process_name", "unknown"),
+                "schema_version": one_or_mixed(stats.schema_versions, "1"),
+                "thread_name": thread_name,
+                "event_name": event_name,
+                "event_kind": one_or_mixed(stats.event_kinds, "unknown"),
+                "detail_level": one_or_mixed(stats.detail_levels, "boundary"),
+                "count": len(durations),
+                "mean_us": avg,
+                "p99_us": quantile(durations, 0.99),
+                "max_us": durations[-1] if durations else math.nan,
+                "cpu_observed_count": stats.cpu_observed_count,
+                "cpu_migrations": stats.cpu_migrations,
+                "cpu_migration_rate": stats.cpu_migrations / stats.cpu_observed_count
+                if stats.cpu_observed_count
+                else math.nan,
+            }
+        )
+    return rows
+
+
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def analysis_input_rows(
+    profile_dirs: list[Path],
+    run_dirs: list[Path],
+    metadata_by_dir: dict[str, dict[str, str]],
+) -> list[dict[str, object]]:
+    profile_keys = {str(path) for path in profile_dirs}
+    rows: list[dict[str, object]] = []
+    for run_dir in run_dirs:
+        key = str(run_dir)
+        metadata = metadata_by_dir.get(key, {})
+        campaign: dict[str, object] = {}
+        campaign_path = run_dir / "campaign_run.json"
+        if campaign_path.is_file():
+            try:
+                value = json.loads(campaign_path.read_text(errors="replace"))
+                if isinstance(value, dict):
+                    campaign = value
+            except (OSError, json.JSONDecodeError):
+                campaign = {}
+        manifest_path = run_dir / "archive_manifest.csv"
+        manifest_present = manifest_path.is_file()
+        rows.append(
+            {
+                "input_path": key,
+                "input_kind": "profile" if key in profile_keys else "campaign_run",
+                "run_id": metadata.get("run_id", str(campaign.get("run_id", run_dir.name))),
+                "experiment_id": metadata.get("experiment_id", str(campaign.get("experiment_id", ""))),
+                "campaign_id": metadata.get("campaign_id", str(campaign.get("campaign_id", ""))),
+                "variant": metadata.get("variant", str(campaign.get("variant", ""))),
+                "trial": metadata.get("trial", str(campaign.get("trial", ""))),
+                "role": metadata.get("role", str(campaign.get("role", "unknown"))),
+                "hostname": metadata.get("hostname", str(campaign.get("hostname", "unknown"))),
+                "schema_version": metadata.get("schema_version", ""),
+                "archive_manifest_status": "present" if manifest_present else "missing",
+                "archive_manifest_path": str(manifest_path) if manifest_present else "",
+                "archive_manifest_sha256": sha256_file(manifest_path) if manifest_present else "",
+            }
+        )
+    return rows
+
+
+def analysis_provenance_rows(
+    args: argparse.Namespace,
+    invocation_argv: list[str],
+) -> list[dict[str, object]]:
+    invocation_values = [
+        ("argv_json", json.dumps(invocation_argv, ensure_ascii=False)),
+        (
+            "input_arguments_json",
+            json.dumps([str(path) for path in args.profile_dir], ensure_ascii=False),
+        ),
+        ("event_filter_json", json.dumps(args.event or [], ensure_ascii=False)),
+        ("output_profile", args.output_profile),
+        ("output_dir_argument", str(args.output_dir) if args.output_dir is not None else ""),
+        ("working_directory", str(Path.cwd())),
+        ("python_version", sys.version),
+        ("python_executable", sys.executable),
+        ("python_implementation", sys.implementation.name),
+    ]
+    rows: list[dict[str, object]] = [
+        {
+            "record_type": "invocation",
+            "name": name,
+            "value": value,
+            "path": "",
+            "sha256": "",
+        }
+        for name, value in invocation_values
+    ]
+    module_paths = [
+        ("oai_profile_analyze", Path(__file__).resolve()),
+        ("oai_profile_clock", Path(__file__).resolve().with_name("oai_profile_clock.py")),
+        (
+            "oai_profile_deadlines",
+            Path(__file__).resolve().with_name("oai_profile_deadlines.py"),
+        ),
+        ("oai_profile_reports", Path(__file__).resolve().with_name("oai_profile_reports.py")),
+        ("oai_profile_archive", Path(__file__).resolve().with_name("oai_profile_archive.py")),
+    ]
+    for module_name, module_path in module_paths:
+        rows.append(
+            {
+                "record_type": "module",
+                "name": module_name,
+                "value": "",
+                "path": str(module_path),
+                "sha256": sha256_file(module_path),
+            }
+        )
+    return rows
+
+
+def prepare_output_directory(output_dir: Path) -> tuple[Path, Path]:
+    final_dir = output_dir.expanduser().resolve()
+    if final_dir.exists():
+        raise FileExistsError(f"analysis output directory already exists: {final_dir}")
+    final_dir.parent.mkdir(parents=True, exist_ok=True)
+    staging_dir = Path(
+        tempfile.mkdtemp(prefix=f".{final_dir.name}.partial-", dir=final_dir.parent)
+    )
+    return final_dir, staging_dir
+
+
+def fsync_directory(path: Path) -> None:
+    descriptor = os.open(path, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+
+
+def write_incomplete_marker(
+    directory: Path,
+    output_profile: str,
+    error: BaseException,
+    published: bool,
+) -> bool:
+    if not directory.is_dir():
+        return False
+    marker = directory / "ANALYSIS_INCOMPLETE.txt"
+    try:
+        with marker.open("w") as stream:
+            stream.write(
+                f"publication_state={'published_incomplete' if published else 'unpublished_partial'}\n"
+                f"output_profile={output_profile}\n"
+                f"error_type={type(error).__name__}\n"
+                f"error={error}\n"
+            )
+            stream.flush()
+            os.fsync(stream.fileno())
+        fsync_directory(directory)
+        return True
+    except BaseException:
+        return False
+
+
+def write_analysis_manifest(
+    output_dir: Path,
+    artifacts: dict[str, ArtifactInfo],
+    omitted: set[str],
+    output_profile: str,
+) -> None:
+    rows: list[dict[str, object]] = []
+    for filename, artifact in sorted(artifacts.items()):
+        rows.append(
+            {
+                "artifact": filename,
+                "status": "generated",
+                "row_count": artifact.row_count,
+                "size_bytes": artifact.size_bytes,
+                "sha256": artifact.sha256,
+                "output_profile": output_profile,
+                "notes": "",
+            }
+        )
+    for filename in sorted(omitted):
+        rows.append(
+            {
+                "artifact": filename,
+                "status": "omitted_by_output_profile",
+                "row_count": "",
+                "size_bytes": "",
+                "sha256": "",
+                "output_profile": output_profile,
+                "notes": "Regenerable detail output intentionally omitted.",
+            }
+        )
+    rows.append(
+        {
+            "artifact": "analysis_manifest.csv",
+            "status": "generated_self_unhashed",
+            "row_count": len(rows) + 1,
+            "size_bytes": "",
+            "sha256": "",
+            "output_profile": output_profile,
+            "notes": "The manifest excludes its own digest to avoid a self-reference.",
+        }
+    )
+    write_rows(output_dir / "analysis_manifest.csv", ANALYSIS_MANIFEST_FIELDS, rows)
+
+
 def main() -> int:
+    invocation_argv = list(sys.argv)
     parser = argparse.ArgumentParser(description="Summarize OAI profiler process directories or archive roots")
     parser.add_argument(
         "profile_dir",
@@ -1216,7 +1736,16 @@ def main() -> int:
     )
     parser.add_argument("--event", action="append", help="Event name to include; may be given multiple times")
     parser.add_argument("--output-dir", type=Path, help="Write all CSV analysis outputs here")
+    parser.add_argument(
+        "--output-profile",
+        choices=("full", "publication"),
+        default="full",
+        help="full emits all detail CSVs; publication omits regenerable event/hierarchy detail",
+    )
     args = parser.parse_args()
+    if args.output_profile != "full" and args.output_dir is None:
+        parser.error("--output-profile publication requires --output-dir")
+    captured_provenance_rows = analysis_provenance_rows(args, invocation_argv)
 
     profile_dirs = discover_profile_dirs(args.profile_dir)
     run_dirs = discover_run_dirs(args.profile_dir, profile_dirs)
@@ -1239,135 +1768,230 @@ def main() -> int:
     )
     pair_rows = build_pairs(run_rows)
 
-    all_event_groups: dict[tuple[str, str], GroupStats] = defaultdict(GroupStats)
-    thread_groups: dict[tuple[str, str, str], GroupStats] = defaultdict(GroupStats)
-    deadline_rows: list[dict[str, str]] = []
-    migration_rows: list[dict[str, str]] = []
-    transport_fault_rows: list[dict[str, str]] = []
-    deadline_event_rows_by_dir: dict[str, list[dict[str, str]]] = {
-        str(profile_dir): [] for profile_dir in profile_dirs
-    }
-    collect_hierarchy = args.output_dir is not None
-    hierarchy_records_by_dir: dict[str, list[HierarchyRecord]] = (
-        {str(profile_dir): [] for profile_dir in profile_dirs} if collect_hierarchy else {}
-    )
+    final_output_dir: Path | None = None
+    output_dir: Path | None = None
+    artifacts: dict[str, ArtifactInfo] = {}
+    open_writers: list[TrackedCsvWriter] = []
+    hierarchy_writer: TrackedCsvWriter | None = None
+    anomaly_writer: TrackedCsvWriter | None = None
+    correlation_writer: TrackedCsvWriter | None = None
+    causal_writer: TrackedCsvWriter | None = None
+    deadline_miss_writer: TrackedCsvWriter | None = None
+    deadline_check_writer: TrackedCsvWriter | None = None
+    migration_writer: TrackedCsvWriter | None = None
 
-    for profile_dir, row in iter_event_rows(profile_dirs, None, metadata_by_dir, catalogs_by_dir):
-        profile_key = str(profile_dir)
-        if collect_hierarchy:
-            hierarchy_record = hierarchy_record_from_row(row)
-            if hierarchy_record is not None:
-                hierarchy_records_by_dir[profile_key].append(hierarchy_record)
-        if row["subsystem"] == "rf_usrp" and row["event_kind"] == "instant":
-            transport_fault_rows.append({"profile_dir": profile_key, **row})
-        all_event_groups[(profile_key, row["event_name"])].add(row)
-        if row["event_name"] in DEADLINE_EVENT_NAMES:
-            deadline_event_rows_by_dir[profile_key].append(row)
-
-        if event_filter and row["event_name"] not in event_filter:
-            continue
-        thread_groups[(profile_key, row["thread_name"], row["event_name"])].add(row)
-        if row["event_name"] == "UE_TX_DEADLINE_MISS":
-            deadline_rows.append(
-                {
-                    "profile_dir": profile_key,
-                    "schema_version": row["schema_version"],
-                    "seq": row["seq"],
-                    "tid": row["tid"],
-                    "thread_name": row["thread_name"],
-                    "frame": row["frame"],
-                    "slot": row["slot"],
-                    "absolute_slot": row["absolute_slot"],
-                    "correlation_id": row["correlation_id"],
-                    "span_id": row["span_id"],
-                    "parent_id": row["parent_id"],
-                    "cpu_start": row["cpu_start"],
-                    "cpu_end": row["cpu_end"],
-                    "cpu_migrated": row["cpu_migrated"],
-                    "current_time_us": row["aux0"],
-                    "deadline_us": row["aux1"],
-                    "miss_us": row["aux2"],
-                    "start_tick": row["start_tick"],
-                }
-            )
-        if parse_int(row.get("cpu_migrated")):
-            migration_rows.append(
-                {
-                    "profile_dir": profile_key,
-                    "schema_version": row["schema_version"],
-                    "seq": row["seq"],
-                    "tid": row["tid"],
-                    "thread_name": row["thread_name"],
-                    "event_name": row["event_name"],
-                    "event_kind": row["event_kind"],
-                    "frame": row["frame"],
-                    "slot": row["slot"],
-                    "absolute_slot": row["absolute_slot"],
-                    "correlation_id": row["correlation_id"],
-                    "span_id": row["span_id"],
-                    "parent_id": row["parent_id"],
-                    "nesting_depth": row["nesting_depth"],
-                    "cpu_start": row["cpu_start"],
-                    "cpu_end": row["cpu_end"],
-                    "start_tick": row["start_tick"],
-                    "duration_tick": row["duration_tick"],
-                    "duration_us": row["duration_us"],
-                }
-            )
-
-    all_summary_rows = build_rows(all_event_groups, metadata_by_dir, drop_diagnostics_by_dir)
-    summary_rows = (
-        [row for row in all_summary_rows if row["event_name"] in event_filter] if event_filter else all_summary_rows
-    )
+    all_summary_rows: list[dict[str, object]] = []
     thread_rows: list[dict[str, object]] = []
-    for (profile_dir, thread_name, event_name), stats in sorted(thread_groups.items()):
-        durations = sorted(stats.durations_us)
-        avg = mean(durations)
-        cpu_migration_rate = (
-            stats.cpu_migrations / stats.cpu_observed_count if stats.cpu_observed_count else math.nan
-        )
-        thread_rows.append(
-            {
-                "profile_dir": profile_dir,
-                "process_name": metadata_by_dir.get(profile_dir, {}).get("process_name", "unknown"),
-                "schema_version": one_or_mixed(stats.schema_versions, "1"),
-                "thread_name": thread_name,
-                "event_name": event_name,
-                "event_kind": one_or_mixed(stats.event_kinds, "unknown"),
-                "detail_level": one_or_mixed(stats.detail_levels, "boundary"),
-                "count": len(durations),
-                "mean_us": avg,
-                "p99_us": quantile(durations, 0.99),
-                "max_us": durations[-1] if durations else math.nan,
-                "cpu_observed_count": stats.cpu_observed_count,
-                "cpu_migrations": stats.cpu_migrations,
-                "cpu_migration_rate": cpu_migration_rate,
-            }
-            )
-
-    hierarchy_rows: list[dict[str, object]] = []
-    hierarchy_anomaly_rows: list[dict[str, object]] = []
+    deadline_summary_rows: list[dict[str, object]] = []
+    transport_fault_rows: list[dict[str, str]] = []
     hierarchy_integrity_rows: list[dict[str, object]] = []
-    correlation_rows: list[dict[str, object]] = []
-    exclusive_groups: dict[tuple[str, str], ExclusiveStats] = {}
-    if collect_hierarchy:
+    exclusive_summary_rows: list[dict[str, object]] = []
+    published = False
+
+    def open_output_writer(path: Path, fields: list[str]) -> TrackedCsvWriter:
+        writer = TrackedCsvWriter(path, fields)
+        try:
+            open_writers.append(writer)
+        except BaseException:
+            if not writer.closed:
+                try:
+                    writer.close()
+                except BaseException:
+                    pass
+            raise
+        return writer
+
+    if args.output_dir is not None:
+        final_output_dir, output_dir = prepare_output_directory(args.output_dir)
+
+    try:
+        if output_dir is not None:
+            if args.output_profile == "full":
+                hierarchy_writer = open_output_writer(
+                    output_dir / "hierarchy.csv",
+                    HIERARCHY_FIELDS,
+                )
+            anomaly_writer = open_output_writer(
+                output_dir / "hierarchy_anomalies.csv",
+                HIERARCHY_ANOMALY_FIELDS,
+            )
+            correlation_writer = open_output_writer(
+                output_dir / "correlations.csv",
+                CORRELATION_FIELDS,
+            )
+            deadline_miss_writer = open_output_writer(
+                output_dir / "deadline_misses.csv",
+                DEADLINE_MISS_FIELDS,
+            )
+            deadline_check_writer = open_output_writer(
+                output_dir / "deadline_checks.csv",
+                DEADLINE_CHECK_FIELDS,
+            )
+            migration_writer = open_output_writer(
+                output_dir / "migrations.csv",
+                MIGRATION_FIELDS,
+            )
+            if args.output_profile == "publication":
+                causal_writer = open_output_writer(
+                    output_dir / "causal_edges_summary.csv",
+                    CAUSAL_EDGE_SUMMARY_FIELDS,
+                )
+
         for profile_dir in profile_dirs:
             profile_key = str(profile_dir)
-            counter_hz = parse_int(metadata_by_dir[profile_key].get("counter_hz"))
-            run_hierarchy, run_anomalies, run_integrity, run_correlations, run_exclusive = build_hierarchy_outputs(
-                profile_key,
-                hierarchy_records_by_dir[profile_key],
-                counter_hz,
+            metadata = metadata_by_dir[profile_key]
+            is_nrue = is_nrue_profile(metadata)
+            event_groups: dict[tuple[str, str], GroupStats] = defaultdict(GroupStats)
+            thread_groups: dict[tuple[str, str, str], GroupStats] = defaultdict(GroupStats)
+            hierarchy_records: list[HierarchyRecord] = []
+            deadline_event_rows: list[dict[str, str]] = []
+
+            for _, row in iter_event_rows(
+                [profile_dir],
+                None,
+                metadata_by_dir,
+                catalogs_by_dir,
+            ):
+                if output_dir is not None:
+                    hierarchy_record = hierarchy_record_from_row(row)
+                    if hierarchy_record is not None:
+                        hierarchy_records.append(hierarchy_record)
+                    if row["subsystem"] == "rf_usrp" and row["event_kind"] == "instant":
+                        transport_fault_rows.append({"profile_dir": profile_key, **row})
+                event_groups[(profile_key, row["event_name"])].add(row)
+                if (
+                    output_dir is not None
+                    and is_nrue
+                    and row["event_name"] in DEADLINE_EVENT_NAMES
+                ):
+                    deadline_event_rows.append(row)
+
+                if event_filter and row["event_name"] not in event_filter:
+                    continue
+                if output_dir is not None:
+                    thread_groups[(profile_key, row["thread_name"], row["event_name"])].add(row)
+                    if is_nrue and row["event_name"] == "UE_TX_DEADLINE_MISS":
+                        assert deadline_miss_writer is not None
+                        deadline_miss_writer.writerow(
+                            {
+                                "profile_dir": profile_key,
+                                "schema_version": row["schema_version"],
+                                "seq": row["seq"],
+                                "tid": row["tid"],
+                                "thread_name": row["thread_name"],
+                                "frame": row["frame"],
+                                "slot": row["slot"],
+                                "absolute_slot": row["absolute_slot"],
+                                "correlation_id": row["correlation_id"],
+                                "span_id": row["span_id"],
+                                "parent_id": row["parent_id"],
+                                "cpu_start": row["cpu_start"],
+                                "cpu_end": row["cpu_end"],
+                                "cpu_migrated": row["cpu_migrated"],
+                                "current_time_us": row["aux0"],
+                                "deadline_us": row["aux1"],
+                                "miss_us": row["aux2"],
+                                "start_tick": row["start_tick"],
+                            }
+                        )
+                    if parse_int(row.get("cpu_migrated")):
+                        assert migration_writer is not None
+                        migration_writer.writerow(
+                            {
+                                "profile_dir": profile_key,
+                                "schema_version": row["schema_version"],
+                                "seq": row["seq"],
+                                "tid": row["tid"],
+                                "thread_name": row["thread_name"],
+                                "event_name": row["event_name"],
+                                "event_kind": row["event_kind"],
+                                "frame": row["frame"],
+                                "slot": row["slot"],
+                                "absolute_slot": row["absolute_slot"],
+                                "correlation_id": row["correlation_id"],
+                                "span_id": row["span_id"],
+                                "parent_id": row["parent_id"],
+                                "nesting_depth": row["nesting_depth"],
+                                "cpu_start": row["cpu_start"],
+                                "cpu_end": row["cpu_end"],
+                                "start_tick": row["start_tick"],
+                                "duration_tick": row["duration_tick"],
+                                "duration_us": row["duration_us"],
+                            }
+                        )
+
+            profile_summary_rows = build_rows(
+                event_groups,
+                metadata_by_dir,
+                drop_diagnostics_by_dir,
             )
-            hierarchy_rows.extend(run_hierarchy)
-            hierarchy_anomaly_rows.extend(run_anomalies)
-            hierarchy_integrity_rows.append(run_integrity)
-            correlation_rows.extend(run_correlations)
-            exclusive_groups.update(run_exclusive)
-    exclusive_summary_rows = build_exclusive_summary(exclusive_groups)
-    deadline_reports = build_deadline_reports(deadline_event_rows_by_dir, metadata_by_dir)
-    extended_reports = (
-        build_extended_reports(
+            all_summary_rows.extend(profile_summary_rows)
+            if output_dir is not None:
+                thread_rows.extend(build_thread_rows(thread_groups, metadata_by_dir))
+                if is_nrue:
+                    assert deadline_check_writer is not None
+                    profile_deadlines = build_deadline_reports(
+                        {profile_key: deadline_event_rows},
+                        metadata_by_dir,
+                    )
+                    deadline_check_writer.writerows(profile_deadlines.check_rows)
+                    deadline_summary_rows.extend(profile_deadlines.summary_rows)
+                    del profile_deadlines
+                del event_groups
+                del thread_groups
+                del deadline_event_rows
+                row = None
+                assert anomaly_writer is not None
+                assert correlation_writer is not None
+                run_integrity, run_exclusive = build_hierarchy_outputs(
+                    profile_key,
+                    hierarchy_records,
+                    parse_int(metadata.get("counter_hz")),
+                    hierarchy_writer,
+                    anomaly_writer,
+                    correlation_writer,
+                    causal_writer,
+                )
+                hierarchy_integrity_rows.append(run_integrity)
+                exclusive_summary_rows.extend(build_exclusive_summary(run_exclusive))
+                del hierarchy_records
+                del run_integrity
+                del run_exclusive
+            else:
+                del event_groups
+                del thread_groups
+                del deadline_event_rows
+                del hierarchy_records
+                row = None
+            del profile_summary_rows
+
+        summary_rows = (
+            [row for row in all_summary_rows if row["event_name"] in event_filter]
+            if event_filter
+            else all_summary_rows
+        )
+        if output_dir is None:
+            write_summary(None, summary_rows)
+            return 0
+
+        for writer in open_writers:
+            if not writer.closed:
+                artifact = writer.close()
+                artifacts[artifact.artifact] = artifact
+
+        omitted: set[str] = set()
+        if args.output_profile == "full":
+            artifact = write_event_timeline(
+                output_dir / "event_timeline.csv",
+                profile_dirs,
+                metadata_by_dir,
+                catalogs_by_dir,
+            )
+            artifacts[artifact.artifact] = artifact
+        else:
+            omitted.update(("event_timeline.csv", "hierarchy.csv"))
+
+        extended_reports = build_extended_reports(
             profile_dirs,
             run_dirs,
             metadata_by_dir,
@@ -1375,235 +1999,197 @@ def main() -> int:
             all_summary_rows,
             transport_fault_rows,
         )
-        if args.output_dir else {}
-    )
 
-    if args.output_dir:
-        args.output_dir.mkdir(parents=True, exist_ok=True)
-        write_event_timeline(
-            args.output_dir / "event_timeline.csv",
-            profile_dirs,
-            metadata_by_dir,
-            catalogs_by_dir,
-        )
-        write_summary(args.output_dir / "summary.csv", summary_rows)
-        write_by_thread(args.output_dir / "by_thread.csv", thread_rows)
-        write_deadline_misses(args.output_dir / "deadline_misses.csv", deadline_rows)
-        write_rows(
-            args.output_dir / "deadline_checks.csv",
-            DEADLINE_CHECK_FIELDS,
-            deadline_reports.check_rows,
-        )
-        write_rows(
-            args.output_dir / "deadline_summary.csv",
-            DEADLINE_SUMMARY_FIELDS,
-            deadline_reports.summary_rows,
-        )
-        write_migrations(args.output_dir / "migrations.csv", migration_rows)
-        write_rows(
-            args.output_dir / "hierarchy.csv",
-            [
-                "profile_dir",
-                "seq",
-                "tid",
-                "thread_name",
-                "event_name",
-                "frame",
-                "slot",
-                "absolute_slot",
-                "correlation_id",
-                "span_id",
-                "parent_id",
-                "parent_event_name",
-                "parent_relation",
-                "absolute_slot_delta_from_parent",
-                "nesting_depth",
-                "inclusive_us",
-                "direct_children",
-                "duration_children",
-                "instant_children",
-                "contained_duration_children",
-                "noncontained_duration_children",
-                "correlation_mismatch_children",
-                "child_duration_sum_us",
-                "child_interval_union_us",
-                "child_overlap_us",
-                "exclusive_us",
-                "exclusive_valid",
-            ],
-            hierarchy_rows,
-        )
-        write_rows(
-            args.output_dir / "exclusive_summary.csv",
-            [
-                "profile_dir",
-                "event_name",
-                "total_count",
-                "exclusive_valid_count",
-                "exclusive_invalid_count",
-                "inclusive_mean_us",
-                "inclusive_p50_us",
-                "inclusive_p99_us",
-                "exclusive_mean_us",
-                "exclusive_p50_us",
-                "exclusive_p99_us",
-                "child_union_mean_us",
-                "parents_with_overlapping_children",
-                "noncontained_children",
-                "correlation_mismatch_children",
-            ],
-            exclusive_summary_rows,
-        )
-        write_rows(
-            args.output_dir / "hierarchy_anomalies.csv",
-            [
-                "profile_dir",
-                "seq",
-                "event_name",
-                "span_id",
-                "parent_id",
-                "relation",
-                "correlation_id",
-                "parent_correlation_id",
-                "absolute_slot",
-                "parent_absolute_slot",
-                "start_tick",
-                "end_tick",
-                "parent_start_tick",
-                "parent_end_tick",
-            ],
-            hierarchy_anomaly_rows,
-        )
-        write_rows(
-            args.output_dir / "hierarchy_integrity.csv",
-            [
-                "profile_dir",
-                "schema2_records",
-                "duration_records",
-                "instant_records",
-                "unique_span_ids",
-                "duplicate_span_ids",
-                "root_records",
-                "parented_records",
-                "temporally_contained_edges",
-                "causal_noncontained_edges",
-                "missing_parent_edges",
-                "correlation_mismatch_edges",
-                "absolute_slot_mismatch_edges",
-                "unknown_correlation_records",
-                "unknown_absolute_slot_records",
-                "max_nesting_depth",
-                "counter_hz",
-            ],
-            hierarchy_integrity_rows,
-        )
-        write_rows(
-            args.output_dir / "correlations.csv",
-            [
-                "profile_dir",
-                "correlation_id",
-                "absolute_slot_min",
-                "absolute_slot_max",
-                "first_tick",
-                "last_tick",
-                "elapsed_us",
-                "event_count",
-                "duration_count",
-                "instant_count",
-                "root_count",
-                "parented_count",
-                "missing_parent_count",
-                "max_nesting_depth",
-                "thread_count",
-                "cpu_migrations",
-                "root_events",
-            ],
-            correlation_rows,
-        )
-        write_rows(
-            args.output_dir / "runs.csv",
-            [
-                "profile_dir",
-                "schema_version",
-                "event_record_size_bytes",
-                "max_nesting_depth",
-                "run_id",
-                "experiment_id",
-                "campaign_id",
-                "variant",
-                "trial",
-                "role",
-                "process_name",
-                "hostname",
-                "start_realtime_ns",
-                "end_realtime_ns",
-                "start_monotonic_raw_ns",
-                "end_monotonic_raw_ns",
-                "duration_s",
-                "duration_clock",
-                "duration_status",
-                "realtime_clock_regressed",
-                "clean_shutdown",
-                "config_source",
-                "build_oai_version",
-                "runtime_git_branch",
-                "runtime_git_head",
-                "runtime_git_dirty",
-                "min_rxtxtime",
-                "usrp_tx_thread",
-                "continuous_tx",
-                "sample_advance",
-                "thread_pool",
-                "drops_total",
-                "span_stack_overflows",
-                "span_stack_mismatches",
-                "host_metric_samples",
-            ],
-            run_rows,
-        )
-        write_rows(
-            args.output_dir / "pairs.csv",
-            [
-                "status",
-                "method",
-                "experiment_id",
-                "gnb_run_id",
-                "ue_run_id",
-                "gnb_profile_dir",
-                "ue_profile_dir",
-                "gnb_candidate_count",
-                "ue_candidate_count",
-                "clock_domain",
-                "clock_status",
-                "start_delta_ms",
-                "overlap_s",
-                "notes",
-            ],
-            pair_rows,
-        )
-        write_rows(
-            args.output_dir / "host_summary.csv",
-            [
-                "profile_dir",
-                "samples",
-                "temperature_max_millicelsius",
-                "rpi_throttled_valid_samples",
-                "rpi_throttled_or",
-                "cpu_frequency_min_khz",
-                "cpu_frequency_mean_khz",
-                "cpu_frequency_max_khz",
-                "cpu_busy_max_percent",
-                "load1_max",
-                "mem_available_min_kb",
-                "process_rss_max_kb",
-                "involuntary_context_switches_max",
-            ],
-            [host_by_dir[str(profile_dir)] for profile_dir in profile_dirs],
-        )
+        output_artifacts = [
+            write_summary(output_dir / "summary.csv", summary_rows),
+            write_by_thread(output_dir / "by_thread.csv", thread_rows),
+            write_rows(
+                output_dir / "deadline_summary.csv",
+                DEADLINE_SUMMARY_FIELDS,
+                deadline_summary_rows,
+            ),
+            write_rows(
+                output_dir / "exclusive_summary.csv",
+                [
+                    "profile_dir",
+                    "event_name",
+                    "total_count",
+                    "exclusive_valid_count",
+                    "exclusive_invalid_count",
+                    "inclusive_mean_us",
+                    "inclusive_p50_us",
+                    "inclusive_p99_us",
+                    "exclusive_mean_us",
+                    "exclusive_p50_us",
+                    "exclusive_p99_us",
+                    "child_union_mean_us",
+                    "parents_with_overlapping_children",
+                    "noncontained_children",
+                    "correlation_mismatch_children",
+                ],
+                exclusive_summary_rows,
+            ),
+            write_rows(
+                output_dir / "hierarchy_integrity.csv",
+                [
+                    "profile_dir",
+                    "schema2_records",
+                    "duration_records",
+                    "instant_records",
+                    "unique_span_ids",
+                    "duplicate_span_ids",
+                    "root_records",
+                    "parented_records",
+                    "temporally_contained_edges",
+                    "causal_noncontained_edges",
+                    "missing_parent_edges",
+                    "correlation_mismatch_edges",
+                    "absolute_slot_mismatch_edges",
+                    "unknown_correlation_records",
+                    "unknown_absolute_slot_records",
+                    "max_nesting_depth",
+                    "counter_hz",
+                ],
+                hierarchy_integrity_rows,
+            ),
+            write_rows(
+                output_dir / "runs.csv",
+                [
+                    "profile_dir",
+                    "schema_version",
+                    "event_record_size_bytes",
+                    "max_nesting_depth",
+                    "run_id",
+                    "experiment_id",
+                    "campaign_id",
+                    "variant",
+                    "trial",
+                    "role",
+                    "process_name",
+                    "hostname",
+                    "start_realtime_ns",
+                    "end_realtime_ns",
+                    "start_monotonic_raw_ns",
+                    "end_monotonic_raw_ns",
+                    "duration_s",
+                    "duration_clock",
+                    "duration_status",
+                    "realtime_clock_regressed",
+                    "clean_shutdown",
+                    "config_source",
+                    "build_oai_version",
+                    "runtime_git_branch",
+                    "runtime_git_head",
+                    "runtime_git_dirty",
+                    "min_rxtxtime",
+                    "usrp_tx_thread",
+                    "continuous_tx",
+                    "sample_advance",
+                    "thread_pool",
+                    "drops_total",
+                    "span_stack_overflows",
+                    "span_stack_mismatches",
+                    "host_metric_samples",
+                ],
+                run_rows,
+            ),
+            write_rows(
+                output_dir / "pairs.csv",
+                [
+                    "status",
+                    "method",
+                    "experiment_id",
+                    "gnb_run_id",
+                    "ue_run_id",
+                    "gnb_profile_dir",
+                    "ue_profile_dir",
+                    "gnb_candidate_count",
+                    "ue_candidate_count",
+                    "clock_domain",
+                    "clock_status",
+                    "start_delta_ms",
+                    "overlap_s",
+                    "notes",
+                ],
+                pair_rows,
+            ),
+            write_rows(
+                output_dir / "host_summary.csv",
+                [
+                    "profile_dir",
+                    "samples",
+                    "temperature_max_millicelsius",
+                    "rpi_throttled_valid_samples",
+                    "rpi_throttled_or",
+                    "cpu_frequency_min_khz",
+                    "cpu_frequency_mean_khz",
+                    "cpu_frequency_max_khz",
+                    "cpu_busy_max_percent",
+                    "load1_max",
+                    "mem_available_min_kb",
+                    "process_rss_max_kb",
+                    "involuntary_context_switches_max",
+                ],
+                [host_by_dir[str(profile_dir)] for profile_dir in profile_dirs],
+            ),
+            write_rows(
+                output_dir / "analysis_inputs.csv",
+                ANALYSIS_INPUT_FIELDS,
+                analysis_input_rows(profile_dirs, run_dirs, metadata_by_dir),
+            ),
+            write_rows(
+                output_dir / "analysis_provenance.csv",
+                ANALYSIS_PROVENANCE_FIELDS,
+                captured_provenance_rows,
+            ),
+        ]
+        for artifact in output_artifacts:
+            if artifact is not None:
+                artifacts[artifact.artifact] = artifact
         for filename, report in extended_reports.items():
-            write_rows(args.output_dir / filename, report.fields, report.rows)
-    else:
-        write_summary(None, summary_rows)
+            artifact = write_rows(output_dir / filename, report.fields, report.rows)
+            artifacts[artifact.artifact] = artifact
+
+        write_analysis_manifest(output_dir, artifacts, omitted, args.output_profile)
+        assert final_output_dir is not None
+        fsync_directory(output_dir)
+        os.replace(output_dir, final_output_dir)
+        published = True
+        fsync_directory(final_output_dir.parent)
+    except BaseException as error:
+        for writer in open_writers:
+            if not writer.closed:
+                try:
+                    writer.close()
+                except BaseException:
+                    pass
+        marker_dir = final_output_dir if published else output_dir
+        marked = False
+        if marker_dir is not None:
+            marked = write_incomplete_marker(
+                marker_dir,
+                args.output_profile,
+                error,
+                published,
+            )
+        if (
+            published
+            and not marked
+            and final_output_dir is not None
+            and output_dir is not None
+        ):
+            try:
+                os.replace(final_output_dir, output_dir)
+                published = False
+                write_incomplete_marker(
+                    output_dir,
+                    args.output_profile,
+                    error,
+                    published,
+                )
+            except OSError:
+                pass
+        raise
 
     return 0
 

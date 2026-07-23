@@ -154,7 +154,11 @@ collector restores only the exact whole-second mtime truncation caused by the
 measured SFTP transport, then verifies it again. Other integrity failures abort
 publication. A manifestless partial run is published as transferred and
 explicitly labeled unverified. The collector transfers timestamped nrUE process
-directories only; it does not copy `configs/nrUE`.
+directories only; it does not copy `configs/nrUE`. After collection it prints
+a ready-to-run analyzer command with a literal, timestamped child below
+`Analysis`. If that name already exists, `_01`, `_02`, and later suffixes are
+tested until the recommendation is nonexistent; no shell command substitution
+is left for the operator to expand.
 
 ## Run a controlled paired campaign
 
@@ -265,21 +269,47 @@ resampling assumptions from entering the analysis.
 Run analysis on the laptop:
 
 ```bash
-ANALYSIS_DIR=/home/turker/Documents/OpenAirInterface/PerformanceProfiles/Analysis/$(date +%Y-%m-%d_%H-%M-%S)
+ANALYSIS_DIR=/home/turker/Documents/OpenAirInterface/PerformanceProfiles/Analysis/2026-07-24_02-15-00
 ./tools/profiling/oai_profile_analyze.py \
   /home/turker/Documents/OpenAirInterface/PerformanceProfiles \
   --output-dir "$ANALYSIS_DIR"
 ```
 
+Choose a new literal final component for every manual invocation; the
+destination must not exist. The collector command above automatically prints
+such a collision-checked recommendation.
+
+`--output-profile full` is the default and preserves all detailed outputs. For
+publication-scale repeated analysis, use:
+
+```bash
+./tools/profiling/oai_profile_analyze.py \
+  /home/turker/Documents/OpenAirInterface/PerformanceProfiles \
+  --output-profile publication \
+  --output-dir "$ANALYSIS_DIR"
+```
+
+The publication profile omits only the regenerable per-event
+`event_timeline.csv` and per-duration `hierarchy.csv`. It retains canonical
+summaries, integrity evidence, deadlines, correlations, and hard hierarchy
+anomalies. Routine valid asynchronous edges are represented compactly in
+`causal_edges_summary.csv`, keyed by profile, parent/child event, absolute-slot
+delta, and temporal shape with edge counts and boundary-distance
+distributions.
+
 The analyzer writes:
 
 - `summary.csv` and `by_thread.csv`: inclusive per-event distributions.
-- `hierarchy.csv`: one schema-2 duration row with its parent relation,
+- `event_timeline.csv` (full profile): every normalized event plus its
+  process-local clock mapping.
+- `hierarchy.csv` (full profile): one schema-2 duration row with its parent relation,
   direct-child interval union, overlap, and validated exclusive duration.
 - `exclusive_summary.csv`: per-event exclusive distributions using valid
   hierarchy rows only.
-- `hierarchy_anomalies.csv`: missing parents, correlation mismatches, and
-  causal children outside their parent's time interval.
+- `hierarchy_anomalies.csv`: full mode includes missing parents, correlation
+  mismatches, duplicate span IDs, and causal children outside their parent's
+  time interval. Publication mode retains the first three hard relations;
+  routine causal children move to `causal_edges_summary.csv`.
 - `hierarchy_integrity.csv`: per-process identity, parent, correlation,
   absolute-slot, and nesting diagnostics.
 - `correlations.csv`: one process-local radio-work correlation with its slot
@@ -320,6 +350,29 @@ The analyzer writes:
   role states, anchors, exits, manifests, and paired completeness.
 - `observer_effect_summary.csv`: repeated-run process outcomes relative to
   `disabled`, and per-run event medians relative to `in-process`.
+- `analysis_inputs.csv`: discovered run identities plus presence and SHA-256
+  of each input `archive_manifest.csv`.
+- `analysis_provenance.csv`: the raw argument vector, parsed input arguments,
+  event filter, output profile/destination, working directory, Python identity,
+  and SHA-256/path for the analyzer and directly affecting clock, deadline,
+  report, and archive-integrity modules. These rows are captured immediately
+  after argument validation, before profile discovery and the long event pass.
+- `analysis_manifest.csv`: every generated or intentionally omitted analysis
+  artifact, with generated data-row count, size, and SHA-256. The manifest
+  explicitly excludes its own digest to avoid self-reference.
+
+The destination must not already exist. Output is written to a sibling partial
+directory, each CSV is flushed and synchronized, and the directory is renamed
+atomically only after complete generation and provenance. A failure before
+rename returns nonzero and leaves the partial directory with
+`ANALYSIS_INCOMPLETE.txt` labeled `publication_state=unpublished_partial`; the
+requested destination is absent. After rename, the parent directory is also
+synchronized. If that final synchronization fails, analysis still returns
+nonzero and the visible requested destination is explicitly marked
+`publication_state=published_incomplete`. If even that final marker cannot be
+persisted, the analyzer makes a best-effort atomic rollback to the partial name
+and marks it there. Full and publication analyses preserve the same retained
+canonical summary values and ordering.
 
 It accepts Phase 1/schema-1 and schema-2 archives. Schema-1 rows are reported
 with unknown event kind, absolute slot, and CPU plus zero causal IDs, rather

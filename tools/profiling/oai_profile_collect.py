@@ -11,6 +11,7 @@ import shlex
 import stat
 import subprocess
 import tempfile
+from datetime import datetime
 from pathlib import Path
 
 from oai_profile_archive import MANIFEST_NAME, verify_archive
@@ -25,6 +26,31 @@ RUN_NAME = re.compile(
 def default_local_root() -> Path:
     repository = Path(__file__).resolve().parents[2]
     return repository.parent / "PerformanceProfiles"
+
+
+def next_analysis_output_dir(local_root: Path, timestamp: str | None = None) -> Path:
+    """Return a timestamped analysis destination that does not yet exist."""
+    if timestamp is None:
+        timestamp = datetime.now().astimezone().strftime("%Y-%m-%d_%H-%M-%S")
+    analysis_root = local_root / "Analysis"
+    candidate = analysis_root / timestamp
+    suffix = 1
+    while candidate.exists():
+        candidate = analysis_root / f"{timestamp}_{suffix:02d}"
+        suffix += 1
+    return candidate
+
+
+def analysis_command(local_root: Path, output_dir: Path) -> str:
+    """Return a ready-to-run, shell-quoted analyzer command."""
+    return shlex.join(
+        [
+            str(Path(__file__).with_name("oai_profile_analyze.py")),
+            str(local_root),
+            "--output-dir",
+            str(output_dir),
+        ]
+    )
 
 
 def list_remote_runs(remote: str, remote_root: str) -> list[str]:
@@ -139,11 +165,8 @@ def main() -> int:
         copied += copy_run(args.remote, args.remote_root, local_root, name, args.dry_run)
 
     print(f"{copied} run(s) {'would be copied' if args.dry_run else 'copied'}")
-    print(
-        "analyze with: "
-        f"{Path(__file__).with_name('oai_profile_analyze.py')} "
-        f"{local_root} --output-dir {local_root / 'Analysis'}"
-    )
+    output_dir = next_analysis_output_dir(local_root)
+    print(f"analyze with: {analysis_command(local_root, output_dir)}")
     return 0
 
 

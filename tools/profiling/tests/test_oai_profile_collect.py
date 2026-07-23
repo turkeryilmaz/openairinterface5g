@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import os
+import shlex
 import shutil
 import sys
 import tempfile
@@ -15,10 +16,44 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from oai_profile_archive import finalize_archive, verify_archive  # noqa: E402
-from oai_profile_collect import copy_run, normalize_manifest_mtimes  # noqa: E402
+from oai_profile_collect import (  # noqa: E402
+    analysis_command,
+    copy_run,
+    next_analysis_output_dir,
+    normalize_manifest_mtimes,
+)
 
 
 class ProfileCollectorTest(unittest.TestCase):
+    def test_analysis_recommendation_uses_unique_nonexistent_static_path(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="oai-profile-collect-") as temporary:
+            local_root = Path(temporary) / "profiles with spaces"
+            analysis_root = local_root / "Analysis"
+            timestamp = "2026-07-24_02-05-00"
+            (analysis_root / timestamp).mkdir(parents=True)
+            (analysis_root / f"{timestamp}_01").mkdir()
+
+            output_dir = next_analysis_output_dir(local_root, timestamp)
+
+            self.assertEqual(output_dir, analysis_root / f"{timestamp}_02")
+            self.assertFalse(output_dir.exists())
+            command = analysis_command(local_root, output_dir)
+            self.assertNotIn("$(", command)
+            self.assertEqual(
+                shlex.split(command),
+                [
+                    str(
+                        Path(__file__)
+                        .resolve()
+                        .parents[1]
+                        .joinpath("oai_profile_analyze.py")
+                    ),
+                    str(local_root),
+                    "--output-dir",
+                    str(output_dir),
+                ],
+            )
+
     def make_archive(self, root: Path) -> tuple[Path, Path]:
         run_dir = root / "2026-07-23_22-00-35_nrUE_cm5"
         run_dir.mkdir()
