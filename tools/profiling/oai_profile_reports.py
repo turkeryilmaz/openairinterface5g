@@ -25,6 +25,8 @@ from oai_profile_archive import (
 )
 
 THREAD_METRIC_CPU_FREQUENCY_VALID = 1 << 3
+CAMPAIGN_SUCCESS_STOP_REASONS = {"duration_elapsed", "measurement_complete"}
+CAMPAIGN_VALID_DURATION_STATUSES = {"valid", "legacy_realtime_fallback"}
 
 
 IDENTITY_FIELDS = [
@@ -58,6 +60,15 @@ def parse_float(value: object, default: float = math.nan) -> float:
     except (TypeError, ValueError):
         return default
     return parsed if math.isfinite(parsed) else default
+
+
+def campaign_member_succeeded(row: dict[str, object]) -> bool:
+    return (
+        row.get("status") == "finished"
+        and parse_int(row.get("return_code"), -1) == 0
+        and row.get("stop_reason") in CAMPAIGN_SUCCESS_STOP_REASONS
+        and row.get("duration_status") in CAMPAIGN_VALID_DURATION_STATUSES
+    )
 
 
 def elapsed_duration(
@@ -2092,6 +2103,10 @@ def observer_effect_report(
         tuple[str, str, str, str, str, str],
         dict[str, list[tuple[str, float]]],
     ] = defaultdict(lambda: defaultdict(list))
+    campaign_success_by_dir = {
+        str(row.get("profile_dir", "")): campaign_member_succeeded(row)
+        for row in campaign_rows
+    }
     for row in campaign_rows:
         campaign_id = str(row.get("campaign_id", ""))
         case = str(row.get("case", ""))
@@ -2100,12 +2115,12 @@ def observer_effect_report(
         trial = str(row.get("trial", ""))
         if not campaign_id or not case or not variant:
             continue
+        success = int(campaign_member_succeeded(row))
         duration = parse_float(row.get("duration_s"))
-        if math.isfinite(duration):
+        if success and math.isfinite(duration):
             grouped[(campaign_id, case, role, "process", "process_duration", "s")][variant].append(
                 (trial, duration)
             )
-        success = int(row.get("status") == "finished" and parse_int(row.get("return_code"), -1) == 0)
         grouped[(campaign_id, case, role, "process", "process_success", "fraction")][variant].append(
             (trial, float(success))
         )
@@ -2114,6 +2129,8 @@ def observer_effect_report(
         if row.get("event_kind") != "duration" or row.get("event_name") == "PROFILER_PRIMITIVE_CALIBRATION":
             continue
         profile_key = str(row.get("profile_dir", ""))
+        if not campaign_success_by_dir.get(profile_key, False):
+            continue
         metadata = metadata_by_dir.get(profile_key, {})
         campaign = campaign_by_dir.get(profile_key, {})
         campaign_id = metadata.get("campaign_id", str(campaign.get("campaign_id", "")))
@@ -2244,6 +2261,7 @@ def campaign_completeness_report(
         "unexpected_roles",
         "duplicate_roles",
         "finished_roles",
+        "successful_roles",
         "finalized_roles",
         "integrity_valid_roles",
         "paired_complete",
@@ -2275,6 +2293,11 @@ def campaign_completeness_report(
         unexpected_roles = roles - expected
         duplicate_roles = {role: count for role, count in role_counts.items() if count > 1}
         finished = {str(member.get("role", "")) for member in members if member.get("status") == "finished"}
+        successful = {
+            str(member.get("role", ""))
+            for member in members
+            if campaign_member_succeeded(member)
+        }
         finalized = {
             str(member.get("role", ""))
             for member in members
@@ -2290,6 +2313,7 @@ def campaign_completeness_report(
             len(members) == len(expected)
             and role_counts == Counter({"gNB": 1, "nrUE": 1})
             and finished == expected
+            and successful == expected
             and finalized == expected
             and valid == expected
         )
@@ -2302,6 +2326,8 @@ def campaign_completeness_report(
             issues.append("duplicate_role")
         if finished != expected:
             issues.append("unfinished_role")
+        if successful != expected:
+            issues.append("unsuccessful_role")
         if finalized != expected:
             issues.append("unfinalized_role")
         if valid != expected:
@@ -2322,6 +2348,7 @@ def campaign_completeness_report(
                     f"{role}:{count}" for role, count in sorted(duplicate_roles.items())
                 ),
                 "finished_roles": ";".join(sorted(finished)),
+                "successful_roles": ";".join(sorted(successful)),
                 "finalized_roles": ";".join(sorted(finalized)),
                 "integrity_valid_roles": ";".join(sorted(valid)),
                 "paired_complete": int(complete),

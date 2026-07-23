@@ -21,6 +21,7 @@ from oai_profile_reports import (  # noqa: E402
     campaign_completeness_report,
     external_sources_report,
     host_metrics_report,
+    observer_effect_report,
     perf_stat_report,
     source_alignment_status,
 )
@@ -84,7 +85,7 @@ def write_campaign_run(
         "pmu_mode": "software" if profile_enabled else "off",
         "status": "finished",
         "return_code": 0,
-        "stop_reason": "measurement_complete",
+        "stop_reason": "duration_elapsed",
         "start_realtime_ns": start_realtime_ns,
         "end_realtime_ns": start_realtime_ns + duration_s * 1_000_000_000,
         "start_monotonic_raw_ns": start_monotonic_ns,
@@ -401,6 +402,98 @@ class AnalyzerSchemaCompatibilityTest(unittest.TestCase):
         self.assertEqual(completeness.rows[0]["duplicate_roles"], "gNB:2")
         self.assertEqual(completeness.rows[0]["paired_complete"], 0)
         self.assertIn("duplicate_role", str(completeness.rows[0]["status"]))
+
+    def test_early_campaign_exit_is_unsuccessful_and_excluded_from_duration(self) -> None:
+        successful = {
+            "profile_dir": "/run/valid",
+            "campaign_id": "campaign",
+            "experiment_id": "valid-experiment",
+            "case": "case",
+            "variant": "disabled",
+            "trial": "1",
+            "role": "gNB",
+            "status": "finished",
+            "return_code": 0,
+            "stop_reason": "duration_elapsed",
+            "duration_s": 120.0,
+            "duration_status": "valid",
+            "archive_status": "finalization_pending",
+            "archive_manifest_present": 1,
+        }
+        early = {
+            **successful,
+            "profile_dir": "/run/early",
+            "experiment_id": "early-experiment",
+            "trial": "2",
+            "stop_reason": "paired_role_exited",
+            "duration_s": 2.0,
+        }
+        observer = observer_effect_report([successful, early], [], {}, {})
+        duration = next(row for row in observer.rows if row["metric_name"] == "process_duration")
+        success = next(row for row in observer.rows if row["metric_name"] == "process_success")
+        self.assertEqual(duration["sample_count"], 1)
+        self.assertEqual(duration["p50"], 120.0)
+        self.assertEqual(success["sample_count"], 2)
+        self.assertEqual(success["mean"], 0.5)
+
+        successful_event = {
+            **successful,
+            "profile_dir": "/run/valid-event",
+            "variant": "in-process",
+        }
+        early_event = {
+            **early,
+            "profile_dir": "/run/early-event",
+            "variant": "in-process",
+        }
+        summary_rows = [
+            {
+                "profile_dir": successful_event["profile_dir"],
+                "event_kind": "duration",
+                "event_name": "UE_SLOT_PROCESS",
+                "p50_us": 100.0,
+            },
+            {
+                "profile_dir": early_event["profile_dir"],
+                "event_kind": "duration",
+                "event_name": "UE_SLOT_PROCESS",
+                "p50_us": 1.0,
+            },
+        ]
+        metadata_by_dir = {
+            str(row["profile_dir"]): {
+                "campaign_id": "campaign",
+                "role": "gNB",
+                "variant": "in-process",
+                "trial": str(row["trial"]),
+            }
+            for row in (successful_event, early_event)
+        }
+        campaign_by_dir = {
+            str(row["profile_dir"]): {"case": "case"}
+            for row in (successful_event, early_event)
+        }
+        observer = observer_effect_report(
+            [successful_event, early_event],
+            summary_rows,
+            metadata_by_dir,
+            campaign_by_dir,
+        )
+        event = next(row for row in observer.rows if row["metric_name"] == "UE_SLOT_PROCESS")
+        self.assertEqual(event["sample_count"], 1)
+        self.assertEqual(event["p50"], 100.0)
+
+        paired_members = [
+            {**successful, "experiment_id": "paired", "role": "gNB"},
+            {**early, "experiment_id": "paired", "role": "nrUE"},
+        ]
+        integrity_rows = [
+            {"profile_dir": row["profile_dir"], "valid": 1} for row in paired_members
+        ]
+        completeness = campaign_completeness_report(paired_members, integrity_rows)
+        self.assertEqual(completeness.rows[0]["successful_roles"], "gNB")
+        self.assertEqual(completeness.rows[0]["paired_complete"], 0)
+        self.assertIn("unsuccessful_role", str(completeness.rows[0]["status"]))
 
     def test_pairing_is_bijective_and_experiment_ids_are_authoritative(self) -> None:
         def run(name: str, role: str, experiment_id: str, start: int, end: int) -> dict[str, object]:

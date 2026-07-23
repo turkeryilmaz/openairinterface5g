@@ -576,6 +576,9 @@ def preflight_endpoint(handle: ProcessHandle) -> None:
         result = remote_run(endpoint, f"test -x {shlex.quote(endpoint.archive_tool)}", check=False, capture=True)
         if result.returncode != 0:
             raise RuntimeError(f"archive tool is not executable on {endpoint.host}: {endpoint.archive_tool}")
+        result = remote_run(endpoint, "setsid --wait sh -c 'exit 0'", check=False, capture=True)
+        if result.returncode != 0:
+            raise RuntimeError(f"setsid --wait is unavailable on {endpoint.host}: {result.stderr.strip()}")
     if handle.sidecar_tool != "none":
         handle.sidecar_version = perf_version(endpoint)
     if endpoint.sudo:
@@ -619,7 +622,7 @@ def launch_remote(handle: ProcessHandle, control_dir: Path) -> None:
     working_directory = handle.endpoint.cwd or "."
     inner = f"printf '%s\\n' $$ > {shlex.quote(control_pid)}; exec {shlex.join(handle.command)}"
     shell = (
-        f"cd {shlex.quote(working_directory)} && exec setsid sh -c {shlex.quote(inner)} "
+        f"cd {shlex.quote(working_directory)} && exec setsid --wait sh -c {shlex.quote(inner)} "
         f">{shlex.quote(handle.run_dir + '/stdout.log')} 2>{shlex.quote(handle.run_dir + '/stderr.log')}"
     )
     control_dir.mkdir(parents=True, exist_ok=True)
@@ -1231,6 +1234,19 @@ def integer_filter(values: list[str]) -> set[int]:
     return parsed
 
 
+def experiment_failed(rows: list[dict[str, Any]], expected_roles: set[str]) -> bool:
+    observed_roles = [str(row.get("role", "")) for row in rows]
+    role_set_invalid = len(observed_roles) != len(expected_roles) or set(observed_roles) != expected_roles
+    return role_set_invalid or any(
+        row["archive_status"] != "finalized"
+        or row["run_status"] != "finished"
+        or row["return_code"] != 0
+        or row["stop_reason"] != "duration_elapsed"
+        or (row["sidecar"] != "none" and row["sidecar_status"] != "registered")
+        for row in rows
+    )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("spec", type=Path)
@@ -1256,15 +1272,11 @@ def main() -> int:
     control_root = control_root.expanduser().resolve()
     control_root.mkdir(parents=True, exist_ok=True)
     failures = 0
+    expected_roles = set(spec["_start_order"])
     for plan in plans:
         try:
             rows = execute_plan(spec, plan, control_root)
-            failures += any(
-                row["archive_status"] != "finalized"
-                or row["run_status"] != "finished"
-                or (row["sidecar"] != "none" and row["sidecar_status"] != "registered")
-                for row in rows
-            )
+            failures += experiment_failed(rows, expected_roles)
         except Exception as error:
             failures += 1
             print(f"experiment failed: {plan.experiment_id}: {error}", file=sys.stderr)

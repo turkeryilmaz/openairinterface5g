@@ -5,11 +5,15 @@
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import shlex
+import stat
 import subprocess
 import tempfile
 from pathlib import Path
+
+from oai_profile_archive import MANIFEST_NAME, verify_archive
 
 
 DEFAULT_REMOTE_ROOT = "/mnt/ssd/Documents/OpenAirInterface/PerformanceProfiles"
@@ -42,6 +46,43 @@ def list_remote_runs(remote: str, remote_root: str) -> list[str]:
     return sorted(set(names))
 
 
+def normalize_manifest_mtimes(run_dir: Path) -> int | None:
+    manifest = run_dir / MANIFEST_NAME
+    try:
+        manifest_mode = manifest.lstat().st_mode
+    except FileNotFoundError:
+        return None
+    if not stat.S_ISREG(manifest_mode):
+        raise RuntimeError("transferred archive manifest is not a regular file")
+    results = verify_archive(run_dir)
+    failures = [result for result in results if not result.valid]
+    invalid = []
+    for result in failures:
+        expected_second = result.expected_mtime_ns // 1_000_000_000 * 1_000_000_000
+        if result.status != "mtime_mismatch":
+            invalid.append(f"{result.relative_path}:{result.status}")
+        elif result.observed_mtime_ns != expected_second:
+            invalid.append(f"{result.relative_path}:mtime_mismatch_not_second_truncation")
+    if invalid:
+        statuses = ", ".join(invalid)
+        raise RuntimeError(f"transferred archive failed verification: {statuses}")
+    for result in failures:
+        path = run_dir / result.relative_path
+        observed = path.stat()
+        os.utime(
+            path,
+            ns=(observed.st_atime_ns, result.expected_mtime_ns),
+            follow_symlinks=False,
+        )
+    final_failures = [result for result in verify_archive(run_dir) if not result.valid]
+    if final_failures:
+        statuses = ", ".join(
+            f"{result.relative_path}:{result.status}" for result in final_failures
+        )
+        raise RuntimeError(f"transferred archive failed verification after mtime restore: {statuses}")
+    return len(failures)
+
+
 def copy_run(remote: str, remote_root: str, local_root: Path, name: str, dry_run: bool) -> bool:
     destination = local_root / name
     if destination.exists():
@@ -59,6 +100,11 @@ def copy_run(remote: str, remote_root: str, local_root: Path, name: str, dry_run
         copied = staging / name
         if not copied.is_dir():
             raise RuntimeError(f"scp did not create expected directory: {copied}")
+        restored_mtimes = normalize_manifest_mtimes(copied)
+        if restored_mtimes is None:
+            print(f"warning: unverified manifestless partial run: {name}")
+        else:
+            print(f"verified manifest: {name} (restored_mtimes={restored_mtimes})")
         copied.rename(destination)
     print(f"collected: {destination}")
     return True

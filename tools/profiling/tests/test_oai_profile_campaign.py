@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import csv
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -23,9 +24,12 @@ from oai_profile_campaign import (  # noqa: E402
     ProcessHandle,
     Variant,
     build_plans,
+    experiment_failed,
     execute_plan,
+    launch_remote,
     load_spec,
     plan_view,
+    preflight_endpoint,
     register_sidecar,
     redact_command,
     remote_group_is_running,
@@ -90,6 +94,77 @@ def read_results(path: Path) -> list[dict[str, str]]:
 
 
 class CampaignRunnerTest(unittest.TestCase):
+    def test_remote_launch_waits_for_session_payload(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="oai-profile-remote-launch-") as temporary:
+            root = Path(temporary)
+            run_dir = root / "profiles" / "run"
+            run_dir.mkdir(parents=True)
+            marker = root / "payload-finished"
+            payload = (
+                "import pathlib,sys,time;"
+                "time.sleep(0.1);"
+                f"pathlib.Path({str(marker)!r}).write_text('done');"
+                "sys.exit(7)"
+            )
+            endpoint = Endpoint(
+                role="nrUE",
+                host="cm5",
+                hostname="cm5",
+                profile_root=str(run_dir.parent),
+                command=[sys.executable, "-c", payload],
+                cwd=str(root),
+                sudo=False,
+                environment={},
+                archive_tool="/repo/tools/profiling/oai_profile_archive.py",
+                launch_delay_s=0.0,
+            )
+            handle = ProcessHandle(
+                endpoint=endpoint,
+                run_dir=str(run_dir),
+                command=endpoint.command,
+                environment={},
+            )
+            with patch("oai_profile_campaign.subprocess.Popen", return_value=object()) as popen:
+                launch_remote(handle, root / "control")
+
+            remote_shell = popen.call_args.args[0][-1]
+            self.assertIn("exec setsid --wait sh -c", remote_shell)
+            assert handle.stdout_handle is not None
+            assert handle.stderr_handle is not None
+            handle.stdout_handle.close()
+            handle.stderr_handle.close()
+            completed = subprocess.run(["sh", "-c", remote_shell], check=False)
+            self.assertEqual(completed.returncode, 7)
+            self.assertEqual(marker.read_text(), "done")
+            control_pid = int((run_dir / "control.pid").read_text())
+            with self.assertRaises(ProcessLookupError):
+                os.kill(control_pid, 0)
+
+    def test_remote_preflight_requires_setsid_wait(self) -> None:
+        endpoint = Endpoint(
+            role="nrUE",
+            host="cm5",
+            hostname="cm5",
+            profile_root="/profiles",
+            command=["nr-uesoftmodem"],
+            cwd=None,
+            sudo=False,
+            environment={},
+            archive_tool="/repo/tools/profiling/oai_profile_archive.py",
+            launch_delay_s=0.0,
+        )
+        handle = ProcessHandle(
+            endpoint=endpoint,
+            run_dir="/profiles/run",
+            command=endpoint.command,
+            environment={},
+        )
+        completed = subprocess.CompletedProcess(["ssh"], 0, "", "")
+        with patch("oai_profile_campaign.remote_run", return_value=completed) as remote:
+            preflight_endpoint(handle)
+        commands = [call.args[1] for call in remote.call_args_list]
+        self.assertIn("setsid --wait sh -c 'exit 0'", commands)
+
     def test_remote_group_control_survives_ssh_process_exit(self) -> None:
         endpoint = Endpoint(
             role="nrUE",
@@ -337,6 +412,62 @@ class CampaignRunnerTest(unittest.TestCase):
             results = read_results(control_root / "campaign_results.csv")
             self.assertEqual(len(results), 2)
             self.assertEqual({row["run_status"] for row in results}, {"finished"})
+
+    def test_experiment_failure_requires_complete_duration(self) -> None:
+        successful = {
+            "role": "gNB",
+            "archive_status": "finalized",
+            "run_status": "finished",
+            "return_code": 0,
+            "stop_reason": "duration_elapsed",
+            "sidecar": "none",
+            "sidecar_status": "not_requested",
+        }
+        self.assertFalse(experiment_failed([successful], {"gNB"}))
+        for field, value in (
+            ("archive_status", "finalize_failed"),
+            ("run_status", "exited_nonzero"),
+            ("return_code", 1),
+            ("stop_reason", "paired_role_exited"),
+        ):
+            failed = dict(successful)
+            failed[field] = value
+            self.assertTrue(experiment_failed([failed], {"gNB"}), field)
+        self.assertTrue(experiment_failed([], {"gNB", "nrUE"}))
+        self.assertTrue(experiment_failed([successful], {"gNB", "nrUE"}))
+        self.assertTrue(experiment_failed([successful, successful], {"gNB", "nrUE"}))
+
+    def test_main_fails_clean_early_exit_and_preserves_archives(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="oai-profile-campaign-early-exit-") as temporary:
+            root = Path(temporary)
+            spec_path = root / "campaign.json"
+            early_exit = [sys.executable, "-c", "import time;time.sleep(0.15)"]
+            peer = [sys.executable, "-c", GRACEFUL_SLEEP]
+            write_spec(
+                spec_path,
+                root / "profiles",
+                early_exit,
+                peer,
+                duration_s=2.0,
+            )
+            control_root = root / "control"
+            argv = [
+                "oai_profile_campaign.py",
+                str(spec_path),
+                "--execute",
+                "--control-root",
+                str(control_root),
+            ]
+            with patch.object(sys, "argv", argv):
+                self.assertEqual(campaign.main(), 1)
+
+            rows = read_results(control_root / "campaign_results.csv")
+            self.assertEqual(len(rows), 2)
+            self.assertEqual({row["return_code"] for row in rows}, {"0"})
+            self.assertNotIn("duration_elapsed", {row["stop_reason"] for row in rows})
+            for row in rows:
+                self.assertEqual(row["archive_status"], "finalized")
+                self.assertTrue(all(result.valid for result in verify_archive(Path(row["run_dir"]))))
 
     def test_partial_launch_failure_preserves_both_prepared_archives(self) -> None:
         with tempfile.TemporaryDirectory(prefix="oai-profile-campaign-failure-") as temporary:

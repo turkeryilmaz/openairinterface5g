@@ -149,9 +149,12 @@ From the laptop repository root, preview and then collect missing nrUE runs:
 
 The collector defaults to the CM5 and laptop roots shown above. Existing local
 runs are skipped. Each new run is copied into a temporary directory on the
-laptop and atomically renamed into the archive after `scp` succeeds. The
-collector transfers timestamped nrUE process directories only; it does not copy
-`configs/nrUE`.
+laptop. A finalized archive is verified before atomic publication; the
+collector restores only the exact whole-second mtime truncation caused by the
+measured SFTP transport, then verifies it again. Other integrity failures abort
+publication. A manifestless partial run is published as transferred and
+explicitly labeled unverified. The collector transfers timestamped nrUE process
+directories only; it does not copy `configs/nrUE`.
 
 ## Run a controlled paired campaign
 
@@ -208,6 +211,10 @@ the laptop orchestrator clock and are therefore left blank in the remote
 `CLOCK_MONOTONIC_RAW` and can be aligned to that run's `sync.csv`.
 Commands and environments are archived in redacted form; password/token/key
 fragments and IMSI/SUPI/IMEI subscriber identifiers are never retained.
+Successful execution requires every role to reach the declared duration,
+return zero after the requested stop, finalize its archive, and register every
+requested sidecar. An early role exit fails the experiment even when its
+process wrapper returns zero.
 `--keep-going` continues the matrix after a failed paired experiment; without
 it, the runner stops after preserving and finalizing the failed experiment.
 
