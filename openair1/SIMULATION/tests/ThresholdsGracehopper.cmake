@@ -124,8 +124,8 @@ check_threshold_variance(physim.5g.ldpctest.test19 "Decoding time mean:" AVG 29 
 check_threshold_variance(physim.5g.ldpctest.test20 "Encoding time mean:" AVG 10 ABS_VAR 2)
 check_threshold_variance(physim.5g.ldpctest.test20 "Decoding time mean:" AVG 35 ABS_VAR 7)
 
-check_threshold_variance(physim.5g.nr_ulsim_mu_mimo.test1 "ULSCH total decoding time" AVG 475 ABS_VAR 95)
-check_threshold_variance(physim.5g.nr_ulsim_mu_mimo.test2 "ULSCH total decoding time" AVG 420 ABS_VAR 84)
-check_threshold_variance(physim.5g.nr_ulsim_mu_mimo.test3 "ULSCH total decoding time" AVG 2814 ABS_VAR 563)
-check_threshold_variance(physim.5g.nr_ulsim_mu_mimo.test4 "ULSCH total decoding time" AVG 3840 ABS_VAR 768)
-check_threshold_variance(physim.5g.nr_ulsim_mu_mimo.test5 "ULSCH total decoding time" AVG 3187 ABS_VAR 637)
+check_threshold_variance(physim.5g.nr_ulsim_mu_mimo.test1 "ULSCH total decoding time" AVG 334 ABS_VAR 67)
+check_threshold_variance(physim.5g.nr_ulsim_mu_mimo.test2 "ULSCH total decoding time" AVG 290 ABS_VAR 58)
+check_threshold_variance(physim.5g.nr_ulsim_mu_mimo.test3 "ULSCH total decoding time" AVG 2107 ABS_VAR 421)
+check_threshold_variance(physim.5g.nr_ulsim_mu_mimo.test4 "ULSCH total decoding time" AVG 2743 ABS_VAR 549)
+check_threshold_variance(physim.5g.nr_ulsim_mu_mimo.test5 "ULSCH total decoding time" AVG 2148 ABS_VAR 430)
