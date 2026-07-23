@@ -147,7 +147,6 @@ static void send_ssb_rsrp_meas(PHY_VARS_NR_UE *ue,
                                const UE_nr_rxtx_proc_t *proc,
                                uint16_t Nid_cell,
                                int rsrp_dBm,
-                               bool is_neighboring_cell,
                                int ssb_index,
                                float sinr_dB)
 {
@@ -158,7 +157,7 @@ static void send_ssb_rsrp_meas(PHY_VARS_NR_UE *ue,
       .gNB_index = proc->gNB_id,
       .meas_type = NFAPI_NR_SS_MEAS,
       .Nid_cell = Nid_cell,
-      .is_neighboring_cell = is_neighboring_cell,
+      .is_neighboring_cell = false,
       .rsrp_dBm = rsrp_dBm,
       .ssb_index = ssb_index,
       .sinr_dB = sinr_dB,
@@ -175,6 +174,13 @@ static void send_ssb_rsrp_meas(PHY_VARS_NR_UE *ue,
                                                                       .slot = proc->nr_slot_rx,
                                                                       .rx_ind = &rx_ind};
   ue->if_inst->dl_indication(&dl_indication);
+}
+
+// Send neighboring-cell SSB RSRP measurement directly to RRC via ITTI
+static void send_neighbor_cell_meas(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, uint16_t Nid_cell, int rsrp_dBm)
+{
+  if (ue->if_inst && ue->if_inst->meas_ind)
+    ue->if_inst->meas_ind(ue->Mod_id, proc->gNB_id, Nid_cell, false, true, rsrp_dBm);
 }
 
 // This function implements:
@@ -222,7 +228,6 @@ void nr_ue_ssb_rsrp_measurements(PHY_VARS_NR_UE *ue,
                      proc,
                      ue->frame_parms.Nid_cell,
                      ue->measurements.ssb_rsrp_dBm[ssb_index],
-                     false,
                      ssb_index,
                      ue->measurements.ssb_sinr_dB[ssb_index]);
 }
@@ -455,7 +460,7 @@ static void handle_blind_search(fapi_nr_neighboring_cell_t *nr_neighboring_cell,
   }
 }
 
-void search_new_neighboring_cell(UE_nr_rxtx_proc_t *proc, PHY_VARS_NR_UE *ue, c16_t **rxdata, uint32_t rxdata_size)
+static void search_new_neighboring_cell(UE_nr_rxtx_proc_t *proc, PHY_VARS_NR_UE *ue, c16_t **rxdata, uint32_t rxdata_size)
 {
   // Generate PSS time-domain sequences once for all neighbor cells
   NR_DL_FRAME_PARMS *frame_parms = &ue->frame_parms;
@@ -510,7 +515,7 @@ void search_new_neighboring_cell(UE_nr_rxtx_proc_t *proc, PHY_VARS_NR_UE *ue, c1
   }
 }
 
-void do_neighboring_cell_measurements(UE_nr_rxtx_proc_t *proc, PHY_VARS_NR_UE *ue, c16_t **rxdata)
+static void do_neighboring_cell_measurements(UE_nr_rxtx_proc_t *proc, PHY_VARS_NR_UE *ue, c16_t **rxdata)
 {
   // Generate PSS time-domain sequences once for all neighbor cells
   NR_DL_FRAME_PARMS *frame_parms = &ue->frame_parms;
@@ -547,7 +552,7 @@ void do_neighboring_cell_measurements(UE_nr_rxtx_proc_t *proc, PHY_VARS_NR_UE *u
           LOG_D(NR_PHY, "Neighbor cell confirmation failed for candidate with PCI=%d\n", neighbor_cell->Nid_cell);
         } else {
           LOG_D(NR_PHY, "Max consecutive failures reached for PCI=%d, resetting to full search\n", neighbor_cell->Nid_cell);
-          send_ssb_rsrp_meas(ue, proc, neighbor_cell->Nid_cell, INT_MAX, true, -1, 0.0);
+          send_neighbor_cell_meas(ue, proc, neighbor_cell->Nid_cell, INT_MAX);
         }
         reset_neighboring_cell_info(neighbor_cell, neighboring_cell_info, frame_parms->samples_per_slot_wCP);
       }
@@ -563,8 +568,8 @@ void do_neighboring_cell_measurements(UE_nr_rxtx_proc_t *proc, PHY_VARS_NR_UE *u
         - ((int)openair0_cfg[ue->rf_map.card].rx_gain[0] - (int)openair0_cfg[ue->rf_map.card].rx_gain_offset[0])
         - dB_fixed(ue->frame_parms.ofdm_symbol_size);
 
-    // Send SS measurements to MAC
-    send_ssb_rsrp_meas(ue, proc, neighbor_cell->Nid_cell, neighboring_cell_info->ssb_rsrp_dBm, true, -1, 0.0);
+    // Send SS measurements to RRC directly
+    send_neighbor_cell_meas(ue, proc, neighbor_cell->Nid_cell, neighboring_cell_info->ssb_rsrp_dBm);
   }
 }
 
