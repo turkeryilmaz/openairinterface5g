@@ -11,6 +11,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 
@@ -94,6 +95,29 @@ def read_results(path: Path) -> list[dict[str, str]]:
 
 
 class CampaignRunnerTest(unittest.TestCase):
+    def test_stop_handles_signals_reverse_launch_order(self) -> None:
+        gnb_handle = SimpleNamespace(stop_reason="")
+        nrue_handle = SimpleNamespace(stop_reason="")
+        handles = [gnb_handle, nrue_handle]
+        with (
+            patch("oai_profile_campaign.shutdown_target_is_running", return_value=True),
+            patch("oai_profile_campaign.signal_handle") as signal,
+            patch("oai_profile_campaign.wait_handles", side_effect=[False, False, True]),
+        ):
+            campaign.stop_handles(handles, "duration_elapsed", 1.0)
+
+        self.assertEqual(
+            [entry.args for entry in signal.call_args_list],
+            [
+                (nrue_handle, "INT"),
+                (gnb_handle, "INT"),
+                (nrue_handle, "TERM"),
+                (gnb_handle, "TERM"),
+                (nrue_handle, "KILL"),
+                (gnb_handle, "KILL"),
+            ],
+        )
+
     def test_remote_launch_waits_for_session_payload(self) -> None:
         with tempfile.TemporaryDirectory(prefix="oai-profile-remote-launch-") as temporary:
             root = Path(temporary)

@@ -728,15 +728,15 @@ def wait_handles(handles: list[ProcessHandle], timeout_s: float) -> bool:
 
 
 def stop_handles(handles: list[ProcessHandle], reason: str, grace_s: float) -> None:
-    for handle in handles:
+    for handle in reversed(handles):
         if shutdown_target_is_running(handle):
             handle.stop_reason = reason
             signal_handle(handle, "INT")
     if not wait_handles(handles, grace_s):
-        for handle in handles:
+        for handle in reversed(handles):
             signal_handle(handle, "TERM")
     if not wait_handles(handles, grace_s):
-        for handle in handles:
+        for handle in reversed(handles):
             signal_handle(handle, "KILL")
     wait_handles(handles, grace_s)
 
