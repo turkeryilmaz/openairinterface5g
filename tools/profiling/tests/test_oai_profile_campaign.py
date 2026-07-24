@@ -6,6 +6,7 @@ from __future__ import annotations
 import csv
 import json
 import os
+import shlex
 import signal
 import subprocess
 import sys
@@ -122,6 +123,112 @@ def read_results(path: Path) -> list[dict[str, str]]:
 
 
 class CampaignRunnerTest(unittest.TestCase):
+    def test_endpoint_text_read_honors_configured_sudo(self) -> None:
+        def endpoint(host: str, sudo: bool) -> Endpoint:
+            return Endpoint(
+                role="nrUE",
+                host=host,
+                hostname="cm5" if host == "cm5" else "local",
+                profile_root="/profiles",
+                command=["nr-uesoftmodem"],
+                cwd=None,
+                sudo=sudo,
+                environment={},
+                archive_tool=None,
+                launch_delay_s=0.0,
+            )
+
+        with tempfile.TemporaryDirectory(
+            prefix="oai-profile-endpoint-read-"
+        ) as temporary:
+            local_path = Path(temporary) / "ordinary.json"
+            local_path.write_text("local ordinary\n")
+            self.assertEqual(
+                campaign.read_endpoint_text(
+                    endpoint("local", False),
+                    str(local_path),
+                ),
+                "local ordinary\n",
+            )
+
+        local_result = subprocess.CompletedProcess(
+            ["sudo", "-n", "cat"],
+            0,
+            "local privileged\n",
+            "",
+        )
+        with patch(
+            "oai_profile_campaign.subprocess.run",
+            return_value=local_result,
+        ) as local_run:
+            self.assertEqual(
+                campaign.read_endpoint_text(
+                    endpoint("local", True),
+                    "/profiles/run/workload/workload_run.json",
+                ),
+                "local privileged\n",
+            )
+        local_run.assert_called_once_with(
+            [
+                "sudo",
+                "-n",
+                "cat",
+                "--",
+                "/profiles/run/workload/workload_run.json",
+            ],
+            check=False,
+            text=True,
+            capture_output=True,
+        )
+
+        for sudo in (False, True):
+            with self.subTest(remote=True, sudo=sudo):
+                remote_result = subprocess.CompletedProcess(
+                    ["ssh"],
+                    0,
+                    f"remote sudo={sudo}\n",
+                    "",
+                )
+                with patch(
+                    "oai_profile_campaign.remote_run",
+                    return_value=remote_result,
+                ) as remote:
+                    self.assertEqual(
+                        campaign.read_endpoint_text(
+                            endpoint("cm5", sudo),
+                            "/profiles/run with space/workload_run.json",
+                        ),
+                        f"remote sudo={sudo}\n",
+                    )
+                command = ["cat", "--", "/profiles/run with space/workload_run.json"]
+                if sudo:
+                    command = ["sudo", "-n", *command]
+                remote.assert_called_once_with(
+                    endpoint("cm5", sudo),
+                    shlex.join(command),
+                    check=False,
+                    capture=True,
+                )
+
+        denied = subprocess.CompletedProcess(
+            ["ssh"],
+            1,
+            "",
+            "cat: Permission denied",
+        )
+        with patch(
+            "oai_profile_campaign.remote_run",
+            return_value=denied,
+        ):
+            with self.assertRaisesRegex(
+                RuntimeError,
+                "status=1, stderr=cat: Permission denied",
+            ):
+                campaign.read_endpoint_text(
+                    endpoint("cm5", True),
+                    "/profiles/run/workload/workload_run.json",
+                )
+
     def test_control_records_bind_identity_and_wrapper_completion(self) -> None:
         token = "a" * 32
         start = {
@@ -547,6 +654,140 @@ class CampaignRunnerTest(unittest.TestCase):
             register_workload.assert_not_called()
             update_manifest.assert_not_called()
             finalize_handle.assert_not_called()
+
+    def test_post_preflight_read_failure_requires_cleanup_before_finalization(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory(
+            prefix="oai-profile-preflight-read-failure-"
+        ) as temporary:
+            root = Path(temporary)
+            spec_path = root / "campaign.json"
+            command = [sys.executable, "-c", GRACEFUL_SLEEP]
+            write_spec(
+                spec_path,
+                root / "profiles",
+                command,
+                command,
+                duration_s=120,
+                workload=workload_value(root),
+            )
+            spec = load_spec(spec_path)
+            plan = build_plans(spec, set(), set(), set())[0]
+            control_root = root / "control"
+            cleanup_latches: list[bool] = []
+
+            def successful_preflight(
+                workload: campaign.WorkloadHandle,
+                action: str,
+                timeout_s: float,
+            ) -> subprocess.CompletedProcess[str]:
+                self.assertEqual(action, "preflight")
+                self.assertGreater(timeout_s, 0)
+                workload.synchronous_action_attempted = True
+                workload.evidence_quiesced = True
+                return subprocess.CompletedProcess(["workload"], 0, "", "")
+
+            def failed_cleanup(workload: campaign.WorkloadHandle) -> None:
+                cleanup_latches.append(workload.cleanup_required)
+                workload.cleanup_status = "failed"
+                raise RuntimeError("cleanup evidence unavailable")
+
+            with (
+                patch(
+                    "oai_profile_campaign.invoke_workload_action",
+                    side_effect=successful_preflight,
+                ),
+                patch(
+                    "oai_profile_campaign.refresh_workload_state",
+                    side_effect=PermissionError("evidence read blocked"),
+                ),
+                patch(
+                    "oai_profile_campaign.cleanup_workload",
+                    side_effect=failed_cleanup,
+                ) as cleanup,
+                patch(
+                    "oai_profile_campaign.register_workload_evidence"
+                ) as register_workload,
+                patch("oai_profile_campaign.update_manifest") as update_manifest,
+                patch("oai_profile_campaign.finalize_handle") as finalize_handle,
+            ):
+                with self.assertRaisesRegex(
+                    PermissionError,
+                    "evidence read blocked",
+                ):
+                    execute_plan(spec, plan, control_root)
+
+            cleanup.assert_called_once()
+            self.assertEqual(cleanup_latches, [True])
+            rows = read_results(control_root / "campaign_results.csv")
+            self.assertEqual({row["role"] for row in rows}, {"gNB", "nrUE"})
+            self.assertEqual(
+                {row["archive_status"] for row in rows},
+                {"skipped_workload_cleanup_unverified"},
+            )
+            self.assertEqual(
+                {row["network_cleanup_status"] for row in rows},
+                {"failed"},
+            )
+            self.assertEqual({row["workload_artifact"] for row in rows}, {""})
+            for row in rows:
+                self.assertFalse(
+                    (Path(row["run_dir"]) / "archive_manifest.csv").exists()
+                )
+            register_workload.assert_not_called()
+            update_manifest.assert_not_called()
+            finalize_handle.assert_not_called()
+
+    def test_verified_cleanup_clears_finalization_requirement(self) -> None:
+        with tempfile.TemporaryDirectory(
+            prefix="oai-profile-cleanup-latch-"
+        ) as temporary:
+            root = Path(temporary)
+            endpoint = Endpoint(
+                role="nrUE",
+                host="local",
+                hostname="local",
+                profile_root=str(root),
+                command=["nr-uesoftmodem"],
+                cwd=None,
+                sudo=False,
+                environment={},
+                archive_tool=None,
+                launch_delay_s=0.0,
+            )
+            workload = campaign.WorkloadHandle(
+                spec=campaign.parse_workload_spec(workload_value(root)),
+                endpoint=endpoint,
+                run_dir=str(root / "run"),
+                experiment_id="experiment-t001",
+                cleanup_required=True,
+            )
+
+            def completed_cleanup(
+                handle: campaign.WorkloadHandle,
+                action: str,
+                timeout_s: float,
+            ) -> subprocess.CompletedProcess[str]:
+                self.assertEqual(action, "cleanup")
+                self.assertGreater(timeout_s, 0)
+                handle.evidence_quiesced = True
+                return subprocess.CompletedProcess(["workload"], 0, "", "")
+
+            with (
+                patch(
+                    "oai_profile_campaign.invoke_workload_action",
+                    side_effect=completed_cleanup,
+                ),
+                patch(
+                    "oai_profile_campaign.refresh_workload_state",
+                    return_value={"cleanup_status": "ok"},
+                ),
+            ):
+                campaign.cleanup_workload(workload)
+
+            self.assertEqual(workload.cleanup_status, "ok")
+            self.assertFalse(workload.cleanup_required)
 
     def test_controlled_action_escalation_revalidates_every_signal(self) -> None:
         endpoint = Endpoint(

@@ -214,6 +214,7 @@ class WorkloadHandle:
     status: str = "planned"
     cleanup_status: str = "pending"
     preflight_complete: bool = False
+    cleanup_required: bool = False
     shutdown_verified: bool = False
     evidence_quiesced: bool = False
     synchronous_action_attempted: bool = False
@@ -624,14 +625,25 @@ def atomic_write_text(path: Path, value: str) -> None:
 
 
 def read_endpoint_text(endpoint: Endpoint, path: str) -> str:
-    if not endpoint.remote:
+    if not endpoint.remote and not endpoint.sudo:
         return Path(path).read_text()
-    result = remote_run(
-        endpoint,
-        f"cat -- {shlex.quote(path)}",
-        check=False,
-        capture=True,
-    )
+    command = ["cat", "--", path]
+    if endpoint.sudo:
+        command = ["sudo", "-n", *command]
+    if endpoint.remote:
+        result = remote_run(
+            endpoint,
+            shlex.join(command),
+            check=False,
+            capture=True,
+        )
+    else:
+        result = subprocess.run(
+            command,
+            check=False,
+            text=True,
+            capture_output=True,
+        )
     if result.returncode != 0:
         raise RuntimeError(
             f"could not read {endpoint.host}:{path}: "
@@ -1424,6 +1436,7 @@ def preflight_workload(workload: WorkloadHandle) -> None:
             f"workload preflight failed with authoritative status {return_code}; "
             f"transport status {result.returncode}"
         )
+    workload.cleanup_required = True
     state = refresh_workload_state(workload)
     if state.get("status") != "preflight_complete":
         workload.status = "preflight_failed"
@@ -1797,6 +1810,7 @@ def cleanup_workload(workload: WorkloadHandle) -> None:
             f"transport_status={result.returncode}, "
             f"evidence={cleanup_status}"
         )
+    workload.cleanup_required = False
 
 
 def process_is_running(handle: ProcessHandle) -> bool:
@@ -2560,6 +2574,18 @@ def finalize_runs(
         if rows:
             append_results(control_root / "campaign_results.csv", rows)
         return rows
+    if workload is not None and workload.cleanup_required:
+        for handle in prepared:
+            handle.workload_artifact = ""
+            handle.archive_status = "skipped_workload_cleanup_unverified"
+            append_note_once(
+                handle,
+                "archive finalization skipped because workload cleanup is unverified",
+            )
+        rows = [result_row(handle, plan) for handle in prepared]
+        if rows:
+            append_results(control_root / "campaign_results.csv", rows)
+        return rows
     for handle in prepared:
         if not handle.shutdown_verified:
             handle.sidecar_status = "skipped_process_alive" if handle.sidecar_tool != "none" else "not_requested"
@@ -2802,7 +2828,7 @@ def execute_plan(spec: dict[str, Any], plan: ExperimentPlan, control_root: Path)
                 workload.notes.append(f"workload shutdown verification failed: {error}")
                 if failure is None:
                     failure = error
-            if workload.preflight_complete:
+            if workload.cleanup_required:
                 if workload.shutdown_verified and all(
                     handle.shutdown_verified for handle in handles
                 ):
