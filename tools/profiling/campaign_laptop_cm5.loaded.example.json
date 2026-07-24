@@ -1,0 +1,121 @@
+{
+  "schema_version": 1,
+  "campaign_id": "band28-25prb-cm5-loaded",
+  "control_root": "/home/turker/Documents/OpenAirInterface/PerformanceProfiles/Campaigns",
+  "duration_s": 120,
+  "stop_grace_s": 15,
+  "stop_on_role_exit": true,
+  "trials": 5,
+  "start_order": [
+    "gNB",
+    "nrUE"
+  ],
+  "workload": {
+    "schema_version": 1,
+    "client_role": "nrUE",
+    "helper": "/mnt/ssd/Documents/OpenAirInterface/RPiCM5/tools/profiling/oai_profile_workload.py",
+    "interface": "oaitun_ue1",
+    "ipv4_subnet": "10.0.0.0/24",
+    "server_ipv4": "192.168.70.135",
+    "policy_table": 9999,
+    "readiness_timeout_s": 120,
+    "readiness_poll_s": 0.25,
+    "ping_count": 3,
+    "ping_timeout_s": 2,
+    "duration_s": 120,
+    "bitrate_bps": 1000000,
+    "datagram_bytes": 1200,
+    "lease_path": "/mnt/ssd/Documents/OpenAirInterface/PerformanceProfiles/.oai-profile-workload-table9999.lease"
+  },
+  "roles": {
+    "gNB": {
+      "host": "local",
+      "hostname": "ul0011627",
+      "profile_root": "/home/turker/Documents/OpenAirInterface/PerformanceProfiles",
+      "cwd": "/home/turker/Documents/OpenAirInterface/26w25/cmake_targets/ran_build/build",
+      "sudo": true,
+      "command": [
+        "./nr-softmodem",
+        "-O",
+        "/home/turker/Documents/OpenAirInterface/PerformanceProfiles/configs/gNB/gnb.n28.fr1.25PRB.b210.perf.conf"
+      ]
+    },
+    "nrUE": {
+      "host": "cm5",
+      "hostname": "cm5",
+      "profile_root": "/mnt/ssd/Documents/OpenAirInterface/PerformanceProfiles",
+      "cwd": "/mnt/ssd/Documents/OpenAirInterface/RPiCM5/cmake_targets/ran_build/build",
+      "sudo": true,
+      "archive_tool": "/mnt/ssd/Documents/OpenAirInterface/RPiCM5/tools/profiling/oai_profile_archive.py",
+      "launch_delay_s": 5,
+      "command": [
+        "./nr-uesoftmodem",
+        "-O",
+        "/mnt/ssd/Documents/OpenAirInterface/PerformanceProfiles/configs/nrUE/nrue.n28.fr1.25PRB.b205.perf.conf"
+      ]
+    }
+  },
+  "cases": [
+    {
+      "name": "band28-25prb-minrxtx3"
+    }
+  ],
+  "variants": [
+    {
+      "name": "disabled",
+      "profile": false,
+      "pmu": "off",
+      "sidecar": "none"
+    },
+    {
+      "name": "in-process",
+      "profile": true,
+      "pmu": "off",
+      "sidecar": "none"
+    },
+    {
+      "name": "pmu-software",
+      "profile": true,
+      "pmu": "software",
+      "sidecar": "none",
+      "environment": {
+        "OAI_PROFILE_PMU_SAMPLE_US": "100000"
+      }
+    },
+    {
+      "name": "pmu-all",
+      "profile": true,
+      "pmu": "all",
+      "sidecar": "none",
+      "environment": {
+        "OAI_PROFILE_PMU_SAMPLE_US": "100000"
+      }
+    },
+    {
+      "name": "perf-stat",
+      "profile": true,
+      "pmu": "off",
+      "sidecar": {
+        "tool": "perf_stat",
+        "interval_ms": 1000
+      }
+    },
+    {
+      "name": "perf-record",
+      "profile": true,
+      "pmu": "off",
+      "sidecar": {
+        "tool": "perf_record",
+        "event": "cycles",
+        "frequency_hz": 199,
+        "call_graph": "dwarf,8192"
+      }
+    },
+    {
+      "name": "perf-sched",
+      "profile": true,
+      "pmu": "off",
+      "sidecar": "perf_sched"
+    }
+  ]
+}

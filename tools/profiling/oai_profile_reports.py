@@ -25,7 +25,6 @@ from oai_profile_archive import (
 )
 
 THREAD_METRIC_CPU_FREQUENCY_VALID = 1 << 3
-CAMPAIGN_SUCCESS_STOP_REASONS = {"duration_elapsed", "measurement_complete"}
 CAMPAIGN_VALID_DURATION_STATUSES = {"valid", "legacy_realtime_fallback"}
 
 
@@ -63,10 +62,29 @@ def parse_float(value: object, default: float = math.nan) -> float:
 
 
 def campaign_member_succeeded(row: dict[str, object]) -> bool:
+    workload_status = str(row.get("workload_status", "not_configured"))
+    workload_artifact = str(row.get("workload_artifact", ""))
+    cleanup_status = str(
+        row.get("network_cleanup_status", "not_configured")
+    )
+    stop_reason = str(row.get("stop_reason", ""))
+    if workload_status == "not_configured":
+        workload_succeeded = (
+            not workload_artifact
+            and cleanup_status == "not_configured"
+            and stop_reason == "duration_elapsed"
+        )
+    else:
+        workload_succeeded = (
+            workload_status == "completed"
+            and bool(workload_artifact)
+            and cleanup_status in {"ok", "already_absent"}
+            and stop_reason == "measurement_complete"
+        )
     return (
         row.get("status") == "finished"
         and parse_int(row.get("return_code"), -1) == 0
-        and row.get("stop_reason") in CAMPAIGN_SUCCESS_STOP_REASONS
+        and workload_succeeded
         and row.get("duration_status") in CAMPAIGN_VALID_DURATION_STATUSES
     )
 
@@ -225,6 +243,8 @@ def campaign_report(
         "profile_enabled",
         "pmu_mode",
         "status",
+        "transport_return_code",
+        "remote_completion_return_code",
         "return_code",
         "stop_reason",
         "start_realtime_ns",
@@ -240,6 +260,10 @@ def campaign_report(
         "sidecar_tool",
         "sidecar_status",
         "sidecar_artifact",
+        "workload_status",
+        "workload_artifact",
+        "network_cleanup_status",
+        "workload_control_results_json",
         "archive_status",
         "archive_manifest_present",
         "profiler_metadata_present",
@@ -272,6 +296,14 @@ def campaign_report(
                 "profile_enabled": campaign.get("profile_enabled", bool(metadata_by_dir.get(key))),
                 "pmu_mode": campaign.get("pmu_mode", metadata_by_dir.get(key, {}).get("pmu_mode", "")),
                 "status": campaign.get("status", "campaign_metadata_missing"),
+                "transport_return_code": campaign.get(
+                    "transport_return_code",
+                    "",
+                ),
+                "remote_completion_return_code": campaign.get(
+                    "remote_completion_return_code",
+                    "",
+                ),
                 "return_code": campaign.get("return_code", ""),
                 "stop_reason": campaign.get("stop_reason", ""),
                 "start_realtime_ns": start_ns,
@@ -287,6 +319,19 @@ def campaign_report(
                 "sidecar_tool": campaign.get("sidecar_tool", "none"),
                 "sidecar_status": campaign.get("sidecar_status", ""),
                 "sidecar_artifact": campaign.get("sidecar_artifact", ""),
+                "workload_status": campaign.get(
+                    "workload_status",
+                    "not_configured",
+                ),
+                "workload_artifact": campaign.get("workload_artifact", ""),
+                "network_cleanup_status": campaign.get(
+                    "network_cleanup_status",
+                    "not_configured",
+                ),
+                "workload_control_results_json": json.dumps(
+                    campaign.get("workload_control_results", {}),
+                    sort_keys=True,
+                ),
                 "archive_status": campaign.get("archive_status", ""),
                 "archive_manifest_present": int((run_dir / MANIFEST_NAME).is_file()),
                 "profiler_metadata_present": int((run_dir / "metadata.txt").is_file()),

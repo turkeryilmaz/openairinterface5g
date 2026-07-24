@@ -222,6 +222,77 @@ process wrapper returns zero.
 `--keep-going` continues the matrix after a failed paired experiment; without
 it, the runner stops after preserving and finalizing the failed experiment.
 
+### Run the attach-gated loaded protocol
+
+`campaign_laptop_cm5.loaded.example.json` keeps the same laptop/CM5 role
+commands, RF configs, seven observer variants, five trials, and 120-second
+declared measurement duration, but uses the separate campaign identity
+`band28-25prb-cm5-loaded`. It does not set `UHD_IMAGES_DIR`; the host and sudo
+environment remain responsible for the already validated UHD image policy.
+
+The loaded protocol runs one client helper on the CM5 nrUE host. It:
+
+- waits up to 120 seconds for `oaitun_ue1` to have exactly one usable
+  `10.0.0.0/24` IPv4 address;
+- refuses a pre-existing workload lease, unexpected table-9999 policy rule or
+  route, a competing nrUE, or ambiguous interface state;
+- creates only the two exact source/destination rules and default route needed
+  for that UE address in policy table 9999;
+- sends three source-bound pings to the fixed external-DN server
+  `192.168.70.135`;
+- runs 120 seconds of bidirectional UDP with one 1 Mbit/s stream per direction
+  and 1200-byte datagrams; and
+- removes only the exact state owned by its verified lease after the nrUE is
+  proven stopped. It never flushes table 9999 and does not start, stop, or
+  signal the external-DN iperf3 server.
+
+Any pre-existing table-9999 entries are a preflight failure, not state that the
+runner silently adopts or deletes. Inspect such residue outside a radio run,
+establish its owner and purpose, and remove only entries that are independently
+proved stale. The campaign must not touch an unrelated iperf3 server process.
+
+Preview the complete loaded matrix without creating a run, changing policy
+routing, or launching a binary:
+
+```bash
+CAMPAIGN=tools/profiling/campaign_laptop_cm5.loaded.example.json
+./tools/profiling/oai_profile_campaign.py "$CAMPAIGN"
+```
+
+The first live loaded pilot is one in-process trial, not the 35-experiment
+matrix:
+
+```bash
+selection=(--case band28-25prb-minrxtx3 --variant in-process --trial 1)
+./tools/profiling/oai_profile_campaign.py "$CAMPAIGN" "${selection[@]}"
+./tools/profiling/oai_profile_campaign.py "$CAMPAIGN" --execute "${selection[@]}"
+```
+
+Run the second command only after the core network, external-DN iperf3 server,
+both selected binaries/configs, radios, passive host gates, and emergency-stop
+procedure have been verified. The helper begins its traffic interval only
+after UE-interface readiness and ping validation, so attach/setup time is not
+silently counted as 120 seconds of offered load.
+
+The workload remains evidence, not a third campaign role. Both role archives
+receive the same `workload/workload_run.json` before finalization and register
+it as an external source. Raw ping/iperf JSON, partial timeout output,
+preflight/cleanup state, and control records remain in the workload directory.
+For every remote role and helper action, start/completion records bind the
+action, experiment, random token, process group, and `/proc` start ticks. A
+remote signal is sent only to an exactly matching live identity.
+
+SSH transport status and matching remote completion status are separate
+evidence. Remote success requires an authoritative matching completion with
+return code zero; process-group absence without completion proves shutdown but
+does not invent a return code. A loaded campaign member succeeds only with
+`workload_status=completed`, a registered workload artifact,
+`network_cleanup_status=ok` or `already_absent`, and
+`stop_reason=measurement_complete`. A legacy/unloaded member instead requires
+`workload_status=not_configured` and `stop_reason=duration_elapsed`.
+`campaign_runs.csv`, `campaign_completeness.csv`, and observer-effect
+selection use this same distinction.
+
 ## Finalize and verify archives
 
 Finalize only after all profiler, campaign, sidecar, and external-source files

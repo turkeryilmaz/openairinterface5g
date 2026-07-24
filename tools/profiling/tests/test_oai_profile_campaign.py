@@ -6,6 +6,7 @@ from __future__ import annotations
 import csv
 import json
 import os
+import signal
 import subprocess
 import sys
 import tempfile
@@ -18,6 +19,7 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import oai_profile_campaign as campaign  # noqa: E402
+import oai_profile_reports as reports  # noqa: E402
 from oai_profile_archive import verify_archive  # noqa: E402
 from oai_profile_campaign import (  # noqa: E402
     Endpoint,
@@ -70,6 +72,7 @@ def write_spec(
     cases: list[dict[str, object]] | None = None,
     trials: int = 1,
     start_order: list[str] | None = None,
+    workload: dict[str, object] | None = None,
 ) -> None:
     value = {
         "schema_version": 1,
@@ -86,7 +89,31 @@ def write_spec(
         "variants": variants or [{"name": "disabled", "profile": False, "pmu": "off", "sidecar": "none"}],
         "cases": cases or [{"name": "baseline"}],
     }
+    if workload is not None:
+        value["workload"] = workload
     path.write_text(json.dumps(value))
+
+
+def workload_value(root: Path) -> dict[str, object]:
+    return {
+        "schema_version": 1,
+        "client_role": "nrUE",
+        "helper": str(
+            Path(__file__).resolve().parents[1] / "oai_profile_workload.py"
+        ),
+        "interface": "oaitun_ue1",
+        "ipv4_subnet": "10.0.0.0/24",
+        "server_ipv4": "192.168.70.135",
+        "policy_table": 9999,
+        "readiness_timeout_s": 30,
+        "readiness_poll_s": 0.25,
+        "ping_count": 3,
+        "ping_timeout_s": 2,
+        "duration_s": 120,
+        "bitrate_bps": 1_000_000,
+        "datagram_bytes": 1200,
+        "lease_path": str(root / "ue0-table9999.lock"),
+    }
 
 
 def read_results(path: Path) -> list[dict[str, str]]:
@@ -95,17 +122,665 @@ def read_results(path: Path) -> list[dict[str, str]]:
 
 
 class CampaignRunnerTest(unittest.TestCase):
+    def test_control_records_bind_identity_and_wrapper_completion(self) -> None:
+        token = "a" * 32
+        start = {
+            "schema_version": 1,
+            "action": "run",
+            "experiment_id": "experiment-t001",
+            "token": token,
+            "pgid": 4321,
+            "start_ticks": 987654,
+        }
+        start_text = campaign.control_record_text(start, completion=False)
+        self.assertEqual(
+            campaign.parse_control_record(
+                start_text,
+                action="run",
+                experiment_id="experiment-t001",
+                token=token,
+                completion=False,
+            ),
+            start,
+        )
+        completed = {**start, "return_code": 7}
+        self.assertEqual(
+            campaign.parse_control_record(
+                campaign.control_record_text(completed, completion=True),
+                action="run",
+                experiment_id="experiment-t001",
+                token=token,
+                completion=True,
+            ),
+            completed,
+        )
+        for malformed in (
+            start_text.replace("pgid=4321", "pgid=0"),
+            start_text.replace("start_ticks=987654", "start_ticks=-1"),
+            start_text + "token=duplicate\n",
+            start_text.replace("action=run", "action=cleanup"),
+        ):
+            with self.subTest(malformed=malformed):
+                with self.assertRaises(ValueError):
+                    campaign.parse_control_record(
+                        malformed,
+                        action="run",
+                        experiment_id="experiment-t001",
+                        token=token,
+                        completion=False,
+                    )
+
+        wrapper = campaign.remote_control_inner_command(
+            ["python3", "helper.py", "run"],
+            action="run",
+            experiment_id="experiment-t001",
+            token=token,
+            start_path="/profiles/run/workload/run.control.start",
+            completion_path="/profiles/run/workload/run.control.complete",
+        )
+        self.assertLess(wrapper.index("run.control.start"), wrapper.index("python3"))
+        self.assertLess(wrapper.index("python3"), wrapper.index("return_code=$command_rc"))
+        self.assertIn("print $5", wrapper)
+        self.assertIn('[ "$1" = "$$" ]', wrapper)
+        self.assertIn("mv --", wrapper)
+        generic_role_wrapper = campaign.remote_control_inner_command(
+            ["role-command"],
+            action="role:custom_role",
+            experiment_id="experiment-t001",
+            token=token,
+            start_path="/profiles/run/control.start",
+            completion_path="/profiles/run/control.complete",
+        )
+        self.assertIn("action=role:custom_role", generic_role_wrapper)
+
+    def test_remote_control_state_is_token_and_starttime_bound(self) -> None:
+        token = "b" * 32
+        endpoint = Endpoint(
+            role="nrUE",
+            host="cm5",
+            hostname="cm5",
+            profile_root="/profiles",
+            command=["nr-uesoftmodem"],
+            cwd=None,
+            sudo=True,
+            environment={},
+            archive_tool="/repo/tools/profiling/oai_profile_archive.py",
+            launch_delay_s=0.0,
+        )
+        start = {
+            "schema_version": 1,
+            "action": "run",
+            "experiment_id": "experiment-t001",
+            "token": token,
+            "pgid": 4321,
+            "start_ticks": 987654,
+        }
+        start_result = subprocess.CompletedProcess(
+            ["ssh"],
+            0,
+            campaign.control_record_text(start, completion=False),
+            "",
+        )
+        missing = subprocess.CompletedProcess(["ssh"], 1, "", "")
+
+        completed = subprocess.CompletedProcess(
+            ["ssh"],
+            0,
+            campaign.control_record_text(
+                {**start, "return_code": 0},
+                completion=True,
+            ),
+            "",
+        )
+        with patch(
+            "oai_profile_campaign.remote_run",
+            side_effect=[start_result, completed],
+        ):
+            state, identity, detail = campaign.remote_control_state(
+                endpoint,
+                action="run",
+                experiment_id="experiment-t001",
+                token=token,
+                start_path="/profiles/run/workload/run.control.start",
+                completion_path="/profiles/run/workload/run.control.complete",
+            )
+        self.assertFalse(state)
+        self.assertEqual(identity, {**start, "return_code": 0})
+        self.assertEqual(detail, "matching_completion")
+
+        for probe_status, expected_state, expected_detail in (
+            (0, True, "matching_identity_live"),
+            (1, False, "original_identity_absent"),
+            (2, False, "pgid_reused_original_identity_dead"),
+            (3, None, "leader_absent_process_group_still_live"),
+            (44, None, "identity probe status=44"),
+        ):
+            with self.subTest(probe_status=probe_status):
+                probe = subprocess.CompletedProcess(
+                    ["ssh"],
+                    probe_status,
+                    "",
+                    "permission denied" if probe_status == 44 else "",
+                )
+                with patch(
+                    "oai_profile_campaign.remote_run",
+                    side_effect=[start_result, missing, probe],
+                ):
+                    state, identity, detail = campaign.remote_control_state(
+                        endpoint,
+                        action="run",
+                        experiment_id="experiment-t001",
+                        token=token,
+                        start_path="/profiles/run/workload/run.control.start",
+                        completion_path="/profiles/run/workload/run.control.complete",
+                    )
+                self.assertIs(state, expected_state)
+                self.assertEqual(identity, start)
+                self.assertIn(expected_detail, detail)
+
+        wrong_completion = {
+            **start,
+            "action": "cleanup",
+            "return_code": 0,
+        }
+        with patch(
+            "oai_profile_campaign.remote_run",
+            side_effect=[
+                start_result,
+                subprocess.CompletedProcess(
+                    ["ssh"],
+                    0,
+                    campaign.control_record_text(
+                        wrong_completion,
+                        completion=True,
+                    ),
+                    "",
+                ),
+            ],
+        ):
+            state, _, detail = campaign.remote_control_state(
+                endpoint,
+                action="run",
+                experiment_id="experiment-t001",
+                token=token,
+                start_path="/profiles/run/workload/run.control.start",
+                completion_path="/profiles/run/workload/run.control.complete",
+            )
+        self.assertIsNone(state)
+        self.assertIn("completion record invalid", detail)
+
+        signal_command = campaign.remote_identity_signal_command(
+            "/profiles/run/workload/run.control.start",
+            start,
+            "INT",
+            sudo=True,
+        )
+        self.assertIn("start_ticks=987654", signal_command)
+        self.assertIn("/proc/4321/stat", signal_command)
+        self.assertIn("sudo -n kill -INT -- -4321", signal_command)
+
+    def test_synchronous_remote_workload_action_is_fail_closed(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="oai-profile-remote-action-") as temporary:
+            root = Path(temporary)
+            endpoint = Endpoint(
+                role="nrUE",
+                host="cm5",
+                hostname="cm5",
+                profile_root="/profiles",
+                command=["nr-uesoftmodem"],
+                cwd=None,
+                sudo=True,
+                environment={},
+                archive_tool="/repo/tools/profiling/oai_profile_archive.py",
+                launch_delay_s=0.0,
+            )
+
+            def new_workload() -> campaign.WorkloadHandle:
+                return campaign.WorkloadHandle(
+                    spec=campaign.parse_workload_spec(workload_value(root)),
+                    endpoint=endpoint,
+                    run_dir="/profiles/run",
+                    experiment_id="experiment-t001",
+                )
+
+            completed = subprocess.CompletedProcess(["ssh"], 255, "", "transport lost")
+            workload = new_workload()
+            completed_identity = {
+                "schema_version": 1,
+                "action": "preflight",
+                "experiment_id": "experiment-t001",
+                "token": "c" * 32,
+                "pgid": 4321,
+                "start_ticks": 987654,
+                "return_code": 0,
+            }
+            with (
+                patch("oai_profile_campaign.secrets.token_hex", return_value="c" * 32),
+                patch("oai_profile_campaign.remote_run", return_value=completed) as remote,
+                patch(
+                    "oai_profile_campaign.remote_control_state",
+                    return_value=(False, completed_identity, "matching_completion"),
+                ),
+                patch("oai_profile_campaign.stop_remote_controlled_action") as stop,
+            ):
+                result = campaign.invoke_workload_action(workload, "preflight", 20.0)
+            self.assertEqual(result.returncode, 255)
+            self.assertTrue(workload.evidence_quiesced)
+            self.assertEqual(workload.control_tokens, {"preflight": "c" * 32})
+            self.assertEqual(
+                workload.control_results["preflight"],
+                {
+                    "transport_status": "returned",
+                    "transport_return_code": 255,
+                    "remote_completion_return_code": 0,
+                },
+            )
+            self.assertIn("preflight.control.start", remote.call_args.args[1])
+            self.assertIn("preflight.control.complete", remote.call_args.args[1])
+            stop.assert_not_called()
+
+            identity = {
+                "schema_version": 1,
+                "action": "cleanup",
+                "experiment_id": "experiment-t001",
+                "token": "d" * 32,
+                "pgid": 4321,
+                "start_ticks": 987654,
+            }
+            workload = new_workload()
+            timeout = subprocess.TimeoutExpired(["ssh"], 20.0)
+            completed_cleanup = {**identity, "return_code": 0}
+            with (
+                patch("oai_profile_campaign.secrets.token_hex", return_value="d" * 32),
+                patch("oai_profile_campaign.remote_run", side_effect=timeout),
+                patch(
+                    "oai_profile_campaign.remote_control_state",
+                    side_effect=[
+                        (True, identity, "matching_identity_live"),
+                        (False, completed_cleanup, "matching_completion"),
+                    ],
+                ),
+                patch(
+                    "oai_profile_campaign.stop_remote_controlled_action",
+                    return_value=(False, "original_identity_absent"),
+                ) as stop,
+            ):
+                result = campaign.invoke_workload_action(workload, "cleanup", 20.0)
+            self.assertTrue(workload.evidence_quiesced)
+            self.assertEqual(result.returncode, 0)
+            self.assertEqual(
+                workload.control_results["cleanup"][
+                    "remote_completion_return_code"
+                ],
+                0,
+            )
+            stop.assert_called_once()
+            self.assertEqual(stop.call_args.kwargs["identity"], identity)
+
+            for state, detail in (
+                (None, "start record invalid"),
+                (False, "pgid_reused_original_identity_dead"),
+            ):
+                with self.subTest(state=state):
+                    workload = new_workload()
+                    with (
+                        patch(
+                            "oai_profile_campaign.secrets.token_hex",
+                            return_value="e" * 32,
+                        ),
+                        patch(
+                            "oai_profile_campaign.remote_run",
+                            return_value=completed,
+                        ),
+                        patch(
+                            "oai_profile_campaign.remote_control_state",
+                            return_value=(state, None, detail),
+                        ),
+                        patch(
+                            "oai_profile_campaign.stop_remote_controlled_action"
+                        ) as stop,
+                    ):
+                        campaign.invoke_workload_action(
+                            workload,
+                            "preflight",
+                            20.0,
+                        )
+                    stop.assert_not_called()
+                    self.assertIs(workload.evidence_quiesced, state is False)
+
+    def test_unverified_remote_preflight_skips_both_archive_finalizations(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory(
+            prefix="oai-profile-unverified-preflight-"
+        ) as temporary:
+            root = Path(temporary)
+            spec_path = root / "campaign.json"
+            command = [sys.executable, "-c", GRACEFUL_SLEEP]
+            write_spec(
+                spec_path,
+                root / "profiles",
+                command,
+                command,
+                duration_s=120,
+                workload=workload_value(root),
+            )
+            spec = load_spec(spec_path)
+            local_client = spec["_endpoints"]["nrUE"]
+            spec["_endpoints"]["nrUE"] = Endpoint(
+                role=local_client.role,
+                host="cm5",
+                hostname=local_client.hostname,
+                profile_root=local_client.profile_root,
+                command=local_client.command,
+                cwd=local_client.cwd,
+                sudo=local_client.sudo,
+                environment=local_client.environment,
+                archive_tool="/remote/oai_profile_archive.py",
+                launch_delay_s=local_client.launch_delay_s,
+            )
+            plan = build_plans(spec, set(), set(), set())[0]
+            control_root = root / "control"
+
+            def prepare_locally(handle: ProcessHandle) -> None:
+                run_dir = Path(handle.run_dir)
+                run_dir.mkdir(parents=True)
+                (run_dir / "sidecars").mkdir()
+                (run_dir / "workload").mkdir()
+                handle.prepared = True
+                campaign.atomic_write_json(
+                    run_dir / "campaign_run.json",
+                    handle.initial_manifest,
+                )
+
+            transport = subprocess.CompletedProcess(
+                ["ssh"],
+                255,
+                "",
+                "transport returned without trustworthy identity evidence",
+            )
+            with (
+                patch("oai_profile_campaign.preflight_endpoint"),
+                patch(
+                    "oai_profile_campaign.prepare_run_dir",
+                    side_effect=prepare_locally,
+                ),
+                patch(
+                    "oai_profile_campaign.remote_run",
+                    return_value=transport,
+                ),
+                patch(
+                    "oai_profile_campaign.remote_control_state",
+                    return_value=(None, None, "start record invalid"),
+                ),
+                patch("oai_profile_campaign.read_endpoint_json") as read_json,
+                patch("oai_profile_campaign.read_endpoint_text") as read_text,
+                patch(
+                    "oai_profile_campaign.register_workload_evidence"
+                ) as register_workload,
+                patch("oai_profile_campaign.update_manifest") as update_manifest,
+                patch("oai_profile_campaign.finalize_handle") as finalize_handle,
+            ):
+                with self.assertRaisesRegex(
+                    RuntimeError,
+                    "workload preflight process shutdown is unverified",
+                ):
+                    execute_plan(spec, plan, control_root)
+
+            rows = read_results(control_root / "campaign_results.csv")
+            self.assertEqual({row["role"] for row in rows}, {"gNB", "nrUE"})
+            self.assertEqual(
+                {row["archive_status"] for row in rows},
+                {"skipped_workload_action_unverified"},
+            )
+            self.assertEqual(
+                {row["workload_status"] for row in rows},
+                {"preflight_failed"},
+            )
+            self.assertEqual({row["workload_artifact"] for row in rows}, {""})
+            for row in rows:
+                self.assertFalse(
+                    (Path(row["run_dir"]) / "archive_manifest.csv").exists()
+                )
+            read_json.assert_not_called()
+            read_text.assert_not_called()
+            register_workload.assert_not_called()
+            update_manifest.assert_not_called()
+            finalize_handle.assert_not_called()
+
+    def test_controlled_action_escalation_revalidates_every_signal(self) -> None:
+        endpoint = Endpoint(
+            role="nrUE",
+            host="cm5",
+            hostname="cm5",
+            profile_root="/profiles",
+            command=["nr-uesoftmodem"],
+            cwd=None,
+            sudo=True,
+            environment={},
+            archive_tool="/repo/tools/profiling/oai_profile_archive.py",
+            launch_delay_s=0.0,
+        )
+        identity = {
+            "schema_version": 1,
+            "action": "cleanup",
+            "experiment_id": "experiment-t001",
+            "token": "f" * 32,
+            "pgid": 4321,
+            "start_ticks": 987654,
+        }
+        signal_result = subprocess.CompletedProcess(["ssh"], 0, "", "")
+        with (
+            patch(
+                "oai_profile_campaign.remote_run",
+                return_value=signal_result,
+            ) as remote,
+            patch(
+                "oai_profile_campaign.wait_remote_control_not_live",
+                side_effect=[
+                    (True, identity, "matching_identity_live"),
+                    (True, identity, "matching_identity_live"),
+                    (False, identity, "original_identity_absent"),
+                ],
+            ),
+        ):
+            state, detail = campaign.stop_remote_controlled_action(
+                endpoint,
+                action="cleanup",
+                experiment_id="experiment-t001",
+                token="f" * 32,
+                start_path="/profiles/run/workload/cleanup.control.start",
+                completion_path="/profiles/run/workload/cleanup.control.complete",
+                identity=identity,
+            )
+        self.assertFalse(state)
+        self.assertIn("original_identity_absent", detail)
+        commands = [call.args[1] for call in remote.call_args_list]
+        self.assertEqual(len(commands), 3)
+        self.assertIn("sudo -n kill -INT -- -4321", commands[0])
+        self.assertIn("sudo -n kill -TERM -- -4321", commands[1])
+        self.assertIn("sudo -n kill -KILL -- -4321", commands[2])
+        self.assertTrue(
+            all("start_ticks=987654" in command for command in commands)
+        )
+
+        term_failure = subprocess.CompletedProcess(
+            ["ssh"],
+            44,
+            "",
+            "synthetic TERM failure",
+        )
+        with (
+            patch(
+                "oai_profile_campaign.remote_run",
+                side_effect=[OSError("synthetic INT failure"), term_failure, signal_result],
+            ) as remote,
+            patch(
+                "oai_profile_campaign.wait_remote_control_not_live",
+                side_effect=[
+                    (None, identity, "identity probe unavailable"),
+                    (True, identity, "matching_identity_live"),
+                    (False, identity, "original_identity_absent"),
+                ],
+            ) as wait,
+        ):
+            state, detail = campaign.stop_remote_controlled_action(
+                endpoint,
+                action="cleanup",
+                experiment_id="experiment-t001",
+                token="f" * 32,
+                start_path="/profiles/run/workload/cleanup.control.start",
+                completion_path="/profiles/run/workload/cleanup.control.complete",
+                identity=identity,
+            )
+        self.assertFalse(state)
+        self.assertEqual(remote.call_count, 3)
+        self.assertEqual(wait.call_count, 3)
+        self.assertIn("synthetic INT failure", detail)
+        self.assertIn("synthetic TERM failure", detail)
+        self.assertIn("original_identity_absent", detail)
+
+    def test_asynchronous_workload_uses_bound_identity_and_completion(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="oai-profile-async-workload-") as temporary:
+            root = Path(temporary)
+            endpoint = Endpoint(
+                role="nrUE",
+                host="cm5",
+                hostname="cm5",
+                profile_root="/profiles",
+                command=["nr-uesoftmodem"],
+                cwd=None,
+                sudo=True,
+                environment={},
+                archive_tool="/repo/tools/profiling/oai_profile_archive.py",
+                launch_delay_s=0.0,
+            )
+            workload = campaign.WorkloadHandle(
+                spec=campaign.parse_workload_spec(workload_value(root)),
+                endpoint=endpoint,
+                run_dir="/profiles/run",
+                experiment_id="experiment-t001",
+            )
+            process = SimpleNamespace(
+                poll=lambda: None,
+                pid=7654,
+                returncode=None,
+            )
+            with (
+                patch("oai_profile_campaign.secrets.token_hex", return_value="1" * 32),
+                patch(
+                    "oai_profile_campaign.subprocess.Popen",
+                    return_value=process,
+                ) as popen,
+            ):
+                campaign.launch_workload(workload, root / "control")
+            remote_shell = popen.call_args.args[0][-1]
+            self.assertIn("run.control.start", remote_shell)
+            self.assertIn("run.control.complete", remote_shell)
+            self.assertIn("token=" + "1" * 32, remote_shell)
+            self.assertEqual(workload.control_tokens, {"run": "1" * 32})
+            assert workload.stdout_handle is not None
+            assert workload.stderr_handle is not None
+            workload.stdout_handle.close()
+            workload.stderr_handle.close()
+
+            identity = {
+                "schema_version": 1,
+                "action": "run",
+                "experiment_id": "experiment-t001",
+                "token": "1" * 32,
+                "pgid": 4321,
+                "start_ticks": 987654,
+            }
+            signal_result = subprocess.CompletedProcess(["ssh"], 0, "", "")
+            with (
+                patch(
+                    "oai_profile_campaign.remote_control_state",
+                    return_value=(True, identity, "matching_identity_live"),
+                ),
+                patch(
+                    "oai_profile_campaign.remote_run",
+                    return_value=signal_result,
+                ) as remote,
+                patch("oai_profile_campaign.os.killpg") as local_signal,
+            ):
+                campaign.signal_workload(workload, "INT")
+            self.assertIn(
+                "sudo -n kill -INT -- -4321",
+                remote.call_args.args[1],
+            )
+            local_signal.assert_not_called()
+
+            with (
+                patch(
+                    "oai_profile_campaign.remote_control_state",
+                    return_value=(None, identity, "completion record invalid"),
+                ),
+                patch("oai_profile_campaign.remote_run") as remote,
+                patch("oai_profile_campaign.os.killpg") as local_signal,
+            ):
+                campaign.signal_workload(workload, "TERM")
+            remote.assert_not_called()
+            local_signal.assert_not_called()
+
+            with (
+                patch(
+                    "oai_profile_campaign.remote_control_state",
+                    return_value=(
+                        False,
+                        identity,
+                        "pgid_reused_original_identity_dead",
+                    ),
+                ),
+                patch("oai_profile_campaign.remote_run") as remote,
+                patch("oai_profile_campaign.os.killpg") as local_signal,
+            ):
+                campaign.signal_workload(workload, "TERM")
+            remote.assert_not_called()
+            local_signal.assert_called_once_with(7654, signal.SIGTERM)
+
+            process.poll = lambda: 255
+            process.returncode = 255
+            completed_identity = {**identity, "return_code": 0}
+            with patch(
+                "oai_profile_campaign.remote_control_state",
+                return_value=(False, completed_identity, "matching_completion"),
+            ):
+                state, _, _ = campaign.workload_remote_control_state(workload)
+            self.assertFalse(state)
+            self.assertEqual(
+                workload.control_results["run"],
+                {
+                    "transport_status": "returned",
+                    "transport_return_code": 255,
+                    "remote_completion_return_code": 0,
+                },
+            )
+
     def test_stop_handles_signals_reverse_launch_order(self) -> None:
-        gnb_handle = SimpleNamespace(stop_reason="")
-        nrue_handle = SimpleNamespace(stop_reason="")
+        stopped_process = SimpleNamespace(poll=lambda: 0)
+        local_endpoint = SimpleNamespace(remote=False)
+        gnb_handle = SimpleNamespace(
+            stop_reason="",
+            process=stopped_process,
+            endpoint=local_endpoint,
+            shutdown_verified=False,
+        )
+        nrue_handle = SimpleNamespace(
+            stop_reason="",
+            process=stopped_process,
+            endpoint=local_endpoint,
+            shutdown_verified=False,
+        )
         handles = [gnb_handle, nrue_handle]
         with (
             patch("oai_profile_campaign.shutdown_target_is_running", return_value=True),
             patch("oai_profile_campaign.signal_handle") as signal,
             patch("oai_profile_campaign.wait_handles", side_effect=[False, False, True]),
         ):
-            campaign.stop_handles(handles, "duration_elapsed", 1.0)
+            stopped = campaign.stop_handles(handles, "duration_elapsed", 1.0)
 
+        self.assertTrue(stopped)
         self.assertEqual(
             [entry.args for entry in signal.call_args_list],
             [
@@ -147,8 +822,18 @@ class CampaignRunnerTest(unittest.TestCase):
                 run_dir=str(run_dir),
                 command=endpoint.command,
                 environment={},
+                experiment_id="experiment-t001",
             )
-            with patch("oai_profile_campaign.subprocess.Popen", return_value=object()) as popen:
+            with (
+                patch(
+                    "oai_profile_campaign.secrets.token_hex",
+                    return_value="2" * 32,
+                ),
+                patch(
+                    "oai_profile_campaign.subprocess.Popen",
+                    return_value=object(),
+                ) as popen,
+            ):
                 launch_remote(handle, root / "control")
 
             remote_shell = popen.call_args.args[0][-1]
@@ -160,9 +845,25 @@ class CampaignRunnerTest(unittest.TestCase):
             completed = subprocess.run(["sh", "-c", remote_shell], check=False)
             self.assertEqual(completed.returncode, 7)
             self.assertEqual(marker.read_text(), "done")
-            control_pid = int((run_dir / "control.pid").read_text())
+            start = campaign.parse_control_record(
+                (run_dir / "control.start").read_text(),
+                action="role:nrUE",
+                experiment_id="experiment-t001",
+                token="2" * 32,
+                completion=False,
+            )
+            completion = campaign.parse_control_record(
+                (run_dir / "control.complete").read_text(),
+                action="role:nrUE",
+                experiment_id="experiment-t001",
+                token="2" * 32,
+                completion=True,
+            )
+            self.assertEqual(completion["return_code"], 7)
+            self.assertEqual(completion["pgid"], start["pgid"])
+            self.assertEqual(completion["start_ticks"], start["start_ticks"])
             with self.assertRaises(ProcessLookupError):
-                os.kill(control_pid, 0)
+                os.kill(start["pgid"], 0)
 
     def test_remote_preflight_requires_setsid_wait(self) -> None:
         endpoint = Endpoint(
@@ -207,15 +908,164 @@ class CampaignRunnerTest(unittest.TestCase):
             run_dir="/profiles/run",
             command=endpoint.command,
             environment={},
-            process=object(),  # type: ignore[arg-type]
+            process=SimpleNamespace(
+                poll=lambda: 255,
+                returncode=255,
+                pid=7654,
+            ),
+            experiment_id="experiment-t001",
+            control_token="3" * 32,
         )
+        identity = {
+            "schema_version": 1,
+            "action": "role:nrUE",
+            "experiment_id": "experiment-t001",
+            "token": "3" * 32,
+            "pgid": 4321,
+            "start_ticks": 987654,
+        }
         completed = subprocess.CompletedProcess(["ssh"], 0, "", "")
-        with patch("oai_profile_campaign.remote_run", return_value=completed) as remote:
+        with (
+            patch(
+                "oai_profile_campaign.remote_control_state",
+                return_value=(True, identity, "matching_identity_live"),
+            ),
+            patch("oai_profile_campaign.remote_run", return_value=completed) as remote,
+        ):
             self.assertTrue(remote_group_is_running(handle))
             signal_handle(handle, "INT")
         commands = [call.args[1] for call in remote.call_args_list]
-        self.assertIn("kill -0", commands[0])
-        self.assertIn("kill -INT", commands[1])
+        self.assertEqual(len(commands), 1)
+        self.assertIn("kill -INT", commands[0])
+        self.assertIn("start_ticks=987654", commands[0])
+        self.assertEqual(handle.transport_return_code, 255)
+
+    def test_remote_group_control_is_tri_state(self) -> None:
+        endpoint = Endpoint(
+            role="nrUE",
+            host="cm5",
+            hostname="cm5",
+            profile_root="/profiles",
+            command=["nr-uesoftmodem"],
+            cwd=None,
+            sudo=False,
+            environment={},
+            archive_tool="/repo/tools/profiling/oai_profile_archive.py",
+            launch_delay_s=0.0,
+        )
+        identity = {
+            "schema_version": 1,
+            "action": "role:nrUE",
+            "experiment_id": "experiment-t001",
+            "token": "4" * 32,
+            "pgid": 4321,
+            "start_ticks": 987654,
+        }
+        for state, expected in ((True, True), (False, False), (None, None)):
+            with self.subTest(state=state):
+                handle = ProcessHandle(
+                    endpoint=endpoint,
+                    run_dir="/profiles/run",
+                    command=endpoint.command,
+                    environment={},
+                    process=SimpleNamespace(
+                        poll=lambda: 255,
+                        returncode=255,
+                    ),
+                    experiment_id="experiment-t001",
+                    control_token="4" * 32,
+                )
+                with patch(
+                    "oai_profile_campaign.remote_control_state",
+                    return_value=(state, identity, "synthetic remote state"),
+                ):
+                    self.assertIs(remote_group_is_running(handle), expected)
+                if expected is None:
+                    self.assertIn("state unavailable", handle.notes[0])
+
+    def test_remote_role_completion_is_authoritative_over_transport(self) -> None:
+        endpoint = Endpoint(
+            role="nrUE",
+            host="cm5",
+            hostname="cm5",
+            profile_root="/profiles",
+            command=["nr-uesoftmodem"],
+            cwd=None,
+            sudo=False,
+            environment={},
+            archive_tool="/repo/tools/profiling/oai_profile_archive.py",
+            launch_delay_s=0.0,
+        )
+        variant = Variant("in-process", True, "off", {"tool": "none"}, {})
+        plan = ExperimentPlan(
+            "campaign-test",
+            "baseline",
+            variant,
+            1,
+            "experiment-t001",
+            {},
+            {},
+        )
+        process = SimpleNamespace(
+            poll=lambda: 255,
+            returncode=255,
+            wait=lambda: 255,
+            pid=7654,
+        )
+        handle = ProcessHandle(
+            endpoint=endpoint,
+            run_dir="/profiles/run",
+            command=endpoint.command,
+            environment={},
+            process=process,
+            experiment_id="experiment-t001",
+            control_token="5" * 32,
+        )
+        completion = {
+            "schema_version": 1,
+            "action": "role:nrUE",
+            "experiment_id": "experiment-t001",
+            "token": "5" * 32,
+            "pgid": 4321,
+            "start_ticks": 987654,
+            "return_code": 0,
+        }
+        with patch(
+            "oai_profile_campaign.remote_control_state",
+            return_value=(False, completion, "matching_completion"),
+        ):
+            campaign.close_handle(handle)
+        row = campaign.result_row(handle, plan)
+        self.assertEqual(handle.run_status, "finished")
+        self.assertEqual(row["transport_return_code"], 255)
+        self.assertEqual(row["remote_completion_return_code"], 0)
+        self.assertEqual(row["return_code"], 0)
+
+        unverified = ProcessHandle(
+            endpoint=endpoint,
+            run_dir="/profiles/run2",
+            command=endpoint.command,
+            environment={},
+            process=process,
+            experiment_id="experiment-t002",
+            control_token="6" * 32,
+        )
+        absent_identity = {
+            **completion,
+            "experiment_id": "experiment-t002",
+            "token": "6" * 32,
+        }
+        absent_identity.pop("return_code")
+        with patch(
+            "oai_profile_campaign.remote_control_state",
+            return_value=(False, absent_identity, "original_identity_absent"),
+        ):
+            campaign.close_handle(unverified)
+        row = campaign.result_row(unverified, plan)
+        self.assertEqual(unverified.run_status, "remote_return_unverified")
+        self.assertEqual(row["transport_return_code"], 255)
+        self.assertEqual(row["remote_completion_return_code"], "")
+        self.assertEqual(row["return_code"], "")
 
     def test_partial_preparation_failure_is_archived(self) -> None:
         with tempfile.TemporaryDirectory(prefix="oai-profile-campaign-preparation-") as temporary:
@@ -253,7 +1103,8 @@ class CampaignRunnerTest(unittest.TestCase):
             )
 
     def test_repository_example_is_valid(self) -> None:
-        example = Path(__file__).resolve().parents[1] / "campaign_laptop_cm5.example.json"
+        profiling_root = Path(__file__).resolve().parents[1]
+        example = profiling_root / "campaign_laptop_cm5.example.json"
         spec = load_spec(example)
         plans = build_plans(spec, set(), set(), set())
 
@@ -264,6 +1115,92 @@ class CampaignRunnerTest(unittest.TestCase):
             {plan.variant.name for plan in plans},
             {"disabled", "in-process", "pmu-software", "pmu-all", "perf-stat", "perf-record", "perf-sched"},
         )
+
+        loaded_example = (
+            profiling_root / "campaign_laptop_cm5.loaded.example.json"
+        )
+        loaded_spec = load_spec(loaded_example)
+        loaded_plans = build_plans(loaded_spec, set(), set(), set())
+        self.assertEqual(
+            loaded_spec["campaign_id"],
+            "band28-25prb-cm5-loaded",
+        )
+        self.assertEqual(len(loaded_plans), 35)
+        workload = loaded_spec["_workload"]
+        self.assertIsNotNone(workload)
+        assert workload is not None
+        self.assertEqual(workload.client_role, "nrUE")
+        self.assertEqual(workload.interface, "oaitun_ue1")
+        self.assertEqual(str(workload.subnet), "10.0.0.0/24")
+        self.assertEqual(str(workload.server), "192.168.70.135")
+        self.assertEqual(workload.policy_table, 9999)
+        self.assertEqual(workload.duration_s, 120)
+        self.assertEqual(workload.bitrate_bps, 1_000_000)
+        self.assertEqual(workload.datagram_bytes, 1200)
+        loaded_json = json.loads(loaded_example.read_text())
+        self.assertNotIn(
+            "UHD_IMAGES_DIR",
+            json.dumps(loaded_json, sort_keys=True),
+        )
+        self.assertEqual(
+            loaded_json["roles"],
+            json.loads(example.read_text())["roles"],
+        )
+
+    def test_loaded_workload_contract_and_dry_run_are_side_effect_free(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="oai-profile-workload-plan-") as temporary:
+            root = Path(temporary)
+            profile_root = root / "profiles"
+            spec_path = root / "campaign.json"
+            command = [sys.executable, "-c", "pass"]
+            workload = workload_value(root)
+            write_spec(
+                spec_path,
+                profile_root,
+                command,
+                command,
+                duration_s=120,
+                workload=workload,
+            )
+            spec = load_spec(spec_path)
+            plan = build_plans(spec, set(), set(), set())[0]
+            view = plan_view(spec, plan)
+
+            self.assertEqual(len(view["roles"]), 2)
+            self.assertEqual(set(view["roles"]), {"gNB", "nrUE"})
+            self.assertEqual(view["workload"]["client_role"], "nrUE")
+            self.assertTrue(view["workload"]["role_count_unchanged"])
+            self.assertEqual(
+                view["workload"]["contract"]["traffic_contract"],
+                {
+                    "protocol": "UDP",
+                    "direction": "bidirectional",
+                    "bitrate_bps_per_direction": 1_000_000,
+                    "datagram_bytes": 1200,
+                    "post_readiness_duration_s": 120,
+                },
+            )
+            self.assertFalse(profile_root.exists())
+            self.assertFalse(Path(str(workload["lease_path"])).exists())
+
+            mismatched = json.loads(spec_path.read_text())
+            mismatched["duration_s"] = 119
+            spec_path.write_text(json.dumps(mismatched))
+            with self.assertRaisesRegex(ValueError, "exactly equal"):
+                load_spec(spec_path)
+
+            unknown = json.loads(json.dumps(workload))
+            unknown["unexpected"] = True
+            write_spec(
+                spec_path,
+                profile_root,
+                command,
+                command,
+                duration_s=120,
+                workload=unknown,
+            )
+            with self.assertRaisesRegex(ValueError, "unknown workload fields"):
+                load_spec(spec_path)
 
     def test_matrix_order_validation_and_redaction(self) -> None:
         with tempfile.TemporaryDirectory(prefix="oai-profile-campaign-plan-") as temporary:
@@ -426,12 +1363,24 @@ class CampaignRunnerTest(unittest.TestCase):
                 self.assertEqual(row["return_code"], 0)
                 self.assertEqual(row["archive_status"], "finalized")
                 self.assertEqual(row["sidecar_status"], "not_requested")
+                self.assertEqual(row["workload_status"], "not_configured")
+                self.assertEqual(row["workload_artifact"], "")
+                self.assertEqual(
+                    row["network_cleanup_status"],
+                    "not_configured",
+                )
                 run_dir = Path(row["run_dir"])
                 self.assertTrue(all(result.valid for result in verify_archive(run_dir)))
                 campaign = json.loads((run_dir / "campaign_run.json").read_text())
                 self.assertEqual(campaign["status"], "finished")
                 self.assertEqual(campaign["archive_status"], "finalization_pending")
                 self.assertEqual(campaign["experiment_id"], plan.experiment_id)
+                self.assertEqual(campaign["workload_status"], "not_configured")
+                self.assertEqual(campaign["workload_artifact"], "")
+                self.assertEqual(
+                    campaign["network_cleanup_status"],
+                    "not_configured",
+                )
 
             results = read_results(control_root / "campaign_results.csv")
             self.assertEqual(len(results), 2)
@@ -460,6 +1409,176 @@ class CampaignRunnerTest(unittest.TestCase):
         self.assertTrue(experiment_failed([], {"gNB", "nrUE"}))
         self.assertTrue(experiment_failed([successful], {"gNB", "nrUE"}))
         self.assertTrue(experiment_failed([successful, successful], {"gNB", "nrUE"}))
+        wrong_legacy_stop = {
+            **successful,
+            "stop_reason": "measurement_complete",
+        }
+        self.assertTrue(experiment_failed([wrong_legacy_stop], {"gNB"}))
+        inconsistent_legacy = {
+            **successful,
+            "workload_status": "not_configured",
+            "workload_artifact": "workload/workload_run.json",
+            "network_cleanup_status": "not_configured",
+        }
+        self.assertTrue(experiment_failed([inconsistent_legacy], {"gNB"}))
+
+        loaded = {
+            **successful,
+            "stop_reason": "measurement_complete",
+            "workload_status": "completed",
+            "workload_artifact": "workload/workload_run.json",
+            "network_cleanup_status": "ok",
+        }
+        loaded_peer = {**loaded, "role": "nrUE"}
+        self.assertFalse(experiment_failed([loaded, loaded_peer], {"gNB", "nrUE"}))
+        wrong_loaded_stop = {
+            **loaded_peer,
+            "stop_reason": "duration_elapsed",
+        }
+        self.assertTrue(
+            experiment_failed([loaded, wrong_loaded_stop], {"gNB", "nrUE"})
+        )
+        for field, value in (
+            ("workload_status", "failed"),
+            ("workload_artifact", ""),
+            ("network_cleanup_status", "failed"),
+        ):
+            failed = dict(loaded_peer)
+            failed[field] = value
+            self.assertTrue(
+                experiment_failed([loaded, failed], {"gNB", "nrUE"}),
+                field,
+            )
+
+    def test_offline_campaign_success_matches_runtime_workload_mode(self) -> None:
+        baseline = {
+            "status": "finished",
+            "return_code": 0,
+            "stop_reason": "duration_elapsed",
+            "duration_status": "valid",
+        }
+        loaded = {
+            **baseline,
+            "stop_reason": "measurement_complete",
+            "workload_status": "completed",
+            "workload_artifact": "workload/workload_run.json",
+            "network_cleanup_status": "ok",
+        }
+        self.assertTrue(reports.campaign_member_succeeded(baseline))
+        self.assertTrue(reports.campaign_member_succeeded(loaded))
+        for tampered in (
+            {**baseline, "stop_reason": "measurement_complete"},
+            {
+                **baseline,
+                "workload_status": "not_configured",
+                "workload_artifact": "workload/workload_run.json",
+            },
+            {**loaded, "stop_reason": "duration_elapsed"},
+            {**loaded, "workload_artifact": ""},
+            {**loaded, "network_cleanup_status": "failed"},
+        ):
+            with self.subTest(tampered=tampered):
+                self.assertFalse(reports.campaign_member_succeeded(tampered))
+
+        with tempfile.TemporaryDirectory(
+            prefix="oai-profile-campaign-report-"
+        ) as temporary:
+            run_dir = Path(temporary).resolve()
+            key = str(run_dir)
+            campaign_metadata = {
+                **loaded,
+                "transport_return_code": 255,
+                "remote_completion_return_code": 0,
+                "workload_control_results": {
+                    "run": {
+                        "transport_return_code": 255,
+                        "remote_completion_return_code": 0,
+                    }
+                },
+            }
+            report = reports.campaign_report(
+                [run_dir],
+                {},
+                {key: campaign_metadata},
+                {key: "ok"},
+            )
+        self.assertEqual(len(report.rows), 1)
+        row = report.rows[0]
+        self.assertEqual(row["workload_status"], "completed")
+        self.assertEqual(
+            row["workload_artifact"],
+            "workload/workload_run.json",
+        )
+        self.assertEqual(row["network_cleanup_status"], "ok")
+        self.assertEqual(row["transport_return_code"], 255)
+        self.assertEqual(row["remote_completion_return_code"], 0)
+        self.assertEqual(
+            json.loads(str(row["workload_control_results_json"]))["run"][
+                "remote_completion_return_code"
+            ],
+            0,
+        )
+
+    def test_campaign_results_migrates_only_known_headers(self) -> None:
+        with tempfile.TemporaryDirectory(
+            prefix="oai-profile-results-migration-"
+        ) as temporary:
+            root = Path(temporary)
+            current_row = {
+                field_name: ""
+                for field_name in campaign.RESULT_FIELDS
+            }
+            current_row["campaign_id"] = "new-campaign"
+            for name, fields in (
+                ("legacy", campaign.LEGACY_RESULT_FIELDS),
+                ("pre-identity", campaign.PRE_IDENTITY_RESULT_FIELDS),
+            ):
+                with self.subTest(name=name):
+                    path = root / f"{name}.csv"
+                    old_row = {field_name: "" for field_name in fields}
+                    old_row["campaign_id"] = "old-campaign"
+                    if "workload_status" in old_row:
+                        old_row["workload_status"] = "completed"
+                        old_row[
+                            "workload_artifact"
+                        ] = "workload/workload_run.json"
+                        old_row["network_cleanup_status"] = "ok"
+                    with path.open("w", newline="", encoding="utf-8") as stream:
+                        writer = csv.DictWriter(stream, fieldnames=fields)
+                        writer.writeheader()
+                        writer.writerow(old_row)
+                    campaign.append_results(path, [current_row])
+                    with path.open(newline="", encoding="utf-8") as stream:
+                        reader = csv.DictReader(stream)
+                        migrated = list(reader)
+                        self.assertEqual(
+                            reader.fieldnames,
+                            campaign.RESULT_FIELDS,
+                        )
+                    self.assertEqual(len(migrated), 2)
+                    self.assertEqual(
+                        migrated[0]["transport_return_code"],
+                        "",
+                    )
+                    self.assertEqual(
+                        migrated[0]["remote_completion_return_code"],
+                        "",
+                    )
+                    expected_status = (
+                        "not_configured" if name == "legacy" else "completed"
+                    )
+                    self.assertEqual(
+                        migrated[0]["workload_status"],
+                        expected_status,
+                    )
+
+            unknown = root / "unknown.csv"
+            unknown.write_text("unexpected\nvalue\n")
+            with self.assertRaisesRegex(
+                ValueError,
+                "unexpected campaign results schema",
+            ):
+                campaign.append_results(unknown, [current_row])
 
     def test_main_fails_clean_early_exit_and_preserves_archives(self) -> None:
         with tempfile.TemporaryDirectory(prefix="oai-profile-campaign-early-exit-") as temporary:

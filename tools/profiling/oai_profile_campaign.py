@@ -13,6 +13,7 @@ import csv
 import json
 import os
 import re
+import secrets
 import shlex
 import signal
 import socket
@@ -20,7 +21,7 @@ import subprocess
 import sys
 import tempfile
 import time
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path, PurePosixPath
 from typing import Any
@@ -29,13 +30,21 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from oai_profile_archive import finalize_archive, register_external_source  # noqa: E402
+from oai_profile_workload import (  # noqa: E402
+    WorkloadSpec,
+    command_plan as workload_command_plan,
+    parse_workload_spec,
+)
 
 
 CAMPAIGN_SCHEMA_VERSION = 1
 RUNNER_VERSION = "1"
+CONTROL_SCHEMA_VERSION = 1
 SAFE_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*$")
+CONTROL_TOKEN = re.compile(r"^[0-9a-f]{32}$")
 SSH_OPTIONS = ["-o", "BatchMode=yes", "-o", "ConnectTimeout=10"]
 REMOTE_CONTROL_TIMEOUT_S = 20.0
+REMOTE_ACTION_STOP_GRACE_S = 2.0
 SENSITIVE_FRAGMENTS = (
     "password",
     "passwd",
@@ -80,12 +89,29 @@ RESULT_FIELDS = [
     "duration_clock",
     "duration_status",
     "realtime_clock_regressed",
+    "transport_return_code",
+    "remote_completion_return_code",
     "return_code",
     "run_status",
     "stop_reason",
     "archive_status",
     "sidecar_status",
+    "workload_status",
+    "workload_artifact",
+    "network_cleanup_status",
     "notes",
+]
+PRE_IDENTITY_RESULT_FIELDS = [
+    field_name
+    for field_name in RESULT_FIELDS
+    if field_name
+    not in {"transport_return_code", "remote_completion_return_code"}
+]
+LEGACY_RESULT_FIELDS = [
+    field_name
+    for field_name in PRE_IDENTITY_RESULT_FIELDS
+    if field_name
+    not in {"workload_status", "workload_artifact", "network_cleanup_status"}
 ]
 
 
@@ -146,6 +172,15 @@ class ProcessHandle:
     sidecar_version: str = ""
     archive_status: str = "pending"
     sidecar_status: str = "not_requested"
+    workload_status: str = "not_configured"
+    workload_artifact: str = ""
+    network_cleanup_status: str = "not_configured"
+    workload_control_results: dict[str, dict[str, Any]] = field(default_factory=dict)
+    experiment_id: str = ""
+    control_token: str = ""
+    transport_return_code: int | None = None
+    remote_completion_return_code: int | None = None
+    shutdown_verified: bool = False
     run_status: str = "planned"
     initial_manifest: dict[str, Any] = field(default_factory=dict)
     prepared: bool = False
@@ -153,6 +188,50 @@ class ProcessHandle:
     owner_gid: int = -1
     launch_index: int = -1
     notes: list[str] = field(default_factory=list)
+
+    @property
+    def control_action(self) -> str:
+        return f"role:{self.endpoint.role}"
+
+    @property
+    def control_start_path(self) -> str:
+        return f"{self.run_dir}/control.start"
+
+    @property
+    def control_completion_path(self) -> str:
+        return f"{self.run_dir}/control.complete"
+
+
+@dataclass
+class WorkloadHandle:
+    spec: WorkloadSpec
+    endpoint: Endpoint
+    run_dir: str
+    experiment_id: str
+    process: subprocess.Popen[bytes] | None = None
+    stdout_handle: Any = None
+    stderr_handle: Any = None
+    status: str = "planned"
+    cleanup_status: str = "pending"
+    preflight_complete: bool = False
+    shutdown_verified: bool = False
+    evidence_quiesced: bool = False
+    synchronous_action_attempted: bool = False
+    closed: bool = False
+    control_tokens: dict[str, str] = field(default_factory=dict)
+    control_results: dict[str, dict[str, Any]] = field(default_factory=dict)
+    state: dict[str, Any] = field(default_factory=dict)
+    notes: list[str] = field(default_factory=list)
+
+    def action_control_start_path(self, action: str) -> str:
+        if action not in {"preflight", "run", "cleanup"}:
+            raise ValueError(f"unsupported workload action: {action}")
+        return f"{self.run_dir}/workload/{action}.control.start"
+
+    def action_control_completion_path(self, action: str) -> str:
+        if action not in {"preflight", "run", "cleanup"}:
+            raise ValueError(f"unsupported workload action: {action}")
+        return f"{self.run_dir}/workload/{action}.control.complete"
 
 
 def elapsed_duration(
@@ -288,6 +367,17 @@ def load_spec(path: Path) -> dict[str, Any]:
     ):
         raise ValueError("start_order must contain every role exactly once")
     spec["_start_order"] = start_order
+    workload_value = spec.get("workload")
+    workload = parse_workload_spec(workload_value) if workload_value is not None else None
+    if workload is not None:
+        if workload.client_role not in spec["_endpoints"]:
+            raise ValueError(f"workload client role does not exist: {workload.client_role}")
+        if float(workload.duration_s) != duration_s:
+            raise ValueError(
+                "campaign duration_s must exactly equal workload duration_s "
+                "so the measurement window has one declared duration"
+            )
+    spec["_workload"] = workload
     spec["_variants"] = [parse_variant(value) for value in spec["variants"]]
     variant_names = [variant.name for variant in spec["_variants"]]
     if len(set(variant_names)) != len(variant_names):
@@ -519,6 +609,589 @@ def write_remote_json(endpoint: Endpoint, remote_path: str, value: dict[str, Any
         remote_upload(endpoint, local_path, remote_path)
 
 
+def atomic_write_text(path: Path, value: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+    try:
+        with temporary.open("w", encoding="utf-8") as stream:
+            stream.write(value)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, path)
+    finally:
+        if temporary.exists():
+            temporary.unlink()
+
+
+def read_endpoint_text(endpoint: Endpoint, path: str) -> str:
+    if not endpoint.remote:
+        return Path(path).read_text()
+    result = remote_run(
+        endpoint,
+        f"cat -- {shlex.quote(path)}",
+        check=False,
+        capture=True,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"could not read {endpoint.host}:{path}: "
+            f"status={result.returncode}, stderr={result.stderr.strip()}"
+        )
+    return result.stdout
+
+
+def write_endpoint_text(endpoint: Endpoint, path: str, value: str) -> None:
+    if not endpoint.remote:
+        atomic_write_text(Path(path), value)
+        return
+    with tempfile.TemporaryDirectory(prefix="oai-campaign-text-") as temporary:
+        local_path = Path(temporary) / Path(path).name
+        atomic_write_text(local_path, value)
+        remote_upload(endpoint, local_path, path)
+
+
+def read_endpoint_json(endpoint: Endpoint, path: str) -> dict[str, Any]:
+    try:
+        value = json.loads(read_endpoint_text(endpoint, path))
+    except json.JSONDecodeError as error:
+        raise RuntimeError(f"malformed JSON evidence at {endpoint.host}:{path}") from error
+    if not isinstance(value, dict):
+        raise RuntimeError(f"JSON evidence is not an object at {endpoint.host}:{path}")
+    return value
+
+
+def workload_config_json(spec: WorkloadSpec) -> str:
+    return json.dumps(asdict(spec), sort_keys=True, separators=(",", ":"))
+
+
+def workload_action_command(
+    workload: WorkloadHandle,
+    action: str,
+) -> list[str]:
+    command = [
+        "python3",
+        workload.spec.helper,
+        action,
+        "--config-json",
+        workload_config_json(workload.spec),
+        "--run-dir",
+        workload.run_dir,
+        "--experiment-id",
+        workload.experiment_id,
+    ]
+    return ["sudo", "-n", *command] if workload.endpoint.sudo else command
+
+
+def control_record_text(record: dict[str, Any], completion: bool) -> str:
+    fields = [
+        "schema_version",
+        "action",
+        "experiment_id",
+        "token",
+        "pgid",
+        "start_ticks",
+    ]
+    if completion:
+        fields.append("return_code")
+    return "".join(f"{field_name}={record[field_name]}\n" for field_name in fields)
+
+
+def parse_control_record(
+    text: str,
+    *,
+    action: str,
+    experiment_id: str,
+    token: str,
+    completion: bool,
+) -> dict[str, Any]:
+    if not CONTROL_TOKEN.fullmatch(token):
+        raise ValueError("control token must be 32 lowercase hexadecimal characters")
+    expected_fields = {
+        "schema_version",
+        "action",
+        "experiment_id",
+        "token",
+        "pgid",
+        "start_ticks",
+    }
+    if completion:
+        expected_fields.add("return_code")
+    values: dict[str, str] = {}
+    for line in text.splitlines():
+        if not line or "=" not in line:
+            raise ValueError("control record contains a malformed line")
+        name, value = line.split("=", 1)
+        if name in values:
+            raise ValueError(f"control record repeats {name}")
+        values[name] = value
+    if set(values) != expected_fields:
+        raise ValueError("control record field set is invalid")
+    if values["schema_version"] != str(CONTROL_SCHEMA_VERSION):
+        raise ValueError("control record schema is unsupported")
+    expected_identity = {
+        "action": action,
+        "experiment_id": require_safe_name(experiment_id, "experiment_id"),
+        "token": token,
+    }
+    for name, expected in expected_identity.items():
+        if values[name] != expected:
+            raise ValueError(f"control record {name} mismatch")
+    for name in ("pgid", "start_ticks"):
+        if not values[name].isdecimal() or int(values[name]) <= 0:
+            raise ValueError(f"control record {name} must be positive decimal")
+    record: dict[str, Any] = {
+        "schema_version": CONTROL_SCHEMA_VERSION,
+        **expected_identity,
+        "pgid": int(values["pgid"]),
+        "start_ticks": int(values["start_ticks"]),
+    }
+    if completion:
+        return_code = values["return_code"]
+        if not return_code.isdecimal() or not (0 <= int(return_code) <= 255):
+            raise ValueError("control record return_code must be in [0, 255]")
+        record["return_code"] = int(return_code)
+    return record
+
+
+def remote_control_inner_command(
+    command: list[str],
+    *,
+    action: str,
+    experiment_id: str,
+    token: str,
+    start_path: str,
+    completion_path: str,
+) -> str:
+    if not CONTROL_TOKEN.fullmatch(token):
+        raise ValueError("control token must be 32 lowercase hexadecimal characters")
+    require_safe_name(experiment_id, "experiment_id")
+    if action not in {"preflight", "run", "cleanup"}:
+        if not action.startswith("role:"):
+            raise ValueError(f"unsupported control action: {action}")
+        require_safe_name(action.removeprefix("role:"), "control role")
+    fixed_fields = [
+        f"schema_version={CONTROL_SCHEMA_VERSION}",
+        f"action={action}",
+        f"experiment_id={experiment_id}",
+        f"token={token}",
+    ]
+    start_values = " ".join(shlex.quote(value) for value in fixed_fields)
+    start_temporary = f"{start_path}.tmp.$$"
+    completion_temporary = f"{completion_path}.tmp.$$"
+    return (
+        "umask 077; "
+        f"if test -e {shlex.quote(start_path)} || "
+        f"test -e {shlex.quote(completion_path)}; then exit 47; fi; "
+        "pgid=$$; "
+        "proc_identity=$(awk '{print $5 \" \" $22}' /proc/$$/stat) || exit 46; "
+        "set -- $proc_identity; "
+        "[ \"$#\" -eq 2 ] && [ \"$1\" = \"$$\" ] || exit 46; "
+        "start_ticks=$2; "
+        f"printf '%s\\n' {start_values} \"pgid=$pgid\" "
+        f"\"start_ticks=$start_ticks\" > {shlex.quote(start_temporary)} || exit 46; "
+        f"mv -- {shlex.quote(start_temporary)} {shlex.quote(start_path)} || exit 46; "
+        f"{shlex.join(command)}; command_rc=$?; "
+        f"printf '%s\\n' {start_values} \"pgid=$pgid\" "
+        f"\"start_ticks=$start_ticks\" \"return_code=$command_rc\" "
+        f"> {shlex.quote(completion_temporary)} || exit 46; "
+        f"mv -- {shlex.quote(completion_temporary)} "
+        f"{shlex.quote(completion_path)} || exit 46; "
+        "exit \"$command_rc\""
+    )
+
+
+def read_remote_control_record(
+    endpoint: Endpoint,
+    path: str,
+    *,
+    action: str,
+    experiment_id: str,
+    token: str,
+    completion: bool,
+) -> tuple[str, dict[str, Any] | None, str]:
+    command = (
+        f"if ! test -e {shlex.quote(path)}; then exit 1; fi; "
+        f"if ! test -f {shlex.quote(path)} || "
+        f"! test -r {shlex.quote(path)}; then exit 44; fi; "
+        f"cat -- {shlex.quote(path)}"
+    )
+    try:
+        result = remote_run(endpoint, command, check=False, capture=True)
+    except (OSError, subprocess.SubprocessError) as error:
+        return "unknown", None, str(error)
+    if result.returncode == 1:
+        return "missing", None, ""
+    if result.returncode != 0:
+        return (
+            "unknown",
+            None,
+            f"status={result.returncode}, stderr={result.stderr.strip()!r}",
+        )
+    try:
+        record = parse_control_record(
+            result.stdout,
+            action=action,
+            experiment_id=experiment_id,
+            token=token,
+            completion=completion,
+        )
+    except ValueError as error:
+        return "invalid", None, str(error)
+    return "present", record, ""
+
+
+def remote_identity_probe_command(record: dict[str, Any], sudo: bool) -> str:
+    pgid = int(record["pgid"])
+    start_ticks = int(record["start_ticks"])
+    kill = "sudo -n kill" if sudo else "kill"
+    return (
+        f"if ! test -e /proc/{pgid}/stat; then "
+        f"probe=$(LC_ALL=C {kill} -0 -- -{pgid} 2>&1); probe_rc=$?; "
+        "if [ \"$probe_rc\" -eq 0 ]; then exit 3; fi; "
+        "case \"$probe\" in *'No such process'*) exit 1;; "
+        "*) printf '%s\\n' \"$probe\" >&2; exit 44;; esac; fi; "
+        f"if ! test -r /proc/{pgid}/stat; then exit 44; fi; "
+        f"current=$(awk '{{print $22}}' /proc/{pgid}/stat) || exit 44; "
+        f"if [ \"$current\" = {shlex.quote(str(start_ticks))} ]; "
+        "then exit 0; else exit 2; fi"
+    )
+
+
+def remote_control_state(
+    endpoint: Endpoint,
+    *,
+    action: str,
+    experiment_id: str,
+    token: str,
+    start_path: str,
+    completion_path: str,
+) -> tuple[bool | None, dict[str, Any] | None, str]:
+    start_status, start, start_detail = read_remote_control_record(
+        endpoint,
+        start_path,
+        action=action,
+        experiment_id=experiment_id,
+        token=token,
+        completion=False,
+    )
+    if start_status != "present" or start is None:
+        return None, None, f"start record {start_status}: {start_detail}"
+    completion_status, completed, completion_detail = read_remote_control_record(
+        endpoint,
+        completion_path,
+        action=action,
+        experiment_id=experiment_id,
+        token=token,
+        completion=True,
+    )
+    if completion_status == "present" and completed is not None:
+        if (
+            completed["pgid"] != start["pgid"]
+            or completed["start_ticks"] != start["start_ticks"]
+        ):
+            return None, start, "completion identity does not match start record"
+        return False, completed, "matching_completion"
+    if completion_status not in {"missing"}:
+        return (
+            None,
+            start,
+            f"completion record {completion_status}: {completion_detail}",
+        )
+    try:
+        result = remote_run(
+            endpoint,
+            remote_identity_probe_command(start, endpoint.sudo),
+            check=False,
+            capture=True,
+        )
+    except (OSError, subprocess.SubprocessError) as error:
+        return None, start, str(error)
+    if result.returncode == 0:
+        return True, start, "matching_identity_live"
+    if result.returncode == 1:
+        return False, start, "original_identity_absent"
+    if result.returncode == 2:
+        return False, start, "pgid_reused_original_identity_dead"
+    if result.returncode == 3:
+        return None, start, "leader_absent_process_group_still_live"
+    return (
+        None,
+        start,
+        f"identity probe status={result.returncode}, stderr={result.stderr.strip()!r}",
+    )
+
+
+def remote_identity_signal_command(
+    start_path: str,
+    record: dict[str, Any],
+    signal_name: str,
+    sudo: bool,
+) -> str:
+    expected = control_record_text(record, completion=False).rstrip("\n")
+    pgid = int(record["pgid"])
+    start_ticks = int(record["start_ticks"])
+    kill = "sudo -n kill" if sudo else "kill"
+    return (
+        f"if ! test -r {shlex.quote(start_path)}; then exit 42; fi; "
+        f"actual=$(cat -- {shlex.quote(start_path)}) || exit 44; "
+        f"if [ \"$actual\" != {shlex.quote(expected)} ]; then exit 43; fi; "
+        f"if ! test -r /proc/{pgid}/stat; then exit 45; fi; "
+        f"current=$(awk '{{print $22}}' /proc/{pgid}/stat) || exit 44; "
+        f"if [ \"$current\" != {shlex.quote(str(start_ticks))} ]; then exit 45; fi; "
+        f"{kill} -{signal_name} -- -{pgid}"
+    )
+
+
+def wait_remote_control_not_live(
+    endpoint: Endpoint,
+    *,
+    action: str,
+    experiment_id: str,
+    token: str,
+    start_path: str,
+    completion_path: str,
+    timeout_s: float,
+) -> tuple[bool | None, dict[str, Any] | None, str]:
+    deadline = time.monotonic() + timeout_s
+    while True:
+        state, identity, detail = remote_control_state(
+            endpoint,
+            action=action,
+            experiment_id=experiment_id,
+            token=token,
+            start_path=start_path,
+            completion_path=completion_path,
+        )
+        if state is not True or time.monotonic() >= deadline:
+            return state, identity, detail
+        time.sleep(min(0.25, max(0.0, deadline - time.monotonic())))
+
+
+def stop_remote_controlled_action(
+    endpoint: Endpoint,
+    *,
+    action: str,
+    experiment_id: str,
+    token: str,
+    start_path: str,
+    completion_path: str,
+    identity: dict[str, Any],
+) -> tuple[bool | None, str]:
+    current_identity = identity
+    last_state: bool | None = True
+    details: list[str] = []
+    for signal_name in ("INT", "TERM", "KILL"):
+        command = remote_identity_signal_command(
+            start_path,
+            current_identity,
+            signal_name,
+            endpoint.sudo,
+        )
+        try:
+            result = remote_run(
+                endpoint,
+                command,
+                check=False,
+                capture=True,
+            )
+        except BaseException as error:
+            result = None
+            details.append(f"{signal_name} signal proof failed: {error}")
+        if result is not None and result.returncode != 0:
+            details.append(
+                f"{signal_name} signal proof status={result.returncode}, "
+                f"stderr={result.stderr.strip()!r}"
+            )
+        try:
+            state, observed_identity, detail = wait_remote_control_not_live(
+                endpoint,
+                action=action,
+                experiment_id=experiment_id,
+                token=token,
+                start_path=start_path,
+                completion_path=completion_path,
+                timeout_s=REMOTE_ACTION_STOP_GRACE_S,
+            )
+        except BaseException as error:
+            state = None
+            observed_identity = None
+            detail = f"{signal_name} post-signal identity proof failed: {error}"
+        details.append(f"{signal_name} post-signal state: {detail}")
+        last_state = state
+        if state is False:
+            return False, "; ".join(details)
+        if state is True and observed_identity is not None:
+            current_identity = observed_identity
+        elif state is True:
+            details.append(
+                f"{signal_name} live state omitted matching identity; retaining prior identity"
+            )
+    return last_state, "; ".join(details)
+
+
+def invoke_workload_action(
+    workload: WorkloadHandle,
+    action: str,
+    timeout_s: float,
+) -> subprocess.CompletedProcess[str]:
+    workload.synchronous_action_attempted = True
+    workload.evidence_quiesced = False
+    command = workload_action_command(workload, action)
+    stdout_path = f"{workload.run_dir}/workload/{action}.stdout.log"
+    stderr_path = f"{workload.run_dir}/workload/{action}.stderr.log"
+    if workload.endpoint.remote:
+        if action in workload.control_tokens:
+            raise RuntimeError(f"remote workload {action} was already invoked")
+        token = secrets.token_hex(16)
+        if not CONTROL_TOKEN.fullmatch(token):
+            raise RuntimeError("generated workload control token is invalid")
+        workload.control_tokens[action] = token
+        workload.control_results[action] = {
+            "transport_status": "pending",
+            "transport_return_code": None,
+            "remote_completion_return_code": None,
+        }
+        start_path = workload.action_control_start_path(action)
+        completion_path = workload.action_control_completion_path(action)
+        inner = remote_control_inner_command(
+            command,
+            action=action,
+            experiment_id=workload.experiment_id,
+            token=token,
+            start_path=start_path,
+            completion_path=completion_path,
+        )
+        shell = (
+            f"exec setsid --wait sh -c {shlex.quote(inner)} "
+            f">{shlex.quote(stdout_path)} 2>{shlex.quote(stderr_path)}"
+        )
+        result: subprocess.CompletedProcess[str] | None = None
+        invocation_error: BaseException | None = None
+        try:
+            result = remote_run(
+                workload.endpoint,
+                shell,
+                check=False,
+                capture=True,
+                timeout_s=timeout_s,
+            )
+            workload.control_results[action].update(
+                {
+                    "transport_status": "returned",
+                    "transport_return_code": result.returncode,
+                }
+            )
+        except BaseException as error:
+            invocation_error = error
+            workload.control_results[action]["transport_status"] = (
+                f"{type(error).__name__}: {error}"
+            )
+        try:
+            state, identity, detail = remote_control_state(
+                workload.endpoint,
+                action=action,
+                experiment_id=workload.experiment_id,
+                token=token,
+                start_path=start_path,
+                completion_path=completion_path,
+            )
+        except BaseException as error:
+            state = None
+            identity = None
+            detail = f"identity proof raised {type(error).__name__}: {error}"
+        if state is True and identity is not None:
+            workload.notes.append(
+                f"remote workload {action} remained live; starting identity-bound shutdown"
+            )
+            state, detail = stop_remote_controlled_action(
+                workload.endpoint,
+                action=action,
+                experiment_id=workload.experiment_id,
+                token=token,
+                start_path=start_path,
+                completion_path=completion_path,
+                identity=identity,
+            )
+            if state is False:
+                try:
+                    _, identity, completion_detail = remote_control_state(
+                        workload.endpoint,
+                        action=action,
+                        experiment_id=workload.experiment_id,
+                        token=token,
+                        start_path=start_path,
+                        completion_path=completion_path,
+                    )
+                    detail = f"{detail}; final state: {completion_detail}"
+                except BaseException as error:
+                    identity = None
+                    detail = (
+                        f"{detail}; final completion proof raised "
+                        f"{type(error).__name__}: {error}"
+                    )
+        if (
+            state is False
+            and identity is not None
+            and isinstance(identity.get("return_code"), int)
+        ):
+            workload.control_results[action][
+                "remote_completion_return_code"
+            ] = identity["return_code"]
+        workload.evidence_quiesced = state is False
+        if not workload.evidence_quiesced:
+            workload.notes.append(
+                f"remote workload {action} shutdown is unverified: "
+                f"{detail or 'matching identity remains active'}"
+            )
+        if invocation_error is not None:
+            completion_return_code = workload.control_results[action][
+                "remote_completion_return_code"
+            ]
+            if isinstance(invocation_error, (KeyboardInterrupt, SystemExit)):
+                raise invocation_error
+            if completion_return_code is None:
+                raise invocation_error
+            workload.notes.append(
+                f"remote workload {action} transport failed after authoritative "
+                f"completion: {type(invocation_error).__name__}: {invocation_error}"
+            )
+            result = subprocess.CompletedProcess(
+                ["ssh", workload.endpoint.host],
+                completion_return_code,
+                "",
+                str(invocation_error),
+            )
+        if result is None:
+            raise RuntimeError(f"remote workload {action} produced no command result")
+        return result
+    with Path(stdout_path).open("w", encoding="utf-8") as stdout_stream, Path(
+        stderr_path
+    ).open("w", encoding="utf-8") as stderr_stream:
+        result = subprocess.run(
+            command,
+            check=False,
+            text=True,
+            stdout=stdout_stream,
+            stderr=stderr_stream,
+            timeout=timeout_s,
+        )
+    workload.evidence_quiesced = True
+    return result
+
+
+def refresh_workload_state(workload: WorkloadHandle) -> dict[str, Any]:
+    state = read_endpoint_json(
+        workload.endpoint,
+        f"{workload.run_dir}/workload/workload_run.json",
+    )
+    if state.get("schema_version") != 1:
+        raise RuntimeError("workload_run.json has an unsupported schema")
+    if state.get("experiment_id") != workload.experiment_id:
+        raise RuntimeError("workload_run.json experiment identity mismatch")
+    workload.state = state
+    return state
+
+
 def endpoint_path_exists(endpoint: Endpoint, path: str) -> bool:
     if not endpoint.remote:
         return Path(path).exists()
@@ -533,11 +1206,17 @@ def prepare_run_dir(handle: ProcessHandle) -> None:
         raise FileExistsError(f"run directory already exists: {endpoint.host}:{run_dir}")
     if endpoint.remote:
         parent = str(PurePosixPath(run_dir).parent)
+        workload_directory = (
+            f" && mkdir {shlex.quote(run_dir + '/workload')}"
+            if handle.workload_status != "not_configured"
+            else ""
+        )
         remote_run(
             endpoint,
             f"mkdir -p {shlex.quote(parent)} && "
             f"mkdir {shlex.quote(run_dir)} && "
-            f"mkdir {shlex.quote(run_dir + '/sidecars')}",
+            f"mkdir {shlex.quote(run_dir + '/sidecars')}"
+            f"{workload_directory}",
         )
         handle.prepared = True
         write_remote_json(endpoint, f"{run_dir}/campaign_run.json", handle.initial_manifest)
@@ -545,6 +1224,8 @@ def prepare_run_dir(handle: ProcessHandle) -> None:
         Path(run_dir).mkdir(parents=True, exist_ok=False)
         handle.prepared = True
         Path(run_dir, "sidecars").mkdir()
+        if handle.workload_status != "not_configured":
+            Path(run_dir, "workload").mkdir()
         atomic_write_json(Path(run_dir, "campaign_run.json"), handle.initial_manifest)
 
 
@@ -618,9 +1299,21 @@ def launch_local(handle: ProcessHandle) -> None:
 
 
 def launch_remote(handle: ProcessHandle, control_dir: Path) -> None:
-    control_pid = f"{handle.run_dir}/control.pid"
+    if handle.control_token:
+        raise RuntimeError(f"remote role {handle.endpoint.role} was already launched")
+    handle.control_token = secrets.token_hex(16)
+    if not CONTROL_TOKEN.fullmatch(handle.control_token):
+        raise RuntimeError("generated role control token is invalid")
+    require_safe_name(handle.experiment_id, "experiment_id")
     working_directory = handle.endpoint.cwd or "."
-    inner = f"printf '%s\\n' $$ > {shlex.quote(control_pid)}; exec {shlex.join(handle.command)}"
+    inner = remote_control_inner_command(
+        handle.command,
+        action=handle.control_action,
+        experiment_id=handle.experiment_id,
+        token=handle.control_token,
+        start_path=handle.control_start_path,
+        completion_path=handle.control_completion_path,
+    )
     shell = (
         f"cd {shlex.quote(working_directory)} && exec setsid --wait sh -c {shlex.quote(inner)} "
         f">{shlex.quote(handle.run_dir + '/stdout.log')} 2>{shlex.quote(handle.run_dir + '/stderr.log')}"
@@ -647,6 +1340,465 @@ def launch_remote(handle: ProcessHandle, control_dir: Path) -> None:
     handle.notes.append("start/end monotonic anchors are orchestrator-clock values for remote roles")
 
 
+def launch_workload(workload: WorkloadHandle, control_dir: Path) -> None:
+    workload.evidence_quiesced = False
+    command = workload_action_command(workload, "run")
+    stdout_path = f"{workload.run_dir}/workload/run.stdout.log"
+    stderr_path = f"{workload.run_dir}/workload/run.stderr.log"
+    if workload.endpoint.remote:
+        if "run" in workload.control_tokens:
+            raise RuntimeError("remote workload run was already launched")
+        token = secrets.token_hex(16)
+        if not CONTROL_TOKEN.fullmatch(token):
+            raise RuntimeError("generated workload run control token is invalid")
+        workload.control_tokens["run"] = token
+        workload.control_results["run"] = {
+            "transport_status": "running",
+            "transport_return_code": None,
+            "remote_completion_return_code": None,
+        }
+        inner = remote_control_inner_command(
+            command,
+            action="run",
+            experiment_id=workload.experiment_id,
+            token=token,
+            start_path=workload.action_control_start_path("run"),
+            completion_path=workload.action_control_completion_path("run"),
+        )
+        shell = (
+            f"exec setsid --wait sh -c {shlex.quote(inner)} "
+            f">{shlex.quote(stdout_path)} 2>{shlex.quote(stderr_path)}"
+        )
+        control_dir.mkdir(parents=True, exist_ok=True)
+        stdout_handle = Path(control_dir, "workload_ssh_stdout.log").open("wb")
+        stderr_handle = Path(control_dir, "workload_ssh_stderr.log").open("wb")
+        try:
+            workload.process = subprocess.Popen(
+                ["ssh", *SSH_OPTIONS, workload.endpoint.host, shell],
+                stdout=stdout_handle,
+                stderr=stderr_handle,
+                start_new_session=True,
+            )
+        except Exception:
+            stdout_handle.close()
+            stderr_handle.close()
+            raise
+    else:
+        stdout_handle = Path(stdout_path).open("wb")
+        stderr_handle = Path(stderr_path).open("wb")
+        try:
+            workload.process = subprocess.Popen(
+                command,
+                stdout=stdout_handle,
+                stderr=stderr_handle,
+                start_new_session=True,
+            )
+        except Exception:
+            stdout_handle.close()
+            stderr_handle.close()
+            raise
+    workload.stdout_handle = stdout_handle
+    workload.stderr_handle = stderr_handle
+    workload.status = "running"
+
+
+def preflight_workload(workload: WorkloadHandle) -> None:
+    result = invoke_workload_action(workload, "preflight", REMOTE_CONTROL_TIMEOUT_S)
+    if not workload.evidence_quiesced:
+        workload.status = "preflight_failed"
+        raise RuntimeError("workload preflight process shutdown is unverified")
+    return_code = (
+        workload.control_results.get("preflight", {}).get(
+            "remote_completion_return_code"
+        )
+        if workload.endpoint.remote
+        else result.returncode
+    )
+    if return_code != 0:
+        workload.status = "preflight_failed"
+        try:
+            refresh_workload_state(workload)
+        except Exception as error:
+            workload.notes.append(f"preflight evidence unavailable: {error}")
+        raise RuntimeError(
+            f"workload preflight failed with authoritative status {return_code}; "
+            f"transport status {result.returncode}"
+        )
+    state = refresh_workload_state(workload)
+    if state.get("status") != "preflight_complete":
+        workload.status = "preflight_failed"
+        raise RuntimeError("workload preflight did not produce complete structured evidence")
+    workload.preflight_complete = True
+    workload.status = "preflight_complete"
+
+
+def append_workload_note_once(workload: WorkloadHandle, note: str) -> None:
+    if note not in workload.notes:
+        workload.notes.append(note)
+
+
+def workload_remote_control_state(
+    workload: WorkloadHandle,
+) -> tuple[bool | None, dict[str, Any] | None, str]:
+    if not workload.endpoint.remote or workload.process is None:
+        return False, None, "not_remote_or_not_launched"
+    token = workload.control_tokens.get("run")
+    if token is None:
+        return None, None, "run control token is unavailable"
+    state, identity, detail = remote_control_state(
+        workload.endpoint,
+        action="run",
+        experiment_id=workload.experiment_id,
+        token=token,
+        start_path=workload.action_control_start_path("run"),
+        completion_path=workload.action_control_completion_path("run"),
+    )
+    result = workload.control_results.setdefault(
+        "run",
+        {
+            "transport_status": "unknown",
+            "transport_return_code": None,
+            "remote_completion_return_code": None,
+        },
+    )
+    if workload.process.poll() is not None:
+        result["transport_status"] = "returned"
+        result["transport_return_code"] = workload.process.returncode
+    if (
+        state is False
+        and identity is not None
+        and isinstance(identity.get("return_code"), int)
+    ):
+        result["remote_completion_return_code"] = identity["return_code"]
+    return state, identity, detail
+
+
+def workload_remote_group_is_running(workload: WorkloadHandle) -> bool | None:
+    state, _, detail = workload_remote_control_state(workload)
+    if state is None:
+        append_workload_note_once(
+            workload,
+            f"remote workload process-group state unavailable: {detail}",
+        )
+    return state
+
+
+def workload_shutdown_target_is_running(workload: WorkloadHandle) -> bool:
+    if workload.process is None:
+        return False
+    if not workload.endpoint.remote:
+        return workload.process.poll() is None
+    remote_state = workload_remote_group_is_running(workload)
+    return True if remote_state is None else remote_state or workload.process.poll() is None
+
+
+def workload_shutdown_is_verified(workload: WorkloadHandle) -> bool:
+    if workload.process is None:
+        return True
+    if workload.process.poll() is None:
+        return False
+    if workload.endpoint.remote:
+        return workload_remote_group_is_running(workload) is False
+    return True
+
+
+def signal_workload(workload: WorkloadHandle, signal_name: str) -> None:
+    if workload.process is None:
+        return
+    if workload.endpoint.remote:
+        state, identity, detail = workload_remote_control_state(workload)
+        if state is None or (state is True and identity is None):
+            append_workload_note_once(
+                workload,
+                f"remote workload {signal_name} refused: {detail}",
+            )
+            if signal_name == "KILL" and workload.process.poll() is None:
+                try:
+                    os.killpg(workload.process.pid, signal.SIGKILL)
+                    append_workload_note_once(
+                        workload,
+                        "killed local workload SSH transport after unverifiable remote KILL",
+                    )
+                except OSError as error:
+                    append_workload_note_once(
+                        workload,
+                        f"local workload SSH KILL failed: {error}",
+                    )
+            return
+        if state is False:
+            if workload.process.poll() is None:
+                try:
+                    os.killpg(
+                        workload.process.pid,
+                        getattr(signal, f"SIG{signal_name}"),
+                    )
+                except OSError as error:
+                    append_workload_note_once(
+                        workload,
+                        f"local workload SSH {signal_name} failed: {error}",
+                    )
+            return
+        assert identity is not None
+        command = remote_identity_signal_command(
+            workload.action_control_start_path("run"),
+            identity,
+            signal_name,
+            workload.endpoint.sudo,
+        )
+        try:
+            result = remote_run(
+                workload.endpoint,
+                command,
+                check=False,
+                capture=True,
+            )
+        except (OSError, subprocess.SubprocessError) as error:
+            result = None
+            append_workload_note_once(
+                workload,
+                f"remote workload {signal_name} failed: {error}",
+            )
+        if result is not None and result.returncode != 0:
+            append_workload_note_once(
+                workload,
+                f"remote workload {signal_name} failed: {result.stderr.strip()}",
+            )
+        if signal_name == "KILL" and workload.process.poll() is None:
+            try:
+                os.killpg(workload.process.pid, signal.SIGKILL)
+            except OSError as error:
+                append_workload_note_once(
+                    workload,
+                    f"local workload SSH KILL failed: {error}",
+                )
+        return
+    if workload.process.poll() is not None:
+        return
+    if workload.endpoint.sudo:
+        try:
+            subprocess.run(
+                [
+                    "sudo",
+                    "-n",
+                    "kill",
+                    f"-{signal_name}",
+                    "--",
+                    f"-{workload.process.pid}",
+                ],
+                check=True,
+            )
+        except (OSError, subprocess.CalledProcessError) as error:
+            workload.notes.append(f"local workload {signal_name} failed: {error}")
+    else:
+        try:
+            os.killpg(workload.process.pid, getattr(signal, f"SIG{signal_name}"))
+        except OSError as error:
+            workload.notes.append(f"local workload {signal_name} failed: {error}")
+
+
+def wait_workload_stopped(workload: WorkloadHandle, timeout_s: float) -> bool:
+    deadline = time.monotonic() + timeout_s
+    while time.monotonic() < deadline:
+        if not workload_shutdown_target_is_running(workload):
+            return True
+        time.sleep(0.25)
+    return not workload_shutdown_target_is_running(workload)
+
+
+def stop_workload(workload: WorkloadHandle, grace_s: float) -> bool:
+    if workload.process is None:
+        workload.shutdown_verified = True
+        return True
+    failures: list[BaseException] = []
+    try:
+        if workload_shutdown_target_is_running(workload):
+            signal_workload(workload, "INT")
+    except BaseException as error:
+        workload.notes.append(f"workload INT shutdown stage failed: {error}")
+        failures.append(error)
+    try:
+        stopped_after_int = wait_workload_stopped(workload, grace_s)
+    except BaseException as error:
+        failures.append(error)
+        stopped_after_int = False
+    if not stopped_after_int:
+        try:
+            signal_workload(workload, "TERM")
+        except BaseException as error:
+            workload.notes.append(f"workload TERM shutdown stage failed: {error}")
+            failures.append(error)
+    try:
+        stopped_after_term = wait_workload_stopped(workload, grace_s)
+    except BaseException as error:
+        failures.append(error)
+        stopped_after_term = False
+    if not stopped_after_term:
+        try:
+            signal_workload(workload, "KILL")
+        except BaseException as error:
+            workload.notes.append(f"workload KILL shutdown stage failed: {error}")
+            failures.append(error)
+    try:
+        stopped = wait_workload_stopped(workload, grace_s)
+    except BaseException as error:
+        failures.append(error)
+        stopped = False
+    try:
+        workload.shutdown_verified = stopped and workload_shutdown_is_verified(workload)
+        workload.evidence_quiesced = workload.shutdown_verified
+    except BaseException as error:
+        workload.shutdown_verified = False
+        workload.evidence_quiesced = False
+        failures.append(error)
+    if failures:
+        raise failures[0]
+    return workload.shutdown_verified
+
+
+def close_workload(workload: WorkloadHandle) -> None:
+    if workload.closed and workload.shutdown_verified:
+        return
+    if workload.process is not None:
+        workload.shutdown_verified = workload_shutdown_is_verified(workload)
+        workload.evidence_quiesced = workload.shutdown_verified
+        if workload.shutdown_verified:
+            workload.process.wait()
+            if workload.process.returncode != 0 and workload.status == "running":
+                workload.status = "failed"
+        else:
+            workload.evidence_quiesced = False
+            workload.notes.append("workload process shutdown could not be verified")
+            if workload.status == "running":
+                workload.status = "failed"
+            workload.closed = False
+            return
+    else:
+        workload.shutdown_verified = True
+        if not workload.synchronous_action_attempted:
+            workload.evidence_quiesced = True
+    if workload.stdout_handle is not None:
+        workload.stdout_handle.close()
+    if workload.stderr_handle is not None:
+        workload.stderr_handle.close()
+    workload.closed = True
+
+
+def role_measurement_state(handle: ProcessHandle) -> str:
+    if handle.process is None:
+        return "ended"
+    if handle.process.poll() is None:
+        return "running"
+    if not handle.endpoint.remote:
+        return "ended"
+    remote_state = remote_group_is_running(handle)
+    if remote_state is True:
+        return "running"
+    if remote_state is False:
+        return "ended"
+    return "unknown"
+
+
+def workload_measurement_state(workload: WorkloadHandle) -> str:
+    if workload.process is None:
+        return "ended"
+    if workload.process.poll() is None:
+        return "running"
+    if not workload.endpoint.remote:
+        return "ended"
+    remote_state = workload_remote_group_is_running(workload)
+    if remote_state is True:
+        return "running"
+    if remote_state is False:
+        return "ended"
+    return "unknown"
+
+
+def monitor_loaded_measurement(
+    handles: list[ProcessHandle],
+    workload: WorkloadHandle,
+) -> str:
+    timeout_s = (
+        workload.spec.readiness_timeout_s
+        + workload.spec.ping_count * workload.spec.ping_timeout_s
+        + workload.spec.duration_s
+        + 60.0
+    )
+    deadline = time.monotonic() + timeout_s
+    while time.monotonic() < deadline:
+        workload_state = workload_measurement_state(workload)
+        if workload_state == "ended":
+            close_workload(workload)
+            if not workload.shutdown_verified:
+                workload.status = "failed"
+                workload.notes.append(
+                    "workload completion rejected because shutdown was not verified"
+                )
+                return "workload_shutdown_unverified"
+            state = refresh_workload_state(workload)
+            if (
+                workload.process is not None
+                and (
+                    workload.control_results.get("run", {}).get(
+                        "remote_completion_return_code"
+                    )
+                    == 0
+                    if workload.endpoint.remote
+                    else workload.process.returncode == 0
+                )
+                and state.get("status") == "completed"
+                and state.get("workload_status") == "completed"
+                and state.get("iperf3_status") == "ok"
+            ):
+                workload.status = "completed"
+                return "measurement_complete"
+            workload.status = "failed"
+            return "workload_failed"
+        if workload_state == "unknown":
+            workload.status = "failed"
+            workload.notes.append("workload state became unverifiable during measurement")
+            return "workload_state_unknown"
+        role_states = [role_measurement_state(handle) for handle in handles]
+        if "unknown" in role_states:
+            workload.status = "aborted"
+            return "paired_role_state_unknown"
+        if "ended" in role_states:
+            workload.status = "aborted_role_exit"
+            return "paired_role_exited"
+        time.sleep(0.25)
+    workload.status = "failed"
+    workload.notes.append(f"workload outer watchdog expired after {timeout_s}s")
+    return "workload_timeout"
+
+
+def cleanup_workload(workload: WorkloadHandle) -> None:
+    workload.evidence_quiesced = False
+    result = invoke_workload_action(workload, "cleanup", 60.0)
+    if not workload.evidence_quiesced:
+        workload.cleanup_status = "failed"
+        raise RuntimeError("workload cleanup process shutdown is unverified")
+    try:
+        state = refresh_workload_state(workload)
+        cleanup_status = str(state.get("cleanup_status", "failed"))
+    except Exception as error:
+        workload.cleanup_status = "failed"
+        workload.notes.append(f"cleanup evidence unavailable: {error}")
+        raise
+    workload.cleanup_status = cleanup_status
+    return_code = (
+        workload.control_results.get("cleanup", {}).get(
+            "remote_completion_return_code"
+        )
+        if workload.endpoint.remote
+        else result.returncode
+    )
+    if return_code != 0 or cleanup_status not in {"ok", "already_absent"}:
+        raise RuntimeError(
+            f"workload cleanup failed: authoritative_status={return_code}, "
+            f"transport_status={result.returncode}, "
+            f"evidence={cleanup_status}"
+        )
+
+
 def process_is_running(handle: ProcessHandle) -> bool:
     return handle.process is not None and handle.process.poll() is None
 
@@ -659,18 +1811,31 @@ def append_note_once(handle: ProcessHandle, note: str) -> None:
 def remote_group_is_running(handle: ProcessHandle) -> bool | None:
     if not handle.endpoint.remote or handle.process is None:
         return False
-    pid_file = f"{handle.run_dir}/control.pid"
-    kill = "sudo -n kill" if handle.endpoint.sudo else "kill"
-    command = (
-        f"test -s {shlex.quote(pid_file)} && "
-        f"{kill} -0 -- -$(cat {shlex.quote(pid_file)})"
-    )
-    try:
-        result = remote_run(handle.endpoint, command, check=False, capture=True)
-    except (OSError, subprocess.SubprocessError) as error:
-        append_note_once(handle, f"remote process-group state unavailable: {error}")
+    if not handle.control_token:
+        append_note_once(handle, "remote process-group state unavailable: control token is unavailable")
         return None
-    return result.returncode == 0
+    state, identity, detail = remote_control_state(
+        handle.endpoint,
+        action=handle.control_action,
+        experiment_id=handle.experiment_id,
+        token=handle.control_token,
+        start_path=handle.control_start_path,
+        completion_path=handle.control_completion_path,
+    )
+    if handle.process.poll() is not None:
+        handle.transport_return_code = handle.process.returncode
+    if (
+        state is False
+        and identity is not None
+        and isinstance(identity.get("return_code"), int)
+    ):
+        handle.remote_completion_return_code = identity["return_code"]
+    if state is None:
+        append_note_once(
+            handle,
+            f"remote process-group state unavailable: {detail}",
+        )
+    return state
 
 
 def shutdown_target_is_running(handle: ProcessHandle) -> bool:
@@ -684,13 +1849,53 @@ def signal_handle(handle: ProcessHandle, signal_name: str) -> None:
     if handle.process is None:
         return
     if handle.endpoint.remote:
-        pid_file = f"{handle.run_dir}/control.pid"
-        kill = "sudo -n kill" if handle.endpoint.sudo else "kill"
-        command = (
-            f"if test -s {shlex.quote(pid_file)}; then "
-            f"pgid=$(cat {shlex.quote(pid_file)}); "
-            f"if {kill} -0 -- -$pgid; then {kill} -{signal_name} -- -$pgid; fi; "
-            "fi"
+        if not handle.control_token:
+            state: bool | None = None
+            identity = None
+            detail = "control token is unavailable"
+        else:
+            state, identity, detail = remote_control_state(
+                handle.endpoint,
+                action=handle.control_action,
+                experiment_id=handle.experiment_id,
+                token=handle.control_token,
+                start_path=handle.control_start_path,
+                completion_path=handle.control_completion_path,
+            )
+        if state is None or (state is True and identity is None):
+            append_note_once(
+                handle,
+                f"remote {signal_name} refused: {detail}",
+            )
+            if signal_name == "KILL" and process_is_running(handle):
+                try:
+                    os.killpg(handle.process.pid, signal.SIGKILL)
+                    append_note_once(
+                        handle,
+                        "killed local SSH transport after unverifiable remote KILL",
+                    )
+                except OSError as error:
+                    append_note_once(handle, f"local SSH control KILL failed: {error}")
+            return
+        if state is False:
+            if process_is_running(handle):
+                try:
+                    os.killpg(
+                        handle.process.pid,
+                        getattr(signal, f"SIG{signal_name}"),
+                    )
+                except OSError as error:
+                    append_note_once(
+                        handle,
+                        f"local SSH control {signal_name} failed: {error}",
+                    )
+            return
+        assert identity is not None
+        command = remote_identity_signal_command(
+            handle.control_start_path,
+            identity,
+            signal_name,
+            handle.endpoint.sudo,
         )
         try:
             result = remote_run(handle.endpoint, command, check=False, capture=True)
@@ -699,13 +1904,12 @@ def signal_handle(handle: ProcessHandle, signal_name: str) -> None:
             result = None
         if result is not None and result.returncode != 0:
             append_note_once(handle, f"remote {signal_name} failed: {result.stderr.strip()}")
-        if result is None or result.returncode != 0:
-            if signal_name == "KILL" and process_is_running(handle):
-                try:
-                    os.killpg(handle.process.pid, signal.SIGKILL)
-                    append_note_once(handle, "killed local SSH control process after remote KILL failure")
-                except OSError as error:
-                    append_note_once(handle, f"local SSH control KILL failed: {error}")
+        if signal_name == "KILL" and process_is_running(handle):
+            try:
+                os.killpg(handle.process.pid, signal.SIGKILL)
+                append_note_once(handle, "killed local SSH transport after remote KILL")
+            except OSError as error:
+                append_note_once(handle, f"local SSH control KILL failed: {error}")
         return
     if not process_is_running(handle):
         return
@@ -727,29 +1931,88 @@ def wait_handles(handles: list[ProcessHandle], timeout_s: float) -> bool:
     return all(not shutdown_target_is_running(handle) for handle in handles)
 
 
-def stop_handles(handles: list[ProcessHandle], reason: str, grace_s: float) -> None:
+def role_shutdown_is_verified(handle: ProcessHandle) -> bool:
+    if handle.process is None:
+        return True
+    if handle.process.poll() is None:
+        return False
+    if handle.endpoint.remote:
+        return remote_group_is_running(handle) is False
+    return True
+
+
+def stop_handles(handles: list[ProcessHandle], reason: str, grace_s: float) -> bool:
+    failures: list[BaseException] = []
     for handle in reversed(handles):
-        if shutdown_target_is_running(handle):
-            handle.stop_reason = reason
-            signal_handle(handle, "INT")
-    if not wait_handles(handles, grace_s):
+        try:
+            if shutdown_target_is_running(handle):
+                handle.stop_reason = reason
+                signal_handle(handle, "INT")
+        except BaseException as error:
+            append_note_once(handle, f"INT shutdown stage failed: {error}")
+            failures.append(error)
+    try:
+        stopped_after_int = wait_handles(handles, grace_s)
+    except BaseException as error:
+        failures.append(error)
+        stopped_after_int = False
+    if not stopped_after_int:
         for handle in reversed(handles):
-            signal_handle(handle, "TERM")
-    if not wait_handles(handles, grace_s):
+            try:
+                signal_handle(handle, "TERM")
+            except BaseException as error:
+                append_note_once(handle, f"TERM shutdown stage failed: {error}")
+                failures.append(error)
+    try:
+        stopped_after_term = wait_handles(handles, grace_s)
+    except BaseException as error:
+        failures.append(error)
+        stopped_after_term = False
+    if not stopped_after_term:
         for handle in reversed(handles):
-            signal_handle(handle, "KILL")
-    wait_handles(handles, grace_s)
+            try:
+                signal_handle(handle, "KILL")
+            except BaseException as error:
+                append_note_once(handle, f"KILL shutdown stage failed: {error}")
+                failures.append(error)
+    try:
+        stopped = wait_handles(handles, grace_s)
+    except BaseException as error:
+        failures.append(error)
+        stopped = False
+    for handle in handles:
+        try:
+            handle.shutdown_verified = stopped and role_shutdown_is_verified(handle)
+        except BaseException as error:
+            handle.shutdown_verified = False
+            append_note_once(handle, f"shutdown verification failed: {error}")
+            failures.append(error)
+    if failures:
+        raise failures[0]
+    return all(handle.shutdown_verified for handle in handles)
 
 
 def close_handle(handle: ProcessHandle) -> None:
     if handle.process is None:
         return
-    if shutdown_target_is_running(handle) or handle.process.poll() is None:
+    handle.shutdown_verified = role_shutdown_is_verified(handle)
+    if not handle.shutdown_verified:
         handle.notes.append("process remained alive after shutdown escalation")
         handle.run_status = "shutdown_failed"
     else:
         handle.process.wait()
-        handle.run_status = "finished" if handle.process.returncode == 0 else "exited_nonzero"
+        if handle.endpoint.remote:
+            handle.transport_return_code = handle.process.returncode
+            if handle.remote_completion_return_code == 0:
+                handle.run_status = "finished"
+            elif handle.remote_completion_return_code is None:
+                handle.run_status = "remote_return_unverified"
+            else:
+                handle.run_status = "exited_nonzero"
+        else:
+            handle.run_status = (
+                "finished" if handle.process.returncode == 0 else "exited_nonzero"
+            )
     handle.end_realtime_ns = time.time_ns()
     handle.end_monotonic_ns = time.clock_gettime_ns(time.CLOCK_MONOTONIC_RAW)
     if handle.stdout_handle is not None:
@@ -764,6 +2027,7 @@ def run_manifest(
     run_dir: str,
     command: list[str],
     environment: dict[str, str],
+    workload_configured: bool = False,
 ) -> dict[str, Any]:
     return {
         "schema_version": CAMPAIGN_SCHEMA_VERSION,
@@ -783,15 +2047,31 @@ def run_manifest(
         "command": redact_command(command),
         "environment": redact_environment(environment),
         "orchestrator_hostname": socket.gethostname(),
+        "workload_status": "planned" if workload_configured else "not_configured",
+        "workload_artifact": "",
+        "network_cleanup_status": "pending" if workload_configured else "not_configured",
+        "workload_control_results": {},
+        "transport_return_code": "",
+        "remote_completion_return_code": "",
         "status": "prepared",
     }
 
 
+def authoritative_return_code(handle: ProcessHandle) -> int | str:
+    if handle.process is None:
+        return ""
+    if handle.endpoint.remote:
+        return (
+            handle.remote_completion_return_code
+            if handle.remote_completion_return_code is not None
+            else ""
+        )
+    return handle.process.returncode if handle.process.returncode is not None else ""
+
+
 def update_manifest(handle: ProcessHandle) -> dict[str, Any]:
     value = dict(handle.initial_manifest)
-    return_code: int | str = ""
-    if handle.process is not None and handle.process.returncode is not None:
-        return_code = handle.process.returncode
+    return_code = authoritative_return_code(handle)
     duration_s, duration_clock, duration_status = elapsed_duration(
         handle.start_monotonic_ns,
         handle.end_monotonic_ns,
@@ -802,6 +2082,16 @@ def update_manifest(handle: ProcessHandle) -> dict[str, Any]:
         {
             "status": handle.run_status,
             "return_code": return_code,
+            "transport_return_code": (
+                handle.transport_return_code
+                if handle.transport_return_code is not None
+                else ""
+            ),
+            "remote_completion_return_code": (
+                handle.remote_completion_return_code
+                if handle.remote_completion_return_code is not None
+                else ""
+            ),
             "stop_reason": handle.stop_reason or ("process_exit" if handle.process is not None else handle.run_status),
             "start_realtime_ns": handle.start_realtime_ns,
             "end_realtime_ns": handle.end_realtime_ns,
@@ -819,6 +2109,10 @@ def update_manifest(handle: ProcessHandle) -> dict[str, Any]:
             "sidecar_artifact": handle.sidecar_artifact,
             "sidecar_tool_version": handle.sidecar_version,
             "sidecar_status": handle.sidecar_status,
+            "workload_status": handle.workload_status,
+            "workload_artifact": handle.workload_artifact,
+            "network_cleanup_status": handle.network_cleanup_status,
+            "workload_control_results": handle.workload_control_results,
             "archive_status": "finalization_pending",
             "notes": list(handle.notes),
         }
@@ -832,7 +2126,7 @@ def update_manifest(handle: ProcessHandle) -> dict[str, Any]:
 
 
 def normalize_ownership(handle: ProcessHandle) -> None:
-    if not handle.endpoint.sudo or handle.process is None:
+    if not handle.endpoint.sudo:
         return
     if handle.owner_uid < 0 or handle.owner_gid < 0:
         raise RuntimeError(f"numeric owner is unavailable for role {handle.endpoint.role}")
@@ -967,12 +2261,165 @@ def register_sidecar(handle: ProcessHandle, plan: ExperimentPlan) -> None:
     handle.sidecar_status = "registered"
 
 
+def workload_source_anchors(
+    state: dict[str, Any],
+) -> tuple[int | str, int | str, int | str, int | str]:
+    values: list[int | str] = []
+    for field_name in (
+        "start_realtime_ns",
+        "end_realtime_ns",
+        "start_monotonic_raw_ns",
+        "end_monotonic_raw_ns",
+    ):
+        value = state.get(field_name)
+        values.append(value if isinstance(value, int) and value > 0 else "")
+    return values[0], values[1], values[2], values[3]
+
+
+def register_workload_source(
+    handle: ProcessHandle,
+    plan: ExperimentPlan,
+    workload: WorkloadHandle,
+    state: dict[str, Any],
+) -> None:
+    artifact = f"{handle.run_dir}/workload/workload_run.json"
+    source_id = require_safe_name(
+        f"campaign-workload-t{plan.trial:03d}",
+        "source_id",
+    )
+    source_status = "recorded" if workload.status == "completed" else "failed"
+    alignment = (
+        "shared_monotonic_raw"
+        if handle.endpoint.role == workload.spec.client_role
+        else "alignment_pending"
+    )
+    notes = (
+        f"source host is {workload.endpoint.hostname}; "
+        "cross-host temporal alignment is unresolved"
+        if alignment == "alignment_pending"
+        else f"source host is {workload.endpoint.hostname}"
+    )
+    anchors = workload_source_anchors(state)
+    recorded_command = shlex.join(redact_command(workload_action_command(workload, "run")))
+    if handle.endpoint.remote:
+        assert handle.endpoint.archive_tool is not None
+        command = [
+            handle.endpoint.archive_tool,
+            "register-external",
+            handle.run_dir,
+            "--source-id",
+            source_id,
+            "--source-type",
+            "campaign_udp_bidir_workload",
+            "--artifact",
+            artifact,
+            "--clock-domain",
+            f"{workload.endpoint.hostname}:CLOCK_MONOTONIC_RAW",
+            "--clock-unit",
+            "ns",
+            "--command",
+            recorded_command,
+            "--tool-version",
+            f"workload-schema-{state.get('schema_version', '')}",
+            "--start-realtime-ns",
+            str(anchors[0]),
+            "--end-realtime-ns",
+            str(anchors[1]),
+            "--start-monotonic-raw-ns",
+            str(anchors[2]),
+            "--end-monotonic-raw-ns",
+            str(anchors[3]),
+            "--status",
+            source_status,
+            "--alignment-method",
+            alignment,
+            "--notes",
+            notes,
+        ]
+        result = remote_run(
+            handle.endpoint,
+            shlex.join(command),
+            check=False,
+            capture=True,
+        )
+        if result.returncode != 0:
+            raise RuntimeError(result.stderr.strip())
+    else:
+        register_external_source(
+            argparse.Namespace(
+                run_dir=Path(handle.run_dir),
+                source_id=source_id,
+                source_type="campaign_udp_bidir_workload",
+                artifact=Path(artifact),
+                copy_artifact=False,
+                clock_domain=f"{workload.endpoint.hostname}:CLOCK_MONOTONIC_RAW",
+                clock_unit="ns",
+                command=recorded_command,
+                tool_version=f"workload-schema-{state.get('schema_version', '')}",
+                start_realtime_ns=anchors[0],
+                end_realtime_ns=anchors[1],
+                start_monotonic_raw_ns=anchors[2],
+                end_monotonic_raw_ns=anchors[3],
+                status=source_status,
+                alignment_method=alignment,
+                alignment_uncertainty_ns="",
+                notes=notes,
+                replace_manifest=False,
+            )
+        )
+    handle.workload_artifact = "workload/workload_run.json"
+
+
+def register_workload_evidence(
+    handles: list[ProcessHandle],
+    plan: ExperimentPlan,
+    workload: WorkloadHandle,
+) -> None:
+    source_path = f"{workload.run_dir}/workload/workload_run.json"
+    source_text = read_endpoint_text(workload.endpoint, source_path)
+    state = json.loads(source_text)
+    if (
+        not isinstance(state, dict)
+        or state.get("schema_version") != 1
+        or state.get("experiment_id") != workload.experiment_id
+    ):
+        raise RuntimeError("workload summary is malformed or has the wrong experiment identity")
+    workload.state = state
+    for handle in handles:
+        if not handle.prepared or not handle.shutdown_verified:
+            continue
+        target_path = f"{handle.run_dir}/workload/workload_run.json"
+        if not (
+            handle.endpoint.role == workload.spec.client_role
+            and handle.run_dir == workload.run_dir
+        ):
+            write_endpoint_text(handle.endpoint, target_path, source_text)
+        try:
+            register_workload_source(handle, plan, workload, state)
+        except Exception as error:
+            handle.workload_artifact = ""
+            handle.notes.append(f"workload registration failed: {error}")
+
+
+def propagate_workload_state(
+    handles: list[ProcessHandle],
+    workload: WorkloadHandle,
+) -> None:
+    for handle in handles:
+        handle.workload_status = workload.status
+        handle.network_cleanup_status = workload.cleanup_status
+        handle.workload_control_results = {
+            action: dict(result)
+            for action, result in workload.control_results.items()
+        }
+
+
 def finalize_handle(handle: ProcessHandle) -> None:
     if not handle.prepared:
         handle.archive_status = "not_prepared"
         return
-    if process_is_running(handle):
-        handle.archive_status = "skipped_process_alive"
+    if not handle.shutdown_verified:
+        handle.archive_status = "skipped_shutdown_unverified"
         return
     if handle.endpoint.remote:
         assert handle.endpoint.archive_tool is not None
@@ -993,9 +2440,7 @@ def finalize_handle(handle: ProcessHandle) -> None:
 
 
 def result_row(handle: ProcessHandle, plan: ExperimentPlan) -> dict[str, Any]:
-    return_code: int | str = ""
-    if handle.process is not None and handle.process.returncode is not None:
-        return_code = handle.process.returncode
+    return_code = authoritative_return_code(handle)
     duration_s, duration_clock, duration_status = elapsed_duration(
         handle.start_monotonic_ns,
         handle.end_monotonic_ns,
@@ -1024,11 +2469,24 @@ def result_row(handle: ProcessHandle, plan: ExperimentPlan) -> dict[str, Any]:
         "realtime_clock_regressed": int(
             handle.start_realtime_ns > 0 and handle.end_realtime_ns < handle.start_realtime_ns
         ),
+        "transport_return_code": (
+            handle.transport_return_code
+            if handle.transport_return_code is not None
+            else ""
+        ),
+        "remote_completion_return_code": (
+            handle.remote_completion_return_code
+            if handle.remote_completion_return_code is not None
+            else ""
+        ),
         "return_code": return_code,
         "run_status": handle.run_status,
         "stop_reason": handle.stop_reason or ("process_exit" if handle.process is not None else handle.run_status),
         "archive_status": handle.archive_status,
         "sidecar_status": handle.sidecar_status,
+        "workload_status": handle.workload_status,
+        "workload_artifact": handle.workload_artifact,
+        "network_cleanup_status": handle.network_cleanup_status,
         "notes": "; ".join(note for note in handle.notes if note),
     }
 
@@ -1036,6 +2494,39 @@ def result_row(handle: ProcessHandle, plan: ExperimentPlan) -> dict[str, Any]:
 def append_results(path: Path, rows: list[dict[str, Any]]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     new_file = not path.exists()
+    if not new_file:
+        with path.open(newline="", encoding="utf-8") as stream:
+            reader = csv.DictReader(stream)
+            fieldnames = reader.fieldnames
+            existing_rows = list(reader)
+        fieldname_tuple = tuple(fieldnames or [])
+        if fieldname_tuple in {
+            tuple(LEGACY_RESULT_FIELDS),
+            tuple(PRE_IDENTITY_RESULT_FIELDS),
+        }:
+            if any(None in row for row in existing_rows):
+                raise ValueError(f"legacy campaign results contain extra columns: {path}")
+            temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+            try:
+                with temporary.open("w", newline="", encoding="utf-8") as stream:
+                    writer = csv.DictWriter(stream, fieldnames=RESULT_FIELDS)
+                    writer.writeheader()
+                    for row in existing_rows:
+                        if fieldnames == LEGACY_RESULT_FIELDS:
+                            row["workload_status"] = "not_configured"
+                            row["workload_artifact"] = ""
+                            row["network_cleanup_status"] = "not_configured"
+                        row["transport_return_code"] = ""
+                        row["remote_completion_return_code"] = ""
+                        writer.writerow(row)
+                    stream.flush()
+                    os.fsync(stream.fileno())
+                os.replace(temporary, path)
+            finally:
+                if temporary.exists():
+                    temporary.unlink()
+        elif fieldnames != RESULT_FIELDS:
+            raise ValueError(f"unexpected campaign results schema: {path}")
     with path.open("a", newline="") as stream:
         writer = csv.DictWriter(stream, fieldnames=RESULT_FIELDS)
         if new_file:
@@ -1049,16 +2540,43 @@ def finalize_runs(
     handles: list[ProcessHandle],
     plan: ExperimentPlan,
     control_root: Path,
+    workload: WorkloadHandle | None = None,
 ) -> list[dict[str, Any]]:
     prepared = [handle for handle in handles if handle.prepared]
+    if workload is not None and (
+        not workload.shutdown_verified or not workload.evidence_quiesced
+    ):
+        if not workload.shutdown_verified:
+            archive_status = "skipped_workload_shutdown_unverified"
+            note = "archive finalization skipped because workload shutdown is unverified"
+        else:
+            archive_status = "skipped_workload_action_unverified"
+            note = "archive finalization skipped because a workload action may still be writing"
+        for handle in prepared:
+            handle.workload_artifact = ""
+            handle.archive_status = archive_status
+            append_note_once(handle, note)
+        rows = [result_row(handle, plan) for handle in prepared]
+        if rows:
+            append_results(control_root / "campaign_results.csv", rows)
+        return rows
     for handle in prepared:
-        if shutdown_target_is_running(handle):
+        if not handle.shutdown_verified:
             handle.sidecar_status = "skipped_process_alive" if handle.sidecar_tool != "none" else "not_requested"
         else:
             try:
                 normalize_ownership(handle)
             except Exception as error:
                 handle.notes.append(f"ownership normalization failed: {error}")
+    if workload is not None:
+        try:
+            register_workload_evidence(prepared, plan, workload)
+        except Exception as error:
+            for handle in prepared:
+                handle.workload_artifact = ""
+                handle.notes.append(f"workload evidence unavailable: {error}")
+    for handle in prepared:
+        if handle.shutdown_verified:
             try:
                 register_sidecar(handle, plan)
             except Exception as error:
@@ -1096,6 +2614,8 @@ def execute_plan(spec: dict[str, Any], plan: ExperimentPlan, control_root: Path)
     timestamp = datetime.now().astimezone().strftime("%Y-%m-%d_%H-%M-%S")
     endpoints: dict[str, Endpoint] = spec["_endpoints"]
     start_order: list[str] = spec["_start_order"]
+    workload_spec: WorkloadSpec | None = spec["_workload"]
+    workload_configured = workload_spec is not None
     handles: list[ProcessHandle] = []
     sidecar_tool = str(plan.variant.sidecar.get("tool", "none"))
     for launch_index, role in enumerate(start_order):
@@ -1107,7 +2627,14 @@ def execute_plan(spec: dict[str, Any], plan: ExperimentPlan, control_root: Path)
         if not plan.variant.profile and "-P" in command:
             raise ValueError(f"disabled variant cannot use -P in role {endpoint.role} command")
         effective, artifact = effective_command(endpoint, command, environment, plan.variant.sidecar, run_dir)
-        manifest = run_manifest(endpoint, plan, run_dir, effective, environment)
+        manifest = run_manifest(
+            endpoint,
+            plan,
+            run_dir,
+            effective,
+            environment,
+            workload_configured=workload_configured,
+        )
         handles.append(
             ProcessHandle(
                 endpoint=endpoint,
@@ -1118,8 +2645,27 @@ def execute_plan(spec: dict[str, Any], plan: ExperimentPlan, control_root: Path)
                 sidecar_tool=sidecar_tool,
                 sidecar_artifact=artifact,
                 sidecar_status="planned" if sidecar_tool != "none" else "not_requested",
+                workload_status="planned" if workload_configured else "not_configured",
+                network_cleanup_status="pending"
+                if workload_configured
+                else "not_configured",
+                experiment_id=plan.experiment_id,
                 launch_index=launch_index,
             )
+        )
+
+    workload: WorkloadHandle | None = None
+    if workload_spec is not None:
+        client = next(
+            handle
+            for handle in handles
+            if handle.endpoint.role == workload_spec.client_role
+        )
+        workload = WorkloadHandle(
+            spec=workload_spec,
+            endpoint=client.endpoint,
+            run_dir=client.run_dir,
+            experiment_id=plan.experiment_id,
         )
 
     duration_s = float(spec.get("duration_s", 60.0))
@@ -1141,6 +2687,12 @@ def execute_plan(spec: dict[str, Any], plan: ExperimentPlan, control_root: Path)
             prepare_run_dir(handle)
             handle.run_status = "prepared"
 
+        if workload is not None:
+            active_handle = None
+            phase = "workload_preflight"
+            preflight_workload(workload)
+            propagate_workload_state(handles, workload)
+
         phase = "launch"
         launched: list[ProcessHandle] = []
         for handle in handles:
@@ -1159,24 +2711,35 @@ def execute_plan(spec: dict[str, Any], plan: ExperimentPlan, control_root: Path)
             launched.append(handle)
 
         active_handle = None
+        if workload is not None:
+            phase = "workload_launch"
+            launch_workload(workload, control_dir)
+            propagate_workload_state(handles, workload)
+
         phase = "measurement"
-        deadline = time.monotonic() + duration_s
-        while time.monotonic() < deadline:
-            ended = [
-                handle
-                for handle in handles
-                if handle.process is not None and handle.process.poll() is not None
-            ]
-            if len(ended) == len(handles):
-                stop_reason = "all_processes_exited"
-                break
-            if ended and stop_on_role_exit:
-                stop_reason = "paired_role_exited"
-                break
-            time.sleep(0.25)
+        if workload is not None:
+            stop_reason = monitor_loaded_measurement(handles, workload)
+            propagate_workload_state(handles, workload)
+        else:
+            deadline = time.monotonic() + duration_s
+            while time.monotonic() < deadline:
+                states = [role_measurement_state(handle) for handle in handles]
+                if "unknown" in states:
+                    stop_reason = "paired_role_state_unknown"
+                    break
+                if all(state == "ended" for state in states):
+                    stop_reason = "all_processes_exited"
+                    break
+                if "ended" in states and stop_on_role_exit:
+                    stop_reason = "paired_role_exited"
+                    break
+                time.sleep(0.25)
     except BaseException as error:
         failure = error
         stop_reason = "interrupted" if isinstance(error, KeyboardInterrupt) else f"{phase}_failed"
+        if workload is not None and workload.status not in {"completed", "preflight_failed"}:
+            workload.status = "aborted"
+            workload.notes.append(str(error))
         if active_handle is not None and active_handle.prepared and active_handle.process is None:
             active_handle.run_status = f"{phase}_failed"
             active_handle.notes.append(str(error))
@@ -1185,12 +2748,80 @@ def execute_plan(spec: dict[str, Any], plan: ExperimentPlan, control_root: Path)
                 handle.run_status = "launch_not_attempted" if phase == "launch" else f"{phase}_aborted"
                 handle.stop_reason = stop_reason
     finally:
+        if workload is not None:
+            try:
+                if workload.process is not None and not workload_shutdown_is_verified(
+                    workload
+                ):
+                    stop_workload(workload, grace_s)
+                close_workload(workload)
+            except BaseException as error:
+                workload.shutdown_verified = False
+                workload.evidence_quiesced = False
+                workload.status = "failed"
+                workload.notes.append(f"workload shutdown failed: {error}")
+                if failure is None:
+                    failure = error
         launched = [handle for handle in handles if handle.process is not None]
         if launched:
-            stop_handles(launched, stop_reason, grace_s)
-            for handle in launched:
-                close_handle(handle)
-        rows = finalize_runs(handles, plan, control_root)
+            try:
+                stop_handles(launched, stop_reason, grace_s)
+            except BaseException as error:
+                for handle in launched:
+                    append_note_once(handle, f"paired role shutdown failed: {error}")
+                if failure is None:
+                    failure = error
+            for handle in reversed(launched):
+                try:
+                    close_handle(handle)
+                except BaseException as error:
+                    handle.shutdown_verified = False
+                    handle.run_status = "shutdown_failed"
+                    append_note_once(handle, f"role close failed: {error}")
+                    if failure is None:
+                        failure = error
+        for handle in handles:
+            try:
+                handle.shutdown_verified = role_shutdown_is_verified(handle)
+            except BaseException as error:
+                handle.shutdown_verified = False
+                append_note_once(
+                    handle,
+                    f"independent role shutdown verification failed: {error}",
+                )
+                if failure is None:
+                    failure = error
+            if not handle.shutdown_verified:
+                append_note_once(handle, "independent role shutdown verification failed")
+        if workload is not None:
+            try:
+                workload.shutdown_verified = workload_shutdown_is_verified(workload)
+            except BaseException as error:
+                workload.shutdown_verified = False
+                workload.evidence_quiesced = False
+                workload.notes.append(f"workload shutdown verification failed: {error}")
+                if failure is None:
+                    failure = error
+            if workload.preflight_complete:
+                if workload.shutdown_verified and all(
+                    handle.shutdown_verified for handle in handles
+                ):
+                    try:
+                        cleanup_workload(workload)
+                    except BaseException as error:
+                        workload.cleanup_status = "failed"
+                        workload.notes.append(str(error))
+                        if failure is None:
+                            failure = error
+                else:
+                    workload.cleanup_status = "skipped_unverified_role_death"
+                    workload.notes.append(
+                        "network cleanup skipped because helper/role death was not proven"
+                    )
+            elif workload.cleanup_status == "pending":
+                workload.cleanup_status = "not_started"
+            propagate_workload_state(handles, workload)
+        rows = finalize_runs(handles, plan, control_root, workload)
 
     if failure is not None:
         raise failure
@@ -1216,6 +2847,29 @@ def plan_view(spec: dict[str, Any], plan: ExperimentPlan) -> dict[str, Any]:
             "command": redact_command(effective),
             "environment": redact_environment(environment),
         }
+    workload_view: dict[str, Any] | None = None
+    workload_spec: WorkloadSpec | None = spec["_workload"]
+    if workload_spec is not None:
+        endpoint = spec["_endpoints"][workload_spec.client_role]
+        run_dir = (
+            f"{endpoint.profile_root}/<timestamp>_{endpoint.role}_{endpoint.hostname}"
+        )
+        workload = WorkloadHandle(
+            spec=workload_spec,
+            endpoint=endpoint,
+            run_dir=run_dir,
+            experiment_id=plan.experiment_id,
+        )
+        workload_view = {
+            "client_role": workload_spec.client_role,
+            "host": endpoint.host,
+            "contract": workload_command_plan(workload_spec),
+            "actions": {
+                action: redact_command(workload_action_command(workload, action))
+                for action in ("preflight", "run", "cleanup")
+            },
+            "role_count_unchanged": True,
+        }
     return {
         "campaign_id": plan.campaign_id,
         "experiment_id": plan.experiment_id,
@@ -1224,6 +2878,7 @@ def plan_view(spec: dict[str, Any], plan: ExperimentPlan) -> dict[str, Any]:
         "trial": plan.trial,
         "start_order": list(spec["_start_order"]),
         "roles": roles,
+        "workload": workload_view,
     }
 
 
@@ -1234,14 +2889,44 @@ def integer_filter(values: list[str]) -> set[int]:
     return parsed
 
 
+def campaign_result_workload_succeeded(row: dict[str, Any]) -> bool:
+    workload_status = str(row.get("workload_status", "not_configured"))
+    workload_artifact = str(row.get("workload_artifact", ""))
+    cleanup_status = str(
+        row.get("network_cleanup_status", "not_configured")
+    )
+    stop_reason = str(row.get("stop_reason", ""))
+    if workload_status == "not_configured":
+        return (
+            not workload_artifact
+            and cleanup_status == "not_configured"
+            and stop_reason == "duration_elapsed"
+        )
+    return (
+        workload_status == "completed"
+        and bool(workload_artifact)
+        and cleanup_status in {"ok", "already_absent"}
+        and stop_reason == "measurement_complete"
+    )
+
+
 def experiment_failed(rows: list[dict[str, Any]], expected_roles: set[str]) -> bool:
     observed_roles = [str(row.get("role", "")) for row in rows]
     role_set_invalid = len(observed_roles) != len(expected_roles) or set(observed_roles) != expected_roles
-    return role_set_invalid or any(
+    workload_values = {
+        (
+            str(row.get("workload_status", "not_configured")),
+            str(row.get("workload_artifact", "")),
+            str(row.get("network_cleanup_status", "not_configured")),
+        )
+        for row in rows
+    }
+    workload_mismatch = len(workload_values) > 1
+    return role_set_invalid or workload_mismatch or any(
         row["archive_status"] != "finalized"
         or row["run_status"] != "finished"
         or row["return_code"] != 0
-        or row["stop_reason"] != "duration_elapsed"
+        or not campaign_result_workload_succeeded(row)
         or (row["sidecar"] != "none" and row["sidecar_status"] != "registered")
         for row in rows
     )
