@@ -11,6 +11,7 @@ import signal
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
@@ -1105,6 +1106,71 @@ class CampaignRunnerTest(unittest.TestCase):
             self.assertEqual(completion["start_ticks"], start["start_ticks"])
             with self.assertRaises(ProcessLookupError):
                 os.kill(start["pgid"], 0)
+
+    def test_remote_control_wrapper_records_group_signal_completion(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="oai-profile-remote-signal-") as temporary:
+            root = Path(temporary)
+            start_path = root / "control.start"
+            completion_path = root / "control.complete"
+            ready_path = root / "payload-ready"
+            payload = (
+                "import pathlib,signal,sys,time;"
+                "signal.signal(signal.SIGINT,lambda *_:sys.exit(0));"
+                f"pathlib.Path({str(ready_path)!r}).write_text('ready');"
+                "time.sleep(30)"
+            )
+            wrapper = campaign.remote_control_inner_command(
+                [sys.executable, "-c", payload],
+                action="role:nrUE",
+                experiment_id="experiment-t001",
+                token="3" * 32,
+                start_path=str(start_path),
+                completion_path=str(completion_path),
+            )
+            process = subprocess.Popen(
+                ["setsid", "--wait", "sh", "-c", wrapper],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+            start = None
+            try:
+                deadline = time.monotonic() + 5.0
+                while time.monotonic() < deadline:
+                    if start_path.exists() and ready_path.exists():
+                        start = campaign.parse_control_record(
+                            start_path.read_text(),
+                            action="role:nrUE",
+                            experiment_id="experiment-t001",
+                            token="3" * 32,
+                            completion=False,
+                        )
+                        break
+                    if process.poll() is not None:
+                        break
+                    time.sleep(0.01)
+                self.assertIsNotNone(start)
+                assert start is not None
+                os.killpg(start["pgid"], signal.SIGINT)
+                stdout, stderr = process.communicate(timeout=5.0)
+            finally:
+                if process.poll() is None:
+                    if start is not None:
+                        os.killpg(start["pgid"], signal.SIGKILL)
+                    process.kill()
+                    process.communicate()
+            self.assertEqual((stdout, stderr), ("", ""))
+            self.assertEqual(process.returncode, 0)
+            completion = campaign.parse_control_record(
+                completion_path.read_text(),
+                action="role:nrUE",
+                experiment_id="experiment-t001",
+                token="3" * 32,
+                completion=True,
+            )
+            self.assertEqual(completion["return_code"], 0)
+            self.assertEqual(completion["pgid"], start["pgid"])
+            self.assertEqual(completion["start_ticks"], start["start_ticks"])
 
     def test_remote_preflight_requires_setsid_wait(self) -> None:
         endpoint = Endpoint(

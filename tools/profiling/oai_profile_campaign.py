@@ -790,10 +790,7 @@ def remote_control_inner_command(
     start_values = " ".join(shlex.quote(value) for value in fixed_fields)
     start_temporary = f"{start_path}.tmp.$$"
     completion_temporary = f"{completion_path}.tmp.$$"
-    return (
-        "umask 077; "
-        f"if test -e {shlex.quote(start_path)} || "
-        f"test -e {shlex.quote(completion_path)}; then exit 47; fi; "
+    payload = (
         "pgid=$$; "
         "proc_identity=$(awk '{print $5 \" \" $22}' /proc/$$/stat) || exit 46; "
         "set -- $proc_identity; "
@@ -802,9 +799,16 @@ def remote_control_inner_command(
         f"printf '%s\\n' {start_values} \"pgid=$pgid\" "
         f"\"start_ticks=$start_ticks\" > {shlex.quote(start_temporary)} || exit 46; "
         f"mv -- {shlex.quote(start_temporary)} {shlex.quote(start_path)} || exit 46; "
-        f"{shlex.join(command)}; command_rc=$?; "
-        f"printf '%s\\n' {start_values} \"pgid=$pgid\" "
-        f"\"start_ticks=$start_ticks\" \"return_code=$command_rc\" "
+        f"exec {shlex.join(command)}"
+    )
+    return (
+        "umask 077; "
+        f"if test -e {shlex.quote(start_path)} || "
+        f"test -e {shlex.quote(completion_path)}; then exit 47; fi; "
+        f"setsid sh -c {shlex.quote(payload)} & payload_pid=$!; "
+        "wait \"$payload_pid\"; command_rc=$?; "
+        f"actual=$(cat -- {shlex.quote(start_path)}) || exit 46; "
+        "printf '%s\\n' \"$actual\" \"return_code=$command_rc\" "
         f"> {shlex.quote(completion_temporary)} || exit 46; "
         f"mv -- {shlex.quote(completion_temporary)} "
         f"{shlex.quote(completion_path)} || exit 46; "
