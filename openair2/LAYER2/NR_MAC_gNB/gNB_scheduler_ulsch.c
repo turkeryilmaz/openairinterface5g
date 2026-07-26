@@ -2379,6 +2379,10 @@ void post_process_ulsch(gNB_MAC_INST *nr_mac,
 
   cur_harq->sched_pusch.tpc_pusch = tpc;
 
+  if (sched_srs > 0) {
+    if (!nr_schedule_aperiodic_srs(nr_mac, UE, sched_pusch->frame, sched_pusch->slot, sched_pusch->tda_info.k2, sched_srs))
+      sched_srs = 0;  // if we can't schedule aperiodic SRS we do not set the DCI field to trigger the UE transmission
+  }
   fill_dci_pdu_rel15(&UE->sc_info,
                      &UE->current_DL_BWP,
                      current_BWP,
@@ -2392,8 +2396,6 @@ void post_process_ulsch(gNB_MAC_INST *nr_mac,
                      UE->pdsch_HARQ_ACK_Codebook,
                      nr_mac->cset0_bwp_size);
 
-  if (sched_srs > 0)
-    nr_schedule_aperiodic_srs(nr_mac, UE, sched_pusch->frame, sched_pusch->slot, sched_pusch->tda_info.k2, sched_srs);
 }
 
 static int collect_ul_candidates(gNB_MAC_INST *mac,
