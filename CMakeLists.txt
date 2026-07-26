@@ -1942,6 +1942,8 @@ add_executable(ldpctest
   ${OPENAIR1_DIR}/PHY/CODING/TESTBENCH/ldpctest.c
   ${OPENAIR1_DIR}/PHY/CODING/nrLDPC_load.c
 )
+# The LDPC modules resolve profiler hooks from the host, although ldpctest does not call them directly.
+target_link_options(ldpctest PRIVATE "LINKER:--undefined=oai_profiler_enabled")
 target_link_libraries(ldpctest PRIVATE
   -Wl,--start-group UTIL SIMU PHY_COMMON PHY_NR_COMMON -Wl,--end-group
   m pthread dl ${T_LIB}
