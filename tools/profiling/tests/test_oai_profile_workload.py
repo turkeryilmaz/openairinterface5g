@@ -193,8 +193,22 @@ class WorkloadTest(unittest.TestCase):
                     ],
                 }
             ]
-            with patch("oai_profile_workload._json_command", return_value=valid):
+            with patch("oai_profile_workload._json_command", return_value=valid) as query:
                 self.assertEqual(workload.discover_global_ipv4(spec), "10.0.0.4")
+            query.assert_called_once_with(
+                [
+                    spec.ip_binary,
+                    "-j",
+                    "-4",
+                    "address",
+                    "show",
+                    "dev",
+                    spec.interface,
+                    "scope",
+                    "global",
+                ],
+                missing_device_is_pending=True,
+            )
             duplicate = valid + [
                 {
                     "ifname": "oaitun_ue1",

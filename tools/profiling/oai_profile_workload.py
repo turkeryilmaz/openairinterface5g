@@ -398,7 +398,6 @@ def discover_global_ipv4(spec: WorkloadSpec) -> str:
     rows = _json_command(
         [
             spec.ip_binary,
-            "-N",
             "-j",
             "-4",
             "address",
