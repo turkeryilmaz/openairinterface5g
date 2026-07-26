@@ -22,18 +22,29 @@ sys.path.insert(0, str(ANALYZER.parent))
 from oai_profile_deadlines import build_deadline_reports, round_div_signed  # noqa: E402
 import oai_profile_analyze as analyze_module  # noqa: E402
 from oai_profile_analyze import (  # noqa: E402
+    CsvDiagnostics,
+    DropDiagnostics,
     ExclusiveStats,
     GroupStats,
     build_exclusive_summary,
     build_pairs,
     build_rows,
+    build_run_inventory,
+    iter_event_rows,
+    profile_coverage_status,
+    read_drop_diagnostics,
+    read_event_catalog,
 )
 from oai_profile_reports import (  # noqa: E402
     campaign_completeness_report,
     external_sources_report,
     host_metrics_report,
+    matches_native_decimal,
     observer_effect_report,
     perf_stat_report,
+    pmu_reports,
+    pmu_sample_row_is_valid,
+    primitive_overhead_report,
     source_alignment_status,
 )
 HOST_METRIC_FIELDS = (
@@ -48,6 +59,18 @@ HOST_METRIC_FIELDS = (
     "writer_cpu_migrated,acquisition_duration_monotonic_raw_ns,acquisition_duration_tick,"
     "acquisition_duration_us,status,getloadavg_count,getrusage_status,error_mask"
 ).split(",")
+PMU_AVAILABILITY_HEADER = (
+    "schema_version,run_id,experiment_id,campaign_id,role,hostname,thread_index,"
+    "tid,thread_name,event_id,event_name,domain,requested,available,status,error_code"
+)
+PMU_SAMPLE_HEADER = (
+    "schema_version,sample_id,realtime_ns,monotonic_raw_ns,tick,run_id,"
+    "experiment_id,campaign_id,variant,trial,role,hostname,thread_index,tid,"
+    "thread_name,target_cpu,event_id,event_name,domain,unit,raw_value,delta_raw,"
+    "time_enabled_ns,time_running_ns,delta_enabled_ns,delta_running_ns,"
+    "scaled_value,delta_scaled,multiplex_ratio,interval_ns,delta_valid,"
+    "scaling_valid,status,error_code"
+)
 
 def write_text(path: Path, text: str) -> None:
     path.write_text(text)
@@ -116,13 +139,19 @@ def write_campaign_run(
 
 def write_profile_metadata(run_dir: Path, role: str, variant: str, duration_s: int) -> None:
     process = "nr-softmodem" if role == "gNB" else "nr-uesoftmodem"
+    duration_ns = duration_s * 1_000_000_000
     write_text(
         run_dir / "metadata.txt",
         "schema_version=2\nevent_record_size_bytes=120\nmax_nesting_depth=64\ncounter_hz=10000000\n"
         f"process_name={process}\nrole={role}\nrun_id={variant}-{role}\n"
         f"experiment_id=scientific-baseline-{variant}-t001\ncampaign_id=scientific-baseline\n"
         f"variant={variant}\ntrial=1\nhostname={role.lower()}-host\npmu_mode=software\n"
-        f"start_realtime_ns=1000000000\nend_realtime_ns={1_000_000_000 + duration_s * 1_000_000_000}\n"
+        f"start_realtime_ns=1000000000\nend_realtime_ns={1_000_000_000 + duration_ns}\n"
+        f"duration_realtime_ns={duration_ns}\n"
+        f"start_monotonic_raw_ns=500000000\nend_monotonic_raw_ns={500_000_000 + duration_ns}\n"
+        f"duration_monotonic_raw_ns={duration_ns}\n"
+        "duration_clock=CLOCK_MONOTONIC_RAW\n"
+        "realtime_clock_regressed=0\nmonotonic_raw_clock_regressed=0\n"
         "clean_shutdown=1\n",
     )
 
@@ -131,6 +160,1654 @@ def finalize_archive(run_dir: Path) -> None:
     subprocess.run([sys.executable, str(ARCHIVE_TOOL), "finalize", str(run_dir)], check=True, capture_output=True, text=True)
 
 class AnalyzerSchemaCompatibilityTest(unittest.TestCase):
+    def test_drop_diagnostics_preserve_unavailable_and_legacy_states(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="oai-profile-drop-state-") as temporary:
+            root = Path(temporary)
+
+            missing = root / "missing"
+            missing.mkdir()
+            self.assertEqual(read_drop_diagnostics(missing).status, "missing")
+            self.assertIsNone(read_drop_diagnostics(missing).dropped_records)
+
+            zero_byte = root / "zero-byte"
+            zero_byte.mkdir()
+            (zero_byte / "drops.csv").write_bytes(b"")
+            zero_byte_diagnostics = read_drop_diagnostics(zero_byte)
+            self.assertEqual(zero_byte_diagnostics.status, "zero_byte")
+            self.assertIsNone(zero_byte_diagnostics.span_stack_overflows)
+
+            header_only = root / "header-only"
+            header_only.mkdir()
+            write_text(
+                header_only / "drops.csv",
+                "thread_index,tid,thread_name,dropped_records,span_stack_overflows,"
+                "span_stack_mismatches,counter_regressions\n",
+            )
+            header_only_diagnostics = read_drop_diagnostics(header_only)
+            self.assertEqual(header_only_diagnostics.status, "header_only")
+            self.assertIsNone(header_only_diagnostics.dropped_records)
+
+            recorded = root / "recorded"
+            recorded.mkdir()
+            write_text(
+                recorded / "drops.csv",
+                "thread_index,tid,thread_name,dropped_records,span_stack_overflows,"
+                "span_stack_mismatches,counter_regressions\n"
+                "0,100,worker-a,0,0,0,0\n"
+                "1,101,worker-b,2,3,4,5\n",
+            )
+            recorded_diagnostics = read_drop_diagnostics(recorded)
+            self.assertEqual(recorded_diagnostics.status, "recorded")
+            self.assertEqual(recorded_diagnostics.row_count, 2)
+            self.assertEqual(recorded_diagnostics.dropped_records, 2)
+            self.assertEqual(recorded_diagnostics.span_stack_overflows, 3)
+            self.assertEqual(recorded_diagnostics.span_stack_mismatches, 4)
+            self.assertEqual(recorded_diagnostics.counter_regressions, 5)
+
+            legacy = root / "legacy"
+            legacy.mkdir()
+            write_text(
+                legacy / "drops.csv",
+                "thread_index,tid,thread_name,dropped_records\n"
+                "0,100,worker-a,7\n",
+            )
+            legacy_diagnostics = read_drop_diagnostics(legacy)
+            self.assertEqual(legacy_diagnostics.status, "legacy_partial")
+            self.assertEqual(legacy_diagnostics.dropped_records, 7)
+            self.assertIsNone(legacy_diagnostics.span_stack_overflows)
+            self.assertIsNone(legacy_diagnostics.counter_regressions)
+
+            malformed_values = (
+                "not-an-integer",
+                "-1",
+                "",
+            )
+            for index, value in enumerate(malformed_values):
+                malformed = root / f"malformed-{index}"
+                malformed.mkdir()
+                write_text(
+                    malformed / "drops.csv",
+                    "thread_index,tid,thread_name,dropped_records,span_stack_overflows,"
+                    "span_stack_mismatches,counter_regressions\n"
+                    f"0,100,worker-a,{value},0,0,0\n",
+                )
+                diagnostics = read_drop_diagnostics(malformed)
+                self.assertEqual(diagnostics.status, "malformed")
+                self.assertIsNone(diagnostics.dropped_records)
+
+            malformed_header = root / "malformed-header"
+            malformed_header.mkdir()
+            write_text(malformed_header / "drops.csv", '"dropped_records\n')
+            self.assertEqual(
+                read_drop_diagnostics(malformed_header).status,
+                "malformed",
+            )
+
+            excess_column = root / "excess-column"
+            excess_column.mkdir()
+            write_text(
+                excess_column / "drops.csv",
+                "thread_index,tid,thread_name,dropped_records,span_stack_overflows,"
+                "span_stack_mismatches,counter_regressions\n"
+                "0,100,worker-a,0,0,0,0,unexpected\n",
+            )
+            self.assertEqual(
+                read_drop_diagnostics(excess_column).status,
+                "malformed",
+            )
+
+            missing_identity = root / "missing-identity"
+            missing_identity.mkdir()
+            write_text(
+                missing_identity / "drops.csv",
+                "dropped_records,span_stack_overflows,span_stack_mismatches,"
+                "counter_regressions\n"
+                "0,0,0,0\n",
+            )
+            self.assertEqual(
+                read_drop_diagnostics(missing_identity).status,
+                "malformed",
+            )
+
+            blank_identity = root / "blank-identity"
+            blank_identity.mkdir()
+            write_text(
+                blank_identity / "drops.csv",
+                "thread_index,tid,thread_name,dropped_records,span_stack_overflows,"
+                "span_stack_mismatches,counter_regressions\n"
+                "0,100,,0,0,0,0\n",
+            )
+            self.assertEqual(
+                read_drop_diagnostics(blank_identity).status,
+                "malformed",
+            )
+
+            duplicate_identity = root / "duplicate-identity"
+            duplicate_identity.mkdir()
+            write_text(
+                duplicate_identity / "drops.csv",
+                "thread_index,tid,thread_name,dropped_records,span_stack_overflows,"
+                "span_stack_mismatches,counter_regressions\n"
+                "0,100,worker-a,0,0,0,0\n"
+                "0,101,worker-b,0,0,0,0\n",
+            )
+            self.assertEqual(
+                read_drop_diagnostics(duplicate_identity).status,
+                "malformed",
+            )
+
+            reused_tid = root / "reused-tid"
+            reused_tid.mkdir()
+            write_text(
+                reused_tid / "drops.csv",
+                "thread_index,tid,thread_name,dropped_records,span_stack_overflows,"
+                "span_stack_mismatches,counter_regressions\n"
+                "0,100,worker-a,0,0,0,0\n"
+                "1,100,worker-b,0,0,0,0\n",
+            )
+            reused_tid_diagnostics = read_drop_diagnostics(reused_tid)
+            self.assertEqual(reused_tid_diagnostics.status, "recorded")
+            self.assertEqual(reused_tid_diagnostics.row_count, 2)
+
+            zero_diagnostics = DropDiagnostics(
+                status="recorded",
+                row_count=1,
+                dropped_records=0,
+                span_stack_overflows=0,
+                span_stack_mismatches=0,
+                counter_regressions=0,
+            )
+            recorded_csv = CsvDiagnostics(status="recorded", row_count=1)
+            complete_metadata = {
+                "schema_version": "2",
+                "counter_hz": "10000000",
+                "clean_shutdown": "1",
+                "start_realtime_ns": "100",
+                "end_realtime_ns": "200",
+                "start_monotonic_raw_ns": "50",
+                "end_monotonic_raw_ns": "150",
+                "duration_realtime_ns": "100",
+                "duration_monotonic_raw_ns": "100",
+                "duration_clock": "CLOCK_MONOTONIC_RAW",
+                "realtime_clock_regressed": "0",
+                "monotonic_raw_clock_regressed": "0",
+            }
+            self.assertEqual(
+                profile_coverage_status(
+                    complete_metadata,
+                    zero_diagnostics,
+                    recorded_csv,
+                    recorded_csv,
+                ),
+                "complete",
+            )
+            for invalid_metadata in (
+                {**complete_metadata, "end_realtime_ns": "99"},
+                {**complete_metadata, "end_monotonic_raw_ns": "49"},
+                {**complete_metadata, "realtime_clock_regressed": "1"},
+                {**complete_metadata, "monotonic_raw_clock_regressed": "1"},
+            ):
+                self.assertEqual(
+                    profile_coverage_status(
+                        invalid_metadata,
+                        zero_diagnostics,
+                        recorded_csv,
+                        recorded_csv,
+                    ),
+                    "lifecycle_clock_invalid",
+                )
+            for invalid_counter_metadata in (
+                {key: value for key, value in complete_metadata.items() if key != "counter_hz"},
+                {**complete_metadata, "counter_hz": "0"},
+                {**complete_metadata, "counter_hz": "not-an-integer"},
+            ):
+                self.assertEqual(
+                    profile_coverage_status(
+                        invalid_counter_metadata,
+                        zero_diagnostics,
+                        recorded_csv,
+                        recorded_csv,
+                    ),
+                    "counter_hz_invalid",
+                )
+            incomplete_metadata = dict(complete_metadata)
+            del incomplete_metadata["realtime_clock_regressed"]
+            self.assertEqual(
+                profile_coverage_status(
+                    incomplete_metadata,
+                    zero_diagnostics,
+                    recorded_csv,
+                    recorded_csv,
+                ),
+                "lifecycle_metadata_incomplete",
+            )
+
+    def test_event_catalog_and_drop_thread_coverage_are_strict(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="oai-profile-event-state-") as temporary:
+            profile_dir = Path(temporary)
+            profile_key = str(profile_dir)
+            write_text(
+                profile_dir / "metadata.txt",
+                "schema_version=2\ncounter_hz=10000000\n"
+                "process_name=nr-uesoftmodem\nrole=nrUE\n"
+                "start_realtime_ns=100\nend_realtime_ns=200\n"
+                "duration_realtime_ns=100\n"
+                "start_monotonic_raw_ns=50\nend_monotonic_raw_ns=150\n"
+                "duration_monotonic_raw_ns=100\n"
+                "duration_clock=CLOCK_MONOTONIC_RAW\n"
+                "realtime_clock_regressed=0\n"
+                "monotonic_raw_clock_regressed=0\nclean_shutdown=1\n",
+            )
+            event_header = (
+                "schema_version,seq,tid,thread_name,event_id,event_name,event_kind,"
+                "nesting_depth,frame,slot,absolute_slot,correlation_id,span_id,"
+                "parent_id,cpu_start,cpu_end,cpu_migrated,flags,aux0,aux1,aux2,"
+                "aux3,start_tick,duration_tick,duration_us\n"
+            )
+            event_rows = (
+                "2,0,100,producer-a,1,EVENT_A,duration,0,1,1,21,1,1,0,0,0,0,"
+                "0,0,0,0,0,100,10,1.000\n"
+                "2,1,101,producer-b,2,EVENT_B,instant,0,1,2,22,2,2,0,1,1,0,"
+                "0,0,0,0,0,120,0,0.000\n"
+                "2,2,100,producer-a,3,PROFILER_PRIMITIVE_CALIBRATION,instant,0,"
+                "-1,-1,-1,0,3,0,0,0,0,0,0,0,0,0,130,0,0.000\n"
+            )
+            write_text(profile_dir / "events.csv", event_header + event_rows)
+            catalog_header = (
+                "schema_version,event_id,event_name,role,subsystem,event_class,"
+                "default_kind,detail_level,aux0_name,aux0_unit,aux1_name,"
+                "aux1_unit,aux2_name,aux2_unit,aux3_name,aux3_unit,flags_name\n"
+            )
+            catalog_rows = (
+                "2,1,EVENT_A,nrUE,test,duration,duration,stage,,,,,,,,,\n"
+                "2,2,EVENT_B,nrUE,test,instant,instant,stage,,,,,,,,,\n"
+                "2,3,PROFILER_PRIMITIVE_CALIBRATION,nrUE,profiler,calibration,"
+                "duration,primitive,,,,,,,,,\n"
+            )
+            write_text(
+                profile_dir / "event_catalog.csv",
+                catalog_header + catalog_rows,
+            )
+            write_text(
+                profile_dir / "drops.csv",
+                "thread_index,tid,thread_name,dropped_records,"
+                "span_stack_overflows,span_stack_mismatches,counter_regressions\n"
+                "0,100,producer-a,0,0,0,0\n",
+            )
+
+            metadata_by_dir = {
+                profile_key: analyze_module.read_metadata(profile_dir)
+            }
+            catalog, catalog_diagnostics = read_event_catalog(profile_dir, "2")
+            event_diagnostics_by_dir: dict[str, CsvDiagnostics] = {}
+            parsed = list(
+                iter_event_rows(
+                    [profile_dir],
+                    None,
+                    metadata_by_dir,
+                    {profile_key: catalog},
+                    event_diagnostics_by_dir,
+                )
+            )
+            self.assertEqual(len(parsed), 3)
+            event_diagnostics = event_diagnostics_by_dir[profile_key]
+            self.assertEqual(event_diagnostics.status, "recorded")
+            self.assertEqual(event_diagnostics.row_count, 3)
+            self.assertEqual(
+                event_diagnostics.producer_threads,
+                frozenset({(100, "producer-a"), (101, "producer-b")}),
+            )
+            drop_diagnostics = read_drop_diagnostics(profile_dir)
+            self.assertEqual(
+                profile_coverage_status(
+                    metadata_by_dir[profile_key],
+                    drop_diagnostics,
+                    event_diagnostics,
+                    catalog_diagnostics,
+                ),
+                "drop_diagnostics_missing_event_threads",
+            )
+
+            write_text(
+                profile_dir / "drops.csv",
+                "thread_index,tid,thread_name,dropped_records,"
+                "span_stack_overflows,span_stack_mismatches,counter_regressions\n"
+                "0,100,producer-a,0,0,0,0\n"
+                "1,101,producer-b,0,0,0,0\n",
+            )
+            self.assertEqual(
+                profile_coverage_status(
+                    metadata_by_dir[profile_key],
+                    read_drop_diagnostics(profile_dir),
+                    event_diagnostics,
+                    catalog_diagnostics,
+                ),
+                "complete",
+            )
+
+            invalid_native_rows = (
+                (
+                    "instant-nonzero-duration",
+                    "2,0,101,producer-b,2,EVENT_B,instant,0,1,2,22,2,2,0,1,1,0,"
+                    "0,0,0,0,0,120,1,0.100\n",
+                ),
+                (
+                    "instant-cpu-mismatch",
+                    "2,0,101,producer-b,2,EVENT_B,instant,0,1,2,22,2,2,0,1,2,1,"
+                    "0,0,0,0,0,120,0,0.000\n",
+                ),
+                (
+                    "self-parent",
+                    "2,0,100,producer-a,1,EVENT_A,duration,0,1,1,21,1,1,1,0,0,0,"
+                    "0,0,0,0,0,100,10,1.000\n",
+                ),
+                (
+                    "tick-time-mismatch",
+                    "2,0,100,producer-a,1,EVENT_A,duration,0,1,1,21,1,1,0,0,0,0,"
+                    "0,0,0,0,0,100,10,2.000\n",
+                ),
+            )
+            for name, invalid_row in invalid_native_rows:
+                with self.subTest(name=name):
+                    write_text(
+                        profile_dir / "events.csv",
+                        event_header + invalid_row,
+                    )
+                    event_diagnostics_by_dir.clear()
+                    self.assertEqual(
+                        list(
+                            iter_event_rows(
+                                [profile_dir],
+                                None,
+                                metadata_by_dir,
+                                {profile_key: catalog},
+                                event_diagnostics_by_dir,
+                            )
+                        ),
+                        [],
+                    )
+                    self.assertEqual(
+                        event_diagnostics_by_dir[profile_key].status,
+                        "malformed",
+                    )
+
+            write_text(
+                profile_dir / "events.csv",
+                event_header
+                + event_rows.splitlines(keepends=True)[0]
+                + "2,1,101,producer-b\n",
+            )
+            event_diagnostics_by_dir.clear()
+            self.assertEqual(
+                len(
+                    list(
+                        iter_event_rows(
+                            [profile_dir],
+                            None,
+                            metadata_by_dir,
+                            {profile_key: catalog},
+                            event_diagnostics_by_dir,
+                        )
+                    )
+                ),
+                1,
+            )
+            self.assertEqual(
+                event_diagnostics_by_dir[profile_key],
+                CsvDiagnostics(
+                    status="malformed",
+                    row_count=1,
+                    producer_threads=frozenset({(100, "producer-a")}),
+                ),
+            )
+            self.assertEqual(
+                profile_coverage_status(
+                    metadata_by_dir[profile_key],
+                    read_drop_diagnostics(profile_dir),
+                    event_diagnostics_by_dir[profile_key],
+                    catalog_diagnostics,
+                ),
+                "event_stream_malformed",
+            )
+
+            write_text(profile_dir / "events.csv", event_header)
+            event_diagnostics_by_dir.clear()
+            self.assertEqual(
+                list(
+                    iter_event_rows(
+                        [profile_dir],
+                        None,
+                        metadata_by_dir,
+                        {profile_key: catalog},
+                        event_diagnostics_by_dir,
+                    )
+                ),
+                [],
+            )
+            self.assertEqual(
+                event_diagnostics_by_dir[profile_key].status,
+                "header_only",
+            )
+            (profile_dir / "events.csv").write_bytes(b"")
+            event_diagnostics_by_dir.clear()
+            list(
+                iter_event_rows(
+                    [profile_dir],
+                    None,
+                    metadata_by_dir,
+                    {profile_key: catalog},
+                    event_diagnostics_by_dir,
+                )
+            )
+            self.assertEqual(
+                event_diagnostics_by_dir[profile_key].status,
+                "zero_byte",
+            )
+            (profile_dir / "events.csv").unlink()
+            self.assertEqual(
+                analyze_module.discover_profile_dirs([profile_dir]),
+                [profile_dir],
+            )
+            event_diagnostics_by_dir.clear()
+            list(
+                iter_event_rows(
+                    [profile_dir],
+                    None,
+                    metadata_by_dir,
+                    {profile_key: catalog},
+                    event_diagnostics_by_dir,
+                )
+            )
+            self.assertEqual(
+                event_diagnostics_by_dir[profile_key].status,
+                "missing",
+            )
+
+            (profile_dir / "event_catalog.csv").unlink()
+            self.assertEqual(
+                read_event_catalog(profile_dir, "2")[1].status,
+                "missing",
+            )
+            (profile_dir / "event_catalog.csv").write_bytes(b"")
+            self.assertEqual(
+                read_event_catalog(profile_dir, "2")[1].status,
+                "zero_byte",
+            )
+            write_text(profile_dir / "event_catalog.csv", '"schema_version\n')
+            self.assertEqual(
+                read_event_catalog(profile_dir, "2")[1].status,
+                "malformed",
+            )
+
+    def test_partial_schema2_clock_bounds_remain_explicit(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="oai-profile-clock-scope-") as temporary:
+            profile_dir = Path(temporary)
+            write_text(
+                profile_dir / "sync.csv",
+                "realtime_ns,monotonic_raw_ns,tick,status\n"
+                "100,50,1,ok\n"
+                "999,999,9,clock_error\n"
+                "200,150,2,ok\n",
+            )
+            self.assertEqual(
+                analyze_module.read_sync_bounds(profile_dir),
+                (100, 200, 50, 150),
+            )
+            metadata = {
+                "schema_version": "2",
+                "counter_hz": "10000000",
+                "clean_shutdown": "0",
+                "start_realtime_ns": "100",
+                "end_realtime_ns": "200",
+                "end_monotonic_raw_ns": "150",
+                "process_name": "nr-uesoftmodem",
+                "role": "nrUE",
+            }
+            diagnostics = DropDiagnostics(
+                status="recorded",
+                row_count=1,
+                dropped_records=0,
+                span_stack_overflows=0,
+                span_stack_mismatches=0,
+                counter_regressions=0,
+            )
+            profile_key = str(profile_dir)
+            event_diagnostics = CsvDiagnostics(status="recorded", row_count=1)
+            catalog_diagnostics = CsvDiagnostics(status="recorded", row_count=1)
+            rows = build_run_inventory(
+                [profile_dir],
+                {profile_key: metadata},
+                {profile_key: {}},
+                {profile_key: diagnostics},
+                {profile_key: event_diagnostics},
+                {profile_key: catalog_diagnostics},
+                {
+                    profile_key: profile_coverage_status(
+                        metadata,
+                        diagnostics,
+                        event_diagnostics,
+                        catalog_diagnostics,
+                    )
+                },
+                {profile_key: {"samples": 0}},
+            )
+            self.assertEqual(rows[0]["duration_scope"], "mixed_metadata_sync_bounds")
+            self.assertEqual(
+                rows[0]["duration_status"],
+                "valid_mixed_metadata_sync_bounds",
+            )
+
+            invalid_footer = {
+                **metadata,
+                "clean_shutdown": "1",
+                "start_realtime_ns": "100",
+                "end_realtime_ns": "200",
+                "duration_realtime_ns": "100",
+                "start_monotonic_raw_ns": "50",
+                "end_monotonic_raw_ns": "150",
+                "duration_monotonic_raw_ns": "99",
+                "duration_clock": "CLOCK_MONOTONIC_RAW",
+                "realtime_clock_regressed": "0",
+                "monotonic_raw_clock_regressed": "0",
+            }
+            invalid_rows = build_run_inventory(
+                [profile_dir],
+                {profile_key: invalid_footer},
+                {profile_key: {}},
+                {profile_key: diagnostics},
+                {profile_key: event_diagnostics},
+                {profile_key: catalog_diagnostics},
+                {
+                    profile_key: profile_coverage_status(
+                        invalid_footer,
+                        diagnostics,
+                        event_diagnostics,
+                        catalog_diagnostics,
+                    )
+                },
+                {profile_key: {"samples": 0}},
+            )
+            self.assertEqual(
+                invalid_rows[0]["duration_scope"],
+                "invalid_lifecycle_metadata",
+            )
+            self.assertEqual(
+                invalid_rows[0]["duration_status"],
+                "lifecycle_clock_invalid",
+            )
+            self.assertTrue(math.isnan(float(invalid_rows[0]["duration_s"])))
+            self.assertEqual(invalid_rows[0]["realtime_clock_regressed"], "")
+
+    def test_crash_prefix_does_not_fabricate_integrity_or_pmu_evidence(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="oai-profile-crash-prefix-") as temporary:
+            root = Path(temporary)
+            run = root / "synthetic-crash-nrUE"
+            output = root / "analysis"
+            run.mkdir()
+
+            write_text(
+                run / "metadata.txt",
+                "schema_version=2\n"
+                "event_record_size_bytes=120\n"
+                "counter_hz=54000000\n"
+                "process_name=nr-uesoftmodem\n"
+                "role=nrUE\n"
+                "hostname=synthetic-host\n"
+                "run_id=synthetic-crash\n"
+                "experiment_id=synthetic-crash-t001\n"
+                "campaign_id=synthetic-campaign\n"
+                "variant=in-process\n"
+                "trial=1\n"
+                "pmu_mode=off\n"
+                "start_realtime_ns=1000000000\n"
+                "start_monotonic_raw_ns=500000000\n",
+            )
+            write_text(
+                run / "events.csv",
+                "schema_version,seq,tid,thread_name,event_id,event_name,event_kind,nesting_depth,"
+                "frame,slot,absolute_slot,correlation_id,span_id,parent_id,cpu_start,cpu_end,"
+                "cpu_migrated,flags,aux0,aux1,aux2,aux3,start_tick,duration_tick,duration_us\n"
+                "2,1,20,ue-test,107,USRP_RX_RECV,duration,0,0,0,0,1,1,0,2,2,0,0,"
+                "512,512,1,0,54000000,54000,1000.000\n",
+            )
+            write_text(
+                run / "event_catalog.csv",
+                "schema_version,event_id,event_name,role,subsystem,event_class,default_kind,"
+                "detail_level,aux0_name,aux0_unit,aux1_name,aux1_unit,aux2_name,aux2_unit,"
+                "aux3_name,aux3_unit,flags_name\n"
+                "2,107,USRP_RX_RECV,nrUE,rf_usrp,io,duration,transport,requested_samples,"
+                "sample,returned_samples,sample,channel_count,count,error_code,errno,io_status\n",
+            )
+            write_text(
+                run / "sync.csv",
+                "realtime_ns,monotonic_raw_ns,tick\n"
+                "1000000000,500000000,54000000\n"
+                "2000000000,1500000000,108000000\n",
+            )
+            write_text(run / "settings.csv", "key,value\nprofile.pmu_mode,off\n")
+            (run / "drops.csv").write_bytes(b"")
+            (run / "pmu_availability.csv").write_bytes(b"")
+            (run / "pmu_samples.csv").write_bytes(b"")
+            (run / "pmu_read_overhead.csv").write_bytes(b"")
+            write_csv_rows(
+                run / "system_read_overhead.csv",
+                (
+                    "schema_version,sample_id,realtime_ns,monotonic_raw_ns,run_id,"
+                    "experiment_id,campaign_id,variant,trial,role,hostname,source,"
+                    "duration_tick,duration_us,rows,status,error_code"
+                ).split(","),
+                [
+                    {
+                        "schema_version": 2,
+                        "sample_id": 1,
+                        "realtime_ns": 1_500_000_000,
+                        "monotonic_raw_ns": 1_000_000_000,
+                        "run_id": "synthetic-crash",
+                        "experiment_id": "synthetic-crash-t001",
+                        "campaign_id": "synthetic-campaign",
+                        "variant": "in-process",
+                        "trial": 1,
+                        "role": "nrUE",
+                        "hostname": "synthetic-host",
+                        "source": "host_metrics",
+                        "duration_tick": 54,
+                        "duration_us": 1.0,
+                        "rows": 1,
+                        "status": "ok",
+                        "error_code": 0,
+                    }
+                ],
+            )
+            write_text(
+                run / "campaign_run.json",
+                json.dumps(
+                    {
+                        "schema_version": 1,
+                        "runner_version": 1,
+                        "run_id": "synthetic-crash",
+                        "experiment_id": "synthetic-crash-t001",
+                        "campaign_id": "synthetic-campaign",
+                        "case": "synthetic-case",
+                        "variant": "in-process",
+                        "trial": 1,
+                        "role": "nrUE",
+                        "hostname": "synthetic-host",
+                        "profile_enabled": True,
+                        "pmu_mode": "off",
+                        "status": "exited_nonzero",
+                        "return_code": 139,
+                        "stop_reason": "process_exit",
+                        "start_realtime_ns": 1000000000,
+                        "end_realtime_ns": 2000000000,
+                        "start_monotonic_raw_ns": 500000000,
+                        "end_monotonic_raw_ns": 1500000000,
+                        "workload_status": "not_configured",
+                        "network_cleanup_status": "not_configured",
+                    }
+                ),
+            )
+
+            finalize_archive(run)
+            subprocess.run(
+                [sys.executable, str(ANALYZER), str(run), "--output-dir", str(output)],
+                check=True,
+            )
+
+            run_row = read_rows(output / "runs.csv")[0]
+            self.assertEqual(run_row["clean_shutdown"], "unknown")
+            self.assertEqual(run_row["lifecycle_status"], "unknown")
+            self.assertEqual(run_row["duration_scope"], "sync_prefix")
+            self.assertEqual(run_row["duration_status"], "valid_sync_prefix")
+            self.assertEqual(run_row["drops_total"], "")
+            self.assertEqual(run_row["span_stack_overflows"], "")
+            self.assertEqual(run_row["span_stack_mismatches"], "")
+            self.assertEqual(run_row["counter_regressions"], "")
+            self.assertEqual(run_row["drop_diagnostics_status"], "zero_byte")
+            self.assertEqual(
+                run_row["profile_coverage_status"],
+                "lifecycle_unknown;drop_diagnostics_zero_byte",
+            )
+
+            summary_row = next(
+                row
+                for row in read_rows(output / "summary.csv")
+                if row["event_name"] == "USRP_RX_RECV"
+            )
+            self.assertEqual(summary_row["drops_total"], "")
+            self.assertEqual(summary_row["drop_diagnostics_status"], "zero_byte")
+            self.assertEqual(
+                summary_row["profile_coverage_status"],
+                "lifecycle_unknown;drop_diagnostics_zero_byte",
+            )
+
+            transport_row = next(
+                row
+                for row in read_rows(output / "transport_summary.csv")
+                if row["event_name"] == "USRP_RX_RECV"
+            )
+            self.assertEqual(transport_row["drops_total"], "")
+            self.assertEqual(transport_row["counter_regressions"], "")
+            self.assertEqual(transport_row["drop_diagnostics_status"], "zero_byte")
+
+            hierarchy_row = read_rows(output / "hierarchy_integrity.csv")[0]
+            self.assertEqual(hierarchy_row["clean_shutdown"], "unknown")
+            self.assertEqual(hierarchy_row["drops_total"], "")
+            self.assertEqual(
+                hierarchy_row["profile_coverage_status"],
+                "lifecycle_unknown;drop_diagnostics_zero_byte",
+            )
+
+            availability = read_rows(output / "pmu_availability_summary.csv")[0]
+            self.assertEqual(availability["stream_status"], "zero_byte")
+            self.assertEqual(availability["requested"], "")
+            self.assertEqual(availability["available"], "")
+            self.assertEqual(availability["status"], "stream_zero_byte")
+
+            quality = read_rows(output / "pmu_quality.csv")[0]
+            self.assertEqual(quality["status"], "stream_zero_byte")
+            self.assertEqual(quality["samples_total"], "")
+            self.assertEqual(quality["read_error_count"], "")
+
+            collection_overhead = read_rows(
+                output / "collection_overhead_summary.csv"
+            )
+            pmu_overhead = next(
+                row for row in collection_overhead if row["source"] == "pmu_read"
+            )
+            self.assertEqual(pmu_overhead["stream_status"], "zero_byte")
+            self.assertEqual(pmu_overhead["status"], "stream_zero_byte")
+            self.assertEqual(pmu_overhead["samples_total"], "")
+            self.assertEqual(pmu_overhead["duration_p50_us"], "")
+            system_overhead = next(
+                row
+                for row in collection_overhead
+                if row["source"] == "host_metrics"
+            )
+            self.assertEqual(system_overhead["stream_status"], "recorded")
+            self.assertEqual(system_overhead["samples_total"], "1")
+
+            drop_integrity = next(
+                row
+                for row in read_rows(output / "archive_integrity.csv")
+                if row["relative_path"] == "drops.csv"
+            )
+            self.assertEqual(drop_integrity["valid"], "1")
+            self.assertEqual(drop_integrity["status"], "ok")
+            self.assertEqual(drop_integrity["observed_size_bytes"], "0")
+
+            campaign_run = read_rows(output / "campaign_runs.csv")[0]
+            self.assertEqual(campaign_run["status"], "exited_nonzero")
+            self.assertEqual(campaign_run["return_code"], "139")
+            self.assertEqual(campaign_run["stop_reason"], "process_exit")
+
+            observer_rows = read_rows(output / "observer_effect_summary.csv")
+            process_success = next(
+                row
+                for row in observer_rows
+                if row["metric_scope"] == "process"
+                and row["metric_name"] == "process_success"
+            )
+            self.assertEqual(process_success["sample_count"], "1")
+            self.assertEqual(process_success["mean"], "0.0")
+            self.assertFalse(
+                any(
+                    row["metric_scope"] == "event"
+                    and row["metric_name"] == "USRP_RX_RECV"
+                    for row in observer_rows
+                )
+            )
+
+            completeness = read_rows(output / "campaign_completeness.csv")[0]
+            self.assertEqual(completeness["paired_complete"], "0")
+            self.assertEqual(completeness["profile_incomplete_roles"], "nrUE")
+            self.assertEqual(completeness["profile_evidence_complete"], "0")
+            self.assertEqual(
+                completeness["profile_evidence_status"],
+                "operational_incomplete;profile_incomplete",
+            )
+
+    def test_clean_pmu_off_header_only_streams_are_not_requested(self) -> None:
+        self.assertTrue(matches_native_decimal(0.333333, 1.0 / 3.0, 6))
+        self.assertFalse(matches_native_decimal(0.333334, 1.0 / 3.0, 6))
+        self.assertTrue(matches_native_decimal(0.666666667, 2.0 / 3.0, 9))
+        self.assertFalse(matches_native_decimal(0.666666668, 2.0 / 3.0, 9))
+        with tempfile.TemporaryDirectory(prefix="oai-profile-pmu-off-") as temporary:
+            profile_dir = Path(temporary)
+            write_text(
+                profile_dir / "pmu_availability.csv",
+                PMU_AVAILABILITY_HEADER + "\n",
+            )
+            write_text(
+                profile_dir / "pmu_samples.csv",
+                PMU_SAMPLE_HEADER + "\n",
+            )
+            metadata_by_dir = {
+                str(profile_dir): {
+                    "run_id": "clean-pmu-off",
+                    "role": "nrUE",
+                    "hostname": "synthetic-host",
+                }
+            }
+            settings_by_dir = {
+                str(profile_dir): {"profile.pmu_mode": "off"}
+            }
+            availability, summary, quality = pmu_reports(
+                [profile_dir],
+                metadata_by_dir,
+                settings_by_dir,
+                {},
+            )
+            self.assertEqual(len(summary.rows), 0)
+            self.assertEqual(availability.rows[0]["stream_status"], "header_only")
+            self.assertEqual(availability.rows[0]["status"], "not_requested")
+            self.assertEqual(availability.rows[0]["requested"], 0)
+            self.assertEqual(availability.rows[0]["available"], 0)
+            self.assertEqual(quality.rows[0]["status"], "not_requested")
+            self.assertEqual(quality.rows[0]["samples_total"], 0)
+            self.assertEqual(quality.rows[0]["read_error_count"], 0)
+
+            pmu_on = profile_dir / "pmu-on"
+            pmu_on.mkdir()
+            write_text(
+                pmu_on / "pmu_availability.csv",
+                PMU_AVAILABILITY_HEADER + "\n",
+            )
+            write_text(
+                pmu_on / "pmu_samples.csv",
+                PMU_SAMPLE_HEADER + "\n",
+            )
+            pmu_on_key = str(pmu_on)
+            availability, summary, quality = pmu_reports(
+                [pmu_on],
+                {
+                    pmu_on_key: {
+                        "run_id": "pmu-on-header-only",
+                        "role": "nrUE",
+                        "hostname": "synthetic-host",
+                    }
+                },
+                {pmu_on_key: {"profile.pmu_mode": "software"}},
+                {},
+            )
+            self.assertEqual(len(summary.rows), 0)
+            self.assertEqual(availability.rows[0]["status"], "stream_header_only")
+            self.assertEqual(availability.rows[0]["requested"], "")
+            self.assertEqual(availability.rows[0]["available"], "")
+            self.assertEqual(quality.rows[0]["status"], "stream_header_only")
+            self.assertEqual(quality.rows[0]["samples_total"], "")
+            self.assertEqual(quality.rows[0]["read_error_count"], "")
+
+            truncated = profile_dir / "truncated"
+            truncated.mkdir()
+            write_text(
+                truncated / "pmu_availability.csv",
+                PMU_AVAILABILITY_HEADER + "\n",
+            )
+            write_text(
+                truncated / "pmu_samples.csv",
+                PMU_SAMPLE_HEADER + "\n"
+                "2,1,100\n",
+            )
+            truncated_key = str(truncated)
+            _, summary, quality = pmu_reports(
+                [truncated],
+                {
+                    truncated_key: {
+                        "run_id": "pmu-truncated",
+                        "role": "nrUE",
+                        "hostname": "synthetic-host",
+                    }
+                },
+                {truncated_key: {"profile.pmu_mode": "software"}},
+                {},
+            )
+            self.assertEqual(len(summary.rows), 0)
+            self.assertEqual(quality.rows[0]["status"], "stream_malformed")
+            self.assertEqual(quality.rows[0]["samples_total"], "")
+
+            sample_fields = PMU_SAMPLE_HEADER.split(",")
+            valid_sample = {
+                "schema_version": 2,
+                "sample_id": 1,
+                "realtime_ns": 1000,
+                "monotonic_raw_ns": 900,
+                "tick": 9000,
+                "run_id": "valid",
+                "experiment_id": "",
+                "campaign_id": "",
+                "variant": "",
+                "trial": "",
+                "role": "nrUE",
+                "hostname": "synthetic-host",
+                "thread_index": 0,
+                "tid": 100,
+                "thread_name": "producer",
+                "target_cpu": 2,
+                "event_id": 1,
+                "event_name": "cpu_cycles",
+                "domain": "hardware",
+                "unit": "count",
+                "raw_value": 1000,
+                "delta_raw": 100,
+                "time_enabled_ns": 1000,
+                "time_running_ns": 1000,
+                "delta_enabled_ns": 100,
+                "delta_running_ns": 100,
+                "scaled_value": 1000,
+                "delta_valid": 1,
+                "scaling_valid": 1,
+                "delta_scaled": 100,
+                "multiplex_ratio": 1.0,
+                "interval_ns": 1000,
+                "status": "ok",
+                "error_code": 0,
+            }
+            common_nonusable = {
+                "delta_raw": 0,
+                "delta_enabled_ns": 0,
+                "delta_running_ns": 0,
+                "delta_scaled": 0,
+                "delta_valid": 0,
+            }
+            valid_nonusable_states = (
+                {
+                    **common_nonusable,
+                    "interval_ns": 0,
+                    "status": "warmup",
+                },
+                {
+                    **common_nonusable,
+                    "interval_ns": 0,
+                    "status": "clock_regression",
+                },
+                {
+                    **common_nonusable,
+                    "interval_ns": 1000,
+                    "status": "counter_reset_or_reconfigured",
+                },
+                {
+                    "delta_enabled_ns": 0,
+                    "delta_running_ns": 1,
+                    "delta_scaled": 0,
+                    "scaling_valid": 0,
+                    "status": "not_running",
+                },
+                {
+                    "raw_value": 0,
+                    "delta_raw": 0,
+                    "time_enabled_ns": 0,
+                    "time_running_ns": 0,
+                    "delta_enabled_ns": 0,
+                    "delta_running_ns": 0,
+                    "scaled_value": 0,
+                    "delta_scaled": 0,
+                    "multiplex_ratio": 0,
+                    "delta_valid": 0,
+                    "scaling_valid": 0,
+                    "status": "read_error",
+                    "error_code": 5,
+                },
+                {
+                    "raw_value": 0,
+                    "delta_raw": 0,
+                    "time_enabled_ns": 0,
+                    "time_running_ns": 0,
+                    "delta_enabled_ns": 0,
+                    "delta_running_ns": 0,
+                    "scaled_value": 0,
+                    "delta_scaled": 0,
+                    "multiplex_ratio": 0,
+                    "delta_valid": 0,
+                    "scaling_valid": 0,
+                    "status": "malformed_group_read",
+                    "error_code": 5,
+                },
+            )
+            for override in valid_nonusable_states:
+                self.assertTrue(
+                    pmu_sample_row_is_valid(
+                        {
+                            key: str(value)
+                            for key, value in {
+                                **valid_sample,
+                                **override,
+                            }.items()
+                        }
+                    )
+                )
+            for name, override in (
+                ("invalid-delta-flag", {"delta_valid": 2}),
+                ("invalid-scaling-flag", {"scaling_valid": -1}),
+                ("nonnumeric-error", {"error_code": "nope"}),
+                ("nonfinite-delta", {"delta_scaled": "nan"}),
+                ("negative-interval", {"interval_ns": -1}),
+                ("negative-multiplex", {"multiplex_ratio": -0.1}),
+                ("negative-delta", {"delta_scaled": -1}),
+                ("multiplex-above-one", {"multiplex_ratio": 1.1}),
+                ("inconsistent-scaled-value", {"scaled_value": 999}),
+                ("inconsistent-delta-scaled", {"delta_scaled": 101}),
+                ("inconsistent-multiplex", {"multiplex_ratio": 0.5}),
+                ("usable-zero-delta-running", {"delta_running_ns": 0}),
+                ("scaling-valid-zero-running", {"time_running_ns": 0}),
+                (
+                    "usable-running-above-enabled",
+                    {"delta_enabled_ns": 0, "delta_running_ns": 1},
+                ),
+                (
+                    "scaling-running-above-enabled",
+                    {
+                        "delta_valid": 0,
+                        "time_enabled_ns": 0,
+                        "time_running_ns": 1,
+                    },
+                ),
+                (
+                    "nonusable-ok-status",
+                    {
+                        "delta_raw": 0,
+                        "delta_enabled_ns": 0,
+                        "delta_running_ns": 0,
+                        "delta_scaled": 0,
+                        "interval_ns": 0,
+                        "delta_valid": 0,
+                        "status": "ok",
+                    },
+                ),
+                (
+                    "warmup-invalid-scaling-flag",
+                    {
+                        "delta_raw": 0,
+                        "delta_enabled_ns": 0,
+                        "delta_running_ns": 0,
+                        "delta_scaled": 0,
+                        "interval_ns": 0,
+                        "delta_valid": 0,
+                        "scaling_valid": 0,
+                        "status": "warmup",
+                    },
+                ),
+                (
+                    "not-running-wrong-status",
+                    {
+                        "delta_running_ns": 0,
+                        "delta_scaled": 0,
+                        "scaling_valid": 0,
+                        "status": "ok",
+                    },
+                ),
+                (
+                    "read-error-nonzero-evidence",
+                    {
+                        "raw_value": 1,
+                        "delta_raw": 0,
+                        "time_enabled_ns": 0,
+                        "time_running_ns": 0,
+                        "delta_enabled_ns": 0,
+                        "delta_running_ns": 0,
+                        "scaled_value": 0,
+                        "delta_scaled": 0,
+                        "multiplex_ratio": 0,
+                        "delta_valid": 0,
+                        "scaling_valid": 0,
+                        "status": "read_error",
+                        "error_code": 5,
+                    },
+                ),
+                (
+                    "read-error-wrong-status",
+                    {
+                        "raw_value": 0,
+                        "delta_raw": 0,
+                        "time_enabled_ns": 0,
+                        "time_running_ns": 0,
+                        "delta_enabled_ns": 0,
+                        "delta_running_ns": 0,
+                        "scaled_value": 0,
+                        "delta_scaled": 0,
+                        "multiplex_ratio": 0,
+                        "delta_valid": 0,
+                        "scaling_valid": 0,
+                        "status": "warmup",
+                        "error_code": 5,
+                    },
+                ),
+                ("zero-valid-interval", {"interval_ns": 0}),
+                ("usable-error-code", {"error_code": 5}),
+                ("usable-error-status", {"status": "read_error"}),
+            ):
+                invalid = profile_dir / name
+                invalid.mkdir()
+                write_csv_rows(
+                    invalid / "pmu_availability.csv",
+                    PMU_AVAILABILITY_HEADER.split(","),
+                    [
+                        {
+                            "schema_version": 2,
+                            "run_id": name,
+                            "experiment_id": "",
+                            "campaign_id": "",
+                            "role": "nrUE",
+                            "hostname": "synthetic-host",
+                            "thread_index": 0,
+                            "tid": 100,
+                            "thread_name": "producer",
+                            "event_id": 1,
+                            "event_name": "cpu_cycles",
+                            "domain": "hardware",
+                            "requested": 1,
+                            "available": 1,
+                            "status": "available",
+                            "error_code": 0,
+                        }
+                    ],
+                )
+                write_csv_rows(
+                    invalid / "pmu_samples.csv",
+                    sample_fields,
+                    [{**valid_sample, "run_id": name, **override}],
+                )
+                invalid_key = str(invalid)
+                _, invalid_summary, invalid_quality = pmu_reports(
+                    [invalid],
+                    {
+                        invalid_key: {
+                            "run_id": name,
+                            "role": "nrUE",
+                            "hostname": "synthetic-host",
+                        }
+                    },
+                    {invalid_key: {"profile.pmu_mode": "software"}},
+                    {},
+                )
+                self.assertEqual(invalid_summary.rows, [])
+                self.assertEqual(
+                    invalid_quality.rows[0]["status"],
+                    "stream_malformed",
+                )
+                self.assertEqual(invalid_quality.rows[0]["samples_total"], "")
+
+            valid_not_running = profile_dir / "valid-not-running"
+            valid_not_running.mkdir()
+            write_csv_rows(
+                valid_not_running / "pmu_availability.csv",
+                PMU_AVAILABILITY_HEADER.split(","),
+                [
+                    {
+                        "schema_version": 2,
+                        "run_id": "valid-not-running",
+                        "experiment_id": "",
+                        "campaign_id": "",
+                        "role": "nrUE",
+                        "hostname": "synthetic-host",
+                        "thread_index": 0,
+                        "tid": 100,
+                        "thread_name": "producer",
+                        "event_id": 1,
+                        "event_name": "cpu_cycles",
+                        "domain": "hardware",
+                        "requested": 1,
+                        "available": 1,
+                        "status": "available",
+                        "error_code": 0,
+                    }
+                ],
+            )
+            write_csv_rows(
+                valid_not_running / "pmu_samples.csv",
+                sample_fields,
+                [
+                    {
+                        **valid_sample,
+                        "run_id": "valid-not-running",
+                        "delta_enabled_ns": 0,
+                        "delta_running_ns": 1,
+                        "delta_scaled": 0,
+                        "scaling_valid": 0,
+                        "status": "not_running",
+                    }
+                ],
+            )
+            valid_not_running_key = str(valid_not_running)
+            _, not_running_summary, not_running_quality = pmu_reports(
+                [valid_not_running],
+                {
+                    valid_not_running_key: {
+                        "run_id": "valid-not-running",
+                        "role": "nrUE",
+                        "hostname": "synthetic-host",
+                    }
+                },
+                {
+                    valid_not_running_key: {
+                        "profile.pmu_mode": "software"
+                    }
+                },
+                {},
+            )
+            self.assertEqual(len(not_running_summary.rows), 1)
+            self.assertEqual(
+                not_running_summary.rows[0]["usable_samples"],
+                0,
+            )
+            self.assertTrue(
+                math.isnan(
+                    not_running_summary.rows[0]["estimated_rate_per_second"]
+                )
+            )
+            self.assertEqual(not_running_quality.rows[0]["samples_total"], 1)
+            self.assertEqual(
+                not_running_quality.rows[0]["delta_valid_count"],
+                1,
+            )
+            self.assertEqual(
+                not_running_quality.rows[0]["scaling_valid_count"],
+                0,
+            )
+            self.assertEqual(not_running_quality.rows[0]["usable_count"], 0)
+            self.assertEqual(not_running_quality.rows[0]["invalid_count"], 1)
+            self.assertEqual(
+                not_running_quality.rows[0]["status"],
+                "not_running",
+            )
+
+            invalid_availability = profile_dir / "invalid-availability"
+            invalid_availability.mkdir()
+            write_csv_rows(
+                invalid_availability / "pmu_availability.csv",
+                PMU_AVAILABILITY_HEADER.split(","),
+                [
+                    {
+                        "schema_version": 2,
+                        "run_id": "invalid-availability",
+                        "experiment_id": "",
+                        "campaign_id": "",
+                        "role": "nrUE",
+                        "hostname": "synthetic-host",
+                        "thread_index": 0,
+                        "tid": 100,
+                        "thread_name": "producer",
+                        "event_id": 1,
+                        "event_name": "cpu_cycles",
+                        "domain": "hardware",
+                        "requested": 0,
+                        "available": 1,
+                        "status": "available",
+                        "error_code": 0,
+                    }
+                ],
+            )
+            write_text(
+                invalid_availability / "pmu_samples.csv",
+                PMU_SAMPLE_HEADER + "\n",
+            )
+            invalid_availability_key = str(invalid_availability)
+            invalid_availability_report, _, _ = pmu_reports(
+                [invalid_availability],
+                {
+                    invalid_availability_key: {
+                        "run_id": "invalid-availability",
+                        "role": "nrUE",
+                        "hostname": "synthetic-host",
+                    }
+                },
+                {
+                    invalid_availability_key: {
+                        "profile.pmu_mode": "software"
+                    }
+                },
+                {},
+            )
+            self.assertEqual(
+                invalid_availability_report.rows[0]["stream_status"],
+                "malformed",
+            )
+            self.assertEqual(
+                invalid_availability_report.rows[0]["requested"],
+                "",
+            )
+
+            write_csv_rows(
+                invalid_availability / "pmu_availability.csv",
+                PMU_AVAILABILITY_HEADER.split(","),
+                [
+                    {
+                        "schema_version": 2,
+                        "run_id": "invalid-availability",
+                        "experiment_id": "",
+                        "campaign_id": "",
+                        "role": "nrUE",
+                        "hostname": "synthetic-host",
+                        "thread_index": 0,
+                        "tid": 100,
+                        "thread_name": "producer",
+                        "event_id": 1,
+                        "event_name": "cpu_cycles",
+                        "domain": "hardware",
+                        "requested": 1,
+                        "available": 1,
+                        "status": "permission_denied",
+                        "error_code": 13,
+                    }
+                ],
+            )
+            contradictory_availability_report, _, _ = pmu_reports(
+                [invalid_availability],
+                {
+                    invalid_availability_key: {
+                        "run_id": "invalid-availability",
+                        "role": "nrUE",
+                        "hostname": "synthetic-host",
+                    }
+                },
+                {
+                    invalid_availability_key: {
+                        "profile.pmu_mode": "software"
+                    }
+                },
+                {},
+            )
+            self.assertEqual(
+                contradictory_availability_report.rows[0]["stream_status"],
+                "malformed",
+            )
+            self.assertEqual(
+                contradictory_availability_report.rows[0]["available"],
+                "",
+            )
+
+            missing_identity = profile_dir / "missing-sample-identity"
+            missing_identity.mkdir()
+            write_text(
+                missing_identity / "pmu_availability.csv",
+                PMU_AVAILABILITY_HEADER + "\n",
+            )
+            write_text(
+                missing_identity / "pmu_samples.csv",
+                "event_name,delta_valid,scaling_valid,delta_scaled,"
+                "multiplex_ratio,interval_ns,status,error_code\n"
+                "cpu_cycles,1,1,100,1.0,1000,ok,0\n",
+            )
+            missing_identity_key = str(missing_identity)
+            _, missing_summary, missing_quality = pmu_reports(
+                [missing_identity],
+                {
+                    missing_identity_key: {
+                        "run_id": "missing-sample-identity",
+                        "role": "nrUE",
+                        "hostname": "synthetic-host",
+                    }
+                },
+                {missing_identity_key: {"profile.pmu_mode": "software"}},
+                {},
+            )
+            self.assertEqual(missing_summary.rows, [])
+            self.assertEqual(
+                missing_quality.rows[0]["status"],
+                "stream_malformed",
+            )
+
+            malformed = profile_dir / "malformed"
+            malformed.mkdir()
+            write_text(malformed / "pmu_availability.csv", '"event_name\n')
+            write_text(malformed / "pmu_samples.csv", '"event_name\n')
+            malformed_key = str(malformed)
+            availability, summary, quality = pmu_reports(
+                [malformed],
+                {
+                    malformed_key: {
+                        "run_id": "pmu-malformed",
+                        "role": "nrUE",
+                        "hostname": "synthetic-host",
+                    }
+                },
+                {malformed_key: {"profile.pmu_mode": "software"}},
+                {},
+            )
+            self.assertEqual(len(summary.rows), 0)
+            self.assertEqual(availability.rows[0]["stream_status"], "malformed")
+            self.assertEqual(availability.rows[0]["status"], "stream_malformed")
+            self.assertEqual(quality.rows[0]["status"], "stream_malformed")
+
+            blank = profile_dir / "blank"
+            blank.mkdir()
+            write_text(
+                blank / "pmu_availability.csv",
+                PMU_AVAILABILITY_HEADER
+                + "\n"
+                + "," * (len(PMU_AVAILABILITY_HEADER.split(",")) - 1)
+                + "\n",
+            )
+            write_text(
+                blank / "pmu_samples.csv",
+                PMU_SAMPLE_HEADER
+                + "\n"
+                + "," * (len(PMU_SAMPLE_HEADER.split(",")) - 1)
+                + "\n",
+            )
+            blank_key = str(blank)
+            availability, summary, quality = pmu_reports(
+                [blank],
+                {
+                    blank_key: {
+                        "run_id": "pmu-blank",
+                        "role": "nrUE",
+                        "hostname": "synthetic-host",
+                    }
+                },
+                {blank_key: {"profile.pmu_mode": "software"}},
+                {},
+            )
+            self.assertEqual(len(summary.rows), 0)
+            self.assertEqual(availability.rows[0]["stream_status"], "malformed")
+            self.assertEqual(availability.rows[0]["status"], "stream_malformed")
+            self.assertEqual(quality.rows[0]["status"], "stream_malformed")
+            self.assertEqual(quality.rows[0]["samples_total"], "")
+
+    def test_primitive_overhead_malformed_row_does_not_fabricate_zeros(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory(
+            prefix="oai-profile-primitive-malformed-"
+        ) as temporary:
+            profile_dir = Path(temporary)
+            fields = (
+                "schema_version,run_id,experiment_id,campaign_id,variant,trial,"
+                "role,hostname,phase,sample_index,primitive,event_kind,cpu_start,"
+                "cpu_end,cpu_migrated,outer_start_tick,outer_end_tick,"
+                "outer_duration_tick,outer_duration_us,event_record_expected,"
+                "event_recorded,event_seq,event_duration_tick,event_duration_us,"
+                "drop_delta,status"
+            ).split(",")
+            base_row = {
+                "schema_version": 2,
+                "run_id": "primitive-malformed",
+                "experiment_id": "",
+                "campaign_id": "",
+                "variant": "in-process",
+                "trial": 1,
+                "role": "nrUE",
+                "hostname": "synthetic-host",
+                "phase": "measurement",
+                "sample_index": 0,
+                "primitive": "counter_pair",
+                "event_kind": "unknown",
+                "cpu_start": 2,
+                "cpu_end": 2,
+                "cpu_migrated": 0,
+                "outer_start_tick": 100,
+                "outer_end_tick": 110,
+                "outer_duration_tick": 10,
+                "outer_duration_us": 1.0,
+                "event_record_expected": 0,
+                "event_recorded": 0,
+                "event_seq": 0,
+                "event_duration_tick": 0,
+                "event_duration_us": 0.0,
+                "drop_delta": 0,
+                "status": "ok",
+            }
+            write_csv_rows(
+                profile_dir / "profiler_primitive_overhead.csv",
+                fields,
+                [{**base_row, "sample_index": ""}],
+            )
+            profile_key = str(profile_dir)
+            report = primitive_overhead_report(
+                [profile_dir],
+                {
+                    profile_key: {
+                        "run_id": "primitive-malformed",
+                        "experiment_id": "",
+                        "campaign_id": "",
+                        "variant": "in-process",
+                        "trial": "1",
+                        "role": "nrUE",
+                        "hostname": "synthetic-host",
+                    }
+                },
+                {},
+            )
+            self.assertEqual(len(report.rows), 1)
+            self.assertEqual(report.rows[0]["stream_status"], "malformed")
+            self.assertEqual(report.rows[0]["status"], "stream_malformed")
+            self.assertEqual(report.rows[0]["samples_total"], "")
+            self.assertEqual(report.rows[0]["event_recorded_count"], "")
+            self.assertEqual(report.rows[0]["duration_p50_us"], "")
+
+            contradictory_rows = (
+                {
+                    **base_row,
+                    "primitive": "span_start_stop",
+                    "event_kind": "duration",
+                    "event_record_expected": 1,
+                    "status": "ok",
+                },
+                {
+                    **base_row,
+                    "primitive": "counter_pair",
+                    "event_kind": "duration",
+                    "event_record_expected": 1,
+                    "event_recorded": 1,
+                    "event_seq": 1,
+                    "event_duration_tick": 5,
+                    "event_duration_us": 0.5,
+                },
+                {
+                    **base_row,
+                    "primitive": "fabricated_primitive",
+                },
+            )
+            for contradictory_row in contradictory_rows:
+                write_csv_rows(
+                    profile_dir / "profiler_primitive_overhead.csv",
+                    fields,
+                    [contradictory_row],
+                )
+                report = primitive_overhead_report(
+                    [profile_dir],
+                    {
+                        profile_key: {
+                            "run_id": "primitive-malformed",
+                            "experiment_id": "",
+                            "campaign_id": "",
+                            "variant": "in-process",
+                            "trial": "1",
+                            "role": "nrUE",
+                            "hostname": "synthetic-host",
+                        }
+                    },
+                    {},
+                )
+                self.assertEqual(report.rows[0]["stream_status"], "malformed")
+                self.assertEqual(report.rows[0]["status"], "stream_malformed")
+                self.assertEqual(report.rows[0]["samples_total"], "")
+
+            write_csv_rows(
+                profile_dir / "profiler_primitive_overhead.csv",
+                fields,
+                [
+                    {
+                        **base_row,
+                        "phase": "setup",
+                        "primitive": "calibration",
+                        "cpu_start": -1,
+                        "cpu_end": -1,
+                        "outer_start_tick": 0,
+                        "outer_end_tick": 0,
+                        "outer_duration_tick": 0,
+                        "outer_duration_us": 0.0,
+                        "status": "allocation_failed",
+                    }
+                ],
+            )
+            allocation_report = primitive_overhead_report(
+                [profile_dir],
+                {
+                    profile_key: {
+                        "run_id": "primitive-malformed",
+                        "experiment_id": "",
+                        "campaign_id": "",
+                        "variant": "in-process",
+                        "trial": "1",
+                        "role": "nrUE",
+                        "hostname": "synthetic-host",
+                    }
+                },
+                {},
+            )
+            self.assertEqual(
+                allocation_report.rows[0]["stream_status"],
+                "recorded",
+            )
+            self.assertEqual(
+                allocation_report.rows[0]["status"],
+                "allocation_failed",
+            )
+            self.assertEqual(allocation_report.rows[0]["samples_total"], 1)
+            self.assertEqual(allocation_report.rows[0]["samples_valid"], 0)
+
+            write_csv_rows(
+                profile_dir / "profiler_primitive_overhead.csv",
+                fields,
+                [
+                    {
+                        **base_row,
+                        "primitive": "span_start_stop",
+                        "event_kind": "duration",
+                        "event_record_expected": 1,
+                        "event_recorded": 1,
+                        "event_seq": 0,
+                        "event_duration_tick": 5,
+                        "event_duration_us": 0.5,
+                    }
+                ],
+            )
+            zero_sequence_report = primitive_overhead_report(
+                [profile_dir],
+                {
+                    profile_key: {
+                        "run_id": "primitive-malformed",
+                        "experiment_id": "",
+                        "campaign_id": "",
+                        "variant": "in-process",
+                        "trial": "1",
+                        "role": "nrUE",
+                        "hostname": "synthetic-host",
+                    }
+                },
+                {},
+            )
+            self.assertEqual(
+                zero_sequence_report.rows[0]["stream_status"],
+                "recorded",
+            )
+            self.assertEqual(zero_sequence_report.rows[0]["status"], "ok")
+            self.assertEqual(zero_sequence_report.rows[0]["samples_valid"], 1)
+            self.assertEqual(
+                zero_sequence_report.rows[0]["event_recorded_count"],
+                1,
+            )
+
     def test_deadline_reconstruction_rejects_uncorrelated_and_malformed_evidence(self) -> None:
         self.assertEqual(round_div_signed(5, 2), 3)
         self.assertEqual(round_div_signed(-5, 2), -3)
@@ -414,6 +2091,167 @@ class AnalyzerSchemaCompatibilityTest(unittest.TestCase):
         self.assertEqual(completeness.rows[0]["paired_complete"], 0)
         self.assertIn("duplicate_role", str(completeness.rows[0]["status"]))
 
+    def test_campaign_profile_evidence_is_separate_from_operations(self) -> None:
+        def member(role: str, profile_enabled: bool) -> dict[str, object]:
+            return {
+                "profile_dir": f"/run/{role}",
+                "campaign_id": "campaign",
+                "experiment_id": "experiment",
+                "case": "case",
+                "variant": "in-process" if profile_enabled else "disabled",
+                "trial": "1",
+                "role": role,
+                "profile_enabled": profile_enabled,
+                "status": "finished",
+                "return_code": 0,
+                "stop_reason": "duration_elapsed",
+                "duration_status": "valid",
+                "archive_status": "finalization_pending",
+                "archive_manifest_present": 1,
+            }
+
+        profiled_members = [member("gNB", True), member("nrUE", True)]
+        profiled_integrity = [
+            {"profile_dir": row["profile_dir"], "valid": 1}
+            for row in profiled_members
+        ]
+        incomplete = campaign_completeness_report(
+            profiled_members,
+            profiled_integrity,
+            {
+                "/run/gNB": "complete",
+                "/run/nrUE": "lifecycle_unknown;drop_diagnostics_zero_byte",
+            },
+        ).rows[0]
+        self.assertEqual(incomplete["paired_complete"], 1)
+        self.assertEqual(incomplete["status"], "complete")
+        self.assertEqual(incomplete["profile_complete_roles"], "gNB")
+        self.assertEqual(incomplete["profile_incomplete_roles"], "nrUE")
+        self.assertEqual(
+            incomplete["profile_coverage_status_by_role"],
+            "gNB:complete|nrUE:lifecycle_unknown;drop_diagnostics_zero_byte",
+        )
+        self.assertEqual(incomplete["profile_evidence_complete"], 0)
+        self.assertEqual(incomplete["profile_evidence_status"], "profile_incomplete")
+
+        complete = campaign_completeness_report(
+            profiled_members,
+            profiled_integrity,
+            {"/run/gNB": "complete", "/run/nrUE": "complete"},
+        ).rows[0]
+        self.assertEqual(complete["paired_complete"], 1)
+        self.assertEqual(complete["profile_complete_roles"], "gNB;nrUE")
+        self.assertEqual(complete["profile_evidence_complete"], 1)
+        self.assertEqual(complete["profile_evidence_status"], "complete")
+
+        disabled_members = [member("gNB", False), member("nrUE", False)]
+        disabled_integrity = [
+            {"profile_dir": row["profile_dir"], "valid": 1}
+            for row in disabled_members
+        ]
+        disabled = campaign_completeness_report(
+            disabled_members,
+            disabled_integrity,
+            {},
+        ).rows[0]
+        self.assertEqual(disabled["paired_complete"], 1)
+        self.assertEqual(
+            disabled["profile_not_applicable_roles"],
+            "gNB;nrUE",
+        )
+        self.assertEqual(disabled["profile_incomplete_roles"], "")
+        self.assertEqual(disabled["profile_evidence_complete"], 1)
+        self.assertEqual(disabled["profile_evidence_status"], "complete")
+
+        mismatched_members = [
+            {**member("gNB", False), "variant": "in-process"},
+            {**member("nrUE", False), "variant": "in-process"},
+        ]
+        mismatched_integrity = [
+            {"profile_dir": row["profile_dir"], "valid": 1}
+            for row in mismatched_members
+        ]
+        mismatch = campaign_completeness_report(
+            mismatched_members,
+            mismatched_integrity,
+            {},
+        ).rows[0]
+        self.assertEqual(mismatch["paired_complete"], 1)
+        self.assertEqual(
+            mismatch["profile_setting_mismatch_roles"],
+            "gNB;nrUE",
+        )
+        self.assertEqual(mismatch["profile_evidence_complete"], 0)
+        self.assertEqual(
+            mismatch["profile_evidence_status"],
+            "profile_setting_mismatch",
+        )
+
+        contaminated_disabled = campaign_completeness_report(
+            disabled_members,
+            disabled_integrity,
+            {"/run/gNB": "complete"},
+        ).rows[0]
+        self.assertEqual(contaminated_disabled["paired_complete"], 1)
+        self.assertEqual(
+            contaminated_disabled["unexpected_profile_evidence_roles"],
+            "gNB",
+        )
+        self.assertEqual(
+            contaminated_disabled["profile_not_applicable_roles"],
+            "nrUE",
+        )
+        self.assertEqual(
+            contaminated_disabled["profile_coverage_status_by_role"],
+            "gNB:unexpected_profile_evidence:complete|nrUE:not_applicable",
+        )
+        self.assertEqual(
+            contaminated_disabled["profile_evidence_complete"],
+            0,
+        )
+        self.assertEqual(
+            contaminated_disabled["profile_evidence_status"],
+            "unexpected_profile_evidence",
+        )
+
+        events_only_disabled_members = [
+            {
+                **disabled_members[0],
+                "profiler_metadata_present": 0,
+                "events_present": 1,
+            },
+            {
+                **disabled_members[1],
+                "profiler_metadata_present": 0,
+                "events_present": 0,
+            },
+        ]
+        events_only_contamination = campaign_completeness_report(
+            events_only_disabled_members,
+            disabled_integrity,
+            {},
+        ).rows[0]
+        self.assertEqual(
+            events_only_contamination["unexpected_profile_evidence_roles"],
+            "gNB",
+        )
+        self.assertEqual(
+            events_only_contamination["profile_coverage_status_by_role"],
+            "gNB:unexpected_profile_evidence:artifact_presence|nrUE:not_applicable",
+        )
+        self.assertEqual(
+            events_only_contamination["profile_evidence_complete"],
+            0,
+        )
+
+        unevaluated = campaign_completeness_report(
+            profiled_members,
+            profiled_integrity,
+        ).rows[0]
+        self.assertEqual(unevaluated["paired_complete"], 1)
+        self.assertEqual(unevaluated["profile_evidence_complete"], "")
+        self.assertEqual(unevaluated["profile_evidence_status"], "not_evaluated")
+
     def test_early_campaign_exit_is_unsuccessful_and_excluded_from_duration(self) -> None:
         successful = {
             "profile_dir": "/run/valid",
@@ -439,7 +2277,7 @@ class AnalyzerSchemaCompatibilityTest(unittest.TestCase):
             "stop_reason": "paired_role_exited",
             "duration_s": 2.0,
         }
-        observer = observer_effect_report([successful, early], [], {}, {})
+        observer = observer_effect_report([successful, early], [], {}, {}, {})
         duration = next(row for row in observer.rows if row["metric_name"] == "process_duration")
         success = next(row for row in observer.rows if row["metric_name"] == "process_success")
         self.assertEqual(duration["sample_count"], 1)
@@ -451,6 +2289,7 @@ class AnalyzerSchemaCompatibilityTest(unittest.TestCase):
             **successful,
             "profile_dir": "/run/valid-event",
             "variant": "in-process",
+            "profile_enabled": True,
         }
         early_event = {
             **early,
@@ -463,12 +2302,14 @@ class AnalyzerSchemaCompatibilityTest(unittest.TestCase):
                 "event_kind": "duration",
                 "event_name": "UE_SLOT_PROCESS",
                 "p50_us": 100.0,
+                "profile_coverage_status": "complete",
             },
             {
                 "profile_dir": early_event["profile_dir"],
                 "event_kind": "duration",
                 "event_name": "UE_SLOT_PROCESS",
                 "p50_us": 1.0,
+                "profile_coverage_status": "complete",
             },
         ]
         metadata_by_dir = {
@@ -484,15 +2325,137 @@ class AnalyzerSchemaCompatibilityTest(unittest.TestCase):
             str(row["profile_dir"]): {"case": "case"}
             for row in (successful_event, early_event)
         }
+        missing_event_profile = {
+            **successful_event,
+            "profile_dir": "/run/missing-event",
+            "experiment_id": "missing-event-experiment",
+            "trial": "4",
+        }
+        missing_event_key = str(missing_event_profile["profile_dir"])
+        metadata_by_dir[missing_event_key] = {
+            "campaign_id": "campaign",
+            "role": "gNB",
+            "variant": "in-process",
+            "trial": "4",
+        }
+        campaign_by_dir[missing_event_key] = {"case": "case"}
         observer = observer_effect_report(
-            [successful_event, early_event],
+            [successful_event, early_event, missing_event_profile],
             summary_rows,
             metadata_by_dir,
             campaign_by_dir,
+            {
+                str(successful_event["profile_dir"]): "complete",
+                str(early_event["profile_dir"]): "complete",
+                missing_event_key: "event_stream_header_only",
+            },
         )
         event = next(row for row in observer.rows if row["metric_name"] == "UE_SLOT_PROCESS")
         self.assertEqual(event["sample_count"], 1)
         self.assertEqual(event["p50"], 100.0)
+        self.assertEqual(
+            event["excluded_successful_incomplete_profile_count"],
+            1,
+        )
+
+        baseline = {
+            **successful_event,
+            "profile_dir": "/run/incomplete-baseline",
+            "trial": "3",
+        }
+        variant = {
+            **successful_event,
+            "profile_dir": "/run/complete-variant",
+            "variant": "pmu-software",
+            "trial": "3",
+        }
+        baseline_key = str(baseline["profile_dir"])
+        variant_key = str(variant["profile_dir"])
+        metadata_by_dir = {
+            baseline_key: {
+                "campaign_id": "campaign",
+                "role": "gNB",
+                "variant": "in-process",
+                "trial": "3",
+            },
+            variant_key: {
+                "campaign_id": "campaign",
+                "role": "gNB",
+                "variant": "pmu-software",
+                "trial": "3",
+            },
+        }
+        campaign_by_dir = {
+            baseline_key: {"case": "case"},
+            variant_key: {"case": "case"},
+        }
+        observer = observer_effect_report(
+            [baseline, variant],
+            [
+                {
+                    "profile_dir": baseline_key,
+                    "event_kind": "duration",
+                    "event_name": "UE_SLOT_PROCESS",
+                    "p50_us": 100.0,
+                    "profile_coverage_status": "lifecycle_unknown",
+                },
+                {
+                    "profile_dir": variant_key,
+                    "event_kind": "duration",
+                    "event_name": "UE_SLOT_PROCESS",
+                    "p50_us": 110.0,
+                    "profile_coverage_status": "complete",
+                },
+            ],
+            metadata_by_dir,
+            campaign_by_dir,
+            {
+                baseline_key: "lifecycle_unknown",
+                variant_key: "complete",
+            },
+        )
+        pmu_variant = next(
+            row
+            for row in observer.rows
+            if row["metric_name"] == "UE_SLOT_PROCESS"
+            and row["variant"] == "pmu-software"
+        )
+        self.assertEqual(pmu_variant["sample_count"], 1)
+        self.assertEqual(
+            pmu_variant["baseline_status"],
+            "excluded_incomplete_profile",
+        )
+        self.assertEqual(
+            pmu_variant["effect_estimator"],
+            "unavailable_incomplete_baseline",
+        )
+        self.assertTrue(math.isnan(float(pmu_variant["p50_delta"])))
+
+        missing_baseline = observer_effect_report(
+            [variant],
+            [
+                {
+                    "profile_dir": variant_key,
+                    "event_kind": "duration",
+                    "event_name": "UE_SLOT_PROCESS",
+                    "p50_us": 110.0,
+                    "profile_coverage_status": "complete",
+                }
+            ],
+            {variant_key: metadata_by_dir[variant_key]},
+            {variant_key: campaign_by_dir[variant_key]},
+            {variant_key: "complete"},
+        )
+        missing_baseline_variant = next(
+            row
+            for row in missing_baseline.rows
+            if row["metric_name"] == "UE_SLOT_PROCESS"
+        )
+        self.assertEqual(missing_baseline_variant["baseline_status"], "missing")
+        self.assertEqual(
+            missing_baseline_variant["effect_estimator"],
+            "unavailable_missing_baseline",
+        )
 
         paired_members = [
             {**successful, "experiment_id": "paired", "role": "gNB"},
@@ -611,7 +2574,13 @@ class AnalyzerSchemaCompatibilityTest(unittest.TestCase):
                 v2 / "metadata.txt",
                 "schema_version=2\nevent_record_size_bytes=120\nmax_nesting_depth=64\ncounter_hz=10000000\n"
                 "process_name=nr-uesoftmodem\nrole=nrUE\nrun_id=v2\n"
-                "start_realtime_ns=3000000000\nend_realtime_ns=4000000000\nclean_shutdown=1\n",
+                "start_realtime_ns=3000000000\nend_realtime_ns=4000000000\n"
+                "duration_realtime_ns=1000000000\n"
+                "start_monotonic_raw_ns=3\nend_monotonic_raw_ns=4\n"
+                "duration_monotonic_raw_ns=1\n"
+                "duration_clock=CLOCK_MONOTONIC_RAW\n"
+                "realtime_clock_regressed=0\nmonotonic_raw_clock_regressed=0\n"
+                "clean_shutdown=1\n",
             )
             write_text(
                 v2 / "events.csv",
@@ -638,11 +2607,11 @@ class AnalyzerSchemaCompatibilityTest(unittest.TestCase):
                 "0,0,0,0,5000,10,1.000\n"
                 "2,9,21,worker-a,106,LDPC_DECODER_SEGMENT,duration,0,10,7,207,81,4000,0,2,2,0,1,"
                 "0,0,0,0,6000,100,10.000\n"
-                "2,10,20,ue-v2,107,USRP_RX_RECV,duration,1,10,8,208,82,0,0,2,2,0,4,"
+                "2,10,20,ue-v2,107,USRP_RX_RECV,duration,1,10,8,208,82,281474976710660,0,2,2,0,4,"
                 "512,512,1,0,7000,100,10.000\n"
-                "2,11,20,ue-v2,108,UE_TX_DEADLINE_COMPUTE,instant,1,10,9,209,82,0,0,2,2,0,1,"
+                "2,11,20,ue-v2,108,UE_TX_DEADLINE_COMPUTE,instant,1,10,9,209,82,281474976710661,0,2,2,0,1,"
                 "100000,107680,7680,1999000000,7200,0,0.000\n"
-                "2,12,21,worker-a,109,UE_TX_DEADLINE_CHECK,instant,1,10,9,209,82,0,0,2,2,0,3,"
+                "2,12,21,worker-a,109,UE_TX_DEADLINE_CHECK,instant,1,10,9,209,82,562949953421315,0,2,2,0,3,"
                 "2000010000,2000000000,10000,0,17200,0,0.000\n",
             )
             write_text(
@@ -673,8 +2642,11 @@ class AnalyzerSchemaCompatibilityTest(unittest.TestCase):
             )
             write_text(
                 v2 / "drops.csv",
-                "thread_index,tid,thread_name,dropped_records,span_stack_overflows,span_stack_mismatches\n"
-                "0,20,ue-v2,1,2,3\n",
+                "thread_index,tid,thread_name,dropped_records,span_stack_overflows,"
+                "span_stack_mismatches,counter_regressions\n"
+                "0,20,ue-v2,1,2,3,4\n"
+                "1,21,worker-a,0,0,0,0\n"
+                "2,22,worker-b,0,0,0,0\n",
             )
             write_text(
                 v2 / "sync.csv",
@@ -718,6 +2690,10 @@ class AnalyzerSchemaCompatibilityTest(unittest.TestCase):
             self.assertEqual(v1_rf["event_kind"], "unknown")
             self.assertEqual(v1_rf["cpu_observed_count"], "0")
             self.assertEqual(v1_rf["drops_total"], "3")
+            self.assertEqual(v1_rf["span_stack_overflows"], "")
+            self.assertEqual(v1_rf["span_stack_mismatches"], "")
+            self.assertEqual(v1_rf["counter_regressions"], "")
+            self.assertEqual(v1_rf["drop_diagnostics_status"], "legacy_partial")
 
             v2_rf = next(
                 row for row in summary if row["profile_dir"] == str(v2) and row["event_name"] == "UE_RF_READ"
@@ -732,6 +2708,13 @@ class AnalyzerSchemaCompatibilityTest(unittest.TestCase):
             self.assertEqual(float(v2_rf["cpu_migration_rate"]), 1.0)
             self.assertEqual(v2_rf["span_stack_overflows"], "2")
             self.assertEqual(v2_rf["span_stack_mismatches"], "3")
+            self.assertEqual(v2_rf["counter_regressions"], "4")
+            self.assertEqual(v2_rf["drop_diagnostics_status"], "recorded")
+            self.assertEqual(
+                v2_rf["profile_coverage_status"],
+                "known_record_drops;known_span_stack_overflow;"
+                "known_span_stack_mismatch;known_counter_regression",
+            )
 
             ldpc = next(
                 row
@@ -769,6 +2752,11 @@ class AnalyzerSchemaCompatibilityTest(unittest.TestCase):
             self.assertEqual(deadline_summaries["v2"]["compute_events"], "1")
             self.assertEqual(deadline_summaries["v2"]["check_events"], "1")
             self.assertEqual(deadline_summaries["v2"]["classification_agreements"], "1")
+            self.assertEqual(
+                deadline_summaries["v2"]["profile_coverage_status"],
+                "known_record_drops;known_span_stack_overflow;"
+                "known_span_stack_mismatch;known_counter_regression",
+            )
 
             migrations = read_rows(output / "migrations.csv")
             self.assertEqual(len(migrations), 1)
@@ -781,6 +2769,10 @@ class AnalyzerSchemaCompatibilityTest(unittest.TestCase):
             self.assertEqual(v2_run["event_record_size_bytes"], "120")
             self.assertEqual(v2_run["span_stack_overflows"], "2")
             self.assertEqual(v2_run["span_stack_mismatches"], "3")
+            self.assertEqual(v2_run["counter_regressions"], "4")
+            self.assertEqual(v2_run["drop_diagnostics_status"], "recorded")
+            self.assertEqual(v2_run["lifecycle_status"], "clean")
+            self.assertEqual(v2_run["duration_scope"], "complete")
 
             expected_outputs = {
                 "summary.csv",
@@ -981,9 +2973,9 @@ class AnalyzerSchemaCompatibilityTest(unittest.TestCase):
             integrity = next(
                 row for row in read_rows(output / "hierarchy_integrity.csv") if row["profile_dir"] == str(v2)
             )
-            self.assertEqual(integrity["schema2_records"], "10")
-            self.assertEqual(integrity["duration_records"], "9")
-            self.assertEqual(integrity["instant_records"], "1")
+            self.assertEqual(integrity["schema2_records"], "13")
+            self.assertEqual(integrity["duration_records"], "10")
+            self.assertEqual(integrity["instant_records"], "3")
             self.assertEqual(integrity["causal_noncontained_edges"], "1")
             self.assertEqual(integrity["missing_parent_edges"], "1")
 
@@ -1059,12 +3051,18 @@ class AnalyzerSchemaCompatibilityTest(unittest.TestCase):
             {("/profile", "TEST"): stats},
             {"/profile": {"process_name": "nr-uesoftmodem"}},
             {
-                "/profile": {
-                    "dropped_records": 0,
-                    "span_stack_overflows": 0,
-                    "span_stack_mismatches": 0,
-                }
+                "/profile": DropDiagnostics(
+                    status="recorded",
+                    row_count=1,
+                    dropped_records=0,
+                    span_stack_overflows=0,
+                    span_stack_mismatches=0,
+                    counter_regressions=0,
+                )
             },
+            {"/profile": CsvDiagnostics(status="recorded", row_count=1)},
+            {"/profile": CsvDiagnostics(status="recorded", row_count=1)},
+            {"/profile": "complete"},
         )[0]
         values = [0.125, 0.5, 1.25, 8.0]
         average = sum(values) / len(values)
@@ -1268,7 +3266,7 @@ class AnalyzerSchemaCompatibilityTest(unittest.TestCase):
                 },
             )
 
-    def test_output_refusal_and_incomplete_staging(self) -> None:
+    def test_output_refusal_and_malformed_evidence_publishing(self) -> None:
         with tempfile.TemporaryDirectory(prefix="oai-profile-incomplete-") as temporary:
             root = Path(temporary)
             profile = root / "bad_nrUE"
@@ -1304,7 +3302,7 @@ class AnalyzerSchemaCompatibilityTest(unittest.TestCase):
             self.assertEqual(list(root.glob(".existing.partial-*")), [])
 
             requested = root / "analysis"
-            failure = subprocess.run(
+            publication = subprocess.run(
                 [
                     sys.executable,
                     str(ANALYZER),
@@ -1318,16 +3316,20 @@ class AnalyzerSchemaCompatibilityTest(unittest.TestCase):
                 capture_output=True,
                 text=True,
             )
-            self.assertNotEqual(failure.returncode, 0)
-            self.assertFalse(requested.exists())
-            partials = list(root.glob(".analysis.partial-*"))
-            self.assertEqual(len(partials), 1)
-            marker = partials[0] / "ANALYSIS_INCOMPLETE.txt"
-            self.assertTrue(marker.is_file())
-            marker_text = marker.read_text()
-            self.assertIn("output_profile=publication", marker_text)
-            self.assertIn("error_type=ValueError", marker_text)
-            self.assertIn("publication_state=unpublished_partial", marker_text)
+            self.assertEqual(publication.returncode, 0, publication.stderr)
+            self.assertTrue(requested.is_dir())
+            self.assertEqual(list(root.glob(".analysis.partial-*")), [])
+            self.assertFalse((requested / "ANALYSIS_INCOMPLETE.txt").exists())
+            run = read_rows(requested / "runs.csv")[0]
+            self.assertEqual(run["event_stream_status"], "malformed")
+            self.assertEqual(run["event_stream_rows"], "0")
+            self.assertEqual(run["event_catalog_status"], "missing")
+            self.assertEqual(run["drop_diagnostics_status"], "missing")
+            self.assertEqual(
+                run["profile_coverage_status"],
+                "lifecycle_unknown;event_stream_malformed;"
+                "event_catalog_missing;drop_diagnostics_missing",
+            )
 
     def test_writer_initialization_and_post_rename_failures_are_marked(self) -> None:
         with tempfile.TemporaryDirectory(prefix="oai-profile-transaction-") as temporary:
@@ -1553,14 +3555,21 @@ class AnalyzerSchemaCompatibilityTest(unittest.TestCase):
                         "event_id": 1,
                         "event_name": "GNB_RF_READ",
                         "event_kind": "duration",
+                        "nesting_depth": 0,
                         "frame": 1,
                         "slot": 1,
                         "absolute_slot": 21,
+                        "correlation_id": 1,
+                        "span_id": 1,
+                        "parent_id": 0,
                         "cpu_start": 1,
                         "cpu_end": 1,
+                        "cpu_migrated": 0,
+                        "flags": 0,
                         "aux0": 512,
                         "aux1": 1,
                         "aux2": 512,
+                        "aux3": 0,
                         "start_tick": 100,
                         "duration_tick": 20,
                         "duration_us": 2.0,
@@ -1579,15 +3588,21 @@ class AnalyzerSchemaCompatibilityTest(unittest.TestCase):
                         "event_id": 2,
                         "event_name": "USRP_RX_RECV",
                         "event_kind": "duration",
+                        "nesting_depth": 0,
                         "frame": 1,
                         "slot": 1,
                         "absolute_slot": 21,
+                        "correlation_id": 1,
+                        "span_id": 1,
+                        "parent_id": 0,
                         "cpu_start": 2,
                         "cpu_end": 2,
+                        "cpu_migrated": 0,
                         "flags": 4,
                         "aux0": 512,
                         "aux1": 512,
                         "aux2": 1,
+                        "aux3": 0,
                         "start_tick": 200,
                         "duration_tick": 40,
                         "duration_us": 4.0,
@@ -1600,11 +3615,16 @@ class AnalyzerSchemaCompatibilityTest(unittest.TestCase):
                         "event_id": 3,
                         "event_name": "USRP_RX_SHORT_READ",
                         "event_kind": "instant",
+                        "nesting_depth": 0,
                         "frame": 1,
                         "slot": 1,
                         "absolute_slot": 21,
+                        "correlation_id": 1,
+                        "span_id": 2,
+                        "parent_id": 0,
                         "cpu_start": 2,
                         "cpu_end": 2,
+                        "cpu_migrated": 0,
                         "flags": 4,
                         "aux0": 512,
                         "aux1": 500,
@@ -1615,6 +3635,18 @@ class AnalyzerSchemaCompatibilityTest(unittest.TestCase):
                         "duration_us": 0.0,
                     },
                 ],
+            )
+            write_text(
+                profiled_gnb / "drops.csv",
+                "thread_index,tid,thread_name,dropped_records,span_stack_overflows,"
+                "span_stack_mismatches,counter_regressions\n"
+                "0,100,gnb-rx,0,0,0,0\n",
+            )
+            write_text(
+                profiled_ue / "drops.csv",
+                "thread_index,tid,thread_name,dropped_records,span_stack_overflows,"
+                "span_stack_mismatches,counter_regressions\n"
+                "0,200,ue-rx,0,0,0,0\n",
             )
             catalog_fields = (
                 "schema_version,event_id,event_name,role,subsystem,event_class,default_kind,detail_level,"
@@ -1699,26 +3731,47 @@ class AnalyzerSchemaCompatibilityTest(unittest.TestCase):
             }
             primitive_rows = []
             for index, duration in enumerate((1.0, 3.0)):
+                duration_tick = int(duration * 10)
+                outer_start_tick = 1000 + index * 100
                 primitive_rows.append(
                     {
                         **primitive_identity,
                         "sample_index": index,
                         "primitive": "counter_pair",
                         "event_kind": "unknown",
+                        "cpu_migrated": 0,
+                        "outer_start_tick": outer_start_tick,
+                        "outer_end_tick": outer_start_tick + duration_tick,
+                        "outer_duration_tick": duration_tick,
                         "outer_duration_us": duration,
+                        "event_record_expected": 0,
+                        "event_recorded": 0,
+                        "event_seq": 0,
+                        "event_duration_tick": 0,
+                        "event_duration_us": 0.0,
+                        "drop_delta": 0,
                     }
                 )
             for index, duration in enumerate((5.0, 7.0)):
+                duration_tick = int(duration * 10)
+                outer_start_tick = 2000 + index * 100
                 primitive_rows.append(
                     {
                         **primitive_identity,
                         "sample_index": index,
                         "primitive": "span_start_stop",
                         "event_kind": "duration",
+                        "cpu_migrated": 0,
+                        "outer_start_tick": outer_start_tick,
+                        "outer_end_tick": outer_start_tick + duration_tick,
+                        "outer_duration_tick": duration_tick,
                         "outer_duration_us": duration,
                         "event_record_expected": 1,
                         "event_recorded": 1,
                         "event_seq": 10 + index,
+                        "event_duration_tick": duration_tick - 10,
+                        "event_duration_us": duration - 1.0,
+                        "drop_delta": 0,
                     }
                 )
             write_csv_rows(profiled_ue / "profiler_primitive_overhead.csv", primitive_fields, primitive_rows)
@@ -1733,6 +3786,11 @@ class AnalyzerSchemaCompatibilityTest(unittest.TestCase):
                 [
                     {
                         "schema_version": 2,
+                        "run_id": "in-process-nrUE",
+                        "experiment_id": "scientific-baseline-in-process-t001",
+                        "campaign_id": "scientific-baseline",
+                        "role": "nrUE",
+                        "hostname": "nrue-host",
                         "thread_index": 0,
                         "tid": 200,
                         "thread_name": "ue-rx",
@@ -1754,6 +3812,9 @@ class AnalyzerSchemaCompatibilityTest(unittest.TestCase):
             ).split(",")
             pmu_common = {
                 "schema_version": 2,
+                "realtime_ns": 1_000_000_000,
+                "monotonic_raw_ns": 500_000_000,
+                "tick": 100,
                 "run_id": "in-process-nrUE",
                 "experiment_id": "scientific-baseline-in-process-t001",
                 "campaign_id": "scientific-baseline",
@@ -1769,27 +3830,121 @@ class AnalyzerSchemaCompatibilityTest(unittest.TestCase):
                 "event_name": "cpu_cycles",
                 "domain": "hardware",
                 "unit": "count",
+                "raw_value": 100,
+                "delta_raw": 0,
+                "time_enabled_ns": 100,
+                "time_running_ns": 100,
+                "delta_enabled_ns": 0,
+                "delta_running_ns": 0,
+                "scaled_value": 100,
+                "delta_scaled": 0,
+                "multiplex_ratio": 1.0,
+                "interval_ns": 0,
+                "delta_valid": 0,
+                "scaling_valid": 1,
+                "status": "warmup",
                 "error_code": 0,
             }
             write_csv_rows(
                 profiled_ue / "pmu_samples.csv",
                 pmu_fields,
                 [
-                    {**pmu_common, "sample_id": 1, "multiplex_ratio": 1.0, "interval_ns": 0, "delta_valid": 0, "scaling_valid": 0, "status": "warmup"},
-                    {**pmu_common, "sample_id": 2, "delta_raw": 50, "delta_scaled": 100, "multiplex_ratio": 0.5, "interval_ns": 1_000_000_000, "delta_valid": 1, "scaling_valid": 1, "status": "ok"},
-                    {**pmu_common, "sample_id": 3, "delta_raw": 200, "delta_scaled": 200, "multiplex_ratio": 1.0, "interval_ns": 1_000_000_000, "delta_valid": 1, "scaling_valid": 1, "status": "ok"},
+                    {**pmu_common, "sample_id": 1},
+                    {
+                        **pmu_common,
+                        "sample_id": 2,
+                        "realtime_ns": 2_000_000_000,
+                        "monotonic_raw_ns": 1_500_000_000,
+                        "tick": 200,
+                        "raw_value": 150,
+                        "delta_raw": 50,
+                        "time_enabled_ns": 1100,
+                        "time_running_ns": 600,
+                        "delta_enabled_ns": 1000,
+                        "delta_running_ns": 500,
+                        "scaled_value": 275,
+                        "delta_scaled": 100,
+                        "multiplex_ratio": 0.5,
+                        "interval_ns": 1_000_000_000,
+                        "delta_valid": 1,
+                        "scaling_valid": 1,
+                        "status": "ok",
+                    },
+                    {
+                        **pmu_common,
+                        "sample_id": 3,
+                        "realtime_ns": 3_000_000_000,
+                        "monotonic_raw_ns": 2_500_000_000,
+                        "tick": 300,
+                        "raw_value": 350,
+                        "delta_raw": 200,
+                        "time_enabled_ns": 2100,
+                        "time_running_ns": 1600,
+                        "delta_enabled_ns": 1000,
+                        "delta_running_ns": 1000,
+                        "scaled_value": 459.375,
+                        "delta_scaled": 200,
+                        "multiplex_ratio": 1.0,
+                        "interval_ns": 1_000_000_000,
+                        "delta_valid": 1,
+                        "scaling_valid": 1,
+                        "status": "ok",
+                    },
                 ],
             )
             pmu_overhead_fields = (
-                "schema_version,sample_id,realtime_ns,monotonic_raw_ns,run_id,experiment_id,campaign_id,thread_index,"
+                "schema_version,sample_id,realtime_ns,monotonic_raw_ns,end_monotonic_raw_ns,"
+                "timestamp_uncertainty_ns,run_id,experiment_id,campaign_id,thread_index,"
                 "tid,thread_name,duration_tick,duration_us,available_events,active_groups,group_reads,observations,read_errors,counter_status"
             ).split(",")
             write_csv_rows(
                 profiled_ue / "pmu_read_overhead.csv",
                 pmu_overhead_fields,
                 [
-                    {"schema_version": 2, "sample_id": 2, "thread_index": 0, "tid": 200, "thread_name": "ue-rx", "duration_us": 10.0, "observations": 1, "read_errors": 0, "counter_status": "ok"},
-                    {"schema_version": 2, "sample_id": 3, "thread_index": 0, "tid": 200, "thread_name": "ue-rx", "duration_us": 0.0, "observations": 0, "read_errors": 0, "counter_status": "counter_regression"},
+                    {
+                        "schema_version": 2,
+                        "sample_id": 2,
+                        "realtime_ns": 2_000_000_000,
+                        "monotonic_raw_ns": 1_500_000_000,
+                        "end_monotonic_raw_ns": 1_500_000_100,
+                        "timestamp_uncertainty_ns": 100,
+                        "run_id": "in-process-nrUE",
+                        "experiment_id": "scientific-baseline-in-process-t001",
+                        "campaign_id": "scientific-baseline",
+                        "thread_index": 0,
+                        "tid": 200,
+                        "thread_name": "ue-rx",
+                        "duration_tick": 100,
+                        "duration_us": 10.0,
+                        "available_events": 1,
+                        "active_groups": 1,
+                        "group_reads": 1,
+                        "observations": 1,
+                        "read_errors": 0,
+                        "counter_status": "ok",
+                    },
+                    {
+                        "schema_version": 2,
+                        "sample_id": 3,
+                        "realtime_ns": 3_000_000_000,
+                        "monotonic_raw_ns": 2_500_000_000,
+                        "end_monotonic_raw_ns": 2_500_000_000,
+                        "timestamp_uncertainty_ns": 0,
+                        "run_id": "in-process-nrUE",
+                        "experiment_id": "scientific-baseline-in-process-t001",
+                        "campaign_id": "scientific-baseline",
+                        "thread_index": 0,
+                        "tid": 200,
+                        "thread_name": "ue-rx",
+                        "duration_tick": 0,
+                        "duration_us": 0.0,
+                        "available_events": 1,
+                        "active_groups": 1,
+                        "group_reads": 0,
+                        "observations": 0,
+                        "read_errors": 0,
+                        "counter_status": "counter_regression",
+                    },
                 ],
             )
 
@@ -1846,8 +4001,44 @@ class AnalyzerSchemaCompatibilityTest(unittest.TestCase):
                 profiled_ue / "system_read_overhead.csv",
                 system_overhead_fields,
                 [
-                    {"schema_version": 2, "sample_id": 2, "source": "thread_metrics", "duration_us": 5.0, "rows": 1, "status": "ok", "error_code": 0},
-                    {"schema_version": 2, "sample_id": 2, "source": "kernel_activity", "duration_us": 6.0, "rows": 1, "status": "ok", "error_code": 0},
+                    {
+                        "schema_version": 2,
+                        "sample_id": 2,
+                        "realtime_ns": 2_000_000_000,
+                        "monotonic_raw_ns": 1_500_000_000,
+                        "run_id": "in-process-nrUE",
+                        "experiment_id": "scientific-baseline-in-process-t001",
+                        "campaign_id": "scientific-baseline",
+                        "variant": "in-process",
+                        "trial": 1,
+                        "role": "nrUE",
+                        "hostname": "nrue-host",
+                        "source": "thread_metrics",
+                        "duration_tick": 50,
+                        "duration_us": 5.0,
+                        "rows": 1,
+                        "status": "ok",
+                        "error_code": 0,
+                    },
+                    {
+                        "schema_version": 2,
+                        "sample_id": 2,
+                        "realtime_ns": 2_000_000_000,
+                        "monotonic_raw_ns": 1_500_000_000,
+                        "run_id": "in-process-nrUE",
+                        "experiment_id": "scientific-baseline-in-process-t001",
+                        "campaign_id": "scientific-baseline",
+                        "variant": "in-process",
+                        "trial": 1,
+                        "role": "nrUE",
+                        "hostname": "nrue-host",
+                        "source": "kernel_activity",
+                        "duration_tick": 60,
+                        "duration_us": 6.0,
+                        "rows": 1,
+                        "status": "ok",
+                        "error_code": 0,
+                    },
                 ],
             )
 
@@ -2017,6 +4208,7 @@ class AnalyzerSchemaCompatibilityTest(unittest.TestCase):
             self.assertAlmostEqual(float(span["baseline_p50_us"]), 2.0)
             self.assertAlmostEqual(float(span["duration_p50_us"]), 6.0)
             self.assertAlmostEqual(float(span["median_excess_over_counter_pair_us"]), 4.0)
+            self.assertEqual(span["stream_status"], "recorded")
 
             pmu = next(row for row in read_rows(output / "pmu_summary.csv") if row["event_name"] == "cpu_cycles")
             self.assertEqual(pmu["usable_samples"], "2")
@@ -2024,6 +4216,7 @@ class AnalyzerSchemaCompatibilityTest(unittest.TestCase):
             self.assertAlmostEqual(float(pmu["estimated_rate_per_second"]), 150.0)
             quality = next(row for row in read_rows(output / "pmu_quality.csv") if row["event_name"] == "cpu_cycles")
             self.assertEqual(quality["delta_valid_count"], "2")
+            self.assertEqual(quality["scaling_valid_count"], "3")
             self.assertEqual(quality["usable_count"], "2")
             self.assertAlmostEqual(float(quality["multiplex_ratio_min"]), 0.5)
             self.assertAlmostEqual(float(quality["multiplex_ratio_p50"]), 0.75)

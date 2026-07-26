@@ -15,7 +15,7 @@ import math
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
-from typing import Any, Iterable
+from typing import Any, Callable, Iterable
 
 from oai_profile_archive import (
     MANIFEST_NAME,
@@ -38,6 +38,163 @@ IDENTITY_FIELDS = [
     "role",
     "hostname",
 ]
+PROFILE_ENABLED_VARIANTS = {
+    "in-process",
+    "pmu-software",
+    "pmu-all",
+    "perf-stat",
+    "perf-record",
+    "perf-sched",
+}
+PMU_AVAILABILITY_REQUIRED_FIELDS = {
+    "schema_version",
+    "run_id",
+    "experiment_id",
+    "campaign_id",
+    "role",
+    "hostname",
+    "thread_index",
+    "tid",
+    "thread_name",
+    "event_id",
+    "event_name",
+    "domain",
+    "requested",
+    "available",
+    "status",
+    "error_code",
+}
+PMU_AVAILABILITY_NONBLANK_FIELDS = PMU_AVAILABILITY_REQUIRED_FIELDS - {
+    "experiment_id",
+    "campaign_id",
+}
+PMU_SAMPLE_REQUIRED_FIELDS = {
+    "schema_version",
+    "sample_id",
+    "realtime_ns",
+    "monotonic_raw_ns",
+    "tick",
+    "run_id",
+    "experiment_id",
+    "campaign_id",
+    "variant",
+    "trial",
+    "role",
+    "hostname",
+    "thread_index",
+    "tid",
+    "thread_name",
+    "target_cpu",
+    "event_id",
+    "event_name",
+    "domain",
+    "unit",
+    "raw_value",
+    "delta_raw",
+    "time_enabled_ns",
+    "time_running_ns",
+    "delta_enabled_ns",
+    "delta_running_ns",
+    "scaled_value",
+    "delta_valid",
+    "scaling_valid",
+    "delta_scaled",
+    "multiplex_ratio",
+    "interval_ns",
+    "status",
+    "error_code",
+}
+PMU_SAMPLE_NONBLANK_FIELDS = PMU_SAMPLE_REQUIRED_FIELDS - {
+    "experiment_id",
+    "campaign_id",
+    "variant",
+    "trial",
+}
+PMU_OVERHEAD_REQUIRED_FIELDS = {
+    "schema_version",
+    "sample_id",
+    "realtime_ns",
+    "monotonic_raw_ns",
+    "end_monotonic_raw_ns",
+    "timestamp_uncertainty_ns",
+    "run_id",
+    "experiment_id",
+    "campaign_id",
+    "thread_index",
+    "tid",
+    "thread_name",
+    "duration_tick",
+    "duration_us",
+    "available_events",
+    "active_groups",
+    "group_reads",
+    "observations",
+    "read_errors",
+    "counter_status",
+}
+PMU_OVERHEAD_NONBLANK_FIELDS = PMU_OVERHEAD_REQUIRED_FIELDS - {
+    "experiment_id",
+    "campaign_id",
+}
+SYSTEM_OVERHEAD_REQUIRED_FIELDS = {
+    "schema_version",
+    "sample_id",
+    "realtime_ns",
+    "monotonic_raw_ns",
+    "run_id",
+    "experiment_id",
+    "campaign_id",
+    "variant",
+    "trial",
+    "role",
+    "hostname",
+    "source",
+    "duration_tick",
+    "duration_us",
+    "rows",
+    "status",
+    "error_code",
+}
+SYSTEM_OVERHEAD_NONBLANK_FIELDS = SYSTEM_OVERHEAD_REQUIRED_FIELDS - {
+    "experiment_id",
+    "campaign_id",
+    "variant",
+    "trial",
+}
+PRIMITIVE_OVERHEAD_REQUIRED_FIELDS = {
+    "schema_version",
+    "run_id",
+    "experiment_id",
+    "campaign_id",
+    "variant",
+    "trial",
+    "role",
+    "hostname",
+    "phase",
+    "sample_index",
+    "primitive",
+    "event_kind",
+    "cpu_start",
+    "cpu_end",
+    "cpu_migrated",
+    "outer_start_tick",
+    "outer_end_tick",
+    "outer_duration_tick",
+    "outer_duration_us",
+    "event_record_expected",
+    "event_recorded",
+    "event_seq",
+    "event_duration_tick",
+    "event_duration_us",
+    "drop_delta",
+    "status",
+}
+PRIMITIVE_OVERHEAD_NONBLANK_FIELDS = PRIMITIVE_OVERHEAD_REQUIRED_FIELDS - {
+    "experiment_id",
+    "campaign_id",
+    "variant",
+    "trial",
+}
 
 
 @dataclass(frozen=True)
@@ -59,6 +216,19 @@ def parse_float(value: object, default: float = math.nan) -> float:
     except (TypeError, ValueError):
         return default
     return parsed if math.isfinite(parsed) else default
+
+
+def parse_optional_bool(value: object) -> bool | None:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, int) and value in {0, 1}:
+        return bool(value)
+    normalized = str(value).strip().lower()
+    if normalized in {"1", "true", "yes", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "off"}:
+        return False
+    return None
 
 
 def campaign_member_succeeded(row: dict[str, object]) -> bool:
@@ -178,6 +348,530 @@ def read_csv(path: Path) -> list[dict[str, str]]:
         return []
     with path.open(newline="") as stream:
         return list(csv.DictReader(stream))
+
+
+def read_csv_with_status(
+    path: Path,
+    required_fields: set[str],
+    row_validator: Callable[[dict[str, str]], bool] | None = None,
+    nonblank_fields: set[str] | None = None,
+) -> tuple[list[dict[str, str]], str]:
+    if not path.is_file():
+        return [], "missing"
+    if path.stat().st_size == 0:
+        return [], "zero_byte"
+    with path.open(newline="") as stream:
+        try:
+            reader = csv.DictReader(stream, strict=True)
+            fields = reader.fieldnames
+            if (
+                not fields
+                or not required_fields.issubset(fields)
+                or len(fields) != len(set(fields))
+                or any(not field for field in fields)
+            ):
+                return [], "malformed"
+            rows = list(reader)
+        except csv.Error:
+            return [], "malformed"
+    fields_requiring_values = (
+        required_fields if nonblank_fields is None else nonblank_fields
+    )
+    if any(
+        None in row
+        or any(
+            not (row.get(field) or "").strip()
+            for field in fields_requiring_values
+        )
+        for row in rows
+    ):
+        return [], "malformed"
+    if row_validator is not None and any(not row_validator(row) for row in rows):
+        return [], "malformed"
+    return rows, "recorded" if rows else "header_only"
+
+
+def parse_required_int(row: dict[str, str], field: str) -> int | None:
+    try:
+        return int(row[field])
+    except (KeyError, TypeError, ValueError):
+        return None
+
+
+def parse_required_float(row: dict[str, str], field: str) -> float | None:
+    try:
+        value = float(row[field])
+    except (KeyError, TypeError, ValueError):
+        return None
+    return value if math.isfinite(value) else None
+
+
+def matches_native_decimal(
+    observed: float,
+    expected: float,
+    decimal_places: int,
+) -> bool:
+    serialization_tolerance = 0.500001 * 10.0 ** (-decimal_places)
+    floating_tolerance = max(1.0, abs(expected)) * 2.0e-15
+    return abs(observed - expected) <= (
+        serialization_tolerance + floating_tolerance
+    )
+
+
+def row_matches_metadata(
+    row: dict[str, str],
+    metadata: dict[str, str],
+    fields: set[str],
+) -> bool:
+    return all(row.get(field, "") == metadata.get(field, "") for field in fields)
+
+
+def pmu_availability_row_is_valid(row: dict[str, str]) -> bool:
+    thread_index = parse_required_int(row, "thread_index")
+    tid = parse_required_int(row, "tid")
+    event_id = parse_required_int(row, "event_id")
+    requested = parse_required_int(row, "requested")
+    available = parse_required_int(row, "available")
+    error_code = parse_required_int(row, "error_code")
+    status = row.get("status")
+    unavailable_error_statuses = {
+        "permission_denied",
+        "unsupported",
+        "open_error",
+        "id_error",
+        "group_capacity_exceeded",
+        "enable_error",
+    }
+    state_is_valid = (
+        (
+            requested == 0
+            and available == 0
+            and status == "not_requested"
+            and error_code == 0
+        )
+        or (
+            requested == 1
+            and available == 1
+            and status == "available"
+            and error_code == 0
+        )
+        or (
+            requested == 1
+            and available == 0
+            and (
+                (
+                    status in {"not_opened", "unsupported_platform"}
+                    and error_code == 0
+                )
+                or (
+                    status in unavailable_error_statuses
+                    and error_code is not None
+                    and error_code > 0
+                )
+            )
+        )
+    )
+    return (
+        row.get("schema_version") == "2"
+        and thread_index is not None
+        and thread_index >= 0
+        and tid is not None
+        and tid > 0
+        and event_id is not None
+        and event_id > 0
+        and requested in {0, 1}
+        and available in {0, 1}
+        and available <= requested
+        and error_code is not None
+        and error_code >= 0
+        and state_is_valid
+    )
+
+
+def pmu_sample_row_is_valid(row: dict[str, str]) -> bool:
+    integers = {
+        field: parse_required_int(row, field)
+        for field in {
+            "sample_id",
+            "realtime_ns",
+            "monotonic_raw_ns",
+            "tick",
+            "thread_index",
+            "tid",
+            "target_cpu",
+            "event_id",
+            "raw_value",
+            "delta_raw",
+            "time_enabled_ns",
+            "time_running_ns",
+            "delta_enabled_ns",
+            "delta_running_ns",
+            "interval_ns",
+            "delta_valid",
+            "scaling_valid",
+            "error_code",
+        }
+    }
+    scaled_value = parse_required_float(row, "scaled_value")
+    delta_scaled = parse_required_float(row, "delta_scaled")
+    multiplex_ratio = parse_required_float(row, "multiplex_ratio")
+    if any(value is None for value in integers.values()) or any(
+        value is None
+        for value in (scaled_value, delta_scaled, multiplex_ratio)
+    ):
+        return False
+    nonnegative_fields = {
+        "realtime_ns",
+        "monotonic_raw_ns",
+        "tick",
+        "thread_index",
+        "raw_value",
+        "delta_raw",
+        "time_enabled_ns",
+        "time_running_ns",
+        "delta_enabled_ns",
+        "delta_running_ns",
+        "interval_ns",
+        "error_code",
+    }
+    if any(integers[field] < 0 for field in nonnegative_fields):
+        return False
+    delta_valid = integers["delta_valid"]
+    scaling_valid = integers["scaling_valid"]
+    interval_ns = integers["interval_ns"]
+    if not (
+        row.get("schema_version") == "2"
+        and integers["sample_id"] > 0
+        and integers["tid"] > 0
+        and integers["target_cpu"] >= -1
+        and integers["event_id"] > 0
+        and delta_valid in {0, 1}
+        and scaling_valid in {0, 1}
+        and scaled_value >= 0
+        and delta_scaled >= 0
+        and multiplex_ratio >= 0
+        and multiplex_ratio <= 1
+    ):
+        return False
+
+    time_enabled_ns = integers["time_enabled_ns"]
+    time_running_ns = integers["time_running_ns"]
+    delta_enabled_ns = integers["delta_enabled_ns"]
+    delta_running_ns = integers["delta_running_ns"]
+    cumulative_scaling = (
+        time_running_ns > 0 and time_enabled_ns >= time_running_ns
+    )
+    if cumulative_scaling:
+        expected_scaled_value = (
+            float(integers["raw_value"])
+            * float(time_enabled_ns)
+            / float(time_running_ns)
+        )
+        expected_cumulative_multiplex = (
+            time_running_ns / time_enabled_ns
+        )
+        if not matches_native_decimal(
+            scaled_value,
+            expected_scaled_value,
+            6,
+        ):
+            return False
+    else:
+        expected_cumulative_multiplex = 0.0
+        if scaled_value != 0:
+            return False
+
+    status = row.get("status")
+    error_code = integers["error_code"]
+    zero_delta_evidence = (
+        integers["delta_raw"] == 0
+        and delta_enabled_ns == 0
+        and delta_running_ns == 0
+        and delta_scaled == 0
+    )
+    cumulative_multiplex_matches = matches_native_decimal(
+        multiplex_ratio,
+        expected_cumulative_multiplex,
+        9,
+    )
+
+    if error_code > 0:
+        return (
+            status in {"read_error", "malformed_group_read"}
+            and delta_valid == 0
+            and scaling_valid == 0
+            and integers["raw_value"] == 0
+            and time_enabled_ns == 0
+            and time_running_ns == 0
+            and zero_delta_evidence
+            and scaled_value == 0
+            and multiplex_ratio == 0
+        )
+    if status in {"warmup", "clock_regression"}:
+        return (
+            delta_valid == 0
+            and scaling_valid == int(cumulative_scaling)
+            and interval_ns == 0
+            and zero_delta_evidence
+            and cumulative_multiplex_matches
+        )
+    if status == "counter_reset_or_reconfigured":
+        return (
+            delta_valid == 0
+            and scaling_valid == int(cumulative_scaling)
+            and interval_ns > 0
+            and zero_delta_evidence
+            and cumulative_multiplex_matches
+        )
+    if status == "not_running":
+        return (
+            delta_valid == 1
+            and scaling_valid == 0
+            and interval_ns > 0
+            and not (
+                delta_running_ns > 0
+                and delta_enabled_ns >= delta_running_ns
+            )
+            and delta_scaled == 0
+            and cumulative_multiplex_matches
+        )
+    if status != "ok":
+        return False
+    if not (
+        delta_valid == 1
+        and scaling_valid == 1
+        and interval_ns > 0
+        and delta_running_ns > 0
+        and delta_enabled_ns >= delta_running_ns
+    ):
+        return False
+    expected_delta_scaled = (
+        float(integers["delta_raw"])
+        * float(delta_enabled_ns)
+        / float(delta_running_ns)
+    )
+    expected_interval_multiplex = (
+        delta_running_ns / delta_enabled_ns
+    )
+    return (
+        matches_native_decimal(
+            delta_scaled,
+            expected_delta_scaled,
+            6,
+        )
+        and matches_native_decimal(
+            multiplex_ratio,
+            expected_interval_multiplex,
+            9,
+        )
+    )
+
+
+def pmu_overhead_row_is_valid(row: dict[str, str]) -> bool:
+    integers = {
+        field: parse_required_int(row, field)
+        for field in {
+            "sample_id",
+            "realtime_ns",
+            "monotonic_raw_ns",
+            "end_monotonic_raw_ns",
+            "timestamp_uncertainty_ns",
+            "thread_index",
+            "tid",
+            "duration_tick",
+            "available_events",
+            "active_groups",
+            "group_reads",
+            "observations",
+            "read_errors",
+        }
+    }
+    duration_us = parse_required_float(row, "duration_us")
+    if any(value is None for value in integers.values()):
+        return False
+    return (
+        row.get("schema_version") == "2"
+        and integers["sample_id"] > 0
+        and all(value >= 0 for value in integers.values())
+        and integers["tid"] > 0
+        and integers["end_monotonic_raw_ns"]
+        >= integers["monotonic_raw_ns"]
+        and integers["timestamp_uncertainty_ns"]
+        == integers["end_monotonic_raw_ns"] - integers["monotonic_raw_ns"]
+        and duration_us is not None
+        and duration_us >= 0
+    )
+
+
+def system_overhead_row_is_valid(row: dict[str, str]) -> bool:
+    integers = {
+        field: parse_required_int(row, field)
+        for field in {
+            "sample_id",
+            "realtime_ns",
+            "monotonic_raw_ns",
+            "duration_tick",
+            "rows",
+            "error_code",
+        }
+    }
+    duration_us = parse_required_float(row, "duration_us")
+    return (
+        row.get("schema_version") == "2"
+        and all(value is not None and value >= 0 for value in integers.values())
+        and integers["sample_id"] > 0
+        and duration_us is not None
+        and duration_us >= 0
+    )
+
+
+def primitive_overhead_row_is_valid(row: dict[str, str]) -> bool:
+    integers = {
+        field: parse_required_int(row, field)
+        for field in {
+            "sample_index",
+            "cpu_start",
+            "cpu_end",
+            "cpu_migrated",
+            "outer_start_tick",
+            "outer_end_tick",
+            "outer_duration_tick",
+            "event_record_expected",
+            "event_recorded",
+            "event_seq",
+            "event_duration_tick",
+            "drop_delta",
+        }
+    }
+    outer_duration_us = parse_required_float(row, "outer_duration_us")
+    event_duration_us = parse_required_float(row, "event_duration_us")
+    if any(value is None for value in integers.values()):
+        return False
+    expected_migration = int(
+        integers["cpu_start"] >= 0
+        and integers["cpu_end"] >= 0
+        and integers["cpu_start"] != integers["cpu_end"]
+    )
+    tick_regressed = (
+        integers["outer_end_tick"] < integers["outer_start_tick"]
+    )
+    expected_outer_duration = (
+        0
+        if tick_regressed
+        else integers["outer_end_tick"] - integers["outer_start_tick"]
+    )
+    event_kind = row.get("event_kind")
+    primitive = row.get("primitive")
+    phase = row.get("phase")
+    status = row.get("status")
+    primitive_kinds = {
+        "thread_registration": "unknown",
+        "counter_pair": "unknown",
+        "enabled_check": "unknown",
+        "work_context_roundtrip": "unknown",
+        "span_start_stop": "duration",
+        "duration_start_stop": "duration",
+        "instant_record": "instant",
+    }
+    allocation_failed = (
+        phase == "setup"
+        and integers["sample_index"] == 0
+        and primitive == "calibration"
+        and event_kind == "unknown"
+        and integers["cpu_start"] == -1
+        and integers["cpu_end"] == -1
+        and integers["cpu_migrated"] == 0
+        and integers["outer_start_tick"] == 0
+        and integers["outer_end_tick"] == 0
+        and integers["outer_duration_tick"] == 0
+        and outer_duration_us == 0
+        and integers["event_record_expected"] == 0
+        and integers["event_recorded"] == 0
+        and integers["event_seq"] == 0
+        and integers["event_duration_tick"] == 0
+        and event_duration_us == 0
+        and integers["drop_delta"] == 0
+        and status == "allocation_failed"
+    )
+    expected_kind = primitive_kinds.get(primitive)
+    phase_is_valid = (
+        (
+            primitive == "thread_registration"
+            and phase == "setup"
+            and integers["sample_index"] == 0
+        )
+        or (
+            primitive != "thread_registration"
+            and phase in {"warmup", "measurement"}
+        )
+    )
+    expected_event = int(expected_kind in {"duration", "instant"})
+    expected_status = (
+        "counter_regressed"
+        if tick_regressed
+        else (
+            "ok"
+            if expected_event == 0
+            else (
+                "dropped"
+                if integers["drop_delta"] != 0
+                else (
+                    "ok"
+                    if integers["event_recorded"] == 1
+                    else "publication_mismatch"
+                )
+            )
+        )
+    )
+    event_evidence_is_valid = (
+        integers["event_recorded"] == 1
+        or (
+            integers["event_recorded"] == 0
+            and integers["event_seq"] == 0
+            and integers["event_duration_tick"] == 0
+            and event_duration_us == 0
+        )
+    ) and (
+        event_kind != "instant"
+        or (
+            integers["event_duration_tick"] == 0
+            and event_duration_us == 0
+        )
+    )
+    return (
+        row.get("schema_version") == "2"
+        and integers["sample_index"] >= 0
+        and integers["cpu_start"] >= -1
+        and integers["cpu_end"] >= -1
+        and integers["cpu_migrated"] == expected_migration
+        and integers["outer_start_tick"] >= 0
+        and integers["outer_end_tick"] >= 0
+        and integers["outer_duration_tick"] == expected_outer_duration
+        and outer_duration_us is not None
+        and outer_duration_us >= 0
+        and integers["event_record_expected"] == expected_event
+        and integers["event_recorded"] in {0, 1}
+        and integers["event_recorded"] <= integers["event_record_expected"]
+        and integers["event_seq"] >= 0
+        and integers["event_duration_tick"] >= 0
+        and event_duration_us is not None
+        and event_duration_us >= 0
+        and integers["drop_delta"] >= 0
+        and (
+            allocation_failed
+            or (
+                expected_kind is not None
+                and event_kind == expected_kind
+                and phase_is_valid
+                and status == expected_status
+                and event_evidence_is_valid
+                and (
+                    integers["drop_delta"] == 0
+                    or integers["event_recorded"] == 0
+                )
+            )
+        )
+    )
 
 
 def read_campaign(path: Path) -> tuple[dict[str, Any], str]:
@@ -1107,10 +1801,50 @@ def primitive_overhead_report(
         "duration_max_us",
         "duration_mean_us",
         "duration_stdev_us",
+        "stream_status",
     ]
     grouped: dict[tuple[str, str, str, str], dict[str, object]] = {}
+    unavailable_rows: list[dict[str, object]] = []
     for profile_dir in profile_dirs:
-        for row in read_csv(profile_dir / "profiler_primitive_overhead.csv"):
+        profile_key = str(profile_dir)
+        metadata = metadata_by_dir.get(profile_key, {})
+        primitive_rows, stream_status = read_csv_with_status(
+            profile_dir / "profiler_primitive_overhead.csv",
+            PRIMITIVE_OVERHEAD_REQUIRED_FIELDS,
+            lambda row: primitive_overhead_row_is_valid(row)
+            and row_matches_metadata(
+                row,
+                metadata,
+                {
+                    "run_id",
+                    "experiment_id",
+                    "campaign_id",
+                    "variant",
+                    "trial",
+                    "role",
+                    "hostname",
+                },
+            ),
+            PRIMITIVE_OVERHEAD_NONBLANK_FIELDS,
+        )
+        if not primitive_rows:
+            unavailable_rows.append(
+                {
+                    **identity_for(
+                        profile_dir,
+                        metadata_by_dir,
+                        campaign_by_dir,
+                    ),
+                    **{
+                        field: ""
+                        for field in fields
+                        if field not in IDENTITY_FIELDS
+                    },
+                    "status": f"stream_{stream_status}",
+                    "stream_status": stream_status,
+                }
+            )
+        for row in primitive_rows:
             key = (str(profile_dir), row.get("phase", ""), row.get("primitive", ""), row.get("event_kind", ""))
             group = grouped.setdefault(
                 key,
@@ -1146,7 +1880,7 @@ def primitive_overhead_report(
         if primitive == "counter_pair":
             baseline[(profile_dir, phase)] = distribution(group["durations"])["p50"]
 
-    rows: list[dict[str, object]] = []
+    rows = unavailable_rows
     for (profile_key, phase, primitive, event_kind), group in sorted(grouped.items()):
         profile_dir = Path(profile_key)
         stats = prefixed_distribution(group["durations"], "duration", "us")
@@ -1172,6 +1906,7 @@ def primitive_overhead_report(
                 "median_excess_over_counter_pair_us": excess,
                 "excess_estimate_semantics": "difference_of_phase_medians_not_per_sample_correction",
                 **stats,
+                "stream_status": "recorded",
             }
         )
     return Report(fields, rows)
@@ -1236,28 +1971,71 @@ def pmu_reports(
     availability_rows: list[dict[str, object]] = []
     grouped: dict[tuple[str, str, str, str, str, str, str], dict[str, object]] = {}
     profiles_with_samples: set[str] = set()
+    sample_stream_status_by_profile: dict[str, str] = {}
+    availability_stream_status_by_profile: dict[str, str] = {}
+    pmu_mode_by_profile: dict[str, str] = {}
     for profile_dir in profile_dirs:
+        profile_key = str(profile_dir)
+        metadata = metadata_by_dir.get(profile_key, {})
         identity = identity_for(profile_dir, metadata_by_dir, campaign_by_dir)
-        pmu_mode = settings_by_dir.get(str(profile_dir), {}).get(
-            "profile.pmu_mode", metadata_by_dir.get(str(profile_dir), {}).get("pmu_mode", "unknown")
+        pmu_mode = settings_by_dir.get(profile_key, {}).get(
+            "profile.pmu_mode", metadata.get("pmu_mode", "unknown")
         )
+        pmu_mode_by_profile[profile_key] = pmu_mode
         availability_path = profile_dir / "pmu_availability.csv"
-        availability = read_csv(availability_path)
+        availability, availability_status = read_csv_with_status(
+            availability_path,
+            PMU_AVAILABILITY_REQUIRED_FIELDS,
+            lambda row: pmu_availability_row_is_valid(row)
+            and row_matches_metadata(
+                row,
+                metadata,
+                {
+                    "run_id",
+                    "experiment_id",
+                    "campaign_id",
+                    "role",
+                    "hostname",
+                },
+            ),
+            PMU_AVAILABILITY_NONBLANK_FIELDS,
+        )
+        availability_keys = [
+            (
+                row.get("thread_index", ""),
+                row.get("tid", ""),
+                row.get("thread_name", ""),
+                row.get("event_id", ""),
+                row.get("event_name", ""),
+                row.get("domain", ""),
+            )
+            for row in availability
+        ]
+        if len(availability_keys) != len(set(availability_keys)):
+            availability = []
+            availability_status = "malformed"
+        availability_stream_status_by_profile[profile_key] = availability_status
+        available_event_keys = {
+            key
+            for key, row in zip(availability_keys, availability)
+            if row.get("available") == "1"
+        }
         if not availability:
+            not_requested = availability_status == "header_only" and pmu_mode == "off"
             availability_rows.append(
                 {
                     **identity,
                     "pmu_mode": pmu_mode,
-                    "stream_status": "empty" if availability_path.is_file() else "missing",
+                    "stream_status": availability_status,
                     "thread_index": "",
                     "tid": "",
                     "thread_name": "",
                     "event_id": "",
                     "event_name": "",
                     "domain": "",
-                    "requested": 0,
-                    "available": 0,
-                    "status": "no_availability_rows",
+                    "requested": 0 if not_requested else "",
+                    "available": 0 if not_requested else "",
+                    "status": "not_requested" if not_requested else f"stream_{availability_status}",
                     "error_code": "",
                 }
             )
@@ -1275,10 +2053,47 @@ def pmu_reports(
                 }
             )
 
-        for row in read_csv(profile_dir / "pmu_samples.csv"):
-            profiles_with_samples.add(str(profile_dir))
+        sample_rows, sample_stream_status = read_csv_with_status(
+            profile_dir / "pmu_samples.csv",
+            PMU_SAMPLE_REQUIRED_FIELDS,
+            lambda row: pmu_sample_row_is_valid(row)
+            and row_matches_metadata(
+                row,
+                metadata,
+                {
+                    "run_id",
+                    "experiment_id",
+                    "campaign_id",
+                    "variant",
+                    "trial",
+                    "role",
+                    "hostname",
+                },
+            ),
+            PMU_SAMPLE_NONBLANK_FIELDS,
+        )
+        if sample_rows and (
+            availability_status != "recorded"
+            or any(
+                (
+                    row.get("thread_index", ""),
+                    row.get("tid", ""),
+                    row.get("thread_name", ""),
+                    row.get("event_id", ""),
+                    row.get("event_name", ""),
+                    row.get("domain", ""),
+                )
+                not in available_event_keys
+                for row in sample_rows
+            )
+        ):
+            sample_rows = []
+            sample_stream_status = "malformed"
+        sample_stream_status_by_profile[profile_key] = sample_stream_status
+        for row in sample_rows:
+            profiles_with_samples.add(profile_key)
             key = (
-                str(profile_dir),
+                profile_key,
                 row.get("thread_index", ""),
                 row.get("tid", ""),
                 row.get("thread_name", ""),
@@ -1372,6 +2187,14 @@ def pmu_reports(
         )
     for profile_dir in profile_dirs:
         if str(profile_dir) not in profiles_with_samples:
+            sample_stream_status = sample_stream_status_by_profile[str(profile_dir)]
+            not_requested = (
+                sample_stream_status == "header_only"
+                and pmu_mode_by_profile[str(profile_dir)] == "off"
+                and availability_stream_status_by_profile[str(profile_dir)]
+                == "header_only"
+            )
+            evidence_available = not_requested
             quality_rows.append(
                 {
                     **identity_for(profile_dir, metadata_by_dir, campaign_by_dir),
@@ -1379,17 +2202,21 @@ def pmu_reports(
                     "tid": "",
                     "thread_name": "",
                     "event_name": "",
-                    "samples_total": 0,
-                    "delta_valid_count": 0,
-                    "scaling_valid_count": 0,
-                    "usable_count": 0,
-                    "invalid_count": 0,
-                    "read_error_count": 0,
+                    "samples_total": 0 if evidence_available else "",
+                    "delta_valid_count": 0 if evidence_available else "",
+                    "scaling_valid_count": 0 if evidence_available else "",
+                    "usable_count": 0 if evidence_available else "",
+                    "invalid_count": 0 if evidence_available else "",
+                    "read_error_count": 0 if evidence_available else "",
                     "multiplex_ratio_min": math.nan,
                     "multiplex_ratio_p10": math.nan,
                     "multiplex_ratio_p50": math.nan,
-                    "status": "stream_empty_or_missing",
-                    "quality_note": "no PMU sample rows; consult availability and pmu_mode",
+                    "status": "not_requested" if not_requested else f"stream_{sample_stream_status}",
+                    "quality_note": (
+                        "PMU mode off; structurally valid header-only sample stream"
+                        if not_requested
+                        else "no PMU sample evidence; consult stream status, availability, and pmu_mode"
+                    ),
                 }
             )
     return (
@@ -1656,6 +2483,7 @@ def kernel_interference_report(
 def collection_overhead_report(
     profile_dirs: list[Path],
     metadata_by_dir: dict[str, dict[str, str]],
+    settings_by_dir: dict[str, dict[str, str]],
     campaign_by_dir: dict[str, dict[str, Any]],
 ) -> Report:
     fields = IDENTITY_FIELDS + [
@@ -1676,14 +2504,66 @@ def collection_overhead_report(
         "duration_max_us",
         "duration_mean_us",
         "duration_stdev_us",
+        "stream_status",
     ]
     grouped: dict[tuple[str, str, str, str, str], dict[str, object]] = {}
-    profiles_with_rows: set[str] = set()
+    unavailable_rows: list[dict[str, object]] = []
+
+    def append_unavailable(
+        profile_dir: Path,
+        source: str,
+        stream_status: str,
+        not_requested: bool = False,
+    ) -> None:
+        row = {
+            **identity_for(profile_dir, metadata_by_dir, campaign_by_dir),
+            **{field: "" for field in fields if field not in IDENTITY_FIELDS},
+            "source": source,
+            "status": (
+                "not_requested"
+                if not_requested
+                else f"stream_{stream_status}"
+            ),
+            "stream_status": stream_status,
+        }
+        if not_requested:
+            row.update(
+                {
+                    "samples_total": 0,
+                    "rows_or_observations_total": 0,
+                    "read_errors_total": 0,
+                }
+            )
+        unavailable_rows.append(row)
+
     for profile_dir in profile_dirs:
-        for row in read_csv(profile_dir / "pmu_read_overhead.csv"):
-            profiles_with_rows.add(str(profile_dir))
+        profile_key = str(profile_dir)
+        metadata = metadata_by_dir.get(profile_key, {})
+        pmu_rows, pmu_status = read_csv_with_status(
+            profile_dir / "pmu_read_overhead.csv",
+            PMU_OVERHEAD_REQUIRED_FIELDS,
+            lambda row: pmu_overhead_row_is_valid(row)
+            and row_matches_metadata(
+                row,
+                metadata,
+                {"run_id", "experiment_id", "campaign_id"},
+            ),
+            PMU_OVERHEAD_NONBLANK_FIELDS,
+        )
+        if not pmu_rows:
+            pmu_mode = settings_by_dir.get(profile_key, {}).get(
+                "profile.pmu_mode",
+                metadata.get("pmu_mode", "unknown"),
+            )
+            append_unavailable(
+                profile_dir,
+                "pmu_read",
+                pmu_status,
+                pmu_status == "header_only" and pmu_mode == "off",
+            )
+        for row in pmu_rows:
             key = (
-                str(profile_dir),
+                profile_key,
                 "pmu_read",
                 row.get("thread_index", ""),
                 row.get("tid", ""),
@@ -1700,19 +2580,66 @@ def collection_overhead_report(
             group["errors"] = int(group["errors"]) + read_errors + int(counter_status != "ok")
             read_status = "ok" if read_errors == 0 else "read_error"
             group["statuses"].append(counter_status if counter_status != "ok" else read_status)
-        for row in read_csv(profile_dir / "system_read_overhead.csv"):
-            profiles_with_rows.add(str(profile_dir))
-            key = (str(profile_dir), row.get("source", "system"), "", "", "writer")
+
+        system_rows, system_status = read_csv_with_status(
+            profile_dir / "system_read_overhead.csv",
+            SYSTEM_OVERHEAD_REQUIRED_FIELDS,
+            lambda row: system_overhead_row_is_valid(row)
+            and row_matches_metadata(
+                row,
+                metadata,
+                {
+                    "run_id",
+                    "experiment_id",
+                    "campaign_id",
+                    "variant",
+                    "trial",
+                    "role",
+                    "hostname",
+                },
+            ),
+            SYSTEM_OVERHEAD_NONBLANK_FIELDS,
+        )
+        if not system_rows:
+            append_unavailable(profile_dir, "system_read", system_status)
+        for row in system_rows:
+            key = (profile_key, row.get("source", "system"), "", "", "writer")
             group = grouped.setdefault(key, {"durations": [], "count": 0, "work": 0, "errors": 0, "statuses": []})
             group["count"] = int(group["count"]) + 1
-            group["durations"].append(parse_float(row.get("duration_us")))
+            if row.get("status") != "counter_regression":
+                group["durations"].append(parse_float(row.get("duration_us")))
             group["work"] = int(group["work"]) + parse_int(row.get("rows"))
             group["errors"] = int(group["errors"]) + int(parse_int(row.get("error_code")) != 0)
             group["statuses"].append(row.get("status", ""))
-        for row in read_csv(profile_dir / "profiler_primitive_overhead.csv"):
-            profiles_with_rows.add(str(profile_dir))
+
+        primitive_rows, primitive_status = read_csv_with_status(
+            profile_dir / "profiler_primitive_overhead.csv",
+            PRIMITIVE_OVERHEAD_REQUIRED_FIELDS,
+            lambda row: primitive_overhead_row_is_valid(row)
+            and row_matches_metadata(
+                row,
+                metadata,
+                {
+                    "run_id",
+                    "experiment_id",
+                    "campaign_id",
+                    "variant",
+                    "trial",
+                    "role",
+                    "hostname",
+                },
+            ),
+            PRIMITIVE_OVERHEAD_NONBLANK_FIELDS,
+        )
+        if not primitive_rows:
+            append_unavailable(
+                profile_dir,
+                "profiler_primitive",
+                primitive_status,
+            )
+        for row in primitive_rows:
             source = f"profiler_primitive:{row.get('phase', '')}:{row.get('primitive', '')}"
-            key = (str(profile_dir), source, "", "", "initializing_thread")
+            key = (profile_key, source, "", "", "initializing_thread")
             group = grouped.setdefault(key, {"durations": [], "count": 0, "work": 0, "errors": 0, "statuses": []})
             group["count"] = int(group["count"]) + 1
             duration = parse_float(row.get("outer_duration_us"))
@@ -1736,21 +2663,10 @@ def collection_overhead_report(
                 "read_errors_total": group["errors"],
                 "status": joined_status(group["statuses"], "unknown"),
                 **prefixed_distribution(group["durations"], "duration", "us"),
+                "stream_status": "recorded",
             }
         )
-    for profile_dir in profile_dirs:
-        if str(profile_dir) not in profiles_with_rows:
-            rows.append(
-                {
-                    **identity_for(profile_dir, metadata_by_dir, campaign_by_dir),
-                    **{field: "" for field in fields if field not in IDENTITY_FIELDS},
-                    "source": "all",
-                    "samples_total": 0,
-                    "rows_or_observations_total": 0,
-                    "read_errors_total": 0,
-                    "status": "streams_empty_or_missing",
-                }
-            )
+    rows.extend(unavailable_rows)
     return Report(fields, rows)
 
 
@@ -1778,6 +2694,19 @@ def transport_reports(
         "stdev_us",
         "cpu_migrations",
         "drops_total",
+        "span_stack_overflows",
+        "span_stack_mismatches",
+        "drop_diagnostics_status",
+        "drop_diagnostic_rows",
+        "counter_regressions",
+        "drop_diagnostic_threads",
+        "event_stream_status",
+        "event_stream_rows",
+        "event_producer_threads",
+        "drop_missing_event_threads",
+        "event_catalog_status",
+        "event_catalog_rows",
+        "profile_coverage_status",
     ]
     fault_fields = IDENTITY_FIELDS + [
         "schema_version",
@@ -2108,6 +3037,7 @@ def observer_effect_report(
     summary_rows: list[dict[str, object]],
     metadata_by_dir: dict[str, dict[str, str]],
     campaign_by_dir: dict[str, dict[str, Any]],
+    profile_coverage_by_dir: dict[str, str],
 ) -> Report:
     fields = [
         "campaign_id",
@@ -2143,14 +3073,18 @@ def observer_effect_report(
         "unpaired_baseline_samples",
         "ambiguous_trial_count",
         "interpretation",
+        "excluded_successful_incomplete_profile_count",
+        "baseline_excluded_successful_incomplete_profile_count",
     ]
     grouped: dict[
         tuple[str, str, str, str, str, str],
         dict[str, list[tuple[str, float]]],
     ] = defaultdict(lambda: defaultdict(list))
-    campaign_success_by_dir = {
-        str(row.get("profile_dir", "")): campaign_member_succeeded(row)
-        for row in campaign_rows
+    excluded_incomplete: dict[
+        tuple[tuple[str, str, str, str, str, str], str], int
+    ] = defaultdict(int)
+    campaign_row_by_dir = {
+        str(row.get("profile_dir", "")): row for row in campaign_rows
     }
     for row in campaign_rows:
         campaign_id = str(row.get("campaign_id", ""))
@@ -2170,27 +3104,114 @@ def observer_effect_report(
             (trial, float(success))
         )
 
+    applicable_event_names: dict[tuple[str, str, str], set[str]] = defaultdict(set)
+    event_contexts: list[
+        tuple[
+            dict[str, object],
+            str,
+            tuple[str, str, str],
+            tuple[str, str, str, str, str, str],
+            str,
+            str,
+        ]
+    ] = []
     for row in summary_rows:
         if row.get("event_kind") != "duration" or row.get("event_name") == "PROFILER_PRIMITIVE_CALIBRATION":
             continue
         profile_key = str(row.get("profile_dir", ""))
-        if not campaign_success_by_dir.get(profile_key, False):
-            continue
         metadata = metadata_by_dir.get(profile_key, {})
         campaign = campaign_by_dir.get(profile_key, {})
-        campaign_id = metadata.get("campaign_id", str(campaign.get("campaign_id", "")))
-        case = str(campaign.get("case", ""))
-        role = metadata.get("role", str(campaign.get("role", "")))
-        variant = metadata.get("variant", str(campaign.get("variant", "")))
-        trial = metadata.get("trial", str(campaign.get("trial", "")))
-        value = parse_float(row.get("p50_us"))
-        if campaign_id and case and variant and math.isfinite(value):
-            grouped[(campaign_id, case, role, "event", str(row.get("event_name", "")), "us")][variant].append(
-                (trial, value)
+        campaign_row = campaign_row_by_dir.get(profile_key, {})
+        campaign_id = metadata.get(
+            "campaign_id",
+            str(campaign.get("campaign_id", campaign_row.get("campaign_id", ""))),
+        )
+        case = str(campaign.get("case", campaign_row.get("case", "")))
+        role = metadata.get(
+            "role",
+            str(campaign.get("role", campaign_row.get("role", ""))),
+        )
+        variant = metadata.get(
+            "variant",
+            str(campaign.get("variant", campaign_row.get("variant", ""))),
+        )
+        trial = metadata.get(
+            "trial",
+            str(campaign.get("trial", campaign_row.get("trial", ""))),
+        )
+        event_name = str(row.get("event_name", ""))
+        cohort = (campaign_id, case, role)
+        metric_key = (
+            campaign_id,
+            case,
+            role,
+            "event",
+            event_name,
+            "us",
+        )
+        if not campaign_id or not case or not role or not variant or not event_name:
+            continue
+        applicable_event_names[cohort].add(event_name)
+        event_contexts.append(
+            (
+                row,
+                profile_key,
+                cohort,
+                metric_key,
+                variant,
+                trial,
             )
+        )
+
+    for row, profile_key, _, metric_key, variant, trial in event_contexts:
+        campaign_row = campaign_row_by_dir.get(profile_key)
+        if (
+            campaign_row is None
+            or not campaign_member_succeeded(campaign_row)
+            or parse_optional_bool(campaign_row.get("profile_enabled")) is not True
+            or profile_coverage_by_dir.get(profile_key) != "complete"
+        ):
+            continue
+        value = parse_float(row.get("p50_us"))
+        if math.isfinite(value):
+            grouped[metric_key][variant].append((trial, value))
+
+    excluded_profiles: set[tuple[str, tuple[str, str, str, str, str, str]]] = set()
+    for campaign_row in campaign_rows:
+        profile_key = str(campaign_row.get("profile_dir", ""))
+        if (
+            not campaign_member_succeeded(campaign_row)
+            or parse_optional_bool(campaign_row.get("profile_enabled")) is not True
+            or profile_coverage_by_dir.get(profile_key) == "complete"
+        ):
+            continue
+        campaign_id = str(campaign_row.get("campaign_id", ""))
+        case = str(campaign_row.get("case", ""))
+        role = str(campaign_row.get("role", ""))
+        variant = str(campaign_row.get("variant", ""))
+        cohort = (campaign_id, case, role)
+        if not campaign_id or not case or not role or not variant:
+            continue
+        for event_name in applicable_event_names.get(cohort, set()):
+            metric_key = (
+                campaign_id,
+                case,
+                role,
+                "event",
+                event_name,
+                "us",
+            )
+            exclusion_key = (profile_key, metric_key)
+            if exclusion_key in excluded_profiles:
+                continue
+            excluded_profiles.add(exclusion_key)
+            excluded_incomplete[(metric_key, variant)] += 1
 
     rows: list[dict[str, object]] = []
-    for key, variants in sorted(grouped.items()):
+    observer_keys = set(grouped)
+    observer_keys.update(key for key, _ in excluded_incomplete)
+    for key in sorted(observer_keys):
+        variants = grouped.get(key, {})
         campaign_id, case, role, scope, metric_name, unit = key
         baseline_variant = "disabled" if scope == "process" else "in-process"
         baseline_observations = variants.get(baseline_variant, [])
@@ -2200,8 +3221,27 @@ def observer_effect_report(
             if trial:
                 baseline_by_trial[trial].append(value)
         baseline = distribution(baseline_values)
-        baseline_status = "available" if baseline_values else "missing"
-        for variant, observations in sorted(variants.items()):
+        baseline_exclusion_count = excluded_incomplete.get(
+            (key, baseline_variant),
+            0,
+        )
+        baseline_status = (
+            "available"
+            if baseline_values
+            else (
+                "excluded_incomplete_profile"
+                if baseline_exclusion_count
+                else "missing"
+            )
+        )
+        variant_names = set(variants)
+        variant_names.update(
+            variant
+            for excluded_key, variant in excluded_incomplete
+            if excluded_key == key
+        )
+        for variant in sorted(variant_names):
+            observations = variants.get(variant, [])
             values = [value for _, value in observations]
             stats = distribution(values)
             delta = stats["p50"] - baseline["p50"] if baseline_values else math.nan
@@ -2240,14 +3280,28 @@ def observer_effect_report(
             effect_estimator = (
                 "paired_trial_delta"
                 if paired_deltas
-                else "difference_of_medians_unpaired"
+                else (
+                    (
+                        "unavailable_incomplete_baseline"
+                        if baseline_exclusion_count
+                        else "unavailable_missing_baseline"
+                    )
+                    if not baseline_values
+                    else (
+                        "unavailable_incomplete_profile"
+                        if scope == "event"
+                        and not values
+                        and excluded_incomplete.get((key, variant), 0)
+                        else "difference_of_medians_unpaired"
+                    )
+                )
             )
             interpretation = (
                 "trial-matched campaign process outcome; disabled is the observer baseline"
                 if scope == "process"
                 else (
-                    "trial-matched differences between per-run event medians; in-process is the baseline "
-                    "for incremental PMU/sidecar observer effect"
+                    "event medians from otherwise successful runs require complete profiler evidence; "
+                    "in-process is the baseline for incremental PMU/sidecar observer effect"
                 )
             )
             rows.append(
@@ -2285,13 +3339,21 @@ def observer_effect_report(
                     "unpaired_baseline_samples": unpaired_baseline,
                     "ambiguous_trial_count": ambiguous_trials,
                     "interpretation": interpretation,
+                    "excluded_successful_incomplete_profile_count": excluded_incomplete.get(
+                        (key, variant), 0
+                    ),
+                    "baseline_excluded_successful_incomplete_profile_count": excluded_incomplete.get(
+                        (key, baseline_variant), 0
+                    ),
                 }
             )
     return Report(fields, rows)
 
 
 def campaign_completeness_report(
-    campaign_rows: list[dict[str, object]], integrity_rows: list[dict[str, object]]
+    campaign_rows: list[dict[str, object]],
+    integrity_rows: list[dict[str, object]],
+    profile_coverage_by_dir: dict[str, str] | None = None,
 ) -> Report:
     fields = [
         "campaign_id",
@@ -2311,6 +3373,15 @@ def campaign_completeness_report(
         "integrity_valid_roles",
         "paired_complete",
         "status",
+        "profile_complete_roles",
+        "profile_not_applicable_roles",
+        "profile_incomplete_roles",
+        "profile_setting_unknown_roles",
+        "profile_setting_mismatch_roles",
+        "unexpected_profile_evidence_roles",
+        "profile_coverage_status_by_role",
+        "profile_evidence_complete",
+        "profile_evidence_status",
     ]
     integrity_by_dir: dict[str, bool] = {}
     for row in integrity_rows:
@@ -2377,6 +3448,87 @@ def campaign_completeness_report(
             issues.append("unfinalized_role")
         if valid != expected:
             issues.append("integrity_invalid")
+
+        profile_complete: set[str] = set()
+        profile_not_applicable: set[str] = set()
+        profile_incomplete: set[str] = set()
+        profile_setting_unknown: set[str] = set()
+        profile_setting_mismatch: set[str] = set()
+        unexpected_profile_evidence: set[str] = set()
+        profile_coverage_by_role: list[str] = []
+        if profile_coverage_by_dir is not None:
+            for member in members:
+                role = str(member.get("role", ""))
+                profile_key = str(member.get("profile_dir", ""))
+                profile_enabled = parse_optional_bool(member.get("profile_enabled"))
+                expected_profile_enabled = (
+                    False
+                    if key[3] == "disabled"
+                    else True
+                    if key[3] in PROFILE_ENABLED_VARIANTS
+                    else None
+                )
+                if (
+                    expected_profile_enabled is not None
+                    and profile_enabled is not None
+                    and profile_enabled != expected_profile_enabled
+                ):
+                    profile_setting_mismatch.add(role)
+                if profile_enabled is False:
+                    profiler_artifacts_present = (
+                        profile_key in profile_coverage_by_dir
+                        or parse_int(member.get("profiler_metadata_present")) != 0
+                        or parse_int(member.get("events_present")) != 0
+                    )
+                    if profiler_artifacts_present:
+                        unexpected_profile_evidence.add(role)
+                        profile_coverage_by_role.append(
+                            f"{role}:unexpected_profile_evidence:"
+                            f"{profile_coverage_by_dir.get(profile_key, 'artifact_presence')}"
+                        )
+                    else:
+                        profile_not_applicable.add(role)
+                        profile_coverage_by_role.append(f"{role}:not_applicable")
+                elif profile_enabled is True:
+                    coverage = profile_coverage_by_dir.get(
+                        profile_key,
+                        "missing",
+                    )
+                    profile_coverage_by_role.append(f"{role}:{coverage}")
+                    if coverage == "complete":
+                        profile_complete.add(role)
+                    else:
+                        profile_incomplete.add(role)
+                else:
+                    profile_setting_unknown.add(role)
+                    profile_coverage_by_role.append(f"{role}:setting_unknown")
+            profile_evidence_complete: int | str = int(
+                complete
+                and not profile_incomplete
+                and not profile_setting_unknown
+                and not profile_setting_mismatch
+                and not unexpected_profile_evidence
+                and (profile_complete | profile_not_applicable) == expected
+            )
+            profile_evidence_issues: list[str] = []
+            if not complete:
+                profile_evidence_issues.append("operational_incomplete")
+            if profile_incomplete:
+                profile_evidence_issues.append("profile_incomplete")
+            if profile_setting_unknown:
+                profile_evidence_issues.append("profile_setting_unknown")
+            if profile_setting_mismatch:
+                profile_evidence_issues.append("profile_setting_mismatch")
+            if unexpected_profile_evidence:
+                profile_evidence_issues.append("unexpected_profile_evidence")
+            profile_evidence_status = (
+                "complete"
+                if profile_evidence_complete
+                else ";".join(profile_evidence_issues or ["incomplete"])
+            )
+        else:
+            profile_evidence_complete = ""
+            profile_evidence_status = "not_evaluated"
         rows.append(
             {
                 "campaign_id": key[0],
@@ -2398,6 +3550,25 @@ def campaign_completeness_report(
                 "integrity_valid_roles": ";".join(sorted(valid)),
                 "paired_complete": int(complete),
                 "status": "complete" if complete else ";".join(issues or ["incomplete"]),
+                "profile_complete_roles": ";".join(sorted(profile_complete)),
+                "profile_not_applicable_roles": ";".join(
+                    sorted(profile_not_applicable)
+                ),
+                "profile_incomplete_roles": ";".join(sorted(profile_incomplete)),
+                "profile_setting_unknown_roles": ";".join(
+                    sorted(profile_setting_unknown)
+                ),
+                "profile_setting_mismatch_roles": ";".join(
+                    sorted(profile_setting_mismatch)
+                ),
+                "unexpected_profile_evidence_roles": ";".join(
+                    sorted(unexpected_profile_evidence)
+                ),
+                "profile_coverage_status_by_role": "|".join(
+                    sorted(profile_coverage_by_role)
+                ),
+                "profile_evidence_complete": profile_evidence_complete,
+                "profile_evidence_status": profile_evidence_status,
             }
         )
     return Report(fields, rows)
@@ -2410,6 +3581,7 @@ def build_extended_reports(
     settings_by_dir: dict[str, dict[str, str]],
     summary_rows: list[dict[str, object]],
     transport_fault_rows: list[dict[str, str]],
+    profile_coverage_by_dir: dict[str, str],
 ) -> dict[str, Report]:
     campaign_by_dir: dict[str, dict[str, Any]] = {}
     campaign_status_by_dir: dict[str, str] = {}
@@ -2439,14 +3611,27 @@ def build_extended_reports(
         "kernel_interference_summary.csv": kernel_interference_report(profile_dirs, metadata_by_dir, campaign_by_dir),
         "transport_summary.csv": transport,
         "transport_faults.csv": faults,
-        "collection_overhead_summary.csv": collection_overhead_report(profile_dirs, metadata_by_dir, campaign_by_dir),
+        "collection_overhead_summary.csv": collection_overhead_report(
+            profile_dirs,
+            metadata_by_dir,
+            settings_by_dir,
+            campaign_by_dir,
+        ),
         "archive_integrity.csv": integrity,
         "external_sources.csv": external_sources_report(run_dirs, metadata_by_dir, campaign_by_dir),
         "perf_stat_summary.csv": perf_stat_report(run_dirs, metadata_by_dir, campaign_by_dir),
         "campaign_runs.csv": campaign,
-        "campaign_completeness.csv": campaign_completeness_report(campaign.rows, integrity.rows),
+        "campaign_completeness.csv": campaign_completeness_report(
+            campaign.rows,
+            integrity.rows,
+            profile_coverage_by_dir,
+        ),
         "observer_effect_summary.csv": observer_effect_report(
-            campaign.rows, summary_rows, metadata_by_dir, campaign_by_dir
+            campaign.rows,
+            summary_rows,
+            metadata_by_dir,
+            campaign_by_dir,
+            profile_coverage_by_dir,
         ),
     }
     return reports

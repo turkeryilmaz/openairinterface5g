@@ -35,6 +35,96 @@ from oai_profile_reports import build_extended_reports, discover_run_dirs
 
 
 QUANTILES = (0.5, 0.9, 0.95, 0.99, 0.999)
+DROP_DIAGNOSTIC_FIELDS = (
+    "dropped_records",
+    "span_stack_overflows",
+    "span_stack_mismatches",
+    "counter_regressions",
+)
+DROP_IDENTITY_FIELDS = ("thread_index", "tid", "thread_name")
+EVENT_FIELDS_SCHEMA1 = (
+    "seq",
+    "tid",
+    "thread_name",
+    "event_id",
+    "event_name",
+    "frame",
+    "slot",
+    "flags",
+    "aux0",
+    "aux1",
+    "aux2",
+    "aux3",
+    "start_tick",
+    "duration_tick",
+    "duration_us",
+)
+EVENT_FIELDS_SCHEMA2 = (
+    "schema_version",
+    "seq",
+    "tid",
+    "thread_name",
+    "event_id",
+    "event_name",
+    "event_kind",
+    "nesting_depth",
+    "frame",
+    "slot",
+    "absolute_slot",
+    "correlation_id",
+    "span_id",
+    "parent_id",
+    "cpu_start",
+    "cpu_end",
+    "cpu_migrated",
+    "flags",
+    "aux0",
+    "aux1",
+    "aux2",
+    "aux3",
+    "start_tick",
+    "duration_tick",
+    "duration_us",
+)
+EVENT_CATALOG_FIELDS_SCHEMA2 = (
+    "schema_version",
+    "event_id",
+    "event_name",
+    "role",
+    "subsystem",
+    "event_class",
+    "default_kind",
+    "detail_level",
+    "aux0_name",
+    "aux0_unit",
+    "aux1_name",
+    "aux1_unit",
+    "aux2_name",
+    "aux2_unit",
+    "aux3_name",
+    "aux3_unit",
+    "flags_name",
+)
+LIFECYCLE_COMPLETION_FIELDS = (
+    "start_realtime_ns",
+    "end_realtime_ns",
+    "duration_realtime_ns",
+    "start_monotonic_raw_ns",
+    "end_monotonic_raw_ns",
+    "duration_monotonic_raw_ns",
+    "duration_clock",
+    "realtime_clock_regressed",
+    "monotonic_raw_clock_regressed",
+)
+PROFILE_EVIDENCE_OUTPUT_FIELDS = [
+    "drop_diagnostic_threads",
+    "event_stream_status",
+    "event_stream_rows",
+    "event_producer_threads",
+    "drop_missing_event_threads",
+    "event_catalog_status",
+    "event_catalog_rows",
+]
 HIERARCHY_FIELDS = [
     "profile_dir",
     "seq",
@@ -322,6 +412,24 @@ class ArtifactInfo:
     sha256: str
 
 
+@dataclass(frozen=True)
+class DropDiagnostics:
+    status: str
+    row_count: int
+    dropped_records: int | None = None
+    span_stack_overflows: int | None = None
+    span_stack_mismatches: int | None = None
+    counter_regressions: int | None = None
+    thread_identities: frozenset[tuple[int, str]] = frozenset()
+
+
+@dataclass(frozen=True)
+class CsvDiagnostics:
+    status: str
+    row_count: int
+    producer_threads: frozenset[tuple[int, str]] = frozenset()
+
+
 class _HashingTextSink:
     def __init__(self, path: Path) -> None:
         self._stream = path.open("wb")
@@ -462,33 +570,265 @@ def resolve_event_role(descriptor_role: str, process_role: str) -> str:
     return descriptor_role or process_role or "unknown"
 
 
-def read_drop_diagnostics(profile_dir: Path) -> dict[str, int]:
-    diagnostics = {
-        "dropped_records": 0,
-        "span_stack_overflows": 0,
-        "span_stack_mismatches": 0,
-    }
+def read_drop_diagnostics(profile_dir: Path) -> DropDiagnostics:
     drops_path = profile_dir / "drops.csv"
     if not drops_path.exists():
-        return diagnostics
+        return DropDiagnostics(status="missing", row_count=0)
+    if drops_path.stat().st_size == 0:
+        return DropDiagnostics(status="zero_byte", row_count=0)
+
     with drops_path.open(newline="") as f:
-        for row in csv.DictReader(f):
-            for key in diagnostics:
-                diagnostics[key] += parse_int(row.get(key))
-    return diagnostics
+        try:
+            reader = csv.DictReader(f, strict=True)
+            fieldnames = reader.fieldnames
+            if (
+                not fieldnames
+                or not set(DROP_IDENTITY_FIELDS + ("dropped_records",)).issubset(
+                    fieldnames
+                )
+                or len(fieldnames) != len(set(fieldnames))
+                or any(not field for field in fieldnames)
+            ):
+                return DropDiagnostics(status="malformed", row_count=0)
+            available_fields = {
+                field for field in DROP_DIAGNOSTIC_FIELDS if field in fieldnames
+            }
+            totals = {field: 0 for field in available_fields}
+            row_count = 0
+            seen_thread_indexes: set[int] = set()
+            thread_identities: set[tuple[int, str]] = set()
+            for row in reader:
+                if None in row:
+                    return DropDiagnostics(status="malformed", row_count=0)
+                if any(not (row.get(field) or "").strip() for field in DROP_IDENTITY_FIELDS):
+                    return DropDiagnostics(status="malformed", row_count=0)
+                try:
+                    thread_index = int(row["thread_index"])
+                    tid = int(row["tid"])
+                except ValueError:
+                    return DropDiagnostics(status="malformed", row_count=0)
+                if (
+                    thread_index < 0
+                    or tid <= 0
+                    or thread_index in seen_thread_indexes
+                ):
+                    return DropDiagnostics(status="malformed", row_count=0)
+                seen_thread_indexes.add(thread_index)
+                thread_identities.add((tid, row["thread_name"]))
+                parsed_row: dict[str, int] = {}
+                for field in available_fields:
+                    value = row.get(field)
+                    if value is None or not value.strip():
+                        return DropDiagnostics(status="malformed", row_count=0)
+                    try:
+                        parsed = int(value)
+                    except ValueError:
+                        return DropDiagnostics(status="malformed", row_count=0)
+                    if parsed < 0:
+                        return DropDiagnostics(status="malformed", row_count=0)
+                    parsed_row[field] = parsed
+                for field, value in parsed_row.items():
+                    totals[field] += value
+                row_count += 1
+        except csv.Error:
+            return DropDiagnostics(status="malformed", row_count=0)
+
+    if row_count == 0:
+        return DropDiagnostics(status="header_only", row_count=0)
+    status = (
+        "recorded"
+        if available_fields == set(DROP_DIAGNOSTIC_FIELDS)
+        else "legacy_partial"
+    )
+    return DropDiagnostics(
+        status=status,
+        row_count=row_count,
+        **{field: totals.get(field) for field in DROP_DIAGNOSTIC_FIELDS},
+        thread_identities=frozenset(thread_identities),
+    )
 
 
-def read_event_catalog(profile_dir: Path) -> dict[str, dict[str, str]]:
+def lifecycle_state(metadata: dict[str, str]) -> tuple[str, str]:
+    value = metadata.get("clean_shutdown")
+    if value == "1":
+        return "1", "clean"
+    if value == "0":
+        return "0", "unclean"
+    if value is None or value == "":
+        return "unknown", "unknown"
+    return "unknown", "invalid"
+
+
+def lifecycle_clock_metadata_complete(metadata: dict[str, str]) -> bool:
+    return all(
+        field in metadata and bool(metadata[field].strip())
+        for field in LIFECYCLE_COMPLETION_FIELDS
+    )
+
+
+def lifecycle_clock_metadata_valid(metadata: dict[str, str]) -> bool:
+    try:
+        start_realtime_ns = int(metadata["start_realtime_ns"])
+        end_realtime_ns = int(metadata["end_realtime_ns"])
+        duration_realtime_ns = int(metadata["duration_realtime_ns"])
+        start_monotonic_ns = int(metadata["start_monotonic_raw_ns"])
+        end_monotonic_ns = int(metadata["end_monotonic_raw_ns"])
+        duration_monotonic_ns = int(metadata["duration_monotonic_raw_ns"])
+        realtime_regressed = int(metadata["realtime_clock_regressed"])
+        monotonic_regressed = int(metadata["monotonic_raw_clock_regressed"])
+    except (KeyError, ValueError):
+        return False
+    return (
+        start_realtime_ns > 0
+        and end_realtime_ns >= start_realtime_ns
+        and duration_realtime_ns == end_realtime_ns - start_realtime_ns
+        and start_monotonic_ns > 0
+        and end_monotonic_ns >= start_monotonic_ns
+        and duration_monotonic_ns == end_monotonic_ns - start_monotonic_ns
+        and metadata.get("duration_clock") == "CLOCK_MONOTONIC_RAW"
+        and realtime_regressed == 0
+        and monotonic_regressed == 0
+    )
+
+
+def profile_coverage_status(
+    metadata: dict[str, str],
+    diagnostics: DropDiagnostics,
+    event_diagnostics: CsvDiagnostics,
+    catalog_diagnostics: CsvDiagnostics,
+) -> str:
+    issues: list[str] = []
+    schema_version = metadata.get("schema_version", "1")
+    _, lifecycle_status = lifecycle_state(metadata)
+    if schema_version != "2":
+        issues.append("legacy_schema")
+    else:
+        try:
+            counter_hz = int(metadata.get("counter_hz", ""))
+        except ValueError:
+            counter_hz = 0
+        if counter_hz <= 0:
+            issues.append("counter_hz_invalid")
+        if lifecycle_status != "clean":
+            issues.append(f"lifecycle_{lifecycle_status}")
+        elif not lifecycle_clock_metadata_complete(metadata):
+            issues.append("lifecycle_metadata_incomplete")
+        elif not lifecycle_clock_metadata_valid(metadata):
+            issues.append("lifecycle_clock_invalid")
+
+    if event_diagnostics.status != "recorded":
+        issues.append(f"event_stream_{event_diagnostics.status}")
+    if catalog_diagnostics.status != "recorded":
+        issues.append(f"event_catalog_{catalog_diagnostics.status}")
+    if diagnostics.status != "recorded":
+        issues.append(f"drop_diagnostics_{diagnostics.status}")
+    else:
+        for field, issue in (
+            ("dropped_records", "known_record_drops"),
+            ("span_stack_overflows", "known_span_stack_overflow"),
+            ("span_stack_mismatches", "known_span_stack_mismatch"),
+            ("counter_regressions", "known_counter_regression"),
+        ):
+            if getattr(diagnostics, field):
+                issues.append(issue)
+        if (
+            schema_version == "2"
+            and event_diagnostics.status == "recorded"
+            and event_diagnostics.producer_threads - diagnostics.thread_identities
+        ):
+            issues.append("drop_diagnostics_missing_event_threads")
+    return ";".join(issues) if issues else "complete"
+
+
+def profile_evidence_fields(
+    diagnostics: DropDiagnostics,
+    event_diagnostics: CsvDiagnostics,
+    catalog_diagnostics: CsvDiagnostics,
+) -> dict[str, object]:
+    missing_drop_threads = (
+        event_diagnostics.producer_threads - diagnostics.thread_identities
+    )
+    return {
+        "drop_diagnostic_threads": diagnostics.row_count,
+        "event_stream_status": event_diagnostics.status,
+        "event_stream_rows": event_diagnostics.row_count,
+        "event_producer_threads": len(event_diagnostics.producer_threads),
+        "drop_missing_event_threads": len(missing_drop_threads),
+        "event_catalog_status": catalog_diagnostics.status,
+        "event_catalog_rows": catalog_diagnostics.row_count,
+    }
+
+
+def read_event_catalog(
+    profile_dir: Path,
+    schema_version: str,
+) -> tuple[dict[str, dict[str, str]], CsvDiagnostics]:
     catalog_path = profile_dir / "event_catalog.csv"
     if not catalog_path.exists():
-        return {}
+        return {}, CsvDiagnostics(status="missing", row_count=0)
+    if catalog_path.stat().st_size == 0:
+        return {}, CsvDiagnostics(status="zero_byte", row_count=0)
+
     catalog: dict[str, dict[str, str]] = {}
+    event_ids: set[int] = set()
     with catalog_path.open(newline="") as f:
-        for row in csv.DictReader(f):
-            event_name = row.get("event_name", "")
-            if event_name:
+        try:
+            reader = csv.DictReader(f, strict=True)
+            fieldnames = reader.fieldnames
+            required_fields = (
+                set(EVENT_CATALOG_FIELDS_SCHEMA2)
+                if schema_version == "2"
+                else {"event_id", "event_name"}
+            )
+            if (
+                not fieldnames
+                or not required_fields.issubset(fieldnames)
+                or len(fieldnames) != len(set(fieldnames))
+                or any(not field for field in fieldnames)
+            ):
+                return {}, CsvDiagnostics(status="malformed", row_count=0)
+            for row in reader:
+                nonblank_fields = {"event_id", "event_name"}
+                if schema_version == "2":
+                    nonblank_fields.update(
+                        {
+                            "schema_version",
+                            "role",
+                            "subsystem",
+                            "event_class",
+                            "default_kind",
+                            "detail_level",
+                        }
+                    )
+                if None in row or any(
+                    not (row.get(field) or "").strip()
+                    for field in nonblank_fields
+                ):
+                    return {}, CsvDiagnostics(status="malformed", row_count=0)
+                try:
+                    event_id = int(row["event_id"])
+                except ValueError:
+                    return {}, CsvDiagnostics(status="malformed", row_count=0)
+                event_name = row["event_name"]
+                if (
+                    event_id <= 0
+                    or event_id in event_ids
+                    or event_name in catalog
+                    or (
+                        schema_version == "2"
+                        and (
+                            row.get("schema_version") != "2"
+                            or row.get("default_kind") not in {"duration", "instant"}
+                        )
+                    )
+                ):
+                    return {}, CsvDiagnostics(status="malformed", row_count=0)
+                event_ids.add(event_id)
                 catalog[event_name] = row
-    return catalog
+        except csv.Error:
+            return {}, CsvDiagnostics(status="malformed", row_count=0)
+    status = "recorded" if catalog else "header_only"
+    return catalog, CsvDiagnostics(status=status, row_count=len(catalog))
 
 
 def normalize_event_row(
@@ -553,39 +893,60 @@ def discover_profile_dirs(inputs: Iterable[Path]) -> list[Path]:
     discovered: set[Path] = set()
     for input_path in inputs:
         path = input_path.resolve()
-        if (path / "events.csv").is_file() and (path / "metadata.txt").is_file():
+        if (path / "metadata.txt").is_file():
             discovered.add(path)
             continue
         if not path.is_dir():
             raise FileNotFoundError(path)
         for metadata_path in path.rglob("metadata.txt"):
-            profile_dir = metadata_path.parent
-            if (profile_dir / "events.csv").is_file():
-                discovered.add(profile_dir.resolve())
+            discovered.add(metadata_path.parent.resolve())
     return sorted(discovered)
 
 
 def read_sync_bounds(profile_dir: Path) -> tuple[int, int, int, int]:
     sync_path = profile_dir / "sync.csv"
-    first_realtime = 0
-    last_realtime = 0
-    first_monotonic = 0
-    last_monotonic = 0
     if not sync_path.exists():
-        return first_realtime, last_realtime, first_monotonic, last_monotonic
+        return 0, 0, 0, 0
+
+    bounds: list[tuple[int, int]] = []
     with sync_path.open(newline="") as f:
-        for row in csv.DictReader(f):
-            realtime_ns = parse_int(row.get("realtime_ns"))
-            monotonic_ns = parse_int(row.get("monotonic_raw_ns"))
-            if realtime_ns > 0:
-                if first_realtime == 0:
-                    first_realtime = realtime_ns
-                last_realtime = realtime_ns
-            if monotonic_ns > 0:
-                if first_monotonic == 0:
-                    first_monotonic = monotonic_ns
-                last_monotonic = monotonic_ns
-    return first_realtime, last_realtime, first_monotonic, last_monotonic
+        try:
+            reader = csv.DictReader(f, strict=True)
+            fieldnames = reader.fieldnames
+            legacy_fields = {"realtime_ns", "monotonic_raw_ns", "tick"}
+            if (
+                not fieldnames
+                or not legacy_fields.issubset(fieldnames)
+                or len(fieldnames) != len(set(fieldnames))
+                or any(not field for field in fieldnames)
+                or ("status" not in fieldnames and set(fieldnames) != legacy_fields)
+            ):
+                return 0, 0, 0, 0
+            has_status = "status" in fieldnames
+            for row in reader:
+                if None in row:
+                    return 0, 0, 0, 0
+                if has_status:
+                    status = (row.get("status") or "").strip()
+                    if not status:
+                        return 0, 0, 0, 0
+                    if status != "ok":
+                        continue
+                try:
+                    realtime_ns = int(row["realtime_ns"])
+                    monotonic_ns = int(row["monotonic_raw_ns"])
+                    tick = int(row["tick"])
+                except (KeyError, TypeError, ValueError):
+                    return 0, 0, 0, 0
+                if realtime_ns <= 0 or monotonic_ns <= 0 or tick < 0:
+                    return 0, 0, 0, 0
+                bounds.append((realtime_ns, monotonic_ns))
+        except csv.Error:
+            return 0, 0, 0, 0
+
+    if not bounds:
+        return 0, 0, 0, 0
+    return bounds[0][0], bounds[-1][0], bounds[0][1], bounds[-1][1]
 
 
 def elapsed_duration(
@@ -694,8 +1055,10 @@ def build_run_inventory(
     profile_dirs: Iterable[Path],
     metadata_by_dir: dict[str, dict[str, str]],
     settings_by_dir: dict[str, dict[str, str]],
-    drops_by_dir: dict[str, int],
-    drop_diagnostics_by_dir: dict[str, dict[str, int]],
+    drop_diagnostics_by_dir: dict[str, DropDiagnostics],
+    event_diagnostics_by_dir: dict[str, CsvDiagnostics],
+    catalog_diagnostics_by_dir: dict[str, CsvDiagnostics],
+    profile_coverage_by_dir: dict[str, str],
     host_by_dir: dict[str, dict[str, object]],
 ) -> list[dict[str, object]]:
     runs: list[dict[str, object]] = []
@@ -703,6 +1066,10 @@ def build_run_inventory(
         key = str(profile_dir)
         metadata = metadata_by_dir[key]
         settings = settings_by_dir[key]
+        diagnostics = drop_diagnostics_by_dir[key]
+        event_diagnostics = event_diagnostics_by_dir[key]
+        catalog_diagnostics = catalog_diagnostics_by_dir[key]
+        clean_shutdown, lifecycle_status = lifecycle_state(metadata)
         sync_start, sync_end, sync_monotonic_start, sync_monotonic_end = read_sync_bounds(profile_dir)
         start_ns = parse_int(metadata.get("start_realtime_ns"), sync_start)
         end_ns = parse_int(metadata.get("end_realtime_ns"), sync_end)
@@ -714,6 +1081,58 @@ def build_run_inventory(
             start_ns,
             end_ns,
         )
+        schema_version = metadata.get("schema_version", "1")
+        metadata_bounds_complete = lifecycle_clock_metadata_complete(metadata)
+        metadata_bounds_valid = (
+            metadata_bounds_complete and lifecycle_clock_metadata_valid(metadata)
+        )
+        if schema_version == "1":
+            duration_scope = "legacy"
+            realtime_clock_regressed: int | str = int(
+                start_ns > 0 and end_ns < start_ns
+            )
+        elif lifecycle_status == "clean" and metadata_bounds_complete and not metadata_bounds_valid:
+            duration_s = math.nan
+            duration_scope = "invalid_lifecycle_metadata"
+            duration_status = "lifecycle_clock_invalid"
+            realtime_clock_regressed = ""
+        elif duration_status not in {"valid", "legacy_realtime_fallback"}:
+            duration_scope = "unavailable"
+            realtime_clock_regressed = ""
+        elif lifecycle_status == "clean" and metadata_bounds_valid:
+            duration_scope = "complete"
+            realtime_clock_regressed = int(metadata["realtime_clock_regressed"])
+        else:
+            realtime_clock_regressed = ""
+            if duration_clock == "CLOCK_MONOTONIC_RAW":
+                start_from_metadata = (
+                    parse_int(metadata.get("start_monotonic_raw_ns")) > 0
+                )
+                end_from_metadata = (
+                    parse_int(metadata.get("end_monotonic_raw_ns")) > 0
+                )
+            else:
+                start_from_metadata = parse_int(metadata.get("start_realtime_ns")) > 0
+                end_from_metadata = parse_int(metadata.get("end_realtime_ns")) > 0
+            if start_from_metadata and end_from_metadata:
+                duration_scope = "metadata_interval_unfinalized"
+            elif start_from_metadata and not end_from_metadata:
+                duration_scope = "sync_prefix"
+            else:
+                duration_scope = "mixed_metadata_sync_bounds"
+
+            if lifecycle_status == "clean":
+                duration_status = f"{duration_status}_lifecycle_metadata_incomplete"
+            elif duration_scope == "metadata_interval_unfinalized":
+                duration_status = f"{duration_status}_unfinalized_metadata_interval"
+            elif duration_scope == "sync_prefix":
+                duration_status = (
+                    "valid_sync_prefix"
+                    if duration_status == "valid"
+                    else "legacy_realtime_sync_prefix"
+                )
+            else:
+                duration_status = f"{duration_status}_mixed_metadata_sync_bounds"
         process_name = metadata.get("process_name", "unknown")
         role = metadata.get("role", "")
         if not role:
@@ -721,7 +1140,7 @@ def build_run_inventory(
         runs.append(
             {
                 "profile_dir": key,
-                "schema_version": metadata.get("schema_version", "1"),
+                "schema_version": schema_version,
                 "event_record_size_bytes": metadata.get("event_record_size_bytes", ""),
                 "max_nesting_depth": metadata.get("max_nesting_depth", ""),
                 "run_id": metadata.get("run_id", profile_dir.name),
@@ -739,8 +1158,8 @@ def build_run_inventory(
                 "duration_s": duration_s,
                 "duration_clock": duration_clock,
                 "duration_status": duration_status,
-                "realtime_clock_regressed": int(start_ns > 0 and end_ns < start_ns),
-                "clean_shutdown": metadata.get("clean_shutdown", "0"),
+                "realtime_clock_regressed": realtime_clock_regressed,
+                "clean_shutdown": clean_shutdown,
                 "config_source": metadata.get("config_source", ""),
                 "build_oai_version": metadata.get("build_oai_version", metadata.get("oai_version", "")),
                 "runtime_git_branch": metadata.get("runtime_git_branch", ""),
@@ -751,10 +1170,21 @@ def build_run_inventory(
                 "continuous_tx": settings.get("softmodem.continuous_tx", ""),
                 "sample_advance": settings.get("softmodem.sample_advance", ""),
                 "thread_pool": settings.get("softmodem.thread_pool", ""),
-                "drops_total": drops_by_dir[key],
-                "span_stack_overflows": drop_diagnostics_by_dir[key]["span_stack_overflows"],
-                "span_stack_mismatches": drop_diagnostics_by_dir[key]["span_stack_mismatches"],
+                "drops_total": diagnostics.dropped_records,
+                "span_stack_overflows": diagnostics.span_stack_overflows,
+                "span_stack_mismatches": diagnostics.span_stack_mismatches,
                 "host_metric_samples": host_by_dir[key]["samples"],
+                "lifecycle_status": lifecycle_status,
+                "duration_scope": duration_scope,
+                "drop_diagnostics_status": diagnostics.status,
+                "drop_diagnostic_rows": diagnostics.row_count,
+                "counter_regressions": diagnostics.counter_regressions,
+                **profile_evidence_fields(
+                    diagnostics,
+                    event_diagnostics,
+                    catalog_diagnostics,
+                ),
+                "profile_coverage_status": profile_coverage_by_dir[key],
             }
         )
     return sorted(runs, key=lambda row: (int(row["start_realtime_ns"]), str(row["role"]), str(row["profile_dir"])))
@@ -964,27 +1394,175 @@ def write_rows(
         raise
 
 
+def event_row_is_valid(
+    row: dict[str, str],
+    schema_version: str,
+    catalog: dict[str, dict[str, str]],
+    counter_hz: int,
+) -> bool:
+    required_fields = (
+        EVENT_FIELDS_SCHEMA2 if schema_version == "2" else EVENT_FIELDS_SCHEMA1
+    )
+    if None in row or any(
+        not (row.get(field) or "").strip() for field in required_fields
+    ):
+        return False
+
+    text_fields = {"thread_name", "event_name"}
+    if schema_version == "2":
+        text_fields.update({"event_kind"})
+    integer_fields = set(required_fields) - text_fields - {"duration_us"}
+    try:
+        integers = {field: int(row[field]) for field in integer_fields}
+        duration_us = float(row["duration_us"])
+    except (TypeError, ValueError):
+        return False
+    if not math.isfinite(duration_us) or duration_us < 0:
+        return False
+
+    event_id = integers["event_id"]
+    event_name = row["event_name"]
+    descriptor = catalog.get(event_name)
+    if descriptor is not None and descriptor.get("event_id") != str(event_id):
+        return False
+    if catalog and descriptor is None:
+        return False
+    if (
+        integers["seq"] < 0
+        or integers["tid"] <= 0
+        or event_id <= 0
+        or integers["frame"] < -1
+        or integers["slot"] < -1
+        or integers["flags"] < 0
+        or integers["start_tick"] < 0
+        or integers["duration_tick"] < 0
+    ):
+        return False
+
+    if schema_version != "2":
+        return True
+    if (
+        integers["schema_version"] != 2
+        or row["event_kind"] not in {"duration", "instant"}
+        or integers["nesting_depth"] < 0
+        or integers["absolute_slot"] < -1
+        or integers["correlation_id"] < 0
+        or integers["span_id"] <= 0
+        or integers["parent_id"] < 0
+        or integers["cpu_start"] < -1
+        or integers["cpu_end"] < -1
+        or integers["cpu_migrated"] not in {0, 1}
+    ):
+        return False
+    expected_migration = int(
+        integers["cpu_start"] >= 0
+        and integers["cpu_end"] >= 0
+        and integers["cpu_start"] != integers["cpu_end"]
+    )
+    if integers["cpu_migrated"] != expected_migration:
+        return False
+    if integers["parent_id"] == integers["span_id"]:
+        return False
+    if row["event_kind"] == "instant" and (
+        integers["duration_tick"] != 0
+        or duration_us != 0
+        or integers["cpu_start"] != integers["cpu_end"]
+    ):
+        return False
+    if counter_hz > 0:
+        expected_duration_us = integers["duration_tick"] * 1_000_000.0 / counter_hz
+        if not math.isclose(
+            duration_us,
+            expected_duration_us,
+            rel_tol=0.0,
+            abs_tol=0.000501,
+        ):
+            return False
+    return True
+
+
 def iter_event_rows(
     profile_dirs: Iterable[Path],
     event_filter: set[str] | None,
     metadata_by_dir: dict[str, dict[str, str]],
     catalogs_by_dir: dict[str, dict[str, dict[str, str]]],
+    event_diagnostics_by_dir: dict[str, CsvDiagnostics] | None = None,
 ) -> Iterable[tuple[Path, dict[str, str]]]:
     for profile_dir in profile_dirs:
+        profile_key = str(profile_dir)
         events_path = profile_dir / "events.csv"
         if not events_path.exists():
-            raise FileNotFoundError(f"missing {events_path}")
-        with events_path.open(newline="") as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                normalized = normalize_event_row(
-                    row,
-                    metadata_by_dir[str(profile_dir)],
-                    catalogs_by_dir[str(profile_dir)],
+            if event_diagnostics_by_dir is not None:
+                event_diagnostics_by_dir[profile_key] = CsvDiagnostics(
+                    status="missing",
+                    row_count=0,
                 )
-                if event_filter and normalized["event_name"] not in event_filter:
-                    continue
-                yield profile_dir, normalized
+            continue
+        if events_path.stat().st_size == 0:
+            if event_diagnostics_by_dir is not None:
+                event_diagnostics_by_dir[profile_key] = CsvDiagnostics(
+                    status="zero_byte",
+                    row_count=0,
+                )
+            continue
+
+        metadata = metadata_by_dir[profile_key]
+        schema_version = metadata.get("schema_version", "1")
+        counter_hz = parse_int(metadata.get("counter_hz"))
+        catalog = catalogs_by_dir[profile_key]
+        row_count = 0
+        producer_threads: set[tuple[int, str]] = set()
+        malformed = schema_version not in {"1", "2"}
+        with events_path.open(newline="") as f:
+            try:
+                reader = csv.DictReader(f, strict=True)
+                fieldnames = reader.fieldnames
+                required_fields = (
+                    set(EVENT_FIELDS_SCHEMA2)
+                    if schema_version == "2"
+                    else set(EVENT_FIELDS_SCHEMA1)
+                )
+                if (
+                    malformed
+                    or not fieldnames
+                    or not required_fields.issubset(fieldnames)
+                    or len(fieldnames) != len(set(fieldnames))
+                    or any(not field for field in fieldnames)
+                ):
+                    malformed = True
+                else:
+                    for row in reader:
+                        if not event_row_is_valid(
+                            row,
+                            schema_version,
+                            catalog,
+                            counter_hz,
+                        ):
+                            malformed = True
+                            break
+                        row_count += 1
+                        producer_threads.add((int(row["tid"]), row["thread_name"]))
+                        normalized = normalize_event_row(row, metadata, catalog)
+                        if (
+                            event_filter
+                            and normalized["event_name"] not in event_filter
+                        ):
+                            continue
+                        yield profile_dir, normalized
+            except csv.Error:
+                malformed = True
+        if event_diagnostics_by_dir is not None:
+            event_diagnostics_by_dir[profile_key] = CsvDiagnostics(
+                status=(
+                    "malformed"
+                    if malformed
+                    else "recorded"
+                    if row_count
+                    else "header_only"
+                ),
+                row_count=row_count,
+                producer_threads=frozenset(producer_threads),
+            )
 
 
 def write_event_timeline(
@@ -1418,6 +1996,11 @@ def write_summary(path: Path | None, rows: list[dict[str, object]]) -> ArtifactI
         "drops_total",
         "span_stack_overflows",
         "span_stack_mismatches",
+        "drop_diagnostics_status",
+        "drop_diagnostic_rows",
+        "counter_regressions",
+        *PROFILE_EVIDENCE_OUTPUT_FIELDS,
+        "profile_coverage_status",
     ]
     if path is None:
         writer = csv.DictWriter(__import__("sys").stdout, fieldnames=fields)
@@ -1458,7 +2041,10 @@ def write_migrations(path: Path, rows: list[dict[str, str]]) -> ArtifactInfo:
 def build_rows(
     groups: dict[tuple[str, str], GroupStats],
     metadata_by_dir: dict[str, dict[str, str]],
-    drop_diagnostics_by_dir: dict[str, dict[str, int]],
+    drop_diagnostics_by_dir: dict[str, DropDiagnostics],
+    event_diagnostics_by_dir: dict[str, CsvDiagnostics],
+    catalog_diagnostics_by_dir: dict[str, CsvDiagnostics],
+    profile_coverage_by_dir: dict[str, str],
 ) -> list[dict[str, object]]:
     rows: list[dict[str, object]] = []
     for (profile_dir, event_name), stats in sorted(groups.items()):
@@ -1467,6 +2053,8 @@ def build_rows(
         quantiles = [("p50", 0.5), ("p90", 0.9), ("p95", 0.95), ("p99", 0.99), ("p99_9", 0.999)]
         q = {name: quantile(durations, value) for name, value in quantiles}
         diagnostics = drop_diagnostics_by_dir[profile_dir]
+        event_diagnostics = event_diagnostics_by_dir[profile_dir]
+        catalog_diagnostics = catalog_diagnostics_by_dir[profile_dir]
         count = len(durations)
         rows.append(
             {
@@ -1497,9 +2085,18 @@ def build_rows(
                 "cpu_migration_rate": stats.cpu_migrations / stats.cpu_observed_count
                 if stats.cpu_observed_count
                 else math.nan,
-                "drops_total": diagnostics["dropped_records"],
-                "span_stack_overflows": diagnostics["span_stack_overflows"],
-                "span_stack_mismatches": diagnostics["span_stack_mismatches"],
+                "drops_total": diagnostics.dropped_records,
+                "span_stack_overflows": diagnostics.span_stack_overflows,
+                "span_stack_mismatches": diagnostics.span_stack_mismatches,
+                "drop_diagnostics_status": diagnostics.status,
+                "drop_diagnostic_rows": diagnostics.row_count,
+                "counter_regressions": diagnostics.counter_regressions,
+                **profile_evidence_fields(
+                    diagnostics,
+                    event_diagnostics,
+                    catalog_diagnostics,
+                ),
+                "profile_coverage_status": profile_coverage_by_dir[profile_dir],
             }
         )
     return rows
@@ -1754,19 +2351,26 @@ def main() -> int:
     event_filter = set(args.event) if args.event else None
     metadata_by_dir = {str(p): read_metadata(p) for p in profile_dirs}
     settings_by_dir = {str(p): read_settings(p) for p in profile_dirs}
-    catalogs_by_dir = {str(p): read_event_catalog(p) for p in profile_dirs}
+    catalog_results = {
+        str(p): read_event_catalog(
+            p,
+            metadata_by_dir[str(p)].get("schema_version", "1"),
+        )
+        for p in profile_dirs
+    }
+    catalogs_by_dir = {
+        profile_key: result[0] for profile_key, result in catalog_results.items()
+    }
+    catalog_diagnostics_by_dir = {
+        profile_key: result[1] for profile_key, result in catalog_results.items()
+    }
+    event_diagnostics_by_dir = {
+        str(p): CsvDiagnostics(status="unvalidated", row_count=0)
+        for p in profile_dirs
+    }
     drop_diagnostics_by_dir = {str(p): read_drop_diagnostics(p) for p in profile_dirs}
-    drops_by_dir = {key: diagnostics["dropped_records"] for key, diagnostics in drop_diagnostics_by_dir.items()}
+    profile_coverage_by_dir: dict[str, str] = {}
     host_by_dir = {str(p): summarize_host_metrics(p) for p in profile_dirs}
-    run_rows = build_run_inventory(
-        profile_dirs,
-        metadata_by_dir,
-        settings_by_dir,
-        drops_by_dir,
-        drop_diagnostics_by_dir,
-        host_by_dir,
-    )
-    pair_rows = build_pairs(run_rows)
 
     final_output_dir: Path | None = None
     output_dir: Path | None = None
@@ -1851,6 +2455,7 @@ def main() -> int:
                 None,
                 metadata_by_dir,
                 catalogs_by_dir,
+                event_diagnostics_by_dir,
             ):
                 if output_dir is not None:
                     hierarchy_record = hierarchy_record_from_row(row)
@@ -1920,10 +2525,21 @@ def main() -> int:
                             }
                         )
 
+            event_diagnostics = event_diagnostics_by_dir[profile_key]
+            catalog_diagnostics = catalog_diagnostics_by_dir[profile_key]
+            profile_coverage_by_dir[profile_key] = profile_coverage_status(
+                metadata,
+                drop_diagnostics_by_dir[profile_key],
+                event_diagnostics,
+                catalog_diagnostics,
+            )
             profile_summary_rows = build_rows(
                 event_groups,
                 metadata_by_dir,
                 drop_diagnostics_by_dir,
+                event_diagnostics_by_dir,
+                catalog_diagnostics_by_dir,
+                profile_coverage_by_dir,
             )
             all_summary_rows.extend(profile_summary_rows)
             if output_dir is not None:
@@ -1935,6 +2551,10 @@ def main() -> int:
                         metadata_by_dir,
                     )
                     deadline_check_writer.writerows(profile_deadlines.check_rows)
+                    for deadline_summary in profile_deadlines.summary_rows:
+                        deadline_summary["profile_coverage_status"] = (
+                            profile_coverage_by_dir[profile_key]
+                        )
                     deadline_summary_rows.extend(profile_deadlines.summary_rows)
                     del profile_deadlines
                 del event_groups
@@ -1952,11 +2572,37 @@ def main() -> int:
                     correlation_writer,
                     causal_writer,
                 )
+                diagnostics = drop_diagnostics_by_dir[profile_key]
+                clean_shutdown, lifecycle_status = lifecycle_state(metadata)
+                run_integrity.update(
+                    {
+                        "clean_shutdown": clean_shutdown,
+                        "lifecycle_status": lifecycle_status,
+                        "drop_diagnostics_status": diagnostics.status,
+                        "drop_diagnostic_rows": diagnostics.row_count,
+                        "drops_total": diagnostics.dropped_records,
+                        "span_stack_overflows": diagnostics.span_stack_overflows,
+                        "span_stack_mismatches": diagnostics.span_stack_mismatches,
+                        "counter_regressions": diagnostics.counter_regressions,
+                        **profile_evidence_fields(
+                            diagnostics,
+                            event_diagnostics,
+                            catalog_diagnostics,
+                        ),
+                        "profile_coverage_status": profile_coverage_by_dir[profile_key],
+                    }
+                )
                 hierarchy_integrity_rows.append(run_integrity)
-                exclusive_summary_rows.extend(build_exclusive_summary(run_exclusive))
+                profile_exclusive_rows = build_exclusive_summary(run_exclusive)
+                for exclusive_row in profile_exclusive_rows:
+                    exclusive_row["profile_coverage_status"] = (
+                        profile_coverage_by_dir[profile_key]
+                    )
+                exclusive_summary_rows.extend(profile_exclusive_rows)
                 del hierarchy_records
                 del run_integrity
                 del run_exclusive
+                del profile_exclusive_rows
             else:
                 del event_groups
                 del thread_groups
@@ -1965,6 +2611,17 @@ def main() -> int:
                 row = None
             del profile_summary_rows
 
+        run_rows = build_run_inventory(
+            profile_dirs,
+            metadata_by_dir,
+            settings_by_dir,
+            drop_diagnostics_by_dir,
+            event_diagnostics_by_dir,
+            catalog_diagnostics_by_dir,
+            profile_coverage_by_dir,
+            host_by_dir,
+        )
+        pair_rows = build_pairs(run_rows)
         summary_rows = (
             [row for row in all_summary_rows if row["event_name"] in event_filter]
             if event_filter
@@ -1998,6 +2655,7 @@ def main() -> int:
             settings_by_dir,
             all_summary_rows,
             transport_fault_rows,
+            profile_coverage_by_dir,
         )
 
         output_artifacts = [
@@ -2005,7 +2663,7 @@ def main() -> int:
             write_by_thread(output_dir / "by_thread.csv", thread_rows),
             write_rows(
                 output_dir / "deadline_summary.csv",
-                DEADLINE_SUMMARY_FIELDS,
+                [*DEADLINE_SUMMARY_FIELDS, "profile_coverage_status"],
                 deadline_summary_rows,
             ),
             write_rows(
@@ -2026,6 +2684,7 @@ def main() -> int:
                     "parents_with_overlapping_children",
                     "noncontained_children",
                     "correlation_mismatch_children",
+                    "profile_coverage_status",
                 ],
                 exclusive_summary_rows,
             ),
@@ -2049,6 +2708,16 @@ def main() -> int:
                     "unknown_absolute_slot_records",
                     "max_nesting_depth",
                     "counter_hz",
+                    "clean_shutdown",
+                    "lifecycle_status",
+                    "drop_diagnostics_status",
+                    "drop_diagnostic_rows",
+                    "drops_total",
+                    "span_stack_overflows",
+                    "span_stack_mismatches",
+                    "counter_regressions",
+                    *PROFILE_EVIDENCE_OUTPUT_FIELDS,
+                    "profile_coverage_status",
                 ],
                 hierarchy_integrity_rows,
             ),
@@ -2090,6 +2759,13 @@ def main() -> int:
                     "span_stack_overflows",
                     "span_stack_mismatches",
                     "host_metric_samples",
+                    "lifecycle_status",
+                    "duration_scope",
+                    "drop_diagnostics_status",
+                    "drop_diagnostic_rows",
+                    "counter_regressions",
+                    *PROFILE_EVIDENCE_OUTPUT_FIELDS,
+                    "profile_coverage_status",
                 ],
                 run_rows,
             ),

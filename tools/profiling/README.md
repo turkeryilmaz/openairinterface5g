@@ -396,12 +396,17 @@ The analyzer writes:
   classification agreement.
 - `deadline_summary.csv`: per-process deadline event cardinality, validity,
   miss rates, reconstruction coverage, anchor provenance, agreement, and
-  lateness/headroom/bias distributions.
+  lateness/headroom/bias distributions. Its local deadline `status` describes
+  the persisted check/compute evidence; the independent
+  `profile_coverage_status` states whether that event evidence covers a
+  complete profile.
 - `migrations.csv`, `runs.csv`, `pairs.csv`, and `host_summary.csv`:
   execution, pairing, and host-health reports.
 - `profiler_primitive_overhead_summary.csv`: setup, warm-up, and measurement
   distributions. The reported excess is a difference of phase medians, not a
-  per-record correction.
+  per-record correction. Its trailing `stream_status` distinguishes recorded
+  evidence from missing, zero-byte, header-only, or malformed calibration
+  streams; unavailable sentinel rows leave counts and durations blank.
 - `pmu_availability_summary.csv`, `pmu_summary.csv`, and `pmu_quality.csv`:
   requested/support/permission state, valid scaled rates, read errors, and
   interval multiplex quality.
@@ -412,15 +417,20 @@ The analyzer writes:
 - `transport_summary.csv` and `transport_faults.csv`: outer RF plus nested
   UHD timing and raw short-transfer/overflow/async-event evidence.
 - `collection_overhead_summary.csv`: PMU, system, and primitive collection
-  cost distributions with explicit error counts.
+  cost distributions with explicit error counts and an independent
+  `stream_status` for every source, including unavailable sentinels.
 - `archive_integrity.csv` and `external_sources.csv`: per-artifact manifest
   verification plus source/provenance/alignment state.
 - `perf_stat_summary.csv`: tolerant aggregation of registered semicolon
   perf-stat text, including unsupported/uncounted rows and running percentage.
 - `campaign_runs.csv` and `campaign_completeness.csv`: disabled and profiled
-  role states, anchors, exits, manifests, and paired completeness.
+  role states, anchors, exits, manifests, operational paired completeness, and
+  a separate, deliberately narrow profiler-event-evidence qualifier.
 - `observer_effect_summary.csv`: repeated-run process outcomes relative to
-  `disabled`, and per-run event medians relative to `in-process`.
+  `disabled`, and per-run event medians relative to `in-process`. For each
+  event metric observed elsewhere in the same campaign/case/role cohort, the
+  exclusion count includes every successful profiler-enabled incomplete run,
+  even if that run emitted no row for the event.
 - `analysis_inputs.csv`: discovered run identities plus presence and SHA-256
   of each input `archive_manifest.csv`.
 - `analysis_provenance.csv`: the raw argument vector, parsed input arguments,
@@ -431,6 +441,89 @@ The analyzer writes:
 - `analysis_manifest.csv`: every generated or intentionally omitted analysis
   artifact, with generated data-row count, size, and SHA-256. The manifest
   explicitly excludes its own digest to avoid self-reference.
+
+Derived integrity fields distinguish missing evidence from a measured zero.
+`drops_total`, span-stack diagnostics, and `counter_regressions` are numeric
+only when the corresponding `drops.csv` columns contain structurally valid
+native per-thread identities and nonnegative rows. For schema 2, every thread
+observed producing an event must have a corresponding drop row; additional
+registered threads that emitted no event are permitted. Missing, zero-byte,
+header-only, malformed, and
+legacy-partial streams remain explicit in `drop_diagnostics_status`;
+unavailable numeric cells are blank. `profile_coverage_status=complete`
+additionally requires schema 2 with a positive integer `counter_hz`; a
+strictly valid recorded `events.csv` whose tick durations agree with the
+writer's three-decimal microsecond values; a strictly valid recorded
+`event_catalog.csv` whose IDs and names match the events; the complete and
+internally consistent native lifecycle footer; and recorded zero-valued drop,
+span, and counter-regression diagnostics. A descriptor's `default_kind` is
+the catalog default, not a per-row invariant:
+`PROFILER_PRIMITIVE_CALIBRATION` intentionally emits both duration and instant
+records. Schema-2 instant rows must have zero duration and equal observed CPU
+endpoints, and no row may parent itself.
+Stream states, row counts, producer counts, and missing producer diagnostics
+are emitted alongside the global status. Inclusive statistics from an
+incomplete archive remain observed persisted-prefix
+evidence, but event-level observer-effect medians exclude incomplete profiles
+from otherwise operationally successful runs and report that exclusion count.
+Per-record hierarchy `exclusive_valid` remains a local statement about
+persisted parent/child interval structure; global archive coverage is reported
+separately and gates observer/publication aggregation.
+
+In `campaign_completeness.csv`, `paired_complete` and `status` retain their
+operational meaning: both roles finished successfully, were finalized, and
+passed archive-manifest verification. They do not by themselves prove complete
+profiler evidence. The appended `profile_evidence_complete` and
+`profile_evidence_status` fields additionally require every profiler-enabled
+role to have `profile_coverage_status=complete`; profiler-disabled roles are
+explicitly `not_applicable`. Canonical variants must agree with their declared
+profile setting, and profiler artifacts in a declared-disabled role are
+reported as unexpected evidence; either profiler metadata or an event artifact
+is sufficient to detect that contamination even when no complete profile was
+discovered. Per-role coverage and
+incomplete/unknown/mismatched role sets remain in the same row. A
+manifest-valid zero-byte diagnostic stream can therefore be operationally
+intact while its profile evidence remains incomplete. This bounded qualifier
+does not validate PMU, sidecars, host/system sources, clock alignment, RF
+success, or whole-publication scientific validity; those are separate gates.
+
+For an unfinalized schema-2 process, `runs.csv` reports
+`clean_shutdown=unknown` when completion metadata is absent. A duration
+bounded by the last durable `sync.csv` sample is labeled
+`duration_scope=sync_prefix` and `duration_status=valid_sync_prefix`; it is not
+a complete process lifetime. Native `sync.csv` rows with non-`ok` status are
+not used as bounds. A clean footer that contains all required fields but whose
+clock, duration, or regression values contradict one another is explicitly
+`invalid_lifecycle_metadata`/`lifecycle_clock_invalid` and has no numeric
+process duration.
+
+PMU reports likewise distinguish missing, zero-byte, malformed, valid
+header-only, and recorded streams. A clean PMU-off header-only stream is
+`not_requested`; a crash-truncated zero-byte stream does not manufacture
+requested, available, validity, or read-error zeros. Recorded PMU availability
+and sample rows must contain the full native run/thread/event identities,
+timestamps, raw and scaled counts, enabled/running times, deltas, intervals,
+flags, status, and error codes. Samples must join an exact descriptor with
+`requested=1` and `available=1`. Raw-derived/scaled values must be
+nonnegative, running time cannot exceed enabled time, multiplex ratios must be
+in `[0,1]`, and a usable row requires a positive interval, both validity flags,
+`status=ok`, and `error_code=0`. Whenever scaling is marked valid, cumulative
+scaled values are recomputed from raw count and cumulative enabled/running
+time; usable delta-scaled values and multiplex ratios are independently
+recomputed from their interval fields. Comparisons honor the writer's six- and
+nine-decimal serialization precision. Non-rate rows must match one native
+warm-up, clock-regression, counter-reset/reconfiguration, not-running,
+read-error, or malformed-group-read state. A valid `not_running` row remains
+explicit quality evidence but never contributes a rate, and read-error rows
+cannot carry fabricated counter evidence. A semantic violation makes the
+complete stream malformed rather than coercing it to zero or true.
+
+`collection_overhead_summary.csv` applies the same structural distinction
+independently to PMU-read, system-read, and primitive-calibration streams. A
+missing, zero-byte, header-only, or malformed source always receives its own
+sentinel row even when another source is recorded. Its unavailable counts and
+durations remain blank; only a valid PMU-off header-only stream has known
+not-requested zero counts.
 
 The destination must not already exist. Output is written to a sibling partial
 directory, each CSV is flushed and synchronized, and the directory is renamed
