@@ -215,7 +215,9 @@ void nr_configure_pucch(nfapi_nr_pucch_pdu_t *pucch_pdu,
                         uint8_t O_sr,
                         int r_pucch,
                         nr_beam_mode_t mode,
-                        uint16_t ant_port_idx);
+                        uint16_t ant_port_idx,
+                        uint16_t *ssi,
+                        uint16_t num_ant);
 
 void find_search_space(int ss_type,
                        NR_BWP_Downlink_t *bwp,
