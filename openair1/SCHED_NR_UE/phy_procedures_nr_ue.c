@@ -356,40 +356,36 @@ static void nr_ue_measurement_procedures(uint16_t l,
                                          uint32_t pdsch_est_size,
                                          int32_t dl_ch_estimates[][pdsch_est_size])
 {
-  NR_DL_FRAME_PARMS *frame_parms=&ue->frame_parms;
   int nr_slot_rx = proc->nr_slot_rx;
   int gNB_id = proc->gNB_id;
 
-  if (l == 2) {
-    LOG_D(PHY,"Doing UE measurement procedures in symbol l %u Ncp %d nr_slot_rx %d, rxdata %p\n",
-          l,
-          ue->frame_parms.Ncp,
-          nr_slot_rx,
-          ue->common_vars.rxdata);
-    nr_ue_measurements(ue, proc, number_rbs, pdsch_est_size, dl_ch_estimates);
+  LOG_D(PHY,
+        "Doing UE measurement procedures in symbol l %u Ncp %d nr_slot_rx %d, rxdata %p\n",
+        l,
+        ue->frame_parms.Ncp,
+        nr_slot_rx,
+        ue->common_vars.rxdata);
+  nr_ue_measurements(ue, proc, number_rbs, l, pdsch_est_size, dl_ch_estimates);
 #if T_TRACER
-    if(nr_slot_rx == 0)
-      T(T_UE_PHY_MEAS,
-        T_INT(gNB_id),
-        T_INT(proc->frame_rx % 1024),
-        T_INT(nr_slot_rx),
-        T_INT((int)(10 * log10(ue->measurements.rsrp[0]) - ue->rx_total_gain_dB)),
-        T_INT((int)ue->measurements.rx_rssi_dBm[0]),
-        T_INT((int)(ue->measurements.rx_power_avg_dB[0] - ue->measurements.n0_power_avg_dB)),
-        T_INT((int)ue->measurements.rx_power_avg_dB[0]),
-        T_INT((int)ue->measurements.n0_power_avg_dB),
-        T_INT((int)ue->measurements.wideband_cqi_avg[0]),
-        T_INT((int)ue->common_vars.freq_offset));
+  if (nr_slot_rx == 0)
+    T(T_UE_PHY_MEAS,
+      T_INT(gNB_id),
+      T_INT(proc->frame_rx % 1024),
+      T_INT(nr_slot_rx),
+      T_INT((int)(10 * log10(ue->measurements.rsrp[0]) - ue->rx_total_gain_dB)),
+      T_INT((int)ue->measurements.rx_rssi_dBm[0]),
+      T_INT((int)(ue->measurements.rx_power_avg_dB[0] - ue->measurements.n0_power_avg_dB)),
+      T_INT((int)ue->measurements.rx_power_avg_dB[0]),
+      T_INT((int)ue->measurements.n0_power_avg_dB),
+      T_INT((int)ue->measurements.wideband_cqi_avg[0]),
+      T_INT((int)ue->common_vars.freq_offset));
 #endif
-  }
 
   // accumulate and filter timing offset estimation every subframe (instead of every frame)
-  if (( nr_slot_rx == 2) && (l==(2-frame_parms->Ncp))) {
-
+  if (nr_slot_rx == 2) {
     // AGC
     //printf("start adjust gain power avg db %d\n", ue->measurements.rx_power_avg_dB[gNB_id]);
     phy_adjust_gain_nr (ue,ue->measurements.rx_power_avg_dB[gNB_id],gNB_id);
-    
   }
 }
 
@@ -482,7 +478,9 @@ static int nr_ue_pdsch_procedures(PHY_VARS_NR_UE *ue,
   }
   stop_meas_nr_ue_phy(ue, DLSCH_CHANNEL_ESTIMATION_STATS);
   nvar /= (dlschCfg->number_symbols * dlsch->cw_info.Nl * ue->frame_parms.nb_antennas_rx);
-  nr_ue_measurement_procedures(2, ue, proc, freq_alloc->num_rbs, pdsch_est_size, pdsch_dl_ch_estimates);
+  uint32_t dmrs_mask = dlschCfg->dlDmrsSymbPos;
+  int first_dmrs_symbol = get_first_bit_index_mask(&dmrs_mask, 1, 0, NR_SYMBOLS_PER_SLOT);
+  nr_ue_measurement_procedures(first_dmrs_symbol, ue, proc, freq_alloc->num_rbs, pdsch_est_size, pdsch_dl_ch_estimates);
 
   if (ue->chest_time == 1) { // averaging time domain channel estimates
     nr_chest_time_domain_avg(&ue->frame_parms,
