@@ -192,8 +192,11 @@ static int create_gNB_tasks(ngran_node_t node_type, configmodule_interface_t *cf
 
   RCconfig_verify(cfg, node_type);
 
-  if (RC.nb_nr_macrlc_inst > 0)
+  if (RC.nb_nr_macrlc_inst > 0) {
     RCconfig_nr_macrlc(cfg);
+    if (RC.nrmac != NULL && RC.nrmac[0] != NULL)
+      oai_profiler_record_setting_int("gnb.min_rxtxtime", RC.nrmac[0]->radio_config.minRXTXTIME, "effective");
+  }
 
   if (RC.nb_nr_L1_inst>0) AssertFatal(l1_north_init_gNB()==0,"could not initialize L1 north interface\n");
 
@@ -573,8 +576,6 @@ int main( int argc, char **argv ) {
     // Initialize Positioning Reference Signal configuration
     if(NFAPI_MODE != NFAPI_MODE_PNF && NFAPI_MODE != NFAPI_MODE_AERIAL)
       RCconfig_nr_prs();
-    if (RC.nrmac != NULL && RC.nrmac[0] != NULL)
-      oai_profiler_record_setting_int("gnb.min_rxtxtime", RC.nrmac[0]->radio_config.minRXTXTIME, "effective");
   }
 
   // don't create if node doesn't connect to RRC/S1/GTP
