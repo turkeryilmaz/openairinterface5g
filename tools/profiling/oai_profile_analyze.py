@@ -2219,6 +2219,10 @@ def analysis_provenance_rows(
         ),
         ("oai_profile_reports", Path(__file__).resolve().with_name("oai_profile_reports.py")),
         ("oai_profile_archive", Path(__file__).resolve().with_name("oai_profile_archive.py")),
+        (
+            "oai_profile_campaign_semantics",
+            Path(__file__).resolve().with_name("oai_profile_campaign_semantics.py"),
+        ),
     ]
     for module_name, module_path in module_paths:
         rows.append(

@@ -23,9 +23,22 @@ from oai_profile_archive import (
     is_safe_relative_path,
     verify_archive,
 )
+from oai_profile_campaign_semantics import (
+    COMPLETION_CLASSIFIER_VERSION,
+    classify_role_termination,
+    is_controlled_sigint_class,
+    pair_measurement_contracts_match,
+    paired_workload_contract_is_valid,
+    role_termination_succeeded,
+    sidecar_contracts_match,
+    sidecar_evidence_is_valid,
+    workload_evidence_is_valid,
+    workload_contracts_match,
+)
 
 THREAD_METRIC_CPU_FREQUENCY_VALID = 1 << 3
 CAMPAIGN_VALID_DURATION_STATUSES = {"valid", "legacy_realtime_fallback"}
+SUPPORTED_CAMPAIGN_SCHEMA_VERSION = 1
 
 
 IDENTITY_FIELDS = [
@@ -232,30 +245,66 @@ def parse_optional_bool(value: object) -> bool | None:
 
 
 def campaign_member_succeeded(row: dict[str, object]) -> bool:
-    workload_status = str(row.get("workload_status", "not_configured"))
-    workload_artifact = str(row.get("workload_artifact", ""))
-    cleanup_status = str(
-        row.get("network_cleanup_status", "not_configured")
+    duration_succeeded = (
+        row.get("duration_status") == "valid"
+        if str(row.get("completion_classifier_version", "")).strip()
+        else row.get("duration_status") in CAMPAIGN_VALID_DURATION_STATUSES
     )
-    stop_reason = str(row.get("stop_reason", ""))
-    if workload_status == "not_configured":
-        workload_succeeded = (
-            not workload_artifact
-            and cleanup_status == "not_configured"
-            and stop_reason == "duration_elapsed"
-        )
-    else:
-        workload_succeeded = (
-            workload_status == "completed"
-            and bool(workload_artifact)
-            and cleanup_status in {"ok", "already_absent"}
-            and stop_reason == "measurement_complete"
-        )
     return (
-        row.get("status") == "finished"
-        and parse_int(row.get("return_code"), -1) == 0
-        and workload_succeeded
-        and row.get("duration_status") in CAMPAIGN_VALID_DURATION_STATUSES
+        role_termination_succeeded(row)
+        and workload_evidence_is_valid(row)
+        and duration_succeeded
+    )
+
+
+def campaign_sidecar_evidence_succeeded(row: dict[str, object]) -> bool:
+    return sidecar_evidence_is_valid(row, tool_field="sidecar_tool")
+
+
+def termination_class_evidence_is_consistent(row: dict[str, object]) -> bool:
+    version = str(row.get("completion_classifier_version", ""))
+    if not version:
+        return True
+    if version != COMPLETION_CLASSIFIER_VERSION:
+        return False
+    recorded = str(row.get("termination_class_recorded", ""))
+    recomputed = classify_role_termination(row)
+    return bool(recorded) and recorded == recomputed
+
+
+def campaign_profile_identity_evidence_is_consistent(
+    row: dict[str, object],
+) -> bool:
+    raw = row.get("campaign_profile_identity_consistent", "")
+    if str(raw).strip() == "":
+        return True
+    return parse_optional_bool(raw) is True
+
+
+def campaign_schema_evidence_is_supported(row: dict[str, object]) -> bool:
+    raw = row.get("campaign_schema_supported", "")
+    if str(raw).strip() != "":
+        return parse_optional_bool(raw) is True
+    return (
+        parse_int(row.get("campaign_schema_version"), -1)
+        == SUPPORTED_CAMPAIGN_SCHEMA_VERSION
+    )
+
+
+def campaign_member_measurement_eligible(
+    row: dict[str, object],
+    *,
+    archive_integrity_valid: bool,
+) -> bool:
+    return (
+        campaign_member_succeeded(row)
+        and campaign_schema_evidence_is_supported(row)
+        and campaign_sidecar_evidence_succeeded(row)
+        and row.get("archive_status") == "finalization_pending"
+        and parse_int(row.get("archive_manifest_present")) == 1
+        and archive_integrity_valid
+        and termination_class_evidence_is_consistent(row)
+        and campaign_profile_identity_evidence_is_consistent(row)
     )
 
 
@@ -883,6 +932,13 @@ def read_campaign(path: Path) -> tuple[dict[str, Any], str]:
         return {}, f"parse_error:{error}"
     if not isinstance(value, dict):
         return {}, "parse_error:not_an_object"
+    schema_version = value.get("schema_version")
+    if (
+        isinstance(schema_version, bool)
+        or not isinstance(schema_version, int)
+        or schema_version != SUPPORTED_CAMPAIGN_SCHEMA_VERSION
+    ):
+        return value, f"unsupported_schema:{schema_version!r}"
     return value, "ok"
 
 
@@ -923,6 +979,66 @@ def identity_for(
     }
 
 
+CAMPAIGN_PROFILE_IDENTITY_FIELDS = (
+    "run_id",
+    "experiment_id",
+    "campaign_id",
+    "variant",
+    "trial",
+    "role",
+    "hostname",
+)
+
+
+def campaign_identity_for(
+    run_dir: Path,
+    metadata_by_dir: dict[str, dict[str, str]],
+    campaign_by_dir: dict[str, dict[str, Any]],
+) -> tuple[dict[str, object], list[str], bool]:
+    key = str(run_dir)
+    metadata = metadata_by_dir.get(key, {})
+    campaign = campaign_by_dir.get(key, {})
+    identity = identity_for(run_dir, metadata_by_dir, campaign_by_dir)
+    mismatches: list[str] = []
+    profile_enabled = parse_optional_bool(campaign.get("profile_enabled")) is True
+    current_campaign = (
+        str(campaign.get("runner_version", "")).strip() not in {"", "1"}
+        or bool(str(campaign.get("completion_classifier_version", "")).strip())
+    )
+    for field_name in CAMPAIGN_PROFILE_IDENTITY_FIELDS:
+        campaign_value = str(campaign.get(field_name, "")).strip()
+        metadata_value = str(metadata.get(field_name, "")).strip()
+        if field_name in campaign:
+            identity[field_name] = campaign_value
+        elif current_campaign and field_name != "run_id":
+            identity[field_name] = ""
+        if current_campaign and field_name != "run_id" and not campaign_value:
+            mismatches.append(f"{field_name}:campaign_missing")
+        if campaign_value and metadata_value and campaign_value != metadata_value:
+            mismatches.append(f"{field_name}:value_mismatch")
+        elif profile_enabled and campaign_value and not metadata_value:
+            mismatches.append(f"{field_name}:metadata_missing")
+    if profile_enabled and not metadata:
+        mismatches.append("profiler_metadata:missing")
+    return identity, mismatches, bool(metadata)
+
+
+PAIR_IDENTITY_FIELDS = (
+    "campaign_id",
+    "experiment_id",
+    "case",
+    "variant",
+    "trial",
+)
+
+
+def campaign_pair_key(
+    row: dict[str, object],
+) -> tuple[str, str, str, str, str] | None:
+    values = tuple(str(row.get(field_name, "")).strip() for field_name in PAIR_IDENTITY_FIELDS)
+    return values if all(values) else None
+
+
 def campaign_report(
     run_dirs: list[Path],
     metadata_by_dir: dict[str, dict[str, str]],
@@ -931,6 +1047,10 @@ def campaign_report(
 ) -> Report:
     fields = IDENTITY_FIELDS + [
         "campaign_metadata_status",
+        "campaign_schema_version",
+        "campaign_schema_supported",
+        "campaign_profile_identity_consistent",
+        "campaign_profile_identity_mismatches",
         "runner_version",
         "case",
         "host",
@@ -941,6 +1061,15 @@ def campaign_report(
         "remote_completion_return_code",
         "return_code",
         "stop_reason",
+        "completion_classifier_version",
+        "controlled_stop_requested",
+        "shutdown_stage",
+        "shutdown_verified",
+        "remote_completion_identity_verified",
+        "termination_class",
+        "termination_class_recorded",
+        "termination_class_recomputed",
+        "termination_class_consistent",
         "start_realtime_ns",
         "end_realtime_ns",
         "start_monotonic_raw_ns",
@@ -954,9 +1083,12 @@ def campaign_report(
         "sidecar_tool",
         "sidecar_status",
         "sidecar_artifact",
+        "sidecar_config_json",
+        "sidecar_evidence_fields_present",
         "workload_status",
         "workload_artifact",
         "network_cleanup_status",
+        "workload_evidence_fields_present",
         "workload_control_results_json",
         "archive_status",
         "archive_manifest_present",
@@ -980,15 +1112,36 @@ def campaign_report(
             start_ns,
             end_ns,
         )
-        rows.append(
-            {
-                **identity_for(run_dir, metadata_by_dir, campaign_by_dir),
-                "campaign_metadata_status": campaign_status_by_dir[key],
+        identity, identity_mismatches, metadata_present = campaign_identity_for(
+            run_dir,
+            metadata_by_dir,
+            campaign_by_dir,
+        )
+        campaign_status = campaign_status_by_dir[key]
+        sidecar_config = campaign.get("sidecar")
+        sidecar_config_json = (
+            json.dumps(sidecar_config, sort_keys=True, separators=(",", ":"))
+            if isinstance(sidecar_config, dict)
+            else ""
+        )
+        row = {
+                **identity,
+                "campaign_metadata_status": campaign_status,
+                "campaign_schema_version": campaign.get("schema_version", ""),
+                "campaign_schema_supported": int(campaign_status == "ok"),
+                "campaign_profile_identity_consistent": (
+                    int(not identity_mismatches)
+                    if metadata_present or identity_mismatches
+                    else ""
+                ),
+                "campaign_profile_identity_mismatches": ";".join(
+                    identity_mismatches
+                ),
                 "runner_version": campaign.get("runner_version", ""),
                 "case": campaign.get("case", ""),
                 "host": campaign.get("host", ""),
-                "profile_enabled": campaign.get("profile_enabled", bool(metadata_by_dir.get(key))),
-                "pmu_mode": campaign.get("pmu_mode", metadata_by_dir.get(key, {}).get("pmu_mode", "")),
+                "profile_enabled": campaign.get("profile_enabled", ""),
+                "pmu_mode": campaign.get("pmu_mode", ""),
                 "status": campaign.get("status", "campaign_metadata_missing"),
                 "transport_return_code": campaign.get(
                     "transport_return_code",
@@ -1000,6 +1153,17 @@ def campaign_report(
                 ),
                 "return_code": campaign.get("return_code", ""),
                 "stop_reason": campaign.get("stop_reason", ""),
+                "completion_classifier_version": campaign.get(
+                    "completion_classifier_version", ""
+                ),
+                "controlled_stop_requested": campaign.get(
+                    "controlled_stop_requested", ""
+                ),
+                "shutdown_stage": campaign.get("shutdown_stage", ""),
+                "shutdown_verified": campaign.get("shutdown_verified", ""),
+                "remote_completion_identity_verified": campaign.get(
+                    "remote_completion_identity_verified", ""
+                ),
                 "start_realtime_ns": start_ns,
                 "end_realtime_ns": end_ns,
                 "start_monotonic_raw_ns": start_monotonic_ns,
@@ -1010,17 +1174,38 @@ def campaign_report(
                 "realtime_clock_regressed": int(start_ns > 0 and end_ns < start_ns),
                 "anchor_clock_scope": campaign.get("anchor_clock_scope", ""),
                 "launch_index": campaign.get("launch_index", ""),
-                "sidecar_tool": campaign.get("sidecar_tool", "none"),
+                "sidecar_tool": campaign.get("sidecar_tool", ""),
                 "sidecar_status": campaign.get("sidecar_status", ""),
                 "sidecar_artifact": campaign.get("sidecar_artifact", ""),
-                "workload_status": campaign.get(
-                    "workload_status",
-                    "not_configured",
+                "sidecar_config_json": sidecar_config_json,
+                "sidecar_evidence_fields_present": (
+                    "complete"
+                    if all(
+                        field_name in campaign
+                        for field_name in ("sidecar_tool", "sidecar_status", "sidecar_artifact")
+                    )
+                    else "absent"
+                    if all(
+                        field_name not in campaign
+                        for field_name in ("sidecar_tool", "sidecar_status", "sidecar_artifact")
+                    )
+                    else "partial"
                 ),
+                "workload_status": campaign.get("workload_status", ""),
                 "workload_artifact": campaign.get("workload_artifact", ""),
-                "network_cleanup_status": campaign.get(
-                    "network_cleanup_status",
-                    "not_configured",
+                "network_cleanup_status": campaign.get("network_cleanup_status", ""),
+                "workload_evidence_fields_present": (
+                    "complete"
+                    if all(
+                        field_name in campaign
+                        for field_name in ("workload_status", "workload_artifact", "network_cleanup_status")
+                    )
+                    else "absent"
+                    if all(
+                        field_name not in campaign
+                        for field_name in ("workload_status", "workload_artifact", "network_cleanup_status")
+                    )
+                    else "partial"
                 ),
                 "workload_control_results_json": json.dumps(
                     campaign.get("workload_control_results", {}),
@@ -1034,7 +1219,17 @@ def campaign_report(
                 "environment_json": json.dumps(campaign.get("environment", {}), sort_keys=True),
                 "notes_json": json.dumps(campaign.get("notes", []), sort_keys=True),
             }
+        recorded_termination_class = str(campaign.get("termination_class", ""))
+        recomputed_termination_class = classify_role_termination(row)
+        row["termination_class"] = recomputed_termination_class
+        row["termination_class_recorded"] = recorded_termination_class
+        row["termination_class_recomputed"] = recomputed_termination_class
+        row["termination_class_consistent"] = (
+            int(recorded_termination_class == recomputed_termination_class)
+            if str(row.get("completion_classifier_version", ""))
+            else ""
         )
+        rows.append(row)
     return Report(fields, rows)
 
 
@@ -3038,6 +3233,7 @@ def observer_effect_report(
     metadata_by_dir: dict[str, dict[str, str]],
     campaign_by_dir: dict[str, dict[str, Any]],
     profile_coverage_by_dir: dict[str, str],
+    integrity_rows: list[dict[str, object]],
 ) -> Report:
     fields = [
         "campaign_id",
@@ -3086,6 +3282,49 @@ def observer_effect_report(
     campaign_row_by_dir = {
         str(row.get("profile_dir", "")): row for row in campaign_rows
     }
+    integrity_by_dir: dict[str, bool] = {}
+    for row in integrity_rows:
+        profile_key = str(row.get("profile_dir", ""))
+        integrity_by_dir[profile_key] = integrity_by_dir.get(
+            profile_key,
+            True,
+        ) and bool(parse_int(row.get("valid")))
+    members_by_experiment: dict[
+        tuple[str, str, str, str, str],
+        list[dict[str, object]],
+    ] = defaultdict(list)
+    for row in campaign_rows:
+        pair_key = campaign_pair_key(row)
+        if pair_key is not None:
+            members_by_experiment[pair_key].append(row)
+    pair_execution_eligible_dirs: set[str] = set()
+    pair_measurement_eligible_dirs: set[str] = set()
+    for members in members_by_experiment.values():
+        if not paired_workload_contract_is_valid(members):
+            continue
+        if not all(campaign_member_succeeded(member) for member in members):
+            continue
+        if not all(campaign_schema_evidence_is_supported(member) for member in members):
+            continue
+        member_dirs = {str(member.get("profile_dir", "")) for member in members}
+        pair_execution_eligible_dirs.update(member_dirs)
+        if not pair_measurement_contracts_match(
+            members,
+            tool_field="sidecar_tool",
+            sidecar_config_field="sidecar_config_json",
+        ):
+            continue
+        if all(
+            campaign_member_measurement_eligible(
+                member,
+                archive_integrity_valid=integrity_by_dir.get(
+                    str(member.get("profile_dir", "")),
+                    False,
+                ),
+            )
+            for member in members
+        ):
+            pair_measurement_eligible_dirs.update(member_dirs)
     for row in campaign_rows:
         campaign_id = str(row.get("campaign_id", ""))
         case = str(row.get("case", ""))
@@ -3096,7 +3335,12 @@ def observer_effect_report(
             continue
         success = int(campaign_member_succeeded(row))
         duration = parse_float(row.get("duration_s"))
-        if success and math.isfinite(duration):
+        profile_key = str(row.get("profile_dir", ""))
+        if (
+            success
+            and profile_key in pair_execution_eligible_dirs
+            and math.isfinite(duration)
+        ):
             grouped[(campaign_id, case, role, "process", "process_duration", "s")][variant].append(
                 (trial, duration)
             )
@@ -3122,22 +3366,30 @@ def observer_effect_report(
         metadata = metadata_by_dir.get(profile_key, {})
         campaign = campaign_by_dir.get(profile_key, {})
         campaign_row = campaign_row_by_dir.get(profile_key, {})
-        campaign_id = metadata.get(
-            "campaign_id",
-            str(campaign.get("campaign_id", campaign_row.get("campaign_id", ""))),
+        campaign_id = str(
+            campaign_row.get(
+                "campaign_id",
+                campaign.get("campaign_id", metadata.get("campaign_id", "")),
+            )
         )
-        case = str(campaign.get("case", campaign_row.get("case", "")))
-        role = metadata.get(
-            "role",
-            str(campaign.get("role", campaign_row.get("role", ""))),
+        case = str(campaign_row.get("case", campaign.get("case", "")))
+        role = str(
+            campaign_row.get(
+                "role",
+                campaign.get("role", metadata.get("role", "")),
+            )
         )
-        variant = metadata.get(
-            "variant",
-            str(campaign.get("variant", campaign_row.get("variant", ""))),
+        variant = str(
+            campaign_row.get(
+                "variant",
+                campaign.get("variant", metadata.get("variant", "")),
+            )
         )
-        trial = metadata.get(
-            "trial",
-            str(campaign.get("trial", campaign_row.get("trial", ""))),
+        trial = str(
+            campaign_row.get(
+                "trial",
+                campaign.get("trial", metadata.get("trial", "")),
+            )
         )
         event_name = str(row.get("event_name", ""))
         cohort = (campaign_id, case, role)
@@ -3167,7 +3419,7 @@ def observer_effect_report(
         campaign_row = campaign_row_by_dir.get(profile_key)
         if (
             campaign_row is None
-            or not campaign_member_succeeded(campaign_row)
+            or profile_key not in pair_measurement_eligible_dirs
             or parse_optional_bool(campaign_row.get("profile_enabled")) is not True
             or profile_coverage_by_dir.get(profile_key) != "complete"
         ):
@@ -3180,7 +3432,7 @@ def observer_effect_report(
     for campaign_row in campaign_rows:
         profile_key = str(campaign_row.get("profile_dir", ""))
         if (
-            not campaign_member_succeeded(campaign_row)
+            profile_key not in pair_measurement_eligible_dirs
             or parse_optional_bool(campaign_row.get("profile_enabled")) is not True
             or profile_coverage_by_dir.get(profile_key) == "complete"
         ):
@@ -3368,11 +3620,23 @@ def campaign_completeness_report(
         "unexpected_roles",
         "duplicate_roles",
         "finished_roles",
+        "termination_accepted_roles",
+        "controlled_stop_roles",
+        "termination_class_by_role",
+        "campaign_schema_supported_roles",
+        "campaign_profile_identity_inconsistent_roles",
+        "workload_contract_consistent",
+        "sidecar_contract_consistent",
+        "measurement_contract_consistent",
         "successful_roles",
+        "sidecar_valid_roles",
+        "measurement_eligible_roles",
         "finalized_roles",
         "integrity_valid_roles",
         "paired_complete",
         "status",
+        "paired_measurement_complete",
+        "measurement_status",
         "profile_complete_roles",
         "profile_not_applicable_roles",
         "profile_incomplete_roles",
@@ -3389,17 +3653,9 @@ def campaign_completeness_report(
         integrity_by_dir[key] = integrity_by_dir.get(key, True) and bool(parse_int(row.get("valid")))
     grouped: dict[tuple[str, str, str, str, str], list[dict[str, object]]] = defaultdict(list)
     for row in campaign_rows:
-        campaign_id = str(row.get("campaign_id", ""))
-        experiment_id = str(row.get("experiment_id", ""))
-        if campaign_id and experiment_id:
-            key = (
-                campaign_id,
-                experiment_id,
-                str(row.get("case", "")),
-                str(row.get("variant", "")),
-                str(row.get("trial", "")),
-            )
-            grouped[key].append(row)
+        pair_key = campaign_pair_key(row)
+        if pair_key is not None:
+            grouped[pair_key].append(row)
     rows: list[dict[str, object]] = []
     expected = {"gNB", "nrUE"}
     for key, members in sorted(grouped.items()):
@@ -3409,10 +3665,49 @@ def campaign_completeness_report(
         unexpected_roles = roles - expected
         duplicate_roles = {role: count for role, count in role_counts.items() if count > 1}
         finished = {str(member.get("role", "")) for member in members if member.get("status") == "finished"}
+        termination_accepted = {
+            str(member.get("role", ""))
+            for member in members
+            if role_termination_succeeded(member)
+        }
+        controlled_stop = {
+            str(member.get("role", ""))
+            for member in members
+            if is_controlled_sigint_class(classify_role_termination(member))
+        }
+        termination_classes = sorted(
+            f"{member.get('role', '')}:{classify_role_termination(member)}"
+            for member in members
+        )
+        schema_supported = {
+            str(member.get("role", ""))
+            for member in members
+            if campaign_schema_evidence_is_supported(member)
+        }
+        identity_inconsistent = {
+            str(member.get("role", ""))
+            for member in members
+            if not campaign_profile_identity_evidence_is_consistent(member)
+        }
+        workload_contract_consistent = workload_contracts_match(members)
+        sidecar_contract_consistent = sidecar_contracts_match(
+            members,
+            tool_field="sidecar_tool",
+        )
+        measurement_contract_consistent = pair_measurement_contracts_match(
+            members,
+            tool_field="sidecar_tool",
+            sidecar_config_field="sidecar_config_json",
+        )
         successful = {
             str(member.get("role", ""))
             for member in members
             if campaign_member_succeeded(member)
+        }
+        sidecar_valid = {
+            str(member.get("role", ""))
+            for member in members
+            if campaign_sidecar_evidence_succeeded(member)
         }
         finalized = {
             str(member.get("role", ""))
@@ -3425,13 +3720,29 @@ def campaign_completeness_report(
             for member in members
             if integrity_by_dir.get(str(member.get("profile_dir", "")), False)
         }
+        measurement_eligible = {
+            str(member.get("role", ""))
+            for member in members
+            if campaign_member_measurement_eligible(
+                member,
+                archive_integrity_valid=integrity_by_dir.get(
+                    str(member.get("profile_dir", "")),
+                    False,
+                ),
+            )
+        }
         complete = (
-            len(members) == len(expected)
-            and role_counts == Counter({"gNB": 1, "nrUE": 1})
-            and finished == expected
+            paired_workload_contract_is_valid(members)
+            and schema_supported == expected
+            and termination_accepted == expected
             and successful == expected
             and finalized == expected
             and valid == expected
+        )
+        measurement_complete = (
+            complete
+            and measurement_contract_consistent
+            and measurement_eligible == expected
         )
         issues = []
         if missing_roles:
@@ -3440,14 +3751,31 @@ def campaign_completeness_report(
             issues.append("unexpected_role")
         if duplicate_roles:
             issues.append("duplicate_role")
-        if finished != expected:
-            issues.append("unfinished_role")
+        if termination_accepted != expected:
+            issues.append("termination_unaccepted")
+        if schema_supported != expected:
+            issues.append("campaign_schema_unsupported")
+        if not workload_contract_consistent:
+            issues.append("workload_mismatch")
         if successful != expected:
             issues.append("unsuccessful_role")
         if finalized != expected:
             issues.append("unfinalized_role")
         if valid != expected:
             issues.append("integrity_invalid")
+        measurement_issues = []
+        if not complete:
+            measurement_issues.append("operational_incomplete")
+        if sidecar_valid != expected:
+            measurement_issues.append("sidecar_invalid")
+        if not sidecar_contract_consistent:
+            measurement_issues.append("sidecar_mismatch")
+        if not measurement_contract_consistent:
+            measurement_issues.append("measurement_contract_mismatch")
+        if identity_inconsistent:
+            measurement_issues.append("profile_identity_mismatch")
+        if measurement_eligible != expected:
+            measurement_issues.append("measurement_ineligible")
 
         profile_complete: set[str] = set()
         profile_not_applicable: set[str] = set()
@@ -3545,11 +3873,39 @@ def campaign_completeness_report(
                     f"{role}:{count}" for role, count in sorted(duplicate_roles.items())
                 ),
                 "finished_roles": ";".join(sorted(finished)),
+                "termination_accepted_roles": ";".join(
+                    sorted(termination_accepted)
+                ),
+                "controlled_stop_roles": ";".join(sorted(controlled_stop)),
+                "termination_class_by_role": "|".join(termination_classes),
+                "campaign_schema_supported_roles": ";".join(
+                    sorted(schema_supported)
+                ),
+                "campaign_profile_identity_inconsistent_roles": ";".join(
+                    sorted(identity_inconsistent)
+                ),
+                "workload_contract_consistent": int(
+                    workload_contract_consistent
+                ),
+                "sidecar_contract_consistent": int(sidecar_contract_consistent),
+                "measurement_contract_consistent": int(
+                    measurement_contract_consistent
+                ),
                 "successful_roles": ";".join(sorted(successful)),
+                "sidecar_valid_roles": ";".join(sorted(sidecar_valid)),
+                "measurement_eligible_roles": ";".join(
+                    sorted(measurement_eligible)
+                ),
                 "finalized_roles": ";".join(sorted(finalized)),
                 "integrity_valid_roles": ";".join(sorted(valid)),
                 "paired_complete": int(complete),
                 "status": "complete" if complete else ";".join(issues or ["incomplete"]),
+                "paired_measurement_complete": int(measurement_complete),
+                "measurement_status": (
+                    "complete"
+                    if measurement_complete
+                    else ";".join(measurement_issues or ["incomplete"])
+                ),
                 "profile_complete_roles": ";".join(sorted(profile_complete)),
                 "profile_not_applicable_roles": ";".join(
                     sorted(profile_not_applicable)
@@ -3632,6 +3988,7 @@ def build_extended_reports(
             metadata_by_dir,
             campaign_by_dir,
             profile_coverage_by_dir,
+            integrity.rows,
         ),
     }
     return reports

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import json
 import os
 import sys
 import tempfile
@@ -17,6 +18,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from oai_profile_archive import (  # noqa: E402
     MANIFEST_NAME,
+    archive_identity,
     finalize_archive,
     register_external_source,
     sha256_file,
@@ -41,6 +43,111 @@ def write_run(run_dir: Path) -> None:
 
 
 class ArchiveIntegrityTest(unittest.TestCase):
+    def test_disabled_controlled_sigint_has_consistent_archive_state(self) -> None:
+        with tempfile.TemporaryDirectory(
+            prefix="oai-profile-controlled-disabled-"
+        ) as temporary:
+            run_dir = Path(temporary) / "run"
+            run_dir.mkdir()
+            campaign = {
+                "schema_version": 1,
+                "runner_version": 2,
+                "run_id": "controlled-disabled",
+                "campaign_id": "controlled-campaign",
+                "experiment_id": "controlled-experiment",
+                "variant": "disabled",
+                "trial": 1,
+                "role": "gNB",
+                "hostname": "laptop",
+                "host": "local",
+                "status": "exited_nonzero",
+                "return_code": -2,
+                "stop_reason": "duration_elapsed",
+                "completion_classifier_version": 1,
+                "controlled_stop_requested": 1,
+                "shutdown_stage": "SIGINT",
+                "shutdown_verified": 1,
+                "remote_completion_identity_verified": "not_applicable",
+                "termination_class": "controlled_sigint_signal",
+            }
+            (run_dir / "campaign_run.json").write_text(
+                json.dumps(campaign, sort_keys=True) + "\n"
+            )
+            self.assertEqual(
+                archive_identity(run_dir)["archive_state"],
+                "runner_completed_controlled_sigint",
+            )
+            finalize_archive(run_dir)
+            self.assertTrue(all(result.valid for result in verify_archive(run_dir)))
+            with (run_dir / MANIFEST_NAME).open(newline="") as stream:
+                rows = list(csv.DictReader(stream))
+            self.assertEqual(
+                {row["archive_state"] for row in rows},
+                {"runner_completed_controlled_sigint"},
+            )
+
+            unproven = Path(temporary) / "unproven"
+            unproven.mkdir()
+            campaign.pop("completion_classifier_version")
+            campaign.pop("controlled_stop_requested")
+            campaign.pop("shutdown_stage")
+            campaign.pop("shutdown_verified")
+            campaign.pop("remote_completion_identity_verified")
+            (unproven / "campaign_run.json").write_text(
+                json.dumps(campaign, sort_keys=True) + "\n"
+            )
+            self.assertEqual(
+                archive_identity(unproven)["archive_state"],
+                "runner_incomplete",
+            )
+
+            natural = Path(temporary) / "natural"
+            natural.mkdir()
+            natural_campaign = {
+                **campaign,
+                "status": "finished",
+                "return_code": 0,
+                "completion_classifier_version": 1,
+                "controlled_stop_requested": 0,
+                "shutdown_stage": "none",
+                "shutdown_verified": 1,
+                "remote_completion_identity_verified": "not_applicable",
+                "termination_class": "natural_zero",
+            }
+            (natural / "campaign_run.json").write_text(
+                json.dumps(natural_campaign, sort_keys=True) + "\n"
+            )
+            self.assertEqual(
+                archive_identity(natural)["archive_state"],
+                "runner_completed",
+            )
+
+            for name, tampered in (
+                ("natural-escalated", {**natural_campaign, "shutdown_stage": "SIGTERM"}),
+                ("natural-unverified", {**natural_campaign, "shutdown_verified": 0}),
+                (
+                    "natural-unsupported",
+                    {**natural_campaign, "completion_classifier_version": 999},
+                ),
+                (
+                    "remote-natural-unverified",
+                    {
+                        **natural_campaign,
+                        "host": "cm5",
+                        "remote_completion_identity_verified": 0,
+                    },
+                ),
+            ):
+                invalid = Path(temporary) / name
+                invalid.mkdir()
+                (invalid / "campaign_run.json").write_text(
+                    json.dumps(tampered, sort_keys=True) + "\n"
+                )
+                self.assertEqual(
+                    archive_identity(invalid)["archive_state"],
+                    "runner_incomplete",
+                )
+
     def test_verify_rejects_malformed_manifest_rows(self) -> None:
         with tempfile.TemporaryDirectory(prefix="oai-profile-manifest-validation-") as temporary:
             run_dir = Path(temporary) / "run"

@@ -30,6 +30,15 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from oai_profile_archive import finalize_archive, register_external_source  # noqa: E402
+from oai_profile_campaign_semantics import (  # noqa: E402
+    COMPLETION_CLASSIFIER_VERSION,
+    classify_role_termination,
+    pair_measurement_contracts_match,
+    role_termination_succeeded,
+    sidecar_evidence_is_valid,
+    workload_evidence_is_valid,
+    workload_contracts_match,
+)
 from oai_profile_workload import (  # noqa: E402
     WorkloadSpec,
     command_plan as workload_command_plan,
@@ -38,7 +47,7 @@ from oai_profile_workload import (  # noqa: E402
 
 
 CAMPAIGN_SCHEMA_VERSION = 1
-RUNNER_VERSION = "1"
+RUNNER_VERSION = "2"
 CONTROL_SCHEMA_VERSION = 1
 SAFE_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*$")
 CONTROL_TOKEN = re.compile(r"^[0-9a-f]{32}$")
@@ -94,16 +103,39 @@ RESULT_FIELDS = [
     "return_code",
     "run_status",
     "stop_reason",
+    "completion_classifier_version",
+    "controlled_stop_requested",
+    "shutdown_stage",
+    "shutdown_verified",
+    "remote_completion_identity_verified",
+    "termination_class",
     "archive_status",
     "sidecar_status",
+    "sidecar_artifact",
     "workload_status",
     "workload_artifact",
     "network_cleanup_status",
     "notes",
 ]
-PRE_IDENTITY_RESULT_FIELDS = [
+COMPLETION_RESULT_FIELDS = {
+    "completion_classifier_version",
+    "controlled_stop_requested",
+    "shutdown_stage",
+    "shutdown_verified",
+    "remote_completion_identity_verified",
+    "termination_class",
+}
+PRE_COMPLETION_RESULT_FIELDS = [
     field_name
     for field_name in RESULT_FIELDS
+    if field_name not in COMPLETION_RESULT_FIELDS and field_name != "sidecar_artifact"
+]
+PRE_SIDECAR_ARTIFACT_RESULT_FIELDS = [
+    field_name for field_name in RESULT_FIELDS if field_name != "sidecar_artifact"
+]
+PRE_IDENTITY_RESULT_FIELDS = [
+    field_name
+    for field_name in PRE_COMPLETION_RESULT_FIELDS
     if field_name
     not in {"transport_return_code", "remote_completion_return_code"}
 ]
@@ -167,6 +199,8 @@ class ProcessHandle:
     end_realtime_ns: int = 0
     end_monotonic_ns: int = 0
     stop_reason: str = ""
+    controlled_stop_requested: bool = False
+    shutdown_stage: str = "none"
     sidecar_tool: str = "none"
     sidecar_artifact: str = ""
     sidecar_version: str = ""
@@ -180,6 +214,7 @@ class ProcessHandle:
     control_token: str = ""
     transport_return_code: int | None = None
     remote_completion_return_code: int | None = None
+    remote_completion_identity_verified: bool = False
     shutdown_verified: bool = False
     run_status: str = "planned"
     initial_manifest: dict[str, Any] = field(default_factory=dict)
@@ -340,7 +375,8 @@ def parse_variant(value: Any) -> Variant:
 
 def load_spec(path: Path) -> dict[str, Any]:
     spec = json.loads(path.read_text())
-    if spec.get("schema_version") != CAMPAIGN_SCHEMA_VERSION:
+    schema_version = spec.get("schema_version")
+    if type(schema_version) is not int or schema_version != CAMPAIGN_SCHEMA_VERSION:
         raise ValueError(f"campaign schema_version must be {CAMPAIGN_SCHEMA_VERSION}")
     require_safe_name(str(spec.get("campaign_id", "")), "campaign_id")
     if not isinstance(spec.get("roles"), dict) or not spec["roles"]:
@@ -805,8 +841,7 @@ def remote_control_inner_command(
         "umask 077; "
         f"if test -e {shlex.quote(start_path)} || "
         f"test -e {shlex.quote(completion_path)}; then exit 47; fi; "
-        f"setsid sh -c {shlex.quote(payload)} & payload_pid=$!; "
-        "wait \"$payload_pid\"; command_rc=$?; "
+        f"setsid sh -c {shlex.quote(payload)}; command_rc=$?; "
         f"actual=$(cat -- {shlex.quote(start_path)}) || exit 46; "
         "printf '%s\\n' \"$actual\" \"return_code=$command_rc\" "
         f"> {shlex.quote(completion_temporary)} || exit 46; "
@@ -1526,7 +1561,7 @@ def workload_shutdown_target_is_running(workload: WorkloadHandle) -> bool:
     if workload.process is None:
         return False
     if not workload.endpoint.remote:
-        return workload.process.poll() is None
+        return local_process_group_is_running(workload.process)
     remote_state = workload_remote_group_is_running(workload)
     return True if remote_state is None else remote_state or workload.process.poll() is None
 
@@ -1538,7 +1573,7 @@ def workload_shutdown_is_verified(workload: WorkloadHandle) -> bool:
         return False
     if workload.endpoint.remote:
         return workload_remote_group_is_running(workload) is False
-    return True
+    return not local_process_group_is_running(workload.process)
 
 
 def signal_workload(workload: WorkloadHandle, signal_name: str) -> None:
@@ -1611,7 +1646,7 @@ def signal_workload(workload: WorkloadHandle, signal_name: str) -> None:
                     f"local workload SSH KILL failed: {error}",
                 )
         return
-    if workload.process.poll() is not None:
+    if not local_process_group_is_running(workload.process):
         return
     if workload.endpoint.sudo:
         try:
@@ -1843,6 +1878,17 @@ def process_is_running(handle: ProcessHandle) -> bool:
     return handle.process is not None and handle.process.poll() is None
 
 
+def local_process_group_is_running(process: subprocess.Popen[Any]) -> bool:
+    process.poll()
+    try:
+        os.killpg(process.pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
+
+
 def append_note_once(handle: ProcessHandle, note: str) -> None:
     if note not in handle.notes:
         handle.notes.append(note)
@@ -1870,6 +1916,7 @@ def remote_group_is_running(handle: ProcessHandle) -> bool | None:
         and isinstance(identity.get("return_code"), int)
     ):
         handle.remote_completion_return_code = identity["return_code"]
+        handle.remote_completion_identity_verified = True
     if state is None:
         append_note_once(
             handle,
@@ -1880,14 +1927,17 @@ def remote_group_is_running(handle: ProcessHandle) -> bool | None:
 
 def shutdown_target_is_running(handle: ProcessHandle) -> bool:
     if not handle.endpoint.remote:
-        return process_is_running(handle)
+        return (
+            handle.process is not None
+            and local_process_group_is_running(handle.process)
+        )
     remote_state = remote_group_is_running(handle)
     return True if remote_state is None else remote_state or process_is_running(handle)
 
 
-def signal_handle(handle: ProcessHandle, signal_name: str) -> None:
+def signal_handle(handle: ProcessHandle, signal_name: str) -> bool:
     if handle.process is None:
-        return
+        return False
     if handle.endpoint.remote:
         if not handle.control_token:
             state: bool | None = None
@@ -1916,7 +1966,7 @@ def signal_handle(handle: ProcessHandle, signal_name: str) -> None:
                     )
                 except OSError as error:
                     append_note_once(handle, f"local SSH control KILL failed: {error}")
-            return
+            return False
         if state is False:
             if process_is_running(handle):
                 try:
@@ -1929,7 +1979,7 @@ def signal_handle(handle: ProcessHandle, signal_name: str) -> None:
                         handle,
                         f"local SSH control {signal_name} failed: {error}",
                     )
-            return
+            return False
         assert identity is not None
         command = remote_identity_signal_command(
             handle.control_start_path,
@@ -1950,16 +2000,18 @@ def signal_handle(handle: ProcessHandle, signal_name: str) -> None:
                 append_note_once(handle, "killed local SSH transport after remote KILL")
             except OSError as error:
                 append_note_once(handle, f"local SSH control KILL failed: {error}")
-        return
-    if not process_is_running(handle):
-        return
+        return result is not None and result.returncode == 0
+    if not local_process_group_is_running(handle.process):
+        return False
     try:
         if handle.endpoint.sudo:
             subprocess.run(["sudo", "-n", "kill", f"-{signal_name}", "--", f"-{handle.process.pid}"], check=True)
         else:
             os.killpg(handle.process.pid, getattr(signal, f"SIG{signal_name}"))
+        return True
     except (OSError, subprocess.CalledProcessError) as error:
         handle.notes.append(f"local {signal_name} failed: {error}")
+        return False
 
 
 def wait_handles(handles: list[ProcessHandle], timeout_s: float) -> bool:
@@ -1978,7 +2030,7 @@ def role_shutdown_is_verified(handle: ProcessHandle) -> bool:
         return False
     if handle.endpoint.remote:
         return remote_group_is_running(handle) is False
-    return True
+    return not local_process_group_is_running(handle.process)
 
 
 def stop_handles(handles: list[ProcessHandle], reason: str, grace_s: float) -> bool:
@@ -1987,7 +2039,9 @@ def stop_handles(handles: list[ProcessHandle], reason: str, grace_s: float) -> b
         try:
             if shutdown_target_is_running(handle):
                 handle.stop_reason = reason
-                signal_handle(handle, "INT")
+                handle.controlled_stop_requested = True
+                if signal_handle(handle, "INT"):
+                    handle.shutdown_stage = "SIGINT"
         except BaseException as error:
             append_note_once(handle, f"INT shutdown stage failed: {error}")
             failures.append(error)
@@ -1999,7 +2053,8 @@ def stop_handles(handles: list[ProcessHandle], reason: str, grace_s: float) -> b
     if not stopped_after_int:
         for handle in reversed(handles):
             try:
-                signal_handle(handle, "TERM")
+                if signal_handle(handle, "TERM"):
+                    handle.shutdown_stage = "SIGTERM"
             except BaseException as error:
                 append_note_once(handle, f"TERM shutdown stage failed: {error}")
                 failures.append(error)
@@ -2011,7 +2066,8 @@ def stop_handles(handles: list[ProcessHandle], reason: str, grace_s: float) -> b
     if not stopped_after_term:
         for handle in reversed(handles):
             try:
-                signal_handle(handle, "KILL")
+                if signal_handle(handle, "KILL"):
+                    handle.shutdown_stage = "SIGKILL"
             except BaseException as error:
                 append_note_once(handle, f"KILL shutdown stage failed: {error}")
                 failures.append(error)
@@ -2094,6 +2150,50 @@ def run_manifest(
         "transport_return_code": "",
         "remote_completion_return_code": "",
         "status": "prepared",
+        "completion_classifier_version": COMPLETION_CLASSIFIER_VERSION,
+        "controlled_stop_requested": 0,
+        "shutdown_stage": "none",
+        "shutdown_verified": 0,
+        "remote_completion_identity_verified": (
+            0 if endpoint.remote else "not_applicable"
+        ),
+        "termination_class": "not_launched",
+    }
+
+
+def completion_evidence(
+    handle: ProcessHandle,
+    *,
+    status_field: str,
+) -> dict[str, object]:
+    evidence: dict[str, object] = {
+        "host": handle.endpoint.host,
+        status_field: handle.run_status,
+        "return_code": authoritative_return_code(handle),
+        "remote_completion_return_code": (
+            handle.remote_completion_return_code
+            if handle.remote_completion_return_code is not None
+            else ""
+        ),
+        "stop_reason": handle.stop_reason
+        or ("process_exit" if handle.process is not None else handle.run_status),
+        "completion_classifier_version": COMPLETION_CLASSIFIER_VERSION,
+        "controlled_stop_requested": int(handle.controlled_stop_requested),
+        "shutdown_stage": handle.shutdown_stage,
+        "shutdown_verified": int(handle.shutdown_verified),
+        "remote_completion_identity_verified": (
+            int(handle.remote_completion_identity_verified)
+            if handle.endpoint.remote
+            else "not_applicable"
+        ),
+    }
+    evidence["termination_class"] = classify_role_termination(
+        evidence,
+        status_field=status_field,
+    )
+    return {
+        field_name: evidence[field_name]
+        for field_name in COMPLETION_RESULT_FIELDS
     }
 
 
@@ -2155,6 +2255,7 @@ def update_manifest(handle: ProcessHandle) -> dict[str, Any]:
             "workload_control_results": handle.workload_control_results,
             "archive_status": "finalization_pending",
             "notes": list(handle.notes),
+            **completion_evidence(handle, status_field="status"),
         }
     )
     path = f"{handle.run_dir}/campaign_run.json"
@@ -2524,10 +2625,12 @@ def result_row(handle: ProcessHandle, plan: ExperimentPlan) -> dict[str, Any]:
         "stop_reason": handle.stop_reason or ("process_exit" if handle.process is not None else handle.run_status),
         "archive_status": handle.archive_status,
         "sidecar_status": handle.sidecar_status,
+        "sidecar_artifact": handle.sidecar_artifact,
         "workload_status": handle.workload_status,
         "workload_artifact": handle.workload_artifact,
         "network_cleanup_status": handle.network_cleanup_status,
         "notes": "; ".join(note for note in handle.notes if note),
+        **completion_evidence(handle, status_field="run_status"),
     }
 
 
@@ -2543,6 +2646,8 @@ def append_results(path: Path, rows: list[dict[str, Any]]) -> None:
         if fieldname_tuple in {
             tuple(LEGACY_RESULT_FIELDS),
             tuple(PRE_IDENTITY_RESULT_FIELDS),
+            tuple(PRE_COMPLETION_RESULT_FIELDS),
+            tuple(PRE_SIDECAR_ARTIFACT_RESULT_FIELDS),
         }:
             if any(None in row for row in existing_rows):
                 raise ValueError(f"legacy campaign results contain extra columns: {path}")
@@ -2556,8 +2661,16 @@ def append_results(path: Path, rows: list[dict[str, Any]]) -> None:
                             row["workload_status"] = "not_configured"
                             row["workload_artifact"] = ""
                             row["network_cleanup_status"] = "not_configured"
-                        row["transport_return_code"] = ""
-                        row["remote_completion_return_code"] = ""
+                        if fieldnames not in (
+                            PRE_COMPLETION_RESULT_FIELDS,
+                            PRE_SIDECAR_ARTIFACT_RESULT_FIELDS,
+                        ):
+                            row["transport_return_code"] = ""
+                            row["remote_completion_return_code"] = ""
+                        if fieldnames != PRE_SIDECAR_ARTIFACT_RESULT_FIELDS:
+                            for field_name in COMPLETION_RESULT_FIELDS:
+                                row[field_name] = ""
+                        row["sidecar_artifact"] = ""
                         writer.writerow(row)
                     stream.flush()
                     os.fsync(stream.fileno())
@@ -2942,44 +3055,31 @@ def integer_filter(values: list[str]) -> set[int]:
 
 
 def campaign_result_workload_succeeded(row: dict[str, Any]) -> bool:
-    workload_status = str(row.get("workload_status", "not_configured"))
-    workload_artifact = str(row.get("workload_artifact", ""))
-    cleanup_status = str(
-        row.get("network_cleanup_status", "not_configured")
-    )
-    stop_reason = str(row.get("stop_reason", ""))
-    if workload_status == "not_configured":
-        return (
-            not workload_artifact
-            and cleanup_status == "not_configured"
-            and stop_reason == "duration_elapsed"
-        )
-    return (
-        workload_status == "completed"
-        and bool(workload_artifact)
-        and cleanup_status in {"ok", "already_absent"}
-        and stop_reason == "measurement_complete"
-    )
+    return workload_evidence_is_valid(row)
+
+
+def campaign_result_process_succeeded(row: dict[str, Any]) -> bool:
+    return role_termination_succeeded(row, status_field="run_status")
+
+
+def campaign_result_sidecar_succeeded(row: dict[str, Any]) -> bool:
+    return sidecar_evidence_is_valid(row, tool_field="sidecar")
 
 
 def experiment_failed(rows: list[dict[str, Any]], expected_roles: set[str]) -> bool:
     observed_roles = [str(row.get("role", "")) for row in rows]
     role_set_invalid = len(observed_roles) != len(expected_roles) or set(observed_roles) != expected_roles
-    workload_values = {
-        (
-            str(row.get("workload_status", "not_configured")),
-            str(row.get("workload_artifact", "")),
-            str(row.get("network_cleanup_status", "not_configured")),
-        )
-        for row in rows
-    }
-    workload_mismatch = len(workload_values) > 1
-    return role_set_invalid or workload_mismatch or any(
+    workload_mismatch = not workload_contracts_match(rows)
+    measurement_contract_mismatch = not pair_measurement_contracts_match(
+        rows,
+        tool_field="sidecar",
+    )
+    return role_set_invalid or workload_mismatch or measurement_contract_mismatch or any(
         row["archive_status"] != "finalized"
-        or row["run_status"] != "finished"
-        or row["return_code"] != 0
+        or not campaign_result_process_succeeded(row)
+        or row.get("duration_status") != "valid"
         or not campaign_result_workload_succeeded(row)
-        or (row["sidecar"] != "none" and row["sidecar_status"] != "registered")
+        or not campaign_result_sidecar_succeeded(row)
         for row in rows
     )
 

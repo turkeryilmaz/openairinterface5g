@@ -6,6 +6,7 @@ from __future__ import annotations
 import csv
 import json
 import os
+import shutil
 import shlex
 import signal
 import subprocess
@@ -22,7 +23,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import oai_profile_campaign as campaign  # noqa: E402
 import oai_profile_reports as reports  # noqa: E402
-from oai_profile_archive import verify_archive  # noqa: E402
+from oai_profile_archive import archive_identity, verify_archive  # noqa: E402
 from oai_profile_campaign import (  # noqa: E402
     Endpoint,
     ExperimentPlan,
@@ -50,6 +51,7 @@ GRACEFUL_SLEEP = (
     "signal.signal(signal.SIGINT,lambda *_:sys.exit(0));"
     "time.sleep(30)"
 )
+DEFAULT_SIGINT_SLEEP = "import time;time.sleep(30)"
 
 
 def role(profile_root: Path, name: str, command: list[str], delay_s: float = 0.0) -> dict[str, object]:
@@ -1125,18 +1127,24 @@ class CampaignRunnerTest(unittest.TestCase):
             process=stopped_process,
             endpoint=local_endpoint,
             shutdown_verified=False,
+            notes=[],
         )
         nrue_handle = SimpleNamespace(
             stop_reason="",
             process=stopped_process,
             endpoint=local_endpoint,
             shutdown_verified=False,
+            notes=[],
         )
         handles = [gnb_handle, nrue_handle]
         with (
             patch("oai_profile_campaign.shutdown_target_is_running", return_value=True),
-            patch("oai_profile_campaign.signal_handle") as signal,
+            patch(
+                "oai_profile_campaign.signal_handle",
+                side_effect=[True] * 6,
+            ) as signal,
             patch("oai_profile_campaign.wait_handles", side_effect=[False, False, True]),
+            patch("oai_profile_campaign.role_shutdown_is_verified", return_value=True),
         ):
             stopped = campaign.stop_handles(handles, "duration_elapsed", 1.0)
 
@@ -1152,6 +1160,85 @@ class CampaignRunnerTest(unittest.TestCase):
                 (gnb_handle, "KILL"),
             ],
         )
+        for handle in handles:
+            self.assertTrue(handle.controlled_stop_requested)
+            self.assertEqual(handle.shutdown_stage, "SIGKILL")
+
+    def test_local_shutdown_escalates_for_live_group_descendant(self) -> None:
+        with tempfile.TemporaryDirectory(
+            prefix="oai-profile-local-descendant-"
+        ) as temporary:
+            marker = Path(temporary) / "child-ready"
+            script = "\n".join(
+                (
+                    "import os, signal, time",
+                    "pid = os.fork()",
+                    "if pid == 0:",
+                    "    signal.signal(signal.SIGINT, signal.SIG_IGN)",
+                    f"    open({str(marker)!r}, 'w').write(str(os.getpid()))",
+                    "    while True: time.sleep(30)",
+                    "signal.signal(signal.SIGINT, signal.SIG_DFL)",
+                    "while True: time.sleep(30)",
+                )
+            )
+            process = subprocess.Popen(
+                [sys.executable, "-c", script],
+                start_new_session=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            endpoint = Endpoint(
+                role="gNB",
+                host="local",
+                hostname="local",
+                profile_root=temporary,
+                command=[sys.executable, "-c", script],
+                cwd=None,
+                sudo=False,
+                environment={},
+                archive_tool=None,
+                launch_delay_s=0.0,
+            )
+            handle = ProcessHandle(
+                endpoint=endpoint,
+                run_dir=temporary,
+                command=endpoint.command,
+                environment={},
+                process=process,
+                run_status="running",
+            )
+            try:
+                deadline = time.monotonic() + 5.0
+                while not marker.exists() and time.monotonic() < deadline:
+                    time.sleep(0.01)
+                self.assertTrue(marker.exists())
+                self.assertTrue(
+                    campaign.stop_handles([handle], "duration_elapsed", 0.25)
+                )
+                campaign.close_handle(handle)
+                self.assertEqual(handle.shutdown_stage, "SIGTERM")
+                self.assertTrue(handle.shutdown_verified)
+                self.assertFalse(campaign.local_process_group_is_running(process))
+                self.assertFalse(
+                    campaign.campaign_result_process_succeeded(
+                        {
+                            **campaign.completion_evidence(
+                                handle,
+                                status_field="run_status",
+                            ),
+                            "host": "local",
+                            "run_status": handle.run_status,
+                            "return_code": campaign.authoritative_return_code(handle),
+                            "stop_reason": handle.stop_reason,
+                        }
+                    )
+                )
+            finally:
+                try:
+                    os.killpg(process.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+                process.wait(timeout=5)
 
     def test_remote_launch_waits_for_session_payload(self) -> None:
         with tempfile.TemporaryDirectory(prefix="oai-profile-remote-launch-") as temporary:
@@ -1289,6 +1376,208 @@ class CampaignRunnerTest(unittest.TestCase):
             self.assertEqual(completion["return_code"], 0)
             self.assertEqual(completion["pgid"], start["pgid"])
             self.assertEqual(completion["start_ticks"], start["start_ticks"])
+
+    def test_emulated_remote_sigint_lifecycle_is_archived_and_accepted(self) -> None:
+        cases = (
+            (
+                "signal",
+                "",
+                128 + signal.SIGINT,
+                "controlled_sigint_signal",
+            ),
+            (
+                "graceful",
+                "signal.signal(signal.SIGINT,lambda *_:sys.exit(0));",
+                0,
+                "controlled_sigint_zero",
+            ),
+        )
+        for index, (name, signal_setup, expected_return, expected_class) in enumerate(
+            cases,
+            start=5,
+        ):
+            with self.subTest(name=name), tempfile.TemporaryDirectory(
+                prefix=f"oai-profile-remote-{name}-"
+            ) as temporary:
+                root = Path(temporary)
+                run_dir = root / "run"
+                run_dir.mkdir()
+                ready_path = root / "payload.ready"
+                payload = (
+                    "import pathlib,signal,sys,time;"
+                    f"{signal_setup}"
+                    f"pathlib.Path({str(ready_path)!r}).write_text('ready');"
+                    "time.sleep(30)"
+                )
+                endpoint = Endpoint(
+                    role="nrUE",
+                    host="remote-emulated",
+                    hostname="remote-emulated",
+                    profile_root=str(root),
+                    command=[sys.executable, "-c", payload],
+                    cwd=None,
+                    sudo=False,
+                    environment={},
+                    archive_tool=str(
+                        Path(__file__).resolve().parents[1]
+                        / "oai_profile_archive.py"
+                    ),
+                    launch_delay_s=0.0,
+                )
+                plan = ExperimentPlan(
+                    "campaign-test",
+                    "baseline",
+                    Variant("disabled", False, "off", {"tool": "none"}, {}),
+                    1,
+                    f"campaign-test-remote-{name}-t001",
+                    {},
+                    {},
+                )
+                token = str(index) * 32
+                handle = ProcessHandle(
+                    endpoint=endpoint,
+                    run_dir=str(run_dir),
+                    command=endpoint.command,
+                    environment={},
+                    start_realtime_ns=time.time_ns(),
+                    start_monotonic_ns=time.clock_gettime_ns(
+                        time.CLOCK_MONOTONIC_RAW
+                    ),
+                    experiment_id=plan.experiment_id,
+                    control_token=token,
+                    prepared=True,
+                    run_status="running",
+                )
+                handle.initial_manifest = campaign.run_manifest(
+                    endpoint,
+                    plan,
+                    str(run_dir),
+                    endpoint.command,
+                    {},
+                )
+                campaign.atomic_write_json(
+                    run_dir / "campaign_run.json",
+                    handle.initial_manifest,
+                )
+                wrapper = campaign.remote_control_inner_command(
+                    endpoint.command,
+                    action=handle.control_action,
+                    experiment_id=handle.experiment_id,
+                    token=handle.control_token,
+                    start_path=handle.control_start_path,
+                    completion_path=handle.control_completion_path,
+                )
+                process = subprocess.Popen(
+                    ["setsid", "--wait", "sh", "-c", wrapper],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                )
+                handle.process = process
+
+                def run_locally(
+                    endpoint_argument: Endpoint,
+                    command: str,
+                    check: bool = True,
+                    capture: bool = False,
+                    timeout_s: float | None = campaign.REMOTE_CONTROL_TIMEOUT_S,
+                ) -> subprocess.CompletedProcess[str]:
+                    del endpoint_argument
+                    return subprocess.run(
+                        ["sh", "-c", command],
+                        check=check,
+                        text=True,
+                        capture_output=capture,
+                        timeout=timeout_s,
+                    )
+
+                def upload_locally(
+                    endpoint_argument: Endpoint,
+                    local_path: Path,
+                    remote_path: str,
+                ) -> None:
+                    del endpoint_argument
+                    destination = Path(remote_path)
+                    destination.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(local_path, destination)
+
+                start_record: dict[str, object] | None = None
+                try:
+                    deadline = time.monotonic() + 5.0
+                    while time.monotonic() < deadline:
+                        if (
+                            Path(handle.control_start_path).is_file()
+                            and ready_path.is_file()
+                        ):
+                            start_record = campaign.parse_control_record(
+                                Path(handle.control_start_path).read_text(),
+                                action=handle.control_action,
+                                experiment_id=handle.experiment_id,
+                                token=handle.control_token,
+                                completion=False,
+                            )
+                            break
+                        if process.poll() is not None:
+                            break
+                        time.sleep(0.01)
+                    self.assertIsNotNone(start_record)
+                    with (
+                        patch(
+                            "oai_profile_campaign.remote_run",
+                            side_effect=run_locally,
+                        ),
+                        patch(
+                            "oai_profile_campaign.remote_upload",
+                            side_effect=upload_locally,
+                        ),
+                    ):
+                        self.assertTrue(
+                            campaign.stop_handles(
+                                [handle],
+                                "duration_elapsed",
+                                2.0,
+                            )
+                        )
+                        campaign.close_handle(handle)
+                        campaign.update_manifest(handle)
+                        campaign.finalize_handle(handle)
+                finally:
+                    if process.poll() is None:
+                        if start_record is not None:
+                            try:
+                                os.killpg(
+                                    int(start_record["pgid"]),
+                                    signal.SIGKILL,
+                                )
+                            except OSError:
+                                pass
+                        process.kill()
+                    process.communicate(timeout=5.0)
+
+                completion = campaign.parse_control_record(
+                    Path(handle.control_completion_path).read_text(),
+                    action=handle.control_action,
+                    experiment_id=handle.experiment_id,
+                    token=handle.control_token,
+                    completion=True,
+                )
+                self.assertEqual(completion["return_code"], expected_return)
+                self.assertEqual(handle.remote_completion_return_code, expected_return)
+                self.assertTrue(handle.remote_completion_identity_verified)
+                self.assertEqual(handle.shutdown_stage, "SIGINT")
+                self.assertTrue(handle.shutdown_verified)
+                self.assertEqual(handle.archive_status, "finalized")
+                row = campaign.result_row(handle, plan)
+                self.assertEqual(row["return_code"], expected_return)
+                self.assertEqual(row["termination_class"], expected_class)
+                self.assertFalse(experiment_failed([row], {"nrUE"}))
+                self.assertEqual(
+                    archive_identity(run_dir)["archive_state"],
+                    "runner_completed_controlled_sigint",
+                )
+                self.assertTrue(
+                    all(result.valid for result in verify_archive(run_dir))
+                )
 
     def test_remote_completion_waits_for_live_process_group_descendant(self) -> None:
         with tempfile.TemporaryDirectory(prefix="oai-profile-remote-descendant-") as temporary:
@@ -1938,6 +2227,10 @@ os._exit(0)
                 self.assertEqual(row["sidecar_status"], "not_requested")
                 self.assertEqual(row["workload_status"], "not_configured")
                 self.assertEqual(row["workload_artifact"], "")
+                self.assertEqual(row["controlled_stop_requested"], 1)
+                self.assertEqual(row["shutdown_stage"], "SIGINT")
+                self.assertEqual(row["shutdown_verified"], 1)
+                self.assertEqual(row["termination_class"], "controlled_sigint_zero")
                 self.assertEqual(
                     row["network_cleanup_status"],
                     "not_configured",
@@ -1959,17 +2252,103 @@ os._exit(0)
             self.assertEqual(len(results), 2)
             self.assertEqual({row["run_status"] for row in results}, {"finished"})
 
+    def test_local_sigint_exit_is_preserved_and_accepted(self) -> None:
+        with tempfile.TemporaryDirectory(
+            prefix="oai-profile-campaign-controlled-int-"
+        ) as temporary:
+            root = Path(temporary)
+            spec_path = root / "campaign.json"
+            command = [sys.executable, "-c", DEFAULT_SIGINT_SLEEP]
+            write_spec(spec_path, root / "profiles", command, command)
+
+            spec = load_spec(spec_path)
+            plan = build_plans(spec, set(), set(), set())[0]
+            control_root = root / "control"
+            rows = execute_plan(spec, plan, control_root)
+
+            self.assertFalse(experiment_failed(rows, {"gNB", "nrUE"}))
+            for row in rows:
+                self.assertEqual(row["run_status"], "exited_nonzero")
+                self.assertEqual(row["return_code"], -signal.SIGINT)
+                self.assertEqual(row["stop_reason"], "duration_elapsed")
+                self.assertEqual(row["shutdown_stage"], "SIGINT")
+                self.assertEqual(row["shutdown_verified"], 1)
+                self.assertEqual(
+                    row["termination_class"],
+                    "controlled_sigint_signal",
+                )
+                self.assertEqual(row["archive_status"], "finalized")
+                run_dir = Path(row["run_dir"])
+                self.assertTrue(
+                    all(result.valid for result in verify_archive(run_dir))
+                )
+                manifest = json.loads((run_dir / "campaign_run.json").read_text())
+                self.assertEqual(manifest["status"], "exited_nonzero")
+                self.assertEqual(manifest["return_code"], -signal.SIGINT)
+                self.assertEqual(
+                    manifest["termination_class"],
+                    "controlled_sigint_signal",
+                )
+
     def test_experiment_failure_requires_complete_duration(self) -> None:
         successful = {
             "role": "gNB",
+            "host": "local",
             "archive_status": "finalized",
             "run_status": "finished",
             "return_code": 0,
             "stop_reason": "duration_elapsed",
+            "duration_status": "valid",
+            "completion_classifier_version": "1",
+            "controlled_stop_requested": 1,
+            "shutdown_stage": "SIGINT",
+            "shutdown_verified": 1,
+            "remote_completion_identity_verified": "not_applicable",
+            "remote_completion_return_code": "",
+            "termination_class": "controlled_sigint_zero",
+            "profile_enabled": 1,
+            "pmu_mode": "off",
             "sidecar": "none",
             "sidecar_status": "not_requested",
+            "sidecar_artifact": "",
+            "workload_status": "not_configured",
+            "workload_artifact": "",
+            "network_cleanup_status": "not_configured",
         }
         self.assertFalse(experiment_failed([successful], {"gNB"}))
+        self.assertTrue(
+            experiment_failed(
+                [{**successful, "sidecar_status": ""}],
+                {"gNB"},
+            )
+        )
+        legacy_no_sidecar = {
+            key: value
+            for key, value in successful.items()
+            if key
+            not in {
+                "completion_classifier_version",
+                "controlled_stop_requested",
+                "shutdown_stage",
+                "shutdown_verified",
+                "remote_completion_identity_verified",
+                "termination_class",
+            }
+        }
+        legacy_no_sidecar["sidecar_status"] = ""
+        self.assertFalse(experiment_failed([legacy_no_sidecar], {"gNB"}))
+        legacy_offline_sidecar = {
+            **legacy_no_sidecar,
+            "sidecar_tool": legacy_no_sidecar.pop("sidecar"),
+        }
+        self.assertTrue(
+            reports.campaign_sidecar_evidence_succeeded(legacy_offline_sidecar)
+        )
+        self.assertFalse(
+            reports.campaign_sidecar_evidence_succeeded(
+                {**successful, "sidecar_status": ""}
+            )
+        )
         for field, value in (
             ("archive_status", "finalize_failed"),
             ("run_status", "exited_nonzero"),
@@ -2004,6 +2383,61 @@ os._exit(0)
         }
         loaded_peer = {**loaded, "role": "nrUE"}
         self.assertFalse(experiment_failed([loaded, loaded_peer], {"gNB", "nrUE"}))
+        sidecar_loaded = {
+            **loaded,
+            "sidecar": "perf_stat",
+            "sidecar_status": "registered",
+            "sidecar_artifact": "/profiles/run/sidecars/perf_stat.csv",
+        }
+        self.assertFalse(experiment_failed([sidecar_loaded], {"gNB"}))
+        self.assertTrue(
+            experiment_failed(
+                [{**sidecar_loaded, "sidecar_artifact": ""}],
+                {"gNB"},
+            )
+        )
+        controlled_loaded = {
+            **loaded,
+            "run_status": "exited_nonzero",
+            "return_code": -signal.SIGINT,
+            "termination_class": "controlled_sigint_signal",
+            "termination_class_recorded": "controlled_sigint_signal",
+            "termination_class_recomputed": "controlled_sigint_signal",
+            "termination_class_consistent": 1,
+        }
+        controlled_remote = {
+            **loaded_peer,
+            "host": "cm5",
+            "run_status": "exited_nonzero",
+            "return_code": 128 + signal.SIGINT,
+            "remote_completion_return_code": 128 + signal.SIGINT,
+            "remote_completion_identity_verified": 1,
+            "termination_class": "controlled_sigint_signal",
+        }
+        self.assertFalse(
+            experiment_failed(
+                [controlled_loaded, controlled_remote],
+                {"gNB", "nrUE"},
+            )
+        )
+        for tampered in (
+            {**controlled_loaded, "shutdown_stage": "SIGTERM"},
+            {**controlled_loaded, "shutdown_verified": 0},
+            {**controlled_loaded, "controlled_stop_requested": 0},
+            {**controlled_loaded, "completion_classifier_version": ""},
+            {**controlled_loaded, "return_code": 130},
+            {**controlled_remote, "remote_completion_identity_verified": 0},
+            {**controlled_remote, "remote_completion_return_code": ""},
+            {**controlled_remote, "remote_completion_return_code": 0},
+            {**controlled_remote, "return_code": -signal.SIGINT},
+            {**controlled_remote, "stop_reason": "interrupted"},
+            {**controlled_remote, "duration_status": "unavailable"},
+        ):
+            with self.subTest(tampered=tampered):
+                peer = controlled_remote if tampered.get("role") == "gNB" else controlled_loaded
+                self.assertTrue(
+                    experiment_failed([tampered, peer], {"gNB", "nrUE"})
+                )
         wrong_loaded_stop = {
             **loaded_peer,
             "stop_reason": "duration_elapsed",
@@ -2029,6 +2463,19 @@ os._exit(0)
             "return_code": 0,
             "stop_reason": "duration_elapsed",
             "duration_status": "valid",
+            "archive_status": "finalization_pending",
+            "archive_manifest_present": 1,
+            "campaign_schema_version": 1,
+            "campaign_schema_supported": 1,
+            "profile_enabled": 0,
+            "pmu_mode": "off",
+            "sidecar_tool": "none",
+            "sidecar_status": "not_requested",
+            "sidecar_artifact": "",
+            "sidecar_config_json": '{"tool":"none"}',
+            "workload_status": "not_configured",
+            "workload_artifact": "",
+            "network_cleanup_status": "not_configured",
         }
         loaded = {
             **baseline,
@@ -2039,6 +2486,34 @@ os._exit(0)
         }
         self.assertTrue(reports.campaign_member_succeeded(baseline))
         self.assertTrue(reports.campaign_member_succeeded(loaded))
+        controlled_local = {
+            **loaded,
+            "host": "local",
+            "status": "exited_nonzero",
+            "return_code": -signal.SIGINT,
+            "completion_classifier_version": "1",
+            "controlled_stop_requested": 1,
+            "shutdown_stage": "SIGINT",
+            "shutdown_verified": 1,
+            "remote_completion_identity_verified": "not_applicable",
+            "remote_completion_return_code": "",
+            "termination_class": "controlled_sigint_signal",
+            "termination_class_recorded": "controlled_sigint_signal",
+        }
+        controlled_remote = {
+            **controlled_local,
+            "host": "cm5",
+            "return_code": str(128 + signal.SIGINT),
+            "remote_completion_return_code": 128 + signal.SIGINT,
+            "remote_completion_identity_verified": 1,
+        }
+        self.assertTrue(reports.campaign_member_succeeded(controlled_local))
+        self.assertTrue(reports.campaign_member_succeeded(controlled_remote))
+        self.assertTrue(
+            reports.campaign_member_succeeded(
+                {**baseline, "duration_status": "legacy_realtime_fallback"}
+            )
+        )
         for tampered in (
             {**baseline, "stop_reason": "measurement_complete"},
             {
@@ -2049,9 +2524,49 @@ os._exit(0)
             {**loaded, "stop_reason": "duration_elapsed"},
             {**loaded, "workload_artifact": ""},
             {**loaded, "network_cleanup_status": "failed"},
+            {**controlled_local, "shutdown_stage": "SIGTERM"},
+            {**controlled_local, "shutdown_verified": 0},
+            {**controlled_local, "duration_status": "legacy_realtime_fallback"},
+            {**controlled_remote, "remote_completion_identity_verified": 0},
+            {**controlled_remote, "return_code": "-2"},
         ):
             with self.subTest(tampered=tampered):
                 self.assertFalse(reports.campaign_member_succeeded(tampered))
+
+        self.assertTrue(
+            reports.campaign_member_measurement_eligible(
+                baseline,
+                archive_integrity_valid=True,
+            )
+        )
+        for tampered, integrity_valid in (
+            ({**baseline, "archive_manifest_present": 0}, True),
+            ({**baseline, "archive_status": "finalize_failed"}, True),
+            (
+                {
+                    **baseline,
+                    "sidecar_tool": "perf_stat",
+                    "sidecar_status": "artifact_missing",
+                },
+                True,
+            ),
+            (baseline, False),
+            (
+                {
+                    **controlled_local,
+                    "termination_class_recorded": "natural_zero",
+                },
+                True,
+            ),
+        ):
+            with self.subTest(tampered=tampered, integrity=integrity_valid):
+                self.assertTrue(reports.campaign_member_succeeded(tampered))
+                self.assertFalse(
+                    reports.campaign_member_measurement_eligible(
+                        tampered,
+                        archive_integrity_valid=integrity_valid,
+                    )
+                )
 
         with tempfile.TemporaryDirectory(
             prefix="oai-profile-campaign-report-"
@@ -2059,9 +2574,12 @@ os._exit(0)
             run_dir = Path(temporary).resolve()
             key = str(run_dir)
             campaign_metadata = {
-                **loaded,
+                **controlled_remote,
+                "schema_version": 1,
+                "runner_version": "2",
+                "sidecar": {"tool": "none"},
                 "transport_return_code": 255,
-                "remote_completion_return_code": 0,
+                "remote_completion_return_code": 128 + signal.SIGINT,
                 "workload_control_results": {
                     "run": {
                         "transport_return_code": 255,
@@ -2083,14 +2601,477 @@ os._exit(0)
             "workload/workload_run.json",
         )
         self.assertEqual(row["network_cleanup_status"], "ok")
+        self.assertEqual(row["status"], "exited_nonzero")
+        self.assertEqual(row["return_code"], "130")
+        self.assertEqual(row["shutdown_stage"], "SIGINT")
+        self.assertEqual(row["termination_class"], "controlled_sigint_signal")
         self.assertEqual(row["transport_return_code"], 255)
-        self.assertEqual(row["remote_completion_return_code"], 0)
+        self.assertEqual(row["remote_completion_return_code"], 128 + signal.SIGINT)
         self.assertEqual(
             json.loads(str(row["workload_control_results_json"]))["run"][
                 "remote_completion_return_code"
             ],
             0,
         )
+
+    def test_controlled_sigint_proof_reaches_completeness_and_observer(self) -> None:
+        common = {
+            "campaign_id": "controlled-campaign",
+            "experiment_id": "controlled-experiment",
+            "case": "RxTxTime3",
+            "variant": "in-process",
+            "trial": "1",
+            "profile_enabled": True,
+            "pmu_mode": "off",
+            "status": "exited_nonzero",
+            "stop_reason": "measurement_complete",
+            "duration_s": 120.0,
+            "duration_status": "valid",
+            "completion_classifier_version": "1",
+            "controlled_stop_requested": 1,
+            "shutdown_stage": "SIGINT",
+            "shutdown_verified": 1,
+            "termination_class": "controlled_sigint_signal",
+            "termination_class_recorded": "controlled_sigint_signal",
+            "termination_class_recomputed": "controlled_sigint_signal",
+            "termination_class_consistent": 1,
+            "sidecar_tool": "none",
+            "sidecar_status": "not_requested",
+            "sidecar_artifact": "",
+            "sidecar_config_json": '{"tool":"none"}',
+            "sidecar_evidence_fields_present": "complete",
+            "workload_status": "completed",
+            "workload_artifact": "workload/workload_run.json",
+            "network_cleanup_status": "ok",
+            "workload_evidence_fields_present": "complete",
+            "archive_status": "finalization_pending",
+            "archive_manifest_present": 1,
+            "campaign_schema_version": 1,
+            "campaign_schema_supported": 1,
+            "campaign_profile_identity_consistent": 1,
+        }
+        gnb = {
+            **common,
+            "profile_dir": "/run/controlled-gNB",
+            "role": "gNB",
+            "host": "local",
+            "return_code": -signal.SIGINT,
+            "remote_completion_return_code": "",
+            "remote_completion_identity_verified": "not_applicable",
+        }
+        nrue = {
+            **common,
+            "profile_dir": "/run/controlled-nrUE",
+            "role": "nrUE",
+            "host": "cm5",
+            "return_code": 128 + signal.SIGINT,
+            "remote_completion_return_code": 128 + signal.SIGINT,
+            "remote_completion_identity_verified": 1,
+        }
+        integrity = [
+            {"profile_dir": row["profile_dir"], "valid": 1}
+            for row in (gnb, nrue)
+        ]
+        coverage = {
+            str(gnb["profile_dir"]): "complete",
+            str(nrue["profile_dir"]): "complete",
+        }
+        completeness = reports.campaign_completeness_report(
+            [gnb, nrue],
+            integrity,
+            coverage,
+        ).rows[0]
+        self.assertEqual(completeness["finished_roles"], "")
+        self.assertEqual(
+            completeness["termination_accepted_roles"],
+            "gNB;nrUE",
+        )
+        self.assertEqual(completeness["controlled_stop_roles"], "gNB;nrUE")
+        self.assertEqual(
+            completeness["termination_class_by_role"],
+            "gNB:controlled_sigint_signal|nrUE:controlled_sigint_signal",
+        )
+        self.assertEqual(completeness["workload_contract_consistent"], 1)
+        self.assertEqual(completeness["successful_roles"], "gNB;nrUE")
+        self.assertEqual(completeness["sidecar_valid_roles"], "gNB;nrUE")
+        self.assertEqual(
+            completeness["measurement_eligible_roles"],
+            "gNB;nrUE",
+        )
+        self.assertEqual(completeness["paired_complete"], 1)
+        self.assertEqual(completeness["paired_measurement_complete"], 1)
+        self.assertEqual(completeness["status"], "complete")
+        self.assertEqual(completeness["profile_evidence_complete"], 1)
+
+        summary_rows = [
+            {
+                "profile_dir": row["profile_dir"],
+                "event_kind": "duration",
+                "event_name": "SLOT_PROCESS",
+                "p50_us": 100.0 if row["role"] == "gNB" else 200.0,
+            }
+            for row in (gnb, nrue)
+        ]
+        metadata_by_dir = {
+            str(row["profile_dir"]): {
+                "campaign_id": str(row["campaign_id"]),
+                "role": str(row["role"]),
+                "variant": str(row["variant"]),
+                "trial": str(row["trial"]),
+            }
+            for row in (gnb, nrue)
+        }
+        campaign_by_dir = {
+            str(row["profile_dir"]): {"case": str(row["case"])}
+            for row in (gnb, nrue)
+        }
+        observer = reports.observer_effect_report(
+            [gnb, nrue],
+            summary_rows,
+            metadata_by_dir,
+            campaign_by_dir,
+            coverage,
+            integrity,
+        )
+        success_rows = [
+            row
+            for row in observer.rows
+            if row["metric_name"] == "process_success"
+        ]
+        self.assertEqual(len(success_rows), 2)
+        self.assertEqual({row["mean"] for row in success_rows}, {1.0})
+        duration_rows = [
+            row
+            for row in observer.rows
+            if row["metric_name"] == "process_duration"
+        ]
+        self.assertEqual(len(duration_rows), 2)
+        self.assertEqual({row["sample_count"] for row in duration_rows}, {1})
+        event_rows = [
+            row for row in observer.rows if row["metric_name"] == "SLOT_PROCESS"
+        ]
+        self.assertEqual(len(event_rows), 2)
+        self.assertEqual({row["sample_count"] for row in event_rows}, {1})
+
+        unproven_nrue = {**nrue, "shutdown_stage": "SIGTERM"}
+        failed = reports.campaign_completeness_report(
+            [gnb, unproven_nrue],
+            integrity,
+            coverage,
+        ).rows[0]
+        self.assertEqual(failed["termination_accepted_roles"], "gNB")
+        self.assertEqual(failed["successful_roles"], "gNB")
+        self.assertEqual(failed["paired_complete"], 0)
+        self.assertIn("termination_unaccepted", str(failed["status"]))
+        self.assertIn("unsuccessful_role", str(failed["status"]))
+
+        mismatched_workload = {
+            **nrue,
+            "workload_status": "not_configured",
+            "workload_artifact": "",
+            "network_cleanup_status": "not_configured",
+            "stop_reason": "duration_elapsed",
+        }
+        mismatch = reports.campaign_completeness_report(
+            [gnb, mismatched_workload],
+            integrity,
+            coverage,
+        ).rows[0]
+        self.assertEqual(mismatch["termination_accepted_roles"], "gNB;nrUE")
+        self.assertEqual(mismatch["successful_roles"], "gNB;nrUE")
+        self.assertEqual(mismatch["workload_contract_consistent"], 0)
+        self.assertEqual(mismatch["paired_complete"], 0)
+        self.assertIn("workload_mismatch", str(mismatch["status"]))
+
+        mismatch_observer = reports.observer_effect_report(
+            [gnb, mismatched_workload],
+            summary_rows,
+            metadata_by_dir,
+            campaign_by_dir,
+            coverage,
+            integrity,
+        )
+        self.assertEqual(
+            {row["metric_name"] for row in mismatch_observer.rows},
+            {"process_success"},
+        )
+        self.assertEqual(
+            {row["mean"] for row in mismatch_observer.rows},
+            {1.0},
+        )
+
+        for name, acquisition_nrue, acquisition_integrity in (
+            (
+                "sidecar",
+                {
+                    **nrue,
+                    "sidecar_tool": "perf_stat",
+                    "sidecar_status": "artifact_missing",
+                    "sidecar_artifact": "",
+                },
+                integrity,
+            ),
+            (
+                "integrity",
+                nrue,
+                [
+                    integrity[0],
+                    {"profile_dir": nrue["profile_dir"], "valid": 0},
+                ],
+            ),
+        ):
+            with self.subTest(acquisition_failure=name):
+                acquisition_observer = reports.observer_effect_report(
+                    [gnb, acquisition_nrue],
+                    summary_rows,
+                    metadata_by_dir,
+                    campaign_by_dir,
+                    coverage,
+                    acquisition_integrity,
+                )
+                process_success = [
+                    row
+                    for row in acquisition_observer.rows
+                    if row["metric_name"] == "process_success"
+                ]
+                process_duration = [
+                    row
+                    for row in acquisition_observer.rows
+                    if row["metric_name"] == "process_duration"
+                ]
+                event_metrics = [
+                    row
+                    for row in acquisition_observer.rows
+                    if row["metric_name"] == "SLOT_PROCESS"
+                ]
+                self.assertEqual({row["mean"] for row in process_success}, {1.0})
+                self.assertEqual(len(process_duration), 2)
+                self.assertEqual(event_metrics, [])
+
+        valid_perf_stat_nrue = {
+            **nrue,
+            "sidecar_tool": "perf_stat",
+            "sidecar_status": "registered",
+            "sidecar_artifact": "sidecars/perf-stat.csv",
+            "sidecar_config_json": '{"interval_ms":1000,"tool":"perf_stat"}',
+        }
+        sidecar_mismatch = reports.campaign_completeness_report(
+            [gnb, valid_perf_stat_nrue],
+            integrity,
+            coverage,
+        ).rows[0]
+        self.assertEqual(sidecar_mismatch["paired_complete"], 1)
+        self.assertEqual(sidecar_mismatch["sidecar_contract_consistent"], 0)
+        self.assertEqual(sidecar_mismatch["measurement_contract_consistent"], 0)
+        self.assertEqual(sidecar_mismatch["paired_measurement_complete"], 0)
+        self.assertIn("sidecar_mismatch", str(sidecar_mismatch["measurement_status"]))
+        mixed_observer = reports.observer_effect_report(
+            [gnb, valid_perf_stat_nrue],
+            summary_rows,
+            metadata_by_dir,
+            campaign_by_dir,
+            coverage,
+            integrity,
+        )
+        self.assertEqual(
+            {row["metric_name"] for row in mixed_observer.rows},
+            {"process_success", "process_duration"},
+        )
+
+        blank_identity_nrue = {**nrue, "experiment_id": ""}
+        blank_observer = reports.observer_effect_report(
+            [gnb, blank_identity_nrue],
+            summary_rows,
+            metadata_by_dir,
+            campaign_by_dir,
+            coverage,
+            integrity,
+        )
+        self.assertEqual(
+            {row["metric_name"] for row in blank_observer.rows},
+            {"process_success"},
+        )
+        blank_completeness = reports.campaign_completeness_report(
+            [gnb, blank_identity_nrue],
+            integrity,
+            coverage,
+        ).rows
+        self.assertEqual(len(blank_completeness), 1)
+        self.assertEqual(blank_completeness[0]["roles_present"], "gNB")
+        self.assertEqual(blank_completeness[0]["paired_complete"], 0)
+        self.assertIn("missing_role", str(blank_completeness[0]["status"]))
+
+        unsupported_nrue = {**nrue, "campaign_schema_supported": 0}
+        unsupported = reports.campaign_completeness_report(
+            [gnb, unsupported_nrue],
+            integrity,
+            coverage,
+        ).rows[0]
+        self.assertEqual(unsupported["paired_complete"], 0)
+        self.assertIn("campaign_schema_unsupported", str(unsupported["status"]))
+        unsupported_observer = reports.observer_effect_report(
+            [gnb, unsupported_nrue],
+            summary_rows,
+            metadata_by_dir,
+            campaign_by_dir,
+            coverage,
+            integrity,
+        )
+        self.assertEqual(
+            {row["metric_name"] for row in unsupported_observer.rows},
+            {"process_success"},
+        )
+
+    def test_campaign_schema_and_identity_are_fail_closed(self) -> None:
+        with tempfile.TemporaryDirectory(
+            prefix="oai-profile-schema-identity-"
+        ) as temporary:
+            root = Path(temporary)
+            spec_path = root / "campaign.json"
+            write_spec(
+                spec_path,
+                root / "profiles",
+                ["/bin/true"],
+                ["/bin/true"],
+            )
+            original = json.loads(spec_path.read_text())
+            for schema_version in (True, 1.0, "1", 2, None):
+                value = dict(original)
+                if schema_version is None:
+                    value.pop("schema_version", None)
+                else:
+                    value["schema_version"] = schema_version
+                spec_path.write_text(json.dumps(value))
+                with self.subTest(input_schema=schema_version):
+                    with self.assertRaisesRegex(ValueError, "schema_version"):
+                        campaign.load_spec(spec_path)
+
+            manifest_path = root / "campaign_run.json"
+            for schema_version in (1, True, 1.0, "1", 2, None):
+                value = {"schema_version": schema_version}
+                if schema_version is None:
+                    value = {}
+                manifest_path.write_text(json.dumps(value))
+                parsed, status = reports.read_campaign(manifest_path)
+                self.assertEqual(parsed, value)
+                if type(schema_version) is int and schema_version == 1:
+                    self.assertEqual(status, "ok")
+                else:
+                    self.assertTrue(status.startswith("unsupported_schema:"))
+
+            run_dirs = [root / "gNB", root / "nrUE"]
+            for run_dir in run_dirs:
+                run_dir.mkdir()
+                (run_dir / "archive_manifest.csv").touch()
+            def manifest(role: str, experiment_id: str) -> dict[str, object]:
+                return {
+                    "schema_version": 1,
+                    "runner_version": "2",
+                    "completion_classifier_version": "1",
+                    "campaign_id": "identity-campaign",
+                    "experiment_id": experiment_id,
+                    "case": "RxTxTime3",
+                    "variant": "in-process",
+                    "trial": 1,
+                    "role": role,
+                    "host": "local",
+                    "hostname": f"{role.lower()}-host",
+                    "profile_enabled": True,
+                    "pmu_mode": "off",
+                    "status": "finished",
+                    "return_code": 0,
+                    "remote_completion_return_code": "",
+                    "stop_reason": "duration_elapsed",
+                    "controlled_stop_requested": 0,
+                    "shutdown_stage": "none",
+                    "shutdown_verified": 1,
+                    "remote_completion_identity_verified": "not_applicable",
+                    "termination_class": "natural_zero",
+                    "start_realtime_ns": 1_000_000_000,
+                    "end_realtime_ns": 2_000_000_000,
+                    "start_monotonic_raw_ns": 500_000_000,
+                    "end_monotonic_raw_ns": 1_500_000_000,
+                    "sidecar": {"tool": "none"},
+                    "sidecar_tool": "none",
+                    "sidecar_status": "not_requested",
+                    "sidecar_artifact": "",
+                    "workload_status": "not_configured",
+                    "workload_artifact": "",
+                    "network_cleanup_status": "not_configured",
+                    "archive_status": "finalization_pending",
+                }
+
+            campaign_by_dir = {
+                str(run_dirs[0]): manifest("gNB", "campaign-e1"),
+                str(run_dirs[1]): manifest("nrUE", "campaign-e2"),
+            }
+            metadata_by_dir = {
+                str(run_dir): {
+                    "experiment_id": "metadata-shared",
+                    "campaign_id": "identity-campaign",
+                    "variant": "in-process",
+                    "trial": "1",
+                    "role": role,
+                    "hostname": f"{role.lower()}-host",
+                }
+                for run_dir, role in zip(run_dirs, ("gNB", "nrUE"))
+            }
+            report = reports.campaign_report(
+                run_dirs,
+                metadata_by_dir,
+                campaign_by_dir,
+                {str(run_dir): "ok" for run_dir in run_dirs},
+            )
+            self.assertEqual(
+                {row["experiment_id"] for row in report.rows},
+                {"campaign-e1", "campaign-e2"},
+            )
+            self.assertEqual(
+                {row["campaign_profile_identity_consistent"] for row in report.rows},
+                {0},
+            )
+            self.assertTrue(
+                all(
+                    "experiment_id:value_mismatch"
+                    in str(row["campaign_profile_identity_mismatches"])
+                    for row in report.rows
+                )
+            )
+            completeness = reports.campaign_completeness_report(
+                report.rows,
+                [
+                    {"profile_dir": str(run_dir), "valid": 1}
+                    for run_dir in run_dirs
+                ],
+            )
+            self.assertEqual(len(completeness.rows), 2)
+            self.assertTrue(
+                all(row["paired_complete"] == 0 for row in completeness.rows)
+            )
+
+            missing_experiment = dict(campaign_by_dir[str(run_dirs[0])])
+            missing_experiment.pop("experiment_id")
+            missing_report = reports.campaign_report(
+                [run_dirs[0]],
+                {str(run_dirs[0]): metadata_by_dir[str(run_dirs[0])]},
+                {str(run_dirs[0]): missing_experiment},
+                {str(run_dirs[0]): "ok"},
+            ).rows[0]
+            self.assertEqual(missing_report["experiment_id"], "")
+            self.assertIn(
+                "experiment_id:campaign_missing",
+                str(missing_report["campaign_profile_identity_mismatches"]),
+            )
+
+            disabled = manifest("gNB", "disabled-e1")
+            disabled["profile_enabled"] = False
+            disabled_report = reports.campaign_report(
+                [run_dirs[0]],
+                {},
+                {str(run_dirs[0]): disabled},
+                {str(run_dirs[0]): "ok"},
+            ).rows[0]
+            self.assertEqual(disabled_report["campaign_profile_identity_consistent"], "")
 
     def test_campaign_results_migrates_only_known_headers(self) -> None:
         with tempfile.TemporaryDirectory(
@@ -2105,6 +3086,11 @@ os._exit(0)
             for name, fields in (
                 ("legacy", campaign.LEGACY_RESULT_FIELDS),
                 ("pre-identity", campaign.PRE_IDENTITY_RESULT_FIELDS),
+                ("pre-completion", campaign.PRE_COMPLETION_RESULT_FIELDS),
+                (
+                    "pre-sidecar-artifact",
+                    campaign.PRE_SIDECAR_ARTIFACT_RESULT_FIELDS,
+                ),
             ):
                 with self.subTest(name=name):
                     path = root / f"{name}.csv"
@@ -2116,6 +3102,11 @@ os._exit(0)
                             "workload_artifact"
                         ] = "workload/workload_run.json"
                         old_row["network_cleanup_status"] = "ok"
+                    if "transport_return_code" in old_row:
+                        old_row["transport_return_code"] = "255"
+                        old_row["remote_completion_return_code"] = "130"
+                    if "completion_classifier_version" in old_row:
+                        old_row["completion_classifier_version"] = "1"
                     with path.open("w", newline="", encoding="utf-8") as stream:
                         writer = csv.DictWriter(stream, fieldnames=fields)
                         writer.writeheader()
@@ -2129,14 +3120,23 @@ os._exit(0)
                             campaign.RESULT_FIELDS,
                         )
                     self.assertEqual(len(migrated), 2)
-                    self.assertEqual(
-                        migrated[0]["transport_return_code"],
-                        "",
-                    )
-                    self.assertEqual(
-                        migrated[0]["remote_completion_return_code"],
-                        "",
-                    )
+                    preserves_identity = name in {
+                        "pre-completion",
+                        "pre-sidecar-artifact",
+                    }
+                    expected_transport = "255" if preserves_identity else ""
+                    expected_remote = "130" if preserves_identity else ""
+                    self.assertEqual(migrated[0]["transport_return_code"], expected_transport)
+                    self.assertEqual(migrated[0]["remote_completion_return_code"], expected_remote)
+                    for field_name in campaign.COMPLETION_RESULT_FIELDS:
+                        expected = (
+                            "1"
+                            if name == "pre-sidecar-artifact"
+                            and field_name == "completion_classifier_version"
+                            else ""
+                        )
+                        self.assertEqual(migrated[0][field_name], expected)
+                    self.assertEqual(migrated[0]["sidecar_artifact"], "")
                     expected_status = (
                         "not_configured" if name == "legacy" else "completed"
                     )

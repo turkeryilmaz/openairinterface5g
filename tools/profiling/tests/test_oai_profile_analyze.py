@@ -2102,6 +2102,9 @@ class AnalyzerSchemaCompatibilityTest(unittest.TestCase):
                 "trial": "1",
                 "role": role,
                 "profile_enabled": profile_enabled,
+                "pmu_mode": "off",
+                "campaign_schema_version": 1,
+                "campaign_schema_supported": 1,
                 "status": "finished",
                 "return_code": 0,
                 "stop_reason": "duration_elapsed",
@@ -2261,6 +2264,10 @@ class AnalyzerSchemaCompatibilityTest(unittest.TestCase):
             "variant": "disabled",
             "trial": "1",
             "role": "gNB",
+            "profile_enabled": False,
+            "pmu_mode": "off",
+            "campaign_schema_version": 1,
+            "campaign_schema_supported": 1,
             "status": "finished",
             "return_code": 0,
             "stop_reason": "duration_elapsed",
@@ -2277,9 +2284,39 @@ class AnalyzerSchemaCompatibilityTest(unittest.TestCase):
             "stop_reason": "paired_role_exited",
             "duration_s": 2.0,
         }
-        observer = observer_effect_report([successful, early], [], {}, {}, {})
-        duration = next(row for row in observer.rows if row["metric_name"] == "process_duration")
-        success = next(row for row in observer.rows if row["metric_name"] == "process_success")
+        successful_peer = {
+            **successful,
+            "profile_dir": "/run/valid-peer",
+            "role": "nrUE",
+        }
+        early_peer = {
+            **successful_peer,
+            "profile_dir": "/run/early-peer",
+            "experiment_id": "early-experiment",
+            "trial": "2",
+        }
+        process_members = [successful, successful_peer, early, early_peer]
+        observer = observer_effect_report(
+            process_members,
+            [],
+            {},
+            {},
+            {},
+            [
+                {"profile_dir": row["profile_dir"], "valid": 1}
+                for row in process_members
+            ],
+        )
+        duration = next(
+            row
+            for row in observer.rows
+            if row["metric_name"] == "process_duration" and row["role"] == "gNB"
+        )
+        success = next(
+            row
+            for row in observer.rows
+            if row["metric_name"] == "process_success" and row["role"] == "gNB"
+        )
         self.assertEqual(duration["sample_count"], 1)
         self.assertEqual(duration["p50"], 120.0)
         self.assertEqual(success["sample_count"], 2)
@@ -2339,8 +2376,33 @@ class AnalyzerSchemaCompatibilityTest(unittest.TestCase):
             "trial": "4",
         }
         campaign_by_dir[missing_event_key] = {"case": "case"}
+        successful_event_peer = {
+            **successful_event,
+            "profile_dir": "/run/valid-event-peer",
+            "role": "nrUE",
+        }
+        early_event_peer = {
+            **successful_event_peer,
+            "profile_dir": "/run/early-event-peer",
+            "experiment_id": "early-experiment",
+            "trial": "2",
+        }
+        missing_event_peer = {
+            **successful_event_peer,
+            "profile_dir": "/run/missing-event-peer",
+            "experiment_id": "missing-event-experiment",
+            "trial": "4",
+        }
+        event_members = [
+            successful_event,
+            successful_event_peer,
+            early_event,
+            early_event_peer,
+            missing_event_profile,
+            missing_event_peer,
+        ]
         observer = observer_effect_report(
-            [successful_event, early_event, missing_event_profile],
+            event_members,
             summary_rows,
             metadata_by_dir,
             campaign_by_dir,
@@ -2349,6 +2411,10 @@ class AnalyzerSchemaCompatibilityTest(unittest.TestCase):
                 str(early_event["profile_dir"]): "complete",
                 missing_event_key: "event_stream_header_only",
             },
+            [
+                {"profile_dir": row["profile_dir"], "valid": 1}
+                for row in event_members
+            ],
         )
         event = next(row for row in observer.rows if row["metric_name"] == "UE_SLOT_PROCESS")
         self.assertEqual(event["sample_count"], 1)
@@ -2389,8 +2455,19 @@ class AnalyzerSchemaCompatibilityTest(unittest.TestCase):
             baseline_key: {"case": "case"},
             variant_key: {"case": "case"},
         }
+        baseline_peer = {
+            **baseline,
+            "profile_dir": "/run/incomplete-baseline-peer",
+            "role": "nrUE",
+        }
+        variant_peer = {
+            **variant,
+            "profile_dir": "/run/complete-variant-peer",
+            "role": "nrUE",
+        }
+        comparison_members = [baseline, baseline_peer, variant, variant_peer]
         observer = observer_effect_report(
-            [baseline, variant],
+            comparison_members,
             [
                 {
                     "profile_dir": baseline_key,
@@ -2413,6 +2490,10 @@ class AnalyzerSchemaCompatibilityTest(unittest.TestCase):
                 baseline_key: "lifecycle_unknown",
                 variant_key: "complete",
             },
+            [
+                {"profile_dir": row["profile_dir"], "valid": 1}
+                for row in comparison_members
+            ],
         )
         pmu_variant = next(
             row
@@ -2432,7 +2513,7 @@ class AnalyzerSchemaCompatibilityTest(unittest.TestCase):
         self.assertTrue(math.isnan(float(pmu_variant["p50_delta"])))
 
         missing_baseline = observer_effect_report(
-            [variant],
+            [variant, variant_peer],
             [
                 {
                     "profile_dir": variant_key,
@@ -2445,6 +2526,10 @@ class AnalyzerSchemaCompatibilityTest(unittest.TestCase):
             {variant_key: metadata_by_dir[variant_key]},
             {variant_key: campaign_by_dir[variant_key]},
             {variant_key: "complete"},
+            [
+                {"profile_dir": variant_key, "valid": 1},
+                {"profile_dir": variant_peer["profile_dir"], "valid": 1},
+            ],
         )
         missing_baseline_variant = next(
             row
@@ -2917,6 +3002,7 @@ class AnalyzerSchemaCompatibilityTest(unittest.TestCase):
                 "oai_profile_deadlines",
                 "oai_profile_reports",
                 "oai_profile_archive",
+                "oai_profile_campaign_semantics",
             }
             module_rows = {
                 name: row

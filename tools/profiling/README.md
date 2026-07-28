@@ -215,12 +215,40 @@ the laptop orchestrator clock and are therefore left blank in the remote
 `CLOCK_MONOTONIC_RAW` and can be aligned to that run's `sync.csv`.
 Commands and environments are archived in redacted form; password/token/key
 fragments and IMSI/SUPI/IMEI subscriber identifiers are never retained.
-Successful execution requires every role to reach the declared duration,
-return zero after the requested stop, finalize its archive, and register every
-requested sidecar. An early role exit fails the experiment even when its
-process wrapper returns zero.
+The campaign command returns success only when every role reaches the declared
+duration or loaded-workload terminal condition, both roles carry the same
+workload contract, every archive is finalized, and every requested sidecar has
+a registered artifact. Offline reports preserve more specific evidence layers
+instead of relabeling an acquisition failure as a process failure.
+
+Runner-version-2 evidence distinguishes a natural zero exit from a positively
+proven controlled SIGINT stop. A controlled stop is accepted only when the
+runner records the request, successfully delivers SIGINT to the exact local or
+identity-bound remote process group, does not escalate to SIGTERM/SIGKILL,
+verifies group death, and obtains the endpoint-correct authoritative return
+(`-2` locally or identity-bound `130` remotely; zero remains valid for a
+graceful handler). The remote wrapper runs its inner `setsid` action
+synchronously so it does not impose the ignored-SIGINT disposition of an
+asynchronous shell job on the target. Raw status, return codes, transport
+status, and stop reason are never rewritten. An early or externally interrupted
+role remains failed even when its wrapper returns zero, `-2`, or `130`.
 `--keep-going` continues the matrix after a failed paired experiment; without
 it, the runner stops after preserving and finalizing the failed experiment.
+
+The current campaign contract requires `schema_version` to be the exact JSON
+integer `1`; Boolean, floating-point, string, missing, and future values are not
+silently coerced. The analyzer preserves unsupported manifests as negative
+evidence and emits `campaign_schema_version` and
+`campaign_schema_supported`, but excludes them from duration and measurement
+admission. `workload_evidence_fields_present` and
+`sidecar_evidence_fields_present` explicitly classify each outcome group as
+`absent`, `partial`, or `complete`. Runner-version-2 evidence must be complete;
+partial evidence and explicit contradictions always fail closed. Wholly absent
+runner-version-1 fields receive only the documented bounded legacy defaults.
+For a configured sidecar, the complete canonical sidecar configuration must
+name the same supported tool as the runtime outcome, and a requested sidecar
+without a registered artifact is unavailable evidence rather than a measured
+zero.
 
 ### Run the attach-gated loaded protocol
 
@@ -283,9 +311,13 @@ action, experiment, random token, process group, and `/proc` start ticks. A
 remote signal is sent only to an exactly matching live identity.
 
 SSH transport status and matching remote completion status are separate
-evidence. Remote success requires an authoritative matching completion with
-return code zero; process-group absence without completion proves shutdown but
-does not invent a return code. A loaded campaign member succeeds only with
+evidence. Remote success requires an authoritative matching completion;
+process-group absence without completion proves shutdown but does not invent a
+return code. Nonzero `130` is accepted only with runner-version-2
+identity-bound SIGINT delivery, a SIGINT-only shutdown stage, verified group
+death, and matching remote completion identity. Historical `-2`/`130` rows
+without these proof fields are not retroactively reclassified. A loaded
+campaign member succeeds only with
 `workload_status=completed`, a registered workload artifact,
 `network_cleanup_status=ok` or `already_absent`, and
 `stop_reason=measurement_complete`. A legacy/unloaded member instead requires
@@ -470,22 +502,66 @@ Per-record hierarchy `exclusive_valid` remains a local statement about
 persisted parent/child interval structure; global archive coverage is reported
 separately and gates observer/publication aggregation.
 
-In `campaign_completeness.csv`, `paired_complete` and `status` retain their
-operational meaning: both roles finished successfully, were finalized, and
-passed archive-manifest verification. They do not by themselves prove complete
-profiler evidence. The appended `profile_evidence_complete` and
-`profile_evidence_status` fields additionally require every profiler-enabled
-role to have `profile_coverage_status=complete`; profiler-disabled roles are
-explicitly `not_applicable`. Canonical variants must agree with their declared
-profile setting, and profiler artifacts in a declared-disabled role are
-reported as unexpected evidence; either profiler metadata or an event artifact
-is sufficient to detect that contamination even when no complete profile was
-discovered. Per-role coverage and
-incomplete/unknown/mismatched role sets remain in the same row. A
-manifest-valid zero-byte diagnostic stream can therefore be operationally
-intact while its profile evidence remains incomplete. This bounded qualifier
-does not validate PMU, sidecars, host/system sources, clock alignment, RF
-success, or whole-publication scientific validity; those are separate gates.
+The offline campaign and observer reports use explicit, non-interchangeable
+layers:
+
+- role execution success (`successful_roles` and observer
+  `process_success`) requires accepted termination, a mode-correct workload and
+  stop reason, and valid duration evidence. It deliberately does not require a
+  sidecar or archive so acquisition failure cannot be mislabeled as process/RF
+  failure;
+- observer `process_duration` additionally requires one exact gNB/nrUE pair in
+  which both members succeeded and the workload status, artifact, and cleanup
+  result match;
+- measurement eligibility additionally requires the mode-correct sidecar
+  status/artifact, finalized manifest presence, successful manifest
+  verification, and agreement between the recorded and recomputed versioned
+  termination class; and
+- event-level observer medians additionally require an exact
+  measurement-eligible pair, profiler enablement, and complete profiler
+  coverage. A successful but incomplete profile is excluded and counted, not
+  converted to a zero observation.
+
+In `campaign_runs.csv`, `termination_class_recorded`,
+`termination_class_recomputed`, and `termination_class_consistent` retain that
+integrity comparison. In `campaign_completeness.csv`, `finished_roles`
+preserves raw zero-exit provenance, while `termination_accepted_roles`,
+`controlled_stop_roles`, and `termination_class_by_role` expose the recomputed
+completion decision. `paired_complete` and `status` are the operational archive
+layer: exactly one gNB and one nrUE have a common valid workload contract,
+accepted role execution, finalized manifests, and verified archive integrity.
+They do not require sidecar evidence. `paired_measurement_complete` and
+`measurement_status` add sidecar validity, the complete measurement-eligibility
+contract, and recorded/recomputed termination-class agreement for both roles.
+
+Campaign-control identity is authoritative for campaign pairing. An eligible
+pair requires nonblank and equal `campaign_id`, `experiment_id`, `case`,
+`variant`, and `trial`; current missing campaign fields are never backfilled
+from profiler metadata. `campaign_profile_identity_consistent` and
+`campaign_profile_identity_mismatches` compare campaign identity with profiler
+metadata when profiling is enabled, while
+`campaign_profile_identity_inconsistent_roles` retains pair-level failures.
+`sidecar_contract_consistent` requires matching valid sidecar tool and full
+configuration on both roles. `measurement_contract_consistent` additionally
+requires equal explicit profiler enablement and PMU mode. A treatment mismatch
+does not retroactively turn a valid process/RF execution into a process
+failure, so operational paired duration remains reportable; it does prevent
+that pair from contributing measurement or event evidence to an observer
+cohort.
+
+`profile_evidence_complete` and `profile_evidence_status` separately require
+every profiler-enabled role in an operationally complete pair to have
+`profile_coverage_status=complete`; profiler-disabled roles are explicitly
+`not_applicable`. Canonical variants must agree with their declared profile
+setting, and profiler artifacts in a declared-disabled role are reported as
+unexpected evidence; either profiler metadata or an event artifact is
+sufficient to detect that contamination even when no complete profile was
+discovered. Per-role coverage and incomplete/unknown/mismatched role sets
+remain in the same row. A manifest-valid zero-byte diagnostic stream can
+therefore be operationally intact while its profile evidence remains
+incomplete. Neither the operational, measurement, nor profiler-evidence field
+alone validates PMU quality, host/system sources, clock alignment, RF success,
+or whole-publication scientific validity; those remain separate gates.
 
 For an unfinalized schema-2 process, `runs.csv` reports
 `clean_shutdown=unknown` when completion metadata is absent. A duration

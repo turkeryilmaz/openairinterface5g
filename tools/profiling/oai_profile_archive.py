@@ -22,6 +22,11 @@ from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import Iterable
 
+from oai_profile_campaign_semantics import (
+    classify_role_termination,
+    role_termination_succeeded,
+)
+
 
 MANIFEST_VERSION = "1"
 MANIFEST_NAME = "archive_manifest.csv"
@@ -114,7 +119,15 @@ def archive_identity(run_dir: Path) -> dict[str, str]:
     if metadata:
         archive_state = "clean_shutdown" if clean_shutdown == "1" else "unclean_or_unknown"
     else:
-        archive_state = "runner_completed" if campaign.get("status") == "finished" else "runner_incomplete"
+        termination_class = classify_role_termination(campaign)
+        if role_termination_succeeded(campaign):
+            archive_state = (
+                "runner_completed_controlled_sigint"
+                if termination_class.startswith("controlled_sigint_")
+                else "runner_completed"
+            )
+        else:
+            archive_state = "runner_incomplete"
     return {
         "schema_version": metadata.get("schema_version", str(campaign.get("schema_version", "unknown"))),
         "run_id": metadata.get("run_id", str(campaign.get("run_id", run_dir.name))),
