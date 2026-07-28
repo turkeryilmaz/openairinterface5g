@@ -331,30 +331,58 @@ class CampaignRunnerTest(unittest.TestCase):
         )
         missing = subprocess.CompletedProcess(["ssh"], 1, "", "")
 
+        completed_identity = {**start, "return_code": 0}
         completed = subprocess.CompletedProcess(
             ["ssh"],
             0,
             campaign.control_record_text(
-                {**start, "return_code": 0},
+                completed_identity,
                 completion=True,
             ),
             "",
         )
-        with patch(
-            "oai_profile_campaign.remote_run",
-            side_effect=[start_result, completed],
+        for probe_status, expected_state, expected_detail in (
+            (
+                0,
+                None,
+                "completion_present_but_original_leader_identity_observed",
+            ),
+            (1, False, "matching_completion_group_absent"),
+            (
+                2,
+                False,
+                "matching_completion_pgid_reused_original_identity_dead",
+            ),
+            (
+                3,
+                True,
+                "matching_completion_leader_absent_process_group_still_live",
+            ),
+            (44, None, "identity probe status=44"),
         ):
-            state, identity, detail = campaign.remote_control_state(
-                endpoint,
-                action="run",
-                experiment_id="experiment-t001",
-                token=token,
-                start_path="/profiles/run/workload/run.control.start",
-                completion_path="/profiles/run/workload/run.control.complete",
-            )
-        self.assertFalse(state)
-        self.assertEqual(identity, {**start, "return_code": 0})
-        self.assertEqual(detail, "matching_completion")
+            with self.subTest(completion_probe_status=probe_status):
+                probe = subprocess.CompletedProcess(
+                    ["ssh"],
+                    probe_status,
+                    "",
+                    "permission denied" if probe_status == 44 else "",
+                )
+                with patch(
+                    "oai_profile_campaign.remote_run",
+                    side_effect=[start_result, completed, probe],
+                ) as remote:
+                    state, identity, detail = campaign.remote_control_state(
+                        endpoint,
+                        action="run",
+                        experiment_id="experiment-t001",
+                        token=token,
+                        start_path="/profiles/run/workload/run.control.start",
+                        completion_path="/profiles/run/workload/run.control.complete",
+                    )
+                self.assertIs(state, expected_state)
+                self.assertEqual(identity, completed_identity)
+                self.assertIn(expected_detail, detail)
+                self.assertEqual(remote.call_count, 3)
 
         for probe_status, expected_state, expected_detail in (
             (0, True, "matching_identity_live"),
@@ -425,7 +453,97 @@ class CampaignRunnerTest(unittest.TestCase):
         )
         self.assertIn("start_ticks=987654", signal_command)
         self.assertIn("/proc/4321/stat", signal_command)
-        self.assertIn("sudo -n kill -INT -- -4321", signal_command)
+        self.assertIn("sudo -n /bin/kill -INT -- -4321", signal_command)
+
+    def test_completion_backed_group_liveness_delays_shutdown_admission(self) -> None:
+        completed_identity = {
+            "schema_version": 1,
+            "action": "role:nrUE",
+            "experiment_id": "experiment-t001",
+            "token": "c" * 32,
+            "pgid": 4321,
+            "start_ticks": 987654,
+            "return_code": 130,
+        }
+        with (
+            patch(
+                "oai_profile_campaign.remote_control_state",
+                side_effect=[
+                    (
+                        True,
+                        completed_identity,
+                        "matching_completion_leader_absent_process_group_still_live",
+                    ),
+                    (
+                        True,
+                        completed_identity,
+                        "matching_completion_leader_absent_process_group_still_live",
+                    ),
+                    (
+                        False,
+                        completed_identity,
+                        "matching_completion_group_absent",
+                    ),
+                ],
+            ) as state_probe,
+            patch("oai_profile_campaign.time.sleep") as sleep,
+        ):
+            state, identity, detail = campaign.wait_remote_control_not_live(
+                Endpoint(
+                    role="nrUE",
+                    host="cm5",
+                    hostname="cm5",
+                    profile_root="/profiles",
+                    command=["nr-uesoftmodem"],
+                    cwd=None,
+                    sudo=True,
+                    environment={},
+                    archive_tool="/repo/tools/profiling/oai_profile_archive.py",
+                    launch_delay_s=0.0,
+                ),
+                action="role:nrUE",
+                experiment_id="experiment-t001",
+                token="c" * 32,
+                start_path="/profiles/run/control.start",
+                completion_path="/profiles/run/control.complete",
+                timeout_s=10.0,
+            )
+        self.assertFalse(state)
+        self.assertEqual(identity, completed_identity)
+        self.assertEqual(detail, "matching_completion_group_absent")
+        self.assertEqual(state_probe.call_count, 3)
+        self.assertEqual(sleep.call_count, 2)
+
+        process = SimpleNamespace(poll=lambda: 130, pid=7654, returncode=130)
+        handle = ProcessHandle(
+            endpoint=Endpoint(
+                role="nrUE",
+                host="cm5",
+                hostname="cm5",
+                profile_root="/profiles",
+                command=["nr-uesoftmodem"],
+                cwd=None,
+                sudo=True,
+                environment={},
+                archive_tool="/repo/tools/profiling/oai_profile_archive.py",
+                launch_delay_s=0.0,
+            ),
+            run_dir="/profiles/run",
+            command=["nr-uesoftmodem"],
+            environment={},
+            process=process,
+            experiment_id="experiment-t001",
+            control_token="c" * 32,
+        )
+        with patch(
+            "oai_profile_campaign.remote_control_state",
+            return_value=(
+                True,
+                completed_identity,
+                "matching_completion_leader_absent_process_group_still_live",
+            ),
+        ):
+            self.assertFalse(campaign.role_shutdown_is_verified(handle))
 
     def test_synchronous_remote_workload_action_is_fail_closed(self) -> None:
         with tempfile.TemporaryDirectory(prefix="oai-profile-remote-action-") as temporary:
@@ -839,9 +957,9 @@ class CampaignRunnerTest(unittest.TestCase):
         self.assertIn("original_identity_absent", detail)
         commands = [call.args[1] for call in remote.call_args_list]
         self.assertEqual(len(commands), 3)
-        self.assertIn("sudo -n kill -INT -- -4321", commands[0])
-        self.assertIn("sudo -n kill -TERM -- -4321", commands[1])
-        self.assertIn("sudo -n kill -KILL -- -4321", commands[2])
+        self.assertIn("sudo -n /bin/kill -INT -- -4321", commands[0])
+        self.assertIn("sudo -n /bin/kill -TERM -- -4321", commands[1])
+        self.assertIn("sudo -n /bin/kill -KILL -- -4321", commands[2])
         self.assertTrue(
             all("start_ticks=987654" in command for command in commands)
         )
@@ -948,7 +1066,7 @@ class CampaignRunnerTest(unittest.TestCase):
             ):
                 campaign.signal_workload(workload, "INT")
             self.assertIn(
-                "sudo -n kill -INT -- -4321",
+                "sudo -n /bin/kill -INT -- -4321",
                 remote.call_args.args[1],
             )
             local_signal.assert_not_called()
@@ -1172,6 +1290,154 @@ class CampaignRunnerTest(unittest.TestCase):
             self.assertEqual(completion["pgid"], start["pgid"])
             self.assertEqual(completion["start_ticks"], start["start_ticks"])
 
+    def test_remote_completion_waits_for_live_process_group_descendant(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="oai-profile-remote-descendant-") as temporary:
+            root = Path(temporary)
+            start_path = root / "control.start"
+            completion_path = root / "control.complete"
+            child_path = root / "child.pid"
+            payload = f"""
+import os
+import pathlib
+import time
+
+child_pid = os.fork()
+if child_pid == 0:
+    null_fd = os.open(os.devnull, os.O_RDWR)
+    for standard_fd in (0, 1, 2):
+        os.dup2(null_fd, standard_fd)
+    if null_fd > 2:
+        os.close(null_fd)
+    pathlib.Path({str(child_path)!r}).write_text(str(os.getpid()))
+    time.sleep(30)
+    os._exit(0)
+os._exit(0)
+"""
+            wrapper = campaign.remote_control_inner_command(
+                [sys.executable, "-c", payload],
+                action="role:nrUE",
+                experiment_id="experiment-t001",
+                token="4" * 32,
+                start_path=str(start_path),
+                completion_path=str(completion_path),
+            )
+            process = subprocess.Popen(
+                ["setsid", "--wait", "sh", "-c", wrapper],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+            start = None
+            try:
+                deadline = time.monotonic() + 5.0
+                while time.monotonic() < deadline:
+                    if start_path.exists() and completion_path.exists() and child_path.exists():
+                        start = campaign.parse_control_record(
+                            start_path.read_text(),
+                            action="role:nrUE",
+                            experiment_id="experiment-t001",
+                            token="4" * 32,
+                            completion=False,
+                        )
+                        break
+                    if process.poll() is not None and not child_path.exists():
+                        break
+                    time.sleep(0.01)
+                self.assertIsNotNone(start)
+                assert start is not None
+                stdout, stderr = process.communicate(timeout=5.0)
+                self.assertEqual((stdout, stderr), ("", ""))
+                self.assertEqual(process.returncode, 0)
+                completion = campaign.parse_control_record(
+                    completion_path.read_text(),
+                    action="role:nrUE",
+                    experiment_id="experiment-t001",
+                    token="4" * 32,
+                    completion=True,
+                )
+                self.assertEqual(completion["return_code"], 0)
+                self.assertEqual(completion["pgid"], start["pgid"])
+                self.assertEqual(completion["start_ticks"], start["start_ticks"])
+                self.assertFalse(Path(f"/proc/{start['pgid']}/stat").exists())
+                os.killpg(start["pgid"], 0)
+
+                def run_locally(
+                    endpoint: Endpoint,
+                    command: str,
+                    check: bool = True,
+                    capture: bool = False,
+                    timeout_s: float | None = campaign.REMOTE_CONTROL_TIMEOUT_S,
+                ) -> subprocess.CompletedProcess[str]:
+                    del endpoint
+                    return subprocess.run(
+                        ["sh", "-c", command],
+                        check=check,
+                        text=True,
+                        capture_output=capture,
+                        timeout=timeout_s,
+                    )
+
+                endpoint = Endpoint(
+                    role="nrUE",
+                    host="local-test",
+                    hostname="local-test",
+                    profile_root=str(root),
+                    command=["nr-uesoftmodem"],
+                    cwd=None,
+                    sudo=False,
+                    environment={},
+                    archive_tool=str(root / "archive-tool"),
+                    launch_delay_s=0.0,
+                )
+                with patch(
+                    "oai_profile_campaign.remote_run",
+                    side_effect=run_locally,
+                ) as remote:
+                    state, identity, detail = campaign.remote_control_state(
+                        endpoint,
+                        action="role:nrUE",
+                        experiment_id="experiment-t001",
+                        token="4" * 32,
+                        start_path=str(start_path),
+                        completion_path=str(completion_path),
+                    )
+                self.assertTrue(state, detail)
+                self.assertEqual(identity, completion)
+                self.assertEqual(
+                    detail,
+                    "matching_completion_leader_absent_process_group_still_live",
+                )
+                self.assertEqual(remote.call_count, 3)
+            finally:
+                cleanup_start = start
+                if cleanup_start is None and start_path.exists():
+                    try:
+                        cleanup_start = campaign.parse_control_record(
+                            start_path.read_text(),
+                            action="role:nrUE",
+                            experiment_id="experiment-t001",
+                            token="4" * 32,
+                            completion=False,
+                        )
+                    except (OSError, ValueError):
+                        pass
+                if cleanup_start is not None:
+                    try:
+                        os.killpg(cleanup_start["pgid"], signal.SIGKILL)
+                    except OSError:
+                        pass
+                elif child_path.exists():
+                    try:
+                        child_pid_text = child_path.read_text().strip()
+                        if not child_pid_text.isdecimal() or int(child_pid_text) <= 0:
+                            raise ValueError("invalid test child PID")
+                        os.kill(int(child_pid_text), signal.SIGKILL)
+                    except (OSError, ValueError):
+                        pass
+                if process.poll() is None:
+                    process.kill()
+                process.communicate()
+
     def test_remote_preflight_requires_setsid_wait(self) -> None:
         endpoint = Endpoint(
             role="nrUE",
@@ -1243,7 +1509,7 @@ class CampaignRunnerTest(unittest.TestCase):
             signal_handle(handle, "INT")
         commands = [call.args[1] for call in remote.call_args_list]
         self.assertEqual(len(commands), 1)
-        self.assertIn("kill -INT", commands[0])
+        self.assertIn("/bin/kill -INT", commands[0])
         self.assertIn("start_ticks=987654", commands[0])
         self.assertEqual(handle.transport_return_code, 255)
 

@@ -859,7 +859,7 @@ def read_remote_control_record(
 def remote_identity_probe_command(record: dict[str, Any], sudo: bool) -> str:
     pgid = int(record["pgid"])
     start_ticks = int(record["start_ticks"])
-    kill = "sudo -n kill" if sudo else "kill"
+    kill = "sudo -n /bin/kill" if sudo else "/bin/kill"
     return (
         f"if ! test -e /proc/{pgid}/stat; then "
         f"probe=$(LC_ALL=C {kill} -0 -- -{pgid} 2>&1); probe_rc=$?; "
@@ -906,13 +906,13 @@ def remote_control_state(
             or completed["start_ticks"] != start["start_ticks"]
         ):
             return None, start, "completion identity does not match start record"
-        return False, completed, "matching_completion"
-    if completion_status not in {"missing"}:
+    elif completion_status != "missing":
         return (
             None,
             start,
             f"completion record {completion_status}: {completion_detail}",
         )
+    observed_identity = completed if completed is not None else start
     try:
         result = remote_run(
             endpoint,
@@ -921,18 +921,40 @@ def remote_control_state(
             capture=True,
         )
     except (OSError, subprocess.SubprocessError) as error:
-        return None, start, str(error)
+        return None, observed_identity, str(error)
     if result.returncode == 0:
-        return True, start, "matching_identity_live"
+        if completed is not None:
+            return (
+                None,
+                observed_identity,
+                "completion_present_but_original_leader_identity_observed",
+            )
+        return True, observed_identity, "matching_identity_live"
     if result.returncode == 1:
-        return False, start, "original_identity_absent"
+        detail = (
+            "matching_completion_group_absent"
+            if completed is not None
+            else "original_identity_absent"
+        )
+        return False, observed_identity, detail
     if result.returncode == 2:
-        return False, start, "pgid_reused_original_identity_dead"
+        detail = (
+            "matching_completion_pgid_reused_original_identity_dead"
+            if completed is not None
+            else "pgid_reused_original_identity_dead"
+        )
+        return False, observed_identity, detail
     if result.returncode == 3:
-        return None, start, "leader_absent_process_group_still_live"
+        if completed is not None:
+            return (
+                True,
+                observed_identity,
+                "matching_completion_leader_absent_process_group_still_live",
+            )
+        return None, observed_identity, "leader_absent_process_group_still_live"
     return (
         None,
-        start,
+        observed_identity,
         f"identity probe status={result.returncode}, stderr={result.stderr.strip()!r}",
     )
 
@@ -946,7 +968,7 @@ def remote_identity_signal_command(
     expected = control_record_text(record, completion=False).rstrip("\n")
     pgid = int(record["pgid"])
     start_ticks = int(record["start_ticks"])
-    kill = "sudo -n kill" if sudo else "kill"
+    kill = "sudo -n /bin/kill" if sudo else "/bin/kill"
     return (
         f"if ! test -r {shlex.quote(start_path)}; then exit 42; fi; "
         f"actual=$(cat -- {shlex.quote(start_path)}) || exit 44; "
