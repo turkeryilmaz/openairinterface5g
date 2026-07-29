@@ -700,7 +700,8 @@ typedef struct {
   int ul_failure_timer;
   int release_timer;
   CSI_report_t CSI_report;
-  bool SR;
+  /// number of SR received for this UE since the last UL grant
+  uint8_t sr_cnt;
   /// information about every HARQ process
   NR_UE_harq_t harq_processes[NR_MAX_HARQ_PROCESSES];
   /// HARQ processes that are free
