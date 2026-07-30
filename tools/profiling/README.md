@@ -260,7 +260,7 @@ final immutable manifest. Laptop-side control logs and
 `measured_host` or `orchestrator`. For remote roles, these process bounds use
 the laptop orchestrator clock and are therefore left blank in the remote
 `external_sources.csv`; they are not relabeled as CM5-local anchors.
-`perf-record --clockid mono_raw` samples still use the remote source host's
+`perf-record --clockid CLOCK_MONOTONIC_RAW` samples use the remote source host's
 `CLOCK_MONOTONIC_RAW` and can be aligned to that run's `sync.csv`.
 Commands and environments are archived in redacted form; password/token/key
 fragments and IMSI/SUPI/IMEI subscriber identifiers are never retained.

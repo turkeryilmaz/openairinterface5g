@@ -574,7 +574,7 @@ def sidecar_command(command: list[str], sidecar: dict[str, Any], run_dir: str) -
                 "--call-graph",
                 call_graph,
                 "--clockid",
-                "mono_raw",
+                "CLOCK_MONOTONIC_RAW",
                 "--timestamp",
                 "--",
             ]

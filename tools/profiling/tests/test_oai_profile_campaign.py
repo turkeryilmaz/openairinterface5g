@@ -2159,6 +2159,37 @@ os._exit(0)
             self.assertEqual(sidecar_source_anchors(local_handle), (1, 2, 3, 4, ""))
             self.assertEqual(sidecar_clock("perf_record")[2], "shared_monotonic_raw")
             self.assertEqual(sidecar_clock("perf_sched")[2], "alignment_pending")
+            perf_record_command, artifact = sidecar_command(
+                command,
+                {
+                    "tool": "perf_record",
+                    "event": "cycles",
+                    "frequency_hz": 199,
+                    "call_graph": "dwarf,8192",
+                },
+                str(root),
+            )
+            self.assertEqual(artifact, f"{root}/sidecars/perf.data")
+            self.assertEqual(
+                perf_record_command,
+                [
+                    "perf",
+                    "record",
+                    "-o",
+                    artifact,
+                    "-e",
+                    "cycles",
+                    "-F",
+                    "199",
+                    "--call-graph",
+                    "dwarf,8192",
+                    "--clockid",
+                    "CLOCK_MONOTONIC_RAW",
+                    "--timestamp",
+                    "--",
+                    *command,
+                ],
+            )
             with self.assertRaises(ValueError):
                 sidecar_command(command, {"tool": "perf_record", "frequency_hz": 0}, str(root))
 
