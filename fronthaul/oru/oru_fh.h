@@ -119,6 +119,15 @@ void oru_fh_rx_send_prach(void *handle, uint32_t **prachF, int nb_rx, int frame,
 int oru_fh_poll_ul_job(void *handle, ul_job_t *job);
 
 /**
+ * @brief Get the DL-direction symbol bitmask for the configured TDD pattern.
+ *
+ * @param handle Pointer to the fronthaul handle.
+ * @param bitmask Pointer to store the (read-only, internally owned) bitmask buffer.
+ * @param bit_length Pointer to store the bitmask length in bits (one repeating TDD period).
+ */
+void oru_fh_get_dl_symbol_bitmask(void *handle, const uint8_t **bitmask, uint16_t *bit_length);
+
+/**
  * @brief Send PUSCH symbol data (U-Plane) over the Fronthaul interface.
  *
  * @param handle Pointer to the fronthaul handle.

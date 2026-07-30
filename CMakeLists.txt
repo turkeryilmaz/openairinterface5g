@@ -1786,7 +1786,7 @@ if (OAI_RU_FRONTHAUL)
   )
   target_link_libraries(nr-oru PRIVATE
     UTIL NR_PHY_RU PHY_NR shlib_loader dl oru_fh MAC_NR_COMMON
-    radio_common softmodem_common nfapi_pnf_lib)
+    radio_common softmodem_common nfapi_pnf_lib symbol_reorder)
   target_link_libraries(nr-oru PRIVATE pthread m CONFIG_LIB rt ${T_LIB} utils
     barrier actor nfapi_user_lib)
   target_link_libraries(nr-oru PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs nr_phy_common time_management)
