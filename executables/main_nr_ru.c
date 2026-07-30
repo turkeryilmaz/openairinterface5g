@@ -221,13 +221,14 @@ int main(int argc, char **argv)
   ret = ru->rfdevice.trx_start_func(&ru->rfdevice);
   AssertFatal(ret == 0, "RU %u: trx_start_func() ret %d: cannot start rfdevice\n", ru->idx, ret);
 
-  threadCreate(&oru.north_read_thread, oru_north_read_thread, (void *)&oru, "north_read_thread", -1, OAI_PRIORITY_RT_MAX);
-  threadCreate(&oru.south_read_thread, oru_south_read_thread, (void *)&oru, "south_read_thread", -1, OAI_PRIORITY_RT_MAX);
-  usleep(1000);
-  oru_fh_start(oru.fronthaul);
-
   // Signal handler
   signal(SIGINT, sig_handler);
+
+  ret = oru_fh_start(oru.fronthaul);
+  AssertFatal(ret == 0, "Cannot start O-RU fronthaul\n");
+
+  threadCreate(&oru.south_read_thread, oru_south_read_thread, (void *)&oru, "south_read_thread", -1, OAI_PRIORITY_RT_MAX);
+  threadCreate(&oru.north_read_thread, oru_north_read_thread, (void *)&oru, "north_read_thread", -1, OAI_PRIORITY_RT_MAX);
 
   while (oai_exit == 0) {
     oru_fh_print_stats(oru.fronthaul);
