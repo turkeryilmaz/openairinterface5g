@@ -1917,16 +1917,20 @@ void rrc_forward_ue_nas_message(gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE)
 
   LOG_UE_DL_EVENT(UE, "Send DL Information Transfer [%ld bytes]\n", UE->nas_pdu.len);
 
-  uint8_t buffer[4096];
   unsigned int xid = rrc_gNB_get_next_transaction_identifier(rrc->module_id);
-  uint32_t length = do_NR_DLInformationTransfer(buffer, sizeof(buffer), xid, UE->nas_pdu.len, UE->nas_pdu.buf);
-  LOG_DUMPMSG(NR_RRC, DEBUG_RRC, buffer, length, "[MSG] RRC DL Information Transfer\n");
-  rb_id_t srb_id = UE->Srb[2].Active ? DL_SCH_LCID_DCCH1 : DL_SCH_LCID_DCCH;
-  const uint32_t msg_id = NR_DL_DCCH_MessageType__c1_PR_dlInformationTransfer;
-  nr_rrc_transfer_protected_rrc_message(rrc, UE, srb_id, msg_id, buffer, length);
-  // no need to free UE->nas_pdu.buf, do_NR_DLInformationTransfer() did that
+  byte_array_t msg = do_NR_DLInformationTransfer(xid, UE->nas_pdu.len, UE->nas_pdu.buf);
+  /* do_NR_DLInformationTransfer() takes ownership of the NAS buffer */
   UE->nas_pdu.buf = NULL;
   UE->nas_pdu.len = 0;
+  if (msg.buf == NULL || msg.len <= 0) {
+    LOG_E(NR_RRC, "UE %d: failed to encode DLInformationTransfer\n", UE->rrc_ue_id);
+    return;
+  }
+  LOG_DUMPMSG(NR_RRC, DEBUG_RRC, msg.buf, msg.len, "[MSG] RRC DL Information Transfer\n");
+  rb_id_t srb_id = UE->Srb[2].Active ? DL_SCH_LCID_DCCH1 : DL_SCH_LCID_DCCH;
+  const uint32_t msg_id = NR_DL_DCCH_MessageType__c1_PR_dlInformationTransfer;
+  nr_rrc_transfer_protected_rrc_message(rrc, UE, srb_id, msg_id, msg.buf, msg.len);
+  free_byte_array(msg);
 }
 
 static void handle_ueCapabilityInformation(gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE, const NR_UECapabilityInformation_t *ue_cap_info)
