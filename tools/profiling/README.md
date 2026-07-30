@@ -160,6 +160,55 @@ a ready-to-run analyzer command with a literal, timestamped child below
 tested until the recommendation is nonexistent; no shell command substitution
 is left for the operator to expand.
 
+## Offload completed batches to a separate archive disk
+
+Keep active acquisition separate from immutable archival storage. Put each
+campaign or analysis batch in one uniquely named child below the policy
+`active_root`; do not reuse a batch name. The laptop/X10 example policy uses:
+
+- internal active scratch:
+  `/home/turker/Documents/OpenAirInterface/PerformanceProfiles/Active`;
+- X10 batch archive:
+  `/mnt/oai-archive/OAI/PerformanceProfiles/Batches`;
+- X10 offload ledgers:
+  `/mnt/oai-archive/OAI/Inventory/Offloads`.
+
+Preview one completed batch, then publish it and reclaim its internal copy:
+
+```bash
+POLICY=tools/profiling/storage_laptop_x10.example.json
+./tools/profiling/oai_profile_offload.py "$POLICY" RxTxTime3_Disabled_InProcess_n5
+./tools/profiling/oai_profile_offload.py "$POLICY" RxTxTime3_Disabled_InProcess_n5 \
+  --execute --remove-source
+```
+
+The example policy records the archive filesystem UUID and a 100-GiB free-space
+reserve. The tool requires exactly one matching read-write mount, rejects
+symlinks and special files, rejects any existing destination, and never merges
+or overwrites batches. It hashes the source before copying, copies with
+metadata-preserving `rsync` into a same-filesystem hidden staging directory,
+hashes staging, hashes the source again to detect an active writer, atomically
+publishes with Linux `RENAME_NOREPLACE`, and re-hashes both the published tree
+and source. The archive mount is revalidated before publication and source
+reclamation. The internal source is renamed and removed only after all five
+snapshots match. A failure before atomic publication leaves the source
+untouched and neither replaces nor publishes the requested destination.
+A later verification failure can leave the destination visible, but never
+permits source reclamation. If reclamation itself fails, the already verified
+destination remains and the recoverable source residue is recorded under its
+hidden retired path. Every failure ledger records its exact phase, publication
+state and any staging/retired-source paths.
+
+For paired laptop/CM5 work, use a unique active batch as the local gNB profile
+and campaign-control root, collect that batch's exact CM5 process directories
+into the same batch with `oai_profile_collect.py --local-root`, and complete
+the archive/campaign audit before offloading. Heavy publication analysis should
+use the archived batch as input and a destination on X10. Keeping the X10
+mounted during RF is valid only after a site-specific USB-topology check shows
+that its storage traffic does not contend with the SDR controller; mount
+identity, free space, thermal state, deadline behavior and observer effect
+remain per-run evidence.
+
 ## Run a controlled paired campaign
 
 `campaign_laptop_cm5.example.json` defines the current Band 28, 25 PRB

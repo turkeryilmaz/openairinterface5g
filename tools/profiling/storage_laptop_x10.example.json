@@ -1,0 +1,8 @@
+{
+  "active_root": "/home/turker/Documents/OpenAirInterface/PerformanceProfiles/Active",
+  "archive_root": "/mnt/oai-archive/OAI/PerformanceProfiles/Batches",
+  "archive_mount": "/mnt/oai-archive",
+  "archive_uuid": "ed46bf11-c2eb-4f27-9df1-2a99a816bf5a",
+  "inventory_root": "/mnt/oai-archive/OAI/Inventory/Offloads",
+  "archive_free_reserve_bytes": 107374182400
+}
