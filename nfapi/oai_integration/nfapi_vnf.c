@@ -1586,15 +1586,20 @@ int nr_error_ind_cb(nfapi_vnf_config_t *config, int p5_idx, nfapi_nr_error_indic
 {
   UNUSED(config);
   NFAPI_TRACE(NFAPI_TRACE_WARN,
-              "[VNF] Received NFAPI_NR_PHY_MSG_TYPE_ERROR_INDICATION idx:%d phy_id:%d\n",
-              p5_idx,
-              resp->header.phy_id);
-  NFAPI_TRACE(NFAPI_TRACE_WARN, "[VNF] Previous message 0x%02x resulted in an error on the PNF \n", resp->message_id);
-  NFAPI_TRACE(NFAPI_TRACE_WARN,
-              "[VNF] Received error code 0x%02x (%s)\n",
+              "[VNF] %4d.%2d Received NFAPI_NR_PHY_MSG_TYPE_ERROR_INDICATION (error code 0x%02x, %s) idx:%d phy_id:%d (Previous message 0x%02x)\n",
+              resp->sfn,
+              resp->slot,
               resp->error_code,
-              error_ind_code_to_str(resp->error_code));
+              error_ind_code_to_str(resp->error_code),
+              p5_idx,
+              resp->header.phy_id,
+              resp->message_id);
   // TODO: add error handling to the VNF instead of only reporting the received error
+  // - for specific slot errors: possibly reset/stop L1
+  // - out of sync: could use Expected SFN/Slot to clean up state
+  // - error for DL_TTI/UL_TTI/UL_DCI/Tx_data: "should assume that the UE did
+  //   not receive data and control sent in this slot." => this is handled
+  //   implicitly by OAI
   return 0;
 }
 
