@@ -894,25 +894,10 @@ static NR_SetupRelease_SRS_Config_t *get_config_srs(const NR_ServingCellConfigCo
 
   srs_Config->srs_ResourceSetToAddModList = calloc_or_fail(1, sizeof(*srs_Config->srs_ResourceSetToAddModList));
   int k2 = minRXTXTIME;
-  int num_reset = 1;
+  int num_res_set = 1;
   const long usage = NR_SRS_ResourceSet__usage_codebook;
-  NR_SRS_ResourceSet_t *srs_resset = get_srs_resourceset(num_reset, res_id, usage, k2, num_reset, do_srs);
+  NR_SRS_ResourceSet_t *srs_resset = get_srs_resourceset(num_res_set, res_id, usage, k2, num_res_set, do_srs);
   asn1cSeqAdd(&srs_Config->srs_ResourceSetToAddModList->list, srs_resset);
-  if (do_srs == APERIODIC_SRS) {
-    NR_PUSCH_TimeDomainResourceAllocationList_t *tda_list =
-          scc->uplinkConfigCommon->initialUplinkBWP->pusch_ConfigCommon->choice.setup->pusch_TimeDomainAllocationList;
-    for (int i = 0; i < tda_list->list.count; ++i) {
-      if (k2 == *tda_list->list.array[i]->k2)
-        continue;
-      num_reset++;
-      k2 = *tda_list->list.array[i]->k2;
-      // in case of UL heavy configuration better use periodic SRS if there are more UL slots than allowed trigger states
-      AssertFatal(num_reset < 4, "Exceeded the number of allowed SRS trigger states.\n");
-      const long usage = NR_SRS_ResourceSet__usage_codebook;
-      NR_SRS_ResourceSet_t *srs_resset = get_srs_resourceset(num_reset, res_id, usage, k2, num_reset, do_srs);
-      asn1cSeqAdd(&srs_Config->srs_ResourceSetToAddModList->list, srs_resset);
-    }
-  }
   srs_Config->srs_ResourceSetToReleaseList = NULL;
   srs_Config->srs_ResourceToReleaseList = NULL;
 

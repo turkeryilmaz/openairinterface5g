@@ -138,7 +138,7 @@ These modes of operation are supported:
   - HARQ procedures for uplink
   - MCS adaption from HARQ BLER or PUSCH SINR
 - Scheduler procedures for SRS reception
-  - Periodic SRS reception
+  - Periodic and aperiodic SRS reception
   - Channel rank computation up to 2x2 scenario
   - TPMI computation based on SRS up 4 antenna ports and 2 layers
 - MAC procedures to handle CSI measurement report

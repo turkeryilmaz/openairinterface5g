@@ -2379,6 +2379,10 @@ void post_process_ulsch(gNB_MAC_INST *nr_mac,
 
   cur_harq->sched_pusch.tpc_pusch = tpc;
 
+  if (sched_srs > 0) {
+    if (!nr_schedule_aperiodic_srs(nr_mac, UE, sched_pusch->frame, sched_pusch->slot, sched_pusch->tda_info.k2, sched_srs))
+      sched_srs = 0;  // if we can't schedule aperiodic SRS we do not set the DCI field to trigger the UE transmission
+  }
   fill_dci_pdu_rel15(&UE->sc_info,
                      &UE->current_DL_BWP,
                      current_BWP,
@@ -2392,8 +2396,6 @@ void post_process_ulsch(gNB_MAC_INST *nr_mac,
                      UE->pdsch_HARQ_ACK_Codebook,
                      nr_mac->cset0_bwp_size);
 
-  if (sched_srs > 0)
-    nr_schedule_aperiodic_srs(nr_mac, UE, sched_pusch->frame, sched_pusch->slot, sched_pusch->tda_info.k2, sched_srs);
 }
 
 static int collect_ul_candidates(gNB_MAC_INST *mac,
@@ -2407,6 +2409,7 @@ static int collect_ul_candidates(gNB_MAC_INST *mac,
                                  int sched_slot)
 {
   int numUE = 0;
+  bool aperiodic_srs_scheduled = false;
 
   UE_iterator (UE_list, UE) {
     if (numUE >= max_candidates)
@@ -2496,7 +2499,11 @@ static int collect_ul_candidates(gNB_MAC_INST *mac,
     bool bler_updated = update_bler_stats(&mac->ul_bler, stats, &sched_ctrl->ul_bler_stats, frame);
 
     cand.is_retx = false;
-    cand.sched_srs = verify_aperiodic_srs(mac, sched_slot, k2, &sched_ctrl->aperiodic_srs_trigger, current_BWP);
+    if (!aperiodic_srs_scheduled) {
+      cand.sched_srs = verify_aperiodic_srs(mac, sched_slot, k2, &sched_ctrl->aperiodic_srs_trigger, current_BWP);
+      aperiodic_srs_scheduled = cand.sched_srs > 0;
+    } else
+      cand.sched_srs = 0;
     cand.retx_harq_pid = -1;
     cand.sched_inactive = (B == 0 && do_sched);
     cand.pending_bytes = B;

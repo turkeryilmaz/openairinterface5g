@@ -183,7 +183,7 @@ void nr_srs_ri_computation(const nfapi_nr_srs_normalized_channel_iq_matrix_t *nr
 int get_pucch_resourceid(NR_PUCCH_Config_t *pucch_Config, int O_uci, int pucch_resource);
 
 void nr_schedule_periodic_srs(int module_id, frame_t frame, int slot);
-void nr_schedule_aperiodic_srs(gNB_MAC_INST *nrmac, NR_UE_info_t *UE, int sched_frame, int sched_slot, int k2, int sched_srs);
+bool nr_schedule_aperiodic_srs(gNB_MAC_INST *nrmac, NR_UE_info_t *UE, int sched_frame, int sched_slot, int k2, int sched_srs);
 void nr_csirs_scheduling(int Mod_idP, frame_t frame, slot_t slot, nfapi_nr_dl_tti_request_t *DL_req);
 
 void nr_csi_meas_reporting(int Mod_idP, frame_t frameP, slot_t slotP);
