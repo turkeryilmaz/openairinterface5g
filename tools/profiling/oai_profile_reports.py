@@ -3128,6 +3128,10 @@ def parse_perf_stat_line(line: str) -> dict[str, object] | None:
         if candidate.endswith("%"):
             running_percent = parse_float(candidate.removesuffix("%"))
             break
+    if not math.isfinite(running_percent) and len(parts) > value_index + 4:
+        candidate = parse_float(parts[value_index + 4])
+        if math.isfinite(candidate) and 0.0 <= candidate <= 100.0:
+            running_percent = candidate
     return {
         "status": status,
         "event": event,

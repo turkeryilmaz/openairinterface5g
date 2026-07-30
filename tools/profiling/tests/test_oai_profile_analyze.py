@@ -41,6 +41,7 @@ from oai_profile_reports import (  # noqa: E402
     host_metrics_report,
     matches_native_decimal,
     observer_effect_report,
+    parse_perf_stat_line,
     perf_stat_report,
     pmu_reports,
     pmu_sample_row_is_valid,
@@ -1970,6 +1971,37 @@ class AnalyzerSchemaCompatibilityTest(unittest.TestCase):
         self.assertEqual(summary["reconstruction_valid_checks"], 1)
         self.assertEqual(summary["classification_agreements"], 1)
         self.assertEqual(summary["status"], "partial")
+
+    def test_perf_stat_running_percent_formats(self) -> None:
+        laptop = parse_perf_stat_line(
+            "1.000894655;60646212;;cycles;10532322;63.00;3.670;GHz"
+        )
+        self.assertIsNotNone(laptop)
+        self.assertEqual(laptop["status"], "ok")
+        self.assertEqual(laptop["event"], "cycles")
+        self.assertEqual(laptop["running_percent"], 63.0)
+
+        cm5 = parse_perf_stat_line(
+            "1.001026456;13441999;;cycles;5621907;100.00;2.391;GHz"
+        )
+        self.assertIsNotNone(cm5)
+        self.assertEqual(cm5["running_percent"], 100.0)
+
+        explicit = parse_perf_stat_line(
+            "1.000000000;123;;cycles;456;75.00%;1.0;GHz"
+        )
+        self.assertIsNotNone(explicit)
+        self.assertEqual(explicit["running_percent"], 75.0)
+
+        out_of_range = parse_perf_stat_line(
+            "1.000000000;123;;cycles;456;100.01;1.0;GHz"
+        )
+        self.assertIsNotNone(out_of_range)
+        self.assertTrue(math.isnan(out_of_range["running_percent"]))
+
+        missing = parse_perf_stat_line("1.000000000;123;;cycles;456")
+        self.assertIsNotNone(missing)
+        self.assertTrue(math.isnan(missing["running_percent"]))
 
     def test_external_alignment_paths_and_duplicate_campaign_roles(self) -> None:
         realtime_only = {
