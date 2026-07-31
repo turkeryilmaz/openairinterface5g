@@ -495,7 +495,8 @@ static bool nr_fill_nfapi_srs(gNB_MAC_INST *nrmac,
   for (int i = 0; i < UE->current_UL_BWP.BWPSize; ++i) {
     int rb = i + UE->current_UL_BWP.BWPStart;
     uint16_t alloc = vrb_map_UL[rb] & mask;
-    if (nrmac->ulprbbl[rb] != 0 || alloc != 0) {
+    // we allocate SRS regardless of prohibited UL PRBs (already present in VRB map)
+    if (alloc != 0 && nrmac->ulprbbl[rb] == 0) {
       LOG_W(NR_MAC, "RB %d not free for SRS: alloc 0x%02x for mask 0x%02x\n", rb, alloc, mask);
       // resetting the resources allocated for SRS
       reset_beam_status(&nrmac->beam_info, frame, slot, UE->UE_beam_index, slots_frame, beam.new_beam);
