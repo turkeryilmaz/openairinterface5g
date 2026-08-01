@@ -22,8 +22,6 @@
 
 #include "uper_decoder.h"
 #include "uper_encoder.h"
-#include "openair1/PHY/defs_nr_common.h"
-#include "openair1/PHY/defs_gNB.h"
 #include "openair3/NRPPA/nrppa_gNB_config.h"
 #include "openair2/F1AP/lib/f1ap_positioning.h"
 
