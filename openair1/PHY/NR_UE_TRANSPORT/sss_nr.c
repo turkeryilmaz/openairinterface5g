@@ -168,6 +168,17 @@ static void pss_sss_extract_nr(
   }
 }
 
+static bool skip_pci(int Nid1, int Nid2, const uint16_t *exclude_nid_cells, int num_exclude_nid_cells)
+{
+  int current_pci = Nid2 + (3 * Nid1);
+  for (int i = 0; i < num_exclude_nid_cells; i++) {
+    if (current_pci == exclude_nid_cells[i]) {
+      return true;
+    }
+  }
+  return false;
+}
+
 /*******************************************************************
  *
  * NAME :         rx_sss_nr
@@ -230,6 +241,9 @@ sss_detection_result_t rx_sss_nr(nr_sss_params_t *params,
     const c64_t rot =
         (c64_t){round(cos(M_PI / 3 / 15 * (phase_to_try[idx])) * 32767), round(sin(M_PI / 3 / 15 * (phase_to_try[idx])) * 32767)};
     for (int n1 = Nid1_start; n1 < Nid1_end; n1++) { // all possible Nid1 values
+      // Skip this Nid1 if the corresponding PCI is in the exclusion list
+      if (skip_pci(n1, Nid2, params->exclude_nid_cells, params->num_exclude_nid_cells))
+        continue;
       int64_t metric = 0;
       int16_t *d = d_sss[n1];
       for (int i = 0; i < LENGTH_SSS_NR; i++) {

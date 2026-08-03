@@ -357,7 +357,7 @@ These modes of operation are supported:
 *  Reception of NR-PSS/NR-SSS
 *  NR-PBCH supports multiple SSBs and flexible periodicity
    - RSRP measurement for the strongest SSB
-   - RSRP measurement for neighboring cell at same SSB frequency with serving cell
+   - RSRP measurement for up to 8 neighboring cell at same SSB frequency with serving cell
 *  Reception of NR-PDCCH (including reception of DCI, polar decoding, de-scrambling, de-modulation, RB de-mapping, etc)
    - common search space configured by MIB
    - user-specific search space configured by RRC
@@ -509,7 +509,7 @@ These modes of operation are supported:
    - RRCReestablishmentRequest/RRC Reestablishment/Reestablishment complete
    - Support for master cell group configuration
    - Reception of UECapabilityEnquiry, encoding and transmission of UECapability
-   - Support for measurement report of Event A2/A3
+   - Support for measurement report type of Event A2/A3 and periodical (only RSRP in the report)
    - Paging: PCCH reception
 * NTN according to 38.331 Rel.17
    - Reception of ntn-Config-r17 from SIB19 or reconfigurationWithSync
