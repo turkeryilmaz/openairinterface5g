@@ -25,6 +25,7 @@ The following DPDK versions are supported:
 
 #### AMD T2 Telco Accelerator Card
 
+- DPDK20.11.9
 - DPDK22.11
 - DPDK22.11.3
 
@@ -121,8 +122,73 @@ Lastly, we bind our accelerator with the `vfio-pci` driver.
 ```
 
 > [!NOTE]
-> For the AMD T2 Telco Accelerator Card, we can use this device directly.
-If you use an Intel vRAN accelerator, read on.
+> For the AMD T2 Telco Accelerator Card, we can use this device directly in a single process.  
+> If you use the T2 Telco Accelerator Card in more than one process in parallel, read the following hidden note.  
+> If you use an Intel vRAN accelerator, read the following section.
+
+<details> 
+<summary> Notes on enabling Virtual Functions (VFs) for the AMD T2 Telco Accelerator Card. </summary>
+
+This section explains how to enable the VFs in order to use the T2 Telco Accelerator Card in multiple processes or containers.
+This feature is available only for **DPDK 20.11.9** with patch `ACCL_BBDEV_DPDK20.11.3_ldpc_3.2.patch` and the corresponding board firmware.
+
+##### Clone and Build the `igb_uio` kernel module
+
+```bash
+git clone http://dpdk.org/git/dpdk-kmods ~/dpdk-kmods
+cd ~/dpdk-kmods/linux/igb_uio
+make
+```
+
+##### Insert the `igb_uio` kernel module
+
+Instructions below this line should be followed upon each system restart.
+
+```bash
+cd ~/dpdk-kmods/linux/igb_uio
+sudo modprobe uio
+sudo insmod igb_uio.ko 
+lsmod | grep uio
+```
+
+##### Bind the devices
+
+First bind the Physical Function to `igb_uio`.
+
+```bash
+sudo ~/dpdk-stable-20.11.9/usertools/dpdk-devbind.py -b igb_uio 0000:f7:00.0
+```
+Then create the VFs, there are 2 in this example but there can be up to 16 VFs.
+
+```bash
+echo 2 | sudo tee /sys/bus/pci/devices/0000\:f7\:00.0/max_vfs
+```
+
+Finally, bind the VFs to `vfio-pci`.
+
+```bash
+sudo ~/dpdk-stable-20.11.9/usertools/dpdk-devbind.py -b vfio-pci 0000:f7:00.4
+sudo ~/dpdk-stable-20.11.9/usertools/dpdk-devbind.py -b vfio-pci 0000:f7:00.5
+```
+
+##### Run the dpdk-admin app
+
+This app was built with DPDK and is located in the `app` directory in the build directory.
+
+**IMPORTANT:**
+- Make sure no other `dpdk-admin` app is running and no running task are yet trying to use the VFs.  
+  Otherwise the system may get in a deadlock.
+- Keep the `dpdk-admin` command running while using the VFs.
+  Do not stop it while any process is still using any VF.
+- `-l <cpu>` corresponds to the list of cores used by the DPDK threads of the admin app.  
+  It is isolated and exclusively reserved to the dpdk-admin app.
+- Pass the Physical Function address to option `-a`.  
+
+```bash
+sudo ~/dpdk-stable-20.11.9/build/app/dpdk-admin -a 0000:f7:00.0 --file-prefix PF -l 7 2>&1
+```
+
+</details>
 
 #### Additional Steps for Intel vRAN Accelerators
 
