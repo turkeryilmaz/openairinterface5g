@@ -826,12 +826,14 @@ static void map_uci_common(struct map_uci_common_arg p)
         }
         total_placed++;
       }
-      if (p.uci_type_to_map == BIT_TYPE_CSI1 && p.resv_ack_pos_symb) {
+      if (p.uci_type_to_map != BIT_TYPE_ACK_RESERVED)
+        p.m_uci_current[sym]--;
+      if (p.uci_type_to_map == BIT_TYPE_CSI1 || p.uci_type_to_map == BIT_TYPE_CSI2) {
         uint32_t prev_re_offset = re_offset;
         re_offset += d_factor_re;
-        for (uint32_t i = 0; i < p.resv_ack_count_symb[sym] / p.nlqm; i++) {
-          uint32_t resv_re = (p.resv_ack_pos_symb[sym][i * p.nlqm] - symbol_start_bit_idx[sym]) / p.nlqm;
-          if (resv_re > prev_re_offset && resv_re <= re_offset)
+        for (uint32_t re = prev_re_offset + 1; re <= re_offset && re < uci_re_on_sym; re++) {
+          uci_on_pusch_bit_type_t t = p.template[symbol_start_bit_idx[sym] + (re * p.nlqm)];
+          if (skip_mapping_current_uci(t, p.uci_type_to_map))
             re_offset++;
         }
       } else {
