@@ -2862,7 +2862,6 @@ static int nr_rrc_ue_decode_dcch(NR_UE_RRC_INST_t *rrc,
           break;
 
         case NR_DL_DCCH_MessageType__c1_PR_rrcReconfiguration: {
-          nr_rrc_ue_process_rrcReconfiguration(rrc, gNB_indexP, c1->choice.rrcReconfiguration);
           if (rrc->reconfig_after_reestab) {
             // if this is the first RRCReconfiguration message after successful completion of the RRC re-establishment procedure
             // resume SRB2 and DRBs that are suspended
@@ -2886,6 +2885,7 @@ static int nr_rrc_ue_decode_dcch(NR_UE_RRC_INST_t *rrc,
             }
             rrc->reconfig_after_reestab = false;
           }
+          nr_rrc_ue_process_rrcReconfiguration(rrc, gNB_indexP, c1->choice.rrcReconfiguration);
           nr_rrc_ue_generate_RRCReconfigurationComplete(rrc, Srb_id, c1->choice.rrcReconfiguration->rrc_TransactionIdentifier);
         } break;
 
