@@ -139,8 +139,9 @@ In the first line,
 * whether a UE is `in-sync` (actively being scheduled) or `out-of-sync` (the UE
   is not being scheduled, because it did not respond when being scheduled in UL
   or since it has radio-link failure
-* `PH` (`28`): Power Headroom, the amount of power the UE has left. If it is > 40 you
-  can achieve full UL throughput. `PCMAX` (`24 dBm`) is what the UE reported as
+* `PH` (`28`): Power Headroom (TS 38.133 section 10.1.17.1.1) normalized by
+  allocated RBs: the amount of power the UE has left. If it is > 40 you can
+  achieve full UL throughput. `PCMAX` (`24 dBm`) is what the UE reported as
   maximum UL transmit power it can output in the channel.
 * `RSRP` (`-74`): measured power of the DL reference signals at the UE. >-80dBm
   you should have full DL throughput. <-95 dBm, you are very limited in terms
@@ -150,7 +151,8 @@ In the first line,
 
 The second line reflects channel state information (CSI) as
 reported by the UE, and only appear if CSI-RS/SRS are enabled and _received_
-(for some bands, they cannot be enabled):
+(for some bands, they cannot be enabled). Note that these quantities reflect
+indications for the gNB, but it might deviate (e.g., use less layers).
 
 * `CQI` (`15`): the channel quality indicator is a number between 0 and 15. It
   indicates the achievable spectral efficiency of the UE. 15 means highest, 0
@@ -161,7 +163,8 @@ reported by the UE, and only appear if CSI-RS/SRS are enabled and _received_
   the gNBs transmit array as seen by the UE. It indicates the precoding that
   the gNB applies. It should be more or less stationary unless the UE is moving
   around quickly. It can jump when objects move around the UE
-* `UL-RI`, `TPMI`: same as DL.
+* `UL-RI`, `TPMI`: Uplink Rank indicator and transmit precoding matrix
+  indicator, as in DL.
 
 The third and fourth line show HARQ-related information:
 
