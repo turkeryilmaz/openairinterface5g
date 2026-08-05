@@ -21,6 +21,9 @@ option during the build process.
 Ensure you have built and installed DPDK and the ORAN FHI library (as
 described in the [OAI 7.2 Fronthaul Interface Tutorial](./ORAN_FHI7.2_Tutorial.md#build-oran-fronthaul-interface-library)).
 
+> [!NOTE]
+> DPDK version 22.11 or superior is required for the O-RU
+
 ### Building with CMake and Ninja
 
 From your repository root:
