@@ -328,8 +328,7 @@ void free_nr_ue_dl_harq(NR_DL_UE_HARQ_t harq_list[2][NR_MAX_HARQ_PROCESSES], int
   }
 
   for (int j=0; j < 2; j++) {
-    for (int i=0; i<number_of_processes; i++) {
-      free_and_zero(harq_list[j][i].b);
+    for (int i = 0; i < number_of_processes; i++) {
       free_and_zero(harq_list[j][i].c);
       free_and_zero(harq_list[j][i].d);
     }
@@ -396,7 +395,6 @@ void nr_init_dl_harq_processes(NR_DL_UE_HARQ_t harq_list[2][NR_MAX_HARQ_PROCESSE
       memset(harq_list[j] + i, 0, sizeof(NR_DL_UE_HARQ_t));
       init_downlink_harq_status(harq_list[j] + i);
 
-      harq_list[j][i].b = malloc16_clear(a_segments * 1056);
       harq_list[j][i].c = malloc16(a_segments * sizeof(*harq_list[j][i].c) * 1056);
       harq_list[j][i].d = malloc16(a_segments * sizeof(*harq_list[j][i].d) * 3 * 8448);
       init_abort(&harq_list[j][i].abort_decode);

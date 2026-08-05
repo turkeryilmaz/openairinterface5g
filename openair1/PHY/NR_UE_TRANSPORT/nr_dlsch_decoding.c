@@ -199,7 +199,6 @@ void nr_dlsch_decoding(PHY_VARS_NR_UE *phy_vars_ue,
     return;
   }
 
-  uint32_t offset = 0, r_offset = 0;
   bool crcok = true;
   for (int r = 0; r < TB_parameters.C; r++)
     if (TB_parameters.decodeSuccess[r] == false) {
@@ -207,13 +206,15 @@ void nr_dlsch_decoding(PHY_VARS_NR_UE *phy_vars_ue,
       crcok = false;
       break;
     }
+
   if (crcok) {
+    uint8_t *output = b;
+    const uint8_t *in = harq_process->c;
+    const int sz = (harq_process->K - harq_process->F) / 8 - (harq_process->C > 1 ? 3 : 0);
     for (int r = 0; r < TB_parameters.C; r++) {
-      memcpy(b + offset,
-             harq_process->c + r_offset,
-             (harq_process->K >> 3) - (harq_process->F >> 3) - ((harq_process->C > 1) ? 3 : 0));
-      offset += (harq_process->K >> 3) - (harq_process->F >> 3) - ((harq_process->C > 1) ? 3 : 0);
-      r_offset += (harq_process->K >> 3);
+      memcpy(output, in, sz);
+      output += sz;
+      in += harq_process->K / 8;
     }
   } else {
     LOG_D(PHY, "frame=%d, slot=%d, first_rx=%d, rv_index=%d\n", proc->frame_rx, proc->nr_slot_rx, harq_process->first_rx, cw_info->rv);

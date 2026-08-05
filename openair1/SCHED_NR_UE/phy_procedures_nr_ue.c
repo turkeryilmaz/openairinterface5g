@@ -670,7 +670,8 @@ static void nr_ue_dlsch_procedures(PHY_VARS_NR_UE *ue,
   stop_meas_nr_ue_phy(ue, DLSCH_UNSCRAMBLING_STATS);
 
   start_meas_nr_ue_phy(ue, DLSCH_DECODING_STATS);
-  nr_dlsch_decoding(ue, proc, dlsch, cw_idx, config, llr, dl_harq->b, freq_alloc->num_rbs, G);
+  uint8_t output[lenWithCrc(1, dlsch->cw_info.TBS) / 8];
+  nr_dlsch_decoding(ue, proc, dlsch, cw_idx, config, llr, output, freq_alloc->num_rbs, G);
   stop_meas_nr_ue_phy(ue, DLSCH_DECODING_STATS);
 
   int ind_type = -1;
@@ -708,7 +709,7 @@ static void nr_ue_dlsch_procedures(PHY_VARS_NR_UE *ue,
   if (ue->if_inst && ue->if_inst->dl_indication) {
     fapi_nr_rx_indication_t rx_ind;
     rx_ind.number_pdus = 0;
-    nr_fill_rx_indication(&rx_ind, ind_type, ue, cw_idx, harq_pid, dlsch, proc, dl_harq->b);
+    nr_fill_rx_indication(&rx_ind, ind_type, ue, cw_idx, harq_pid, dlsch, proc, output);
     nr_downlink_indication_t dl_indication = (nr_downlink_indication_t){
         .gNB_index = proc->gNB_id,
         .module_id = ue->Mod_id,
@@ -732,10 +733,9 @@ static void nr_ue_dlsch_procedures(PHY_VARS_NR_UE *ue,
     a_segments = a_segments * freq_alloc->num_rbs;
     a_segments = (a_segments / 273) + 1;
   }
-  uint32_t dlsch_bytes = a_segments * 1056;  // allocated bytes per segment
 
   if (ue->phy_sim_dlsch_b)
-    memcpy(ue->phy_sim_dlsch_b, dl_harq->b, dlsch_bytes);
+    memcpy(ue->phy_sim_dlsch_b, output, sizeof(output));
 }
 
 static bool check_neighboring_cells_task(PHY_VARS_NR_UE *ue, bool task_pending)
