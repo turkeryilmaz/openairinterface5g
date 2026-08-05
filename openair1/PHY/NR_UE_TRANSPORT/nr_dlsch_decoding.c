@@ -210,7 +210,7 @@ void nr_dlsch_decoding(PHY_VARS_NR_UE *phy_vars_ue,
   if (crcok) {
     uint8_t *output = b;
     const uint8_t *in = harq_process->c;
-    const int sz = harq_process->K / 8 - harq_process->F / 8 - (harq_process->C > 1 ? 3 : 0);
+    const int sz = (harq_process->K - harq_process->F) / 8 - (harq_process->C > 1 ? 3 : 0);
     for (int r = 0; r < TB_parameters.C; r++) {
       memcpy(output, in, sz);
       output += sz;
