@@ -1306,13 +1306,11 @@ void pdsch_processing(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, nr_phy_
   UEscopeCopy(ue, commonRxdataF, rxdataF, sizeof(int32_t), ue->frame_parms.nb_antennas_rx, rxdataF_sz, 0);
 }
 
-
-// todo:
-// - power control as per 38.213 ch 7.4
+// TODO: Actuate the MAC-requested PRACH power after defining a calibrated dBm-to-waveform/radio mapping.
 static void nr_ue_prach_procedures(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, c16_t **txData)
 {
   int gNB_id = proc->gNB_id;
-  int frame_tx = proc->frame_tx, nr_slot_tx = proc->nr_slot_tx, prach_power; // tx_amp
+  int frame_tx = proc->frame_tx, nr_slot_tx = proc->nr_slot_tx, generated_prach_power;
   uint8_t mod_id = ue->Mod_id;
 
   NR_UE_PRACH *prach_var = ue->prach_vars[gNB_id];
@@ -1321,20 +1319,21 @@ static void nr_ue_prach_procedures(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *
     // Generate PRACH in first slot. For L839, the following slots are also filled in this slot.
     if (prach_pdu->prach_slot == nr_slot_tx) {
       ue->tx_power_dBm[nr_slot_tx] = prach_pdu->prach_tx_power;
+      const int16_t tx_amp = AMP;
 
       LOG_D(PHY,
-            "In %s: [UE %d][RAPROC][%d.%d]: Generating PRACH Msg1 (preamble %d, P0_PRACH %d)\n",
+            "In %s: [UE %d][RAPROC][%d.%d]: Generating PRACH Msg1 (preamble %d, requested TX power %d dBm, digital "
+            "amplitude %d)\n",
             __FUNCTION__,
             mod_id,
             frame_tx,
             nr_slot_tx,
             prach_pdu->ra_PreambleIndex,
-            ue->tx_power_dBm[nr_slot_tx]);
-
-      prach_var->amp = AMP;
+            ue->tx_power_dBm[nr_slot_tx],
+            tx_amp);
 
       start_meas_nr_ue_phy(ue, PRACH_GEN_STATS);
-      prach_power = generate_nr_prach(ue, gNB_id, frame_tx, nr_slot_tx, txData);
+      generated_prach_power = generate_nr_prach(ue, gNB_id, frame_tx, nr_slot_tx, tx_amp, txData);
       stop_meas_nr_ue_phy(ue, PRACH_GEN_STATS);
       if (cpumeas(CPUMEAS_GETSTATE)) {
         LOG_D(PHY,
@@ -1345,14 +1344,15 @@ static void nr_ue_prach_procedures(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *
       }
 
       LOG_D(PHY,
-            "In %s: [UE %d][RAPROC][%d.%d]: Generated PRACH Msg1 (TX power PRACH %d dBm, digital power %d dBW (amp %d)\n",
+            "In %s: [UE %d][RAPROC][%d.%d]: Generated PRACH Msg1 (requested TX power %d dBm, digital amplitude %d, "
+            "digital power %d dB)\n",
             __FUNCTION__,
             mod_id,
             frame_tx,
             nr_slot_tx,
             ue->tx_power_dBm[nr_slot_tx],
-            dB_fixed(prach_power),
-            ue->prach_vars[gNB_id]->amp);
+            tx_amp,
+            dB_fixed(generated_prach_power));
 
       // set duration of prach slots so we know when to skip OFDM modulation
       const int prach_format = ue->prach_vars[gNB_id]->prach_pdu.prach_format;
