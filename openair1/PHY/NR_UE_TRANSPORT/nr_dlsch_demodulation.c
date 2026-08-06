@@ -8,6 +8,7 @@
 
 #include "common/platform_constants.h"
 #include "nr_phy_common.h"
+#include "nr_layer_demapping.h"
 #include "PHY/defs_nr_UE.h"
 #include "nr_transport_proto_ue.h"
 #include "PHY/sse_intrin.h"
