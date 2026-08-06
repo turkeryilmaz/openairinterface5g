@@ -987,7 +987,7 @@ static int pbch_process(PHY_VARS_NR_UE *UE,
   int sampleShift = INT_MAX;
 
   // Buffer to hold symbol 3 estimates for FO estimation
-  c16_t pbch_ch_est_sym3[NR_PBCH_NUM_RB * NR_NB_SC_PER_RB] = {0};
+  c16_t pbch_ch_est_sym3[NR_PBCH_NUM_RB * NR_NB_SC_PER_RB];
   // Choose estimates buffer for FO compensation based on current PBCH symbol
   c16_t *cur_pbch_est = NULL;
   if (*pbchSymbCnt == 0)
