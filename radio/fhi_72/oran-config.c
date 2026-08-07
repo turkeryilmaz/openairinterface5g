@@ -796,7 +796,7 @@ static bool set_fh_prach_config(void *mplane_api,
   const split7_config_t *s7cfg = &oai0->split7;
 
   prach_config->nPrachConfIdx = s7cfg->prach_index; // PRACH Configuration Index
-  prach_config->nPrachSubcSpacing = oai0->nr_scs_for_raster; // 0 -> 15kHz, 1 -> 30kHz, 2 -> 60kHz, 3 -> 120kHz
+  prach_config->nPrachSubcSpacing = s7cfg->mu; // 0 -> 15kHz, 1 -> 30kHz, 2 -> 60kHz, 3 -> 120kHz
   prach_config->nPrachZeroCorrConf = 0; // PRACH zeroCorrelationZoneConfig; should be saved from config file; not used in xran
   prach_config->nPrachRestrictSet = 0; /* PRACH restrictedSetConfig; should be saved from config file; 0 = unrestricted,
                                           1 = restricted type A, 2=restricted type B; not used in xran */
@@ -1029,7 +1029,7 @@ static bool set_fh_config(void *mplane_api, int ru_idx, int num_rus, enum xran_c
   fh_config->ttiCb = NULL; // check tti_to_phy_cb(), tx_cp_dl_cb() and tx_cp_ul_cb => first_call
   fh_config->ttiCbParam = NULL; // check tti_to_phy_cb(), tx_cp_dl_cb() and tx_cp_ul_cb => first_call
 
-  uint8_t mu_number = oai0->nr_scs_for_raster;
+  uint8_t mu_number = oai0->split7.mu;
   if(!set_fh_per_mu_cfg(mplane_api, ru_idx, num_rus, oai0, &fh_config->perMu[mu_number]))
     return false;
 
@@ -1081,7 +1081,7 @@ static bool set_fh_config(void *mplane_api, int ru_idx, int num_rus, enum xran_c
   fh_config->dssEnable = 0; // enable DSS (extension-9)
   fh_config->dssPeriod = 0; // DSS pattern period for LTE/NR
   // fh_config->technology[XRAN_MAX_DSS_PERIODICITY] // technology array represents slot is LTE(0)/NR(1); used only if DSS enabled
-  if (!set_activeMUs(&activeMUs, oai0->nr_scs_for_raster))
+  if (!set_activeMUs(&activeMUs, mu_number))
     return false;
   fh_config->activeMUs = &activeMUs;
 

@@ -470,6 +470,7 @@ void fill_split7_2_config(split7_config_t *split7, const nfapi_nr_config_request
   const nfapi_nr_cell_config_t *cell_config = &config->cell_config;
   const nfapi_nr_carrier_config_t *carrier_config = &config->carrier_config;
 
+  split7->mu = config->ssb_config.scs_common.value;
   DevAssert(prach_config->prach_ConfigurationIndex.tl.tag == NFAPI_NR_CONFIG_PRACH_CONFIG_INDEX_TAG);
   split7->prach_index = prach_config->prach_ConfigurationIndex.value;
   AssertFatal(prach_config->num_prach_fd_occasions.value >= 1, "must have at least one PRACH occasion\n");
@@ -1167,12 +1168,10 @@ static void NRRCconfig_RU(configmodule_interface_t *cfg)
       ru->band[i] = param[RU_BAND_LIST_IDX].iptr[i];
     ru->openair0_cfg.nr_flag = *param[RU_NR_FLAG].iptr;
     // TODO remove band from RU?
-    ru->openair0_cfg.nr_scs_for_raster = *param[RU_NR_SCS_FOR_RASTER].iptr;
     LOG_D(PHY,
-          "[RU %d] Setting nr_flag %d, nr_scs_for_raster %d\n",
+          "[RU %d] Setting nr_flag %d\n",
           j,
-          ru->openair0_cfg.nr_flag,
-          ru->openair0_cfg.nr_scs_for_raster);
+          ru->openair0_cfg.nr_flag);
     ru->openair0_cfg.rxfh_cores[0] = *param[RU_RXFH_CORE_ID].iptr;
     ru->openair0_cfg.txfh_cores[0] = *param[RU_TXFH_CORE_ID].iptr;
     ru->num_tpcores = *param[RU_NUM_TP_CORES].iptr;

@@ -95,7 +95,7 @@ static LY_ERR fill_uplane_ch_common_v2(const uplane_dir_t dir, const xran_mplane
   LY_ERR ret = LY_SUCCESS;
 
   char frame_str[8];
-  snprintf(frame_str, sizeof(frame_str), "%d", (oai->split7.fftSize << 4) + oai->nr_scs_for_raster); // 3GPP TS 38.211
+  snprintf(frame_str, sizeof(frame_str), "%d", (oai->split7.fftSize << 4) + oai->split7.mu); // 3GPP TS 38.211
   ret = lyd_new_term(*root, NULL, "frame-structure", frame_str, 0, NULL);
   VERIFY_SUCCESS(ret == LY_SUCCESS, "[MPLANE] Failed to create \"frame-structure\" node.\n");
 
@@ -117,9 +117,9 @@ static LY_ERR fill_uplane_ch_common_v2(const uplane_dir_t dir, const xran_mplane
 
   char freq_offset[8];
   if (dir == UP_CH_RX || dir == UP_CH_PRACH) {
-    snprintf(freq_offset, sizeof(freq_offset), "%d", oai->split7.ul_k0[oai->nr_scs_for_raster]);
+    snprintf(freq_offset, sizeof(freq_offset), "%d", oai->split7.ul_k0[oai->split7.mu]);
   } else {
-    snprintf(freq_offset, sizeof(freq_offset), "%d", oai->split7.dl_k0[oai->nr_scs_for_raster]);
+    snprintf(freq_offset, sizeof(freq_offset), "%d", oai->split7.dl_k0[oai->split7.mu]);
   }
   ret = lyd_new_term(*root, NULL, "offset-to-absolute-frequency-center", freq_offset, 0, NULL);
   VERIFY_SUCCESS(ret == LY_SUCCESS, "[MPLANE] Failed to create \"offset-to-absolute-frequency-center\" node.\n");
@@ -189,16 +189,16 @@ static bool fill_uplane_ch_rx_v2(const uplane_dir_t dir, const xran_mplane_t *xr
   VERIFY_SUCCESS(ret == LY_SUCCESS, "[MPLANE] Failed to create \"non-time-managed-delay-enabled\" node.\n");
 
   struct lyd_node *fft_offset = NULL;
-  ret = lyd_new_list(*root, NULL, "ul-fft-sampling-offsets", 0, &fft_offset, scs_name[oai->nr_scs_for_raster]);
+  ret = lyd_new_list(*root, NULL, "ul-fft-sampling-offsets", 0, &fft_offset, scs_name[oai->split7.mu]);
   VERIFY_SUCCESS(ret == LY_SUCCESS, "[MPLANE] Failed to create \"ul-fft-sampling-offsets\" node.\n");
 
   // Note: set of allowed values is restricted by SCS derived from values in supported-frame-structures.
   char ul_fft_offset[8];
   int frame = 0;
   if (dir == UP_CH_RX) {
-    frame = (oai->split7.fftSize << 4) + oai->nr_scs_for_raster;
+    frame = (oai->split7.fftSize << 4) + oai->split7.mu;
   } else if (dir == UP_CH_PRACH) {
-    frame = (oai->split7.prach_fftSize << 4) + oai->nr_scs_for_raster; // TODO: handle long PRACH
+    frame = (oai->split7.prach_fftSize << 4) + oai->split7.mu; // TODO: handle long PRACH
   }
   snprintf(ul_fft_offset, sizeof(ul_fft_offset), "%d", xran_mplane->frame_str - frame);
   ret = lyd_new_term(fft_offset, NULL, "ul-fft-sampling-offset", ul_fft_offset, 0, NULL);

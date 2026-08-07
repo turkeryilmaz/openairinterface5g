@@ -161,7 +161,7 @@ void oran_fh_if4p5_south_in(RU_t *ru, int *frame, int *slot)
     printf("ORAN: %d.%d ORAN_fh_if4p5_south_in ERROR in RX PRACH function \n", f_prach, sl_prach);
   }
 
-  int slots_per_frame = 10 << (ru->openair0_cfg.nr_scs_for_raster);
+  int slots_per_frame = 10 << (ru->openair0_cfg.split7.mu);
   proc->tti_rx = sl;
   proc->frame_rx = f;
   proc->tti_tx = (sl + ru->sl_ahead) % slots_per_frame;
