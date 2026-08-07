@@ -328,8 +328,7 @@ void free_nr_ue_dl_harq(NR_DL_UE_HARQ_t harq_list[2][NR_MAX_HARQ_PROCESSES], int
   }
 
   for (int j=0; j < 2; j++) {
-    for (int i=0; i<number_of_processes; i++) {
-      free_and_zero(harq_list[j][i].b);
+    for (int i = 0; i < number_of_processes; i++) {
       free_and_zero(harq_list[j][i].c);
       free_and_zero(harq_list[j][i].d);
     }
@@ -396,7 +395,6 @@ void nr_init_dl_harq_processes(NR_DL_UE_HARQ_t harq_list[2][NR_MAX_HARQ_PROCESSE
       memset(harq_list[j] + i, 0, sizeof(NR_DL_UE_HARQ_t));
       init_downlink_harq_status(harq_list[j] + i);
 
-      harq_list[j][i].b = malloc16_clear(a_segments * 1056);
       harq_list[j][i].c = malloc16(a_segments * sizeof(*harq_list[j][i].c) * 1056);
       harq_list[j][i].d = malloc16(a_segments * sizeof(*harq_list[j][i].d) * 3 * 8448);
       init_abort(&harq_list[j][i].abort_decode);
@@ -481,6 +479,15 @@ void init_nr_ue_transport(PHY_VARS_NR_UE *ue)
   ue->pdsch_num_actors = num_actors;
   ue->pdsch_scratch = calloc_or_fail(num_actors, sizeof(*ue->pdsch_scratch));
   nr_init_pdsch_buffers(ue->pdsch_scratch, num_actors, &ue->frame_parms);
+}
+
+void init_phy_nr_measurements(PHY_VARS_NR_UE *ue)
+{
+  PHY_NR_MEASUREMENTS *measurements = &ue->measurements;
+  measurements->meas_request_pending = false;
+  measurements->search_new_cells_pending = false;
+  measurements->last_blind_slot = -1;
+  measurements->last_slot = -1;
 }
 
 void clean_UE_harq(PHY_VARS_NR_UE *UE)

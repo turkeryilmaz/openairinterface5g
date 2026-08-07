@@ -670,7 +670,8 @@ static void nr_ue_dlsch_procedures(PHY_VARS_NR_UE *ue,
   stop_meas_nr_ue_phy(ue, DLSCH_UNSCRAMBLING_STATS);
 
   start_meas_nr_ue_phy(ue, DLSCH_DECODING_STATS);
-  nr_dlsch_decoding(ue, proc, dlsch, cw_idx, config, llr, dl_harq->b, freq_alloc->num_rbs, G);
+  uint8_t output[lenWithCrc(1, dlsch->cw_info.TBS) / 8];
+  nr_dlsch_decoding(ue, proc, dlsch, cw_idx, config, llr, output, freq_alloc->num_rbs, G);
   stop_meas_nr_ue_phy(ue, DLSCH_DECODING_STATS);
 
   int ind_type = -1;
@@ -708,7 +709,7 @@ static void nr_ue_dlsch_procedures(PHY_VARS_NR_UE *ue,
   if (ue->if_inst && ue->if_inst->dl_indication) {
     fapi_nr_rx_indication_t rx_ind;
     rx_ind.number_pdus = 0;
-    nr_fill_rx_indication(&rx_ind, ind_type, ue, cw_idx, harq_pid, dlsch, proc, dl_harq->b);
+    nr_fill_rx_indication(&rx_ind, ind_type, ue, cw_idx, harq_pid, dlsch, proc, output);
     nr_downlink_indication_t dl_indication = (nr_downlink_indication_t){
         .gNB_index = proc->gNB_id,
         .module_id = ue->Mod_id,
@@ -732,19 +733,14 @@ static void nr_ue_dlsch_procedures(PHY_VARS_NR_UE *ue,
     a_segments = a_segments * freq_alloc->num_rbs;
     a_segments = (a_segments / 273) + 1;
   }
-  uint32_t dlsch_bytes = a_segments * 1056;  // allocated bytes per segment
 
   if (ue->phy_sim_dlsch_b)
-    memcpy(ue->phy_sim_dlsch_b, dl_harq->b, dlsch_bytes);
+    memcpy(ue->phy_sim_dlsch_b, output, sizeof(output));
 }
 
-static bool check_meas_to_perform(PHY_VARS_NR_UE *ue, int nr_slot_rx)
+static bool check_neighboring_cells_task(PHY_VARS_NR_UE *ue, bool task_pending)
 {
-  if (nr_slot_rx != 0) {
-    return false;
-  }
-
-  if (ue->measurements.meas_request_pending == true) {
+  if (task_pending == true) {
     return false;
   }
 
@@ -991,7 +987,7 @@ static int pbch_process(PHY_VARS_NR_UE *UE,
   int sampleShift = INT_MAX;
 
   // Buffer to hold symbol 3 estimates for FO estimation
-  c16_t pbch_ch_est_sym3[NR_PBCH_NUM_RB * NR_NB_SC_PER_RB] = {0};
+  c16_t pbch_ch_est_sym3[NR_PBCH_NUM_RB * NR_NB_SC_PER_RB];
   // Choose estimates buffer for FO compensation based on current PBCH symbol
   c16_t *cur_pbch_est = NULL;
   if (*pbchSymbCnt == 0)
@@ -1040,6 +1036,25 @@ static int pbch_process(PHY_VARS_NR_UE *UE,
     *ssbIndex = -1;
   }
   return sampleShift;
+}
+
+static nr_meas_task_args_t *create_meas_task_args(const UE_nr_rxtx_proc_t *proc, PHY_VARS_NR_UE *ue)
+{
+  NR_DL_FRAME_PARMS *fp = &ue->frame_parms;
+  // Extra headroom so that nr_slot_fep() can read all NR_N_SYMBOLS_SSB symbols
+  // when the PSS is detected at the very end of the samples_per_slot_wCP search window
+  uint32_t rxdata_size = fp->samples_per_slot_wCP
+                       + NR_N_SYMBOLS_SSB * (fp->ofdm_symbol_size + fp->nb_prefix_samples);
+  size_t total_size = sizeof(nr_meas_task_args_t) + fp->nb_antennas_rx * rxdata_size * sizeof(c16_t);
+  nr_meas_task_args_t *args = malloc_or_fail(total_size);
+  args->proc = *proc;
+  args->ue = ue;
+  args->rxdata_size = rxdata_size;
+  args->nb_ant = fp->nb_antennas_rx;
+  uint32_t slot_offset = get_samples_slot_timestamp(fp, proc->nr_slot_rx);
+  for (int i = 0; i < fp->nb_antennas_rx; i++)
+    memcpy(args->rxdata_ant + i * rxdata_size, &ue->common_vars.rxdata[i][slot_offset], rxdata_size * sizeof(c16_t));
+  return args;
 }
 
 int pbch_processing(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, nr_phy_data_t *phy_data)
@@ -1098,26 +1113,29 @@ int pbch_processing(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, nr_phy_da
   } // for gNB_id
 
   PHY_NR_MEASUREMENTS *measurements = &ue->measurements;
-  if (check_meas_to_perform(ue, nr_slot_rx)) {
+
+  // Measurements on known neighboring cells
+  if (check_neighboring_cells_task(ue, measurements->meas_request_pending)) {
     measurements->meas_request_pending = true;
-
-    // Copy rxdata
-    uint32_t rxdata_size = (2 * (fp->samples_per_frame) + fp->ofdm_symbol_size);
-    size_t total_size = sizeof(nr_meas_task_args_t) + fp->nb_antennas_rx * rxdata_size * sizeof(c16_t);
-    nr_meas_task_args_t *args = malloc_or_fail(total_size);
-    args->proc = *proc;
-    args->ue = ue;
-    args->rxdata_size = rxdata_size;
-    args->rxdata = malloc_or_fail(fp->nb_antennas_rx * sizeof(*args->rxdata));
-
-    for (int i = 0; i < fp->nb_antennas_rx; i++) {
-      args->rxdata[i] = &args->rxdata_ant[i * rxdata_size];
-      memcpy(args->rxdata[i], ue->common_vars.rxdata[i], rxdata_size * sizeof(c16_t));
-    }
-
+    nr_meas_task_args_t *args = create_meas_task_args(proc, ue);
     task_t t = {.func = nr_ue_meas_neighboring_cell, .args = args};
     pushTpool(&get_nrUE_params()->Tpool, t);
   }
+
+  // Search for unknown neighboring cells
+  if (!ue->disable_blind_search && proc->frame_rx % 256 == 0 && proc->nr_slot_rx == 0
+      && measurements->last_blind_slot == measurements->last_slot)
+    measurements->last_blind_slot = -1;
+  uint16_t slots_per_frame = ue->frame_parms.slots_per_frame;
+  bool is_meas_slot = proc->frame_rx % 256 == 0 && proc->nr_slot_rx >= CIRCULAR_INC(measurements->last_blind_slot, 1, slots_per_frame);
+  if (!ue->disable_blind_search && is_meas_slot && check_neighboring_cells_task(ue, measurements->search_new_cells_pending)) {
+    measurements->search_new_cells_pending = true;
+    measurements->last_blind_slot = proc->nr_slot_rx;
+    nr_meas_task_args_t *args = create_meas_task_args(proc, ue);
+    task_t t = {.func = nr_ue_search_new_neighboring_cell, .args = args};
+    pushTpool(&get_nrUE_params()->Tpool, t);
+  }
+  measurements->last_slot = proc->nr_slot_rx;
 
   TracyCZoneEnd(ctx);
   return sampleShift;

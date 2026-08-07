@@ -18,8 +18,6 @@
 #include "L1_nr_paramdef.h"
 #include "MACRLC_nr_paramdef.h"
 #include "PHY/INIT/nr_phy_init.h"
-#include "PHY/defs_gNB.h"
-#include "PHY/defs_nr_common.h"
 #include "RRC_nr_paramsvalues.h"
 #include "T.h"
 #include "asn_SEQUENCE_OF.h"

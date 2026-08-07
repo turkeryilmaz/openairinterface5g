@@ -18,7 +18,6 @@
 #include "common/platform_types.h"
 #include "openair2/LAYER2/NR_MAC_gNB/nr_mac_gNB.h"
 #include "openair2/LAYER2/nr_rlc/nr_rlc_configuration.h"
-#include "openair1/PHY/defs_nr_common.h"
 #include "openair2/LAYER2/NR_MAC_COMMON/nr_mac.h"
 struct NR_MeasurementTimingConfiguration;
 struct NR_PDSCH_TimeDomainResourceAllocationList;

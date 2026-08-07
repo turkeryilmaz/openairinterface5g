@@ -3755,6 +3755,9 @@ static nr_dci_format_t nr_extract_dci_00_10(NR_UE_MAC_INST_t *mac,
       // sys info = 0 for SIB1 and 1 for other SIB
       if (mac->get_sib1 == 0 && sys_info == 0)
         return NR_DCI_NONE;
+      // received DCI for other SI while still waiting to receive SIB1
+      if (mac->get_sib1 != 0 && sys_info == 1)
+        return NR_DCI_NONE;
       break;
     case TYPE_C_RNTI_ :
       // Identifier for DCI formats
@@ -4004,7 +4007,7 @@ static void nr_ue_process_mac_pdu(NR_UE_MAC_INST_t *mac, nr_downlink_indication_
 {
   frame_t frameP = dl_info->frame;
   int slot = dl_info->slot;
-  fapi_nr_pdsch_pdu_t *pdsch_pdu = &(dl_info->rx_ind->rx_indication_body + pdu_id)->pdsch_pdu;
+  fapi_nr_pdsch_pdu_t *pdsch_pdu = &dl_info->rx_ind->rx_indication_body[pdu_id].pdsch_pdu;
   uint8_t *pduP = pdsch_pdu->pdu;
   int32_t pdu_len = (int32_t)pdsch_pdu->pdu_length;
   uint8_t CC_id = dl_info->cc_id;

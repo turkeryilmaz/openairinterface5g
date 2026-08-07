@@ -1342,6 +1342,8 @@ void nr_ue_dl_scheduler(NR_UE_MAC_INST_t *mac, nr_downlink_indication_t *dl_info
 
 static bool check_pucchres_for_pending_SR(NR_PUCCH_Config_t *pucch_Config, int target_sr_id)
 {
+  if (!pucch_Config || !pucch_Config->schedulingRequestResourceToAddModList)
+    return false;
   for (int id = 0; id < pucch_Config->schedulingRequestResourceToAddModList->list.count; id++) {
     NR_SchedulingRequestResourceConfig_t *sr_Config = pucch_Config->schedulingRequestResourceToAddModList->list.array[id];
     if (sr_Config->schedulingRequestID == target_sr_id)  {
@@ -1419,10 +1421,6 @@ static void nr_update_sr(NR_UE_MAC_INST_t *mac, bool BSRsent)
 
   NR_UE_UL_BWP_t *current_UL_BWP = mac->current_UL_BWP;
   NR_PUCCH_Config_t *pucch_Config = current_UL_BWP ? current_UL_BWP->pucch_Config : NULL;
-  if (!pucch_Config
-      || !pucch_Config->schedulingRequestResourceToAddModList
-      || pucch_Config->schedulingRequestResourceToAddModList->list.count == 0)
-    return; // cannot schedule SR if there is no schedulingRequestResource configured
 
   if (lc_info->sr_id < 0 || lc_info->sr_id >= NR_MAX_SR_ID)
     LOG_E(NR_MAC, "No SR corresponding to this LCID\n"); // TODO not sure what to do here
@@ -1432,14 +1430,17 @@ static void nr_update_sr(NR_UE_MAC_INST_t *mac, bool BSRsent)
       if (check_pucchres_for_pending_SR(pucch_Config, lc_info->sr_id)) {
         // trigger SR
         LOG_D(NR_MAC, "Triggering SR for ID %d\n", lc_info->sr_id);
+        mac->sr_fallback_ra_triggered = false;
         sr->pending = true;
         sr->counter = 0;
-      } else {
+      } else if (!mac->sr_fallback_ra_triggered && !mac->ra.ra_pucch) {
         // initiate a Random Access procedure on the SpCell and cancel the pending SR
         // if the MAC entity has no valid PUCCH resource configured for the pending SR
+        // Wait until any pending Msg4/MsgB HARQ feedback PUCCH has been transmitted
         sr->pending = false;
         sr->counter = 0;
         nr_timer_stop(&sr->prohibitTimer);
+        mac->sr_fallback_ra_triggered = true;
         schedule_RA_after_SR_failure(mac);
       }
     }

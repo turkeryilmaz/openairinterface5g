@@ -19,6 +19,7 @@
 #include "PHY/NR_REFSIG/nr_refsig.h"
 #include "PHY/TOOLS/tools_defs.h"
 #include "nr-uesoftmodem.h"
+#include "nfapi/open-nFAPI/nfapi/public_inc/fapi_nr_ue_interface.h"
 
 //#define DEBUG_INITIAL_SYNCH
 #define DUMP_PBCH_CH_ESTIMATES 0
@@ -206,61 +207,75 @@ bool nr_search_ssb_common(nr_ssb_search_params_t *params)
                                       .nb_antennas_rx = params->nb_antennas_rx,
                                       .rxdata_length = params->rxdata_size,
                                       .ofdm_symbol_size = params->ofdm_symbol_size,
+                                      .nb_prefix_samples = params->nb_prefix_samples,
                                       .subcarrier_spacing = params->subcarrier_spacing,
                                       .fo_flag = params->fo_flag,
                                       .target_Nid_cell = params->target_nid_cell,
                                       .pssTime = (c16_t *)pssTime};
-  params->pss_res = pss_search_time_nr(&p_pss);
+  nr_pss_info_t pss_info = pss_search_time_nr(&p_pss);
 
-  if (!params->pss_res.success)
-    return false;
+  // This is the frequency offset that will be applied in the compensation,
+  // and it takes into account the values already applied previously during the loop.
+  int f_off_to_comp = 0;
 
-  const int ssb_time_offset = params->pss_res.pos - params->nb_prefix_samples;
+  for (int p = 0; p < NUMBER_PSS_SEQUENCE; p++) {
+    pss_detection_result_t *pss_res = &pss_info.pss_elem_info[p];
+    if (!pss_res->success)
+      continue;
+
+    int freq_offset_pss = pss_res->freq_offset;
+    int sync_pos = pss_res->pos;
+
+    const int ssb_time_offset = sync_pos - params->nb_prefix_samples;
 
 #ifdef DEBUG_INITIAL_SYNCH
-  LOG_I(PHY, "Initial sync : Estimated PSS position %d, Nid2 %d, ssb offset %d\n", sync_pos, nid2, ssb_offset);
+    LOG_I(PHY, "Initial sync : Estimated PSS position %d, Nid2 %d, ssb time offset %d\n", sync_pos, p, ssb_time_offset);
 #endif
 
-  // Check that SSB fits within buffer
-  if (ssb_time_offset + NR_N_SYMBOLS_SSB * (params->ofdm_symbol_size + params->nb_prefix_samples) >= params->rxdata_size) {
-    LOG_D(PHY,
-          "SSB extends beyond buffer boundary (sync_pos %d, ssb_offset %d, buffer_size %d)\n",
-          params->pss_res.pos,
-          ssb_time_offset,
-          params->rxdata_size);
-    return false;
+    // Check that SSB fits within buffer
+    if (ssb_time_offset + NR_N_SYMBOLS_SSB * (params->ofdm_symbol_size + params->nb_prefix_samples) >= params->rxdata_size) {
+      LOG_D(PHY,
+            "SSB extends beyond buffer boundary (sync_pos %d, ssb_time_offset %d, buffer_size %d)\n",
+            sync_pos,
+            ssb_time_offset,
+            params->rxdata_size);
+      return false;
+    }
+
+    // Apply frequency offset compensation if requested
+    if (params->apply_freq_offset && freq_offset_pss != 0) {
+      f_off_to_comp += freq_offset_pss;
+      compensate_freq_offset(params->rxdata, params->nb_antennas_rx, params->rxdata_size, f_off_to_comp, params->sampling_rate);
+      f_off_to_comp *= -1;
+    }
+
+    // Extract SSB symbols to frequency domain
+    // Symbol ordering: 0=PSS, 1=PBCH, 2=SSS, 3=PBCH
+    do_time_to_freq(params, ssb_time_offset);
+
+    // Perform SSS detection
+    nr_sss_params_t p_sss = (nr_sss_params_t){.nb_antennas_rx = params->nb_antennas_rx,
+                                              .samples_per_slot_wCP = params->samples_per_slot_wCP,
+                                              .ofdm_symbol_size = params->ofdm_symbol_size,
+                                              .first_carrier_offset = params->first_carrier_offset,
+                                              .ssb_start_subcarrier = params->ssb_start_subcarrier,
+                                              .subcarrier_spacing = params->subcarrier_spacing,
+                                              .exclude_nid_cells = params->exclude_nid_cells,
+                                              .num_exclude_nid_cells = params->num_exclude_nid_cells};
+
+    c16_t(*rxdataF)[params->nb_antennas_rx][params->ofdm_symbol_size] =
+        (c16_t(*)[params->nb_antennas_rx][params->ofdm_symbol_size])params->rxdataF;
+    params->sss_res = rx_sss_nr(&p_sss, pss_res, -1, rxdataF);
+
+    if (!params->sss_res.success || params->sss_res.nid_cell < 0) {
+      continue;
+    }
+
+    params->pss_res = *pss_res;
+    return true;
   }
 
-  // Apply frequency offset compensation if requested
-  if (params->apply_freq_offset && params->pss_res.freq_offset != 0) {
-    compensate_freq_offset(params->rxdata, params->nb_antennas_rx, params->rxdata_size, params->pss_res.freq_offset, params->sampling_rate);
-  }
-
-  // Extract SSB symbols to frequency domain
-  // Symbol ordering: 0=PSS, 1=PBCH, 2=SSS, 3=PBCH
-  do_time_to_freq(params, ssb_time_offset);
-
-  // Perform SSS detection
-  nr_sss_params_t p_sss = (nr_sss_params_t){.nb_antennas_rx = params->nb_antennas_rx,
-                                            .samples_per_slot_wCP = params->samples_per_slot_wCP,
-                                            .ofdm_symbol_size = params->ofdm_symbol_size,
-                                            .first_carrier_offset = params->first_carrier_offset,
-                                            .ssb_start_subcarrier = params->ssb_start_subcarrier,
-                                            .subcarrier_spacing = params->subcarrier_spacing};
-
-  c16_t(*rxdataF)[params->nb_antennas_rx][params->ofdm_symbol_size] =
-      (c16_t(*)[params->nb_antennas_rx][params->ofdm_symbol_size])params->rxdataF;
-  params->sss_res = rx_sss_nr(&p_sss, &params->pss_res, -1, rxdataF);
-
-  if (!params->sss_res.success || params->sss_res.nid_cell < 0) {
-    return false;
-  }
-
-  // Check if we should exclude the serving cell
-  if (params->exclude_nid_cell >= 0 && params->sss_res.nid_cell == params->exclude_nid_cell)
-    return false;
-
-  return true;
+  return false;
 }
 
 static void nr_scan_ssb(void *arg)
@@ -320,7 +335,8 @@ static void nr_scan_ssb(void *arg)
         .subcarrier_spacing = fp->subcarrier_spacing,
         .samples_per_slot_wCP = fp->samples_per_slot_wCP,
         .target_nid_cell = ssbInfo->targetNidCell,
-        .exclude_nid_cell = -1, // No exclusion for initial sync
+        .exclude_nid_cells = NULL, // No exclusion for initial sync
+        .num_exclude_nid_cells = 0,
         .apply_freq_offset = ssbInfo->foFlag,
         .fo_flag = ssbInfo->foFlag,
         .rxdataF = rxdataF,

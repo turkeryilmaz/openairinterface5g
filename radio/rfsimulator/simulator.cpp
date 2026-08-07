@@ -1116,7 +1116,7 @@ static void process_recv_header(rfsimulator_state_t *t, buffer_t *b, bool first_
   AssertFatal(b->th.beam_map == 1ULL || t->beam_ctrl->enable_beams == 1,
               "The transmitter has enabled beam simulation while this receiver has not\n");
   size_t payload_sz = sampleToByte(b->th.size, b->th.nbAnt) * num_beams;
-  b->packet_ptr = static_cast<rfsim_packet_t *>(calloc_or_fail(1, payload_sz + sizeof(samplesBlockHeader_t)));
+  b->packet_ptr = static_cast<rfsim_packet_t *>(malloc_or_fail(payload_sz + sizeof(samplesBlockHeader_t)));
   b->packet_ptr->header = b->th;
   b->transferPtr = b->packet_ptr->payload;
   b->remainToTransfer = payload_sz;
@@ -1213,7 +1213,7 @@ static bool flushInput(rfsimulator_state_t *t, int timeout, bool first_time)
 {
   // Process all incoming events on sockets
   // store the data in lists
-  struct epoll_event events[MAX_FD_RFSIMU] = {{0}};
+  struct epoll_event events[MAX_FD_RFSIMU];
   int nfds = epoll_wait(t->epollfd, events, MAX_FD_RFSIMU, timeout);
 
   if (nfds == -1) {

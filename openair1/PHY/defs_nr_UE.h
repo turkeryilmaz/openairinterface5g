@@ -90,6 +90,7 @@ typedef struct {
 #define NEIGHBOR_CELL_MAX_CONSECUTIVE_FAILURES 10
 
 typedef struct {
+  int ssb_slot;
   int pss_search_start;
   int pss_search_length;
   uint32_t ssb_rsrp;
@@ -153,7 +154,10 @@ typedef struct {
 
   /// Info about neighboring cells to perform the measurements
   neighboring_cell_info_t neighboring_cell_info[NUMBER_OF_NEIGHBORING_CELLS_MAX];
-  bool meas_request_pending;
+  _Atomic(bool) meas_request_pending;
+  _Atomic(bool) search_new_cells_pending;
+  int last_blind_slot;
+  int last_slot;
 } PHY_NR_MEASUREMENTS;
 
 typedef struct {
@@ -382,6 +386,7 @@ typedef struct PHY_VARS_NR_UE_s {
   double freq_off_acc; /// accumulated DL frequency error (for PI controller)
   double dl_Doppler_shift; /// calculated DL Doppler shift
   double ul_Doppler_shift; /// calculated UL Doppler shift
+  int disable_blind_search; /// flag disabling the blind search for UE searches by neighboring cells
 
   /// Timing Advance updates variables
   /// Timing advance update computed from the TA command signalled from gNB
@@ -546,7 +551,8 @@ typedef struct {
   int subcarrier_spacing;
   int samples_per_slot_wCP;
   int target_nid_cell; // -1 for blind search, specific PCI for targeted search
-  int exclude_nid_cell; // -1 for no exclusion, or serving cell PCI to exclude
+  const uint16_t *exclude_nid_cells; // PCIs to exclude (serving cell + already discovered neighboring cells)
+  int num_exclude_nid_cells; // Number of PCIs in exclude_nid_cells array
   bool apply_freq_offset; // whether to compensate frequency offset
   bool fo_flag; // frequency offset estimation flag for pss_synchro_nr()
   void *rxdataF; // Pre-allocated rxdataF buffer

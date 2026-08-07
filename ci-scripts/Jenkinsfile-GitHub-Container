@@ -52,6 +52,7 @@ def saAERIALStatus = ''
 def saMultiAntennaStatus = ''
 def saFHI72Status = ''
 def saFHI72MplaneStatus = ''
+def saORUStatus = ''
 def saHandoverStatus = ''
 def saAERIALOAIUEStatus = ''
 def saOAIUEStatus = ''
@@ -799,6 +800,29 @@ pipeline {
               script {
                 currentBuild.result = 'FAILURE'
                 failingStages += saFHI72MplaneStatus
+              }
+            }
+          }
+        }
+        stage ("SA-ORU-CN5G") {
+          when { expression {do5Gtest} }
+          steps {
+            script {
+              triggerDownstreamJob ('RAN-SA-ORU-CN5G')
+            }
+          }
+          post {
+            always {
+              script {
+                // Using a unique variable name for each test stage to avoid overwriting on a global variable
+                // due to parallel-time concurrency
+                saORUStatus = finalizeDownstreamJob('RAN-SA-ORU-CN5G')
+              }
+            }
+            failure {
+              script {
+                currentBuild.result = 'FAILURE'
+                failingStages += saORUStatus
               }
             }
           }

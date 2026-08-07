@@ -1,5 +1,8 @@
 # SPDX-License-Identifier: LicenseRef-CSSL-1.0
 
+# use env var PKG_CONFIG_PATH to override paths to libdpdk.pc
+pkg_check_modules(dpdk REQUIRED libdpdk>=22.11)
+
 add_library(oru_io oru_io.c)
 target_include_directories(oru_io PUBLIC ./)
 target_link_libraries(oru_io PUBLIC fh_core ${dpdk_LIBRARIES})
