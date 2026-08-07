@@ -23,6 +23,11 @@ target_include_directories(spectrum_sm PUBLIC ${CLIBE3_INCLUDE_DIRS})
 target_link_directories(spectrum_sm PRIVATE ${CLIBE3_LIBRARY_DIRS})
 target_link_libraries(spectrum_sm spectrum_sm_asn1 json-c pthread LOG)
 
+if(SPECTRUM_SM_HAVE_PROTOBUF)
+  target_link_libraries(spectrum_sm spectrum_sm_pb)
+  target_include_directories(spectrum_sm PUBLIC ${PROTOBUFC_INCLUDE_DIRS})
+  target_compile_definitions(spectrum_sm PRIVATE E3_SM_HAVE_PROTOBUF)
+endif()
 
 # Both encodings are compiled in; the active one is selected at runtime from
 # the config file (E3Configuration.encoding).
