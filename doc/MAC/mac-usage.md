@@ -125,8 +125,8 @@ Example:
 ```
 UE RNTI 2460 CU-UE-ID 2 in-sync PH 28 dB PCMAX 24 dBm, average RSRP -74 (8 meas), average SINR 40.0 (32 meas)
 UE 2460: CSI [CQI 15 RI 2 PMI (14,1)] SRS [UL-RI 2 TPMI 0]
-UE 2460: dlsch_rounds 32917/5113/1504/560, dlsch_errors 211, pucch0_DTX 1385 (SNR 19.8+0.2 dB) RSSI -44.2, BLER 0.19557 MCS (1) 23 (Qm 8) CCE fail 3
-UE 2460: ulsch_rounds 3756/353/182/179, ulsch_errors 170, ulsch_DTX 285, BLER 0.33021 MCS (1) 27 (Qm 8 deltaMCS 0 dB) NPRB 5 SNR 31.0 (-1.0) dB RSSI -39.8 CCE fail 0
+UE 2460: dlsch_rounds 32917/5113/1504/560, dlsch_errors 211, pucch0_DTX 1385 (SNR 19.8+0.2) RSSI -44.2, BLER 0.19557 MCS (1) 23 (Qm 8) CCE fail 3
+UE 2460: ulsch_rounds 3756/353/182/179, ulsch_errors 170, ulsch_DTX 285, BLER 0.33021 MCS (1) 27 (Qm 8 deltaMCS 0) NPRB 5 SNR 31.0 (-1.0) RSSI -39.8 CCE fail 0
 UE 2460: LCID 1,2,4, goodput DL  120.50 UL   12.30 Mbps
 ```
 
@@ -183,7 +183,7 @@ The third and fourth line show HARQ-related information:
   and ACK/NAK cannot be conveyed properly or DL DCIs are missed by the UE. This
   is also something that should be very small compared to `A` in
   `dlsch_rounds`.
-* `(SNR x+y dB)`: PUCCH SNR where `x` is the average PUCCH SNR and `y` the
+* `(SNR x+y)`: PUCCH SNR where `x` is the average PUCCH SNR and `y` the
   difference to the target (positive: above SNR, negative: below)
 * PUCCH `RSSI`: the received signal strength indicator, either in dBm or dBFs.
   For OAI L1, this is in dBFs.
@@ -202,7 +202,7 @@ The third and fourth line show HARQ-related information:
   or missed DCI 0\_x DCIs. It should be low compared to `A` in `ulsch_rounds`
   when things are working properly.
 * ULSCH `BLER/MCS`: same as DLSCH but for UL.
-* ULSCH `Qm X deltaMCS Y dB`: modulation order: 2=QPSK, 4=16QAM, 6=64QAM,
+* ULSCH `Qm X deltaMCS Y`: modulation order: 2=QPSK, 4=16QAM, 6=64QAM,
   8=256QAM and the dB offset for deltaMCS component in PUSCH power control law.
   If deltaMCS is disabled (this is the default) then it indicates 0. When
   deltaMCS is enabled it indicates the current power offset applied by the UE
