@@ -7,6 +7,10 @@
 
 #include <stdint.h>
 
+/* Name of the config section holding every E3 setting, including the ones the
+ * RAN functions read for themselves (see ran_func_spectrum.c). */
+#define E3CONFIG_SECTION "E3Configuration"
+
 /* SM identifiers, used by enabled_sms */
 #define E3_SM_ID_KPM 2 /* L1-KPM SM: PHY IQ metadata */
 
