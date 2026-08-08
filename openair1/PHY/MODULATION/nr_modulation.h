@@ -179,4 +179,20 @@ void fftshift_inplace(c16_t *in, int nbins, int fft_size);
 void fftshift_inverse(const c16_t *in, c16_t *out, int nbins, int fft_size);
 void fftshift_inverse_inplace(c16_t *in, int nbins, int fft_size);
 
+/*! \brief Fast 2-port / 2-layer precoder: writes both antenna outputs in one
+   pass, exploiting that every 2x2 codebook weight is +/-1 or +/-j times a
+   common scale. See nr_modulation.c for details.
+  @param[in]  txdataF_res_mapped Tx data after resource mapping (2 layers).
+  @param[in]  weights            2x2 precoding matrix weights [layer][port].
+  @param[in]  re_cnt             Number of RE to write, should be multiple of 4.
+  @param[out] txdataF_precoded_ant0/ant1  Precoded data for antenna ports 0 and 1.
+*/
+void nr_layer_precoder_2x2_simd(const int symSz,
+                                const c16_t txdataF_res_mapped[2][symSz],
+                                c16_t weights[NR_MAX_NB_LAYERS][NR_MAX_CSI_PORTS],
+                                const int sc_offset,
+                                const int re_cnt,
+                                c16_t *txdataF_precoded_ant0,
+                                c16_t *txdataF_precoded_ant1);
+
 #endif
