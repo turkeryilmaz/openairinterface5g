@@ -951,7 +951,8 @@ static inline __attribute__((always_inline)) int16x8_t cmac0_prec128(int16x8_t x
 }
 static inline __attribute__((always_inline)) int16x8_t cmac_prec128(int16x8_t y, int16x8_t x, int16x8_t wr, int16x8_t wi) {
   int16x8_t produ = cmac0_prec128(x, wr, wi);
-  return vaddq_s16(y, produ);
+  // saturating add to match the x86 path (adds_epi16); plain vaddq_s16 wraps on overflow
+  return vqaddq_s16(y, produ);
 }
 
 #else // __x86 128-bit
