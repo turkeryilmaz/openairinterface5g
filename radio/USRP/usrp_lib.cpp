@@ -693,6 +693,7 @@ static int trx_usrp_read(openair0_device_t *device, openair0_timestamp_t *ptimes
 {
   usrp_state_t *s = (usrp_state_t *)device->priv;
   int samples_received=0;
+  openair0_timestamp_t first_received_timestamp = 0;
   int nsamps2; // aligned to upper 32 or 16 byte boundary
   nsamps2 = (nsamps+7)>>3;
   simde__m256i buff_tmp[cc < 2 ? 2 : cc][nsamps2];
@@ -713,31 +714,44 @@ static int trx_usrp_read(openair0_device_t *device, openair0_timestamp_t *ptimes
 
   samples_received=0;
   while (samples_received != nsamps) {
-
+    const bool waiting_for_first_pps = s->wait_for_first_pps == 1;
+    int samples_received_this_call;
     if (cc>1) {
       // receive multiple channels (e.g. RF A and RF B)
       std::vector<void *> buff_ptrs;
 
-      for (int i=0; i<cc; i++) buff_ptrs.push_back(buff_tmp[i]+samples_received);
-      samples_received += s->rx_stream->recv(buff_ptrs, nsamps-samples_received, s->rx_md);
+      for (int i = 0; i < cc; i++)
+        buff_ptrs.push_back((int32_t *)buff_tmp[i] + samples_received);
+      samples_received_this_call = s->rx_stream->recv(buff_ptrs, nsamps - samples_received, s->rx_md);
     } else {
       // receive a single channel (e.g. from connector RF A)
 
-      samples_received += s->rx_stream->recv((void*)((int32_t*)buff_tmp[0]+samples_received),
-                                             nsamps-samples_received, s->rx_md);
+      samples_received_this_call =
+          s->rx_stream->recv((void *)((int32_t *)buff_tmp[0] + samples_received), nsamps - samples_received, s->rx_md);
     }
-    if  ((s->wait_for_first_pps == 0) && (s->rx_md.error_code!=uhd::rx_metadata_t::ERROR_CODE_NONE))
-      break;
 
-    if ((s->wait_for_first_pps == 1) && (samples_received != nsamps)) {
+    if (samples_received == 0 && samples_received_this_call > 0)
+      first_received_timestamp = s->rx_md.time_spec.to_ticks(s->sample_rate);
+    if (samples_received_this_call > 0)
+      s->wait_for_first_pps = 0;
+    samples_received += samples_received_this_call;
+
+    const bool retry_startup_timeout = waiting_for_first_pps && samples_received == 0 && samples_received_this_call == 0
+                                       && s->rx_md.error_code == uhd::rx_metadata_t::ERROR_CODE_TIMEOUT;
+    if (retry_startup_timeout) {
       printf("sleep...\n"); //usleep(100);
+      continue;
     }
+
+    if (s->rx_md.error_code != uhd::rx_metadata_t::ERROR_CODE_NONE)
+      break;
   }
-  if (samples_received == nsamps) s->wait_for_first_pps=0;
 
   // bring RX data into 12 LSBs for softmodem RX
+  const int full_vectors = samples_received >> 3;
+  const int remainder_samples = samples_received & 7;
   for (int i=0; i<cc; i++) {
-    for (int j = 0; j < nsamps2; j++) {
+    for (int j = 0; j < full_vectors; j++) {
       // bring RX data into 12 LSBs for softmodem RX,
       // this keeps the significant bits of B210 and may loose better ADC results,
       // but it makes free bits in MSB for signal processing on int16
@@ -749,6 +763,14 @@ static int trx_usrp_read(openair0_device_t *device, openair0_timestamp_t *ptimes
         simde_mm256_storeu_si256(((simde__m256i *)buff[i]) + j, tmp);
       }
     }
+
+    if (remainder_samples > 0) {
+      const size_t remainder_bytes = remainder_samples * sizeof(int32_t);
+      simde__m256i tmp = simde_mm256_setzero_si256();
+      memcpy(&tmp, &buff_tmp[i][full_vectors], remainder_bytes);
+      tmp = simde_mm256_srai_epi16(tmp, rxshift);
+      memcpy((int32_t *)buff[i] + (full_vectors << 3), &tmp, remainder_bytes);
+    }
   }
 
   if (samples_received < nsamps) {
@@ -758,8 +780,8 @@ static int trx_usrp_read(openair0_device_t *device, openair0_timestamp_t *ptimes
   if ( s->rx_md.error_code != uhd::rx_metadata_t::ERROR_CODE_NONE)
     LOG_E(HW, "%s\n", s->rx_md.to_pp_string(true).c_str());
 
-  s->rx_count += nsamps;
-  s->rx_timestamp = s->rx_md.time_spec.to_ticks(s->sample_rate);
+  s->rx_count += samples_received;
+  s->rx_timestamp = samples_received > 0 ? first_received_timestamp : s->rx_md.time_spec.to_ticks(s->sample_rate);
   *ptimestamp = s->rx_timestamp;
 
   T(T_USRP_RX_ANT0, T_INT(s->rx_timestamp), T_BUFFER(buff[0], samples_received*4));
@@ -778,13 +800,19 @@ static int trx_usrp_read(openair0_device_t *device, openair0_timestamp_t *ptimes
       (void) clock_gettime(CLOCK_REALTIME, &trec);
       hdr->header = BELL_LABS_IQ_HEADER;
       hdr->ts = *ptimestamp;
-      hdr->nbBytes=nsamps*4;            // real number of samples bytes
+      hdr->nbBytes = samples_received * 4; // real number of samples bytes
       hdr->tv_sec = trec.tv_sec;        // record secs
       hdr->tv_usec = trec.tv_nsec/1000; // record µsecs
-      memcpy(hdr+1, buff[0], nsamps*4);
+      memcpy(hdr + 1, buff[0], samples_received * 4);
       recPlay->currentPtr+=sizeof(iqrec_t)+BELL_LABS_IQ_BYTES_PER_SF; // record size is constant (BELL_LABS_IQ_BYTES_PER_SF)
       recPlay->nbSamplesBlocks++;
-      LOG_D(HW,"recorded %d samples, for TS %lu, shift in buffer %ld nbBytes %d nbSamplesBlocks %d\n", nsamps, hdr->ts, recPlay->currentPtr-(uint8_t *)recPlay->ms_sample, (int)hdr->nbBytes, (int)recPlay->nbSamplesBlocks);
+      LOG_D(HW,
+            "recorded %d samples, for TS %lu, shift in buffer %ld nbBytes %d nbSamplesBlocks %d\n",
+            samples_received,
+            hdr->ts,
+            recPlay->currentPtr - (uint8_t *)recPlay->ms_sample,
+            (int)hdr->nbBytes,
+            (int)recPlay->nbSamplesBlocks);
     } else
       exit_function(__FILE__, __FUNCTION__, __LINE__, "Recording reaches max iq limit\n", OAI_EXIT_NORMAL);
   }
@@ -1538,7 +1566,7 @@ extern "C" {
   if (recPlay != NULL) { // record mode
     recPlay->maxSizeBytes=openair0_cfg[0].recplay_conf->u_sf_max *
                             (sizeof(iqrec_t)+BELL_LABS_IQ_BYTES_PER_SF);
-    recPlay->ms_sample = (iqrec_t *) malloc(recPlay->maxSizeBytes);
+    recPlay->ms_sample = (iqrec_t *)calloc(1, recPlay->maxSizeBytes);
     recPlay->currentPtr= (uint8_t *)recPlay->ms_sample;
 
     if (recPlay->ms_sample == NULL) {
