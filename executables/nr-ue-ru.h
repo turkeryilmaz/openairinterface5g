@@ -5,6 +5,7 @@
 #ifndef NR_UE_RU_H
 #define NR_UE_RU_H
 
+#include "executables/nr-ue-tx-deadline.h"
 #include "PHY/defs_nr_UE.h"
 #include "radio/COMMON/common_lib.h"
 
@@ -28,7 +29,12 @@ int nrue_ru_set_freq(PHY_VARS_NR_UE *UE, uint64_t ul_carrier, uint64_t dl_carrie
 void nrue_ru_get_freq(const PHY_VARS_NR_UE *UE, uint64_t *ul_carrier, uint64_t *dl_carrier, int channel);
 int nrue_ru_adjust_rx_gain(PHY_VARS_NR_UE *UE, int gain_change);
 radio_gain_sample_context_t nrue_ru_sample_context(PHY_VARS_NR_UE *UE, int64_t first, int64_t end);
-int nrue_ru_read(PHY_VARS_NR_UE *UE, openair0_timestamp_t *ptimestamp, void **buff, int nsamps, int num_antennas);
+int nrue_ru_read(PHY_VARS_NR_UE *UE,
+                 openair0_timestamp_t *ptimestamp,
+                 void **buff,
+                 int nsamps,
+                 int num_antennas,
+                 nr_ue_tx_deadline_anchor_t *deadline_anchor);
 int nrue_ru_write(PHY_VARS_NR_UE *UE, openair0_timestamp_t timestamp, void **buff, int nsamps, int num_antennas, int flags);
 int nrue_ru_write_reorder(PHY_VARS_NR_UE *UE, openair0_timestamp_t timestamp, void **txp, int nsamps, int nbAnt, int flags);
 void nrue_ru_write_reorder_clear_context(PHY_VARS_NR_UE *UE);
