@@ -14,6 +14,7 @@
 #include <errno.h>
 #include <sys/ioctl.h>
 #include <dlfcn.h>
+#include <link.h>
 #include "openair1/PHY/defs_common.h"
 #include "common/oai_version.h"
 
@@ -93,7 +94,29 @@ static char *loader_format_shlibpath(char *modname, char *version)
   return tmpstr;
 }
 
-int load_module_version_shlib(char *modname, char *version, loader_shlibfunc_t *farray, int numf, void *autoinit_arg)
+static int verify_symbol_origin(void *lib_handle, void *symbol, const char *shlib_path, const char *symbol_name)
+{
+  struct link_map *opened_map = NULL;
+  struct link_map *symbol_map = NULL;
+  Dl_info symbol_info = {0};
+  if (!symbol || dlinfo(lib_handle, RTLD_DI_LINKMAP, &opened_map) != 0 || !opened_map
+      || dladdr1(symbol, &symbol_info, (void **)&symbol_map, RTLD_DL_LINKMAP) == 0 || !symbol_map || symbol_map != opened_map) {
+    fprintf(stderr,
+            "[LOADER] library %s symbol %s resolves from %s instead of the opened module\n",
+            shlib_path,
+            symbol_name,
+            symbol_info.dli_fname ? symbol_info.dli_fname : "<unknown>");
+    return -1;
+  }
+  return 0;
+}
+
+int load_module_version_shlib_precheck(char *modname,
+                                       char *version,
+                                       loader_shlibfunc_t *farray,
+                                       int numf,
+                                       void *autoinit_arg,
+                                       const loader_shlib_precheck_t *precheck)
 {
   void *lib_handle = NULL;
   initfunc_t fpi;
@@ -140,7 +163,39 @@ int load_module_version_shlib(char *modname, char *version, loader_shlibfunc_t *
     goto load_module_shlib_exit;
   }
 
+  if (precheck) {
+    if (!precheck->required_symbol || !precheck->validate) {
+      fprintf(stderr, "[LOADER] invalid precheck requested for library %s\n", shlib_path);
+      ret = -1;
+      goto load_module_shlib_exit;
+    }
+
+    dlerror();
+    void *precheck_fptr = dlsym(lib_handle, precheck->required_symbol);
+    const char *dlsym_error = dlerror();
+    if (dlsym_error || !precheck_fptr) {
+      fprintf(stderr,
+              "[LOADER] library %s does not provide required symbol %s: %s\n",
+              shlib_path,
+              precheck->required_symbol,
+              dlsym_error ? dlsym_error : "symbol address is null");
+      ret = -1;
+      goto load_module_shlib_exit;
+    }
+
+    if (verify_symbol_origin(lib_handle, precheck_fptr, shlib_path, precheck->required_symbol) < 0) {
+      ret = -1;
+      goto load_module_shlib_exit;
+    }
+
+    if (precheck->validate(modname, shlib_path, precheck_fptr, precheck->opaque) < 0) {
+      ret = -1;
+      goto load_module_shlib_exit;
+    }
+  }
+
   afname = malloc(strlen(modname)+15);
+
   if (!afname) {
     fprintf(stderr, "[LOADER] unable to allocate memory for library %s\n", shlib_path);
     ret = -1;
@@ -149,6 +204,10 @@ int load_module_version_shlib(char *modname, char *version, loader_shlibfunc_t *
   sprintf(afname,"%s_checkbuildver",modname);
   fpc = dlsym(lib_handle,afname);
   if (fpc) {
+    if (precheck && verify_symbol_origin(lib_handle, (void *)fpc, shlib_path, afname) < 0) {
+      ret = -1;
+      goto load_module_shlib_exit;
+    }
     int chkver_ret = fpc(loader_data.mainexec_buildversion,
                          &(loader_data.shlibs[lib_idx].shlib_buildversion));
     if (chkver_ret < 0) {
@@ -162,6 +221,10 @@ int load_module_version_shlib(char *modname, char *version, loader_shlibfunc_t *
   fpi = dlsym(lib_handle,afname);
 
   if (fpi) {
+    if (precheck && verify_symbol_origin(lib_handle, (void *)fpi, shlib_path, afname) < 0) {
+      ret = -1;
+      goto load_module_shlib_exit;
+    }
     fpi(autoinit_arg);
   }
 
@@ -182,6 +245,10 @@ int load_module_version_shlib(char *modname, char *version, loader_shlibfunc_t *
       if (!farray[i].fptr) {
         fprintf(stderr, "[LOADER] load_module_shlib(): function %s not found: %s\n",
                   farray[i].fname, dlerror());
+        ret = -1;
+        goto load_module_shlib_exit;
+      }
+      if (precheck && verify_symbol_origin(lib_handle, farray[i].fptr, shlib_path, farray[i].fname) < 0) {
         ret = -1;
         goto load_module_shlib_exit;
       }
@@ -216,6 +283,10 @@ int load_module_version_shlib(char *modname, char *version, loader_shlibfunc_t *
     sprintf(afname,"%s_getfarray",modname);
     fpg = dlsym(lib_handle,afname);
     if (fpg) {
+      if (precheck && verify_symbol_origin(lib_handle, (void *)fpg, shlib_path, afname) < 0) {
+        ret = -1;
+        goto load_module_shlib_exit;
+      }
       loader_data.shlibs[lib_idx].numfunc =
           fpg(&(loader_data.shlibs[lib_idx].funcarray));
     }
@@ -226,6 +297,11 @@ load_module_shlib_exit:
   if (afname)     free(afname);
   if (lib_handle) dlclose(lib_handle);
   return ret;
+}
+
+int load_module_version_shlib(char *modname, char *version, loader_shlibfunc_t *farray, int numf, void *autoinit_arg)
+{
+  return load_module_version_shlib_precheck(modname, version, farray, numf, autoinit_arg, NULL);
 }
 
 void * get_shlibmodule_fptr(const char *modname, const char *fname)

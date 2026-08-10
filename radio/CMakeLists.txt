@@ -56,3 +56,30 @@ add_boolean_option(OAI_ZMQ OFF "Activate OAI's ZMQ radio" OFF)
 if(OAI_ZMQ)
   add_subdirectory(zmq)
 endif()
+
+set(OPENAIR0_DEVICE_PLUGIN_TARGETS
+    oai_iqplayer
+    oai_usrpdevif
+    oai_bladerfdevif
+    oai_irisdevif
+    oai_lmssdrdevif
+    rfsimulator
+    vrtsim
+    rf_emulator
+    oai_zmqdevif)
+foreach(plugin IN LISTS OPENAIR0_DEVICE_PLUGIN_TARGETS)
+  if(TARGET ${plugin})
+    target_sources(${plugin} PRIVATE ${OPENAIR_DIR}/radio/COMMON/openair0_device_abi.c)
+  endif()
+endforeach()
+
+set(OPENAIR0_TRANSPORT_PLUGIN_TARGETS
+    oai_eth_transpro
+    aw2sori_transpro
+    oran_fhlib_5g
+    oran_fhlib_5g_mplane)
+foreach(plugin IN LISTS OPENAIR0_TRANSPORT_PLUGIN_TARGETS)
+  if(TARGET ${plugin})
+    target_sources(${plugin} PRIVATE ${OPENAIR_DIR}/radio/COMMON/openair0_transport_abi.c)
+  endif()
+endforeach()

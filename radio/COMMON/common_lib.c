@@ -6,6 +6,7 @@
  * \brief common APIs for different RF frontend device
  */
 #include <pthread.h>
+#include <inttypes.h>
 #include <stdio.h>
 #include <strings.h>
 #include <dlfcn.h>
@@ -67,6 +68,67 @@ static int set_transport(openair0_device_t *device)
 
 typedef int (*devfunc_t)(openair0_device_t *, openair0_config_t *);
 
+static const openair0_plugin_abi_t device_plugin_abi =
+    OPENAIR0_PLUGIN_ABI_DESCRIPTOR(OPENAIR0_PLUGIN_DEVICE, OPENAIR0_PLUGIN_ABI_EPOCH);
+static const openair0_plugin_abi_t transport_plugin_abi =
+    OPENAIR0_PLUGIN_ABI_DESCRIPTOR(OPENAIR0_PLUGIN_TRANSPORT, OPENAIR0_PLUGIN_ABI_EPOCH);
+
+static int report_plugin_abi_mismatch(const char *modname,
+                                      const char *shlib_path,
+                                      const char *field,
+                                      uint64_t expected,
+                                      uint64_t actual)
+{
+  fprintf(stderr,
+          "[HW] radio plugin ABI mismatch for module %s (%s): %s expected 0x%016" PRIx64 ", actual 0x%016" PRIx64 "\n",
+          modname,
+          shlib_path,
+          field,
+          expected,
+          actual);
+  return -1;
+}
+
+static int validate_plugin_abi(const char *modname, const char *shlib_path, void *resolved_symbol, const void *opaque)
+{
+  OPENAIR0_STATIC_ASSERT(sizeof(openair0_plugin_abi_getter_t) == sizeof(resolved_symbol),
+                         "radio plugin ABI getter pointer has an unsupported representation");
+  openair0_plugin_abi_getter_t getter;
+  memcpy(&getter, &resolved_symbol, sizeof(getter));
+  const openair0_plugin_abi_t *actual = getter();
+  const openair0_plugin_abi_t *expected = opaque;
+  if (!actual) {
+    fprintf(stderr,
+            "[HW] radio plugin ABI mismatch for module %s (%s): descriptor expected non-null, actual null\n",
+            modname,
+            shlib_path);
+    return -1;
+  }
+
+#define CHECK_PLUGIN_ABI_FIELD(field)                                                                 \
+  do {                                                                                                \
+    if (actual->field != expected->field)                                                             \
+      return report_plugin_abi_mismatch(modname, shlib_path, #field, expected->field, actual->field); \
+  } while (0)
+
+  CHECK_PLUGIN_ABI_FIELD(magic);
+  /* Format v1 is an extensible prefix; older hosts ignore a compatible trailing extension. */
+  if (actual->descriptor_size < sizeof(*expected))
+    return report_plugin_abi_mismatch(modname, shlib_path, "descriptor_size", sizeof(*expected), actual->descriptor_size);
+  CHECK_PLUGIN_ABI_FIELD(descriptor_version);
+  CHECK_PLUGIN_ABI_FIELD(plugin_kind);
+  CHECK_PLUGIN_ABI_FIELD(abi_epoch);
+  CHECK_PLUGIN_ABI_FIELD(reserved);
+  CHECK_PLUGIN_ABI_FIELD(openair0_device_size);
+  CHECK_PLUGIN_ABI_FIELD(openair0_device_alignment);
+  CHECK_PLUGIN_ABI_FIELD(openair0_config_size);
+  CHECK_PLUGIN_ABI_FIELD(openair0_config_alignment);
+  CHECK_PLUGIN_ABI_FIELD(openair0_device_layout_signature);
+  CHECK_PLUGIN_ABI_FIELD(openair0_config_layout_signature);
+#undef CHECK_PLUGIN_ABI_FIELD
+  return 0;
+}
+
 #define  DEVICE_SECTION   "device"
 #define CONFIG_HLP_DEVICE "Identifies the oai device (the interface to RF) to use, the shared lib \"lib_<name>.so\" will be loaded"
 /* look for the interface library and load it */
@@ -79,6 +141,7 @@ int load_lib(openair0_device_t *device, openair0_config_t *openair0_cfg, rau_typ
     IS_SOFTMODEM_IQRECORDER = true; // softmodem has to know we use the iqrecorder to workaround randomized algorithms
   }
   char *deflibname = OAI_RF_LIBNAME;
+  openair0_plugin_kind_t plugin_kind = OPENAIR0_PLUGIN_DEVICE;
   loader_shlibfunc_t shlib_fdesc = {.fname = "device_init"};
   if (openair0_cfg->recplay_mode == RECPLAY_REPLAYMODE) {
     deflibname = OAI_IQPLAYER_LIBNAME;
@@ -91,10 +154,12 @@ int load_lib(openair0_device_t *device, openair0_config_t *openair0_cfg, rau_typ
         break;
       case RAU_REMOTE_THIRDPARTY_RADIO_HEAD:
         deflibname = OAI_THIRDPARTY_TP_LIBNAME;
+        plugin_kind = OPENAIR0_PLUGIN_TRANSPORT;
         shlib_fdesc.fname = "transport_init";
         break;
       case RAU_REMOTE_RADIO_HEAD:
         deflibname = OAI_TP_LIBNAME;
+        plugin_kind = OPENAIR0_PLUGIN_TRANSPORT;
         shlib_fdesc.fname = "transport_init";
         break;
       default:
@@ -106,8 +171,17 @@ int load_lib(openair0_device_t *device, openair0_config_t *openair0_cfg, rau_typ
   paramdef_t device_params = {"name", CONFIG_HLP_DEVICE, 0, .strptr = &devname, .defstrval = deflibname, TYPE_STRING, 0};
   config_get(config_get_if(), &device_params, 1, DEVICE_SECTION);
 
-  int ret = load_module_shlib(devname, &shlib_fdesc, 1, NULL);
-  AssertFatal(ret >= 0, "Library %s couldn't be loaded\n", devname);
+  const openair0_plugin_abi_t *expected_abi = plugin_kind == OPENAIR0_PLUGIN_DEVICE ? &device_plugin_abi : &transport_plugin_abi;
+  const loader_shlib_precheck_t precheck = {
+      .required_symbol = OPENAIR0_PLUGIN_ABI_GETTER,
+      .validate = validate_plugin_abi,
+      .opaque = expected_abi,
+  };
+  int ret = load_module_version_shlib_precheck(devname, NULL, &shlib_fdesc, 1, NULL, &precheck);
+  if (ret < 0) {
+    fprintf(stderr, "[HW] Library %s could not be loaded with a compatible radio ABI\n", devname);
+    return ret;
+  }
   return ((devfunc_t)shlib_fdesc.fptr)(device, openair0_cfg);
 }
 
@@ -122,7 +196,7 @@ int openair0_device_load(openair0_device_t *device, openair0_config_t *openair0_
       return -1;
     }
   } else {
-    AssertFatal(false, "can't open the radio device: %s\n", get_devname(device->type));
+    AssertFatal(false, "can't open the radio device\n");
   }
   pthread_mutex_init(&device->reOrder.mutex_store, NULL);
   pthread_mutex_init(&device->reOrder.mutex_write, NULL);
