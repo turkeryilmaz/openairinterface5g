@@ -1058,7 +1058,7 @@ static bool pusch_signal_detected(PHY_VARS_gNB *gNB, NR_gNB_PUSCH *pusch_vars, N
       stats->ulsch_stats.DTX++;
   }
 
-  return true;
+  return detected;
 }
 
 static bool drop_old_pucch(const void *data, void *user)
