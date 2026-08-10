@@ -431,6 +431,7 @@ void fill_rf_config(RU_t *ru, char *rf_config_file)
   cfg->num_distributed_ru = 1;
   LOG_I(PHY,"Setting RF config for N_RB %d, NB_RX %d, NB_TX %d\n",cfg->num_rb_dl,cfg->rx_num_channels,cfg->tx_num_channels);
   LOG_I(PHY,"tune_offset %.0f Hz, sample_rate %.0f Hz\n",cfg->tune_offset,cfg->sample_rate);
+  cfg->nr_flag = 1;
 
   for (int i = 0; i < ru->nb_tx; i++) {
     if (ru->if_frequency == 0) {
@@ -1166,12 +1167,7 @@ static void NRRCconfig_RU(configmodule_interface_t *cfg)
     ru->num_bands = param[RU_BAND_LIST_IDX].numelt;
     for (int i = 0; i < ru->num_bands; i++)
       ru->band[i] = param[RU_BAND_LIST_IDX].iptr[i];
-    ru->openair0_cfg.nr_flag = *param[RU_NR_FLAG].iptr;
     // TODO remove band from RU?
-    LOG_D(PHY,
-          "[RU %d] Setting nr_flag %d\n",
-          j,
-          ru->openair0_cfg.nr_flag);
     ru->openair0_cfg.rxfh_cores[0] = *param[RU_RXFH_CORE_ID].iptr;
     ru->openair0_cfg.txfh_cores[0] = *param[RU_TXFH_CORE_ID].iptr;
     ru->num_tpcores = *param[RU_NUM_TP_CORES].iptr;
