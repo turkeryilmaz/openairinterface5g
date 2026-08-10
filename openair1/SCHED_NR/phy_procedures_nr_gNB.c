@@ -980,7 +980,9 @@ static void handle_srs(fsn_t now,
                                                 &timing_advance_offset,
                                                 timing_advance_offset_nsec);
 
-  if ((snr * 10) < gNB->srs_thres) {
+  // Measurement outputs are valid on raw success (including 0), before SNR thresholding.
+  const bool estimate_valid = srs_est >= 0;
+  if (estimate_valid && (snr * 10) < gNB->srs_thres) {
     srs_est = -1;
   }
 
@@ -1016,6 +1018,13 @@ static void handle_srs(fsn_t now,
   nfapi_srs_report_tlv_t *report_tlv = &srs_indication->report_tlv;
   report_tlv->tag = 0;
   report_tlv->length = 0;
+
+  if (!estimate_valid) {
+    srs_indication->report_type = 0;
+    if (srs_indication->srs_usage == NFAPI_NR_SRS_POSITIONING)
+      srs_toa_v_ext->num_ta = 0;
+    return;
+  }
 
   start_meas(&gNB->srs_report_tlv_stats);
   switch (srs_indication->srs_usage) {
