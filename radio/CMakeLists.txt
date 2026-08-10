@@ -83,3 +83,32 @@ foreach(plugin IN LISTS OPENAIR0_TRANSPORT_PLUGIN_TARGETS)
     target_sources(${plugin} PRIVATE ${OPENAIR_DIR}/radio/COMMON/openair0_transport_abi.c)
   endif()
 endforeach()
+
+set(OPENAIR0_DEVICE_PLUGIN_CONSUMERS
+    nr-softmodem
+    nr-uesoftmodem
+    lte-softmodem
+    lte-uesoftmodem
+    oairu
+    rftest
+    nr-oru)
+foreach(consumer IN LISTS OPENAIR0_DEVICE_PLUGIN_CONSUMERS)
+  foreach(plugin IN LISTS OPENAIR0_DEVICE_PLUGIN_TARGETS)
+    if(TARGET ${consumer} AND TARGET ${plugin})
+      add_dependencies(${consumer} ${plugin})
+    endif()
+  endforeach()
+endforeach()
+
+set(OPENAIR0_TRANSPORT_PLUGIN_CONSUMERS
+    nr-softmodem
+    lte-softmodem
+    oairu
+    nr-oru)
+foreach(consumer IN LISTS OPENAIR0_TRANSPORT_PLUGIN_CONSUMERS)
+  foreach(plugin IN LISTS OPENAIR0_TRANSPORT_PLUGIN_TARGETS)
+    if(TARGET ${consumer} AND TARGET ${plugin})
+      add_dependencies(${consumer} ${plugin})
+    endif()
+  endforeach()
+endforeach()
