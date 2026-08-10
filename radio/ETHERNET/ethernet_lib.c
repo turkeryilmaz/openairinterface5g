@@ -451,8 +451,13 @@ int transport_init(openair0_device_t *device, openair0_config_t *openair0_cfg)
   eth->flags = device->eth_params.transp_preference;
 
   // load third-party driver
-  if (eth->flags == ETH_UDP_IF5_ECPRI_MODE)
-    load_lib(device, openair0_cfg, RAU_REMOTE_THIRDPARTY_RADIO_HEAD);
+  if (eth->flags == ETH_UDP_IF5_ECPRI_MODE) {
+    int ret = load_lib(device, openair0_cfg, RAU_REMOTE_THIRDPARTY_RADIO_HEAD);
+    if (ret < 0) {
+      free(eth);
+      return ret;
+    }
+  }
 
   if (device->eth_params.if_compress == 0) {
     eth->compression = NO_COMPRESS;

@@ -8,6 +8,8 @@
 
 #ifndef COMMON_LIB_H
 #define COMMON_LIB_H
+#include <stddef.h>
+#include <pthread.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <sys/types.h>
@@ -597,6 +599,188 @@ struct openair0_device {
    */
   re_order_t reOrder;
 };
+
+/*
+ * Runtime-loaded radio modules share openair0_device_t and openair0_config_t
+ * with their host. Bump this epoch for ABI changes that do not alter a size,
+ * alignment, or top-level openair0_device_t/openair0_config_t member layouts
+ * below, including callback prototype and semantic contract changes.
+ */
+#define OPENAIR0_PLUGIN_ABI_EPOCH 1U
+#define OPENAIR0_PLUGIN_ABI_MAGIC UINT64_C(0x4f41493041424931)
+#define OPENAIR0_PLUGIN_ABI_DESCRIPTOR_VERSION 1U
+#define OPENAIR0_PLUGIN_ABI_GETTER "openair0_plugin_get_abi"
+
+typedef enum {
+  OPENAIR0_PLUGIN_DEVICE = 1,
+  OPENAIR0_PLUGIN_TRANSPORT = 2,
+} openair0_plugin_kind_t;
+
+/* Format-v1 readers require this known prefix and ignore a compatible trailing extension. */
+
+typedef struct {
+  uint64_t magic;
+  uint32_t descriptor_size;
+  uint16_t descriptor_version;
+  uint16_t plugin_kind;
+  uint32_t abi_epoch;
+  uint32_t reserved;
+  uint64_t openair0_device_size;
+  uint64_t openair0_device_alignment;
+  uint64_t openair0_config_size;
+  uint64_t openair0_config_alignment;
+  uint64_t openair0_device_layout_signature;
+  uint64_t openair0_config_layout_signature;
+} openair0_plugin_abi_t;
+
+#ifdef __cplusplus
+#define OPENAIR0_STATIC_ASSERT(condition, message) static_assert(condition, message)
+#define OPENAIR0_ALIGNOF(type) alignof(type)
+#define OPENAIR0_PLUGIN_EXTERN_C extern "C"
+#else
+#define OPENAIR0_STATIC_ASSERT(condition, message) _Static_assert(condition, message)
+#define OPENAIR0_ALIGNOF(type) _Alignof(type)
+#define OPENAIR0_PLUGIN_EXTERN_C
+#endif
+
+OPENAIR0_STATIC_ASSERT(offsetof(openair0_plugin_abi_t, magic) == 0, "unexpected radio plugin ABI magic offset");
+OPENAIR0_STATIC_ASSERT(offsetof(openair0_plugin_abi_t, descriptor_size) == 8, "unexpected radio plugin ABI descriptor-size offset");
+OPENAIR0_STATIC_ASSERT(offsetof(openair0_plugin_abi_t, descriptor_version) == 12,
+                       "unexpected radio plugin ABI descriptor-version offset");
+OPENAIR0_STATIC_ASSERT(offsetof(openair0_plugin_abi_t, plugin_kind) == 14, "unexpected radio plugin ABI kind offset");
+OPENAIR0_STATIC_ASSERT(offsetof(openair0_plugin_abi_t, abi_epoch) == 16, "unexpected radio plugin ABI epoch offset");
+OPENAIR0_STATIC_ASSERT(offsetof(openair0_plugin_abi_t, reserved) == 20, "unexpected radio plugin ABI reserved offset");
+OPENAIR0_STATIC_ASSERT(offsetof(openair0_plugin_abi_t, openair0_device_size) == 24,
+                       "unexpected radio plugin ABI device-size offset");
+OPENAIR0_STATIC_ASSERT(offsetof(openair0_plugin_abi_t, openair0_device_alignment) == 32,
+                       "unexpected radio plugin ABI device-alignment offset");
+OPENAIR0_STATIC_ASSERT(offsetof(openair0_plugin_abi_t, openair0_config_size) == 40,
+                       "unexpected radio plugin ABI config-size offset");
+OPENAIR0_STATIC_ASSERT(offsetof(openair0_plugin_abi_t, openair0_config_alignment) == 48,
+                       "unexpected radio plugin ABI config-alignment offset");
+OPENAIR0_STATIC_ASSERT(offsetof(openair0_plugin_abi_t, openair0_device_layout_signature) == 56,
+                       "unexpected radio plugin ABI device-layout offset");
+OPENAIR0_STATIC_ASSERT(offsetof(openair0_plugin_abi_t, openair0_config_layout_signature) == 64,
+                       "unexpected radio plugin ABI config-layout offset");
+OPENAIR0_STATIC_ASSERT(sizeof(openair0_plugin_abi_t) == 72, "unexpected radio plugin ABI descriptor size");
+
+// clang-format off
+#define OPENAIR0_ABI_LAYOUT_TERM(member, ordinal)                                                                               \
+  (((((uint64_t)offsetof(openair0_device_t, member)) + UINT64_C(0x9e3779b97f4a7c15) * (ordinal))                               \
+    * UINT64_C(0xbf58476d1ce4e5b9))                                                                                           \
+   ^ ((((uint64_t)sizeof(((openair0_device_t *)0)->member)) + UINT64_C(0x94d049bb133111eb) * (ordinal))                       \
+      * UINT64_C(0x94d049bb133111eb)))
+
+#define OPENAIR0_DEVICE_LAYOUT_SIGNATURE                                                                                        \
+  (OPENAIR0_ABI_LAYOUT_TERM(write_thread, 1)                                                                                    \
+   ^ OPENAIR0_ABI_LAYOUT_TERM(type, 2)                                                                                          \
+   ^ OPENAIR0_ABI_LAYOUT_TERM(transp_type, 3)                                                                                   \
+   ^ OPENAIR0_ABI_LAYOUT_TERM(host_type, 4)                                                                                     \
+   ^ OPENAIR0_ABI_LAYOUT_TERM(openair0_cfg, 5)                                                                                  \
+   ^ OPENAIR0_ABI_LAYOUT_TERM(firstTS, 6)                                                                                       \
+   ^ OPENAIR0_ABI_LAYOUT_TERM(firstTS_initialized, 7)                                                                           \
+   ^ OPENAIR0_ABI_LAYOUT_TERM(eth_params, 8)                                                                                    \
+   ^ OPENAIR0_ABI_LAYOUT_TERM(recplay_state, 9)                                                                                 \
+   ^ OPENAIR0_ABI_LAYOUT_TERM(priv, 10)                                                                                         \
+   ^ OPENAIR0_ABI_LAYOUT_TERM(trx_start_func, 11)                                                                               \
+   ^ OPENAIR0_ABI_LAYOUT_TERM(trx_config_func, 12)                                                                              \
+   ^ OPENAIR0_ABI_LAYOUT_TERM(trx_ctlsend_func, 13)                                                                             \
+   ^ OPENAIR0_ABI_LAYOUT_TERM(trx_ctlrecv_func, 14)                                                                             \
+   ^ OPENAIR0_ABI_LAYOUT_TERM(trx_write_beams_func, 15)                                                                         \
+   ^ OPENAIR0_ABI_LAYOUT_TERM(trx_write_func, 16)                                                                               \
+   ^ OPENAIR0_ABI_LAYOUT_TERM(trx_write_func2, 17)                                                                              \
+   ^ OPENAIR0_ABI_LAYOUT_TERM(trx_read_func, 18)                                                                                \
+   ^ OPENAIR0_ABI_LAYOUT_TERM(trx_read_beams_func, 19)                                                                          \
+   ^ OPENAIR0_ABI_LAYOUT_TERM(trx_read_func2, 20)                                                                               \
+   ^ OPENAIR0_ABI_LAYOUT_TERM(trx_get_stats_func, 21)                                                                           \
+   ^ OPENAIR0_ABI_LAYOUT_TERM(trx_reset_stats_func, 22)                                                                         \
+   ^ OPENAIR0_ABI_LAYOUT_TERM(trx_end_func, 23)                                                                                 \
+   ^ OPENAIR0_ABI_LAYOUT_TERM(trx_stop_func, 24)                                                                                \
+   ^ OPENAIR0_ABI_LAYOUT_TERM(get_timestamp, 25)                                                                                \
+   ^ OPENAIR0_ABI_LAYOUT_TERM(trx_set_freq_func, 26)                                                                            \
+   ^ OPENAIR0_ABI_LAYOUT_TERM(trx_set_gains_func, 27)                                                                           \
+   ^ OPENAIR0_ABI_LAYOUT_TERM(trx_set_beams, 28)                                                                                \
+   ^ OPENAIR0_ABI_LAYOUT_TERM(trx_set_beams2, 29)                                                                               \
+   ^ OPENAIR0_ABI_LAYOUT_TERM(configure_rru, 30)                                                                                \
+   ^ OPENAIR0_ABI_LAYOUT_TERM(thirdparty_priv, 31)                                                                              \
+   ^ OPENAIR0_ABI_LAYOUT_TERM(thirdparty_init, 32)                                                                              \
+   ^ OPENAIR0_ABI_LAYOUT_TERM(thirdparty_cleanup, 33)                                                                           \
+   ^ OPENAIR0_ABI_LAYOUT_TERM(thirdparty_startstreaming, 34)                                                                    \
+   ^ OPENAIR0_ABI_LAYOUT_TERM(trx_write_init, 35)                                                                               \
+   ^ OPENAIR0_ABI_LAYOUT_TERM(get_internal_parameter, 36)                                                                       \
+   ^ OPENAIR0_ABI_LAYOUT_TERM(reOrder, 37))
+
+#define OPENAIR0_CONFIG_ABI_LAYOUT_TERM(member, ordinal)                                                                         \
+  (((((uint64_t)offsetof(openair0_config_t, member)) + UINT64_C(0x9e3779b97f4a7c15) * (ordinal))                               \
+    * UINT64_C(0xbf58476d1ce4e5b9))                                                                                           \
+   ^ ((((uint64_t)sizeof(((openair0_config_t *)0)->member)) + UINT64_C(0x94d049bb133111eb) * (ordinal))                       \
+      * UINT64_C(0x94d049bb133111eb)))
+
+#define OPENAIR0_CONFIG_LAYOUT_SIGNATURE                                                                                        \
+  (OPENAIR0_CONFIG_ABI_LAYOUT_TERM(ru_id, 1)                                                                                    \
+   ^ OPENAIR0_CONFIG_ABI_LAYOUT_TERM(duplex_mode, 2)                                                                            \
+   ^ OPENAIR0_CONFIG_ABI_LAYOUT_TERM(num_rb_dl, 3)                                                                              \
+   ^ OPENAIR0_CONFIG_ABI_LAYOUT_TERM(sample_rate, 4)                                                                            \
+   ^ OPENAIR0_CONFIG_ABI_LAYOUT_TERM(mmapped_dma, 5)                                                                            \
+   ^ OPENAIR0_CONFIG_ABI_LAYOUT_TERM(tx_sample_advance, 6)                                                                      \
+   ^ OPENAIR0_CONFIG_ABI_LAYOUT_TERM(command_line_sample_advance, 7)                                                             \
+   ^ OPENAIR0_CONFIG_ABI_LAYOUT_TERM(samples_per_packet, 8)                                                                     \
+   ^ OPENAIR0_CONFIG_ABI_LAYOUT_TERM(rx_num_channels, 9)                                                                        \
+   ^ OPENAIR0_CONFIG_ABI_LAYOUT_TERM(tx_num_channels, 10)                                                                       \
+   ^ OPENAIR0_CONFIG_ABI_LAYOUT_TERM(num_distributed_ru, 11)                                                                    \
+   ^ OPENAIR0_CONFIG_ABI_LAYOUT_TERM(rx_subdev, 12)                                                                             \
+   ^ OPENAIR0_CONFIG_ABI_LAYOUT_TERM(tx_subdev, 13)                                                                             \
+   ^ OPENAIR0_CONFIG_ABI_LAYOUT_TERM(rxbase, 14)                                                                                \
+   ^ OPENAIR0_CONFIG_ABI_LAYOUT_TERM(rxsize, 15)                                                                                \
+   ^ OPENAIR0_CONFIG_ABI_LAYOUT_TERM(txbase, 16)                                                                                \
+   ^ OPENAIR0_CONFIG_ABI_LAYOUT_TERM(rx_freq, 17)                                                                               \
+   ^ OPENAIR0_CONFIG_ABI_LAYOUT_TERM(tx_freq, 18)                                                                               \
+   ^ OPENAIR0_CONFIG_ABI_LAYOUT_TERM(tune_offset, 19)                                                                           \
+   ^ OPENAIR0_CONFIG_ABI_LAYOUT_TERM(rx_gain_calib_table, 20)                                                                   \
+   ^ OPENAIR0_CONFIG_ABI_LAYOUT_TERM(rx_gain, 21)                                                                               \
+   ^ OPENAIR0_CONFIG_ABI_LAYOUT_TERM(rx_gain_offset, 22)                                                                        \
+   ^ OPENAIR0_CONFIG_ABI_LAYOUT_TERM(tx_gain, 23)                                                                               \
+   ^ OPENAIR0_CONFIG_ABI_LAYOUT_TERM(rx_bw, 24)                                                                                 \
+   ^ OPENAIR0_CONFIG_ABI_LAYOUT_TERM(tx_bw, 25)                                                                                 \
+   ^ OPENAIR0_CONFIG_ABI_LAYOUT_TERM(clock_source, 26)                                                                          \
+   ^ OPENAIR0_CONFIG_ABI_LAYOUT_TERM(time_source, 27)                                                                           \
+   ^ OPENAIR0_CONFIG_ABI_LAYOUT_TERM(sdr_addrs, 28)                                                                             \
+   ^ OPENAIR0_CONFIG_ABI_LAYOUT_TERM(autocal, 29)                                                                               \
+   ^ OPENAIR0_CONFIG_ABI_LAYOUT_TERM(configFilename, 30)                                                                        \
+   ^ OPENAIR0_CONFIG_ABI_LAYOUT_TERM(recplay_mode, 31)                                                                          \
+   ^ OPENAIR0_CONFIG_ABI_LAYOUT_TERM(recplay_conf, 32)                                                                          \
+   ^ OPENAIR0_CONFIG_ABI_LAYOUT_TERM(nr_flag, 33)                                                                               \
+   ^ OPENAIR0_CONFIG_ABI_LAYOUT_TERM(nr_scs_for_raster, 34)                                                                     \
+   ^ OPENAIR0_CONFIG_ABI_LAYOUT_TERM(rxfh_cores, 35)                                                                            \
+   ^ OPENAIR0_CONFIG_ABI_LAYOUT_TERM(txfh_cores, 36)                                                                            \
+   ^ OPENAIR0_CONFIG_ABI_LAYOUT_TERM(gpio_controller, 37)                                                                       \
+   ^ OPENAIR0_CONFIG_ABI_LAYOUT_TERM(split7, 38))
+
+#define OPENAIR0_PLUGIN_ABI_DESCRIPTOR(kind, epoch)                                                                             \
+  {                                                                                                                             \
+    OPENAIR0_PLUGIN_ABI_MAGIC,                                                                                                   \
+    sizeof(openair0_plugin_abi_t),                                                                                               \
+    OPENAIR0_PLUGIN_ABI_DESCRIPTOR_VERSION,                                                                                      \
+    (kind),                                                                                                                      \
+    (epoch),                                                                                                                     \
+    0,                                                                                                                           \
+    sizeof(openair0_device_t),                                                                                                   \
+    OPENAIR0_ALIGNOF(openair0_device_t),                                                                                         \
+    sizeof(openair0_config_t),                                                                                                   \
+    OPENAIR0_ALIGNOF(openair0_config_t),                                                                                         \
+    OPENAIR0_DEVICE_LAYOUT_SIGNATURE,                                                                                            \
+    OPENAIR0_CONFIG_LAYOUT_SIGNATURE,                                                                                            \
+  }
+
+#define OPENAIR0_PLUGIN_ABI_EXPORT(kind)                                                                                          \
+  OPENAIR0_PLUGIN_EXTERN_C __attribute__((visibility("default"))) const openair0_plugin_abi_t *openair0_plugin_get_abi(void)     \
+  {                                                                                                                              \
+    static const openair0_plugin_abi_t descriptor = OPENAIR0_PLUGIN_ABI_DESCRIPTOR(kind, OPENAIR0_PLUGIN_ABI_EPOCH);              \
+    return &descriptor;                                                                                                          \
+  }
+// clang-format on
+
+typedef const openair0_plugin_abi_t *(*openair0_plugin_abi_getter_t)(void);
 
 typedef struct {
   uint32_t size;           // Number of samples per antenna to follow this header

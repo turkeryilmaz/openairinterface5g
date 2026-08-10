@@ -41,6 +41,12 @@ typedef int(*checkverfunc_t)(char * mainexec_version, char ** shlib_version);
 /* 3: get function array function, called when loading when a module doesn't provide */
 /* the function array when calling load_module_shlib (farray param NULL)             */
 typedef int(*getfarrayfunc_t)(loader_shlibfunc_t **funcarray);
+typedef int (*loader_shlib_validator_t)(const char *modname, const char *shlib_path, void *resolved_symbol, const void *opaque);
+typedef struct {
+  const char *required_symbol;
+  loader_shlib_validator_t validate;
+  const void *opaque;
+} loader_shlib_precheck_t;
 
 #define LOADER_CONFIG_PREFIX  "loader"
 #define DEFAULT_PATH      ""
@@ -59,6 +65,12 @@ extern loader_data_t loader_data;
 // clang-format on
 
 int load_module_version_shlib(char *modname, char *version, loader_shlibfunc_t *farray, int numf, void *initfunc_arg);
+int load_module_version_shlib_precheck(char *modname,
+                                       char *version,
+                                       loader_shlibfunc_t *farray,
+                                       int numf,
+                                       void *initfunc_arg,
+                                       const loader_shlib_precheck_t *precheck);
 void *get_shlibmodule_fptr(const char *modname, const char *fname);
 #define load_module_shlib(M, F, N, I) load_module_version_shlib(M, NULL, F, N, I)
 void loader_reset();
