@@ -1763,11 +1763,13 @@ static bool schedule_uci_on_pusch(NR_UE_MAC_INST_t *mac,
     return false;
   }
 
+  // Section 9 of 38.213 states:
   // - UE multiplexes only HARQ-ACK information, if any, from the UCI in the PUSCH transmission
   // and does not transmit the PUCCH if the UE multiplexes aperiodic or semi-persistent CSI reports in the PUSCH
-
   // - UE multiplexes only HARQ-ACK information and CSI reports, if any, from the UCI in the PUSCH transmission
   // and does not transmit the PUCCH if the UE does not multiplex aperiodic or semi-persistent CSI reports in the PUSCH
+
+  // HARQ is then multiplexed on PUSCH in both scenarios
   bool mux_done = false;
   if (pucch->n_harq > 0) {
     NR_PUSCH_Config_t *pusch_Config = mac->current_UL_BWP->pusch_Config;
@@ -1791,10 +1793,9 @@ static bool schedule_uci_on_pusch(NR_UE_MAC_INST_t *mac,
     }
   }
 
-  AssertFatal(pusch_pdu->pusch_uci.csi_payload.p1_bits == 0, "PUSCH already has CSI report\n");
-
-  // Check if this PUCCH has CSI report to send. If so, multiplex it on PUSCH
-  if (pucch->csi_payload.p1_bits > 0) {
+  // CSI, if present on PUCCH, is transmitted only if there is no aperiodic/semi-persistent CSI report already
+  bool csi_present = (pusch_pdu->pusch_uci.csi_payload.p1_bits > 0) || (pusch_pdu->pusch_uci.csi_payload.p2_bits > 0);
+  if (pucch->csi_payload.p1_bits > 0 && !csi_present) {
     nfapi_nr_ue_csi_payload_t csi_payload = {0};
     NR_PUSCH_Config_t *pusch_Config = mac->current_UL_BWP->pusch_Config;
     NR_PUCCH_Resource_t *csi_pucch = NULL;
