@@ -260,9 +260,11 @@ bool tap_config(const char* ifname)
   return success;
 }
 
-void setup_ue_ipv4_route(const char* ifname, int instance_id, const char *ipv4)
+void setup_ue_ipv4_route(const char* ifname, int instance_id, int pdu_session_id, const char *ipv4)
 {
-  int table_id = instance_id - 1 + 10000;
+  /* This needs to be unique per (instance_id, pdu_session_id) */
+  // UE0, PDU1 = 10001, UE1, PDU1 = 10101, UE15, PDU15 = 11515 ...
+  int table_id = 10000 + instance_id * 100 + pdu_session_id;
 
   char command_line[500];
   int res = sprintf(command_line,
