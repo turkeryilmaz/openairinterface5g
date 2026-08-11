@@ -175,7 +175,7 @@ nr_initial_sync_t nr_initial_sync(UE_nr_rxtx_proc_t *proc,
                                   int numGscn);
 
 /*!
-  \brief Common SSB search function shared by initial sync and neighbor cell search
+  \brief SSB search function used by neighbor cell search
   @param params Pointer to SSB search parameters structure
   @return true if SSB was successfully detected, false otherwise
 */

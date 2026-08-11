@@ -17,6 +17,8 @@
 #include <assert.h>
 #include <errno.h>
 #include <math.h>
+#include <stdlib.h>
+#include <stdint.h>
 #include <nr-uesoftmodem.h>
 
 #include "PHY/defs_nr_UE.h"
@@ -118,6 +120,88 @@ static int cmp_pss_peak(const void *a, const void *b)
   if (pa->peak > pb->peak)
     return -1;
   return 0;
+}
+
+typedef unsigned __int128 nr_pss_power_t;
+
+typedef struct {
+  pss_detection_result_t result;
+  nr_pss_power_t power;
+} nr_pss_peak_t;
+
+static nr_pss_power_t get_pss_correlation_power(c32_t result)
+{
+  const int64_t re = result.r;
+  const int64_t im = result.i;
+  return (nr_pss_power_t)(re * re) + (nr_pss_power_t)(im * im);
+}
+
+static uint64_t pss_power_to_uint64(nr_pss_power_t power)
+{
+  return power > UINT64_MAX ? UINT64_MAX : (uint64_t)power;
+}
+
+static bool pss_peak_is_better(const nr_pss_peak_t *a, const nr_pss_peak_t *b)
+{
+  if (a->power != b->power)
+    return a->power > b->power;
+  if (a->result.pos != b->result.pos)
+    return a->result.pos < b->result.pos;
+  return a->result.nid2 < b->result.nid2;
+}
+
+static int cmp_pss_candidate(const void *a, const void *b)
+{
+  const nr_pss_peak_t *pa = a;
+  const nr_pss_peak_t *pb = b;
+  if (pss_peak_is_better(pa, pb))
+    return -1;
+  if (pss_peak_is_better(pb, pa))
+    return 1;
+  return 0;
+}
+
+static void retain_pss_peak(nr_pss_peak_t *peaks,
+                            size_t *count,
+                            size_t capacity,
+                            nr_pss_peak_t candidate,
+                            nr_pss_power_t *max_discarded_power)
+{
+  if (*count < capacity) {
+    peaks[(*count)++] = candidate;
+    return;
+  }
+
+  size_t weakest = 0;
+  for (size_t i = 1; i < *count; i++) {
+    if (pss_peak_is_better(&peaks[weakest], &peaks[i]))
+      weakest = i;
+  }
+
+  if (pss_peak_is_better(&candidate, &peaks[weakest])) {
+    if (peaks[weakest].power > *max_discarded_power)
+      *max_discarded_power = peaks[weakest].power;
+    peaks[weakest] = candidate;
+  } else {
+    if (candidate.power > *max_discarded_power)
+      *max_discarded_power = candidate.power;
+  }
+}
+
+static int estimate_pss_freq_offset(const pss_search_t *p, int nid2, int peak_position)
+{
+  if (!p->fo_flag)
+    return 0;
+
+  c16_t(*pssTime)[p->ofdm_symbol_size] = (c16_t(*)[p->ofdm_symbol_size])p->pssTime;
+  const c16_t *rx_peak = &p->rxdata[0][peak_position];
+  const int half_symbol = p->ofdm_symbol_size >> 1;
+  const c32_t r1 = dot_product(pssTime[nid2], rx_peak, half_symbol, SCALING_PSS_NR);
+  const c32_t r2 = dot_product(pssTime[nid2] + half_symbol, rx_peak + half_symbol, half_symbol, SCALING_PSS_NR);
+  const cd_t r1d = {r1.r, r1.i};
+  const cd_t r2d = {r2.r, r2.i};
+  const double ffo_est = atan2(r1d.r * r2d.i - r2d.r * r1d.i, r1d.r * r2d.r + r1d.i * r2d.i) / M_PI;
+  return ffo_est * p->subcarrier_spacing;
 }
 
 /*******************************************************************
@@ -289,6 +373,106 @@ nr_pss_info_t pss_search_time_nr(const pss_search_t *p)
 #endif
 
   return pss_info;
+}
+
+/* Search all four-sample-aligned PSS start positions whose complete linear
+ * SS/PBCH block lies inside the immutable capture. Retain a bounded,
+ * strongest-first list; SSS and PBCH validation decide which candidate, if
+ * any, owns final state. */
+size_t pss_search_time_nr_candidates(const pss_search_t *p, pss_detection_result_t *candidates, size_t capacity, bool *truncated)
+{
+  if (truncated)
+    *truncated = false;
+  if (candidates == NULL || capacity == 0 || p->rxdata_length < p->ofdm_symbol_size)
+    return 0;
+  const int64_t ssb_duration = (int64_t)NR_N_SYMBOLS_SSB * ((int64_t)p->ofdm_symbol_size + p->nb_prefix_samples);
+  if (ssb_duration > p->rxdata_length)
+    return 0;
+
+  const size_t result_capacity = min(capacity, (size_t)NR_PSS_SEARCH_MAX_CANDIDATES);
+  nr_pss_peak_t selected[NR_PSS_SEARCH_MAX_CANDIDATES] = {0};
+  size_t selected_count = 0;
+  nr_pss_power_t selected_discarded_power = 0;
+
+  c16_t(*pssTime)[p->ofdm_symbol_size] = (c16_t(*)[p->ofdm_symbol_size])p->pssTime;
+  const int max_pss_sequences = get_softmodem_params()->sl_mode == 0 ? NUMBER_PSS_SEQUENCE : NUMBER_PSS_SEQUENCE_SL;
+  const int first_nid2 = p->target_Nid_cell == -1 ? 0 : GET_NID2(p->target_Nid_cell);
+  const int last_nid2 = p->target_Nid_cell == -1 ? max_pss_sequences : first_nid2 + 1;
+  const int last_start = (int)(p->rxdata_length - ssb_duration + p->nb_prefix_samples);
+
+  for (int nid2 = first_nid2; nid2 < last_nid2; nid2++) {
+    nr_pss_peak_t local_peaks[NR_PSS_SEARCH_MAX_CANDIDATES] = {0};
+    size_t local_count = 0;
+    nr_pss_power_t local_discarded_power = 0;
+    nr_pss_power_t average_power = 0;
+    int correlation_count = 0;
+    nr_pss_power_t previous_power = 0;
+    nr_pss_power_t power_before_previous = 0;
+    int previous_position = -1;
+
+    for (int n = 0; n <= last_start; n += 4) {
+      nr_pss_power_t correlation_power = 0;
+      for (int ar = 0; ar < p->nb_antennas_rx; ar++) {
+        const c32_t result = dot_product(pssTime[nid2], &p->rxdata[ar][n], p->ofdm_symbol_size, SCALING_PSS_NR);
+        correlation_power += get_pss_correlation_power(result);
+      }
+      average_power += correlation_power;
+      correlation_count++;
+
+      if (previous_position >= p->nb_prefix_samples && previous_power > power_before_previous
+          && previous_power >= correlation_power) {
+        const nr_pss_peak_t peak = {
+            .result = {.pos = previous_position, .nid2 = nid2},
+            .power = previous_power,
+        };
+        retain_pss_peak(local_peaks, &local_count, sizeofArray(local_peaks), peak, &local_discarded_power);
+      }
+
+      power_before_previous = previous_power;
+      previous_power = correlation_power;
+      previous_position = n;
+    }
+
+    if (previous_position >= p->nb_prefix_samples && previous_power > power_before_previous) {
+      const nr_pss_peak_t peak = {
+          .result = {.pos = previous_position, .nid2 = nid2},
+          .power = previous_power,
+      };
+      retain_pss_peak(local_peaks, &local_count, sizeofArray(local_peaks), peak, &local_discarded_power);
+    }
+
+    average_power /= correlation_count;
+    const nr_pss_power_t detection_threshold = 5 * average_power;
+    const bool targeted = p->target_Nid_cell != -1;
+    if (truncated && local_discarded_power > 0 && local_discarded_power >= detection_threshold)
+      *truncated = true;
+
+    size_t strongest_local_peak = 0;
+    for (size_t i = 1; i < local_count; i++) {
+      if (pss_peak_is_better(&local_peaks[i], &local_peaks[strongest_local_peak]))
+        strongest_local_peak = i;
+    }
+
+    for (size_t i = 0; i < local_count; i++) {
+      nr_pss_peak_t peak = local_peaks[i];
+      const bool significant = peak.power >= detection_threshold;
+      const bool target_fallback = targeted && i == strongest_local_peak;
+      if (!significant && !target_fallback)
+        continue;
+      peak.result.success = true;
+      peak.result.peak = dB_fixed64(pss_power_to_uint64(peak.power));
+      peak.result.avg = dB_fixed64(pss_power_to_uint64(average_power));
+      peak.result.freq_offset = estimate_pss_freq_offset(p, nid2, peak.result.pos);
+      retain_pss_peak(selected, &selected_count, result_capacity, peak, &selected_discarded_power);
+    }
+  }
+
+  if (truncated && selected_discarded_power > 0)
+    *truncated = true;
+  qsort(selected, selected_count, sizeof(*selected), cmp_pss_candidate);
+  for (size_t i = 0; i < selected_count; i++)
+    candidates[i] = selected[i].result;
+  return selected_count;
 }
 
 void sl_generate_pss(SL_NR_UE_INIT_PARAMS_t *sl_init_params, uint8_t n_sl_id2, uint16_t scaling)

@@ -15,6 +15,8 @@
 #ifndef PSS_NR_H
 #define PSS_NR_H
 
+#include <stddef.h>
+
 #include "PHY/defs_nr_common.h"
 #include "PHY/NR_REFSIG/ss_pbch_nr.h"
 #include "PHY/defs_nr_UE.h"
@@ -53,6 +55,9 @@
   #define  SYNCHRO_RATE_CHANGE_FACTOR  (1)
 #endif
 
+/* Computational bound for initial-sync hypotheses, not a cell-count limit. */
+#define NR_PSS_SEARCH_MAX_CANDIDATES 256
+
 typedef struct {
   c16_t **rxdata;
   int nb_antennas_rx;
@@ -70,6 +75,11 @@ typedef struct {
 } nr_pss_info_t;
 
 nr_pss_info_t pss_search_time_nr(const pss_search_t *p);
+
+/* Enumerate PSS peaks in an immutable linear capture. Unlike the legacy
+ * pss_search_time_nr() API, rxdata_length is the exact readable sample extent,
+ * not a span of candidate start positions. */
+size_t pss_search_time_nr_candidates(const pss_search_t *p, pss_detection_result_t *candidates, size_t capacity, bool *truncated);
 
 void generate_pss_nr_time(int ofdm_symbol_size,
                           int first_carrier_offset,

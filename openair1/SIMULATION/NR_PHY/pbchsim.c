@@ -22,6 +22,7 @@
 #include "PHY/MODULATION/nr_modulation.h"
 #include "PHY/INIT/nr_phy_init.h"
 #include "PHY/NR_TRANSPORT/nr_transport_proto.h"
+#include "PHY/NR_REFSIG/pss_nr.h"
 #include "PHY/NR_UE_TRANSPORT/nr_transport_proto_ue.h"
 #include "PHY/NR_UE_ESTIMATION/nr_estimation.h"
 #include "PHY/phy_vars.h"
@@ -83,6 +84,450 @@ void nr_fill_rx_indication(fapi_nr_rx_indication_t *rx_ind,
 {
 }
 
+typedef struct {
+  int nid_cell;
+  bool valid_pbch;
+  int insert_sample;
+  double gain;
+  double cfo_hz;
+} pbchsim_ssb_component_t;
+
+typedef struct {
+  pbchsim_ssb_component_t component[2];
+  int num_components;
+  int target_nid_cell;
+  bool expect_detected;
+  int expected_nid_cell;
+  int expected_insert_sample;
+  double expected_cfo_hz;
+  unsigned int ofdm_offset_divisor;
+} pbchsim_capture_case_t;
+
+typedef struct {
+  int nid_cell;
+  int ssb_start_subcarrier;
+  int half_frame_bit;
+  int ssb_index;
+  int symbol_offset;
+  double freq_offset;
+  int adjust_rxgain;
+  int init_sync_frame;
+} pbchsim_sync_state_t;
+
+static pbchsim_sync_state_t pbchsim_get_sync_state(const PHY_VARS_NR_UE *ue)
+{
+  return (pbchsim_sync_state_t){.nid_cell = ue->frame_parms.Nid_cell,
+                                .ssb_start_subcarrier = ue->frame_parms.ssb_start_subcarrier,
+                                .half_frame_bit = ue->frame_parms.half_frame_bit,
+                                .ssb_index = ue->frame_parms.ssb_index,
+                                .symbol_offset = ue->symbol_offset,
+                                .freq_offset = ue->common_vars.freq_offset,
+                                .adjust_rxgain = ue->adjust_rxgain,
+                                .init_sync_frame = ue->init_sync_frame};
+}
+
+static bool pbchsim_sync_state_equal(const pbchsim_sync_state_t *a, const pbchsim_sync_state_t *b)
+{
+  return a->nid_cell == b->nid_cell && a->ssb_start_subcarrier == b->ssb_start_subcarrier && a->half_frame_bit == b->half_frame_bit
+         && a->ssb_index == b->ssb_index && a->symbol_offset == b->symbol_offset && a->freq_offset == b->freq_offset
+         && a->adjust_rxgain == b->adjust_rxgain && a->init_sync_frame == b->init_sync_frame;
+}
+
+static int64_t pbchsim_floor_divide(int64_t dividend, int64_t divisor)
+{
+  AssertFatal(divisor > 0, "Invalid divisor %ld\n", divisor);
+  int64_t quotient = dividend / divisor;
+  if (dividend % divisor < 0)
+    quotient--;
+  return quotient;
+}
+
+static int pbchsim_generate_ssb(PHY_VARS_gNB *gNB,
+                                c16_t *slot_time,
+                                c16_t *ssb_time,
+                                int ssb_subcarrier_offset,
+                                int nid_cell,
+                                bool valid_pbch)
+{
+  NR_DL_FRAME_PARMS *fp = &gNB->frame_parms;
+  const int original_config_nid = gNB->gNB_config.cell_config.phy_cell_id.value;
+  const int original_frame_nid = fp->Nid_cell;
+  const int original_ssb_start_subcarrier = fp->ssb_start_subcarrier;
+  const int ssb_index = 0;
+  const int start_symbol = nr_get_ssb_start_symbol(fp, ssb_index);
+  const int slot = start_symbol / fp->symbols_per_slot;
+  const int slot_symbol = start_symbol % fp->symbols_per_slot;
+  const int sc_offset = fp->freq_range == FR1 ? ssb_subcarrier_offset << fp->numerology_index : ssb_subcarrier_offset;
+  const int prb_offset = fp->freq_range == FR1 ? gNB->gNB_config.ssb_table.ssb_offset_point_a.value << fp->numerology_index
+                                               : gNB->gNB_config.ssb_table.ssb_offset_point_a.value << (fp->numerology_index - 2);
+  nfapi_nr_dl_tti_ssb_pdu ssb_pdu = {0};
+  ssb_pdu.ssb_pdu_rel15.bchPayload = 0x55dd33;
+  ssb_pdu.ssb_pdu_rel15.SsbBlockIndex = ssb_index;
+  ssb_pdu.ssb_pdu_rel15.SsbSubcarrierOffset = sc_offset;
+  ssb_pdu.ssb_pdu_rel15.ssbOffsetPointA = prb_offset;
+
+  gNB->gNB_config.cell_config.phy_cell_id.value = nid_cell;
+  fp->Nid_cell = nid_cell;
+  memset(gNB->common_vars.txdataF[0], 0, fp->samples_per_slot_wCP * sizeof(*gNB->common_vars.txdataF[0]));
+  nr_common_signal_procedures(gNB, 0, slot, &ssb_pdu);
+
+  if (!valid_pbch) {
+    const int invalid_nid_cell = nid_cell >= 4 ? nid_cell - 4 : nid_cell + 4;
+    const int n_hf = slot < (fp->slots_per_frame >> 1) ? 0 : 1;
+    const int hf = fp->Lmax == 4 ? n_hf : 0;
+    gNB->gNB_config.cell_config.phy_cell_id.value = invalid_nid_cell;
+    fp->Nid_cell = invalid_nid_cell;
+    nr_generate_pbch_dmrs(nr_gold_pbch(fp->Lmax, invalid_nid_cell, hf, ssb_index & 7),
+                          gNB->common_vars.txdataF[0],
+                          gNB->TX_AMP,
+                          slot_symbol,
+                          &gNB->gNB_config,
+                          fp);
+    nr_generate_pbch(gNB, &ssb_pdu, gNB->common_vars.txdataF[0], slot_symbol, n_hf, 0, &gNB->gNB_config, fp);
+  }
+
+  __attribute__((aligned(64))) c16_t fft_in[fp->ofdm_symbol_size * fp->symbols_per_slot];
+  memset(fft_in, 0, sizeof(fft_in));
+  apply_nr_rotation_TX(fp, gNB->common_vars.txdataF[0], true, fp->symbol_rotation[0], slot, fp->N_RB_DL, 0, fp->symbols_per_slot);
+  fft_shift(gNB->common_vars.txdataF[0], fp->ofdm_symbol_size, fp->N_RB_DL, fft_in, fp->ofdm_symbol_size, 0, fp->symbols_per_slot);
+  memset(slot_time, 0, fp->samples_per_slot_wCP * sizeof(*slot_time));
+  PHY_ofdm_mod((int *)fft_in, (int *)slot_time, fp->ofdm_symbol_size, 1, fp->nb_prefix_samples0, CYCLIC_PREFIX);
+  PHY_ofdm_mod((int *)fft_in + fp->ofdm_symbol_size,
+               (int *)&slot_time[fp->nb_prefix_samples0 + fp->ofdm_symbol_size],
+               fp->ofdm_symbol_size,
+               fp->symbols_per_slot - 1,
+               fp->nb_prefix_samples,
+               CYCLIC_PREFIX);
+
+  const int ssb_start = get_samples_symbol_timestamp(fp, slot, slot_symbol);
+  const int ssb_length = get_samples_symbol_duration(fp, slot, slot_symbol, NR_N_SYMBOLS_SSB);
+  memcpy(ssb_time, &slot_time[ssb_start], ssb_length * sizeof(*ssb_time));
+
+  gNB->gNB_config.cell_config.phy_cell_id.value = original_config_nid;
+  fp->Nid_cell = original_frame_nid;
+  fp->ssb_start_subcarrier = original_ssb_start_subcarrier;
+  return ssb_length;
+}
+
+static void pbchsim_accumulate_component(double *capture_re,
+                                         double *capture_im,
+                                         int capture_samples,
+                                         const c16_t *ssb_time,
+                                         int ssb_samples,
+                                         const pbchsim_ssb_component_t *component,
+                                         double sampling_rate_hz)
+{
+  const int first_source_sample = max(0, -component->insert_sample);
+  const int last_source_sample = min(ssb_samples, capture_samples - component->insert_sample);
+  for (int source_sample = first_source_sample; source_sample < last_source_sample; source_sample++) {
+    const int destination_sample = component->insert_sample + source_sample;
+    const double phase = 2.0 * M_PI * component->cfo_hz * destination_sample / sampling_rate_hz;
+    const double re = ssb_time[source_sample].r;
+    const double im = ssb_time[source_sample].i;
+    capture_re[destination_sample] += component->gain * (re * cos(phase) - im * sin(phase));
+    capture_im[destination_sample] += component->gain * (re * sin(phase) + im * cos(phase));
+  }
+}
+
+static void pbchsim_quantize_capture(c16_t *capture, const double *capture_re, const double *capture_im, int capture_samples)
+{
+  double peak = 0.0;
+  for (int sample = 0; sample < capture_samples; sample++) {
+    peak = max(peak, fabs(capture_re[sample]));
+    peak = max(peak, fabs(capture_im[sample]));
+  }
+  const double scale = peak > 20000.0 ? 20000.0 / peak : 1.0;
+  for (int sample = 0; sample < capture_samples; sample++) {
+    capture[sample].r = (int16_t)lround(scale * capture_re[sample]);
+    capture[sample].i = (int16_t)lround(scale * capture_im[sample]);
+  }
+}
+
+static bool pbchsim_configure_capture_case(const char *name,
+                                           const NR_DL_FRAME_PARMS *fp,
+                                           int native_ssb_start,
+                                           int ssb_samples,
+                                           pbchsim_capture_case_t *test_case)
+{
+  const int frame_samples = fp->samples_per_frame;
+  const int later_ssb_start = native_ssb_start + 2 * ssb_samples;
+  const int boundary_ssb_start = (frame_samples - ssb_samples / 2) & ~3;
+  const int exact_end_ssb_start = 2 * frame_samples - ssb_samples;
+  const int same_nid2_target = 12; // PCI 0 and 12 share NID2 0.
+  *test_case = (pbchsim_capture_case_t){.target_nid_cell = -1, .ofdm_offset_divisor = 8};
+
+  if (!strcmp(name, "positive-cfo")) {
+    test_case->component[0] = (pbchsim_ssb_component_t){0, true, native_ssb_start, 1.0, 1300.0};
+    test_case->num_components = 1;
+    test_case->expect_detected = true;
+    test_case->expected_nid_cell = 0;
+    test_case->expected_insert_sample = native_ssb_start;
+    test_case->expected_cfo_hz = 1300.0;
+  } else if (!strcmp(name, "negative-cfo")) {
+    test_case->component[0] = (pbchsim_ssb_component_t){0, true, native_ssb_start, 1.0, -1300.0};
+    test_case->num_components = 1;
+    test_case->expect_detected = true;
+    test_case->expected_nid_cell = 0;
+    test_case->expected_insert_sample = native_ssb_start;
+    test_case->expected_cfo_hz = -1300.0;
+  } else if (!strcmp(name, "internal-boundary")) {
+    test_case->component[0] = (pbchsim_ssb_component_t){0, true, boundary_ssb_start, 1.0, 900.0};
+    test_case->num_components = 1;
+    test_case->expect_detected = true;
+    test_case->expected_nid_cell = 0;
+    test_case->expected_insert_sample = boundary_ssb_start;
+    test_case->expected_cfo_hz = 900.0;
+  } else if (!strcmp(name, "same-pci-retry")) {
+    test_case->component[0] = (pbchsim_ssb_component_t){0, false, native_ssb_start, 1.0, 800.0};
+    test_case->component[1] = (pbchsim_ssb_component_t){0, true, later_ssb_start, 0.75, 800.0};
+    test_case->num_components = 2;
+    test_case->target_nid_cell = 0;
+    test_case->expect_detected = true;
+    test_case->expected_nid_cell = 0;
+    test_case->expected_insert_sample = later_ssb_start;
+    test_case->expected_cfo_hz = 800.0;
+  } else if (!strcmp(name, "opposite-target-late")) {
+    test_case->component[0] = (pbchsim_ssb_component_t){0, true, native_ssb_start, 1.0, 1300.0};
+    test_case->component[1] = (pbchsim_ssb_component_t){same_nid2_target, true, later_ssb_start, 0.75, -1300.0};
+    test_case->num_components = 2;
+    test_case->target_nid_cell = same_nid2_target;
+    test_case->expect_detected = true;
+    test_case->expected_nid_cell = same_nid2_target;
+    test_case->expected_insert_sample = later_ssb_start;
+    test_case->expected_cfo_hz = -1300.0;
+  } else if (!strcmp(name, "opposite-target-early")) {
+    test_case->component[0] = (pbchsim_ssb_component_t){same_nid2_target, true, native_ssb_start, 0.75, -1300.0};
+    test_case->component[1] = (pbchsim_ssb_component_t){0, true, later_ssb_start, 1.0, 1300.0};
+    test_case->num_components = 2;
+    test_case->target_nid_cell = same_nid2_target;
+    test_case->expect_detected = true;
+    test_case->expected_nid_cell = same_nid2_target;
+    test_case->expected_insert_sample = native_ssb_start;
+    test_case->expected_cfo_hz = -1300.0;
+  } else if (!strcmp(name, "target-absent")) {
+    test_case->component[0] = (pbchsim_ssb_component_t){0, true, native_ssb_start, 1.0, 1300.0};
+    test_case->num_components = 1;
+    test_case->target_nid_cell = 3;
+    test_case->expect_detected = false;
+  } else if (!strcmp(name, "exact-end")) {
+    test_case->component[0] = (pbchsim_ssb_component_t){0, true, exact_end_ssb_start, 1.0, 500.0};
+    test_case->num_components = 1;
+    test_case->target_nid_cell = 0;
+    test_case->expect_detected = true;
+    test_case->expected_nid_cell = 0;
+    test_case->expected_insert_sample = exact_end_ssb_start;
+    test_case->expected_cfo_hz = 500.0;
+  } else if (!strcmp(name, "incomplete-end")) {
+    const int missing_samples = fp->nb_prefix_samples / test_case->ofdm_offset_divisor;
+    test_case->component[0] = (pbchsim_ssb_component_t){0, true, exact_end_ssb_start + missing_samples, 1.0, 500.0};
+    test_case->num_components = 1;
+    test_case->target_nid_cell = 0;
+    test_case->expect_detected = false;
+  } else {
+    return false;
+  }
+
+  for (int component = 0; component < test_case->num_components; component++) {
+    const int pss_position = test_case->component[component].insert_sample + fp->nb_prefix_samples;
+    AssertFatal(pss_position % 4 == 0, "Case %s has unaligned PSS position %d\n", name, pss_position);
+  }
+  return true;
+}
+
+static int pbchsim_run_pss_candidate_case(const NR_DL_FRAME_PARMS *fp)
+{
+#ifndef NR_PSS_SEARCH_MAX_CANDIDATES
+  printf("SSB capture regression pss-candidates: UNSUPPORTED (multi-peak API unavailable)\n");
+  return 2;
+#else
+  const int sequence_samples = fp->ofdm_symbol_size;
+  const int capture_samples = 12 * sequence_samples;
+  c16_t *capture = malloc16_clear(capture_samples * sizeof(*capture));
+  c16_t *snapshot = malloc16(capture_samples * sizeof(*snapshot));
+  AssertFatal(capture != NULL && snapshot != NULL, "Could not allocate PSS candidate fixture\n");
+  __attribute__((aligned(32))) c16_t pss_time[NUMBER_PSS_SEQUENCE][sequence_samples];
+  for (int nid2 = 0; nid2 < NUMBER_PSS_SEQUENCE; nid2++)
+    generate_pss_nr_time(sequence_samples, fp->first_carrier_offset, nid2, fp->ssb_start_subcarrier, pss_time[nid2]);
+  const int first_position = sequence_samples;
+  const int second_position = 6 * sequence_samples;
+  memcpy(&capture[first_position], pss_time[0], sequence_samples * sizeof(*capture));
+  memcpy(&capture[second_position], pss_time[0], sequence_samples * sizeof(*capture));
+  memcpy(snapshot, capture, capture_samples * sizeof(*snapshot));
+  c16_t *rxdata[1] = {capture};
+  const pss_search_t search = {.rxdata = rxdata,
+                               .nb_antennas_rx = 1,
+                               .rxdata_length = capture_samples,
+                               .ofdm_symbol_size = sequence_samples,
+                               .nb_prefix_samples = fp->nb_prefix_samples,
+                               .subcarrier_spacing = fp->subcarrier_spacing,
+                               .fo_flag = false,
+                               .target_Nid_cell = -1,
+                               .pssTime = (c16_t *)pss_time};
+  pss_detection_result_t candidates[NR_PSS_SEARCH_MAX_CANDIDATES] = {0};
+  bool full_truncated = false;
+  const size_t candidate_count = pss_search_time_nr_candidates(&search, candidates, NR_PSS_SEARCH_MAX_CANDIDATES, &full_truncated);
+  int first_index = -1;
+  int second_index = -1;
+  for (size_t candidate = 0; candidate < candidate_count; candidate++) {
+    if (candidates[candidate].nid2 == 0 && candidates[candidate].pos == first_position)
+      first_index = candidate;
+    if (candidates[candidate].nid2 == 0 && candidates[candidate].pos == second_position)
+      second_index = candidate;
+  }
+
+  pss_search_t targeted_search = search;
+  targeted_search.target_Nid_cell = 0;
+  pss_detection_result_t targeted_candidates[NR_PSS_SEARCH_MAX_CANDIDATES] = {0};
+  bool targeted_truncated = false;
+  const size_t targeted_count =
+      pss_search_time_nr_candidates(&targeted_search, targeted_candidates, NR_PSS_SEARCH_MAX_CANDIDATES, &targeted_truncated);
+  int targeted_first_index = -1;
+  int targeted_second_index = -1;
+  for (size_t candidate = 0; candidate < targeted_count; candidate++) {
+    if (targeted_candidates[candidate].pos == first_position)
+      targeted_first_index = candidate;
+    if (targeted_candidates[candidate].pos == second_position)
+      targeted_second_index = candidate;
+  }
+
+  pss_detection_result_t one_candidate = {0};
+  bool one_truncated = false;
+  const size_t one_count = pss_search_time_nr_candidates(&targeted_search, &one_candidate, 1, &one_truncated);
+  const bool input_unchanged = memcmp(capture, snapshot, capture_samples * sizeof(*capture)) == 0;
+  const bool passed = candidate_count >= 2 && !full_truncated && first_index >= 0 && second_index > first_index && one_count == 1
+                      && targeted_count >= 2 && targeted_count < NR_PSS_SEARCH_MAX_CANDIDATES && !targeted_truncated
+                      && targeted_first_index >= 0 && targeted_second_index > targeted_first_index && one_truncated
+                      && one_candidate.nid2 == 0 && one_candidate.pos == first_position && input_unchanged;
+  printf(
+      "SSB capture regression pss-candidates: count=%zu positions=%d,%d targeted=%zu targeted_positions=%d,%d "
+      "cap1=%d truncated=%d immutable=%d: %s\n",
+      candidate_count,
+      first_index,
+      second_index,
+      targeted_count,
+      targeted_first_index,
+      targeted_second_index,
+      one_candidate.pos,
+      one_truncated,
+      input_unchanged,
+      passed ? "PASS" : "FAIL");
+  free(snapshot);
+  free(capture);
+  return passed ? 0 : 1;
+#endif
+}
+
+static int pbchsim_run_capture_case(const char *name,
+                                    PHY_VARS_gNB *gNB,
+                                    PHY_VARS_NR_UE *ue,
+                                    c16_t *slot_time,
+                                    int ssb_subcarrier_offset)
+{
+  NR_DL_FRAME_PARMS *fp = &ue->frame_parms;
+  const int capture_samples = 2 * fp->samples_per_frame;
+  const int ssb_index = 0;
+  const int start_symbol = nr_get_ssb_start_symbol(fp, ssb_index);
+  const int slot = start_symbol / fp->symbols_per_slot;
+  const int slot_symbol = start_symbol % fp->symbols_per_slot;
+  const int native_ssb_start = get_samples_slot_timestamp(fp, slot) + get_samples_symbol_timestamp(fp, slot, slot_symbol);
+  const int expected_ssb_samples = get_samples_symbol_duration(fp, slot, slot_symbol, NR_N_SYMBOLS_SSB);
+  pbchsim_capture_case_t test_case;
+  if (!pbchsim_configure_capture_case(name, fp, native_ssb_start, expected_ssb_samples, &test_case)) {
+    printf("Unknown SSB capture regression case: %s\n", name);
+    return 2;
+  }
+
+  double *capture_re = calloc(capture_samples, sizeof(*capture_re));
+  double *capture_im = calloc(capture_samples, sizeof(*capture_im));
+  c16_t *ssb_time = malloc16_clear(expected_ssb_samples * sizeof(*ssb_time));
+  c16_t *snapshot = malloc16(capture_samples * sizeof(*snapshot));
+  AssertFatal(capture_re != NULL && capture_im != NULL && ssb_time != NULL && snapshot != NULL,
+              "Could not allocate SSB capture fixture\n");
+
+  for (int component = 0; component < test_case.num_components; component++) {
+    const int generated_samples = pbchsim_generate_ssb(gNB,
+                                                       slot_time,
+                                                       ssb_time,
+                                                       ssb_subcarrier_offset,
+                                                       test_case.component[component].nid_cell,
+                                                       test_case.component[component].valid_pbch);
+    AssertFatal(generated_samples == expected_ssb_samples,
+                "Generated SSB length %d differs from expected %d\n",
+                generated_samples,
+                expected_ssb_samples);
+    pbchsim_accumulate_component(capture_re,
+                                 capture_im,
+                                 capture_samples,
+                                 ssb_time,
+                                 generated_samples,
+                                 &test_case.component[component],
+                                 fp->samples_per_subframe * 1000.0);
+  }
+  pbchsim_quantize_capture(ue->common_vars.rxdata[0], capture_re, capture_im, capture_samples);
+  memcpy(snapshot, ue->common_vars.rxdata[0], capture_samples * sizeof(*snapshot));
+
+  const int gscn_ssb_start_subcarrier = gNB->frame_parms.ssb_start_subcarrier;
+  ue->target_Nid_cell = test_case.target_nid_cell;
+  ue->UE_fo_compensation = 1;
+  ue->initial_fo = 0;
+  ue->frame_parms.ofdm_offset_divisor = test_case.ofdm_offset_divisor;
+  ue->frame_parms.Nid_cell = 1000;
+  ue->frame_parms.ssb_start_subcarrier = 1234;
+  ue->frame_parms.half_frame_bit = 1;
+  ue->frame_parms.ssb_index = 63;
+  ue->symbol_offset = 200;
+  ue->common_vars.freq_offset = 12345.0;
+  ue->adjust_rxgain = 77;
+  ue->init_sync_frame = 99;
+  const pbchsim_sync_state_t state_before = pbchsim_get_sync_state(ue);
+
+  UE_nr_rxtx_proc_t proc = {0};
+  nr_gscn_info_t gscn_info[MAX_GSCN_BAND] = {0};
+  gscn_info[0].ssbFirstSC = gscn_ssb_start_subcarrier;
+  const nr_initial_sync_t result = nr_initial_sync(&proc, ue, 2, gscn_info, 1);
+  const pbchsim_sync_state_t state_after = pbchsim_get_sync_state(ue);
+  const bool input_unchanged = memcmp(ue->common_vars.rxdata[0], snapshot, capture_samples * sizeof(*snapshot)) == 0;
+
+  bool passed = result.cell_detected == test_case.expect_detected && input_unchanged;
+  if (test_case.expect_detected) {
+    const int64_t sync_delta = (int64_t)test_case.expected_insert_sample - native_ssb_start;
+    const int64_t frame_delta = pbchsim_floor_divide(sync_delta, fp->samples_per_frame);
+    const int expected_rx_offset = sync_delta - frame_delta * fp->samples_per_frame;
+    const int expected_frame_id = test_case.expected_insert_sample / fp->samples_per_frame;
+    const int expected_init_sync_frame = 1 - frame_delta;
+    const double cfo_error_hz = fabs(state_after.freq_offset - test_case.expected_cfo_hz);
+    passed = passed && result.rx_offset == expected_rx_offset && result.frame_id == expected_frame_id
+             && state_after.nid_cell == test_case.expected_nid_cell && state_after.ssb_start_subcarrier == gscn_ssb_start_subcarrier
+             && state_after.half_frame_bit == 0 && state_after.ssb_index == 0 && state_after.symbol_offset == start_symbol
+             && state_after.init_sync_frame == expected_init_sync_frame && state_after.adjust_rxgain != state_before.adjust_rxgain
+             && cfo_error_hz <= 200.0;
+    printf("SSB capture regression %s: detected=%d pci=%d frame=%d rx_offset=%d cfo=%.0f error=%.0f immutable=%d: %s\n",
+           name,
+           result.cell_detected,
+           state_after.nid_cell,
+           result.frame_id,
+           result.rx_offset,
+           state_after.freq_offset,
+           cfo_error_hz,
+           input_unchanged,
+           passed ? "PASS" : "FAIL");
+  } else {
+    passed = passed && result.rx_offset == 0 && result.frame_id == 0 && pbchsim_sync_state_equal(&state_before, &state_after);
+    printf("SSB capture regression %s: detected=%d state_unchanged=%d immutable=%d: %s\n",
+           name,
+           result.cell_detected,
+           pbchsim_sync_state_equal(&state_before, &state_after),
+           input_unchanged,
+           passed ? "PASS" : "FAIL");
+  }
+
+  free(snapshot);
+  free(ssb_time);
+  free(capture_im);
+  free(capture_re);
+  return passed ? 0 : 1;
+}
+
 configmodule_interface_t *uniqCfg = NULL;
 int main(int argc, char **argv)
 {
@@ -114,6 +559,7 @@ int main(int argc, char **argv)
   uint64_t SSB_positions=0x01;
   int ssb_subcarrier_offset = 0;
   int ssb_scan_threads = 0;
+  const char *ssb_capture_regression = NULL;
 
   channel_desc_t *gNB2UE;
 
@@ -156,7 +602,7 @@ int main(int argc, char **argv)
   }
 
   int c;
-  while ((c = getopt(argc, argv, "--:O:c:F:g:hIL:m:M:n:N:o:P:R:s:S:x:y:z:")) != -1) {
+  while ((c = getopt(argc, argv, "--:O:c:F:g:hIL:m:M:n:N:o:P:Q:R:s:S:x:y:z:")) != -1) {
     /* ignore long options starting with '--', option '-O' and their arguments that are handled by configmodule */
     /* with this opstring getopt returns 1 for non-option arguments, refer to 'man 3 getopt' */
     if (c == 1 || c == '-' || c == 'O')
@@ -282,6 +728,11 @@ int main(int argc, char **argv)
         printf("Illegal PBCH phase (0-3) got %d\n",pbch_phase);
       break;
 
+    case 'Q':
+      ssb_capture_regression = optarg;
+      run_initial_sync = 1;
+      break;
+
     case 'R':
       N_RB_DL = atoi(optarg);
       break;
@@ -337,7 +788,7 @@ int main(int argc, char **argv)
     case 'h':
       printf(
           "OAI_RNGSEED=xxx ./%s -F input_filename -g channel_mod -h(elp) -I(nitial sync) -L log_lvl -n n_frames -M SSBs -n frames "
-          "-N cell_id -o FO -P phase -R RBs -s snr0 -S snr1 -x transmission_mode -y TXant -z RXant\n",
+          "-N cell_id -o FO -P phase -Q case -R RBs -s snr0 -S snr1 -x transmission_mode -y TXant -z RXant\n",
           argv[0]);
       //printf("-A Interpolation_filname Run with Abstraction to generate Scatter plot using interpolation polynomial in file\n");
       printf("-c SSB subcarrier offset\n");
@@ -359,6 +810,7 @@ int main(int argc, char **argv)
       //printf("-O oversampling factor (1,2,4,8,16)\n");
       //printf("-p Use extended prefix mode\n");
       printf("-P PBCH phase, allowed values 0-3\n");
+      printf("-Q Run one deterministic linear-capture initial-sync regression case\n");
       printf("-R N_RB_DL\n");
       printf("-s Starting SNR, runs from SNR0 to SNR0 + 10 dB if not -S given. If -n 1, then just SNR is simulated\n");
       printf("-S Ending SNR, runs from SNR0 to SNR1\n");
@@ -369,6 +821,12 @@ int main(int argc, char **argv)
       exit (-1);
       break;
     }
+  }
+
+  if (ssb_capture_regression != NULL) {
+    AssertFatal(input_fd == NULL, "The SSB capture regression does not accept an input file\n");
+    AssertFatal(mu == 0 && N_RB_DL == 25, "The SSB capture regression requires -m0 -R25\n");
+    AssertFatal(n_tx == 1 && n_rx == 1, "The SSB capture regression requires one TX and one RX antenna\n");
   }
 
   randominit();
@@ -478,6 +936,13 @@ int main(int argc, char **argv)
   const uint32_t rxdataF_sz = UE->frame_parms.samples_per_slot_wCP;
   __attribute__ ((aligned(32))) c16_t rxdataF[UE->frame_parms.nb_antennas_rx][rxdataF_sz];
   nfapi_nr_dl_tti_ssb_pdu ssb_pdu[64] = {0};
+  if (ssb_capture_regression != NULL) {
+    ret_test = !strcmp(ssb_capture_regression, "pss-candidates")
+                   ? pbchsim_run_pss_candidate_case(&UE->frame_parms)
+                   : pbchsim_run_capture_case(ssb_capture_regression, gNB, UE, txdata[0], ssb_subcarrier_offset);
+    goto cleanup;
+  }
+
   if (input_fd==NULL) {
 
     for (i=0; i<frame_parms->Lmax; i++) {
@@ -752,6 +1217,7 @@ int main(int argc, char **argv)
 
   } // NSR
 
+cleanup:
   free_channel_desc_scm(gNB2UE);
 
   int nb_slots_to_set = (1 << mu) * NR_NUMBER_OF_SUBFRAMES_PER_FRAME;
