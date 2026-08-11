@@ -430,37 +430,42 @@ static void nr_fill_indication(const PHY_VARS_gNB *gNB,
 {
   // Get estimated timing advance for MAC
   const int sync_pos = pusch->delay.est_delay;
+  int timing_advance_update = 0xffff;
 
   // scale the 16 factor in N_TA calculation in 38.213 section 4.2 according to the used FFT size
   uint16_t bw_scaling = 16 * gNB->frame_parms.ofdm_symbol_size / 2048;
 
-  // do some integer rounding to improve TA accuracy
-  int sync_pos_rounded;
-  if (sync_pos > 0)
-    sync_pos_rounded = sync_pos + (bw_scaling / 2) - 1;
-  else
-    sync_pos_rounded = sync_pos - (bw_scaling / 2) + 1;
   if (stats)
     stats->ulsch_stats.sync_pos = sync_pos;
 
-  int timing_advance_update = sync_pos_rounded / bw_scaling;
+  if (pusch->delay.valid) {
+    // do some integer rounding to improve TA accuracy
+    int sync_pos_rounded;
+    if (sync_pos > 0)
+      sync_pos_rounded = sync_pos + (bw_scaling / 2) - 1;
+    else
+      sync_pos_rounded = sync_pos - (bw_scaling / 2) + 1;
 
-  // put timing advance command in 0..63 range
-  timing_advance_update += 31;
-  timing_advance_update = max(timing_advance_update, 0);
-  timing_advance_update = min(timing_advance_update, 63);
+    timing_advance_update = sync_pos_rounded / bw_scaling;
+
+    // put timing advance command in 0..63 range
+    timing_advance_update += 31;
+    timing_advance_update = max(timing_advance_update, 0);
+    timing_advance_update = min(timing_advance_update, 63);
+  }
 
   // estimate UL_CQI for MAC
   int SNRtimes10 = dB_fixed_x10(pusch->ulsch_power_tot) - dB_fixed_x10(pusch->ulsch_noise_power_tot);
 
   LOG_D(PHY,
-        "%d.%d: Estimated SNR for PUSCH is = %f dB (ulsch_power %f, noise %f) delay %d\n",
+        "%d.%d: Estimated SNR for PUSCH is = %f dB (ulsch_power %f, noise %f) delay %d%s\n",
         frame,
         slot_rx,
         SNRtimes10 / 10.0,
         dB_fixed_x10(pusch->ulsch_power_tot) / 10.0,
         dB_fixed_x10(pusch->ulsch_noise_power_tot) / 10.0,
-        sync_pos);
+        sync_pos,
+        pusch->delay.valid ? "" : " (invalid)");
 
   int cqi;
   if      (SNRtimes10 < -640) cqi=0;

@@ -370,7 +370,8 @@ void nr_est_delay(int ofdm_symbol_size, const c16_t *ls_est, c16_t *ch_estimates
   // estimated delay, and causing the delay compensation to worsen the result instead of improving it. After analyzing several
   // peaks, and doing many tests, a PEAK_DETECT_THRESHOLD = 15 is an adequate value, to apply delay compensation only when there is
   // clearly a peak
-  delay->est_delay = mean_val > 0 && max_val / mean_val > PEAK_DETECT_THRESHOLD ? max_pos - sync_pos : 0;
+  delay->valid = mean_val > 0 && max_val / mean_val > PEAK_DETECT_THRESHOLD;
+  delay->est_delay = delay->valid ? max_pos - sync_pos : 0;
 }
 
 unsigned int nr_get_tx_amp(int power_dBm, int power_max_dBm, int total_nb_rb, int nb_rb)
