@@ -93,6 +93,25 @@ add_physim_test(physim.5g.nr_pbchsim.273rb.test2 "PBCH and synchronization, 273 
 add_physim_test(physim.5g.nr_pbchsim.otherSCS.test1 "PBCH-only, 15Khz, 5Mhz" nr_pbchsim -s-10 -S-8 -n30 -m0 -R25)
 add_physim_test(physim.5g.nr_pbchsim.otherSCS.test2 "PBCH-only, 120Khz, 50Mhz" nr_pbchsim -s-10 -S-8 -n30 -m3 -R32)
 
+set(NR_PBCHSIM_LINEAR_CAPTURE_CASES
+    positive-cfo
+    negative-cfo
+    internal-boundary
+    same-pci-retry
+    opposite-target-late
+    opposite-target-early
+    target-absent
+    exact-end
+    incomplete-end
+    pss-candidates)
+foreach(CAPTURE_CASE IN LISTS NR_PBCHSIM_LINEAR_CAPTURE_CASES)
+  add_physim_test(physim.5g.nr_pbchsim.linearCapture.${CAPTURE_CASE}
+                  "Linear capture initial sync: ${CAPTURE_CASE}"
+                  nr_pbchsim -Q ${CAPTURE_CASE} -m0 -R25)
+  set_property(TEST physim.5g.nr_pbchsim.linearCapture.${CAPTURE_CASE}
+               APPEND PROPERTY ENVIRONMENT "OAI_RNGSEED=387")
+endforeach()
+
 ####################################################################################
 ######                           nr_dlsim unit test                           ######
 ####################################################################################
