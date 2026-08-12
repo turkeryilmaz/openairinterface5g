@@ -615,6 +615,11 @@ int ngap_gNB_initial_ctxt_resp(instance_t instance, ngap_initial_context_setup_r
       item->pDUSessionID = initial_ctxt_resp_p->pdusessions[i].pdusession_id;
       // PDU Session Resource Setup Response Transfer (Mandatory)
       byte_array_t ba = encode_ngap_pdusession_setup_response_transfer(&initial_ctxt_resp_p->pdusessions[i]);
+      if (ba.buf == NULL) {
+        NGAP_ERROR("Failed to encode PDUSessionResourceSetupResponseTransfer for PDU session %ld\n", item->pDUSessionID);
+        ASN_STRUCT_FREE_CONTENTS_ONLY(asn_DEF_NGAP_NGAP_PDU, &pdu);
+        return -1;
+      }
       item->pDUSessionResourceSetupResponseTransfer.buf = ba.buf;
       item->pDUSessionResourceSetupResponseTransfer.size = ba.len;
     }
@@ -628,21 +633,18 @@ int ngap_gNB_initial_ctxt_resp(instance_t instance, ngap_initial_context_setup_r
 
     for (i = 0; i < initial_ctxt_resp_p->nb_of_pdusessions_failed; i++) {
       asn1cSequenceAdd(ie->value.choice.PDUSessionResourceFailedToSetupListCxtRes.list, NGAP_PDUSessionResourceFailedToSetupItemCxtRes_t, item);
-      NGAP_PDUSessionResourceSetupUnsuccessfulTransfer_t pdusessionUnTransfer = {0};
-    
       /* pDUSessionID */
       item->pDUSessionID = initial_ctxt_resp_p->pdusessions_failed[i].pdusession_id;
-
-      /* cause */
-      encode_ngap_cause(&pdusessionUnTransfer.cause, &initial_ctxt_resp_p->pdusessions_failed[i].cause);
-
       NGAP_INFO("initial context setup response: failed pdusession ID %ld\n", item->pDUSessionID);
-      asn_encode_to_new_buffer_result_t res = asn_encode_to_new_buffer(NULL, ATS_ALIGNED_CANONICAL_PER, &asn_DEF_NGAP_PDUSessionResourceSetupUnsuccessfulTransfer, &pdusessionUnTransfer);
-      AssertFatal(res.buffer, "ASN1 message encoding failed (%s, %lu)!\n", res.result.failed_type->name, res.result.encoded);
-      item->pDUSessionResourceSetupUnsuccessfulTransfer.buf = res.buffer;
-      item->pDUSessionResourceSetupUnsuccessfulTransfer.size = res.result.encoded;
 
-      ASN_STRUCT_FREE_CONTENTS_ONLY(asn_DEF_NGAP_PDUSessionResourceSetupUnsuccessfulTransfer, &pdusessionUnTransfer);
+      byte_array_t ba = encode_ngap_pdusession_setup_unsuccessful_transfer(&initial_ctxt_resp_p->pdusessions_failed[i].cause);
+      if (ba.buf == NULL) {
+        NGAP_ERROR("Failed to encode PDUSessionResourceSetupUnsuccessfulTransfer for PDU session %ld\n", item->pDUSessionID);
+        ASN_STRUCT_FREE_CONTENTS_ONLY(asn_DEF_NGAP_NGAP_PDU, &pdu);
+        return -1;
+      }
+      item->pDUSessionResourceSetupUnsuccessfulTransfer.buf = ba.buf;
+      item->pDUSessionResourceSetupUnsuccessfulTransfer.size = ba.len;
     }
   }
 
