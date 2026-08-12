@@ -232,6 +232,9 @@ bool tun_config(const char* ifname, const char *ipv4, const char *ipv6)
     success = flags >= 0 && set_if_flags(sock_fd, ifname, (flags | IFF_NOARP | IFF_POINTOPOINT) & ~IFF_MULTICAST);
   }
 
+  // Note: only the link-local IPv6 address is available at this point.
+  // The global IPv6 address is assigned after receiving a Router Advertisement, which triggers SLAAC
+  // (3GPP TS 23.501, Section 5.8.2.2.3; IETF RFC 4862).
   if (success)
     LOG_A(OIP, "TUN Interface %s successfully configured, IPv4 %s, IPv6 %s\n", ifname, ipv4, ipv6);
   else
