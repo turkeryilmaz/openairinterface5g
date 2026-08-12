@@ -332,11 +332,9 @@ void mac_top_init_gNB(ngran_node_t node_type,
     RC.nrmac = NULL;
   }
 
-  // Initialize Linked-List for Active UEs
   for (module_id_t i = 0; i < RC.nb_nr_macrlc_inst; i++) {
     gNB_MAC_INST *nrmac = RC.nrmac[i];
     nrmac->if_inst = NR_IF_Module_init(i);
-    memset(&nrmac->UE_info, 0, sizeof(nrmac->UE_info));
   }
 
   du_init_f1_ue_data();
