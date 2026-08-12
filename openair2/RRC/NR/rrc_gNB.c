@@ -2961,8 +2961,13 @@ static void rrc_CU_process_ue_modification_required(MessageDef *msg_p, instance_
     store_cgc(UE, &temp_cgc);
 
     /* trigger reconfiguration */
-    if (!UE->ongoing_reconfiguration)
+    if (!UE->ongoing_reconfiguration) {
       nr_rrc_reconfiguration_req(rrc, UE);
+    } else {
+      LOG_W(NR_RRC, "UE %d UE Context Modification Request: has ongoing reconfiguration\n", UE->rrc_ue_id);
+      /* TODO send reject? */
+    }
+
     return;
   }
   LOG_W(RRC,
