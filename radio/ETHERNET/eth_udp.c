@@ -443,7 +443,7 @@ void *udp_read_thread(void *arg)
       if (oai_exit)
         break;
       aid = *(uint16_t*)(&buffer[ECPRICOMMON_BYTES]);
-      TS  = *(openair0_timestamp_t *)(&buffer[ECPRICOMMON_BYTES+ECPRIPCID_BYTES]);
+      memcpy(&TS, &buffer[ECPRICOMMON_BYTES+ECPRIPCID_BYTES], sizeof(TS));
       // convert TS to samples, /6 for AW2S @ 30.72 Ms/s, this is converted for other sample rates in OAI application
       TS = (eth->sampling_rate_ratio_n * TS) / (eth->sampling_rate_ratio_d * 6);
       AssertFatal(aid < 8,"Cannot handle more than 8 antennas, got aid %d\n",aid);
