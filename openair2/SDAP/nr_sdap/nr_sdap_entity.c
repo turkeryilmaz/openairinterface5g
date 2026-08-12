@@ -408,8 +408,9 @@ static void nr_sdap_qfi2drb_map_del(nr_sdap_entity_t *entity, const uint8_t qfi)
 static const qfi2drb_t *nr_sdap_qfi2drb(const nr_sdap_entity_t *entity, uint8_t qfi)
 {
   /* Fetch DRB ID mapped to QFI */
-  const qfi2drb_t *row = &entity->qfi2drb_table[qfi];
-  if (row->drb_id) {
+  // Handle the out-of-bound case when a DL PDU arrives with no QFI marking (QFI = -1 (255 in uint8_t)).
+  const qfi2drb_t *row = qfi < SDAP_MAX_QFI ? &entity->qfi2drb_table[qfi] : NULL;
+  if (row && row->drb_id) {
     /* QoS flow to DRB mapping rule exists, return corresponding DRB ID */
     LOG_D(SDAP, "Existing QoS flow to DRB mapping rule: QFI %u to DRB %d\n", qfi, row->drb_id);
     return row;
