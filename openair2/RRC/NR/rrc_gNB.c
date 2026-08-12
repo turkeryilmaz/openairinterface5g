@@ -331,6 +331,43 @@ static void nr_rrc_transfer_protected_rrc_message(const gNB_RRC_INST *rrc,
 #endif
 }
 
+typedef struct deliver_ue_context_modif_confirm_s {
+  const gNB_RRC_INST *rrc;
+  f1ap_ue_context_modif_confirm_t *confirm;
+  sctp_assoc_t assoc_id;
+} deliver_ue_context_modif_confirm_t;
+
+static void rrc_deliver_ue_context_modif_confirm(void *deliver_pdu_data, ue_id_t ue_id, int srb_id, char *buf, int size, int sdu_id)
+{
+  UNUSED(ue_id);
+  UNUSED(sdu_id);
+  DevAssert(deliver_pdu_data != NULL);
+  deliver_ue_context_modif_confirm_t *data = (deliver_ue_context_modif_confirm_t *)deliver_pdu_data;
+  data->confirm->rrc_container = (uint8_t *)buf;
+  data->confirm->rrc_container_length = size;
+  data->rrc->mac_rrc.ue_context_modification_confirm(data->assoc_id, data->confirm);
+}
+
+static void nr_rrc_transfer_protected_ue_reconfig_confirm(const gNB_RRC_INST *rrc,
+                                                          const gNB_RRC_UE_t *ue_p,
+                                                          uint8_t srb_id,
+                                                          const uint8_t *buffer,
+                                                          int size)
+{
+  DevAssert(size > 0);
+  f1_ue_data_t ue_data = cu_get_f1_ue_data(ue_p->rrc_ue_id);
+  RETURN_IF_INVALID_ASSOC_ID(ue_data.du_assoc_id);
+  f1ap_ue_context_modif_confirm_t confirm = { .gNB_CU_ue_id = ue_p->rrc_ue_id, .gNB_DU_ue_id = ue_data.secondary_ue};
+  deliver_ue_context_modif_confirm_t data = {.rrc = rrc, .confirm = &confirm, .assoc_id = ue_data.du_assoc_id};
+  nr_pdcp_data_req_srb(ue_p->rrc_ue_id,
+                       srb_id,
+                       rrc_gNB_mui++,
+                       size,
+                       (unsigned char *const)buffer,
+                       rrc_deliver_ue_context_modif_confirm,
+                       &data);
+}
+
 static void rrc_gNB_CU_DU_init(gNB_RRC_INST *rrc)
 {
   switch (rrc->node_type) {
@@ -1265,7 +1302,9 @@ static void rrc_gNB_process_RRCReestablishmentComplete(gNB_RRC_INST *rrc, gNB_RR
   }
 }
 
-int nr_rrc_reconfiguration_req(gNB_RRC_INST *rrc, gNB_RRC_UE_t *ue_p)
+/* \brief Explicit request for reconfiguration from DU, after UE context
+ * modificatien required. Send in a UE context modification confirm message. */
+static int nr_rrc_reconfiguration_req(gNB_RRC_INST *rrc, gNB_RRC_UE_t *ue_p)
 {
   uint8_t xid = rrc_gNB_get_next_transaction_identifier(rrc->module_id);
   ue_p->xids[xid] = RRC_DEDICATED_RECONF;
@@ -1277,8 +1316,7 @@ int nr_rrc_reconfiguration_req(gNB_RRC_INST *rrc, gNB_RRC_UE_t *ue_p)
     LOG_E(NR_RRC, "UE %d: Failed to generate RRCReconfiguration\n", ue_p->rrc_ue_id);
     return -1;
   }
-  const uint32_t msg_id = NR_DL_DCCH_MessageType__c1_PR_rrcReconfiguration;
-  nr_rrc_transfer_protected_rrc_message(rrc, ue_p, DL_SCH_LCID_DCCH, msg_id, msg.buf, msg.len);
+  nr_rrc_transfer_protected_ue_reconfig_confirm(rrc, ue_p, DL_SCH_LCID_DCCH, msg.buf, msg.len);
   free_byte_array(msg);
   free_RRCReconfiguration_params(params);
   return 0;
