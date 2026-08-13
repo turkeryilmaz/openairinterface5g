@@ -1241,7 +1241,11 @@ static int Gtpv1uHandleGpdu(int h, uint8_t *msgBuf, uint32_t msgBufLen, const st
   const uint32_t destinationL2Id = 0;
 
   if (sdu_buffer_size > 0) {
-    if (qfi != NO_QFI && uedata.callBackSDAP) {
+    // TS 29.281 5.2.2.7 / TS 38.415 require a QFI (PDU Session Container) on every N3 G-PDU,
+    // so a DL PDU with no QFI (e.g. a UPF-generated Router Advertisement) is out-of-spec.
+    // We still forward it through SDAP, by following the TS 37.324 5.2.1, where defined that
+    // an unmapped QoS flow shall map the SDAP SDU to the default DRB.
+    if (uedata.callBackSDAP) {
       if (!uedata.callBackSDAP(&ctxt,
                                        uedata.ue_id,
                                        srb_flag,
