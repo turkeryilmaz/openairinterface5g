@@ -151,6 +151,21 @@ static bool nr_sdap_tx_entity(nr_sdap_entity_t *entity,
     return 0;
   }
 
+  // Reuse a QFI that the UE has already mapped to the default DRB to avoid
+  // encoding an invalid QFI in the SDAP header. This follows TS 37.324 5.2.1,
+  // which maps SDAP SDUs from unmapped QoS flows (e.g., a UFP-generated Router Advertisement) to the default DRB.
+  uint8_t hdr_qfi = qfi;
+  if (qfi >= SDAP_MAX_QFI) { // qfi = -1 (uint_8 255)
+    for (int i = 0; i < SDAP_MAX_QFI; i++) {
+      if (entity->qfi2drb_table[i].drb_id == drb_id) {
+        hdr_qfi = i;
+        break;
+      }
+    }
+    DevAssert (hdr_qfi < SDAP_MAX_QFI);
+    LOG_W(SDAP, "TX SDAP SDU with no QFI marking: reusing QFI %u already mapped to DRB %d\n", hdr_qfi, drb_id);
+  }
+
   if (sdap_dl_tx) { // create DL Data PDU with SDAP header
     offset = SDAP_HDR_LENGTH;
     /*
@@ -160,7 +175,7 @@ static bool nr_sdap_tx_entity(nr_sdap_entity_t *entity,
      * Construct the DL SDAP data PDU.
      */
     nr_sdap_dl_hdr_t sdap_hdr;
-    sdap_hdr.QFI = qfi;
+    sdap_hdr.QFI = hdr_qfi;
     sdap_hdr.RQI = rqi;
     sdap_hdr.RDI = 0; // SDAP Hardcoded Value
     /* Add the SDAP DL Header to the buffer */
@@ -179,7 +194,7 @@ static bool nr_sdap_tx_entity(nr_sdap_entity_t *entity,
      * construct the UL SDAP data PDU as specified in the subclause 6.2.2.3.
      */
     nr_sdap_ul_hdr_t sdap_hdr;
-    sdap_hdr.QFI = qfi;
+    sdap_hdr.QFI = hdr_qfi;
     sdap_hdr.R = 0;
     sdap_hdr.DC = rqi;
     /* Add the SDAP UL Header to the buffer */
