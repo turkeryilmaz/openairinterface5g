@@ -232,6 +232,9 @@ bool tun_config(const char* ifname, const char *ipv4, const char *ipv6)
     success = flags >= 0 && set_if_flags(sock_fd, ifname, (flags | IFF_NOARP | IFF_POINTOPOINT) & ~IFF_MULTICAST);
   }
 
+  // Note: only the link-local IPv6 address is available at this point.
+  // The global IPv6 address is assigned after receiving a Router Advertisement, which triggers SLAAC
+  // (3GPP TS 23.501, Section 5.8.2.2.3; IETF RFC 4862).
   if (success)
     LOG_A(OIP, "TUN Interface %s successfully configured, IPv4 %s, IPv6 %s\n", ifname, ipv4, ipv6);
   else
@@ -260,9 +263,11 @@ bool tap_config(const char* ifname)
   return success;
 }
 
-void setup_ue_ipv4_route(const char* ifname, int instance_id, const char *ipv4)
+void setup_ue_ipv4_route(const char* ifname, int instance_id, int pdu_session_id, const char *ipv4)
 {
-  int table_id = instance_id - 1 + 10000;
+  /* This needs to be unique per (instance_id, pdu_session_id) */
+  // UE0, PDU1 = 10001, UE1, PDU1 = 10101, UE15, PDU15 = 11515 ...
+  int table_id = 10000 + instance_id * 100 + pdu_session_id;
 
   char command_line[500];
   int res = sprintf(command_line,

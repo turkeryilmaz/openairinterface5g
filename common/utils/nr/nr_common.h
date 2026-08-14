@@ -173,6 +173,8 @@ typedef struct frame_structure_s {
 typedef struct {
   /// Time shift in number of samples estimated based on DMRS-PDSCH/PUSCH
   int est_delay;
+  /// True when est_delay is based on a clear enough channel impulse response peak
+  bool valid;
   /// Max position in OFDM symbol related to time shift estimation based on DMRS-PDSCH/PUSCH
   int delay_max_pos;
   /// Max value related to time shift estimation based on DMRS-PDSCH/PUSCH

@@ -150,6 +150,8 @@ typedef enum { SYMBOL_DIR_DL = 0, SYMBOL_DIR_UL = 1, SYMBOL_DIR_GU = 2 } symbol_
  * initialization of split 7 radios which reuses the interface of split 8.
  */
 typedef struct split7_config {
+  /*! Common numerology */
+  int mu;
   /*! PRACH index used for PRACH */
   int prach_index;
   /*! PRACH frequency start, from RRC's msg1-FrequencyStart */
@@ -241,8 +243,6 @@ typedef struct openair0_config {
   recplay_conf_t *recplay_conf;
   //! Flag to indicate this configuration is for NR
   int nr_flag;
-  //! NR scs for raster
-  int nr_scs_for_raster;
   //! Core IDs for RX FH
   int rxfh_cores[8];
   //! Core IDs for TX FH

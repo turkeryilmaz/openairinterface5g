@@ -9,6 +9,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <arpa/inet.h>
+#include "aper_encoder.h"
+#include "assertions.h"
 #include "conversions.h"
 #include "ngap_common.h"
 #include "ngap_msg_includes.h"
@@ -349,15 +351,34 @@ byte_array_t encode_ngap_pdusession_setup_response_transfer(const pdusession_set
     qos_item->qosFlowIdentifier = pdusession->associated_qos_flows[j].qfi;
   }
 
-  // Encode
-  asn_encode_to_new_buffer_result_t res = asn_encode_to_new_buffer(NULL,
-                                                                   ATS_ALIGNED_CANONICAL_PER,
-                                                                   &asn_DEF_NGAP_PDUSessionResourceSetupResponseTransfer,
-                                                                   &pdusessionTransfer);
-  AssertFatal(res.buffer, "ASN1 message encoding failed (%s, %lu)!\n", res.result.failed_type->name, res.result.encoded);
+  void *buf = NULL;
+  ssize_t encoded =
+      aper_encode_to_new_buffer(&asn_DEF_NGAP_PDUSessionResourceSetupResponseTransfer, NULL, &pdusessionTransfer, &buf);
   ASN_STRUCT_FREE_CONTENTS_ONLY(asn_DEF_NGAP_PDUSessionResourceSetupResponseTransfer, &pdusessionTransfer);
-  out.buf = res.buffer;
-  out.len = res.result.encoded;
+  if (encoded < 0)
+    return out;
+  out.buf = buf;
+  out.len = encoded;
+  return out;
+}
+
+/** @brief PDU Session Resource Setup Unsuccessful Transfer encoding (9.3.4.16 3GPP TS 38.413) */
+byte_array_t encode_ngap_pdusession_setup_unsuccessful_transfer(const ngap_cause_t *cause)
+{
+  DevAssert(cause != NULL);
+
+  NGAP_PDUSessionResourceSetupUnsuccessfulTransfer_t transfer = {0};
+  byte_array_t out = {0};
+
+  encode_ngap_cause(&transfer.cause, cause);
+
+  void *buf = NULL;
+  ssize_t encoded = aper_encode_to_new_buffer(&asn_DEF_NGAP_PDUSessionResourceSetupUnsuccessfulTransfer, NULL, &transfer, &buf);
+  ASN_STRUCT_FREE_CONTENTS_ONLY(asn_DEF_NGAP_PDUSessionResourceSetupUnsuccessfulTransfer, &transfer);
+  if (encoded < 0)
+    return out;
+  out.buf = buf;
+  out.len = encoded;
   return out;
 }
 

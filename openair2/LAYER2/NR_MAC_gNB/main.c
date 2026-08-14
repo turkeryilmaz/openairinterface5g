@@ -108,8 +108,8 @@ size_t dump_mac_stats(gNB_MAC_INST *gNB, char *output, size_t strlen, bool reset
   UE_iterator(gNB->UE_info.connected_ue_list, UE) {
     NR_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
     NR_mac_stats_t *stats = &UE->mac_stats;
-    const int avg_rsrp = stats->num_rsrp_meas > 0 ? stats->cumul_rsrp / stats->num_rsrp_meas : 0;
-    const int avg_sinrx10 = stats->num_sinr_meas > 0 ? stats->cumul_sinrx10 / stats->num_sinr_meas : 0;
+    const int avg_rsrp = stats->num_rsrp_meas > 0 ? stats->cumul_rsrp / (int)stats->num_rsrp_meas : 0;
+    const int avg_sinrx10 = stats->num_sinr_meas > 0 ? stats->cumul_sinrx10 / (int)stats->num_sinr_meas : 0;
 
     output = st_append(output, end, "UE RNTI %04x CU-UE-ID ", UE->rnti);
     if (du_exists_f1_ue_data(UE->rnti)) {
@@ -128,12 +128,12 @@ size_t dump_mac_stats(gNB_MAC_INST *gNB, char *output, size_t strlen, bool reset
                        sched_ctrl->pcmax);
 
     if (stats->num_rsrp_meas)
-      output = st_append(output, end, ", average RSRP %d (%d meas)", avg_rsrp, stats->num_rsrp_meas);
+      output = st_append(output, end, ", average RSRP %d (%u meas)", avg_rsrp, stats->num_rsrp_meas);
 
     if (stats->num_sinr_meas) {
       output = st_append(output,
                          end,
-                         ", average SINR %d.%d (%d meas)",
+                         ", average SINR %d.%d (%u meas)",
                          avg_sinrx10 / 10,
                          avg_sinrx10 % 10,
                          stats->num_sinr_meas);
@@ -332,11 +332,9 @@ void mac_top_init_gNB(ngran_node_t node_type,
     RC.nrmac = NULL;
   }
 
-  // Initialize Linked-List for Active UEs
   for (module_id_t i = 0; i < RC.nb_nr_macrlc_inst; i++) {
     gNB_MAC_INST *nrmac = RC.nrmac[i];
     nrmac->if_inst = NR_IF_Module_init(i);
-    memset(&nrmac->UE_info, 0, sizeof(nrmac->UE_info));
   }
 
   du_init_f1_ue_data();

@@ -370,7 +370,8 @@ void nr_est_delay(int ofdm_symbol_size, const c16_t *ls_est, c16_t *ch_estimates
   // estimated delay, and causing the delay compensation to worsen the result instead of improving it. After analyzing several
   // peaks, and doing many tests, a PEAK_DETECT_THRESHOLD = 15 is an adequate value, to apply delay compensation only when there is
   // clearly a peak
-  delay->est_delay = mean_val > 0 && max_val / mean_val > PEAK_DETECT_THRESHOLD ? max_pos - sync_pos : 0;
+  delay->valid = mean_val > 0 && max_val / mean_val > PEAK_DETECT_THRESHOLD;
+  delay->est_delay = delay->valid ? max_pos - sync_pos : 0;
 }
 
 unsigned int nr_get_tx_amp(int power_dBm, int power_max_dBm, int total_nb_rb, int nb_rb)
@@ -488,46 +489,4 @@ int nr_get_ssb_start_sc(int scs, int ssb_offset_point_a, int ssb_sco, frequency_
                         prb_offset, ssb_sco, scs, freq_range, ssb_start_subcarrier);
 
   return ssb_start_subcarrier;
-}
-
-/* Constant MO lets the compiler inline memcpy as fixed-size vector stores */
-static inline void layer_demapping(uint8_t Nl, int nb_re, int16_t **llr_layers, int16_t *llr_out, int MO)
-{
-  int k = 0;
-  for (int j = 0; j < nb_re; j++) {
-    for (int l = 0; l < Nl; l++) {
-      memcpy(llr_out + k, llr_layers[l] + j * MO, MO * sizeof(int16_t));
-      k += MO;
-    }
-  }
-}
-
-void nr_layer_demapping(uint8_t Nl, uint8_t mod_order, int nb_re, int16_t **llr_layers, int16_t *llr_out)
-{
-  AssertFatal(Nl >= 1 && Nl <= 4, "Unsupported number of layers %d\n", Nl);
-
-  if (Nl == 1) {
-    /* Single layer: one contiguous memcpy, no interleaving needed. */
-    memcpy(llr_out, llr_layers[0], nb_re * mod_order * sizeof(int16_t));
-    return;
-  }
-
-  /* Switch on mod_order so MO is a compile-time literal, enabling the compiler
-   * to inline memcpy as fixed-size vector stores. */
-  switch (mod_order) {
-    case 2:
-      layer_demapping(Nl, nb_re, llr_layers, llr_out, 2);
-      break;
-    case 4:
-      layer_demapping(Nl, nb_re, llr_layers, llr_out, 4);
-      break;
-    case 6:
-      layer_demapping(Nl, nb_re, llr_layers, llr_out, 6);
-      break;
-    case 8:
-      layer_demapping(Nl, nb_re, llr_layers, llr_out, 8);
-      break;
-    default:
-      AssertFatal(0, "Unknown mod_order %d\n", mod_order);
-  }
 }

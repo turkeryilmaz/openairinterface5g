@@ -51,6 +51,20 @@ void print_ue_mac_stats(const module_id_t mod, const int frame_rx, const int slo
                   slot_rx,
                   mac->stats.bad_dci);
 
+  const NR_SSB_meas_t *ssb = &mac->ssb_measurements[mac->mib_ssb];
+  const NR_CSIRS_meas_t *csi = &mac->csirs_measurements;
+  cur += snprintf(cur,
+                  end - cur,
+                  "    DL Chan: SSB %d SINR %.01f dB RSRP %d dBm, RI %d ",
+                  mac->mib_ssb,
+                  ssb->ssb_sinr_dB,
+                  ssb->ssb_rsrp_dBm,
+                  csi->ri);
+  if (csi->rsrp_dBm != 0)
+    cur += snprintf(cur, end - cur, "CQI %d CSI-RS RSRP %d dBm\n", csi->cqi, csi->rsrp_dBm);
+  else
+    cur += snprintf(cur, end - cur, "CQI: N/A\n");
+
   cur += snprintf(cur, end - cur, "    DL harq: %lu", mac->stats.dl.rounds[0]);
   int nb;
   for (nb = NR_MAX_HARQ_ROUNDS_FOR_STATS - 1; nb > 1; nb--)
@@ -58,8 +72,17 @@ void print_ue_mac_stats(const module_id_t mod, const int frame_rx, const int slo
       break;
   for (int i = 1; i < nb + 1; i++)
     cur += snprintf(cur, end - cur, "/%lu", mac->stats.dl.rounds[i]);
+  cur += snprintf(cur,
+                  end - cur,
+                  " avg code rate %.01f, avg bit/symbol %.01f, avg per TB: "
+                  "(nb RBs %.01f, nb symbols %.01f)\n",
+                  mac->stats.dl.total_bits ? (double)mac->stats.dl.target_code_rate / (mac->stats.dl.total_bits * 1024 * 10)
+                                           : 0.0, // See const Table_51311 definition
+                  mac->stats.dl.total_symbols ? (double)mac->stats.dl.total_bits / mac->stats.dl.total_symbols : 0.0,
+                  mac->stats.dl.rb_size / nbdl,
+                  mac->stats.dl.nr_of_symbols / nbdl);
 
-  cur += snprintf(cur, end - cur, "\n    UL harq: %lu", mac->stats.ul.rounds[0]);
+  cur += snprintf(cur, end - cur, "    UL harq: %lu", mac->stats.ul.rounds[0]);
   for (nb = NR_MAX_HARQ_ROUNDS_FOR_STATS - 1; nb > 1; nb--)
     if (mac->stats.ul.rounds[nb])
       break;
@@ -69,8 +92,9 @@ void print_ue_mac_stats(const module_id_t mod, const int frame_rx, const int slo
            end - cur,
            " avg code rate %.01f, avg bit/symbol %.01f, avg per TB: "
            "(nb RBs %.01f, nb symbols %.01f)\n",
-           (double)mac->stats.ul.target_code_rate / (mac->stats.ul.total_bits * 1024 * 10), // See const Table_51311 definition
-           (double)mac->stats.ul.total_bits / mac->stats.ul.total_symbols,
+           mac->stats.ul.total_bits ? (double)mac->stats.ul.target_code_rate / (mac->stats.ul.total_bits * 1024 * 10)
+                                    : 0.0, // See const Table_51311 definition
+           mac->stats.ul.total_symbols ? (double)mac->stats.ul.total_bits / mac->stats.ul.total_symbols : 0.0,
            mac->stats.ul.rb_size / nbul,
            mac->stats.ul.nr_of_symbols / nbul);
   LOG_I(NR_MAC, "%s", txt);

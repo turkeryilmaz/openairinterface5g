@@ -614,9 +614,8 @@ int nr_pusch_channel_estimation(PHY_VARS_gNB *gNB,
     nest_count += nest_count_arr[aarx];
   }
   // get the maximum delay
-  *delay = delay_arr[0];
-  for (int aarx = 1; aarx < nb_antennas_rx; aarx++) {
-    if (delay_arr[aarx].est_delay >= delay->est_delay) {
+  for (int aarx = 0; aarx < nb_antennas_rx; aarx++) {
+    if (delay_arr[aarx].valid && delay_arr[aarx].delay_max_val > delay->delay_max_val) {
       *delay = delay_arr[aarx];
     }
   }

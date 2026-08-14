@@ -198,7 +198,7 @@ typedef struct {
   uint16_t freq_msg1;
   /// Preamble index for PRACH (0-63)
   uint8_t ra_PreambleIndex;
-  /// PRACH TX power (TODO possibly modify to uint)
+  /// Requested PRACH transmit power in dBm
   int16_t prach_tx_power;
 } fapi_nr_ul_config_prach_pdu;
 

@@ -431,6 +431,7 @@ void fill_rf_config(RU_t *ru, char *rf_config_file)
   cfg->num_distributed_ru = 1;
   LOG_I(PHY,"Setting RF config for N_RB %d, NB_RX %d, NB_TX %d\n",cfg->num_rb_dl,cfg->rx_num_channels,cfg->tx_num_channels);
   LOG_I(PHY,"tune_offset %.0f Hz, sample_rate %.0f Hz\n",cfg->tune_offset,cfg->sample_rate);
+  cfg->nr_flag = 1;
 
   for (int i = 0; i < ru->nb_tx; i++) {
     if (ru->if_frequency == 0) {
@@ -470,6 +471,7 @@ void fill_split7_2_config(split7_config_t *split7, const nfapi_nr_config_request
   const nfapi_nr_cell_config_t *cell_config = &config->cell_config;
   const nfapi_nr_carrier_config_t *carrier_config = &config->carrier_config;
 
+  split7->mu = config->ssb_config.scs_common.value;
   DevAssert(prach_config->prach_ConfigurationIndex.tl.tag == NFAPI_NR_CONFIG_PRACH_CONFIG_INDEX_TAG);
   split7->prach_index = prach_config->prach_ConfigurationIndex.value;
   AssertFatal(prach_config->num_prach_fd_occasions.value >= 1, "must have at least one PRACH occasion\n");
@@ -690,10 +692,9 @@ void *ru_thread(void *param)
 
   // Start RF device if any
   if (ru->start_rf) {
-    if (ru->start_rf(ru) != 0)
-      LOG_E(HW, "Could not start the RF device\n");
-    else
-      LOG_I(PHY, "RU %d rf device ready\n", ru->idx);
+    ret = ru->start_rf(ru);
+    AssertFatal(ret == 0, "RU %u: start_rf() ret %d: cannot start RF device\n", ru->idx, ret);
+    LOG_I(PHY, "RU %d rf device ready\n", ru->idx);
   } else
     LOG_I(PHY, "RU %d no rf device\n", ru->idx);
 
@@ -1165,14 +1166,7 @@ static void NRRCconfig_RU(configmodule_interface_t *cfg)
     ru->num_bands = param[RU_BAND_LIST_IDX].numelt;
     for (int i = 0; i < ru->num_bands; i++)
       ru->band[i] = param[RU_BAND_LIST_IDX].iptr[i];
-    ru->openair0_cfg.nr_flag = *param[RU_NR_FLAG].iptr;
     // TODO remove band from RU?
-    ru->openair0_cfg.nr_scs_for_raster = *param[RU_NR_SCS_FOR_RASTER].iptr;
-    LOG_D(PHY,
-          "[RU %d] Setting nr_flag %d, nr_scs_for_raster %d\n",
-          j,
-          ru->openair0_cfg.nr_flag,
-          ru->openair0_cfg.nr_scs_for_raster);
     ru->openair0_cfg.rxfh_cores[0] = *param[RU_RXFH_CORE_ID].iptr;
     ru->openair0_cfg.txfh_cores[0] = *param[RU_TXFH_CORE_ID].iptr;
     ru->num_tpcores = *param[RU_NUM_TP_CORES].iptr;

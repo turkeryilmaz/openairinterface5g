@@ -88,7 +88,7 @@ static void ue_context_modification_confirm_f1ap(sctp_assoc_t assoc_id, const f1
   f1ap_msg->rrc_container = NULL;
   f1ap_msg->rrc_container_length = 0;
   if (confirm->rrc_container != NULL) {
-    f1ap_msg->rrc_container = calloc(1, sizeof(*f1ap_msg->rrc_container));
+    f1ap_msg->rrc_container = calloc(confirm->rrc_container_length, sizeof(*f1ap_msg->rrc_container));
     AssertFatal(f1ap_msg->rrc_container != NULL, "out of memory\n");
     memcpy(f1ap_msg->rrc_container, confirm->rrc_container, confirm->rrc_container_length);
     f1ap_msg->rrc_container_length = confirm->rrc_container_length;
