@@ -26,6 +26,7 @@
 #include "OctetString.h"
 #include "PduSessionEstablishRequest.h"
 #include "PduSessionEstablishmentAccept.h"
+#include "PduSessionModificationCommand.h"
 #include "RegistrationAccept.h"
 #include "SORTransparentContainer.h"
 #include "FGSIdentityResponse.h"
@@ -1848,6 +1849,135 @@ static void handle_pdu_session_accept(nr_ue_nas_t *nas, uint8_t *pdu_buffer, uin
 }
 
 /**
+ * @brief Handle PDU Session Modification Command
+ */
+static void handle_pdu_session_modification_command(nr_ue_nas_t *nas, uint8_t *pdu_buffer, uint32_t msg_length)
+{
+  pdu_session_modification_command_msg_t msg = {0};
+  int size = 0;
+  int decoded = 0;
+
+  // Security protected NAS header (7 bytes)
+  fgs_nas_message_security_header_t sec_nas_hdr = {0};
+  if ((decoded = decode_5gs_security_protected_header(&sec_nas_hdr, pdu_buffer, msg_length)) < 0) {
+    LOG_E(NAS, "decode_5gs_security_protected_header failure in PDU Session Modification Command decoding\n");
+    return;
+  }
+  size += decoded;
+
+  // decode plain 5GMM message header
+  fgmm_msg_header_t mm_header = {0};
+  if ((decoded = decode_5gmm_msg_header(&mm_header, pdu_buffer + size, msg_length - size)) < 0) {
+    LOG_E(NAS, "decode_5gmm_msg_header failure in PDU Session Modification Command decoding\n");
+    return;
+  }
+  size += decoded;
+
+  /* Process container (5GSM message) */
+  // Payload container type and spare (1 octet)
+  size++;
+  // Payload container length
+  uint16_t iei_len = 0;
+  GET_SHORT(pdu_buffer + size, iei_len);
+  size += sizeof(iei_len);
+  // decode plain 5GSM message header
+  fgsm_msg_header_t sm_header = {0};
+  if ((decoded = decode_5gsm_msg_header(&sm_header, pdu_buffer + size, msg_length - size)) < 0) {
+    LOG_E(NAS, "decode_5gsm_msg_header failure in PDU Session Modification Command decoding\n");
+    return;
+  }
+  size += decoded;
+
+  // decode PDU Session Modification Command
+  if (iei_len < decoded || size + (iei_len - decoded) > msg_length) {
+    LOG_E(NAS, "Invalid payload container length in PDU Session Modification Command\n");
+    return;
+  }
+  uint32_t msg_body_len = iei_len - decoded;
+  if (decode_pdu_session_modification_command(&msg, pdu_buffer + size, msg_body_len) < 0) {
+    LOG_E(NAS, "decode_pdu_session_modification_command failure\n");
+    return;
+  }
+
+  // Process QoS rules if present
+  if (msg.qos_rules_present) {
+    auth_qos_rule_t *qos_rules = &msg.qos_rules;
+
+    for (int i = 0; i < qos_rules->num_rules; i++) {
+      qos_rule_t *rule = &qos_rules->rule[i];
+
+      switch (rule->oc) {
+        case ROC_CREATE_NEW_QOS_RULE:
+          LOG_I(NAS,
+                "PDU session %d: CREATE new QoS rule %d with QFI %d (precedence %d, %d filters)\n",
+                sm_header.pdu_session_id,
+                rule->id,
+                rule->qfi,
+                rule->precedence,
+                rule->nb_pf);
+          // Only update the legacy entity QFI when this is the default QoS rule
+          if (rule->dqr) {
+            nr_ue_tun_store_qfi(&nas->pdu_tun[sm_header.pdu_session_id], rule->qfi);
+            LOG_I(NAS, "PDU session %d: set default QFI to %d\n", sm_header.pdu_session_id, rule->qfi);
+          }
+          break;
+
+        case ROC_DELETE_QOS_RULE:
+          LOG_I(NAS, "PDU session %d: DELETE QoS rule %d\n", sm_header.pdu_session_id, rule->id);
+          break;
+
+        case ROC_MODIFY_QOS_RULE_ADD_PF:
+          LOG_I(NAS,
+                "PDU session %d: MODIFY QoS rule %d - ADD %d packet filters (QFI %d)\n",
+                sm_header.pdu_session_id,
+                rule->id,
+                rule->nb_pf,
+                rule->qfi);
+          break;
+
+        case ROC_MODIFY_QOS_RULE_REPLACE_PF:
+          LOG_I(NAS,
+                "PDU session %d: MODIFY QoS rule %d - REPLACE packet filters with %d new filters (QFI %d)\n",
+                sm_header.pdu_session_id,
+                rule->id,
+                rule->nb_pf,
+                rule->qfi);
+          break;
+
+        case ROC_MODIFY_QOS_RULE_DELETE_PF:
+          LOG_I(NAS,
+                "PDU session %d: MODIFY QoS rule %d - DELETE %d packet filters (QFI %d)\n",
+                sm_header.pdu_session_id,
+                rule->id,
+                rule->num_pf_delete,
+                rule->qfi);
+          break;
+
+        case ROC_MODIFY_QOS_RULE_WITHOUT_PF:
+          LOG_I(NAS,
+                "PDU session %d: MODIFY QoS rule %d without changing packet filters (QFI %d)\n",
+                sm_header.pdu_session_id,
+                rule->id,
+                rule->qfi);
+          break;
+
+        default:
+          LOG_W(NAS, "PDU session %d: Unknown rule operation code %d for rule %d\n", sm_header.pdu_session_id, rule->oc, rule->id);
+          break;
+      }
+    }
+  }
+
+  if (msg.sess_ambr_present) {
+    LOG_I(NAS, "PDU session %d: Session-AMBR updated\n", sm_header.pdu_session_id);
+  }
+
+  if (msg.cause_present) {
+    LOG_I(NAS, "PDU session %d: 5GSM cause: 0x%02x\n", sm_header.pdu_session_id, msg.cause);
+  }
+}
+
+/**
  * @brief Handle DL NAS Transport and process piggybacked 5GSM messages
  */
 void handleDownlinkNASTransport(nr_ue_nas_t *nas, uint8_t *pdu_buffer, int pdu_length)
@@ -1860,6 +1990,9 @@ void handleDownlinkNASTransport(nr_ue_nas_t *nas, uint8_t *pdu_buffer, int pdu_l
   if (msg_type == FGS_PDU_SESSION_ESTABLISHMENT_ACC) {
     LOG_A(NAS, "Received PDU Session Establishment Accept in DL NAS Transport\n");
     handle_pdu_session_accept(nas, pdu_buffer, pdu_length);
+  } else if (msg_type == FGS_PDU_SESSION_MODIFICATION_COMMAND) {
+    LOG_A(NAS, "Received PDU Session Modification Command in DL NAS Transport\n");
+    handle_pdu_session_modification_command(nas, pdu_buffer, pdu_length);
   } else {
     LOG_E(NAS, "Received unexpected message in DLinformationTransfer %d\n", msg_type);
   }
@@ -2485,6 +2618,8 @@ void *nas_nrue(void *args_p)
           handle_pdu_session_accept(nas, ba.buf, ba.len);
         } else if (msg_type == FGS_SERVICE_ACCEPT) {
           handle_service_accept(nas, &ba);
+        } else if (msg_type == FGS_PDU_SESSION_MODIFICATION_COMMAND) {
+          handle_pdu_session_modification_command(nas, ba.buf, ba.len);
         }
 
         // Free NAS buffer memory after use (coming from RRC)
@@ -2587,6 +2722,9 @@ void *nas_nrue(void *args_p)
             break;
           case FGS_PDU_SESSION_ESTABLISHMENT_REJ:
             LOG_E(NAS, "Received PDU Session Establishment reject\n");
+            break;
+          case FGS_PDU_SESSION_MODIFICATION_COMMAND:
+            handle_pdu_session_modification_command(nas, pdu_buffer, pdu_length);
             break;
           case FGS_REGISTRATION_REJECT:
             handle_registration_reject(nas, &buffer);
