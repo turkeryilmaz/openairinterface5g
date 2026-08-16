@@ -37,8 +37,10 @@ static void remove_ip_if(nr_sdap_entity_t *entity)
   DevAssert(entity != NULL);
   sdap_tun_endpoint_t *tun = &entity->tun;
 
-  if (!tun->is_gnb)
+  if (!tun->is_gnb) {
+    nr_sdap_qos_rules_free(entity);
     return; /* UE: NAS owns the TUN fd, do not close/destroy */
+  }
   if (tun->sock < 0)
     return;
 
@@ -619,6 +621,10 @@ static void nr_sdap_add_entity(const int is_gnb, const ue_id_t ue_id, const sdap
   sdap_entity->qfi2drb_map_delete = nr_sdap_qfi2drb_map_del;
   sdap_entity->qfi2drb_map = nr_sdap_qfi2drb;
   sdap_entity->tun.sock = -1;
+
+  // Initialize QoS rules for UL packet filter matching at UE
+  if (!is_gnb)
+    nr_sdap_qos_rules_init(sdap_entity);
 
   // set default DRB
   if (sdap->defaultDRB) {
