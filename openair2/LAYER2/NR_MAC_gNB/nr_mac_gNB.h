@@ -1068,7 +1068,7 @@ struct nr_ul_candidate {
   bool is_retx;
   int8_t retx_harq_pid;
   int retx_rbSize;
-  bool sched_inactive;
+  bool sched_long_inactivity;
   int sched_srs;
   uint32_t pending_bytes;
   float avg_throughput;
@@ -1114,6 +1114,8 @@ struct nr_ul_candidate {
   int alloc_cce_index;
   int alloc_aggregation_level;
   NR_sched_pdcch_t alloc_sched_pdcch;
+  /// number of SR received since the last UL grant, used as scheduling priority
+  uint8_t sr_cnt;
 };
 
 typedef struct {
