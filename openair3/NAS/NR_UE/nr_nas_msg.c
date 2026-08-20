@@ -27,6 +27,7 @@
 #include "PduSessionEstablishRequest.h"
 #include "PduSessionEstablishmentAccept.h"
 #include "PduSessionModificationCommand.h"
+#include "PduSessionModificationComplete.h"
 #include "RegistrationAccept.h"
 #include "SORTransparentContainer.h"
 #include "FGSIdentityResponse.h"
@@ -1849,6 +1850,98 @@ static void handle_pdu_session_accept(nr_ue_nas_t *nas, uint8_t *pdu_buffer, uin
   send_nas_tun_req(nas, sm_header.pdu_session_id);
 }
 
+static void send_nas_uplink_data_req(nr_ue_nas_t *nas, const as_nas_info_t *initial_nas_msg)
+{
+  MessageDef *msg = itti_alloc_new_message(TASK_NAS_NRUE, nas->UE_id, NAS_UPLINK_DATA_REQ);
+  ul_info_transfer_req_t *req = &NAS_UPLINK_DATA_REQ(msg);
+  req->UEid = nas->UE_id;
+  req->nasMsg.nas_data = initial_nas_msg->nas_data;
+  req->nasMsg.length = initial_nas_msg->length;
+  itti_send_msg_to_task(TASK_RRC_NRUE, nas->UE_id, msg);
+}
+
+static void generatePduSessionModificationComplete(nr_ue_nas_t *nas,
+                                                   as_nas_info_t *responseMsg,
+                                                   uint8_t pdu_session_id,
+                                                   uint8_t pti)
+{
+  int size = 0;
+
+  // Setup PDU session modification complete message
+  uint16_t req_length = 4;
+  uint8_t *req_buffer = malloc_or_fail(req_length);
+  pdu_session_modification_complete_msg pdu_session_mod_complete;
+  pdu_session_mod_complete.protocoldiscriminator = FGS_SESSION_MANAGEMENT_MESSAGE;
+  pdu_session_mod_complete.pdusessionid = pdu_session_id;
+  pdu_session_mod_complete.pti = pti;
+  pdu_session_mod_complete.pdusessionmodificationcompletemsgtype = FGS_PDU_SESSION_MODIFICATION_COMPLETE;
+  encode_pdu_session_modification_complete(&pdu_session_mod_complete, req_buffer, req_length);
+
+  nas_stream_cipher_t stream_cipher = {0};
+  uint8_t mac[NAS_INTEGRITY_SIZE];
+
+  // 5GMM security protected message
+  fgmm_nas_msg_security_protected_t sp_msg = {0};
+  // 5GMM security protected message header
+  fgs_nas_message_security_header_t *sp_header = &sp_msg.header;
+  sp_header->protocol_discriminator = FGS_MOBILITY_MANAGEMENT_MESSAGE;
+  sp_header->security_header_type = INTEGRITY_PROTECTED_AND_CIPHERED;
+  sp_header->sequence_number = nas->security.nas_count_ul & 0xff;
+
+  size += 7;
+
+  fgmm_nas_message_plain_t *plain = &sp_msg.plain;
+
+  // Plain 5GMM header
+  plain->header = set_mm_header(FGS_UPLINK_NAS_TRANSPORT, PLAIN_5GS_MSG);
+  size += sizeof(plain->header);
+
+  fgs_uplink_nas_transport_msg *mm_msg = &plain->mm_msg.uplink_nas_transport;
+  mm_msg->payloadcontainertype.type = 1;
+  size += 1;
+  mm_msg->fgspayloadcontainer.payloadcontainercontents.length = req_length;
+  mm_msg->fgspayloadcontainer.payloadcontainercontents.value = req_buffer;
+  size += (2 + req_length);
+  mm_msg->pdusessionid = pdu_session_id;
+  size += 2;
+
+  // Encode the message
+  responseMsg->nas_data = malloc_or_fail(size * sizeof(*responseMsg->nas_data));
+  int security_header_len = nas_protected_security_header_encode(responseMsg->nas_data, sp_header, size);
+
+  responseMsg->length =
+      security_header_len
+      + mm_msg_encode(plain, (uint8_t *)(responseMsg->nas_data + security_header_len), size - security_header_len);
+
+  // Free allocated memory after encode
+  free(req_buffer);
+
+  /* ciphering */
+  uint8_t buf[responseMsg->length - 7];
+  stream_cipher.context = nas->security_container->ciphering_context;
+  AssertFatal(nas->security.nas_count_ul <= 0xffffff, "fatal: NAS COUNT UL too big (todo: fix that)\n");
+  stream_cipher.count = nas->security.nas_count_ul;
+  stream_cipher.bearer = 1;
+  stream_cipher.message = (unsigned char *)(responseMsg->nas_data + 7);
+  /* length in bits */
+  stream_cipher.blength = (responseMsg->length - 7) << 3;
+  stream_compute_encrypt(nas->security_container->ciphering_algorithm, &stream_cipher, buf);
+  memcpy(stream_cipher.message, buf, responseMsg->length - 7);
+
+  /* integrity protection */
+  stream_cipher.context = nas->security_container->integrity_context;
+  stream_cipher.count = nas->security.nas_count_ul++;
+  stream_cipher.bearer = 1;
+  stream_cipher.message = (unsigned char *)(responseMsg->nas_data + 6);
+  /* length in bits */
+  stream_cipher.blength = (responseMsg->length - 6) << 3;
+  stream_compute_integrity(nas->security_container->integrity_algorithm, &stream_cipher, mac);
+
+  for (int i = 0; i < 4; i++) {
+    responseMsg->nas_data[2 + i] = mac[i];
+  }
+}
+
 /**
  * @brief Handle PDU Session Modification Command
  */
@@ -2017,6 +2110,12 @@ static void handle_pdu_session_modification_command(nr_ue_nas_t *nas, uint8_t *p
   if (msg.cause_present) {
     LOG_I(NAS, "PDU session %d: 5GSM cause: 0x%02x\n", sm_header.pdu_session_id, msg.cause);
   }
+
+  // Send PDU Session Modification Complete response
+  as_nas_info_t response_msg = {0};
+  generatePduSessionModificationComplete(nas, &response_msg, sm_header.pdu_session_id, sm_header.pti);
+  send_nas_uplink_data_req(nas, &response_msg);
+  LOG_I(NAS, "Send NAS_UPLINK_DATA_REQ message(PduSessionModificationComplete)\n");
 }
 
 /**
@@ -2149,6 +2248,9 @@ static void generatePduSessionEstablishRequest(nr_ue_nas_t *nas, as_nas_info_t *
   size += (2 + req_length);
   mm_msg->pdusessionid = pdu_req->pdusession_id;
   mm_msg->requesttype = 1;
+  mm_msg->requesttype_present = true;
+  mm_msg->snssai_present = true;
+  mm_msg->dnn_present = true;
   size += 3;
   const bool has_nssai_sd = pdu_req->sd != 0xffffff; // 0xffffff means "no SD", TS 23.003
   const size_t nssai_len = has_nssai_sd ? 4 : 1;
@@ -2205,16 +2307,6 @@ static void generatePduSessionEstablishRequest(nr_ue_nas_t *nas, as_nas_info_t *
   for (int i = 0; i < 4; i++) {
     initialNasMsg->nas_data[2 + i] = mac[i];
   }
-}
-
-static void send_nas_uplink_data_req(nr_ue_nas_t *nas, const as_nas_info_t *initial_nas_msg)
-{
-  MessageDef *msg = itti_alloc_new_message(TASK_NAS_NRUE, nas->UE_id, NAS_UPLINK_DATA_REQ);
-  ul_info_transfer_req_t *req = &NAS_UPLINK_DATA_REQ(msg);
-  req->UEid = nas->UE_id;
-  req->nasMsg.nas_data = (uint8_t *)initial_nas_msg->nas_data;
-  req->nasMsg.length = initial_nas_msg->length;
-  itti_send_msg_to_task(TASK_RRC_NRUE, nas->UE_id, msg);
 }
 
 /** Send initial NAS to RRC as NAS_INITIAL_UL_TRANSFER_REQ (e.g. paging Service Request, TS 24.501 §5.6.1).
