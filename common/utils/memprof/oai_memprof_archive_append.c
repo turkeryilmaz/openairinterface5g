@@ -30,6 +30,31 @@ static uint32_t load_u32_le(const uint8_t *source)
   return (uint32_t)source[0] | ((uint32_t)source[1] << 8) | ((uint32_t)source[2] << 16) | ((uint32_t)source[3] << 24);
 }
 
+static int hex_digit(unsigned char value)
+{
+  if (value >= '0' && value <= '9')
+    return value - '0';
+  if (value >= 'a' && value <= 'f')
+    return value - 'a' + 10;
+  if (value >= 'A' && value <= 'F')
+    return value - 'A' + 10;
+  return -1;
+}
+
+static bool decode_sha256_hex(const char *source, uint8_t digest[32])
+{
+  if (source == NULL || digest == NULL || strlen(source) != 64U)
+    return false;
+  for (size_t index = 0; index < 32U; ++index) {
+    const int high = hex_digit((unsigned char)source[index * 2U]);
+    const int low = hex_digit((unsigned char)source[index * 2U + 1U]);
+    if (high < 0 || low < 0)
+      return false;
+    digest[index] = (uint8_t)(((unsigned int)high << 4U) | (unsigned int)low);
+  }
+  return true;
+}
+
 static bool valid_leaf(const char *name)
 {
   if (name == NULL || name[0] == '\0' || strcmp(name, ".") == 0 || strcmp(name, "..") == 0)
@@ -93,6 +118,14 @@ static bool read_immutable_leaf(int directory_fd, const char *name, uint64_t max
   result->bytes = bytes;
   result->size = size;
   return true;
+}
+
+static bool immutable_file_sha256_matches(const immutable_file_t *file, const uint8_t expected[32])
+{
+  uint8_t calculated[32] = {0};
+  return file != NULL && expected != NULL
+         && oai_memprof_container_v1_sha256(file->bytes, file->size, calculated) == OAI_MEMPROF_CONTAINER_V1_OK
+         && memcmp(calculated, expected, sizeof(calculated)) == 0;
 }
 
 static bool multiply_size(size_t left, size_t right, size_t *result)
@@ -181,8 +214,10 @@ static bool decode_trailer(const immutable_file_t *file,
 
 int main(int argc, char **argv)
 {
-  if (argc != 5 || !valid_leaf(argv[2]) || !valid_leaf(argv[3]) || !valid_leaf(argv[4])) {
-    fputs("usage: oai_memprof_archive_append DIRECTORY STREAM_LEAF HANDOFF_LEAF TRAILER_LEAF\n", stderr);
+  uint8_t expected_handoff_sha256[32] = {0};
+  if (argc != 6 || !valid_leaf(argv[2]) || !valid_leaf(argv[3]) || !valid_leaf(argv[4])
+      || !decode_sha256_hex(argv[5], expected_handoff_sha256)) {
+    fputs("usage: oai_memprof_archive_append DIRECTORY STREAM_LEAF HANDOFF_LEAF TRAILER_LEAF HANDOFF_SHA256\n", stderr);
     return 64;
   }
   const int directory_fd = open(argv[1], O_RDONLY | O_CLOEXEC | O_DIRECTORY | O_NOFOLLOW);
@@ -193,8 +228,11 @@ int main(int argc, char **argv)
   immutable_file_t handoff_file = {0};
   immutable_file_t trailer_file = {0};
   const uint64_t handoff_limit = OAI_MEMPROF_PROCESS_HANDOFF_V1_MAX_WIRE_BYTES;
-  bool ok = read_immutable_leaf(directory_fd, argv[3], handoff_limit, &handoff_file)
-            && read_immutable_leaf(directory_fd, argv[4], TRAILER_LIMIT_BYTES, &trailer_file);
+  bool ok = read_immutable_leaf(directory_fd, argv[3], handoff_limit, &handoff_file);
+  if (ok)
+    ok = immutable_file_sha256_matches(&handoff_file, expected_handoff_sha256);
+  if (ok)
+    ok = read_immutable_leaf(directory_fd, argv[4], TRAILER_LIMIT_BYTES, &trailer_file);
   oai_memprof_process_handoff_thread_v1_t *threads = NULL;
   oai_memprof_process_handoff_v1_t handoff = {0};
   if (ok) {

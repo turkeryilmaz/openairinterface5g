@@ -108,6 +108,8 @@ int main(void)
   static const uint8_t accepted_leaf[] = "AUXILIARY-OBJECT-A";
   static const uint8_t replacement_leaf[] = "AUXILIARY-OBJECT-B";
   static const uint8_t prefooter_sentinel[] = "PREFOOTER-SENTINEL";
+  static uint8_t digest_input[] = "AUTHENTICATED-HANDOFF";
+  static const char expected_digest_hex[] = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
   static const char auxiliary_name[] = "handoff.bin";
   static const char replacement_name[] = "handoff-replacement.bin";
   static const char prefooter_name[] = "prefooter.stream";
@@ -119,7 +121,25 @@ int main(void)
   struct stat named_status = {0};
   uint8_t observed_replacement[sizeof(replacement_leaf)] = {0};
   uint8_t observed_prefooter[sizeof(prefooter_sentinel)] = {0};
+  uint8_t expected_digest[32] = {0};
+  uint8_t decoded_digest[32] = {0};
+  immutable_file_t digest_file = {.bytes = digest_input, .size = sizeof(digest_input)};
   bool ok = directory_path_result != NULL;
+
+  if (ok)
+    ok = expect(decode_sha256_hex(expected_digest_hex, decoded_digest), "expected digest hex did not decode");
+  if (ok)
+    ok = expect(decoded_digest[0] == UINT8_C(0x01) && decoded_digest[31] == UINT8_C(0xef), "decoded digest bytes differ");
+  if (ok)
+    ok = expect(!decode_sha256_hex("not-a-sha256", decoded_digest), "malformed digest was accepted");
+  if (ok)
+    ok = expect(oai_memprof_container_v1_sha256(digest_file.bytes, digest_file.size, expected_digest) == OAI_MEMPROF_CONTAINER_V1_OK
+                    && immutable_file_sha256_matches(&digest_file, expected_digest),
+                "exact handoff digest was not accepted");
+  if (ok) {
+    expected_digest[0] ^= UINT8_C(1);
+    ok = expect(!immutable_file_sha256_matches(&digest_file, expected_digest), "substituted handoff digest was accepted");
+  }
 
   if (ok) {
     directory_fd = open(directory_path, O_RDONLY | O_CLOEXEC | O_DIRECTORY | O_NOFOLLOW);
