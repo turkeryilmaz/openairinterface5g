@@ -21,6 +21,10 @@ GRTAGS
 GTAGS
 tags
 
+# Generated Python bytecode
+__pycache__/
+*.py[cod]
+
 # Package conffiles
 
 tools/packages/oai-lte/conffiles
