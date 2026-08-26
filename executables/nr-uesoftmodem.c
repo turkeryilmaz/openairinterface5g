@@ -16,6 +16,9 @@
 #include "SCHED_NR_UE/defs.h"
 #include "common/ran_context.h"
 #include "common/config/config_userapi.h"
+#ifdef OAI_MEMPROF_ACTIVE
+#include "common/utils/memprof/oai_memprof_softmodem_session.h"
+#endif
 #include "common/utils/load_module_shlib.h"
 #include "common/utils/nr/nr_common.h"
 #include "radio/ETHERNET/if_defs.h"
@@ -79,6 +82,25 @@ uint64_t        sidelink_frequency[MAX_NUM_CCs][4];
 // UE and OAI config variables
 double            cpuf;
 
+#ifdef OAI_MEMPROF_ACTIVE
+static int finish_oai_memprof_session(void)
+{
+  oai_memprof_process_session_result_t result = {0};
+  const oai_memprof_softmodem_session_status_t status = oai_memprof_softmodem_session_finish_v1(&result);
+  if (status == OAI_MEMPROF_SOFTMODEM_SESSION_DISABLED || status == OAI_MEMPROF_SOFTMODEM_SESSION_OK
+      || status == OAI_MEMPROF_SOFTMODEM_SESSION_ALREADY_FINISHED)
+    return 0;
+  fprintf(stderr,
+          "OAI memory-profiler finalization failed: %s "
+          "(process_status=%d writer_status=%d errno=%d)\n",
+          oai_memprof_softmodem_session_status_name_v1(status),
+          (int)result.status,
+          (int)result.writer.status,
+          result.system_errno);
+  return -1;
+}
+#endif
+
 int create_tasks_nrue(uint32_t ue_nb) {
   LOG_D(NR_RRC, "%s(ue_nb:%d)\n", __FUNCTION__, ue_nb);
   itti_wait_ready(1);
@@ -115,7 +137,12 @@ void exit_function(const char *file, const char *function, const int line, const
     abort();
   } else {
     sleep(1); // allow lte-softmodem threads to exit first
+#ifdef OAI_MEMPROF_ACTIVE
+    const int memprof_status = finish_oai_memprof_session();
+    exit(memprof_status == 0 ? EXIT_SUCCESS : EXIT_FAILURE);
+#else
     exit(EXIT_SUCCESS);
+#endif
   }
 }
 
@@ -430,6 +457,14 @@ int main(int argc, char **argv)
   int ret = pthread_join(ru_start_thread, NULL);
   AssertFatal(ret == 0, "pthread_join error %d, errno %d (%s)\n", ret, errno, strerror(errno));
 
+#ifdef OAI_MEMPROF_ACTIVE
+  const oai_memprof_softmodem_session_status_t memprof_start =
+      oai_memprof_softmodem_session_start_v1(OAI_MEMPROF_SOFTMODEM_ROLE_NR_UE);
+  AssertFatal(memprof_start == OAI_MEMPROF_SOFTMODEM_SESSION_DISABLED || memprof_start == OAI_MEMPROF_SOFTMODEM_SESSION_OK,
+              "OAI memory-profiler startup failed: %s\n",
+              oai_memprof_softmodem_session_status_name_v1(memprof_start));
+#endif
+
   for (int inst = 0; inst < NB_UE_INST; inst++) {
     LOG_I(PHY,"Intializing UE Threads for instance %d ...\n", inst);
     init_NR_UE_threads(nrPHY_vars_UE_g[inst][0]);
@@ -479,7 +514,12 @@ int main(int argc, char **argv)
   time_manager_finish();
 
   free(pckg);
+  int exit_status = EXIT_SUCCESS;
+#ifdef OAI_MEMPROF_ACTIVE
+  if (finish_oai_memprof_session() != 0)
+    exit_status = EXIT_FAILURE;
+#endif
   printf("Bye.\n");
-  return 0;
+  return exit_status;
 }
 

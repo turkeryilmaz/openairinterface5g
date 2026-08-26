@@ -21,13 +21,11 @@
 #include <unistd.h>
 
 #define OAI_MEMPROF_SOFTMODEM_MAX_CONFIGURATION_BYTES (UINT32_C(1) << 20)
-#define OAI_MEMPROF_SOFTMODEM_MAX_PATH_BYTES UINT32_C(4096)
 #define OAI_MEMPROF_SOFTMODEM_MAX_GENERATION ((UINT64_C(1) << 48) - UINT64_C(1))
 
 #define ENV_ENABLE "OAI_MEMPROF_SESSION_ENABLE"
-#define ENV_ARCHIVE "OAI_MEMPROF_SESSION_ARCHIVE_DIRECTORY"
-#define ENV_CONFIGURATION "OAI_MEMPROF_SESSION_CONFIGURATION_PATH"
-#define ENV_OPENING "OAI_MEMPROF_SESSION_OPENING_PATH"
+#define ENV_ARCHIVE_FD "OAI_MEMPROF_SESSION_ARCHIVE_FD"
+#define ENV_BOOTSTRAP_FD "OAI_MEMPROF_SESSION_BOOTSTRAP_FD"
 #define ENV_GENERATION "OAI_MEMPROF_SESSION_PROCESS_GENERATION"
 #define ENV_MAX_THREADS "OAI_MEMPROF_SESSION_MAX_THREADS"
 #define ENV_RING_RECORDS "OAI_MEMPROF_SESSION_RING_RECORDS"
@@ -41,11 +39,18 @@
 #define ENV_FLUSH_INTERVAL "OAI_MEMPROF_SESSION_FLUSH_INTERVAL_NS"
 #define ENV_SEAL_TIMEOUT "OAI_MEMPROF_SESSION_SEAL_TIMEOUT_NS"
 
+#define LEGACY_ENV_ARCHIVE "OAI_MEMPROF_SESSION_ARCHIVE_DIRECTORY"
+#define LEGACY_ENV_CONFIGURATION "OAI_MEMPROF_SESSION_CONFIGURATION_PATH"
+#define LEGACY_ENV_OPENING "OAI_MEMPROF_SESSION_OPENING_PATH"
+
+#define CONFIGURATION_LEAF "effective-config.json"
+#define OPENING_LEAF "opening.bin"
+#define STREAMS_LEAF "streams"
+
 static const char *const environment_names[] = {
     ENV_ENABLE,
-    ENV_ARCHIVE,
-    ENV_CONFIGURATION,
-    ENV_OPENING,
+    ENV_ARCHIVE_FD,
+    ENV_BOOTSTRAP_FD,
     ENV_GENERATION,
     ENV_MAX_THREADS,
     ENV_RING_RECORDS,
@@ -58,6 +63,12 @@ static const char *const environment_names[] = {
     ENV_FLUSH_RECORDS,
     ENV_FLUSH_INTERVAL,
     ENV_SEAL_TIMEOUT,
+};
+
+static const char *const legacy_environment_names[] = {
+    LEGACY_ENV_ARCHIVE,
+    LEGACY_ENV_CONFIGURATION,
+    LEGACY_ENV_OPENING,
 };
 
 enum lifecycle_state {
@@ -83,14 +94,6 @@ static uint64_t seal_timeout_ns;
 static oai_memprof_process_session_result_t completed_result;
 static oai_memprof_softmodem_session_status_t completion_status = OAI_MEMPROF_SOFTMODEM_SESSION_INVALID_STATE;
 
-static bool absolute_path(const char *value)
-{
-  if (value == NULL || value[0] != '/')
-    return false;
-  const size_t length = strnlen(value, OAI_MEMPROF_SOFTMODEM_MAX_PATH_BYTES + 1U);
-  return length != 0 && length <= OAI_MEMPROF_SOFTMODEM_MAX_PATH_BYTES;
-}
-
 static bool parse_u64(const char *text, uint64_t maximum, bool nonzero, uint64_t *value)
 {
   if (text == NULL || value == NULL || text[0] == '\0')
@@ -112,6 +115,22 @@ static bool parse_u64(const char *text, uint64_t maximum, bool nonzero, uint64_t
   return true;
 }
 
+static bool parse_fd(const char *text, int *fd)
+{
+  uint64_t parsed = 0;
+  if (fd == NULL || !parse_u64(text, INT_MAX, true, &parsed) || parsed < 3)
+    return false;
+  *fd = (int)parsed;
+  return fcntl(*fd, F_GETFD) >= 0;
+}
+
+static bool private_directory_fd(int fd)
+{
+  struct stat identity = {0};
+  return fd >= 3 && fstat(fd, &identity) == 0 && S_ISDIR(identity.st_mode) && identity.st_uid == geteuid()
+         && (identity.st_mode & S_IWGRP) == 0 && (identity.st_mode & S_IWOTH) == 0;
+}
+
 static bool frozen_unchanged(const frozen_file_t *file)
 {
   struct stat after = {0};
@@ -122,12 +141,12 @@ static bool frozen_unchanged(const frozen_file_t *file)
          && after.st_ctim.tv_sec == file->identity.st_ctim.tv_sec && after.st_ctim.tv_nsec == file->identity.st_ctim.tv_nsec;
 }
 
-static bool frozen_open(const char *path, size_t maximum, frozen_file_t *file)
+static bool frozen_openat(int directory_fd, const char *leaf, size_t maximum, frozen_file_t *file)
 {
-  if (!absolute_path(path) || file == NULL || maximum == 0)
+  if (directory_fd < 3 || leaf == NULL || leaf[0] == 0 || strchr(leaf, '/') != NULL || file == NULL || maximum == 0)
     return false;
   *file = (frozen_file_t){.fd = -1};
-  file->fd = open(path, O_RDONLY | O_CLOEXEC | O_NOFOLLOW | O_NONBLOCK);
+  file->fd = openat(directory_fd, leaf, O_RDONLY | O_CLOEXEC | O_NOFOLLOW | O_NONBLOCK);
   if (file->fd < 0 || fstat(file->fd, &file->identity) != 0 || !S_ISREG(file->identity.st_mode) || file->identity.st_nlink != 1
       || file->identity.st_size <= 0 || (uint64_t)file->identity.st_size > maximum || (uint64_t)file->identity.st_size > SIZE_MAX) {
     if (file->fd >= 0)
@@ -164,11 +183,18 @@ static bool all_environment_absent(void)
     if (getenv(environment_names[index]) != NULL)
       return false;
   }
+  for (size_t index = 0; index < sizeof(legacy_environment_names) / sizeof(legacy_environment_names[0]); ++index) {
+    if (getenv(legacy_environment_names[index]) != NULL)
+      return false;
+  }
   return true;
 }
 
 static bool environment_complete(void)
 {
+  for (size_t index = 0; index < sizeof(legacy_environment_names) / sizeof(legacy_environment_names[0]); ++index)
+    if (getenv(legacy_environment_names[index]) != NULL)
+      return false;
   if (getenv(ENV_ENABLE) == NULL || strcmp(getenv(ENV_ENABLE), "1") != 0)
     return false;
   for (size_t index = 1; index < sizeof(environment_names) / sizeof(environment_names[0]); ++index) {
@@ -193,11 +219,14 @@ oai_memprof_softmodem_session_status_t oai_memprof_softmodem_session_start_v1(ui
       || (expected_role_kind != OAI_MEMPROF_SOFTMODEM_ROLE_GNB && expected_role_kind != OAI_MEMPROF_SOFTMODEM_ROLE_NR_UE))
     return OAI_MEMPROF_SOFTMODEM_SESSION_INVALID_ENVIRONMENT;
 
-  const char *archive_path = getenv(ENV_ARCHIVE);
-  const char *configuration_path = getenv(ENV_CONFIGURATION);
-  const char *opening_path = getenv(ENV_OPENING);
-  if (!absolute_path(archive_path) || !absolute_path(configuration_path) || !absolute_path(opening_path))
-    return OAI_MEMPROF_SOFTMODEM_SESSION_INVALID_ENVIRONMENT;
+  frozen_file_t configuration = {.fd = -1};
+  frozen_file_t opening_file = {.fd = -1};
+  int archive_fd = -1;
+  int bootstrap_fd = -1;
+  int streams_fd = -1;
+  oai_memprof_softmodem_session_status_t status = OAI_MEMPROF_SOFTMODEM_SESSION_INVALID_ENVIRONMENT;
+  if (!parse_fd(getenv(ENV_ARCHIVE_FD), &archive_fd) || !parse_fd(getenv(ENV_BOOTSTRAP_FD), &bootstrap_fd))
+    goto cleanup;
 
   uint64_t generation = 0;
   uint64_t max_threads = 0;
@@ -229,17 +258,20 @@ oai_memprof_softmodem_session_status_t oai_memprof_softmodem_session_start_v1(ui
       || (mode_id != OAI_MEMPROF_CORE_SAMPLED
           && (table_entries != 0 || sample_seed != 0 || sample_threshold != 0 || table_probes != 0))
       || (realloc_policy != 1 && realloc_policy != 2))
-    return OAI_MEMPROF_SOFTMODEM_SESSION_INVALID_ENVIRONMENT;
+    goto cleanup;
 
-  frozen_file_t configuration = {.fd = -1};
-  frozen_file_t opening_file = {.fd = -1};
-  int archive_fd = -1;
-  int streams_fd = -1;
-  oai_memprof_softmodem_session_status_t status = OAI_MEMPROF_SOFTMODEM_SESSION_IO_ERROR;
-  if (!frozen_open(configuration_path, OAI_MEMPROF_SOFTMODEM_MAX_CONFIGURATION_BYTES, &configuration)
-      || !frozen_open(opening_path, OAI_MEMPROF_CONTAINER_V1_OPENING_HEADER_SIZE, &opening_file)
+  if (!private_directory_fd(archive_fd) || !private_directory_fd(bootstrap_fd))
+    goto cleanup;
+  status = OAI_MEMPROF_SOFTMODEM_SESSION_IO_ERROR;
+  if (!frozen_openat(bootstrap_fd, CONFIGURATION_LEAF, OAI_MEMPROF_SOFTMODEM_MAX_CONFIGURATION_BYTES, &configuration)
+      || !frozen_openat(bootstrap_fd, OPENING_LEAF, OAI_MEMPROF_CONTAINER_V1_OPENING_HEADER_SIZE, &opening_file)
       || opening_file.size != OAI_MEMPROF_CONTAINER_V1_OPENING_HEADER_SIZE)
     goto cleanup;
+  if (close(bootstrap_fd) != 0) {
+    bootstrap_fd = -1;
+    goto cleanup;
+  }
+  bootstrap_fd = -1;
 
   oai_memprof_container_v1_opening_header_t opening = {0};
   if (oai_memprof_container_v1_opening_header_decode(&opening, opening_file.mapping, opening_file.size)
@@ -249,16 +281,30 @@ oai_memprof_softmodem_session_status_t oai_memprof_softmodem_session_start_v1(ui
     status = OAI_MEMPROF_SOFTMODEM_SESSION_INVALID_CONFIGURATION;
     goto cleanup;
   }
+  uint8_t configuration_sha256[sizeof(opening.configuration_instance_sha256)] = {0};
+  if (oai_memprof_container_v1_sha256(configuration.mapping, configuration.size, configuration_sha256)
+          != OAI_MEMPROF_CONTAINER_V1_OK
+      || memcmp(configuration_sha256, opening.configuration_instance_sha256, sizeof(configuration_sha256)) != 0) {
+    status = OAI_MEMPROF_SOFTMODEM_SESSION_INVALID_CONFIGURATION;
+    goto cleanup;
+  }
 
-  archive_fd = open(archive_path, O_RDONLY | O_CLOEXEC | O_DIRECTORY | O_NOFOLLOW);
-  if (archive_fd < 0)
-    goto cleanup;
-  struct stat archive_identity = {0};
-  if (fstat(archive_fd, &archive_identity) != 0 || !S_ISDIR(archive_identity.st_mode))
-    goto cleanup;
-  streams_fd = openat(archive_fd, "streams", O_RDONLY | O_CLOEXEC | O_DIRECTORY | O_NOFOLLOW);
+  /*
+   * These roots are capabilities pinned by the launcher, not path claims.
+   * They bind descendant lookup across pathname renames/replacements, but do
+   * not claim to make an inode immutable against a same-UID writer that can
+   * mutate an already-open object after the launcher has authenticated it.
+   */
+  streams_fd = openat(archive_fd, STREAMS_LEAF, O_RDONLY | O_CLOEXEC | O_DIRECTORY | O_NOFOLLOW);
   if (streams_fd < 0)
     goto cleanup;
+  if (!private_directory_fd(streams_fd))
+    goto cleanup;
+  if (close(archive_fd) != 0) {
+    archive_fd = -1;
+    goto cleanup;
+  }
+  archive_fd = -1;
 
   const oai_memprof_process_session_config_t session_config = {
       .directory_fd = streams_fd,
@@ -302,6 +348,8 @@ oai_memprof_softmodem_session_status_t oai_memprof_softmodem_session_start_v1(ui
 cleanup:
   if (streams_fd >= 0)
     (void)close(streams_fd);
+  if (bootstrap_fd >= 0)
+    (void)close(bootstrap_fd);
   if (archive_fd >= 0)
     (void)close(archive_fd);
   frozen_close(&opening_file);

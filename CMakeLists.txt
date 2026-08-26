@@ -349,6 +349,7 @@ add_boolean_option(T_TRACER            ON  "Activate the T tracer, a debugging/m
 add_boolean_option(ENABLE_LTTNG        OFF "Activate the LTTNG tracer, a debugging/monitoring framework" ON)
 add_boolean_option(UE_DEBUG_TRACE      OFF "Activate UE debug trace" ON)
 add_boolean_option(UE_TIMING_TRACE     OFF "Activate UE timing trace" ON)
+add_boolean_option(OAI_MEMPROF_ACTIVE OFF "Enable default-off ACTIVE allocation profiling for NR softmodems" OFF)
 
 add_boolean_option(TRACY_ENABLE OFF "Enable tracy instrumentation" ON)
 if (TRACY_ENABLE)
