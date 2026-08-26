@@ -49,7 +49,7 @@ def sha(raw: bytes) -> str:
 
 
 TRUSTED_RELEASE_AUTHORITY_FIXTURE_SHA256 = (
-    "758d9b2678b3f1052d1d330c7048f111b65d9b1ce0dd10a37218a6804fe7d3a8"
+    "c52650bb899612a24bf9096aa49559e9bdb133893dcdd20e9d97f5669c254f06"
 )
 
 
@@ -377,6 +377,11 @@ class ArchiveComposerBuildEvidenceTests(unittest.TestCase):
             destination = cls.source_root / repository_relative_path
             destination.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(source, destination)
+        cls.source_root.joinpath("unselected_fixture.c").write_text(
+            "#include <unistd.h>\n"
+            "pid_t oai_memprof_unselected_fixture(void) { return getpid(); }\n",
+            encoding="utf-8",
+        )
         cls.source_root.joinpath("CMakeLists.txt").write_text(
             "\n".join(
                 (
@@ -387,6 +392,9 @@ class ArchiveComposerBuildEvidenceTests(unittest.TestCase):
                     "add_custom_target(tests)",
                     "enable_testing()",
                     "add_subdirectory(common/utils/memprof memprof)",
+                    "add_library(oai_memprof_unselected_fixture SHARED unselected_fixture.c)",
+                    "target_link_options(oai_memprof_unselected_fixture PRIVATE",
+                    "  \"LINKER:-Map,${CMAKE_CURRENT_BINARY_DIR}/oai_memprof_unselected_fixture.map\")",
                     "",
                 )
             ),
@@ -394,7 +402,14 @@ class ArchiveComposerBuildEvidenceTests(unittest.TestCase):
         )
         run(("/usr/bin/git", "init", "-q"), cwd=cls.source_root)
         run(
-            ("/usr/bin/git", "add", "CMakeLists.txt", "common", "tools"),
+            (
+                "/usr/bin/git",
+                "add",
+                "CMakeLists.txt",
+                "common",
+                "tools",
+                "unselected_fixture.c",
+            ),
             cwd=cls.source_root,
         )
         run(
@@ -440,6 +455,7 @@ class ArchiveComposerBuildEvidenceTests(unittest.TestCase):
                 "test_oai_memprof_archive_producer",
                 "oai_memprof_active_runtime",
                 "oai_memprof_archive_append",
+                "oai_memprof_unselected_fixture",
                 "--parallel",
                 "1",
             )
@@ -471,6 +487,25 @@ class ArchiveComposerBuildEvidenceTests(unittest.TestCase):
                 "common/utils/memprof/liboai_memprof_active_runtime.so.1",
                 2,
                 (1, 2),
+            ),
+            BUILD_EVIDENCE.LogicalElfInput(
+                "unselected_fixture",
+                "liboai_memprof_unselected_fixture.so",
+                cls.build_root / "liboai_memprof_unselected_fixture.so",
+                cls.build_root / "oai_memprof_unselected_fixture.map",
+                "unselected_fixture.c",
+                2,
+                (1,),
+                module_selection={
+                    "operator_id": 1,
+                    "predicates": [
+                        {
+                            "configuration_key": "unselected_fixture_enabled",
+                            "expected_value": "1",
+                            "predicate_id": 2,
+                        }
+                    ],
+                },
             ),
         )
         cls.prepared = BUILD_EVIDENCE.prepare_measured_build_evidence(
@@ -639,7 +674,9 @@ class ArchiveComposerBuildEvidenceTests(unittest.TestCase):
         bound_authority_digest: str | None = None,
         config_output_directory: str | None = None,
         mode_id: int = 4,
+        preload_unselected_fixture: bool = False,
         runtime_threshold_delta: int = 0,
+        unselected_fixture_enabled: str | None = "0",
     ) -> tuple[pathlib.Path, pathlib.Path, bytes, bytes]:
         evidence_raw = (
             self.prepared.evidence_bytes if evidence_raw is None else evidence_raw
@@ -687,6 +724,20 @@ class ArchiveComposerBuildEvidenceTests(unittest.TestCase):
             sample_threshold = 0
         else:
             raise AssertionError("fixture mode must be 3 or 4")
+        selection_values = [
+            {"key": "build_evidence_sha256", "value": bound_digest},
+            {
+                "key": "trusted_release_authority_sha256",
+                "value": bound_authority_digest,
+            },
+        ]
+        if unselected_fixture_enabled is not None:
+            selection_values.append(
+                {
+                    "key": "unselected_fixture_enabled",
+                    "value": unselected_fixture_enabled,
+                }
+            )
         config = CONFIG.make_effective_configuration(
             flush_records=4,
             flush_us=1_000,
@@ -705,13 +756,7 @@ class ArchiveComposerBuildEvidenceTests(unittest.TestCase):
             sample_seed_status_id=sample_seed_status_id,
             sample_threshold=sample_threshold,
             scope_kind=1,
-            selection_values=[
-                {"key": "build_evidence_sha256", "value": bound_digest},
-                {
-                    "key": "trusted_release_authority_sha256",
-                    "value": bound_authority_digest,
-                },
-            ],
+            selection_values=selection_values,
             table_entries=64,
             table_probes=8,
         )
@@ -737,9 +782,18 @@ class ArchiveComposerBuildEvidenceTests(unittest.TestCase):
                 str(sample_seed_k),
                 str(runtime_threshold),
             )
+        producer_environment = {
+            "LD_LIBRARY_PATH": str(self.build_root / "memprof")
+        }
+        if preload_unselected_fixture:
+            producer_environment["LD_PRELOAD"] = str(
+                (self.build_root / "liboai_memprof_unselected_fixture.so").resolve(
+                    strict=True
+                )
+            )
         output = run(
             arguments,
-            environment={"LD_LIBRARY_PATH": str(self.build_root / "memprof")},
+            environment=producer_environment,
         )
         self.assertIn(b"archive producer emitted", output)
         stream = archive / "streams/memory-lifetime.bin"
@@ -1091,7 +1145,7 @@ class ArchiveComposerBuildEvidenceTests(unittest.TestCase):
                     ):
                         self.compose(archive, evidence_root)
 
-    def test_clean_two_elf_build_reaches_scientific_admission(self) -> None:
+    def test_clean_build_with_unselected_dso_reaches_scientific_admission(self) -> None:
         self.assertEqual(BUILD_EVIDENCE.VERSION, {"major": 1, "minor": 3})
         self.assertEqual(self.evidence_value["version"], BUILD_EVIDENCE.VERSION)
         archive, evidence_root, _prefix, _handoff = self.produce("positive")
@@ -1104,6 +1158,29 @@ class ArchiveComposerBuildEvidenceTests(unittest.TestCase):
         self.assertEqual(
             [(row.api_id, row.event_kind) for row in records],
             [(1, 1), (2, 1), (3, 2), (4, 3)],
+        )
+        run = COVERAGE.parse_canonical(
+            (archive / "catalog/run-coverage.json").read_bytes()
+        )
+        unselected = next(
+            row
+            for row in run["module_population"]
+            if row["logical_id"] == "unselected_fixture"
+        )
+        self.assertEqual(
+            (
+                unselected["configured"],
+                unselected["observed"],
+                unselected["load_state_id"],
+            ),
+            (False, False, 11),
+        )
+        module_catalog = COMPOSER.VERIFIER.SEMANTIC.parse_canonical(
+            (archive / "catalog/module.json").read_bytes()
+        )
+        self.assertNotIn(
+            "unselected_fixture",
+            {row["logical_id"] for row in module_catalog["entries"]},
         )
         manifest = COMPOSER.VERIFIER.STATUS.parse_canonical(
             (archive / "manifest.json").read_bytes()
@@ -1123,6 +1200,98 @@ class ArchiveComposerBuildEvidenceTests(unittest.TestCase):
         )
         self.assertEqual(manifest_paths, expected)
         self.assertEqual(len(manifest_path_rows), len(manifest_paths))
+
+    def test_conditional_population_real_paths_reject_before_append(self) -> None:
+        for label, selected_value, preload, expected in (
+            ("selected_missing", "1", False, (True, False, 10)),
+            ("unselected_observed", "0", True, (False, True, 20)),
+        ):
+            with self.subTest(label=label):
+                archive, evidence_root, prefix, handoff_raw = self.produce(
+                    label,
+                    preload_unselected_fixture=preload,
+                    unselected_fixture_enabled=selected_value,
+                )
+                config = CONFIG.validate_effective_configuration_bytes(
+                    (self.case_root / f"{label}-effective-config.json").read_bytes()
+                )
+                handoff = HANDOFF.decode_process_handoff(handoff_raw)
+                _module_raw, population, _modules = COMPOSER._runtime_objects(
+                    handoff, self.build, config
+                )
+                row = next(
+                    item
+                    for item in population
+                    if item["logical_id"] == "unselected_fixture"
+                )
+                self.assertEqual(
+                    (row["configured"], row["observed"], row["load_state_id"]),
+                    expected,
+                )
+                with mock.patch.object(COMPOSER, "_publish_once") as publisher:
+                    with mock.patch.object(
+                        COMPOSER.subprocess, "run"
+                    ) as appender:
+                        with self.assertRaisesRegex(
+                            COMPOSER.ArchiveComposerError,
+                            "requires each build row to be selected and observed or unselected and unobserved",
+                        ):
+                            self.compose(archive, evidence_root)
+                publisher.assert_not_called()
+                appender.assert_not_called()
+                self.assertEqual(
+                    (archive / "streams/memory-lifetime.bin").read_bytes(), prefix
+                )
+                self.assertFalse((archive / "manifest.json").exists())
+
+    def test_missing_conditional_selection_key_rejects_before_append(self) -> None:
+        label = "missing_selection_key"
+        archive, evidence_root, prefix, _handoff = self.produce(
+            label, unselected_fixture_enabled=None
+        )
+        with mock.patch.object(COMPOSER, "_publish_once") as publisher:
+            with mock.patch.object(COMPOSER.subprocess, "run") as appender:
+                with self.assertRaisesRegex(
+                    COMPOSER.ArchiveComposerError,
+                    "missing required key 'unselected_fixture_enabled'",
+                ):
+                    self.compose(archive, evidence_root)
+        publisher.assert_not_called()
+        appender.assert_not_called()
+        self.assertEqual(
+            (archive / "streams/memory-lifetime.bin").read_bytes(), prefix
+        )
+        self.assertFalse((archive / "manifest.json").exists())
+
+    def test_complete_rejects_noneligible_population_before_append(self) -> None:
+        for label, population in (
+            (
+                "configured_missing",
+                [{"configured": True, "observed": False, "load_state_id": 10}],
+            ),
+            (
+                "unconfigured_observed",
+                [{"configured": False, "observed": True, "load_state_id": 20}],
+            ),
+        ):
+            with self.subTest(label=label):
+                archive, evidence_root, _prefix, _handoff = self.produce(label)
+                with mock.patch.object(
+                    COMPOSER,
+                    "_runtime_objects",
+                    return_value=(b"", population, []),
+                ):
+                    with mock.patch.object(COMPOSER, "_publish_once") as publisher:
+                        with mock.patch.object(
+                            COMPOSER.subprocess, "run"
+                        ) as appender:
+                            with self.assertRaisesRegex(
+                                COMPOSER.ArchiveComposerError,
+                                "requires each build row to be selected and observed or unselected and unobserved",
+                            ):
+                                self.compose(archive, evidence_root)
+                publisher.assert_not_called()
+                appender.assert_not_called()
 
     def test_trusted_release_source_root_rejects_symlink_and_nonregular_leaf(self) -> None:
         root_link = self.case_root / "trusted-release-source-root-link"

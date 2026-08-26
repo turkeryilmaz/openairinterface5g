@@ -609,6 +609,7 @@ def _require_glibc_runtime_binding(
 def _runtime_objects(
     handoff: Any,
     build: Mapping[str, Any],
+    config: Mapping[str, Any] | None = None,
 ) -> tuple[bytes, list[dict[str, Any]], list[dict[str, Any]]]:
     mapped_rows = _parse_maps(handoff.maps_bytes)
     mapped_matches = [
@@ -644,6 +645,30 @@ def _runtime_objects(
                 f"unregistered mapped ELF under primary build directory: {path}"
             )
 
+    if config is None:
+        raise ArchiveComposerError(
+            "effective configuration required for runtime module population"
+        )
+    selection_values = {
+        row["key"]: row["value"] for row in config["selection_values"]
+    }
+    role_name = dict(VERIFIER.CONFIG.ROLE_CATALOG)[config["role_id"]]
+    try:
+        configured_by_logical_id = {
+            row["logical_id"]: (
+                config["role_id"] in row["role_ids"]
+                and VERIFIER.CONFIG._module_selected(
+                    row["module_selection"],
+                    configuration_values=selection_values,
+                    role_name=role_name,
+                    where=f"build_coverage.entries[{index}].module_selection",
+                )
+            )
+            for index, row in enumerate(build["entries"])
+        }
+    except VERIFIER.CONFIG.EffectiveConfigError as error:
+        raise ArchiveComposerError(str(error)) from error
+
     module_entries: list[dict[str, Any]] = []
     population: list[dict[str, Any]] = []
     represented: set[str] = set()
@@ -653,6 +678,8 @@ def _runtime_objects(
             continue
         build_row, _image = matched
         logical_id = build_row["logical_id"]
+        configured = configured_by_logical_id[logical_id]
+        load_state_id = 1 if configured else 20
         if logical_id in represented:
             raise ArchiveComposerError(f"multiple mappings for build logical ID {logical_id!r}")
         represented.add(logical_id)
@@ -662,7 +689,7 @@ def _runtime_objects(
             "byte_count": build_row["byte_count"],
             "device": mapped["device"],
             "inode": mapped["inode"],
-            "load_state_id": 1,
+            "load_state_id": load_state_id,
             "loaded_path": mapped["loaded_path"],
             "logical_id": logical_id,
             "module_generation": handoff.opening.process_generation,
@@ -688,9 +715,9 @@ def _runtime_objects(
                     }
                     for origin in build_row["symbol_origins"]
                 ],
-                "configured": True,
+                "configured": configured,
                 "load_generation": handoff.opening.process_generation,
-                "load_state_id": 1,
+                "load_state_id": load_state_id,
                 "loaded_path": mapped["loaded_path"],
                 "logical_id": logical_id,
                 "observed": True,
@@ -701,6 +728,8 @@ def _runtime_objects(
         module_id += 1
     for row in build["entries"]:
         if row["logical_id"] not in represented:
+            configured = configured_by_logical_id[row["logical_id"]]
+            load_state_id = 10 if configured else 11
             population.append(
                 {
                     "admission_state_id": row["admission_state_id"],
@@ -712,9 +741,9 @@ def _runtime_objects(
                         }
                         for origin in row["symbol_origins"]
                     ],
-                    "configured": True,
+                    "configured": configured,
                     "load_generation": None,
-                    "load_state_id": 10,
+                    "load_state_id": load_state_id,
                     "loaded_path": None,
                     "logical_id": row["logical_id"],
                     "observed": False,
@@ -1298,11 +1327,7 @@ def compose(
         raise ArchiveComposerError(
             "effective configuration does not bind the external trusted-release authority"
         )
-    module_raw, population, _modules = _runtime_objects(handoff, build)
-    if any(row["load_state_id"] != 1 for row in population):
-        raise ArchiveComposerError(
-            "v1 COMPLETE composition requires every measured build row loaded and observed"
-        )
+    module_raw, population, _modules = _runtime_objects(handoff, build, config)
     run = {
         "build_coverage": {
             "object_kind": 8,
@@ -1333,6 +1358,18 @@ def compose(
         "verdict_id": 2,
         "version": {"major": 1, "minor": 0},
     }
+    complete_population_states = {
+        (True, True, 1),
+        (False, False, 11),
+    }
+    if any(
+        (row["configured"], row["observed"], row["load_state_id"])
+        not in complete_population_states
+        for row in population
+    ):
+        raise ArchiveComposerError(
+            "v1 COMPLETE composition requires each build row to be selected and observed or unselected and unobserved"
+        )
     run_raw = VERIFIER.COVERAGE.canonical_bytes(run)
     VERIFIER.COVERAGE.validate_run_coverage_bytes(
         run_raw,
@@ -1340,6 +1377,12 @@ def compose(
         api_definition_sha256=VERIFIER.ACCEPTED_MEMBER_SHA256[4],
         expected_configuration_instance_sha256=_sha(handoff.bootstrap_bytes),
     )
+    try:
+        VERIFIER.CONFIG.validate_module_selection_bindings(
+            config, build_coverage=build, run_coverage=run
+        )
+    except VERIFIER.CONFIG.EffectiveConfigError as error:
+        raise ArchiveComposerError(str(error)) from error
     resolution = VERIFIER.COVERAGE.resolve_run_realloc_zero_policy(
         run,
         build_coverage=build,
