@@ -23,6 +23,30 @@ add_test(NAME oai_memprof_wire_python
                  tools.profiling.memory.tests.test_oai_memprof_wire)
 set_tests_properties(oai_memprof_wire_python PROPERTIES WORKING_DIRECTORY ${OPENAIR_DIR})
 
+add_executable(oai_memprof_archive_append ../oai_memprof_archive_append.c)
+target_compile_features(oai_memprof_archive_append PRIVATE c_std_11)
+target_compile_options(oai_memprof_archive_append PRIVATE -Wall -Wextra -Werror -Wpedantic)
+target_link_libraries(oai_memprof_archive_append PRIVATE
+                      oai_memprof_stream_finalizer
+                      oai_memprof_process_handoff)
+set_target_properties(oai_memprof_archive_append PROPERTIES BUILD_RPATH "${CMAKE_BINARY_DIR}/memprof")
+add_dependencies(tests oai_memprof_archive_append)
+
+add_executable(test_oai_memprof_archive_append test_oai_memprof_archive_append.c)
+target_compile_features(test_oai_memprof_archive_append PRIVATE c_std_11)
+target_compile_options(test_oai_memprof_archive_append PRIVATE -Wall -Wextra -Werror -Wpedantic)
+target_link_libraries(test_oai_memprof_archive_append PRIVATE
+                      oai_memprof_stream_finalizer
+                      oai_memprof_process_handoff)
+set_target_properties(test_oai_memprof_archive_append PROPERTIES BUILD_RPATH "${CMAKE_BINARY_DIR}/memprof")
+add_dependencies(tests test_oai_memprof_archive_append)
+
+add_test(NAME oai_memprof_archive_append_c
+         COMMAND test_oai_memprof_archive_append)
+set_tests_properties(oai_memprof_archive_append_c PROPERTIES
+                     LABELS "memprof;archive-appender"
+                     TIMEOUT 30)
+
 if(NOT CMAKE_GENERATOR STREQUAL "Ninja")
   message(FATAL_ERROR "The frozen R0 final-link gate requires the single-config Ninja generator")
 endif()
