@@ -267,6 +267,7 @@ int main(int argc, char **argv)
   CHECK(argc == 2);
   CHECK(clear_environment());
   if (strcmp(argv[1], "disabled") == 0) {
+    CHECK(oai_memprof_softmodem_session_finish_v1(NULL) == OAI_MEMPROF_SOFTMODEM_SESSION_DISABLED);
     CHECK(oai_memprof_softmodem_session_start_v1(OAI_MEMPROF_SOFTMODEM_ROLE_GNB) == OAI_MEMPROF_SOFTMODEM_SESSION_DISABLED);
     CHECK(oai_memprof_softmodem_session_finish_v1(NULL) == OAI_MEMPROF_SOFTMODEM_SESSION_DISABLED);
   } else if (strcmp(argv[1], "partial") == 0) {

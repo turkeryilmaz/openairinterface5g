@@ -88,7 +88,7 @@ typedef struct frozen_file_s {
 } frozen_file_t;
 
 static _Atomic(int) lifecycle = LIFECYCLE_UNINITIALIZED;
-static pthread_mutex_t finish_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t lifecycle_mutex = PTHREAD_MUTEX_INITIALIZER;
 static oai_memprof_process_session_t *process_session;
 static uint64_t seal_timeout_ns;
 static oai_memprof_process_session_result_t completed_result;
@@ -207,24 +207,31 @@ static bool environment_complete(void)
 
 oai_memprof_softmodem_session_status_t oai_memprof_softmodem_session_start_v1(uint16_t expected_role_kind)
 {
+  oai_memprof_softmodem_session_status_t status = OAI_MEMPROF_SOFTMODEM_SESSION_INVALID_STATE;
+  if (pthread_mutex_lock(&lifecycle_mutex) != 0)
+    return status;
+
   int expected = LIFECYCLE_UNINITIALIZED;
   if (!atomic_compare_exchange_strong_explicit(&lifecycle, &expected, LIFECYCLE_FAILED, memory_order_acq_rel, memory_order_acquire))
-    return OAI_MEMPROF_SOFTMODEM_SESSION_INVALID_STATE;
+    goto unlock;
 
   if (all_environment_absent()) {
     atomic_store_explicit(&lifecycle, LIFECYCLE_DISABLED, memory_order_release);
-    return OAI_MEMPROF_SOFTMODEM_SESSION_DISABLED;
+    status = OAI_MEMPROF_SOFTMODEM_SESSION_DISABLED;
+    goto unlock;
   }
   if (!environment_complete()
-      || (expected_role_kind != OAI_MEMPROF_SOFTMODEM_ROLE_GNB && expected_role_kind != OAI_MEMPROF_SOFTMODEM_ROLE_NR_UE))
-    return OAI_MEMPROF_SOFTMODEM_SESSION_INVALID_ENVIRONMENT;
+      || (expected_role_kind != OAI_MEMPROF_SOFTMODEM_ROLE_GNB && expected_role_kind != OAI_MEMPROF_SOFTMODEM_ROLE_NR_UE)) {
+    status = OAI_MEMPROF_SOFTMODEM_SESSION_INVALID_ENVIRONMENT;
+    goto unlock;
+  }
 
   frozen_file_t configuration = {.fd = -1};
   frozen_file_t opening_file = {.fd = -1};
   int archive_fd = -1;
   int bootstrap_fd = -1;
   int streams_fd = -1;
-  oai_memprof_softmodem_session_status_t status = OAI_MEMPROF_SOFTMODEM_SESSION_INVALID_ENVIRONMENT;
+  status = OAI_MEMPROF_SOFTMODEM_SESSION_INVALID_ENVIRONMENT;
   if (!parse_fd(getenv(ENV_ARCHIVE_FD), &archive_fd) || !parse_fd(getenv(ENV_BOOTSTRAP_FD), &bootstrap_fd))
     goto cleanup;
 
@@ -357,27 +364,29 @@ cleanup:
   atomic_store_explicit(&lifecycle,
                         status == OAI_MEMPROF_SOFTMODEM_SESSION_OK ? LIFECYCLE_ACTIVE : LIFECYCLE_FAILED,
                         memory_order_release);
+unlock:
+  (void)pthread_mutex_unlock(&lifecycle_mutex);
   return status;
 }
 
 oai_memprof_softmodem_session_status_t oai_memprof_softmodem_session_finish_v1(oai_memprof_process_session_result_t *result)
 {
-  if (pthread_mutex_lock(&finish_mutex) != 0)
+  if (pthread_mutex_lock(&lifecycle_mutex) != 0)
     return OAI_MEMPROF_SOFTMODEM_SESSION_INVALID_STATE;
 
   const int observed = atomic_load_explicit(&lifecycle, memory_order_acquire);
-  if (observed == LIFECYCLE_DISABLED) {
-    (void)pthread_mutex_unlock(&finish_mutex);
+  if (observed == LIFECYCLE_UNINITIALIZED || observed == LIFECYCLE_DISABLED) {
+    (void)pthread_mutex_unlock(&lifecycle_mutex);
     return OAI_MEMPROF_SOFTMODEM_SESSION_DISABLED;
   }
   if (observed == LIFECYCLE_COMPLETE) {
     if (result != NULL)
       *result = completed_result;
-    (void)pthread_mutex_unlock(&finish_mutex);
+    (void)pthread_mutex_unlock(&lifecycle_mutex);
     return OAI_MEMPROF_SOFTMODEM_SESSION_ALREADY_FINISHED;
   }
   if (observed != LIFECYCLE_ACTIVE) {
-    (void)pthread_mutex_unlock(&finish_mutex);
+    (void)pthread_mutex_unlock(&lifecycle_mutex);
     return OAI_MEMPROF_SOFTMODEM_SESSION_INVALID_STATE;
   }
   atomic_store_explicit(&lifecycle, LIFECYCLE_FINISHING, memory_order_release);
@@ -393,7 +402,7 @@ oai_memprof_softmodem_session_status_t oai_memprof_softmodem_session_finish_v1(o
                         memory_order_release);
   if (result != NULL)
     *result = completed_result;
-  (void)pthread_mutex_unlock(&finish_mutex);
+  (void)pthread_mutex_unlock(&lifecycle_mutex);
   return completion_status;
 }
 
