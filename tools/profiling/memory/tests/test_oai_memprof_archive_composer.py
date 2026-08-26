@@ -49,7 +49,7 @@ def sha(raw: bytes) -> str:
 
 
 TRUSTED_RELEASE_AUTHORITY_FIXTURE_SHA256 = (
-    "45a9d758bee99b91434c355dbee03f1f34c8e277a701c431b1d1f656e6efd7fe"
+    "758d9b2678b3f1052d1d330c7048f111b65d9b1ce0dd10a37218a6804fe7d3a8"
 )
 
 
@@ -308,6 +308,24 @@ class BuildEvidenceCommandCaptureTests(unittest.TestCase):
         self.assertIn("arm64", aarch_block)
         self.assertEqual(aarch_block.count("oai_memprof_add_active_map(dfts)"), 1)
         self.assertNotIn("oai_memprof_wrap_active_c(dfts", aarch_block)
+
+    def test_rfsimulator_wrap_set_is_conditional_and_exact(self) -> None:
+        cmake = (ROOT / "common/utils/memprof/CMakeLists.txt").read_text(encoding="utf-8")
+        rfsimulator_marker = cmake.index("if(TARGET rfsimulator)")
+        rfsimulator_end = cmake.index("endif()", rfsimulator_marker) + len("endif()")
+        rfsimulator_block = " ".join(cmake[rfsimulator_marker:rfsimulator_end].split())
+
+        self.assertEqual(
+            rfsimulator_block,
+            (
+                "if(TARGET rfsimulator) "
+                "oai_memprof_wrap_active_c(rfsimulator malloc calloc free strdup) "
+                "elseif(OAI_SIMU) "
+                "message(FATAL_ERROR "
+                "\"OAI_MEMPROF_ACTIVE with OAI_SIMU requires target rfsimulator\") "
+                "endif()"
+            ),
+        )
 
     def test_requests_only_final_ninja_command(self) -> None:
         expected = b"final link command\n"

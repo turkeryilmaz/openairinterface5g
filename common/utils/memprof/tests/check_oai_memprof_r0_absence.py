@@ -26,7 +26,7 @@ from unittest import mock
 
 SCHEMA = "oai.memprof.r0.absence-result/v11"
 SELF_TEST_SCHEMA = "oai.memprof.r0.absence-self-test/v18"
-CATALOG_VERSION = "oai-memprof-r0-absence-catalog/19"
+CATALOG_VERSION = "oai-memprof-r0-absence-catalog/20"
 CATALOG_SERIALIZATION_DOMAIN = "oai.memprof.r0.absence-catalog"
 CATALOG_SERIALIZATION_VERSION = "length-prefixed-fields/v1"
 
@@ -195,6 +195,7 @@ PRODUCTION_OUTPUTS = (
     "nr-uesoftmodem.oai-memprof.map",
     "oai_usrpdevif.oai-memprof.map",
     "params_libconfig.oai-memprof.map",
+    "rfsimulator.oai-memprof.map",
     "oai_memprof_archive_append",
 )
 
@@ -446,7 +447,7 @@ R0_CMAKE_NAME_CORRESPONDENCE_VECTORS = (
     ),
 )
 
-EXPECTED_CATALOG_IDS_V19 = (
+EXPECTED_CATALOG_IDS_V20 = (
     'build-subtree-relative',
     'control-load:oai_memprof_control_load_v1',
     'control:oai_memprof_control_v1',
@@ -482,6 +483,7 @@ EXPECTED_CATALOG_IDS_V19 = (
     'output:oai_memprof_archive_append',
     'output:oai_usrpdevif.oai-memprof.map',
     'output:params_libconfig.oai-memprof.map',
+    'output:rfsimulator.oai-memprof.map',
     'python-source-subtree-relative',
     'r0-cmake-namespace',
     'r0-file:active_stream_opening_v1.hex',
@@ -711,8 +713,8 @@ EXPECTED_CATALOG_IDS_V19 = (
     'wrapper:strndup',
     'wrapper:valloc',
 )
-EXPECTED_CATALOG_COUNT_V19 = 263
-EXPECTED_CATALOG_DIGEST_V19 = '14a3d10c88e4da56f1b48d2732309471e7472c15e6aad0cea1db24ec5ffef270'
+EXPECTED_CATALOG_COUNT_V20 = 264
+EXPECTED_CATALOG_DIGEST_V20 = '8123e39d217c1e6a0a1ddce30367eb09418cf25d43ec9eb0bcc08d8efeafe2fa'
 
 
 class AbsenceError(RuntimeError):
@@ -1057,12 +1059,12 @@ def validate_catalog_freeze(entries: Sequence[CatalogEntry]) -> str:
     identifiers, digest = catalog_identity(entries)
     require(len(set(identifiers)) == len(identifiers), "catalog_duplicate_id",
             "the catalog contains duplicate semantic IDs")
-    require(len(identifiers) == EXPECTED_CATALOG_COUNT_V19,
-            "catalog_count_mismatch", "the v19 catalog count changed without a version update")
-    require(identifiers == EXPECTED_CATALOG_IDS_V19,
-            "catalog_id_set_mismatch", "the v19 catalog ID set changed without a version update")
-    require(digest == EXPECTED_CATALOG_DIGEST_V19,
-            "catalog_digest_mismatch", "the v19 catalog contract changed without a version update")
+    require(len(identifiers) == EXPECTED_CATALOG_COUNT_V20,
+            "catalog_count_mismatch", "the v20 catalog count changed without a version update")
+    require(identifiers == EXPECTED_CATALOG_IDS_V20,
+            "catalog_id_set_mismatch", "the v20 catalog ID set changed without a version update")
+    require(digest == EXPECTED_CATALOG_DIGEST_V20,
+            "catalog_digest_mismatch", "the v20 catalog contract changed without a version update")
     return digest
 
 
@@ -2157,6 +2159,7 @@ def run_self_test(stream: BinaryIO | None = None) -> int:
             "output:nr-uesoftmodem.oai-memprof.map",
             "output:oai_usrpdevif.oai-memprof.map",
             "output:params_libconfig.oai-memprof.map",
+            "output:rfsimulator.oai-memprof.map",
             "raw-schema:oai-memprof-r0-raw-v1",
             "wire-namespace:OAI_MEMPROF_WIRE",
             "r0-optional-lib-namespace",

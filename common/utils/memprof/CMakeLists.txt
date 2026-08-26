@@ -280,6 +280,13 @@ if(OAI_MEMPROF_ACTIVE)
       message(FATAL_ERROR
               "OAI_MEMPROF_ACTIVE with OAI_USRP requires target oai_usrpdevif")
     endif()
+
+    if(TARGET rfsimulator)
+      oai_memprof_wrap_active_c(rfsimulator malloc calloc free strdup)
+    elseif(OAI_SIMU)
+      message(FATAL_ERROR
+              "OAI_MEMPROF_ACTIVE with OAI_SIMU requires target rfsimulator")
+    endif()
   endfunction()
 
   cmake_language(DEFER DIRECTORY "${CMAKE_SOURCE_DIR}"
