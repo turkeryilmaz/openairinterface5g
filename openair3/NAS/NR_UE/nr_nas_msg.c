@@ -817,6 +817,10 @@ nr_ue_nas_t *get_ue_nas_info(module_id_t module_id)
   if (!nr_ue_nas[module_id].uicc) {
     nr_ue_nas[module_id].uicc = checkUicc(module_id);
     nr_ue_nas[module_id].UE_id = module_id;
+    for (int i = 0; i < MAX_NUM_PSI; i++) {
+      nr_ue_nas[module_id].pdu_tun[i].sock = -1;
+      nr_ue_nas[module_id].pdu_tun[i].qfi = -1;
+    }
   }
   return &nr_ue_nas[module_id];
 }
@@ -1771,6 +1775,7 @@ static void handle_pdu_session_accept(nr_ue_nas_t *nas, uint8_t *pdu_buffer, uin
   }
 
   // Set QFI before starting UE interface thread to avoid early SDUs using 0-initialized QFI.
+  nas->pdu_tun[sm_header.pdu_session_id].qfi = msg.qos_rules.rule->qfi;
   set_qfi(msg.qos_rules.rule->qfi, sm_header.pdu_session_id, nas->UE_id);
 
   // process PDU Session: pass ID -1 to not append PDU ID to interface
@@ -2542,6 +2547,7 @@ void *nas_nrue(void *args_p)
         const char *ip = "10.0.1.2";
         const int qfi = 7;
         const bool is_default = true;
+        nas->pdu_tun[pdu_session_id].qfi = qfi;
         set_qfi(qfi, pdu_session_id, nas->UE_id);
         create_ue_ip_if(ip, NULL, nas->UE_id, pdu_session_id, is_default);
         nas->psi_status[pdu_session_id] = PDU_SESSION_ACTIVE;
