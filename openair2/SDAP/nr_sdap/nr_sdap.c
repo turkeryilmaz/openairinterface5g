@@ -17,93 +17,6 @@
 #include "tuntap_if.h"
 #include "system.h"
 
-typedef struct sdap_tun_iface_s {
-  ue_id_t ue_id;
-  int pdusession_id;
-  int sock;
-  char *ifname;
-  int qfi;
-  struct sdap_tun_iface_s *next;
-} sdap_tun_iface_t;
-
-static sdap_tun_iface_t *sdap_tun_iface_list = NULL;
-
-static void *sdap_tun_read_thread(void *arg);
-
-static sdap_tun_iface_t *sdap_tun_iface_lookup(ue_id_t ue_id, int pdusession_id)
-{
-  for (sdap_tun_iface_t *it = sdap_tun_iface_list; it != NULL; it = it->next) {
-    if (it->ue_id == ue_id && it->pdusession_id == pdusession_id)
-      return it;
-  }
-  return NULL;
-}
-
-void nr_sdap_tun_store_qfi(ue_id_t ue_id, int pdusession_id, uint8_t qfi)
-{
-  DevAssert(qfi < SDAP_MAX_QFI);
-  sdap_tun_iface_t *iface = sdap_tun_iface_lookup(ue_id, pdusession_id);
-  if (iface == NULL)
-    return;
-
-  iface->qfi = qfi;
-}
-
-void nr_sdap_tun_attach(nr_sdap_entity_t *entity)
-{
-  DevAssert(entity);
-  if (entity->tun.sock >= 0)
-    return;
-
-  sdap_tun_iface_t *iface = sdap_tun_iface_lookup(entity->tun.ue_id, entity->tun.pdusession_id);
-  if (iface == NULL)
-    return;
-
-  if (!entity->tun.is_gnb && iface->qfi >= 0 && iface->qfi < SDAP_MAX_QFI) {
-    entity->qfi = iface->qfi;
-    LOG_I(SDAP, "UE %ld PDU session %d: cached QFI %d\n", entity->tun.ue_id, entity->tun.pdusession_id, entity->qfi);
-  }
-
-  /* For UE, reflect UP suspend/resume to the OS by toggling IFF_UP. */
-  if (!entity->tun.is_gnb) {
-    LOG_I(SDAP, "UE %ld PDU session %d: bringing TUN %s up\n", entity->tun.ue_id, entity->tun.pdusession_id, iface->ifname);
-    int fd = socket(AF_INET, SOCK_DGRAM, 0);
-    if (fd >= 0) {
-      tuntap_set_up(iface->ifname, fd);
-      close(fd);
-    }
-  }
-
-  int d = dup(iface->sock);
-  if (d < 0)
-    LOG_W(SDAP, "dup(tun sock) failed: errno %d %s\n", errno, strerror(errno));
-  else
-    tuntap_reblock(d);
-  entity->tun.sock = d;
-  if (d < 0)
-    return;
-
-  nr_sdap_tun_start_reader(entity, &entity->pdusession_thread, "gnb_tun_read_thread");
-}
-
-static sdap_tun_iface_t *sdap_tun_iface_register(ue_id_t ue_id, int pdusession_id, int sock, const char *ifname)
-{
-  DevAssert(sdap_tun_iface_lookup(ue_id, pdusession_id) == NULL);
-  sdap_tun_iface_t *iface = calloc_or_fail(1, sizeof(*iface));
-  iface->ue_id = ue_id;
-  iface->pdusession_id = pdusession_id;
-  iface->sock = sock;
-  iface->qfi = -1;
-  iface->ifname = strdup(ifname);
-  AssertFatal(iface->ifname != NULL, "strdup(ifname) failed\n");
-  nr_sdap_entity_t *entity = nr_sdap_get_entity(ue_id, pdusession_id);
-  if (entity != NULL && !entity->tun.is_gnb && entity->qfi >= 0 && entity->qfi < SDAP_MAX_QFI)
-    iface->qfi = entity->qfi;
-  iface->next = sdap_tun_iface_list;
-  sdap_tun_iface_list = iface;
-  return iface;
-}
-
 bool sdap_data_req(protocol_ctxt_t *ctxt_p,
                    const ue_id_t ue_id,
                    const srb_flag_t srb_flag,
@@ -207,6 +120,21 @@ static void *sdap_tun_read_thread(void *arg)
   return NULL;
 }
 
+/** @brief Bind NAS TUN sock and QFI on an SDAP entity for connected UP
+ * Borrow the fd/QFI without taking ownership (NAS owns the TUN, UE entity must not close it)
+ * @param[in] entity SDAP entity for this PDU session
+ * @param[in] sock TUN fd to borrow
+ * @param[in] qfi QFI for the UL SDU */
+void nr_sdap_tun_bind(nr_sdap_entity_t *entity, int sock, int qfi)
+{
+  DevAssert(entity != NULL);
+  if (sock < 0)
+    return;
+  DevAssert(qfi >= 0 && qfi < SDAP_MAX_QFI);
+  entity->tun.sock = sock;
+  entity->qfi = qfi;
+}
+
 /** @brief Start the connected TUN UL reader on an SDAP entity
  * @param[in] entity SDAP entity for this PDU session
  * @param[in,out] thread Reader pthread handle to create into
@@ -238,51 +166,12 @@ void nr_sdap_tun_stop_reader(pthread_t *thread)
   LOG_I(SDAP, "TUN reader stopped\n");
 }
 
-void nr_sdap_tun_detach(nr_sdap_entity_t *entity)
+/** @brief Fill ifname[IFNAMSIZ] for the gNB default PDU-session TUN */
+void nr_sdap_generate_gnb_tun_ifname(char *ifname, ue_id_t ue_id)
 {
-  DevAssert(entity != NULL);
-  sdap_tun_iface_t *iface = NULL;
-  if (!entity->tun.is_gnb) {
-    iface = sdap_tun_iface_lookup(entity->tun.ue_id, entity->tun.pdusession_id);
-    if (iface != NULL && entity->qfi >= 0 && entity->qfi < SDAP_MAX_QFI)
-      iface->qfi = entity->qfi; // store the QFI for the next attach
-  }
-  if (entity->tun.sock < 0)
-    return;
-
-  /* Stop/join the reader before close: on Linux, close() may not wake a blocked read() */
-  nr_sdap_tun_stop_reader(&entity->pdusession_thread);
-
-  close(entity->tun.sock);
-  entity->tun.sock = -1;
-
-  /* For UE, bring interface down so the OS reflects UP suspension. */
-  if (!entity->tun.is_gnb && iface != NULL) {
-    LOG_I(SDAP, "UE %ld PDU session %d: bringing TUN %s down\n", entity->tun.ue_id, entity->tun.pdusession_id, iface->ifname);
-    tuntap_destroy(iface->ifname);
-  }
-}
-
-void nr_sdap_tun_destroy(ue_id_t ue_id, int pdusession_id)
-{
-  sdap_tun_iface_t *iface = NULL;
-  for (sdap_tun_iface_t **pp = &sdap_tun_iface_list; *pp != NULL; pp = &(*pp)->next) {
-    if ((*pp)->ue_id == ue_id && (*pp)->pdusession_id == pdusession_id) {
-      iface = *pp;
-      *pp = iface->next;
-      iface->next = NULL;
-      break;
-    }
-  }
-  if (iface == NULL) {
-    LOG_D(SDAP, "nr_sdap_tun_destroy: no iface (ue=%ld, pdu=%d)\n", ue_id, pdusession_id);
-    return;
-  }
-  close(iface->sock);
-  tuntap_destroy(iface->ifname);
-  LOG_I(SDAP, "Destroyed TUN dataplane for UE %ld PDU session %d (%s)\n", iface->ue_id, iface->pdusession_id, iface->ifname);
-  free(iface->ifname);
-  free(iface);
+  DevAssert(ifname);
+  const char *ifprefix = get_softmodem_params()->nsa ? "oaitun_gnb" : "oaitun_enb";
+  tun_generate_ifname(ifname, ifprefix, ue_id - 1);
 }
 
 void start_sdap_tun_gnb_first_ue_default_pdu_session(ue_id_t ue_id, int pdu_session_id)
@@ -290,58 +179,10 @@ void start_sdap_tun_gnb_first_ue_default_pdu_session(ue_id_t ue_id, int pdu_sess
   nr_sdap_entity_t *entity = nr_sdap_get_entity(ue_id, pdu_session_id);
   DevAssert(entity != NULL);
   DevAssert(entity->tun.is_gnb);
-  char *ifprefix = get_softmodem_params()->nsa ? "oaitun_gnb" : "oaitun_enb";
+
   char ifname[IFNAMSIZ];
-  tun_generate_ifname(ifname, ifprefix, ue_id - 1);
-  const int sock = tuntap_alloc(IFF_TUN, ifname);
+  nr_sdap_generate_gnb_tun_ifname(ifname, ue_id);
+  entity->tun.sock = tuntap_alloc(IFF_TUN, ifname);
   tun_config(ifname, "10.0.1.1", NULL);
-  sdap_tun_iface_register(entity->tun.ue_id, entity->tun.pdusession_id, sock, ifname);
-  nr_sdap_tun_attach(entity);
-}
-
-static void start_sdap_tun_ue(ue_id_t ue_id, int pdu_session_id, int sock, const char *ifname)
-{
-  nr_sdap_entity_t *entity = nr_sdap_get_entity(ue_id, pdu_session_id);
-  DevAssert(entity != NULL);
-  DevAssert(!entity->tun.is_gnb);
-  // First PDU session setup: register UE TUN and attach the reader thread
-  sdap_tun_iface_register(ue_id, pdu_session_id, sock, ifname);
-  nr_sdap_tun_attach(entity);
-}
-
-void create_ue_ip_if(const char *ipv4, const char *ipv6, int ue_id, int pdu_session_id, bool is_default)
-{
-  char ifname[IFNAMSIZ];
-  tuntap_generate_ue_ifname(ifname, IFF_TUN, ue_id, is_default ? -1 : pdu_session_id);
-
-  if (sdap_tun_iface_lookup(ue_id, pdu_session_id) == NULL) {
-    const int sock = tuntap_alloc(IFF_TUN, ifname);
-    start_sdap_tun_ue(ue_id, pdu_session_id, sock, ifname);
-  } else {
-    nr_sdap_entity_t *entity = nr_sdap_get_entity(ue_id, pdu_session_id);
-    if (entity != NULL)
-      nr_sdap_tun_attach(entity);
-  }
-
-  tun_config(ifname, ipv4, ipv6);
-  if (ipv4) {
-    setup_ue_ipv4_route(ifname, ue_id, pdu_session_id, ipv4);
-  }
-}
-
-void create_ue_eth_if(int ue_id, int pdu_session_id, bool is_default)
-{
-  char ifname[IFNAMSIZ];
-  tuntap_generate_ue_ifname(ifname, IFF_TAP, ue_id, is_default ? -1 : pdu_session_id);
-
-  if (sdap_tun_iface_lookup(ue_id, pdu_session_id) == NULL) {
-    const int sock = tuntap_alloc(IFF_TAP, ifname);
-    start_sdap_tun_ue(ue_id, pdu_session_id, sock, ifname);
-  } else {
-    nr_sdap_entity_t *entity = nr_sdap_get_entity(ue_id, pdu_session_id);
-    if (entity != NULL)
-      nr_sdap_tun_attach(entity);
-  }
-
-  tap_config(ifname);
+  nr_sdap_tun_start_reader(entity, &entity->pdusession_thread, "gnb_tun_read_thread");
 }

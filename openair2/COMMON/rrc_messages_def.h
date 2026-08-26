@@ -45,6 +45,7 @@ MESSAGE_DEF(NAS_INITIAL_UL_TRANSFER_REQ, MESSAGE_PRIORITY_MED, ul_info_transfer_
 MESSAGE_DEF(NAS_DETACH_REQ, MESSAGE_PRIORITY_MED, nas_detach_req_t, nas_detach_req)
 MESSAGE_DEF(NAS_DEREGISTRATION_REQ, MESSAGE_PRIORITY_MED, nas_deregistration_req_t, nas_deregistration_req)
 MESSAGE_DEF(NAS_5GMM_IND, MESSAGE_PRIORITY_MED, nas_5gmm_ind_t, nas_5gmm_ind)
+MESSAGE_DEF(NAS_TUN_REQ, MESSAGE_PRIORITY_MED, nas_tun_req_t, nas_tun_req)
 
 MESSAGE_DEF(NAS_RAB_ESTABLI_RSP, MESSAGE_PRIORITY_MED, rab_establish_rsp_t, nas_rab_est_rsp)
 

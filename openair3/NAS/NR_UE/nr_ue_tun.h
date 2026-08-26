@@ -14,7 +14,7 @@ typedef struct nas_ue_pdu_tun_s {
   char ifname[IFNAMSIZ];
   int qfi; /* -1 = unset */
   /** TUN reader (idle or connected)
-   * lifecycle managed by SDAP start/stop APIs */
+   * lifecycle managed via RRC */
   pthread_t reader_thread;
 } nas_ue_pdu_tun_t;
 

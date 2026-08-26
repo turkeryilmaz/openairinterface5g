@@ -41,12 +41,8 @@ bool sdap_data_req(protocol_ctxt_t *ctxt_p,
 void sdap_data_ind(int drb_id, int is_gnb, int pdusession_id, ue_id_t ue_id, char *buf, int size);
 
 void start_sdap_tun_gnb_first_ue_default_pdu_session(ue_id_t ue_id, int pdu_session_id);
-void create_ue_ip_if(const char *ipv4, const char *ipv6, int ue_id, int pdu_session_id, bool is_default);
-void create_ue_eth_if(int ue_id, int pdu_session_id, bool is_default);
-void nr_sdap_tun_attach(struct nr_sdap_entity_s *entity);
-void nr_sdap_tun_detach(struct nr_sdap_entity_s *entity);
-void nr_sdap_tun_destroy(ue_id_t ue_id, int pdusession_id);
-void nr_sdap_tun_store_qfi(ue_id_t ue_id, int pdusession_id, uint8_t qfi);
+void nr_sdap_generate_gnb_tun_ifname(char *ifname, ue_id_t ue_id);
+void nr_sdap_tun_bind(struct nr_sdap_entity_s *entity, int sock, int qfi);
 void nr_sdap_tun_stop_reader(pthread_t *thread);
 void nr_sdap_tun_start_reader(struct nr_sdap_entity_s *entity, pthread_t *thread, char *name);
 

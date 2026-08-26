@@ -729,6 +729,23 @@ static void nr_rrc_process_dedicatedNAS_MessageList(NR_UE_RRC_INST_t *rrc, NR_RR
   }
 }
 
+/** @brief Start the user-plane TUN UL reader for one PDU session
+ * Stop any prior reader on reader_thread, bind sock and qfi onto the SDAP entity, then start the reader
+ * @note reader_thread is NAS pdu_tun state, start/stop only through RRC */
+static void nr_rrc_ue_tun_start_user_plane(ue_id_t ue_id, int pdusession_id, int sock, int qfi, pthread_t *reader_thread)
+{
+  DevAssert(pdusession_id > 0 && pdusession_id < MAX_NUM_PSI);
+  DevAssert(sock >= 0);
+  DevAssert(reader_thread != NULL);
+  nr_sdap_entity_t *entity = nr_sdap_get_entity(ue_id, pdusession_id);
+  DevAssert(entity != NULL);
+  nr_sdap_tun_stop_reader(reader_thread);
+  nr_sdap_tun_bind(entity, sock, qfi);
+  char name[64];
+  snprintf(name, sizeof(name), "ue_tun_read_%ld_p%d", ue_id, pdusession_id);
+  nr_sdap_tun_start_reader(entity, reader_thread, name);
+}
+
 /** @brief Add bearer in PDCP/SDAP for 5GC association (SA) */
 static void rrc_ue_add_bearer(const int ue_id, const NR_DRB_ToAddMod_t *drb, const nr_pdcp_entity_security_keys_and_algos_t *sp)
 {
@@ -3469,6 +3486,20 @@ void *rrc_nrue(void *notUsed)
     rrc->fiveG_S_TMSI = req->fiveG_STMSI;
     /* Push the 5G-S-TMSI-derived UE_ID to MAC for paging PF/PO derivation */
     nr_rrc_mac_config_req_paging_ue_id(rrc->ue_id, rrc->fiveG_S_TMSI);
+    break;
+  }
+
+  case NAS_TUN_REQ: {
+    const nas_tun_req_t *req = &NAS_TUN_REQ(msg_p);
+    DevAssert(req->n_psi >= 0 && req->n_psi <= NAS_TUN_LIST_MAX);
+    if (req->action == NAS_TUN_START_USER_PLANE) {
+      for (int i = 0; i < req->n_psi; i++) {
+        const nas_tun_psi_t *p = &req->psi[i];
+        nr_rrc_ue_tun_start_user_plane(rrc->ue_id, p->pdusession_id, p->sock, p->qfi, p->reader_thread);
+      }
+    } else {
+      AssertFatal(false, "unknown NAS_TUN_REQ action %d\n", req->action);
+    }
     break;
   }
 

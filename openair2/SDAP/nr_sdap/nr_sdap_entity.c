@@ -16,6 +16,8 @@
 #include "intertask_interface.h"
 #include "rlc.h"
 #include "nr_sdap.h"
+#include "tuntap_if.h"
+#include "utils.h"
 
 #define NO_SDAP_HEADER 0
 
@@ -27,13 +29,28 @@ static nr_sdap_entity_info sdap_info;
 
 instance_t *N3GTPUInst = NULL;
 
+/** @brief Tear down gNB TUN dataplane for one SDAP entity
+ * Skip UE entities: NAS owns the TUN fd so it survives SDAP delete in 5GMM-IDLE
+ * (needed for MO Service Request UL and re-bind after UP restore, TS 24.501 clause 5.6.1) */
 static void remove_ip_if(nr_sdap_entity_t *entity)
 {
   DevAssert(entity != NULL);
-  nr_sdap_tun_detach(entity);
-  if (!entity->tun.is_gnb)
+  sdap_tun_endpoint_t *tun = &entity->tun;
+
+  if (!tun->is_gnb)
+    return; /* UE: NAS owns the TUN fd, do not close/destroy */
+  if (tun->sock < 0)
     return;
-  nr_sdap_tun_destroy(entity->tun.ue_id, entity->tun.pdusession_id);
+
+  /* Stop/join the reader before close: on Linux, close() may not wake a blocked read() */
+  nr_sdap_tun_stop_reader(&entity->pdusession_thread);
+  close(tun->sock);
+  tun->sock = -1;
+
+  char ifname[IFNAMSIZ];
+  nr_sdap_generate_gnb_tun_ifname(ifname, tun->ue_id);
+  tuntap_destroy(ifname);
+  LOG_I(SDAP, "Destroyed TUN dataplane for UE %ld PDU session %d (%s)\n", tun->ue_id, tun->pdusession_id, ifname);
 }
 
 /** @brief Returns a bitmap indicating the SDAP entity role,
@@ -629,13 +646,6 @@ static void nr_sdap_add_entity(const int is_gnb, const ue_id_t ue_id, const sdap
     // PDCP SDUs to/from the TUN interface.
     start_sdap_tun_gnb_first_ue_default_pdu_session(ue_id, sdap_entity->tun.pdusession_id);
   }
-
-  if (!is_gnb) {
-    /* No-op on first setup until NAS registers the TUN. After paging/service request,
-     * re-attach the preserved UE TUN for the established PDU session (TS 38.304 clause 7.1,
-     * TS 24.501 clauses 5.6.2.2.1/5.6.1.1 restore UP resources for an established PDU session). */
-    nr_sdap_tun_attach(sdap_entity);
-  }
 }
 
 /** @brief Add or modify an SDAP entity if it already exists */
@@ -832,13 +842,4 @@ void nr_reconfigure_sdap_entity(NR_SDAP_Config_t *sdap_config, ue_id_t ue_id, in
   /* QFI to DRB mapping */
   sdap_config_t sdap = nr_sdap_get_config(is_gnb, sdap_config, drb_id);
   sdap_entity->qfi2drb_map_update(sdap_entity, &sdap);
-}
-
-void set_qfi(uint8_t qfi, uint8_t pduid, ue_id_t ue_id)
-{
-  DevAssert(qfi < SDAP_MAX_QFI);
-  nr_sdap_entity_t *entity = nr_sdap_get_entity(ue_id, pduid);
-  DevAssert(entity != NULL);
-  entity->qfi = qfi;
-  nr_sdap_tun_store_qfi(ue_id, pduid, qfi);
 }
