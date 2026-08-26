@@ -1,0 +1,19 @@
+/* SPDX-License-Identifier: LicenseRef-CSSL-1.0 */
+
+OAI_MEMPROF_ACTIVE_RUNTIME_1.0 {
+  global:
+    oai_memprof_active_control_v1;
+    oai_memprof_active_runtime_bootstrap_v1;
+    oai_memprof_active_runtime_activate_v1;
+    oai_memprof_active_runtime_seal_v1;
+    oai_memprof_active_runtime_drain_v1;
+    oai_memprof_active_runtime_complete_v1;
+    oai_memprof_active_runtime_snapshot_v1;
+    oai_memprof_active_runtime_thread_info_v1;
+    oai_memprof_active_runtime_begin_v1;
+    oai_memprof_active_runtime_sample_predecessor_v1;
+    oai_memprof_active_runtime_end_v1;
+    oai_memprof_active_runtime_realloc_zero_policy_v1;
+  local:
+    *;
+};
