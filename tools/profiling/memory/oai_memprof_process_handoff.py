@@ -20,6 +20,7 @@ SELF_SHA256_BYTES = 32
 MAX_BOOTSTRAP_BYTES = 65_536
 MAX_MAPS_BYTES = 16_777_216
 MAX_THREADS = 65_534
+MAX_WIRE_BYTES = 46_203_168
 MAX_RING_RECORDS = 1_048_576
 MAX_FLUSH_RECORDS = 65_536
 MAGIC = b"OAIMPHANDOFFV1\x00\x00"
@@ -276,6 +277,8 @@ def decode_process_handoff(data: object) -> ProcessHandoff:
     raw = data
     if len(raw) < HEADER_BYTES + SELF_SHA256_BYTES:
         _fail("handoff", "truncated")
+    if len(raw) > MAX_WIRE_BYTES:
+        _fail("handoff", "too large")
     if raw[:16] != MAGIC:
         _fail("magic", "schema-v1 magic mismatch")
     digest = hashlib.sha256(raw[:-32]).digest()

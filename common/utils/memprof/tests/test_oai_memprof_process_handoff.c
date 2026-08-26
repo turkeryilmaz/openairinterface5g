@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/mman.h>
 
 #define LITERAL_BYTES 1745U
 #define THREAD_OFFSET 1265U
@@ -81,6 +82,15 @@ int main(int argc, char **argv)
   oai_memprof_process_handoff_v1_t handoff;
   memset(&handoff, 0x5a, sizeof(handoff));
   const oai_memprof_process_handoff_v1_t handoff_sentinel = handoff;
+
+  const size_t too_large_wire_size = (size_t)OAI_MEMPROF_PROCESS_HANDOFF_V1_MAX_WIRE_BYTES + 1U;
+  const uint8_t *too_large_wire = mmap(NULL, too_large_wire_size, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+  CHECK(too_large_wire != MAP_FAILED);
+  CHECK(oai_memprof_process_handoff_v1_decode(&handoff, &thread, 1, too_large_wire, too_large_wire_size)
+        == OAI_MEMPROF_PROCESS_HANDOFF_WRONG_SIZE);
+  assert_unchanged((const uint8_t *)&handoff, (const uint8_t *)&handoff_sentinel, sizeof(handoff));
+  assert_unchanged((const uint8_t *)&thread, (const uint8_t *)&thread_sentinel, sizeof(thread));
+  CHECK(munmap((void *)too_large_wire, too_large_wire_size) == 0);
 
   CHECK(oai_memprof_process_handoff_v1_decode(&handoff, &thread, 1, literal, sizeof(literal)) == OAI_MEMPROF_PROCESS_HANDOFF_OK);
   CHECK(handoff.opening_header.process_generation == 7);

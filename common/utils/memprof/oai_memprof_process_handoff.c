@@ -60,6 +60,12 @@ _Static_assert(HANDOFF_THREAD_REQUESTED_BYTES_OFFSET == HANDOFF_THREAD_API_ATTEM
 _Static_assert(HANDOFF_THREAD_RUNTIME_BYTES + OAI_MEMPROF_PROCESS_HANDOFF_V1_DIAGNOSTIC_COUNT * 8U
                    == OAI_MEMPROF_PROCESS_HANDOFF_V1_THREAD_BYTES,
                "handoff thread-row extent mismatch");
+_Static_assert(OAI_MEMPROF_PROCESS_HANDOFF_V1_MAX_WIRE_BYTES
+                   == OAI_MEMPROF_PROCESS_HANDOFF_V1_HEADER_BYTES + OAI_MEMPROF_PROCESS_HANDOFF_V1_MAX_BOOTSTRAP_BYTES
+                          + OAI_MEMPROF_PROCESS_HANDOFF_V1_MAX_MAPS_BYTES
+                          + OAI_MEMPROF_PROCESS_HANDOFF_V1_MAX_THREADS * OAI_MEMPROF_PROCESS_HANDOFF_V1_THREAD_BYTES
+                          + OAI_MEMPROF_PROCESS_HANDOFF_V1_DIGEST_BYTES,
+               "handoff maximum wire extent mismatch");
 
 static void put_u16(uint8_t *destination, uint16_t value)
 {
@@ -612,6 +618,8 @@ oai_memprof_process_handoff_status_t oai_memprof_process_handoff_v1_decode(oai_m
   if (handoff == NULL || wire == NULL || (thread_capacity != 0 && threads == NULL))
     return OAI_MEMPROF_PROCESS_HANDOFF_INVALID_ARGUMENT;
   if (wire_size < OAI_MEMPROF_PROCESS_HANDOFF_V1_HEADER_BYTES + HANDOFF_SELF_SHA256_BYTES)
+    return OAI_MEMPROF_PROCESS_HANDOFF_WRONG_SIZE;
+  if (wire_size > OAI_MEMPROF_PROCESS_HANDOFF_V1_MAX_WIRE_BYTES)
     return OAI_MEMPROF_PROCESS_HANDOFF_WRONG_SIZE;
   if (memcmp(wire, handoff_magic, sizeof(handoff_magic)) != 0)
     return OAI_MEMPROF_PROCESS_HANDOFF_BAD_MAGIC;

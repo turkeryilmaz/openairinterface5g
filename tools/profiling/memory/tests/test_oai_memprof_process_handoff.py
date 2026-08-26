@@ -28,6 +28,14 @@ def load_module():
 SUBJECT = load_module()
 
 
+class TooLargeBytes(bytes):
+    def __len__(self) -> int:
+        return SUBJECT.MAX_WIRE_BYTES + 1
+
+    def __getitem__(self, key: object) -> bytes:
+        raise AssertionError("oversized handoff must be rejected before slicing")
+
+
 def refreshed(raw: bytearray) -> bytes:
     raw[-32:] = hashlib.sha256(raw[:-32]).digest()
     return bytes(raw)
@@ -85,6 +93,10 @@ class ProcessHandoffTests(unittest.TestCase):
             SUBJECT.decode_process_handoff(bytes(mutant))
         with self.assertRaisesRegex(SUBJECT.ProcessHandoffError, r"^reserved: nonzero reserved byte$"):
             SUBJECT.decode_process_handoff(refreshed(mutant))
+
+    def test_oversized_bytes_subclass_rejects_before_slicing_or_hashing(self) -> None:
+        with self.assertRaisesRegex(SUBJECT.ProcessHandoffError, r"^handoff: too large$"):
+            SUBJECT.decode_process_handoff(TooLargeBytes())
 
     def test_component_and_runtime_relations_reject(self) -> None:
         mutant = bytearray(self.literal)
