@@ -9,6 +9,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <inttypes.h>
+#include <pthread.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -29,8 +30,15 @@
 static size_t maximum_write = SIZE_MAX;
 static uint64_t fail_after = UINT64_MAX;
 static uint64_t observed_written;
+static bool inject_join_failure;
+static bool join_failure_injected;
+static bool captured_join_thread_valid;
+static pthread_t captured_join_thread;
+static uint64_t fsync_after_join_failure;
 
 ssize_t __real_write(int fd, const void *buffer, size_t size);
+int __real_pthread_join(pthread_t thread, void **value_ptr);
+int __real_fsync(int fd);
 
 ssize_t __wrap_write(int fd, const void *buffer, size_t size)
 {
@@ -51,6 +59,24 @@ ssize_t __wrap_write(int fd, const void *buffer, size_t size)
   if (result > 0)
     observed_written += (uint64_t)result;
   return result;
+}
+
+int __wrap_pthread_join(pthread_t thread, void **value_ptr)
+{
+  if (inject_join_failure && !join_failure_injected) {
+    captured_join_thread = thread;
+    captured_join_thread_valid = true;
+    join_failure_injected = true;
+    return ESRCH;
+  }
+  return __real_pthread_join(thread, value_ptr);
+}
+
+int __wrap_fsync(int fd)
+{
+  if (join_failure_injected)
+    ++fsync_after_join_failure;
+  return __real_fsync(fd);
 }
 
 static uint8_t hex_digit(char value)
@@ -153,6 +179,65 @@ static void validate_boundary_samples(const oai_memprof_stream_writer_result_t *
       CHECK(samples[index - 1].monotonic_raw_after_ns <= samples[index].monotonic_raw_before_ns);
     }
   }
+}
+
+static void validate_zero_clock_sample(const oai_memprof_clock_sample_v1_t *sample)
+{
+  CHECK(sample->counter == 0);
+  CHECK(sample->monotonic_raw_before_ns == 0);
+  CHECK(sample->monotonic_raw_after_ns == 0);
+  CHECK(sample->realtime_unix_ns == 0);
+}
+
+static void validate_zero_runtime_snapshot(const oai_memprof_core_snapshot_t *snapshot)
+{
+  CHECK(snapshot->process_generation == 0);
+  CHECK(snapshot->reservations == 0);
+  CHECK(snapshot->ready_threads == 0);
+  CHECK(snapshot->registration_capacity_failures == 0);
+  CHECK(snapshot->unregistered_active_thread_failures == 0);
+  CHECK(snapshot->diagnostic_saturation_transitions == 0);
+  CHECK(snapshot->registration_diagnostic_saturated_mask == 0);
+  CHECK(snapshot->recursion_bypasses == 0);
+  CHECK(snapshot->ring_full_losses == 0);
+  CHECK(snapshot->admitted_transactions == 0);
+  CHECK(snapshot->completed_transactions == 0);
+  CHECK(snapshot->emitted_events == 0);
+  CHECK(snapshot->requested_bytes == 0);
+  CHECK(snapshot->table_entries == 0);
+  CHECK(snapshot->sample_seed == 0);
+  CHECK(snapshot->sample_threshold == 0);
+  CHECK(snapshot->table_probes == 0);
+  CHECK(snapshot->table_shards == 0);
+  CHECK(snapshot->state == 0);
+  CHECK(snapshot->mode_id == 0);
+}
+
+static void validate_join_failure_result(const oai_memprof_stream_writer_result_t *result)
+{
+  CHECK(result->status == OAI_MEMPROF_STREAM_WRITER_THREAD_ERROR);
+  CHECK(result->runtime_status == OAI_MEMPROF_CORE_OK);
+  validate_zero_runtime_snapshot(&result->runtime_snapshot);
+  CHECK(result->clock_status == OAI_MEMPROF_CLOCK_OK);
+  CHECK(result->clock_info.counter_frequency_numerator == 0);
+  CHECK(result->clock_info.counter_frequency_denominator == 0);
+  CHECK(result->clock_info.architecture_id == 0);
+  CHECK(result->clock_info.acquisition_source_id == 0);
+  CHECK(result->clock_info.clock_kind == 0);
+  for (size_t index = 0; index < sizeof(result->clock_info.reserved_zero); ++index)
+    CHECK(result->clock_info.reserved_zero[index] == 0);
+  validate_zero_clock_sample(&result->seal_before_sample);
+  validate_zero_clock_sample(&result->seal_after_sample);
+  validate_zero_clock_sample(&result->drain_complete_sample);
+  validate_zero_clock_sample(&result->final_sample);
+  CHECK(result->chunk_count == 0);
+  CHECK(result->record_count == 0);
+  CHECK(result->payload_bytes == 0);
+  CHECK(result->stream_bytes == 0);
+  CHECK(result->file_device == 0);
+  CHECK(result->file_inode == 0);
+  CHECK(result->system_errno == ESRCH);
+  CHECK(!result->prefooter_closed);
 }
 
 static uint8_t *read_file(const char *path, size_t *size)
@@ -258,6 +343,8 @@ int main(int argc, char **argv)
     fail_after = OAI_MEMPROF_CONTAINER_V1_OPENING_HEADER_SIZE + OAI_MEMPROF_CONTAINER_V1_CHUNK_HEADER_SIZE + 48;
     event_count = 1;
     flush_records = 1;
+  } else if (strcmp(mode, "join-failure") == 0) {
+    event_count = 0;
   } else {
     CHECK(strcmp(mode, "positive") == 0);
   }
@@ -313,8 +400,23 @@ int main(int argc, char **argv)
     CHECK(flushed);
   }
 
-  oai_memprof_stream_writer_result_t result = {0};
+  if (strcmp(mode, "join-failure") == 0)
+    inject_join_failure = true;
+  oai_memprof_stream_writer_result_t result;
+  memset(&result, 0xa5, sizeof(result));
   const oai_memprof_stream_writer_status_t finish = oai_memprof_stream_writer_finish_v1(writer, UINT64_C(100000000), &result);
+  if (strcmp(mode, "join-failure") == 0) {
+    CHECK(join_failure_injected && captured_join_thread_valid);
+    CHECK(fsync_after_join_failure == 0);
+    CHECK(finish == OAI_MEMPROF_STREAM_WRITER_THREAD_ERROR);
+    validate_join_failure_result(&result);
+    CHECK(__real_pthread_join(captured_join_thread, NULL) == 0);
+    CHECK(fsync_after_join_failure == 0);
+    CHECK(unlink(path) == 0);
+    CHECK(rmdir(directory) == 0);
+    puts("stream writer join-failure test passed");
+    return EXIT_SUCCESS;
+  }
   validate_boundary_samples(&result);
   size_t size = 0;
   uint8_t *bytes = read_file(path, &size);

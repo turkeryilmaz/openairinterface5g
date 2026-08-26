@@ -64,9 +64,10 @@ oai_memprof_process_session_status_t oai_memprof_process_session_start_v1(const 
                                                                           oai_memprof_process_session_t **session);
 
 /*
- * Finish seals and joins the writer, snapshots every READY producer, and
- * publishes one self-authenticating handoff with O_EXCL. The session becomes
- * invalid after this call. Result is always populated for a valid session.
+ * Finish seals and joins the writer, snapshots every READY producer, and only
+ * after a successful, closed pre-footer publishes one self-authenticating
+ * handoff with O_EXCL. The session becomes invalid after this call. Result is
+ * always populated for a valid session.
  */
 oai_memprof_process_session_status_t oai_memprof_process_session_finish_v1(oai_memprof_process_session_t *session,
                                                                            uint64_t seal_timeout_ns,

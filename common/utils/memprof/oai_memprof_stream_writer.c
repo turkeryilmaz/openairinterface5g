@@ -408,8 +408,17 @@ oai_memprof_stream_writer_status_t oai_memprof_stream_writer_finish_v1(oai_mempr
   oai_memprof_core_status_t runtime_status = oai_memprof_active_runtime_seal_v1(seal_timeout_ns);
   capture_boundary_sample(writer, &writer->seal_before_sample, &writer->seal_after_sample);
   atomic_store_explicit(&writer->stop, true, memory_order_release);
-  if (pthread_join(writer->thread, NULL) != 0)
-    fail_writer(writer, OAI_MEMPROF_STREAM_WRITER_THREAD_ERROR, 0);
+  const int join_status = pthread_join(writer->thread, NULL);
+  if (join_status != 0) {
+    /* The consumer may still access writer, so process teardown retains its mapping and descriptors. */
+    const oai_memprof_stream_writer_result_t failed = {
+        .status = OAI_MEMPROF_STREAM_WRITER_THREAD_ERROR,
+        .runtime_status = runtime_status,
+        .system_errno = join_status,
+    };
+    *result = failed;
+    return OAI_MEMPROF_STREAM_WRITER_THREAD_ERROR;
+  }
   if (runtime_status != OAI_MEMPROF_CORE_OK)
     fail_writer(writer, OAI_MEMPROF_STREAM_WRITER_RUNTIME_ERROR, 0);
   capture_boundary_sample(writer, &writer->seal_after_sample, &writer->drain_complete_sample);

@@ -327,16 +327,16 @@ oai_memprof_process_session_status_t oai_memprof_process_session_finish_v1(oai_m
     return OAI_MEMPROF_PROCESS_SESSION_INVALID_ARGUMENT;
   oai_memprof_process_session_result_t completed = {0};
   completed.writer.status = oai_memprof_stream_writer_finish_v1(session->writer, seal_timeout_ns, &completed.writer);
-  completed.status = completed.writer.status == OAI_MEMPROF_STREAM_WRITER_OK ? OAI_MEMPROF_PROCESS_SESSION_OK
-                                                                             : OAI_MEMPROF_PROCESS_SESSION_WRITER_ERROR;
+  const bool writer_complete = completed.writer.status == OAI_MEMPROF_STREAM_WRITER_OK && completed.writer.prefooter_closed;
+  completed.status = writer_complete ? OAI_MEMPROF_PROCESS_SESSION_OK : OAI_MEMPROF_PROCESS_SESSION_WRITER_ERROR;
 
-  const uint64_t ready_threads = completed.writer.runtime_snapshot.ready_threads;
+  const uint64_t ready_threads = writer_complete ? completed.writer.runtime_snapshot.ready_threads : 0;
   if (ready_threads > session->max_threads || ready_threads > SIZE_MAX) {
     completed.status = OAI_MEMPROF_PROCESS_SESSION_RUNTIME_ERROR;
   }
   size_t thread_bytes = 0;
   oai_memprof_process_handoff_thread_v1_t *threads = NULL;
-  if (completed.status != OAI_MEMPROF_PROCESS_SESSION_RUNTIME_ERROR
+  if (completed.status == OAI_MEMPROF_PROCESS_SESSION_OK
       && (!multiply_size((size_t)ready_threads, sizeof(*threads), &thread_bytes)
           || (ready_threads != 0
               && (threads = mmap(NULL, thread_bytes, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0)) == MAP_FAILED))) {
@@ -352,15 +352,14 @@ oai_memprof_process_session_status_t oai_memprof_process_session_finish_v1(oai_m
   }
 
   uint8_t prefix_sha256[32] = {0};
-  if (completed.status != OAI_MEMPROF_PROCESS_SESSION_RUNTIME_ERROR && completed.status != OAI_MEMPROF_PROCESS_SESSION_NO_MEMORY
-      && !hash_stream_prefix(session, &completed.writer, prefix_sha256)) {
+  if (completed.status == OAI_MEMPROF_PROCESS_SESSION_OK && !hash_stream_prefix(session, &completed.writer, prefix_sha256)) {
     completed.status = OAI_MEMPROF_PROCESS_SESSION_HANDOFF_ERROR;
     completed.system_errno = errno == 0 ? EIO : errno;
   }
 
   size_t wire_size = 0;
   uint8_t *wire = NULL;
-  if (completed.status != OAI_MEMPROF_PROCESS_SESSION_RUNTIME_ERROR && completed.status != OAI_MEMPROF_PROCESS_SESSION_NO_MEMORY) {
+  if (completed.status == OAI_MEMPROF_PROCESS_SESSION_OK) {
     oai_memprof_process_handoff_v1_t handoff = {
         .opening_header = session->opening_header,
         .opening_sample = session->opening_sample,
@@ -394,9 +393,7 @@ oai_memprof_process_session_status_t oai_memprof_process_session_finish_v1(oai_m
   }
 
   int handoff_fd = -1;
-  if (wire != NULL && completed.status != OAI_MEMPROF_PROCESS_SESSION_HANDOFF_ERROR
-      && completed.status != OAI_MEMPROF_PROCESS_SESSION_NO_MEMORY
-      && completed.status != OAI_MEMPROF_PROCESS_SESSION_RUNTIME_ERROR) {
+  if (wire != NULL && completed.status == OAI_MEMPROF_PROCESS_SESSION_OK) {
     handoff_fd = openat(session->directory_fd,
                         session->handoff_file_name,
                         O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC | O_NOFOLLOW,

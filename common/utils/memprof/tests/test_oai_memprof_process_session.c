@@ -24,6 +24,26 @@
     }                                                                                 \
   } while (0)
 
+static bool inject_writer_error;
+
+oai_memprof_stream_writer_status_t __real_oai_memprof_stream_writer_finish_v1(oai_memprof_stream_writer_t *writer,
+                                                                              uint64_t seal_timeout_ns,
+                                                                              oai_memprof_stream_writer_result_t *result);
+
+oai_memprof_stream_writer_status_t __wrap_oai_memprof_stream_writer_finish_v1(oai_memprof_stream_writer_t *writer,
+                                                                              uint64_t seal_timeout_ns,
+                                                                              oai_memprof_stream_writer_result_t *result)
+{
+  const oai_memprof_stream_writer_status_t status = __real_oai_memprof_stream_writer_finish_v1(writer, seal_timeout_ns, result);
+  if (!inject_writer_error)
+    return status;
+  CHECK(status == OAI_MEMPROF_STREAM_WRITER_OK);
+  CHECK(result->status == OAI_MEMPROF_STREAM_WRITER_OK && result->prefooter_closed);
+  result->status = OAI_MEMPROF_STREAM_WRITER_IO_ERROR;
+  result->system_errno = EIO;
+  return OAI_MEMPROF_STREAM_WRITER_IO_ERROR;
+}
+
 static const uint8_t canonical_configuration[] =
     "{\"configuration_id\":\"process-session-fixture\",\"version\":{\"major\":1,\"minor\":0}}\n";
 
@@ -125,7 +145,8 @@ int main(int argc, char **argv)
 {
   CHECK(argc == 2);
   const bool existing_handoff = strcmp(argv[1], "existing") == 0;
-  CHECK(existing_handoff || strcmp(argv[1], "positive") == 0);
+  const bool writer_error = strcmp(argv[1], "writer-error") == 0;
+  CHECK(existing_handoff || writer_error || strcmp(argv[1], "positive") == 0);
 
   oai_memprof_clock_info_v1_t clock = {0};
   const oai_memprof_clock_status_t clock_status = oai_memprof_clock_info_v1(&clock);
@@ -179,12 +200,22 @@ int main(int argc, char **argv)
   }
 
   oai_memprof_process_session_result_t result = {0};
+  inject_writer_error = writer_error;
   const oai_memprof_process_session_status_t finish = oai_memprof_process_session_finish_v1(session, UINT64_C(100000000), &result);
   if (existing_handoff) {
     CHECK(finish == OAI_MEMPROF_PROCESS_SESSION_IO_ERROR);
     CHECK(result.status == OAI_MEMPROF_PROCESS_SESSION_IO_ERROR && result.system_errno == EEXIST);
     CHECK(!result.handoff_published && result.writer.status == OAI_MEMPROF_STREAM_WRITER_OK);
     assert_existing_handoff_retained(directory_fd);
+  } else if (writer_error) {
+    CHECK(finish == OAI_MEMPROF_PROCESS_SESSION_WRITER_ERROR);
+    CHECK(result.status == OAI_MEMPROF_PROCESS_SESSION_WRITER_ERROR && result.system_errno == 0);
+    CHECK(result.writer.status == OAI_MEMPROF_STREAM_WRITER_IO_ERROR && result.writer.system_errno == EIO
+          && result.writer.prefooter_closed);
+    CHECK(!result.handoff_published && result.handoff_bytes == 0 && result.handoff_device == 0 && result.handoff_inode == 0);
+    struct stat missing_handoff;
+    errno = 0;
+    CHECK(fstatat(directory_fd, "handoff.bin", &missing_handoff, AT_SYMLINK_NOFOLLOW) == -1 && errno == ENOENT);
   } else {
     CHECK(finish == OAI_MEMPROF_PROCESS_SESSION_OK && result.status == OAI_MEMPROF_PROCESS_SESSION_OK);
     CHECK(result.handoff_published && result.system_errno == 0);
@@ -231,7 +262,12 @@ int main(int argc, char **argv)
   }
 
   CHECK(unlinkat(directory_fd, "pre-footer.bin", 0) == 0);
-  CHECK(unlinkat(directory_fd, "handoff.bin", 0) == 0);
+  if (writer_error) {
+    errno = 0;
+    CHECK(unlinkat(directory_fd, "handoff.bin", 0) == -1 && errno == ENOENT);
+  } else {
+    CHECK(unlinkat(directory_fd, "handoff.bin", 0) == 0);
+  }
   CHECK(close(directory_fd) == 0 && rmdir(directory) == 0);
   printf("process session %s test passed\n", argv[1]);
   return EXIT_SUCCESS;

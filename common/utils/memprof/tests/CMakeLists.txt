@@ -23,6 +23,47 @@ add_test(NAME oai_memprof_wire_python
                  tools.profiling.memory.tests.test_oai_memprof_wire)
 set_tests_properties(oai_memprof_wire_python PROPERTIES WORKING_DIRECTORY ${OPENAIR_DIR})
 
+add_executable(test_oai_memprof_stream_writer test_oai_memprof_stream_writer.c)
+target_compile_features(test_oai_memprof_stream_writer PRIVATE c_std_11)
+target_compile_options(test_oai_memprof_stream_writer PRIVATE -Wall -Wextra -Werror -Wpedantic)
+target_link_libraries(test_oai_memprof_stream_writer PRIVATE oai_memprof_stream_writer)
+target_link_options(test_oai_memprof_stream_writer PRIVATE
+                    "LINKER:--wrap=write"
+                    "LINKER:--wrap=pthread_join"
+                    "LINKER:--wrap=fsync")
+set_target_properties(test_oai_memprof_stream_writer PROPERTIES
+                      BUILD_RPATH "${CMAKE_BINARY_DIR}/memprof")
+add_dependencies(tests test_oai_memprof_stream_writer)
+
+foreach(mode positive counters timer short failure join-failure)
+  add_test(NAME oai_memprof_stream_writer_${mode}_c
+           COMMAND test_oai_memprof_stream_writer
+                   ${mode}
+                   ${CMAKE_CURRENT_SOURCE_DIR}/active_stream_opening_v1.hex)
+  set_tests_properties(oai_memprof_stream_writer_${mode}_c PROPERTIES
+                       LABELS "memprof;stream-writer"
+                       SKIP_RETURN_CODE 77
+                       TIMEOUT 30)
+endforeach()
+
+add_executable(test_oai_memprof_process_session test_oai_memprof_process_session.c)
+target_compile_features(test_oai_memprof_process_session PRIVATE c_std_11)
+target_compile_options(test_oai_memprof_process_session PRIVATE -Wall -Wextra -Werror -Wpedantic)
+target_link_libraries(test_oai_memprof_process_session PRIVATE oai_memprof_process_session)
+target_link_options(test_oai_memprof_process_session PRIVATE
+                    "LINKER:--wrap=oai_memprof_stream_writer_finish_v1")
+set_target_properties(test_oai_memprof_process_session PROPERTIES BUILD_RPATH "${CMAKE_BINARY_DIR}/memprof")
+add_dependencies(tests test_oai_memprof_process_session)
+
+foreach(mode positive existing writer-error)
+  add_test(NAME oai_memprof_process_session_${mode}_c
+           COMMAND test_oai_memprof_process_session ${mode})
+  set_tests_properties(oai_memprof_process_session_${mode}_c PROPERTIES
+                       LABELS "memprof;process-session"
+                       SKIP_RETURN_CODE 77
+                       TIMEOUT 30)
+endforeach()
+
 add_executable(oai_memprof_archive_append ../oai_memprof_archive_append.c)
 target_compile_features(oai_memprof_archive_append PRIVATE c_std_11)
 target_compile_options(oai_memprof_archive_append PRIVATE -Wall -Wextra -Werror -Wpedantic)
