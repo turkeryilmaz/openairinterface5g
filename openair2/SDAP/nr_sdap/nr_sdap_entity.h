@@ -75,13 +75,16 @@ typedef struct sdap_configuration_s {
   uint8_t mappedQFIs2ReleaseCount;
 } sdap_config_t;
 
-typedef struct nr_sdap_entity_s {
+typedef struct sdap_tun_endpoint_s {
   ue_id_t ue_id;
-  /// sdap_tun_read_thread needs to know if we are gNB/UE, so for noS1 mode,
-  /// store which one we are
-  bool is_gnb;
   int pdusession_id;
-  int pdusession_sock;
+  // TUN fd (-1 = none)
+  int sock;
+  bool is_gnb;
+} sdap_tun_endpoint_t;
+
+typedef struct nr_sdap_entity_s {
+  sdap_tun_endpoint_t tun;
   pthread_t pdusession_thread;
   bool stop_thread;
   int qfi;

@@ -31,9 +31,9 @@ static void remove_ip_if(nr_sdap_entity_t *entity)
 {
   DevAssert(entity != NULL);
   nr_sdap_tun_detach(entity);
-  if (!entity->is_gnb)
+  if (!entity->tun.is_gnb)
     return;
-  nr_sdap_tun_destroy(entity->ue_id, entity->pdusession_id);
+  nr_sdap_tun_destroy(entity->tun.ue_id, entity->tun.pdusession_id);
 }
 
 /** @brief Returns a bitmap indicating the SDAP entity role,
@@ -117,7 +117,7 @@ static bool nr_sdap_tx_entity(nr_sdap_entity_t *entity,
   uint8_t sdap_buf[SDAP_MAX_PDU];
   const qfi2drb_t *map = entity->qfi2drb_map(entity, qfi);
   if (!map) {
-    LOG_W(SDAP, "Dropping TX SDAP SDU: no DRB mapping for QFI %u (pdu_session=%d)\n", qfi, entity->pdusession_id);
+    LOG_W(SDAP, "Dropping TX SDAP SDU: no DRB mapping for QFI %u (pdu_session=%d)\n", qfi, entity->tun.pdusession_id);
     return false;
   }
   const int drb_id = map->drb_id;
@@ -377,17 +377,17 @@ nr_sdap_rx_entity(nr_sdap_entity_t *entity, int drb_id, int is_gnb, int pdusessi
      * 5.2.2 Downlink
      * deliver the retrieved SDAP SDU to the upper layer.
      */
-    if (entity->pdusession_sock < 0) {
+    if (entity->tun.sock < 0) {
       LOG_D(SDAP, "[UE %ld] PDU session %d: TUN not attached, drop DL SDU (%d B)\n", ue_id, pdusession_id, size - offset);
       return;
     }
-    int len = write(entity->pdusession_sock, &buf[offset], size - offset);
+    int len = write(entity->tun.sock, &buf[offset], size - offset);
     LOG_D(SDAP, "RX Entity len : %d\n", len);
     LOG_D(SDAP, "RX Entity size : %d\n", size);
     LOG_D(SDAP, "RX Entity offset : %d\n", offset);
 
     if (len != size-offset)
-      LOG_E(SDAP, "write failed to fd %d! errno = %s\n", entity->pdusession_sock, strerror(errno));
+      LOG_E(SDAP, "write failed to fd %d! errno = %s\n", entity->tun.sock, strerror(errno));
   }
 }
 
@@ -540,9 +540,6 @@ static void nr_sdap_rm_qos_flows_from_drb(nr_sdap_entity_t *entity, const sdap_c
  * @param drb the DRB ID to be mapped */
 static void nr_sdap_qfi2drb_map_update(nr_sdap_entity_t *entity, const sdap_config_t *sdap)
 {
-  if (!entity->is_gnb) { // UE control PDU configuration
-    nr_sdap_ue_control_pdu_config(entity, entity->ue_id, sdap);
-  }
   nr_sdap_add_qos_flows_to_drb(entity, sdap);
   nr_sdap_rm_qos_flows_from_drb(entity, sdap);
 
@@ -563,8 +560,15 @@ static void nr_sdap_qfi2drb_map_update(nr_sdap_entity_t *entity, const sdap_conf
         }
       }
     }
-    AssertFatal(mapped_drbs <= 1, "PDU session %d: disabled SDAP but %d DRBs mapped\n", entity->pdusession_id, mapped_drbs);
+    AssertFatal(mapped_drbs <= 1, "PDU session %d: disabled SDAP but %d DRBs mapped\n", entity->tun.pdusession_id, mapped_drbs);
   }
+}
+
+/** @brief UE: end-marker control PDUs before QFI to DRB map update (TS 37.324 clause 5.3.1) */
+static void nr_sdap_ue_qfi2drb_map_update(nr_sdap_entity_t *entity, const sdap_config_t *sdap)
+{
+  nr_sdap_ue_control_pdu_config(entity, entity->tun.ue_id, sdap);
+  nr_sdap_qfi2drb_map_update(entity, sdap);
 }
 
 /**
@@ -580,9 +584,9 @@ static void nr_sdap_add_entity(const int is_gnb, const ue_id_t ue_id, const sdap
   LOG_I(SDAP, "Creating SDAP entity ue_id=%ld pdu_session_id=%d\n", ue_id, sdap->pdusession_id);
 
   // SDAP entity ids
-  sdap_entity->ue_id = ue_id;
-  sdap_entity->pdusession_id = sdap->pdusession_id;
-  sdap_entity->is_gnb = is_gnb;
+  sdap_entity->tun.ue_id = ue_id;
+  sdap_entity->tun.pdusession_id = sdap->pdusession_id;
+  sdap_entity->tun.is_gnb = is_gnb;
 
   // rx/tx entities
   sdap_entity->tx_entity = nr_sdap_tx_entity;
@@ -593,12 +597,12 @@ static void nr_sdap_add_entity(const int is_gnb, const ue_id_t ue_id, const sdap
   sdap_entity->sdap_map_ctrl_pdu = nr_sdap_map_ctrl_pdu;
   sdap_entity->sdap_submit_ctrl_pdu = nr_sdap_submit_ctrl_pdu;
 
-  // QFI to DRB mapping functions pointers
-  sdap_entity->qfi2drb_map_update = nr_sdap_qfi2drb_map_update;
+  // QFI to DRB mapping function pointers
+  sdap_entity->qfi2drb_map_update = is_gnb ? nr_sdap_qfi2drb_map_update : nr_sdap_ue_qfi2drb_map_update;
   sdap_entity->qfi2drb_map_add = nr_sdap_qfi2drb_map_add;
   sdap_entity->qfi2drb_map_delete = nr_sdap_qfi2drb_map_del;
   sdap_entity->qfi2drb_map = nr_sdap_qfi2drb;
-  sdap_entity->pdusession_sock = -1;
+  sdap_entity->tun.sock = -1;
 
   // set default DRB
   if (sdap->defaultDRB) {
@@ -623,7 +627,7 @@ static void nr_sdap_add_entity(const int is_gnb, const ue_id_t ue_id, const sdap
   if (IS_SOFTMODEM_NOS1 && is_gnb) {
     // In NOS1 mode, terminate SDAP for the first UE on the gNB. This allows injecting/receiving
     // PDCP SDUs to/from the TUN interface.
-    start_sdap_tun_gnb_first_ue_default_pdu_session(ue_id, sdap_entity->pdusession_id);
+    start_sdap_tun_gnb_first_ue_default_pdu_session(ue_id, sdap_entity->tun.pdusession_id);
   }
 
   if (!is_gnb) {
@@ -660,11 +664,11 @@ nr_sdap_entity_t *nr_sdap_get_entity(ue_id_t ue_id, int pdusession_id)
     return NULL;
   }
 
-  while ((sdap_entity->ue_id != ue_id || sdap_entity->pdusession_id != pdusession_id) && sdap_entity->next_entity != NULL) {
+  while ((sdap_entity->tun.ue_id != ue_id || sdap_entity->tun.pdusession_id != pdusession_id) && sdap_entity->next_entity != NULL) {
     sdap_entity = sdap_entity->next_entity;
   }
 
-  if (sdap_entity->ue_id == ue_id && sdap_entity->pdusession_id == pdusession_id)
+  if (sdap_entity->tun.ue_id == ue_id && sdap_entity->tun.pdusession_id == pdusession_id)
     return sdap_entity;
 
   return NULL;
@@ -739,7 +743,7 @@ bool nr_sdap_delete_entity(ue_id_t ue_id, int pdusession_id)
 
   for (nr_sdap_entity_t **pp = &sdap_info.sdap_entity_llist; *pp != NULL; pp = &(*pp)->next_entity) {
     nr_sdap_entity_t *entity = *pp;
-    if (entity->ue_id != ue_id || entity->pdusession_id != pdusession_id)
+    if (entity->tun.ue_id != ue_id || entity->tun.pdusession_id != pdusession_id)
       continue;
     *pp = entity->next_entity;
     remove_ip_if(entity);
@@ -763,7 +767,7 @@ bool nr_sdap_delete_ue_entities(ue_id_t ue_id)
 
   for (nr_sdap_entity_t **pp = &sdap_info.sdap_entity_llist; *pp != NULL;) {
     nr_sdap_entity_t *entity = *pp;
-    if (entity->ue_id != ue_id) {
+    if (entity->tun.ue_id != ue_id) {
       pp = &(*pp)->next_entity;
       continue;
     }
