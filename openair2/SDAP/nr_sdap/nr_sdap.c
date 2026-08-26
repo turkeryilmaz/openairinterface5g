@@ -83,13 +83,7 @@ void nr_sdap_tun_attach(nr_sdap_entity_t *entity)
   if (d < 0)
     return;
 
-  char thread_name[64];
-  if (entity->tun.is_gnb) {
-    snprintf(thread_name, sizeof(thread_name), "gnb_tun_read_thread");
-  } else {
-    snprintf(thread_name, sizeof(thread_name), "ue_tun_read_%ld_p%d", entity->tun.ue_id, entity->tun.pdusession_id);
-  }
-  threadCreate(&entity->pdusession_thread, sdap_tun_read_thread, entity, thread_name, -1, OAI_PRIORITY_RT_LOW);
+  nr_sdap_tun_start_reader(entity, &entity->pdusession_thread, "gnb_tun_read_thread");
 }
 
 static sdap_tun_iface_t *sdap_tun_iface_register(ue_id_t ue_id, int pdusession_id, int sock, const char *ifname)
@@ -211,6 +205,22 @@ static void *sdap_tun_read_thread(void *arg)
   }
 
   return NULL;
+}
+
+/** @brief Start the connected TUN UL reader on an SDAP entity
+ * @param[in] entity SDAP entity for this PDU session
+ * @param[in,out] thread Reader pthread handle to create into
+ * @param[in] name Thread name for threadCreate */
+void nr_sdap_tun_start_reader(nr_sdap_entity_t *entity, pthread_t *thread, char *name)
+{
+  DevAssert(entity);
+  DevAssert(entity->tun.sock >= 0);
+  DevAssert(thread);
+  DevAssert(*thread == 0);
+  DevAssert(name);
+
+  threadCreate(thread, sdap_tun_read_thread, entity, name, -1, OAI_PRIORITY_RT_LOW);
+  LOG_I(SDAP, "UE %ld PDU session %d: started TUN reader '%s'\n", entity->tun.ue_id, entity->tun.pdusession_id, name);
 }
 
 /** @brief Stop a TUN reader thread and clear the handle
