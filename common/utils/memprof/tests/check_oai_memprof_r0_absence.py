@@ -24,9 +24,9 @@ from typing import BinaryIO, Callable, Sequence
 from unittest import mock
 
 
-SCHEMA = "oai.memprof.r0.absence-result/v6"
-SELF_TEST_SCHEMA = "oai.memprof.r0.absence-self-test/v6"
-CATALOG_VERSION = "oai-memprof-r0-absence-catalog/6"
+SCHEMA = "oai.memprof.r0.absence-result/v11"
+SELF_TEST_SCHEMA = "oai.memprof.r0.absence-self-test/v18"
+CATALOG_VERSION = "oai-memprof-r0-absence-catalog/19"
 CATALOG_SERIALIZATION_DOMAIN = "oai.memprof.r0.absence-catalog"
 CATALOG_SERIALIZATION_VERSION = "length-prefixed-fields/v1"
 
@@ -40,8 +40,46 @@ MAX_DIAGNOSTIC_CHARS = 512
 MAX_PATH_CHARS = 4096
 MAX_JSON_BYTES = 64 * 1024
 
-APIS = ("malloc", "calloc", "realloc", "free")
+APIS = (
+    "malloc",
+    "calloc",
+    "realloc",
+    "free",
+    "reallocarray",
+    "aligned_alloc",
+    "posix_memalign",
+    "memalign",
+    "valloc",
+    "pvalloc",
+    "strdup",
+    "strndup",
+)
 R0_FINAL_TARGETS = ("nr-softmodem", "nr-uesoftmodem")
+
+CATALOG_SCAN_MARKERS = (
+    "memprof",
+    "r0_",
+    "__wrap_",
+    "__real_",
+    "profiling/memory",
+    "profiling.memory",
+    "compare_literal",
+    "event_record_v1_literal",
+    "chunk_header_v1.hex",
+    "diagnostic_total_entry_v1.hex",
+    "event_record_v1.hex",
+    "event_total_entry_v1.hex",
+    "footer_preimage_v1.hex",
+    "object_binding_entries_v1.hex",
+    "opening_header_v1.hex",
+    "active_stream_opening_v1.hex",
+    "process_handoff_v1.hex",
+    "trailer_header_v1.hex",
+)
+WRAP_SCAN_MARKERS = ("wrap", "--w", "-wr")
+WRAP_QUOTING_CHARACTERS = frozenset(map(chr, (92, 39, 34)))
+WRAP_QUOTING_TRANSLATION = str.maketrans({92: None, 39: None, 34: None})
+INVALID_LINE_CHARACTER = re.compile(r"[\x00-\x08\x0a-\x0c\x0e-\x1f\x7f]|\r(?=.)")
 
 GNU_LD_REFERENCE_VERSION = "GNU ld 2.42"
 GNU_LD_WRAP_GRAMMAR_VERSION = "oai.memprof.gnu-ld-wrap-text-grammar/v2"
@@ -49,7 +87,7 @@ GNU_LD_WRAP_OPTION_NAMES = ("wr", "wra", "wrap")
 GNU_LD_WRAP_CLAIM = "frozen_textual_grammar_only"
 GNU_LD_WRAP_EXPANSION_CLAIM = "shell_expansion_constructed_spellings_outside_grammar"
 GNU_LD_WRAP_EXPANSION_EXAMPLE = r"--wr${EMPTY}ap=malloc"
-FINAL_LINK_GRAMMAR_VERSION = "oai.memprof.r0.final-link-text-grammar/v2"
+FINAL_LINK_GRAMMAR_VERSION = "oai.memprof.r0.final-link-text-grammar/v3"
 ROOT_GRAMMAR_VERSION = "oai.memprof.r0.declared-root-grammar/v1"
 FINAL_ELF_REQUIREMENT = "independent_final_elf_validation_required"
 ABSENCE_SCOPE_CLAIM = "bounded_structural_content_only"
@@ -76,6 +114,7 @@ MALFORMED_RAW_OUTPUT_EXPRESSIONS = (
     r"(?:[\t ]+-Xlinker)?[\t ]+(?P<value>[^\t ;&|<>]+)",
 )
 R0_FINAL_LINK_DRIVER = "/usr/bin/c++"
+FINAL_LINK_DEPENDENCY_OPTION_TEMPLATE = "-Wl,--dependency-file=CMakeFiles/{target}.dir/link.d"
 FINAL_LINK_PRE_OPTION_EXPRESSIONS = (
     r"-D[A-Za-z_][A-Za-z0-9_]*(?:=.*)?",
     r"-O[A-Za-z0-9_.+-]+",
@@ -83,6 +122,7 @@ FINAL_LINK_PRE_OPTION_EXPRESSIONS = (
     r"-f[A-Za-z0-9_.+-]+(?:=.*)?",
     r"-g[A-Za-z0-9_.+-]*",
     r"-m[A-Za-z0-9_.+-]+(?:=.*)?",
+    r"-l(?:gcc|rt)",
     r"-pipe",
     r"-rdynamic",
 )
@@ -116,6 +156,17 @@ PRODUCTION_TARGETS = (
     "oai_memprof_runtime",
     "oai_memprof_wrap_c",
     "oai_memprof_wire",
+    "oai_memprof_container_wire",
+    "oai_memprof_active_core",
+    "oai_memprof_active_runtime",
+    "oai_memprof_active_wrap_c",
+    "oai_memprof_stream_writer",
+    "oai_memprof_stream_finalizer",
+    "oai_memprof_clock",
+    "oai_memprof_process_handoff",
+    "oai_memprof_process_session",
+    "oai_memprof_softmodem_session",
+    "oai_memprof_archive_append",
 )
 
 PRODUCTION_OUTPUTS = (
@@ -124,6 +175,27 @@ PRODUCTION_OUTPUTS = (
     "liboai_memprof_runtime.so.1.0.0",
     "liboai_memprof_wrap_c.a",
     "liboai_memprof_wire.a",
+    "liboai_memprof_container_wire.a",
+    "liboai_memprof_active_core.a",
+    "liboai_memprof_active_runtime.so",
+    "liboai_memprof_active_runtime.so.1",
+    "liboai_memprof_active_runtime.so.1.0.0",
+    "liboai_memprof_active_wrap_c.a",
+    "liboai_memprof_stream_writer.a",
+    "liboai_memprof_stream_finalizer.a",
+    "liboai_memprof_clock.a",
+    "liboai_memprof_process_handoff.a",
+    "liboai_memprof_process_session.a",
+    "liboai_memprof_softmodem_session.a",
+    "liboai_memprof_active_runtime.map",
+    "dfts.oai-memprof.map",
+    "ldpc.oai-memprof.map",
+    "ldpc_orig.oai-memprof.map",
+    "nr-softmodem.oai-memprof.map",
+    "nr-uesoftmodem.oai-memprof.map",
+    "oai_usrpdevif.oai-memprof.map",
+    "params_libconfig.oai-memprof.map",
+    "oai_memprof_archive_append",
 )
 
 PRODUCTION_SOURCES = (
@@ -138,6 +210,45 @@ PRODUCTION_SOURCES = (
     "oai_memprof_wrap_calloc.c",
     "oai_memprof_wrap_realloc.c",
     "oai_memprof_wrap_free.c",
+    "oai_memprof_container_wire.c",
+    "oai_memprof_container_wire.h",
+    "oai_memprof_container_wire.py",
+    "oai_memprof_active_core.c",
+    "oai_memprof_active_core.h",
+    "oai_memprof_active_runtime.c",
+    "oai_memprof_active_runtime.map",
+    "oai_memprof_active_runtime_abi.h",
+    "oai_memprof_active_wrap_internal.h",
+    "oai_memprof_active_wrap_malloc.c",
+    "oai_memprof_active_wrap_calloc.c",
+    "oai_memprof_active_wrap_realloc.c",
+    "oai_memprof_active_wrap_free.c",
+    "oai_memprof_active_wrap_reallocarray.c",
+    "oai_memprof_active_wrap_aligned_alloc.c",
+    "oai_memprof_active_wrap_posix_memalign.c",
+    "oai_memprof_active_wrap_memalign.c",
+    "oai_memprof_active_wrap_valloc.c",
+    "oai_memprof_active_wrap_pvalloc.c",
+    "oai_memprof_active_wrap_strdup.c",
+    "oai_memprof_active_wrap_strndup.c",
+    "oai_memprof_stream_writer.c",
+    "oai_memprof_stream_writer.h",
+    "oai_memprof_stream_finalizer.c",
+    "oai_memprof_stream_finalizer.h",
+    "oai_memprof_clock.c",
+    "oai_memprof_clock.h",
+    "oai_memprof_process_handoff.c",
+    "oai_memprof_process_handoff.h",
+    "oai_memprof_process_handoff.py",
+    "oai_memprof_process_session.c",
+    "oai_memprof_process_session.h",
+    "oai_memprof_softmodem_session.c",
+    "oai_memprof_softmodem_session.h",
+    "oai_memprof_archive_append.c",
+    "oai_memprof_archive_composer.py",
+    "oai_memprof_build_evidence.py",
+    "oai_memprof_trusted_release_authority.py",
+    "oai_memprof_softmodem_launcher.py",
 )
 
 R0_SOURCE_AND_TOOL_NAMES = (
@@ -163,6 +274,32 @@ R0_SOURCE_AND_TOOL_NAMES = (
     "test_r0_bounded_process.py",
     "test_r0_harness.py",
     "validate_r0_scripted_oracle.py",
+    "chunk_header_v1.hex",
+    "diagnostic_total_entry_v1.hex",
+    "event_record_v1.hex",
+    "event_total_entry_v1.hex",
+    "footer_preimage_v1.hex",
+    "object_binding_entries_v1.hex",
+    "opening_header_v1.hex",
+    "trailer_header_v1.hex",
+    "test_oai_memprof_container_wire.c",
+    "test_oai_memprof_container_wire.py",
+    "active_stream_opening_v1.hex",
+    "test_oai_memprof_active_core.c",
+    "test_oai_memprof_active_wrappers.c",
+    "test_oai_memprof_stream_writer.c",
+    "test_oai_memprof_stream_finalizer.c",
+    "validate_oai_memprof_stream_finalizer.py",
+    "test_oai_memprof_clock.c",
+    "process_handoff_v1.hex",
+    "test_oai_memprof_process_handoff.c",
+    "test_oai_memprof_process_handoff.py",
+    "test_oai_memprof_process_session.c",
+    "test_oai_memprof_softmodem_session.c",
+    "test_oai_memprof_archive_producer.c",
+    "test_oai_memprof_archive_composer.py",
+    "test_oai_memprof_softmodem_launcher.py",
+    "test_oai_memprof_trusted_release_authority.py",
 )
 
 R0_TARGET_AND_TEST_NAMES = (
@@ -205,6 +342,50 @@ R0_TARGET_AND_TEST_NAMES = (
     "oai_memprof_r0_a01_dso.map",
     "liboai_memprof_r0_actual_dso_a00.so",
     "liboai_memprof_r0_actual_dso_a01.so",
+    "test_oai_memprof_container_wire",
+    "oai_memprof_container_wire_c",
+    "oai_memprof_container_wire_python",
+    "test_oai_memprof_active_core",
+    "test_oai_memprof_active_wrappers",
+    "test_oai_memprof_stream_writer",
+    "oai_memprof_active_core_c",
+    "oai_memprof_active_wrappers_c",
+    "oai_memprof_stream_writer_positive_c",
+    "oai_memprof_stream_writer_counters_c",
+    "oai_memprof_stream_writer_timer_c",
+    "oai_memprof_stream_writer_short_c",
+    "oai_memprof_stream_writer_failure_c",
+    "test_oai_memprof_stream_finalizer",
+    "oai_memprof_stream_finalizer_positive_c",
+    "oai_memprof_stream_finalizer_short_c",
+    "oai_memprof_stream_finalizer_failure_c",
+    "oai_memprof_stream_finalizer_corrupt_c",
+    "oai_memprof_stream_finalizer_mismatch_c",
+    "oai_memprof_stream_finalizer_identity_c",
+    "oai_memprof_stream_finalizer_offline_c",
+    "test_oai_memprof_clock",
+    "oai_memprof_clock_c",
+    "test_oai_memprof_process_handoff",
+    "oai_memprof_process_handoff_c",
+    "oai_memprof_process_handoff_python",
+    "test_oai_memprof_process_session",
+    "oai_memprof_process_session_positive_c",
+    "oai_memprof_process_session_existing_c",
+    "test_oai_memprof_softmodem_session",
+    "oai_memprof_softmodem_session_disabled_c",
+    "oai_memprof_softmodem_session_partial_c",
+    "oai_memprof_softmodem_session_legacy-path_c",
+    "oai_memprof_softmodem_session_role-mismatch_c",
+    "oai_memprof_softmodem_session_positive_c",
+    "oai_memprof_softmodem_session_sampled_c",
+    "oai_memprof_softmodem_session_fd-roots-replaced_c",
+    "oai_memprof_softmodem_session_configuration-mismatch_c",
+    "oai_memprof_softmodem_session_insecure-streams_c",
+    "oai_memprof_softmodem_launcher_python",
+    "test_oai_memprof_archive_producer",
+    "test_oai_memprof_archive_producer.map",
+    "oai_memprof_archive_composer_python",
+    "oai_memprof_trusted_release_authority_python",
 )
 
 REVIEWER_NAMESPACE_VECTORS = (
@@ -220,6 +401,26 @@ REVIEWER_NAMESPACE_VECTORS = (
     ("namespace:linker:-loai_memprof", "-loai_memprof_wrap_c"),
     ("namespace:python:tools.profiling.memory",
      "tools.profiling.memory.tests.test_oai_memprof_wire"),
+    ("namespace:upper:OAI_MEMPROF", "-DOAI_MEMPROF_CONTAINER_V1_FOOTER_SIZE=256"),
+    ("namespace:lower:oai_memprof", "U oai_memprof_container_v1_footer_decode"),
+    ("namespace:linker:-loai_memprof", "-loai_memprof_container_wire"),
+    ("namespace:python:tools.profiling.memory",
+     "tools.profiling.memory.tests.test_oai_memprof_container_wire"),
+    ("namespace:lower:oai_memprof", "U oai_memprof_active_runtime_activate_v1"),
+    ("namespace:linker:-loai_memprof", "-loai_memprof_active_runtime"),
+    ("namespace:linker:-loai_memprof", "-loai_memprof_stream_writer"),
+    ("namespace:linker:-loai_memprof", "-loai_memprof_stream_finalizer"),
+    ("namespace:lower:oai_memprof", "U oai_memprof_stream_finalize_v1"),
+    ("namespace:lower:oai_memprof", "U oai_memprof_stream_finalize_offline_v1"),
+    ("namespace:lower:oai_memprof", "U oai_memprof_clock_sample_v1"),
+    ("namespace:linker:-loai_memprof", "-loai_memprof_clock"),
+    ("namespace:linker:-loai_memprof", "-loai_memprof_process_handoff"),
+    ("namespace:linker:-loai_memprof", "-loai_memprof_process_session"),
+    ("namespace:linker:-loai_memprof", "-loai_memprof_softmodem_session"),
+    ("namespace:python:tools.profiling.memory",
+     "tools.profiling.memory.tests.test_oai_memprof_process_handoff"),
+    ("namespace:python:tools.profiling.memory",
+     "tools.profiling.memory.tests.test_oai_memprof_softmodem_launcher"),
 )
 
 REVIEWER_WRAP_ESCAPE_VECTORS = (
@@ -245,116 +446,273 @@ R0_CMAKE_NAME_CORRESPONDENCE_VECTORS = (
     ),
 )
 
-EXPECTED_CATALOG_IDS_V6 = (
-    "build-subtree-relative",
-    "control-load:oai_memprof_control_load_v1",
-    "control:oai_memprof_control_v1",
-    "namespace:hyphen:oai-memprof",
-    "namespace:lib:liboai_memprof",
-    "namespace:linker:-loai_memprof",
-    "namespace:lower:oai_memprof",
-    "namespace:python:tools.profiling.memory",
-    "namespace:upper:OAI_MEMPROF",
-    "output:liboai_memprof_runtime.so",
-    "output:liboai_memprof_runtime.so.1",
-    "output:liboai_memprof_runtime.so.1.0.0",
-    "output:liboai_memprof_wire.a",
-    "output:liboai_memprof_wrap_c.a",
-    "python-source-subtree-relative",
-    "r0-cmake-namespace",
-    "r0-file:check_oai_memprof_r0_absence.py",
-    "r0-file:check_oai_memprof_r0_elf.py",
-    "r0-file:compare_literal.cmake",
-    "r0-file:event_record_v1_literal.hex",
-    "r0-file:r0_actual_fixture.h",
-    "r0-file:r0_actual_fixture_common.h",
-    "r0-file:r0_actual_fixture_dso.c",
-    "r0-file:r0_actual_fixture_exe.c",
-    "r0-file:r0_bounded_process.py",
-    "r0-file:r0_harness_common.py",
-    "r0-file:r0_raw_emit.c",
-    "r0-file:r0_raw_emit.h",
-    "r0-file:r0_scripted_backend.c",
-    "r0-file:r0_scripted_backend.h",
-    "r0-file:r0_scripted_oracle.c",
-    "r0-file:r0_scripted_passthrough.c",
-    "r0-file:run_r0_actual_differential.py",
-    "r0-file:test_oai_memprof_wire.c",
-    "r0-file:test_oai_memprof_wire.py",
-    "r0-file:test_r0_bounded_process.py",
-    "r0-file:test_r0_harness.py",
-    "r0-file:validate_r0_scripted_oracle.py",
-    "r0-name:liboai_memprof_r0_actual_dso_a00.so",
-    "r0-name:liboai_memprof_r0_actual_dso_a01.so",
-    "r0-name:oai_memprof_r0_a00_dso.map",
-    "r0-name:oai_memprof_r0_a00_exe.map",
-    "r0-name:oai_memprof_r0_a01_dso.map",
-    "r0-name:oai_memprof_r0_a01_exe.map",
-    "r0-name:oai_memprof_r0_absence_validator_selftest",
-    "r0-name:oai_memprof_r0_actual_a00",
-    "r0-name:oai_memprof_r0_actual_a01",
-    "r0-name:oai_memprof_r0_actual_differential",
-    "r0-name:oai_memprof_r0_actual_dso_a00",
-    "r0-name:oai_memprof_r0_actual_dso_a01",
-    "r0-name:oai_memprof_r0_actual_dso_object",
-    "r0-name:oai_memprof_r0_actual_exe_object",
-    "r0-name:oai_memprof_r0_elf",
-    "r0-name:oai_memprof_r0_elf_validator_selftest",
-    "r0-name:oai_memprof_r0_harness_selftest",
-    "r0-name:oai_memprof_r0_mutation_context",
-    "r0-name:oai_memprof_r0_mutation_duplicate_real",
-    "r0-name:oai_memprof_r0_mutation_errno",
-    "r0-name:oai_memprof_r0_mutation_operand",
-    "r0-name:oai_memprof_r0_mutation_result",
-    "r0-name:oai_memprof_r0_mutation_suppress_free_null",
-    "r0-name:oai_memprof_r0_scripted_bounds",
-    "r0-name:oai_memprof_r0_scripted_pair",
-    "r0-name:oai_memprof_wire_c",
-    "r0-name:oai_memprof_wire_cross_literal",
-    "r0-name:oai_memprof_wire_python",
-    "r0-name:test_oai_memprof_r0_actual_a00",
-    "r0-name:test_oai_memprof_r0_actual_a01",
-    "r0-name:test_oai_memprof_r0_mutant_context",
-    "r0-name:test_oai_memprof_r0_mutant_duplicate_real",
-    "r0-name:test_oai_memprof_r0_mutant_errno",
-    "r0-name:test_oai_memprof_r0_mutant_operand",
-    "r0-name:test_oai_memprof_r0_mutant_result",
-    "r0-name:test_oai_memprof_r0_mutant_suppress_free_null",
-    "r0-name:test_oai_memprof_r0_scripted_a00",
-    "r0-name:test_oai_memprof_r0_scripted_a01",
-    "r0-name:test_oai_memprof_wire",
-    "r0-optional-lib-namespace",
-    "r0-target-namespace",
-    "raw-schema:oai-memprof-r0-raw-v1",
-    "real:calloc",
-    "real:free",
-    "real:malloc",
-    "real:realloc",
-    "runtime-soname",
-    "runtime-symbol-version",
-    "source-subtree-relative",
-    "source:oai_memprof_runtime.c",
-    "source:oai_memprof_runtime.map",
-    "source:oai_memprof_runtime_abi.h",
-    "source:oai_memprof_wire.c",
-    "source:oai_memprof_wire.h",
-    "source:oai_memprof_wire.py",
-    "source:oai_memprof_wrap_calloc.c",
-    "source:oai_memprof_wrap_free.c",
-    "source:oai_memprof_wrap_internal.h",
-    "source:oai_memprof_wrap_malloc.c",
-    "source:oai_memprof_wrap_realloc.c",
-    "target:oai_memprof_runtime",
-    "target:oai_memprof_wire",
-    "target:oai_memprof_wrap_c",
-    "wire-namespace:OAI_MEMPROF_WIRE",
-    "wrapper:calloc",
-    "wrapper:free",
-    "wrapper:malloc",
-    "wrapper:realloc",
+EXPECTED_CATALOG_IDS_V19 = (
+    'build-subtree-relative',
+    'control-load:oai_memprof_control_load_v1',
+    'control:oai_memprof_control_v1',
+    'namespace:hyphen:oai-memprof',
+    'namespace:lib:liboai_memprof',
+    'namespace:linker:-loai_memprof',
+    'namespace:lower:oai_memprof',
+    'namespace:python:tools.profiling.memory',
+    'namespace:upper:OAI_MEMPROF',
+    'output:dfts.oai-memprof.map',
+    'output:ldpc.oai-memprof.map',
+    'output:ldpc_orig.oai-memprof.map',
+    'output:liboai_memprof_active_core.a',
+    'output:liboai_memprof_active_runtime.map',
+    'output:liboai_memprof_active_runtime.so',
+    'output:liboai_memprof_active_runtime.so.1',
+    'output:liboai_memprof_active_runtime.so.1.0.0',
+    'output:liboai_memprof_active_wrap_c.a',
+    'output:liboai_memprof_clock.a',
+    'output:liboai_memprof_container_wire.a',
+    'output:liboai_memprof_process_handoff.a',
+    'output:liboai_memprof_process_session.a',
+    'output:liboai_memprof_runtime.so',
+    'output:liboai_memprof_runtime.so.1',
+    'output:liboai_memprof_runtime.so.1.0.0',
+    'output:liboai_memprof_softmodem_session.a',
+    'output:liboai_memprof_stream_finalizer.a',
+    'output:liboai_memprof_stream_writer.a',
+    'output:liboai_memprof_wire.a',
+    'output:liboai_memprof_wrap_c.a',
+    'output:nr-softmodem.oai-memprof.map',
+    'output:nr-uesoftmodem.oai-memprof.map',
+    'output:oai_memprof_archive_append',
+    'output:oai_usrpdevif.oai-memprof.map',
+    'output:params_libconfig.oai-memprof.map',
+    'python-source-subtree-relative',
+    'r0-cmake-namespace',
+    'r0-file:active_stream_opening_v1.hex',
+    'r0-file:check_oai_memprof_r0_absence.py',
+    'r0-file:check_oai_memprof_r0_elf.py',
+    'r0-file:chunk_header_v1.hex',
+    'r0-file:compare_literal.cmake',
+    'r0-file:diagnostic_total_entry_v1.hex',
+    'r0-file:event_record_v1.hex',
+    'r0-file:event_record_v1_literal.hex',
+    'r0-file:event_total_entry_v1.hex',
+    'r0-file:footer_preimage_v1.hex',
+    'r0-file:object_binding_entries_v1.hex',
+    'r0-file:opening_header_v1.hex',
+    'r0-file:process_handoff_v1.hex',
+    'r0-file:r0_actual_fixture.h',
+    'r0-file:r0_actual_fixture_common.h',
+    'r0-file:r0_actual_fixture_dso.c',
+    'r0-file:r0_actual_fixture_exe.c',
+    'r0-file:r0_bounded_process.py',
+    'r0-file:r0_harness_common.py',
+    'r0-file:r0_raw_emit.c',
+    'r0-file:r0_raw_emit.h',
+    'r0-file:r0_scripted_backend.c',
+    'r0-file:r0_scripted_backend.h',
+    'r0-file:r0_scripted_oracle.c',
+    'r0-file:r0_scripted_passthrough.c',
+    'r0-file:run_r0_actual_differential.py',
+    'r0-file:test_oai_memprof_active_core.c',
+    'r0-file:test_oai_memprof_active_wrappers.c',
+    'r0-file:test_oai_memprof_archive_composer.py',
+    'r0-file:test_oai_memprof_archive_producer.c',
+    'r0-file:test_oai_memprof_clock.c',
+    'r0-file:test_oai_memprof_container_wire.c',
+    'r0-file:test_oai_memprof_container_wire.py',
+    'r0-file:test_oai_memprof_process_handoff.c',
+    'r0-file:test_oai_memprof_process_handoff.py',
+    'r0-file:test_oai_memprof_process_session.c',
+    'r0-file:test_oai_memprof_softmodem_launcher.py',
+    'r0-file:test_oai_memprof_softmodem_session.c',
+    'r0-file:test_oai_memprof_stream_finalizer.c',
+    'r0-file:test_oai_memprof_stream_writer.c',
+    'r0-file:test_oai_memprof_trusted_release_authority.py',
+    'r0-file:test_oai_memprof_wire.c',
+    'r0-file:test_oai_memprof_wire.py',
+    'r0-file:test_r0_bounded_process.py',
+    'r0-file:test_r0_harness.py',
+    'r0-file:trailer_header_v1.hex',
+    'r0-file:validate_oai_memprof_stream_finalizer.py',
+    'r0-file:validate_r0_scripted_oracle.py',
+    'r0-name:liboai_memprof_r0_actual_dso_a00.so',
+    'r0-name:liboai_memprof_r0_actual_dso_a01.so',
+    'r0-name:oai_memprof_active_core_c',
+    'r0-name:oai_memprof_active_wrappers_c',
+    'r0-name:oai_memprof_archive_composer_python',
+    'r0-name:oai_memprof_clock_c',
+    'r0-name:oai_memprof_container_wire_c',
+    'r0-name:oai_memprof_container_wire_python',
+    'r0-name:oai_memprof_process_handoff_c',
+    'r0-name:oai_memprof_process_handoff_python',
+    'r0-name:oai_memprof_process_session_existing_c',
+    'r0-name:oai_memprof_process_session_positive_c',
+    'r0-name:oai_memprof_r0_a00_dso.map',
+    'r0-name:oai_memprof_r0_a00_exe.map',
+    'r0-name:oai_memprof_r0_a01_dso.map',
+    'r0-name:oai_memprof_r0_a01_exe.map',
+    'r0-name:oai_memprof_r0_absence_validator_selftest',
+    'r0-name:oai_memprof_r0_actual_a00',
+    'r0-name:oai_memprof_r0_actual_a01',
+    'r0-name:oai_memprof_r0_actual_differential',
+    'r0-name:oai_memprof_r0_actual_dso_a00',
+    'r0-name:oai_memprof_r0_actual_dso_a01',
+    'r0-name:oai_memprof_r0_actual_dso_object',
+    'r0-name:oai_memprof_r0_actual_exe_object',
+    'r0-name:oai_memprof_r0_elf',
+    'r0-name:oai_memprof_r0_elf_validator_selftest',
+    'r0-name:oai_memprof_r0_harness_selftest',
+    'r0-name:oai_memprof_r0_mutation_context',
+    'r0-name:oai_memprof_r0_mutation_duplicate_real',
+    'r0-name:oai_memprof_r0_mutation_errno',
+    'r0-name:oai_memprof_r0_mutation_operand',
+    'r0-name:oai_memprof_r0_mutation_result',
+    'r0-name:oai_memprof_r0_mutation_suppress_free_null',
+    'r0-name:oai_memprof_r0_scripted_bounds',
+    'r0-name:oai_memprof_r0_scripted_pair',
+    'r0-name:oai_memprof_softmodem_launcher_python',
+    'r0-name:oai_memprof_softmodem_session_configuration-mismatch_c',
+    'r0-name:oai_memprof_softmodem_session_disabled_c',
+    'r0-name:oai_memprof_softmodem_session_fd-roots-replaced_c',
+    'r0-name:oai_memprof_softmodem_session_insecure-streams_c',
+    'r0-name:oai_memprof_softmodem_session_legacy-path_c',
+    'r0-name:oai_memprof_softmodem_session_partial_c',
+    'r0-name:oai_memprof_softmodem_session_positive_c',
+    'r0-name:oai_memprof_softmodem_session_role-mismatch_c',
+    'r0-name:oai_memprof_softmodem_session_sampled_c',
+    'r0-name:oai_memprof_stream_finalizer_corrupt_c',
+    'r0-name:oai_memprof_stream_finalizer_failure_c',
+    'r0-name:oai_memprof_stream_finalizer_identity_c',
+    'r0-name:oai_memprof_stream_finalizer_mismatch_c',
+    'r0-name:oai_memprof_stream_finalizer_offline_c',
+    'r0-name:oai_memprof_stream_finalizer_positive_c',
+    'r0-name:oai_memprof_stream_finalizer_short_c',
+    'r0-name:oai_memprof_stream_writer_counters_c',
+    'r0-name:oai_memprof_stream_writer_failure_c',
+    'r0-name:oai_memprof_stream_writer_positive_c',
+    'r0-name:oai_memprof_stream_writer_short_c',
+    'r0-name:oai_memprof_stream_writer_timer_c',
+    'r0-name:oai_memprof_trusted_release_authority_python',
+    'r0-name:oai_memprof_wire_c',
+    'r0-name:oai_memprof_wire_cross_literal',
+    'r0-name:oai_memprof_wire_python',
+    'r0-name:test_oai_memprof_active_core',
+    'r0-name:test_oai_memprof_active_wrappers',
+    'r0-name:test_oai_memprof_archive_producer',
+    'r0-name:test_oai_memprof_archive_producer.map',
+    'r0-name:test_oai_memprof_clock',
+    'r0-name:test_oai_memprof_container_wire',
+    'r0-name:test_oai_memprof_process_handoff',
+    'r0-name:test_oai_memprof_process_session',
+    'r0-name:test_oai_memprof_r0_actual_a00',
+    'r0-name:test_oai_memprof_r0_actual_a01',
+    'r0-name:test_oai_memprof_r0_mutant_context',
+    'r0-name:test_oai_memprof_r0_mutant_duplicate_real',
+    'r0-name:test_oai_memprof_r0_mutant_errno',
+    'r0-name:test_oai_memprof_r0_mutant_operand',
+    'r0-name:test_oai_memprof_r0_mutant_result',
+    'r0-name:test_oai_memprof_r0_mutant_suppress_free_null',
+    'r0-name:test_oai_memprof_r0_scripted_a00',
+    'r0-name:test_oai_memprof_r0_scripted_a01',
+    'r0-name:test_oai_memprof_softmodem_session',
+    'r0-name:test_oai_memprof_stream_finalizer',
+    'r0-name:test_oai_memprof_stream_writer',
+    'r0-name:test_oai_memprof_wire',
+    'r0-optional-lib-namespace',
+    'r0-target-namespace',
+    'raw-schema:oai-memprof-r0-raw-v1',
+    'real:aligned_alloc',
+    'real:calloc',
+    'real:free',
+    'real:malloc',
+    'real:memalign',
+    'real:posix_memalign',
+    'real:pvalloc',
+    'real:realloc',
+    'real:reallocarray',
+    'real:strdup',
+    'real:strndup',
+    'real:valloc',
+    'runtime-soname',
+    'runtime-symbol-version',
+    'source-subtree-relative',
+    'source:oai_memprof_active_core.c',
+    'source:oai_memprof_active_core.h',
+    'source:oai_memprof_active_runtime.c',
+    'source:oai_memprof_active_runtime.map',
+    'source:oai_memprof_active_runtime_abi.h',
+    'source:oai_memprof_active_wrap_aligned_alloc.c',
+    'source:oai_memprof_active_wrap_calloc.c',
+    'source:oai_memprof_active_wrap_free.c',
+    'source:oai_memprof_active_wrap_internal.h',
+    'source:oai_memprof_active_wrap_malloc.c',
+    'source:oai_memprof_active_wrap_memalign.c',
+    'source:oai_memprof_active_wrap_posix_memalign.c',
+    'source:oai_memprof_active_wrap_pvalloc.c',
+    'source:oai_memprof_active_wrap_realloc.c',
+    'source:oai_memprof_active_wrap_reallocarray.c',
+    'source:oai_memprof_active_wrap_strdup.c',
+    'source:oai_memprof_active_wrap_strndup.c',
+    'source:oai_memprof_active_wrap_valloc.c',
+    'source:oai_memprof_archive_append.c',
+    'source:oai_memprof_archive_composer.py',
+    'source:oai_memprof_build_evidence.py',
+    'source:oai_memprof_clock.c',
+    'source:oai_memprof_clock.h',
+    'source:oai_memprof_container_wire.c',
+    'source:oai_memprof_container_wire.h',
+    'source:oai_memprof_container_wire.py',
+    'source:oai_memprof_process_handoff.c',
+    'source:oai_memprof_process_handoff.h',
+    'source:oai_memprof_process_handoff.py',
+    'source:oai_memprof_process_session.c',
+    'source:oai_memprof_process_session.h',
+    'source:oai_memprof_runtime.c',
+    'source:oai_memprof_runtime.map',
+    'source:oai_memprof_runtime_abi.h',
+    'source:oai_memprof_softmodem_launcher.py',
+    'source:oai_memprof_softmodem_session.c',
+    'source:oai_memprof_softmodem_session.h',
+    'source:oai_memprof_stream_finalizer.c',
+    'source:oai_memprof_stream_finalizer.h',
+    'source:oai_memprof_stream_writer.c',
+    'source:oai_memprof_stream_writer.h',
+    'source:oai_memprof_trusted_release_authority.py',
+    'source:oai_memprof_wire.c',
+    'source:oai_memprof_wire.h',
+    'source:oai_memprof_wire.py',
+    'source:oai_memprof_wrap_calloc.c',
+    'source:oai_memprof_wrap_free.c',
+    'source:oai_memprof_wrap_internal.h',
+    'source:oai_memprof_wrap_malloc.c',
+    'source:oai_memprof_wrap_realloc.c',
+    'target:oai_memprof_active_core',
+    'target:oai_memprof_active_runtime',
+    'target:oai_memprof_active_wrap_c',
+    'target:oai_memprof_archive_append',
+    'target:oai_memprof_clock',
+    'target:oai_memprof_container_wire',
+    'target:oai_memprof_process_handoff',
+    'target:oai_memprof_process_session',
+    'target:oai_memprof_runtime',
+    'target:oai_memprof_softmodem_session',
+    'target:oai_memprof_stream_finalizer',
+    'target:oai_memprof_stream_writer',
+    'target:oai_memprof_wire',
+    'target:oai_memprof_wrap_c',
+    'wire-namespace:OAI_MEMPROF_WIRE',
+    'wrapper:aligned_alloc',
+    'wrapper:calloc',
+    'wrapper:free',
+    'wrapper:malloc',
+    'wrapper:memalign',
+    'wrapper:posix_memalign',
+    'wrapper:pvalloc',
+    'wrapper:realloc',
+    'wrapper:reallocarray',
+    'wrapper:strdup',
+    'wrapper:strndup',
+    'wrapper:valloc',
 )
-EXPECTED_CATALOG_COUNT_V6 = 106
-EXPECTED_CATALOG_DIGEST_V6 = "a74f21dd955e8995dc1faad14eab70d1b2cc0ca0fe0aaebc0c9af13bc43a8c14"
+EXPECTED_CATALOG_COUNT_V19 = 263
+EXPECTED_CATALOG_DIGEST_V19 = '14a3d10c88e4da56f1b48d2732309471e7472c15e6aad0cea1db24ec5ffef270'
 
 
 class AbsenceError(RuntimeError):
@@ -639,6 +997,10 @@ def canonical_catalog_serialization(entries: Sequence[CatalogEntry]) -> bytes:
     parts.append(len(FINAL_LINK_PRE_OPTION_EXPRESSIONS).to_bytes(8, "big"))
     for expression in FINAL_LINK_PRE_OPTION_EXPRESSIONS:
         append_canonical_field(parts, "final_link_pre_option_expression", expression)
+    append_canonical_field(
+        parts, "final_link_dependency_option_template",
+        FINAL_LINK_DEPENDENCY_OPTION_TEMPLATE,
+    )
 
     parts.append(len(COMPILER_NON_LINK_OPTIONS).to_bytes(8, "big"))
     for option in COMPILER_NON_LINK_OPTIONS:
@@ -695,12 +1057,12 @@ def validate_catalog_freeze(entries: Sequence[CatalogEntry]) -> str:
     identifiers, digest = catalog_identity(entries)
     require(len(set(identifiers)) == len(identifiers), "catalog_duplicate_id",
             "the catalog contains duplicate semantic IDs")
-    require(len(identifiers) == EXPECTED_CATALOG_COUNT_V6,
-            "catalog_count_mismatch", "the v6 catalog count changed without a version update")
-    require(identifiers == EXPECTED_CATALOG_IDS_V6,
-            "catalog_id_set_mismatch", "the v6 catalog ID set changed without a version update")
-    require(digest == EXPECTED_CATALOG_DIGEST_V6,
-            "catalog_digest_mismatch", "the v6 catalog contract changed without a version update")
+    require(len(identifiers) == EXPECTED_CATALOG_COUNT_V19,
+            "catalog_count_mismatch", "the v19 catalog count changed without a version update")
+    require(identifiers == EXPECTED_CATALOG_IDS_V19,
+            "catalog_id_set_mismatch", "the v19 catalog ID set changed without a version update")
+    require(digest == EXPECTED_CATALOG_DIGEST_V19,
+            "catalog_digest_mismatch", "the v19 catalog contract changed without a version update")
     return digest
 
 
@@ -730,15 +1092,21 @@ class Catalog:
     ) -> tuple[list[Match], int]:
         require(0 <= retain_limit <= MAX_REPORTED_MATCHES, "invalid_match_limit",
                 f"invalid retained-match limit: {retain_limit}")
+        folded_line = line.casefold()
+        if not any(marker in folded_line for marker in CATALOG_SCAN_MARKERS):
+            if not any(marker in folded_line for marker in WRAP_SCAN_MARKERS):
+                if not any(character in folded_line for character in WRAP_QUOTING_CHARACTERS):
+                    return [], 0
+                normalized_wrap_line = folded_line.translate(WRAP_QUOTING_TRANSLATION)
+                if not any(marker in normalized_wrap_line for marker in WRAP_SCAN_MARKERS):
+                    return [], 0
         scanned_line = mask_declared_roots(line, self.declared_roots)
         digest = hashlib.sha256(line.encode("utf-8")).hexdigest()
         matches, total_matches = scan_wrap_options(
             role, line_number, scanned_line, digest, retain_limit
         )
         folded_line = scanned_line.casefold()
-        if not any(marker in folded_line for marker in
-                   ("memprof", "r0_", "__wrap_", "__real_", "profiling/memory",
-                    "profiling.memory", "compare_literal", "event_record_v1_literal")):
+        if not any(marker in folded_line for marker in CATALOG_SCAN_MARKERS):
             return matches, total_matches
 
         room = retain_limit - len(matches)
@@ -1233,9 +1601,12 @@ def is_library_argument(value: str) -> bool:
     return safe_artifact_path(value, allow_absolute=True)
 
 
-def is_pre_object_option(value: str) -> bool:
-    return any(re.fullmatch(expression, value) is not None
+def is_pre_object_option(value: str, target: str) -> bool:
+    return (
+        value == FINAL_LINK_DEPENDENCY_OPTION_TEMPLATE.format(target=target)
+        or any(re.fullmatch(expression, value) is not None
                for expression in FINAL_LINK_PRE_OPTION_EXPRESSIONS)
+    )
 
 
 def validate_strict_final_link_argv(
@@ -1285,7 +1656,7 @@ def validate_strict_final_link_argv(
             f"commands line {line_number} has no contiguous object input block")
     pre_options = before_output[:object_start]
     objects = before_output[object_start:]
-    require(all(is_pre_object_option(token) for token in pre_options),
+    require(all(is_pre_object_option(token, target) for token in pre_options),
             "unsupported_final_link_pre_option",
             f"commands line {line_number} has a token outside the frozen pre-object grammar")
     require(bool(objects) and all(is_object_input(token) for token in objects),
@@ -1329,6 +1700,15 @@ def direct_final_link_segment(
     return tuple(segments[1])
 
 
+def line_may_contain_frozen_target(line: str, targets: Sequence[str]) -> bool:
+    """Conservatively retain raw and quote/backslash-joined target spellings."""
+
+    if any(target in line for target in targets):
+        return True
+    normalized_line = line.translate(WRAP_QUOTING_TRANSLATION)
+    return any(target in normalized_line for target in targets)
+
+
 def observe_frozen_final_outputs(
     line: str,
     line_number: int,
@@ -1338,6 +1718,9 @@ def observe_frozen_final_outputs(
     """Count only structurally valid final `-o` arguments for the frozen R0 targets."""
 
     analysis = analyze_shell_line(line)
+    targets = tuple(counts)
+    if not line_may_contain_frozen_target(line, targets):
+        return analysis.active_text if not analysis.forbidden_features else ""
     try:
         tokens = shell_tokenize(analysis.active_text)
     except ValueError as error:
@@ -1349,10 +1732,10 @@ def observe_frozen_final_outputs(
     frozen = tuple(
         (mention, target)
         for mention in mentions
-        if (target := output_mention_target(mention, tuple(counts))) is not None
+        if (target := output_mention_target(mention, targets)) is not None
     )
     if analysis.forbidden_features and (
-        frozen or line_has_raw_frozen_output_candidate(line, tuple(counts))
+        frozen or line_has_raw_frozen_output_candidate(line, targets)
     ):
         raise AbsenceError(
             "forbidden_final_link_shell_syntax",
@@ -1410,7 +1793,8 @@ class RoleValidator:
             self.nonempty += 1
         if self.role == "build_ninja":
             for index, root in enumerate(self.declared_roots):
-                self.root_seen[index] |= line_binds_declared_root(line, root)
+                if not self.root_seen[index]:
+                    self.root_seen[index] = line_binds_declared_root(line, root)
         if self.role == "build_ninja":
             if re.fullmatch(r"ninja_required_version = [0-9]+(?:\.[0-9]+)+", line):
                 self.ninja_version_count += 1
@@ -1428,12 +1812,17 @@ class RoleValidator:
             if line in self.target_sentinels:
                 self.target_sentinels[line] += 1
         elif self.role == "commands":
+            if all(self.root_seen) and not line_may_contain_frozen_target(
+                line, tuple(self.final_target_counts)
+            ):
+                return
             active_root_text = observe_frozen_final_outputs(
                 line, line_number, self.build_root, self.final_target_counts
             )
             if active_root_text:
                 for index, root in enumerate(self.declared_roots):
-                    self.root_seen[index] |= line_binds_declared_root(active_root_text, root)
+                    if not self.root_seen[index]:
+                        self.root_seen[index] = line_binds_declared_root(active_root_text, root)
 
     def validate(self) -> None:
         require(self.nonempty > 0, "empty_evidence", f"{self.role} evidence has no records")
@@ -1473,17 +1862,21 @@ def validate_line_bytes(raw: bytes, role: str, line_number: int) -> str:
     except UnicodeDecodeError as error:
         raise AbsenceError("non_utf8_evidence",
                            f"{role} line {line_number} is not valid UTF-8: {error}") from error
-    for index, character in enumerate(line):
-        codepoint = ord(character)
-        if codepoint < 32 and character not in {"\t", "\r"}:
-            raise AbsenceError("control_character",
-                               f"{role} line {line_number} contains control byte at column {index + 1}")
-        if character == "\r" and index != len(line) - 1:
-            raise AbsenceError("control_character",
-                               f"{role} line {line_number} contains embedded carriage return")
-        if codepoint == 127:
-            raise AbsenceError("control_character",
-                               f"{role} line {line_number} contains DEL at column {index + 1}")
+    invalid = INVALID_LINE_CHARACTER.search(line)
+    if invalid is not None:
+        character = invalid.group(0)
+        if character == "\r":
+            message = f"{role} line {line_number} contains embedded carriage return"
+        elif character == "\x7f":
+            message = (
+                f"{role} line {line_number} contains DEL at column {invalid.start() + 1}"
+            )
+        else:
+            message = (
+                f"{role} line {line_number} contains control byte at column "
+                f"{invalid.start() + 1}"
+            )
+        raise AbsenceError("control_character", message)
     return line[:-1] if line.endswith("\r") else line
 
 
@@ -1680,7 +2073,8 @@ def write_valid_evidence(
     command_lines = [
         f"{R0_FINAL_LINK_DRIVER} -I{source_root}/safe -c safe.c -o safe.o",
         *(
-        f": && {R0_FINAL_LINK_DRIVER} -DSELF_TEST=1 "
+        f": && {R0_FINAL_LINK_DRIVER} -DSELF_TEST=1 -mcpu=native -march=native "
+        f"-lgcc -lrt -Wl,--dependency-file=CMakeFiles/{target}.dir/link.d "
         f"CMakeFiles/{target}.dir/selftest.c.o -o {target} "
         f"-Wl,-rpath,{build_root} -Wl,--start-group libsafe.a "
         f"-Wl,--end-group -lm && :"
@@ -1754,6 +2148,15 @@ def run_self_test(stream: BinaryIO | None = None) -> int:
 
         required_semantic_ids = {
             "control-load:oai_memprof_control_load_v1",
+            "output:liboai_memprof_container_wire.a",
+            "output:liboai_memprof_softmodem_session.a",
+            "output:dfts.oai-memprof.map",
+            "output:ldpc.oai-memprof.map",
+            "output:ldpc_orig.oai-memprof.map",
+            "output:nr-softmodem.oai-memprof.map",
+            "output:nr-uesoftmodem.oai-memprof.map",
+            "output:oai_usrpdevif.oai-memprof.map",
+            "output:params_libconfig.oai-memprof.map",
             "raw-schema:oai-memprof-r0-raw-v1",
             "wire-namespace:OAI_MEMPROF_WIRE",
             "r0-optional-lib-namespace",
@@ -1766,6 +2169,23 @@ def run_self_test(stream: BinaryIO | None = None) -> int:
             "namespace:lower:oai_memprof",
             "namespace:python:tools.profiling.memory",
             "namespace:upper:OAI_MEMPROF",
+            "r0-file:test_oai_memprof_container_wire.c",
+            "r0-file:test_oai_memprof_container_wire.py",
+            "r0-file:test_oai_memprof_softmodem_launcher.py",
+            "r0-file:test_oai_memprof_softmodem_session.c",
+            "r0-name:oai_memprof_container_wire_c",
+            "r0-name:oai_memprof_container_wire_python",
+            "r0-name:test_oai_memprof_container_wire",
+            "r0-name:oai_memprof_softmodem_launcher_python",
+            "r0-name:test_oai_memprof_softmodem_session",
+            "source:oai_memprof_container_wire.c",
+            "source:oai_memprof_container_wire.h",
+            "source:oai_memprof_container_wire.py",
+            "source:oai_memprof_softmodem_launcher.py",
+            "source:oai_memprof_softmodem_session.c",
+            "source:oai_memprof_softmodem_session.h",
+            "target:oai_memprof_container_wire",
+            "target:oai_memprof_softmodem_session",
         }
         identifiers, _ = catalog_identity(entries)
         require(required_semantic_ids <= set(identifiers), "self_test_catalog_core",
@@ -1777,6 +2197,28 @@ def run_self_test(stream: BinaryIO | None = None) -> int:
             require(any(match.catalog_id == entry.catalog_id for match in observed),
                     "self_test_catalog_miss", f"catalog entry is insensitive: {entry.catalog_id}")
             checks += 1
+
+        for api in APIS:
+            for prefix, category in (
+                ("__wrap_", "wrapper"),
+                ("__real_", "real"),
+            ):
+                symbol = f"{prefix}{api}"
+                observed, _ = scan_text_for_test(catalog, f"U {symbol}")
+                require(any(match.catalog_id == f"{category}:{api}" and
+                            match.matched == symbol
+                            for match in observed),
+                        "self_test_api_symbol_miss",
+                        f"{category} spelling escaped for {api}")
+                checks += 1
+
+        observed, _ = scan_text_for_test(catalog, "U __real_aligned_alloc")
+        require(any(match.catalog_id == "real:aligned_alloc" and
+                    match.matched == "__real_aligned_alloc"
+                    for match in observed),
+                "self_test_non_original_api",
+                "the isolated aligned_alloc real spelling escaped the catalog")
+        checks += 1
 
         wrap_spellings: list[tuple[str, str]] = []
         for option_name in GNU_LD_WRAP_OPTION_NAMES:
@@ -2012,6 +2454,40 @@ def run_self_test(stream: BinaryIO | None = None) -> int:
                 "malformed ordinary compile line became a frozen output candidate")
         checks += 1
 
+        fast_final_counts = {target: 0 for target in R0_FINAL_TARGETS}
+        clean_non_target_command = "/usr/bin/c++ -Wall -c safe.cc -o safe.o"
+        with mock.patch.object(
+            sys.modules[__name__],
+            "shell_tokenize",
+            side_effect=AssertionError("non-target command reached shlex"),
+        ):
+            require(
+                observe_frozen_final_outputs(
+                    clean_non_target_command, 1, build_root, fast_final_counts
+                ) == clean_non_target_command
+                and not any(fast_final_counts.values()),
+                "self_test_final_target_prefilter",
+                "a clean non-target command did not bypass final-output tokenization",
+            )
+        checks += 1
+
+        fast_role = RoleValidator("commands", (source_root, build_root), build_root)
+        fast_role.root_seen[:] = [True, True]
+        with mock.patch.object(
+            sys.modules[__name__],
+            "observe_frozen_final_outputs",
+            side_effect=AssertionError("bound-root non-target command reached full analysis"),
+        ):
+            fast_role.observe(clean_non_target_command, 41)
+        require(
+            fast_role.line_count == 41
+            and fast_role.nonempty == 1
+            and fast_role.root_seen == [True, True],
+            "self_test_bound_root_non_target_prefilter",
+            "stateful non-target fast path changed general accounting or root state",
+        )
+        checks += 1
+
         repeated = " ".join("--wrap=malloc" for _ in range(512))
         observed, count = scan_text_for_test(catalog, repeated, retain_limit=3)
         require(len(observed) == 3 and count == 512 and
@@ -2216,7 +2692,7 @@ def run_self_test(stream: BinaryIO | None = None) -> int:
                 adversarial_line: str,
                 expected_code: str,
             ) -> None:
-                adversarial_commands = root / f"commands-v6-adversarial-{label}.txt"
+                adversarial_commands = root / f"commands-v8-adversarial-{label}.txt"
                 adversarial_lines = list(clean_command_lines)
                 adversarial_lines[1] = adversarial_line
                 adversarial_commands.write_text(
@@ -2312,6 +2788,18 @@ def run_self_test(stream: BinaryIO | None = None) -> int:
                     "quoted-output",
                     valid_first_link.replace(
                         f"-o {first_target}", f"-o '{first_target}'", 1
+                    ),
+                ),
+                (
+                    "split-quoted-output",
+                    valid_first_link.replace(
+                        f"-o {first_target}", "-o nr-soft'modem'", 1
+                    ),
+                ),
+                (
+                    "split-escaped-output",
+                    valid_first_link.replace(
+                        f"-o {first_target}", r"-o nr-soft\modem", 1
                     ),
                 ),
                 (
@@ -2411,6 +2899,23 @@ def run_self_test(stream: BinaryIO | None = None) -> int:
                 )
                 checks += 1
 
+            for label, inserted in (
+                ("preobject-lgcc-lookalike", "-lgcc_s "),
+                ("preobject-unrelated-library", "-lpthread "),
+                ("dependency-wrong-target",
+                 "-Wl,--dependency-file=CMakeFiles/other.dir/link.d "),
+                ("dependency-parent-component",
+                 "-Wl,--dependency-file=CMakeFiles/../nr-softmodem.dir/link.d "),
+            ):
+                require_invalid_command_case(
+                    label,
+                    valid_first_link.replace(
+                        first_object + " ", inserted + first_object + " ", 1
+                    ),
+                    "unsupported_final_link_pre_option",
+                )
+                checks += 1
+
             for label, inserted, expected_code in (
                 ("response-file", "@args.rsp ", "unsupported_final_link_token"),
                 ("option-terminator", "-- ", "unsupported_final_link_token"),
@@ -2501,6 +3006,37 @@ def run_self_test(stream: BinaryIO | None = None) -> int:
                 lambda: scan_regular_evidence("commands", invalid_utf8, catalog, 4096),
             )
             checks += 1
+
+            require(
+                validate_line_bytes(b"safe\ttext", "commands", 7) == "safe\ttext"
+                and validate_line_bytes(b"safe\r", "commands", 8) == "safe",
+                "self_test_line_validation",
+                "valid tab or terminal carriage return changed meaning",
+            )
+            checks += 1
+
+            invalid_line_cases = (
+                (b"safe\x00x", "commands line 9 contains control byte at column 5"),
+                (b"safe\nx", "commands line 9 contains control byte at column 5"),
+                (b"safe\rx", "commands line 9 contains embedded carriage return"),
+                (b"safe\x7fx", "commands line 9 contains DEL at column 5"),
+                (b"a\x7f\x00", "commands line 9 contains DEL at column 2"),
+            )
+            for raw_line, expected_message in invalid_line_cases:
+                try:
+                    validate_line_bytes(raw_line, "commands", 9)
+                except AbsenceError as error:
+                    require(
+                        error.code == "control_character" and str(error) == expected_message,
+                        "self_test_line_validation",
+                        f"line validation changed precedence/message: {error.code}: {error}",
+                    )
+                else:
+                    raise AbsenceError(
+                        "self_test_line_validation",
+                        f"invalid line was accepted: {raw_line!r}",
+                    )
+                checks += 1
 
             overlimit = root / "evidence-over-limit.txt"
             overlimit.write_bytes(b"x" * 4097)

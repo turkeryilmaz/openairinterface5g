@@ -23,6 +23,49 @@ add_test(NAME oai_memprof_wire_python
                  tools.profiling.memory.tests.test_oai_memprof_wire)
 set_tests_properties(oai_memprof_wire_python PROPERTIES WORKING_DIRECTORY ${OPENAIR_DIR})
 
+add_executable(test_oai_memprof_active_core test_oai_memprof_active_core.c)
+target_compile_features(test_oai_memprof_active_core PRIVATE c_std_11)
+target_compile_options(test_oai_memprof_active_core PRIVATE -Wall -Wextra -Werror -Wpedantic)
+target_link_libraries(test_oai_memprof_active_core PRIVATE oai_memprof_active_core pthread)
+add_dependencies(tests test_oai_memprof_active_core)
+
+add_test(NAME oai_memprof_active_core_c
+         COMMAND test_oai_memprof_active_core)
+set_tests_properties(oai_memprof_active_core_c PROPERTIES
+                     LABELS "memprof;active-core"
+                     TIMEOUT 30)
+
+add_executable(test_oai_memprof_active_wrappers test_oai_memprof_active_wrappers.c)
+target_compile_features(test_oai_memprof_active_wrappers PRIVATE c_std_11)
+target_compile_options(test_oai_memprof_active_wrappers PRIVATE
+                       -Wall -Wextra -Werror -Wpedantic -fPIC)
+target_link_libraries(test_oai_memprof_active_wrappers PRIVATE
+                      oai_memprof_active_wrap_c
+                      oai_memprof_active_runtime)
+set_target_properties(test_oai_memprof_active_wrappers PROPERTIES
+                      BUILD_RPATH "${CMAKE_BINARY_DIR}/memprof"
+                      POSITION_INDEPENDENT_CODE ON)
+target_link_options(test_oai_memprof_active_wrappers PRIVATE "LINKER:-pie")
+add_dependencies(tests test_oai_memprof_active_wrappers)
+
+add_test(NAME oai_memprof_active_wrappers_c
+         COMMAND test_oai_memprof_active_wrappers)
+set_tests_properties(oai_memprof_active_wrappers_c PROPERTIES
+                     LABELS "memprof;active-wrappers"
+                     TIMEOUT 30)
+
+add_executable(test_oai_memprof_clock test_oai_memprof_clock.c)
+target_compile_features(test_oai_memprof_clock PRIVATE c_std_11)
+target_compile_options(test_oai_memprof_clock PRIVATE -Wall -Wextra -Werror -Wpedantic)
+target_link_libraries(test_oai_memprof_clock PRIVATE oai_memprof_clock)
+add_dependencies(tests test_oai_memprof_clock)
+
+add_test(NAME oai_memprof_clock_c COMMAND test_oai_memprof_clock)
+set_tests_properties(oai_memprof_clock_c PROPERTIES
+                     LABELS "memprof;clock"
+                     SKIP_RETURN_CODE 77
+                     TIMEOUT 30)
+
 add_executable(test_oai_memprof_stream_writer test_oai_memprof_stream_writer.c)
 target_compile_features(test_oai_memprof_stream_writer PRIVATE c_std_11)
 target_compile_options(test_oai_memprof_stream_writer PRIVATE -Wall -Wextra -Werror -Wpedantic)
@@ -46,6 +89,97 @@ foreach(mode positive counters timer short failure join-failure)
                        TIMEOUT 30)
 endforeach()
 
+add_executable(test_oai_memprof_stream_finalizer test_oai_memprof_stream_finalizer.c)
+target_compile_features(test_oai_memprof_stream_finalizer PRIVATE c_std_11)
+target_compile_options(test_oai_memprof_stream_finalizer PRIVATE -Wall -Wextra -Werror -Wpedantic -fPIC)
+target_link_libraries(test_oai_memprof_stream_finalizer PRIVATE oai_memprof_stream_finalizer)
+target_link_options(test_oai_memprof_stream_finalizer PRIVATE
+                    "LINKER:--wrap=pwrite"
+                    "LINKER:--wrap=oai_memprof_active_runtime_snapshot_v1"
+                    "LINKER:--wrap=oai_memprof_active_runtime_complete_v1")
+set_target_properties(test_oai_memprof_stream_finalizer PROPERTIES
+                      BUILD_RPATH "${CMAKE_BINARY_DIR}/memprof"
+                      POSITION_INDEPENDENT_CODE ON)
+add_dependencies(tests test_oai_memprof_stream_finalizer)
+
+foreach(mode positive offline short failure corrupt mismatch identity)
+  add_test(NAME oai_memprof_stream_finalizer_${mode}_c
+           COMMAND test_oai_memprof_stream_finalizer
+                   ${mode}
+                   ${Python3_EXECUTABLE}
+                   ${CMAKE_CURRENT_SOURCE_DIR}/validate_oai_memprof_stream_finalizer.py)
+  set_tests_properties(oai_memprof_stream_finalizer_${mode}_c PROPERTIES
+                       ENVIRONMENT "PYTHONDONTWRITEBYTECODE=1"
+                       LABELS "memprof;stream-finalizer"
+                       SKIP_RETURN_CODE 77
+                       TIMEOUT 30
+                       WORKING_DIRECTORY ${OPENAIR_DIR})
+endforeach()
+
+add_executable(test_oai_memprof_container_wire test_oai_memprof_container_wire.c)
+target_link_libraries(test_oai_memprof_container_wire PRIVATE oai_memprof_container_wire)
+add_dependencies(tests test_oai_memprof_container_wire)
+
+add_test(NAME oai_memprof_container_wire_c
+         COMMAND test_oai_memprof_container_wire)
+
+add_test(NAME oai_memprof_container_wire_python
+         COMMAND ${Python3_EXECUTABLE}
+                 -B
+                 -m unittest
+                 -v
+                 tools.profiling.memory.tests.test_oai_memprof_container_wire)
+set_tests_properties(oai_memprof_container_wire_python PROPERTIES WORKING_DIRECTORY ${OPENAIR_DIR})
+
+set(OAI_MEMPROF_CATALOG_V1_TESTS
+    tools/profiling/memory/catalog_v1/callsite/tests/test_callsite_catalog_v1.py
+    tools/profiling/memory/catalog_v1/config/tests/test_effective_config_v1.py
+    tools/profiling/memory/catalog_v1/coverage/tests/test_coverage_catalog_v1.py
+    tools/profiling/memory/catalog_v1/diagnostics/tests/test_diagnostic_instance_v1.py
+    tools/profiling/memory/catalog_v1/integration/test_archive_semantic_verifier_v1.py
+    tools/profiling/memory/catalog_v1/runtime/tests/test_runtime_catalog_v1.py
+    tools/profiling/memory/catalog_v1/sampling/tests/test_selection_rule_v1.py
+    tools/profiling/memory/catalog_v1/semantic/tests/test_event_classifier_v1.py
+    tools/profiling/memory/catalog_v1/semantic/tests/test_semantic_catalog_v1.py
+    tools/profiling/memory/catalog_v1/status/test_status_chain_v1.py)
+add_test(NAME oai_memprof_catalog_v1_python
+         COMMAND ${Python3_EXECUTABLE}
+                 -B
+                 -m unittest
+                 -v
+                 ${OAI_MEMPROF_CATALOG_V1_TESTS})
+set_tests_properties(oai_memprof_catalog_v1_python PROPERTIES
+                     ENVIRONMENT "PYTHONDONTWRITEBYTECODE=1"
+                     LABELS "memprof;catalog;archive-verifier"
+                     TIMEOUT 90
+                     WORKING_DIRECTORY ${OPENAIR_DIR})
+
+add_executable(test_oai_memprof_process_handoff test_oai_memprof_process_handoff.c)
+target_compile_features(test_oai_memprof_process_handoff PRIVATE c_std_11)
+target_compile_options(test_oai_memprof_process_handoff PRIVATE -Wall -Wextra -Werror -Wpedantic)
+target_link_libraries(test_oai_memprof_process_handoff PRIVATE oai_memprof_process_handoff)
+set_target_properties(test_oai_memprof_process_handoff PROPERTIES BUILD_RPATH "${CMAKE_BINARY_DIR}/memprof")
+add_dependencies(tests test_oai_memprof_process_handoff)
+
+add_test(NAME oai_memprof_process_handoff_c
+         COMMAND test_oai_memprof_process_handoff
+                 ${CMAKE_CURRENT_SOURCE_DIR}/process_handoff_v1.hex)
+set_tests_properties(oai_memprof_process_handoff_c PROPERTIES
+                     LABELS "memprof;process-handoff"
+                     TIMEOUT 30)
+
+add_test(NAME oai_memprof_process_handoff_python
+         COMMAND ${Python3_EXECUTABLE}
+                 -B
+                 -m unittest
+                 -v
+                 tools.profiling.memory.tests.test_oai_memprof_process_handoff)
+set_tests_properties(oai_memprof_process_handoff_python PROPERTIES
+                     ENVIRONMENT "PYTHONDONTWRITEBYTECODE=1"
+                     LABELS "memprof;process-handoff"
+                     TIMEOUT 30
+                     WORKING_DIRECTORY ${OPENAIR_DIR})
+
 add_executable(test_oai_memprof_process_session test_oai_memprof_process_session.c)
 target_compile_features(test_oai_memprof_process_session PRIVATE c_std_11)
 target_compile_options(test_oai_memprof_process_session PRIVATE -Wall -Wextra -Werror -Wpedantic)
@@ -63,6 +197,59 @@ foreach(mode positive existing writer-error)
                        SKIP_RETURN_CODE 77
                        TIMEOUT 30)
 endforeach()
+
+add_executable(test_oai_memprof_softmodem_session
+               test_oai_memprof_softmodem_session.c)
+target_compile_features(test_oai_memprof_softmodem_session PRIVATE c_std_11)
+target_compile_options(test_oai_memprof_softmodem_session PRIVATE
+                       -Wall -Wextra -Werror -Wpedantic)
+target_link_libraries(test_oai_memprof_softmodem_session PRIVATE
+                      oai_memprof_softmodem_session)
+set_target_properties(test_oai_memprof_softmodem_session PROPERTIES
+                      BUILD_RPATH "${CMAKE_BINARY_DIR}/memprof")
+add_dependencies(tests test_oai_memprof_softmodem_session)
+
+foreach(mode disabled partial legacy-path role-mismatch positive sampled fd-roots-replaced configuration-mismatch insecure-streams)
+  add_test(NAME oai_memprof_softmodem_session_${mode}_c
+           COMMAND test_oai_memprof_softmodem_session ${mode})
+  set_tests_properties(oai_memprof_softmodem_session_${mode}_c PROPERTIES
+                       LABELS "memprof;softmodem-session"
+                       SKIP_RETURN_CODE 77
+                       TIMEOUT 30)
+endforeach()
+
+add_test(NAME oai_memprof_softmodem_launcher_python
+         COMMAND ${Python3_EXECUTABLE}
+                 -B
+                 ${OPENAIR_DIR}/tools/profiling/memory/tests/test_oai_memprof_softmodem_launcher.py
+                 -v)
+set_tests_properties(oai_memprof_softmodem_launcher_python PROPERTIES
+                     ENVIRONMENT "PYTHONDONTWRITEBYTECODE=1"
+                     LABELS "memprof;softmodem-launcher;build-evidence"
+                     TIMEOUT 30
+                     WORKING_DIRECTORY ${OPENAIR_DIR})
+
+add_test(NAME oai_memprof_trusted_release_authority_python
+         COMMAND ${Python3_EXECUTABLE}
+                 -B
+                 ${OPENAIR_DIR}/tools/profiling/memory/tests/test_oai_memprof_trusted_release_authority.py
+                 -v)
+set_tests_properties(oai_memprof_trusted_release_authority_python PROPERTIES
+                     ENVIRONMENT "PYTHONDONTWRITEBYTECODE=1"
+                     LABELS "memprof;trusted-release-authority;git"
+                     TIMEOUT 30
+                     WORKING_DIRECTORY ${OPENAIR_DIR})
+
+add_test(NAME oai_memprof_build_evidence_python
+         COMMAND ${Python3_EXECUTABLE}
+                 -B
+                 ${OPENAIR_DIR}/tools/profiling/memory/tests/test_oai_memprof_build_evidence.py
+                 -v)
+set_tests_properties(oai_memprof_build_evidence_python PROPERTIES
+                     ENVIRONMENT "PYTHONDONTWRITEBYTECODE=1"
+                     LABELS "memprof;build-evidence"
+                     TIMEOUT 60
+                     WORKING_DIRECTORY ${OPENAIR_DIR})
 
 add_executable(oai_memprof_archive_append ../oai_memprof_archive_append.c)
 target_compile_features(oai_memprof_archive_append PRIVATE c_std_11)
@@ -87,6 +274,41 @@ add_test(NAME oai_memprof_archive_append_c
 set_tests_properties(oai_memprof_archive_append_c PROPERTIES
                      LABELS "memprof;archive-appender"
                      TIMEOUT 30)
+
+set(OAI_MEMPROF_ARCHIVE_PRODUCER_MAP
+    "${CMAKE_CURRENT_BINARY_DIR}/test_oai_memprof_archive_producer.map")
+add_executable(test_oai_memprof_archive_producer test_oai_memprof_archive_producer.c)
+target_compile_features(test_oai_memprof_archive_producer PRIVATE c_std_11)
+target_compile_options(test_oai_memprof_archive_producer PRIVATE
+                       -Wall -Wextra -Werror -Wpedantic
+                       -fno-builtin-calloc -fno-builtin-free
+                       -fno-builtin-malloc -fno-builtin-realloc)
+target_link_libraries(test_oai_memprof_archive_producer PRIVATE
+                      oai_memprof_process_session
+                      oai_memprof_active_wrap_c
+                      oai_memprof_active_runtime)
+target_link_options(test_oai_memprof_archive_producer PRIVATE
+                    "LINKER:--wrap=malloc"
+                    "LINKER:--wrap=calloc"
+                    "LINKER:--wrap=realloc"
+                    "LINKER:--wrap=free"
+                    "LINKER:-Map,${OAI_MEMPROF_ARCHIVE_PRODUCER_MAP}"
+                    "LINKER:--cref")
+set_target_properties(test_oai_memprof_archive_producer PROPERTIES
+                      BUILD_RPATH "${CMAKE_BINARY_DIR}/memprof"
+                      INTERPROCEDURAL_OPTIMIZATION FALSE)
+add_dependencies(tests test_oai_memprof_archive_producer)
+
+add_test(NAME oai_memprof_archive_composer_python
+         COMMAND ${Python3_EXECUTABLE}
+                 -B
+                 ${OPENAIR_DIR}/tools/profiling/memory/tests/test_oai_memprof_archive_composer.py
+                 -v)
+set_tests_properties(oai_memprof_archive_composer_python PROPERTIES
+                     ENVIRONMENT "PYTHONDONTWRITEBYTECODE=1"
+                     LABELS "memprof;archive-composer;build-evidence"
+                     TIMEOUT 180
+                     WORKING_DIRECTORY ${OPENAIR_DIR})
 
 if(NOT CMAKE_GENERATOR STREQUAL "Ninja")
   message(FATAL_ERROR "The frozen R0 final-link gate requires the single-config Ninja generator")
