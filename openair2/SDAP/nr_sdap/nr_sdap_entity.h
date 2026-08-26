@@ -86,7 +86,6 @@ typedef struct sdap_tun_endpoint_s {
 typedef struct nr_sdap_entity_s {
   sdap_tun_endpoint_t tun;
   pthread_t pdusession_thread;
-  bool stop_thread;
   int qfi;
 
   qfi2drb_t default_drb;

@@ -82,7 +82,6 @@ void nr_sdap_tun_attach(nr_sdap_entity_t *entity)
   entity->tun.sock = d;
   if (d < 0)
     return;
-  entity->stop_thread = false;
 
   char thread_name[64];
   if (entity->tun.is_gnb) {
@@ -161,16 +160,15 @@ void sdap_data_ind(int drb_id, int is_gnb, int pdusession_id, ue_id_t ue_id, cha
 
 static void *sdap_tun_read_thread(void *arg)
 {
-  DevAssert(arg != NULL);
   nr_sdap_entity_t *entity = arg;
+  DevAssert(entity != NULL);
+  DevAssert(entity->tun.sock >= 0);
 
   char rx_buf[NL_MAX_PAYLOAD];
-  int len;
-  DevAssert(entity->tun.sock >= 0);
   tuntap_reblock(entity->tun.sock);
 
-  while (!entity->stop_thread) {
-    len = read(entity->tun.sock, &rx_buf, NL_MAX_PAYLOAD);
+  while (1) {
+    int len = read(entity->tun.sock, rx_buf, NL_MAX_PAYLOAD);
     if (len == -1) {
       if (errno == EINTR)
         continue; // interrupted system call
@@ -183,7 +181,7 @@ static void *sdap_tun_read_thread(void *arg)
         break;
       }
 
-      LOG_E(PDCP, "read() failed: errno %d (%s)\n", errno, strerror(errno));
+      LOG_E(SDAP, "read() failed: errno %d (%s)\n", errno, strerror(errno));
       break;
     }
 
@@ -215,6 +213,21 @@ static void *sdap_tun_read_thread(void *arg)
   return NULL;
 }
 
+/** @brief Stop a TUN reader thread and clear the handle
+ * @note Does not close the TUN socket */
+void nr_sdap_tun_stop_reader(pthread_t *thread)
+{
+  if (thread == NULL || *thread == 0)
+    return; // nothing to do
+  /* ESRCH: thread already exited (e.g. read returned after close on some OS) */
+  int cancel_ret = pthread_cancel(*thread);
+  AssertFatal(cancel_ret == 0 || cancel_ret == ESRCH, "pthread_cancel() failed: %d (%s)\n", cancel_ret, strerror(cancel_ret));
+  int ret = pthread_join(*thread, NULL);
+  AssertFatal(ret == 0, "pthread_join() failed: %d (%s)\n", ret, strerror(ret));
+  *thread = 0;
+  LOG_I(SDAP, "TUN reader stopped\n");
+}
+
 void nr_sdap_tun_detach(nr_sdap_entity_t *entity)
 {
   DevAssert(entity != NULL);
@@ -227,7 +240,9 @@ void nr_sdap_tun_detach(nr_sdap_entity_t *entity)
   if (entity->tun.sock < 0)
     return;
 
-  entity->stop_thread = true;
+  /* Stop/join the reader before close: on Linux, close() may not wake a blocked read() */
+  nr_sdap_tun_stop_reader(&entity->pdusession_thread);
+
   close(entity->tun.sock);
   entity->tun.sock = -1;
 
@@ -236,11 +251,6 @@ void nr_sdap_tun_detach(nr_sdap_entity_t *entity)
     LOG_I(SDAP, "UE %ld PDU session %d: bringing TUN %s down\n", entity->tun.ue_id, entity->tun.pdusession_id, iface->ifname);
     tuntap_destroy(iface->ifname);
   }
-
-  int cancel_ret = pthread_cancel(entity->pdusession_thread);
-  AssertFatal(cancel_ret == 0, "pthread_cancel() failed: %d (%s)\n", cancel_ret, strerror(cancel_ret));
-  int ret = pthread_join(entity->pdusession_thread, NULL);
-  AssertFatal(ret == 0, "pthread_join() failed: %d (%s)\n", ret, strerror(ret));
 }
 
 void nr_sdap_tun_destroy(ue_id_t ue_id, int pdusession_id)

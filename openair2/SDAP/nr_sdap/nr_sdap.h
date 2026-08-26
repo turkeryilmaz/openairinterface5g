@@ -7,6 +7,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <pthread.h>
 #include "common/platform_types.h"
 
 struct nr_sdap_entity_s;
@@ -46,5 +47,6 @@ void nr_sdap_tun_attach(struct nr_sdap_entity_s *entity);
 void nr_sdap_tun_detach(struct nr_sdap_entity_s *entity);
 void nr_sdap_tun_destroy(ue_id_t ue_id, int pdusession_id);
 void nr_sdap_tun_store_qfi(ue_id_t ue_id, int pdusession_id, uint8_t qfi);
+void nr_sdap_tun_stop_reader(pthread_t *thread);
 
 #endif
