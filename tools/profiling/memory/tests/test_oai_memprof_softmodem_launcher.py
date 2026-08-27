@@ -40,8 +40,25 @@ def sha(raw: bytes) -> str:
 
 
 TRUSTED_RELEASE_AUTHORITY_FIXTURE_SHA256 = (
-    "6477e10bdd20851e62156fa42ab668c7f93c3bece422c62e70daed9c67a83bff"
+    "edde0b92154f7170b9565facfa77136bf30300bfe2f75e3d6e1e38dc6f848047"
 )
+_TRUSTED_RELEASE_AUTHORITY_SOURCES = (
+    LAUNCHER.VERIFIER.accepted_trusted_release_source_bytes()
+)
+_TRUSTED_RELEASE_AUTHORITY_RAW = (
+    LAUNCHER.VERIFIER.make_trusted_release_authority_bytes(
+        commit="1" * 40,
+        tree="2" * 40,
+        source_bytes=_TRUSTED_RELEASE_AUTHORITY_SOURCES,
+    )
+)
+_TRUSTED_RELEASE_AUTHORITY_SHA256 = sha(_TRUSTED_RELEASE_AUTHORITY_RAW)
+if _TRUSTED_RELEASE_AUTHORITY_SHA256 != TRUSTED_RELEASE_AUTHORITY_FIXTURE_SHA256:
+    raise AssertionError(
+        "trusted-release authority fixture changed; review and explicitly "
+        "update its literal pin "
+        f"(observed {_TRUSTED_RELEASE_AUTHORITY_SHA256})"
+    )
 
 
 def always_selected() -> dict:
@@ -119,21 +136,8 @@ class SoftmodemLauncherTests(unittest.TestCase):
             self.primary,
             self.binary,
         )
-        self.authority_sources = (
-            LAUNCHER.VERIFIER.accepted_trusted_release_source_bytes()
-        )
-        self.authority_raw = LAUNCHER.VERIFIER.make_trusted_release_authority_bytes(
-            commit=self.build["build_identity"]["source_commit"],
-            tree=self.build["build_identity"]["source_tree"],
-            source_bytes=self.authority_sources,
-        )
-        actual_authority_sha256 = sha(self.authority_raw)
-        self.assertEqual(
-            actual_authority_sha256,
-            TRUSTED_RELEASE_AUTHORITY_FIXTURE_SHA256,
-            "trusted-release authority fixture changed; review and explicitly "
-            f"update its literal pin (observed {actual_authority_sha256})",
-        )
+        self.authority_sources = _TRUSTED_RELEASE_AUTHORITY_SOURCES
+        self.authority_raw = _TRUSTED_RELEASE_AUTHORITY_RAW
         self.authority_sha256 = TRUSTED_RELEASE_AUTHORITY_FIXTURE_SHA256
         self.authority_path = self.root / "trusted-release-authority-v1.json"
         self.authority_path.write_bytes(self.authority_raw)

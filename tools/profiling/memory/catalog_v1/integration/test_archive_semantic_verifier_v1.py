@@ -61,8 +61,21 @@ def sha(raw: bytes) -> str:
 
 
 TRUSTED_RELEASE_AUTHORITY_FIXTURE_SHA256 = (
-    "6477e10bdd20851e62156fa42ab668c7f93c3bece422c62e70daed9c67a83bff"
+    "edde0b92154f7170b9565facfa77136bf30300bfe2f75e3d6e1e38dc6f848047"
 )
+_TRUSTED_RELEASE_AUTHORITY_SOURCES = V.accepted_trusted_release_source_bytes()
+_TRUSTED_RELEASE_AUTHORITY_RAW = V.make_trusted_release_authority_bytes(
+    commit="1" * 40,
+    tree="2" * 40,
+    source_bytes=_TRUSTED_RELEASE_AUTHORITY_SOURCES,
+)
+_TRUSTED_RELEASE_AUTHORITY_SHA256 = sha(_TRUSTED_RELEASE_AUTHORITY_RAW)
+if _TRUSTED_RELEASE_AUTHORITY_SHA256 != TRUSTED_RELEASE_AUTHORITY_FIXTURE_SHA256:
+    raise AssertionError(
+        "trusted-release authority fixture changed; review and explicitly "
+        "update its literal pin "
+        f"(observed {_TRUSTED_RELEASE_AUTHORITY_SHA256})"
+    )
 VERIFIER_SHA256 = sha(VERIFIER_DEFINITION)
 EVENT_CLASSIFIER_SHA256 = sha(EVENT_CLASSIFIER_DEFINITION)
 
@@ -674,14 +687,22 @@ def trusted_release_authority(
     build: dict | None = None,
 ) -> tuple[bytes, str, dict[str, bytes], dict[str, bytes]]:
     build = F.build(synthetic=False) if build is None else build
-    sources = V.accepted_trusted_release_source_bytes()
     identity = build["build_identity"]
-    raw = V.make_trusted_release_authority_bytes(
-        commit=identity["source_commit"],
-        tree=identity["source_tree"],
-        source_bytes=sources,
-    )
-    actual_sha256 = sha(raw)
+    if (
+        identity["source_commit"] == "1" * 40
+        and identity["source_tree"] == "2" * 40
+    ):
+        sources = _TRUSTED_RELEASE_AUTHORITY_SOURCES
+        raw = _TRUSTED_RELEASE_AUTHORITY_RAW
+        actual_sha256 = _TRUSTED_RELEASE_AUTHORITY_SHA256
+    else:
+        sources = V.accepted_trusted_release_source_bytes()
+        raw = V.make_trusted_release_authority_bytes(
+            commit=identity["source_commit"],
+            tree=identity["source_tree"],
+            source_bytes=sources,
+        )
+        actual_sha256 = sha(raw)
     if actual_sha256 != TRUSTED_RELEASE_AUTHORITY_FIXTURE_SHA256:
         raise AssertionError(
             "trusted-release authority fixture changed; review and explicitly "
@@ -919,7 +940,7 @@ class IntegrationTests(unittest.TestCase):
         self.assertEqual(V.COVERAGE.INSTANCE_VERSION, {"major": 1, "minor": 0})
         self.assertEqual(V.CONFIG.SCHEMA_VERSION, {"major": 1, "minor": 1})
         self.assertEqual(V.CONFIG.INSTANCE_VERSION, {"major": 1, "minor": 0})
-        self.assertEqual(V.BUILD_EVIDENCE.VERSION, {"major": 1, "minor": 3})
+        self.assertEqual(V.BUILD_EVIDENCE.VERSION, {"major": 1, "minor": 4})
         run = V.COVERAGE.parse_canonical(objects["catalog/run-coverage.json"])
         self.assertEqual(build["version"], {"major": 1, "minor": 0})
         self.assertEqual(run["version"], {"major": 1, "minor": 0})

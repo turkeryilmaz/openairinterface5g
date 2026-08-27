@@ -251,22 +251,29 @@ set_tests_properties(oai_memprof_build_evidence_python PROPERTIES
                      TIMEOUT 60
                      WORKING_DIRECTORY ${OPENAIR_DIR})
 
-add_executable(oai_memprof_archive_append ../oai_memprof_archive_append.c)
-target_compile_features(oai_memprof_archive_append PRIVATE c_std_11)
-target_compile_options(oai_memprof_archive_append PRIVATE -Wall -Wextra -Werror -Wpedantic)
-target_link_libraries(oai_memprof_archive_append PRIVATE
-                      oai_memprof_stream_finalizer
-                      oai_memprof_process_handoff)
-set_target_properties(oai_memprof_archive_append PROPERTIES BUILD_RPATH "${CMAKE_BINARY_DIR}/memprof")
 add_dependencies(tests oai_memprof_archive_append)
 
-add_executable(test_oai_memprof_archive_append test_oai_memprof_archive_append.c)
+add_executable(test_oai_memprof_archive_append
+               test_oai_memprof_archive_append.c
+               ../oai_memprof_stream_finalizer.c)
 target_compile_features(test_oai_memprof_archive_append PRIVATE c_std_11)
-target_compile_options(test_oai_memprof_archive_append PRIVATE -Wall -Wextra -Werror -Wpedantic)
+target_include_directories(test_oai_memprof_archive_append PRIVATE ${OPENAIR_DIR})
+target_compile_options(test_oai_memprof_archive_append PRIVATE
+                       -Wall -Wextra -Werror -Wpedantic -fno-pie)
+target_compile_definitions(test_oai_memprof_archive_append PRIVATE
+                           OAI_MEMPROF_STREAM_FINALIZER_OFFLINE_ONLY=1)
 target_link_libraries(test_oai_memprof_archive_append PRIVATE
-                      oai_memprof_stream_finalizer
-                      oai_memprof_process_handoff)
-set_target_properties(test_oai_memprof_archive_append PROPERTIES BUILD_RPATH "${CMAKE_BINARY_DIR}/memprof")
+                      oai_memprof_process_handoff
+                      oai_memprof_container_wire
+                      oai_memprof_wire)
+target_link_options(test_oai_memprof_archive_append PRIVATE -static -no-pie)
+set_target_properties(test_oai_memprof_archive_append PROPERTIES
+                      BUILD_RPATH ""
+                      INSTALL_RPATH ""
+                      SKIP_BUILD_RPATH TRUE
+                      SKIP_INSTALL_RPATH TRUE
+                      INTERPROCEDURAL_OPTIMIZATION FALSE
+                      POSITION_INDEPENDENT_CODE OFF)
 add_dependencies(tests test_oai_memprof_archive_append)
 
 add_test(NAME oai_memprof_archive_append_c

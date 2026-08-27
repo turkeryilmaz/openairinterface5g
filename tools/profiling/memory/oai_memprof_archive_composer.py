@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import fcntl
 import hashlib
 import importlib.util
 import os
@@ -38,6 +39,7 @@ MAX_BUILD_ARTIFACT_BYTES = 512 * 1024 * 1024
 MAX_BUILD_ARTIFACT_ENTRIES = 256
 MAX_BUILD_ARTIFACT_TOTAL_BYTES = 1 * 1024 * 1024 * 1024
 MAX_STREAM_BYTES = 64 * 1024 * 1024 * 1024
+APPENDER_CALLER_ARGV0 = "oai_memprof_archive_append"
 APPENDER_CONTRACT_PROBE_ARGUMENT = "--oai-memprof-archive-append-contract-v1"
 APPENDER_CONTRACT_PROBE_OUTPUT = b"oai_memprof_archive_append contract-v1\n"
 APPENDER_CONTRACT_PROBE_TIMEOUT_SECONDS = 5
@@ -60,6 +62,36 @@ _GLIBC_RUNTIME_FILENAME_RE = re.compile(
 
 class ArchiveComposerError(RuntimeError):
     """Fail-closed composition error."""
+
+
+@dataclass
+class _SealedAppender:
+    """Single-owner sealed appender image, invalid immediately after close."""
+
+    descriptor: int | None
+    byte_count: int
+    seals: int
+
+    def _active_descriptor(self) -> int:
+        if self.descriptor is None:
+            raise ArchiveComposerError("sealed archive appender used after close")
+        return self.descriptor
+
+    def executable_path(self) -> str:
+        return f"/proc/self/fd/{self._active_descriptor()}"
+
+    def pass_descriptor(self) -> int:
+        return self._active_descriptor()
+
+    def close(self) -> None:
+        descriptor = self.descriptor
+        if descriptor is None:
+            raise ArchiveComposerError("sealed archive appender closed more than once")
+        self.descriptor = None
+        try:
+            os.close(descriptor)
+        except Exception as error:
+            raise ArchiveComposerError("sealed archive appender close failed") from error
 
 
 @dataclass(frozen=True)
@@ -666,16 +698,20 @@ def _terminate_unidentified_probe(
 
 
 def _run_appender_contract_probe(
-    appender_path: pathlib.Path,
+    appender: _SealedAppender,
 ) -> tuple[int, bytes, bytes]:
     try:
         probe = subprocess.Popen(
-            [str(appender_path), APPENDER_CONTRACT_PROBE_ARGUMENT],
+            [APPENDER_CALLER_ARGV0, APPENDER_CONTRACT_PROBE_ARGUMENT],
+            executable=appender.executable_path(),
             stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             bufsize=0,
             start_new_session=True,
+            close_fds=True,
+            pass_fds=(appender.pass_descriptor(),),
+            env={},
         )
     except OSError as error:
         raise ArchiveComposerError(
@@ -877,16 +913,41 @@ def _run_appender_contract_probe(
     return result
 
 
-def _require_appender_contract(append_executable: pathlib.Path) -> pathlib.Path:
+def _run_sealed_appender(
+    appender: _SealedAppender,
+    process_directory: pathlib.Path,
+    stream_leaf: str,
+    handoff_leaf: str,
+    trailer_leaf: str,
+    handoff_sha256: str,
+) -> subprocess.CompletedProcess[bytes]:
+    """Run the already-sealed production appender without reopening its path."""
+
+    return subprocess.run(
+        [
+            APPENDER_CALLER_ARGV0,
+            str(process_directory),
+            stream_leaf,
+            handoff_leaf,
+            trailer_leaf,
+            handoff_sha256,
+        ],
+        executable=appender.executable_path(),
+        check=False,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        timeout=30,
+        close_fds=True,
+        pass_fds=(appender.pass_descriptor(),),
+        env={},
+    )
+
+
+def _require_appender_contract(appender: _SealedAppender) -> None:
     """Require the side-effect-free archive-appender contract before publication."""
 
-    try:
-        appender_path = append_executable.resolve(strict=True)
-    except OSError as error:
-        raise ArchiveComposerError(
-            "append utility contract probe executable unavailable"
-        ) from error
-    return_code, stdout, stderr = _run_appender_contract_probe(appender_path)
+    return_code, stdout, stderr = _run_appender_contract_probe(appender)
     if return_code != 0:
         raise ArchiveComposerError(
             f"append utility contract probe failed status={return_code}"
@@ -895,7 +956,6 @@ def _require_appender_contract(append_executable: pathlib.Path) -> pathlib.Path:
         raise ArchiveComposerError("append utility contract probe emitted stderr")
     if stdout != APPENDER_CONTRACT_PROBE_OUTPUT:
         raise ArchiveComposerError("append utility contract probe stdout mismatch")
-    return appender_path
 
 
 def _load(name: str, path: pathlib.Path) -> ModuleType:
@@ -2061,6 +2121,217 @@ def _read_build_evidence_artifacts(
     return artifacts
 
 
+def _read_sealed_appender_bytes(
+    descriptor: int, expected: bytes
+) -> None:
+    try:
+        os.lseek(descriptor, 0, os.SEEK_SET)
+        expected_view = memoryview(expected)
+        offset = 0
+        while offset < len(expected_view):
+            chunk = os.read(descriptor, min(len(expected_view) - offset, 1 << 20))
+            if not chunk:
+                raise ArchiveComposerError("sealed archive appender short read")
+            end = offset + len(chunk)
+            if chunk != expected_view[offset:end]:
+                raise ArchiveComposerError(
+                    "sealed archive appender bytes differ after seal"
+                )
+            offset = end
+        if os.read(descriptor, 1) != b"":
+            raise ArchiveComposerError("sealed archive appender trailing bytes")
+    except OSError as error:
+        raise ArchiveComposerError("sealed archive appender verification failed") from error
+
+
+def _create_sealed_appender(authenticated_raw: bytes) -> _SealedAppender:
+    required_seal_names = (
+        "F_ADD_SEALS",
+        "F_GET_SEALS",
+        "F_SEAL_WRITE",
+        "F_SEAL_GROW",
+        "F_SEAL_SHRINK",
+        "F_SEAL_SEAL",
+    )
+    missing = [
+        name
+        for name in ("memfd_create", "MFD_CLOEXEC", "MFD_ALLOW_SEALING")
+        if not hasattr(os, name)
+    ]
+    missing.extend(name for name in required_seal_names if not hasattr(fcntl, name))
+    if (
+        sys.platform != "linux"
+        or not pathlib.Path("/proc/self/fd").is_dir()
+        or missing
+    ):
+        detail = ",".join(missing) if missing else "linux/procfs"
+        raise ArchiveComposerError(
+            f"sealed archive appender unavailable: {detail}"
+        )
+    descriptor: int | None = None
+    try:
+        descriptor = os.memfd_create(
+            "oai-memprof-archive-append",
+            os.MFD_CLOEXEC | os.MFD_ALLOW_SEALING,
+        )
+        offset = 0
+        while offset < len(authenticated_raw):
+            written = os.write(descriptor, authenticated_raw[offset:])
+            if written <= 0:
+                raise ArchiveComposerError("sealed archive appender short write")
+            offset += written
+        if offset != len(authenticated_raw):
+            raise ArchiveComposerError("sealed archive appender short write")
+        os.fchmod(descriptor, 0o500)
+        if stat.S_IMODE(os.fstat(descriptor).st_mode) != 0o500:
+            raise ArchiveComposerError("sealed archive appender mode mismatch")
+        required_seals = (
+            fcntl.F_SEAL_WRITE
+            | fcntl.F_SEAL_GROW
+            | fcntl.F_SEAL_SHRINK
+            | fcntl.F_SEAL_SEAL
+        )
+        fcntl.fcntl(descriptor, fcntl.F_ADD_SEALS, required_seals)
+        observed_seals = fcntl.fcntl(descriptor, fcntl.F_GET_SEALS)
+        if observed_seals & required_seals != required_seals:
+            raise ArchiveComposerError("sealed archive appender required seals absent")
+        _read_sealed_appender_bytes(descriptor, authenticated_raw)
+        if os.get_inheritable(descriptor):
+            raise ArchiveComposerError("sealed archive appender parent descriptor is inheritable")
+        sealed = _SealedAppender(descriptor, len(authenticated_raw), observed_seals)
+        descriptor = None
+        return sealed
+    except BaseException as error:
+        if descriptor is not None:
+            closing_descriptor, descriptor = descriptor, None
+            try:
+                os.close(closing_descriptor)
+            except Exception as close_error:
+                error.add_note(
+                    "sealed archive appender setup close failure: "
+                    f"{type(close_error).__name__}: {close_error}"
+                )
+            except BaseException as close_interruption:
+                error.add_note(
+                    "sealed archive appender setup close interruption: "
+                    f"{type(close_interruption).__name__}: {close_interruption}"
+                )
+        if isinstance(error, ArchiveComposerError):
+            raise
+        if isinstance(error, Exception):
+            raise ArchiveComposerError("sealed archive appender creation failed") from error
+        raise
+
+
+def _close_sealed_appender(
+    appender: _SealedAppender,
+    primary: BaseException | None,
+) -> None:
+    """Close one sealed image, preserving an active primary over close failure.
+
+    Without an active composition failure, the original close exception or
+    interruption propagates unchanged.
+    """
+
+    try:
+        appender.close()
+    except Exception as close_error:
+        if primary is None:
+            raise
+        primary.add_note(
+            "sealed archive appender close failure: "
+            f"{type(close_error).__name__}: {close_error}"
+        )
+    except BaseException as close_interruption:
+        if primary is None:
+            raise
+        primary.add_note(
+            "sealed archive appender close interruption: "
+            f"{type(close_interruption).__name__}: {close_interruption}"
+        )
+
+
+def _require_authenticated_appender(
+    append_executable: pathlib.Path,
+    build_evidence: Mapping[str, Any],
+    build_evidence_artifacts: Mapping[str, bytes],
+) -> _SealedAppender:
+    """Freeze the selected canonical appender and seal its measured exact bytes."""
+
+    auxiliary_rows = build_evidence.get("auxiliary_executables")
+    if not isinstance(auxiliary_rows, list) or len(auxiliary_rows) != 1:
+        raise ArchiveComposerError(
+            "build evidence requires exactly one auxiliary executable"
+        )
+    auxiliary = auxiliary_rows[0]
+    if (
+        not isinstance(auxiliary, Mapping)
+        or auxiliary.get("auxiliary_id")
+        != BUILD_EVIDENCE.ARCHIVE_APPEND_AUXILIARY_ID
+        or auxiliary.get("target") != BUILD_EVIDENCE.ARCHIVE_APPEND_TARGET
+        or not isinstance(auxiliary.get("build_output_path"), str)
+        or not isinstance(auxiliary.get("elf_path"), str)
+    ):
+        raise ArchiveComposerError(
+            "build evidence archive-appender auxiliary identity is unavailable"
+        )
+    try:
+        build_directory = BUILD_EVIDENCE._build_directory_identity(
+            build_evidence.get("build_directory"),
+            "build evidence archive-appender build directory",
+        )
+        build_output_path = BUILD_EVIDENCE._archive_path(
+            auxiliary["build_output_path"],
+            "build evidence archive-appender build output",
+        )
+        artifact_path = BUILD_EVIDENCE._archive_path(
+            auxiliary["elf_path"],
+            "build evidence archive-appender ELF artifact",
+        )
+    except BUILD_EVIDENCE.BuildEvidenceError as error:
+        raise ArchiveComposerError(str(error)) from error
+    expected_path = pathlib.Path(build_directory).joinpath(
+        *build_output_path.split("/")
+    )
+    selected_path = pathlib.Path(append_executable)
+    try:
+        expected_canonical = expected_path.resolve(strict=True)
+        selected_canonical = selected_path.resolve(strict=True)
+    except OSError as error:
+        raise ArchiveComposerError(
+            "authenticated archive appender is unavailable"
+        ) from error
+    if (
+        not selected_path.is_absolute()
+        or selected_path != selected_canonical
+        or expected_path != expected_canonical
+        or selected_path != expected_path
+    ):
+        raise ArchiveComposerError(
+            "append utility must be the exact canonical authenticated build output"
+        )
+    authenticated_raw = build_evidence_artifacts.get(artifact_path)
+    if type(authenticated_raw) is not bytes:
+        raise ArchiveComposerError(
+            "authenticated archive-appender ELF artifact is unavailable"
+        )
+    try:
+        frozen = _read_frozen(expected_path, MAX_BUILD_ARTIFACT_BYTES)
+    except (ArchiveComposerError, OSError) as error:
+        raise ArchiveComposerError(
+            "authenticated archive appender cannot be frozen"
+        ) from error
+    if frozen.mode & (stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH) == 0:
+        raise ArchiveComposerError(
+            "authenticated archive appender requires an executable mode bit"
+        )
+    if frozen.raw != authenticated_raw:
+        raise ArchiveComposerError(
+            "authenticated archive appender bytes differ from build evidence"
+        )
+    return _create_sealed_appender(authenticated_raw)
+
+
 def compose(
     archive_directory: pathlib.Path,
     *,
@@ -2307,30 +2578,35 @@ def compose(
     process_directory = stream_path.parent
     trailer_leaf = "trailer.bin"
     trailer_path = process_directory / trailer_leaf
-    appender_path = _require_appender_contract(append_executable)
-    _publish_once(archive_directory, f"streams/{trailer_leaf}", trailer_raw)
+    appender = _require_authenticated_appender(
+        append_executable,
+        evidence_value,
+        build_evidence_artifacts,
+    )
+    appender_primary: BaseException | None = None
     try:
-        completed = subprocess.run(
-            [
-                str(appender_path),
-                str(process_directory),
+        _require_appender_contract(appender)
+        _publish_once(archive_directory, f"streams/{trailer_leaf}", trailer_raw)
+        try:
+            completed = _run_sealed_appender(
+                appender,
+                process_directory,
                 stream_path.name,
                 handoff_path.name,
                 trailer_leaf,
                 _sha(handoff_file.raw),
-            ],
-            check=False,
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            timeout=30,
-        )
-        if completed.returncode != 0:
-            raise ArchiveComposerError(
-                f"C append utility failed {completed.returncode}: {completed.stderr.decode('utf-8', 'replace')}"
             )
+            if completed.returncode != 0:
+                raise ArchiveComposerError(
+                    f"C append utility failed {completed.returncode}: {completed.stderr.decode('utf-8', 'replace')}"
+                )
+        finally:
+            _unlink_leaf(process_directory, trailer_leaf)
+    except BaseException as error:
+        appender_primary = error
+        raise
     finally:
-        _unlink_leaf(process_directory, trailer_leaf)
+        _close_sealed_appender(appender, appender_primary)
     handoff_after_append = _read_frozen(handoff_path, MAX_HANDOFF_BYTES)
     if (
         handoff_after_append.raw != handoff_file.raw

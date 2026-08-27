@@ -9,7 +9,9 @@ import hashlib
 import importlib.util
 import os
 import pathlib
+import re
 import shutil
+import struct
 import subprocess
 import sys
 import tempfile
@@ -50,7 +52,7 @@ def sha(raw: bytes) -> str:
 
 
 TRUSTED_RELEASE_AUTHORITY_FIXTURE_SHA256 = (
-    "5951c69716648ce2b1b1192039420659f65951a6baccac5c6ee054dae30c6600"
+    "5f69d1290785570b57cecdf25639639f175e26146d1a6f5752baa09226c76014"
 )
 
 
@@ -275,7 +277,7 @@ class BuildEvidenceCommandCaptureTests(unittest.TestCase):
             )
             for row in BUILD_EVIDENCE.COVERAGE.API_RULES
         )
-        self.assertEqual(BUILD_EVIDENCE.VERSION, {"major": 1, "minor": 3})
+        self.assertEqual(BUILD_EVIDENCE.VERSION, {"major": 1, "minor": 4})
         self.assertEqual(BUILD_EVIDENCE._SUPPORTED, expected)
         self.assertEqual([row[0] for row in expected], list(range(1, 13)))
         self.assertEqual(
@@ -290,6 +292,38 @@ class BuildEvidenceCommandCaptureTests(unittest.TestCase):
             BUILD_EVIDENCE.COVERAGE.expected_supported_symbol_version(6, 2),
             "GLIBC_2.17",
         )
+
+    def test_archive_appender_target_is_guarded_production_only_once(self) -> None:
+        cmake = (ROOT / "common/utils/memprof/CMakeLists.txt").read_text(
+            encoding="utf-8"
+        )
+        tests_cmake = (
+            ROOT / "common/utils/memprof/tests/CMakeLists.txt"
+        ).read_text(encoding="utf-8")
+        marker = "add_executable(oai_memprof_archive_append EXCLUDE_FROM_ALL"
+        self.assertEqual(cmake.count(marker), 1)
+        self.assertNotIn("add_executable(oai_memprof_archive_append", tests_cmake)
+        start = cmake.rfind("if(", 0, cmake.index(marker))
+        end = cmake.index("endif()", cmake.index(marker))
+        block = " ".join(cmake[start:end].split())
+        self.assertTrue(block.startswith("if(OAI_MEMPROF_ACTIVE OR ENABLE_TESTS)"))
+        self.assertIn("oai_memprof_stream_finalizer.c", block)
+        self.assertIn("OAI_MEMPROF_STREAM_FINALIZER_OFFLINE_ONLY=1", block)
+        self.assertIn("-static", block)
+        self.assertIn("-no-pie", block)
+        self.assertIn("LINKER:-Map,${OAI_MEMPROF_ARCHIVE_APPEND_MAP}", block)
+        self.assertIn("LINKER:--cref", block)
+        unit_marker = "add_executable(test_oai_memprof_archive_append"
+        unit_start = tests_cmake.index(unit_marker)
+        unit_end = tests_cmake.index(
+            "add_dependencies(tests test_oai_memprof_archive_append)", unit_start
+        )
+        unit_block = " ".join(tests_cmake[unit_start:unit_end].split())
+        self.assertIn("../oai_memprof_stream_finalizer.c", unit_block)
+        self.assertIn("OAI_MEMPROF_STREAM_FINALIZER_OFFLINE_ONLY=1", unit_block)
+        self.assertIn("-static", unit_block)
+        self.assertIn("-no-pie", unit_block)
+        self.assertNotIn("oai_memprof_stream_finalizer)", unit_block)
 
     def test_dfts_wrap_set_is_architecture_exact(self) -> None:
         cmake = (ROOT / "common/utils/memprof/CMakeLists.txt").read_text(encoding="utf-8")
@@ -395,7 +429,8 @@ class ArchiveComposerBuildEvidenceTests(unittest.TestCase):
                     "add_subdirectory(common/utils/memprof memprof)",
                     "add_library(oai_memprof_unselected_fixture SHARED unselected_fixture.c)",
                     "target_link_options(oai_memprof_unselected_fixture PRIVATE",
-                    "  \"LINKER:-Map,${CMAKE_CURRENT_BINARY_DIR}/oai_memprof_unselected_fixture.map\")",
+                    "  \"LINKER:-Map,${CMAKE_CURRENT_BINARY_DIR}/oai_memprof_unselected_fixture.map\"",
+                    "  \"LINKER:--cref\")",
                     "",
                 )
             ),
@@ -465,7 +500,7 @@ class ArchiveComposerBuildEvidenceTests(unittest.TestCase):
         cls.producer = (
             cls.build_root / "memprof/tests/test_oai_memprof_archive_producer"
         )
-        cls.appender = cls.build_root / "memprof/tests/oai_memprof_archive_append"
+        cls.appender = cls.build_root / "memprof/oai_memprof_archive_append"
         cls.evidence_root = cls.case_root / "prepared"
         cls.evidence_root.mkdir()
         logical_elfs = (
@@ -514,6 +549,14 @@ class ArchiveComposerBuildEvidenceTests(unittest.TestCase):
             build_directory=cls.build_root,
             evidence_root=cls.evidence_root,
             logical_elfs=logical_elfs,
+            auxiliary_executables=(
+                BUILD_EVIDENCE.AuxiliaryExecutableInput(
+                    BUILD_EVIDENCE.ARCHIVE_APPEND_AUXILIARY_ID,
+                    BUILD_EVIDENCE.ARCHIVE_APPEND_TARGET,
+                    cls.appender,
+                    cls.build_root / "memprof/oai_memprof_archive_append.map",
+                ),
+            ),
             primary_logical_elf_id="archive_fixture",
             libc_path=pathlib.Path(
                 "/lib/x86_64-linux-gnu/libc.so.6"
@@ -526,6 +569,27 @@ class ArchiveComposerBuildEvidenceTests(unittest.TestCase):
         )
         cls.build = COVERAGE.parse_canonical(cls.prepared.coverage_bytes)
         cls.assert_clean_source()
+        trusted_sources = {
+            archive_path: (
+                cls.source_root / repository_relative_path
+            ).read_bytes()
+            for archive_path, repository_relative_path in COMPOSER.VERIFIER.TRUSTED_RELEASE_SOURCE_PATHS.items()
+        }
+        identity = cls.build["build_identity"]
+        cls.trusted_release_authority_raw = (
+            COMPOSER.VERIFIER.make_trusted_release_authority_bytes(
+                commit=identity["source_commit"],
+                tree=identity["source_tree"],
+                source_bytes=trusted_sources,
+            )
+        )
+        actual_authority_sha256 = sha(cls.trusted_release_authority_raw)
+        if actual_authority_sha256 != TRUSTED_RELEASE_AUTHORITY_FIXTURE_SHA256:
+            raise AssertionError(
+                "trusted-release authority fixture changed; review and explicitly "
+                "update its literal pin "
+                f"(observed {actual_authority_sha256})"
+            )
 
     @classmethod
     def assert_clean_source(cls) -> None:
@@ -639,26 +703,8 @@ class ArchiveComposerBuildEvidenceTests(unittest.TestCase):
     def trusted_release_inputs(
         cls, label: str
     ) -> tuple[pathlib.Path, pathlib.Path, str]:
-        sources = {
-            archive_path: (
-                cls.source_root / repository_relative_path
-            ).read_bytes()
-            for archive_path, repository_relative_path in COMPOSER.VERIFIER.TRUSTED_RELEASE_SOURCE_PATHS.items()
-        }
-        identity = cls.build["build_identity"]
-        authority_raw = COMPOSER.VERIFIER.make_trusted_release_authority_bytes(
-            commit=identity["source_commit"],
-            tree=identity["source_tree"],
-            source_bytes=sources,
-        )
-        actual_sha256 = sha(authority_raw)
-        if actual_sha256 != TRUSTED_RELEASE_AUTHORITY_FIXTURE_SHA256:
-            raise AssertionError(
-                "trusted-release authority fixture changed; review and explicitly "
-                f"update its literal pin (observed {actual_sha256})"
-            )
         authority_path = cls.case_root / f"{label}-trusted-release-authority-v1.json"
-        authority_path.write_bytes(authority_raw)
+        authority_path.write_bytes(cls.trusted_release_authority_raw)
         return (
             authority_path,
             cls.source_root,
@@ -800,6 +846,16 @@ class ArchiveComposerBuildEvidenceTests(unittest.TestCase):
         stream = archive / "streams/memory-lifetime.bin"
         handoff = archive / "streams/process-handoff.bin"
         return archive, evidence_root, stream.read_bytes(), handoff.read_bytes()
+
+    def sealed_appender(self, path: pathlib.Path) -> COMPOSER._SealedAppender:
+        return COMPOSER._create_sealed_appender(path.read_bytes())
+
+    def probe_contract_path(self, path: pathlib.Path) -> None:
+        appender = self.sealed_appender(path)
+        try:
+            COMPOSER._require_appender_contract(appender)
+        finally:
+            appender.close()
 
     def compose(
         self,
@@ -1190,31 +1246,239 @@ class ArchiveComposerBuildEvidenceTests(unittest.TestCase):
         )
 
     def test_current_appender_contract_probe_and_integration_succeeds(self) -> None:
-        expected_path = self.appender.resolve(strict=True)
-        with mock.patch.object(
-            COMPOSER.subprocess, "Popen", wraps=subprocess.Popen
-        ) as runner:
-            self.assertEqual(
-                COMPOSER._require_appender_contract(self.appender), expected_path
-            )
+        raw = self.appender.read_bytes()
+        self.assertEqual(struct.unpack_from("<H", raw, 16)[0], 2)
+        program_offset = struct.unpack_from("<Q", raw, 32)[0]
+        program_entry_size = struct.unpack_from("<H", raw, 54)[0]
+        program_count = struct.unpack_from("<H", raw, 56)[0]
+        program_types = {
+            struct.unpack_from("<I", raw, program_offset + index * program_entry_size)[0]
+            for index in range(program_count)
+        }
+        self.assertNotIn(2, program_types)  # PT_DYNAMIC
+        self.assertNotIn(3, program_types)  # PT_INTERP
+        _machine, sections, _bodies = BUILD_EVIDENCE._parse_sections(raw)
+        self.assertFalse(any(section.kind in (6, 11) for section in sections))
+        auxiliary_paths = BUILD_EVIDENCE._auxiliary_paths(
+            BUILD_EVIDENCE.ARCHIVE_APPEND_AUXILIARY_ID
+        )
+        command_raw = self.artifacts[auxiliary_paths["link_command_path"]]
+        self.assertEqual(len(re.findall(rb"(?<!\S)-static(?!\S)", command_raw)), 1)
+        self.assertEqual(len(re.findall(rb"(?<!\S)-no-pie(?!\S)", command_raw)), 1)
+        self.assertIn(b"-Wl,-Map,", command_raw)
+        self.assertIn(b"-Wl,--cref", command_raw)
+        self.assertNotIn(b"liboai_memprof_active_runtime", command_raw)
+        self.assertNotIn(b"rpath", command_raw.lower())
+        appender = COMPOSER._require_authenticated_appender(
+            self.appender,
+            self.evidence_value,
+            self.artifacts,
+        )
+        descriptor = appender.pass_descriptor()
+        executable = appender.executable_path()
+        self.assertFalse(os.get_inheritable(descriptor))
+        required_seals = (
+            COMPOSER.fcntl.F_SEAL_WRITE
+            | COMPOSER.fcntl.F_SEAL_GROW
+            | COMPOSER.fcntl.F_SEAL_SHRINK
+            | COMPOSER.fcntl.F_SEAL_SEAL
+        )
+        self.assertEqual(appender.seals & required_seals, required_seals)
+        with self.assertRaises(PermissionError):
+            os.write(descriptor, b"x")
+        original_raw = self.appender.read_bytes()
+        original_mode = self.appender.stat().st_mode & 0o7777
+        replacement = self.contract_probe_executable(
+            "sealed-appender-path-replacement",
+            stdout_text="evil\n",
+            stderr_text="",
+            return_code=0,
+        )
+        try:
+            os.replace(replacement, self.appender)
+            self.appender.write_bytes(b"not an executable image\n")
+            with mock.patch.object(
+                COMPOSER.subprocess, "Popen", wraps=subprocess.Popen
+            ) as runner:
+                COMPOSER._require_appender_contract(appender)
+        finally:
+            self.appender.write_bytes(original_raw)
+            self.appender.chmod(original_mode)
         runner.assert_called_once_with(
-            [str(expected_path), COMPOSER.APPENDER_CONTRACT_PROBE_ARGUMENT],
+            [COMPOSER.APPENDER_CALLER_ARGV0, COMPOSER.APPENDER_CONTRACT_PROBE_ARGUMENT],
+            executable=executable,
             stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             bufsize=0,
             start_new_session=True,
+            close_fds=True,
+            pass_fds=(descriptor,),
+            env={},
+        )
+        completed = subprocess.CompletedProcess([], 0, b"", b"")
+        with mock.patch.object(
+            COMPOSER.subprocess, "run", return_value=completed
+        ) as production:
+            self.assertIs(
+                COMPOSER._run_sealed_appender(
+                    appender,
+                    self.case_root,
+                    "stream.bin",
+                    "handoff.bin",
+                    "trailer.bin",
+                    "a" * 64,
+                ),
+                completed,
+            )
+        production.assert_called_once_with(
+            [
+                COMPOSER.APPENDER_CALLER_ARGV0,
+                str(self.case_root),
+                "stream.bin",
+                "handoff.bin",
+                "trailer.bin",
+                "a" * 64,
+            ],
+            executable=executable,
+            check=False,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=30,
+            close_fds=True,
+            pass_fds=(descriptor,),
+            env={},
+        )
+        appender.close()
+        with self.assertRaisesRegex(COMPOSER.ArchiveComposerError, "used after close"):
+            appender.executable_path()
+        with self.assertRaisesRegex(COMPOSER.ArchiveComposerError, "closed more than once"):
+            appender.close()
+
+    def test_appender_authentication_and_seal_fail_closed(self) -> None:
+        alias = self.case_root / "archive-appender-alias"
+        shutil.copy2(self.appender, alias)
+        with self.assertRaisesRegex(
+            COMPOSER.ArchiveComposerError,
+            "exact canonical authenticated build output",
+        ):
+            COMPOSER._require_authenticated_appender(
+                alias, self.evidence_value, self.artifacts
+            )
+        original_mode = self.appender.stat().st_mode & 0o7777
+        original_raw = self.appender.read_bytes()
+        try:
+            self.appender.chmod(original_mode & ~0o111)
+            with self.assertRaisesRegex(
+                COMPOSER.ArchiveComposerError, "requires an executable mode bit"
+            ):
+                COMPOSER._require_authenticated_appender(
+                    self.appender, self.evidence_value, self.artifacts
+                )
+            self.appender.chmod(original_mode)
+            self.appender.write_bytes(original_raw + b"\n")
+            with self.assertRaisesRegex(
+                COMPOSER.ArchiveComposerError, "bytes differ from build evidence"
+            ):
+                COMPOSER._require_authenticated_appender(
+                    self.appender, self.evidence_value, self.artifacts
+                )
+        finally:
+            self.appender.write_bytes(original_raw)
+            self.appender.chmod(original_mode)
+        with mock.patch.object(COMPOSER.sys, "platform", "not-linux"):
+            with self.assertRaisesRegex(
+                COMPOSER.ArchiveComposerError, "sealed archive appender unavailable"
+            ):
+                COMPOSER._create_sealed_appender(original_raw)
+        with mock.patch.object(COMPOSER.os, "write", return_value=0), mock.patch.object(
+            COMPOSER.os, "close", wraps=os.close
+        ) as closer:
+            with self.assertRaisesRegex(
+                COMPOSER.ArchiveComposerError, "short write"
+            ):
+                COMPOSER._create_sealed_appender(original_raw)
+        self.assertEqual(closer.call_count, 1)
+
+        real_close = os.close
+
+        def close_then_ordinary_error(descriptor: int) -> None:
+            real_close(descriptor)
+            raise OSError("synthetic setup close failure")
+
+        with mock.patch.object(COMPOSER.os, "write", return_value=0), mock.patch.object(
+            COMPOSER.os, "close", side_effect=close_then_ordinary_error
+        ) as closer:
+            with self.assertRaisesRegex(
+                COMPOSER.ArchiveComposerError, "short write"
+            ) as captured:
+                COMPOSER._create_sealed_appender(original_raw)
+        self.assertEqual(closer.call_count, 1)
+        self.assertIn(
+            "sealed archive appender setup close failure: OSError",
+            "\n".join(captured.exception.__notes__),
         )
 
-        archive, evidence_root, prefix, _handoff = self.produce(
-            "current_appender_contract"
+        close_interruption = KeyboardInterrupt()
+
+        def close_then_interrupt(descriptor: int) -> None:
+            real_close(descriptor)
+            raise close_interruption
+
+        with mock.patch.object(COMPOSER.os, "write", return_value=0), mock.patch.object(
+            COMPOSER.os, "close", side_effect=close_then_interrupt
+        ) as closer:
+            with self.assertRaisesRegex(
+                COMPOSER.ArchiveComposerError, "short write"
+            ) as captured:
+                COMPOSER._create_sealed_appender(original_raw)
+        self.assertEqual(closer.call_count, 1)
+        self.assertIn(
+            "sealed archive appender setup close interruption: KeyboardInterrupt",
+            "\n".join(captured.exception.__notes__),
         )
-        result = self.compose(archive, evidence_root)
-        self.assertEqual(result.terminal_outcome, "complete")
-        self.assertGreater(
-            len((archive / COMPOSER.STREAM_ARCHIVE_PATH).read_bytes()), len(prefix)
+
+        for interruption in (KeyboardInterrupt(), SystemExit(17)):
+            with self.subTest(interruption=type(interruption).__name__), mock.patch.object(
+                COMPOSER.os, "fchmod", side_effect=interruption
+            ), mock.patch.object(COMPOSER.os, "close", wraps=os.close) as closer:
+                with self.assertRaises(type(interruption)) as captured:
+                    COMPOSER._create_sealed_appender(original_raw)
+            self.assertIs(captured.exception, interruption)
+            self.assertEqual(closer.call_count, 1)
+
+    def test_sealed_appender_final_close_precedence(self) -> None:
+        primary = COMPOSER.ArchiveComposerError("synthetic mutation primary")
+        ordinary_close = COMPOSER.ArchiveComposerError("synthetic ordinary close")
+        appender = mock.Mock()
+        appender.close.side_effect = ordinary_close
+        COMPOSER._close_sealed_appender(appender, primary)
+        self.assertIn(
+            "sealed archive appender close failure: ArchiveComposerError",
+            "\n".join(primary.__notes__),
         )
-        self.assertTrue((archive / COMPOSER.VERIFIER.STATUS.MANIFEST_PATH).exists())
+
+        appender = mock.Mock()
+        appender.close.side_effect = ordinary_close
+        with self.assertRaises(COMPOSER.ArchiveComposerError) as captured:
+            COMPOSER._close_sealed_appender(appender, None)
+        self.assertIs(captured.exception, ordinary_close)
+
+        interruption = KeyboardInterrupt()
+        appender = mock.Mock()
+        appender.close.side_effect = interruption
+        COMPOSER._close_sealed_appender(appender, primary)
+        self.assertIn(
+            "sealed archive appender close interruption: KeyboardInterrupt",
+            "\n".join(primary.__notes__),
+        )
+
+        appender = mock.Mock()
+        appender.close.side_effect = interruption
+        with self.assertRaises(KeyboardInterrupt) as captured:
+            COMPOSER._close_sealed_appender(appender, None)
+        self.assertIs(captured.exception, interruption)
 
     def test_stale_or_wrong_appender_contract_rejects_before_stream_mutation(
         self,
@@ -1237,26 +1501,39 @@ class ArchiveComposerBuildEvidenceTests(unittest.TestCase):
         )
         for label, stdout_text, stderr_text, return_code, error in cases:
             with self.subTest(label=label):
-                archive, evidence_root, prefix, handoff = self.produce(label)
-                appender = self.contract_probe_executable(
+                wrapper = self.contract_probe_executable(
                     label,
                     stdout_text=stdout_text,
                     stderr_text=stderr_text,
                     return_code=return_code,
                 )
-                with self.assertRaisesRegex(COMPOSER.ArchiveComposerError, error):
-                    self.compose(archive, evidence_root, append_executable=appender)
-                self.assertEqual(
-                    (archive / COMPOSER.STREAM_ARCHIVE_PATH).read_bytes(), prefix
-                )
-                self.assertEqual(
-                    (archive / COMPOSER.PROCESS_HANDOFF_ARCHIVE_PATH).read_bytes(),
-                    handoff,
-                )
-                self.assertFalse((archive / "streams/trailer.bin").exists())
-                self.assertFalse(
-                    (archive / COMPOSER.VERIFIER.STATUS.MANIFEST_PATH).exists()
-                )
+                appender = self.sealed_appender(wrapper)
+                try:
+                    with self.assertRaisesRegex(COMPOSER.ArchiveComposerError, error):
+                        COMPOSER._require_appender_contract(appender)
+                finally:
+                    appender.close()
+
+        archive, evidence_root, prefix, handoff = self.produce(
+            "unmeasured_wrapper_prepublication_rejection"
+        )
+        wrapper = self.contract_probe_executable(
+            "unmeasured_wrapper_prepublication_rejection",
+            stdout_text=COMPOSER.APPENDER_CONTRACT_PROBE_OUTPUT.decode("ascii"),
+            stderr_text="",
+            return_code=0,
+        )
+        with self.assertRaisesRegex(
+            COMPOSER.ArchiveComposerError,
+            "exact canonical authenticated build output",
+        ):
+            self.compose(archive, evidence_root, append_executable=wrapper)
+        self.assertEqual((archive / COMPOSER.STREAM_ARCHIVE_PATH).read_bytes(), prefix)
+        self.assertEqual(
+            (archive / COMPOSER.PROCESS_HANDOFF_ARCHIVE_PATH).read_bytes(), handoff
+        )
+        self.assertFalse((archive / "streams/trailer.bin").exists())
+        self.assertFalse((archive / COMPOSER.VERIFIER.STATUS.MANIFEST_PATH).exists())
 
     def test_contract_probe_rejects_stderr_timeout_and_output_overflow(self) -> None:
         stderr_appender = self.contract_probe_executable(
@@ -1269,7 +1546,7 @@ class ArchiveComposerBuildEvidenceTests(unittest.TestCase):
             COMPOSER.ArchiveComposerError,
             "append utility contract probe emitted stderr",
         ):
-            COMPOSER._require_appender_contract(stderr_appender)
+            self.probe_contract_path(stderr_appender)
 
         sleeper, pid_path = self.sleeping_contract_probe_executable(
             "timeout_appender_contract"
@@ -1285,7 +1562,7 @@ class ArchiveComposerBuildEvidenceTests(unittest.TestCase):
                 COMPOSER.ArchiveComposerError,
                 "append utility contract probe timed out",
             ):
-                COMPOSER._require_appender_contract(sleeper)
+                self.probe_contract_path(sleeper)
         self.assertTrue(pid_path.exists())
         direct_pid = self.read_contract_probe_pid(pid_path)
         self.assert_process_gone(direct_pid)
@@ -1311,7 +1588,7 @@ class ArchiveComposerBuildEvidenceTests(unittest.TestCase):
                     return_code=0,
                 )
                 with self.assertRaisesRegex(COMPOSER.ArchiveComposerError, error):
-                    COMPOSER._require_appender_contract(appender)
+                    self.probe_contract_path(appender)
 
     def test_contract_probe_rejects_same_session_descendant_and_reaps_it(self) -> None:
         appender, process_path = self.descendant_contract_probe_executable(
@@ -1321,7 +1598,7 @@ class ArchiveComposerBuildEvidenceTests(unittest.TestCase):
             COMPOSER.ArchiveComposerError,
             "append utility contract probe left session descendants",
         ):
-            COMPOSER._require_appender_contract(appender)
+            self.probe_contract_path(appender)
         self.assertTrue(process_path.exists())
         leader_pid, child_pid, leader_group, child_group, session = map(
             int, process_path.read_text(encoding="ascii").split()
@@ -1341,7 +1618,7 @@ class ArchiveComposerBuildEvidenceTests(unittest.TestCase):
             COMPOSER.ArchiveComposerError,
             "append utility contract probe left session descendants",
         ):
-            COMPOSER._require_appender_contract(appender)
+            self.probe_contract_path(appender)
         self.assertTrue(process_path.exists())
         leader_pid, child_pid, leader_group, child_group, session = map(
             int, process_path.read_text(encoding="ascii").split()
@@ -1458,7 +1735,7 @@ class ArchiveComposerBuildEvidenceTests(unittest.TestCase):
                 COMPOSER.ArchiveComposerError,
                 "append utility contract probe I/O setup failed",
             ):
-                COMPOSER._require_appender_contract(sleeper)
+                self.probe_contract_path(sleeper)
         self.assertEqual(len(launched), 1)
         self.assert_process_gone(self.read_contract_probe_pid(pid_path))
 
@@ -1483,7 +1760,7 @@ class ArchiveComposerBuildEvidenceTests(unittest.TestCase):
                 COMPOSER.ArchiveComposerError,
                 "append utility contract probe pipes unavailable",
             ) as captured:
-                COMPOSER._require_appender_contract(sleeper)
+                self.probe_contract_path(sleeper)
         self.assertIsNot(captured.exception.__cause__, captured.exception)
         self.assertEqual(len(launched_without_stdout), 1)
         self.assert_process_gone(launched_without_stdout[0].pid)
@@ -1508,7 +1785,7 @@ class ArchiveComposerBuildEvidenceTests(unittest.TestCase):
                 COMPOSER.ArchiveComposerError,
                 "append utility contract probe timed out",
             ) as captured:
-                COMPOSER._require_appender_contract(sleeper)
+                self.probe_contract_path(sleeper)
         self.assertIn(
             "cleanup/close failure: synthetic selector close failure",
             "\n".join(captured.exception.__notes__),
@@ -1560,7 +1837,7 @@ class ArchiveComposerBuildEvidenceTests(unittest.TestCase):
                         COMPOSER.ArchiveComposerError,
                         "synthetic leader setup failure",
                     ):
-                        COMPOSER._require_appender_contract(appender)
+                        self.probe_contract_path(appender)
                 leader_pid, child_pid, _leader_group, child_group, session = map(
                     int, process_path.read_text(encoding="ascii").split()
                 )
@@ -1608,7 +1885,7 @@ class ArchiveComposerBuildEvidenceTests(unittest.TestCase):
                 COMPOSER.ArchiveComposerError,
                 "append utility contract probe pidfd unavailable",
             ):
-                COMPOSER._require_appender_contract(sleeper)
+                self.probe_contract_path(sleeper)
         self.assertEqual(len(launched), 1)
         self.assert_process_gone(launched[0].pid)
         wait_index = events.index("wait")
@@ -1679,7 +1956,7 @@ class ArchiveComposerBuildEvidenceTests(unittest.TestCase):
                         COMPOSER.ArchiveComposerError,
                         "append utility contract probe leader identity unavailable",
                     ):
-                        COMPOSER._require_appender_contract(sleeper)
+                        self.probe_contract_path(sleeper)
                 self.assertEqual(len(launched), 1)
                 self.assertTrue(scan_sessions)
                 self.assertEqual(scan_sessions, [launched[0].pid] * len(scan_sessions))
@@ -1719,7 +1996,7 @@ class ArchiveComposerBuildEvidenceTests(unittest.TestCase):
                 COMPOSER.ArchiveComposerError,
                 "append utility contract probe stdout exceeded byte limit",
             ):
-                COMPOSER._require_appender_contract(appender)
+                self.probe_contract_path(appender)
         self.assertTrue(stream_bytes)
         self.assertTrue(
             all(
@@ -1754,7 +2031,7 @@ class ArchiveComposerBuildEvidenceTests(unittest.TestCase):
             COMPOSER, "_close_probe_resource", side_effect=record_close
         ):
             with self.assertRaises(KeyboardInterrupt) as captured:
-                COMPOSER._require_appender_contract(appender)
+                self.probe_contract_path(appender)
         self.assertIs(captured.exception, interruption)
         self.assertEqual(close_names, ["selector", "stdout", "stderr"])
         leader_pid, child_pid, _leader_group, _child_group, session = map(
@@ -1785,12 +2062,12 @@ class ArchiveComposerBuildEvidenceTests(unittest.TestCase):
             COMPOSER, "APPENDER_CONTRACT_PROBE_TIMEOUT_SECONDS", 0.2
         ):
             with self.assertRaises(KeyboardInterrupt) as captured:
-                COMPOSER._require_appender_contract(sleeper)
+                self.probe_contract_path(sleeper)
         self.assertIs(captured.exception, interruption)
         self.assertEqual(close_names, ["selector", "stdout", "stderr"])
         self.assert_process_gone(self.read_contract_probe_pid(pid_path))
 
-    def test_real_c_appender_rejects_handoff_substitution(self) -> None:
+    def test_post_sealed_appender_handoff_substitution_rejects(self) -> None:
         archive, evidence_root, prefix, handoff_raw = self.produce(
             "handoff_content_substitution"
         )
@@ -1799,18 +2076,28 @@ class ArchiveComposerBuildEvidenceTests(unittest.TestCase):
             writer_status=9,
             clock_status=0,
         )
-        wrapper = self.handoff_substituting_appender(
-            archive,
-            label="handoff_content_substitution",
-            replacement=replacement,
-        )
+        replacement_path = archive / "streams/handoff-content-replacement.bin"
+        replacement_path.write_bytes(replacement)
+        original_run = COMPOSER._run_sealed_appender
+
+        def run_then_substitute(*arguments, **kwargs):
+            completed = original_run(*arguments, **kwargs)
+            os.replace(
+                replacement_path,
+                archive / COMPOSER.PROCESS_HANDOFF_ARCHIVE_PATH,
+            )
+            return completed
+
         with self.assertRaisesRegex(
             COMPOSER.ArchiveComposerError,
-            "C append utility failed 1",
-        ):
-            self.compose(archive, evidence_root, append_executable=wrapper)
-        self.assertEqual(
-            (archive / "streams/memory-lifetime.bin").read_bytes(), prefix
+            "persisted handoff differs after C append authentication",
+        ), mock.patch.object(
+            COMPOSER, "_run_sealed_appender", side_effect=run_then_substitute
+        ) as runner:
+            self.compose(archive, evidence_root, append_executable=self.appender)
+        runner.assert_called_once()
+        self.assertGreater(
+            len((archive / "streams/memory-lifetime.bin").read_bytes()), len(prefix)
         )
         self.assertEqual(
             (archive / COMPOSER.PROCESS_HANDOFF_ARCHIVE_PATH).read_bytes(),
@@ -1822,16 +2109,26 @@ class ArchiveComposerBuildEvidenceTests(unittest.TestCase):
         archive, evidence_root, prefix, handoff_raw = self.produce(
             "handoff_identity_substitution"
         )
-        wrapper = self.handoff_substituting_appender(
-            archive,
-            label="handoff_identity_substitution",
-            replacement=handoff_raw,
-        )
+        replacement_path = archive / "streams/handoff-identity-replacement.bin"
+        replacement_path.write_bytes(handoff_raw)
+        original_run = COMPOSER._run_sealed_appender
+
+        def run_then_rebind(*arguments, **kwargs):
+            completed = original_run(*arguments, **kwargs)
+            os.replace(
+                replacement_path,
+                archive / COMPOSER.PROCESS_HANDOFF_ARCHIVE_PATH,
+            )
+            return completed
+
         with self.assertRaisesRegex(
             COMPOSER.ArchiveComposerError,
             "persisted handoff differs after C append authentication",
-        ):
-            self.compose(archive, evidence_root, append_executable=wrapper)
+        ), mock.patch.object(
+            COMPOSER, "_run_sealed_appender", side_effect=run_then_rebind
+        ) as runner:
+            self.compose(archive, evidence_root, append_executable=self.appender)
+        runner.assert_called_once()
         stream = (archive / "streams/memory-lifetime.bin").read_bytes()
         self.assertGreater(len(stream), len(prefix))
         self.assertEqual(
@@ -1839,6 +2136,53 @@ class ArchiveComposerBuildEvidenceTests(unittest.TestCase):
             handoff_raw,
         )
         self.assertFalse((archive / "manifest.json").exists())
+
+    def test_real_sealed_appender_ignores_replaced_and_mutated_path(self) -> None:
+        archive, evidence_root, prefix, handoff_raw = self.produce(
+            "sealed_real_path_mutation"
+        )
+        original_raw = self.appender.read_bytes()
+        original_mode = self.appender.stat().st_mode & 0o7777
+        replacement = self.contract_probe_executable(
+            "sealed-real-path-replacement",
+            stdout_text="evil\n",
+            stderr_text="",
+            return_code=0,
+        )
+        original_authenticate = COMPOSER._require_authenticated_appender
+        sealed = []
+
+        def seal_then_mutate(*arguments, **kwargs):
+            appender = original_authenticate(*arguments, **kwargs)
+            sealed.append(appender)
+            os.replace(replacement, self.appender)
+            self.appender.write_bytes(b"not the sealed executable\n")
+            return appender
+
+        try:
+            with mock.patch.object(
+                COMPOSER,
+                "_require_authenticated_appender",
+                side_effect=seal_then_mutate,
+            ):
+                result = self.compose(
+                    archive,
+                    evidence_root,
+                    append_executable=self.appender,
+                )
+        finally:
+            self.appender.write_bytes(original_raw)
+            self.appender.chmod(original_mode)
+        self.assertEqual(len(sealed), 1)
+        self.assertEqual(result.terminal_outcome, "complete")
+        stream = (archive / COMPOSER.STREAM_ARCHIVE_PATH).read_bytes()
+        self.assertGreater(len(stream), len(prefix))
+        self.assertTrue(stream.startswith(prefix))
+        self.assertEqual(
+            (archive / COMPOSER.PROCESS_HANDOFF_ARCHIVE_PATH).read_bytes(), handoff_raw
+        )
+        self.assertFalse((archive / "streams/trailer.bin").exists())
+        self.assertTrue((archive / COMPOSER.VERIFIER.STATUS.MANIFEST_PATH).exists())
 
     def test_post_publication_archive_and_manifest_rebind_reject(self) -> None:
         for index, target in enumerate(
@@ -1879,7 +2223,7 @@ class ArchiveComposerBuildEvidenceTests(unittest.TestCase):
                         self.compose(archive, evidence_root)
 
     def test_clean_build_with_unselected_dso_reaches_scientific_admission(self) -> None:
-        self.assertEqual(BUILD_EVIDENCE.VERSION, {"major": 1, "minor": 3})
+        self.assertEqual(BUILD_EVIDENCE.VERSION, {"major": 1, "minor": 4})
         self.assertEqual(self.evidence_value["version"], BUILD_EVIDENCE.VERSION)
         archive, evidence_root, _prefix, _handoff = self.produce("positive")
         result = self.compose(archive, evidence_root)

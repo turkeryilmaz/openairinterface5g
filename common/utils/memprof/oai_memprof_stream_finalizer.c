@@ -582,7 +582,12 @@ static bool offline_terminal_outcome_matches_writer(const oai_memprof_stream_fin
   }
 }
 
-static bool valid_configuration(const oai_memprof_stream_finalizer_config_t *config, bool offline)
+static bool valid_configuration(const oai_memprof_stream_finalizer_config_t *config
+#ifndef OAI_MEMPROF_STREAM_FINALIZER_OFFLINE_ONLY
+                                ,
+                                bool offline
+#endif
+)
 {
   if (config == NULL || config->directory_fd < 0 || !valid_file_name(config->file_name))
     return false;
@@ -593,15 +598,24 @@ static bool valid_configuration(const oai_memprof_stream_finalizer_config_t *con
   if (config->event_entry_count > UINT32_MAX || config->diagnostic_entry_count > UINT32_MAX
       || config->object_entry_count > UINT32_MAX)
     return false;
+#ifdef OAI_MEMPROF_STREAM_FINALIZER_OFFLINE_ONLY
+  return config->authenticated_prefix_sha256 != NULL && config->authenticated_opening_header_sha256 != NULL
+         && offline_terminal_outcome_matches_writer(config);
+#else
   if (offline)
     return config->authenticated_prefix_sha256 != NULL && config->authenticated_opening_header_sha256 != NULL
            && offline_terminal_outcome_matches_writer(config);
   return config->prefooter.status == OAI_MEMPROF_STREAM_WRITER_OK && config->prefooter.runtime_status == OAI_MEMPROF_CORE_OK;
+#endif
 }
 
 static oai_memprof_stream_finalizer_status_t finalize(const oai_memprof_stream_finalizer_config_t *config,
-                                                      oai_memprof_stream_finalizer_result_t *result,
-                                                      bool offline)
+                                                      oai_memprof_stream_finalizer_result_t *result
+#ifndef OAI_MEMPROF_STREAM_FINALIZER_OFFLINE_ONLY
+                                                      ,
+                                                      bool offline
+#endif
+)
 {
   if (result == NULL)
     return OAI_MEMPROF_STREAM_FINALIZER_INVALID_ARGUMENT;
@@ -616,7 +630,12 @@ static oai_memprof_stream_finalizer_status_t finalize(const oai_memprof_stream_f
               .runtime_status = OAI_MEMPROF_CORE_INVALID_STATE,
           },
   };
-  if (!valid_configuration(config, offline)) {
+  if (!valid_configuration(config
+#ifndef OAI_MEMPROF_STREAM_FINALIZER_OFFLINE_ONLY
+                           ,
+                           offline
+#endif
+                           )) {
     context.result.status =
         config == NULL ? OAI_MEMPROF_STREAM_FINALIZER_INVALID_ARGUMENT : OAI_MEMPROF_STREAM_FINALIZER_INVALID_CONFIGURATION;
     *result = context.result;
@@ -625,6 +644,16 @@ static oai_memprof_stream_finalizer_status_t finalize(const oai_memprof_stream_f
   context.result.file_device = config->prefooter.file_device;
   context.result.file_inode = config->prefooter.file_inode;
 
+#ifdef OAI_MEMPROF_STREAM_FINALIZER_OFFLINE_ONLY
+  context.result.runtime_status = config->prefooter.runtime_status;
+  if (config->prefooter.runtime_snapshot.process_generation != config->trailer_header.process_generation
+      || (config->prefooter.runtime_snapshot.mode_id == OAI_MEMPROF_CORE_EXACT_EVENTS
+          && config->prefooter.runtime_snapshot.emitted_events != config->prefooter.record_count)) {
+    context.result.status = OAI_MEMPROF_STREAM_FINALIZER_RUNTIME_ERROR;
+    *result = context.result;
+    return context.result.status;
+  }
+#else
   if (offline) {
     context.result.runtime_status = config->prefooter.runtime_status;
     if (config->prefooter.runtime_snapshot.process_generation != config->trailer_header.process_generation
@@ -653,6 +682,7 @@ static oai_memprof_stream_finalizer_status_t finalize(const oai_memprof_stream_f
       return context.result.status;
     }
   }
+#endif
 
   context.directory_fd = fcntl(config->directory_fd, F_DUPFD_CLOEXEC, 3);
   struct stat directory_status;
@@ -687,7 +717,10 @@ static oai_memprof_stream_finalizer_status_t finalize(const oai_memprof_stream_f
           || oai_memprof_container_v1_sha256(prefix, OAI_MEMPROF_CONTAINER_V1_OPENING_HEADER_SIZE, opening_sha256)
                  != OAI_MEMPROF_CONTAINER_V1_OK))
     fail(&context, OAI_MEMPROF_STREAM_FINALIZER_CODEC_ERROR, 0);
-  if (prefix_valid && context.result.status == OAI_MEMPROF_STREAM_FINALIZER_OK && offline
+  if (prefix_valid && context.result.status == OAI_MEMPROF_STREAM_FINALIZER_OK
+#ifndef OAI_MEMPROF_STREAM_FINALIZER_OFFLINE_ONLY
+      && offline
+#endif
       && (memcmp(prefix_sha256, config->authenticated_prefix_sha256, sizeof(prefix_sha256)) != 0
           || memcmp(opening_sha256, config->authenticated_opening_header_sha256, sizeof(opening_sha256)) != 0))
     fail(&context, OAI_MEMPROF_STREAM_FINALIZER_AUTHENTICATION_MISMATCH, EILSEQ);
@@ -776,6 +809,7 @@ static oai_memprof_stream_finalizer_status_t finalize(const oai_memprof_stream_f
   }
   context.directory_fd = -1;
 
+#ifndef OAI_MEMPROF_STREAM_FINALIZER_OFFLINE_ONLY
   if (!offline && config->trailer_header.lifecycle_state == OAI_MEMPROF_CONTAINER_V1_LIFECYCLE_COMPLETE) {
     context.result.runtime_status = oai_memprof_active_runtime_complete_v1();
     if (context.result.runtime_status != OAI_MEMPROF_CORE_OK) {
@@ -784,6 +818,7 @@ static oai_memprof_stream_finalizer_status_t finalize(const oai_memprof_stream_f
     }
     context.result.runtime_complete = true;
   }
+#endif
   *result = context.result;
   return context.result.status;
 
@@ -796,14 +831,20 @@ cleanup:
   return context.result.status;
 }
 
+#ifndef OAI_MEMPROF_STREAM_FINALIZER_OFFLINE_ONLY
 oai_memprof_stream_finalizer_status_t oai_memprof_stream_finalize_v1(const oai_memprof_stream_finalizer_config_t *config,
                                                                      oai_memprof_stream_finalizer_result_t *result)
 {
   return finalize(config, result, false);
 }
+#endif
 
 oai_memprof_stream_finalizer_status_t oai_memprof_stream_finalize_offline_v1(const oai_memprof_stream_finalizer_config_t *config,
                                                                              oai_memprof_stream_finalizer_result_t *result)
 {
+#ifdef OAI_MEMPROF_STREAM_FINALIZER_OFFLINE_ONLY
+  return finalize(config, result);
+#else
   return finalize(config, result, true);
+#endif
 }

@@ -38,7 +38,9 @@ COVERAGE_PATH = (
 )
 EVIDENCE_ARCHIVE_PATH = "input/build-evidence.json"
 DEFINITION_ARCHIVE_PATH = "definition/oai-memprof-build-evidence-v1.py"
-VERSION = {"major": 1, "minor": 3}
+VERSION = {"major": 1, "minor": 4}
+ARCHIVE_APPEND_AUXILIARY_ID = "archive_append"
+ARCHIVE_APPEND_TARGET = "oai_memprof_archive_append"
 MAX_INPUT_BYTES = 512 * 1024 * 1024
 MAX_TOOL_OUTPUT_BYTES = 32 * 1024 * 1024
 MAX_TOOL_ERROR_BYTES = 1024 * 1024
@@ -62,6 +64,18 @@ _HASH_RE = re.compile(r"[0-9a-f]{64}\Z", re.ASCII)
 _IDENTIFIER_RE = re.compile(r"[a-z][a-z0-9_]{0,62}\Z", re.ASCII)
 _TARGET_RE = re.compile(r"[A-Za-z0-9_][A-Za-z0-9_./+-]{0,254}\Z", re.ASCII)
 _VERSION_RE = re.compile(r"[0-9A-Za-z][0-9A-Za-z.+:~_-]{0,126}\Z", re.ASCII)
+GNU_LD_REFERENCE_VERSION = "GNU ld 2.42"
+GNU_LD_WRAP_GRAMMAR_VERSION = "oai.memprof.gnu-ld-wrap-text-grammar/v2"
+WRAP_SYMBOL = re.compile(r"^[A-Za-z_][A-Za-z0-9_.$@+-]{0,127}$")
+LD_WRAP_OPTION = re.compile(
+    r"^(?P<option>-{1,2}(?:wr|wra|wrap))(?:(?P<equals>=)(?P<symbol>.*))?$"
+)
+# GNU ld 2.42 treats the upper-case -Ma/--Ma spellings as unambiguous
+# prefixes for -Map/--Map.  Keep this case-sensitive: lower-case -m is the
+# distinct linker emulation option, not a map-output option.
+LD_MAP_OPTION = re.compile(r"^-{1,2}M(?:a(?:p)?)?(?:=.*)?$")
+SHELL_CONTROL_CHARACTERS = ";&|<>"
+ASCII_SHELL_WHITESPACE = frozenset(" \t\r\n\v\f")
 
 
 class BuildEvidenceError(ValueError):
@@ -105,6 +119,14 @@ class LogicalElfInput:
     role_ids: tuple[int, ...]
     aliases: tuple[str, ...] = ()
     module_selection: Mapping[str, Any] | None = None
+
+
+@dataclass(frozen=True)
+class AuxiliaryExecutableInput:
+    auxiliary_id: str
+    target: str
+    elf_path: pathlib.Path
+    link_map_path: pathlib.Path
 
 
 @dataclass(frozen=True)
@@ -170,13 +192,13 @@ def _require(condition: bool, detail: str) -> None:
         raise BuildEvidenceError(detail)
 
 
-def _read_regular(
+def _read_regular_identity(
     path: pathlib.Path,
     *,
     maximum: int = MAX_INPUT_BYTES,
     allow_empty: bool = False,
     require_single_link: bool = True,
-) -> bytes:
+) -> tuple[bytes, pathlib.Path, tuple[int, int]]:
     path = path.resolve(strict=True)
     flags = os.O_RDONLY | os.O_CLOEXEC | os.O_NOFOLLOW
     if hasattr(os, "O_NONBLOCK"):
@@ -230,7 +252,22 @@ def _read_regular(
         == (before.st_dev, before.st_ino, before.st_mode, before.st_nlink, before.st_size),
         f"path changed after read: {path}",
     )
-    return raw
+    return raw, path, (before.st_dev, before.st_ino)
+
+
+def _read_regular(
+    path: pathlib.Path,
+    *,
+    maximum: int = MAX_INPUT_BYTES,
+    allow_empty: bool = False,
+    require_single_link: bool = True,
+) -> bytes:
+    return _read_regular_identity(
+        path,
+        maximum=maximum,
+        allow_empty=allow_empty,
+        require_single_link=require_single_link,
+    )[0]
 
 
 def _decode(raw: bytes, where: str) -> str:
@@ -515,6 +552,40 @@ def _parse_symbols(
     return symbol_sections[11], parsed[11], parsed[2]
 
 
+def _parse_auxiliary_symbols(
+    sections: Sequence[_Section], bodies: Mapping[int, bytes], where: str
+) -> tuple[_Symbol, ...]:
+    dynsym_sections = [section for section in sections if section.kind == 11]
+    symtab_sections = [section for section in sections if section.kind == 2]
+    _require(
+        not dynsym_sections,
+        f"{where}: auxiliary executable forbids SHT_DYNSYM",
+    )
+    _require(
+        len(symtab_sections) == 1,
+        f"{where}: auxiliary executable requires exactly one SHT_SYMTAB",
+    )
+    symtab = symtab_sections[0]
+    _require(
+        symtab.entry_size == 24 and symtab.size % 24 == 0,
+        f"{where}: auxiliary SHT_SYMTAB width is invalid",
+    )
+    strings = bodies.get(symtab.link)
+    _require(strings is not None, f"{where}: auxiliary SHT_SYMTAB strings unavailable")
+    symbols: list[_Symbol] = []
+    for index, offset in enumerate(range(0, symtab.size, 24)):
+        name_offset, info, other, section_index, _value, _size = struct.unpack_from(
+            "<IBBHQQ", bodies[symtab.index], offset
+        )
+        name = "" if name_offset == 0 else _cstring(
+            strings, name_offset, f"{where}: auxiliary symbol {index}"
+        )
+        symbols.append(
+            _Symbol(index, name, info >> 4, other & 3, section_index)
+        )
+    return tuple(symbols)
+
+
 def _parse_versions(
     sections: Sequence[_Section],
     bodies: Mapping[int, bytes],
@@ -705,6 +776,71 @@ def _parse_elf(raw: bytes) -> _Elf:
         machine, sections, bodies, dynsym_section, dynsyms, symtab, versions
     )
     return _Elf(machine, build_id, needed, soname, origins, relocations, wrappers)
+
+
+def _validate_auxiliary_executable(
+    raw: bytes, *, expected_machine: int, where: str
+) -> None:
+    """Validate an executable ELF without assigning workload-origin semantics."""
+
+    machine, sections, bodies = _parse_sections(raw)
+    elf_type = struct.unpack_from("<H", raw, 16)[0]
+    entry = struct.unpack_from("<Q", raw, 24)[0]
+    program_offset = struct.unpack_from("<Q", raw, 32)[0]
+    program_entry_size = struct.unpack_from("<H", raw, 54)[0]
+    program_count = struct.unpack_from("<H", raw, 56)[0]
+    _require(
+        expected_machine in (62, 183) and machine == expected_machine,
+        f"{where}: ELF architecture differs from the target triple",
+    )
+    _require(
+        elf_type == 2
+        and entry != 0
+        and program_entry_size == 56
+        and 0 < program_count <= 65535
+        and program_offset + program_entry_size * program_count <= len(raw),
+        f"{where}: executable ELF program headers required",
+    )
+    program_headers = [
+        struct.unpack_from(
+            "<IIQQQQQQ", raw, program_offset + index * program_entry_size
+        )
+        for index in range(program_count)
+    ]
+    _require(
+        all(
+            header[5] <= header[6]
+            and header[2] <= len(raw)
+            and header[5] <= len(raw) - header[2]
+            for header in program_headers
+        ),
+        f"{where}: executable ELF program-header range is invalid",
+    )
+    _require(
+        not any(header[0] == 3 for header in program_headers),
+        f"{where}: auxiliary executable forbids PT_INTERP",
+    )
+    _require(
+        not any(header[0] == 2 for header in program_headers),
+        f"{where}: auxiliary executable forbids PT_DYNAMIC",
+    )
+    _require(
+        not any(section.kind == 6 for section in sections),
+        f"{where}: auxiliary executable forbids SHT_DYNAMIC and DT_NEEDED/"
+        "DT_SONAME/DT_RPATH/DT_RUNPATH",
+    )
+    wrapper_symbols = sorted(
+        {
+            symbol.name
+            for symbol in _parse_auxiliary_symbols(sections, bodies, where)
+            if symbol.name.startswith(("__wrap_", "__real_"))
+        }
+    )
+    _require(
+        not wrapper_symbols,
+        f"{where}: auxiliary executable forbids __wrap_/__real_ symbols: "
+        f"{wrapper_symbols!r}",
+    )
 
 
 def _archive_path(value: Any, where: str) -> str:
@@ -921,30 +1057,485 @@ def _normalized_build_artifact_path(
     )
 
 
+def _claim_unique_build_output_or_map(
+    claims: dict[str, str], path: str, where: str
+) -> None:
+    previous = claims.get(path)
+    _require(
+        previous is None,
+        f"{where}: globally unique normalized build output/map paths required; "
+        f"aliases {previous}",
+    )
+    claims[path] = where
+
+
+def _claim_unique_online_artifact(
+    resolved_claims: dict[pathlib.Path, str],
+    identity_claims: dict[tuple[int, int], str],
+    *,
+    resolved_path: pathlib.Path,
+    identity: tuple[int, int],
+    where: str,
+) -> None:
+    resolved_previous = resolved_claims.get(resolved_path)
+    _require(
+        resolved_previous is None,
+        f"{where}: resolved build artifact aliases {resolved_previous}",
+    )
+    identity_previous = identity_claims.get(identity)
+    _require(
+        identity_previous is None,
+        f"{where}: build artifact device/inode aliases {identity_previous}",
+    )
+    resolved_claims[resolved_path] = where
+    identity_claims[identity] = where
+
+
+@dataclass(frozen=True)
+class _ShellLexicalAnalysis:
+    active_text: str
+    forbidden_features: tuple[str, ...]
+
+
+def _analyze_shell_line(line: str) -> _ShellLexicalAnalysis:
+    quote: str | None = None
+    escaped = False
+    word_start = True
+    comment_start: int | None = None
+    forbidden: set[str] = set()
+    for index, character in enumerate(line):
+        if quote == "single":
+            if character == "'":
+                quote = None
+            continue
+        if escaped:
+            escaped = False
+            word_start = False
+            continue
+        if character == "\\":
+            forbidden.add("shell_quoting_or_escape")
+            escaped = True
+            word_start = False
+            continue
+        if quote == "double":
+            if character == '"':
+                quote = None
+            elif character in {"$", "`"}:
+                forbidden.add("shell_expansion")
+            continue
+        if character == "'":
+            forbidden.add("shell_quoting_or_escape")
+            quote = "single"
+            word_start = False
+        elif character == '"':
+            forbidden.add("shell_quoting_or_escape")
+            quote = "double"
+            word_start = False
+        elif character in ASCII_SHELL_WHITESPACE:
+            word_start = True
+        elif character == "#" and word_start:
+            forbidden.add("shell_comment")
+            comment_start = index
+            break
+        elif character == "#":
+            forbidden.add("unquoted_hash")
+            word_start = False
+        elif character in {"$", "`"}:
+            forbidden.add("shell_expansion")
+            word_start = False
+        elif character in {"<", ">"}:
+            forbidden.add("shell_redirection")
+            word_start = True
+        elif character in {"(", ")", "{", "}"}:
+            forbidden.add("shell_group_or_expansion")
+            word_start = True
+        elif character in {"*", "?", "["}:
+            forbidden.add("shell_pathname_expansion")
+            word_start = False
+        elif character == "~" and word_start:
+            forbidden.add("shell_tilde_expansion")
+            word_start = False
+        else:
+            word_start = character in SHELL_CONTROL_CHARACTERS
+    active_text = line if comment_start is None else line[:comment_start].rstrip()
+    return _ShellLexicalAnalysis(active_text, tuple(sorted(forbidden)))
+
+
+def _shell_tokenize(line: str) -> tuple[str, ...]:
+    lexer = shlex.shlex(line, posix=True, punctuation_chars=SHELL_CONTROL_CHARACTERS)
+    lexer.whitespace_split = True
+    lexer.commenters = ""
+    return tuple(lexer)
+
+
+def _is_shell_control_token(token: str) -> bool:
+    return bool(token) and all(character in SHELL_CONTROL_CHARACTERS for character in token)
+
+
+def _split_shell_command_tokens(
+    tokens: Sequence[str],
+) -> tuple[tuple[tuple[str, ...], ...], tuple[str, ...]]:
+    segments: list[tuple[str, ...]] = []
+    controls: list[str] = []
+    current: list[str] = []
+    for token in tokens:
+        if _is_shell_control_token(token):
+            segments.append(tuple(current))
+            controls.append(token)
+            current = []
+        else:
+            current.append(token)
+    segments.append(tuple(current))
+    return tuple(segments), tuple(controls)
+
+
+def _reject_response_file_operands(tokens: Sequence[str], where: str) -> None:
+    for token in tokens:
+        _require(
+            not token.startswith("@"),
+            f"{where}: response-file operands are forbidden",
+        )
+        if token.startswith("-Wl,"):
+            fields = token[len("-Wl,") :].split(",")
+            _require(
+                fields and all(fields),
+                f"{where}: malformed -Wl option list",
+            )
+            _require(
+                not any(field.startswith("@") for field in fields),
+                f"{where}: response-file operands are forbidden",
+            )
+
+
+def _parse_final_link_source_text(line: str, where: str) -> tuple[str, ...]:
+    _require(
+        isinstance(line, str)
+        and line
+        and "\0" not in line
+        and "\n" not in line
+        and "\r" not in line,
+        f"{where}: exactly one NUL-free final-link source line required",
+    )
+    analysis = _analyze_shell_line(line)
+    _require(
+        not analysis.forbidden_features,
+        f"{where}: shell expansion/quoting/comment/pathname/redirection/grouping "
+        f"features are forbidden: {', '.join(analysis.forbidden_features)}",
+    )
+    try:
+        tokens = _shell_tokenize(analysis.active_text)
+    except ValueError as error:
+        raise BuildEvidenceError(f"{where}: malformed shell syntax") from error
+    segments, controls = _split_shell_command_tokens(tokens)
+    if not controls:
+        _require(
+            len(segments) == 1 and bool(segments[0]),
+            f"{where}: exactly one direct final-link command required",
+        )
+        command = segments[0]
+    else:
+        _require(
+            tuple(controls) == ("&&", "&&")
+            and len(segments) == 3
+            and tuple(segments[0]) == (":",)
+            and tuple(segments[2]) == (":",)
+            and bool(segments[1]),
+            f"{where}: final-link scaffold must be exact ': && DRIVER ... && :'",
+        )
+        command = segments[1]
+    driver = command[0]
+    _require(
+        driver.startswith("/")
+        and not driver.startswith("//")
+        and "\\" not in driver
+        and "=" not in driver
+        and posixpath.normpath(driver) == driver,
+        f"{where}: absolute direct compiler driver required",
+    )
+    _reject_response_file_operands(command, where)
+    return command
+
+
+def _parse_ld_wrap_option(token: str) -> tuple[str, bool, str | None] | None:
+    matched = LD_WRAP_OPTION.fullmatch(token)
+    if matched is None:
+        return None
+    return matched.group("option"), matched.group("equals") is not None, matched.group("symbol")
+
+
+def _is_wrap_like_token(token: str) -> bool:
+    folded = token.casefold()
+    if "wrap" in folded:
+        return True
+    option = folded.partition("=")[0]
+    return option in {"--w", "--wr", "--wra", "--wrap", "-wr", "-wra", "-wrap"}
+
+
+def _is_wrap_like_option(token: str) -> bool:
+    return token.startswith("-") and _is_wrap_like_token(token)
+
+
 def _command_output_tokens(tokens: Sequence[str], where: str) -> list[str]:
     outputs: list[str] = []
     index = 0
+    _reject_response_file_operands(tokens, where)
     while index < len(tokens):
         token = tokens[index]
         if token == "-o":
-            _require(index + 1 < len(tokens) and tokens[index + 1], f"{where}: -o value required")
+            _require(
+                index + 1 < len(tokens) and tokens[index + 1],
+                f"{where}: -o value required",
+            )
             outputs.append(tokens[index + 1])
             index += 2
             continue
         if token.startswith("-o") and len(token) > 2:
-            outputs.append(token[2:])
+            raise BuildEvidenceError(f"{where}: joined -o output aliases are forbidden")
+        if token == "--output" or token.startswith("--output="):
+            raise BuildEvidenceError(f"{where}: --output aliases are forbidden")
+        if token.startswith("-Wl,"):
+            fields = token[len("-Wl,") :].split(",")
+            _require(fields and all(fields), f"{where}: malformed -Wl option list")
+            _require(
+                not any(
+                    field == "-o"
+                    or (field.startswith("-o") and len(field) > 2)
+                    or field == "--output"
+                    or field.startswith("--output=")
+                    for field in fields
+                ),
+                f"{where}: linker output aliases are forbidden",
+            )
+        elif token == "-Xlinker":
+            _require(index + 1 < len(tokens), f"{where}: incomplete -Xlinker option")
+            value = tokens[index + 1]
+            _require(
+                not (
+                    value == "-o"
+                    or (value.startswith("-o") and len(value) > 2)
+                    or value == "--output"
+                    or value.startswith("--output=")
+                ),
+                f"{where}: linker output aliases are forbidden",
+            )
+            index += 1
         index += 1
     return outputs
 
 
-def _command_map_tokens(tokens: Sequence[str]) -> list[str]:
+def _is_map_option(token: str) -> bool:
+    return LD_MAP_OPTION.fullmatch(token) is not None or token == "--print-map"
+
+
+def _command_map_tokens(tokens: Sequence[str], where: str) -> list[str]:
     values: list[str] = []
-    for token in tokens:
-        if token.startswith("-Wl,-Map,") and len(token) > len("-Wl,-Map,"):
-            values.append(token[len("-Wl,-Map,") :])
-        elif token.startswith("-Wl,-Map=") and len(token) > len("-Wl,-Map="):
-            values.append(token[len("-Wl,-Map=") :])
+    index = 0
+    _reject_response_file_operands(tokens, where)
+    while index < len(tokens):
+        token = tokens[index]
+        if token.startswith("-Wl,"):
+            fields = token[len("-Wl,") :].split(",")
+            _require(fields and all(fields), f"{where}: malformed -Wl option list")
+            field_index = 0
+            while field_index < len(fields):
+                field = fields[field_index]
+                if field == "-Map":
+                    _require(
+                        field_index + 1 < len(fields),
+                        f"{where}: -Wl,-Map requires one path in its option group",
+                    )
+                    value = fields[field_index + 1]
+                    _require(
+                        not _is_map_option(value),
+                        f"{where}: map aliases are forbidden",
+                    )
+                    values.append(value)
+                    field_index += 2
+                    continue
+                if _is_map_option(field):
+                    raise BuildEvidenceError(f"{where}: map aliases are forbidden")
+                field_index += 1
+        elif token == "-Xlinker":
+            _require(index + 1 < len(tokens), f"{where}: incomplete -Xlinker option")
+            if _is_map_option(tokens[index + 1]):
+                raise BuildEvidenceError(f"{where}: map aliases are forbidden")
+            index += 1
+        elif _is_map_option(token):
+            raise BuildEvidenceError(f"{where}: map aliases are forbidden")
+        index += 1
     return values
+
+
+def _command_cref_count(tokens: Sequence[str], where: str) -> int:
+    count = 0
+    index = 0
+    _reject_response_file_operands(tokens, where)
+    while index < len(tokens):
+        token = tokens[index]
+        if token.startswith("-Wl,"):
+            fields = token[len("-Wl,") :].split(",")
+            _require(fields and all(fields), f"{where}: malformed -Wl option list")
+            for field in fields:
+                if field == "--cref":
+                    count += 1
+                elif field.casefold().startswith(("--cref", "-cref")):
+                    raise BuildEvidenceError(f"{where}: --cref aliases are forbidden")
+        elif token == "-Xlinker":
+            _require(index + 1 < len(tokens), f"{where}: incomplete -Xlinker option")
+            if tokens[index + 1].casefold().startswith(("--cref", "-cref")):
+                raise BuildEvidenceError(f"{where}: --cref must use the -Wl channel")
+            index += 1
+        elif token.casefold().startswith(("--cref", "-cref")):
+            raise BuildEvidenceError(f"{where}: --cref must use the -Wl channel")
+        index += 1
+    return count
+
+
+def _record_wrap_option(
+    options: list[str], symbol: str, source: str, recognized: bool, where: str
+) -> None:
+    _require(
+        recognized and WRAP_SYMBOL.fullmatch(symbol) is not None,
+        f"{where}: malformed GNU ld wrap option: {source}",
+    )
+    options.append(f"--wrap={symbol}")
+
+
+def _command_wrap_options(tokens: Sequence[str], where: str) -> list[str]:
+    options: list[str] = []
+    consumed: set[int] = set()
+    index = 0
+    _reject_response_file_operands(tokens, where)
+    while index < len(tokens):
+        if index in consumed:
+            index += 1
+            continue
+        token = tokens[index]
+        if token.startswith("-Wl,"):
+            values = token[len("-Wl,") :].split(",")
+            _require(values and all(values), f"{where}: malformed -Wl option list")
+            value_index = 0
+            while value_index < len(values):
+                value = values[value_index]
+                parsed = _parse_ld_wrap_option(value)
+                if parsed is not None:
+                    _option, has_equals, symbol = parsed
+                    if has_equals:
+                        _record_wrap_option(options, symbol or "", value, True, where)
+                    elif value_index + 1 < len(values):
+                        value_index += 1
+                        _record_wrap_option(
+                            options, values[value_index], token, True, where
+                        )
+                    elif index + 1 < len(tokens):
+                        consumed.add(index + 1)
+                        _record_wrap_option(
+                            options, tokens[index + 1], token, True, where
+                        )
+                    else:
+                        _record_wrap_option(options, "", value, False, where)
+                elif _is_wrap_like_option(value):
+                    _record_wrap_option(options, "", value, False, where)
+                value_index += 1
+        elif token == "-Xlinker":
+            _require(
+                index + 1 < len(tokens),
+                f"{where}: incomplete -Xlinker option",
+            )
+            candidate = tokens[index + 1]
+            parsed = _parse_ld_wrap_option(candidate)
+            if parsed is not None:
+                _option, has_equals, symbol = parsed
+                consumed.update((index, index + 1))
+                if has_equals:
+                    _record_wrap_option(options, symbol or "", candidate, True, where)
+                elif index + 3 < len(tokens) and tokens[index + 2] == "-Xlinker":
+                    consumed.update((index + 2, index + 3))
+                    _record_wrap_option(options, tokens[index + 3], candidate, True, where)
+                else:
+                    _record_wrap_option(options, "", candidate, False, where)
+            elif _is_wrap_like_option(candidate):
+                consumed.update((index, index + 1))
+                _record_wrap_option(options, "", candidate, False, where)
+        else:
+            parsed = _parse_ld_wrap_option(token)
+            if parsed is not None:
+                _option, has_equals, symbol = parsed
+                consumed.add(index)
+                if has_equals:
+                    _record_wrap_option(options, symbol or "", token, True, where)
+                elif index + 1 < len(tokens):
+                    consumed.add(index + 1)
+                    _record_wrap_option(options, tokens[index + 1], token, True, where)
+                else:
+                    _record_wrap_option(options, "", token, False, where)
+            elif _is_wrap_like_option(token):
+                consumed.add(index)
+                _record_wrap_option(options, "", token, False, where)
+        index += 1
+    return sorted(options)
+
+
+def _auxiliary_linker_field_is_forbidden(field: str) -> bool:
+    folded = field.casefold()
+    return (
+        folded in {"-pie", "-shared", "-static-pie", "-dynamic-linker", "--dynamic-linker"}
+        or folded.startswith(("-dynamic-linker=", "--dynamic-linker="))
+        or "rpath" in folded
+        or folded in {"-r", "-i", "-bdynamic"}
+        or field == "-R"
+        or folded in {"-plugin", "--plugin"}
+        or folded.startswith(
+            ("-plugin=", "--plugin=", "-plugin-opt", "--plugin-opt")
+        )
+        or (folded.startswith("-l:") and ".so" in folded)
+        or ".so" in folded
+        or "oai_memprof_active_runtime" in folded
+    )
+
+
+def _validate_auxiliary_link_options(tokens: Sequence[str], where: str) -> None:
+    _require(
+        tokens.count("-static") == 1 and tokens.count("-no-pie") == 1,
+        f"{where}: auxiliary command requires exactly one direct -static and -no-pie",
+    )
+    index = 0
+    _reject_response_file_operands(tokens, where)
+    while index < len(tokens):
+        token = tokens[index]
+        folded = token.casefold()
+        _require(
+            token not in {"-pie", "-shared", "-static-pie"},
+            f"{where}: auxiliary command forbids PIE/shared link modes",
+        )
+        _require(
+            token not in {"-B", "-fuse-ld", "-specs", "--specs", "-wrapper"}
+            and not token.startswith(
+                ("-B", "-fuse-ld=", "-specs=", "--specs=", "-fplugin", "-wrapper=")
+            ),
+            f"{where}: auxiliary command forbids compiler loader/plugin/specs indirection",
+        )
+        _require(
+            "oai_memprof_active_runtime" not in folded,
+            f"{where}: auxiliary command forbids the active-runtime DSO",
+        )
+        if token.startswith("-Wl,"):
+            fields = token[len("-Wl,") :].split(",")
+            _require(fields and all(fields), f"{where}: malformed -Wl option list")
+            _require(
+                not any(_auxiliary_linker_field_is_forbidden(field) for field in fields),
+                f"{where}: auxiliary command forbids dynamic-loader/RPATH/plugin linkage",
+            )
+        elif token == "-Xlinker":
+            raise BuildEvidenceError(
+                f"{where}: auxiliary command forbids -Xlinker indirection"
+            )
+        else:
+            _require(
+                ".so" not in folded,
+                f"{where}: auxiliary command forbids shared-object link inputs",
+            )
+        index += 1
 
 
 def _validate_final_link_command(
@@ -955,16 +1546,14 @@ def _validate_final_link_command(
     build_map_path: str,
     expected_wraps: Sequence[str],
     where: str,
+    require_static_executable: bool = False,
 ) -> None:
     command = _decode(command_raw, where)
     _require(
         command.endswith("\n") and command.count("\n") == 1,
         f"{where}: exactly one final-link command line required",
     )
-    try:
-        tokens = shlex.split(command.strip())
-    except ValueError as error:
-        raise BuildEvidenceError(f"{where}: malformed shell quoting") from error
+    tokens = _parse_final_link_source_text(command[:-1], where)
     outputs = _command_output_tokens(tokens, where)
     _require(len(outputs) == 1, f"{where}: exactly one -o output required")
     _require(
@@ -974,7 +1563,7 @@ def _validate_final_link_command(
         == build_output_path,
         f"{where}: -o does not name the measured ELF",
     )
-    map_values = _command_map_tokens(tokens)
+    map_values = _command_map_tokens(tokens, where)
     _require(
         len(map_values) == 1,
         f"{where}: exactly one supported GNU ld map option required",
@@ -986,13 +1575,17 @@ def _validate_final_link_command(
         == build_map_path,
         f"{where}: map option does not name the authenticated link map",
     )
-    observed_wraps = sorted(
-        token[4:] for token in tokens if token.startswith("-Wl,--wrap=")
+    _require(
+        _command_cref_count(tokens, where) == 1,
+        f"{where}: exactly one -Wl,--cref option required",
     )
+    observed_wraps = _command_wrap_options(tokens, where)
     _require(
         observed_wraps == sorted(expected_wraps),
         f"{where}: exact wrap set differs",
     )
+    if require_static_executable:
+        _validate_auxiliary_link_options(tokens, where)
 
 
 def _link_command(
@@ -1002,6 +1595,7 @@ def _link_command(
     build_output_path: str,
     build_map_path: str,
     expected_wraps: Sequence[str],
+    require_static_executable: bool = False,
 ) -> bytes:
     text = _decode(output, "ninja command output")
     build_directory = _build_directory_identity(
@@ -1017,10 +1611,9 @@ def _link_command(
     }
     candidates: list[str] = []
     for line in text.splitlines():
-        try:
-            tokens = shlex.split(line)
-        except ValueError as error:
-            raise BuildEvidenceError("ninja command output: malformed shell quoting") from error
+        if not any(value in line for value in accepted_outputs):
+            continue
+        tokens = _parse_final_link_source_text(line, "ninja command output")
         if any(
             value in accepted_outputs
             for value in _command_output_tokens(tokens, "ninja command output")
@@ -1038,6 +1631,7 @@ def _link_command(
         build_map_path=build_map_path,
         expected_wraps=expected_wraps,
         where=f"final link command for {build_output_path}",
+        require_static_executable=require_static_executable,
     )
     return command_raw
 
@@ -1068,6 +1662,15 @@ def _validate_link_map_output(
 
 def _entry_paths(logical_id: str) -> dict[str, str]:
     base = f"input/build-evidence/{logical_id}"
+    return {
+        "elf_path": f"{base}.elf",
+        "link_command_path": f"{base}.link-command.txt",
+        "link_map_path": f"{base}.link-map.txt",
+    }
+
+
+def _auxiliary_paths(auxiliary_id: str) -> dict[str, str]:
+    base = f"input/build-evidence/auxiliary/{auxiliary_id}"
     return {
         "elf_path": f"{base}.elf",
         "link_command_path": f"{base}.link-command.txt",
@@ -1114,6 +1717,7 @@ def _derive(
 ) -> bytes:
     expected_keys = {
         "api_definition_sha256",
+        "auxiliary_executables",
         "build_directory",
         "build_coverage_sha256",
         "catalog_id",
@@ -1192,6 +1796,58 @@ def _derive(
         libc_machine == architecture["elf_machine"] and libc_soname == "libc.so.6",
         "build evidence: libc ELF identity mismatch",
     )
+    auxiliary_values = evidence["auxiliary_executables"]
+    _require(
+        isinstance(auxiliary_values, list) and len(auxiliary_values) == 1,
+        "build evidence auxiliary_executables: exactly one row required",
+    )
+    auxiliary = auxiliary_values[0]
+    auxiliary_where = "build evidence auxiliary_executables[0]"
+    auxiliary_keys = {
+        "auxiliary_id",
+        "build_map_path",
+        "build_output_path",
+        "elf_path",
+        "link_command_path",
+        "link_map_path",
+        "target",
+    }
+    _require(
+        isinstance(auxiliary, dict) and set(auxiliary) == auxiliary_keys,
+        f"{auxiliary_where}: exact members required",
+    )
+    auxiliary_id = _identifier(
+        auxiliary["auxiliary_id"], f"{auxiliary_where}.auxiliary_id"
+    )
+    target = _target(auxiliary["target"], f"{auxiliary_where}.target")
+    _require(
+        auxiliary_id == ARCHIVE_APPEND_AUXILIARY_ID
+        and target == ARCHIVE_APPEND_TARGET,
+        f"{auxiliary_where}: exact archive-appender identity required",
+    )
+    auxiliary_build_output_path = _archive_path(
+        auxiliary["build_output_path"], f"{auxiliary_where}.build_output_path"
+    )
+    auxiliary_build_map_path = _archive_path(
+        auxiliary["build_map_path"], f"{auxiliary_where}.build_map_path"
+    )
+    auxiliary_paths = _auxiliary_paths(auxiliary_id)
+    for key, path in auxiliary_paths.items():
+        _require(
+            auxiliary[key] == path,
+            f"{auxiliary_where}.{key}: exact derived archive path required",
+        )
+    build_output_or_map_claims: dict[str, str] = {}
+    _claim_unique_build_output_or_map(
+        build_output_or_map_claims,
+        auxiliary_build_output_path,
+        f"{auxiliary_where}.build_output_path",
+    )
+    _claim_unique_build_output_or_map(
+        build_output_or_map_claims,
+        auxiliary_build_map_path,
+        f"{auxiliary_where}.build_map_path",
+    )
     logical_values = evidence["logical_elfs"]
     _require(isinstance(logical_values, list) and logical_values, "build evidence logical_elfs: nonempty array required")
     logical_ids = [row.get("logical_id") for row in logical_values if isinstance(row, dict)]
@@ -1203,6 +1859,7 @@ def _derive(
     )
     build_rows: list[dict[str, Any]] = []
     projection_rows: list[dict[str, str]] = []
+    auxiliary_projection_rows: list[dict[str, str]] = []
     required_artifact_paths = set(tools.values())
     for index, specification in enumerate(logical_values):
         where = f"build evidence logical_elfs[{index}]"
@@ -1226,6 +1883,16 @@ def _derive(
         )
         build_map_path = _archive_path(
             specification["build_map_path"], f"{where}.build_map_path"
+        )
+        _claim_unique_build_output_or_map(
+            build_output_or_map_claims,
+            build_output_path,
+            f"{where}.build_output_path",
+        )
+        _claim_unique_build_output_or_map(
+            build_output_or_map_claims,
+            build_map_path,
+            f"{where}.build_map_path",
         )
         paths = _entry_paths(logical_id)
         for key, path in paths.items():
@@ -1312,6 +1979,47 @@ def _derive(
                 "logical_id": logical_id,
             }
         )
+    required_artifact_paths.update(auxiliary_paths.values())
+    auxiliary_elf_raw = _required_artifact(
+        artifacts, auxiliary_paths["elf_path"], auxiliary_where
+    )
+    auxiliary_command_raw = _required_artifact(
+        artifacts, auxiliary_paths["link_command_path"], auxiliary_where
+    )
+    auxiliary_map_raw = _required_artifact(
+        artifacts, auxiliary_paths["link_map_path"], auxiliary_where
+    )
+    _validate_auxiliary_executable(
+        auxiliary_elf_raw,
+        expected_machine=architecture["elf_machine"],
+        where=f"{auxiliary_where}.elf",
+    )
+    _validate_final_link_command(
+        auxiliary_command_raw,
+        build_directory=build_directory,
+        build_output_path=auxiliary_build_output_path,
+        build_map_path=auxiliary_build_map_path,
+        expected_wraps=(),
+        require_static_executable=True,
+        where=f"{auxiliary_where}.link_command",
+    )
+    _validate_link_map_output(
+        auxiliary_map_raw,
+        build_directory=build_directory,
+        build_output_path=auxiliary_build_output_path,
+        where=f"{auxiliary_where}.link_map",
+    )
+    auxiliary_projection_rows.append(
+        {
+            "auxiliary_id": auxiliary_id,
+            "build_map_path": auxiliary_build_map_path,
+            "build_output_path": auxiliary_build_output_path,
+            "elf_sha256": _sha(auxiliary_elf_raw),
+            "link_command_sha256": _sha(auxiliary_command_raw),
+            "link_map_sha256": _sha(auxiliary_map_raw),
+            "target": target,
+        }
+    )
     _require(
         set(artifacts) == required_artifact_paths,
         "build evidence: exact required raw-artifact path set required",
@@ -1359,6 +2067,7 @@ def _derive(
     )
     build_configuration = COVERAGE.canonical_bytes(
         {
+            "auxiliary_executables": auxiliary_projection_rows,
             "build_directory": build_directory,
             "compiler_version": compiler_version,
             "entries": projection_rows,
@@ -1580,12 +2289,45 @@ def _request_logical(value: Mapping[str, Any], index: int) -> LogicalElfInput:
     )
 
 
+def _request_auxiliary(
+    value: Mapping[str, Any], index: int
+) -> AuxiliaryExecutableInput:
+    where = f"request.auxiliary_executables[{index}]"
+    keys = {
+        "auxiliary_id",
+        "elf_path",
+        "link_map_path",
+        "target",
+    }
+    _require(
+        isinstance(value, dict) and set(value) == keys,
+        f"{where}: exact members required",
+    )
+    return AuxiliaryExecutableInput(
+        auxiliary_id=_identifier(value["auxiliary_id"], f"{where}.auxiliary_id"),
+        target=_target(value["target"], f"{where}.target"),
+        elf_path=_request_path(value["elf_path"], f"{where}.elf_path"),
+        link_map_path=_request_path(
+            value["link_map_path"], f"{where}.link_map_path"
+        ),
+    )
+
+
+def _request_path(value: Any, where: str) -> pathlib.Path:
+    _require(
+        isinstance(value, str) and value,
+        f"{where}: nonempty path string required",
+    )
+    return pathlib.Path(value)
+
+
 def prepare_measured_build_evidence(
     *,
     repository: pathlib.Path,
     build_directory: pathlib.Path,
     evidence_root: pathlib.Path,
     logical_elfs: Sequence[LogicalElfInput],
+    auxiliary_executables: Sequence[AuxiliaryExecutableInput],
     primary_logical_elf_id: str,
     libc_path: pathlib.Path,
     api_definition_sha256: str,
@@ -1619,6 +2361,17 @@ def prepare_measured_build_evidence(
         raise BuildEvidenceError("evidence root must remain outside the source repository")
     _require(logical_elfs and len(logical_elfs) == len({row.logical_id for row in logical_elfs}), "logical ELF inputs must be nonempty and unique")
     _require([row.logical_id for row in logical_elfs] == sorted(row.logical_id for row in logical_elfs), "logical ELF inputs must be sorted")
+    _require(
+        len(auxiliary_executables) == 1
+        and auxiliary_executables[0].auxiliary_id
+        == ARCHIVE_APPEND_AUXILIARY_ID
+        and auxiliary_executables[0].target == ARCHIVE_APPEND_TARGET,
+        "auxiliary executable inputs require exactly the archive appender",
+    )
+    _require(
+        all(row.target != ARCHIVE_APPEND_TARGET for row in logical_elfs),
+        "archive appender target is auxiliary-only",
+    )
     _validate_cmake_build_root(build_directory, repository)
     source_snapshot = _source_snapshot(git, repository)
     status = source_snapshot.status
@@ -1644,6 +2397,9 @@ def prepare_measured_build_evidence(
         _tool_paths()["source_tree_path"]: tree,
         _tool_paths()["target_triple_path"]: target_triple,
     }
+    online_build_output_or_map_claims: dict[str, str] = {}
+    online_resolved_artifact_claims: dict[pathlib.Path, str] = {}
+    online_artifact_identity_claims: dict[tuple[int, int], str] = {}
     logical_values: list[dict[str, Any]] = []
     for logical in logical_elfs:
         logical_id = _identifier(logical.logical_id, "logical ELF ID")
@@ -1676,7 +2432,24 @@ def prepare_measured_build_evidence(
             map_path.relative_to(build_directory).as_posix(),
             f"logical ELF {logical_id} build map",
         )
-        elf_raw = _read_regular(elf_path)
+        _claim_unique_build_output_or_map(
+            online_build_output_or_map_claims,
+            build_output_path,
+            f"logical ELF {logical_id} build output",
+        )
+        _claim_unique_build_output_or_map(
+            online_build_output_or_map_claims,
+            build_map_path,
+            f"logical ELF {logical_id} build map",
+        )
+        elf_raw, elf_resolved_path, elf_identity = _read_regular_identity(elf_path)
+        _claim_unique_online_artifact(
+            online_resolved_artifact_claims,
+            online_artifact_identity_claims,
+            resolved_path=elf_resolved_path,
+            identity=elf_identity,
+            where=f"logical ELF {logical_id} image",
+        )
         parsed = _parse_elf(elf_raw)
         expected_wraps = sorted(
             option
@@ -1693,7 +2466,14 @@ def prepare_measured_build_evidence(
             build_map_path=build_map_path,
             expected_wraps=expected_wraps,
         )
-        map_raw = _read_regular(map_path)
+        map_raw, map_resolved_path, map_identity = _read_regular_identity(map_path)
+        _claim_unique_online_artifact(
+            online_resolved_artifact_claims,
+            online_artifact_identity_claims,
+            resolved_path=map_resolved_path,
+            identity=map_identity,
+            where=f"logical ELF {logical_id} map",
+        )
         _validate_link_map_output(
             map_raw,
             build_directory=build_directory_identity,
@@ -1724,8 +2504,118 @@ def prepare_measured_build_evidence(
             repository,
             f"while freezing artifacts for Ninja target {logical.target}",
         )
+    target_triple_value = _version_line(
+        target_triple, "target triple", r"([a-z0-9_]+-linux-gnu)\n?"
+    )
+    auxiliary_machine = {
+        "x86_64-linux-gnu": 62,
+        "aarch64-linux-gnu": 183,
+    }.get(target_triple_value)
+    _require(
+        auxiliary_machine is not None,
+        f"unsupported auxiliary target triple {target_triple_value!r}",
+    )
+    auxiliary_values: list[dict[str, Any]] = []
+    for auxiliary in auxiliary_executables:
+        auxiliary_id = _identifier(auxiliary.auxiliary_id, "auxiliary executable ID")
+        target = _target(auxiliary.target, f"auxiliary executable {auxiliary_id} target")
+        paths = _auxiliary_paths(auxiliary_id)
+        _run((str(ninja), "-C", str(build_directory), target))
+        _require_source_snapshot(
+            source_snapshot,
+            git,
+            repository,
+            f"while constructing Ninja target {target}",
+        )
+        elf_path = _resolve_under(
+            build_directory,
+            auxiliary.elf_path,
+            f"auxiliary executable {auxiliary_id} image",
+        )
+        map_path = _resolve_under(
+            build_directory,
+            auxiliary.link_map_path,
+            f"auxiliary executable {auxiliary_id} map",
+        )
+        build_output_path = _archive_path(
+            elf_path.relative_to(build_directory).as_posix(),
+            f"auxiliary executable {auxiliary_id} build output",
+        )
+        build_map_path = _archive_path(
+            map_path.relative_to(build_directory).as_posix(),
+            f"auxiliary executable {auxiliary_id} build map",
+        )
+        _claim_unique_build_output_or_map(
+            online_build_output_or_map_claims,
+            build_output_path,
+            f"auxiliary executable {auxiliary_id} build output",
+        )
+        _claim_unique_build_output_or_map(
+            online_build_output_or_map_claims,
+            build_map_path,
+            f"auxiliary executable {auxiliary_id} build map",
+        )
+        elf_raw, elf_resolved_path, elf_identity = _read_regular_identity(elf_path)
+        _claim_unique_online_artifact(
+            online_resolved_artifact_claims,
+            online_artifact_identity_claims,
+            resolved_path=elf_resolved_path,
+            identity=elf_identity,
+            where=f"auxiliary executable {auxiliary_id} image",
+        )
+        _validate_auxiliary_executable(
+            elf_raw,
+            expected_machine=auxiliary_machine,
+            where=f"auxiliary executable {auxiliary_id}",
+        )
+        commands = _ninja_final_command(
+            ninja, build_directory, build_output_path
+        )
+        command_raw = _link_command(
+            commands,
+            build_directory=build_directory_identity,
+            build_output_path=build_output_path,
+            build_map_path=build_map_path,
+            expected_wraps=(),
+            require_static_executable=True,
+        )
+        map_raw, map_resolved_path, map_identity = _read_regular_identity(map_path)
+        _claim_unique_online_artifact(
+            online_resolved_artifact_claims,
+            online_artifact_identity_claims,
+            resolved_path=map_resolved_path,
+            identity=map_identity,
+            where=f"auxiliary executable {auxiliary_id} map",
+        )
+        _validate_link_map_output(
+            map_raw,
+            build_directory=build_directory_identity,
+            build_output_path=build_output_path,
+            where=f"auxiliary executable {auxiliary_id} link map",
+        )
+        artifacts[paths["elf_path"]] = elf_raw
+        artifacts[paths["link_command_path"]] = command_raw
+        artifacts[paths["link_map_path"]] = map_raw
+        auxiliary_values.append(
+            {
+                "auxiliary_id": auxiliary_id,
+                "build_map_path": build_map_path,
+                "build_output_path": build_output_path,
+                "elf_path": paths["elf_path"],
+                "link_command_path": paths["link_command_path"],
+                "link_map_path": paths["link_map_path"],
+                "target": target,
+            }
+        )
+        _require_source_snapshot(
+            source_snapshot,
+            git,
+            repository,
+            f"while freezing artifacts for Ninja target {target}",
+        )
     provisional = {
         "api_definition_sha256": api_definition_sha256,
+        "auxiliary_executables": auxiliary_values,
         "build_directory": build_directory_identity,
         "build_coverage_sha256": "0" * 64,
         "catalog_id": "oai_memprof_build_evidence",
@@ -1807,6 +2697,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     request = COVERAGE.parse_canonical(request_raw)
     required = {
         "api_definition_sha256",
+        "auxiliary_executables",
         "build_directory",
         "evidence_root",
         "libc_path",
@@ -1822,6 +2713,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         logical_elfs=tuple(
             _request_logical(value, index)
             for index, value in enumerate(request["logical_elfs"])
+        ),
+        auxiliary_executables=tuple(
+            _request_auxiliary(value, index)
+            for index, value in enumerate(request["auxiliary_executables"])
         ),
         primary_logical_elf_id=request["primary_logical_elf_id"],
         libc_path=pathlib.Path(request["libc_path"]),

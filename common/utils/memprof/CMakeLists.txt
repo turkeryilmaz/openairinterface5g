@@ -178,18 +178,49 @@ target_compile_features(oai_memprof_process_handoff PUBLIC c_std_11)
 target_include_directories(oai_memprof_process_handoff PUBLIC ${OPENAIR_DIR})
 target_compile_options(oai_memprof_process_handoff PRIVATE -Wall -Wextra -Werror -Wpedantic)
 target_link_libraries(oai_memprof_process_handoff
-                      PUBLIC oai_memprof_stream_writer
                       PRIVATE oai_memprof_container_wire)
 set_target_properties(oai_memprof_process_handoff PROPERTIES
                       C_COMPILER_LAUNCHER ""
                       INTERPROCEDURAL_OPTIMIZATION FALSE
                       POSITION_INDEPENDENT_CODE ON)
 
+if(OAI_MEMPROF_ACTIVE OR ENABLE_TESTS)
+  set(OAI_MEMPROF_ARCHIVE_APPEND_MAP
+      "${CMAKE_CURRENT_BINARY_DIR}/oai_memprof_archive_append.map")
+  add_executable(oai_memprof_archive_append EXCLUDE_FROM_ALL
+                 oai_memprof_archive_append.c
+                 oai_memprof_stream_finalizer.c)
+  target_compile_features(oai_memprof_archive_append PRIVATE c_std_11)
+  target_include_directories(oai_memprof_archive_append PRIVATE ${OPENAIR_DIR})
+  target_compile_options(oai_memprof_archive_append PRIVATE
+                         -Wall -Wextra -Werror -Wpedantic -fno-pie)
+  target_compile_definitions(oai_memprof_archive_append PRIVATE
+                             OAI_MEMPROF_STREAM_FINALIZER_OFFLINE_ONLY=1)
+  target_link_libraries(oai_memprof_archive_append PRIVATE
+                        oai_memprof_process_handoff
+                        oai_memprof_container_wire
+                        oai_memprof_wire)
+  target_link_options(oai_memprof_archive_append PRIVATE
+                      -static
+                      -no-pie
+                      "LINKER:-Map,${OAI_MEMPROF_ARCHIVE_APPEND_MAP}"
+                      "LINKER:--cref")
+  set_target_properties(oai_memprof_archive_append PROPERTIES
+                        BUILD_RPATH ""
+                        INSTALL_RPATH ""
+                        SKIP_BUILD_RPATH TRUE
+                        SKIP_INSTALL_RPATH TRUE
+                        INTERPROCEDURAL_OPTIMIZATION FALSE
+                        POSITION_INDEPENDENT_CODE OFF)
+endif()
+
 add_library(oai_memprof_process_session STATIC oai_memprof_process_session.c)
 target_compile_features(oai_memprof_process_session PUBLIC c_std_11)
 target_include_directories(oai_memprof_process_session PUBLIC ${OPENAIR_DIR})
 target_compile_options(oai_memprof_process_session PRIVATE -Wall -Wextra -Werror -Wpedantic)
-target_link_libraries(oai_memprof_process_session PUBLIC oai_memprof_process_handoff)
+target_link_libraries(oai_memprof_process_session
+                      PUBLIC oai_memprof_process_handoff
+                      PRIVATE oai_memprof_stream_writer)
 set_target_properties(oai_memprof_process_session PROPERTIES
                       C_COMPILER_LAUNCHER ""
                       INTERPROCEDURAL_OPTIMIZATION FALSE
