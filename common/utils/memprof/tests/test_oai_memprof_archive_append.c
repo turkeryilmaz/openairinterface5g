@@ -103,6 +103,95 @@ static bool read_leaf_exact(int directory_fd, const char *name, uint8_t *bytes, 
   return ok;
 }
 
+static bool capture_pipe_text(int file_descriptor, char *text, size_t capacity)
+{
+  if (text == NULL || capacity == 0)
+    return false;
+  size_t offset = 0;
+  for (;;) {
+    char buffer[64];
+    const ssize_t count = read(file_descriptor, buffer, sizeof(buffer));
+    if (count < 0 && errno == EINTR)
+      continue;
+    if (count < 0)
+      return false;
+    if (count == 0)
+      break;
+    if ((size_t)count >= capacity - offset)
+      return false;
+    memcpy(text + offset, buffer, (size_t)count);
+    offset += (size_t)count;
+  }
+  text[offset] = '\0';
+  return true;
+}
+
+static bool capture_contract_probe(int *return_code,
+                                   char *stdout_text,
+                                   size_t stdout_capacity,
+                                   char *stderr_text,
+                                   size_t stderr_capacity)
+{
+  int stdout_pipe[2] = {-1, -1};
+  int stderr_pipe[2] = {-1, -1};
+  int saved_stdout = -1;
+  int saved_stderr = -1;
+  bool stdout_redirected = false;
+  bool stderr_redirected = false;
+  bool ok = return_code != NULL && pipe(stdout_pipe) == 0 && pipe(stderr_pipe) == 0;
+  if (ok && (fflush(stdout) == EOF || fflush(stderr) == EOF))
+    ok = false;
+  if (ok) {
+    saved_stdout = dup(STDOUT_FILENO);
+    saved_stderr = dup(STDERR_FILENO);
+    ok = saved_stdout >= 0 && saved_stderr >= 0;
+  }
+  if (ok) {
+    stdout_redirected = dup2(stdout_pipe[1], STDOUT_FILENO) >= 0;
+    stderr_redirected = dup2(stderr_pipe[1], STDERR_FILENO) >= 0;
+    ok = stdout_redirected && stderr_redirected;
+  }
+  if (stdout_pipe[1] >= 0 && close(stdout_pipe[1]) != 0)
+    ok = false;
+  stdout_pipe[1] = -1;
+  if (stderr_pipe[1] >= 0 && close(stderr_pipe[1]) != 0)
+    ok = false;
+  stderr_pipe[1] = -1;
+  if (ok) {
+    char executable_name[] = "oai_memprof_archive_append";
+    char probe_argument[] = ARCHIVE_APPEND_CONTRACT_PROBE_ARGUMENT;
+    char *arguments[] = {executable_name, probe_argument, NULL};
+    *return_code = oai_memprof_archive_append_main(2, arguments);
+    if (fflush(stdout) == EOF || fflush(stderr) == EOF)
+      ok = false;
+  }
+  if (stdout_redirected && dup2(saved_stdout, STDOUT_FILENO) < 0)
+    ok = false;
+  if (stderr_redirected && dup2(saved_stderr, STDERR_FILENO) < 0)
+    ok = false;
+  if (saved_stdout >= 0 && close(saved_stdout) != 0)
+    ok = false;
+  if (saved_stderr >= 0 && close(saved_stderr) != 0)
+    ok = false;
+  if (stdout_pipe[0] >= 0) {
+    if (!capture_pipe_text(stdout_pipe[0], stdout_text, stdout_capacity))
+      ok = false;
+    if (close(stdout_pipe[0]) != 0)
+      ok = false;
+  } else {
+    ok = false;
+  }
+  if (stderr_pipe[0] >= 0) {
+    if (!capture_pipe_text(stderr_pipe[0], stderr_text, stderr_capacity))
+      ok = false;
+    if (close(stderr_pipe[0]) != 0)
+      ok = false;
+  } else {
+    ok = false;
+  }
+  return ok;
+}
+
 int main(void)
 {
   static const uint8_t accepted_leaf[] = "AUXILIARY-OBJECT-A";
@@ -114,7 +203,7 @@ int main(void)
   static const char replacement_name[] = "handoff-replacement.bin";
   static const char prefooter_name[] = "prefooter.stream";
   char directory_path[] = "/tmp/oai_memprof_archive_append.XXXXXX";
-  char *const directory_path_result = mkdtemp(directory_path);
+  char *directory_path_result = NULL;
   int directory_fd = -1;
   immutable_file_t result = {0};
   struct stat accepted_status = {0};
@@ -124,7 +213,28 @@ int main(void)
   uint8_t expected_digest[32] = {0};
   uint8_t decoded_digest[32] = {0};
   immutable_file_t digest_file = {.bytes = digest_input, .size = sizeof(digest_input)};
-  bool ok = directory_path_result != NULL;
+  int contract_probe_status = -1;
+  char contract_probe_stdout[128] = {0};
+  char contract_probe_stderr[128] = {0};
+  bool ok = true;
+
+  if (ok)
+    ok = expect(capture_contract_probe(&contract_probe_status,
+                                       contract_probe_stdout,
+                                       sizeof(contract_probe_stdout),
+                                       contract_probe_stderr,
+                                       sizeof(contract_probe_stderr)),
+                "could not capture appender contract probe");
+  if (ok)
+    ok = expect(contract_probe_status == 0, "appender contract probe did not succeed");
+  if (ok)
+    ok = expect(strcmp(contract_probe_stdout, ARCHIVE_APPEND_CONTRACT_PROBE_OUTPUT) == 0, "appender contract probe stdout differs");
+  if (ok)
+    ok = expect(contract_probe_stderr[0] == '\0', "appender contract probe emitted stderr");
+  if (ok) {
+    directory_path_result = mkdtemp(directory_path);
+    ok = directory_path_result != NULL;
+  }
 
   if (ok)
     ok = expect(decode_sha256_hex(expected_digest_hex, decoded_digest), "expected digest hex did not decode");

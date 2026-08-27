@@ -13,6 +13,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from unittest import mock
 import uuid
@@ -49,7 +50,7 @@ def sha(raw: bytes) -> str:
 
 
 TRUSTED_RELEASE_AUTHORITY_FIXTURE_SHA256 = (
-    "3e0f5c3ca51801bbdbac52eb9acd4d14795d971fd2f0b516816569ff0381f6ae"
+    "5951c69716648ce2b1b1192039420659f65951a6baccac5c6ee054dae30c6600"
 )
 
 
@@ -845,6 +846,8 @@ class ArchiveComposerBuildEvidenceTests(unittest.TestCase):
                     "#!/usr/bin/python3",
                     "import os",
                     "import sys",
+                    f"if sys.argv[1:] == [{COMPOSER.APPENDER_CONTRACT_PROBE_ARGUMENT!r}]:",
+                    f"    os.execv({str(self.appender)!r}, [{str(self.appender)!r}, *sys.argv[1:]])",
                     f"os.replace({str(replacement_path)!r}, os.path.join(sys.argv[1], {handoff_leaf!r}))",
                     f"os.execv({str(self.appender)!r}, [{str(self.appender)!r}, *sys.argv[1:]])",
                     "",
@@ -854,6 +857,135 @@ class ArchiveComposerBuildEvidenceTests(unittest.TestCase):
         )
         wrapper.chmod(0o700)
         return wrapper
+
+    def contract_probe_executable(
+        self,
+        label: str,
+        *,
+        stdout_text: str,
+        stderr_text: str,
+        return_code: int,
+    ) -> pathlib.Path:
+        wrapper = self.case_root / f"{label}-contract-probe-appender.py"
+        wrapper.write_text(
+            "\n".join(
+                (
+                    "#!/usr/bin/python3",
+                    "import sys",
+                    f"sys.stdout.write({stdout_text!r})",
+                    f"sys.stderr.write({stderr_text!r})",
+                    f"raise SystemExit({return_code})",
+                    "",
+                )
+            ),
+            encoding="utf-8",
+        )
+        wrapper.chmod(0o700)
+        return wrapper
+
+    def sleeping_contract_probe_executable(
+        self, label: str
+    ) -> tuple[pathlib.Path, pathlib.Path]:
+        pid_path = self.case_root / f"{label}-contract-probe.pid"
+        wrapper = self.case_root / f"{label}-contract-probe-sleeper.py"
+        wrapper.write_text(
+            "\n".join(
+                (
+                    "#!/usr/bin/python3",
+                    "import os",
+                    "import pathlib",
+                    "import time",
+                    f"pathlib.Path({str(pid_path)!r}).write_text(str(os.getpid()), encoding='ascii')",
+                    "time.sleep(30)",
+                    "",
+                )
+            ),
+            encoding="utf-8",
+        )
+        wrapper.chmod(0o700)
+        return wrapper, pid_path
+
+    def descendant_contract_probe_executable(
+        self,
+        label: str,
+        *,
+        alternate_process_group: bool = False,
+    ) -> tuple[pathlib.Path, pathlib.Path]:
+        child_path = self.case_root / f"{label}-contract-probe-child.pid"
+        process_path = self.case_root / f"{label}-contract-probe-processes.txt"
+        wrapper = self.case_root / f"{label}-contract-probe-descendant.py"
+        wrapper.write_text(
+            "\n".join(
+                (
+                    "#!/usr/bin/python3",
+                    "import os",
+                    "import pathlib",
+                    "import signal",
+                    "import sys",
+                    "import time",
+                    f"child_path = pathlib.Path({str(child_path)!r})",
+                    f"process_path = pathlib.Path({str(process_path)!r})",
+                    "child = os.fork()",
+                    "if child == 0:",
+                    f"    if {alternate_process_group!r}:",
+                    "        os.setpgid(0, 0)",
+                    "    signal.signal(signal.SIGTERM, signal.SIG_IGN)",
+                    "    child_path.write_text(str(os.getpid()), encoding='ascii')",
+                    "    while True:",
+                    "        time.sleep(1)",
+                    "deadline = time.monotonic() + 1",
+                    "while not child_path.exists() and time.monotonic() < deadline:",
+                    "    time.sleep(0.001)",
+                    "if not child_path.exists():",
+                    "    raise SystemExit(1)",
+                    "process_path.write_text(",
+                    "    f'{os.getpid()} {child} {os.getpgrp()} {os.getpgid(child)} {os.getsid(0)}',",
+                    "    encoding='ascii',",
+                    ")",
+                    f"sys.stdout.write({COMPOSER.APPENDER_CONTRACT_PROBE_OUTPUT.decode('ascii')!r})",
+                    "sys.stdout.flush()",
+                    "os._exit(0)",
+                    "",
+                )
+            ),
+            encoding="utf-8",
+        )
+        wrapper.chmod(0o700)
+        return wrapper, process_path
+
+    def assert_process_gone(self, pid: int) -> None:
+        deadline = time.monotonic() + 1
+        while True:
+            try:
+                os.kill(pid, 0)
+            except ProcessLookupError:
+                return
+            if time.monotonic() >= deadline:
+                self.fail(f"process {pid} remained after contract probe cleanup")
+            time.sleep(0.01)
+
+    def assert_probe_session_quiescent(self, session: int) -> None:
+        deadline = time.monotonic() + 1
+        while True:
+            members = COMPOSER._scan_probe_session(session, deadline)
+            if not members:
+                return
+            if time.monotonic() >= deadline:
+                self.fail(
+                    f"probe session {session} retained members after containment: {members}"
+                )
+            time.sleep(0.01)
+
+    def read_contract_probe_pid(self, pid_path: pathlib.Path) -> int:
+        deadline = time.monotonic() + 1
+        while True:
+            if pid_path.exists():
+                raw = pid_path.read_text(encoding="ascii")
+                if raw:
+                    return int(raw)
+            if time.monotonic() >= deadline:
+                self.fail(f"contract probe PID file was not populated: {pid_path}")
+            time.sleep(0.001)
 
     def assert_negative_terminal_archive(
         self,
@@ -1056,6 +1188,607 @@ class ArchiveComposerBuildEvidenceTests(unittest.TestCase):
         self.assertEqual(
             (archive / "streams/memory-lifetime.bin").read_bytes(), prefix
         )
+
+    def test_current_appender_contract_probe_and_integration_succeeds(self) -> None:
+        expected_path = self.appender.resolve(strict=True)
+        with mock.patch.object(
+            COMPOSER.subprocess, "Popen", wraps=subprocess.Popen
+        ) as runner:
+            self.assertEqual(
+                COMPOSER._require_appender_contract(self.appender), expected_path
+            )
+        runner.assert_called_once_with(
+            [str(expected_path), COMPOSER.APPENDER_CONTRACT_PROBE_ARGUMENT],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            bufsize=0,
+            start_new_session=True,
+        )
+
+        archive, evidence_root, prefix, _handoff = self.produce(
+            "current_appender_contract"
+        )
+        result = self.compose(archive, evidence_root)
+        self.assertEqual(result.terminal_outcome, "complete")
+        self.assertGreater(
+            len((archive / COMPOSER.STREAM_ARCHIVE_PATH).read_bytes()), len(prefix)
+        )
+        self.assertTrue((archive / COMPOSER.VERIFIER.STATUS.MANIFEST_PATH).exists())
+
+    def test_stale_or_wrong_appender_contract_rejects_before_stream_mutation(
+        self,
+    ) -> None:
+        cases = (
+            (
+                "stale_appender_contract",
+                "",
+                "usage: oai_memprof_archive_append DIRECTORY STREAM_LEAF HANDOFF_LEAF TRAILER_LEAF\n",
+                64,
+                "append utility contract probe failed status=64",
+            ),
+            (
+                "wrong_appender_contract",
+                "oai_memprof_archive_append contract-v0\n",
+                "",
+                0,
+                "append utility contract probe stdout mismatch",
+            ),
+        )
+        for label, stdout_text, stderr_text, return_code, error in cases:
+            with self.subTest(label=label):
+                archive, evidence_root, prefix, handoff = self.produce(label)
+                appender = self.contract_probe_executable(
+                    label,
+                    stdout_text=stdout_text,
+                    stderr_text=stderr_text,
+                    return_code=return_code,
+                )
+                with self.assertRaisesRegex(COMPOSER.ArchiveComposerError, error):
+                    self.compose(archive, evidence_root, append_executable=appender)
+                self.assertEqual(
+                    (archive / COMPOSER.STREAM_ARCHIVE_PATH).read_bytes(), prefix
+                )
+                self.assertEqual(
+                    (archive / COMPOSER.PROCESS_HANDOFF_ARCHIVE_PATH).read_bytes(),
+                    handoff,
+                )
+                self.assertFalse((archive / "streams/trailer.bin").exists())
+                self.assertFalse(
+                    (archive / COMPOSER.VERIFIER.STATUS.MANIFEST_PATH).exists()
+                )
+
+    def test_contract_probe_rejects_stderr_timeout_and_output_overflow(self) -> None:
+        stderr_appender = self.contract_probe_executable(
+            "stderr_appender_contract",
+            stdout_text=COMPOSER.APPENDER_CONTRACT_PROBE_OUTPUT.decode("ascii"),
+            stderr_text="unexpected probe diagnostic\n",
+            return_code=0,
+        )
+        with self.assertRaisesRegex(
+            COMPOSER.ArchiveComposerError,
+            "append utility contract probe emitted stderr",
+        ):
+            COMPOSER._require_appender_contract(stderr_appender)
+
+        sleeper, pid_path = self.sleeping_contract_probe_executable(
+            "timeout_appender_contract"
+        )
+        with mock.patch.object(
+            COMPOSER.subprocess,
+            "Popen",
+            wraps=subprocess.Popen,
+        ) as runner, mock.patch.object(
+            COMPOSER, "APPENDER_CONTRACT_PROBE_TIMEOUT_SECONDS", 0.2
+        ):
+            with self.assertRaisesRegex(
+                COMPOSER.ArchiveComposerError,
+                "append utility contract probe timed out",
+            ):
+                COMPOSER._require_appender_contract(sleeper)
+        self.assertTrue(pid_path.exists())
+        direct_pid = self.read_contract_probe_pid(pid_path)
+        self.assert_process_gone(direct_pid)
+        self.assertEqual(runner.call_count, 1)
+
+        for stream, error in (
+            ("stdout", "append utility contract probe stdout exceeded byte limit"),
+            ("stderr", "append utility contract probe stderr exceeded byte limit"),
+        ):
+            with self.subTest(stream=stream):
+                appender = self.contract_probe_executable(
+                    f"{stream}_overflow_appender_contract",
+                    stdout_text=(
+                        "x" * (COMPOSER.APPENDER_CONTRACT_PROBE_STDOUT_LIMIT_BYTES + 1)
+                        if stream == "stdout"
+                        else ""
+                    ),
+                    stderr_text=(
+                        "x" * (COMPOSER.APPENDER_CONTRACT_PROBE_STDERR_LIMIT_BYTES + 1)
+                        if stream == "stderr"
+                        else ""
+                    ),
+                    return_code=0,
+                )
+                with self.assertRaisesRegex(COMPOSER.ArchiveComposerError, error):
+                    COMPOSER._require_appender_contract(appender)
+
+    def test_contract_probe_rejects_same_session_descendant_and_reaps_it(self) -> None:
+        appender, process_path = self.descendant_contract_probe_executable(
+            "descendant_appender_contract"
+        )
+        with self.assertRaisesRegex(
+            COMPOSER.ArchiveComposerError,
+            "append utility contract probe left session descendants",
+        ):
+            COMPOSER._require_appender_contract(appender)
+        self.assertTrue(process_path.exists())
+        leader_pid, child_pid, leader_group, child_group, session = map(
+            int, process_path.read_text(encoding="ascii").split()
+        )
+        self.assertEqual(leader_pid, leader_group)
+        self.assertEqual(child_group, leader_group)
+        self.assert_process_gone(leader_pid)
+        self.assert_process_gone(child_pid)
+        self.assert_probe_session_quiescent(session)
+
+    def test_contract_probe_rejects_alternate_group_same_session_descendant(self) -> None:
+        appender, process_path = self.descendant_contract_probe_executable(
+            "alternate_group_descendant_appender_contract",
+            alternate_process_group=True,
+        )
+        with self.assertRaisesRegex(
+            COMPOSER.ArchiveComposerError,
+            "append utility contract probe left session descendants",
+        ):
+            COMPOSER._require_appender_contract(appender)
+        self.assertTrue(process_path.exists())
+        leader_pid, child_pid, leader_group, child_group, session = map(
+            int, process_path.read_text(encoding="ascii").split()
+        )
+        self.assertEqual(leader_pid, leader_group)
+        self.assertEqual(child_pid, child_group)
+        self.assertNotEqual(child_group, leader_group)
+        self.assert_process_gone(leader_pid)
+        self.assert_process_gone(child_pid)
+        self.assert_probe_session_quiescent(session)
+
+    def test_contract_probe_cleanup_timeout_when_session_persists(self) -> None:
+        probe = mock.Mock()
+        leader = COMPOSER._ProbeProcessIdentity(
+            pid=12345,
+            process_group=12345,
+            session=12345,
+            start_time_ticks=1,
+            state="S",
+        )
+        persistent_child = COMPOSER._ProbeProcessIdentity(
+            pid=12346,
+            process_group=12346,
+            session=12345,
+            start_time_ticks=2,
+            state="S",
+        )
+        with mock.patch.object(
+            COMPOSER, "_probe_leader_exited", return_value=True
+        ), mock.patch.object(
+            COMPOSER, "_probe_session_members", return_value=[leader, persistent_child]
+        ), mock.patch.object(
+            COMPOSER, "_signal_probe_identity"
+        ) as signal_identity, mock.patch.object(
+            COMPOSER, "APPENDER_CONTRACT_PROBE_CLEANUP_GRACE_SECONDS", 0.001
+        ):
+            with self.assertRaisesRegex(
+                COMPOSER.ArchiveComposerError,
+                "append utility contract probe cleanup timed out",
+            ):
+                cleanup_failure = COMPOSER._terminate_probe_session(
+                    probe, 99, leader
+                )
+                if cleanup_failure is not None:
+                    raise cleanup_failure
+        self.assertTrue(
+            all(
+                call.args[0] == persistent_child
+                for call in signal_identity.call_args_list
+            )
+        )
+        self.assertIn(
+            mock.call(persistent_child, COMPOSER.signal.SIGTERM),
+            signal_identity.call_args_list,
+        )
+        self.assertIn(
+            mock.call(persistent_child, COMPOSER.signal.SIGKILL),
+            signal_identity.call_args_list,
+        )
+
+    def test_contract_probe_does_not_signal_recycled_group_after_setsid_escape(
+        self,
+    ) -> None:
+        leader = COMPOSER._ProbeProcessIdentity(
+            pid=12345,
+            process_group=12345,
+            session=12345,
+            start_time_ticks=1,
+            state="Z",
+        )
+        with mock.patch.object(
+            COMPOSER, "_probe_leader_exited", return_value=True
+        ), mock.patch.object(
+            COMPOSER, "_probe_session_members", return_value=[leader]
+        ), mock.patch.object(
+            COMPOSER, "_signal_probe_identity"
+        ) as signal_identity, mock.patch.object(COMPOSER.os, "killpg") as killpg:
+            self.assertTrue(
+                COMPOSER._wait_for_probe_session_quiescence(
+                    99,
+                    leader,
+                    time.monotonic() + 1,
+                    COMPOSER.signal.SIGKILL,
+                )
+            )
+        signal_identity.assert_not_called()
+        killpg.assert_not_called()
+
+    def test_contract_probe_adapts_setup_and_close_failures(self) -> None:
+        sleeper, pid_path = self.sleeping_contract_probe_executable(
+            "setup_failure_appender_contract"
+        )
+        real_popen = subprocess.Popen
+        launched = []
+
+        def launch(*arguments, **kwargs):
+            probe = real_popen(*arguments, **kwargs)
+            launched.append(probe)
+            return probe
+
+        def fail_set_blocking(*_args, **_kwargs):
+            deadline = time.monotonic() + 1
+            while not pid_path.exists() and time.monotonic() < deadline:
+                time.sleep(0.001)
+            self.assertTrue(pid_path.exists())
+            raise OSError("synthetic set-blocking failure")
+
+        with mock.patch.object(
+            COMPOSER.subprocess, "Popen", side_effect=launch
+        ), mock.patch.object(
+            COMPOSER.os, "set_blocking", side_effect=fail_set_blocking
+        ):
+            with self.assertRaisesRegex(
+                COMPOSER.ArchiveComposerError,
+                "append utility contract probe I/O setup failed",
+            ):
+                COMPOSER._require_appender_contract(sleeper)
+        self.assertEqual(len(launched), 1)
+        self.assert_process_gone(self.read_contract_probe_pid(pid_path))
+
+        sleeper, pid_path = self.sleeping_contract_probe_executable(
+            "missing_pipe_appender_contract"
+        )
+        launched_without_stdout = []
+
+        def launch_without_stdout(*arguments, **kwargs):
+            probe = real_popen(*arguments, **kwargs)
+            launched_without_stdout.append(probe)
+            stdout = probe.stdout
+            probe.stdout = None
+            if stdout is not None:
+                stdout.close()
+            return probe
+
+        with mock.patch.object(
+            COMPOSER.subprocess, "Popen", side_effect=launch_without_stdout
+        ):
+            with self.assertRaisesRegex(
+                COMPOSER.ArchiveComposerError,
+                "append utility contract probe pipes unavailable",
+            ) as captured:
+                COMPOSER._require_appender_contract(sleeper)
+        self.assertIsNot(captured.exception.__cause__, captured.exception)
+        self.assertEqual(len(launched_without_stdout), 1)
+        self.assert_process_gone(launched_without_stdout[0].pid)
+
+        sleeper, pid_path = self.sleeping_contract_probe_executable(
+            "close_failure_appender_contract"
+        )
+        original_close = COMPOSER._close_probe_resource
+
+        def close_with_failure(name, resource):
+            original_failure = original_close(name, resource)
+            if name == "selector":
+                return COMPOSER.ArchiveComposerError("synthetic selector close failure")
+            return original_failure
+
+        with mock.patch.object(
+            COMPOSER, "_close_probe_resource", side_effect=close_with_failure
+        ) as closer, mock.patch.object(
+            COMPOSER, "APPENDER_CONTRACT_PROBE_TIMEOUT_SECONDS", 0.2
+        ):
+            with self.assertRaisesRegex(
+                COMPOSER.ArchiveComposerError,
+                "append utility contract probe timed out",
+            ) as captured:
+                COMPOSER._require_appender_contract(sleeper)
+        self.assertIn(
+            "cleanup/close failure: synthetic selector close failure",
+            "\n".join(captured.exception.__notes__),
+        )
+        self.assertEqual(
+            [call.args[0] for call in closer.call_args_list],
+            ["selector", "stdout", "stderr"],
+        )
+        self.assert_process_gone(self.read_contract_probe_pid(pid_path))
+
+    def test_contract_probe_unidentified_fallback_reaps_session_descendants(
+        self,
+    ) -> None:
+        original_read = COMPOSER._read_probe_process_identity
+        for alternate_process_group in (False, True):
+            with self.subTest(alternate_process_group=alternate_process_group):
+                appender, process_path = self.descendant_contract_probe_executable(
+                    f"fallback_descendant_{int(alternate_process_group)}",
+                    alternate_process_group=alternate_process_group,
+                )
+                failed = False
+
+                def fail_first_leader_read(pid: int):
+                    nonlocal failed
+                    if not failed:
+                        failed = True
+                        deadline = time.monotonic() + 1
+                        fields = ()
+                        while time.monotonic() < deadline:
+                            if process_path.exists():
+                                fields = tuple(
+                                    process_path.read_text(encoding="ascii").split()
+                                )
+                                if len(fields) == 5:
+                                    break
+                            time.sleep(0.001)
+                        self.assertEqual(len(fields), 5)
+                        raise COMPOSER.ArchiveComposerError(
+                            "synthetic leader setup failure"
+                        )
+                    return original_read(pid)
+
+                with mock.patch.object(
+                    COMPOSER,
+                    "_read_probe_process_identity",
+                    side_effect=fail_first_leader_read,
+                ):
+                    with self.assertRaisesRegex(
+                        COMPOSER.ArchiveComposerError,
+                        "synthetic leader setup failure",
+                    ):
+                        COMPOSER._require_appender_contract(appender)
+                leader_pid, child_pid, _leader_group, child_group, session = map(
+                    int, process_path.read_text(encoding="ascii").split()
+                )
+                if alternate_process_group:
+                    self.assertEqual(child_pid, child_group)
+                self.assert_process_gone(leader_pid)
+                self.assert_process_gone(child_pid)
+                self.assert_probe_session_quiescent(session)
+
+    def test_contract_probe_pidfd_unavailable_fails_closed_before_reap(self) -> None:
+        sleeper, _pid_path = self.sleeping_contract_probe_executable(
+            "pidfd_unavailable_appender_contract"
+        )
+        real_popen = subprocess.Popen
+        real_killpg = os.killpg
+        launched = []
+        events = []
+
+        def launch(*arguments, **kwargs):
+            probe = real_popen(*arguments, **kwargs)
+            launched.append(probe)
+            original_wait = probe.wait
+
+            def record_wait(*wait_arguments, **wait_kwargs):
+                events.append("wait")
+                return original_wait(*wait_arguments, **wait_kwargs)
+
+            probe.wait = record_wait
+            return probe
+
+        def record_group_signal(process_group, signal_number):
+            events.append(("killpg", process_group, signal_number))
+            return real_killpg(process_group, signal_number)
+
+        with mock.patch.object(
+            COMPOSER.subprocess, "Popen", side_effect=launch
+        ), mock.patch.object(
+            COMPOSER.os, "pidfd_open", side_effect=OSError("unavailable")
+        ), mock.patch.object(
+            COMPOSER.os, "killpg", side_effect=record_group_signal
+        ), mock.patch.object(
+            COMPOSER, "APPENDER_CONTRACT_PROBE_CLEANUP_GRACE_SECONDS", 0.05
+        ):
+            with self.assertRaisesRegex(
+                COMPOSER.ArchiveComposerError,
+                "append utility contract probe pidfd unavailable",
+            ):
+                COMPOSER._require_appender_contract(sleeper)
+        self.assertEqual(len(launched), 1)
+        self.assert_process_gone(launched[0].pid)
+        wait_index = events.index("wait")
+        self.assertTrue(
+            all(index < wait_index for index, event in enumerate(events) if event != "wait")
+        )
+        self.assertIn(
+            ("killpg", launched[0].pid, COMPOSER.signal.SIGTERM), events
+        )
+        self.assertIn(
+            ("killpg", launched[0].pid, COMPOSER.signal.SIGKILL), events
+        )
+
+    def test_contract_probe_fences_invalid_leader_group_and_session(self) -> None:
+        original_read = COMPOSER._read_probe_process_identity
+        original_scan = COMPOSER._scan_probe_session
+        original_signal = COMPOSER._signal_probe_identity
+        real_popen = subprocess.Popen
+        for field in ("process_group", "session"):
+            with self.subTest(field=field):
+                sleeper, _pid_path = self.sleeping_contract_probe_executable(
+                    f"invalid_leader_{field}_appender_contract"
+                )
+                launched = []
+                scan_sessions = []
+                signalled = []
+                injected = None
+
+                def launch(*arguments, **kwargs):
+                    probe = real_popen(*arguments, **kwargs)
+                    launched.append(probe)
+                    return probe
+
+                def invalid_first_leader_read(pid: int):
+                    nonlocal injected
+                    identity = original_read(pid)
+                    if injected is None:
+                        self.assertIsNotNone(identity)
+                        injected = dataclasses.replace(
+                            identity,
+                            **{field: identity.pid + 100_000},
+                        )
+                        return injected
+                    return identity
+
+                def record_scan(session, deadline):
+                    scan_sessions.append(session)
+                    return original_scan(session, deadline)
+
+                def record_signal(identity, signal_number):
+                    signalled.append(identity)
+                    return original_signal(identity, signal_number)
+
+                with mock.patch.object(
+                    COMPOSER.subprocess, "Popen", side_effect=launch
+                ), mock.patch.object(
+                    COMPOSER,
+                    "_read_probe_process_identity",
+                    side_effect=invalid_first_leader_read,
+                ), mock.patch.object(
+                    COMPOSER, "_scan_probe_session", side_effect=record_scan
+                ), mock.patch.object(
+                    COMPOSER, "_signal_probe_identity", side_effect=record_signal
+                ), mock.patch.object(
+                    COMPOSER, "APPENDER_CONTRACT_PROBE_CLEANUP_GRACE_SECONDS", 0.05
+                ):
+                    with self.assertRaisesRegex(
+                        COMPOSER.ArchiveComposerError,
+                        "append utility contract probe leader identity unavailable",
+                    ):
+                        COMPOSER._require_appender_contract(sleeper)
+                self.assertEqual(len(launched), 1)
+                self.assertTrue(scan_sessions)
+                self.assertEqual(scan_sessions, [launched[0].pid] * len(scan_sessions))
+                self.assertNotIn(injected, signalled)
+                self.assert_process_gone(launched[0].pid)
+
+    def test_contract_probe_never_reads_past_stream_limit_after_overflow(self) -> None:
+        appender = self.contract_probe_executable(
+            "large_stdout_appender_contract",
+            stdout_text="x" * (COMPOSER.APPENDER_CONTRACT_PROBE_STDOUT_LIMIT_BYTES * 32),
+            stderr_text="",
+            return_code=0,
+        )
+        real_popen = subprocess.Popen
+        real_read = os.read
+        stream_fds = set()
+        stream_bytes = {}
+
+        def launch(*arguments, **kwargs):
+            probe = real_popen(*arguments, **kwargs)
+            for pipe in (probe.stdout, probe.stderr):
+                if pipe is not None:
+                    stream_fds.add(pipe.fileno())
+                    stream_bytes[pipe.fileno()] = 0
+            return probe
+
+        def count_stream_read(descriptor, size):
+            chunk = real_read(descriptor, size)
+            if descriptor in stream_fds:
+                stream_bytes[descriptor] += len(chunk)
+            return chunk
+
+        with mock.patch.object(
+            COMPOSER.subprocess, "Popen", side_effect=launch
+        ), mock.patch.object(COMPOSER.os, "read", side_effect=count_stream_read):
+            with self.assertRaisesRegex(
+                COMPOSER.ArchiveComposerError,
+                "append utility contract probe stdout exceeded byte limit",
+            ):
+                COMPOSER._require_appender_contract(appender)
+        self.assertTrue(stream_bytes)
+        self.assertTrue(
+            all(
+                count <= COMPOSER.APPENDER_CONTRACT_PROBE_STDOUT_LIMIT_BYTES + 1
+                for count in stream_bytes.values()
+            )
+        )
+
+    def test_contract_probe_cleanup_interrupt_reaps_before_propagation(self) -> None:
+        appender, process_path = self.descendant_contract_probe_executable(
+            "cleanup_interrupt_appender_contract"
+        )
+        interruption = KeyboardInterrupt()
+        original_wait = COMPOSER._wait_for_probe_session_quiescence
+        original_close = COMPOSER._close_probe_resource
+        close_names = []
+
+        def interrupt_term_wait(pidfd, leader, deadline, signal_number):
+            if signal_number == COMPOSER.signal.SIGTERM:
+                raise interruption
+            return original_wait(pidfd, leader, deadline, signal_number)
+
+        def record_close(name, resource):
+            close_names.append(name)
+            return original_close(name, resource)
+
+        with mock.patch.object(
+            COMPOSER,
+            "_wait_for_probe_session_quiescence",
+            side_effect=interrupt_term_wait,
+        ), mock.patch.object(
+            COMPOSER, "_close_probe_resource", side_effect=record_close
+        ):
+            with self.assertRaises(KeyboardInterrupt) as captured:
+                COMPOSER._require_appender_contract(appender)
+        self.assertIs(captured.exception, interruption)
+        self.assertEqual(close_names, ["selector", "stdout", "stderr"])
+        leader_pid, child_pid, _leader_group, _child_group, session = map(
+            int, process_path.read_text(encoding="ascii").split()
+        )
+        self.assert_process_gone(leader_pid)
+        self.assert_process_gone(child_pid)
+        self.assert_probe_session_quiescent(session)
+
+    def test_contract_probe_close_interrupt_still_closes_later_resources(self) -> None:
+        sleeper, pid_path = self.sleeping_contract_probe_executable(
+            "close_interrupt_appender_contract"
+        )
+        interruption = KeyboardInterrupt()
+        original_close = COMPOSER._close_probe_resource
+        close_names = []
+
+        def interrupt_selector_close(name, resource):
+            close_names.append(name)
+            result = original_close(name, resource)
+            if name == "selector":
+                raise interruption
+            return result
+
+        with mock.patch.object(
+            COMPOSER, "_close_probe_resource", side_effect=interrupt_selector_close
+        ), mock.patch.object(
+            COMPOSER, "APPENDER_CONTRACT_PROBE_TIMEOUT_SECONDS", 0.2
+        ):
+            with self.assertRaises(KeyboardInterrupt) as captured:
+                COMPOSER._require_appender_contract(sleeper)
+        self.assertIs(captured.exception, interruption)
+        self.assertEqual(close_names, ["selector", "stdout", "stderr"])
+        self.assert_process_gone(self.read_contract_probe_pid(pid_path))
 
     def test_real_c_appender_rejects_handoff_substitution(self) -> None:
         archive, evidence_root, prefix, handoff_raw = self.produce(

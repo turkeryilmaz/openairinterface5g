@@ -9,13 +9,16 @@ import importlib.util
 import os
 import pathlib
 import re
+import selectors
+import signal
 import stat
 import subprocess
 import sys
+import time
 import uuid
 from dataclasses import dataclass
 from types import ModuleType
-from typing import Any, Mapping, Sequence
+from typing import Any, Callable, Mapping, Sequence
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[3]
@@ -35,6 +38,17 @@ MAX_BUILD_ARTIFACT_BYTES = 512 * 1024 * 1024
 MAX_BUILD_ARTIFACT_ENTRIES = 256
 MAX_BUILD_ARTIFACT_TOTAL_BYTES = 1 * 1024 * 1024 * 1024
 MAX_STREAM_BYTES = 64 * 1024 * 1024 * 1024
+APPENDER_CONTRACT_PROBE_ARGUMENT = "--oai-memprof-archive-append-contract-v1"
+APPENDER_CONTRACT_PROBE_OUTPUT = b"oai_memprof_archive_append contract-v1\n"
+APPENDER_CONTRACT_PROBE_TIMEOUT_SECONDS = 5
+APPENDER_CONTRACT_PROBE_STDOUT_LIMIT_BYTES = 128
+APPENDER_CONTRACT_PROBE_STDERR_LIMIT_BYTES = 128
+APPENDER_CONTRACT_PROBE_CLEANUP_GRACE_SECONDS = 0.5
+APPENDER_CONTRACT_PROBE_POLL_SECONDS = 0.05
+APPENDER_CONTRACT_PROBE_CLEANUP_POLL_SECONDS = 0.01
+APPENDER_CONTRACT_PROBE_MAX_PROC_ENTRIES = 65536
+APPENDER_CONTRACT_PROBE_PROC_STAT_MAX_BYTES = 4096
+APPENDER_CONTRACT_PROBE_QUIESCENT_SCANS = 2
 _MAP_RE = re.compile(
     rb"\A([0-9a-f]+)-([0-9a-f]+) ([r-][w-][x-][ps]) ([0-9a-f]+) "
     rb"([0-9a-f]+):([0-9a-f]+) ([0-9]+)(?: +(.*))?\Z"
@@ -46,6 +60,842 @@ _GLIBC_RUNTIME_FILENAME_RE = re.compile(
 
 class ArchiveComposerError(RuntimeError):
     """Fail-closed composition error."""
+
+
+@dataclass(frozen=True)
+class _ProbeProcessIdentity:
+    pid: int
+    process_group: int
+    session: int
+    start_time_ticks: int
+    state: str
+
+
+def _read_probe_process_identity(pid: int) -> _ProbeProcessIdentity | None:
+    path = pathlib.Path("/proc") / str(pid) / "stat"
+    try:
+        descriptor = os.open(
+            path, os.O_RDONLY | os.O_CLOEXEC | os.O_NONBLOCK | os.O_NOFOLLOW
+        )
+    except (FileNotFoundError, ProcessLookupError):
+        return None
+    except OSError as error:
+        raise ArchiveComposerError(
+            "append utility contract probe process inspection failed"
+        ) from error
+    primary: BaseException | None = None
+    close_failure: ArchiveComposerError | None = None
+    try:
+        data = bytearray()
+        while len(data) <= APPENDER_CONTRACT_PROBE_PROC_STAT_MAX_BYTES:
+            chunk = os.read(
+                descriptor,
+                APPENDER_CONTRACT_PROBE_PROC_STAT_MAX_BYTES + 1 - len(data),
+            )
+            if not chunk:
+                break
+            data.extend(chunk)
+        if len(data) > APPENDER_CONTRACT_PROBE_PROC_STAT_MAX_BYTES:
+            raise ArchiveComposerError(
+                "append utility contract probe process inspection exceeded byte limit"
+            )
+    except ArchiveComposerError as error:
+        primary = error
+    except Exception as error:
+        primary = ArchiveComposerError(
+            "append utility contract probe process inspection failed"
+        )
+        primary.__cause__ = error
+    except BaseException as error:
+        primary = error
+    try:
+        os.close(descriptor)
+    except Exception as error:
+        close_failure = ArchiveComposerError(
+            "append utility contract probe process inspection failed"
+        )
+        close_failure.__cause__ = error
+    if primary is not None:
+        if close_failure is not None:
+            _add_probe_failure_note(
+                primary,
+                "process inspection close failure",
+                close_failure,
+            )
+        raise primary
+    if close_failure is not None:
+        raise close_failure
+    if not data:
+        # A process can exit between /proc enumeration and its bounded stat read.
+        return None
+    opening = data.find(b"(")
+    closing = data.rfind(b") ")
+    try:
+        fields = data[closing + 2 :].split()
+        identity = _ProbeProcessIdentity(
+            pid=int(data[:opening].strip(), 10),
+            state=fields[0].decode("ascii"),
+            process_group=int(fields[2], 10),
+            session=int(fields[3], 10),
+            start_time_ticks=int(fields[19], 10),
+        )
+    except (IndexError, UnicodeDecodeError, ValueError) as error:
+        raise ArchiveComposerError(
+            "append utility contract probe process inspection failed"
+        ) from error
+    if (
+        opening <= 0
+        or closing <= opening
+        or identity.pid != pid
+        or len(identity.state) != 1
+        or identity.start_time_ticks <= 0
+    ):
+        raise ArchiveComposerError(
+            "append utility contract probe process inspection failed"
+        )
+    return identity
+
+
+def _same_probe_process(
+    left: _ProbeProcessIdentity,
+    right: _ProbeProcessIdentity,
+) -> bool:
+    return left.pid == right.pid and left.start_time_ticks == right.start_time_ticks
+
+
+def _scan_probe_session(
+    session: int,
+    deadline: float,
+) -> list[_ProbeProcessIdentity]:
+    members: list[_ProbeProcessIdentity] = []
+    entries = 0
+    try:
+        directory = os.scandir("/proc")
+    except Exception as error:
+        raise ArchiveComposerError(
+            "append utility contract probe session inspection failed"
+        ) from error
+    try:
+        with directory:
+            for entry in directory:
+                try:
+                    deadline_expired = time.monotonic() >= deadline
+                except Exception as error:
+                    _raise_probe_error(
+                        "append utility contract probe session inspection failed", error
+                    )
+                if deadline_expired:
+                    raise ArchiveComposerError(
+                        "append utility contract probe session inspection timed out"
+                    )
+                if not entry.name.isascii() or not entry.name.isdigit():
+                    continue
+                entries += 1
+                if entries > APPENDER_CONTRACT_PROBE_MAX_PROC_ENTRIES:
+                    raise ArchiveComposerError(
+                        "append utility contract probe session inspection entry limit exceeded"
+                    )
+                identity = _read_probe_process_identity(int(entry.name, 10))
+                if identity is not None and identity.session == session:
+                    members.append(identity)
+    except Exception as error:
+        _raise_probe_error("append utility contract probe session inspection failed", error)
+    return members
+
+
+def _probe_error(message: str, error: Exception) -> ArchiveComposerError:
+    if isinstance(error, ArchiveComposerError):
+        return error
+    failure = ArchiveComposerError(message)
+    failure.__cause__ = error
+    return failure
+
+
+def _raise_probe_error(message: str, error: Exception) -> None:
+    failure = _probe_error(message, error)
+    if failure is error:
+        raise failure
+    raise failure from error
+
+
+def _add_probe_failure_note(
+    primary: BaseException,
+    phase: str,
+    failure: ArchiveComposerError,
+) -> None:
+    primary.add_note(f"{phase}: {failure}")
+
+
+def _close_probe_descriptor(
+    name: str,
+    descriptor: int,
+) -> ArchiveComposerError | None:
+    try:
+        os.close(descriptor)
+    except Exception as error:
+        return _probe_error(
+            f"append utility contract probe {name} close failed", error
+        )
+    return None
+
+
+def _open_verified_probe_pidfd(identity: _ProbeProcessIdentity) -> int | None:
+    try:
+        descriptor = os.pidfd_open(identity.pid, 0)
+    except (FileNotFoundError, ProcessLookupError):
+        return None
+    except Exception as error:
+        raise ArchiveComposerError(
+            "append utility contract probe pidfd open failed"
+        ) from error
+    primary: BaseException | None = None
+    close_descriptor = False
+    try:
+        current = _read_probe_process_identity(identity.pid)
+        if current is None:
+            close_descriptor = True
+        elif (
+            not _same_probe_process(current, identity)
+            or current.session != identity.session
+        ):
+            raise ArchiveComposerError(
+                "append utility contract probe process identity changed"
+            )
+    except BaseException as error:
+        primary = error
+        close_descriptor = True
+    if close_descriptor:
+        close_failure = _close_probe_descriptor("pidfd", descriptor)
+        if primary is not None:
+            if close_failure is not None:
+                _add_probe_failure_note(primary, "pidfd close failure", close_failure)
+            raise primary
+        if close_failure is not None:
+            raise close_failure
+        return None
+    return descriptor
+
+
+def _probe_leader_exited(pidfd: int) -> bool:
+    try:
+        return os.waitid(
+            os.P_PIDFD,
+            pidfd,
+            os.WEXITED | os.WNOHANG | os.WNOWAIT,
+        ) is not None
+    except Exception as error:
+        raise ArchiveComposerError(
+            "append utility contract probe leader wait failed"
+        ) from error
+
+
+def _leader_identity_is_fenced(
+    identity: _ProbeProcessIdentity | None,
+    probe_pid: int,
+) -> bool:
+    return (
+        identity is not None
+        and identity.pid == probe_pid
+        and identity.process_group == probe_pid
+        and identity.session == probe_pid
+    )
+
+
+def _signal_probe_identity(
+    identity: _ProbeProcessIdentity,
+    signal_number: int,
+) -> None:
+    descriptor = _open_verified_probe_pidfd(identity)
+    if descriptor is None:
+        return
+    primary: BaseException | None = None
+    try:
+        current = _read_probe_process_identity(identity.pid)
+        if (
+            current is None
+            or not _same_probe_process(current, identity)
+            or current.session != identity.session
+            or current.state == "Z"
+        ):
+            pass
+        else:
+            try:
+                signal.pidfd_send_signal(descriptor, signal_number, None, 0)
+            except ProcessLookupError:
+                pass
+            except Exception as error:
+                _raise_probe_error(
+                    "append utility contract probe cleanup signal failed", error
+                )
+    except BaseException as error:
+        primary = error
+    close_failure = _close_probe_descriptor("pidfd", descriptor)
+    if primary is not None:
+        if close_failure is not None:
+            _add_probe_failure_note(primary, "pidfd close failure", close_failure)
+        raise primary
+    if close_failure is not None:
+        raise close_failure
+
+
+def _probe_session_members(
+    leader: _ProbeProcessIdentity,
+    deadline: float,
+) -> list[_ProbeProcessIdentity]:
+    # A descendant that calls setsid(2) has escaped this containment session.
+    # Do not signal a potentially recycled PID/process group outside it.
+    members = _scan_probe_session(leader.session, deadline)
+    for member in members:
+        if member.pid == leader.pid and not _same_probe_process(member, leader):
+            raise ArchiveComposerError(
+                "append utility contract probe leader identity changed"
+            )
+    return members
+
+
+def _wait_for_probe_session_quiescence(
+    pidfd: int,
+    leader: _ProbeProcessIdentity,
+    deadline: float,
+    signal_number: int | None,
+) -> bool:
+    empty_scans = 0
+    while True:
+        leader_exited = _probe_leader_exited(pidfd)
+        members = _probe_session_members(leader, deadline)
+        descendants = [
+            member for member in members if not _same_probe_process(member, leader)
+        ]
+        if signal_number is not None:
+            if not leader_exited:
+                _signal_probe_identity(leader, signal_number)
+            for descendant in descendants:
+                _signal_probe_identity(descendant, signal_number)
+        if leader_exited and not descendants:
+            empty_scans += 1
+            if empty_scans >= APPENDER_CONTRACT_PROBE_QUIESCENT_SCANS:
+                return True
+        else:
+            empty_scans = 0
+        try:
+            remaining = deadline - time.monotonic()
+        except Exception as error:
+            _raise_probe_error(
+                "append utility contract probe session inspection failed", error
+            )
+        if remaining <= 0:
+            return False
+        try:
+            time.sleep(min(remaining, APPENDER_CONTRACT_PROBE_CLEANUP_POLL_SECONDS))
+        except Exception as error:
+            _raise_probe_error("append utility contract probe cleanup wait failed", error)
+
+
+def _signal_unreaped_probe_group(
+    probe_pid: int,
+    signal_number: int,
+) -> None:
+    try:
+        os.killpg(probe_pid, signal_number)
+    except ProcessLookupError:
+        return
+    except Exception as error:
+        raise ArchiveComposerError(
+            "append utility contract probe fallback group signal failed"
+        ) from error
+
+
+def _wait_for_unidentified_probe_session_quiescence(
+    probe: subprocess.Popen[bytes],
+    pidfd: int,
+    deadline: float,
+    signal_number: int | None,
+) -> bool:
+    empty_scans = 0
+    while True:
+        leader_exited = _probe_leader_exited(pidfd)
+        if signal_number is not None:
+            # The session leader is still unreaped, so this numeric group cannot
+            # yet have been recycled.  Identity signals cover alternate groups.
+            _signal_unreaped_probe_group(probe.pid, signal_number)
+        members = _scan_probe_session(probe.pid, deadline)
+        descendants = [member for member in members if member.pid != probe.pid]
+        if signal_number is not None:
+            for member in members:
+                _signal_probe_identity(member, signal_number)
+        if leader_exited and not descendants:
+            empty_scans += 1
+            if empty_scans >= APPENDER_CONTRACT_PROBE_QUIESCENT_SCANS:
+                return True
+        else:
+            empty_scans = 0
+        try:
+            remaining = deadline - time.monotonic()
+        except Exception as error:
+            _raise_probe_error(
+                "append utility contract probe session inspection failed", error
+            )
+        if remaining <= 0:
+            return False
+        try:
+            time.sleep(min(remaining, APPENDER_CONTRACT_PROBE_CLEANUP_POLL_SECONDS))
+        except Exception as error:
+            _raise_probe_error("append utility contract probe cleanup wait failed", error)
+
+
+def _reap_probe_leader_once(
+    probe: subprocess.Popen[bytes],
+    pidfd: int,
+) -> int:
+    if not _probe_leader_exited(pidfd):
+        raise ArchiveComposerError("append utility contract probe leader wait failed")
+    try:
+        return probe.wait(timeout=0)
+    except Exception as error:
+        raise ArchiveComposerError(
+            "append utility contract probe leader reap failed"
+        ) from error
+
+
+def _collect_cleanup_failure(
+    failures: list[ArchiveComposerError],
+    interruptions: list[BaseException],
+    operation: Callable[[], object],
+) -> object | None:
+    try:
+        return operation()
+    except Exception as error:
+        failures.append(
+            _probe_error("append utility contract probe cleanup failed", error)
+        )
+        return None
+    except BaseException as error:
+        interruptions.append(error)
+        return None
+
+
+def _collapse_probe_failures(
+    failures: list[ArchiveComposerError],
+) -> ArchiveComposerError | None:
+    if not failures:
+        return None
+    primary = failures[0]
+    for failure in failures[1:]:
+        _add_probe_failure_note(primary, "additional cleanup failure", failure)
+    return primary
+
+
+def _finish_probe_cleanup(
+    failures: list[ArchiveComposerError],
+    interruptions: list[BaseException],
+) -> ArchiveComposerError | None:
+    if interruptions:
+        primary = interruptions[0]
+        for interruption in interruptions[1:]:
+            primary.add_note(
+                "additional cleanup interruption: "
+                f"{type(interruption).__name__}: {interruption}"
+            )
+        for failure in failures:
+            _add_probe_failure_note(primary, "cleanup failure", failure)
+        raise primary
+    return _collapse_probe_failures(failures)
+
+
+def _terminate_probe_session(
+    probe: subprocess.Popen[bytes],
+    pidfd: int,
+    leader: _ProbeProcessIdentity,
+) -> ArchiveComposerError | None:
+    failures: list[ArchiveComposerError] = []
+    interruptions: list[BaseException] = []
+    term_deadline = _collect_cleanup_failure(
+        failures,
+        interruptions,
+        lambda: time.monotonic() + APPENDER_CONTRACT_PROBE_CLEANUP_GRACE_SECONDS,
+    )
+    quiescent = False
+    if term_deadline is not None:
+        cleanup_state = _collect_cleanup_failure(
+            failures,
+            interruptions,
+            lambda: _wait_for_probe_session_quiescence(
+                pidfd, leader, term_deadline, signal.SIGTERM
+            ),
+        )
+        quiescent = cleanup_state is True
+    if not quiescent:
+        kill_deadline = _collect_cleanup_failure(
+            failures,
+            interruptions,
+            lambda: time.monotonic() + APPENDER_CONTRACT_PROBE_CLEANUP_GRACE_SECONDS,
+        )
+        if kill_deadline is not None:
+            cleanup_state = _collect_cleanup_failure(
+                failures,
+                interruptions,
+                lambda: _wait_for_probe_session_quiescence(
+                    pidfd, leader, kill_deadline, signal.SIGKILL
+                ),
+            )
+            quiescent = cleanup_state is True
+    if not quiescent:
+        failures.append(
+            ArchiveComposerError("append utility contract probe cleanup timed out")
+        )
+    leader_exited = _collect_cleanup_failure(
+        failures, interruptions, lambda: _probe_leader_exited(pidfd)
+    )
+    if leader_exited is True:
+        _collect_cleanup_failure(
+            failures, interruptions, lambda: _reap_probe_leader_once(probe, pidfd)
+        )
+    return _finish_probe_cleanup(failures, interruptions)
+
+
+def _close_probe_resource(
+    name: str,
+    resource: object | None,
+) -> ArchiveComposerError | None:
+    if resource is None:
+        return None
+    try:
+        resource.close()
+    except Exception as error:
+        return _probe_error(
+            f"append utility contract probe {name} close failed", error
+        )
+    return None
+
+
+def _close_probe_pidfd(pidfd: int | None) -> ArchiveComposerError | None:
+    if pidfd is None:
+        return None
+    try:
+        os.close(pidfd)
+    except Exception as error:
+        return _probe_error("append utility contract probe pidfd close failed", error)
+    return None
+
+
+def _open_probe_leader_pidfd(probe_pid: int) -> int | None:
+    try:
+        return os.pidfd_open(probe_pid, 0)
+    except (FileNotFoundError, ProcessLookupError):
+        return None
+    except Exception as error:
+        raise ArchiveComposerError(
+            "append utility contract probe pidfd unavailable"
+        ) from error
+
+
+def _terminate_unidentified_probe(
+    probe: subprocess.Popen[bytes],
+    pidfd: int | None,
+) -> ArchiveComposerError | None:
+    failures: list[ArchiveComposerError] = []
+    interruptions: list[BaseException] = []
+    quiescent = False
+    if pidfd is None:
+        failures.append(
+            ArchiveComposerError("append utility contract probe containment unavailable")
+        )
+        _collect_cleanup_failure(
+            failures,
+            interruptions,
+            lambda: _signal_unreaped_probe_group(probe.pid, signal.SIGTERM),
+        )
+        _collect_cleanup_failure(
+            failures,
+            interruptions,
+            lambda: time.sleep(APPENDER_CONTRACT_PROBE_CLEANUP_GRACE_SECONDS),
+        )
+        _collect_cleanup_failure(
+            failures,
+            interruptions,
+            lambda: _signal_unreaped_probe_group(probe.pid, signal.SIGKILL),
+        )
+        _collect_cleanup_failure(
+            failures,
+            interruptions,
+            lambda: probe.wait(timeout=APPENDER_CONTRACT_PROBE_CLEANUP_GRACE_SECONDS),
+        )
+        return _finish_probe_cleanup(failures, interruptions)
+
+    term_deadline = _collect_cleanup_failure(
+        failures,
+        interruptions,
+        lambda: time.monotonic() + APPENDER_CONTRACT_PROBE_CLEANUP_GRACE_SECONDS,
+    )
+    if term_deadline is not None:
+        cleanup_state = _collect_cleanup_failure(
+            failures,
+            interruptions,
+            lambda: _wait_for_unidentified_probe_session_quiescence(
+                probe, pidfd, term_deadline, signal.SIGTERM
+            ),
+        )
+        quiescent = cleanup_state is True
+    if not quiescent:
+        kill_deadline = _collect_cleanup_failure(
+            failures,
+            interruptions,
+            lambda: time.monotonic() + APPENDER_CONTRACT_PROBE_CLEANUP_GRACE_SECONDS,
+        )
+        if kill_deadline is not None:
+            cleanup_state = _collect_cleanup_failure(
+                failures,
+                interruptions,
+                lambda: _wait_for_unidentified_probe_session_quiescence(
+                    probe, pidfd, kill_deadline, signal.SIGKILL
+                ),
+            )
+            quiescent = cleanup_state is True
+    if not quiescent:
+        failures.append(
+            ArchiveComposerError("append utility contract probe cleanup timed out")
+        )
+    leader_exited = _collect_cleanup_failure(
+        failures, interruptions, lambda: _probe_leader_exited(pidfd)
+    )
+    if leader_exited is True:
+        _collect_cleanup_failure(
+            failures, interruptions, lambda: _reap_probe_leader_once(probe, pidfd)
+        )
+    return _finish_probe_cleanup(failures, interruptions)
+
+
+def _run_appender_contract_probe(
+    appender_path: pathlib.Path,
+) -> tuple[int, bytes, bytes]:
+    try:
+        probe = subprocess.Popen(
+            [str(appender_path), APPENDER_CONTRACT_PROBE_ARGUMENT],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            bufsize=0,
+            start_new_session=True,
+        )
+    except OSError as error:
+        raise ArchiveComposerError(
+            "append utility contract probe launch failed"
+        ) from error
+    selector: selectors.BaseSelector | None = None
+    leader: _ProbeProcessIdentity | None = None
+    pidfd: int | None = None
+    primary: ArchiveComposerError | None = None
+    result: tuple[int, bytes, bytes] | None = None
+    requires_cleanup = True
+    try:
+        pidfd = _open_probe_leader_pidfd(probe.pid)
+        if pidfd is None:
+            raise ArchiveComposerError("append utility contract probe pidfd unavailable")
+        observed_leader = _read_probe_process_identity(probe.pid)
+        if not _leader_identity_is_fenced(observed_leader, probe.pid):
+            raise ArchiveComposerError(
+                "append utility contract probe leader identity unavailable"
+            )
+        current_leader = _read_probe_process_identity(probe.pid)
+        if (
+            not _leader_identity_is_fenced(current_leader, probe.pid)
+            or not _same_probe_process(current_leader, observed_leader)
+        ):
+            raise ArchiveComposerError(
+                "append utility contract probe leader identity changed"
+            )
+        leader = observed_leader
+        try:
+            if probe.stdout is None or probe.stderr is None:
+                raise ArchiveComposerError(
+                    "append utility contract probe pipes unavailable"
+                )
+            selector = selectors.DefaultSelector()
+            outputs = (
+                ("stdout", probe.stdout, APPENDER_CONTRACT_PROBE_STDOUT_LIMIT_BYTES),
+                ("stderr", probe.stderr, APPENDER_CONTRACT_PROBE_STDERR_LIMIT_BYTES),
+            )
+            buffers = {name: bytearray() for name, _pipe, _limit in outputs}
+            for name, pipe, limit in outputs:
+                os.set_blocking(pipe.fileno(), False)
+                selector.register(pipe, selectors.EVENT_READ, (name, limit))
+        except Exception as error:
+            _raise_probe_error("append utility contract probe I/O setup failed", error)
+
+        try:
+            deadline = time.monotonic() + APPENDER_CONTRACT_PROBE_TIMEOUT_SECONDS
+        except Exception as error:
+            _raise_probe_error("append utility contract probe I/O failed", error)
+        while True:
+            try:
+                streams_open = bool(selector.get_map())
+            except Exception as error:
+                _raise_probe_error("append utility contract probe I/O failed", error)
+            try:
+                leader_exited = _probe_leader_exited(pidfd)
+            except Exception as error:
+                raise ArchiveComposerError(
+                    "append utility contract probe wait failed"
+                ) from error
+            if leader_exited:
+                members = _probe_session_members(leader, deadline)
+                if any(
+                    not _same_probe_process(member, leader) for member in members
+                ):
+                    raise ArchiveComposerError(
+                        "append utility contract probe left session descendants"
+                    )
+            if not streams_open:
+                break
+            try:
+                remaining = deadline - time.monotonic()
+            except Exception as error:
+                _raise_probe_error("append utility contract probe I/O failed", error)
+            if remaining <= 0:
+                raise ArchiveComposerError("append utility contract probe timed out")
+            try:
+                events = selector.select(
+                    min(remaining, APPENDER_CONTRACT_PROBE_POLL_SECONDS)
+                )
+            except Exception as error:
+                raise ArchiveComposerError(
+                    "append utility contract probe I/O failed"
+                ) from error
+            for key, _event in events:
+                name, limit = key.data
+                buffer = buffers[name]
+                try:
+                    chunk = os.read(key.fd, limit + 1 - len(buffer))
+                except BlockingIOError:
+                    continue
+                except Exception as error:
+                    raise ArchiveComposerError(
+                        "append utility contract probe I/O failed"
+                    ) from error
+                if not chunk:
+                    try:
+                        selector.unregister(key.fileobj)
+                    except Exception as error:
+                        _raise_probe_error(
+                            "append utility contract probe I/O failed", error
+                        )
+                    continue
+                buffer.extend(chunk)
+                if len(buffer) > limit:
+                    raise ArchiveComposerError(
+                        f"append utility contract probe {name} exceeded byte limit"
+                    )
+
+        try:
+            remaining = deadline - time.monotonic()
+        except Exception as error:
+            _raise_probe_error("append utility contract probe wait failed", error)
+        if remaining <= 0:
+            raise ArchiveComposerError("append utility contract probe timed out")
+        if not _wait_for_probe_session_quiescence(
+            pidfd, leader, deadline, None
+        ):
+            raise ArchiveComposerError("append utility contract probe timed out")
+        return_code = _reap_probe_leader_once(probe, pidfd)
+        result = return_code, bytes(buffers["stdout"]), bytes(buffers["stderr"])
+        requires_cleanup = False
+    except Exception as error:
+        primary = _probe_error("append utility contract probe execution failed", error)
+    finally:
+        failures: list[ArchiveComposerError] = []
+        interruptions: list[BaseException] = []
+        active_exception = sys.exc_info()[1]
+        if requires_cleanup:
+            cleanup_failure = _collect_cleanup_failure(
+                failures,
+                interruptions,
+                (
+                    (lambda: _terminate_probe_session(probe, pidfd, leader))
+                    if leader is not None and pidfd is not None
+                    else (lambda: _terminate_unidentified_probe(probe, pidfd))
+                ),
+            )
+            if cleanup_failure is not None:
+                failures.append(cleanup_failure)
+        for name, resource in (
+            ("selector", selector),
+            ("stdout", probe.stdout),
+            ("stderr", probe.stderr),
+        ):
+            close_failure = _collect_cleanup_failure(
+                failures,
+                interruptions,
+                lambda name=name, resource=resource: _close_probe_resource(
+                    name, resource
+                ),
+            )
+            if close_failure is not None:
+                failures.append(close_failure)
+        close_failure = _collect_cleanup_failure(
+            failures,
+            interruptions,
+            lambda: _close_probe_pidfd(pidfd),
+        )
+        if close_failure is not None:
+            failures.append(close_failure)
+        if active_exception is not None:
+            if primary is not None:
+                active_exception.add_note(f"probe primary failure: {primary}")
+            for failure in failures:
+                _add_probe_failure_note(
+                    active_exception, "cleanup/close failure", failure
+                )
+            for interruption in interruptions:
+                if interruption is not active_exception:
+                    active_exception.add_note(
+                        "additional cleanup interruption: "
+                        f"{type(interruption).__name__}: {interruption}"
+                    )
+        elif interruptions:
+            cleanup_interruption = interruptions[0]
+            if primary is not None:
+                cleanup_interruption.add_note(f"probe primary failure: {primary}")
+            for failure in failures:
+                _add_probe_failure_note(
+                    cleanup_interruption, "cleanup/close failure", failure
+                )
+            for interruption in interruptions[1:]:
+                cleanup_interruption.add_note(
+                    "additional cleanup interruption: "
+                    f"{type(interruption).__name__}: {interruption}"
+                )
+            raise cleanup_interruption
+        elif primary is not None:
+            for failure in failures:
+                _add_probe_failure_note(primary, "cleanup/close failure", failure)
+        elif failures:
+            primary = _collapse_probe_failures(failures)
+    if primary is not None:
+        raise primary
+    if result is None:
+        raise ArchiveComposerError("append utility contract probe execution failed")
+    return result
+
+
+def _require_appender_contract(append_executable: pathlib.Path) -> pathlib.Path:
+    """Require the side-effect-free archive-appender contract before publication."""
+
+    try:
+        appender_path = append_executable.resolve(strict=True)
+    except OSError as error:
+        raise ArchiveComposerError(
+            "append utility contract probe executable unavailable"
+        ) from error
+    return_code, stdout, stderr = _run_appender_contract_probe(appender_path)
+    if return_code != 0:
+        raise ArchiveComposerError(
+            f"append utility contract probe failed status={return_code}"
+        )
+    if stderr != b"":
+        raise ArchiveComposerError("append utility contract probe emitted stderr")
+    if stdout != APPENDER_CONTRACT_PROBE_OUTPUT:
+        raise ArchiveComposerError("append utility contract probe stdout mismatch")
+    return appender_path
 
 
 def _load(name: str, path: pathlib.Path) -> ModuleType:
@@ -1457,11 +2307,12 @@ def compose(
     process_directory = stream_path.parent
     trailer_leaf = "trailer.bin"
     trailer_path = process_directory / trailer_leaf
+    appender_path = _require_appender_contract(append_executable)
     _publish_once(archive_directory, f"streams/{trailer_leaf}", trailer_raw)
     try:
         completed = subprocess.run(
             [
-                str(append_executable.resolve(strict=True)),
+                str(appender_path),
                 str(process_directory),
                 stream_path.name,
                 handoff_path.name,

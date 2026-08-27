@@ -19,6 +19,8 @@
 #include <unistd.h>
 
 #define TRAILER_LIMIT_BYTES UINT64_C(1048576)
+#define ARCHIVE_APPEND_CONTRACT_PROBE_ARGUMENT "--oai-memprof-archive-append-contract-v1"
+#define ARCHIVE_APPEND_CONTRACT_PROBE_OUTPUT "oai_memprof_archive_append contract-v1\n"
 
 typedef struct immutable_file_s {
   uint8_t *bytes;
@@ -214,6 +216,11 @@ static bool decode_trailer(const immutable_file_t *file,
 
 int main(int argc, char **argv)
 {
+  if (argc == 2 && strcmp(argv[1], ARCHIVE_APPEND_CONTRACT_PROBE_ARGUMENT) == 0) {
+    if (fputs(ARCHIVE_APPEND_CONTRACT_PROBE_OUTPUT, stdout) == EOF || fflush(stdout) == EOF)
+      return 1;
+    return 0;
+  }
   uint8_t expected_handoff_sha256[32] = {0};
   if (argc != 6 || !valid_leaf(argv[2]) || !valid_leaf(argv[3]) || !valid_leaf(argv[4])
       || !decode_sha256_hex(argv[5], expected_handoff_sha256)) {
