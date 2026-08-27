@@ -126,7 +126,7 @@ int main(int argc, char **argv)
               .core =
                   {
                       .process_generation = 1,
-                      .table_entries = mode_id == OAI_MEMPROF_CORE_SAMPLED ? UINT64_C(64) : UINT64_C(0),
+                      .table_entries = mode_id == OAI_MEMPROF_CORE_SAMPLED ? UINT64_C(512) : UINT64_C(0),
                       .sample_seed = sample_seed,
                       .sample_threshold = sample_threshold,
                       .max_threads = 1,

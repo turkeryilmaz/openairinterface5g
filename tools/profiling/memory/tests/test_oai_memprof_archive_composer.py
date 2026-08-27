@@ -52,7 +52,7 @@ def sha(raw: bytes) -> str:
 
 
 TRUSTED_RELEASE_AUTHORITY_FIXTURE_SHA256 = (
-    "0b348dc1fc4e5575b307f640bbe41ee6fd30e5906e8152f923481ba1e0587fe8"
+    "9d8fcacaaf85f2fa759bb5c0b8056116341eb451ff2b1cff7c869713222a25fa"
 )
 
 
@@ -804,7 +804,7 @@ class ArchiveComposerBuildEvidenceTests(unittest.TestCase):
             sample_threshold=sample_threshold,
             scope_kind=1,
             selection_values=selection_values,
-            table_entries=64,
+            table_entries=512,
             table_probes=8,
         )
         config_raw = CONFIG.serialize_effective_configuration(config)
@@ -2436,7 +2436,7 @@ class ArchiveComposerBuildEvidenceTests(unittest.TestCase):
         )
         handoff = HANDOFF.decode_process_handoff(handoff_raw)
         self.assertEqual(handoff.writer.runtime_snapshot.mode_id, 3)
-        self.assertEqual(handoff.writer.runtime_snapshot.table_entries, 64)
+        self.assertEqual(handoff.writer.runtime_snapshot.table_entries, 512)
         self.assertEqual(
             handoff.writer.runtime_snapshot.sample_seed,
             int(config["sample_seed_hex"], 16),
@@ -2446,7 +2446,16 @@ class ArchiveComposerBuildEvidenceTests(unittest.TestCase):
             config["sample_threshold"],
         )
         self.assertEqual(handoff.writer.runtime_snapshot.table_probes, 8)
-        self.assertEqual(handoff.writer.runtime_snapshot.table_shards, 64)
+        self.assertEqual(handoff.writer.runtime_snapshot.table_shards, 256)
+        self.assertEqual(
+            (
+                handoff.threads[0].sample_insertion_failures,
+                handoff.threads[0].sample_lookup_failures,
+                handoff.threads[0].sample_probe_exhaustions,
+                handoff.threads[0].sample_pairing_failures,
+            ),
+            (0, 0, 0, 0),
+        )
         decoded = WIRE.decode_container(
             (archive / "streams/memory-lifetime.bin").read_bytes()
         )
