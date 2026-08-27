@@ -40,7 +40,7 @@ def sha(raw: bytes) -> str:
 
 
 TRUSTED_RELEASE_AUTHORITY_FIXTURE_SHA256 = (
-    "edde0b92154f7170b9565facfa77136bf30300bfe2f75e3d6e1e38dc6f848047"
+    "7c7743fa026f0df8a4154bc9330ab1c1420abb26f0291b165a430e32b451431f"
 )
 _TRUSTED_RELEASE_AUTHORITY_SOURCES = (
     LAUNCHER.VERIFIER.accepted_trusted_release_source_bytes()

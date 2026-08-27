@@ -1201,6 +1201,78 @@ class BuildEvidenceBoundaryTests(unittest.TestCase):
                 require_static_executable=True,
             )
 
+    def test_link_command_preserves_authenticated_cmake_compatibility_suffix(
+        self,
+    ) -> None:
+        build_directory = "/build"
+        output_path = "liboai_usrpdevif.so"
+        map_path = "common/utils/memprof/oai_usrpdevif.oai-memprof.map"
+        expected_wraps = ("--wrap=calloc", "--wrap=free", "--wrap=malloc")
+        line = (
+            ": && /usr/bin/c++ -shared -o liboai_usrpdevif.so "
+            "-Wl,-Map,/build/common/utils/memprof/oai_usrpdevif.oai-memprof.map "
+            "-Wl,--cref -Wl,--wrap=malloc -Wl,--wrap=calloc -Wl,--wrap=free "
+            "&& cd /build && /usr/bin/cmake -E create_symlink "
+            "liboai_usrpdevif.so liboai_device.so"
+        )
+        command_raw = (line + "\n").encode("utf-8")
+        kwargs = {
+            "build_directory": build_directory,
+            "build_output_path": output_path,
+            "build_map_path": map_path,
+            "expected_wraps": expected_wraps,
+        }
+
+        self.assertEqual(B._link_command(command_raw, **kwargs), command_raw)
+        self.assertIsNone(
+            B._validate_final_link_command(
+                command_raw,
+                where="offline compatibility-symlink command",
+                **kwargs,
+            )
+        )
+        for label, mutant, expression in (
+            (
+                "build-directory",
+                line.replace("cd /build", "cd /wrong", 1),
+                "post-link compatibility symlink suffix",
+            ),
+            (
+                "source",
+                line.replace(
+                    "create_symlink liboai_usrpdevif.so",
+                    "create_symlink libwrong.so",
+                    1,
+                ),
+                "post-link compatibility symlink suffix",
+            ),
+            (
+                "destination",
+                line.replace("liboai_device.so", "libwrong.so", 1),
+                "post-link compatibility symlink suffix",
+            ),
+            (
+                "cmake",
+                line.replace("/usr/bin/cmake", "/usr/bin/true", 1),
+                "post-link compatibility symlink suffix",
+            ),
+            (
+                "extra-command",
+                line + " && /usr/bin/true",
+                "final-link scaffold",
+            ),
+        ):
+            with self.subTest(suffix=label):
+                mutant_raw = (mutant + "\n").encode("utf-8")
+                with self.assertRaisesRegex(B.BuildEvidenceError, expression):
+                    B._link_command(mutant_raw, **kwargs)
+                with self.assertRaisesRegex(B.BuildEvidenceError, expression):
+                    B._validate_final_link_command(
+                        mutant_raw,
+                        where="offline compatibility-symlink command",
+                        **kwargs,
+                    )
+
     def test_dynamic_auxiliary_elf_metadata_is_rejected_online_and_offline(self) -> None:
         source, build = self.make_project("source-dynamic-auxiliary")
         self.run_host(("/usr/bin/ninja", "-C", str(build), "app"))

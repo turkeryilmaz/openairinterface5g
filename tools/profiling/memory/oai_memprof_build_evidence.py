@@ -76,6 +76,12 @@ LD_WRAP_OPTION = re.compile(
 LD_MAP_OPTION = re.compile(r"^-{1,2}M(?:a(?:p)?)?(?:=.*)?$")
 SHELL_CONTROL_CHARACTERS = ";&|<>"
 ASCII_SHELL_WHITESPACE = frozenset(" \t\r\n\v\f")
+# CMake creates this compatibility alias as an authenticated post-link action
+# for the USRP device interface. It is deliberately not a general allowance
+# for arbitrary commands after a final link.
+CMAKE_COMPATIBILITY_SYMLINKS = {
+    "liboai_usrpdevif.so": "liboai_device.so",
+}
 
 
 class BuildEvidenceError(ValueError):
@@ -1207,7 +1213,13 @@ def _reject_response_file_operands(tokens: Sequence[str], where: str) -> None:
             )
 
 
-def _parse_final_link_source_text(line: str, where: str) -> tuple[str, ...]:
+def _parse_final_link_source_text(
+    line: str,
+    where: str,
+    *,
+    build_directory: str | None = None,
+    build_output_path: str | None = None,
+) -> tuple[str, ...]:
     _require(
         isinstance(line, str)
         and line
@@ -1233,6 +1245,31 @@ def _parse_final_link_source_text(line: str, where: str) -> tuple[str, ...]:
             f"{where}: exactly one direct final-link command required",
         )
         command = segments[0]
+    elif (
+        tuple(controls) == ("&&", "&&", "&&")
+        and len(segments) == 4
+        and tuple(segments[0]) == (":",)
+        and bool(segments[1])
+    ):
+        _require(
+            build_directory is not None and build_output_path is not None,
+            f"{where}: final-link scaffold must be exact ': && DRIVER ... && :'",
+        )
+        expected_alias = CMAKE_COMPATIBILITY_SYMLINKS.get(build_output_path)
+        _require(
+            expected_alias is not None
+            and tuple(segments[2]) == ("cd", build_directory)
+            and tuple(segments[3])
+            == (
+                "/usr/bin/cmake",
+                "-E",
+                "create_symlink",
+                build_output_path,
+                expected_alias,
+            ),
+            f"{where}: post-link compatibility symlink suffix must be exact",
+        )
+        command = segments[1]
     else:
         _require(
             tuple(controls) == ("&&", "&&")
@@ -1553,7 +1590,12 @@ def _validate_final_link_command(
         command.endswith("\n") and command.count("\n") == 1,
         f"{where}: exactly one final-link command line required",
     )
-    tokens = _parse_final_link_source_text(command[:-1], where)
+    tokens = _parse_final_link_source_text(
+        command[:-1],
+        where,
+        build_directory=build_directory,
+        build_output_path=build_output_path,
+    )
     outputs = _command_output_tokens(tokens, where)
     _require(len(outputs) == 1, f"{where}: exactly one -o output required")
     _require(
@@ -1613,7 +1655,12 @@ def _link_command(
     for line in text.splitlines():
         if not any(value in line for value in accepted_outputs):
             continue
-        tokens = _parse_final_link_source_text(line, "ninja command output")
+        tokens = _parse_final_link_source_text(
+            line,
+            "ninja command output",
+            build_directory=build_directory,
+            build_output_path=build_output_path,
+        )
         if any(
             value in accepted_outputs
             for value in _command_output_tokens(tokens, "ninja command output")
