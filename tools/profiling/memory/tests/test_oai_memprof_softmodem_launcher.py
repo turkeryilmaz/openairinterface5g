@@ -40,7 +40,7 @@ def sha(raw: bytes) -> str:
 
 
 TRUSTED_RELEASE_AUTHORITY_FIXTURE_SHA256 = (
-    "3e576a6d40470a8617d94129e7714e2e7844153ff2d22e816510f446142f6300"
+    "be83016c97b84a923036224ce3d7e31b5ba31fbe101cc3f61a136ba388504615"
 )
 
 
@@ -260,6 +260,7 @@ class SoftmodemLauncherTests(unittest.TestCase):
             tuple(name for name, _value in prepared.session_environment),
             LAUNCHER.SESSION_ENVIRONMENT_NAMES,
         )
+        self.assertEqual(prepared.exec_environment, ())
         environment = dict(prepared.session_environment)
         self.assertEqual(
             environment["OAI_MEMPROF_SESSION_ARCHIVE_FD"],
@@ -548,6 +549,242 @@ class SoftmodemLauncherTests(unittest.TestCase):
                     LAUNCHER._read_build_artifacts(evidence(over_budget), self.root)
             read.assert_not_called()
 
+    def test_request_exec_environment_admits_only_secure_uhd_images_directory(self) -> None:
+        images_directory = self.root / "uhd-images"
+        images_directory.mkdir(mode=0o750)
+        request, raw, _archive, _bootstrap, prepared = self.prepare(
+            "uhd-images",
+            request_mutator=lambda value: value.update(
+                exec_environment=[
+                    {"name": "UHD_IMAGES_DIR", "value": str(images_directory)}
+                ]
+            ),
+        )
+        self.assertEqual(
+            request["exec_environment"],
+            [{"name": "UHD_IMAGES_DIR", "value": str(images_directory)}],
+        )
+        self.assertEqual(
+            LAUNCHER._request(raw)["exec_environment"],
+            request["exec_environment"],
+        )
+        self.assertEqual(
+            prepared.exec_environment,
+            (("UHD_IMAGES_DIR", str(images_directory)),),
+        )
+        self.assertNotIn("UHD_IMAGES_DIR", dict(prepared.session_environment))
+
+        observed = {}
+
+        def intercepted_execve(_executable, _argv, environment):
+            observed["environment"] = environment
+            raise ExecveSentinel
+
+        stale = {
+            "UHD_IMAGES_DIR": "/tmp/ambient-uhd-images",
+            "LD_PRELOAD": "/tmp/ambient-preload.so",
+            "UNRELATED_LAUNCHER_TEST": "ambient",
+        }
+        with mock.patch.dict(os.environ, stale, clear=True):
+            with mock.patch.object(
+                LAUNCHER.os, "execve", side_effect=intercepted_execve
+            ):
+                with self.assertRaises(ExecveSentinel):
+                    LAUNCHER.execute(prepared)
+        self.assertEqual(
+            observed["environment"],
+            dict(prepared.session_environment + prepared.exec_environment),
+        )
+        self.assertEqual(observed["environment"]["UHD_IMAGES_DIR"], str(images_directory))
+        self.assertNotIn("LD_PRELOAD", observed["environment"])
+        self.assertNotIn("UNRELATED_LAUNCHER_TEST", observed["environment"])
+
+        _request, _raw, _archive, _bootstrap, empty_prepared = self.prepare(
+            "empty-exec-environment",
+            request_mutator=lambda value: value.update(exec_environment=[]),
+        )
+        self.assertEqual(empty_prepared.exec_environment, ())
+
+    def test_request_exec_environment_rejects_invalid_controls_before_publication(self) -> None:
+        images_directory = self.root / "uhd-images-valid"
+        images_directory.mkdir(mode=0o750)
+        symlink_directory = self.root / "uhd-images-link"
+        symlink_directory.symlink_to(images_directory, target_is_directory=True)
+        writable_directory = self.root / "uhd-images-writable"
+        writable_directory.mkdir(mode=0o770)
+        writable_directory.chmod(0o770)
+        regular_file = self.root / "uhd-images-file"
+        regular_file.write_bytes(b"not an image directory\n")
+        regular_file.chmod(0o600)
+        noncanonical_directory = str(
+            images_directory.parent / images_directory.name / ".." / images_directory.name
+        )
+        cases = (
+            ("container", {}, "array required"),
+            ("explicit-null", None, "array required"),
+            (
+                "row-shape",
+                [{"name": "UHD_IMAGES_DIR", "unexpected": str(images_directory)}],
+                "exact members",
+            ),
+            (
+                "name-type",
+                [{"name": [], "value": str(images_directory)}],
+                "string required",
+            ),
+            (
+                "name-nul",
+                [{"name": "UHD_IMAGES_DIR\x00", "value": str(images_directory)}],
+                "NUL-free no-equals name required",
+            ),
+            (
+                "name-equals",
+                [{"name": "UHD_IMAGES_DIR=bad", "value": str(images_directory)}],
+                "NUL-free no-equals name required",
+            ),
+            (
+                "unknown-name",
+                [{"name": "PATH", "value": str(images_directory)}],
+                "only UHD_IMAGES_DIR",
+            ),
+            (
+                "profiler-collision",
+                [{"name": "OAI_MEMPROF_SESSION_ENABLE", "value": "1"}],
+                "profiler control collision",
+            ),
+            (
+                "loader-collision",
+                [{"name": "LD_PRELOAD", "value": "/tmp/loader.so"}],
+                "loader-dangerous control collision",
+            ),
+            (
+                "duplicate",
+                [
+                    {"name": "UHD_IMAGES_DIR", "value": str(images_directory)},
+                    {"name": "UHD_IMAGES_DIR", "value": str(images_directory)},
+                ],
+                "entry limit exceeded",
+            ),
+            (
+                "value-type",
+                [{"name": "UHD_IMAGES_DIR", "value": []}],
+                "string required",
+            ),
+            (
+                "value-nul",
+                [{"name": "UHD_IMAGES_DIR", "value": "/images\x00dir"}],
+                "bounded NUL-free path required",
+            ),
+            (
+                "relative",
+                [{"name": "UHD_IMAGES_DIR", "value": "relative-images"}],
+                "absolute path required",
+            ),
+            (
+                "missing",
+                [
+                    {
+                        "name": "UHD_IMAGES_DIR",
+                        "value": str(self.root / "missing-images"),
+                    }
+                ],
+                "unavailable directory",
+            ),
+            (
+                "regular-file",
+                [{"name": "UHD_IMAGES_DIR", "value": str(regular_file)}],
+                "real directory required",
+            ),
+            (
+                "symlink",
+                [{"name": "UHD_IMAGES_DIR", "value": str(symlink_directory)}],
+                "canonical resolved path required",
+            ),
+            (
+                "noncanonical",
+                [{"name": "UHD_IMAGES_DIR", "value": noncanonical_directory}],
+                "canonical resolved path required",
+            ),
+            (
+                "writable",
+                [{"name": "UHD_IMAGES_DIR", "value": str(writable_directory)}],
+                "group/other write forbidden",
+            ),
+            (
+                "bounded",
+                [
+                    {
+                        "name": "UHD_IMAGES_DIR",
+                        "value": "/" + "a" * LAUNCHER.MAX_UHD_IMAGES_DIR_BYTES,
+                    }
+                ],
+                "bounded NUL-free path required",
+            ),
+        )
+        for label, exec_environment, message in cases:
+            with self.subTest(label=label):
+                request, archive, bootstrap = self.request(f"exec-environment-{label}")
+                request["exec_environment"] = exec_environment
+                with self.assertRaisesRegex(LAUNCHER.SoftmodemLauncherError, message):
+                    self.prepare_from_authenticated(request, self.authenticated)
+                self.assertEqual(list(archive.iterdir()), [])
+                self.assertEqual(list(bootstrap.iterdir()), [])
+
+    def test_execute_rejects_tampered_exec_environment_before_execve(self) -> None:
+        writable_directory = self.root / "tampered-uhd-images"
+        writable_directory.mkdir(mode=0o770)
+        writable_directory.chmod(0o770)
+        cases = (
+            (
+                "outer-list",
+                [("UHD_IMAGES_DIR", str(writable_directory))],
+                "exact optional environment tuple required",
+            ),
+            (
+                "malformed-row",
+                (("UHD_IMAGES_DIR",),),
+                "exact optional environment row required",
+            ),
+            (
+                "non-string-name",
+                ((1, str(writable_directory)),),
+                "name: string required",
+            ),
+            (
+                "non-string-value",
+                (("UHD_IMAGES_DIR", 1),),
+                "value: string required",
+            ),
+            (
+                "extra-rows",
+                (
+                    ("UHD_IMAGES_DIR", str(writable_directory)),
+                    ("UHD_IMAGES_DIR", str(writable_directory)),
+                ),
+                "optional environment entry limit exceeded",
+            ),
+            (
+                "unexpected-name",
+                (("LD_PRELOAD", "/tmp/loader.so"),),
+                "loader-dangerous control collision",
+            ),
+            (
+                "writable-directory",
+                (("UHD_IMAGES_DIR", str(writable_directory)),),
+                "group/other write forbidden",
+            ),
+        )
+        for label, exec_environment, message in cases:
+            with self.subTest(label=label):
+                _request, _raw, _archive, _bootstrap, prepared = self.prepare(
+                    f"tampered-{label}"
+                )
+                prepared.exec_environment = exec_environment
+                with mock.patch.object(LAUNCHER.os, "execve") as execve:
+                    with self.assertRaisesRegex(LAUNCHER.SoftmodemLauncherError, message):
+                        LAUNCHER.execute(prepared)
+                execve.assert_not_called()
+
     def test_execute_uses_authenticated_fd_and_strict_owned_environment(self) -> None:
         _request, _raw, _archive, _bootstrap, prepared = self.prepare("exec")
         observed = {}
@@ -568,6 +805,7 @@ class SoftmodemLauncherTests(unittest.TestCase):
         stale = {name: "stale" for name in LAUNCHER.SESSION_ENVIRONMENT_NAMES}
         stale.update(
             {
+                "UHD_IMAGES_DIR": "/tmp/ambient-uhd-images",
                 "LD_PRELOAD": "/tmp/ambient-preload.so",
                 "LD_AUDIT": "/tmp/ambient-audit.so",
                 "LD_LIBRARY_PATH": "/tmp/ambient-library",
@@ -592,6 +830,7 @@ class SoftmodemLauncherTests(unittest.TestCase):
         self.assertTrue(observed["bootstrap_inheritable"])
         self.assertFalse(observed["working_inheritable"])
         for name in (
+            "UHD_IMAGES_DIR",
             "LD_PRELOAD",
             "LD_AUDIT",
             "LD_LIBRARY_PATH",

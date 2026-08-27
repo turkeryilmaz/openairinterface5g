@@ -38,6 +38,9 @@ MAX_BUILD_ARTIFACT_TOTAL_BYTES = 1 << 30
 MAX_BINARY_BYTES = 2 << 30
 MAX_ARGUMENT_BYTES = 1 << 20
 MAX_ARGUMENT_COUNT = 4096
+MAX_EXEC_ENVIRONMENT_ENTRIES = 1
+MAX_EXEC_ENVIRONMENT_NAME_BYTES = 128
+MAX_UHD_IMAGES_DIR_BYTES = 4096
 MAX_EXEC_DESCRIPTOR_COUNT = 4096
 MAX_PROCESS_GENERATION = (1 << 48) - 1
 MAX_THREADS = 65534
@@ -65,6 +68,36 @@ SESSION_ENVIRONMENT_NAMES = (
     "OAI_MEMPROF_SESSION_FLUSH_INTERVAL_NS",
     "OAI_MEMPROF_SESSION_SEAL_TIMEOUT_NS",
 )
+UHD_IMAGES_DIR_ENVIRONMENT_NAME = "UHD_IMAGES_DIR"
+LOADER_DANGEROUS_ENVIRONMENT_NAMES = frozenset(
+    ("LD_AUDIT", "LD_LIBRARY_PATH", "LD_PRELOAD")
+)
+REQUEST_REQUIRED_KEYS = (
+    "archive_directory",
+    "argv",
+    "bootstrap_directory",
+    "build_coverage_path",
+    "build_evidence_path",
+    "build_evidence_root",
+    "flush_records",
+    "flush_us",
+    "max_threads",
+    "mode_id",
+    "process_generation",
+    "process_uuid",
+    "ring_records",
+    "role_id",
+    "run_id",
+    "run_uuid",
+    "sample_threshold",
+    "scope_kind",
+    "seal_timeout_ns",
+    "selection_values",
+    "table_entries",
+    "table_probes",
+    "working_directory",
+)
+OPTIONAL_REQUEST_KEYS = ("exec_environment",)
 # ``os.execve`` accepts a descriptor only where the platform exposes a real
 # descriptor-exec primitive. A pathname fallback would reintroduce the race
 # this launcher exists to prevent, so unsupported platforms fail closed.
@@ -120,6 +153,7 @@ class PreparedLaunch:
     binary_sha256: str
     argv: tuple[str, ...]
     session_environment: tuple[tuple[str, str], ...]
+    exec_environment: tuple[tuple[str, str], ...]
     configuration_sha256: str
     opening_sha256: str
     build_coverage_sha256: str
@@ -201,6 +235,98 @@ def _canonical_existing_path(value: Any, where: str, *, directory: bool) -> path
             f"{where}: single-link regular file required",
         )
     return resolved
+
+
+def _authenticated_uhd_images_directory(value: Any, where: str) -> str:
+    _require(type(value) is str, f"{where}: string required")
+    encoded = value.encode("utf-8")
+    _require(
+        0 < len(encoded) <= MAX_UHD_IMAGES_DIR_BYTES and "\x00" not in value,
+        f"{where}: bounded NUL-free path required",
+    )
+    _require(value.startswith("/"), f"{where}: absolute path required")
+    path = pathlib.Path(value)
+    try:
+        resolved = path.resolve(strict=True)
+    except OSError as error:
+        raise SoftmodemLauncherError(f"{where}: unavailable directory") from error
+    _require(str(resolved) == value, f"{where}: canonical resolved path required")
+    status = os.lstat(path)
+    _require(stat.S_ISDIR(status.st_mode), f"{where}: real directory required")
+    _require(
+        status.st_mode & 0o022 == 0,
+        f"{where}: group/other write forbidden",
+    )
+    return str(resolved)
+
+
+def _validated_exec_environment_entry(
+    name: Any, directory: Any, where: str
+) -> tuple[str, str]:
+    _require(type(name) is str, f"{where}.name: string required")
+    _require(type(directory) is str, f"{where}.value: string required")
+    encoded_name = name.encode("utf-8")
+    _require(
+        0 < len(encoded_name) <= MAX_EXEC_ENVIRONMENT_NAME_BYTES
+        and "\x00" not in name
+        and "=" not in name,
+        f"{where}.name: bounded NUL-free no-equals name required",
+    )
+    _require(
+        name not in SESSION_ENVIRONMENT_NAMES,
+        f"{where}: profiler control collision",
+    )
+    _require(
+        name not in LOADER_DANGEROUS_ENVIRONMENT_NAMES,
+        f"{where}: loader-dangerous control collision",
+    )
+    _require(
+        name == UHD_IMAGES_DIR_ENVIRONMENT_NAME,
+        f"{where}: only UHD_IMAGES_DIR is permitted",
+    )
+    return (
+        name,
+        _authenticated_uhd_images_directory(directory, f"{where}.value for {name}"),
+    )
+
+
+def _exec_environment(value: Any) -> tuple[tuple[str, str], ...]:
+    _require(isinstance(value, list), "request.exec_environment: array required")
+    _require(
+        len(value) <= MAX_EXEC_ENVIRONMENT_ENTRIES,
+        "request.exec_environment: entry limit exceeded",
+    )
+    if not value:
+        return ()
+    row = _exact_keys(value[0], ("name", "value"), "request.exec_environment[0]")
+    return (
+        _validated_exec_environment_entry(
+            row["name"], row["value"], "request.exec_environment[0]"
+        ),
+    )
+
+
+def _prepared_exec_environment(value: Any) -> tuple[tuple[str, str], ...]:
+    _require(
+        type(value) is tuple,
+        "prepared launch: exact optional environment tuple required",
+    )
+    _require(
+        len(value) <= MAX_EXEC_ENVIRONMENT_ENTRIES,
+        "prepared launch: optional environment entry limit exceeded",
+    )
+    if not value:
+        return ()
+    row = value[0]
+    _require(
+        type(row) is tuple and len(row) == 2,
+        "prepared launch: exact optional environment row required",
+    )
+    return (
+        _validated_exec_environment_entry(
+            row[0], row[1], "prepared launch exec_environment"
+        ),
+    )
 
 
 def _same_file_status(before: Any, after: Any) -> bool:
@@ -624,34 +750,12 @@ def _request(raw: bytes) -> dict[str, Any]:
         value = COVERAGE.parse_canonical(raw)
     except Exception as error:
         raise SoftmodemLauncherError(str(error)) from error
-    _exact_keys(
-        value,
-        (
-            "archive_directory",
-            "argv",
-            "bootstrap_directory",
-            "build_coverage_path",
-            "build_evidence_path",
-            "build_evidence_root",
-            "flush_records",
-            "flush_us",
-            "max_threads",
-            "mode_id",
-            "process_generation",
-            "process_uuid",
-            "ring_records",
-            "role_id",
-            "run_id",
-            "run_uuid",
-            "sample_threshold",
-            "scope_kind",
-            "seal_timeout_ns",
-            "selection_values",
-            "table_entries",
-            "table_probes",
-            "working_directory",
-        ),
-        "request",
+    _require(isinstance(value, dict), "request: object required")
+    request_keys = set(value)
+    _require(
+        request_keys == set(REQUEST_REQUIRED_KEYS)
+        or request_keys == set(REQUEST_REQUIRED_KEYS + OPTIONAL_REQUEST_KEYS),
+        "request: exact members with only optional exec_environment required",
     )
     return value
 
@@ -942,6 +1046,9 @@ def _prepare_from_authenticated(
         request["bootstrap_directory"], "request.bootstrap_directory", directory=True
     )
     working = _canonical_existing_path(request["working_directory"], "request.working_directory", directory=True)
+    exec_environment = _exec_environment(
+        request["exec_environment"] if "exec_environment" in request else []
+    )
     generation = _uint(
         request["process_generation"], 64, "request.process_generation", minimum=1, maximum=MAX_PROCESS_GENERATION
     )
@@ -1137,6 +1244,7 @@ def _prepare_from_authenticated(
             binary_sha256=primary_sha256,
             argv=argv,
             session_environment=environment,
+            exec_environment=exec_environment,
             configuration_sha256=_sha(config_raw),
             opening_sha256=_sha(opening_raw),
             build_coverage_sha256=_sha(authenticated.build_raw),
@@ -1225,9 +1333,15 @@ def execute(prepared: PreparedLaunch) -> None:
             == SESSION_ENVIRONMENT_NAMES,
             "prepared launch: exact owned environment required",
         )
-        environment = dict(prepared.session_environment)
+        exec_environment = _prepared_exec_environment(prepared.exec_environment)
         _require(
-            len(environment) == len(SESSION_ENVIRONMENT_NAMES),
+            prepared.exec_environment == exec_environment,
+            "prepared launch: authenticated optional environment changed",
+        )
+        environment = dict(prepared.session_environment + exec_environment)
+        _require(
+            len(environment)
+            == len(SESSION_ENVIRONMENT_NAMES) + len(exec_environment),
             "prepared launch: duplicate environment control",
         )
     except BaseException:
