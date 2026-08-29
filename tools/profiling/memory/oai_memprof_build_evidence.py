@@ -171,6 +171,7 @@ class _Symbol:
     index: int
     name: str
     binding: int
+    kind: int
     visibility: int
     section_index: int
 
@@ -565,7 +566,16 @@ def _parse_symbols(
                 "<IBBHQQ", bodies[section.index], offset
             )
             name = "" if name_offset == 0 else _cstring(strings, name_offset, f"ELF {section.name} symbol {index}")
-            rows.append(_Symbol(index, name, info >> 4, other & 3, section_index))
+            rows.append(
+                _Symbol(
+                    index,
+                    name,
+                    info >> 4,
+                    info & 0xF,
+                    other & 3,
+                    section_index,
+                )
+            )
         parsed[kind] = tuple(rows)
     return symbol_sections[11], parsed[11], parsed[2]
 
@@ -599,9 +609,43 @@ def _parse_auxiliary_symbols(
             strings, name_offset, f"{where}: auxiliary symbol {index}"
         )
         symbols.append(
-            _Symbol(index, name, info >> 4, other & 3, section_index)
+            _Symbol(
+                index,
+                name,
+                info >> 4,
+                info & 0xF,
+                other & 3,
+                section_index,
+            )
         )
     return tuple(symbols)
+
+
+def _forbidden_auxiliary_wrapper_symbols(
+    machine: int, symbols: Sequence[_Symbol]
+) -> tuple[str, ...]:
+    def is_aarch64_crt1_main_trampoline(symbol: _Symbol) -> bool:
+        # Static AArch64 glibc crt1 emits this local BTI trampoline to main;
+        # despite its spelling, it is not GNU ld --wrap interposition.
+        return (
+            machine == 183
+            and symbol.name == "__wrap_main"
+            and symbol.binding == 0
+            and symbol.kind == 0
+            and symbol.visibility == 0
+            and symbol.defined
+        )
+
+    return tuple(
+        sorted(
+            {
+                symbol.name
+                for symbol in symbols
+                if symbol.name.startswith(("__wrap_", "__real_"))
+                and not is_aarch64_crt1_main_trampoline(symbol)
+            }
+        )
+    )
 
 
 def _parse_versions(
@@ -847,12 +891,8 @@ def _validate_auxiliary_executable(
         f"{where}: auxiliary executable forbids SHT_DYNAMIC and DT_NEEDED/"
         "DT_SONAME/DT_RPATH/DT_RUNPATH",
     )
-    wrapper_symbols = sorted(
-        {
-            symbol.name
-            for symbol in _parse_auxiliary_symbols(sections, bodies, where)
-            if symbol.name.startswith(("__wrap_", "__real_"))
-        }
+    wrapper_symbols = _forbidden_auxiliary_wrapper_symbols(
+        machine, _parse_auxiliary_symbols(sections, bodies, where)
     )
     _require(
         not wrapper_symbols,

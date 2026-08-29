@@ -1325,6 +1325,36 @@ class BuildEvidenceBoundaryTests(unittest.TestCase):
             self.prepare(source, build, evidence_root)
         self.assertEqual(list(evidence_root.iterdir()), [])
 
+    def test_aarch64_crt1_local_wrap_main_exception_is_exact(self) -> None:
+        crt1_trampoline = B._Symbol(
+            index=1,
+            name="__wrap_main",
+            binding=0,
+            kind=0,
+            visibility=0,
+            section_index=5,
+        )
+        self.assertEqual(
+            B._forbidden_auxiliary_wrapper_symbols(183, (crt1_trampoline,)),
+            (),
+        )
+
+        rejected = (
+            (62, crt1_trampoline),
+            (183, B._Symbol(1, "__wrap_main", 1, 0, 0, 5)),
+            (183, B._Symbol(1, "__wrap_main", 0, 2, 0, 5)),
+            (183, B._Symbol(1, "__wrap_main", 0, 0, 2, 5)),
+            (183, B._Symbol(1, "__wrap_main", 0, 0, 0, 0)),
+            (183, B._Symbol(1, "__real_main", 0, 0, 0, 5)),
+            (183, B._Symbol(1, "__wrap_malloc", 0, 0, 0, 5)),
+        )
+        for machine, symbol in rejected:
+            with self.subTest(machine=machine, symbol=symbol):
+                self.assertEqual(
+                    B._forbidden_auxiliary_wrapper_symbols(machine, (symbol,)),
+                    (symbol.name,),
+                )
+
     def test_malformed_auxiliary_request_paths_use_project_error(self) -> None:
         evidence_root = self.root / "request-evidence"
         evidence_root.mkdir()
