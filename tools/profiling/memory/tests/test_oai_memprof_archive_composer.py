@@ -52,7 +52,7 @@ def sha(raw: bytes) -> str:
 
 
 TRUSTED_RELEASE_AUTHORITY_FIXTURE_SHA256 = (
-    "9d8fcacaaf85f2fa759bb5c0b8056116341eb451ff2b1cff7c869713222a25fa"
+    "48b7946d9338cd455fe6b2f48a4fc7a7fc1c7a46cd22c5c5c7ae029edb3d1a16"
 )
 
 

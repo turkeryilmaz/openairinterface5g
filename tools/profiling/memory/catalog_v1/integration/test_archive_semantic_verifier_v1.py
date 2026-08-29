@@ -61,7 +61,7 @@ def sha(raw: bytes) -> str:
 
 
 TRUSTED_RELEASE_AUTHORITY_FIXTURE_SHA256 = (
-    "7c7743fa026f0df8a4154bc9330ab1c1420abb26f0291b165a430e32b451431f"
+    "ac5768cd199455e8af6c7e26542d76abd29bbb46677f7af90e4f1e9381fd1959"
 )
 _TRUSTED_RELEASE_AUTHORITY_SOURCES = V.accepted_trusted_release_source_bytes()
 _TRUSTED_RELEASE_AUTHORITY_RAW = V.make_trusted_release_authority_bytes(

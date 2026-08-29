@@ -1454,6 +1454,45 @@ class BuildEvidenceBoundaryTests(unittest.TestCase):
                 with self.assertRaises(ChildProcessError):
                     os.waitpid(pid, os.WNOHANG)
 
+    def test_tool_environment_disables_ccache_with_nonexistent_home(self) -> None:
+        source = self.root / "ccache-no-home.c"
+        source.write_text("int main(void) { return 0; }\n", encoding="utf-8")
+        self.assertEqual(
+            B._run(
+                (
+                    "/usr/bin/ccache",
+                    "/usr/bin/cc",
+                    "-fsyntax-only",
+                    str(source),
+                )
+            ),
+            b"",
+        )
+
+    def test_tool_failure_retains_bounded_stdout_and_stderr(self) -> None:
+        expected_stdout = "S" * 16 + " [truncated: 112 bytes omitted]"
+        expected_stderr = "E" * 16 + " [truncated: 112 bytes omitted]"
+        for returncode in (0, 17):
+            with self.subTest(returncode=returncode):
+                code = (
+                    "import os\n"
+                    "os.write(1, bytes((83,)) * 128)\n"
+                    "os.write(2, bytes((69,)) * 128)\n"
+                    f"os._exit({returncode})\n"
+                )
+                with mock.patch.object(B, "MAX_TOOL_OUTPUT_BYTES", 256), mock.patch.object(
+                    B, "MAX_TOOL_ERROR_BYTES", 256
+                ), mock.patch.object(B, "MAX_TOOL_FAILURE_DIAGNOSTIC_BYTES", 16):
+                    with self.assertRaises(B.BuildEvidenceError) as raised:
+                        B._run(("/usr/bin/python3", "-c", code))
+                detail = str(raised.exception)
+                self.assertIn(
+                    f"rc={returncode}: stdout={expected_stdout}: stderr={expected_stderr}",
+                    detail,
+                )
+                self.assertNotIn("S" * 17, detail)
+                self.assertNotIn("E" * 17, detail)
+
     def test_tool_timeout_is_stable_and_direct_child_is_reaped(self) -> None:
         pid_path = self.root / "timeout.pid"
         code = (

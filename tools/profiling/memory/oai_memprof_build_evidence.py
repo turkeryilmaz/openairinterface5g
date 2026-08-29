@@ -44,6 +44,7 @@ ARCHIVE_APPEND_TARGET = "oai_memprof_archive_append"
 MAX_INPUT_BYTES = 512 * 1024 * 1024
 MAX_TOOL_OUTPUT_BYTES = 32 * 1024 * 1024
 MAX_TOOL_ERROR_BYTES = 1024 * 1024
+MAX_TOOL_FAILURE_DIAGNOSTIC_BYTES = 4096
 TOOL_TIMEOUT_SECONDS = 30
 TOOL_TERMINATION_GRACE_SECONDS = 1.0
 _UNREGISTERED_ALLOCATION_SYMBOLS = frozenset(
@@ -283,6 +284,15 @@ def _decode(raw: bytes, where: str) -> str:
         raise BuildEvidenceError(f"{where}: strict UTF-8 required") from error
 
 
+def _tool_failure_diagnostic(raw: bytes) -> str:
+    prefix = raw[:MAX_TOOL_FAILURE_DIAGNOSTIC_BYTES]
+    omitted = len(raw) - len(prefix)
+    detail = prefix.decode("utf-8", "replace")
+    if omitted:
+        return f"{detail} [truncated: {omitted} bytes omitted]"
+    return detail
+
+
 def _signal_process_group(process_group_id: int, selected_signal: signal.Signals) -> None:
     try:
         os.killpg(process_group_id, selected_signal)
@@ -325,6 +335,7 @@ def _run(arguments: Sequence[str], *, cwd: pathlib.Path | None = None) -> bytes:
         "LANG": "C",
         "LC_ALL": "C",
         "PATH": "/usr/bin:/bin",
+        "CCACHE_DISABLE": "1",
     }
     process = subprocess.Popen(
         list(arguments),
@@ -388,7 +399,8 @@ def _run(arguments: Sequence[str], *, cwd: pathlib.Path | None = None) -> bytes:
         _require(
             returncode == 0 and not stderr,
             f"tool failed: {shlex.join(arguments)}: rc={returncode}: "
-            f"{stderr.decode('utf-8', 'replace')}",
+            f"stdout={_tool_failure_diagnostic(stdout)}: "
+            f"stderr={_tool_failure_diagnostic(stderr)}",
         )
         return stdout
     except BaseException:
