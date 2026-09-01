@@ -119,59 +119,79 @@ With `ulsch_max_frame_inactivity= 0;`
 
 For execution details, see [physical-simulators.md](./physical-simulators.md).
 
-#### Test Profile
+The tables below report the gNB processing time, in microseconds, averaged over
+1000 frames (`-n1000`), for a set of bandwidth, layer, SNR and MCS combinations:
 
-- Test System: AMD EPYC 9575F 64-Core Processor
-- SNR: 40 DB
-- MCS: 25
+- TX processing is the `PHY proc tx` value reported by `nr_dlsim -P`
+- RX processing is the `Total PHY proc rx` value reported by `nr_ulsim -P`
+- DLSCH encoding is the `DLSCH encoding time` reported by `nr_dlsim -P`
+- ULSCH decoding is the `ULSCH total decoding time` reported by `nr_ulsim -P`
 
-#### nr_dlsim
+`nr_dlsim` covers the DL only and `nr_ulsim` the UL only, hence the antenna
+configurations do not fully overlap: entries marked `-` are not measured.
 
-256 QAM modulation, 6 thread pool cores
+#### Example commands
 
-|Bandwidth MHz/PRB|Layers         |DL Processing (us) |Test Command                                                                             |
-|-----------------|---------------|-------------------|-----------------------------------------------------------------------------------------|
-|40(106)          |1              |35                 |nr_dlsim -n1000 -s30 -S30.2 -e25 -b106 -R106 -X 8,9,10,11,12,13,14,15 -P -q1             |
-|                 |2 (2 antennas) |52                 |nr_dlsim -n1000 -s40 -S40.2 -e25 -b106 -R106 -X 8,9,10,11,12,13,14,15 -P -q1 -x2 -z2 -y2 |
-|                 |  (4 antennas) |62                 |nr_dlsim -n1000 -s40 -S40.2 -e25 -b106 -R106 -X 8,9,10,11,12,13,14,15 -P -q1 -x2 -z4 -y4 |
-|100(273)         |1              |60                 |nr_dlsim -n1000 -s40 -S40.2 -e25 -b273 -R273 -X 8,9,10,11,12,13,14,15 -P -q1             |
-|                 |2 (2 antennas) |122                |nr_dlsim -n1000 -s40 -S40.2 -e25 -b273 -R273 -X 8,9,10,11,12,13,14,15 -P -q1 -x2 -z2 -y2 |
-|                 |  (4 antennas) |161                |nr_dlsim -n1000 -s40 -S40.2 -e25 -b273 -R273 -X 8,9,10,11,12,13,14,15 -P -q1 -x2 -z4 -y4 |
+```bash
+# DL: 40 MHz (106 PRB), 1 layer, SNR 20, MCS 15
+./nr_dlsim -n1000 -s20 -S20.2 -e15 -b106 -R106 -X <list of isolated CPUs> -P
+# UL: 40 MHz (106 PRB), 1 layer, SNR 20, MCS 15
+./nr_ulsim -n1000 -s20 -S20 -m15 -r106 -R106 -C8 -P
+```
 
-#### nr_ulsim
+To obtain the other entries of the tables, adapt the following options:
 
-64 QAM modulation, 8 thread pool cores
+|Option                                 |Meaning                                                        |
+|---------------------------------------|---------------------------------------------------------------|
+|`-b`/`-R` (nr_dlsim), `-r`/`-R` (nr_ulsim)|Number of PRBs, e.g. `106` for 40 MHz, `273` for 100 MHz    |
+|`-s`/`-S`                              |SNR, e.g. `-s20 -S20.2` (nr_dlsim) or `-s20 -S20` (nr_ulsim)   |
+|`-e` (nr_dlsim), `-m` (nr_ulsim)       |MCS index, e.g. `20` or `25`                                   |
+|`-x` (nr_dlsim), `-W` (nr_ulsim)       |Number of layers, e.g. `-x2` or `-W2`                          |
+|`-z`/`-y`                              |Number of RX/TX antennas, e.g. `-z2 -y2` or `-z4 -y4`          |
 
-|Bandwidth MHz/PRB|Layers|UL Processing (us) |Test Command                                                    |
-|-----------------|------|-------------------|----------------------------------------------------------------|
-|40(106)          |1     |90                 |nr_ulsim -n1000 -s40 -S40.2 -m25 -r106 -R106 -C8 -P             |
-|                 |2     |247                |nr_ulsim -n1000 -s40 -S40.2 -m25 -r106 -R106 -C8 -P -W2 -z2 -y2 |
-|100(273)         |1     |170                |nr_ulsim -n1000 -s40 -S40.2 -m25 -r273 -R273 -C8 -P             |
-|                 |2     |591                |nr_ulsim -n1000 -s40 -S40.2 -m25 -r273 -R273 -C8 -P -W2 -z2 -y2 |
+#### Test Profile 1
 
-#### nr_dlsim
+|Parameter   |Value                           |
+|------------|--------------------------------|
+|Machine     |AMD Ryzen 9 7945HX              |
+|Architecture|x86_64                          |
 
-256 QAM modulation, 6 thread pool cores
+|SNR/MCS|Bandwidth MHz/PRB|Configuration|TX Processing - nr_dlsim (us)|DLSCH Encoding - nr_dlsim (us)|RX Processing - nr_ulsim (us)|ULSCH Decoding - nr_ulsim (us)|
+|-------|-----------------|-------------|------------------------------:|--------------------------------:|------------------------------:|--------------------------------:|
+|20/15|40(106)|1 layer|44.86|30.52|119.81|81.85|
+|||2 layers / 2 antennas|52.90|27.51|233.62|121.25|
+|||2 layers / 4 antennas|63.41|27.87|-|-|
+||100(273)|1 layer|57.85|28.70|212.31|139.86|
+|||2 layers / 2 antennas|94.79|38.12|442.09|211.39|
+|||2 layers / 4 antennas|118.37|37.60|-|-|
+|30/25|40(106)|1 layer|41.08|25.64|121.39|77.98|
+|||2 layers / 2 antennas|58.41|31.61|340.42|121.84|
+|||2 layers / 4 antennas|69.55|32.17|-|-|
+||100(273)|1 layer|68.81|37.36|225.67|133.66|
+|||2 layers / 2 antennas|109.75|49.11|748.93|262.83|
+|||2 layers / 4 antennas|140.59|55.78|-|-|
 
-|Bandwidth MHz/PRB|Layers         |gNB TX processing (us) |Test Command                                                                             |
-|-----------------|---------------|----------------------:|-----------------------------------------------------------------------------------------|
-|40(106)          |1              |35                     |nr_dlsim -n1000 -s30 -S30.2 -e25 -b106 -R106 -X 8,9,10,11,12,13,14,15 -P -q1             |
-|                 |2 (2 antennas) |52                     |nr_dlsim -n1000 -s40 -S40.2 -e25 -b106 -R106 -X 8,9,10,11,12,13,14,15 -P -q1 -x2 -z2 -y2 |
-|                 |  (4 antennas) |62                     |nr_dlsim -n1000 -s40 -S40.2 -e25 -b106 -R106 -X 8,9,10,11,12,13,14,15 -P -q1 -x2 -z4 -y4 |
-|100(273)         |1              |60                     |nr_dlsim -n1000 -s40 -S40.2 -e25 -b273 -R273 -X 8,9,10,11,12,13,14,15 -P -q1             |
-|                 |2 (2 antennas) |122                    |nr_dlsim -n1000 -s40 -S40.2 -e25 -b273 -R273 -X 8,9,10,11,12,13,14,15 -P -q1 -x2 -z2 -y2 |
-|                 |  (4 antennas) |161                    |nr_dlsim -n1000 -s40 -S40.2 -e25 -b273 -R273 -X 8,9,10,11,12,13,14,15 -P -q1 -x2 -z4 -y4 |
+#### Test Profile 2
 
-#### nr_ulsim
+|Parameter   |Value                           |
+|------------|--------------------------------|
+|Machine     |DGX Spark, Cortex-X925, 20 cores|
+|Architecture|aarch64                         |
 
-64 QAM modulation, 8 thread pool cores
-
-|Bandwidth MHz/PRB|Layers|gNB RX processing (us) |Test Command                                                    |
-|-----------------|-----:|----------------------:|----------------------------------------------------------------|
-|40(106)          |1     |90                     |nr_ulsim -n1000 -s40 -S40.2 -m25 -r106 -R106 -C8 -P             |
-|                 |2     |247                    |nr_ulsim -n1000 -s40 -S40.2 -m25 -r106 -R106 -C8 -P -W2 -z2 -y2 |
-|100(273)         |1     |170                    |nr_ulsim -n1000 -s40 -S40.2 -m25 -r273 -R273 -C8 -P             |
-|                 |2     |591                    |nr_ulsim -n1000 -s40 -S40.2 -m25 -r273 -R273 -C8 -P -W2 -z2 -y2 |
+|SNR/MCS|Bandwidth MHz/PRB|Configuration|TX Processing - nr_dlsim (us)|DLSCH Encoding - nr_dlsim (us)|RX Processing - nr_ulsim (us)|ULSCH Decoding - nr_ulsim (us)|
+|-------|-----------------|-------------|------------------------------:|--------------------------------:|------------------------------:|--------------------------------:|
+|20/15|40(106)|1 layer|78.87|46.69|156.54|97.61|
+|||2 layers / 2 antennas|112.56|52.44|332.56|147.42|
+|||2 layers / 4 antennas|142.34|54.21|-|-|
+||100(273)|1 layer|126.82|58.30|274.24|168.85|
+|||2 layers / 2 antennas|239.51|91.51|677.19|269.18|
+|||2 layers / 4 antennas|310.43|92.67|-|-|
+|30/25|40(106)|1 layer|81.34|48.89|153.56|92.56|
+|||2 layers / 2 antennas|129.66|69.08|552.92|140.98|
+|||2 layers / 4 antennas|158.74|69.13|-|-|
+||100(273)|1 layer|151.22|82.04|294.53|178.25|
+|||2 layers / 2 antennas|276.59|126.84|1276.87|300.83|
+|||2 layers / 4 antennas|350.57|128.13|-|-|
 
 ## 4. `nr-uesoftmodem`
 
