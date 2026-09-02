@@ -1690,6 +1690,7 @@ static void nr_ue_prach_scheduler(NR_UE_MAC_INST_t *mac, frame_t frameP, slot_t 
   } // if is_nr_UL_slot
 }
 
+/** @brief Schedule UCI from an overlapping PUCCH onto PUSCH (TS 38.213 clause 9.2.5.3) */
 static bool schedule_uci_on_pusch(NR_UE_MAC_INST_t *mac,
                                   frame_t frame_tx,
                                   int slot_tx,

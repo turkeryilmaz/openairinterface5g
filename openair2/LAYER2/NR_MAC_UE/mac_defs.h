@@ -289,6 +289,7 @@ typedef struct {
 } NR_pdcch_order_config_t;
 
 typedef struct {
+  /* when present, dedicated PUCCH-Resource (9.2.3/9.2.5), else Table 9.2.1-1 common HARQ-ACK */
   NR_PUCCH_Resource_t *pucch_resource;
   uint32_t ack_payload;
   int harq_ack_pucch_res_ind;
@@ -298,7 +299,9 @@ typedef struct {
   int n_harq;
   int n_CCE;
   int N_CCE;
+  /* r_PUCCH from TS 38.213 9.2.1 (resource index 0..15), -1 if unused */
   int initial_pucch_id;
+  /* ASN.1 pucch-ResourceCommon set (row index of Table 9.2.1-1) */
   int pucch_ResourceCommon;
 } PUCCH_sched_t;
 

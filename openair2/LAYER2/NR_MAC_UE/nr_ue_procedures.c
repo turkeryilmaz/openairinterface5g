@@ -2329,6 +2329,8 @@ static void merge_resources(PUCCH_sched_t *res, int num_res, NR_PUCCH_Config_t *
     merge_pair(res, i, pucch_Config);
 }
 
+/* @brief Order PUCCH occasions in the slot and merge overlapping ones.
+ * The UE multiplexes HARQ-ACK information, SR, and CSI reports (TS 38.213 9.2.5.1, 9.2.5.2) */
 void multiplex_pucch_resource(NR_UE_MAC_INST_t *mac, PUCCH_sched_t *pucch, int num_res)
 {
   NR_PUCCH_Config_t *pucch_Config = mac->current_UL_BWP->pucch_Config;
@@ -2341,7 +2343,7 @@ void multiplex_pucch_resource(NR_UE_MAC_INST_t *mac, PUCCH_sched_t *pucch, int n
       o++;
       j++;
     } else {
-      if (o > 0) {
+      if (o > 0) { // if there are overlapping resources, merge them
         merge_resources(&pucch[j - o], o + 1, pucch_Config);
         // move the resources to occupy the places left empty
         int num_empty = o;
