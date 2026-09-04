@@ -732,74 +732,46 @@ void nr_sdap_entity_update_qos_flows(ue_id_t ue_id, sdap_config_t *sdap)
 
 bool nr_sdap_delete_entity(ue_id_t ue_id, int pdusession_id)
 {
-  nr_sdap_entity_t *entityPtr = sdap_info.sdap_entity_llist;
-  nr_sdap_entity_t *entityPrev = NULL;
-  int upperBound = 0;
-
-  if (entityPtr == NULL && (pdusession_id < 0 || pdusession_id > NR_MAX_NB_PDU_SESSIONS)) {
-    LOG_E(SDAP, "SDAP entities not established or Invalid range of pdusession_id [0, %d].\n", NR_MAX_NB_PDU_SESSIONS);
+  if (pdusession_id < 0 || pdusession_id > NR_MAX_NB_PDU_SESSIONS) {
+    LOG_E(SDAP, "Invalid range of pdusession_id [0, %d].\n", NR_MAX_NB_PDU_SESSIONS);
     return false;
   }
 
-  if (entityPtr->ue_id == ue_id && entityPtr->pdusession_id == pdusession_id) {
-    sdap_info.sdap_entity_llist = sdap_info.sdap_entity_llist->next_entity;
-    remove_ip_if(entityPtr);
-    free(entityPtr);
+  for (nr_sdap_entity_t **pp = &sdap_info.sdap_entity_llist; *pp != NULL; pp = &(*pp)->next_entity) {
+    nr_sdap_entity_t *entity = *pp;
+    if (entity->ue_id != ue_id || entity->pdusession_id != pdusession_id)
+      continue;
+    *pp = entity->next_entity;
+    remove_ip_if(entity);
+    free(entity);
     LOG_D(SDAP, "Successfully deleted SDAP entity for UE %lx and PDU Session id %d\n", ue_id, pdusession_id);
     return true;
-  } else {
-    while ((entityPtr->ue_id != ue_id || entityPtr->pdusession_id != pdusession_id) && entityPtr->next_entity != NULL
-           && upperBound < SDAP_MAX_NUM_OF_ENTITIES) {
-      entityPrev = entityPtr;
-      entityPtr = entityPtr->next_entity;
-      upperBound++;
-    }
-
-    if (entityPtr->ue_id == ue_id && entityPtr->pdusession_id == pdusession_id) {
-      entityPrev->next_entity = entityPtr->next_entity;
-      remove_ip_if(entityPtr);
-      free(entityPtr);
-      LOG_D(SDAP, "Successfully deleted Entity for UE %lx and PDU Session id %d\n", ue_id, pdusession_id);
-      return true;
-    }
   }
+
   LOG_E(SDAP, "Entity does not exist or it was not found.\n");
   return false;
 }
 
 bool nr_sdap_delete_ue_entities(ue_id_t ue_id)
 {
-  nr_sdap_entity_t *entityPtr = sdap_info.sdap_entity_llist;
-  nr_sdap_entity_t *entityPrev = NULL;
-  int upperBound = 0;
   bool ret = false;
 
-  if (entityPtr == NULL && (ue_id) * (ue_id - SDAP_MAX_UE_ID) > 0) {
-    LOG_W(SDAP, "SDAP entities not established or Invalid range of ue_id [0, 65536]\n");
-    return ret;
+  if (ue_id > SDAP_MAX_UE_ID) {
+    LOG_W(SDAP, "Invalid range of ue_id [0, %d]\n", SDAP_MAX_UE_ID);
+    return false;
   }
 
-  /* Handle scenario where ue_id matches the head of the list */
-  while (entityPtr != NULL && entityPtr->ue_id == ue_id && upperBound < MAX_DRBS_PER_UE) {
-    sdap_info.sdap_entity_llist = entityPtr->next_entity;
-    remove_ip_if(entityPtr);
-    free(entityPtr);
-    entityPtr = sdap_info.sdap_entity_llist;
-    ret = true;
-  }
-
-  while (entityPtr != NULL && upperBound < SDAP_MAX_NUM_OF_ENTITIES) {
-    if (entityPtr->ue_id != ue_id) {
-      entityPrev = entityPtr;
-      entityPtr = entityPtr->next_entity;
-    } else {
-      entityPrev->next_entity = entityPtr->next_entity;
-      remove_ip_if(entityPtr);
-      free(entityPtr);
-      entityPtr = entityPrev->next_entity;
-      LOG_I(SDAP, "Successfully deleted SDAP entity for UE %ld\n", ue_id);
-      ret = true;
+  for (nr_sdap_entity_t **pp = &sdap_info.sdap_entity_llist; *pp != NULL;) {
+    nr_sdap_entity_t *entity = *pp;
+    if (entity->ue_id != ue_id) {
+      pp = &(*pp)->next_entity;
+      continue;
     }
+    *pp = entity->next_entity;
+    remove_ip_if(entity);
+    free(entity);
+    LOG_I(SDAP, "Successfully deleted SDAP entity for UE %ld\n", ue_id);
+    ret = true;
   }
   return ret;
 }
