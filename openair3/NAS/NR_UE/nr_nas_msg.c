@@ -2050,6 +2050,45 @@ static void send_nas_initial_ul_transfer_req(nr_ue_nas_t *nas, const as_nas_info
   itti_send_msg_to_task(TASK_RRC_NRUE, nas->UE_id, msg);
 }
 
+/** @brief Initiate Service Request and send it as initial NAS UL to RRC */
+static bool initiate_service_request(nr_ue_nas_t *nas)
+{
+  if (!nas->guti) {
+    LOG_W(NAS, "[UE %ld] no GUTI available, cannot generate Service Request\n", nas->UE_id);
+    return false;
+  }
+
+  /* TS 24.501 §5.6.1.1.2: while the service request procedure is ongoing the UE
+   * shall not initiate another 5GMM procedure (5GMM-SERVICE-REQUEST-INITIATED state) */
+  if (nas->fiveGMM_state == FGS_SERVICE_REQUEST_INITIATED) {
+    LOG_D(NAS, "[UE %ld] Service Request already pending, ignore\n", nas->UE_id);
+    return false;
+  }
+
+  if (nas->fiveGMM_state != FGS_REGISTERED) {
+    LOG_W(NAS, "[UE %ld] UE not in 5GMM-REGISTERED (state=%d), cannot generate Service Request\n", nas->UE_id, nas->fiveGMM_state);
+    return false;
+  }
+
+  /* If UE is 5GMM-CONNECTED, Service Request is not needed (TS 24.501 §5.6.2.2.1) */
+  if (nas->fiveGMM_mode != FGS_IDLE) {
+    LOG_W(NAS, "[UE %ld] UE already in 5GMM-CONNECTED (mode=%d), dropping Service Request\n", nas->UE_id, nas->fiveGMM_mode);
+    return false;
+  }
+
+  as_nas_info_t initialNasMsg = {0};
+  generateServiceRequest(&initialNasMsg, nas);
+  if (initialNasMsg.length <= 0) {
+    LOG_E(NAS, "[UE %ld] Failed to generate Service Request\n", nas->UE_id);
+    return false;
+  }
+  /* TS 24.501 §5.6.1.2: send SERVICE REQUEST, enter 5GMM-SERVICE-REQUEST-INITIATED (§5.1.3.2.1.2.6) */
+  nas->fiveGMM_state = FGS_SERVICE_REQUEST_INITIATED;
+  send_nas_initial_ul_transfer_req(nas, &initialNasMsg);
+  LOG_I(NAS, "[UE %ld] Service Request (%u B) sent to RRC (NAS_INITIAL_UL_TRANSFER_REQ)\n", nas->UE_id, initialNasMsg.length);
+  return true;
+}
+
 static void send_nas_detach_req(nr_ue_nas_t *nas, bool wait_release)
 {
   MessageDef *msg = itti_alloc_new_message(TASK_NAS_NRUE, nas->UE_id, NAS_DETACH_REQ);
@@ -2359,62 +2398,17 @@ void *nas_nrue(void *args_p)
         }
 
         /** Paging for 5GS services (TS 24.501 §5.6.2.2.1) and
-         *  network-triggered Service Request (TS 23.502 §4.2.3.3 step 6):
-         *  - Upon reception of a paging indication the UE shall,
-         *    when 5GMM‑REGISTERED and in 5GMM‑IDLE without suspend indication,
-         *    initiate a Service Request over 3GPP access.
-         *
-         * This implementation currently enforces:
-         *  1. UE has GUTI
-         *  2. UE is 5GMM-REGISTERED
-         *  3. UE is 5GMM-IDLE
+         *  network-triggered Service Request (TS 23.502 §4.2.3.3 step 6)
+         *  Upon reception of a paging indication the UE shall,
+         *  when 5GMM-REGISTERED and in 5GMM-IDLE without suspend indication,
+         *  initiate a Service Request over 3GPP access
          *
          * TODO (future work):
-         *  - Implement T3346 and stop it here if running.
+         *  - Implement T3346 and stop it here if running
          *  - Add explicit "suspend indication" handling for the 5GMM-IDLE-with-suspend case
-         *    as per TS 24.501 §5.6.2.2.1 ("proceed as specified in subclause 5.3.1.5"). */
-        if (!nas->guti) {
-          LOG_W(NAS, "[UE %ld] Paging received but no GUTI available, cannot generate Service Request\n", nas->UE_id);
-          break;
-        }
-
-        /* TS 24.501 §5.6.1.1.2: while the service request procedure is ongoing the UE
-         * shall not initiate another 5GMM procedure (5GMM-SERVICE-REQUEST-INITIATED state). */
-        if (nas->fiveGMM_state == FGS_SERVICE_REQUEST_INITIATED) {
-          LOG_W(NAS, "[UE %ld] Paging ignored: Service Request already pending\n", nas->UE_id);
-          break;
-        }
-
-        if (nas->fiveGMM_state != FGS_REGISTERED) {
-          LOG_W(NAS,
-                "[UE %ld] Paging received but UE not in 5GMM-REGISTERED state (state=%d), cannot generate Service Request\n",
-                nas->UE_id,
-                nas->fiveGMM_state);
-          break;
-        }
-
-        if (nas->fiveGMM_mode != FGS_IDLE) {
-          // If UE is 5GMM-CONNECTED, Service Request is not needed as connection already exists (TS 24.501 §5.6.2.2.1)
-          LOG_W(NAS,
-                "[UE %ld] Paging received but UE already in 5GMM-CONNECTED (mode=%d), dropping Service Request\n",
-                nas->UE_id,
-                nas->fiveGMM_mode);
-          break;
-        }
-
-        as_nas_info_t initialNasMsg = {0};
-        generateServiceRequest(&initialNasMsg, nas);
-        if (initialNasMsg.length <= 0) {
-          LOG_E(NAS, "[UE %ld] Failed to generate Service Request after paging\n", nas->UE_id);
-          break;
-        }
-        /* TS 24.501 §5.6.1.2: send SERVICE REQUEST, enter 5GMM-SERVICE-REQUEST-INITIATED (§5.1.3.2.1.2.6) */
-        nas->fiveGMM_state = FGS_SERVICE_REQUEST_INITIATED;
-        send_nas_initial_ul_transfer_req(nas, &initialNasMsg);
-        LOG_I(NAS,
-              "[UE %ld] Paging: Service Request (%u B) sent to RRC (NAS_INITIAL_UL_TRANSFER_REQ)\n",
-              nas->UE_id,
-              (unsigned)initialNasMsg.length);
+         *    as per TS 24.501 §5.6.2.2.1 ("proceed as specified in subclause 5.3.1.5") */
+        LOG_I(NAS, "[UE %ld] Paging: initiate Service Request\n", nas->UE_id);
+        initiate_service_request(nas);
         break;
       }
 
