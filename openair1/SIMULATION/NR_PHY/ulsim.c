@@ -1909,6 +1909,7 @@ int main(int argc, char *argv[])
   abortTpool(&gNB->threadPool);
 
   free_sorted_list_meas(&gNB->phy_proc_rx);
+  free_sorted_list_meas(&gNB->phy_proc_tx);
   free_MIB_NR(mib);
   free(Sched_INFO);
 
