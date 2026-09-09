@@ -145,19 +145,6 @@ int force_rlf(char *buf, int debug, telnet_printfunc_t prnt)
   return 0;
 }
 
-/**
- * Send UE to RRC_IDLE
- */
-int force_RRC_IDLE(char *buf, int debug, telnet_printfunc_t prnt)
-{
-  UNUSED(debug);
-  UNUSED(buf);
-  UNUSED(prnt);
-  NR_UE_RRC_INST_t *rrc = get_NR_UE_rrc_inst(0);
-  nr_rrc_going_to_IDLE(rrc, OTHER, NULL);
-  return 0;
-}
-
 /** @brief Trigger RA with Msg3 C-RNTI */
 int force_crnti_ra(char *buf, int debug, telnet_printfunc_t prnt)
 {
@@ -247,7 +234,6 @@ static telnetshell_cmddef_t cicmds[] = {
   {"rrc_state", "[UE_ID(int,opt)]", get_rrc_state},
   {"nas_mode", "[UE_ID(int,opt)]", get_nas_mode},
   {"force_rlf", "", force_rlf},
-  {"force_RRC_IDLE", "", force_RRC_IDLE},
   {"force_crnti_ra", "", force_crnti_ra},
   {"deregistration", "", force_deregistration},
   {"get_max_dl_toa", "[ant]", get_dl_toa},
