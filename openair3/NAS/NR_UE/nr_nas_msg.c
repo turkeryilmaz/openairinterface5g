@@ -2291,6 +2291,9 @@ static void handle_service_accept(nr_ue_nas_t *nas, const byte_array_t *buffer)
 static void handle_service_reject(nr_ue_nas_t *nas, const byte_array_t *buffer)
 {
   abort_service_request(nas);
+  /* If still 5GMM-IDLE (MO path stopped them for SR), restart idle TUN listeners */
+  if (nas->fiveGMM_mode == FGS_IDLE)
+    send_nas_tun_req_action(nas, NAS_TUN_START_IDLE_LISTENER);
   fgs_service_reject_msg_t msg = {0};
   decode_fgs_service_reject(&msg, buffer);
   // Extract timer t3448 in seconds (optional IE)
