@@ -11,6 +11,7 @@
 #include "../../flexric/src/agent/e2_agent_api.h"
 #include "openair2/E2AP/flexric/src/lib/sm/enc/enc_ue_id.h"
 #include "openair2/E2AP/flexric/src/sm/rc_sm/rc_sm_id.h"
+#include "openair2/RRC/NR/rrc_gNB_du.h"
 
 #include <stdio.h>
 #include <unistd.h>
@@ -82,16 +83,39 @@ static seq_ev_trg_style_t fill_ev_tr_format_1(const char *ev_style_name)
   return ev_trig_style;
 }
 
+static seq_ev_trg_style_t fill_ev_tr_format_5(const char *ev_style_name)
+{
+  seq_ev_trg_style_t ev_trig_style = {0};
+
+  // RIC Event Trigger Style Type
+  // Mandatory
+  // 9.3.3
+  ev_trig_style.style = 5;
+
+  // RIC Event Trigger Style Name
+  // Mandatory
+  // 9.3.4
+  ev_trig_style.name = cp_str_to_ba(ev_style_name);
+
+  // RIC Event Trigger Format Type
+  // Mandatory
+  // 9.3.5
+  ev_trig_style.format = FORMAT_5_E2SM_RC_EV_TRIGGER_FORMAT;
+
+  return ev_trig_style;
+}
+
 static void fill_rc_ev_trig(ran_func_def_ev_trig_t* ev_trig)
 {
   // Sequence of EVENT TRIGGER styles
   // [1 - 63]
-  ev_trig->sz_seq_ev_trg_style = 2;
+  ev_trig->sz_seq_ev_trg_style = 3;
   ev_trig->seq_ev_trg_style = calloc(ev_trig->sz_seq_ev_trg_style, sizeof(seq_ev_trg_style_t));
   assert(ev_trig->seq_ev_trg_style != NULL && "Memory exhausted");
 
   ev_trig->seq_ev_trg_style[0] = fill_ev_tr_format_1("Message Event");
   ev_trig->seq_ev_trg_style[1] = fill_ev_tr_format_4("UE Information Change");
+  ev_trig->seq_ev_trg_style[2] = fill_ev_tr_format_5("On Demand");
 
   // Sequence of RAN Parameters for L2 Variables
   // [0 - 65535]
@@ -239,16 +263,82 @@ static seq_report_sty_t fill_report_style_1(const char *report_name)
   return report_style;
 }
 
+static seq_report_sty_t fill_report_style_5(const char *report_name)
+{
+  seq_report_sty_t report_style = {0};
+
+  // RIC Report Style Type
+  // Mandatory
+  // 9.3.3
+  report_style.report_type = 5;
+
+  // RIC Report Style Name
+  // Mandatory
+  // 9.3.4
+  report_style.name = cp_str_to_ba(report_name);
+
+  // Supported RIC Event Trigger Style Type
+  // Mandatory
+  // 9.3.3
+  report_style.ev_trig_type = FORMAT_5_E2SM_RC_EV_TRIGGER_FORMAT;
+
+  // RIC Report Action Format Type
+  // Mandatory
+  // 9.3.5
+  report_style.act_frmt_type = FORMAT_1_E2SM_RC_ACT_DEF;
+
+  // RIC Indication Header Format Type
+  // Mandatory
+  // 9.3.5
+  report_style.ind_hdr_type = FORMAT_1_E2SM_RC_IND_HDR;
+
+  // RIC Indication Message Format Type
+  // Mandatory
+  // 9.3.5
+  report_style.ind_msg_type = FORMAT_4_E2SM_RC_IND_MSG;
+
+  // Sequence of RAN Parameters Supported
+  // [0 - 65535]
+  report_style.sz_seq_ran_param = 2;
+  report_style.ran_param = calloc(report_style.sz_seq_ran_param, sizeof(seq_ran_param_3_t));
+  assert(report_style.ran_param != NULL && "Memory exhausted");
+
+  // RAN Parameter ID
+  // Mandatory
+  // 9.3.8
+  // [1- 4294967295]
+  report_style.ran_param[0].id = E2SM_RC_RS5_UE_CONTEXT_INFORMATION;
+  report_style.ran_param[1].id = E2SM_RC_RS5_NEIGHBOUR_RELATION_TABLE;
+
+  // RAN Parameter Name
+  // Mandatory
+  // 9.3.9
+  // [1-150]
+  const char ran_param_name[] = "UE Context Information";
+  report_style.ran_param[0].name = cp_str_to_ba(ran_param_name);
+  const char ran_param_name_1[] = "Neighbour Relation Table";
+  report_style.ran_param[1].name = cp_str_to_ba(ran_param_name_1);
+
+  // RAN Parameter Definition
+  // Optional
+  // 9.3.51
+  report_style.ran_param[0].def = NULL;
+  report_style.ran_param[1].def = NULL;
+
+  return report_style;
+}
+
 static void fill_rc_report(ran_func_def_report_t* report)
 {
   // Sequence of REPORT styles
   // [1 - 63]
-  report->sz_seq_report_sty = 2;
+  report->sz_seq_report_sty = 3;
   report->seq_report_sty = calloc(report->sz_seq_report_sty, sizeof(seq_report_sty_t));
   assert(report->seq_report_sty != NULL && "Memory exhausted");
 
   report->seq_report_sty[0] = fill_report_style_1("Message Copy");
   report->seq_report_sty[1] = fill_report_style_4("UE Information");
+  report->seq_report_sty[2] = fill_report_style_5("On Demand Report");
 }
 
 static void fill_rc_control(ran_func_def_ctrl_t* ctrl)
@@ -627,6 +717,132 @@ static void send_aper_ric_ind(const uint32_t ric_req_id, rc_ind_data_t* rc_ind_d
   printf("[E2 AGENT] Event for RIC request ID %d generated\n", ric_req_id);
 }
 
+#ifdef NGRAN_GNB_CUCP
+static nr_cgi_t fill_nr_cgi(plmn_id_t *plmn, uint64_t cell_id)
+{
+  nr_cgi_t cgi = {0};
+  cgi.plmn_id.mcc = plmn->mcc;
+  cgi.plmn_id.mnc = plmn->mnc;
+  cgi.plmn_id.mnc_digit_len = plmn->mnc_digit_length;
+  cgi.nr_cell_id = cell_id;
+
+  return cgi;
+}
+
+#endif
+
+/* REPORT Service Style 5 ("On Demand Report", E2SM-RC v01.03 7.4.6).
+ * Check if and which RAN Parameter IDs does the Action Definition carry.
+ * Choices are described in section 8.2.5.
+ * The Indication Header Format 1 with ev_trigger_id is optional, so left unset. */
+static rc_ind_data_t* fill_context_info_on_demand(const e2sm_rc_act_def_frmt_1_t *ad)
+{
+  assert(ad != NULL && "[E2 AGENT] Action Definition Format 1 empty.\n");
+  rc_ind_data_t* rc_ind = calloc(1, sizeof(rc_ind_data_t));
+  assert(rc_ind != NULL && "Memory exhausted");
+
+  rc_ind->hdr.format = FORMAT_1_E2SM_RC_IND_HDR;
+  rc_ind->msg.format = FORMAT_4_E2SM_RC_IND_MSG;
+
+  const ngran_node_t node_type = get_e2_node_type();
+#ifdef NGRAN_GNB_CUCP
+  e2sm_rc_ind_msg_frmt_4_t *frmt_4 = &rc_ind->msg.frmt_4;
+  gNB_RRC_INST* rrc = RC.nrrrc[0];
+  for (size_t i = 0; i < ad->sz_param_report_def; i++) {
+    if (ad->param_report_def[i].ran_param_id == E2SM_RC_RS5_UE_CONTEXT_INFORMATION) {
+      size_t sz = 0;
+      struct rrc_gNB_ue_context_s* rrc_ue_context = NULL;
+      RB_FOREACH(rrc_ue_context, rrc_nr_ue_tree_s, &rrc->rrc_ue_head)
+        sz++;
+
+      frmt_4->sz_seq_ue_info = sz;
+      frmt_4->seq_ue_info = calloc(sz, sizeof(seq_ue_info_t));
+      assert(frmt_4->seq_ue_info != NULL && "Memory exhausted");
+
+      size_t j = 0;
+      RB_FOREACH(rrc_ue_context, rrc_nr_ue_tree_s, &rrc->rrc_ue_head) {
+        gNB_RRC_UE_t* ue = &rrc_ue_context->ue_context;
+        frmt_4->seq_ue_info[j].ue_id = fill_ue_id_data[node_type](ue, 0, 0);
+        frmt_4->seq_ue_info[j].ue_ctx_info = NULL;
+        nr_rrc_cell_container_t *pcell = rrc_get_pcell_for_ue(rrc, ue);
+        AssertFatal(pcell != NULL, "[E2 AGENT] UE %d not connected to any cell\n", ue->rrc_ue_id);
+        frmt_4->seq_ue_info[j].cell_global_id.type = NR_CGI_RAT_TYPE;
+        frmt_4->seq_ue_info[j].cell_global_id.nr_cgi = fill_nr_cgi(&pcell->info.plmn, pcell->info.cell_id);
+        j++;
+      }
+
+    } else if (ad->param_report_def[i].ran_param_id == E2SM_RC_RS5_NEIGHBOUR_RELATION_TABLE) {
+      frmt_4->sz_seq_cell_info_2 = rrc->num_cells;
+      if (rrc->num_cells == 0)
+        continue;
+      frmt_4->seq_cell_info_2 = calloc(frmt_4->sz_seq_cell_info_2, sizeof(*frmt_4->seq_cell_info_2));
+      assert(frmt_4->seq_cell_info_2 != NULL && "Memory exhausted");
+
+      size_t j = 0;
+      nr_rrc_cell_container_t *cell;
+      RB_FOREACH(cell, rrc_cell_tree, &rrc->cells) {
+        frmt_4->seq_cell_info_2[j].cell_global_id.type = NR_CGI_RAT_TYPE;
+        frmt_4->seq_cell_info_2[j].cell_global_id.nr_cgi = fill_nr_cgi(&cell->info.plmn, cell->info.cell_id);
+        const neighbour_cell_configuration_t *neighbour_cfg = get_neighbour_cell_config(RC.nrrrc[0], cell->info.cell_id);
+        if (!neighbour_cfg)
+          continue;
+
+        neighbour_rela_tbl_t *neighbour_tbl = calloc(1, sizeof(*neighbour_tbl));
+        assert(neighbour_tbl != NULL && "Memory exhausted");
+        frmt_4->seq_cell_info_2[j].neighbour_rela_tbl = neighbour_tbl;
+
+        // Serving Cell PCI
+        neighbour_tbl->serving_cell_pci.type = NR_SERVING_CELL_E2SM_RC;
+        neighbour_tbl->serving_cell_pci.nr_pci = cell->info.pci;
+        // Serving Cell ARFCN
+        neighbour_tbl->serving_cell_arfcn.type = NR_SERVING_CELL_E2SM_RC;
+        // DL Frequency Info for FDD Mode. Mandatory per spec.
+        // If TDD, then place 0.
+        neighbour_tbl->serving_cell_arfcn.nr_arfcn = (cell->info.mode == NR_MODE_FDD) ? cell->info.fdd.dl.arfcn : 0;
+        neighbour_tbl->sz_neighbour_cell_list = neighbour_cfg->neighbour_cells.size;
+        neighbour_tbl->neighbour_cell_list = calloc(neighbour_tbl->sz_neighbour_cell_list, sizeof(*neighbour_tbl->neighbour_cell_list));
+        assert(neighbour_tbl->neighbour_cell_list != NULL && "Memory exhausted");
+
+        size_t z = 0;
+        FOR_EACH_SEQ_ARR(nr_neighbour_cell_t *, nc, &neighbour_cfg->neighbour_cells) {
+          neighbour_cell_item_t *item = &neighbour_tbl->neighbour_cell_list[z];
+          item->type = NR_NEIGHBOUR_CELL_E2SM_RC;
+          item->choice_nr.nr_cgi = fill_nr_cgi(&nc->plmn, nc->nrcell_id);
+          item->choice_nr.nr_pci = nc->physicalCellId;
+          item->choice_nr.five_gs_tac = nc->tac;
+          // nr_neighbour_cell_t doesn't contain mode info. Inherit from serving cell.
+          item->choice_nr.nr_mode_info = (cell->info.mode == NR_MODE_FDD) ? FDD_NR_MODE_INFO_E2SM_RC : TDD_NR_MODE_INFO_E2SM_RC;
+          // DL Frequency Info for FDD Mode. NR Frequency Info IE in TS 38.473 9.3.1.17. Mandatory per spec.
+          // If TDD, fill anyway.
+          item->choice_nr.nr_freq_info.nr_arfcn = nc->absoluteFrequencySSB;
+          item->choice_nr.nr_freq_info.sz_freq_band_list = 1;
+          item->choice_nr.nr_freq_info.freq_band_list = calloc(item->choice_nr.nr_freq_info.sz_freq_band_list, sizeof(*item->choice_nr.nr_freq_info.freq_band_list));
+          assert(item->choice_nr.nr_freq_info.freq_band_list != NULL && "Memory exhausted");
+          item->choice_nr.nr_freq_info.freq_band_list[0].freq_band_indicator_nr = nc->band;
+          item->choice_nr.nr_freq_info.freq_band_list[0].sz_sul_band_list = 0;
+          item->choice_nr.nr_freq_info.freq_band_list[0].sul_band_list = NULL;
+          item->choice_nr.nr_freq_info.freq_shift_7p5khz = NULL;
+          // neither Xn nor X2 handover not yet supported
+          item->choice_nr.xn_x2_established = FALSE_XN_X2_ESTABLISHED_E2SM_RC;
+          item->choice_nr.ho_validated = nc->stats.ho_success_count > 0 ? TRUE_HO_VALIDATED_E2SM_RC : FALSE_HO_VALIDATED_E2SM_RC;
+          /* For every neighbour information, the value is incremented by 1.
+           * When there is a change in the existing neighbour information,
+           * a new incremented version number is used.
+           * The deleted neighbours are not sent. */
+          item->choice_nr.version = nc->stats.version;
+          z++;
+        }
+        j++;
+      }
+    }
+  }
+#else
+    printf("[E2 AGENT] \"UE Context Information\" not supported by %d.\n", node_type);
+#endif
+
+  return rc_ind;
+}
+
 static rc_ind_data_t* fill_ue_id(const gNB_RRC_UE_t *rrc_ue_context, const uint16_t cond_id)
 {
   rc_ind_data_t* rc_ind = malloc_or_fail(sizeof(rc_ind_data_t));
@@ -856,7 +1072,10 @@ sm_ag_if_ans_t write_subs_rc_sm(void const* src)
       if (wr_rc->rc.et.format + 1 != report_style) { // wr_rc->rc.et.format is an enum -> initialization starts from 0
         AssertError(false, return ans, "[E2 AGENT] Event Trigger Definition Format %d doesn't correspond to REPORT style %d.\n", wr_rc->rc.et.format + 1, report_style);
       }
-      get_list_for_report_style(ric_req_id, &wr_rc->rc.et, wr_rc->rc.ad->frmt_1.sz_param_report_def, wr_rc->rc.ad->frmt_1.param_report_def);
+      /* RAN Parameter IDs from `On Demand` Report Style 5 are not included in rc_subs_data_t.
+       * Its intention is to send immeditately RIC Indication Message upon RIC Subscription reception. */
+      if (report_style != 5)
+        get_list_for_report_style(ric_req_id, &wr_rc->rc.et, wr_rc->rc.ad->frmt_1.sz_param_report_def, wr_rc->rc.ad->frmt_1.param_report_def);
       break;
     }
 
@@ -867,6 +1086,14 @@ sm_ag_if_ans_t write_subs_rc_sm(void const* src)
   ans.type = SUBS_OUTCOME_SM_AG_IF_ANS_V0;
   ans.subs_out.type = APERIODIC_SUBSCRIPTION_FLRC;
   ans.subs_out.aper.free_aper_subs = free_aperiodic_subscription;
+  ans.subs_out.aper.imm_ind_data = NULL;
+
+  // REPORT Service Style 5 ("On Demand Report"): report immediately. The
+  // actual send is deferred to the caller (after this subscription is fully
+  // registered with the agent) - it can't happen here, since we are still
+  // inside on_subscription and the agent hasn't registered ric_req_id yet.
+  if (report_style == 5)
+    ans.subs_out.aper.imm_ind_data = fill_context_info_on_demand(&wr_rc->rc.ad->frmt_1);
 
   return ans;
 }
