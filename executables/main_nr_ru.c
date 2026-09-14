@@ -5,18 +5,11 @@
 #include <sched.h>
 #include <string.h>
 #include "assertions.h"
-#include "PHY/types.h"
 #include "PHY/defs_RU.h"
 #include "common/oai_version.h"
 #include "common/config/config_userapi.h"
-#include "common/utils/load_module_shlib.h"
 #include "common/ran_context.h"
-#include "radio/ETHERNET/if_defs.h"
-#include "PHY/phy_vars.h"
-#include "PHY/phy_extern.h"
-#include "PHY/TOOLS/phy_scope_interface.h"
 #include "common/utils/LOG/log.h"
-#include "openair2/ENB_APP/enb_paramdef.h"
 #include "system.h"
 #include "nfapi/oai_integration/vendor_ext.h"
 #include <executables/softmodem-common.h>
@@ -24,8 +17,8 @@
 #include "executables/nr-softmodem.h"
 #include "nr-oru.h"
 #include "common/utils/threadPool/thread-pool.h"
-#include "openair1/PHY/INIT/nr_phy_init.h"
 #include "openair1/SCHED_NR/sched_nr.h"
+#include "PHY/MODULATION/nr_modulation.h"
 
 pthread_cond_t sync_cond;
 pthread_mutex_t sync_mutex;
