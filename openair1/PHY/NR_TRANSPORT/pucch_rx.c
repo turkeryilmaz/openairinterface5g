@@ -1100,7 +1100,6 @@ void nr_decode_pucch2(PHY_VARS_gNB *gNB,
   for (int aa = 0; aa < Prx; aa++) {
     for (int symb = 0; symb < nb_symbols; symb++) {
       c16_t *tmp_rp = &rxdataF[aa][soffset + (l2 + symb) * symb_sz];
-
       memcpy(rp[aa][symb], &tmp_rp[re_offset[symb]], nb_re_pucch * sizeof(c16_t));
       pucch2_lev += signal_energy_nodc(rp[aa][symb], nb_re_pucch);
     }
@@ -1316,7 +1315,10 @@ void nr_decode_pucch2(PHY_VARS_gNB *gNB,
   memset(decodedPayload, 0, sizeof(decodedPayload));
   uint8_t corr_dB;
   int decoderState = 2;
-  if (pucch2_levdB < gNB->measurements.n0_subband_power_avg_dB + (gNB->pucch0_thres / 10))
+  int max_n0 = gNB->measurements.n0_subband_power_tot_dB[pucch_pdu->bwp_start + pucch_pdu->prb_start];
+  for (int p = 1; p < pucch_pdu->prb_size; p++)
+    max_n0 = max(max_n0, gNB->measurements.n0_subband_power_tot_dB[pucch_pdu->bwp_start + pucch_pdu->prb_start + p]);
+  if (pucch2_levdB < max_n0 + (gNB->pucch0_thres / 10))
     decoderState = 1; // assuming missed detection, only attempt to decode for polar case (with CRC)
   LOG_D(NR_PHY,
         "n0+thres %d decoderState %d\n",
@@ -1453,17 +1455,14 @@ void nr_decode_pucch2(PHY_VARS_gNB *gNB,
 
   LOG_D(PHY, "UCI decoderState %d, payload[0] %llu\n", decoderState, (unsigned long long)decodedPayload[0]);
 
-  // estimate CQI for MAC (from antenna port 0 only)
-  // TODO this computation is wrong -> to be ignored at MAC for now
-  int cqi = 0xff;
-  /*int SNRtimes10 =
-    dB_fixed_times10(signal_energy_nodc((int32_t *)&rxdataF[0][soffset + (l2 * symb_sz) + re_offset[0]],
-    12 * pucch_pdu->prb_size))
-    - (10 * gNB->measurements.n0_power_tot_dB);
-    int cqi,bit_left;
-    if (SNRtimes10 < -640) cqi=0;
-    else if (SNRtimes10 >  635) cqi=255;
-    else cqi=(640+SNRtimes10)/5;*/
+  int SNRtimes10 = dB_fixed_times10(pucch2_lev) - (10 * max_n0);
+  int cqi;
+  if (SNRtimes10 < -640)
+    cqi = 0;
+  else if (SNRtimes10 > 635)
+    cqi = 255;
+  else
+    cqi = (640 + SNRtimes10) / 5;
 
   uci_pdu->harq.harq_bit_len = pucch_pdu->bit_len_harq;
   uci_pdu->pduBitmap = 0;
