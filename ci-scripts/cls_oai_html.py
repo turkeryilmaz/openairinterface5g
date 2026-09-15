@@ -24,8 +24,6 @@ class HTMLManagement():
 	def __init__(self):
 
 		self.htmlFile = ''
-		self.htmlHeaderCreated = False
-		self.htmlFooterCreated = False
 
 		self.nbTestXMLfiles = 0
 		self.htmlTabRefs = []
@@ -43,7 +41,7 @@ class HTMLManagement():
 
 
 	def CreateHtmlHeader(self, repository, branch):
-		if (not self.htmlHeaderCreated):
+		if True:
 			self.htmlFile = open('test_results.html', 'w')
 			self.htmlFile.write('<!DOCTYPE html>\n')
 			self.htmlFile.write('<html class="no-js" lang="en-US">\n')
@@ -119,7 +117,7 @@ class HTMLManagement():
 			self.htmlFile.close()
 
 	def CreateHtmlTabHeader(self):
-		if (not self.htmlHeaderCreated):
+		if True:
 			if (not os.path.isfile('test_results.html')):
 				self.CreateHtmlHeader('none')
 			self.htmlFile = open('test_results.html', 'a')
@@ -139,10 +137,9 @@ class HTMLManagement():
 			self.htmlFile.write('        <th>Info</th>\n')
 			self.htmlFile.write('      </tr>\n')
 			self.htmlFile.close()
-		self.htmlHeaderCreated = True
 
 	def CreateHtmlTabFooter(self, passStatus):
-		if ((not self.htmlFooterCreated) and (self.htmlHeaderCreated)):
+		if True:
 			self.htmlFile = open('test_results.html', 'a')
 			self.htmlFile.write('      <tr>\n')
 			self.htmlFile.write('        <th bgcolor = "#33CCFF" colspan="3">Final Tab Status</th>\n')
@@ -160,7 +157,6 @@ class HTMLManagement():
 			else:
 				cmd = "sed -i -e 's/__STATE_" + self.htmlTabNames[0] + r"__/<span class=\"glyphicon glyphicon-remove\"><\/span>/' test_results.html"
 				subprocess.run(cmd, shell=True)
-		self.htmlFooterCreated = False
 
 	def CreateHtmlFooter(self, passStatus):
 		if (os.path.isfile('test_results.html')):
@@ -194,8 +190,6 @@ class HTMLManagement():
 
 	#for the moment it is limited to 4 columns, to be made generic later
 	def CreateHtmlDataLogTable(self, DataLog, filename):
-		if (self.htmlFooterCreated or (not self.htmlHeaderCreated)):
-			return
 		self.htmlFile = open('test_results.html', 'a')
 		
         # TabHeader 
@@ -228,7 +222,7 @@ class HTMLManagement():
 
 
 	def CreateHtmlTestRowQueue(self, options, status, infoList):
-		if ((not self.htmlFooterCreated) and (self.htmlHeaderCreated)):
+		if True:
 			self.htmlFile = open('test_results.html', 'a')
 			currentTime = int(round(time.time() * 1000)) - self.startTime
 			addOrangeBK = False
@@ -258,8 +252,6 @@ class HTMLManagement():
 			self.htmlFile.close()
 
 	def CreateHtmlTestRowPhySimTestResult(self, testSummary, testResult):
-		if (self.htmlFooterCreated or (not self.htmlHeaderCreated)):
-			return
 		self.htmlFile = open('test_results.html', 'a')
 		if bool(testResult) == False and bool(testSummary) == False:
 			self.htmlFile.write('      <tr bgcolor = "red" >\n')

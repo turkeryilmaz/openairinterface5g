@@ -373,15 +373,11 @@ if __name__ == "__main__":
 		HTML.htmlTabNames = [xmlRoot.findtext('htmlTabName')]
 		HTML.htmlTabIcons = [xmlRoot.findtext('htmlTabIcon')]
 
-		# reset that we created a header (this "logic" makes no sense and will
-		# be removed once we removed the different modes)
-		HTML.htmlHeaderCreated = False
 		HTML.CreateHtmlTabHeader()
 		HTML.startTime=int(round(time.time() * 1000))
 
 		success = run_tests(g_ctx, logPath, HTML, all_tests)
 
-		HTML.htmlFooterCreated = False
 		if not success:
 			logging.error('\u001B[1;37;41mScenario failed\u001B[0m')
 			HTML.CreateHtmlTabFooter(False)
