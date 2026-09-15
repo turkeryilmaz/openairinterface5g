@@ -35,9 +35,6 @@ class HTMLManagement():
 		self.htmlTabIcons = []
 		self.testXMLfiles = []
 
-		self.htmleNBFailureMsg = ''
-		self.htmlUEFailureMsg = ''
-
 		self.startTime = int(round(time.time() * 1000))
 		self.testCaseIdx = ''
 		self.desc = ''
@@ -196,86 +193,6 @@ class HTMLManagement():
 			self.htmlFile.write('</div></body>\n')
 			self.htmlFile.write('</html>\n')
 			self.htmlFile.close()
-
-	def CreateHtmlTestRow(self, options, status, processesStatus, machine='eNB'):
-		if (self.htmlFooterCreated or (not self.htmlHeaderCreated)):
-			return
-		self.htmlFile = open('test_results.html', 'a')
-		currentTime = int(round(time.time() * 1000)) - self.startTime
-		self.htmlFile.write('      <tr>\n')
-		self.htmlFile.write('        <td bgcolor = "lightcyan" >' + format(currentTime / 1000, '.1f') + '</td>\n')
-		self.htmlFile.write('        <td bgcolor = "lightcyan" >' + self.testCaseIdx  + '</td>\n')
-		self.htmlFile.write('        <td>' + self.desc  + '</td>\n')
-		self.htmlFile.write('        <td>' + str(options)  + '</td>\n')
-		if (str(status) == 'OK'):
-			self.htmlFile.write('        <td bgcolor = "lightgreen" >' + str(status)  + '</td>\n')
-		elif (str(status) == 'KO'):
-			if (processesStatus == 0):
-				self.htmlFile.write('        <td bgcolor = "lightcoral" >' + str(status)  + '</td>\n')
-			elif (processesStatus == CONST.ENB_PROCESS_FAILED):
-				self.htmlFile.write('        <td bgcolor = "lightcoral" >KO - eNB process not found</td>\n')
-			elif (processesStatus == CONST.OAI_UE_PROCESS_FAILED):
-				self.htmlFile.write('        <td bgcolor = "lightcoral" >KO - OAI UE process not found</td>\n')
-			elif (processesStatus == CONST.ENB_PROCESS_SEG_FAULT) or (processesStatus == CONST.OAI_UE_PROCESS_SEG_FAULT):
-				self.htmlFile.write('        <td bgcolor = "lightcoral" >KO - ' + machine + ' process ended in Segmentation Fault</td>\n')
-			elif (processesStatus == CONST.ENB_PROCESS_ASSERTION) or (processesStatus == CONST.OAI_UE_PROCESS_ASSERTION):
-				self.htmlFile.write('        <td bgcolor = "lightcoral" >KO - ' + machine + ' process ended in Assertion</td>\n')
-			elif (processesStatus == CONST.ENB_PROCESS_REALTIME_ISSUE):
-				self.htmlFile.write('        <td bgcolor = "lightcoral" >KO - ' + machine + ' process faced Real Time issue(s)</td>\n')
-			elif (processesStatus == CONST.ENB_PROCESS_NOLOGFILE_TO_ANALYZE) or (processesStatus == CONST.OAI_UE_PROCESS_NOLOGFILE_TO_ANALYZE):
-				self.htmlFile.write('        <td bgcolor = "orange" >OK?</td>\n')
-			elif (processesStatus == CONST.ENB_PROCESS_SLAVE_RRU_NOT_SYNCED):
-				self.htmlFile.write('        <td bgcolor = "lightcoral" >KO - ' + machine + ' Slave RRU could not synch</td>\n')
-			elif (processesStatus == CONST.OAI_UE_PROCESS_COULD_NOT_SYNC):
-				self.htmlFile.write('        <td bgcolor = "lightcoral" >KO - UE could not sync</td>\n')
-			elif (processesStatus == CONST.HSS_PROCESS_FAILED):
-				self.htmlFile.write('        <td bgcolor = "lightcoral" >KO - HSS process not found</td>\n')
-			elif (processesStatus == CONST.MME_PROCESS_FAILED):
-				self.htmlFile.write('        <td bgcolor = "lightcoral" >KO - MME process not found</td>\n')
-			elif (processesStatus == CONST.SPGW_PROCESS_FAILED):
-				self.htmlFile.write('        <td bgcolor = "lightcoral" >KO - SPGW process not found</td>\n')
-			elif (processesStatus == CONST.UE_IP_ADDRESS_ISSUE):
-				self.htmlFile.write('        <td bgcolor = "lightcoral" >KO - Could not retrieve UE IP address</td>\n')
-			elif (processesStatus == CONST.PHYSIM_IMAGE_ABSENT):
-				self.htmlFile.write('        <td bgcolor = "lightcoral" >KO - No such image oai-physim</td>\n')
-			elif (processesStatus == CONST.OC_LOGIN_FAIL):
-				self.htmlFile.write('        <td bgcolor = "lightcoral" >KO - Could not log onto cluster</td>\n')
-			elif (processesStatus == CONST.OC_PROJECT_FAIL):
-				self.htmlFile.write('        <td bgcolor = "lightcoral" >KO - Could not register into cluster project</td>\n')
-			elif (processesStatus == CONST.OC_IS_FAIL):
-				self.htmlFile.write('        <td bgcolor = "lightcoral" >KO - Could not create Image Stream</td>\n')
-			elif (processesStatus == CONST.OC_PHYSIM_DEPLOY_FAIL):
-				self.htmlFile.write('        <td bgcolor = "lightcoral" >KO - Could not properly deploy physim on cluster</td>\n')
-			else:
-				self.htmlFile.write('        <td bgcolor = "lightcoral" >' + str(status)  + '</td>\n')
-		else:
-			self.htmlFile.write('        <td bgcolor = "orange" >' + str(status)  + '</td>\n')
-		if (len(str(self.htmleNBFailureMsg)) > 2):
-			cellBgColor = 'white'
-			result = re.search('ended with|faced real time issues', self.htmleNBFailureMsg)
-			if result is not None:
-				cellBgColor = 'red'
-			else:
-				result = re.search('showed|Reestablishment|Could not copy eNB logfile', self.htmleNBFailureMsg)
-				if result is not None:
-					cellBgColor = 'orange'
-			self.htmlFile.write('        <td bgcolor = "' + cellBgColor + '" colspan="1"><pre style="background-color:' + cellBgColor + '">' + self.htmleNBFailureMsg + '</pre></td>\n')
-			self.htmleNBFailureMsg = ''
-		elif (len(str(self.htmlUEFailureMsg)) > 2):
-			cellBgColor = 'white'
-			result = re.search('ended with|faced real time issues', self.htmlUEFailureMsg)
-			if result is not None:
-				cellBgColor = 'red'
-			else:
-				result = re.search('showed|Could not copy UE logfile|oaitun_ue1 interface is either NOT mounted or NOT configured', self.htmlUEFailureMsg)
-				if result is not None:
-					cellBgColor = 'orange'
-			self.htmlFile.write('        <td bgcolor = "' + cellBgColor + '" colspan="1"><pre style="background-color:' + cellBgColor + '">' + self.htmlUEFailureMsg + '</pre></td>\n')
-			self.htmlUEFailureMsg = ''
-		else:
-			self.htmlFile.write('        <td>-</td>\n')
-		self.htmlFile.write('      </tr>\n')
-		self.htmlFile.close()
 
 	#for the moment it is limited to 4 columns, to be made generic later
 	def CreateHtmlDataLogTable(self, DataLog, filename):
