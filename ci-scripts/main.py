@@ -295,8 +295,6 @@ def run_tests(g_ctx, logPath, HTML, all_tests):
 # MAIN PART
 #-----------------------------------------------------------
 
-mode = ''
-
 CiTestObj = cls_oaicitest.OaiCiTest()
  
 HTML = cls_oai_html.HTMLManagement()
@@ -309,7 +307,7 @@ CONTAINERS = cls_containerize.Containerize()
 import args_parse
 # Force local execution, move all execution targets to localhost
 force_local = False
-mode, force_local, date_fmt, final_status, g_ctx, oc = args_parse.ArgsParse(sys.argv,HTML,CONTAINERS)
+force_local, date_fmt, g_ctx, oc = args_parse.ArgsParse(sys.argv,HTML,CONTAINERS)
 fmt = "%(levelname)8s: %(message)s"
 if date_fmt:
     fmt = "[%(asctime)s] %(levelname)s %(message)s"
@@ -317,82 +315,11 @@ logging.basicConfig(level=logging.DEBUG, stream=sys.stdout, format=fmt, datefmt=
 
 
 #-----------------------------------------------------------
-# mode amd XML class (action) analysis
+# XML class (action) analysis
 #-----------------------------------------------------------
 cwd = os.getcwd()
 
-if re.match('^InitiateHtml$', mode, re.IGNORECASE):
-	count = 0
-	foundCount = 0
-	while (count < HTML.nbTestXMLfiles):
-		xml_test_file = sys.path[0] + "/" + HTML.testXMLfiles[count]
-		if (os.path.isfile(xml_test_file)):
-			try:
-				xmlTree = ET.parse(xml_test_file)
-			except Exception as e:
-				print(f"Error: {e} while parsing file: {xml_test_file}.")
-			xmlRoot = xmlTree.getroot()
-			HTML.htmlTabRefs.append(xmlRoot.findtext('htmlTabRef',default='test-tab-' + str(count)))
-			HTML.htmlTabNames.append(xmlRoot.findtext('htmlTabName',default='test-tab-' + str(count)))
-			HTML.htmlTabIcons.append(xmlRoot.findtext('htmlTabIcon',default='info-sign'))
-			foundCount += 1
-		count += 1
-	if foundCount != HTML.nbTestXMLfiles:
-		HTML.nbTestXMLfiles=foundCount
-	
-	HTML.CreateHtmlHeader(g_ctx.repository, g_ctx.branch)
-elif re.match('^FinalizeHtml$', mode, re.IGNORECASE):
-	logging.info('\u001B[1m----------------------------------------\u001B[0m')
-	logging.info('\u001B[1m  Creating HTML footer \u001B[0m')
-	logging.info('\u001B[1m----------------------------------------\u001B[0m')
-
-	HTML.CreateHtmlFooter(final_status)
-elif re.match('^TesteNB$', mode, re.IGNORECASE):
-	logging.info('\u001B[1m----------------------------------------\u001B[0m')
-	logging.info('\u001B[1m  Starting Scenario: ' + HTML.testXMLfiles[0] + '\u001B[0m')
-	logging.info('\u001B[1m----------------------------------------\u001B[0m')
-	if g_ctx.repository == '' or g_ctx.branch == '' or g_ctx.workspace == '':
-		sys.exit(f'Insufficient Parameters: {g_ctx.repository=}, {g_ctx.branch=}, {g_ctx.workspace=}')
-	if HTML.nbTestXMLfiles != 1:
-		sys.exit(f'Only one XML file per TesteNB call supported')
-	#read test_case_list.xml file
-	# if no parameters for XML file, use default value
-	if (HTML.nbTestXMLfiles != 1):
-		xml_test_file = cwd + "/test_case_list.xml"
-	else:
-		xml_test_file = cwd + "/" + HTML.testXMLfiles[0]
-
-	signal.signal(signal.SIGINT, receive_signal)
-
-	# directory where all log artifacts will be placed
-	logPath = f"{cwd}/../cmake_targets/log/{xml_test_file.split('/')[-1]}.d"
-	# we run from within ci-scripts, but the logPath is absolute, so replace
-	# the ci-scripts/..; if it does not exist, nothing will happen
-	logPath = logPath.replace(r'/ci-scripts/..', '')
-	logging.info(f"placing all artifacts for this run in {logPath}/")
-	with cls_cmd.LocalCmd() as c:
-		c.run(f"rm -rf {logPath}")
-		c.run(f"mkdir -p {logPath}")
-
-	xmlTree = ET.parse(xml_test_file)
-	xmlRoot = xmlTree.getroot()
-	all_tests=xmlRoot.findall('testCase')
-
-	HTML.htmlTabRefs.append(xmlRoot.findtext('htmlTabRef',default='test-tab-0'))
-	HTML.htmlTabNames.append(xmlRoot.findtext('htmlTabName',default='Test-0'))
-	HTML.CreateHtmlTabHeader()
-	HTML.startTime=int(round(time.time() * 1000))
-
-	success = run_tests(g_ctx, logPath, HTML, all_tests)
-
-	if not success:
-		logging.error('\u001B[1;37;41mScenario failed\u001B[0m')
-		HTML.CreateHtmlTabFooter(False)
-		sys.exit('Failed Scenario')
-	else:
-		logging.info('\u001B[1;37;42mScenario passed\u001B[0m')
-		HTML.CreateHtmlTabFooter(True)
-elif mode == "all-in-one":
+if __name__ == "__main__":
 	if g_ctx.repository == '' or g_ctx.branch == '' or g_ctx.workspace == '':
 		sys.exit(f'Insufficient Parameters: {g_ctx.repository=}, {g_ctx.branch=}, {g_ctx.workspace=}')
 	count = 0
@@ -467,6 +394,3 @@ elif mode == "all-in-one":
 	HTML.CreateHtmlFooter(final_status)
 	ret = 0 if final_status else 1
 	sys.exit(ret)
-else:
-	sys.exit(f'Invalid mode {mode}')
-sys.exit(0)
