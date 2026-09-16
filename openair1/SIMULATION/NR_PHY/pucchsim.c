@@ -33,6 +33,7 @@
 #include "executables/softmodem-common.h"
 #include "openair1/PHY/phy_vars_nr_ue.h"
 #include "PHY/nr_phy_common/inc/nr_sequences_tables.h"
+#include "SIMULATION/LTE_PHY/common_sim.h"
 
 THREAD_STRUCT thread_struct;
 PHY_VARS_gNB *gNB;
@@ -535,6 +536,9 @@ int main(int argc, char **argv)
   double tx_level_fp = 100.0;
   c16_t **rxdataF = gNB->common_vars.rxdataF;
   for (SNR = snr0; SNR <= snr1 && !stop; SNR += 1) {
+    reset_meas(&gNB->pucch01_proc_rx);
+    reset_meas(&gNB->pucch23_proc_rx);
+
     ack_nack_errors = 0;
     sr_errors = 0;
     n_errors = 0;
@@ -658,7 +662,6 @@ int main(int argc, char **argv)
 
       // noise measurement (all PRBs)
       gNB_I0_measurements(gNB, nr_slot_tx, 0, gNB->frame_parms.symbols_per_slot, rb_mask_ul);
-      start_meas(&gNB->phy_proc_rx);
 
       if (n_trials == 1)
         printf("noise rxlev %d (%d dB), rxlev pucch %d dB sigma2 %f dB, SNR %f, TX %f, I0 (pucch) %d, I0 (avg) %d\n",
@@ -696,7 +699,9 @@ int main(int argc, char **argv)
         } else
           pucch_pdu.freq_hop_flag = 0;
 
+        start_meas(&gNB->pucch01_proc_rx);
         nr_decode_pucch0(gNB, rxdataF, nr_frame_tx, nr_slot_tx, &uci_pdu, &pucch_pdu);
+        stop_meas(&gNB->pucch01_proc_rx);
         if (sr_flag == 1) {
           if (uci_pdu.sr.sr_indication == 0 || uci_pdu.sr.sr_confidence_level == 1)
             sr_errors += 1;
@@ -737,7 +742,9 @@ int main(int argc, char **argv)
         pucch_pdu.second_hop_prb = N_RB_DL - 1;
         pucch_pdu.time_domain_occ_idx = timeDomainOCC;
 
+        start_meas(&gNB->pucch01_proc_rx);
         nr_decode_pucch1(gNB, rxdataF, nr_frame_tx, nr_slot_tx, &uci_pdu, &pucch_pdu);      
+        stop_meas(&gNB->pucch01_proc_rx);
         // harq value 0 -> pass
         nfapi_nr_harq_t *harq_list = uci_pdu.harq.harq_list;
         // confidence value 0 -> good confidence
@@ -775,7 +782,9 @@ int main(int argc, char **argv)
           pucch_pdu.second_hop_prb = N_RB_DL - 1;
         } else
           pucch_pdu.freq_hop_flag = 0;
+        start_meas(&gNB->pucch23_proc_rx);
         nr_decode_pucch2(gNB, rxdataF, nr_frame_tx, nr_slot_tx, &uci_pdu, &pucch_pdu);
+        stop_meas(&gNB->pucch23_proc_rx);
         int csi_part1_bytes = pucch_pdu.bit_len_csi_part1 >> 3;
         if ((pucch_pdu.bit_len_csi_part1 & 7) > 0)
           csi_part1_bytes++;
@@ -787,22 +796,16 @@ int main(int argc, char **argv)
         }
         free(uci_pdu.csi_part1.csi_part1_payload);
       }
-      stop_meas(&gNB->phy_proc_rx);
 
       n_errors = ((actual_payload ^ payload_received) & 1) + (((actual_payload ^ payload_received) & 2) >> 1)
                  + (((actual_payload ^ payload_received) & 4) >> 2) + n_errors;
     }
     if (sr_flag == 1)
       printf("SR: SNR=%f, n_trials=%d, n_bit_errors=%d\n", SNR, n_trials, sr_errors);
-    if (print_perf) {
-      time_stats_t *ts = &gNB->phy_proc_rx;
-      printf("cpu time for pucch format %d: per block %.2f us; nb blocks %d, max time %.2f;\n",
-             format,
-             ts->diff / ts->trials / cpuf / 1000.0,
-             ts->trials,
-             ts->max / cpuf / 1000.0);
-      reset_meas(ts);
-    }
+    if (print_perf && gNB->pucch01_proc_rx.trials > 0)
+      printStatIndent(&gNB->pucch01_proc_rx, "PUCCH01 RX");
+    if (print_perf && gNB->pucch23_proc_rx.trials > 0)
+      printStatIndent(&gNB->pucch23_proc_rx, "PUCCH23 RX");
     if (nr_bit > 0)
       printf("ACK/NACK: SNR=%f, n_trials=%d, n_bit_errors=%d\n", SNR, n_trials, ack_nack_errors);
     if ((float)(ack_nack_errors + sr_errors) / (float)(n_trials) <= target_error_rate) {
