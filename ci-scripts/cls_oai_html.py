@@ -12,7 +12,6 @@
 #-----------------------------------------------------------
 import re               # reg
 import fileinput
-import logging
 import os
 import time
 import subprocess
@@ -50,9 +49,6 @@ class HTMLManagement():
 
 	def CreateHtmlHeader(self, repository, branch):
 		if (not self.htmlHeaderCreated):
-			logging.info('\u001B[1m----------------------------------------\u001B[0m')
-			logging.info('\u001B[1m  Creating HTML header \u001B[0m')
-			logging.info('\u001B[1m----------------------------------------\u001B[0m')
 			self.htmlFile = open('test_results.html', 'w')
 			self.htmlFile.write('<!DOCTYPE html>\n')
 			self.htmlFile.write('<html class="no-js" lang="en-US">\n')
