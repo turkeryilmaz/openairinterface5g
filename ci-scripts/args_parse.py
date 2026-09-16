@@ -20,7 +20,7 @@ def strToBool(s):
         return False
     raise argparse.ArgumentTypeError(f"cannot interpret '{s}' as boolean")
 
-def ArgsParse(argvs,HTML,CONTAINERS):
+def ArgsParse(argvs, CONTAINERS):
 
     p = argparse.ArgumentParser(description="OAI CI driver", ) #formatter_class?
     p.add_argument('--local', '-l', action='store_true', default=False, help='Force local execution: rewrites the test xml script before running to always execute on localhost. Assumes images are available locally, will not remove any images and will run inside the current repo directory')
@@ -41,12 +41,8 @@ def ArgsParse(argvs,HTML,CONTAINERS):
 
     g = GlobalTestCtx(args.repository, args.workspace, args.branch, args.ranAllowMerge, args.targetBranch)
 
-    all_xml = args.xmls
-    HTML.testXMLfiles = all_xml
-    HTML.nbTestXMLfiles = len(all_xml)
-
     oc = OcCtx(args.OCUserName, args.OCPassword, args.OCProjectName)
 
     CONTAINERS.flexricTag = args.FlexRicTag
 
-    return args.local, args.datefmt, g, oc
+    return args.local, args.datefmt, args.xmls, g, oc

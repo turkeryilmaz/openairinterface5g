@@ -306,7 +306,7 @@ CONTAINERS = cls_containerize.Containerize()
 import args_parse
 # Force local execution, move all execution targets to localhost
 force_local = False
-force_local, date_fmt, g_ctx, oc = args_parse.ArgsParse(sys.argv,HTML,CONTAINERS)
+force_local, date_fmt, xmls, g_ctx, oc = args_parse.ArgsParse(sys.argv, CONTAINERS)
 fmt = "%(levelname)8s: %(message)s"
 if date_fmt:
     fmt = "[%(asctime)s] %(levelname)s %(message)s"
@@ -323,6 +323,8 @@ if __name__ == "__main__":
 		sys.exit(f'Insufficient Parameters: {g_ctx.repository=}, {g_ctx.branch=}, {g_ctx.workspace=}')
 	count = 0
 	foundCount = 0
+	HTML.testXMLfiles = xmls
+	HTML.nbTestXMLfiles = len(xmls)
 	while (count < HTML.nbTestXMLfiles):
 		xml_test_file = sys.path[0] + "/" + HTML.testXMLfiles[count]
 		if (os.path.isfile(xml_test_file)):
