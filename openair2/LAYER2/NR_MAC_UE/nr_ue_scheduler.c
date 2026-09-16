@@ -1711,8 +1711,8 @@ static bool schedule_uci_on_pusch(NR_UE_MAC_INST_t *mac,
       int nr_of_symbols = 0;
       int start_symbol_index = 0;
       if (pucch->initial_pucch_id > -1 && pucch->pucch_resource == NULL) {
-        const int idx = *current_UL_BWP->pucch_ConfigCommon->pucch_ResourceCommon;
-        const initial_pucch_resource_t pucch_resourcecommon = get_initial_pucch_resource(idx);
+        // Common HARQ: symbols from Table 9.2.1-1 row on the occasion (frozen at DCI)
+        const initial_pucch_resource_t pucch_resourcecommon = get_initial_pucch_resource(pucch->pucch_ResourceCommon);
         start_symbol_index = pucch_resourcecommon.startingSymbolIndex;
         nr_of_symbols = pucch_resourcecommon.nrofSymbols;
       }
