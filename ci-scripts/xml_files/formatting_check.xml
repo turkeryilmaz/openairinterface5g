@@ -2,7 +2,6 @@
 
 <testCaseList>
   <htmlTabName>License and Formatting Checks</htmlTabName>
-  <htmlTabIcon>wrench</htmlTabIcon>
 
   <testCase>
     <class>LicenceAndFormattingCheck</class>

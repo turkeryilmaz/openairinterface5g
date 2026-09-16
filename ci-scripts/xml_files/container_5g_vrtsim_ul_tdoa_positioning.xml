@@ -2,7 +2,6 @@
 
 <testCaseList>
   <htmlTabName>Monolithic gNB vrtsim + NRPPA validation</htmlTabName>
-  <htmlTabIcon>wrench</htmlTabIcon>
 
   <testCase>
     <class>Pull_Local_Registry</class>

@@ -2,7 +2,6 @@
 
 <testCaseList>
   <htmlTabName>Build Container Images</htmlTabName>
-  <htmlTabIcon>wrench</htmlTabIcon>
 
   <testCase>
     <class>Create_Workspace</class>

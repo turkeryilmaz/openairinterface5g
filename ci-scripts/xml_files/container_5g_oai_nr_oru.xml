@@ -2,7 +2,6 @@
 
 <testCaseList>
   <htmlTabName>O-RU vrtsim 1x1</htmlTabName>
-  <htmlTabIcon>wrench</htmlTabIcon>
 
   <testCase>
     <class>Pull_Local_Registry</class>

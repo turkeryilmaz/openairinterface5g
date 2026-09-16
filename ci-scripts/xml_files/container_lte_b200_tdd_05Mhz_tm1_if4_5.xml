@@ -2,7 +2,6 @@
 
 <testCaseList>
   <htmlTabName>Test-TDD-05MHz-TM1-IF4.5</htmlTabName>
-  <htmlTabIcon>tasks</htmlTabIcon>
 
   <testCase>
     <class>Custom_Command</class>

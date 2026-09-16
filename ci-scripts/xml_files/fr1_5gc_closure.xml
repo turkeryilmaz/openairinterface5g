@@ -2,7 +2,6 @@
 
 <testCaseList>
   <htmlTabName>5GC-Closure</htmlTabName>
-  <htmlTabIcon>log-out</htmlTabIcon>
 
   <testCase>
     <class>UndeployCoreNetwork</class>

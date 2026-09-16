@@ -2,7 +2,6 @@
 
 <testCaseList>
   <htmlTabName>20 MHz TDD SA</htmlTabName>
-  <htmlTabIcon>tasks</htmlTabIcon>
 
   <testCase>
     <class>Custom_Command</class>

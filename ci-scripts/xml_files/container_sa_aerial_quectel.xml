@@ -2,7 +2,6 @@
 
 <testCaseList>
   <htmlTabName>AERIAL 100 MHz TDD SA</htmlTabName>
-  <htmlTabIcon>tasks</htmlTabIcon>
 
   <testCase>
     <class>Pull_Local_Registry</class>

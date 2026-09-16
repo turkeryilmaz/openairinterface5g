@@ -2,7 +2,6 @@
 
 <testCaseList>
   <htmlTabName>Undeploy 5GC</htmlTabName>
-  <htmlTabIcon>tasks</htmlTabIcon>
 
   <testCase>
     <class>UndeployCoreNetwork</class>

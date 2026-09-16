@@ -2,7 +2,6 @@
 
 <testCaseList>
   <htmlTabName>Build and Run Unit Tests</htmlTabName>
-  <htmlTabIcon>wrench</htmlTabIcon>
 
   <testCase>
     <class>Build_Run_Tests</class>

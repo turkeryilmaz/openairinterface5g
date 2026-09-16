@@ -2,7 +2,6 @@
 
 <testCaseList>
   <htmlTabName>Sidelink test</htmlTabName>
-  <htmlTabIcon>wrench</htmlTabIcon>
 
   <testCase>
     <class>Pull_Local_Registry</class>

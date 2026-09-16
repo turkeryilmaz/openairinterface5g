@@ -2,7 +2,6 @@
 
 <testCaseList>
   <htmlTabName>Monolithic SA TDD gNB and FlexRic Integration</htmlTabName>
-  <htmlTabIcon>wrench</htmlTabIcon>
 
   <testCase>
     <class>Pull_Local_Registry</class>

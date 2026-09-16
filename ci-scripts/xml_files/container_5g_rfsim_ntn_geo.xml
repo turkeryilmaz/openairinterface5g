@@ -2,7 +2,6 @@
 
 <testCaseList>
   <htmlTabName>Monolithic SA NTN GEO gNB</htmlTabName>
-  <htmlTabIcon>wrench</htmlTabIcon>
 
   <testCase>
     <class>Pull_Local_Registry</class>

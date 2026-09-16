@@ -2,7 +2,6 @@
 
 <testCaseList>
   <htmlTabName>EPC-Closure</htmlTabName>
-  <htmlTabIcon>log-out</htmlTabIcon>
 
   <testCase>
     <class>UndeployCoreNetwork</class>

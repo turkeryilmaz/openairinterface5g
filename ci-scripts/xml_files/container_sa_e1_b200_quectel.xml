@@ -2,7 +2,6 @@
 
 <testCaseList>
   <htmlTabName>40 MHz TDD F1+E1 SA</htmlTabName>
-  <htmlTabIcon>tasks</htmlTabIcon>
 
   <testCase>
     <class>Pull_Local_Registry</class>

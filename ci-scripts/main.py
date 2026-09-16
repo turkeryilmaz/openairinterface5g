@@ -324,7 +324,7 @@ if __name__ == "__main__":
 		sys.exit(f'Insufficient Parameters: {g_ctx.repository=}, {g_ctx.branch=}, {g_ctx.workspace=}')
 	count = 0
 	foundCount = 0
-	TestXML = namedtuple("TestXML", ["filename", "title", "icon"])
+	TestXML = namedtuple("TestXML", ["filename", "title"])
 	test_xmls = []
 	for x in xmls:
 		xml_test_file = f"{sys.path[0]}/{x}"
@@ -338,7 +338,7 @@ if __name__ == "__main__":
 			logging.error(f"while parsing file {xml_test_file}: {e}")
 			sys.exit(1)
 		root = xmlTree.getroot()
-		t = TestXML(x, root.findtext('htmlTabName'), root.findtext('htmlTabIcon'))
+		t = TestXML(x, root.findtext('htmlTabName'))
 		test_xmls.append(t)
 
 	HTML.CreateHtmlHeader(g_ctx.repository, g_ctx.branch, test_xmls)

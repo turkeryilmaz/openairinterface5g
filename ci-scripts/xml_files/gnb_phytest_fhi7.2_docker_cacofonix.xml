@@ -2,7 +2,6 @@
 
 <testCaseList>
   <htmlTabName>Timing phytest 100 MHz 4x4 FHI7.2</htmlTabName>
-  <htmlTabIcon>tasks</htmlTabIcon>
 
   <testCase>
     <class>Custom_Script</class>

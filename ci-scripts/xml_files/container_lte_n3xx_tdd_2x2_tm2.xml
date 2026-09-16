@@ -2,7 +2,6 @@
 
 <testCaseList>
   <htmlTabName>2.6 Ghz TDD LTE 2x2 TM2</htmlTabName>
-  <htmlTabIcon>tasks</htmlTabIcon>
 
   <testCase>
     <class>Pull_Local_Registry</class>

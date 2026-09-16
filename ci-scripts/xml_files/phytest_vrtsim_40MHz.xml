@@ -2,7 +2,6 @@
 
 <testCaseList>
   <htmlTabName>Timing phytest 40 MHz with vrtsim</htmlTabName>
-  <htmlTabIcon>tasks</htmlTabIcon>
 
   <testCase>
     <class>Pull_Cluster_Image</class>

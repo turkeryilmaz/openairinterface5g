@@ -2,7 +2,6 @@
 
 <testCaseList>
   <htmlTabName>100 MHz TDD SA VVDN</htmlTabName>
-  <htmlTabIcon>tasks</htmlTabIcon>
 
   <testCase>
     <class>Custom_Script</class>

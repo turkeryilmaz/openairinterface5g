@@ -2,7 +2,6 @@
 
 <testCaseList>
   <htmlTabName>CN5G-Stop</htmlTabName>
-  <htmlTabIcon>log-in</htmlTabIcon>
 
   <testCase>
     <class>UndeployCoreNetwork</class>

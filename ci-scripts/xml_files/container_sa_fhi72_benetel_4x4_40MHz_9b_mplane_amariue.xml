@@ -2,7 +2,6 @@
 
 <testCaseList>
   <htmlTabName>40MHz 4x4 9b TDD SA Benetel M-plane</htmlTabName>
-  <htmlTabIcon>tasks</htmlTabIcon>
 
   <testCase>
     <class>DeployCoreNetwork</class>

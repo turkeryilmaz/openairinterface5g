@@ -2,7 +2,6 @@
 
 <testCaseList>
   <htmlTabName>Monolithic eNB - FDD 05MHz - noS1</htmlTabName>
-  <htmlTabIcon>wrench</htmlTabIcon>
 
   <testCase>
     <class>Pull_Local_Registry</class>

@@ -2,7 +2,6 @@
 
 <testCaseList>
   <htmlTabName>5GC-Start</htmlTabName>
-  <htmlTabIcon>log-in</htmlTabIcon>
 
   <testCase>
     <class>DeployCoreNetwork</class>

@@ -2,7 +2,6 @@
 
 <testCaseList>
   <htmlTabName>100 MHz 8x8 TDD SA Benetel</htmlTabName>
-  <htmlTabIcon>tasks</htmlTabIcon>
 
   <testCase>
     <class>Pull_Local_Registry</class>

@@ -2,7 +2,6 @@
 
 <testCaseList>
   <htmlTabName>F1 Handover 20 MHz TDD SA</htmlTabName>
-  <htmlTabIcon>tasks</htmlTabIcon>
 
   <testCase>
     <class>DeployCoreNetwork</class>

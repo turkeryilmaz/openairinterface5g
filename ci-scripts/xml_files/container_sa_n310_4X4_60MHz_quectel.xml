@@ -2,7 +2,6 @@
 
 <testCaseList>
   <htmlTabName>nFAPI 60 MHz 4x4 TDD SA</htmlTabName>
-  <htmlTabIcon>tasks</htmlTabIcon>
 
   <testCase>
     <class>Custom_Command</class>

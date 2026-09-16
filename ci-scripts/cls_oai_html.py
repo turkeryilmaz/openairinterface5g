@@ -91,20 +91,10 @@ class HTMLManagement():
 			f.write('  </table>\n')
 
 			f.write('  <br>\n')
-			f.write('  <ul class="nav nav-pills">\n')
+			f.write('  <ul class="nav nav-pills" style="display: flex; flex-wrap: wrap;">\n')
 			for i, xml in enumerate(xmls):
-				if i == 0:
-					pillMsg = '    <li class="active"><a data-toggle="pill" href="#'
-				else:
-					pillMsg = '    <li><a data-toggle="pill" href="#'
-				pillMsg += tabRef(i)
-				pillMsg += '">'
-				pillMsg += f'__STATE_{i}__'
-				pillMsg += xml.title
-				pillMsg += ' <span class="glyphicon glyphicon-'
-				pillMsg += xml.icon
-				pillMsg += '"></span></a></li>\n'
-				f.write(pillMsg)
+				active = ' class="active"' if i == 0 else ''
+				f.write(f'    <li{active}><a data-toggle="pill" href="#{tabRef(i)}">__STATE_{i}__{xml.title}</a></li>\n')
 			f.write('  </ul>\n')
 			f.write('  <div class="tab-content">\n')
 

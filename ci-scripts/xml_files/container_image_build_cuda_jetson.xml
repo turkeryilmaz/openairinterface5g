@@ -2,7 +2,6 @@
 
 <testCaseList>
   <htmlTabName>Build Container Images for ARM with CUDA</htmlTabName>
-  <htmlTabIcon>wrench</htmlTabIcon>
 
   <testCase>
     <class>Create_Workspace</class>

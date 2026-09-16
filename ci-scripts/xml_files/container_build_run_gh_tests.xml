@@ -2,7 +2,6 @@
 
 <testCaseList>
   <htmlTabName>Build and Run Unit Tests with CUDA</htmlTabName>
-  <htmlTabIcon>wrench</htmlTabIcon>
 
   <testCase>
     <class>Create_Workspace</class>

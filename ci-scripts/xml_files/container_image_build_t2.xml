@@ -2,7 +2,6 @@
 
 <testCaseList>
   <htmlTabName>Build Images with T2 support</htmlTabName>
-  <htmlTabIcon>wrench</htmlTabIcon>
   <testCase>
     <class>Create_Workspace</class>
     <desc>Create new Workspace for server 0</desc>

@@ -2,7 +2,6 @@
 
 <testCaseList>
   <htmlTabName>100 MHz 4x4 TDD SA VVDN nFAPI</htmlTabName>
-  <htmlTabIcon>tasks</htmlTabIcon>
 
   <testCase>
     <class>DeployCoreNetwork</class>

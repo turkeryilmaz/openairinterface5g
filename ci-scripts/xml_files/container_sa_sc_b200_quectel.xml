@@ -2,7 +2,6 @@
 
 <testCaseList>
   <htmlTabName>40 MHz TDD (pattern2) SA with SC-FDMA</htmlTabName>
-  <htmlTabIcon>tasks</htmlTabIcon>
 
   <testCase>
     <class>Custom_Command</class>

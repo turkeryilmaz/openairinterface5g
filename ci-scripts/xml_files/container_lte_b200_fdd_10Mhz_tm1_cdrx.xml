@@ -2,7 +2,6 @@
 
 <testCaseList>
   <htmlTabName>Test-FDD-10MHz-CDRX-TM1</htmlTabName>
-  <htmlTabIcon>tasks</htmlTabIcon>
 
   <testCase>
     <class>Custom_Command</class>

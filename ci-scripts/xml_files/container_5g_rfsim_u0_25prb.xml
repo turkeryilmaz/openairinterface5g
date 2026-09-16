@@ -2,7 +2,6 @@
 
 <testCaseList>
   <htmlTabName>VNF-PNF nFAPI FDD u0 25PRB gNB</htmlTabName>
-  <htmlTabIcon>wrench</htmlTabIcon>
 
   <testCase>
     <class>Pull_Local_Registry</class>

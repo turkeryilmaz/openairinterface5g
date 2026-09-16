@@ -2,7 +2,6 @@
 
 <testCaseList>
   <htmlTabName>Monolithic SA TDD gNB</htmlTabName>
-  <htmlTabIcon>wrench</htmlTabIcon>
 
   <testCase>
     <class>Deploy_Object</class>
