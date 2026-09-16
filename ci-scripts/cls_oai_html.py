@@ -16,6 +16,10 @@ import os
 import time
 import subprocess
 
+def tabRef(idx):
+	# implicit, unique HTML anchor for the tab of the idx'th scenario
+	return f"test-tab-{idx}"
+
 #-----------------------------------------------------------
 # Class Declaration
 #-----------------------------------------------------------
@@ -93,9 +97,9 @@ class HTMLManagement():
 					pillMsg = '    <li class="active"><a data-toggle="pill" href="#'
 				else:
 					pillMsg = '    <li><a data-toggle="pill" href="#'
-				pillMsg += xml.ref
+				pillMsg += tabRef(i)
 				pillMsg += '">'
-				pillMsg += '__STATE_' + xml.title + '__'
+				pillMsg += f'__STATE_{i}__'
 				pillMsg += xml.title
 				pillMsg += ' <span class="glyphicon glyphicon-'
 				pillMsg += xml.icon
@@ -104,9 +108,9 @@ class HTMLManagement():
 			f.write('  </ul>\n')
 			f.write('  <div class="tab-content">\n')
 
-	def CreateHtmlTabHeader(self, xml, ref):
+	def CreateHtmlTabHeader(self, xml, idx):
 		with open('test_results.html', 'a') as f:
-			f.write(f'  <div id="{ref}" class="tab-pane fade">\n')
+			f.write(f'  <div id="{tabRef(idx)}" class="tab-pane fade">\n')
 			f.write(f'  <h3>Test Summary for <span class="glyphicon glyphicon-file"></span> {xml}</h3>\n')
 			f.write('  <table class="table" border = "1">\n')
 			f.write('      <tr bgcolor = "#33CCFF" >\n')
@@ -119,7 +123,7 @@ class HTMLManagement():
 			f.write('        <th>Info</th>\n')
 			f.write('      </tr>\n')
 
-	def CreateHtmlTabFooter(self, passStatus, name):
+	def CreateHtmlTabFooter(self, passStatus, idx):
 		with open('test_results.html', 'a') as f:
 			f.write('      <tr>\n')
 			f.write('        <th bgcolor = "#33CCFF" colspan="3">Final Tab Status</th>\n')
@@ -131,10 +135,10 @@ class HTMLManagement():
 			f.write('  </table>\n')
 			f.write('  </div>\n')
 		if passStatus:
-			cmd = f"sed -i -e 's/__STATE_{name}__//' test_results.html"
+			cmd = f"sed -i -e 's/__STATE_{idx}__//' test_results.html"
 			subprocess.run(cmd, shell=True)
 		else:
-			cmd = f"sed -i -e 's/__STATE_{name}" + r"__/<span class=\"glyphicon glyphicon-remove\"><\/span>/' test_results.html"
+			cmd = f"sed -i -e 's/__STATE_{idx}" + r"__/<span class=\"glyphicon glyphicon-remove\"><\/span>/' test_results.html"
 			subprocess.run(cmd, shell=True)
 
 	def CreateHtmlFooter(self, passStatus):

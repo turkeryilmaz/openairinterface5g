@@ -1,7 +1,6 @@
 <!-- SPDX-License-Identifier: LicenseRef-CSSL-1.0 -->
 
 <testCaseList>
-  <htmlTabRef>formatting-tab</htmlTabRef>
   <htmlTabName>License and Formatting Checks</htmlTabName>
   <htmlTabIcon>wrench</htmlTabIcon>
 

@@ -1,7 +1,6 @@
 <!-- SPDX-License-Identifier: LicenseRef-CSSL-1.0 -->
 
 <testCaseList>
-  <htmlTabRef>rfsim-4glte-fdd10mhz</htmlTabRef>
   <htmlTabName>Monolithic eNB - FDD 10MHz</htmlTabName>
   <htmlTabIcon>wrench</htmlTabIcon>
 

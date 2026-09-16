@@ -324,7 +324,7 @@ if __name__ == "__main__":
 		sys.exit(f'Insufficient Parameters: {g_ctx.repository=}, {g_ctx.branch=}, {g_ctx.workspace=}')
 	count = 0
 	foundCount = 0
-	TestXML = namedtuple("TestXML", ["filename", "ref", "title", "icon"])
+	TestXML = namedtuple("TestXML", ["filename", "title", "icon"])
 	test_xmls = []
 	for x in xmls:
 		xml_test_file = f"{sys.path[0]}/{x}"
@@ -338,7 +338,7 @@ if __name__ == "__main__":
 			logging.error(f"while parsing file {xml_test_file}: {e}")
 			sys.exit(1)
 		root = xmlTree.getroot()
-		t = TestXML(x, root.findtext('htmlTabRef'), root.findtext('htmlTabName'), root.findtext('htmlTabIcon'))
+		t = TestXML(x, root.findtext('htmlTabName'), root.findtext('htmlTabIcon'))
 		test_xmls.append(t)
 
 	HTML.CreateHtmlHeader(g_ctx.repository, g_ctx.branch, test_xmls)
@@ -346,7 +346,7 @@ if __name__ == "__main__":
 	signal.signal(signal.SIGINT, receive_signal)
 
 	final_status = True
-	for xml in test_xmls:
+	for i, xml in enumerate(test_xmls):
 		logging.info('\u001B[1m----------------------------------------\u001B[0m')
 		logging.info(f'\u001B[1m  Starting Scenario: {xml.filename}\u001B[0m')
 		logging.info('\u001B[1m----------------------------------------\u001B[0m')
@@ -367,18 +367,18 @@ if __name__ == "__main__":
 		xmlRoot = xmlTree.getroot()
 		all_tests = xmlRoot.findall('testCase')
 
-		HTML.CreateHtmlTabHeader(xml.filename, xml.ref)
+		HTML.CreateHtmlTabHeader(xml.filename, i)
 		HTML.startTime=int(round(time.time() * 1000))
 
 		success = run_tests(g_ctx, logPath, HTML, all_tests)
 
 		if not success:
 			logging.error(f'\u001B[1;37;41mScenario {xml.filename} failed\u001B[0m')
-			HTML.CreateHtmlTabFooter(False, xml.title)
+			HTML.CreateHtmlTabFooter(False, i)
 			final_status = False
 		else:
 			logging.info(f'\u001B[1;37;42mScenario {xml.filename} passed\u001B[0m')
-			HTML.CreateHtmlTabFooter(True, xml.title)
+			HTML.CreateHtmlTabFooter(True, i)
 
 	HTML.CreateHtmlFooter(final_status)
 	ret = 0 if final_status else 1

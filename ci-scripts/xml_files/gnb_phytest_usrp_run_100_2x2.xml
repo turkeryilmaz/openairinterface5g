@@ -1,6 +1,5 @@
 <!-- SPDX-License-Identifier: LicenseRef-CSSL-1.0 -->
 <testCaseList>
-  <htmlTabRef>gNB-PHY-Test-100-2x2</htmlTabRef>
   <htmlTabName>Timing phytest 100 MHz 2x2</htmlTabName>
   <htmlTabIcon>tasks</htmlTabIcon>
 

@@ -1,7 +1,6 @@
 <!-- SPDX-License-Identifier: LicenseRef-CSSL-1.0 -->
 
 <testCaseList>
-  <htmlTabRef>test-5g-fhi72-4x4-vvdn</htmlTabRef>
   <htmlTabName>100 MHz 4x4 TDD SA VVDN</htmlTabName>
   <htmlTabIcon>tasks</htmlTabIcon>
 

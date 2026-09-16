@@ -1,7 +1,6 @@
 <!-- SPDX-License-Identifier: LicenseRef-CSSL-1.0 -->
 
 <testCaseList>
-  <htmlTabRef>rfsim-5gnr-ntn-Leo</htmlTabRef>
   <htmlTabName>Monolithic SA NTN LEO gNB</htmlTabName>
   <htmlTabIcon>wrench</htmlTabIcon>
 

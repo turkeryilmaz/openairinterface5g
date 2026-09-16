@@ -1,7 +1,6 @@
 <!-- SPDX-License-Identifier: LicenseRef-CSSL-1.0 -->
 
 <testCaseList>
-  <htmlTabRef>rfsim-fr2-66prb-5gnr-tdd</htmlTabRef>
   <htmlTabName>Monolithic FR2 gNB</htmlTabName>
   <htmlTabIcon>wrench</htmlTabIcon>
 

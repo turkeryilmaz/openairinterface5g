@@ -1,7 +1,6 @@
 <!-- SPDX-License-Identifier: LicenseRef-CSSL-1.0 -->
 
 <testCaseList>
-  <htmlTabRef>build-cuda-tab</htmlTabRef>
   <htmlTabName>Build Container Images for ARM with CUDA</htmlTabName>
   <htmlTabIcon>wrench</htmlTabIcon>
 

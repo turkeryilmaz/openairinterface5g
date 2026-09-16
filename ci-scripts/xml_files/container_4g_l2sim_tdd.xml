@@ -1,7 +1,6 @@
 <!-- SPDX-License-Identifier: LicenseRef-CSSL-1.0 -->
 
 <testCaseList>
-  <htmlTabRef>l2sim-4glte-tdd</htmlTabRef>
   <htmlTabName>Testing 4G LTE L2 sim - FDD eNB</htmlTabName>
   <htmlTabIcon>wrench</htmlTabIcon>
 

@@ -1,7 +1,6 @@
 <!-- SPDX-License-Identifier: LicenseRef-CSSL-1.0 -->
 
 <testCaseList>
-  <htmlTabRef>build-tab</htmlTabRef>
   <htmlTabName>Build Images on Cluster</htmlTabName>
   <htmlTabIcon>wrench</htmlTabIcon>
 

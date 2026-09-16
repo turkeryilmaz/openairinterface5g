@@ -1,7 +1,6 @@
 <!-- SPDX-License-Identifier: LicenseRef-CSSL-1.0 -->
 
 <testCaseList>
-  <htmlTabRef>rfsim-5gnr-flexric</htmlTabRef>
   <htmlTabName>Monolithic SA TDD gNB and FlexRic Integration</htmlTabName>
   <htmlTabIcon>wrench</htmlTabIcon>
 
