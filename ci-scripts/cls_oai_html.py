@@ -23,11 +23,6 @@ class HTMLManagement():
 
 	def __init__(self):
 
-		self.nbTestXMLfiles = 0
-		self.htmlTabRefs = []
-		self.htmlTabNames = []
-		self.htmlTabIcons = []
-
 		self.startTime = int(round(time.time() * 1000))
 		self.testCaseIdx = ''
 		self.desc = ''
@@ -37,7 +32,7 @@ class HTMLManagement():
 #-----------------------------------------------------------
 
 
-	def CreateHtmlHeader(self, repository, branch):
+	def CreateHtmlHeader(self, repository, branch, xmls):
 		with open('test_results.html', 'w') as f:
 			f.write('<!DOCTYPE html>\n')
 			f.write('<html class="no-js" lang="en-US">\n')
@@ -93,21 +88,19 @@ class HTMLManagement():
 
 			f.write('  <br>\n')
 			f.write('  <ul class="nav nav-pills">\n')
-			count = 0
-			while (count < self.nbTestXMLfiles):
-				if count == 0:
+			for i, xml in enumerate(xmls):
+				if i == 0:
 					pillMsg = '    <li class="active"><a data-toggle="pill" href="#'
 				else:
 					pillMsg = '    <li><a data-toggle="pill" href="#'
-				pillMsg += self.htmlTabRefs[count]
+				pillMsg += xml.ref
 				pillMsg += '">'
-				pillMsg += '__STATE_' + self.htmlTabNames[count] + '__'
-				pillMsg += self.htmlTabNames[count]
+				pillMsg += '__STATE_' + xml.title + '__'
+				pillMsg += xml.title
 				pillMsg += ' <span class="glyphicon glyphicon-'
-				pillMsg += self.htmlTabIcons[count]
+				pillMsg += xml.icon
 				pillMsg += '"></span></a></li>\n'
 				f.write(pillMsg)
-				count += 1
 			f.write('  </ul>\n')
 			f.write('  <div class="tab-content">\n')
 

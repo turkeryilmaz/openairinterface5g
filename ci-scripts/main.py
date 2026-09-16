@@ -36,6 +36,7 @@ import time		# sleep
 import os
 import subprocess
 import lxml.etree as ET
+from collections import namedtuple
 import logging
 import signal
 import traceback
@@ -323,40 +324,37 @@ if __name__ == "__main__":
 		sys.exit(f'Insufficient Parameters: {g_ctx.repository=}, {g_ctx.branch=}, {g_ctx.workspace=}')
 	count = 0
 	foundCount = 0
-	HTML.testXMLfiles = xmls
-	HTML.nbTestXMLfiles = len(xmls)
-	while (count < HTML.nbTestXMLfiles):
-		xml_test_file = sys.path[0] + "/" + HTML.testXMLfiles[count]
-		if (os.path.isfile(xml_test_file)):
-			try:
-				xmlTree = ET.parse(xml_test_file)
-			except Exception as e:
-				print(f"Error: {e} while parsing file: {xml_test_file}.")
-			xmlRoot = xmlTree.getroot()
-			HTML.htmlTabRefs.append(xmlRoot.findtext('htmlTabRef'))
-			HTML.htmlTabNames.append(xmlRoot.findtext('htmlTabName'))
-			HTML.htmlTabIcons.append(xmlRoot.findtext('htmlTabIcon'))
-			foundCount += 1
-		count += 1
-	if foundCount != HTML.nbTestXMLfiles:
-		HTML.nbTestXMLfiles=foundCount
+	TestXML = namedtuple("TestXML", ["filename", "ref", "title", "icon"])
+	test_xmls = []
+	for x in xmls:
+		xml_test_file = f"{sys.path[0]}/{x}"
+		logging.info(f"open and parse file {xml_test_file}")
+		if not os.path.isfile(xml_test_file):
+			logging.error(f"no such file {xml_test_file}")
+			sys.exit(1)
+		try:
+			xmlTree = ET.parse(xml_test_file)
+		except Exception as e:
+			logging.error(f"while parsing file {xml_test_file}: {e}")
+			sys.exit(1)
+		root = xmlTree.getroot()
+		t = TestXML(x, root.findtext('htmlTabRef'), root.findtext('htmlTabName'), root.findtext('htmlTabIcon'))
+		test_xmls.append(t)
 
-	HTML.CreateHtmlHeader(g_ctx.repository, g_ctx.branch)
+	HTML.CreateHtmlHeader(g_ctx.repository, g_ctx.branch, test_xmls)
 
 	signal.signal(signal.SIGINT, receive_signal)
 
-	xmls = HTML.testXMLfiles
-
 	final_status = True
-	for xml in xmls:
+	for xml in test_xmls:
 		logging.info('\u001B[1m----------------------------------------\u001B[0m')
-		logging.info(f'\u001B[1m  Starting Scenario: {xml}\u001B[0m')
+		logging.info(f'\u001B[1m  Starting Scenario: {xml.filename}\u001B[0m')
 		logging.info('\u001B[1m----------------------------------------\u001B[0m')
 
-		xml_test_file = f"{cwd}/{xml}"
+		xml_test_file = f"{cwd}/{xml.filename}"
 
 		# directory where all log artifacts will be placed
-		logPath = f"{cwd}/../cmake_targets/log/{xml}.d"
+		logPath = f"{cwd}/../cmake_targets/log/{xml.filename}.d"
 		# we run from within ci-scripts, but the logPath is absolute, so replace
 		# the ci-scripts/..; if it does not exist, nothing will happen
 		logPath = logPath.replace(r'/ci-scripts/..', '')
@@ -369,23 +367,18 @@ if __name__ == "__main__":
 		xmlRoot = xmlTree.getroot()
 		all_tests = xmlRoot.findall('testCase')
 
-		HTML.nbTestXMLfiles = 1
-		HTML.htmlTabRefs = [xmlRoot.findtext('htmlTabRef')]
-		HTML.htmlTabNames = [xmlRoot.findtext('htmlTabName')]
-		HTML.htmlTabIcons = [xmlRoot.findtext('htmlTabIcon')]
-
-		HTML.CreateHtmlTabHeader(xml, xmlRoot.findtext('htmlTabRef'))
+		HTML.CreateHtmlTabHeader(xml.filename, xml.ref)
 		HTML.startTime=int(round(time.time() * 1000))
 
 		success = run_tests(g_ctx, logPath, HTML, all_tests)
 
 		if not success:
-			logging.error(f'\u001B[1;37;41mScenario {xml} failed\u001B[0m')
-			HTML.CreateHtmlTabFooter(False, xmlRoot.findtext('htmlTabName'))
+			logging.error(f'\u001B[1;37;41mScenario {xml.filename} failed\u001B[0m')
+			HTML.CreateHtmlTabFooter(False, xml.title)
 			final_status = False
 		else:
-			logging.info(f'\u001B[1;37;42mScenario {xml} passed\u001B[0m')
-			HTML.CreateHtmlTabFooter(True, xmlRoot.findtext('htmlTabName'))
+			logging.info(f'\u001B[1;37;42mScenario {xml.filename} passed\u001B[0m')
+			HTML.CreateHtmlTabFooter(True, xml.title)
 
 	HTML.CreateHtmlFooter(final_status)
 	ret = 0 if final_status else 1
