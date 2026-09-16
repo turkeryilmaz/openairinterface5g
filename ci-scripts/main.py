@@ -379,11 +379,11 @@ if __name__ == "__main__":
 		success = run_tests(g_ctx, logPath, HTML, all_tests)
 
 		if not success:
-			logging.error('\u001B[1;37;41mScenario failed\u001B[0m')
+			logging.error(f'\u001B[1;37;41mScenario {xml} failed\u001B[0m')
 			HTML.CreateHtmlTabFooter(False)
 			final_status = False
 		else:
-			logging.info('\u001B[1;37;42mScenario passed\u001B[0m')
+			logging.info(f'\u001B[1;37;42mScenario {xml} passed\u001B[0m')
 			HTML.CreateHtmlTabFooter(True)
 
 	HTML.CreateHtmlFooter(final_status)
