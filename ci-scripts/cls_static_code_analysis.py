@@ -109,7 +109,7 @@ class StaticCodeAnalysis():
 			if analyzed:
 				logging.debug('files not formatted properly: ' + str(nbFilesNotFormatted))
 				if nbFilesNotFormatted == 0:
-					HTML.CreateHtmlTestRow('File(s) Format', 'OK', CONST.ALL_PROCESSES_OK)
+					HTML.CreateHtmlTestRowQueue('File(s) Format', 'OK', [])
 				else:
 					html_cell = f'Number of files not following OAI Rules: {nbFilesNotFormatted}\n'
 					for nFile in listFilesNotFormatted:
@@ -119,7 +119,7 @@ class StaticCodeAnalysis():
 
 				logging.debug('header files not respecting the circular dependency protection: ' + str(len(circularHeaderDependencyFiles)))
 				if len(circularHeaderDependencyFiles) == 0:
-					HTML.CreateHtmlTestRow('Header Circular Dependency', 'OK', CONST.ALL_PROCESSES_OK)
+					HTML.CreateHtmlTestRowQueue('Header Circular Dependency', 'OK', [])
 				else:
 					html_cell = f'Number of files not respecting: {len(circularHeaderDependencyFiles)}\n'
 					for nFile in circularHeaderDependencyFiles:
@@ -130,7 +130,7 @@ class StaticCodeAnalysis():
 
 				logging.debug('files with a GNU GPL license: ' + str(len(gnuGplLicenceFiles)))
 				if len(gnuGplLicenceFiles) == 0:
-					HTML.CreateHtmlTestRow('Files w/ GNU GPL License', 'OK', CONST.ALL_PROCESSES_OK)
+					HTML.CreateHtmlTestRowQueue('Files w/ GNU GPL License', 'OK', [])
 				else:
 					html_cell = f'Number of files not respecting: {len(gnuGplLicenceFiles)}\n'
 					for nFile in gnuGplLicenceFiles:
@@ -141,7 +141,7 @@ class StaticCodeAnalysis():
 
 				logging.debug('files with a suspect license: ' + str(len(suspectLicenceFiles)))
 				if len(suspectLicenceFiles) == 0:
-					HTML.CreateHtmlTestRow('Files with suspect license', 'OK', CONST.ALL_PROCESSES_OK)
+					HTML.CreateHtmlTestRowQueue('Files with suspect license', 'OK', [])
 				else:
 					html_cell = f'Number of files not respecting: {len(suspectLicenceFiles)}\n'
 					for nFile in suspectLicenceFiles:
@@ -152,11 +152,9 @@ class StaticCodeAnalysis():
 
 			else:
 				finalStatus = -1
-				HTML.htmleNBFailureMsg = 'Could not fully analyze oai-formatting-check.txt file'
-				HTML.CreateHtmlTestRow('N/A', 'KO', CONST.ENB_PROCESS_NOLOGFILE_TO_ANALYZE)
+				HTML.CreateHtmlTestRowQueue('N/A', 'OK?', ['Could not fully analyze oai-formatting-check.txt file'])
 		else:
 			finalStatus = -1
-			HTML.htmleNBFailureMsg = 'Could not access oai-formatting-check.txt file'
-			HTML.CreateHtmlTestRow('N/A', 'KO', CONST.ENB_PROCESS_NOLOGFILE_TO_ANALYZE)
+			HTML.CreateHtmlTestRowQueue('N/A', 'OK?', ['Could not access oai-formatting-check.txt file'])
 
 		return finalStatus == 0

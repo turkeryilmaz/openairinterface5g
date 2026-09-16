@@ -38,8 +38,8 @@ class Native():
 
 		if success:
 			logging.info('\u001B[1m Building OAI Pass\u001B[0m')
-			HTML.CreateHtmlTestRow(options, 'OK', CONST.ALL_PROCESSES_OK)
+			HTML.CreateHtmlTestRowQueue(options, 'OK', [])
 		else:
 			logging.error('\u001B[1m Building OAI Failed\u001B[0m')
-			HTML.CreateHtmlTestRow(options, 'KO', CONST.ALL_PROCESSES_OK)
+			HTML.CreateHtmlTestRowQueue(options, 'KO', [])
 		return success
