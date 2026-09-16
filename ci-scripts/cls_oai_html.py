@@ -16,8 +16,6 @@ import os
 import time
 import subprocess
 
-import constants as CONST
-
 #-----------------------------------------------------------
 # Class Declaration
 #-----------------------------------------------------------

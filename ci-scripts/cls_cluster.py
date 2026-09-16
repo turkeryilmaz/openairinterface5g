@@ -16,7 +16,6 @@ import time
 import os
 
 import cls_oai_html
-import constants as CONST
 import cls_containerize
 import cls_cmd
 from cls_ci_helper import archiveArtifact

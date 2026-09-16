@@ -18,7 +18,6 @@ import os
 # OAI Testing modules
 #-----------------------------------------------------------
 import cls_cmd
-import constants as CONST
 import cls_analysis
 from cls_ci_helper import archiveArtifact
 

@@ -13,7 +13,6 @@
 # Import Components
 #-----------------------------------------------------------
 
-import constants as CONST
 
 
 import cls_oaicitest		 #main class for OAI CI test framework

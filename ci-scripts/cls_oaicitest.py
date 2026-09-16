@@ -19,8 +19,6 @@ import concurrent.futures
 import json
 
 #import our libs
-import constants as CONST
-
 import cls_module
 import cls_corenetwork
 import cls_analysis
