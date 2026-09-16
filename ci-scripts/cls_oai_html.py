@@ -27,7 +27,6 @@ class HTMLManagement():
 		self.htmlTabRefs = []
 		self.htmlTabNames = []
 		self.htmlTabIcons = []
-		self.testXMLfiles = []
 
 		self.startTime = int(round(time.time() * 1000))
 		self.testCaseIdx = ''
@@ -112,13 +111,10 @@ class HTMLManagement():
 			f.write('  </ul>\n')
 			f.write('  <div class="tab-content">\n')
 
-	def CreateHtmlTabHeader(self):
+	def CreateHtmlTabHeader(self, xml, ref):
 		with open('test_results.html', 'a') as f:
-			if (self.nbTestXMLfiles == 1):
-				f.write('  <div id="' + self.htmlTabRefs[0] + '" class="tab-pane fade">\n')
-				f.write('  <h3>Test Summary for <span class="glyphicon glyphicon-file"></span> ' + self.testXMLfiles[0] + '</h3>\n')
-			else:
-				f.write('  <div id="build-tab" class="tab-pane fade">\n')
+			f.write(f'  <div id="{ref}" class="tab-pane fade">\n')
+			f.write(f'  <h3>Test Summary for <span class="glyphicon glyphicon-file"></span> {xml}</h3>\n')
 			f.write('  <table class="table" border = "1">\n')
 			f.write('      <tr bgcolor = "#33CCFF" >\n')
 			f.write('        <th style="width:5%">Relative Time (s)</th>\n')
@@ -130,7 +126,7 @@ class HTMLManagement():
 			f.write('        <th>Info</th>\n')
 			f.write('      </tr>\n')
 
-	def CreateHtmlTabFooter(self, passStatus):
+	def CreateHtmlTabFooter(self, passStatus, name):
 		with open('test_results.html', 'a') as f:
 			f.write('      <tr>\n')
 			f.write('        <th bgcolor = "#33CCFF" colspan="3">Final Tab Status</th>\n')
@@ -142,10 +138,10 @@ class HTMLManagement():
 			f.write('  </table>\n')
 			f.write('  </div>\n')
 		if passStatus:
-			cmd = "sed -i -e 's/__STATE_" + self.htmlTabNames[0] + "__//' test_results.html"
+			cmd = f"sed -i -e 's/__STATE_{name}__//' test_results.html"
 			subprocess.run(cmd, shell=True)
 		else:
-			cmd = "sed -i -e 's/__STATE_" + self.htmlTabNames[0] + r"__/<span class=\"glyphicon glyphicon-remove\"><\/span>/' test_results.html"
+			cmd = f"sed -i -e 's/__STATE_{name}" + r"__/<span class=\"glyphicon glyphicon-remove\"><\/span>/' test_results.html"
 			subprocess.run(cmd, shell=True)
 
 	def CreateHtmlFooter(self, passStatus):

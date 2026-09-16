@@ -369,24 +369,23 @@ if __name__ == "__main__":
 		xmlRoot = xmlTree.getroot()
 		all_tests = xmlRoot.findall('testCase')
 
-		HTML.testXMLfiles = [xml]
 		HTML.nbTestXMLfiles = 1
 		HTML.htmlTabRefs = [xmlRoot.findtext('htmlTabRef')]
 		HTML.htmlTabNames = [xmlRoot.findtext('htmlTabName')]
 		HTML.htmlTabIcons = [xmlRoot.findtext('htmlTabIcon')]
 
-		HTML.CreateHtmlTabHeader()
+		HTML.CreateHtmlTabHeader(xml, xmlRoot.findtext('htmlTabRef'))
 		HTML.startTime=int(round(time.time() * 1000))
 
 		success = run_tests(g_ctx, logPath, HTML, all_tests)
 
 		if not success:
 			logging.error(f'\u001B[1;37;41mScenario {xml} failed\u001B[0m')
-			HTML.CreateHtmlTabFooter(False)
+			HTML.CreateHtmlTabFooter(False, xmlRoot.findtext('htmlTabName'))
 			final_status = False
 		else:
 			logging.info(f'\u001B[1;37;42mScenario {xml} passed\u001B[0m')
-			HTML.CreateHtmlTabFooter(True)
+			HTML.CreateHtmlTabFooter(True, xmlRoot.findtext('htmlTabName'))
 
 	HTML.CreateHtmlFooter(final_status)
 	ret = 0 if final_status else 1
