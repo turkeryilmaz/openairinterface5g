@@ -1,0 +1,26 @@
+# Example only. Do not install without site review and role-specific env files.
+[Unit]
+Description=OAI bounded flight capture (%i)
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=infinity
+StartLimitBurst=3
+
+[Service]
+Type=simple
+User=oai
+WorkingDirectory=/opt/oai/current
+EnvironmentFile=/etc/oai/flight/%i.env
+ExecStart=/usr/bin/python3 /opt/oai/current/tools/flight_test/capture.py --role %i --output /var/lib/oai-flight/captures --repo /opt/oai/current --config ${OAI_FLIGHT_CONFIG} --core-ip ${OAI_FLIGHT_CORE_IP} --interface ${OAI_FLIGHT_INTERFACE} -- ${OAI_FLIGHT_BINARY} -O ${OAI_FLIGHT_CONFIG} $OAI_FLIGHT_EXTRA_ARGS
+Restart=no
+RestartSec=30s
+KillMode=control-group
+TimeoutStopSec=20s
+NoNewPrivileges=yes
+PrivateTmp=yes
+AmbientCapabilities=CAP_SYS_NICE CAP_NET_ADMIN CAP_NET_RAW CAP_IPC_LOCK
+LimitRTPRIO=99
+LimitMEMLOCK=infinity
+
+[Install]
+WantedBy=multi-user.target
