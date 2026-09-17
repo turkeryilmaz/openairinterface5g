@@ -97,7 +97,7 @@ int main(int argc, char **argv)
   uint8_t snr1set = 0;
   double **s_re, **s_im, **r_re, **r_im;
   FILE *output_fd = NULL;
-  int trial, n_trials = 100, n_errors = 0, ack_nack_errors = 0, sr_errors = 0;
+  int trial, n_trials = 100, ack_nack_errors = 0, sr_errors = 0;
   int ret = 1;
   uint8_t transmission_mode = 1, n_tx = 1, n_rx = 1;
   uint16_t Nid_cell = 0;
@@ -108,7 +108,7 @@ int main(int argc, char **argv)
   int16_t amp = 0x7FFF;
   int nr_slot_tx = 0;
   int nr_frame_tx = 0;
-  uint64_t actual_payload = 0, payload_received = 0;
+  uint64_t actual_payload = 0;
   bool random_payload = true;
   int nr_bit = 1; // maximum value possible is 2
   uint8_t m0 = 0; // higher layer paramater initial cyclic shift
@@ -539,7 +539,6 @@ int main(int argc, char **argv)
 
     ack_nack_errors = 0;
     sr_errors = 0;
-    n_errors = 0;
     c16_t **txdataF = gNB->common_vars.txdataF;
     for (trial = 0; trial < n_trials && !stop; trial++) {
       for (int aatx = 0; aatx < 1; aatx++)
@@ -783,20 +782,21 @@ int main(int argc, char **argv)
         start_meas(&gNB->pucch23_proc_rx);
         nr_decode_pucch2(gNB, rxdataF, nr_frame_tx, nr_slot_tx, &uci_pdu, &pucch_pdu);
         stop_meas(&gNB->pucch23_proc_rx);
-        int csi_part1_bytes = pucch_pdu.bit_len_csi_part1 >> 3;
-        if ((pucch_pdu.bit_len_csi_part1 & 7) > 0)
-          csi_part1_bytes++;
-        for (int i = 0; i < csi_part1_bytes; i++) {
-          if (uci_pdu.csi_part1.csi_part1_payload[i] != ((uint8_t *)&actual_payload)[i]) {
-            ack_nack_errors++;
-            break;
+        if (uci_pdu.csi_part1.csi_part1_crc == 1) // missed reception
+          ack_nack_errors++;
+        else {
+          int csi_part1_bytes = pucch_pdu.bit_len_csi_part1 >> 3;
+          if ((pucch_pdu.bit_len_csi_part1 & 7) > 0)
+            csi_part1_bytes++;
+          for (int i = 0; i < csi_part1_bytes; i++) {
+            if (uci_pdu.csi_part1.csi_part1_payload[i] != ((uint8_t *)&actual_payload)[i]) {
+              ack_nack_errors++;
+              break;
+            }
           }
         }
         free(uci_pdu.csi_part1.csi_part1_payload);
       }
-
-      n_errors = ((actual_payload ^ payload_received) & 1) + (((actual_payload ^ payload_received) & 2) >> 1)
-                 + (((actual_payload ^ payload_received) & 4) >> 2) + n_errors;
     }
     if (sr_flag == 1)
       printf("SR: SNR=%f, n_trials=%d, n_bit_errors=%d\n", SNR, n_trials, sr_errors);
