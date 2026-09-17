@@ -97,6 +97,12 @@ void flight_recorder_shutdown(void);
 /** True only while producers may submit numeric records. */
 bool flight_recorder_enabled(void);
 
+/** Sample one in 1024 calls using a caller-owned counter; independent of chunk size. */
+static inline bool flight_recorder_sample_due(uint32_t *calls)
+{
+  return (++*calls & 1023U) == 0;
+}
+
 /**
  * Submit a fixed-size numeric record. This is bounded producer work: two
  * normally-vDSO clock_gettime reads, atomic loads/fetch-adds, a fixed record
