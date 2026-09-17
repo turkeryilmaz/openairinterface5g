@@ -500,6 +500,23 @@ static bool test_write_error_disables_capture(const char *directory)
   return true;
 }
 
+static bool test_sample_cadence(const char *directory)
+{
+  (void)directory;
+  uint32_t calls = 0;
+  for (unsigned period = 0; period < 3; ++period) {
+    for (unsigned skipped = 0; skipped < 1023; ++skipped)
+      CHECK(!flight_recorder_sample_due(&calls), "successful-read sample arrived early");
+    CHECK(flight_recorder_sample_due(&calls), "missing periodic successful-read sample");
+  }
+  CHECK(calls == 3072, "counter does not count receive calls");
+  calls = UINT32_MAX - 1;
+  CHECK(!flight_recorder_sample_due(&calls), "unexpected pre-wrap sample");
+  CHECK(flight_recorder_sample_due(&calls) && calls == 0, "unsigned wrap interrupted cadence");
+  CHECK(!flight_recorder_sample_due(&calls), "unexpected post-wrap sample");
+  return true;
+}
+
 typedef bool (*test_function_t)(const char *directory);
 
 static bool make_case_directory(char *path, size_t path_size, const char *root, const char *name)
@@ -552,6 +569,7 @@ int main(int argc, char **argv)
     const char *name;
     test_function_t function;
   } cases[] = {
+      {"sample-cadence", test_sample_cadence},
       {"disabled", test_disabled},
       {"invalid-path", test_invalid_path},
       {"ordering-timestamps-short-writes", test_ordering_timestamps_and_short_writes},
