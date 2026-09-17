@@ -84,6 +84,7 @@ typedef struct {
   int num_seq_errors;
   int64_t tx_count;
   int64_t rx_count;
+  uint32_t flight_rx_calls; // owned by the RX reader, independent of variable-size sample reads
   int wait_for_first_pps;
   int use_gps;
   //int first_tx;
@@ -315,6 +316,7 @@ static int trx_usrp_start(openair0_device_t *device)
 
   s->wait_for_first_pps = 1;
   s->rx_count = 0;
+  s->flight_rx_calls = 0;
   s->tx_count = 0;
   //s->first_tx = 1;
   //s->first_rx = 1;
@@ -728,16 +730,17 @@ static int trx_usrp_read(openair0_device_t *device, openair0_timestamp_t *ptimes
   s->rx_count += nsamps;
   s->rx_timestamp = s->rx_md.time_spec.to_ticks(s->sample_rate);
   *ptimestamp = s->rx_timestamp;
-  if (flight_recorder_enabled()
-      && (samples_received != nsamps || s->rx_md.error_code != uhd::rx_metadata_t::ERROR_CODE_NONE
-          || (nsamps > 0 && s->rx_count % ((uint64_t)nsamps * 1024) == 0)))
-    flight_recorder_emit(FLIGHT_EVENT_RADIO_RX,
-                         device->type,
-                         *ptimestamp,
-                         nsamps,
-                         samples_received,
-                         s->rx_md.error_code,
-                         s->rx_md.has_time_spec);
+  if (flight_recorder_enabled()) {
+    const bool sampled = flight_recorder_sample_due(&s->flight_rx_calls);
+    if (samples_received != nsamps || s->rx_md.error_code != uhd::rx_metadata_t::ERROR_CODE_NONE || sampled)
+      flight_recorder_emit(FLIGHT_EVENT_RADIO_RX,
+                           device->type,
+                           *ptimestamp,
+                           nsamps,
+                           samples_received,
+                           s->rx_md.error_code,
+                           s->rx_md.has_time_spec);
+  }
 
   T(T_USRP_RX_ANT0, T_INT(s->rx_timestamp), T_BUFFER(buff[0], samples_received*4));
 
