@@ -9,6 +9,7 @@
 #define RRC_UE
 #define RRC_UE_C
 
+#include "common/utils/LOG/flight_recorder.h"
 #include "LTE_MeasObjectToAddMod.h"
 #include "NR_DL-DCCH-Message.h"        //asn_DEF_NR_DL_DCCH_Message
 #include "NR_DL-CCCH-Message.h"        //asn_DEF_NR_DL_CCCH_Message
@@ -897,6 +898,7 @@ static void nr_rrc_ue_process_RadioBearerConfig(NR_UE_RRC_INST_t *rrc, NR_RadioB
 
   rrc->nrRrcState = RRC_STATE_CONNECTED_NR;
   RRCLOG_I("State = NR_RRC_CONNECTED\n");
+  flight_recorder_emit(FLIGHT_EVENT_UE_RRC, rrc->ue_id, RRC_STATE_CONNECTED_NR, 0, 0, 0, 0);
 }
 
 static void nr_rrc_signal_maxrtxindication(int ue_id)
