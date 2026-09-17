@@ -9,6 +9,7 @@
 #define _GNU_SOURCE  /* required for pthread_getname_np */
 //#define LOG_TEST 1
 
+#include "common/utils/LOG/flight_recorder.h"
 #include <ctype.h>
 #define LOG_MAIN
 #include "log.h"
@@ -509,11 +510,13 @@ int logInit (void)
   AssertFatal(ret <= 1, "Invalid log options: time, wall_clock and utc_time are mutually exclusive\n");
 
   g_log->flag =  g_log->flag | FLAG_INITIALIZED;
+  flight_recorder_init();
   return 0;
 }
 
 void logTerm(void)
 {
+  flight_recorder_shutdown();
   unregister_all_log_components();
   free_and_zero(g_log);
 }
