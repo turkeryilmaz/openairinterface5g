@@ -392,10 +392,8 @@ int main(int argc, char **argv)
   if ((format < 2) && (actual_payload == 4))
     do_DTX = 1;
 
-  if (random_payload) {
-    double tmp = uniformrandom();
-    memcpy(&actual_payload, &tmp, sizeof(actual_payload));
-  }
+  if (random_payload)
+    fill_random(&actual_payload, sizeof(actual_payload));
   actual_payload &= nr_bit < 64 ? (1UL << nr_bit) - 1 : 0xffffffffffffffff;
 
   printf("Transmitted payload is %lu, do_DTX = %d\n", actual_payload, do_DTX);
