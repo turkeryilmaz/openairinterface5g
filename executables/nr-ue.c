@@ -2,6 +2,7 @@
  * SPDX-License-Identifier: LicenseRef-CSSL-1.0
  */
 
+#include "common/utils/LOG/flight_recorder.h"
 #include "PHY/defs_nr_common.h"
 #define _GNU_SOURCE // For pthread_setname_np
 #include <pthread.h>
@@ -231,10 +232,12 @@ static void UE_synch(void *arg) {
       nrue_ru_adjust_rx_gain(UE, UE->adjust_rxgain);
     }
 
+    flight_recorder_emit(FLIGHT_EVENT_UE_SYNC, UE->Mod_id, 1, hw_slot_offset, freq_offset, ret.rx_offset, 0);
     LOG_I(PHY, "Got synch: hw_slot_offset %d, carrier off %d Hz\n", hw_slot_offset, freq_offset);
 
     UE->is_synchronized = 1;
   } else {
+    flight_recorder_emit(FLIGHT_EVENT_UE_SYNC, UE->Mod_id, 0, 0, 0, 0, 0);
     int gain_change = 0;
     if (get_nrUE_params()->agc)
       gain_change = nrue_ru_adjust_rx_gain(UE, INCREASE_IN_RXGAIN);

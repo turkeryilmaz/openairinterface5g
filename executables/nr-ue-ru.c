@@ -2,6 +2,7 @@
  * SPDX-License-Identifier: LicenseRef-CSSL-1.0
  */
 
+#include "common/utils/LOG/flight_recorder.h"
 #include "nr-ue-ru.h"
 #include "nr-uesoftmodem.h"
 #include "PHY/NR_UE_TRANSPORT/nr_transport_proto_ue.h"
@@ -410,6 +411,7 @@ int nrue_ru_adjust_rx_gain(PHY_VARS_NR_UE *UE, int gain_change)
   openair0_config_t *cfg = &openair0_cfg_g[UE->rf_map.card];
   openair0_device_t *dev = &openair0_dev[UE->rf_map.card];
 
+  const int requested_gain_change = gain_change;
   // Increase the RX gain by the value determined by adjust_rxgain
   cfg->rx_gain[0] += gain_change;
 
@@ -423,6 +425,7 @@ int nrue_ru_adjust_rx_gain(PHY_VARS_NR_UE *UE, int gain_change)
   }
 
   int applied_rxgain = cfg->rx_gain[0] - cfg->rx_gain_offset[0];
+  flight_recorder_emit(FLIGHT_EVENT_UE_AGC, UE->Mod_id, requested_gain_change, gain_change, applied_rxgain, ret_gain, 0);
   LOG_I(HW, "Rxgain adjusted by %d dB, RX gain: %d dB \n", gain_change, applied_rxgain);
 
   return gain_change;

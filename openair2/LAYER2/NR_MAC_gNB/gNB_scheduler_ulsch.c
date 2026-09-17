@@ -6,7 +6,7 @@
  * \brief gNB procedures for the ULSCH transport channel
  */
 
-
+#include "common/utils/LOG/flight_recorder.h"
 #include "LAYER2/NR_MAC_gNB/mac_proto.h"
 #include "executables/softmodem-common.h"
 #include "common/utils/nr/nr_common.h"
@@ -727,6 +727,7 @@ static void handle_nr_ul_harq(nr_cell_sched_t *cell, NR_UE_info_t *UE, rnti_t rn
 static void handle_msg3_failed_rx(gNB_MAC_INST *mac, NR_RA_t *ra, rnti_t rnti, int harq_round_max)
 {
   if (ra->msg3_round >= harq_round_max - 1) {
+    flight_recorder_emit(FLIGHT_EVENT_GNB_RA, 3, rnti, mac->frame * 1000, ra->RA_rnti, ra->msg3_round, harq_round_max);
     LOG_W(NR_MAC, "UE %04x RA failed at state %s (Reached msg3 max harq rounds)\n", rnti, nrra_text[ra->ra_state]);
     nr_release_ra_UE(mac, rnti);
     return;

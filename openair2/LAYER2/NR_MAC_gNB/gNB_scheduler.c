@@ -2,6 +2,7 @@
  * SPDX-License-Identifier: LicenseRef-CSSL-1.0
  */
 
+#include "common/utils/LOG/flight_recorder.h"
 #include "assertions.h"
 
 #include "NR_MAC_gNB/mac_proto.h"
@@ -144,6 +145,55 @@ void gNB_dlsch_ulsch_scheduler(module_id_t module_idP, const int cell_id, frame_
   clear_beam_information(&cell->beam_info, frame, slot, slots_frame);
 
   gNB->frame = frame;
+  // Capture under the existing scheduler lock; no formatting, file I/O or new locks here.
+  // One sample per 64 radio frames (640 ms); SFN wrap is resolved using mono_ns.
+  if (flight_recorder_enabled() && slot == 0 && (frame & 63) == 0) {
+    flight_recorder_emit(FLIGHT_EVENT_GNB_SLOT, module_idP, cell_id, frame, slot, 0, 0);
+    int captured = 0;
+    UE_iterator (gNB->UE_info.connected_ue_list, ue) {
+      if (ue->pcell != cell)
+        continue;
+      if (captured++ == 16)
+        break; // bounded research capture: at most 16 UEs per cell
+      const NR_mac_stats_t *stats = &ue->mac_stats;
+      const NR_UE_sched_ctrl_t *ctrl = &ue->UE_sched_ctrl;
+      flight_recorder_emit(FLIGHT_EVENT_GNB_UE_BYTES,
+                           cell_id,
+                           ue->rnti,
+                           frame,
+                           stats->dl.total_sdu_bytes,
+                           stats->ul.total_sdu_bytes,
+                           ctrl->ul_failure);
+      flight_recorder_emit(FLIGHT_EVENT_GNB_UE_RADIO,
+                           ue->rnti,
+                           ctrl->dl_bler_stats.mcs,
+                           ctrl->ul_bler_stats.mcs,
+                           stats->dl.errors,
+                           stats->ul.errors,
+                           stats->ulsch_DTX);
+      flight_recorder_emit(FLIGHT_EVENT_GNB_UE_LINK,
+                           ue->rnti,
+                           ctrl->ph,
+                           ctrl->pcmax,
+                           stats->pucch0_DTX,
+                           stats->num_rsrp_meas ? stats->cumul_rsrp / (int)stats->num_rsrp_meas : INT64_MIN,
+                           stats->num_sinr_meas ? stats->cumul_sinrx10 / (int)stats->num_sinr_meas : INT64_MIN);
+      flight_recorder_emit(FLIGHT_EVENT_GNB_DL_HARQ,
+                           ue->rnti,
+                           stats->dl.rounds[0],
+                           stats->dl.rounds[1],
+                           stats->dl.rounds[2],
+                           stats->dl.rounds[3],
+                           stats->dl.total_bytes);
+      flight_recorder_emit(FLIGHT_EVENT_GNB_UL_HARQ,
+                           ue->rnti,
+                           stats->ul.rounds[0],
+                           stats->ul.rounds[1],
+                           stats->ul.rounds[2],
+                           stats->ul.rounds[3],
+                           stats->ul.total_bytes);
+    }
+  }
   start_meas(&cell->gNB_scheduler);
 
   int num_beams = 1;
