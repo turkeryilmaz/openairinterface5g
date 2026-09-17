@@ -6,6 +6,7 @@
  * \brief Definitions of handlers and callbacks for NR NAS UE task
  */
 
+#include "common/utils/LOG/flight_recorder.h"
 #include "nr_nas_msg.h"
 #include <netinet/in.h>
 #include "NR_NAS_defs.h"
@@ -1756,6 +1757,9 @@ static void handle_pdu_session_accept(const nr_ue_nas_t *nas, uint8_t *pdu_buffe
           msg.pdu_type);
     return;
   }
+
+  // Accepted control-plane message; this is not proof of working user-plane traffic.
+  flight_recorder_emit(FLIGHT_EVENT_UE_PDU, instance, sm_header.pdu_session_id, msg.pdu_type, 1, 0, 0);
 
   // Set QFI before starting UE interface thread to avoid early SDUs using 0-initialized QFI.
   set_qfi(msg.qos_rules.rule->qfi, sm_header.pdu_session_id, instance);

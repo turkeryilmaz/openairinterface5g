@@ -6,6 +6,7 @@
  * \brief     primitives used for random access
  */
 
+#include "common/utils/LOG/flight_recorder.h"
 #include "common/platform_types.h"
 
 /* MAC */
@@ -786,6 +787,7 @@ void nr_initiate_ra_proc(module_id_t module_idP,
   uint8_t ul_carrier_id = 0; // 0 for NUL 1 for SUL
   uint32_t slot_RA = get_slot_RA(scc, rach_ConfigCommon, msgacc, cc->frame_type, slot);
   ra->RA_rnti = nr_get_ra_rnti(symbol, slot_RA, freq_index, ul_carrier_id);
+  flight_recorder_emit(FLIGHT_EVENT_GNB_RA, 0, UE->rnti, frame * 1000 + slot, ra->RA_rnti, preamble_index, timing_offset);
   if (msgacc) {
     ra->ra_type = RA_2_STEP;
     ra->ra_state = nrRA_WAIT_MsgA_PUSCH;
@@ -2139,6 +2141,7 @@ bool nr_check_Msg4_MsgB_Ack(gNB_MAC_INST *nr_mac, nr_cell_sched_t *cell, frame_t
   NR_RA_t *ra = UE->ra;
   const char *ra_type_str = ra->ra_type == RA_2_STEP ? "MsgB" : "Msg4";
   const int current_harq_pid = ra->harq_pid;
+  flight_recorder_emit(FLIGHT_EVENT_GNB_RA, success ? 1 : 2, UE->rnti, frame * 1000 + slot, ra->RA_rnti, ra->preamble_index, 0);
 
   NR_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
   NR_UE_harq_t *harq = &sched_ctrl->harq_processes[current_harq_pid];

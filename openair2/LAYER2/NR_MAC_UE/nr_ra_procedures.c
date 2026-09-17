@@ -7,6 +7,7 @@
  */
 
 /* RRC */
+#include "common/utils/LOG/flight_recorder.h"
 #include "RRC/NR_UE/L2_interface_ue.h"
 
 /* MAC */
@@ -1073,6 +1074,7 @@ void nr_ra_succeeded(NR_UE_MAC_INST_t *mac, const frame_t frame, const int slot)
 
   ra->RA_active = false;
   mac->msg3_C_RNTI = false;
+  flight_recorder_emit(FLIGHT_EVENT_UE_RA, mac->ue_id, frame * 1000 + slot, mac->crnti, 1, ra->ra_type, ra->cfra);
   ra->ra_state = nrRA_SUCCEEDED;
   mac->state = UE_CONNECTED;
   free_and_zero(ra->Msg3_buffer);
@@ -1091,6 +1093,7 @@ void nr_ra_backoff_setting(RA_config_t *ra)
 
 void nr_ra_contention_resolution_failed(NR_UE_MAC_INST_t *mac)
 {
+  flight_recorder_emit(FLIGHT_EVENT_UE_RA, mac->ue_id, -1, mac->ra.t_crnti, 2, mac->ra.ra_state, 0);
   LOG_W(MAC, "[UE %d] Contention resolution failed\n", mac->ue_id);
   RA_config_t *ra = &mac->ra;
   // discard the TEMPORARY_C-RNTI
@@ -1114,6 +1117,7 @@ void nr_ra_contention_resolution_failed(NR_UE_MAC_INST_t *mac)
 
 void nr_rar_not_successful(NR_UE_MAC_INST_t *mac)
 {
+  flight_recorder_emit(FLIGHT_EVENT_UE_RA, mac->ue_id, -1, mac->ra.t_crnti, 3, mac->ra.ra_state, 0);
   LOG_W(MAC, "[UE %d] RAR reception failed\n", mac->ue_id);
   RA_config_t *ra = &mac->ra;
   NR_PRACH_RESOURCES_t *prach_resources = &ra->prach_resources;

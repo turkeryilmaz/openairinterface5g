@@ -6,7 +6,7 @@
  * \brief procedures related to UE
  */
 
-
+#include "common/utils/LOG/flight_recorder.h"
 #include <stdio.h>
 #include <math.h>
 
@@ -1662,6 +1662,14 @@ void nr_ue_process_l1_measurements(NR_UE_MAC_INST_t *mac, frame_t frame, int slo
 {
   LOG_D(NR_MAC, "(%d.%d) Received measurements from L1\n", frame, slot);
   bool csi_meas = l1_measurements->meas_type == NFAPI_NR_CSI_MEAS;
+  if (!csi_meas && !l1_measurements->is_neighboring_cell)
+    flight_recorder_emit(FLIGHT_EVENT_UE_MEASUREMENTS,
+                         mac->ue_id,
+                         frame * 1000 + slot,
+                         l1_measurements->Nid_cell,
+                         l1_measurements->ssb_index,
+                         l1_measurements->rsrp_dBm,
+                         l1_measurements->sinr_dB);
   if (!csi_meas && !l1_measurements->is_neighboring_cell) {
     int ssb_index = l1_measurements->ssb_index;
     mac->ssb_measurements[ssb_index].ssb_rsrp_dBm = l1_measurements->rsrp_dBm;
@@ -3211,6 +3219,7 @@ nfapi_nr_ue_csi_payload_t nr_get_csi_payload(NR_UE_MAC_INST_t *mac,
 static void set_time_alignment(NR_UE_MAC_INST_t *mac, int ta, ta_type_t type, int frame, int slot)
 {
   NR_UL_TIME_ALIGNMENT_t *ul_time_alignment = &mac->ul_time_alignment;
+  flight_recorder_emit(FLIGHT_EVENT_UE_TA, mac->ue_id, frame * 1000 + slot, mac->crnti, ta, type, 0);
   ul_time_alignment->ta_command = ta;
   ul_time_alignment->ta_apply = type;
   const int ntn_ue_koffset = GET_NTN_UE_K_OFFSET(&mac->phy_config.config_req.ntn_config, mac->current_UL_BWP->scs);
