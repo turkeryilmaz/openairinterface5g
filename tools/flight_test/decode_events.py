@@ -16,12 +16,12 @@ FIELDS = ['source_file', 'source_line', 'name', 'event', 'ring', 'sequence', 'mo
 
 def decode(directory, output):
     paths = sorted(directory.glob('oai-flight-recorder-*.ndjson'))
-    if not 1 <= len(paths) <= 8:
-        raise ValueError('expected one recorder process with one to eight files')
+    if not paths:
+        raise ValueError('expected recorder files from one process')
     identities = []
     slots = set()
     for path in paths:
-        match = re.fullmatch(r'oai-flight-recorder-([0-9]+-[0-9a-f]{16})-([0-7])\.ndjson', path.name)
+        match = re.fullmatch(r'oai-flight-recorder-([0-9]+-[0-9a-f]{16})-([0-9]+)\.ndjson', path.name)
         if match is None or match[2] in slots:
             raise ValueError('invalid recorder filename or duplicate file slot')
         identities.append(match[1])

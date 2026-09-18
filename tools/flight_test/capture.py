@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Portable, bounded, privacy-preserving OAI flight-process supervisor.
+"""Portable OAI flight collector with bounded buffers and sequential output.
 
 The program intentionally uses only the Python standard library. It owns one
 child process group, never discovers users or shells out, and performs no
@@ -14,6 +14,7 @@ import hashlib
 import ipaddress
 import json
 import os
+import queue
 import re
 import selectors
 import signal
@@ -37,11 +38,12 @@ from flight_health import (
 
 SCHEMA_VERSION = 1
 MIB = 1024 * 1024
-DEFAULT_STDOUT_BUDGET = 256 * MIB
-DEFAULT_RECORDER_BUDGET = 128 * MIB
+DEFAULT_STDOUT_BUDGET = 0
+DEFAULT_RECORDER_BUDGET = 0
 MIN_RECORDER_BUDGET = 8192
-MAX_RECORDER_BUDGET = DEFAULT_RECORDER_BUDGET
-DEFAULT_HOST_BUDGET = 64 * MIB
+MAX_RECORDER_BUDGET = (1 << 63) - 1
+DEFAULT_HOST_BUDGET = 0
+DEFAULT_MIN_FREE_BYTES = 512 * MIB
 DEFAULT_CHUNK_BYTES = 8 * MIB
 MAX_LINE_BYTES = 8192
 READ_CHUNK_BYTES = 8192
@@ -123,18 +125,18 @@ class CaptureHealth:
 
 
 class ByteQuota:
-    """A bounded byte quota shared by one or more rotating writers."""
+    """An optional byte quota shared by writers; zero retains the complete run."""
 
     def __init__(self, limit: int) -> None:
-        if limit <= 0:
-            raise ValueError("quota must be positive")
+        if limit < 0:
+            raise ValueError("quota must be non-negative")
         self.limit = limit
         self.used = 0
         self._lock = threading.Lock()
 
     def reserve(self, wanted: int) -> int:
         with self._lock:
-            granted = max(0, min(wanted, self.limit - self.used))
+            granted = wanted if self.limit == 0 else max(0, min(wanted, self.limit - self.used))
             self.used += granted
             return granted
 
@@ -147,6 +149,70 @@ class ByteQuota:
     def snapshot(self) -> dict[str, int]:
         with self._lock:
             return {"limit_bytes": self.limit, "used_bytes": self.used}
+
+
+class ConsoleMirror:
+    """A slow terminal may lose console copies, but cannot block disk capture."""
+
+    def __init__(self) -> None:
+        self.queue: queue.Queue[bytes] = queue.Queue(maxsize=64)
+        self.stop = threading.Event()
+        self.dropped_bytes = 0
+        self.counter_lock = threading.Lock()
+        self.thread = threading.Thread(target=self._run, daemon=True)
+        self.thread.start()
+
+    def write(self, data: bytes) -> None:
+        try:
+            self.queue.put_nowait(data)
+        except queue.Full:
+            with self.counter_lock:
+                self.dropped_bytes += len(data)
+
+    def _run(self) -> None:
+        while not self.stop.is_set() or not self.queue.empty():
+            try:
+                data = self.queue.get(timeout=0.05)
+            except queue.Empty:
+                continue
+            try:
+                while data:
+                    count = os.write(sys.stdout.fileno(), data)
+                    if count <= 0:
+                        raise OSError("console write failed")
+                    data = data[count:]
+            except OSError:
+                with self.counter_lock:
+                    self.dropped_bytes += len(data)
+
+    def close(self) -> None:
+        self.stop.set()
+        self.thread.join(timeout=0.2)
+
+
+class StorageReserve:
+    """Best-effort free-space reserve, shared by the asynchronous text writers."""
+
+    def __init__(self, directory: Path, minimum: int) -> None:
+        self.directory = directory
+        self.minimum = minimum
+        self.checked_at = 0.0
+        self.available = True
+        self.lock = threading.Lock()
+
+    def allows_write(self) -> bool:
+        if self.minimum == 0:
+            return True
+        with self.lock:
+            now = time.monotonic()
+            if now - self.checked_at >= 0.5:
+                try:
+                    space = os.statvfs(self.directory)
+                    self.available = space.f_bavail * space.f_frsize > self.minimum
+                except OSError:
+                    self.available = False
+                self.checked_at = now
+            return self.available
 
 
 class BoundedRotatingWriter:
@@ -167,6 +233,8 @@ class BoundedRotatingWriter:
         self.quota = quota
         self.chunk_bytes = chunk_bytes
         self.health = health
+        self.console: Optional[ConsoleMirror] = None
+        self.storage: Optional[StorageReserve] = None
         self.file_index = 0
         self.file_bytes = 0
         self.fd: Optional[int] = None
@@ -186,6 +254,12 @@ class BoundedRotatingWriter:
     def write(self, data: bytes) -> bool:
         if not data:
             return True
+        if self.console is not None:
+            self.console.write(data)
+        if self.storage is not None and not self.storage.allows_write():
+            with self._lock:
+                self._drop(len(data), "free_space_reserve")
+            return False
         offset = 0
         with self._lock:
             while offset < len(data):
@@ -383,6 +457,8 @@ class OutputSanitizer:
             self.buffer.clear()
 
     def _emit(self, line: bytes) -> None:
+        if line.startswith(b"flight recorder disabled:"):
+            self.writer.health.unhealthy("recorder_disabled")
         if not self.redactor.accept(line):
             return
         self.writer.write(line + b"\n")
@@ -593,12 +669,24 @@ def positive_int(value: str) -> int:
     return result
 
 
+def byte_limit(value: str) -> int:
+    try:
+        result = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("must be a non-negative byte count") from exc
+    if not 0 <= result <= MAX_RECORDER_BUDGET:
+        raise argparse.ArgumentTypeError("must be in 0..INT64_MAX")
+    return result
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Bounded observer-only supervisor for one absolute OAI executable."
     )
     parser.add_argument("--role", choices=("gnb", "ue"), required=True)
-    parser.add_argument("--output", required=True, metavar="ROOT")
+    parser.add_argument("--output", metavar="ROOT", help="default: REPO/cmake_targets/log/FlightTests/local-date")
+    parser.add_argument("--console", action="store_true", help="mirror redacted console output without blocking capture")
+    parser.add_argument("--working-directory", metavar="DIR", help="preserve the softmodem launch directory")
     parser.add_argument("--config", metavar="CONFIG")
     parser.add_argument("--repo", metavar="REPO")
     parser.add_argument("--core-ip", metavar="IP")
@@ -610,12 +698,30 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--post-exit-drain-timeout", type=float, default=2.0)
     parser.add_argument("--startup-grace", type=float, default=30.0)
     parser.add_argument("--health-interval", type=float, default=1.0)
-    parser.add_argument("--stdout-budget", type=positive_int, default=DEFAULT_STDOUT_BUDGET)
-    parser.add_argument("--recorder-budget", type=positive_int, default=DEFAULT_RECORDER_BUDGET)
-    parser.add_argument("--host-budget", type=positive_int, default=DEFAULT_HOST_BUDGET)
+    parser.add_argument("--stdout-budget", type=byte_limit, default=DEFAULT_STDOUT_BUDGET)
+    parser.add_argument("--recorder-budget", type=byte_limit, default=DEFAULT_RECORDER_BUDGET)
+    parser.add_argument("--host-budget", type=byte_limit, default=DEFAULT_HOST_BUDGET)
+    parser.add_argument("--min-free-bytes", type=byte_limit, default=DEFAULT_MIN_FREE_BYTES)
     parser.add_argument("--chunk-bytes", type=positive_int, default=DEFAULT_CHUNK_BYTES)
     parser.add_argument("command", nargs=argparse.REMAINDER, metavar="-- BINARY [ARGS ...]")
     return parser
+
+
+def default_output(repo: str) -> Path:
+    root = Path(repo)
+    # Linked worktrees share the user's main checkout log root, not nested copies.
+    if (root / ".git").is_file():
+        try:
+            result = subprocess.run(
+                ["git", "-C", str(root), "rev-parse", "--path-format=absolute", "--git-common-dir"],
+                capture_output=True, text=True, timeout=2, check=False,
+            )
+            common = Path(result.stdout.strip())
+            if result.returncode == 0 and common.name == ".git" and (common.parent / "cmake_targets").is_dir():
+                root = common.parent
+        except (OSError, subprocess.TimeoutExpired):
+            pass
+    return root / "cmake_targets/log/FlightTests" / time.strftime("%Y-%m-%d")
 
 
 def validate_args(args: argparse.Namespace, parser: argparse.ArgumentParser) -> list[str]:
@@ -623,9 +729,9 @@ def validate_args(args: argparse.Namespace, parser: argparse.ArgumentParser) -> 
         parser.error("timeout/interval must be positive and startup grace non-negative")
     if args.probe_ping and args.core_ip is None:
         parser.error("--probe-ping requires --core-ip for a remote core endpoint")
-    if not args.disable_recorder and not MIN_RECORDER_BUDGET <= args.recorder_budget <= MAX_RECORDER_BUDGET:
+    if not args.disable_recorder and args.recorder_budget != 0 and not MIN_RECORDER_BUDGET <= args.recorder_budget <= MAX_RECORDER_BUDGET:
         parser.error(
-            f"--recorder-budget must be {MIN_RECORDER_BUDGET}..{MAX_RECORDER_BUDGET} bytes when recorder is enabled"
+            f"--recorder-budget must be 0 or {MIN_RECORDER_BUDGET}..{MAX_RECORDER_BUDGET} bytes"
         )
     if args.core_ip is not None:
         try:
@@ -643,6 +749,10 @@ def validate_args(args: argparse.Namespace, parser: argparse.ArgumentParser) -> 
         parser.error("--repo must be an absolute path")
     if args.config is not None and not os.path.isabs(args.config):
         parser.error("--config must be an absolute path so child CWD remains contained")
+    if args.working_directory is not None:
+        args.working_directory = str(Path(args.working_directory).resolve())
+        if not Path(args.working_directory).is_dir():
+            parser.error("--working-directory must name an existing directory")
     for index, argument in enumerate(command):
         value = None
         if argument in ("-O", "--config") and index + 1 < len(command):
@@ -651,8 +761,12 @@ def validate_args(args: argparse.Namespace, parser: argparse.ArgumentParser) -> 
             value = argument.split("=", 1)[1]
         elif argument.startswith("-O="):
             value = argument.split("=", 1)[1]
-        if value is not None and not os.path.isabs(value):
+        if value is not None and not os.path.isabs(value) and args.working_directory is None:
             parser.error("configuration argument after -- must be an absolute path")
+    if args.output is None:
+        if args.repo is None:
+            parser.error("default output needs --repo (supplied automatically by the softmodem)")
+        args.output = str(default_output(args.repo))
     return command
 
 
@@ -686,12 +800,12 @@ class RecorderMonitor:
                         continue
         except OSError as exc:
             return {"state": "unavailable", "reason": errno.errorcode.get(exc.errno, exc.__class__.__name__)}
-        exceeded = total > self.limit_bytes or scan_limited
+        exceeded = self.limit_bytes != 0 and total > self.limit_bytes
         if exceeded:
             health.unhealthy("recorder_contract_exceeded")
         self.previous_exceeded = self.previous_exceeded or exceeded
         return {
-            "state": "exceeded" if exceeded else "available",
+            "state": "exceeded" if exceeded else "partial" if scan_limited else "available",
             "observed_bytes": total,
             "files": min(files, 64),
             "scan_limited": scan_limited,
@@ -782,6 +896,7 @@ class FlightCapture:
         self.health = CaptureHealth()
         self.run_dir: Optional[Path] = None
         self.process: Optional[subprocess.Popen[bytes]] = None
+        self.console: Optional[ConsoleMirror] = None
         self.stop_signal: Optional[int] = None
         self.stop_sent_ns: Optional[int] = None
         self.kill_sent = False
@@ -802,6 +917,7 @@ class FlightCapture:
     def run(self) -> int:
         run_dir = self._create_run_dir()
         self.run_dir = run_dir
+        print(f"[FLIGHT] logging enabled: {run_dir}", file=sys.stderr, flush=True)
         recorder_dir = run_dir / "recorder"
         recorder_dir.mkdir(mode=0o700)
         os.chmod(recorder_dir, 0o700)
@@ -832,6 +948,14 @@ class FlightCapture:
             min(self.args.chunk_bytes, 4 * MIB),
             self.health,
         )
+        if self.args.console:
+            self.console = ConsoleMirror()
+            stdout_writer.console = self.console
+            stderr_writer.console = self.console
+        storage = StorageReserve(run_dir, self.args.min_free_bytes)
+        for writer in (stdout_writer, stderr_writer, host_writer):
+            writer.storage = storage
+        old_handlers = self._install_signal_handlers()
         try:
             return self._launch_and_supervise(
                 recorder_dir,
@@ -841,9 +965,12 @@ class FlightCapture:
                 host_writer,
             )
         finally:
+            self._restore_signal_handlers(old_handlers)
             stdout_writer.close()
             stderr_writer.close()
             host_writer.close()
+            if self.console is not None:
+                self.console.close()
 
     def _create_run_dir(self) -> Path:
         root = Path(self.args.output).resolve()
@@ -855,6 +982,8 @@ class FlightCapture:
         return run_dir
 
     def _child_cwd(self, run_dir: Path) -> tuple[Path, str]:
+        if self.args.working_directory is not None:
+            return Path(self.args.working_directory), "original_launch_directory"
         work = run_dir / "working"
         work.mkdir(mode=0o700)
         os.chmod(work, 0o700)
@@ -866,6 +995,8 @@ class FlightCapture:
             "kind": "flight_capture_metadata",
             "run_id": uuid.uuid4().hex,
             "role": self.args.role,
+            "features": ["log"],
+            "directory_date_basis": "host local date at launch",
             "created_clock": clock_sample(),
             "command": redact_argv(self.command),
             "binary": file_fingerprint(self.command[0]),
@@ -887,6 +1018,8 @@ class FlightCapture:
                 "directory_basename": recorder_dir.name,
                 "maximum_bytes": self.args.recorder_budget,
                 "enabled_range_bytes": [MIN_RECORDER_BUDGET, MAX_RECORDER_BUDGET],
+                "zero_budget_means_no_total_cap": True,
+                "retention": "sequential_files_no_overwrite",
                 "contract": "OAI_FLIGHT_RECORDER_DIR and OAI_FLIGHT_RECORDER_MAX_BYTES",
             },
             "limits": {
@@ -894,8 +1027,10 @@ class FlightCapture:
                 "recorder_budget_bytes": self.args.recorder_budget,
                 "host_budget_bytes": self.args.host_budget,
                 "chunk_bytes": self.args.chunk_bytes,
+                "minimum_free_bytes": self.args.min_free_bytes,
+                "zero_budget_means_no_total_cap": True,
                 "max_line_bytes": MAX_LINE_BYTES,
-                "disk_bound_scope": "capture files plus recorder contract; metadata is bounded separately",
+                "disk_bound_scope": "optional per-category caps; otherwise free-space reserve; metadata separately bounded",
             },
             "privacy": {
                 "config_contents_saved": False,
@@ -920,12 +1055,14 @@ class FlightCapture:
         host_writer: BoundedRotatingWriter,
     ) -> int:
         environment = os.environ.copy()
+        environment["_OAI_FLIGHT_CAPTURE_PARENT"] = str(os.getpid())
         if self.args.disable_recorder:
             environment.pop("OAI_FLIGHT_RECORDER_DIR", None)
             environment.pop("OAI_FLIGHT_RECORDER_MAX_BYTES", None)
         else:
             environment["OAI_FLIGHT_RECORDER_DIR"] = str(recorder_dir)
             environment["OAI_FLIGHT_RECORDER_MAX_BYTES"] = str(self.args.recorder_budget)
+            environment["OAI_FLIGHT_RECORDER_MIN_FREE_BYTES"] = str(self.args.min_free_bytes)
         executable_library_dir = str(Path(self.command[0]).resolve().parent)
         existing_library_path = environment.get("LD_LIBRARY_PATH")
         environment["LD_LIBRARY_PATH"] = executable_library_dir + (
@@ -977,7 +1114,6 @@ class FlightCapture:
             self.health,
             self.args.health_interval,
         )
-        old_handlers = self._install_signal_handlers()
         worker.start()
         stdout_sanitizer = OutputSanitizer(stdout_writer)
         stderr_sanitizer = OutputSanitizer(stderr_writer)
@@ -1046,7 +1182,6 @@ class FlightCapture:
             if not pipes_closed_early:
                 process.stdout.close()
                 process.stderr.close()
-            self._restore_signal_handlers(old_handlers)
             worker.stop()
             worker.join(timeout=5.0)
             if worker.is_alive():
@@ -1154,7 +1289,14 @@ class FlightCapture:
     ) -> None:
         if self.run_dir is None:
             return
+        if self.console is not None:
+            self.console.close()
         status = {
+            "console": {
+                "enabled": self.console is not None,
+                "dropped_bytes": self.console.dropped_bytes if self.console else 0,
+                "drain_complete": not self.console.thread.is_alive() if self.console else True,
+            },
             "schema_version": SCHEMA_VERSION,
             "kind": "flight_capture_status",
             "final_clock": clock_sample(),

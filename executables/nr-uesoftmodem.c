@@ -2,6 +2,7 @@
  * SPDX-License-Identifier: LicenseRef-CSSL-1.0
  */
 
+#include "flight_options.h"
 
 #define _GNU_SOURCE             /* See feature_test_macros(7) */
 #include <sched.h>
@@ -200,12 +201,17 @@ nrLDPC_coding_interface_t nrLDPC_coding_interface = {0};
 
 int main(int argc, char **argv)
 {
-  start_background_system();
+  if (flight_normalize_arguments(&argc, argv) != 0)
+    return 2;
 
-  if ((uniqCfg = load_configmodule(argc, argv, CONFIG_ENABLECMDLINEONLY)) == NULL || CONFIG_ISFLAGSET(CONFIG_ABORT)) {
+  if ((uniqCfg = load_configmodule(argc, argv, CONFIG_ENABLECMDLINEONLY | CONFIG_NO_CMDLINE_ECHO)) == NULL
+      || CONFIG_ISFLAGSET(CONFIG_ABORT)) {
     fprintf(stderr, "configuration module init failed\n");
     return 1;
   }
+  if (flight_start_capture(uniqCfg, argc, argv, "ue") != 0)
+    return 2;
+  start_background_system();
   //set_softmodem_sighandler();
   CONFIG_SETRTFLAG(CONFIG_NOEXITONHELP);
   // initialize logging
