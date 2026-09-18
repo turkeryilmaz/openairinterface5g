@@ -1077,7 +1077,6 @@ int main(int argc, char **argv)
     reset_meas(&gNB->dlsch_resource_mapping_stats);
     reset_meas(&gNB->dlsch_encoding_stats);
     reset_meas(&gNB->dci_generation_stats);
-    reset_meas(&gNB->phase_comp_stats);
 
     uint32_t errors_scrambling[16] = {0};
     int n_errors[16] = {0};
@@ -1454,8 +1453,6 @@ int main(int argc, char **argv)
       printStatIndent3(&gNB->dlsch_resource_mapping_stats,"DLSCH Resource Mapping time");
       gNB->dlsch_precoding_stats.trials = gNB->dlsch_layer_mapping_stats.trials;
       printStatIndent3(&gNB->dlsch_precoding_stats,"DLSCH Precoding time");
-      if (gNB->phase_comp)
-        printStatIndent2(&gNB->phase_comp_stats, "Phase Compensation");
 
       if (use_cuda) {
         printStatIndent(&pipeline_stats, "GPU Channel Pipeline");

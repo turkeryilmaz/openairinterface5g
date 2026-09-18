@@ -419,8 +419,6 @@ void phy_procedures_gNB_TX(PHY_VARS_gNB *gNB,
     nr_generate_pdsch(gNB, num_pdsch, gNB->dlsch, frame, slot);
   }
 
-  int slot_type = nr_slot_select(&gNB->gNB_config, frame, slot);
-  START_MEAS_FULL_SLOT(&gNB->phase_comp_stats, slot_type, NR_DOWNLINK_SLOT);
   for (int aa = 0; aa < fp->nb_antennas_tx; aa++) {
     T(T_GNB_PHY_DL_OUTPUT_SIGNAL,
       T_INT(0),
@@ -429,7 +427,6 @@ void phy_procedures_gNB_TX(PHY_VARS_gNB *gNB,
       T_INT(aa),
       T_BUFFER(gNB->common_vars.txdataF[aa], fp->samples_per_slot_wCP * sizeof(int32_t)));
   }
-  STOP_MEAS_FULL_SLOT(&gNB->phase_comp_stats, slot_type, NR_DOWNLINK_SLOT);
 }
 
 static int nr_ulsch_procedures(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx, int *ulsch_to_decode, int nb_pusch, NR_UL_IND_t *UL_INFO)
