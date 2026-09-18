@@ -74,6 +74,25 @@ class CaptureFixture(unittest.TestCase):
         command.extend(["--", *child])
         return subprocess.run(command, text=True, capture_output=True, timeout=timeout, check=False)
 
+    def test_free_space_reserve_keeps_child_running_and_reports_loss(self) -> None:
+        with self.temporary_directory() as temporary:
+            output = Path(temporary) / "output"
+            result = self.invoke(output, [sys.executable, "-c", "print('still-running'); raise SystemExit(7)"],
+                                 ["--min-free-bytes", str((1 << 63) - 1)])
+            self.assertEqual(result.returncode, 7)
+            status = json.loads((self.run_directory(output) / "status.json").read_text())
+            self.assertFalse(status["capture"]["healthy"])
+            self.assertGreater(status["writers"]["stdout"]["dropped_bytes"], 0)
+
+    def test_console_mirror_is_redacted(self) -> None:
+        with self.temporary_directory() as temporary:
+            output = Path(temporary) / "output"
+            result = self.invoke(output, [sys.executable, "-c", "print('password=synthetic-secret'); print(); print('[SAFE] console-copy')"],
+                                 ["--console"])
+            self.assertEqual(result.returncode, 0)
+            self.assertIn("console-copy", result.stdout)
+            self.assertNotIn("synthetic-secret", result.stdout)
+
     def test_small_end_to_end_exit_status_and_streams(self) -> None:
         with self.temporary_directory() as temporary:
             output = Path(temporary) / "output"
@@ -345,7 +364,7 @@ class CaptureFixture(unittest.TestCase):
         self.assertIn("missing UE tunnel", healthy["evidence"][1]["scope"])
 
     def test_enabled_recorder_budget_boundaries(self) -> None:
-        for budget in (8192, 134217728):
+        for budget in (0, 8192, 134217728, 1073741824):
             with self.subTest(budget=budget), self.temporary_directory() as temporary:
                 output = Path(temporary) / "output"
                 result = self.invoke(
@@ -362,7 +381,7 @@ class CaptureFixture(unittest.TestCase):
                 self.assertNotIn("packet_payloads_saved", privacy)
 
     def test_enabled_recorder_budget_outside_boundaries_is_rejected(self) -> None:
-        for budget in (8191, 134217729):
+        for budget in (-1, 8191, 1 << 63):
             with self.subTest(budget=budget), self.temporary_directory() as temporary:
                 output = Path(temporary) / "output"
                 result = self.invoke(

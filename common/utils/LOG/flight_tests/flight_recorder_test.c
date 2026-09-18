@@ -31,7 +31,9 @@
 #include <time.h>
 #include <unistd.h>
 
+#define TEST_MAX_FILES 256
 #define TEST_PATH_BYTES 512
+extern void flight_recorder_test_set_file_limit(uint64_t bytes);
 #define TEST_LINE_BYTES 1024
 
 extern void flight_recorder_test_set_write_limit(int byte_limit);
@@ -70,7 +72,7 @@ static void sleep_milliseconds(long milliseconds)
   nanosleep(&pause, NULL);
 }
 
-static int recorder_file_paths(const char *directory, char paths[FLIGHT_RECORDER_MAX_FILES][TEST_PATH_BYTES])
+static int recorder_file_paths(const char *directory, char paths[TEST_MAX_FILES][TEST_PATH_BYTES])
 {
   DIR *stream = opendir(directory);
   if (stream == NULL)
@@ -83,7 +85,7 @@ static int recorder_file_paths(const char *directory, char paths[FLIGHT_RECORDER
       continue;
     if (strstr(entry->d_name, ".ndjson") == NULL)
       continue;
-    if (count >= (int)FLIGHT_RECORDER_MAX_FILES) {
+    if (count >= (int)TEST_MAX_FILES) {
       closedir(stream);
       return -1;
     }
@@ -140,7 +142,7 @@ static bool json_unsigned(const char *line, const char *field, uint64_t *value)
 
 static bool read_footer_field(const char *directory, const char *field, uint64_t *value)
 {
-  char paths[FLIGHT_RECORDER_MAX_FILES][TEST_PATH_BYTES];
+  char paths[TEST_MAX_FILES][TEST_PATH_BYTES];
   const int file_count = recorder_file_paths(directory, paths);
   if (file_count < 0)
     return false;
@@ -163,7 +165,7 @@ static bool read_footer_field(const char *directory, const char *field, uint64_t
 
 static bool has_line(const char *directory, const char *needle)
 {
-  char paths[FLIGHT_RECORDER_MAX_FILES][TEST_PATH_BYTES];
+  char paths[TEST_MAX_FILES][TEST_PATH_BYTES];
   const int file_count = recorder_file_paths(directory, paths);
   if (file_count < 0)
     return false;
@@ -260,7 +262,7 @@ static bool test_invalid_path(const char *directory)
   CHECK(!flight_recorder_enabled(), "regular-file output path enabled recorder");
   flight_recorder_emit(FLIGHT_EVENT_UE_SYNC, 1, 2, 3, 4, 5, 6);
   flight_recorder_shutdown();
-  char paths[FLIGHT_RECORDER_MAX_FILES][TEST_PATH_BYTES];
+  char paths[TEST_MAX_FILES][TEST_PATH_BYTES];
   CHECK(recorder_file_paths(directory, paths) == 0, "invalid path created recorder file");
   return true;
 }
@@ -288,7 +290,7 @@ static bool test_ordering_timestamps_and_short_writes(const char *directory)
   flight_recorder_shutdown();
   flight_recorder_shutdown();
 
-  char paths[FLIGHT_RECORDER_MAX_FILES][TEST_PATH_BYTES];
+  char paths[TEST_MAX_FILES][TEST_PATH_BYTES];
   const int file_count = recorder_file_paths(directory, paths);
   CHECK(file_count == 1, "expected one output file, got %d", file_count);
   struct stat status;
@@ -388,26 +390,62 @@ static bool test_no_slot(const char *directory)
 static bool test_rotation_bound(const char *directory)
 {
   CHECK(setenv("OAI_FLIGHT_RECORDER_DIR", directory, 1) == 0, "setenv output failed");
-  CHECK(setenv("OAI_FLIGHT_RECORDER_MAX_BYTES", "8192", 1) == 0, "setenv limit failed");
+  CHECK(setenv("OAI_FLIGHT_RECORDER_MAX_BYTES", "0", 1) == 0, "setenv limit failed");
+  flight_recorder_test_set_file_limit(1024);
   flight_recorder_init();
   CHECK(flight_recorder_enabled(), "recorder did not enable");
   for (int index = 0; index < 128; ++index)
     flight_recorder_emit(FLIGHT_EVENT_GNB_UE_BYTES, index, 1, 2, 3, 4, 5);
   flight_recorder_shutdown();
-
-  char paths[FLIGHT_RECORDER_MAX_FILES][TEST_PATH_BYTES];
+  char paths[TEST_MAX_FILES][TEST_PATH_BYTES];
   const int file_count = recorder_file_paths(directory, paths);
-  CHECK(file_count > 0 && file_count <= (int)FLIGHT_RECORDER_MAX_FILES, "rotation created %d files", file_count);
-  off_t total_size = 0;
+  CHECK(file_count > 8, "test did not cross the former eight-file limit");
+  unsigned int events = 0;
   for (int index = 0; index < file_count; ++index) {
     struct stat status;
-    CHECK(stat(paths[index], &status) == 0, "rotation stat failed");
-    CHECK(status.st_size <= 1024, "file exceeds per-file cap: %jd", (intmax_t)status.st_size);
-    total_size += status.st_size;
+    CHECK(stat(paths[index], &status) == 0 && status.st_size <= 1024, "file exceeds chunk size");
+    FILE *f = fopen(paths[index], "r");
+    CHECK(f != NULL, "file open failed");
+    char line[TEST_LINE_BYTES];
+    while (fgets(line, sizeof(line), f))
+      events += strstr(line, "\"kind\":\"event\"") != NULL;
+    fclose(f);
   }
-  CHECK(total_size <= 8192, "rotation exceeds total cap: %jd", (intmax_t)total_size);
-  CHECK(has_line(directory, "\"overwrites_available\":1"), "rotation did not retain overwrite metadata");
+  CHECK(events == 128, "sequential rotation lost earlier events: %u", events);
+  CHECK(!has_line(directory, "\"overwrites_available\":1"), "rotation overwrote evidence");
   CHECK(has_line(directory, "\"kind\":\"capture_footer\""), "rotation footer missing");
+  return true;
+}
+
+static bool test_total_budget(const char *directory)
+{
+  CHECK(setenv("OAI_FLIGHT_RECORDER_DIR", directory, 1) == 0, "setenv output failed");
+  CHECK(setenv("OAI_FLIGHT_RECORDER_MAX_BYTES", "8192", 1) == 0, "setenv limit failed");
+  flight_recorder_init();
+  for (int i = 0; i < 128; ++i)
+    flight_recorder_emit(FLIGHT_EVENT_GNB_UE_BYTES, i, 1, 2, 3, 4, 5);
+  flight_recorder_shutdown();
+  char paths[TEST_MAX_FILES][TEST_PATH_BYTES];
+  int count = recorder_file_paths(directory, paths);
+  off_t bytes = 0;
+  for (int i = 0; i < count; ++i) {
+    struct stat status;
+    CHECK(stat(paths[i], &status) == 0, "stat failed");
+    bytes += status.st_size;
+  }
+  CHECK(count > 0 && bytes <= 8192, "total cap exceeded");
+  CHECK(has_line(directory, "\"a\":0,"), "initial event was lost");
+  CHECK(!has_line(directory, "\"kind\":\"capture_footer\""), "exhaustion incorrectly reported clean");
+  return true;
+}
+
+static bool test_space_reserve(const char *directory)
+{
+  CHECK(setenv("OAI_FLIGHT_RECORDER_DIR", directory, 1) == 0, "setenv output failed");
+  CHECK(setenv("OAI_FLIGHT_RECORDER_MIN_FREE_BYTES", "9223372036854775807", 1) == 0, "setenv reserve failed");
+  flight_recorder_init();
+  flight_recorder_shutdown();
+  CHECK(!has_line(directory, "\"kind\":\"capture_footer\""), "reserve exhaustion incorrectly reported clean");
   return true;
 }
 
@@ -576,6 +614,8 @@ int main(int argc, char **argv)
       {"saturation", test_saturation},
       {"no-slot", test_no_slot},
       {"rotation-bound", test_rotation_bound},
+      {"total-budget", test_total_budget},
+      {"space-reserve", test_space_reserve},
       {"active-shutdown", test_shutdown_with_active_producer},
       {"final-drain-after-quiescence", test_final_drain_after_producer_quiescence},
       {"writer-error-races-shutdown", test_writer_error_races_shutdown},
