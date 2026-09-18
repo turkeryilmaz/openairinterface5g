@@ -20,6 +20,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <sys/statvfs.h>
 #include <sys/types.h>
 #include <time.h>
 #include <unistd.h>
@@ -94,6 +95,10 @@ static bool g_atexit_registered;
 static int g_directory_fd = -1;
 static uint64_t g_capture_id;
 static uint64_t g_file_limit;
+static uint64_t g_total_limit;
+static uint64_t g_total_written;
+static uint64_t g_next_file_number;
+static uint64_t g_min_free_bytes;
 static int g_current_file = -1;
 static flight_ring_t g_rings[FLIGHT_RECORDER_MAX_THREAD_RINGS];
 static recorder_file_t g_files[FLIGHT_RECORDER_MAX_FILES];
@@ -101,6 +106,11 @@ static recorder_file_t g_files[FLIGHT_RECORDER_MAX_FILES];
 static _Thread_local int tls_ring = -1;
 
 #ifdef FLIGHT_RECORDER_TESTING
+static uint64_t g_test_file_limit;
+void flight_recorder_test_set_file_limit(uint64_t bytes)
+{
+  g_test_file_limit = bytes;
+}
 static atomic_int g_test_write_limit = ATOMIC_VAR_INIT(0);
 static atomic_int g_test_writer_policy = ATOMIC_VAR_INIT(-1);
 static atomic_bool g_test_writer_paused = ATOMIC_VAR_INIT(false);
@@ -282,12 +292,18 @@ static bool writer_write_raw(const char *line, size_t length)
     return false;
   }
 
+  if (length > UINT64_MAX - g_total_written
+      || (g_total_limit && (length > g_total_limit || g_total_written > g_total_limit - length))) {
+    recorder_fail("recording byte limit reached; earlier files retained", EFBIG);
+    return false;
+  }
   if (!write_all(file->fd, line, length)) {
     recorder_fail("output write failed", errno);
     return false;
   }
 
   file->bytes += length;
+  g_total_written += length;
   return true;
 }
 
@@ -359,6 +375,23 @@ static bool writer_write_file_header(unsigned int slot, uint64_t previous_first,
   return writer_emit_clock_correlation(false);
 }
 
+static bool writer_has_space(void)
+{
+  if (g_min_free_bytes == 0)
+    return true;
+  struct statvfs space;
+  if (fstatvfs(g_directory_fd, &space) != 0 || space.f_frsize == 0) {
+    recorder_fail("free space unavailable", errno);
+    return false;
+  }
+  const uint64_t needed = g_min_free_bytes / space.f_frsize + (g_min_free_bytes % space.f_frsize != 0);
+  if (space.f_bavail <= needed) {
+    recorder_fail("free-space reserve reached; earlier files retained", ENOSPC);
+    return false;
+  }
+  return true;
+}
+
 static bool writer_open_file(unsigned int slot)
 {
   if (slot >= FLIGHT_RECORDER_MAX_FILES) {
@@ -367,8 +400,23 @@ static bool writer_open_file(unsigned int slot)
   }
 
   recorder_file_t *file = &g_files[slot];
-  const uint64_t previous_first = file->first_sequence;
-  const uint64_t previous_last = file->last_sequence;
+  if (!writer_has_space())
+    return false;
+  if (file->generation > 0) {
+    if (file->fd >= 0)
+      close(file->fd);
+    file->fd = -1;
+    int length = snprintf(file->name,
+                          sizeof(file->name),
+                          "oai-flight-recorder-%ld-%016" PRIx64 "-%" PRIu64 ".ndjson",
+                          (long)getpid(),
+                          g_capture_id,
+                          g_next_file_number++);
+    if (length < 0 || (size_t)length >= sizeof(file->name)) {
+      recorder_fail("output filename exhausted", EOVERFLOW);
+      return false;
+    }
+  }
 
   if (file->fd < 0) {
     const int fd = openat(g_directory_fd, file->name, O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC | O_NOFOLLOW, 0600);
@@ -383,11 +431,6 @@ static bool writer_open_file(unsigned int slot)
       return false;
     }
     file->fd = fd;
-  } else {
-    if (ftruncate(file->fd, 0) != 0 || lseek(file->fd, 0, SEEK_SET) < 0) {
-      recorder_fail("output rotation failed", errno);
-      return false;
-    }
   }
 
   file->bytes = 0;
@@ -395,7 +438,7 @@ static bool writer_open_file(unsigned int slot)
   file->first_sequence = 0;
   file->last_sequence = 0;
   g_current_file = (int)slot;
-  return writer_write_file_header(slot, previous_first, previous_last);
+  return writer_write_file_header(slot, 0, 0);
 }
 
 static bool writer_rotate(void)
@@ -602,7 +645,7 @@ static void *writer_main(void *unused)
   while (atomic_load_explicit(&g_state, memory_order_seq_cst) == recorder_running) {
     int64_t now_ns;
     if (time_to_ns(CLOCK_MONOTONIC, &now_ns) && now_ns - last_clock_ns >= INT64_C(1000000000)) {
-      if (!writer_emit_clock_correlation(true) || !writer_emit_health())
+      if (!writer_has_space() || !writer_emit_clock_correlation(true) || !writer_emit_health())
         break;
       last_clock_ns = now_ns;
     }
@@ -653,19 +696,38 @@ static bool configure_output_directory(void)
     return false;
 
   const char *max_bytes = getenv("OAI_FLIGHT_RECORDER_MAX_BYTES");
-  uint64_t total_limit = FLIGHT_RECORDER_MAX_TOTAL_BYTES;
+  uint64_t total_limit = 0;
   if (max_bytes != NULL && max_bytes[0] != '\0') {
     char *end = NULL;
     errno = 0;
     const unsigned long long parsed = strtoull(max_bytes, &end, 10);
-    if (errno != 0 || end == max_bytes || *end != '\0' || parsed < FLIGHT_RECORDER_MIN_TOTAL_BYTES
-        || parsed > FLIGHT_RECORDER_MAX_TOTAL_BYTES) {
+    if (errno != 0 || end == max_bytes || *end != '\0' || (parsed != 0 && parsed < FLIGHT_RECORDER_MIN_TOTAL_BYTES)
+        || parsed > INT64_MAX) {
       recorder_stderr("invalid OAI_FLIGHT_RECORDER_MAX_BYTES", EINVAL);
       return false;
     }
     total_limit = (uint64_t)parsed;
   }
-  g_file_limit = total_limit / FLIGHT_RECORDER_MAX_FILES;
+  g_total_limit = total_limit;
+  g_total_written = 0;
+  g_next_file_number = FLIGHT_RECORDER_MAX_FILES;
+  g_file_limit = total_limit && total_limit < FLIGHT_RECORDER_MAX_FILE_BYTES ? total_limit : FLIGHT_RECORDER_MAX_FILE_BYTES;
+#ifdef FLIGHT_RECORDER_TESTING
+  if (g_test_file_limit)
+    g_file_limit = g_test_file_limit;
+#endif
+  g_min_free_bytes = FLIGHT_RECORDER_DEFAULT_MIN_FREE_BYTES;
+  const char *reserve = getenv("OAI_FLIGHT_RECORDER_MIN_FREE_BYTES");
+  if (reserve && *reserve) {
+    char *end = NULL;
+    errno = 0;
+    unsigned long long parsed = strtoull(reserve, &end, 10);
+    if (errno || end == reserve || *end || parsed > INT64_MAX) {
+      recorder_stderr("invalid OAI_FLIGHT_RECORDER_MIN_FREE_BYTES", EINVAL);
+      return false;
+    }
+    g_min_free_bytes = parsed;
+  }
 
   g_directory_fd = open(directory, O_RDONLY | O_DIRECTORY | O_CLOEXEC | O_NOFOLLOW);
   if (g_directory_fd < 0) {

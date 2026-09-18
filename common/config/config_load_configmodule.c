@@ -217,11 +217,13 @@ configmodule_interface_t *load_configmodule(int argc,
   int OoptIdx=-1;
   int OWoptIdx = -1;
 
-  printf("CMDLINE: ");
-  for (int i=0; i<argc; i++)
-    printf("\"%s\" ", argv[i]);
-  printf("\n");
-  fflush(stdout);
+  if (!(initflags & CONFIG_NO_CMDLINE_ECHO)) {
+    printf("CMDLINE: ");
+    for (int i = 0; i < argc; i++)
+      printf("\"%s\" ", argv[i]);
+    printf("\n");
+    fflush(stdout);
+  }
 
   /* first parse the command line to look for the -O option */
   for (i = 0; i<argc; i++) {

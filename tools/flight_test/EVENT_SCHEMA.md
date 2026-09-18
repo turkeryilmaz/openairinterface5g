@@ -29,6 +29,18 @@ GNB snapshots run under the existing scheduler lock every 64 frames (640 ms), fo
 
 This version does not drain UHD TX asynchronous metadata. TX sample acceptance does not prove RF delivery; stderr L/U/O characters are not authoritative late-packet counts or restart triggers. Additional ordinary OAI logs are retained subject to privacy/volume limits.
 
-The normal-priority writer uses 64 lifetime thread rings of 1,024 records, and eight rotating files with a default 128 MiB total limit. Overflow/no-slot/loss and file overwrite metadata are explicit. MAX_BYTES can lower the per-process bound. Never reuse a capture directory for multiple processes: bounds multiply. Rotation loses oldest history. No subscriber keys, packet payloads or IQ arrays enter numeric records.
+The normal-priority writer drains 64 lifetime thread rings of 1,024 records to sequential files of at most 16 MiB. Files are never overwritten. Total-byte caps are optional (zero by default), with a configurable 512 MiB free-space reserve. Overflow/no-slot/loss is explicit. Use a separate capture directory for each process. The eight internal file-descriptor slots do not limit retained file count. No subscriber keys, packet payloads or IQ arrays enter numeric records.
 
 Clock correlations bound clock-read skew, not UTC accuracy. A missing clean footer can mean crash, kill, capture failure or still-running process. Power loss can lose buffered events. Producer hooks add clocks/atomics/fixed copies, with no added allocation, locks, printf or file I/O. Native tests do not qualify the observer effect on CM5/B205mini: compare disabled/enabled stationary operation before takeoff.
+
+
+## Sequential retention (September startup integration)
+
+New captures retain successive numbered files without overwriting earlier data.
+The filename's final decimal number is no longer limited to 0..7. `file_slot`
+remains an internal descriptor slot and may repeat across files; the complete
+filename identifies the file. New headers have `overwrites_available=0`.
+The decoder also accepts older eight-slot captures and their overwrite markers.
+Event IDs, payload meanings, timestamps and record schema version remain unchanged.
+A missing clean footer or a recording-disabled diagnostic must not be treated as
+complete recording. Unknown event IDs preserve all numeric fields for later decoding.

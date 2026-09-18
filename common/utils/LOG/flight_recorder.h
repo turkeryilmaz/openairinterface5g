@@ -32,7 +32,7 @@ extern "C" {
 #define FLIGHT_RECORDER_RING_RECORDS 1024U
 #define FLIGHT_RECORDER_MAX_FILES 8U
 #define FLIGHT_RECORDER_MAX_FILE_BYTES (16U * 1024U * 1024U)
-#define FLIGHT_RECORDER_MAX_TOTAL_BYTES (FLIGHT_RECORDER_MAX_FILES * FLIGHT_RECORDER_MAX_FILE_BYTES)
+#define FLIGHT_RECORDER_DEFAULT_MIN_FREE_BYTES (512ULL * 1024ULL * 1024ULL)
 
 /**
  * Numeric event descriptor catalog. The a..f slots are signed 64-bit numeric
@@ -82,9 +82,11 @@ typedef enum {
  *
  * OAI_FLIGHT_RECORDER_DIR must name an existing directory. Files are created
  * directly in that directory with unique O_EXCL names and mode 0600. Optional
- * OAI_FLIGHT_RECORDER_MAX_BYTES accepts a decimal byte limit from 8192 through
- * 134217728; it is split over the eight rotating files. Invalid paths or
- * limits fail closed and report a fixed diagnostic to stderr.
+ * OAI_FLIGHT_RECORDER_MAX_BYTES accepts 0 (default: no total byte cap), or
+ * 8192..INT64_MAX bytes. Sequential files are never overwritten. The writer
+ * checks OAI_FLIGHT_RECORDER_MIN_FREE_BYTES (default 512 MiB) outside producer
+ * paths. Exhaustion disables recording and reports a diagnostic; OAI continues.
+ * Invalid paths or limits report a fixed diagnostic to stderr.
  *
  * This function prefaults the static recorder pages and starts its writer with
  * explicit SCHED_OTHER attributes. It is not for a real-time producer path.
