@@ -527,6 +527,7 @@ static void nr_pdsch_symbol_processing(void *arg)
   const int symbol_sz = frame_parms->ofdm_symbol_size;
 
   c16_t **txdataF = gNB->common_vars.txdataF;
+  const int symb_offset = (slot % frame_parms->slots_per_subframe) * frame_parms->symbols_per_slot;
 
   for (int l_symbol = rdata->startSymbol; l_symbol < rdata->startSymbol + rdata->numSymbols; l_symbol++) {
     start_meas(&rdata->dlsch_resource_mapping_stats);
@@ -597,6 +598,12 @@ static void nr_pdsch_symbol_processing(void *arg)
                    block_end - block_start + 1,
                    txdataF_offset_per_symbol);
 
+        if (gNB->phase_comp) {
+          const int start_sc = get_block_start_sc(block_start, rel15->BWPStart, symbol_sz);
+          c16_t *pdsch_sc = &txdataF[rdata->ant_to_map[ant]][txdataF_offset_per_symbol + start_sc];
+          const c16_t rot = frame_parms->symbol_rotation[0][symb_offset + l_symbol];
+          rotate_cpx_vector(pdsch_sc, rot, pdsch_sc, (block_end - block_start + 1) * NR_NB_SC_PER_RB, 15);
+        }
       }
     }
     stop_meas(&rdata->dlsch_precoding_stats);
