@@ -104,6 +104,8 @@ typedef struct configmodule_interface {
   }
 
 #define CONFIG_ENABLECMDLINEONLY  (1<<1)
+/* Initialization-only: a caller may not yet have a private/redacted output sink. */
+#define CONFIG_NO_CMDLINE_ECHO (1 << 2)
 extern configmodule_interface_t *load_configmodule(int argc, char **argv, uint32_t initflags);
 /* free ressources used to read parameters, keep memory 
  * allocated for parameters values which has been defined with the PARAMFLAG_NOFREE flag

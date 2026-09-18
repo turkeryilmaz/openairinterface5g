@@ -20,6 +20,18 @@ class DecoderTests(unittest.TestCase):
                 decoder.decode(root, root / 'out')
             self.assertFalse((root / 'out').exists())
 
+    def test_more_than_eight_sequential_files_and_unknown_event(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            for index in range(12):
+                event = dict(schema='oai.flight_recorder', version=1, kind='event', event=999,
+                             ring=0, sequence=index + 1, mono_ns=index, realtime_ns=index,
+                             a=0, b=0, c=0, d=0, e=0, f=0)
+                (root / f'oai-flight-recorder-100-0123456789abcdef-{index}.ndjson').write_text(json.dumps(event) + '\n')
+            result = decoder.decode(root, root / 'out')
+            self.assertEqual(result['events'], 12)
+            self.assertEqual(result['event_counts']['UNKNOWN'], 12)
+
     def test_false_footer_and_integer_precision(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
