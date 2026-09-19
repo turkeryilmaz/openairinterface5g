@@ -5,6 +5,7 @@
 #define _LARGEFILE_SOURCE
 #define _FILE_OFFSET_BITS 64
 #include "common/utils/LOG/flight_recorder.h"
+#include "common/utils/LOG/flight_monitor.h"
 #include <string.h>
 #include <pthread.h>
 #include <unistd.h>
@@ -529,6 +530,8 @@ static int trx_usrp_write(openair0_device_t *device,
 
       if (flight_recorder_enabled() && (ret != nsamps || (s->tx_count & 1023) == 0))
         flight_recorder_emit(FLIGHT_EVENT_RADIO_TX, device->type, timestamp, nsamps, ret, flags, 0);
+      if (ret > 0)
+        flight_monitor_add(FLIGHT_MONITOR_TX_SAMPLES, (uint64_t)ret);
       if (ret != nsamps) {
         LOG_E(HW, "[xmit] tx samples %d != %d\n", ret, nsamps);
       }
@@ -635,7 +638,10 @@ void *trx_usrp_write_thread(void * arg)
 
     if (flight_recorder_enabled() && (ret != nsamps || (s->tx_count & 1023) == 0))
       flight_recorder_emit(FLIGHT_EVENT_RADIO_TX, device->type, timestamp, nsamps, ret, 0, 1);
-    if (ret != nsamps) LOG_E(HW,"[xmit] tx samples %d != %d\n",ret,nsamps);
+    if (ret > 0)
+      flight_monitor_add(FLIGHT_MONITOR_TX_SAMPLES, (uint64_t)ret);
+    if (ret != nsamps)
+      LOG_E(HW, "[xmit] tx samples %d != %d\n", ret, nsamps);
     VCD_SIGNAL_DUMPER_DUMP_VARIABLE_BY_NAME( VCD_SIGNAL_DUMPER_VARIABLES_USRP_SEND_RETURN, ret );
     VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME( VCD_SIGNAL_DUMPER_FUNCTIONS_TRX_WRITE_THREAD, 0 );
 
@@ -741,6 +747,9 @@ static int trx_usrp_read(openair0_device_t *device, openair0_timestamp_t *ptimes
                            s->rx_md.error_code,
                            s->rx_md.has_time_spec);
   }
+
+  if (samples_received == nsamps && s->rx_md.error_code == uhd::rx_metadata_t::ERROR_CODE_NONE)
+    flight_monitor_add(FLIGHT_MONITOR_RX_SAMPLES, (uint64_t)samples_received);
 
   T(T_USRP_RX_ANT0, T_INT(s->rx_timestamp), T_BUFFER(buff[0], samples_received*4));
 

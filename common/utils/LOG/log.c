@@ -10,6 +10,7 @@
 //#define LOG_TEST 1
 
 #include "common/utils/LOG/flight_recorder.h"
+#include "common/utils/LOG/flight_monitor.h"
 #include <ctype.h>
 #define LOG_MAIN
 #include "log.h"
@@ -511,11 +512,13 @@ int logInit (void)
 
   g_log->flag =  g_log->flag | FLAG_INITIALIZED;
   flight_recorder_init();
+  flight_monitor_init();
   return 0;
 }
 
 void logTerm(void)
 {
+  flight_monitor_shutdown();
   flight_recorder_shutdown();
   unregister_all_log_components();
   free_and_zero(g_log);
