@@ -10,6 +10,15 @@
 
 typedef struct {
   cause_id_t cause;
+  /* TS 24.501 table 8.2.9.1.1: retain the complete GPRS timer 2 octet.
+   * Presence is separate: a zero-valued timer is not an absent timer. */
+  bool t3346_present;
+  bool t3502_present;
+  uint8_t t3346;
+  uint8_t t3502;
+  /* Unknown, malformed or duplicate optional IE: mandatory cause remains valid,
+   * but the caller must not infer absent/usable retry restrictions. */
+  bool unhandled_ies;
 } fgs_registration_reject_msg_t;
 
 int decode_fgs_registration_reject(fgs_registration_reject_msg_t *msg, const byte_array_t *buffer);
