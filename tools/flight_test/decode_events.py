@@ -6,10 +6,10 @@ import json
 import re
 from pathlib import Path
 
-NAMES = dict(zip([10, 11, 12, 13, 14, 15, 16, 20, 21, 22, 23, 24, 25, 26, 30, 31],
+NAMES = dict(zip([10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 30, 31],
                  ['UE_SYNC', 'UE_AGC', 'UE_MEASUREMENTS', 'UE_RA', 'UE_RRC', 'UE_PDU', 'UE_TA',
-                  'GNB_SLOT', 'GNB_UE_BYTES', 'GNB_UE_RADIO', 'GNB_RA', 'GNB_UE_LINK',
-                  'GNB_DL_HARQ', 'GNB_UL_HARQ', 'RADIO_RX', 'RADIO_TX']))
+                  'UE_NAS', 'UE_RRC_TIMER', 'UE_CONTROL', 'GNB_SLOT', 'GNB_UE_BYTES', 'GNB_UE_RADIO', 'GNB_RA', 'GNB_UE_LINK',
+                  'GNB_DL_HARQ', 'GNB_UL_HARQ', 'UE_NAS_COUNT', 'RADIO_RX', 'RADIO_TX']))
 FIELDS = ['source_file', 'source_line', 'name', 'event', 'ring', 'sequence', 'mono_ns', 'realtime_ns',
           'a', 'b', 'c', 'd', 'e', 'f']
 

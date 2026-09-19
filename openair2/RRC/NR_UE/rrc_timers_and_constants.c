@@ -3,7 +3,116 @@
  */
 
 #include "openair2/RRC/NR_UE/rrc_proto.h"
+#include "common/utils/LOG/flight_monitor.h"
+#include "common/utils/LOG/flight_recorder.h"
+#include "executables/nr-uesoftmodem.h"
 #include "executables/softmodem-common.h"
+
+#include <time.h>
+
+enum {
+  FLIGHT_RRC_TIMER_T301 = 301,
+  FLIGHT_RRC_TIMER_T302 = 302,
+  FLIGHT_RRC_TIMER_T311 = 311,
+};
+
+enum {
+  FLIGHT_RRC_TIMER_STARTED = 1,
+  FLIGHT_RRC_TIMER_STOPPED = 2,
+  FLIGHT_RRC_TIMER_EXPIRED = 3,
+};
+
+/* The RRC task is the sole reader and writer of these bounded lifecycles.
+ * The monitor receives only the resulting absolute maximum deadline. */
+static uint64_t g_flight_rrc_deadlines[MAX_NUM_NR_UE_INST][3];
+
+static uint64_t *flight_rrc_deadline_slot(const NR_UE_RRC_INST_t *rrc, const uint32_t timer_number)
+{
+  if (rrc->ue_id < 0 || rrc->ue_id >= MAX_NUM_NR_UE_INST)
+    return NULL;
+
+  unsigned int index = 0;
+  switch (timer_number) {
+    case FLIGHT_RRC_TIMER_T301:
+      index = 0;
+      break;
+    case FLIGHT_RRC_TIMER_T302:
+      index = 1;
+      break;
+    case FLIGHT_RRC_TIMER_T311:
+      index = 2;
+      break;
+    default:
+      return NULL;
+  }
+  return &g_flight_rrc_deadlines[rrc->ue_id][index];
+}
+
+static uint64_t flight_rrc_monotonic_deadline(const uint32_t duration_ms)
+{
+  struct timespec now = {0};
+  if (clock_gettime(CLOCK_MONOTONIC, &now) != 0 || now.tv_sec < 0)
+    return UINT64_MAX; // Unavailable clock must not erase a network hold.
+
+  const uint64_t current_ns = (uint64_t)now.tv_sec * UINT64_C(1000000000) + (uint64_t)now.tv_nsec;
+  const uint64_t duration_ns = (uint64_t)duration_ms * UINT64_C(1000000);
+  return UINT64_MAX - current_ns < duration_ns ? UINT64_MAX : current_ns + duration_ns;
+}
+
+static void flight_rrc_publish_hold_deadline(void)
+{
+  uint64_t maximum = 0;
+  for (unsigned int ue = 0; ue < MAX_NUM_NR_UE_INST; ++ue) {
+    for (unsigned int timer = 0; timer < 3; ++timer) {
+      if (g_flight_rrc_deadlines[ue][timer] > maximum)
+        maximum = g_flight_rrc_deadlines[ue][timer];
+    }
+  }
+  flight_monitor_set(FLIGHT_MONITOR_RRC_HOLD_UNTIL_NS, maximum);
+}
+
+static void flight_rrc_publish_timer_event(const NR_UE_RRC_INST_t *rrc,
+                                           const uint32_t timer_number,
+                                           const uint32_t action,
+                                           const uint32_t duration_ms)
+{
+  flight_recorder_emit(FLIGHT_EVENT_UE_RRC_TIMER, rrc->ue_id, timer_number, action, duration_ms, rrc->nrRrcState, 0);
+}
+
+void nr_rrc_flight_timer_started(NR_UE_RRC_INST_t *rrc, const uint32_t timer_number, const uint32_t duration_ms)
+{
+  if (!flight_monitor_enabled() && !flight_recorder_enabled())
+    return;
+  uint64_t *deadline = flight_rrc_deadline_slot(rrc, timer_number);
+  if (deadline != NULL)
+    *deadline = flight_rrc_monotonic_deadline(duration_ms);
+  flight_rrc_publish_hold_deadline();
+  flight_rrc_publish_timer_event(rrc, timer_number, FLIGHT_RRC_TIMER_STARTED, duration_ms);
+}
+
+static void nr_rrc_flight_timer_ended(NR_UE_RRC_INST_t *rrc,
+                                      const uint32_t timer_number,
+                                      const uint32_t action,
+                                      const uint32_t duration_ms)
+{
+  if (!flight_monitor_enabled() && !flight_recorder_enabled())
+    return;
+  uint64_t *deadline = flight_rrc_deadline_slot(rrc, timer_number);
+  if (deadline != NULL)
+    *deadline = 0;
+  flight_rrc_publish_hold_deadline();
+  flight_rrc_publish_timer_event(rrc, timer_number, action, duration_ms);
+}
+
+void nr_rrc_flight_timer_stopped(NR_UE_RRC_INST_t *rrc, const uint32_t timer_number, const uint32_t duration_ms)
+{
+  nr_rrc_flight_timer_ended(rrc, timer_number, FLIGHT_RRC_TIMER_STOPPED, duration_ms);
+}
+
+static void nr_rrc_flight_timer_expired(NR_UE_RRC_INST_t *rrc, const uint32_t timer_number, const uint32_t duration_ms)
+{
+  nr_rrc_flight_timer_ended(rrc, timer_number, FLIGHT_RRC_TIMER_EXPIRED, duration_ms);
+}
 
 void init_SI_timers(NR_UE_RRC_SI_INFO *SInfo)
 {
@@ -181,6 +290,7 @@ void nr_rrc_handle_timers(NR_UE_RRC_INST_t *rrc)
   // Upon T301 expiry, the UE shall perform the actions upon going to RRC_IDLE
   // with release cause 'RRC connection failure'
   if(t301_expired) {
+    nr_rrc_flight_timer_expired(rrc, FLIGHT_RRC_TIMER_T301, timers->T301.target);
     RRCLOG_W("Timer T301 expired! No timely response to RRCReestabilshmentRequest\n");
     nr_rrc_going_to_IDLE(rrc, RRC_CONNECTION_FAILURE, NULL);
   }
@@ -189,6 +299,7 @@ void nr_rrc_handle_timers(NR_UE_RRC_INST_t *rrc)
   // 5.3.14.4 in 38.331
   // consider the barring for this Access Category to be alleviated
   if (t302_expired) {
+    nr_rrc_flight_timer_expired(rrc, FLIGHT_RRC_TIMER_T302, timers->T302.target);
     RRCLOG_W("Timer T302 expired! Access barring alleviated!\n");
     handle_302_expired_stopped(rrc);
   }
@@ -213,6 +324,7 @@ void nr_rrc_handle_timers(NR_UE_RRC_INST_t *rrc)
 
   bool t311_expired = nr_timer_tick(&timers->T311);
   if (t311_expired) {
+    nr_rrc_flight_timer_expired(rrc, FLIGHT_RRC_TIMER_T311, timers->T311.target);
     RRCLOG_W("Timer T311 expired! No suitable cell found in time after initiation of re-establishment\n");
     // Upon T311 expiry, the UE shall perform the actions upon going to RRC_IDLE
     // with release cause 'RRC connection failure'

@@ -10,6 +10,7 @@
 #define RRC_UE_C
 
 #include "common/utils/LOG/flight_recorder.h"
+#include "common/utils/LOG/flight_monitor.h"
 #include "LTE_MeasObjectToAddMod.h"
 #include "NR_DL-DCCH-Message.h"        //asn_DEF_NR_DL_DCCH_Message
 #include "NR_DL-CCCH-Message.h"        //asn_DEF_NR_DL_CCCH_Message
@@ -54,6 +55,37 @@
 #include "openair2/SDAP/nr_sdap/nr_sdap_entity.h"
 
 static NR_UE_RRC_INST_t *NR_UE_rrc_inst[MAX_NUM_NR_UE_INST] = {0};
+
+enum {
+  FLIGHT_RRC_TIMER_T301 = 301,
+  FLIGHT_RRC_TIMER_T302 = 302,
+  FLIGHT_RRC_TIMER_T311 = 311,
+};
+
+enum {
+  FLIGHT_RRC_CONTROL_TRANSITION = 1,
+  FLIGHT_RRC_CONTROL_RLF = 2,
+  FLIGHT_RRC_CONTROL_IDLE_FALLBACK = 3,
+};
+
+static void flight_rrc_stop_timer(NR_UE_RRC_INST_t *rrc, NR_timer_t *timer, const uint32_t timer_number)
+{
+  const bool was_active = nr_timer_is_active(timer);
+  const uint32_t duration_ms = timer->target;
+  nr_timer_stop(timer);
+  if (was_active)
+    nr_rrc_flight_timer_stopped(rrc, timer_number, duration_ms);
+}
+
+static void flight_rrc_publish_state(NR_UE_RRC_INST_t *rrc,
+                                     const uint32_t kind,
+                                     const Rrc_State_NR_t old_state,
+                                     const Rrc_State_NR_t new_state,
+                                     const int64_t release_cause)
+{
+  flight_monitor_set(FLIGHT_MONITOR_RRC_STATE, new_state);
+  flight_recorder_emit(FLIGHT_EVENT_UE_CONTROL, rrc->ue_id, kind, old_state, new_state, release_cause, 0);
+}
 /* NAS Attach request with IMSI */
 static const char nr_nas_attach_req_imsi_dummy_NSA_case[] = {
     0x07,
@@ -161,6 +193,17 @@ static void set_DRB_status(NR_UE_RRC_INST_t *rrc, NR_DRB_Identity_t drb_id, NR_R
 {
   AssertFatal(drb_id > 0 && drb_id < 33, "Invalid DRB ID %ld\n", drb_id);
   rrc->status_DRBs[drb_id - 1] = status;
+}
+
+static void flight_rrc_publish_drb_context(const NR_UE_RRC_INST_t *rrc)
+{
+  for (int drb = 0; drb < MAX_DRBS_PER_UE; ++drb) {
+    if (rrc->status_DRBs[drb] == RB_ESTABLISHED) {
+      flight_monitor_set(FLIGHT_MONITOR_DRB_CONTEXT_ACTIVE, 1);
+      return;
+    }
+  }
+  flight_monitor_set(FLIGHT_MONITOR_DRB_CONTEXT_ACTIVE, 0);
 }
 
 static int get_ulsyncvalidityduration_timer_value(NR_NTN_Config_r17_t *ntncfg)
@@ -855,7 +898,13 @@ static void nr_rrc_ue_process_RadioBearerConfig(NR_UE_RRC_INST_t *rrc, NR_RadioB
     }
   } // drb_ToAddModList //
 
+  flight_rrc_publish_drb_context(rrc);
+  const Rrc_State_NR_t old_state = rrc->nrRrcState;
   rrc->nrRrcState = RRC_STATE_CONNECTED_NR;
+  if (old_state != rrc->nrRrcState)
+    flight_rrc_publish_state(rrc, FLIGHT_RRC_CONTROL_TRANSITION, old_state, rrc->nrRrcState, 0);
+  else
+    flight_monitor_set(FLIGHT_MONITOR_RRC_STATE, rrc->nrRrcState);
   RRCLOG_I("State = NR_RRC_CONNECTED\n");
   flight_recorder_emit(FLIGHT_EVENT_UE_RRC, rrc->ue_id, RRC_STATE_CONNECTED_NR, 0, 0, 0, 0);
 }
@@ -2027,11 +2076,11 @@ static void nr_rrc_ue_decode_NR_BCCH_BCH_Message(NR_UE_RRC_INST_t *rrc,
   }
   if (LOG_DEBUGFLAG(DEBUG_ASN1))
     xer_fprint(stdout, &asn_DEF_NR_BCCH_BCH_Message, (void *)bcch_message);
-    
+
   // Actions following cell selection while T311 is running
   NR_UE_Timers_Constants_t *timers = &rrc->timers_and_constants;
   if (nr_timer_is_active(&timers->T311)) {
-    nr_timer_stop(&timers->T311);
+    flight_rrc_stop_timer(rrc, &timers->T311, FLIGHT_RRC_TIMER_T311);
     rrc->ra_trigger = RRC_CONNECTION_REESTABLISHMENT;
 
     // apply the default MAC Cell Group configuration
@@ -2148,6 +2197,7 @@ static void nr_rrc_handle_msg3_indication(NR_UE_RRC_INST_t *rrc, rnti_t rnti)
     case RRC_CONNECTION_REESTABLISHMENT:
       rrc->rnti = rnti;
       nr_timer_start(&tac->T301);
+      nr_rrc_flight_timer_started(rrc, FLIGHT_RRC_TIMER_T301, tac->T301.target);
       int srb_id = 1;
       // re-establish PDCP for SRB1
       // (and suspend integrity protection and ciphering for SRB1)
@@ -2306,6 +2356,7 @@ static void nr_rrc_rrcsetup_fallback(NR_UE_RRC_INST_t *rrc)
 {
   RRCLOG_W("Received RRCSetup in response to %s request\n",
            rrc->ra_trigger == RRC_CONNECTION_REESTABLISHMENT ? "RRCReestablishment" : "RRCResume");
+  flight_monitor_set(FLIGHT_MONITOR_DRB_CONTEXT_ACTIVE, 0);
 
   // discard any stored UE Inactive AS context and suspendConfig
   // TODO
@@ -2369,14 +2420,14 @@ static void nr_rrc_process_rrcsetup(NR_UE_RRC_INST_t *rrc, const NR_RRCSetup_t *
   // stop timer T300, T301, T319, T320 if running;
   NR_UE_Timers_Constants_t *timers = &rrc->timers_and_constants;
   nr_timer_stop(&timers->T300);
-  nr_timer_stop(&timers->T301);
+  flight_rrc_stop_timer(rrc, &timers->T301, FLIGHT_RRC_TIMER_T301);
   nr_timer_stop(&timers->T319);
   nr_timer_stop(&timers->T320);
 
   // if T390 (not implemented) and T302 are running
   // stop timer
   // perform the actions as specified in 5.3.14.4
-  nr_timer_stop(&timers->T302);
+  flight_rrc_stop_timer(rrc, &timers->T302, FLIGHT_RRC_TIMER_T302);
   handle_302_expired_stopped(rrc);
 
   // if the RRCSetup is received in response to an RRCResumeRequest, RRCResumeRequest1 or RRCSetupRequest
@@ -2400,7 +2451,7 @@ static void nr_rrc_process_rrcreject(NR_UE_RRC_INST_t *rrc, const NR_RRCReject_t
   // stop timer T300, T302, T319 if running;
   NR_UE_Timers_Constants_t *timers = &rrc->timers_and_constants;
   nr_timer_stop(&timers->T300);
-  nr_timer_stop(&timers->T302);
+  flight_rrc_stop_timer(rrc, &timers->T302, FLIGHT_RRC_TIMER_T302);
   nr_timer_stop(&timers->T319);
 
   // reset MAC and release the default MAC Cell Group configuration
@@ -2419,6 +2470,7 @@ static void nr_rrc_process_rrcreject(NR_UE_RRC_INST_t *rrc, const NR_RRCReject_t
   if (waitTime) {
     nr_timer_setup(&timers->T302, *waitTime * 1000, 10);
     nr_timer_start(&timers->T302);
+    nr_rrc_flight_timer_started(rrc, FLIGHT_RRC_TIMER_T302, timers->T302.target);
     rrc->access_barred = true;
   } else {
     RRCLOG_W("Error: waitTime should be always included in RRCReject message\n");
@@ -2693,7 +2745,7 @@ static void nr_rrc_ue_process_rrcReestablishment(NR_UE_RRC_INST_t *rrc,
 {
   // stop timer T301
   NR_UE_Timers_Constants_t *timers = &rrc->timers_and_constants;
-  nr_timer_stop(&timers->T301);
+  flight_rrc_stop_timer(rrc, &timers->T301, FLIGHT_RRC_TIMER_T301);
   NR_RRCReestablishment_IEs_t *ies = rrcReestablishment->criticalExtensions.choice.rrcReestablishment;
   AssertFatal(ies, "Not expecting RRCReestablishment_IEs to be NULL\n");
 
@@ -2850,6 +2902,7 @@ static int nr_rrc_ue_decode_dcch(NR_UE_RRC_INST_t *rrc,
               rrc_msg.payload.resume_rb.rb_id = 2;
               nr_rrc_send_msg_to_mac(rrc, &rrc_msg);
             }
+            bool resumed_drb = false;
             for (int i = 1; i <= MAX_DRBS_PER_UE; i++) {
               if (get_DRB_status(rrc, i) == RB_SUSPENDED) {
                 set_DRB_status(rrc, i, RB_ESTABLISHED);
@@ -2858,8 +2911,11 @@ static int nr_rrc_ue_decode_dcch(NR_UE_RRC_INST_t *rrc,
                 rrc_msg.payload.resume_rb.is_srb = false;
                 rrc_msg.payload.resume_rb.rb_id = i;
                 nr_rrc_send_msg_to_mac(rrc, &rrc_msg);
+                resumed_drb = true;
               }
             }
+            if (resumed_drb)
+              flight_rrc_publish_drb_context(rrc);
             rrc->reconfig_after_reestab = false;
           }
           nr_rrc_ue_process_rrcReconfiguration(rrc, gNB_indexP, c1->choice.rrcReconfiguration);
@@ -3293,6 +3349,8 @@ void *rrc_nrue(void *notUsed)
   instance_t instance = ITTI_MSG_DESTINATION_INSTANCE(msg_p);
   NR_UE_RRC_INST_t *rrc = get_NR_UE_rrc_inst(instance);
   AssertFatal(instance == rrc->ue_id, "Instance %ld received from ITTI doesn't matach with UE-ID %ld\n", instance, rrc->ue_id);
+  flight_monitor_add(FLIGHT_MONITOR_RRC_MESSAGES, 1);
+  flight_monitor_set(FLIGHT_MONITOR_RRC_STATE, rrc->nrRrcState);
   RRCLOG_D("Received %s frame %d\n", ITTI_MSG_NAME(msg_p), rrc->current_frame);
   switch (ITTI_MSG_ID(msg_p)) {
   case TERMINATE_MESSAGE:
@@ -3416,7 +3474,10 @@ void *rrc_nrue(void *notUsed)
     if (NAS_DETACH_REQ(msg_p).wait_release)
       rrc->detach_after_release = true;
     else {
+      const Rrc_State_NR_t old_state = rrc->nrRrcState;
       rrc->nrRrcState = RRC_STATE_DETACH_NR;
+      flight_monitor_set(FLIGHT_MONITOR_PDU_ACTIVE, 0);
+      flight_rrc_publish_state(rrc, FLIGHT_RRC_CONTROL_TRANSITION, old_state, rrc->nrRrcState, OTHER);
       NR_Release_Cause_t release_cause = OTHER;
       nr_rrc_going_to_IDLE(rrc, release_cause, NULL);
     }
@@ -3518,6 +3579,7 @@ static void nr_rrc_initiate_rrcReestablishment(NR_UE_RRC_INST_t *rrc, NR_Reestab
   nr_timer_stop(&timers->T304);
   // start timer T311
   nr_timer_start(&timers->T311);
+  nr_rrc_flight_timer_started(rrc, FLIGHT_RRC_TIMER_T311, timers->T311.target);
   // suspend all RBs, except SRB0
   for (int i = 1; i < 4; i++) {
     if (rrc->Srb[i] == RB_ESTABLISHED) {
@@ -3553,8 +3615,12 @@ void handle_RRCRelease(NR_UE_RRC_INST_t *rrc)
   nr_timer_stop(&tac->T380);
   // stop timer T320, if running
   nr_timer_stop(&tac->T320);
-  if (rrc->detach_after_release)
+  if (rrc->detach_after_release) {
+    const Rrc_State_NR_t old_state = rrc->nrRrcState;
     rrc->nrRrcState = RRC_STATE_DETACH_NR;
+    flight_monitor_set(FLIGHT_MONITOR_PDU_ACTIVE, 0);
+    flight_rrc_publish_state(rrc, FLIGHT_RRC_CONTROL_TRANSITION, old_state, rrc->nrRrcState, OTHER);
+  }
   const struct NR_RRCRelease_IEs *rrcReleaseIEs = rrc->RRCRelease ? rrc->RRCRelease->criticalExtensions.choice.rrcRelease : NULL;
   if (!rrc->as_security_activated) {
     // ignore any field included in RRCRelease message except waitTime
@@ -3588,6 +3654,9 @@ void handle_RRCRelease(NR_UE_RRC_INST_t *rrc)
 
 void handle_rlf_detection(NR_UE_RRC_INST_t *rrc)
 {
+  flight_monitor_set(FLIGHT_MONITOR_PDU_ACTIVE, 0);
+  flight_monitor_set(FLIGHT_MONITOR_DRB_CONTEXT_ACTIVE, 0);
+  flight_rrc_publish_state(rrc, FLIGHT_RRC_CONTROL_RLF, rrc->nrRrcState, rrc->nrRrcState, 0);
   // 5.3.10.3 in 38.331
   bool srb2 = rrc->Srb[2] != RB_NOT_PRESENT;
   bool any_drb = false;
@@ -3610,6 +3679,8 @@ void nr_rrc_going_to_IDLE(NR_UE_RRC_INST_t *rrc,
                           NR_Release_Cause_t release_cause,
                           NR_RRCRelease_t *RRCRelease)
 {
+  const Rrc_State_NR_t old_state = rrc->nrRrcState;
+  flight_monitor_set(FLIGHT_MONITOR_DRB_CONTEXT_ACTIVE, 0);
   NR_UE_Timers_Constants_t *tac = &rrc->timers_and_constants;
   struct NR_RRCRelease_IEs *rrcReleaseIEs = RRCRelease ? RRCRelease->criticalExtensions.choice.rrcRelease : NULL;
 
@@ -3621,11 +3692,12 @@ void nr_rrc_going_to_IDLE(NR_UE_RRC_INST_t *rrc,
       waitTime = rrcReleaseIEs->nonCriticalExtension ?
                  rrcReleaseIEs->nonCriticalExtension->waitTime : NULL;
       if (waitTime) {
-        nr_timer_stop(&tac->T302); // stop 302
+        flight_rrc_stop_timer(rrc, &tac->T302, FLIGHT_RRC_TIMER_T302); // stop 302
         // start timer T302 with the value set to the waitTime
         int target = *waitTime * 1000; // waitTime is in seconds
         nr_timer_setup(&tac->T302, target, 10);
         nr_timer_start(&tac->T302);
+        nr_rrc_flight_timer_started(rrc, FLIGHT_RRC_TIMER_T302, tac->T302.target);
         // TODO inform upper layers that access barring is applicable
         //      for all access categories except categories '0' and '2'.
         // for now we just set the access barred in RRC
@@ -3635,7 +3707,7 @@ void nr_rrc_going_to_IDLE(NR_UE_RRC_INST_t *rrc,
   }
   if (!waitTime) {
     if (nr_timer_is_active(&tac->T302)) {
-      nr_timer_stop(&tac->T302);
+      flight_rrc_stop_timer(rrc, &tac->T302, FLIGHT_RRC_TIMER_T302);
       handle_302_expired_stopped(rrc);
     }
   }
@@ -3652,10 +3724,10 @@ void nr_rrc_going_to_IDLE(NR_UE_RRC_INST_t *rrc,
   }
   // Stop all the timers except T302, T320 and T325
   nr_timer_stop(&tac->T300);
-  nr_timer_stop(&tac->T301);
+  flight_rrc_stop_timer(rrc, &tac->T301, FLIGHT_RRC_TIMER_T301);
   nr_timer_stop(&tac->T304);
   nr_timer_stop(&tac->T310);
-  nr_timer_stop(&tac->T311);
+  flight_rrc_stop_timer(rrc, &tac->T311, FLIGHT_RRC_TIMER_T311);
   nr_timer_stop(&tac->T319);
 
   for (int i = 0; i < NB_CNX_UE; i++) {
@@ -3761,6 +3833,8 @@ void nr_rrc_going_to_IDLE(NR_UE_RRC_INST_t *rrc,
   RRCLOG_I("RRC moved into IDLE state\n");
   if (rrc->nrRrcState != RRC_STATE_DETACH_NR)
     rrc->nrRrcState = RRC_STATE_IDLE_NR;
+  flight_monitor_set(FLIGHT_MONITOR_PDU_ACTIVE, 0);
+  flight_rrc_publish_state(rrc, FLIGHT_RRC_CONTROL_IDLE_FALLBACK, old_state, rrc->nrRrcState, release_cause);
 
   rrc->rnti = 0;
 
