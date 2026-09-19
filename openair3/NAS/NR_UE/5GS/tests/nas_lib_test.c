@@ -286,6 +286,49 @@ static void test_registration_reject(void)
   free_fgs_registration_reject(&dec);
 }
 
+/* Exercise the production codec with byte vectors, including hostile lengths. */
+static void test_registration_reject_timers(void)
+{
+  uint8_t wire[] = {101, 0x5f, 1, 0x25, 0x16, 1, 0x42};
+  byte_array_t input = {.buf = wire, .len = sizeof(wire)};
+  fgs_registration_reject_msg_t msg = {0};
+  AssertFatal(decode_fgs_registration_reject(&msg, &input) == sizeof(wire), "timer decode failed\n");
+  AssertFatal(
+      msg.cause == 101 && msg.t3346_present && msg.t3346 == 0x25 && msg.t3502_present && msg.t3502 == 0x42 && !msg.unhandled_ies,
+      "timer values/presence lost\n");
+  uint8_t output[sizeof(wire)];
+  byte_array_t encoded = {.buf = output, .len = sizeof(output)};
+  AssertFatal(encode_fgs_registration_reject(&encoded, &msg) == sizeof(wire) && memcmp(wire, output, sizeof(wire)) == 0,
+              "timer roundtrip failed\n");
+  const int consumed[] = {-1, 1, 1, 1, 4, 4, 4, 7};
+  for (size_t n = 0; n <= sizeof(wire); ++n) {
+    input.len = n;
+    int rc = decode_fgs_registration_reject(&msg, &input);
+    AssertFatal(rc == consumed[n], "wrong consumed size for truncation %zu\n", n);
+    if (n > 0)
+      AssertFatal(msg.cause == 101 && msg.unhandled_ies == (n != 1 && n != 4 && n != 7),
+                  "optional truncation lost mandatory cause or ambiguity at %zu\n",
+                  n);
+  }
+  uint8_t duplicate[] = {101, 0x5f, 1, 0x25, 0x5f, 1, 0x01};
+  input = (byte_array_t){.buf = duplicate, .len = sizeof(duplicate)};
+  AssertFatal(decode_fgs_registration_reject(&msg, &input) == 4 && msg.cause == 101 && msg.unhandled_ies,
+              "duplicate optional timer suppressed mandatory rejection\n");
+  uint8_t invalid[] = {101, 0x5f, 0, 0x25};
+  input = (byte_array_t){.buf = invalid, .len = sizeof(invalid)};
+  AssertFatal(decode_fgs_registration_reject(&msg, &input) == 1 && msg.cause == 101 && msg.unhandled_ies,
+              "invalid optional timer suppressed mandatory rejection\n");
+  uint8_t unknown[] = {101, 0x78, 0, 3, 0x5f, 1, 0x25};
+  input = (byte_array_t){.buf = unknown, .len = sizeof(unknown)};
+  AssertFatal(decode_fgs_registration_reject(&msg, &input) == 1 && msg.unhandled_ies && !msg.t3346_present,
+              "unknown payload mistaken for timer\n");
+  AssertFatal(encode_fgs_registration_reject(&encoded, &msg) < 0, "unknown IE silently discarded by encode\n");
+  uint8_t zero[] = {101, 0x16, 1, 0};
+  input = (byte_array_t){.buf = zero, .len = sizeof(zero)};
+  AssertFatal(decode_fgs_registration_reject(&msg, &input) == sizeof(zero) && msg.t3502_present && msg.t3502 == 0,
+              "present zero timer confused with absence\n");
+}
+
 /** @brief Test NAS Authentication Failure enc/dec */
 static void test_auth_failure(void)
 {
@@ -402,6 +445,7 @@ int main()
   test_service_accept();
   test_service_reject();
   test_registration_reject();
+  test_registration_reject_timers();
   test_auth_failure();
   test_auth_reject();
   test_security_mode_reject();
