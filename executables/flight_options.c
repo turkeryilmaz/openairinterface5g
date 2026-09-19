@@ -22,7 +22,7 @@ int flight_normalize_arguments(int *argc, char **argv)
       continue;
     }
     if (seen || i + 1 == *argc || argv[i + 1][0] == '-') {
-      fprintf(stderr, "[FLIGHT] Use one --flight followed by log or off\n");
+      fprintf(stderr, "[FLIGHT] Use one --flight followed by log [recovery] or off\n");
       return -1;
     }
     seen = true;
@@ -96,8 +96,11 @@ int flight_start_capture(configmodule_interface_t *cfg, int argc, char **argv, c
   char *features = NULL;
   char *output = NULL, *repo_option = NULL, *core = NULL, *interface = NULL, *gpsd = NULL;
   char *recorder_budget = NULL, *stdout_budget = NULL, *host_budget = NULL, *min_free = NULL;
+  char *stall = NULL, *attempt = NULL;
   paramdef_t options[] = {
-      STRINGPARAM("flight", "Flight features: log, or off. CLI replaces the config value.\n", 0, &features, "off"),
+      STRINGPARAM("flight", "Flight features: log [recovery], or off. CLI replaces the config value.\n", 0, &features, "off"),
+      STRINGPARAM("flight-recovery-stall", "Native RX progress timeout in seconds (default 10).\n", 0, &stall, NULL),
+      STRINGPARAM("flight-recovery-attempt", "Cell-present acquisition bound in seconds (default 120).\n", 0, &attempt, NULL),
       STRINGPARAM("flight-output", "Capture directory; default: cmake_targets/log/FlightTests/YYYY-MM-DD.\n", 0, &output, NULL),
       STRINGPARAM("flight-repo", "Optional relocated source checkout containing tools/flight_test.\n", 0, &repo_option, NULL),
       STRINGPARAM("flight-core-ip", "Optional remote endpoint observation; not required for logging.\n", 0, &core, NULL),
@@ -122,7 +125,7 @@ int flight_start_capture(configmodule_interface_t *cfg, int argc, char **argv, c
     if (strcmp(argv[i], "-h") == 0 || strncmp(argv[i], "--help", 6) == 0)
       return 0;
 
-  bool log = false, off = false;
+  bool log = false, off = false, recovery = false;
   char *copy = strdup(features ? features : "off");
   if (copy == NULL)
     return -1;
@@ -132,17 +135,17 @@ int flight_start_capture(configmodule_interface_t *cfg, int argc, char **argv, c
       log = true;
     else if (strcmp(feature, "off") == 0)
       off = true;
+    else if (strcmp(feature, "recovery") == 0)
+      recovery = true;
     else {
-      fprintf(stderr,
-              "[FLIGHT] Unsupported feature '%s'; this build supports log and off. Recovery/AGC are not implemented.\n",
-              feature);
+      fprintf(stderr, "[FLIGHT] Unsupported feature '%s'; supported: log, recovery (UE only), off.\n", feature);
       free(copy);
       return -1;
     }
   }
   free(copy);
-  if (log == off) {
-    fprintf(stderr, "[FLIGHT] Select log or off, not an empty or conflicting feature list\n");
+  if (log == off || (recovery && (!log || strcmp(role, "ue") != 0))) {
+    fprintf(stderr, "[FLIGHT] Select log [recovery] for UE, log for gNB, or off\n");
     return -1;
   }
   if (off)
@@ -168,7 +171,7 @@ int flight_start_capture(configmodule_interface_t *cfg, int argc, char **argv, c
     fprintf(stderr, "[FLIGHT] Cannot locate tools/flight_test/capture.py; keep the source checkout or set flight-repo\n");
     return -1;
   }
-  char **command = calloc((size_t)argc + 40, sizeof(*command));
+  char **command = calloc((size_t)argc + 48, sizeof(*command));
   if (command == NULL)
     return -1;
   int n = 0;
@@ -180,6 +183,8 @@ int flight_start_capture(configmodule_interface_t *cfg, int argc, char **argv, c
   command[n++] = "--repo";
   command[n++] = repo;
   command[n++] = "--console";
+  if (recovery)
+    command[n++] = "--recovery";
   command[n++] = "--working-directory";
   command[n++] = cwd;
   if (cfg->num_cfgP > 0 && cfg->cfgP[0] && realpath(cfg->cfgP[0], config)) {
@@ -193,7 +198,9 @@ int flight_start_capture(configmodule_interface_t *cfg, int argc, char **argv, c
                             {"--recorder-budget", recorder_budget},
                             {"--stdout-budget", stdout_budget},
                             {"--host-budget", host_budget},
-                            {"--min-free-bytes", min_free}};
+                            {"--min-free-bytes", min_free},
+                            {"--recovery-stall", stall},
+                            {"--recovery-attempt", attempt}};
   for (unsigned int i = 0; i < sizeofArray(pairs); ++i) {
     if (pairs[i][1]) {
       command[n++] = (char *)pairs[i][0];
