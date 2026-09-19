@@ -13,6 +13,9 @@ Every event has event, a–f, ring, sequence, mono_ns and realtime_ns. Sequence 
 |14 UE_RRC|UE instance|connected state enum|reserved|reserved|reserved|reserved|
 |15 UE_PDU|UE instance|PDU session ID|PDU type enum|1 decoded/config-matched accept|reserved|reserved|
 |16 UE_TA|UE instance|SFN*1000+slot|C-RNTI|TA command|TA type enum|reserved|
+|17 UE_NAS|UE instance|0 RX,1 TX,2 ITTI dispatch,3 Registration Request construction,4 reject decision|message type or -1; ITTI ID for dispatch; cause for rejection|security result for RX, outer header for TX, 5GMM mode for dispatch, security-container flag for construction, policy for reject|length or 0; registration type for construction; wait seconds for reject|5GMM state|
+|18 UE_RRC_TIMER|UE instance|timer number|1 start,2 stop,3 expire|duration ms|RRC state|reserved|
+|19 UE_CONTROL|UE instance|1 RRC transition,2 RLF,3 idle fallback,4 NAS reject|old state or reject cause|new state or reject policy|release cause or raw T3346 (-1 absent)|reserved or raw T3502 (-1 absent)|
 |20 GNB_SLOT|gNB module|cell ID|SFN|slot|reserved|reserved|
 |21 GNB_UE_BYTES|cell ID|RNTI|SFN|DL MAC SDU bytes|UL MAC SDU bytes|UL failure flag|
 |22 GNB_UE_RADIO|RNTI|DL MCS|UL MCS|DL HARQ errors|UL HARQ errors|UL DTX|
@@ -20,6 +23,7 @@ Every event has event, a–f, ring, sequence, mono_ns and realtime_ns. Sequence 
 |24 GNB_UE_LINK|RNTI|scheduler normalized PH dB|scheduler PCMAX dBm|PUCCH DTX|mean RSRP or unavailable|mean SINR*10 or unavailable|
 |25 GNB_DL_HARQ|RNTI|round0 count|round1 count|round2 count|round3 count|DL MAC transport bytes|
 |26 GNB_UL_HARQ|RNTI|round0 count|round1 count|round2 count|round3 count|UL MAC transport bytes|
+|27 UE_NAS_COUNT|UE instance|0 before RX security,1 after RX security,2 TX handoff,3 Registration Request construction|current UL NAS COUNT|current DL NAS COUNT|context presence mask: 1 integrity,2 ciphering|5GMM state|
 |30 RADIO_RX|device-type enum|UHD sample ticks|requested samples|returned samples|RX error enum|has_time_spec|
 |31 RADIO_TX|device-type enum|scheduled sample ticks|requested samples|returned samples|burst flags (direct path)|0 direct / 1 TX worker|
 
@@ -44,3 +48,45 @@ The decoder also accepts older eight-slot captures and their overwrite markers.
 Event IDs, payload meanings, timestamps and record schema version remain unchanged.
 A missing clean footer or a recording-disabled diagnostic must not be treated as
 complete recording. Unknown event IDs preserve all numeric fields for later decoding.
+
+## Native recovery stream, schema version 1
+
+Each worker supplies an inherited private AF_UNIX datagram socket to a
+SCHED_OTHER monitor. Once per second and at orderly shutdown it attempts one
+bounded JSON snapshot containing worker PID, sequence, source CLOCK_MONOTONIC
+nanoseconds, send-drop count and observed values. A separate recovery journal
+records receipt time, sequence gaps, policy transitions and action outcomes.
+No RT producer formats JSON, sends on the socket or writes a file.
+
+`rx_samples` and `tx_samples` count successful UHD samples, `search_attempts`
+counts completed searches, `sync_successes` counts successful synchronization,
+`rrc_messages` and `nas_messages` count task dispatches. `ue_slot_inputs`
+counts submissions from the synchronized main loop; `ue_dl_completed` and
+`ue_tx_completed` count completed PHY worker calls (not decoded packets). `rrc_state` is the OAI
+enum; `pdu_accepts` counts decoded/config-matched accepts. `pdu_active` denotes
+accepted control-plane context and is cleared at RLF/idle/detach; it does not
+prove a functioning user plane. `rrc_hold_until_ns` is a monotonic lower bound
+from observed T302/T301/T311 holds. Fields are independently sampled, not one
+compound-coherent protocol snapshot. Unobserved fields are omitted.
+
+`nas_reject` is one coherent uint64: generation bits 63..56, cause 55..48,
+T3502-presence flag 47, policy 46..40, raw T3502 39..32, minimum wait seconds 31..0. Policy 1 permits
+the implemented retry subset, 2 inhibits retry, and 3 marks unsupported or
+malformed restrictions and also inhibits retry. Generation is worker-local.
+The session retains the last explicitly supplied T3502 across worker replacements;
+omission does not replace it with the default. The initial default octet 0x42
+represents twelve minutes. A value does not encode
+a subscription identity. The journal decodes this word before policy decisions.
+
+RX NAS events before type extraction have type -1 and the security result;
+after successful validation/decryption a second event carries the type. TX
+ciphertext is never interpreted as a type. Registration Request construction
+with the security-container flag is not a second wire transmission. Numeric
+metadata does not expose NAS payloads, keys, SUCI, GUTI or IMSI.
+
+UE_NAS_COUNT records numeric counters and context-presence booleans only, never key bytes or pointers. Counts are local values at the named phase, not necessarily the sequence number of the adjacent wire message: TX generation may already have incremented UL COUNT, and RX validation may update DL COUNT. Compare before/after RX and construction/handoff events within one worker to diagnose context resets, replay or repeated registration. This is diagnostic evidence, not a security validation verdict.
+
+`drb_context_active` is a native 0/1 observation of configured or resumed DRB
+control-plane context. It clears on release, suspension, RLF and reset. Recovery
+requires a prior PDU acceptance in the same worker before treating this as
+restoration; it is not proof of packet or application delivery.
