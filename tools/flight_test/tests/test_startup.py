@@ -78,6 +78,25 @@ class Startup(unittest.TestCase):
             for path in [run / "metadata.json", *run.glob("stdout.*.log"), *run.glob("stderr.*.log")]:
                 self.assertNotIn(marker, path.read_text())
 
+    def test_recovery_config_and_cli_start_one_terminal_worker(self):
+        for config_enabled in (True, False):
+            self.output = self.work / f"recovery-{config_enabled}"
+            self.config("log recovery" if config_enabled else "off")
+            args = [] if config_enabled else ["--flight", "log", "recovery"]
+            result = self.run_fixture(*args)
+            self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
+            sessions = list(self.output.glob("ue-session-*"))
+            self.assertEqual(len(sessions), 1)
+            status = json.loads((sessions[0] / "status.json").read_text())
+            self.assertEqual(status["attempt_count"], 1)
+            self.assertEqual(status["state"], "policy_stop")
+            self.assertIsNone(status["operator_stop_signal"])
+            self.assertEqual(status["exit_code"], 0)
+            # This fixture performs the production bootstrap/logInit then
+            # exits normally. A terminal exit must not become a retry loop.
+            logs = list((sessions[0] / "attempts").glob("*/stdout.*.log"))
+            self.assertIn("fixture-recording=1", ''.join(f.read_text() for f in logs))
+
     def test_cli_disables_config(self):
         self.config("log")
         result = self.run_fixture("--flight", "off")
@@ -93,7 +112,7 @@ class Startup(unittest.TestCase):
         self.assertFalse(self.output.exists())
 
     def test_future_features_rejected_before_capture(self):
-        for features in (("log", "recovery"), ("log", "recovery", "agc"), ("log", "off"), ()):
+        for features in (("recovery",), ("log", "recovery", "agc"), ("log", "off"), ()):
             self.config()
             result = self.run_fixture("--flight", *features)
             self.assertEqual(result.returncode, 2, result.stderr + result.stdout)

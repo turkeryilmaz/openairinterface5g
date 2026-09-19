@@ -11,8 +11,10 @@ from __future__ import annotations
 import argparse
 import errno
 import hashlib
+from dataclasses import dataclass
 import ipaddress
 import json
+import math
 import os
 import queue
 import re
@@ -34,6 +36,7 @@ from flight_health import (
     bounded_command,
     clock_sample,
 )
+from flight_recovery import Decision, NativeChannel, RecoveryPolicy
 
 
 SCHEMA_VERSION = 1
@@ -122,6 +125,43 @@ class CaptureHealth:
     def snapshot(self) -> dict[str, Any]:
         with self._lock:
             return {"healthy": not self._reasons, "reasons": sorted(self._reasons)}
+
+
+class StopLatch:
+    """Latch one operator stop across an attempt and any retry backoff."""
+
+    def __init__(self) -> None:
+        self.signal_number: Optional[int] = None
+
+    def install(self) -> dict[int, Any]:
+        previous: dict[int, Any] = {}
+        for signum in (signal.SIGTERM, signal.SIGINT):
+            previous[signum] = signal.getsignal(signum)
+            signal.signal(signum, self._on_signal)
+        return previous
+
+    def restore(self, previous: dict[int, Any]) -> None:
+        for signum, handler in previous.items():
+            signal.signal(signum, handler)
+
+    def _on_signal(self, signum: int, _frame: Any) -> None:
+        if self.signal_number is None:
+            self.signal_number = signum
+
+
+@dataclass(frozen=True)
+class CaptureResult:
+    """The bounded outcome of one worker and its owned process group."""
+
+    exit_code: int
+    raw_returncode: Optional[int]
+    state: str
+    policy_decision: Optional[Decision]
+    operator_stop: bool
+    recovery_stop_reason: Optional[str]
+    run_dir: Path
+    process_group: Optional[int]
+
 
 
 class ByteQuota:
@@ -694,6 +734,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--gpsd", type=parse_gpsd, metavar="HOST:PORT")
     parser.add_argument("--probe-ping", action="store_true")
     parser.add_argument("--disable-recorder", action="store_true")
+    parser.add_argument("--recovery", action="store_true", help="allow UE-only policy-gated worker recovery")
+    parser.add_argument("--recovery-stall", type=float, default=10.0)
+    parser.add_argument("--recovery-attempt", type=float, default=120.0)
     parser.add_argument("--stop-timeout", type=float, default=10.0)
     parser.add_argument("--post-exit-drain-timeout", type=float, default=2.0)
     parser.add_argument("--startup-grace", type=float, default=30.0)
@@ -725,8 +768,15 @@ def default_output(repo: str) -> Path:
 
 
 def validate_args(args: argparse.Namespace, parser: argparse.ArgumentParser) -> list[str]:
+    time_values = (args.stop_timeout, args.post_exit_drain_timeout, args.health_interval, args.startup_grace, args.recovery_stall, args.recovery_attempt)
+    if not all(math.isfinite(value) for value in time_values):
+        parser.error("timeouts and intervals must be finite")
     if args.stop_timeout <= 0 or args.post_exit_drain_timeout <= 0 or args.health_interval <= 0 or args.startup_grace < 0:
         parser.error("timeout/interval must be positive and startup grace non-negative")
+    if args.recovery and args.role != "ue":
+        parser.error("--recovery is supported only for a UE log capture")
+    if args.recovery_stall < 1 or args.recovery_attempt < 1:
+        parser.error("--recovery-stall and --recovery-attempt must each be at least one second")
     if args.probe_ping and args.core_ip is None:
         parser.error("--probe-ping requires --core-ip for a remote core endpoint")
     if not args.disable_recorder and args.recorder_budget != 0 and not MIN_RECORDER_BUDGET <= args.recorder_budget <= MAX_RECORDER_BUDGET:
@@ -890,16 +940,40 @@ class HealthWorker(threading.Thread):
 class FlightCapture:
     """Create one private run directory and supervise one child process group."""
 
-    def __init__(self, args: argparse.Namespace, command: list[str]) -> None:
+    def __init__(
+        self,
+        args: argparse.Namespace,
+        command: list[str],
+        *,
+        run_dir: Optional[Path] = None,
+        session_id: Optional[str] = None,
+        policy: Optional[RecoveryPolicy] = None,
+        begin_policy_attempt: bool = True,
+        stop_latch: Optional[StopLatch] = None,
+        recovery_enabled: bool = False,
+        launch_observer: Optional[Callable[[int], None]] = None,
+    ) -> None:
         self.args = args
         self.command = command
         self.health = CaptureHealth()
-        self.run_dir: Optional[Path] = None
+        self.run_dir = run_dir
         self.process: Optional[subprocess.Popen[bytes]] = None
+        self.process_start_ticks: Optional[int] = None
         self.console: Optional[ConsoleMirror] = None
         self.stop_signal: Optional[int] = None
         self.stop_sent_ns: Optional[int] = None
+        self.recovery_stop_reason: Optional[str] = None
+        self.recovery_stop_sent_ns: Optional[int] = None
         self.kill_sent = False
+        self.session_id = session_id or uuid.uuid4().hex
+        self.policy = policy or RecoveryPolicy(args.recovery_stall, args.recovery_attempt)
+        self.begin_policy_attempt = begin_policy_attempt
+        self.stop_latch = stop_latch
+        self.recovery_enabled = recovery_enabled
+        self.launch_observer = launch_observer
+        self.policy_decision: Optional[Decision] = None
+        self._last_policy_decision: Optional[tuple[str, str, int]] = None
+        self.last_result: Optional[CaptureResult] = None
         self.counters = {
             "launch_attempts": 0,
             "launch_failures": 0,
@@ -915,7 +989,7 @@ class FlightCapture:
         }
 
     def run(self) -> int:
-        run_dir = self._create_run_dir()
+        run_dir = self.run_dir or self._create_run_dir()
         self.run_dir = run_dir
         print(f"[FLIGHT] logging enabled: {run_dir}", file=sys.stderr, flush=True)
         recorder_dir = run_dir / "recorder"
@@ -948,14 +1022,21 @@ class FlightCapture:
             min(self.args.chunk_bytes, 4 * MIB),
             self.health,
         )
+        recovery_writer = BoundedRotatingWriter(
+            run_dir,
+            "recovery",
+            host_quota,
+            min(self.args.chunk_bytes, 4 * MIB),
+            self.health,
+        )
         if self.args.console:
             self.console = ConsoleMirror()
             stdout_writer.console = self.console
             stderr_writer.console = self.console
         storage = StorageReserve(run_dir, self.args.min_free_bytes)
-        for writer in (stdout_writer, stderr_writer, host_writer):
+        for writer in (stdout_writer, stderr_writer, host_writer, recovery_writer):
             writer.storage = storage
-        old_handlers = self._install_signal_handlers()
+        old_handlers = self._install_signal_handlers() if self.stop_latch is None else None
         try:
             return self._launch_and_supervise(
                 recorder_dir,
@@ -963,12 +1044,15 @@ class FlightCapture:
                 stdout_writer,
                 stderr_writer,
                 host_writer,
+                recovery_writer,
             )
         finally:
-            self._restore_signal_handlers(old_handlers)
+            if old_handlers is not None:
+                self._restore_signal_handlers(old_handlers)
             stdout_writer.close()
             stderr_writer.close()
             host_writer.close()
+            recovery_writer.close()
             if self.console is not None:
                 self.console.close()
 
@@ -994,8 +1078,9 @@ class FlightCapture:
             "schema_version": SCHEMA_VERSION,
             "kind": "flight_capture_metadata",
             "run_id": uuid.uuid4().hex,
+            "session_id": self.session_id,
             "role": self.args.role,
-            "features": ["log"],
+            "features": ["log", "recovery"] if self.recovery_enabled else ["log"],
             "directory_date_basis": "host local date at launch",
             "created_clock": clock_sample(),
             "command": redact_argv(self.command),
@@ -1033,6 +1118,13 @@ class FlightCapture:
                 "disk_bound_scope": "optional per-category caps; otherwise free-space reserve; metadata separately bounded",
             },
             "privacy": {
+            "recovery": {
+                "enabled": self.recovery_enabled,
+                "native_channel": "one inherited OAI_FLIGHT_MONITOR_FD socketpair per worker",
+                "stall_seconds": self.args.recovery_stall,
+                "attempt_seconds": self.args.recovery_attempt,
+                "actions": "policy observations only unless recovery is enabled",
+            },
                 "config_contents_saved": False,
                 "environment_saved": False,
                 "git_diff_saved": False,
@@ -1053,6 +1145,7 @@ class FlightCapture:
         stdout_writer: BoundedRotatingWriter,
         stderr_writer: BoundedRotatingWriter,
         host_writer: BoundedRotatingWriter,
+        recovery_writer: BoundedRotatingWriter,
     ) -> int:
         environment = os.environ.copy()
         environment["_OAI_FLIGHT_CAPTURE_PARENT"] = str(os.getpid())
@@ -1068,6 +1161,20 @@ class FlightCapture:
         environment["LD_LIBRARY_PATH"] = executable_library_dir + (
             os.pathsep + existing_library_path if existing_library_path else ""
         )
+        native = NativeChannel()
+        environment["_OAI_FLIGHT_MONITOR_FD"] = str(native.child.fileno())
+        if self.begin_policy_attempt:
+            self.policy.begin_attempt(time.monotonic_ns())
+        # Check at the Popen boundary as well as the session boundary. A latched
+        # operator signal must never turn a pending retry into another worker.
+        if self._operator_stop_signal() is not None:
+            native.close()
+            return self._operator_stop_before_launch(
+                stdout_writer,
+                stderr_writer,
+                host_writer,
+                recovery_writer,
+            )
         self.counters["launch_attempts"] += 1
         try:
             process = subprocess.Popen(
@@ -1079,9 +1186,12 @@ class FlightCapture:
                 env=environment,
                 close_fds=True,
                 start_new_session=True,
+                pass_fds=(native.child.fileno(),),
             )
         except OSError as exc:
             self.counters["launch_failures"] += 1
+            native.close()
+            self.policy_decision = Decision("stop", "launch_failed")
             return_code = 127 if exc.errno == errno.ENOENT else 126
             self._final_status(
                 "launch_failed",
@@ -1091,11 +1201,30 @@ class FlightCapture:
                 stdout_writer,
                 stderr_writer,
                 host_writer,
+                recovery_writer,
+                None,
+            )
+            assert self.run_dir is not None
+            self.last_result = CaptureResult(
+                return_code,
+                None,
+                "launch_failed",
+                self.policy_decision,
+                self._operator_stop_signal() is not None,
+                None,
+                self.run_dir,
                 None,
             )
             return return_code
+        native.child.close()
 
         self.process = process
+        self.process_start_ticks = self._process_start_ticks(process.pid)
+        if self.launch_observer is not None:
+            try:
+                self.launch_observer(process.pid)
+            except Exception:
+                self.health.unhealthy("launch_observer_failure")
         assert process.stdout is not None
         assert process.stderr is not None
         collector = SystemHealthCollector(
@@ -1130,12 +1259,22 @@ class FlightCapture:
         try:
             while True:
                 self._forward_stop_request(process)
-                self._apply_stop_deadline(process)
-                observed_returncode = process.poll()
                 now_ns = time.monotonic_ns()
+                # A clean leader exit is classified before a native policy tick
+                # can request recovery. A datagram received after that exit is
+                # still recorded below, but cannot turn an unknown zero exit
+                # into a controlled restart.
+                observed_returncode = process.poll()
                 if leader_returncode is None and observed_returncode is not None:
                     leader_returncode = observed_returncode
                     leader_exit_ns = now_ns
+                self._drain_native(
+                    native,
+                    process.pid,
+                    recovery_writer,
+                    allow_actions=leader_returncode is None,
+                )
+                self._apply_stop_deadline(process)
 
                 if leader_returncode is not None:
                     if (
@@ -1157,12 +1296,16 @@ class FlightCapture:
                         # After an explicit TERM or INT, retain the owned-group
                         # deadline if descendants still exist after leader exit.
                         if (
-                            self.stop_sent_ns is not None
+                            (self.stop_sent_ns is not None or self.recovery_stop_sent_ns is not None)
                             and not self.kill_sent
                             and self._owned_group_exists(process)
                         ):
                             time.sleep(0.05)
                             continue
+                        # The worker may send its final native datagram after
+                        # the loop's previous drain but before poll sees exit.
+                        # Drain once more after exit, without issuing actions.
+                        self._drain_native(native, process.pid, recovery_writer, allow_actions=False)
                         break
 
                 if not selector.get_map():
@@ -1182,6 +1325,7 @@ class FlightCapture:
             if not pipes_closed_early:
                 process.stdout.close()
                 process.stderr.close()
+            native.reader.close()
             worker.stop()
             worker.join(timeout=5.0)
             if worker.is_alive():
@@ -1190,6 +1334,25 @@ class FlightCapture:
         stderr_sanitizer.finish()
         returncode = leader_returncode if leader_returncode is not None else process.wait()
         exit_code, exit_kind = self._exit_code(returncode)
+        self.policy_decision = self.policy.exited(
+            time.monotonic_ns(),
+            returncode,
+            self._operator_stop_signal() is not None,
+            controlled_recovery=self.recovery_stop_reason is not None,
+        )
+        self._record_policy_decision(recovery_writer, "exited", self.policy_decision, force=True)
+        assert self.run_dir is not None
+        self.last_result = CaptureResult(
+            exit_code,
+            returncode,
+            exit_kind,
+            self.policy_decision,
+            self._operator_stop_signal() is not None,
+            self.recovery_stop_reason,
+            self.run_dir,
+            process.pid,
+        )
+
         self._final_status(
             exit_kind,
             exit_code,
@@ -1208,9 +1371,122 @@ class FlightCapture:
             stdout_writer,
             stderr_writer,
             host_writer,
+            recovery_writer,
             worker,
         )
         return exit_code
+
+    @staticmethod
+    def _process_start_ticks(pid: int) -> Optional[int]:
+        """Return Linux /proc start ticks without retaining process details."""
+
+        try:
+            stat_text = Path("/proc").joinpath(str(pid), "stat").read_text(encoding="ascii")
+            fields = stat_text[stat_text.rfind(")") + 2 :].split()
+            return int(fields[19]) if len(fields) > 19 else None
+        except (OSError, UnicodeDecodeError, ValueError):
+            return None
+
+    def _operator_stop_before_launch(
+        self,
+        stdout_writer: BoundedRotatingWriter,
+        stderr_writer: BoundedRotatingWriter,
+        host_writer: BoundedRotatingWriter,
+        recovery_writer: BoundedRotatingWriter,
+    ) -> int:
+        signal_number = self._operator_stop_signal()
+        assert signal_number is not None
+        return_code = 128 + abs(signal_number)
+        self.policy_decision = Decision("stop", "operator_stop_before_launch")
+        self._final_status(
+            "operator_stop_before_launch",
+            return_code,
+            None,
+            {"operator_stop_signal": signal_number},
+            stdout_writer,
+            stderr_writer,
+            host_writer,
+            recovery_writer,
+            None,
+        )
+        assert self.run_dir is not None
+        self.last_result = CaptureResult(
+            return_code,
+            None,
+            "operator_stop_before_launch",
+            self.policy_decision,
+            True,
+            None,
+            self.run_dir,
+            None,
+        )
+        return return_code
+
+    def _write_recovery_event(self, writer: BoundedRotatingWriter, kind: str, **fields: Any) -> None:
+        receipt = clock_sample()
+        payload: dict[str, Any] = {
+            "schema_version": SCHEMA_VERSION,
+            "kind": kind,
+            "session_id": self.session_id,
+            "attempt_directory": self.run_dir.name if self.run_dir is not None else None,
+            "policy_generation": self.policy.snapshot()["generation"],
+            "receipt_clock": receipt,
+        }
+        payload.update(fields)
+        writer.write(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8") + b"\n")
+
+    def _record_policy_decision(self, writer: BoundedRotatingWriter, phase: str, decision: Decision, force: bool = False) -> None:
+        identity = (decision.action, decision.reason, decision.not_before_ns)
+        if not force and identity == self._last_policy_decision:
+            return
+        self._last_policy_decision = identity
+        self._write_recovery_event(
+            writer,
+            "recovery_policy_transition",
+            policy_phase=phase,
+            decision={
+                "action": decision.action,
+                "reason": decision.reason,
+                "not_before_ns": decision.not_before_ns,
+            },
+            policy_snapshot=self.policy.snapshot(),
+        )
+
+    def _drain_native(self, channel: NativeChannel, pid: int,
+                      writer: BoundedRotatingWriter, *, allow_actions: bool = True) -> None:
+        samples = channel.receive(pid)
+        for sample in samples:
+            self._write_recovery_event(
+                writer,
+                "native_progress_snapshot",
+                native_pid=pid,
+                source_sequence=sample["sequence"],
+                source_clock={
+                    "monotonic_ns": sample["mono_ns"],
+                    "utc_wall_ns": None,
+                    "utc_wall_state": "unavailable_from_native_abi",
+                },
+                native_values=sample["values"],
+                native_send_drops=sample["send_drops"],
+            )
+            for change in self.policy.observe(sample, time.monotonic_ns()):
+                self._write_recovery_event(
+                    writer,
+                    "recovery_policy_transition",
+                    policy_phase="native_observe",
+                    change=change,
+                    policy_snapshot=self.policy.snapshot(),
+                )
+        decision = self.policy.tick(time.monotonic_ns())
+        self._record_policy_decision(writer, "tick", decision)
+        if allow_actions and self.recovery_enabled and decision.action == "restart":
+            self._request_recovery_stop(self.process, decision.reason)
+        self.native_channel = {
+            "sequence": channel.sequence,
+            "invalid": channel.invalid,
+            "gaps": channel.gaps,
+            "latest_source_monotonic_ns": channel.latest["mono_ns"] if channel.latest is not None else None,
+        }
 
     def _install_signal_handlers(self) -> dict[int, Any]:
         previous: dict[int, Any] = {}
@@ -1229,19 +1505,39 @@ class FlightCapture:
         if self.stop_signal is None:
             self.stop_signal = signum
 
+    def _operator_stop_signal(self) -> Optional[int]:
+        if self.stop_latch is not None:
+            return self.stop_latch.signal_number
+        return self.stop_signal
+
     def _forward_stop_request(self, process: subprocess.Popen[bytes]) -> None:
-        if self.stop_signal is None or self.stop_sent_ns is not None:
+        requested = self._operator_stop_signal()
+        if requested is None or self.stop_sent_ns is not None:
             return
+        self.stop_signal = requested
         self.stop_sent_ns = time.monotonic_ns()
         self.counters["stop_requests"] += 1
         try:
             # The child created this process group. It can remain after its leader
             # exits, so do not use process.poll() to gate an owned-group signal.
-            os.killpg(process.pid, self.stop_signal)
+            os.killpg(process.pid, requested)
             self.counters["graceful_group_signals"] += 1
         except ProcessLookupError:
             pass
 
+    def _request_recovery_stop(self, process: subprocess.Popen[bytes], reason: str) -> None:
+        if self._operator_stop_signal() is not None or self.recovery_stop_sent_ns is not None:
+            return
+        try:
+            os.killpg(process.pid, signal.SIGINT)
+        except ProcessLookupError:
+            # The worker group was already gone. In particular, do not make a
+            # later clean leader exit appear to be a controlled recovery.
+            return
+        self.recovery_stop_reason = reason
+        self.recovery_stop_sent_ns = time.monotonic_ns()
+        self.counters["recovery_stop_requests"] = self.counters.get("recovery_stop_requests", 0) + 1
+        self.counters["graceful_group_signals"] += 1
 
     def _owned_group_exists(self, process: subprocess.Popen[bytes]) -> bool:
         try:
@@ -1253,10 +1549,14 @@ class FlightCapture:
             return False
 
     def _apply_stop_deadline(self, process: subprocess.Popen[bytes]) -> None:
-        if self.stop_sent_ns is None or self.kill_sent:
+        if self.kill_sent:
             return
-        elapsed = time.monotonic_ns() - self.stop_sent_ns
-        if elapsed < int(self.args.stop_timeout * 1_000_000_000):
+        started_ns = self.stop_sent_ns if self.stop_sent_ns is not None else self.recovery_stop_sent_ns
+        if started_ns is None:
+            return
+        timeout_seconds = self.args.stop_timeout if self.stop_sent_ns is not None else 10.0
+        elapsed = time.monotonic_ns() - started_ns
+        if elapsed < int(timeout_seconds * 1_000_000_000):
             return
         try:
             os.killpg(process.pid, signal.SIGKILL)
@@ -1285,6 +1585,7 @@ class FlightCapture:
         stdout_writer: BoundedRotatingWriter,
         stderr_writer: BoundedRotatingWriter,
         host_writer: BoundedRotatingWriter,
+        recovery_writer: BoundedRotatingWriter,
         worker: Optional[HealthWorker],
     ) -> None:
         if self.run_dir is None:
@@ -1299,6 +1600,7 @@ class FlightCapture:
             },
             "schema_version": SCHEMA_VERSION,
             "kind": "flight_capture_status",
+            "session_id": self.session_id,
             "final_clock": clock_sample(),
             "state": state,
             "exit_code": exit_code,
@@ -1310,12 +1612,20 @@ class FlightCapture:
                 "stdout": stdout_writer.snapshot(),
                 "stderr": stderr_writer.snapshot(),
                 "host": host_writer.snapshot(),
+                "recovery": recovery_writer.snapshot(),
             },
             "quotas": {
                 "stdout_and_stderr": stdout_writer.quota.snapshot(),
                 "host": host_writer.quota.snapshot(),
             },
             "health_worker": worker.snapshot() if worker is not None else None,
+            "recovery": {
+                "enabled": self.recovery_enabled,
+                "stop_reason": self.recovery_stop_reason,
+                "policy_decision": self.policy_decision.__dict__ if self.policy_decision is not None else None,
+                "policy_snapshot": self.policy.snapshot(),
+                "native_channel": getattr(self, "native_channel", None),
+            },
             "extra": extra,
         }
         write_json(self.run_dir / "status.json", status, self.health)
@@ -1326,11 +1636,411 @@ class FlightCapture:
         print(result, file=sys.stderr)
 
 
+
+class RecoverySession:
+    """Own sequential UE workers while keeping recovery restrictions session-wide."""
+
+    _MAX_RECENT_ATTEMPTS = 32
+    _PROC_SCAN_LIMIT = 65536
+
+    def __init__(self, args: argparse.Namespace, command: list[str]) -> None:
+        self.args = args
+        self.command = command
+        self.policy = RecoveryPolicy(args.recovery_stall, args.recovery_attempt)
+        self.latch = StopLatch()
+        self.health = CaptureHealth()
+        self.session_dir: Optional[Path] = None
+        self.journal: Optional[BoundedRotatingWriter] = None
+        self.attempt_count = 0
+        self.dropped_attempt_records = 0
+        self.recent_attempts: list[dict[str, Any]] = []
+        self.current_attempt: Optional[dict[str, Any]] = None
+        self.final_state = "starting"
+        self.final_exit_code: Optional[int] = None
+        self.group_fence_state: Optional[str] = None
+
+    def _write(self, kind: str, **fields: Any) -> None:
+        if self.journal is None or self.session_dir is None:
+            return
+        payload: dict[str, Any] = {
+            "schema_version": SCHEMA_VERSION,
+            "kind": kind,
+            "session_id": self.session_dir.name,
+            "receipt_clock": clock_sample(),
+            "policy_generation": self.policy.snapshot()["generation"],
+        }
+        payload.update(fields)
+        self.journal.write(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8") + b"\n")
+
+    def _write_status(self) -> None:
+        if self.session_dir is None:
+            return
+        status = {
+            "schema_version": SCHEMA_VERSION,
+            "kind": "recovery_session_status",
+            "session_id": self.session_dir.name,
+            "final_clock": clock_sample(),
+            "state": self.final_state,
+            "exit_code": self.final_exit_code,
+            "operator_stop_signal": self.latch.signal_number,
+            "attempt_count": self.attempt_count,
+            "dropped_attempt_records": self.dropped_attempt_records,
+            "current_attempt": self.current_attempt,
+            "recent_attempts": self.recent_attempts,
+            "group_fence_state": self.group_fence_state,
+            "policy": self.policy.snapshot(),
+            "journal": self.journal.snapshot() if self.journal is not None else None,
+            "capture": self.health.snapshot(),
+        }
+        write_json(self.session_dir / "status.json", status, self.health)
+
+    def _open(self) -> Path:
+        root = Path(self.args.output).resolve()
+        root.mkdir(mode=0o700, parents=True, exist_ok=True)
+        os.chmod(root, 0o700)
+        stamp = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime())
+        self.session_dir = Path(tempfile.mkdtemp(prefix=f"ue-session-{stamp}-{os.getpid()}-", dir=root))
+        os.chmod(self.session_dir, 0o700)
+        attempts_dir = self.session_dir / "attempts"
+        attempts_dir.mkdir(mode=0o700)
+        os.chmod(attempts_dir, 0o700)
+        journal_limit = self.args.host_budget if self.args.host_budget else min(self.args.chunk_bytes, 4 * MIB)
+        quota = ByteQuota(journal_limit)
+        self.journal = BoundedRotatingWriter(
+            self.session_dir,
+            "recovery",
+            quota,
+            min(self.args.chunk_bytes, 4 * MIB),
+            self.health,
+        )
+        self.journal.storage = StorageReserve(self.session_dir, self.args.min_free_bytes)
+        write_json(
+            self.session_dir / "metadata.json",
+            {
+                "schema_version": SCHEMA_VERSION,
+                "kind": "recovery_session_metadata",
+                "session_id": self.session_dir.name,
+                "role": "ue",
+                "created_clock": clock_sample(),
+                "command": redact_argv(self.command),
+                "recovery": {
+                    "stall_seconds": self.args.recovery_stall,
+                    "attempt_seconds": self.args.recovery_attempt,
+                    "no_total_start_budget": True,
+                    "recent_attempt_record_limit": self._MAX_RECENT_ATTEMPTS,
+                    "journal_byte_limit": journal_limit,
+                },
+            },
+            self.health,
+        )
+        return self.session_dir
+
+    @staticmethod
+    def _operator_exit_code(signal_number: int) -> int:
+        return 128 + abs(signal_number)
+
+    @staticmethod
+    def _attempt_dir(session_dir: Path, ordinal: int) -> Path:
+        return session_dir / "attempts" / f"{ordinal:06d}"
+
+    @classmethod
+    def _owned_group_member_count(cls, group: int) -> Optional[int]:
+        """Verify members remain in the session created by the worker leader."""
+
+        members = 0
+        scanned = 0
+        try:
+            entries = os.scandir("/proc")
+        except OSError:
+            return None
+        with entries:
+            for entry in entries:
+                if not entry.name.isdigit():
+                    continue
+                scanned += 1
+                if scanned > cls._PROC_SCAN_LIMIT:
+                    return None
+                try:
+                    text = Path(entry.path, "stat").read_text(encoding="ascii")
+                    fields = text[text.rfind(")") + 2 :].split()
+                    process_group = int(fields[2])
+                    session = int(fields[3])
+                except FileNotFoundError:
+                    # A process can exit between scandir and stat; it cannot
+                    # remain an unfenced member after this point.
+                    continue
+                except (OSError, UnicodeDecodeError, ValueError, IndexError):
+                    return None
+                if process_group != group:
+                    continue
+                # start_new_session makes the leader's SID and PGID its PID.
+                # A member from another session is outside the group we created.
+                if session != group:
+                    return None
+                members += 1
+        return members
+
+    def _owned_group_state(self, capture: FlightCapture) -> str:
+        if capture.process is None:
+            return "not_started"
+        group = capture.process.pid
+        try:
+            os.killpg(group, 0)
+        except ProcessLookupError:
+            return "already_absent"
+        except PermissionError:
+            return "ownership_unknown"
+        current_start_ticks = FlightCapture._process_start_ticks(group)
+        if current_start_ticks is not None:
+            if capture.process_start_ticks is None or current_start_ticks != capture.process_start_ticks:
+                return "pid_reused"
+        members = self._owned_group_member_count(group)
+        if members is None:
+            return "ownership_unknown"
+        if members:
+            return "owned"
+        try:
+            os.killpg(group, 0)
+        except ProcessLookupError:
+            return "already_absent"
+        except PermissionError:
+            return "ownership_unknown"
+        return "ownership_unknown"
+
+    def _fence_owned_group(self, capture: FlightCapture) -> str:
+        """Drain only the worker session we launched before a replacement."""
+
+        initial = self._owned_group_state(capture)
+        if initial != "owned":
+            return initial
+        assert capture.process is not None
+        group = capture.process.pid
+        graceful_signal = self.latch.signal_number or signal.SIGINT
+        self._write(
+            "recovery_group_fence",
+            process_group=group,
+            signal=graceful_signal,
+            state="graceful_sent",
+        )
+        try:
+            os.killpg(group, graceful_signal)
+        except ProcessLookupError:
+            return "already_absent"
+        except PermissionError:
+            return "ownership_unknown"
+        deadline = time.monotonic_ns() + 10_000_000_000
+        while time.monotonic_ns() < deadline:
+            state = self._owned_group_state(capture)
+            if state == "already_absent":
+                return "fenced"
+            if state != "owned":
+                return state
+            time.sleep(0.1)
+        state = self._owned_group_state(capture)
+        if state == "already_absent":
+            return "fenced"
+        if state != "owned":
+            return state
+        self._write("recovery_group_fence", process_group=group, signal=signal.SIGKILL, state="kill_sent")
+        try:
+            os.killpg(group, signal.SIGKILL)
+        except ProcessLookupError:
+            return "fenced"
+        except PermissionError:
+            return "ownership_unknown"
+        for _ in range(10):
+            state = self._owned_group_state(capture)
+            if state == "already_absent":
+                return "fenced_after_kill"
+            if state != "owned":
+                return state
+            time.sleep(0.1)
+        return "cleanup_failed"
+
+    def _worker_started(self, ordinal: int, worker_pid: int) -> None:
+        if self.current_attempt is None or self.current_attempt["ordinal"] != ordinal:
+            return
+        self.current_attempt["state"] = "running"
+        self.current_attempt["worker_pid"] = worker_pid
+        self.current_attempt["worker_started_monotonic_ns"] = time.monotonic_ns()
+        self._write(
+            "recovery_attempt_worker_started",
+            ordinal=ordinal,
+            attempt_directory=self.current_attempt["attempt_directory"],
+            worker_pid=worker_pid,
+        )
+        self._write_status()
+
+    def _record_attempt(self, result: CaptureResult, fence_state: str) -> None:
+        record = dict(self.current_attempt or {})
+        record.update(
+            {
+                "state": "finished",
+                "finished_monotonic_ns": time.monotonic_ns(),
+                "exit_code": result.exit_code,
+                "child_returncode": result.raw_returncode,
+                "capture_state": result.state,
+                "operator_stop": result.operator_stop,
+                "recovery_stop_reason": result.recovery_stop_reason,
+                "policy_decision": result.policy_decision.__dict__ if result.policy_decision is not None else None,
+                "process_group": result.process_group,
+                "group_fence_state": fence_state,
+                "attempt_directory": str(result.run_dir),
+            }
+        )
+        if len(self.recent_attempts) >= self._MAX_RECENT_ATTEMPTS:
+            self.recent_attempts.pop(0)
+            self.dropped_attempt_records += 1
+        self.recent_attempts.append(record)
+        self.current_attempt = None
+
+    @staticmethod
+    def _fence_failed(state: str) -> bool:
+        return state in {"ownership_unknown", "pid_reused", "cleanup_failed"}
+
+    def _wait_for_launch(self, planned_launch_ns: int) -> bool:
+        self.final_state = "backoff"
+        self.current_attempt = None
+        self._write(
+            "recovery_backoff",
+            planned_launch_monotonic_ns=planned_launch_ns,
+            remaining_ns=max(0, planned_launch_ns - time.monotonic_ns()),
+            policy_snapshot=self.policy.snapshot(),
+        )
+        self._write_status()
+        while time.monotonic_ns() < planned_launch_ns:
+            if self.latch.signal_number is not None:
+                return False
+            time.sleep(0.1)
+        return self.latch.signal_number is None
+
+    def run(self) -> int:
+        session_dir = self._open()
+        previous_handlers = self.latch.install()
+        active_capture: Optional[FlightCapture] = None
+        try:
+            self._write("recovery_session_started", no_total_start_budget=True, policy_snapshot=self.policy.snapshot())
+            self._write_status()
+            planned_launch_ns = time.monotonic_ns()
+            while True:
+                if self.latch.signal_number is not None:
+                    self.final_state = "operator_stop"
+                    self.final_exit_code = self._operator_exit_code(self.latch.signal_number)
+                    self._write("recovery_session_finished", reason="operator_stop", exit_code=self.final_exit_code)
+                    break
+                if not self._wait_for_launch(planned_launch_ns):
+                    assert self.latch.signal_number is not None
+                    self.final_state = "operator_stop"
+                    self.final_exit_code = self._operator_exit_code(self.latch.signal_number)
+                    self._write("recovery_session_finished", reason="operator_stop_during_backoff", exit_code=self.final_exit_code)
+                    break
+
+                actual_launch_ns = time.monotonic_ns()
+                self.attempt_count += 1
+                ordinal = self.attempt_count
+                attempt_dir = self._attempt_dir(session_dir, ordinal)
+                attempt_dir.mkdir(mode=0o700)
+                os.chmod(attempt_dir, 0o700)
+                # The policy generation belongs to this accepted worker launch. It
+                # is intentionally not consumed when the session object is created.
+                self.policy.begin_attempt(time.monotonic_ns())
+                self.current_attempt = {
+                    "ordinal": ordinal,
+                    "state": "launching",
+                    "attempt_directory": str(attempt_dir),
+                    "planned_launch_monotonic_ns": planned_launch_ns,
+                    "actual_launch_monotonic_ns": actual_launch_ns,
+                    "launch_delay_ns": max(0, actual_launch_ns - planned_launch_ns),
+                    "worker_pid": None,
+                }
+                self.final_state = "running"
+                self._write("recovery_attempt_started", **self.current_attempt, policy_snapshot=self.policy.snapshot())
+                self._write_status()
+                active_capture = FlightCapture(
+                    self.args,
+                    self.command,
+                    run_dir=attempt_dir,
+                    session_id=session_dir.name,
+                    policy=self.policy,
+                    begin_policy_attempt=False,
+                    stop_latch=self.latch,
+                    recovery_enabled=True,
+                    launch_observer=lambda pid, value=ordinal: self._worker_started(value, pid),
+                )
+                active_capture.run()
+                result = active_capture.last_result
+                if result is None:
+                    self.final_state = "capture_failure"
+                    self.final_exit_code = 125
+                    self._write("recovery_session_finished", reason="capture_result_unavailable", exit_code=125)
+                    break
+                fence_state = self._fence_owned_group(active_capture)
+                self.group_fence_state = fence_state
+                self._record_attempt(result, fence_state)
+                self._write(
+                    "recovery_attempt_finished",
+                    ordinal=ordinal,
+                    attempt_directory=str(result.run_dir),
+                    worker_pid=result.process_group,
+                    exit_code=result.exit_code,
+                    child_returncode=result.raw_returncode,
+                    recovery_stop_reason=result.recovery_stop_reason,
+                    group_fence_state=fence_state,
+                    policy_decision=result.policy_decision.__dict__ if result.policy_decision is not None else None,
+                )
+                active_capture = None
+                if self._fence_failed(fence_state):
+                    self.final_state = "cleanup_failed"
+                    self.final_exit_code = 125
+                    self._write("recovery_session_finished", reason=fence_state, exit_code=125)
+                    break
+                if self.latch.signal_number is not None or result.operator_stop:
+                    signal_number = self.latch.signal_number or signal.SIGINT
+                    self.final_state = "operator_stop"
+                    self.final_exit_code = self._operator_exit_code(signal_number)
+                    self._write("recovery_session_finished", reason="operator_stop", exit_code=self.final_exit_code)
+                    break
+                decision = result.policy_decision
+                if decision is None or decision.action != "retry":
+                    self.final_state = "policy_stop"
+                    self.final_exit_code = result.exit_code
+                    self._write(
+                        "recovery_session_finished",
+                        reason=decision.reason if decision is not None else "missing_policy_decision",
+                        exit_code=self.final_exit_code,
+                        policy_snapshot=self.policy.snapshot(),
+                    )
+                    break
+                planned_launch_ns = max(time.monotonic_ns(), decision.not_before_ns)
+                self._write_status()
+        except (CaptureError, OSError) as exc:
+            self.final_state = "session_error"
+            self.final_exit_code = 125
+            self._write("recovery_session_finished", reason=exc.__class__.__name__, exit_code=125)
+        finally:
+            if active_capture is not None:
+                fence_state = self._fence_owned_group(active_capture)
+                self.group_fence_state = fence_state
+                if self._fence_failed(fence_state):
+                    self.final_state = "cleanup_failed"
+                    self.final_exit_code = 125
+                    self._write("recovery_session_finished", reason=fence_state, exit_code=125)
+            if self.final_exit_code is None:
+                self.final_state = "session_error"
+                self.final_exit_code = 125
+            self._write_status()
+            if self.journal is not None:
+                self.journal.close()
+            self.latch.restore(previous_handlers)
+        return self.final_exit_code
+
 def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
     command = validate_args(args, parser)
     try:
+        if args.recovery:
+            return RecoverySession(args, command).run()
         return FlightCapture(args, command).run()
     except CaptureError as exc:
         print(f"flight capture error: {exc}", file=sys.stderr)
