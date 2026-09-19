@@ -1,4 +1,4 @@
-# OAI flight logging
+# OAI flight logging and recovery instrumentation
 
 Run the normal gNB or nrUE executable from its usual build directory. Enable
 logging with a top-level setting in the existing libconfig `.conf` file:
@@ -22,13 +22,12 @@ sudo ./nr-uesoftmodem -O ../../../../Configs/2026-07-23_nrue_flight_tests.conf -
 CLI values override the corresponding configuration settings. `--flight off`
 disables a configuration's `flight = "log"`. With no setting, flight logging is
 off. The feature list accepts space-separated names (`flight = "log";` in the
-file, `--flight log` on the terminal). Only `log` and `off` exist today: names
-such as `recovery` and `agc` fail explicitly before starting the radio. They are
-reserved for future implementations, not placeholders that silently do nothing.
+file, `--flight log` on the terminal). `recovery` requires `log` and is UE-only. Unknown features such as
+`agc` fail before starting the radio; existing AGC behavior is unchanged.
 
 No systemd unit or separate capture command is required. The executable reads
 these options before background processes, logging threads, or radio setup. It
-starts the bundled Python collector, which launches one OAI worker and enables
+starts the bundled Python collector, which owns the OAI worker and enables
 the C recorder. Python 3 and the checkout's `tools/flight_test/` directory must
 be present; no Python packages need to be installed. This is independent of
 USRP model and service manager. Normal OAI platform requirements still apply.
@@ -40,6 +39,74 @@ Additional flight capture files use the directory below. The collector mirrors
 redacted output to the terminal through a bounded asynchronous queue; a slow
 terminal can lose console copies without blocking disk capture. The final
 status records console loss separately.
+
+## Automatic UE recovery
+
+The opt-in session supervisor uses the same executable, with no separate
+service or operator command. This is experimental flight recovery; hardware
+validation results and remaining limitations belong to the campaign report.
+Enable it with:
+
+```conf
+flight = "log recovery";
+```
+
+```sh
+sudo ./nr-uesoftmodem -O flightTest.conf
+# Or override the feature list on the command line:
+sudo ./nr-uesoftmodem -O flightTest.conf --flight log recovery
+```
+
+The session supervisor keeps one worker at a time. Normal OAI cell search and RRC
+recovery run first. A missing IP address after 30 seconds does not cause a
+restart. The following defaults are flight experiment policy, not 3GPP timers:
+
+| Condition | Action |
+| --- | --- |
+| Cell search continues with actual RX progress | Continue searching, without a 30-second deadline. |
+| Fresh native monitor snapshots but RX samples stop increasing for 10 seconds, confirmed for another second | Request a worker restart. |
+| PHY slot submissions keep advancing but DL or TX completions remain frozen for the stall interval, confirmed for another second | Request a worker restart. |
+| A cell was acquired, or an established PDU path was lost, and 120 seconds pass without PDU acceptance or restoration of an earlier accepted session’s DRB context | Request a worker restart after any observed protocol hold expires. |
+| Unexpected nonzero exit or signal after native monitoring started | Retry with 5, 15, 30, then at most 60 seconds of process backoff. |
+| An accepted or restored DRB context and RX/slot/DL/TX progress remain continuously observed for 60 seconds | Reset process-backoff escalation. This does not clear a network wait or prove video delivery. |
+| Exit zero following a supported registration rejection | Retry after the recorded protocol and process waits. |
+| Authentication/permanent rejection, malformed or unsupported restriction, unclassified exit zero, or failure before native monitoring starts | Stop automatic retries; retain the reason. |
+| Ctrl+C or SIGTERM to the launched command | Stop the session, including during backoff; never relaunch. |
+| Missing ping, tunnel, traffic, text logs or native telemetry alone | Record the observation; do not infer a stuck radio. |
+
+Change the two experiment thresholds using optional config strings
+`flight-recovery-stall = "10";` and `flight-recovery-attempt = "120";`, or the
+matching `--flight-recovery-stall` / `--flight-recovery-attempt` CLI options.
+Values must be finite and at least one second. These do not override network
+barring or backoff. A requested worker shutdown gets ten seconds of grace,
+then its owned process group is killed and fenced before replacement.
+
+The implemented registration-reject subset preserves decoded T3346 lower
+bounds and T3502 values across worker attempts, uses a ten-second short-retry
+lower bound, and applies the long wait after five eligible failures (immediately
+for causes 95, 96, 97, 99 and 111). Cause 101 is included because it was observed
+on this bench. Other causes and unknown optional IEs inhibit automatic retries.
+This is a conservative fallback around OAI's existing terminal rejection path,
+not a complete implementation of [TS 24.501 registration procedures](https://www.etsi.org/deliver/etsi_ts/124500_124599/124501/18.07.00_60/ts_124501v180700p.pdf).
+Network selection, forbidden-area lists, all NAS timers and in-process retry
+state/context ownership still belong in the native NAS/RRC implementation.
+
+Each session retains numbered attempt directories, native progress, rejection
+decisions, planned/actual launch times, backoff deadlines, signal/exit
+classification and process-group cleanup outcomes. Eligible retries have no
+lifetime attempt limit. The session status keeps only the latest 32 attempt
+summaries plus total/omitted counts; individual attempt logs retain the history
+subject to storage limits. Cleanup uncertainty stops replacement rather than
+starting a second possible radio owner. Native snapshots use a private inherited socket and a normal-priority
+C monitor thread independent of the recorder writer. Producers update bounded
+lock-free counters. Sampling and socket delivery are best effort: missing data
+is explicit and cannot prove the absence of a network restriction. Restrictions
+persist within this supervisor session, not across a reboot or a newly launched
+command. PDU acceptance is control-plane evidence; inspect traffic/application
+measurements before calling an attempt successful. A resumed/configured DRB following an
+earlier PDU acceptance cancels the acquisition deadline without claiming application
+delivery. RRC_CONNECTED or fresh PHY samples alone do not cancel it. The native
+DRB observation clears when the context is released, suspended, or reset.
 
 ## Output and optional settings
 
@@ -55,6 +122,14 @@ With no overrides, each invocation creates:
     recorder/oai-flight-recorder-*.ndjson
     status.json
 ```
+
+With recovery enabled, the parent directory instead contains a
+`ue-session-<UTC-start>-<pid>-<unique-id>/` directory with its own
+`metadata.json`, `status.json`, `recovery.*.log` journal and
+`attempts/000001/`, `attempts/000002/`, etc. Each attempt contains the usual
+capture files. Session/attempt identifiers join the failure to its replacement;
+separate files preserve crashes and forced-stop evidence. Stream and recorder
+quotas apply per attempt, and the disk free-space reserve still applies.
 
 The gNB uses a `gnb-` prefix. `YYYY-MM-DD` is the host's local date at launch.
 Event timestamps retain UTC epoch nanoseconds and monotonic nanoseconds;
@@ -119,7 +194,7 @@ the final status and recorder footer when assessing completeness.
 
 No core address or GPS daemon is required. Missing optional host facilities
 are recorded as unavailable. Neither interface observations nor an ICMP result
-prove application connectivity. This version never restarts the worker.
+prove application connectivity. Logging alone never restarts the worker.
 Ctrl+C and SIGTERM are forwarded to its process group; after the existing
 10-second grace period, a stuck owned group is killed. Exit status is retained.
 
@@ -145,7 +220,7 @@ Keep allocation, formatting, filesystem access, subprocesses and blocking work
 out of radio producers. Add host observations to the asynchronous collector.
 Register future `flight` features explicitly in the startup parser and provide
 their implementation and tests before enabling them. The current feature
-selection does not implement recovery or change AGC behavior.
+selection keeps recovery opt-in and does not change AGC behavior.
 
 Decode after stopping a run:
 
@@ -160,12 +235,14 @@ an operator marker. It does not detect take-off automatically.
 
 Build OAI normally through CMake, including the required configuration and radio
 plugins adjacent to the executable. With `ENABLE_TESTS=ON`, build
-`flight_startup_fixture` and `flight_recorder_test`, then run:
+`flight_startup_fixture`, `flight_recorder_test`, `flight_monitor_test` and
+`nas_lib_test`, then run:
 
 ```sh
-ctest --test-dir <build> -R '^flight_(startup|recorder)$' --output-on-failure
+ctest --test-dir <build> -R '^(flight_(startup|recorder|monitor)|nas_lib_test)$' --output-on-failure
 python3 -B tools/flight_test/tests/test_capture.py
 python3 -B tools/flight_test/tests/test_decode_events.py
+python3 -B tools/flight_test/tests/test_recovery.py
 ```
 
 The startup fixture uses the real config plugin, bootstrap and recorder but
