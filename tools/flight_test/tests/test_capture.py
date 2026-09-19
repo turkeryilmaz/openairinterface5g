@@ -6,6 +6,8 @@ from __future__ import annotations
 import json
 import os
 import signal
+import socket
+from unittest.mock import patch
 import subprocess
 import sys
 import tempfile
@@ -24,6 +26,7 @@ VALIDATION_ROOT = (
 sys.path.insert(0, str(TOOL_DIR))
 
 from flight_health import HealthInput, HealthStateMachine, SystemHealthCollector
+import capture as capture_module
 from capture import redact_argv
 
 
@@ -96,7 +99,7 @@ class CaptureFixture(unittest.TestCase):
     def test_small_end_to_end_exit_status_and_streams(self) -> None:
         with self.temporary_directory() as temporary:
             output = Path(temporary) / "output"
-            code = "import os, pathlib, sys; assert os.environ['LD_LIBRARY_PATH'].split(os.pathsep)[0] == str(pathlib.Path(sys.executable).resolve().parent); pathlib.Path('cwd-marker').write_text('ok'); print('fixture-safe'); print('fixture-stderr', file=sys.stderr); raise SystemExit(7)"
+            code = "import os, pathlib, stat, sys; assert os.environ['LD_LIBRARY_PATH'].split(os.pathsep)[0] == str(pathlib.Path(sys.executable).resolve().parent); native_fd=int(os.environ['_OAI_FLIGHT_MONITOR_FD']); assert stat.S_ISSOCK(os.fstat(native_fd).st_mode); pathlib.Path('cwd-marker').write_text('ok'); print('fixture-safe'); print('fixture-stderr', file=sys.stderr); raise SystemExit(7)"
             result = self.invoke(output, [sys.executable, "-c", code])
             self.assertEqual(result.returncode, 7)
             run = self.run_directory(output)
@@ -359,7 +362,8 @@ class CaptureFixture(unittest.TestCase):
             current = machine.observe(HealthInput(mono, True, False, None))
             self.assertEqual(current["state"], "acquiring")
         healthy = machine.observe(HealthInput(2_000_000_000, True, False, None))
-        self.assertEqual(healthy["state"], "healthy")
+        self.assertEqual(healthy["state"], "host_ready")
+        self.assertEqual(healthy["service_state"], "unverified")
         self.assertEqual(healthy["role"], "gnb")
         self.assertIn("missing UE tunnel", healthy["evidence"][1]["scope"])
 
@@ -402,16 +406,197 @@ class CaptureFixture(unittest.TestCase):
             current = machine.observe(HealthInput(mono, True, True, True))
             self.assertEqual(current["state"], "acquiring")
         healthy = machine.observe(HealthInput(14_000_000_000, True, True, True))
-        self.assertEqual(healthy["state"], "healthy")
+        self.assertEqual(healthy["state"], "host_ready")
+        self.assertEqual(healthy["service_state"], "unverified")
         for mono in (15_000_000_000, 16_000_000_000):
             current = machine.observe(HealthInput(mono, True, True, False))
-            self.assertEqual(current["state"], "healthy")
+            self.assertEqual(current["state"], "host_ready")
         degraded = machine.observe(HealthInput(17_000_000_000, True, True, False))
         self.assertEqual(degraded["state"], "degraded")
         exited = machine.observe(HealthInput(18_000_000_000, False, True, True))
         self.assertEqual(exited["state"], "exited")
         self.assertEqual(exited["state_basis"], "direct")
 
+
+    def test_udp_and_process_status_are_bounded_observer_evidence(self) -> None:
+        with self.temporary_directory() as temporary:
+            root = Path(temporary) / "proc"
+            (root / "net").mkdir(parents=True)
+            (root / "net" / "snmp").write_text(
+                "Udp: InDatagrams NoPorts InErrors OutDatagrams RcvbufErrors SndbufErrors\nUdp: 1 2 3 4 5 6\n"
+            )
+            pid_root = root / "4242"
+            pid_root.mkdir()
+            (pid_root / "status").write_text(
+                "State:\tS (sleeping)\nThreads:\t7\nVmRSS:\t8 kB\nvoluntary_ctxt_switches:\t9\nnonvoluntary_ctxt_switches:\t10\n"
+            )
+            collector = SystemHealthCollector("missing", proc_root=root, sys_root=root / "sys", command_paths={"chronyc": (), "ip": (), "ping": ()})
+            observation = collector.sample(4242, True)
+            udp = observation["udp_host_counters"]
+            self.assertEqual(udp["state"], "available")
+            self.assertEqual(udp["counters"], {"InDatagrams": 1, "OutDatagrams": 4, "InErrors": 3, "RcvbufErrors": 5, "SndbufErrors": 6, "NoPorts": 2})
+            status = observation["process"]["status_observation"]
+            self.assertEqual(status["state"], "available")
+            self.assertEqual(status["process_state"], "S (sleeping)")
+            self.assertEqual(status["threads"], 7)
+            self.assertEqual(status["vm_rss_bytes"], 8192)
+            self.assertEqual(status["voluntary_context_switches"], 9)
+            self.assertEqual(status["nonvoluntary_context_switches"], 10)
+
+    def test_recovery_thresholds_must_be_finite_and_at_least_one_second(self) -> None:
+        with self.temporary_directory() as temporary:
+            for option, value in (("--recovery-stall", "nan"), ("--recovery-attempt", "inf"), ("--recovery-stall", "0.5")):
+                with self.subTest(option=option, value=value):
+                    output = Path(temporary) / f"output-{option[11:]}-{value}"
+                    result = self.invoke(
+                        output,
+                        [sys.executable, "-c", "raise SystemExit(0)"],
+                        [option, value],
+                    )
+                    self.assertEqual(result.returncode, 2)
+                    self.assertFalse(output.exists())
+
+    def test_final_native_reject_between_drain_and_exit_poll_is_retained(self) -> None:
+        class MemoryWriter:
+            def __init__(self):
+                self.data = bytearray()
+            def write(self, data):
+                self.data.extend(data)
+
+        class IdleHealthWorker:
+            def __init__(self, *args): pass
+            def start(self): pass
+            def stop(self): pass
+            def join(self, **kwargs): pass
+            def is_alive(self): return False
+
+        class ExitingProcess:
+            pid = 12345678
+            def __init__(self, *args, **kwargs):
+                self.sender = socket.socket(fileno=os.dup(kwargs["pass_fds"][0]))
+                self.stdout = self.eof_pipe()
+                self.stderr = self.eof_pipe()
+                self.polls = 0
+                self.send(1, {"rx_samples": 1})
+            @staticmethod
+            def eof_pipe():
+                reader, writer = os.pipe()
+                os.close(writer)
+                return os.fdopen(reader, "rb")
+            def send(self, sequence, values):
+                self.sender.send(json.dumps(dict(kind="native_progress", schema_version=1,
+                    pid=self.pid, sequence=sequence, mono_ns=time.monotonic_ns(),
+                    send_drops=0, values=values)).encode())
+            def poll(self):
+                self.polls += 1
+                if self.polls == 1:
+                    return None
+                if self.polls == 2:
+                    # The worker's atexit message races the collector's poll.
+                    self.send(2, {"rx_samples": 1,
+                        "nas_reject": (1 << 56) | (101 << 48) | (1 << 40) | (0x42 << 32) | 10})
+                    self.sender.close()
+                return 0
+            def wait(self): return 0
+
+        with self.temporary_directory() as temporary:
+            root = Path(temporary)
+            args = capture_module.build_parser().parse_args([
+                "--role", "ue", "--output", str(root), "--disable-recorder", "--", sys.executable])
+            subject = capture_module.FlightCapture(args, [sys.executable], run_dir=root)
+            subject._final_status = lambda *args, **kwargs: None
+            outputs = [MemoryWriter() for _ in range(4)]
+            with patch.object(capture_module.subprocess, "Popen", ExitingProcess), \
+                    patch.object(capture_module, "HealthWorker", IdleHealthWorker):
+                code = subject._launch_and_supervise(root, root, *outputs)
+            events = [json.loads(line) for line in outputs[3].data.splitlines()]
+            sequences = [e["source_sequence"] for e in events if e["kind"] == "native_progress_snapshot"]
+            self.assertEqual(code, 0)
+            self.assertEqual(sequences, [1, 2])
+            self.assertEqual(subject.native_channel["sequence"], 2)
+            self.assertEqual(subject.policy_decision.action, "retry")
+            self.assertEqual(subject.policy.last_reject_cause, 101)
+
+    def test_absent_group_recovery_signal_does_not_latch_controlled_reason(self) -> None:
+        with self.temporary_directory() as temporary:
+            root = Path(temporary)
+            args = capture_module.build_parser().parse_args([
+                "--role", "ue", "--output", str(root), "--disable-recorder", "--", sys.executable])
+            subject = capture_module.FlightCapture(args, [sys.executable], run_dir=root, recovery_enabled=True)
+
+            class AbsentGroup:
+                pid = 12345679
+
+            with patch.object(capture_module.os, "killpg", side_effect=ProcessLookupError) as killpg:
+                subject._request_recovery_stop(AbsentGroup(), "radio_rx_progress_stalled")
+            killpg.assert_called_once_with(AbsentGroup.pid, signal.SIGINT)
+            self.assertIsNone(subject.recovery_stop_reason)
+            self.assertIsNone(subject.recovery_stop_sent_ns)
+            self.assertNotIn("recovery_stop_requests", subject.counters)
+
+    def test_exited_zero_never_becomes_controlled_when_restart_tick_races_exit(self) -> None:
+        class MemoryWriter:
+            def __init__(self):
+                self.data = bytearray()
+            def write(self, data):
+                self.data.extend(data)
+
+        class IdleHealthWorker:
+            def __init__(self, *args): pass
+            def start(self): pass
+            def stop(self): pass
+            def join(self, **kwargs): pass
+            def is_alive(self): return False
+
+        class ExitedProcess:
+            pid = 12345680
+            def __init__(self, *args, **kwargs):
+                sender = socket.socket(fileno=os.dup(kwargs["pass_fds"][0]))
+                sender.send(json.dumps(dict(kind="native_progress", schema_version=1,
+                    pid=self.pid, sequence=1, mono_ns=time.monotonic_ns(),
+                    send_drops=0, values={"rx_samples": 1})).encode())
+                sender.close()
+                self.stdout = self.eof_pipe()
+                self.stderr = self.eof_pipe()
+            @staticmethod
+            def eof_pipe():
+                reader, writer = os.pipe()
+                os.close(writer)
+                return os.fdopen(reader, "rb")
+            def poll(self): return 0
+            def wait(self): return 0
+
+        with self.temporary_directory() as temporary:
+            root = Path(temporary)
+            args = capture_module.build_parser().parse_args([
+                "--role", "ue", "--output", str(root), "--disable-recorder", "--", sys.executable])
+            subject = capture_module.FlightCapture(args, [sys.executable], run_dir=root, recovery_enabled=True)
+            subject._final_status = lambda *args, **kwargs: None
+            outputs = [MemoryWriter() for _ in range(4)]
+            with patch.object(capture_module.subprocess, "Popen", ExitedProcess), \
+                    patch.object(capture_module, "HealthWorker", IdleHealthWorker), \
+                    patch.object(subject.policy, "tick", return_value=capture_module.Decision("restart", "synthetic_stall")), \
+                    patch.object(capture_module.os, "killpg", side_effect=ProcessLookupError) as killpg:
+                code = subject._launch_and_supervise(root, root, *outputs)
+            self.assertEqual(code, 0)
+            killpg.assert_not_called()
+            self.assertIsNone(subject.recovery_stop_reason)
+            self.assertIsNone(subject.recovery_stop_sent_ns)
+            self.assertEqual(subject.policy_decision.action, "stop")
+            self.assertEqual(subject.policy_decision.reason, "unclassified_zero_exit")
+
+    def test_one_shot_log_records_valid_native_datagram_without_relaunch(self) -> None:
+        with self.temporary_directory() as temporary:
+            output = Path(temporary) / "output"
+            code = "import json, os, socket, time; channel=socket.socket(fileno=int(os.environ['_OAI_FLIGHT_MONITOR_FD'])); channel.send(json.dumps({'kind':'native_progress','schema_version':1,'pid':os.getpid(),'sequence':1,'mono_ns':time.monotonic_ns(),'send_drops':0,'values':{'rx_samples':1}}).encode())"
+            result = self.invoke(output, [sys.executable, "-c", code])
+            self.assertEqual(result.returncode, 0)
+            run = self.run_directory(output)
+            status = json.loads((run / "status.json").read_text())
+            self.assertEqual(status["recovery"]["native_channel"]["sequence"], 1)
+            self.assertEqual(len([path for path in output.iterdir() if path.is_dir()]), 1)
+            events = [json.loads(line) for line in self.contents(run, "recovery").splitlines()]
+            self.assertTrue(any(event["kind"] == "native_progress_snapshot" for event in events))
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
