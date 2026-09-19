@@ -7,6 +7,7 @@
  */
 
 #include "common/utils/LOG/flight_recorder.h"
+#include "common/utils/LOG/flight_monitor.h"
 #include "nr_nas_msg.h"
 #include <netinet/in.h>
 #include "NR_NAS_defs.h"
@@ -902,6 +903,61 @@ static FGSRegistrationType set_fgs_registration_type(nr_ue_nas_t *nas)
 /**
  * @brief Generate 5GS Registration Request (8.2.6 of 3GPP TS 24.501)
  */
+/* Flight policy is deliberately conservative: unsupported rejection procedures
+ * inhibit process recovery rather than erasing an unhandled network restriction.
+ * This is telemetry for an opt-in supervisor, not a replacement NAS state machine. */
+static uint8_t flight_reject_generation;
+
+static void flight_nas_reject(const nr_ue_nas_t *nas,
+                              uint8_t cause,
+                              uint8_t policy,
+                              uint8_t t3502,
+                              bool t3502_present,
+                              uint32_t wait_seconds,
+                              int t3346)
+{
+  if (!flight_monitor_enabled() && !flight_recorder_enabled())
+    return;
+  flight_monitor_set(FLIGHT_MONITOR_PDU_ACTIVE, 0);
+  flight_monitor_set(
+      FLIGHT_MONITOR_NAS_REJECT,
+      flight_monitor_pack_nas_reject(++flight_reject_generation, cause, policy | (t3502_present ? 0x80 : 0), t3502, wait_seconds));
+  flight_recorder_emit(FLIGHT_EVENT_UE_CONTROL, nas->UE_id, 4, cause, policy, t3346, t3502_present ? t3502 : -1);
+  flight_recorder_emit(FLIGHT_EVENT_UE_NAS, nas->UE_id, 4, cause, policy, wait_seconds, nas->fiveGMM_state);
+}
+
+/* NAS task only: COUNT values and presence bits are diagnostic metadata,
+ * not key material, packet contents, or a claim about the wire sequence. */
+static void flight_nas_counts(const nr_ue_nas_t *nas, int phase)
+{
+  if (!flight_recorder_enabled())
+    return;
+  unsigned int context = 0;
+  if (nas->security_container) {
+    context |= nas->security_container->integrity_context != NULL ? 1 : 0;
+    context |= nas->security_container->ciphering_context != NULL ? 2 : 0;
+  }
+  flight_recorder_emit(FLIGHT_EVENT_UE_NAS_COUNT,
+                       nas->UE_id,
+                       phase,
+                       nas->security.nas_count_ul,
+                       nas->security.nas_count_dl,
+                       context,
+                       nas->fiveGMM_state);
+}
+
+static void flight_nas_tx(const nr_ue_nas_t *nas, const as_nas_info_t *message)
+{
+  if (!flight_recorder_enabled())
+    return;
+  flight_nas_counts(nas, 2);
+  const uint8_t *p = (const uint8_t *)message->nas_data;
+  int security = message->length >= 2 ? p[1] & 15 : -1;
+  // Ciphertext must never be interpreted or recorded as a message type.
+  int type = security == 0 && message->length >= 3 ? p[2] : -1;
+  flight_recorder_emit(FLIGHT_EVENT_UE_NAS, nas->UE_id, 1, type, security, message->length, nas->fiveGMM_state);
+}
+
 void generateRegistrationRequest(as_nas_info_t *initialNasMsg, nr_ue_nas_t *nas, bool is_security_mode)
 {
   LOG_I(NAS, "Generate Initial NAS Message: Registration Request\n");
@@ -925,6 +981,14 @@ void generateRegistrationRequest(as_nas_info_t *initialNasMsg, nr_ue_nas_t *nas,
 
   // 5GMM Registration Type
   rr->fgsregistrationtype = set_fgs_registration_type(nas);
+  flight_nas_counts(nas, 3);
+  flight_recorder_emit(FLIGHT_EVENT_UE_NAS,
+                       nas->UE_id,
+                       3,
+                       FGS_REGISTRATION_REQUEST,
+                       is_security_mode,
+                       rr->fgsregistrationtype,
+                       nas->fiveGMM_state);
   size += 1;
   if (rr->fgsregistrationtype == REG_TYPE_RESERVED) {
     // currently only REG_TYPE_RESERVED is supported
@@ -1829,6 +1893,8 @@ static void handle_pdu_session_accept(nr_ue_nas_t *nas, uint8_t *pdu_buffer, uin
   nas_ue_pdu_tun_t *t = &nas->pdu_tun[sm_header.pdu_session_id];
   // Accepted control-plane message; this is not proof of working user-plane traffic.
   flight_recorder_emit(FLIGHT_EVENT_UE_PDU, nas->UE_id, sm_header.pdu_session_id, msg.pdu_type, 1, 0, 0);
+  flight_monitor_add(FLIGHT_MONITOR_PDU_ACCEPTS, 1);
+  flight_monitor_set(FLIGHT_MONITOR_PDU_ACTIVE, 1);
 
   // Set QFI before starting UE interface thread to avoid early SDUs using 0-initialized QFI.
   nr_ue_tun_store_qfi(t, msg.qos_rules.rule->qfi);
@@ -1860,6 +1926,9 @@ void handleDownlinkNASTransport(nr_ue_nas_t *nas, uint8_t *pdu_buffer, int pdu_l
     return;
   }
   uint8_t msg_type = *(pdu_buffer + 16);
+  flight_recorder_emit(FLIGHT_EVENT_UE_NAS, nas->UE_id, 0, msg_type, -1, pdu_length, nas->fiveGMM_state);
+  if (msg_type == FGS_PDU_SESSION_ESTABLISHMENT_REJ)
+    flight_nas_reject(nas, 0, 3, 0x42, false, 0, -1);
   if (msg_type == FGS_PDU_SESSION_ESTABLISHMENT_ACC) {
     LOG_A(NAS, "Received PDU Session Establishment Accept in DL NAS Transport\n");
     handle_pdu_session_accept(nas, pdu_buffer, pdu_length);
@@ -2037,6 +2106,7 @@ static void generatePduSessionEstablishRequest(nr_ue_nas_t *nas, as_nas_info_t *
 
 static void send_nas_uplink_data_req(nr_ue_nas_t *nas, const as_nas_info_t *initial_nas_msg)
 {
+  flight_nas_tx(nas, initial_nas_msg);
   MessageDef *msg = itti_alloc_new_message(TASK_NAS_NRUE, nas->UE_id, NAS_UPLINK_DATA_REQ);
   ul_info_transfer_req_t *req = &NAS_UPLINK_DATA_REQ(msg);
   req->UEid = nas->UE_id;
@@ -2049,6 +2119,7 @@ static void send_nas_uplink_data_req(nr_ue_nas_t *nas, const as_nas_info_t *init
  *  RRC buffers for RRCSetupComplete dedicatedNAS when no SRB (TS 38.331 §5.3.3.4). */
 static void send_nas_initial_ul_transfer_req(nr_ue_nas_t *nas, const as_nas_info_t *initial_nas_msg)
 {
+  flight_nas_tx(nas, initial_nas_msg);
   MessageDef *msg = itti_alloc_new_message(TASK_NAS_NRUE, nas->UE_id, NAS_INITIAL_UL_TRANSFER_REQ);
   ul_info_transfer_req_t *req = &NAS_INITIAL_UL_TRANSFER_REQ(msg);
   req->UEid = nas->UE_id;
@@ -2293,6 +2364,7 @@ static void handle_service_accept(nr_ue_nas_t *nas, const byte_array_t *buffer)
 
 static void handle_service_reject(nr_ue_nas_t *nas, const byte_array_t *buffer)
 {
+  flight_nas_reject(nas, 0, 3, 0x42, false, 0, -1);
   abort_service_request(nas);
   /* If still 5GMM-IDLE (MO path stopped them for SR), restart idle TUN listeners */
   if (nas->fiveGMM_mode == FGS_IDLE)
@@ -2321,6 +2393,7 @@ static void handle_registration_reject(nr_ue_nas_t *nas, const byte_array_t *buf
 
   if (buffer->len < sizeof(fgmm_msg_header_t)) {
     LOG_E(NAS, "Failed to extract Registration Reject message body: buffer length too short\n");
+    flight_nas_reject(nas, 0, 3, 0x42, false, 0, -1);
     return;
   }
 
@@ -2333,6 +2406,7 @@ static void handle_registration_reject(nr_ue_nas_t *nas, const byte_array_t *buf
     int decoded = decode_5gs_security_protected_header(&sp_header, pdu_buffer, msg_length);
     if (decoded < 0) {
       LOG_E(NAS, "Registration Reject: failed to decode security protected header\n");
+      flight_nas_reject(nas, 0, 3, 0x42, false, 0, -1);
       return;
     }
     pdu_buffer += decoded;
@@ -2342,10 +2416,12 @@ static void handle_registration_reject(nr_ue_nas_t *nas, const byte_array_t *buf
   int decoded = decode_5gmm_msg_header(&mm_header, pdu_buffer, end - pdu_buffer);
   if (decoded < 0) {
     LOG_E(NAS, "Registration Reject: failed to decode NAS message header\n");
+    flight_nas_reject(nas, 0, 3, 0x42, false, 0, -1);
     return;
   }
   if (mm_header.message_type != FGS_REGISTRATION_REJECT) {
     LOG_E(NAS, "Expected NAS message type FGS_REGISTRATION_REJECT, got %#x\n", mm_header.message_type);
+    flight_nas_reject(nas, 0, 3, 0x42, false, 0, -1);
     return;
   }
   pdu_buffer += decoded;
@@ -2354,9 +2430,36 @@ static void handle_registration_reject(nr_ue_nas_t *nas, const byte_array_t *buf
   if (decode_fgs_registration_reject(&msg, &ba) < 0) {
     LOG_E(NAS, "Registration Reject: failed to decode NAS message body\n");
     free_fgs_registration_reject(&msg);
+    flight_nas_reject(nas, 0, 3, 0x42, false, 0, -1);
     return;
   }
 
+  /* TS 24.501 5.5.1.2.7: limited protocol-error retry subset. Other
+   * causes need PLMN/TAI/session-specific handling before automatic restart. */
+  uint8_t policy = 2;
+  uint32_t wait_seconds = 10; // T3511; process backoff may increase this.
+  if (msg.cause == 95 || msg.cause == 96 || msg.cause == 97 || msg.cause == 99 || msg.cause == 101 || msg.cause == 111)
+    policy = 1;
+  if (msg.unhandled_ies)
+    policy = 3;
+  if (msg.t3346_present) {
+    unsigned int unit = msg.t3346 >> 5;
+    unsigned int factor = unit == 0 ? 2 : unit == 2 ? 360 : 60;
+    unsigned int seconds = (msg.t3346 & 31) * factor;
+    if (unit == 7)
+      policy = 3;
+    if (seconds > wait_seconds)
+      wait_seconds = seconds;
+  }
+  if (msg.t3502_present && (msg.t3502 >> 5) == 7)
+    policy = 3;
+  flight_nas_reject(nas,
+                    msg.cause,
+                    policy,
+                    msg.t3502_present ? msg.t3502 : 0x42,
+                    msg.t3502_present,
+                    wait_seconds,
+                    msg.t3346_present ? msg.t3346 : -1);
   LOG_E(NAS, "Received Registration Reject cause: %s\n", print_info(msg.cause, fgmm_cause_s, sizeofArray(fgmm_cause_s)));
   free_fgs_registration_reject(&msg);
   nas->fiveGMM_state = FGS_DEREGISTERED;
@@ -2373,6 +2476,8 @@ void *nas_nrue(void *args_p)
 
   if (msg_p != NULL) {
     nr_ue_nas_t *nas = get_ue_nas_info(msg_p->ittiMsgHeader.destinationInstance);
+    flight_monitor_add(FLIGHT_MONITOR_NAS_MESSAGES, 1);
+    flight_recorder_emit(FLIGHT_EVENT_UE_NAS, nas->UE_id, 2, ITTI_MSG_ID(msg_p), nas->fiveGMM_mode, 0, nas->fiveGMM_state);
 
     switch (ITTI_MSG_ID(msg_p)) {
       case INITIALIZE_MESSAGE:
@@ -2470,13 +2575,17 @@ void *nas_nrue(void *args_p)
               NAS_CONN_ESTABLI_CNF(msg_p).nasMsg.length);
 
         byte_array_t ba = {.buf = NAS_CONN_ESTABLI_CNF(msg_p).nasMsg.nas_data, .len = NAS_CONN_ESTABLI_CNF(msg_p).nasMsg.length};
+        flight_nas_counts(nas, 0);
         security_state_t security_state = nas_security_rx_process(nas, ba);
+        flight_nas_counts(nas, 1);
+        flight_recorder_emit(FLIGHT_EVENT_UE_NAS, nas->UE_id, 0, -1, security_state, ba.len, nas->fiveGMM_state);
         if (security_state > NAS_SECURITY_INTEGRITY_PASSED) {
           LOG_E(NAS, "NAS integrity failed, discard incoming message: security state is %s\n", security_state_info[security_state].text);
           break;
         }
 
         fgs_nas_msg_t msg_type = get_msg_type(ba.buf, ba.len);
+        flight_recorder_emit(FLIGHT_EVENT_UE_NAS, nas->UE_id, 0, msg_type, security_state, 0, nas->fiveGMM_state);
         LOG_D(NAS,
               "[UE %ld] NAS_CONN_ESTABLI_CNF decoded NAS msg_type=%s (%d)\n",
               nas->UE_id,
@@ -2488,6 +2597,11 @@ void *nas_nrue(void *args_p)
           handle_pdu_session_accept(nas, ba.buf, ba.len);
         } else if (msg_type == FGS_SERVICE_ACCEPT) {
           handle_service_accept(nas, &ba);
+        } else if (msg_type == FGS_REGISTRATION_REJECT || msg_type == FGS_AUTHENTICATION_REJECT || msg_type == FGS_SERVICE_REJECT
+                   || msg_type == FGS_PDU_SESSION_ESTABLISHMENT_REJ) {
+          // This existing delivery path does not process rejection procedures.
+          // Preserve that fact rather than letting a supervisor erase restrictions.
+          flight_nas_reject(nas, 0, 3, 0x42, false, 0, -1);
         }
 
         // Free NAS buffer memory after use (coming from RRC)
@@ -2547,13 +2661,17 @@ void *nas_nrue(void *args_p)
         uint8_t *pdu_buffer = NAS_DOWNLINK_DATA_IND(msg_p).nasMsg.nas_data;
         int pdu_length = NAS_DOWNLINK_DATA_IND(msg_p).nasMsg.length;
         byte_array_t buffer = {.buf = pdu_buffer, .len = pdu_length};
+        flight_nas_counts(nas, 0);
         security_state_t security_state = nas_security_rx_process(nas, buffer);
+        flight_nas_counts(nas, 1);
+        flight_recorder_emit(FLIGHT_EVENT_UE_NAS, nas->UE_id, 0, -1, security_state, buffer.len, nas->fiveGMM_state);
         if (security_state > NAS_SECURITY_INTEGRITY_PASSED) {
           LOG_E(NAS, "NAS integrity failed, discard incoming message\n");
           break;
         }
 
         fgs_nas_msg_t msg_type = get_msg_type(pdu_buffer, pdu_length);
+        flight_recorder_emit(FLIGHT_EVENT_UE_NAS, nas->UE_id, 0, msg_type, security_state, 0, nas->fiveGMM_state);
         LOG_I(NAS,
               "[UE %ld] Received %s type %s with length %u\n",
               nas->UE_id,
@@ -2569,6 +2687,7 @@ void *nas_nrue(void *args_p)
             handle_fgmm_authentication_request(nas, &initialNasMsg, &buffer);
             break;
           case FGS_AUTHENTICATION_REJECT:
+            flight_nas_reject(nas, 0, 2, 0x42, false, 0, -1);
             handle_authentication_reject(nas, pdu_buffer, pdu_length);
             break;
           case FGS_SECURITY_MODE_COMMAND:
@@ -2589,6 +2708,7 @@ void *nas_nrue(void *args_p)
             handle_pdu_session_accept(nas, pdu_buffer, pdu_length);
             break;
           case FGS_PDU_SESSION_ESTABLISHMENT_REJ:
+            flight_nas_reject(nas, 0, 3, 0x42, false, 0, -1);
             LOG_E(NAS, "Received PDU Session Establishment reject\n");
             break;
           case FGS_REGISTRATION_REJECT:

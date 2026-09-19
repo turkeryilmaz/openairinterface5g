@@ -3,6 +3,7 @@
  */
 
 #include "common/utils/LOG/flight_recorder.h"
+#include "common/utils/LOG/flight_monitor.h"
 #include "PHY/defs_nr_common.h"
 #define _GNU_SOURCE // For pthread_setname_np
 #include <pthread.h>
@@ -447,6 +448,7 @@ void processSlotTX(void *arg)
     dynamic_barrier_join(rxtxD->next_barrier);
   }
   RU_write(rxtxD, sl_tx_action, txp);
+  flight_monitor_add(FLIGHT_MONITOR_UE_TX_COMPLETED, 1);
   TracyCZoneEnd(ctx);
 }
 
@@ -621,6 +623,7 @@ void UE_dl_processing(void *arg) {
   if (!UE->sl_mode)
     pdsch_processing(UE, proc, phy_data);
 
+  flight_monitor_add(FLIGHT_MONITOR_UE_DL_COMPLETED, 1);
   TracyCZoneEnd(ctx);
 }
 
@@ -817,7 +820,9 @@ void *UE_thread(void *arg)
         syncRunning = false;
         for (int i = 0; i < fp->nb_antennas_rx; i++)
           free(sync_buf[i]);
+        flight_monitor_add(FLIGHT_MONITOR_SEARCH_ATTEMPTS, 1);
         if (UE->is_synchronized) {
+          flight_monitor_add(FLIGHT_MONITOR_SYNC_SUCCESSES, 1);
           UE->synch_request.received_synch_request = 0;
           if (UE->sl_mode == SL_MODE2_SUPPORTED)
             decoded_frame_rx = UE->SL_UE_PHY_PARAMS.sync_params.DFN;
@@ -1051,6 +1056,7 @@ void *UE_thread(void *arg)
       nr_ue_rrc_timer_trigger(UE->Mod_id, curMsg.proc.hfn_rx, curMsg.proc.frame_rx, curMsg.proc.gNB_id);
 
     // RX slot processing. We launch and forget.
+    flight_monitor_add(FLIGHT_MONITOR_UE_SLOT_INPUTS, 1);
     notifiedFIFO_elt_t *newRx = newNotifiedFIFO_elt(sizeof(nr_rxtx_thread_data_t), curMsg.proc.nr_slot_tx, NULL, UE_dl_processing);
     nr_rxtx_thread_data_t *curMsgRx = (nr_rxtx_thread_data_t *)NotifiedFifoData(newRx);
     *curMsgRx = (nr_rxtx_thread_data_t){.proc = curMsg.proc, .UE = UE};
