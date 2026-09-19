@@ -47,6 +47,9 @@ extern "C" {
  * 14  UE_RRC          UE RRC transition/result
  * 15  UE_PDU          UE PDU result
  * 16  UE_TA           UE timing-advance observation
+ * 17  UE_NAS         NAS dispatch/message/rejection metadata
+ * 18  UE_RRC_TIMER   RRC timer lifecycle
+ * 19  UE_CONTROL     RRC transitions and NAS recovery classification
  * 20  GNB_SLOT        gNB slot processing observation
  * 21  GNB_UE_BYTES    gNB per-UE byte counters
  * 22  GNB_UE_RADIO    gNB per-UE radio metrics
@@ -54,6 +57,7 @@ extern "C" {
  * 24  GNB_UE_LINK     gNB per-UE link state/result
  * 25  GNB_DL_HARQ     gNB downlink HARQ result
  * 26  GNB_UL_HARQ     gNB uplink HARQ result
+ * 27  UE_NAS_COUNT    NAS security counters/context presence, never keys
  * 30  RADIO_RX        radio receive result
  * 31  RADIO_TX        radio transmit result
  */
@@ -66,6 +70,9 @@ typedef enum {
   FLIGHT_EVENT_UE_RRC = 14,
   FLIGHT_EVENT_UE_PDU = 15,
   FLIGHT_EVENT_UE_TA = 16,
+  FLIGHT_EVENT_UE_NAS = 17,
+  FLIGHT_EVENT_UE_RRC_TIMER = 18,
+  FLIGHT_EVENT_UE_CONTROL = 19,
   FLIGHT_EVENT_GNB_SLOT = 20,
   FLIGHT_EVENT_GNB_UE_BYTES = 21,
   FLIGHT_EVENT_GNB_UE_RADIO = 22,
@@ -73,6 +80,7 @@ typedef enum {
   FLIGHT_EVENT_GNB_UE_LINK = 24,
   FLIGHT_EVENT_GNB_DL_HARQ = 25,
   FLIGHT_EVENT_GNB_UL_HARQ = 26,
+  FLIGHT_EVENT_UE_NAS_COUNT = 27,
   FLIGHT_EVENT_RADIO_RX = 30,
   FLIGHT_EVENT_RADIO_TX = 31,
 } flight_recorder_event_t;

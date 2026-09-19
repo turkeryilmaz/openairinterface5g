@@ -38,6 +38,9 @@ void *rrc_nrue_task(void *args_p);
 void *rrc_nrue(void *args_p);
 
 void nr_rrc_handle_timers(NR_UE_RRC_INST_t *rrc);
+/* Observational flight timer hooks; inert when capture/monitoring is disabled. */
+void nr_rrc_flight_timer_started(NR_UE_RRC_INST_t *rrc, uint32_t timer_number, uint32_t duration_ms);
+void nr_rrc_flight_timer_stopped(NR_UE_RRC_INST_t *rrc, uint32_t timer_number, uint32_t duration_ms);
 void handle_rlf_detection(NR_UE_RRC_INST_t *rrc);
 void handle_302_expired_stopped(NR_UE_RRC_INST_t *rrc);
 
