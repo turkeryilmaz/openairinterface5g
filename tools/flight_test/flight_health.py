@@ -32,7 +32,7 @@ DEFAULT_COMMAND_PATHS = {
 class HealthState(str, enum.Enum):
     STARTING = "starting"
     ACQUIRING = "acquiring"
-    HEALTHY = "healthy"
+    HOST_READY = "host_ready"
     DEGRADED = "degraded"
     EXITED = "exited"
     UNAVAILABLE = "unavailable"
@@ -57,7 +57,7 @@ def _recommendation(state: HealthState) -> dict[str, Any]:
     advice = {
         HealthState.STARTING: "wait through the configured monotonic startup grace",
         HealthState.ACQUIRING: "inspect registration and tunnel acquisition logs",
-        HealthState.HEALTHY: "continue observation",
+        HealthState.HOST_READY: "continue host observation; PDU session remains unverified",
         HealthState.DEGRADED: "inspect direct process/interface evidence before any manual recovery",
         HealthState.EXITED: "inspect the captured exit status before a manual relaunch",
         HealthState.UNAVAILABLE: "restore host observation access before interpreting health",
@@ -222,7 +222,7 @@ class HealthStateMachine:
             self.healthy_streak += 1
             self.bad_streak = 0
             if self.healthy_streak >= self.hysteresis_samples:
-                self.state = HealthState.HEALTHY
+                self.state = HealthState.HOST_READY
                 reason = (
                     "three consecutive direct process/interface observations"
                     if self.role == "ue"
@@ -262,6 +262,10 @@ class HealthStateMachine:
             "hysteresis_samples": self.hysteresis_samples,
             "evidence": evidence,
             "recovery": _recommendation(self.state),
+            "service_state": "unverified",
+            "service_state_scope": (
+                "host process, tunnel, ICMP, and interface counters do not establish a UE PDU session"
+            ),
         }
 
 
@@ -444,6 +448,7 @@ class SystemHealthCollector:
             "thermal": self._thermal(),
             "process": self._process(pid, process_running),
             "interface": interface,
+            "udp_host_counters": self._udp_host_counters(),
             "route": self._route(now_ns),
             "chrony": self._chrony(now_ns),
             "gpsd": self._gpsd(),
@@ -555,13 +560,51 @@ class SystemHealthCollector:
             )
         return {"state": "available" if zones else "unavailable", "readings": readings}
 
+    def _udp_host_counters(self) -> dict[str, Any]:
+        value = _read_text(self.proc_root / "net/snmp", 16384)
+        if value is None:
+            return {"state": "unavailable", "scope": "host-wide UDP counters; no packet payloads or endpoints", "counters": None}
+        lines = value.splitlines()
+        for index, line in enumerate(lines[:-1]):
+            if not line.startswith("Udp:") or not lines[index + 1].startswith("Udp:"):
+                continue
+            names, values = line.split()[1:], lines[index + 1].split()[1:]
+            if len(names) != len(values):
+                return {"state": "invalid", "scope": "host-wide UDP counters; no packet payloads or endpoints", "counters": None}
+            try:
+                parsed = {name: int(number) for name, number in zip(names, values)}
+            except ValueError:
+                return {"state": "invalid", "scope": "host-wide UDP counters; no packet payloads or endpoints", "counters": None}
+            selected = ("InDatagrams", "OutDatagrams", "InErrors", "RcvbufErrors", "SndbufErrors", "NoPorts")
+            return {"state": "available", "scope": "host-wide UDP counters; no packet payloads or endpoints", "counters": {name: parsed.get(name) for name in selected}}
+        return {"state": "invalid", "scope": "host-wide UDP counters; no packet payloads or endpoints", "counters": None}
+
+    def _process_status(self, pid: int) -> dict[str, Any]:
+        value = _read_text(self.proc_root / str(pid) / "status", 8192)
+        if value is None:
+            return {"state": "unavailable", "process_state": None, "threads": None, "vm_rss_bytes": None, "voluntary_context_switches": None, "nonvoluntary_context_switches": None}
+        raw: dict[str, str] = {}
+        for line in value.splitlines():
+            key, separator, rest = line.partition(":")
+            if separator:
+                raw[key] = rest.strip()
+        def number(key: str) -> Optional[int]:
+            try:
+                return int(raw[key].split()[0])
+            except (KeyError, IndexError, ValueError):
+                return None
+        present = bool(raw)
+        return {"state": "available" if present else "invalid", "process_state": raw.get("State"), "threads": number("Threads"), "vm_rss_bytes": (number("VmRSS") or 0) * 1024 if number("VmRSS") is not None else None, "voluntary_context_switches": number("voluntary_ctxt_switches"), "nonvoluntary_context_switches": number("nonvoluntary_ctxt_switches"), "scope": "per-worker /proc status only; no payloads or endpoints"}
+
     def _process(self, pid: int, running: Optional[bool]) -> dict[str, Any]:
         result: dict[str, Any] = {"running": running, "state": "available" if running is not None else "unavailable"}
         if running is not True:
+            result["status_observation"] = {"state": "unavailable", "process_state": None, "threads": None, "vm_rss_bytes": None, "voluntary_context_switches": None, "nonvoluntary_context_switches": None, "scope": "worker not running; /proc/PID/status not read"}
             return result
+        status = self._process_status(pid)
         value = _read_text(self.proc_root / str(pid) / "stat", 8192)
         if value is None or ")" not in value:
-            result.update({"metrics_state": "unavailable", "rss_bytes": None})
+            result.update({"metrics_state": "unavailable", "rss_bytes": None, "status_observation": status})
             return result
         fields = value.rsplit(")", 1)[1].split()
         try:
@@ -577,6 +620,7 @@ class SystemHealthCollector:
             )
         except (IndexError, ValueError, OSError):
             result.update({"metrics_state": "invalid", "rss_bytes": None})
+        result["status_observation"] = status
         return result
 
     def _interface(self) -> dict[str, Any]:
