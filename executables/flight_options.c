@@ -138,14 +138,14 @@ int flight_start_capture(configmodule_interface_t *cfg, int argc, char **argv, c
     else if (strcmp(feature, "recovery") == 0)
       recovery = true;
     else {
-      fprintf(stderr, "[FLIGHT] Unsupported feature '%s'; supported: log, recovery (UE only), off.\n", feature);
+      fprintf(stderr, "[FLIGHT] Unsupported feature '%s'; supported: log, recovery, off.\n", feature);
       free(copy);
       return -1;
     }
   }
   free(copy);
-  if (log == off || (recovery && (!log || strcmp(role, "ue") != 0))) {
-    fprintf(stderr, "[FLIGHT] Select log [recovery] for UE, log for gNB, or off\n");
+  if (log == off || (recovery && !log)) {
+    fprintf(stderr, "[FLIGHT] Select log [recovery] for UE or gNB, or off\n");
     return -1;
   }
   if (off)
