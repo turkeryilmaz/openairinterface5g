@@ -22,7 +22,7 @@ sudo ./nr-uesoftmodem -O ../../../../Configs/2026-07-23_nrue_flight_tests.conf -
 CLI values override the corresponding configuration settings. `--flight off`
 disables a configuration's `flight = "log"`. With no setting, flight logging is
 off. The feature list accepts space-separated names (`flight = "log";` in the
-file, `--flight log` on the terminal). `recovery` requires `log` and is UE-only. Unknown features such as
+file, `--flight log` on the terminal). `recovery` requires `log` and supports both UE and gNB workers. Unknown features such as
 `agc` fail before starting the radio; existing AGC behavior is unchanged.
 
 No systemd unit or separate capture command is required. The executable reads
@@ -108,6 +108,45 @@ earlier PDU acceptance cancels the acquisition deadline without claiming applica
 delivery. RRC_CONNECTED or fresh PHY samples alone do not cancel it. The native
 DRB observation clears when the context is released, suspended, or reset.
 
+## gNB recovery and radio-health evidence
+
+The same `flight = "log recovery";` setting enables a gNB session supervisor. It does not use UE attach, TUN,
+IP-address, PDU-session, NAS, DRB, or cell-acquisition deadlines. A gNB may retry only an unexpected nonzero
+worker exit after **two fresh, ordered, active snapshots for one device slot** show an increase in either
+`tx_send_accepted_samples` or `rx_returned_samples`. The first static snapshot, requested TX samples, counters
+from different slots, stale/reordered snapshots, startup failures, and clean unclassified exits do not
+qualify. The same capped 5/15/30/60-second process backoff and ten-second owned-group fencing apply. Ctrl+C
+and SIGTERM stop the whole session and never relaunch it. A gNB startup or replacement attempt that exits
+before this qualification stops conservatively.
+
+Each worker also records private monitor-socket `radio_health` schema-v1 datagrams in `radio_health.*.log`
+JSON Lines. The stream retains accepted raw snapshots and per-device intervals, including source/collector
+gaps, active/closed lifecycle, supported-but-unobserved values, value decreases or counter resets, and
+first/last native event identity. It marks every late, underflow, overflow, queue, missing, or in-flight
+finding with `candidate_action="observe"` and `qualified=false`. Those records are evidence for offline
+analysis only; they are not restart triggers for UE or gNB and do not establish an RF fault, packet delivery,
+or a 3GPP threshold.
+
+Schema v1 currently advertises bounded device slots and TX send, TX async, RX stream, and TX queue metrics.
+The collector distinguishes known counters, known gauges, and bounded future numeric names that remain opaque
+until documented. Requested TX, accepted TX, and delivered TX are separate facts; v1 has no delivered-sample
+metric. A supported counter observed as zero differs from an absent gauge. Device ticks are not interpreted
+unless their companion `*_device_time_valid` value is observed as one. The `*_sample_rate_microhz`
+gauges preserve the actual nominal rate returned by the backend, rounded to the nearest microhertz
+(divide by 1,000,000 for Hz). For example, `7680000005984` means `7680000.005984 Hz`.
+The older `*_sample_rate_hz` gauges are additionally present when the nominal rate is exactly an integer
+in Hz. These are backend-coerced nominal rates, not measurements of oscillator accuracy or requested
+configuration rates. `tx_send_inflight` and `rx_recv_inflight` preserve
+pending-call evidence only when the corresponding known accepted/returned sample delta is zero; unavailable
+deltas remain unavailable rather than becoming zero. Native sample counts follow UHD send/recv return
+semantics per channel for a stream; they are not RF-delivery proof. Event counts aggregate per registered
+device/stream, and valid last metadata includes only the latest channel rather than a per-channel event
+history.
+
+The radio-health writer shares the existing `flight-host-budget` and free-space reserve with host and recovery
+journals. It uses the same bounded sequential rotation; a quota or storage loss is retained in final status
+and never blocks radio work.
+
 ## Output and optional settings
 
 With no overrides, each invocation creates:
@@ -119,6 +158,7 @@ With no overrides, each invocation creates:
     stdout.0000.log
     stderr.0000.log
     host.0000.log
+    radio_health.0000.log
     recorder/oai-flight-recorder-*.ndjson
     status.json
 ```
@@ -190,6 +230,7 @@ the final status and recorder footer when assessing completeness.
   HARQ and random access; sampled USRP RX/TX results.
 - Redacted stdout/stderr and bounded-buffer host/interface/clock observations.
 - Binary, configuration, source and adjacent runtime-plugin fingerprints.
+- Private native radio-health snapshots, per-device metric intervals, lifecycle and observer-only transport diagnostics.
 - Exit status, intentional signals, recording failures, and loss counters.
 
 No core address or GPS daemon is required. Missing optional host facilities
@@ -239,10 +280,11 @@ plugins adjacent to the executable. With `ENABLE_TESTS=ON`, build
 `nas_lib_test`, then run:
 
 ```sh
-ctest --test-dir <build> -R '^(flight_(startup|recorder|monitor)|nas_lib_test)$' --output-on-failure
+ctest --test-dir <build> -R '^(flight_(startup|recorder|monitor)|nas_lib_test|test_radio_health)$' --output-on-failure
 python3 -B tools/flight_test/tests/test_capture.py
 python3 -B tools/flight_test/tests/test_decode_events.py
 python3 -B tools/flight_test/tests/test_recovery.py
+python3 -B tools/flight_test/tests/test_radio_health.py
 ```
 
 The startup fixture uses the real config plugin, bootstrap and recorder but
