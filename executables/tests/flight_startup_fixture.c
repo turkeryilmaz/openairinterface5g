@@ -5,6 +5,7 @@
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
 configmodule_interface_t *uniqCfg;
@@ -22,7 +23,12 @@ int main(int argc, char **argv)
   if (flight_normalize_arguments(&argc, argv))
     return 2;
   uniqCfg = load_configmodule(argc, argv, CONFIG_ENABLECMDLINEONLY | CONFIG_NO_CMDLINE_ECHO);
-  if (!uniqCfg || flight_start_capture(uniqCfg, argc, argv, "ue"))
+  const char *role = getenv("OAI_FLIGHT_STARTUP_FIXTURE_ROLE");
+  if (role == NULL)
+    role = "ue";
+  if (strcmp(role, "ue") != 0 && strcmp(role, "gnb") != 0)
+    return 6;
+  if (!uniqCfg || flight_start_capture(uniqCfg, argc, argv, role))
     return 2;
   char *input = NULL, *synthetic_key = NULL;
   int hold = 0;

@@ -37,6 +37,7 @@ from flight_health import (
     clock_sample,
 )
 from flight_recovery import Decision, NativeChannel, RecoveryPolicy
+from radio_health import RadioHealthDiagnostics
 
 
 SCHEMA_VERSION = 1
@@ -734,7 +735,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--gpsd", type=parse_gpsd, metavar="HOST:PORT")
     parser.add_argument("--probe-ping", action="store_true")
     parser.add_argument("--disable-recorder", action="store_true")
-    parser.add_argument("--recovery", action="store_true", help="allow UE-only policy-gated worker recovery")
+    parser.add_argument("--recovery", action="store_true", help="allow policy-gated worker recovery for the selected role")
     parser.add_argument("--recovery-stall", type=float, default=10.0)
     parser.add_argument("--recovery-attempt", type=float, default=120.0)
     parser.add_argument("--stop-timeout", type=float, default=10.0)
@@ -773,8 +774,6 @@ def validate_args(args: argparse.Namespace, parser: argparse.ArgumentParser) -> 
         parser.error("timeouts and intervals must be finite")
     if args.stop_timeout <= 0 or args.post_exit_drain_timeout <= 0 or args.health_interval <= 0 or args.startup_grace < 0:
         parser.error("timeout/interval must be positive and startup grace non-negative")
-    if args.recovery and args.role != "ue":
-        parser.error("--recovery is supported only for a UE log capture")
     if args.recovery_stall < 1 or args.recovery_attempt < 1:
         parser.error("--recovery-stall and --recovery-attempt must each be at least one second")
     if args.probe_ping and args.core_ip is None:
@@ -966,7 +965,7 @@ class FlightCapture:
         self.recovery_stop_sent_ns: Optional[int] = None
         self.kill_sent = False
         self.session_id = session_id or uuid.uuid4().hex
-        self.policy = policy or RecoveryPolicy(args.recovery_stall, args.recovery_attempt)
+        self.policy = policy or RecoveryPolicy(args.recovery_stall, args.recovery_attempt, args.role)
         self.begin_policy_attempt = begin_policy_attempt
         self.stop_latch = stop_latch
         self.recovery_enabled = recovery_enabled
@@ -974,6 +973,8 @@ class FlightCapture:
         self.policy_decision: Optional[Decision] = None
         self._last_policy_decision: Optional[tuple[str, str, int]] = None
         self.last_result: Optional[CaptureResult] = None
+        self.radio_health = RadioHealthDiagnostics()
+        self.radio_health_writer: Optional[BoundedRotatingWriter] = None
         self.counters = {
             "launch_attempts": 0,
             "launch_failures": 0,
@@ -1029,12 +1030,20 @@ class FlightCapture:
             min(self.args.chunk_bytes, 4 * MIB),
             self.health,
         )
+        radio_health_writer = BoundedRotatingWriter(
+            run_dir,
+            "radio_health",
+            host_quota,
+            min(self.args.chunk_bytes, 4 * MIB),
+            self.health,
+        )
+        self.radio_health_writer = radio_health_writer
         if self.args.console:
             self.console = ConsoleMirror()
             stdout_writer.console = self.console
             stderr_writer.console = self.console
         storage = StorageReserve(run_dir, self.args.min_free_bytes)
-        for writer in (stdout_writer, stderr_writer, host_writer, recovery_writer):
+        for writer in (stdout_writer, stderr_writer, host_writer, recovery_writer, radio_health_writer):
             writer.storage = storage
         old_handlers = self._install_signal_handlers() if self.stop_latch is None else None
         try:
@@ -1053,6 +1062,7 @@ class FlightCapture:
             stderr_writer.close()
             host_writer.close()
             recovery_writer.close()
+            radio_health_writer.close()
             if self.console is not None:
                 self.console.close()
 
@@ -1081,6 +1091,14 @@ class FlightCapture:
             "session_id": self.session_id,
             "role": self.args.role,
             "features": ["log", "recovery"] if self.recovery_enabled else ["log"],
+            "radio_health": {
+                "enabled": True,
+                "stream": "radio_health.*.log JSON Lines",
+                "wire_kind": "radio_health",
+                "wire_schema_version": 1,
+                "transport_diagnostics": "observer_only_unqualified_for_restart",
+                "budget": "shares the existing host budget and free-space reserve",
+            },
             "directory_date_basis": "host local date at launch",
             "created_clock": clock_sample(),
             "command": redact_argv(self.command),
@@ -1435,6 +1453,22 @@ class FlightCapture:
         payload.update(fields)
         writer.write(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8") + b"\n")
 
+    def _write_radio_health_event(self, event: dict[str, Any]) -> None:
+        """Write one observer-only diagnostic event to the bounded JSONL stream."""
+
+        if self.radio_health_writer is None:
+            return
+        payload: dict[str, Any] = {
+            "schema_version": SCHEMA_VERSION,
+            "session_id": self.session_id,
+            "attempt_directory": self.run_dir.name if self.run_dir is not None else None,
+            "role": self.args.role,
+            "process_attempt": {"policy_generation": self.policy.snapshot()["generation"]},
+            "receipt_clock": clock_sample(),
+        }
+        payload.update(event)
+        self.radio_health_writer.write(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8") + b"\n")
+
     def _record_policy_decision(self, writer: BoundedRotatingWriter, phase: str, decision: Decision, force: bool = False) -> None:
         identity = (decision.action, decision.reason, decision.not_before_ns)
         if not force and identity == self._last_policy_decision:
@@ -1477,6 +1511,23 @@ class FlightCapture:
                     change=change,
                     policy_snapshot=self.policy.snapshot(),
                 )
+        receipt_ns = time.monotonic_ns()
+        for snapshot in channel.take_radio_health():
+            accepted_before = self.radio_health.accepted
+            for event in self.radio_health.observe(snapshot, receipt_ns):
+                self._write_radio_health_event(event)
+            if self.radio_health.accepted == accepted_before:
+                continue
+            for change in self.policy.observe_radio_health(snapshot, receipt_ns):
+                self._write_recovery_event(
+                    writer,
+                    "recovery_policy_transition",
+                    policy_phase="radio_health_observe",
+                    change=change,
+                    policy_snapshot=self.policy.snapshot(),
+                )
+        for event in self.radio_health.tick(receipt_ns):
+            self._write_radio_health_event(event)
         decision = self.policy.tick(time.monotonic_ns())
         self._record_policy_decision(writer, "tick", decision)
         if allow_actions and self.recovery_enabled and decision.action == "restart":
@@ -1486,6 +1537,9 @@ class FlightCapture:
             "invalid": channel.invalid,
             "gaps": channel.gaps,
             "latest_source_monotonic_ns": channel.latest["mono_ns"] if channel.latest is not None else None,
+            "radio_health_received": channel.radio_health_received,
+            "radio_health_invalid": channel.radio_health_invalid,
+            "radio_health": self.radio_health.snapshot(),
         }
 
     def _install_signal_handlers(self) -> dict[int, Any]:
@@ -1613,6 +1667,7 @@ class FlightCapture:
                 "stderr": stderr_writer.snapshot(),
                 "host": host_writer.snapshot(),
                 "recovery": recovery_writer.snapshot(),
+                "radio_health": self.radio_health_writer.snapshot() if self.radio_health_writer is not None else None,
             },
             "quotas": {
                 "stdout_and_stderr": stdout_writer.quota.snapshot(),
@@ -1625,6 +1680,7 @@ class FlightCapture:
                 "policy_decision": self.policy_decision.__dict__ if self.policy_decision is not None else None,
                 "policy_snapshot": self.policy.snapshot(),
                 "native_channel": getattr(self, "native_channel", None),
+                "radio_health": self.radio_health.snapshot(),
             },
             "extra": extra,
         }
@@ -1638,7 +1694,7 @@ class FlightCapture:
 
 
 class RecoverySession:
-    """Own sequential UE workers while keeping recovery restrictions session-wide."""
+    """Own sequential role-specific workers while keeping restrictions session-wide."""
 
     _MAX_RECENT_ATTEMPTS = 32
     _PROC_SCAN_LIMIT = 65536
@@ -1646,7 +1702,7 @@ class RecoverySession:
     def __init__(self, args: argparse.Namespace, command: list[str]) -> None:
         self.args = args
         self.command = command
-        self.policy = RecoveryPolicy(args.recovery_stall, args.recovery_attempt)
+        self.policy = RecoveryPolicy(args.recovery_stall, args.recovery_attempt, args.role)
         self.latch = StopLatch()
         self.health = CaptureHealth()
         self.session_dir: Optional[Path] = None
@@ -1699,7 +1755,7 @@ class RecoverySession:
         root.mkdir(mode=0o700, parents=True, exist_ok=True)
         os.chmod(root, 0o700)
         stamp = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime())
-        self.session_dir = Path(tempfile.mkdtemp(prefix=f"ue-session-{stamp}-{os.getpid()}-", dir=root))
+        self.session_dir = Path(tempfile.mkdtemp(prefix=f"{self.args.role}-session-{stamp}-{os.getpid()}-", dir=root))
         os.chmod(self.session_dir, 0o700)
         attempts_dir = self.session_dir / "attempts"
         attempts_dir.mkdir(mode=0o700)
@@ -1720,7 +1776,7 @@ class RecoverySession:
                 "schema_version": SCHEMA_VERSION,
                 "kind": "recovery_session_metadata",
                 "session_id": self.session_dir.name,
-                "role": "ue",
+                "role": self.args.role,
                 "created_clock": clock_sample(),
                 "command": redact_argv(self.command),
                 "recovery": {
