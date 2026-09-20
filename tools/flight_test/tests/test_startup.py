@@ -33,11 +33,14 @@ class Startup(unittest.TestCase):
         text += f'flight-output = "{self.output}";\n' + extra
         (self.work / "flight.conf").write_text(text)
 
-    def run_fixture(self, *args):
+    def run_fixture(self, *args, role="ue"):
+        env = dict(self.env)
+        if role != "ue":
+            env["OAI_FLIGHT_STARTUP_FIXTURE_ROLE"] = role
         return subprocess.run([str(BINARY), "-O", "flight.conf", *args], cwd=self.work,
-                              env=self.env, capture_output=True, text=True, timeout=15)
+                              env=env, capture_output=True, text=True, timeout=15)
 
-    def capture(self, root=None):
+    def capture(self, root=None, role="ue"):
         runs = list((root or self.output).glob("ue-*"))
         self.assertEqual(len(runs), 1)
         run = runs[0]
@@ -164,6 +167,18 @@ class Startup(unittest.TestCase):
                     p.kill()
                     p.communicate()
 
+
+    def test_gnb_cli_log_recovery_starts_without_rf(self):
+        self.config("off")
+        result = self.run_fixture("--flight", "log", "recovery", role="gnb")
+        self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
+        sessions = list(self.output.glob("gnb-session-*"))
+        self.assertEqual(len(sessions), 1)
+        status = json.loads((sessions[0] / "status.json").read_text())
+        self.assertEqual(status["attempt_count"], 1)
+        self.assertEqual(status["state"], "policy_stop")
+        self.assertEqual(status["policy"]["role"], "gnb")
+        self.assertEqual(status["recent_attempts"][0]["policy_decision"]["reason"], "unclassified_zero_exit")
 
 if __name__ == "__main__":
     unittest.main()
