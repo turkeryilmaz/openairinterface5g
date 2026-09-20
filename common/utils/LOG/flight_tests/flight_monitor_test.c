@@ -5,6 +5,7 @@
 #define _GNU_SOURCE
 
 #include "flight_monitor.h"
+#include "radio_health.h"
 
 #include <errno.h>
 #include <poll.h>
@@ -244,6 +245,65 @@ static void test_child_does_not_emit(void)
   clear_monitor_environment();
 }
 
+static void test_radio_snapshot_catalog_and_lifecycle(void)
+{
+  int sockets[2] = {-1, -1};
+  CHECK(socketpair(AF_UNIX, SOCK_DGRAM, 0, sockets) == 0, "radio socketpair failed");
+  if (sockets[0] < 0 || sockets[1] < 0)
+    return;
+  set_monitor_environment(sockets[0]);
+  flight_monitor_init();
+  radio_health_device_t *uhd = radio_health_register(
+      RADIO_HEALTH_BACKEND_UHD,
+      7,
+      RADIO_HEALTH_CAP_TX_SEND | RADIO_HEALTH_CAP_TX_ASYNC | RADIO_HEALTH_CAP_RX_STREAM | RADIO_HEALTH_CAP_TX_QUEUE);
+  radio_health_device_t *other = radio_health_register(RADIO_HEALTH_BACKEND_UNKNOWN, 99, RADIO_HEALTH_CAP_RX_STREAM);
+  CHECK(uhd && other, "native monitor did not enable radio registration");
+  if (!uhd || !other) {
+    flight_monitor_shutdown();
+    close(sockets[1]);
+    clear_monitor_environment();
+    return;
+  }
+  for (unsigned int i = 0; i < RADIO_HEALTH_METRIC_COUNT; ++i) {
+    radio_health_metric_t metric = (radio_health_metric_t)i;
+    if (radio_health_metric_kind(metric) == RADIO_HEALTH_METRIC_COUNTER)
+      radio_health_counter_add(uhd, metric, UINT64_MAX);
+    else
+      radio_health_gauge_set(uhd, metric, UINT64_MAX);
+  }
+  char message[8192];
+  CHECK(wait_for_message_with(sockets[1],
+                              "\"backend\":\"uhd\"",
+                              "\"tx_send_calls\":18446744073709551615",
+                              TEST_TIMEOUT_MS,
+                              message,
+                              sizeof(message)),
+        "radio snapshot missing full uint64 catalog");
+  CHECK(strstr(message, "\"kind\":\"radio_health\"") != NULL, "wrong radio envelope kind");
+  CHECK(strstr(message, "\"active\":true") != NULL, "active device state missing");
+  CHECK(strlen(message) < sizeof(message) - 1, "full radio catalog exceeded the bounded datagram");
+  CHECK(strstr(message, "\"tx_queue_overflow_discards\":18446744073709551615") != NULL, "last radio counter truncated");
+  CHECK(wait_for_message_with(sockets[1],
+                              "\"backend\":\"unknown\"",
+                              "\"rx_recv_calls\":0",
+                              TEST_TIMEOUT_MS,
+                              message,
+                              sizeof(message)),
+        "supported zero counter unavailable for synthetic other backend");
+  CHECK(strstr(message, "\"tx_send_calls\"") == NULL, "unsupported TX field exposed by RX-only backend");
+  CHECK(strstr(message, "\"rx_last_device_ticks\":") == NULL, "unobserved timestamp incorrectly emitted as zero");
+  radio_health_close(uhd);
+  radio_health_close(other);
+  flight_monitor_shutdown();
+  CHECK(wait_for_message_with(sockets[1], "\"backend\":\"uhd\"", "\"active\":false", TEST_TIMEOUT_MS, message, sizeof(message)),
+        "closed device missing from final radio snapshot");
+  CHECK(radio_health_register(RADIO_HEALTH_BACKEND_UNKNOWN, 0, RADIO_HEALTH_CAP_RX_STREAM) == NULL,
+        "monitor shutdown left new radio registrations enabled");
+  close(sockets[1]);
+  clear_monitor_environment();
+}
+
 int main(void)
 {
   test_reject_packing();
@@ -252,5 +312,6 @@ int main(void)
   test_full_catalog_fits_snapshot();
   test_full_socket_does_not_block_shutdown();
   test_child_does_not_emit();
+  test_radio_snapshot_catalog_and_lifecycle();
   return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
