@@ -30,6 +30,7 @@
 #include <time.h>
 #include "common/utils/LOG/log.h"
 #include "common_lib.h"
+#include "radio_health.h"
 #include "assertions.h"
 #include "system.h"
 
@@ -86,6 +87,16 @@ typedef struct {
   int64_t tx_count;
   int64_t rx_count;
   uint32_t flight_rx_calls; // owned by the RX reader, independent of variable-size sample reads
+  radio_health_device_t *radio_health;
+  pthread_t radio_health_async_thread;
+  pthread_mutex_t radio_health_async_mutex;
+  bool radio_health_async_stop;
+  bool radio_health_async_started;
+  bool radio_health_rx_previous_time_valid;
+  uint64_t radio_health_rx_expected_ticks;
+  uint64_t radio_health_queue_high_water;
+  double radio_health_rx_sample_rate;
+  double radio_health_tx_sample_rate;
   int wait_for_first_pps;
   int use_gps;
   //int first_tx;
@@ -416,6 +427,333 @@ static int trx_set_beam(openair0_device_t *device, uint16_t *beams, int num_beam
 
 static void trx_usrp_write_reset(openair0_thread_t *wt);
 
+static bool usrp_radio_health_monotonic_ns(uint64_t *value)
+{
+  struct timespec now;
+  if (clock_gettime(CLOCK_MONOTONIC, &now) != 0 || now.tv_sec < 0 || now.tv_nsec < 0)
+    return false;
+
+  const uint64_t seconds = (uint64_t)now.tv_sec;
+  if (seconds > UINT64_MAX / UINT64_C(1000000000))
+    return false;
+  *value = seconds * UINT64_C(1000000000) + (uint64_t)now.tv_nsec;
+  return true;
+}
+
+static bool usrp_radio_health_time_to_ticks(const uhd::time_spec_t &time, double rate, uint64_t *ticks)
+{
+  if (!std::isfinite(rate) || rate <= 0)
+    return false;
+  const long long signed_ticks = time.to_ticks(rate);
+  if (signed_ticks < 0)
+    return false;
+  *ticks = (uint64_t)signed_ticks;
+  return true;
+}
+
+static void usrp_radio_health_record_sample_rate(usrp_state_t *state,
+                                                 radio_health_metric_t hertz_metric,
+                                                 radio_health_metric_t microhertz_metric,
+                                                 double rate)
+{
+  if (state->radio_health == NULL)
+    return;
+
+  uint64_t rate_microhz;
+  if (radio_health_rate_microhz(rate, &rate_microhz))
+    radio_health_gauge_set(state->radio_health, microhertz_metric, rate_microhz);
+
+  if (!std::isfinite(rate) || rate <= 0 || rate >= 0x1p64)
+    return;
+  const uint64_t rate_hz = (uint64_t)rate;
+  if ((double)rate_hz == rate)
+    radio_health_gauge_set(state->radio_health, hertz_metric, rate_hz);
+}
+
+static void usrp_radio_health_record_tx_start(usrp_state_t *state, int requested)
+{
+  if (state->radio_health == NULL)
+    return;
+
+  radio_health_counter_add(state->radio_health, RADIO_HEALTH_METRIC_TX_SEND_CALLS, 1);
+  if (requested > 0)
+    radio_health_counter_add(state->radio_health, RADIO_HEALTH_METRIC_TX_SEND_REQUESTED_SAMPLES, (uint64_t)requested);
+}
+
+static void usrp_radio_health_record_tx_result(usrp_state_t *state, int requested, int accepted)
+{
+  if (state->radio_health == NULL)
+    return;
+
+  if (accepted > 0)
+    radio_health_counter_add(state->radio_health, RADIO_HEALTH_METRIC_TX_SEND_ACCEPTED_SAMPLES, (uint64_t)accepted);
+  if (accepted != requested)
+    radio_health_counter_add(state->radio_health, RADIO_HEALTH_METRIC_TX_SEND_SHORT_CALLS, 1);
+}
+
+static void usrp_radio_health_record_rx_start(usrp_state_t *state, size_t requested)
+{
+  if (state->radio_health == NULL)
+    return;
+
+  radio_health_counter_add(state->radio_health, RADIO_HEALTH_METRIC_RX_RECV_CALLS, 1);
+  radio_health_counter_add(state->radio_health, RADIO_HEALTH_METRIC_RX_REQUESTED_SAMPLES, (uint64_t)requested);
+}
+
+static int usrp_radio_health_send(usrp_state_t *state, void **buffers, int samples, int channels)
+{
+  try {
+    if (channels > 1) {
+      std::vector<void *> buffer_pointers;
+      for (int channel = 0; channel < channels; channel++)
+        buffer_pointers.push_back(buffers[channel]);
+      usrp_radio_health_record_tx_start(state, samples);
+      if (state->radio_health != NULL)
+        radio_health_gauge_set(state->radio_health, RADIO_HEALTH_METRIC_TX_SEND_INFLIGHT, 1);
+      const int accepted = (int)state->tx_stream->send(buffer_pointers, samples, state->tx_md);
+      if (state->radio_health != NULL)
+        radio_health_gauge_set(state->radio_health, RADIO_HEALTH_METRIC_TX_SEND_INFLIGHT, 0);
+      return accepted;
+    }
+    usrp_radio_health_record_tx_start(state, samples);
+    if (state->radio_health != NULL)
+      radio_health_gauge_set(state->radio_health, RADIO_HEALTH_METRIC_TX_SEND_INFLIGHT, 1);
+    const int accepted = (int)state->tx_stream->send(buffers[0], samples, state->tx_md);
+    if (state->radio_health != NULL)
+      radio_health_gauge_set(state->radio_health, RADIO_HEALTH_METRIC_TX_SEND_INFLIGHT, 0);
+    return accepted;
+  } catch (...) {
+    if (state->radio_health != NULL) {
+      radio_health_gauge_set(state->radio_health, RADIO_HEALTH_METRIC_TX_SEND_INFLIGHT, 0);
+      radio_health_counter_add(state->radio_health, RADIO_HEALTH_METRIC_TX_SEND_EXCEPTIONS, 1);
+    }
+    throw;
+  }
+}
+
+static size_t usrp_radio_health_recv(usrp_state_t *state,
+                                     const std::vector<void *> &buffers,
+                                     size_t samples,
+                                     uhd::rx_metadata_t &metadata)
+{
+  usrp_radio_health_record_rx_start(state, samples);
+  if (state->radio_health != NULL)
+    radio_health_gauge_set(state->radio_health, RADIO_HEALTH_METRIC_RX_RECV_INFLIGHT, 1);
+  try {
+    const size_t received = state->rx_stream->recv(buffers, samples, metadata);
+    if (state->radio_health != NULL)
+      radio_health_gauge_set(state->radio_health, RADIO_HEALTH_METRIC_RX_RECV_INFLIGHT, 0);
+    return received;
+  } catch (...) {
+    if (state->radio_health != NULL)
+      radio_health_gauge_set(state->radio_health, RADIO_HEALTH_METRIC_RX_RECV_INFLIGHT, 0);
+    throw;
+  }
+}
+
+static size_t usrp_radio_health_recv(usrp_state_t *state, void *buffer, size_t samples, uhd::rx_metadata_t &metadata)
+{
+  usrp_radio_health_record_rx_start(state, samples);
+  if (state->radio_health != NULL)
+    radio_health_gauge_set(state->radio_health, RADIO_HEALTH_METRIC_RX_RECV_INFLIGHT, 1);
+  try {
+    const size_t received = state->rx_stream->recv(buffer, samples, metadata);
+    if (state->radio_health != NULL)
+      radio_health_gauge_set(state->radio_health, RADIO_HEALTH_METRIC_RX_RECV_INFLIGHT, 0);
+    return received;
+  } catch (...) {
+    if (state->radio_health != NULL)
+      radio_health_gauge_set(state->radio_health, RADIO_HEALTH_METRIC_RX_RECV_INFLIGHT, 0);
+    throw;
+  }
+}
+
+static void usrp_radio_health_record_async_event(usrp_state_t *state, const uhd::async_metadata_t &metadata)
+{
+  if (state->radio_health == NULL)
+    return;
+
+  const uint64_t raw_code = (uint64_t)metadata.event_code;
+  radio_health_metric_t metric = RADIO_HEALTH_METRIC_TX_ASYNC_UNKNOWN;
+  switch (metadata.event_code) {
+    case uhd::async_metadata_t::EVENT_CODE_TIME_ERROR:
+      metric = RADIO_HEALTH_METRIC_TX_ASYNC_TIME_ERROR;
+      break;
+    case uhd::async_metadata_t::EVENT_CODE_UNDERFLOW:
+      metric = RADIO_HEALTH_METRIC_TX_ASYNC_UNDERFLOW;
+      break;
+    case uhd::async_metadata_t::EVENT_CODE_UNDERFLOW_IN_PACKET:
+      metric = RADIO_HEALTH_METRIC_TX_ASYNC_UNDERFLOW_IN_PACKET;
+      break;
+    case uhd::async_metadata_t::EVENT_CODE_SEQ_ERROR:
+      metric = RADIO_HEALTH_METRIC_TX_ASYNC_SEQ_ERROR;
+      break;
+    case uhd::async_metadata_t::EVENT_CODE_SEQ_ERROR_IN_BURST:
+      metric = RADIO_HEALTH_METRIC_TX_ASYNC_SEQ_ERROR_IN_BURST;
+      break;
+    case uhd::async_metadata_t::EVENT_CODE_BURST_ACK:
+      metric = RADIO_HEALTH_METRIC_TX_ASYNC_BURST_ACK;
+      break;
+    default:
+      break;
+  }
+  radio_health_counter_add(state->radio_health, metric, 1);
+
+  uint64_t monotonic_ns;
+  if (usrp_radio_health_monotonic_ns(&monotonic_ns)) {
+    uint64_t device_ticks = 0;
+    const bool device_time_valid =
+        metadata.has_time_spec
+        && usrp_radio_health_time_to_ticks(metadata.time_spec, state->radio_health_tx_sample_rate, &device_ticks);
+    radio_health_observe_tx_async(state->radio_health,
+                                  monotonic_ns,
+                                  raw_code,
+                                  true,
+                                  (uint64_t)metadata.channel,
+                                  device_time_valid,
+                                  device_ticks);
+  }
+}
+
+static bool usrp_radio_health_async_stop_requested(usrp_state_t *state)
+{
+  bool stop;
+  pthread_mutex_lock(&state->radio_health_async_mutex);
+  stop = state->radio_health_async_stop;
+  pthread_mutex_unlock(&state->radio_health_async_mutex);
+  return stop;
+}
+
+static void *usrp_radio_health_async_worker(void *opaque)
+{
+  usrp_state_t *state = (usrp_state_t *)opaque;
+  while (!usrp_radio_health_async_stop_requested(state)) {
+    uhd::async_metadata_t metadata;
+    bool received = false;
+    try {
+      received = state->tx_stream->recv_async_msg(metadata, 0.05);
+      radio_health_counter_add(state->radio_health, RADIO_HEALTH_METRIC_TX_ASYNC_POLLS, 1);
+      uint64_t monotonic_ns;
+      if (usrp_radio_health_monotonic_ns(&monotonic_ns))
+        radio_health_gauge_set(state->radio_health, RADIO_HEALTH_METRIC_TX_ASYNC_LAST_POLL_MONO_NS, monotonic_ns);
+      if (received) {
+        radio_health_counter_add(state->radio_health, RADIO_HEALTH_METRIC_TX_ASYNC_MESSAGES, 1);
+        usrp_radio_health_record_async_event(state, metadata);
+      }
+    } catch (...) {
+      radio_health_counter_add(state->radio_health, RADIO_HEALTH_METRIC_TX_ASYNC_EXCEPTIONS, 1);
+      return NULL;
+    }
+  }
+  return NULL;
+}
+
+static void usrp_radio_health_start_async(usrp_state_t *state)
+{
+  if (state->radio_health == NULL)
+    return;
+
+  int error = pthread_mutex_init(&state->radio_health_async_mutex, NULL);
+  if (error != 0) {
+    radio_health_counter_add(state->radio_health, RADIO_HEALTH_METRIC_TX_ASYNC_EXCEPTIONS, 1);
+    LOG_W(HW, "USRP radio-health async collector was not started: %s\n", strerror(error));
+    return;
+  }
+
+  state->radio_health_async_stop = false;
+  pthread_attr_t attributes;
+  error = pthread_attr_init(&attributes);
+  if (error == 0) {
+    error = pthread_attr_setinheritsched(&attributes, PTHREAD_EXPLICIT_SCHED);
+    if (error == 0)
+      error = pthread_attr_setschedpolicy(&attributes, SCHED_OTHER);
+    if (error == 0) {
+      const struct sched_param scheduling = {.sched_priority = 0};
+      error = pthread_attr_setschedparam(&attributes, &scheduling);
+    }
+    if (error == 0)
+      error = pthread_create(&state->radio_health_async_thread, &attributes, usrp_radio_health_async_worker, state);
+    pthread_attr_destroy(&attributes);
+  }
+
+  if (error != 0) {
+    radio_health_counter_add(state->radio_health, RADIO_HEALTH_METRIC_TX_ASYNC_EXCEPTIONS, 1);
+    LOG_W(HW, "USRP radio-health async collector was not started: %s\n", strerror(error));
+    pthread_mutex_destroy(&state->radio_health_async_mutex);
+    return;
+  }
+  state->radio_health_async_started = true;
+}
+
+static void usrp_radio_health_stop_async(usrp_state_t *state)
+{
+  if (!state->radio_health_async_started)
+    return;
+
+  pthread_mutex_lock(&state->radio_health_async_mutex);
+  state->radio_health_async_stop = true;
+  pthread_mutex_unlock(&state->radio_health_async_mutex);
+  pthread_join(state->radio_health_async_thread, NULL);
+  pthread_mutex_destroy(&state->radio_health_async_mutex);
+  state->radio_health_async_started = false;
+}
+
+static void usrp_radio_health_record_rx(usrp_state_t *state, size_t requested, size_t received, const uhd::rx_metadata_t &metadata)
+{
+  if (state->radio_health == NULL)
+    return;
+
+  radio_health_counter_add(state->radio_health, RADIO_HEALTH_METRIC_RX_RETURNED_SAMPLES, (uint64_t)received);
+  if (received < requested)
+    radio_health_counter_add(state->radio_health, RADIO_HEALTH_METRIC_RX_SHORT_CALLS, 1);
+  if (received == 0)
+    radio_health_counter_add(state->radio_health, RADIO_HEALTH_METRIC_RX_ZERO_RETURN_CALLS, 1);
+
+  switch (metadata.error_code) {
+    case uhd::rx_metadata_t::ERROR_CODE_NONE:
+      radio_health_counter_add(state->radio_health, RADIO_HEALTH_METRIC_RX_ERROR_NONE, 1);
+      break;
+    case uhd::rx_metadata_t::ERROR_CODE_TIMEOUT:
+      radio_health_counter_add(state->radio_health, RADIO_HEALTH_METRIC_RX_ERROR_TIMEOUT, 1);
+      break;
+    case uhd::rx_metadata_t::ERROR_CODE_LATE_COMMAND:
+      radio_health_counter_add(state->radio_health, RADIO_HEALTH_METRIC_RX_ERROR_LATE_COMMAND, 1);
+      break;
+    case uhd::rx_metadata_t::ERROR_CODE_BROKEN_CHAIN:
+      radio_health_counter_add(state->radio_health, RADIO_HEALTH_METRIC_RX_ERROR_BROKEN_CHAIN, 1);
+      break;
+    case uhd::rx_metadata_t::ERROR_CODE_OVERFLOW:
+      if (!metadata.out_of_sequence)
+        radio_health_counter_add(state->radio_health, RADIO_HEALTH_METRIC_RX_ERROR_OVERFLOW, 1);
+      break;
+    case uhd::rx_metadata_t::ERROR_CODE_ALIGNMENT:
+      radio_health_counter_add(state->radio_health, RADIO_HEALTH_METRIC_RX_ERROR_ALIGNMENT, 1);
+      break;
+    case uhd::rx_metadata_t::ERROR_CODE_BAD_PACKET:
+      radio_health_counter_add(state->radio_health, RADIO_HEALTH_METRIC_RX_ERROR_BAD_PACKET, 1);
+      break;
+    default:
+      radio_health_counter_add(state->radio_health, RADIO_HEALTH_METRIC_RX_ERROR_OTHER, 1);
+      break;
+  }
+  if (metadata.out_of_sequence)
+    radio_health_counter_add(state->radio_health, RADIO_HEALTH_METRIC_RX_OUT_OF_SEQUENCE, 1);
+
+  uint64_t device_ticks = 0;
+  const bool device_time_valid =
+      metadata.has_time_spec
+      && usrp_radio_health_time_to_ticks(metadata.time_spec, state->radio_health_rx_sample_rate, &device_ticks);
+  if (device_time_valid && received > 0) {
+    if (state->radio_health_rx_previous_time_valid && device_ticks != state->radio_health_rx_expected_ticks)
+      radio_health_counter_add(state->radio_health, RADIO_HEALTH_METRIC_RX_TIMESTAMP_GAPS, 1);
+    state->radio_health_rx_expected_ticks = device_ticks + (uint64_t)received;
+    state->radio_health_rx_previous_time_valid = true;
+  } else {
+    state->radio_health_rx_previous_time_valid = false;
+  }
+  radio_health_observe_rx_metadata(state->radio_health, (uint64_t)metadata.error_code, device_time_valid, device_ticks);
+}
+
 /*! \brief Terminate operation of the USRP transceiver -- free all associated resources
  * \param device the hardware to use
  */
@@ -435,7 +773,10 @@ static void trx_usrp_end(openair0_device_t *device)
 
   /* finish tx and rx */
   trx_usrp_send_end_of_burst(s);
+  usrp_radio_health_stop_async(s);
   trx_usrp_finish_rx(s);
+  if (s->radio_health != NULL)
+    radio_health_close(s->radio_health);
   /* set tx_stream, rx_stream, and usrp to NULL to clear/free them */
   s->tx_stream = NULL;
   s->rx_stream = NULL;
@@ -517,16 +858,8 @@ static int trx_usrp_write(openair0_device_t *device,
       s->tx_md.time_spec = uhd::time_spec_t::from_ticks(timestamp, s->sample_rate);
       s->tx_count++;
 
-      if (cc > 1) {
-        std::vector<void *> buff_ptrs;
-
-        for (int i = 0; i < cc; i++)
-          buff_ptrs.push_back(buff[i]);
-
-        ret = (int)s->tx_stream->send(buff_ptrs, nsamps, s->tx_md);
-      } else {
-        ret = (int)s->tx_stream->send(buff[0], nsamps, s->tx_md);
-      }
+      ret = usrp_radio_health_send(s, buff, nsamps, cc);
+      usrp_radio_health_record_tx_result(s, nsamps, ret);
 
       if (flight_recorder_enabled() && (ret != nsamps || (s->tx_count & 1023) == 0))
         flight_recorder_emit(FLIGHT_EVENT_RADIO_TX, device->type, timestamp, nsamps, ret, flags, 0);
@@ -545,6 +878,11 @@ static int trx_usrp_write(openair0_device_t *device,
               write_thread->count_write,
               write_thread->start,
               write_thread->end);
+        const uint64_t discarded = (uint64_t)write_thread->count_write;
+        if (s->radio_health != NULL) {
+          radio_health_counter_add(s->radio_health, RADIO_HEALTH_METRIC_TX_QUEUE_OVERFLOW_DISCARDS, discarded);
+          radio_health_gauge_set(s->radio_health, RADIO_HEALTH_METRIC_TX_QUEUE_DEPTH, 0);
+        }
         write_thread->end = write_thread->start;
         write_thread->count_write = 0;
       }
@@ -559,6 +897,15 @@ static int trx_usrp_write(openair0_device_t *device,
         write_package[end].buff[i] = buff[i];
       write_thread->count_write++;
       write_thread->end = (write_thread->end + 1) % MAX_WRITE_THREAD_PACKAGE;
+      if (s->radio_health != NULL) {
+        const uint64_t depth = (uint64_t)write_thread->count_write;
+        radio_health_counter_add(s->radio_health, RADIO_HEALTH_METRIC_TX_QUEUE_ENQUEUES, 1);
+        radio_health_gauge_set(s->radio_health, RADIO_HEALTH_METRIC_TX_QUEUE_DEPTH, depth);
+        if (depth > s->radio_health_queue_high_water) {
+          s->radio_health_queue_high_water = depth;
+          radio_health_gauge_set(s->radio_health, RADIO_HEALTH_METRIC_TX_QUEUE_HIGH_WATER, depth);
+        }
+      }
       LOG_D(HW, "Signaling TX TS %llu\n", (unsigned long long)timestamp);
       pthread_cond_signal(&write_thread->cond_write);
       pthread_mutex_unlock(&write_thread->mutex_write);
@@ -610,6 +957,10 @@ void *trx_usrp_write_thread(void * arg)
     last_packet  = write_package[start].last_packet;
     write_thread->start = (write_thread->start + 1)% MAX_WRITE_THREAD_PACKAGE;
     write_thread->count_write--;
+    if (s->radio_health != NULL) {
+      radio_health_counter_add(s->radio_health, RADIO_HEALTH_METRIC_TX_QUEUE_DEQUEUES, 1);
+      radio_health_gauge_set(s->radio_health, RADIO_HEALTH_METRIC_TX_QUEUE_DEPTH, (uint64_t)write_thread->count_write);
+    }
     pthread_mutex_unlock(&write_thread->mutex_write);
     /*if(write_thread->count_write != 0){
       LOG_W(HW,"count write = %d, start = %d, end = %d\n", write_thread->count_write, write_thread->start, write_thread->end);
@@ -622,17 +973,8 @@ void *trx_usrp_write_thread(void * arg)
     LOG_D(PHY,"usrp_tx_write: tx_count %llu SoB %d, EoB %d, TS %llu\n",(unsigned long long)s->tx_count,s->tx_md.start_of_burst,s->tx_md.end_of_burst,(unsigned long long)timestamp); 
     s->tx_count++;
 
-    if (cc>1) {
-      std::vector<void *> buff_ptrs;
-
-      for (int i=0; i<cc; i++)
-        buff_ptrs.push_back(buff[i]);
-
-      ret = (int)s->tx_stream->send(buff_ptrs, nsamps, s->tx_md);
-    }
-    else {
-      ret = (int)s->tx_stream->send(buff[0], nsamps, s->tx_md);
-    }
+    ret = usrp_radio_health_send(s, buff, nsamps, cc);
+    usrp_radio_health_record_tx_result(s, nsamps, ret);
 
     T(T_USRP_TX_ANT0, T_INT(timestamp), T_BUFFER(buff[0], nsamps*4));
 
@@ -705,18 +1047,21 @@ static int trx_usrp_read(openair0_device_t *device, openair0_timestamp_t *ptimes
   samples_received=0;
   while (samples_received != nsamps) {
 
+    const size_t requested = (size_t)(nsamps - samples_received);
+    size_t received;
     if (cc>1) {
       // receive multiple channels (e.g. RF A and RF B)
       std::vector<void *> buff_ptrs;
 
       for (int i=0; i<cc; i++) buff_ptrs.push_back((void*)((int32_t*)buff[i]+samples_received));
-      samples_received += s->rx_stream->recv(buff_ptrs, nsamps-samples_received, s->rx_md);
+      received = usrp_radio_health_recv(s, buff_ptrs, requested, s->rx_md);
     } else {
       // receive a single channel (e.g. from connector RF A)
 
-      samples_received += s->rx_stream->recv((void*)((int32_t*)buff[0]+samples_received),
-                                             nsamps-samples_received, s->rx_md);
+      received = usrp_radio_health_recv(s, (void *)((int32_t *)buff[0] + samples_received), requested, s->rx_md);
     }
+    usrp_radio_health_record_rx(s, requested, received, s->rx_md);
+    samples_received += (int)received;
     if  ((s->wait_for_first_pps == 0) && (s->rx_md.error_code!=uhd::rx_metadata_t::ERROR_CODE_NONE))
       break;
 
@@ -1496,6 +1841,10 @@ extern "C" {
     stream_args_tx.channels.push_back(i+choffset);
 
   s->tx_stream = s->usrp->get_tx_stream(stream_args_tx);
+  s->radio_health = radio_health_register(RADIO_HEALTH_BACKEND_UHD,
+                                          (uint32_t)device->type,
+                                          RADIO_HEALTH_CAP_TX_SEND | RADIO_HEALTH_CAP_TX_ASYNC
+                                              | RADIO_HEALTH_CAP_RX_STREAM | RADIO_HEALTH_CAP_TX_QUEUE);
 
   /* Setting TX/RX BW after streamers are created due to USRP calibration issue */
   // N310 with UHD >= 4.2.0 has issues with changing the BW, which is a NOP on N310 in earlier versions
@@ -1510,7 +1859,15 @@ extern "C" {
 
   for (int i=0; i<openair0_cfg[0].rx_num_channels; i++) {
     LOG_I(HW,"RX Channel %d\n",i);
-    LOG_I(HW,"  Actual RX sample rate: %fMSps...\n",s->usrp->get_rx_rate(i+choffset)/1e6);
+    const double actual_rx_rate = s->usrp->get_rx_rate(i + choffset);
+    LOG_I(HW,"  Actual RX sample rate: %fMSps...\n",actual_rx_rate/1e6);
+    if (i == 0 && s->radio_health != NULL) {
+      s->radio_health_rx_sample_rate = actual_rx_rate;
+      usrp_radio_health_record_sample_rate(s,
+                                           RADIO_HEALTH_METRIC_RX_SAMPLE_RATE_HZ,
+                                           RADIO_HEALTH_METRIC_RX_SAMPLE_RATE_MICROHZ,
+                                           actual_rx_rate);
+    }
     LOG_I(HW,"  Actual RX frequency: %fGHz...\n", s->usrp->get_rx_freq(i+choffset)/1e9);
     LOG_I(HW,"  Actual RX gain: %f...\n", s->usrp->get_rx_gain(i+choffset));
     LOG_I(HW,"  Actual RX bandwidth: %fM...\n", s->usrp->get_rx_bandwidth(i+choffset)/1e6);
@@ -1519,7 +1876,15 @@ extern "C" {
 
   for (int i=0; i<openair0_cfg[0].tx_num_channels; i++) {
     LOG_I(HW,"TX Channel %d\n",i);
-    LOG_I(HW,"  Actual TX sample rate: %fMSps...\n", s->usrp->get_tx_rate(i+choffset)/1e6);
+    const double actual_tx_rate = s->usrp->get_tx_rate(i + choffset);
+    LOG_I(HW,"  Actual TX sample rate: %fMSps...\n", actual_tx_rate/1e6);
+    if (i == 0 && s->radio_health != NULL) {
+      s->radio_health_tx_sample_rate = actual_tx_rate;
+      usrp_radio_health_record_sample_rate(s,
+                                           RADIO_HEALTH_METRIC_TX_SAMPLE_RATE_HZ,
+                                           RADIO_HEALTH_METRIC_TX_SAMPLE_RATE_MICROHZ,
+                                           actual_tx_rate);
+    }
     LOG_I(HW,"  Actual TX frequency: %fGHz...\n", s->usrp->get_tx_freq(i+choffset)/1e9);
     LOG_I(HW,"  Actual TX gain: %f...\n", s->usrp->get_tx_gain(i+choffset));
     LOG_I(HW,"  Actual TX bandwidth: %fM...\n", s->usrp->get_tx_bandwidth(i+choffset)/1e6);
@@ -1532,6 +1897,11 @@ extern "C" {
   device->trx_write_func = trx_usrp_write;
   device->trx_read_func  = trx_usrp_read;
   device->trx_set_beams = (device->openair0_cfg->gpio_controller != RU_GPIO_CONTROL_NONE) ? trx_set_beam : NULL;
+  if (s->radio_health != NULL) {
+    radio_health_gauge_set(s->radio_health, RADIO_HEALTH_METRIC_TX_SEND_INFLIGHT, 0);
+    radio_health_gauge_set(s->radio_health, RADIO_HEALTH_METRIC_RX_RECV_INFLIGHT, 0);
+    usrp_radio_health_start_async(s);
+  }
   s->sample_rate = openair0_cfg[0].sample_rate;
 
   // TODO:
