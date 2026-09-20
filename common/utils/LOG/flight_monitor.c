@@ -5,6 +5,7 @@
 #define _GNU_SOURCE
 
 #include "flight_monitor.h"
+#include "radio_health.h"
 
 #include <errno.h>
 #include <fcntl.h>
@@ -25,6 +26,7 @@
 
 #define FLIGHT_MONITOR_FIELDS_MAX 32U
 #define FLIGHT_MONITOR_MESSAGE_BYTES 1024U
+#define FLIGHT_RADIO_MESSAGE_BYTES 8192U
 #define FLIGHT_MONITOR_INTERVAL_SECONDS 1L
 
 typedef struct {
@@ -68,6 +70,9 @@ static bool g_atexit_registered;
 static pid_t g_owner_pid;
 static int g_monitor_fd = -1;
 static uint64_t g_sequence;
+/* The monitor owns these; each device has an independent message sequence. */
+static uint64_t g_radio_sequences[RADIO_HEALTH_MAX_DEVICES];
+static uint64_t g_radio_send_drops[RADIO_HEALTH_MAX_DEVICES];
 
 #ifdef FLIGHT_MONITOR_TESTING
 static atomic_int g_test_worker_policy = ATOMIC_VAR_INIT(-1);
@@ -193,6 +198,75 @@ static void emit_snapshot(void)
     atomic_fetch_add_explicit(&g_send_drops, 1, memory_order_relaxed);
 }
 
+static void emit_radio_snapshots(void)
+{
+  if (getpid() != g_owner_pid || g_monitor_fd < 0)
+    return;
+
+  for (uint32_t slot = 0; slot < RADIO_HEALTH_MAX_DEVICES; ++slot) {
+    radio_health_snapshot_t snapshot;
+    struct timespec monotonic;
+    if (!radio_health_snapshot(slot, &snapshot) || clock_gettime(CLOCK_MONOTONIC, &monotonic) != 0)
+      continue;
+
+    char message[FLIGHT_RADIO_MESSAGE_BYTES];
+    int written =
+        snprintf(message,
+                 sizeof(message),
+                 "{\"kind\":\"radio_health\",\"schema_version\":1,\"pid\":%ld,\"sequence\":%" PRIu64 ",\"mono_ns\":%" PRIu64
+                 ",\"send_drops\":%" PRIu64 ",\"device_id\":%u,\"backend\":\"%s\",\"device_type\":%u,\"active\":%s,\"supported\":[",
+                 (long)g_owner_pid,
+                 ++g_radio_sequences[slot],
+                 (uint64_t)monotonic.tv_sec * UINT64_C(1000000000) + (uint64_t)monotonic.tv_nsec,
+                 g_radio_send_drops[slot],
+                 snapshot.device_id,
+                 radio_health_backend_name(snapshot.backend),
+                 snapshot.device_type,
+                 snapshot.lifecycle == RADIO_HEALTH_LIFECYCLE_ACTIVE ? "true" : "false");
+    bool valid = written >= 0 && (size_t)written < sizeof(message);
+    size_t used = valid ? (size_t)written : 0;
+    bool first = true;
+    for (unsigned int i = 0; valid && i < RADIO_HEALTH_METRIC_COUNT; ++i) {
+      if (!radio_health_metric_supported(snapshot.capabilities, (radio_health_metric_t)i))
+        continue;
+      written = snprintf(message + used,
+                         sizeof(message) - used,
+                         "%s\"%s\"",
+                         first ? "" : ",",
+                         radio_health_metric_name((radio_health_metric_t)i));
+      valid = written >= 0 && (size_t)written < sizeof(message) - used;
+      if (valid)
+        used += (size_t)written;
+      first = false;
+    }
+    if (valid) {
+      written = snprintf(message + used, sizeof(message) - used, "],\"values\":{");
+      valid = written >= 0 && (size_t)written < sizeof(message) - used;
+      if (valid)
+        used += (size_t)written;
+    }
+    first = true;
+    for (unsigned int i = 0; valid && i < RADIO_HEALTH_METRIC_COUNT; ++i) {
+      if (!(snapshot.observed_metrics & RADIO_HEALTH_METRIC_BIT(i)))
+        continue;
+      valid = append_value(message,
+                           sizeof(message),
+                           &used,
+                           &first,
+                           radio_health_metric_name((radio_health_metric_t)i),
+                           snapshot.values[i]);
+    }
+    if (valid) {
+      written = snprintf(message + used, sizeof(message) - used, "}}");
+      valid = written >= 0 && (size_t)written < sizeof(message) - used;
+      if (valid)
+        used += (size_t)written;
+    }
+    if (!valid || send(g_monitor_fd, message, used, MSG_DONTWAIT | MSG_NOSIGNAL) != (ssize_t)used)
+      ++g_radio_send_drops[slot];
+  }
+}
+
 static void wait_for_next_snapshot(void)
 {
   struct timespec deadline = {0};
@@ -214,6 +288,7 @@ static void *flight_monitor_main(void *unused)
   struct sched_param parameter = {0};
   if (pthread_getschedparam(pthread_self(), &policy, &parameter) != 0 || policy != SCHED_OTHER) {
     atomic_store_explicit(&g_enabled, false, memory_order_release);
+    radio_health_set_enabled(false);
     return NULL;
   }
 #ifdef FLIGHT_MONITOR_TESTING
@@ -222,12 +297,16 @@ static void *flight_monitor_main(void *unused)
   (void)pthread_setname_np(pthread_self(), "flight-monitor");
 
   emit_snapshot();
+  emit_radio_snapshots();
   while (!atomic_load_explicit(&g_stop, memory_order_acquire)) {
     wait_for_next_snapshot();
-    if (!atomic_load_explicit(&g_stop, memory_order_acquire))
+    if (!atomic_load_explicit(&g_stop, memory_order_acquire)) {
       emit_snapshot();
+      emit_radio_snapshots();
+    }
   }
   emit_snapshot();
+  emit_radio_snapshots();
   return NULL;
 }
 
@@ -279,14 +358,20 @@ void flight_monitor_init(void)
   atomic_store_explicit(&g_send_drops, 0, memory_order_relaxed);
   atomic_store_explicit(&g_stop, false, memory_order_release);
   g_sequence = 0;
+  for (unsigned int i = 0; i < RADIO_HEALTH_MAX_DEVICES; ++i) {
+    g_radio_sequences[i] = 0;
+    g_radio_send_drops[i] = 0;
+  }
   g_owner_pid = current_pid;
   g_monitor_fd = monitor_fd;
 #ifdef FLIGHT_MONITOR_TESTING
   atomic_store_explicit(&g_test_worker_policy, -1, memory_order_release);
 #endif
   atomic_store_explicit(&g_enabled, true, memory_order_release);
+  radio_health_set_enabled(true);
 
   if (!start_monitor_thread()) {
+    radio_health_set_enabled(false);
     atomic_store_explicit(&g_enabled, false, memory_order_release);
     g_monitor_fd = -1;
     g_owner_pid = 0;
@@ -308,6 +393,7 @@ void flight_monitor_shutdown(void)
   }
 
   pthread_mutex_lock(&g_lifecycle_lock);
+  radio_health_set_enabled(false);
   atomic_store_explicit(&g_enabled, false, memory_order_release);
   if (g_worker_started) {
     atomic_store_explicit(&g_stop, true, memory_order_release);
