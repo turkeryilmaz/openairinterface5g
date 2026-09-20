@@ -13,8 +13,10 @@ import time
 from dataclasses import dataclass
 from typing import Any, Optional
 
+from radio_health import MAX_RADIO_HEALTH_DATAGRAM, parse_radio_health_datagram, radio_sample_progress_increased
+
 NANOSECOND = 1_000_000_000
-MAX_DATAGRAM = 4096
+MAX_DATAGRAM = MAX_RADIO_HEALTH_DATAGRAM
 FIELDS = frozenset((
     "rx_samples", "tx_samples", "search_attempts", "sync_successes",
     "rrc_messages", "nas_messages", "rrc_state", "pdu_accepts", "pdu_active",
@@ -33,12 +35,16 @@ class NativeChannel:
         self.invalid = 0
         self.gaps = 0
         self.latest: Optional[dict[str, Any]] = None
+        self.radio_health: list[dict[str, Any]] = []
+        self.radio_health_invalid = 0
+        self.radio_health_received = 0
 
     def receive(self, pid: int, now_ns: Optional[int] = None) -> list[dict[str, Any]]:
         # Production validates against a clock sampled after recv. An explicit
         # clock is reserved for deterministic policy/channel fixtures.
         result = []
         for _ in range(32):
+            value: Any = None
             try:
                 raw = self.reader.recv(MAX_DATAGRAM + 1)
                 receipt_ns = time.monotonic_ns() if now_ns is None else now_ns
@@ -46,6 +52,11 @@ class NativeChannel:
                 break
             try:
                 value = json.loads(raw)
+                if isinstance(value, dict) and value.get("kind") == "radio_health":
+                    snapshot = parse_radio_health_datagram(raw, pid, receipt_ns)
+                    self.radio_health.append(snapshot)
+                    self.radio_health_received += 1
+                    continue
                 if (len(raw) > MAX_DATAGRAM or not isinstance(value, dict)
                         or value.get("kind") != "native_progress"
                         or type(value.get("schema_version")) is not int or value["schema_version"] != 1
@@ -63,6 +74,8 @@ class NativeChannel:
                     raise ValueError("invalid fields")
             except (ValueError, KeyError, TypeError):
                 self.invalid += 1
+                if isinstance(value, dict) and value.get("kind") == "radio_health":
+                    self.radio_health_invalid += 1
                 continue
             if self.sequence >= 0:
                 self.gaps += value["sequence"] - self.sequence - 1
@@ -71,9 +84,19 @@ class NativeChannel:
             result.append(value)
         return result
 
+    def take_radio_health(self) -> list[dict[str, Any]]:
+        """Return parsed radio-health snapshots after one socket drain."""
+
+        snapshots = self.radio_health
+        self.radio_health = []
+        return snapshots
+
     def close(self) -> None:
-        self.reader.close()
-        self.child.close()
+        for stream in (self.reader, self.child):
+            try:
+                stream.close()
+            except OSError:
+                pass
 
 
 @dataclass(frozen=True)
@@ -92,7 +115,10 @@ class RecoveryPolicy:
     restrictions (also blocks). No packet contents or subscription IDs enter it.
     """
 
-    def __init__(self, stall_seconds: float = 10.0, attempt_seconds: float = 120.0) -> None:
+    def __init__(self, stall_seconds: float = 10.0, attempt_seconds: float = 120.0, role: str = "ue") -> None:
+        if role not in ("ue", "gnb"):
+            raise ValueError("role must be ue or gnb")
+        self.role = role
         self.stall_ns = int(stall_seconds * NANOSECOND)
         self.attempt_ns = int(attempt_seconds * NANOSECOND)
         self.not_before_ns = 0
@@ -129,8 +155,47 @@ class RecoveryPolicy:
         self.completions: dict[str, tuple[int, int]] = {}
         self.worker_suspected_ns: dict[str, int] = {}
         self.stable_progress_since_ns: Optional[int] = None
+        self.radio_health_initialized = False
+        self.radio_progress_observed = False
+        self.radio_progress_observed_ns: Optional[int] = None
+        self.radio_health_values: dict[int, dict[str, int]] = {}
+        self.radio_health_source_ns: dict[int, int] = {}
+
+    def observe_radio_health(self, snapshot: dict[str, Any], now_ns: int) -> list[dict[str, Any]]:
+        """Record gNB crash-retry eligibility without deriving transport faults."""
+
+        if self.role != "gnb":
+            return []
+        device_id = snapshot["device_id"]
+        if not snapshot["active"]:
+            self.radio_health_values.pop(device_id, None)
+            self.radio_health_source_ns.pop(device_id, None)
+            return []
+        self.radio_health_initialized = True
+        previous_values = self.radio_health_values.get(device_id)
+        previous_source_ns = self.radio_health_source_ns.get(device_id)
+        fresh_pair = previous_source_ns is not None and 0 < snapshot["mono_ns"] - previous_source_ns <= 3 * NANOSECOND
+        self.radio_health_values[device_id] = dict(snapshot["values"])
+        self.radio_health_source_ns[device_id] = snapshot["mono_ns"]
+        if fresh_pair and radio_sample_progress_increased(previous_values, snapshot):
+            was_observed = self.radio_progress_observed
+            self.radio_progress_observed = True
+            self.radio_progress_observed_ns = now_ns
+            if not was_observed:
+                return [{
+                    "event": "positive_radio_progress_observed",
+                    "candidate_action": "observe",
+                    "qualified": False,
+                }]
+        return []
 
     def observe(self, sample: dict[str, Any], now_ns: int) -> list[dict[str, Any]]:
+        if self.role == "gnb":
+            # gNB has no UE NAS, DRB, attach or tunnel deadline. Only positive
+            # radio health permits a later unexpected-crash retry.
+            self.last_sample_ns = sample["mono_ns"]
+            self.values = sample["values"]
+            return []
         changes = []
         v = sample["values"]
         previous_values = self.values
@@ -234,6 +299,12 @@ class RecoveryPolicy:
         return changes
 
     def tick(self, now_ns: int) -> Decision:
+        if self.role == "gnb":
+            if self.radio_progress_observed:
+                return Decision("observe", "gnb_radio_progress_observed")
+            if self.radio_health_initialized:
+                return Decision("observe", "gnb_radio_initialized_without_positive_progress")
+            return Decision("observe", "gnb_radio_health_unavailable")
         if self.blocked_reason:
             return Decision("observe", self.blocked_reason)
         if self.last_sample_ns is None or now_ns - self.last_sample_ns > 3 * NANOSECOND:
@@ -264,6 +335,14 @@ class RecoveryPolicy:
     def exited(self, now_ns: int, returncode: int, operator_stop: bool, controlled_recovery: bool = False) -> Decision:
         if operator_stop:
             return Decision("stop", "operator_stop")
+        if self.role == "gnb":
+            if returncode == 0:
+                return Decision("stop", "unclassified_zero_exit")
+            if not self.radio_progress_observed:
+                return Decision("stop", "startup_failed_without_positive_radio_progress")
+            self.failures += 1
+            delay = (5, 15, 30, 60)[min(self.failures - 1, 3)]
+            return Decision("retry", f"unexpected_nonzero_exit_{returncode}_after_positive_radio_progress", now_ns + delay * NANOSECOND)
         if self.blocked_reason:
             return Decision("stop", self.blocked_reason)
         if self.last_sample_ns is None:
@@ -276,7 +355,10 @@ class RecoveryPolicy:
         return Decision("retry", f"unrequested_exit_{returncode}", deadline)
 
     def snapshot(self) -> dict[str, Any]:
-        return {"generation": self.generation, "failures": self.failures,
+        return {"role": self.role, "generation": self.generation, "failures": self.failures,
                 "registration_failures": self.registration_failures, "t3502_raw": self.t3502_raw,
                 "not_before_ns": self.not_before_ns, "blocked_reason": self.blocked_reason,
-                "last_reject_cause": self.last_reject_cause, "native_values": self.values}
+                "last_reject_cause": self.last_reject_cause, "native_values": self.values,
+                "radio_health_initialized": self.radio_health_initialized,
+                "radio_progress_observed": self.radio_progress_observed,
+                "radio_progress_observed_ns": self.radio_progress_observed_ns}
