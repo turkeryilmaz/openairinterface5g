@@ -287,6 +287,8 @@ uint32_t nr_rx_pdsch(PHY_VARS_NR_UE *ue,
                      c16_t rho_dl[][pdsch_buf_size_max],
                      uint16_t ptrs_symb_pos);
 
+void nr_ue_prepare_prach(PHY_VARS_NR_UE *ue);
+
 int32_t generate_nr_prach(PHY_VARS_NR_UE *ue, uint8_t gNB_id, int frame, uint8_t slot, int16_t tx_amp, c16_t **txData);
 bool nr_pbch_detection(const UE_nr_rxtx_proc_t *proc,
                        const NR_DL_FRAME_PARMS *frame_parms,

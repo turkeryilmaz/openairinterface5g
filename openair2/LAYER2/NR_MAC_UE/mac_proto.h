@@ -35,6 +35,16 @@ typedef struct psfch_params {
   uint16_t *rb_set;
 } psfch_params_t;
 
+/* Translate the PRACH table's format notation to the UE FAPI format ID. */
+static inline int nr_ue_prach_format_id(int format)
+{
+  const int formats[] = {0, 1, 2, 3, 0xa1, 0xa2, 0xa3, 0xb1, 0xb4, 0xc0, 0xc2};
+  for (int i = 0; i < sizeof(formats) / sizeof(formats[0]); i++)
+    if (formats[i] == format)
+      return i;
+  return -1;
+}
+
 /**\brief initialize the field in nr_mac instance
    \param mac      MAC pointer */
 void nr_ue_init_mac(NR_UE_MAC_INST_t *mac);
