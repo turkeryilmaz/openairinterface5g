@@ -63,6 +63,7 @@
 #include "common/platform_types.h"
 #include "radio/COMMON/radio_gain_samples.h"
 #include "NR_UE_TRANSPORT/nr_transport_ue.h"
+#include "NR_UE_TRANSPORT/nr_prach_lut.h"
 #include "openair1/PHY/defs_common.h"
 
 #if defined(UPGRADE_RAT_NR)
@@ -350,6 +351,8 @@ typedef struct PHY_VARS_NR_UE_s {
   nr_synch_request_t synch_request;
 
   NR_UE_PRACH *prach_vars[NUMBER_OF_CONNECTED_gNB_MAX];
+  nr_prach_lut_t *prach_lut;
+  nr_prach_preparation_t prach_preparation;
   NR_UE_PRS *prs_vars[NR_MAX_PRS_COMB_SIZE];
   uint8_t prs_active_gNBs;
   NR_DL_UE_HARQ_t dl_harq_processes[2][NR_MAX_HARQ_PROCESSES];
