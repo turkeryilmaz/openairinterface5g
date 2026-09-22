@@ -687,7 +687,9 @@ int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
     /* HARQ_PROCESS_NUMBER */
     pusch_config_pdu->pusch_data.harq_process_id = pid;
 
-    if (NR_DMRS_ulconfig != NULL)
+    if (dci_format == NR_UL_DCI_FORMAT_0_0)
+      add_pos = pusch_config_pdu->frequency_hopping ? pusch_dmrs_pos1 : pusch_dmrs_pos2;
+    else if (NR_DMRS_ulconfig != NULL)
       add_pos = (NR_DMRS_ulconfig->dmrs_AdditionalPosition == NULL) ? 2 : *NR_DMRS_ulconfig->dmrs_AdditionalPosition;
 
     /* DMRS */
