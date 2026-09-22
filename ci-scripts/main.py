@@ -31,10 +31,8 @@ import cls_oai_html
 # Import Libs
 #-----------------------------------------------------------
 import sys		# arg
-import re		# reg
 import time		# sleep
 import os
-import subprocess
 import lxml.etree as ET
 from collections import namedtuple
 import logging

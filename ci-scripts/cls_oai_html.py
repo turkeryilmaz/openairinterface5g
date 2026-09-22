@@ -12,7 +12,6 @@
 #-----------------------------------------------------------
 import re               # reg
 import fileinput
-import os
 import time
 import subprocess
 

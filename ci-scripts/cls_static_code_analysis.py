@@ -10,11 +10,9 @@
 #-----------------------------------------------------------
 # Import
 #-----------------------------------------------------------
-import sys              # arg
 import re               # reg
 import logging
 import os
-from pathlib import Path
 
 #-----------------------------------------------------------
 # OAI Testing modules

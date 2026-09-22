@@ -2,11 +2,8 @@
 
 import logging
 import re
-import os
 
 import cls_cmd
-import cls_oai_html
-import cls_analysis
 from cls_ci_helper import archiveArtifact
 
 DPDK_PATH = '/opt/dpdk-t2-22.11.0'
