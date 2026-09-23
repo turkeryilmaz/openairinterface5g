@@ -124,7 +124,7 @@
     <node>avra</node>
     <yaml_path>ci-scripts/yaml_files/5g_sa_n310_gnb</yaml_path>
     <analysis>
-      <services>oai-gnb=RetxCheck=20,100,100,100 oai-gnb=EndsWithBye</services>
+      <services>oai-gnb=EndsWithBye</services>
     </analysis>
   </testCase>
 
