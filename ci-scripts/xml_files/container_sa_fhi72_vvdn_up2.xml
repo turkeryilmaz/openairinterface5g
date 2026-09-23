@@ -1,9 +1,7 @@
 <!-- SPDX-License-Identifier: LicenseRef-CSSL-1.0 -->
 
 <testCaseList>
-  <htmlTabRef>test-5g-fhi72-vvdn</htmlTabRef>
   <htmlTabName>100 MHz TDD SA VVDN</htmlTabName>
-  <htmlTabIcon>tasks</htmlTabIcon>
 
   <testCase>
     <class>Custom_Script</class>

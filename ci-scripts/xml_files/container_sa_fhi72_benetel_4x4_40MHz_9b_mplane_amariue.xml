@@ -1,9 +1,7 @@
 <!-- SPDX-License-Identifier: LicenseRef-CSSL-1.0 -->
 
 <testCaseList>
-  <htmlTabRef>test-5g-fhi72-benetel-40Mhz-4x4-9b-mplane</htmlTabRef>
   <htmlTabName>40MHz 4x4 9b TDD SA Benetel M-plane</htmlTabName>
-  <htmlTabIcon>tasks</htmlTabIcon>
 
   <testCase>
     <class>DeployCoreNetwork</class>

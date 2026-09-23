@@ -5,9 +5,6 @@
 #
 #   Required Python Version
 #     Python 3.x
-#
-#   Required Python Package
-#     pexpect
 #---------------------------------------------------------------------
 
 
@@ -22,8 +19,6 @@ import concurrent.futures
 import json
 
 #import our libs
-import constants as CONST
-
 import cls_module
 import cls_corenetwork
 import cls_analysis
@@ -245,7 +240,7 @@ def Custom_Script(HTML, node, script, args):
 def IdleSleep(HTML, idle_sleep_time):
 	logging.debug(f"sleep for {idle_sleep_time} seconds")
 	time.sleep(idle_sleep_time)
-	HTML.CreateHtmlTestRow(f"{idle_sleep_time} sec", 'OK', CONST.ALL_PROCESSES_OK)
+	HTML.CreateHtmlTestRowQueue(f"{idle_sleep_time} sec", 'OK', [])
 	return True
 
 def Deploy_Physim(ctx, HTML, node, workdir, script, options):
@@ -264,7 +259,7 @@ def Deploy_Physim(ctx, HTML, node, workdir, script, options):
 	test_status, test_summary, test_result = cls_analysis.Analysis.analyze_physim(result_junit, details_json, ctx.logPath)
 	if test_summary:
 		if test_status:
-			HTML.CreateHtmlTestRow('N/A', 'OK', CONST.ALL_PROCESSES_OK)
+			HTML.CreateHtmlTestRowQueue('N/A', 'OK', [])
 			HTML.CreateHtmlTestRowPhySimTestResult(test_summary, test_result)
 			logging.info('\u001B[1m Physical Simulator Pass\u001B[0m')
 		else:

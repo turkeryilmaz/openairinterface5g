@@ -5,9 +5,6 @@
 #
 #   Required Python Version
 #     Python 3.x
-#
-#   Required Python Package
-#     pexpect
 #---------------------------------------------------------------------
 
 #-----------------------------------------------------------
@@ -21,7 +18,6 @@ import os
 # OAI Testing modules
 #-----------------------------------------------------------
 import cls_cmd
-import constants as CONST
 import cls_analysis
 from cls_ci_helper import archiveArtifact
 
@@ -281,7 +277,7 @@ class Containerize():
 			cmd.run(f"docker image prune --force")
 			cmd.close()
 			logging.error('\u001B[1m Building OAI Images Failed\u001B[0m')
-			HTML.CreateHtmlTestRow(self.imageKind, 'KO', CONST.ALL_PROCESSES_OK)
+			HTML.CreateHtmlTestRowQueue(self.imageKind, 'KO', [])
 			return False
 		else:
 			result = re.search(r'Size *= *(?P<size>[0-9\-]+) *bytes', cmd.getBefore())
@@ -389,7 +385,7 @@ class Containerize():
 		ret = cmd.run(f"docker image inspect --format=\'Size = {{{{.Size}}}} bytes\' {baseImage}:{baseTag}")
 		if ret.returncode != 0:
 			logging.error(f'No {baseImage} image present, cannot build tests')
-			HTML.CreateHtmlTestRow("Unit test build failed", 'KO', CONST.ALL_PROCESSES_OK)
+			HTML.CreateHtmlTestRowQueue("Unit test build failed", 'KO', [])
 			return False
 
 		# build ran-unittests image
@@ -399,7 +395,7 @@ class Containerize():
 		archiveArtifact(cmd, ctx, logfile)
 		if ret.returncode != 0:
 			logging.error(f'Cannot build unit tests')
-			HTML.CreateHtmlTestRow("Unit test build failed", 'KO', [dockerfile])
+			HTML.CreateHtmlTestRowQueue("Unit test build failed", 'KO', [dockerfile])
 			return False
 
 		HTML.CreateHtmlTestRowQueue("Build unit tests", 'OK', [dockerfile])
@@ -432,7 +428,7 @@ class Containerize():
 			msg = 'Could not log into local registry'
 			logging.error(msg)
 			ssh.close()
-			HTML.CreateHtmlTestRow(msg, 'KO', CONST.ALL_PROCESSES_OK)
+			HTML.CreateHtmlTestRowQueue(msg, 'KO', [])
 			return False
 
 		orgTag = 'develop'
@@ -449,7 +445,7 @@ class Containerize():
 				msg = f'Could not push {image} to local registry : {imageTag}'
 				logging.error(msg)
 				ssh.close()
-				HTML.CreateHtmlTestRow(msg, 'KO', CONST.ALL_PROCESSES_OK)
+				HTML.CreateHtmlTestRowQueue(msg, 'KO', [])
 				return False
 			# Creating a develop tag on the local private registry
 			if not ctx.g.merge:
@@ -464,11 +460,11 @@ class Containerize():
 			msg = 'Could not log off from local registry'
 			logging.error(msg)
 			ssh.close()
-			HTML.CreateHtmlTestRow(msg, 'KO', CONST.ALL_PROCESSES_OK)
+			HTML.CreateHtmlTestRowQueue(msg, 'KO', [])
 			return False
 
 		ssh.close()
-		HTML.CreateHtmlTestRow('N/A', 'OK', CONST.ALL_PROCESSES_OK)
+		HTML.CreateHtmlTestRowQueue('N/A', 'OK', [])
 		return True
 
 	def Pull_Image(cmd, images, tag, tag_prefix, registry, username, password):
