@@ -39,7 +39,7 @@
 
   <testCase>
     <class>Deploy_Object</class>
-    <desc>Deploy gNB (TDD/Band78/100MHz/Benetel) in a container</desc>
+    <desc>Deploy gNB (TDD/Band78/40MHz/Benetel) in a container</desc>
     <node>cacofonix</node>
     <yaml_path>ci-scripts/yaml_files/sa_fhi_7.2_benetel550_4x4_40MHz_9b_mplane_gnb</yaml_path>
   </testCase>
