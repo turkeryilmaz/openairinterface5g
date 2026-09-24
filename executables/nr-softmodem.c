@@ -3,6 +3,7 @@
  */
 
 #include "flight_options.h"
+#include "agc_options.h"
 
 #define _GNU_SOURCE             /* See feature_test_macros(7) */
 
@@ -439,6 +440,8 @@ int main( int argc, char **argv ) {
     fprintf(stderr, "configuration module init failed\n");
     return 1;
   }
+  if (agc_start_options(uniqCfg, argc, argv, AGC_ROLE_GNB) != 0)
+    return 2;
   if (flight_start_capture(uniqCfg, argc, argv, "gnb") != 0)
     return 2;
   start_background_system();

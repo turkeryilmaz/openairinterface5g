@@ -243,8 +243,143 @@ No raw configuration, environment, Git diff, packet payload, camera video,
 application frame counters, or glass-to-glass latency is collected. Console
 redaction suppresses recognized secret/SIM/authentication blocks, but cannot
 classify every possible protocol dump: review private captures before export.
-The recorder does not yet consume UHD asynchronous TX metadata, so it cannot
-provide an authoritative TX-late/underflow counter.
+UHD TX asynchronous metadata is collected through the private radio-health
+channel in `radio_health.*.log`. Use its supported typed counters, source sequence
+and timestamps to distinguish startup, steady operation and teardown. Numeric
+RADIO_TX events describe sample acceptance; they do not prove RF delivery.
+
+## Gain observations
+
+Gain control is selected separately from flight capture. `agc` is not a valid
+`flight` token. For an initial fixed-gain comparison on either NR role:
+
+```conf
+agc-mode = "observe";
+agc-directions = "rx";
+flight = "log recovery";
+```
+
+On the UE, omit the old `agc = 1`/`--agc` acquisition option in observe mode;
+the resolver rejects that conflict. The current managed-radio integration uses
+one radio, one RX stream and one TX stream, with an optional backend capability
+interface. Unsupported combinations report an error instead of silently using a
+second gain writer. The legacy no-option/off radio path remains available.
+UE managed modes, including `--agc` alone or `agc = 1`, default to the existing
+software CFO compensation `cont-fo-comp = 1` when that option is absent. Startup
+logs this resolved default. Explicit modes 1/2/3 are preserved; explicit mode 0
+is rejected. Thus the legacy gain-acquisition policy remains selectable, but its
+former default hardware-CFO-retuning path is replaced by software compensation.
+Use the same explicit CFO mode when comparing gain policies. Hardware CFO retuning after TX
+admission has no qualified quiescent boundary and is rejected before streaming.
+
+`continuous` with explicit `agc-directions = "rx"` enables the new RX controller.
+On the UE, adding `agc = 1` selects legacy acquisition followed by new tracking;
+without it, acquisition and tracking use the new policy. A loss of synchronization
+returns to the selected acquisition policy. On the gNB, the controller starts in
+listening/tracking mode and does not increase gain merely because UL is absent.
+The controller is opt-in. Device/band/configuration qualification does not carry over to another radio merely because its model matches.
+
+
+`observe` records hypothetical one-step RX decisions without applying them.
+Raw-read observations provide sparse component peak and near-rail counts;
+serving SSB or detected PUSCH provides the tracking reference. The reported
+reference level is a full-grid-equivalent digital level, not the power averaged
+over idle slots and not calibrated RF input power. A sparse observation does not
+establish that every sample avoided clipping.
+
+The decoder writes `radio_gain.csv`, `radio_rx_level.csv` and
+`radio_rx_decisions.csv`. Decisions retain their actual input gain, generation,
+sample-range endpoint, reason and proposed gain; `submitted` distinguishes a
+real admitted request from an observe-only proposal. A backend result includes
+reported gain and a device-time bracket when available. `agc-rx-settle-us`
+defaults to 20000 and excludes transition samples from gain-dependent reports;
+it is an engineering guard, not a guaranteed analog settling-time calibration.
+
+TX request records in `ue_tx_power.csv` describe the MAC request and generator
+reference for PRACH/PUSCH/PUCCH/SRS. `gnb_tx_reference.csv` describes configured
+SSB reference power and generator amplitude. Neither file reports measured RF
+output. `continuous` with `agc-directions = "tx"` or `"both"` also applies
+channel-specific TX power, provided a matching qualified profile is supplied.
+Explicitly requesting managed TX never silently enables RX-only control.
+
+Use `agc-mode` independently from `flight = "log recovery"`; `flight` has no
+`agc` token. On the UE, `--agc` selects the retained legacy acquisition policy.
+Adding it to `continuous` selects legacy acquisition followed by new RX tracking;
+it does not add a second hardware gain writer. On the gNB, legacy `--agc` and
+`acquisition` are unsupported. `observe` computes decisions without changing
+samples or gains and does not support combining legacy acquisition with it.
+
+Managed TX holds analog gain fixed after initialization. The UE applies the
+MAC's requested power to each complete active PRACH, PUSCH/Msg3, PUCCH or SRS
+waveform span, including cyclic prefixes. The initial supported layout is one
+TX stream, normal CP and symbol-disjoint channels. Overlapping channel spans
+are rejected rather than scaled with one slot-wide multiplier. PUSCH TPC is
+applied in scheduled transmission order, and a queued grant is rejected if its
+BWP/power configuration changed before that transmission.
+
+The gNB chooses one common generator amplitude from configured SSS resource-element
+power and the profile. It preserves channel-relative amplitudes as allocation
+changes; it does not renormalize every slot to equal total power. Composite
+symbol power and converter peaks are checked before submission. Neither role
+increases TX power simply because its RX gain controller sees a weak signal.
+
+The `agc-tx-profile` config section identifies one connector and operating point:
+
+| Field | Meaning |
+|---|---|
+| `id`, `provenance` | Profile identifier and qualification evidence reference |
+| `device`, `antenna` | Exact backend connector identity and port readback |
+| `qualified` | Explicit operator qualification; defaults to false |
+| `minimum-frequency-hz`, `maximum-frequency-hz` | Qualified frequency interval |
+| `sample-rate-hz`, `bandwidth-hz`, `reported-gain-db` | Actual sample rate, analog filter bandwidth and fixed TX gain |
+| `component-full-scale` | OAI sample magnitude before the backend converter |
+| `reference-dbm` | Connector power at unit complex RMS/full scale |
+| `minimum-dbm`, `maximum-dbm`, `uncertainty-db` | Qualified active-channel output range and its uncertainty |
+| `peak-limit-fs` | Maximum component peak/full scale; default 0.7 |
+| `quantization-tolerance-db` | Maximum digital rounding power error; default 0.5 dB, maximum 1 dB |
+| `quantization-evm-limit` | Maximum additional digital rounding EVM; default and maximum 0.03 |
+
+A profile is not inferred from an uncalibrated gain setting. Missing qualification
+or a connector/rate/filter/gain/converter mismatch rejects explicit managed TX.
+An explicitly supplied UE network `p-Max` must fit the same physical output
+range; unsupported alternate limits are rejected. An infeasible request is not
+silently clipped while MAC reports unchanged power/headroom. A runtime mapping,
+headroom or profile failure closes managed TX admission and asks the existing
+ITTI shutdown path to stop the worker. This is a configuration/actuation fault,
+not a new radio-recovery threshold.
+
+`radio_tx_power.csv` joins each channel request to fixed-point scaling, input
+and output sample energy/peaks, added quantization EVM and profile uncertainty.
+The decoder marks missing or ambiguous records rather than inventing zeros.
+`radio_tx_rejects.csv` records rejected layouts, spans, power limits and profiles.
+`ue_tx_control.csv` records the serving-SSB pathloss, closed-loop adjustment
+state after calculation, supplied TPC increment and configured network p-Max for
+supported PUCCH calculations and managed PUSCH calculations at their target
+slot. A supplied increment can be suppressed by saturation. An absent network
+limit remains unavailable in the CSV; it is not converted into zero. These
+records can explain changes in requests, but do not prove transmission.
+`ue_pathloss_state.csv` records when a serving-SSB pathloss first becomes
+available or unavailable. Missing or invalid measurements defer new UL
+scheduling without changing power-control adjustment state; elapsed protocol
+timers continue. A later valid measurement permits scheduling again. This is
+measurement availability, not an RF-fault restart or a guarantee of freshness.
+
+The first dedicated PUCCH support covers one PCell relation using the active
+SSB, one matching P0 and pathloss-reference entry, and adjustment state i0.
+Multiple relations, another reference signal, another serving cell or two
+adjustment states are not supported by this controller. An unsupported MAC
+power request produces `POWER_CONTROL` in `radio_tx_rejects.csv` and closes
+managed TX admission. The ordinary fixed-amplitude path retains its prior
+waveform behavior. This is a bounded implementation of the supported NR power
+procedures, not a claim of complete 3GPP power-control conformance.
+
+Estimated output remains a digital/profile estimate; backend acceptance and RF
+emission are separate facts. Digital quantization EVM is not measured RF EVM.
+A provisional conducted engineering fixture is not a calibrated flight profile.
+
+The old T tracer UE_PHY_MEAS record has no gain-validity fields and reads legacy
+averaging state. It is suppressed for managed gain contexts rather than emitting
+stale values. Use the gain-aware flight records for this experimental branch.
 
 ## Extending the logging
 
@@ -299,3 +434,42 @@ point requires an absolute executable and absolute configuration paths unless
 directory; the integrated softmodem path supplies the original launch
 directory automatically. The old systemd example is optional legacy material,
 not an installation requirement or the flight activation mechanism.
+
+
+With a managed `agc-mode` and flight logging, `radio_tx_level.csv` adds exact
+whole-buffer digital energy/peak and converter-range counts for the first and
+every64th admitted TX callback on either role. It includes the backend return
+and reported TX gain when available. This is before-conversion digital evidence,
+not measured RF power or proof of transmission; unselected buffers are not
+covered. The feature observes only and does not change samples or TX gain.
+
+
+For gain-controlled measurement debugging, `ue_ssb_measurements.csv` records each serving-SSB PHY acceptance or rejection together with raw SSS energy, generation, and noise/gain qualification. Proven adjacent context adds reported RXgain, device sample interval, sampled peak and near-rail counts. A valid driver gain readback alone does not make a clipped measurement suitable for pathloss calculation. Managed UE measurements and gNB noise averaging reject missing/malformed level summaries and observed near-rail samples while the RX controller retains raw overload evidence. The bounded radio sampling cannot prove that every sample was unclipped. Rejected UE updates retain the previous accepted scalar at MAC; this addition does not create a measurement-age policy. See `EVENT_SCHEMA.md` for the exact validity and loss-aware association rules.
+
+Managed serving-SSB measurements are staged until the matching PBCH decode succeeds. A failed decode
+cannot replace the verified MAC pathloss reference with noise or select a stronger but unconfirmed
+SSB. Gain/noise qualification remains required, and raw overload evidence remains available to the
+RX controller. The SSB CSV records whether PBCH confirmation was required, attempted and successful.
+This is a conservative measurement-validity policy, not a claim that 3GPP requires a fresh PBCH CRC
+for every RSRP observation. The absent-context baseline keeps its previous reporting order. The last
+verified measurement is retained across a transient failed PBCH; that measurement policy adds no
+expiry timer, TPC reset or minimum-power clamp. Decode selection keeps separate serving-PBCH failure
+state, so retaining the verified reference does not prevent an eligible alternate SSB from being
+tried after a serving decode failure.
+
+A newly accepted contention-based RAR starts a fresh Msg3 power-control initialization. Its initial
+adjustment uses that random-access attempt's ramp and RAR TPC, rather than inheriting the previous
+connected-mode PUSCH adjustment. Subsequent retransmissions retain their accumulated state; CFRA
+and ordinary C-RNTI grants do not take this initialization path.
+Positive RX tracking and acquisition-search steps retain the policy deadband below
+the sampled-peak overload threshold. This reserve avoids targeting the overload edge directly. The shared envelope
+below also retains stronger-burst evidence across quieter receive windows.
+Overload reduction remains immediate subject to the existing actuation cooldown;
+the finite sample observations do not prove that all received peaks were measured.
+
+The RX policies also share an input-referred peak envelope across gain changes.
+It attacks stronger observed peaks immediately and releases at an initial
+engineering rate of 3 dB/s, so a quiet receive window cannot immediately undo
+headroom protection for a stronger burst. The retained envelope limits increases;
+raw overload still controls reductions. `radio_rx_peak_envelope.csv` records that
+constraint separately from the instantaneous peak in `radio_rx_decisions.csv`.

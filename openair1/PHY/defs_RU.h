@@ -18,6 +18,7 @@
 #include "common/utils/threadPool/task_ans.h"
 #include "common/utils/threadPool/thread-pool.h"
 #include "common/utils/threadPool/notified_fifo.h"
+#include "radio/COMMON/radio_gain_samples.h"
 
 #define MAX_BANDS_PER_RRU 4
 #define MAX_RRU_CONFIG_SIZE 1024
@@ -162,6 +163,8 @@ typedef struct RU_proc_t_s {
   struct RU_t_s *ru;
   /// timestamp received from HW
   openair0_timestamp_t timestamp_rx;
+  /// Immutable gain context for the raw RX range most recently read from RF.
+  radio_gain_sample_context_t rx_gain_context;
   /// timestamp to send to "slave rru"
   openair0_timestamp_t timestamp_tx;
   /// subframe (LTE) / slot (NR) to act upon for reception

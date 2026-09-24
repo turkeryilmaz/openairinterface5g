@@ -10,6 +10,7 @@
 
 #define DEFAULT_P0_NOMINAL_PUCCH_0_DBM 0
 #define DEFAULT_DELTA_F_PUCCH_0_DB 0
+#define PUCCH_POWER_UNSUPPORTED INT16_MIN
 
 // TODO: This should be part of mac instance
 /* TS 38.213 9.2.5.2 UE procedure for multiplexing HARQ-ACK/SR and CSI in a PUCCH */
@@ -151,9 +152,10 @@ float nr_get_Pcmax(int p_Max,
   if (frequency_range == FR1) {
     // TODO configure P-MAX from the upper layers according to 38.331
     int p_powerclass = 23; // dBm assuming poweclass 3 UE
-    int p_emax = p_Max != INT_MIN ? p_Max : p_powerclass;
+    const bool has_p_max = p_Max != INT_MIN;
+    int p_emax = has_p_max ? p_Max : p_powerclass;
     int delta_P_powerclass = 0; // for powerclass 2 needs to be changed
-    if (p_Max && Qm == 1 && powerBoostPi2BPSK
+    if (has_p_max && Qm == 1 && powerBoostPi2BPSK
         && (nr_band == 40 || nr_band == 41 || nr_band == 77 || nr_band == 78 || nr_band == 79)) {
       p_emax += 3;
       delta_P_powerclass -= 3;
@@ -176,7 +178,7 @@ float nr_get_Pcmax(int p_Max,
     float total_reduction = max(max(MPR + delta_MPR, A_MPR) + delta_T_IB + delta_TC + delta_rx_SRS, P_MPR);
 
     float pcmax_high, pcmax_low;
-    if (p_Max) {
+    if (has_p_max) {
       pcmax_high = p_emax < (p_powerclass - delta_P_powerclass) ? p_emax : (p_powerclass - delta_P_powerclass);
       pcmax_low = (p_emax - delta_TC) < (p_powerclass - delta_P_powerclass - total_reduction)
                       ? (p_emax - delta_TC)
@@ -250,6 +252,41 @@ static int get_deltatf(uint16_t nb_of_prbs,
   return DELTA_TF;
 }
 
+static bool select_single_pcell_pucch_power_control(const NR_UE_MAC_INST_t *mac,
+                                                    const NR_PUCCH_Config_t *pucch_config,
+                                                    const struct NR_PUCCH_PowerControl *power_config,
+                                                    int16_t *p0_ue_pucch)
+{
+  if (!mac || !pucch_config || !power_config || !p0_ue_pucch || !power_config->p0_Set || !power_config->pathlossReferenceRSs
+      || !pucch_config->spatialRelationInfoToAddModList || power_config->p0_Set->list.count != 1
+      || power_config->p0_Set->list.array == NULL || power_config->p0_Set->list.array[0] == NULL
+      || power_config->pathlossReferenceRSs->list.count != 1 || power_config->pathlossReferenceRSs->list.array == NULL
+      || power_config->pathlossReferenceRSs->list.array[0] == NULL || pucch_config->spatialRelationInfoToAddModList->list.count != 1
+      || pucch_config->spatialRelationInfoToAddModList->list.array == NULL
+      || pucch_config->spatialRelationInfoToAddModList->list.array[0] == NULL) {
+    LOG_D(MAC, "Unsupported dedicated PUCCH power control: require one P0, pathloss RS, and spatial relation\n");
+    return false;
+  }
+
+  const NR_P0_PUCCH_t *p0 = power_config->p0_Set->list.array[0];
+  const NR_PUCCH_PathlossReferenceRS_t *pathloss_reference = power_config->pathlossReferenceRSs->list.array[0];
+  const NR_PUCCH_SpatialRelationInfo_t *spatial_relation = pucch_config->spatialRelationInfoToAddModList->list.array[0];
+  if (spatial_relation->servingCellId != NULL
+      || spatial_relation->closedLoopIndex != NR_PUCCH_SpatialRelationInfo__closedLoopIndex_i0
+      || spatial_relation->p0_PUCCH_Id != p0->p0_PUCCH_Id
+      || spatial_relation->pucch_PathlossReferenceRS_Id != pathloss_reference->pucch_PathlossReferenceRS_Id
+      || spatial_relation->referenceSignal.present != NR_PUCCH_SpatialRelationInfo__referenceSignal_PR_ssb_Index
+      || pathloss_reference->referenceSignal.present != NR_PUCCH_PathlossReferenceRS__referenceSignal_PR_ssb_Index
+      || spatial_relation->referenceSignal.choice.ssb_Index != mac->mib_ssb
+      || pathloss_reference->referenceSignal.choice.ssb_Index != mac->mib_ssb) {
+    LOG_D(MAC, "Unsupported dedicated PUCCH power-control relation for active PCell SSB %d\n", mac->mib_ssb);
+    return false;
+  }
+
+  *p0_ue_pucch = p0->p0_PUCCH_Value;
+  return true;
+}
+
 // PUCCH Power control according to 38.213 section 7.2.1
 int16_t get_pucch_tx_power_ue(NR_UE_MAC_INST_t *mac,
                               int scs,
@@ -267,29 +304,25 @@ int16_t get_pucch_tx_power_ue(NR_UE_MAC_INST_t *mac,
   NR_UE_UL_BWP_t *current_UL_BWP = mac->current_UL_BWP;
   AssertFatal(current_UL_BWP && current_UL_BWP->pucch_ConfigCommon,
               "Missing configuration: need UL_BWP and pucch_ConfigCommon to calculate PUCCH tx power\n");
-  int PUCCH_POWER_DEFAULT = 0;
   // p0_nominal is optional
   int16_t P_O_NOMINAL_PUCCH = DEFAULT_P0_NOMINAL_PUCCH_0_DBM;
   if (current_UL_BWP->pucch_ConfigCommon->p0_nominal != NULL) {
     P_O_NOMINAL_PUCCH = *current_UL_BWP->pucch_ConfigCommon->p0_nominal;
   }
 
-  struct NR_PUCCH_PowerControl *power_config = pucch_Config ? pucch_Config->pucch_PowerControl : NULL;
-
-  if (!power_config)
-    return (PUCCH_POWER_DEFAULT);
-
+  const struct NR_PUCCH_PowerControl *power_config = pucch_Config ? pucch_Config->pucch_PowerControl : NULL;
+  const bool use_default_pucch_power_control = power_config == NULL || power_config->p0_Set == NULL;
   int16_t P_O_UE_PUCCH = 0;
-
-  if (pucch_Config->spatialRelationInfoToAddModList != NULL) {  /* FFS TODO NR */
-    LOG_D(MAC,"PUCCH Spatial relation infos are not yet implemented\n");
-    return (PUCCH_POWER_DEFAULT);
+  if (use_default_pucch_power_control) {
+    if (pucch_Config && pucch_Config->spatialRelationInfoToAddModList != NULL) {
+      LOG_D(MAC, "Unsupported PUCCH spatial relation without a dedicated P0 configuration\n");
+      return PUCCH_POWER_UNSUPPORTED;
+    }
+  } else if (!select_single_pcell_pucch_power_control(mac, pucch_Config, power_config, &P_O_UE_PUCCH)) {
+    return PUCCH_POWER_UNSUPPORTED;
   }
 
   int G_b_f_c = 0;
-  if (power_config->p0_Set != NULL) {
-    P_O_UE_PUCCH = power_config->p0_Set->list.array[0]->p0_PUCCH_Value; /* get from index 0 if no spatial relation set */
-  }
 
   int P_O_PUCCH = P_O_NOMINAL_PUCCH + P_O_UE_PUCCH;
 
@@ -303,33 +336,32 @@ int16_t get_pucch_tx_power_ue(NR_UE_MAC_INST_t *mac,
   switch (format_type) {
     case 0:
       N_ref_PUCCH = 2;
-      DELTA_TF = 10 * log10(N_ref_PUCCH/N_symb_PUCCH);
-      delta_F_PUCCH_config = power_config->deltaF_PUCCH_f0;
+      DELTA_TF = 10 * log10(N_ref_PUCCH / N_symb_PUCCH);
+      delta_F_PUCCH_config = power_config ? power_config->deltaF_PUCCH_f0 : NULL;
       break;
     case 1:
       N_ref_PUCCH = 14;
-      DELTA_TF = 10 * log10(N_ref_PUCCH/N_symb_PUCCH * O_uci);
-      delta_F_PUCCH_config = power_config->deltaF_PUCCH_f1;
+      DELTA_TF = 10 * log10(N_ref_PUCCH / N_symb_PUCCH * O_uci);
+      delta_F_PUCCH_config = power_config ? power_config->deltaF_PUCCH_f1 : NULL;
       break;
     case 2:
       N_sc_ctrl_RB = 10;
       DELTA_TF = get_deltatf(nb_of_prbs, N_symb_PUCCH, freq_hop_flag, add_dmrs_flag, N_sc_ctrl_RB, O_uci);
-      delta_F_PUCCH_config = power_config->deltaF_PUCCH_f2;
+      delta_F_PUCCH_config = power_config ? power_config->deltaF_PUCCH_f2 : NULL;
       break;
     case 3:
       N_sc_ctrl_RB = 14;
       DELTA_TF = get_deltatf(nb_of_prbs, N_symb_PUCCH, freq_hop_flag, add_dmrs_flag, N_sc_ctrl_RB, O_uci);
-      delta_F_PUCCH_config = power_config->deltaF_PUCCH_f3;
+      delta_F_PUCCH_config = power_config ? power_config->deltaF_PUCCH_f3 : NULL;
       break;
     case 4:
-      N_sc_ctrl_RB = 14/(nb_pucch_format_4_in_subframes[subframe_number]);
+      N_sc_ctrl_RB = 14 / (nb_pucch_format_4_in_subframes[subframe_number]);
       DELTA_TF = get_deltatf(nb_of_prbs, N_symb_PUCCH, freq_hop_flag, add_dmrs_flag, N_sc_ctrl_RB, O_uci);
-      delta_F_PUCCH_config = power_config->deltaF_PUCCH_f4;
+      delta_F_PUCCH_config = power_config ? power_config->deltaF_PUCCH_f4 : NULL;
       break;
-    default:
-    {
-      LOG_E(MAC,"PUCCH unknown pucch format %d\n", format_type);
-      return (0);
+    default: {
+      LOG_E(MAC, "PUCCH unknown pucch format %d\n", format_type);
+      return PUCCH_POWER_UNSUPPORTED;
     }
   }
   if (delta_F_PUCCH_config != NULL) {
@@ -352,43 +384,56 @@ int16_t get_pucch_tx_power_ue(NR_UE_MAC_INST_t *mac,
                             1,
                             start_prb);
   float P_CMIN = current_UL_BWP->P_CMIN;
-  int16_t pathloss = compute_nr_SSB_PL(mac);
+  int16_t pathloss;
+  if (!compute_nr_SSB_PL(mac, &pathloss))
+    return PUCCH_POWER_UNSUPPORTED;
 
-  if (power_config->twoPUCCH_PC_AdjustmentStates && *power_config->twoPUCCH_PC_AdjustmentStates > 1) {
-    LOG_E(MAC,"PUCCH power control adjustment states with 2 states not yet implemented\n");
-    return (PUCCH_POWER_DEFAULT);
+  if (power_config && power_config->twoPUCCH_PC_AdjustmentStates) {
+    LOG_D(MAC, "PUCCH power control adjustment states with 2 states not yet implemented\n");
+    return PUCCH_POWER_UNSUPPORTED;
   }
-  int M_pucch_component = (10 * log10((double)(pow(2,scs) * nb_of_prbs)));
+  int M_pucch_component = (10 * log10((double)(pow(2, scs) * nb_of_prbs)));
 
   int16_t pucch_power_without_g_pucch = P_O_PUCCH + M_pucch_component + pathloss + delta_F_PUCCH + DELTA_TF;
 
-  if (power_config->p0_Set == NULL) {
-    if (mac->pucch_power_control_initialized == false) {
-      // Initialize power control state
-      // Assuming only sending on PCell
+  if (!mac->pucch_power_control_initialized) {
+    if (use_default_pucch_power_control) {
+      // Initialize the PCell adjustment state from PRACH ramping and the RAR TPC command.
       NR_PRACH_RESOURCES_t *prach_res = &mac->ra.prach_resources;
-      float DELTA_P_rampup_requested = (prach_res->preamble_power_ramping_cnt - 1) * prach_res->preamble_power_ramping_step;
-      float DELTA_P_rampup = P_CMAX - (P_O_PUCCH + pathloss + delta_F_PUCCH + DELTA_TF + sum_delta_pucch);
-      DELTA_P_rampup = max(min(0, DELTA_P_rampup), DELTA_P_rampup_requested);
-      mac->G_b_f_c = DELTA_P_rampup + sum_delta_pucch;
-      mac->pucch_power_control_initialized = true;
+      const float rampup_requested = prach_res->preamble_power_ramping_cnt > 0
+                                         ? (prach_res->preamble_power_ramping_cnt - 1) * prach_res->preamble_power_ramping_step
+                                         : 0;
+      // The initial adjustment state bounds PRACH ramping before the per-occasion M_PUCCH term is applied.
+      const float rampup_headroom = P_CMAX - (P_O_PUCCH + pathloss + delta_F_PUCCH + DELTA_TF + mac->delta_msg2);
+      const float rampup = min(rampup_requested, max(0, rampup_headroom));
+      G_b_f_c = rampup + mac->delta_msg2;
+    } else {
+      // A higher-layer P0 configuration resets the selected dedicated i0 state to zero.
+      G_b_f_c = 0;
     }
-    else {
-      // PUCCH closed loop power control state
-      G_b_f_c = mac->G_b_f_c;
-      if (!((pucch_power_without_g_pucch + G_b_f_c >= P_CMAX && sum_delta_pucch > 0) ||
-        (pucch_power_without_g_pucch + G_b_f_c <= P_CMIN && sum_delta_pucch < 0))) {
-        G_b_f_c += sum_delta_pucch;
-      }
-      mac->G_b_f_c = G_b_f_c;
-    }
+    mac->pucch_power_control_initialized = true;
+  } else {
+    G_b_f_c = mac->G_b_f_c;
   }
 
+  // The caller supplies only TPC commands eligible for this PUCCH occasion.
+  if (!((pucch_power_without_g_pucch + G_b_f_c >= P_CMAX && sum_delta_pucch > 0)
+        || (pucch_power_without_g_pucch + G_b_f_c <= P_CMIN && sum_delta_pucch < 0))) {
+    G_b_f_c += sum_delta_pucch;
+  }
+  mac->G_b_f_c = G_b_f_c;
 
   int pucch_power = min(P_CMAX, pucch_power_without_g_pucch + G_b_f_c);
 
-  LOG_D(MAC, "PUCCH ( Tx power : %d dBm ) ( 10Log(...) : %d ) ( from Path Loss : %d ) ( delta_F_PUCCH : %d ) ( DELTA_TF : %d ) ( G_b_f_c : %d ) \n",
-        pucch_power, M_pucch_component, pathloss, delta_F_PUCCH, DELTA_TF, G_b_f_c);
+  LOG_D(MAC,
+        "PUCCH ( Tx power : %d dBm ) ( 10Log(...) : %d ) ( from Path Loss : %d ) ( delta_F_PUCCH : %d ) ( DELTA_TF : %d ) ( "
+        "G_b_f_c : %d ) \n",
+        pucch_power,
+        M_pucch_component,
+        pathloss,
+        delta_F_PUCCH,
+        DELTA_TF,
+        G_b_f_c);
 
   return pucch_power;
 }
@@ -399,25 +444,22 @@ int16_t get_pucch_tx_power_ue(NR_UE_MAC_INST_t *mac,
 // - PRACH transmission from a UE is not in response to a detection of a PDCCH order by the UE
 // Measurement units:
 // - referenceSignalPower:   dBm/RE (average EPRE of the resources elements that carry secondary synchronization signals in dBm)
-int16_t compute_nr_SSB_PL(NR_UE_MAC_INST_t *mac)
+bool compute_nr_SSB_PL(const NR_UE_MAC_INST_t *mac, int16_t *pathloss)
 {
-  // getting the maximum SSB RSRP from the SSB measurements
-  int max_ssb_rsrp_dBm = mac->ssb_measurements[mac->mib_ssb].ssb_rsrp_dBm;
-  fapi_nr_config_request_t *cfg = &mac->phy_config.config_req;
-  int referenceSignalPower = cfg->ssb_config.ss_pbch_power;
+  if (!mac || !pathloss || mac->mib_ssb >= MAX_NB_SSB)
+    return false;
 
-  //TODO improve PL measurements. Probably not correct as it is.
+  const int rsrp_dBm = mac->ssb_measurements[mac->mib_ssb].ssb_rsrp_dBm;
+  if (rsrp_dBm == INT_MIN)
+    return false;
 
-  int16_t pathloss = (int16_t)(referenceSignalPower - max_ssb_rsrp_dBm);
+  const int64_t reference_signal_power_dBm = mac->phy_config.config_req.ssb_config.ss_pbch_power;
+  const int64_t pathloss_dB = reference_signal_power_dBm - (int64_t)rsrp_dBm;
+  if (pathloss_dB < 0 || pathloss_dB > INT16_MAX)
+    return false;
 
-  LOG_D(NR_MAC, "pathloss %d dB, referenceSignalPower %d dBm/RE (%f mW), RSRP %d dBm (%f mW)\n",
-        pathloss,
-        referenceSignalPower,
-        pow(10, referenceSignalPower/10),
-        max_ssb_rsrp_dBm,
-        pow(10, max_ssb_rsrp_dBm/10));
-
-  return pathloss;
+  *pathloss = (int16_t)pathloss_dB;
+  return true;
 }
 
 // PUSCH transmission power according to 38.213 7.1
@@ -533,7 +575,9 @@ int get_pusch_tx_power_ue(NR_UE_MAC_INST_t *mac,
   }
 
   // TODO: compute pathloss using correct reference
-  int16_t pathloss = compute_nr_SSB_PL(mac);
+  int16_t pathloss;
+  if (!compute_nr_SSB_PL(mac, &pathloss))
+    return INT_MIN;
   int P_CMIN = mac->current_UL_BWP->P_CMIN;
 
   float pusch_power_without_f_b_f_c = P_O_PUSCH + M_pusch_component + alpha * pathloss + DELTA_TF;
@@ -566,6 +610,36 @@ int get_pusch_tx_power_ue(NR_UE_MAC_INST_t *mac,
         DELTA_TF,
         f_b_f_c);
   return min(P_CMAX, P_O_PUSCH + M_pusch_component + alpha * pathloss + DELTA_TF + f_b_f_c);
+}
+
+bool nr_ue_apply_deferred_pusch_tx_power(NR_UE_MAC_INST_t *mac,
+                                         nfapi_nr_ue_pusch_pdu_t *pusch_config_pdu,
+                                         uint64_t config_generation)
+{
+  if (!pusch_config_pdu->oai_deferred_tx_power || pusch_config_pdu->oai_deferred_config_generation != config_generation)
+    return false;
+
+  const bool transform_precoding = pusch_config_pdu->transform_precoding == NR_PUSCH_Config__transformPrecoder_enabled;
+
+  const int tx_power = get_pusch_tx_power_ue(mac,
+                                               pusch_config_pdu->rb_size,
+                                               pusch_config_pdu->rb_start,
+                                               pusch_config_pdu->nr_of_symbols,
+                                               pusch_config_pdu->oai_deferred_nb_dmrs_prb,
+                                               0, // TODO: count PTRS per RB
+                                               pusch_config_pdu->qam_mod_order,
+                                               pusch_config_pdu->target_code_rate,
+                                               pusch_config_pdu->pusch_uci.beta_offset_csi1,
+                                               pusch_config_pdu->pusch_data.tb_size << 3,
+                                               pusch_config_pdu->oai_deferred_tpc_delta,
+                                               pusch_config_pdu->oai_deferred_is_rar_tx_retx,
+                                               transform_precoding);
+  if (tx_power == INT_MIN)
+    return false;
+
+  pusch_config_pdu->tx_power = tx_power;
+  pusch_config_pdu->oai_deferred_tx_power = 0;
+  return true;
 }
 
 int get_srs_tx_power_ue(NR_UE_MAC_INST_t *mac,
@@ -601,7 +675,9 @@ int get_srs_tx_power_ue(NR_UE_MAC_INST_t *mac,
                             get_m_srs(srs_resource->freqHopping.c_SRS, srs_resource->freqHopping.b_SRS),
                             0); // TODO: Determine SRS start RB
 
-  int16_t pathloss = compute_nr_SSB_PL(mac);
+  int16_t pathloss;
+  if (!compute_nr_SSB_PL(mac, &pathloss))
+    return INT_MIN;
 
   int srs_power_without_h_b_f_c = P_0_SRS + alpha * pathloss + m_srs_component;
 

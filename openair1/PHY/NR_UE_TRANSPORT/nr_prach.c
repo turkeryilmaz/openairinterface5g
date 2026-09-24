@@ -2,6 +2,8 @@
  * SPDX-License-Identifier: LicenseRef-CSSL-1.0
  */
 
+#include <stdint.h>
+
 /*!
  * \brief Routines for UE PRACH physical channel
  */
@@ -14,6 +16,7 @@
 #include "PHY/NR_TRANSPORT/nr_transport_common_proto.h"
 
 #include "common/utils/LOG/log.h"
+#include "radio/COMMON/radio_gain_device.h"
 
 #include "T.h"
 
@@ -345,13 +348,22 @@ int32_t generate_nr_prach(PHY_VARS_NR_UE *ue, uint8_t gNB_id, int frame, uint8_t
     nr_prach_ofdm_mod(prachF, dftlen, Ncp, repetitions, prach, txData[0] + prach_start);
   }
 
+  if (radio_gain_device_tx_selected()) {
+    const uint64_t sample_count = Ncp + (uint64_t)repetitions * dftlen;
+    if (sample_count > UINT32_MAX) {
+      radio_gain_device_reject_tx(frame, slot, 1, RADIO_TX_REJECT_SPAN);
+    } else if (!radio_gain_device_apply_tx(txData[0] + prach_start, sample_count, prach_pdu->prach_tx_power, frame, slot, 1)) {
+      radio_gain_device_reject_tx(frame, slot, 1, RADIO_TX_REJECT_PROFILE);
+    }
+  }
+
 #ifdef NR_PRACH_DEBUG
   LOG_I(PHY,
         "PRACH [UE %d] N_RB_UL %d prach_start %d, prach_len %d\n",
         ue->Mod_id,
         fp->N_RB_UL,
         prach_start,
-        out - (txData[0] + prach_start));
+        Ncp + repetitions * dftlen);
 #endif
 
   return signal_energy((int *)prach, 256);

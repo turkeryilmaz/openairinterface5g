@@ -28,6 +28,7 @@
 
 #include "common/utils/LOG/log.h"
 #include "common/utils/time_manager/time_manager.h"
+#include "radio/COMMON/radio_gain_device.h"
 
 #include <executables/softmodem-common.h>
 /* these variables have to be defined before including ENB_APP/enb_paramdef.h and GNB_APP/gnb_paramdef.h */
@@ -146,8 +147,10 @@ static void rx_rf(RU_t *ru, int *frame, int *slot)
   LOG_D(PHY,"Reading %d samples for slot %d (%p)\n", samples_per_slot, *slot, rxp[0]);
 
   openair0_timestamp_t ts;
-  unsigned int rxs;
-  rxs = ru->rfdevice.trx_read_func(&ru->rfdevice, &ts, rxp, samples_per_slot, nb);
+  const int raw_rxs = ru->rfdevice.trx_read_func(&ru->rfdevice, &ts, rxp, samples_per_slot, nb);
+  if (raw_rxs > 0 && ts <= INT64_MAX - raw_rxs)
+    proc->rx_gain_context = radio_gain_device_samples(&ru->rfdevice, ts, ts + raw_rxs);
+  unsigned int rxs = raw_rxs;
   proc->timestamp_rx = ts-ru->ts_offset;
 
   if (rxs != samples_per_slot)
@@ -306,6 +309,15 @@ int tx_rf_symbols(RU_t *ru, int frame, int slot, uint64_t timestamp, int start_s
   uint32_t time_offset = get_samples_slot_timestamp(fp, slot) + get_samples_symbol_timestamp(fp, slot, start_symbol);
   for (int i = 0; i < nt; i++)
     txp[i] = (void *)&ru->common.txdata[i][time_offset] - sf_extension * sizeof(int32_t);
+
+  if (radio_gain_device_tx_actuating()) {
+    for (int symbol = start_symbol; symbol < start_symbol + transmitted_symbols; ++symbol) {
+      const int offset = get_samples_slot_timestamp(fp, slot) + get_samples_symbol_timestamp(fp, slot, symbol);
+      const int count = get_samples_symbol_duration(fp, slot, symbol, 1);
+      if (!radio_gain_device_validate_gnb_tx(&ru->common.txdata[0][offset], count, frame, slot))
+        return -1;
+    }
+  }
 
   // prepare tx buffer pointers
   uint32_t txs = ru->rfdevice.trx_write_func(&ru->rfdevice,
@@ -623,7 +635,13 @@ static void ru_rx_slot(RU_t *ru, PHY_VARS_gNB *gNB, int frame_rx, int slot_rx)
 }
 
 /* @brief push a TX job for the given slot to the gNB TX pipeline */
-void ru_push_tx_job(PHY_VARS_gNB *gNB, int frame_tx, int slot_tx, int frame_rx, int slot_rx, uint64_t timestamp_tx)
+void ru_push_tx_job(PHY_VARS_gNB *gNB,
+                    int frame_tx,
+                    int slot_tx,
+                    int frame_rx,
+                    int slot_rx,
+                    uint64_t timestamp_tx,
+                    const radio_gain_sample_context_t *rx_gain_context)
 {
   notifiedFIFO_elt_t *resTx = newNotifiedFIFO_elt(sizeof(processingData_L1tx_t), 0, &gNB->L1_tx_out, NULL);
   resTx->key = slot_tx;
@@ -633,7 +651,8 @@ void ru_push_tx_job(PHY_VARS_gNB *gNB, int frame_tx, int slot_tx, int frame_rx, 
                                        .slot = slot_tx,
                                        .frame_rx = frame_rx,
                                        .slot_rx = slot_rx,
-                                       .timestamp_tx = timestamp_tx};
+                                       .timestamp_tx = timestamp_tx,
+                                       .rx_gain_context = rx_gain_context ? *rx_gain_context : (radio_gain_sample_context_t){0}};
   pushNotifiedFIFO(&gNB->L1_tx_out, resTx);
 }
 
@@ -694,6 +713,8 @@ void *ru_thread(void *param)
     LOG_D(PHY,"[RU_thread] read data: frame_rx = %d, tti_rx = %d\n", frame, slot);
 
     AssertFatal(ru->fh_south_in, "No fronthaul interface at south port");
+    /* Remote/no-owner paths retain the exact legacy behavior through absent metadata. */
+    proc->rx_gain_context = (radio_gain_sample_context_t){0};
     ru->fh_south_in(ru, &frame, &slot);
 
     proc->timestamp_tx = proc->timestamp_rx;
@@ -724,7 +745,7 @@ void *ru_thread(void *param)
       ru_rx_slot(ru, gNB, proc->frame_rx, proc->tti_rx);
     }
 
-    ru_push_tx_job(gNB, proc->frame_tx, proc->tti_tx, proc->frame_rx, proc->tti_rx, proc->timestamp_tx);
+    ru_push_tx_job(gNB, proc->frame_tx, proc->tti_tx, proc->frame_rx, proc->tti_rx, proc->timestamp_tx, &proc->rx_gain_context);
   }
 
   ru_thread_status = 0;
@@ -769,6 +790,15 @@ static void start_split8(RU_t *ru)
   } else if (ru->if_south == LOCAL_RF) { // configure RF parameters only
     ret = openair0_device_load(&ru->rfdevice,&ru->openair0_cfg);
     AssertFatal(ret==0,"Cannot connect to local radio\n");
+    if (radio_gain_device_tx_selected()) {
+      NR_DL_FRAME_PARMS *fp = ru->nr_frame_parms;
+      PHY_VARS_gNB *gNB = ru->gNB_list[0];
+      if (ru->num_gNB != 1 || ru->nb_tx != 1 || fp->Ncp != 0
+          || !radio_gain_device_configure_gnb_tx(ru->config.ssb_config.ss_pbch_power.value, fp->ofdm_symbol_size, &gNB->TX_AMP)) {
+        LOG_E(PHY, "Unsupported managed gNB TX layout or reference-power profile\n");
+        exit(EXIT_FAILURE);
+      }
+    }
   }
 
   if (setup_RU_buffers(ru)!=0) {
