@@ -19,6 +19,8 @@ typedef struct pdsch_scope_req_s {
   bool copy_chanest_to_scope;
   bool copy_rxdataF_to_scope;
   size_t scope_rxdataF_offset;
+  bool copy_rxdataF_comp_to_scope;
+  size_t scope_rxdataF_comp_offset;
 } pdsch_scope_req_t;
 
 // Functions below implement 36-211 and 36-212
@@ -219,7 +221,6 @@ void nr_sl_rf_card_config_freq(PHY_VARS_NR_UE *ue,
     @param pdsch_est_size
     @param dl_ch_estimates
     @param llr
-    @param dl_valid_re
     @param rxdataF
     @param llr_offset
     @param log2_maxhrx_size_symbol
@@ -229,33 +230,33 @@ void nr_sl_rf_card_config_freq(PHY_VARS_NR_UE *ue,
     @param ptrs_phase_per_slot
     @param ptrs_re_per_slot
 */
-int nr_rx_pdsch(PHY_VARS_NR_UE *ue,
-                const UE_nr_rxtx_proc_t *proc,
-                NR_UE_DLSCH_t *dlsch,
-                const freq_alloc_bitmap_t *freq_alloc,
-                fapi_nr_dl_config_dlsch_pdu_rel15_t *dlsch_config,
-                NR_DL_UE_HARQ_t *dlsch_harq,
-                unsigned char symbol,
-                bool first_symbol_flag,
-                unsigned char harq_pid,
-                uint32_t pdsch_est_size,
-                int32_t dl_ch_estimates[][pdsch_est_size],
-                int16_t *llr,
-                uint32_t dl_valid_re[NR_SYMBOLS_PER_SLOT],
-                c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP],
-                int32_t *log2_maxh,
-                uint32_t pdsch_buf_size_max,
-                int nbRx,
-                c16_t rxdataF_comp[][NR_MAX_NB_LAYERS][pdsch_buf_size_max],
-                c16_t dl_ch_mag[][NR_MAX_NB_LAYERS][pdsch_buf_size_max],
-                c16_t dl_ch_magb[][NR_MAX_NB_LAYERS][pdsch_buf_size_max],
-                c16_t dl_ch_magr[][NR_MAX_NB_LAYERS][pdsch_buf_size_max],
-                c16_t ptrs_phase,
-                uint ptrs_re_per_symbol,
-                uint32_t nvar,
-                pdsch_scope_req_t *scope_req,
-                c16_t rho_dl[][NR_MAX_NB_LAYERS * NR_MAX_NB_LAYERS][pdsch_buf_size_max],
-                uint16_t ptrs_symb_pos);
+uint32_t nr_rx_pdsch(PHY_VARS_NR_UE *ue,
+                     const UE_nr_rxtx_proc_t *proc,
+                     NR_UE_DLSCH_t *dlsch,
+                     const freq_alloc_bitmap_t *freq_alloc,
+                     fapi_nr_dl_config_dlsch_pdu_rel15_t *dlsch_config,
+                     NR_DL_UE_HARQ_t *dlsch_harq,
+                     unsigned char symbol,
+                     bool first_symbol_flag,
+                     unsigned char harq_pid,
+                     uint32_t pdsch_est_size,
+                     int32_t dl_ch_estimates[][pdsch_est_size],
+                     int16_t *llr,
+                     c16_t (*rxdataF)[ue->frame_parms.samples_per_slot_wCP],
+                     int32_t *log2_maxh,
+                     uint32_t pdsch_buf_size_max,
+                     int nbRx,
+                     int max_layers,
+                     c16_t rxdataF_comp[][pdsch_buf_size_max],
+                     c16_t dl_ch_mag[][pdsch_buf_size_max],
+                     c16_t dl_ch_magb[][pdsch_buf_size_max],
+                     c16_t dl_ch_magr[][pdsch_buf_size_max],
+                     c16_t ptrs_phase,
+                     uint ptrs_re_per_symbol,
+                     uint32_t nvar,
+                     pdsch_scope_req_t *scope_req,
+                     c16_t rho_dl[][pdsch_buf_size_max],
+                     uint16_t ptrs_symb_pos);
 
 int32_t generate_nr_prach(PHY_VARS_NR_UE *ue, uint8_t gNB_id, int frame, uint8_t slot, int16_t tx_amp, c16_t **txData);
 void apply_ntn_config(PHY_VARS_NR_UE *UE,
@@ -332,4 +333,3 @@ int nr_pbch_decode(PHY_VARS_NR_UE *ue,
                    fapiPbch_t *result);
 /**@}*/
 #endif
-
