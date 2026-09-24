@@ -68,7 +68,7 @@
     <desc>Initiate and validate NRPPA</desc>
     <node>localhost</node>
     <script>scripts/run-nrppa-validation.sh</script>
-    <args>./yaml_files/5g_vrtsim_ul_tdoa_positioning/validate_nrppa.py ./yaml_files/5g_vrtsim_ul_tdoa_positioning/InputData.json</args>
+    <options>./yaml_files/5g_vrtsim_ul_tdoa_positioning/validate_nrppa.py ./yaml_files/5g_vrtsim_ul_tdoa_positioning/InputData.json</options>
   </testCase>
 
   <testCase>

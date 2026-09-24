@@ -14,7 +14,7 @@
     <desc>Check Microamp FR2 RU configuration and PTP synchronization</desc>
     <node>stonechat</node>
     <script>scripts/microamp-check-ru.sh</script>
-    <args>100</args>
+    <options>100</options>
   </testCase>
 
   <testCase>

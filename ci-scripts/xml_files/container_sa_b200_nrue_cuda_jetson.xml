@@ -41,7 +41,7 @@
     <desc>Configure 30 MHz bandwidth on WNC RU</desc>
     <node>gracehopper1-oai</node>
     <script>scripts/set-wnc-bandwidth.sh</script>
-    <args>30</args>
+    <options>30</options>
   </testCase>
 
   <testCase>
@@ -150,7 +150,7 @@
     <desc>Configure 100 MHz bandwidth on WNC RU</desc>
     <node>gracehopper1-oai</node>
     <script>scripts/set-wnc-bandwidth.sh</script>
-    <args>100</args>
+    <options>100</options>
   </testCase>
 
   <testCase>
