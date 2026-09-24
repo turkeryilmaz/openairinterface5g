@@ -103,6 +103,12 @@ int nr_prs_channel_estimation(uint8_t gNB_id,
 #endif
   const int scale_factor = (1.0f / (float)(prs_cfg->NumPRSSymbols)) * (1 << 15);
   const int num_pilots = (NR_NB_SC_PER_RB / CombSize) * prs_cfg->NumRB;
+  openair0_config_t *cfg = &openair0_cfg_g[ue->rf_map.card];
+  const double fallback_gain_db = (int)cfg->rx_gain[0] - (int)cfg->rx_gain_offset[0];
+  double rx_gain_db = 0;
+  const bool gain_valid = nr_ue_sample_gain(proc, fallback_gain_db, &rx_gain_db);
+  const bool generation_current = nr_ue_gain_generation_current(&ue->measurements, proc);
+  const bool prs_report_valid = gain_valid && generation_current;
 
   for (int l = prs_cfg->SymbolStart; l < prs_cfg->SymbolStart + prs_cfg->NumPRSSymbols; l++) {
     c16_t *ch_tmp = ch_tmp_buf;
@@ -383,36 +389,54 @@ int nr_prs_channel_estimation(uint8_t gNB_id,
     int mean_val = squaredMod(ch_tmp_buf[(prs_cfg->NumRB * NR_NB_SC_PER_RB) >> 1]);
     int prs_toa, ch_pwr;
     peak_estimator(chT_interpol, NR_PRS_IDFT_OVERSAMP_FACTOR * symb_sz, &prs_toa, &ch_pwr, mean_val);
-    openair0_config_t *cfg = &openair0_cfg_g[ue->rf_map.card];
-    // adjusting the rx_gains for channel peak power
-    double ch_pwr_dbm = 10 * log10(ch_pwr) + 30 - SQ15_SQUARED_NORM_FACTOR_DB - ((int)cfg->rx_gain[0] - (int)cfg->rx_gain_offset[0])
-                        - dB_fixed(symb_sz);
-
-    prs_meas[rxAnt]->rsrp_dBm = 10 * log10(prs_meas[rxAnt]->rsrp) + 30 - SQ15_SQUARED_NORM_FACTOR_DB
-                                - ((int)cfg->rx_gain[0] - (int)cfg->rx_gain_offset[0]) - dB_fixed(symb_sz);
-
-    // prs measurements
-    prs_meas[rxAnt]->gNB_id     = gNB_id;
-    prs_meas[rxAnt]->sfn        = proc->frame_rx;
-    prs_meas[rxAnt]->slot       = proc->nr_slot_rx;
-    prs_meas[rxAnt]->rxAnt_idx  = rxAnt;
-    prs_meas[rxAnt]->dl_aoa     = rsc_id;
     float dl_toa = prs_toa / (float)NR_PRS_IDFT_OVERSAMP_FACTOR;
     if ((symb_sz - dl_toa) < symb_sz / 2)
       dl_toa -= (symb_sz);
-    LOG_I(PHY,
-          "[gNB %d][rsc %d][Rx %d][sfn %d][slot %d] DL PRS ToA ==> %.1f / %d samples, peak channel power %.1f dBm, SNR %+.1f dB, "
-          "rsrp %+.1f dBm\n",
-          gNB_id,
-          rsc_id,
-          rxAnt,
-          proc->frame_rx,
-          proc->nr_slot_rx,
-          dl_toa,
-          symb_sz,
-          ch_pwr_dbm,
-          prs_meas[rxAnt]->snr,
-          prs_meas[rxAnt]->rsrp_dBm);
+    if (prs_report_valid) {
+      double ch_pwr_dbm = 0;
+      if (!proc->rx_gain_context.present) {
+        ch_pwr_dbm = 10 * log10(ch_pwr) + 30 - SQ15_SQUARED_NORM_FACTOR_DB - ((int)cfg->rx_gain[0] - (int)cfg->rx_gain_offset[0])
+                     - dB_fixed(symb_sz);
+        prs_meas[rxAnt]->rsrp_dBm = 10 * log10(prs_meas[rxAnt]->rsrp) + 30 - SQ15_SQUARED_NORM_FACTOR_DB
+                                    - ((int)cfg->rx_gain[0] - (int)cfg->rx_gain_offset[0]) - dB_fixed(symb_sz);
+      } else {
+        ch_pwr_dbm = 10 * log10(ch_pwr) + 30 - SQ15_SQUARED_NORM_FACTOR_DB - rx_gain_db - dB_fixed(symb_sz);
+        prs_meas[rxAnt]->rsrp_dBm =
+            10 * log10(prs_meas[rxAnt]->rsrp) + 30 - SQ15_SQUARED_NORM_FACTOR_DB - rx_gain_db - dB_fixed(symb_sz);
+      }
+
+      // PRS report fields are updated only with a valid gain context.
+      prs_meas[rxAnt]->gNB_id = gNB_id;
+      prs_meas[rxAnt]->sfn = proc->frame_rx;
+      prs_meas[rxAnt]->slot = proc->nr_slot_rx;
+      prs_meas[rxAnt]->rxAnt_idx = rxAnt;
+      prs_meas[rxAnt]->dl_aoa = rsc_id;
+      LOG_I(PHY,
+            "[gNB %d][rsc %d][Rx %d][sfn %d][slot %d] DL PRS ToA ==> %.1f / %d samples, peak channel power %.1f dBm, SNR %+.1f dB, "
+            "rsrp %+.1f dBm\n",
+            gNB_id,
+            rsc_id,
+            rxAnt,
+            proc->frame_rx,
+            proc->nr_slot_rx,
+            dl_toa,
+            symb_sz,
+            ch_pwr_dbm,
+            prs_meas[rxAnt]->snr,
+            prs_meas[rxAnt]->rsrp_dBm);
+    } else {
+      LOG_I(PHY,
+            "[gNB %d][rsc %d][Rx %d][sfn %d][slot %d] DL PRS ToA ==> %.1f / %d samples, SNR %+.1f dB, dBm unavailable: invalid or "
+            "stale RX gain context\n",
+            gNB_id,
+            rsc_id,
+            rxAnt,
+            proc->frame_rx,
+            proc->nr_slot_rx,
+            dl_toa,
+            symb_sz,
+            prs_meas[rxAnt]->snr);
+    }
 
     set_prs_dl_toa(prs_meas[rxAnt], dl_toa);
 

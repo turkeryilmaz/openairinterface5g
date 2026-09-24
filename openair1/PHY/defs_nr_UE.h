@@ -67,6 +67,7 @@
 #include "PHY/CODING/nrLDPC_coding/nrLDPC_coding_interface.h"
 #include "PHY/TOOLS/tools_defs.h"
 #include "common/platform_types.h"
+#include "radio/COMMON/radio_gain_samples.h"
 #include "NR_UE_TRANSPORT/nr_transport_ue.h"
 #include "openair1/PHY/defs_common.h"
 
@@ -105,7 +106,12 @@ typedef struct {
 } fapiPbch_t;
 
 typedef struct {
+  uint64_t generation;
+  unsigned int n0_power_avg;
+  bool valid;
+} nr_ue_noise_snapshot_t;
 
+typedef struct {
   // RRC measurements
   uint32_t rssi;
   int n_adj_cells;
@@ -115,11 +121,11 @@ typedef struct {
   float ssb_sinr_dB[64];
   // common measurements
   //! total estimated noise power (linear)
-  unsigned int   n0_power_tot;
+  unsigned int n0_power_tot;
   //! total estimated noise power (dB)
   short n0_power_tot_dB;
   //! average estimated noise power (linear)
-  unsigned int   n0_power_avg;
+  unsigned int n0_power_avg;
   //! average estimated noise power (dB)
   short n0_power_avg_dB;
   //! total estimated noise power (dBm)
@@ -132,9 +138,9 @@ typedef struct {
   fourDimArray_t *rx_spatial_power_dB;
 
   /// estimated received signal power (sum over all TX/RX antennas)
-  int rx_power_tot[NUMBER_OF_CONNECTED_gNB_MAX]; //NEW
+  int rx_power_tot[NUMBER_OF_CONNECTED_gNB_MAX]; // NEW
   /// estimated received signal power (sum over all TX/RX antennas)
-  short rx_power_tot_dB[NUMBER_OF_CONNECTED_gNB_MAX]; //NEW
+  short rx_power_tot_dB[NUMBER_OF_CONNECTED_gNB_MAX]; // NEW
 
   //! estimated received signal power (sum of all TX/RX antennas, time average)
   int rx_power_avg[NUMBER_OF_CONNECTED_gNB_MAX];
@@ -150,7 +156,7 @@ typedef struct {
   short rx_rssi_dBm[NUMBER_OF_CONNECTED_gNB_MAX];
 
   /// Number of RX Antennas
-  unsigned char  nb_antennas_rx;
+  unsigned char nb_antennas_rx;
 
   /// Info about neighboring cells to perform the measurements
   neighboring_cell_info_t neighboring_cell_info[NUMBER_OF_NEIGHBORING_CELLS_MAX];
@@ -158,6 +164,16 @@ typedef struct {
   _Atomic(bool) search_new_cells_pending;
   int last_blind_slot;
   int last_slot;
+  /* Accessed only with __atomic builtins because copied measurement tasks can
+   * complete out of order. A generation of zero is valid. */
+  uint64_t latest_rx_gain_generation;
+  /* The serial PBCH measurement path is the only writer. The sequence
+   * brackets a generation, average-noise, and validity snapshot for PDSCH
+   * and SSB report consumers. */
+  uint32_t n0_power_avg_snapshot_sequence;
+  uint64_t n0_power_avg_snapshot_generation;
+  unsigned int n0_power_avg_snapshot;
+  bool n0_power_avg_snapshot_valid;
 } PHY_NR_MEASUREMENTS;
 
 typedef struct {
@@ -375,6 +391,10 @@ typedef struct PHY_VARS_NR_UE_s {
   /// temporary offset during cell search prior to MIB decoding
   int ssb_offset;
   uint16_t symbol_offset; /// offset in terms of symbols for detected ssb in sync
+  /* Serial managed-PBCH state: a failed committed-serving CRC allows a
+   * qualified alternate one decode opportunity until a decode succeeds or
+   * the initial-sync lifecycle restarts. */
+  bool managed_serving_pbch_failed;
   int64_t max_pos_iir; /// Timing offset IIR filter
   int max_pos_acc; /// Timing offset accumuluated error for PI filter
 
@@ -487,7 +507,83 @@ typedef struct {
   int hfn_tx;
   /// hyper frame number to act upon for reception
   int hfn_rx;
+  /// Immutable gain context for the RX samples processed by this work item.
+  radio_gain_sample_context_t rx_gain_context;
 } UE_nr_rxtx_proc_t;
+
+/* The fallback is intentionally supplied by the caller: this header remains
+ * independent of the mutable radio configuration and preserves the old
+ * conversion when sample context is absent. */
+static inline bool nr_ue_sample_gain(const UE_nr_rxtx_proc_t *proc, double fallback_gain_db, double *rx_gain_db)
+{
+  if (!proc->rx_gain_context.present) {
+    *rx_gain_db = fallback_gain_db;
+    return true;
+  }
+  if (!radio_gain_sample_measurement_valid(&proc->rx_gain_context))
+    return false;
+  *rx_gain_db = proc->rx_gain_context.rx_gain_db;
+  return true;
+}
+
+/* This bounded observation avoids an unbounded retry in a PHY hot path. It is
+ * not a publication lock: a newer context can still arrive after it returns. */
+#define NR_UE_GAIN_GENERATION_ATTEMPTS 2U
+static inline bool nr_ue_gain_generation_current(PHY_NR_MEASUREMENTS *measurements, const UE_nr_rxtx_proc_t *proc)
+{
+  if (!proc->rx_gain_context.present)
+    return true;
+
+  const uint64_t generation = proc->rx_gain_context.generation;
+  for (unsigned int attempt = 0; attempt < NR_UE_GAIN_GENERATION_ATTEMPTS; ++attempt) {
+    uint64_t observed = __atomic_load_n(&measurements->latest_rx_gain_generation, __ATOMIC_ACQUIRE);
+    if (observed >= generation)
+      return proc->rx_gain_context.valid && observed == generation;
+    if (__atomic_compare_exchange_n(&measurements->latest_rx_gain_generation,
+                                    &observed,
+                                    generation,
+                                    false,
+                                    __ATOMIC_ACQ_REL,
+                                    __ATOMIC_ACQUIRE))
+      return proc->rx_gain_context.valid;
+  }
+  return false;
+}
+
+#define NR_UE_NOISE_SNAPSHOT_ATTEMPTS 3U
+/* The sole serial PBCH writer publishes an even sequence only after all
+ * payload fields are visible. Readers make a bounded coherent copy. */
+static inline void nr_ue_noise_snapshot_publish(PHY_NR_MEASUREMENTS *measurements,
+                                                uint64_t generation,
+                                                unsigned int n0_power_avg,
+                                                bool valid)
+{
+  const uint32_t sequence = __atomic_load_n(&measurements->n0_power_avg_snapshot_sequence, __ATOMIC_SEQ_CST);
+  __atomic_store_n(&measurements->n0_power_avg_snapshot_sequence, sequence + 1, __ATOMIC_SEQ_CST);
+  __atomic_store_n(&measurements->n0_power_avg_snapshot_generation, generation, __ATOMIC_SEQ_CST);
+  __atomic_store_n(&measurements->n0_power_avg_snapshot, n0_power_avg, __ATOMIC_SEQ_CST);
+  __atomic_store_n(&measurements->n0_power_avg_snapshot_valid, valid, __ATOMIC_SEQ_CST);
+  __atomic_store_n(&measurements->n0_power_avg_snapshot_sequence, sequence + 2, __ATOMIC_SEQ_CST);
+}
+
+static inline bool nr_ue_noise_snapshot_load(const PHY_NR_MEASUREMENTS *measurements, nr_ue_noise_snapshot_t *snapshot)
+{
+  for (unsigned int attempt = 0; attempt < NR_UE_NOISE_SNAPSHOT_ATTEMPTS; ++attempt) {
+    const uint32_t sequence_start = __atomic_load_n(&measurements->n0_power_avg_snapshot_sequence, __ATOMIC_SEQ_CST);
+    if (sequence_start & 1)
+      continue;
+
+    const uint64_t generation = __atomic_load_n(&measurements->n0_power_avg_snapshot_generation, __ATOMIC_SEQ_CST);
+    const unsigned int n0_power_avg = __atomic_load_n(&measurements->n0_power_avg_snapshot, __ATOMIC_SEQ_CST);
+    const bool valid = __atomic_load_n(&measurements->n0_power_avg_snapshot_valid, __ATOMIC_SEQ_CST);
+    const uint32_t sequence_end = __atomic_load_n(&measurements->n0_power_avg_snapshot_sequence, __ATOMIC_SEQ_CST);
+    if (sequence_start == sequence_end && !(sequence_end & 1)) {
+      *snapshot = (nr_ue_noise_snapshot_t){.generation = generation, .n0_power_avg = n0_power_avg, .valid = valid};
+      return true;
+    }
+  }
+  return false;
+}
 
 typedef struct {
   bool cell_detected;

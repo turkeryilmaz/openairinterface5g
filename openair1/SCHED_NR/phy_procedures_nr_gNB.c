@@ -13,6 +13,8 @@
 #include "PHY/nr_phy_common/inc/nr_phy_meas.h"
 #include "nfapi/open-nFAPI/nfapi/public_inc/nfapi_interface.h"
 #include "common/utils/LOG/log.h"
+#include "common/utils/LOG/flight_recorder.h"
+#include "radio/COMMON/radio_gain_device.h"
 #include "PHY/INIT/nr_phy_init.h"
 #include "PHY/MODULATION/nr_modulation.h"
 #include "PHY/nr_phy_common/inc/nr_phy_common.h"
@@ -225,6 +227,16 @@ void nr_common_signal_procedures(PHY_VARS_gNB *gNB, int frame, int slot, const n
 #endif
 
   nr_generate_pbch(gNB, ssb_pdu, txdataF[ant_port], ssb_start_symbol, n_hf, frame, cfg, fp);
+  if (flight_recorder_enabled()) {
+    const int64_t resource = ant_port | ((int64_t)beam_id << 16) | ((int64_t)(uint32_t)fp->ssb_start_subcarrier << 32);
+    flight_recorder_emit(FLIGHT_EVENT_GNB_TX_REFERENCE,
+                         (int64_t)frame * 1000 + slot,
+                         cfg->ssb_config.ss_pbch_power.value,
+                         gNB->TX_AMP,
+                         ssb_index,
+                         ssb_start_symbol,
+                         resource);
+  }
 
   if (!gNB->phase_comp)
     return;
@@ -332,7 +344,7 @@ static void nr_generate_csi_rs_gNB(PHY_VARS_gNB *gNB, int slot, const nfapi_nr_d
 static void nr_generate_prs_gNB(PHY_VARS_gNB *gNB, int slot, int slot_prs, prs_config_t *prs_config, int prb_mask_words)
 {
   const NR_DL_FRAME_PARMS *fp = &gNB->frame_parms;
-  nr_generate_prs(slot_prs, gNB->common_vars.txdataF[0], AMP, prs_config, fp);
+  nr_generate_prs(slot_prs, gNB->common_vars.txdataF[0], radio_gain_device_tx_actuating() ? gNB->TX_AMP : AMP, prs_config, fp);
 
   if (!gNB->phase_comp)
     return;
@@ -355,6 +367,9 @@ void phy_procedures_gNB_TX(PHY_VARS_gNB *gNB,
 {
   const NR_DL_FRAME_PARMS *fp = &gNB->frame_parms;
   nfapi_nr_config_request_scf_t *cfg = &gNB->gNB_config;
+
+  if (!radio_gain_device_validate_gnb_reference(cfg->ssb_config.ss_pbch_power.value, gNB->TX_AMP, frame, slot))
+    return;
 
   if ((cfg->cell_config.frame_duplex_type.value == TDD) && (nr_slot_select(cfg,frame,slot) == NR_UPLINK_SLOT))
     return;
@@ -1406,7 +1421,20 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx, N
       NR_gNB_PUSCH *pusch_vars = &gNB->pusch_vars[ULSCH_id];
       NR_gNB_ULSCH_t *ulsch = &gNB->ulsch[ULSCH_id];
 
-      if (pusch_signal_detected(gNB, pusch_vars, ulsch) || get_softmodem_params()->phy_test) {
+      /* Detection can replace the stored total with noise; preserve raw bin
+       * power first. This integration admits one RX chain only. */
+      const double reference_power = pusch_vars->ulsch_power[0];
+      const bool signal_detected = pusch_signal_detected(gNB, pusch_vars, ulsch);
+      if (gNB->rx_gain_context.present) {
+        const nfapi_nr_pusch_pdu_t *pdu = &ulsch->harq_process->ulsch_pdu;
+        bool noise_current = gNB->measurements.n0_ema_gain_generation_valid
+                             && gNB->measurements.n0_ema_gain_generation == gNB->rx_gain_context.generation;
+        for (int rb = pdu->bwp_start + pdu->rb_start; noise_current && rb < pdu->bwp_start + pdu->rb_start + pdu->rb_size; ++rb)
+          noise_current = rb < 275 && gNB->measurements.n0_ema_gain_initialized[rb];
+        radio_gain_device_observe_rx(&gNB->rx_gain_context, reference_power, signal_detected && noise_current, false,
+                                     RADIO_RX_SOURCE_GNB_PUSCH);
+      }
+      if (signal_detected || get_softmodem_params()->phy_test) {
         ulsch_idx_to_decode[num_pusch++] = ULSCH_id;
       } else {
         AssertFatal(ulsch->harq_process != NULL, "harq_pid %d is not allocated\n", ulsch->harq_pid);

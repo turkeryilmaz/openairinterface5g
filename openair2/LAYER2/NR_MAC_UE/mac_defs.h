@@ -346,6 +346,8 @@ typedef struct {
   int response_window_setup_time;
   /// Random-access backoff timer
   NR_timer_t RA_backoff_timer;
+  /* Backoff expired while SSB pathloss was unavailable; select once after a fresh SSB measurement. */
+  bool defer_preamble_for_ssb_pathloss;
   int RA_backoff_limit;
   uint8_t scaling_factor_bi;
   /// Flag to indicate whether preambles Group A is selected
@@ -570,6 +572,11 @@ typedef struct NR_UE_MAC_INST_s {
   NR_SearchSpace_t *search_space_zero;
   NR_UE_DL_BWP_t *current_DL_BWP;
   NR_UE_UL_BWP_t *current_UL_BWP;
+  // Protected by if_mutex; stamped on managed PUSCH grants to reject changed UL BWP/power configuration.
+  uint64_t ul_pusch_config_generation;
+  // Flight pathloss availability transition state, read and updated only by the serial UL scheduler.
+  bool ssb_pathloss_observed;
+  bool ssb_pathloss_available;
 
   bool harq_ACK_SpatialBundlingPUCCH;
   bool harq_ACK_SpatialBundlingPUSCH;

@@ -12,6 +12,15 @@
 #include <pthread.h>
 static NR_UE_MAC_INST_t *nr_ue_mac_inst[MAX_NUM_NR_UE_INST] = {0};
 
+static void reset_ssb_measurements(NR_UE_MAC_INST_t *mac)
+{
+  memset(&mac->ssb_measurements, 0, sizeof(mac->ssb_measurements));
+  for (int i = 0; i < MAX_NB_SSB; i++) {
+    mac->ssb_measurements[i].ssb_rsrp_dBm = INT_MIN;
+    mac->ssb_measurements[i].ssb_sinr_dB = INT_MIN;
+  }
+}
+
 void send_srb0_rrc(int ue_id, const uint8_t *sdu, sdu_size_t sdu_len, void *data)
 {
   AssertFatal(sdu_len > 0 && sdu_len < CCCH_SDU_SIZE, "invalid CCCH SDU size %d\n", sdu_len);
@@ -50,6 +59,7 @@ void nr_ue_init_mac(NR_UE_MAC_INST_t *mac)
   mac->uecap_maxMIMO_PUSCH_layers_nocb = 0;
   mac->p_Max = INT_MIN;
   mac->p_Max_alt = INT_MIN;
+  mac->ul_pusch_config_generation = 1;
   mac->msg3_C_RNTI = false;
   mac->sr_fallback_ra_triggered = false;
   mac->phy_config.config_req.ntn_config.params_changed = false;
@@ -59,11 +69,7 @@ void nr_ue_init_mac(NR_UE_MAC_INST_t *mac)
   // need to inizialize because might not been setup (optional timer)
   nr_timer_stop(&mac->scheduling_info.sr_DelayTimer);
 
-  memset(&mac->ssb_measurements, 0, sizeof(mac->ssb_measurements));
-  for (int i = 0; i < MAX_NB_SSB; i++) {
-    mac->ssb_measurements[i].ssb_rsrp_dBm = INT_MIN;
-    mac->ssb_measurements[i].ssb_sinr_dB = INT_MIN;
-  }
+  reset_ssb_measurements(mac);
 
   memset(&mac->ul_time_alignment, 0, sizeof(mac->ul_time_alignment));
   memset(&mac->ssb_list, 0, sizeof(mac->ssb_list));
@@ -257,6 +263,8 @@ static void release_dedicated_bwp0_config(NR_UE_MAC_INST_t *mac)
 void release_mac_configuration(NR_UE_MAC_INST_t *mac, NR_UE_MAC_reset_cause_t cause)
 {
   NR_UE_ServingCell_Info_t *sc = &mac->sc_info;
+  const bool retains_serving_cell_context = cause == RE_ESTABLISHMENT || cause == RRC_SETUP_REESTAB_RESUME;
+  mac->ra.defer_preamble_for_ssb_pathloss = false;
   /* Partial release for normal no-redirection RRCRelease: RRC keeps the current cell selected for idle camping
    * (TS 38.304 §5.2.5), so keep SIB1/common BWP0/paging PDCCH and drop only connected-mode MAC config. */
   if (cause == GO_TO_IDLE_KEEP_CAMPED) {
@@ -306,7 +314,7 @@ void release_mac_configuration(NR_UE_MAC_INST_t *mac, NR_UE_MAC_reset_cause_t ca
 
   // in case of re-establishment we don't need to release initial BWP config common
   int first_bwp_rel = 0; // first BWP to release
-  if (cause == RE_ESTABLISHMENT || cause == RRC_SETUP_REESTAB_RESUME) {
+  if (retains_serving_cell_context) {
     first_bwp_rel = 1;
     // release dedicated BWP0 config
     NR_UE_DL_BWP_t *bwp = mac->dl_BWPs.array[0];
@@ -333,7 +341,8 @@ void release_mac_configuration(NR_UE_MAC_INST_t *mac, NR_UE_MAC_reset_cause_t ca
   for (int i = first_bwp_rel; i < mac->ul_BWPs.count; i++)
     release_ul_BWP(mac, i);
 
-  memset(&mac->ssb_measurements, 0, sizeof(mac->ssb_measurements));
+  if (!retains_serving_cell_context)
+    reset_ssb_measurements(mac);
   memset(&mac->csirs_measurements, 0, sizeof(mac->csirs_measurements));
   memset(&mac->ul_time_alignment, 0, sizeof(mac->ul_time_alignment));
   for (int i = mac->TAG_list.count; i > 0 ; i--)

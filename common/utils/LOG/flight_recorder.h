@@ -58,8 +58,26 @@ extern "C" {
  * 25  GNB_DL_HARQ     gNB downlink HARQ result
  * 26  GNB_UL_HARQ     gNB uplink HARQ result
  * 27  UE_NAS_COUNT    NAS security counters/context presence, never keys
- * 30  RADIO_RX        radio receive result
- * 31  RADIO_TX        radio transmit result
+ * 30  RADIO_RX              radio receive result
+ * 31  RADIO_TX              radio transmit result
+ * 40  RADIO_GAIN            radio gain result
+ * 41  RADIO_GAIN_TIME       radio gain device-time metadata
+ * 42  RADIO_RX_LEVEL        sampled radio input level
+ * 43  UE_TX_POWER_REQUEST   UE generated-channel request and digital reference
+ * 44  GNB_TX_REFERENCE      gNB generated SSB configured/digital reference
+ * 45  RADIO_RX_DECISION     RX policy decision and admission
+ * 46  RADIO_RX_DECISION_INPUT RX decision gain/peak/error
+ * 47  RADIO_TX_LEVEL        complete selected TX buffer before conversion
+ * 48  RADIO_TX_LEVEL_STATE  TX buffer backend return and gain snapshot
+ * 49  RADIO_TX_POWER        channel power mapping and application result
+ * 50  RADIO_TX_POWER_SAMPLES mapped channel sample energy and peak
+ * 51  RADIO_TX_REJECT       managed TX rejection reason
+ * 52  RADIO_TX_POWER_QUALITY digital quantization error and profile uncertainty
+ * 53  UE_TX_CONTROL         MAC channel power-control calculation context
+ * 54  UE_PATHLOSS_STATE     checked serving-SSB pathloss availability transition
+ * 55  UE_SSB_MEASUREMENT    SSB measurement acceptance and raw digital power
+ * 56  UE_SSB_MEASUREMENT_CONTEXT sample/gain/overload evidence for SSB qualification
+ * 57  RADIO_RX_PEAK_ENVELOPE retained peak constraint for gain increases
  */
 typedef enum {
   FLIGHT_EVENT_LIFECYCLE = 1,
@@ -83,7 +101,33 @@ typedef enum {
   FLIGHT_EVENT_UE_NAS_COUNT = 27,
   FLIGHT_EVENT_RADIO_RX = 30,
   FLIGHT_EVENT_RADIO_TX = 31,
+  FLIGHT_EVENT_RADIO_GAIN = 40,
+  FLIGHT_EVENT_RADIO_GAIN_TIME = 41,
+  FLIGHT_EVENT_RADIO_RX_LEVEL = 42,
+  FLIGHT_EVENT_UE_TX_POWER_REQUEST = 43,
+  FLIGHT_EVENT_GNB_TX_REFERENCE = 44,
+  FLIGHT_EVENT_RADIO_RX_DECISION = 45,
+  FLIGHT_EVENT_RADIO_RX_DECISION_INPUT = 46,
+  FLIGHT_EVENT_RADIO_TX_LEVEL = 47,
+  FLIGHT_EVENT_RADIO_TX_LEVEL_STATE = 48,
+  FLIGHT_EVENT_RADIO_TX_POWER = 49,
+  FLIGHT_EVENT_RADIO_TX_POWER_SAMPLES = 50,
+  FLIGHT_EVENT_RADIO_TX_REJECT = 51,
+  FLIGHT_EVENT_RADIO_TX_POWER_QUALITY = 52,
+  FLIGHT_EVENT_UE_TX_CONTROL = 53,
+  FLIGHT_EVENT_UE_PATHLOSS_STATE = 54,
+  FLIGHT_EVENT_UE_SSB_MEASUREMENT = 55,
+  FLIGHT_EVENT_UE_SSB_MEASUREMENT_CONTEXT = 56,
+  FLIGHT_EVENT_RADIO_RX_PEAK_ENVELOPE = 57,
 } flight_recorder_event_t;
+
+/** Channel discriminator carried by FLIGHT_EVENT_UE_TX_POWER_REQUEST. */
+typedef enum {
+  FLIGHT_UE_TX_CHANNEL_PRACH = 1,
+  FLIGHT_UE_TX_CHANNEL_PUSCH = 2,
+  FLIGHT_UE_TX_CHANNEL_PUCCH = 3,
+  FLIGHT_UE_TX_CHANNEL_SRS = 4,
+} flight_ue_tx_channel_t;
 
 /**
  * Initialize one process-lifetime capture session.

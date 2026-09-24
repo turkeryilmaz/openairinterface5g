@@ -332,6 +332,11 @@ typedef struct {
   int n0_subband_power_avg_perANT_dB[MAX_ANT];
   //! estimated avg noise power per RB (dB)
   int n0_subband_power_tot_dB[275];
+  /// Generation owning the current I0 EMA; only the serial L1 RX thread updates it.
+  uint64_t n0_ema_gain_generation;
+  bool n0_ema_gain_generation_valid;
+  /// Per-PRB initialization state for the current gain generation.
+  bool n0_ema_gain_initialized[275];
   /// PRACH background noise level
   int prach_I0;
 } PHY_MEASUREMENTS_gNB;
@@ -351,6 +356,8 @@ typedef struct PHY_VARS_gNB_s {
   nfapi_nr_config_request_scf_t gNB_config;
   NR_DL_FRAME_PARMS frame_parms;
   PHY_MEASUREMENTS_gNB measurements;
+  /* Copied from each L1 RX work item immediately before serial RX processing. */
+  radio_gain_sample_context_t rx_gain_context;
   NR_IF_Module_t *if_inst;
 
   nfapi_nr_ul_tti_request_t UL_tti_req;
@@ -535,6 +542,8 @@ typedef struct processingData_L1 {
   int slot_rx;
   openair0_timestamp_t timestamp_tx;
   PHY_VARS_gNB *gNB;
+  /* Immutable raw-RX gain context for this L1 slot. */
+  radio_gain_sample_context_t rx_gain_context;
   notifiedFIFO_elt_t *elt;
 } processingData_L1_t;
 
@@ -545,6 +554,8 @@ typedef struct processingData_L1tx {
   int slot_rx;
   openair0_timestamp_t timestamp_tx;
   PHY_VARS_gNB *gNB;
+  /* Transit-only copy, forwarded by tx_func() to the L1 RX work item. */
+  radio_gain_sample_context_t rx_gain_context;
 } processingData_L1tx_t;
 
 typedef struct processingData_L1rx {

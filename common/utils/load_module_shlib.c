@@ -242,6 +242,26 @@ void * get_shlibmodule_fptr(const char *modname, const char *fname)
     return NULL;
 }
 
+void *get_shlibmodule_optional_fptr(const char *modname, const char *fname)
+{
+  if (!modname || !fname)
+    return NULL;
+  for (uint32_t i = 0; i < loader_data.numshlibs; ++i) {
+    const loader_shlibdesc_t *module = &loader_data.shlibs[i];
+    if (!module->name || strcmp(module->name, modname) != 0 || !module->thisshlib_path)
+      continue;
+    /* The normal loader retains modules with RTLD_NODELETE. Do not load a
+     * different object or require optional exports from legacy backends. */
+    void *handle = dlopen(module->thisshlib_path, RTLD_LAZY | RTLD_NOLOAD);
+    if (!handle)
+      return NULL;
+    void *symbol = dlsym(handle, fname);
+    dlclose(handle);
+    return symbol;
+  }
+  return NULL;
+}
+
 void loader_reset()
 {
   for (int i = 0; i < loader_data.numshlibs && loader_data.shlibs[i].name != NULL; i++) {

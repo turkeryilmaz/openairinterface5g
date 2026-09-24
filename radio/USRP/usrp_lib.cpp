@@ -31,6 +31,7 @@
 #include "common/utils/LOG/log.h"
 #include "common_lib.h"
 #include "radio_health.h"
+#include "radio_gain.h"
 #include "assertions.h"
 #include "system.h"
 
@@ -1180,6 +1181,152 @@ int openair0_set_rx_frequencies(openair0_device_t *device, openair0_config_t *op
   //rx_tune_req.rf_freq = openair0_cfg[0].rx_freq[0];
   s->usrp->set_rx_freq(rx_tune_req);
   return(0);
+}
+
+/* This optional interface deliberately does not use the combined legacy gain
+ * callback: an RX decision must never change the TX operating point. Channels
+ * refer to UHD logical channels after the configured RX/TX subdevice mappings. */
+static int usrp_gain_query(void *opaque, radio_gain_direction_t direction, unsigned channel, radio_gain_channel_t *result)
+{
+  auto *device = static_cast<openair0_device_t *>(opaque);
+  if (!device || !device->priv || !result || (direction != RADIO_GAIN_RX && direction != RADIO_GAIN_TX))
+    return -1;
+  auto *s = static_cast<usrp_state_t *>(device->priv);
+  try {
+    const bool rx = direction == RADIO_GAIN_RX;
+    if (channel >= (rx ? s->usrp->get_rx_num_channels() : s->usrp->get_tx_num_channels()))
+      return -1;
+    const auto range = rx ? s->usrp->get_rx_gain_range(channel) : s->usrp->get_tx_gain_range(channel);
+    if (range.size() != 1)
+      return -1; // This ABI describes one contiguous gain range.
+    radio_gain_channel_t value = {};
+    value.minimum_db = range.start();
+    value.maximum_db = range.stop();
+    value.step_db = range.step();
+    value.reported_db = rx ? s->usrp->get_rx_gain(channel) : s->usrp->get_tx_gain(channel);
+    value.frequency_hz = rx ? s->usrp->get_rx_freq(channel) : s->usrp->get_tx_freq(channel);
+    value.sample_rate_hz = rx ? s->usrp->get_rx_rate(channel) : s->usrp->get_tx_rate(channel);
+    value.bandwidth_hz = rx ? s->usrp->get_rx_bandwidth(channel) : s->usrp->get_tx_bandwidth(channel);
+    value.component_full_scale = rx && (device->type == USRP_X300_DEV || device->type == USRP_N300_DEV) ? 8192 : 2048;
+    const auto info = rx ? s->usrp->get_usrp_rx_info(channel) : s->usrp->get_usrp_tx_info(channel);
+    const char *subdev_key = rx ? "rx_subdev_spec" : "tx_subdev_spec";
+    if (!info.has_key("mboard_serial") || !info.has_key(subdev_key))
+      return -1;
+    const std::string serial = info["mboard_serial"];
+    const std::string subdev = info[subdev_key];
+    /* Logical channel zero can name RF A or RF B after a subdevice remap.
+     * Keep that physical mapping in profile identity, not only the port label. */
+    const int identity_length = snprintf(value.identity,
+                                         sizeof(value.identity),
+                                         "%s:%s:%u:%s",
+                                         s->usrp->get_mboard_name().c_str(),
+                                         serial.c_str(),
+                                         channel,
+                                         subdev.c_str());
+    const std::string antenna = rx ? s->usrp->get_rx_antenna(channel) : s->usrp->get_tx_antenna(channel);
+    const int antenna_length = snprintf(value.antenna, sizeof(value.antenna), "%s", antenna.c_str());
+    if (serial.empty() || subdev.empty() || identity_length < 0 || identity_length >= (int)sizeof(value.identity)
+        || antenna_length < 0 || antenna_length >= (int)sizeof(value.antenna))
+      return -1;
+#if UHD_VERSION >= 4000000
+    value.power_reference_valid = rx ? s->usrp->has_rx_power_reference(channel) : s->usrp->has_tx_power_reference(channel);
+    if (value.power_reference_valid) {
+      value.power_reference_dbm = rx ? s->usrp->get_rx_power_reference(channel) : s->usrp->get_tx_power_reference(channel);
+      value.power_reference_valid = std::isfinite(value.power_reference_dbm);
+    }
+#endif
+    *result = value;
+    return 0;
+  } catch (const std::exception &error) {
+    LOG_E(HW, "Radio gain capability/readback failed: %s\n", error.what());
+    return -1;
+  }
+}
+
+static int usrp_gain_set(void *opaque, radio_gain_direction_t direction, unsigned channel, double gain_db, double *reported_db)
+{
+  auto *device = static_cast<openair0_device_t *>(opaque);
+  if (!device || !device->priv || !reported_db || !std::isfinite(gain_db))
+    return -1;
+  auto *s = static_cast<usrp_state_t *>(device->priv);
+  try {
+    if (direction == RADIO_GAIN_RX) {
+      s->usrp->set_rx_gain(gain_db, channel);
+      *reported_db = s->usrp->get_rx_gain(channel);
+    } else if (direction == RADIO_GAIN_TX) {
+      s->usrp->set_tx_gain(gain_db, channel);
+      *reported_db = s->usrp->get_tx_gain(channel);
+    } else {
+      return -1;
+    }
+    return std::isfinite(*reported_db) ? 0 : -1;
+  } catch (const std::exception &error) {
+    LOG_E(HW, "Radio gain transaction failed: %s\n", error.what());
+    return -1;
+  }
+}
+
+static int usrp_gain_native_agc(void *opaque, unsigned channel, bool enable)
+{
+  auto *device = static_cast<openair0_device_t *>(opaque);
+  if (!device || !device->priv)
+    return -1;
+  try {
+    static_cast<usrp_state_t *>(device->priv)->usrp->set_rx_agc(enable, channel);
+    return 0;
+  } catch (const std::exception &error) {
+    LOG_E(HW, "Native RX AGC selection failed: %s\n", error.what());
+    return -1;
+  }
+}
+
+static int usrp_gain_retune(void *opaque, unsigned rx_channel, unsigned tx_channel, double rx_hz, double tx_hz, double offset_hz)
+{
+  auto *device = static_cast<openair0_device_t *>(opaque);
+  if (!device || !device->priv || !std::isfinite(rx_hz) || !std::isfinite(tx_hz) || !std::isfinite(offset_hz)
+      || rx_hz <= 0 || tx_hz <= 0)
+    return -1;
+  auto *s = static_cast<usrp_state_t *>(device->priv);
+  try {
+    /* Retain relative gain, not a power reference that could silently change
+     * analog gain on retune. Caller has retired every old TX sample first. */
+    const double rx_gain = s->usrp->get_rx_gain(rx_channel);
+    const double tx_gain = s->usrp->get_tx_gain(tx_channel);
+    s->usrp->set_rx_gain(rx_gain, rx_channel);
+    s->usrp->set_tx_gain(tx_gain, tx_channel);
+    s->usrp->set_rx_freq(uhd::tune_request_t(rx_hz, offset_hz), rx_channel);
+    s->usrp->set_tx_freq(uhd::tune_request_t(tx_hz, offset_hz), tx_channel);
+    return 0;
+  } catch (const std::exception &error) {
+    LOG_E(HW, "Radio gain-owner retune failed: %s\n", error.what());
+    return -1;
+  }
+}
+
+static int usrp_gain_device_ticks(void *opaque, double rate_hz, int64_t *ticks)
+{
+  auto *device = static_cast<openair0_device_t *>(opaque);
+  if (!device || !device->priv || !ticks || !std::isfinite(rate_hz) || rate_hz <= 0)
+    return -1;
+  try {
+    *ticks = static_cast<usrp_state_t *>(device->priv)->usrp->get_time_now().to_ticks(rate_hz);
+    return 0;
+  } catch (const std::exception &error) {
+    LOG_E(HW, "Radio gain-owner time query failed: %s\n", error.what());
+    return -1;
+  }
+}
+
+extern "C" const radio_gain_api_t *oai_radio_gain_get_api_v1(uint32_t version, size_t minimum_size)
+{
+  static const radio_gain_api_t api = {OAI_RADIO_GAIN_ABI,
+                                     sizeof(radio_gain_api_t),
+                                     usrp_gain_query,
+                                     usrp_gain_set,
+                                     usrp_gain_native_agc,
+                                     usrp_gain_retune,
+                                     usrp_gain_device_ticks};
+  return version == OAI_RADIO_GAIN_ABI && minimum_size <= sizeof(api) ? &api : nullptr;
 }
 
 /*! \brief Set Gains (TX/RX)

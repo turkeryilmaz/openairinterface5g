@@ -1697,14 +1697,20 @@ static void configure_dedicated_BWP_ul(NR_UE_MAC_INST_t *mac, int bwp_id, NR_BWP
   if (ul_dedicated) {
     NR_UE_UL_BWP_t *bwp = get_ul_bwp_structure(mac, bwp_id, true);
     bwp->bwp_id = bwp_id;
-    if(ul_dedicated->pucch_Config) {
+    if (ul_dedicated->pucch_Config) {
+      bool reset_pucch_power_control = ul_dedicated->pucch_Config->present == NR_SetupRelease_PUCCH_Config_PR_release;
       if (ul_dedicated->pucch_Config->present == NR_SetupRelease_PUCCH_Config_PR_release)
         asn1cFreeStruc(asn_DEF_NR_PUCCH_Config, bwp->pucch_Config);
       if (ul_dedicated->pucch_Config->present == NR_SetupRelease_PUCCH_Config_PR_setup) {
         if (!bwp->pucch_Config)
           bwp->pucch_Config = calloc(1, sizeof(*bwp->pucch_Config));
-        setup_pucchconfig(ul_dedicated->pucch_Config->choice.setup, bwp->pucch_Config);
+        NR_PUCCH_Config_t *pucch_config = ul_dedicated->pucch_Config->choice.setup;
+        reset_pucch_power_control = pucch_config->pucch_PowerControl && pucch_config->pucch_PowerControl->p0_Set;
+        setup_pucchconfig(pucch_config, bwp->pucch_Config);
       }
+      // The MAC carries only the active PCell/BWP PUCCH adjustment state.
+      if (reset_pucch_power_control && bwp == mac->current_UL_BWP)
+        mac->pucch_power_control_initialized = false;
     }
     if(ul_dedicated->pusch_Config) {
       if (ul_dedicated->pusch_Config->present == NR_SetupRelease_PUSCH_Config_PR_release)
@@ -2084,6 +2090,13 @@ void nr_rrc_mac_start_ra(module_id_t module_id, nr_mac_ra_start_cause_t cause)
   AssertFatal(!ret, "mutex failed %d\n", ret);
 }
 
+static void advance_ul_pusch_config_generation(NR_UE_MAC_INST_t *mac)
+{
+  // All callers hold if_mutex, which also serializes grant construction and target-slot scheduling.
+  if (++mac->ul_pusch_config_generation == 0)
+    mac->ul_pusch_config_generation = 1;
+}
+
 void nr_rrc_mac_config_req_sib1(module_id_t module_id, int cc_idP, NR_SIB1_t *sib1, bool can_start_ra)
 {
   NR_UE_MAC_INST_t *mac = get_mac_inst(module_id);
@@ -2127,6 +2140,7 @@ void nr_rrc_mac_config_req_sib1(module_id_t module_id, int cc_idP, NR_SIB1_t *si
 
   mac->if_module->phy_config_request(&mac->phy_config);
   mac->phy_config.config_req.ntn_config.params_changed = false;
+  advance_ul_pusch_config_generation(mac);
   ret = pthread_mutex_unlock(&mac->if_mutex);
   AssertFatal(!ret, "mutex failed %d\n", ret);
 }
@@ -2922,8 +2936,11 @@ static void configure_BWPs(NR_UE_MAC_INST_t *mac, NR_ServingCellConfig_t *scd)
       }
     }
     if (scd->uplinkConfig->firstActiveUplinkBWP_Id) {
-      mac->current_UL_BWP = get_ul_bwp_structure(mac, *scd->uplinkConfig->firstActiveUplinkBWP_Id, false);
-      AssertFatal(mac->current_UL_BWP, "Couldn't find UL-BWP %ld\n", *scd->uplinkConfig->firstActiveUplinkBWP_Id);
+      NR_UE_UL_BWP_t *next_ul_bwp = get_ul_bwp_structure(mac, *scd->uplinkConfig->firstActiveUplinkBWP_Id, false);
+      AssertFatal(next_ul_bwp, "Couldn't find UL-BWP %ld\n", *scd->uplinkConfig->firstActiveUplinkBWP_Id);
+      if (next_ul_bwp != mac->current_UL_BWP)
+        mac->pucch_power_control_initialized = false;
+      mac->current_UL_BWP = next_ul_bwp;
     }
   }
 }
@@ -3009,6 +3026,7 @@ void nr_rrc_mac_config_req_cg(module_id_t module_id,
 
   if (!mac->dl_config_request || !mac->ul_config_request)
     ue_init_config_request(mac, mac->frame_structure.numb_slots_frame);
+  advance_ul_pusch_config_generation(mac);
   ret = pthread_mutex_unlock(&mac->if_mutex);
   AssertFatal(!ret, "mutex failed %d\n", ret);
 }

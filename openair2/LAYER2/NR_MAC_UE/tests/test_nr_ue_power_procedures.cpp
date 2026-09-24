@@ -5,6 +5,8 @@
 #include "gtest/gtest.h"
 extern "C" {
 #include "openair2/LAYER2/NR_MAC_UE/mac_proto.h"
+#include "NR_PUCCH-Config.h"
+#include "NR_PUCCH-PowerControl.h"
 #include "executables/softmodem-common.h"
 static softmodem_params_t softmodem_params;
 softmodem_params_t* get_softmodem_params(void)
@@ -12,6 +14,7 @@ softmodem_params_t* get_softmodem_params(void)
   return &softmodem_params;
 }
 }
+#include <climits>
 #include <cstdio>
 #include "common/utils/LOG/log.h"
 
@@ -63,6 +66,7 @@ TEST(test_pcmax, test_pucch_max_power)
 TEST(test_pucch_power_state, test_accumulated_delta_pucch)
 {
   NR_UE_MAC_INST_t mac = {0};
+  mac.p_Max = INT_MIN;
   NR_UE_UL_BWP_t current_UL_BWP = {0};
   current_UL_BWP.scs = 1;
   current_UL_BWP.BWPSize = 106;
@@ -71,7 +75,7 @@ TEST(test_pucch_power_state, test_accumulated_delta_pucch)
   mac.current_UL_BWP->pucch_ConfigCommon = &pucch_ConfigCommon;
   mac.nr_band = 20;
   NR_PUCCH_Config_t pucch_Config = {0};
-  struct NR_PUCCH_PowerControl power_config;
+  struct NR_PUCCH_PowerControl power_config = {0};
   pucch_Config.pucch_PowerControl = &power_config;
   mac.G_b_f_c = 0;
   mac.pucch_power_control_initialized = true;
@@ -159,6 +163,192 @@ TEST(test_pucch_power_state, test_accumulated_delta_pucch)
   }
 }
 
+TEST(test_pucch_power_state, default_control_uses_common_power_and_initial_state)
+{
+  NR_UE_MAC_INST_t mac = {0};
+  mac.p_Max = INT_MIN;
+  mac.nr_band = 20;
+  mac.frequency_range = FR1;
+  mac.frame_structure.frame_type = TDD;
+  NR_UE_UL_BWP_t current_UL_BWP = {0};
+  current_UL_BWP.scs = 1;
+  current_UL_BWP.BWPSize = 106;
+  current_UL_BWP.channel_bandwidth = 20;
+  NR_PUCCH_ConfigCommon_t pucch_ConfigCommon = {0};
+  long p0_nominal = 0;
+  pucch_ConfigCommon.p0_nominal = &p0_nominal;
+  current_UL_BWP.pucch_ConfigCommon = &pucch_ConfigCommon;
+  mac.current_UL_BWP = &current_UL_BWP;
+  NR_PUCCH_Config_t explicit_empty_config = {0};
+
+  auto get_default_pucch_power = [](NR_UE_MAC_INST_t *test_mac, NR_PUCCH_Config_t *config, int delta_pucch) {
+    return get_pucch_tx_power_ue(test_mac, 1, config, delta_pucch, 0, 1, 0, 0, 2, 0, 2, 0);
+  };
+
+  mac.pucch_power_control_initialized = true;
+  mac.G_b_f_c = 0;
+  const int zero_common_p0_power = get_default_pucch_power(&mac, NULL, 0);
+
+  p0_nominal = 4;
+  mac.pucch_power_control_initialized = true;
+  mac.G_b_f_c = 0;
+  const int absent_power_control_power = get_default_pucch_power(&mac, NULL, 0);
+  mac.pucch_power_control_initialized = true;
+  mac.G_b_f_c = 0;
+  const int explicit_empty_power_control_power = get_default_pucch_power(&mac, &explicit_empty_config, 0);
+  EXPECT_NE(0, absent_power_control_power);
+  EXPECT_EQ(absent_power_control_power, explicit_empty_power_control_power);
+  EXPECT_EQ(zero_common_p0_power + 4, absent_power_control_power);
+
+  mac.p_Max = -5;
+  mac.pucch_power_control_initialized = true;
+  mac.G_b_f_c = 0;
+  EXPECT_EQ(-5, get_default_pucch_power(&mac, NULL, 0));
+
+  p0_nominal = -20;
+  mac.ra.prach_resources.preamble_power_ramping_cnt = 4;
+  mac.ra.prach_resources.preamble_power_ramping_step = 2;
+  mac.delta_msg2 = 2;
+
+  mac.ra.prach_resources.preamble_power_ramping_cnt = 0;
+  mac.p_Max = 0;
+  mac.G_b_f_c = 0;
+  mac.pucch_power_control_initialized = false;
+  EXPECT_EQ(-15, get_default_pucch_power(&mac, NULL, 0));
+  EXPECT_EQ(2, mac.G_b_f_c);
+
+  mac.ra.prach_resources.preamble_power_ramping_cnt = 4;
+  mac.p_Max = -18;
+  mac.G_b_f_c = 0;
+  mac.pucch_power_control_initialized = false;
+  EXPECT_EQ(-18, get_default_pucch_power(&mac, NULL, 0));
+  EXPECT_EQ(2, mac.G_b_f_c);
+
+  // This test uses mu=1 and one PRB, so the final M_PUCCH term is 3 dB and not part of initial ramp headroom.
+  mac.p_Max = -10;
+  mac.G_b_f_c = 0;
+  mac.pucch_power_control_initialized = false;
+  EXPECT_EQ(-10, get_default_pucch_power(&mac, NULL, 0));
+  EXPECT_EQ(8, mac.G_b_f_c);
+
+  mac.p_Max = 0;
+  mac.G_b_f_c = 0;
+  mac.pucch_power_control_initialized = false;
+  EXPECT_EQ(-6, get_default_pucch_power(&mac, NULL, 3));
+  EXPECT_EQ(11, mac.G_b_f_c);
+}
+
+TEST(test_pucch_power_state, dedicated_single_relation_resets_and_accumulates)
+{
+  NR_UE_MAC_INST_t mac = {0};
+  mac.p_Max = INT_MIN;
+  mac.nr_band = 20;
+  mac.frequency_range = FR1;
+  mac.frame_structure.frame_type = TDD;
+  NR_UE_UL_BWP_t current_ul_bwp = {0};
+  current_ul_bwp.scs = 1;
+  current_ul_bwp.BWPSize = 106;
+  current_ul_bwp.channel_bandwidth = 20;
+  current_ul_bwp.P_CMIN = -100;
+  NR_PUCCH_ConfigCommon_t pucch_config_common = {0};
+  long p0_nominal = 4;
+  pucch_config_common.p0_nominal = &p0_nominal;
+  current_ul_bwp.pucch_ConfigCommon = &pucch_config_common;
+  mac.current_UL_BWP = &current_ul_bwp;
+  mac.mib_ssb = 0;
+
+  NR_P0_PUCCH_t p0 = {0};
+  p0.p0_PUCCH_Id = 1;
+  p0.p0_PUCCH_Value = 0;
+  NR_P0_PUCCH_t *p0_entries[] = {&p0};
+  NR_PUCCH_PowerControl_t::NR_PUCCH_PowerControl__p0_Set p0_set = {0};
+  p0_set.list.array = p0_entries;
+  p0_set.list.count = 1;
+  p0_set.list.size = 1;
+
+  NR_PUCCH_PathlossReferenceRS_t pathloss_reference = {0};
+  pathloss_reference.pucch_PathlossReferenceRS_Id = 0;
+  pathloss_reference.referenceSignal.present = NR_PUCCH_PathlossReferenceRS__referenceSignal_PR_ssb_Index;
+  pathloss_reference.referenceSignal.choice.ssb_Index = mac.mib_ssb;
+  NR_PUCCH_PathlossReferenceRS_t *pathloss_entries[] = {&pathloss_reference};
+  NR_PUCCH_PowerControl_t::NR_PUCCH_PowerControl__pathlossReferenceRSs pathloss_references = {0};
+  pathloss_references.list.array = pathloss_entries;
+  pathloss_references.list.count = 1;
+  pathloss_references.list.size = 1;
+
+  NR_PUCCH_SpatialRelationInfo_t spatial_relation = {0};
+  spatial_relation.pucch_SpatialRelationInfoId = 1;
+  spatial_relation.referenceSignal.present = NR_PUCCH_SpatialRelationInfo__referenceSignal_PR_ssb_Index;
+  spatial_relation.referenceSignal.choice.ssb_Index = mac.mib_ssb;
+  spatial_relation.pucch_PathlossReferenceRS_Id = pathloss_reference.pucch_PathlossReferenceRS_Id;
+  spatial_relation.p0_PUCCH_Id = p0.p0_PUCCH_Id;
+  spatial_relation.closedLoopIndex = NR_PUCCH_SpatialRelationInfo__closedLoopIndex_i0;
+  NR_PUCCH_SpatialRelationInfo_t *spatial_entries[] = {&spatial_relation, &spatial_relation};
+  NR_PUCCH_Config_t::NR_PUCCH_Config__spatialRelationInfoToAddModList spatial_relations = {0};
+  spatial_relations.list.array = spatial_entries;
+  spatial_relations.list.count = 1;
+  spatial_relations.list.size = 1;
+
+  NR_PUCCH_PowerControl_t power_control = {0};
+  power_control.p0_Set = &p0_set;
+  power_control.pathlossReferenceRSs = &pathloss_references;
+  NR_PUCCH_Config_t pucch_config = {0};
+  pucch_config.pucch_PowerControl = &power_control;
+  pucch_config.spatialRelationInfoToAddModList = &spatial_relations;
+
+  auto get_dedicated_power = [&mac, &pucch_config](int delta_pucch) {
+    return get_pucch_tx_power_ue(&mac, 1, &pucch_config, delta_pucch, 0, 1, 0, 0, 2, 0, 1, 0);
+  };
+
+  mac.G_b_f_c = 6;
+  mac.pucch_power_control_initialized = false;
+  EXPECT_EQ(7, get_dedicated_power(0));
+  EXPECT_EQ(0, mac.G_b_f_c);
+  EXPECT_EQ(10, get_dedicated_power(3));
+  EXPECT_EQ(3, mac.G_b_f_c);
+  EXPECT_EQ(9, get_dedicated_power(-1));
+  EXPECT_EQ(2, mac.G_b_f_c);
+  // The deployed value is zero; also prove that a selected nonzero P0 contributes to the request.
+  p0.p0_PUCCH_Value = 2;
+  mac.G_b_f_c = 6;
+  mac.pucch_power_control_initialized = false;
+  EXPECT_EQ(9, get_dedicated_power(0));
+  EXPECT_EQ(0, mac.G_b_f_c);
+  p0.p0_PUCCH_Value = 0;
+
+  const int saved_g = mac.G_b_f_c;
+  spatial_relation.p0_PUCCH_Id = 2;
+  EXPECT_EQ(INT16_MIN, get_dedicated_power(0));
+  EXPECT_EQ(saved_g, mac.G_b_f_c);
+  spatial_relation.p0_PUCCH_Id = p0.p0_PUCCH_Id;
+
+  pathloss_reference.pucch_PathlossReferenceRS_Id = 2;
+  EXPECT_EQ(INT16_MIN, get_dedicated_power(0));
+  EXPECT_EQ(saved_g, mac.G_b_f_c);
+  pathloss_reference.pucch_PathlossReferenceRS_Id = 0;
+
+  spatial_relation.referenceSignal.choice.ssb_Index = 1;
+  EXPECT_EQ(INT16_MIN, get_dedicated_power(0));
+  EXPECT_EQ(saved_g, mac.G_b_f_c);
+  spatial_relation.referenceSignal.choice.ssb_Index = mac.mib_ssb;
+
+  spatial_relation.closedLoopIndex = NR_PUCCH_SpatialRelationInfo__closedLoopIndex_i1;
+  EXPECT_EQ(INT16_MIN, get_dedicated_power(0));
+  EXPECT_EQ(saved_g, mac.G_b_f_c);
+  spatial_relation.closedLoopIndex = NR_PUCCH_SpatialRelationInfo__closedLoopIndex_i0;
+
+  // ASN.1 encodes the only two-state enum value as zero; presence itself is unsupported.
+  long two_states = 0;
+  power_control.twoPUCCH_PC_AdjustmentStates = &two_states;
+  EXPECT_EQ(INT16_MIN, get_dedicated_power(0));
+  EXPECT_EQ(saved_g, mac.G_b_f_c);
+  power_control.twoPUCCH_PC_AdjustmentStates = NULL;
+
+  spatial_relations.list.count = 2;
+  EXPECT_EQ(INT16_MIN, get_dedicated_power(0));
+  EXPECT_EQ(saved_g, mac.G_b_f_c);
+}
+
 TEST(pc_min, check_all_bw_indexes)
 {
   const int bws[] = {5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 60, 70, 80, 90, 100};
@@ -170,6 +360,7 @@ TEST(pc_min, check_all_bw_indexes)
 TEST(pusch_power_control, pusch_power_control_msg3)
 {
   NR_UE_MAC_INST_t mac = {0};
+  mac.p_Max = INT_MIN;
   NR_UE_UL_BWP_t current_UL_BWP = {0};
   current_UL_BWP.scs = 1;
   current_UL_BWP.BWPSize = 106;
@@ -267,6 +458,7 @@ TEST(pusch_power_control, pusch_power_control_msg3)
 TEST(pusch_power_control, pusch_power_data)
 {
   NR_UE_MAC_INST_t mac = {0};
+  mac.p_Max = INT_MIN;
   NR_UE_UL_BWP_t current_UL_BWP = {0};
   current_UL_BWP.scs = 1;
   current_UL_BWP.BWPSize = 106;
@@ -348,6 +540,7 @@ TEST(pusch_power_control, pusch_power_data)
 TEST(pusch_power_control, pusch_power_control_state_initialization)
 {
   NR_UE_MAC_INST_t mac = {0};
+  mac.p_Max = INT_MIN;
   NR_UE_UL_BWP_t current_UL_BWP = {0};
   current_UL_BWP.scs = 1;
   current_UL_BWP.BWPSize = 106;
@@ -394,6 +587,7 @@ TEST(pusch_power_control, pusch_power_control_state_initialization)
 TEST(pusch_power_control, pusch_power_control_state)
 {
   NR_UE_MAC_INST_t mac = {0};
+  mac.p_Max = INT_MIN;
   NR_UE_UL_BWP_t current_UL_BWP = {0};
   current_UL_BWP.scs = 1;
   current_UL_BWP.BWPSize = 106;
@@ -496,6 +690,7 @@ TEST(pusch_power_control, pusch_power_control_state)
 TEST(pusch_power_control, pusch_power_100_rb)
 {
   NR_UE_MAC_INST_t mac = {0};
+  mac.p_Max = INT_MIN;
   NR_UE_UL_BWP_t current_UL_BWP = {0};
   current_UL_BWP.scs = 1;
   current_UL_BWP.BWPSize = 106;
@@ -572,6 +767,7 @@ TEST(test_pcmax, test_non_obvious_bwp_size)
 TEST(test_srs_power, use_pusch_power_adjustment_state)
 {
   NR_UE_MAC_INST_t mac = {0};
+  mac.p_Max = INT_MIN;
   NR_UE_UL_BWP_t current_UL_BWP = {0};
   current_UL_BWP.scs = 1;
   current_UL_BWP.BWPSize = 106;
@@ -599,6 +795,7 @@ TEST(test_srs_power, use_pusch_power_adjustment_state)
 TEST(test_srs_power, no_support_for_two_pusch_power_adjustment_states)
 {
   NR_UE_MAC_INST_t mac = {0};
+  mac.p_Max = INT_MIN;
   NR_UE_UL_BWP_t current_UL_BWP = {0};
   current_UL_BWP.scs = 1;
   current_UL_BWP.BWPSize = 106;
@@ -622,6 +819,7 @@ TEST(test_srs_power, no_support_for_two_pusch_power_adjustment_states)
 TEST(test_srs_power, no_tpc_accumulation)
 {
   NR_UE_MAC_INST_t mac = {0};
+  mac.p_Max = INT_MIN;
   NR_UE_UL_BWP_t current_UL_BWP = {0};
   current_UL_BWP.scs = 1;
   current_UL_BWP.BWPSize = 106;
@@ -655,6 +853,7 @@ TEST(test_srs_power, no_tpc_accumulation)
 TEST(test_srs_power, tpc_accumulation)
 {
   NR_UE_MAC_INST_t mac = {0};
+  mac.p_Max = INT_MIN;
   NR_UE_UL_BWP_t current_UL_BWP = {0};
   current_UL_BWP.scs = 1;
   current_UL_BWP.BWPSize = 106;
@@ -686,6 +885,156 @@ TEST(test_srs_power, tpc_accumulation)
   int more_tx_power =
       get_srs_tx_power_ue(&mac, &srs_resource, &srs_resource_set, delta_srs, is_configured_for_pusch_on_current_bwp);
   EXPECT_EQ(tx_power + delta_srs * 2, more_tx_power);
+}
+
+TEST(pusch_power_control, deferred_tpc_uses_target_slot_order_once)
+{
+  NR_UE_MAC_INST_t mac = {0};
+  mac.p_Max = INT_MIN;
+  mac.nr_band = 78;
+  mac.frame_structure.frame_type = TDD;
+  NR_UE_UL_BWP_t current_UL_BWP = {0};
+  current_UL_BWP.scs = 1;
+  current_UL_BWP.BWPSize = 106;
+  current_UL_BWP.channel_bandwidth = 40;
+  mac.current_UL_BWP = &current_UL_BWP;
+  NR_PUSCH_Config_t pusch_Config = {0};
+  NR_PUSCH_PowerControl pusch_PowerControl = {0};
+  pusch_Config.pusch_PowerControl = &pusch_PowerControl;
+  current_UL_BWP.pusch_Config = &pusch_Config;
+
+  const uint64_t config_generation = 17;
+  mac.ul_pusch_config_generation = config_generation;
+  auto make_pending_pusch = [config_generation](int delta_tpc) {
+    nfapi_nr_ue_pusch_pdu_t pdu = {0};
+    pdu.rb_size = 5;
+    pdu.rb_start = 0;
+    pdu.nr_of_symbols = 3;
+    pdu.ul_dmrs_symb_pos = 1;
+    pdu.dmrs_config_type = pusch_dmrs_type1;
+    pdu.num_dmrs_cdm_grps_no_data = 1;
+    pdu.transform_precoding = NR_PUSCH_Config__transformPrecoder_disabled;
+    pdu.qam_mod_order = 2;
+    pdu.target_code_rate = 6790;
+    pdu.pusch_data.tb_size = 24;
+    pdu.oai_deferred_nb_dmrs_prb = 6;
+    pdu.oai_deferred_tx_power = 1;
+    pdu.oai_deferred_tpc_delta = delta_tpc;
+    pdu.oai_deferred_config_generation = config_generation;
+    return pdu;
+  };
+
+  nfapi_nr_ue_pusch_pdu_t later_target = make_pending_pusch(3);
+  nfapi_nr_ue_pusch_pdu_t earlier_target = make_pending_pusch(-1);
+  NR_UE_MAC_INST_t baseline_mac = mac;
+  const int baseline_power = get_pusch_tx_power_ue(&baseline_mac,
+                                                   earlier_target.rb_size,
+                                                   earlier_target.rb_start,
+                                                   earlier_target.nr_of_symbols,
+                                                   6,
+                                                   0,
+                                                   earlier_target.qam_mod_order,
+                                                   earlier_target.target_code_rate,
+                                                   earlier_target.pusch_uci.beta_offset_csi1,
+                                                   earlier_target.pusch_data.tb_size << 3,
+                                                   0,
+                                                   false,
+                                                   false);
+
+  // The later K2 grant arrived first. Target-slot consumption applies the earlier grant first.
+  EXPECT_TRUE(nr_ue_apply_deferred_pusch_tx_power(&mac, &earlier_target, config_generation));
+  EXPECT_EQ(-1, mac.f_b_f_c);
+  EXPECT_EQ(baseline_power - 1, earlier_target.tx_power);
+  EXPECT_TRUE(nr_ue_apply_deferred_pusch_tx_power(&mac, &later_target, config_generation));
+  EXPECT_EQ(2, mac.f_b_f_c);
+  EXPECT_EQ(baseline_power + 2, later_target.tx_power);
+
+  // The pending flag prevents a Msg3/retransmission-style duplicate from mutating f_b_f_c twice.
+  const int applied_power = earlier_target.tx_power;
+  EXPECT_FALSE(nr_ue_apply_deferred_pusch_tx_power(&mac, &earlier_target, config_generation));
+  EXPECT_EQ(2, mac.f_b_f_c);
+  EXPECT_EQ(applied_power, earlier_target.tx_power);
+
+  // Preserve the Msg3 context too: its first target-slot application initializes PUSCH power state once.
+  NR_UE_MAC_INST_t msg3_mac = mac;
+  msg3_mac.f_b_f_c = 0;
+  msg3_mac.pusch_power_control_initialized = false;
+  nfapi_nr_ue_pusch_pdu_t msg3_target = make_pending_pusch(0);
+  msg3_target.oai_deferred_is_rar_tx_retx = 1;
+  EXPECT_TRUE(nr_ue_apply_deferred_pusch_tx_power(&msg3_mac, &msg3_target, config_generation));
+  EXPECT_TRUE(msg3_mac.pusch_power_control_initialized);
+  const int msg3_power = msg3_target.tx_power;
+  EXPECT_FALSE(nr_ue_apply_deferred_pusch_tx_power(&msg3_mac, &msg3_target, config_generation));
+  EXPECT_EQ(msg3_power, msg3_target.tx_power);
+
+  // A BWP or power configuration change rejects a retained grant before it can mutate f_b_f_c.
+  NR_UE_MAC_INST_t stale_mac = mac;
+  stale_mac.f_b_f_c = 5;
+  stale_mac.ul_pusch_config_generation = config_generation + 1;
+  nfapi_nr_ue_pusch_pdu_t stale_target = make_pending_pusch(3);
+  const int stale_power = stale_target.tx_power;
+  EXPECT_FALSE(nr_ue_apply_deferred_pusch_tx_power(&stale_mac, &stale_target, stale_mac.ul_pusch_config_generation));
+  EXPECT_EQ(5, stale_mac.f_b_f_c);
+  EXPECT_TRUE(stale_target.oai_deferred_tx_power);
+  EXPECT_EQ(stale_power, stale_target.tx_power);
+
+  // Baseline's already-computed zero-TPC value has no deferred state and is left untouched.
+  nfapi_nr_ue_pusch_pdu_t baseline_pdu = make_pending_pusch(0);
+  baseline_pdu.oai_deferred_tx_power = 0;
+  baseline_pdu.tx_power = baseline_power;
+  EXPECT_FALSE(nr_ue_apply_deferred_pusch_tx_power(&mac, &baseline_pdu, config_generation));
+  EXPECT_EQ(2, mac.f_b_f_c);
+  EXPECT_EQ(baseline_power, baseline_pdu.tx_power);
+}
+
+TEST(pusch_power_control, unavailable_pathloss_preserves_deferred_tpc_until_fresh)
+{
+  NR_UE_MAC_INST_t mac = {0};
+  mac.p_Max = INT_MIN;
+  mac.nr_band = 78;
+  mac.frequency_range = FR1;
+  mac.frame_structure.frame_type = TDD;
+  NR_UE_UL_BWP_t current_UL_BWP = {0};
+  current_UL_BWP.scs = 1;
+  current_UL_BWP.BWPSize = 106;
+  current_UL_BWP.channel_bandwidth = 40;
+  mac.current_UL_BWP = &current_UL_BWP;
+  NR_PUSCH_Config_t pusch_Config = {0};
+  NR_PUSCH_PowerControl pusch_PowerControl = {0};
+  pusch_Config.pusch_PowerControl = &pusch_PowerControl;
+  current_UL_BWP.pusch_Config = &pusch_Config;
+
+  const uint64_t config_generation = 3;
+  mac.ul_pusch_config_generation = config_generation;
+  nfapi_nr_ue_pusch_pdu_t pdu = {0};
+  pdu.rb_size = 5;
+  pdu.rb_start = 0;
+  pdu.nr_of_symbols = 3;
+  pdu.ul_dmrs_symb_pos = 1;
+  pdu.dmrs_config_type = pusch_dmrs_type1;
+  pdu.num_dmrs_cdm_grps_no_data = 1;
+  pdu.transform_precoding = NR_PUSCH_Config__transformPrecoder_disabled;
+  pdu.qam_mod_order = 2;
+  pdu.target_code_rate = 6790;
+  pdu.pusch_data.tb_size = 24;
+  pdu.oai_deferred_nb_dmrs_prb = 6;
+  pdu.oai_deferred_tx_power = 1;
+  pdu.oai_deferred_tpc_delta = 1;
+  pdu.oai_deferred_config_generation = config_generation;
+
+  mac.f_b_f_c = 4;
+  mac.ssb_measurements[0].ssb_rsrp_dBm = INT_MIN;
+  const int tx_power_before = pdu.tx_power;
+  EXPECT_FALSE(nr_ue_apply_deferred_pusch_tx_power(&mac, &pdu, config_generation));
+  EXPECT_EQ(4, mac.f_b_f_c);
+  EXPECT_TRUE(pdu.oai_deferred_tx_power);
+  EXPECT_EQ(tx_power_before, pdu.tx_power);
+
+  mac.phy_config.config_req.ssb_config.ss_pbch_power = 0;
+  mac.ssb_measurements[0].ssb_rsrp_dBm = 0;
+  EXPECT_TRUE(nr_ue_apply_deferred_pusch_tx_power(&mac, &pdu, config_generation));
+  EXPECT_EQ(5, mac.f_b_f_c);
+  EXPECT_FALSE(pdu.oai_deferred_tx_power);
 }
 
 int main(int argc, char** argv)

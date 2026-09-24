@@ -11,6 +11,7 @@
 #include "PHY/defs_nr_UE.h"
 #include "PHY/INIT/nr_phy_init.h"
 #include "common/utils/LOG/log.h"
+#include "common/utils/LOG/flight_recorder.h"
 #include "PHY/sse_intrin.h"
 #include "SCHED_NR_UE/defs.h"
 #include "PHY/NR_REFSIG/sss_nr.h"
@@ -24,9 +25,9 @@
 #define K1 ((long long int) 512)
 #define K2 ((long long int) (1024-K1))
 
-//#define DEBUG_MEAS_RRC
-//#define DEBUG_MEAS_UE
-//#define DEBUG_RANK_EST
+// #define DEBUG_MEAS_RRC
+// #define DEBUG_MEAS_UE
+// #define DEBUG_RANK_EST
 
 void nr_ue_measurements(PHY_VARS_NR_UE *ue,
                         const UE_nr_rxtx_proc_t *proc,
@@ -62,7 +63,7 @@ void nr_ue_measurements(PHY_VARS_NR_UE *ue,
     for (aarx = 0; aarx < frame_parms->nb_antennas_rx; aarx++) {
       int rx_power = 0;
       for (aatx = 0; aatx < frame_parms->nb_antenna_ports_gNB; aatx++) {
-        const int z = signal_energy_nodc((c16_t*)&dl_ch_estimates[gNB_id][ch_offset], number_rbs * NR_NB_SC_PER_RB);
+        const int z = signal_energy_nodc((c16_t *)&dl_ch_estimates[gNB_id][ch_offset], number_rbs * NR_NB_SC_PER_RB);
         rx_spatial_power[gNB_id][aatx][aarx] = z;
         if (rx_spatial_power[gNB_id][aatx][aarx] < 0)
           rx_spatial_power[gNB_id][aatx][aarx] = 0;
@@ -71,32 +72,66 @@ void nr_ue_measurements(PHY_VARS_NR_UE *ue,
       }
       ue->measurements.rx_power_tot[gNB_id] += rx_power;
     }
-    ue->measurements.rx_power_tot_dB[gNB_id] =  dB_fixed(ue->measurements.rx_power_tot[gNB_id]);
+    ue->measurements.rx_power_tot_dB[gNB_id] = dB_fixed(ue->measurements.rx_power_tot[gNB_id]);
+  }
+
+  if (proc->rx_gain_context.present) {
+    double rx_gain_db = 0;
+    const bool gain_valid = nr_ue_sample_gain(proc, 0.0, &rx_gain_db);
+    const bool generation_current = nr_ue_gain_generation_current(&ue->measurements, proc);
+    nr_ue_noise_snapshot_t noise_snapshot = {0};
+    const bool noise_snapshot_available = nr_ue_noise_snapshot_load(&ue->measurements, &noise_snapshot);
+    const bool report_valid = gain_valid && generation_current && noise_snapshot_available && noise_snapshot.valid
+                              && noise_snapshot.generation == proc->rx_gain_context.generation;
+
+    for (gNB_id = 0; gNB_id < ue->n_connected_gNB; gNB_id++) {
+      if (report_valid) {
+        const short noise_power_avg_dB = dB_fixed(noise_snapshot.n0_power_avg);
+        ue->measurements.wideband_cqi_tot[gNB_id] = ue->measurements.rx_power_tot_dB[gNB_id] - noise_power_avg_dB;
+        ue->measurements.rx_rssi_dBm[gNB_id] =
+            (short)lround(ue->measurements.rx_power_tot_dB[gNB_id] + 30 - SQ15_SQUARED_NORM_FACTOR_DB - rx_gain_db
+                          - dB_fixed(ue->frame_parms.ofdm_symbol_size));
+        LOG_D(PHY,
+              "[gNB %d] Slot %d, RSSI %d dB (%d dBm/RE), WBandCQI %d dB, rxPwr %d, n0PwrAvg %u\n",
+              gNB_id,
+              slot,
+              ue->measurements.rx_power_tot_dB[gNB_id],
+              ue->measurements.rx_rssi_dBm[gNB_id],
+              ue->measurements.wideband_cqi_tot[gNB_id],
+              ue->measurements.rx_power_tot[gNB_id],
+              noise_snapshot.n0_power_avg);
+      } else {
+        LOG_D(PHY, "[gNB %d] Slot %d, RSSI and WBandCQI unavailable (RX gain or PBCH noise snapshot invalid)\n", gNB_id, slot);
+      }
+    }
+    return;
   }
 
   // filter to remove jitter
   if (ue->init_averaging == 0) {
-
     for (gNB_id = 0; gNB_id < ue->n_connected_gNB; gNB_id++)
-      ue->measurements.rx_power_avg[gNB_id] = (int)((K1 * ue->measurements.rx_power_avg[gNB_id] + K2 * ue->measurements.rx_power_tot[gNB_id]) >> 10);
+      ue->measurements.rx_power_avg[gNB_id] =
+          (int)((K1 * ue->measurements.rx_power_avg[gNB_id] + K2 * ue->measurements.rx_power_tot[gNB_id]) >> 10);
 
     ue->measurements.n0_power_avg = (int)((K1 * ue->measurements.n0_power_avg + K2 * ue->measurements.n0_power_tot) >> 10);
 
-    LOG_D(PHY, "Noise Power Computation: K1 %lld K2 %lld n0 avg %u n0 tot %u\n", K1, K2, ue->measurements.n0_power_avg, ue->measurements.n0_power_tot);
+    LOG_D(PHY,
+          "Noise Power Computation: K1 %lld K2 %lld n0 avg %u n0 tot %u\n",
+          K1,
+          K2,
+          ue->measurements.n0_power_avg,
+          ue->measurements.n0_power_tot);
 
   } else {
-
     for (gNB_id = 0; gNB_id < ue->n_connected_gNB; gNB_id++)
       ue->measurements.rx_power_avg[gNB_id] = ue->measurements.rx_power_tot[gNB_id];
 
     ue->measurements.n0_power_avg = ue->measurements.n0_power_tot;
     ue->init_averaging = 0;
-
   }
 
   for (gNB_id = 0; gNB_id < ue->n_connected_gNB; gNB_id++) {
-
-    ue->measurements.rx_power_avg_dB[gNB_id] = dB_fixed( ue->measurements.rx_power_avg[gNB_id]);
+    ue->measurements.rx_power_avg_dB[gNB_id] = dB_fixed(ue->measurements.rx_power_avg[gNB_id]);
     ue->measurements.n0_power_avg_dB = dB_fixed(ue->measurements.n0_power_avg);
     ue->measurements.wideband_cqi_tot[gNB_id] = ue->measurements.rx_power_tot_dB[gNB_id] - ue->measurements.n0_power_tot_dB;
     ue->measurements.wideband_cqi_avg[gNB_id] = ue->measurements.rx_power_avg_dB[gNB_id] - ue->measurements.n0_power_avg_dB;
@@ -105,14 +140,15 @@ void nr_ue_measurements(PHY_VARS_NR_UE *ue,
         - ((int)openair0_cfg_g[ue->rf_map.card].rx_gain[0] - (int)openair0_cfg_g[ue->rf_map.card].rx_gain_offset[0])
         - dB_fixed(ue->frame_parms.ofdm_symbol_size);
 
-    LOG_D(PHY, "[gNB %d] Slot %d, RSSI %d dB (%d dBm/RE), WBandCQI %d dB, rxPwrAvg %d, n0PwrAvg %d\n",
-      gNB_id,
-      slot,
-      ue->measurements.rx_power_avg_dB[gNB_id],
-      ue->measurements.rx_rssi_dBm[gNB_id],
-      ue->measurements.wideband_cqi_avg[gNB_id],
-      ue->measurements.rx_power_avg[gNB_id],
-      ue->measurements.n0_power_tot);
+    LOG_D(PHY,
+          "[gNB %d] Slot %d, RSSI %d dB (%d dBm/RE), WBandCQI %d dB, rxPwrAvg %d, n0PwrAvg %d\n",
+          gNB_id,
+          slot,
+          ue->measurements.rx_power_avg_dB[gNB_id],
+          ue->measurements.rx_rssi_dBm[gNB_id],
+          ue->measurements.wideband_cqi_avg[gNB_id],
+          ue->measurements.rx_power_avg[gNB_id],
+          ue->measurements.n0_power_tot);
   }
 }
 
@@ -178,53 +214,207 @@ static void send_neighbor_cell_meas(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t 
     ue->if_inst->meas_ind(ue->Mod_id, proc->gNB_id, Nid_cell, false, true, rsrp_dBm);
 }
 
-// This function implements:
-// - SS reference signal received power (SS-RSRP) as per clause 5.1.1 of 3GPP TS 38.215 version 16.3.0 Release 16
-// - no Layer 3 filtering implemented (no filterCoefficient provided from RRC)
-// Todo:
-// - Layer 3 filtering according to clause 5.5.3.2 of 3GPP TS 38.331 version 16.2.0 Release 16
-// Measurement units:
-// - RSRP:    W (dBW)
-// - RX Gain  dB
+/* Two bounded records at the actual qualification point. Acceptance means PHY
+ * eligible for reporting; it does not acknowledge a MAC callback/table update. */
+static int64_t ssb_measurement_milli(double value, bool valid)
+{
+  const double scaled = value * 1000.0;
+  return valid && isfinite(scaled) && scaled > (double)INT64_MIN && scaled < (double)INT64_MAX ? llround(scaled) : INT64_MIN;
+}
+
+static void record_ssb_measurement(const UE_nr_rxtx_proc_t *proc,
+                                   int ssb_index,
+                                   uint32_t raw_rsrp,
+                                   bool gain_eligible,
+                                   bool generation_current,
+                                   bool noise_checked,
+                                   bool noise_current,
+                                   bool accepted,
+                                   bool pbch_checked,
+                                   bool pbch_success,
+                                   bool confirmation_required,
+                                   int rsrp_dbm)
+{
+  if (!flight_recorder_enabled())
+    return;
+  const radio_gain_sample_context_t *context = &proc->rx_gain_context;
+  const int64_t flags = (int64_t)context->present | ((int64_t)context->valid << 1) | ((int64_t)context->level_valid << 2)
+                        | ((int64_t)generation_current << 3) | ((int64_t)gain_eligible << 4) | ((int64_t)noise_checked << 5)
+                        | ((int64_t)noise_current << 6) | ((int64_t)accepted << 7) | ((int64_t)pbch_checked << 8)
+                        | ((int64_t)pbch_success << 9) | ((int64_t)confirmation_required << 10);
+  const int64_t generation = context->present ? (int64_t)context->generation : 0;
+  const int64_t gain_mdb = ssb_measurement_milli(context->rx_gain_db, context->present && context->valid);
+  const int64_t peak_mdb = context->level_valid && context->peak_component_fs > 0
+                               ? ssb_measurement_milli(20 * log10(context->peak_component_fs), true)
+                               : INT64_MIN;
+  const uint64_t counts = ((uint64_t)context->near_rail_components << 32) | context->sampled_components;
+  flight_recorder_emit(FLIGHT_EVENT_UE_SSB_MEASUREMENT,
+                       (int64_t)proc->frame_rx * 1000 + proc->nr_slot_rx,
+                       ssb_index,
+                       generation,
+                       raw_rsrp,
+                       accepted ? rsrp_dbm : INT64_MIN,
+                       flags);
+  flight_recorder_emit(FLIGHT_EVENT_UE_SSB_MEASUREMENT_CONTEXT,
+                       generation,
+                       context->present ? context->first_sample : INT64_MIN,
+                       context->present ? context->end_sample : INT64_MIN,
+                       gain_mdb,
+                       peak_mdb,
+                       (int64_t)counts);
+}
+
+/* The stage implements SS-RSRP according to 38.215 §5.1.1. It retains only
+ * scalar results from the PBCH middle symbol; PBCH confirmation owns the
+ * serving-state publication in managed mode. */
+static void commit_ssb_rsrp_measurement(PHY_VARS_NR_UE *ue, const nr_ue_ssb_measurement_candidate_t *candidate)
+{
+  if (!candidate->eligible)
+    return;
+  ue->measurements.ssb_rsrp_dBm[candidate->ssb_index] = candidate->rsrp_dBm;
+  ue->measurements.ssb_sinr_dB[candidate->ssb_index] = candidate->sinr_dB;
+  LOG_D(PHY,
+        "[UE %d] ssb %d SS-RSRP: %d dBm/RE (%f dB/RE), SS-SINR: %f dB\n",
+        ue->Mod_id,
+        candidate->ssb_index,
+        candidate->rsrp_dBm,
+        10 * log10(candidate->raw_sss_mean_power),
+        candidate->sinr_dB);
+}
+
+bool nr_ue_select_managed_ssb_candidate(const nr_ue_ssb_measurement_candidate_t *candidate,
+                                        int serving_ssb_index,
+                                        int serving_rsrp_dBm,
+                                        bool serving_pbch_failed)
+{
+  if (candidate == NULL || !candidate->staged)
+    return false;
+
+  if (candidate->ssb_index == serving_ssb_index)
+    return true;
+
+  return candidate->eligible && (serving_pbch_failed || candidate->rsrp_dBm > serving_rsrp_dBm);
+}
+
+bool nr_ue_managed_ssb_fallback_after_decode(bool serving_pbch_failed, bool decoded_serving, bool pbch_success)
+{
+  return !pbch_success && (serving_pbch_failed || decoded_serving);
+}
+
+void nr_ue_stage_ssb_rsrp_measurement(PHY_VARS_NR_UE *ue,
+                                      int ssb_index,
+                                      const UE_nr_rxtx_proc_t *proc,
+                                      uint32_t raw_sss_mean_power,
+                                      nr_ue_ssb_measurement_candidate_t *candidate)
+{
+  if (candidate == NULL)
+    return;
+  *candidate = (nr_ue_ssb_measurement_candidate_t){
+      .staged = true,
+      .ssb_index = ssb_index,
+      .raw_sss_mean_power = raw_sss_mean_power,
+  };
+
+  const NR_DL_FRAME_PARMS *fp = &ue->frame_parms;
+  const float rsrp_db_per_re = 10 * log10(raw_sss_mean_power);
+  openair0_config_t *cfg = &openair0_cfg_g[ue->rf_map.card];
+  const double fallback_gain_db = (int)cfg->rx_gain[0] - (int)cfg->rx_gain_offset[0];
+  double rx_gain_db = 0;
+  candidate->gain_eligible = nr_ue_sample_gain(proc, fallback_gain_db, &rx_gain_db);
+  candidate->generation_current = nr_ue_gain_generation_current(&ue->measurements, proc);
+  if (!candidate->gain_eligible || !candidate->generation_current)
+    return;
+
+  nr_ue_noise_snapshot_t noise_snapshot = {0};
+  if (proc->rx_gain_context.present) {
+    candidate->noise_checked = true;
+    candidate->noise_current = nr_ue_noise_snapshot_load(&ue->measurements, &noise_snapshot) && noise_snapshot.valid
+                               && noise_snapshot.generation == proc->rx_gain_context.generation;
+    if (!candidate->noise_current)
+      return;
+  }
+  const unsigned int n0_power_avg = proc->rx_gain_context.present ? noise_snapshot.n0_power_avg : ue->measurements.n0_power_avg;
+
+  if (raw_sss_mean_power == 0)
+    candidate->rsrp_dBm = -200; // lower than any value to be reported per Table 10.1.6.1-1 of 38.133
+  else if (!proc->rx_gain_context.present)
+    candidate->rsrp_dBm = rsrp_db_per_re + 30 - SQ15_SQUARED_NORM_FACTOR_DB
+                          - ((int)cfg->rx_gain[0] - (int)cfg->rx_gain_offset[0]) - dB_fixed(fp->ofdm_symbol_size);
+  else
+    candidate->rsrp_dBm =
+        (int)lround(rsrp_db_per_re + 30 - SQ15_SQUARED_NORM_FACTOR_DB - rx_gain_db - dB_fixed(fp->ofdm_symbol_size));
+
+  const uint32_t signal_pwr = raw_sss_mean_power > n0_power_avg ? raw_sss_mean_power - n0_power_avg : 0;
+  const int snr_times10 = dB_fixed_x10(signal_pwr) - dB_fixed_x10(n0_power_avg);
+  candidate->sinr_dB = snr_times10 / 10.0;
+  candidate->eligible = true;
+}
+
+void nr_ue_finalize_staged_ssb_rsrp_measurement(PHY_VARS_NR_UE *ue,
+                                                 const UE_nr_rxtx_proc_t *proc,
+                                                 const nr_ue_ssb_measurement_candidate_t *candidate,
+                                                 bool pbch_checked,
+                                                 bool pbch_success)
+{
+  if (candidate == NULL || !candidate->staged)
+    return;
+  const bool accepted = candidate->eligible && pbch_checked && pbch_success;
+  if (accepted)
+    commit_ssb_rsrp_measurement(ue, candidate);
+  record_ssb_measurement(proc,
+                         candidate->ssb_index,
+                         candidate->raw_sss_mean_power,
+                         candidate->gain_eligible,
+                         candidate->generation_current,
+                         candidate->noise_checked,
+                         candidate->noise_current,
+                         accepted,
+                         pbch_checked,
+                         pbch_success,
+                         true,
+                         candidate->rsrp_dBm);
+  if (accepted)
+    send_ssb_rsrp_meas(ue, proc, ue->frame_parms.Nid_cell, candidate->rsrp_dBm, candidate->ssb_index, candidate->sinr_dB);
+}
+
 void nr_ue_ssb_rsrp_measurements(PHY_VARS_NR_UE *ue,
                                  int ssb_index,
                                  const UE_nr_rxtx_proc_t *proc,
                                  const c16_t rxdataF[ue->frame_parms.nb_antennas_rx][ue->frame_parms.ofdm_symbol_size])
 {
-  const NR_DL_FRAME_PARMS *fp = &ue->frame_parms;
+  const uint32_t raw_sss_mean_power = nr_ue_calculate_ssb_rsrp(&ue->frame_parms, rxdataF, ue->frame_parms.ssb_start_subcarrier);
+  nr_ue_ssb_measurement_candidate_t candidate;
+  nr_ue_stage_ssb_rsrp_measurement(ue, ssb_index, proc, raw_sss_mean_power, &candidate);
+  if (!candidate.eligible) {
+    record_ssb_measurement(proc,
+                           candidate.ssb_index,
+                           candidate.raw_sss_mean_power,
+                           candidate.gain_eligible,
+                           candidate.generation_current,
+                           candidate.noise_checked,
+                           candidate.noise_current,
+                           false,
+                           false,
+                           false,
+                           false,
+                           0);
+    return;
+  }
 
-  uint32_t rsrp_avg = nr_ue_calculate_ssb_rsrp(fp, rxdataF, fp->ssb_start_subcarrier);
-  float rsrp_db_per_re = 10 * log10(rsrp_avg);
-
-  openair0_config_t *cfg = &openair0_cfg_g[ue->rf_map.card];
-
-  if (rsrp_avg == 0)
-    ue->measurements.ssb_rsrp_dBm[ssb_index] = -200; // lower than any value to be reported per Table 10.1.6.1-1 of 38.133
-  else
-    ue->measurements.ssb_rsrp_dBm[ssb_index] = rsrp_db_per_re + 30 - SQ15_SQUARED_NORM_FACTOR_DB
-                                               - ((int)cfg->rx_gain[0] - (int)cfg->rx_gain_offset[0])
-                                               - dB_fixed(fp->ofdm_symbol_size);
-
-  // to obtain non-integer dB value with a resoluion of 0.5dB
-  uint32_t signal_pwr = rsrp_avg > ue->measurements.n0_power_avg ? rsrp_avg - ue->measurements.n0_power_avg : 0;
-  int SNRtimes10 = dB_fixed_x10(signal_pwr) - dB_fixed_x10(ue->measurements.n0_power_avg);
-  ue->measurements.ssb_sinr_dB[ssb_index] = SNRtimes10 / 10.0;
-
-  LOG_D(PHY,
-        "[UE %d] ssb %d SS-RSRP: %d dBm/RE (%f dB/RE), SS-SINR: %f dB\n",
-        ue->Mod_id,
-        ssb_index,
-        ue->measurements.ssb_rsrp_dBm[ssb_index],
-        rsrp_db_per_re,
-        ue->measurements.ssb_sinr_dB[ssb_index]);
-
-  // Send SS measurements to MAC
-  send_ssb_rsrp_meas(ue,
-                     proc,
-                     ue->frame_parms.Nid_cell,
-                     ue->measurements.ssb_rsrp_dBm[ssb_index],
-                     ssb_index,
-                     ue->measurements.ssb_sinr_dB[ssb_index]);
+  commit_ssb_rsrp_measurement(ue, &candidate);
+  record_ssb_measurement(proc,
+                         candidate.ssb_index,
+                         candidate.raw_sss_mean_power,
+                         candidate.gain_eligible,
+                         candidate.generation_current,
+                         candidate.noise_checked,
+                         candidate.noise_current,
+                         true,
+                         false,
+                         false,
+                         false,
+                         candidate.rsrp_dBm);
+  send_ssb_rsrp_meas(ue, proc, ue->frame_parms.Nid_cell, candidate.rsrp_dBm, candidate.ssb_index, candidate.sinr_dB);
 }
 
 static void reset_neighboring_cell_info(fapi_nr_neighboring_cell_t *neighbor_cell,
@@ -551,10 +741,23 @@ static void do_neighboring_cell_measurements(UE_nr_rxtx_proc_t *proc, PHY_VARS_N
     uint8_t sss_symbol = SSS_SYMBOL_NB - PSS_SYMBOL_NB;
     neighboring_cell_info->ssb_rsrp = nr_ue_calculate_ssb_rsrp(frame_parms, rxdataF[sss_symbol], frame_parms->ssb_start_subcarrier);
 
-    neighboring_cell_info->ssb_rsrp_dBm =
-        10 * log10(neighboring_cell_info->ssb_rsrp) + 30 - SQ15_SQUARED_NORM_FACTOR_DB
-        - ((int)openair0_cfg_g[ue->rf_map.card].rx_gain[0] - (int)openair0_cfg_g[ue->rf_map.card].rx_gain_offset[0])
-        - dB_fixed(ue->frame_parms.ofdm_symbol_size);
+    openair0_config_t *cfg = &openair0_cfg_g[ue->rf_map.card];
+    const double fallback_gain_db = (int)cfg->rx_gain[0] - (int)cfg->rx_gain_offset[0];
+    double rx_gain_db = 0;
+    const bool gain_valid = nr_ue_sample_gain(proc, fallback_gain_db, &rx_gain_db);
+    const bool generation_current = nr_ue_gain_generation_current(&ue->measurements, proc);
+    if (!gain_valid || !generation_current)
+      continue;
+
+    if (!proc->rx_gain_context.present) {
+      neighboring_cell_info->ssb_rsrp_dBm = 10 * log10(neighboring_cell_info->ssb_rsrp) + 30 - SQ15_SQUARED_NORM_FACTOR_DB
+                                            - ((int)cfg->rx_gain[0] - (int)cfg->rx_gain_offset[0])
+                                            - dB_fixed(ue->frame_parms.ofdm_symbol_size);
+    } else {
+      neighboring_cell_info->ssb_rsrp_dBm =
+          (int)lround(10 * log10(neighboring_cell_info->ssb_rsrp) + 30 - SQ15_SQUARED_NORM_FACTOR_DB - rx_gain_db
+                      - dB_fixed(ue->frame_parms.ofdm_symbol_size));
+    }
 
     // Send SS measurements to RRC directly
     send_neighbor_cell_meas(ue, proc, neighbor_cell->Nid_cell, neighboring_cell_info->ssb_rsrp_dBm);
@@ -598,8 +801,10 @@ void nr_ue_rrc_measurements(PHY_VARS_NR_UE *ue,
   const uint8_t k_right = 183;
   const uint8_t k_length = 8;
   unsigned int ssb_offset = ue->frame_parms.ssb_start_subcarrier;
-  double rx_gain = openair0_cfg_g[ue->rf_map.card].rx_gain[0];
-  double rx_gain_offset = openair0_cfg_g[ue->rf_map.card].rx_gain_offset[0];
+  openair0_config_t *cfg = &openair0_cfg_g[ue->rf_map.card];
+  const double fallback_gain_db = (int)cfg->rx_gain[0] - (int)cfg->rx_gain_offset[0];
+  double rx_gain_db = 0;
+  const bool gain_valid = nr_ue_sample_gain(proc, fallback_gain_db, &rx_gain_db);
 
   ue->measurements.n0_power_tot = 0;
 
@@ -613,9 +818,9 @@ void nr_ue_rrc_measurements(PHY_VARS_NR_UE *ue,
     for (int k = k_left; k < k_left + k_length; k++) {
       int re = ssb_offset + k;
 
-      #ifdef DEBUG_MEAS_RRC
-      LOG_I(PHY, "In %s -rxF_sss %d %d\n", __FUNCTION__, rxF_sss[re*2], rxF_sss[re*2 + 1]);
-      #endif
+#ifdef DEBUG_MEAS_RRC
+      LOG_I(PHY, "In %s -rxF_sss %d %d\n", __FUNCTION__, rxF_sss[re * 2], rxF_sss[re * 2 + 1]);
+#endif
 
       n0_power += (((int32_t)rxF_sss[re * 2] * rxF_sss[re * 2]) + ((int32_t)rxF_sss[re * 2 + 1] * rxF_sss[re * 2 + 1]));
     }
@@ -624,11 +829,11 @@ void nr_ue_rrc_measurements(PHY_VARS_NR_UE *ue,
     for (int k = k_right; k < k_right + k_length; k++) {
       int re = ssb_offset + k;
 
-      #ifdef DEBUG_MEAS_RRC
-      LOG_I(PHY, "In %s +rxF_sss %d %d\n", __FUNCTION__, rxF_sss[re*2], rxF_sss[re*2 + 1]);
-      #endif
+#ifdef DEBUG_MEAS_RRC
+      LOG_I(PHY, "In %s +rxF_sss %d %d\n", __FUNCTION__, rxF_sss[re * 2], rxF_sss[re * 2 + 1]);
+#endif
 
-      n0_power += (((int32_t)rxF_sss[re * 2]*rxF_sss[re * 2]) + ((int32_t)rxF_sss[re * 2 + 1] * rxF_sss[re * 2 + 1]));
+      n0_power += (((int32_t)rxF_sss[re * 2] * rxF_sss[re * 2]) + ((int32_t)rxF_sss[re * 2 + 1] * rxF_sss[re * 2 + 1]));
     }
 
     n0_power /= 2 * k_length;
@@ -636,22 +841,66 @@ void nr_ue_rrc_measurements(PHY_VARS_NR_UE *ue,
   }
 
   ue->measurements.n0_power_tot_dB = dB_fixed(ue->measurements.n0_power_tot);
+  if (proc->rx_gain_context.present) {
+    const uint64_t generation = proc->rx_gain_context.generation;
 
-  #ifdef DEBUG_MEAS_RRC
+    if (gain_valid) {
+      nr_ue_noise_snapshot_t previous_snapshot = {0};
+      const bool have_previous_average = nr_ue_noise_snapshot_load(&ue->measurements, &previous_snapshot) && previous_snapshot.valid
+                                         && previous_snapshot.generation == generation;
+      const unsigned int n0_power_avg =
+          have_previous_average ? (unsigned int)((K1 * previous_snapshot.n0_power_avg + K2 * ue->measurements.n0_power_tot) >> 10)
+                                : ue->measurements.n0_power_tot;
+      ue->measurements.n0_power_avg = n0_power_avg;
+      ue->measurements.n0_power_avg_dB = dB_fixed(n0_power_avg);
+      nr_ue_noise_snapshot_publish(&ue->measurements, generation, n0_power_avg, true);
+    } else {
+      nr_ue_noise_snapshot_publish(&ue->measurements, generation, ue->measurements.n0_power_tot, false);
+    }
+  }
+
+#ifdef DEBUG_MEAS_RRC
   const int psd_awgn = -174;
   const int scs = 15000 * (1 << ue->frame_parms.numerology_index);
-  const int nf_usrp = ue->measurements.n0_power_tot_dB + 3 + 30 - ((int)rx_gain - (int)rx_gain_offset) - SQ15_SQUARED_NORM_FACTOR_DB - (psd_awgn + dB_fixed(scs) + dB_fixed(ue->frame_parms.ofdm_symbol_size));
-  LOG_D(PHY, "In [%s][slot:%d] NF USRP %d dB\n", __FUNCTION__, slot, nf_usrp);
-  #endif
+  if (gain_valid) {
+    if (!proc->rx_gain_context.present) {
+      const int nf_usrp = ue->measurements.n0_power_tot_dB + 3 + 30 - ((int)cfg->rx_gain[0] - (int)cfg->rx_gain_offset[0])
+                          - SQ15_SQUARED_NORM_FACTOR_DB - (psd_awgn + dB_fixed(scs) + dB_fixed(ue->frame_parms.ofdm_symbol_size));
+      LOG_D(PHY, "In [%s][slot:%d] NF USRP %d dB\n", __FUNCTION__, slot, nf_usrp);
+    } else {
+      const double nf_usrp = ue->measurements.n0_power_tot_dB + 3 + 30 - rx_gain_db - SQ15_SQUARED_NORM_FACTOR_DB
+                             - (psd_awgn + dB_fixed(scs) + dB_fixed(ue->frame_parms.ofdm_symbol_size));
+      LOG_D(PHY, "In [%s][slot:%d] NF USRP %.1f dB\n", __FUNCTION__, slot, nf_usrp);
+    }
+  }
+#endif
 
-  LOG_D(PHY,
-        "In [%s][slot:%d] Noise Level %d (digital level %d dB, noise power spectral density %f dBm/RE)\n",
-        __FUNCTION__,
-        slot,
-        ue->measurements.n0_power_tot,
-        ue->measurements.n0_power_tot_dB,
-        ue->measurements.n0_power_tot_dB + 30 - SQ15_SQUARED_NORM_FACTOR_DB - dB_fixed(ue->frame_parms.ofdm_symbol_size)
-            - ((int)rx_gain - (int)rx_gain_offset));
+  if (!gain_valid) {
+    LOG_D(PHY,
+          "In [%s][slot:%d] Noise Level %d (digital level %d dB, dBm/RE unavailable: invalid RX gain context)\n",
+          __FUNCTION__,
+          slot,
+          ue->measurements.n0_power_tot,
+          ue->measurements.n0_power_tot_dB);
+  } else if (!proc->rx_gain_context.present) {
+    LOG_D(PHY,
+          "In [%s][slot:%d] Noise Level %d (digital level %d dB, noise power spectral density %f dBm/RE)\n",
+          __FUNCTION__,
+          slot,
+          ue->measurements.n0_power_tot,
+          ue->measurements.n0_power_tot_dB,
+          ue->measurements.n0_power_tot_dB + 30 - SQ15_SQUARED_NORM_FACTOR_DB - dB_fixed(ue->frame_parms.ofdm_symbol_size)
+              - ((int)cfg->rx_gain[0] - (int)cfg->rx_gain_offset[0]));
+  } else {
+    LOG_D(PHY,
+          "In [%s][slot:%d] Noise Level %d (digital level %d dB, noise power spectral density %f dBm/RE)\n",
+          __FUNCTION__,
+          slot,
+          ue->measurements.n0_power_tot,
+          ue->measurements.n0_power_tot_dB,
+          ue->measurements.n0_power_tot_dB + 30 - SQ15_SQUARED_NORM_FACTOR_DB - dB_fixed(ue->frame_parms.ofdm_symbol_size)
+              - rx_gain_db);
+  }
 }
 
 // This function implements:
