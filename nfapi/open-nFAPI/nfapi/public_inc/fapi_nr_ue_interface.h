@@ -362,8 +362,13 @@ typedef struct
   nfapi_nr_ue_dfts_ofdm_t dfts_ofdm;
   //beamforming
   nfapi_nr_ue_ul_beamforming_t beamforming;
-  //OAI specific
+  // OAI-specific. The deferred state stays in the private UE slot queue and is never serialized in nFAPI.
   int16_t tx_power;
+  uint8_t oai_deferred_tx_power;
+  uint8_t oai_deferred_is_rar_tx_retx;
+  int8_t oai_deferred_tpc_delta;
+  uint16_t oai_deferred_nb_dmrs_prb;
+  uint64_t oai_deferred_config_generation;
   fapi_nr_tx_request_body_t tx_request_body;
 } nfapi_nr_ue_pusch_pdu_t;
 

@@ -27,6 +27,8 @@
 #include <common/utils/nr/nr_common.h>
 #include "SCHED_NR_UE/defs.h"
 #include "SCHED_NR_UE/harq_nr.h"
+#include "common/utils/LOG/flight_recorder.h"
+#include "radio/COMMON/radio_gain_device.h"
 
 #include "SCHED_NR_UE/pucch_uci_ue_nr.h"
 
@@ -136,9 +138,26 @@ void pucch_procedures_ue_nr(PHY_VARS_NR_UE *ue,
       /* Generate PUCCH signal according to its format and parameters */
 
       int16_t pucch_tx_power = pucch_pdu->pucch_tx_power;
+      if (pucch_tx_power == INT16_MIN) {
+        if (radio_gain_device_tx_selected())
+          radio_gain_device_reject_tx(proc->frame_tx, nr_slot_tx, 3, RADIO_TX_REJECT_POWER_CONTROL);
+        if (radio_gain_device_tx_actuating()) {
+          pucch_vars->active[i] = false;
+          continue;
+        }
+        // Preserve the baseline waveform for unsupported power-control configurations.
+        pucch_tx_power = 0;
+      }
 
-      if (pucch_tx_power > ue->tx_power_max_dBm)
+      if (pucch_tx_power > ue->tx_power_max_dBm) {
+        if (radio_gain_device_tx_selected())
+          radio_gain_device_reject_tx(proc->frame_tx, nr_slot_tx, 3, RADIO_TX_REJECT_POWER_LIMIT);
+        if (radio_gain_device_tx_actuating()) {
+          pucch_vars->active[i] = false;
+          continue;
+        }
         pucch_tx_power = ue->tx_power_max_dBm;
+      }
 
       /* set tx power */
       ue->tx_power_dBm[nr_slot_tx] = pucch_tx_power;
@@ -155,10 +174,10 @@ void pucch_procedures_ue_nr(PHY_VARS_NR_UE *ue,
       // FIXME temporarly using fixed amplitude before pucch power control implementation revised
       tx_amp = AMP;
 
+      LOG_D(PHY, "Generation of PUCCH format %d at frame.slot %d.%d\n", pucch_pdu->format_type, proc->frame_tx, nr_slot_tx);
 
-      LOG_D(PHY,"Generation of PUCCH format %d at frame.slot %d.%d\n",pucch_pdu->format_type,proc->frame_tx,nr_slot_tx);
-
-      switch(pucch_pdu->format_type) {
+      bool generated = true;
+      switch (pucch_pdu->format_type) {
         case 0:
           nr_generate_pucch0(txdataF, &ue->frame_parms, tx_amp, nr_slot_tx, pucch_pdu);
           break;
@@ -172,6 +191,21 @@ void pucch_procedures_ue_nr(PHY_VARS_NR_UE *ue,
         case 4:
           nr_generate_pucch3_4(txdataF, &ue->frame_parms, tx_amp, nr_slot_tx, pucch_pdu);
           break;
+        default:
+          generated = false;
+          break;
+      }
+      if (generated && flight_recorder_enabled()) {
+        const int64_t resource = pucch_pdu->prb_start | ((int64_t)pucch_pdu->prb_size << 16)
+                                 | ((int64_t)pucch_pdu->start_symbol_index << 32) | ((int64_t)pucch_pdu->nr_of_symbols << 40)
+                                 | ((int64_t)pucch_pdu->format_type << 48) | ((int64_t)i << 56);
+        flight_recorder_emit(FLIGHT_EVENT_UE_TX_POWER_REQUEST,
+                             ue->Mod_id,
+                             (int64_t)proc->frame_tx * 1000 + nr_slot_tx,
+                             FLIGHT_UE_TX_CHANNEL_PUCCH,
+                             pucch_pdu->pucch_tx_power,
+                             tx_amp,
+                             resource);
       }
     }
     pucch_vars->active[i] = false;

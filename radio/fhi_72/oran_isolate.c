@@ -464,7 +464,7 @@ static void *split7_thread(void *param)
     int slot_tx = (slot + s7cfg->sl_ahead) % s7cfg->slots_per_frame;
 
     // no timestamp as 7.2 is a frequency domain interface
-    ru_push_tx_job(gNB, frame_tx, slot_tx, frame, slot, 0);
+    ru_push_tx_job(gNB, frame_tx, slot_tx, frame, slot, 0, NULL);
   }
 
   trx_oran_stop(eth);
