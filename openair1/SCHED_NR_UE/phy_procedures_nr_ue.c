@@ -14,6 +14,7 @@
 #include "assertions.h"
 #include "defs.h"
 #include "PHY/defs_nr_UE.h"
+#include "PHY/defs_nr_common.h"
 #include "PHY/NR_REFSIG/dmrs_nr.h"
 #include "PHY/MODULATION/modulation_UE.h"
 #include "PHY/INIT/nr_phy_init.h"
@@ -41,6 +42,8 @@
 #endif
 
 #include "common/utils/LOG/log.h"
+#include "common/utils/LOG/flight_recorder.h"
+#include "radio/COMMON/radio_gain_device.h"
 
 #include "UTIL/OPT/opt.h"
 #include "T.h"
@@ -51,6 +54,173 @@ static const unsigned int gain_table[31] = {100,  112,  126,  141,  158,  178,  
                                             1258, 1412, 1585, 1778, 1995, 2239, 2512, 2818, 3162};
 
 static void nr_ue_prach_procedures(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, c16_t **txData);
+
+enum {
+  RADIO_GAIN_TX_CHANNEL_PUSCH = 2,
+  RADIO_GAIN_TX_CHANNEL_PUCCH = 3,
+  RADIO_GAIN_TX_CHANNEL_SRS = 4,
+  MAX_UE_TX_CHANNEL_SPANS = 4,
+};
+
+typedef struct {
+  unsigned int channel;
+  int requested_dbm;
+  int first_symbol;
+  int number_symbols;
+  uint32_t sample_start;
+  uint32_t sample_count;
+  int reject_reason;
+} nr_ue_tx_channel_span_t;
+
+typedef struct {
+  nr_ue_tx_channel_span_t spans[MAX_UE_TX_CHANNEL_SPANS];
+  unsigned int count;
+} nr_ue_tx_channel_layout_t;
+
+static void nr_ue_tx_reject_layout(const nr_ue_tx_channel_layout_t *layout, int frame, int slot, int reason)
+{
+  for (unsigned int span = 0; span < layout->count; ++span)
+    radio_gain_device_reject_tx(frame, slot, layout->spans[span].channel, reason);
+}
+
+static bool nr_ue_tx_symbol_span(const NR_DL_FRAME_PARMS *fp,
+                                 int slot,
+                                 int first_symbol,
+                                 int number_symbols,
+                                 uint32_t *sample_start,
+                                 uint32_t *sample_count)
+{
+  if (fp->Ncp != 0 || fp->symbols_per_slot == 0 || fp->symbols_per_slot > NR_SYMBOLS_PER_SLOT || slot < 0 || first_symbol < 0
+      || number_symbols <= 0 || number_symbols > fp->symbols_per_slot || first_symbol > fp->symbols_per_slot - number_symbols
+      || (fp->numerology_index != 0 && fp->slots_per_subframe < 2))
+    return false;
+
+  const uint32_t slot_samples = get_samples_per_slot(slot, fp);
+  const uint32_t first_sample = get_samples_symbol_timestamp(fp, slot, first_symbol);
+  const uint32_t span_samples = get_samples_symbol_duration(fp, slot, first_symbol, number_symbols);
+  if (span_samples == 0 || first_sample >= slot_samples || span_samples > slot_samples - first_sample)
+    return false;
+
+  *sample_start = first_sample;
+  *sample_count = span_samples;
+  return true;
+}
+
+static bool nr_ue_tx_add_channel_span(nr_ue_tx_channel_layout_t *layout,
+                                      unsigned int channel,
+                                      int requested_dbm,
+                                      int first_symbol,
+                                      int number_symbols)
+{
+  if (layout->count == MAX_UE_TX_CHANNEL_SPANS)
+    return false;
+  layout->spans[layout->count++] = (nr_ue_tx_channel_span_t){
+      .channel = channel,
+      .requested_dbm = requested_dbm,
+      .first_symbol = first_symbol,
+      .number_symbols = number_symbols,
+  };
+  return true;
+}
+
+static bool nr_ue_tx_collect_channel_layout(const PHY_VARS_NR_UE *ue,
+                                            int frame,
+                                            int slot,
+                                            const nr_phy_data_tx_t *phy_data,
+                                            c16_t **txp,
+                                            nr_ue_tx_channel_layout_t *layout)
+{
+  *layout = (nr_ue_tx_channel_layout_t){0};
+  if (phy_data->ulsch.status == NR_ACTIVE) {
+    const nfapi_nr_ue_pusch_pdu_t *pusch = &phy_data->ulsch.pusch_pdu;
+    if (!nr_ue_tx_add_channel_span(layout,
+                                   RADIO_GAIN_TX_CHANNEL_PUSCH,
+                                   pusch->tx_power,
+                                   pusch->start_symbol_index,
+                                   pusch->nr_of_symbols))
+      return false;
+  }
+  if (phy_data->srs_vars.active) {
+    static const uint8_t srs_symbols[] = {1, 2, 4, 8, 12};
+    const fapi_nr_ul_config_srs_pdu *srs = &phy_data->srs_vars.srs_config_pdu;
+    const int number_symbols = srs->num_symbols < sizeofArray(srs_symbols) ? srs_symbols[srs->num_symbols] : 0;
+    if (!nr_ue_tx_add_channel_span(layout, RADIO_GAIN_TX_CHANNEL_SRS, srs->tx_power, srs->time_start_position, number_symbols))
+      return false;
+  }
+  for (unsigned int pdu = 0; pdu < 2; ++pdu) {
+    if (!phy_data->pucch_vars.active[pdu])
+      continue;
+    const fapi_nr_ul_config_pucch_pdu *pucch = &phy_data->pucch_vars.pucch_pdu[pdu];
+    if (!nr_ue_tx_add_channel_span(layout,
+                                   RADIO_GAIN_TX_CHANNEL_PUCCH,
+                                   pucch->pucch_tx_power,
+                                   pucch->start_symbol_index,
+                                   pucch->nr_of_symbols))
+      return false;
+  }
+  if (layout->count == 0)
+    return false;
+
+  if (ue->frame_parms.Ncp != 0 || ue->frame_parms.nb_antennas_tx != 1 || txp == NULL || txp[0] == NULL) {
+    nr_ue_tx_reject_layout(layout, frame, slot, RADIO_TX_REJECT_LAYOUT);
+    return false;
+  }
+
+  bool invalid = false;
+  for (unsigned int span = 0; span < layout->count; ++span) {
+    nr_ue_tx_channel_span_t *current = &layout->spans[span];
+    if (!nr_ue_tx_symbol_span(&ue->frame_parms,
+                              slot,
+                              current->first_symbol,
+                              current->number_symbols,
+                              &current->sample_start,
+                              &current->sample_count))
+      current->reject_reason = RADIO_TX_REJECT_SPAN;
+    if (current->channel == RADIO_GAIN_TX_CHANNEL_PUCCH && current->requested_dbm > ue->tx_power_max_dBm
+        && current->reject_reason == 0)
+      current->reject_reason = RADIO_TX_REJECT_POWER_LIMIT;
+    if (current->channel == RADIO_GAIN_TX_CHANNEL_PUCCH && current->requested_dbm == INT16_MIN && current->reject_reason == 0)
+      current->reject_reason = RADIO_TX_REJECT_POWER_CONTROL;
+    if (current->reject_reason != 0) {
+      /* PUCCH reports invalid power and its secondary bound before its generator. */
+      if (current->reject_reason != RADIO_TX_REJECT_POWER_LIMIT && current->reject_reason != RADIO_TX_REJECT_POWER_CONTROL)
+        radio_gain_device_reject_tx(frame, slot, current->channel, current->reject_reason);
+      invalid = true;
+    }
+  }
+  if (invalid)
+    return false;
+
+  for (unsigned int first = 0; first < layout->count; ++first) {
+    const nr_ue_tx_channel_span_t *left = &layout->spans[first];
+    const int left_end = left->first_symbol + left->number_symbols;
+    for (unsigned int second = first + 1; second < layout->count; ++second) {
+      const nr_ue_tx_channel_span_t *right = &layout->spans[second];
+      const int right_end = right->first_symbol + right->number_symbols;
+      if (left->first_symbol < right_end && right->first_symbol < left_end) {
+        nr_ue_tx_reject_layout(layout, frame, slot, RADIO_TX_REJECT_OVERLAP);
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+static void nr_ue_tx_apply_channel_layout(c16_t *txdata, int frame, int slot, const nr_ue_tx_channel_layout_t *layout)
+{
+  for (unsigned int span = 0; span < layout->count; ++span) {
+    const nr_ue_tx_channel_span_t *current = &layout->spans[span];
+    if (!radio_gain_device_apply_tx(txdata + current->sample_start,
+                                    current->sample_count,
+                                    current->requested_dbm,
+                                    frame,
+                                    slot,
+                                    current->channel)) {
+      radio_gain_device_reject_tx(frame, slot, current->channel, RADIO_TX_REJECT_PROFILE);
+      break;
+    }
+  }
+}
 
 static uint32_t get_ssb_arfcn(NR_DL_FRAME_PARMS *frame_parms)
 {
@@ -318,6 +488,19 @@ void ue_srs_procedures_nr(PHY_VARS_NR_UE *ue,
                                    frame_parms->nb_antennas_tx);
   DevAssert(generated); // if we can't generate despite the SRS config, there
                         // is a problem
+  if (generated && flight_recorder_enabled()) {
+    const int64_t resource =
+        (int64_t)srs_config_pdu->bwp_start | ((int64_t)srs_config_pdu->bwp_size << 16)
+        | ((int64_t)srs_config_pdu->time_start_position << 32) | ((int64_t)(1U << srs_config_pdu->num_symbols) << 40)
+        | ((int64_t)srs_config_pdu->frequency_position << 48) | ((int64_t)(1U << srs_config_pdu->num_ant_ports) << 56);
+    flight_recorder_emit(FLIGHT_EVENT_UE_TX_POWER_REQUEST,
+                         ue->Mod_id,
+                         (int64_t)proc->frame_tx * 1000 + proc->nr_slot_tx,
+                         FLIGHT_UE_TX_CHANNEL_SRS,
+                         srs_config_pdu->tx_power,
+                         AMP,
+                         resource);
+  }
 }
 
 void phy_procedures_nrUE_TX(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, nr_phy_data_tx_t *phy_data, c16_t **txp)
@@ -338,8 +521,12 @@ void phy_procedures_nrUE_TX(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, n
   for(int i=0; i< ue->frame_parms.nb_antennas_tx; ++i)
     txdataF[i] = &txdataF_buf[i * samplesF_per_slot];
 
-  LOG_D(PHY,"****** start TX-Chain for AbsSubframe %d.%d ******\n", frame_tx, slot_tx);
+  LOG_D(PHY, "****** start TX-Chain for AbsSubframe %d.%d ******\n", frame_tx, slot_tx);
   bool was_symbol_used[NR_SYMBOLS_PER_SLOT] = {0};
+  const NR_UE_PRACH *prach_var = ue->prach_vars[proc->gNB_id];
+  nr_ue_tx_channel_layout_t managed_tx_layout;
+  const bool apply_managed_tx = !prach_var->active && radio_gain_device_tx_selected()
+                                && nr_ue_tx_collect_channel_layout(ue, frame_tx, slot_tx, phy_data, txp, &managed_tx_layout);
 
   start_meas_nr_ue_phy(ue, PHY_PROC_TX);
 
@@ -353,7 +540,6 @@ void phy_procedures_nrUE_TX(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, n
   LOG_D(PHY, "Sending Uplink data \n");
 
   // Don't do OFDM Mod if txdata contains prach
-  const NR_UE_PRACH *prach_var = ue->prach_vars[proc->gNB_id];
   if (!prach_var->active) {
     start_meas_nr_ue_phy(ue, OFDM_MOD_STATS);
     nr_tx_rotation_and_ofdm_mod(proc->nr_slot_tx,
@@ -365,6 +551,8 @@ void phy_procedures_nrUE_TX(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, n
                                 was_symbol_used,
                                 ue->no_phase_pre_comp);
     stop_meas_nr_ue_phy(ue, OFDM_MOD_STATS);
+    if (apply_managed_tx)
+      nr_ue_tx_apply_channel_layout(txp[0], frame_tx, slot_tx, &managed_tx_layout);
   }
 
   nr_ue_prach_procedures(ue, proc, txp);
@@ -392,7 +580,10 @@ static void nr_ue_measurement_procedures(uint16_t l,
         ue->common_vars.rxdata);
   nr_ue_measurements(ue, proc, number_rbs, l, pdsch_est_size, dl_ch_estimates);
 #if T_TRACER
-  if (nr_slot_rx == 0)
+  /* This legacy record has no gain-generation/validity fields and reads
+   * averaging state that managed measurements deliberately do not maintain.
+   * Do not publish that stale state as a new managed-mode measurement. */
+  if (nr_slot_rx == 0 && !proc->rx_gain_context.present)
     T(T_UE_PHY_MEAS,
       T_INT(gNB_id),
       T_INT(proc->frame_rx % 1024),
@@ -406,12 +597,6 @@ static void nr_ue_measurement_procedures(uint16_t l,
       T_INT((int)ue->common_vars.freq_offset));
 #endif
 
-  // accumulate and filter timing offset estimation every subframe (instead of every frame)
-  if (nr_slot_rx == 2) {
-    // AGC
-    //printf("start adjust gain power avg db %d\n", ue->measurements.rx_power_avg_dB[gNB_id]);
-    phy_adjust_gain_nr (ue,ue->measurements.rx_power_avg_dB[gNB_id],gNB_id);
-  }
 }
 
 static int nr_ue_pdsch_procedures(PHY_VARS_NR_UE *ue,
@@ -942,9 +1127,13 @@ int nr_process_pbch_symbol(PHY_VARS_NR_UE *ue,
                            c16_t dl_ch_estimates_time[ue->frame_parms.nb_antennas_rx][ue->frame_parms.ofdm_symbol_size],
                            c16_t *dl_ch_estimates_symbol,
                            int16_t pbch_e_rx[NR_POLAR_PBCH_E],
-                           uint8_t *log2_maxh)
+                           uint8_t *log2_maxh,
+                           uint32_t *reference_power,
+                           nr_ue_ssb_measurement_candidate_t *staged_measurement,
+                           int *decode_ssb_index)
 {
   NR_DL_FRAME_PARMS *fp = &ue->frame_parms;
+  const bool managed_measurement = proc->rx_gain_context.present;
   const int symbIdxInFrame = symbol + NR_SYMBOLS_PER_SLOT * proc->nr_slot_rx;
 
   // Search for SSB index if given SSB index is invalid
@@ -986,8 +1175,9 @@ int nr_process_pbch_symbol(PHY_VARS_NR_UE *ue,
                                rxdataF[aarx],
                                false,
                                nid);
-    // Get channel response to measure timing error
-    if ((fp->ssb_index == ssbIndex) && (relPbchSymb == NB_SYMBOLS_PBCH - 1)) {
+    // Keep the timing buffer with the locally selected PBCH candidate. The
+    // managed path does not change the serving SSB index before CRC success.
+    if (((managed_measurement ? *decode_ssb_index : fp->ssb_index) == ssbIndex) && (relPbchSymb == NB_SYMBOLS_PBCH - 1)) {
       // do ifft of channel estimate
       freq2time(fp->ofdm_symbol_size, (int16_t *)&dl_ch_estimates[aarx], (int16_t *)dl_ch_estimates_time[aarx]);
       UEscopeCopy(ue, pbchDlChEstimateTime, (void *)dl_ch_estimates_time, sizeof(c16_t), fp->nb_antennas_rx, fp->ofdm_symbol_size, 0);
@@ -1010,13 +1200,28 @@ int nr_process_pbch_symbol(PHY_VARS_NR_UE *ue,
                        dl_ch_estimates,
                        pbch_e_rx,
                        log2_maxh);
-  // Do measurements on middle symbol of PBCH block
+  // Do measurements on the middle symbol of the PBCH block.
   if (relPbchSymb == 1) {
-    nr_ue_ssb_rsrp_measurements(ue, ssbIndex, proc, rxdataF);
-    nr_ue_rrc_measurements(ue, proc, rxdataF);
-    // resetting ssb index for PBCH detection if there is a stronger SSB index
-    if (ue->measurements.ssb_rsrp_dBm[ssbIndex] > ue->measurements.ssb_rsrp_dBm[fp->ssb_index]) {
-      fp->ssb_index = ssbIndex;
+    if (managed_measurement) {
+      *reference_power = nr_ue_calculate_ssb_rsrp(fp, rxdataF, fp->ssb_start_subcarrier);
+      /* The serial PBCH path owns noise averaging in gain-managed mode.
+       * Stage the scalar result, but do not publish or change the serving beam
+       * until the selected PBCH has passed CRC. */
+      nr_ue_rrc_measurements(ue, proc, rxdataF);
+      nr_ue_stage_ssb_rsrp_measurement(ue, ssbIndex, proc, *reference_power, staged_measurement);
+      if (nr_ue_select_managed_ssb_candidate(staged_measurement,
+                                             fp->ssb_index,
+                                             ue->measurements.ssb_rsrp_dBm[fp->ssb_index],
+                                             ue->managed_serving_pbch_failed))
+        *decode_ssb_index = ssbIndex;
+    } else {
+      /* Keep legacy order and immediate serving-state publication exactly. */
+      nr_ue_ssb_rsrp_measurements(ue, ssbIndex, proc, rxdataF);
+      nr_ue_rrc_measurements(ue, proc, rxdataF);
+      // Reset SSB index for PBCH detection if there is a stronger SSB index.
+      if (ue->measurements.ssb_rsrp_dBm[ssbIndex] > ue->measurements.ssb_rsrp_dBm[fp->ssb_index])
+        fp->ssb_index = ssbIndex;
+      *decode_ssb_index = fp->ssb_index;
     }
   }
 
@@ -1031,7 +1236,10 @@ static int pbch_process(PHY_VARS_NR_UE *UE,
                         c16_t pbch_ch_est_time[UE->frame_parms.nb_antennas_rx][UE->frame_parms.ofdm_symbol_size],
                         int16_t pbch_e_rx[NR_POLAR_PBCH_E],
                         int *pbchSymbCnt,
-                        uint8_t *log2_maxh)
+                        uint8_t *log2_maxh,
+                        uint32_t *reference_power,
+                        nr_ue_ssb_measurement_candidate_t *staged_measurement,
+                        int *decode_ssb_index)
 {
   int sampleShift = INT_MAX;
 
@@ -1044,18 +1252,39 @@ static int pbch_process(PHY_VARS_NR_UE *UE,
   else if (*pbchSymbCnt == 2)
     cur_pbch_est = pbch_ch_est_sym3;
 
-  *ssbIndex = nr_process_pbch_symbol(UE, proc, symbol, *ssbIndex, pbch_ch_est_time, cur_pbch_est, pbch_e_rx, log2_maxh);
+  *ssbIndex = nr_process_pbch_symbol(UE,
+                                     proc,
+                                     symbol,
+                                     *ssbIndex,
+                                     pbch_ch_est_time,
+                                     cur_pbch_est,
+                                     pbch_e_rx,
+                                     log2_maxh,
+                                     reference_power,
+                                     staged_measurement,
+                                     decode_ssb_index);
   // If valid PBCH symbol, increment symbol count.
   if (*ssbIndex > -1)
     (*pbchSymbCnt)++;
-  // Current symbol is last PBCH symbol, decode it.
+  // Current symbol is last PBCH symbol, decode the selected candidate.
   if (*pbchSymbCnt == 3) {
-    if (*ssbIndex == UE->frame_parms.ssb_index) {
+    const bool managed_measurement = proc->rx_gain_context.present;
+    const bool decode_selected = *ssbIndex == (managed_measurement ? *decode_ssb_index : UE->frame_parms.ssb_index);
+    if (decode_selected) {
       fapiPbch_t pbchResult; // TODO: Not used anywhere. To be cleaned later
       int hfb, ssb_idx, symb_offset = 0;
       const int nid = UE->frame_parms.Nid_cell;
+      const bool decoded_serving = *ssbIndex == UE->frame_parms.ssb_index;
       const int pbchSuccess =
           nr_pbch_decode(UE, &UE->frame_parms, proc, *ssbIndex, nid, pbch_e_rx, &hfb, &ssb_idx, &symb_offset, &pbchResult);
+      if (managed_measurement) {
+        UE->managed_serving_pbch_failed =
+            nr_ue_managed_ssb_fallback_after_decode(UE->managed_serving_pbch_failed, decoded_serving, pbchSuccess == 0);
+        radio_gain_device_observe_rx(&proc->rx_gain_context, *reference_power, pbchSuccess == 0, false, RADIO_RX_SOURCE_UE_SSB);
+        nr_ue_finalize_staged_ssb_rsrp_measurement(UE, proc, staged_measurement, true, pbchSuccess == 0);
+        if (pbchSuccess == 0 && staged_measurement->eligible)
+          UE->frame_parms.ssb_index = *ssbIndex;
+      }
       if (pbchSuccess != 0)
         LOG_E(PHY, "Frame %d, slot %d, SSB Index %d. Error decoding PBCH!\n", proc->frame_rx, proc->nr_slot_rx, *ssbIndex);
       else
@@ -1080,9 +1309,15 @@ static int pbch_process(PHY_VARS_NR_UE *UE,
         UE->freq_offset += freq_offset * PID_P + UE->freq_off_acc * PID_I;
         UE->freq_off_acc += freq_offset;
       }
+    } else if (managed_measurement && staged_measurement->staged) {
+      /* A non-selected candidate has no PBCH decision, but still emits its
+       * sole rejected measurement record. */
+      nr_ue_finalize_staged_ssb_rsrp_measurement(UE, proc, staged_measurement, false, false);
     }
     *pbchSymbCnt = 0; // For next SSB index
     *ssbIndex = -1;
+    *decode_ssb_index = UE->frame_parms.ssb_index;
+    *staged_measurement = (nr_ue_ssb_measurement_candidate_t){0};
   }
   return sampleShift;
 }
@@ -1124,6 +1359,9 @@ int pbch_processing(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, nr_phy_da
 
   {
     int pbchSymbCnt = 0;
+    uint32_t reference_power = 0;
+    nr_ue_ssb_measurement_candidate_t staged_measurement = {0};
+    int decode_ssb_index = fp->ssb_index;
     __attribute__((aligned(32))) c16_t pbch_ch_est_time[ue->frame_parms.nb_antennas_rx][ue->frame_parms.ofdm_symbol_size];
     int16_t pbch_e_rx[NR_POLAR_PBCH_E];
     // Buffer to hold estimates of symbol 1 for FO compensation in symbol 3
@@ -1133,8 +1371,18 @@ int pbch_processing(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, nr_phy_da
     uint8_t log2_maxh = 0;
     // TODO: Remove loopover symbols when symbol based receiver is fully integrated.
     for (int symbol = 0; symbol < fp->symbols_per_slot; symbol++) {
-      const int pbch_sampleShift =
-          pbch_process(ue, proc, symbol, &ssbIndex, pbch_ch_est_sym1, pbch_ch_est_time, pbch_e_rx, &pbchSymbCnt, &log2_maxh);
+      const int pbch_sampleShift = pbch_process(ue,
+                                                proc,
+                                                symbol,
+                                                &ssbIndex,
+                                                pbch_ch_est_sym1,
+                                                pbch_ch_est_time,
+                                                pbch_e_rx,
+                                                &pbchSymbCnt,
+                                                &log2_maxh,
+                                                &reference_power,
+                                                &staged_measurement,
+                                                &decode_ssb_index);
       // To prevent overwrite estimated shift by consecutive symbol calls
       sampleShift = (sampleShift == INT_MAX) ? pbch_sampleShift : sampleShift;
     }
@@ -1400,6 +1648,18 @@ static void nr_ue_prach_procedures(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *
             ue->tx_power_dBm[nr_slot_tx],
             tx_amp,
             dB_fixed(generated_prach_power));
+      if (flight_recorder_enabled()) {
+        const int64_t resource = prach_pdu->ra_PreambleIndex | ((int64_t)prach_pdu->prach_format << 8)
+                                 | ((int64_t)prach_pdu->num_ra << 16) | ((int64_t)prach_pdu->prach_start_symbol << 24)
+                                 | ((int64_t)prach_pdu->freq_msg1 << 32);
+        flight_recorder_emit(FLIGHT_EVENT_UE_TX_POWER_REQUEST,
+                             ue->Mod_id,
+                             (int64_t)frame_tx * 1000 + nr_slot_tx,
+                             FLIGHT_UE_TX_CHANNEL_PRACH,
+                             prach_pdu->prach_tx_power,
+                             tx_amp,
+                             resource);
+      }
 
       // set duration of prach slots so we know when to skip OFDM modulation
       const int prach_format = ue->prach_vars[gNB_id]->prach_pdu.prach_format;

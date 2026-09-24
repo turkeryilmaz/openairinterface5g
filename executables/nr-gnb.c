@@ -88,6 +88,7 @@ static void tx_func(processingData_L1tx_t *info)
   syncMsg->frame_rx = frame_rx;
   syncMsg->slot_rx = slot_rx;
   syncMsg->timestamp_tx = info->timestamp_tx;
+  syncMsg->rx_gain_context = info->rx_gain_context;
   res->key = slot_rx;
   pushNotifiedFIFO(&gNB->resp_L1, res);
 
@@ -163,6 +164,8 @@ void *L1_tx_thread(void *arg) {
 static void rx_func(processingData_L1_t *info)
 {
   PHY_VARS_gNB *gNB = info->gNB;
+  /* rx_func() and gNB_I0_measurements() run only on this serial L1 RX thread. */
+  gNB->rx_gain_context = info->rx_gain_context;
   int frame_rx = info->frame_rx;
   int slot_rx = info->slot_rx;
   nfapi_nr_config_request_scf_t *cfg = &gNB->gNB_config;

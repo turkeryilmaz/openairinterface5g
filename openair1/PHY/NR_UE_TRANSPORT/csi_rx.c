@@ -160,6 +160,7 @@ static int nr_get_csi_rs_signal(const PHY_VARS_NR_UE *ue,
                                 c16_t csi_rs_received_signal[][ue->frame_parms.samples_per_slot_wCP],
                                 uint32_t *rsrp,
                                 int *rsrp_dBm,
+                                bool *rsrp_dBm_valid,
                                 uint32_t *noise_power,
                                 const c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP])
 {
@@ -236,15 +237,27 @@ static int nr_get_csi_rs_signal(const PHY_VARS_NR_UE *ue,
   }
 
   *rsrp = rsrp_sum / meas_count;
-  *rsrp_dBm = dB_fixed(*rsrp) + 30 - SQ15_SQUARED_NORM_FACTOR_DB
-              - ((int)openair0_cfg_g[ue->rf_map.card].rx_gain[0] - (int)openair0_cfg_g[ue->rf_map.card].rx_gain_offset[0])
-              - dB_fixed(fp->ofdm_symbol_size);
+  openair0_config_t *cfg = &openair0_cfg_g[ue->rf_map.card];
+  const double fallback_gain_db = (int)cfg->rx_gain[0] - (int)cfg->rx_gain_offset[0];
+  double rx_gain_db = 0;
+  *rsrp_dBm_valid = nr_ue_sample_gain(proc, fallback_gain_db, &rx_gain_db);
+  if (*rsrp_dBm_valid) {
+    if (!proc->rx_gain_context.present) {
+      *rsrp_dBm = dB_fixed(*rsrp) + 30 - SQ15_SQUARED_NORM_FACTOR_DB - ((int)cfg->rx_gain[0] - (int)cfg->rx_gain_offset[0])
+                  - dB_fixed(fp->ofdm_symbol_size);
+    } else {
+      *rsrp_dBm = (int)lround(dB_fixed(*rsrp) + 30 - SQ15_SQUARED_NORM_FACTOR_DB - rx_gain_db - dB_fixed(fp->ofdm_symbol_size));
+    }
+  }
 
   *noise_power =
-    sum_nr2 / n_count - (sum_nr / n_count) * (sum_nr / n_count) + sum_ni2 / n_count - (sum_ni / n_count) * (sum_ni / n_count);
+      sum_nr2 / n_count - (sum_nr / n_count) * (sum_nr / n_count) + sum_ni2 / n_count - (sum_ni / n_count) * (sum_ni / n_count);
 
 #ifdef NR_CSIRS_DEBUG
-  LOG_I(NR_PHY, "RSRP = %i (%i dBm)\n", *rsrp, *rsrp_dBm);
+  if (*rsrp_dBm_valid)
+    LOG_I(NR_PHY, "RSRP = %i (%i dBm)\n", *rsrp, *rsrp_dBm);
+  else
+    LOG_I(NR_PHY, "RSRP = %i (dBm unavailable: invalid RX gain context)\n", *rsrp);
   LOG_I(NR_PHY, "Noise power estimation based on CSI-RS: %i\n", *noise_power);
 #endif
 
@@ -1216,6 +1229,7 @@ void nr_ue_csi_rs_procedures(PHY_VARS_NR_UE *ue,
   c16_t csi_rs_received_signal[frame_parms->nb_antennas_rx][frame_parms->samples_per_slot_wCP];
   uint32_t rsrp = 0;
   int rsrp_dBm = 0;
+  bool rsrp_dBm_valid = false;
   uint32_t noise_power = 0;
   nr_get_csi_rs_signal(ue,
                        proc,
@@ -1226,6 +1240,7 @@ void nr_ue_csi_rs_procedures(PHY_VARS_NR_UE *ue,
                        csi_rs_received_signal,
                        &rsrp,
                        &rsrp_dBm,
+                       &rsrp_dBm_valid,
                        &noise_power,
                        rxdataF);
 
@@ -1287,23 +1302,59 @@ void nr_ue_csi_rs_procedures(PHY_VARS_NR_UE *ue,
     stop_meas_nr_ue_phy(ue, TRS_PROCESSING);
   }
 
+  const bool csi_rsrp_requested = csirs_config_pdu->measurement_bitmap & 1U;
+  const bool csi_report_valid = !csi_rsrp_requested || (rsrp_dBm_valid && nr_ue_gain_generation_current(&ue->measurements, proc));
+
   switch (csirs_config_pdu->measurement_bitmap) {
     case 0:
       if (do_trs_est)
         LOG_D(NR_PHY, "%d.%d TRS estimated CFO: %d Hz\n", proc->frame_rx, proc->nr_slot_rx, trs_cfo);
       break;
     case 1:
-      LOG_D(NR_PHY, "%d.%d [UE %d] RSRP = %i dBm\n", proc->frame_rx, proc->nr_slot_rx, ue->Mod_id, rsrp_dBm);
+      if (csi_report_valid)
+        LOG_D(NR_PHY, "%d.%d [UE %d] RSRP = %i dBm\n", proc->frame_rx, proc->nr_slot_rx, ue->Mod_id, rsrp_dBm);
+      else
+        LOG_D(NR_PHY,
+              "%d.%d [UE %d] RSRP unavailable (invalid or stale RX gain context)\n",
+              proc->frame_rx,
+              proc->nr_slot_rx,
+              ue->Mod_id);
       break;
-    case 26 :
-      LOG_D(NR_PHY, "RI = %i i1 = %i.%i.%i, i2 = %i, SINR = %i dB, CQI = %i\n",
-            rank_indicator + 1, pmi.i_1_1, pmi.i_1_2, pmi.i_1_3, pmi.i_2, precoded_sinr_dB, cqi);
+    case 26:
+      LOG_D(NR_PHY,
+            "RI = %i i1 = %i.%i.%i, i2 = %i, SINR = %i dB, CQI = %i\n",
+            rank_indicator + 1,
+            pmi.i_1_1,
+            pmi.i_1_2,
+            pmi.i_1_3,
+            pmi.i_2,
+            precoded_sinr_dB,
+            cqi);
       break;
-    case 27 :
-      LOG_D(NR_PHY, "RSRP = %i dBm, RI = %i i1 = %i.%i.%i, i2 = %i, SINR = %i dB, CQI = %i\n",
-            rsrp_dBm, rank_indicator + 1, pmi.i_1_1, pmi.i_1_2, pmi.i_1_3, pmi.i_2, precoded_sinr_dB, cqi);
+    case 27:
+      if (csi_report_valid)
+        LOG_D(NR_PHY,
+              "RSRP = %i dBm, RI = %i i1 = %i.%i.%i, i2 = %i, SINR = %i dB, CQI = %i\n",
+              rsrp_dBm,
+              rank_indicator + 1,
+              pmi.i_1_1,
+              pmi.i_1_2,
+              pmi.i_1_3,
+              pmi.i_2,
+              precoded_sinr_dB,
+              cqi);
+      else
+        LOG_D(NR_PHY,
+              "RSRP unavailable (invalid or stale RX gain context), RI = %i i1 = %i.%i.%i, i2 = %i, SINR = %i dB, CQI = %i\n",
+              rank_indicator + 1,
+              pmi.i_1_1,
+              pmi.i_1_2,
+              pmi.i_1_3,
+              pmi.i_2,
+              precoded_sinr_dB,
+              cqi);
       break;
-    default :
+    default:
       AssertFatal(false, "Not supported measurement configuration\n");
   }
 
@@ -1319,6 +1370,8 @@ void nr_ue_csi_rs_procedures(PHY_VARS_NR_UE *ue,
   if (csirs_config_pdu->measurement_bitmap == 0) {
     return;
   }
+  if (!csi_report_valid)
+    return;
 
   fapi_nr_l1_measurements_t l1_measurements = {
       .gNB_index = proc->gNB_id,

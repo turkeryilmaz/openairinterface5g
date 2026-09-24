@@ -2,6 +2,8 @@
  * SPDX-License-Identifier: LicenseRef-CSSL-1.0
  */
 
+#include <stdint.h>
+
 /*!
  * \brief Routines for UE PRACH physical channel
  */
@@ -12,6 +14,7 @@
 #include "PHY/NR_TRANSPORT/nr_transport_common_proto.h"
 
 #include "common/utils/LOG/log.h"
+#include "radio/COMMON/radio_gain_device.h"
 
 #include "T.h"
 
@@ -329,7 +332,8 @@ int32_t generate_nr_prach(PHY_VARS_NR_UE *ue, uint8_t gNB_id, int frame, uint8_t
     idft(idft_size, (int16_t *)prachF, (int16_t *)prach, 1);
   }
 
-  c16_t *out = txData[0] + prach_start;
+  c16_t *const prach_output = txData[0] + prach_start;
+  c16_t *out = prach_output;
   memcpy(out, prach + dftlen - Ncp, Ncp * sizeof(*prach));
   out += Ncp;
   const int copies[11] = {1, 2, 4, 4, 2, 4, 6, 2, 12, 1, 4};
@@ -337,6 +341,15 @@ int32_t generate_nr_prach(PHY_VARS_NR_UE *ue, uint8_t gNB_id, int frame, uint8_t
   for (int i = 0; i < copies[prach_fmt_id]; i++) {
     memcpy(out, prach, dftlen * sizeof(*prach));
     out += dftlen;
+  }
+
+  if (radio_gain_device_tx_selected()) {
+    const uint64_t sample_count = out - prach_output;
+    if (sample_count > UINT32_MAX) {
+      radio_gain_device_reject_tx(frame, slot, 1, RADIO_TX_REJECT_SPAN);
+    } else if (!radio_gain_device_apply_tx(prach_output, sample_count, prach_pdu->prach_tx_power, frame, slot, 1)) {
+      radio_gain_device_reject_tx(frame, slot, 1, RADIO_TX_REJECT_PROFILE);
+    }
   }
 
 #ifdef NR_PRACH_DEBUG

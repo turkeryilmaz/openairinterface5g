@@ -128,6 +128,19 @@ void gNB_I0_measurements(PHY_VARS_gNB *gNB, int slot, int first_symb, int num_sy
   NR_DL_FRAME_PARMS *frame_parms = &gNB->frame_parms;
   NR_gNB_COMMON *common_vars = &gNB->common_vars;
   PHY_MEASUREMENTS_gNB *measurements = &gNB->measurements;
+  const radio_gain_sample_context_t *gain_context = &gNB->rx_gain_context;
+  const bool gain_context_present = gain_context->present;
+  const bool gain_context_valid = radio_gain_sample_measurement_valid(gain_context);
+  const bool reset_gain_ema =
+      gain_context_valid
+      && (!measurements->n0_ema_gain_generation_valid || measurements->n0_ema_gain_generation != gain_context->generation);
+  /* Continue local I0 work through an unknown transition, but do not turn it
+   * into a cross-generation EMA input. The next valid context reinitializes. */
+  const bool local_only_noise = gain_context_present && !gain_context_valid;
+  if (reset_gain_ema || local_only_noise)
+    memset(measurements->n0_ema_gain_initialized, 0, sizeof(measurements->n0_ema_gain_initialized));
+  if (local_only_noise)
+    measurements->n0_ema_gain_generation_valid = false;
   int nb_symb[MAX_BWP_SIZE] = {0};
 
   unsigned int tmp_n0_subband[frame_parms->nb_antennas_rx][frame_parms->N_RB_UL];
@@ -169,16 +182,24 @@ void gNB_I0_measurements(PHY_VARS_gNB *gNB, int slot, int first_symb, int num_sy
   for (int rb = 0 ; rb<frame_parms->N_RB_UL;rb++) {
     int32_t n0_subband_tot_perPRB=0;
     if (nb_symb[rb] > 0) {
+      const bool initialize_noise = init_meas || (gain_context_valid && !measurements->n0_ema_gain_initialized[rb]);
       for (int aarx = 0; aarx < frame_parms->nb_antennas_rx; aarx++) {
         tmp_n0_subband[aarx][rb] /= nb_symb[rb];
-        // Initialize n0_subband_power from the first measurement before EMA
-        if (init_meas)
+        if (local_only_noise) {
+          /* This slot may still inform its decoder, but cannot become EMA state. */
           n0_subband_power[aarx][rb] = tmp_n0_subband[aarx][rb];
-        // apply exponential moving average to smooth noise measurements
-        n0_subband_power[aarx][rb] = 0.9 * n0_subband_power[aarx][rb] + 0.1 * tmp_n0_subband[aarx][rb];
+        } else {
+          // Initialize the first sample for this PRB in a gain generation before EMA.
+          if (initialize_noise)
+            n0_subband_power[aarx][rb] = tmp_n0_subband[aarx][rb];
+          // apply exponential moving average to smooth noise measurements
+          n0_subband_power[aarx][rb] = 0.9 * n0_subband_power[aarx][rb] + 0.1 * tmp_n0_subband[aarx][rb];
+        }
         n0_subband_tot_perPRB += n0_subband_power[aarx][rb];
         n0_subband_tot_perANT[aarx] += n0_subband_power[aarx][rb];
       }
+      if (gain_context_valid)
+        measurements->n0_ema_gain_initialized[rb] = true;
       n0_subband_tot_perPRB /= frame_parms->nb_antennas_rx;
       measurements->n0_subband_power_tot_dB[rb] = dB_fixed(n0_subband_tot_perPRB);
       LOG_D(NR_PHY,"n0_subband_power_tot_dB[%d] => %d, over %d symbols\n",rb,measurements->n0_subband_power_tot_dB[rb],nb_symb[rb]);
@@ -186,6 +207,10 @@ void gNB_I0_measurements(PHY_VARS_gNB *gNB, int slot, int first_symb, int num_sy
     }
   }
   if (nb_rb>0) {
+    if (gain_context_valid) {
+      measurements->n0_ema_gain_generation = gain_context->generation;
+      measurements->n0_ema_gain_generation_valid = true;
+    }
     int64_t n0_subband_tot = 0;
     for (int aarx = 0; aarx < frame_parms->nb_antennas_rx; aarx++) {
       measurements->n0_subband_power_avg_perANT_dB[aarx] = dB_fixed(n0_subband_tot_perANT[aarx] / nb_rb);

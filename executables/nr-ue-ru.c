@@ -4,6 +4,8 @@
 
 #include "common/utils/LOG/flight_recorder.h"
 #include "nr-ue-ru.h"
+#include "radio/COMMON/radio_gain_device.h"
+#include "executables/agc_options.h"
 #include "nr-uesoftmodem.h"
 #include "PHY/NR_UE_TRANSPORT/nr_transport_proto_ue.h"
 #include "common/config/config_paramdesc.h"
@@ -367,7 +369,7 @@ void nrue_ru_end(void)
   }
 }
 
-void nrue_ru_set_freq(PHY_VARS_NR_UE *UE, uint64_t ul_carrier, uint64_t dl_carrier, int freq_offset)
+int nrue_ru_set_freq(PHY_VARS_NR_UE *UE, uint64_t ul_carrier, uint64_t dl_carrier, int freq_offset)
 {
   int current_cell_id = nrue_rus[UE->rf_map.card].used_by_cell;
   NR_DL_FRAME_PARMS *fp0 = &nrue_cell_fp[current_cell_id];
@@ -402,12 +404,44 @@ void nrue_ru_set_freq(PHY_VARS_NR_UE *UE, uint64_t ul_carrier, uint64_t dl_carri
 
   openair0_config_t *cfg = &openair0_cfg_g[UE->rf_map.card];
   openair0_device_t *dev = &openair0_dev[UE->rf_map.card];
+  const openair0_config_t previous = *cfg;
   nr_rf_card_config_freq(cfg, ul_carrier, dl_carrier, freq_offset);
-  dev->trx_set_freq_func(dev, cfg);
+  const int status = dev->trx_set_freq_func(dev, cfg);
+  if (status != 0) {
+    /* The owner rejects an unsafe retune before touching the device. Preserve
+     * configuration provenance rather than claiming the request took effect. */
+    *cfg = previous;
+    return status;
+  }
+  return 0;
 }
 
 int nrue_ru_adjust_rx_gain(PHY_VARS_NR_UE *UE, int gain_change)
 {
+  if (get_agc_options()->mode != AGC_MODE_OFF) {
+    openair0_config_t *cfg = &openair0_cfg_g[UE->rf_map.card];
+    double applied_delta = 0, reported_gain = 0;
+    const int status = radio_gain_device_adjust_rx(&openair0_dev[UE->rf_map.card], gain_change, &applied_delta, &reported_gain);
+    if (status == 0) {
+      /* Acquisition has not published synchronized PHY work yet. Retain the
+       * configuration-derived legacy event separately from hardware readback. */
+      /* Tracking may have changed gain since this acquisition view was last
+       * updated. Adopt the result; never add a delta to that older view. */
+      cfg->rx_gain[0] = reported_gain + cfg->rx_gain_offset[0];
+      UE->rx_total_gain_dB = lround(cfg->rx_gain[0]);
+    }
+    flight_recorder_emit(FLIGHT_EVENT_UE_AGC,
+                         UE->Mod_id,
+                         gain_change,
+                         lround(applied_delta),
+                         lround(cfg->rx_gain[0] - cfg->rx_gain_offset[0]),
+                         status,
+                         0);
+    if (status != 0)
+      LOG_W(HW, "RX acquisition gain request was not applied: %d\n", status);
+    return lround(applied_delta);
+  }
+
   openair0_config_t *cfg = &openair0_cfg_g[UE->rf_map.card];
   openair0_device_t *dev = &openair0_dev[UE->rf_map.card];
 
@@ -429,6 +463,16 @@ int nrue_ru_adjust_rx_gain(PHY_VARS_NR_UE *UE, int gain_change)
   LOG_I(HW, "Rxgain adjusted by %d dB, RX gain: %d dB \n", gain_change, applied_rxgain);
 
   return gain_change;
+}
+
+radio_gain_sample_context_t nrue_ru_sample_context(PHY_VARS_NR_UE *UE, int64_t first, int64_t end)
+{
+  openair0_device_t *dev = &openair0_dev[UE->rf_map.card];
+  int64_t raw_first, raw_end;
+  if (!dev->firstTS_initialized || __builtin_add_overflow(first, dev->firstTS, &raw_first)
+      || __builtin_add_overflow(end, dev->firstTS, &raw_end))
+    return (radio_gain_sample_context_t){.present = get_agc_options()->mode != AGC_MODE_OFF};
+  return radio_gain_device_samples(dev, raw_first, raw_end);
 }
 
 int nrue_ru_read(PHY_VARS_NR_UE *UE, openair0_timestamp_t *ptimestamp, void **buff, int nsamps, int num_antennas)

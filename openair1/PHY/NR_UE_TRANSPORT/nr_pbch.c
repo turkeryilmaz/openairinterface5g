@@ -457,6 +457,11 @@ int nr_pbch_decode(PHY_VARS_NR_UE *ue,
     fapi_nr_rx_indication_t rx_ind;
     rx_ind.number_pdus = 0;
     nr_fill_rx_indication(&rx_ind, FAPI_NR_RX_PDU_TYPE_SSB, ue, 0, 0, NULL, proc, (void *)result);
+    /* nr_fill_rx_indication() normally reads the committed serving index. A
+     * managed stronger candidate is committed only after this decode returns,
+     * so preserve the decoded index's lower three bits in this SSB PDU. For
+     * Lmax 64 the existing result->xtra_byte retains the upper index bits. */
+    rx_ind.rx_indication_body[rx_ind.number_pdus - 1].ssb_pdu.ssb_index = *ssb_index & 0x7;
     nr_downlink_indication_t dl_indication = (nr_downlink_indication_t){
         .gNB_index = proc->gNB_id,
         .module_id = ue->Mod_id,
