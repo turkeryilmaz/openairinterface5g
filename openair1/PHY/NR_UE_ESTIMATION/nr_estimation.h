@@ -87,10 +87,48 @@ uint32_t nr_ue_calculate_ssb_rsrp(const NR_DL_FRAME_PARMS *fp,
                                   const c16_t rxdataF[][fp->ofdm_symbol_size],
                                   int ssb_start_subcarrier);
 
+typedef struct {
+  bool staged;
+  bool eligible;
+  bool gain_eligible;
+  bool generation_current;
+  bool noise_checked;
+  bool noise_current;
+  int ssb_index;
+  uint32_t raw_sss_mean_power;
+  int rsrp_dBm;
+  float sinr_dB;
+} nr_ue_ssb_measurement_candidate_t;
+
+/* Managed selection is deliberately separate from measurement publication:
+ * current serving candidates decode as before; an alternate must qualify and
+ * be stronger unless the last committed-serving PBCH CRC failed. */
+bool nr_ue_select_managed_ssb_candidate(const nr_ue_ssb_measurement_candidate_t *candidate,
+                                        int serving_ssb_index,
+                                        int serving_rsrp_dBm,
+                                        bool serving_pbch_failed);
+
+/* Update the serial fallback state after an actual selected PBCH decode. */
+bool nr_ue_managed_ssb_fallback_after_decode(bool serving_pbch_failed, bool decoded_serving, bool pbch_success);
+
 void nr_ue_ssb_rsrp_measurements(PHY_VARS_NR_UE *ue,
                                  int ssb_index,
                                  const UE_nr_rxtx_proc_t *proc,
                                  const c16_t rxdataF[ue->frame_parms.nb_antennas_rx][ue->frame_parms.ofdm_symbol_size]);
+/* Stage uses only the middle-symbol raw scalar and immutable work context.
+ * It does not alter serving measurement state or notify MAC. */
+void nr_ue_stage_ssb_rsrp_measurement(PHY_VARS_NR_UE *ue,
+                                      int ssb_index,
+                                      const UE_nr_rxtx_proc_t *proc,
+                                      uint32_t raw_sss_mean_power,
+                                      nr_ue_ssb_measurement_candidate_t *candidate);
+/* Finalize exactly one managed stage after its PBCH decision. Only a successful
+ * eligible candidate commits serving state and sends the MAC measurement. */
+void nr_ue_finalize_staged_ssb_rsrp_measurement(PHY_VARS_NR_UE *ue,
+                                                 const UE_nr_rxtx_proc_t *proc,
+                                                 const nr_ue_ssb_measurement_candidate_t *candidate,
+                                                 bool pbch_checked,
+                                                 bool pbch_success);
 
 // Structure to pass data to neighboring cell measurement task
 typedef struct {
@@ -108,9 +146,6 @@ void nr_ue_rrc_measurements(PHY_VARS_NR_UE *ue,
                             const UE_nr_rxtx_proc_t *proc,
                             const c16_t rxdataF[ue->frame_parms.nb_antennas_rx][ue->frame_parms.ofdm_symbol_size]);
 
-void phy_adjust_gain_nr(PHY_VARS_NR_UE *ue,
-                        uint32_t rx_power_fil_dB,
-                        uint8_t gNB_id);
 
 void nr_pdsch_ptrs_processing(int nbRx,
                               c16_t ptrs_phase_per_slot[][14],

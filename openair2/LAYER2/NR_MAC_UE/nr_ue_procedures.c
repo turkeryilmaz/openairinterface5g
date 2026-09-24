@@ -1712,6 +1712,10 @@ int nr_ue_configure_pucch(NR_UE_MAC_INST_t *mac,
                            PUCCH_sched_t *pucch,
                            fapi_nr_ul_config_pucch_pdu *pucch_pdu)
 {
+  int16_t pathloss;
+  if (!compute_nr_SSB_PL(mac, &pathloss))
+    return -1;
+
   NR_UE_UL_BWP_t *current_UL_BWP = mac->current_UL_BWP;
   NR_UE_ServingCell_Info_t *sc_info = &mac->sc_info;
   NR_PUCCH_FormatConfig_t *pucchfmt;
@@ -1759,8 +1763,29 @@ int nr_ue_configure_pucch(NR_UE_MAC_INST_t *mac,
     pucch_pdu->mcs = get_pucch0_mcs(pucch->n_harq, 0, pucch->ack_payload, 0);
     pucch_pdu->payload = pucch->ack_payload;
     pucch_pdu->n_bit = 1;
-  } else if (pucch->pucch_resource != NULL) {
 
+    const int sum_delta_pucch = get_sum_delta_pucch(mac, slot, frame);
+    pucch_pdu->pucch_tx_power = get_pucch_tx_power_ue(mac,
+                                                      scs,
+                                                      NULL,
+                                                      sum_delta_pucch,
+                                                      pucch_pdu->format_type,
+                                                      pucch_pdu->prb_size,
+                                                      pucch_pdu->freq_hop_flag,
+                                                      pucch_pdu->add_dmrs_flag,
+                                                      pucch_pdu->nr_of_symbols,
+                                                      subframe_number,
+                                                      pucch_pdu->n_bit,
+                                                      pucch_pdu->prb_start);
+    if (flight_recorder_enabled() && pucch_pdu->pucch_tx_power != INT16_MIN)
+      flight_recorder_emit(FLIGHT_EVENT_UE_TX_CONTROL,
+                           FLIGHT_UE_TX_CHANNEL_PUCCH,
+                           (int64_t)frame * 1000 + slot,
+                           pathloss,
+                           mac->G_b_f_c,
+                           sum_delta_pucch,
+                           mac->p_Max == INT_MIN ? INT64_MIN : mac->p_Max);
+  } else if (pucch->pucch_resource != NULL) {
     NR_PUCCH_Resource_t *pucchres = pucch->pucch_resource;
 
     if (mac->harq_ACK_SpatialBundlingPUCCH ||
@@ -1919,6 +1944,14 @@ int nr_ue_configure_pucch(NR_UE_MAC_INST_t *mac,
                                                       subframe_number,
                                                       n_uci,
                                                       pucch_pdu->prb_start);
+    if (flight_recorder_enabled() && pucch_pdu->pucch_tx_power != INT16_MIN)
+      flight_recorder_emit(FLIGHT_EVENT_UE_TX_CONTROL,
+                           FLIGHT_UE_TX_CHANNEL_PUCCH,
+                           (int64_t)frame * 1000 + slot,
+                           pathloss,
+                           mac->G_b_f_c,
+                           sum_delta_pucch,
+                           mac->p_Max == INT_MIN ? INT64_MIN : mac->p_Max);
   } else {
     LOG_E(NR_MAC, "problem with pucch configuration\n");
     return -1;
@@ -3368,6 +3401,9 @@ static void handle_rar_reception(NR_UE_MAC_INST_t *mac, NR_MAC_RAR *rar, frame_t
     fapi_nr_ul_config_request_pdu_t *pdu = lockGet_ul_config(mac, frame_tx, slot_tx, FAPI_NR_UL_CONFIG_TYPE_PUSCH);
     if (!pdu)
       return;
+    // A new contention-based RAR starts Msg3 power control from this RAR TPC and PRACH ramp.
+    if (!ra->cfra && ra->ra_state == nrRA_WAIT_RAR)
+      mac->pusch_power_control_initialized = false;
     // Config Msg3 PDU
     int ret = nr_config_pusch_pdu(mac,
                                   &tda_info,
@@ -3378,8 +3414,13 @@ static void handle_rar_reception(NR_UE_MAC_INST_t *mac, NR_MAC_RAR *rar, frame_t
                                   rnti,
                                   NR_SearchSpace__searchSpaceType_PR_common,
                                   NR_DCI_NONE);
-    if (ret != 0)
+    if (ret != 0) {
       remove_ul_config_last_item(pdu);
+      release_ul_config(pdu, false);
+      if (!ra->cfra && ra->ra_state == nrRA_WAIT_RAR)
+        nr_msg3_not_transmitted(mac);
+      return;
+    }
     release_ul_config(pdu, false);
   }
 }

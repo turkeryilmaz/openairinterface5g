@@ -3,6 +3,7 @@
  */
 
 #include "flight_options.h"
+#include "agc_options.h"
 
 #define _GNU_SOURCE             /* See feature_test_macros(7) */
 #include <sched.h>
@@ -133,13 +134,28 @@ uint64_t set_nrUE_optmask(uint64_t bitmask) {
 nrUE_params_t *get_nrUE_params(void) {
   return &nrUE_params;
 }
-static void get_options(configmodule_interface_t *cfg)
+static int get_options(configmodule_interface_t *cfg)
 {
   paramdef_t cmdline_params[] = CMDLINE_NRUEPARAMS_DESC;
   int numparams = sizeofArray(cmdline_params);
   config_get(cfg, cmdline_params, numparams, NULL);
-  AssertFatal(nrUE_params.extra_pdu_id == -1,
-              "Add additional PDU sessions in uicc.pdu_sessions array instead\n");
+  AssertFatal(nrUE_params.extra_pdu_id == -1, "Add additional PDU sessions in uicc.pdu_sessions array instead\n");
+  for (int i = 0; i < numparams; ++i) {
+    if (strcmp(cmdline_params[i].optname, "cont-fo-comp") != 0)
+      continue;
+    const bool supplied = config_isparamset(cmdline_params, i);
+    if (agc_resolve_ue_cfo(get_agc_options(), supplied, nrUE_params.cont_fo_comp, &nrUE_params.cont_fo_comp) != 0) {
+      LOG_E(HW, "Managed AGC requires cont-fo-comp=1, 2, or 3; explicit hardware CFO retuning (0) has no TX quiescence contract\n");
+      return -1;
+    }
+    if (get_agc_options()->mode != AGC_MODE_OFF)
+      LOG_I(HW,
+            "[AGC] cont-fo-comp=%d (%s); hardware CFO retuning disabled\n",
+            nrUE_params.cont_fo_comp,
+            supplied ? "configured" : "managed-owner default");
+    return 0;
+  }
+  return -1;
 }
 
 /* Parse --actor-affinity into cores[]. Returns number of cores. Empty/NULL -> 0. */
@@ -290,6 +306,8 @@ int main(int argc, char **argv)
       || CONFIG_ISFLAGSET(CONFIG_ABORT)) {
     exit_fun("[SOFTMODEM] Error, configuration module init failed\n");
   }
+  if (agc_start_options(uniqCfg, argc, argv, AGC_ROLE_UE) != 0)
+    return 2;
   if (flight_start_capture(uniqCfg, argc, argv, "ue") != 0)
     return 2;
   start_background_system();
@@ -299,9 +317,11 @@ int main(int argc, char **argv)
   logInit();
   // get options and fill parameters from configuration file
 
-  get_options(uniqCfg); // Command-line options specific for NRUE
+  if (get_options(uniqCfg) != 0) // Command-line options specific for NRUE
+    return 2;
   IS_SOFTMODEM_5GUE = true;
   get_common_options(uniqCfg);
+  nrUE_params.agc = get_agc_options()->rx_acquisition == AGC_RX_ACQUISITION_LEGACY;
   CONFIG_CLEARRTFLAG(CONFIG_NOEXITONHELP);
 
   softmodem_verify_mode(get_softmodem_params());

@@ -6,9 +6,12 @@
  * \brief       Routines for UE scheduling
  */
 
+#include "common/utils/LOG/flight_recorder.h"
 #include <stdio.h>
 #include <math.h>
 #include <pthread.h>
+#include "executables/agc_options.h"
+#include "radio/COMMON/radio_gain_device.h"
 
 /* exe */
 #include <common/utils/nr/nr_common.h>
@@ -213,10 +216,13 @@ void update_mac_ul_timers(NR_UE_MAC_INST_t *mac)
 
   nr_phr_info_t *phr_info = &mac->scheduling_info.phr_info;
   if (phr_info->is_configured) {
-    bool prohibit_expired = nr_timer_tick(&phr_info->prohibitPHR_Timer);
-    if (prohibit_expired) {
-      int16_t pathloss = compute_nr_SSB_PL(mac);
-      if (abs(pathloss - phr_info->PathlossLastValue) > phr_info->PathlossChange_db) {
+    nr_timer_tick(&phr_info->prohibitPHR_Timer);
+    // Once the timer has elapsed, keep the pathloss-change condition eligible until a valid
+    // measurement can satisfy it. The timer still elapsed and remains stopped normally.
+    if (nr_timer_expired(&phr_info->prohibitPHR_Timer)) {
+      int16_t pathloss;
+      if (compute_nr_SSB_PL(mac, &pathloss)
+          && abs(pathloss - phr_info->PathlossLastValue) > phr_info->PathlossChange_db) {
         phr_info->phr_reporting |= (1 << phr_cause_prohibit_timer);
       }
     }
@@ -227,9 +233,9 @@ void update_mac_ul_timers(NR_UE_MAC_INST_t *mac)
   }
   bool ra_backoff_expired = nr_timer_tick(&mac->ra.RA_backoff_timer);
   if (ra_backoff_expired) {
-    // perform the Random Access Resource selection procedure after the backoff time
+    // The standardized backoff elapsed. Defer only the new preamble selection until the SSB measurement is usable.
     mac->ra.ra_state = nrRA_GENERATE_PREAMBLE;
-    ra_resource_selection(mac);
+    mac->ra.defer_preamble_for_ssb_pathloss = !ra_resource_selection(mac);
   } else {
     if (nr_timer_is_active(&mac->ra.RA_backoff_timer)) {
       // if the criteria (as defined in clause 5.1.2) to select contention-free Random Access Resources
@@ -239,7 +245,7 @@ void update_mac_ul_timers(NR_UE_MAC_INST_t *mac)
         // perform the Random Access Resource selection procedure
         nr_timer_stop(&mac->ra.RA_backoff_timer);
         mac->ra.ra_state = nrRA_GENERATE_PREAMBLE;
-        ra_resource_selection(mac);
+        mac->ra.defer_preamble_for_ssb_pathloss = !ra_resource_selection(mac);
       }
     }
   }
@@ -361,6 +367,17 @@ int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
 {
   uint16_t l_prime_mask = 0;
   int N_PRB_oh  = 0;
+
+  /* lockGet_ul_config() reuses this storage; initialize all local deferred state before any error path. */
+  int16_t pathloss;
+  if (!compute_nr_SSB_PL(mac, &pathloss))
+    return -1;
+
+  pusch_config_pdu->oai_deferred_tx_power = 0;
+  pusch_config_pdu->oai_deferred_is_rar_tx_retx = 0;
+  pusch_config_pdu->oai_deferred_tpc_delta = 0;
+  pusch_config_pdu->oai_deferred_nb_dmrs_prb = 0;
+  pusch_config_pdu->oai_deferred_config_generation = 0;
 
   int rnti_type = get_rnti_type(mac, rnti);
   NR_UE_UL_BWP_t *current_UL_BWP = mac->current_UL_BWP;
@@ -805,23 +822,38 @@ int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
       delta_pusch = table_38_213_7_1_1_1[0][dci->tpc];
     }
   }
-  delta_pusch = 0; // set to 0 as a workaround for PHY not applying PUSCH tx power
-
   bool is_rar_tx_retx = rnti_type == TYPE_TC_RNTI_;
-  bool tp_enabled = pusch_config_pdu->transform_precoding == NR_PUSCH_Config__transformPrecoder_enabled;
-  pusch_config_pdu->tx_power = get_pusch_tx_power_ue(mac,
-                                                     pusch_config_pdu->rb_size,
-                                                     pusch_config_pdu->rb_start,
-                                                     pusch_config_pdu->nr_of_symbols,
-                                                     nb_dmrs_re_per_rb * number_dmrs_symbols,
-                                                     0, // TODO: count PTRS per RB
-                                                     pusch_config_pdu->qam_mod_order,
-                                                     pusch_config_pdu->target_code_rate,
-                                                     pusch_config_pdu->pusch_uci.beta_offset_csi1,
-                                                     pusch_config_pdu->pusch_data.tb_size << 3,
-                                                     delta_pusch,
-                                                     is_rar_tx_retx,
-                                                     tp_enabled);
+  if (get_agc_options()->tx_actuation) {
+    // Snapshot the accepted RAR command; TC-RNTI retransmissions use their own DCI TPC.
+    if (rar_grant != NULL && is_rar_tx_retx && !mac->ra.cfra)
+      delta_pusch = mac->ra.Msg3_TPC;
+    /* A DCI can arrive out of target-slot order. Retain its decoded TPC with the existing
+     * private slot queue and consume it only from nr_ue_ul_scheduler() at transmission time. */
+    pusch_config_pdu->oai_deferred_tx_power = 1;
+    pusch_config_pdu->oai_deferred_is_rar_tx_retx = is_rar_tx_retx;
+    pusch_config_pdu->oai_deferred_tpc_delta = delta_pusch;
+    pusch_config_pdu->oai_deferred_nb_dmrs_prb = nb_dmrs_re_per_rb * number_dmrs_symbols;
+    pusch_config_pdu->oai_deferred_config_generation = mac->ul_pusch_config_generation;
+  } else {
+    /* Preserve baseline behavior, including the existing PHY workaround. */
+    delta_pusch = 0;
+    bool tp_enabled = pusch_config_pdu->transform_precoding == NR_PUSCH_Config__transformPrecoder_enabled;
+    pusch_config_pdu->tx_power = get_pusch_tx_power_ue(mac,
+                                                       pusch_config_pdu->rb_size,
+                                                       pusch_config_pdu->rb_start,
+                                                       pusch_config_pdu->nr_of_symbols,
+                                                       nb_dmrs_re_per_rb * number_dmrs_symbols,
+                                                       0, // TODO: count PTRS per RB
+                                                       pusch_config_pdu->qam_mod_order,
+                                                       pusch_config_pdu->target_code_rate,
+                                                       pusch_config_pdu->pusch_uci.beta_offset_csi1,
+                                                       pusch_config_pdu->pusch_data.tb_size << 3,
+                                                       delta_pusch,
+                                                       is_rar_tx_retx,
+                                                       tp_enabled);
+    if (pusch_config_pdu->tx_power == INT_MIN)
+      return -1;
+  }
 
   pusch_config_pdu->ldpcBaseGraph = get_BG(pusch_config_pdu->pusch_data.tb_size << 3, pusch_config_pdu->target_code_rate);
 
@@ -904,6 +936,10 @@ int configure_srs_pdu(NR_UE_MAC_INST_t *mac,
                       int offset,
                       NR_SRS_ResourceSet_t *srs_resource_set)
 {
+  int16_t pathloss;
+  if (!compute_nr_SSB_PL(mac, &pathloss))
+    return -1;
+
   NR_UE_UL_BWP_t *current_UL_BWP = mac->current_UL_BWP;
 
   srs_config_pdu->rnti = mac->crnti;
@@ -948,6 +984,8 @@ int configure_srs_pdu(NR_UE_MAC_INST_t *mac,
   int delta_srs = 0; // DCI format 2_3 not implemented
   srs_config_pdu->tx_power =
       get_srs_tx_power_ue(mac, srs_resource, srs_resource_set, delta_srs, is_configured_for_pusch_on_current_bwp);
+  if (srs_config_pdu->tx_power == INT_MIN)
+    return -1;
 
 #ifdef SRS_DEBUG
   LOG_I(NR_MAC,"Frame = %i, slot = %i\n", frame, slot);
@@ -1549,6 +1587,10 @@ static void nr_ue_prach_scheduler(NR_UE_MAC_INST_t *mac, frame_t frameP, slot_t 
 
   if (is_ul_slot(slotP, &mac->frame_structure)) {
     if (slotP == prach_occasion_info->slot) {
+      int16_t prach_tx_power;
+      if (!get_prach_tx_power(mac, &prach_tx_power))
+        return;
+
       fapi_nr_ul_config_request_pdu_t *pdu = lockGet_ul_config(mac, frameP, slotP, FAPI_NR_UL_CONFIG_TYPE_PRACH);
       if (!pdu) {
         LOG_E(NR_MAC, "Error in PRACH allocation\n");
@@ -1614,7 +1656,7 @@ static void nr_ue_prach_scheduler(NR_UE_MAC_INST_t *mac, frame_t frameP, slot_t 
       }
 
       pdu->prach_config_pdu.ra_PreambleIndex = ra->ra_PreambleIndex;
-      pdu->prach_config_pdu.prach_tx_power = get_prach_tx_power(mac);
+      pdu->prach_config_pdu.prach_tx_power = prach_tx_power;
       release_ul_config(pdu, false);
       nr_scheduled_response_t scheduled_response = {.ul_config = mac->ul_config_request + slotP,
                                                     .mac = mac,
@@ -1906,13 +1948,17 @@ static void nr_ue_pucch_scheduler(NR_UE_MAC_INST_t *mac, frame_t frame, int slot
   }
 }
 
-static void nr_ue_fill_phr(NR_UE_MAC_INST_t *mac,
+static bool nr_ue_fill_phr(NR_UE_MAC_INST_t *mac,
                            NR_SINGLE_ENTRY_PHR_MAC_CE *phr,
                            float P_CMAX,
                            float tx_power,
                            frame_t frame,
                            slot_t slot)
 {
+  int16_t pathloss;
+  if (!compute_nr_SSB_PL(mac, &pathloss))
+    return false;
+
   nr_phr_info_t *phr_info = &mac->scheduling_info.phr_info;
   // Value mapping according to 38.133 10.1.18.1
   const int PC_MAX_00 = -29;
@@ -1938,11 +1984,12 @@ static void nr_ue_fill_phr(NR_UE_MAC_INST_t *mac,
         headroom,
         tx_power);
 
-  phr_info->PathlossLastValue = compute_nr_SSB_PL(mac);
+  phr_info->PathlossLastValue = pathloss;
   // Restart both timers according to 38.321
   nr_timer_start(&phr_info->periodicPHR_Timer);
   nr_timer_start(&phr_info->prohibitPHR_Timer);
   phr_info->phr_reporting = 0;
+  return true;
 }
 
 typedef struct {
@@ -2037,9 +2084,9 @@ static void nr_ue_get_sdu_mac_ce_pre(NR_UE_MAC_INST_t *mac,
   if (phr_info->is_configured && phr_info->phr_reporting > 0) {
     int needed = sizeof(NR_MAC_SUBHEADER_FIXED) + sizeof(NR_SINGLE_ENTRY_PHR_MAC_CE);
     if (buflen >= bsr_len + needed) {
-      if (mac->scheduling_info.phr_info.phr_reporting) {
+      if (mac->scheduling_info.phr_info.phr_reporting
+          && nr_ue_fill_phr(mac, &mac_ce_p->phr, P_CMAX, tx_power, frame, slot)) {
         mac_ce_p->phr_len = needed;
-        nr_ue_fill_phr(mac, &mac_ce_p->phr, P_CMAX, tx_power, frame, slot);
       }
     }
   }
@@ -2561,6 +2608,78 @@ static bool nr_ue_get_sdu(NR_UE_MAC_INST_t *mac,
   return true; // success if we got at least one sdu
 }
 
+static bool has_stale_deferred_pusch(const fapi_nr_ul_config_request_pdu_t *ulcfg_pdu, uint64_t config_generation)
+{
+  for (const fapi_nr_ul_config_request_pdu_t *pdu = ulcfg_pdu; pdu->pdu_type != FAPI_NR_END; ++pdu) {
+    if (pdu->pdu_type == FAPI_NR_UL_CONFIG_TYPE_PUSCH && pdu->pusch_config_pdu.oai_deferred_tx_power
+        && pdu->pusch_config_pdu.oai_deferred_config_generation != config_generation)
+      return true;
+  }
+  return false;
+}
+
+static bool has_multiple_deferred_pusch(const fapi_nr_ul_config_request_pdu_t *ulcfg_pdu)
+{
+  unsigned int deferred_pusch = 0;
+  for (const fapi_nr_ul_config_request_pdu_t *pdu = ulcfg_pdu; pdu->pdu_type != FAPI_NR_END; ++pdu) {
+    if (pdu->pdu_type == FAPI_NR_UL_CONFIG_TYPE_PUSCH && pdu->pusch_config_pdu.oai_deferred_tx_power && ++deferred_pusch > 1)
+      return true;
+  }
+  return false;
+}
+
+static void record_ssb_pathloss_availability(NR_UE_MAC_INST_t *mac, bool available, int16_t pathloss)
+{
+  if (!flight_recorder_enabled()
+      || (mac->ssb_pathloss_observed && mac->ssb_pathloss_available == available))
+    return;
+
+  int64_t rsrp_dBm = INT64_MIN;
+  if (mac->mib_ssb < MAX_NB_SSB && mac->ssb_measurements[mac->mib_ssb].ssb_rsrp_dBm != INT_MIN)
+    rsrp_dBm = mac->ssb_measurements[mac->mib_ssb].ssb_rsrp_dBm;
+
+  flight_recorder_emit(FLIGHT_EVENT_UE_PATHLOSS_STATE,
+                       available,
+                       mac->mib_ssb,
+                       rsrp_dBm,
+                       mac->phy_config.config_req.ssb_config.ss_pbch_power,
+                       available ? pathloss : INT64_MIN,
+                       mac->state);
+  mac->ssb_pathloss_observed = true;
+  mac->ssb_pathloss_available = available;
+}
+
+static void retire_unavailable_pathloss_feedback(NR_UE_MAC_INST_t *mac, frame_t frame, slot_t slot)
+{
+  RA_PUCCH_SCHED_t *ra_pucch = mac->ra.ra_pucch;
+  if (ra_pucch && ra_pucch->sched_frame == frame && ra_pucch->sched_slot == slot)
+    free_and_zero(mac->ra.ra_pucch);
+
+  const int num_dl_harq = get_nrofHARQ_ProcessesForPDSCH(&mac->sc_info);
+  for (int code_word = 0; code_word < NR_DL_MAX_NB_CW; ++code_word) {
+    for (int harq_pid = 0; harq_pid < num_dl_harq; ++harq_pid) {
+      NR_UE_DL_HARQ_STATUS_t *harq = &mac->dl_harq_info[harq_pid][code_word];
+      if (harq->active && harq->ul_frame == frame && harq->ul_slot == slot) {
+        harq->active = false;
+        harq->ack_received = false;
+      }
+    }
+  }
+}
+
+static bool is_queued_initial_msg3(const NR_UE_MAC_INST_t *mac, const fapi_nr_ul_config_request_pdu_t *pdu)
+{
+  if (mac->ra.ra_state != nrRA_WAIT_RAR || mac->ra.cfra)
+    return false;
+
+  const int num_pdus = *pdu->privateNBpdus;
+  for (int i = 0; i < num_pdus; ++i) {
+    if (pdu[i].pdu_type == FAPI_NR_UL_CONFIG_TYPE_PUSCH)
+      return true;
+  }
+  return false;
+}
+
 void nr_ue_ul_scheduler(NR_UE_MAC_INST_t *mac, nr_uplink_indication_t *ul_info)
 {
   int cc_id = ul_info->cc_id;
@@ -2568,10 +2687,43 @@ void nr_ue_ul_scheduler(NR_UE_MAC_INST_t *mac, nr_uplink_indication_t *ul_info)
   slot_t slot_tx = ul_info->slot;
   RA_config_t *ra = &mac->ra;
 
+  const bool pathloss_needed = mac->state == UE_PERFORMING_RA || mac->state == UE_CONNECTED;
+  int16_t pathloss = 0;
+  const bool pathloss_available = !pathloss_needed || compute_nr_SSB_PL(mac, &pathloss);
+  if (pathloss_needed)
+    record_ssb_pathloss_availability(mac, pathloss_available, pathloss);
+
+  if (pathloss_needed && !pathloss_available) {
+    // Retire only feedback due now; future feedback must survive this skipped target slot.
+    retire_unavailable_pathloss_feedback(mac, frame_tx, slot_tx);
+
+    // Drop this current-slot request; the frame/slot check also clears stale wrapped grants.
+    fapi_nr_ul_config_request_pdu_t *pending_pdu = lockGet_ul_iterator(mac, frame_tx, slot_tx);
+    const bool retire_msg3 = pending_pdu && is_queued_initial_msg3(mac, pending_pdu);
+    if (pending_pdu)
+      release_ul_config(pending_pdu, true);
+    if (retire_msg3)
+      nr_msg3_not_transmitted(mac);
+    return;
+  }
+
+  if ((mac->state == UE_PERFORMING_RA || mac->state == UE_CONNECTED)
+      && !radio_gain_device_validate_ue_power_limit(mac->p_Max, mac->p_Max_alt, frame_tx, slot_tx))
+    return;
+
   if (mac->state == UE_PERFORMING_RA && ra->ra_state == nrRA_UE_IDLE) {
     init_RA(mac);
     // perform the Random Access Resource selection procedure (see clause 5.1.2 and .2a)
-    ra_resource_selection(mac);
+    if (!ra_resource_selection(mac)) {
+      ra->defer_preamble_for_ssb_pathloss = true;
+      return;
+    }
+  }
+
+  if (mac->state == UE_PERFORMING_RA && ra->defer_preamble_for_ssb_pathloss) {
+    if (!ra_resource_selection(mac))
+      return;
+    ra->defer_preamble_for_ssb_pathloss = false;
   }
 
   if (mac->state == UE_PERFORMING_RA && ra->ra_state == nrRA_GENERATE_PREAMBLE)
@@ -2595,6 +2747,24 @@ void nr_ue_ul_scheduler(NR_UE_MAC_INST_t *mac, nr_uplink_indication_t *ul_info)
   if (ulcfg_pdu) {
     LOG_D(NR_MAC, "number of UL PDUs: %d with UL transmission in sfn [%d.%d]\n", *ulcfg_pdu->privateNBpdus, frame_tx, slot_tx);
 
+    const uint64_t config_generation = mac->ul_pusch_config_generation;
+    if (get_agc_options()->tx_actuation && has_stale_deferred_pusch(ulcfg_pdu, config_generation)) {
+      LOG_E(NR_MAC,
+            "Managed TX rejects PUSCH after an UL BWP or power configuration change in target slot %d.%d\n",
+            frame_tx,
+            slot_tx);
+      radio_gain_device_reject_tx(frame_tx, slot_tx, 0, RADIO_TX_REJECT_LAYOUT);
+      release_ul_config(ulcfg_pdu, true);
+      return;
+    }
+
+    if (get_agc_options()->tx_actuation && has_multiple_deferred_pusch(ulcfg_pdu)) {
+      LOG_E(NR_MAC, "Managed TX does not support multiple PUSCH PDUs in target slot %d.%d\n", frame_tx, slot_tx);
+      radio_gain_device_reject_tx(frame_tx, slot_tx, 0, RADIO_TX_REJECT_LAYOUT);
+      release_ul_config(ulcfg_pdu, true);
+      return;
+    }
+
     while (ulcfg_pdu->pdu_type != FAPI_NR_END) {
       uint8_t *ulsch_input_buffer = ulsch_input_buffer_array[number_of_pdus];
       if (ulcfg_pdu->pdu_type == FAPI_NR_UL_CONFIG_TYPE_PUSCH) {
@@ -2607,6 +2777,21 @@ void nr_ue_ul_scheduler(NR_UE_MAC_INST_t *mac, nr_uplink_indication_t *ul_info)
               TBS_bytes,
               ra->ra_state);
         pdu->tx_request_body.fapiTxPdu = NULL;
+        const bool power_deferred = pdu->oai_deferred_tx_power;
+        if (pdu->oai_deferred_tx_power && !nr_ue_apply_deferred_pusch_tx_power(mac, pdu, config_generation)) {
+          LOG_E(NR_MAC, "Managed TX rejects stale PUSCH configuration in target slot %d.%d\n", frame_tx, slot_tx);
+          radio_gain_device_reject_tx(frame_tx, slot_tx, 0, RADIO_TX_REJECT_LAYOUT);
+          release_ul_config(ulcfg_pdu, true);
+          return;
+        }
+        if (power_deferred && flight_recorder_enabled())
+          flight_recorder_emit(FLIGHT_EVENT_UE_TX_CONTROL,
+                               FLIGHT_UE_TX_CHANNEL_PUSCH,
+                               (int64_t)frame_tx * 1000 + slot_tx,
+                               pathloss,
+                               mac->f_b_f_c,
+                               pdu->oai_deferred_tpc_delta,
+                               mac->p_Max == INT_MIN ? INT64_MIN : mac->p_Max);
         if ((ra->ra_state == nrRA_WAIT_RAR || ra->ra_state == nrRA_WAIT_MSGB) && !ra->cfra) {
           nr_get_Msg3_MsgA_PUSCH_payload(mac, ulsch_input_buffer, TBS_bytes);
           for (int k = 0; k < TBS_bytes; k++) {

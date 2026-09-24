@@ -154,6 +154,8 @@ void set_precoding_information_parameters(nfapi_nr_ue_pusch_pdu_t *pusch_config_
 bool get_downlink_ack(NR_UE_MAC_INST_t *mac, frame_t frame, int slot, PUCCH_sched_t *pucch);
 initial_pucch_resource_t get_initial_pucch_resource(const int idx);
 void multiplex_pucch_resource(NR_UE_MAC_INST_t *mac, PUCCH_sched_t *pucch, int num_res);
+/* INT16_MIN means the PUCCH power-control configuration is unsupported. The PHY
+ * turns it into a managed-TX fault, while baseline retains its legacy fallback. */
 int16_t get_pucch_tx_power_ue(NR_UE_MAC_INST_t *mac,
                               int scs,
                               NR_PUCCH_Config_t *pucch_Config,
@@ -180,6 +182,11 @@ int get_pusch_tx_power_ue(
   int delta_pusch,
   bool is_rar_tx_retx,
   bool transform_precoding);
+
+/* Applies one OAI-local deferred PUSCH TPC at its target slot only if its stamped configuration matches. */
+bool nr_ue_apply_deferred_pusch_tx_power(NR_UE_MAC_INST_t *mac,
+                                         nfapi_nr_ue_pusch_pdu_t *pusch_config_pdu,
+                                         uint64_t config_generation);
 
 int get_srs_tx_power_ue(NR_UE_MAC_INST_t *mac,
                         NR_SRS_Resource_t *srs_resource,
@@ -250,10 +257,12 @@ bool is_ss_monitor_occasion(const int frame, const int slot, const int slots_per
  */
 NR_UE_L2_STATE_t nr_ue_get_sync_state(module_id_t mod_id);
 
-int16_t get_prach_tx_power(NR_UE_MAC_INST_t *mac);
+bool get_prach_tx_power(const NR_UE_MAC_INST_t *mac, int16_t *tx_power);
 void schedule_RA_after_SR_failure(NR_UE_MAC_INST_t *mac);
 void nr_rar_not_successful(NR_UE_MAC_INST_t *mac);
-void ra_resource_selection(NR_UE_MAC_INST_t *mac);
+/* Retire a received-RAR attempt whose initial Msg3 was not transmitted. */
+void nr_msg3_not_transmitted(NR_UE_MAC_INST_t *mac);
+bool ra_resource_selection(NR_UE_MAC_INST_t *mac);
 void nr_Msg3_transmitted(NR_UE_MAC_INST_t *mac);
 void trigger_MAC_UE_RA(NR_UE_MAC_INST_t *mac, dci_pdu_rel15_t *pdcch_order);
 void nr_get_Msg3_MsgA_PUSCH_payload(NR_UE_MAC_INST_t *mac, uint8_t *buf, int TBS_max);
@@ -276,7 +285,8 @@ void remove_ul_config_last_item(fapi_nr_ul_config_request_pdu_t *pdu);
 fapi_nr_ul_config_request_pdu_t *fapiLockIterator(fapi_nr_ul_config_request_t *ul_config, frame_t frame_tx, int slot_tx);
 
 void release_ul_config(fapi_nr_ul_config_request_pdu_t *pdu, bool clearIt);
-int16_t compute_nr_SSB_PL(NR_UE_MAC_INST_t *mac);
+/* Returns false without writing pathloss when the selected SSB measurement is unavailable or invalid. */
+bool compute_nr_SSB_PL(const NR_UE_MAC_INST_t *mac, int16_t *pathloss);
 
 // PUSCH scheduler:
 // - Calculate the slot in which ULSCH should be scheduled. This is current slot + K2,

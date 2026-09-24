@@ -16,12 +16,20 @@
 #include <executables/softmodem-common.h>
 #include "openair2/LAYER2/nr_rlc/nr_rlc_oai_api.h"
 
-int16_t get_prach_tx_power(NR_UE_MAC_INST_t *mac)
+bool get_prach_tx_power(const NR_UE_MAC_INST_t *mac, int16_t *tx_power)
 {
-  RA_config_t *ra = &mac->ra;
-  int16_t pathloss = compute_nr_SSB_PL(mac);
-  int16_t ra_preamble_rx_power = (int16_t)(ra->prach_resources.ra_preamble_rx_target_power + pathloss);
-  return min(ra->prach_resources.Pc_max, ra_preamble_rx_power);
+  int16_t pathloss;
+  if (!compute_nr_SSB_PL(mac, &pathloss))
+    return false;
+
+  const RA_config_t *ra = &mac->ra;
+  const int64_t requested_power = (int64_t)ra->prach_resources.ra_preamble_rx_target_power + pathloss;
+  const int64_t capped_power = min((int64_t)ra->prach_resources.Pc_max, requested_power);
+  if (capped_power < INT16_MIN || capped_power > INT16_MAX)
+    return false;
+
+  *tx_power = (int16_t)capped_power;
+  return true;
 }
 
 static void set_preambleTransMax(RA_config_t *ra, long preambleTransMax)
@@ -139,7 +147,7 @@ static int get_messagePowerOffsetGroupB(long messagePowerOffsetGroupB)
   return pow_offset;
 }
 
-static void select_preamble_group(NR_UE_MAC_INST_t *mac)
+static bool select_preamble_group(NR_UE_MAC_INST_t *mac)
 {
   RA_config_t *ra = &mac->ra;
   // TODO if the RA_TYPE is switched from 2-stepRA to 4-stepRA
@@ -154,7 +162,9 @@ static void select_preamble_group(NR_UE_MAC_INST_t *mac)
       // – preambleReceivedTargetPower – msg3-DeltaPreamble – messagePowerOffsetGroupB
       int groupB_pow_offset = get_messagePowerOffsetGroupB(groupB->messagePowerOffsetGroupB);
       int PLThreshold = ra->prach_resources.Pc_max - ra->preambleRxTargetPower - ra->msg3_deltaPreamble - groupB_pow_offset;
-      int pathloss = compute_nr_SSB_PL(mac);
+      int16_t pathloss;
+      if (!compute_nr_SSB_PL(mac, &pathloss))
+        return false;
       // TODO if the Random Access procedure was initiated for the CCCH logical channel and the CCCH SDU size
       // plus MAC subheader is greater than ra-Msg3SizeGroupA
       if (ra->Msg3_size > get_Msg3SizeGroupA(groupB->ra_Msg3SizeGroupA) && pathloss < PLThreshold)
@@ -165,6 +175,7 @@ static void select_preamble_group(NR_UE_MAC_INST_t *mac)
       ra->RA_GroupA = true;
   }
   // else if Msg3 is being retransmitted, we keep what used in first transmission of Msg3
+  return true;
 }
 
 static ssb_ro_preambles_t get_ssb_ro_preambles_2step(struct NR_RACH_ConfigCommonTwoStepRA_r16__msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16 *config)
@@ -569,14 +580,19 @@ static void ra_preamble_msga_transmission(RA_config_t *ra, int scs)
 }
 
 // 38.321 Section 5.1.2 Random Access Resource selection
-void ra_resource_selection(NR_UE_MAC_INST_t *mac)
+bool ra_resource_selection(NR_UE_MAC_INST_t *mac)
 {
+  int16_t pathloss;
+  if (!compute_nr_SSB_PL(mac, &pathloss))
+    return false;
+
   configure_ra_preamble(mac);
   const NR_UE_UL_BWP_t *current_UL_BWP = mac->current_UL_BWP;
   const int ul_mu = mac->current_UL_BWP->scs;
   const int mu = nr_get_prach_or_ul_mu(mac->current_UL_BWP->msgA_ConfigCommon_r16, current_UL_BWP->rach_ConfigCommon, ul_mu);
   configure_prach_occasions(mac, mu);
   ra_preamble_msga_transmission(&mac->ra, mu);
+  return true;
 }
 
 static int nr_get_RA_window_2Step_v17(long msgB_ResponseWindow)
@@ -765,6 +781,7 @@ bool init_RA(NR_UE_MAC_INST_t *mac)
   RA_config_t *ra = &mac->ra;
   LOG_D(NR_MAC, "Initialization of RA\n");
   ra->ra_state = nrRA_GENERATE_PREAMBLE;
+  ra->defer_preamble_for_ssb_pathloss = false;
 
   // TODO this piece of code is required to compute MSG3_size that is used by ra_preambles_config function
   // Not a good implementation, it needs improvements
@@ -1083,6 +1100,7 @@ void nr_ra_succeeded(NR_UE_MAC_INST_t *mac, const frame_t frame, const int slot)
 
 void nr_ra_backoff_setting(RA_config_t *ra)
 {
+  ra->defer_preamble_for_ssb_pathloss = false;
   // select a random backoff time according to a uniform distribution
   // between 0 and the PREAMBLE_BACKOFF
   uint32_t seed = (unsigned int)(rdtsc_oai() & ~0);
@@ -1091,18 +1109,16 @@ void nr_ra_backoff_setting(RA_config_t *ra)
   nr_timer_start(&ra->RA_backoff_timer);
 }
 
-void nr_ra_contention_resolution_failed(NR_UE_MAC_INST_t *mac)
+static void retry_ra_after_failed_attempt(NR_UE_MAC_INST_t *mac)
 {
-  flight_recorder_emit(FLIGHT_EVENT_UE_RA, mac->ue_id, -1, mac->ra.t_crnti, 2, mac->ra.ra_state, 0);
-  LOG_W(MAC, "[UE %d] Contention resolution failed\n", mac->ue_id);
   RA_config_t *ra = &mac->ra;
-  // discard the TEMPORARY_C-RNTI
+  // discard the TEMPORARY-C-RNTI and flush any Msg3 payload from the failed attempt
   ra->t_crnti = 0;
-  // flush MSG3 buffer
   free_and_zero(ra->Msg3_buffer);
-  // MSG3 with C-RNTI is a L2 procedure, we shouldn't send any indication to RRC
+  // MSG3 with C-RNTI is a L2 procedure, so it does not need a new RRC payload indication
   if (!mac->msg3_C_RNTI)
     nr_mac_rrc_msg3_ind(mac->ue_id, 0, true);
+
   NR_PRACH_RESOURCES_t *prach_resources = &ra->prach_resources;
   prach_resources->preamble_tx_counter++;
   if (prach_resources->preamble_tx_counter == ra->preambleTransMax + 1) {
@@ -1113,6 +1129,27 @@ void nr_ra_contention_resolution_failed(NR_UE_MAC_INST_t *mac)
     // starting backoff time
     nr_ra_backoff_setting(ra);
   }
+}
+
+void nr_ra_contention_resolution_failed(NR_UE_MAC_INST_t *mac)
+{
+  flight_recorder_emit(FLIGHT_EVENT_UE_RA, mac->ue_id, -1, mac->ra.t_crnti, 2, mac->ra.ra_state, 0);
+  LOG_W(MAC, "[UE %d] Contention resolution failed\n", mac->ue_id);
+  retry_ra_after_failed_attempt(mac);
+}
+
+void nr_msg3_not_transmitted(NR_UE_MAC_INST_t *mac)
+{
+  RA_config_t *ra = &mac->ra;
+  // Only a contention-based initial Msg3 can return to preamble backoff from this seam.
+  // The serial scheduler can revisit a skipped slot; the active backoff marks that attempt retired.
+  if (ra->cfra || ra->ra_state != nrRA_WAIT_RAR || nr_timer_is_active(&ra->RA_backoff_timer))
+    return;
+
+  LOG_W(MAC, "[UE %d] Initial Msg3 was not transmitted; retrying Random Access\n", mac->ue_id);
+  nr_timer_stop(&ra->response_window_timer);
+  nr_timer_stop(&ra->contention_resolution_timer);
+  retry_ra_after_failed_attempt(mac);
 }
 
 void nr_rar_not_successful(NR_UE_MAC_INST_t *mac)
@@ -1177,7 +1214,10 @@ void prepare_msg4_msgb_feedback(NR_UE_MAC_INST_t *mac, int pid, int ack_nack)
   ra->ra_pucch->sched_frame = sched_frame;
   ra->ra_pucch->sched_slot = sched_slot;
   int ret = nr_ue_configure_pucch(mac, sched_slot, sched_frame, ra->t_crnti, &pucch, &ra->ra_pucch->pucch_pdu);
-  AssertFatal(ret == 0, "Couldn't configure PUCCH for MSG4\n");
+  if (ret != 0) {
+    free_and_zero(ra->ra_pucch);
+    return;
+  }
 }
 
 void reset_ra(NR_UE_MAC_INST_t *nr_mac, bool free_prach)

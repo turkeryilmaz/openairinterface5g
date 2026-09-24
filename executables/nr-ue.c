@@ -2,12 +2,14 @@
  * SPDX-License-Identifier: LicenseRef-CSSL-1.0
  */
 
+#include "radio/COMMON/radio_gain_device.h"
 #include "common/utils/LOG/flight_recorder.h"
 #include "common/utils/LOG/flight_monitor.h"
 #include "PHY/defs_nr_common.h"
 #include "PHY/impl_defs_nr.h"
 #define _GNU_SOURCE // For pthread_setname_np
 #include <pthread.h>
+#include <errno.h>
 #include "executables/nr-ue-ru.h"
 #include "executables/nr-uesoftmodem.h"
 #include "PHY/INIT/nr_phy_init.h"
@@ -194,7 +196,9 @@ typedef struct {
 static void UE_synch(void *arg) {
   syncData_t *syncD = (syncData_t *)arg;
   PHY_VARS_NR_UE *UE = syncD->UE;
+  radio_gain_device_set_rx_phase(RADIO_GAIN_RX_PHASE_ACQUISITION);
   UE->is_synchronized = 0;
+  UE->managed_serving_pbch_failed = false;
 
   if (UE->target_Nid_cell != -1) {
     LOG_W(NR_PHY, "Starting re-sync detection for target Nid_cell %i\n", UE->target_Nid_cell);
@@ -224,11 +228,14 @@ static void UE_synch(void *arg) {
         ((ret.rx_offset * 2) / fp->samples_per_subframe * fp->slots_per_subframe)
         + round((float)((ret.rx_offset * 2) % fp->samples_per_subframe) / fp->samples_per_slot0);
 
-    UE->freq_offset = freq_offset - UE->dl_Doppler_shift;
     if (!get_nrUE_params()->cont_fo_comp) {
       // rerun with new cell parameters and frequency-offset
-      nrue_ru_set_freq(UE, ul_carrier, dl_carrier, freq_offset);
+      if (nrue_ru_set_freq(UE, ul_carrier, dl_carrier, freq_offset) != 0) {
+        LOG_W(PHY, "Synchronization retune failed or was deferred; synchronization remains pending\n");
+        return;
+      }
     }
+    UE->freq_offset = freq_offset - UE->dl_Doppler_shift;
 
     if (get_nrUE_params()->agc) {
       nrue_ru_adjust_rx_gain(UE, UE->adjust_rxgain);
@@ -238,8 +245,10 @@ static void UE_synch(void *arg) {
     LOG_I(PHY, "Got synch: hw_slot_offset %d, carrier off %d Hz\n", hw_slot_offset, freq_offset);
 
     UE->is_synchronized = 1;
+    radio_gain_device_set_rx_phase(RADIO_GAIN_RX_PHASE_TRACKING);
   } else {
     flight_recorder_emit(FLIGHT_EVENT_UE_SYNC, UE->Mod_id, 0, 0, 0, 0, 0);
+    radio_gain_device_observe_rx(&syncD->proc.rx_gain_context, 0, false, true, RADIO_RX_SOURCE_UE_SEARCH);
     int gain_change = 0;
     if (get_nrUE_params()->agc)
       gain_change = nrue_ru_adjust_rx_gain(UE, INCREASE_IN_RXGAIN);
@@ -289,11 +298,19 @@ static int nr_ue_slot_select(const fapi_nr_config_request_t *cfg, int nr_slot)
   return NR_MIXED_SLOT;
 }
 
-static void RU_write(nr_rxtx_thread_data_t *rxtxD, bool sl_tx_action, c16_t **txp)
+/* Managed TX closes admission before the settings worker delivers SIGTERM.
+ * Let queued actors unwind during that interval instead of aborting before the
+ * coordinated shutdown can flush evidence. Other radio errors remain fatal. */
+static inline bool radio_shutdown_cancelled(int result)
+{
+  return (result == -ESHUTDOWN && oai_exit) || radio_gain_device_tx_cancelled(result);
+}
+
+static bool RU_write(nr_rxtx_thread_data_t *rxtxD, bool sl_tx_action, c16_t **txp)
 {
   int writeBlockSize = rxtxD->writeBlockSize;
   if (writeBlockSize == 0)
-    return;
+    return true;
 
   PHY_VARS_NR_UE *UE = rxtxD->UE;
   const fapi_nr_config_request_t *cfg = &UE->nrUE_config;
@@ -359,6 +376,8 @@ static void RU_write(nr_rxtx_thread_data_t *rxtxD, bool sl_tx_action, c16_t **tx
   while (writeBlockSize > maxWriteBlockSize) {
     const int dummyBlockSize = min(writeBlockSize - maxWriteBlockSize, maxWriteBlockSize);
     int tmp = nrue_ru_write_reorder(UE, writeTimestamp, (void **)txp, dummyBlockSize, fp->nb_antennas_tx, flags);
+    if (radio_shutdown_cancelled(tmp))
+      return false;
     AssertFatal(tmp == dummyBlockSize, "write samples to reorder function failed %d", tmp);
 
     writeTimestamp += dummyBlockSize;
@@ -370,6 +389,8 @@ static void RU_write(nr_rxtx_thread_data_t *rxtxD, bool sl_tx_action, c16_t **tx
     const uint num_dl_symbols = num_dl_symbols_slot(cfg, slot);
     const uint num_zero_samples = get_samples_symbol_timestamp(fp, slot, num_dl_symbols);
     int tmp = nrue_ru_write_reorder(UE, writeTimestamp, (void **)txp, num_zero_samples, fp->nb_antennas_tx, TX_BURST_INVALID);
+    if (radio_shutdown_cancelled(tmp))
+      return false;
     AssertFatal(tmp == num_zero_samples, "write samples to reorder function failed %d", tmp);
 
     writeTimestamp += num_zero_samples;
@@ -395,7 +416,10 @@ static void RU_write(nr_rxtx_thread_data_t *rxtxD, bool sl_tx_action, c16_t **tx
   }
 
   int tmp = nrue_ru_write_reorder(UE, writeTimestamp, (void **)txp, writeBlockSize, fp->nb_antennas_tx, flags);
+  if (radio_shutdown_cancelled(tmp))
+    return false;
   AssertFatal(tmp == writeBlockSize, "write to reorder function failed %d", tmp);
+  return true;
 }
 
 void processSlotTX(void *arg)
@@ -468,8 +492,8 @@ void processSlotTX(void *arg)
   } else {
     dynamic_barrier_join(rxtxD->next_barrier);
   }
-  RU_write(rxtxD, sl_tx_action, txp);
-  flight_monitor_add(FLIGHT_MONITOR_UE_TX_COMPLETED, 1);
+  if (RU_write(rxtxD, sl_tx_action, txp))
+    flight_monitor_add(FLIGHT_MONITOR_UE_TX_COMPLETED, 1);
   TracyCZoneEnd(ctx);
 }
 
@@ -507,7 +531,8 @@ static int handle_sync_req_from_mac(PHY_VARS_NR_UE *UE)
             ul_CarrierFreq,
             cfg->dl_frequency,
             UE->target_Nid_cell);
-      nrue_ru_set_freq(UE, ul_CarrierFreq, dl_CarrierFreq, 0);
+      if (nrue_ru_set_freq(UE, ul_CarrierFreq, dl_CarrierFreq, 0) != 0)
+        return 1;
       fp->dl_CarrierFreq = dl_CarrierFreq;
       fp->ul_CarrierFreq = ul_CarrierFreq;
       init_symbol_rotation(fp);
@@ -539,6 +564,7 @@ static int handle_sync_req_from_mac(PHY_VARS_NR_UE *UE)
     }
 
     clean_UE_harq(UE);
+    radio_gain_device_set_rx_phase(RADIO_GAIN_RX_PHASE_ACQUISITION);
     UE->is_synchronized = 0;
     UE->synch_request.received_synch_request = 0;
     return 0;
@@ -648,7 +674,7 @@ void UE_dl_processing(void *arg) {
   TracyCZoneEnd(ctx);
 }
 
-void dummyWrite(PHY_VARS_NR_UE *UE, openair0_timestamp_t timestamp, int writeBlockSize)
+static bool dummyWrite(PHY_VARS_NR_UE *UE, openair0_timestamp_t timestamp, int writeBlockSize)
 {
   const NR_DL_FRAME_PARMS *fp = &UE->frame_parms;
   if (UE->sl_mode == 2)
@@ -661,7 +687,10 @@ void dummyWrite(PHY_VARS_NR_UE *UE, openair0_timestamp_t timestamp, int writeBlo
     dummy_tx[i] = dummy_tx_data;
 
   int tmp = nrue_ru_write(UE, timestamp, (void **)dummy_tx, writeBlockSize, fp->nb_antennas_tx, 4);
+  if (radio_shutdown_cancelled(tmp))
+    return false;
   AssertFatal(writeBlockSize == tmp, "write to reorder function failed %d", tmp);
+  return true;
 }
 
 static int compute_sync_size(PHY_VARS_NR_UE *UE)
@@ -681,7 +710,12 @@ static int compute_sync_size(PHY_VARS_NR_UE *UE)
   return sz;
 }
 
-static void readFrame(PHY_VARS_NR_UE *UE, openair0_timestamp_t *timestamp, int duration_rx_to_tx, int sz, c16_t **result)
+static bool readFrame(PHY_VARS_NR_UE *UE,
+                      openair0_timestamp_t *timestamp,
+                      int duration_rx_to_tx,
+                      int sz,
+                      c16_t **result,
+                      radio_gain_sample_context_t *gain_context)
 {
   const NR_DL_FRAME_PARMS *fp = &UE->frame_parms;
   c16_t *rxp[fp->nb_antennas_rx];
@@ -697,12 +731,19 @@ static void readFrame(PHY_VARS_NR_UE *UE, openair0_timestamp_t *timestamp, int d
       rxp[i] = result[i];
   }
 
+  bool completed = false;
+  openair0_timestamp_t first_timestamp = 0, end_timestamp = 0;
   for (int remain = sz; remain > 0;) {
     for (int slot_rx = 0; slot_rx < fp->slots_per_subframe; slot_rx++) {
       int readBlockSize = min(get_samples_per_slot(slot_rx, fp), sz);
       int tmp = nrue_ru_read(UE, timestamp, (void **)rxp, readBlockSize, fp->nb_antennas_rx);
+      if (radio_shutdown_cancelled(tmp))
+        goto done;
       UEscopeCopy(UE, ueTimeDomainSamplesBeforeSync, rxp[0], sizeof(c16_t), 1, readBlockSize, 0);
       AssertFatal(readBlockSize == tmp, "read rf board failed %d", tmp);
+      if (remain == sz)
+        first_timestamp = *timestamp;
+      end_timestamp = *timestamp + tmp;
       if (result)
         for (int i = 0; i < fp->nb_antennas_rx; i++)
           rxp[i] += readBlockSize;
@@ -713,15 +754,21 @@ static void readFrame(PHY_VARS_NR_UE *UE, openair0_timestamp_t *timestamp, int d
         int ta = UE->timing_advance + UE->timing_advance_ntn;
         const openair0_timestamp_t writeTimestamp =
             *timestamp + get_samples_slot_duration(fp, slot_rx, duration_rx_to_tx) - UE->N_TA_offset - ta;
-        dummyWrite(UE, writeTimestamp, writeBlockSize);
+        if (!dummyWrite(UE, writeTimestamp, writeBlockSize))
+          goto done;
       }
     }
   }
+  completed = true;
+done:
+  if (completed && gain_context)
+    *gain_context = nrue_ru_sample_context(UE, first_timestamp, end_timestamp);
   if (!result)
     free(rxp[0]);
+  return completed;
 }
 
-static void syncInFrame(PHY_VARS_NR_UE *UE, openair0_timestamp_t *timestamp, int duration_rx_to_tx, openair0_timestamp_t rx_offset)
+static bool syncInFrame(PHY_VARS_NR_UE *UE, openair0_timestamp_t *timestamp, int duration_rx_to_tx, openair0_timestamp_t rx_offset)
 {
   const NR_DL_FRAME_PARMS *fp = &UE->frame_parms;
   if (UE->sl_mode == 2)
@@ -734,15 +781,19 @@ static void syncInFrame(PHY_VARS_NR_UE *UE, openair0_timestamp_t *timestamp, int
     // Set a maximum transfer size. As we usually read/write single slots, we use the size of slot 0 as maximum here.
     const int unitTransfer = min(get_samples_per_slot(0, fp), size);
     const int res = nrue_ru_read(UE, timestamp, (void **)UE->common_vars.rxdata, unitTransfer, fp->nb_antennas_rx);
+    if (radio_shutdown_cancelled(res))
+      return false;
     DevAssert(unitTransfer == res);
     if (IS_SOFTMODEM_RFSIM) {
       int ta = UE->timing_advance + UE->timing_advance_ntn;
       const openair0_timestamp_t writeTimestamp =
           *timestamp + get_samples_slot_duration(fp, 0, duration_rx_to_tx) - UE->N_TA_offset - ta;
-      dummyWrite(UE, writeTimestamp, unitTransfer);
+      if (!dummyWrite(UE, writeTimestamp, unitTransfer))
+        return false;
     }
     size -= unitTransfer;
   }
+  return true;
 }
 
 // Keeps RRC timers (T310/T311/T304/...) advancing while out of sync: one RRC tick per frame read from the radio.
@@ -774,11 +825,12 @@ void trs_freq_correction(PHY_VARS_NR_UE *ue, int cfo)
 {
   if (abs(cfo) > TRS_CFO_THRESH) {
     LOG_A(PHY, "CFO estimated (%d) from TRS exceeded threshold (%d). Adjusting radio CF\n", cfo, TRS_CFO_THRESH);
-    ue->freq_offset += cfo;
     uint64_t dl_carrier;
     uint64_t ul_carrier;
     nr_get_carrier_frequencies(ue, &dl_carrier, &ul_carrier);
-    nrue_ru_set_freq(ue, ul_carrier, dl_carrier, ue->freq_offset);
+    const int requested_offset = ue->freq_offset + cfo;
+    if (nrue_ru_set_freq(ue, ul_carrier, dl_carrier, requested_offset) == 0)
+      ue->freq_offset = requested_offset;
   }
 }
 
@@ -797,6 +849,7 @@ void *UE_thread(void *arg)
   }
 
   UE->is_synchronized = 0;
+  radio_gain_device_set_rx_phase(RADIO_GAIN_RX_PHASE_ACQUISITION);
   InitSinLUT();
 
   notifiedFIFO_t nf;
@@ -837,11 +890,14 @@ void *UE_thread(void *arg)
 
   if (get_softmodem_params()->sync_ref && UE->sl_mode == 2) {
     UE->is_synchronized = 1;
+    radio_gain_device_set_rx_phase(RADIO_GAIN_RX_PHASE_TRACKING);
   } else {
     //warm up the RF board
     openair0_timestamp_t tmp;
-    for (int i = 0; i < 50; i++)
-      readFrame(UE, &tmp, duration_rx_to_tx, compute_sync_size(UE), NULL);
+    for (int i = 0; i < 50; i++) {
+      if (!readFrame(UE, &tmp, duration_rx_to_tx, compute_sync_size(UE), NULL, NULL))
+        break;
+    }
   }
 
   c16_t *sync_buf[fp->nb_antennas_rx];
@@ -886,12 +942,14 @@ void *UE_thread(void *arg)
           openair0_config_t *cfg0 = &openair0_cfg_g[UE->rf_map.card];
           const unsigned int sync_in_frames = cfg0->recplay_conf->u_f_sync;
           while (skipped_frames != sync_in_frames) {
-            readFrame(UE, &sync_timestamp, duration_rx_to_tx, compute_sync_size(UE), NULL);
+            if (!readFrame(UE, &sync_timestamp, duration_rx_to_tx, compute_sync_size(UE), NULL, NULL))
+              break;
             skipped_frames += 2;
             out_of_sync_rrc_timer_tick(UE, 2, &out_of_sync_rrc_tick_frame, &out_of_sync_rrc_tick_hfn);
           }
         } else {
-          readFrame(UE, &sync_timestamp, duration_rx_to_tx, compute_sync_size(UE), NULL);
+          if (!readFrame(UE, &sync_timestamp, duration_rx_to_tx, compute_sync_size(UE), NULL, NULL))
+            break;
           const int num_frames_read = (UE->sl_mode == 2) ? SL_NR_PSBCH_REPETITION_IN_FRAMES : 2;
           skipped_frames += num_frames_read;
           out_of_sync_rrc_timer_tick(UE, num_frames_read, &out_of_sync_rrc_tick_frame, &out_of_sync_rrc_tick_hfn);
@@ -913,7 +971,12 @@ void *UE_thread(void *arg)
       int sz = compute_sync_size(UE);
       for (int i = 0; i < fp->nb_antennas_rx; i++)
         sync_buf[i] = malloc(sz * sizeof(**sync_buf));
-      readFrame(UE, &sync_timestamp, duration_rx_to_tx, sz, sync_buf);
+      radio_gain_sample_context_t sync_gain;
+      if (!readFrame(UE, &sync_timestamp, duration_rx_to_tx, sz, sync_buf, &sync_gain)) {
+        for (int i = 0; i < fp->nb_antennas_rx; i++)
+          free(sync_buf[i]);
+        break;
+      }
       notifiedFIFO_elt_t *Msg = newNotifiedFIFO_elt(sizeof(syncData_t), 0, &nf, UE_synch);
       syncData_t *syncMsg = (syncData_t *)NotifiedFifoData(Msg);
       *syncMsg = (syncData_t){.input = sync_buf, .input_sz = sz};
@@ -929,6 +992,7 @@ void *UE_thread(void *arg)
       }
       syncMsg->UE = UE;
       memset(&syncMsg->proc, 0, sizeof(syncMsg->proc));
+      syncMsg->proc.rx_gain_context = sync_gain;
       pushNotifiedFIFO(&UE->sync_actor.fifo, Msg);
       skipped_frames = UE->sl_mode == 2 ? SL_NR_PSBCH_REPETITION_IN_FRAMES : 2; // the capture for decoding
       out_of_sync_rrc_timer_tick(UE, skipped_frames, &out_of_sync_rrc_tick_frame, &out_of_sync_rrc_tick_hfn);
@@ -938,7 +1002,8 @@ void *UE_thread(void *arg)
 
     if (stream_status == STREAM_STATUS_UNSYNC) {
       stream_status = STREAM_STATUS_SYNCING;
-      syncInFrame(UE, &sync_timestamp, duration_rx_to_tx, intialSyncOffset);
+      if (!syncInFrame(UE, &sync_timestamp, duration_rx_to_tx, intialSyncOffset))
+        break;
       nrue_ru_write_reorder_clear_context(UE);
       shiftForNextFrame = -(skipped_frames)*UE->max_pos_acc
                           * get_nrUE_params()->time_sync_I; // compensate for the time drift that happened during initial sync
@@ -949,6 +1014,8 @@ void *UE_thread(void *arg)
                              (void **)UE->common_vars.rxdata,
                              fp->ofdm_symbol_size + fp->nb_prefix_samples0,
                              fp->nb_antennas_rx);
+      if (radio_shutdown_cancelled(ret))
+        break;
       AssertFatal(fp->ofdm_symbol_size + fp->nb_prefix_samples0 == ret, "read rf board failed %d", ret);
       // we have the decoded frame index in the return of the synch process
       // and we shifted above to the first slot of next frame
@@ -1050,6 +1117,8 @@ void *UE_thread(void *arg)
     const int readBlockSize = get_readBlockSize(slot_nr, fp) - iq_shift_to_apply;
     openair0_timestamp_t rx_timestamp;
     int tmp = nrue_ru_read(UE, &rx_timestamp, (void **)rxp, readBlockSize, fp->nb_antennas_rx);
+    if (radio_shutdown_cancelled(tmp))
+      break;
     metadata meta = {.slot =  curMsg.proc.nr_slot_rx, .frame =  curMsg.proc.frame_rx};
     UEscopeCopyWithMetadata(UE, ueTimeDomainSamples, rxp[0] - firstSymSamp, sizeof(c16_t), 1, readBlockSize, 0, &meta);
     AssertFatal(readBlockSize == tmp, "read to rf board failed %d", tmp);
@@ -1065,6 +1134,8 @@ void *UE_thread(void *arg)
       if (first_symbols > 0) {
         openair0_timestamp_t ignore_timestamp;
         int tmp = nrue_ru_read(UE, &ignore_timestamp, (void **)UE->common_vars.rxdata, first_symbols, fp->nb_antennas_rx);
+        if (radio_shutdown_cancelled(tmp))
+          break;
         AssertFatal(first_symbols == tmp, "read to rf board failed %d", tmp);
 
       } else
@@ -1101,6 +1172,11 @@ void *UE_thread(void *arg)
 
     if (curMsg.proc.nr_slot_rx == 0)
       nr_ue_rrc_timer_trigger(UE->Mod_id, curMsg.proc.hfn_rx, curMsg.proc.frame_rx, curMsg.proc.gNB_id);
+
+    /* Include the first symbol read with the preceding slot, before handing
+     * immutable context to asynchronous PHY consumers. */
+    curMsg.proc.rx_gain_context =
+        nrue_ru_sample_context(UE, rx_timestamp - firstSymSamp, rx_timestamp - firstSymSamp + get_samples_per_slot(slot_nr, fp));
 
     // RX slot processing. We launch and forget.
     flight_monitor_add(FLIGHT_MONITOR_UE_SLOT_INPUTS, 1);

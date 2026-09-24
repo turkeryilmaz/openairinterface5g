@@ -14,6 +14,7 @@
 #include <stdlib.h>
 
 #include "common_lib.h"
+#include "radio_gain_device.h"
 #include "assertions.h"
 #include "common/utils/load_module_shlib.h"
 #include "common/utils/LOG/log.h"
@@ -108,7 +109,13 @@ int load_lib(openair0_device_t *device, openair0_config_t *openair0_cfg, rau_typ
 
   int ret = load_module_shlib(devname, &shlib_fdesc, 1, NULL);
   AssertFatal(ret >= 0, "Library %s couldn't be loaded\n", devname);
-  return ((devfunc_t)shlib_fdesc.fptr)(device, openair0_cfg);
+  int result = ((devfunc_t)shlib_fdesc.fptr)(device, openair0_cfg);
+  if (result == 0 && rau_type == RAU_LOCAL_RADIO_HEAD && (IS_SOFTMODEM_GNB || IS_SOFTMODEM_5GUE)) {
+    radio_gain_get_api_t get_api = get_shlibmodule_optional_fptr(devname, OAI_RADIO_GAIN_SYMBOL);
+    const radio_gain_api_t *api = get_api ? get_api(OAI_RADIO_GAIN_ABI, sizeof(radio_gain_api_t)) : NULL;
+    result = radio_gain_device_attach(device, openair0_cfg, api);
+  }
+  return result;
 }
 
 int openair0_device_load(openair0_device_t *device, openair0_config_t *openair0_cfg)
@@ -191,7 +198,7 @@ static void writerProcessWaitingQueue(nrue_ru_write_t nrue_ru_write, PHY_VARS_NR
             wroteSamples = nrue_ru_write(UE, timestamp, txp, nsamps, nbAnt, flags);
           else
             wroteSamples = device->trx_write_func(device, timestamp, txp, nsamps, nbAnt, flags);
-          if (wroteSamples != nsamps)
+          if (wroteSamples != nsamps && !radio_gain_device_tx_cancelled(wroteSamples))
             LOG_W(HW, "Failed to write to RF: wrote %d out of %d samples\n", wroteSamples, nsamps);
         }
         ctx->nextTS = timestamp + nsamps;
@@ -236,7 +243,7 @@ int openair0_write_reorder_common(nrue_ru_write_t nrue_ru_write,
           wroteSamples = nrue_ru_write(UE, timestamp, txp, nsamps, nbAnt, flags);
         else
           wroteSamples = device->trx_write_func(device, timestamp, txp, nsamps, nbAnt, flags);
-        if (wroteSamples != nsamps)
+        if (wroteSamples != nsamps && !radio_gain_device_tx_cancelled(wroteSamples))
           LOG_W(HW, "Failed to write to RF: wrote %d out of %d samples\n", wroteSamples, nsamps);
       } else
         wroteSamples = nsamps;
