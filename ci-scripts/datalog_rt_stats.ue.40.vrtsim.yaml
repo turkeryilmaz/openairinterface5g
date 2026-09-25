@@ -5,7 +5,7 @@ ColNames :
   - Average; Max; Count
   - Average vs Reference Deviation (Reference Value; Acceptability Deviation Threshold)
 Ref :
-  RX_PDSCH_STATS : 57.8
+  RX_PDSCH_STATS : 46.0
   DLSCH_RX_PDCCH_STATS : 28.0
   RX_DFT_STATS : 4.8
   DLSCH_CHANNEL_ESTIMATION_STATS : 31.3
