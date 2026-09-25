@@ -449,11 +449,13 @@ typedef struct PHY_VARS_NR_UE_s {
   pthread_t stat_thread;
   // Per-DL-actor pre-allocated PDSCH scratch buffers (one set per actor to avoid races)
   struct pdsch_scratch_s {
-    c16_t   *rxdataF_comp;          // [NR_SYMBOLS_PER_SLOT][NR_MAX_NB_LAYERS][pdsch_buf_size_max]
-    c16_t   *dl_ch_mag;             // [NR_SYMBOLS_PER_SLOT][NR_MAX_NB_LAYERS][pdsch_buf_size_max]
-    c16_t   *dl_ch_magb;            // [NR_SYMBOLS_PER_SLOT][NR_MAX_NB_LAYERS][pdsch_buf_size_max]
-    c16_t   *dl_ch_magr;            // [NR_SYMBOLS_PER_SLOT][NR_MAX_NB_LAYERS][pdsch_buf_size_max]
-    c16_t   *rho_dl;                // [NR_SYMBOLS_PER_SLOT][NR_MAX_NB_LAYERS*NR_MAX_NB_LAYERS][pdsch_buf_size_max]
+    // 1-symbol-wide: channel compensation writes into these and LLR+demapping consumes
+    // them within the same nr_rx_pdsch() call, so no per-symbol slot-wide storage is kept.
+    c16_t   *rxdataF_comp;          // [max_layers][pdsch_buf_size_max]
+    c16_t   *dl_ch_mag;             // [max_layers][pdsch_buf_size_max]
+    c16_t   *dl_ch_magb;            // [max_layers][pdsch_buf_size_max]
+    c16_t   *dl_ch_magr;            // [max_layers][pdsch_buf_size_max]
+    c16_t   *rho_dl;                // [max_layers*max_layers][pdsch_buf_size_max], only allocated when do_ml is set
     int32_t *pdsch_dl_ch_estimates; // [nb_antennas_rx*NR_MAX_NB_LAYERS][pdsch_est_size]
     int16_t *llr[2];               // [2 codewords][llr_buf_max]
 #ifdef LDPC_CUDA
