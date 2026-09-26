@@ -1749,7 +1749,7 @@ static int capture_ipv6_addr(const uint8_t *addr, char *ip, size_t len)
  * @brief Process PDU Session Address in PDU Session Establishment Accept message
  *        and configure the tun interface
  */
-static void process_pdu_session_addr(pdu_session_establishment_accept_msg_t *msg,
+static bool process_pdu_session_addr(pdu_session_establishment_accept_msg_t *msg,
                                      int ue_id,
                                      int pdu_session_id,
                                      nas_ue_pdu_tun_t *t)
@@ -1761,26 +1761,26 @@ static void process_pdu_session_addr(pdu_session_establishment_accept_msg_t *msg
     case PDU_SESSION_TYPE_IPV4: {
       char ip[20];
       capture_ipv4_addr(&addr[0], ip, sizeof(ip));
-      nr_ue_tun_create_ip_if(t, ip, NULL, ue_id, pdu_session_id);
-    } break;
+      return nr_ue_tun_create_ip_if(t, ip, NULL, ue_id, pdu_session_id);
+    }
 
     case PDU_SESSION_TYPE_IPV6: {
       char ipv6[40];
       capture_ipv6_addr(addr, ipv6, sizeof(ipv6));
-      nr_ue_tun_create_ip_if(t, NULL, ipv6, ue_id, pdu_session_id);
-    } break;
+      return nr_ue_tun_create_ip_if(t, NULL, ipv6, ue_id, pdu_session_id);
+    }
 
     case PDU_SESSION_TYPE_IPV4V6: {
       char ipv6[40];
       capture_ipv6_addr(addr, ipv6, sizeof(ipv6));
       char ipv4[20];
       capture_ipv4_addr(&addr[IPv6_INTERFACE_ID_LENGTH], ipv4, sizeof(ipv4));
-      nr_ue_tun_create_ip_if(t, ipv4, ipv6, ue_id, pdu_session_id);
-    } break;
+      return nr_ue_tun_create_ip_if(t, ipv4, ipv6, ue_id, pdu_session_id);
+    }
 
     default:
       LOG_E(NAS, "Unknown PDU Session Address type %d\n", msg->pdu_addr_ie.pdu_type);
-      break;
+      return false;
   }
 }
 
@@ -1798,7 +1798,8 @@ static void send_nas_tun_req(nr_ue_nas_t *nas, int pdusession_id)
 {
   DevAssert(pdusession_id > 0 && pdusession_id < MAX_NUM_PSI);
   nas_ue_pdu_tun_t *t = &nas->pdu_tun[pdusession_id];
-  DevAssert(t->sock >= 0);
+  if (!nr_ue_tun_is_ready(t))
+    return;
   MessageDef *msg = itti_alloc_new_message(TASK_NAS_NRUE, nas->UE_id, NAS_TUN_REQ);
   nas_tun_req_t *req = &NAS_TUN_REQ(msg);
   req->action = NAS_TUN_START_USER_PLANE;
@@ -1818,7 +1819,7 @@ static void send_nas_tun_req_action(nr_ue_nas_t *nas, nas_tun_req_action_t actio
   if (action == NAS_TUN_START_USER_PLANE) {
     for (int psi = 1; psi < MAX_NUM_PSI && req->n_psi < NAS_TUN_LIST_MAX; psi++) {
       nas_ue_pdu_tun_t *t = &nas->pdu_tun[psi];
-      if (nas->psi_status[psi] == PDU_SESSION_INACTIVE || t->sock < 0)
+      if (nas->psi_status[psi] == PDU_SESSION_INACTIVE || !nr_ue_tun_is_ready(t))
         continue;
       nas_tun_psi_set(&req->psi[req->n_psi], psi, t);
       req->n_psi++;
@@ -1904,7 +1905,6 @@ static void handle_pdu_session_accept(nr_ue_nas_t *nas, uint8_t *pdu_buffer, uin
   // Accepted control-plane message; this is not proof of working user-plane traffic.
   flight_recorder_emit(FLIGHT_EVENT_UE_PDU, nas->UE_id, sm_header.pdu_session_id, msg.pdu_type, 1, 0, 0);
   flight_monitor_add(FLIGHT_MONITOR_PDU_ACCEPTS, 1);
-  flight_monitor_set(FLIGHT_MONITOR_PDU_ACTIVE, 1);
 
   // Set QFI before starting UE interface thread to avoid early SDUs using 0-initialized QFI.
   nr_ue_tun_store_qfi(t, msg.qos_rules.rule->qfi);
@@ -1923,21 +1923,26 @@ static void handle_pdu_session_accept(nr_ue_nas_t *nas, uint8_t *pdu_buffer, uin
     bool is_eth = msg.pdu_type == PDU_SESSION_TYPE_ETHER;
     tuntap_generate_ue_ifname(t->ifname, is_eth ? IFF_TAP : IFF_TUN, nas->UE_id, ifname_pdu_id);
   }
+  bool configured = false;
   if (msg.pdu_type == PDU_SESSION_TYPE_ETHER) {
     nr_ue_tun_create_eth_if(t);
+    configured = t->sock >= 0;
   } else if (msg.pdu_addr_ie.pdu_length) {
-    process_pdu_session_addr(&msg, nas->UE_id, sm_header.pdu_session_id, t);
+    configured = process_pdu_session_addr(&msg, nas->UE_id, sm_header.pdu_session_id, t);
   } else {
     LOG_W(NAS, "Unhandled PDU session type %d, ignoring PDU session ID %d\n", msg.pdu_type, sm_header.pdu_session_id);
     return;
   }
+  if (!configured) {
+    LOG_E(NAS, "PDU Session Accept could not configure TUN for session ID %d\n", sm_header.pdu_session_id);
+    return;
+  }
+  DevAssert(t->sock >= 0);
   /* Track active PDU session for later PDU session status IE (24.501 8.2.16.3) */
   nas->psi_status[sm_header.pdu_session_id] = PDU_SESSION_ACTIVE;
+  flight_monitor_set(FLIGHT_MONITOR_PDU_ACTIVE, 1);
   // ask RRC to start connected reader for this PSI
-  if (t->sock > 0)
-    send_nas_tun_req(nas, sm_header.pdu_session_id);
-  else
-    LOG_W(NAS, "could not create data interface reader thread, cannot inject data traffic\n");
+  send_nas_tun_req(nas, sm_header.pdu_session_id);
 }
 
 static void send_nas_uplink_data_req(nr_ue_nas_t *nas, const as_nas_info_t *initial_nas_msg)
@@ -3037,7 +3042,10 @@ void *nas_nrue(void *args_p)
         nas_ue_pdu_tun_t *t = &nas->pdu_tun[pdu_session_id];
         nr_ue_tun_store_qfi(t, qfi);
         tuntap_generate_ue_ifname(t->ifname, IFF_TUN, nas->UE_id, -1);
-        nr_ue_tun_create_ip_if(t, ip, NULL, nas->UE_id, pdu_session_id);
+        if (!nr_ue_tun_create_ip_if(t, ip, NULL, nas->UE_id, pdu_session_id)) {
+          LOG_E(NAS, "Could not configure no-S1 PDU session TUN\n");
+          break;
+        }
         DevAssert(t->sock >= 0);
         nas->psi_status[pdu_session_id] = PDU_SESSION_ACTIVE;
         send_nas_tun_req(nas, pdu_session_id);
