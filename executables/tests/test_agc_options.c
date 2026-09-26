@@ -78,6 +78,10 @@ static void test_default(void)
   CHECK(resolved.directions == AGC_DIRECTIONS_BOTH, "default directions are %s", agc_directions_name(resolved.directions));
   CHECK(resolved.mode_source == AGC_OPTION_SOURCE_DEFAULT, "default mode provenance changed");
   CHECK(resolved.directions_source == AGC_OPTION_SOURCE_DEFAULT, "default directions provenance changed");
+  CHECK(resolved.tx_power_mode == AGC_TX_POWER_ABSOLUTE,
+        "default TX power mode is %s",
+        agc_tx_power_mode_name(resolved.tx_power_mode));
+  CHECK(resolved.tx_power_mode_source == AGC_OPTION_SOURCE_DEFAULT, "default TX power mode provenance changed");
   CHECK(!resolved.rx_actuation && !resolved.tx_actuation, "default enables actuation");
 }
 
@@ -405,6 +409,24 @@ static void test_resolver_matrix(void)
     check_case(&cases[i]);
 }
 
+static void check_tx_power_selection_error(const char *name, const char *mode, const char *directions)
+{
+  const agc_option_request_t request = {
+      .role = AGC_ROLE_UE,
+      .mode = mode,
+      .directions = directions,
+      .tx_power_mode = "relative",
+      .mode_source = AGC_OPTION_SOURCE_CONFIG,
+      .directions_source = AGC_OPTION_SOURCE_CONFIG,
+      .tx_power_mode_source = AGC_OPTION_SOURCE_CONFIG,
+  };
+  agc_options_t resolved;
+  char error[AGC_OPTION_ERROR_MAX];
+  CHECK(agc_resolve_options(&request, &resolved, error, sizeof(error)) != 0,
+        "%s accepted a TX power mode without managed TX",
+        name);
+}
+
 static void test_invalid_values(void)
 {
   const agc_option_request_t bad_mode = {.role = AGC_ROLE_UE, .mode = "adaptive", .mode_source = AGC_OPTION_SOURCE_CONFIG};
@@ -415,12 +437,19 @@ static void test_invalid_values(void)
   const agc_option_request_t gnb_legacy_disabled = {.role = AGC_ROLE_GNB,
                                                     .legacy_set = true,
                                                     .legacy_source = AGC_OPTION_SOURCE_CONFIG};
+  const agc_option_request_t bad_tx_power = {.role = AGC_ROLE_UE,
+                                             .tx_power_mode = "nominal",
+                                             .tx_power_mode_source = AGC_OPTION_SOURCE_CONFIG};
   agc_options_t resolved;
   char error[AGC_OPTION_ERROR_MAX];
   CHECK(agc_resolve_options(&bad_mode, &resolved, error, sizeof(error)) != 0, "invalid mode accepted");
   CHECK(agc_resolve_options(&bad_directions, &resolved, error, sizeof(error)) != 0, "invalid directions accepted");
   CHECK(agc_resolve_options(&bad_role, &resolved, error, sizeof(error)) != 0, "invalid role accepted");
   CHECK(agc_resolve_options(&gnb_legacy_disabled, &resolved, error, sizeof(error)) != 0, "gNB accepted an explicit legacy option");
+  CHECK(agc_resolve_options(&bad_tx_power, &resolved, error, sizeof(error)) != 0, "invalid TX power mode accepted");
+  check_tx_power_selection_error("off", "off", "both");
+  check_tx_power_selection_error("acquisition", "acquisition", "both");
+  check_tx_power_selection_error("directions-rx", "continuous", "rx");
 }
 
 static void test_argument_retention(void)
@@ -445,7 +474,9 @@ static int check_configuration_case(const char *name, int argc, char **argv)
   const int result = agc_start_options(uniqCfg, argc, argv, role);
   if (strcmp(name, "help") == 0)
     return result == 0 ? 0 : 1;
-  if (strcmp(name, "gnb-legacy") == 0 || strcmp(name, "missing-profile") == 0)
+  if (strcmp(name, "gnb-legacy") == 0 || strcmp(name, "absolute-invalid-profile") == 0
+      || strcmp(name, "relative-profile-conflict") == 0 || strcmp(name, "tx-power-mode-typo") == 0
+      || strcmp(name, "tx-power-mode-off") == 0)
     return result != 0 ? 0 : 1;
   if (result != 0)
     return 1;
@@ -484,7 +515,32 @@ static int check_configuration_case(const char *name, int argc, char **argv)
                : 1;
   if (strcmp(name, "default") == 0)
     return options->mode == AGC_MODE_OFF && options->mode_source == AGC_OPTION_SOURCE_DEFAULT
-                   && options->directions == AGC_DIRECTIONS_BOTH
+                   && options->directions == AGC_DIRECTIONS_BOTH && options->tx_power_mode == AGC_TX_POWER_ABSOLUTE
+                   && options->tx_power_mode_source == AGC_OPTION_SOURCE_DEFAULT
+               ? 0
+               : 1;
+  if (strcmp(name, "relative-config") == 0)
+    return options->mode == AGC_MODE_OBSERVE && options->directions == AGC_DIRECTIONS_TX
+                   && options->tx_power_mode == AGC_TX_POWER_RELATIVE && options->tx_power_mode_source == AGC_OPTION_SOURCE_CONFIG
+                   && !options->tx_actuation
+               ? 0
+               : 1;
+  if (strcmp(name, "relative-cli") == 0)
+    return options->mode == AGC_MODE_OBSERVE && options->directions == AGC_DIRECTIONS_TX
+                   && options->tx_power_mode == AGC_TX_POWER_RELATIVE && options->tx_power_mode_source == AGC_OPTION_SOURCE_CLI
+                   && !options->tx_actuation
+               ? 0
+               : 1;
+  if (strcmp(name, "relative-continuous") == 0)
+    return options->mode == AGC_MODE_CONTINUOUS && options->directions == AGC_DIRECTIONS_TX
+                   && options->tx_power_mode == AGC_TX_POWER_RELATIVE && options->tx_power_mode_source == AGC_OPTION_SOURCE_CLI
+                   && options->tx_actuation
+               ? 0
+               : 1;
+  if (strcmp(name, "observe-absolute") == 0)
+    return options->mode == AGC_MODE_OBSERVE && options->directions == AGC_DIRECTIONS_TX
+                   && options->tx_power_mode == AGC_TX_POWER_ABSOLUTE && options->tx_power_mode_source == AGC_OPTION_SOURCE_DEFAULT
+                   && !options->tx_actuation
                ? 0
                : 1;
   return 1;
@@ -506,6 +562,28 @@ static int run_child(const char *self, const char *name, const char *config, boo
       execl(self, self, "-O", config, "--cont-fo-comp", "0", (char *)NULL);
     else if (strncmp(name, "cfo-cli-", 8) == 0)
       execl(self, self, "-O", config, "--cont-fo-comp", name + 8, (char *)NULL);
+    else if (strcmp(name, "relative-cli") == 0)
+      execl(self, self, "-O", config, "--tx-power-mode", "relative", (char *)NULL);
+    else if (strcmp(name, "relative-profile-conflict") == 0)
+      execl(self,
+            self,
+            "-O",
+            config,
+            "--agc-mode",
+            "continuous",
+            "--agc-directions",
+            "tx",
+            "--tx-power-mode",
+            "relative",
+            (char *)NULL);
+    else if (strcmp(name, "relative-continuous") == 0)
+      execl(self, self, "--agc-mode", "continuous", "--agc-directions", "tx", "--tx-power-mode", "relative", (char *)NULL);
+    else if (strcmp(name, "observe-absolute") == 0)
+      execl(self, self, "--agc-mode", "observe", "--agc-directions", "tx", (char *)NULL);
+    else if (strcmp(name, "tx-power-mode-typo") == 0)
+      execl(self, self, "--agc-mode", "observe", "--agc-directions", "tx", "--tx-power-mode", "nominal", (char *)NULL);
+    else if (strcmp(name, "tx-power-mode-off") == 0)
+      execl(self, self, "--tx-power-mode", "relative", (char *)NULL);
     else if (config != NULL && cli_override)
       execl(self, self, "-O", config, "--agc-mode", "continuous", "--agc-directions", "tx", (char *)NULL);
     else if (config != NULL)
@@ -524,10 +602,12 @@ static void test_configuration_integration(const char *self)
 {
   char config_only[] = "/tmp/oai-agc-options-config-only-XXXXXX";
   char config_cli[] = "/tmp/oai-agc-options-config-cli-XXXXXX";
+  char config_relative[] = "/tmp/oai-agc-options-config-relative-XXXXXX";
   const int only_fd = mkstemp(config_only);
   const int cli_fd = mkstemp(config_cli);
-  CHECK(only_fd >= 0 && cli_fd >= 0, "could not create temporary configuration files");
-  if (only_fd < 0 || cli_fd < 0) {
+  const int relative_fd = mkstemp(config_relative);
+  CHECK(only_fd >= 0 && cli_fd >= 0 && relative_fd >= 0, "could not create temporary configuration files");
+  if (only_fd < 0 || cli_fd < 0 || relative_fd < 0) {
     if (only_fd >= 0) {
       close(only_fd);
       unlink(config_only);
@@ -535,6 +615,10 @@ static void test_configuration_integration(const char *self)
     if (cli_fd >= 0) {
       close(cli_fd);
       unlink(config_cli);
+    }
+    if (relative_fd >= 0) {
+      close(relative_fd);
+      unlink(config_relative);
     }
     return;
   }
@@ -546,16 +630,28 @@ static void test_configuration_integration(const char *self)
       "minimum-frequency-hz = 710749000.0; maximum-frequency-hz = 710751000.0; "
       "sample-rate-hz = 7680000.0; bandwidth-hz = 20000000.0; reported-gain-db = 60.75; reference-dbm = 0.0; "
       "minimum-dbm = -30.0; maximum-dbm = 0.0; uncertainty-db = 1.0; };\n";
+  static const char relative_contents[] =
+      "agc-mode = \042observe\042;\nagc-directions = \042tx\042;\ntx-power-mode = \042relative\042;\n";
   CHECK(write(only_fd, only_contents, sizeof(only_contents) - 1) == (ssize_t)(sizeof(only_contents) - 1),
         "could not write config-only fixture");
   CHECK(write(cli_fd, cli_contents, sizeof(cli_contents) - 1) == (ssize_t)(sizeof(cli_contents) - 1),
         "could not write config-cli fixture");
+  CHECK(write(relative_fd, relative_contents, sizeof(relative_contents) - 1) == (ssize_t)(sizeof(relative_contents) - 1),
+        "could not write relative configuration fixture");
   close(only_fd);
   close(cli_fd);
+  close(relative_fd);
   CHECK(run_child(self, "default", NULL, false) == 0, "default config-library integration failed");
   CHECK(run_child(self, "config-only", config_only, false) == 0, "config-only legacy integration failed");
   CHECK(run_child(self, "config-cli", config_cli, true) == 0, "config/CLI precedence integration failed");
-  CHECK(run_child(self, "missing-profile", config_only, true) == 0, "missing managed TX profile was accepted");
+  CHECK(run_child(self, "absolute-invalid-profile", config_only, true) == 0, "missing managed absolute TX profile was accepted");
+  CHECK(run_child(self, "relative-config", config_relative, false) == 0, "relative configuration integration failed");
+  CHECK(run_child(self, "relative-cli", config_relative, false) == 0, "relative CLI integration failed");
+  CHECK(run_child(self, "relative-profile-conflict", config_cli, false) == 0, "relative/profile conflict was accepted");
+  CHECK(run_child(self, "relative-continuous", NULL, false) == 0, "relative continuous mode without a profile was rejected");
+  CHECK(run_child(self, "observe-absolute", NULL, false) == 0, "absolute observe mode without a profile was rejected");
+  CHECK(run_child(self, "tx-power-mode-typo", NULL, false) == 0, "invalid TX power mode was accepted");
+  CHECK(run_child(self, "tx-power-mode-off", NULL, false) == 0, "TX power mode was accepted while AGC was off");
   CHECK(run_child(self, "legacy-cli", NULL, false) == 0, "legacy CLI integration failed");
   CHECK(run_child(self, "gnb-legacy", config_only, false) == 0, "gNB legacy configuration was accepted");
   CHECK(run_child(self, "help", NULL, false) == 0, "help integration failed");
@@ -571,6 +667,7 @@ static void test_configuration_integration(const char *self)
   }
   unlink(config_only);
   unlink(config_cli);
+  unlink(config_relative);
 }
 
 void exit_function(const char *file, const char *function, const int line, const char *message, const int assertion)

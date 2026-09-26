@@ -325,11 +325,21 @@ int tx_rf_symbols(RU_t *ru, int frame, int slot, uint64_t timestamp, int start_s
   for (int i = 0; i < nt; i++)
     txp[i] = (void *)&ru->common.txdata[i][time_offset] - sf_extension * sizeof(int32_t);
 
-  if (radio_gain_device_tx_actuating()) {
+  if (radio_gain_device_tx_relative_actuating()) {
+    /* Relative failure erases the complete radio write, including its prefix.
+     * Per-symbol erasure would emit a partially punctured PDSCH or SSB. */
+    const int64_t count = (int64_t)siglen + sf_extension;
+    if (nt != 1 || sf_extension < 0 || count <= 0 || count > RADIO_TX_POWER_MAX_SAMPLES) {
+      radio_gain_device_reject_tx(frame, slot, 0, RADIO_TX_REJECT_SPAN);
+      return -1;
+    }
+    if (!radio_gain_device_validate_gnb_tx(txp[0], count, frame, slot))
+      return -1;
+  } else if (radio_gain_device_tx_actuating()) {
     for (int symbol = start_symbol; symbol < start_symbol + transmitted_symbols; ++symbol) {
       const int offset = get_samples_slot_timestamp(fp, slot) + get_samples_symbol_timestamp(fp, slot, symbol);
       const int count = get_samples_symbol_duration(fp, slot, symbol, 1);
-      if (!radio_gain_device_validate_gnb_tx(&ru->common.txdata[0][offset], count, frame, slot))
+      if (!radio_gain_device_validate_gnb_tx((c16_t *)&ru->common.txdata[0][offset], count, frame, slot))
         return -1;
     }
   }

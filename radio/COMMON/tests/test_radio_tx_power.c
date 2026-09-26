@@ -27,6 +27,7 @@ int main(void)
   CHECK(r.status == RADIO_TX_POWER_OK && !r.applied && !memcmp(samples, original, sizeof(samples)));
   CHECK(r.input_energy == 2097152 && r.output_energy == 524288 && r.output_peak_component == 512);
   CHECK(fabs(r.estimated_output_dbm - quarter_power_db) < 1e-10);
+  CHECK(isnan(r.requested_power_dbfs) && isnan(r.realized_power_dbfs));
   r = radio_tx_apply_power(samples, 2, 2048, &profile, quarter_power_db, 0, 0.9, 0.01, 0.03, true);
   CHECK(r.status == RADIO_TX_POWER_OK && r.applied && samples[0].r == 512 && samples[1].r == -512);
 
@@ -84,6 +85,94 @@ int main(void)
   CHECK(radio_tx_apply_power(samples, 1, 32769, &profile, -10, 0, 0.9, 0.1, 0.03, true).status == RADIO_TX_POWER_INVALID);
   CHECK(radio_tx_apply_power(samples, 1, 2048, &profile, -10, 0, NAN, 0.1, 0.03, true).status == RADIO_TX_POWER_INVALID);
   CHECK(radio_tx_apply_power(samples, 1, 2048, &profile, -10, 0, 0.9, -0.1, 0.03, true).status == RADIO_TX_POWER_INVALID);
+
+  /* The relative path is a declared digital RMS envelope only. AMP512 at
+   * nominal23 is -12.041 dBFS on a 2048 component scale; default 6 dB
+   * backoff therefore caps requests at nominal17. */
+  radio_tx_relative_config_t relative = {0};
+  CHECK(radio_tx_relative_configure(2048, 512, 6, &relative));
+  CHECK(relative.nominal_reference == 23 && relative.nominal_min == -3 && relative.nominal_max == 17);
+  CHECK(fabs(relative.reference_dbfs - 20 * log10(0.25)) < 1e-12 && relative.peak_limit_fs == 0.7
+        && relative.maximum_quantization_error_db == 0.5 && relative.maximum_quantization_evm == 0.03);
+
+  c16_t relative_samples[] = {{512, 0}, {-512, 0}};
+  c16_t relative_original[2];
+  memcpy(relative_original, relative_samples, sizeof(relative_samples));
+  r = radio_tx_apply_relative_power(relative_samples, 2, &relative, 17, false);
+  CHECK(r.status == RADIO_TX_POWER_OK && !r.applied && r.mapping.valid
+        && !memcmp(relative_samples, relative_original, sizeof(relative_samples)));
+  CHECK(isnan(r.mapping.requested_dbm) && isnan(r.mapping.selected_dbm) && isnan(r.mapping.estimated_dbm)
+        && isnan(r.mapping.uncertainty_db) && isnan(r.estimated_output_dbm));
+  CHECK(r.input_energy == 524288 && r.output_energy == 132098 && r.input_peak_component == 512 && r.output_peak_component == 257);
+  /* mapping.amplitude_scale is the admitted Q30 coefficient, not the
+   * unquantized ideal scale. One Q30 unit is below 1e-9. */
+  CHECK(fabs(r.mapping.amplitude_scale - pow(10.0, -6.0 / 20.0)) < 1e-9 && fabs(r.requested_power_dbfs + 18.041199826559248) < 1e-12
+        && fabs(r.realized_power_dbfs - r.requested_power_dbfs) < 0.02 && fabs(r.quantization_error_db) < 0.02
+        && r.quantization_evm < 0.03);
+
+  r = radio_tx_apply_relative_power(relative_samples, 2, &relative, 17, true);
+  CHECK(r.status == RADIO_TX_POWER_OK && r.applied && relative_samples[0].r == 257 && relative_samples[1].r == -257);
+  memcpy(relative_samples, relative_original, sizeof(relative_samples));
+  r = radio_tx_apply_relative_power(relative_samples, 2, &relative, 16, false);
+  CHECK(r.status == RADIO_TX_POWER_OK && fabs(r.requested_power_dbfs + 19.041199826559248) < 1e-12
+        && fabs(r.realized_power_dbfs - r.requested_power_dbfs) < 0.02);
+
+  /* Target RMS covers the entire active span, including zeros. The sparse
+   * representation has the same source energy but twice the span length. */
+  c16_t dense[] = {{512, 0}, {-512, 0}};
+  c16_t sparse[] = {{512, 0}, {0, 0}, {-512, 0}, {0, 0}};
+  c16_t sparse_original[4];
+  memcpy(sparse_original, sparse, sizeof(sparse));
+  radio_tx_power_result_t dense_result = radio_tx_apply_relative_power(dense, 2, &relative, 17, false);
+  radio_tx_power_result_t sparse_result = radio_tx_apply_relative_power(sparse, 4, &relative, 17, false);
+  CHECK(dense_result.status == RADIO_TX_POWER_OK && sparse_result.status == RADIO_TX_POWER_OK
+        && dense_result.input_energy == sparse_result.input_energy && sparse_result.output_energy > dense_result.output_energy
+        && fabs(dense_result.realized_power_dbfs - sparse_result.realized_power_dbfs) < 0.02
+        && !memcmp(sparse, sparse_original, sizeof(sparse)));
+
+  memcpy(relative_samples, relative_original, sizeof(relative_samples));
+  r = radio_tx_apply_relative_power(relative_samples, 2, &relative, relative.nominal_min, false);
+  CHECK(r.status == RADIO_TX_POWER_OK && r.quantization_evm <= 0.03 && fabs(r.quantization_error_db) <= 0.5
+        && !memcmp(relative_samples, relative_original, sizeof(relative_samples)));
+  r = radio_tx_apply_relative_power(relative_samples, 2, &relative, relative.nominal_min - 1, true);
+  CHECK(r.status == RADIO_TX_POWER_MAPPING_REJECTED && !r.applied && isnan(r.requested_power_dbfs) && isnan(r.realized_power_dbfs)
+        && isnan(r.mapping.amplitude_scale) && !memcmp(relative_samples, relative_original, sizeof(relative_samples)));
+  r = radio_tx_apply_relative_power(relative_samples, 2, &relative, relative.nominal_max + 1, true);
+  CHECK(r.status == RADIO_TX_POWER_MAPPING_REJECTED && !r.applied
+        && !memcmp(relative_samples, relative_original, sizeof(relative_samples)));
+
+  c16_t silent[] = {{0, 0}, {0, 0}};
+  c16_t silent_original[2];
+  memcpy(silent_original, silent, sizeof(silent));
+  r = radio_tx_apply_relative_power(silent, 2, &relative, 17, true);
+  CHECK(r.status == RADIO_TX_POWER_MAPPING_REJECTED && !r.applied && isnan(r.requested_power_dbfs)
+        && !memcmp(silent, silent_original, sizeof(silent)));
+  CHECK(radio_tx_apply_relative_power(NULL, 1, &relative, 17, false).status == RADIO_TX_POWER_INVALID);
+  CHECK(radio_tx_apply_relative_power(relative_samples, 0, &relative, 17, false).status == RADIO_TX_POWER_INVALID);
+
+  c16_t extreme[] = {{INT16_MIN, INT16_MIN}};
+  c16_t extreme_original[1];
+  memcpy(extreme_original, extreme, sizeof(extreme));
+  r = radio_tx_apply_relative_power(extreme, 1, &relative, 17, false);
+  CHECK(r.status == RADIO_TX_POWER_OK && !r.applied && !memcmp(extreme, extreme_original, sizeof(extreme)));
+
+  c16_t crest[32] = {{512, 0}};
+  c16_t crest_original[32];
+  memcpy(crest_original, crest, sizeof(crest));
+  r = radio_tx_apply_relative_power(crest, 32, &relative, 17, true);
+  CHECK(r.status == RADIO_TX_POWER_HEADROOM && !r.applied && isnan(r.mapping.amplitude_scale)
+        && !memcmp(crest, crest_original, sizeof(crest)));
+
+  radio_tx_relative_config_t malformed = relative;
+  malformed.peak_limit_fs = 0.9;
+  r = radio_tx_apply_relative_power(relative_samples, 2, &malformed, 17, false);
+  CHECK(r.status == RADIO_TX_POWER_INVALID && isnan(r.requested_power_dbfs));
+  CHECK(!radio_tx_relative_configure(0, 512, 6, &malformed));
+  CHECK(!radio_tx_relative_configure(2048, 0, 6, &malformed));
+  CHECK(!radio_tx_relative_configure(2048, 2049, 6, &malformed));
+  CHECK(!radio_tx_relative_configure(2048, NAN, 6, &malformed));
+  CHECK(!radio_tx_relative_configure(2048, 512, -1, &malformed));
+  CHECK(!radio_tx_relative_configure(2048, 512, 27, &malformed));
 
   static c16_t maximum[RADIO_TX_POWER_MAX_SAMPLES];
   for (unsigned i = 0; i < RADIO_TX_POWER_MAX_SAMPLES; ++i)

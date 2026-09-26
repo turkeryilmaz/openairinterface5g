@@ -8,14 +8,16 @@ import re
 from pathlib import Path
 
 NAMES = dict(zip([10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 30, 31,
-                  40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57],
+                  40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64],
                  ['UE_SYNC', 'UE_AGC', 'UE_MEASUREMENTS', 'UE_RA', 'UE_RRC', 'UE_PDU', 'UE_TA',
                   'UE_NAS', 'UE_RRC_TIMER', 'UE_CONTROL', 'GNB_SLOT', 'GNB_UE_BYTES', 'GNB_UE_RADIO', 'GNB_RA', 'GNB_UE_LINK',
                   'GNB_DL_HARQ', 'GNB_UL_HARQ', 'UE_NAS_COUNT', 'RADIO_RX', 'RADIO_TX',
                   'RADIO_GAIN', 'RADIO_GAIN_TIME', 'RADIO_RX_LEVEL', 'UE_TX_POWER_REQUEST', 'GNB_TX_REFERENCE',
                   'RADIO_RX_DECISION', 'RADIO_RX_DECISION_INPUT', 'RADIO_TX_LEVEL', 'RADIO_TX_LEVEL_STATE',
                   'RADIO_TX_POWER', 'RADIO_TX_POWER_SAMPLES', 'RADIO_TX_REJECT', 'RADIO_TX_POWER_QUALITY', 'UE_TX_CONTROL', 'UE_PATHLOSS_STATE',
-                  'UE_SSB_MEASUREMENT', 'UE_SSB_MEASUREMENT_CONTEXT', 'RADIO_RX_PEAK_ENVELOPE']))
+                  'UE_SSB_MEASUREMENT', 'UE_SSB_MEASUREMENT_CONTEXT', 'RADIO_RX_PEAK_ENVELOPE', 'RADIO_TX_RELATIVE_POWER',
+                  'RADIO_TX_RELATIVE_QUALITY', 'RADIO_TX_RELATIVE_CONFIG', 'RADIO_TX_RELATIVE_ERASURE',
+                  'UE_TX_RELATIVE_BOUNDS', 'RADIO_TX_RELATIVE_SAMPLES', 'RADIO_TX_RELATIVE_GATE']))
 FIELDS = ['source_file', 'source_line', 'name', 'event', 'ring', 'sequence', 'mono_ns', 'realtime_ns',
           'a', 'b', 'c', 'd', 'e', 'f']
 
@@ -303,6 +305,63 @@ def decode_radio_rx_peak_envelope(event):
                 retained_peak_at_current_gain_dbfs=_optional_milli_db(event['d']),
                 reported_rx_gain_db=_optional_milli_db(event['e']),
                 peak_release_db_per_second=_optional_milli_db(event['f']))
+
+
+RELATIVE_TX_FIELDS = [
+    'source_file', 'source_line', 'thread_ring', 'sequence', 'recorder_mono_ns', 'recorder_realtime_ns',
+    'record_type', 'channel', 'frame_slot_raw', 'status', 'status_flags_raw', 'applied',
+    'selected_nominal', 'requested_digital_dbfs', 'realized_digital_dbfs', 'sample_count',
+    'quantization_error_db', 'quantization_evm_ppb', 'coefficient_q30', 'role', 'component_full_scale',
+    'reference_dbfs', 'minimum_nominal', 'maximum_nominal', 'fixed_analog_gain_db',
+    'network_pmax_nominal', 'network_pmax_alt_nominal', 'requested_nominal', 'input_energy', 'output_energy', 'input_peak_component', 'output_peak_component',
+]
+
+
+def decode_relative_tx(event):
+    """Every record stands alone; missing neighbors do not invent a mapping or RF power."""
+    kind = event['event']
+    if kind not in (58, 59, 60, 61, 62, 63, 64):
+        return None
+    row = dict(source_file=event['source_file'], source_line=event['source_line'],
+               thread_ring=event['ring'], sequence=event['sequence'],
+               recorder_mono_ns=event['mono_ns'], recorder_realtime_ns=event['realtime_ns'])
+    if kind == 60:
+        row.update(record_type='configuration', role=_enum_name({0: 'UE', 1: 'GNB'}, event['a']),
+                   component_full_scale=event['b'], reference_dbfs=_optional_milli_db(event['c']),
+                   minimum_nominal=event['d'], maximum_nominal=event['e'],
+                   fixed_analog_gain_db=_optional_milli_db(event['f']))
+        return row
+    row.update(channel=_enum_name(RADIO_TX_REJECT_CHANNEL_NAMES, event['a']), frame_slot_raw=event['b'])
+    if kind == 64:
+        row.update(record_type='admission_blocked',
+                   network_pmax_nominal=None if event['c'] == INT64_MIN else event['c'],
+                   network_pmax_alt_nominal=None if event['d'] == INT64_MIN else event['d'],
+                   minimum_nominal=None if event['e'] == INT64_MIN else event['e'],
+                   maximum_nominal=None if event['f'] == INT64_MIN else event['f'])
+    elif kind == 58:
+        status = event['c'] & 0xff
+        row.update(record_type='mapping', status=_enum_name(RADIO_TX_POWER_STATUS_NAMES, status),
+                   status_flags_raw=event['c'], applied=bool(event['c'] & 0x100),
+                   selected_nominal=_optional_milli_db(event['d']),
+                   requested_digital_dbfs=_optional_milli_db(event['e']),
+                   realized_digital_dbfs=_optional_milli_db(event['f']) if status == 0 else None)
+    elif kind == 59:
+        row.update(record_type='quality', sample_count=event['c'], quantization_error_db=_optional_milli_db(event['d']),
+                   quantization_evm_ppb=None if event['e'] == INT64_MIN else event['e'],
+                   coefficient_q30=None if event['f'] == INT64_MIN else event['f'])
+    elif kind == 61:
+        row.update(record_type='erasure', status=_enum_name(RADIO_TX_POWER_STATUS_NAMES, event['c']),
+                   sample_count=event['d'], applied=False)
+    elif kind == 62:
+        row.update(record_type='bounds', minimum_nominal=event['c'], maximum_nominal=event['d'],
+                   requested_nominal=event['e'], selected_nominal=event['f'])
+    else:
+        peak = event['f'] & UINT64_MASK
+        row.update(record_type='samples', sample_count=event['c'], input_energy=event['d'],
+                   output_energy=None if event['e'] == INT64_MIN else event['e'],
+                   input_peak_component=peak >> 32,
+                   output_peak_component=None if event['e'] == INT64_MIN else peak & 0xffffffff)
+    return row
 
 
 def _radio_rx_decision_key(record):
@@ -879,6 +938,7 @@ def decode(directory, output):
     radio_tx_power_qualities = []
     radio_tx_rejects = []
     radio_tx_level_events = []
+    relative_tx_records = []
     with (output / 'events.csv').open('w', newline='') as dst:
         writer = csv.DictWriter(dst, fieldnames=FIELDS)
         writer.writeheader()
@@ -962,6 +1022,9 @@ def decode(directory, output):
                             ssb = decode_ue_ssb_measurement(dict(values, source_file=path.name, source_line=number))
                             if ssb is not None:
                                 (ue_ssb_measurements if ssb['record_type'] == 'measurement' else ue_ssb_contexts).append(ssb)
+                            relative = decode_relative_tx(dict(values, source_file=path.name, source_line=number))
+                            if relative is not None:
+                                relative_tx_records.append(relative)
                             if values['event'] in (47, 48):
                                 radio_tx_level_events.append(dict(values, source_file=path.name, source_line=number))
                             result['events'] += 1
@@ -1015,6 +1078,9 @@ def decode(directory, output):
     result['radio_tx_power_samples'] = len(radio_tx_power_samples)
     result['radio_tx_power_qualities'] = len(radio_tx_power_qualities)
     result['radio_tx_rejects'] = len(radio_tx_rejects)
+    _write_csv(output / 'relative_tx.csv', RELATIVE_TX_FIELDS, relative_tx_records)
+    result['relative_tx_records'] = len(relative_tx_records)
+    result['relative_tx_erasures'] = sum(r['record_type'] == 'erasure' for r in relative_tx_records)
     result['clean_footer_observed'] = len(result['footers']) == 1
     result['ordering'] = 'file order only; compare per-boot monotonic times, never assume continuous UTC'
     (output / 'summary.json').write_text(json.dumps(result, indent=2) + '\n')

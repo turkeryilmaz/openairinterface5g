@@ -44,6 +44,28 @@ typedef enum {
   RADIO_TX_POWER_QUANTIZATION,
 } radio_tx_power_status_t;
 
+/* A calibration-free digital RMS envelope. nominal_reference is fixed at 23;
+ * nominal_min/max are integer engineering bounds derived from the fixed-point
+ * quality limits. This declares a waveform envelope, not RF power, a universal
+ * crest-factor certificate, or a qualified profile. */
+typedef struct {
+  uint32_t component_full_scale;
+  double reference_amplitude;
+  double backoff_db;
+  double reference_dbfs;
+  double nominal_reference;
+  int nominal_min;
+  int nominal_max;
+  double peak_limit_fs;
+  double maximum_quantization_error_db;
+  double maximum_quantization_evm;
+} radio_tx_relative_config_t;
+
+bool radio_tx_relative_configure(uint32_t component_full_scale,
+                                 double reference_amplitude,
+                                 double backoff_db,
+                                 radio_tx_relative_config_t *config);
+
 typedef struct {
   radio_tx_power_status_t status;
   radio_tx_power_mapping_t mapping;
@@ -56,6 +78,9 @@ typedef struct {
   double quantization_error_db;
   double quantization_evm;
   double estimated_output_dbm;
+  /* Available only for a successful calibration-free relative mapping. */
+  double requested_power_dbfs;
+  double realized_power_dbfs;
 } radio_tx_power_result_t;
 
 /* One complete active time-domain channel span, including cyclic prefixes and
@@ -77,4 +102,14 @@ radio_tx_power_result_t radio_tx_apply_power(c16_t *samples,
                                              double maximum_quantization_error_db,
                                              double maximum_quantization_evm,
                                              bool apply);
+
+/* selected_nominal is already constrained by MAC to config->nominal_min/max.
+ * This helper rejects an out-of-range request instead of clipping it. Its
+ * preflight validates every exact Q30 output before any write. A HEADROOM
+ * result leaves samples unchanged so the caller can erase the whole span. */
+radio_tx_power_result_t radio_tx_apply_relative_power(c16_t *samples,
+                                                      uint32_t count,
+                                                      const radio_tx_relative_config_t *config,
+                                                      double selected_nominal,
+                                                      bool apply);
 #endif
