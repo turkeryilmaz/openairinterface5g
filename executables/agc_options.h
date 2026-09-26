@@ -50,13 +50,20 @@ typedef enum {
   AGC_TX_POLICY_MANAGED,
 } agc_tx_policy_t;
 
+typedef enum {
+  AGC_TX_POWER_ABSOLUTE = 0,
+  AGC_TX_POWER_RELATIVE,
+} agc_tx_power_mode_t;
+
 /* Input to the pure resolver. Sources are also retained for startup reporting. */
 typedef struct {
   agc_role_t role;
   const char *mode;
   const char *directions;
+  const char *tx_power_mode;
   agc_option_source_t mode_source;
   agc_option_source_t directions_source;
+  agc_option_source_t tx_power_mode_source;
   bool legacy_set;
   bool legacy_requested;
   agc_option_source_t legacy_source;
@@ -77,6 +84,8 @@ typedef struct {
   agc_rx_acquisition_t rx_acquisition;
   agc_rx_tracking_t rx_tracking;
   agc_tx_policy_t tx_policy;
+  agc_tx_power_mode_t tx_power_mode;
+  agc_option_source_t tx_power_mode_source;
   bool rx_actuation;
   bool tx_actuation;
   unsigned int rx_settle_us; /* sample exclusion after a completed device transaction */
@@ -101,5 +110,6 @@ const char *agc_option_source_name(agc_option_source_t source);
 const char *agc_rx_acquisition_name(agc_rx_acquisition_t acquisition);
 const char *agc_rx_tracking_name(agc_rx_tracking_t tracking);
 const char *agc_tx_policy_name(agc_tx_policy_t policy);
+const char *agc_tx_power_mode_name(agc_tx_power_mode_t mode);
 
 #endif

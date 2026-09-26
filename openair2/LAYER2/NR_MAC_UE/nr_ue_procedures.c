@@ -19,6 +19,7 @@
 /* MAC */
 #include "NR_MAC_COMMON/nr_mac.h"
 #include "NR_MAC_UE/mac_proto.h"
+#include "radio/COMMON/radio_gain_device.h"
 #include "common/utils/nr/nr_common.h"
 #include "openair2/NR_UE_PHY_INTERFACE/NR_Packet_Drop.h"
 
@@ -1777,6 +1778,8 @@ int nr_ue_configure_pucch(NR_UE_MAC_INST_t *mac,
                                                       subframe_number,
                                                       pucch_pdu->n_bit,
                                                       pucch_pdu->prb_start);
+    if (pucch_pdu->pucch_tx_power == INT16_MIN && radio_gain_device_tx_relative_actuating())
+      return -1;
     if (flight_recorder_enabled() && pucch_pdu->pucch_tx_power != INT16_MIN)
       flight_recorder_emit(FLIGHT_EVENT_UE_TX_CONTROL,
                            FLIGHT_UE_TX_CHANNEL_PUCCH,
@@ -1944,6 +1947,8 @@ int nr_ue_configure_pucch(NR_UE_MAC_INST_t *mac,
                                                       subframe_number,
                                                       n_uci,
                                                       pucch_pdu->prb_start);
+    if (pucch_pdu->pucch_tx_power == INT16_MIN && radio_gain_device_tx_relative_actuating())
+      return -1;
     if (flight_recorder_enabled() && pucch_pdu->pucch_tx_power != INT16_MIN)
       flight_recorder_emit(FLIGHT_EVENT_UE_TX_CONTROL,
                            FLIGHT_UE_TX_CHANNEL_PUCCH,
