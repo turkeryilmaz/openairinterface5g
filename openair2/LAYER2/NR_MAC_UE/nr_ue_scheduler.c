@@ -2680,6 +2680,35 @@ static bool is_queued_initial_msg3(const NR_UE_MAC_INST_t *mac, const fapi_nr_ul
   return false;
 }
 
+/* A caller that already holds an iterator can only trigger this seam while
+ * processing the PUSCH itself.  Do not reacquire that non-recursive lock. */
+static bool is_locked_initial_msg3(const NR_UE_MAC_INST_t *mac, const fapi_nr_ul_config_request_pdu_t *pdu)
+{
+  return pdu && pdu->pdu_type == FAPI_NR_UL_CONFIG_TYPE_PUSCH && mac->ra.ra_state == nrRA_WAIT_RAR && !mac->ra.cfra;
+}
+
+/* Retire exactly the target UL slot after a nonfatal relative-TX admission
+ * failure.  A received RAR's initial Msg3 must re-enter RA retry instead of
+ * surviving as a stale grant when digital bounds later recover. */
+static void retire_unavailable_ul_slot(NR_UE_MAC_INST_t *mac,
+                                       frame_t frame,
+                                       slot_t slot,
+                                       fapi_nr_ul_config_request_pdu_t *locked_pdu)
+{
+  retire_unavailable_pathloss_feedback(mac, frame, slot);
+
+  fapi_nr_ul_config_request_pdu_t *pending_pdu = locked_pdu;
+  if (!pending_pdu)
+    pending_pdu = lockGet_ul_iterator(mac, frame, slot);
+
+  const bool retire_msg3 = locked_pdu ? is_locked_initial_msg3(mac, locked_pdu)
+                                       : pending_pdu && is_queued_initial_msg3(mac, pending_pdu);
+  if (pending_pdu)
+    release_ul_config(pending_pdu, true);
+  if (retire_msg3)
+    nr_msg3_not_transmitted(mac);
+}
+
 void nr_ue_ul_scheduler(NR_UE_MAC_INST_t *mac, nr_uplink_indication_t *ul_info)
 {
   int cc_id = ul_info->cc_id;
@@ -2695,21 +2724,16 @@ void nr_ue_ul_scheduler(NR_UE_MAC_INST_t *mac, nr_uplink_indication_t *ul_info)
 
   if (pathloss_needed && !pathloss_available) {
     // Retire only feedback due now; future feedback must survive this skipped target slot.
-    retire_unavailable_pathloss_feedback(mac, frame_tx, slot_tx);
-
-    // Drop this current-slot request; the frame/slot check also clears stale wrapped grants.
-    fapi_nr_ul_config_request_pdu_t *pending_pdu = lockGet_ul_iterator(mac, frame_tx, slot_tx);
-    const bool retire_msg3 = pending_pdu && is_queued_initial_msg3(mac, pending_pdu);
-    if (pending_pdu)
-      release_ul_config(pending_pdu, true);
-    if (retire_msg3)
-      nr_msg3_not_transmitted(mac);
+    retire_unavailable_ul_slot(mac, frame_tx, slot_tx, NULL);
     return;
   }
 
   if ((mac->state == UE_PERFORMING_RA || mac->state == UE_CONNECTED)
-      && !radio_gain_device_validate_ue_power_limit(mac->p_Max, mac->p_Max_alt, frame_tx, slot_tx))
+      && !radio_gain_device_validate_ue_power_limit(mac->p_Max, mac->p_Max_alt, frame_tx, slot_tx)) {
+    if (radio_gain_device_tx_relative_actuating())
+      retire_unavailable_ul_slot(mac, frame_tx, slot_tx, NULL);
     return;
+  }
 
   if (mac->state == UE_PERFORMING_RA && ra->ra_state == nrRA_UE_IDLE) {
     init_RA(mac);
@@ -2778,7 +2802,14 @@ void nr_ue_ul_scheduler(NR_UE_MAC_INST_t *mac, nr_uplink_indication_t *ul_info)
               ra->ra_state);
         pdu->tx_request_body.fapiTxPdu = NULL;
         const bool power_deferred = pdu->oai_deferred_tx_power;
-        if (pdu->oai_deferred_tx_power && !nr_ue_apply_deferred_pusch_tx_power(mac, pdu, config_generation)) {
+        int requested_tx_power = pdu->tx_power;
+        if (pdu->oai_deferred_tx_power
+            && !nr_ue_apply_deferred_pusch_tx_power_with_request(mac, pdu, config_generation, &requested_tx_power)) {
+          if (radio_gain_device_tx_relative_actuating()) {
+            LOG_W(NR_MAC, "PUSCH power bounds unavailable in target slot %d.%d; dropping occasion\n", frame_tx, slot_tx);
+            retire_unavailable_ul_slot(mac, frame_tx, slot_tx, ulcfg_pdu);
+            return;
+          }
           LOG_E(NR_MAC, "Managed TX rejects stale PUSCH configuration in target slot %d.%d\n", frame_tx, slot_tx);
           radio_gain_device_reject_tx(frame_tx, slot_tx, 0, RADIO_TX_REJECT_LAYOUT);
           release_ul_config(ulcfg_pdu, true);
@@ -2831,6 +2862,15 @@ void nr_ue_ul_scheduler(NR_UE_MAC_INST_t *mac, nr_uplink_indication_t *ul_info)
                                       tp_enabled,
                                       pdu->rb_size,
                                       pdu->rb_start);
+            if (radio_gain_device_tx_relative_actuating()) {
+              int P_CMIN = mac->current_UL_BWP->P_CMIN;
+              if (!nr_ue_get_effective_tx_power_bounds(P_CMIN, P_CMAX, &P_CMIN, &P_CMAX)) {
+                LOG_W(NR_MAC, "PUSCH PHR bounds unavailable in target slot %d.%d; dropping occasion\n", frame_tx, slot_tx);
+                retire_unavailable_ul_slot(mac, frame_tx, slot_tx, ulcfg_pdu);
+                return;
+              }
+              tx_power = requested_tx_power;
+            }
             if (nr_ue_get_sdu(mac, frame_tx, slot_tx, ulsch_input_buffer, TBS_bytes, tx_power, P_CMAX, &BSRsent)) {
               pdu->tx_request_body.fapiTxPdu = ulsch_input_buffer;
               pdu->tx_request_body.pdu_length = TBS_bytes;

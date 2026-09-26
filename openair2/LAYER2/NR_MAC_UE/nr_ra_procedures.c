@@ -13,18 +13,47 @@
 /* MAC */
 #include "NR_MAC_COMMON/nr_mac.h"
 #include "LAYER2/NR_MAC_UE/mac_proto.h"
+#include "radio/COMMON/radio_gain_device.h"
 #include <executables/softmodem-common.h>
 #include "openair2/LAYER2/nr_rlc/nr_rlc_oai_api.h"
 
 bool get_prach_tx_power(const NR_UE_MAC_INST_t *mac, int16_t *tx_power)
 {
+  if (!mac || !tx_power)
+    return false;
+
   int16_t pathloss;
   if (!compute_nr_SSB_PL(mac, &pathloss))
     return false;
 
   const RA_config_t *ra = &mac->ra;
   const int64_t requested_power = (int64_t)ra->prach_resources.ra_preamble_rx_target_power + pathloss;
-  const int64_t capped_power = min((int64_t)ra->prach_resources.Pc_max, requested_power);
+  int maximum = ra->prach_resources.Pc_max;
+
+  if (radio_gain_device_tx_relative_actuating()) {
+    if (!mac->current_UL_BWP)
+      return false;
+    if (mac->p_Max != INT_MIN)
+      maximum = min(maximum, mac->p_Max);
+    int minimum = mac->current_UL_BWP->P_CMIN;
+    if (!nr_ue_get_effective_tx_power_bounds(minimum, maximum, &minimum, &maximum))
+      return false;
+    const int64_t capped_power = min((int64_t)maximum, max((int64_t)minimum, requested_power));
+    if (capped_power < INT16_MIN || capped_power > INT16_MAX)
+      return false;
+    *tx_power = (int16_t)capped_power;
+    if (flight_recorder_enabled())
+      flight_recorder_emit(FLIGHT_EVENT_UE_TX_RELATIVE_BOUNDS,
+                           FLIGHT_UE_TX_CHANNEL_PRACH,
+                           -1,
+                           minimum,
+                           maximum,
+                           requested_power,
+                           *tx_power);
+    return true;
+  }
+
+  const int64_t capped_power = min((int64_t)maximum, requested_power);
   if (capped_power < INT16_MIN || capped_power > INT16_MAX)
     return false;
 

@@ -1,10 +1,15 @@
 /* SPDX-License-Identifier: LicenseRef-CSSL-1.0 */
 #include "radio_tx_power.h"
+#include <limits.h>
 #include <math.h>
 #include <string.h>
 
 #define TX_SCALE_FRACTION_BITS 30
 #define TX_SCALE_ONE (INT64_C(1) << TX_SCALE_FRACTION_BITS)
+#define TX_RELATIVE_NOMINAL_REFERENCE 23.0
+#define TX_RELATIVE_PEAK_LIMIT_FS 0.7
+#define TX_RELATIVE_MAXIMUM_QUANTIZATION_ERROR_DB 0.5
+#define TX_RELATIVE_MAXIMUM_QUANTIZATION_EVM 0.03
 
 static uint32_t component_magnitude(int32_t component)
 {
@@ -21,6 +26,70 @@ static int64_t scaled_component(int16_t component, int64_t coefficient)
   return product < 0 ? -rounded : rounded;
 }
 
+static radio_tx_power_result_t relative_result(radio_tx_power_status_t status)
+{
+  return (radio_tx_power_result_t){
+      .status = status,
+      .mapping = {.requested_dbm = NAN, .selected_dbm = NAN, .amplitude_scale = NAN, .estimated_dbm = NAN, .uncertainty_db = NAN},
+      .quantization_error_db = NAN,
+      .quantization_evm = NAN,
+      .estimated_output_dbm = NAN,
+      .requested_power_dbfs = NAN,
+      .realized_power_dbfs = NAN};
+}
+
+bool radio_tx_relative_configure(uint32_t full_scale,
+                                 double reference_amplitude,
+                                 double backoff_db,
+                                 radio_tx_relative_config_t *config)
+{
+  if (config != NULL)
+    *config = (radio_tx_relative_config_t){0};
+  if (config == NULL || !full_scale || full_scale > 32768U || !isfinite(reference_amplitude) || reference_amplitude <= 0
+      || reference_amplitude > full_scale || !isfinite(backoff_db) || backoff_db < 0)
+    return false;
+
+  const double reference_dbfs = 20.0 * log10(reference_amplitude / full_scale);
+  const double normalization = (double)full_scale * full_scale;
+  const double power_error_evm = 1.0 - pow(10.0, -TX_RELATIVE_MAXIMUM_QUANTIZATION_ERROR_DB / 20.0);
+  const double evm_floor =
+      TX_RELATIVE_NOMINAL_REFERENCE
+      + 10.0 * log10((0.5 / (TX_RELATIVE_MAXIMUM_QUANTIZATION_EVM * TX_RELATIVE_MAXIMUM_QUANTIZATION_EVM)) / normalization)
+      - reference_dbfs;
+  const double power_error_floor =
+      TX_RELATIVE_NOMINAL_REFERENCE + 10.0 * log10((0.5 / (power_error_evm * power_error_evm)) / normalization) - reference_dbfs;
+  const double minimum = ceil(fmax(evm_floor, power_error_floor));
+  const double maximum = floor(TX_RELATIVE_NOMINAL_REFERENCE - backoff_db);
+  if (!isfinite(reference_dbfs) || !isfinite(power_error_evm) || power_error_evm <= 0 || !isfinite(minimum) || !isfinite(maximum)
+      || minimum < INT_MIN || minimum > INT_MAX || maximum < INT_MIN || maximum > INT_MAX || minimum > maximum)
+    return false;
+
+  *config = (radio_tx_relative_config_t){.component_full_scale = full_scale,
+                                         .reference_amplitude = reference_amplitude,
+                                         .backoff_db = backoff_db,
+                                         .reference_dbfs = reference_dbfs,
+                                         .nominal_reference = TX_RELATIVE_NOMINAL_REFERENCE,
+                                         .nominal_min = (int)minimum,
+                                         .nominal_max = (int)maximum,
+                                         .peak_limit_fs = TX_RELATIVE_PEAK_LIMIT_FS,
+                                         .maximum_quantization_error_db = TX_RELATIVE_MAXIMUM_QUANTIZATION_ERROR_DB,
+                                         .maximum_quantization_evm = TX_RELATIVE_MAXIMUM_QUANTIZATION_EVM};
+  return true;
+}
+
+static bool relative_config_valid(const radio_tx_relative_config_t *config)
+{
+  if (config == NULL)
+    return false;
+  radio_tx_relative_config_t expected;
+  return radio_tx_relative_configure(config->component_full_scale, config->reference_amplitude, config->backoff_db, &expected)
+         && config->reference_dbfs == expected.reference_dbfs && config->nominal_reference == expected.nominal_reference
+         && config->nominal_min == expected.nominal_min && config->nominal_max == expected.nominal_max
+         && config->peak_limit_fs == expected.peak_limit_fs
+         && config->maximum_quantization_error_db == expected.maximum_quantization_error_db
+         && config->maximum_quantization_evm == expected.maximum_quantization_evm;
+}
+
 radio_tx_power_result_t radio_tx_apply_power(c16_t *samples,
                                              uint32_t count,
                                              uint32_t full_scale,
@@ -32,7 +101,7 @@ radio_tx_power_result_t radio_tx_apply_power(c16_t *samples,
                                              double maximum_quantization_evm,
                                              bool apply)
 {
-  radio_tx_power_result_t result = {.status = RADIO_TX_POWER_INVALID};
+  radio_tx_power_result_t result = {.status = RADIO_TX_POWER_INVALID, .requested_power_dbfs = NAN, .realized_power_dbfs = NAN};
   if (!samples || !count || count > RADIO_TX_POWER_MAX_SAMPLES || !full_scale || full_scale > 32768U || !isfinite(peak_limit_fs)
       || peak_limit_fs <= 0 || peak_limit_fs > 1 || !isfinite(maximum_quantization_error_db) || maximum_quantization_error_db < 0
       || !isfinite(maximum_quantization_evm) || maximum_quantization_evm <= 0 || maximum_quantization_evm > 0.03)
@@ -112,6 +181,102 @@ radio_tx_power_result_t radio_tx_apply_power(c16_t *samples,
     }
     result.applied = true;
   }
+  result.status = RADIO_TX_POWER_OK;
+  return result;
+}
+
+radio_tx_power_result_t radio_tx_apply_relative_power(c16_t *samples,
+                                                      uint32_t count,
+                                                      const radio_tx_relative_config_t *config,
+                                                      double selected_nominal,
+                                                      bool apply)
+{
+  radio_tx_power_result_t result = relative_result(RADIO_TX_POWER_INVALID);
+  if (!samples || !count || count > RADIO_TX_POWER_MAX_SAMPLES || !relative_config_valid(config))
+    return result;
+  if (!isfinite(selected_nominal) || selected_nominal < config->nominal_min || selected_nominal > config->nominal_max) {
+    result.status = RADIO_TX_POWER_MAPPING_REJECTED;
+    return result;
+  }
+
+  result.sample_count = count;
+  for (uint32_t i = 0; i < count; ++i) {
+    const int32_t r = samples[i].r, q = samples[i].i;
+    result.input_energy += (int64_t)r * r + (int64_t)q * q;
+    const uint32_t peak = component_magnitude(r) > component_magnitude(q) ? component_magnitude(r) : component_magnitude(q);
+    if (peak > result.input_peak_component)
+      result.input_peak_component = peak;
+  }
+  if (!result.input_energy) {
+    result.status = RADIO_TX_POWER_MAPPING_REJECTED;
+    return result;
+  }
+
+  const double normalization = (double)count * config->component_full_scale * config->component_full_scale;
+  const double requested_power_dbfs = config->reference_dbfs + selected_nominal - config->nominal_reference;
+  result.requested_power_dbfs = requested_power_dbfs;
+  const double target_energy = normalization * pow(10.0, requested_power_dbfs / 10.0);
+  const double coefficient_value = sqrt(target_energy / result.input_energy) * TX_SCALE_ONE;
+  if (!isfinite(normalization) || !isfinite(requested_power_dbfs) || !isfinite(target_energy) || target_energy <= 0
+      || !isfinite(coefficient_value) || coefficient_value < 0.5 || coefficient_value > (double)(INT64_C(1) << 46)) {
+    result.status = RADIO_TX_POWER_QUANTIZATION;
+    return result;
+  }
+
+  const int64_t coefficient = llround(coefficient_value);
+  const int64_t positive_limit =
+      (int64_t)fmin(config->component_full_scale - 1U, floor(config->peak_limit_fs * config->component_full_scale));
+  const int64_t negative_limit = -(int64_t)floor(config->peak_limit_fs * config->component_full_scale);
+  uint64_t output_energy = 0;
+  uint32_t output_peak_component = 0;
+  int64_t input_output_dot = 0;
+  /* Preflight every exact output before mutating the active span. An exceptional
+   * crest is an erasure decision for the caller, never saturation or restart. */
+  for (uint32_t i = 0; i < count; ++i) {
+    const int64_t r = scaled_component(samples[i].r, coefficient);
+    const int64_t q = scaled_component(samples[i].i, coefficient);
+    if (r < negative_limit || r > positive_limit || q < negative_limit || q > positive_limit) {
+      result.status = RADIO_TX_POWER_HEADROOM;
+      return result;
+    }
+    output_energy += r * r + q * q;
+    input_output_dot += r * samples[i].r + q * samples[i].i;
+    const uint32_t peak = component_magnitude(r) > component_magnitude(q) ? component_magnitude(r) : component_magnitude(q);
+    if (peak > output_peak_component)
+      output_peak_component = peak;
+  }
+  if (!output_energy) {
+    result.status = RADIO_TX_POWER_QUANTIZATION;
+    return result;
+  }
+
+  const double actual_scale = (double)coefficient / TX_SCALE_ONE;
+  const double ideal_energy = actual_scale * actual_scale * result.input_energy;
+  const double error_energy = fmax(0.0, output_energy - 2.0 * actual_scale * input_output_dot + ideal_energy);
+  const double quantization_evm = sqrt(error_energy / ideal_energy);
+  const double realized_power_dbfs = 10.0 * log10(output_energy / normalization);
+  const double quantization_error_db = realized_power_dbfs - requested_power_dbfs;
+  if (!isfinite(quantization_evm) || quantization_evm > config->maximum_quantization_evm || !isfinite(realized_power_dbfs)
+      || !isfinite(quantization_error_db) || fabs(quantization_error_db) > config->maximum_quantization_error_db) {
+    result.status = RADIO_TX_POWER_QUANTIZATION;
+    return result;
+  }
+
+  if (apply) {
+    for (uint32_t i = 0; i < count; ++i) {
+      samples[i].r = scaled_component(samples[i].r, coefficient);
+      samples[i].i = scaled_component(samples[i].i, coefficient);
+    }
+    result.applied = true;
+  }
+  result.mapping.valid = true;
+  result.mapping.amplitude_scale = actual_scale;
+  result.output_energy = output_energy;
+  result.output_peak_component = output_peak_component;
+  result.quantization_error_db = quantization_error_db;
+  result.quantization_evm = quantization_evm;
+  result.requested_power_dbfs = requested_power_dbfs;
+  result.realized_power_dbfs = realized_power_dbfs;
   result.status = RADIO_TX_POWER_OK;
   return result;
 }

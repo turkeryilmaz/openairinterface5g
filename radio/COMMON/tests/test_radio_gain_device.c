@@ -1108,12 +1108,146 @@ static int test_managed_tx_profile_and_fault(void)
   return EXIT_SUCCESS;
 }
 
+static int test_relative_tx_mapping_and_erasure(void)
+{
+  fake_radio_t radio;
+  openair0_device_t device;
+  openair0_config_t config;
+  fake_init(&radio);
+  make_device(&device, &config, &radio);
+  test_options = (agc_options_t){.mode = AGC_MODE_CONTINUOUS,
+                                 .directions = AGC_DIRECTIONS_TX,
+                                 .tx_policy = AGC_TX_POLICY_MANAGED,
+                                 .tx_power_mode = AGC_TX_POWER_RELATIVE,
+                                 .tx_actuation = true};
+  const radio_gain_api_t api = fake_api();
+  int minimum = 0, maximum = 0;
+  CHECK(!radio_gain_device_relative_tx_bounds(&minimum, &maximum));
+  CHECK(radio_gain_device_attach(&device, &config, &api) == 0);
+  CHECK(radio_gain_device_relative_tx_bounds(&minimum, &maximum));
+  CHECK(minimum == -3 && maximum == 17);
+  CHECK(radio_gain_device_validate_ue_power_limit(23, INT_MIN, 1, 0));
+  CHECK(radio_gain_device_validate_ue_power_limit(0, INT_MIN, 1, 1));
+  recorder_reset(true);
+  /* A TDD UL sequence need not include slot zero. Log the first blocked call,
+   * then bound rapid repeated diagnostics without suppressing admission checks. */
+  CHECK(!radio_gain_device_validate_ue_power_limit(-4, INT_MIN, 100, 5));
+  CHECK(!radio_gain_device_validate_ue_power_limit(-4, INT_MIN, 100, 6));
+  CHECK(recorder_event_count(FLIGHT_EVENT_RADIO_TX_RELATIVE_GATE) == 1);
+  CHECK(recorder_last_event(FLIGHT_EVENT_RADIO_TX_RELATIVE_GATE)->b == 100005);
+  CHECK(radio_gain_device_relative_tx_bounds(&minimum, &maximum));
+  CHECK(minimum == -3 && maximum == 17); /* network ceiling never reanchors */
+  CHECK(!radio_gain_device_tx_cancelled(-ERANGE));
+  recorder_reset(true);
+  c16_t samples[] = {{512, 0}, {-512, 0}};
+  CHECK(radio_gain_device_apply_tx(samples, 2, 17, 1, 3, 2));
+  CHECK(samples[0].r == 257 && samples[1].r == -257);
+  CHECK(recorder_event_count(FLIGHT_EVENT_RADIO_TX_RELATIVE_POWER) == 1);
+  CHECK(recorder_event_count(FLIGHT_EVENT_RADIO_TX_POWER) == 0);
+  c16_t crest[100] = {{512, 0}};
+  CHECK(radio_gain_device_apply_tx(crest, 100, 17, 1, 4, 2));
+  for (unsigned i = 0; i < 100; ++i)
+    CHECK(crest[i].r == 0 && crest[i].i == 0);
+  CHECK(recorder_event_count(FLIGHT_EVENT_RADIO_TX_RELATIVE_ERASURE) == 1);
+  CHECK(!radio_gain_device_tx_cancelled(-ERANGE));
+  void *buffers[] = {crest};
+  CHECK(device.trx_write_func(&device, 200, buffers, 100, 1, 0) == 100);
+  CHECK(radio.write_calls == 1 && radio.set_calls == 0);
+  samples[0].r = 512;
+  samples[1].r = -512;
+  CHECK(radio_gain_device_apply_tx(samples, 2, 16, 1, 5, 2));
+  CHECK(samples[0].r > 0 && samples[0].r < 257);
+  buffers[0] = samples;
+  CHECK(device.trx_write_func(&device, 300, buffers, 2, 1, 0) == 2);
+  CHECK(radio.write_calls == 2);
+  device.trx_end_func(&device);
+  fake_fini(&radio);
+  return EXIT_SUCCESS;
+}
+
+static int test_relative_gnb_reference(void)
+{
+  fake_radio_t radio;
+  openair0_device_t device;
+  openair0_config_t config;
+  fake_init(&radio);
+  make_device(&device, &config, &radio);
+  test_options = (agc_options_t){.role = AGC_ROLE_GNB,
+                                 .mode = AGC_MODE_CONTINUOUS,
+                                 .directions = AGC_DIRECTIONS_TX,
+                                 .tx_policy = AGC_TX_POLICY_MANAGED,
+                                 .tx_power_mode = AGC_TX_POWER_RELATIVE,
+                                 .tx_actuation = true};
+  const radio_gain_api_t api = fake_api();
+  CHECK(radio_gain_device_attach(&device, &config, &api) == 0);
+  int16_t amplitude = 512;
+  CHECK(radio_gain_device_configure_gnb_tx(-25, 512, &amplitude));
+  CHECK(amplitude == 257);
+  CHECK(radio_gain_device_validate_gnb_reference(-25, amplitude, 0, 0));
+  c16_t samples[] = {{100, 0}, {-1400, 0}};
+  CHECK(radio_gain_device_validate_gnb_tx(samples, 2, 0, 1));
+  CHECK(samples[0].r == 100 && samples[1].r == -1400);
+  samples[1].r = 1500;
+  recorder_reset(true);
+  CHECK(radio_gain_device_validate_gnb_tx(samples, 2, 0, 2));
+  CHECK(samples[0].r == 0 && samples[1].r == 0);
+  CHECK(recorder_event_count(FLIGHT_EVENT_RADIO_TX_RELATIVE_ERASURE) == 1);
+  CHECK(!radio_gain_device_tx_cancelled(-ERANGE));
+  /* One complete write: four prefix samples followed by two symbols. Only
+   * the final symbol violates the cap; no earlier part may survive erasure. */
+  c16_t write_span[4 + 2 * 64];
+  for (unsigned i = 0; i < 132; ++i)
+    write_span[i] = (c16_t){100, -100};
+  write_span[131].r = 1500;
+  recorder_reset(true);
+  CHECK(radio_gain_device_validate_gnb_tx(write_span, 132, 0, 3));
+  for (unsigned i = 0; i < 132; ++i)
+    CHECK(write_span[i].r == 0 && write_span[i].i == 0);
+  CHECK(recorder_last_event(FLIGHT_EVENT_RADIO_TX_RELATIVE_ERASURE)->d == 132);
+  void *buffers[] = {write_span};
+  CHECK(device.trx_write_func(&device, 200, buffers, 132, 1, 0) == 132);
+  write_span[0].r = 100;
+  CHECK(radio_gain_device_validate_gnb_tx(write_span, 132, 0, 4));
+  CHECK(write_span[0].r == 100);
+  CHECK(device.trx_write_func(&device, 332, buffers, 132, 1, 0) == 132);
+  CHECK(radio.write_calls == 2 && radio.set_calls == 0);
+  device.trx_end_func(&device);
+  fake_fini(&radio);
+  return EXIT_SUCCESS;
+}
+
+static int test_relative_observe_immutable(void)
+{
+  fake_radio_t radio;
+  openair0_device_t device;
+  openair0_config_t config;
+  fake_init(&radio);
+  make_device(&device, &config, &radio);
+  test_options = (agc_options_t){.mode = AGC_MODE_OBSERVE,
+                                 .directions = AGC_DIRECTIONS_TX,
+                                 .tx_policy = AGC_TX_POLICY_MANAGED,
+                                 .tx_power_mode = AGC_TX_POWER_RELATIVE};
+  const radio_gain_api_t api = fake_api();
+  CHECK(radio_gain_device_attach(&device, &config, &api) == 0);
+  c16_t samples[100] = {{512, 0}};
+  CHECK(radio_gain_device_apply_tx(samples, 100, 17, 0, 1, 2));
+  CHECK(samples[0].r == 512 && samples[1].r == 0);
+  CHECK(!radio_gain_device_tx_relative_actuating());
+  CHECK(radio.set_calls == 0);
+  device.trx_end_func(&device);
+  fake_fini(&radio);
+  return EXIT_SUCCESS;
+}
+
 int main(void)
 {
   memset(&test_log, 0, sizeof(test_log));
   for (unsigned int index = 0; index < MAX_LOG_COMPONENTS; ++index)
     test_log.log_component[index].level = OAILOG_DISABLE;
 
+  CHECK(run_child(test_relative_tx_mapping_and_erasure) == EXIT_SUCCESS);
+  CHECK(run_child(test_relative_gnb_reference) == EXIT_SUCCESS);
+  CHECK(run_child(test_relative_observe_immutable) == EXIT_SUCCESS);
   CHECK(run_child(test_managed_tx_profile_and_fault) == EXIT_SUCCESS);
   CHECK(run_child(test_continuous_rejected) == EXIT_SUCCESS);
   CHECK(run_child(test_continuous_legacy_handoff) == EXIT_SUCCESS);

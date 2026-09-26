@@ -39,11 +39,12 @@ void radio_gain_device_observe_rx(const radio_gain_sample_context_t *context,
                                   bool search_failed,
                                   radio_rx_source_t source);
 /* Bounded PHY producer interface. Disabled/observe never mutates samples.
- * Any managed failure latches TX admission closed until process teardown;
+ * Absolute mapping and structural failures latch TX admission closed; relative
+ * waveform exceptions erase the complete occasion and emit explicit evidence. A
  * failure is never interpreted as a request to transmit an unscaled waveform. */
 /* Initialization before gNB workers/streaming, followed by read-only guards. */
 bool radio_gain_device_configure_gnb_tx(double requested_sss_dbm, uint32_t fft_size, int16_t *amplitude);
-bool radio_gain_device_validate_gnb_tx(const c16_t *samples, uint32_t count, int frame, int slot);
+bool radio_gain_device_validate_gnb_tx(c16_t *samples, uint32_t count, int frame, int slot);
 bool radio_gain_device_validate_gnb_reference(double requested_sss_dbm, int16_t amplitude, int frame, int slot);
 enum {
   RADIO_TX_REJECT_LAYOUT = 1,
@@ -55,6 +56,10 @@ enum {
 };
 bool radio_gain_device_tx_selected(void);
 bool radio_gain_device_tx_actuating(void);
+bool radio_gain_device_tx_relative_actuating(void);
+/* Immutable nominal digital bounds, available only after relative attachment.
+ * These are not calibrated RF powers. Call before MAC TPC/PHR decisions. */
+bool radio_gain_device_relative_tx_bounds(int *minimum, int *maximum);
 /* True only for an admission error after a managed TX fault has already queued
  * coordinated shutdown. Other backend errors retain their ordinary handling. */
 bool radio_gain_device_tx_cancelled(int result);

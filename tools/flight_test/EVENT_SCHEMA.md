@@ -37,6 +37,12 @@ Every event has event, a–f, ring, sequence, mono_ns and realtime_ns. Sequence 
 |50 RADIO_TX_POWER_SAMPLES|same channel|same SFN*1000+slot|complex sample count|input sum(I²+Q²) raw integer codes|output sum(I²+Q²) only for status 0, otherwise INT64_MIN|input peak component upper 32 bits; output peak component lower 32 bits|
 |51 RADIO_TX_REJECT|radio binding (currently 0)|SFN*1000+slot|channel: 1 PRACH,2 PUSCH,3 PUCCH,4 SRS or 0 generic|reason: 1 layout,2 span,3 overlap,4 power limit,5 profile|actuation requested bool|reserved 0|
 |52 RADIO_TX_POWER_QUALITY|same channel|same SFN*1000+slot|quantization power error mdB only for status 0, otherwise INT64_MIN|quantization EVM parts per billion only for status 0, otherwise INT64_MIN|profile uncertainty mdB, or INT64_MIN unavailable|component full-scale integer code|
+|58 RADIO_TX_RELATIVE_POWER|channel: 1 PRACH,2 PUSCH,3 PUCCH,4 SRS or 0 generic|SFN*1000+slot|status bits 0..7 and applied bit 8|selected nominal mdB|requested digital dBFS mdB only for status 0, otherwise INT64_MIN|realized digital dBFS mdB only for status 0, otherwise INT64_MIN|
+|59 RADIO_TX_RELATIVE_QUALITY|same channel|same SFN*1000+slot|complex sample count|quantization power error mdB only for status 0, otherwise INT64_MIN|quantization EVM parts per billion only for status 0, otherwise INT64_MIN|amplitude coefficient Q30 only for status 0, otherwise INT64_MIN|
+|60 RADIO_TX_RELATIVE_CONFIG|role: 0 UE,1 gNB|component full-scale integer code|digital reference mdBFS|minimum nominal|maximum nominal|fixed analog TX gain mdB, or INT64_MIN unavailable|
+|61 RADIO_TX_RELATIVE_ERASURE|channel: 1 PRACH,2 PUSCH,3 PUCCH,4 SRS or 0 generic|SFN*1000+slot|relative mapping status that caused the erasure|zeroed complex sample count|reserved 0|reserved 0|
+|62 UE_TX_RELATIVE_BOUNDS|channel: 1 PRACH,2 PUSCH,3 PUCCH,4 SRS|SFN*1000+slot or -1|effective minimum nominal|effective maximum nominal|MAC requested nominal|MAC selected nominal|
+|63 RADIO_TX_RELATIVE_SAMPLES|channel: 1 PRACH,2 PUSCH,3 PUCCH,4 SRS or 0 generic|SFN*1000+slot|complex sample count|input sum(I²+Q²) raw integer codes|output sum(I²+Q²) only for status 0, otherwise INT64_MIN|input peak component upper 32 bits; output peak component lower 32 bits|
 
 `RADIO_GAIN` status values are 0 OK, 1 BUSY, 2 UNSUPPORTED, 3 INVALID,
 4 STALE, 5 CLOSED, 6 BACKEND_ERROR and 7 TX_PENDING. Operation values are
@@ -270,7 +276,7 @@ generic producer uses frame and slot -1), so the decoder preserves it in
 frame_slot_raw and leaves typed frame and slot blank. Generic events.csv retains
 the original numeric records.
 
-`RADIO_TX_REJECT` reason 6 (`POWER_CONTROL`) means the MAC could not calculate a supported channel-power request. The PUCCH MAC/PHY internal sentinel is `INT16_MIN`; it is not a dBm request. Managed TX suppresses that channel and closes admission, while baseline waveform behavior retains its former zero-request fallback.
+`RADIO_TX_REJECT` reason 6 (`POWER_CONTROL`) means the MAC could not calculate a supported channel-power request. The PUCCH MAC/PHY internal sentinel is `INT16_MIN`; it is not a dBm request. Absolute managed TX suppresses that channel and closes admission. Relative mode drops the unsupported PUCCH configuration before PHY; baseline waveform behavior retains its former zero-request fallback.
 
 Event 53 `UE_TX_CONTROL` records MAC power-control context: a=channel (2 PUSCH, 3 PUCCH), b=SFN*1000+slot, c=serving-SSB pathloss dB, d=closed-loop adjustment state after calculation dB, e=provided eligible TPC delta dB, f=configured network p-Max dBm (`INT64_MIN` when absent). A provided delta can be suppressed by the existing saturation rule; it is not necessarily an applied increment. Configured p-Max is not the allocation-dependent P_CMAX. PUSCH records cover managed target-slot deferred calculations; baseline grant-time calculations have no such record. PUCCH records cover supported common and dedicated calculations. These rows are calculation evidence, not proof of PHY generation or RF emission. Compare channel/frame/slot and monotonic time with waveform records; the decoder does not invent joins across SFN wraps or producer rings.
 
@@ -304,6 +310,44 @@ ring, generation, context and sequence evidence when interpreting a recorded
 constraint. `INT64_MIN` remains unavailable, not zero; historical captures without
 57 have no envelope evidence.
 
+### Relative TX events (58--64)
+
+These additive records describe `tx-power-mode = "relative"`, a digital envelope
+selected only for managed TX. They do not revise IDs 49--52 or the existing
+absolute-mode `radio_tx_power.csv`. The configuration is calibration-free:
+the fixed device-reported analog gain is not RF-power calibration, and the
+recorded requested/realized values in event 58 are dBFS rather than RF dBm.
+
+For the current `AMP = 512`, component full scale 2048 configuration, event 60
+records the -12.041 dBFS digital reference and current nominal limits -3..17.
+Nominal 23 is fixed; the 6 dB engineering backoff creates the upper limit and
+the fixed-point quality/EVM constraints create the effective lower limit. These
+are digital engineering constraints, not a qualified profile, an RF output
+range, conformance evidence, or a universal crest-factor certificate.
+
+Event 62 is the UE MAC decision after intersecting its channel range with the
+relative limits. It records the requested and selected nominal values, so an
+analysis can distinguish ordinary MAC bounding from an exact mapper failure.
+A network p-Max may reduce the applicable ceiling, but cannot change nominal 23
+or re-anchor the dBFS reference. Event 58 then records the per-span mapping
+result; status values are 0 OK, 1 INVALID, 2 UNQUALIFIED, 3 MAPPING_REJECTED,
+4 HEADROOM, and 5 QUANTIZATION. Bit 8 says the mapping wrote selected samples.
+
+An event 61 means a valid relative active occasion was zeroed as a whole after an
+unusual peak/crest or quality preflight failure. It is an RF-gate failure for
+that occasion, not proof of emission and not a radio-recovery action; subsequent
+occasions remain eligible. Structural/admission failures such as an unsupported
+layout or span remain managed-TX failures rather than relative erasures. Event
+59 carries the mapping quality and event 63 carries input/output whole-span
+sample evidence. Their unavailable output fields remain `INT64_MIN`.
+
+The decoder writes `relative_tx.csv` as a standalone union of IDs 58--64. Each
+record becomes one row with `record_type` `mapping`, `quality`, `configuration`,
+`erasure`, `bounds`, `samples`, or `admission_blocked`; only its applicable columns are populated.
+No cross-event join is attempted. Missing neighbors and `INT64_MIN` fields stay
+blank, so this CSV never invents an RF measurement, a mapping, or complete
+occasion coverage. Generic `events.csv` preserves the original raw records.
+
 TX 49/50/52 association also accepts a bounded globally interleaved group when
 every sequence in its span (at most 256 events) is uniquely present and all
 intervening records belong to other producer rings. Same-ring interruptions,
@@ -311,3 +355,18 @@ duplicates, missing sequences, reordered timestamps, and larger spans remain
 ambiguous. The output records `evidence_join_basis`, `evidence_group_sequence_span`,
 and `evidence_interleaved_events`; this proof does not infer missing records from
 a clean footer. Existing global-consecutive groups remain supported.
+
+Event 64 `RADIO_TX_RELATIVE_GATE` records persistent UE admission blocking once
+per second of host monotonic time, triggered by actual blocked scheduler calls: a=0 (UE), b=SFN*1000+slot, c=configured nominal
+p-Max or INT64_MIN when absent, d=alternate p-Max or INT64_MIN when absent,
+e=available digital minimum nominal, f=available digital maximum nominal.
+Missing digital bounds are INT64_MIN. An alternate limit is unsupported by the
+current MAC calculation; a ceiling below the digital minimum cannot admit TX.
+This record identifies a blocked opportunity, not an emitted or erased waveform.
+The decoder preserves it as an independent `admission_blocked` row.
+
+For event 63, an unavailable output-energy field (`e == INT64_MIN`) also makes
+the packed output peak unavailable. Its raw zero bits do not establish a zero
+peak, especially in observe mode where failed preflight leaves samples intact.
+The decoder keeps both output fields blank without requiring a neighboring
+mapping record.
