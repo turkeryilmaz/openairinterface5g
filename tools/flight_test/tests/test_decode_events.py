@@ -19,6 +19,38 @@ class DecoderTests(unittest.TestCase):
                     realtime_ns=sequence if realtime_ns is None else realtime_ns,
                     a=a, b=b, c=c, d=d, e=e, f=f)
 
+    def test_relative_tx_standalone_records_never_infer_rf_power(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            events = [self.event(60, 1, a=0, b=2048, c=-12041, d=-3, e=17, f=60750),
+                      self.event(58, 3, a=2, b=1002, c=256, d=17000, e=-18041, f=-18028),
+                      self.event(61, 5, a=2, b=1003, c=4, d=7132),
+                      self.event(59, 9, a=2, b=1002, c=7132, d=decoder.INT64_MIN,
+                                 e=decoder.INT64_MIN, f=decoder.INT64_MIN),
+                      self.event(62, 11, a=2, b=-1, c=-3, d=17, e=25, f=17),
+                      self.event(63, 12, a=2, b=1002, c=2, d=524288, e=132098, f=(512 << 32) | 257),
+                      self.event(63, 20, a=2, b=1005, c=100, d=262144, e=decoder.INT64_MIN, f=512 << 32)]
+            (root / 'oai-flight-recorder-100-0123456789abcdef-0.ndjson').write_text(
+                ''.join(json.dumps(event) + '\n' for event in events))
+            result = decoder.decode(root, root / 'out')
+            self.assertEqual(result['invalid_lines'], 0)
+            self.assertEqual(result['relative_tx_records'], 7)
+            self.assertEqual(result['relative_tx_erasures'], 1)
+            self.assertEqual(result['radio_tx_powers'], 0)
+            with (root / 'out/relative_tx.csv').open(newline='') as source:
+                rows = list(csv.DictReader(source))
+            self.assertEqual(rows[0]['minimum_nominal'], '-3')
+            self.assertEqual(rows[1]['realized_digital_dbfs'], '-18.028')
+            self.assertEqual(rows[2]['record_type'], 'erasure')
+            self.assertEqual(rows[2]['realized_digital_dbfs'], '')
+            self.assertEqual(rows[3]['quantization_error_db'], '')
+            self.assertEqual(rows[4]['requested_nominal'], '25')
+            self.assertEqual(rows[5]['output_peak_component'], '257')
+            self.assertEqual(rows[6]['input_peak_component'], '512')
+            self.assertEqual(rows[6]['output_energy'], '')
+            self.assertEqual(rows[6]['output_peak_component'], '')
+            self.assertFalse(any('dbm' in field for field in rows[0]))
+
     def test_peak_envelope_stands_alone_and_preserves_unavailable_values(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)

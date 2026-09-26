@@ -7,6 +7,8 @@
  */
 
 #include "LAYER2/NR_MAC_UE/mac_proto.h"
+#include "radio/COMMON/radio_gain_device.h"
+#include "common/utils/LOG/flight_recorder.h"
 
 #define DEFAULT_P0_NOMINAL_PUCCH_0_DBM 0
 #define DEFAULT_DELTA_F_PUCCH_0_DB 0
@@ -16,6 +18,27 @@
 /* TS 38.213 9.2.5.2 UE procedure for multiplexing HARQ-ACK/SR and CSI in a PUCCH */
 /* this is a counter of number of pucch format 4 per subframe */
 static int nb_pucch_format_4_in_subframes[NR_NUMBER_OF_SUBFRAMES_PER_FRAME] = {0};
+
+bool nr_ue_get_effective_tx_power_bounds(int standard_min, int standard_max, int *minimum, int *maximum)
+{
+  if (!minimum || !maximum)
+    return false;
+
+  if (!radio_gain_device_tx_relative_actuating()) {
+    *minimum = standard_min;
+    *maximum = standard_max;
+    return true;
+  }
+
+  int digital_min;
+  int digital_max;
+  if (standard_min > standard_max || !radio_gain_device_relative_tx_bounds(&digital_min, &digital_max) || digital_min > digital_max)
+    return false;
+
+  *minimum = max(standard_min, digital_min);
+  *maximum = min(standard_max, digital_max);
+  return *minimum <= *maximum;
+}
 
 /* TS 38.211 Table 6.4.1.3.3.2-1: DM-RS positions for PUCCH format 3 and 4 */
 static const int nb_symbols_excluding_dmrs[11][2][2]
@@ -383,7 +406,10 @@ int16_t get_pucch_tx_power_ue(NR_UE_MAC_INST_t *mac,
                             format_type == 2,
                             1,
                             start_prb);
-  float P_CMIN = current_UL_BWP->P_CMIN;
+  int P_CMIN = current_UL_BWP->P_CMIN;
+  const bool relative_tx = radio_gain_device_tx_relative_actuating();
+  if (relative_tx && !nr_ue_get_effective_tx_power_bounds(P_CMIN, P_CMAX, &P_CMIN, &P_CMAX))
+    return PUCCH_POWER_UNSUPPORTED;
   int16_t pathloss;
   if (!compute_nr_SSB_PL(mac, &pathloss))
     return PUCCH_POWER_UNSUPPORTED;
@@ -423,7 +449,16 @@ int16_t get_pucch_tx_power_ue(NR_UE_MAC_INST_t *mac,
   }
   mac->G_b_f_c = G_b_f_c;
 
-  int pucch_power = min(P_CMAX, pucch_power_without_g_pucch + G_b_f_c);
+  const int pucch_power_requested = pucch_power_without_g_pucch + G_b_f_c;
+  int pucch_power = relative_tx ? min(P_CMAX, max(P_CMIN, pucch_power_requested)) : min(P_CMAX, pucch_power_requested);
+  if (relative_tx && flight_recorder_enabled())
+    flight_recorder_emit(FLIGHT_EVENT_UE_TX_RELATIVE_BOUNDS,
+                         FLIGHT_UE_TX_CHANNEL_PUCCH,
+                         -1,
+                         P_CMIN,
+                         P_CMAX,
+                         pucch_power_requested,
+                         pucch_power);
 
   LOG_D(MAC,
         "PUCCH ( Tx power : %d dBm ) ( 10Log(...) : %d ) ( from Path Loss : %d ) ( delta_F_PUCCH : %d ) ( DELTA_TF : %d ) ( "
@@ -463,20 +498,23 @@ bool compute_nr_SSB_PL(const NR_UE_MAC_INST_t *mac, int16_t *pathloss)
 }
 
 // PUSCH transmission power according to 38.213 7.1
-int get_pusch_tx_power_ue(NR_UE_MAC_INST_t *mac,
-                          int num_rb,
-                          int start_prb,
-                          uint16_t nb_symb_sch,
-                          uint16_t nb_dmrs_prb,
-                          uint16_t nb_ptrs_prb,
-                          uint16_t qm,
-                          uint16_t R,
-                          uint16_t beta_offset_csi1,
-                          uint32_t sum_bits_in_codeblocks,
-                          int delta_pusch,
-                          bool is_rar_tx_retx,
-                          bool transform_precoding)
+static int get_pusch_tx_power_ue_core(NR_UE_MAC_INST_t *mac,
+                                      int num_rb,
+                                      int start_prb,
+                                      uint16_t nb_symb_sch,
+                                      uint16_t nb_dmrs_prb,
+                                      uint16_t nb_ptrs_prb,
+                                      uint16_t qm,
+                                      uint16_t R,
+                                      uint16_t beta_offset_csi1,
+                                      uint32_t sum_bits_in_codeblocks,
+                                      int delta_pusch,
+                                      bool is_rar_tx_retx,
+                                      bool transform_precoding,
+                                      int *requested_power)
 {
+  if (requested_power)
+    *requested_power = INT_MIN;
   LOG_D(NR_MAC,
         "PUSCH tx power determination num_rb=%d start_prb=%d nb_symb_sch=%u nb_dmrs_prb=%u nb_ptrs_prb=%u Qm=%u R= %u "
         "beta_offset_cs1=%u sum_bits_in_codeblocks=%u delta_pusch=%d is_rar_tx_retx=%d transform_precoding=%d\n",
@@ -579,6 +617,9 @@ int get_pusch_tx_power_ue(NR_UE_MAC_INST_t *mac,
   if (!compute_nr_SSB_PL(mac, &pathloss))
     return INT_MIN;
   int P_CMIN = mac->current_UL_BWP->P_CMIN;
+  const bool relative_tx = radio_gain_device_tx_relative_actuating();
+  if (relative_tx && !nr_ue_get_effective_tx_power_bounds(P_CMIN, P_CMAX, &P_CMIN, &P_CMAX))
+    return INT_MIN;
 
   float pusch_power_without_f_b_f_c = P_O_PUSCH + M_pusch_component + alpha * pathloss + DELTA_TF;
 
@@ -609,37 +650,90 @@ int get_pusch_tx_power_ue(NR_UE_MAC_INST_t *mac,
         alpha * pathloss,
         DELTA_TF,
         f_b_f_c);
-  return min(P_CMAX, P_O_PUSCH + M_pusch_component + alpha * pathloss + DELTA_TF + f_b_f_c);
+  const int power_requested = P_O_PUSCH + M_pusch_component + alpha * pathloss + DELTA_TF + f_b_f_c;
+  if (requested_power)
+    *requested_power = power_requested;
+  const int selected_power = relative_tx ? min(P_CMAX, max(P_CMIN, power_requested)) : min(P_CMAX, power_requested);
+  if (relative_tx && flight_recorder_enabled())
+    flight_recorder_emit(FLIGHT_EVENT_UE_TX_RELATIVE_BOUNDS,
+                         FLIGHT_UE_TX_CHANNEL_PUSCH,
+                         -1,
+                         P_CMIN,
+                         P_CMAX,
+                         power_requested,
+                         selected_power);
+  return selected_power;
 }
 
-bool nr_ue_apply_deferred_pusch_tx_power(NR_UE_MAC_INST_t *mac,
-                                         nfapi_nr_ue_pusch_pdu_t *pusch_config_pdu,
-                                         uint64_t config_generation)
+int get_pusch_tx_power_ue(NR_UE_MAC_INST_t *mac,
+                          int num_rb,
+                          int start_prb,
+                          uint16_t nb_symb_sch,
+                          uint16_t nb_dmrs_prb,
+                          uint16_t nb_ptrs_prb,
+                          uint16_t qm,
+                          uint16_t R,
+                          uint16_t beta_offset_csi1,
+                          uint32_t sum_bits_in_codeblocks,
+                          int delta_pusch,
+                          bool is_rar_tx_retx,
+                          bool transform_precoding)
 {
+  return get_pusch_tx_power_ue_core(mac,
+                                    num_rb,
+                                    start_prb,
+                                    nb_symb_sch,
+                                    nb_dmrs_prb,
+                                    nb_ptrs_prb,
+                                    qm,
+                                    R,
+                                    beta_offset_csi1,
+                                    sum_bits_in_codeblocks,
+                                    delta_pusch,
+                                    is_rar_tx_retx,
+                                    transform_precoding,
+                                    NULL);
+}
+
+bool nr_ue_apply_deferred_pusch_tx_power_with_request(NR_UE_MAC_INST_t *mac,
+                                                      nfapi_nr_ue_pusch_pdu_t *pusch_config_pdu,
+                                                      uint64_t config_generation,
+                                                      int *requested_power)
+{
+  if (requested_power)
+    *requested_power = INT_MIN;
   if (!pusch_config_pdu->oai_deferred_tx_power || pusch_config_pdu->oai_deferred_config_generation != config_generation)
     return false;
 
   const bool transform_precoding = pusch_config_pdu->transform_precoding == NR_PUSCH_Config__transformPrecoder_enabled;
 
-  const int tx_power = get_pusch_tx_power_ue(mac,
-                                               pusch_config_pdu->rb_size,
-                                               pusch_config_pdu->rb_start,
-                                               pusch_config_pdu->nr_of_symbols,
-                                               pusch_config_pdu->oai_deferred_nb_dmrs_prb,
-                                               0, // TODO: count PTRS per RB
-                                               pusch_config_pdu->qam_mod_order,
-                                               pusch_config_pdu->target_code_rate,
-                                               pusch_config_pdu->pusch_uci.beta_offset_csi1,
-                                               pusch_config_pdu->pusch_data.tb_size << 3,
-                                               pusch_config_pdu->oai_deferred_tpc_delta,
-                                               pusch_config_pdu->oai_deferred_is_rar_tx_retx,
-                                               transform_precoding);
+  const int tx_power = get_pusch_tx_power_ue_core(mac,
+                                             pusch_config_pdu->rb_size,
+                                             pusch_config_pdu->rb_start,
+                                             pusch_config_pdu->nr_of_symbols,
+                                             pusch_config_pdu->oai_deferred_nb_dmrs_prb,
+                                             0, // TODO: count PTRS per RB
+                                             pusch_config_pdu->qam_mod_order,
+                                             pusch_config_pdu->target_code_rate,
+                                             pusch_config_pdu->pusch_uci.beta_offset_csi1,
+                                             pusch_config_pdu->pusch_data.tb_size << 3,
+                                             pusch_config_pdu->oai_deferred_tpc_delta,
+                                             pusch_config_pdu->oai_deferred_is_rar_tx_retx,
+                                             transform_precoding,
+                                             requested_power);
   if (tx_power == INT_MIN)
     return false;
 
   pusch_config_pdu->tx_power = tx_power;
   pusch_config_pdu->oai_deferred_tx_power = 0;
   return true;
+}
+
+bool nr_ue_apply_deferred_pusch_tx_power(NR_UE_MAC_INST_t *mac,
+                                         nfapi_nr_ue_pusch_pdu_t *pusch_config_pdu,
+                                         uint64_t config_generation)
+{
+  return nr_ue_apply_deferred_pusch_tx_power_with_request(mac, pusch_config_pdu, config_generation, NULL);
 }
 
 int get_srs_tx_power_ue(NR_UE_MAC_INST_t *mac,
@@ -674,6 +768,10 @@ int get_srs_tx_power_ue(NR_UE_MAC_INST_t *mac,
                             true,
                             get_m_srs(srs_resource->freqHopping.c_SRS, srs_resource->freqHopping.b_SRS),
                             0); // TODO: Determine SRS start RB
+  int P_CMIN = mac->current_UL_BWP->P_CMIN;
+  const bool relative_tx = radio_gain_device_tx_relative_actuating();
+  if (relative_tx && !nr_ue_get_effective_tx_power_bounds(P_CMIN, P_CMAX, &P_CMIN, &P_CMAX))
+    return INT_MIN;
 
   int16_t pathloss;
   if (!compute_nr_SSB_PL(mac, &pathloss))
@@ -708,7 +806,6 @@ int get_srs_tx_power_ue(NR_UE_MAC_INST_t *mac,
         current_UL_BWP->srs_power_control_initialized = true;
         current_UL_BWP->h_b_f_c = DELTA_P_rampup + mac->delta_msg2;
       } else {
-        int P_CMIN = mac->current_UL_BWP->P_CMIN;
         if (!((srs_power_without_h_b_f_c + current_UL_BWP->h_b_f_c >= P_CMAX && delta_srs > 0)
               || (srs_power_without_h_b_f_c + current_UL_BWP->h_b_f_c <= P_CMIN && delta_srs < 0))) {
           current_UL_BWP->h_b_f_c += delta_srs;
@@ -721,5 +818,15 @@ int get_srs_tx_power_ue(NR_UE_MAC_INST_t *mac,
     }
   }
 
-  return min(P_CMAX, srs_power_without_h_b_f_c + h_b_f_c);
+  const int srs_power_requested = srs_power_without_h_b_f_c + h_b_f_c;
+  const int selected_power = relative_tx ? min(P_CMAX, max(P_CMIN, srs_power_requested)) : min(P_CMAX, srs_power_requested);
+  if (relative_tx && flight_recorder_enabled())
+    flight_recorder_emit(FLIGHT_EVENT_UE_TX_RELATIVE_BOUNDS,
+                         FLIGHT_UE_TX_CHANNEL_SRS,
+                         -1,
+                         P_CMIN,
+                         P_CMAX,
+                         srs_power_requested,
+                         selected_power);
+  return selected_power;
 }

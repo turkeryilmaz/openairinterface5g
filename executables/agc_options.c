@@ -73,6 +73,17 @@ static int parse_directions(const char *directions, agc_directions_t *parsed, ch
   return 0;
 }
 
+static int parse_tx_power_mode(const char *mode, agc_tx_power_mode_t *parsed, char *error, size_t error_size)
+{
+  if (strcmp(mode, "absolute") == 0)
+    *parsed = AGC_TX_POWER_ABSOLUTE;
+  else if (strcmp(mode, "relative") == 0)
+    *parsed = AGC_TX_POWER_RELATIVE;
+  else
+    return set_error(error, error_size, "invalid tx-power-mode '%s'; use absolute or relative", mode);
+  return 0;
+}
+
 int agc_resolve_options(const agc_option_request_t *request, agc_options_t *resolved, char *error, size_t error_size)
 {
   if (request == NULL || resolved == NULL)
@@ -91,6 +102,8 @@ int agc_resolve_options(const agc_option_request_t *request, agc_options_t *reso
       .rx_acquisition = AGC_RX_ACQUISITION_CONFIGURED,
       .rx_tracking = AGC_RX_TRACKING_HOLD,
       .tx_policy = AGC_TX_POLICY_BASELINE,
+      .tx_power_mode = AGC_TX_POWER_ABSOLUTE,
+      .tx_power_mode_source = AGC_OPTION_SOURCE_DEFAULT,
       .rx_settle_us = AGC_RX_SETTLE_DEFAULT_US,
   };
 
@@ -111,6 +124,14 @@ int agc_resolve_options(const agc_option_request_t *request, agc_options_t *reso
     if (parse_directions(request->directions, &options.directions, error, error_size) != 0)
       return -1;
     options.directions_source = request->directions_source;
+  }
+
+  if (request->tx_power_mode_source != AGC_OPTION_SOURCE_DEFAULT) {
+    if (request->tx_power_mode == NULL)
+      return set_error(error, error_size, "tx-power-mode has no value");
+    if (parse_tx_power_mode(request->tx_power_mode, &options.tx_power_mode, error, error_size) != 0)
+      return -1;
+    options.tx_power_mode_source = request->tx_power_mode_source;
   }
 
   if (request->role == AGC_ROLE_GNB && request->legacy_set)
@@ -158,6 +179,11 @@ int agc_resolve_options(const agc_option_request_t *request, agc_options_t *reso
       break;
   }
 
+  if (options.tx_power_mode_source != AGC_OPTION_SOURCE_DEFAULT && options.tx_policy != AGC_TX_POLICY_MANAGED)
+    return set_error(error,
+                     error_size,
+                     "tx-power-mode requires managed TX; use agc-mode observe or continuous with agc-directions both or tx");
+
   *resolved = options;
   return 0;
 }
@@ -177,16 +203,17 @@ int agc_resolve_ue_cfo(const agc_options_t *options, bool supplied, int requeste
   return 0;
 }
 
-static int read_tx_profile(configmodule_interface_t *cfg, radio_tx_profile_t *profile)
+/* If profile is NULL, inspect only whether an agc-tx-profile field was supplied. */
+static int inspect_tx_profile(configmodule_interface_t *cfg, radio_tx_profile_t *profile, bool *supplied)
 {
   char *id = NULL, *identity = NULL, *antenna = NULL, *provenance = NULL;
   int qualified = 0, full_scale = 0;
   radio_tx_profile_t p = {0};
   paramdef_t params[] = {
-      STRINGPARAM("id", "Local TX profile identifier.\n", 0, &id, NULL),
-      STRINGPARAM("device", "Exact backend TX connector identity.\n", 0, &identity, NULL),
-      STRINGPARAM("antenna", "Exact TX antenna/port name.\n", 0, &antenna, NULL),
-      STRINGPARAM("provenance", "Local qualification evidence identifier.\n", 0, &provenance, NULL),
+      STRINGPARAM("id", "Local TX profile identifier.\n", 0, &id, ""),
+      STRINGPARAM("device", "Exact backend TX connector identity.\n", 0, &identity, ""),
+      STRINGPARAM("antenna", "Exact TX antenna/port name.\n", 0, &antenna, ""),
+      STRINGPARAM("provenance", "Local qualification evidence identifier.\n", 0, &provenance, ""),
       INTPARAM("qualified", "Explicit qualification for this device and operating range.\n", PARAMFLAG_BOOL, &qualified, 0),
       INTPARAM("component-full-scale", "OAI converter component full scale.\n", 0, &full_scale, 0),
       DOUBLEPARAM("minimum-frequency-hz", "Qualified lower frequency.\n", 0, &p.minimum_frequency_hz, NAN),
@@ -208,6 +235,16 @@ static int read_tx_profile(configmodule_interface_t *cfg, radio_tx_profile_t *pr
   };
   if (config_get(cfg, params, sizeofArray(params), "agc-tx-profile") < 0)
     return -1;
+  if (supplied != NULL) {
+    *supplied = false;
+    for (unsigned int i = 0; i < sizeofArray(params); ++i)
+      if (config_isparamset(params, i)) {
+        *supplied = true;
+        break;
+      }
+  }
+  if (profile == NULL)
+    return 0;
   if (!qualified) {
     *profile = p;
     return 0;
@@ -229,6 +266,7 @@ int agc_start_options(configmodule_interface_t *cfg, int argc, char **argv, agc_
 {
   char *mode = NULL;
   char *directions = NULL;
+  char *tx_power_mode = NULL;
   int legacy = 0;
   int rx_settle_us = AGC_RX_SETTLE_DEFAULT_US;
   paramdef_t options[] = {
@@ -240,6 +278,7 @@ int agc_start_options(configmodule_interface_t *cfg, int argc, char **argv, agc_
                0,
                &rx_settle_us,
                AGC_RX_SETTLE_DEFAULT_US),
+      STRINGPARAM("tx-power-mode", "TX power mode: absolute (default) or relative.\n", 0, &tx_power_mode, NULL),
   };
 
   const uint32_t flags = cfg->rtflags;
@@ -256,8 +295,10 @@ int agc_start_options(configmodule_interface_t *cfg, int argc, char **argv, agc_
       .role = role,
       .mode = mode,
       .directions = directions,
+      .tx_power_mode = tx_power_mode,
       .mode_source = string_option_source(mode, is_cli_option_present(argc, argv, "agc-mode")),
       .directions_source = string_option_source(directions, is_cli_option_present(argc, argv, "agc-directions")),
+      .tx_power_mode_source = string_option_source(tx_power_mode, is_cli_option_present(argc, argv, "tx-power-mode")),
       .legacy_set = config_isparamset(options, 2),
       .legacy_requested = legacy != 0,
       .legacy_source = parameter_option_source(options, 2, is_cli_option_present(argc, argv, "agc")),
@@ -274,11 +315,23 @@ int agc_start_options(configmodule_interface_t *cfg, int argc, char **argv, agc_
     return -1;
   }
   resolved.rx_settle_us = rx_settle_us;
-  if (resolved.tx_policy == AGC_TX_POLICY_MANAGED && read_tx_profile(cfg, &resolved.tx_profile) != 0) {
-    fprintf(stderr, "[AGC] invalid agc-tx-profile; check identity, evidence and numerical bounds\n");
-    return -1;
+  if (resolved.tx_policy == AGC_TX_POLICY_MANAGED) {
+    if (resolved.tx_power_mode == AGC_TX_POWER_RELATIVE) {
+      bool tx_profile_supplied = false;
+      if (inspect_tx_profile(cfg, NULL, &tx_profile_supplied) != 0) {
+        fprintf(stderr, "[AGC] cannot inspect agc-tx-profile\n");
+        return -1;
+      }
+      if (tx_profile_supplied) {
+        fprintf(stderr, "[AGC] tx-power-mode relative conflicts with an explicitly supplied agc-tx-profile\n");
+        return -1;
+      }
+    } else if (inspect_tx_profile(cfg, &resolved.tx_profile, NULL) != 0) {
+      fprintf(stderr, "[AGC] invalid agc-tx-profile; check identity, evidence and numerical bounds\n");
+      return -1;
+    }
   }
-  if (resolved.tx_actuation && !radio_tx_profile_valid(&resolved.tx_profile)) {
+  if (resolved.tx_actuation && resolved.tx_power_mode == AGC_TX_POWER_ABSOLUTE && !radio_tx_profile_valid(&resolved.tx_profile)) {
     fprintf(stderr,
             "[AGC] managed TX requires a qualified agc-tx-profile for the actual device; use observe or directions rx otherwise\n");
     return -1;
@@ -286,7 +339,7 @@ int agc_start_options(configmodule_interface_t *cfg, int argc, char **argv, agc_
   active_options = resolved;
   fprintf(stderr,
           "[AGC] role=%s mode=%s (%s) directions=%s (%s) legacy=%s (%s) rx-acquisition=%s "
-          "rx-tracking=%s tx-policy=%s rx-actuation=%s tx-actuation=%s rx-settle-us=%u (%s)\n",
+          "rx-tracking=%s tx-policy=%s tx-power-mode=%s (%s) rx-actuation=%s tx-actuation=%s rx-settle-us=%u (%s)\n",
           agc_role_name(resolved.role),
           agc_mode_name(resolved.mode),
           agc_option_source_name(resolved.mode_source),
@@ -297,6 +350,8 @@ int agc_start_options(configmodule_interface_t *cfg, int argc, char **argv, agc_
           agc_rx_acquisition_name(resolved.rx_acquisition),
           agc_rx_tracking_name(resolved.rx_tracking),
           agc_tx_policy_name(resolved.tx_policy),
+          agc_tx_power_mode_name(resolved.tx_power_mode),
+          agc_option_source_name(resolved.tx_power_mode_source),
           resolved.rx_actuation ? "yes" : "no",
           resolved.tx_actuation ? "yes" : "no",
           resolved.rx_settle_us,
@@ -386,6 +441,17 @@ const char *agc_tx_policy_name(agc_tx_policy_t policy)
       return "baseline";
     case AGC_TX_POLICY_MANAGED:
       return "managed";
+  }
+  return "invalid";
+}
+
+const char *agc_tx_power_mode_name(agc_tx_power_mode_t mode)
+{
+  switch (mode) {
+    case AGC_TX_POWER_ABSOLUTE:
+      return "absolute";
+    case AGC_TX_POWER_RELATIVE:
+      return "relative";
   }
   return "invalid";
 }

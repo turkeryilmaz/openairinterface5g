@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: LicenseRef-CSSL-1.0 */
 #include "radio_gain_device.h"
 #include "common_lib.h"
+#include "openair1/PHY/impl_defs_top.h"
 #include "radio_gain_policy.h"
 #include "executables/agc_options.h"
 #include "common/utils/LOG/log.h"
@@ -30,8 +31,10 @@ static struct {
   /* Profile contents are immutable after startup. Retunes may only retain the
    * same qualified operating range; they never publish a different mapper. */
   radio_tx_profile_t tx_profile;
-  _Atomic(bool) tx_profile_valid;
+  radio_tx_relative_config_t tx_relative;
+  _Atomic(bool) tx_mapping_valid;
   _Atomic(bool) tx_fault;
+  _Atomic(uint64_t) next_relative_gate_ns;
   bool gnb_reference_ready;
   double gnb_sss_dbm;
   int16_t gnb_amplitude;
@@ -89,7 +92,8 @@ static bool binding_atomics_lock_free(void)
          && atomic_is_lock_free(&binding.rx_phase_token) && atomic_is_lock_free(&binding.policy_result_outstanding)
          && atomic_is_lock_free(&binding.tx_writer_active) && atomic_is_lock_free(&binding.tx_reconfiguration_active)
          && atomic_is_lock_free(&binding.tx_seen) && atomic_is_lock_free(&binding.shutdown_deferred)
-         && atomic_is_lock_free(&binding.tx_profile_valid) && atomic_is_lock_free(&binding.tx_fault);
+         && atomic_is_lock_free(&binding.tx_mapping_valid) && atomic_is_lock_free(&binding.tx_fault)
+         && atomic_is_lock_free(&binding.next_relative_gate_ns);
 }
 
 static bool enter(openair0_device_t *device)
@@ -635,6 +639,45 @@ static int observe_read(openair0_device_t *device, openair0_timestamp_t *timesta
  * second concurrent caller gets a truthful -EBUSY result before its samples
  * reach the legacy device. The ordinary NR path has one TX producer; lifting
  * this restriction needs a producer reference/count contract, not a spinlock. */
+static bool relative_tx_selected(void)
+{
+  return radio_gain_device_tx_selected() && get_agc_options()->tx_power_mode == AGC_TX_POWER_RELATIVE;
+}
+
+bool radio_gain_device_tx_relative_actuating(void)
+{
+  return relative_tx_selected() && radio_gain_device_tx_actuating();
+}
+
+bool radio_gain_device_relative_tx_bounds(int *minimum, int *maximum)
+{
+  if (!relative_tx_selected() || !minimum || !maximum || !atomic_load_explicit(&binding.tx_mapping_valid, memory_order_acquire)
+      || atomic_load_explicit(&binding.tx_fault, memory_order_acquire))
+    return false;
+  *minimum = binding.tx_relative.nominal_min;
+  *maximum = binding.tx_relative.nominal_max;
+  return true;
+}
+
+/* A relative mapping has no RF calibration epoch. A retune before the first
+ * TX may retain it only if the connector, converter and fixed gain still agree. */
+static bool relative_operating_point_matches(const radio_gain_channel_t *tx)
+{
+  return tx->component_full_scale == binding.tx.component_full_scale && isfinite(tx->reported_db)
+         && fabs(tx->reported_db - binding.tx.reported_db) < 1e-6 && tx->sample_rate_hz == binding.tx.sample_rate_hz
+         && tx->bandwidth_hz == binding.tx.bandwidth_hz && !strcmp(tx->identity, binding.tx.identity)
+         && !strcmp(tx->antenna, binding.tx.antenna);
+}
+
+static void erase_relative_tx(c16_t *samples, uint32_t count, int frame, int slot, unsigned channel, int reason)
+{
+  /* A bounded whole-occasion erasure preserves phase/channel relationships in
+   * every emitted occasion. It is not clipping, an accepted power mapping, or
+   * a reason to restart the radio. The zero buffer still advances device time. */
+  memset(samples, 0, (size_t)count * sizeof(*samples));
+  flight_recorder_emit(FLIGHT_EVENT_RADIO_TX_RELATIVE_ERASURE, channel, (int64_t)frame * 1000 + slot, reason, count, 0, 0);
+}
+
 static int observe_write(openair0_device_t *device,
                          openair0_timestamp_t timestamp,
                          void **buffers,
@@ -647,21 +690,9 @@ static int observe_write(openair0_device_t *device,
 
   if (radio_gain_device_tx_actuating()
       && (atomic_load_explicit(&binding.tx_fault, memory_order_acquire)
-          || !atomic_load_explicit(&binding.tx_profile_valid, memory_order_acquire))) {
+          || !atomic_load_explicit(&binding.tx_mapping_valid, memory_order_acquire))) {
     leave();
     return -ERANGE;
-  }
-
-  if (radio_gain_device_tx_actuating()) {
-    const radio_tx_sample_level_t level = antennas == 1 && buffers && count > 0
-                                              ? radio_tx_sample_level(buffers[0], count, binding.tx_profile.component_full_scale)
-                                              : (radio_tx_sample_level_t){0};
-    if (!level.valid || level.over_range_components
-        || level.peak_component > binding.tx_profile.peak_limit_fs * binding.tx_profile.component_full_scale) {
-      radio_gain_device_reject_tx(-1, -1, 0, RADIO_TX_REJECT_POWER_LIMIT);
-      leave();
-      return -ERANGE;
-    }
   }
 
   bool expected = false;
@@ -677,6 +708,24 @@ static int observe_write(openair0_device_t *device,
     atomic_store_explicit(&binding.tx_writer_active, false, memory_order_release);
     leave();
     return -EBUSY;
+  }
+
+  if (radio_gain_device_tx_actuating()) {
+    const bool relative = relative_tx_selected();
+    const uint32_t full_scale = relative ? binding.tx_relative.component_full_scale : binding.tx_profile.component_full_scale;
+    const double peak_limit = relative ? binding.tx_relative.peak_limit_fs : binding.tx_profile.peak_limit_fs;
+    const radio_tx_sample_level_t level =
+        antennas == 1 && buffers && count > 0 ? radio_tx_sample_level(buffers[0], count, full_scale) : (radio_tx_sample_level_t){0};
+    if (!level.valid || level.over_range_components || level.peak_component > peak_limit * full_scale) {
+      if (relative && level.valid)
+        erase_relative_tx(buffers[0], count, -1, -1, 0, RADIO_TX_POWER_HEADROOM);
+      else {
+        radio_gain_device_reject_tx(-1, -1, 0, RADIO_TX_REJECT_POWER_LIMIT);
+        atomic_store_explicit(&binding.tx_writer_active, false, memory_order_release);
+        leave();
+        return -ERANGE;
+      }
+    }
   }
 
   int sent = binding.write == NULL ? -ENOTSUP : -EBUSY;
@@ -755,12 +804,13 @@ static int owner_set_frequency(openair0_device_t *device, openair0_config_t *con
           .tx_frequency_hz = config->tx_freq[0],
           .tune_offset_hz = config->tune_offset,
       };
-      atomic_store_explicit(&binding.tx_profile_valid, false, memory_order_release);
+      atomic_store_explicit(&binding.tx_mapping_valid, false, memory_order_release);
       status = synchronous_request(&request, &snapshot);
       radio_gain_channel_t rx, tx;
       const bool valid =
-          status == 0 && radio_gain_channels(binding.owner, &rx, &tx) && radio_tx_profile_matches(&binding.tx_profile, &tx);
-      atomic_store_explicit(&binding.tx_profile_valid, valid, memory_order_release);
+          status == 0 && radio_gain_channels(binding.owner, &rx, &tx)
+          && (relative_tx_selected() ? relative_operating_point_matches(&tx) : radio_tx_profile_matches(&binding.tx_profile, &tx));
+      atomic_store_explicit(&binding.tx_mapping_valid, valid, memory_order_release);
       if (radio_gain_device_tx_actuating() && !valid) {
         atomic_store_explicit(&binding.tx_fault, true, memory_order_release);
         radio_gain_owner_report_failure(binding.owner, RADIO_TX_REJECT_PROFILE);
@@ -899,18 +949,33 @@ int radio_gain_device_attach(openair0_device_t *device, openair0_config_t *confi
         tx.step_db,
         tx.reported_db,
         tx.power_reference_valid ? "available-unqualified" : "unavailable");
-  const bool tx_profile_valid = radio_tx_profile_matches(&options->tx_profile, &tx);
-  if (options->tx_actuation && !tx_profile_valid) {
-    LOG_E(HW, "Managed TX profile does not match the actual connector, rate, frequency, gain and converter.\n");
+  radio_tx_relative_config_t relative_config = {0};
+  const bool relative = relative_tx_selected();
+  const bool tx_mapping_valid =
+      relative ? isfinite(tx.reported_db) && radio_tx_relative_configure(tx.component_full_scale, AMP, 6.0, &relative_config)
+               : radio_tx_profile_matches(&options->tx_profile, &tx);
+  if (options->tx_actuation && !tx_mapping_valid) {
+    LOG_E(HW,
+          "Managed TX mapping is incompatible with the actual connector, gain or converter (absolute mode also requires a matching "
+          "profile).\n");
     radio_gain_owner_destroy(owner);
     return -ENOTSUP;
   }
-  if (options->tx_policy == AGC_TX_POLICY_MANAGED)
+  if (relative)
+    LOG_I(HW,
+          "[AGC] TX relative: fixed gain=%.3f dB, reference=%.3f dBFS at nominal %.0f, nominal range=%d..%d; "
+          "RF output power is uncalibrated\n",
+          tx.reported_db,
+          relative_config.reference_dbfs,
+          relative_config.nominal_reference,
+          relative_config.nominal_min,
+          relative_config.nominal_max);
+  else if (options->tx_policy == AGC_TX_POLICY_MANAGED)
     LOG_I(HW,
           "[AGC] TX profile=%s valid=%s evidence=%s reference=%.3f dBm uncertainty=%.3f dB range=%.3f..%.3f dBm; analog gain held "
           "fixed\n",
           options->tx_profile.id,
-          tx_profile_valid ? "yes" : "no",
+          tx_mapping_valid ? "yes" : "no",
           options->tx_profile.provenance,
           options->tx_profile.power.reference_dbm,
           options->tx_profile.power.uncertainty_db,
@@ -954,8 +1019,10 @@ int radio_gain_device_attach(openair0_device_t *device, openair0_config_t *confi
   binding.rx = rx;
   binding.tx = tx;
   binding.tx_profile = options->tx_profile;
-  atomic_store_explicit(&binding.tx_profile_valid, tx_profile_valid, memory_order_release);
+  binding.tx_relative = relative_config;
+  atomic_store_explicit(&binding.tx_mapping_valid, tx_mapping_valid, memory_order_release);
   atomic_store_explicit(&binding.tx_fault, false, memory_order_release);
+  atomic_store_explicit(&binding.next_relative_gate_ns, 0, memory_order_relaxed);
   binding.rx_peak_refresh_fs = pow(10, (rx_policy_config.peak_ceiling_dbfs - rx_policy_config.deadband_db) / 20);
   binding.read = device->trx_read_func;
   binding.write = device->trx_write_func;
@@ -968,6 +1035,14 @@ int radio_gain_device_attach(openair0_device_t *device, openair0_config_t *confi
   device->trx_end_func = owner_end;
   device->trx_set_gains_func = reject_combined_gain;
 
+  if (relative)
+    flight_recorder_emit(FLIGHT_EVENT_RADIO_TX_RELATIVE_CONFIG,
+                         options->role,
+                         tx.component_full_scale,
+                         milli_db(relative_config.reference_dbfs, tx_mapping_valid),
+                         relative_config.nominal_min,
+                         relative_config.nominal_max,
+                         milli_db(tx.reported_db, true));
   radio_gain_result_t initial;
   if (radio_gain_snapshot(owner, &initial))
     record_result(&initial);
@@ -1016,48 +1091,75 @@ bool radio_gain_device_apply_tx(c16_t *samples, uint32_t count, double requested
   const bool apply = radio_gain_device_tx_actuating();
   if (!enter(binding.device))
     return !apply;
-  const bool valid = atomic_load_explicit(&binding.tx_profile_valid, memory_order_acquire)
+  const bool valid = atomic_load_explicit(&binding.tx_mapping_valid, memory_order_acquire)
                      && !atomic_load_explicit(&binding.tx_fault, memory_order_acquire);
   const radio_tx_profile_t *p = &binding.tx_profile;
-  const radio_tx_power_result_t result = radio_tx_apply_power(samples,
-                                                              count,
-                                                              p->component_full_scale,
-                                                              valid ? &p->power : NULL,
-                                                              requested_dbm,
-                                                              p->power.maximum_dbm,
-                                                              p->peak_limit_fs,
-                                                              p->maximum_quantization_error_db,
-                                                              p->maximum_quantization_evm,
-                                                              apply);
-  if (apply && result.status != RADIO_TX_POWER_OK) {
+  const bool relative = relative_tx_selected();
+  const radio_tx_power_result_t result =
+      relative ? radio_tx_apply_relative_power(samples, count, valid ? &binding.tx_relative : NULL, requested_dbm, apply)
+               : radio_tx_apply_power(samples,
+                                      count,
+                                      p->component_full_scale,
+                                      valid ? &p->power : NULL,
+                                      requested_dbm,
+                                      p->power.maximum_dbm,
+                                      p->peak_limit_fs,
+                                      p->maximum_quantization_error_db,
+                                      p->maximum_quantization_evm,
+                                      apply);
+  /* Normal nominal saturation was already decided in MAC. A valid buffer
+   * rejected by exact relative preflight is an explicitly logged erasure. */
+  const bool erased = relative && apply && valid && samples && count > 0 && count <= RADIO_TX_POWER_MAX_SAMPLES
+                      && result.status != RADIO_TX_POWER_OK;
+  if (erased)
+    erase_relative_tx(samples, count, frame, slot, channel, result.status);
+  if (apply && result.status != RADIO_TX_POWER_OK && !erased) {
     atomic_store_explicit(&binding.tx_fault, true, memory_order_release);
     radio_gain_owner_report_failure(binding.owner, 100 + result.status);
   }
   if (flight_recorder_enabled()) {
-    flight_recorder_emit(FLIGHT_EVENT_RADIO_TX_POWER,
-                         channel,
-                         (int64_t)frame * 1000 + slot,
-                         result.status | ((int64_t)result.applied << 8),
-                         milli_db(requested_dbm, true),
-                         milli_db(result.estimated_output_dbm, result.status == RADIO_TX_POWER_OK),
-                         result.status == RADIO_TX_POWER_OK ? llround(result.mapping.amplitude_scale * 1073741824.0) : INT64_MIN);
-    flight_recorder_emit(FLIGHT_EVENT_RADIO_TX_POWER_SAMPLES,
+    if (relative) {
+      flight_recorder_emit(FLIGHT_EVENT_RADIO_TX_RELATIVE_POWER,
+                           channel,
+                           (int64_t)frame * 1000 + slot,
+                           result.status | ((int64_t)result.applied << 8),
+                           milli_db(requested_dbm, isfinite(requested_dbm)),
+                           milli_db(result.requested_power_dbfs, isfinite(result.requested_power_dbfs)),
+                           milli_db(result.realized_power_dbfs, result.status == RADIO_TX_POWER_OK));
+      flight_recorder_emit(FLIGHT_EVENT_RADIO_TX_RELATIVE_QUALITY,
+                           channel,
+                           (int64_t)frame * 1000 + slot,
+                           result.sample_count,
+                           milli_db(result.quantization_error_db, result.status == RADIO_TX_POWER_OK),
+                           result.status == RADIO_TX_POWER_OK ? llround(result.quantization_evm * 1e9) : INT64_MIN,
+                           result.status == RADIO_TX_POWER_OK ? llround(result.mapping.amplitude_scale * 1073741824.0) : INT64_MIN);
+    } else {
+      flight_recorder_emit(FLIGHT_EVENT_RADIO_TX_POWER,
+                           channel,
+                           (int64_t)frame * 1000 + slot,
+                           result.status | ((int64_t)result.applied << 8),
+                           milli_db(requested_dbm, true),
+                           milli_db(result.estimated_output_dbm, result.status == RADIO_TX_POWER_OK),
+                           result.status == RADIO_TX_POWER_OK ? llround(result.mapping.amplitude_scale * 1073741824.0) : INT64_MIN);
+    }
+    flight_recorder_emit(relative ? FLIGHT_EVENT_RADIO_TX_RELATIVE_SAMPLES : FLIGHT_EVENT_RADIO_TX_POWER_SAMPLES,
                          channel,
                          (int64_t)frame * 1000 + slot,
                          result.sample_count,
                          result.input_energy,
                          result.status == RADIO_TX_POWER_OK ? (int64_t)result.output_energy : INT64_MIN,
                          ((uint64_t)result.input_peak_component << 32) | result.output_peak_component);
-    flight_recorder_emit(FLIGHT_EVENT_RADIO_TX_POWER_QUALITY,
-                         channel,
-                         (int64_t)frame * 1000 + slot,
-                         milli_db(result.quantization_error_db, result.status == RADIO_TX_POWER_OK),
-                         result.status == RADIO_TX_POWER_OK ? llround(result.quantization_evm * 1000000000.0) : INT64_MIN,
-                         milli_db(p->power.uncertainty_db, valid),
-                         p->component_full_scale);
+    if (!relative)
+      flight_recorder_emit(FLIGHT_EVENT_RADIO_TX_POWER_QUALITY,
+                           channel,
+                           (int64_t)frame * 1000 + slot,
+                           milli_db(result.quantization_error_db, result.status == RADIO_TX_POWER_OK),
+                           result.status == RADIO_TX_POWER_OK ? llround(result.quantization_evm * 1000000000.0) : INT64_MIN,
+                           milli_db(p->power.uncertainty_db, valid),
+                           p->component_full_scale);
   }
   leave();
-  return !apply || result.status == RADIO_TX_POWER_OK;
+  return !apply || result.status == RADIO_TX_POWER_OK || erased;
 }
 
 bool radio_gain_device_validate_ue_power_limit(int p_max, int p_max_alt, int frame, int slot)
@@ -1072,7 +1174,32 @@ bool radio_gain_device_validate_ue_power_limit(int p_max, int p_max_alt, int fra
    * ceiling; do not invent a lower PHY-only cap while advertising more PHR.
    * The alternate FR1 limit is not yet consumed by nr_get_Pcmax. */
   const double network_ceiling = p_max == INT_MIN ? 23.0 : fmin(23.0, p_max);
-  if (p_max_alt != INT_MIN || !atomic_load_explicit(&binding.tx_profile_valid, memory_order_acquire)
+  if (relative_tx_selected()) {
+    int minimum = 0, maximum = 0;
+    const bool ready = radio_gain_device_relative_tx_bounds(&minimum, &maximum);
+    const bool allowed = p_max_alt == INT_MIN && ready && network_ceiling >= minimum;
+    /* The scheduler may never run in slot zero of a TDD frame. Throttle on
+     * actual blocked calls, with one non-waiting publication attempt. */
+    if (!allowed && flight_recorder_enabled()) {
+      const uint64_t now = monotonic_ns();
+      uint64_t next = atomic_load_explicit(&binding.next_relative_gate_ns, memory_order_relaxed);
+      if (now && now >= next && now <= UINT64_MAX - 1000000000ULL
+          && atomic_compare_exchange_strong_explicit(&binding.next_relative_gate_ns,
+                                                     &next,
+                                                     now + 1000000000ULL,
+                                                     memory_order_relaxed,
+                                                     memory_order_relaxed))
+        flight_recorder_emit(FLIGHT_EVENT_RADIO_TX_RELATIVE_GATE,
+                             0,
+                             (int64_t)frame * 1000 + slot,
+                             p_max == INT_MIN ? INT64_MIN : p_max,
+                             p_max_alt == INT_MIN ? INT64_MIN : p_max_alt,
+                             ready ? minimum : INT64_MIN,
+                             ready ? maximum : INT64_MIN);
+    }
+    return allowed;
+  }
+  if (p_max_alt != INT_MIN || !atomic_load_explicit(&binding.tx_mapping_valid, memory_order_acquire)
       || network_ceiling > binding.tx_profile.power.maximum_dbm) {
     radio_gain_device_reject_tx(frame, slot, 0, RADIO_TX_REJECT_POWER_LIMIT);
     return false;
@@ -1084,9 +1211,29 @@ bool radio_gain_device_configure_gnb_tx(double requested_sss_dbm, uint32_t fft_s
 {
   if (!radio_gain_device_tx_selected())
     return true;
+  if (relative_tx_selected()) {
+    const bool valid =
+        amplitude && *amplitude > 0 && fft_size > 0 && atomic_load_explicit(&binding.tx_mapping_valid, memory_order_acquire);
+    if (!valid)
+      return !radio_gain_device_tx_actuating();
+    const int16_t candidate = lround(*amplitude * pow(10.0, -binding.tx_relative.backoff_db / 20.0));
+    LOG_I(HW,
+          "[AGC] gNB relative TX: common amplitude %d -> %d, fixed %.1f dB digital backoff; SSS setting %.3f is nominal\n",
+          *amplitude,
+          candidate,
+          binding.tx_relative.backoff_db,
+          requested_sss_dbm);
+    if (radio_gain_device_tx_actuating()) {
+      *amplitude = candidate;
+      binding.gnb_sss_dbm = requested_sss_dbm;
+      binding.gnb_amplitude = candidate;
+      binding.gnb_reference_ready = true;
+    }
+    return true;
+  }
   int16_t candidate = 0;
   double estimated = NAN;
-  const bool valid = atomic_load_explicit(&binding.tx_profile_valid, memory_order_acquire)
+  const bool valid = atomic_load_explicit(&binding.tx_mapping_valid, memory_order_acquire)
                      && radio_tx_sss_amplitude(&binding.tx_profile, fft_size, requested_sss_dbm, &candidate, &estimated);
   LOG_I(HW,
         "[AGC] gNB SSS request=%.3f dBm/RE candidate amplitude=%d estimate=%.3f dBm/RE valid=%s apply=%s\n",
@@ -1119,10 +1266,22 @@ bool radio_gain_device_validate_gnb_reference(double requested_sss_dbm, int16_t 
   return true;
 }
 
-bool radio_gain_device_validate_gnb_tx(const c16_t *samples, uint32_t count, int frame, int slot)
+bool radio_gain_device_validate_gnb_tx(c16_t *samples, uint32_t count, int frame, int slot)
 {
   if (!radio_gain_device_tx_actuating())
     return true;
+  if (relative_tx_selected()) {
+    const radio_tx_sample_level_t level =
+        radio_tx_sample_level((const int16_t *)samples, count, binding.tx_relative.component_full_scale);
+    if (!binding.gnb_reference_ready || !level.valid) {
+      radio_gain_device_reject_tx(frame, slot, 0, RADIO_TX_REJECT_SPAN);
+      return false;
+    }
+    if (level.over_range_components
+        || level.peak_component > binding.tx_relative.peak_limit_fs * binding.tx_relative.component_full_scale)
+      erase_relative_tx(samples, count, frame, slot, 0, RADIO_TX_POWER_HEADROOM);
+    return true;
+  }
   const radio_tx_profile_t *p = &binding.tx_profile;
   const radio_tx_sample_level_t level = radio_tx_sample_level((const int16_t *)samples, count, p->component_full_scale);
   const double maximum_energy = (double)count * p->component_full_scale * p->component_full_scale

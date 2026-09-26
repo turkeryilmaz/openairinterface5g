@@ -187,6 +187,13 @@ int get_pusch_tx_power_ue(
 bool nr_ue_apply_deferred_pusch_tx_power(NR_UE_MAC_INST_t *mac,
                                          nfapi_nr_ue_pusch_pdu_t *pusch_config_pdu,
                                          uint64_t config_generation);
+bool nr_ue_apply_deferred_pusch_tx_power_with_request(NR_UE_MAC_INST_t *mac,
+                                                      nfapi_nr_ue_pusch_pdu_t *pusch_config_pdu,
+                                                      uint64_t config_generation,
+                                                      int *requested_power);
+
+/* Intersects MAC's standard nominal range with immutable relative digital bounds. */
+bool nr_ue_get_effective_tx_power_bounds(int standard_min, int standard_max, int *minimum, int *maximum);
 
 int get_srs_tx_power_ue(NR_UE_MAC_INST_t *mac,
                         NR_SRS_Resource_t *srs_resource,

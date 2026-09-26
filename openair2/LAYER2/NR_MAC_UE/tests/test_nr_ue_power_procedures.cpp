@@ -13,6 +13,16 @@ softmodem_params_t* get_softmodem_params(void)
 {
   return &softmodem_params;
 }
+bool radio_gain_device_tx_relative_actuating(void)
+{
+  return false;
+}
+bool radio_gain_device_relative_tx_bounds(int *minimum, int *maximum)
+{
+  (void)minimum;
+  (void)maximum;
+  return false;
+}
 }
 #include <climits>
 #include <cstdio>

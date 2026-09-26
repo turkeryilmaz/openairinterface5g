@@ -298,9 +298,8 @@ it is an engineering guard, not a guaranteed analog settling-time calibration.
 TX request records in `ue_tx_power.csv` describe the MAC request and generator
 reference for PRACH/PUSCH/PUCCH/SRS. `gnb_tx_reference.csv` describes configured
 SSB reference power and generator amplitude. Neither file reports measured RF
-output. `continuous` with `agc-directions = "tx"` or `"both"` also applies
-channel-specific TX power, provided a matching qualified profile is supplied.
-Explicitly requesting managed TX never silently enables RX-only control.
+output. They are the established absolute-mode records and retain their existing
+meaning. Explicitly requesting managed TX never silently enables RX-only control.
 
 Use `agc-mode` independently from `flight = "log recovery"`; `flight` has no
 `agc` token. On the UE, `--agc` selects the retained legacy acquisition policy.
@@ -317,13 +316,71 @@ are rejected rather than scaled with one slot-wide multiplier. PUSCH TPC is
 applied in scheduled transmission order, and a queued grant is rejected if its
 BWP/power configuration changed before that transmission.
 
+### Managed TX power modes
+
+`tx-power-mode` selects the managed-TX mapping. It is `"absolute"` when absent,
+which is the existing profile-backed behavior. `"relative"` is available only
+with `agc-mode = "continuous"` or `"observe"` and
+`agc-directions = "tx"` or `"both"`; the resolver rejects a selector in
+acquisition/off or RX-only operation. `observe` keeps its existing non-actuating
+behavior: it can calculate and record the selected mapping but does not change
+samples or gain.
+
+For a relative run, select the mode without an `agc-tx-profile`:
+
+```conf
+agc-mode = "continuous";
+agc-directions = "tx";
+tx-power-mode = "relative";
+flight = "log recovery";
+```
+
+`flight = "log recovery"` remains independent capture and supervisor selection;
+it neither selects a TX mode nor turns a relative-occasion erasure into worker
+recovery. Supplying `agc-tx-profile` together with relative mode is a
+configuration error. Conversely, absolute managed TX continues to use the
+qualified profile path described below.
+
+Relative mode is a calibration-free digital RMS envelope. The backend-reported
+analog TX gain is fixed at attachment; it is a device setting, not a power
+calibration. The current reference has nominal value 23. With `AMP = 512` and
+component full scale 2048, its digital reference is -12.041 dBFS. The default
+6 dB engineering backoff yields the current nominal upper bound 17. The current
+effective lower bound is -3: it is derived from the fixed-point quantization
+quality/EVM limits, rather than a calibrated RF minimum. Thus the default
+relative range is `-3..17`; the emitted configuration record is authoritative
+if a different component full scale changes the derived lower bound.
+
+At the UE, MAC intersects the standard channel range with these immutable
+relative bounds and records the requested and selected nominal value before the
+result reaches the mapper. TPC uses these effective limits. PHR compares the effective ceiling with the
+unclamped requested nominal power, retaining a power deficit when saturated.
+The mapper does not silently clip the selected value later. A network `p-Max` can lower the network ceiling
+within that selection, but it cannot re-anchor nominal 23 or the digital dBFS
+reference. At the gNB, one common generator amplitude receives the fixed 6 dB
+backoff. Allocation changes preserve channel-relative amplitudes; there is no
+per-slot occupancy normalization.
+
+Relative preflight checks the complete active waveform before it writes samples.
+An unusual crest/peak or fixed-point quality failure zeros the complete active
+occasion, emits the relative erasure evidence, and leaves later TX occasions
+eligible. The zero buffer still advances device time. Treat that erased occasion
+as an RF-gate failure, not evidence of an emitted waveform. Missing references,
+unsupported channel/span/overlap structure, and other admission faults remain
+fatal managed-TX failures. Relative records provide digital dBFS and sample
+evidence only: they establish neither RF dBm, conformance, nor a universal
+crest-factor guarantee.
+
 The gNB chooses one common generator amplitude from configured SSS resource-element
-power and the profile. It preserves channel-relative amplitudes as allocation
+power in absolute mode. It preserves channel-relative amplitudes as allocation
 changes; it does not renormalize every slot to equal total power. Composite
 symbol power and converter peaks are checked before submission. Neither role
 increases TX power simply because its RX gain controller sees a weak signal.
 
-The `agc-tx-profile` config section identifies one connector and operating point:
+### Absolute TX profiles
+
+The `agc-tx-profile` config section applies to absolute mode and identifies one
+connector and operating point:
 
 | Field | Meaning |
 |---|---|
@@ -339,19 +396,25 @@ The `agc-tx-profile` config section identifies one connector and operating point
 | `quantization-tolerance-db` | Maximum digital rounding power error; default 0.5 dB, maximum 1 dB |
 | `quantization-evm-limit` | Maximum additional digital rounding EVM; default and maximum 0.03 |
 
-A profile is not inferred from an uncalibrated gain setting. Missing qualification
-or a connector/rate/filter/gain/converter mismatch rejects explicit managed TX.
-An explicitly supplied UE network `p-Max` must fit the same physical output
-range; unsupported alternate limits are rejected. An infeasible request is not
-silently clipped while MAC reports unchanged power/headroom. A runtime mapping,
-headroom or profile failure closes managed TX admission and asks the existing
-ITTI shutdown path to stop the worker. This is a configuration/actuation fault,
-not a new radio-recovery threshold.
+A profile is not inferred from an uncalibrated gain setting. In absolute mode,
+missing qualification or a connector/rate/filter/gain/converter mismatch rejects
+explicit managed TX. An explicitly supplied UE network `p-Max` must fit the
+same physical output range; unsupported alternate limits are rejected. An
+infeasible request is not silently clipped while MAC reports unchanged
+power/headroom. An absolute-mode runtime mapping, headroom or profile failure
+closes managed TX admission and asks the existing ITTI shutdown path to stop the
+worker. This is a configuration/actuation fault, not a new radio-recovery
+threshold.
 
 `radio_tx_power.csv` joins each channel request to fixed-point scaling, input
 and output sample energy/peaks, added quantization EVM and profile uncertainty.
 The decoder marks missing or ambiguous records rather than inventing zeros.
 `radio_tx_rejects.csv` records rejected layouts, spans, power limits and profiles.
+These absolute-mode CSVs and their joining rules are unchanged. Relative mode
+adds the independent `relative_tx.csv`: each ID 58--64 record is one standalone
+row, with only fields applicable to that record type filled. It never joins a
+neighboring mapping, quality, configuration, erasure, MAC-bounds, or samples
+record to fabricate a result; unavailable and missing values remain blank.
 `ue_tx_control.csv` records the serving-SSB pathloss, closed-loop adjustment
 state after calculation, supplied TPC increment and configured network p-Max for
 supported PUCCH calculations and managed PUSCH calculations at their target
