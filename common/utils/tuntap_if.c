@@ -276,6 +276,111 @@ bool tap_config(const char* ifname)
   return success;
 }
 
+static int get_ue_ipv4_route_table_id(int instance_id, int pdu_session_id)
+{
+  /* This needs to be unique per (instance_id, pdu_session_id).  The default
+   * interface selector is intentionally -1, yielding table 9999. */
+  return 10000 + instance_id * 100 + pdu_session_id;
+}
+
+static bool valid_ipv4_address(const char *ipv4)
+{
+  struct in_addr address;
+  if (ipv4 && inet_pton(AF_INET, ipv4, &address) == 1)
+    return true;
+  LOG_E(UTIL, "Invalid IPv4 address for UE policy routing: %s\n", ipv4 ? ipv4 : "(null)");
+  return false;
+}
+
+static bool run_ue_ipv4_policy_command(char *command_line, const char *operation)
+{
+  if (background_system(command_line) == 0)
+    return true;
+  LOG_E(UTIL, "Could not %s UE IPv4 policy routing\n", operation);
+  return false;
+}
+
+static bool remove_ue_ipv4_selectors(int table_id, const char *ipv4)
+{
+  char command_line[500];
+  const int res = snprintf(command_line,
+                           sizeof(command_line),
+                           "ip -4 rule flush from %s/32 table %d && ip -4 rule flush to %s/32 table %d",
+                           ipv4,
+                           table_id,
+                           ipv4,
+                           table_id);
+  if (res < 0 || res >= (int)sizeof(command_line)) {
+    LOG_E(UTIL, "Could not create UE IPv4 selector removal command\n");
+    return false;
+  }
+  return run_ue_ipv4_policy_command(command_line, "remove exact");
+}
+
+static bool add_ue_ipv4_selectors(int table_id, const char *ipv4)
+{
+  char command_line[500];
+  const int res = snprintf(command_line,
+                           sizeof(command_line),
+                           "ip -4 rule add from %s/32 table %d && ip -4 rule add to %s/32 table %d",
+                           ipv4,
+                           table_id,
+                           ipv4,
+                           table_id);
+  if (res < 0 || res >= (int)sizeof(command_line)) {
+    LOG_E(UTIL, "Could not create UE IPv4 selector addition command\n");
+    return false;
+  }
+  return run_ue_ipv4_policy_command(command_line, "add exact");
+}
+
+static bool replace_ue_ipv4_default_route(const char *ifname, int table_id)
+{
+  char command_line[500];
+  const int res = snprintf(command_line, sizeof(command_line), "ip -4 route replace default dev %s table %d", ifname, table_id);
+  if (res < 0 || res >= (int)sizeof(command_line)) {
+    LOG_E(UTIL, "Could not create UE IPv4 default route command\n");
+    return false;
+  }
+  return run_ue_ipv4_policy_command(command_line, "replace default");
+}
+
+bool replace_ue_ipv4_route(const char *ifname, int instance_id, int pdu_session_id, const char *previous_ipv4, const char *ipv4)
+{
+  if (!ifname || !valid_ipv4_address(ipv4) || (previous_ipv4 && !valid_ipv4_address(previous_ipv4)))
+    return false;
+  if (previous_ipv4 && strcmp(previous_ipv4, ipv4) == 0)
+    return true;
+
+  const int table_id = get_ue_ipv4_route_table_id(instance_id, pdu_session_id);
+  if (previous_ipv4 && !remove_ue_ipv4_selectors(table_id, previous_ipv4))
+    return false;
+  /* A failed initial or refresh attempt may have installed the new selectors
+   * before returning false. Remove only those exact owned selectors on retry. */
+  if (!remove_ue_ipv4_selectors(table_id, ipv4)) {
+    if (previous_ipv4)
+      (void)add_ue_ipv4_selectors(table_id, previous_ipv4);
+    return false;
+  }
+  if (!replace_ue_ipv4_default_route(ifname, table_id)) {
+    if (previous_ipv4)
+      (void)add_ue_ipv4_selectors(table_id, previous_ipv4);
+    return false;
+  }
+  if (add_ue_ipv4_selectors(table_id, ipv4))
+    return true;
+
+  (void)remove_ue_ipv4_selectors(table_id, ipv4);
+  if (previous_ipv4)
+    (void)add_ue_ipv4_selectors(table_id, previous_ipv4);
+  return false;
+}
+
+bool setup_ue_ipv4_route_checked(const char *ifname, int instance_id, int pdu_session_id, const char *ipv4)
+{
+  return replace_ue_ipv4_route(ifname, instance_id, pdu_session_id, NULL, ipv4);
+}
+
 void setup_ue_ipv4_route(const char* ifname, int instance_id, int pdu_session_id, const char *ipv4)
 {
   /* This needs to be unique per (instance_id, pdu_session_id) */

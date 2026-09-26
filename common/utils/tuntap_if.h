@@ -78,6 +78,20 @@ bool tap_config(const char* ifname);
 void setup_ue_ipv4_route(const char* ifname, int instance_id, int pdu_session_id, const char *ipv4);
 
 /*!
+ * \brief Configure or replace UE-owned IPv4 policy selectors and default route.
+ * Existing callers may retain the void setup wrapper; new session setup callers
+ * use the checked form so a failed command cannot mark the session configured.
+ */
+bool setup_ue_ipv4_route_checked(const char *ifname, int instance_id, int pdu_session_id, const char *ipv4);
+
+/*!
+ * \brief Replace only the prior and new exact UE IPv4 policy selectors.
+ * \param[in] previous_ipv4 NULL for initial setup, otherwise the last successful IPv4 address.
+ * \return true after the new owned selectors and route are installed.
+ */
+bool replace_ue_ipv4_route(const char *ifname, int instance_id, int pdu_session_id, const char *previous_ipv4, const char *ipv4);
+
+/*!
  * \brief This function allocates a TUN or TAP interface
  * \param[in] flag IFF_TUN (for TUN device) or IFF_TAP (for TAP device)
  * \param[in] dev name of the interface
