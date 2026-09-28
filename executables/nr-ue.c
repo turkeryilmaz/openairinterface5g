@@ -3,6 +3,7 @@
  */
 
 #include "PHY/defs_nr_common.h"
+#include "PHY/impl_defs_nr.h"
 #define _GNU_SOURCE // For pthread_setname_np
 #include <pthread.h>
 #include "executables/nr-ue-ru.h"
@@ -258,23 +259,13 @@ static int nr_ue_slot_select(const fapi_nr_config_request_t *cfg, int nr_slot)
 
   const fapi_nr_max_tdd_periodicity_t *current_slot = &tdd_table->max_tdd_periodicity_list[rel_slot];
 
-  // if the 1st symbol is UL the whole slot is UL
-  if (current_slot->max_num_of_symbol_per_slot_list[0].slot_config == 1)
+  if (current_slot->num_dl_ul_symbols_list.num_dl == NR_SYMBOLS_PER_SLOT)
+    return NR_DOWNLINK_SLOT;
+
+  if (current_slot->num_dl_ul_symbols_list.num_ul == NR_SYMBOLS_PER_SLOT)
     return NR_UPLINK_SLOT;
 
-  // if the 1st symbol is flexible the whole slot is mixed
-  if (current_slot->max_num_of_symbol_per_slot_list[0].slot_config == 2)
-    return NR_MIXED_SLOT;
-
-  for (int i = 1; i < NR_SYMBOLS_PER_SLOT; i++) {
-    // if the 1st symbol is DL and any other is not, the slot is mixed
-    if (current_slot->max_num_of_symbol_per_slot_list[i].slot_config != 0) {
-      return NR_MIXED_SLOT;
-    }
-  }
-
-  // if here, all the symbols where DL
-  return NR_DOWNLINK_SLOT;
+  return NR_MIXED_SLOT;
 }
 
 static void RU_write(nr_rxtx_thread_data_t *rxtxD, bool sl_tx_action, c16_t **txp)
