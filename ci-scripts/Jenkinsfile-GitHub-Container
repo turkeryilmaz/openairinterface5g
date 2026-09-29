@@ -981,7 +981,7 @@ pipeline {
   }
 }
 
-// ----  Slave Job functions
+// ----  Downstream Job functions
 
 def triggerDownstreamJob (jobName) {
   // Workaround for the "cancelled" pipeline notification
@@ -1002,12 +1002,12 @@ def triggerDownstreamJob (jobName) {
     ], propagate: false
   downstreamUrls[jobName] = localStatus.getAbsoluteUrl()
   def localResult = localStatus.getResult()
-  echo "${jobName} Slave Job status is ${localResult}"
+  echo "${jobName} Downstream Job status is ${localResult}"
   downstreamResults[jobName] = localStatus.resultIsBetterOrEqualTo('SUCCESS') ? 'SUCCESS' : 'FAILURE'
   if (localStatus.resultIsBetterOrEqualTo('SUCCESS')) {
-    echo "${jobName} Slave Job is OK"
+    echo "${jobName} Downstream Job is OK"
   } else {
-    error "${jobName} Slave Job is KO"
+    error "${jobName} Downstream Job is KO"
   }
 }
 
@@ -1022,12 +1022,12 @@ def triggerCN5GDownstreamJob (jobName) {
       string(name: 'FULL_RAN_TAG', value: String.valueOf(fullRanTag))
     ], propagate: false
   def localResult = localStatus.getResult()
-  echo "${jobName} Slave Job status is ${localResult}"
+  echo "${jobName} Downstream Job status is ${localResult}"
   downstreamResults[jobName] = localStatus.resultIsBetterOrEqualTo('SUCCESS') ? 'SUCCESS' : 'FAILURE'
   if (localStatus.resultIsBetterOrEqualTo('SUCCESS')) {
-    echo "${jobName} Slave Job is OK"
+    echo "${jobName} Downstream Job is OK"
   } else {
-    error "${jobName} Slave Job is KO"
+    error "${jobName} Downstream Job is KO"
   }
 }
 
