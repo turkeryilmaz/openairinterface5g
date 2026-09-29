@@ -8,6 +8,7 @@ import groovy.transform.Field
 @Field def branch = ''
 @Field def gitLocalBranch = ''
 @Field def downstreamResults = [:]
+@Field def downstreamUrls = [:]
 
 // Location of the executor node
 def nodeExecutor = params.nodeExecutor
@@ -184,7 +185,8 @@ pipeline {
         failure {
           script {
             currentBuild.result = 'FAILURE'
-            failingStages += '\n * Internal-Repo-Push - merge validation failed (merge conflict, git operation failure, or internal CI error)'
+            def jobUrl = downstreamUrls['RAN-Internal-Repo-Push'] ?: BUILD_URL
+            failingStages += "\n * [Internal-Repo-Push](${jobUrl}) - merge validation failed (merge conflict, git operation failure, or internal CI error)"
           }
         }
       }
@@ -998,6 +1000,7 @@ def triggerDownstreamJob (jobName) {
       string(name: 'repository', value: String.valueOf(params.ciRepositoryURL)),
       string(name: 'branch', value: String.valueOf(branch))
     ], propagate: false
+  downstreamUrls[jobName] = localStatus.getAbsoluteUrl()
   def localResult = localStatus.getResult()
   echo "${jobName} Slave Job status is ${localResult}"
   downstreamResults[jobName] = localStatus.resultIsBetterOrEqualTo('SUCCESS') ? 'SUCCESS' : 'FAILURE'
