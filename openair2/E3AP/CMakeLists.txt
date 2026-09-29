@@ -2,8 +2,9 @@
 
 find_package(PkgConfig REQUIRED)
 # libe3's C API is not stable across minor releases: 0.2.0 adds a correlation
-# id to the control and report callbacks, which this agent does not pass.
-pkg_check_modules(CLIBE3 REQUIRED libe3>=0.0.10 libe3<0.2.0)
+# id (sequence_id) to the control and report callbacks and to
+# e3_agent_send_xapp_control(), so stay inside the 0.2 series.
+pkg_check_modules(CLIBE3 REQUIRED libe3>=0.2.0 libe3<0.3.0)
 
 if(NOT CLIBE3_FOUND)
     message(FATAL_ERROR "libe3 not found and required for E3 Agent")
