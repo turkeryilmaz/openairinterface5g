@@ -49,7 +49,7 @@ int main(int argc, char *argv[])
   if (argc < 11) {
     printf(
         "Usage: %s <pcap_file> <initial_symbol> <num_dl_slots> <num_ul_slots> <num_dl_symbols> <num_ul_symbols> "
-        "<tdd_pattern_length_slots> <mtu> <prach_eaxc_offset> -- <eal args>\n",
+        "<tdd_pattern_length_slots> <mtu> <prach_eaxc_offset> [<num_bf_weights> <min_ext1_received>] -- <eal args>\n",
         argv[0]);
     return 1;
   }
@@ -90,6 +90,9 @@ int main(int argc, char *argv[])
     printf("Error: Missing '--' separator for EAL arguments\n");
     return 1;
   }
+  // Decode ext1 if present with N weights and require at least M min_ext1_received
+  int num_bf_weights = eal_args_start > 10 ? atoi(argv[10]) : 0;
+  uint64_t min_ext1_received = eal_args_start > 11 ? atoll(argv[11]) : 0;
 
   printf("Starting test with parameters:\n");
   printf("  pcap: %s\n", argv[1]);
@@ -102,6 +105,7 @@ int main(int argc, char *argv[])
          tdd_pattern_length_slots);
   printf("  MTU: %zu\n", mtu);
   printf("  PRACH eAxC Offset: %d\n", prach_eaxc_offset);
+  printf("  BF weights per ext1: %d, min ext1 expected: %lu\n", num_bf_weights, min_ext1_received);
 
   void *ctx = init_packet_processor(1,
                                     273,
@@ -122,6 +126,7 @@ int main(int argc, char *argv[])
                                     FH_COMP_NONE,
                                     0);
   assert(ctx != NULL);
+  set_num_bf_weights_ext1(ctx, num_bf_weights);
 
   char errbuf[PCAP_ERRBUF_SIZE];
   pcap_t *pcap = pcap_open_offline(argv[1], errbuf);
@@ -271,6 +276,8 @@ int main(int argc, char *argv[])
   printf("  UL TDD Mismatch: %lu\n", stats.ul_tdd_mismatch);
   printf("  Out of Mbufs: %lu\n", stats.out_of_mbufs);
   printf("  Application Too Slow Errors: %lu\n", stats.application_too_slow);
+  printf("  C-Plane Section Extension 1 received: %lu\n", stats.cplane_ext1_received);
+  printf("  C-Plane Malformed Section Extension Errors: %lu\n", stats.cplane_err_sect_ext);
 
   pcap_close(pcap);
   cleanup_packet_processor(ctx);
@@ -279,5 +286,13 @@ int main(int argc, char *argv[])
   for (int i = 0; i < MAX_ANTENNAS; i++)
     free(txdataF[i]);
 
+  if (stats.cplane_err_sect_ext != 0) {
+    printf("FAIL: %lu malformed section extension(s)\n", stats.cplane_err_sect_ext);
+    return 1;
+  }
+  if (stats.cplane_ext1_received < min_ext1_received) {
+    printf("FAIL: %lu ext1 received, expected at least %lu\n", stats.cplane_ext1_received, min_ext1_received);
+    return 1;
+  }
   return 0;
 }
