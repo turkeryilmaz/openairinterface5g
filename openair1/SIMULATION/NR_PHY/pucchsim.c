@@ -393,8 +393,7 @@ int main(int argc, char **argv)
               "illegal combination format %d, nr_bit %d\n",
               format,
               nr_bit);
-  AssertFatal(!format0_freq_hop || (format == 0 && nrofSymbols == 2),
-              "-H requires PUCCH format 0 with two symbols\n");
+  AssertFatal(!format0_freq_hop || (format == 0 && nrofSymbols == 2), "-H requires PUCCH format 0 with two symbols\n");
   int do_DTX = 0;
   if ((format < 2) && (actual_payload == 4))
     do_DTX = 1;
