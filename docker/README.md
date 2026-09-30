@@ -26,6 +26,7 @@ For all platforms, the strategy for building docker/podman images is the same:
    -  lte-UE
    -  nr-UE
    -  nr-cuup
+   -  nr-oru
    These target images will only contain:
    -  the generated executable (for example `lte-softmodem`)
    -  the generated shared libraries (for example `liboai_usrpdevif.so`)
@@ -62,6 +63,7 @@ Targets can be:
 -  `gNB.fhi` for an image named `oai-gnb-fhi72`
 -  `lteUE` for an image named `oai-lte-ue`
 -  `nrUE` for an image named `oai-nr-ue`
+-  `nrORU` for an image named `oai-nr-oru`
 
 The currently-supported OS are:
 

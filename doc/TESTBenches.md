@@ -41,6 +41,7 @@ All pipelines in this group are started by the parent pipeline
   https://github.com/duranta-project/openairinterface5g/labels/4G-LTE
   https://github.com/duranta-project/openairinterface5g/labels/5G-NR
   https://github.com/duranta-project/openairinterface5g/labels/nrUE
+  https://github.com/duranta-project/openairinterface5g/labels/O-RU
 
 This pipeline has two main stages: image build and image test. For the image build,
 please also refer to the [dedicated documentation](../docker/README.md).
@@ -54,6 +55,7 @@ please also refer to the [dedicated documentation](../docker/README.md).
     https://github.com/duranta-project/openairinterface5g/labels/4G-LTE
     https://github.com/duranta-project/openairinterface5g/labels/5G-NR
     https://github.com/duranta-project/openairinterface5g/labels/nrUE
+    https://github.com/duranta-project/openairinterface5g/labels/O-RU
   - Images:
     - base image from [`Dockerfile.base.ubuntu.cross-arm64`](../docker/Dockerfile.base.ubuntu.cross-arm64)
     - build image from [`Dockerfile.build.ubuntu.cross-arm64`](../docker/Dockerfile.build.ubuntu.cross-arm64) (no target images)
@@ -64,6 +66,7 @@ please also refer to the [dedicated documentation](../docker/README.md).
     https://github.com/duranta-project/openairinterface5g/labels/4G-LTE
     https://github.com/duranta-project/openairinterface5g/labels/5G-NR
     https://github.com/duranta-project/openairinterface5g/labels/nrUE
+    https://github.com/duranta-project/openairinterface5g/labels/O-RU
   - Images:
     - base image from [`Dockerfile.base.rhel9`](../docker/Dockerfile.base.rhel9)
     - build image from [`Dockerfile.build.rhel9`](../docker/Dockerfile.build.rhel9), followed by
@@ -85,6 +88,7 @@ please also refer to the [dedicated documentation](../docker/README.md).
     https://github.com/duranta-project/openairinterface5g/labels/4G-LTE
     https://github.com/duranta-project/openairinterface5g/labels/5G-NR
     https://github.com/duranta-project/openairinterface5g/labels/nrUE
+    https://github.com/duranta-project/openairinterface5g/labels/O-RU
   - Images:
     - run formatting check from [`Dockerfile.formatting.ubuntu`](../ci-scripts/docker/Dockerfile.formatting.ubuntu)
     - base image from [`Dockerfile.base.ubuntu`](../docker/Dockerfile.base.ubuntu)
@@ -106,6 +110,7 @@ please also refer to the [dedicated documentation](../docker/README.md).
     https://github.com/duranta-project/openairinterface5g/labels/4G-LTE
     https://github.com/duranta-project/openairinterface5g/labels/5G-NR
     https://github.com/duranta-project/openairinterface5g/labels/nrUE
+    https://github.com/duranta-project/openairinterface5g/labels/O-RU
   - Images:
     - base image from [`Dockerfile.base.ubuntu`](../docker/Dockerfile.base.ubuntu)
     - build image from [`Dockerfile.build.ubuntu`](../docker/Dockerfile.build.ubuntu), followed by
@@ -120,6 +125,7 @@ please also refer to the [dedicated documentation](../docker/README.md).
     https://github.com/duranta-project/openairinterface5g/labels/4G-LTE
     https://github.com/duranta-project/openairinterface5g/labels/5G-NR
     https://github.com/duranta-project/openairinterface5g/labels/nrUE
+    https://github.com/duranta-project/openairinterface5g/labels/O-RU
   - Images:
     - base image from [`Dockerfile.base.ubuntu`](../docker/Dockerfile.base.ubuntu)
     - build image from [`Dockerfile.build.ubuntu`](../docker/Dockerfile.build.ubuntu), followed by
@@ -262,6 +268,7 @@ please also refer to the [dedicated documentation](../docker/README.md).
   - Purpose: FHI 7.2 testing with 40 MHz bandwidth, OAI O-RU
   - Labels:
     https://github.com/duranta-project/openairinterface5g/labels/5G-NR
+    https://github.com/duranta-project/openairinterface5g/labels/O-RU
 - [RAN-SA-FHI72-FR2-CN5G](https://jenkins-oai.eurecom.fr/view/RAN/job/RAN-SA-FHI72-FR2-CN5G/)
   - Purpose: FHI 7.2 testing with 100 MHz bandwidth, 2 layers in DL
   - Hardware: Microamp FR2 O-RU, Quectel UE
