@@ -1060,8 +1060,9 @@ int nr_rate_matching_ldpc(uint32_t Tbslbrm,
 #endif
 
   // TS 38.212, 5.4.2.1 selects E non-NULL bits; E need not reach the filler offset.
+  // F == Ncb would leave no non-filler bits and the loop below would never advance
   if (Foffset > Ncb || F > Ncb - Foffset || F == Ncb) {
-    LOG_E(PHY, "nr_rate_matching: invalid filler interval (offset %d, length %d, Ncb %d)\n", Foffset, F, Ncb);
+    LOG_E(PHY, "nr_rate_matching: invalid filler interval (offset %u, length %u, Ncb %u)\n", Foffset, F, Ncb);
     return -1;
   }
 
@@ -1121,8 +1122,9 @@ int nr_rate_matching_ldpc_rx_simd(uint32_t Tbslbrm,
   const uint32_t N = geo.N;
   const uint32_t Ncb = geo.Ncb;
   uint32_t ind = geo.k0;
+  // F == Ncb would leave no non-filler bits and the loop below would never advance
   if (Foffset > Ncb || F > Ncb - Foffset || F == Ncb) {
-    LOG_E(PHY, "nr_rate_matching: invalid filler interval (offset %d, length %d, Ncb %d)\n", Foffset, F, Ncb);
+    LOG_E(PHY, "nr_rate_matching: invalid filler interval (offset %u, length %u, Ncb %u)\n", Foffset, F, Ncb);
     return -1;
   }
 
@@ -1190,8 +1192,9 @@ int nr_rate_matching_ldpc_rx(uint32_t Tbslbrm,
   const uint32_t N = geo.N;
   const uint32_t Ncb = geo.Ncb;
   uint32_t ind = geo.k0;
+  // F == Ncb would leave no non-filler bits and the loop below would never advance
   if (Foffset > Ncb || F > Ncb - Foffset || F == Ncb) {
-    LOG_E(PHY, "nr_rate_matching: invalid filler interval (offset %d, length %d, Ncb %d)\n", Foffset, F, Ncb);
+    LOG_E(PHY, "nr_rate_matching: invalid filler interval (offset %u, length %u, Ncb %u)\n", Foffset, F, Ncb);
     return -1;
   }
 
