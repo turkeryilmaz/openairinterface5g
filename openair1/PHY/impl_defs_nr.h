@@ -206,20 +206,6 @@ typedef struct {
   srs_PowerControlAdjustmentStates_t srs_PowerControlAdjustmentStates;
 } SRS_ResourceSet_t;
 
-/***********************************************************************
-*
-* FUNCTIONALITY    :  Physical Downlink Shared Channel PDSCH
-*
-* DESCRIPTION      :  interface description for PSDCH configuration
-*
-************************************************************************/
-
-typedef enum {
-  pdsch_dmrs_pos0 = 0,
-  pdsch_dmrs_pos1 = 1,
-  pdsch_dmrs_pos2 = 2,
-  pdsch_dmrs_pos3 = 3,
-} pdsch_dmrs_AdditionalPosition_t;
 
 /***********************************************************************
 *

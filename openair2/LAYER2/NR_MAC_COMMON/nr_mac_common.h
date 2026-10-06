@@ -147,6 +147,13 @@ typedef enum {
 } pusch_dmrs_AdditionalPosition_t;
 
 typedef enum {
+  pdsch_dmrs_pos0 = 0,
+  pdsch_dmrs_pos1 = 1,
+  pdsch_dmrs_pos2 = 2,
+  pdsch_dmrs_pos3 = 3,
+} pdsch_dmrs_AdditionalPosition_t;
+
+typedef enum {
   pusch_len1 = 1,
   pusch_len2 = 2
 } pusch_maxLength_t;
