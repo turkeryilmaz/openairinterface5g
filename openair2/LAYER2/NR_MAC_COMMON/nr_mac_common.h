@@ -162,7 +162,7 @@ typedef struct {
 } ssb_ro_preambles_t;
 
 uint32_t get_Y(const NR_SearchSpace_t *ss, int slot, rnti_t rnti);
-
+pusch_dmrs_AdditionalPosition_t get_pusch_dmrs_pos(const long *dmrs_AdditionalPosition);
 uint8_t get_BG(uint32_t A, uint16_t R);
 uint32_t get_short_bsr_value(int idx);
 uint32_t get_long_bsr_value(int idx);

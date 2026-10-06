@@ -2198,6 +2198,20 @@ uint8_t get_l0_ul(uint8_t mapping_type, uint8_t dmrs_typeA_position)
   return ((mapping_type==typeA)?dmrs_typeA_position:0);
 }
 
+pusch_dmrs_AdditionalPosition_t get_pusch_dmrs_pos(const long *dmrs_AdditionalPosition)
+{
+  if (!dmrs_AdditionalPosition)
+    return pusch_dmrs_pos2;
+  if (*dmrs_AdditionalPosition == NR_DMRS_UplinkConfig__dmrs_AdditionalPosition_pos0)
+    return pusch_dmrs_pos0;
+  if (*dmrs_AdditionalPosition == NR_DMRS_UplinkConfig__dmrs_AdditionalPosition_pos1)
+    return pusch_dmrs_pos1;
+  if (*dmrs_AdditionalPosition == NR_DMRS_UplinkConfig__dmrs_AdditionalPosition_pos3)
+    return pusch_dmrs_pos3;
+  AssertFatal(false, "Invalid PUSCH DMRS additional position\n");
+  return pusch_dmrs_pos2;
+}
+
 int32_t get_l_prime(uint8_t duration_in_symbols,
                     uint8_t mapping_type,
                     pusch_dmrs_AdditionalPosition_t additional_pos,
