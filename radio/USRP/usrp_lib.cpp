@@ -10,6 +10,7 @@
 #include <pthread.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <uhd/exception.hpp>
 #include <uhd/version.hpp>
 #if UHD_VERSION < 3110000
   #include <uhd/utils/thread_priority.hpp>
@@ -1272,7 +1273,17 @@ static int usrp_gain_native_agc(void *opaque, unsigned channel, bool enable)
   if (!device || !device->priv)
     return -1;
   try {
-    static_cast<usrp_state_t *>(device->priv)->usrp->set_rx_agc(enable, channel);
+    auto *s = static_cast<usrp_state_t *>(device->priv);
+    if (channel >= s->usrp->get_rx_num_channels())
+      return -1;
+    try {
+      s->usrp->set_rx_agc(enable, channel);
+    } catch (const uhd::not_implemented_error &) {
+      // UHD throws when the radio has no native AGC. Only disabling it is then a no-op.
+      if (enable)
+        throw;
+      LOG_I(HW, "RX channel %u has no native AGC; retaining manual hardware gain control\n", channel);
+    }
     return 0;
   } catch (const std::exception &error) {
     LOG_E(HW, "Native RX AGC selection failed: %s\n", error.what());
