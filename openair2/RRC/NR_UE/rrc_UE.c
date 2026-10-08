@@ -1859,9 +1859,9 @@ NR_UE_RRC_INST_t* nr_rrc_init_ue(char* uecap_file, int instance_id, int num_ant_
   rrc->access_barred = false;
 
   FILE *f = NULL;
-  if (uecap_file)
+  if (uecap_file) {
     f = fopen(uecap_file, "r");
-  if (f) {
+    AssertFatal(f, "could not open UE capabilities file \"%s\": %s\n", uecap_file, strerror(errno));
     fseek(f, 0, SEEK_END);
     long file_size = ftell(f);
     rewind(f);
@@ -1869,13 +1869,10 @@ NR_UE_RRC_INST_t* nr_rrc_init_ue(char* uecap_file, int instance_id, int num_ant_
                 "UE Capabilities XER file %s is too large (%ld bytes, max 1MB)\n", uecap_file, file_size);
     char *UE_NR_Capability_xer = malloc_or_fail(file_size);
     size_t size = fread(UE_NR_Capability_xer, 1, file_size, f);
-    if (size == 0) {
-      RRCLOG_E("UE Capabilities XER file %s: read error\n", uecap_file);
-    } else {
-      asn_dec_rval_t dec_rval =
-          xer_decode(0, &asn_DEF_NR_UE_NR_Capability, (void *)&rrc->UECap.UE_NR_Capability, UE_NR_Capability_xer, size);
-      assert(dec_rval.code == RC_OK);
-    }
+    AssertFatal(size > 0, "UE Capabilities XER file %s: read error\n", uecap_file);
+    asn_dec_rval_t dec_rval =
+        xer_decode(0, &asn_DEF_NR_UE_NR_Capability, (void *)&rrc->UECap.UE_NR_Capability, UE_NR_Capability_xer, size);
+    DevAssert(dec_rval.code == RC_OK);
     free(UE_NR_Capability_xer);
     fclose(f);
     /* Verify consistency of num PHY antennas vs UE Capabilities */
