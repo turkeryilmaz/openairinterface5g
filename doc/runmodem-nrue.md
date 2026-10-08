@@ -115,7 +115,13 @@ You can view all available options by typing:
 
 ### UE Capabilities
 
-The `--uecap_file` option can be used to pass the UE Capabilities input file (path location + filename), e.g.`--uecap_file ../../../targets/PROJECTS/GENERIC-NR-5GC/CONF/uecap_ports1.xml` for 1 layer or e.g. `--uecap_file ../../../targets/PROJECTS/GENERIC-NR-5GC/CONF/uecap_ports2.xml` for 2 layers.
+The `--uecap_file` option can be used to pass the UE Capabilities input file
+(path location + filename):
+
+- `targets/PROJECTS/GENERIC-NR-5GC/CONF/uecap_portsX.xml` for X=1,2,4 layer(s).
+  Those are sample files and might need to be tweaked for your scenario.
+
+Not providing this option yields empty UE capabilities being sent to the gNB.
 
 This option is available for the following combinations of operation modes and gNB/nrUE softmodems:
 
