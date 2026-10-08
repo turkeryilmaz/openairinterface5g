@@ -690,7 +690,7 @@ int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
     if (dci_format == NR_UL_DCI_FORMAT_0_0)
       add_pos = pusch_config_pdu->frequency_hopping ? pusch_dmrs_pos1 : pusch_dmrs_pos2;
     else if (NR_DMRS_ulconfig != NULL)
-      add_pos = (NR_DMRS_ulconfig->dmrs_AdditionalPosition == NULL) ? 2 : *NR_DMRS_ulconfig->dmrs_AdditionalPosition;
+      add_pos = get_pusch_dmrs_pos(NR_DMRS_ulconfig->dmrs_AdditionalPosition);
 
     /* DMRS */
     l_prime_mask = get_l_prime(pusch_config_pdu->nr_of_symbols,

@@ -880,7 +880,7 @@ int main(int argc, char *argv[])
     else if (dmrs_arg[0] == 1)
       mapping_type = typeB;
     /* Additional DMRS positions */
-    if(dmrs_arg[1] >= 0 && dmrs_arg[1] <=3 )
+    if(dmrs_arg[1] >= 0 && dmrs_arg[1] <= 3)
       add_pos = dmrs_arg[1];
     /* DMRS Conf Type 1 or 2 */
     if(dmrs_arg[2] == 1)
