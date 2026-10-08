@@ -22,3 +22,9 @@ function(add_ntn_test name)
 endfunction()
 
 add_ntn_test(test_ntn_assistance_codec codec_test.c ${NTN_MAC_DIR}/ntn_assistance.c)
+add_ntn_test(test_ntn_assistance_server server_test.c)
+add_ntn_test(test_ntn_assistance_publisher publisher_test.c
+  ${NTN_MAC_DIR}/config.c ${NTN_MAC_DIR}/nr_radio_config.c)
+target_link_options(test_ntn_assistance_publisher PRIVATE -Wl,--wrap=calloc)
+add_ntn_test(test_ntn_radio_time radio_time_test.c ${CMAKE_SOURCE_DIR}/openair1/PHY/INIT/nr_parms.c)
+target_link_options(test_ntn_radio_time PRIVATE -Wl,--wrap=clock_gettime)
