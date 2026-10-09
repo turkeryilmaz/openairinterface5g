@@ -33,7 +33,7 @@ Note: `time`, `utc_time` and `wall_clock` are mutually exclusive and cannot be u
 | `<component>_log_level` | `boolean` | global log level, as defined by the  `global_log_level ` parameter) |
 | `<component>_log_infile` | `boolean` | 0 = false| Triggers the redirection of log messages printed by the specified component in a file. The file path and name is /tmp/<componemt>.[extension] the extension is optional and component dependant, it can be `log `,  `dat `,  `txt `|
 
-The list of components defined within oai can be retrieved from the  [config module](../../../config/config.md) traces, when asking for config module debugging info on the command line:
+The list of components defined within oai can be retrieved from the  [config module](../../../config/DOC/config.md) traces, when asking for config module debugging info on the command line:
 
 ```bash
 ./lte-softmodem -O libconfig:<path to config file>:dbgl5
