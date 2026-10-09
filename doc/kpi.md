@@ -81,9 +81,58 @@ The following results apply to the TDD configuration below:
 |100(273)         |1     |412                 |160                 |
 |                 |2     |820                 |200                 |
 
+### RSRP and Application level throughput Heatmaps
+
+#### Test Profile
+
+#### Test Profile
+
+The measurements were collected with the following FR1 O-RAN 7.2 setup:
+
+|Parameter|Value|
+|---------|-----|
+|Band|n78|
+|Center frequency|3,500.25 MHz|
+|SCS|30 kHz|
+|Bandwidth|100 MHz / 273 PRBs|
+|Radio configuration|4T4R, 4 DL layers, 1 UL layer|
+|Fronthaul compression|9-bit BFP static compression|
+
+- Test System: AMD EPYC 9575F 64-Core Processor
+- Operating System: Ubuntu 25.04 (plucky)
+- Network Interface: Intel E810-C, 100G
+- Radio: Metanoia FR1 O-RU
+- UE: Samsung S25 Ultra
+- Environment: OTA, first floor of EURECOM
+- Application-level throughput tested using iperf3 UDP
+
+#### RSRP Heatmap
+
+![FR1 RSRP heatmap](https://github.com/user-attachments/assets/6bea108c-841e-42bb-ada5-d829861c62fa)
+
+#### Application-Level Throughput Heatmaps
+
+##### UDP Downlink Throughput Heatmap
+
+![FR1 UDP downlink throughput heatmap](https://github.com/user-attachments/assets/254adbbc-7522-4403-9f6b-282d507e5e47)
+
+##### UDP Uplink Throughput Heatmap
+
+![FR1 UDP uplink throughput heatmap](https://github.com/user-attachments/assets/ba7a5568-efba-4ba7-9840-c84ed57f8563)
+
+#### Bidirectional UDP Mobility Test
+
+The route started close to the O-RU, moved to a remote non-line-of-sight
+position, returned close to the O-RU, and then moved away again until the UE
+disconnected.
+
+![FR1 bidirectional UDP mobility throughput](https://github.com/user-attachments/assets/941285e3-e9b2-4cf8-aba2-2adb5a3ab761)
+
 ## 2. `nr-softmodem` Performance in `oai-gNB` and `oai-gNB-du` Modes for FR2 bands
 
-### Test Profile
+### Static-point Test
+
+#### Test Profile
 
 The following results apply to the TDD configuration below:
 
@@ -100,7 +149,7 @@ The following results apply to the TDD configuration below:
 - Environment: OTA, distance: 2m
 - Application level throughput tested using iperf3 UDP
 
-#### KPI
+##### KPI
 
 |Bandwidth MHz/PRB|Layers|DL Throughput (Mbps)|UL Throughput (Mbps)|
 |-----------------|-----:|-------------------:|-------------------:|
@@ -112,6 +161,43 @@ The following results apply to the TDD configuration below:
 Round trip time (measured using icmp ping): 4.526 ms
 
 With `ulsch_max_frame_inactivity= 0;`
+
+### Range Test
+
+#### Test Profile
+
+The following results apply to the FR2 central-beam configuration below:
+
+|Parameter|Value|
+|---------|-----|
+|Band|n257|
+|Center frequency|26,700 MHz|
+|SCS|120 kHz|
+|Bandwidth|200 MHz / 132 PRBs|
+|Radio configuration|2T2R, 2 DL layers, 1 UL layer|
+|Fronthaul compression|9-bit compression|
+|Distance range|5 m to 40 m, in 5 m steps|
+
+- Test System: AMD EPYC 9575F 64-Core Processor
+- Operating System: Ubuntu 25.04 (plucky)
+- Network Interface: Intel E810-C, 100G
+- Radio: Metanoia FR2 O-RU
+- UE: Microamp FR2 CPE
+- Environment: OTA
+- Application-level throughput tested using iperf3 UDP
+
+#### Results
+
+|Distance from O-RU (m)|Average RSRP (dBm)|UL SNR (dB)|DL Throughput (Mbps)|UL Throughput (Mbps)|
+|---------------------:|-----------------:|----------:|-------------------:|-------------------:|
+|5|-56|20.1|1284.32|81.5|
+|10|-62|20.7|1222.12|20.5|
+|15|-66|21.9|1248.73|16.0|
+|20|-68|21.1|936.08|18.3|
+|25|-71|19.4|891.72|17.2|
+|30|-70|19.0|570.45|16.3|
+|35|-72|19.7|607.68|20.5|
+|40|-73|20.0|543.33|11.7|
 
 ## 3. Performance Metrics for OAI Block Tests
 
