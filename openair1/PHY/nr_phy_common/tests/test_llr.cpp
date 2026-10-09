@@ -83,21 +83,41 @@ void nr_256qam_llr_ref(const c16_t *rxdataF_comp, const c16_t *ch_mag, const c16
   }
 }
 
-void test_function_16_qam(AlignedVector512<uint32_t> nb_res)
+constexpr int16_t llr_sentinel = 0x5a5a;
+
+// Output buffer of nb_llr LLRs starting llr_offset int16 after a 64-byte boundary, followed by a sentinel
+struct LlrBuffer {
+  LlrBuffer(uint32_t nb_llr, uint32_t llr_offset) : buf(nb_llr + llr_offset + 1, 0), nb_llr(nb_llr)
+  {
+    llr = buf.data() + llr_offset;
+    llr[nb_llr] = llr_sentinel;
+  }
+  bool sentinel_intact() const
+  {
+    return llr[nb_llr] == llr_sentinel;
+  }
+  AlignedVector512<int16_t> buf;
+  int16_t *llr;
+  uint32_t nb_llr;
+};
+
+void test_function_16_qam(AlignedVector512<uint32_t> nb_res, uint32_t llr_offset = 0)
 {
   for (auto i = 0U; i < nb_res.size(); i++) {
     uint32_t nb_re = nb_res[i];
     auto rf_data = generate_random_c16(nb_re);
     auto magnitude_data = generate_random_uint16(nb_re * 2);
+    const c16_t *rf = (const c16_t *)rf_data.data();
+    const c16_t *mag = (const c16_t *)magnitude_data.data();
     AlignedVector512<int16_t> llr_ref;
     llr_ref.resize(nb_re * 4);
     std::fill(llr_ref.begin(), llr_ref.end(), 0);
-    nr_16qam_llr_ref((const c16_t *)rf_data.data(), (const c16_t *)magnitude_data.data(), (int16_t *)llr_ref.data(), nb_re);
+    nr_16qam_llr_ref(rf, mag, (int16_t *)llr_ref.data(), nb_re);
 
-    AlignedVector512<int16_t> llr;
-    llr.resize(nb_re * 4);
-    std::fill(llr.begin(), llr.end(), 0);
-    nr_16qam_llr((const c16_t *)rf_data.data(), (const c16_t *)magnitude_data.data(), (int16_t *)llr.data(), nb_re);
+    LlrBuffer out(nb_re * 4, llr_offset);
+    int16_t *llr = out.llr;
+    nr_16qam_llr(rf, mag, llr, nb_re);
+    EXPECT_TRUE(out.sentinel_intact()) << "16qam llr written past the end, nb res " << nb_re;
 
     int num_errors = 0;
     for (auto i = 0U; i < llr_ref.size(); i++) {
@@ -109,33 +129,28 @@ void test_function_16_qam(AlignedVector512<uint32_t> nb_res)
   }
 }
 
-void test_function_64_qam(AlignedVector512<uint32_t> nb_res)
+void test_function_64_qam(AlignedVector512<uint32_t> nb_res, uint32_t llr_offset = 0)
 {
   for (auto i = 0U; i < nb_res.size(); i++) {
     uint32_t nb_re = nb_res[i];
     auto rf_data = generate_random_c16(nb_re);
     auto magnitude_data = generate_random_uint16(nb_re * 2);
     auto magnitude_b_data = generate_random_uint16(nb_re * 2);
+    const c16_t *rf = (const c16_t *)rf_data.data();
+    const c16_t *mag = (const c16_t *)magnitude_data.data();
+    const c16_t *mag_b = (const c16_t *)magnitude_b_data.data();
     AlignedVector512<int16_t> llr_ref;
     llr_ref.resize(nb_re * 6);
     std::fill(llr_ref.begin(), llr_ref.end(), 0);
-    nr_64qam_llr_ref((const c16_t *)rf_data.data(),
-                     (const c16_t *)magnitude_data.data(),
-                     (const c16_t *)magnitude_b_data.data(),
-                     (int16_t *)llr_ref.data(),
-                     nb_re);
+    nr_64qam_llr_ref(rf, mag, mag_b, (int16_t *)llr_ref.data(), nb_re);
 
-    AlignedVector512<int16_t> llr;
-    llr.resize(nb_re * 6);
-    std::fill(llr.begin(), llr.end(), 0);
-    nr_64qam_llr((const c16_t *)rf_data.data(),
-                 (const c16_t *)magnitude_data.data(),
-                 (const c16_t *)magnitude_b_data.data(),
-                 (int16_t *)llr.data(),
-                 nb_re);
+    LlrBuffer out(nb_re * 6, llr_offset);
+    int16_t *llr = out.llr;
+    nr_64qam_llr(rf, mag, mag_b, llr, nb_re);
+    EXPECT_TRUE(out.sentinel_intact()) << "64qam llr written past the end, nb res " << nb_re;
 
     int num_errors = 0;
-    for (auto i = 0U; i < llr.size(); i++) {
+    for (auto i = 0U; i < llr_ref.size(); i++) {
       EXPECT_LE(llr_ref[i] - llr[i] ? (llr_ref[i] - llr[i]) / (float)llr[i] : 0, 0.001)
           << "Mismatch 64qam REF " << std::hex << llr_ref[i] << " != DUT " << llr[i] << " at " << std::dec << i
           << "total err: " << ++num_errors;
@@ -144,7 +159,7 @@ void test_function_64_qam(AlignedVector512<uint32_t> nb_res)
   }
 }
 
-void test_function_256_qam(AlignedVector512<uint32_t> nb_res)
+void test_function_256_qam(AlignedVector512<uint32_t> nb_res, uint32_t llr_offset = 0)
 {
   for (auto i = 0U; i < nb_res.size(); i++) {
     uint32_t nb_re = nb_res[i];
@@ -152,28 +167,22 @@ void test_function_256_qam(AlignedVector512<uint32_t> nb_res)
     auto magnitude_data = generate_random_uint16(nb_re * 2);
     auto magnitude_b_data = generate_random_uint16(nb_re * 2);
     auto magnitude_c_data = generate_random_uint16(nb_re * 2);
+    const c16_t *rf = (const c16_t *)rf_data.data();
+    const c16_t *mag = (const c16_t *)magnitude_data.data();
+    const c16_t *mag_b = (const c16_t *)magnitude_b_data.data();
+    const c16_t *mag_c = (const c16_t *)magnitude_c_data.data();
     AlignedVector512<int16_t> llr_ref;
     llr_ref.resize(nb_re * 8);
     std::fill(llr_ref.begin(), llr_ref.end(), 0);
-    nr_256qam_llr_ref((const c16_t *)rf_data.data(),
-                      (const c16_t *)magnitude_data.data(),
-                      (const c16_t *)magnitude_b_data.data(),
-                      (const c16_t *)magnitude_c_data.data(),
-                      (int16_t *)llr_ref.data(),
-                      nb_re);
+    nr_256qam_llr_ref(rf, mag, mag_b, mag_c, (int16_t *)llr_ref.data(), nb_re);
 
-    AlignedVector512<int16_t> llr;
-    llr.resize(nb_re * 8);
-    std::fill(llr.begin(), llr.end(), 0);
-    nr_256qam_llr((const c16_t *)rf_data.data(),
-                  (const c16_t *)magnitude_data.data(),
-                  (const c16_t *)magnitude_b_data.data(),
-                  (const c16_t *)magnitude_c_data.data(),
-                  (int16_t *)llr.data(),
-                  nb_re);
+    LlrBuffer out(nb_re * 8, llr_offset);
+    int16_t *llr = out.llr;
+    nr_256qam_llr(rf, mag, mag_b, mag_c, llr, nb_re);
+    EXPECT_TRUE(out.sentinel_intact()) << "256qam llr written past the end, nb res " << nb_re;
 
     int num_errors = 0;
-    for (auto i = 0U; i < llr.size(); i++) {
+    for (auto i = 0U; i < llr_ref.size(); i++) {
       EXPECT_LE(llr_ref[i] - llr[i] ? (llr_ref[i] - llr[i]) / (float)llr[i] : 0, 0.001)
           << "Mismatch 256qam REF " << std::hex << llr_ref[i] << " != DUT " << llr[i] << " at " << std::dec << i
           << "total err: " << ++num_errors;
@@ -290,6 +299,39 @@ TEST(test_llr, no_segfault_any_number_of_re_256qam)
   for (uint32_t i = 0U; i < 1000U; i++) {
     test_function_256_qam({i});
   }
+}
+
+// Inputs stay aligned, the llr output starts this many int16 after a 64-byte boundary, i.e. it is
+// misaligned for 16 and 32 byte access so an aligned SIMD store to it segfaults
+static const uint32_t unaligned_llr_offsets[] = {1, 2, 3, 4, 5, 6, 7, 9, 10, 14, 18};
+
+// Covers the 256-bit loop, the 128-bit loop (4..7 RE remainder), the scalar tail and a 273 PRB symbol
+static AlignedVector512<uint32_t> unaligned_llr_nb_res()
+{
+  AlignedVector512<uint32_t> nb_res;
+  for (uint32_t i = 1U; i <= 40U; i++)
+    nb_res.push_back(i);
+  nb_res.push_back(273 * 12);
+  nb_res.push_back(273 * 12 - 1);
+  return nb_res;
+}
+
+TEST(test_llr, unaligned_llr_16qam)
+{
+  for (auto offset : unaligned_llr_offsets)
+    test_function_16_qam(unaligned_llr_nb_res(), offset);
+}
+
+TEST(test_llr, unaligned_llr_64qam)
+{
+  for (auto offset : unaligned_llr_offsets)
+    test_function_64_qam(unaligned_llr_nb_res(), offset);
+}
+
+TEST(test_llr, unaligned_llr_256qam)
+{
+  for (auto offset : unaligned_llr_offsets)
+    test_function_256_qam(unaligned_llr_nb_res(), offset);
 }
 
 // It is possible to implement an AVX accelerated llr computation for multiples of 2REs.

@@ -16,17 +16,11 @@
 #endif
 
 #include "defs_nr_common.h"
-#include "CODING/nrPolar_tools/nr_polar_pbch_defs.h"
 #include "PHY/defs_nr_sl_UE.h"
 #include "openair1/PHY/nr_phy_common/inc/nr_ue_phy_meas.h"
 #include "common/utils/threadPool/task_ans.h"
-#include <stdio.h>
-#include <stdlib.h>
 #include <malloc.h>
-#include <string.h>
-#include <math.h>
 #include "fapi_nr_ue_interface.h"
-#include "assertions.h"
 #include "common/utils/barrier/barrier.h"
 #include "common/utils/actor/actor.h"
 //#include "openair1/SCHED_NR_UE/defs.h"
@@ -459,8 +453,8 @@ typedef struct PHY_VARS_NR_UE_s {
     int32_t *pdsch_dl_ch_estimates; // [nb_antennas_rx*NR_MAX_NB_LAYERS][pdsch_est_size]
     int16_t *llr[2];               // [2 codewords][llr_buf_max]
 #ifdef LDPC_CUDA
-    // gpu mapped version (cudaDeviceGetHostPointer), typically the same for Jetson/GH/GB
-    int16_t *llr_dev[10][2];
+    // gpu mapped version (gpuHostGetDevicePointer), typically the same for Jetson/GH/GB
+    int16_t *llr_dev[2];
 #endif
     uint32_t pdsch_buf_size_max;
     uint32_t pdsch_est_size;

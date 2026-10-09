@@ -105,6 +105,7 @@ add_physim_test(physim.5g.nr_dlsim.basic.test5 "HARQ test 33% TP 3 rounds" nr_dl
 add_physim_test(physim.5g.nr_dlsim.basic.test6 "HARQ test 50% TP 2 rounds" nr_dlsim -P -n300 -s5 -S7 -t50)
 add_physim_test(physim.5g.nr_dlsim.basic.test7 "25 PRBs, 15 kHz SCS" nr_dlsim -P -n300 -m0 -e0 -R25 -b25 -i 2 1 0)
 add_physim_test(physim.5g.nr_dlsim.basic.test8 "32 PRBs, 120 kHz SCS" nr_dlsim -P -n300 -s5 -m3 -R32 -b32)
+add_physim_test(physim.5g.nr_dlsim.basic.test9 "HARQ retx on 60 of 106 PRBs (E < Foffset) 50% TP 2 rounds" nr_dlsim -P -n100 -e27 -s17 -S18 -K60 -t50)
 add_physim_test(physim.5g.nr_dlsim.offset.test1 "106 PRB 25 PDSCH-Offset" nr_dlsim -P -n300 -R106 -a25 -s5)
 add_physim_test(physim.5g.nr_dlsim.offset.test2 "106 PRB 51 PDSCH-Offset" nr_dlsim -P -n300 -R106 -a51 -s5)
 add_physim_test(physim.5g.nr_dlsim.offset.test3 "217 PRB 100 PDSCH-PRBs" nr_dlsim -P -n300 -R217 -b100 -s5)
@@ -208,6 +209,12 @@ add_physim_test(physim.5g.nr_pucchsim.test46 "Format 1 (NACK,ACK) number of symb
 add_physim_test(physim.5g.nr_pucchsim.test47 "Format 1 (ACK,ACK) number of symbols = 14, 273PRB"   nr_pucchsim -R 273 -z8 -i 14 -P 1 -b 2 -B 3 -s-8 -n1000)
 add_physim_test(physim.5g.nr_pucchsim.test48 "Format 2 13-bit 16/273 PRB" nr_pucchsim -R 273 -i 1 -P 2 -q 16 -b 13 -n300)
 
+# Two-symbol format 0 without and with frequency hopping; a nonzero hopping ID gives a nonzero sequence group u[0].
+add_physim_test(physim.5g.nr_pucchsim.test49 "Format 0 2-symbol non-hopping ACK and SR"
+  nr_pucchsim -R 106 -N 40 -i 2 -P 0 -b 2 -c -s 10 -S 10 -n 100)
+add_physim_test(physim.5g.nr_pucchsim.test50 "Format 0 2-symbol hopping"
+  nr_pucchsim -R 106 -N 40 -i 2 -P 0 -b 2 -H -s 10 -S 10 -n 100)
+
 ####################################################################################
 ######                           nr_ulsim unit test                           ######
 ####################################################################################
@@ -237,6 +244,10 @@ add_physim_test(physim.5g.nr_ulsim.mimo.test2 "MCS 9 106 PRBs MIMO 2 layers" nr_
 add_physim_test(physim.5g.nr_ulsim.mimo.test3 "MCS 10 106 PRBs MIMO 2 layers" nr_ulsim -P -n300 -m10 -r106 -s12 -W2 -y2 -z2)
 add_physim_test(physim.5g.nr_ulsim.mimo.test4 "MCS 19 106 PRBs MIMO 2 layers" nr_ulsim -P -n300 -m19 -r106 -s22 -W2 -y2 -z2)
 add_physim_test(physim.5g.nr_ulsim.mimo.test5 "MCS 9 106 PRBs MIMO 4 layers" nr_ulsim -P -n300 -m9 -r106 -s10 -W4 -y4 -z4)
+add_physim_test(physim.5g.nr_ulsim.uci-pusch.test1 "MCS 9 106 PRBs 1 HARQ BIT" nr_ulsim -P -n300 -m9 -r106 -s10 -o 1,0,0)
+add_physim_test(physim.5g.nr_ulsim.uci-pusch.test2 "MCS 16 51 PRBs 3 HARQ BITS" nr_ulsim -P -n300 -m16 -r51 -s15 -o 3,0,0)
+add_physim_test(physim.5g.nr_ulsim.uci-pusch.test3 "MCS 27 106 PRBs 7 CSI BITS" nr_ulsim -P -n300 -m27 -r106 -s25 -o 0,7,0)
+add_physim_test(physim.5g.nr_ulsim.uci-pusch.test4 "MCS 9 106 PRBs MIMO 2 layers 2 HARQ BITS 7 CSI BITS" nr_ulsim -P -n300 -m9 -r106 -s8 -W2 -y2 -z2 -o 2,7,0)
 add_physim_test(physim.5g.nr_ulsim.3gpp.test1 "3GPP G-FR1-A5-13, PUSCH Type A, 40 MHz BW, 30 kHz SCS, 2 RX Antennas Requirements Test" nr_ulsim -P -n300 -b14 -I7 -i 0,1 -g A,l,10 -t70 -u 1 -m20 -R106 -r106 -U 0,1,1,2 -z2 -s12.4 -S12.4)
 add_physim_test(physim.5g.nr_ulsim.3gpp.test2 "3GPP G-FR1-A5-13, PUSCH Type A, 40 MHz BW, 30 kHz SCS, 4 RX Antennas Requirements Test" nr_ulsim -P -n300 -b14 -I7 -i 0,1 -g A,l,10 -t70 -u 1 -m20 -R106 -r106 -U 0,1,1,2 -z4 -s8.5 -S8.5)
 add_physim_test(physim.5g.nr_ulsim.3gpp.test3 "3GPP G-FR1-A5-13, PUSCH Type A, 40 MHz BW, 30 kHz SCS, 8 RX Antennas Requirements Test" nr_ulsim -P -n300 -b14 -I7 -i 0,1 -g A,l,10 -t70 -u 1 -m20 -R106 -r106 -U 0,1,1,2 -z8 -s5.4 -S5.4)
@@ -507,6 +518,8 @@ if(ENABLE_PHYSIM_TESTS)
     physim.5g.nr_ulschsim.test2
     physim.5g.nr_ulschsim.test4
     physim.5g.nr_pucchsim.test1
+    physim.5g.nr_pucchsim.test49
+    physim.5g.nr_pucchsim.test50
     physim.5g.nr_pucchsim.test2
     physim.5g.nr_pucchsim.test4
     physim.5g.nr_pucchsim.test5

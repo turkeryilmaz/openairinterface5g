@@ -308,7 +308,7 @@ Additional optional questions in case they apply:
 
 ## Reporting bugs
 
-Please report only true bugs in the [issue tracker](../../issues). Do not
+Please report only true bugs in the [issue tracker](https://github.com/duranta-project/openairinterface5g/issues). Do not
 report general user problems; use the [mailing
 lists](https://github.com/duranta-project/openairinterface5g/wiki/MailingList)
 instead.  If in doubt, prefer the mailing lists and if needed and requested by
