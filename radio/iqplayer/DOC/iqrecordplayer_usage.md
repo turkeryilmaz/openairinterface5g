@@ -152,7 +152,7 @@ An easiest scenario is to use the record player in parallel with the noS1 mode, 
 most of the implementation is now located in the oai device common code:
 * The`load_lib` function in [common-lib.c](../../COMMON/common_lib.c) reads the record player parameters. 
 * Recorder specific functions are implemented in  `iqrecorder_end` saves the cached iq's to disk, it has to be called by the oai device in it's end function.
-* When recording is enabled, the device must implement iq's caching in it's read function. It also has to call the `iqrecorder_end ` function when  terminating to write iqs to a file on disk. Look at the USRP device ( [../usrp_lib.cpp](../../USRP/USERSPACE/LIB/usrp_lib.cpp) ) for  details.
+* When recording is enabled, the device must implement iq's caching in it's read function. It also has to call the `iqrecorder_end ` function when  terminating to write iqs to a file on disk. Look at the USRP device ( [usrp_lib.cpp](../../USRP/usrp_lib.cpp) ) for  details.
 
 ### iq player
 The replay feature is implemented as a oai device. 

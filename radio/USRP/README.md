@@ -13,7 +13,7 @@ Hardware Driver (UHD) (https://github.com/EttusResearch/uhd). The file
 
 Example files can be found in the `ci-scripts/conf_files/` directory with a
 `usrp` in the name, for instance
-[`gnb.sa.band78.106prb.usrpn310.ddsuu-2x2.conf`](../../ci-scripts/conf_files/gnb.sa.band78.106prb.usrpn310.ddsuu-2x2.conf).
+[`gnb.sa.band78.106prb.usrpn310.ddsuu-2x2.conf`](../../ci-scripts/conf_files/untested/gnb.sa.band78.106prb.usrpn310.ddsuu-2x2.conf).
 
 ## Build
 
