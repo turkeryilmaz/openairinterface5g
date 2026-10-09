@@ -195,7 +195,7 @@ For LEO satellite scenario we assume the LO to be very accurate and the main FO 
 Therefore, we use the command line parameter `--cont-fo-comp 2` to continuously compensate the DL Doppler and pre-compensate the UL Doppler.
 The initial Doppler frequency offset must be provided via command line with the parameter `--initial-fo`.
 
-For other information on optional NR UE command line options, please refer [here](#optional-nr-ue-command-line-options).
+For other information on optional NR UE command line options, please refer [here](./runmodem-nrue.md#optional-nr-ue-command-line-options).
 
 So an example NR UE command for FDD, 5MHz BW, 15 kHz SCS, transparent LEO satellite 5G NR NTN is this:
 ```

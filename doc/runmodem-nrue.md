@@ -32,7 +32,7 @@ sudo ./nr-uesoftmodem -r 106 --numerology 1 --band 78 -C 3619200000 --ssb 516
 
 With the **RFsimulator** (on the same machine), just add the option `--rfsim` to both gNB and NR UE command lines.
 
-UE capabilities can be passed according to the [UE Capabilities](#UE-Capabilities) section.
+UE capabilities can be passed according to the [UE Capabilities](#ue-capabilities) section.
 
 ## Configuration file
 
@@ -271,7 +271,7 @@ In summary:
   * `scp usera@machineA:/the/path/where/you/launched/nr-softmodem/r*config.raw userb@machineB:/the/path/where/you/will/launch/nr-uesoftmodem/`
   * Obviously this operation should be done before launching the `nr-uesoftmodem` executable.
 
-In phy-test mode it is possible to mimic the reception of UE Capabilities at gNB through the command line parameter `--uecap_file`. Refer to the [UE Capabilities](#UE-Capabilities) section for more details.
+In phy-test mode it is possible to mimic the reception of UE Capabilities at gNB through the command line parameter `--uecap_file`. Refer to the [UE Capabilities](#ue-capabilities) section for more details.
 
 ### noS1 setup with OAI UE
 
@@ -307,7 +307,7 @@ The do-ra flag is used to ran the NR Random Access procedures in contention-free
 
 In order to run the RA, the `--do-ra` flag is needed for both the gNB and the UE.
 
-In do-ra mode it is possible to mimic the reception of UE Capabilities at gNB through the command line parameter `--uecap_file`. Refer to the [UE Capabilities](#UE-Capabilities) section for more details.
+In do-ra mode it is possible to mimic the reception of UE Capabilities at gNB through the command line parameter `--uecap_file`. Refer to the [UE Capabilities](#ue-capabilities) section for more details.
 
 To run using the RFsimulator:
 

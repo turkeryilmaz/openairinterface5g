@@ -225,7 +225,7 @@ The list of components defined within oai can be retrieved from the  [config mod
 log init done
 
 ```
-It can also be retrieved when using the telnet server, as explained  [below](### Using the telnet server to configure the logging facility)
+It can also be retrieved when using the telnet server, as explained  [below](#using-the-telnet-server-to-configure-the-logging-facility)
 
 ### parameters to activate conditional code
 | name | type | default | description |
