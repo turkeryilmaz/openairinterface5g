@@ -1153,6 +1153,7 @@ set(NR_PDCP_SRC_UE ${NR_PDCP_SRC})
 set(NR_SDAP_SRC
   ${OPENAIR2_DIR}/SDAP/nr_sdap/nr_sdap.c
   ${OPENAIR2_DIR}/SDAP/nr_sdap/nr_sdap_entity.c
+  ${OPENAIR2_DIR}/SDAP/nr_sdap/nr_sdap_qos_rule.c
   )
 
 set(L2_SRC
@@ -1413,7 +1414,7 @@ target_link_libraries(L2_UE PRIVATE nfapi_pnf_lib)
 target_link_libraries(L2_UE PRIVATE asn1_lte_rrc_hdrs)
 
 add_library( NR_L2_UE ${NR_L2_SRC_UE} ${MAC_NR_SRC_UE} )
-target_link_libraries(NR_L2_UE PRIVATE nr_rlc)
+target_link_libraries(NR_L2_UE PRIVATE nr_rlc ds alg)
 target_link_libraries(NR_L2_UE PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs nr_common nr_ue_power_procedures nr_ue_ra_procedures)
 target_link_libraries(NR_L2_UE PRIVATE nr_nas)
 

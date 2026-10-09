@@ -37,8 +37,10 @@ static void remove_ip_if(nr_sdap_entity_t *entity)
   DevAssert(entity != NULL);
   sdap_tun_endpoint_t *tun = &entity->tun;
 
-  if (!tun->is_gnb)
+  if (!tun->is_gnb) {
+    nr_sdap_qos_rules_free(entity);
     return; /* UE: NAS owns the TUN fd, do not close/destroy */
+  }
   if (tun->sock < 0)
     return;
 
@@ -567,17 +569,16 @@ static void nr_sdap_qfi2drb_map_update(nr_sdap_entity_t *entity, const sdap_conf
   }
 
   if (sdap->role == NO_SDAP_HEADER) {
-    /* TS 37.324 §6.2.2.1: with both headers absent, only one DRB per PDU session is allowed */
-    int mapped_drbs = 0;
-    for (int drb = 1; drb <= MAX_DRBS_PER_UE; drb++) {
-      for (int qfi = 0; qfi < SDAP_MAX_QFI; qfi++) {
-        if (entity->qfi2drb_table[qfi].drb_id == drb) {
-          mapped_drbs++;
-          break;
-        }
+    int qfis_on_this_drb = 0;
+    for (int qfi = 0; qfi < SDAP_MAX_QFI; qfi++) {
+      if (entity->qfi2drb_table[qfi].drb_id == sdap->drb_id) {
+        qfis_on_this_drb++;
       }
     }
-    AssertFatal(mapped_drbs <= 1, "PDU session %d: disabled SDAP but %d DRBs mapped\n", entity->tun.pdusession_id, mapped_drbs);
+    AssertFatal(qfis_on_this_drb <= 1,
+                "PDU session %d DRB %d: both SDAP headers absent: at most one QoS flow per DRB\n",
+        entity->tun.pdusession_id,
+                sdap->drb_id);
   }
 }
 
@@ -620,6 +621,10 @@ static void nr_sdap_add_entity(const int is_gnb, const ue_id_t ue_id, const sdap
   sdap_entity->qfi2drb_map_delete = nr_sdap_qfi2drb_map_del;
   sdap_entity->qfi2drb_map = nr_sdap_qfi2drb;
   sdap_entity->tun.sock = -1;
+
+  // Initialize QoS rules for UL packet filter matching at UE
+  if (!is_gnb)
+    nr_sdap_qos_rules_init(sdap_entity);
 
   // set default DRB
   if (sdap->defaultDRB) {
