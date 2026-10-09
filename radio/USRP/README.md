@@ -20,7 +20,7 @@ Example files can be found in the `ci-scripts/conf_files/` directory with a
 The OAI USRP driver in leverages the [USRP Hardware
 Driver](https://github.com/EttusResearch/uhd) to interface with a USRP.
 `build_oai` has support for installing UHD from package manager (Ubuntu) or from
-source (other distributions or on request). See [`BUILD.md`](./BUILD.md) for
+source (other distributions or on request). See [`BUILD.md`](../../doc/BUILD.md) for
 more information.
 
 Note that OAI comes with a patch for UHD as found in `cmake_targets/tools/`.
@@ -150,7 +150,7 @@ There are two workarounds:
    `gNBs.[0].ul_prbblacklist` in the configuration file.
 
 You can also find more information on this in the [5G/NR gNB with COTS UE
-tutorial](./NR_SA_Tutorial_COTS_UE.md).
+tutorial](../../doc/NR_SA_Tutorial_COTS_UE.md).
 
 ### Sample bit alignment (`rxshift` / TX shift)
 
