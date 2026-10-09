@@ -55,13 +55,13 @@ static void unpack_output(uint32_t *f,
     int i;
     if ((bit_index & 31) == 0) {
       for (i = 0; i < (E >> 5) << 5; i += 32) {
-        simde__m256i f256 = simde_mm256_srli_epi32(*(simde__m256i *)&fp[i], s2);
+        simde__m256i f256 = simde_mm256_srli_epi32(simde_mm256_loadu_si256((simde__m256i *)&fp[i]), s2);
         simde__m256i cshift = simde_mm256_and_si256(simde_mm256_sllv_epi32(f256, shift0), vmask0);
-        f256 = simde_mm256_srli_epi32(*(simde__m256i *)&fp[i + 8], s2);
+        f256 = simde_mm256_srli_epi32(simde_mm256_loadu_si256((simde__m256i *)&fp[i + 8]), s2);
         cshift = simde_mm256_or_si256(simde_mm256_and_si256(simde_mm256_sllv_epi32(f256, shift1), vmask1), cshift);
-        f256 = simde_mm256_srli_epi32(*(simde__m256i *)&fp[i + 16], s2);
+        f256 = simde_mm256_srli_epi32(simde_mm256_loadu_si256((simde__m256i *)&fp[i + 16]), s2);
         cshift = simde_mm256_or_si256(simde_mm256_and_si256(simde_mm256_sllv_epi32(f256, shift2), vmask2), cshift);
-        f256 = simde_mm256_srli_epi32(*(simde__m256i *)&fp[i + 24], s2);
+        f256 = simde_mm256_srli_epi32(simde_mm256_loadu_si256((simde__m256i *)&fp[i + 24]), s2);
         cshift = simde_mm256_or_si256(simde_mm256_and_si256(simde_mm256_sllv_epi32(f256, shift3), vmask3), cshift);
         *(output_p + (bit_index >> 5)) = simde_mm256_extract_epi32(cshift, 0) | simde_mm256_extract_epi32(cshift, 1)
                                          | simde_mm256_extract_epi32(cshift, 2) | simde_mm256_extract_epi32(cshift, 3)
@@ -71,13 +71,13 @@ static void unpack_output(uint32_t *f,
       }
       uint32_t Emod32 = E & 31;
       if (Emod32 != 0) {
-        simde__m256i f256 = simde_mm256_srli_epi32(*(simde__m256i *)&fp[i], s2);
+        simde__m256i f256 = simde_mm256_srli_epi32(simde_mm256_loadu_si256((simde__m256i *)&fp[i]), s2);
         simde__m256i cshift = simde_mm256_and_si256(simde_mm256_sllv_epi32(f256, shift0), vmask0);
-        f256 = simde_mm256_srli_epi32(*(simde__m256i *)&fp[i + 8], s2);
+        f256 = simde_mm256_srli_epi32(simde_mm256_loadu_si256((simde__m256i *)&fp[i + 8]), s2);
         cshift = simde_mm256_or_si256(simde_mm256_and_si256(simde_mm256_sllv_epi32(f256, shift1), vmask1), cshift);
-        f256 = simde_mm256_srli_epi32(*(simde__m256i *)&fp[i + 16], s2);
+        f256 = simde_mm256_srli_epi32(simde_mm256_loadu_si256((simde__m256i *)&fp[i + 16]), s2);
         cshift = simde_mm256_or_si256(simde_mm256_and_si256(simde_mm256_sllv_epi32(f256, shift2), vmask2), cshift);
-        f256 = simde_mm256_srli_epi32(*(simde__m256i *)&fp[i + 24], s2);
+        f256 = simde_mm256_srli_epi32(simde_mm256_loadu_si256((simde__m256i *)&fp[i + 24]), s2);
         cshift = simde_mm256_or_si256(simde_mm256_and_si256(simde_mm256_sllv_epi32(f256, shift3), vmask3), cshift);
         *(output_p + (bit_index >> 5)) =
             (simde_mm256_extract_epi32(cshift, 0) | simde_mm256_extract_epi32(cshift, 1) | simde_mm256_extract_epi32(cshift, 2)
@@ -88,13 +88,13 @@ static void unpack_output(uint32_t *f,
       }
     } else {
       for (i = 0; i < (E >> 5) << 5; i += 32) {
-        simde__m256i f256 = simde_mm256_srli_epi32(*(simde__m256i *)&fp[i], s2);
+        simde__m256i f256 = simde_mm256_srli_epi32(simde_mm256_loadu_si256((simde__m256i *)&fp[i]), s2);
         simde__m256i cshift = simde_mm256_and_si256(simde_mm256_sllv_epi32(f256, shift0), vmask0);
-        f256 = simde_mm256_srli_epi32(*(simde__m256i *)&fp[i + 8], s2);
+        f256 = simde_mm256_srli_epi32(simde_mm256_loadu_si256((simde__m256i *)&fp[i + 8]), s2);
         cshift = simde_mm256_or_si256(simde_mm256_and_si256(simde_mm256_sllv_epi32(f256, shift1), vmask1), cshift);
-        f256 = simde_mm256_srli_epi32(*(simde__m256i *)&fp[i + 16], s2);
+        f256 = simde_mm256_srli_epi32(simde_mm256_loadu_si256((simde__m256i *)&fp[i + 16]), s2);
         cshift = simde_mm256_or_si256(simde_mm256_and_si256(simde_mm256_sllv_epi32(f256, shift2), vmask2), cshift);
-        f256 = simde_mm256_srli_epi32(*(simde__m256i *)&fp[i + 24], s2);
+        f256 = simde_mm256_srli_epi32(simde_mm256_loadu_si256((simde__m256i *)&fp[i + 24]), s2);
         cshift = simde_mm256_or_si256(simde_mm256_and_si256(simde_mm256_sllv_epi32(f256, shift3), vmask3), cshift);
         uint32_t tmp = simde_mm256_extract_epi32(cshift, 0) | simde_mm256_extract_epi32(cshift, 1)
                        | simde_mm256_extract_epi32(cshift, 2) | simde_mm256_extract_epi32(cshift, 3)
@@ -106,13 +106,13 @@ static void unpack_output(uint32_t *f,
       }
       uint32_t Emod32 = E & 31;
       if (Emod32 != 0) {
-        simde__m256i f256 = simde_mm256_srli_epi32(*(simde__m256i *)&fp[i], s2);
+        simde__m256i f256 = simde_mm256_srli_epi32(simde_mm256_loadu_si256((simde__m256i *)&fp[i]), s2);
         simde__m256i cshift = simde_mm256_and_si256(simde_mm256_sllv_epi32(f256, shift0), vmask0);
-        f256 = simde_mm256_srli_epi32(*(simde__m256i *)&fp[i + 8], s2);
+        f256 = simde_mm256_srli_epi32(simde_mm256_loadu_si256((simde__m256i *)&fp[i + 8]), s2);
         cshift = simde_mm256_or_si256(simde_mm256_and_si256(simde_mm256_sllv_epi32(f256, shift1), vmask1), cshift);
-        f256 = simde_mm256_srli_epi32(*(simde__m256i *)&fp[i + 16], s2);
+        f256 = simde_mm256_srli_epi32(simde_mm256_loadu_si256((simde__m256i *)&fp[i + 16]), s2);
         cshift = simde_mm256_or_si256(simde_mm256_and_si256(simde_mm256_sllv_epi32(f256, shift2), vmask2), cshift);
-        f256 = simde_mm256_srli_epi32(*(simde__m256i *)&fp[i + 24], s2);
+        f256 = simde_mm256_srli_epi32(simde_mm256_loadu_si256((simde__m256i *)&fp[i + 24]), s2);
         cshift = simde_mm256_or_si256(simde_mm256_and_si256(simde_mm256_sllv_epi32(f256, shift3), vmask3), cshift);
         uint32_t tmp =
             (simde_mm256_extract_epi32(cshift, 0) | simde_mm256_extract_epi32(cshift, 1) | simde_mm256_extract_epi32(cshift, 2)
@@ -132,13 +132,13 @@ static void unpack_output(uint32_t *f,
     int i;
     if ((bit_index & 31) == 0) {
       for (i = 0; i < (E2 >> 5) << 5; i += 32) {
-        simde__m256i f256 = simde_mm256_srli_epi32(*(simde__m256i *)&fp[i], s2);
+        simde__m256i f256 = simde_mm256_srli_epi32(simde_mm256_loadu_si256((simde__m256i *)&fp[i]), s2);
         simde__m256i cshift = simde_mm256_and_si256(simde_mm256_sllv_epi32(f256, shift0), vmask0);
-        f256 = simde_mm256_srli_epi32(*(simde__m256i *)&fp[i + 8], s2);
+        f256 = simde_mm256_srli_epi32(simde_mm256_loadu_si256((simde__m256i *)&fp[i + 8]), s2);
         cshift = simde_mm256_or_si256(simde_mm256_and_si256(simde_mm256_sllv_epi32(f256, shift1), vmask1), cshift);
-        f256 = simde_mm256_srli_epi32(*(simde__m256i *)&fp[i + 16], s2);
+        f256 = simde_mm256_srli_epi32(simde_mm256_loadu_si256((simde__m256i *)&fp[i + 16]), s2);
         cshift = simde_mm256_or_si256(simde_mm256_and_si256(simde_mm256_sllv_epi32(f256, shift2), vmask2), cshift);
-        f256 = simde_mm256_srli_epi32(*(simde__m256i *)&fp[i + 24], s2);
+        f256 = simde_mm256_srli_epi32(simde_mm256_loadu_si256((simde__m256i *)&fp[i + 24]), s2);
         cshift = simde_mm256_or_si256(simde_mm256_and_si256(simde_mm256_sllv_epi32(f256, shift3), vmask3), cshift);
         *(output_p + (bit_index >> 5)) = simde_mm256_extract_epi32(cshift, 0) | simde_mm256_extract_epi32(cshift, 1)
                                          | simde_mm256_extract_epi32(cshift, 2) | simde_mm256_extract_epi32(cshift, 3)
@@ -148,13 +148,13 @@ static void unpack_output(uint32_t *f,
       }
       uint32_t E2mod32 = E2 & 31;
       if (E2mod32 != 0) {
-        simde__m256i f256 = simde_mm256_srli_epi32(*(simde__m256i *)&fp[i], s2);
+        simde__m256i f256 = simde_mm256_srli_epi32(simde_mm256_loadu_si256((simde__m256i *)&fp[i]), s2);
         simde__m256i cshift = simde_mm256_and_si256(simde_mm256_sllv_epi32(f256, shift0), vmask0);
-        f256 = simde_mm256_srli_epi32(*(simde__m256i *)&fp[i + 8], s2);
+        f256 = simde_mm256_srli_epi32(simde_mm256_loadu_si256((simde__m256i *)&fp[i + 8]), s2);
         cshift = simde_mm256_or_si256(simde_mm256_and_si256(simde_mm256_sllv_epi32(f256, shift1), vmask1), cshift);
-        f256 = simde_mm256_srli_epi32(*(simde__m256i *)&fp[i + 16], s2);
+        f256 = simde_mm256_srli_epi32(simde_mm256_loadu_si256((simde__m256i *)&fp[i + 16]), s2);
         cshift = simde_mm256_or_si256(simde_mm256_and_si256(simde_mm256_sllv_epi32(f256, shift2), vmask2), cshift);
-        f256 = simde_mm256_srli_epi32(*(simde__m256i *)&fp[i + 24], s2);
+        f256 = simde_mm256_srli_epi32(simde_mm256_loadu_si256((simde__m256i *)&fp[i + 24]), s2);
         cshift = simde_mm256_or_si256(simde_mm256_and_si256(simde_mm256_sllv_epi32(f256, shift3), vmask3), cshift);
         *(output_p + (bit_index >> 5)) =
             (simde_mm256_extract_epi32(cshift, 0) | simde_mm256_extract_epi32(cshift, 1) | simde_mm256_extract_epi32(cshift, 2)
@@ -165,13 +165,13 @@ static void unpack_output(uint32_t *f,
       }
     } else {
       for (i = 0; i < (E2 >> 5) << 5; i += 32) {
-        simde__m256i f256 = simde_mm256_srli_epi32(*(simde__m256i *)&fp[i], s2);
+        simde__m256i f256 = simde_mm256_srli_epi32(simde_mm256_loadu_si256((simde__m256i *)&fp[i]), s2);
         simde__m256i cshift = simde_mm256_and_si256(simde_mm256_sllv_epi32(f256, shift0), vmask0);
-        f256 = simde_mm256_srli_epi32(*(simde__m256i *)&fp[i + 8], s2);
+        f256 = simde_mm256_srli_epi32(simde_mm256_loadu_si256((simde__m256i *)&fp[i + 8]), s2);
         cshift = simde_mm256_or_si256(simde_mm256_and_si256(simde_mm256_sllv_epi32(f256, shift1), vmask1), cshift);
-        f256 = simde_mm256_srli_epi32(*(simde__m256i *)&fp[i + 16], s2);
+        f256 = simde_mm256_srli_epi32(simde_mm256_loadu_si256((simde__m256i *)&fp[i + 16]), s2);
         cshift = simde_mm256_or_si256(simde_mm256_and_si256(simde_mm256_sllv_epi32(f256, shift2), vmask2), cshift);
-        f256 = simde_mm256_srli_epi32(*(simde__m256i *)&fp[i + 24], s2);
+        f256 = simde_mm256_srli_epi32(simde_mm256_loadu_si256((simde__m256i *)&fp[i + 24]), s2);
         cshift = simde_mm256_or_si256(simde_mm256_and_si256(simde_mm256_sllv_epi32(f256, shift3), vmask3), cshift);
         uint32_t tmp = simde_mm256_extract_epi32(cshift, 0) | simde_mm256_extract_epi32(cshift, 1)
                        | simde_mm256_extract_epi32(cshift, 2) | simde_mm256_extract_epi32(cshift, 3)
@@ -183,13 +183,13 @@ static void unpack_output(uint32_t *f,
       }
       uint32_t E2mod32 = E2 & 31;
       if (E2mod32 != 0) {
-        simde__m256i f256 = simde_mm256_srli_epi32(*(simde__m256i *)&fp[i], s2);
+        simde__m256i f256 = simde_mm256_srli_epi32(simde_mm256_loadu_si256((simde__m256i *)&fp[i]), s2);
         simde__m256i cshift = simde_mm256_and_si256(simde_mm256_sllv_epi32(f256, shift0), vmask0);
-        f256 = simde_mm256_srli_epi32(*(simde__m256i *)&fp[i + 8], s2);
+        f256 = simde_mm256_srli_epi32(simde_mm256_loadu_si256((simde__m256i *)&fp[i + 8]), s2);
         cshift = simde_mm256_or_si256(simde_mm256_and_si256(simde_mm256_sllv_epi32(f256, shift1), vmask1), cshift);
-        f256 = simde_mm256_srli_epi32(*(simde__m256i *)&fp[i + 16], s2);
+        f256 = simde_mm256_srli_epi32(simde_mm256_loadu_si256((simde__m256i *)&fp[i + 16]), s2);
         cshift = simde_mm256_or_si256(simde_mm256_and_si256(simde_mm256_sllv_epi32(f256, shift2), vmask2), cshift);
-        f256 = simde_mm256_srli_epi32(*(simde__m256i *)&fp[i + 24], s2);
+        f256 = simde_mm256_srli_epi32(simde_mm256_loadu_si256((simde__m256i *)&fp[i + 24]), s2);
         cshift = simde_mm256_or_si256(simde_mm256_and_si256(simde_mm256_sllv_epi32(f256, shift3), vmask3), cshift);
         uint32_t tmp =
             (simde_mm256_extract_epi32(cshift, 0) | simde_mm256_extract_epi32(cshift, 1) | simde_mm256_extract_epi32(cshift, 2)
