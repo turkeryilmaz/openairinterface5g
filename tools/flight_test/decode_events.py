@@ -8,7 +8,8 @@ import re
 from pathlib import Path
 
 NAMES = dict(zip([10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 30, 31,
-                  40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64],
+                  40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64,
+                  65, 66, 67, 68, 69],
                  ['UE_SYNC', 'UE_AGC', 'UE_MEASUREMENTS', 'UE_RA', 'UE_RRC', 'UE_PDU', 'UE_TA',
                   'UE_NAS', 'UE_RRC_TIMER', 'UE_CONTROL', 'GNB_SLOT', 'GNB_UE_BYTES', 'GNB_UE_RADIO', 'GNB_RA', 'GNB_UE_LINK',
                   'GNB_DL_HARQ', 'GNB_UL_HARQ', 'UE_NAS_COUNT', 'RADIO_RX', 'RADIO_TX',
@@ -17,7 +18,8 @@ NAMES = dict(zip([10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25
                   'RADIO_TX_POWER', 'RADIO_TX_POWER_SAMPLES', 'RADIO_TX_REJECT', 'RADIO_TX_POWER_QUALITY', 'UE_TX_CONTROL', 'UE_PATHLOSS_STATE',
                   'UE_SSB_MEASUREMENT', 'UE_SSB_MEASUREMENT_CONTEXT', 'RADIO_RX_PEAK_ENVELOPE', 'RADIO_TX_RELATIVE_POWER',
                   'RADIO_TX_RELATIVE_QUALITY', 'RADIO_TX_RELATIVE_CONFIG', 'RADIO_TX_RELATIVE_ERASURE',
-                  'UE_TX_RELATIVE_BOUNDS', 'RADIO_TX_RELATIVE_SAMPLES', 'RADIO_TX_RELATIVE_GATE']))
+                  'UE_TX_RELATIVE_BOUNDS', 'RADIO_TX_RELATIVE_SAMPLES', 'RADIO_TX_RELATIVE_GATE',
+                  'GNB_PRACH_DECISION', 'GNB_PRACH_TIMING', 'GNB_PRACH_CONFIG', 'UE_TX_RELATIVE_ANCHOR', 'UE_SYNC_ALIGNMENT']))
 FIELDS = ['source_file', 'source_line', 'name', 'event', 'ring', 'sequence', 'mono_ns', 'realtime_ns',
           'a', 'b', 'c', 'd', 'e', 'f']
 
@@ -114,6 +116,7 @@ RADIO_RX_SOURCE_NAMES = {
     2: 'GNB_PUSCH',
     3: 'UE_SEARCH',
     4: 'HEADROOM',
+    5: 'GNB_ACQUISITION',
 }
 RADIO_RX_REASON_NAMES = {
     0: 'HOLD_INVALID',
@@ -127,9 +130,10 @@ RADIO_RX_REASON_NAMES = {
     8: 'REDUCE_OVERLOAD',
     9: 'TRACK_LEVEL',
     10: 'SEARCH_STEP',
+    11: 'ACQUIRE_RESOLUTION',
 }
 RADIO_RX_KNOWN_FLAG_MASK = (1 << 14) - 1
-RADIO_RX_ERROR_REASONS = {5, 9}
+RADIO_RX_ERROR_REASONS = {5, 9, 11}
 RADIO_TX_POWER_STATUS_NAMES = {
     0: 'OK',
     1: 'INVALID',
@@ -314,17 +318,24 @@ RELATIVE_TX_FIELDS = [
     'quantization_error_db', 'quantization_evm_ppb', 'coefficient_q30', 'role', 'component_full_scale',
     'reference_dbfs', 'minimum_nominal', 'maximum_nominal', 'fixed_analog_gain_db',
     'network_pmax_nominal', 'network_pmax_alt_nominal', 'requested_nominal', 'input_energy', 'output_energy', 'input_peak_component', 'output_peak_component',
+    'anchor_cell_id', 'anchor_first_nominal', 'anchor_offset_db', 'anchor_reference_nominal',
 ]
 
 
 def decode_relative_tx(event):
     """Every record stands alone; missing neighbors do not invent a mapping or RF power."""
     kind = event['event']
-    if kind not in (58, 59, 60, 61, 62, 63, 64):
+    if kind not in (58, 59, 60, 61, 62, 63, 64, 68):
         return None
     row = dict(source_file=event['source_file'], source_line=event['source_line'],
                thread_ring=event['ring'], sequence=event['sequence'],
                recorder_mono_ns=event['mono_ns'], recorder_realtime_ns=event['realtime_ns'])
+    if kind == 68:
+        row.update(record_type='anchor', anchor_cell_id=_optional_int64(event['a']),
+                   anchor_first_nominal=_optional_int64(event['b']), anchor_offset_db=_optional_int64(event['c']),
+                   minimum_nominal=_optional_int64(event['d']), maximum_nominal=_optional_int64(event['e']),
+                   anchor_reference_nominal=_optional_int64(event['f']))
+        return row
     if kind == 60:
         row.update(record_type='configuration', role=_enum_name({0: 'UE', 1: 'GNB'}, event['a']),
                    component_full_scale=event['b'], reference_dbfs=_optional_milli_db(event['c']),
@@ -361,6 +372,78 @@ def decode_relative_tx(event):
                    output_energy=None if event['e'] == INT64_MIN else event['e'],
                    input_peak_component=peak >> 32,
                    output_peak_component=None if event['e'] == INT64_MIN else peak & 0xffffffff)
+    return row
+
+
+GNB_PRACH_FIELDS = [
+    'source_file', 'source_line', 'thread_ring', 'sequence', 'recorder_mono_ns', 'recorder_realtime_ns',
+    'record_type', 'frame_slot_raw', 'frame', 'slot', 'occasion_raw', 'gnb', 'occasion', 'frequency_index', 'start_symbol',
+    'decision_raw', 'rapid', 'noise_ready', 'above_threshold', 'indication_has_space', 'accepted',
+    'decision_flags_consistent', 'decision', 'rejection_reasons', 'unknown_decision_bits',
+    'candidate_energy_tenth_db', 'candidate_energy_db', 'noise_i0_tenth_db', 'noise_i0_db',
+    'configured_threshold_tenth_db', 'configured_threshold_db', 'noise_estimate_count', 'noise_estimate_required',
+    'raw_correlation_delay', 'timing_advance', 'configuration_raw', 'prach_format', 'occasion_count',
+    'restricted_set', 'unknown_configuration_bits', 'sequence_length_code', 'sequence_length', 'ncs',
+    'scs_raw', 'prach_scs_code', 'ul_numerology',
+]
+
+
+def _signed32(value):
+    return value - (1 << 32) if value & (1 << 31) else value
+
+
+def decode_gnb_prach(event):
+    """Retain each evaluated-occasion fragment independently; never join SFNs."""
+    kind = event['event']
+    if kind not in (65, 66, 67):
+        return None
+    row = dict(source_file=event['source_file'], source_line=event['source_line'],
+               thread_ring=event['ring'], sequence=event['sequence'],
+               recorder_mono_ns=_optional_int64(event['mono_ns']),
+               recorder_realtime_ns=_optional_int64(event['realtime_ns']),
+               record_type={65: 'decision', 66: 'timing', 67: 'configuration'}[kind],
+               frame_slot_raw=_optional_int64(event['a']), occasion_raw=_optional_int64(event['b']))
+    if event['a'] != INT64_MIN and event['a'] >= 0:
+        row.update(frame=event['a'] // 1000, slot=event['a'] % 1000)
+    if event['b'] != INT64_MIN:
+        occasion = event['b'] & UINT64_MASK
+        row.update(gnb=occasion & 0xffff, occasion=(occasion >> 16) & 0xff,
+                   frequency_index=(occasion >> 24) & 0xff, start_symbol=occasion >> 32)
+    if kind in (65, 66):
+        row['decision_raw'] = _optional_int64(event['f'])
+        if event['f'] != INT64_MIN:
+            decision = event['f'] & UINT64_MASK
+            ready, above, space, accepted = [bool(decision & (1 << bit)) for bit in range(16, 20)]
+            consistent = accepted == (ready and above and space)
+            failures = [reason for passed, reason in ((ready, 'NOISE_NOT_READY'),
+                                                       (above, 'AT_OR_BELOW_THRESHOLD'),
+                                                       (space, 'INDICATION_FULL')) if not passed]
+            row.update(rapid=decision & 0xffff, noise_ready=ready, above_threshold=above,
+                       indication_has_space=space, accepted=accepted, decision_flags_consistent=consistent,
+                       decision=('ACCEPTED' if accepted else 'REJECTED') if consistent else 'INVALID_FLAGS',
+                       rejection_reasons='|'.join(failures), unknown_decision_bits=decision & 0xfff00000)
+            count = _signed32(decision >> 32)
+            row['noise_estimate_count' if kind == 65 else 'noise_estimate_required'] = count
+        if kind == 65:
+            for payload, field in (('c', 'candidate_energy'), ('d', 'noise_i0'), ('e', 'configured_threshold')):
+                value = _optional_int64(event[payload])
+                row[field + '_tenth_db'] = value
+                row[field + '_db'] = None if value is None else value / 10.0
+        else:
+            row.update(raw_correlation_delay=_optional_int64(event['c']), timing_advance=_optional_int64(event['d']),
+                       noise_estimate_count=_optional_int64(event['e']))
+    else:
+        row.update(configuration_raw=_optional_int64(event['c']), sequence_length_code=_optional_int64(event['d']),
+                   sequence_length={0: 839, 1: 139}.get(event['d']), ncs=_optional_int64(event['e']),
+                   scs_raw=_optional_int64(event['f']))
+        if event['c'] != INT64_MIN:
+            config = event['c'] & UINT64_MASK
+            row.update(prach_format=config & 0xff, occasion_count=(config >> 8) & 0xff,
+                       restricted_set=_signed32((config >> 16) & 0xffffffff),
+                       unknown_configuration_bits=config & 0xffff000000000000)
+        if event['f'] != INT64_MIN:
+            scs = event['f'] & UINT64_MASK
+            row.update(prach_scs_code=_signed32(scs & 0xffffffff), ul_numerology=_signed32(scs >> 32))
     return row
 
 
@@ -939,6 +1022,7 @@ def decode(directory, output):
     radio_tx_rejects = []
     radio_tx_level_events = []
     relative_tx_records = []
+    gnb_prach_records = []
     with (output / 'events.csv').open('w', newline='') as dst:
         writer = csv.DictWriter(dst, fieldnames=FIELDS)
         writer.writeheader()
@@ -1025,6 +1109,9 @@ def decode(directory, output):
                             relative = decode_relative_tx(dict(values, source_file=path.name, source_line=number))
                             if relative is not None:
                                 relative_tx_records.append(relative)
+                            prach = decode_gnb_prach(dict(values, source_file=path.name, source_line=number))
+                            if prach is not None:
+                                gnb_prach_records.append(prach)
                             if values['event'] in (47, 48):
                                 radio_tx_level_events.append(dict(values, source_file=path.name, source_line=number))
                             result['events'] += 1
@@ -1081,6 +1168,9 @@ def decode(directory, output):
     _write_csv(output / 'relative_tx.csv', RELATIVE_TX_FIELDS, relative_tx_records)
     result['relative_tx_records'] = len(relative_tx_records)
     result['relative_tx_erasures'] = sum(r['record_type'] == 'erasure' for r in relative_tx_records)
+    _write_csv(output / 'gnb_prach.csv', GNB_PRACH_FIELDS, gnb_prach_records)
+    result['gnb_prach_records'] = len(gnb_prach_records)
+    result['gnb_prach_decisions'] = sum(r['record_type'] == 'decision' for r in gnb_prach_records)
     result['clean_footer_observed'] = len(result['footers']) == 1
     result['ordering'] = 'file order only; compare per-boot monotonic times, never assume continuous UTC'
     (output / 'summary.json').write_text(json.dumps(result, indent=2) + '\n')

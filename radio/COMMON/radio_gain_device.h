@@ -32,6 +32,7 @@ typedef enum {
   RADIO_RX_SOURCE_GNB_PUSCH = 2,
   RADIO_RX_SOURCE_UE_SEARCH = 3,
   RADIO_RX_SOURCE_HEADROOM = 4,
+  RADIO_RX_SOURCE_GNB_ACQUISITION = 5,
 } radio_rx_source_t;
 void radio_gain_device_observe_rx(const radio_gain_sample_context_t *context,
                                   double reference_bin_power,
@@ -57,8 +58,13 @@ enum {
 bool radio_gain_device_tx_selected(void);
 bool radio_gain_device_tx_actuating(void);
 bool radio_gain_device_tx_relative_actuating(void);
-/* Immutable nominal digital bounds, available only after relative attachment.
- * These are not calibrated RF powers. Call before MAC TPC/PHR decisions. */
+/* Initialize the UE translation once from a PRACH request already bounded by
+ * standard Pcmin/Pcmax/p-Max, before intersecting digital bounds. Retain it
+ * through retries; changing the serving PCI requires a new radio attachment. */
+bool radio_gain_device_prepare_relative_ue_tx(int first_nominal, int64_t physical_cell_id);
+/* Frozen nominal digital bounds. Actuating UE bounds require PRACH preparation;
+ * other relative modes use the native envelope. These are not calibrated RF
+ * powers. Call before MAC TPC/PHR decisions. */
 bool radio_gain_device_relative_tx_bounds(int *minimum, int *maximum);
 /* True only for an admission error after a managed TX fault has already queued
  * coordinated shutdown. Other backend errors retain their ordinary handling. */

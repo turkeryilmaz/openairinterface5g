@@ -36,6 +36,12 @@ bool get_prach_tx_power(const NR_UE_MAC_INST_t *mac, int16_t *tx_power)
     if (mac->p_Max != INT_MIN)
       maximum = min(maximum, mac->p_Max);
     int minimum = mac->current_UL_BWP->P_CMIN;
+    if (minimum > maximum)
+      return false;
+    const int64_t first_nominal = min((int64_t)maximum, max((int64_t)minimum, requested_power));
+    if (first_nominal < INT16_MIN || first_nominal > INT16_MAX
+        || !radio_gain_device_prepare_relative_ue_tx(first_nominal, mac->physCellId))
+      return false;
     if (!nr_ue_get_effective_tx_power_bounds(minimum, maximum, &minimum, &maximum))
       return false;
     const int64_t capped_power = min((int64_t)maximum, max((int64_t)minimum, requested_power));

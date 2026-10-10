@@ -224,9 +224,9 @@ static void UE_synch(void *arg) {
   if (ret.cell_detected) {
     syncD->rx_offset = ret.rx_offset;
     const int freq_offset = UE->common_vars.freq_offset; // frequency offset computed with pss in initial sync
-    const int hw_slot_offset =
-        ((ret.rx_offset * 2) / fp->samples_per_subframe * fp->slots_per_subframe)
-        + round((float)((ret.rx_offset * 2) % fp->samples_per_subframe) / fp->samples_per_slot0);
+    const int64_t doubled_offset = (int64_t)ret.rx_offset * 2;
+    const int hw_slot_offset = (doubled_offset / fp->samples_per_subframe * fp->slots_per_subframe)
+                               + round((double)(doubled_offset % fp->samples_per_subframe) / fp->samples_per_slot0);
 
     if (!get_nrUE_params()->cont_fo_comp) {
       // rerun with new cell parameters and frequency-offset
@@ -739,8 +739,8 @@ static bool readFrame(PHY_VARS_NR_UE *UE,
       int tmp = nrue_ru_read(UE, timestamp, (void **)rxp, readBlockSize, fp->nb_antennas_rx);
       if (radio_shutdown_cancelled(tmp))
         goto done;
-      UEscopeCopy(UE, ueTimeDomainSamplesBeforeSync, rxp[0], sizeof(c16_t), 1, readBlockSize, 0);
       AssertFatal(readBlockSize == tmp, "read rf board failed %d", tmp);
+      UEscopeCopy(UE, ueTimeDomainSamplesBeforeSync, rxp[0], sizeof(c16_t), 1, readBlockSize, 0);
       if (remain == sz)
         first_timestamp = *timestamp;
       end_timestamp = *timestamp + tmp;
@@ -927,10 +927,24 @@ void *UE_thread(void *arg)
             decoded_frame_rx = mac->mib_frame;
           }
           LOG_A(PHY, "UE synchronized! decoded_frame_rx=%d skipped_frames=%d\n", decoded_frame_rx, skipped_frames);
-          // shift the frame index with all the frames we trashed meanwhile we perform the synch search
           syncData_t *syncMsg = (syncData_t *)NotifiedFifoData(res);
-          decoded_frame_rx = (decoded_frame_rx + skipped_frames) % MAX_FRAME_NUMBER;
-          intialSyncOffset = syncMsg->rx_offset;
+          const int64_t frame_samples = fp->samples_per_frame;
+          const int64_t raw_offset = syncMsg->rx_offset;
+          const int mib_frame = decoded_frame_rx;
+          int64_t frame_carry = 0;
+          // A negative NR offset identifies a frame boundary behind the capture origin.
+          // Align to the next reachable boundary and advance its SFN by the same whole frames.
+          if (UE->sl_mode != SL_MODE2_SUPPORTED && raw_offset < 0)
+            frame_carry = (-raw_offset + frame_samples - 1) / frame_samples;
+          intialSyncOffset = (int)(raw_offset + frame_carry * frame_samples);
+          decoded_frame_rx = (int)(((int64_t)decoded_frame_rx + skipped_frames + frame_carry) % MAX_FRAME_NUMBER);
+          flight_recorder_emit(FLIGHT_EVENT_UE_SYNC_ALIGNMENT,
+                               UE->Mod_id,
+                               raw_offset,
+                               intialSyncOffset,
+                               frame_samples,
+                               mib_frame,
+                               ((uint64_t)(uint32_t)skipped_frames << 32) | (uint32_t)decoded_frame_rx);
         }
         delNotifiedFIFO_elt(res);
         stream_status = STREAM_STATUS_UNSYNC;
@@ -1119,9 +1133,9 @@ void *UE_thread(void *arg)
     int tmp = nrue_ru_read(UE, &rx_timestamp, (void **)rxp, readBlockSize, fp->nb_antennas_rx);
     if (radio_shutdown_cancelled(tmp))
       break;
+    AssertFatal(readBlockSize == tmp, "read to rf board failed %d", tmp);
     metadata meta = {.slot =  curMsg.proc.nr_slot_rx, .frame =  curMsg.proc.frame_rx};
     UEscopeCopyWithMetadata(UE, ueTimeDomainSamples, rxp[0] - firstSymSamp, sizeof(c16_t), 1, readBlockSize, 0, &meta);
-    AssertFatal(readBlockSize == tmp, "read to rf board failed %d", tmp);
     struct timespec current_time;
     if (clock_gettime(CLOCK_REALTIME, &current_time)) {
       LOG_E(PHY, "clock_gettime failed\n");

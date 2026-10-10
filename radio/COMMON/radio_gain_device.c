@@ -32,6 +32,9 @@ static struct {
    * same qualified operating range; they never publish a different mapper. */
   radio_tx_profile_t tx_profile;
   radio_tx_relative_config_t tx_relative;
+  /* Zero is uninitialized. The low word is offset + 1; the high word is the
+   * serving PCI. Publish once from PRACH, then retain through RA retries. */
+  _Atomic(uint64_t) tx_relative_ue_anchor;
   _Atomic(bool) tx_mapping_valid;
   _Atomic(bool) tx_fault;
   _Atomic(uint64_t) next_relative_gate_ns;
@@ -59,6 +62,8 @@ static struct {
   /* Raw reads run ahead of decoded references. Order each source separately,
    * while every completed physical action updates both cooldowns. */
   radio_rx_policy_state_t rx_headroom_policy;
+  radio_rx_policy_state_t rx_acquisition_policy;
+  uint64_t last_pusch_observation_ns;
   /* Both source-specific filters observe one physical input-referred peak
    * history. request_consumer serializes all accesses. */
   radio_rx_peak_envelope_t rx_peak_envelope;
@@ -93,7 +98,7 @@ static bool binding_atomics_lock_free(void)
          && atomic_is_lock_free(&binding.tx_writer_active) && atomic_is_lock_free(&binding.tx_reconfiguration_active)
          && atomic_is_lock_free(&binding.tx_seen) && atomic_is_lock_free(&binding.shutdown_deferred)
          && atomic_is_lock_free(&binding.tx_mapping_valid) && atomic_is_lock_free(&binding.tx_fault)
-         && atomic_is_lock_free(&binding.next_relative_gate_ns);
+         && atomic_is_lock_free(&binding.next_relative_gate_ns) && atomic_is_lock_free(&binding.tx_relative_ue_anchor);
 }
 
 static bool enter(openair0_device_t *device)
@@ -247,6 +252,7 @@ static bool consume_policy_result(uint64_t now_ns)
   if (result.status == RADIO_GAIN_OK) {
     radio_rx_action_completed(&binding.rx_policy, result.generation, now_ns);
     radio_rx_action_completed(&binding.rx_headroom_policy, result.generation, now_ns);
+    radio_rx_action_completed(&binding.rx_acquisition_policy, result.generation, now_ns);
   }
   return true;
 }
@@ -272,6 +278,8 @@ static void finish_rx_phase_transition(void)
 
   reset_policy_observations(&binding.rx_policy);
   reset_policy_observations(&binding.rx_headroom_policy);
+  reset_policy_observations(&binding.rx_acquisition_policy);
+  binding.last_pusch_observation_ns = 0;
   binding.rx_peak_envelope = (radio_rx_peak_envelope_t){0};
   binding.last_reason = RADIO_RX_HOLD_INVALID;
   binding.last_decision_log_ns = 0;
@@ -462,6 +470,9 @@ void radio_gain_device_observe_rx(const radio_gain_sample_context_t *context,
 {
   const agc_options_t *options = get_agc_options();
   const bool search = source == RADIO_RX_SOURCE_UE_SEARCH;
+  const bool acquisition = source == RADIO_RX_SOURCE_GNB_ACQUISITION;
+  if (acquisition && options->role != AGC_ROLE_GNB)
+    return;
   if (context == NULL || !context->present)
     return;
   /* Ordinary raw reads need only a peak/count comparison. A pending result or
@@ -499,6 +510,12 @@ void radio_gain_device_observe_rx(const radio_gain_sample_context_t *context,
   if (!radio_gain_snapshot(binding.owner, &current) || !current.rx_gain_valid)
     goto done;
   const double scale = binding.rx.component_full_scale;
+  /* Retain the normal PUSCH controller while its qualified reference is fresh.
+   * Once that reference expires, raw acquisition may restore useful resolution
+   * without claiming a serving UE or changing the downlink power. */
+  if (acquisition && binding.last_pusch_observation_ns && now >= binding.last_pusch_observation_ns
+      && now - binding.last_pusch_observation_ns <= rx_policy_config.maximum_age_ns)
+    goto done;
   const double power = activity_valid ? reference_bin_power / scale / scale : context->mean_power_fs;
   radio_rx_observation_t observation = {
       .generation = context->generation,
@@ -509,15 +526,22 @@ void radio_gain_device_observe_rx(const radio_gain_sample_context_t *context,
       .peak_component_dbfs = context->peak_component_fs > 0 ? 20 * log10(context->peak_component_fs) : -200,
       .sampled_components = context->sampled_components,
       .near_rail_components = context->near_rail_components,
-      .power_valid = context->level_valid && isfinite(power) && power >= 0,
+      .power_valid = context->level_valid && isfinite(power) && power >= 0 && (!acquisition || power > 0),
       .gain_valid = context->valid && context->generation == current.generation && now != 0,
       .settled = context->valid,
       .activity_valid = activity_valid && reference_bin_power > 0,
       .search_failed = search && search_failed,
   };
-  radio_rx_policy_state_t *state = source == RADIO_RX_SOURCE_HEADROOM ? &binding.rx_headroom_policy : &binding.rx_policy;
+  radio_rx_policy_state_t *state = acquisition                          ? &binding.rx_acquisition_policy
+                                   : source == RADIO_RX_SOURCE_HEADROOM ? &binding.rx_headroom_policy
+                                                                        : &binding.rx_policy;
   const radio_rx_decision_t decision =
-      radio_rx_decide(&rx_policy_config, state, &binding.rx_peak_envelope, &binding.rx, &observation);
+      acquisition ? radio_rx_acquire_resolution(&rx_policy_config, state, &binding.rx_peak_envelope, &binding.rx, &observation)
+                  : radio_rx_decide(&rx_policy_config, state, &binding.rx_peak_envelope, &binding.rx, &observation);
+  if (source == RADIO_RX_SOURCE_GNB_PUSCH && observation.activity_valid && decision.reason != RADIO_RX_HOLD_INVALID
+      && decision.reason != RADIO_RX_HOLD_UNSUPPORTED && decision.reason != RADIO_RX_HOLD_STALE
+      && decision.reason != RADIO_RX_HOLD_TRANSITION)
+    binding.last_pusch_observation_ns = observation.observation_ns;
   bool submitted = false;
   if (decision.change && options->rx_actuation) {
     radio_gain_request_t request = {
@@ -542,14 +566,15 @@ void radio_gain_device_observe_rx(const radio_gain_sample_context_t *context,
                          milli_db(observation.mean_power_dbfs, observation.power_valid),
                          milli_db(decision.gain_db, observation.gain_valid),
                          flags);
-    flight_recorder_emit(
-        FLIGHT_EVENT_RADIO_RX_DECISION_INPUT,
-        source,
-        context->generation,
-        context->end_sample,
-        milli_db(observation.reported_gain_db, observation.gain_valid),
-        milli_db(observation.peak_component_dbfs, context->level_valid),
-        milli_db(decision.error_db, decision.reason == RADIO_RX_TRACK_LEVEL || decision.reason == RADIO_RX_HOLD_DEADBAND));
+    flight_recorder_emit(FLIGHT_EVENT_RADIO_RX_DECISION_INPUT,
+                         source,
+                         context->generation,
+                         context->end_sample,
+                         milli_db(observation.reported_gain_db, observation.gain_valid),
+                         milli_db(observation.peak_component_dbfs, context->level_valid),
+                         milli_db(decision.error_db,
+                                  decision.reason == RADIO_RX_TRACK_LEVEL || decision.reason == RADIO_RX_HOLD_DEADBAND
+                                      || decision.reason == RADIO_RX_ACQUIRE_RESOLUTION));
     if (decision.peak_bound_valid)
       flight_recorder_emit(FLIGHT_EVENT_RADIO_RX_PEAK_ENVELOPE,
                            source,
@@ -630,6 +655,8 @@ static int observe_read(openair0_device_t *device, openair0_timestamp_t *timesta
     }
     radio_gain_sample_publish(binding.history, &context);
     radio_gain_device_observe_rx(&context, 0, false, false, RADIO_RX_SOURCE_HEADROOM);
+    if (get_agc_options()->role == AGC_ROLE_GNB && (atomic_load_explicit(&binding.read_calls, memory_order_relaxed) & 31U) == 0)
+      radio_gain_device_observe_rx(&context, 0, false, false, RADIO_RX_SOURCE_GNB_ACQUISITION);
   }
   leave();
   return received;
@@ -649,13 +676,74 @@ bool radio_gain_device_tx_relative_actuating(void)
   return relative_tx_selected() && radio_gain_device_tx_actuating();
 }
 
+static bool relative_ue_tx_actuating(void)
+{
+  return radio_gain_device_tx_relative_actuating() && get_agc_options()->role == AGC_ROLE_UE;
+}
+
+static int relative_ue_offset(uint64_t anchor)
+{
+  return anchor ? (int)((uint32_t)anchor - 1U) : 0;
+}
+
+bool radio_gain_device_prepare_relative_ue_tx(int first_nominal, int64_t physical_cell_id)
+{
+  if (!relative_ue_tx_actuating())
+    return !radio_gain_device_tx_relative_actuating();
+  if (first_nominal < INT16_MIN || first_nominal > INT16_MAX || physical_cell_id < 0 || physical_cell_id > 1007
+      || !enter(binding.device))
+    return false;
+
+  bool valid = atomic_load_explicit(&binding.tx_mapping_valid, memory_order_acquire)
+               && !atomic_load_explicit(&binding.tx_fault, memory_order_acquire);
+  uint64_t anchor = atomic_load_explicit(&binding.tx_relative_ue_anchor, memory_order_acquire);
+  if (valid && !anchor) {
+    const int64_t difference = (int64_t)binding.tx_relative.nominal_min - first_nominal;
+    const int64_t offset = difference > 0 ? difference : 0;
+    const int64_t minimum = (int64_t)binding.tx_relative.nominal_min - offset;
+    const int64_t maximum = (int64_t)binding.tx_relative.nominal_max - offset;
+    valid = offset <= INT_MAX && minimum >= INT_MIN && maximum <= INT_MAX;
+    if (valid) {
+      const uint64_t candidate = ((uint64_t)physical_cell_id << 32) | (uint32_t)(offset + 1);
+      if (atomic_compare_exchange_strong_explicit(&binding.tx_relative_ue_anchor,
+                                                  &anchor,
+                                                  candidate,
+                                                  memory_order_acq_rel,
+                                                  memory_order_acquire)) {
+        anchor = candidate;
+        if (flight_recorder_enabled())
+          flight_recorder_emit(FLIGHT_EVENT_UE_TX_RELATIVE_ANCHOR,
+                               physical_cell_id,
+                               first_nominal,
+                               offset,
+                               minimum,
+                               maximum,
+                               llround(binding.tx_relative.nominal_reference - offset));
+      }
+    }
+  }
+  if (valid && anchor && (uint32_t)(anchor >> 32) != physical_cell_id) {
+    /* A new cell must start a new radio attachment. Changing the reference
+     * underneath retained grants would invalidate power control and PHR. */
+    radio_gain_device_reject_tx(-1, -1, FLIGHT_UE_TX_CHANNEL_PRACH, RADIO_TX_REJECT_POWER_CONTROL);
+    valid = false;
+  }
+  leave();
+  return valid && anchor;
+}
+
 bool radio_gain_device_relative_tx_bounds(int *minimum, int *maximum)
 {
   if (!relative_tx_selected() || !minimum || !maximum || !atomic_load_explicit(&binding.tx_mapping_valid, memory_order_acquire)
-      || atomic_load_explicit(&binding.tx_fault, memory_order_acquire))
+      || atomic_load_explicit(&binding.tx_fault, memory_order_acquire)
+      || atomic_load_explicit(&binding.closed, memory_order_acquire))
     return false;
-  *minimum = binding.tx_relative.nominal_min;
-  *maximum = binding.tx_relative.nominal_max;
+  const uint64_t anchor = atomic_load_explicit(&binding.tx_relative_ue_anchor, memory_order_acquire);
+  if (relative_ue_tx_actuating() && !anchor)
+    return false;
+  const int offset = relative_ue_tx_actuating() ? relative_ue_offset(anchor) : 0;
+  *minimum = binding.tx_relative.nominal_min - offset;
+  *maximum = binding.tx_relative.nominal_max - offset;
   return true;
 }
 
@@ -794,6 +882,7 @@ static int owner_set_frequency(openair0_device_t *device, openair0_config_t *con
   int status = -EBUSY;
   if (!atomic_load_explicit(&binding.tx_seen, memory_order_acquire)
       && !atomic_load_explicit(&binding.tx_writer_active, memory_order_acquire)
+      && (!relative_ue_tx_actuating() || !atomic_load_explicit(&binding.tx_relative_ue_anchor, memory_order_acquire))
       && radio_gain_set_tx_admission(binding.owner, false)) {
     radio_gain_result_t snapshot;
     if (radio_gain_snapshot(binding.owner, &snapshot)) {
@@ -1009,6 +1098,8 @@ int radio_gain_device_attach(openair0_device_t *device, openair0_config_t *confi
   binding.policy_request_pending = false;
   binding.rx_policy = (radio_rx_policy_state_t){0};
   binding.rx_headroom_policy = (radio_rx_policy_state_t){0};
+  binding.rx_acquisition_policy = (radio_rx_policy_state_t){0};
+  binding.last_pusch_observation_ns = 0;
   binding.rx_peak_envelope = (radio_rx_peak_envelope_t){0};
   binding.last_reason = RADIO_RX_HOLD_INVALID;
   binding.last_decision_log_ns = 0;
@@ -1020,6 +1111,7 @@ int radio_gain_device_attach(openair0_device_t *device, openair0_config_t *confi
   binding.tx = tx;
   binding.tx_profile = options->tx_profile;
   binding.tx_relative = relative_config;
+  atomic_store_explicit(&binding.tx_relative_ue_anchor, 0, memory_order_relaxed);
   atomic_store_explicit(&binding.tx_mapping_valid, tx_mapping_valid, memory_order_release);
   atomic_store_explicit(&binding.tx_fault, false, memory_order_release);
   atomic_store_explicit(&binding.next_relative_gate_ns, 0, memory_order_relaxed);
@@ -1091,12 +1183,15 @@ bool radio_gain_device_apply_tx(c16_t *samples, uint32_t count, double requested
   const bool apply = radio_gain_device_tx_actuating();
   if (!enter(binding.device))
     return !apply;
-  const bool valid = atomic_load_explicit(&binding.tx_mapping_valid, memory_order_acquire)
-                     && !atomic_load_explicit(&binding.tx_fault, memory_order_acquire);
   const radio_tx_profile_t *p = &binding.tx_profile;
   const bool relative = relative_tx_selected();
+  const uint64_t anchor = atomic_load_explicit(&binding.tx_relative_ue_anchor, memory_order_acquire);
+  const bool relative_ue = relative_ue_tx_actuating();
+  const bool valid = atomic_load_explicit(&binding.tx_mapping_valid, memory_order_acquire)
+                     && !atomic_load_explicit(&binding.tx_fault, memory_order_acquire) && (!relative_ue || anchor);
+  const double mapper_nominal = requested_dbm + (relative_ue ? relative_ue_offset(anchor) : 0);
   const radio_tx_power_result_t result =
-      relative ? radio_tx_apply_relative_power(samples, count, valid ? &binding.tx_relative : NULL, requested_dbm, apply)
+      relative ? radio_tx_apply_relative_power(samples, count, valid ? &binding.tx_relative : NULL, mapper_nominal, apply)
                : radio_tx_apply_power(samples,
                                       count,
                                       p->component_full_scale,
@@ -1177,7 +1272,12 @@ bool radio_gain_device_validate_ue_power_limit(int p_max, int p_max_alt, int fra
   if (relative_tx_selected()) {
     int minimum = 0, maximum = 0;
     const bool ready = radio_gain_device_relative_tx_bounds(&minimum, &maximum);
-    const bool allowed = p_max_alt == INT_MIN && ready && network_ceiling >= minimum;
+    /* This gate precedes PRACH resource selection. Permit reference preparation
+     * without pretending that any active channel already has usable bounds. */
+    const bool preparing = relative_ue_tx_actuating() && !atomic_load_explicit(&binding.tx_relative_ue_anchor, memory_order_acquire)
+                           && atomic_load_explicit(&binding.tx_mapping_valid, memory_order_acquire)
+                           && !atomic_load_explicit(&binding.closed, memory_order_acquire);
+    const bool allowed = p_max_alt == INT_MIN && (preparing || (ready && network_ceiling >= minimum));
     /* The scheduler may never run in slot zero of a TDD frame. Throttle on
      * actual blocked calls, with one non-waiting publication attempt. */
     if (!allowed && flight_recorder_enabled()) {

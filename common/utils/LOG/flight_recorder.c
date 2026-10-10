@@ -93,6 +93,8 @@ static pthread_t g_writer;
 static bool g_writer_started;
 static bool g_atexit_registered;
 static int g_directory_fd = -1;
+static uid_t g_output_uid;
+static gid_t g_output_gid;
 static uint64_t g_capture_id;
 static uint64_t g_file_limit;
 static uint64_t g_total_limit;
@@ -392,6 +394,15 @@ static bool writer_has_space(void)
   return true;
 }
 
+static bool set_output_permissions(int fd)
+{
+  // The supervisor gives its private recorder directory to the invoking user.
+  // Native files, including rotations, must remain readable by that same user.
+  if (geteuid() == 0 && fchown(fd, g_output_uid, g_output_gid) != 0)
+    return false;
+  return fchmod(fd, 0600) == 0;
+}
+
 static bool writer_open_file(unsigned int slot)
 {
   if (slot >= FLIGHT_RECORDER_MAX_FILES) {
@@ -424,7 +435,7 @@ static bool writer_open_file(unsigned int slot)
       recorder_fail("output file creation failed", errno);
       return false;
     }
-    if (fchmod(fd, 0600) != 0) {
+    if (!set_output_permissions(fd)) {
       const int saved_errno = errno;
       close(fd);
       recorder_fail("output file permissions failed", saved_errno);
@@ -743,6 +754,8 @@ static bool configure_output_directory(void)
     recorder_stderr("output directory validation failed", saved_errno);
     return false;
   }
+  g_output_uid = directory_status.st_uid;
+  g_output_gid = directory_status.st_gid;
 
   int64_t monotonic_start;
   if (!time_to_ns(CLOCK_MONOTONIC, &monotonic_start)) {
@@ -776,7 +789,7 @@ static bool configure_output_directory(void)
     recorder_stderr("output file creation failed", saved_errno);
     return false;
   }
-  if (fchmod(first_fd, 0600) != 0) {
+  if (!set_output_permissions(first_fd)) {
     const int saved_errno = errno;
     close(first_fd);
     close(g_directory_fd);

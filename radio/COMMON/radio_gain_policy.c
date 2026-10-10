@@ -139,6 +139,36 @@ radio_rx_decision_t radio_rx_decide(const radio_rx_policy_config_t *c,
   return decision;
 }
 
+radio_rx_decision_t radio_rx_acquire_resolution(const radio_rx_policy_config_t *config,
+                                                radio_rx_policy_state_t *state,
+                                                radio_rx_peak_envelope_t *peak_envelope,
+                                                const radio_gain_channel_t *channel,
+                                                const radio_rx_observation_t *observation)
+{
+  if (!config || !channel || !observation || channel->component_full_scale == 0)
+    return (radio_rx_decision_t){.reason = RADIO_RX_HOLD_INVALID};
+
+  /* Budget one converter code per component for integer rounding/truncation:
+   * two sample units squared across I/Q. A 3% fractional RMS budget gives an
+   * aggregate floor of sqrt(2)/0.03 converter codes. This is an engineering
+   * resolution guard, not measured receive EVM or signal-to-noise ratio. */
+  radio_rx_policy_config_t acquisition = *config;
+  const double full_scale = channel->component_full_scale;
+  acquisition.target_dbfs = 10.0 * log10(2.0 / (0.03 * 0.03 * full_scale * full_scale));
+  radio_rx_observation_t raw = *observation;
+  raw.search_failed = false;
+  raw.activity_valid = raw.mean_power_dbfs < acquisition.target_dbfs - acquisition.deadband_db;
+  radio_rx_decision_t result = radio_rx_decide(&acquisition, state, peak_envelope, channel, &raw);
+  if (result.reason == RADIO_RX_TRACK_LEVEL) {
+    if (result.change && result.gain_db < raw.reported_gain_db) {
+      result.change = false;
+      result.gain_db = raw.reported_gain_db;
+    }
+    result.reason = RADIO_RX_ACQUIRE_RESOLUTION;
+  }
+  return result;
+}
+
 void radio_rx_action_completed(radio_rx_policy_state_t *state, uint64_t generation, uint64_t now_ns)
 {
   if (!state || generation < state->generation || (state->last_observation_valid && now_ns < state->last_observation_ns))

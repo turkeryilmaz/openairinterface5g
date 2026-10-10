@@ -190,6 +190,8 @@ int flight_start_capture(configmodule_interface_t *cfg, int argc, char **argv, c
   if (cfg->num_cfgP > 0 && cfg->cfgP[0] && realpath(cfg->cfgP[0], config)) {
     command[n++] = "--config";
     command[n++] = config;
+    command[n++] = "--config-backend";
+    command[n++] = cfg->cfgmode ? cfg->cfgmode : "unknown";
   }
   const char *pairs[][2] = {{"--output", output},
                             {"--core-ip", core},

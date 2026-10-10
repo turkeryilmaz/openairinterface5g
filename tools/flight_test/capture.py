@@ -16,6 +16,7 @@ import ipaddress
 import json
 import math
 import os
+import pwd
 import queue
 import re
 import selectors
@@ -110,6 +111,46 @@ ANSI_ESCAPE_RE = re.compile(br"\x1b\[[0-?]*[ -/]*[@-~]")
 
 class CaptureError(RuntimeError):
     pass
+
+
+def capture_owner() -> tuple[int, int]:
+    """Keep sudo-created evidence private to the account which launched OAI."""
+    uid, gid = os.geteuid(), os.getegid()
+    sudo_uid = os.environ.get("SUDO_UID")
+    if uid != 0 or sudo_uid is None:
+        return uid, gid
+    if not sudo_uid.isascii() or not sudo_uid.isdecimal():
+        raise CaptureError("invalid sudo invoking UID")
+    try:
+        account = pwd.getpwuid(int(sudo_uid))
+    except (KeyError, OverflowError, ValueError) as exc:
+        raise CaptureError("sudo invoking account is unavailable") from exc
+    return account.pw_uid, account.pw_gid
+
+
+def private_fd(fd: int, mode: int) -> None:
+    if os.geteuid() == 0:
+        os.fchown(fd, *capture_owner())
+    os.fchmod(fd, mode)
+
+
+def private_directory(path: Path, *, parents: bool = False, exist_ok: bool = False) -> None:
+    path.mkdir(mode=0o700, parents=parents, exist_ok=exist_ok)
+    fd = os.open(path, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC)
+    try:
+        if os.fstat(fd).st_uid not in (os.geteuid(), capture_owner()[0]):
+            raise CaptureError("capture directory belongs to another account")
+        private_fd(fd, 0o700)
+    finally:
+        os.close(fd)
+
+
+def open_capture_directory(path: Path) -> int:
+    fd = os.open(path, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC)
+    if os.fstat(fd).st_uid != capture_owner()[0]:
+        os.close(fd)
+        raise PermissionError("capture directory ownership changed")
+    return fd
 
 
 class CaptureHealth:
@@ -345,13 +386,22 @@ class BoundedRotatingWriter:
             self.file_index += 1
             self.stats["rotations"] += 1
         while True:
-            path = self.directory / f"{self.prefix}.{self.file_index:04d}.log"
+            name = f"{self.prefix}.{self.file_index:04d}.log"
             try:
-                self.fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+                directory_fd = open_capture_directory(self.directory)
+                try:
+                    self.fd = os.open(name, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW | os.O_CLOEXEC,
+                                      0o600, dir_fd=directory_fd)
+                    private_fd(self.fd, 0o600)
+                finally:
+                    os.close(directory_fd)
             except FileExistsError:
                 self.file_index += 1
                 continue
             except OSError as exc:
+                if self.fd is not None:
+                    os.close(self.fd)
+                    self.fd = None
                 self._write_error(exc)
                 return False
             self.file_bytes = 0
@@ -444,6 +494,7 @@ class OutputSanitizer:
         self.buffer = bytearray()
         self.discarding_long_line = False
         self.redactor = SecretRedactor()
+        self.reported_revision: Optional[str] = None
         self.stats = {
             "chunks_received": 0,
             "lines_written": 0,
@@ -502,12 +553,16 @@ class OutputSanitizer:
             self.writer.health.unhealthy("recorder_disabled")
         if not self.redactor.accept(line):
             return
+        version = re.search(rb'Version: Branch: [^\r\n]{0,256} Abrev\. Hash: ([0-9a-fA-F]{7,40})(?:\s|$)', line)
+        if version:
+            self.reported_revision = version[1].decode("ascii").lower()
         self.writer.write(line + b"\n")
         self.stats["lines_written"] += 1
 
     def snapshot(self) -> dict[str, Any]:
         result = dict(self.stats)
         result.update(self.redactor.stats)
+        result["reported_oai_revision"] = self.reported_revision
         return result
 
 
@@ -521,24 +576,37 @@ def _write_all(fd: int, content: bytes) -> None:
 
 
 def write_json(path: Path, value: dict[str, Any], health: Optional[CaptureHealth] = None) -> bool:
-    """Write small metadata with no temporary files and a private mode."""
+    """Atomically replace private metadata without truncating a substituted link."""
 
     content = json.dumps(value, sort_keys=True, separators=(",", ":")).encode("utf-8") + b"\n"
     if len(content) > 512 * 1024:
         raise CaptureError("metadata exceeds 512 KiB bound")
+    directory_fd = None
+    temporary_name = f".{path.name}.{uuid.uuid4().hex}.tmp"
     try:
-        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        directory_fd = open_capture_directory(path.parent)
+        fd = os.open(temporary_name, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW | os.O_CLOEXEC,
+                     0o600, dir_fd=directory_fd)
         try:
+            private_fd(fd, 0o600)
             _write_all(fd, content)
             os.fsync(fd)
         finally:
             os.close(fd)
-        os.chmod(path, 0o600)
+        os.replace(temporary_name, path.name, src_dir_fd=directory_fd, dst_dir_fd=directory_fd)
         return True
     except OSError as exc:
         if health is not None:
             health.unhealthy("disk_enospc" if exc.errno == errno.ENOSPC else "metadata_write_error")
         return False
+    finally:
+        if directory_fd is not None:
+            try:
+                os.unlink(temporary_name, dir_fd=directory_fd)
+            except FileNotFoundError:
+                pass
+            finally:
+                os.close(directory_fd)
 
 
 def file_fingerprint(path_text: Optional[str]) -> dict[str, Any]:
@@ -585,6 +653,70 @@ def runtime_module_fingerprints(binary_path: str) -> dict[str, dict[str, Any]]:
     return {name: file_fingerprint(str(parent / name)) for name in names}
 
 
+def redacted_config(text: str) -> str:
+    """Preserve libconfig structure while removing comments and secret assignments.
+
+    Values may span lines or contain nested groups; line-based redaction would
+    either expose continuations or discard useful radio settings after a key.
+    This is an evidence snapshot, not an executable replacement configuration.
+    """
+    tokens = re.findall(r'/\*.*?\*/|//[^\n]*|\#[^\n]*|"(?:\\.|[^"\\])*"|[A-Za-z_][\w.\-]*|\s+|.',
+                        text, flags=re.DOTALL)
+    output: list[str] = []
+    index = 0
+    while index < len(tokens):
+        token = tokens[index]
+        if token.startswith(("/*", "//", "#")):
+            output.append("\n" * token.count("\n") or " ")
+            index += 1
+            continue
+        sensitive = (SENSITIVE_ARG_RE.search(token) or re.fullmatch(r"uicc\d*|sim\d*|k|op|pin", token, re.IGNORECASE))
+        following = index + 1
+        while following < len(tokens) and (tokens[following].isspace() or tokens[following].startswith(("/*", "//", "#"))):
+            following += 1
+        if sensitive and following < len(tokens) and tokens[following] in ("=", ":"):
+            output.append(token + ' = "<redacted>"')
+            index = following + 1
+            depth = 0
+            while index < len(tokens):
+                value = tokens[index]
+                if value == ";" and depth == 0:
+                    break
+                if value in ("{", "[", "("):
+                    depth += 1
+                elif value in ("}", "]", ")"):
+                    if depth == 0:
+                        break
+                    depth -= 1
+                index += 1
+            continue
+        output.append(token)
+        index += 1
+    return "".join(output)
+
+
+def config_snapshot(path_text: Optional[str], backend: Optional[str] = None) -> dict[str, Any]:
+    if path_text is None:
+        return {"state": "unconfigured"}
+    try:
+        with open(path_text, "rb") as source:
+            if not stat.S_ISREG(os.fstat(source.fileno()).st_mode):
+                return {"state": "not_regular"}
+            data = source.read(65537)
+        if len(data) > 65536:
+            return {"state": "too_large", "maximum_source_bytes": 65536}
+        text = data.decode("utf-8", errors="strict")
+    except (OSError, UnicodeError):
+        return {"state": "unavailable"}
+    if backend != "libconfig":
+        return {"state": "text_omitted", "reason": "unsupported_or_unknown_config_backend",
+                "original_sha256": hashlib.sha256(data).hexdigest(), "original_size_bytes": len(data)}
+    return {"state": "redacted", "original_sha256": hashlib.sha256(data).hexdigest(),
+            "original_size_bytes": len(data), "text": redacted_config(text),
+            "includes_expanded": False, "comments_saved": False,
+            "usage": "evidence only; secrets omitted; CLI overrides are recorded separately"}
+
+
 def _git_executable() -> Optional[str]:
     for candidate in ("/usr/bin/git", "/bin/git"):
         if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
@@ -599,7 +731,7 @@ def _stream_git_summary(executable: Optional[str], args: Sequence[str], count_st
         return {"state": "unavailable"}
     try:
         process = subprocess.Popen(
-            [executable, *args],
+            [executable, "--no-optional-locks", *args],
             stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL,
@@ -729,6 +861,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--console", action="store_true", help="mirror redacted console output without blocking capture")
     parser.add_argument("--working-directory", metavar="DIR", help="preserve the softmodem launch directory")
     parser.add_argument("--config", metavar="CONFIG")
+    parser.add_argument("--config-backend", help="Actual OAI config backend; text snapshots require libconfig")
     parser.add_argument("--repo", metavar="REPO")
     parser.add_argument("--core-ip", metavar="IP")
     parser.add_argument("--interface", default="oaitun_ue1")
@@ -994,8 +1127,7 @@ class FlightCapture:
         self.run_dir = run_dir
         print(f"[FLIGHT] logging enabled: {run_dir}", file=sys.stderr, flush=True)
         recorder_dir = run_dir / "recorder"
-        recorder_dir.mkdir(mode=0o700)
-        os.chmod(recorder_dir, 0o700)
+        private_directory(recorder_dir)
         child_cwd, cwd_mode = self._child_cwd(run_dir)
         metadata = self._metadata(recorder_dir, child_cwd, cwd_mode)
         write_json(run_dir / "metadata.json", metadata, self.health)
@@ -1068,25 +1200,25 @@ class FlightCapture:
 
     def _create_run_dir(self) -> Path:
         root = Path(self.args.output).resolve()
-        root.mkdir(mode=0o700, parents=True, exist_ok=True)
-        os.chmod(root, 0o700)
+        private_directory(root, parents=True, exist_ok=True)
         stamp = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime())
         run_dir = Path(tempfile.mkdtemp(prefix=f"{self.args.role}-{stamp}-{os.getpid()}-", dir=root))
-        os.chmod(run_dir, 0o700)
+        private_directory(run_dir, exist_ok=True)
         return run_dir
 
     def _child_cwd(self, run_dir: Path) -> tuple[Path, str]:
         if self.args.working_directory is not None:
             return Path(self.args.working_directory), "original_launch_directory"
         work = run_dir / "working"
-        work.mkdir(mode=0o700)
-        os.chmod(work, 0o700)
+        private_directory(work)
         return work, "per_run_contained"
 
     def _metadata(self, recorder_dir: Path, child_cwd: Path, cwd_mode: str) -> dict[str, Any]:
+        self.source_identity = safe_source_identity(self.args.repo)
         return {
             "schema_version": SCHEMA_VERSION,
             "kind": "flight_capture_metadata",
+            "capture_owner": {"uid": capture_owner()[0], "gid": capture_owner()[1]},
             "run_id": uuid.uuid4().hex,
             "session_id": self.session_id,
             "role": self.args.role,
@@ -1104,8 +1236,9 @@ class FlightCapture:
             "command": redact_argv(self.command),
             "binary": file_fingerprint(self.command[0]),
             "config": file_fingerprint(self.args.config),
+            "config_snapshot": config_snapshot(self.args.config, self.args.config_backend),
             "config_was_absolute": bool(self.args.config and os.path.isabs(self.args.config)),
-            "source": safe_source_identity(self.args.repo),
+            "source": self.source_identity,
             "child_working_directory": {
                 "mode": cwd_mode,
                 "basename": child_cwd.name,
@@ -1143,7 +1276,7 @@ class FlightCapture:
                 "attempt_seconds": self.args.recovery_attempt,
                 "actions": "policy observations only unless recovery is enabled",
             },
-                "config_contents_saved": False,
+                "config_contents_saved": "bounded redacted libconfig snapshot; other/unknown backends retain fingerprints only",
                 "environment_saved": False,
                 "git_diff_saved": False,
                 "numeric_recorder_packet_payloads_saved": False,
@@ -1646,7 +1779,15 @@ class FlightCapture:
             return
         if self.console is not None:
             self.console.close()
+        revision = extra.get("stdout_sanitizer", {}).get("reported_oai_revision")
+        head = getattr(self, "source_identity", {}).get("head")
         status = {
+            "provenance": {
+                "reported_oai_revision": revision,
+                "repository_head_at_launch": head,
+                "reported_revision_matches_head": head.lower().startswith(revision) if head and revision else None,
+                "scope": "reported version comparison; does not prove every loaded object was rebuilt",
+            },
             "console": {
                 "enabled": self.console is not None,
                 "dropped_bytes": self.console.dropped_bytes if self.console else 0,
@@ -1752,14 +1893,12 @@ class RecoverySession:
 
     def _open(self) -> Path:
         root = Path(self.args.output).resolve()
-        root.mkdir(mode=0o700, parents=True, exist_ok=True)
-        os.chmod(root, 0o700)
+        private_directory(root, parents=True, exist_ok=True)
         stamp = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime())
         self.session_dir = Path(tempfile.mkdtemp(prefix=f"{self.args.role}-session-{stamp}-{os.getpid()}-", dir=root))
-        os.chmod(self.session_dir, 0o700)
+        private_directory(self.session_dir, exist_ok=True)
         attempts_dir = self.session_dir / "attempts"
-        attempts_dir.mkdir(mode=0o700)
-        os.chmod(attempts_dir, 0o700)
+        private_directory(attempts_dir)
         journal_limit = self.args.host_budget if self.args.host_budget else min(self.args.chunk_bytes, 4 * MIB)
         quota = ByteQuota(journal_limit)
         self.journal = BoundedRotatingWriter(
@@ -1995,8 +2134,7 @@ class RecoverySession:
                 self.attempt_count += 1
                 ordinal = self.attempt_count
                 attempt_dir = self._attempt_dir(session_dir, ordinal)
-                attempt_dir.mkdir(mode=0o700)
-                os.chmod(attempt_dir, 0o700)
+                private_directory(attempt_dir)
                 # The policy generation belongs to this accepted worker launch. It
                 # is intentionally not consumed when the session object is created.
                 self.policy.begin_attempt(time.monotonic_ns())
