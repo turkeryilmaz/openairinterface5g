@@ -58,7 +58,9 @@ class Startup(unittest.TestCase):
         self.config("log")
         result = self.run_fixture()
         self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
-        self.capture()
+        run = self.capture()
+        metadata = json.loads((run / "metadata.json").read_text())
+        self.assertEqual(metadata["config_snapshot"]["state"], "redacted")
 
     def test_cli_enables_and_overrides_output(self):
         self.config("off")

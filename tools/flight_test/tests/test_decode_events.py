@@ -19,6 +19,139 @@ class DecoderTests(unittest.TestCase):
                     realtime_ns=sequence if realtime_ns is None else realtime_ns,
                     a=a, b=b, c=c, d=d, e=e, f=f)
 
+    def test_acquisition_error_and_signed_alignment_are_retained(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            events = [self.event(45, 1, a=5, b=1, c=100, d=-60000, e=13000, f=11 | (1 << 8)),
+                      self.event(46, 2, a=5, b=1, c=100, d=10000, e=-54000, f=27240),
+                      self.event(69, 3, a=0, b=-552, c=76248, d=76800, e=1023, f=(4 << 32) | 4)]
+            (root / 'oai-flight-recorder-100-0123456789abcdef-0.ndjson').write_text(
+                ''.join(json.dumps(event) + '\n' for event in events))
+            decoder.decode(root, root / 'out')
+            with (root / 'out/radio_rx_decisions.csv').open() as source:
+                row = next(csv.DictReader(source))
+            self.assertEqual(row['source'], 'GNB_ACQUISITION')
+            self.assertEqual(row['reason'], 'ACQUIRE_RESOLUTION')
+            self.assertEqual(row['error_db'], '27.24')
+            with (root / 'out/events.csv').open() as source:
+                alignment = list(csv.DictReader(source))[-1]
+            self.assertEqual(alignment['name'], 'UE_SYNC_ALIGNMENT')
+            self.assertEqual(alignment['b'], '-552')
+
+    def test_gnb_prach_records_preserve_units_packing_and_missing_fragments(self):
+        occasion = 321 | (2 << 16) | (3 << 24) | (13 << 32)
+        accepted = (100 << 32) | (15 << 16) | 63
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            events = [self.event(65, 1, ring=7, a=1023159, b=occasion, c=431, d=211, e=140, f=accepted),
+                      self.event(66, 3, ring=7, a=1023159, b=occasion, c=57, d=1024, e=100, f=accepted),
+                      self.event(67, 8, ring=7, a=1023159, b=occasion, c=12 | (4 << 8) | (2 << 16),
+                                 d=0, e=167, f=3 | (4 << 32)),
+                      self.event(65, 9, ring=7, a=0, b=occasion, c=-11, d=-15, e=140,
+                                 f=(99 << 32) | (4 << 16) | 8),
+                      self.event(67, 10000, ring=7, a=1023159, b=occasion, c=4 | (1 << 8), d=1, e=0, f=1),
+                      self.event(66, 20000, ring=8, a=decoder.INT64_MIN, b=decoder.INT64_MIN,
+                                 c=decoder.INT64_MIN, d=decoder.INT64_MIN, e=decoder.INT64_MIN,
+                                 f=decoder.INT64_MIN, mono_ns=decoder.INT64_MIN)]
+            (root / 'oai-flight-recorder-100-0123456789abcdef-0.ndjson').write_text(
+                ''.join(json.dumps(event) + '\n' for event in events))
+            result = decoder.decode(root, root / 'out')
+            self.assertEqual(result['invalid_lines'], 0)
+            self.assertEqual(result['gnb_prach_records'], 6)
+            self.assertEqual(result['gnb_prach_decisions'], 2)
+            self.assertEqual(result['event_counts']['GNB_PRACH_DECISION'], 2)
+            self.assertEqual(result['event_counts']['GNB_PRACH_TIMING'], 2)
+            self.assertEqual(result['event_counts']['GNB_PRACH_CONFIG'], 2)
+            with (root / 'out/gnb_prach.csv').open(newline='') as source:
+                decision, timing, config, rejected, repeated_sfn, missing = list(csv.DictReader(source))
+            self.assertEqual(decision['frame'], '1023')
+            self.assertEqual(decision['slot'], '159')
+            self.assertEqual(decision['gnb'], '321')
+            self.assertEqual(decision['occasion'], '2')
+            self.assertEqual(decision['frequency_index'], '3')
+            self.assertEqual(decision['start_symbol'], '13')
+            self.assertEqual(decision['rapid'], '63')
+            self.assertEqual(decision['candidate_energy_tenth_db'], '431')
+            self.assertEqual(decision['candidate_energy_db'], '43.1')
+            self.assertEqual(decision['noise_i0_db'], '21.1')
+            self.assertEqual(decision['configured_threshold_db'], '14.0')
+            self.assertEqual(decision['noise_estimate_count'], '100')
+            self.assertEqual(decision['decision'], 'ACCEPTED')
+            self.assertEqual(decision['sequence'], '1')
+            self.assertEqual(decision['thread_ring'], '7')
+            self.assertEqual(decision['source_line'], '1')
+            self.assertEqual(decision['recorder_mono_ns'], '1')
+            self.assertEqual(decision['recorder_realtime_ns'], '1')
+            self.assertEqual(decision['timing_advance'], '')
+            self.assertEqual(decision['noise_estimate_required'], '')
+            self.assertEqual(timing['raw_correlation_delay'], '57')
+            self.assertEqual(timing['timing_advance'], '1024')
+            self.assertEqual(timing['noise_estimate_required'], '100')
+            self.assertEqual(timing['candidate_energy_db'], '')
+            self.assertEqual(config['prach_format'], '12')
+            self.assertEqual(config['occasion_count'], '4')
+            self.assertEqual(config['restricted_set'], '2')
+            self.assertEqual(config['sequence_length_code'], '0')
+            self.assertEqual(config['sequence_length'], '839')
+            self.assertEqual(config['ncs'], '167')
+            self.assertEqual(config['prach_scs_code'], '3')
+            self.assertEqual(config['ul_numerology'], '4')
+            self.assertEqual(config['accepted'], '')
+            self.assertEqual(rejected['frame'], '0')
+            self.assertEqual(rejected['candidate_energy_db'], '-1.1')
+            self.assertEqual(rejected['noise_i0_db'], '-1.5')
+            self.assertEqual(rejected['noise_estimate_count'], '99')
+            self.assertEqual(rejected['decision'], 'REJECTED')
+            self.assertEqual(rejected['rejection_reasons'], 'NOISE_NOT_READY|AT_OR_BELOW_THRESHOLD')
+            self.assertEqual(repeated_sfn['sequence_length'], '139')
+            self.assertEqual(repeated_sfn['decision'], '')
+            self.assertEqual(repeated_sfn['timing_advance'], '')
+            for field in ('frame', 'slot', 'gnb', 'rapid', 'noise_ready', 'accepted', 'noise_estimate_count',
+                          'noise_estimate_required', 'raw_correlation_delay', 'timing_advance', 'recorder_mono_ns'):
+                self.assertEqual(missing[field], '', field)
+
+    def test_gnb_prach_decision_flags_and_unknown_bits(self):
+        for gates in range(8):
+            accepted = gates == 7
+            flags = gates | (8 if accepted else 0)
+            event = dict(self.event(65, 1, f=(100 << 32) | (flags << 16) | 5),
+                         source_file='test', source_line=1)
+            row = decoder.decode_gnb_prach(event)
+            self.assertTrue(row['decision_flags_consistent'])
+            self.assertEqual(row['accepted'], accepted)
+            self.assertEqual(row['noise_ready'], bool(gates & 1))
+            self.assertEqual(row['above_threshold'], bool(gates & 2))
+            self.assertEqual(row['indication_has_space'], bool(gates & 4))
+            event['f'] ^= 1 << 19
+            inconsistent = decoder.decode_gnb_prach(event)
+            self.assertFalse(inconsistent['decision_flags_consistent'])
+            self.assertEqual(inconsistent['decision'], 'INVALID_FLAGS')
+        event = dict(self.event(65, 1, c=decoder.INT64_MIN, d=-3, e=-140,
+                               f=(0xffffffff << 32) | (1 << 20) | (4 << 16) | 65535),
+                     source_file='test', source_line=1)
+        row = decoder.decode_gnb_prach(event)
+        self.assertIsNone(row['candidate_energy_db'])
+        self.assertEqual(row['noise_i0_db'], -0.3)
+        self.assertEqual(row['configured_threshold_db'], -14.0)
+        self.assertEqual(row['noise_estimate_count'], -1)
+        self.assertEqual(row['rapid'], 65535)
+        self.assertEqual(row['unknown_decision_bits'], 1 << 20)
+
+    def test_gnb_prach_configuration_preserves_unknown_and_signed_codes(self):
+        event = dict(self.event(67, 1, c=(1 << 60) | (0xffffffff << 16), d=2,
+                               e=decoder.INT64_MIN, f=-(1 << 32) + 0xfffffffe), source_file='test', source_line=1)
+        row = decoder.decode_gnb_prach(event)
+        self.assertEqual(row['restricted_set'], -1)
+        self.assertEqual(row['unknown_configuration_bits'], 1 << 60)
+        self.assertEqual(row['sequence_length_code'], 2)
+        self.assertIsNone(row['sequence_length'])
+        self.assertIsNone(row['ncs'])
+        self.assertEqual(row['prach_scs_code'], -2)
+        self.assertEqual(row['ul_numerology'], -1)
+        self.assertIsNone(decoder.decode_gnb_prach(self.event(64, 1)))
+        acquisition = decoder.decode_radio_rx_decision_event(self.event(45, 1, a=5))
+        self.assertEqual(acquisition['source'], 'GNB_ACQUISITION')
+
     def test_relative_tx_standalone_records_never_infer_rf_power(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
@@ -74,6 +207,41 @@ class DecoderTests(unittest.TestCase):
             self.assertEqual(unknown['reported_rx_gain_db'], '')
             self.assertEqual(unknown['peak_release_db_per_second'], '')
             self.assertIn('99', unknown['source'])
+
+    def test_relative_tx_anchor_stands_alone_without_rf_or_neighbor_inference(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            events = [self.event(68, 1, a=42, b=-26, c=23, d=-26, e=-6, f=0),
+                      self.event(68, 2, a=42, b=0, c=0, d=-3, e=17, f=23),
+                      self.event(68, 3, a=decoder.INT64_MIN, b=decoder.INT64_MIN,
+                                 c=decoder.INT64_MIN, d=decoder.INT64_MIN,
+                                 e=decoder.INT64_MIN, f=decoder.INT64_MIN)]
+            (root / 'oai-flight-recorder-100-0123456789abcdef-0.ndjson').write_text(
+                ''.join(json.dumps(event) + '\n' for event in events))
+            result = decoder.decode(root, root / 'out')
+            self.assertEqual(result['relative_tx_records'], 3)
+            self.assertEqual(result['event_counts']['UE_TX_RELATIVE_ANCHOR'], 3)
+            self.assertEqual(result['radio_tx_powers'], 0)
+            with (root / 'out/relative_tx.csv').open(newline='') as source:
+                anchored, native, missing = list(csv.DictReader(source))
+            self.assertEqual(anchored['record_type'], 'anchor')
+            self.assertEqual(anchored['anchor_cell_id'], '42')
+            self.assertEqual(anchored['anchor_first_nominal'], '-26')
+            self.assertEqual(anchored['anchor_offset_db'], '23')
+            self.assertEqual(anchored['minimum_nominal'], '-26')
+            self.assertEqual(anchored['maximum_nominal'], '-6')
+            self.assertEqual(anchored['anchor_reference_nominal'], '0')
+            self.assertEqual(native['anchor_offset_db'], '0')
+            self.assertEqual(native['anchor_reference_nominal'], '23')
+            for row in (anchored, native, missing):
+                self.assertEqual(row['reference_dbfs'], '')
+                self.assertEqual(row['realized_digital_dbfs'], '')
+                self.assertEqual(row['channel'], '')
+                self.assertFalse(any('dbm' in field for field in row))
+            for field in ('anchor_cell_id', 'anchor_first_nominal', 'anchor_offset_db',
+                          'anchor_reference_nominal', 'minimum_nominal', 'maximum_nominal'):
+                self.assertEqual(missing[field], '')
+            self.assertEqual(decoder.RADIO_RX_REASON_NAMES[11], 'ACQUIRE_RESOLUTION')
 
     def test_ssb_acceptance_and_clipped_context(self):
         with tempfile.TemporaryDirectory() as temp:
