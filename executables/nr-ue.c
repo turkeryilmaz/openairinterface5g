@@ -360,6 +360,14 @@ static bool RU_write(nr_rxtx_thread_data_t *rxtxD, bool sl_tx_action, c16_t **tx
     const int clock_error = deadline.valid && clock_status != 0 ? errno : deadline.error_code;
     const nr_ue_tx_deadline_check_t check =
         nr_ue_tx_deadline_check(&deadline, clock_status == 0 ? &monotonic_time : NULL, clock_error);
+    if (flight_recorder_enabled())
+      flight_recorder_emit(FLIGHT_EVENT_UE_TX_DEADLINE,
+                           UE->Mod_id,
+                           proc->flight_sync_epoch,
+                           proc->timestamp_tx,
+                           check.valid ? check.monotonic_now_ns : INT64_MIN,
+                           check.valid ? check.lateness_ns : INT64_MIN,
+                           ((uint64_t)(uint32_t)check.error_code << 32) | (uint32_t)flags);
     if (!check.valid) {
       static _Atomic(uint64_t) deadline_error_rate_limit;
       if (nr_ue_tx_deadline_log_due(&deadline_error_rate_limit))
@@ -889,6 +897,7 @@ void *UE_thread(void *arg)
   bool syncRunning = false;
   const int nb_slot_frame = fp->slots_per_frame;
   int absolute_slot = 0, decoded_frame_rx = MAX_FRAME_NUMBER - 1, skipped_frames = 0;
+  uint64_t flight_sync_epoch = 0;
   int tx_wait_for_dlsch[NR_MAX_SLOTS_PER_FRAME];
   // out-of-sync RRC timer tick frame/hfn (see out_of_sync_rrc_timer_tick())
   int out_of_sync_rrc_tick_frame = 0, out_of_sync_rrc_tick_hfn = 0;
@@ -1046,6 +1055,15 @@ void *UE_thread(void *arg)
       if (radio_shutdown_cancelled(ret))
         break;
       AssertFatal(fp->ofdm_symbol_size + fp->nb_prefix_samples0 == ret, "read rf board failed %d", ret);
+      flight_sync_epoch++;
+      if (flight_recorder_enabled())
+        flight_recorder_emit(FLIGHT_EVENT_UE_SYNC_EPOCH,
+                             UE->Mod_id,
+                             flight_sync_epoch,
+                             sync_timestamp,
+                             decoded_frame_rx,
+                             UE->freq_offset,
+                             fp->samples_per_frame);
       // we have the decoded frame index in the return of the synch process
       // and we shifted above to the first slot of next frame
       const int prev_frame_rx = (absolute_slot / nb_slot_frame) % MAX_FRAME_NUMBER;
@@ -1100,6 +1118,7 @@ void *UE_thread(void *arg)
     int slot_nr = absolute_slot % nb_slot_frame;
     nr_rxtx_thread_data_t curMsg = {0};
     curMsg.UE=UE;
+    curMsg.proc.flight_sync_epoch = flight_sync_epoch;
     // update thread index for received subframe
     curMsg.proc.nr_slot_rx  = slot_nr;
     curMsg.proc.nr_slot_tx  = (absolute_slot + duration_rx_to_tx) % nb_slot_frame;
@@ -1251,6 +1270,24 @@ void *UE_thread(void *arg)
     curMsgTx->tx_deadline_monotonic_ns = tx_deadline.monotonic_ns;
     curMsgTx->tx_deadline_error_code = tx_deadline.error_code;
     curMsgTx->tx_deadline_valid = tx_deadline.valid;
+    if (flight_recorder_enabled()) {
+      const int64_t tx_slot =
+          ((int64_t)curMsg.proc.hfn_tx * MAX_FRAME_NUMBER + curMsg.proc.frame_tx) * nb_slot_frame + curMsg.proc.nr_slot_tx;
+      flight_recorder_emit(FLIGHT_EVENT_UE_TX_SCHEDULE,
+                           UE->Mod_id,
+                           flight_sync_epoch,
+                           tx_slot,
+                           writeTimestamp,
+                           tx_deadline.valid ? tx_deadline.monotonic_ns : INT64_MIN,
+                           writeBlockSize);
+      flight_recorder_emit(FLIGHT_EVENT_UE_TX_ANCHOR,
+                           UE->Mod_id,
+                           flight_sync_epoch,
+                           writeTimestamp,
+                           deadline_anchor.valid ? deadline_anchor.radio_timestamp : INT64_MIN,
+                           deadline_anchor.valid ? deadline_anchor.monotonic_ns : INT64_MIN,
+                           ((uint64_t)(uint32_t)fp->ofdm_symbol_size << 32) | (uint32_t)fp->samples_per_subframe);
+    }
 
     int slot = curMsgTx->proc.nr_slot_tx;
     int slot_and_frame = slot + curMsgTx->proc.frame_tx * nb_slot_frame;

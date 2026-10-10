@@ -27,6 +27,7 @@
 #include "SCHED_NR/sched_nr.h"
 
 #include "common/utils/LOG/log.h"
+#include "common/utils/LOG/flight_recorder.h"
 #include "common/utils/time_manager/time_manager.h"
 #include "radio/COMMON/radio_gain_device.h"
 
@@ -143,6 +144,10 @@ static void rx_rf(RU_t *ru, int *frame, int *slot)
   NR_DL_FRAME_PARMS *fp = ru->nr_frame_parms;
   openair0_config_t *cfg   = &ru->openair0_cfg;
   uint32_t samples_per_slot = get_samples_per_slot(*slot, fp);
+  const bool capture = flight_recorder_enabled();
+  const int capture_frame = *frame;
+  const int capture_slot = *slot;
+  bool capture_discarded = false;
   AssertFatal(*slot < fp->slots_per_frame && *slot >= 0, "slot %d is illegal (%d)\n", *slot, fp->slots_per_frame);
 
   start_meas(&ru->rx_fhaul);
@@ -168,6 +173,7 @@ static void rx_rf(RU_t *ru, int *frame, int *slot)
     uint32_t samples_per_slot_prev = get_samples_per_slot((*slot - 1) % fp->slots_per_frame, fp);
 
     if (proc->timestamp_rx - old_ts != samples_per_slot_prev) {
+      capture_discarded = true;
       LOG_D(PHY,
             "rx_rf: rfdevice timing drift of %" PRId64 " samples (ts_off %" PRId64 ")\n",
             proc->timestamp_rx - old_ts - samples_per_slot_prev,
@@ -229,6 +235,7 @@ static void rx_rf(RU_t *ru, int *frame, int *slot)
     uint64_t sample_offset_within_frame = proc->timestamp_rx % fp->samples_per_frame;
     uint64_t sample_offset_within_slot = sample_offset_within_frame - get_samples_slot_timestamp(fp, *slot);
     if (sample_offset_within_slot > 0) {
+      capture_discarded = true;
       samples_to_slot_boundary = get_samples_per_slot(*slot, fp) - sample_offset_within_slot;
       LOG_A(NR_PHY, "Aligning to the slot boundary %lu\n", samples_to_slot_boundary);
 
@@ -244,6 +251,16 @@ static void rx_rf(RU_t *ru, int *frame, int *slot)
     }
   }
 
+  if (capture) {
+    nr_prach_capture_read(&proc->prach_rx_span,
+                          capture_frame,
+                          get_samples_slot_timestamp(fp, capture_slot),
+                          samples_per_slot,
+                          raw_rxs,
+                          ts,
+                          fp->samples_per_frame,
+                          capture_discarded || capture_frame != *frame || capture_slot != *slot);
+  }
   metadata mt = {.slot = *slot, .frame = *frame};
   gNBscopeCopyWithMetadata(ru, gNbTimeDomainSamples, rxp[0], sizeof(c16_t), 1, samples_per_slot, 0, &mt);
 
@@ -597,6 +614,74 @@ static bool wait_free_rx_tti(notifiedFIFO_t *L1_rx_out, bool rx_tti_busy[RU_RX_S
   return true;
 }
 
+static int64_t prach_capture_scaled(double value, double scale, bool valid)
+{
+  if (!valid || !isfinite(value) || value <= (double)INT64_MIN / scale || value >= (double)INT64_MAX / scale)
+    return INT64_MIN;
+  return llround(value * scale);
+}
+
+static void record_prach_extraction(RU_t *ru, const PHY_VARS_gNB *gNB, prach_item_t *p)
+{
+  if (!flight_recorder_enabled())
+    return;
+  NR_DL_FRAME_PARMS *fp = ru->nr_frame_parms;
+  const bool local_rf = ru->fh_south_in == rx_rf;
+  const int duration = get_nr_prach_duration(p->pdu.prach_format);
+  for (int oc = 0; oc < p->pdu.num_prach_ocas && oc < NUMBER_OF_NR_RU_PRACH_OCCASIONS_MAX; oc++) {
+    nr_prach_capture_layout_t *layout = &p->capture[oc];
+    layout->token = nr_prach_capture_token(&ru->proc.prach_rx_span, ru->idx);
+    const int64_t token = layout->token > 0 ? layout->token : INT64_MIN;
+    const int symbol = p->pdu.prach_start_symbol + oc * duration;
+    const uint64_t occasion = (uint16_t)gNB->Mod_id | ((uint64_t)(uint8_t)oc << 16) | ((uint64_t)p->pdu.num_ra << 24)
+                              | ((uint64_t)(uint32_t)symbol << 32);
+    int64_t first = INT64_MIN, end = INT64_MIN;
+    const bool mapped = local_rf && layout->valid && layout->dftlen > 0 && layout->reps > 0
+                        && nr_prach_capture_window(&ru->proc.prach_rx_span,
+                                                   p->frame,
+                                                   layout->buffer_first,
+                                                   (int64_t)layout->dftlen * layout->reps,
+                                                   &first,
+                                                   &end);
+    const bool siso = ru->nb_rx == 1 && layout->antenna_count == 1 && layout->first_antenna == 0;
+    // Outer-read continuity does not certify internal UHD fragments or hardware settling.
+    const uint64_t flags =
+        layout->valid | ((uint64_t)mapped << 1) | ((uint64_t)local_rf << 2) | ((uint64_t)siso << 3) | ((uint64_t)local_rf << 4);
+    flight_recorder_emit(FLIGHT_EVENT_GNB_PRACH_WINDOW, token, (int64_t)p->frame * 1000 + p->slot, occasion, first, end, flags);
+    flight_recorder_emit(
+        FLIGHT_EVENT_GNB_PRACH_LAYOUT,
+        token,
+        layout->valid ? layout->buffer_first : INT64_MIN,
+        layout->valid ? (uint32_t)layout->ncp | ((uint64_t)(uint32_t)layout->reps << 32) : INT64_MIN,
+        layout->valid ? (uint32_t)layout->dftlen | ((uint64_t)(uint32_t)layout->n_ta_offset << 32) : INT64_MIN,
+        layout->valid ? (uint32_t)layout->k | ((uint64_t)layout->first_antenna << 32) | ((uint64_t)layout->antenna_count << 48)
+                      : INT64_MIN,
+        (int64_t)fp->samples_per_subframe * 1000);
+    radio_gain_sample_context_t context = {0};
+    if (mapped && siso)
+      context = radio_gain_device_samples(&ru->rfdevice, first, end);
+    const int64_t gain = prach_capture_scaled(context.rx_gain_db, 1000, context.valid);
+    const bool gain_valid = context.valid && gain != INT64_MIN && context.generation <= INT64_MAX;
+    const uint64_t gain_flags = context.present | ((uint64_t)gain_valid << 1)
+                                | ((uint64_t)context.level_valid << 2) | ((uint64_t)mapped << 3);
+    flight_recorder_emit(FLIGHT_EVENT_GNB_PRACH_GAIN,
+                         token,
+                         gain_flags,
+                         gain_valid ? (int64_t)context.generation : INT64_MIN,
+                         gain_valid ? gain : INT64_MIN,
+                         first,
+                         end);
+    flight_recorder_emit(
+        FLIGHT_EVENT_GNB_PRACH_LEVEL,
+        token,
+        first,
+        end,
+        prach_capture_scaled(context.mean_power_fs, 1000000000.0, context.level_valid),
+        prach_capture_scaled(context.peak_component_fs, 1000000000.0, context.level_valid),
+        context.level_valid ? ((uint64_t)context.near_rail_components << 32) | context.sampled_components : INT64_MIN);
+  }
+}
+
 void *ru_thread(void *param)
 {
   static int ru_thread_status;
@@ -729,6 +814,8 @@ void *ru_thread(void *param)
     /* Remote/no-owner paths retain the exact legacy behavior through absent metadata. */
     proc->rx_gain_context = (radio_gain_sample_context_t){0};
     ru->fh_south_in(ru, &frame, &slot);
+    if (flight_recorder_enabled() && ru->fh_south_in != rx_rf)
+      proc->prach_rx_span.valid = false;
 
     if (initial_wait == 1 && proc->frame_rx < 300) {
       if (proc->frame_rx > 0 && ((proc->frame_rx % 100) == 0) && proc->tti_rx == 0) {
@@ -789,6 +876,7 @@ void *ru_thread(void *param)
         while (get_next_nr_prach(&gNB->prach_ru_queue, &now, &p)) {
           // need to extract RACH data for later processing by rx_nr_prach()
           rx_nr_prach_ru(&p, ru->common.rxdata, ru->nr_frame_parms, ru->N_TA_offset, gNB->enable_analog_das);
+          record_prach_extraction(ru, gNB, &p);
           bool success = spsc_q_put(&gNB->prach_l1rx_queue, &p, sizeof(p));
           // assume prach_l1rx_queue never full: prach_ru_queue filled at
           // constant pace, but prach_l1rx_queue emptied as fast as possible,

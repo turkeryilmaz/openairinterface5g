@@ -14,6 +14,7 @@
 #include "PHY/NR_TRANSPORT/nr_transport_common_proto.h"
 
 #include "common/utils/LOG/log.h"
+#include "common/utils/LOG/flight_recorder.h"
 #include "radio/COMMON/radio_gain_device.h"
 
 #include "T.h"
@@ -351,6 +352,15 @@ int32_t generate_nr_prach(PHY_VARS_NR_UE *ue, uint8_t gNB_id, int frame, uint8_t
       radio_gain_device_reject_tx(frame, slot, 1, RADIO_TX_REJECT_PROFILE);
     }
   }
+
+  if (flight_recorder_enabled())
+    flight_recorder_emit(FLIGHT_EVENT_UE_PRACH_SPAN,
+                         ue->Mod_id,
+                         (int64_t)frame * 1000 + slot,
+                         prach_start,
+                         out - prach_output,
+                         Ncp,
+                         dftlen);
 
 #ifdef NR_PRACH_DEBUG
   LOG_I(PHY,

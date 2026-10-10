@@ -25,6 +25,68 @@ FIELDS = ['source_file', 'source_line', 'name', 'event', 'ring', 'sequence', 'mo
 
 INT64_MIN = -(1 << 63)
 UINT64_MASK = (1 << 64) - 1
+# Each timing record remains independent. In particular, an asynchronous UHD
+# event is not assigned to the most recently submitted packet or repeated SFN.
+TIMING_LAYOUTS = {
+    70: ('RADIO_TX_SUBMIT', ('radio_type', 'raw_requested_ticks', 'final_ticks', 'requested_samples', 'flags', 'advance_samples')),
+    71: ('RADIO_TX_QUEUE', ('radio_type', 'final_ticks', 'requested_samples', 'queue_depth', 'queue_action', 'discarded_count')),
+    72: ('RADIO_TX_SEND', ('radio_type', 'send_sequence', 'final_ticks', 'requested_samples', 'metadata_flags', 'channels')),
+    73: ('RADIO_TX_RESULT', ('radio_type', 'send_sequence', 'final_ticks', 'requested_samples', 'accepted_samples', 'send_outcome')),
+    74: ('RADIO_TX_ASYNC', ('radio_type', 'backend_event_code', 'channel', 'device_ticks', 'metadata_flags', 'reserved')),
+    75: ('RADIO_TX_REORDER', ('radio_type', 'reorder_ticks', 'requested_samples', 'flags', 'reorder_stage', 'reorder_detail')),
+    76: ('UE_TX_ORIGIN', ('radio_index', 'ue', 'ue_relative_ticks', 'origin_ticks', 'raw_requested_ticks', 'requested_samples')),
+    77: ('RADIO_RX_DISCONTINUITY', ('radio_type', 'device_ticks', 'expected_ticks', 'received_samples', 'backend_event_code', 'rx_flags')),
+    80: ('GNB_PRACH_WINDOW', ('prach_token', 'frame_slot', 'occasion_key', 'window_first_ticks', 'window_end_ticks', 'provenance_flags')),
+    81: ('GNB_PRACH_LAYOUT', ('prach_token', 'buffer_offset', 'cp_reps', 'dft_ta', 'bins_antennas', 'sample_rate_hz')),
+    82: ('GNB_PRACH_GAIN', ('prach_token', 'gain_flags', 'gain_generation', 'rx_gain_millidb', 'window_first_ticks', 'window_end_ticks')),
+    83: ('GNB_PRACH_LEVEL', ('prach_token', 'window_first_ticks', 'window_end_ticks', 'power_fs_nano', 'peak_fs_nano', 'component_counts')),
+    84: ('GNB_PRACH_DECISION_LINK', ('prach_token', 'frame_slot', 'occasion_key', 'decision_flags', 'energy_tenth_db', 'noise_threshold')),
+    85: ('UE_TX_SCHEDULE', ('ue', 'sync_epoch', 'absolute_tx_slot', 'ue_relative_ticks', 'deadline_ns', 'requested_samples')),
+    86: ('UE_TX_DEADLINE', ('ue', 'sync_epoch', 'ue_relative_ticks', 'check_ns', 'lateness_ns', 'error_flags')),
+    87: ('UE_SYNC_EPOCH', ('ue', 'sync_epoch', 'ue_relative_ticks', 'decoded_sfn', 'cfo_hz', 'frame_samples')),
+    88: ('UE_PRACH_SPAN', ('ue', 'frame_slot', 'buffer_offset', 'waveform_samples', 'cp_samples', 'dft_samples')),
+    89: ('UE_TX_ANCHOR', ('ue', 'sync_epoch', 'ue_relative_ticks', 'rx_end_ticks', 'rx_end_host_ns', 'guard_rate')),
+    90: ('UE_TX_CHANNEL_CONTEXT', ('ue', 'sync_epoch', 'frame_slot', 'ue_relative_ticks', 'channel_code', 'preamble_index')),
+}
+NAMES.update({number: layout[0] for number, layout in TIMING_LAYOUTS.items()})
+
+
+def decode_radio_timing(event):
+    layout = TIMING_LAYOUTS.get(event['event'])
+    if layout is None:
+        return None
+    row = {key: event.get(key) for key in ('source_file', 'source_line', 'event', 'ring', 'sequence', 'mono_ns', 'realtime_ns')}
+    row['name'] = layout[0]
+    row.update(zip(layout[1], (event[key] for key in 'abcdef')))
+    # Preserve packed values alongside their interpretations and unknown bits.
+    if event['event'] == 86:
+        row['deadline_error'] = (event['f'] & UINT64_MASK) >> 32
+        row['flags'] = event['f'] & 0xffffffff
+        row['check_valid'] = event['d'] != INT64_MIN and row['deadline_error'] == 0
+    elif event['event'] == 89:
+        row['guard_samples'] = (event['f'] & UINT64_MASK) >> 32
+        row['samples_per_subframe'] = event['f'] & 0xffffffff
+    # INT64_MIN is unavailable only where explicitly defined by the producer.
+    nullable = {
+        72: ('final_ticks',), 73: ('accepted_samples', 'final_ticks'), 74: ('device_ticks',), 77: ('device_ticks', 'expected_ticks'),
+        80: ('window_first_ticks', 'window_end_ticks'),
+        81: ('buffer_offset', 'cp_reps', 'dft_ta', 'bins_antennas'),
+        82: ('gain_generation', 'rx_gain_millidb',
+                                                          'window_first_ticks', 'window_end_ticks'),
+        83: ('window_first_ticks', 'window_end_ticks', 'power_fs_nano', 'peak_fs_nano', 'component_counts'),
+        85: ('deadline_ns',), 86: ('check_ns',), 89: ('rx_end_ticks', 'rx_end_host_ns'),
+    }
+    for key in nullable.get(event['event'], ()):
+        if row[key] == INT64_MIN:
+            row[key] = None
+    if 80 <= event['event'] <= 84 and row['prach_token'] == INT64_MIN:
+        row['prach_token'] = None
+    # INT64_MIN is a representable, valid lateness; use the separate error flag.
+    if event['event'] == 86 and not row['check_valid']:
+        row['lateness_ns'] = None
+    return row
+
+
 RADIO_GAIN = 40
 RADIO_GAIN_TIME = 41
 RADIO_RX_LEVEL = 42
@@ -1023,6 +1085,7 @@ def decode(directory, output):
     radio_tx_level_events = []
     relative_tx_records = []
     gnb_prach_records = []
+    timing_records = []
     with (output / 'events.csv').open('w', newline='') as dst:
         writer = csv.DictWriter(dst, fieldnames=FIELDS)
         writer.writeheader()
@@ -1112,6 +1175,9 @@ def decode(directory, output):
                             prach = decode_gnb_prach(dict(values, source_file=path.name, source_line=number))
                             if prach is not None:
                                 gnb_prach_records.append(prach)
+                            timing = decode_radio_timing(dict(values, source_file=path.name, source_line=number))
+                            if timing is not None:
+                                timing_records.append(timing)
                             if values['event'] in (47, 48):
                                 radio_tx_level_events.append(dict(values, source_file=path.name, source_line=number))
                             result['events'] += 1
@@ -1171,6 +1237,10 @@ def decode(directory, output):
     _write_csv(output / 'gnb_prach.csv', GNB_PRACH_FIELDS, gnb_prach_records)
     result['gnb_prach_records'] = len(gnb_prach_records)
     result['gnb_prach_decisions'] = sum(r['record_type'] == 'decision' for r in gnb_prach_records)
+    timing_fields = ['source_file', 'source_line', 'event', 'name', 'ring', 'sequence', 'mono_ns', 'realtime_ns']
+    timing_fields += sorted({field for row in timing_records for field in row} - set(timing_fields))
+    _write_csv(output / 'radio_timing.csv', timing_fields, timing_records)
+    result['radio_timing_records'] = len(timing_records)
     result['clean_footer_observed'] = len(result['footers']) == 1
     result['ordering'] = 'file order only; compare per-boot monotonic times, never assume continuous UTC'
     (output / 'summary.json').write_text(json.dumps(result, indent=2) + '\n')

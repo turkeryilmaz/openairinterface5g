@@ -486,6 +486,8 @@ typedef struct pdsch_scratch_s pdsch_scratch_t;
 
 typedef struct {
   openair0_timestamp_t timestamp_tx;
+  /// Immutable flight diagnostic identity, incremented after receive realignment.
+  uint64_t flight_sync_epoch;
   int gNB_id;
   /// NR slot index within frame_tx [0 .. slots_per_frame - 1] to act upon for transmission
   int nr_slot_tx;

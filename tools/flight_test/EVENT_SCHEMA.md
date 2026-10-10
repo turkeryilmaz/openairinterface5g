@@ -470,3 +470,114 @@ RX decision source5 `GNB_ACQUISITION` uses raw sample level only when no fresh
 qualified PUSCH reference is available. Reason11 `ACQUIRE_RESOLUTION` raises gain
 toward a modest converter-resolution floor, with the existing peak, age, settle,
 step and cooldown guards. It does not establish PRACH detection or signal SNR.
+
+### Correlated radio timing (70–90)
+
+These append-only records are enabled by `flight = "log"` (or `--flight log`),
+including when AGC is off. `radio_timing.csv` retains each event independently,
+with raw packed fields, recorder ring/sequence and both host timestamps. The
+schema adds no implicit packet association to asynchronous driver events. Missing
+records remain missing; check the recorder footer and health records for loss.
+
+| ID | Record | a, b, c, d, e, f |
+|---|---|---|
+|70|RADIO_TX_SUBMIT|radio type, raw requested device ticks, final ticks, sample count, OAI flags, total configured sample advance|
+|71|RADIO_TX_QUEUE|radio type, final ticks, sample count, queue depth, action, discarded count|
+|72|RADIO_TX_SEND|radio type, sender sequence, final ticks, requested count, metadata bits, channels|
+|73|RADIO_TX_RESULT|radio type, sender sequence, final ticks, requested count, accepted count, outcome|
+|74|RADIO_TX_ASYNC|radio type, raw UHD event code, channel, device ticks, validity bits, reserved0|
+|75|RADIO_TX_REORDER|radio type, reorder timestamp, sample count, OAI flags, stage, stage detail|
+|76|UE_TX_ORIGIN|radio index, UE, UE-relative ticks, firstTS origin, raw requested device ticks, count|
+|77|RADIO_RX_DISCONTINUITY|radio type, first device tick, prior expected tick, received count, raw metadata error, validity bits|
+|80|GNB_PRACH_WINDOW|occasion token, frame*1000+slot, occasion key, first DFT device tick, exclusive end tick, provenance flags|
+|81|GNB_PRACH_LAYOUT|occasion token, DFT buffer offset, CP/repetitions packed, DFT length/TA offset packed, bin/antennas packed, sample rate Hz|
+|82|GNB_PRACH_GAIN|occasion token, gain flags, historical generation, historical RX gain in millidB, first tick, exclusive end tick|
+|83|GNB_PRACH_LEVEL|occasion token, first tick, end tick, mean power/full-scale² times1e9, peak component/full-scale times1e9, component counts|
+|84|GNB_PRACH_DECISION_LINK|occasion token, frame*1000+slot, occasion key, RAPID/gates/count packed as65, energy0.1dB, I0/threshold packed|
+|85|UE_TX_SCHEDULE|UE, sync epoch, extended TX slot, UE-relative TX ticks, estimated deadline ns, write count|
+|86|UE_TX_DEADLINE|UE, sync epoch, UE-relative TX ticks, checker monotonic ns, signed lateness ns, error/flags packed|
+|87|UE_SYNC_EPOCH|UE, sync epoch, first aligned symbol UE-relative ticks, receive SFN, estimated CFO Hz, samples/frame|
+|88|UE_PRACH_SPAN|UE, frame*1000+slot, offset in starting slot TX buffer, generated sample count including CP, CP samples, DFT samples|
+|89|UE_TX_ANCHOR|UE, sync epoch, UE-relative TX ticks, RX exclusive-end ticks, host monotonic ns at read completion, guard/rate packed|
+|90|UE_TX_CHANNEL_CONTEXT|UE, sync epoch, frame*1000+slot, UE-relative TX ticks, channel code, preamble index|
+
+All sample timestamps are in samples at the configured radio rate, not ns. UE
+reorder timestamps are relative to `firstTS`; gNB reorder timestamps already use
+the radio domain. Event76 is the explicit UE conversion. Event70 then records
+both command-line and backend TX sample advance. The final UHD timestamp is not
+necessarily the original PHY timestamp. Radio type is not a globally unique
+radio identity: use the session manifest/device serial and recorded radio index.
+
+Queue action1=enqueued,2=dequeued,3=overflow discard. A successful enqueue or
+reorder return does not establish an actual UHD send. Reorder stage0=arrival,
+1=enqueued (detail=queue index),2=direct dispatch (detail=expected timestamp),
+3=queued dispatch (detail=queue index),4=suppressed non-transmitting interval,
+5=clear requested. Stage4 does not transmit; its detail is meaningful only with
+its arrival/queue path. The existing queue algorithm and burst behaviour are
+unchanged by recording.
+
+Send metadata bits are1=timed,2=start-of-burst,4=end-of-burst. Send outcome0 is
+normal return;1 is exception, for which accepted count is `INT64_MIN`/unavailable.
+Shutdown EOB uses sequence−1 and a zero-length, untimed send, separately from
+positive steady-send sequences. Return of the requested count establishes driver
+acceptance only. An asynchronous time error or underflow is recorded individually
+without inventing a one-to-one association with that send. Async bits1=timestamp
+present,2=successful conversion to nonnegative device ticks. Missing or invalid
+times use `INT64_MIN`. Async device timestamps retain UHD's semantics and are not
+a measurement of host queue residence or a calibrated RF emission timestamp.
+
+RX discontinuity bits are1=metadata time present,2=tick conversion valid,
+4=prior expected tick valid,8=out-of-sequence,16=short read. This is exception
+telemetry, not a continuous IQ recording. Inference from absence requires intact
+recorder coverage; host/outer-read continuity cannot prove the integrity of every
+sample inside a returned buffer.
+
+The UE sync epoch increments after successful sample realignment. It is local
+to the process and survives repeated SFNs within that process. Event85 extended
+slot uses the existing HFN/SFN; this is diagnostic identity, not an independently
+verified clock. Event90 immediately precedes PRACH generation on the same
+producer. Event88 records the generated buffer span; power events43/49/58/63
+supply existing request, mapping and energy evidence. Together with85/76/70,
+these allow reconstruction of the intended PRACH radio interval. Do not join
+repeated frame/slot values alone across epochs, restarts or missing records.
+
+Event86 f stores unsigned error code in bits32..63 and OAI burst flags in0..31.
+Error0 plus available checker time establishes a valid estimate; negative
+lateness means headroom. `INT64_MIN` can be valid signed lateness, so the decoder
+uses the separate error/time validity rather than treating every such value as
+missing. Event89 f packs guard samples in32..63 and samples/subframe in0..31.
+Missing anchors/deadlines use `INT64_MIN`. The estimate is based on host
+`CLOCK_MONOTONIC` at RX completion and the received block endpoint. Unknown RX
+buffering/transport latency can make it optimistic; CFO processing, reorder
+waiting, write-thread queues and device transport occur later. Event86 therefore
+means **estimated host deadline**, never a proven hardware deadline.
+
+Records are bounded fixed-size producer operations. Detailed timing records
+cover every scheduled/transmitting interval and every send; they can substantially
+increase disk use versus sampled RF summaries. The asynchronous recorder rotates
+files without overwriting earlier records and stops recording at its configured
+free-space reserve. Optional total-size limits still apply; budget storage from
+the measured event/file rate of the intended configuration. Compare enabled and
+disabled runs before attributing small timing changes to the radio algorithm.
+
+PRACH token80–84 packs an RU-local, monotonically increasing occasion sequence
+in bits8..62 and RU index in0..7. Unsupported/exhausted tokens use `INT64_MIN`;
+they must never be joined together. Window flags are bit0=layout available,
+1=covered by contiguous outer reads,2=local RF path,3=SISO extraction,
+4=internal backend-fragment continuity unknown. The window excludes CP and
+covers the DFT repetitions actually consumed. Frame-buffer coverage is reset
+on wrap, discontinuity, discard or incomplete read; unsupported fronthaul paths
+do not fabricate a local-device timestamp. The mapping does not certify ChEm
+latency or propagation delay.
+
+Layout81 c packs CP in0..31/repetitions in32..63; d packs DFT length in0..31 and
+signed TA offset in32..63; e packs signed starting bin in0..31, first antenna in
+32..47 and antenna count in48..63. Gain82 flags bit0=history present,
+1=valid finite historical gain,2=level summary valid,3=outer-read coverage.
+Only a supported SISO interval uses the matching history lookup. Gain readback
+is not calibrated received power. Level83 summaries conservatively include
+whole intersecting reads, not only PRACH samples; counts pack sampled components
+in0..31 and near-rail components in32..63. Unavailable fields remain blank.
+Decision84 repeats the actual detector inputs and gate result with the exact
+token, avoiding ambiguous joins after SFN wrap; f packs signed I0 in0..31 and
+signed threshold in32..63. Detection decisions are unchanged.

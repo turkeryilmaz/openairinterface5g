@@ -88,6 +88,8 @@ typedef struct {
   int num_seq_errors;
   int64_t tx_count;
   int64_t rx_count;
+  dev_type_t flight_device_type; // immutable before TX/RX owners and async collector start
+  int flight_tx_channels;
   uint32_t flight_rx_calls; // owned by the RX reader, independent of variable-size sample reads
   radio_health_device_t *radio_health;
   pthread_t radio_health_async_thread;
@@ -354,6 +356,27 @@ static int trx_usrp_start(openair0_device_t *device)
   return 0;
 }
 
+static void usrp_flight_record_tx_send(const usrp_state_t *state,
+                                       int64_t sequence,
+                                       openair0_timestamp_t timestamp,
+                                       int samples,
+                                       int channels)
+{
+  const int metadata =
+      (state->tx_md.has_time_spec ? 1 : 0) | (state->tx_md.start_of_burst ? 2 : 0) | (state->tx_md.end_of_burst ? 4 : 0);
+  flight_recorder_emit(FLIGHT_EVENT_RADIO_TX_SEND, state->flight_device_type, sequence, timestamp, samples, metadata, channels);
+}
+
+static void usrp_flight_record_tx_result(const usrp_state_t *state,
+                                         int64_t sequence,
+                                         openair0_timestamp_t timestamp,
+                                         int samples,
+                                         int64_t accepted,
+                                         int outcome)
+{
+  flight_recorder_emit(FLIGHT_EVENT_RADIO_TX_RESULT, state->flight_device_type, sequence, timestamp, samples, accepted, outcome);
+}
+
 static void trx_usrp_send_end_of_burst(usrp_state_t *s)
 {
   // if last packet sent was end of burst no need to do anything. otherwise send end of burst packet
@@ -362,7 +385,20 @@ static void trx_usrp_send_end_of_burst(usrp_state_t *s)
   s->tx_md.end_of_burst = true;
   s->tx_md.start_of_burst = false;
   s->tx_md.has_time_spec = false;
-  s->tx_stream->send("", 0, s->tx_md);
+  /* Normal close sends this once, after joining the optional sender. Reserve
+   * -1 so teardown never reads or advances the steady sender's tx_count. */
+  const bool recording = flight_recorder_enabled();
+  if (recording)
+    usrp_flight_record_tx_send(s, -1, INT64_MIN, 0, s->flight_tx_channels);
+  try {
+    const size_t accepted = s->tx_stream->send("", 0, s->tx_md);
+    if (recording)
+      usrp_flight_record_tx_result(s, -1, INT64_MIN, 0, accepted, 0);
+  } catch (...) {
+    if (recording)
+      usrp_flight_record_tx_result(s, -1, INT64_MIN, 0, INT64_MIN, 1);
+    throw;
+  }
 }
 
 static void trx_usrp_finish_rx(usrp_state_t *s)
@@ -502,8 +538,11 @@ static void usrp_radio_health_record_rx_start(usrp_state_t *state, size_t reques
   radio_health_counter_add(state->radio_health, RADIO_HEALTH_METRIC_RX_REQUESTED_SAMPLES, (uint64_t)requested);
 }
 
-static int usrp_radio_health_send(usrp_state_t *state, void **buffers, int samples, int channels)
+static int usrp_radio_health_send(usrp_state_t *state, void **buffers, int samples, int channels, openair0_timestamp_t timestamp)
 {
+  const bool recording = flight_recorder_enabled();
+  const int64_t sequence = recording ? state->tx_count : 0;
+  bool send_started = false;
   try {
     if (channels > 1) {
       std::vector<void *> buffer_pointers;
@@ -512,7 +551,13 @@ static int usrp_radio_health_send(usrp_state_t *state, void **buffers, int sampl
       usrp_radio_health_record_tx_start(state, samples);
       if (state->radio_health != NULL)
         radio_health_gauge_set(state->radio_health, RADIO_HEALTH_METRIC_TX_SEND_INFLIGHT, 1);
+      if (recording) {
+        usrp_flight_record_tx_send(state, sequence, timestamp, samples, channels);
+        send_started = true;
+      }
       const int accepted = (int)state->tx_stream->send(buffer_pointers, samples, state->tx_md);
+      if (recording)
+        usrp_flight_record_tx_result(state, sequence, timestamp, samples, accepted, 0);
       if (state->radio_health != NULL)
         radio_health_gauge_set(state->radio_health, RADIO_HEALTH_METRIC_TX_SEND_INFLIGHT, 0);
       return accepted;
@@ -520,11 +565,20 @@ static int usrp_radio_health_send(usrp_state_t *state, void **buffers, int sampl
     usrp_radio_health_record_tx_start(state, samples);
     if (state->radio_health != NULL)
       radio_health_gauge_set(state->radio_health, RADIO_HEALTH_METRIC_TX_SEND_INFLIGHT, 1);
+    if (recording) {
+      usrp_flight_record_tx_send(state, sequence, timestamp, samples, channels);
+      send_started = true;
+    }
     const int accepted = (int)state->tx_stream->send(buffers[0], samples, state->tx_md);
+    if (recording)
+      usrp_flight_record_tx_result(state, sequence, timestamp, samples, accepted, 0);
     if (state->radio_health != NULL)
       radio_health_gauge_set(state->radio_health, RADIO_HEALTH_METRIC_TX_SEND_INFLIGHT, 0);
     return accepted;
   } catch (...) {
+    /* Buffer preparation can throw before send; do not invent a UHD result. */
+    if (recording && send_started)
+      usrp_flight_record_tx_result(state, sequence, timestamp, samples, INT64_MIN, 1);
     if (state->radio_health != NULL) {
       radio_health_gauge_set(state->radio_health, RADIO_HEALTH_METRIC_TX_SEND_INFLIGHT, 0);
       radio_health_counter_add(state->radio_health, RADIO_HEALTH_METRIC_TX_SEND_EXCEPTIONS, 1);
@@ -572,6 +626,21 @@ static size_t usrp_radio_health_recv(usrp_state_t *state, void *buffer, size_t s
 
 static void usrp_radio_health_record_async_event(usrp_state_t *state, const uhd::async_metadata_t &metadata)
 {
+  if (flight_recorder_enabled()) {
+    uint64_t device_ticks = 0;
+    const bool device_time_valid =
+        metadata.has_time_spec
+        && usrp_radio_health_time_to_ticks(metadata.time_spec, state->radio_health_tx_sample_rate, &device_ticks)
+        && device_ticks <= INT64_MAX;
+    const int flags = (metadata.has_time_spec ? 1 : 0) | (device_time_valid ? 2 : 0);
+    flight_recorder_emit(FLIGHT_EVENT_RADIO_TX_ASYNC,
+                         state->flight_device_type,
+                         metadata.event_code,
+                         metadata.channel,
+                         device_time_valid ? (int64_t)device_ticks : INT64_MIN,
+                         flags,
+                         0);
+  }
   if (state->radio_health == NULL)
     return;
 
@@ -702,58 +771,81 @@ static void usrp_radio_health_stop_async(usrp_state_t *state)
 
 static void usrp_radio_health_record_rx(usrp_state_t *state, size_t requested, size_t received, const uhd::rx_metadata_t &metadata)
 {
-  if (state->radio_health == NULL)
+  const bool recording = flight_recorder_enabled();
+  if (state->radio_health == NULL && !recording)
     return;
 
-  radio_health_counter_add(state->radio_health, RADIO_HEALTH_METRIC_RX_RETURNED_SAMPLES, (uint64_t)received);
-  if (received < requested)
-    radio_health_counter_add(state->radio_health, RADIO_HEALTH_METRIC_RX_SHORT_CALLS, 1);
-  if (received == 0)
-    radio_health_counter_add(state->radio_health, RADIO_HEALTH_METRIC_RX_ZERO_RETURN_CALLS, 1);
+  if (state->radio_health != NULL) {
+    radio_health_counter_add(state->radio_health, RADIO_HEALTH_METRIC_RX_RETURNED_SAMPLES, (uint64_t)received);
+    if (received < requested)
+      radio_health_counter_add(state->radio_health, RADIO_HEALTH_METRIC_RX_SHORT_CALLS, 1);
+    if (received == 0)
+      radio_health_counter_add(state->radio_health, RADIO_HEALTH_METRIC_RX_ZERO_RETURN_CALLS, 1);
 
-  switch (metadata.error_code) {
-    case uhd::rx_metadata_t::ERROR_CODE_NONE:
-      radio_health_counter_add(state->radio_health, RADIO_HEALTH_METRIC_RX_ERROR_NONE, 1);
-      break;
-    case uhd::rx_metadata_t::ERROR_CODE_TIMEOUT:
-      radio_health_counter_add(state->radio_health, RADIO_HEALTH_METRIC_RX_ERROR_TIMEOUT, 1);
-      break;
-    case uhd::rx_metadata_t::ERROR_CODE_LATE_COMMAND:
-      radio_health_counter_add(state->radio_health, RADIO_HEALTH_METRIC_RX_ERROR_LATE_COMMAND, 1);
-      break;
-    case uhd::rx_metadata_t::ERROR_CODE_BROKEN_CHAIN:
-      radio_health_counter_add(state->radio_health, RADIO_HEALTH_METRIC_RX_ERROR_BROKEN_CHAIN, 1);
-      break;
-    case uhd::rx_metadata_t::ERROR_CODE_OVERFLOW:
-      if (!metadata.out_of_sequence)
-        radio_health_counter_add(state->radio_health, RADIO_HEALTH_METRIC_RX_ERROR_OVERFLOW, 1);
-      break;
-    case uhd::rx_metadata_t::ERROR_CODE_ALIGNMENT:
-      radio_health_counter_add(state->radio_health, RADIO_HEALTH_METRIC_RX_ERROR_ALIGNMENT, 1);
-      break;
-    case uhd::rx_metadata_t::ERROR_CODE_BAD_PACKET:
-      radio_health_counter_add(state->radio_health, RADIO_HEALTH_METRIC_RX_ERROR_BAD_PACKET, 1);
-      break;
-    default:
-      radio_health_counter_add(state->radio_health, RADIO_HEALTH_METRIC_RX_ERROR_OTHER, 1);
-      break;
+    switch (metadata.error_code) {
+      case uhd::rx_metadata_t::ERROR_CODE_NONE:
+        radio_health_counter_add(state->radio_health, RADIO_HEALTH_METRIC_RX_ERROR_NONE, 1);
+        break;
+      case uhd::rx_metadata_t::ERROR_CODE_TIMEOUT:
+        radio_health_counter_add(state->radio_health, RADIO_HEALTH_METRIC_RX_ERROR_TIMEOUT, 1);
+        break;
+      case uhd::rx_metadata_t::ERROR_CODE_LATE_COMMAND:
+        radio_health_counter_add(state->radio_health, RADIO_HEALTH_METRIC_RX_ERROR_LATE_COMMAND, 1);
+        break;
+      case uhd::rx_metadata_t::ERROR_CODE_BROKEN_CHAIN:
+        radio_health_counter_add(state->radio_health, RADIO_HEALTH_METRIC_RX_ERROR_BROKEN_CHAIN, 1);
+        break;
+      case uhd::rx_metadata_t::ERROR_CODE_OVERFLOW:
+        if (!metadata.out_of_sequence)
+          radio_health_counter_add(state->radio_health, RADIO_HEALTH_METRIC_RX_ERROR_OVERFLOW, 1);
+        break;
+      case uhd::rx_metadata_t::ERROR_CODE_ALIGNMENT:
+        radio_health_counter_add(state->radio_health, RADIO_HEALTH_METRIC_RX_ERROR_ALIGNMENT, 1);
+        break;
+      case uhd::rx_metadata_t::ERROR_CODE_BAD_PACKET:
+        radio_health_counter_add(state->radio_health, RADIO_HEALTH_METRIC_RX_ERROR_BAD_PACKET, 1);
+        break;
+      default:
+        radio_health_counter_add(state->radio_health, RADIO_HEALTH_METRIC_RX_ERROR_OTHER, 1);
+        break;
+    }
+    if (metadata.out_of_sequence)
+      radio_health_counter_add(state->radio_health, RADIO_HEALTH_METRIC_RX_OUT_OF_SEQUENCE, 1);
   }
-  if (metadata.out_of_sequence)
-    radio_health_counter_add(state->radio_health, RADIO_HEALTH_METRIC_RX_OUT_OF_SEQUENCE, 1);
 
   uint64_t device_ticks = 0;
   const bool device_time_valid =
       metadata.has_time_spec
       && usrp_radio_health_time_to_ticks(metadata.time_spec, state->radio_health_rx_sample_rate, &device_ticks);
+  if (recording) {
+    const bool current_valid = device_time_valid && device_ticks <= INT64_MAX;
+    const bool previous_valid = state->radio_health_rx_previous_time_valid && state->radio_health_rx_expected_ticks <= INT64_MAX;
+    const bool timestamp_gap =
+        device_time_valid && state->radio_health_rx_previous_time_valid && device_ticks != state->radio_health_rx_expected_ticks;
+    const bool short_read = received < requested;
+    if (timestamp_gap || metadata.error_code != uhd::rx_metadata_t::ERROR_CODE_NONE || short_read || !current_valid) {
+      const int flags = (metadata.has_time_spec ? 1 : 0) | (current_valid ? 2 : 0) | (previous_valid ? 4 : 0)
+                        | (metadata.out_of_sequence ? 8 : 0) | (short_read ? 16 : 0);
+      flight_recorder_emit(FLIGHT_EVENT_RADIO_RX_DISCONTINUITY,
+                           state->flight_device_type,
+                           current_valid ? (int64_t)device_ticks : INT64_MIN,
+                           previous_valid ? (int64_t)state->radio_health_rx_expected_ticks : INT64_MIN,
+                           received,
+                           metadata.error_code,
+                           flags);
+    }
+  }
   if (device_time_valid && received > 0) {
-    if (state->radio_health_rx_previous_time_valid && device_ticks != state->radio_health_rx_expected_ticks)
+    if (state->radio_health != NULL && state->radio_health_rx_previous_time_valid
+        && device_ticks != state->radio_health_rx_expected_ticks)
       radio_health_counter_add(state->radio_health, RADIO_HEALTH_METRIC_RX_TIMESTAMP_GAPS, 1);
     state->radio_health_rx_expected_ticks = device_ticks + (uint64_t)received;
     state->radio_health_rx_previous_time_valid = true;
   } else {
     state->radio_health_rx_previous_time_valid = false;
   }
-  radio_health_observe_rx_metadata(state->radio_health, (uint64_t)metadata.error_code, device_time_valid, device_ticks);
+  if (state->radio_health != NULL)
+    radio_health_observe_rx_metadata(state->radio_health, (uint64_t)metadata.error_code, device_time_valid, device_ticks);
 }
 
 /*! \brief Terminate operation of the USRP transceiver -- free all associated resources
@@ -812,7 +904,16 @@ static int trx_usrp_write(openair0_device_t *device,
 {
   int ret=0;
   usrp_state_t *s = (usrp_state_t *)device->priv;
+  const openair0_timestamp_t raw_timestamp = timestamp;
   timestamp -= device->openair0_cfg->command_line_sample_advance + device->openair0_cfg->tx_sample_advance;
+  if (flight_recorder_enabled())
+    flight_recorder_emit(FLIGHT_EVENT_RADIO_TX_SUBMIT,
+                         device->type,
+                         raw_timestamp,
+                         timestamp,
+                         nsamps,
+                         flags,
+                         (int64_t)device->openair0_cfg->command_line_sample_advance + device->openair0_cfg->tx_sample_advance);
 
   radio_tx_burst_flag_t flags_burst = (radio_tx_burst_flag_t) (flags & 0xf);
 
@@ -860,7 +961,7 @@ static int trx_usrp_write(openair0_device_t *device,
       s->tx_md.time_spec = uhd::time_spec_t::from_ticks(timestamp, s->sample_rate);
       s->tx_count++;
 
-      ret = usrp_radio_health_send(s, buff, nsamps, cc);
+      ret = usrp_radio_health_send(s, buff, nsamps, cc, timestamp);
       usrp_radio_health_record_tx_result(s, nsamps, ret);
 
       if (flight_recorder_enabled() && (ret != nsamps || (s->tx_count & 1023) == 0))
@@ -887,6 +988,8 @@ static int trx_usrp_write(openair0_device_t *device,
         }
         write_thread->end = write_thread->start;
         write_thread->count_write = 0;
+        if (flight_recorder_enabled())
+          flight_recorder_emit(FLIGHT_EVENT_RADIO_TX_QUEUE, device->type, timestamp, nsamps, 0, 3, discarded);
       }
 
       end = write_thread->end;
@@ -899,6 +1002,8 @@ static int trx_usrp_write(openair0_device_t *device,
         write_package[end].buff[i] = buff[i];
       write_thread->count_write++;
       write_thread->end = (write_thread->end + 1) % MAX_WRITE_THREAD_PACKAGE;
+      if (flight_recorder_enabled())
+        flight_recorder_emit(FLIGHT_EVENT_RADIO_TX_QUEUE, device->type, timestamp, nsamps, write_thread->count_write, 1, 0);
       if (s->radio_health != NULL) {
         const uint64_t depth = (uint64_t)write_thread->count_write;
         radio_health_counter_add(s->radio_health, RADIO_HEALTH_METRIC_TX_QUEUE_ENQUEUES, 1);
@@ -959,6 +1064,8 @@ void *trx_usrp_write_thread(void * arg)
     last_packet  = write_package[start].last_packet;
     write_thread->start = (write_thread->start + 1)% MAX_WRITE_THREAD_PACKAGE;
     write_thread->count_write--;
+    if (flight_recorder_enabled())
+      flight_recorder_emit(FLIGHT_EVENT_RADIO_TX_QUEUE, device->type, timestamp, nsamps, write_thread->count_write, 2, 0);
     if (s->radio_health != NULL) {
       radio_health_counter_add(s->radio_health, RADIO_HEALTH_METRIC_TX_QUEUE_DEQUEUES, 1);
       radio_health_gauge_set(s->radio_health, RADIO_HEALTH_METRIC_TX_QUEUE_DEPTH, (uint64_t)write_thread->count_write);
@@ -975,7 +1082,7 @@ void *trx_usrp_write_thread(void * arg)
     LOG_D(PHY,"usrp_tx_write: tx_count %llu SoB %d, EoB %d, TS %llu\n",(unsigned long long)s->tx_count,s->tx_md.start_of_burst,s->tx_md.end_of_burst,(unsigned long long)timestamp); 
     s->tx_count++;
 
-    ret = usrp_radio_health_send(s, buff, nsamps, cc);
+    ret = usrp_radio_health_send(s, buff, nsamps, cc, timestamp);
     usrp_radio_health_record_tx_result(s, nsamps, ret);
 
     T(T_USRP_TX_ANT0, T_INT(timestamp), T_BUFFER(buff[0], nsamps*4));
@@ -2013,6 +2120,8 @@ extern "C" {
     stream_args_tx.channels.push_back(i+choffset);
 
   s->tx_stream = s->usrp->get_tx_stream(stream_args_tx);
+  s->flight_device_type = device->type;
+  s->flight_tx_channels = openair0_cfg[0].tx_num_channels;
   s->radio_health = radio_health_register(RADIO_HEALTH_BACKEND_UHD,
                                           (uint32_t)device->type,
                                           RADIO_HEALTH_CAP_TX_SEND | RADIO_HEALTH_CAP_TX_ASYNC
@@ -2033,7 +2142,7 @@ extern "C" {
     LOG_I(HW,"RX Channel %d\n",i);
     const double actual_rx_rate = s->usrp->get_rx_rate(i + choffset);
     LOG_I(HW,"  Actual RX sample rate: %fMSps...\n",actual_rx_rate/1e6);
-    if (i == 0 && s->radio_health != NULL) {
+    if (i == 0) {
       s->radio_health_rx_sample_rate = actual_rx_rate;
       usrp_radio_health_record_sample_rate(s,
                                            RADIO_HEALTH_METRIC_RX_SAMPLE_RATE_HZ,
@@ -2050,7 +2159,7 @@ extern "C" {
     LOG_I(HW,"TX Channel %d\n",i);
     const double actual_tx_rate = s->usrp->get_tx_rate(i + choffset);
     LOG_I(HW,"  Actual TX sample rate: %fMSps...\n", actual_tx_rate/1e6);
-    if (i == 0 && s->radio_health != NULL) {
+    if (i == 0) {
       s->radio_health_tx_sample_rate = actual_tx_rate;
       usrp_radio_health_record_sample_rate(s,
                                            RADIO_HEALTH_METRIC_TX_SAMPLE_RATE_HZ,
