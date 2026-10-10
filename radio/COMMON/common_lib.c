@@ -18,6 +18,7 @@
 #include "assertions.h"
 #include "common/utils/load_module_shlib.h"
 #include "common/utils/LOG/log.h"
+#include "common/utils/LOG/flight_recorder.h"
 #include "executables/softmodem-common.h"
 #include "common/config/config_paramdesc.h"
 #include "common/config/config_userapi.h"
@@ -150,8 +151,9 @@ int openair0_transport_load(openair0_device_t *device, openair0_config_t *openai
   return rc;
 }
 
-static void writerEnqueue(re_order_t *ctx, openair0_timestamp_t timestamp, void **txp, int nsamps, int nbAnt, int flags)
+static void writerEnqueue(openair0_device_t *device, openair0_timestamp_t timestamp, void **txp, int nsamps, int nbAnt, int flags)
 {
+  re_order_t *ctx = &device->reOrder;
   pthread_mutex_lock(&ctx->mutex_store);
   LOG_D(HW, "Enqueue write for TS: %lu\n", timestamp);
   int i;
@@ -168,6 +170,8 @@ static void writerEnqueue(re_order_t *ctx, openair0_timestamp_t timestamp, void 
       break;
     }
   AssertFatal(i < WRITE_QUEUE_SZ, "Write queue full\n");
+  if (flight_recorder_enabled())
+    flight_recorder_emit(FLIGHT_EVENT_RADIO_TX_REORDER, device->type, timestamp, nsamps, flags, 1, i);
   pthread_mutex_unlock(&ctx->mutex_store);
 }
 
@@ -192,6 +196,14 @@ static void writerProcessWaitingQueue(nrue_ru_write_t nrue_ru_write, PHY_VARS_NR
         ctx->queue[i].active = false;
         pthread_mutex_unlock(&ctx->mutex_store);
         found = true;
+        if (flight_recorder_enabled())
+          flight_recorder_emit(FLIGHT_EVENT_RADIO_TX_REORDER,
+                               device->type,
+                               timestamp,
+                               nsamps,
+                               flags,
+                               flags || IS_SOFTMODEM_RFSIM ? 3 : 4,
+                               i);
         if (flags || IS_SOFTMODEM_RFSIM) {
           int wroteSamples;
           if (nrue_ru_write)
@@ -226,6 +238,8 @@ int openair0_write_reorder_common(nrue_ru_write_t nrue_ru_write,
   int wroteSamples = 0;
   re_order_t *ctx = &device->reOrder;
   LOG_D(HW, "received write order ts: %lu, nb samples %d, next ts %luflags %d\n", timestamp, nsamps, timestamp + nsamps, flags);
+  if (flight_recorder_enabled())
+    flight_recorder_emit(FLIGHT_EVENT_RADIO_TX_REORDER, device->type, timestamp, nsamps, flags, 0, 0);
   pthread_mutex_lock(&ctx->mutex_store);
   if (!ctx->initDone) {
     ctx->nextTS = timestamp;
@@ -238,6 +252,14 @@ int openair0_write_reorder_common(nrue_ru_write_t nrue_ru_write,
   if (pthread_mutex_trylock(&ctx->mutex_write) == 0) {
     // We have the write exclusivity
     if (llabs(timestamp - ctx->nextTS) < MAX_GAP) { // We are writing in sequence of the previous write
+      if (flight_recorder_enabled())
+        flight_recorder_emit(FLIGHT_EVENT_RADIO_TX_REORDER,
+                             device->type,
+                             timestamp,
+                             nsamps,
+                             flags,
+                             flags || IS_SOFTMODEM_RFSIM ? 2 : 4,
+                             ctx->nextTS);
       if (flags || IS_SOFTMODEM_RFSIM) {
         if (nrue_ru_write)
           wroteSamples = nrue_ru_write(UE, timestamp, txp, nsamps, nbAnt, flags);
@@ -250,13 +272,13 @@ int openair0_write_reorder_common(nrue_ru_write_t nrue_ru_write,
       ctx->nextTS = timestamp + nsamps;
 
     } else {
-      writerEnqueue(ctx, timestamp, txp, nsamps, nbAnt, flags);
+      writerEnqueue(device, timestamp, txp, nsamps, nbAnt, flags);
     }
     writerProcessWaitingQueue(nrue_ru_write, UE, device);
     pthread_mutex_unlock(&ctx->mutex_write);
     return wroteSamples ? wroteSamples : nsamps;
   }
-  writerEnqueue(ctx, timestamp, txp, nsamps, nbAnt, flags);
+  writerEnqueue(device, timestamp, txp, nsamps, nbAnt, flags);
   if (pthread_mutex_trylock(&ctx->mutex_write) == 0) {
     writerProcessWaitingQueue(nrue_ru_write, UE, device);
     pthread_mutex_unlock(&ctx->mutex_write);
@@ -272,6 +294,8 @@ int openair0_write_reorder(openair0_device_t *device, openair0_timestamp_t times
 void openair0_write_reorder_clear_context(openair0_device_t *device)
 {
   LOG_I(HW, "received write reorder clear context\n");
+  if (flight_recorder_enabled())
+    flight_recorder_emit(FLIGHT_EVENT_RADIO_TX_REORDER, device->type, 0, 0, 0, 5, 0);
   re_order_t *ctx = &device->reOrder;
   if (!ctx->initDone)
     return;

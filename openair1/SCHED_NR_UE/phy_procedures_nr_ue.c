@@ -1628,6 +1628,14 @@ static void nr_ue_prach_procedures(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *
             tx_amp);
 
       start_meas_nr_ue_phy(ue, PRACH_GEN_STATS);
+      if (flight_recorder_enabled())
+        flight_recorder_emit(FLIGHT_EVENT_UE_TX_CHANNEL_CONTEXT,
+                             ue->Mod_id,
+                             proc->flight_sync_epoch,
+                             (int64_t)frame_tx * 1000 + nr_slot_tx,
+                             proc->timestamp_tx,
+                             FLIGHT_UE_TX_CHANNEL_PRACH,
+                             prach_pdu->ra_PreambleIndex);
       generated_prach_power = generate_nr_prach(ue, gNB_id, frame_tx, nr_slot_tx, tx_amp, txData);
       stop_meas_nr_ue_phy(ue, PRACH_GEN_STATS);
       if (cpumeas(CPUMEAS_GETSTATE)) {

@@ -11,6 +11,7 @@
 #include "PHY/NR_TRANSPORT/nr_transport_proto.h"
 #include "PHY/NR_TRANSPORT/nr_transport_common_proto.h"
 #include "openair1/PHY/NR_TRANSPORT/nr_prach.h"
+#include "common/utils/LOG/flight_recorder.h"
 
 typedef struct {
   int reps;
@@ -317,12 +318,24 @@ static void rx_nr_prach_ru_internal_rep(prach_item_t *p,
                                         int N_TA_offset,
                                         int rep,
                                         const prach_ru_params_t *params,
-                                        c16_t (*rxsigF)[NR_PRACH_SEQ_LEN_L])
+                                        c16_t (*rxsigF)[NR_PRACH_SEQ_LEN_L],
+                                        nr_prach_capture_layout_t *capture)
 {
   AssertFatal(rep >= 0 && rep < params->reps, "rep %d is out of range (reps = %d)\n", rep, params->reps);
 
   int slot2 = p->prach_sequence_length ? p->slot : p->slot;
-  int sample_offset = get_samples_slot_timestamp(fp, slot2) + params->sample_offset_slot - N_TA_offset + params->Ncp + rep * params->dftlen;
+  int sample_offset =
+      get_samples_slot_timestamp(fp, slot2) + params->sample_offset_slot - N_TA_offset + params->Ncp + rep * params->dftlen;
+  if (capture && rep == 0) {
+    *capture = (nr_prach_capture_layout_t){.buffer_first = sample_offset,
+                                           .ncp = params->Ncp,
+                                           .dftlen = params->dftlen,
+                                           .reps = params->reps,
+                                           .n_ta_offset = N_TA_offset,
+                                           .k = params->k,
+                                           .first_antenna = ant_offset,
+                                           .antenna_count = p->nb_rx};
+  }
 
   for (int aa = 0; aa < p->nb_rx; aa++) {
     int idx = ant_offset + aa;
@@ -369,9 +382,13 @@ static void rx_nr_prach_ru_internal(prach_item_t *p,
                         p->pdu.beamforming.prgs_list[0].dig_bf_interface_list[0].beam_idx,
                         p->pdu.param_v4.numSpatialStreamIndices > 0 ? p->pdu.param_v4.spatialStreamIndices[ant_offset] : 0);
 
+  nr_prach_capture_layout_t *capture =
+      flight_recorder_enabled() && prachOccasion < NUMBER_OF_NR_RU_PRACH_OCCASIONS_MAX ? &p->capture[prachOccasion] : NULL;
   for (int rep = 0; rep < params.reps; rep++) {
-    rx_nr_prach_ru_internal_rep(p, ant_start, rxdata, fp, N_TA_offset, rep, &params, rxsigF_tmp);
+    rx_nr_prach_ru_internal_rep(p, ant_start, rxdata, fp, N_TA_offset, rep, &params, rxsigF_tmp, capture);
   }
+  if (capture)
+    capture->valid = true;
 
   for (int aa = 0; aa < p->nb_rx; aa++) {
     memcpy(p->prach_buf[aa][prachOccasion], rxsigF_tmp[aa], sizeof(c16_t) * params.N_ZC);
@@ -402,7 +419,7 @@ void rx_nr_prach_ru_rep(prach_item_t *p,
   int N_dur = get_nr_prach_duration(p->pdu.prach_format);
   int prachStartSymbol = p->pdu.prach_start_symbol + prachOccasion * N_dur;
   prach_ru_params_t params = get_prach_ru_params(p, prachStartSymbol, fp);
-  rx_nr_prach_ru_internal_rep(p, 0, rxdata, fp, N_TA_offset, rep, &params, rxsigF);
+  rx_nr_prach_ru_internal_rep(p, 0, rxdata, fp, N_TA_offset, rep, &params, rxsigF, NULL);
 }
 
 rx_prach_out_t rx_nr_prach(const prach_item_t *in, int occasion)

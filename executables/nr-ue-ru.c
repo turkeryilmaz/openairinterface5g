@@ -530,6 +530,14 @@ int nrue_ru_read(PHY_VARS_NR_UE *UE,
 int nrue_ru_write(PHY_VARS_NR_UE *UE, openair0_timestamp_t timestamp, void **buff, int nsamps, int num_antennas, int flags)
 {
   openair0_device_t *dev = &openair0_dev[UE->rf_map.card];
+  if (flight_recorder_enabled())
+    flight_recorder_emit(FLIGHT_EVENT_UE_TX_ORIGIN,
+                         UE->rf_map.card,
+                         UE->Mod_id,
+                         timestamp,
+                         dev->firstTS,
+                         timestamp + dev->firstTS,
+                         nsamps);
   int ret = dev->trx_write_func(dev, timestamp + dev->firstTS, buff, nsamps, num_antennas, flags);
 
   if (UE->Mod_id != 0)

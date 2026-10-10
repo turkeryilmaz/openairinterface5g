@@ -71,6 +71,14 @@ void L1_nr_prach_procedures(PHY_VARS_gNB *gNB, prach_item_t *prach_id, nfapi_nr_
                            prach_id->prach_sequence_length,
                            prach_pdu->num_cs,
                            (uint32_t)prach_id->mu | ((uint64_t)(uint32_t)prach_id->numerology_index << 32));
+      const int64_t token = prach_oc < NUMBER_OF_NR_RU_PRACH_OCCASIONS_MAX ? prach_id->capture[prach_oc].token : 0;
+      flight_recorder_emit(FLIGHT_EVENT_GNB_PRACH_DECISION_LINK,
+                           token > 0 ? token : INT64_MIN,
+                           frame_slot,
+                           occasion,
+                           decision | ((uint64_t)(uint32_t)gNB->prach_energy_counter << 32),
+                           res.max_preamble_energy,
+                           (uint32_t)gNB->measurements.prach_I0 | ((uint64_t)(uint32_t)gNB->prach_thres << 32));
     }
     LOG_D(NR_PHY,
           "[RAPROC] %d.%d occasion %d symbol %u format %u sequence-length %d N_ZC %d PRACH-SCS %d UL-mu %d NCS %u "
