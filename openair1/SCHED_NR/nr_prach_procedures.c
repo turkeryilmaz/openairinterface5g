@@ -11,6 +11,7 @@
 #include "nfapi_nr_interface_scf.h"
 #include "nfapi_pnf.h"
 #include "common/utils/LOG/log.h"
+#include "common/utils/LOG/flight_recorder.h"
 #include "assertions.h"
 #include <time.h>
 
@@ -41,6 +42,36 @@ void L1_nr_prach_procedures(PHY_VARS_gNB *gNB, prach_item_t *prach_id, nfapi_nr_
     const bool prach_above_threshold = res.max_preamble_energy > gNB->measurements.prach_I0 + gNB->prach_thres;
     const bool prach_ind_has_space = rach_ind->number_of_pdus < MAX_NUM_NR_RX_RACH_PDUS;
     const bool prach_accepted = prach_noise_ready && prach_above_threshold && prach_ind_has_space;
+    if (flight_recorder_enabled()) {
+      // Keep each fragment identifiable without joining repeated SFNs or unrelated radio gain contexts.
+      const int64_t frame_slot = (int64_t)frame * 1000 + slot;
+      const uint64_t occasion = (uint16_t)gNB->Mod_id | ((uint64_t)(uint8_t)prach_oc << 16) | ((uint64_t)prach_pdu->num_ra << 24)
+                                | ((uint64_t)prachStartSymbol << 32);
+      const uint64_t decision = res.max_preamble | ((uint64_t)prach_noise_ready << 16) | ((uint64_t)prach_above_threshold << 17)
+                                | ((uint64_t)prach_ind_has_space << 18) | ((uint64_t)prach_accepted << 19);
+      flight_recorder_emit(FLIGHT_EVENT_GNB_PRACH_DECISION,
+                           frame_slot,
+                           occasion,
+                           res.max_preamble_energy,
+                           gNB->measurements.prach_I0,
+                           gNB->prach_thres,
+                           decision | ((uint64_t)(uint32_t)gNB->prach_energy_counter << 32));
+      flight_recorder_emit(FLIGHT_EVENT_GNB_PRACH_TIMING,
+                           frame_slot,
+                           occasion,
+                           res.max_preamble_delay_raw,
+                           res.max_preamble_delay,
+                           gNB->prach_energy_counter,
+                           decision | ((uint64_t)NUM_PRACH_RX_FOR_NOISE_ESTIMATE << 32));
+      flight_recorder_emit(FLIGHT_EVENT_GNB_PRACH_CONFIG,
+                           frame_slot,
+                           occasion,
+                           prach_pdu->prach_format | ((uint64_t)prach_pdu->num_prach_ocas << 8)
+                               | ((uint64_t)(uint32_t)prach_id->restricted_set << 16),
+                           prach_id->prach_sequence_length,
+                           prach_pdu->num_cs,
+                           (uint32_t)prach_id->mu | ((uint64_t)(uint32_t)prach_id->numerology_index << 32));
+    }
     LOG_D(NR_PHY,
           "[RAPROC] %d.%d occasion %d symbol %u format %u sequence-length %d N_ZC %d PRACH-SCS %d UL-mu %d NCS %u "
           "RAPID %u energy %d.%d dB I0 %d.%d dB threshold %d.%d dB raw-delay %u TA %u "

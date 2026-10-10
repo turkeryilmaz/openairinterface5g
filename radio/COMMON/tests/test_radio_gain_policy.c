@@ -227,6 +227,44 @@ int main(void)
   CHECK(!d.change && d.reason == RADIO_RX_HOLD_STALE && poison_envelope.input_peak_dbfs == retained_input_peak_dbfs
         && poison_envelope.last_update_ns == retained_update_ns);
 
+  /* An idle noise floor that responds 1 dB per gain dB must converge well
+   * below the ordinary -18 dBFS tracking target; absence of a UE is not a
+   * request to keep raising gain. No serving-reference flag is supplied. */
+  radio_rx_policy_state_t acquisition_state = {0};
+  radio_rx_peak_envelope_t acquisition_envelope = {0};
+  radio_gain_channel_t acquisition_channel = channel;
+  acquisition_channel.component_full_scale = 2048;
+  double acquired_gain = 0;
+  uint64_t acquisition_generation = 1;
+  for (unsigned attempt = 0; attempt < 20; ++attempt) {
+    o = valid_observation(acquisition_generation, UINT64_C(30000000000) + attempt * UINT64_C(250000000));
+    o.reported_gain_db = acquired_gain;
+    o.mean_power_dbfs = -60 + acquired_gain;
+    o.peak_component_dbfs = -54 + acquired_gain;
+    o.activity_valid = false;
+    d = radio_rx_acquire_resolution(&config, &acquisition_state, &acquisition_envelope, &acquisition_channel, &o);
+    if (d.change) {
+      CHECK(d.reason == RADIO_RX_ACQUIRE_RESOLUTION);
+      CHECK(d.gain_db > acquired_gain && d.gain_db <= acquired_gain + 3);
+      acquired_gain = d.gain_db;
+      radio_rx_action_completed(&acquisition_state, acquisition_generation++, o.now_ns);
+    }
+  }
+  CHECK(acquired_gain >= 25 && acquired_gain <= 30 && !d.change);
+  o.observation_ns = o.now_ns += UINT64_C(250000000);
+  o.mean_power_dbfs = -30;
+  o.peak_component_dbfs = -24;
+  d = radio_rx_acquire_resolution(&config, &acquisition_state, &acquisition_envelope, &acquisition_channel, &o);
+  CHECK(!d.change && d.reason == RADIO_RX_HOLD_INACTIVE);
+  o.observation_ns = ++o.now_ns;
+  o.peak_component_dbfs = -2;
+  d = radio_rx_acquire_resolution(&config, &acquisition_state, &acquisition_envelope, &acquisition_channel, &o);
+  CHECK(d.change && d.reason == RADIO_RX_REDUCE_OVERLOAD && d.gain_db == acquired_gain - 3);
+  o.observation_ns = ++o.now_ns;
+  o.power_valid = false;
+  d = radio_rx_acquire_resolution(&config, &acquisition_state, &acquisition_envelope, &acquisition_channel, &o);
+  CHECK(!d.change && d.reason == RADIO_RX_HOLD_INVALID);
+
   radio_tx_power_profile_t profile = {.qualified = true,
                                       .reference_dbm = 20,
                                       .uncertainty_db = 0.7,

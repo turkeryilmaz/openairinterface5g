@@ -31,6 +31,34 @@ from capture import redact_argv
 
 
 class CaptureFixture(unittest.TestCase):
+    def test_source_status_does_not_rewrite_index(self) -> None:
+        with self.temporary_directory() as directory:
+            repo = Path(directory)
+            subprocess.run(["git", "init", "-q", str(repo)], check=True)
+            source = repo / "source.c"
+            source.write_text("initial\n")
+            subprocess.run(["git", "-C", str(repo), "add", "source.c"], check=True)
+            index = repo / ".git/index"
+            before = index.stat()
+            original = index.read_bytes()
+            source.write_text("modified after index creation\n")
+            result = capture_module._stream_git_summary(
+                capture_module._git_executable(),
+                ("-C", str(repo), "status", "--porcelain=v1", "-z"), True)
+            self.assertEqual(result["path_count"], 1)
+            self.assertEqual(index.read_bytes(), original)
+            self.assertEqual(index.stat().st_mtime_ns, before.st_mtime_ns)
+
+    def test_reported_version_mismatch_is_retained(self) -> None:
+        with self.temporary_directory() as directory:
+            output = Path(directory) / "capture"
+            child = [sys.executable, "-c", "import sys; sys.stdout.write('[HW] Version: Branch: HEAD Abrev. Hash: deadbee Date: test\\n')"]
+            result = self.invoke(output, child, ["--repo", str(WORKTREE)])
+            self.assertEqual(result.returncode, 0, result.stderr)
+            status = json.loads((self.run_directory(output) / "status.json").read_text())
+            self.assertEqual(status["provenance"]["reported_oai_revision"], "deadbee")
+            self.assertIs(status["provenance"]["reported_revision_matches_head"], False)
+
     @classmethod
     def setUpClass(cls) -> None:
         VALIDATION_ROOT.mkdir(parents=True, exist_ok=True)
@@ -86,6 +114,59 @@ class CaptureFixture(unittest.TestCase):
             status = json.loads((self.run_directory(output) / "status.json").read_text())
             self.assertFalse(status["capture"]["healthy"])
             self.assertGreater(status["writers"]["stdout"]["dropped_bytes"], 0)
+
+    def test_sudo_owner_and_nonroot_environment(self) -> None:
+        account = capture_module.pwd.getpwuid(os.getuid())
+        with patch.dict(os.environ, {"SUDO_UID": str(account.pw_uid)}):
+            with patch.object(os, "geteuid", return_value=0):
+                self.assertEqual(capture_module.capture_owner(), (account.pw_uid, account.pw_gid))
+        with patch.dict(os.environ, {"SUDO_UID": "not-a-uid"}):
+            with patch.object(os, "geteuid", return_value=0):
+                with self.assertRaises(capture_module.CaptureError):
+                    capture_module.capture_owner()
+            with patch.object(os, "geteuid", return_value=1234):
+                self.assertEqual(capture_module.capture_owner()[0], 1234)
+
+    def test_metadata_replacement_does_not_follow_existing_link(self) -> None:
+        with self.temporary_directory() as temporary:
+            root = Path(temporary)
+            target = root / "unrelated"
+            target.write_text("preserved")
+            metadata = root / "metadata.json"
+            metadata.symlink_to(target)
+            self.assertTrue(capture_module.write_json(metadata, {"state": "new"}))
+            self.assertEqual(target.read_text(), "preserved")
+            self.assertFalse(metadata.is_symlink())
+            self.assertEqual(metadata.stat().st_mode & 0o777, 0o600)
+            self.assertEqual(list(root.glob("*.tmp")), [])
+
+    def test_config_snapshot_redacts_multiline_secrets_and_retains_radio(self) -> None:
+        text = ('# comment-secret\n uicc0 = { key = "credential-one"; imsi = "identity-one"; };\n'
+                'agc-mode = "continuous"; rx_gain = 90;\n'
+                'password /* between */ =\n "credential-two";\n'
+                'service = { token: ("credential-three", "credential-four"); enabled = true; };\n'
+                'path = "http://example.invalid/a#b"; // comment-two\n')
+        with self.temporary_directory() as temporary:
+            path = Path(temporary) / "radio.conf"
+            path.write_text(text)
+            result = capture_module.config_snapshot(str(path), "libconfig")
+            self.assertEqual(result["state"], "redacted")
+            for secret in ("credential", "identity-one", "comment-secret", "comment-two"):
+                self.assertNotIn(secret, result["text"])
+            for retained in ('agc-mode = "continuous"', 'rx_gain = 90', 'enabled = true', 'http://example.invalid/a#b'):
+                self.assertIn(retained, result["text"])
+            self.assertEqual(result["original_sha256"], capture_module.file_fingerprint(str(path))["sha256"])
+
+    def test_yaml_and_unknown_backend_snapshots_omit_text(self) -> None:
+        with self.temporary_directory() as temporary:
+            path = Path(temporary) / "radio.conf"
+            path.write_text('"uicc0":\n  "key": &credential "synthetic-secret"\n  "opc": *credential\n')
+            for backend in (None, "unknown", "yaml"):
+                result = capture_module.config_snapshot(str(path), backend)
+                self.assertEqual(result["state"], "text_omitted")
+                self.assertNotIn("text", result)
+                self.assertNotIn("synthetic-secret", json.dumps(result))
+                self.assertEqual(result["original_sha256"], capture_module.file_fingerprint(str(path))["sha256"])
 
     def test_console_mirror_is_redacted(self) -> None:
         with self.temporary_directory() as temporary:

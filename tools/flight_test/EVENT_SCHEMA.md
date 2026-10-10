@@ -43,6 +43,9 @@ Every event has event, a–f, ring, sequence, mono_ns and realtime_ns. Sequence 
 |61 RADIO_TX_RELATIVE_ERASURE|channel: 1 PRACH,2 PUSCH,3 PUCCH,4 SRS or 0 generic|SFN*1000+slot|relative mapping status that caused the erasure|zeroed complex sample count|reserved 0|reserved 0|
 |62 UE_TX_RELATIVE_BOUNDS|channel: 1 PRACH,2 PUSCH,3 PUCCH,4 SRS|SFN*1000+slot or -1|effective minimum nominal|effective maximum nominal|MAC requested nominal|MAC selected nominal|
 |63 RADIO_TX_RELATIVE_SAMPLES|channel: 1 PRACH,2 PUSCH,3 PUCCH,4 SRS or 0 generic|SFN*1000+slot|complex sample count|input sum(I²+Q²) raw integer codes|output sum(I²+Q²) only for status 0, otherwise INT64_MIN|input peak component upper 32 bits; output peak component lower 32 bits|
+|65 GNB_PRACH_DECISION|SFN*1000+slot|packed gNB/occasion/frequency/start-symbol|candidate energy 0.1 dB|I0 before update 0.1 dB|configured margin 0.1 dB|RAPID bits 0..15, decision flags 16..19, actual noise count 32..63|
+|66 GNB_PRACH_TIMING|same SFN*1000+slot|same occasion metadata|raw correlation-bin delay|normalized TA|actual noise count before update|RAPID bits 0..15, decision flags 16..19, required noise count 32..63|
+|67 GNB_PRACH_CONFIG|same SFN*1000+slot|same occasion metadata|format bits 0..7, occasion count 8..15, restricted set 16..47|sequence-length code: 0 long, 1 short|NCS|PRACH SCS code bits 0..31, UL numerology 32..63|
 
 `RADIO_GAIN` status values are 0 OK, 1 BUSY, 2 UNSUPPORTED, 3 INVALID,
 4 STALE, 5 CLOSED, 6 BACKEND_ERROR and 7 TX_PENDING. Operation values are
@@ -310,7 +313,7 @@ ring, generation, context and sequence evidence when interpreting a recorded
 constraint. `INT64_MIN` remains unavailable, not zero; historical captures without
 57 have no envelope evidence.
 
-### Relative TX events (58--64)
+### Relative TX events (58--64, 68)
 
 These additive records describe `tx-power-mode = "relative"`, a digital envelope
 selected only for managed TX. They do not revise IDs 49--52 or the existing
@@ -319,17 +322,38 @@ the fixed device-reported analog gain is not RF-power calibration, and the
 recorded requested/realized values in event 58 are dBFS rather than RF dBm.
 
 For the current `AMP = 512`, component full scale 2048 configuration, event 60
-records the -12.041 dBFS digital reference and current nominal limits -3..17.
-Nominal 23 is fixed; the 6 dB engineering backoff creates the upper limit and
-the fixed-point quality/EVM constraints create the effective lower limit. These
+records the -12.041 dBFS digital reference and native mapper coordinates -3..17.
+Native reference 23 is fixed; the 6 dB engineering backoff creates the upper limit and
+the fixed-point quality/EVM constraints create the lower limit. These
 are digital engineering constraints, not a qualified profile, an RF output
 range, conformance evidence, or a universal crest-factor certificate.
 
+An actuating UE initializes a nonnegative offset from its first valid PRACH
+request after standard Pcmin/Pcmax/p-Max bounding, before digital intersection:
+`offset = max(0, native_minimum - first_nominal)`. It then freezes that offset
+through retries and reconnects on the same cell/radio attachment. MAC sees
+native bounds minus offset; all active UE channels pass selected nominal plus
+offset to the unchanged native mapper. Idle zero writes do not initialize it.
+An unsupported serving-PCI change faults the mapping and requires a new radio
+attachment. The existing retune/operating-point restrictions remain; no live
+reference replacement is performed. Other relative modes retain the native
+envelope. Uncalibrated nominal coordinates and PCMAX are not verified RF dBm.
+
+Event 68 `UE_TX_RELATIVE_ANCHOR` records this one-time publication: a=serving
+physical cell ID, b=first standard-bounded nominal request, c=nonnegative offset
+in dB, d/e=translated nominal minimum/maximum before per-channel intersection,
+f=translated nominal reference (`23 - offset` for the current native envelope).
+All are integer coordinates, not RF power measurements. A first request -26
+gives offset 23, bounds -26..-6 and nominal reference 0. The decoder retains
+each anchor independently and does not infer or join a neighboring event 60,
+mapping, emitted waveform, or calibration. Missing event 68 leaves the origin
+unavailable in captured evidence, rather than implying offset zero.
+
 Event 62 is the UE MAC decision after intersecting its channel range with the
-relative limits. It records the requested and selected nominal values, so an
+translated relative limits. It records the requested and selected nominal values, so an
 analysis can distinguish ordinary MAC bounding from an exact mapper failure.
-A network p-Max may reduce the applicable ceiling, but cannot change nominal 23
-or re-anchor the dBFS reference. Event 58 then records the per-span mapping
+A network p-Max may reduce the applicable ceiling, but cannot change the frozen
+offset or native dBFS reference. Event 58 then records the per-span mapping
 result; status values are 0 OK, 1 INVALID, 2 UNQUALIFIED, 3 MAPPING_REJECTED,
 4 HEADROOM, and 5 QUANTIZATION. Bit 8 says the mapping wrote selected samples.
 
@@ -341,9 +365,9 @@ layout or span remain managed-TX failures rather than relative erasures. Event
 59 carries the mapping quality and event 63 carries input/output whole-span
 sample evidence. Their unavailable output fields remain `INT64_MIN`.
 
-The decoder writes `relative_tx.csv` as a standalone union of IDs 58--64. Each
+The decoder writes `relative_tx.csv` as a standalone union of IDs 58--64 and 68. Each
 record becomes one row with `record_type` `mapping`, `quality`, `configuration`,
-`erasure`, `bounds`, `samples`, or `admission_blocked`; only its applicable columns are populated.
+`erasure`, `bounds`, `samples`, `admission_blocked`, or `anchor`; only its applicable columns are populated.
 No cross-event join is attempted. Missing neighbors and `INT64_MIN` fields stay
 blank, so this CSV never invents an RF measurement, a mapping, or complete
 occasion coverage. Generic `events.csv` preserves the original raw records.
@@ -370,3 +394,79 @@ the packed output peak unavailable. Its raw zero bits do not establish a zero
 peak, especially in observe mode where failed preflight leaves samples intact.
 The decoder keeps both output fields blank without requiring a neighboring
 mapping record.
+
+### gNB PRACH evaluation events (65--67)
+
+`L1_nr_prach_procedures()` attempts three fixed records after each call to
+`rx_nr_prach()` returns, including rejected candidates. This capture reuses the
+already computed decision gates and precedes the noise-estimate update and
+counter increment. It changes no threshold, detector, noise estimator or RACH
+indication rule. Existing detailed `LOG_D` output remains available; these
+records retain the same decision evidence independently of textual log levels.
+No record means no retained evidence; it does not prove a non-evaluated occasion,
+absence of a signal, or a complete capture. Recorder health/drop metadata still
+determines the available coverage.
+
+All three records repeat `a = SFN*1000 + slot` and the same packed `b`: gNB module
+ID in bits 0..15, occasion index in 16..23, frequency index (`num_ra`) in 24..31,
+and actual start symbol in 32..63. The start symbol includes the occasion's
+duration offset. These are identifiers within a scheduled PRACH PDU; SFNs wrap
+and are not unique sample timestamps.
+
+Event 65 retains candidate RAPID and the strongest correlation energy, current
+I0, and configured detection margin in their native integer 0.1 dB units. The
+strict threshold test is `candidate_energy > I0 + configured_margin`; equality
+rejects. The energy/I0 are digital detector metrics, with no RF dBm calibration
+implied. The decoder retains raw integers and signed values divided by 10 for
+the dB columns; it does not use signed quotient/remainder formatting.
+
+For 65 and 66, `f` bits 0..15 contain RAPID, bits 16..19 respectively mean
+noise ready, above threshold, RACH indication space, and accepted. Bits 20..31
+are reserved and retained as unknown decision bits. Acceptance is the conjunction
+of the other three flags; contradictory records are marked `INVALID_FLAGS`.
+The decoder reports all failed gates as `NOISE_NOT_READY`,
+`AT_OR_BELOW_THRESHOLD`, and/or `INDICATION_FULL`. These describe the evaluated
+gates, not a new detector diagnosis. Event 65's upper 32 bits retain the actual
+signed noise-estimate count. Event 66 repeats that count in `e` and instead uses
+the upper 32 bits of `f` for the required count
+(`NUM_PRACH_RX_FOR_NOISE_ESTIMATE`, currently 100). Decision rows leave the
+required count blank; timing rows retain it independently.
+
+Event 66's raw delay is the correlation-bin index before normalization; TA is
+the unchanged detector output copied into the RACH indication on acceptance.
+The corresponding TA time unit is `16 * 64 * Tc / 2^UL_numerology`. Rejected
+candidates also retain these candidate timing values; the record does not imply
+that a RACH indication or RAR was sent.
+
+Event 67 records the configured format, PDU occasion count, restricted-set code,
+sequence-length code (0 maps to 839, 1 to 139), NCS, PRACH SCS code and UL
+numerology. Restricted set, SCS and UL numerology retain signed 32-bit values
+from their packed fields; an unknown sequence-length code does not invent an
+N_ZC. Bits 48..63 of `c` are reserved and retained as unknown configuration bits.
+The SCS code is the detector's `prach_id->mu`, not a derived spacing in Hz.
+No asynchronous radio gain snapshot is associated with this historical PRACH
+buffer; these events cannot establish its exact gain or sample interval.
+
+The decoder writes `gnb_prach.csv` as a standalone union: `decision`, `timing`
+and `configuration` each occupy one row with only their applicable columns.
+Source file/line, recorder ring, global sequence and recorder times are retained.
+There is no cross-event join, including across matching identifiers after SFN
+wrap. Missing fragments and `INT64_MIN` stay blank; an unavailable packed field
+does not turn its raw zero bits into a RAPID, flags, count, or configuration.
+Generic `events.csv` preserves the original numeric records.
+
+### UE synchronization alignment (69)
+
+`UE_SYNC_ALIGNMENT` is emitted when the synchronization actor result is accepted.
+It records a=UE module, b=signed raw RX offset in samples, c=normalized forward
+read/discard count, d=samples per radio frame, e=MIB decoded SFN, and f=skipped
+frame count in bits32..63 plus the resulting receive SFN in bits0..31. Generic
+`events.csv` retains each complete record independently. The frame carry from
+normalizing a negative offset is included in the resulting SFN; skipped frames
+retain their existing meaning. This is a digital frame/sample alignment record,
+not an RF propagation-delay measurement or a host-clock synchronization claim.
+
+RX decision source5 `GNB_ACQUISITION` uses raw sample level only when no fresh
+qualified PUSCH reference is available. Reason11 `ACQUIRE_RESOLUTION` raises gain
+toward a modest converter-resolution floor, with the existing peak, age, settle,
+step and cooldown guards. It does not establish PRACH detection or signal SNR.

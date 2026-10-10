@@ -276,7 +276,14 @@ admission has no qualified quiescent boundary and is rejected before streaming.
 On the UE, adding `agc = 1` selects legacy acquisition followed by new tracking;
 without it, acquisition and tracking use the new policy. A loss of synchronization
 returns to the selected acquisition policy. On the gNB, the controller starts in
-listening/tracking mode and does not increase gain merely because UL is absent.
+listening/tracking mode. Before a fresh qualified PUSCH reference is available,
+a sparse raw-sample policy can raise RX gain toward a modest converter-resolution
+floor: sqrt(2)/0.03 converter codes RMS (about -32.8 dBFS for full scale2048).
+It holds above that floor, rejects all-zero observations and retains the normal
+peak, settling, step and cooldown guards. It is an engineering acquisition aid,
+not a noise/SNR estimator or a guarantee that a weak PRACH will be detectable.
+A fresh PUSCH reference takes precedence; this raw policy never targets the
+higher connected-mode reference level merely because no UE is present.
 The controller is opt-in. Device/band/configuration qualification does not carry over to another radio merely because its model matches.
 
 
@@ -343,21 +350,32 @@ qualified profile path described below.
 
 Relative mode is a calibration-free digital RMS envelope. The backend-reported
 analog TX gain is fixed at attachment; it is a device setting, not a power
-calibration. The current reference has nominal value 23. With `AMP = 512` and
+calibration. The native reference has nominal value 23. With `AMP = 512` and
 component full scale 2048, its digital reference is -12.041 dBFS. The default
-6 dB engineering backoff yields the current nominal upper bound 17. The current
-effective lower bound is -3: it is derived from the fixed-point quantization
-quality/EVM limits, rather than a calibrated RF minimum. Thus the default
-relative range is `-3..17`; the emitted configuration record is authoritative
-if a different component full scale changes the derived lower bound.
+6 dB engineering backoff yields native bounds `-3..17`; the lower bound follows
+the fixed-point quantization quality/EVM limits. The emitted configuration
+record is authoritative if the component full scale changes these bounds.
 
-At the UE, MAC intersects the standard channel range with these immutable
-relative bounds and records the requested and selected nominal value before the
-result reaches the mapper. TPC uses these effective limits. PHR compares the effective ceiling with the
-unclamped requested nominal power, retaining a power deficit when saturated.
-The mapper does not silently clip the selected value later. A network `p-Max` can lower the network ceiling
-within that selection, but it cannot re-anchor nominal 23 or the digital dBFS
-reference. At the gNB, one common generator amplitude receives the fixed 6 dB
+For an actuating UE, the first usable PRACH request is bounded by standard
+`Pcmin`, `Pcmax` and network `p-Max` before it initializes a nonnegative
+translation: `offset = max(0, native_min - first_nominal)`. MAC then intersects
+the standard channel range with `native_bounds - offset`, and the digital
+mapper receives `selected_nominal + offset`. A first nominal request of -26
+therefore gives offset 23 and bounds `-26..-6`; requests from -26 through -8
+retain their 18 dB progression. Event 68 records the serving PCI, first request,
+offset and translated bounds. Idle writes cannot initialize this reference.
+
+The translation is shared by PRACH, Msg3/PUSCH, PUCCH and SRS and stays fixed
+through retries and reconnects within the same radio attachment. RA preparation
+may proceed before initialization; active channel selection requires the
+reference. A different serving PCI or a retune after initialization requires
+a restart. A request below the translated floor can still saturate there.
+TPC and PHR use the same effective limits. PHR compares the effective ceiling
+with the unclamped requested nominal power, retaining a deficit when saturated.
+A network `p-Max` can lower the selection ceiling but cannot change the offset.
+These nominal coordinates and the encoded effective Pcmax are not verified RF
+dBm; the translation supplies relative digital progression without calibration.
+At the gNB, one common generator amplitude receives the fixed 6 dB
 backoff. Allocation changes preserve channel-relative amplitudes; there is no
 per-slot occupancy normalization.
 
