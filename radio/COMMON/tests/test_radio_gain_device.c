@@ -771,6 +771,69 @@ static int test_continuous_gnb_tracking(void)
   return EXIT_SUCCESS;
 }
 
+static int test_gnb_acquisition_before_pusch(void)
+{
+  fake_radio_t radio;
+  openair0_device_t device;
+  openair0_config_t config;
+  fake_init(&radio);
+  make_device(&device, &config, &radio);
+  test_options = (agc_options_t){.role = AGC_ROLE_GNB,
+                                 .mode = AGC_MODE_CONTINUOUS,
+                                 .directions = AGC_DIRECTIONS_RX,
+                                 .rx_acquisition = AGC_RX_ACQUISITION_NEW,
+                                 .rx_tracking = AGC_RX_TRACKING_NEW,
+                                 .rx_actuation = true};
+  const radio_gain_api_t api = fake_api();
+  CHECK(radio_gain_device_attach(&device, &config, &api) == 0);
+  recorder_reset(true);
+  radio_gain_sample_context_t raw = policy_context(1, 100, 200);
+  raw.mean_power_fs = 0;
+  raw.peak_component_fs = 0;
+  radio_gain_device_observe_rx(&raw, 0, false, false, RADIO_RX_SOURCE_GNB_ACQUISITION);
+  CHECK(radio.set_calls == 0);
+  raw = policy_context(1, 200, 300);
+  raw.mean_power_fs = 1e-6;
+  raw.peak_component_fs = 0.002;
+  radio_gain_device_observe_rx(&raw, 0, false, false, RADIO_RX_SOURCE_GNB_ACQUISITION);
+  wait_set_entered(&radio);
+  CHECK(radio.set_calls == 1);
+  const recorder_event_t *event = recorder_last_event(FLIGHT_EVENT_RADIO_RX_DECISION);
+  CHECK(event && (event->f & 0xff) == RADIO_RX_ACQUIRE_RESOLUTION);
+  device.trx_end_func(&device);
+  CHECK(radio.rx_gain == 13.0);
+  fake_fini(&radio);
+  return EXIT_SUCCESS;
+}
+
+static int test_gnb_fresh_pusch_suppresses_acquisition(void)
+{
+  fake_radio_t radio;
+  openair0_device_t device;
+  openair0_config_t config;
+  fake_init(&radio);
+  make_device(&device, &config, &radio);
+  test_options = (agc_options_t){.role = AGC_ROLE_GNB,
+                                 .mode = AGC_MODE_CONTINUOUS,
+                                 .directions = AGC_DIRECTIONS_RX,
+                                 .rx_acquisition = AGC_RX_ACQUISITION_NEW,
+                                 .rx_tracking = AGC_RX_TRACKING_NEW,
+                                 .rx_actuation = true};
+  const radio_gain_api_t api = fake_api();
+  CHECK(radio_gain_device_attach(&device, &config, &api) == 0);
+  radio_gain_sample_context_t pusch = policy_context(1, 100, 200);
+  radio_gain_device_observe_rx(&pusch, pow(10, -18.0 / 10) * 2048 * 2048, true, false, RADIO_RX_SOURCE_GNB_PUSCH);
+  CHECK(radio.set_calls == 0);
+  radio_gain_sample_context_t raw = policy_context(1, 200, 300);
+  raw.mean_power_fs = 1e-6;
+  raw.peak_component_fs = 0.002;
+  radio_gain_device_observe_rx(&raw, 0, false, false, RADIO_RX_SOURCE_GNB_ACQUISITION);
+  device.trx_end_func(&device);
+  CHECK(radio.set_calls == 0 && radio.rx_gain == 10.0);
+  fake_fini(&radio);
+  return EXIT_SUCCESS;
+}
+
 static int test_shared_peak_envelope_binding(void)
 {
   fake_radio_t radio;
@@ -1124,6 +1187,14 @@ static int test_relative_tx_mapping_and_erasure(void)
   int minimum = 0, maximum = 0;
   CHECK(!radio_gain_device_relative_tx_bounds(&minimum, &maximum));
   CHECK(radio_gain_device_attach(&device, &config, &api) == 0);
+  CHECK(!radio_gain_device_relative_tx_bounds(&minimum, &maximum));
+  CHECK(radio_gain_device_validate_ue_power_limit(-4, INT_MIN, 1, 0)); /* PRACH can establish an origin below -3. */
+  CHECK(!radio_gain_device_validate_ue_power_limit(23, 0, 1, 0));
+  CHECK(!radio_gain_device_prepare_relative_ue_tx(-26, -1));
+  CHECK(!radio_gain_device_prepare_relative_ue_tx(-26, 1008));
+  CHECK(!radio_gain_device_prepare_relative_ue_tx(-26, 65536));
+  CHECK(!radio_gain_device_relative_tx_bounds(&minimum, &maximum));
+  CHECK(radio_gain_device_prepare_relative_ue_tx(0, 42)); /* No translation when the request already fits. */
   CHECK(radio_gain_device_relative_tx_bounds(&minimum, &maximum));
   CHECK(minimum == -3 && maximum == 17);
   CHECK(radio_gain_device_validate_ue_power_limit(23, INT_MIN, 1, 0));
@@ -1160,6 +1231,104 @@ static int test_relative_tx_mapping_and_erasure(void)
   buffers[0] = samples;
   CHECK(device.trx_write_func(&device, 300, buffers, 2, 1, 0) == 2);
   CHECK(radio.write_calls == 2);
+  device.trx_end_func(&device);
+  CHECK(!radio_gain_device_relative_tx_bounds(&minimum, &maximum));
+  fake_fini(&radio);
+  return EXIT_SUCCESS;
+}
+
+static int test_relative_ue_ramp_and_frozen_origin(void)
+{
+  CHECK(signal(SIGTERM, SIG_IGN) != SIG_ERR); /* admit the deliberate changed-cell fault */
+  fake_radio_t radio;
+  openair0_device_t device;
+  openair0_config_t config;
+  fake_init(&radio);
+  make_device(&device, &config, &radio);
+  test_options = (agc_options_t){.mode = AGC_MODE_CONTINUOUS,
+                                 .role = AGC_ROLE_UE,
+                                 .directions = AGC_DIRECTIONS_TX,
+                                 .tx_policy = AGC_TX_POLICY_MANAGED,
+                                 .tx_power_mode = AGC_TX_POWER_RELATIVE,
+                                 .tx_actuation = true};
+  const radio_gain_api_t api = fake_api();
+  CHECK(radio_gain_device_attach(&device, &config, &api) == 0);
+  int minimum = 0, maximum = 0;
+  CHECK(!radio_gain_device_relative_tx_bounds(&minimum, &maximum));
+  c16_t idle[2] = {{0}};
+  void *buffers[] = {idle};
+  CHECK(device.trx_write_func(&device, 100, buffers, 2, 1, 0) == 2);
+  CHECK(!radio_gain_device_relative_tx_bounds(&minimum, &maximum));
+  recorder_reset(true);
+  CHECK(radio_gain_device_prepare_relative_ue_tx(-26, 42));
+  CHECK(radio_gain_device_relative_tx_bounds(&minimum, &maximum));
+  CHECK(minimum == -26 && maximum == -6);
+  const recorder_event_t *anchor = recorder_last_event(FLIGHT_EVENT_UE_TX_RELATIVE_ANCHOR);
+  CHECK(anchor && anchor->a == 42 && anchor->b == -26 && anchor->c == 23 && anchor->d == -26 && anchor->e == -6 && anchor->f == 0);
+  CHECK(radio_gain_device_prepare_relative_ue_tx(-40, 42));
+  CHECK(radio_gain_device_prepare_relative_ue_tx(23, 42));
+  CHECK(recorder_event_count(FLIGHT_EVENT_UE_TX_RELATIVE_ANCHOR) == 1);
+  CHECK(radio_gain_device_relative_tx_bounds(&minimum, &maximum) && minimum == -26 && maximum == -6);
+
+  double previous_dbfs = NAN;
+  for (int nominal = -26; nominal <= -8; nominal += 2) {
+    recorder_reset(true);
+    c16_t samples[] = {{512, 0}, {-512, 0}};
+    CHECK(radio_gain_device_apply_tx(samples, 2, nominal, 1, 3, FLIGHT_UE_TX_CHANNEL_PRACH));
+    const recorder_event_t *mapping = recorder_last_event(FLIGHT_EVENT_RADIO_TX_RELATIVE_POWER);
+    CHECK(mapping && mapping->c == (RADIO_TX_POWER_OK | 256) && mapping->d == nominal * 1000);
+    const double requested_dbfs = mapping->e / 1000.0;
+    CHECK(fabs(requested_dbfs - (-38.041199826559248 + nominal + 26)) < 0.001);
+    CHECK(fabs(mapping->f / 1000.0 - requested_dbfs) <= 0.5);
+    if (isfinite(previous_dbfs))
+      CHECK(fabs(requested_dbfs - previous_dbfs - 2.0) < 0.001);
+    previous_dbfs = requested_dbfs;
+  }
+
+  /* Msg3/PUSCH, PUCCH and SRS use the same frozen nominal coordinate. */
+  for (unsigned channel = FLIGHT_UE_TX_CHANNEL_PUSCH; channel <= FLIGHT_UE_TX_CHANNEL_SRS; ++channel) {
+    recorder_reset(true);
+    c16_t samples[] = {{512, 0}, {-512, 0}};
+    CHECK(radio_gain_device_apply_tx(samples, 2, -8, 1, 4, channel));
+    const recorder_event_t *mapping = recorder_last_event(FLIGHT_EVENT_RADIO_TX_RELATIVE_POWER);
+    CHECK(mapping && mapping->a == channel && mapping->d == -8000 && mapping->e == -20041);
+  }
+  CHECK(radio.set_calls == 0 && radio.tx_gain == 11);
+  CHECK(radio_gain_device_validate_ue_power_limit(-10, INT_MIN, 1, 5));
+  CHECK(!radio_gain_device_validate_ue_power_limit(-27, INT_MIN, 1, 5));
+  config.rx_freq[0] += 1e6;
+  config.tx_freq[0] += 1e6;
+  CHECK(device.trx_set_freq_func(&device, &config) == -EBUSY);
+  CHECK(radio.retune_calls == 0);
+  CHECK(!radio_gain_device_prepare_relative_ue_tx(-26, 43));
+  CHECK(!radio_gain_device_relative_tx_bounds(&minimum, &maximum));
+  CHECK(radio_gain_device_tx_cancelled(-ERANGE));
+  device.trx_end_func(&device);
+  fake_fini(&radio);
+  return EXIT_SUCCESS;
+}
+
+static int test_relative_ue_active_before_prach_is_rejected(void)
+{
+  CHECK(signal(SIGTERM, SIG_IGN) != SIG_ERR); /* admit the deliberate missing-reference fault */
+  fake_radio_t radio;
+  openair0_device_t device;
+  openair0_config_t config;
+  fake_init(&radio);
+  make_device(&device, &config, &radio);
+  test_options = (agc_options_t){.mode = AGC_MODE_CONTINUOUS,
+                                 .role = AGC_ROLE_UE,
+                                 .directions = AGC_DIRECTIONS_TX,
+                                 .tx_policy = AGC_TX_POLICY_MANAGED,
+                                 .tx_power_mode = AGC_TX_POWER_RELATIVE,
+                                 .tx_actuation = true};
+  const radio_gain_api_t api = fake_api();
+  CHECK(radio_gain_device_attach(&device, &config, &api) == 0);
+  c16_t samples[] = {{512, 0}, {-512, 0}};
+  CHECK(!radio_gain_device_apply_tx(samples, 2, 0, 1, 0, FLIGHT_UE_TX_CHANNEL_PUSCH));
+  CHECK(samples[0].r == 512 && samples[1].r == -512);
+  CHECK(radio_gain_device_tx_cancelled(-ERANGE));
+  CHECK(!radio_gain_device_prepare_relative_ue_tx(-26, 42));
   device.trx_end_func(&device);
   fake_fini(&radio);
   return EXIT_SUCCESS;
@@ -1246,6 +1415,8 @@ int main(void)
     test_log.log_component[index].level = OAILOG_DISABLE;
 
   CHECK(run_child(test_relative_tx_mapping_and_erasure) == EXIT_SUCCESS);
+  CHECK(run_child(test_relative_ue_ramp_and_frozen_origin) == EXIT_SUCCESS);
+  CHECK(run_child(test_relative_ue_active_before_prach_is_rejected) == EXIT_SUCCESS);
   CHECK(run_child(test_relative_gnb_reference) == EXIT_SUCCESS);
   CHECK(run_child(test_relative_observe_immutable) == EXIT_SUCCESS);
   CHECK(run_child(test_managed_tx_profile_and_fault) == EXIT_SUCCESS);
@@ -1253,6 +1424,8 @@ int main(void)
   CHECK(run_child(test_continuous_legacy_handoff) == EXIT_SUCCESS);
   CHECK(run_child(test_continuous_new_acquisition_shared_cooldown) == EXIT_SUCCESS);
   CHECK(run_child(test_continuous_gnb_tracking) == EXIT_SUCCESS);
+  CHECK(run_child(test_gnb_acquisition_before_pusch) == EXIT_SUCCESS);
+  CHECK(run_child(test_gnb_fresh_pusch_suppresses_acquisition) == EXIT_SUCCESS);
   CHECK(run_child(test_shared_peak_envelope_binding) == EXIT_SUCCESS);
   CHECK(run_child(test_observe_no_gain_write) == EXIT_SUCCESS);
   CHECK(run_child(test_tx_level_records_and_disabled_path) == EXIT_SUCCESS);

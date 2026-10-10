@@ -15,6 +15,7 @@ typedef enum {
   RADIO_RX_REDUCE_OVERLOAD,
   RADIO_RX_TRACK_LEVEL,
   RADIO_RX_SEARCH_STEP,
+  RADIO_RX_ACQUIRE_RESOLUTION,
 } radio_rx_reason_t;
 
 typedef struct {
@@ -88,6 +89,15 @@ radio_rx_decision_t radio_rx_decide(const radio_rx_policy_config_t *config,
                                     radio_rx_peak_envelope_t *peak_envelope,
                                     const radio_gain_channel_t *channel,
                                     const radio_rx_observation_t *observation);
+/* Raw aggregate-level acquisition before a serving reference is available.
+ * Raises only toward a modest converter-resolution floor, never toward the
+ * tracking target. Noise is not identified as a UE signal. A separate filter
+ * state and the shared peak envelope/cooldown are required. */
+radio_rx_decision_t radio_rx_acquire_resolution(const radio_rx_policy_config_t *config,
+                                                radio_rx_policy_state_t *state,
+                                                radio_rx_peak_envelope_t *peak_envelope,
+                                                const radio_gain_channel_t *channel,
+                                                const radio_rx_observation_t *observation);
 /* Record only an action that actually completed. Older generations, completions
  * preceding the accepted host-monotonic observation, and backward completions are ignored. */
 void radio_rx_action_completed(radio_rx_policy_state_t *state, uint64_t generation, uint64_t now_ns);
