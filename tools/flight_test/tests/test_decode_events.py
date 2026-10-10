@@ -19,6 +19,58 @@ class DecoderTests(unittest.TestCase):
                     realtime_ns=sequence if realtime_ns is None else realtime_ns,
                     a=a, b=b, c=c, d=d, e=e, f=f)
 
+    def test_radio_timing_preserves_unavailable_and_signed_deadlines(self):
+        valid = decoder.decode_radio_timing(self.event(86, 1, d=10, e=decoder.INT64_MIN, f=1))
+        self.assertTrue(valid['check_valid'])
+        self.assertEqual(valid['lateness_ns'], decoder.INT64_MIN)
+        invalid = decoder.decode_radio_timing(self.event(86, 2, d=decoder.INT64_MIN,
+                                                        e=decoder.INT64_MIN, f=(22 << 32) | 1))
+        self.assertFalse(invalid['check_valid'])
+        self.assertIsNone(invalid['check_ns'])
+        self.assertIsNone(invalid['lateness_ns'])
+        self.assertEqual(invalid['deadline_error'], 22)
+        anchor = decoder.decode_radio_timing(self.event(89, 3, d=-1, e=20, f=(512 << 32) | 7680))
+        self.assertEqual(anchor['rx_end_ticks'], -1)
+        self.assertEqual(anchor['guard_samples'], 512)
+        self.assertEqual(anchor['samples_per_subframe'], 7680)
+        layout = decoder.decode_radio_timing(self.event(81, 4, a=decoder.INT64_MIN, b=decoder.INT64_MIN,
+                                                       c=decoder.INT64_MIN, d=decoder.INT64_MIN,
+                                                       e=decoder.INT64_MIN, f=7680000))
+        for key in ('prach_token', 'buffer_offset', 'cp_reps', 'dft_ta', 'bins_antennas'):
+            self.assertIsNone(layout[key])
+        self.assertEqual(layout['sample_rate_hz'], 7680000)
+
+    def test_radio_timing_does_not_invent_async_or_sfn_joins(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            events = [self.event(72, 1, a=1, b=99, c=10000, d=7680, e=3, f=1),
+                      self.event(74, 2, a=1, b=8, c=0, d=decoder.INT64_MIN, e=0),
+                      self.event(73, 3, a=1, b=99, c=10000, d=7680, e=7680),
+                      self.event(90, 4, a=0, b=1, c=1007, d=10000, e=1, f=2),
+                      self.event(90, 5, a=0, b=2, c=1007, d=20000, e=1, f=2)]
+            (root / 'oai-flight-recorder-100-0123456789abcdef-0.ndjson').write_text(
+                ''.join(json.dumps(event) + '\n' for event in events))
+            result = decoder.decode(root, root / 'out')
+            self.assertEqual(result['radio_timing_records'], 5)
+            with (root / 'out/radio_timing.csv').open() as source:
+                rows = list(csv.DictReader(source))
+            self.assertEqual(rows[1]['device_ticks'], '')
+            self.assertEqual(rows[1]['send_sequence'], '')
+            self.assertEqual(rows[3]['sync_epoch'], '1')
+            self.assertEqual(rows[4]['sync_epoch'], '2')
+            self.assertEqual(rows[3]['frame_slot'], rows[4]['frame_slot'])
+            self.assertNotEqual(rows[3]['ue_relative_ticks'], rows[4]['ue_relative_ticks'])
+
+    def test_all_timing_fields_are_retained_without_float_conversion(self):
+        for event_id, (name, fields) in decoder.TIMING_LAYOUTS.items():
+            with self.subTest(event_id=event_id):
+                event = self.event(event_id, 1, a=1, b=2, c=3, d=4, e=5, f=6)
+                row = decoder.decode_radio_timing(event)
+                self.assertEqual(row['name'], name)
+                for key, value in zip(fields, range(1, 7)):
+                    self.assertEqual(row[key], value)
+        self.assertIsNone(decoder.decode_radio_timing(self.event(69, 1)))
+
     def test_acquisition_error_and_signed_alignment_are_retained(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
