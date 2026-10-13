@@ -40,6 +40,51 @@ redacted output to the terminal through a bounded asynchronous queue; a slow
 terminal can lose console copies without blocking disk capture. The final
 status records console loss separately.
 
+## PRACH waveform preparation and experimental gNB detection
+
+The UE prepares contiguous PRACH root and waveform tables on its existing RRC
+task. No extra command-line option is required. Event 91 records whether each
+transmission actually used a prepared waveform; event 88 still records the
+complete transmitted span, and flight TX scaling applies to both prepared and
+fallback waveforms. Preparation removes waveform construction from the TX path
+when the table is ready. It does not correct transport delays, clock errors or
+every source of missed deadlines.
+
+The gNB keeps its existing detector by default. To test an alternative that
+does not accumulate rejected correlation peaks into the detection reference:
+
+```sh
+sudo ./nr-softmodem -O flightTest.conf --flight log recovery --prach-normalized-detection
+```
+
+Or add the top-level setting `prach-normalized-detection = 1;` to the config.
+This experimental criterion compares the winning linear correlation peak with
+the full IFFT's mean energy for the same root and occasion. For configured
+`prach_dtx_threshold = 150;`, acceptance requires
+`peak * bins > total * 10^(150/100)`. The threshold remains numerically 15 dB,
+but its statistical meaning differs from the legacy peak-versus-running-reference
+margin. The reference includes signal and noise; this ratio is not calibrated
+RF SNR. Root products use symmetric nearest rounding to avoid a low-level DC
+bias, and the peak must reach the receiver's existing first representable
+normalized power unit (`bins * antennas`). Zero or sub-resolution input cannot
+pass through a large ratio alone. Existing noise-readiness and indication-space
+gates, PRACH configuration and TA conversion remain active.
+
+With flight logging, events 100-105 preserve exact linear peak/total values,
+the reference and gate selection, and separate long-preamble repetitions.
+The repetition snapshots support local SISO RU formats 0-3 and share the existing
+PRACH job allocation and lifetime. They add 13,424 bytes per captured occasion
+and only the winning root is additionally correlated for each repetition.
+Other paths explicitly report unavailable snapshots. The existing coherent
+combining algorithm is unchanged. Check phase cancellation, coherent integer
+wraps, sample-window validity, recorder losses and TX timing together before
+attributing a rejection to the detector. Omit the new option for a legacy
+control run; linear and repetition logging remain available in that run.
+
+This is an experimental flight-branch correction, qualified with production
+correlation code and synthetic signal/no-signal controls. A fresh physical RF
+and ChEm test is required to establish attachment and performance on that setup.
+
 ## Automatic UE recovery
 
 The opt-in session supervisor uses the same executable, with no separate

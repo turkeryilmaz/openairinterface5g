@@ -2,6 +2,7 @@
 import csv
 import importlib.util
 import json
+import math
 from pathlib import Path
 import tempfile
 import unittest
@@ -39,6 +40,34 @@ class DecoderTests(unittest.TestCase):
         for key in ('prach_token', 'buffer_offset', 'cp_reps', 'dft_ta', 'bins_antennas'):
             self.assertIsNone(layout[key])
         self.assertEqual(layout['sample_rate_hz'], 7680000)
+
+    def test_prach_linear_reference_and_repetition_fragments(self):
+        raw = decoder.decode_radio_timing(self.event(100, 1, a=77, b=(2 << 16) | 3,
+                                                     c=(194 << 32) | 194, d=2**33, e=2**38, f=(2 << 32) | 1024))
+        self.assertEqual(raw['correlation_peak'], 2**33)
+        self.assertEqual(raw['linear_preamble'], 3)
+        self.assertEqual(raw['linear_root_offset'], 2)
+        self.assertEqual(raw['linear_raw_delay'], 194)
+        self.assertEqual(raw['correlation_bins'], 1024)
+        self.assertEqual(raw['antennas'], 2)
+        self.assertAlmostEqual(raw['peak_mean_db'], 10 * math.log10(32))
+        zero = decoder.decode_radio_timing(self.event(100, 2, a=decoder.INT64_MIN, d=0, e=0, f=1024))
+        self.assertIsNone(zero['prach_token'])
+        self.assertIsNone(zero['peak_mean_db'])
+        self.assertEqual(zero['correlation_total'], 0)
+        criterion = decoder.decode_radio_timing(self.event(101, 3, a=77, b=1, c=150, d=200, e=290, f=29))
+        self.assertFalse(criterion['legacy_threshold_pass'])
+        self.assertTrue(criterion['normalized_threshold_pass'])
+        self.assertTrue(criterion['accepted'])
+        rep = decoder.decode_radio_timing(self.event(102, 4, a=77, b=1, c=193,
+                                                     d=2**31, e=2**38, f=(0x8000 << 16) | 0xffff))
+        self.assertEqual(rep['candidate_real'], -1)
+        self.assertEqual(rep['candidate_imag'], -32768)
+        absent = decoder.decode_radio_timing(self.event(103, 5, a=77, b=0,
+                                                        c=decoder.INT64_MIN, d=decoder.INT64_MIN, e=1, f=2))
+        self.assertFalse(absent['snapshot_allocated'])
+        self.assertFalse(absent['repetitions_complete'])
+        self.assertIsNone(absent['coherent_wraps'])
 
     def test_radio_timing_does_not_invent_async_or_sfn_joins(self):
         with tempfile.TemporaryDirectory() as temp:

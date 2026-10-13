@@ -28,6 +28,8 @@ typedef struct {
   int k;
   uint16_t first_antenna;
   uint16_t antenna_count;
+  uint16_t repetition_mask;
+  uint32_t coherent_wraps;
   bool valid;
 } nr_prach_capture_layout_t;
 
