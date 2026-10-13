@@ -12,6 +12,7 @@
 #include "PHY/NR_TRANSPORT/nr_transport_common_proto.h"
 #include "openair1/PHY/NR_TRANSPORT/nr_prach.h"
 #include "common/utils/LOG/flight_recorder.h"
+#include <math.h>
 
 typedef struct {
   int reps;
@@ -221,6 +222,12 @@ void init_nr_prach(PHY_VARS_gNB *gNB)
 
 void reset_nr_prach(PHY_VARS_gNB *gNB)
 {
+  prach_item_t pending;
+  // Teardown runs after the producers stop; queued entries still own buffers.
+  while (spsc_q_get(&gNB->prach_ru_queue, &pending, sizeof(pending)))
+    free_nr_prach_entry(&pending);
+  while (spsc_q_get(&gNB->prach_l1rx_queue, &pending, sizeof(pending)))
+    free_nr_prach_entry(&pending);
   spsc_q_free(&gNB->prach_ru_queue);
   spsc_q_free(&gNB->prach_l1rx_queue);
 }
@@ -253,7 +260,9 @@ static bool get_current_prach(const void *data, void *user)
 
 bool get_next_nr_prach(spsc_q_t *q, const fsn_t *now, prach_item_t *p)
 {
-  spsc_q_drop_while(q, drop_old_prach, (void *)now);
+  prach_item_t stale;
+  while (spsc_q_get_if(q, drop_old_prach, (void *)now, &stale, sizeof(stale)))
+    free_nr_prach_entry(&stale);
   return spsc_q_get_if(q, get_current_prach, (void *)now, p, sizeof(*p));
 }
 
@@ -279,9 +288,17 @@ void nr_schedule_rx_prach(PHY_VARS_gNB *gNB, int SFN, int Slot, nfapi_nr_prach_p
       .nb_rx = num_rx_per_beam,
       .Xu = gNB->X_u,
       .rx_prach = &gNB->rx_prach,
-      // TODO can be made permanently allocated?
-      .prach_buf = calloc_or_fail(1, sizeof(c16_t) * prach.nb_rx * NUMBER_OF_NR_RU_PRACH_OCCASIONS_MAX * NR_PRACH_SEQ_LEN_L),
+      .normalized_detection = gNB->prach_normalized_detection,
   };
+  // Keep optional diagnostic spectra in the existing job's allocation/lifetime.
+  const size_t buffer_bytes = sizeof(c16_t) * prach.nb_rx * NUMBER_OF_NR_RU_PRACH_OCCASIONS_MAX * NR_PRACH_SEQ_LEN_L;
+  const bool capture_repetitions = flight_recorder_enabled() && prach.nb_rx == 1 && prach.prach_sequence_length == 0 && fmt < 4
+                                   && prach_pdu->num_prach_ocas > 0
+                                   && prach_pdu->num_prach_ocas <= NUMBER_OF_NR_RU_PRACH_OCCASIONS_MAX;
+  const size_t repetition_bytes =
+      capture_repetitions ? sizeof(c16_t) * prach_pdu->num_prach_ocas * NR_PRACH_MAX_LONG_REPETITIONS * NR_PRACH_SEQ_LEN_L : 0;
+  prach.prach_buf = calloc_or_fail(1, buffer_bytes + repetition_bytes);
+  prach.prach_repetitions = capture_repetitions ? (void *)((char *)prach.prach_buf + buffer_bytes) : NULL;
   const int num_beams = prach_pdu->beamforming.dig_bf_interface;
   int n_symb = get_nr_prach_duration(prach_pdu->prach_format);
   AssertFatal(num_beams < NFAPI_MAX_NUM_BG_IF, "impossible beams size %d\n", num_beams);
@@ -307,8 +324,10 @@ void nr_schedule_rx_prach(PHY_VARS_gNB *gNB, int SFN, int Slot, nfapi_nr_prach_p
     }
   }
   bool found = spsc_q_put(&gNB->prach_ru_queue, &prach, sizeof(prach));
-  if (!found)
+  if (!found) {
     LOG_W(NR_PHY, "%4d.%2d PRACH occ queue is full: dropping PRACH request\n", SFN, Slot);
+    free_nr_prach_entry(&prach);
+  }
 }
 
 static void rx_nr_prach_ru_internal_rep(prach_item_t *p,
@@ -319,7 +338,8 @@ static void rx_nr_prach_ru_internal_rep(prach_item_t *p,
                                         int rep,
                                         const prach_ru_params_t *params,
                                         c16_t (*rxsigF)[NR_PRACH_SEQ_LEN_L],
-                                        nr_prach_capture_layout_t *capture)
+                                        nr_prach_capture_layout_t *capture,
+                                        c16_t *repetition)
 {
   AssertFatal(rep >= 0 && rep < params->reps, "rep %d is out of range (reps = %d)\n", rep, params->reps);
 
@@ -350,9 +370,18 @@ static void rx_nr_prach_ru_internal_rep(prach_item_t *p,
     for (int j = 0; j < params->N_ZC; j++, k2++) {
       if (k2 == params->dftlen)
         k2 = 0;
+      if (repetition) {
+        repetition[j] = tmp[k2];
+        const int sum_r = rxsigF[aa][j].r + tmp[k2].r;
+        const int sum_i = rxsigF[aa][j].i + tmp[k2].i;
+        if (capture)
+          capture->coherent_wraps += sum_r < INT16_MIN || sum_r > INT16_MAX || sum_i < INT16_MIN || sum_i > INT16_MAX;
+      }
       rxsigF[aa][j] = c16add(rxsigF[aa][j], tmp[k2]);
     }
   }
+  if (repetition && capture)
+    capture->repetition_mask |= 1U << rep;
 }
 
 static void rx_nr_prach_ru_internal(prach_item_t *p,
@@ -385,7 +414,8 @@ static void rx_nr_prach_ru_internal(prach_item_t *p,
   nr_prach_capture_layout_t *capture =
       flight_recorder_enabled() && prachOccasion < NUMBER_OF_NR_RU_PRACH_OCCASIONS_MAX ? &p->capture[prachOccasion] : NULL;
   for (int rep = 0; rep < params.reps; rep++) {
-    rx_nr_prach_ru_internal_rep(p, ant_start, rxdata, fp, N_TA_offset, rep, &params, rxsigF_tmp, capture);
+    c16_t *snapshot = p->prach_repetitions && rep < NR_PRACH_MAX_LONG_REPETITIONS ? p->prach_repetitions[prachOccasion][rep] : NULL;
+    rx_nr_prach_ru_internal_rep(p, ant_start, rxdata, fp, N_TA_offset, rep, &params, rxsigF_tmp, capture, snapshot);
   }
   if (capture)
     capture->valid = true;
@@ -419,7 +449,118 @@ void rx_nr_prach_ru_rep(prach_item_t *p,
   int N_dur = get_nr_prach_duration(p->pdu.prach_format);
   int prachStartSymbol = p->pdu.prach_start_symbol + prachOccasion * N_dur;
   prach_ru_params_t params = get_prach_ru_params(p, prachStartSymbol, fp);
-  rx_nr_prach_ru_internal_rep(p, 0, rxdata, fp, N_TA_offset, rep, &params, rxsigF, NULL);
+  rx_nr_prach_ru_internal_rep(p, 0, rxdata, fp, N_TA_offset, rep, &params, rxsigF, NULL, NULL);
+}
+
+bool nr_prach_normalized_detected(const rx_prach_out_t *out, int threshold_tenth_db)
+{
+  if (!out->correlation_total || !out->correlation_bins || !out->correlation_antennas || threshold_tenth_db < 0)
+    return false;
+  // Preserve the receiver's first representable normalized power unit. Below
+  // it, sparse quantization residue can have a large ratio without a usable peak.
+  if (out->correlation_peak < (uint64_t)out->correlation_bins * out->correlation_antennas)
+    return false;
+  // Compare peak/mean without truncating the mean or multiplying integers.
+  const double threshold = pow(10.0, threshold_tenth_db / 100.0);
+  return (double)out->correlation_peak * out->correlation_bins > (double)out->correlation_total * threshold;
+}
+
+static void prach_correlate(const c16_t *root,
+                            const c16_t *received,
+                            int sequence_length,
+                            int bins,
+                            bool rounded,
+                            c16_t *frequency,
+                            c16_t *correlation)
+{
+  for (int i = 0; i < sequence_length; i++) {
+    if (rounded) {
+      // Arithmetic truncation biases low-level complex noise toward a DC peak.
+      const int64_t real = (int64_t)root[i].r * received[i].r + (int64_t)root[i].i * received[i].i;
+      const int64_t imag = (int64_t)root[i].r * received[i].i - (int64_t)root[i].i * received[i].r;
+      const int64_t real_q = real >= 0 ? (real + 16384) / 32768 : -((-real + 16384) / 32768);
+      const int64_t imag_q = imag >= 0 ? (imag + 16384) / 32768 : -((-imag + 16384) / 32768);
+      frequency[i].r = max(INT16_MIN, min(INT16_MAX, real_q));
+      frequency[i].i = max(INT16_MIN, min(INT16_MAX, imag_q));
+    } else {
+      frequency[i] = c16MulConjShift(root[i], received[i], 15);
+    }
+  }
+  memset(frequency + sequence_length, 0, sizeof(*frequency) * (bins - sequence_length));
+  idft(get_idft(bins), (int16_t *)frequency, (int16_t *)correlation, 1);
+}
+
+static void prach_repetition_evidence(const prach_item_t *in, int occasion, const rx_prach_out_t *out)
+{
+  if (!flight_recorder_enabled())
+    return;
+  const nr_prach_capture_layout_t *capture = &in->capture[occasion];
+  const int64_t token = capture->token > 0 ? capture->token : INT64_MIN;
+  const bool complete = in->prach_repetitions && in->nb_rx == 1 && capture->valid && capture->reps > 0
+                        && capture->reps <= NR_PRACH_MAX_LONG_REPETITIONS && capture->repetition_mask == (1U << capture->reps) - 1;
+  const int flags = (in->prach_repetitions != NULL) | (capture->valid << 1) | (complete << 2);
+  flight_recorder_emit(FLIGHT_EVENT_GNB_PRACH_COMBINING,
+                       token,
+                       flags | ((int64_t)capture->repetition_mask << 16),
+                       capture->valid ? capture->reps : INT64_MIN,
+                       complete ? capture->coherent_wraps : INT64_MIN,
+                       in->pdu.prach_format,
+                       in->nb_rx);
+  if (!complete)
+    return;
+  const int bins = out->correlation_bins;
+  const int nzc = in->prach_sequence_length == 0 ? 839 : 139;
+  c16_t frequency[bins] __attribute__((aligned(32)));
+  c16_t correlation[bins] __attribute__((aligned(32)));
+  uint64_t separate_total = 0;
+  for (int rep = 0; rep < capture->reps; rep++) {
+    uint64_t spectral_total = 0, spectral_peak = 0;
+    const c16_t *received = in->prach_repetitions[occasion][rep];
+    for (int i = 0; i < nzc; i++) {
+      const int64_t real = received[i].r, imag = received[i].i;
+      const uint64_t energy = real * real + imag * imag;
+      spectral_total += energy;
+      spectral_peak = max(spectral_peak, energy);
+    }
+    separate_total += spectral_total;
+    flight_recorder_emit(FLIGHT_EVENT_GNB_PRACH_REPETITION_SPECTRUM, token, rep, spectral_total, spectral_peak, nzc, 1);
+    // Spectral evidence remains available even if coherent cancellation leaves no candidate.
+    if (!out->correlation_peak)
+      continue;
+    prach_correlate(in->Xu[out->correlation_root],
+                    in->prach_repetitions[occasion][rep],
+                    nzc,
+                    bins,
+                    in->normalized_detection,
+                    frequency,
+                    correlation);
+    uint64_t peak = 0, total = 0;
+    int peak_bin = 0;
+    for (int i = 0; i < bins; i++) {
+      const int64_t real = correlation[i].r, imag = correlation[i].i;
+      const uint64_t energy = real * real + imag * imag;
+      total += energy;
+      if (energy > peak) {
+        peak = energy;
+        peak_bin = i;
+      }
+    }
+    const c16_t candidate = correlation[out->correlation_bin];
+    const uint32_t packed = (uint16_t)candidate.r | ((uint32_t)(uint16_t)candidate.i << 16);
+    flight_recorder_emit(FLIGHT_EVENT_GNB_PRACH_REPETITION, token, rep, peak_bin, peak, total, packed);
+  }
+  uint64_t combined_total = 0;
+  for (int i = 0; i < nzc; i++) {
+    const int64_t real = in->prach_buf[0][occasion][i].r, imag = in->prach_buf[0][occasion][i].i;
+    combined_total += real * real + imag * imag;
+  }
+  flight_recorder_emit(FLIGHT_EVENT_GNB_PRACH_COMBINED_SPECTRUM,
+                       token,
+                       combined_total,
+                       separate_total,
+                       capture->reps,
+                       capture->coherent_wraps,
+                       nzc);
 }
 
 rx_prach_out_t rx_nr_prach(const prach_item_t *in, int occasion)
@@ -429,7 +570,7 @@ rx_prach_out_t rx_nr_prach(const prach_item_t *in, int occasion)
   uint16_t numshift = 0;
   int first_nonzero_root_idx = 0;
   bool new_dft = false;
-  int log2_ifft_size = 10;
+  int log2_ifft_size = in->prach_sequence_length == 0 ? 10 : 8;
 
   const int nb_rx = in->nb_rx;
   const int NCS = in->pdu.num_cs;
@@ -465,7 +606,11 @@ rx_prach_out_t rx_nr_prach(const prach_item_t *in, int occasion)
 
   int16_t preamble_shift = 0;
   const int dft_sz = N_ZC == 839 ? 1024 : 256;
-  int32_t prach_ifft[dft_sz] __attribute__((aligned(32)));
+  const bool collect_linear = in->normalized_detection || flight_recorder_enabled();
+  uint64_t prach_ifft[dft_sz] __attribute__((aligned(32)));
+  uint64_t correlation_total = 0;
+  out.correlation_bins = dft_sz;
+  out.correlation_antennas = nb_rx;
   for (int preamble_index = 0; preamble_index < 64; preamble_index++) {
     if (LOG_DEBUGFLAG(DEBUG_PRACH)) {
       int en = dB_fixed(signal_energy((int32_t *)in->prach_buf[0][occasion], N_ZC == 839 ? 840 : 140));
@@ -578,17 +723,14 @@ rx_prach_out_t rx_nr_prach(const prach_item_t *in, int occasion)
       }
       c16_t prachF[dft_sz] __attribute__((aligned(32)));
       for (int aa = 0; aa < nb_rx; aa++) {
-        // Do componentwise product with Xu* on each antenna
-        for (int offset = 0; offset < N_ZC; offset++) {
-          prachF[offset] = c16MulConjShift(Xu[offset], in->prach_buf[aa][occasion][offset], 15);
-        }
-        memset(prachF + N_ZC, 0, sizeof(*prachF) * (dft_sz - N_ZC));
-        // Now do IFFT of size 1024 (N_ZC=839) or 256 (N_ZC=139)
         c16_t prach_ifft_tmp[dft_sz] __attribute__((aligned(32)));
-        idft(get_idft(dft_sz), (int16_t *)prachF, (int16_t *)prach_ifft_tmp, 1);
+        prach_correlate(Xu, in->prach_buf[aa][occasion], N_ZC, dft_sz, in->normalized_detection, prachF, prach_ifft_tmp);
         // compute energy and accumulate over receive antennas
-        for (int i = 0; i < dft_sz; i++)
-          prach_ifft[i] += squaredMod(prach_ifft_tmp[i]);
+        for (int i = 0; i < dft_sz; i++) {
+          const int64_t real = prach_ifft_tmp[i].r;
+          const int64_t imag = prach_ifft_tmp[i].i;
+          prach_ifft[i] += real * real + imag * imag;
+        }
 
         if (LOG_DUMPFLAG(DEBUG_PRACH)) {
           if (aa == 0)
@@ -599,15 +741,11 @@ rx_prach_out_t rx_nr_prach(const prach_item_t *in, int occasion)
 
       } // antennas_rx
 
-      // Normalization of energy over ifft and receive antennas
-      if (N_ZC == 839) {
-        log2_ifft_size = 10;
-        for (int i = 0; i < 1024; i++)
-          prach_ifft[i] = (prach_ifft[i]>>log2_ifft_size)/nb_rx;
-      } else {
-        log2_ifft_size = 8;
-        for (int i = 0; i < 256; i++)
-          prach_ifft[i] = (prach_ifft[i]>>log2_ifft_size)/nb_rx;
+      // Keep the complete linear energy for this root, before legacy truncation.
+      if (collect_linear) {
+        correlation_total = 0;
+        for (int i = 0; i < dft_sz; i++)
+          correlation_total += prach_ifft[i];
       }
 
     } // new dft
@@ -618,7 +756,17 @@ rx_prach_out_t rx_nr_prach(const prach_item_t *in, int occasion)
 
     for (int i = 0; i < NCS2; i++) {
       const int peak_bin = preamble_shift2 + i;
-      const int levdB = dB_fixed_times10(prach_ifft[peak_bin]);
+      const uint64_t linear = prach_ifft[peak_bin];
+      const uint32_t normalized = (linear >> log2_ifft_size) / nb_rx;
+      const int levdB = normalized ? dB_fixed_times10(normalized) : -900;
+      if (collect_linear && (linear > out.correlation_peak || (linear == out.correlation_peak && out.correlation_delay_raw > i))) {
+        out.correlation_peak = linear;
+        out.correlation_total = correlation_total;
+        out.correlation_bin = peak_bin;
+        out.correlation_root = preamble_offset - first_nonzero_root_idx;
+        out.correlation_preamble = preamble_index;
+        out.correlation_delay_raw = i;
+      }
       if (levdB > out.max_preamble_energy || (levdB == out.max_preamble_energy && out.max_preamble_delay_raw > i)) {
         LOG_D(NR_PHY_RACH, "preamble_index %d, delay %d en %d dB > %d dB\n", preamble_index, i, levdB, out.max_preamble_energy);
         out.max_preamble_energy = levdB;
@@ -627,6 +775,13 @@ rx_prach_out_t rx_nr_prach(const prach_item_t *in, int occasion)
       }
     }
   } // preamble_index
+
+  if (in->normalized_detection && out.correlation_peak) {
+    out.max_preamble = out.correlation_preamble;
+    out.max_preamble_delay_raw = out.correlation_delay_raw;
+    const uint32_t normalized = (out.correlation_peak >> log2_ifft_size) / nb_rx;
+    out.max_preamble_energy = normalized ? max(0, dB_fixed_times10(normalized)) : 0;
+  }
 
   // The conversion from raw PRACH delay to TA value is done here.
   // It is normalized to the 30.72 Ms/s, considering the numerology, N_RB and the sampling rate
@@ -657,5 +812,6 @@ rx_prach_out_t rx_nr_prach(const prach_item_t *in, int occasion)
   }
 
   stop_meas(in->rx_prach);
+  prach_repetition_evidence(in, occasion, &out);
   return out;
 }

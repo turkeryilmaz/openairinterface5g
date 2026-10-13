@@ -39,7 +39,10 @@ void L1_nr_prach_procedures(PHY_VARS_gNB *gNB, prach_item_t *prach_id, nfapi_nr_
     // where there is PRACH. Its up to the MAC to schedule another PRACH PDU in the case there are there N_RA_slot \in {0,1}.
     rx_prach_out_t res = rx_nr_prach(prach_id, prach_oc);
     const bool prach_noise_ready = gNB->prach_energy_counter == NUM_PRACH_RX_FOR_NOISE_ESTIMATE;
-    const bool prach_above_threshold = res.max_preamble_energy > gNB->measurements.prach_I0 + gNB->prach_thres;
+    const bool legacy_threshold_pass = res.max_preamble_energy > gNB->measurements.prach_I0 + gNB->prach_thres;
+    const bool normalized_threshold_pass =
+        (prach_id->normalized_detection || flight_recorder_enabled()) && nr_prach_normalized_detected(&res, gNB->prach_thres);
+    const bool prach_above_threshold = prach_id->normalized_detection ? normalized_threshold_pass : legacy_threshold_pass;
     const bool prach_ind_has_space = rach_ind->number_of_pdus < MAX_NUM_NR_RX_RACH_PDUS;
     const bool prach_accepted = prach_noise_ready && prach_above_threshold && prach_ind_has_space;
     if (flight_recorder_enabled()) {
@@ -79,6 +82,26 @@ void L1_nr_prach_procedures(PHY_VARS_gNB *gNB, prach_item_t *prach_id, nfapi_nr_
                            decision | ((uint64_t)(uint32_t)gNB->prach_energy_counter << 32),
                            res.max_preamble_energy,
                            (uint32_t)gNB->measurements.prach_I0 | ((uint64_t)(uint32_t)gNB->prach_thres << 32));
+      const int64_t diagnostic_token = token > 0 ? token : INT64_MIN;
+      flight_recorder_emit(FLIGHT_EVENT_GNB_PRACH_CORRELATION_RAW,
+                           diagnostic_token,
+                           res.correlation_preamble | ((uint64_t)res.correlation_root << 16),
+                           res.correlation_delay_raw | ((uint64_t)res.correlation_bin << 32),
+                           res.correlation_peak,
+                           res.correlation_total,
+                           res.correlation_bins | ((uint64_t)(uint32_t)prach_id->nb_rx << 32));
+      const unsigned criteria = prach_noise_ready | (legacy_threshold_pass << 1) | (normalized_threshold_pass << 2)
+                                | (prach_above_threshold << 3) | (prach_accepted << 4)
+                                | ((res.correlation_peak >= (uint64_t)res.correlation_bins * res.correlation_antennas
+                                    && res.correlation_bins && res.correlation_antennas)
+                                   << 5);
+      flight_recorder_emit(FLIGHT_EVENT_GNB_PRACH_CRITERION,
+                           diagnostic_token,
+                           prach_id->normalized_detection,
+                           gNB->prach_thres,
+                           gNB->measurements.prach_I0,
+                           res.max_preamble_energy,
+                           criteria);
     }
     LOG_D(NR_PHY,
           "[RAPROC] %d.%d occasion %d symbol %u format %u sequence-length %d N_ZC %d PRACH-SCS %d UL-mu %d NCS %u "
