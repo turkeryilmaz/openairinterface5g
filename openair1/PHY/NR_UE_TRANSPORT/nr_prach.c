@@ -415,7 +415,8 @@ int32_t generate_nr_prach(PHY_VARS_NR_UE *ue, uint8_t gNB_id, int frame, uint8_t
   LOG_I(PHY, "PRACH [UE %d] in frame.slot %d.%d, preambleIndex = %d\n", ue->Mod_id, frame, slot, pdu->ra_PreambleIndex);
   int dftlen, ncp, prach_start;
   int32_t power;
-  if (prach->waveform_ready) {
+  const bool cached = prach->waveform_ready;
+  if (cached) {
     dftlen = prach->waveform_length;
     ncp = prach->prefix_length;
     prach_start = prach->waveform_start;
@@ -445,7 +446,7 @@ int32_t generate_nr_prach(PHY_VARS_NR_UE *ue, uint8_t gNB_id, int frame, uint8_t
     else if (!radio_gain_device_apply_tx(prach_output, sample_count, pdu->prach_tx_power, frame, slot, 1))
       radio_gain_device_reject_tx(frame, slot, 1, RADIO_TX_REJECT_PROFILE);
   }
-  if (flight_recorder_enabled())
+  if (flight_recorder_enabled()) {
     flight_recorder_emit(FLIGHT_EVENT_UE_PRACH_SPAN,
                          ue->Mod_id,
                          (int64_t)frame * 1000 + slot,
@@ -453,5 +454,7 @@ int32_t generate_nr_prach(PHY_VARS_NR_UE *ue, uint8_t gNB_id, int frame, uint8_t
                          sample_count,
                          ncp,
                          dftlen);
+    flight_recorder_emit(FLIGHT_EVENT_UE_PRACH_LUT, ue->Mod_id, (int64_t)frame * 1000 + slot, cached, sample_count, dftlen, tx_amp);
+  }
   return power;
 }

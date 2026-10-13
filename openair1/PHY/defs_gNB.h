@@ -28,6 +28,7 @@
 #define NR_SRS_DETECTION_THRESHOLD 10
 
 #define NUMBER_OF_NR_PRACH_MAX 8
+#define NR_PRACH_MAX_LONG_REPETITIONS 4
 typedef struct {
   int frame;
   int slot;
@@ -45,6 +46,9 @@ typedef struct {
   c16_t (*Xu)[839];
   time_stats_t *rx_prach;
   c16_t (*prach_buf)[NUMBER_OF_NR_RU_PRACH_OCCASIONS_MAX][NR_PRACH_SEQ_LEN_L];
+  // Optional SISO long-preamble snapshots in the tail of the same allocation.
+  c16_t (*prach_repetitions)[NR_PRACH_MAX_LONG_REPETITIONS][NR_PRACH_SEQ_LEN_L];
+  bool normalized_detection;
   nr_prach_capture_layout_t capture[NUMBER_OF_NR_RU_PRACH_OCCASIONS_MAX];
 } prach_item_t;
 
@@ -414,6 +418,7 @@ typedef struct PHY_VARS_gNB_s {
 
   /// counter to average prach energh over first 100 prach opportunities
   int prach_energy_counter;
+  bool prach_normalized_detection;
 
   int pucch0_thres;
   int pusch_thres;

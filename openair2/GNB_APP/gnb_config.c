@@ -809,6 +809,11 @@ void RCconfig_NR_L1(void)
       gNB->ofdm_offset_divisor = *gpd(params, np, L1_OFDM_OFFSET_DIVISOR)->uptr;
       gNB->pucch0_thres = *gpd(params, np, L1_PUCCH0_DTX_THRESHOLD)->uptr;
       gNB->prach_thres = *gpd(params, np, L1_PRACH_DTX_THRESHOLD)->uptr;
+      gNB->prach_normalized_detection = get_softmodem_params()->prach_normalized_detection;
+      LOG_I(NR_PHY,
+            "PRACH detector reference: %s, configured margin %.1f dB\n",
+            gNB->prach_normalized_detection ? "full-correlation mean (experimental)" : "legacy running peak",
+            gNB->prach_thres / 10.0);
       gNB->pusch_thres = *gpd(params, np, L1_PUSCH_DTX_THRESHOLD)->uptr;
       gNB->srs_thres = *gpd(params, np, L1_SRS_DTX_THRESHOLD)->uptr;
       gNB->max_ldpc_iterations = *gpd(params, np, L1_MAX_LDPC_ITERATIONS)->uptr;

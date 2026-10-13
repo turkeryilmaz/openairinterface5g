@@ -124,8 +124,17 @@ typedef struct rx_prach_out {
   uint16_t max_preamble_energy;
   uint16_t max_preamble_delay;
   uint16_t max_preamble_delay_raw; // raw PRACH correlation-bin delay before TA normalization
+  uint16_t correlation_bins;
+  uint16_t correlation_antennas;
+  uint16_t correlation_bin;
+  uint16_t correlation_root;
+  uint16_t correlation_preamble;
+  uint16_t correlation_delay_raw;
+  uint64_t correlation_peak;
+  uint64_t correlation_total;
 } rx_prach_out_t;
 rx_prach_out_t rx_nr_prach(const prach_item_t *, int occasion);
+bool nr_prach_normalized_detected(const rx_prach_out_t *out, int threshold_tenth_db);
 
 void rx_nr_prach_ru(prach_item_t *, int32_t **, NR_DL_FRAME_PARMS *frame_parms, int N_TA_offset, bool das);
 void rx_nr_prach_ru_rep(prach_item_t *p,
