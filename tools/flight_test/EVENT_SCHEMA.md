@@ -581,3 +581,67 @@ in0..31 and near-rail components in32..63. Unavailable fields remain blank.
 Decision84 repeats the actual detector inputs and gate result with the exact
 token, avoiding ambiguous joins after SFN wrap; f packs signed I0 in0..31 and
 signed threshold in32..63. Detection decisions are unchanged.
+
+
+### PRACH preparation and linear detector evidence (91, 100-105)
+
+| ID | Record | a, b, c, d, e, f |
+|---|---|---|
+|91|UE_PRACH_LUT|UE, frame*1000+slot, prepared-waveform hit bool, waveform samples including CP, DFT samples, generator amplitude before flight TX scaling|
+|100|GNB_PRACH_CORRELATION_RAW|occasion token, linear RAPID/root offset packed, raw delay/absolute IFFT bin packed, raw peak energy, raw full-IFFT energy sum, IFFT bins/receive antennas packed|
+|101|GNB_PRACH_CRITERION|occasion token, selected reference mode, configured threshold0.1dB, legacy EWMA before update0.1dB, selected candidate legacy-normalized energy0.1dB, criterion flags|
+|102|GNB_PRACH_REPETITION|occasion token, repetition index, full-root peak bin, raw peak, raw full-IFFT sum, signed complex correlation at the combined linear winner's absolute bin packed|
+|103|GNB_PRACH_COMBINING|occasion token, snapshot flags/repetition mask packed, repetitions, coherent c16 wrap count, PRACH format, receive antennas|
+|104|GNB_PRACH_REPETITION_SPECTRUM|occasion token, repetition index, extracted spectral energy sum, spectral peak energy, sequence bins, spectrum-valid bool|
+|105|GNB_PRACH_COMBINED_SPECTRUM|occasion token, coherently combined spectral sum, sum of individual repetitions' spectral sums, repetitions, coherent c16 wrap count, sequence bins|
+
+Event100 b packs linear RAPID in bits0..15 and root-table offset in16..63;
+its c packs delay within that preamble window in0..31 and absolute IFFT bin
+in32..63; f packs full-IFFT bin count in0..31 and receive-antenna count in32..63.
+Energies are exact integer-code squared sums after fixed-point correlation,
+before division by IFFT size/antennas or conversion to decibels. The reference
+uses all 1024 long or 256 short IFFT bins, not the839/139 extracted sequence
+bins and not just the candidate search window. `peak_mean_db` in
+`radio_timing.csv` is `10*log10(peak*bins/total)` when both energies are positive;
+otherwise it is unavailable. These units are not dBm or calibrated SNR.
+
+Mode0 in101 selects legacy peak-versus-EWMA acceptance; mode1 selects the
+experimental per-occasion peak/full-IFFT mean. Flags are bit0=noise-ready,
+bit1=legacy-threshold-pass, bit2=normalized-threshold-pass,
+bit3=selected-threshold-pass, bit4=accepted, bit5=normalized precision admission.
+Precision admission requires peak>=bins*antennas, preserving the first nonzero
+legacy normalized power unit. Normalized acceptance additionally requires
+positive total and `peak*bins > total*10^(threshold/100)`; negative thresholds
+are rejected. The reference's statistical meaning changes with mode1 even
+when the numeric threshold stays150 (15dB). Rounded symmetric Q15 root products
+are used in mode1; legacy products remain in mode0. The legacy comparison in
+mode1 uses that mode's selected candidate and correlation arithmetic; it is
+not a simultaneous rerun of the entire legacy correlator. Conversely event100
+in mode0 identifies the exact linear winner, which may differ from the
+legacy winner due to decibel quantization ties. Events65/66/84 retain their
+existing energy/TA fields but their pass/accepted bits describe the selected
+criterion; interpret them with101 rather than subtracting I0 in mode1.
+
+Repetition snapshots cover local RU SISO long formats0-3. Event103 b uses
+bit0=snapshot-allocated, bit1=layout-valid, bit2=all-repetitions-captured, with
+the captured repetition mask in16..63. Its c and d are unavailable when their
+support/validity is absent. These flags describe extraction/snapshot completeness,
+not the independent radio-read continuity and gain validity in80-83. Repetitions
+are correlated only for event100's winning root, with the same mode-specific
+root product as the combined correlator. Event102 reports each repetition's
+own full-root peak and its complex value at the combined linear candidate bin;
+f packs signed16-bit real in0..15 and imaginary in16..31. It does not assert
+that each repetition's own peak identifies the same preamble. Comparing complex
+values at the common bin allows cancellation analysis without mistaking different
+peak locations for a phase pair. If the combined peak is zero,102 is absent,
+while104/105 can still show nonzero individual and zero combined spectra.
+
+A coherent wrap counts a spectral-bin addition for which either component
+exceeds signed16-bit range; it is not an ADC clipping count. The original
+coherent summation is retained. Comparing105's combined/separate energy ratio
+must account for these wraps, repetitions, CFO/phase, timing, RX context and
+fixed-point rounding; it is not by itself proof of a channel-emulator defect.
+Unsupported paths emit103 with incomplete/unavailable fields and no invented
+repetition values. Tokens are process-local and missing tokens remain unavailable;
+never join SFN/slot alone across restarts or wraps. Check footer loss and record
+coverage before inferring anything from a missing fragment.

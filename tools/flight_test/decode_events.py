@@ -47,6 +47,13 @@ TIMING_LAYOUTS = {
     88: ('UE_PRACH_SPAN', ('ue', 'frame_slot', 'buffer_offset', 'waveform_samples', 'cp_samples', 'dft_samples')),
     89: ('UE_TX_ANCHOR', ('ue', 'sync_epoch', 'ue_relative_ticks', 'rx_end_ticks', 'rx_end_host_ns', 'guard_rate')),
     90: ('UE_TX_CHANNEL_CONTEXT', ('ue', 'sync_epoch', 'frame_slot', 'ue_relative_ticks', 'channel_code', 'preamble_index')),
+    91: ('UE_PRACH_LUT', ('ue', 'frame_slot', 'lut_hit', 'waveform_samples', 'dft_samples', 'amplitude')),
+    100: ('GNB_PRACH_CORRELATION_RAW', ('prach_token', 'preamble_root', 'delay_bin', 'correlation_peak', 'correlation_total', 'correlation_shape')),
+    101: ('GNB_PRACH_CRITERION', ('prach_token', 'reference_mode', 'threshold_tenth_db', 'legacy_reference_tenth_db', 'candidate_energy_tenth_db', 'criterion_flags')),
+    102: ('GNB_PRACH_REPETITION', ('prach_token', 'repetition', 'repetition_peak_bin', 'repetition_peak', 'repetition_total', 'candidate_complex')),
+    103: ('GNB_PRACH_COMBINING', ('prach_token', 'combining_flags', 'repetitions', 'coherent_wraps', 'prach_format', 'antennas')),
+    104: ('GNB_PRACH_REPETITION_SPECTRUM', ('prach_token', 'repetition', 'spectral_total', 'spectral_peak', 'sequence_bins', 'spectrum_valid')),
+    105: ('GNB_PRACH_COMBINED_SPECTRUM', ('prach_token', 'combined_spectral_total', 'separate_spectral_total', 'repetitions', 'coherent_wraps', 'sequence_bins')),
 }
 NAMES.update({number: layout[0] for number, layout in TIMING_LAYOUTS.items()})
 
@@ -66,6 +73,31 @@ def decode_radio_timing(event):
     elif event['event'] == 89:
         row['guard_samples'] = (event['f'] & UINT64_MASK) >> 32
         row['samples_per_subframe'] = event['f'] & 0xffffffff
+    elif event['event'] == 100:
+        row['linear_preamble'] = event['b'] & 0xffff
+        row['linear_root_offset'] = (event['b'] & UINT64_MASK) >> 16
+        row['linear_raw_delay'] = event['c'] & 0xffffffff
+        row['linear_absolute_bin'] = (event['c'] & UINT64_MASK) >> 32
+        row['correlation_bins'] = event['f'] & 0xffffffff
+        row['antennas'] = (event['f'] & UINT64_MASK) >> 32
+        peak, total = event['d'], event['e']
+        row['peak_mean_db'] = 10 * math.log10(peak * row['correlation_bins'] / total) if peak > 0 and total > 0 else None
+    elif event['event'] == 101:
+        row['noise_ready'] = bool(event['f'] & 1)
+        row['legacy_threshold_pass'] = bool(event['f'] & 2)
+        row['normalized_threshold_pass'] = bool(event['f'] & 4)
+        row['selected_threshold_pass'] = bool(event['f'] & 8)
+        row['accepted'] = bool(event['f'] & 16)
+        row['correlation_precision_valid'] = bool(event['f'] & 32)
+    elif event['event'] == 102:
+        real, imag = event['f'] & 0xffff, (event['f'] >> 16) & 0xffff
+        row['candidate_real'] = real - 0x10000 if real & 0x8000 else real
+        row['candidate_imag'] = imag - 0x10000 if imag & 0x8000 else imag
+    elif event['event'] == 103:
+        row['snapshot_allocated'] = bool(event['b'] & 1)
+        row['capture_valid'] = bool(event['b'] & 2)
+        row['repetitions_complete'] = bool(event['b'] & 4)
+        row['repetition_mask'] = (event['b'] & UINT64_MASK) >> 16
     # INT64_MIN is unavailable only where explicitly defined by the producer.
     nullable = {
         72: ('final_ticks',), 73: ('accepted_samples', 'final_ticks'), 74: ('device_ticks',), 77: ('device_ticks', 'expected_ticks'),
@@ -75,11 +107,12 @@ def decode_radio_timing(event):
                                                           'window_first_ticks', 'window_end_ticks'),
         83: ('window_first_ticks', 'window_end_ticks', 'power_fs_nano', 'peak_fs_nano', 'component_counts'),
         85: ('deadline_ns',), 86: ('check_ns',), 89: ('rx_end_ticks', 'rx_end_host_ns'),
+        103: ('repetitions', 'coherent_wraps'),
     }
     for key in nullable.get(event['event'], ()):
         if row[key] == INT64_MIN:
             row[key] = None
-    if 80 <= event['event'] <= 84 and row['prach_token'] == INT64_MIN:
+    if (80 <= event['event'] <= 84 or 100 <= event['event'] <= 105) and row['prach_token'] == INT64_MIN:
         row['prach_token'] = None
     # INT64_MIN is a representable, valid lateness; use the separate error flag.
     if event['event'] == 86 and not row['check_valid']:
