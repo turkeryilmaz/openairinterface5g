@@ -267,7 +267,9 @@ static bool get_current_prach(const void *data, void *user)
 
 bool get_next_nr_prach(spsc_q_t *q, const fsn_t *now, prach_item_t *p)
 {
-  spsc_q_drop_while(q, drop_old_prach, (void *)now);
+  prach_item_t stale;
+  while (spsc_q_get_if(q, drop_old_prach, (void *)now, &stale, sizeof(stale)))
+    free_nr_prach_entry(&stale);
   return spsc_q_get_if(q, get_current_prach, (void *)now, p, sizeof(*p));
 }
 
