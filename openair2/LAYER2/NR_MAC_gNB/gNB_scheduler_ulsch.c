@@ -2804,6 +2804,8 @@ void nr_ulsch_preprocessor(gNB_MAC_INST *nr_mac, nr_cell_sched_t *cell, post_pro
   bool last_dl = (current.s % fs->numb_slots_period) == (fs->period_cfg.num_dl_slots - 1);
 
   fsn_t *next = &cell->ul_next;
+  if (next->f == UINT16_MAX)
+    *next = min_next;
   while (max_dci > 0) {
     /* go to the next UL slot, skipping DL if necessary */
     *next = fsn_get_max(*next, min_next);
