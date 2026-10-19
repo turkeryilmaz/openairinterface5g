@@ -308,7 +308,7 @@ static int nr_ue_slot_select(const fapi_nr_config_request_t *cfg, int nr_slot)
  * coordinated shutdown can flush evidence. Other radio errors remain fatal. */
 static inline bool radio_shutdown_cancelled(int result)
 {
-  return (result == -ESHUTDOWN && oai_exit) || radio_gain_device_tx_cancelled(result);
+  return (result == -ESHUTDOWN && (oai_exit || nrue_ru_failed())) || radio_gain_device_tx_cancelled(result);
 }
 
 static bool RU_write(nr_rxtx_thread_data_t *rxtxD, bool sl_tx_action, c16_t **txp)

@@ -430,6 +430,14 @@ typedef struct timer_elm_s {
   }
 
   static sem_t itti_sem_block;
+  static pthread_once_t itti_sem_once = PTHREAD_ONCE_INIT;
+
+  static void itti_init_stop_semaphore()
+  {
+    int rc = sem_init(&itti_sem_block, 0, 0);
+    AssertFatal(rc == 0, "error in sem_init(): %d %s\n", errno, strerror(errno));
+  }
+
   void itti_wait_tasks_unblock()
   {
     int rc = sem_post(&itti_sem_block);
@@ -443,15 +451,22 @@ typedef struct timer_elm_s {
     itti_wait_tasks_unblock();
   }
 
-  void itti_wait_tasks_end(void (*handler)(int))
+  void itti_wait_tasks_prepare(void (*handler)(int))
   {
-    int rc = sem_init(&itti_sem_block, 0, 0);
-    AssertFatal(rc == 0, "error in sem_init(): %d %s\n", errno, strerror(errno));
+    int rc = pthread_once(&itti_sem_once, itti_init_stop_semaphore);
+    AssertFatal(rc == 0, "error in pthread_once(): %d %s\n", rc, strerror(rc));
 
     if (handler == NULL) /* no handler given: install default */
       handler = catch_sigterm;
     signal(SIGTERM, handler);
     signal(SIGINT, handler);
+  }
+
+  void itti_wait_tasks_end(void (*handler)(int))
+  {
+    // Preserve stop notifications posted between preparation and this wait.
+    itti_wait_tasks_prepare(handler);
+    int rc;
 
     // POSIX sem_wait(), ERRORS: EINTR does not mean the semaphore was acquired.
     do {

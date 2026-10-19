@@ -4,6 +4,7 @@
 
 #include "flight_options.h"
 #include "agc_options.h"
+#include "radio/COMMON/radio_gain_device.h"
 
 #define _GNU_SOURCE             /* See feature_test_macros(7) */
 #include <sched.h>
@@ -205,6 +206,12 @@ static void trigger_stop(int sig)
 }
 static void trigger_deregistration(int sig)
 {
+  // A failed sample stream or closed TX admission cannot carry deregistration.
+  // Retain the ordinary NAS procedure for a user stop with a usable radio.
+  if (nrue_ru_failed() || radio_gain_device_tx_cancelled(-ERANGE)) {
+    itti_wait_tasks_unblock();
+    return;
+  }
   if (!stop_immediately && IS_SA_MODE(get_softmodem_params())) {
     for (int ue_inst = 0; ue_inst < NB_UE_INST; ue_inst++) {
       MessageDef *msg = itti_alloc_new_message(TASK_NAS_NRUE, ue_inst, NAS_DEREGISTRATION_REQ);
@@ -434,6 +441,9 @@ int main(int argc, char **argv)
     load_module_shlib("imscope_record", NULL, 0, nrPHY_vars_UE_g[0][0]);
   }
 
+  // Radio workers may report a fatal error as soon as they start.
+  itti_wait_tasks_prepare(trigger_deregistration);
+
   // Launch a temporary high-priority thread to start the UE RU, ensuring radio library threads inherit this priority
   pthread_t ru_start_thread;
   threadCreate(&ru_start_thread, nrue_ru_start_thread, NULL, "ru_start_thread", -1, OAI_PRIORITY_RT_MAX);
@@ -488,6 +498,6 @@ int main(int argc, char **argv)
 
   free(pckg);
   printf("Bye.\n");
-  return 0;
+  return nrue_ru_failed() || radio_gain_device_tx_cancelled(-ERANGE) ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 

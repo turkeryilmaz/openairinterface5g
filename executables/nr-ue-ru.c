@@ -13,6 +13,15 @@
 #include "openair1/PHY/phy_extern_nr_ue.h"
 
 #include <errno.h>
+#include <signal.h>
+#include <stdatomic.h>
+
+static _Atomic bool radio_failed;
+
+bool nrue_ru_failed(void)
+{
+  return atomic_load_explicit(&radio_failed, memory_order_acquire);
+}
 
 /* NR UE RU configuration section name */
 #define CONFIG_STRING_NRUE_RU_LIST "RUs"
@@ -485,8 +494,26 @@ int nrue_ru_read(PHY_VARS_NR_UE *UE,
                  nr_ue_tx_deadline_anchor_t *deadline_anchor)
 {
   openair0_device_t *dev = &openair0_dev[UE->rf_map.card];
-  openair0_timestamp_t tmp_timestamp;
+  openair0_timestamp_t tmp_timestamp = 0;
   int ret = dev->trx_read_func(dev, &tmp_timestamp, buff, nsamps, num_antennas);
+  if (ret != nsamps) {
+    // A discontinuous receive buffer must never reach synchronization, scope or
+    // PHY processing. Let the main thread stop the radio and join its workers.
+    if (!oai_exit && !radio_gain_device_tx_cancelled(ret) && !atomic_exchange_explicit(&radio_failed, true, memory_order_acq_rel)) {
+      LOG_E(HW, "RX returned %d of %d samples on radio %d; requesting coordinated shutdown\n", ret, nsamps, UE->rf_map.card);
+      flight_recorder_emit(FLIGHT_EVENT_UE_RADIO_STOP,
+                           UE->rf_map.card,
+                           1,
+                           nsamps,
+                           ret,
+                           ret > 0 ? tmp_timestamp : INT64_MIN,
+                           dev->firstTS_initialized);
+      (void)kill(getpid(), SIGTERM);
+    }
+    if (deadline_anchor)
+      *deadline_anchor = (nr_ue_tx_deadline_anchor_t){.error_code = EIO};
+    return -ESHUTDOWN;
+  }
   struct timespec monotonic_time = {0};
   const int clock_status = deadline_anchor == NULL ? 0 : clock_gettime(CLOCK_MONOTONIC, &monotonic_time);
   const int clock_error = clock_status == 0 ? 0 : errno;
@@ -517,7 +544,27 @@ int nrue_ru_read(PHY_VARS_NR_UE *UE,
       continue;
 
     dev = &openair0_dev[ru_id];
-    dev->trx_read_func(dev, &tmp_timestamp, tmp_buf, nsamps, num_antennas);
+    const int other_ret = dev->trx_read_func(dev, &tmp_timestamp, tmp_buf, nsamps, num_antennas);
+    if (other_ret != nsamps) {
+      if (!oai_exit && !atomic_exchange_explicit(&radio_failed, true, memory_order_acq_rel)) {
+        LOG_E(HW,
+              "RX returned %d of %d samples on auxiliary radio %d; requesting coordinated shutdown\n",
+              other_ret,
+              nsamps,
+              ru_id);
+        flight_recorder_emit(FLIGHT_EVENT_UE_RADIO_STOP,
+                             ru_id,
+                             1,
+                             nsamps,
+                             other_ret,
+                             other_ret > 0 ? tmp_timestamp : INT64_MIN,
+                             dev->firstTS_initialized);
+        (void)kill(getpid(), SIGTERM);
+      }
+      if (deadline_anchor)
+        *deadline_anchor = (nr_ue_tx_deadline_anchor_t){.error_code = EIO};
+      return -ESHUTDOWN;
+    }
     if (!dev->firstTS_initialized) {
       dev->firstTS = tmp_timestamp;
       dev->firstTS_initialized = true;
