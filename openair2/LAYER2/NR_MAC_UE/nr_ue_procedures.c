@@ -4246,8 +4246,13 @@ static void nr_ue_process_mac_pdu(NR_UE_MAC_INST_t *mac, nr_downlink_indication_
       case DL_SCH_LCID_CCCH:
         //  MSG4 RRC Setup 38.331
         //  variable length
-        ret=get_mac_len(pduP, pdu_len, &mac_len, &mac_subheader_len);
-        AssertFatal(ret, "The mac_len (%d) has an invalid size. PDU len = %d! \n", mac_len, pdu_len);
+        ret = get_mac_len(pduP, pdu_len, &mac_len, &mac_subheader_len);
+        if (!ret) {
+          // Discard a malformed CCCH subPDU without terminating the UE.
+          LOG_E(MAC, "CCCH: invalid mac_len %d for PDU len %d, dropping the PDU\n", mac_len, pdu_len);
+          done = 1;
+          break;
+        }
 
         // Check if it is a valid CCCH message, we get all 00's messages very often
         int i = 0;
@@ -4397,6 +4402,8 @@ static void nr_ue_process_mac_pdu(NR_UE_MAC_INST_t *mac, nr_downlink_indication_
         LOG_W(MAC, "unknown lcid %02x\n", rx_lcid);
         break;
     }
+    if (done)
+      break;
     pduP += (mac_subheader_len + mac_len);
     pdu_len -= (mac_subheader_len + mac_len);
     if (pdu_len < 0) {
