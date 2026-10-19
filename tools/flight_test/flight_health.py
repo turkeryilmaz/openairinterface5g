@@ -11,6 +11,7 @@ from __future__ import annotations
 import dataclasses
 import enum
 import json
+import itertools
 import os
 import selectors
 import signal
@@ -26,6 +27,7 @@ DEFAULT_COMMAND_PATHS = {
     "chronyc": ("/usr/bin/chronyc", "/usr/sbin/chronyc", "/bin/chronyc"),
     "ip": ("/usr/sbin/ip", "/sbin/ip", "/usr/bin/ip", "/bin/ip"),
     "ping": ("/usr/bin/ping", "/bin/ping", "/usr/sbin/ping", "/sbin/ping"),
+    "vcgencmd": ("/usr/bin/vcgencmd", "/bin/vcgencmd", "/opt/vc/bin/vcgencmd"),
 }
 
 
@@ -430,6 +432,10 @@ class SystemHealthCollector:
         self.last_route_ns = 0
         self.chrony: dict[str, Any] = {"status": "not_sampled"}
         self.route: dict[str, Any] = {"status": "not_sampled"}
+        self.previous_throttle: dict[str, int] = {}
+        self.last_voltage_ns = 0
+        self.previous_voltage_mask: Optional[int] = None
+        self.voltage: dict[str, Any] = {"state": "not_sampled"}
 
     def sample(self, pid: int, process_running: Optional[bool]) -> dict[str, Any]:
         now = clock_sample()
@@ -446,6 +452,8 @@ class SystemHealthCollector:
             "load": self._load(),
             "memory": self._memory(),
             "thermal": self._thermal(),
+            "cpu_settings": self._cpu_settings(),
+            "voltage_throttle": self._voltage_throttle(now_ns),
             "process": self._process(pid, process_running),
             "interface": interface,
             "udp_host_counters": self._udp_host_counters(),
@@ -559,6 +567,72 @@ class SystemHealthCollector:
                 }
             )
         return {"state": "available" if zones else "unavailable", "readings": readings}
+
+    def _cpu_settings(self) -> dict[str, Any]:
+        root = self.sys_root / "devices/system/cpu"
+        try:
+            entries = list(itertools.islice((root / "cpufreq").iterdir(), 65))
+        except OSError:
+            entries = []
+        policies = []
+        for policy in sorted(entries[:64]):
+            if not policy.name.startswith("policy"):
+                continue
+            policies.append({"name": policy.name,
+                             "scaling_governor": _read_text(policy / "scaling_governor", 128),
+                             "scaling_driver": _read_text(policy / "scaling_driver", 128),
+                             "affected_cpus": _read_text(policy / "affected_cpus", 1024),
+                             **{key: _read_int(policy / key) for key in
+                                ("scaling_cur_freq", "cpuinfo_cur_freq", "scaling_min_freq", "scaling_max_freq")}})
+        throttles = []
+        for cpu in range(64):
+            for name in ("core_throttle_count", "package_throttle_count"):
+                value = _read_int(root / f"cpu{cpu}/thermal_throttle" / name)
+                if value is None:
+                    continue
+                key = f"cpu{cpu}/{name}"
+                previous = self.previous_throttle.get(key)
+                delta = value - previous if previous is not None and value >= previous else None
+                throttles.append({"cpu": cpu, "counter": name, "value": value, "delta": delta,
+                                  "reset_observed": previous is not None and value < previous})
+                self.previous_throttle[key] = value
+        return {"state": "available" if policies or throttles else "unavailable", "policies": policies,
+                "frequency_unit": "kHz", "throttle_counters": throttles,
+                "policy_scan_limited": len(entries) > 64, "cpu_scan_limit": 64,
+                "settings_changed": False,
+                "scope": "kernel frequency/governor observations; shared package counters must not be summed"}
+
+    def _voltage_throttle(self, now_ns: int) -> dict[str, Any]:
+        if self.last_voltage_ns and now_ns - self.last_voltage_ns < 10_000_000_000:
+            return self.voltage
+        self.last_voltage_ns = now_ns
+        executable = _safe_executable(self.command_paths.get("vcgencmd", ()))
+        if executable is None:
+            self.voltage = {"state": "unavailable", "reason": "optional_vcgencmd_not_installed"}
+            return self.voltage
+        result = bounded_command(executable, ("get_throttled",), 1.0, max_output_bytes=512)
+        try:
+            if result.get("status") != "ok" or result.get("returncode") != 0:
+                raise ValueError()
+            text = result.get("output", "").strip()
+            if not text.startswith("throttled=0x"):
+                raise ValueError()
+            mask = int(text.split("=", 1)[1], 16)
+            if not 0 <= mask <= 0xffffffff:
+                raise ValueError()
+        except ValueError:
+            self.voltage = {"state": "unavailable", "reason": "optional_voltage_probe_failed"}
+            return self.voltage
+        self.voltage = {"state": "available", "mask": mask,
+                        "under_voltage_now": bool(mask & 1), "frequency_capped_now": bool(mask & 2),
+                        "throttled_now": bool(mask & 4), "soft_temperature_limit_now": bool(mask & 8),
+                        "under_voltage_occurred_since_boot": bool(mask & (1 << 16)),
+                        "newly_latched_bits": mask & ~self.previous_voltage_mask & 0xffff0000
+                                              if self.previous_voltage_mask is not None else None,
+                        "sample_monotonic_ns": now_ns, "cadence_seconds": 10, "settings_changed": False,
+                        "scope": "optional Raspberry Pi firmware observation; boot-latched flags predate this run"}
+        self.previous_voltage_mask = mask
+        return self.voltage
 
     def _udp_host_counters(self) -> dict[str, Any]:
         value = _read_text(self.proc_root / "net/snmp", 16384)

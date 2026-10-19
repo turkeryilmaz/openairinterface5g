@@ -22,7 +22,7 @@ sudo ./nr-uesoftmodem -O ../../../../Configs/2026-07-23_nrue_flight_tests.conf -
 CLI values override the corresponding configuration settings. `--flight off`
 disables a configuration's `flight = "log"`. With no setting, flight logging is
 off. The feature list accepts space-separated names (`flight = "log";` in the
-file, `--flight log` on the terminal). `recovery` requires `log` and supports both UE and gNB workers. Unknown features such as
+file, `--flight log` on the terminal). `recovery` and `traffic` require `log` and support both UE and gNB workers. Unknown features such as
 `agc` fail before starting the radio; existing AGC behavior is unchanged.
 
 No systemd unit or separate capture command is required. The executable reads
@@ -39,6 +39,65 @@ Additional flight capture files use the directory below. The collector mirrors
 redacted output to the terminal through a bounded asynchronous queue; a slow
 terminal can lose console copies without blocking disk capture. The final
 status records console loss separately.
+
+## Automatic UDP traffic
+
+Add `traffic` to the usual flight setting on both endpoints. The gNB supervisor
+owns an iperf3 server, and the UE supervisor owns the client. No separate server
+command or service is needed. For the gNB:
+
+```conf
+flight = "log recovery traffic";
+# Optional: use a specific existing local address instead of all addresses.
+# flight-traffic-bind = "192.0.2.10";
+```
+
+For the UE, select the actual gNB-host address reachable through its PDU path:
+
+```conf
+flight = "log recovery traffic";
+flight-traffic-peer = "192.0.2.10";
+flight-traffic-direction = "both";
+```
+
+`192.0.2.10` is a documentation placeholder. Existing core routing and firewall
+rules must already allow that path. The supervisor changes no routes or firewall
+rules. The same keys can be supplied as `--flight-traffic-peer`,
+`--flight-traffic-bind`, `--flight-traffic-port`, `--flight-traffic-direction`,
+and `--flight-traffic-rate`. CLI values replace corresponding config values.
+`--flight log traffic` enables traffic without automatic radio recovery.
+
+The UE requires an explicit peer IP. Port defaults to 5201; direction defaults
+to `ul`, with `dl` and simultaneous `both` available. Rate defaults to 1100000
+bits/s **per direction**. UDP datagrams are 1200 bytes, reporting is once per
+second, and client segments last 30 seconds. Each segment binds both iperf3's
+TCP control connection and UDP socket to the current `flight-interface` IP
+and device (`SO_BINDTODEVICE`). There is no fallback to the management route.
+An absent tunnel waits; an address change stops the old generation before
+starting another. Failed segments retry after five seconds, and a client still
+running ten seconds after its segment deadline is stopped. A healthy completed
+segment is followed by another segment while the OAI worker runs.
+Receiving endpoints use a five-second receive timeout; the server also uses
+iperf3's ten-second idle timeout to recover an idle control session.
+
+Traffic children run at the inherited ordinary collector priority, in owned
+process groups. Worker replacement, SIGINT and SIGTERM stop them; after one
+second of grace a remaining traffic group is killed. Uncertain cleanup prevents
+further traffic launches and automatic worker replacement. A peer outage or
+traffic failure never requests radio recovery. Missing iperf3, unsupported
+required options and invalid enabled settings fail before launching the radio;
+no packages are installed. Runtime failures, including route, bind and peer
+errors, remain explicit traffic evidence. A gNB server startup error stops
+before radio launch.
+
+`traffic.*.log` holds JSON Lines with generation identifiers, address changes,
+gaps, bounded raw stdout/stderr (including partial/error output), parsed interval
+fields, exit status and cleanup results. The UE requests server output so a
+completed segment preserves both endpoint reports; the gNB independently
+records its own intervals. Interrupted TCP control can prevent retrieval of a
+receiver report. An absent receiver report means unavailable delivery evidence.
+Traffic capture shares the host byte budget and free-space reserve. Inspect
+writer losses and the raw reports before interpreting measured throughput.
 
 ## PRACH waveform preparation and experimental gNB detection
 
@@ -83,7 +142,7 @@ control run; linear and repetition logging remain available in that run.
 
 This is an experimental flight-branch correction, qualified with production
 correlation code and synthetic signal/no-signal controls. A fresh physical RF
-and ChEm test is required to establish attachment and performance on that setup.
+test is required to establish attachment and performance on that setup.
 
 ## Automatic UE recovery
 
@@ -277,11 +336,36 @@ the final status and recorder footer when assessing completeness.
 - Binary, configuration, source and adjacent runtime-plugin fingerprints.
 - Private native radio-health snapshots, per-device metric intervals, lifecycle and observer-only transport diagnostics.
 - Exit status, intentional signals, recording failures, and loss counters.
+- CPU frequency/governor settings, bounded kernel throttle-counter deltas and optional Raspberry Pi firmware undervoltage flags, without tuning.
+
+Startup metadata retains kernel/architecture, CPU count/affinity and collector
+priority. When `uecap_file` is actually configured, startup checks that the XML
+file is readable, nonempty, at most 1 MiB and syntactically valid before radio
+launch. Its fingerprint is retained without XML contents. This preflight does
+not validate ASN.1 semantics or compatibility with the selected RF settings;
+native capability validation remains authoritative. An omitted capability
+file preserves the native built-in path. No SIM credentials are added to this
+manifest.
+
+Each attempt also writes `summary.json` after final status. This bounded offline
+summary separates observed PDU acceptance from iperf3 receiver delivery reports,
+and reports missing footer, numeric recorder loss, text writer loss and scan
+limits. A clean recorder footer can coexist with reported lost events. Missing
+receiver data remains unavailable, and neither PDU acceptance nor an iperf3
+sender rate proves delivery. Recreate a summary from one closed attempt with
+`python3 tools/flight_test/summary.py /path/to/attempt`; the output states the
+64 MiB scan budget and any truncation or malformed/partial lines. Recovery
+session parents retain their existing status and journal; summaries belong to
+individual attempts.
 
 No core address or GPS daemon is required. Missing optional host facilities
 are recorded as unavailable. Neither interface observations nor an ICMP result
 prove application connectivity. Logging alone never restarts the worker.
-Ctrl+C and SIGTERM are forwarded to its process group; after the existing
+Ctrl+C remains an operator stop and is delivered to the owned worker group as
+SIGTERM, avoiding the gNB's partially initialized early SIGINT cleanup path.
+The journal/status preserve the requested and delivered signals. SIGTERM uses
+coordinated native shutdown once installed; during early startup its default
+termination can leave a missing recorder footer. After the existing
 10-second grace period, a stuck owned group is killed. Exit status is retained.
 
 No raw configuration, environment, Git diff, packet payload, camera video,
@@ -420,6 +504,19 @@ with the unclamped requested nominal power, retaining a deficit when saturated.
 A network `p-Max` can lower the selection ceiling but cannot change the offset.
 These nominal coordinates and the encoded effective Pcmax are not verified RF
 dBm; the translation supplies relative digital progression without calibration.
+
+PRACH additionally retains a procedure-local starting point in relative mode.
+If its first raw protocol request is below the available digital floor, repeated
+retry increments must not all disappear into that floor. Each subsequent PRACH
+therefore selects `first_selected + (current_raw_request - first_raw_request)`,
+bounded by the live effective limits. This preserves protocol ramp and measured
+pathloss changes without treating an uncalibrated absolute request as RF power.
+The procedure-local starting point resets at RA initialization/reset; it does not
+move the radio attachment's fixed translation or alter ordinary PUSCH/PUCCH/SRS
+mapping. Events107/108 expose the raw inputs, selected coordinate and saturation.
+This is an experimental relative-power policy; the calibrated absolute mode is
+unchanged and physical attachment/false-detection qualification remains required.
+
 At the gNB, one common generator amplitude receives the fixed 6 dB
 backoff. Allocation changes preserve channel-relative amplitudes; there is no
 per-slot occupancy normalization.

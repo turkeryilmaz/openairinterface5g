@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Portable OAI flight collector with bounded buffers and sequential output.
 
-The program intentionally uses only the Python standard library. It owns one
-child process group, never discovers users or shells out, and performs no
-recovery action beyond forwarding a signal that it received itself.
+The program intentionally uses only the Python standard library. It owns the
+worker and opted-in traffic process groups. Native policy gates radio recovery;
+host and traffic observations never request it.
 """
 
 from __future__ import annotations
@@ -28,6 +28,7 @@ import tempfile
 import threading
 import time
 import uuid
+import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any, Callable, Optional, Sequence
 
@@ -39,6 +40,8 @@ from flight_health import (
 )
 from flight_recovery import Decision, NativeChannel, RecoveryPolicy
 from radio_health import RadioHealthDiagnostics
+from flight_traffic import TrafficError, TrafficSupervisor, validate_settings
+from summary import summarize_run
 
 
 SCHEMA_VERSION = 1
@@ -717,6 +720,31 @@ def config_snapshot(path_text: Optional[str], backend: Optional[str] = None) -> 
             "usage": "evidence only; secrets omitted; CLI overrides are recorded separately"}
 
 
+def capability_preflight(path_text: Optional[str], working_directory: Optional[str]) -> dict[str, Any]:
+    if path_text is None:
+        return {"state": "unconfigured", "scope": "native built-in capability path"}
+    path = Path(path_text)
+    if not path.is_absolute():
+        path = Path(working_directory or os.getcwd()) / path
+    try:
+        # A mistaken FIFO/device path must not block before the regular-file check.
+        with os.fdopen(os.open(path, os.O_RDONLY | os.O_NONBLOCK | os.O_CLOEXEC), "rb") as source:
+            if not stat.S_ISREG(os.fstat(source.fileno()).st_mode):
+                raise CaptureError("configured uecap_file must be a readable regular XML file")
+            content = source.read(MIB + 1)
+    except OSError as exc:
+        raise CaptureError("configured uecap_file is unreadable") from exc
+    if not content or len(content) > MIB:
+        raise CaptureError("configured uecap_file must contain 1..1048576 bytes")
+    try:
+        ET.fromstring(content)
+    except (ET.ParseError, ValueError) as exc:
+        raise CaptureError("configured uecap_file contains malformed XML") from exc
+    return {"state": "xml_syntax_valid", "basename": path.name, "size_bytes": len(content),
+            "sha256": hashlib.sha256(content).hexdigest(), "contents_saved": False,
+            "scope": "readability and XML syntax only; native ASN.1 and RF compatibility remain unchecked"}
+
+
 def _git_executable() -> Optional[str]:
     for candidate in ("/usr/bin/git", "/bin/git"):
         if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
@@ -862,6 +890,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--working-directory", metavar="DIR", help="preserve the softmodem launch directory")
     parser.add_argument("--config", metavar="CONFIG")
     parser.add_argument("--config-backend", help="Actual OAI config backend; text snapshots require libconfig")
+    parser.add_argument("--capability-xml", help="configured UE uecap_file; relative to original launch directory")
     parser.add_argument("--repo", metavar="REPO")
     parser.add_argument("--core-ip", metavar="IP")
     parser.add_argument("--interface", default="oaitun_ue1")
@@ -869,6 +898,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--probe-ping", action="store_true")
     parser.add_argument("--disable-recorder", action="store_true")
     parser.add_argument("--recovery", action="store_true", help="allow policy-gated worker recovery for the selected role")
+    parser.add_argument("--traffic", action="store_true", help="own iperf3 UDP traffic without changing radio recovery")
+    parser.add_argument("--traffic-peer", metavar="IP", help="required UE traffic destination")
+    parser.add_argument("--traffic-bind", metavar="IP", help="optional gNB server bind address")
+    parser.add_argument("--traffic-port", type=int, default=5201)
+    parser.add_argument("--traffic-direction", choices=("ul", "dl", "both"), default="ul")
+    parser.add_argument("--traffic-rate", type=int, default=1100000, help="bits/s per direction")
     parser.add_argument("--recovery-stall", type=float, default=10.0)
     parser.add_argument("--recovery-attempt", type=float, default=120.0)
     parser.add_argument("--stop-timeout", type=float, default=10.0)
@@ -902,6 +937,10 @@ def default_output(repo: str) -> Path:
 
 
 def validate_args(args: argparse.Namespace, parser: argparse.ArgumentParser) -> list[str]:
+    try:
+        args.traffic_settings = validate_settings(args)
+    except TrafficError as exc:
+        parser.error(str(exc))
     time_values = (args.stop_timeout, args.post_exit_drain_timeout, args.health_interval, args.startup_grace, args.recovery_stall, args.recovery_attempt)
     if not all(math.isfinite(value) for value in time_values):
         parser.error("timeouts and intervals must be finite")
@@ -949,6 +988,10 @@ def validate_args(args: argparse.Namespace, parser: argparse.ArgumentParser) -> 
         if args.repo is None:
             parser.error("default output needs --repo (supplied automatically by the softmodem)")
         args.output = str(default_output(args.repo))
+    try:
+        args.capability_preflight = capability_preflight(args.capability_xml, args.working_directory)
+    except CaptureError as exc:
+        parser.error(str(exc))
     return command
 
 
@@ -1093,6 +1136,7 @@ class FlightCapture:
         self.process_start_ticks: Optional[int] = None
         self.console: Optional[ConsoleMirror] = None
         self.stop_signal: Optional[int] = None
+        self.worker_stop_signal: Optional[int] = None
         self.stop_sent_ns: Optional[int] = None
         self.recovery_stop_reason: Optional[str] = None
         self.recovery_stop_sent_ns: Optional[int] = None
@@ -1108,6 +1152,8 @@ class FlightCapture:
         self.last_result: Optional[CaptureResult] = None
         self.radio_health = RadioHealthDiagnostics()
         self.radio_health_writer: Optional[BoundedRotatingWriter] = None
+        self.traffic: Optional[TrafficSupervisor] = None
+        self.traffic_writer: Optional[BoundedRotatingWriter] = None
         self.counters = {
             "launch_attempts": 0,
             "launch_failures": 0,
@@ -1170,6 +1216,12 @@ class FlightCapture:
             self.health,
         )
         self.radio_health_writer = radio_health_writer
+        traffic_writer = None
+        if self.args.traffic_settings is not None:
+            traffic_writer = BoundedRotatingWriter(run_dir, "traffic", host_quota,
+                                                   min(self.args.chunk_bytes, 4 * MIB), self.health)
+            self.traffic_writer = traffic_writer
+            self.traffic = TrafficSupervisor(self.args.traffic_settings, traffic_writer)
         if self.args.console:
             self.console = ConsoleMirror()
             stdout_writer.console = self.console
@@ -1177,8 +1229,22 @@ class FlightCapture:
         storage = StorageReserve(run_dir, self.args.min_free_bytes)
         for writer in (stdout_writer, stderr_writer, host_writer, recovery_writer, radio_health_writer):
             writer.storage = storage
+        if traffic_writer is not None:
+            traffic_writer.storage = storage
         old_handlers = self._install_signal_handlers() if self.stop_latch is None else None
         try:
+            if self.traffic is not None:
+                try:
+                    self.traffic.start()
+                except TrafficError as exc:
+                    self.traffic.close()
+                    self.health.unhealthy("traffic_start_failed")
+                    self.policy_decision = Decision("stop", "traffic_start_failed")
+                    self._final_status("traffic_start_failed", 125, None, {"traffic_error": str(exc)},
+                                       stdout_writer, stderr_writer, host_writer, recovery_writer, None)
+                    self.last_result = CaptureResult(125, None, "traffic_start_failed", self.policy_decision,
+                                                     self._operator_stop_signal() is not None, None, run_dir, None)
+                    return 125
             return self._launch_and_supervise(
                 recorder_dir,
                 child_cwd,
@@ -1188,6 +1254,8 @@ class FlightCapture:
                 recovery_writer,
             )
         finally:
+            if self.traffic is not None:
+                self.traffic.close()
             if old_handlers is not None:
                 self._restore_signal_handlers(old_handlers)
             stdout_writer.close()
@@ -1195,6 +1263,8 @@ class FlightCapture:
             host_writer.close()
             recovery_writer.close()
             radio_health_writer.close()
+            if traffic_writer is not None:
+                traffic_writer.close()
             if self.console is not None:
                 self.console.close()
 
@@ -1222,7 +1292,12 @@ class FlightCapture:
             "run_id": uuid.uuid4().hex,
             "session_id": self.session_id,
             "role": self.args.role,
-            "features": ["log", "recovery"] if self.recovery_enabled else ["log"],
+            "features": ["log"] + (["recovery"] if self.recovery_enabled else []) +
+                        (["traffic"] if self.args.traffic_settings is not None else []),
+            "traffic": {"enabled": self.args.traffic_settings is not None,
+                        "settings": self.args.traffic_settings.metadata() if self.args.traffic_settings else None,
+                        "binary": file_fingerprint(self.args.traffic_settings.executable)
+                                  if self.args.traffic_settings else None},
             "radio_health": {
                 "enabled": True,
                 "stream": "radio_health.*.log JSON Lines",
@@ -1237,6 +1312,7 @@ class FlightCapture:
             "binary": file_fingerprint(self.command[0]),
             "config": file_fingerprint(self.args.config),
             "config_snapshot": config_snapshot(self.args.config, self.args.config_backend),
+            "capability_preflight": self.args.capability_preflight,
             "config_was_absolute": bool(self.args.config and os.path.isabs(self.args.config)),
             "source": self.source_identity,
             "child_working_directory": {
@@ -1245,6 +1321,10 @@ class FlightCapture:
                 "contains_oai_cwd_statistics": cwd_mode == "per_run_contained",
             },
             "runtime": {
+                "host": {"sysname": os.uname().sysname, "release": os.uname().release,
+                         "machine": os.uname().machine, "cpu_count": os.cpu_count(),
+                         "affinity_cpus": sorted(os.sched_getaffinity(0)) if hasattr(os, "sched_getaffinity") else None,
+                         "collector_nice": os.getpriority(os.PRIO_PROCESS, 0), "settings_changed": False},
                 "executable_parent_prepended_to_ld_library_path": True,
                 "environment_values_saved": False,
                 "adjacent_module_fingerprints": runtime_module_fingerprints(self.command[0]),
@@ -1409,7 +1489,7 @@ class FlightCapture:
         pipes_closed_early = False
         try:
             while True:
-                self._forward_stop_request(process)
+                self._forward_stop_request(process, recovery_writer)
                 now_ns = time.monotonic_ns()
                 # A clean leader exit is classified before a native policy tick
                 # can request recovery. A datagram received after that exit is
@@ -1426,6 +1506,9 @@ class FlightCapture:
                     allow_actions=leader_returncode is None,
                 )
                 self._apply_stop_deadline(process)
+                if self.traffic is not None:
+                    self.traffic.tick(stopping=leader_returncode is not None or
+                                      self._operator_stop_signal() is not None or self.recovery_stop_reason is not None)
 
                 if leader_returncode is not None:
                     if (
@@ -1472,6 +1555,10 @@ class FlightCapture:
                         continue
                     key.data.feed(chunk)
         finally:
+            if self.traffic is not None:
+                self.traffic.close()
+                if self.traffic.cleanup_failed:
+                    self.health.unhealthy("traffic_owned_group_cleanup_failed")
             selector.close()
             if not pipes_closed_early:
                 process.stdout.close()
@@ -1491,6 +1578,8 @@ class FlightCapture:
             self._operator_stop_signal() is not None,
             controlled_recovery=self.recovery_stop_reason is not None,
         )
+        if self.traffic is not None and self.traffic.cleanup_failed:
+            self.policy_decision = Decision("stop", "traffic_owned_group_cleanup_failed")
         self._record_policy_decision(recovery_writer, "exited", self.policy_decision, force=True)
         assert self.run_dir is not None
         self.last_result = CaptureResult(
@@ -1697,20 +1786,30 @@ class FlightCapture:
             return self.stop_latch.signal_number
         return self.stop_signal
 
-    def _forward_stop_request(self, process: subprocess.Popen[bytes]) -> None:
+    def _forward_stop_request(self, process: subprocess.Popen[bytes],
+                              writer: Optional[BoundedRotatingWriter] = None) -> None:
         requested = self._operator_stop_signal()
         if requested is None or self.stop_sent_ns is not None:
             return
         self.stop_signal = requested
         self.stop_sent_ns = time.monotonic_ns()
         self.counters["stop_requests"] += 1
+        # gNB installs its SIGINT cleanup handler before all radio state exists.
+        # SIGTERM safely terminates early startup and uses coordinated ITTI
+        # shutdown once available. Keep the original operator signal latched.
+        delivered = signal.SIGTERM if requested == signal.SIGINT else requested
         try:
             # The child created this process group. It can remain after its leader
             # exits, so do not use process.poll() to gate an owned-group signal.
-            os.killpg(process.pid, requested)
+            os.killpg(process.pid, delivered)
+            self.worker_stop_signal = delivered
             self.counters["graceful_group_signals"] += 1
         except ProcessLookupError:
             pass
+        if writer is not None:
+            self._write_recovery_event(writer, "operator_stop_forwarded", requested_signal=requested,
+                                       delivered_signal=self.worker_stop_signal,
+                                       scope="owned worker group; early default SIGTERM can omit recorder footer")
 
     def _request_recovery_stop(self, process: subprocess.Popen[bytes], reason: str) -> None:
         if self._operator_stop_signal() is not None or self.recovery_stop_sent_ns is not None:
@@ -1777,6 +1876,10 @@ class FlightCapture:
     ) -> None:
         if self.run_dir is None:
             return
+        if self.traffic is not None:
+            self.traffic.close()
+            if self.traffic.cleanup_failed:
+                self.health.unhealthy("traffic_owned_group_cleanup_failed")
         if self.console is not None:
             self.console.close()
         revision = extra.get("stdout_sanitizer", {}).get("reported_oai_revision")
@@ -1801,6 +1904,8 @@ class FlightCapture:
             "exit_code": exit_code,
             "child_returncode": raw_returncode,
             "stop_signal": self.stop_signal,
+            "worker_stop_signal": self.worker_stop_signal,
+            "traffic": self.traffic.snapshot() if self.traffic is not None else {"enabled": False},
             "capture": self.health.snapshot(),
             "counters": dict(self.counters),
             "writers": {
@@ -1809,6 +1914,7 @@ class FlightCapture:
                 "host": host_writer.snapshot(),
                 "recovery": recovery_writer.snapshot(),
                 "radio_health": self.radio_health_writer.snapshot() if self.radio_health_writer is not None else None,
+                "traffic": self.traffic_writer.snapshot() if self.traffic_writer is not None else None,
             },
             "quotas": {
                 "stdout_and_stderr": stdout_writer.quota.snapshot(),
@@ -1826,6 +1932,7 @@ class FlightCapture:
             "extra": extra,
         }
         write_json(self.run_dir / "status.json", status, self.health)
+        write_json(self.run_dir / "summary.json", summarize_run(self.run_dir), self.health)
         health_state = self.health.snapshot()
         result = f"flight capture run={self.run_dir} state={state} exit={exit_code}"
         if not health_state["healthy"]:
