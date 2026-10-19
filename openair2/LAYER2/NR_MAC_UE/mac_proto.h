@@ -275,7 +275,7 @@ bool is_ss_monitor_occasion(const int frame, const int slot, const int slots_per
  */
 NR_UE_L2_STATE_t nr_ue_get_sync_state(module_id_t mod_id);
 
-bool get_prach_tx_power(const NR_UE_MAC_INST_t *mac, int16_t *tx_power);
+bool get_prach_tx_power(NR_UE_MAC_INST_t *mac, int16_t *tx_power);
 void schedule_RA_after_SR_failure(NR_UE_MAC_INST_t *mac);
 void nr_rar_not_successful(NR_UE_MAC_INST_t *mac);
 /* Retire a received-RAR attempt whose initial Msg3 was not transmitted. */

@@ -17,7 +17,7 @@
 #include <executables/softmodem-common.h>
 #include "openair2/LAYER2/nr_rlc/nr_rlc_oai_api.h"
 
-bool get_prach_tx_power(const NR_UE_MAC_INST_t *mac, int16_t *tx_power)
+bool get_prach_tx_power(NR_UE_MAC_INST_t *mac, int16_t *tx_power)
 {
   if (!mac || !tx_power)
     return false;
@@ -26,7 +26,7 @@ bool get_prach_tx_power(const NR_UE_MAC_INST_t *mac, int16_t *tx_power)
   if (!compute_nr_SSB_PL(mac, &pathloss))
     return false;
 
-  const RA_config_t *ra = &mac->ra;
+  RA_config_t *ra = &mac->ra;
   const int64_t requested_power = (int64_t)ra->prach_resources.ra_preamble_rx_target_power + pathloss;
   int maximum = ra->prach_resources.Pc_max;
 
@@ -44,11 +44,25 @@ bool get_prach_tx_power(const NR_UE_MAC_INST_t *mac, int16_t *tx_power)
       return false;
     if (!nr_ue_get_effective_tx_power_bounds(minimum, maximum, &minimum, &maximum))
       return false;
-    const int64_t capped_power = min((int64_t)maximum, max((int64_t)minimum, requested_power));
+    /* An unknown absolute offset can put every retry below P_CMIN. Retain the
+     * first clipping correction for this RA so target/pathloss/ramp differences
+     * reach the relative mapper, subject to the current network/digital bounds. */
+    if (!ra->relative_prach_reference_valid) {
+      const int64_t first_selected = min((int64_t)maximum, max((int64_t)minimum, requested_power));
+      if (first_selected < INT16_MIN || first_selected > INT16_MAX)
+        return false;
+      ra->relative_prach_first_selected = first_selected;
+      ra->relative_prach_first_request = requested_power;
+      ra->relative_prach_reference_valid = true;
+    }
+    // Both requests are an int target plus int16_t pathloss; their difference fits int64_t.
+    const int64_t delta = requested_power - ra->relative_prach_first_request;
+    const int64_t relative_request = (int64_t)ra->relative_prach_first_selected + delta;
+    const int64_t capped_power = min((int64_t)maximum, max((int64_t)minimum, relative_request));
     if (capped_power < INT16_MIN || capped_power > INT16_MAX)
       return false;
     *tx_power = (int16_t)capped_power;
-    if (flight_recorder_enabled())
+    if (flight_recorder_enabled()) {
       flight_recorder_emit(FLIGHT_EVENT_UE_TX_RELATIVE_BOUNDS,
                            FLIGHT_UE_TX_CHANNEL_PRACH,
                            -1,
@@ -56,6 +70,23 @@ bool get_prach_tx_power(const NR_UE_MAC_INST_t *mac, int16_t *tx_power)
                            maximum,
                            requested_power,
                            *tx_power);
+      flight_recorder_emit(FLIGHT_EVENT_UE_PRACH_POWER_INPUT,
+                           requested_power,
+                           ra->prach_resources.ra_preamble_rx_target_power,
+                           pathloss,
+                           ra->prach_resources.preamble_power_ramping_cnt,
+                           ra->prach_resources.preamble_power_ramping_step,
+                           mac->ul_pusch_config_generation <= INT64_MAX ? (int64_t)mac->ul_pusch_config_generation : INT64_MIN);
+      flight_recorder_emit(FLIGHT_EVENT_UE_PRACH_RELATIVE_RAMP,
+                           ra->relative_prach_first_selected,
+                           ra->relative_prach_first_request,
+                           delta,
+                           relative_request,
+                           *tx_power,
+                           relative_request < minimum   ? -1
+                           : relative_request > maximum ? 1
+                                                        : 0);
+    }
     return true;
   }
 
@@ -775,6 +806,7 @@ bool init_RA(NR_UE_MAC_INST_t *mac)
   LOG_D(NR_MAC, "Initialization of RA\n");
   ra->ra_state = nrRA_GENERATE_PREAMBLE;
   ra->defer_preamble_for_ssb_pathloss = false;
+  ra->relative_prach_reference_valid = false;
 
   // TODO this piece of code is required to compute MSG3_size that is used by ra_preambles_config function
   // Not a good implementation, it needs improvements

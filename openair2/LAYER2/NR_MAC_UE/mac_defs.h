@@ -376,6 +376,12 @@ typedef struct {
 
   NR_PRACH_RESOURCES_t prach_resources;
 
+  /* Per-RA relative acquisition reference; the radio mapping shared with UL
+   * remains fixed. Keep target/pathloss/ramp differences after initial clipping. */
+  bool relative_prach_reference_valid;
+  int16_t relative_prach_first_selected;
+  int64_t relative_prach_first_request;
+
   bool new_ssb;
   int num_fd_occasions;
   int ra_config_index;
