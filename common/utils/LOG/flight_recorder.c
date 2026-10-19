@@ -30,6 +30,7 @@
 #define FLIGHT_RECORDER_MIN_TOTAL_BYTES 8192U
 #define FLIGHT_RECORDER_SLEEP_NS 1000000L
 #define FLIGHT_RECORDER_TIMESTAMP_UNAVAILABLE INT64_MIN
+#define FLIGHT_RECORDER_ASYNC_REPEAT_NS INT64_C(100000000)
 
 #if defined(FLIGHT_RECORDER_FORCE_INERT_TEST)
 #define FLIGHT_RECORDER_LOCKFREE_ARCH 0
@@ -80,6 +81,24 @@ typedef struct {
   char name[FLIGHT_RECORDER_FILENAME_BYTES];
 } recorder_file_t;
 
+/* Sole-writer state, separate from producer rings. Count only suppressed
+ * records consumed from one ring, never native async callbacks or ring drops. */
+typedef struct {
+  bool active;
+  int64_t device;
+  int64_t code;
+  int64_t channel;
+  int64_t flags;
+  int64_t window_first_ns;
+  uint64_t count;
+  uint64_t sequence_first;
+  uint64_t sequence_last;
+  int64_t mono_first_ns;
+  int64_t mono_last_ns;
+  int64_t device_ticks_first;
+  int64_t device_ticks_last;
+} async_repeat_t;
+
 static atomic_int g_state = ATOMIC_VAR_INIT(recorder_off);
 static atomic_uint_fast64_t g_active_emits = ATOMIC_VAR_INIT(0);
 static atomic_uint_fast64_t g_next_ring = ATOMIC_VAR_INIT(0);
@@ -104,6 +123,7 @@ static uint64_t g_min_free_bytes;
 static int g_current_file = -1;
 static flight_ring_t g_rings[FLIGHT_RECORDER_MAX_THREAD_RINGS];
 static recorder_file_t g_files[FLIGHT_RECORDER_MAX_FILES];
+static async_repeat_t g_async_repeats[FLIGHT_RECORDER_MAX_THREAD_RINGS];
 
 static _Thread_local int tls_ring = -1;
 
@@ -514,6 +534,98 @@ static bool writer_write_event(unsigned int ring_id, const flight_record_t *reco
   return true;
 }
 
+static bool writer_flush_async_repeat(unsigned int ring_id)
+{
+  async_repeat_t *repeat = &g_async_repeats[ring_id];
+  if (repeat->count) {
+    char line[FLIGHT_RECORDER_LINE_BYTES];
+    size_t length;
+    if (!format_line(line,
+                     sizeof(line),
+                     &length,
+                     "{\"schema\":\"oai.flight_recorder\",\"version\":%u,\"kind\":\"async_repeat_summary\","
+                     "\"event\":%u,\"ring\":%u,\"device\":%" PRId64 ",\"code\":%" PRId64 ",\"channel\":%" PRId64
+                     ",\"flags\":%" PRId64 ",\"repeat_count\":%" PRIu64 ",\"sequence_first\":%" PRIu64 ",\"sequence_last\":%" PRIu64
+                     ",\"mono_first_ns\":%" PRId64 ",\"mono_last_ns\":%" PRId64 ",\"device_ticks_first\":%" PRId64
+                     ",\"device_ticks_last\":%" PRId64 ",\"payload_truncated\":0}\n",
+                     FLIGHT_RECORDER_SCHEMA_VERSION,
+                     (unsigned int)FLIGHT_EVENT_RADIO_TX_ASYNC,
+                     ring_id,
+                     repeat->device,
+                     repeat->code,
+                     repeat->channel,
+                     repeat->flags,
+                     repeat->count,
+                     repeat->sequence_first,
+                     repeat->sequence_last,
+                     repeat->mono_first_ns,
+                     repeat->mono_last_ns,
+                     repeat->device_ticks_first,
+                     repeat->device_ticks_last)) {
+      recorder_fail("async summary formatting failed", 0);
+      return false;
+    }
+    if (!writer_ensure_space(length) || !writer_write_raw(line, length))
+      return false;
+    recorder_file_t *file = &g_files[g_current_file];
+    if (file->first_sequence == 0)
+      file->first_sequence = repeat->sequence_first;
+    file->last_sequence = repeat->sequence_last;
+  }
+  *repeat = (async_repeat_t){0};
+  return true;
+}
+
+static bool writer_write_record(unsigned int ring_id, const flight_record_t *record)
+{
+  async_repeat_t *repeat = &g_async_repeats[ring_id];
+  /* Keep unknown timestamps and future uses of reserved f raw. The first
+   * event in each run/window is always visible before any summary delay. */
+  const bool eligible = record->event == FLIGHT_EVENT_RADIO_TX_ASYNC && record->values[5] == 0 && record->mono_ns >= 0;
+  const bool same_key = eligible && repeat->device == record->values[0] && repeat->code == record->values[1]
+                        && repeat->channel == record->values[2] && repeat->flags == record->values[4];
+  if (repeat->active
+      && (!same_key || record->mono_ns < repeat->window_first_ns
+          || record->mono_ns - repeat->window_first_ns >= FLIGHT_RECORDER_ASYNC_REPEAT_NS || repeat->count == UINT64_MAX)) {
+    if (!writer_flush_async_repeat(ring_id))
+      return false;
+  }
+  if (repeat->active) {
+    if (!repeat->count) {
+      repeat->sequence_first = record->sequence;
+      repeat->mono_first_ns = record->mono_ns;
+      repeat->device_ticks_first = record->values[3];
+    }
+    ++repeat->count;
+    repeat->sequence_last = record->sequence;
+    repeat->mono_last_ns = record->mono_ns;
+    repeat->device_ticks_last = record->values[3];
+    return true;
+  }
+  if (!writer_write_event(ring_id, record))
+    return false;
+  if (eligible)
+    *repeat = (async_repeat_t){.active = true,
+                               .device = record->values[0],
+                               .code = record->values[1],
+                               .channel = record->values[2],
+                               .flags = record->values[4],
+                               .window_first_ns = record->mono_ns};
+  return true;
+}
+
+static bool writer_flush_async_due(int64_t now_ns, bool force)
+{
+  for (unsigned int ring_id = 0; ring_id < FLIGHT_RECORDER_MAX_THREAD_RINGS; ++ring_id) {
+    const async_repeat_t *repeat = &g_async_repeats[ring_id];
+    if (repeat->active
+        && (force || now_ns < repeat->window_first_ns || now_ns - repeat->window_first_ns >= FLIGHT_RECORDER_ASYNC_REPEAT_NS)
+        && !writer_flush_async_repeat(ring_id))
+      return false;
+  }
+  return true;
+}
+
 static uint64_t dropped_full_total(void)
 {
   uint64_t total = 0;
@@ -584,10 +696,14 @@ static bool writer_drain_once(void)
     for (unsigned int record_count = 0; record_count < FLIGHT_RECORDER_RING_RECORDS && ring_get(&g_rings[ring_id], &record);
          ++record_count) {
       drained = true;
-      if (!writer_write_event(ring_id, &record))
+      if (!writer_write_record(ring_id, &record))
         return false;
     }
   }
+  int64_t now_ns;
+  time_to_ns(CLOCK_MONOTONIC, &now_ns);
+  if (!writer_flush_async_due(now_ns, false))
+    return false;
   return drained;
 }
 
@@ -692,7 +808,7 @@ static void *writer_main(void *unused)
         nanosleep(&pause, NULL);
       }
     }
-    if (atomic_load_explicit(&g_state, memory_order_seq_cst) == recorder_stopping)
+    if (atomic_load_explicit(&g_state, memory_order_seq_cst) == recorder_stopping && writer_flush_async_due(0, true))
       writer_write_footer();
   }
 
@@ -856,6 +972,7 @@ void flight_recorder_init(void)
    */
   memset(g_rings, 0, sizeof(g_rings));
   memset(g_files, 0, sizeof(g_files));
+  memset(g_async_repeats, 0, sizeof(g_async_repeats));
   for (unsigned int index = 0; index < FLIGHT_RECORDER_MAX_FILES; ++index)
     g_files[index].fd = -1;
   atomic_store_explicit(&g_active_emits, 0, memory_order_seq_cst);
