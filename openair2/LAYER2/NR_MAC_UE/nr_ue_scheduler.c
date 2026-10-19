@@ -327,6 +327,17 @@ static void ul_layers_config(NR_UE_MAC_INST_t *mac, nfapi_nr_ue_pusch_pdu_t *pus
   }
 }
 
+static const NR_BetaOffsets_t *get_pusch_beta_offsets(const NR_UCI_OnPUSCH_t *on_pusch)
+{
+  // TS 38.331: an absent betaOffsets selects semiStatic; absent indices use the defaults below.
+  if (!on_pusch->betaOffsets)
+    return NULL;
+  AssertFatal(
+      on_pusch->betaOffsets->present == NR_UCI_OnPUSCH__betaOffsets_PR_semiStatic && on_pusch->betaOffsets->choice.semiStatic,
+      "Only semistatic beta offset is supported\n");
+  return on_pusch->betaOffsets->choice.semiStatic;
+}
+
 static void fill_pusch_uci_struct(const NR_PUSCH_Config_t *pusch_Config,
                                   const nfapi_nr_ue_csi_payload_t *csi_payload,
                                   nfapi_nr_ue_pusch_pdu_t *pusch_config_pdu)
@@ -334,16 +345,17 @@ static void fill_pusch_uci_struct(const NR_PUSCH_Config_t *pusch_Config,
   pusch_config_pdu->pusch_uci.csi_payload = *csi_payload;
   AssertFatal(pusch_Config && pusch_Config->uci_OnPUSCH, "UCI on PUSCH need to be configured\n");
   NR_UCI_OnPUSCH_t *onPusch = pusch_Config->uci_OnPUSCH->choice.setup;
-  AssertFatal(onPusch && onPusch->betaOffsets && onPusch->betaOffsets->present == NR_UCI_OnPUSCH__betaOffsets_PR_semiStatic,
-              "Only semistatic beta offset is supported\n");
-  NR_BetaOffsets_t *beta_offsets = onPusch->betaOffsets->choice.semiStatic;
-
-  pusch_config_pdu->pusch_uci.beta_offset_csi1 = pusch_config_pdu->pusch_uci.csi_payload.p1_bits < 12
-                                                     ? *beta_offsets->betaOffsetCSI_Part1_Index1
-                                                     : *beta_offsets->betaOffsetCSI_Part1_Index2;
-  pusch_config_pdu->pusch_uci.beta_offset_csi2 = pusch_config_pdu->pusch_uci.csi_payload.p2_bits < 12
-                                                     ? *beta_offsets->betaOffsetCSI_Part2_Index1
-                                                     : *beta_offsets->betaOffsetCSI_Part2_Index2;
+  AssertFatal(onPusch, "UCI on PUSCH need to be configured\n");
+  const NR_BetaOffsets_t *beta_offsets = get_pusch_beta_offsets(onPusch);
+  const long *csi1_index = beta_offsets ? (csi_payload->p1_bits < 12 ? beta_offsets->betaOffsetCSI_Part1_Index1
+                                                                     : beta_offsets->betaOffsetCSI_Part1_Index2)
+                                        : NULL;
+  const long *csi2_index = beta_offsets ? (csi_payload->p2_bits < 12 ? beta_offsets->betaOffsetCSI_Part2_Index1
+                                                                     : beta_offsets->betaOffsetCSI_Part2_Index2)
+                                        : NULL;
+  // TS 38.331 BetaOffsets field descriptions: absent CSI indices default to 13.
+  pusch_config_pdu->pusch_uci.beta_offset_csi1 = csi1_index ? *csi1_index : 13;
+  pusch_config_pdu->pusch_uci.beta_offset_csi2 = csi2_index ? *csi2_index : 13;
   pusch_config_pdu->pusch_uci.alpha_scaling = onPusch->scaling;
 }
 
@@ -1818,6 +1830,7 @@ static bool schedule_uci_on_pusch(NR_UE_MAC_INST_t *mac,
   // If a UE would transmit on a serving cell a PUSCH without UL-SCH that overlaps with a PUCCH transmission
   // on a serving cell that includes positive SR information, the UE does not transmit the PUSCH.
   if (pusch_pdu && pusch_pdu->ulsch_indicator == 0 && pucch->sr_payload == 1) {
+    ulcfg_pdu->pdu_type = FAPI_NR_UL_CONFIG_TYPE_DONE;
     release_ul_config(ulcfg_pdu, false);
     return false;
   }
@@ -1834,17 +1847,16 @@ static bool schedule_uci_on_pusch(NR_UE_MAC_INST_t *mac,
     NR_PUSCH_Config_t *pusch_Config = mac->current_UL_BWP->pusch_Config;
     if (pusch_Config && pusch_Config->uci_OnPUSCH) {
       NR_UCI_OnPUSCH_t *onPusch = pusch_Config->uci_OnPUSCH->choice.setup;
-      AssertFatal(onPusch &&
-                  onPusch->betaOffsets &&
-                  onPusch->betaOffsets->present == NR_UCI_OnPUSCH__betaOffsets_PR_semiStatic,
-                  "Only semistatic beta offset is supported\n");
-      NR_BetaOffsets_t *beta_offsets = onPusch->betaOffsets->choice.semiStatic;
+      AssertFatal(onPusch, "UCI on PUSCH need to be configured\n");
+      const NR_BetaOffsets_t *beta_offsets = get_pusch_beta_offsets(onPusch);
+      const long *ack_index = beta_offsets ? (pucch->n_harq <= 2 ? beta_offsets->betaOffsetACK_Index1
+                                                                 : (pucch->n_harq < 12 ? beta_offsets->betaOffsetACK_Index2
+                                                                                       : beta_offsets->betaOffsetACK_Index3))
+                                           : NULL;
       pusch_pdu->pusch_uci.harq_ack_bit_length = pucch->n_harq;
       pusch_pdu->pusch_uci.harq_payload = pucch->ack_payload;
-      pusch_pdu->pusch_uci.beta_offset_harq_ack = pucch->n_harq > 2 ?
-                                                  (pucch->n_harq < 12 ? *beta_offsets->betaOffsetACK_Index2 :
-                                                  *beta_offsets->betaOffsetACK_Index3) :
-                                                  *beta_offsets->betaOffsetACK_Index1;
+      // TS 38.331 BetaOffsets field descriptions: absent HARQ-ACK indices default to 11.
+      pusch_pdu->pusch_uci.beta_offset_harq_ack = ack_index ? *ack_index : 11;
       pusch_pdu->pusch_uci.alpha_scaling = onPusch->scaling;
       mux_done = true;
     } else {
@@ -1864,8 +1876,8 @@ static bool schedule_uci_on_pusch(NR_UE_MAC_INST_t *mac,
   }
 
   release_ul_config(ulcfg_pdu, false);
-  // only use PUSCH if any mux is done otherwise send PUCCH
-  return mux_done;
+  // Overlapped SR is omitted; CSI on PUCCH is omitted if CSI is already carried on PUSCH (TS 38.213 clause 9).
+  return mux_done || (pucch->n_harq == 0 && (pucch->csi_payload.p1_bits == 0 || csi_present));
 }
 
 static void nr_ue_pucch_scheduler(NR_UE_MAC_INST_t *mac, frame_t frame, int slot)
