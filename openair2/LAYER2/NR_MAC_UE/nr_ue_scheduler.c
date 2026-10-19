@@ -1760,6 +1760,14 @@ static void nr_ue_prach_scheduler(NR_UE_MAC_INST_t *mac, frame_t frameP, slot_t 
   } // if is_nr_UL_slot
 }
 
+enum { UL_RETIRE_UCI_HARQ_ACK = 1, UL_RETIRE_UCI_CSI = 2, UL_RETIRE_UCI_POSITIVE_SR = 4 };
+
+static void record_uci_pusch_retirement(const NR_UE_MAC_INST_t *mac, frame_t frame, slot_t slot, int uci)
+{
+  enum { UL_RETIRE_OVERLAP = 2 };
+  flight_recorder_emit(FLIGHT_EVENT_UE_UL_RETIRE, mac->ue_id, frame, slot, UL_RETIRE_OVERLAP, FAPI_NR_UL_CONFIG_TYPE_PUSCH, uci);
+}
+
 /** @brief Schedule UCI from an overlapping PUCCH onto PUSCH (TS 38.213 clause 9.2.5.3) */
 static bool schedule_uci_on_pusch(NR_UE_MAC_INST_t *mac,
                                   frame_t frame_tx,
@@ -1830,8 +1838,27 @@ static bool schedule_uci_on_pusch(NR_UE_MAC_INST_t *mac,
   // If a UE would transmit on a serving cell a PUSCH without UL-SCH that overlaps with a PUCCH transmission
   // on a serving cell that includes positive SR information, the UE does not transmit the PUSCH.
   if (pusch_pdu && pusch_pdu->ulsch_indicator == 0 && pucch->sr_payload == 1) {
+    record_uci_pusch_retirement(mac, frame_tx, slot_tx, UL_RETIRE_UCI_POSITIVE_SR);
     ulcfg_pdu->pdu_type = FAPI_NR_UL_CONFIG_TYPE_DONE;
     release_ul_config(ulcfg_pdu, false);
+    return false;
+  }
+
+  const bool csi_present = pusch_pdu->pusch_uci.csi_payload.p1_bits > 0 || pusch_pdu->pusch_uci.csi_payload.p2_bits > 0;
+  NR_PUSCH_Config_t *pusch_Config = current_UL_BWP->pusch_Config;
+  const NR_UCI_OnPUSCH_t *onPusch = pusch_Config && pusch_Config->uci_OnPUSCH ? pusch_Config->uci_OnPUSCH->choice.setup : NULL;
+  if ((pucch->n_harq > 0 || (pucch->csi_payload.p1_bits > 0 && !csi_present)) && !onPusch && !current_UL_BWP->pucch_Config) {
+    // Dedicated UCI configuration can be released during recovery. Keep PUCCH rather than invent PUSCH scaling.
+    record_uci_pusch_retirement(
+        mac,
+        frame_tx,
+        slot_tx,
+        (pucch->n_harq > 0 ? UL_RETIRE_UCI_HARQ_ACK : 0) | (pucch->csi_payload.p1_bits > 0 ? UL_RETIRE_UCI_CSI : 0));
+    const bool initial_msg3 = pusch_pdu->ulsch_indicator && mac->ra.ra_state == nrRA_WAIT_RAR && !mac->ra.cfra;
+    ulcfg_pdu->pdu_type = FAPI_NR_UL_CONFIG_TYPE_DONE;
+    release_ul_config(ulcfg_pdu, false);
+    if (initial_msg3)
+      nr_msg3_not_transmitted(mac);
     return false;
   }
 
@@ -1842,11 +1869,9 @@ static bool schedule_uci_on_pusch(NR_UE_MAC_INST_t *mac,
   // and does not transmit the PUCCH if the UE does not multiplex aperiodic or semi-persistent CSI reports in the PUSCH
 
   // HARQ is then multiplexed on PUSCH in both scenarios
-  bool mux_done = false;
+  bool mux_done = true;
   if (pucch->n_harq > 0) {
-    NR_PUSCH_Config_t *pusch_Config = mac->current_UL_BWP->pusch_Config;
     if (pusch_Config && pusch_Config->uci_OnPUSCH) {
-      NR_UCI_OnPUSCH_t *onPusch = pusch_Config->uci_OnPUSCH->choice.setup;
       AssertFatal(onPusch, "UCI on PUSCH need to be configured\n");
       const NR_BetaOffsets_t *beta_offsets = get_pusch_beta_offsets(onPusch);
       const long *ack_index = beta_offsets ? (pucch->n_harq <= 2 ? beta_offsets->betaOffsetACK_Index1
@@ -1858,26 +1883,23 @@ static bool schedule_uci_on_pusch(NR_UE_MAC_INST_t *mac,
       // TS 38.331 BetaOffsets field descriptions: absent HARQ-ACK indices default to 11.
       pusch_pdu->pusch_uci.beta_offset_harq_ack = ack_index ? *ack_index : 11;
       pusch_pdu->pusch_uci.alpha_scaling = onPusch->scaling;
-      mux_done = true;
     } else {
       LOG_E(NR_MAC, "UCI on PUSCH need to be configured to schedule UCI on PUSCH\n");
+      mux_done = false;
     }
   }
 
   // CSI, if present on PUCCH, is transmitted only if there is no aperiodic/semi-persistent CSI report already
-  bool csi_present = (pusch_pdu->pusch_uci.csi_payload.p1_bits > 0) || (pusch_pdu->pusch_uci.csi_payload.p2_bits > 0);
   if (pucch->csi_payload.p1_bits > 0 && !csi_present) {
     nfapi_nr_ue_csi_payload_t csi_payload = {0};
-    NR_PUSCH_Config_t *pusch_Config = mac->current_UL_BWP->pusch_Config;
     NR_PUCCH_Resource_t *csi_pucch = NULL;
     nr_get_csi_measurements(mac, frame_tx, slot_tx, &csi_payload, &csi_pucch);
     fill_pusch_uci_struct(pusch_Config, &csi_payload, pusch_pdu);
-    mux_done = true;
   }
 
   release_ul_config(ulcfg_pdu, false);
   // Overlapped SR is omitted; CSI on PUCCH is omitted if CSI is already carried on PUSCH (TS 38.213 clause 9).
-  return mux_done || (pucch->n_harq == 0 && (pucch->csi_payload.p1_bits == 0 || csi_present));
+  return mux_done;
 }
 
 static void nr_ue_pucch_scheduler(NR_UE_MAC_INST_t *mac, frame_t frame, int slot)
@@ -2636,14 +2658,15 @@ static bool nr_ue_get_sdu(NR_UE_MAC_INST_t *mac,
   return true; // success if we got at least one sdu
 }
 
-static bool has_stale_deferred_pusch(const fapi_nr_ul_config_request_pdu_t *ulcfg_pdu, uint64_t config_generation)
+static const nfapi_nr_ue_pusch_pdu_t *find_stale_deferred_pusch(const fapi_nr_ul_config_request_pdu_t *ulcfg_pdu,
+                                                                uint64_t config_generation)
 {
   for (const fapi_nr_ul_config_request_pdu_t *pdu = ulcfg_pdu; pdu->pdu_type != FAPI_NR_END; ++pdu) {
     if (pdu->pdu_type == FAPI_NR_UL_CONFIG_TYPE_PUSCH && pdu->pusch_config_pdu.oai_deferred_tx_power
         && pdu->pusch_config_pdu.oai_deferred_config_generation != config_generation)
-      return true;
+      return &pdu->pusch_config_pdu;
   }
-  return false;
+  return NULL;
 }
 
 static bool has_multiple_deferred_pusch(const fapi_nr_ul_config_request_pdu_t *ulcfg_pdu)
@@ -2700,23 +2723,16 @@ static bool is_queued_initial_msg3(const NR_UE_MAC_INST_t *mac, const fapi_nr_ul
   if (mac->ra.ra_state != nrRA_WAIT_RAR || mac->ra.cfra)
     return false;
 
-  const int num_pdus = *pdu->privateNBpdus;
-  for (int i = 0; i < num_pdus; ++i) {
-    if (pdu[i].pdu_type == FAPI_NR_UL_CONFIG_TYPE_PUSCH)
+  // The held iterator can start before Msg3 or already point to its PUSCH.
+  for (; pdu->pdu_type != FAPI_NR_END; ++pdu) {
+    if (pdu->pdu_type == FAPI_NR_UL_CONFIG_TYPE_PUSCH)
       return true;
   }
   return false;
 }
 
-/* A caller that already holds an iterator can only trigger this seam while
- * processing the PUSCH itself.  Do not reacquire that non-recursive lock. */
-static bool is_locked_initial_msg3(const NR_UE_MAC_INST_t *mac, const fapi_nr_ul_config_request_pdu_t *pdu)
-{
-  return pdu && pdu->pdu_type == FAPI_NR_UL_CONFIG_TYPE_PUSCH && mac->ra.ra_state == nrRA_WAIT_RAR && !mac->ra.cfra;
-}
-
-/* Retire exactly the target UL slot after a nonfatal relative-TX admission
- * failure.  A received RAR's initial Msg3 must re-enter RA retry instead of
+/* Retire exactly the target UL slot after a nonfatal admission failure or
+ * configuration change. A received RAR's initial Msg3 must re-enter RA retry instead of
  * surviving as a stale grant when digital bounds later recover. */
 static void retire_unavailable_ul_slot(NR_UE_MAC_INST_t *mac,
                                        frame_t frame,
@@ -2729,8 +2745,7 @@ static void retire_unavailable_ul_slot(NR_UE_MAC_INST_t *mac,
   if (!pending_pdu)
     pending_pdu = lockGet_ul_iterator(mac, frame, slot);
 
-  const bool retire_msg3 = locked_pdu ? is_locked_initial_msg3(mac, locked_pdu)
-                                       : pending_pdu && is_queued_initial_msg3(mac, pending_pdu);
+  const bool retire_msg3 = pending_pdu && is_queued_initial_msg3(mac, pending_pdu);
   if (pending_pdu)
     release_ul_config(pending_pdu, true);
   if (retire_msg3)
@@ -2797,6 +2812,8 @@ void nr_ue_ul_scheduler(NR_UE_MAC_INST_t *mac, nr_uplink_indication_t *ul_info)
   // AND if a UL grant (UL DCI or Msg3) has been received (as indicated by num_pdus)
   uint8_t ulsch_input_buffer_array[FAPI_NR_UL_CONFIG_LIST_NUM][MAX_NUM_NR_ULSCH_SEGMENTS * 1056];
   int number_of_pdus = 0;
+  const uint64_t config_generation = mac->ul_pusch_config_generation;
+  const bool common_pucch = mac->current_UL_BWP && !mac->current_UL_BWP->pucch_Config;
 
   /* Stale ul_config (frame mismatch on a slot-indexed buffer) must not abort the
    * whole UL scheduler: PUCCH HARQ-ACK/CSI/SR still needs to go out. lockGet_ul_iterator
@@ -2805,14 +2822,18 @@ void nr_ue_ul_scheduler(NR_UE_MAC_INST_t *mac, nr_uplink_indication_t *ul_info)
   if (ulcfg_pdu) {
     LOG_D(NR_MAC, "number of UL PDUs: %d with UL transmission in sfn [%d.%d]\n", *ulcfg_pdu->privateNBpdus, frame_tx, slot_tx);
 
-    const uint64_t config_generation = mac->ul_pusch_config_generation;
-    if (get_agc_options()->tx_actuation && has_stale_deferred_pusch(ulcfg_pdu, config_generation)) {
-      LOG_E(NR_MAC,
-            "Managed TX rejects PUSCH after an UL BWP or power configuration change in target slot %d.%d\n",
-            frame_tx,
-            slot_tx);
-      radio_gain_device_reject_tx(frame_tx, slot_tx, 0, RADIO_TX_REJECT_LAYOUT);
-      release_ul_config(ulcfg_pdu, true);
+    const nfapi_nr_ue_pusch_pdu_t *stale_pusch =
+        get_agc_options()->tx_actuation ? find_stale_deferred_pusch(ulcfg_pdu, config_generation) : NULL;
+    if (stale_pusch) {
+      enum { UL_RETIRE_STALE_CONFIG = 1 };
+      flight_recorder_emit(FLIGHT_EVENT_UE_UL_RETIRE,
+                           mac->ue_id,
+                           frame_tx,
+                           slot_tx,
+                           UL_RETIRE_STALE_CONFIG,
+                           stale_pusch->oai_deferred_config_generation,
+                           config_generation);
+      retire_unavailable_ul_slot(mac, frame_tx, slot_tx, ulcfg_pdu);
       return;
     }
 
@@ -2823,6 +2844,20 @@ void nr_ue_ul_scheduler(NR_UE_MAC_INST_t *mac, nr_uplink_indication_t *ul_info)
       return;
     }
 
+    if (common_pucch)
+      release_ul_config(ulcfg_pdu, false);
+  }
+
+  // Common resources have no SR/CSI configuration. Resolve recovery-time cancellations before consuming UL data.
+  // Dedicated PUCCH stays after PUSCH construction so a sent BSR can cancel its pending SR.
+  // The caller holds if_mutex, serializing grants/configuration across this per-slot unlock.
+  if (common_pucch) {
+    if (mac->state >= UE_PERFORMING_RA && mac->state < UE_DETACHING)
+      nr_ue_pucch_scheduler(mac, frame_tx, slot_tx);
+    ulcfg_pdu = lockGet_ul_iterator(mac, frame_tx, slot_tx);
+  }
+
+  if (ulcfg_pdu) {
     while (ulcfg_pdu->pdu_type != FAPI_NR_END) {
       uint8_t *ulsch_input_buffer = ulsch_input_buffer_array[number_of_pdus];
       if (ulcfg_pdu->pdu_type == FAPI_NR_UL_CONFIG_TYPE_PUSCH) {
@@ -2943,7 +2978,7 @@ void nr_ue_ul_scheduler(NR_UE_MAC_INST_t *mac, nr_uplink_indication_t *ul_info)
     release_ul_config(ulcfg_pdu, false);
   }
 
-  if(mac->state >= UE_PERFORMING_RA && mac->state < UE_DETACHING)
+  if (!common_pucch && mac->state >= UE_PERFORMING_RA && mac->state < UE_DETACHING)
     nr_ue_pucch_scheduler(mac, frame_tx, slot_tx);
 
   if (mac->if_module != NULL && mac->if_module->scheduled_response != NULL) {
