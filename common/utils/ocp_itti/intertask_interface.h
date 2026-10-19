@@ -509,6 +509,12 @@ MessageDef *itti_alloc_new_message_sized(
     \param handler a custom signal handler. To unblock, it should call itti_wait_tasks_unblock()
  **/
 void itti_wait_tasks_end(void (*handler)(int));
+/** Prepare the stop semaphore and signal handlers before starting workers.
+ * Call from the main thread. The later itti_wait_tasks_end() preserves any
+ * notification posted after preparation; callers without early preparation
+ * retain the existing wait-and-install behavior.
+ */
+void itti_wait_tasks_prepare(void (*handler)(int));
 /** \brif unblocks ITTI waiting in itti_wait_tasks_end(). **/
 void itti_wait_tasks_unblock(void);
 void itti_set_task_real_time(task_id_t task_id);
