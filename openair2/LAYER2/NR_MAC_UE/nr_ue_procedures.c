@@ -4423,6 +4423,8 @@ static void nr_ue_process_mac_pdu(NR_UE_MAC_INST_t *mac, nr_downlink_indication_
         LOG_W(MAC, "unknown lcid %02x\n", rx_lcid);
         break;
     }
+    if (done)
+      break;
     pduP += (mac_subheader_len + mac_len);
     pdu_len -= (mac_subheader_len + mac_len);
     if (pdu_len < 0) {
