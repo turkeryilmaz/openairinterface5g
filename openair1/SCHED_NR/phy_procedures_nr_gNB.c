@@ -569,6 +569,20 @@ static void nr_fill_indication(const PHY_VARS_gNB *gNB,
   // in terms of dBFS range -128 to 0 with 0.1 step
   crc->rssi = (dtx_flag == 0) ? get_pusch_rssi(pusch, pusch_pdu->param_v4.numSpatialStreamIndices) : 0;
 
+  if (flight_recorder_enabled()) {
+    const uint64_t layout = (uint64_t)crc->harq_id | ((uint64_t)pusch_pdu->rb_start << 8) | ((uint64_t)pusch_pdu->rb_size << 24)
+                            | ((uint64_t)pusch_pdu->nrOfLayers << 40) | ((uint64_t)pusch_pdu->bwp_start << 48);
+    const uint64_t outcome = (uint64_t)crc->tb_crc_status | ((uint64_t)(dtx_flag != 0) << 1) | ((uint64_t)crc->rssi << 16);
+    // Include temporary RNTIs: Msg3 can fail before per-UE MAC statistics exist.
+    flight_recorder_emit(FLIGHT_EVENT_GNB_PUSCH_RESULT,
+                         (int64_t)frame * 1000 + slot_rx,
+                         pusch_pdu->rnti,
+                         layout,
+                         crc->ul_cqi,
+                         crc->timing_advance,
+                         outcome);
+  }
+
   pdu->handle = pusch_pdu->handle;
   pdu->rnti = pusch_pdu->rnti;
   pdu->harq_id = pusch_pdu->pusch_data.harq_process_id;
@@ -1147,6 +1161,16 @@ static bool pusch_signal_detected(PHY_VARS_gNB *gNB, NR_gNB_PUSCH *pusch_vars, N
 {
   const bool detected =
       dB_fixed_x10(pusch_vars->ulsch_power_tot) >= dB_fixed_x10(pusch_vars->ulsch_noise_power_tot) + gNB->pusch_thres;
+
+  // The DTX path below replaces signal power with noise; retain the actual decision inputs first.
+  if (flight_recorder_enabled())
+    flight_recorder_emit(FLIGHT_EVENT_GNB_PUSCH_DETECTION,
+                         (int64_t)ulsch->frame * 1000 + ulsch->slot,
+                         ulsch->rnti,
+                         pusch_vars->ulsch_power_tot,
+                         pusch_vars->ulsch_noise_power_tot,
+                         gNB->pusch_thres,
+                         detected);
 
   LOG_D(NR_PHY,
         "PUSCH %s in %d.%d (%d,%d,%d)\n",
