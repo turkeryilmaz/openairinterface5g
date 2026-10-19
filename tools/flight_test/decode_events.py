@@ -54,6 +54,10 @@ TIMING_LAYOUTS = {
     103: ('GNB_PRACH_COMBINING', ('prach_token', 'combining_flags', 'repetitions', 'coherent_wraps', 'prach_format', 'antennas')),
     104: ('GNB_PRACH_REPETITION_SPECTRUM', ('prach_token', 'repetition', 'spectral_total', 'spectral_peak', 'sequence_bins', 'spectrum_valid')),
     105: ('GNB_PRACH_COMBINED_SPECTRUM', ('prach_token', 'combined_spectral_total', 'separate_spectral_total', 'repetitions', 'coherent_wraps', 'sequence_bins')),
+    106: ('UE_UL_RETIRE', ('ue', 'frame', 'slot', 'reason', 'reason_value_a', 'reason_value_b')),
+    107: ('UE_PRACH_POWER_INPUT', ('raw_request', 'preamble_target', 'pathloss', 'ramp_count', 'ramp_step', 'config_generation')),
+    108: ('UE_PRACH_RELATIVE_RAMP', ('first_selected', 'first_raw_request', 'request_delta', 'unbounded_coordinate', 'selected_coordinate', 'saturation')),
+    109: ('UE_RADIO_STOP', ('radio_index', 'direction', 'requested_samples', 'returned_samples', 'device_ticks', 'origin_initialized')),
 }
 NAMES.update({number: layout[0] for number, layout in TIMING_LAYOUTS.items()})
 
@@ -66,7 +70,12 @@ def decode_radio_timing(event):
     row['name'] = layout[0]
     row.update(zip(layout[1], (event[key] for key in 'abcdef')))
     # Preserve packed values alongside their interpretations and unknown bits.
-    if event['event'] == 86:
+    if event['event'] == 106:
+        if event['d'] == 1:
+            row['previous_generation'], row['current_generation'] = event['e'], event['f']
+        elif event['d'] == 2:
+            row['retired_pdu_type'], row['uci_mask'] = event['e'], event['f']
+    elif event['event'] == 86:
         row['deadline_error'] = (event['f'] & UINT64_MASK) >> 32
         row['flags'] = event['f'] & 0xffffffff
         row['check_valid'] = event['d'] != INT64_MIN and row['deadline_error'] == 0
@@ -108,6 +117,8 @@ def decode_radio_timing(event):
         83: ('window_first_ticks', 'window_end_ticks', 'power_fs_nano', 'peak_fs_nano', 'component_counts'),
         85: ('deadline_ns',), 86: ('check_ns',), 89: ('rx_end_ticks', 'rx_end_host_ns'),
         103: ('repetitions', 'coherent_wraps'),
+        107: ('config_generation',),
+        109: ('device_ticks',),
     }
     for key in nullable.get(event['event'], ()):
         if row[key] == INT64_MIN:
@@ -1095,6 +1106,7 @@ def decode(directory, output):
         raise ValueError('mixed process/capture identities; decode each run separately')
     output.mkdir(parents=True, exist_ok=True)
     result = dict(files=len(paths), events=0, invalid_lines=0, unsupported_schema=0,
+                  async_repeat_summaries=0, async_repeated_records=0,
                   footers=[], health=[], retention=[], event_counts={})
     # Global sequence ownership proves gaps are retained events from other rings.
     # A duplicate is explicitly ambiguous, even if both copies name the same ring.
@@ -1119,9 +1131,14 @@ def decode(directory, output):
     relative_tx_records = []
     gnb_prach_records = []
     timing_records = []
-    with (output / 'events.csv').open('w', newline='') as dst:
+    repeat_fields = ('ring', 'device', 'code', 'channel', 'flags', 'repeat_count', 'sequence_first', 'sequence_last',
+                     'mono_first_ns', 'mono_last_ns', 'device_ticks_first', 'device_ticks_last')
+    with (output / 'events.csv').open('w', newline='') as dst, \
+            (output / 'radio_tx_async_repeats.csv').open('w', newline='') as repeats:
         writer = csv.DictWriter(dst, fieldnames=FIELDS)
         writer.writeheader()
+        repeat_writer = csv.DictWriter(repeats, fieldnames=('source_file', 'source_line', *repeat_fields))
+        repeat_writer.writeheader()
         for path in paths:
             with path.open('rb') as source:
                 number = 0
@@ -1215,6 +1232,18 @@ def decode(directory, output):
                                 radio_tx_level_events.append(dict(values, source_file=path.name, source_line=number))
                             result['events'] += 1
                             result['event_counts'][name] = result['event_counts'].get(name, 0) + 1
+                        elif kind == 'async_repeat_summary':
+                            values = {key: obj[key] for key in repeat_fields}
+                            if (any(type(value) is not int for value in values.values())
+                                    or obj.get('event') != 74 or obj.get('payload_truncated') != 0
+                                    or not 0 <= values['ring'] < 64 or values['repeat_count'] <= 0
+                                    or not 0 < values['sequence_first'] <= values['sequence_last']
+                                    or values['repeat_count'] > values['sequence_last'] - values['sequence_first'] + 1
+                                    or not 0 <= values['mono_first_ns'] <= values['mono_last_ns']):
+                                raise ValueError()
+                            repeat_writer.writerow(dict(source_file=path.name, source_line=number, **values))
+                            result['async_repeat_summaries'] += 1
+                            result['async_repeated_records'] += values['repeat_count']
                         elif kind in ('capture_footer', 'health', 'capture_health', 'file_begin'):
                             if kind == 'capture_footer':
                                 required = ('clean', 'writer_errors', 'dropped_ring_full', 'dropped_no_slot',
