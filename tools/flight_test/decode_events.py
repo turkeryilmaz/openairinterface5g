@@ -58,6 +58,8 @@ TIMING_LAYOUTS = {
     107: ('UE_PRACH_POWER_INPUT', ('raw_request', 'preamble_target', 'pathloss', 'ramp_count', 'ramp_step', 'config_generation')),
     108: ('UE_PRACH_RELATIVE_RAMP', ('first_selected', 'first_raw_request', 'request_delta', 'unbounded_coordinate', 'selected_coordinate', 'saturation')),
     109: ('UE_RADIO_STOP', ('radio_index', 'direction', 'requested_samples', 'returned_samples', 'device_ticks', 'origin_initialized')),
+    110: ('GNB_PUSCH_DETECTION', ('frame_slot', 'rnti', 'signal_power_linear', 'noise_power_linear', 'threshold_tenth_db', 'detected_raw')),
+    111: ('GNB_PUSCH_RESULT', ('frame_slot', 'rnti', 'pusch_layout', 'ul_cqi_raw', 'timing_advance_raw', 'pusch_outcome')),
 }
 NAMES.update({number: layout[0] for number, layout in TIMING_LAYOUTS.items()})
 
@@ -70,7 +72,23 @@ def decode_radio_timing(event):
     row['name'] = layout[0]
     row.update(zip(layout[1], (event[key] for key in 'abcdef')))
     # Preserve packed values alongside their interpretations and unknown bits.
-    if event['event'] == 106:
+    if event['event'] == 110:
+        row['detected'] = event['f'] == 1 if event['f'] in (0, 1) else None
+        signal, noise = event['c'], event['d']
+        row['signal_noise_ratio_db'] = 10 * math.log10(signal / noise) if signal > 0 and noise > 0 else None
+    elif event['event'] == 111:
+        layout, outcome = event['c'] & UINT64_MASK, event['f'] & UINT64_MASK
+        row['harq_id'] = layout & 0xff
+        row['rb_start'] = (layout >> 8) & 0xffff
+        row['rb_count'] = (layout >> 24) & 0xffff
+        row['layers'] = (layout >> 40) & 0xff
+        row['bwp_start'] = (layout >> 48) & 0x1ff
+        row['unknown_layout_bits'] = layout & ~((1 << 57) - 1)
+        row['crc_failed'], row['dtx'] = bool(outcome & 1), bool(outcome & 2)
+        row['rssi_raw'] = (outcome >> 16) & 0xffff
+        row['rssi_available'] = not row['dtx']
+        row['unknown_outcome_bits'] = outcome & ~((0xffff << 16) | 3)
+    elif event['event'] == 106:
         if event['d'] == 1:
             row['previous_generation'], row['current_generation'] = event['e'], event['f']
         elif event['d'] == 2:

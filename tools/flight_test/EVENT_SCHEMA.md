@@ -674,6 +674,36 @@ coordinated stop. It does not claim that all worker shutdown operations complete
 An unavailable timestamp stays unavailable; a short read cannot initialize the
 RX origin or be passed to PHY processing as a full block.
 
+### Scheduled PUSCH detection and results (110-111)
+
+These records also cover temporary RNTIs during Msg3, before established-UE MAC
+statistics exist. Each record retains its own source timestamp; the decoder
+does not join repeated SFN/slot/RNTI values across wraps, processes or missing
+records. They are included in `radio_timing.csv`.
+
+| ID | Record | a, b, c, d, e, f |
+|---|---|---|
+|110|GNB_PUSCH_DETECTION|frame*1000+slot, RNTI, linear signal power total, linear noise power total, threshold in0.1dB, detected0/1|
+|111|GNB_PUSCH_RESULT|frame*1000+slot, RNTI, packed allocation, raw FAPI UL CQI, raw FAPI timing advance, packed outcome|
+
+Event110 is emitted before the DTX path replaces the stored signal power with
+the noise estimate. The totals are the existing receiver's unsigned32-bit
+internal power values, without RF calibration. Detection uses the production
+`dB_fixed_x10(signal) >= dB_fixed_x10(noise) + threshold` comparison. The decoder's
+`10*log10(signal/noise)` is a derived diagnostic ratio when both totals are
+positive; it does not replace that quantized comparison. Zero totals leave
+the ratio unavailable.
+
+Event111 allocation bits0..7 are HARQ ID,8..23 RB start relative to the BWP,
+24..39 RB count,40..47 layer count and48..56 BWP start. Outcome bit0 is CRC
+failure, bit1 DTX, and bits16..31 raw FAPI RSSI.
+The DTX path sets RSSI to0; this is an unavailable measurement, not measured
+0dBFS. CQI and timing advance retain the producer's FAPI encodings and sentinel
+values. The decoder preserves unknown bits. CRC failure with DTX clear means
+the receiver attempted decoding; DTX means the detector rejected the signal.
+Neither a failed CRC nor the absence of a matching result proves that the UE
+did not transmit. No packet payload is recorded.
+
 ### Repeated TX asynchronous records
 
 The writer retains the first event74 in a consecutive same-ring run. Identical
