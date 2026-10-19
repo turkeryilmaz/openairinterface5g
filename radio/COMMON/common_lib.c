@@ -151,7 +151,13 @@ int openair0_transport_load(openair0_device_t *device, openair0_config_t *openai
   return rc;
 }
 
-static void writerEnqueue(openair0_device_t *device, openair0_timestamp_t timestamp, void **txp, int nsamps, int nbAnt, int flags)
+static void writerEnqueue(openair0_device_t *device,
+                          openair0_timestamp_t timestamp,
+                          void **txp,
+                          int nsamps,
+                          int nbAnt,
+                          int flags,
+                          bool cancelled)
 {
   re_order_t *ctx = &device->reOrder;
   pthread_mutex_lock(&ctx->mutex_store);
@@ -161,6 +167,7 @@ static void writerEnqueue(openair0_device_t *device, openair0_timestamp_t timest
     if (!ctx->queue[i].active) {
       ctx->queue[i].timestamp = timestamp;
       ctx->queue[i].active = true;
+      ctx->queue[i].cancelled = cancelled;
       ctx->queue[i].nsamps = nsamps;
       ctx->queue[i].nbAnt = nbAnt;
       ctx->queue[i].flags = flags;
@@ -171,7 +178,7 @@ static void writerEnqueue(openair0_device_t *device, openair0_timestamp_t timest
     }
   AssertFatal(i < WRITE_QUEUE_SZ, "Write queue full\n");
   if (flight_recorder_enabled())
-    flight_recorder_emit(FLIGHT_EVENT_RADIO_TX_REORDER, device->type, timestamp, nsamps, flags, 1, i);
+    flight_recorder_emit(FLIGHT_EVENT_RADIO_TX_REORDER, device->type, timestamp, nsamps, flags, cancelled ? 6 : 1, i);
   pthread_mutex_unlock(&ctx->mutex_store);
 }
 
@@ -189,6 +196,7 @@ static void writerProcessWaitingQueue(nrue_ru_write_t nrue_ru_write, PHY_VARS_NR
         int nsamps = ctx->queue[i].nsamps;
         int nbAnt = ctx->queue[i].nbAnt;
         int flags = ctx->queue[i].flags;
+        const bool cancelled = ctx->queue[i].cancelled;
         void *txp[NB_ANTENNAS_TX];
         AssertFatal(nbAnt <= NB_ANTENNAS_TX, "");
         for (int j = 0; j < nbAnt; j++)
@@ -202,9 +210,9 @@ static void writerProcessWaitingQueue(nrue_ru_write_t nrue_ru_write, PHY_VARS_NR
                                timestamp,
                                nsamps,
                                flags,
-                               flags || IS_SOFTMODEM_RFSIM ? 3 : 4,
+                               cancelled ? 8 : (flags || IS_SOFTMODEM_RFSIM ? 3 : 4),
                                i);
-        if (flags || IS_SOFTMODEM_RFSIM) {
+        if (!cancelled && (flags || IS_SOFTMODEM_RFSIM)) {
           int wroteSamples;
           if (nrue_ru_write)
             wroteSamples = nrue_ru_write(UE, timestamp, txp, nsamps, nbAnt, flags);
@@ -226,14 +234,15 @@ static void writerProcessWaitingQueue(nrue_ru_write_t nrue_ru_write, PHY_VARS_NR
 // but to make zerocopy and agnostic design, we need to make a proper ring buffer with mutex protection
 // mutex (or atomic flags) will be mandatory because this out order system root cause is there are several writer threads
 
-int openair0_write_reorder_common(nrue_ru_write_t nrue_ru_write,
-                                  PHY_VARS_NR_UE *UE,
-                                  openair0_device_t *device,
-                                  openair0_timestamp_t timestamp,
-                                  void **txp,
-                                  int nsamps,
-                                  int nbAnt,
-                                  int flags)
+static int write_reorder_common(nrue_ru_write_t nrue_ru_write,
+                                PHY_VARS_NR_UE *UE,
+                                openair0_device_t *device,
+                                openair0_timestamp_t timestamp,
+                                void **txp,
+                                int nsamps,
+                                int nbAnt,
+                                int flags,
+                                bool cancelled)
 {
   int wroteSamples = 0;
   re_order_t *ctx = &device->reOrder;
@@ -258,9 +267,9 @@ int openair0_write_reorder_common(nrue_ru_write_t nrue_ru_write,
                              timestamp,
                              nsamps,
                              flags,
-                             flags || IS_SOFTMODEM_RFSIM ? 2 : 4,
+                             cancelled ? 7 : (flags || IS_SOFTMODEM_RFSIM ? 2 : 4),
                              ctx->nextTS);
-      if (flags || IS_SOFTMODEM_RFSIM) {
+      if (!cancelled && (flags || IS_SOFTMODEM_RFSIM)) {
         if (nrue_ru_write)
           wroteSamples = nrue_ru_write(UE, timestamp, txp, nsamps, nbAnt, flags);
         else
@@ -272,18 +281,41 @@ int openair0_write_reorder_common(nrue_ru_write_t nrue_ru_write,
       ctx->nextTS = timestamp + nsamps;
 
     } else {
-      writerEnqueue(device, timestamp, txp, nsamps, nbAnt, flags);
+      writerEnqueue(device, timestamp, txp, nsamps, nbAnt, flags, cancelled);
     }
     writerProcessWaitingQueue(nrue_ru_write, UE, device);
     pthread_mutex_unlock(&ctx->mutex_write);
     return wroteSamples ? wroteSamples : nsamps;
   }
-  writerEnqueue(device, timestamp, txp, nsamps, nbAnt, flags);
+  writerEnqueue(device, timestamp, txp, nsamps, nbAnt, flags, cancelled);
   if (pthread_mutex_trylock(&ctx->mutex_write) == 0) {
     writerProcessWaitingQueue(nrue_ru_write, UE, device);
     pthread_mutex_unlock(&ctx->mutex_write);
   }
   return nsamps;
+}
+
+int openair0_write_reorder_common(nrue_ru_write_t writer,
+                                  PHY_VARS_NR_UE *UE,
+                                  openair0_device_t *device,
+                                  openair0_timestamp_t timestamp,
+                                  void **txp,
+                                  int nsamps,
+                                  int nbAnt,
+                                  int flags)
+{
+  return write_reorder_common(writer, UE, device, timestamp, txp, nsamps, nbAnt, flags, false);
+}
+
+int openair0_write_reorder_cancel(nrue_ru_write_t writer,
+                                  PHY_VARS_NR_UE *UE,
+                                  openair0_device_t *device,
+                                  openair0_timestamp_t timestamp,
+                                  int nsamps)
+{
+  if (nsamps <= 0)
+    return -EINVAL;
+  return write_reorder_common(writer, UE, device, timestamp, NULL, nsamps, 0, TX_BURST_INVALID, true);
 }
 
 int openair0_write_reorder(openair0_device_t *device, openair0_timestamp_t timestamp, void **txp, int nsamps, int nbAnt, int flags)

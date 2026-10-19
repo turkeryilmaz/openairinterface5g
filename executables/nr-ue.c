@@ -400,8 +400,12 @@ static bool RU_write(nr_rxtx_thread_data_t *rxtxD, bool sl_tx_action, c16_t **tx
   while (writeBlockSize > maxWriteBlockSize) {
     const int dummyBlockSize = min(writeBlockSize - maxWriteBlockSize, maxWriteBlockSize);
     int tmp = nrue_ru_write_reorder(UE, writeTimestamp, (void **)txp, dummyBlockSize, fp->nb_antennas_tx, flags);
-    if (radio_shutdown_cancelled(tmp))
+    if (radio_shutdown_cancelled(tmp)) {
+      // The rejected fragment has already advanced the reorder cursor. Retire
+      // the rest of this scheduled interval so later actors cannot leave a hole.
+      nrue_ru_write_reorder_cancel(UE, writeTimestamp + dummyBlockSize, writeBlockSize - dummyBlockSize);
       return false;
+    }
     AssertFatal(tmp == dummyBlockSize, "write samples to reorder function failed %d", tmp);
 
     writeTimestamp += dummyBlockSize;
@@ -413,8 +417,11 @@ static bool RU_write(nr_rxtx_thread_data_t *rxtxD, bool sl_tx_action, c16_t **tx
     const uint num_dl_symbols = num_dl_symbols_slot(cfg, slot);
     const uint num_zero_samples = get_samples_symbol_timestamp(fp, slot, num_dl_symbols);
     int tmp = nrue_ru_write_reorder(UE, writeTimestamp, (void **)txp, num_zero_samples, fp->nb_antennas_tx, TX_BURST_INVALID);
-    if (radio_shutdown_cancelled(tmp))
+    if (radio_shutdown_cancelled(tmp)) {
+      if (writeBlockSize > num_zero_samples)
+        nrue_ru_write_reorder_cancel(UE, writeTimestamp + num_zero_samples, writeBlockSize - num_zero_samples);
       return false;
+    }
     AssertFatal(tmp == num_zero_samples, "write samples to reorder function failed %d", tmp);
 
     writeTimestamp += num_zero_samples;

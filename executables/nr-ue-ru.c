@@ -576,3 +576,8 @@ void nrue_ru_write_reorder_clear_context(PHY_VARS_NR_UE *UE)
   openair0_device_t *device = &openair0_dev[UE->rf_map.card];
   openair0_write_reorder_clear_context(device);
 }
+
+int nrue_ru_write_reorder_cancel(PHY_VARS_NR_UE *UE, openair0_timestamp_t timestamp, int nsamps)
+{
+  return openair0_write_reorder_cancel(nrue_ru_write, UE, &openair0_dev[UE->rf_map.card], timestamp, nsamps);
+}

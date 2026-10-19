@@ -327,6 +327,7 @@ typedef struct {
   openair0_timestamp_t nextTS;
   struct {
     bool active;
+    bool cancelled;
     openair0_timestamp_t timestamp;
     void **txp;
     int nsamps;
@@ -595,6 +596,13 @@ extern int read_recplayconfig(recplay_conf_t **recplay_conf, recplay_state_t **r
 extern void iqrecorder_end(openair0_device_t *device);
 
 int openair0_write_reorder(openair0_device_t *device, openair0_timestamp_t timestamp, void **txp, int nsamps, int nbAnt, int flags);
+/* Retire a scheduled interval without submitting samples, including with RFsim.
+ * The same writer callback is retained for unrelated queued intervals. */
+int openair0_write_reorder_cancel(nrue_ru_write_t writer,
+                                  PHY_VARS_NR_UE *UE,
+                                  openair0_device_t *device,
+                                  openair0_timestamp_t timestamp,
+                                  int nsamps);
 void openair0_write_reorder_clear_context(openair0_device_t *device);
 /**@}*/
 

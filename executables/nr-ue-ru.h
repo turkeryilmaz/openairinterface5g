@@ -36,6 +36,7 @@ int nrue_ru_read(PHY_VARS_NR_UE *UE,
                  nr_ue_tx_deadline_anchor_t *deadline_anchor);
 int nrue_ru_write(PHY_VARS_NR_UE *UE, openair0_timestamp_t timestamp, void **buff, int nsamps, int num_antennas, int flags);
 int nrue_ru_write_reorder(PHY_VARS_NR_UE *UE, openair0_timestamp_t timestamp, void **txp, int nsamps, int nbAnt, int flags);
+int nrue_ru_write_reorder_cancel(PHY_VARS_NR_UE *UE, openair0_timestamp_t timestamp, int nsamps);
 void nrue_ru_write_reorder_clear_context(PHY_VARS_NR_UE *UE);
 
 #endif
