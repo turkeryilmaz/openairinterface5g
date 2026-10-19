@@ -512,9 +512,11 @@ Queue action1=enqueued,2=dequeued,3=overflow discard. A successful enqueue or
 reorder return does not establish an actual UHD send. Reorder stage0=arrival,
 1=enqueued (detail=queue index),2=direct dispatch (detail=expected timestamp),
 3=queued dispatch (detail=queue index),4=suppressed non-transmitting interval,
-5=clear requested. Stage4 does not transmit; its detail is meaningful only with
-its arrival/queue path. The existing queue algorithm and burst behaviour are
-unchanged by recording.
+5=clear requested,6=cancelled interval enqueued,7=cancelled interval retired
+directly,8=cancelled interval retired from queue. Stages4/6/7/8 do not transmit;
+cancelled intervals never reach the backend even with RFsim. Stage7 detail is
+the previous expected timestamp; stages6/8 carry the queue index. Cancellation
+retires the complete scheduled interval, not only an already rejected fragment.
 
 Send metadata bits are1=timed,2=start-of-burst,4=end-of-burst. Send outcome0 is
 normal return;1 is exception, for which accepted count is `INT64_MIN`/unavailable.
@@ -645,3 +647,50 @@ Unsupported paths emit103 with incomplete/unavailable fields and no invented
 repetition values. Tokens are process-local and missing tokens remain unavailable;
 never join SFN/slot alone across restarts or wraps. Check footer loss and record
 coverage before inferring anything from a missing fragment.
+
+### UL retirement, relative PRACH ramp and radio stop (106-109)
+
+| ID | Record | a, b, c, d, e, f |
+|---|---|---|
+|106|UE_UL_RETIRE|UE, frame, slot, reason, reason-specific previous value, reason-specific current value|
+|107|UE_PRACH_POWER_INPUT|raw protocol power request, preamble target, pathloss, ramp counter, ramp step dB, configuration generation|
+|108|UE_PRACH_RELATIVE_RAMP|first selected coordinate, first raw request, current raw-request delta, unbounded relative coordinate, selected coordinate, saturation direction|
+|109|UE_RADIO_STOP|radio index, direction (1=RX), requested samples, returned samples/error, device ticks or unavailable, receive origin initialized bool|
+
+Event106 reason1 retires a deferred PUSCH prepared under a previous configuration
+generation; e/f identify the old/current generations. This is a target-slot
+decision, not a terminal radio fault. Reason2 retires an overlapping PUSCH in
+common-PUCCH recovery when whole UCI-on-PUSCH setup is missing: e is the retired
+FAPI PDU type, f is a mask (ACK=1, CSI=2, positive SR=4). The current common
+resource path carries HARQ; the mask reserves the other meanings explicitly.
+Event107 uses `INT64_MIN` for unavailable protocol inputs.
+Event108 records the relative algorithm `first_selected + raw_now - first_raw`,
+clipped to the current admissible bounds; saturation is -1/0/+1 for lower/none/upper.
+The first values reset with each random-access procedure. Relative coordinates
+are not calibrated RF power in dBm; changing hardware, digital reference or
+calibration requires a new experiment, not reinterpretation of old coordinates.
+Event109 is emitted once when an unexpected incomplete radio read requests a
+coordinated stop. It does not claim that all worker shutdown operations completed.
+An unavailable timestamp stays unavailable; a short read cannot initialize the
+RX origin or be passed to PHY processing as a full block.
+
+### Repeated TX asynchronous records
+
+The writer retains the first event74 in a consecutive same-ring run. Identical
+device/code/channel/flags repetitions may be combined for up to100ms into
+`kind="async_repeat_summary"`. This JSON record contains `event=74`, `ring`,
+`device`, `code`, `channel`, `flags`, `repeat_count`, `sequence_first/last`,
+`mono_first_ns/last_ns`, `device_ticks_first/last`, and `payload_truncated=0`.
+Its count and ranges cover **only suppressed repetitions**, excluding the
+separately retained first event. Device ticks may be `INT64_MIN` when unavailable.
+No intermediate timestamp distribution is retained. A key change, another event
+on the same ring, the window boundary, idle writer flush or clean shutdown
+flushes pending repetitions. Alternating keys may remain fully detailed.
+
+This is asynchronous file-output aggregation, with unchanged fixed-size producer
+records. Counts describe records consumed from the ring; ring loss, writer
+failure and missing final footer remain separate limitations. Native radio-health
+counters remain independent. The decoder writes `radio_tx_async_repeats.csv` and
+reports `async_repeated_records` separately from raw `event_counts`; add that
+count to raw RADIO_TX_ASYNC records when counting retained async observations.
+Do not infer each suppressed event's exact sequence or timestamp from endpoints.
