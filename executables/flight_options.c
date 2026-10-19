@@ -22,7 +22,7 @@ int flight_normalize_arguments(int *argc, char **argv)
       continue;
     }
     if (seen || i + 1 == *argc || argv[i + 1][0] == '-') {
-      fprintf(stderr, "[FLIGHT] Use one --flight followed by log [recovery] or off\n");
+      fprintf(stderr, "[FLIGHT] Use one --flight followed by log [recovery] [traffic] or off\n");
       return -1;
     }
     seen = true;
@@ -97,8 +97,16 @@ int flight_start_capture(configmodule_interface_t *cfg, int argc, char **argv, c
   char *output = NULL, *repo_option = NULL, *core = NULL, *interface = NULL, *gpsd = NULL;
   char *recorder_budget = NULL, *stdout_budget = NULL, *host_budget = NULL, *min_free = NULL;
   char *stall = NULL, *attempt = NULL;
+  char *traffic_peer = NULL, *traffic_bind = NULL, *traffic_port = NULL, *traffic_direction = NULL, *traffic_rate = NULL;
+  char *capability_xml = NULL;
   paramdef_t options[] = {
-      STRINGPARAM("flight", "Flight features: log [recovery], or off. CLI replaces the config value.\n", 0, &features, "off"),
+      STRINGPARAM("flight", "Flight features: log [recovery] [traffic], or off. CLI replaces config.\n", 0, &features, "off"),
+      STRINGPARAM("flight-traffic-peer", "Required UE traffic destination IP.\n", 0, &traffic_peer, NULL),
+      STRINGPARAM("flight-traffic-bind", "Optional gNB traffic server bind IP.\n", 0, &traffic_bind, NULL),
+      STRINGPARAM("flight-traffic-port", "iperf3 server port (default 5201).\n", 0, &traffic_port, NULL),
+      STRINGPARAM("flight-traffic-direction", "UDP traffic ul, dl, or both (default ul).\n", 0, &traffic_direction, NULL),
+      STRINGPARAM("flight-traffic-rate", "UDP traffic bit/s per direction (default 1100000).\n", 0, &traffic_rate, NULL),
+      STRINGPARAM("uecap_file", "UE capabilities XER file; flight checks XML syntax.\n", 0, &capability_xml, NULL),
       STRINGPARAM("flight-recovery-stall", "Native RX progress timeout in seconds (default 10).\n", 0, &stall, NULL),
       STRINGPARAM("flight-recovery-attempt", "Cell-present acquisition bound in seconds (default 120).\n", 0, &attempt, NULL),
       STRINGPARAM("flight-output", "Capture directory; default: cmake_targets/log/FlightTests/YYYY-MM-DD.\n", 0, &output, NULL),
@@ -125,7 +133,7 @@ int flight_start_capture(configmodule_interface_t *cfg, int argc, char **argv, c
     if (strcmp(argv[i], "-h") == 0 || strncmp(argv[i], "--help", 6) == 0)
       return 0;
 
-  bool log = false, off = false, recovery = false;
+  bool log = false, off = false, recovery = false, traffic = false;
   char *copy = strdup(features ? features : "off");
   if (copy == NULL)
     return -1;
@@ -137,15 +145,17 @@ int flight_start_capture(configmodule_interface_t *cfg, int argc, char **argv, c
       off = true;
     else if (strcmp(feature, "recovery") == 0)
       recovery = true;
+    else if (strcmp(feature, "traffic") == 0)
+      traffic = true;
     else {
-      fprintf(stderr, "[FLIGHT] Unsupported feature '%s'; supported: log, recovery, off.\n", feature);
+      fprintf(stderr, "[FLIGHT] Unsupported feature '%s'; supported: log, recovery, traffic, off.\n", feature);
       free(copy);
       return -1;
     }
   }
   free(copy);
-  if (log == off || (recovery && !log)) {
-    fprintf(stderr, "[FLIGHT] Select log [recovery] for UE or gNB, or off\n");
+  if (log == off || ((recovery || traffic) && !log)) {
+    fprintf(stderr, "[FLIGHT] Select log [recovery] [traffic] for UE or gNB, or off\n");
     return -1;
   }
   if (off)
@@ -171,10 +181,28 @@ int flight_start_capture(configmodule_interface_t *cfg, int argc, char **argv, c
     fprintf(stderr, "[FLIGHT] Cannot locate tools/flight_test/capture.py; keep the source checkout or set flight-repo\n");
     return -1;
   }
-  char **command = calloc((size_t)argc + 48, sizeof(*command));
+  const char *pairs[][2] = {{"--output", output},
+                            {"--core-ip", core},
+                            {"--interface", interface},
+                            {"--gpsd", gpsd},
+                            {"--recorder-budget", recorder_budget},
+                            {"--stdout-budget", stdout_budget},
+                            {"--host-budget", host_budget},
+                            {"--min-free-bytes", min_free},
+                            {"--recovery-stall", stall},
+                            {"--recovery-attempt", attempt},
+                            {"--traffic-peer", traffic_peer},
+                            {"--traffic-bind", traffic_bind},
+                            {"--traffic-port", traffic_port},
+                            {"--traffic-direction", traffic_direction},
+                            {"--traffic-rate", traffic_rate},
+                            {"--capability-xml", strcmp(role, "ue") == 0 ? capability_xml : NULL}};
+  /* Fixed bootstrap arguments, optional pairs, original argv and the NULL end. */
+  const size_t command_capacity = (size_t)argc + 24 + 2 * sizeofArray(pairs);
+  char **command = calloc(command_capacity, sizeof(*command));
   if (command == NULL)
     return -1;
-  int n = 0;
+  size_t n = 0;
   command[n++] = "python3";
   command[n++] = "-B";
   command[n++] = script;
@@ -185,6 +213,8 @@ int flight_start_capture(configmodule_interface_t *cfg, int argc, char **argv, c
   command[n++] = "--console";
   if (recovery)
     command[n++] = "--recovery";
+  if (traffic)
+    command[n++] = "--traffic";
   command[n++] = "--working-directory";
   command[n++] = cwd;
   if (cfg->num_cfgP > 0 && cfg->cfgP[0] && realpath(cfg->cfgP[0], config)) {
@@ -193,16 +223,6 @@ int flight_start_capture(configmodule_interface_t *cfg, int argc, char **argv, c
     command[n++] = "--config-backend";
     command[n++] = cfg->cfgmode ? cfg->cfgmode : "unknown";
   }
-  const char *pairs[][2] = {{"--output", output},
-                            {"--core-ip", core},
-                            {"--interface", interface},
-                            {"--gpsd", gpsd},
-                            {"--recorder-budget", recorder_budget},
-                            {"--stdout-budget", stdout_budget},
-                            {"--host-budget", host_budget},
-                            {"--min-free-bytes", min_free},
-                            {"--recovery-stall", stall},
-                            {"--recovery-attempt", attempt}};
   for (unsigned int i = 0; i < sizeofArray(pairs); ++i) {
     if (pairs[i][1]) {
       command[n++] = (char *)pairs[i][0];
