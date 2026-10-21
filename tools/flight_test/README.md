@@ -70,15 +70,18 @@ and `--flight-traffic-rate`. CLI values replace corresponding config values.
 The UE requires an explicit peer IP. Port defaults to 5201; direction defaults
 to `ul`, with `dl` and simultaneous `both` available. Rate defaults to 1100000
 bits/s **per direction**. UDP datagrams are 1200 bytes, reporting is once per
-second, and client segments last 30 seconds. Each segment binds both iperf3's
+second, and healthy traffic runs continuously in one generation (`iperf3 --time 0`)
+until the worker stops. Each generation binds both iperf3's
 TCP control connection and UDP socket to the current `flight-interface` IP
 and device (`SO_BINDTODEVICE`). There is no fallback to the management route.
 An absent tunnel waits; an address change stops the old generation before
-starting another. Failed segments retry after five seconds, and a client still
-running ten seconds after its segment deadline is stopped. A healthy completed
-segment is followed by another segment while the OAI worker runs.
+starting another. Failed generations retry after five seconds. A client with no
+interval report for ten seconds is stopped, bounding stuck setup or reporting.
 Receiving endpoints use a five-second receive timeout; the server also uses
 iperf3's ten-second idle timeout to recover an idle control session.
+Both endpoints request a five-second TCP outstanding-data timeout. This bounds
+unacknowledged control traffic, not an idle control connection: a silent UL UDP
+partition can leave the sender running, with delivery evidence unavailable.
 
 Traffic children run at the inherited ordinary collector priority, in owned
 process groups. Worker replacement, SIGINT and SIGTERM stop them; after one
@@ -92,12 +95,24 @@ before radio launch.
 
 `traffic.*.log` holds JSON Lines with generation identifiers, address changes,
 gaps, bounded raw stdout/stderr (including partial/error output), parsed interval
-fields, exit status and cleanup results. The UE requests server output so a
-completed segment preserves both endpoint reports; the gNB independently
+fields, exit status and cleanup results. Typed reports identify UL/DL,
+sender/receiver, endpoint and bidirectional stream tags, and preserve jitter,
+lost/total datagrams and loss percentage when iperf3 supplies them. Final summaries
+and retrieved server output are marked separately; they must not be added to
+live intervals as extra delivered bytes. The UE requests server output so a
+completed test can preserve both endpoint reports; the gNB independently
 records its own intervals. Interrupted TCP control can prevent retrieval of a
 receiver report. An absent receiver report means unavailable delivery evidence.
-Traffic capture shares the host byte budget and free-space reserve. Inspect
-writer losses and the raw reports before interpreting measured throughput.
+An interrupted remote `0/0` receiver summary is marked unavailable rather than
+being interpreted as measured zero delivery.
+Readable `[TRAFFIC]` lines in `stdout.*.log` and its optional console mirror show
+at most about one live report per second per direction. Sender lines explicitly
+show unavailable delivery; receiver lines show observed receive rate, jitter and
+datagram loss. During continuous UL, inspect gNB receiver lines; the UE has only
+its local sender intervals until remote reports are retrieved at completion.
+Traffic JSON capture shares the host byte budget and free-space reserve; readable
+lines share the stdout budget. Inspect writer losses and raw reports before
+interpreting measured throughput.
 
 ## PRACH waveform preparation and experimental gNB detection
 
@@ -215,8 +230,8 @@ DRB observation clears when the context is released, suspended, or reset.
 ## gNB recovery and radio-health evidence
 
 The same `flight = "log recovery";` setting enables a gNB session supervisor. It does not use UE attach, TUN,
-IP-address, PDU-session, NAS, DRB, or cell-acquisition deadlines. A gNB may retry only an unexpected nonzero
-worker exit after **two fresh, ordered, active snapshots for one device slot** show an increase in either
+IP-address, PDU-session, NAS, DRB, or cell-acquisition deadlines. A gNB may retry an unexpected nonzero
+worker exit, or an explicitly requested radio-failure restart, after **two fresh, ordered, active snapshots for one device slot** show an increase in either
 `tx_send_accepted_samples` or `rx_returned_samples`. The first static snapshot, requested TX samples, counters
 from different slots, stale/reordered snapshots, startup failures, and clean unclassified exits do not
 qualify. The same capped 5/15/30/60-second process backoff and ten-second owned-group fencing apply. Ctrl+C
@@ -228,8 +243,30 @@ JSON Lines. The stream retains accepted raw snapshots and per-device intervals, 
 gaps, active/closed lifecycle, supported-but-unobserved values, value decreases or counter resets, and
 first/last native event identity. It marks every late, underflow, overflow, queue, missing, or in-flight
 finding with `candidate_action="observe"` and `qualified=false`. Those records are evidence for offline
-analysis only; they are not restart triggers for UE or gNB and do not establish an RF fault, packet delivery,
-or a 3GPP threshold.
+analysis only. The separate recovery policy evaluates the following sustained combinations and records its
+decisions in `recovery.*.log`; a raw diagnostic record alone is never a restart command.
+
+With `recovery` enabled, both roles request a coordinated worker restart after the existing
+`flight-recovery-stall` window (default ten seconds) continuously shows either:
+
+- Ongoing TX submission and acceptance, RX progress, asynchronous polling and new local TX schedule errors
+  in every interval. Full UHD acceptance does not erase evidence of subsequent schedule rejection.
+- No accepted TX samples while a send remains in flight, or while the TX queue remains nonempty without
+  dequeue progress. Idle UE acquisition is not treated as a stuck transmitter.
+
+The intervals must be fresh, consecutive and from the same active device, with unchanged capabilities and
+no monitor send losses. A gap, missing required metric, counter reset, device closure or healthy interval
+clears the pending observation. Underflow counts alone never request a restart. The persistence window is
+an engineering recovery policy, not a 3GPP limit or proof that every transmitted packet was lost.
+This uses the existing owned-process shutdown, retry delays and network-restriction handling; it does not
+retime samples or reset a live UHD stream. Logging without `recovery` remains observational.
+
+Native event 112 records the TA command actually applied by PHY, its RAR/MAC-CE type, before/after sample
+counts and samples per millisecond. Event 16 retains the MAC command-reception evidence. Event 113 records
+requested/completed RX acquisition/tracking transitions; events 40/41 retain gain request, hardware
+readback and validity. Event 114 identifies a TX barrier-capacity stop. Join these by process attempt and
+monotonic time with sync epochs and TX schedule events, accounting for recorder loss. These additions do
+not change timing-advance arithmetic, gain decisions or the uncalibrated TX operating point.
 
 Schema v1 currently advertises bounded device slots and TX send, TX async, RX stream, and TX queue metrics.
 The collector distinguishes known counters, known gauges, and bounded future numeric names that remain opaque
