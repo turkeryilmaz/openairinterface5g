@@ -122,6 +122,9 @@ int decode_fgs_service_accept(fgs_service_accept_msg_t *msg, const byte_array_t 
         break;
 
       case IEI_EAPMSG:
+        // decode_eap_msg_ie() copies the contents into eap_msg.buf
+        if (!msg->eap_msg.buf)
+          msg->eap_msg.buf = malloc_or_fail(MAX_EAP_CONTENTS_LEN);
         DECODE_NAS_IE(ba, decode_eap_msg_ie(&msg->eap_msg, &ba), decoded);
         break;
 
@@ -170,4 +173,5 @@ bool eq_service_accept(const fgs_service_accept_msg_t *a, const fgs_service_acce
 void free_fgs_service_accept(fgs_service_accept_msg_t *msg)
 {
   free(msg->t3448);
+  free(msg->eap_msg.buf);
 }
