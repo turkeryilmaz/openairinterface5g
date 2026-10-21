@@ -3570,7 +3570,8 @@ void *rrc_nrue(void *notUsed)
       RRCLOG_I("Initial NAS UL: no SRB yet; buffered %u B for RRCSetupComplete dedicatedNAS (RRC state=%d)\n",
                req->nasMsg.length,
                rrc->nrRrcState);
-      if (rrc->nrRrcState == RRC_STATE_IDLE_NR) {
+      // Replace pending NAS without changing the Msg3 identity of a setup already in progress.
+      if (rrc->nrRrcState == RRC_STATE_IDLE_NR && rrc->ra_trigger != RRC_CONNECTION_SETUP) {
         RA_trigger_t prev_trigger = rrc->ra_trigger;
         rrc->ra_trigger = RRC_CONNECTION_SETUP;
         nr_rrc_ue_prepare_RRCSetupRequest(rrc);
