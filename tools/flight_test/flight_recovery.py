@@ -13,7 +13,8 @@ import time
 from dataclasses import dataclass
 from typing import Any, Optional
 
-from radio_health import MAX_RADIO_HEALTH_DATAGRAM, parse_radio_health_datagram, radio_sample_progress_increased
+from radio_health import (GAUGE_METRICS, KNOWN_METRICS, MAX_RADIO_HEALTH_DATAGRAM,
+                          parse_radio_health_datagram, radio_sample_progress_increased)
 
 NANOSECOND = 1_000_000_000
 MAX_DATAGRAM = MAX_RADIO_HEALTH_DATAGRAM
@@ -160,17 +161,100 @@ class RecoveryPolicy:
         self.radio_progress_observed_ns: Optional[int] = None
         self.radio_health_values: dict[int, dict[str, int]] = {}
         self.radio_health_source_ns: dict[int, int] = {}
+        self.radio_previous: dict[int, dict[str, Any]] = {}
+        self.radio_tx_faults: dict[int, dict[str, Any]] = {}
+
+    def _observe_tx_health(self, snapshot: dict[str, Any], now_ns: int) -> list[dict[str, Any]]:
+        """Qualify sustained local TX faults, never infer delivery from send().
+
+        The same ten-second persistence window used for worker stalls applies
+        here. Every intervening interval must contain fresh, uninterrupted
+        evidence. An isolated underflow, idle transmitter or missing telemetry
+        is not grounds to restart either role.
+        """
+        device_id = snapshot["device_id"]
+        previous = self.radio_previous.get(device_id)
+        self.radio_previous[device_id] = snapshot
+        reason = None
+        evidence: dict[str, Any] = {}
+        fresh = (previous is not None and previous["active"] and snapshot["active"]
+                 and 0 < snapshot["mono_ns"] - previous["mono_ns"] <= 3 * NANOSECOND
+                 and 0 <= now_ns - snapshot["mono_ns"] <= 3 * NANOSECOND
+                 and snapshot["sequence"] == previous["sequence"] + 1
+                 and snapshot["send_drops"] == previous["send_drops"]
+                 and snapshot["backend"] == previous["backend"]
+                 and snapshot["device_type"] == previous["device_type"]
+                 and set(snapshot["supported"]) == set(previous["supported"])
+                 and not any(snapshot["values"][name] < previous["values"][name]
+                             for name in (KNOWN_METRICS - GAUGE_METRICS)
+                             if name in snapshot["values"] and name in previous["values"]))
+        if fresh:
+            values, old = snapshot["values"], previous["values"]
+            supported = set(snapshot["supported"])
+
+            def delta(name: str) -> Optional[int]:
+                if name not in supported or name not in values or name not in old or values[name] < old[name]:
+                    return None
+                return values[name] - old[name]
+
+            requested = delta("tx_send_requested_samples")
+            accepted = delta("tx_send_accepted_samples")
+            rx = delta("rx_returned_samples")
+            errors = delta("tx_async_time_error")
+            polls = delta("tx_async_polls")
+            enqueued = delta("tx_queue_enqueues")
+            dequeued = delta("tx_queue_dequeues")
+            # Each interval must show ongoing scheduled TX, asynchronous local
+            # rejection and a live RX stream. Accepted bytes are not delivered
+            # bytes: full send() returns do not clear this particular fault.
+            if all(value is not None and value > 0 for value in (requested, accepted, rx, errors, polls)):
+                reason = "persistent_local_tx_schedule_errors"
+            else:
+                inflight = ("tx_send_inflight" in supported
+                            and values.get("tx_send_inflight") == old.get("tx_send_inflight") == 1)
+                queued = ("tx_queue_depth" in supported
+                          and values.get("tx_queue_depth", 0) > 0 and old.get("tx_queue_depth", 0) > 0
+                          and enqueued is not None and dequeued == 0)
+                # An idle UE in acquisition has neither a blocked send nor
+                # pending queued samples. Do not mistake its silence for failure.
+                if accepted == 0 and (inflight or queued):
+                    reason = "persistent_local_tx_no_progress"
+            evidence = {"requested_samples_delta": requested, "accepted_samples_delta": accepted,
+                        "rx_samples_delta": rx, "time_error_delta": errors, "async_polls_delta": polls,
+                        "queue_enqueues_delta": enqueued, "queue_dequeues_delta": dequeued}
+
+        old_fault = self.radio_tx_faults.get(device_id)
+        if reason is None:
+            self.radio_tx_faults.pop(device_id, None)
+            if old_fault is not None:
+                return [{"event": "radio_tx_fault_observation_cleared", "device_id": device_id,
+                         "reason": "condition_absent" if fresh else "evidence_not_contiguous_or_fresh",
+                         "previous_reason": old_fault["reason"], "qualified": False}]
+            return []
+        since = (old_fault["since_source_ns"] if old_fault is not None and old_fault["reason"] == reason
+                 else previous["mono_ns"])
+        duration = snapshot["mono_ns"] - since
+        qualified = duration >= self.stall_ns
+        self.radio_tx_faults[device_id] = {
+            "reason": reason, "since_source_ns": since, "last_source_ns": snapshot["mono_ns"],
+            "receipt_ns": now_ns, "observed_duration_ns": duration, "qualified": qualified,
+            "persistence_required_ns": self.stall_ns, "evidence": evidence,
+        }
+        if old_fault is None or old_fault["reason"] != reason or qualified != old_fault["qualified"]:
+            return [{"event": "radio_tx_fault_observation", "device_id": device_id,
+                     **self.radio_tx_faults[device_id], "candidate_action": "restart" if qualified else "observe",
+                     "delivery_state": "not_established_by_send_acceptance"}]
+        return []
 
     def observe_radio_health(self, snapshot: dict[str, Any], now_ns: int) -> list[dict[str, Any]]:
-        """Record gNB crash-retry eligibility without deriving transport faults."""
+        """Record radio progress and qualified local TX failure for either role."""
 
-        if self.role != "gnb":
-            return []
+        changes = self._observe_tx_health(snapshot, now_ns)
         device_id = snapshot["device_id"]
         if not snapshot["active"]:
             self.radio_health_values.pop(device_id, None)
             self.radio_health_source_ns.pop(device_id, None)
-            return []
+            return changes
         self.radio_health_initialized = True
         previous_values = self.radio_health_values.get(device_id)
         previous_source_ns = self.radio_health_source_ns.get(device_id)
@@ -182,12 +266,12 @@ class RecoveryPolicy:
             self.radio_progress_observed = True
             self.radio_progress_observed_ns = now_ns
             if not was_observed:
-                return [{
+                changes.append({
                     "event": "positive_radio_progress_observed",
                     "candidate_action": "observe",
                     "qualified": False,
-                }]
-        return []
+                })
+        return changes
 
     def observe(self, sample: dict[str, Any], now_ns: int) -> list[dict[str, Any]]:
         if self.role == "gnb":
@@ -299,14 +383,17 @@ class RecoveryPolicy:
         return changes
 
     def tick(self, now_ns: int) -> Decision:
+        if self.blocked_reason:
+            return Decision("observe", self.blocked_reason)
+        for fault in self.radio_tx_faults.values():
+            if fault["qualified"] and 0 <= now_ns - fault["last_source_ns"] <= 3 * NANOSECOND:
+                return Decision("restart", fault["reason"])
         if self.role == "gnb":
             if self.radio_progress_observed:
                 return Decision("observe", "gnb_radio_progress_observed")
             if self.radio_health_initialized:
                 return Decision("observe", "gnb_radio_initialized_without_positive_progress")
             return Decision("observe", "gnb_radio_health_unavailable")
-        if self.blocked_reason:
-            return Decision("observe", self.blocked_reason)
         if self.last_sample_ns is None or now_ns - self.last_sample_ns > 3 * NANOSECOND:
             # Telemetry absence is not proof that radio processing has stopped.
             return Decision("observe", "native_telemetry_unavailable")
@@ -336,13 +423,15 @@ class RecoveryPolicy:
         if operator_stop:
             return Decision("stop", "operator_stop")
         if self.role == "gnb":
-            if returncode == 0:
+            if returncode == 0 and not controlled_recovery:
                 return Decision("stop", "unclassified_zero_exit")
             if not self.radio_progress_observed:
                 return Decision("stop", "startup_failed_without_positive_radio_progress")
             self.failures += 1
             delay = (5, 15, 30, 60)[min(self.failures - 1, 3)]
-            return Decision("retry", f"unexpected_nonzero_exit_{returncode}_after_positive_radio_progress", now_ns + delay * NANOSECOND)
+            reason = ("controlled_radio_recovery" if controlled_recovery
+                      else f"unexpected_nonzero_exit_{returncode}_after_positive_radio_progress")
+            return Decision("retry", reason, now_ns + delay * NANOSECOND)
         if self.blocked_reason:
             return Decision("stop", self.blocked_reason)
         if self.last_sample_ns is None:
@@ -352,7 +441,8 @@ class RecoveryPolicy:
         self.failures += 1
         delay = (5, 15, 30, 60)[min(self.failures - 1, 3)]
         deadline = max(self.not_before_ns, self.rrc_hold_ns, now_ns + delay * NANOSECOND)
-        return Decision("retry", f"unrequested_exit_{returncode}", deadline)
+        reason = "controlled_recovery" if controlled_recovery else f"unrequested_exit_{returncode}"
+        return Decision("retry", reason, deadline)
 
     def snapshot(self) -> dict[str, Any]:
         return {"role": self.role, "generation": self.generation, "failures": self.failures,
@@ -361,4 +451,5 @@ class RecoveryPolicy:
                 "last_reject_cause": self.last_reject_cause, "native_values": self.values,
                 "radio_health_initialized": self.radio_health_initialized,
                 "radio_progress_observed": self.radio_progress_observed,
-                "radio_progress_observed_ns": self.radio_progress_observed_ns}
+                "radio_progress_observed_ns": self.radio_progress_observed_ns,
+                "radio_tx_faults": self.radio_tx_faults}
