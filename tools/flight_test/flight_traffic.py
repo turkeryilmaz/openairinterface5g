@@ -39,11 +39,12 @@ class TrafficSettings:
     port: int = 5201
     direction: str = "ul"
     rate: int = 1100000
-    segment_seconds: int = 30
+    segment_seconds: int = 0  # iperf3: no scheduled end; the capture owns shutdown.
     retry_seconds: float = 5.0
 
     def metadata(self) -> dict[str, Any]:
         return {**self.__dict__, "datagram_bytes": 1200, "interval_seconds": 1,
+                "continuous": self.segment_seconds == 0, "client_report_timeout_seconds": 10,
                 "control_protocol": "TCP", "payload_protocol": "UDP",
                 "binding": "current tunnel IP and SO_BINDTODEVICE on UE",
                 "radio_recovery_actions": False}
@@ -77,7 +78,7 @@ def validate_settings(args: Any) -> Optional[TrafficSettings]:
     if executable is None:
         raise TrafficError("traffic requires installed iperf3; no package is installed automatically")
     help_result = bounded_command(executable, ("--help",), 2.0)
-    required = ["--forceflush", "--rcv-timeout"]
+    required = ["--forceflush", "--rcv-timeout", "--snd-timeout"]
     if args.role == "gnb":
         required.append("--idle-timeout")
     if args.role == "ue":
@@ -123,26 +124,71 @@ INTERVAL_RE = re.compile(r"(?P<start>\d+(?:\.\d+)?)\s*-\s*(?P<end>\d+(?:\.\d+)?)
                          r"(?P<rate>\d+(?:\.\d+)?)\s+(?P<rate_unit>[KMGT]?)bits/sec")
 
 
-def interval_evidence(text: str) -> Optional[dict[str, Any]]:
+UDP_RECEIVER_RE = re.compile(r"(?P<jitter>\d+(?:\.\d+)?)\s+ms\s+"
+                             r"(?P<lost>\d+)\s*/\s*(?P<total>\d+)\s+\((?P<loss>\d+(?:\.\d+)?)%\)")
+STREAM_TAG_RE = re.compile(r"\[(?P<tag>(?:TX|RX)-(?:C|S))\]")
+
+
+def interval_evidence(text: str, role: Optional[str] = None,
+                      direction: Optional[str] = None) -> Optional[dict[str, Any]]:
     match = INTERVAL_RE.search(text)
     if match is None:
         return None
-    return {"start_seconds": float(match["start"]), "end_seconds": float(match["end"]),
-            "bytes": float(match["bytes"]) * 1024 ** (" KMGT".index(match["byte_unit"] or " ")),
-            "bits_per_second": float(match["rate"]) * 1000 ** (" KMGT".index(match["rate_unit"] or " ")),
-            "reporter": "receiver" if re.search(r"\breceiver\s*$", text) else
-                        "sender" if re.search(r"\bsender\s*$", text) else "interval",
-            "scope": "rounded iperf3 text units; raw text retains jitter, packet and loss fields"}
+    summary = re.search(r"\b(sender|receiver)\s*$", text)
+    tag_match = STREAM_TAG_RE.search(text)
+    tag = tag_match["tag"] if tag_match else None
+    udp = UDP_RECEIVER_RE.search(text, match.end())
+    reporter = summary[1] if summary else ("receiver" if tag and tag.startswith("RX") else
+                                          "sender" if tag else "receiver" if udp else
+                                          "sender" if role else "interval")
+    if tag:
+        direction = "ul" if tag in ("TX-C", "RX-S") else "dl"
+    elif direction not in ("ul", "dl"):
+        # The server's configured direction does not select the client's mode.
+        # Untagged live UDP reports identify its negotiated direction instead.
+        if role and not summary:
+            direction = "ul" if (role == "ue") == (reporter == "sender") else "dl"
+        else:
+            direction = None
+    endpoint = None
+    if direction in ("ul", "dl") and reporter in ("sender", "receiver"):
+        endpoint = "client" if (direction == "ul") == (reporter == "sender") else "server"
+    # On interrupted result exchange iperf3 can print a remote 0/0 receiver
+    # summary without having received that endpoint's results. Preserve the raw
+    # numbers, but do not turn this placeholder into evidence of zero delivery.
+    local_endpoint = "client" if role == "ue" else "server" if role == "gnb" else None
+    receiver_available = (not (summary and udp and int(udp["total"]) == 0 and float(match["bytes"]) == 0
+                              and (local_endpoint is None or endpoint != local_endpoint))) if reporter == "receiver" else None
+    result = {"start_seconds": float(match["start"]), "end_seconds": float(match["end"]),
+              "bytes": float(match["bytes"]) * 1024 ** (" KMGT".index(match["byte_unit"] or " ")),
+              "bits_per_second": float(match["rate"]) * 1000 ** (" KMGT".index(match["rate_unit"] or " ")),
+              "reporter": reporter, "reporter_endpoint": endpoint, "direction": direction, "stream_tag": tag,
+              "report_type": "summary" if summary else "interval",
+              "receiver_report_available": receiver_available,
+              "jitter_ms": float(udp["jitter"]) if udp else None,
+              "lost_datagrams": int(udp["lost"]) if udp else None,
+              "total_datagrams": int(udp["total"]) if udp else None,
+              "loss_percent": float(udp["loss"]) if udp else None,
+              "scope": "rounded iperf3 text units; sender reports do not establish delivery"}
+    sent = re.match(r"\s+(\d+)\s*(?:sender)?\s*$", text[match.end():])
+    result["sent_datagrams"] = int(sent[1]) if sent and reporter == "sender" else None
+    return result
 
 
 class TrafficSupervisor:
     """One ordinary-priority child group, ticked from FlightCapture's loop."""
 
     def __init__(self, settings: TrafficSettings, writer: Any,
-                 address_reader: Callable[[str, str], Optional[str]] = tunnel_address) -> None:
+                 address_reader: Callable[[str, str], Optional[str]] = tunnel_address,
+                 human_writer: Any = None) -> None:
         self.settings = settings
         self.writer = writer
         self.address_reader = address_reader
+        self.human_writer = human_writer
+        self.human_last: dict[str, float] = {}
+        self.last_interval = 0.0
+        self.server_output = False
+        self.session_direction: Optional[str] = settings.direction if settings.role == "ue" else None
         self.selector = selectors.DefaultSelector()
         self.process: Optional[subprocess.Popen[bytes]] = None
         self.last_process_group: Optional[int] = None
@@ -172,11 +218,35 @@ class TrafficSupervisor:
     def _gap(self, reason: str) -> None:
         if self.last_gap != reason:
             self._event("traffic_gap", reason=reason, delivered_traffic="unavailable")
+            self._human(f"gap={reason} delivery=unavailable")
             self.last_gap = reason
+
+    def _human(self, text: str) -> None:
+        if self.human_writer is not None:
+            self.human_writer.write(f"[TRAFFIC] gen={self.generation} {text}\n".encode("ascii")[:512])
+
+    def _human_interval(self, interval: dict[str, Any]) -> None:
+        direction = interval["direction"] or "unknown"
+        now = time.monotonic()
+        if now - self.human_last.get(direction, float("-inf")) < 0.9:
+            return
+        self.human_last[direction] = now
+        detail = "delivery=unavailable"
+        if interval["reporter"] == "receiver":
+            detail = "delivery=receiver_observed"
+            if interval["lost_datagrams"] is not None:
+                detail += (f" loss={interval['lost_datagrams']}/{interval['total_datagrams']}"
+                           f" ({interval['loss_percent']:g}%) jitter={interval['jitter_ms']:g}ms")
+        elif interval["sent_datagrams"] is not None:
+            detail += f" sent_datagrams={interval['sent_datagrams']}"
+        self._human(f"{direction.upper()} {interval['reporter']}={interval['reporter_endpoint'] or 'unknown'} "
+                    f"{interval['start_seconds']:.2f}-{interval['end_seconds']:.2f}s "
+                    f"{interval['bits_per_second'] / 1e6:.3f}Mbps {detail}")
 
     def _command(self) -> list[str]:
         s = self.settings
-        command = [s.executable, "--port", str(s.port), "--interval", "1", "--format", "k", "--forceflush"]
+        command = [s.executable, "--port", str(s.port), "--interval", "1", "--format", "k", "--forceflush",
+                   "--snd-timeout", "5000"]
         if s.role == "gnb":
             command += ["--server", "--rcv-timeout", "5000", "--idle-timeout", "10"]
             if s.bind:
@@ -209,6 +279,10 @@ class TrafficSupervisor:
             return
         self.last_process_group = self.process.pid
         self.started = now
+        self.last_interval = now
+        self.server_output = False
+        self.session_direction = self.settings.direction if self.settings.role == "ue" else None
+        self.human_last.clear()
         self.stop_started = None
         self.stop_reason = None
         self.killed = False
@@ -234,9 +308,21 @@ class TrafficSupervisor:
 
     def _line(self, stream: str, raw: bytes, partial: bool = False) -> None:
         text = raw.decode("utf-8", "replace")
+        if stream == "stdout" and text.startswith("Server output:"):
+            self.server_output = True
+        if stream == "stdout" and text.startswith("Accepted connection from"):
+            self.session_direction = None
+        role = ("gnb" if self.settings.role == "ue" else "ue") if self.server_output else self.settings.role
+        interval = interval_evidence(text, role, self.session_direction) if not partial else None
+        if interval is not None:
+            interval["source"] = "retrieved_server_output" if self.server_output else "local_output"
+            if not self.server_output and interval["report_type"] == "interval":
+                self.last_interval = time.monotonic()
+                self.session_direction = interval["direction"]
+                self._human_interval(interval)
         self.output_lines += 1
         self._event("traffic_output", stream=stream, text=text, partial=partial,
-                    interval=interval_evidence(text))
+                    interval=interval)
 
     def _drain(self) -> None:
         # At most 32 KiB per tick: a noisy child cannot starve radio supervision.
@@ -302,9 +388,13 @@ class TrafficSupervisor:
                 self._stop("main_worker_stopping", now)
             elif returncode is not None:
                 self._stop("segment_finished" if returncode == 0 else "segment_failed", now)
-            elif self.settings.role == "ue" and now - self.started >= self.settings.segment_seconds + 10:
+            elif (self.settings.role == "ue" and self.settings.segment_seconds > 0
+                  and now - self.started >= self.settings.segment_seconds + 10):
                 self._gap("segment_deadline")
                 self._stop("segment_deadline", now)
+            elif self.settings.role == "ue" and now - (self.last_interval or self.started) >= 10:
+                self._gap("client_report_timeout")
+                self._stop("client_report_timeout", now)
             if self.stop_started is not None:
                 if now - self.stop_started >= 1 and not self.killed and self._group_exists():
                     self._signal(signal.SIGKILL)
