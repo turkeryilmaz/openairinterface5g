@@ -93,8 +93,14 @@
  *
  */
 
-static void start_process_slot_tx(void* arg) {
+static void start_process_slot_tx(void *arg)
+{
   notifiedFIFO_elt_t *newTx = arg;
+  // A late DL completion must not enqueue work into a stopped UL actor.
+  if (oai_exit || nrue_ru_failed()) {
+    delNotifiedFIFO_elt(newTx);
+    return;
+  }
   nr_rxtx_thread_data_t *curMsgTx = NotifiedFifoData(newTx);
   int num_ul_actors = get_nrUE_params()->num_ul_actors;
   if (num_ul_actors > 0) {
@@ -456,6 +462,10 @@ static bool RU_write(nr_rxtx_thread_data_t *rxtxD, bool sl_tx_action, c16_t **tx
 void processSlotTX(void *arg)
 {
   TracyCZone(ctx, true);
+  if (oai_exit || nrue_ru_failed()) {
+    TracyCZoneEnd(ctx);
+    return;
+  }
   nr_rxtx_thread_data_t *rxtxD = arg;
   const UE_nr_rxtx_proc_t *proc = &rxtxD->proc;
   PHY_VARS_NR_UE *UE = rxtxD->UE;
@@ -1373,10 +1383,14 @@ void *UE_thread(void *arg)
 
     dynamic_barrier_t *next_barrier = &UE->process_slot_tx_barriers[next_tx_slot_and_frame % NUM_PROCESS_SLOT_TX_BARRIERS];
     curMsgTx->next_barrier = next_barrier;
-    dynamic_barrier_update(&UE->process_slot_tx_barriers[slot_and_frame % NUM_PROCESS_SLOT_TX_BARRIERS],
-                           tx_wait_for_dlsch[slot] + wait_for_prev_slot,
-                           start_process_slot_tx,
-                           newTx);
+    if (!dynamic_barrier_try_update(&UE->process_slot_tx_barriers[slot_and_frame % NUM_PROCESS_SLOT_TX_BARRIERS],
+                                    tx_wait_for_dlsch[slot] + wait_for_prev_slot,
+                                    start_process_slot_tx,
+                                    newTx)) {
+      delNotifiedFIFO_elt(newTx);
+      nrue_ru_tx_barrier_failed(UE, curMsg.proc.frame_tx, slot);
+      break;
+    }
     stream_status = STREAM_STATUS_SYNCED;
     tx_wait_for_dlsch[slot] = 0;
   }
@@ -1386,6 +1400,9 @@ void *UE_thread(void *arg)
   for (int i = 0; i < num_dl_actors; i++)
     shutdown_actor(&dl_actors[i]);
   destroy_actor(&sync_actor);
+  // All producers are joined; no callback can race with pending-argument cleanup.
+  for (int i = 0; i < NUM_PROCESS_SLOT_TX_BARRIERS; i++)
+    dynamic_barrier_reset(&UE->process_slot_tx_barriers[i]);
   return NULL;
 }
 

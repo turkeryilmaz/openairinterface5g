@@ -23,6 +23,14 @@ bool nrue_ru_failed(void)
   return atomic_load_explicit(&radio_failed, memory_order_acquire);
 }
 
+void nrue_ru_tx_barrier_failed(PHY_VARS_NR_UE *UE, int frame, int slot)
+{
+  if (!atomic_exchange_explicit(&radio_failed, true, memory_order_acq_rel)) {
+    LOG_E(HW, "TX barrier still pending for UE %d slot %d.%d; requesting coordinated shutdown\n", UE->Mod_id, frame, slot);
+    (void)kill(getpid(), SIGTERM);
+  }
+}
+
 /* NR UE RU configuration section name */
 #define CONFIG_STRING_NRUE_RU_LIST "RUs"
 
@@ -576,6 +584,8 @@ int nrue_ru_read(PHY_VARS_NR_UE *UE,
 
 int nrue_ru_write(PHY_VARS_NR_UE *UE, openair0_timestamp_t timestamp, void **buff, int nsamps, int num_antennas, int flags)
 {
+  if (oai_exit || nrue_ru_failed())
+    return -ESHUTDOWN;
   openair0_device_t *dev = &openair0_dev[UE->rf_map.card];
   if (flight_recorder_enabled())
     flight_recorder_emit(FLIGHT_EVENT_UE_TX_ORIGIN,
@@ -614,6 +624,8 @@ int nrue_ru_write(PHY_VARS_NR_UE *UE, openair0_timestamp_t timestamp, void **buf
 
 int nrue_ru_write_reorder(PHY_VARS_NR_UE *UE, openair0_timestamp_t timestamp, void **txp, int nsamps, int nbAnt, int flags)
 {
+  if (oai_exit || nrue_ru_failed())
+    return -ESHUTDOWN;
   openair0_device_t *device = &openair0_dev[UE->rf_map.card];
   return openair0_write_reorder_common(nrue_ru_write, UE, device, timestamp, txp, nsamps, nbAnt, flags);
 }
@@ -626,5 +638,7 @@ void nrue_ru_write_reorder_clear_context(PHY_VARS_NR_UE *UE)
 
 int nrue_ru_write_reorder_cancel(PHY_VARS_NR_UE *UE, openair0_timestamp_t timestamp, int nsamps)
 {
+  if (oai_exit || nrue_ru_failed())
+    return -ESHUTDOWN;
   return openair0_write_reorder_cancel(nrue_ru_write, UE, &openair0_dev[UE->rf_map.card], timestamp, nsamps);
 }
