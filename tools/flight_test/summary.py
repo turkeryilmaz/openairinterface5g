@@ -20,6 +20,7 @@ class BoundedLogs:
         self.invalid_lines = 0
         self.limited = False
         self.unavailable_files = 0
+        self.budget_partial_lines = 0
 
     def records(self, paths: list[Path]) -> Iterator[dict[str, Any]]:
         # Rotating text writers can split a JSON line across adjacent files.
@@ -59,7 +60,9 @@ class BoundedLogs:
                         break
             except OSError:
                 self.unavailable_files += 1
-        if buffer:
+        if buffer and self.remaining == 0:
+            self.budget_partial_lines += 1
+        elif buffer:
             self.invalid_lines += 1
 
 
@@ -89,6 +92,39 @@ def _status(directory: Path) -> dict[str, Any]:
         return {}
 
 
+def _footer_records(paths: list[Path], reader: BoundedLogs) -> Iterator[dict[str, Any]]:
+    """Inspect complete records in bounded file tails independently of the event budget.
+
+    The native writer appends its footer last. A large healthy capture must not
+    lose this evidence just because the sequential event scan has stopped.
+    This verifies footer records, not the integrity of all preceding events.
+    """
+    for path in paths:
+        try:
+            with path.open("rb") as source:
+                size = source.seek(0, 2)
+                offset = max(0, size - 65536)
+                source.seek(offset)
+                data = source.read(65536)
+            reader.read_bytes += len(data)
+            # A tail may begin or end inside a record; neither fragment is proof
+            # of a complete footer. Native records do not span rotated files.
+            if offset:
+                data = data.partition(b"\n")[2]
+            for line in data.splitlines(keepends=True):
+                if not line.endswith(b"\n") or b'"capture_footer"' not in line:
+                    continue
+                try:
+                    value = json.loads(line)
+                except (ValueError, UnicodeError):
+                    reader.invalid_lines += 1
+                    continue
+                if isinstance(value, dict) and value.get("kind") == "capture_footer":
+                    yield value
+        except OSError:
+            reader.unavailable_files += 1
+
+
 def summarize_run(directory: Path, maximum_bytes: int = 64 * 1024 * 1024) -> dict[str, Any]:
     reader = BoundedLogs(maximum_bytes)
     receiver_reports = 0
@@ -97,7 +133,8 @@ def summarize_run(directory: Path, maximum_bytes: int = 64 * 1024 * 1024) -> dic
     gaps = failures = partial_output = 0
     for event in reader.records(_paths(directory, "traffic.", reader)):
         interval = event.get("interval")
-        if isinstance(interval, dict) and interval.get("reporter") == "receiver":
+        if (isinstance(interval, dict) and interval.get("reporter") == "receiver"
+                and interval.get("receiver_report_available") is not False):
             value = interval.get("bytes")
             if type(value) in (int, float) and math.isfinite(value) and value >= 0:
                 receiver_reports += 1
@@ -118,7 +155,8 @@ def summarize_run(directory: Path, maximum_bytes: int = 64 * 1024 * 1024) -> dic
     footer_count = clean_footers = invalid_footers = 0
     async_repeat_summaries = async_repeated_records = 0
     losses: dict[str, int] = {}
-    for event in reader.records(_paths(directory / "recorder", "oai-flight-recorder-", reader)):
+    recorder_paths = _paths(directory / "recorder", "oai-flight-recorder-", reader)
+    for event in reader.records(recorder_paths):
         if event.get("kind") == "async_repeat_summary":
             count = event.get("repeat_count")
             if type(count) is int and count > 0:
@@ -126,6 +164,8 @@ def summarize_run(directory: Path, maximum_bytes: int = 64 * 1024 * 1024) -> dic
                 async_repeated_records += count
         if event.get("kind") == "event" and event.get("event") == 15 and event.get("d") == 1:
             pdu_accept_observed = True
+    footer_reader = BoundedLogs()
+    for event in _footer_records(recorder_paths, footer_reader):
         if event.get("kind") == "capture_footer":
             footer_count += 1
             required = ("clean", "writer_errors", "dropped_ring_full", "dropped_no_slot", "no_slot_threads",
@@ -156,9 +196,14 @@ def summarize_run(directory: Path, maximum_bytes: int = 64 * 1024 * 1024) -> dic
                         "async_repeat_summaries": async_repeat_summaries,
                         "async_repeated_records": async_repeated_records,
                         "footer_losses": losses if footer_count else None,
-                        "missing_footer_means": "unavailable completeness; crash, kill, live capture or recorder failure possible"},
+                        "missing_footer_means": "unavailable completeness; crash, kill, live capture, recorder failure or scan limits possible",
+                        "footer_scan": {"bytes_read": footer_reader.read_bytes,
+                                        "unavailable_files": footer_reader.unavailable_files,
+                                        "invalid_lines": footer_reader.invalid_lines,
+                                        "scope": "complete records in last 65536 bytes of each selected native file; not full capture integrity"}},
             "scan": {"bytes_read": reader.read_bytes, "maximum_bytes": maximum_bytes,
                      "limited": reader.limited, "invalid_or_partial_lines": reader.invalid_lines,
+                     "budget_partial_lines": reader.budget_partial_lines,
                      "unavailable_files": reader.unavailable_files,
                      "limits": "1024 entries/directory, 256 files/stream, 65536 bytes/line"}}
 

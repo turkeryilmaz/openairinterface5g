@@ -377,6 +377,15 @@ void ue_ta_procedures(PHY_VARS_NR_UE *ue, int slot_tx, int frame_tx)
             timing_advance_before);
 
     ue->timing_advance += ta_samples;
+    // Preserve actual application separately from the MAC command reception.
+    // Bit 16 distinguishes the absolute RAR command from a relative MAC CE.
+    flight_recorder_emit(FLIGHT_EVENT_UE_TA_APPLIED,
+                         ue->Mod_id,
+                         frame_tx * 1000 + slot_tx,
+                         (uint16_t)ue->ta_command | ((int64_t)ta_command_is_rar << 16),
+                         timing_advance_before,
+                         ue->timing_advance,
+                         ue->frame_parms.samples_per_subframe);
 
     LOG_D(PHY,
           "[UE %d] %d.%d applied %s command %d: TA-units %d, samples-per-unit %u, command-samples %d, "

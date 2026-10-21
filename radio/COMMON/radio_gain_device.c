@@ -284,11 +284,12 @@ static void finish_rx_phase_transition(void)
   binding.last_reason = RADIO_RX_HOLD_INVALID;
   binding.last_decision_log_ns = 0;
   uint64_t expected = token;
-  (void)atomic_compare_exchange_strong_explicit(&binding.rx_phase_token,
-                                                &expected,
-                                                token & ~(uint64_t)RADIO_RX_PHASE_PENDING_BIT,
-                                                memory_order_release,
-                                                memory_order_acquire);
+  if (atomic_compare_exchange_strong_explicit(&binding.rx_phase_token,
+                                              &expected,
+                                              token & ~(uint64_t)RADIO_RX_PHASE_PENDING_BIT,
+                                              memory_order_release,
+                                              memory_order_acquire))
+    flight_recorder_emit(FLIGHT_EVENT_RADIO_RX_PHASE, 1, rx_phase_from_token(token), INT64_MIN, rx_phase_started_ns(token), 0, 0);
 }
 
 static bool policy_allowed_for_phase(const agc_options_t *options, radio_gain_device_rx_phase_t phase, radio_rx_source_t source)
@@ -447,7 +448,15 @@ void radio_gain_device_set_rx_phase(radio_gain_device_rx_phase_t phase)
     leave();
     return;
   }
-  atomic_store_explicit(&binding.rx_phase_token, rx_phase_token(phase, true, monotonic_ns()), memory_order_release);
+  const uint64_t started_ns = monotonic_ns();
+  atomic_store_explicit(&binding.rx_phase_token, rx_phase_token(phase, true, started_ns), memory_order_release);
+  flight_recorder_emit(FLIGHT_EVENT_RADIO_RX_PHASE,
+                       0,
+                       phase,
+                       rx_phase_from_token(previous),
+                       started_ns,
+                       rx_phase_pending(previous),
+                       atomic_load_explicit(&binding.policy_result_outstanding, memory_order_acquire));
 
   bool expected = false;
   if (atomic_compare_exchange_strong_explicit(&binding.request_consumer,

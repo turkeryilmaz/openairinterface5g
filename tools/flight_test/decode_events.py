@@ -60,6 +60,9 @@ TIMING_LAYOUTS = {
     109: ('UE_RADIO_STOP', ('radio_index', 'direction', 'requested_samples', 'returned_samples', 'device_ticks', 'origin_initialized')),
     110: ('GNB_PUSCH_DETECTION', ('frame_slot', 'rnti', 'signal_power_linear', 'noise_power_linear', 'threshold_tenth_db', 'detected_raw')),
     111: ('GNB_PUSCH_RESULT', ('frame_slot', 'rnti', 'pusch_layout', 'ul_cqi_raw', 'timing_advance_raw', 'pusch_outcome')),
+    112: ('UE_TA_APPLIED', ('ue', 'frame_slot', 'command_flags', 'before_samples', 'after_samples', 'samples_per_subframe')),
+    113: ('RADIO_RX_PHASE', ('stage', 'phase', 'previous_phase', 'phase_start_ns', 'previous_pending', 'result_outstanding')),
+    114: ('UE_TX_BARRIER_STOP', ('ue', 'frame', 'slot', 'barrier_capacity', 'radio_index', 'reserved')),
 }
 NAMES.update({number: layout[0] for number, layout in TIMING_LAYOUTS.items()})
 
@@ -72,7 +75,20 @@ def decode_radio_timing(event):
     row['name'] = layout[0]
     row.update(zip(layout[1], (event[key] for key in 'abcdef')))
     # Preserve packed values alongside their interpretations and unknown bits.
-    if event['event'] == 110:
+    if event['event'] == 112:
+        flags = event['c'] & UINT64_MASK
+        row['ta_command'] = flags & 0xffff
+        row['command_type'] = 'rar' if flags & (1 << 16) else 'relative_mac_ce'
+        row['unknown_command_bits'] = flags & ~0x1ffff
+        row['delta_samples'] = event['e'] - event['d']
+        rate = event['f']
+        row['after_microseconds'] = event['e'] * 1000 / rate if rate > 0 else None
+        row['delta_microseconds'] = row['delta_samples'] * 1000 / rate if rate > 0 else None
+    elif event['event'] == 113:
+        row['stage_name'] = {0: 'requested', 1: 'completed'}.get(event['a'], 'unknown')
+        row['phase_name'] = {0: 'acquisition', 1: 'tracking'}.get(event['b'], 'unknown')
+        row['previous_phase_name'] = {0: 'acquisition', 1: 'tracking'}.get(event['c'])
+    elif event['event'] == 110:
         row['detected'] = event['f'] == 1 if event['f'] in (0, 1) else None
         signal, noise = event['c'], event['d']
         row['signal_noise_ratio_db'] = 10 * math.log10(signal / noise) if signal > 0 and noise > 0 else None
