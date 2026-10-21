@@ -1221,7 +1221,7 @@ class FlightCapture:
             traffic_writer = BoundedRotatingWriter(run_dir, "traffic", host_quota,
                                                    min(self.args.chunk_bytes, 4 * MIB), self.health)
             self.traffic_writer = traffic_writer
-            self.traffic = TrafficSupervisor(self.args.traffic_settings, traffic_writer)
+            self.traffic = TrafficSupervisor(self.args.traffic_settings, traffic_writer, human_writer=stdout_writer)
         if self.args.console:
             self.console = ConsoleMirror()
             stdout_writer.console = self.console
