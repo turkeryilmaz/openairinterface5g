@@ -27,6 +27,7 @@ void nrue_ru_stop(void);
 void nrue_ru_end(void);
 /* Process-lifetime failure latch, observed by the coordinated stop handler. */
 bool nrue_ru_failed(void);
+void nrue_ru_tx_barrier_failed(PHY_VARS_NR_UE *UE, int frame, int slot);
 int nrue_ru_set_freq(PHY_VARS_NR_UE *UE, uint64_t ul_carrier, uint64_t dl_carrier, int freq_offset);
 void nrue_ru_get_freq(const PHY_VARS_NR_UE *UE, uint64_t *ul_carrier, uint64_t *dl_carrier, int channel);
 int nrue_ru_adjust_rx_gain(PHY_VARS_NR_UE *UE, int gain_change);
