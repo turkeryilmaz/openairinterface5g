@@ -518,7 +518,8 @@ class GnbSupervisorFixture(unittest.TestCase):
                 deadline = time.monotonic() + 5
                 while time.monotonic() < deadline:
                     sessions = list(output.glob("gnb-session-*")) if output.exists() else []
-                    if sessions and json.loads((sessions[0] / "status.json").read_text())["state"] == "running":
+                    if (sessions and counter.exists()
+                            and json.loads((sessions[0] / "status.json").read_text())["state"] == "running"):
                         break
                     time.sleep(0.05)
                 else:
