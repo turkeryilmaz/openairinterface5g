@@ -4,6 +4,7 @@
 
 #ifndef _BARRIER_H_
 #define _BARRIER_H_
+#include <stdbool.h>
 #include <stdint.h>
 #include <pthread.h>
 
@@ -22,7 +23,7 @@ typedef struct {
 /// @param barrier
 void dynamic_barrier_init(dynamic_barrier_t* barrier);
 
-/// @brief Reset the barrier
+/// @brief Reset the barrier after all joins and updates have stopped
 /// @param barrier
 void dynamic_barrier_reset(dynamic_barrier_t* barrier);
 
@@ -30,7 +31,12 @@ void dynamic_barrier_reset(dynamic_barrier_t* barrier);
 /// @param barrier
 void dynamic_barrier_join(dynamic_barrier_t* barrier);
 
-/// @brief Set callback and max_joins. May run callback if the number of joins is already equal to max_joins
+/// @brief Try to set callback and max_joins, or run callback if max_joins joins have already completed
+/// @return false if a callback is pending; the barrier is unchanged and the caller retains arg
+/// @note An accepted callback owns arg until it runs or a quiescent reset frees arg
+bool dynamic_barrier_try_update(dynamic_barrier_t* barrier, int max_joins, callback_t callback, void* arg);
+
+/// @brief Set callback and max_joins. Requires that no callback is pending
 /// @param barrier
 /// @param max_joins maximum number of joins before barrier triggers
 /// @param callback callback function

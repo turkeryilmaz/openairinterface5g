@@ -41,10 +41,15 @@ void dynamic_barrier_join(dynamic_barrier_t* barrier)
   AssertFatal(ret == 0, "Mutex error %d", ret);
 }
 
-void dynamic_barrier_update(dynamic_barrier_t* barrier, int max_joins, callback_t callback, void* arg)
+bool dynamic_barrier_try_update(dynamic_barrier_t* barrier, int max_joins, callback_t callback, void* arg)
 {
   int ret = pthread_mutex_lock(&barrier->barrier_lock);
   AssertFatal(ret == 0, "Mutex error %d", ret);
+  if (barrier->callback) {
+    ret = pthread_mutex_unlock(&barrier->barrier_lock);
+    AssertFatal(ret == 0, "Mutex error %d", ret);
+    return false;
+  }
   if (barrier->completed_jobs == max_joins) {
     barrier->completed_jobs = 0;
     callback(arg);
@@ -55,4 +60,11 @@ void dynamic_barrier_update(dynamic_barrier_t* barrier, int max_joins, callback_
   }
   ret = pthread_mutex_unlock(&barrier->barrier_lock);
   AssertFatal(ret == 0, "Mutex error %d", ret);
+  return true;
+}
+
+void dynamic_barrier_update(dynamic_barrier_t* barrier, int max_joins, callback_t callback, void* arg)
+{
+  bool accepted = dynamic_barrier_try_update(barrier, max_joins, callback, arg);
+  AssertFatal(accepted, "Cannot replace a pending barrier callback\n");
 }
