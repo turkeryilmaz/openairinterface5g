@@ -92,8 +92,16 @@ int decode_fgs_service_reject(fgs_service_reject_msg_t *msg, const byte_array_t 
         break;
 
       case IEI_CAG_INFO_LIST: {
-        int cag_list_len = (buffer->buf[decoded] << 8) | buffer->buf[decoded + 1];
-        int cag_len = cag_list_len + 2; // encoded content + 2 octets for the length IE
+        if (buffer->len - decoded < 2) {
+          PRINT_ERROR("CAG information list IE: missing length\n");
+          return -1;
+        }
+        uint32_t cag_list_len = (buffer->buf[decoded] << 8) | buffer->buf[decoded + 1];
+        uint32_t cag_len = cag_list_len + 2; // encoded content + 2 octets for the length IE
+        if (cag_len > buffer->len - decoded) {
+          PRINT_ERROR("CAG information list IE: length %u exceeds the message\n", cag_list_len);
+          return -1;
+        }
         decoded += cag_len;
         UPDATE_BYTE_ARRAY(ba, cag_len);
         PRINT_ERROR("CAG information list IE in NAS Service Reject is not handled\n");
