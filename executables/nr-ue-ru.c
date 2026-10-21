@@ -27,6 +27,13 @@ void nrue_ru_tx_barrier_failed(PHY_VARS_NR_UE *UE, int frame, int slot)
 {
   if (!atomic_exchange_explicit(&radio_failed, true, memory_order_acq_rel)) {
     LOG_E(HW, "TX barrier still pending for UE %d slot %d.%d; requesting coordinated shutdown\n", UE->Mod_id, frame, slot);
+    flight_recorder_emit(FLIGHT_EVENT_UE_TX_BARRIER_STOP,
+                         UE->Mod_id,
+                         frame,
+                         slot,
+                         NUM_PROCESS_SLOT_TX_BARRIERS,
+                         UE->rf_map.card,
+                         0);
     (void)kill(getpid(), SIGTERM);
   }
 }
