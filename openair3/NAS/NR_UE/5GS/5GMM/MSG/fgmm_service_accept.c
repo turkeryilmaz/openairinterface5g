@@ -126,6 +126,7 @@ int decode_fgs_service_accept(fgs_service_accept_msg_t *msg, const byte_array_t 
         uint8_t eap_buf[MAX_EAP_CONTENTS_LEN];
         byte_array_t eap = {.buf = eap_buf};
         DECODE_NAS_IE(ba, decode_eap_msg_ie(&eap, &ba), decoded);
+        free_byte_array(msg->eap_msg);
         msg->eap_msg = create_byte_array(eap.len, eap.buf);
       } break;
 
