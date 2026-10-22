@@ -130,6 +130,16 @@ Traffic JSON capture shares the host byte budget and free-space reserve; readabl
 lines share the stdout budget. Inspect writer losses and raw reports before
 interpreting measured throughput.
 
+At shutdown, `[FLIGHT SUMMARY]` lines in the saved `stdout.*.log` summarize the
+attempt's receiver evidence, registration and reacquisition observations, and
+recording completeness. Each attempt also has `summary.txt` and `summary.json`;
+the recovery session has corresponding totals over all attempts, including those
+older than its bounded recent-attempt list. These summaries are collector-generated,
+not modem-originated records. They exclude sender-only reports and duplicate final
+iperf totals from received-byte accounting. A gap in reports is described as an
+observation gap, not asserted to be an RF outage. Read the gNB summary for continuous
+UL receiver evidence and the UE summary for continuous DL receiver evidence.
+
 ## PRACH waveform preparation and experimental gNB detection
 
 The UE prepares contiguous PRACH root and waveform tables on its existing RRC
