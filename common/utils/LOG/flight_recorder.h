@@ -166,6 +166,7 @@ typedef enum {
   FLIGHT_EVENT_UE_TA_APPLIED = 112,
   FLIGHT_EVENT_RADIO_RX_PHASE = 113,
   FLIGHT_EVENT_UE_TX_BARRIER_STOP = 114,
+  FLIGHT_EVENT_UE_TX_RELATIVE_TRANSLATION = 115,
 } flight_recorder_event_t;
 
 /** Channel discriminator carried by FLIGHT_EVENT_UE_TX_POWER_REQUEST. */

@@ -204,6 +204,8 @@ bool nr_ue_apply_deferred_pusch_tx_power_with_request(NR_UE_MAC_INST_t *mac,
 
 /* Intersects MAC's standard nominal range with immutable relative digital bounds. */
 bool nr_ue_get_effective_tx_power_bounds(int standard_min, int standard_max, int *minimum, int *maximum);
+/* Called under if_mutex when UL configuration or its relative RA origin changes. */
+void advance_ul_pusch_config_generation(NR_UE_MAC_INST_t *mac);
 
 int get_srs_tx_power_ue(NR_UE_MAC_INST_t *mac,
                         NR_SRS_Resource_t *srs_resource,

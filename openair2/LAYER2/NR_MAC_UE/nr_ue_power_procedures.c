@@ -40,6 +40,55 @@ bool nr_ue_get_effective_tx_power_bounds(int standard_min, int standard_max, int
   return *minimum <= *maximum;
 }
 
+/* Share PRACH's retained clipping correction without folding it into a TPC state.
+ * A valid raw reference is an int target plus the available nonnegative int16_t pathloss. */
+static bool get_relative_tx_correction(const NR_UE_MAC_INST_t *mac, int64_t *correction)
+{
+  const RA_config_t *ra = &mac->ra;
+  if (!ra->relative_prach_reference_valid || ra->relative_prach_first_request < INT_MIN
+      || ra->relative_prach_first_request > (int64_t)INT_MAX + INT16_MAX)
+    return false;
+  *correction = (int64_t)ra->relative_prach_first_selected - ra->relative_prach_first_request;
+  return true;
+}
+
+static bool checked_tx_adjustment(double value, int *adjustment)
+{
+  if (!isfinite(value) || value < INT_MIN || value > INT_MAX)
+    return false;
+  *adjustment = value;
+  return true;
+}
+
+static double relative_ra_ramp(const NR_PRACH_RESOURCES_t *prach)
+{
+  return prach->preamble_power_ramping_cnt > 0
+             ? (double)(prach->preamble_power_ramping_cnt - 1) * prach->preamble_power_ramping_step
+             : 0;
+}
+
+/* Preserve the raw formula's integer truncation before translating its origin.
+ * INT_MIN remains the unavailable-request sentinel used by deferred PUSCH. */
+static bool relative_tx_request(double raw_request, int64_t correction, int64_t *raw, int *translated)
+{
+  if (!isfinite(raw_request) || raw_request < -0x1p63 || raw_request >= 0x1p63)
+    return false;
+  *raw = raw_request;
+  if (*raw <= (int64_t)INT_MIN - correction || *raw > (int64_t)INT_MAX - correction)
+    return false;
+  *translated = *raw + correction;
+  return true;
+}
+
+static void
+record_relative_tx_power(unsigned channel, int64_t raw, int64_t correction, int request, int minimum, int maximum, int selected)
+{
+  if (!flight_recorder_enabled())
+    return;
+  flight_recorder_emit(FLIGHT_EVENT_UE_TX_RELATIVE_TRANSLATION, channel, raw, correction, request, minimum, maximum);
+  flight_recorder_emit(FLIGHT_EVENT_UE_TX_RELATIVE_BOUNDS, channel, -1, minimum, maximum, request, selected);
+}
+
 /* TS 38.211 Table 6.4.1.3.3.2-1: DM-RS positions for PUCCH format 3 and 4 */
 static const int nb_symbols_excluding_dmrs[11][2][2]
 = {
@@ -408,7 +457,9 @@ int16_t get_pucch_tx_power_ue(NR_UE_MAC_INST_t *mac,
                             start_prb);
   int P_CMIN = current_UL_BWP->P_CMIN;
   const bool relative_tx = radio_gain_device_tx_relative_actuating();
-  if (relative_tx && !nr_ue_get_effective_tx_power_bounds(P_CMIN, P_CMAX, &P_CMIN, &P_CMAX))
+  int64_t correction = 0;
+  if (relative_tx
+      && (!nr_ue_get_effective_tx_power_bounds(P_CMIN, P_CMAX, &P_CMIN, &P_CMAX) || !get_relative_tx_correction(mac, &correction)))
     return PUCCH_POWER_UNSUPPORTED;
   int16_t pathloss;
   if (!compute_nr_SSB_PL(mac, &pathloss))
@@ -420,24 +471,34 @@ int16_t get_pucch_tx_power_ue(NR_UE_MAC_INST_t *mac,
   }
   int M_pucch_component = (10 * log10((double)(pow(2, scs) * nb_of_prbs)));
 
-  int16_t pucch_power_without_g_pucch = P_O_PUCCH + M_pucch_component + pathloss + delta_F_PUCCH + DELTA_TF;
+  const double raw_base = relative_tx ? (double)P_O_PUCCH + M_pucch_component + pathloss + delta_F_PUCCH + DELTA_TF
+                                      : (int16_t)(P_O_PUCCH + M_pucch_component + pathloss + delta_F_PUCCH + DELTA_TF);
+  const double pucch_power_without_g_pucch = raw_base + correction;
 
   if (!mac->pucch_power_control_initialized) {
     if (use_default_pucch_power_control) {
       // Initialize the PCell adjustment state from PRACH ramping and the RAR TPC command.
       NR_PRACH_RESOURCES_t *prach_res = &mac->ra.prach_resources;
-      const float rampup_requested = prach_res->preamble_power_ramping_cnt > 0
-                                         ? (prach_res->preamble_power_ramping_cnt - 1) * prach_res->preamble_power_ramping_step
-                                         : 0;
+      const double rampup_requested =
+          relative_tx ? relative_ra_ramp(prach_res)
+                      : (float)(prach_res->preamble_power_ramping_cnt > 0
+                                    ? (prach_res->preamble_power_ramping_cnt - 1) * prach_res->preamble_power_ramping_step
+                                    : 0);
       // The initial adjustment state bounds PRACH ramping before the per-occasion M_PUCCH term is applied.
-      const float rampup_headroom = P_CMAX - (P_O_PUCCH + pathloss + delta_F_PUCCH + DELTA_TF + mac->delta_msg2);
-      const float rampup = min(rampup_requested, max(0, rampup_headroom));
-      G_b_f_c = rampup + mac->delta_msg2;
+      const double rampup_headroom = relative_tx
+                                         ? P_CMAX - (raw_base - M_pucch_component + correction + mac->delta_msg2)
+                                         : (float)(P_CMAX - (P_O_PUCCH + pathloss + delta_F_PUCCH + DELTA_TF + mac->delta_msg2));
+      const double rampup = min(rampup_requested, max(0, rampup_headroom));
+      if (relative_tx) {
+        if (!checked_tx_adjustment(rampup + mac->delta_msg2, &G_b_f_c))
+          return PUCCH_POWER_UNSUPPORTED;
+      } else {
+        G_b_f_c = (float)rampup + mac->delta_msg2;
+      }
     } else {
       // A higher-layer P0 configuration resets the selected dedicated i0 state to zero.
       G_b_f_c = 0;
     }
-    mac->pucch_power_control_initialized = true;
   } else {
     G_b_f_c = mac->G_b_f_c;
   }
@@ -445,20 +506,33 @@ int16_t get_pucch_tx_power_ue(NR_UE_MAC_INST_t *mac,
   // The caller supplies only TPC commands eligible for this PUCCH occasion.
   if (!((pucch_power_without_g_pucch + G_b_f_c >= P_CMAX && sum_delta_pucch > 0)
         || (pucch_power_without_g_pucch + G_b_f_c <= P_CMIN && sum_delta_pucch < 0))) {
-    G_b_f_c += sum_delta_pucch;
+    if (relative_tx) {
+      if (!checked_tx_adjustment((double)G_b_f_c + sum_delta_pucch, &G_b_f_c))
+        return PUCCH_POWER_UNSUPPORTED;
+    } else {
+      G_b_f_c += sum_delta_pucch;
+    }
   }
-  mac->G_b_f_c = G_b_f_c;
 
-  const int pucch_power_requested = pucch_power_without_g_pucch + G_b_f_c;
+  int pucch_power_requested;
+  int64_t raw_request = 0;
+  if (relative_tx) {
+    if (!relative_tx_request(raw_base + G_b_f_c, correction, &raw_request, &pucch_power_requested))
+      return PUCCH_POWER_UNSUPPORTED;
+  } else {
+    pucch_power_requested = (int)raw_base + G_b_f_c;
+  }
+  mac->pucch_power_control_initialized = true;
+  mac->G_b_f_c = G_b_f_c;
   int pucch_power = relative_tx ? min(P_CMAX, max(P_CMIN, pucch_power_requested)) : min(P_CMAX, pucch_power_requested);
-  if (relative_tx && flight_recorder_enabled())
-    flight_recorder_emit(FLIGHT_EVENT_UE_TX_RELATIVE_BOUNDS,
-                         FLIGHT_UE_TX_CHANNEL_PUCCH,
-                         -1,
-                         P_CMIN,
-                         P_CMAX,
-                         pucch_power_requested,
-                         pucch_power);
+  if (relative_tx)
+    record_relative_tx_power(FLIGHT_UE_TX_CHANNEL_PUCCH,
+                             raw_request,
+                             correction,
+                             pucch_power_requested,
+                             P_CMIN,
+                             P_CMAX,
+                             pucch_power);
 
   LOG_D(MAC,
         "PUCCH ( Tx power : %d dBm ) ( 10Log(...) : %d ) ( from Path Loss : %d ) ( delta_F_PUCCH : %d ) ( DELTA_TF : %d ) ( "
@@ -532,6 +606,7 @@ static int get_pusch_tx_power_ue_core(NR_UE_MAC_INST_t *mac,
         transform_precoding);
   NR_UE_UL_BWP_t *current_UL_BWP = mac->current_UL_BWP;
   AssertFatal(current_UL_BWP, "Missing configuration: need UL_BWP to calculate PUSCH tx power\n");
+  const bool relative_tx = radio_gain_device_tx_relative_actuating();
   NR_PUSCH_Config_t *pusch_Config = current_UL_BWP->pusch_Config;
   bool has_pusch_config = pusch_Config != NULL;
   bool has_pusch_power_control_config = has_pusch_config && pusch_Config->pusch_PowerControl != NULL;
@@ -546,6 +621,8 @@ static int get_pusch_tx_power_ue_core(NR_UE_MAC_INST_t *mac,
       DELTA_PREAMBLE_MSG3 = *current_UL_BWP->msg3_DeltaPreamble;
     }
     int P_O_PRE = mac->ra.prach_resources.ra_preamble_rx_target_power;
+    if (relative_tx && ((int64_t)P_O_PRE + DELTA_PREAMBLE_MSG3 < INT_MIN || (int64_t)P_O_PRE + DELTA_PREAMBLE_MSG3 > INT_MAX))
+      return INT_MIN;
     P_O_NOMINAL_PUSCH = P_O_PRE + DELTA_PREAMBLE_MSG3;
 
     if (has_pusch_power_control_config && pusch_Config->pusch_PowerControl->msg3_Alpha) {
@@ -591,6 +668,8 @@ static int get_pusch_tx_power_ue_core(NR_UE_MAC_INST_t *mac,
                             num_rb,
                             start_prb);
 
+  if (relative_tx && ((int64_t)P_O_NOMINAL_PUSCH + P_O_UE_PUSCH < INT_MIN || (int64_t)P_O_NOMINAL_PUSCH + P_O_UE_PUSCH > INT_MAX))
+    return INT_MIN;
   int P_O_PUSCH = P_O_NOMINAL_PUSCH + P_O_UE_PUSCH;
 
   float DELTA_TF = 0;
@@ -617,31 +696,50 @@ static int get_pusch_tx_power_ue_core(NR_UE_MAC_INST_t *mac,
   if (!compute_nr_SSB_PL(mac, &pathloss))
     return INT_MIN;
   int P_CMIN = mac->current_UL_BWP->P_CMIN;
-  const bool relative_tx = radio_gain_device_tx_relative_actuating();
-  if (relative_tx && !nr_ue_get_effective_tx_power_bounds(P_CMIN, P_CMAX, &P_CMIN, &P_CMAX))
+  int64_t correction = 0;
+  if (relative_tx
+      && (!nr_ue_get_effective_tx_power_bounds(P_CMIN, P_CMAX, &P_CMIN, &P_CMAX) || !get_relative_tx_correction(mac, &correction)))
     return INT_MIN;
 
-  float pusch_power_without_f_b_f_c = P_O_PUSCH + M_pusch_component + alpha * pathloss + DELTA_TF;
+  const double raw_base = relative_tx ? (double)P_O_PUSCH + M_pusch_component + alpha * pathloss + DELTA_TF
+                                      : (float)(P_O_PUSCH + M_pusch_component + alpha * pathloss + DELTA_TF);
+  const double pusch_power_without_f_b_f_c = raw_base + correction;
 
   int f_b_f_c = 0;
-  if (has_pusch_power_control_config && pusch_Config->pusch_PowerControl->tpc_Accumulation) {
+  const bool accumulate_tpc = !(has_pusch_power_control_config && pusch_Config->pusch_PowerControl->tpc_Accumulation);
+  bool initialize_pusch = false;
+  if (!accumulate_tpc) {
     f_b_f_c = delta_pusch;
   } else {
     if (!mac->pusch_power_control_initialized && is_rar_tx_retx) {
       NR_PRACH_RESOURCES_t *prach_res = &mac->ra.prach_resources;
-      float DELTA_P_rampup_requested = (prach_res->preamble_power_ramping_cnt - 1) * prach_res->preamble_power_ramping_step;
-      float DELTA_P_rampup = P_CMAX - (P_O_PUSCH + M_pusch_component + alpha * pathloss + DELTA_TF + delta_pusch);
+      const double DELTA_P_rampup_requested =
+          relative_tx ? relative_ra_ramp(prach_res)
+                      : (float)((prach_res->preamble_power_ramping_cnt - 1) * prach_res->preamble_power_ramping_step);
+      double DELTA_P_rampup = relative_tx
+                                  ? P_CMAX - (pusch_power_without_f_b_f_c + delta_pusch)
+                                  : (float)(P_CMAX - (P_O_PUSCH + M_pusch_component + alpha * pathloss + DELTA_TF + delta_pusch));
       DELTA_P_rampup = min(DELTA_P_rampup_requested, max(0, DELTA_P_rampup));
-      mac->f_b_f_c = DELTA_P_rampup + delta_pusch;
-      mac->pusch_power_control_initialized = true;
-      mac->delta_msg2 = delta_pusch;
+      if (relative_tx) {
+        if (!checked_tx_adjustment(DELTA_P_rampup + delta_pusch, &f_b_f_c))
+          return INT_MIN;
+      } else {
+        f_b_f_c = (float)DELTA_P_rampup + delta_pusch;
+      }
+      initialize_pusch = true;
     } else {
-      if (!((pusch_power_without_f_b_f_c + mac->f_b_f_c >= P_CMAX && delta_pusch > 0) ||
-        (pusch_power_without_f_b_f_c + mac->f_b_f_c <= P_CMIN && delta_pusch < 0))) {
-        mac->f_b_f_c += delta_pusch;
+      f_b_f_c = mac->f_b_f_c;
+      const double adjusted_power =
+          relative_tx ? pusch_power_without_f_b_f_c + mac->f_b_f_c : (float)((float)pusch_power_without_f_b_f_c + mac->f_b_f_c);
+      if (!((adjusted_power >= P_CMAX && delta_pusch > 0) || (adjusted_power <= P_CMIN && delta_pusch < 0))) {
+        if (relative_tx) {
+          if (!checked_tx_adjustment((double)f_b_f_c + delta_pusch, &f_b_f_c))
+            return INT_MIN;
+        } else {
+          f_b_f_c += delta_pusch;
+        }
       }
     }
-    f_b_f_c = mac->f_b_f_c;
   }
   LOG_D(NR_MAC,
         "PUSCH tx power components P_O_PUSCH=%d, M_pusch_component=%d, alpha*pathloss=%f, delta_TF=%f, f_b_f_c=%d\n",
@@ -650,18 +748,26 @@ static int get_pusch_tx_power_ue_core(NR_UE_MAC_INST_t *mac,
         alpha * pathloss,
         DELTA_TF,
         f_b_f_c);
-  const int power_requested = P_O_PUSCH + M_pusch_component + alpha * pathloss + DELTA_TF + f_b_f_c;
+  int power_requested;
+  int64_t raw_request = 0;
+  if (relative_tx) {
+    if (!relative_tx_request(raw_base + f_b_f_c, correction, &raw_request, &power_requested))
+      return INT_MIN;
+  } else {
+    power_requested = P_O_PUSCH + M_pusch_component + alpha * pathloss + DELTA_TF + f_b_f_c;
+  }
+  if (accumulate_tpc) {
+    mac->f_b_f_c = f_b_f_c;
+    if (initialize_pusch) {
+      mac->pusch_power_control_initialized = true;
+      mac->delta_msg2 = delta_pusch;
+    }
+  }
   if (requested_power)
     *requested_power = power_requested;
   const int selected_power = relative_tx ? min(P_CMAX, max(P_CMIN, power_requested)) : min(P_CMAX, power_requested);
-  if (relative_tx && flight_recorder_enabled())
-    flight_recorder_emit(FLIGHT_EVENT_UE_TX_RELATIVE_BOUNDS,
-                         FLIGHT_UE_TX_CHANNEL_PUSCH,
-                         -1,
-                         P_CMIN,
-                         P_CMAX,
-                         power_requested,
-                         selected_power);
+  if (relative_tx)
+    record_relative_tx_power(FLIGHT_UE_TX_CHANNEL_PUSCH, raw_request, correction, power_requested, P_CMIN, P_CMAX, selected_power);
   return selected_power;
 }
 
@@ -770,17 +876,22 @@ int get_srs_tx_power_ue(NR_UE_MAC_INST_t *mac,
                             0); // TODO: Determine SRS start RB
   int P_CMIN = mac->current_UL_BWP->P_CMIN;
   const bool relative_tx = radio_gain_device_tx_relative_actuating();
-  if (relative_tx && !nr_ue_get_effective_tx_power_bounds(P_CMIN, P_CMAX, &P_CMIN, &P_CMAX))
+  int64_t correction = 0;
+  if (relative_tx
+      && (!nr_ue_get_effective_tx_power_bounds(P_CMIN, P_CMAX, &P_CMIN, &P_CMAX) || !get_relative_tx_correction(mac, &correction)))
     return INT_MIN;
 
   int16_t pathloss;
   if (!compute_nr_SSB_PL(mac, &pathloss))
     return INT_MIN;
 
-  int srs_power_without_h_b_f_c = P_0_SRS + alpha * pathloss + m_srs_component;
+  const double raw_base = relative_tx ? trunc((double)P_0_SRS + alpha * pathloss + m_srs_component)
+                                      : (int)(P_0_SRS + alpha * pathloss + m_srs_component);
+  const double srs_power_without_h_b_f_c = raw_base + correction;
 
   // Power adjustment state
   int h_b_f_c = 0;
+  bool update_srs_state = false;
   bool use_pusch_power_adjustment_state = srs_resource_set->srs_PowerControlAdjustmentStates == NULL;
   if (is_configured_for_pusch_on_current_bwp && use_pusch_power_adjustment_state) {
     // Case 1: Use PUSCH power control adjustment state
@@ -798,35 +909,59 @@ int get_srs_tx_power_ue(NR_UE_MAC_INST_t *mac,
                                                == NR_SRS_ResourceSet__srs_PowerControlAdjustmentStates_separateClosedLoop;
 
     if (!is_tpc_accumulation_provided && (!is_configured_for_pusch_on_current_bwp || separate_pc_adjustment_state)) {
+      update_srs_state = true;
       if (!current_UL_BWP->srs_power_control_initialized) {
         NR_PRACH_RESOURCES_t *prach = &mac->ra.prach_resources;
-        float DELTA_P_rampup_requested = (prach->preamble_power_ramping_cnt - 1) * prach->preamble_power_ramping_step;
-        float DELTA_P_rampup = P_CMAX - (P_0_SRS + m_srs_component + alpha * pathloss);
+        const double DELTA_P_rampup_requested =
+            relative_tx ? relative_ra_ramp(prach)
+                        : (float)((prach->preamble_power_ramping_cnt - 1) * prach->preamble_power_ramping_step);
+        double DELTA_P_rampup = relative_tx ? P_CMAX - ((double)P_0_SRS + m_srs_component + alpha * pathloss + correction)
+                                            : (float)(P_CMAX - (P_0_SRS + m_srs_component + alpha * pathloss));
         DELTA_P_rampup = min(DELTA_P_rampup_requested, max(0, DELTA_P_rampup));
-        current_UL_BWP->srs_power_control_initialized = true;
-        current_UL_BWP->h_b_f_c = DELTA_P_rampup + mac->delta_msg2;
+        if (relative_tx) {
+          if (!checked_tx_adjustment(DELTA_P_rampup + mac->delta_msg2, &h_b_f_c))
+            return INT_MIN;
+        } else {
+          h_b_f_c = (float)DELTA_P_rampup + mac->delta_msg2;
+        }
       } else {
+        h_b_f_c = current_UL_BWP->h_b_f_c;
         if (!((srs_power_without_h_b_f_c + current_UL_BWP->h_b_f_c >= P_CMAX && delta_srs > 0)
               || (srs_power_without_h_b_f_c + current_UL_BWP->h_b_f_c <= P_CMIN && delta_srs < 0))) {
-          current_UL_BWP->h_b_f_c += delta_srs;
+          if (relative_tx) {
+            if (!checked_tx_adjustment((double)h_b_f_c + delta_srs, &h_b_f_c))
+              return INT_MIN;
+          } else {
+            h_b_f_c += delta_srs;
+          }
         }
       }
-      h_b_f_c = current_UL_BWP->h_b_f_c;
     } else {
       // Case 3: No accumulation
       h_b_f_c = delta_srs;
     }
   }
 
-  const int srs_power_requested = srs_power_without_h_b_f_c + h_b_f_c;
+  int srs_power_requested;
+  int64_t raw_request = 0;
+  if (relative_tx) {
+    if (!relative_tx_request(raw_base + h_b_f_c, correction, &raw_request, &srs_power_requested))
+      return INT_MIN;
+  } else {
+    srs_power_requested = (int)raw_base + h_b_f_c;
+  }
+  if (update_srs_state) {
+    current_UL_BWP->srs_power_control_initialized = true;
+    current_UL_BWP->h_b_f_c = h_b_f_c;
+  }
   const int selected_power = relative_tx ? min(P_CMAX, max(P_CMIN, srs_power_requested)) : min(P_CMAX, srs_power_requested);
-  if (relative_tx && flight_recorder_enabled())
-    flight_recorder_emit(FLIGHT_EVENT_UE_TX_RELATIVE_BOUNDS,
-                         FLIGHT_UE_TX_CHANNEL_SRS,
-                         -1,
-                         P_CMIN,
-                         P_CMAX,
-                         srs_power_requested,
-                         selected_power);
+  if (relative_tx)
+    record_relative_tx_power(FLIGHT_UE_TX_CHANNEL_SRS,
+                             raw_request,
+                             correction,
+                             srs_power_requested,
+                             P_CMIN,
+                             P_CMAX,
+                             selected_power);
   return selected_power;
 }

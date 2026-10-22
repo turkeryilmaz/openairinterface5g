@@ -53,6 +53,8 @@ bool get_prach_tx_power(NR_UE_MAC_INST_t *mac, int16_t *tx_power)
         return false;
       ra->relative_prach_first_selected = first_selected;
       ra->relative_prach_first_request = requested_power;
+      // Deferred grants accepted before this origin must not use the new relative power context.
+      advance_ul_pusch_config_generation(mac);
       ra->relative_prach_reference_valid = true;
     }
     // Both requests are an int target plus int16_t pathloss; their difference fits int64_t.
@@ -70,6 +72,13 @@ bool get_prach_tx_power(NR_UE_MAC_INST_t *mac, int16_t *tx_power)
                            maximum,
                            requested_power,
                            *tx_power);
+      flight_recorder_emit(FLIGHT_EVENT_UE_TX_RELATIVE_TRANSLATION,
+                           FLIGHT_UE_TX_CHANNEL_PRACH,
+                           requested_power,
+                           (int64_t)ra->relative_prach_first_selected - ra->relative_prach_first_request,
+                           relative_request,
+                           minimum,
+                           maximum);
       flight_recorder_emit(FLIGHT_EVENT_UE_PRACH_POWER_INPUT,
                            requested_power,
                            ra->prach_resources.ra_preamble_rx_target_power,
