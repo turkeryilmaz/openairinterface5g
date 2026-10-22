@@ -4,6 +4,66 @@ Capture is off unless OAI_FLIGHT_RECORDER_DIR names an existing directory at log
 
 Every event has event, a–f, ring, sequence, mono_ns and realtime_ns. Sequence numbers are global across all producer rings; gaps within one ring are expected when other rings emit. Time fields are integer nanoseconds; realtime is Unix UTC epoch. Monotonic values compare only within one boot. INT64_MIN means unavailable. Ordinary stdout timestamps are receipt times; numeric timestamps are captured at the source event. File/sequence order across threads can differ from timestamp order.
 
+## Detail selection and recorder health
+
+`balanced` detail selects each thread/group's first eight opportunities and then
+uses a deterministic 64-bit key mixer to select approximately 1/64 of ordinary
+observations. This is a diagnostic volume policy, not a radio-health threshold.
+`full` bypasses this selection; older periodic emitters keep their own documented
+cadence. Explicit forced observations bypass reduction, including the transport,
+deadline and decoder failures described below. Repeated RLC failure callbacks
+are an exception: event119 retains the first eight per thread, then samples
+repetitions to bound a notification storm. In the steady
+cohort, equal keys select identically across groups, but per-thread warmup and
+forced observations can differ. Pair records only through their actual keys and
+existing unambiguous sequence rules, never by assuming all stages are present.
+
+Stable group IDs are 1 TX mapper (all result/energy/quality sidecars together),
+2 backend submit, 3 send, 4 result, 5 queue, 6 reorder, 7 UE timestamp origin,
+8 UE schedule plus anchor, 9 deadline, 10 UE PDSCH, 11 gNB PDSCH grant and
+12 RLC failure, 13 UE generated-power request, 14 UE MAC power-control context,
+and 15 UE relative translation plus bounds. The transport keys are their respective radio sample timestamps;
+the mapper key combines frame, slot and channel. They are deterministic cohorts,
+not independent random samples and not estimates of rare-failure probability.
+
+Power groups13..15 use changing per-producer, per-channel opportunity counters,
+not a hash of a constant power tuple. Fixed state remembers the last instance
+and transition signature: selected power/generator reference for13;
+pathloss/closed-loop adjustment/TPC delta/p-Max for14; correction/minimum/maximum/
+selected power for15. A change forces selection. PRACH requests and unknown
+inputs remain selected. Steady clipping is sampled even when raw request differs
+from the selected bound. Group15 admits115 and62 together; ring overflow can
+still lose one member and is reported separately. Intermediate omitted raw
+requests and per-slot control rows are unavailable, not inferred unchanged.
+
+Additional schema-v1 metadata records describe recorder behavior:
+
+- `sampling_config`: `detail_mode`, `selection_period`, `warmup_opportunities`,
+  `groups` and `key_mix_version`. Written once in the first file.
+- `sampling_health`: cumulative `evaluated`, `retained` and `reduced` observation
+  opportunities per `ring` and `group`, with `snapshot_mono_ns`, `detail_mode` and
+  `selection_period`. Evaluated equals retained plus reduced. A retained decision
+  can emit multiple sidecars, can lose an event to ring pressure, or can be followed
+  by shutdown; these are not counts of successfully written events.
+- `ring_health`: capacity, occupancy high-water mark and cumulative
+  `dropped_ring_full`, `dropped_reserved`, `dropped_capacity` per ring.
+- `event_loss`: cumulative reservation/capacity rejects per ring and event ID.
+  `event_known=0` with event `4294967295` combines IDs outside the fixed 0..255
+  accounting bins. Such unknown events keep critical admission priority.
+- `writer_health`: cumulative records drained, physical lines/bytes written,
+  attempted write calls, bytes accepted including buffered bytes, current buffered
+  bytes, drain passes/wall time/clock errors, and configured batch/quantum/reserve.
+  These values describe the snapshot before its own record is written.
+
+Snapshots are cumulative; use the latest observation for each key, not their sum.
+They are live observations, not an atomic cross-ring snapshot. A failed snapshot
+clock is `INT64_MIN`. The process footer remains the aggregate loss authority.
+`dropped_ring_full` includes both rejects at the reserved boundary and at physical
+capacity. Intentional `reduced` opportunities are separate from actual losses.
+The 128-entry critical reserve does not prevent critical losses if a ring fills.
+`decode_events.py` retains the latest metadata under `recorder_observations` in
+its summary, without adding per-event loss counts again to the process footer.
+
 | ID/name | a | b | c | d | e | f |
 |---|---|---|---|---|---|---|
 |10 UE_SYNC|UE instance|1 success / 0 failure|HW slot offset on success|CFO Hz on success|RX sample offset on success|reserved|
@@ -745,3 +805,72 @@ coordinates, not measured connector dBm. Event 62 retains the selected value
 58/59/63 retain the actual digital mapping and quality results. Correlate within
 one process attempt and producer sequence, retaining recorder-loss indicators.
 This event does not establish successful RF delivery or a hardware gain change.
+
+### PDSCH decoding, receive context and RLC failure (116-119)
+
+These records separate the UE decoder result from the ACK actually delivered to
+MAC, and retain the corresponding gNB grant and UE sample-gain context. They do
+not change decoding, HARQ ownership, ACK generation or gain decisions. Normal
+observations use sampling groups 10 and 11; failed CRC, unexpected ownership,
+decoder errors and retransmitted gNB grants force selection. Event 119 uses
+group 12 to retain the first eight callback occurrences per producer thread,
+then sample repeated notifications. Loss and intentional reduction remain
+separate. No packet contents or soft buffers are recorded.
+
+| ID | Record | a, b, c, d, e, f |
+|---|---|---|
+|116|UE_PDSCH_RESULT|identity, sync epoch, extended RX slot, packed result, coding, geometry|
+|117|UE_PDSCH_RX_CONTEXT|same identity, sync epoch, extended RX slot, gain generation, RX gain in0.001dB, sample/owner context|
+|118|GNB_PDSCH_GRANT|RNTI/PCI identity, frame*1000+slot, HARQ state, coding, geometry, feedback frame*1000+slot|
+|119|RLC_FAILURE|UE ID, gNB bool, SRB bool, bearer ID, RLF handler present bool, reason (1=max retransmissions)|
+
+For116/117, identity bits0..15 contain UE ID,16..31 RNTI,32..39 codeword,
+40..47 RNTI type and48..55 stage:0 after decoding,1 at RX indication,2 decoder
+early return,3 outer inactive/owner guard. Extended RX slot is
+`(HFN*1024+SFN)*slots_per_frame+slot`; invalid coordinates/epoch use `INT64_MIN`.
+This tuple, process attempt and timestamps identify records; never join using
+SFN alone across wraps or process restarts. The decoder leaves records independent.
+
+Event116 result bits0..4 contain HARQ PID,5..12 pre-decode round,13..14 RV,
+15 UE new-data decision,16 first_rx,17 soft-buffer clear requested,18 segment check performed,
+19 segment success,20 global CRC check performed,21 global CRC success,
+22 all-zero PDU rejection,23 current decodeResult,24 owner matches this slot,
+25 actual indication ACK,26..28 reason,29 segment-count fields valid.
+Reasons are0 normal,1 late owner,2 unsupported segment count,3 invalid coded-bit
+count,4 decoder returned an error,5 inactive HARQ. With reason4, bits32..63
+hold the signed32-bit decoder return; otherwise valid segment fields occupy
+32..47 processed segments and48..63 code-block count. Bits30..31 are reserved.
+The ACK is available only at stage1; unchecked CRC results are unavailable.
+Bit17 records the decoder parameter requesting a clear, not proof that every
+soft buffer was cleared. An early return can prevent the request from reaching
+the decoder, and a decoder error can leave processing partial. This request is
+unavailable at stages1/3; all-zero PDU rejection is available only at stage0.
+At stage1, first_rx/round/decodeResult describe the then-current HARQ state,
+not a second decoder execution. Stage2/3 do not imply decoding occurred.
+The UE new-data decision is the MAC interpretation supplied to PHY after NDI
+toggle handling (and any local new-data override). It is not the raw DCI NDI
+bit; do not compare it numerically with event118's transmitted NDI.
+
+Event116 coding has TBS in bits0..23 (bits), coded-bit count G in24..47 and
+DMRS symbol mask in48..61. Stage1 retains only TBS; G, DMRS and geometry are
+unavailable. Invalid packed words use `INT64_MIN`, never silently truncated data.
+Event117 uses the immutable receive sample context, not a fresh hardware query.
+Its context low32 contains the armed owner `SFN*1000+slot` (`UINT32_MAX` absent);
+bits32..37 are present, valid, level-valid, any near-rail component, finite gain,
+and measurement-valid. Missing/nonfinite gain or unavailable generation uses
+`INT64_MIN`. The paired116/117 decoder records share one admission decision.
+
+Event118 identity packs RNTI in0..15 and PCI in16..31. HARQ PID/round/RV
+use the same low15 result bits as116; bit15 is the gNB's transmitted NDI.
+Coding packs TBS bits in0..23, raw FAPI
+target-code-rate in24..39 and DMRS mask in40..53. Feedback coordinates are the
+scheduled PUCCH occasion, not proof that feedback arrived. Codeword0 is recorded.
+
+The shared geometry word in116/118 packs RB start0..8, RB count9..17,
+BWP start18..26, BWP size27..35, start symbol36..39, symbol count40..43,
+MCS44..48, modulation order49..52, layers53..56, MCS table57..58,
+LDPC base graph59..60, DMRS type61 and resource allocation type62.
+All are the producer's raw configuration values. The UE receives a post-mapping
+allocation while the gNB records its grant; compare allocation type and mapping
+before interpreting differing RB fields. These fields alone cannot establish
+the cause of a failed transport block.

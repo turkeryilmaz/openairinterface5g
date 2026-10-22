@@ -17,6 +17,106 @@
 #include "common/utils/nr/nr_common.h"
 #include "openair1/PHY/TOOLS/phy_scope_interface.h"
 #include "nfapi/open-nFAPI/nfapi/public_inc/nfapi_nr_interface.h"
+#include "common/utils/LOG/flight_recorder.h"
+
+/* These words are shared with the gNB grant record. Reject values that do not
+ * fit instead of silently changing the evidence by truncation. */
+static int64_t flight_ue_pdsch_geometry(const fapi_nr_dl_config_dlsch_pdu_rel15_t *config,
+                                        const fapi_nr_dl_cw_info_t *cw,
+                                        int number_rbs)
+{
+  if (!config || config->start_rb > 511 || number_rbs < 0 || number_rbs > 511 || config->BWPStart > 511 || config->BWPSize > 511
+      || config->start_symbol > 15 || config->number_symbols > 15 || cw->mcs > 31 || cw->qamModOrder > 15 || cw->Nl > 15
+      || config->mcs_table > 3 || cw->ldpcBaseGraph > 3 || config->dmrsConfigType > 1 || config->resource_alloc > 1)
+    return INT64_MIN;
+  return (uint64_t)config->start_rb | ((uint64_t)number_rbs << 9) | ((uint64_t)config->BWPStart << 18)
+         | ((uint64_t)config->BWPSize << 27) | ((uint64_t)config->start_symbol << 36) | ((uint64_t)config->number_symbols << 40)
+         | ((uint64_t)cw->mcs << 44) | ((uint64_t)cw->qamModOrder << 49) | ((uint64_t)cw->Nl << 53)
+         | ((uint64_t)config->mcs_table << 57) | ((uint64_t)cw->ldpcBaseGraph << 59) | ((uint64_t)config->dmrsConfigType << 61)
+         | ((uint64_t)config->resource_alloc << 62);
+}
+
+static int64_t flight_ue_pdsch_coding(const fapi_nr_dl_cw_info_t *cw, const fapi_nr_dl_config_dlsch_pdu_rel15_t *config, int G)
+{
+  if (cw->TBS > 0xffffffU)
+    return INT64_MIN;
+  /* The indication has no immutable demodulation configuration or G. Its stage
+   * makes these fields unavailable, even though the unused packed bits are 0. */
+  if (!config)
+    return cw->TBS;
+  if (G < 0 || G > 0xffffff || config->dlDmrsSymbPos > 0x3fff)
+    return INT64_MIN;
+  return (uint64_t)cw->TBS | ((uint64_t)G << 24) | ((uint64_t)config->dlDmrsSymbPos << 48);
+}
+
+void nr_ue_record_pdsch_result(const PHY_VARS_NR_UE *ue,
+                               const UE_nr_rxtx_proc_t *proc,
+                               const NR_UE_DLSCH_t *dlsch,
+                               int cw_idx,
+                               int harq_pid,
+                               const fapi_nr_dl_config_dlsch_pdu_rel15_t *config,
+                               int number_rbs,
+                               int G,
+                               const nr_ue_pdsch_diagnostic_t *diagnostic)
+{
+  if (!flight_recorder_enabled() || cw_idx < 0 || cw_idx >= 2 || harq_pid < 0 || harq_pid >= NR_MAX_HARQ_PROCESSES)
+    return;
+  const NR_DL_UE_HARQ_t *harq = &ue->dl_harq_processes[cw_idx][harq_pid];
+  const bool owner_matches = harq->activated_frame == proc->frame_rx && harq->activated_slot == proc->nr_slot_rx;
+  const bool indication = diagnostic->stage == NR_PDSCH_DIAG_INDICATION;
+  const bool failed = diagnostic->reason != NR_PDSCH_DIAG_NORMAL || !owner_matches || !harq->decodeResult
+                      || (indication && !diagnostic->indication_ack) || (diagnostic->segment_checked && !diagnostic->segment_ok)
+                      || (diagnostic->global_checked && !diagnostic->global_ok) || diagnostic->zero_rejected;
+  const int slots = ue->frame_parms.slots_per_frame;
+  const int64_t rx_slot = proc->hfn_rx >= 0 && proc->frame_rx >= 0 && proc->frame_rx < MAX_FRAME_NUMBER && slots > 0
+                                  && proc->nr_slot_rx >= 0 && proc->nr_slot_rx < slots
+                              ? ((int64_t)proc->hfn_rx * MAX_FRAME_NUMBER + proc->frame_rx) * slots + proc->nr_slot_rx
+                              : INT64_MIN;
+  const uint64_t key = proc->flight_sync_epoch * UINT64_C(0x9e3779b97f4a7c15) ^ (uint64_t)rx_slot ^ ((uint64_t)dlsch->rnti << 32)
+                       ^ ((uint64_t)cw_idx << 48) ^ ((uint64_t)ue->Mod_id << 56);
+  if (!flight_recorder_sample(FLIGHT_SAMPLE_UE_PDSCH, key, failed))
+    return;
+
+  const int64_t identity = (uint64_t)ue->Mod_id | ((uint64_t)dlsch->rnti << 16) | ((uint64_t)cw_idx << 32)
+                           | ((uint64_t)dlsch->rnti_type << 40) | ((uint64_t)diagnostic->stage << 48);
+  const int64_t epoch = proc->flight_sync_epoch <= INT64_MAX ? (int64_t)proc->flight_sync_epoch : INT64_MIN;
+  uint64_t result = harq_pid | ((uint64_t)diagnostic->round << 5) | ((uint64_t)(dlsch->cw_info.rv & 3) << 13)
+                    | ((uint64_t)dlsch->cw_info.new_data_indicator << 15) | ((uint64_t)diagnostic->first_rx << 16)
+                    | ((uint64_t)diagnostic->clear_requested << 17) | ((uint64_t)diagnostic->segment_checked << 18)
+                    | ((uint64_t)diagnostic->segment_ok << 19) | ((uint64_t)diagnostic->global_checked << 20)
+                    | ((uint64_t)diagnostic->global_ok << 21) | ((uint64_t)diagnostic->zero_rejected << 22)
+                    | ((uint64_t)harq->decodeResult << 23) | ((uint64_t)owner_matches << 24)
+                    | ((uint64_t)diagnostic->indication_ack << 25) | ((uint64_t)diagnostic->reason << 26);
+  if (diagnostic->reason == NR_PDSCH_DIAG_DECODER_ERROR) {
+    result |= (uint64_t)(uint32_t)diagnostic->decoder_error << 32;
+  } else if (diagnostic->decoder_fields_valid && harq->processedSegments <= UINT16_MAX && harq->C <= UINT16_MAX) {
+    result |= UINT64_C(1) << 29;
+    result |= (uint64_t)harq->processedSegments << 32 | (uint64_t)harq->C << 48;
+  }
+  flight_recorder_emit(FLIGHT_EVENT_UE_PDSCH_RESULT,
+                       identity,
+                       epoch,
+                       rx_slot,
+                       harq_pid <= 31 && dlsch->cw_info.rv <= 3 && diagnostic->reason <= 7 ? (int64_t)result : INT64_MIN,
+                       flight_ue_pdsch_coding(&dlsch->cw_info, config, G),
+                       flight_ue_pdsch_geometry(config, &dlsch->cw_info, number_rbs));
+  if (indication)
+    return;
+
+  const radio_gain_sample_context_t *context = &proc->rx_gain_context;
+  const bool finite_gain = context->present && isfinite(context->rx_gain_db);
+  const double gain_mdb = finite_gain ? context->rx_gain_db * 1000.0 : 0;
+  const int64_t gain = finite_gain && gain_mdb >= -0x1p63 && gain_mdb < 0x1p63 ? llround(gain_mdb) : INT64_MIN;
+  const int64_t generation = context->present && context->generation <= INT64_MAX ? (int64_t)context->generation : INT64_MIN;
+  const uint64_t owner = harq->activated_frame >= 0 && harq->activated_frame < MAX_FRAME_NUMBER && harq->activated_slot >= 0
+                                 && harq->activated_slot < slots
+                             ? (uint64_t)harq->activated_frame * 1000 + harq->activated_slot
+                             : UINT32_MAX;
+  const uint64_t flags = context->present | ((uint64_t)context->valid << 1) | ((uint64_t)context->level_valid << 2)
+                         | ((uint64_t)(context->near_rail_components != 0) << 3) | ((uint64_t)finite_gain << 4)
+                         | ((uint64_t)radio_gain_sample_measurement_valid(context) << 5);
+  flight_recorder_emit(FLIGHT_EVENT_UE_PDSCH_RX_CONTEXT, identity, epoch, rx_slot, generation, gain, owner | (flags << 32));
+}
 
 static extended_kpi_ue kpiStructure = {0};
 
@@ -63,7 +163,13 @@ void nr_dlsch_decoding(PHY_VARS_NR_UE *phy_vars_ue,
   AssertFatal(dmrs_Type == 0 || dmrs_Type == 1, "Illegal dmrs_type %d\n", dmrs_Type);
   fapi_nr_dl_cw_info_t *cw_info = &dlsch->cw_info;
   NR_DL_UE_HARQ_t *harq_process = &phy_vars_ue->dl_harq_processes[cw_idx][dlsch_config->harq_process_nbr];
+  nr_ue_pdsch_diagnostic_t diagnostic = {.stage = NR_PDSCH_DIAG_DECODE,
+                                         .round = harq_process->DLround,
+                                         .first_rx = harq_process->first_rx == 1};
   if (harq_process->activated_frame != proc->frame_rx || harq_process->activated_slot != proc->nr_slot_rx) {
+    diagnostic.stage = NR_PDSCH_DIAG_EARLY_RETURN;
+    diagnostic.reason = NR_PDSCH_DIAG_LATE_OWNER;
+    nr_ue_record_pdsch_result(phy_vars_ue, proc, dlsch, cw_idx, harq_pid, dlsch_config, number_rbs, G, &diagnostic);
     LOG_W(PHY, "%d.%d DLSCH harq %d late decode aborted, re-armed %d.%d\n",
           proc->frame_rx, proc->nr_slot_rx, harq_pid, harq_process->activated_frame, harq_process->activated_slot);
     return;
@@ -122,6 +228,9 @@ void nr_dlsch_decoding(PHY_VARS_NR_UE *phy_vars_ue,
     harq_process->F = TB_parameters.F;
 
     if (harq_process->C > MAX_NUM_NR_DLSCH_SEGMENTS_PER_LAYER * TB_parameters.nb_layers) {
+      diagnostic.stage = NR_PDSCH_DIAG_EARLY_RETURN;
+      diagnostic.reason = NR_PDSCH_DIAG_SEGMENT_LIMIT;
+      nr_ue_record_pdsch_result(phy_vars_ue, proc, dlsch, cw_idx, harq_pid, dlsch_config, number_rbs, G, &diagnostic);
       LOG_E(PHY, "nr_segmentation.c: too many segments %d, A %d\n", harq_process->C, TB_parameters.A);
       return;
     }
@@ -140,6 +249,7 @@ void nr_dlsch_decoding(PHY_VARS_NR_UE *phy_vars_ue,
     LOG_I(PHY, "Segmentation: C %d, K %d\n", harq_process->C, harq_process->K);
 
   TB_parameters.d_to_be_cleared = harq_process->first_rx == 1;
+  diagnostic.clear_requested = TB_parameters.d_to_be_cleared;
   /* Buffer now holds this TB. Clear first_rx only after that, so a skipped decode still re-segments. */
   harq_process->first_rx = 0;
   /* Restart llrLen when the buffer is cleared, even if DLround is already non-zero. */
@@ -158,8 +268,12 @@ void nr_dlsch_decoding(PHY_VARS_NR_UE *phy_vars_ue,
         TB_parameters.Qm,
         TB_parameters.llr);
   int E = nr_get_E(TB_parameters.G, TB_parameters.C, TB_parameters.Qm, TB_parameters.nb_layers, 0);
-  if (E < 0)
+  if (E < 0) {
+    diagnostic.stage = NR_PDSCH_DIAG_EARLY_RETURN;
+    diagnostic.reason = NR_PDSCH_DIAG_INVALID_E;
+    nr_ue_record_pdsch_result(phy_vars_ue, proc, dlsch, cw_idx, harq_pid, dlsch_config, number_rbs, G, &diagnostic);
     return;
+  }
   TB_parameters.c = harq_process->c;
   TB_parameters.d = harq_process->d;
   TB_parameters.E = E;
@@ -201,6 +315,10 @@ void nr_dlsch_decoding(PHY_VARS_NR_UE *phy_vars_ue,
   int ret_decoder = phy_vars_ue->nrLDPC_coding_interface.nrLDPC_coding_decoder(&slot_parameters);
 
   if (ret_decoder != 0) {
+    diagnostic.stage = NR_PDSCH_DIAG_EARLY_RETURN;
+    diagnostic.reason = NR_PDSCH_DIAG_DECODER_ERROR;
+    diagnostic.decoder_error = ret_decoder;
+    nr_ue_record_pdsch_result(phy_vars_ue, proc, dlsch, cw_idx, harq_pid, dlsch_config, number_rbs, G, &diagnostic);
     LOG_E(PHY, "nrLDPC_coding_decoder returned an error: %d\n", ret_decoder);
     return;
   }
@@ -212,6 +330,9 @@ void nr_dlsch_decoding(PHY_VARS_NR_UE *phy_vars_ue,
       crcok = false;
       break;
     }
+  diagnostic.segment_checked = true;
+  diagnostic.segment_ok = crcok;
+  diagnostic.decoder_fields_valid = true;
 
   if (crcok) {
     uint8_t *output = b;
@@ -239,7 +360,9 @@ void nr_dlsch_decoding(PHY_VARS_NR_UE *phy_vars_ue,
   if (harq_process->decodeResult && harq_process->C > 1) {
     /* check global CRC */
     // we have regrouped the transport block
-    if (!check_crc(b, lenWithCrc(1, cw_info->TBS), crcType(1, cw_info->TBS))) {
+    diagnostic.global_checked = true;
+    diagnostic.global_ok = check_crc(b, lenWithCrc(1, cw_info->TBS), crcType(1, cw_info->TBS));
+    if (!diagnostic.global_ok) {
       LOG_E(PHY,
             " Frame %d.%d LDPC global CRC fails, but individual LDPC CRC succeeded. %d segs "
             "(harq_pid %d cw %d first_rx %d round %d rv %d clear %d | TBS %d A %d K %d Z %d F %d "
@@ -278,6 +401,7 @@ void nr_dlsch_decoding(PHY_VARS_NR_UE *phy_vars_ue,
       while (b[i] == 0 && i < sz)
         i++;
       if (i == sz) {
+        diagnostic.zero_rejected = true;
         LOG_E(PHY,
               "received all 0 pdu (TBS %d, mcs %d, C %d, nb_rb %d, decodedSegments %d) consider it false reception, even if the "
               "TS 38.212 7.2.1 says only we should attach the "
@@ -291,6 +415,8 @@ void nr_dlsch_decoding(PHY_VARS_NR_UE *phy_vars_ue,
       }
     }
   }
+
+  nr_ue_record_pdsch_result(phy_vars_ue, proc, dlsch, cw_idx, harq_pid, dlsch_config, number_rbs, G, &diagnostic);
 
   /* LOG_D only: this runs on a SCHED_FIFO thread; LOG_I formatting was enough to miss slot deadlines. */
   if (harq_process->DLround > 0 || !harq_process->decodeResult)

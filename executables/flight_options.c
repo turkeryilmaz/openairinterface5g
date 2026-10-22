@@ -95,7 +95,7 @@ int flight_start_capture(configmodule_interface_t *cfg, int argc, char **argv, c
 {
   char *features = NULL;
   char *output = NULL, *repo_option = NULL, *core = NULL, *interface = NULL, *gpsd = NULL;
-  char *recorder_budget = NULL, *stdout_budget = NULL, *host_budget = NULL, *min_free = NULL;
+  char *recorder_budget = NULL, *recorder_detail = NULL, *stdout_budget = NULL, *host_budget = NULL, *min_free = NULL;
   char *stall = NULL, *attempt = NULL;
   char *traffic_peer = NULL, *traffic_bind = NULL, *traffic_port = NULL, *traffic_direction = NULL, *traffic_rate = NULL;
   char *capability_xml = NULL;
@@ -119,6 +119,11 @@ int flight_start_capture(configmodule_interface_t *cfg, int argc, char **argv, c
       STRINGPARAM("flight-interface", "Observed UE interface (default oaitun_ue1).\n", 0, &interface, NULL),
       STRINGPARAM("flight-gpsd", "Optional GPSD endpoint HOST:PORT.\n", 0, &gpsd, NULL),
       STRINGPARAM("flight-min-free-bytes", "Free-space reserve in bytes (default 512 MiB).\n", 0, &min_free, NULL),
+      STRINGPARAM("flight-recorder-detail",
+                  "Numeric detail: balanced (default) or full; fault detail is not sampled.\n",
+                  0,
+                  &recorder_detail,
+                  NULL),
       STRINGPARAM("flight-recorder-budget",
                   "Numeric recorder byte limit; 0 (default) retains until the space reserve.\n",
                   0,
@@ -190,6 +195,7 @@ int flight_start_capture(configmodule_interface_t *cfg, int argc, char **argv, c
                             {"--interface", interface},
                             {"--gpsd", gpsd},
                             {"--recorder-budget", recorder_budget},
+                            {"--recorder-detail", recorder_detail},
                             {"--stdout-budget", stdout_budget},
                             {"--host-budget", host_budget},
                             {"--min-free-bytes", min_free},

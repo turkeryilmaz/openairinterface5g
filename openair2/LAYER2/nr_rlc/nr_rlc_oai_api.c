@@ -19,6 +19,7 @@
 #include "NR_CellGroupConfig.h"
 #include "NR_RLC-Config.h"
 #include "common/ran_context.h"
+#include "common/utils/LOG/flight_recorder.h"
 #include "NR_UL-CCCH-Message.h"
 
 #include "openair2/F1AP/f1ap_du_rrc_message_transfer.h"
@@ -568,6 +569,19 @@ rb_found:
 #endif
 }
 
+static void flight_rlc_failure(int ue_id, bool is_gnb, bool is_srb, int rb_id, bool handler_present)
+{
+  if (!flight_recorder_enabled())
+    return;
+  /* Each callback runs on its caller's existing RLC path. This counter belongs
+   * only to that thread; repeated notifications add no shared contention. */
+  static _Thread_local uint64_t occurrence;
+  const uint64_t key =
+      ++occurrence * UINT64_C(0x9e3779b97f4a7c15) ^ ((uint64_t)(uint32_t)ue_id << 16) ^ ((uint64_t)(uint32_t)rb_id << 1) ^ is_srb;
+  if (flight_recorder_sample(FLIGHT_SAMPLE_RLC_FAILURE, key, false))
+    flight_recorder_emit(FLIGHT_EVENT_RLC_FAILURE, ue_id, is_gnb, is_srb, rb_id, handler_present, 1);
+}
+
 static void max_retx_reached(void *_ue, nr_rlc_entity_t *entity)
 {
   nr_rlc_ue_t *ue = _ue;
@@ -597,6 +611,8 @@ static void max_retx_reached(void *_ue, nr_rlc_entity_t *entity)
   exit(1);
 
 rb_found:
+  if (flight_recorder_enabled())
+    flight_rlc_failure(ue->ue_id, nr_rlc_manager_get_gnb_flag(nr_rlc_ue_manager), is_srb, rb_id, ue->rlf_handler != NULL);
   LOG_E(RLC, "max RETX reached on %s %d\n",
         is_srb ? "SRB" : "DRB",
         rb_id);

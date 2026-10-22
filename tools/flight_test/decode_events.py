@@ -65,8 +65,21 @@ TIMING_LAYOUTS = {
     114: ('UE_TX_BARRIER_STOP', ('ue', 'frame', 'slot', 'barrier_capacity', 'radio_index', 'reserved')),
     115: ('UE_TX_RELATIVE_TRANSLATION', ('channel', 'raw_request', 'reference_correction_db', 'translated_request',
                                       'minimum_coordinate', 'maximum_coordinate')),
+    116: ('UE_PDSCH_RESULT', ('identity', 'sync_epoch', 'absolute_rx_slot', 'result', 'coding', 'geometry')),
+    117: ('UE_PDSCH_RX_CONTEXT', ('identity', 'sync_epoch', 'absolute_rx_slot', 'gain_generation', 'rx_gain_millidb', 'context')),
+    118: ('GNB_PDSCH_GRANT', ('identity', 'frame_slot', 'harq_state', 'coding', 'geometry', 'feedback_frame_slot')),
+    119: ('RLC_FAILURE', ('ue_id', 'is_gnb', 'is_srb', 'rb_id', 'handler_present', 'reason')),
 }
 NAMES.update({number: layout[0] for number, layout in TIMING_LAYOUTS.items()})
+
+
+def decode_pdsch_geometry(word):
+    fields = (('rb_start', 0, 9), ('rb_count', 9, 9), ('bwp_start', 18, 9), ('bwp_size', 27, 9),
+              ('start_symbol', 36, 4), ('symbol_count', 40, 4), ('mcs', 44, 5), ('qm', 49, 4),
+              ('layers', 53, 4), ('mcs_table', 57, 2), ('base_graph', 59, 2), ('dmrs_type', 61, 1),
+              ('resource_allocation_type', 62, 1))
+    return {name: None if word == INT64_MIN else (word >> shift) & ((1 << width) - 1)
+            for name, shift, width in fields}
 
 
 def decode_radio_timing(event):
@@ -77,7 +90,77 @@ def decode_radio_timing(event):
     row['name'] = layout[0]
     row.update(zip(layout[1], (event[key] for key in 'abcdef')))
     # Preserve packed values alongside their interpretations and unknown bits.
-    if event['event'] == 115:
+    if event['event'] in (116, 117):
+        identity = event['a'] & UINT64_MASK
+        row.update(ue=identity & 0xffff, rnti=(identity >> 16) & 0xffff,
+                   codeword=(identity >> 32) & 0xff, rnti_type=(identity >> 40) & 0xff,
+                   stage=(identity >> 48) & 0xff, unknown_identity_bits=identity >> 56)
+        stage = row['stage']
+        row['stage_name'] = {0: 'decode', 1: 'indication', 2: 'early_return', 3: 'skipped'}.get(stage, 'unknown')
+        if event['event'] == 116:
+            state, coding = event['d'] & UINT64_MASK, event['e'] & UINT64_MASK
+            available = event['d'] != INT64_MIN
+            row.update(harq_id=state & 31 if available else None,
+                       round=(state >> 5) & 0xff if available else None,
+                       rv=(state >> 13) & 3 if available else None,
+                       new_data=bool(state & (1 << 15)) if available else None,
+                       reason=(state >> 26) & 7 if available else None,
+                       unknown_result_bits=state & (3 << 30) if available else None)
+            row['reason_name'] = {0: 'normal', 1: 'late_owner', 2: 'segment_count', 3: 'coded_bits',
+                                  4: 'decoder_error', 5: 'inactive'}.get(row['reason'], 'unknown')
+            for name, bit in (('first_rx', 16), ('soft_buffer_clear_requested', 17), ('segment_checked', 18),
+                              ('segment_ok', 19), ('global_crc_checked', 20), ('global_crc_ok', 21),
+                              ('zero_pdu_rejected', 22), ('decode_result', 23), ('owner_matches', 24),
+                              ('indication_ack', 25), ('decoder_fields_valid', 29)):
+                row[name] = bool(state & (1 << bit)) if available else None
+            if stage != 1:
+                row['indication_ack'] = None
+            if stage not in (0, 2):
+                row['soft_buffer_clear_requested'] = None
+            if stage != 0:
+                row['zero_pdu_rejected'] = None
+            for flag, checked in (('segment_ok', 'segment_checked'), ('global_crc_ok', 'global_crc_checked')):
+                if not row[checked]:
+                    row[flag] = None
+            decoder_error = row['reason'] == 4
+            counts_valid = row['decoder_fields_valid'] and not decoder_error
+            row['processed_segments'] = (state >> 32) & 0xffff if counts_valid else None
+            row['code_blocks'] = (state >> 48) & 0xffff if counts_valid else None
+            error = (state >> 32) & 0xffffffff
+            row['decoder_error'] = (error - (1 << 32) if error & (1 << 31) else error) if decoder_error else None
+            row['tbs_bits'] = coding & 0xffffff if event['e'] != INT64_MIN else None
+            row['coded_bits'] = (coding >> 24) & 0xffffff if event['e'] != INT64_MIN and stage != 1 else None
+            row['dmrs_symbol_mask'] = (coding >> 48) & 0x3fff if event['e'] != INT64_MIN and stage != 1 else None
+            row['unknown_coding_bits'] = coding >> 62 if event['e'] != INT64_MIN else None
+            row.update(decode_pdsch_geometry(event['f']))
+        else:
+            context = event['f'] & UINT64_MASK
+            owner = context & 0xffffffff
+            row['armed_frame_slot'] = owner if owner != 0xffffffff else None
+            for name, bit in (('gain_present', 32), ('gain_valid', 33), ('level_valid', 34),
+                              ('near_rail', 35), ('finite_gain', 36), ('measurement_valid', 37)):
+                row[name] = bool(context & (1 << bit))
+            row['unknown_context_bits'] = context >> 38
+    elif event['event'] == 118:
+        identity, state, coding = (event[key] & UINT64_MASK for key in 'acd')
+        row.update(rnti=identity & 0xffff if event['a'] != INT64_MIN else None,
+                   pci=(identity >> 16) & 0xffff if event['a'] != INT64_MIN else None,
+                   unknown_identity_bits=identity >> 32 if event['a'] != INT64_MIN else None,
+                   harq_id=state & 31 if event['c'] != INT64_MIN else None,
+                   round=(state >> 5) & 0xff if event['c'] != INT64_MIN else None,
+                   rv=(state >> 13) & 3 if event['c'] != INT64_MIN else None,
+                   ndi=(state >> 15) & 1 if event['c'] != INT64_MIN else None,
+                   unknown_harq_bits=state >> 16 if event['c'] != INT64_MIN else None,
+                   tbs_bits=coding & 0xffffff if event['d'] != INT64_MIN else None,
+                   target_code_rate_raw=(coding >> 24) & 0xffff if event['d'] != INT64_MIN else None,
+                   dmrs_symbol_mask=(coding >> 40) & 0x3fff if event['d'] != INT64_MIN else None,
+                   unknown_coding_bits=coding >> 54 if event['d'] != INT64_MIN else None)
+        row.update(decode_pdsch_geometry(event['e']))
+    elif event['event'] == 119:
+        row['role'] = {0: 'ue', 1: 'gnb'}.get(event['b'], 'unknown')
+        row['bearer_type'] = {0: 'DRB', 1: 'SRB'}.get(event['c'], 'unknown')
+        row['reason_name'] = {1: 'max_retransmissions'}.get(event['f'], 'unknown')
+    elif event['event'] == 115:
         row['channel_name'] = {1: 'PRACH', 2: 'PUSCH', 3: 'PUCCH', 4: 'SRS'}.get(event['a'], 'unknown')
         row['power_unit'] = 'uncalibrated_relative_coordinate'
     elif event['event'] == 112:
@@ -158,6 +241,9 @@ def decode_radio_timing(event):
         103: ('repetitions', 'coherent_wraps'),
         107: ('config_generation',),
         109: ('device_ticks',),
+        116: ('sync_epoch', 'absolute_rx_slot', 'result', 'coding', 'geometry'),
+        117: ('sync_epoch', 'absolute_rx_slot', 'gain_generation', 'rx_gain_millidb'),
+        118: ('identity', 'harq_state', 'coding', 'geometry', 'feedback_frame_slot'),
     }
     for key in nullable.get(event['event'], ()):
         if row[key] == INT64_MIN:
@@ -1147,6 +1233,8 @@ def decode(directory, output):
     result = dict(files=len(paths), events=0, invalid_lines=0, unsupported_schema=0,
                   async_repeat_summaries=0, async_repeated_records=0,
                   footers=[], health=[], retention=[], event_counts={})
+    recorder_observations = {name: {} for name in ('ring_health', 'event_loss', 'writer_health', 'sampling_health')}
+    result['sampling_config'] = []
     # Global sequence ownership proves gaps are retained events from other rings.
     # A duplicate is explicitly ambiguous, even if both copies name the same ring.
     sequence_owners = {}
@@ -1283,6 +1371,42 @@ def decode(directory, output):
                             repeat_writer.writerow(dict(source_file=path.name, source_line=number, **values))
                             result['async_repeat_summaries'] += 1
                             result['async_repeated_records'] += values['repeat_count']
+                        elif kind == 'sampling_config':
+                            if (obj.get('detail_mode') not in ('balanced', 'full')
+                                    or any(type(obj.get(k)) is not int or obj[k] < 0
+                                           for k in ('selection_period', 'warmup_opportunities', 'groups', 'key_mix_version'))):
+                                raise ValueError()
+                            if len(result['sampling_config']) < 64:
+                                result['sampling_config'].append(obj)
+                        elif kind in recorder_observations:
+                            snapshot = obj.get('snapshot_mono_ns')
+                            if type(snapshot) is not int or (snapshot < 0 and snapshot != INT64_MIN):
+                                raise ValueError()
+                            ring = obj.get('ring')
+                            if kind != 'writer_health' and (type(ring) is not int or not 0 <= ring < 64):
+                                raise ValueError()
+                            key = (ring,)
+                            if kind == 'sampling_health':
+                                group = obj.get('group')
+                                if (type(group) is not int or not 1 <= group <= 32
+                                        or obj.get('detail_mode') not in ('balanced', 'full')
+                                        or any(type(obj.get(k)) is not int or obj[k] < 0
+                                               for k in ('evaluated', 'retained', 'reduced', 'selection_period'))
+                                        or obj['evaluated'] != obj['retained'] + obj['reduced']):
+                                    raise ValueError()
+                                key = (ring, group)
+                            elif kind == 'event_loss':
+                                event = obj.get('event')
+                                if (type(event) is not int or event not in range(256) and event != 0xffffffff
+                                        or any(type(obj.get(k)) is not int or obj[k] < 0
+                                               for k in ('dropped_reserved', 'dropped_capacity'))):
+                                    raise ValueError()
+                                key = (ring, event)
+                            # These are cumulative snapshots, never additional
+                            # losses to sum into the authoritative process footer.
+                            old = recorder_observations[kind].get(key)
+                            if old is None or snapshot >= old['snapshot_mono_ns']:
+                                recorder_observations[kind][key] = obj
                         elif kind in ('capture_footer', 'health', 'capture_health', 'file_begin'):
                             if kind == 'capture_footer':
                                 required = ('clean', 'writer_errors', 'dropped_ring_full', 'dropped_no_slot',
@@ -1343,6 +1467,7 @@ def decode(directory, output):
     _write_csv(output / 'radio_timing.csv', timing_fields, timing_records)
     result['radio_timing_records'] = len(timing_records)
     result['clean_footer_observed'] = len(result['footers']) == 1
+    result['recorder_observations'] = {kind: list(rows.values()) for kind, rows in recorder_observations.items()}
     result['ordering'] = 'file order only; compare per-boot monotonic times, never assume continuous UTC'
     (output / 'summary.json').write_text(json.dumps(result, indent=2) + '\n')
     return result

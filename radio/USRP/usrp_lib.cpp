@@ -362,6 +362,11 @@ static void usrp_flight_record_tx_send(const usrp_state_t *state,
                                        int samples,
                                        int channels)
 {
+  if (!flight_recorder_sample(
+          FLIGHT_SAMPLE_TX_SEND,
+          timestamp,
+          timestamp < 0 || samples <= 0 || !state->tx_md.has_time_spec || state->tx_md.start_of_burst || state->tx_md.end_of_burst))
+    return;
   const int metadata =
       (state->tx_md.has_time_spec ? 1 : 0) | (state->tx_md.start_of_burst ? 2 : 0) | (state->tx_md.end_of_burst ? 4 : 0);
   flight_recorder_emit(FLIGHT_EVENT_RADIO_TX_SEND, state->flight_device_type, sequence, timestamp, samples, metadata, channels);
@@ -374,6 +379,8 @@ static void usrp_flight_record_tx_result(const usrp_state_t *state,
                                          int64_t accepted,
                                          int outcome)
 {
+  if (!flight_recorder_sample(FLIGHT_SAMPLE_TX_RESULT, timestamp, outcome != 0 || accepted != samples || samples <= 0))
+    return;
   flight_recorder_emit(FLIGHT_EVENT_RADIO_TX_RESULT, state->flight_device_type, sequence, timestamp, samples, accepted, outcome);
 }
 
@@ -906,7 +913,10 @@ static int trx_usrp_write(openair0_device_t *device,
   usrp_state_t *s = (usrp_state_t *)device->priv;
   const openair0_timestamp_t raw_timestamp = timestamp;
   timestamp -= device->openair0_cfg->command_line_sample_advance + device->openair0_cfg->tx_sample_advance;
-  if (flight_recorder_enabled())
+  if (flight_recorder_enabled()
+      && flight_recorder_sample(FLIGHT_SAMPLE_TX_SUBMIT,
+                                timestamp,
+                                flags != TX_BURST_MIDDLE || timestamp < 0 || raw_timestamp < 0 || nsamps <= 0))
     flight_recorder_emit(FLIGHT_EVENT_RADIO_TX_SUBMIT,
                          device->type,
                          raw_timestamp,
@@ -1002,7 +1012,10 @@ static int trx_usrp_write(openair0_device_t *device,
         write_package[end].buff[i] = buff[i];
       write_thread->count_write++;
       write_thread->end = (write_thread->end + 1) % MAX_WRITE_THREAD_PACKAGE;
-      if (flight_recorder_enabled())
+      if (flight_recorder_enabled()
+          && flight_recorder_sample(FLIGHT_SAMPLE_TX_QUEUE,
+                                    timestamp,
+                                    write_thread->count_write > 1 || nsamps <= 0 || timestamp < 0))
         flight_recorder_emit(FLIGHT_EVENT_RADIO_TX_QUEUE, device->type, timestamp, nsamps, write_thread->count_write, 1, 0);
       if (s->radio_health != NULL) {
         const uint64_t depth = (uint64_t)write_thread->count_write;
@@ -1064,7 +1077,8 @@ void *trx_usrp_write_thread(void * arg)
     last_packet  = write_package[start].last_packet;
     write_thread->start = (write_thread->start + 1)% MAX_WRITE_THREAD_PACKAGE;
     write_thread->count_write--;
-    if (flight_recorder_enabled())
+    if (flight_recorder_enabled()
+        && flight_recorder_sample(FLIGHT_SAMPLE_TX_QUEUE, timestamp, write_thread->count_write > 1 || nsamps <= 0 || timestamp < 0))
       flight_recorder_emit(FLIGHT_EVENT_RADIO_TX_QUEUE, device->type, timestamp, nsamps, write_thread->count_write, 2, 0);
     if (s->radio_health != NULL) {
       radio_health_counter_add(s->radio_health, RADIO_HEALTH_METRIC_TX_QUEUE_DEQUEUES, 1);
