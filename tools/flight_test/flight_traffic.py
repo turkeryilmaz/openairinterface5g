@@ -146,6 +146,7 @@ INTERVAL_RE = re.compile(r"(?P<start>\d+(?:\.\d+)?)\s*-\s*(?P<end>\d+(?:\.\d+)?)
 UDP_RECEIVER_RE = re.compile(r"(?P<jitter>\d+(?:\.\d+)?)\s+ms\s+"
                              r"(?P<lost>\d+)\s*/\s*(?P<total>\d+)\s+\((?P<loss>\d+(?:\.\d+)?)%\)")
 STREAM_TAG_RE = re.compile(r"\[(?P<tag>(?:TX|RX)-(?:C|S))\]")
+STREAM_ID_RE = re.compile(r"^\[\s*(\d+)\]")
 
 
 def interval_evidence(text: str, role: Optional[str] = None,
@@ -156,6 +157,7 @@ def interval_evidence(text: str, role: Optional[str] = None,
     summary = re.search(r"\b(sender|receiver)\s*$", text)
     tag_match = STREAM_TAG_RE.search(text)
     tag = tag_match["tag"] if tag_match else None
+    stream = STREAM_ID_RE.match(text)
     udp = UDP_RECEIVER_RE.search(text, match.end())
     reporter = summary[1] if summary else ("receiver" if tag and tag.startswith("RX") else
                                           "sender" if tag else "receiver" if udp else
@@ -182,6 +184,7 @@ def interval_evidence(text: str, role: Optional[str] = None,
               "bytes": float(match["bytes"]) * 1024 ** (" KMGT".index(match["byte_unit"] or " ")),
               "bits_per_second": float(match["rate"]) * 1000 ** (" KMGT".index(match["rate_unit"] or " ")),
               "reporter": reporter, "reporter_endpoint": endpoint, "direction": direction, "stream_tag": tag,
+              "stream_id": int(stream[1]) if stream else None,
               "report_type": "summary" if summary else "interval",
               "receiver_report_available": receiver_available,
               "jitter_ms": float(udp["jitter"]) if udp else None,
@@ -199,11 +202,14 @@ class TrafficSupervisor:
 
     def __init__(self, settings: TrafficSettings, writer: Any,
                  address_reader: Callable[[str, str], Optional[str]] = tunnel_address,
-                 human_writer: Any = None) -> None:
+                 human_writer: Any = None,
+                 event_observer: Optional[Callable[[dict[str, Any]], None]] = None) -> None:
         self.settings = settings
         self.writer = writer
         self.address_reader = address_reader
         self.human_writer = human_writer
+        self.event_observer = event_observer
+        self.connection_index = 0
         self.human_last: dict[str, float] = {}
         self.last_interval = 0.0
         self.server_output = False
@@ -230,9 +236,11 @@ class TrafficSupervisor:
         self.failed_segments = 0
 
     def _event(self, kind: str, **fields: Any) -> None:
-        self.writer.write(json.dumps({"schema_version": 1, "kind": kind, "clock": clock_sample(),
-                                     "generation": self.generation, **fields}, sort_keys=True,
-                                    separators=(",", ":")).encode("utf-8") + b"\n")
+        event = {"schema_version": 1, "kind": kind, "clock": clock_sample(),
+                 "generation": self.generation, "connection_index": self.connection_index, **fields}
+        self.writer.write(json.dumps(event, sort_keys=True, separators=(",", ":")).encode("utf-8") + b"\n")
+        if self.event_observer is not None:
+            self.event_observer(event)
 
     def _gap(self, reason: str) -> None:
         if self.last_gap != reason:
@@ -285,6 +293,7 @@ class TrafficSupervisor:
     def _launch(self, now: float) -> None:
         command = self._command()
         self.generation += 1
+        self.connection_index = 0
         self._event("traffic_generation_started", role=self.settings.role, command=command,
                     tunnel_ip=self.address, previous_gap=self.last_gap)
         try:
@@ -329,8 +338,13 @@ class TrafficSupervisor:
         text = raw.decode("utf-8", "replace")
         if stream == "stdout" and text.startswith("Server output:"):
             self.server_output = True
-        if stream == "stdout" and text.startswith("Accepted connection from"):
+        if stream == "stdout" and not partial and not self.server_output and (
+                (self.settings.role == "gnb" and text.startswith("Accepted connection from ")) or
+                (self.settings.role == "ue" and self.connection_index == 0
+                 and re.match(r"^\[\s*\d+\]\s+local .+ connected to ", text))):
+            self.connection_index += 1
             self.session_direction = None
+            self._event("traffic_connection_started")
         role = ("gnb" if self.settings.role == "ue" else "ue") if self.server_output else self.settings.role
         interval = interval_evidence(text, role, self.session_direction) if not partial else None
         if interval is not None:

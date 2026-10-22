@@ -41,7 +41,7 @@ from flight_health import (
 from flight_recovery import Decision, NativeChannel, RecoveryPolicy
 from radio_health import RadioHealthDiagnostics
 from flight_traffic import TrafficError, TrafficSupervisor, parse_bitrate, validate_settings
-from summary import summarize_run
+from summary import SessionSummary, render_summary, summarize_run
 
 
 SCHEMA_VERSION = 1
@@ -582,6 +582,12 @@ def write_json(path: Path, value: dict[str, Any], health: Optional[CaptureHealth
     """Atomically replace private metadata without truncating a substituted link."""
 
     content = json.dumps(value, sort_keys=True, separators=(",", ":")).encode("utf-8") + b"\n"
+    return _write_private_metadata(path, content, health)
+
+
+def _write_private_metadata(path: Path, content: bytes, health: Optional[CaptureHealth] = None) -> bool:
+    """Use the same bounded atomic private-file path for JSON and readable summaries."""
+
     if len(content) > 512 * 1024:
         raise CaptureError("metadata exceeds 512 KiB bound")
     directory_fd = None
@@ -1128,6 +1134,7 @@ class FlightCapture:
         stop_latch: Optional[StopLatch] = None,
         recovery_enabled: bool = False,
         launch_observer: Optional[Callable[[int], None]] = None,
+        session_summary: Optional[SessionSummary] = None,
     ) -> None:
         self.args = args
         self.command = command
@@ -1148,6 +1155,10 @@ class FlightCapture:
         self.stop_latch = stop_latch
         self.recovery_enabled = recovery_enabled
         self.launch_observer = launch_observer
+        self.summary = SessionSummary(time.monotonic_ns())
+        self.summary.begin_attempt()
+        self.summary_observers = (self.summary, session_summary) if session_summary is not None else (self.summary,)
+        self.session_summary = session_summary
         self.policy_decision: Optional[Decision] = None
         self._last_policy_decision: Optional[tuple[str, str, int]] = None
         self.last_result: Optional[CaptureResult] = None
@@ -1222,7 +1233,8 @@ class FlightCapture:
             traffic_writer = BoundedRotatingWriter(run_dir, "traffic", host_quota,
                                                    min(self.args.chunk_bytes, 4 * MIB), self.health)
             self.traffic_writer = traffic_writer
-            self.traffic = TrafficSupervisor(self.args.traffic_settings, traffic_writer, human_writer=stdout_writer)
+            self.traffic = TrafficSupervisor(self.args.traffic_settings, traffic_writer, human_writer=stdout_writer,
+                                             event_observer=self._observe_traffic_summary)
         if self.args.console:
             self.console = ConsoleMirror()
             stdout_writer.console = self.console
@@ -1452,6 +1464,8 @@ class FlightCapture:
 
         self.process = process
         self.process_start_ticks = self._process_start_ticks(process.pid)
+        for observer in self.summary_observers:
+            observer.worker_started()
         if self.launch_observer is not None:
             try:
                 self.launch_observer(process.pid)
@@ -1676,6 +1690,10 @@ class FlightCapture:
         payload.update(fields)
         writer.write(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8") + b"\n")
 
+    def _observe_traffic_summary(self, event: dict[str, Any]) -> None:
+        for observer in self.summary_observers:
+            observer.observe_traffic(event)
+
     def _write_radio_health_event(self, event: dict[str, Any]) -> None:
         """Write one observer-only diagnostic event to the bounded JSONL stream."""
 
@@ -1713,6 +1731,9 @@ class FlightCapture:
                       writer: BoundedRotatingWriter, *, allow_actions: bool = True) -> None:
         samples = channel.receive(pid)
         for sample in samples:
+            receipt_ns = time.monotonic_ns()
+            for observer in self.summary_observers:
+                observer.observe_native(sample, receipt_ns)
             self._write_recovery_event(
                 writer,
                 "native_progress_snapshot",
@@ -1883,6 +1904,7 @@ class FlightCapture:
                 self.health.unhealthy("traffic_owned_group_cleanup_failed")
         if self.console is not None:
             self.console.close()
+            stdout_writer.console = None
         revision = extra.get("stdout_sanitizer", {}).get("reported_oai_revision")
         head = getattr(self, "source_identity", {}).get("head")
         status = {
@@ -1932,8 +1954,43 @@ class FlightCapture:
             },
             "extra": extra,
         }
+        summary = summarize_run(self.run_dir, live=self.summary, final_status=status,
+                                recorder_enabled=not self.args.disable_recorder)
+        for observer in self.summary_observers:
+            observer.finish_attempt(summary["capture"])
+        integrity = summary["capture"]["native_integrity"]
+        if integrity in ("degraded", "incomplete"):
+            self.health.unhealthy("native_capture_" + integrity)
+        status["capture"] = self.health.snapshot()
+        status["native_capture"] = {name: summary["capture"][name] for name in
+                                    ("native_integrity", "native_integrity_reasons", "clean_footer_observed", "footer_losses")}
+        summary["session"] = self.summary.snapshot(time.monotonic_ns())
+        text = render_summary(summary["session"])
+        if self.session_summary is not None:
+            text = text.replace("Flight session summary", "Flight attempt summary", 1)
+        payload = ("\n" + "".join("[FLIGHT SUMMARY] " + line + "\n" for line in text.splitlines())).encode("utf-8")
+        quota = stdout_writer.quota.snapshot()
+        enough_quota = quota["limit_bytes"] == 0 or quota["limit_bytes"] - quota["used_bytes"] >= len(payload)
+        previous_drops = stdout_writer.snapshot()["dropped_bytes"]
+        stdout_summary_written = stdout_writer.write(payload) if enough_quota and not stdout_writer.disabled else False
+        additional_drops = stdout_writer.snapshot()["dropped_bytes"] - previous_drops
+        for observer in self.summary_observers:
+            observer.writer_dropped_bytes += additional_drops
+        status["capture"] = self.health.snapshot()
+        status["writers"]["stdout"] = stdout_writer.snapshot()
+        status["quotas"]["stdout_and_stderr"] = stdout_writer.quota.snapshot()
+        summary["capture"]["reported_capture"] = status["capture"]
+        summary["capture"]["writer_dropped_bytes"]["stdout"] = status["writers"]["stdout"]["dropped_bytes"]
+        summary["summary_output"] = {"stdout_written": stdout_summary_written,
+                                     "scope": "capture-generated attempt summary; whole-session summary stays at session root"}
+        summary["session"] = self.summary.snapshot(time.monotonic_ns())
+        if additional_drops:
+            text = render_summary(summary["session"])
         write_json(self.run_dir / "status.json", status, self.health)
-        write_json(self.run_dir / "summary.json", summarize_run(self.run_dir), self.health)
+        write_json(self.run_dir / "summary.json", summary, self.health)
+        _write_private_metadata(self.run_dir / "summary.txt", text.encode("utf-8"), self.health)
+        if self.session_summary is None:
+            print(text, file=sys.stderr, end="", flush=True)
         health_state = self.health.snapshot()
         result = f"flight capture run={self.run_dir} state={state} exit={exit_code}"
         if not health_state["healthy"]:
@@ -1963,6 +2020,7 @@ class RecoverySession:
         self.final_state = "starting"
         self.final_exit_code: Optional[int] = None
         self.group_fence_state: Optional[str] = None
+        self.summary = SessionSummary(time.monotonic_ns())
 
     def _write(self, kind: str, **fields: Any) -> None:
         if self.journal is None or self.session_dir is None:
@@ -1996,6 +2054,7 @@ class RecoverySession:
             "policy": self.policy.snapshot(),
             "journal": self.journal.snapshot() if self.journal is not None else None,
             "capture": self.health.snapshot(),
+            "session_capture_integrity": self.summary.snapshot(time.monotonic_ns())["capture"],
         }
         write_json(self.session_dir / "status.json", status, self.health)
 
@@ -2240,6 +2299,7 @@ class RecoverySession:
 
                 actual_launch_ns = time.monotonic_ns()
                 self.attempt_count += 1
+                self.summary.begin_attempt()
                 ordinal = self.attempt_count
                 attempt_dir = self._attempt_dir(session_dir, ordinal)
                 private_directory(attempt_dir)
@@ -2268,6 +2328,7 @@ class RecoverySession:
                     stop_latch=self.latch,
                     recovery_enabled=True,
                     launch_observer=lambda pid, value=ordinal: self._worker_started(value, pid),
+                    session_summary=self.summary,
                 )
                 active_capture.run()
                 result = active_capture.last_result
@@ -2330,6 +2391,15 @@ class RecoverySession:
             if self.final_exit_code is None:
                 self.final_state = "session_error"
                 self.final_exit_code = 125
+            summary = self.summary.snapshot(time.monotonic_ns())
+            summary.update({"session_id": session_dir.name, "state": self.final_state,
+                            "exit_code": self.final_exit_code, "operator_stop_signal": self.latch.signal_number})
+            if summary["capture"]["integrity"] in ("degraded", "incomplete"):
+                self.health.unhealthy("session_capture_" + summary["capture"]["integrity"])
+            write_json(session_dir / "summary.json", summary, self.health)
+            text = render_summary(summary)
+            _write_private_metadata(session_dir / "summary.txt", text.encode("utf-8"), self.health)
+            print(text, file=sys.stderr, end="", flush=True)
             self._write_status()
             if self.journal is not None:
                 self.journal.close()
