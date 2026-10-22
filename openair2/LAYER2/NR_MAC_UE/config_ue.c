@@ -2120,7 +2120,7 @@ void nr_rrc_mac_start_ra(module_id_t module_id, nr_mac_ra_start_cause_t cause)
   AssertFatal(!ret, "mutex failed %d\n", ret);
 }
 
-static void advance_ul_pusch_config_generation(NR_UE_MAC_INST_t *mac)
+void advance_ul_pusch_config_generation(NR_UE_MAC_INST_t *mac)
 {
   // All callers hold if_mutex, which also serializes grant construction and target-slot scheduling.
   if (++mac->ul_pusch_config_generation == 0)

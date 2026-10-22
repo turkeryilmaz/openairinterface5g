@@ -63,6 +63,8 @@ TIMING_LAYOUTS = {
     112: ('UE_TA_APPLIED', ('ue', 'frame_slot', 'command_flags', 'before_samples', 'after_samples', 'samples_per_subframe')),
     113: ('RADIO_RX_PHASE', ('stage', 'phase', 'previous_phase', 'phase_start_ns', 'previous_pending', 'result_outstanding')),
     114: ('UE_TX_BARRIER_STOP', ('ue', 'frame', 'slot', 'barrier_capacity', 'radio_index', 'reserved')),
+    115: ('UE_TX_RELATIVE_TRANSLATION', ('channel', 'raw_request', 'reference_correction_db', 'translated_request',
+                                      'minimum_coordinate', 'maximum_coordinate')),
 }
 NAMES.update({number: layout[0] for number, layout in TIMING_LAYOUTS.items()})
 
@@ -75,7 +77,10 @@ def decode_radio_timing(event):
     row['name'] = layout[0]
     row.update(zip(layout[1], (event[key] for key in 'abcdef')))
     # Preserve packed values alongside their interpretations and unknown bits.
-    if event['event'] == 112:
+    if event['event'] == 115:
+        row['channel_name'] = {1: 'PRACH', 2: 'PUSCH', 3: 'PUCCH', 4: 'SRS'}.get(event['a'], 'unknown')
+        row['power_unit'] = 'uncalibrated_relative_coordinate'
+    elif event['event'] == 112:
         flags = event['c'] & UINT64_MASK
         row['ta_command'] = flags & 0xffff
         row['command_type'] = 'rar' if flags & (1 << 16) else 'relative_mac_ce'

@@ -548,9 +548,22 @@ retry increments must not all disappear into that floor. Each subsequent PRACH
 therefore selects `first_selected + (current_raw_request - first_raw_request)`,
 bounded by the live effective limits. This preserves protocol ramp and measured
 pathloss changes without treating an uncalibrated absolute request as RF power.
-The procedure-local starting point resets at RA initialization/reset; it does not
-move the radio attachment's fixed translation or alter ordinary PUSCH/PUCCH/SRS
-mapping. Events107/108 expose the raw inputs, selected coordinate and saturation.
+The correction `first_selected - first_raw_request` also shifts the open-loop
+base of Msg3/PUSCH, PUCCH and SRS, before their ramp-headroom and TPC limit
+decisions. It is separate from the accumulated TPC state and is applied once,
+including when SRS shares the PUSCH adjustment state. For example, PRACH raw
+`-87` selecting `-40` establishes a correction of `+47`. A subsequent PUSCH raw
+request of `-77` then requests `-30`, instead of falling back to the `-40` floor.
+PHR uses this translated, unclamped demand and the same effective ceiling.
+
+The procedure-local starting point survives successful RA and ordinary power
+configuration updates. It resets at RA initialization/reset; relative UL power
+selection is unavailable until PRACH establishes the next reference. Publishing
+a new reference advances the existing deferred-PUSCH configuration generation,
+so a queued older grant cannot be reinterpreted under the new reference. This
+does not move the radio attachment's fixed translation or change hardware gain.
+Events 107/108 expose PRACH inputs and saturation; event 115 records the raw
+channel request, correction, translated request and live bounds.
 This is an experimental relative-power policy; the calibrated absolute mode is
 unchanged and physical attachment/false-detection qualification remains required.
 

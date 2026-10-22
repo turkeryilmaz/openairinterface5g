@@ -724,3 +724,24 @@ counters remain independent. The decoder writes `radio_tx_async_repeats.csv` and
 reports `async_repeated_records` separately from raw `event_counts`; add that
 count to raw RADIO_TX_ASYNC records when counting retained async observations.
 Do not infer each suppressed event's exact sequence or timestamp from endpoints.
+
+### UE relative uplink reference translation (115)
+
+`UE_TX_RELATIVE_TRANSLATION` records each relative-mode PRACH, PUSCH, PUCCH or SRS
+power selection using the existing per-RA PRACH reference. The six fields are:
+
+| Field | Meaning |
+| --- | --- |
+| `a` | Channel: 1 PRACH, 2 PUSCH, 3 PUCCH, 4 SRS |
+| `b` | Raw channel request, including its current power adjustment state |
+| `c` | Reference correction: first selected PRACH coordinate minus first raw request |
+| `d` | Translated, unclamped request (`b + c`) used for selection and PUSCH PHR |
+| `e` | Current effective lower bound |
+| `f` | Current effective upper bound |
+
+The correction is a dB difference. Requests and bounds are uncalibrated relative
+coordinates, not measured connector dBm. Event 62 retains the selected value
+(its PRACH request field remains raw for compatibility; use 115 for translation);
+58/59/63 retain the actual digital mapping and quality results. Correlate within
+one process attempt and producer sequence, retaining recorder-loss indicators.
+This event does not establish successful RF delivery or a hardware gain change.
