@@ -29,6 +29,25 @@ class TrafficError(RuntimeError):
     pass
 
 
+def parse_bitrate(value: str) -> int:
+    """Decimal bit/s, optionally K/M/G or Kbps/Mbps/Gbps; never byte rates."""
+    message = "rate must be 1..1000000000000 bit/s, e.g. 500K, 1.1M, 1.1Mbps or 1100000"
+    if len(value) > 64:
+        raise ValueError(message)
+    match = re.fullmatch(r"([0-9]+)(?:\.([0-9]+))?([kKmMgG]?)(?:bps)?", value.strip())
+    if match is None:
+        raise ValueError(message)
+    whole, fraction, unit = match.groups()
+    fraction = fraction or ""
+    # Integer arithmetic preserves fractional input exactly, without silently
+    # rounding a nonintegral bit/s rate or interpreting M as a binary multiple.
+    scale = 1000 ** {"": 0, "K": 1, "M": 2, "G": 3}[unit.upper()]
+    rate, remainder = divmod(int(whole + fraction) * scale, 10 ** len(fraction))
+    if remainder or not 1 <= rate <= 10**12:
+        raise ValueError(message)
+    return rate
+
+
 @dataclass(frozen=True)
 class TrafficSettings:
     role: str
