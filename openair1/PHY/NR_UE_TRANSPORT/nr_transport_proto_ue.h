@@ -92,6 +92,8 @@ typedef struct {
   bool decoder_fields_valid;
   bool indication_ack;
   int decoder_error;
+  const int16_t *llr;
+  int llr_count;
 } nr_ue_pdsch_diagnostic_t;
 
 /* Numeric flight evidence only; this does not change the HARQ or indication. */

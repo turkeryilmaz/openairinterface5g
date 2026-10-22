@@ -874,3 +874,56 @@ All are the producer's raw configuration values. The UE receives a post-mapping
 allocation while the gNB records its grant; compare allocation type and mapping
 before interpreting differing RB fields. These fields alone cannot establish
 the cause of a failed transport block.
+
+### Selected PDSCH PHY inputs (120-121)
+
+Event120 accompanies selected UE116/117 records when a PHY configuration is
+available; it is absent at RX indication. Event121 accompanies selected gNB118
+grants. They add no independent selection, PHY decision or sample scan. They
+retain the actual work-item scalar inputs, not reconstructed RRC defaults.
+Individual queue admission remains separate: shared selection does not guarantee
+all records survive overflow. Check loss and identity before joining.
+
+For120, a/b/c are the same identity/epoch/extended RX slot as116. For121,
+a/b/c are the same identity/frame-slot/HARQ state as118. In both records:
+
+- d packs data scrambling ID in0..15, DMRS scrambling ID in16..31, DMRS port
+  bitmap in32..47, nSCID in48..55 and reference point in56..63. An invalid
+  nSCID/reference-point value makes this word unavailable (`INT64_MIN`).
+- e packs CDM-group count in0..7, raw VRB mapping in8..15, PDU bitmap in16..31
+  and CSI-RS rate-match count in32..39. The gNB PDU has no such CSI count;
+  255 means unavailable. PDU bitmap bit0 identifies PTRS presence. UE mapping
+  is its enum value, while gNB mapping uses the FAPI encoding; compare their
+  meanings before interpreting nonzero values. Invalid UE enum width yields
+  an unavailable word.
+- f packs the raw TBSLBRM value passed to the coding implementation in0..31
+  and raw target code rate in32..47. Remaining bits of e/f are reserved.
+
+These inputs supplement the DMRS positions/type and allocation already in116/118.
+They do not prove that a scheduled gNB PDU was transmitted, independently verify
+soft-buffer clearing, or measure PDSCH signal quality.
+
+### Selected decoder-input LLR samples (122)
+
+Event122 accompanies selected stage0 UE116 decode results when the descrambled
+LLR input buffer is available. It is read after the LDPC backend returns, before
+the owning work item releases the buffer. The current segment backend reads
+that buffer without modifying it. Other backends must be checked before assuming
+the recorded values equal their input. No LLRs or radio decisions are changed.
+
+The first three words identify the same UE/codeword/stage, synchronization epoch
+and extended RX slot as116. With G input values and N=min(G,64), the sampler reads
+indices floor((2i+1)G/(2N)) for i=0..N-1. This bounded sample is not a complete
+codeword distribution and can miss localized or periodic faults.
+
+- d packs N in0..15, zero count in16..31, magnitude<=1 count in32..47, and
+  signed16-bit rail count (-32768 or32767) in48..63. Zero is included in the
+  magnitude<=1 count.
+- e is the sum of absolute sampled magnitudes, evaluated in32bits.
+- f packs signed16-bit minimum in0..15 and maximum in16..31; upper bits reserved.
+
+The decoder reports mean absolute magnitude only for valid counts. Missing122
+does not mean zero LLRs: selection, unavailable stage/input and recorder loss
+must be distinguished. These are integer decoder units, not calibrated power,
+SNR, EVM or a proof of correct LLR signs. The sample is collected only after the
+existing116 selection, with no additional sampling state or dynamic allocation.

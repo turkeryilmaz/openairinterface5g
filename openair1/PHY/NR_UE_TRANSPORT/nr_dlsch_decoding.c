@@ -49,6 +49,34 @@ static int64_t flight_ue_pdsch_coding(const fapi_nr_dl_cw_info_t *cw, const fapi
   return (uint64_t)cw->TBS | ((uint64_t)G << 24) | ((uint64_t)config->dlDmrsSymbPos << 48);
 }
 
+/* The decoder's input stays owned by this work item until it returns. Sample
+ * at most 64 bin midpoints: fixed work, without copying the codeword or claiming
+ * a complete distribution. Call only after the existing evidence selection. */
+static void flight_ue_pdsch_llr(int64_t identity, int64_t epoch, int64_t rx_slot, const int16_t *llr, int count)
+{
+  if (!llr || count <= 0)
+    return;
+  const unsigned int n = count < 64 ? count : 64;
+  uint32_t zeros = 0, units = 0, rails = 0, sum_abs = 0;
+  int32_t minimum = INT16_MAX, maximum = INT16_MIN;
+  for (unsigned int i = 0; i < n; ++i) {
+    const uint64_t index = ((UINT64_C(2) * i + 1) * (unsigned int)count) / (2 * n);
+    const int32_t value = llr[index];
+    const uint32_t magnitude = value < 0 ? -value : value;
+    zeros += value == 0;
+    units += magnitude <= 1;
+    rails += value == INT16_MIN || value == INT16_MAX;
+    sum_abs += magnitude;
+    if (value < minimum)
+      minimum = value;
+    if (value > maximum)
+      maximum = value;
+  }
+  const uint64_t counts = n | ((uint64_t)zeros << 16) | ((uint64_t)units << 32) | ((uint64_t)rails << 48);
+  const uint64_t extrema = (uint16_t)minimum | ((uint64_t)(uint16_t)maximum << 16);
+  flight_recorder_emit(FLIGHT_EVENT_UE_PDSCH_LLR, identity, epoch, rx_slot, counts, sum_abs, extrema);
+}
+
 void nr_ue_record_pdsch_result(const PHY_VARS_NR_UE *ue,
                                const UE_nr_rxtx_proc_t *proc,
                                const NR_UE_DLSCH_t *dlsch,
@@ -116,6 +144,23 @@ void nr_ue_record_pdsch_result(const PHY_VARS_NR_UE *ue,
                          | ((uint64_t)(context->near_rail_components != 0) << 3) | ((uint64_t)finite_gain << 4)
                          | ((uint64_t)radio_gain_sample_measurement_valid(context) << 5);
   flight_recorder_emit(FLIGHT_EVENT_UE_PDSCH_RX_CONTEXT, identity, epoch, rx_slot, generation, gain, owner | (flags << 32));
+  if (config) {
+    /* Capture the work item's actual PHY inputs under the result's selection;
+     * intended RRC defaults cannot establish what this decoder consumed. */
+    const int64_t sequences = config->nscid <= 1 && config->refPoint <= 1
+                                  ? (uint64_t)config->dlDataScramblingId | ((uint64_t)config->dlDmrsScramblingId << 16)
+                                        | ((uint64_t)config->dmrs_ports << 32) | ((uint64_t)config->nscid << 48)
+                                        | ((uint64_t)config->refPoint << 56)
+                                  : INT64_MIN;
+    const int64_t mapping = (unsigned int)config->vrb_to_prb_mapping <= UINT8_MAX
+                                ? (uint64_t)config->n_dmrs_cdm_groups | ((uint64_t)config->vrb_to_prb_mapping << 8)
+                                      | ((uint64_t)config->pduBitmap << 16) | ((uint64_t)config->numCsiRsForRateMatching << 32)
+                                : INT64_MIN;
+    const int64_t limits = (uint64_t)config->tbslbrm | ((uint64_t)dlsch->cw_info.targetCodeRate << 32);
+    flight_recorder_emit(FLIGHT_EVENT_UE_PDSCH_INPUT, identity, epoch, rx_slot, sequences, mapping, limits);
+  }
+  if (diagnostic->stage == NR_PDSCH_DIAG_DECODE)
+    flight_ue_pdsch_llr(identity, epoch, rx_slot, diagnostic->llr, diagnostic->llr_count);
 }
 
 static extended_kpi_ue kpiStructure = {0};
@@ -165,7 +210,9 @@ void nr_dlsch_decoding(PHY_VARS_NR_UE *phy_vars_ue,
   NR_DL_UE_HARQ_t *harq_process = &phy_vars_ue->dl_harq_processes[cw_idx][dlsch_config->harq_process_nbr];
   nr_ue_pdsch_diagnostic_t diagnostic = {.stage = NR_PDSCH_DIAG_DECODE,
                                          .round = harq_process->DLround,
-                                         .first_rx = harq_process->first_rx == 1};
+                                         .first_rx = harq_process->first_rx == 1,
+                                         .llr = dlsch_llr,
+                                         .llr_count = G};
   if (harq_process->activated_frame != proc->frame_rx || harq_process->activated_slot != proc->nr_slot_rx) {
     diagnostic.stage = NR_PDSCH_DIAG_EARLY_RETURN;
     diagnostic.reason = NR_PDSCH_DIAG_LATE_OWNER;
