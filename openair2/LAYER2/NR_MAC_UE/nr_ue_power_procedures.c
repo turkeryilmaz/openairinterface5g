@@ -620,7 +620,10 @@ static int get_pusch_tx_power_ue_core(NR_UE_MAC_INST_t *mac,
     if (current_UL_BWP->msg3_DeltaPreamble) {
       DELTA_PREAMBLE_MSG3 = *current_UL_BWP->msg3_DeltaPreamble;
     }
-    int P_O_PRE = mac->ra.prach_resources.ra_preamble_rx_target_power;
+    // Msg3's configured P0 excludes DELTA_PREAMBLE and the ramp added to f below (TS 38.213, 7.1.1).
+    // Preserve the existing Type-2 non-RAR path, which also serves MsgA.
+    const int P_O_PRE = mac->ra.ra_type == RA_2_STEP && !is_rar_tx_retx ? mac->ra.prach_resources.ra_preamble_rx_target_power
+                                                                        : mac->ra.preambleReceivedTargetPower_config;
     if (relative_tx && ((int64_t)P_O_PRE + DELTA_PREAMBLE_MSG3 < INT_MIN || (int64_t)P_O_PRE + DELTA_PREAMBLE_MSG3 > INT_MAX))
       return INT_MIN;
     P_O_NOMINAL_PUSCH = P_O_PRE + DELTA_PREAMBLE_MSG3;
