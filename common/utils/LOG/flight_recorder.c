@@ -31,6 +31,14 @@
 #define FLIGHT_RECORDER_SLEEP_NS 1000000L
 #define FLIGHT_RECORDER_TIMESTAMP_UNAVAILABLE INT64_MIN
 #define FLIGHT_RECORDER_ASYNC_REPEAT_NS INT64_C(100000000)
+#define FLIGHT_RECORDER_BATCH_BYTES (64U * 1024U)
+#define FLIGHT_RECORDER_RING_QUANTUM 64U
+#define FLIGHT_RECORDER_CRITICAL_RESERVE 128U
+#define FLIGHT_RECORDER_EVENT_BINS 256U
+#define FLIGHT_RECORDER_SAMPLE_GROUPS 32U
+#define FLIGHT_RECORDER_SAMPLE_PERIOD 64U
+#define FLIGHT_RECORDER_SAMPLE_WARMUP 8U
+#define FLIGHT_RECORDER_POWER_GROUPS 3U
 
 #if defined(FLIGHT_RECORDER_FORCE_INERT_TEST)
 #define FLIGHT_RECORDER_LOCKFREE_ARCH 0
@@ -47,6 +55,9 @@ _Static_assert(ATOMIC_LLONG_LOCK_FREE == 2, "flight recorder 64-bit atomics must
 
 _Static_assert((FLIGHT_RECORDER_RING_RECORDS & (FLIGHT_RECORDER_RING_RECORDS - 1U)) == 0,
                "flight recorder ring capacity must be a power of two");
+_Static_assert(FLIGHT_RECORDER_CRITICAL_RESERVE < FLIGHT_RECORDER_RING_RECORDS, "critical reserve must leave bulk capacity");
+_Static_assert(FLIGHT_SAMPLE_UE_TX_RELATIVE_POWER - FLIGHT_SAMPLE_UE_TX_POWER_REQUEST + 1 == FLIGHT_RECORDER_POWER_GROUPS,
+               "power sampling groups must occupy the fixed cache range");
 
 typedef enum {
   recorder_off = 0,
@@ -66,9 +77,35 @@ typedef struct {
 } flight_record_t;
 
 typedef struct {
+  atomic_uint_fast64_t reserved;
+  atomic_uint_fast64_t capacity;
+} recorder_event_loss_t;
+
+typedef struct {
+  atomic_uint_fast64_t evaluated;
+  atomic_uint_fast64_t retained;
+  atomic_uint_fast64_t reduced;
+} recorder_sampling_t;
+
+/* Producer-owned state shares the rings' initialization and retained lifetime.
+ * The writer reads sampling counters, never these signatures. */
+typedef struct {
+  bool valid;
+  int64_t instance;
+  int64_t values[4];
+  uint64_t opportunities;
+} recorder_power_sampling_t;
+
+typedef struct {
   atomic_uint_fast64_t write_index;
   atomic_uint_fast64_t read_index;
   atomic_uint_fast64_t dropped_full;
+  atomic_uint_fast64_t dropped_reserved;
+  atomic_uint_fast64_t dropped_capacity;
+  atomic_uint_fast64_t occupancy_high_water;
+  recorder_event_loss_t event_loss[FLIGHT_RECORDER_EVENT_BINS + 1U];
+  recorder_sampling_t sampling[FLIGHT_RECORDER_SAMPLE_GROUPS];
+  recorder_power_sampling_t power_sampling[FLIGHT_RECORDER_POWER_GROUPS][FLIGHT_UE_TX_CHANNEL_SRS];
   flight_record_t records[FLIGHT_RECORDER_RING_RECORDS];
 } __attribute__((aligned(64))) flight_ring_t;
 
@@ -120,10 +157,27 @@ static uint64_t g_total_limit;
 static uint64_t g_total_written;
 static uint64_t g_next_file_number;
 static uint64_t g_min_free_bytes;
+static bool g_detail_full;
 static int g_current_file = -1;
 static flight_ring_t g_rings[FLIGHT_RECORDER_MAX_THREAD_RINGS];
 static recorder_file_t g_files[FLIGHT_RECORDER_MAX_FILES];
 static async_repeat_t g_async_repeats[FLIGHT_RECORDER_MAX_THREAD_RINGS];
+
+/* Only the writer uses the batch and counters. Budget counters include bytes
+ * admitted to this batch; physical counters advance on successful writes. */
+static char g_write_batch[FLIGHT_RECORDER_BATCH_BYTES];
+static size_t g_write_batch_used;
+static bool g_write_failed;
+static unsigned int g_next_drain_ring;
+static struct {
+  uint64_t records_drained;
+  uint64_t lines_written;
+  uint64_t bytes_written;
+  uint64_t write_calls;
+  uint64_t drain_passes;
+  uint64_t drain_wall_ns;
+  uint64_t drain_clock_errors;
+} g_writer_stats;
 
 static _Thread_local int tls_ring = -1;
 
@@ -226,6 +280,62 @@ static bool time_to_ns(clockid_t clock_id, int64_t *result)
   return true;
 }
 
+static bool record_is_bulk(const flight_record_t *record)
+{
+  const int64_t *v = record->values;
+  /* This is a whitelist of successful numeric observations. Unknown events,
+   * transition/application records and faults keep the full FIFO capacity.
+   * Payload tests follow the emitting call sites, including short TX returns,
+   * queue discards and unavailable/late deadline evidence. */
+  switch (record->event) {
+    case FLIGHT_EVENT_UE_MEASUREMENTS:
+    case FLIGHT_EVENT_GNB_SLOT:
+      return true;
+    case FLIGHT_EVENT_GNB_UE_BYTES:
+      return v[5] == 0;
+    case FLIGHT_EVENT_GNB_UE_RADIO:
+      return v[3] == 0 && v[4] == 0 && v[5] == 0;
+    case FLIGHT_EVENT_RADIO_RX_LEVEL:
+      return v[1] > 0 && v[3] != INT64_MIN && v[4] != INT64_MIN && ((uint64_t)v[5] >> 32) == 0;
+    case FLIGHT_EVENT_UE_TX_POWER_REQUEST:
+      return v[2] >= FLIGHT_UE_TX_CHANNEL_PUSCH && v[2] <= FLIGHT_UE_TX_CHANNEL_SRS && v[4] > 0;
+    case FLIGHT_EVENT_RADIO_TX_LEVEL:
+      return v[2] > 0 && v[3] > 0 && ((uint64_t)v[5] & UINT32_MAX) == 0;
+    case FLIGHT_EVENT_RADIO_TX_LEVEL_STATE:
+      return v[2] > 0 && v[3] == v[2] && v[4] != INT64_MIN && v[5] != INT64_MIN;
+    case FLIGHT_EVENT_RADIO_TX_POWER:
+    case FLIGHT_EVENT_RADIO_TX_RELATIVE_POWER:
+      // c packs status (OK=0) and the boolean applied bit at bit 8.
+      return v[0] != FLIGHT_UE_TX_CHANNEL_PRACH && (v[2] == 0 || v[2] == 256) && v[4] != INT64_MIN && v[5] != INT64_MIN;
+    case FLIGHT_EVENT_RADIO_TX_POWER_SAMPLES:
+    case FLIGHT_EVENT_RADIO_TX_RELATIVE_SAMPLES:
+      return v[0] != FLIGHT_UE_TX_CHANNEL_PRACH && v[2] > 0 && v[4] != INT64_MIN;
+    case FLIGHT_EVENT_RADIO_TX_RELATIVE_QUALITY:
+      return v[0] != FLIGHT_UE_TX_CHANNEL_PRACH && v[2] > 0 && v[3] != INT64_MIN && v[4] != INT64_MIN && v[5] != INT64_MIN;
+    case FLIGHT_EVENT_RADIO_TX_POWER_QUALITY:
+      return v[0] != FLIGHT_UE_TX_CHANNEL_PRACH && v[2] != INT64_MIN && v[3] != INT64_MIN && v[4] != INT64_MIN;
+    case FLIGHT_EVENT_RADIO_TX_SUBMIT:
+      // Flag 1 is a routine middle-of-burst request, with no future flag bits.
+      return v[3] > 0 && v[4] == 1;
+    case FLIGHT_EVENT_RADIO_TX_QUEUE:
+      // Preserve accumulating queue depth even before the queue is near full.
+      return v[2] > 0 && v[3] >= 0 && v[3] <= 1 && (v[4] == 1 || v[4] == 2) && v[5] == 0;
+    case FLIGHT_EVENT_RADIO_TX_SEND:
+      // Metadata 1 is timed data without start/end-of-burst markers.
+      return v[3] > 0 && v[4] == 1 && v[5] > 0;
+    case FLIGHT_EVENT_RADIO_TX_RESULT:
+      return v[3] > 0 && v[4] == v[3] && v[5] == 0;
+    case FLIGHT_EVENT_UE_TX_SCHEDULE:
+      return v[3] >= 0 && v[4] >= 0 && v[5] > 0;
+    case FLIGHT_EVENT_UE_TX_DEADLINE:
+      return v[3] >= 0 && v[4] != INT64_MIN && v[4] <= 0 && v[5] == 1;
+    case FLIGHT_EVENT_UE_TX_ANCHOR:
+      return v[2] >= 0 && v[3] >= 0 && v[4] >= 0;
+    default:
+      return false;
+  }
+}
+
 static bool ring_put(flight_ring_t *ring, const flight_record_t *record)
 {
   /*
@@ -235,11 +345,23 @@ static bool ring_put(flight_ring_t *ring, const flight_record_t *record)
    */
   const uint64_t write_index = atomic_load_explicit(&ring->write_index, memory_order_relaxed);
   const uint64_t read_index = atomic_load_explicit(&ring->read_index, memory_order_acquire);
-  if (write_index - read_index >= FLIGHT_RECORDER_RING_RECORDS) {
+  const uint64_t occupancy = write_index - read_index;
+  const bool full = occupancy >= FLIGHT_RECORDER_RING_RECORDS;
+  if (full || (occupancy >= FLIGHT_RECORDER_RING_RECORDS - FLIGHT_RECORDER_CRITICAL_RESERVE && record_is_bulk(record))) {
     atomic_fetch_add_explicit(&ring->dropped_full, 1, memory_order_relaxed);
+    const unsigned int event_bin = record->event < FLIGHT_RECORDER_EVENT_BINS ? record->event : FLIGHT_RECORDER_EVENT_BINS;
+    if (full) {
+      atomic_fetch_add_explicit(&ring->dropped_capacity, 1, memory_order_relaxed);
+      atomic_fetch_add_explicit(&ring->event_loss[event_bin].capacity, 1, memory_order_relaxed);
+    } else {
+      atomic_fetch_add_explicit(&ring->dropped_reserved, 1, memory_order_relaxed);
+      atomic_fetch_add_explicit(&ring->event_loss[event_bin].reserved, 1, memory_order_relaxed);
+    }
     return false;
   }
 
+  if (occupancy + 1 > atomic_load_explicit(&ring->occupancy_high_water, memory_order_relaxed))
+    atomic_store_explicit(&ring->occupancy_high_water, occupancy + 1, memory_order_relaxed);
   ring->records[write_index & (FLIGHT_RECORDER_RING_RECORDS - 1U)] = *record;
   atomic_store_explicit(&ring->write_index, write_index + 1, memory_order_release);
   return true;
@@ -275,8 +397,12 @@ static bool write_all(int fd, const char *buffer, size_t length)
 {
   size_t written = 0;
   while (written < length) {
+    ++g_writer_stats.write_calls;
     const ssize_t result = recorder_write(fd, buffer + written, length - written);
     if (result > 0) {
+      g_writer_stats.bytes_written += (size_t)result;
+      for (size_t index = written; index < written + (size_t)result; ++index)
+        g_writer_stats.lines_written += buffer[index] == '\n';
       written += (size_t)result;
       continue;
     }
@@ -286,6 +412,24 @@ static bool write_all(int fd, const char *buffer, size_t length)
       errno = EIO;
     return false;
   }
+  return true;
+}
+
+static bool writer_flush_batch(void)
+{
+  if (g_write_failed)
+    return false;
+  if (g_write_batch_used == 0)
+    return true;
+  if (!write_all(g_files[g_current_file].fd, g_write_batch, g_write_batch_used)) {
+    const int saved_errno = errno;
+    // A partial write cannot be retried from the batch start without duplicates.
+    g_write_failed = true;
+    g_write_batch_used = 0;
+    recorder_fail("output write failed", saved_errno);
+    return false;
+  }
+  g_write_batch_used = 0;
   return true;
 }
 
@@ -303,6 +447,8 @@ static bool format_line(char *buffer, size_t buffer_size, size_t *length, const 
 
 static bool writer_write_raw(const char *line, size_t length)
 {
+  if (g_write_failed)
+    return false;
   if (g_current_file < 0 || g_current_file >= (int)FLIGHT_RECORDER_MAX_FILES) {
     recorder_fail("writer has no output file", 0);
     return false;
@@ -319,11 +465,15 @@ static bool writer_write_raw(const char *line, size_t length)
     recorder_fail("recording byte limit reached; earlier files retained", EFBIG);
     return false;
   }
-  if (!write_all(file->fd, line, length)) {
-    recorder_fail("output write failed", errno);
+  if (length > sizeof(g_write_batch)) {
+    recorder_fail("record exceeds writer batch", EFBIG);
     return false;
   }
+  if (length > sizeof(g_write_batch) - g_write_batch_used && !writer_flush_batch())
+    return false;
 
+  memcpy(g_write_batch + g_write_batch_used, line, length);
+  g_write_batch_used += length;
   file->bytes += length;
   g_total_written += length;
   return true;
@@ -365,6 +515,32 @@ static bool writer_emit_clock_correlation(bool rotate_if_needed)
   return writer_write_raw(line, length);
 }
 
+static const char *recorder_detail_mode(void)
+{
+  return g_detail_full ? "full" : "balanced";
+}
+
+static bool writer_emit_sampling_config(void)
+{
+  char line[FLIGHT_RECORDER_LINE_BYTES];
+  size_t length;
+  if (!format_line(line,
+                   sizeof(line),
+                   &length,
+                   "{\"schema\":\"oai.flight_recorder\",\"version\":%u,\"kind\":\"sampling_config\","
+                   "\"detail_mode\":\"%s\",\"selection_period\":%u,\"warmup_opportunities\":%u,\"groups\":%u,"
+                   "\"key_mix_version\":1,\"payload_truncated\":0}\n",
+                   FLIGHT_RECORDER_SCHEMA_VERSION,
+                   recorder_detail_mode(),
+                   FLIGHT_RECORDER_SAMPLE_PERIOD,
+                   FLIGHT_RECORDER_SAMPLE_WARMUP,
+                   FLIGHT_RECORDER_SAMPLE_GROUPS)) {
+    recorder_fail("sampling config formatting failed", 0);
+    return false;
+  }
+  return writer_write_raw(line, length);
+}
+
 static bool writer_write_file_header(unsigned int slot, uint64_t previous_first, uint64_t previous_last)
 {
   char line[FLIGHT_RECORDER_LINE_BYTES];
@@ -394,7 +570,9 @@ static bool writer_write_file_header(unsigned int slot, uint64_t previous_first,
 
   if (!writer_write_raw(line, length))
     return false;
-  return writer_emit_clock_correlation(false);
+  if (!writer_emit_clock_correlation(false))
+    return false;
+  return slot != 0 || file->generation != 1 || writer_emit_sampling_config();
 }
 
 static bool writer_has_space(void)
@@ -430,6 +608,8 @@ static bool writer_open_file(unsigned int slot)
     return false;
   }
 
+  if (!writer_flush_batch())
+    return false;
   recorder_file_t *file = &g_files[slot];
   if (!writer_has_space())
     return false;
@@ -634,6 +814,148 @@ static uint64_t dropped_full_total(void)
   return total;
 }
 
+static bool writer_emit_ring_health(int64_t snapshot_ns)
+{
+  const uint64_t assigned = atomic_load_explicit(&g_next_ring, memory_order_relaxed);
+  const unsigned int rings = assigned > FLIGHT_RECORDER_MAX_THREAD_RINGS ? FLIGHT_RECORDER_MAX_THREAD_RINGS : assigned;
+  for (unsigned int ring_id = 0; ring_id < rings; ++ring_id) {
+    const flight_ring_t *ring = &g_rings[ring_id];
+    char line[FLIGHT_RECORDER_LINE_BYTES];
+    size_t length;
+    time_to_ns(CLOCK_MONOTONIC, &snapshot_ns);
+    if (!format_line(line,
+                     sizeof(line),
+                     &length,
+                     "{\"schema\":\"oai.flight_recorder\",\"version\":%u,\"kind\":\"ring_health\","
+                     "\"snapshot_mono_ns\":%" PRId64 ",\"ring\":%u,\"capacity\":%u,\"occupancy_high_water\":%" PRIu64
+                     ",\"dropped_ring_full\":%" PRIu64 ",\"dropped_reserved\":%" PRIu64 ",\"dropped_capacity\":%" PRIu64
+                     ",\"payload_truncated\":0}\n",
+                     FLIGHT_RECORDER_SCHEMA_VERSION,
+                     snapshot_ns,
+                     ring_id,
+                     FLIGHT_RECORDER_RING_RECORDS,
+                     atomic_load_explicit(&ring->occupancy_high_water, memory_order_relaxed),
+                     atomic_load_explicit(&ring->dropped_full, memory_order_relaxed),
+                     atomic_load_explicit(&ring->dropped_reserved, memory_order_relaxed),
+                     atomic_load_explicit(&ring->dropped_capacity, memory_order_relaxed))) {
+      recorder_fail("ring health formatting failed", 0);
+      return false;
+    }
+    if (!writer_ensure_space(length) || !writer_write_raw(line, length))
+      return false;
+
+    for (unsigned int event_bin = 0; event_bin <= FLIGHT_RECORDER_EVENT_BINS; ++event_bin) {
+      const uint64_t reserved = atomic_load_explicit(&ring->event_loss[event_bin].reserved, memory_order_relaxed);
+      const uint64_t capacity = atomic_load_explicit(&ring->event_loss[event_bin].capacity, memory_order_relaxed);
+      if (reserved == 0 && capacity == 0)
+        continue;
+      const bool known = event_bin < FLIGHT_RECORDER_EVENT_BINS;
+      time_to_ns(CLOCK_MONOTONIC, &snapshot_ns);
+      if (!format_line(line,
+                       sizeof(line),
+                       &length,
+                       "{\"schema\":\"oai.flight_recorder\",\"version\":%u,\"kind\":\"event_loss\","
+                       "\"snapshot_mono_ns\":%" PRId64 ",\"ring\":%u,\"event\":%" PRIu32 ",\"event_known\":%u,"
+                       "\"dropped_reserved\":%" PRIu64 ",\"dropped_capacity\":%" PRIu64 ",\"payload_truncated\":0}\n",
+                       FLIGHT_RECORDER_SCHEMA_VERSION,
+                       snapshot_ns,
+                       ring_id,
+                       known ? event_bin : UINT32_MAX,
+                       known ? 1U : 0U,
+                       reserved,
+                       capacity)) {
+        recorder_fail("event loss formatting failed", 0);
+        return false;
+      }
+      if (!writer_ensure_space(length) || !writer_write_raw(line, length))
+        return false;
+    }
+  }
+  return true;
+}
+
+static bool writer_emit_writer_health(void)
+{
+  if (!writer_flush_batch())
+    return false;
+  int64_t snapshot_ns;
+  time_to_ns(CLOCK_MONOTONIC, &snapshot_ns);
+  char line[2U * FLIGHT_RECORDER_LINE_BYTES];
+  size_t length;
+  // Counters describe this snapshot, before encoding/writing its own record.
+  if (!format_line(line,
+                   sizeof(line),
+                   &length,
+                   "{\"schema\":\"oai.flight_recorder\",\"version\":%u,\"kind\":\"writer_health\","
+                   "\"snapshot_mono_ns\":%" PRId64 ",\"records_drained\":%" PRIu64 ",\"lines_written\":%" PRIu64
+                   ",\"bytes_written\":%" PRIu64 ",\"bytes_accepted\":%" PRIu64 ",\"write_calls\":%" PRIu64
+                   ",\"buffered_bytes\":%zu,\"drain_passes\":%" PRIu64 ",\"drain_wall_ns\":%" PRIu64
+                   ",\"drain_clock_errors\":%" PRIu64
+                   ",\"batch_capacity_bytes\":%u,\"ring_quantum\":%u,\"critical_reserve_records\":%u,\"payload_truncated\":0}\n",
+                   FLIGHT_RECORDER_SCHEMA_VERSION,
+                   snapshot_ns,
+                   g_writer_stats.records_drained,
+                   g_writer_stats.lines_written,
+                   g_writer_stats.bytes_written,
+                   g_total_written,
+                   g_writer_stats.write_calls,
+                   g_write_batch_used,
+                   g_writer_stats.drain_passes,
+                   g_writer_stats.drain_wall_ns,
+                   g_writer_stats.drain_clock_errors,
+                   FLIGHT_RECORDER_BATCH_BYTES,
+                   FLIGHT_RECORDER_RING_QUANTUM,
+                   FLIGHT_RECORDER_CRITICAL_RESERVE)) {
+    recorder_fail("writer health formatting failed", 0);
+    return false;
+  }
+  return writer_ensure_space(length) && writer_write_raw(line, length) && writer_flush_batch();
+}
+
+static bool writer_emit_sampling_health(void)
+{
+  const uint64_t assigned = atomic_load_explicit(&g_next_ring, memory_order_relaxed);
+  const unsigned int rings = assigned > FLIGHT_RECORDER_MAX_THREAD_RINGS ? FLIGHT_RECORDER_MAX_THREAD_RINGS : assigned;
+  for (unsigned int ring_id = 0; ring_id < rings; ++ring_id) {
+    for (unsigned int group = 0; group < FLIGHT_RECORDER_SAMPLE_GROUPS; ++group) {
+      const recorder_sampling_t *sampling = &g_rings[ring_id].sampling[group];
+      const uint64_t retained = atomic_load_explicit(&sampling->retained, memory_order_relaxed);
+      const uint64_t reduced = atomic_load_explicit(&sampling->reduced, memory_order_relaxed);
+      /* Derive the live evaluated count from published decisions, avoiding a
+       * torn three-counter identity. At quiescence all three counters agree. */
+      const uint64_t evaluated = retained + reduced;
+      if (evaluated == 0)
+        continue;
+      int64_t snapshot_ns;
+      time_to_ns(CLOCK_MONOTONIC, &snapshot_ns);
+      char line[FLIGHT_RECORDER_LINE_BYTES];
+      size_t length;
+      if (!format_line(line,
+                       sizeof(line),
+                       &length,
+                       "{\"schema\":\"oai.flight_recorder\",\"version\":%u,\"kind\":\"sampling_health\","
+                       "\"snapshot_mono_ns\":%" PRId64 ",\"ring\":%u,\"group\":%u,\"evaluated\":%" PRIu64 ",\"retained\":%" PRIu64
+                       ",\"reduced\":%" PRIu64 ",\"selection_period\":%u,\"detail_mode\":\"%s\","
+                       "\"payload_truncated\":0}\n",
+                       FLIGHT_RECORDER_SCHEMA_VERSION,
+                       snapshot_ns,
+                       ring_id,
+                       group + 1U,
+                       evaluated,
+                       retained,
+                       reduced,
+                       FLIGHT_RECORDER_SAMPLE_PERIOD,
+                       recorder_detail_mode())) {
+        recorder_fail("sampling health formatting failed", 0);
+        return false;
+      }
+      if (!writer_ensure_space(length) || !writer_write_raw(line, length))
+        return false;
+    }
+  }
+  return true;
+}
+
 static bool writer_emit_health(void)
 {
   char line[FLIGHT_RECORDER_LINE_BYTES];
@@ -655,11 +977,16 @@ static bool writer_emit_health(void)
 
   if (!writer_ensure_space(length))
     return false;
-  return writer_write_raw(line, length);
+  int64_t snapshot_ns;
+  time_to_ns(CLOCK_MONOTONIC, &snapshot_ns);
+  return writer_write_raw(line, length) && writer_emit_ring_health(snapshot_ns) && writer_emit_sampling_health()
+         && writer_emit_writer_health();
 }
 
 static bool writer_write_footer(void)
 {
+  if (atomic_load_explicit(&g_state, memory_order_seq_cst) == recorder_failed || !writer_flush_batch())
+    return false;
   char line[FLIGHT_RECORDER_LINE_BYTES];
   size_t length;
   const uint64_t assigned = atomic_load_explicit(&g_next_ring, memory_order_relaxed);
@@ -685,30 +1012,48 @@ static bool writer_write_footer(void)
     return false;
   if (!writer_ensure_space(length))
     return false;
-  return writer_write_raw(line, length);
+  return writer_write_raw(line, length) && writer_flush_batch();
 }
 
 static bool writer_drain_once(void)
 {
+  int64_t start_ns;
+  time_to_ns(CLOCK_MONOTONIC, &start_ns);
+  ++g_writer_stats.drain_passes;
   bool drained = false;
-  for (unsigned int ring_id = 0; ring_id < FLIGHT_RECORDER_MAX_THREAD_RINGS; ++ring_id) {
+  const unsigned int start_ring = g_next_drain_ring;
+  g_next_drain_ring = (start_ring + 1U) % FLIGHT_RECORDER_MAX_THREAD_RINGS;
+  for (unsigned int offset = 0; offset < FLIGHT_RECORDER_MAX_THREAD_RINGS; ++offset) {
+    const unsigned int ring_id = (start_ring + offset) % FLIGHT_RECORDER_MAX_THREAD_RINGS;
     flight_record_t record;
-    for (unsigned int record_count = 0; record_count < FLIGHT_RECORDER_RING_RECORDS && ring_get(&g_rings[ring_id], &record);
+    for (unsigned int record_count = 0; record_count < FLIGHT_RECORDER_RING_QUANTUM && ring_get(&g_rings[ring_id], &record);
          ++record_count) {
       drained = true;
+      ++g_writer_stats.records_drained;
       if (!writer_write_record(ring_id, &record))
-        return false;
+        goto failed;
     }
   }
   int64_t now_ns;
   time_to_ns(CLOCK_MONOTONIC, &now_ns);
-  if (!writer_flush_async_due(now_ns, false))
-    return false;
+  if (!writer_flush_async_due(now_ns, false) || !writer_flush_batch())
+    goto failed;
+  goto finished;
+failed:
+  drained = false;
+finished:
+  time_to_ns(CLOCK_MONOTONIC, &now_ns);
+  if (start_ns >= 0 && now_ns >= start_ns)
+    g_writer_stats.drain_wall_ns += (uint64_t)(now_ns - start_ns);
+  else
+    ++g_writer_stats.drain_clock_errors;
   return drained;
 }
 
 static void writer_close_files(void)
 {
+  // Preserve admitted records after a later budget/space failure, too.
+  writer_flush_batch();
   for (unsigned int index = 0; index < FLIGHT_RECORDER_MAX_FILES; ++index) {
     if (g_files[index].fd >= 0) {
       close(g_files[index].fd);
@@ -776,12 +1121,14 @@ static void *writer_main(void *unused)
         break;
       last_clock_ns = now_ns;
     }
-    writer_drain_once();
+    const bool drained = writer_drain_once();
     if (atomic_load_explicit(&g_state, memory_order_seq_cst) != recorder_running)
       break;
 
-    const struct timespec pause = {.tv_sec = 0, .tv_nsec = FLIGHT_RECORDER_SLEEP_NS};
-    nanosleep(&pause, NULL);
+    if (!drained) {
+      const struct timespec pause = {.tv_sec = 0, .tv_nsec = FLIGHT_RECORDER_SLEEP_NS};
+      nanosleep(&pause, NULL);
+    }
   }
 
   if (atomic_load_explicit(&g_state, memory_order_seq_cst) == recorder_stopping) {
@@ -799,8 +1146,10 @@ static void *writer_main(void *unused)
       if (atomic_load_explicit(&g_state, memory_order_seq_cst) != recorder_stopping)
         break;
       if (atomic_load_explicit(&g_active_emits, memory_order_seq_cst) == 0) {
-        /* Once active is zero, no enrolled producer can publish after this final bounded pass. */
-        writer_drain_once();
+        /* No enrolled producer can publish after zero is observed. Drain all
+         * remaining quanta, including publication after the preceding pass. */
+        while (writer_drain_once() && atomic_load_explicit(&g_state, memory_order_seq_cst) == recorder_stopping) {
+        }
         break;
       }
       if (!drained) {
@@ -808,7 +1157,8 @@ static void *writer_main(void *unused)
         nanosleep(&pause, NULL);
       }
     }
-    if (atomic_load_explicit(&g_state, memory_order_seq_cst) == recorder_stopping && writer_flush_async_due(0, true))
+    if (atomic_load_explicit(&g_state, memory_order_seq_cst) == recorder_stopping && writer_flush_async_due(0, true)
+        && writer_emit_health())
       writer_write_footer();
   }
 
@@ -821,6 +1171,17 @@ static bool configure_output_directory(void)
   const char *directory = getenv("OAI_FLIGHT_RECORDER_DIR");
   if (directory == NULL || directory[0] == '\0')
     return false;
+
+  const char *detail = getenv("OAI_FLIGHT_RECORDER_DETAIL");
+  g_detail_full = false;
+  if (detail != NULL) {
+    if (strcmp(detail, "full") == 0)
+      g_detail_full = true;
+    else if (strcmp(detail, "balanced") != 0) {
+      recorder_stderr("invalid OAI_FLIGHT_RECORDER_DETAIL", EINVAL);
+      return false;
+    }
+  }
 
   const char *max_bytes = getenv("OAI_FLIGHT_RECORDER_MAX_BYTES");
   uint64_t total_limit = 0;
@@ -973,6 +1334,11 @@ void flight_recorder_init(void)
   memset(g_rings, 0, sizeof(g_rings));
   memset(g_files, 0, sizeof(g_files));
   memset(g_async_repeats, 0, sizeof(g_async_repeats));
+  memset(g_write_batch, 0, sizeof(g_write_batch));
+  memset(&g_writer_stats, 0, sizeof(g_writer_stats));
+  g_write_batch_used = 0;
+  g_write_failed = false;
+  g_next_drain_ring = 0;
   for (unsigned int index = 0; index < FLIGHT_RECORDER_MAX_FILES; ++index)
     g_files[index].fd = -1;
   atomic_store_explicit(&g_active_emits, 0, memory_order_seq_cst);
@@ -1011,7 +1377,7 @@ bool flight_recorder_enabled(void)
   return atomic_load_explicit(&g_state, memory_order_seq_cst) == recorder_running;
 }
 
-void flight_recorder_emit(uint32_t event, int64_t a, int64_t b, int64_t c, int64_t d, int64_t e, int64_t f)
+static bool producer_enter(void)
 {
   /*
    * Enrollment and stop share one seq_cst order across g_state and g_active_emits.
@@ -1022,13 +1388,10 @@ void flight_recorder_emit(uint32_t event, int64_t a, int64_t b, int64_t c, int64
    * The seq_cst completion decrement also releases ring publication before the
    * writer's zero observation and its final SPSC acquire drain.
    */
-  if (atomic_load_explicit(&g_state, memory_order_seq_cst) != recorder_running)
-    return;
-
   atomic_fetch_add_explicit(&g_active_emits, 1, memory_order_seq_cst);
   if (atomic_load_explicit(&g_state, memory_order_seq_cst) != recorder_running) {
     atomic_fetch_sub_explicit(&g_active_emits, 1, memory_order_seq_cst);
-    return;
+    return false;
   }
 
 #ifdef FLIGHT_RECORDER_TESTING
@@ -1040,7 +1403,11 @@ void flight_recorder_emit(uint32_t event, int64_t a, int64_t b, int64_t c, int64
     }
   }
 #endif
+  return true;
+}
 
+static int producer_ring(void)
+{
   if (tls_ring == -1) {
     const uint64_t assigned = atomic_fetch_add_explicit(&g_next_ring, 1, memory_order_relaxed);
     if (assigned >= FLIGHT_RECORDER_MAX_THREAD_RINGS) {
@@ -1050,8 +1417,107 @@ void flight_recorder_emit(uint32_t event, int64_t a, int64_t b, int64_t c, int64
       tls_ring = (int)assigned;
     }
   }
+  return tls_ring;
+}
 
-  if (tls_ring == -2) {
+static bool sampling_key_selected(uint64_t key)
+{
+  // Fixed SplitMix64 finalizer with its input increment, independent of group.
+  key += UINT64_C(0x9e3779b97f4a7c15);
+  key = (key ^ (key >> 30)) * UINT64_C(0xbf58476d1ce4e5b9);
+  key = (key ^ (key >> 27)) * UINT64_C(0x94d049bb133111eb);
+  key ^= key >> 31;
+  return (key & (FLIGHT_RECORDER_SAMPLE_PERIOD - 1U)) == 0;
+}
+
+static bool sample_ring_group(flight_ring_t *ring, unsigned int group, uint64_t key, bool force)
+{
+  recorder_sampling_t *sampling = &ring->sampling[group - 1U];
+  const uint64_t evaluated = atomic_load_explicit(&sampling->evaluated, memory_order_relaxed);
+  const bool retained = force || g_detail_full || evaluated < FLIGHT_RECORDER_SAMPLE_WARMUP || sampling_key_selected(key);
+  atomic_store_explicit(&sampling->evaluated, evaluated + 1, memory_order_relaxed);
+  atomic_uint_fast64_t *counter = retained ? &sampling->retained : &sampling->reduced;
+  atomic_store_explicit(counter, atomic_load_explicit(counter, memory_order_relaxed) + 1, memory_order_relaxed);
+  return retained;
+}
+
+bool flight_recorder_sample(unsigned int group, uint64_t key, bool force)
+{
+  if (atomic_load_explicit(&g_state, memory_order_seq_cst) != recorder_running)
+    return false;
+  if (group == 0 || group > FLIGHT_RECORDER_SAMPLE_GROUPS)
+    return true;
+  if (!producer_enter())
+    return false;
+
+  const int ring = producer_ring();
+  bool retained = true;
+  if (ring >= 0)
+    retained = sample_ring_group(&g_rings[ring], group, key, force);
+  // No-slot decisions retain: actual emits still own per-record loss accounting.
+  atomic_fetch_sub_explicit(&g_active_emits, 1, memory_order_seq_cst);
+  return retained;
+}
+
+static bool power_signature_unknown(unsigned int group, int64_t instance, int64_t a, int64_t b, int64_t c, int64_t d)
+{
+  if (instance < 0 || a == INT64_MIN || b == INT64_MIN || c == INT64_MIN || d == INT64_MIN)
+    return true;
+  switch (group) {
+    case FLIGHT_SAMPLE_UE_TX_POWER_REQUEST:
+      return a == INT16_MIN || a == INT_MIN || b <= 0 || b > INT16_MAX;
+    case FLIGHT_SAMPLE_UE_TX_CONTROL:
+      return a < 0;
+    case FLIGHT_SAMPLE_UE_TX_RELATIVE_POWER:
+      return b > c || d < b || d > c;
+    default:
+      return true;
+  }
+}
+
+bool flight_recorder_sample_power(unsigned int group,
+                                  unsigned int channel,
+                                  int64_t instance,
+                                  int64_t a,
+                                  int64_t b,
+                                  int64_t c,
+                                  int64_t d)
+{
+  if (atomic_load_explicit(&g_state, memory_order_seq_cst) != recorder_running)
+    return false;
+  if (group < FLIGHT_SAMPLE_UE_TX_POWER_REQUEST || group > FLIGHT_SAMPLE_UE_TX_RELATIVE_POWER
+      || channel < FLIGHT_UE_TX_CHANNEL_PRACH || channel > FLIGHT_UE_TX_CHANNEL_SRS)
+    return true;
+  if (!producer_enter())
+    return false;
+
+  const int ring_id = producer_ring();
+  bool retained = true;
+  if (ring_id >= 0) {
+    flight_ring_t *ring = &g_rings[ring_id];
+    recorder_power_sampling_t *state = &ring->power_sampling[group - FLIGHT_SAMPLE_UE_TX_POWER_REQUEST][channel - 1U];
+    const bool changed = !state->valid || state->instance != instance || state->values[0] != a || state->values[1] != b
+                         || state->values[2] != c || state->values[3] != d;
+    const bool force = changed || channel == FLIGHT_UE_TX_CHANNEL_PRACH || power_signature_unknown(group, instance, a, b, c, d);
+    state->valid = true;
+    state->instance = instance;
+    state->values[0] = a;
+    state->values[1] = b;
+    state->values[2] = c;
+    state->values[3] = d;
+    const uint64_t key = state->opportunities++;
+    retained = sample_ring_group(ring, group, key, force);
+  }
+  atomic_fetch_sub_explicit(&g_active_emits, 1, memory_order_seq_cst);
+  return retained;
+}
+
+void flight_recorder_emit(uint32_t event, int64_t a, int64_t b, int64_t c, int64_t d, int64_t e, int64_t f)
+{
+  if (atomic_load_explicit(&g_state, memory_order_seq_cst) != recorder_running || !producer_enter())
+    return;
+
+  if (producer_ring() < 0) {
     atomic_fetch_add_explicit(&g_dropped_no_slot, 1, memory_order_relaxed);
     atomic_fetch_sub_explicit(&g_active_emits, 1, memory_order_seq_cst);
     return;
@@ -1128,6 +1594,32 @@ void flight_recorder_shutdown(void)
 
 bool flight_recorder_enabled(void)
 {
+  return false;
+}
+
+bool flight_recorder_sample(unsigned int group, uint64_t key, bool force)
+{
+  (void)group;
+  (void)key;
+  (void)force;
+  return false;
+}
+
+bool flight_recorder_sample_power(unsigned int group,
+                                  unsigned int channel,
+                                  int64_t instance,
+                                  int64_t a,
+                                  int64_t b,
+                                  int64_t c,
+                                  int64_t d)
+{
+  (void)group;
+  (void)channel;
+  (void)instance;
+  (void)a;
+  (void)b;
+  (void)c;
+  (void)d;
   return false;
 }
 

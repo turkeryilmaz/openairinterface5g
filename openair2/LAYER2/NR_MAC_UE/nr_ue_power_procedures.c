@@ -80,10 +80,22 @@ static bool relative_tx_request(double raw_request, int64_t correction, int64_t 
   return true;
 }
 
-static void
-record_relative_tx_power(unsigned channel, int64_t raw, int64_t correction, int request, int minimum, int maximum, int selected)
+static void record_relative_tx_power(const NR_UE_MAC_INST_t *mac,
+                                     unsigned channel,
+                                     int64_t raw,
+                                     int64_t correction,
+                                     int request,
+                                     int minimum,
+                                     int maximum,
+                                     int selected)
 {
-  if (!flight_recorder_enabled())
+  if (!flight_recorder_sample_power(FLIGHT_SAMPLE_UE_TX_RELATIVE_POWER,
+                                    channel,
+                                    mac->ue_id,
+                                    correction,
+                                    minimum,
+                                    maximum,
+                                    selected))
     return;
   flight_recorder_emit(FLIGHT_EVENT_UE_TX_RELATIVE_TRANSLATION, channel, raw, correction, request, minimum, maximum);
   flight_recorder_emit(FLIGHT_EVENT_UE_TX_RELATIVE_BOUNDS, channel, -1, minimum, maximum, request, selected);
@@ -526,7 +538,8 @@ int16_t get_pucch_tx_power_ue(NR_UE_MAC_INST_t *mac,
   mac->G_b_f_c = G_b_f_c;
   int pucch_power = relative_tx ? min(P_CMAX, max(P_CMIN, pucch_power_requested)) : min(P_CMAX, pucch_power_requested);
   if (relative_tx)
-    record_relative_tx_power(FLIGHT_UE_TX_CHANNEL_PUCCH,
+    record_relative_tx_power(mac,
+                             FLIGHT_UE_TX_CHANNEL_PUCCH,
                              raw_request,
                              correction,
                              pucch_power_requested,
@@ -770,7 +783,14 @@ static int get_pusch_tx_power_ue_core(NR_UE_MAC_INST_t *mac,
     *requested_power = power_requested;
   const int selected_power = relative_tx ? min(P_CMAX, max(P_CMIN, power_requested)) : min(P_CMAX, power_requested);
   if (relative_tx)
-    record_relative_tx_power(FLIGHT_UE_TX_CHANNEL_PUSCH, raw_request, correction, power_requested, P_CMIN, P_CMAX, selected_power);
+    record_relative_tx_power(mac,
+                             FLIGHT_UE_TX_CHANNEL_PUSCH,
+                             raw_request,
+                             correction,
+                             power_requested,
+                             P_CMIN,
+                             P_CMAX,
+                             selected_power);
   return selected_power;
 }
 
@@ -959,7 +979,8 @@ int get_srs_tx_power_ue(NR_UE_MAC_INST_t *mac,
   }
   const int selected_power = relative_tx ? min(P_CMAX, max(P_CMIN, srs_power_requested)) : min(P_CMAX, srs_power_requested);
   if (relative_tx)
-    record_relative_tx_power(FLIGHT_UE_TX_CHANNEL_SRS,
+    record_relative_tx_power(mac,
+                             FLIGHT_UE_TX_CHANNEL_SRS,
                              raw_request,
                              correction,
                              srs_power_requested,

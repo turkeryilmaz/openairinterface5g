@@ -919,6 +919,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--health-interval", type=float, default=1.0)
     parser.add_argument("--stdout-budget", type=byte_limit, default=DEFAULT_STDOUT_BUDGET)
     parser.add_argument("--recorder-budget", type=byte_limit, default=DEFAULT_RECORDER_BUDGET)
+    parser.add_argument("--recorder-detail", choices=("balanced", "full"), default="balanced",
+                        help="sample routine numeric detail or retain every observation; failures remain selected")
     parser.add_argument("--host-budget", type=byte_limit, default=DEFAULT_HOST_BUDGET)
     parser.add_argument("--min-free-bytes", type=byte_limit, default=DEFAULT_MIN_FREE_BYTES)
     parser.add_argument("--chunk-bytes", type=positive_int, default=DEFAULT_CHUNK_BYTES)
@@ -1346,10 +1348,11 @@ class FlightCapture:
                 "enabled": not self.args.disable_recorder,
                 "directory_basename": recorder_dir.name,
                 "maximum_bytes": self.args.recorder_budget,
+                "detail_mode": self.args.recorder_detail,
                 "enabled_range_bytes": [MIN_RECORDER_BUDGET, MAX_RECORDER_BUDGET],
                 "zero_budget_means_no_total_cap": True,
                 "retention": "sequential_files_no_overwrite",
-                "contract": "OAI_FLIGHT_RECORDER_DIR and OAI_FLIGHT_RECORDER_MAX_BYTES",
+                "contract": "OAI_FLIGHT_RECORDER_DIR, OAI_FLIGHT_RECORDER_MAX_BYTES and OAI_FLIGHT_RECORDER_DETAIL",
             },
             "limits": {
                 "stdout_and_stderr_budget_bytes": self.args.stdout_budget,
@@ -1396,9 +1399,11 @@ class FlightCapture:
         if self.args.disable_recorder:
             environment.pop("OAI_FLIGHT_RECORDER_DIR", None)
             environment.pop("OAI_FLIGHT_RECORDER_MAX_BYTES", None)
+            environment.pop("OAI_FLIGHT_RECORDER_DETAIL", None)
         else:
             environment["OAI_FLIGHT_RECORDER_DIR"] = str(recorder_dir)
             environment["OAI_FLIGHT_RECORDER_MAX_BYTES"] = str(self.args.recorder_budget)
+            environment["OAI_FLIGHT_RECORDER_DETAIL"] = self.args.recorder_detail
             environment["OAI_FLIGHT_RECORDER_MIN_FREE_BYTES"] = str(self.args.min_free_bytes)
         executable_library_dir = str(Path(self.command[0]).resolve().parent)
         existing_library_path = environment.get("LD_LIBRARY_PATH")

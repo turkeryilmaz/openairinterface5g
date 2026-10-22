@@ -40,6 +40,37 @@ redacted output to the terminal through a bounded asynchronous queue; a slow
 terminal can lose console copies without blocking disk capture. The final
 status records console loss separately.
 
+Routine numeric detail defaults to `balanced`: the first eight observations per
+thread/group are retained, followed by a deterministic 1-in-64 key selection for
+ordinary TX transport, waveform mapping and healthy deadline detail. Related
+mapper energy/quality records share one decision. PRACH mappings, failed sends,
+missed/invalid deadlines, queue depth above one, gain changes, timing-advance changes
+and recovery transitions remain selected. This reduces producer clock reads,
+ring traffic, formatting and storage without changing radio calculations.
+
+Repeated UE power calculations are also reduced in balanced mode. Each producer
+tracks a fixed per-channel transition signature: selected power and generator
+reference, MAC pathloss/TPC context, or relative correction/bounds/selected power.
+Changes remain selected; unchanged opportunities retain sampled examples.
+The relative translation and selected-bounds records share one decision. A
+request repeatedly clipped to the same bound does not force every record.
+PRACH remains fully selected. Intermediate steady raw requests are intentionally
+unavailable, so use full detail when investigating their exact per-slot sequence.
+
+For a focused diagnostic run, `--flight-recorder-detail full` (or top-level
+`flight-recorder-detail = "full";`) selects every observation in these groups.
+Other pre-existing periodic observations keep their existing cadence. No extra
+option is required for normal logging. The native API also accepts
+`OAI_FLIGHT_RECORDER_DETAIL=balanced|full` when used without the capture launcher.
+
+The recorder batches disk writes and fairly drains the producer rings. Each
+1024-record ring reserves 128 entries from routine records for critical detail.
+This is preferential retention, not a guarantee against loss under sustained
+overload. `sampling_health` counts intentionally reduced observation groups;
+`event_loss`, `ring_health` and the aggregate footer report actual losses. A
+complete footer with nonzero losses means an orderly but incomplete event trace.
+The saved final summary makes that distinction explicit.
+
 ## Automatic UDP traffic
 
 Add `traffic` to the usual flight setting on both endpoints. The gNB supervisor

@@ -195,7 +195,14 @@ void pucch_procedures_ue_nr(PHY_VARS_NR_UE *ue,
           generated = false;
           break;
       }
-      if (generated && flight_recorder_enabled()) {
+      if (generated
+          && flight_recorder_sample_power(FLIGHT_SAMPLE_UE_TX_POWER_REQUEST,
+                                          FLIGHT_UE_TX_CHANNEL_PUCCH,
+                                          ue->Mod_id,
+                                          pucch_pdu->pucch_tx_power,
+                                          tx_amp,
+                                          0,
+                                          0)) {
         const int64_t resource = pucch_pdu->prb_start | ((int64_t)pucch_pdu->prb_size << 16)
                                  | ((int64_t)pucch_pdu->start_symbol_index << 32) | ((int64_t)pucch_pdu->nr_of_symbols << 40)
                                  | ((int64_t)pucch_pdu->format_type << 48) | ((int64_t)i << 56);
