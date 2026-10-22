@@ -69,6 +69,9 @@ TIMING_LAYOUTS = {
     117: ('UE_PDSCH_RX_CONTEXT', ('identity', 'sync_epoch', 'absolute_rx_slot', 'gain_generation', 'rx_gain_millidb', 'context')),
     118: ('GNB_PDSCH_GRANT', ('identity', 'frame_slot', 'harq_state', 'coding', 'geometry', 'feedback_frame_slot')),
     119: ('RLC_FAILURE', ('ue_id', 'is_gnb', 'is_srb', 'rb_id', 'handler_present', 'reason')),
+    120: ('UE_PDSCH_INPUT', ('identity', 'sync_epoch', 'absolute_rx_slot', 'sequences', 'mapping', 'limits')),
+    121: ('GNB_PDSCH_INPUT', ('identity', 'frame_slot', 'harq_state', 'sequences', 'mapping', 'limits')),
+    122: ('UE_PDSCH_LLR', ('identity', 'sync_epoch', 'absolute_rx_slot', 'counts', 'sum_abs', 'extrema')),
 }
 NAMES.update({number: layout[0] for number, layout in TIMING_LAYOUTS.items()})
 
@@ -90,7 +93,50 @@ def decode_radio_timing(event):
     row['name'] = layout[0]
     row.update(zip(layout[1], (event[key] for key in 'abcdef')))
     # Preserve packed values alongside their interpretations and unknown bits.
-    if event['event'] in (116, 117):
+    if event['event'] == 122:
+        identity = event['a'] & UINT64_MASK
+        row.update(ue=identity & 0xffff, rnti=(identity >> 16) & 0xffff,
+                   codeword=(identity >> 32) & 0xff, rnti_type=(identity >> 40) & 0xff,
+                   stage=(identity >> 48) & 0xff, unknown_identity_bits=identity >> 56)
+        for name, shift in (('sample_count', 0), ('zero_count', 16), ('unit_count', 32), ('rail_count', 48)):
+            row[name] = (event['d'] >> shift) & 0xffff
+        for name, shift in (('minimum', 0), ('maximum', 16)):
+            value = (event['f'] >> shift) & 0xffff
+            row[name] = value - 65536 if value & 0x8000 else value
+        row['unknown_extrema_bits'] = (event['f'] & UINT64_MASK) >> 32
+        n = row['sample_count']
+        row['sample_valid'] = (1 <= n <= 64 and 0 <= row['zero_count'] <= row['unit_count'] <= n
+                               and 0 <= row['rail_count'] <= n and row['unit_count'] + row['rail_count'] <= n
+                               and 0 <= row['sum_abs'] <= n * 32768 and row['minimum'] <= row['maximum']
+                               and row['stage'] == 0 and row['unknown_extrema_bits'] == 0)
+        row['mean_abs'] = row['sum_abs'] / n if row['sample_valid'] else None
+    elif event['event'] in (120, 121):
+        ue = event['event'] == 120
+        identity = event['a'] & UINT64_MASK
+        row['rnti'] = ((identity >> 16) if ue else identity) & 0xffff if event['a'] != INT64_MIN else None
+        if ue:
+            row.update(ue=identity & 0xffff, codeword=(identity >> 32) & 0xff,
+                       rnti_type=(identity >> 40) & 0xff, stage=(identity >> 48) & 0xff)
+        else:
+            state = event['c'] & UINT64_MASK
+            row.update(pci=(identity >> 16) & 0xffff if event['a'] != INT64_MIN else None,
+                       harq_id=state & 31 if event['c'] != INT64_MIN else None,
+                       round=(state >> 5) & 0xff if event['c'] != INT64_MIN else None,
+                       rv=(state >> 13) & 3 if event['c'] != INT64_MIN else None,
+                       ndi=(state >> 15) & 1 if event['c'] != INT64_MIN else None)
+        for word, fields in (('d', (('data_scrambling_id', 0, 16), ('dmrs_scrambling_id', 16, 16),
+                                   ('dmrs_ports', 32, 16), ('nscid', 48, 8), ('reference_point', 56, 8))),
+                             ('e', (('dmrs_cdm_groups', 0, 8), ('vrb_to_prb_mapping_raw', 8, 8),
+                                   ('pdu_bitmap', 16, 16), ('csi_rate_match_count', 32, 8))),
+                             ('f', (('tbslbrm_raw', 0, 32), ('target_code_rate_raw', 32, 16)))):
+            for name, shift, width in fields:
+                row[name] = None if event[word] == INT64_MIN else (event[word] >> shift) & ((1 << width) - 1)
+        if row['csi_rate_match_count'] == 255:
+            row['csi_rate_match_count'] = None
+        row['ptrs_present'] = bool(row['pdu_bitmap'] & 1) if row['pdu_bitmap'] is not None else None
+        row['unknown_mapping_bits'] = (event['e'] & UINT64_MASK) >> 40 if event['e'] != INT64_MIN else None
+        row['unknown_limits_bits'] = (event['f'] & UINT64_MASK) >> 48 if event['f'] != INT64_MIN else None
+    elif event['event'] in (116, 117):
         identity = event['a'] & UINT64_MASK
         row.update(ue=identity & 0xffff, rnti=(identity >> 16) & 0xffff,
                    codeword=(identity >> 32) & 0xff, rnti_type=(identity >> 40) & 0xff,
@@ -244,6 +290,9 @@ def decode_radio_timing(event):
         116: ('sync_epoch', 'absolute_rx_slot', 'result', 'coding', 'geometry'),
         117: ('sync_epoch', 'absolute_rx_slot', 'gain_generation', 'rx_gain_millidb'),
         118: ('identity', 'harq_state', 'coding', 'geometry', 'feedback_frame_slot'),
+        120: ('sync_epoch', 'absolute_rx_slot', 'sequences', 'mapping', 'limits'),
+        121: ('identity', 'harq_state', 'sequences', 'mapping', 'limits'),
+        122: ('sync_epoch', 'absolute_rx_slot'),
     }
     for key in nullable.get(event['event'], ()):
         if row[key] == INT64_MIN:

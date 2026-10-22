@@ -71,6 +71,16 @@ static void flight_gnb_pdsch_grant(int pci,
                              : INT64_MIN;
   const int64_t feedback = pucch ? (int64_t)pucch->frame * 1000 + pucch->ul_slot : INT64_MIN;
   flight_recorder_emit(FLIGHT_EVENT_GNB_PDSCH_GRANT, identity, frame_slot, state, coding, flight_gnb_pdsch_geometry(pdu), feedback);
+  const int64_t sequences = pdu->SCID <= 1 && pdu->refPoint <= 1
+                                ? (uint64_t)pdu->dataScramblingId | ((uint64_t)pdu->dlDmrsScramblingId << 16)
+                                      | ((uint64_t)pdu->dmrsPorts << 32) | ((uint64_t)pdu->SCID << 48)
+                                      | ((uint64_t)pdu->refPoint << 56)
+                                : INT64_MIN;
+  /* This PDU carries no CSI-RS rate-matching count; 255 means unavailable. */
+  const int64_t mapping = (uint64_t)pdu->numDmrsCdmGrpsNoData | ((uint64_t)pdu->VRBtoPRBMapping << 8)
+                          | ((uint64_t)pdu->pduBitmap << 16) | (UINT64_C(255) << 32);
+  const int64_t limits = (uint64_t)pdu->maintenance_parms_v3.tbSizeLbrmBytes | ((uint64_t)pdu->targetCodeRate[0] << 32);
+  flight_recorder_emit(FLIGHT_EVENT_GNB_PDSCH_INPUT, identity, frame_slot, state, sequences, mapping, limits);
 }
 
 int get_dl_tda(const gNB_MAC_INST *nrmac, const nr_cell_sched_t *cell, int slot)
