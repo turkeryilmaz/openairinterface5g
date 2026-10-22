@@ -40,7 +40,7 @@ from flight_health import (
 )
 from flight_recovery import Decision, NativeChannel, RecoveryPolicy
 from radio_health import RadioHealthDiagnostics
-from flight_traffic import TrafficError, TrafficSupervisor, validate_settings
+from flight_traffic import TrafficError, TrafficSupervisor, parse_bitrate, validate_settings
 from summary import summarize_run
 
 
@@ -903,7 +903,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--traffic-bind", metavar="IP", help="optional gNB server bind address")
     parser.add_argument("--traffic-port", type=int, default=5201)
     parser.add_argument("--traffic-direction", choices=("ul", "dl", "both"), default="ul")
-    parser.add_argument("--traffic-rate", type=int, default=1100000, help="bits/s per direction")
+    parser.add_argument("--traffic-rate", type=parse_bitrate, default=1100000,
+                        help="UE offered bit/s per direction; accepts 500K, 1.1M, 1.1Mbps or integer bit/s")
     parser.add_argument("--recovery-stall", type=float, default=10.0)
     parser.add_argument("--recovery-attempt", type=float, default=120.0)
     parser.add_argument("--stop-timeout", type=float, default=10.0)
