@@ -247,7 +247,7 @@ static int write_reorder_common(nrue_ru_write_t nrue_ru_write,
   int wroteSamples = 0;
   re_order_t *ctx = &device->reOrder;
   LOG_D(HW, "received write order ts: %lu, nb samples %d, next ts %luflags %d\n", timestamp, nsamps, timestamp + nsamps, flags);
-  if (flight_recorder_enabled())
+  if (flight_recorder_enabled() && flight_recorder_sample(FLIGHT_SAMPLE_TX_REORDER, timestamp, cancelled))
     flight_recorder_emit(FLIGHT_EVENT_RADIO_TX_REORDER, device->type, timestamp, nsamps, flags, 0, 0);
   pthread_mutex_lock(&ctx->mutex_store);
   if (!ctx->initDone) {
@@ -261,7 +261,7 @@ static int write_reorder_common(nrue_ru_write_t nrue_ru_write,
   if (pthread_mutex_trylock(&ctx->mutex_write) == 0) {
     // We have the write exclusivity
     if (llabs(timestamp - ctx->nextTS) < MAX_GAP) { // We are writing in sequence of the previous write
-      if (flight_recorder_enabled())
+      if (flight_recorder_enabled() && flight_recorder_sample(FLIGHT_SAMPLE_TX_REORDER, timestamp, cancelled))
         flight_recorder_emit(FLIGHT_EVENT_RADIO_TX_REORDER,
                              device->type,
                              timestamp,

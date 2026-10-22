@@ -368,7 +368,8 @@ static bool RU_write(nr_rxtx_thread_data_t *rxtxD, bool sl_tx_action, c16_t **tx
     const int clock_error = deadline.valid && clock_status != 0 ? errno : deadline.error_code;
     const nr_ue_tx_deadline_check_t check =
         nr_ue_tx_deadline_check(&deadline, clock_status == 0 ? &monotonic_time : NULL, clock_error);
-    if (flight_recorder_enabled())
+    if (flight_recorder_enabled()
+        && flight_recorder_sample(FLIGHT_SAMPLE_TX_DEADLINE, proc->timestamp_tx, !check.valid || check.missed))
       flight_recorder_emit(FLIGHT_EVENT_UE_TX_DEADLINE,
                            UE->Mod_id,
                            proc->flight_sync_epoch,
@@ -1357,7 +1358,8 @@ void *UE_thread(void *arg)
     curMsgTx->tx_deadline_monotonic_ns = tx_deadline.monotonic_ns;
     curMsgTx->tx_deadline_error_code = tx_deadline.error_code;
     curMsgTx->tx_deadline_valid = tx_deadline.valid;
-    if (flight_recorder_enabled()) {
+    if (flight_recorder_enabled()
+        && flight_recorder_sample(FLIGHT_SAMPLE_TX_SCHEDULE, writeTimestamp, !tx_deadline.valid || !deadline_anchor.valid)) {
       const int64_t tx_slot =
           ((int64_t)curMsg.proc.hfn_tx * MAX_FRAME_NUMBER + curMsg.proc.frame_tx) * nb_slot_frame + curMsg.proc.nr_slot_tx;
       flight_recorder_emit(FLIGHT_EVENT_UE_TX_SCHEDULE,

@@ -1221,7 +1221,13 @@ bool radio_gain_device_apply_tx(c16_t *samples, uint32_t count, double requested
     atomic_store_explicit(&binding.tx_fault, true, memory_order_release);
     radio_gain_owner_report_failure(binding.owner, 100 + result.status);
   }
-  if (flight_recorder_enabled()) {
+  /* Keep a mapper result and its quality/energy sidecars together. Preserve
+   * every PRACH attempt and failed mapping; thin only ordinary channel detail. */
+  const uint64_t observation_key = ((uint64_t)(uint32_t)frame * 1000 + (uint32_t)slot) * 8 + channel;
+  if (flight_recorder_enabled()
+      && flight_recorder_sample(FLIGHT_SAMPLE_TX_MAPPING,
+                                observation_key,
+                                channel == FLIGHT_UE_TX_CHANNEL_PRACH || result.status != RADIO_TX_POWER_OK)) {
     if (relative) {
       flight_recorder_emit(FLIGHT_EVENT_RADIO_TX_RELATIVE_POWER,
                            channel,

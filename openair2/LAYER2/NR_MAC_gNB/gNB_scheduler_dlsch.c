@@ -7,6 +7,7 @@
  */
 
 #include "common/utils/nr/nr_common.h"
+#include "common/utils/LOG/flight_recorder.h"
 /*MAC*/
 #include "LAYER2/NR_MAC_COMMON/nr_mac.h"
 #include "nr_mac_gNB.h"
@@ -28,6 +29,49 @@
 //#define SIZE_OF_POINTER sizeof (void *)
 
 #define MAX_NUM_DATA_REQ 1024
+
+static int64_t flight_gnb_pdsch_geometry(const nfapi_nr_dl_tti_pdsch_pdu_rel15_t *pdu)
+{
+  if (pdu->rbStart > 511 || pdu->rbSize > 511 || pdu->BWPStart > 511 || pdu->BWPSize > 511 || pdu->StartSymbolIndex > 15
+      || pdu->NrOfSymbols > 15 || pdu->mcsIndex[0] > 31 || pdu->qamModOrder[0] > 15 || pdu->nrOfLayers > 15 || pdu->mcsTable[0] > 3
+      || pdu->maintenance_parms_v3.ldpcBaseGraph > 3 || pdu->dmrsConfigType > 1 || pdu->resourceAlloc > 1)
+    return INT64_MIN;
+  return (uint64_t)pdu->rbStart | ((uint64_t)pdu->rbSize << 9) | ((uint64_t)pdu->BWPStart << 18) | ((uint64_t)pdu->BWPSize << 27)
+         | ((uint64_t)pdu->StartSymbolIndex << 36) | ((uint64_t)pdu->NrOfSymbols << 40) | ((uint64_t)pdu->mcsIndex[0] << 44)
+         | ((uint64_t)pdu->qamModOrder[0] << 49) | ((uint64_t)pdu->nrOfLayers << 53) | ((uint64_t)pdu->mcsTable[0] << 57)
+         | ((uint64_t)pdu->maintenance_parms_v3.ldpcBaseGraph << 59) | ((uint64_t)pdu->dmrsConfigType << 61)
+         | ((uint64_t)pdu->resourceAlloc << 62);
+}
+
+static void flight_gnb_pdsch_grant(int pci,
+                                   int frame,
+                                   int slot,
+                                   rnti_t rnti,
+                                   int harq_pid,
+                                   int round,
+                                   int ndi,
+                                   int rv,
+                                   const nfapi_nr_dl_tti_pdsch_pdu_rel15_t *pdu,
+                                   const NR_sched_pucch_t *pucch)
+{
+  if (!flight_recorder_enabled())
+    return;
+  const int64_t frame_slot = (int64_t)frame * 1000 + slot;
+  const uint64_t key = (uint64_t)frame_slot ^ ((uint64_t)rnti << 32) ^ ((uint64_t)harq_pid << 48);
+  if (!flight_recorder_sample(FLIGHT_SAMPLE_GNB_PDSCH, key, round > 0))
+    return;
+  const int64_t identity = pci >= 0 && pci <= UINT16_MAX ? (uint64_t)rnti | ((uint64_t)pci << 16) : INT64_MIN;
+  const int64_t state =
+      harq_pid >= 0 && harq_pid <= 31 && round >= 0 && round <= UINT8_MAX && rv >= 0 && rv <= 3 && ndi >= 0 && ndi <= 1
+          ? harq_pid | ((uint64_t)round << 5) | ((uint64_t)rv << 13) | ((uint64_t)ndi << 15)
+          : INT64_MIN;
+  const uint64_t tbs_bits = (uint64_t)pdu->TBSize[0] * 8;
+  const int64_t coding = tbs_bits <= 0xffffffU && pdu->dlDmrsSymbPos <= 0x3fff
+                             ? tbs_bits | ((uint64_t)pdu->targetCodeRate[0] << 24) | ((uint64_t)pdu->dlDmrsSymbPos << 40)
+                             : INT64_MIN;
+  const int64_t feedback = pucch ? (int64_t)pucch->frame * 1000 + pucch->ul_slot : INT64_MIN;
+  flight_recorder_emit(FLIGHT_EVENT_GNB_PDSCH_GRANT, identity, frame_slot, state, coding, flight_gnb_pdsch_geometry(pdu), feedback);
+}
 
 int get_dl_tda(const gNB_MAC_INST *nrmac, const nr_cell_sched_t *cell, int slot)
 {
@@ -1369,6 +1413,17 @@ void post_process_dlsch(gNB_MAC_INST *nr_mac,
                                                        current_harq_pid,
                                                        0,
                                                        false);
+
+  flight_gnb_pdsch_grant(*scc->physCellId,
+                         frame,
+                         slot,
+                         rnti,
+                         current_harq_pid,
+                         harq->round,
+                         dci_payload.ndi,
+                         dci_payload.rv,
+                         pdsch_pdu,
+                         pucch);
 
   LOG_D(NR_MAC,
         "%4d.%2d DCI type 1 payload: freq_alloc %d (%d,%d,%d), "

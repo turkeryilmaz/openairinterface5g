@@ -594,7 +594,7 @@ int nrue_ru_write(PHY_VARS_NR_UE *UE, openair0_timestamp_t timestamp, void **buf
   if (oai_exit || nrue_ru_failed())
     return -ESHUTDOWN;
   openair0_device_t *dev = &openair0_dev[UE->rf_map.card];
-  if (flight_recorder_enabled())
+  if (flight_recorder_enabled() && flight_recorder_sample(FLIGHT_SAMPLE_TX_ORIGIN, timestamp, !dev->firstTS_initialized))
     flight_recorder_emit(FLIGHT_EVENT_UE_TX_ORIGIN,
                          UE->rf_map.card,
                          UE->Mod_id,

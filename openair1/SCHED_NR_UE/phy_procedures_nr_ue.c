@@ -255,6 +255,11 @@ void nr_fill_rx_indication(fapi_nr_rx_indication_t *rx_ind,
         rx->pdsch_pdu.ack_nack = dl_harq->decodeResult;
         rx->pdsch_pdu.pdu = (uint8_t *)typeSpecific;
         rx->pdsch_pdu.pdu_length = dlsch->cw_info.TBS / 8;
+        const nr_ue_pdsch_diagnostic_t diagnostic = {.stage = NR_PDSCH_DIAG_INDICATION,
+                                                     .round = dl_harq->DLround,
+                                                     .first_rx = dl_harq->first_rx == 1,
+                                                     .indication_ack = rx->pdsch_pdu.ack_nack};
+        nr_ue_record_pdsch_result(ue, proc, dlsch, cw_idx, harq_pid, NULL, 0, -1, &diagnostic);
         if (dl_harq->decodeResult) {
           int t = WS_C_RNTI;
           if (pdu_type == FAPI_NR_RX_PDU_TYPE_RAR)
@@ -497,7 +502,14 @@ void ue_srs_procedures_nr(PHY_VARS_NR_UE *ue,
                                    frame_parms->nb_antennas_tx);
   DevAssert(generated); // if we can't generate despite the SRS config, there
                         // is a problem
-  if (generated && flight_recorder_enabled()) {
+  if (generated
+      && flight_recorder_sample_power(FLIGHT_SAMPLE_UE_TX_POWER_REQUEST,
+                                      FLIGHT_UE_TX_CHANNEL_SRS,
+                                      ue->Mod_id,
+                                      srs_config_pdu->tx_power,
+                                      AMP,
+                                      0,
+                                      0)) {
     const int64_t resource =
         (int64_t)srs_config_pdu->bwp_start | ((int64_t)srs_config_pdu->bwp_size << 16)
         | ((int64_t)srs_config_pdu->time_start_position << 32) | ((int64_t)(1U << srs_config_pdu->num_symbols) << 40)
@@ -887,6 +899,11 @@ static void nr_ue_dlsch_procedures(PHY_VARS_NR_UE *ue,
   // exit dlsch procedures as there are no active dlsch
   NR_DL_UE_HARQ_t *dl_harq = &ue->dl_harq_processes[cw_idx][harq_pid];
   if (dl_harq->status != NR_ACTIVE) {
+    const nr_ue_pdsch_diagnostic_t diagnostic = {.stage = NR_PDSCH_DIAG_SKIPPED,
+                                                 .reason = NR_PDSCH_DIAG_INACTIVE,
+                                                 .round = dl_harq->DLround,
+                                                 .first_rx = dl_harq->first_rx == 1};
+    nr_ue_record_pdsch_result(ue, proc, dlsch, cw_idx, harq_pid, config, freq_alloc->num_rbs, G, &diagnostic);
     /* Grant arrived (dlsch active, LLRs demodulated) but the HARQ process is no longer ACTIVE. */
     LOG_E(NR_PHY, "Internal error nr_ue_dlsch_procedure() no active cw slot %d harq %d (now %d.%d status %d activated %d.%d)\n",
           nr_slot_rx, harq_pid, frame_rx, nr_slot_rx, dl_harq->status, dl_harq->activated_frame, dl_harq->activated_slot);
@@ -899,6 +916,11 @@ static void nr_ue_dlsch_procedures(PHY_VARS_NR_UE *ue,
 
   /* Late finish of a TB that no longer owns the PID: do not decode, ACK, or write HARQ state. */
   if (dl_harq->activated_frame != frame_rx || dl_harq->activated_slot != nr_slot_rx) {
+    const nr_ue_pdsch_diagnostic_t diagnostic = {.stage = NR_PDSCH_DIAG_SKIPPED,
+                                                 .reason = NR_PDSCH_DIAG_LATE_OWNER,
+                                                 .round = dl_harq->DLround,
+                                                 .first_rx = dl_harq->first_rx == 1};
+    nr_ue_record_pdsch_result(ue, proc, dlsch, cw_idx, harq_pid, config, freq_alloc->num_rbs, G, &diagnostic);
     LOG_W(NR_PHY, "%d.%d DLSCH harq %d late decode skipped, re-armed %d.%d first_rx %d\n",
           frame_rx, nr_slot_rx, harq_pid, dl_harq->activated_frame, dl_harq->activated_slot, dl_harq->first_rx);
     if (config->k1_feedback) {

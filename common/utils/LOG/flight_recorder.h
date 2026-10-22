@@ -167,7 +167,30 @@ typedef enum {
   FLIGHT_EVENT_RADIO_RX_PHASE = 113,
   FLIGHT_EVENT_UE_TX_BARRIER_STOP = 114,
   FLIGHT_EVENT_UE_TX_RELATIVE_TRANSLATION = 115,
+  FLIGHT_EVENT_UE_PDSCH_RESULT = 116,
+  FLIGHT_EVENT_UE_PDSCH_RX_CONTEXT = 117,
+  FLIGHT_EVENT_GNB_PDSCH_GRANT = 118,
+  FLIGHT_EVENT_RLC_FAILURE = 119,
 } flight_recorder_event_t;
+
+/** Stable groups for accounting intentional reduction of routine detail. */
+typedef enum {
+  FLIGHT_SAMPLE_TX_MAPPING = 1,
+  FLIGHT_SAMPLE_TX_SUBMIT = 2,
+  FLIGHT_SAMPLE_TX_SEND = 3,
+  FLIGHT_SAMPLE_TX_RESULT = 4,
+  FLIGHT_SAMPLE_TX_QUEUE = 5,
+  FLIGHT_SAMPLE_TX_REORDER = 6,
+  FLIGHT_SAMPLE_TX_ORIGIN = 7,
+  FLIGHT_SAMPLE_TX_SCHEDULE = 8,
+  FLIGHT_SAMPLE_TX_DEADLINE = 9,
+  FLIGHT_SAMPLE_UE_PDSCH = 10,
+  FLIGHT_SAMPLE_GNB_PDSCH = 11,
+  FLIGHT_SAMPLE_RLC_FAILURE = 12,
+  FLIGHT_SAMPLE_UE_TX_POWER_REQUEST = 13,
+  FLIGHT_SAMPLE_UE_TX_CONTROL = 14,
+  FLIGHT_SAMPLE_UE_TX_RELATIVE_POWER = 15,
+} flight_recorder_sample_group_t;
 
 /** Channel discriminator carried by FLIGHT_EVENT_UE_TX_POWER_REQUEST. */
 typedef enum {
@@ -198,6 +221,45 @@ void flight_recorder_shutdown(void);
 
 /** True only while producers may submit numeric records. */
 bool flight_recorder_enabled(void);
+
+/**
+ * Decide whether to retain one routine observation group. Call before preparing
+ * expensive diagnostic arguments, then emit all related sidecars under that one
+ * decision. With OAI_FLIGHT_RECORDER_DETAIL=balanced (default), each thread/group
+ * retains its first eight opportunities, then a deterministic 1/64 key cohort.
+ * Equal keys select the same steady-state cohort across groups; warmup and forced
+ * decisions can differ, so readers must not assume complete cross-thread pairs.
+ * force=true and detail=full retain every opportunity. Errors and transitions
+ * should force retention or bypass this helper. Disabled capture returns false.
+ * The writer reports retained/reduced opportunity counts separately from losses;
+ * a true result does not guarantee successful subsequent emission.
+ *
+ * Bounded producer work: no clock reads, allocation, I/O, locks or retry loops.
+ */
+bool flight_recorder_sample(unsigned int group, uint64_t key, bool force);
+
+/**
+ * Retain power detail on state changes and a periodic key cohort during steady
+ * state. Valid groups are UE_TX_POWER_REQUEST, UE_TX_CONTROL and
+ * UE_TX_RELATIVE_POWER; channels are FLIGHT_UE_TX_CHANNEL_*. Each producer owns
+ * one fixed signature per group/channel, including instance and four values.
+ * PRACH, changed signatures, unknown inputs and full detail always retain.
+ * Steady decisions use an unsigned opportunity count, independent of the state
+ * values, and share the normal sampling counters and shutdown enrollment.
+ *
+ * Request signatures are selected power/amplitude/0/0; control signatures are
+ * pathloss/TPC-state/delta/PCMAX; relative signatures are correction/min/max/
+ * selected. Changing raw or translated requests within unchanged relative
+ * bounds is intentionally periodic. Gate all related sidecars on one decision;
+ * separate FIFO admission can still lose one sidecar during overflow.
+ */
+bool flight_recorder_sample_power(unsigned int group,
+                                  unsigned int channel,
+                                  int64_t instance,
+                                  int64_t a,
+                                  int64_t b,
+                                  int64_t c,
+                                  int64_t d);
 
 /** Sample one in 1024 calls using a caller-owned counter; independent of chunk size. */
 static inline bool flight_recorder_sample_due(uint32_t *calls)

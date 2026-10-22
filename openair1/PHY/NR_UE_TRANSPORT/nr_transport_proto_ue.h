@@ -62,6 +62,49 @@ void nr_dlsch_decoding(PHY_VARS_NR_UE *phy_vars_ue,
                        int number_rbs,
                        int G);
 
+enum {
+  NR_PDSCH_DIAG_DECODE,
+  NR_PDSCH_DIAG_INDICATION,
+  NR_PDSCH_DIAG_EARLY_RETURN,
+  NR_PDSCH_DIAG_SKIPPED,
+};
+
+enum {
+  NR_PDSCH_DIAG_NORMAL,
+  NR_PDSCH_DIAG_LATE_OWNER,
+  NR_PDSCH_DIAG_SEGMENT_LIMIT,
+  NR_PDSCH_DIAG_INVALID_E,
+  NR_PDSCH_DIAG_DECODER_ERROR,
+  NR_PDSCH_DIAG_INACTIVE,
+};
+
+typedef struct {
+  uint8_t stage;
+  uint8_t reason;
+  uint8_t round;
+  bool first_rx;
+  bool clear_requested;
+  bool segment_checked;
+  bool segment_ok;
+  bool global_checked;
+  bool global_ok;
+  bool zero_rejected;
+  bool decoder_fields_valid;
+  bool indication_ack;
+  int decoder_error;
+} nr_ue_pdsch_diagnostic_t;
+
+/* Numeric flight evidence only; this does not change the HARQ or indication. */
+void nr_ue_record_pdsch_result(const PHY_VARS_NR_UE *ue,
+                               const UE_nr_rxtx_proc_t *proc,
+                               const NR_UE_DLSCH_t *dlsch,
+                               int cw_idx,
+                               int harq_pid,
+                               const fapi_nr_dl_config_dlsch_pdu_rel15_t *config,
+                               int number_rbs,
+                               int G,
+                               const nr_ue_pdsch_diagnostic_t *diagnostic);
+
 int nr_ulsch_pre_encoding(NR_UL_UE_HARQ_t *harq_process,
                           uint32_t tb_size_bytes,
                           uint8_t nrOfLayers,

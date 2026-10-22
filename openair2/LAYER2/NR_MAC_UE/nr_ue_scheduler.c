@@ -2884,7 +2884,14 @@ void nr_ue_ul_scheduler(NR_UE_MAC_INST_t *mac, nr_uplink_indication_t *ul_info)
           release_ul_config(ulcfg_pdu, true);
           return;
         }
-        if (power_deferred && flight_recorder_enabled())
+        if (power_deferred
+            && flight_recorder_sample_power(FLIGHT_SAMPLE_UE_TX_CONTROL,
+                                            FLIGHT_UE_TX_CHANNEL_PUSCH,
+                                            mac->ue_id,
+                                            pathloss,
+                                            mac->f_b_f_c,
+                                            pdu->oai_deferred_tpc_delta,
+                                            mac->p_Max == INT_MIN ? INT64_MIN : mac->p_Max))
           flight_recorder_emit(FLIGHT_EVENT_UE_TX_CONTROL,
                                FLIGHT_UE_TX_CHANNEL_PUSCH,
                                (int64_t)frame_tx * 1000 + slot_tx,

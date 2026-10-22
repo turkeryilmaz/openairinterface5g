@@ -1780,7 +1780,14 @@ int nr_ue_configure_pucch(NR_UE_MAC_INST_t *mac,
                                                       pucch_pdu->prb_start);
     if (pucch_pdu->pucch_tx_power == INT16_MIN && radio_gain_device_tx_relative_actuating())
       return -1;
-    if (flight_recorder_enabled() && pucch_pdu->pucch_tx_power != INT16_MIN)
+    if (pucch_pdu->pucch_tx_power != INT16_MIN
+        && flight_recorder_sample_power(FLIGHT_SAMPLE_UE_TX_CONTROL,
+                                        FLIGHT_UE_TX_CHANNEL_PUCCH,
+                                        mac->ue_id,
+                                        pathloss,
+                                        mac->G_b_f_c,
+                                        sum_delta_pucch,
+                                        mac->p_Max == INT_MIN ? INT64_MIN : mac->p_Max))
       flight_recorder_emit(FLIGHT_EVENT_UE_TX_CONTROL,
                            FLIGHT_UE_TX_CHANNEL_PUCCH,
                            (int64_t)frame * 1000 + slot,
@@ -1949,7 +1956,14 @@ int nr_ue_configure_pucch(NR_UE_MAC_INST_t *mac,
                                                       pucch_pdu->prb_start);
     if (pucch_pdu->pucch_tx_power == INT16_MIN && radio_gain_device_tx_relative_actuating())
       return -1;
-    if (flight_recorder_enabled() && pucch_pdu->pucch_tx_power != INT16_MIN)
+    if (pucch_pdu->pucch_tx_power != INT16_MIN
+        && flight_recorder_sample_power(FLIGHT_SAMPLE_UE_TX_CONTROL,
+                                        FLIGHT_UE_TX_CHANNEL_PUCCH,
+                                        mac->ue_id,
+                                        pathloss,
+                                        mac->G_b_f_c,
+                                        sum_delta_pucch,
+                                        mac->p_Max == INT_MIN ? INT64_MIN : mac->p_Max))
       flight_recorder_emit(FLIGHT_EVENT_UE_TX_CONTROL,
                            FLIGHT_UE_TX_CHANNEL_PUCCH,
                            (int64_t)frame * 1000 + slot,

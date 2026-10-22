@@ -1240,7 +1240,13 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
     } // symbol loop
   } // port loop
 
-  if (flight_recorder_enabled()) {
+  if (flight_recorder_sample_power(FLIGHT_SAMPLE_UE_TX_POWER_REQUEST,
+                                   FLIGHT_UE_TX_CHANNEL_PUSCH,
+                                   UE->Mod_id,
+                                   pusch_pdu->tx_power,
+                                   INT16_MAX,
+                                   0,
+                                   0)) {
     const int64_t resource = pusch_pdu->rb_start | ((int64_t)pusch_pdu->rb_size << 16) | ((int64_t)start_symbol << 32)
                              | ((int64_t)number_of_symbols << 40) | ((int64_t)mod_order << 48) | ((int64_t)Nl << 56);
     /* nr_modulation() uses fixed Q15 constellation scaling, not a PDU power actuator. */
