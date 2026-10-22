@@ -69,7 +69,23 @@ and `--flight-traffic-rate`. CLI values replace corresponding config values.
 
 The UE requires an explicit peer IP. Port defaults to 5201; direction defaults
 to `ul`, with `dl` and simultaneous `both` available. Rate defaults to 1100000
-bits/s **per direction**. UDP datagrams are 1200 bytes, reporting is once per
+bits/s **per direction**. Set `--flight-traffic-rate 500K`, `1.1M`, or `2M` on
+the UE command to offer 500 kbit/s, 1.1 Mbit/s, or 2 Mbit/s respectively. Explicit
+`Kbps`, `Mbps`, `Gbps` and integer bit/s are also accepted; K/M/G mean decimal
+1000/1000000/1000000000, not bytes or binary multiples. For example:
+
+```sh
+sudo ./nr-uesoftmodem -O ue.conf --flight log recovery traffic \
+  --flight-traffic-peer 192.0.2.10 --flight-traffic-direction both --flight-traffic-rate 2M
+```
+
+This offers **2 Mbit/s UL and 2 Mbit/s DL**. The UE iperf client selects the rate
+also for DL-only/reverse traffic; the gNB server does not need a rate flag. In a
+configuration file, use `flight-traffic-rate = "2M";`. The CLI overrides it.
+The numeric rate in bit/s is recorded in metadata and the iperf command. These
+are offered rates; actual received throughput and loss are reported separately.
+
+UDP datagrams are 1200 bytes, reporting is once per
 second, and healthy traffic runs continuously in one generation (`iperf3 --time 0`)
 until the worker stops. Each generation binds both iperf3's
 TCP control connection and UDP socket to the current `flight-interface` IP
