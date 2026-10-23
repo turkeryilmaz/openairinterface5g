@@ -216,6 +216,12 @@ void nr_rrc_SI_timers(NR_UE_RRC_SI_INFO *SInfo)
 
 void handle_meas_timers(NR_UE_RRC_INST_t *rrc)
 {
+  // TS 38.331 5.3.7: SRB1 resumes before the re-establishment response arrives.
+  // Defer reports until RRCReestablishmentComplete has been submitted. Preserve
+  // pending report timers/counts while T311 or the re-establishment procedure runs.
+  if (nr_timer_is_active(&rrc->timers_and_constants.T311) || rrc->ra_trigger == RRC_CONNECTION_REESTABLISHMENT)
+    return;
+
   for (int i = 0; i < NB_CNX_UE; i++) {
     rrcPerNB_t *nb = &rrc->perNB[i];
     l3_measurements_t *l3_measurements = &nb->l3_measurements;
