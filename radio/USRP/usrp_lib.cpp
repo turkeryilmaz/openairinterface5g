@@ -67,6 +67,7 @@ typedef struct {
   //! USRP TX Metadata
   uhd::tx_metadata_t tx_md;
   usrp_tx_burst_state_t tx_burst;
+  usrp_tx_underflow_mailbox_t tx_underflow;
   //! USRP RX Metadata
   uhd::rx_metadata_t rx_md;
 
@@ -380,15 +381,17 @@ static void usrp_flight_record_tx_result(const usrp_state_t *state,
                                          int64_t accepted,
                                          int outcome)
 {
-  if (!flight_recorder_sample(FLIGHT_SAMPLE_TX_RESULT, timestamp, outcome != 0 || accepted != samples || samples <= 0))
+  if (!flight_recorder_sample(FLIGHT_SAMPLE_TX_RESULT,
+                              timestamp,
+                              timestamp < 0 || outcome != 0 || accepted != samples || samples <= 0))
     return;
   flight_recorder_emit(FLIGHT_EVENT_RADIO_TX_RESULT, state->flight_device_type, sequence, timestamp, samples, accepted, outcome);
 }
 
-static void trx_usrp_send_end_of_burst(usrp_state_t *s, int64_t sequence)
+static bool trx_usrp_send_end_of_burst(usrp_state_t *s, int64_t sequence)
 {
   if (!s->tx_burst.open)
-    return;
+    return true;
   s->tx_md.end_of_burst = true;
   s->tx_md.start_of_burst = false;
   s->tx_md.has_time_spec = false;
@@ -399,20 +402,22 @@ static void trx_usrp_send_end_of_burst(usrp_state_t *s, int64_t sequence)
               s->flight_tx_channels);
   for (int channel = 0; channel < s->flight_tx_channels; channel++)
     buffers[channel] = &zero;
-  /* Use the payload sender's existing 0.1 s timeout, with no retry. UHD returns
-   * zero for an empty EOB even on timeout, so return alone is not delivery proof. */
+  /* UHD pads an empty EOB to one zero sample but returns zero even on timeout.
+   * Request that padding explicitly so the return count proves host acceptance.
+   * Use the payload sender's existing 0.1 s timeout, with no retry. */
   const bool recording = flight_recorder_enabled();
   if (recording)
-    usrp_flight_record_tx_send(s, sequence, INT64_MIN, 0, s->flight_tx_channels);
+    usrp_flight_record_tx_send(s, sequence, INT64_MIN, 1, s->flight_tx_channels);
   try {
-    const size_t accepted = s->tx_stream->send(uhd::tx_streamer::buffs_type(buffers, s->flight_tx_channels), 0, s->tx_md, 0.1);
-    usrp_tx_burst_closed(&s->tx_burst);
+    const size_t accepted = s->tx_stream->send(uhd::tx_streamer::buffs_type(buffers, s->flight_tx_channels), 1, s->tx_md, 0.1);
+    const bool closed = usrp_tx_burst_close_result(&s->tx_burst, accepted);
     if (recording)
-      usrp_flight_record_tx_result(s, sequence, INT64_MIN, 0, accepted, 0);
+      usrp_flight_record_tx_result(s, sequence, INT64_MIN, 1, accepted, 0);
+    return closed;
   } catch (...) {
     usrp_tx_burst_uncertain(&s->tx_burst);
     if (recording)
-      usrp_flight_record_tx_result(s, sequence, INT64_MIN, 0, INT64_MIN, 1);
+      usrp_flight_record_tx_result(s, sequence, INT64_MIN, 1, INT64_MIN, 1);
     throw;
   }
 }
@@ -564,11 +569,13 @@ static int usrp_radio_health_send(usrp_state_t *state,
 {
   const bool recording = flight_recorder_enabled();
   const int64_t sequence = recording ? state->tx_count : 0;
+  if (state->flight_device_type == USRP_X300_DEV)
+    usrp_tx_burst_underflow(&state->tx_burst, usrp_tx_underflow_snapshot(&state->tx_underflow));
   const usrp_tx_burst_plan_t plan = usrp_tx_burst_plan(&state->tx_burst, timestamp, samples, first_packet, last_packet);
-  /* X3xx's DUC keeps advancing time within an open burst. A new timestamp
-   * after reacquisition must follow an untimed EOB so it seeds a fresh burst. */
-  if (plan.close)
-    trx_usrp_send_end_of_burst(state, sequence);
+  /* A timestamp gap or a current-burst X3xx underflow requires a boundary before
+   * continuing timed payloads. Do not submit payload after a short EOB send. */
+  if (plan.close && !trx_usrp_send_end_of_burst(state, sequence))
+    return 0;
   if (!plan.payload)
     return 0;
   state->tx_md.has_time_spec = true;
@@ -663,6 +670,15 @@ static size_t usrp_radio_health_recv(usrp_state_t *state, void *buffer, size_t s
 
 static void usrp_radio_health_record_async_event(usrp_state_t *state, const uhd::async_metadata_t &metadata)
 {
+  if (state->flight_device_type == USRP_X300_DEV
+      && (metadata.event_code == uhd::async_metadata_t::EVENT_CODE_UNDERFLOW
+          || metadata.event_code == uhd::async_metadata_t::EVENT_CODE_UNDERFLOW_IN_PACKET)) {
+    uint64_t ticks;
+    /* Use the same sample units as the sender's time_spec::from_ticks(). A
+     * missing device timestamp cannot identify the affected burst. */
+    if (metadata.has_time_spec && usrp_radio_health_time_to_ticks(metadata.time_spec, state->sample_rate, &ticks))
+      usrp_tx_underflow_publish(&state->tx_underflow, ticks);
+  }
   if (flight_recorder_enabled()) {
     uint64_t device_ticks = 0;
     const bool device_time_valid =
@@ -758,7 +774,7 @@ static void *usrp_radio_health_async_worker(void *opaque)
 
 static void usrp_radio_health_start_async(usrp_state_t *state)
 {
-  if (state->radio_health == NULL)
+  if (state->radio_health == NULL && state->flight_device_type != USRP_X300_DEV)
     return;
 
   int error = pthread_mutex_init(&state->radio_health_async_mutex, NULL);
@@ -1708,6 +1724,7 @@ extern "C" {
       device->priv=s;
       AssertFatal( s!=NULL,"USRP device: memory allocation failure\n");
       s->last_beam_id = UINT16_MAX;
+      usrp_tx_underflow_init(&s->tx_underflow);
     } else {
       LOG_E(HW, "multiple device init detected\n");
       return 0;
@@ -2221,12 +2238,12 @@ extern "C" {
   device->trx_write_func = trx_usrp_write;
   device->trx_read_func  = trx_usrp_read;
   device->trx_set_beams = (device->openair0_cfg->gpio_controller != RU_GPIO_CONTROL_NONE) ? trx_set_beam : NULL;
+  s->sample_rate = openair0_cfg[0].sample_rate;
   if (s->radio_health != NULL) {
     radio_health_gauge_set(s->radio_health, RADIO_HEALTH_METRIC_TX_SEND_INFLIGHT, 0);
     radio_health_gauge_set(s->radio_health, RADIO_HEALTH_METRIC_RX_RECV_INFLIGHT, 0);
-    usrp_radio_health_start_async(s);
   }
-  s->sample_rate = openair0_cfg[0].sample_rate;
+  usrp_radio_health_start_async(s);
 
   // TODO:
   // init tx_forward_nsamps based usrp_time_offset ex

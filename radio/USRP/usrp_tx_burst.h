@@ -8,12 +8,45 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#if __GCC_ATOMIC_LLONG_LOCK_FREE != 2
+#error "USRP TX underflow notifications require lock-free 64-bit atomics"
+#endif
+
+/* One async reader publishes; the serialized sender only takes snapshots.
+ * UINT64_MAX is outside the valid device timestamp range, including zero. */
+typedef struct {
+  uint64_t latest_ticks;
+} usrp_tx_underflow_mailbox_t;
+
+static inline void usrp_tx_underflow_init(usrp_tx_underflow_mailbox_t *mailbox)
+{
+  __atomic_store_n(&mailbox->latest_ticks, UINT64_MAX, __ATOMIC_RELAXED);
+}
+
+static inline void usrp_tx_underflow_publish(usrp_tx_underflow_mailbox_t *mailbox, uint64_t ticks)
+{
+  if (ticks > INT64_MAX)
+    return;
+  const uint64_t previous = __atomic_load_n(&mailbox->latest_ticks, __ATOMIC_RELAXED);
+  if (previous == UINT64_MAX || ticks > previous)
+    __atomic_store_n(&mailbox->latest_ticks, ticks, __ATOMIC_RELEASE);
+}
+
+static inline uint64_t usrp_tx_underflow_snapshot(const usrp_tx_underflow_mailbox_t *mailbox)
+{
+  return __atomic_load_n(&mailbox->latest_ticks, __ATOMIC_ACQUIRE);
+}
+
 /* Owned by the serialized sender, then by teardown after the sender has joined.
  * An unknown end requires an EOB before another timed payload can start. */
 typedef struct {
+  int64_t start_timestamp;
   int64_t end_timestamp;
+  uint64_t consumed_underflow;
   bool open;
+  bool start_valid;
   bool end_valid;
+  bool consumed_underflow_valid;
 } usrp_tx_burst_state_t;
 
 typedef struct {
@@ -45,6 +78,7 @@ static inline usrp_tx_burst_plan_t usrp_tx_burst_plan(const usrp_tx_burst_state_
 static inline void usrp_tx_burst_closed(usrp_tx_burst_state_t *state)
 {
   state->open = false;
+  state->start_valid = false;
   state->end_valid = false;
 }
 
@@ -52,6 +86,30 @@ static inline void usrp_tx_burst_uncertain(usrp_tx_burst_state_t *state)
 {
   state->open = true;
   state->end_valid = false;
+}
+
+static inline bool usrp_tx_burst_underflow(usrp_tx_burst_state_t *state, uint64_t ticks)
+{
+  if (ticks > INT64_MAX || (state->consumed_underflow_valid && ticks <= state->consumed_underflow))
+    return false;
+  state->consumed_underflow = ticks;
+  state->consumed_underflow_valid = true;
+  /* Receipt order cannot identify the burst: an old report can arrive after a
+   * successful restart. Compare its device time with the first accepted sample. */
+  if (!state->open || (state->start_valid && (int64_t)ticks < state->start_timestamp))
+    return false;
+  usrp_tx_burst_uncertain(state);
+  return true;
+}
+
+static inline bool usrp_tx_burst_close_result(usrp_tx_burst_state_t *state, uint64_t accepted)
+{
+  if (accepted != 1) {
+    usrp_tx_burst_uncertain(state);
+    return false;
+  }
+  usrp_tx_burst_closed(state);
+  return true;
 }
 
 static inline void usrp_tx_burst_accepted(usrp_tx_burst_state_t *state, int64_t timestamp, int requested, int accepted, bool end)
@@ -68,6 +126,10 @@ static inline void usrp_tx_burst_accepted(usrp_tx_burst_state_t *state, int64_t 
     return;
   }
 
+  if (!state->open) {
+    state->start_timestamp = timestamp;
+    state->start_valid = true;
+  }
   state->open = true;
   state->end_valid = timestamp <= INT64_MAX - accepted;
   if (state->end_valid)
