@@ -51,6 +51,9 @@
 //       (0  + 0 * 20) % 512 = 0
 #define NUM_PROCESS_SLOT_TX_BARRIERS 512
 
+// Keep extended live PRACH writes disjoint from the following slot's retained samples.
+#define NR_UE_TX_SLOT_BUFFER_FACTOR 2
+
 // CSI for tracking can have up to 2 resources per slot
 #define MAX_CSI_RES_SLOT 2
 // Threshold to change radio frequency
@@ -181,7 +184,7 @@ typedef struct {
   /// \brief Holds the transmit data in time domain.
   /// For IFFT_FPGA this points to the same memory as PHY_vars->tx_vars[a].TX_DMA_BUFFER.
   /// - first index: tx antenna [0..nb_antennas_tx[
-  /// - second index: sample [0..FRAME_LENGTH_COMPLEX_SAMPLES[
+  /// - second index: sample [0..NR_UE_TX_SLOT_BUFFER_FACTOR * samples_per_frame[ (one frame for sidelink)
   c16_t **txData;
 
   /// \brief Holds the received data in time domain.

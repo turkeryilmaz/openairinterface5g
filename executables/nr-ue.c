@@ -320,7 +320,7 @@ static inline bool radio_shutdown_cancelled(int result)
   return (result == -ESHUTDOWN && (oai_exit || nrue_ru_failed())) || radio_gain_device_tx_cancelled(result);
 }
 
-static bool RU_write(nr_rxtx_thread_data_t *rxtxD, bool sl_tx_action, c16_t **txp)
+static bool RU_write(nr_rxtx_thread_data_t *rxtxD, bool sl_tx_action, bool prach_tx, c16_t **txp)
 {
   int writeBlockSize = rxtxD->writeBlockSize;
   if (writeBlockSize == 0)
@@ -405,9 +405,9 @@ static bool RU_write(nr_rxtx_thread_data_t *rxtxD, bool sl_tx_action, c16_t **tx
   }
 
   openair0_timestamp_t writeTimestamp = proc->timestamp_tx;
-  // if writeBlockSize gets longer that slot size, fill with dummy
+  // PRACH already fills its complete interval; normal TX retains the repeated-prefix extension.
   const int maxWriteBlockSize = get_samples_per_slot(proc->nr_slot_tx, fp);
-  while (writeBlockSize > maxWriteBlockSize) {
+  while (!prach_tx && writeBlockSize > maxWriteBlockSize) {
     const int dummyBlockSize = min(writeBlockSize - maxWriteBlockSize, maxWriteBlockSize);
     int tmp = nrue_ru_write_reorder(UE, writeTimestamp, (void **)txp, dummyBlockSize, fp->nb_antennas_tx, flags);
     if (radio_shutdown_cancelled(tmp)) {
@@ -556,6 +556,7 @@ void processSlotTX(void *arg)
   PHY_VARS_NR_UE *UE = rxtxD->UE;
   nr_phy_data_tx_t phy_data = {0};
   bool sl_tx_action = false;
+  bool prach_tx = false;
   bool tx_samples_valid = true;
 
   if (UE->if_inst)
@@ -567,9 +568,10 @@ void processSlotTX(void *arg)
   LOG_D(PHY, "SlotTx %d.%d => slot type %d\n", proc->frame_tx, proc->nr_slot_tx, proc->tx_slot_type);
 
   const NR_DL_FRAME_PARMS *fp = &UE->frame_parms;
+  const int tx_slot_buffer_factor = UE->sl_mode == 2 ? 1 : NR_UE_TX_SLOT_BUFFER_FACTOR;
   c16_t *txp[fp->nb_antennas_tx];
   for (int i = 0; i < fp->nb_antennas_tx; i++) {
-    txp[i] = UE->common_vars.txData[i] + get_samples_slot_timestamp(fp, proc->nr_slot_tx);
+    txp[i] = UE->common_vars.txData[i] + (size_t)tx_slot_buffer_factor * get_samples_slot_timestamp(fp, proc->nr_slot_tx);
   }
 
   if (proc->tx_slot_type == NR_UPLINK_SLOT || proc->tx_slot_type == NR_MIXED_SLOT) {
@@ -618,6 +620,7 @@ void processSlotTX(void *arg)
       phy_data.prach_handled = true;
       const NR_UE_PRACH *prach = UE->prach_vars[proc->gNB_id];
       if (prach->active || prach->tx_request_pending || prach->tx_waveform_active) {
+        prach_tx = true;
         const int guard_samples =
             fp->frame_type == TDD && proc->tx_slot_type == NR_MIXED_SLOT
                 ? get_samples_symbol_timestamp(fp, proc->nr_slot_tx, num_dl_symbols_slot(&UE->nrUE_config, proc->nr_slot_tx))
@@ -631,15 +634,17 @@ void processSlotTX(void *arg)
     }
   } else {
     const NR_UE_PRACH *prach = UE->prach_vars[proc->gNB_id];
-    if (UE->sl_mode != 2 && (prach->active || prach->tx_request_pending || prach->tx_waveform_active))
+    if (UE->sl_mode != 2 && (prach->active || prach->tx_request_pending || prach->tx_waveform_active)) {
+      prach_tx = true;
       tx_samples_valid = nr_ue_prach_tx(UE, proc, &phy_data, txp, rxtxD->writeBlockSize, 0);
+    }
     dynamic_barrier_join(rxtxD->next_barrier);
   }
   if (!tx_samples_valid) {
     // An unrepresentable interval cannot advance the reorder cursor.
     if (rxtxD->writeBlockSize > 0 && proc->timestamp_tx <= INT64_MAX - rxtxD->writeBlockSize)
       nrue_ru_write_reorder_cancel(UE, proc->timestamp_tx, rxtxD->writeBlockSize);
-  } else if (RU_write(rxtxD, sl_tx_action, txp))
+  } else if (RU_write(rxtxD, sl_tx_action, prach_tx, txp))
     flight_monitor_add(FLIGHT_MONITOR_UE_TX_COMPLETED, 1);
   TracyCZoneEnd(ctx);
 }

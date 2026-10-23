@@ -1654,8 +1654,8 @@ bool nr_ue_prach_tx(PHY_VARS_NR_UE *ue,
   NR_UE_PRACH *prach = ue->prach_vars[proc->gNB_id];
   const NR_DL_FRAME_PARMS *fp = &ue->frame_parms;
   const int slot_samples = get_samples_per_slot(proc->nr_slot_tx, fp);
-  if (sample_count <= 0 || sample_count > slot_samples || guard_samples < 0 || guard_samples > sample_count
-      || (proc->tx_slot_type != NR_UPLINK_SLOT && proc->tx_slot_type != NR_MIXED_SLOT))
+  if (sample_count <= 0 || sample_count > (int64_t)NR_UE_TX_SLOT_BUFFER_FACTOR * slot_samples || guard_samples < 0
+      || guard_samples > sample_count || (proc->tx_slot_type != NR_UPLINK_SLOT && proc->tx_slot_type != NR_MIXED_SLOT))
     return erase_prach_tx(ue, proc, RADIO_TX_REJECT_SPAN);
   if (phy_data->ulsch.status == NR_ACTIVE || phy_data->srs_vars.active || phy_data->pucch_vars.active[0]
       || phy_data->pucch_vars.active[1])
@@ -1716,9 +1716,10 @@ bool nr_ue_prach_tx(PHY_VARS_NR_UE *ue,
   if (first < last && first - proc->timestamp_tx < guard_samples)
     return erase_prach_tx(ue, proc, RADIO_TX_REJECT_OVERLAP);
 
-  // Copy only this slot's bytes before publishing the next prefix. Reorder never retains the staging buffer.
+  // Copy the complete interval into this slot's storage before releasing the next slot.
+  // Reorder may retain these pointers, but never the reusable waveform staging buffer.
   for (int ant = 0; ant < fp->nb_antennas_tx; ant++)
-    memset(txp[ant], 0, slot_samples * sizeof(c16_t));
+    memset(txp[ant], 0, (size_t)sample_count * sizeof(c16_t));
   if (first < last)
     memcpy(txp[0] + (first - proc->timestamp_tx),
            prach->tx_waveform + (first - prach->tx_waveform_timestamp),
