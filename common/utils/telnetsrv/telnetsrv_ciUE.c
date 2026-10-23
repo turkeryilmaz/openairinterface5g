@@ -152,7 +152,7 @@ int force_crnti_ra(char *buf, int debug, telnet_printfunc_t prnt)
   UNUSED(buf);
   UNUSED(prnt);
   NR_UE_MAC_INST_t *mac = get_mac_inst(0);
-  trigger_MAC_UE_RA(mac, NULL);
+  trigger_MAC_UE_RA_with_reason(mac, NULL, "telnet CI request");
   return 0;
 }
 

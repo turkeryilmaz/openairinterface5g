@@ -286,6 +286,7 @@ void nr_msg3_not_transmitted(NR_UE_MAC_INST_t *mac);
 bool ra_resource_selection(NR_UE_MAC_INST_t *mac);
 void nr_Msg3_transmitted(NR_UE_MAC_INST_t *mac);
 void trigger_MAC_UE_RA(NR_UE_MAC_INST_t *mac, dci_pdu_rel15_t *pdcch_order);
+void trigger_MAC_UE_RA_with_reason(NR_UE_MAC_INST_t *mac, dci_pdu_rel15_t *pdcch_order, const char *reason);
 void nr_get_Msg3_MsgA_PUSCH_payload(NR_UE_MAC_INST_t *mac, uint8_t *buf, int TBS_max);
 void handle_time_alignment_timer_expired(NR_UE_MAC_INST_t *mac);
 void handle_ulsync_loss(NR_UE_MAC_INST_t *mac);
