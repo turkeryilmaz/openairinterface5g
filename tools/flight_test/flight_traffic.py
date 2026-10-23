@@ -234,6 +234,7 @@ class TrafficSupervisor:
         self.output_truncated_bytes = 0
         self.completed_segments = 0
         self.failed_segments = 0
+        self.stopped_segments = 0
 
     def _event(self, kind: str, **fields: Any) -> None:
         event = {"schema_version": 1, "kind": kind, "clock": clock_sample(),
@@ -417,10 +418,10 @@ class TrafficSupervisor:
         self._drain()
         if self.process is not None:
             returncode = self.process.poll()
-            if stopping:
-                self._stop("main_worker_stopping", now)
-            elif returncode is not None:
+            if returncode is not None:
                 self._stop("segment_finished" if returncode == 0 else "segment_failed", now)
+            elif stopping:
+                self._stop("main_worker_stopping", now)
             elif (self.settings.role == "ue" and self.settings.segment_seconds > 0
                   and now - self.started >= self.settings.segment_seconds + 10):
                 self._gap("segment_deadline")
@@ -467,12 +468,19 @@ class TrafficSupervisor:
         for name, buffer in self.buffers.items():
             if buffer:
                 self._line(name, bytes(buffer), partial=True)
-        success = returncode == 0 and self.stop_reason == "segment_finished"
+        success = (returncode == 0 and self.stop_reason == "segment_finished" and not self.killed
+                   and not self.cleanup_failed)
+        expected_stop = (self.stop_reason == "main_worker_stopping" and not self.killed
+                         and not self.cleanup_failed)
+        outcome = "completed" if success else "stopped" if expected_stop else "failed"
         self.completed_segments += int(success)
-        self.failed_segments += int(not success)
+        self.stopped_segments += int(expected_stop)
+        self.failed_segments += int(outcome == "failed")
         self.last_returncode = returncode
         self._event("traffic_generation_finished", returncode=returncode, reason=self.stop_reason,
-                    completed=success, forced_kill=self.killed)
+                    completed=success, outcome=outcome, forced_kill=self.killed,
+                    cleanup_failed=self.cleanup_failed)
+        self._human(f"generation ended: {outcome}; reason={self.stop_reason}; exit={returncode}")
         self.process = None
         self.buffers.clear()
         self.next_launch = now if success else now + self.settings.retry_seconds
@@ -502,6 +510,7 @@ class TrafficSupervisor:
         return {"enabled": True, "generation_count": self.generation, "output_lines": self.output_lines,
                 "output_truncated_bytes": self.output_truncated_bytes,
                 "completed_segments": self.completed_segments, "failed_segments": self.failed_segments,
+                "stopped_segments": self.stopped_segments,
                 "last_returncode": self.last_returncode, "cleanup_failed": self.cleanup_failed,
                 "last_process_group": self.last_process_group,
                 "active_pid": self.process.pid if self.process else None,

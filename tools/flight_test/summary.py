@@ -17,6 +17,24 @@ def _number(value: Any) -> bool:
     return type(value) in (int, float) and math.isfinite(value) and value >= 0
 
 
+def _traffic_outcome(event: dict[str, Any]) -> Optional[str]:
+    if event.get("kind") == "traffic_launch_failed":
+        return "failed"
+    if event.get("kind") != "traffic_generation_finished":
+        return None
+    outcome = event.get("outcome")
+    if outcome in ("completed", "stopped", "failed"):
+        return outcome
+    # Older recordings have only completed/reason/forced_kill. Keep their
+    # reported stop reason; an absent kill field cannot prove a clean stop.
+    if event.get("completed"):
+        return "completed"
+    if (event.get("reason") == "main_worker_stopping" and event.get("forced_kill") is False
+            and not event.get("cleanup_failed")):
+        return "stopped"
+    return "failed"
+
+
 class _DirectionSummary:
     """One ordered iperf stream per direction; old/overlapping reports are excluded."""
 
@@ -122,6 +140,7 @@ class SessionSummary:
         self.sync_successes = self.sync_reacquisitions = self.context_restorations = self.context_losses = 0
         self.pdu_accepts = self.native_counter_resets = self.native_send_drops = 0
         self.native_samples = self.traffic_gaps = self.traffic_failures = self.partial_output = 0
+        self.traffic_stops = 0
         self.sync_samples = self.context_samples = self.send_drop_samples = self.pdu_samples = 0
         self.integrity_counts = {name: 0 for name in ("complete", "degraded", "incomplete", "disabled")}
         self.native_losses: dict[str, int] = {}
@@ -141,8 +160,9 @@ class SessionSummary:
     def observe_traffic(self, event: dict[str, Any]) -> None:
         kind = event.get("kind")
         self.traffic_gaps += kind == "traffic_gap"
-        self.traffic_failures += kind == "traffic_launch_failed" or (
-            kind == "traffic_generation_finished" and not event.get("completed"))
+        outcome = _traffic_outcome(event)
+        self.traffic_failures += outcome == "failed"
+        self.traffic_stops += outcome == "stopped"
         self.partial_output += kind in ("traffic_output_truncated", "traffic_output_incomplete")
         row = event.get("interval")
         if (kind != "traffic_output" or event.get("partial") or not isinstance(row, dict)
@@ -237,6 +257,7 @@ class SessionSummary:
                         "python_unhealthy_attempts": self.python_unhealthy_attempts,
                         "traffic_gap_records": self.traffic_gaps,
                         "traffic_failed_or_interrupted_generations": self.traffic_failures,
+                        "traffic_expected_stops": self.traffic_stops,
                         "traffic_incomplete_output_records": self.partial_output},
             "scope": {"timing": "monotonic receipt observations from session start, not exact protocol or first-packet timestamps",
                       "traffic": "rounded local receiver intervals; unique disjoint connection coverage; "
@@ -276,7 +297,9 @@ def render_summary(summary: dict[str, Any]) -> str:
                      f"{row['overlapping_intervals_excluded']}")
     losses = (json.dumps(capture['native_footer_losses'], sort_keys=True)
               if capture['native_footer_losses'] is not None else 'unavailable')
-    lines += [f"Capture integrity: {capture['integrity']}; native: {capture['native_integrity']}; "
+    lines += [f"Traffic generations: failed/interrupted: {capture['traffic_failed_or_interrupted_generations']}; "
+              f"expected stops: {count(capture.get('traffic_expected_stops'))}",
+              f"Capture integrity: {capture['integrity']}; native: {capture['native_integrity']}; "
               f"native footer losses: {losses}; "
               f"writer bytes dropped: {capture['writer_dropped_bytes']}",
               "Times are first receipt observations. Rates cover unique receiver intervals only.",
@@ -407,7 +430,7 @@ def summarize_run(directory: Path, maximum_bytes: int = 64 * 1024 * 1024, *,
     receiver_reports = 0
     delivered: Any = None
     maximum_received: Any = None
-    gaps = failures = partial_output = 0
+    gaps = failures = stops = partial_output = 0
     for event in reader.records(_paths(directory, "traffic.", reader)) if live is None else ():
         interval = event.get("interval")
         if (isinstance(interval, dict) and interval.get("reporter") == "receiver"
@@ -418,8 +441,9 @@ def summarize_run(directory: Path, maximum_bytes: int = 64 * 1024 * 1024, *,
                 maximum_received = max(maximum_received or 0, value)
                 delivered = bool(delivered or value > 0)
         gaps += event.get("kind") == "traffic_gap"
-        failures += event.get("kind") == "traffic_launch_failed" or (event.get("kind") == "traffic_generation_finished"
-                                                                   and not event.get("completed"))
+        outcome = _traffic_outcome(event)
+        failures += outcome == "failed"
+        stops += outcome == "stopped"
         partial_output += event.get("kind") in ("traffic_output_truncated", "traffic_output_incomplete")
     pdu_accept_observed: Any = None
     for event in reader.records(_paths(directory, "recovery.", reader)) if live is None else ():
@@ -483,6 +507,7 @@ def summarize_run(directory: Path, maximum_bytes: int = 64 * 1024 * 1024, *,
         maximum_received = max((value.maximum_bytes for value in live.directions.values()
                                 if value.maximum_bytes is not None), default=None)
         gaps, failures, partial_output = live.traffic_gaps, live.traffic_failures, live.partial_output
+        stops = live.traffic_stops
         pdu_accept_observed = True if live.first_pdu_ns is not None else None
     return {"schema_version": 1, "kind": "flight_capture_summary", "capture_directory": str(directory),
             "control_plane": {"pdu_accept_observed": pdu_accept_observed,
@@ -490,6 +515,7 @@ def summarize_run(directory: Path, maximum_bytes: int = 64 * 1024 * 1024, *,
             "traffic": {"delivered_bytes_observed": delivered, "receiver_reports": receiver_reports,
                         "maximum_receiver_report_bytes": maximum_received, "gap_records": gaps,
                         "failed_or_interrupted_generations": failures, "incomplete_output_records": partial_output,
+                        "expected_stops": stops,
                         "scope": "rounded receiver text reports only; duplicate reports are not summed; no video-delivery claim"},
             "capture": {"final_status_present": bool(status), "reported_capture": status.get("capture"),
                         "native_integrity": integrity, "native_integrity_reasons": reasons,
