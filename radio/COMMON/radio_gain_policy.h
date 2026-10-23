@@ -31,6 +31,9 @@ typedef struct {
   double filter_weight;
   uint64_t minimum_interval_ns;
   uint64_t maximum_age_ns;
+  /* Optional shorter interval for positive steps; zero retains minimum_interval_ns.
+   * A new, settled observation and the retained peak headroom are still required. */
+  uint64_t minimum_increase_interval_ns;
 } radio_rx_policy_config_t;
 
 typedef struct {

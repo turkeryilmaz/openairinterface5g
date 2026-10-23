@@ -544,9 +544,18 @@ void radio_gain_device_observe_rx(const radio_gain_sample_context_t *context,
   radio_rx_policy_state_t *state = acquisition                          ? &binding.rx_acquisition_policy
                                    : source == RADIO_RX_SOURCE_HEADROOM ? &binding.rx_headroom_policy
                                                                         : &binding.rx_policy;
+  radio_rx_policy_config_t policy = rx_policy_config;
+  if (options->role == AGC_ROLE_UE) {
+    /* A weak UE can decode access signalling before its receive level is useful
+     * for sustained PDSCH. Permit the next bounded increase after a fresh settled
+     * observation, without the extra tracking cooldown. Peak protection remains
+     * shared across generations; downward steps retain their existing interval. */
+    const uint64_t settle_ns = (uint64_t)(options->rx_settle_us ? options->rx_settle_us : AGC_RX_SETTLE_DEFAULT_US) * 1000;
+    policy.minimum_increase_interval_ns = settle_ns < policy.minimum_interval_ns ? settle_ns : policy.minimum_interval_ns;
+  }
   const radio_rx_decision_t decision =
-      acquisition ? radio_rx_acquire_resolution(&rx_policy_config, state, &binding.rx_peak_envelope, &binding.rx, &observation)
-                  : radio_rx_decide(&rx_policy_config, state, &binding.rx_peak_envelope, &binding.rx, &observation);
+      acquisition ? radio_rx_acquire_resolution(&policy, state, &binding.rx_peak_envelope, &binding.rx, &observation)
+                  : radio_rx_decide(&policy, state, &binding.rx_peak_envelope, &binding.rx, &observation);
   if (source == RADIO_RX_SOURCE_GNB_PUSCH && observation.activity_valid && decision.reason != RADIO_RX_HOLD_INVALID
       && decision.reason != RADIO_RX_HOLD_UNSUPPORTED && decision.reason != RADIO_RX_HOLD_STALE
       && decision.reason != RADIO_RX_HOLD_TRANSITION)
