@@ -381,6 +381,14 @@ static void usrp_flight_record_tx_result(const usrp_state_t *state,
                                          int64_t accepted,
                                          int outcome)
 {
+  if (state->tx_md.has_time_spec && state->tx_md.start_of_burst)
+    flight_recorder_emit(FLIGHT_EVENT_RADIO_TX_START_RESULT,
+                         state->flight_device_type,
+                         sequence,
+                         timestamp,
+                         samples,
+                         accepted,
+                         outcome);
   if (!flight_recorder_sample(FLIGHT_SAMPLE_TX_RESULT,
                               timestamp,
                               timestamp < 0 || outcome != 0 || accepted != samples || samples <= 0))
@@ -569,13 +577,31 @@ static int usrp_radio_health_send(usrp_state_t *state,
 {
   const bool recording = flight_recorder_enabled();
   const int64_t sequence = recording ? state->tx_count : 0;
+  /* Underflow handling can invalidate the accepted end before planning a close. */
+  const bool previous_end_valid = state->tx_burst.end_valid;
+  const openair0_timestamp_t previous_end = previous_end_valid ? state->tx_burst.end_timestamp : INT64_MIN;
+  bool underflow_trigger = false;
   if (state->flight_device_type == USRP_X300_DEV)
-    usrp_tx_burst_underflow(&state->tx_burst, usrp_tx_underflow_snapshot(&state->tx_underflow));
+    underflow_trigger = usrp_tx_burst_underflow(&state->tx_burst, usrp_tx_underflow_snapshot(&state->tx_underflow));
   const usrp_tx_burst_plan_t plan = usrp_tx_burst_plan(&state->tx_burst, timestamp, samples, first_packet, last_packet);
   /* A timestamp gap or a current-burst X3xx underflow requires a boundary before
    * continuing timed payloads. Do not submit payload after a short EOB send. */
-  if (plan.close && !trx_usrp_send_end_of_burst(state, sequence))
-    return 0;
+  if (plan.close) {
+    if (recording) {
+      const int flags = (first_packet ? 1 : 0) | (last_packet ? 2 : 0) | (previous_end_valid ? 4 : 32) | (underflow_trigger ? 8 : 0)
+                        | (previous_end_valid && samples > 0 && timestamp != previous_end ? 16 : 0)
+                        | (samples == 0 && last_packet ? 64 : 0);
+      flight_recorder_emit(FLIGHT_EVENT_RADIO_TX_BURST_BOUNDARY,
+                           state->flight_device_type,
+                           sequence,
+                           previous_end,
+                           timestamp,
+                           samples,
+                           flags);
+    }
+    if (!trx_usrp_send_end_of_burst(state, sequence))
+      return 0;
+  }
   if (!plan.payload)
     return 0;
   state->tx_md.has_time_spec = true;
