@@ -489,6 +489,10 @@ nr_initial_sync_t nr_initial_sync(UE_nr_rxtx_proc_t *proc,
                                + (res->symbolOffset - n_symb_prefix0) * (fp->ofdm_symbol_size + fp->nb_prefix_samples);
 
     res->syncRes.rx_offset = res->ssbOffset - sync_pos_frame;
+    // Keep the SFN and sample offset from the same selected PBCH capture.
+    res->syncRes.frame_number = ((res->pbchResult.decoded_output[0] >> 1) & 0x3f) << 4;
+    for (int i = 0; i < 4; i++)
+      res->syncRes.frame_number |= ((res->pbchResult.xtra_byte >> i) & 1) << (3 - i);
 
     LOG_I(PHY, "[UE%d] In synch, rx_offset %d samples\n", ue->Mod_id, res->syncRes.rx_offset);
     LOG_I(PHY, "[UE %d] Measured Carrier Frequency offset %d Hz\n", ue->Mod_id, res->freqOffset);
