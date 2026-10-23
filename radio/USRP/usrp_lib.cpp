@@ -71,7 +71,7 @@ typedef struct {
   //! USRP RX Metadata
   uhd::rx_metadata_t rx_md;
 
-  //! Sampling rate
+  //! Actual common RX/TX sample rate for device timestamp conversions
   double sample_rate;
 
   //! TX forward samples. We use usrp_time_offset to get this value
@@ -2224,9 +2224,22 @@ extern "C" {
       s->usrp->set_rx_bandwidth(openair0_cfg[0].rx_bw,i+choffset);
   }
 
+  /* UHD can coerce the requested rate. Using the nominal rate for actual sample
+   * timestamps can introduce periodic one-sample jumps. */
+  double common_sample_rate = 0.0;
   for (int i=0; i<openair0_cfg[0].rx_num_channels; i++) {
     LOG_I(HW,"RX Channel %d\n",i);
     const double actual_rx_rate = s->usrp->get_rx_rate(i + choffset);
+    if (!std::isfinite(actual_rx_rate) || actual_rx_rate <= 0.0
+        || (common_sample_rate > 0.0 && actual_rx_rate != common_sample_rate)) {
+      LOG_E(HW,
+            "USRP RX channel %d: invalid or inconsistent sample rate, common %.17g Hz, actual %.17g Hz\n",
+            i + choffset,
+            common_sample_rate,
+            actual_rx_rate);
+      return -1;
+    }
+    common_sample_rate = actual_rx_rate;
     LOG_I(HW,"  Actual RX sample rate: %fMSps...\n",actual_rx_rate/1e6);
     if (i == 0) {
       s->radio_health_rx_sample_rate = actual_rx_rate;
@@ -2244,6 +2257,16 @@ extern "C" {
   for (int i=0; i<openair0_cfg[0].tx_num_channels; i++) {
     LOG_I(HW,"TX Channel %d\n",i);
     const double actual_tx_rate = s->usrp->get_tx_rate(i + choffset);
+    if (!std::isfinite(actual_tx_rate) || actual_tx_rate <= 0.0
+        || (common_sample_rate > 0.0 && actual_tx_rate != common_sample_rate)) {
+      LOG_E(HW,
+            "USRP TX channel %d: invalid or inconsistent sample rate, common %.17g Hz, actual %.17g Hz\n",
+            i + choffset,
+            common_sample_rate,
+            actual_tx_rate);
+      return -1;
+    }
+    common_sample_rate = actual_tx_rate;
     LOG_I(HW,"  Actual TX sample rate: %fMSps...\n", actual_tx_rate/1e6);
     if (i == 0) {
       s->radio_health_tx_sample_rate = actual_tx_rate;
@@ -2259,12 +2282,17 @@ extern "C" {
     LOG_I(HW,"  Actual TX packet size: %lu\n",s->tx_stream->get_max_num_samps());
   }
 
+  if (common_sample_rate == 0.0) {
+    LOG_E(HW, "USRP has no active RX/TX sample rate for timestamp conversion\n");
+    return -1;
+  }
+
   std::cout << boost::format("Using Device: %s") % s->usrp->get_pp_string() << std::endl;
   LOG_I(HW,"Device timestamp: %f...\n", s->usrp->get_time_now().get_real_secs());
   device->trx_write_func = trx_usrp_write;
   device->trx_read_func  = trx_usrp_read;
   device->trx_set_beams = (device->openair0_cfg->gpio_controller != RU_GPIO_CONTROL_NONE) ? trx_set_beam : NULL;
-  s->sample_rate = openair0_cfg[0].sample_rate;
+  s->sample_rate = common_sample_rate;
   if (s->radio_health != NULL) {
     radio_health_gauge_set(s->radio_health, RADIO_HEALTH_METRIC_TX_SEND_INFLIGHT, 0);
     radio_health_gauge_set(s->radio_health, RADIO_HEALTH_METRIC_RX_RECV_INFLIGHT, 0);
@@ -2273,13 +2301,13 @@ extern "C" {
 
   // TODO:
   // init tx_forward_nsamps based usrp_time_offset ex
-  if(is_equal(s->sample_rate, (double)30.72e6))
+  if (is_equal(openair0_cfg[0].sample_rate, (double)30.72e6))
     s->tx_forward_nsamps  = 176;
 
-  if(is_equal(s->sample_rate, (double)15.36e6))
+  if (is_equal(openair0_cfg[0].sample_rate, (double)15.36e6))
     s->tx_forward_nsamps = 90;
 
-  if(is_equal(s->sample_rate, (double)7.68e6))
+  if (is_equal(openair0_cfg[0].sample_rate, (double)7.68e6))
     s->tx_forward_nsamps = 50;
 
   recplay_state_t *recPlay=device->recplay_state;
