@@ -230,6 +230,8 @@ typedef struct {
                            // TODO: for multi-peer reception this pool must be sized
                            // as num_peers * NR_MAX_SLSCH_HARQ_PROCESSES
 
+#define NR_UE_PRACH_MAX_TX_SAMPLES 824064
+
 typedef struct {
   bool active;
   int num_prach_slots;
@@ -241,6 +243,13 @@ typedef struct {
   int prefix_length;
   int waveform_start;
   int32_t waveform_power;
+  /* Immutable CP/repetition span; only permanent slot buffers are handed to the radio reorder queue. */
+  c16_t tx_waveform[NR_UE_PRACH_MAX_TX_SAMPLES];
+  uint32_t tx_waveform_length;
+  bool tx_request_pending;
+  bool tx_waveform_active;
+  openair0_timestamp_t tx_waveform_timestamp;
+  uint64_t tx_waveform_epoch;
 } NR_UE_PRACH;
 
 typedef struct {
@@ -534,6 +543,8 @@ typedef struct pdsch_scratch_s pdsch_scratch_t;
 
 typedef struct UE_nr_rxtx_proc_s {
   openair0_timestamp_t timestamp_tx;
+  /// MAC sample shift used to construct this job's immutable radio timestamp.
+  int tx_mac_stream_adjustment;
   /// Immutable flight diagnostic identity, incremented after receive realignment.
   uint64_t flight_sync_epoch;
   int gNB_id;
@@ -707,6 +718,8 @@ typedef struct nr_phy_data_tx_s {
   NR_UE_ULSCH_t ulsch;
   NR_UE_PUCCH pucch_vars;
   NR_UE_SRS srs_vars;
+  /// Runtime stream jobs handle PRACH before releasing the following TX prefix.
+  bool prach_handled;
 
   // Sidelink Rx action decided by MAC
   sl_nr_tx_config_type_enum_t sl_tx_action;
