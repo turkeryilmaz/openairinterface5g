@@ -611,6 +611,7 @@ static inline bool nr_ue_noise_snapshot_load(const PHY_NR_MEASUREMENTS *measurem
 typedef struct {
   bool cell_detected;
   int rx_offset;
+  int frame_number;
 } nr_initial_sync_t;
 
 typedef struct {

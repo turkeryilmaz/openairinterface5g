@@ -205,6 +205,7 @@ typedef struct {
   nr_gscn_info_t gscnInfo[MAX_GSCN_BAND];
   int numGscn;
   int rx_offset;
+  int frame_number;
 } syncData_t;
 
 static void UE_synch(void *arg) {
@@ -237,6 +238,7 @@ static void UE_synch(void *arg) {
 
   if (ret.cell_detected) {
     syncD->rx_offset = ret.rx_offset;
+    syncD->frame_number = ret.frame_number;
     const int freq_offset = UE->common_vars.freq_offset; // frequency offset computed with pss in initial sync
     const int64_t doubled_offset = (int64_t)ret.rx_offset * 2;
     const int hw_slot_offset = (doubled_offset / fp->samples_per_subframe * fp->slots_per_subframe)
@@ -1094,7 +1096,6 @@ void *UE_thread(void *arg)
   int duration_rx_to_tx = get_nrUE_params()->ue_capability_rx2tx;
   int timing_advance = UE->timing_advance_ntn;
   UE->N_TA_offset = determine_N_TA_offset(UE);
-  NR_UE_MAC_INST_t *mac = get_mac_inst(UE->Mod_id);
 
   bool syncRunning = false;
   const int nb_slot_frame = fp->slots_per_frame;
@@ -1141,18 +1142,12 @@ void *UE_thread(void *arg)
           flight_monitor_add(FLIGHT_MONITOR_SYNC_SUCCESSES, 1);
           UE->synch_request.received_synch_request = 0;
           out_of_sync_rrc_tick_seeded = false;
+          syncData_t *syncMsg = (syncData_t *)NotifiedFifoData(res);
           if (UE->sl_mode == SL_MODE2_SUPPORTED)
             decoded_frame_rx = UE->SL_UE_PHY_PARAMS.sync_params.DFN;
-          else {
-            // We must wait the RRC layer decoded the MIB and sent us the frame number
-            notifiedFIFO_elt_t *elt = pullNotifiedFIFO(&mac->input_nf);
-            AssertFatal(elt != NULL, "fifo error while waiting for MIB");
-            process_msg_rcc_to_mac(NotifiedFifoData(elt), UE->Mod_id);
-            delNotifiedFIFO_elt(elt);
-            decoded_frame_rx = mac->mib_frame;
-          }
+          else
+            decoded_frame_rx = syncMsg->frame_number;
           LOG_A(PHY, "UE synchronized! decoded_frame_rx=%d skipped_frames=%d\n", decoded_frame_rx, skipped_frames);
-          syncData_t *syncMsg = (syncData_t *)NotifiedFifoData(res);
           const int64_t frame_samples = fp->samples_per_frame;
           const int64_t raw_offset = syncMsg->rx_offset;
           const int mib_frame = decoded_frame_rx;

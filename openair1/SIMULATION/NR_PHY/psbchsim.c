@@ -617,7 +617,7 @@ int main(int argc, char **argv)
       }
 
       if (UE_RX->is_synchronized == 0) {
-        nr_initial_sync_t ret = {false, 0};
+        nr_initial_sync_t ret = {.cell_detected = false, .rx_offset = 0};
         UE_nr_rxtx_proc_t proc = {0};
         // Should not have SLSS id configured. Search should find SLSS id from TX UE
         UE_RX->SL_UE_PHY_PARAMS.sl_config.sl_sync_source.rx_slss_id = 0xFFFF;
