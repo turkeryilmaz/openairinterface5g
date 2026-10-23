@@ -4281,7 +4281,10 @@ static void nr_ue_process_mac_pdu(NR_UE_MAC_INST_t *mac, nr_downlink_indication_
 
         //  38.321 Ch6.1.3.14
         //  varialbe length
-        get_mac_len(pduP, pdu_len, &mac_len, &mac_subheader_len);
+        if (!get_mac_len(pduP, pdu_len, &mac_len, &mac_subheader_len)) {
+          LOG_E(MAC, "MAC CE: invalid mac_len %d for PDU len %d, dropping the PDU\n", mac_len, pdu_len);
+          done = 1;
+        }
         break;
 
       case DL_SCH_LCID_RECOMMENDED_BITRATE:
