@@ -77,7 +77,8 @@ void processSlotTX(void *arg);
   @param slot_tx
   @param frame_tx
 */
-void ue_ta_procedures(PHY_VARS_NR_UE *ue, int slot_tx, int frame_tx);
+/// Consume the selected due TA command and return its sample adjustment, or zero when none is due.
+int nr_ue_ta_command_samples(PHY_VARS_NR_UE *ue, int slot_tx, int frame_tx, bool is_rar);
 
 void set_tx_harq_id(NR_UE_ULSCH_t *ulsch, int harq_pid, int slot_tx);
 int get_tx_harq_id(NR_UE_ULSCH_t *ulsch, int slot_tx);

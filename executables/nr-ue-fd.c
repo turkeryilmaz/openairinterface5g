@@ -53,7 +53,10 @@ extern int UE_dl_preprocessing(PHY_VARS_NR_UE *UE,
                                const UE_nr_rxtx_proc_t *proc,
                                int *tx_wait_for_dlsch,
                                nr_phy_data_t *phy_data,
-                               bool *stats_printed);
+                               bool *stats_printed,
+                               bool *sl_stats_printed,
+                               int *relative_ta_delta,
+                               int *relative_ta_command);
 extern void *nrL1_UE_stats_thread(void *param);
 extern int nr_ue_slot_select(const fapi_nr_config_request_t *cfg, int nr_slot);
 extern int determine_N_TA_offset(PHY_VARS_NR_UE *ue);
@@ -434,7 +437,12 @@ static void *UE_fd_thread(void *arg)
     notifiedFIFO_elt_t *newRx = newNotifiedFIFO_elt(sizeof(nr_rxtx_thread_data_t), curMsg.proc.nr_slot_tx, NULL, UE_dl_processing);
     nr_rxtx_thread_data_t *curMsgRx = NotifiedFifoData(newRx);
     *curMsgRx = (nr_rxtx_thread_data_t){.proc = curMsg.proc, .UE = UE};
-    const int ret = UE_dl_preprocessing(UE, &curMsgRx->proc, tx_wait_for_dlsch, &curMsgRx->phy_data, &stats_printed);
+    bool sl_stats_printed = false;
+    int relative_ta_delta = 0;
+    int relative_ta_command = -1;
+    const int ret = UE_dl_preprocessing(UE, &curMsgRx->proc, tx_wait_for_dlsch, &curMsgRx->phy_data,
+                                       &stats_printed, &sl_stats_printed, &relative_ta_delta, &relative_ta_command);
+    UE->timing_advance += relative_ta_delta;
     if (ret != INT_MAX)
       shiftForNextFrame = ret;
 
