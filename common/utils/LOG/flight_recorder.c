@@ -324,7 +324,8 @@ static bool record_is_bulk(const flight_record_t *record)
       // Metadata 1 is timed data without start/end-of-burst markers.
       return v[3] > 0 && v[4] == 1 && v[5] > 0;
     case FLIGHT_EVENT_RADIO_TX_RESULT:
-      return v[3] > 0 && v[4] == v[3] && v[5] == 0;
+      // Untimed burst-close results retain reserved capacity even with one padding sample.
+      return v[2] != INT64_MIN && v[3] > 0 && v[4] == v[3] && v[5] == 0;
     case FLIGHT_EVENT_UE_TX_SCHEDULE:
       return v[3] >= 0 && v[4] >= 0 && v[5] > 0;
     case FLIGHT_EVENT_UE_TX_DEADLINE:
