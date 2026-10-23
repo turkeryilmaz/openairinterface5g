@@ -290,10 +290,13 @@ class TrafficSupervisor:
         self.human_last[direction] = now
         detail = "delivery=unavailable"
         if interval["reporter"] == "receiver":
-            detail = "delivery=receiver_observed"
+            detail = "delivery=observed_zero" if interval["bytes"] == 0 else "delivery=receiver_observed"
             if interval["lost_datagrams"] is not None:
-                detail += (f" loss={interval['lost_datagrams']}/{interval['total_datagrams']}"
-                           f" ({interval['loss_percent']:g}%) jitter={interval['jitter_ms']:g}ms")
+                detail += f" loss={interval['lost_datagrams']}/{interval['total_datagrams']}"
+                if interval["total_datagrams"] > 0:
+                    detail += f" ({interval['loss_percent']:g}%) jitter={interval['jitter_ms']:g}ms"
+                else:
+                    detail += " (percentage unavailable; no datagrams reported)"
         elif interval["sent_datagrams"] is not None:
             detail += f" sent_datagrams={interval['sent_datagrams']}"
         self._human(f"{direction.upper()} {interval['reporter']}={interval['reporter_endpoint'] or 'unknown'} "
