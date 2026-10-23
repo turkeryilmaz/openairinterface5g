@@ -531,7 +531,7 @@ qualified PUSCH reference is available. Reason11 `ACQUIRE_RESOLUTION` raises gai
 toward a modest converter-resolution floor, with the existing peak, age, settle,
 step and cooldown guards. It does not establish PRACH detection or signal SNR.
 
-### Correlated radio timing (70–90)
+### Correlated radio timing (70-90, 123-124)
 
 These append-only records are enabled by `flight = "log"` (or `--flight log`),
 including when AGC is off. `radio_timing.csv` retains each event independently,
@@ -560,6 +560,8 @@ records remain missing; check the recorder footer and health records for loss.
 |88|UE_PRACH_SPAN|UE, frame*1000+slot, offset in starting slot TX buffer, generated sample count including CP, CP samples, DFT samples|
 |89|UE_TX_ANCHOR|UE, sync epoch, UE-relative TX ticks, RX exclusive-end ticks, host monotonic ns at read completion, guard/rate packed|
 |90|UE_TX_CHANNEL_CONTEXT|UE, sync epoch, frame*1000+slot, UE-relative TX ticks, channel code, preamble index|
+|123|RADIO_TX_BURST_BOUNDARY|radio type, sender sequence, previous accepted end tick or INT64_MIN, new final target tick, requested count, boundary flags|
+|124|RADIO_TX_START_RESULT|radio type, sender sequence, final ticks, requested count, accepted count, outcome|
 
 All sample timestamps are in samples at the configured radio rate, not ns. UE
 reorder timestamps are relative to `firstTS`; gNB reorder timestamps already use
@@ -580,13 +582,33 @@ retires the complete scheduled interval, not only an already rejected fragment.
 
 Send metadata bits are1=timed,2=start-of-burst,4=end-of-burst. Send outcome0 is
 normal return;1 is exception, for which accepted count is `INT64_MIN`/unavailable.
-Shutdown EOB uses sequence−1 and a zero-length, untimed send, separately from
-positive steady-send sequences. Return of the requested count establishes driver
-acceptance only. An asynchronous time error or underflow is recorded individually
+Shutdown EOB uses sequence-1; a runtime EOB uses the following payload's sender
+sequence. Both request one zero padding sample with untimed EOB metadata.
+Return of the requested count establishes driver acceptance only.
+An asynchronous time error or underflow is recorded individually
 without inventing a one-to-one association with that send. Async bits1=timestamp
 present,2=successful conversion to nonnegative device ticks. Missing or invalid
 times use `INT64_MIN`. Async device timestamps retain UHD's semantics and are not
 a measurement of host queue residence or a calibrated RF emission timestamp.
+
+Event123 is emitted only when the serialized sender plans to close an already
+open burst, immediately before the EOB call. It snapshots the previous accepted
+end before underflow handling can invalidate it. Boundary flag values are
+1=caller first,2=caller last,4=previous end valid,8=current-burst underflow consumed,
+16=positive-count target differs from a valid previous end,32=previous end unknown,
+64=empty END request. The valid flag is authoritative even if the stored endpoint
+equals `INT64_MIN`; without it, the decoder marks the previous end unavailable.
+The new target and previous end use the sender's configured-rate sample ticks.
+Several reason flags can be set together; they are observations, not exclusive
+causal diagnoses. A planned close does not establish that UHD accepted it.
+
+Event124 records each actual timed SOB result, including full and short returns
+and exceptions, before event73 sampling. Outcome0=returned,1=exception, with an
+unavailable accepted count for exceptions. Normal payloads and untimed EOBs do
+not produce124. Events123/124 bypass routine sampling and retain the recorder's
+critical reserve by default; full rings or writer failure can still lose them.
+Existing event73 schema and sampling remain unchanged. These records establish
+sender decisions and host-side driver acceptance, not FPGA or RF delivery.
 
 RX discontinuity bits are1=metadata time present,2=tick conversion valid,
 4=prior expected tick valid,8=out-of-sequence,16=short read. This is exception

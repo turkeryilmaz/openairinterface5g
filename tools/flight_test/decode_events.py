@@ -72,6 +72,8 @@ TIMING_LAYOUTS = {
     120: ('UE_PDSCH_INPUT', ('identity', 'sync_epoch', 'absolute_rx_slot', 'sequences', 'mapping', 'limits')),
     121: ('GNB_PDSCH_INPUT', ('identity', 'frame_slot', 'harq_state', 'sequences', 'mapping', 'limits')),
     122: ('UE_PDSCH_LLR', ('identity', 'sync_epoch', 'absolute_rx_slot', 'counts', 'sum_abs', 'extrema')),
+    123: ('RADIO_TX_BURST_BOUNDARY', ('radio_type', 'send_sequence', 'previous_end_ticks', 'final_ticks', 'requested_samples', 'boundary_flags')),
+    124: ('RADIO_TX_START_RESULT', ('radio_type', 'send_sequence', 'final_ticks', 'requested_samples', 'accepted_samples', 'send_outcome')),
 }
 NAMES.update({number: layout[0] for number, layout in TIMING_LAYOUTS.items()})
 
@@ -93,7 +95,17 @@ def decode_radio_timing(event):
     row['name'] = layout[0]
     row.update(zip(layout[1], (event[key] for key in 'abcdef')))
     # Preserve packed values alongside their interpretations and unknown bits.
-    if event['event'] == 122:
+    if event['event'] == 124:
+        row['send_outcome_name'] = {0: 'returned', 1: 'exception'}.get(event['f'], 'unknown')
+    elif event['event'] == 123:
+        flags = event['f'] & UINT64_MASK
+        for name, bit in (('caller_first', 0), ('caller_last', 1), ('previous_end_valid', 2),
+                          ('underflow_trigger', 3), ('timestamp_mismatch', 4), ('previous_end_unknown', 5), ('empty_end', 6)):
+            row[name] = bool(flags & (1 << bit))
+        row['unknown_boundary_bits'] = flags & ~0x7f
+        if not row['previous_end_valid']:
+            row['previous_end_ticks'] = None
+    elif event['event'] == 122:
         identity = event['a'] & UINT64_MASK
         row.update(ue=identity & 0xffff, rnti=(identity >> 16) & 0xffff,
                    codeword=(identity >> 32) & 0xff, rnti_type=(identity >> 40) & 0xff,
@@ -293,6 +305,7 @@ def decode_radio_timing(event):
         120: ('sync_epoch', 'absolute_rx_slot', 'sequences', 'mapping', 'limits'),
         121: ('identity', 'harq_state', 'sequences', 'mapping', 'limits'),
         122: ('sync_epoch', 'absolute_rx_slot'),
+        124: ('accepted_samples', 'final_ticks'),
     }
     for key in nullable.get(event['event'], ()):
         if row[key] == INT64_MIN:
