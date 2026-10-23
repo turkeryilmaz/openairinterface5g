@@ -1457,7 +1457,7 @@ void schedule_RA_after_SR_failure(NR_UE_MAC_INST_t *mac)
   if (get_softmodem_params()->phy_test)
     return; // cannot trigger RA in phytest mode
   mac->sr_fallback_ra_triggered = true;
-  trigger_MAC_UE_RA(mac, NULL);
+  trigger_MAC_UE_RA_with_reason(mac, NULL, "SR fallback");
   // release PUCCH for all Serving Cells;
   // release SRS for all Serving Cells;
   release_PUCCH_SRS(mac);
@@ -2942,7 +2942,7 @@ void nr_ue_ul_scheduler(NR_UE_MAC_INST_t *mac, nr_uplink_indication_t *ul_info)
                 && !get_softmodem_params()->phy_test) {
               // UL data arrival during RRC_CONNECTED when UL synchronisation status is "non-synchronised"
               release_ul_config(ulcfg_pdu, false);
-              trigger_MAC_UE_RA(mac, NULL);
+              trigger_MAC_UE_RA_with_reason(mac, NULL, "UL data without time alignment");
               return;
             }
             // Getting IP traffic to be transmitted

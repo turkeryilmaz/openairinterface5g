@@ -1220,9 +1220,17 @@ void nr_rar_not_successful(NR_UE_MAC_INST_t *mac)
   }
 }
 
-void trigger_MAC_UE_RA(NR_UE_MAC_INST_t *mac, dci_pdu_rel15_t *pdcch_order)
+void trigger_MAC_UE_RA_with_reason(NR_UE_MAC_INST_t *mac, dci_pdu_rel15_t *pdcch_order, const char *reason)
 {
-  LOG_W(NR_MAC, "Triggering new RA procedure for UE with RNTI %x\n", mac->crnti);
+  LOG_W(NR_MAC,
+        "Triggering new RA procedure for UE with RNTI %x: %s "
+        "(time_alignment_active=%d, ta_started_by_ra=%d, mac_state=%d, ra_state=%d)\n",
+        mac->crnti,
+        reason,
+        nr_timer_is_active(&mac->time_alignment_timer),
+        mac->ra.time_alignment_timer_started,
+        mac->state,
+        mac->ra.ra_state);
   mac->state = UE_PERFORMING_RA;
   reset_ra(mac, false);
   RA_config_t *ra = &mac->ra;
@@ -1233,6 +1241,11 @@ void trigger_MAC_UE_RA(NR_UE_MAC_INST_t *mac, dci_pdu_rel15_t *pdcch_order)
     ra->pdcch_order.ssb_index = pdcch_order->ss_pbch_index;
     ra->pdcch_order.prach_mask = pdcch_order->prach_mask_index;
   }
+}
+
+void trigger_MAC_UE_RA(NR_UE_MAC_INST_t *mac, dci_pdu_rel15_t *pdcch_order)
+{
+  trigger_MAC_UE_RA_with_reason(mac, pdcch_order, pdcch_order ? "PDCCH order" : "unspecified local request");
 }
 
 void prepare_msg4_msgb_feedback(NR_UE_MAC_INST_t *mac, int pid, int ack_nack)
