@@ -14,8 +14,36 @@
 #include "mac_proto.h"
 #include "common/ran_context.h"
 #include "common/utils/T/T.h"
+#include "common/utils/LOG/flight_recorder.h"
 #include "common/utils/nr/nr_common.h"
 #include "nfapi/oai_integration/vendor_ext.h"
+
+static void flight_gnb_pucch_harq(module_id_t mod_id,
+                                  int cell_id,
+                                  frame_t frame,
+                                  slot_t slot,
+                                  int pid,
+                                  int bit,
+                                  int round,
+                                  bool is_ra,
+                                  const nfapi_nr_uci_pucch_pdu_format_0_1_t *uci)
+{
+  if (!flight_recorder_enabled())
+    return;
+  const uint8_t value = uci->harq.harq_list[bit].harq_value;
+  const uint8_t confidence = uci->harq.harq_confidence_level;
+  const int64_t frame_slot = (int64_t)frame * 1000 + slot;
+  const uint64_t key = (uint64_t)frame_slot ^ ((uint64_t)uci->rnti << 32) ^ ((uint64_t)pid << 48);
+  if (!flight_recorder_sample(FLIGHT_SAMPLE_GNB_PDSCH, key, value != 0 || confidence != 0))
+    return;
+  const int64_t identity = cell_id >= 0 && cell_id <= UINT16_MAX
+                               ? (uint64_t)uci->rnti | ((uint64_t)mod_id << 16) | ((uint64_t)cell_id << 32)
+                               : INT64_MIN;
+  const uint64_t outcome = value | ((uint64_t)confidence << 8) | ((uint64_t)bit << 16) | ((uint64_t)uci->harq.num_harq << 24)
+                           | ((uint64_t)uci->pucch_format << 32) | ((uint64_t)uci->pduBitmap << 40) | ((uint64_t)is_ra << 48);
+  flight_recorder_emit(FLIGHT_EVENT_GNB_PUCCH_HARQ, identity, frame_slot, pid, outcome, uci->ul_cqi, round);
+}
+
 static void nr_fill_nfapi_pucch(nr_cell_sched_t *cell, frame_t frame, slot_t slot, const NR_sched_pucch_t *pucch, NR_UE_info_t* UE)
 {
 
@@ -951,6 +979,7 @@ void handle_nr_uci_pucch_0_1(module_id_t mod_id, int cell_id, frame_t frame, slo
       LOG_D(NR_MAC,"%4d.%2d bit %d pid %d ack/nack %d\n",frame, slot, harq_bit,pid,harq_value);
       nr_mac_update_pdcch_closed_loop_adjust(sched_ctrl, harq_confidence != 0);
       bool success = harq_value == 0 && harq_confidence == 0;
+      flight_gnb_pucch_harq(mod_id, cell_id, frame, slot, pid, harq_bit, harq->round, is_ra, uci_01);
       // TCI state switch occurs at the first slot that is after slot n_+ T_HARQ + 3N_sf_slot (8.10.3 of 38.133)
       if (success && harq->start_tci_timer) {
         int slots = 3 * cell->frame_structure.numb_slots_frame / 10;

@@ -562,6 +562,21 @@ records remain missing; check the recorder footer and health records for loss.
 |90|UE_TX_CHANNEL_CONTEXT|UE, sync epoch, frame*1000+slot, UE-relative TX ticks, channel code, preamble index|
 |123|RADIO_TX_BURST_BOUNDARY|radio type, sender sequence, previous accepted end tick or INT64_MIN, new final target tick, requested count, boundary flags|
 |124|RADIO_TX_START_RESULT|radio type, sender sequence, final ticks, requested count, accepted count, outcome|
+|125|GNB_PUCCH_HARQ|RNTI/module/cell identity, received frame*1000+slot, HARQ PID, packed feedback outcome, raw UL CQI, HARQ round before update|
+
+Event125 observes each handled HARQ bit in a received PUCCH format0/1 indication,
+before MAC updates that HARQ process. Identity contains RNTI in bits0-15, module
+in16-31 and cell ID in32-47; INT64_MIN means that identity is unavailable.
+Outcome bytes0-5 contain raw HARQ value, confidence, bit index, HARQ bit count,
+PUCCH format and indication bitmap respectively; bit48 marks random access.
+MAC accepts only value0 with confidence0. Confidence1 contributes a DTX count
+per HARQ bit, so two bits can represent one PUCCH reception. CQI remains raw;
+255 must not be treated as a measured SNR. The round is captured before the
+existing HARQ handler changes it. Failed feedback is retained and successful
+feedback uses existing GNB_PDSCH sampling. This records received indications,
+not missed indications or proof of UE transmission. Scheduled feedback in
+event118 and UE ACK indications in event116 require an unambiguous session,
+RNTI, frame/slot and HARQ association; SFN/PID reuse can make a join ambiguous.
 
 All sample timestamps are sample counts, not ns. The USRP backend converts
 device times using the common actual RX/TX rate reported by UHD; this can differ
