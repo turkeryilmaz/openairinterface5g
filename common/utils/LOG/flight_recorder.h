@@ -176,6 +176,7 @@ typedef enum {
   FLIGHT_EVENT_UE_PDSCH_LLR = 122,
   FLIGHT_EVENT_RADIO_TX_BURST_BOUNDARY = 123,
   FLIGHT_EVENT_RADIO_TX_START_RESULT = 124,
+  FLIGHT_EVENT_GNB_PUCCH_HARQ = 125,
 } flight_recorder_event_t;
 
 /** Stable groups for accounting intentional reduction of routine detail. */

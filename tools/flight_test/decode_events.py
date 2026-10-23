@@ -74,6 +74,7 @@ TIMING_LAYOUTS = {
     122: ('UE_PDSCH_LLR', ('identity', 'sync_epoch', 'absolute_rx_slot', 'counts', 'sum_abs', 'extrema')),
     123: ('RADIO_TX_BURST_BOUNDARY', ('radio_type', 'send_sequence', 'previous_end_ticks', 'final_ticks', 'requested_samples', 'boundary_flags')),
     124: ('RADIO_TX_START_RESULT', ('radio_type', 'send_sequence', 'final_ticks', 'requested_samples', 'accepted_samples', 'send_outcome')),
+    125: ('GNB_PUCCH_HARQ', ('identity', 'frame_slot', 'harq_pid', 'outcome', 'ul_cqi_raw', 'round_before')),
 }
 NAMES.update({number: layout[0] for number, layout in TIMING_LAYOUTS.items()})
 
@@ -95,7 +96,19 @@ def decode_radio_timing(event):
     row['name'] = layout[0]
     row.update(zip(layout[1], (event[key] for key in 'abcdef')))
     # Preserve packed values alongside their interpretations and unknown bits.
-    if event['event'] == 124:
+    if event['event'] == 125:
+        identity = event['a'] & UINT64_MASK
+        for name, shift in (('rnti', 0), ('module_id', 16), ('cell_id', 32)):
+            row[name] = None if event['a'] == INT64_MIN else (identity >> shift) & 0xffff
+        row['unknown_identity_bits'] = None if event['a'] == INT64_MIN else identity >> 48
+        outcome = event['d'] & UINT64_MASK
+        for name, shift in (('harq_value', 0), ('confidence', 8), ('harq_bit', 16), ('num_harq', 24),
+                            ('pucch_format', 32), ('pdu_bitmap', 40)):
+            row[name] = (outcome >> shift) & 0xff
+        row['is_ra'] = bool(outcome & (1 << 48))
+        row['unknown_outcome_bits'] = outcome >> 49
+        row['mac_success'] = row['harq_value'] == 0 and row['confidence'] == 0
+    elif event['event'] == 124:
         row['send_outcome_name'] = {0: 'returned', 1: 'exception'}.get(event['f'], 'unknown')
     elif event['event'] == 123:
         flags = event['f'] & UINT64_MASK
