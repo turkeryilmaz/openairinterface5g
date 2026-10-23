@@ -9,7 +9,8 @@ bool radio_rx_policy_config_valid(const radio_rx_policy_config_t *c)
          && c->search_step_db <= c->maximum_step_db && isfinite(c->peak_ceiling_dbfs) && c->peak_ceiling_dbfs <= 0
          && c->peak_ceiling_dbfs > c->target_dbfs && isfinite(c->peak_release_db_per_second) && c->peak_release_db_per_second > 0
          && isfinite(c->near_rail_fraction) && c->near_rail_fraction > 0 && c->near_rail_fraction <= 1 && isfinite(c->filter_weight)
-         && c->filter_weight > 0 && c->filter_weight <= 1 && c->minimum_interval_ns > 0 && c->maximum_age_ns > 0;
+         && c->filter_weight > 0 && c->filter_weight <= 1 && c->minimum_interval_ns > 0 && c->maximum_age_ns > 0
+         && c->minimum_increase_interval_ns <= c->minimum_interval_ns;
 }
 
 radio_rx_decision_t radio_rx_decide(const radio_rx_policy_config_t *c,
@@ -118,7 +119,9 @@ radio_rx_decision_t radio_rx_decide(const radio_rx_policy_config_t *c,
     decision.reason = RADIO_RX_HOLD_INACTIVE;
     return decision;
   }
-  if (state->action_recorded && o->now_ns - state->last_action_ns < c->minimum_interval_ns) {
+  const uint64_t interval_ns =
+      change > 0 && c->minimum_increase_interval_ns ? c->minimum_increase_interval_ns : c->minimum_interval_ns;
+  if (state->action_recorded && o->now_ns - state->last_action_ns < interval_ns) {
     decision.reason = RADIO_RX_HOLD_COOLDOWN;
     return decision;
   }

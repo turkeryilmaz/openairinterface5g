@@ -525,6 +525,18 @@ reported gain and a device-time bracket when available. `agc-rx-settle-us`
 defaults to 20000 and excludes transition samples from gain-dependent reports;
 it is an engineering guard, not a guaranteed analog settling-time calibration.
 
+The new UE RX policy permits positive gain steps after the shorter of that
+settling guard and the normal 200 ms cooldown. Each step still requires a fresh,
+settled observation from the current gain generation, retained peak headroom,
+and admission by the single gain owner; it remains bounded to 3 dB. This applies
+to new-policy acquisition and tracking, including reacquisition. It avoids waiting
+for the full 200 ms cooldown between increases when a weak signal needs several steps.
+It does not promise a gain change every 20 ms: sample availability, device
+completion and the other guards also determine when a request is possible.
+Downward changes and gNB decisions retain the 200 ms cooldown, and legacy UE
+acquisition is unchanged. These intervals are implementation policy, not 3GPP
+requirements or a guarantee of successful attachment.
+
 TX request records in `ue_tx_power.csv` describe the MAC request and generator
 reference for PRACH/PUSCH/PUCCH/SRS. `gnb_tx_reference.csv` describes configured
 SSB reference power and generator amplitude. Neither file reports measured RF
