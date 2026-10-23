@@ -1737,6 +1737,8 @@ class FlightCapture:
         samples = channel.receive(pid)
         for sample in samples:
             receipt_ns = time.monotonic_ns()
+            if self.traffic is not None:
+                self.traffic.observe_bearer_context(sample["values"], sample["mono_ns"])
             for observer in self.summary_observers:
                 observer.observe_native(sample, receipt_ns)
             self._write_recovery_event(
