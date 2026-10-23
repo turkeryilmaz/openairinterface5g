@@ -92,6 +92,15 @@ bool flight_recorder_enabled(void)
   return test_recorder_enabled;
 }
 
+bool flight_recorder_sample(unsigned int group, uint64_t key, bool force)
+{
+  (void)group;
+  (void)key;
+  (void)force;
+  /* This fixture checks the binding's complete diagnostic payloads. */
+  return test_recorder_enabled;
+}
+
 void flight_recorder_emit(uint32_t event, int64_t a, int64_t b, int64_t c, int64_t d, int64_t e, int64_t f)
 {
   if (!test_recorder_enabled || test_recorder_count == TEST_RECORDER_EVENTS)
