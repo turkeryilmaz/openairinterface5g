@@ -187,6 +187,9 @@ void init_nr_ue_vars(PHY_VARS_NR_UE *ue, uint8_t UE_id)
 
   ue->ta_frame = -1;
   ue->ta_slot = -1;
+  ue->rar_ta_command.ta_frame = -1;
+  ue->rar_ta_command.ta_slot = -1;
+  ue->tx_stream_timing_adjustment = 0;
 }
 
 /*!
@@ -460,6 +463,95 @@ static bool RU_write(nr_rxtx_thread_data_t *rxtxD, bool sl_tx_action, c16_t **tx
   return true;
 }
 
+static void apply_ta_samples(PHY_VARS_NR_UE *ue, int frame, int slot, int command, bool is_rar, int samples)
+{
+  const int timing_advance_before = ue->timing_advance;
+  const int64_t timing_advance = (int64_t)timing_advance_before + samples;
+  DevAssert(timing_advance >= INT_MIN && timing_advance <= INT_MAX);
+  ue->timing_advance = timing_advance;
+  // Emit actual application, including zero-delta commands; bit 16 identifies RAR.
+  flight_recorder_emit(FLIGHT_EVENT_UE_TA_APPLIED,
+                       ue->Mod_id,
+                       frame * 1000 + slot,
+                       (uint16_t)command | ((int64_t)is_rar << 16),
+                       timing_advance_before,
+                       ue->timing_advance,
+                       ue->frame_parms.samples_per_subframe);
+}
+
+static void update_tx_timing(nr_rxtx_thread_data_t *rxtxD)
+{
+  PHY_VARS_NR_UE *ue = rxtxD->UE;
+  UE_nr_rxtx_proc_t *proc = &rxtxD->proc;
+  const NR_DL_FRAME_PARMS *fp = ue->sl_mode == 2 ? &ue->SL_UE_PHY_PARAMS.sl_frame_params : &ue->frame_parms;
+
+  if (ue->sl_mode != 2) {
+    const int next_slot = (proc->nr_slot_tx + 1) % fp->slots_per_frame;
+    const int next_frame = (proc->frame_tx + (next_slot == 0)) % MAX_FRAME_NUMBER;
+    const bool rar_due = ue->rar_ta_command.ta_frame == next_frame && ue->rar_ta_command.ta_slot == next_slot;
+    const int rar_command = ue->rar_ta_command.ta_command;
+    if (rar_due && ue->timing_advance != 0)
+      LOG_W(PHY,
+            "[UE %d] %d.%d applying RAR TA command %d to non-zero timing advance %d samples; "
+            "timing advance should have been reset before PRACH\n",
+            ue->Mod_id,
+            next_frame,
+            next_slot,
+            rar_command,
+            ue->timing_advance);
+    // Move the blank boundary before Msg3; relative updates retain their post-sizing order below.
+    const int rar_delta = nr_ue_ta_command_samples(ue, next_slot, next_frame, true);
+    if (rar_due)
+      apply_ta_samples(ue, proc->frame_tx, proc->nr_slot_tx, rar_command, true, rar_delta);
+  }
+
+  const int stream_adjustment = ue->tx_stream_timing_adjustment;
+  proc->timestamp_tx -= stream_adjustment;
+  const int requested_ta = ue->sl_mode == 2 ? 0 : ue->timing_advance;
+  const int64_t write_size = (int64_t)rxtxD->writeBlockSize - ((int64_t)requested_ta - stream_adjustment);
+  if (write_size < 0) {
+    // Carry the unapplied change into later chunks without reversing the sample stream.
+    const int64_t carried_adjustment = (int64_t)requested_ta + write_size;
+    DevAssert(carried_adjustment >= INT_MIN && carried_adjustment <= INT_MAX);
+    ue->tx_stream_timing_adjustment = carried_adjustment;
+    rxtxD->writeBlockSize = 0;
+  } else {
+    DevAssert(write_size <= INT_MAX);
+    ue->tx_stream_timing_adjustment = requested_ta;
+    rxtxD->writeBlockSize = write_size;
+  }
+
+  // RX captured each relative update at its original application point, after sizing the current slot.
+  if (ue->sl_mode != 2 && rxtxD->relative_ta_command >= 0)
+    apply_ta_samples(ue, proc->frame_tx, proc->nr_slot_tx, rxtxD->relative_ta_command, false, rxtxD->relative_ta_delta);
+
+  // The original RX anchor remains immutable; the deadline and evidence describe the final sample timestamp.
+  const nr_ue_tx_deadline_anchor_t *anchor = &rxtxD->tx_deadline_anchor;
+  const nr_ue_tx_deadline_t deadline =
+      nr_ue_tx_deadline_compute(anchor, proc->timestamp_tx, fp->ofdm_symbol_size, fp->samples_per_subframe);
+  rxtxD->tx_deadline_monotonic_ns = deadline.monotonic_ns;
+  rxtxD->tx_deadline_error_code = deadline.error_code;
+  rxtxD->tx_deadline_valid = deadline.valid;
+  if (flight_recorder_enabled()
+      && flight_recorder_sample(FLIGHT_SAMPLE_TX_SCHEDULE, proc->timestamp_tx, !deadline.valid || !anchor->valid)) {
+    const int64_t tx_slot = ((int64_t)proc->hfn_tx * MAX_FRAME_NUMBER + proc->frame_tx) * fp->slots_per_frame + proc->nr_slot_tx;
+    flight_recorder_emit(FLIGHT_EVENT_UE_TX_SCHEDULE,
+                         ue->Mod_id,
+                         proc->flight_sync_epoch,
+                         tx_slot,
+                         proc->timestamp_tx,
+                         deadline.valid ? deadline.monotonic_ns : INT64_MIN,
+                         rxtxD->writeBlockSize);
+    flight_recorder_emit(FLIGHT_EVENT_UE_TX_ANCHOR,
+                         ue->Mod_id,
+                         proc->flight_sync_epoch,
+                         proc->timestamp_tx,
+                         anchor->valid ? anchor->radio_timestamp : INT64_MIN,
+                         anchor->valid ? anchor->monotonic_ns : INT64_MIN,
+                         ((uint64_t)(uint32_t)fp->ofdm_symbol_size << 32) | (uint32_t)fp->samples_per_subframe);
+  }
+}
+
 void processSlotTX(void *arg)
 {
   TracyCZone(ctx, true);
@@ -475,6 +567,9 @@ void processSlotTX(void *arg)
 
   if (UE->if_inst)
     UE->if_inst->slot_indication(UE->Mod_id, true);
+
+  // This prefix is ordered by the previous TX slot; publish immutable timing before releasing the next slot.
+  update_tx_timing(rxtxD);
 
   LOG_D(PHY, "SlotTx %d.%d => slot type %d\n", proc->frame_tx, proc->nr_slot_tx, proc->tx_slot_type);
 
@@ -621,7 +716,9 @@ static int UE_dl_preprocessing(PHY_VARS_NR_UE *UE,
                                const UE_nr_rxtx_proc_t *proc,
                                int *tx_wait_for_dlsch,
                                nr_phy_data_t *phy_data,
-                               bool *stats_printed)
+                               bool *stats_printed,
+                               int *relative_ta_delta,
+                               int *relative_ta_command)
 {
   TracyCZone(ctx, true);
   int sampleShift = INT_MAX;
@@ -698,8 +795,11 @@ static int UE_dl_preprocessing(PHY_VARS_NR_UE *UE,
         sampleShift = psbch_pscch_processing(UE, proc, phy_data);
       }
     }
-  } else
-    ue_ta_procedures(UE, proc->nr_slot_tx, proc->frame_tx);
+  } else {
+    if (UE->ta_frame == proc->frame_tx && UE->ta_slot == proc->nr_slot_tx)
+      *relative_ta_command = UE->ta_command;
+    *relative_ta_delta = nr_ue_ta_command_samples(UE, proc->nr_slot_tx, proc->frame_tx, false);
+  }
 
   TracyCZoneEnd(ctx);
   return sampleShift;
@@ -977,7 +1077,7 @@ void *UE_thread(void *arg)
   bool ntn_targetcell = false;
   int ntn_koffset = 0;
   int duration_rx_to_tx = get_nrUE_params()->ue_capability_rx2tx;
-  int timing_advance = UE->timing_advance + UE->timing_advance_ntn;
+  int timing_advance = UE->timing_advance_ntn;
   UE->N_TA_offset = determine_N_TA_offset(UE);
   NR_UE_MAC_INST_t *mac = get_mac_inst(UE->Mod_id);
 
@@ -1182,6 +1282,11 @@ void *UE_thread(void *arg)
         ntn_targetcell = false;
       }
       UE->timing_advance = 0;
+      UE->tx_stream_timing_adjustment = 0;
+      UE->ta_frame = -1;
+      UE->ta_slot = -1;
+      UE->rar_ta_command.ta_frame = -1;
+      UE->rar_ta_command.ta_slot = -1;
       // We have resynchronized, maybe after RF loss so we need to purge any existing context
       memset(tx_wait_for_dlsch, 0, sizeof(tx_wait_for_dlsch));
       for (int i = 0; i < NUM_PROCESS_SLOT_TX_BARRIERS; i++) {
@@ -1285,17 +1390,13 @@ void *UE_thread(void *arg)
       }
     }
 
-    // use previous timing_advance value to compute writeTimestamp
+    // MAC TA is applied by the ordered TX prefix; this cache contains only the producer's NTN timing.
     const openair0_timestamp_t writeTimestamp =
         rx_timestamp + get_samples_slot_duration(fp, slot_nr, duration_rx_to_tx) - firstSymSamp - UE->N_TA_offset - timing_advance;
 
-    // Calculate TX deadline, approximately 1 symbol before the first sample should be written
-    const nr_ue_tx_deadline_t tx_deadline =
-        nr_ue_tx_deadline_compute(&deadline_anchor, writeTimestamp, fp->ofdm_symbol_size, fp->samples_per_subframe);
-
-    // but use current UE->timing_advance value to compute writeBlockSize
+    // Leave the raw length unclamped so opposing NTN and MAC adjustments can cancel in the TX prefix.
     int writeBlockSize = get_samples_per_slot((slot_nr + duration_rx_to_tx) % nb_slot_frame, fp) - iq_shift_to_apply;
-    int new_timing_advance = UE->timing_advance + UE->timing_advance_ntn;
+    int new_timing_advance = UE->timing_advance_ntn;
     if (new_timing_advance != timing_advance) {
       writeBlockSize -= new_timing_advance - timing_advance;
       timing_advance = new_timing_advance;
@@ -1306,12 +1407,6 @@ void *UE_thread(void *arg)
       writeBlockSize -= new_N_TA_offset - UE->N_TA_offset;
       UE->N_TA_offset = new_N_TA_offset;
     }
-    if (writeBlockSize < 0) {
-      timing_advance += writeBlockSize;
-      LOG_I(PHY, "writeBlockSize is %d, setting it to 0 and changing timing_advance to %d\n", writeBlockSize, timing_advance);
-      writeBlockSize = 0;
-    }
-
     if (curMsg.proc.nr_slot_rx == 0)
       nr_ue_rrc_timer_trigger(UE->Mod_id, curMsg.proc.hfn_rx, curMsg.proc.frame_rx, curMsg.proc.gNB_id);
 
@@ -1325,7 +1420,15 @@ void *UE_thread(void *arg)
     notifiedFIFO_elt_t *newRx = newNotifiedFIFO_elt(sizeof(nr_rxtx_thread_data_t), curMsg.proc.nr_slot_tx, NULL, UE_dl_processing);
     nr_rxtx_thread_data_t *curMsgRx = (nr_rxtx_thread_data_t *)NotifiedFifoData(newRx);
     *curMsgRx = (nr_rxtx_thread_data_t){.proc = curMsg.proc, .UE = UE};
-    int ret = UE_dl_preprocessing(UE, &curMsgRx->proc, tx_wait_for_dlsch, &curMsgRx->phy_data, &stats_printed);
+    int relative_ta_delta = 0;
+    int relative_ta_command = -1;
+    int ret = UE_dl_preprocessing(UE,
+                                  &curMsgRx->proc,
+                                  tx_wait_for_dlsch,
+                                  &curMsgRx->phy_data,
+                                  &stats_printed,
+                                  &relative_ta_delta,
+                                  &relative_ta_command);
     if (ret != INT_MAX)
       shiftForNextFrame = ret;
     if (num_dl_actors > 0) {
@@ -1352,31 +1455,12 @@ void *UE_thread(void *arg)
     memset(curMsgTx, 0, sizeof(*curMsgTx));
     curMsgTx->proc = curMsg.proc;
     curMsgTx->writeBlockSize = writeBlockSize;
+    curMsgTx->relative_ta_delta = relative_ta_delta;
+    curMsgTx->relative_ta_command = relative_ta_command;
     curMsgTx->proc.timestamp_tx = writeTimestamp;
     curMsgTx->UE = UE;
     curMsgTx->ul_actors = ul_actors;
-    curMsgTx->tx_deadline_monotonic_ns = tx_deadline.monotonic_ns;
-    curMsgTx->tx_deadline_error_code = tx_deadline.error_code;
-    curMsgTx->tx_deadline_valid = tx_deadline.valid;
-    if (flight_recorder_enabled()
-        && flight_recorder_sample(FLIGHT_SAMPLE_TX_SCHEDULE, writeTimestamp, !tx_deadline.valid || !deadline_anchor.valid)) {
-      const int64_t tx_slot =
-          ((int64_t)curMsg.proc.hfn_tx * MAX_FRAME_NUMBER + curMsg.proc.frame_tx) * nb_slot_frame + curMsg.proc.nr_slot_tx;
-      flight_recorder_emit(FLIGHT_EVENT_UE_TX_SCHEDULE,
-                           UE->Mod_id,
-                           flight_sync_epoch,
-                           tx_slot,
-                           writeTimestamp,
-                           tx_deadline.valid ? tx_deadline.monotonic_ns : INT64_MIN,
-                           writeBlockSize);
-      flight_recorder_emit(FLIGHT_EVENT_UE_TX_ANCHOR,
-                           UE->Mod_id,
-                           flight_sync_epoch,
-                           writeTimestamp,
-                           deadline_anchor.valid ? deadline_anchor.radio_timestamp : INT64_MIN,
-                           deadline_anchor.valid ? deadline_anchor.monotonic_ns : INT64_MIN,
-                           ((uint64_t)(uint32_t)fp->ofdm_symbol_size << 32) | (uint32_t)fp->samples_per_subframe);
-    }
+    curMsgTx->tx_deadline_anchor = deadline_anchor;
 
     int slot = curMsgTx->proc.nr_slot_tx;
     int slot_and_frame = slot + curMsgTx->proc.frame_tx * nb_slot_frame;

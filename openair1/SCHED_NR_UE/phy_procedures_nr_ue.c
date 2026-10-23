@@ -347,14 +347,28 @@ int get_tx_amp_prach(int power_dBm, int power_max_dBm, int N_RB_UL){
   return (amp_x_100);
 }
 
-// UL time alignment procedures:
-// - If the current tx frame and slot match the TA configuration
-//   then timing advance is processed and set to be applied in the next UL transmission
-// - Application of timing adjustment according to TS 38.213 p4.2
-// - handle RAR TA application as per ch 4.2 TS 38.213
-void ue_ta_procedures(PHY_VARS_NR_UE *ue, int slot_tx, int frame_tx)
+// Consume a due RAR or relative command and return its sample adjustment; return zero when none is due.
+// RX captures relative adjustments for the ordered TX prefix, which applies both command types.
+int nr_ue_ta_command_samples(PHY_VARS_NR_UE *ue, int slot_tx, int frame_tx, bool is_rar)
 {
-  if (frame_tx == ue->ta_frame && slot_tx == ue->ta_slot) {
+  const int ta_frame = is_rar ? ue->rar_ta_command.ta_frame : ue->ta_frame;
+  const int ta_slot = is_rar ? ue->rar_ta_command.ta_slot : ue->ta_slot;
+  if (ta_frame < 0 || ta_slot < 0)
+    return 0;
+
+  if (!is_rar) {
+    const int slots_per_frame = ue->frame_parms.slots_per_frame;
+    const int slots_per_cycle = MAX_FRAME_NUMBER * slots_per_frame;
+    const int slots_ahead = ((ta_frame - frame_tx) * slots_per_frame + ta_slot - slot_tx + slots_per_cycle) % slots_per_cycle;
+    // Valid relative targets (NTN K <= 1023 ms plus PHY processing) are less than half an SFN cycle ahead.
+    // Discard commands published after their target; retaining them would replay them at the next SFN wrap.
+    if (slots_ahead >= slots_per_cycle / 2) {
+      ue->ta_frame = -1;
+      ue->ta_slot = -1;
+      return 0;
+    }
+  }
+  if (frame_tx == ta_frame && slot_tx == ta_slot) {
     uint16_t ofdm_symbol_size = ue->frame_parms.ofdm_symbol_size;
 
     // convert time factor "16 * 64 * T_c / (2^mu)" in N_TA calculation in TS38.213 section 4.2 to samples by multiplying with
@@ -366,51 +380,31 @@ void ue_ta_procedures(PHY_VARS_NR_UE *ue, int slot_tx, int frame_tx)
     // = 16 * ofdm_symbol_size / 2048
     uint16_t bw_scaling = 16 * ofdm_symbol_size / 2048;
 
-    const int timing_advance_before = ue->timing_advance;
-    const bool ta_command_is_rar = ue->ta_command_is_rar;
-    const int ta_units = ta_command_is_rar ? ue->ta_command : ue->ta_command - 31;
+    const int command = is_rar ? ue->rar_ta_command.ta_command : ue->ta_command;
+    const int ta_units = is_rar ? command : command - 31;
     const int ta_samples = ta_units * bw_scaling;
 
-    if (ta_command_is_rar && timing_advance_before != 0)
-      LOG_W(PHY,
-            "[UE %d] %d.%d applying RAR TA command %d to non-zero timing advance %d samples; "
-            "timing advance should have been reset before PRACH\n",
-            ue->Mod_id,
-            frame_tx,
-            slot_tx,
-            ue->ta_command,
-            timing_advance_before);
-
-    ue->timing_advance += ta_samples;
-    // Preserve actual application separately from the MAC command reception.
-    // Bit 16 distinguishes the absolute RAR command from a relative MAC CE.
-    flight_recorder_emit(FLIGHT_EVENT_UE_TA_APPLIED,
-                         ue->Mod_id,
-                         frame_tx * 1000 + slot_tx,
-                         (uint16_t)ue->ta_command | ((int64_t)ta_command_is_rar << 16),
-                         timing_advance_before,
-                         ue->timing_advance,
-                         ue->frame_parms.samples_per_subframe);
-
     LOG_D(PHY,
-          "[UE %d] %d.%d applied %s command %d: TA-units %d, samples-per-unit %u, command-samples %d, "
-          "timing-advance %d -> %d samples (N_TA_offset %d)\n",
+          "[UE %d] %d.%d consumed %s command %d: TA-units %d, samples-per-unit %u, command-samples %d\n",
           ue->Mod_id,
           frame_tx,
           slot_tx,
-          ta_command_is_rar ? "RAR" : "relative MAC CE",
-          ue->ta_command,
+          is_rar ? "RAR" : "relative MAC CE",
+          command,
           ta_units,
           bw_scaling,
-          ta_samples,
-          timing_advance_before,
-          ue->timing_advance,
-          ue->N_TA_offset);
+          ta_samples);
 
-    ue->ta_frame = -1;
-    ue->ta_slot = -1;
-    ue->ta_command_is_rar = false;
+    if (is_rar) {
+      ue->rar_ta_command.ta_frame = -1;
+      ue->rar_ta_command.ta_slot = -1;
+    } else {
+      ue->ta_frame = -1;
+      ue->ta_slot = -1;
+    }
+    return ta_samples;
   }
+  return 0;
 }
 
 static void configure_srs_info(const fapi_nr_ul_config_srs_pdu *srs_config_pdu, nr_srs_info_t *nr_srs_info)
