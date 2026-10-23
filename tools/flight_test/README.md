@@ -123,7 +123,12 @@ TCP control connection and UDP socket to the current `flight-interface` IP
 and device (`SO_BINDTODEVICE`). There is no fallback to the management route.
 An absent tunnel waits; an address change stops the old generation before
 starting another. Failed generations retry after five seconds. A client with no
-interval report for ten seconds is stopped, bounding stuck setup or reporting.
+traffic process can resume a pending retry when fresh native evidence reports
+a configured or resumed DRB after PDU acceptance. The same transition can wake
+one connection failure within the next five seconds, with at least one second
+between launches. Repeated readiness reports do not bypass subsequent backoff,
+and this hint neither stops active traffic nor proves end-to-end delivery.
+A client with no interval report for ten seconds is stopped, bounding stuck setup or reporting.
 Receiving endpoints use a five-second receive timeout; the server also uses
 iperf3's ten-second idle timeout to recover an idle control session.
 Both endpoints request a five-second TCP outstanding-data timeout. This bounds

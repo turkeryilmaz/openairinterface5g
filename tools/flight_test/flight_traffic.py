@@ -235,6 +235,35 @@ class TrafficSupervisor:
         self.completed_segments = 0
         self.failed_segments = 0
         self.stopped_segments = 0
+        self.bearer_ready = False
+        self.retry_wakeup_until = 0.0
+
+    def observe_bearer_context(self, values: dict[str, int], source_ns: int) -> None:
+        """Wake one pending retry; configured bearers do not prove delivery."""
+        if self.settings.role != "ue":
+            return
+        now_ns = time.monotonic_ns()
+        if not 0 <= now_ns - source_ns <= 3_000_000_000:
+            return
+        accepts, active = values.get("pdu_accepts"), values.get("drb_context_active")
+        if type(accepts) is not int or type(active) is not int:
+            return
+        ready = accepts > 0 and active > 0
+        if ready == self.bearer_ready:
+            return
+        self.bearer_ready = ready
+        if not ready:
+            self.retry_wakeup_until = 0.0
+            return
+        now = now_ns / 1e9
+        # A connecting child may fail just after the bearer returns. Retain
+        # this hint briefly, without interrupting an active traffic process.
+        self.retry_wakeup_until = now + self.settings.retry_seconds
+        self.next_address = now
+        if self.process is None:
+            self.next_launch = min(self.next_launch, max(now, self.started + 1.0))
+        self._event("traffic_bearer_context_ready", application_delivery_verified=False)
+        self._human("bearer context ready; pending retry can resume; delivery=unavailable")
 
     def _event(self, kind: str, **fields: Any) -> None:
         event = {"schema_version": 1, "kind": kind, "clock": clock_sample(),
@@ -293,6 +322,8 @@ class TrafficSupervisor:
 
     def _launch(self, now: float) -> None:
         command = self._command()
+        self.started = now
+        self.retry_wakeup_until = 0.0
         self.generation += 1
         self.connection_index = 0
         self._event("traffic_generation_started", role=self.settings.role, command=command,
@@ -307,7 +338,6 @@ class TrafficSupervisor:
             self.next_launch = now + self.settings.retry_seconds
             return
         self.last_process_group = self.process.pid
-        self.started = now
         self.last_interval = now
         self.server_output = False
         self.session_direction = self.settings.direction if self.settings.role == "ue" else None
@@ -484,6 +514,9 @@ class TrafficSupervisor:
         self.process = None
         self.buffers.clear()
         self.next_launch = now if success else now + self.settings.retry_seconds
+        if outcome == "failed" and self.bearer_ready and now < self.retry_wakeup_until:
+            self.next_launch = max(now, self.started + 1.0)
+            self.retry_wakeup_until = 0.0
         self._gap("between_segments" if success else str(self.stop_reason))
 
     def close(self) -> None:
