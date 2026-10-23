@@ -342,30 +342,74 @@ set(GIT_COMMIT_HASH   "UNKNOWN")
 set(GIT_COMMIT_DATE   "UNKNOWN")
 
 find_package(Git)
-if(GIT_FOUND)
+if(GIT_FOUND AND EXISTS "${CMAKE_SOURCE_DIR}/.git")
   # Get the current working branch
   execute_process(
-    COMMAND git rev-parse --abbrev-ref HEAD
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    COMMAND "${GIT_EXECUTABLE}" rev-parse --abbrev-ref HEAD
+    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
     OUTPUT_VARIABLE GIT_BRANCH
     OUTPUT_STRIP_TRAILING_WHITESPACE
+    RESULT_VARIABLE git_branch_result
+    ERROR_QUIET
   )
+  if(NOT git_branch_result EQUAL 0)
+    set(GIT_BRANCH "UNKNOWN")
+  endif()
 
   # Get the latest abbreviated commit hash of the working branch
   execute_process(
-    COMMAND git log -1 --format=%h
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    COMMAND "${GIT_EXECUTABLE}" log -1 --format=%h
+    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
     OUTPUT_VARIABLE GIT_COMMIT_HASH
     OUTPUT_STRIP_TRAILING_WHITESPACE
+    RESULT_VARIABLE git_commit_result
+    ERROR_QUIET
   )
+  if(NOT git_commit_result EQUAL 0)
+    set(GIT_COMMIT_HASH "UNKNOWN")
+  endif()
 
   # Get the latest commit date of the working branch
   execute_process(
-    COMMAND git log -1 --format=%cd
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    COMMAND "${GIT_EXECUTABLE}" log -1 --format=%cd
+    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
     OUTPUT_VARIABLE GIT_COMMIT_DATE
     OUTPUT_STRIP_TRAILING_WHITESPACE
+    RESULT_VARIABLE git_date_result
+    ERROR_QUIET
   )
+  if(NOT git_date_result EQUAL 0)
+    set(GIT_COMMIT_DATE "UNKNOWN")
+  endif()
+
+  # Resolve paths through Git to support linked worktrees and shared refs.
+  execute_process(
+    COMMAND "${GIT_EXECUTABLE}" symbolic-ref -q HEAD
+    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+    OUTPUT_VARIABLE git_head_ref
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    RESULT_VARIABLE git_head_ref_result
+    ERROR_QUIET
+  )
+  if(NOT git_head_ref_result EQUAL 0)
+    set(git_head_ref "")
+  endif()
+  foreach(git_ref HEAD packed-refs ${git_head_ref})
+    execute_process(
+      COMMAND "${GIT_EXECUTABLE}" rev-parse --git-path "${git_ref}"
+      WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+      OUTPUT_VARIABLE git_ref_path
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+      RESULT_VARIABLE git_path_result
+      ERROR_QUIET
+    )
+    if(git_path_result EQUAL 0)
+      get_filename_component(git_ref_path "${git_ref_path}" ABSOLUTE BASE_DIR "${CMAKE_SOURCE_DIR}")
+      # The glob also detects creation/removal when refs move between loose and packed storage.
+      file(GLOB git_version_files CONFIGURE_DEPENDS LIST_DIRECTORIES false "${git_ref_path}")
+      set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${git_version_files})
+    endif()
+  endforeach()
 endif()
 
 option(USE_UNIFIED_MEMORY "Enable CUDA Unified Memory path instead of explicit copies" OFF)
