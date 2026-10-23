@@ -6,6 +6,7 @@
 #define _FILE_OFFSET_BITS 64
 #include "common/utils/LOG/flight_recorder.h"
 #include "common/utils/LOG/flight_monitor.h"
+#include <errno.h>
 #include <string.h>
 #include <pthread.h>
 #include <unistd.h>
@@ -73,6 +74,10 @@ typedef struct {
 
   //! Actual common RX/TX sample rate for device timestamp conversions
   double sample_rate;
+  int64_t rx_time_origin_secs;
+  double rx_time_origin_frac;
+  int64_t rx_time_origin_ticks;
+  bool rx_time_origin_valid;
 
   //! TX forward samples. We use usrp_time_offset to get this value
   int tx_forward_nsamps; //166 for 20Mhz
@@ -339,8 +344,9 @@ static int trx_usrp_start(openair0_device_t *device)
   //s->first_tx = 1;
   //s->first_rx = 1;
   s->rx_timestamp = 0;
+  s->rx_time_origin_valid = false;
 
-    //wait for next pps
+  // wait for next pps
   uhd::time_spec_t last_pps = s->usrp->get_time_last_pps();
   uhd::time_spec_t current_pps = s->usrp->get_time_last_pps();
   while(current_pps == last_pps) {
@@ -516,6 +522,65 @@ static bool usrp_radio_health_time_to_ticks(const uhd::time_spec_t &time, double
     return false;
   *ticks = (uint64_t)signed_ticks;
   return true;
+}
+
+static bool usrp_rx_time_representable(int64_t seconds, double fraction, double rate)
+{
+  /* UHD converts whole seconds to double for the fractional-rate correction. */
+  if (seconds <= -INT64_C(9007199254740992) || seconds >= INT64_C(9007199254740992))
+    return false;
+  if (!std::isfinite(rate) || rate <= 0.0 || rate >= 0x1p63 || !std::isfinite(fraction) || fraction < 0.0 || fraction >= 1.0)
+    return false;
+  /* Bound UHD's whole-second multiplication and fractional rounding before
+   * to_ticks() performs signed integer arithmetic. */
+  const long double bound = (std::fabs((long double)seconds) + 1.0L) * (long double)rate + 1.0L;
+  return bound < (long double)INT64_MAX;
+}
+
+static bool usrp_rx_timestamp_offset(int64_t origin, int64_t elapsed, bool backwards, int64_t *ticks)
+{
+  if (elapsed < 0)
+    return false;
+  return backwards ? !__builtin_sub_overflow(origin, elapsed, ticks) : !__builtin_add_overflow(origin, elapsed, ticks);
+}
+
+static bool usrp_rx_timestamp(usrp_state_t *state, const uhd::rx_metadata_t &metadata, size_t received, openair0_timestamp_t *ticks)
+{
+  const uhd::time_spec_t &time = metadata.time_spec;
+  if (!std::isfinite(time.get_frac_secs()) || time.get_frac_secs() < 0.0 || time.get_frac_secs() >= 1.0)
+    return false;
+  if (!metadata.has_time_spec || received == 0 || !state->rx_time_origin_valid) {
+    if (!usrp_rx_time_representable(time.get_full_secs(), time.get_frac_secs(), state->sample_rate))
+      return false;
+    *ticks = time.to_ticks(state->sample_rate);
+    if (received > 0 && *ticks == INT64_MIN)
+      return false;
+    if (metadata.has_time_spec && received > 0 && time.get_full_secs() >= 0 && *ticks >= 0) {
+      state->rx_time_origin_secs = time.get_full_secs();
+      state->rx_time_origin_frac = time.get_frac_secs();
+      state->rx_time_origin_ticks = *ticks;
+      state->rx_time_origin_valid = true;
+    }
+    return true;
+  }
+
+  /* Choose one integer origin per RX stream. Rounding each absolute half-sample
+   * time independently can alternate by one sample as floating precision changes. */
+  const uhd::time_spec_t origin(state->rx_time_origin_secs, state->rx_time_origin_frac);
+  const bool backwards = time < origin;
+  const uhd::time_spec_t &later = backwards ? origin : time;
+  const uhd::time_spec_t &earlier = backwards ? time : origin;
+  int64_t seconds;
+  if (__builtin_sub_overflow(later.get_full_secs(), earlier.get_full_secs(), &seconds))
+    return false;
+  const uhd::time_spec_t elapsed(seconds, later.get_frac_secs() - earlier.get_frac_secs());
+  if (!usrp_rx_time_representable(elapsed.get_full_secs(), elapsed.get_frac_secs(), state->sample_rate))
+    return false;
+  /* UHD's fractional rounding assumes nonnegative input, so convert the positive
+   * magnitude even when metadata precedes the origin, then subtract its ticks. */
+  if (!usrp_rx_timestamp_offset(state->rx_time_origin_ticks, elapsed.to_ticks(state->sample_rate), backwards, ticks))
+    return false;
+  return *ticks != INT64_MIN;
 }
 
 static void usrp_radio_health_record_sample_rate(usrp_state_t *state,
@@ -848,7 +913,12 @@ static void usrp_radio_health_stop_async(usrp_state_t *state)
   state->radio_health_async_started = false;
 }
 
-static void usrp_radio_health_record_rx(usrp_state_t *state, size_t requested, size_t received, const uhd::rx_metadata_t &metadata)
+static void usrp_radio_health_record_rx(usrp_state_t *state,
+                                        size_t requested,
+                                        size_t received,
+                                        const uhd::rx_metadata_t &metadata,
+                                        bool timestamp_valid,
+                                        openair0_timestamp_t timestamp)
 {
   const bool recording = flight_recorder_enabled();
   if (state->radio_health == NULL && !recording)
@@ -892,10 +962,8 @@ static void usrp_radio_health_record_rx(usrp_state_t *state, size_t requested, s
       radio_health_counter_add(state->radio_health, RADIO_HEALTH_METRIC_RX_OUT_OF_SEQUENCE, 1);
   }
 
-  uint64_t device_ticks = 0;
-  const bool device_time_valid =
-      metadata.has_time_spec
-      && usrp_radio_health_time_to_ticks(metadata.time_spec, state->radio_health_rx_sample_rate, &device_ticks);
+  const bool device_time_valid = metadata.has_time_spec && timestamp_valid && timestamp >= 0;
+  const uint64_t device_ticks = device_time_valid ? (uint64_t)timestamp : 0;
   if (recording) {
     const bool current_valid = device_time_valid && device_ticks <= INT64_MAX;
     const bool previous_valid = state->radio_health_rx_previous_time_valid && state->radio_health_rx_expected_ticks <= INT64_MAX;
@@ -1237,6 +1305,7 @@ static int trx_usrp_read(openair0_device_t *device, openair0_timestamp_t *ptimes
   usrp_state_t *s = (usrp_state_t *)device->priv;
   int samples_received=0;
   openair0_timestamp_t first_received_timestamp = 0;
+  openair0_timestamp_t received_timestamp = 0;
   static int read_count = 0;
 
   samples_received=0;
@@ -1255,10 +1324,17 @@ static int trx_usrp_read(openair0_device_t *device, openair0_timestamp_t *ptimes
 
       received = usrp_radio_health_recv(s, (void *)((int32_t *)buff[0] + samples_received), requested, s->rx_md);
     }
-    usrp_radio_health_record_rx(s, requested, received, s->rx_md);
+    const bool timestamp_valid = usrp_rx_timestamp(s, s->rx_md, received, &received_timestamp);
+    usrp_radio_health_record_rx(s, requested, received, s->rx_md, timestamp_valid, received_timestamp);
+    if (!timestamp_valid) {
+      s->rx_count += samples_received + (int)received;
+      s->rx_timestamp = 0;
+      *ptimestamp = 0;
+      return -EOVERFLOW;
+    }
     // Return the timestamp of the first sample, even when UHD splits a read across calls.
     if (samples_received == 0 && received > 0)
-      first_received_timestamp = s->rx_md.time_spec.to_ticks(s->sample_rate);
+      first_received_timestamp = received_timestamp;
     if (received > 0)
       s->wait_for_first_pps = 0;
     samples_received += (int)received;
@@ -1281,7 +1357,12 @@ static int trx_usrp_read(openair0_device_t *device, openair0_timestamp_t *ptimes
     LOG_E(HW, "%s\n", s->rx_md.to_pp_string(true).c_str());
 
   s->rx_count += samples_received;
-  s->rx_timestamp = samples_received > 0 ? first_received_timestamp : s->rx_md.time_spec.to_ticks(s->sample_rate);
+  if (nsamps == 0 && !usrp_rx_timestamp(s, s->rx_md, 0, &received_timestamp)) {
+    s->rx_timestamp = 0;
+    *ptimestamp = 0;
+    return -EOVERFLOW;
+  }
+  s->rx_timestamp = samples_received > 0 ? first_received_timestamp : received_timestamp;
   *ptimestamp = s->rx_timestamp;
   if (flight_recorder_enabled()) {
     const bool sampled = flight_recorder_sample_due(&s->flight_rx_calls);
