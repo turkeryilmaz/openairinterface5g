@@ -166,6 +166,21 @@ Traffic JSON capture shares the host byte budget and free-space reserve; readabl
 lines share the stdout budget. Inspect writer losses and raw reports before
 interpreting measured throughput.
 
+`[FLIGHT OBSERVED]` lines in the same stdout logs show UE sync/PDU counter
+increases and explicit DRB ready/lost/restored observations, plus per-device
+TX/RX counter deltas at the existing radio-health interval cadence. Each line names
+the worker PID and monotonic receipt time elapsed from attempt start, not exact
+protocol time. Ready requires observed PDU acceptance and an active DRB; missing
+fields do not imply loss, and bearer state does not prove delivery. Radio lines
+show known positive deltas (time/sequence errors, underflows, short calls/exceptions,
+RX overflow/gaps or queue discards) or explicit counter resets. Missing-only
+intervals stay quiet. A short receive can be valid; counters alone do not prove
+failure or delivery, and resets/unavailable deltas are distinct from zero.
+These collector-generated lines share the stdout budget and optional
+console mirror, with no new native producer logging.
+Requested teardown observations carry `phase=requested_shutdown`; an inactive
+bearer then describes teardown rather than a spontaneous recovery failure.
+
 At shutdown, `[FLIGHT SUMMARY]` lines in the saved `stdout.*.log` summarize the
 attempt's receiver evidence, registration and reacquisition observations, and
 recording completeness. Each attempt also has `summary.txt` and `summary.json`;
