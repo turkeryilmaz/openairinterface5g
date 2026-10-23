@@ -563,8 +563,12 @@ records remain missing; check the recorder footer and health records for loss.
 |123|RADIO_TX_BURST_BOUNDARY|radio type, sender sequence, previous accepted end tick or INT64_MIN, new final target tick, requested count, boundary flags|
 |124|RADIO_TX_START_RESULT|radio type, sender sequence, final ticks, requested count, accepted count, outcome|
 
-All sample timestamps are in samples at the configured radio rate, not ns. UE
-reorder timestamps are relative to `firstTS`; gNB reorder timestamps already use
+All sample timestamps are sample counts, not ns. The USRP backend converts
+device times using the common actual RX/TX rate reported by UHD; this can differ
+slightly from the requested rate. That readback is not a calibrated oscillator
+measurement. PHY frame geometry and the UE host deadline estimate retain the
+nominal configured rate. UE reorder timestamps are relative to `firstTS`;
+gNB reorder timestamps already use
 the radio domain. Event76 is the explicit UE conversion. Event70 then records
 both command-line and backend TX sample advance. The final UHD timestamp is not
 necessarily the original PHY timestamp. Radio type is not a globally unique
@@ -598,7 +602,8 @@ end before underflow handling can invalidate it. Boundary flag values are
 16=positive-count target differs from a valid previous end,32=previous end unknown,
 64=empty END request. The valid flag is authoritative even if the stored endpoint
 equals `INT64_MIN`; without it, the decoder marks the previous end unavailable.
-The new target and previous end use the sender's configured-rate sample ticks.
+The new target and previous end use the same device-sample tick scale as the
+sender's actual-rate UHD timestamp conversion.
 Several reason flags can be set together; they are observations, not exclusive
 causal diagnoses. A planned close does not establish that UHD accepted it.
 
