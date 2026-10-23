@@ -1456,6 +1456,7 @@ void schedule_RA_after_SR_failure(NR_UE_MAC_INST_t *mac)
 {
   if (get_softmodem_params()->phy_test)
     return; // cannot trigger RA in phytest mode
+  mac->sr_fallback_ra_triggered = true;
   trigger_MAC_UE_RA(mac, NULL);
   // release PUCCH for all Serving Cells;
   // release SRS for all Serving Cells;
