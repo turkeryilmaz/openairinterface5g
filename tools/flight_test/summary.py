@@ -129,6 +129,103 @@ class _DirectionSummary:
         }
 
 
+class AttemptTimeline:
+    """Fixed-size observer state; no delivery or exact protocol-time inference."""
+
+    RADIO_COUNTERS = (
+        "tx_async_time_error", "tx_async_underflow", "tx_async_underflow_in_packet",
+        "tx_async_seq_error", "tx_async_seq_error_in_burst",
+        "tx_send_short_calls", "tx_send_exceptions", "tx_async_exceptions",
+        "rx_short_calls", "rx_error_overflow", "rx_out_of_sequence", "rx_timestamp_gaps",
+        "tx_queue_overflow_discards",
+    )
+
+    def __init__(self, start_ns: int, role: str) -> None:
+        self.start_ns = start_ns
+        self.role = role
+        self._counters: dict[str, int] = {}
+        self._pdu_accepted = False
+        self._bearer: Optional[str] = None
+        self._had_ready = False
+
+    def _line(self, pid: int, receipt_ns: int, text: str, phase: str) -> str:
+        elapsed = max(0, receipt_ns - self.start_ns) / 1e9
+        return f"[FLIGHT OBSERVED] worker_pid={pid} monotonic_elapsed={elapsed:.3f}s phase={phase} {text}\n"
+
+    def native_lines(self, sample: dict[str, Any], pid: int, receipt_ns: int, *, phase: str = "running") -> list[str]:
+        """Describe only explicit UE observations from the private worker channel."""
+        if self.role != "ue":
+            return []
+        values = sample["values"]
+        lines = []
+        for name in ("sync_successes", "pdu_accepts"):
+            value = values.get(name)
+            if type(value) is not int or value < 0:
+                continue
+            previous = self._counters.get(name)
+            self._counters[name] = value
+            if name == "pdu_accepts" and value > 0:
+                self._pdu_accepted = True
+            if previous is not None and value < previous:
+                text = f"{name} counter decreased/reset previous={previous} current={value}; increment=unknown"
+                lines.append(self._line(pid, receipt_ns, text, phase))
+            elif value > (previous or 0):
+                initial = " (first observed counter)" if previous is None else ""
+                lines.append(self._line(pid, receipt_ns, f"{name} +{value - (previous or 0)} total={value}{initial}", phase))
+
+        active = values.get("drb_context_active")
+        if type(active) is not int or active < 0:
+            return lines
+        # A missing DRB observation never changes the last observed state. TUN
+        # configuration (pdu_active) is not evidence of a configured bearer.
+        bearer = "ready" if active > 0 and self._pdu_accepted else "unknown" if active > 0 else "inactive"
+        if bearer != self._bearer:
+            if bearer == "ready":
+                text = "data bearer restored" if self._had_ready else "data bearer ready"
+                text += " (PDU acceptance and active DRB observed)"
+                self._had_ready = True
+            elif bearer == "inactive":
+                text = "data bearer lost (DRB context inactive)" if self._bearer == "ready" else "DRB context inactive"
+                if self._bearer == "ready" and phase == "requested_shutdown":
+                    text = "data bearer inactive during requested shutdown"
+                if self._bearer is None:
+                    text += " (initial observation)"
+            else:
+                text = "DRB context active; bearer readiness=unknown (PDU acceptance unobserved)"
+            lines.append(self._line(pid, receipt_ns, text + "; delivery=unavailable", phase))
+            self._bearer = bearer
+        return lines
+
+    def radio_line(self, event: dict[str, Any], pid: int, receipt_ns: int, *, phase: str = "running") -> Optional[str]:
+        """Format known positive deltas or explicit resets from the reduced interval."""
+        if event.get("kind") != "radio_health_interval":
+            return None
+        metrics = event["metric_deltas"]
+        positive = []
+        unknown: dict[str, list[str]] = {}
+        for name in self.RADIO_COUNTERS:
+            metric = metrics.get(name)
+            if metric is None:
+                continue
+            state, delta = metric["state"], metric.get("delta")
+            if state == "counter_observed" and type(delta) is int and delta > 0:
+                positive.append(f"{name}=+{delta}")
+            elif state != "counter_observed":
+                unknown.setdefault(state, []).append(name)
+        if not positive and "counter_decreased_or_reset" not in unknown:
+            return None
+        device = event["device"]
+        # Backend names originate in a datagram; quote control characters so a
+        # bounded observation remains one ASCII log line.
+        backend = json.dumps(device["backend"], ensure_ascii=True)
+        text = (f"radio device={device['device_id']} backend={backend} device_type={device['device_type']} "
+                f"source_sequence={event['source_sequence']} source_interval={event['interval_duration_ns'] / 1e9:.3f}s "
+                "observed_counter_deltas: " + (" ".join(positive) if positive else "no known positive delta"))
+        for state, names in unknown.items():
+            text += f"; delta_unknown[{state}]=" + ",".join(names)
+        return self._line(pid, receipt_ns, text + "; transport counters only; delivery=unavailable", phase)
+
+
 class SessionSummary:
     """Fixed-size live totals, independent of retry count and raw log size."""
 

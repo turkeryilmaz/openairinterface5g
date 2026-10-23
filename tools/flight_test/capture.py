@@ -41,7 +41,7 @@ from flight_health import (
 from flight_recovery import Decision, NativeChannel, RecoveryPolicy
 from radio_health import RadioHealthDiagnostics
 from flight_traffic import TrafficError, TrafficSupervisor, parse_bitrate, validate_settings
-from summary import SessionSummary, render_summary, summarize_run
+from summary import AttemptTimeline, SessionSummary, render_summary, summarize_run
 
 
 SCHEMA_VERSION = 1
@@ -1159,6 +1159,7 @@ class FlightCapture:
         self.launch_observer = launch_observer
         self.summary = SessionSummary(time.monotonic_ns())
         self.summary.begin_attempt()
+        self.timeline = AttemptTimeline(self.summary.start_ns, args.role)
         self.summary_observers = (self.summary, session_summary) if session_summary is not None else (self.summary,)
         self.session_summary = session_summary
         self.policy_decision: Optional[Decision] = None
@@ -1523,6 +1524,7 @@ class FlightCapture:
                     native,
                     process.pid,
                     recovery_writer,
+                    stdout_writer,
                     allow_actions=leader_returncode is None,
                 )
                 self._apply_stop_deadline(process)
@@ -1559,7 +1561,7 @@ class FlightCapture:
                         # The worker may send its final native datagram after
                         # the loop's previous drain but before poll sees exit.
                         # Drain once more after exit, without issuing actions.
-                        self._drain_native(native, process.pid, recovery_writer, allow_actions=False)
+                        self._drain_native(native, process.pid, recovery_writer, stdout_writer, allow_actions=False)
                         break
 
                 if not selector.get_map():
@@ -1733,10 +1735,14 @@ class FlightCapture:
         )
 
     def _drain_native(self, channel: NativeChannel, pid: int,
-                      writer: BoundedRotatingWriter, *, allow_actions: bool = True) -> None:
+                      writer: BoundedRotatingWriter, stdout_writer: BoundedRotatingWriter, *, allow_actions: bool = True) -> None:
+        phase = ("requested_shutdown" if self._operator_stop_signal() is not None or self.recovery_stop_reason is not None
+                 else "worker_exit" if not allow_actions else "running")
         samples = channel.receive(pid)
         for sample in samples:
             receipt_ns = time.monotonic_ns()
+            for line in self.timeline.native_lines(sample, pid, receipt_ns, phase=phase):
+                stdout_writer.write(line.encode("ascii"))
             if self.traffic is not None:
                 self.traffic.observe_bearer_context(sample["values"], sample["mono_ns"])
             for observer in self.summary_observers:
@@ -1767,6 +1773,9 @@ class FlightCapture:
             accepted_before = self.radio_health.accepted
             for event in self.radio_health.observe(snapshot, receipt_ns):
                 self._write_radio_health_event(event)
+                line = self.timeline.radio_line(event, pid, receipt_ns, phase=phase)
+                if line is not None:
+                    stdout_writer.write(line.encode("ascii"))
             if self.radio_health.accepted == accepted_before:
                 continue
             for change in self.policy.observe_radio_health(snapshot, receipt_ns):
