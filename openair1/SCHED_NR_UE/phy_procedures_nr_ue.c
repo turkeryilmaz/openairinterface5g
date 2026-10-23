@@ -347,7 +347,7 @@ int get_tx_amp_prach(int power_dBm, int power_max_dBm, int N_RB_UL){
   return (amp_x_100);
 }
 
-// Consume a due RAR or relative command and return its sample adjustment; return zero when none is due.
+// Consume a due command and return absolute RAR TA or a relative sample adjustment; return zero when none is due.
 // RX captures relative adjustments for the ordered TX prefix, which applies both command types.
 int nr_ue_ta_command_samples(PHY_VARS_NR_UE *ue, int slot_tx, int frame_tx, bool is_rar)
 {
@@ -539,8 +539,9 @@ void phy_procedures_nrUE_TX(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, n
   LOG_D(PHY, "****** start TX-Chain for AbsSubframe %d.%d ******\n", frame_tx, slot_tx);
   bool was_symbol_used[NR_SYMBOLS_PER_SLOT] = {0};
   const NR_UE_PRACH *prach_var = ue->prach_vars[proc->gNB_id];
+  const bool prach_active = !phy_data->prach_handled && prach_var->active;
   nr_ue_tx_channel_layout_t managed_tx_layout;
-  const bool apply_managed_tx = !prach_var->active && radio_gain_device_tx_selected()
+  const bool apply_managed_tx = !prach_active && radio_gain_device_tx_selected()
                                 && nr_ue_tx_collect_channel_layout(ue, frame_tx, slot_tx, phy_data, txp, &managed_tx_layout);
 
   start_meas_nr_ue_phy(ue, PHY_PROC_TX);
@@ -555,7 +556,7 @@ void phy_procedures_nrUE_TX(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, n
   LOG_D(PHY, "Sending Uplink data \n");
 
   // Don't do OFDM Mod if txdata contains prach
-  if (!prach_var->active) {
+  if (!prach_active) {
     start_meas_nr_ue_phy(ue, OFDM_MOD_STATS);
     nr_tx_rotation_and_ofdm_mod(proc->nr_slot_tx,
                                 &ue->frame_parms,
@@ -570,7 +571,8 @@ void phy_procedures_nrUE_TX(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, n
       nr_ue_tx_apply_channel_layout(txp[0], frame_tx, slot_tx, &managed_tx_layout);
   }
 
-  nr_ue_prach_procedures(ue, proc, txp);
+  if (!phy_data->prach_handled)
+    nr_ue_prach_procedures(ue, proc, txp);
 
   LOG_D(PHY, "****** end TX-Chain for AbsSubframe %d.%d ******\n", proc->frame_tx, proc->nr_slot_tx);
 
@@ -1626,7 +1628,107 @@ void pdsch_processing(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, nr_phy_
   UEscopeCopy(ue, commonRxdataF, rxdataF, sizeof(int32_t), ue->frame_parms.nb_antennas_rx, rxdataF_sz, 0);
 }
 
-// TODO: Actuate the MAC-requested PRACH power after defining a calibrated dBm-to-waveform/radio mapping.
+static bool erase_prach_tx(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, int reason)
+{
+  NR_UE_PRACH *prach = ue->prach_vars[proc->gNB_id];
+  prach->active = false;
+  prach->tx_request_pending = false;
+  prach->tx_waveform_active = false;
+  // Geometry erases this attempt; gain/profile faults are latched by the waveform mapper itself.
+  LOG_W(PHY,
+        "[UE %d] %d.%d Erasing PRACH attempt: sample placement reason %d\n",
+        ue->Mod_id,
+        proc->frame_tx,
+        proc->nr_slot_tx,
+        reason);
+  return false;
+}
+
+bool nr_ue_prach_tx(PHY_VARS_NR_UE *ue,
+                    const UE_nr_rxtx_proc_t *proc,
+                    const nr_phy_data_tx_t *phy_data,
+                    c16_t **txp,
+                    int sample_count,
+                    int guard_samples)
+{
+  NR_UE_PRACH *prach = ue->prach_vars[proc->gNB_id];
+  const NR_DL_FRAME_PARMS *fp = &ue->frame_parms;
+  const int slot_samples = get_samples_per_slot(proc->nr_slot_tx, fp);
+  if (sample_count <= 0 || sample_count > slot_samples || guard_samples < 0 || guard_samples > sample_count
+      || (proc->tx_slot_type != NR_UPLINK_SLOT && proc->tx_slot_type != NR_MIXED_SLOT))
+    return erase_prach_tx(ue, proc, RADIO_TX_REJECT_SPAN);
+  if (phy_data->ulsch.status == NR_ACTIVE || phy_data->srs_vars.active || phy_data->pucch_vars.active[0]
+      || phy_data->pucch_vars.active[1])
+    return erase_prach_tx(ue, proc, RADIO_TX_REJECT_OVERLAP);
+
+  if (prach->tx_request_pending) {
+    if (prach->tx_waveform_active)
+      return erase_prach_tx(ue, proc, RADIO_TX_REJECT_OVERLAP);
+    if (!prach->waveform_ready || prach->prach_pdu.prach_slot != proc->nr_slot_tx)
+      return erase_prach_tx(ue, proc, RADIO_TX_REJECT_SPAN);
+    openair0_timestamp_t origin;
+    if (__builtin_add_overflow(proc->timestamp_tx, (int64_t)proc->tx_mac_stream_adjustment, &origin)
+        || __builtin_add_overflow(origin, (int64_t)prach->waveform_start, &origin) || origin < 0 || origin < proc->timestamp_tx)
+      return erase_prach_tx(ue, proc, RADIO_TX_REJECT_SPAN);
+
+    ue->tx_power_dBm[proc->nr_slot_tx] = prach->prach_pdu.prach_tx_power;
+    if (flight_recorder_enabled())
+      flight_recorder_emit(FLIGHT_EVENT_UE_TX_CHANNEL_CONTEXT,
+                           ue->Mod_id,
+                           proc->flight_sync_epoch,
+                           (int64_t)proc->frame_tx * 1000 + proc->nr_slot_tx,
+                           origin - prach->waveform_start,
+                           FLIGHT_UE_TX_CHANNEL_PRACH,
+                           prach->prach_pdu.ra_PreambleIndex);
+    start_meas_nr_ue_phy(ue, PRACH_GEN_STATS);
+    const int32_t power = nr_ue_prepare_prach_waveform(ue, proc->gNB_id, proc->frame_tx, proc->nr_slot_tx, AMP);
+    stop_meas_nr_ue_phy(ue, PRACH_GEN_STATS);
+    if (power < 0)
+      return erase_prach_tx(ue, proc, RADIO_TX_REJECT_PROFILE);
+    prach->tx_waveform_timestamp = origin;
+    prach->tx_waveform_epoch = proc->flight_sync_epoch;
+    prach->tx_request_pending = false;
+    prach->tx_waveform_active = true;
+    const int format = prach->prach_pdu.prach_format;
+    prach->num_prach_slots = format < 4 ? get_long_prach_dur(format, fp->numerology_index) : 1;
+    if (flight_recorder_enabled()) {
+      const fapi_nr_ul_config_prach_pdu *pdu = &prach->prach_pdu;
+      const int64_t resource = pdu->ra_PreambleIndex | ((int64_t)pdu->prach_format << 8) | ((int64_t)pdu->num_ra << 16)
+                               | ((int64_t)pdu->prach_start_symbol << 24) | ((int64_t)pdu->freq_msg1 << 32);
+      flight_recorder_emit(FLIGHT_EVENT_UE_TX_POWER_REQUEST,
+                           ue->Mod_id,
+                           (int64_t)proc->frame_tx * 1000 + proc->nr_slot_tx,
+                           FLIGHT_UE_TX_CHANNEL_PRACH,
+                           pdu->prach_tx_power,
+                           AMP,
+                           resource);
+    }
+  }
+  if (!prach->tx_waveform_active || prach->tx_waveform_epoch != proc->flight_sync_epoch)
+    return erase_prach_tx(ue, proc, RADIO_TX_REJECT_SPAN);
+
+  openair0_timestamp_t end, job_end;
+  if (__builtin_add_overflow(prach->tx_waveform_timestamp, (int64_t)prach->tx_waveform_length, &end)
+      || __builtin_add_overflow(proc->timestamp_tx, (int64_t)sample_count, &job_end) || proc->timestamp_tx >= end)
+    return erase_prach_tx(ue, proc, RADIO_TX_REJECT_SPAN);
+  const openair0_timestamp_t first = max(proc->timestamp_tx, prach->tx_waveform_timestamp);
+  const openair0_timestamp_t last = min(job_end, end);
+  if (first < last && first - proc->timestamp_tx < guard_samples)
+    return erase_prach_tx(ue, proc, RADIO_TX_REJECT_OVERLAP);
+
+  // Copy only this slot's bytes before publishing the next prefix. Reorder never retains the staging buffer.
+  for (int ant = 0; ant < fp->nb_antennas_tx; ant++)
+    memset(txp[ant], 0, slot_samples * sizeof(c16_t));
+  if (first < last)
+    memcpy(txp[0] + (first - proc->timestamp_tx),
+           prach->tx_waveform + (first - prach->tx_waveform_timestamp),
+           (last - first) * sizeof(c16_t));
+  prach->tx_waveform_active = job_end < end;
+  prach->active = prach->tx_waveform_active;
+  return true;
+}
+
+// Standalone PHY simulations retain their contiguous waveform output.
 static void nr_ue_prach_procedures(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, c16_t **txData)
 {
   int gNB_id = proc->gNB_id;

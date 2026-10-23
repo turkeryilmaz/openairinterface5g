@@ -352,7 +352,7 @@ static void nr_ue_scheduled_response_ul(PHY_VARS_NR_UE *phy, fapi_nr_ul_config_r
         AssertFatal(nr_ue_select_prach_waveform(phy, 0, ul_config->slot, AMP),
                     "Scheduled PRACH does not match its prepared lookup table\n");
         phy->prach_vars[0]->active = true;
-        phy->timing_advance = 0;
+        phy->prach_vars[0]->tx_request_pending = true;
         pdu->pdu_type = FAPI_NR_UL_CONFIG_TYPE_DONE; // not handle it any more
       } break;
 
