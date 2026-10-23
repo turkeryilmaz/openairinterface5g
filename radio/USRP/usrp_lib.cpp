@@ -42,7 +42,7 @@
 
 #include "openair1/PHY/sse_intrin.h"
 #include "usrp_converters.hpp"
-
+#include "usrp_tx_burst.h"
 
 /** @addtogroup _USRP_PHY_RF_INTERFACE_
  * @{
@@ -66,6 +66,7 @@ typedef struct {
 
   //! USRP TX Metadata
   uhd::tx_metadata_t tx_md;
+  usrp_tx_burst_state_t tx_burst;
   //! USRP RX Metadata
   uhd::rx_metadata_t rx_md;
 
@@ -384,26 +385,34 @@ static void usrp_flight_record_tx_result(const usrp_state_t *state,
   flight_recorder_emit(FLIGHT_EVENT_RADIO_TX_RESULT, state->flight_device_type, sequence, timestamp, samples, accepted, outcome);
 }
 
-static void trx_usrp_send_end_of_burst(usrp_state_t *s)
+static void trx_usrp_send_end_of_burst(usrp_state_t *s, int64_t sequence)
 {
-  // if last packet sent was end of burst no need to do anything. otherwise send end of burst packet
-  if (s->tx_md.end_of_burst)
+  if (!s->tx_burst.open)
     return;
   s->tx_md.end_of_burst = true;
   s->tx_md.start_of_burst = false;
   s->tx_md.has_time_spec = false;
-  /* Normal close sends this once, after joining the optional sender. Reserve
-   * -1 so teardown never reads or advances the steady sender's tx_count. */
+  const uint64_t zero = 0;
+  const void *buffers[MAX_WRITE_THREAD_BUFFER_SIZE];
+  AssertFatal(s->flight_tx_channels > 0 && s->flight_tx_channels <= MAX_WRITE_THREAD_BUFFER_SIZE,
+              "Invalid USRP TX channel count %d\n",
+              s->flight_tx_channels);
+  for (int channel = 0; channel < s->flight_tx_channels; channel++)
+    buffers[channel] = &zero;
+  /* Use the payload sender's existing 0.1 s timeout, with no retry. UHD returns
+   * zero for an empty EOB even on timeout, so return alone is not delivery proof. */
   const bool recording = flight_recorder_enabled();
   if (recording)
-    usrp_flight_record_tx_send(s, -1, INT64_MIN, 0, s->flight_tx_channels);
+    usrp_flight_record_tx_send(s, sequence, INT64_MIN, 0, s->flight_tx_channels);
   try {
-    const size_t accepted = s->tx_stream->send("", 0, s->tx_md);
+    const size_t accepted = s->tx_stream->send(uhd::tx_streamer::buffs_type(buffers, s->flight_tx_channels), 0, s->tx_md, 0.1);
+    usrp_tx_burst_closed(&s->tx_burst);
     if (recording)
-      usrp_flight_record_tx_result(s, -1, INT64_MIN, 0, accepted, 0);
+      usrp_flight_record_tx_result(s, sequence, INT64_MIN, 0, accepted, 0);
   } catch (...) {
+    usrp_tx_burst_uncertain(&s->tx_burst);
     if (recording)
-      usrp_flight_record_tx_result(s, -1, INT64_MIN, 0, INT64_MIN, 1);
+      usrp_flight_record_tx_result(s, sequence, INT64_MIN, 0, INT64_MIN, 1);
     throw;
   }
 }
@@ -545,10 +554,27 @@ static void usrp_radio_health_record_rx_start(usrp_state_t *state, size_t reques
   radio_health_counter_add(state->radio_health, RADIO_HEALTH_METRIC_RX_REQUESTED_SAMPLES, (uint64_t)requested);
 }
 
-static int usrp_radio_health_send(usrp_state_t *state, void **buffers, int samples, int channels, openair0_timestamp_t timestamp)
+static int usrp_radio_health_send(usrp_state_t *state,
+                                  void **buffers,
+                                  int samples,
+                                  int channels,
+                                  openair0_timestamp_t timestamp,
+                                  bool first_packet,
+                                  bool last_packet)
 {
   const bool recording = flight_recorder_enabled();
   const int64_t sequence = recording ? state->tx_count : 0;
+  const usrp_tx_burst_plan_t plan = usrp_tx_burst_plan(&state->tx_burst, timestamp, samples, first_packet, last_packet);
+  /* X3xx's DUC keeps advancing time within an open burst. A new timestamp
+   * after reacquisition must follow an untimed EOB so it seeds a fresh burst. */
+  if (plan.close)
+    trx_usrp_send_end_of_burst(state, sequence);
+  if (!plan.payload)
+    return 0;
+  state->tx_md.has_time_spec = true;
+  state->tx_md.start_of_burst = plan.start;
+  state->tx_md.end_of_burst = last_packet;
+  state->tx_md.time_spec = uhd::time_spec_t::from_ticks(timestamp, state->sample_rate);
   bool send_started = false;
   try {
     if (channels > 1) {
@@ -560,9 +586,10 @@ static int usrp_radio_health_send(usrp_state_t *state, void **buffers, int sampl
         radio_health_gauge_set(state->radio_health, RADIO_HEALTH_METRIC_TX_SEND_INFLIGHT, 1);
       if (recording) {
         usrp_flight_record_tx_send(state, sequence, timestamp, samples, channels);
-        send_started = true;
       }
+      send_started = true;
       const int accepted = (int)state->tx_stream->send(buffer_pointers, samples, state->tx_md);
+      usrp_tx_burst_accepted(&state->tx_burst, timestamp, samples, accepted, last_packet);
       if (recording)
         usrp_flight_record_tx_result(state, sequence, timestamp, samples, accepted, 0);
       if (state->radio_health != NULL)
@@ -574,9 +601,10 @@ static int usrp_radio_health_send(usrp_state_t *state, void **buffers, int sampl
       radio_health_gauge_set(state->radio_health, RADIO_HEALTH_METRIC_TX_SEND_INFLIGHT, 1);
     if (recording) {
       usrp_flight_record_tx_send(state, sequence, timestamp, samples, channels);
-      send_started = true;
     }
+    send_started = true;
     const int accepted = (int)state->tx_stream->send(buffers[0], samples, state->tx_md);
+    usrp_tx_burst_accepted(&state->tx_burst, timestamp, samples, accepted, last_packet);
     if (recording)
       usrp_flight_record_tx_result(state, sequence, timestamp, samples, accepted, 0);
     if (state->radio_health != NULL)
@@ -584,6 +612,8 @@ static int usrp_radio_health_send(usrp_state_t *state, void **buffers, int sampl
     return accepted;
   } catch (...) {
     /* Buffer preparation can throw before send; do not invent a UHD result. */
+    if (send_started)
+      usrp_tx_burst_uncertain(&state->tx_burst);
     if (recording && send_started)
       usrp_flight_record_tx_result(state, sequence, timestamp, samples, INT64_MIN, 1);
     if (state->radio_health != NULL) {
@@ -873,7 +903,9 @@ static void trx_usrp_end(openair0_device_t *device)
     trx_usrp_write_reset(&device->write_thread);
 
   /* finish tx and rx */
-  trx_usrp_send_end_of_burst(s);
+  /* Teardown owns the state after joining the optional sender. Reserve -1 so
+   * it never reads or advances the steady sender's tx_count. */
+  trx_usrp_send_end_of_burst(s, -1);
   usrp_radio_health_stop_async(s);
   trx_usrp_finish_rx(s);
   if (s->radio_health != NULL)
@@ -965,13 +997,9 @@ static int trx_usrp_write(openair0_device_t *device,
     }
 
     if (usrp_tx_thread == 0) {
-      s->tx_md.has_time_spec = true;
-      s->tx_md.start_of_burst = (s->tx_count == 0) ? true : first_packet_state;
-      s->tx_md.end_of_burst = last_packet_state;
-      s->tx_md.time_spec = uhd::time_spec_t::from_ticks(timestamp, s->sample_rate);
       s->tx_count++;
 
-      ret = usrp_radio_health_send(s, buff, nsamps, cc, timestamp);
+      ret = usrp_radio_health_send(s, buff, nsamps, cc, timestamp, first_packet_state, last_packet_state);
       usrp_radio_health_record_tx_result(s, nsamps, ret);
 
       if (flight_recorder_enabled() && (ret != nsamps || (s->tx_count & 1023) == 0))
@@ -1089,14 +1117,15 @@ void *trx_usrp_write_thread(void * arg)
       LOG_W(HW,"count write = %d, start = %d, end = %d\n", write_thread->count_write, write_thread->start, write_thread->end);
     }*/
 
-    s->tx_md.has_time_spec  = true;
-    s->tx_md.start_of_burst = (s->tx_count==0) ? true : first_packet;
-    s->tx_md.end_of_burst   = last_packet;
-    s->tx_md.time_spec      = uhd::time_spec_t::from_ticks(timestamp, s->sample_rate);
-    LOG_D(PHY,"usrp_tx_write: tx_count %llu SoB %d, EoB %d, TS %llu\n",(unsigned long long)s->tx_count,s->tx_md.start_of_burst,s->tx_md.end_of_burst,(unsigned long long)timestamp); 
     s->tx_count++;
 
-    ret = usrp_radio_health_send(s, buff, nsamps, cc, timestamp);
+    ret = usrp_radio_health_send(s, buff, nsamps, cc, timestamp, first_packet, last_packet);
+    LOG_D(PHY,
+          "usrp_tx_write: tx_count %llu SoB %d, EoB %d, TS %llu\n",
+          (unsigned long long)s->tx_count,
+          s->tx_md.start_of_burst,
+          s->tx_md.end_of_burst,
+          (unsigned long long)timestamp);
     usrp_radio_health_record_tx_result(s, nsamps, ret);
 
     T(T_USRP_TX_ANT0, T_INT(timestamp), T_BUFFER(buff[0], nsamps*4));
