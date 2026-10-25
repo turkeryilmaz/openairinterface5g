@@ -245,8 +245,10 @@ static void fd_set_mib_sfn(fapiPbch_t *pbch, int sfn)
 // Hands the anchored cell's MIB to the MAC, as a monolithic initial sync does. The
 // MIB was decoded when the Low-PHY anchored, maybe long before this instance
 // joined: its SFN is moved to the frame this instance starts with.
-static void fd_apply_cell(PHY_VARS_NR_UE *UE, const ue_low_phy_cell_t *cell, uint64_t first_slot)
+static bool fd_apply_cell(PHY_VARS_NR_UE *UE, const ue_low_phy_cell_t *cell, uint64_t first_slot, uint64_t generation)
 {
+  if (!nr_rrc_bcch_is_current(UE->Mod_id, generation))
+    return false;
   NR_DL_FRAME_PARMS *fp = &UE->frame_parms;
   // nr_fill_rx_indication()'s SSB case reads these from frame_parms.
   fp->Nid_cell = cell->pci;
@@ -268,16 +270,26 @@ static void fd_apply_cell(PHY_VARS_NR_UE *UE, const ue_low_phy_cell_t *cell, uin
     UE->if_inst->dl_indication(&dl_indication);
 
   NR_UE_MAC_INST_t *mac = get_mac_inst(UE->Mod_id);
-  notifiedFIFO_elt_t *elt = pullNotifiedFIFO(&mac->input_nf);
-  AssertFatal(elt, "[fd-ue] FIFO error waiting for the MIB (UE %d)\n", UE->Mod_id);
-  process_msg_rcc_to_mac(NotifiedFifoData(elt), UE->Mod_id);
-  delNotifiedFIFO_elt(elt);
+  while (true) {
+    notifiedFIFO_elt_t *elt = pullNotifiedFIFO(&mac->input_nf);
+    if (!elt)
+      return false;
+    nr_mac_rrc_message_t *msg = NotifiedFifoData(elt);
+    const bool matching_mib = msg->payload_type == NR_MAC_RRC_CONFIG_MIB && msg->bcch_generation == generation;
+    process_msg_rcc_to_mac(msg, UE->Mod_id);
+    delNotifiedFIFO_elt(elt);
+    if (!nr_rrc_bcch_is_current(UE->Mod_id, generation))
+      return false;
+    if (matching_mib)
+      break;
+  }
   AssertFatal(mac->mib_frame == sfn,
               "[fd-ue] UE %d: MAC decoded SFN %d from a MIB carrying SFN %d\n",
               UE->Mod_id,
               mac->mib_frame,
               sfn);
   LOG_A(NR_PHY, "[fd-ue] UE %d synchronized: PCI %u, SFN %d\n", UE->Mod_id, cell->pci, mac->mib_frame);
+  return true;
 }
 
 static void *UE_fd_thread(void *arg)
@@ -303,6 +315,7 @@ static void *UE_fd_thread(void *arg)
   int shiftForNextFrame = 0;
   uint32_t ta_samples = UINT32_MAX;
   uint32_t sync_req = 0;
+  uint64_t sync_generation = 0;
   uint64_t next_slot = 0;
   f->rrc_next_frame = fd_radio_frame(fp);
 
@@ -315,8 +328,11 @@ static void *UE_fd_thread(void *arg)
         UE->target_Nid_cell = UE->synch_request.synch_req.target_Nid_cell;
         UE->synch_request.received_synch_request = 0;
       }
-      if (!sync_req)
+      if (!sync_req) {
+        if (!nr_ue_publish_sync_job(UE->Mod_id, NULL, NULL, &sync_generation))
+          continue;
         sync_req = ue_low_phy_client_request_sync(c, UE->target_Nid_cell, get_nrUE_params()->ue_fd_sync_timeout_ms);
+      }
       ue_low_phy_cell_t cell;
       // Short waits: time and RRC timers are ticked between them.
       const int rc = ue_low_phy_client_sync_result(c, sync_req, &cell, 10000);
@@ -332,7 +348,10 @@ static void *UE_fd_thread(void *arg)
       next_slot = ue_low_phy_client_next_published_slot(c);
       if (next_slot < cell.first_slot)
         next_slot = cell.first_slot;
-      fd_apply_cell(UE, &cell, next_slot);
+      if (!fd_apply_cell(UE, &cell, next_slot, sync_generation)) {
+        UE->is_synchronized = 0;
+        continue;
+      }
       f->rrc_next_frame = next_slot / nb_slot_frame;
       stream_status = STREAM_STATUS_UNSYNC;
       memset(tx_wait_for_dlsch, 0, sizeof(tx_wait_for_dlsch));

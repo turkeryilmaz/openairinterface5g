@@ -3,6 +3,7 @@
  */
 
 #include "common/utils/ocp_itti/intertask_interface.h"
+#include "common/utils/threadPool/notified_fifo.h"
 
 typedef uint32_t channel_t;
 
@@ -19,6 +20,16 @@ void nr_mac_rrc_data_ind_ue(const module_id_t module_id,
                             const channel_t channel,
                             const uint8_t* pduP,
                             const sdu_size_t pdu_len);
+void nr_mac_rrc_mib_ind_ue(module_id_t module_id,
+                           uint8_t gnb,
+                           long arfcn,
+                           const uint8_t *pdu,
+                           uint64_t generation,
+                           const nr_ue_mib_metadata_t *metadata);
+bool nr_rrc_mac_resync_request(const nr_mac_rrc_message_t *msg);
+bool nr_rrc_bcch_is_current(module_id_t module_id, uint64_t generation);
+bool nr_ue_service_rrc_messages(int instance_id, unsigned budget);
+bool nr_ue_publish_sync_job(int instance_id, notifiedFIFO_t *fifo, notifiedFIFO_elt_t *job, uint64_t *generation);
 void nr_mac_rrc_meas_ind_ue(module_id_t module_id,
                             uint32_t gNB_index,
                             uint16_t Nid_cell,
