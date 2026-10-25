@@ -84,7 +84,8 @@ void processSlotTX(void *arg);
   @param frame_tx
 */
 /// Consume a due command and return absolute RAR TA or a relative sample adjustment, or zero when none is due.
-int nr_ue_ta_command_samples(PHY_VARS_NR_UE *ue, int slot_tx, int frame_tx, bool is_rar);
+/// If non-NULL, consumed_command receives the command, or -1 when none was consumed.
+int nr_ue_ta_command_samples(PHY_VARS_NR_UE *ue, int slot_tx, int frame_tx, bool is_rar, int *consumed_command);
 
 void set_tx_harq_id(NR_UE_ULSCH_t *ulsch, int harq_pid, int slot_tx);
 int get_tx_harq_id(NR_UE_ULSCH_t *ulsch, int slot_tx);

@@ -349,26 +349,31 @@ int get_tx_amp_prach(int power_dBm, int power_max_dBm, int N_RB_UL){
 
 // Consume a due command and return absolute RAR TA or a relative sample adjustment; return zero when none is due.
 // RX captures relative adjustments for the ordered TX prefix, which applies both command types.
-int nr_ue_ta_command_samples(PHY_VARS_NR_UE *ue, int slot_tx, int frame_tx, bool is_rar)
+int nr_ue_ta_command_samples(PHY_VARS_NR_UE *ue, int slot_tx, int frame_tx, bool is_rar, int *consumed_command)
 {
+  if (consumed_command)
+    *consumed_command = -1;
   const int ta_frame = is_rar ? ue->rar_ta_command.ta_frame : ue->ta_frame;
   const int ta_slot = is_rar ? ue->rar_ta_command.ta_slot : ue->ta_slot;
   if (ta_frame < 0 || ta_slot < 0)
     return 0;
 
+  bool due = frame_tx == ta_frame && slot_tx == ta_slot;
   if (!is_rar) {
     const int slots_per_frame = ue->frame_parms.slots_per_frame;
     const int slots_per_cycle = MAX_FRAME_NUMBER * slots_per_frame;
     const int slots_ahead = ((ta_frame - frame_tx) * slots_per_frame + ta_slot - slot_tx + slots_per_cycle) % slots_per_cycle;
     // Valid relative targets (NTN K <= 1023 ms plus PHY processing) are less than half an SFN cycle ahead.
-    // Discard commands published after their target; retaining them would replay them at the next SFN wrap.
-    if (slots_ahead >= slots_per_cycle / 2) {
+    // A decoded command can arrive after its target was prepared. Consume it once at the
+    // next available TX boundary; retain future targets and reject the ambiguous half-cycle.
+    due = slots_ahead == 0 || slots_ahead > slots_per_cycle / 2;
+    if (slots_ahead == slots_per_cycle / 2) {
       ue->ta_frame = -1;
       ue->ta_slot = -1;
       return 0;
     }
   }
-  if (frame_tx == ta_frame && slot_tx == ta_slot) {
+  if (due) {
     uint16_t ofdm_symbol_size = ue->frame_parms.ofdm_symbol_size;
 
     // convert time factor "16 * 64 * T_c / (2^mu)" in N_TA calculation in TS38.213 section 4.2 to samples by multiplying with
@@ -381,6 +386,8 @@ int nr_ue_ta_command_samples(PHY_VARS_NR_UE *ue, int slot_tx, int frame_tx, bool
     uint16_t bw_scaling = 16 * ofdm_symbol_size / 2048;
 
     const int command = is_rar ? ue->rar_ta_command.ta_command : ue->ta_command;
+    if (consumed_command)
+      *consumed_command = command;
     const int ta_units = is_rar ? command : command - 31;
     const int ta_samples = ta_units * bw_scaling;
 

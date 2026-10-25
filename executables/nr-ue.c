@@ -494,7 +494,7 @@ static void update_tx_timing(nr_rxtx_thread_data_t *rxtxD)
     const bool rar_due = ue->rar_ta_command.ta_frame == next_frame && ue->rar_ta_command.ta_slot == next_slot;
     const int rar_command = ue->rar_ta_command.ta_command;
     // Move the blank boundary before Msg3; relative updates retain their post-sizing order below.
-    const int rar_delta = nr_ue_ta_command_samples(ue, next_slot, next_frame, true);
+    const int rar_delta = nr_ue_ta_command_samples(ue, next_slot, next_frame, true, NULL);
     if (rar_due)
       apply_ta_samples(ue, proc->frame_tx, proc->nr_slot_tx, rar_command, true, rar_delta);
   }
@@ -867,9 +867,7 @@ static int UE_dl_preprocessing(PHY_VARS_NR_UE *UE,
       }
     }
   } else {
-    if (UE->ta_frame == proc->frame_tx && UE->ta_slot == proc->nr_slot_tx)
-      *relative_ta_command = UE->ta_command;
-    *relative_ta_delta = nr_ue_ta_command_samples(UE, proc->nr_slot_tx, proc->frame_tx, false);
+    *relative_ta_delta = nr_ue_ta_command_samples(UE, proc->nr_slot_tx, proc->frame_tx, false, relative_ta_command);
   }
 
   TracyCZoneEnd(ctx);
