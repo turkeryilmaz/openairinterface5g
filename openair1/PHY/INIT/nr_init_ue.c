@@ -165,7 +165,8 @@ int init_nr_ue_signal(PHY_VARS_NR_UE *ue, int nb_connected_gNB)
   LOG_I(PHY, "Initializing UE vars for gNB TXant %u, UE RXant %u\n", fp->nb_antennas_tx, fp->nb_antennas_rx);
 
   phy_init_nr_top(ue);
-  if (!ue->sl_mode) {
+  /* PHY-test mode bypasses random access and has no RRC task in the PHY simulators. */
+  if (!ue->sl_mode && !get_softmodem_params()->phy_test) {
     /* NSA configuration can arrive before frame parameters. Build before starting the sample loop. */
     ue->prach_lut_config = nr_ue_prach_lut_config(ue);
     if (ue->prach_lut_config.num_keys) {
