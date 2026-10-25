@@ -102,6 +102,7 @@ typedef struct UE_RRC_SI_INFO_NR_r17_s {
 
 typedef struct UE_RRC_SI_INFO_NR_s {
   bool sib_pending;
+  uint64_t sib_pending_generation;
   uint32_t default_otherSI_map[MAX_SI_GROUPS];
   bool sib1_validity;
   NR_timer_t sib1_timer;

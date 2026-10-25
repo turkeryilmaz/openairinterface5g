@@ -449,6 +449,7 @@ typedef struct {
 } nr_mac_rrc_config_cg_t;
 typedef struct {
   NR_BCCH_BCH_Message_t *bcch;
+  nr_ue_mib_metadata_t mib_metadata;
   bool access_barred;
 } nr_mac_rrc_config_mib_t;
 typedef struct {
@@ -483,6 +484,9 @@ enum payload_type {
 
 typedef struct {
   enum payload_type payload_type;
+  // Zero identifies ordinary control or a direct simulator call.
+  uint64_t bcch_generation;
+  bool bcch_invalidation;
   union {
     nr_mac_rrc_config_reset_t config_reset;
     nr_mac_rrc_config_cg_t config_cg;

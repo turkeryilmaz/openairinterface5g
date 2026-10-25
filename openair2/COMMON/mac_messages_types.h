@@ -13,6 +13,7 @@
 #include "OCTET_STRING.h"
 #include "openair2/LAYER2/NR_MAC_gNB/mac_config.h"
 #include "PHY/NR_UE_TRANSPORT/nr_prach_lut.h"
+#include "RRC/NR_UE/nr_mac_rrc_types.h"
 
 #define NR_RRC_MAC_PRACH_LUT_REQ(mSGpTR) (mSGpTR)->ittiMsg.nr_rrc_mac_prach_lut_req
 typedef struct {
@@ -122,6 +123,8 @@ typedef struct NRRrcMacBcchDataInd_s {
   uint8_t   sdu[BCCH_SDU_SIZE];
   uint8_t   gnb_index;
   bool      is_bch;
+  uint64_t bcch_generation;
+  nr_ue_mib_metadata_t mib_metadata;
   uint8_t   rsrq;
   uint8_t   rsrp;
   uint32_t  phycellid;

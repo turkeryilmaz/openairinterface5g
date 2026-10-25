@@ -73,14 +73,35 @@ void nr_rrc_mac_config_req_cg(module_id_t module_id,
                               NR_CellGroupConfig_t *cell_group_config,
                               NR_UE_NR_Capability_t *ue_Capability);
 
-void nr_rrc_mac_config_req_mib(module_id_t module_id, int cc_idP, NR_MIB_t *mibP, bool barred);
-void nr_rrc_mac_sched_sib(module_id_t module_id, int sched_sib);
-void nr_rrc_mac_config_req_sib1(module_id_t module_id, int cc_idP, NR_SIB1_t *sib1, bool can_start_ra, bool dedicated_sib1);
+// The caller holds if_mutex when checking admission or stamping a PHY indication.
+static inline bool nr_ue_bcch_is_current(const NR_UE_MAC_INST_t *mac, uint64_t generation)
+{
+  return generation == 0 || (mac->bcch_accepting && !mac->pending_bcch_invalidation && generation == mac->bcch_generation);
+}
+
+void nr_rrc_mac_config_req_mib(module_id_t module_id,
+                               int cc_idP,
+                               NR_MIB_t *mibP,
+                               bool barred,
+                               uint64_t generation,
+                               const nr_ue_mib_metadata_t *metadata);
+void nr_rrc_mac_sched_sib(module_id_t module_id, int sched_sib, uint64_t generation);
+void nr_rrc_mac_config_req_sib1(module_id_t module_id,
+                                int cc_idP,
+                                NR_SIB1_t *sib1,
+                                bool can_start_ra,
+                                bool dedicated_sib1,
+                                uint64_t generation);
 void nr_rrc_mac_config_req_paging_ue_id(module_id_t module_id, uint64_t fiveG_S_TMSI);
 void nr_rrc_mac_start_ra(module_id_t module_id, nr_mac_ra_start_cause_t cause);
 
 struct position; /* forward declaration */
-void nr_rrc_mac_config_other_sib(module_id_t module_id, NR_SIB19_r17_t *sib19_r17, int hfn, int frame, bool can_start_ra);
+void nr_rrc_mac_config_other_sib(module_id_t module_id,
+                                 NR_SIB19_r17_t *sib19_r17,
+                                 int hfn,
+                                 int frame,
+                                 bool can_start_ra,
+                                 uint64_t generation);
 void nr_rrc_mac_resume_rb(module_id_t module_id, bool is_srb, int rb_id);
 void nr_rrc_mac_config_req_reset(module_id_t module_id, NR_UE_MAC_reset_cause_t cause);
 

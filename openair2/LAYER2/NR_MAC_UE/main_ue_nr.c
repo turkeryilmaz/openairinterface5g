@@ -98,6 +98,8 @@ void nr_ue_mac_default_configs(NR_UE_MAC_INST_t *mac)
 
 void nr_ue_send_synch_request(NR_UE_MAC_INST_t *mac, module_id_t module_id, int cc_id, const fapi_nr_synch_request_t *sync_req)
 {
+  // Callers hold if_mutex; PHY indications remain associated with the old acquisition.
+  mac->bcch_accepting = false;
   // Sending to PHY a request to resync
   mac->synch_request.Mod_id = module_id;
   mac->synch_request.CC_id = cc_id;
@@ -107,7 +109,8 @@ void nr_ue_send_synch_request(NR_UE_MAC_INST_t *mac, module_id_t module_id, int 
 
 void nr_ue_reset_sync_state(NR_UE_MAC_INST_t *mac, bool reconf)
 {
-  // reset synchornization status
+  mac->bcch_accepting = false;
+  // reset synchronization status
   mac->state = reconf ? UE_NOT_SYNC_RECONF : UE_NOT_SYNC;
   mac->ra.ra_state = nrRA_UE_IDLE;
 }
