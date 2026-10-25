@@ -9,6 +9,7 @@
 #define _GNU_SOURCE
 
 #include "mac_defs.h"
+#include "bits.h"
 #include "NR_MAC-CellGroupConfig.h"
 #include "LAYER2/NR_MAC_UE/mac_proto.h"
 #include "LAYER2/NR_MAC_COMMON/nr_mac_common.h"
@@ -1106,9 +1107,14 @@ static bool is_cset0_present(frequency_range_t const fr, uint8_t const kssb)
   return (fr == FR1) ? (kssb < 24) : (kssb < 12);
 }
 
-void nr_rrc_mac_sched_sib(module_id_t module_id, int sched_sib)
+void nr_rrc_mac_sched_sib(module_id_t module_id, int sched_sib, uint64_t generation)
 {
   NR_UE_MAC_INST_t *mac = get_mac_inst(module_id);
+  mutexlock(mac->if_mutex);
+  if (!nr_ue_bcch_is_current(mac, generation)) {
+    mutexunlock(mac->if_mutex);
+    return;
+  }
   if (sched_sib == 1) {
     bool const is_c0 = is_cset0_present(mac->frequency_range, mac->ssb_subcarrier_offset);
     mac->get_sib1 = is_c0;
@@ -1118,13 +1124,36 @@ void nr_rrc_mac_sched_sib(module_id_t module_id, int sched_sib)
 
   if (mac->state == UE_NOT_SYNC && mac->get_sib1)
     mac->state = UE_RECEIVING_SIB;
+  mutexunlock(mac->if_mutex);
 }
 
-void nr_rrc_mac_config_req_mib(module_id_t module_id, int cc_idP, NR_MIB_t *mib, bool barred)
+void nr_rrc_mac_config_req_mib(module_id_t module_id,
+                               int cc_idP,
+                               NR_MIB_t *mib,
+                               bool barred,
+                               uint64_t generation,
+                               const nr_ue_mib_metadata_t *metadata)
 {
   NR_UE_MAC_INST_t *mac = get_mac_inst(module_id);
   int ret = pthread_mutex_lock(&mac->if_mutex);
   AssertFatal(!ret, "mutex failed %d\n", ret);
+  if (!nr_ue_bcch_is_current(mac, generation)) {
+    mutexunlock(mac->if_mutex);
+    return;
+  }
+  if (metadata) {
+    mac->physCellId = metadata->cell_id;
+    mac->mib_additional_bits = metadata->additional_bits;
+    mac->mib_ssb = metadata->ssb_index;
+    mac->ssb_start_subcarrier = metadata->ssb_start_subcarrier;
+    mac->frequency_range = metadata->ssb_length == 64 ? FR2 : FR1;
+    if (mac->frequency_range == FR2) {
+      uint8_t bits = metadata->additional_bits;
+      uint8_t reversed;
+      reverse_bits_u8(&bits, 1, &reversed);
+      mac->mib_ssb += (reversed & 7) << 3;
+    }
+  }
   AssertFatal(mib, "MIB should not be NULL\n");
   if (!mac->mib)
     mac->mib = calloc(1, sizeof(*mac->mib));
@@ -2127,11 +2156,20 @@ void advance_ul_pusch_config_generation(NR_UE_MAC_INST_t *mac)
     mac->ul_pusch_config_generation = 1;
 }
 
-void nr_rrc_mac_config_req_sib1(module_id_t module_id, int cc_idP, NR_SIB1_t *sib1, bool can_start_ra, bool dedicated_sib1)
+void nr_rrc_mac_config_req_sib1(module_id_t module_id,
+                                int cc_idP,
+                                NR_SIB1_t *sib1,
+                                bool can_start_ra,
+                                bool dedicated_sib1,
+                                uint64_t generation)
 {
   NR_UE_MAC_INST_t *mac = get_mac_inst(module_id);
   int ret = pthread_mutex_lock(&mac->if_mutex);
   AssertFatal(!ret, "mutex failed %d\n", ret);
+  if (!nr_ue_bcch_is_current(mac, generation)) {
+    mutexunlock(mac->if_mutex);
+    return;
+  }
   NR_SI_SchedulingInfo_t *si_SchedulingInfo = sib1->si_SchedulingInfo;
   NR_SI_SchedulingInfo_v1700_t *si_SchedulingInfo_v1700 = NULL;
   if (sib1->nonCriticalExtension && sib1->nonCriticalExtension->nonCriticalExtension
@@ -2182,12 +2220,21 @@ void nr_rrc_mac_config_req_sib1(module_id_t module_id, int cc_idP, NR_SIB1_t *si
   AssertFatal(!ret, "mutex failed %d\n", ret);
 }
 
-void nr_rrc_mac_config_other_sib(module_id_t module_id, NR_SIB19_r17_t *sib19, int hfn, int frame, bool can_start_ra)
+void nr_rrc_mac_config_other_sib(module_id_t module_id,
+                                 NR_SIB19_r17_t *sib19,
+                                 int hfn,
+                                 int frame,
+                                 bool can_start_ra,
+                                 uint64_t generation)
 {
   NR_UE_MAC_INST_t *mac = get_mac_inst(module_id);
   int ret = pthread_mutex_lock(&mac->if_mutex);
   AssertFatal(!ret, "mutex failed %d\n", ret);
 
+  if (!nr_ue_bcch_is_current(mac, generation)) {
+    mutexunlock(mac->if_mutex);
+    return;
+  }
   if (sib19) {
     // update ntn_Config_r17 with received values
     UPDATE_IE(mac->sc_info.ntn_Config_r17, sib19->ntn_Config_r17, NR_NTN_Config_r17_t);
@@ -2259,10 +2306,8 @@ static void handle_reconfiguration_with_sync(NR_UE_MAC_INST_t *mac,
   // As SYNC request processes the new config
   mac->if_module->phy_config_request(&mac->phy_config);
   mac->phy_config.config_req.ntn_config.params_changed = false;
-  mac->synch_request.Mod_id = mac->ue_id;
-  mac->synch_request.CC_id = cc_idP;
   mac->synch_request.synch_req.target_Nid_cell = mac->physCellId;
-  mac->if_module->synch_request(&mac->synch_request);
+  nr_ue_send_synch_request(mac, mac->ue_id, cc_idP, &mac->synch_request.synch_req);
 }
 
 static void configure_physicalcellgroup(NR_UE_MAC_INST_t *mac,

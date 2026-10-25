@@ -159,7 +159,17 @@ static void nr_rrc_send_msg_to_mac(NR_UE_RRC_INST_t *rrc, nr_mac_rrc_message_t *
   notifiedFIFO_elt_t *nf_msg = newNotifiedFIFO_elt(sizeof(nr_mac_rrc_message_t), 0, NULL, NULL);
   nr_mac_rrc_message_t *rrc_msg = NotifiedFifoData(nf_msg);
   memcpy(rrc_msg, msg, sizeof(nr_mac_rrc_message_t));
+  // Allocation and copying precede the short admission/publication critical section.
+  NR_UE_MAC_INST_t *mac = get_mac_inst(rrc->ue_id);
+  mutexlock(mac->if_mutex);
+  rrc_msg->bcch_invalidation = nr_rrc_mac_resync_request(rrc_msg);
+  if (rrc_msg->bcch_invalidation) {
+    DevAssert(mac->pending_bcch_invalidation != UINT_MAX);
+    mac->pending_bcch_invalidation++;
+    mac->bcch_accepting = false;
+  }
   pushNotifiedFIFO(rrc->mac_input_nf, nf_msg);
+  mutexunlock(mac->if_mutex);
 }
 
 /** @brief Ask MAC to start or restart random access
@@ -327,7 +337,12 @@ static void nr_rrc_process_ntnconfig(NR_UE_RRC_INST_t *rrc, NR_UE_RRC_SI_INFO *S
     nr_timer_start(&SI_info->SInfo_r17.sib19_timer);
 }
 
-static void nr_decode_SI(NR_UE_RRC_SI_INFO *SI_info, NR_SystemInformation_t *si, NR_UE_RRC_INST_t *rrc, int hfn, int frame)
+static void nr_decode_SI(NR_UE_RRC_SI_INFO *SI_info,
+                         NR_SystemInformation_t *si,
+                         NR_UE_RRC_INST_t *rrc,
+                         int hfn,
+                         int frame,
+                         uint64_t generation)
 {
   if (si->criticalExtensions.present != NR_SystemInformation__criticalExtensions_PR_systemInformation) {
     LOG_W(NR_RRC, "Not implemented SystemInformation criticalExtension version\n");
@@ -406,6 +421,7 @@ static void nr_decode_SI(NR_UE_RRC_SI_INFO *SI_info, NR_SystemInformation_t *si,
   if (sib19) {
     nr_mac_rrc_message_t rrc_msg = {0};
     rrc_msg.payload_type = NR_MAC_RRC_CONFIG_OTHER_SIB;
+    rrc_msg.bcch_generation = generation;
     nr_mac_rrc_config_other_sib_t *sib19_msg = &rrc_msg.payload.config_other_sib;
     asn_copy(&asn_DEF_NR_SIB19_r17, (void **)&sib19_msg->sib19, sib19);
     sib19_msg->hfn = hfn;
@@ -511,7 +527,11 @@ static void get_sib19_schedinfo(NR_UE_RRC_SI_INFO *SI_info, NR_SI_SchedulingInfo
   }
 }
 
-static void nr_rrc_process_sib1(NR_UE_RRC_INST_t *rrc, NR_UE_RRC_SI_INFO *SI_info, NR_SIB1_t *sib1, bool is_dedicatedSIB1)
+static void nr_rrc_process_sib1(NR_UE_RRC_INST_t *rrc,
+                                NR_UE_RRC_SI_INFO *SI_info,
+                                NR_SIB1_t *sib1,
+                                bool is_dedicatedSIB1,
+                                uint64_t generation)
 {
   if(g_log->log_component[NR_RRC].level >= OAILOG_DEBUG)
     xer_fprint(stdout, &asn_DEF_NR_SIB1, (const void *) sib1);
@@ -575,6 +595,7 @@ static void nr_rrc_process_sib1(NR_UE_RRC_INST_t *rrc, NR_UE_RRC_SI_INFO *SI_inf
 
   nr_mac_rrc_message_t rrc_msg = {0};
   rrc_msg.payload_type = NR_MAC_RRC_CONFIG_SIB1;
+  rrc_msg.bcch_generation = generation;
   nr_mac_rrc_config_sib1_t *config_sib1 = &rrc_msg.payload.config_sib1;
   config_sib1->sib1 = sib1;
   config_sib1->is_dedicated_sib1 = is_dedicatedSIB1;
@@ -1250,7 +1271,7 @@ static bool nr_rrc_process_reconfiguration_v1530(NR_UE_RRC_INST_t *rrc, NR_RRCRe
       SEQUENCE_free(&asn_DEF_NR_SIB1, sib1, 1);
     } else {
       // mac layer will free sib1
-      nr_rrc_process_sib1(rrc, SI_info, sib1, reconf_with_sync_scc);
+      nr_rrc_process_sib1(rrc, SI_info, sib1, reconf_with_sync_scc, 0);
     }
   }
   if (rec_1530->dedicatedSystemInformationDelivery) {
@@ -1267,7 +1288,7 @@ static bool nr_rrc_process_reconfiguration_v1530(NR_UE_RRC_INST_t *rrc, NR_RRCRe
       SEQUENCE_free(&asn_DEF_NR_SystemInformation, si, 1);
     } else {
       RRCLOG_I("Decoding dedicatedSystemInformationDelivery\n");
-      nr_decode_SI(SI_info, si, rrc, rrc->current_hfn, rrc->current_frame);
+      nr_decode_SI(SI_info, si, rrc, rrc->current_hfn, rrc->current_frame, 0);
     }
   }
   if (rec_1530->otherConfig) {
@@ -2103,20 +2124,11 @@ static void nr_rrc_ue_decode_NR_BCCH_BCH_Message(NR_UE_RRC_INST_t *rrc,
                                                  const uint32_t phycellid,
                                                  const long ssb_arfcn,
                                                  uint8_t *const bufferP,
-                                                 const uint8_t buffer_len)
+                                                 const uint8_t buffer_len,
+                                                 uint64_t generation,
+                                                 const nr_ue_mib_metadata_t *metadata)
 {
-  // MIB received on the target cell. Now process target ntncfg once new timing is received.
-  if (phycellid == rrc->phyCellID && rrc->target_ntncfg) {
-    rrc->process_target_ntncfg = true;
-  }
-
   NR_BCCH_BCH_Message_t *bcch_message = NULL;
-  if (rrc->phyCellID != phycellid || rrc->arfcn_ssb != ssb_arfcn) {
-    RRCLOG_I("BCCH update: phyCellID %d->%u, arfcn_ssb %ld->%ld\n", rrc->phyCellID, phycellid, rrc->arfcn_ssb, ssb_arfcn);
-  }
-  rrc->phyCellID = phycellid;
-  rrc->arfcn_ssb = ssb_arfcn;
-
   asn_dec_rval_t dec_rval = uper_decode_complete(NULL,
                                                  &asn_DEF_NR_BCCH_BCH_Message,
                                                  (void **)&bcch_message,
@@ -2125,10 +2137,28 @@ static void nr_rrc_ue_decode_NR_BCCH_BCH_Message(NR_UE_RRC_INST_t *rrc,
 
   if ((dec_rval.code != RC_OK) || (dec_rval.consumed == 0)) {
     RRCLOG_E("NR_BCCH_BCH decode error\n");
+    ASN_STRUCT_FREE(asn_DEF_NR_BCCH_BCH_Message, bcch_message);
     return;
   }
   if (LOG_DEBUGFLAG(DEBUG_ASN1))
     xer_fprint(stdout, &asn_DEF_NR_BCCH_BCH_Message, (void *)bcch_message);
+
+  if (bcch_message->message.present != NR_BCCH_BCH_MessageType_PR_mib || !nr_rrc_bcch_is_current(rrc->ue_id, generation)) {
+    ASN_STRUCT_FREE(asn_DEF_NR_BCCH_BCH_Message, bcch_message);
+    return;
+  }
+
+  // RRC reset initiators and broadcast handlers are serialized by rrc_nrue.
+  // MIB received on the target cell. Now process target ntncfg once new timing is received.
+  if (phycellid == rrc->phyCellID && rrc->target_ntncfg) {
+    rrc->process_target_ntncfg = true;
+  }
+
+  if (rrc->phyCellID != phycellid || rrc->arfcn_ssb != ssb_arfcn) {
+    RRCLOG_I("BCCH update: phyCellID %d->%u, arfcn_ssb %ld->%ld\n", rrc->phyCellID, phycellid, rrc->arfcn_ssb, ssb_arfcn);
+  }
+  rrc->phyCellID = phycellid;
+  rrc->arfcn_ssb = ssb_arfcn;
 
   // Actions following cell selection while T311 is running
   NR_UE_Timers_Constants_t *timers = &rrc->timers_and_constants;
@@ -2146,31 +2176,28 @@ static void nr_rrc_ue_decode_NR_BCCH_BCH_Message(NR_UE_RRC_INST_t *rrc,
   NR_UE_RRC_SI_INFO *SI_info = &rrc->perNB[gNB_index].SInfo;
   bool barred = rrc->access_barred || bcch_message->message.choice.mib->cellBarred == NR_MIB__cellBarred_barred;
   int get_sib = 0;
-  if (IS_SA_MODE(get_softmodem_params())
-      && !SI_info->sib_pending
-      && bcch_message->message.present == NR_BCCH_BCH_MessageType_PR_mib
-      && !barred
+  if (IS_SA_MODE(get_softmodem_params()) && (!SI_info->sib_pending || SI_info->sib_pending_generation != generation) && !barred
       && rrc->nrRrcState != RRC_STATE_DETACH_NR) {
     // to schedule MAC to get SI if required
     get_sib = check_si_status(SI_info);
   }
-  if (bcch_message->message.present == NR_BCCH_BCH_MessageType_PR_mib) {
-    nr_mac_rrc_message_t rrc_msg = {0};
-    rrc_msg.payload_type = NR_MAC_RRC_CONFIG_MIB;
-    nr_mac_rrc_config_mib_t *config_mib = &rrc_msg.payload.config_mib;
-    config_mib->bcch = bcch_message;
-    config_mib->access_barred = barred;
-    nr_rrc_send_msg_to_mac(rrc, &rrc_msg);
-    if (get_sib) {
-      SI_info->sib_pending = true;
-      nr_mac_rrc_message_t sib_msg = {0};
-      sib_msg.payload_type = NR_MAC_RRC_SCHED_SIB;
-      sib_msg.payload.sched_sib.get_sib = get_sib;
-      nr_rrc_send_msg_to_mac(rrc, &sib_msg);
-    }
-  } else {
-    RRCLOG_E("RRC-received BCCH message is not a MIB\n");
-    ASN_STRUCT_FREE(asn_DEF_NR_BCCH_BCH_Message, bcch_message);
+  nr_mac_rrc_message_t rrc_msg = {0};
+  rrc_msg.payload_type = NR_MAC_RRC_CONFIG_MIB;
+  rrc_msg.bcch_generation = generation;
+  nr_mac_rrc_config_mib_t *config_mib = &rrc_msg.payload.config_mib;
+  config_mib->bcch = bcch_message;
+  config_mib->access_barred = barred;
+  if (metadata)
+    config_mib->mib_metadata = *metadata;
+  nr_rrc_send_msg_to_mac(rrc, &rrc_msg);
+  if (get_sib) {
+    SI_info->sib_pending = true;
+    SI_info->sib_pending_generation = generation;
+    nr_mac_rrc_message_t sib_msg = {0};
+    sib_msg.payload_type = NR_MAC_RRC_SCHED_SIB;
+    sib_msg.bcch_generation = generation;
+    sib_msg.payload.sched_sib.get_sib = get_sib;
+    nr_rrc_send_msg_to_mac(rrc, &sib_msg);
   }
   return;
 }
@@ -2302,19 +2329,23 @@ static void nr_rrc_ue_decode_NR_BCCH_DL_SCH_Message(NR_UE_RRC_INST_t *rrc,
                                                     const uint8_t Sdu_len,
                                                     int hfn,
                                                     int frame,
-                                                    int slot)
+                                                    int slot,
+                                                    uint64_t generation)
 {
   NR_UE_RRC_SI_INFO *SI_info = &rrc->perNB[gNB_index].SInfo;
-  SI_info->sib_pending = false;
-  if (Sdu_len == 0) // decoding failed in L2
-    return;
-
   NR_BCCH_DL_SCH_Message_t *bcch_message = NULL;
-  asn_dec_rval_t dec_rval = uper_decode_complete(NULL,
-                                                 &asn_DEF_NR_BCCH_DL_SCH_Message,
-                                                 (void **)&bcch_message,
-                                                 (const void *)Sdu,
-                                                 Sdu_len);
+  asn_dec_rval_t dec_rval = {0};
+  if (Sdu_len)
+    dec_rval = uper_decode_complete(NULL, &asn_DEF_NR_BCCH_DL_SCH_Message, (void **)&bcch_message, (const void *)Sdu, Sdu_len);
+
+  if (!nr_rrc_bcch_is_current(rrc->ue_id, generation)) {
+    ASN_STRUCT_FREE(asn_DEF_NR_BCCH_DL_SCH_Message, bcch_message);
+    return;
+  }
+  if (!SI_info->sib_pending_generation || SI_info->sib_pending_generation == generation || !generation)
+    SI_info->sib_pending = false;
+  if (!Sdu_len)
+    return;
 
   if ((dec_rval.code != RC_OK) && (dec_rval.consumed == 0)) {
     RRCLOG_E("Failed to decode BCCH_DLSCH_MESSAGE (%zu bits)\n", dec_rval.consumed);
@@ -2331,14 +2362,14 @@ static void nr_rrc_ue_decode_NR_BCCH_DL_SCH_Message(NR_UE_RRC_INST_t *rrc,
   if (bcch_message->message.present == NR_BCCH_DL_SCH_MessageType_PR_c1) {
     switch (bcch_message->message.choice.c1->present) {
       case NR_BCCH_DL_SCH_MessageType__c1_PR_systemInformationBlockType1:
-        nr_rrc_process_sib1(rrc, SI_info, bcch_message->message.choice.c1->choice.systemInformationBlockType1, false);
+        nr_rrc_process_sib1(rrc, SI_info, bcch_message->message.choice.c1->choice.systemInformationBlockType1, false, generation);
         // mac layer will free after usage the sib1
         bcch_message->message.choice.c1->choice.systemInformationBlockType1 = NULL;
         break;
       case NR_BCCH_DL_SCH_MessageType__c1_PR_systemInformation:
         RRCLOG_I("%d:%d Decoding SI\n", frame, slot);
         NR_SystemInformation_t *si = bcch_message->message.choice.c1->choice.systemInformation;
-        nr_decode_SI(SI_info, si, rrc, hfn, frame);
+        nr_decode_SI(SI_info, si, rrc, hfn, frame, generation);
         break;
       case NR_BCCH_DL_SCH_MessageType__c1_PR_NOTHING:
       default:
@@ -3325,6 +3356,7 @@ static void nr_rrc_handle_ra_indication(NR_UE_RRC_INST_t *rrc, bool ra_succeeded
       rrc->sched_reconfsync_sib1 = false;
       NR_UE_RRC_SI_INFO *SI_info = &rrc->perNB[gNB_index].SInfo;
       SI_info->sib_pending = true;
+      SI_info->sib_pending_generation = 0;
       nr_mac_rrc_message_t sib_msg = {0};
       sib_msg.payload_type = NR_MAC_RRC_SCHED_SIB;
       sib_msg.payload.sched_sib.get_sib = 1;
@@ -3483,9 +3515,23 @@ void *rrc_nrue(void *notUsed)
     RRCLOG_D("Received %s: gNB %d\n", ITTI_MSG_NAME(msg_p), NR_RRC_MAC_BCCH_DATA_IND(msg_p).gnb_index);
     NRRrcMacBcchDataInd *bcch = &NR_RRC_MAC_BCCH_DATA_IND(msg_p);
     if (bcch->is_bch)
-      nr_rrc_ue_decode_NR_BCCH_BCH_Message(rrc, bcch->gnb_index, bcch->phycellid, bcch->ssb_arfcn, bcch->sdu, bcch->sdu_size);
+      nr_rrc_ue_decode_NR_BCCH_BCH_Message(rrc,
+                                           bcch->gnb_index,
+                                           bcch->phycellid,
+                                           bcch->ssb_arfcn,
+                                           bcch->sdu,
+                                           bcch->sdu_size,
+                                           bcch->bcch_generation,
+                                           &bcch->mib_metadata);
     else
-      nr_rrc_ue_decode_NR_BCCH_DL_SCH_Message(rrc, bcch->gnb_index, bcch->sdu, bcch->sdu_size, bcch->hfn, bcch->frame, bcch->slot);
+      nr_rrc_ue_decode_NR_BCCH_DL_SCH_Message(rrc,
+                                              bcch->gnb_index,
+                                              bcch->sdu,
+                                              bcch->sdu_size,
+                                              bcch->hfn,
+                                              bcch->frame,
+                                              bcch->slot,
+                                              bcch->bcch_generation);
     break;
 
   case NR_RRC_MAC_SBCCH_DATA_IND:

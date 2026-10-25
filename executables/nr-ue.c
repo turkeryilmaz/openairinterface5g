@@ -206,6 +206,7 @@ typedef struct {
   int numGscn;
   int rx_offset;
   int frame_number;
+  uint64_t bcch_generation;
 } syncData_t;
 
 static void UE_synch(void *arg) {
@@ -729,6 +730,59 @@ static int handle_sync_req_from_mac(PHY_VARS_NR_UE *UE, Actor_t *dl_actors, Acto
   return 1;
 }
 
+static bool accept_sync_result(PHY_VARS_NR_UE *UE,
+                               const NR_DL_FRAME_PARMS *fp,
+                               const syncData_t *result,
+                               int skipped_frames,
+                               int *decoded_frame_rx,
+                               int *initial_sync_offset)
+{
+  if (UE->sl_mode != SL_MODE2_SUPPORTED && !nr_rrc_bcch_is_current(UE->Mod_id, result->bcch_generation))
+    UE->is_synchronized = 0;
+  if (!UE->is_synchronized)
+    return false;
+  if (UE->sl_mode == SL_MODE2_SUPPORTED)
+    *decoded_frame_rx = UE->SL_UE_PHY_PARAMS.sync_params.DFN;
+  else
+    *decoded_frame_rx = result->frame_number;
+  LOG_A(PHY, "UE synchronized! decoded_frame_rx=%d skipped_frames=%d\n", *decoded_frame_rx, skipped_frames);
+  const int64_t frame_samples = fp->samples_per_frame;
+  const int64_t raw_offset = result->rx_offset;
+  const int mib_frame = *decoded_frame_rx;
+  int64_t frame_carry = 0;
+  // A negative NR offset identifies a frame boundary behind the capture origin.
+  // Align to the next reachable boundary and advance its SFN by the same whole frames.
+  if (UE->sl_mode != SL_MODE2_SUPPORTED && raw_offset < 0)
+    frame_carry = (-raw_offset + frame_samples - 1) / frame_samples;
+  *initial_sync_offset = (int)(raw_offset + frame_carry * frame_samples);
+  *decoded_frame_rx = (int)(((int64_t)*decoded_frame_rx + skipped_frames + frame_carry) % MAX_FRAME_NUMBER);
+  flight_recorder_emit(FLIGHT_EVENT_UE_SYNC_ALIGNMENT,
+                       UE->Mod_id,
+                       raw_offset,
+                       *initial_sync_offset,
+                       frame_samples,
+                       mib_frame,
+                       ((uint64_t)(uint32_t)skipped_frames << 32) | (uint32_t)*decoded_frame_rx);
+  return true;
+}
+
+static bool service_unsynchronized_control(PHY_VARS_NR_UE *UE, Actor_t *dl_actors, Actor_t *ul_actors)
+{
+  // A SYNC response is posted only after the actor has stopped using acquisition state.
+  // Bound each pass so queue traffic or mutex contention cannot stop RX and RRC timer progress.
+  enum { UNSYNC_RRC_MESSAGE_BUDGET = 8 };
+  bool controls_ready = nr_ue_service_rrc_messages(UE->Mod_id, UNSYNC_RRC_MESSAGE_BUDGET);
+  if (controls_ready) {
+    handle_sync_req_from_mac(UE, dl_actors, ul_actors);
+    NR_UE_MAC_INST_t *mac = get_mac_inst(UE->Mod_id);
+    mutexlock(mac->if_mutex);
+    controls_ready = !mac->pending_bcch_invalidation && mac->state != UE_DETACHING;
+    mutexunlock(mac->if_mutex);
+    controls_ready = controls_ready && !UE->synch_request.received_synch_request;
+  }
+  return controls_ready;
+}
+
 static int UE_dl_preprocessing(PHY_VARS_NR_UE *UE,
                                const UE_nr_rxtx_proc_t *proc,
                                int *tx_wait_for_dlsch,
@@ -1098,6 +1152,7 @@ void *UE_thread(void *arg)
   UE->N_TA_offset = determine_N_TA_offset(UE);
 
   bool syncRunning = false;
+  notifiedFIFO_elt_t *sync_result = NULL;
   const int nb_slot_frame = fp->slots_per_frame;
   int absolute_slot = 0, decoded_frame_rx = MAX_FRAME_NUMBER - 1, skipped_frames = 0;
   uint64_t flight_sync_epoch = 0;
@@ -1138,35 +1193,7 @@ void *UE_thread(void *arg)
         for (int i = 0; i < fp->nb_antennas_rx; i++)
           free(sync_buf[i]);
         flight_monitor_add(FLIGHT_MONITOR_SEARCH_ATTEMPTS, 1);
-        if (UE->is_synchronized) {
-          flight_monitor_add(FLIGHT_MONITOR_SYNC_SUCCESSES, 1);
-          UE->synch_request.received_synch_request = 0;
-          out_of_sync_rrc_tick_seeded = false;
-          syncData_t *syncMsg = (syncData_t *)NotifiedFifoData(res);
-          if (UE->sl_mode == SL_MODE2_SUPPORTED)
-            decoded_frame_rx = UE->SL_UE_PHY_PARAMS.sync_params.DFN;
-          else
-            decoded_frame_rx = syncMsg->frame_number;
-          LOG_A(PHY, "UE synchronized! decoded_frame_rx=%d skipped_frames=%d\n", decoded_frame_rx, skipped_frames);
-          const int64_t frame_samples = fp->samples_per_frame;
-          const int64_t raw_offset = syncMsg->rx_offset;
-          const int mib_frame = decoded_frame_rx;
-          int64_t frame_carry = 0;
-          // A negative NR offset identifies a frame boundary behind the capture origin.
-          // Align to the next reachable boundary and advance its SFN by the same whole frames.
-          if (UE->sl_mode != SL_MODE2_SUPPORTED && raw_offset < 0)
-            frame_carry = (-raw_offset + frame_samples - 1) / frame_samples;
-          intialSyncOffset = (int)(raw_offset + frame_carry * frame_samples);
-          decoded_frame_rx = (int)(((int64_t)decoded_frame_rx + skipped_frames + frame_carry) % MAX_FRAME_NUMBER);
-          flight_recorder_emit(FLIGHT_EVENT_UE_SYNC_ALIGNMENT,
-                               UE->Mod_id,
-                               raw_offset,
-                               intialSyncOffset,
-                               frame_samples,
-                               mib_frame,
-                               ((uint64_t)(uint32_t)skipped_frames << 32) | (uint32_t)decoded_frame_rx);
-        }
-        delNotifiedFIFO_elt(res);
+        sync_result = res;
         stream_status = STREAM_STATUS_UNSYNC;
       } else {
         if (IS_SOFTMODEM_IQPLAYER || IS_SOFTMODEM_IQRECORDER) {
@@ -1194,14 +1221,34 @@ void *UE_thread(void *arg)
 
     AssertFatal(!syncRunning, "At this point synchronization can't be running\n");
 
-    if (!UE->is_synchronized) {
-      // seed the out-of-sync tick once from the last known synchronized frame/hfn:
-      // absolute_slot doesn't advance while out of sync, so failed sync attempts must not re-seed
+    if (sync_result || !UE->is_synchronized) {
       if (!out_of_sync_rrc_tick_seeded) {
         out_of_sync_rrc_tick_frame = (absolute_slot / nb_slot_frame) % MAX_FRAME_NUMBER;
         out_of_sync_rrc_tick_hfn = (absolute_slot / nb_slot_frame) / MAX_FRAME_NUMBER;
         out_of_sync_rrc_tick_seeded = true;
       }
+
+      bool controls_ready = service_unsynchronized_control(UE, dl_actors, ul_actors);
+      if (!controls_ready) {
+        if (!readFrame(UE, &sync_timestamp, duration_rx_to_tx, compute_sync_size(UE), NULL, NULL))
+          break;
+        const int frames = UE->sl_mode == SL_MODE2_SUPPORTED ? SL_NR_PSBCH_REPETITION_IN_FRAMES : 2;
+        skipped_frames += frames;
+        out_of_sync_rrc_timer_tick(UE, frames, &out_of_sync_rrc_tick_frame, &out_of_sync_rrc_tick_hfn);
+        continue;
+      }
+
+      if (sync_result) {
+        if (accept_sync_result(UE, fp, NotifiedFifoData(sync_result), skipped_frames, &decoded_frame_rx, &intialSyncOffset)) {
+          flight_monitor_add(FLIGHT_MONITOR_SYNC_SUCCESSES, 1);
+          out_of_sync_rrc_tick_seeded = false;
+        }
+        delNotifiedFIFO_elt(sync_result);
+        sync_result = NULL;
+      }
+    }
+
+    if (!UE->is_synchronized) {
       int sz = compute_sync_size(UE);
       for (int i = 0; i < fp->nb_antennas_rx; i++)
         sync_buf[i] = malloc(sz * sizeof(**sync_buf));
@@ -1227,9 +1274,17 @@ void *UE_thread(void *arg)
       syncMsg->UE = UE;
       memset(&syncMsg->proc, 0, sizeof(syncMsg->proc));
       syncMsg->proc.rx_gain_context = sync_gain;
-      pushNotifiedFIFO(&sync_actor.fifo, Msg);
       skipped_frames = UE->sl_mode == 2 ? SL_NR_PSBCH_REPETITION_IN_FRAMES : 2; // the capture for decoding
       out_of_sync_rrc_timer_tick(UE, skipped_frames, &out_of_sync_rrc_tick_frame, &out_of_sync_rrc_tick_hfn);
+      if (UE->sl_mode == SL_MODE2_SUPPORTED) {
+        pushNotifiedFIFO(&sync_actor.fifo, Msg);
+      } else if (!nr_ue_publish_sync_job(UE->Mod_id, &sync_actor.fifo, Msg, &syncMsg->bcch_generation)) {
+        // A control published during capture must be serviced before another search starts.
+        delNotifiedFIFO_elt(Msg);
+        for (int i = 0; i < fp->nb_antennas_rx; i++)
+          free(sync_buf[i]);
+        continue;
+      }
       syncRunning = true;
       continue;
     }
@@ -1495,6 +1550,8 @@ void *UE_thread(void *arg)
     stream_status = STREAM_STATUS_SYNCED;
     tx_wait_for_dlsch[slot] = 0;
   }
+  if (sync_result)
+    delNotifiedFIFO_elt(sync_result);
   LOG_W(NR_PHY, "UE main thread is ending\n");
   for (int i = 0; i < num_ul_actors; i++)
     shutdown_actor(&ul_actors[i]);

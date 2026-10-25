@@ -666,6 +666,10 @@ typedef struct NR_UE_MAC_INST_s {
   bool msg3_C_RNTI;
   bool sr_fallback_ra_triggered; // SR-fallback RA triggered; block re-trigger until PUCCH SR resource is restored
   pthread_mutex_t if_mutex;
+  // Acquisition identity and admission are protected by if_mutex and survive MAC resets.
+  uint64_t bcch_generation;
+  unsigned pending_bcch_invalidation;
+  bool bcch_accepting;
   ue_mac_stats_t stats;
   notifiedFIFO_t input_nf;
   bool prach_lut_pending; /* Protected by if_mutex; defer PRACH until RRC has built the matching table. */

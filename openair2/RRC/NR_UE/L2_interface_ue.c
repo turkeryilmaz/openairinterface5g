@@ -79,6 +79,10 @@ void nr_mac_rrc_data_ind_ue(const module_id_t module_id,
       NR_RRC_MAC_BCCH_DATA_IND (message_p).phycellid = cellid;
       NR_RRC_MAC_BCCH_DATA_IND (message_p).ssb_arfcn = arfcn;
       NR_RRC_MAC_BCCH_DATA_IND (message_p).is_bch = (channel == NR_BCCH_BCH);
+      // BCCH-DL-SCH producers already hold if_mutex, including for zero-length NACKs.
+      NR_RRC_MAC_BCCH_DATA_IND(message_p).bcch_generation =
+          channel == NR_BCCH_DL_SCH ? get_mac_inst(module_id)->bcch_generation : 0;
+      NR_RRC_MAC_BCCH_DATA_IND(message_p).mib_metadata = (nr_ue_mib_metadata_t){0};
       itti_send_msg_to_task(TASK_RRC_NRUE, GNB_MODULE_ID_TO_INSTANCE(module_id), message_p);
       break;
     case NR_SBCCH_SL_BCH:
@@ -109,6 +113,92 @@ void nr_mac_rrc_data_ind_ue(const module_id_t module_id,
   }
 }
 
+void nr_mac_rrc_mib_ind_ue(module_id_t module_id,
+                           uint8_t gnb,
+                           long arfcn,
+                           const uint8_t *pdu,
+                           uint64_t generation,
+                           const nr_ue_mib_metadata_t *metadata)
+{
+  MessageDef *message = itti_alloc_new_message(TASK_MAC_UE, 0, NR_RRC_MAC_BCCH_DATA_IND);
+  NRRrcMacBcchDataInd *bcch = &NR_RRC_MAC_BCCH_DATA_IND(message);
+  *bcch = (NRRrcMacBcchDataInd){.is_bch = true, .bcch_generation = generation, .mib_metadata = *metadata};
+  bcch->gnb_index = gnb;
+  bcch->phycellid = metadata->cell_id;
+  bcch->ssb_arfcn = arfcn;
+  bcch->sdu_size = 3;
+  memcpy(bcch->sdu, pdu, bcch->sdu_size);
+  itti_send_msg_to_task(TASK_RRC_NRUE, GNB_MODULE_ID_TO_INSTANCE(module_id), message);
+}
+
+bool nr_rrc_mac_resync_request(const nr_mac_rrc_message_t *msg)
+{
+  switch (msg->payload_type) {
+    case NR_MAC_RRC_CONFIG_CG: {
+      const NR_SpCellConfig_t *spcell = msg->payload.config_cg.cellGroupConfig->spCellConfig;
+      return spcell && spcell->reconfigurationWithSync;
+    }
+    case NR_MAC_RRC_CONFIG_RESET:
+      return msg->payload.config_reset.cause == GO_TO_IDLE || msg->payload.config_reset.cause == DETACH;
+    case NR_MAC_RRC_START_RA:
+      return msg->payload.start_ra.cause == NR_MAC_RA_START_REESTABLISHMENT;
+    default:
+      return false;
+  }
+}
+
+bool nr_rrc_bcch_is_current(module_id_t module_id, uint64_t generation)
+{
+  NR_UE_MAC_INST_t *mac = get_mac_inst(module_id);
+  mutexlock(mac->if_mutex);
+  bool current = nr_ue_bcch_is_current(mac, generation);
+  mutexunlock(mac->if_mutex);
+  return current;
+}
+
+// Only the PHY owner calls this after its SYNC actor has completed.
+bool nr_ue_service_rrc_messages(int instance_id, unsigned budget)
+{
+  notifiedFIFO_t *fifo = &get_mac_inst(instance_id)->input_nf;
+  for (unsigned count = 0; count < budget; count++) {
+    if (mutextrylock(fifo->lockF))
+      return false;
+    bool aborted = fifo->abortFIFO;
+    notifiedFIFO_elt_t *elt = aborted ? NULL : pullNotifiedFIFO_nothreadSafe(fifo);
+    mutexunlock(fifo->lockF);
+    if (aborted)
+      return false;
+    if (!elt)
+      return true;
+    process_msg_rcc_to_mac(NotifiedFifoData(elt), instance_id);
+    delNotifiedFIFO_elt(elt);
+  }
+  // Exhaustion is not an observation of an empty queue.
+  return false;
+}
+
+bool nr_ue_publish_sync_job(int instance_id, notifiedFIFO_t *fifo, notifiedFIFO_elt_t *job, uint64_t *generation)
+{
+  NR_UE_MAC_INST_t *mac = get_mac_inst(instance_id);
+  mutexlock(mac->if_mutex);
+  if (mac->pending_bcch_invalidation || mac->state == UE_DETACHING || mutextrylock(mac->input_nf.lockF)) {
+    mutexunlock(mac->if_mutex);
+    return false;
+  }
+  bool empty = !mac->input_nf.abortFIFO && !mac->input_nf.outF;
+  mutexunlock(mac->input_nf.lockF);
+  if (empty) {
+    if (++mac->bcch_generation == 0)
+      mac->bcch_generation = 1;
+    mac->bcch_accepting = true;
+    *generation = mac->bcch_generation;
+    // Publish the immutable acquisition identity with the job before admitting a reset.
+    pushNotifiedFIFO(fifo, job);
+  }
+  mutexunlock(mac->if_mutex);
+  return empty;
+}
+
 void process_msg_rcc_to_mac(nr_mac_rrc_message_t *msg, int instance_id)
 {
   switch (msg->payload_type) {
@@ -128,14 +218,16 @@ void process_msg_rcc_to_mac(nr_mac_rrc_message_t *msg, int instance_id)
       nr_rrc_mac_config_req_mib(instance_id,
                                 0,
                                 msg->payload.config_mib.bcch->message.choice.mib,
-                                msg->payload.config_mib.access_barred);
+                                msg->payload.config_mib.access_barred,
+                                msg->bcch_generation,
+                                msg->bcch_generation ? &msg->payload.config_mib.mib_metadata : NULL);
       ASN_STRUCT_FREE(asn_DEF_NR_BCCH_BCH_Message, msg->payload.config_mib.bcch);
       break;
     case NR_MAC_RRC_CONFIG_SIB1: {
       NR_SIB1_t *sib1 = msg->payload.config_sib1.sib1;
       bool can_start_ra = msg->payload.config_sib1.can_start_ra;
       bool is_dedicated = msg->payload.config_sib1.is_dedicated_sib1;
-      nr_rrc_mac_config_req_sib1(instance_id, 0, sib1, can_start_ra, is_dedicated);
+      nr_rrc_mac_config_req_sib1(instance_id, 0, sib1, can_start_ra, is_dedicated, msg->bcch_generation);
       SEQUENCE_free(&asn_DEF_NR_SIB1, msg->payload.config_sib1.sib1, ASFM_FREE_EVERYTHING);
     } break;
     case NR_MAC_RRC_CONFIG_OTHER_SIB: {
@@ -143,19 +235,28 @@ void process_msg_rcc_to_mac(nr_mac_rrc_message_t *msg, int instance_id)
                                   msg->payload.config_other_sib.sib19,
                                   msg->payload.config_other_sib.hfn,
                                   msg->payload.config_other_sib.frame,
-                                  msg->payload.config_other_sib.can_start_ra);
+                                  msg->payload.config_other_sib.can_start_ra,
+                                  msg->bcch_generation);
+      ASN_STRUCT_FREE(asn_DEF_NR_SIB19_r17, msg->payload.config_other_sib.sib19);
     } break;
     case NR_MAC_RRC_START_RA:
       nr_rrc_mac_start_ra(instance_id, msg->payload.start_ra.cause);
       break;
     case NR_MAC_RRC_SCHED_SIB:
-      nr_rrc_mac_sched_sib(instance_id, msg->payload.sched_sib.get_sib);
+      nr_rrc_mac_sched_sib(instance_id, msg->payload.sched_sib.get_sib, msg->bcch_generation);
       break;
     case NR_MAC_RRC_RESUME_RB:
       nr_rrc_mac_resume_rb(instance_id, msg->payload.resume_rb.is_srb, msg->payload.resume_rb.rb_id);
       break;
     default:
       LOG_E(NR_MAC, "Unexpected msg from RRC: %d\n", msg->payload_type);
+  }
+  if (msg->bcch_invalidation) {
+    NR_UE_MAC_INST_t *mac = get_mac_inst(instance_id);
+    mutexlock(mac->if_mutex);
+    DevAssert(mac->pending_bcch_invalidation > 0);
+    mac->pending_bcch_invalidation--;
+    mutexunlock(mac->if_mutex);
   }
 }
 
