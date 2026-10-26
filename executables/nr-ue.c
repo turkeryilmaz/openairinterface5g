@@ -291,7 +291,7 @@ static int nr_ue_slot_select(const fapi_nr_config_request_t *cfg, int nr_slot)
   return NR_MIXED_SLOT;
 }
 
-static void RU_write(nr_rxtx_thread_data_t *rxtxD, bool sl_tx_action, c16_t **txp)
+static void RU_write(nr_rxtx_thread_data_t *rxtxD, bool sl_tx_action, bool prach_tx, bool tx_erasure, c16_t **txp)
 {
   int writeBlockSize = rxtxD->writeBlockSize;
   if (writeBlockSize == 0)
@@ -306,6 +306,7 @@ static void RU_write(nr_rxtx_thread_data_t *rxtxD, bool sl_tx_action, c16_t **tx
     fp = &UE->SL_UE_PHY_PARAMS.sl_frame_params;
 
   int slot = proc->nr_slot_tx;
+  DevAssert(writeBlockSize > 0 && proc->timestamp_tx >= 0 && proc->timestamp_tx <= INT64_MAX - writeBlockSize);
 
   radio_tx_burst_flag_t flags = TX_BURST_INVALID;
 
@@ -358,7 +359,13 @@ static void RU_write(nr_rxtx_thread_data_t *rxtxD, bool sl_tx_action, c16_t **tx
   openair0_timestamp_t writeTimestamp = proc->timestamp_tx;
   // if writeBlockSize gets longer that slot size, fill with dummy
   const int maxWriteBlockSize = get_samples_per_slot(proc->nr_slot_tx, fp);
-  while (writeBlockSize > maxWriteBlockSize) {
+  if (tx_erasure) {
+    // INVALID writes still advance reorder, and RFSIM reads the bounded permanent zero buffer.
+    flags = TX_BURST_INVALID;
+    for (int ant = 0; ant < fp->nb_antennas_tx; ant++)
+      memset(txp[ant], 0, maxWriteBlockSize * sizeof(c16_t));
+  }
+  while ((!prach_tx || tx_erasure) && writeBlockSize > maxWriteBlockSize) {
     const int dummyBlockSize = min(writeBlockSize - maxWriteBlockSize, maxWriteBlockSize);
     int tmp = nrue_ru_write_reorder(UE, writeTimestamp, (void **)txp, dummyBlockSize, fp->nb_antennas_tx, flags);
     AssertFatal(tmp == dummyBlockSize, "write samples to reorder function failed %d", tmp);
@@ -411,23 +418,16 @@ static void update_tx_timing(nr_rxtx_thread_data_t *rxtxD)
   if (ue->sl_mode != 2) {
     const int next_slot = (proc->nr_slot_tx + 1) % fp->slots_per_frame;
     const int next_frame = (proc->frame_tx + (next_slot == 0)) % MAX_FRAME_NUMBER;
-    if (ue->rar_ta_command.ta_frame == next_frame && ue->rar_ta_command.ta_slot == next_slot && ue->timing_advance != 0)
-      LOG_W(PHY,
-            "[UE %d] %d.%d applying RAR TA command %d to non-zero timing advance %d samples; "
-            "timing advance should have been reset before PRACH\n",
-            ue->Mod_id,
-            next_frame,
-            next_slot,
-            ue->rar_ta_command.ta_command,
-            ue->timing_advance);
     // Move the blank boundary before Msg3; relative updates retain their post-sizing order below.
-    const int64_t requested_ta = (int64_t)ue->timing_advance + nr_ue_ta_command_samples(ue, next_slot, next_frame, true);
-    DevAssert(requested_ta >= INT_MIN && requested_ta <= INT_MAX);
-    ue->timing_advance = requested_ta;
+    const bool rar_due = ue->rar_ta_command.ta_frame == next_frame && ue->rar_ta_command.ta_slot == next_slot;
+    const int rar_samples = nr_ue_ta_command_samples(ue, next_slot, next_frame, true);
+    if (rar_due)
+      ue->timing_advance = rar_samples;
   }
 
   const int stream_adjustment = ue->tx_stream_timing_adjustment;
-  proc->timestamp_tx -= stream_adjustment;
+  proc->tx_mac_stream_adjustment = stream_adjustment;
+  DevAssert(!__builtin_sub_overflow(proc->timestamp_tx, (int64_t)stream_adjustment, &proc->timestamp_tx));
   const int requested_ta = ue->sl_mode == 2 ? 0 : ue->timing_advance;
   const int64_t write_size = (int64_t)rxtxD->writeBlockSize - ((int64_t)requested_ta - stream_adjustment);
   if (write_size < 0) {
@@ -468,6 +468,8 @@ void processSlotTX(void *arg)
   PHY_VARS_NR_UE *UE = rxtxD->UE;
   nr_phy_data_tx_t phy_data = {0};
   bool sl_tx_action = false;
+  bool prach_tx = false;
+  bool tx_erasure = false;
 
   if (UE->if_inst)
     UE->if_inst->slot_indication(UE->Mod_id, true);
@@ -478,9 +480,10 @@ void processSlotTX(void *arg)
   LOG_D(PHY, "SlotTx %d.%d => slot type %d\n", proc->frame_tx, proc->nr_slot_tx, proc->tx_slot_type);
 
   const NR_DL_FRAME_PARMS *fp = &UE->frame_parms;
+  const int tx_slot_buffer_factor = UE->sl_mode == 2 ? 1 : NR_UE_TX_SLOT_BUFFER_FACTOR;
   c16_t *txp[fp->nb_antennas_tx];
   for (int i = 0; i < fp->nb_antennas_tx; i++) {
-    txp[i] = UE->common_vars.txData[i] + get_samples_slot_timestamp(fp, proc->nr_slot_tx);
+    txp[i] = UE->common_vars.txData[i] + (size_t)tx_slot_buffer_factor * get_samples_slot_timestamp(fp, proc->nr_slot_tx);
   }
 
   if (proc->tx_slot_type == NR_UPLINK_SLOT || proc->tx_slot_type == NR_MIXED_SLOT) {
@@ -526,14 +529,30 @@ void processSlotTX(void *arg)
         UE->if_inst->ul_indication(&ul_indication);
         stop_meas(&UE->ue_ul_indication_stats);
       }
-      dynamic_barrier_join(rxtxD->next_barrier);
-
-      phy_procedures_nrUE_TX(UE, proc, &phy_data, txp);
+      phy_data.prach_handled = true;
+      const NR_UE_PRACH *prach = UE->prach_vars[proc->gNB_id];
+      prach_tx = prach->active || prach->tx_request_pending || prach->tx_waveform_active;
+      if (prach_tx) {
+        const int guard_samples =
+            fp->frame_type == TDD && proc->tx_slot_type == NR_MIXED_SLOT
+                ? get_samples_symbol_timestamp(fp, proc->nr_slot_tx, num_dl_symbols_slot(&UE->nrUE_config, proc->nr_slot_tx))
+                : 0;
+        tx_erasure = !nr_ue_prach_tx(UE, proc, &phy_data, txp, rxtxD->writeBlockSize, guard_samples);
+        dynamic_barrier_join(rxtxD->next_barrier);
+      } else {
+        dynamic_barrier_join(rxtxD->next_barrier);
+        phy_procedures_nrUE_TX(UE, proc, &phy_data, txp);
+      }
     }
   } else {
+    const NR_UE_PRACH *prach = UE->prach_vars[proc->gNB_id];
+    if (UE->sl_mode != 2 && (prach->active || prach->tx_request_pending || prach->tx_waveform_active)) {
+      prach_tx = true;
+      tx_erasure = !nr_ue_prach_tx(UE, proc, &phy_data, txp, rxtxD->writeBlockSize, 0);
+    }
     dynamic_barrier_join(rxtxD->next_barrier);
   }
-  RU_write(rxtxD, sl_tx_action, txp);
+  RU_write(rxtxD, sl_tx_action, prach_tx, tx_erasure, txp);
   TracyCZoneEnd(ctx);
 }
 
@@ -1115,6 +1134,12 @@ void *UE_thread(void *arg)
       UE->ta_slot = -1;
       UE->rar_ta_command.ta_frame = -1;
       UE->rar_ta_command.ta_slot = -1;
+      for (int gNB_id = 0; gNB_id < UE->n_connected_gNB; gNB_id++) {
+        UE->prach_vars[gNB_id]->active = false;
+        UE->prach_vars[gNB_id]->tx_request_pending = false;
+        UE->prach_vars[gNB_id]->tx_waveform_active = false;
+        UE->prach_vars[gNB_id]->tx_waveform_length = 0;
+      }
       // We have resynchronized, maybe after RF loss so we need to purge any existing context
       memset(tx_wait_for_dlsch, 0, sizeof(tx_wait_for_dlsch));
       for (int i = 0; i < NUM_PROCESS_SLOT_TX_BARRIERS; i++) {
