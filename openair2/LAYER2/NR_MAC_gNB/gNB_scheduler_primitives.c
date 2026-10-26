@@ -1499,7 +1499,8 @@ int nr_get_pucch_resource(NR_ControlResourceSet_t *coreset,
 // This function configures pucch pdu fapi structure
 void nr_configure_pucch(nfapi_nr_pucch_pdu_t *pucch_pdu,
                         NR_ServingCellConfigCommon_t *scc,
-                        NR_UE_info_t *UE,
+                        const NR_UE_info_t *UE,
+                        const NR_UE_UL_BWP_t *current_BWP,
                         uint8_t pucch_resource,
                         uint16_t O_csi,
                         uint16_t O_ack,
@@ -1512,8 +1513,6 @@ void nr_configure_pucch(nfapi_nr_pucch_pdu_t *pucch_pdu,
 {
   NR_PUCCH_Resource_t *pucchres;
   NR_PUCCH_FormatConfig_t *pucchfmt;
-  NR_UE_UL_BWP_t *current_BWP = &UE->current_UL_BWP;
-
   int res_found = 0;
 
   pucch_pdu->bit_len_harq = O_ack;

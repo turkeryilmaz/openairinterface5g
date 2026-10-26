@@ -70,40 +70,12 @@ static void handle_nr_uci(NR_UL_IND_t *UL_info)
     return;
   }
 
-  const module_id_t mod_id = UL_info->module_id;
-  const int cell_id = UL_info->phy_id;
-  const frame_t frame = UL_info->uci_ind.sfn;
-  const slot_t slot = UL_info->uci_ind.slot;
-  int num_ucis = UL_info->uci_ind.num_ucis;
-  nfapi_nr_uci_t *uci_list = UL_info->uci_ind.uci_list;
+  if (UL_info->uci_ind.num_ucis == 0)
+    return;
 
-  for (int i = 0; i < num_ucis; i++) {
-    switch (uci_list[i].pdu_type) {
-      case NFAPI_NR_UCI_PUSCH_PDU_TYPE:
-        LOG_E(MAC, "%s(): unhandled NFAPI_NR_UCI_PUSCH_PDU_TYPE\n", __func__);
-        break;
-
-      case NFAPI_NR_UCI_FORMAT_0_1_PDU_TYPE: {
-        const nfapi_nr_uci_pucch_pdu_format_0_1_t *uci_pdu = &uci_list[i].pucch_pdu_format_0_1;
-        LOG_D(NR_MAC, "The received uci has sfn slot %d %d, num_ucis %d and pdu_size %d\n",
-                UL_info->uci_ind.sfn, UL_info->uci_ind.slot, num_ucis, uci_list[i].pdu_size);
-        handle_nr_uci_pucch_0_1(mod_id, cell_id, frame, slot, uci_pdu);
-        break;
-      }
-
-        case NFAPI_NR_UCI_FORMAT_2_3_4_PDU_TYPE: {
-          const nfapi_nr_uci_pucch_pdu_format_2_3_4_t *uci_pdu = &uci_list[i].pucch_pdu_format_2_3_4;
-          handle_nr_uci_pucch_2_3_4(mod_id, cell_id, frame, slot, uci_pdu);
-          break;
-        }
-      LOG_D(MAC, "UCI handled \n");
-    }
-  }
-
+  nr_mac_handle_uci(UL_info->module_id, UL_info->phy_id, UL_info->uci_ind.sfn, UL_info->uci_ind.slot, &UL_info->uci_ind);
   UL_info->uci_ind.num_ucis = 0;
-
 }
-
 struct sfn_slot {
   int sfn;
   int slot;
