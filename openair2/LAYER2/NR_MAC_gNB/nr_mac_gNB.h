@@ -263,6 +263,16 @@ typedef struct NR_sched_pdcch {
   uint16_t rb_start;
 } NR_sched_pdcch_t;
 
+/* One logical Msg4 feedback occasion can have two physical receive hypotheses. */
+typedef struct {
+  uint32_t cookie; ///< nonzero even handle; low bit selects common/dedicated
+  frame_t frame;
+  slot_t slot;
+  uint8_t harq_pid;
+  uint8_t round;
+  bool sr[2];
+} NR_msg4_feedback_t;
+
 /*! \brief gNB template for the Random access information */
 typedef struct {
   /// Flag to indicate this process is active
@@ -291,6 +301,7 @@ typedef struct {
   NR_beam_alloc_t Msg3_beam;
   /// harq_pid used for Msg4 transmission
   uint8_t harq_pid;
+  NR_msg4_feedback_t msg4_feedback;
   /// RA RNTI allocated from received PRACH
   uint16_t RA_rnti;
   /// MsgB RNTI allocated from received MsgA
@@ -433,6 +444,7 @@ typedef struct UE_info {
 
 typedef struct NR_sched_pucch {
   bool active;
+  bool already_emitted; ///< physical descriptors were appended at retry admission
   int frame;
   int ul_slot;
   bool sr_flag;
@@ -1305,6 +1317,7 @@ typedef struct nr_cell_sched_s {
   /// Ring buffer of future UL TTI requests (dynamically allocated; size = UL_tti_req_ahead_size)
   nfapi_nr_ul_tti_request_t *UL_tti_req_ahead;
   int UL_tti_req_ahead_size;
+  uint32_t msg4_feedback_cookie; ///< survives RA deletion and RNTI reuse
   /// Length of the UL VRB map in slots (derived from frame_structure at init)
   int vrb_map_UL_size;
 

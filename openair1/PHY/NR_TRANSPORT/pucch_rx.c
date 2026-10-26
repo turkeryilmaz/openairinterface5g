@@ -423,6 +423,7 @@ void nr_decode_pucch0(PHY_VARS_gNB *gNB,
   // first bit of bitmap for sr presence and second bit for acknack presence
   uci_pdu->pduBitmap = pucch_pdu->sr_flag | ((pucch_pdu->bit_len_harq > 0) << 1);
   uci_pdu->pucch_format = 0; // format 0
+  uci_pdu->handle = pucch_pdu->handle;
   uci_pdu->rnti = pucch_pdu->rnti;
   uci_pdu->ul_cqi = cqi;
   uci_pdu->timing_advance = 0xffff; // currently not valid
