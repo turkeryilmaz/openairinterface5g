@@ -18,6 +18,7 @@
 #include "assertions.h"
 #include "PHY/defs_nr_UE.h"
 #include "SCHED_NR_UE/defs.h"
+#include "SCHED_NR_UE/harq_nr.h"
 #include "common/ran_context.h"
 #include "common/config/config_userapi.h"
 #include "common/utils/load_module_shlib.h"
@@ -282,7 +283,12 @@ int main(int argc, char **argv)
 
   init_opt();
 
-  int ret_loader = load_nrLDPC_coding_interface(NULL, &nrLDPC_coding_interface, 32);
+  const int dl_harq_contexts = nr_ue_dl_harq_context_count(nrUE_params.num_dl_actors);
+  if (dl_harq_contexts < 0) {
+    LOG_E(PHY, "Invalid number of DL actors %d for LDPC HARQ contexts\n", nrUE_params.num_dl_actors);
+    return 2;
+  }
+  int ret_loader = load_nrLDPC_coding_interface(NULL, &nrLDPC_coding_interface, dl_harq_contexts);
   AssertFatal(ret_loader == 0, "error loading LDPC library\n");
 
   // strdup to put the sring in the core file for post mortem identification

@@ -508,6 +508,8 @@ typedef struct PHY_VARS_NR_UE_s {
     uint32_t pdsch_buf_size_max;
     uint32_t pdsch_est_size;
     uint32_t llr_buf_max;
+    // SI, RA and paging decoding must not overwrite the ordinary DL HARQ history or soft buffers.
+    NR_DL_UE_HARQ_t common_harq[2];
   } *pdsch_scratch;
   int pdsch_num_actors;
 } PHY_VARS_NR_UE;

@@ -830,7 +830,7 @@ static int nr_ue_process_dci_dl_10_p_rnti(NR_UE_MAC_INST_t *mac,
                                           fapi_nr_dl_config_dlsch_pdu_rel15_t *dlsch_pdu,
                                           const NR_UE_DL_BWP_t *current_DL_BWP)
 {
-  static NR_UE_DL_HARQ_STATUS_t prnti_harq;
+  NR_UE_DL_HARQ_STATUS_t prnti_harq = {0};
 
   const int nb_rb_oh = mac->sc_info.xOverhead_PDSCH ? 6 * (1 + *mac->sc_info.xOverhead_PDSCH) : 0;
   const int nb_re_dmrs = ((dlsch_pdu->dmrsConfigType == NFAPI_NR_DMRS_TYPE1) ? 6 : 4) * dlsch_pdu->n_dmrs_cdm_groups;
@@ -1123,8 +1123,9 @@ static int nr_ue_process_dci_dl_10(NR_UE_MAC_INST_t *mac,
 
   int nb_re_dmrs = ((dlsch_pdu->dmrsConfigType == NFAPI_NR_DMRS_TYPE1) ? 6 : 4) * dlsch_pdu->n_dmrs_cdm_groups;
   int nb_rb_oh = mac->sc_info.xOverhead_PDSCH ? nb_rb_oh = 6 * (1 + *mac->sc_info.xOverhead_PDSCH) : 0;
-  NR_UE_DL_HARQ_STATUS_t *current_harq = &mac->dl_harq_info[dci->harq_pid.val][0];
-  NR_UE_DL_HARQ_STATUS_t harq_history = *current_harq;
+  const bool common_dlsch = rnti_type == TYPE_SI_RNTI_ || rnti_type == TYPE_RA_RNTI_;
+  NR_UE_DL_HARQ_STATUS_t *current_harq = common_dlsch ? NULL : &mac->dl_harq_info[dci->harq_pid.val][0];
+  NR_UE_DL_HARQ_STATUS_t harq_history = current_harq ? *current_harq : (NR_UE_DL_HARQ_STATUS_t){0};
   if (!get_cw_info(&harq_history,
                    dlsch_pdu,
                    dl_conf_req->pdu_type,
@@ -1183,7 +1184,8 @@ static int nr_ue_process_dci_dl_10(NR_UE_MAC_INST_t *mac,
     return -1;
   }
 
-  commit_dl_harq_history(current_harq, &harq_history);
+  if (current_harq)
+    commit_dl_harq_history(current_harq, &harq_history);
 
   /* PDSCH_TO_HARQ_FEEDBACK_TIME_IND */
   // according to TS 38.213 9.2.3
