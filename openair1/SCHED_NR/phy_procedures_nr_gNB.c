@@ -1359,7 +1359,7 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx, N
   }
 
   int slot_type = nr_slot_select(&gNB->gNB_config, frame_rx, slot_rx);
-  START_MEAS_FULL_SLOT(&gNB->phy_proc_rx, slot_type, NR_UPLINK_SLOT);
+  START_MEAS_FULL_SLOT(&gNB->phy_proc_rx, slot_type, NR_UPLINK_SLOT, gNB->gNB_config.cell_config.frame_duplex_type.value);
   UL_INFO->uci_ind.header.transmit_timestamp = 0;
   UL_INFO->uci_ind.uci_list = UL_INFO->uci_pdu_list;
   UL_INFO->uci_ind.sfn = frame_rx;
@@ -1444,11 +1444,14 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx, N
   }
 
   if (num_pusch > 0) {
-    START_MEAS_FULL_SLOT(&gNB->ulsch_decoding_stats, slot_type, NR_UPLINK_SLOT);
+    START_MEAS_FULL_SLOT(&gNB->ulsch_decoding_stats,
+                         slot_type,
+                         NR_UPLINK_SLOT,
+                         gNB->gNB_config.cell_config.frame_duplex_type.value);
     int ret_nr_ulsch_procedures = nr_ulsch_procedures(gNB, frame_rx, slot_rx, ulsch_idx_to_decode, num_pusch, UL_INFO);
     if (ret_nr_ulsch_procedures != 0)
       LOG_E(NR_PHY, "Error in nr_ulsch_procedures, returned %d\n", ret_nr_ulsch_procedures);
-    STOP_MEAS_FULL_SLOT(&gNB->ulsch_decoding_stats, slot_type, NR_UPLINK_SLOT);
+    STOP_MEAS_FULL_SLOT(&gNB->ulsch_decoding_stats, slot_type, NR_UPLINK_SLOT, gNB->gNB_config.cell_config.frame_duplex_type.value);
   }
 
   UL_INFO->srs_ind.header.transmit_timestamp = 0;
@@ -1468,7 +1471,7 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx, N
     stop_meas(&gNB->rx_srs_stats);
   }
 
-  STOP_MEAS_FULL_SLOT(&gNB->phy_proc_rx, slot_type, NR_UPLINK_SLOT);
+  STOP_MEAS_FULL_SLOT(&gNB->phy_proc_rx, slot_type, NR_UPLINK_SLOT, gNB->gNB_config.cell_config.frame_duplex_type.value);
 
   if (n_pucch > 0 || num_pusch > 0) {
     UNUSED(ofdm_symbol_size); // only used if T activated

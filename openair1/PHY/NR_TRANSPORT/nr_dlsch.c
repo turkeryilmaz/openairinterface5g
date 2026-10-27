@@ -1108,7 +1108,10 @@ static int do_one_dlsch(unsigned char *input_ptr, PHY_VARS_gNB *gNB, NR_gNB_DLSC
     memcpy(dlsch->f, input_ptr, (encoded_length + 7) >> 3);
 
   int slot_type = nr_slot_select(&gNB->gNB_config, frame, slot);
-  START_MEAS_FULL_SLOT(&gNB->dlsch_pdsch_generation_stats, slot_type, NR_DOWNLINK_SLOT);
+  START_MEAS_FULL_SLOT(&gNB->dlsch_pdsch_generation_stats,
+                       slot_type,
+                       NR_DOWNLINK_SLOT,
+                       gNB->gNB_config.cell_config.frame_duplex_type.value);
 
   int layerSz2 = (layerSz + 63) & ~63;
   c16_t tx_layers[rel15->nrOfLayers][layerSz2] __attribute__((aligned(64)));
@@ -1122,18 +1125,18 @@ static int do_one_dlsch(unsigned char *input_ptr, PHY_VARS_gNB *gNB, NR_gNB_DLSC
               rel15->NrOfCodewords,
               NR_MAX_NB_LAYERS);
 
-  START_MEAS_FULL_SLOT(dlsch_scrambling_stats, slot_type, NR_DOWNLINK_SLOT);
+  START_MEAS_FULL_SLOT(dlsch_scrambling_stats, slot_type, NR_DOWNLINK_SLOT, gNB->gNB_config.cell_config.frame_duplex_type.value);
   uint32_t scrambled_output[(encoded_length >> 5) + 4]; // modulator access by 4 bytes in some cases
   memset(scrambled_output, 0, sizeof(scrambled_output));
   nr_pdsch_codeword_scrambling(input_ptr, encoded_length, 0 /* q: the only codeword */,
                                rel15->dataScramblingId, rel15->rnti, scrambled_output);
-  STOP_MEAS_FULL_SLOT(dlsch_scrambling_stats, slot_type, NR_DOWNLINK_SLOT);
+  STOP_MEAS_FULL_SLOT(dlsch_scrambling_stats, slot_type, NR_DOWNLINK_SLOT, gNB->gNB_config.cell_config.frame_duplex_type.value);
 
-  START_MEAS_FULL_SLOT(dlsch_modulation_stats, slot_type, NR_DOWNLINK_SLOT);
+  START_MEAS_FULL_SLOT(dlsch_modulation_stats, slot_type, NR_DOWNLINK_SLOT, gNB->gNB_config.cell_config.frame_duplex_type.value);
   const bool mapped_ok =
       nr_modulation_layer_mapping(scrambled_output, encoded_length, Qm, rel15->nrOfLayers, layerSz2, tx_layers);
   AssertFatal(mapped_ok, "Unsupported modulation/layer mapping for Qm %d, %d layers\n", Qm, rel15->nrOfLayers);
-  STOP_MEAS_FULL_SLOT(dlsch_modulation_stats, slot_type, NR_DOWNLINK_SLOT);
+  STOP_MEAS_FULL_SLOT(dlsch_modulation_stats, slot_type, NR_DOWNLINK_SLOT, gNB->gNB_config.cell_config.frame_duplex_type.value);
 
   /// Layer Precoding and Antenna port mapping
   // tx_layers 1-8 are mapped on antenna ports 1000-1007
@@ -1226,7 +1229,10 @@ static int do_one_dlsch(unsigned char *input_ptr, PHY_VARS_gNB *gNB, NR_gNB_DLSC
     merge_meas(&gNB->dlsch_resource_mapping_stats, &arr[i].dlsch_resource_mapping_stats);
     merge_meas(&gNB->dlsch_precoding_stats, &arr[i].dlsch_precoding_stats);
   }
-  STOP_MEAS_FULL_SLOT(&gNB->dlsch_pdsch_generation_stats, slot_type, NR_DOWNLINK_SLOT);
+  STOP_MEAS_FULL_SLOT(&gNB->dlsch_pdsch_generation_stats,
+                      slot_type,
+                      NR_DOWNLINK_SLOT,
+                      gNB->gNB_config.cell_config.frame_duplex_type.value);
   /* output and its parts for each dlsch should be aligned on 64 bytes (or 8 * 64 bits)
    * should remain a multiple of 8 * 64 with enough offset to fit each dlsch
    */
@@ -1286,7 +1292,7 @@ void nr_generate_pdsch(PHY_VARS_gNB *gNB, int n_dlsch, NR_gNB_DLSCH_t *dlsch_arr
   bzero(output, sizeof(output));
 
   int slot_type = nr_slot_select(&gNB->gNB_config, frame, slot);
-  START_MEAS_FULL_SLOT(dlsch_encoding_stats, slot_type, NR_DOWNLINK_SLOT);
+  START_MEAS_FULL_SLOT(dlsch_encoding_stats, slot_type, NR_DOWNLINK_SLOT, gNB->gNB_config.cell_config.frame_duplex_type.value);
   if (nr_dlsch_encoding(gNB,
                         n_dlsch,
                         dlsch_array,
@@ -1296,7 +1302,7 @@ void nr_generate_pdsch(PHY_VARS_gNB *gNB, int n_dlsch, NR_gNB_DLSCH_t *dlsch_arr
       == -1) {
     return;
   }
-  STOP_MEAS_FULL_SLOT(dlsch_encoding_stats, slot_type, NR_DOWNLINK_SLOT);
+  STOP_MEAS_FULL_SLOT(dlsch_encoding_stats, slot_type, NR_DOWNLINK_SLOT, gNB->gNB_config.cell_config.frame_duplex_type.value);
 
   unsigned char *output_ptr = output;
   for (int i = 0; i < n_dlsch; i++) {

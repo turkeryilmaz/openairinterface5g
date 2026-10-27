@@ -95,12 +95,24 @@ static void tx_func(processingData_L1tx_t *info)
   RU_t *ru = gNB->RU_list[0];
   int tx_slot_type = nr_slot_select(cfg, frame_tx, slot_tx);
   if (tx_slot_type == NR_DOWNLINK_SLOT || tx_slot_type == NR_MIXED_SLOT) {
-    START_MEAS_FULL_SLOT(&info->gNB->phy_proc_tx, tx_slot_type, NR_DOWNLINK_SLOT);
-    START_MEAS_FULL_SLOT(&info->gNB->gnb_tx_procedures_stats, tx_slot_type, NR_DOWNLINK_SLOT);
+    START_MEAS_FULL_SLOT(&info->gNB->phy_proc_tx,
+                         tx_slot_type,
+                         NR_DOWNLINK_SLOT,
+                         gNB->gNB_config.cell_config.frame_duplex_type.value);
+    START_MEAS_FULL_SLOT(&info->gNB->gnb_tx_procedures_stats,
+                         tx_slot_type,
+                         NR_DOWNLINK_SLOT,
+                         gNB->gNB_config.cell_config.frame_duplex_type.value);
     phy_procedures_gNB_TX(info->gNB, &sched_response.DL_req, &sched_response.TX_req, &sched_response.UL_dci_req, frame_tx,slot_tx);
-    STOP_MEAS_FULL_SLOT(&info->gNB->gnb_tx_procedures_stats, tx_slot_type, NR_DOWNLINK_SLOT);
+    STOP_MEAS_FULL_SLOT(&info->gNB->gnb_tx_procedures_stats,
+                        tx_slot_type,
+                        NR_DOWNLINK_SLOT,
+                        gNB->gNB_config.cell_config.frame_duplex_type.value);
 
-    START_MEAS_FULL_SLOT(&info->gNB->ru_tx_func_stats, tx_slot_type, NR_DOWNLINK_SLOT);
+    START_MEAS_FULL_SLOT(&info->gNB->ru_tx_func_stats,
+                         tx_slot_type,
+                         NR_DOWNLINK_SLOT,
+                         gNB->gNB_config.cell_config.frame_duplex_type.value);
 
     // split 7.2 precoding
     if (ru->feptx_prec)
@@ -110,8 +122,14 @@ static void tx_func(processingData_L1tx_t *info)
     if (ru->feptx_ofdm)
       ru->feptx_ofdm(ru, frame_tx, slot_tx);
 
-    STOP_MEAS_FULL_SLOT(&info->gNB->ru_tx_func_stats, tx_slot_type, NR_DOWNLINK_SLOT);
-    STOP_MEAS_FULL_SLOT(&info->gNB->phy_proc_tx, tx_slot_type, NR_DOWNLINK_SLOT);
+    STOP_MEAS_FULL_SLOT(&info->gNB->ru_tx_func_stats,
+                        tx_slot_type,
+                        NR_DOWNLINK_SLOT,
+                        gNB->gNB_config.cell_config.frame_duplex_type.value);
+    STOP_MEAS_FULL_SLOT(&info->gNB->phy_proc_tx,
+                        tx_slot_type,
+                        NR_DOWNLINK_SLOT,
+                        gNB->gNB_config.cell_config.frame_duplex_type.value);
   }
 
   // beam API - fill TX and/or RX beam IDs
@@ -136,9 +154,9 @@ void *L1_rx_thread(void *arg)
        break;
      processingData_L1_t *info = (processingData_L1_t *)NotifiedFifoData(res);
      int slot_type = nr_slot_select(&gNB->gNB_config, info->frame_rx, info->slot_rx);
-     START_MEAS_FULL_SLOT(&gNB->l1_rx_proc, slot_type, NR_UPLINK_SLOT);
+     START_MEAS_FULL_SLOT(&gNB->l1_rx_proc, slot_type, NR_UPLINK_SLOT, gNB->gNB_config.cell_config.frame_duplex_type.value);
      rx_func(info);
-     STOP_MEAS_FULL_SLOT(&gNB->l1_rx_proc, slot_type, NR_UPLINK_SLOT);
+     STOP_MEAS_FULL_SLOT(&gNB->l1_rx_proc, slot_type, NR_UPLINK_SLOT, gNB->gNB_config.cell_config.frame_duplex_type.value);
      delNotifiedFIFO_elt(res);
   }
   return NULL;
@@ -153,9 +171,9 @@ void *L1_tx_thread(void *arg) {
        break;
      processingData_L1tx_t *info = (processingData_L1tx_t *)NotifiedFifoData(res);
      int slot_type = nr_slot_select(&gNB->gNB_config, info->frame, info->slot);
-     START_MEAS_FULL_SLOT(&gNB->l1_tx_proc, slot_type, NR_DOWNLINK_SLOT);
+     START_MEAS_FULL_SLOT(&gNB->l1_tx_proc, slot_type, NR_DOWNLINK_SLOT, gNB->gNB_config.cell_config.frame_duplex_type.value);
      tx_func(info);
-     STOP_MEAS_FULL_SLOT(&gNB->l1_tx_proc, slot_type, NR_DOWNLINK_SLOT);
+     STOP_MEAS_FULL_SLOT(&gNB->l1_tx_proc, slot_type, NR_DOWNLINK_SLOT, gNB->gNB_config.cell_config.frame_duplex_type.value);
      delNotifiedFIFO_elt(res);
   }
   return NULL;
@@ -217,9 +235,15 @@ static void rx_func(processingData_L1_t *info)
     phy_procedures_gNB_uespec_RX(gNB, frame_rx, slot_rx, &UL_INFO);
 
     // Call the scheduler
-    START_MEAS_FULL_SLOT(&gNB->ul_indication_stats, rx_slot_type, NR_UPLINK_SLOT);
+    START_MEAS_FULL_SLOT(&gNB->ul_indication_stats,
+                         rx_slot_type,
+                         NR_UPLINK_SLOT,
+                         gNB->gNB_config.cell_config.frame_duplex_type.value);
     gNB->if_inst->NR_UL_indication(&UL_INFO);
-    STOP_MEAS_FULL_SLOT(&gNB->ul_indication_stats, rx_slot_type, NR_UPLINK_SLOT);
+    STOP_MEAS_FULL_SLOT(&gNB->ul_indication_stats,
+                        rx_slot_type,
+                        NR_UPLINK_SLOT,
+                        gNB->gNB_config.cell_config.frame_duplex_type.value);
 
     // Signal the ru_thread on completion of using rxdataF in this slot
     notifiedFIFO_elt_t *res = newNotifiedFIFO_elt(sizeof(processingData_L1_t), 0, &gNB->L1_rx_out, NULL);

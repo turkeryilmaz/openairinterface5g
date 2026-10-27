@@ -312,7 +312,11 @@ int nr_ulsch_decoding(PHY_VARS_gNB *phy_vars_gNB,
     if (!crcok)
       LOG_D(PHY, "ULSCH %d in error\n", ULSCH_id);
 
-    MERGE_MEAS_FULL_SLOT(&phy_vars_gNB->ts_ldpc_decode, &TB_parameters->ts_ldpc_decode, slot_type, NR_UPLINK_SLOT);
+    MERGE_MEAS_FULL_SLOT(&phy_vars_gNB->ts_ldpc_decode,
+                         &TB_parameters->ts_ldpc_decode,
+                         slot_type,
+                         NR_UPLINK_SLOT,
+                         phy_vars_gNB->gNB_config.cell_config.frame_duplex_type.value);
 
     harq_process->harq_to_be_cleared = false;
   }
