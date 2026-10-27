@@ -308,7 +308,7 @@ int nr_ulsch_decoding(PHY_VARS_gNB *phy_vars_gNB,
       offset += seg_len;
       r_offset += (harq_process->K >> 3);
 
-      MERGE_SINGLE_MEAS_FULL_SLOT(&phy_vars_gNB->ts_ldpc_decode, &TB_parameters->ts_ldpc_decode[r], slot_type, NR_UPLINK_SLOT);
+      MERGE_SINGLE_MEAS_FULL_SLOT(&phy_vars_gNB->ts_ldpc_decode, &TB_parameters->ts_ldpc_decode[r], slot_type, NR_UPLINK_SLOT, phy_vars_gNB->gNB_config.cell_config.frame_duplex_type.value);
     }
     bool crcok = (harq_process->processedSegments == TB_parameters->C);
     if (!crcok)
