@@ -63,17 +63,10 @@ int encode_fgs_service_accept(byte_array_t *buffer, const fgs_service_accept_msg
 /** @brief Decode Service Accept (8.2.17 of 3GPP TS 24.501) */
 int decode_fgs_service_accept(fgs_service_accept_msg_t *msg, const byte_array_t *buffer)
 {
-  if (buffer->len < 1)
-    return -1; // nothing to decode
-
+  // All Service Accept body IEs are optional (TS 24.501 clause 8.2.17.1).
+  *msg = (fgs_service_accept_msg_t){0};
   byte_array_t ba = *buffer; // Local copy of buffer (to be used in the decoding sub-functions)
   uint32_t decoded = 0;
-
-  // Default output message before decoding
-  msg->has_psi_res = false;
-  msg->has_psi_status = false;
-  msg->num_errors = 0;
-  msg->t3448 = NULL;
 
   // Decode Optional IEs
   while (decoded < buffer->len) {
@@ -117,7 +110,8 @@ int decode_fgs_service_accept(fgs_service_accept_msg_t *msg, const byte_array_t 
       } break;
 
       case IEI_T3448_VALUE:
-        msg->t3448 = malloc_or_fail(sizeof(*msg->t3448));
+        if (!msg->t3448)
+          msg->t3448 = malloc_or_fail(sizeof(*msg->t3448));
         DECODE_NAS_IE(ba, decode_gprs_timer_ie(msg->t3448, &ba), decoded);
         break;
 
