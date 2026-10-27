@@ -76,6 +76,21 @@
 #include "PHY/NR_UE_TRANSPORT/nr_transport_ue.h"
 #include "SCHED_NR_UE/harq_nr.h"
 
+void nr_ue_prepare_common_dl_harq(PHY_VARS_NR_UE *ue,
+                                  const UE_nr_rxtx_proc_t *proc,
+                                  const NR_UE_DLSCH_t *dlsch,
+                                  int cw_idx,
+                                  int harq_pid)
+{
+  if (!nr_ue_is_common_dlsch(dlsch))
+    return;
+  NR_DL_UE_HARQ_t *harq = nr_ue_dl_harq_context(ue, proc, dlsch, cw_idx, harq_pid);
+  init_downlink_harq_status(harq);
+  downlink_harq_process(harq, harq_pid, dlsch->cw_info.new_data_indicator, dlsch->cw_info.rv, dlsch->rnti_type);
+  harq->activated_frame = proc->frame_rx;
+  harq->activated_slot = proc->nr_slot_rx;
+}
+
 /********************* define **************************************/
 
 #define DL_DCI              (1)

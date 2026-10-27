@@ -36,16 +36,21 @@ static void configure_dlsch(NR_UE_DLSCH_t *dlsch,
 
   LOG_D(PHY,"Configure DLSCH for pid = %d\n", current_harq_pid);
 
-  NR_DL_UE_HARQ_t *dlsch_harq = &harq_list[current_harq_pid];
   dlsch->cw_info = dlsch_config_pdu->cw_info[cw_idx];
 
   if (dlsch->cw_info.Nl == 0) {
     LOG_E(PHY, "Invalid number of layers %d for DLSCH\n", dlsch->cw_info.Nl);
     // setting NACK for this TB
     dlsch->active = false;
-    update_harq_status(mac, current_harq_pid, cw_idx, 0);
+    if (!nr_ue_is_common_dlsch(dlsch))
+      update_harq_status(mac, current_harq_pid, cw_idx, 0);
     return;
   }
+
+  // The DL actor initializes its common context when this job starts, after its previous job has finished.
+  if (nr_ue_is_common_dlsch(dlsch))
+    return;
+  NR_DL_UE_HARQ_t *dlsch_harq = &harq_list[current_harq_pid];
 
   /* Retransmission of a TB this HARQ process already decoded (the gNB missed our ACK): its soft
    * buffer is no longer valid for combining, so decoding again would fail and NACK it every round.

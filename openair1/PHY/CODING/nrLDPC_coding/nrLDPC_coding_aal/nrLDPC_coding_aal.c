@@ -9,6 +9,7 @@
 #include <common/utils/LOG/log.h>
 #include "common/config/config_paramdesc.h"
 #include "common/config/config_userapi.h"
+#include "executables/softmodem-common.h"
 #define NR_LDPC_ENABLE_PARITY_CHECK
 
 #include "PHY/CODING/nrLDPC_decoder/nrLDPCdecoder_defs.h"
@@ -1079,6 +1080,17 @@ int32_t nrLDPC_coding_init(int max_num_pxsch)
       {"is_t2", NULL, 0, .uptr = &is_t2, .defintval = 0, TYPE_UINT8, 0, NULL},
   };
   config_get(config_get_if(), LoaderParams, sizeofArray(LoaderParams), "nrLDPC_coding_aal");
+  if (IS_SOFTMODEM_5GUE) {
+    const uint64_t required = max_num_pxsch > 0 ? (uint64_t)max_num_pxsch * NR_LDPC_MAX_NUM_CB : 0;
+    if (max_num_pxsch <= 0 || required > num_harq_codeblock) {
+      LOG_E(NR_PHY,
+            "UE LDPC HARQ capacity: %d contexts require %" PRIu64 " codeblocks, configured %u\n",
+            max_num_pxsch,
+            required,
+            num_harq_codeblock);
+      return -1;
+    }
+  }
   if (dpdk_dev == NULL)
     LOG_E(NR_PHY,
           "could not find mandatory --nrLDPC_coding_aal.dpdk_dev. If you used --nrLDPC_coding_t2.*, please rename all options to "
