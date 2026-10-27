@@ -328,23 +328,25 @@ void term_nr_ue_signal(PHY_VARS_NR_UE *ue)
   sl_ue_free(ue);
 }
 
+static void free_nr_ue_dl_harq_process(NR_DL_UE_HARQ_t *harq)
+{
+  const int ret = pthread_mutex_destroy(&harq->abort_decode.mutex_failure);
+  AssertFatal(ret == 0, "HARQ decode abort mutex is still in use: %d\n", ret);
+#ifdef LDPC_CUDA
+  gpuFreeHost(harq->c);
+  harq->c = NULL;
+#else
+  free_and_zero(harq->c);
+#endif
+  free_and_zero(harq->d);
+}
+
 void free_nr_ue_dl_harq(NR_DL_UE_HARQ_t harq_list[2][NR_MAX_HARQ_PROCESSES], int number_of_processes, int num_rb)
 {
-  uint16_t a_segments = MAX_NUM_NR_DLSCH_SEGMENTS;
-  if (num_rb != 273) {
-    a_segments = a_segments*num_rb;
-    a_segments = (a_segments/273)+1;
-  }
-
-  for (int j=0; j < 2; j++) {
-    for (int i = 0; i < number_of_processes; i++) {
-#ifdef LDPC_CUDA
-      gpuFreeHost(harq_list[j][i].c);
-#else
-      free_and_zero(harq_list[j][i].c);
-#endif
-      free_and_zero(harq_list[j][i].d);
-    }
+  (void)num_rb;
+  for (int j = 0; j < 2; j++) {
+    for (int i = 0; i < number_of_processes; i++)
+      free_nr_ue_dl_harq_process(&harq_list[j][i]);
   }
 }
 
@@ -389,6 +391,7 @@ void free_nr_ue_pdsch_buffers(pdsch_scratch_t *buffers, int num_actors)
     free_and_zero(buffers[i].rho_dl);
     free_and_zero(buffers[i].pdsch_dl_ch_estimates);
     for (int c = 0; c < 2; c++) {
+      free_nr_ue_dl_harq_process(&buffers[i].common_harq[c]);
 #ifdef LDPC_CUDA
       // llr_dev[c] is the device alias of llr[c], not a separate allocation
       gpuFreeHost(buffers[i].llr[c]);
@@ -409,30 +412,33 @@ void term_nr_ue_transport(PHY_VARS_NR_UE *ue)
   free_and_zero(ue->pdsch_scratch);
 }
 
-void nr_init_dl_harq_processes(NR_DL_UE_HARQ_t harq_list[2][NR_MAX_HARQ_PROCESSES], int number_of_processes, int num_rb)
+static void nr_init_dl_harq_process(NR_DL_UE_HARQ_t *harq, int num_rb)
 {
   int a_segments = MAX_NUM_NR_DLSCH_SEGMENTS; // number of segments to be allocated
   if (num_rb != 273) {
-    a_segments = a_segments*num_rb;
-    a_segments = (a_segments/273)+1;
+    a_segments = a_segments * num_rb;
+    a_segments = a_segments / 273 + 1;
   }
 
-  for (int j=0; j<2; j++) {
-    for (int i=0; i<number_of_processes; i++) {
-      memset(harq_list[j] + i, 0, sizeof(NR_DL_UE_HARQ_t));
-      init_downlink_harq_status(harq_list[j] + i);
-
+  memset(harq, 0, sizeof(*harq));
+  init_downlink_harq_status(harq);
 #ifdef LDPC_CUDA
-      harq_list[j][i].c = gpuHostAlloc_or_fail(a_segments * sizeof(uint8_t *) * 1056, gpuHostAllocMapped);
-      harq_list[j][i].cdev = gpuHostGetDevicePointer_or_fail(harq_list[j][i].c);
+  harq->c = gpuHostAlloc_or_fail(a_segments * sizeof(uint8_t *) * 1056, gpuHostAllocMapped);
+  harq->cdev = gpuHostGetDevicePointer_or_fail(harq->c);
 #else
-      harq_list[j][i].c = malloc16(a_segments * sizeof(*harq_list[j][i].c) * 1056);
+  harq->c = malloc16(a_segments * sizeof(*harq->c) * 1056);
 #endif
-      harq_list[j][i].d = malloc16(a_segments * sizeof(*harq_list[j][i].d) * 3 * 8448);
-      init_abort(&harq_list[j][i].abort_decode);
-      harq_list[j][i].status  = 0;
-      harq_list[j][i].DLround = 0;
-    }
+  harq->d = malloc16(a_segments * sizeof(*harq->d) * 3 * 8448);
+  init_abort(&harq->abort_decode);
+  harq->status = 0;
+  harq->DLround = 0;
+}
+
+void nr_init_dl_harq_processes(NR_DL_UE_HARQ_t harq_list[2][NR_MAX_HARQ_PROCESSES], int number_of_processes, int num_rb)
+{
+  for (int j = 0; j < 2; j++) {
+    for (int i = 0; i < number_of_processes; i++)
+      nr_init_dl_harq_process(&harq_list[j][i], num_rb);
   }
 }
 
@@ -528,14 +534,17 @@ void nr_init_pdsch_buffers(pdsch_scratch_t *buffers, int num_actors, const NR_DL
 #endif
     }
     buffers[i].llr[1] = NULL;
+    for (int c = 0; c < 2; c++)
+      nr_init_dl_harq_process(&buffers[i].common_harq[c], fp->N_RB_DL);
   }
 }
 
 void init_nr_ue_transport(PHY_VARS_NR_UE *ue)
 {
+  const int num_actors = get_nrUE_params()->num_dl_actors > 0 ? get_nrUE_params()->num_dl_actors : 1;
+  AssertFatal(nr_ue_dl_harq_context_count(num_actors) > 0, "Invalid number of DL actors %d\n", num_actors);
   nr_init_dl_harq_processes(ue->dl_harq_processes, NR_MAX_HARQ_PROCESSES, ue->frame_parms.N_RB_DL);
   nr_init_ul_harq_processes(ue->ul_harq_processes, NR_MAX_HARQ_PROCESSES, ue->frame_parms.N_RB_UL, ue->frame_parms.nb_antennas_tx);
-  const int num_actors = get_nrUE_params()->num_dl_actors > 0 ? get_nrUE_params()->num_dl_actors : 1;
   ue->pdsch_num_actors = num_actors;
   ue->pdsch_scratch = calloc_or_fail(num_actors, sizeof(*ue->pdsch_scratch));
   nr_init_pdsch_buffers(ue->pdsch_scratch, num_actors, &ue->frame_parms, ue->do_ml);

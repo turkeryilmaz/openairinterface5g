@@ -27,6 +27,7 @@
 #include "executables/softmodem-common.h"
 #include "executables/nr-uesoftmodem.h"
 #include "SCHED_NR_UE/pucch_uci_ue_nr.h"
+#include "SCHED_NR_UE/harq_nr.h"
 #include <openair1/PHY/TOOLS/phy_scope_interface.h>
 #include "nfapi/open-nFAPI/nfapi/public_inc/nfapi_nr_interface.h"
 
@@ -79,7 +80,7 @@ void nr_fill_rx_indication(fapi_nr_rx_indication_t *rx_ind,
     case FAPI_NR_RX_PDU_TYPE_DLSCH:
     case FAPI_NR_RX_PDU_TYPE_PCCH:
       if(dlsch) {
-        NR_DL_UE_HARQ_t *dl_harq = &ue->dl_harq_processes[cw_idx][harq_pid];
+        NR_DL_UE_HARQ_t *dl_harq = nr_ue_dl_harq_context(ue, proc, dlsch, cw_idx, harq_pid);
         rx->pdsch_pdu.harq_pid = harq_pid;
         rx->pdsch_pdu.cw_idx = cw_idx;
         rx->pdsch_pdu.ack_nack = dl_harq->decodeResult;
@@ -691,7 +692,7 @@ static void nr_ue_dlsch_procedures(PHY_VARS_NR_UE *ue,
 
   NR_DL_FRAME_PARMS *fp = &ue->frame_parms;
   // exit dlsch procedures as there are no active dlsch
-  NR_DL_UE_HARQ_t *dl_harq = &ue->dl_harq_processes[cw_idx][harq_pid];
+  NR_DL_UE_HARQ_t *dl_harq = nr_ue_dl_harq_context(ue, proc, dlsch, cw_idx, harq_pid);
   if (dl_harq->status != NR_ACTIVE) {
     /* Grant arrived (dlsch active, LLRs demodulated) but the HARQ process is no longer ACTIVE. */
     LOG_E(NR_PHY, "Internal error nr_ue_dlsch_procedure() no active cw slot %d harq %d (now %d.%d status %d activated %d.%d)\n",
@@ -1254,6 +1255,8 @@ void pdsch_processing(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, nr_phy_
     if (!dlsch->active)
       continue;
 
+    nr_ue_prepare_common_dl_harq(ue, proc, dlsch, c, dlsch_config->harq_process_nbr);
+
     uint16_t nb_symb_sch = dlsch_config->number_symbols;
     uint16_t start_symb_sch = dlsch_config->start_symbol;
 
@@ -1295,8 +1298,7 @@ void pdsch_processing(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, nr_phy_
                      dlsch->cw_info.Nl);
     const uint32_t rx_llr_buf_sz = ALIGNARRAYSIZE(G, 32); // each LLR is 2 bytes hence 64 byte aligned
 
-    // dlsch_harq contains the previous transmissions data for this harq pid
-    NR_DL_UE_HARQ_t *harq = &ue->dl_harq_processes[c][dlsch_config->harq_process_nbr];
+    NR_DL_UE_HARQ_t *harq = nr_ue_dl_harq_context(ue, proc, dlsch, c, dlsch_config->harq_process_nbr);
     // it returns -1 in case of internal failure, or 0 in case of normal result
     int ret_pdsch = nr_ue_pdsch_procedures(ue, proc, dlsch, harq, dlsch_config, llr[c], rxdataF, &freq_alloc);
     TracyCPlot("pdsch mcs", dlsch->cw_info.mcs);
