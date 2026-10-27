@@ -141,6 +141,7 @@ void nr_preprocessor_phytest(gNB_MAC_INST *mac, nr_cell_sched_t *cell, post_proc
  * fixed set of resources */
 void nr_ul_preprocessor_phytest(gNB_MAC_INST *nr_mac, nr_cell_sched_t *cell, post_process_pusch_t *pp_pusch);
 
+void nr_mac_handle_uci(module_id_t mod_id, int cell_id, frame_t frame, slot_t slot, const nfapi_nr_uci_indication_t *indication);
 void handle_nr_uci_pucch_0_1(module_id_t mod_id,
                              int cell_id,
                              frame_t frame,
@@ -199,7 +200,8 @@ void nr_csi_meas_reporting(gNB_MAC_INST *mac, nr_cell_sched_t *cell, frame_t fra
 
 void nr_measgap_scheduling(gNB_MAC_INST *nr_mac, const nr_cell_sched_t *cell, frame_t frame, sub_frame_t slot);
 
-int nr_acknack_scheduling(nr_cell_sched_t *cell,
+int nr_acknack_scheduling(gNB_MAC_INST *nrmac,
+                          nr_cell_sched_t *cell,
                           NR_UE_info_t *UE,
                           frame_t frameP,
                           slot_t slotP,
@@ -217,7 +219,8 @@ int nr_get_pucch_resource(NR_ControlResourceSet_t *coreset,
 
 void nr_configure_pucch(nfapi_nr_pucch_pdu_t *pucch_pdu,
                         NR_ServingCellConfigCommon_t *scc,
-                        NR_UE_info_t *UE,
+                        const NR_UE_info_t *UE,
+                        const NR_UE_UL_BWP_t *current_BWP,
                         uint8_t pucch_resource,
                         uint16_t O_csi,
                         uint16_t O_ack,

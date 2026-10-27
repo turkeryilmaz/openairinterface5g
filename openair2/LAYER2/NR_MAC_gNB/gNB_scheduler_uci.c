@@ -16,6 +16,16 @@
 #include "common/utils/T/T.h"
 #include "common/utils/nr/nr_common.h"
 #include "nfapi/oai_integration/vendor_ext.h"
+static bool pucch_pdus_fit(const nfapi_nr_ul_tti_request_t *request, int count)
+{
+  if (request->n_pdus + count > sizeofArray(request->pdus_list))
+    return false;
+  int physical = 0;
+  for (int i = 0; i < request->n_pdus; i++)
+    physical += request->pdus_list[i].pdu_type == NFAPI_NR_UL_CONFIG_PUCCH_PDU_TYPE;
+  return physical + count <= MAX_NUM_NR_UCI_PDUS;
+}
+
 static void nr_fill_nfapi_pucch(nr_cell_sched_t *cell, frame_t frame, slot_t slot, const NR_sched_pucch_t *pucch, NR_UE_info_t* UE)
 {
 
@@ -34,7 +44,7 @@ static void nr_fill_nfapi_pucch(nr_cell_sched_t *cell, frame_t frame, slot_t slo
           pucch->ul_slot);
 
   // n_pdus is number of pdus, so, in the array, it is the index of the next free element
-  if (future_ul_tti_req->n_pdus >= sizeofArray(future_ul_tti_req->pdus_list) ) {
+  if (!pucch_pdus_fit(future_ul_tti_req, 1)) {
     LOG_E(NR_MAC,
           "future_ul_tti_req->n_pdus %d is full, slot: %d, sr flag %d dropping request\n",
 	  future_ul_tti_req->n_pdus,
@@ -75,6 +85,7 @@ static void nr_fill_nfapi_pucch(nr_cell_sched_t *cell, frame_t frame, slot_t slo
   nr_configure_pucch(pucch_pdu,
                      scc,
                      UE,
+                     &UE->current_UL_BWP,
                      pucch->resource_indicator,
                      pucch->csi_bits,
                      pucch->dai_c,
@@ -138,6 +149,31 @@ static int get_pucch_index(int frame, int slot, const frame_structure_t *fs, int
   return (frame_start + ul_period_start + ul_period_slot) % sched_pucch_size;
 }
 
+/* Count deferred logical commitments as well as descriptors already in the ahead ring.
+ * The scheduler lock serializes admission and emission; emitted pairs count only in the ring. */
+static bool pucch_schedule_fits(const gNB_MAC_INST *nrmac, const nr_cell_sched_t *cell, int frame, int slot, int count)
+{
+  const int index = ul_buffer_index(frame, slot, cell->frame_structure.numb_slots_frame, cell->UL_tti_req_ahead_size);
+  const nfapi_nr_ul_tti_request_t *request = &cell->UL_tti_req_ahead[index];
+  if (request->SFN != frame || request->Slot != slot)
+    return false;
+  int pending = 0;
+  NR_UE_info_t *const *lists[] = {nrmac->UE_info.access_ue_list, nrmac->UE_info.connected_ue_list};
+  const int sizes[] = {NR_NB_RA_PROC_MAX, MAX_MOBILES_PER_GNB};
+  for (int l = 0; l < sizeofArray(lists); l++) {
+    for (int i = 0; i < sizes[l]; i++) {
+      const NR_UE_info_t *ue = lists[l][i];
+      if (!ue || ue->pcell != cell || ue->UE_sched_ctrl.sched_pucch_size == 0)
+        continue;
+      const NR_UE_sched_ctrl_t *sc = &ue->UE_sched_ctrl;
+      const int p = get_pucch_index(frame, slot, &cell->frame_structure, sc->sched_pucch_size);
+      const NR_sched_pucch_t *scheduled = &sc->sched_pucch[p];
+      pending += scheduled->active && !scheduled->already_emitted && scheduled->frame == frame && scheduled->ul_slot == slot;
+    }
+  }
+  return pucch_pdus_fit(request, count + pending);
+}
+
 static void schedule_pucch_core(nr_cell_sched_t *cell, gNB_MAC_INST *nrmac, NR_UE_info_t *UE, frame_t frame, slot_t slot)
 {
   NR_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
@@ -167,7 +203,8 @@ static void schedule_pucch_core(nr_cell_sched_t *cell, gNB_MAC_INST *nrmac, NR_U
         curr_pucch->ul_slot,
         O_ack,O_sr,
         O_csi);
-  nr_fill_nfapi_pucch(cell, frame, slot, curr_pucch, UE);
+  if (!curr_pucch->already_emitted)
+    nr_fill_nfapi_pucch(cell, frame, slot, curr_pucch, UE);
   memset(curr_pucch, 0, sizeof(*curr_pucch));
 }
 
@@ -248,6 +285,8 @@ void nr_csi_meas_reporting(gNB_MAC_INST *nrmac, nr_cell_sched_t *cell, frame_t f
       AssertFatal(res_index >= 0, "PUCCH resource with index %ld not found among PUCCH resources\n", pucchcsires->pucch_Resource);
       const int pucch_index = get_pucch_index(sched.f, sched.s, &cell->frame_structure, sched_ctrl->sched_pucch_size);
       NR_sched_pucch_t *curr_pucch = &sched_ctrl->sched_pucch[pucch_index];
+      if (curr_pucch->already_emitted || (!curr_pucch->active && !pucch_schedule_fits(nrmac, cell, sched.f, sched.s, 1)))
+        continue;
       if (curr_pucch->active) {
         LOG_E(NR_MAC, "CSI structure is scheduled in advance. It should be free!\n");
         memset(curr_pucch, 0, sizeof(*curr_pucch));
@@ -917,11 +956,14 @@ static void nr_mac_sr_received(NR_UE_info_t *UE, nr_cell_sched_t *cell)
     LOG_W(NR_MAC, "UE %04x: %d SR received, reached configured sr_TransMax %d before UL grant\n", UE->rnti, sched_ctrl->sr_cnt, trans_max);
 }
 
-void handle_nr_uci_pucch_0_1(module_id_t mod_id, int cell_id, frame_t frame, slot_t slot, const nfapi_nr_uci_pucch_pdu_format_0_1_t *uci_01)
+static void handle_nr_uci_pucch_0_1_locked(gNB_MAC_INST *nrmac,
+                                           nr_cell_sched_t *cell,
+                                           module_id_t mod_id,
+                                           int cell_id,
+                                           frame_t frame,
+                                           slot_t slot,
+                                           const nfapi_nr_uci_pucch_pdu_format_0_1_t *uci_01)
 {
-  gNB_MAC_INST *nrmac = RC.nrmac[mod_id];
-  NR_SCHED_LOCK(&nrmac->sched_lock);
-  nr_cell_sched_t *cell = nr_mac_get_cell_by_phy_id(nrmac, cell_id);
   NR_UE_info_t *UE = find_nr_UE(&nrmac->UE_info, uci_01->rnti);
   bool is_ra = false;
   if (!UE) {
@@ -930,7 +972,6 @@ void handle_nr_uci_pucch_0_1(module_id_t mod_id, int cell_id, frame_t frame, slo
       is_ra = true;
     else {
       LOG_E(NR_MAC, "Unknown RNTI %04x in PUCCH UCI\n", uci_01->rnti);
-      NR_SCHED_UNLOCK(&nrmac->sched_lock);
       return;
     }
   }
@@ -962,7 +1003,6 @@ void handle_nr_uci_pucch_0_1(module_id_t mod_id, int cell_id, frame_t frame, slo
       if (is_ra) {
         bool ue_rejected = nr_check_Msg4_MsgB_Ack(nrmac, cell, frame, slot, UE, success);
         if (ue_rejected) {
-          NR_SCHED_UNLOCK(&nrmac->sched_lock);
           return;
         }
         // Msg4 Ack: reset average with first measurement
@@ -1000,18 +1040,30 @@ void handle_nr_uci_pucch_0_1(module_id_t mod_id, int cell_id, frame_t frame, slo
     }
 
   }
-  NR_SCHED_UNLOCK(&nrmac->sched_lock);
 }
 
-void handle_nr_uci_pucch_2_3_4(module_id_t mod_id, int cell_id, frame_t frame, slot_t slot, const nfapi_nr_uci_pucch_pdu_format_2_3_4_t *uci_234)
+void handle_nr_uci_pucch_0_1(module_id_t mod_id,
+                             int cell_id,
+                             frame_t frame,
+                             slot_t slot,
+                             const nfapi_nr_uci_pucch_pdu_format_0_1_t *uci_01)
 {
   gNB_MAC_INST *nrmac = RC.nrmac[mod_id];
   NR_SCHED_LOCK(&nrmac->sched_lock);
   nr_cell_sched_t *cell = nr_mac_get_cell_by_phy_id(nrmac, cell_id);
-
+  handle_nr_uci_pucch_0_1_locked(nrmac, cell, mod_id, cell_id, frame, slot, uci_01);
+  NR_SCHED_UNLOCK(&nrmac->sched_lock);
+}
+static void handle_nr_uci_pucch_2_3_4_locked(gNB_MAC_INST *nrmac,
+                                             nr_cell_sched_t *cell,
+                                             module_id_t mod_id,
+                                             int cell_id,
+                                             frame_t frame,
+                                             slot_t slot,
+                                             const nfapi_nr_uci_pucch_pdu_format_2_3_4_t *uci_234)
+{
   NR_UE_info_t *UE = find_nr_UE(&nrmac->UE_info, uci_234->rnti);
   if (!UE) {
-    NR_SCHED_UNLOCK(&nrmac->sched_lock);
     LOG_E(NR_MAC, "%s(): unknown RNTI %04x in PUCCH UCI\n", __func__, uci_234->rnti);
     return;
   }
@@ -1079,6 +1131,133 @@ void handle_nr_uci_pucch_2_3_4(module_id_t mod_id, int cell_id, frame_t frame, s
   if ((uci_234->pduBitmap >> 3) & 0x01) {
     //@TODO:Handle CSI Report 2
     // nothing to free (yet)
+  }
+}
+
+void handle_nr_uci_pucch_2_3_4(module_id_t mod_id,
+                               int cell_id,
+                               frame_t frame,
+                               slot_t slot,
+                               const nfapi_nr_uci_pucch_pdu_format_2_3_4_t *uci_234)
+{
+  gNB_MAC_INST *nrmac = RC.nrmac[mod_id];
+  NR_SCHED_LOCK(&nrmac->sched_lock);
+  nr_cell_sched_t *cell = nr_mac_get_cell_by_phy_id(nrmac, cell_id);
+  handle_nr_uci_pucch_2_3_4_locked(nrmac, cell, mod_id, cell_id, frame, slot, uci_234);
+  NR_SCHED_UNLOCK(&nrmac->sched_lock);
+}
+static uint32_t pucch_uci_handle(const nfapi_nr_uci_t *pdu)
+{
+  switch (pdu->pdu_type) {
+    case NFAPI_NR_UCI_FORMAT_0_1_PDU_TYPE:
+      return pdu->pucch_pdu_format_0_1.handle;
+    case NFAPI_NR_UCI_FORMAT_2_3_4_PDU_TYPE:
+      return pdu->pucch_pdu_format_2_3_4.handle;
+    default:
+      return 0;
+  }
+}
+
+static bool valid_msg4_pucch_member(const nfapi_nr_uci_t *pdu, const NR_UE_info_t *UE, bool sr)
+{
+  if (pdu->pdu_type != NFAPI_NR_UCI_FORMAT_0_1_PDU_TYPE)
+    return false;
+  const nfapi_nr_uci_pucch_pdu_format_0_1_t *uci = &pdu->pucch_pdu_format_0_1;
+  return uci->rnti == UE->rnti && uci->pucch_format == 0 && uci->pduBitmap == (2 | sr) && uci->harq.num_harq == 1
+         && uci->harq.harq_confidence_level <= 1 && uci->harq.harq_list[0].harq_value <= 1
+         && (!sr || (uci->sr.sr_indication <= 1 && uci->sr.sr_confidence_level <= 1));
+}
+
+/* Reduce a complete slot while retaining the scheduler lock through identity check and application. */
+void nr_mac_handle_uci(module_id_t mod_id, int cell_id, frame_t frame, slot_t slot, const nfapi_nr_uci_indication_t *indication)
+{
+  gNB_MAC_INST *nrmac = RC.nrmac[mod_id];
+  NR_SCHED_LOCK(&nrmac->sched_lock);
+  nr_cell_sched_t *cell = nr_mac_get_cell_by_phy_id(nrmac, cell_id);
+  const int count = indication->uci_list ? min(indication->num_ucis, NFAPI_NR_UCI_IND_MAX_PDU) : 0;
+  uint16_t paired_rnti[NR_NB_RA_PROC_MAX];
+  int paired_count = 0;
+  if (NFAPI_MODE == NFAPI_MONOLITHIC) {
+    // A result can remove its current UE and compact the list; higher indices have already been handled.
+    for (int n = NR_NB_RA_PROC_MAX - 1; n >= 0; n--) {
+      NR_UE_info_t *UE = nrmac->UE_info.access_ue_list[n];
+      if (!UE || UE->pcell != cell || !UE->ra)
+        continue;
+      NR_RA_t *ra = UE->ra;
+      const NR_msg4_feedback_t expected = ra->msg4_feedback;
+      if (!expected.cookie || expected.frame != frame || expected.slot != slot)
+        continue;
+      paired_rnti[paired_count++] = UE->rnti;
+      // Clear before a successful ACK can move the UE and free its RA context.
+      memset(&ra->msg4_feedback, 0, sizeof(ra->msg4_feedback));
+      NR_UE_sched_ctrl_t *sc = &UE->UE_sched_ctrl;
+      if (ra->ra_state != nrRA_WAIT_Msg4_MsgB_ACK || ra->ra_type != RA_4_STEP || ra->harq_pid != expected.harq_pid
+          || expected.harq_pid >= NR_MAX_HARQ_PROCESSES || sc->feedback_dl_harq.head != expected.harq_pid)
+        continue;
+      const NR_UE_harq_t *harq = &sc->harq_processes[expected.harq_pid];
+      if (!harq->is_waiting || harq->feedback_frame != frame || harq->feedback_slot != slot || harq->round != expected.round)
+        continue;
+      const nfapi_nr_uci_pucch_pdu_format_0_1_t *members[2] = {NULL, NULL};
+      int seen[2] = {0, 0};
+      for (int i = 0; i < count; i++) {
+        const nfapi_nr_uci_t *pdu = &indication->uci_list[i];
+        const uint32_t handle = pucch_uci_handle(pdu);
+        if ((handle & ~1u) != expected.cookie)
+          continue;
+        const int role = handle & 1;
+        seen[role]++;
+        if (valid_msg4_pucch_member(pdu, UE, expected.sr[role]))
+          members[role] = &pdu->pucch_pdu_format_0_1;
+      }
+      nfapi_nr_uci_pucch_pdu_format_0_1_t result = {
+          .rnti = UE->rnti,
+          .pduBitmap = 2,
+          .pucch_format = 0,
+          .ul_cqi = 0xff,
+          .timing_advance = 0xffff,
+          .harq = {.num_harq = 1, .harq_confidence_level = 1, .harq_list = {{.harq_value = 1}}}};
+      if (seen[0] == 1 && seen[1] == 1 && members[0] && members[1]) {
+        const bool good0 = members[0]->harq.harq_confidence_level == 0;
+        const bool good1 = members[1]->harq.harq_confidence_level == 0;
+        if (good0 != good1)
+          result = *members[good1];
+      }
+      handle_nr_uci_pucch_0_1_locked(nrmac, cell, mod_id, cell_id, frame, slot, &result);
+    }
+  }
+  for (int i = 0; i < count; i++) {
+    const nfapi_nr_uci_t *pdu = &indication->uci_list[i];
+    const uint16_t rnti = pdu->pdu_type == NFAPI_NR_UCI_FORMAT_0_1_PDU_TYPE     ? pdu->pucch_pdu_format_0_1.rnti
+                          : pdu->pdu_type == NFAPI_NR_UCI_FORMAT_2_3_4_PDU_TYPE ? pdu->pucch_pdu_format_2_3_4.rnti
+                                                                                : 0;
+    bool paired = false;
+    for (int n = 0; n < paired_count; n++)
+      paired |= paired_rnti[n] == rnti;
+    if (NFAPI_MODE == NFAPI_MONOLITHIC && (pucch_uci_handle(pdu) || paired)) {
+      // A missing cookie must not route an invalid pair member through ordinary HARQ handling.
+      // Unowned/stale cookies have no MAC effects. Preserve ownership of format-2/3/4 payloads.
+      if (pdu->pdu_type == NFAPI_NR_UCI_FORMAT_2_3_4_PDU_TYPE) {
+        const nfapi_nr_uci_pucch_pdu_format_2_3_4_t *u = &pdu->pucch_pdu_format_2_3_4;
+        if (u->pduBitmap & 1)
+          free(u->sr.sr_payload);
+        if (u->pduBitmap & 2)
+          free(u->harq.harq_payload);
+        if (u->pduBitmap & 4)
+          free(u->csi_part1.csi_part1_payload);
+      }
+      continue;
+    }
+    switch (pdu->pdu_type) {
+      case NFAPI_NR_UCI_FORMAT_0_1_PDU_TYPE:
+        handle_nr_uci_pucch_0_1_locked(nrmac, cell, mod_id, cell_id, frame, slot, &pdu->pucch_pdu_format_0_1);
+        break;
+      case NFAPI_NR_UCI_FORMAT_2_3_4_PDU_TYPE:
+        handle_nr_uci_pucch_2_3_4_locked(nrmac, cell, mod_id, cell_id, frame, slot, &pdu->pucch_pdu_format_2_3_4);
+        break;
+      default:
+        LOG_E(NR_MAC, "%s(): unhandled UCI PDU type %d\n", __func__, pdu->pdu_type);
+        break;
+    }
   }
   NR_SCHED_UNLOCK(&nrmac->sched_lock);
 }
@@ -1181,9 +1360,294 @@ bool check_bits_vs_coderate_limit(NR_PUCCH_Config_t *pucch_Config, int O_uci, in
   AssertFatal(false, "No PUCCH resource found\n");
 }
 
+/* Keep the active access BWP untouched while constructing the post-Setup receive hypothesis. */
+static bool msg4_pucch_alternate(const nr_cell_sched_t *cell, const NR_UE_info_t *UE, NR_UE_UL_BWP_t *alternate)
+{
+  const NR_RA_t *ra = UE->ra;
+  const NR_UE_UL_BWP_t *current = &UE->current_UL_BWP;
+  if (NFAPI_MODE != NFAPI_MONOLITHIC || !ra || ra->ra_type != RA_4_STEP || ra->cfra || ra->ra_state != nrRA_Msg4
+      || ra->harq_pid >= NR_MAX_HARQ_PROCESSES || UE->UE_sched_ctrl.retrans_dl_harq.head != ra->harq_pid
+      || UE->UE_sched_ctrl.harq_processes[ra->harq_pid].round == 0 || current->pucch_Config || !UE->CellGroup || UE->reestablish_rlc
+      || UE->reconfigCellGroup || current->bwp_id != 0 || UE->local_bwp_id != 0)
+    return false;
+
+  const NR_SpCellConfig_t *sp = UE->CellGroup->spCellConfig;
+  const NR_ServingCellConfig_t *serving = sp ? sp->spCellConfigDedicated : NULL;
+  const NR_UplinkConfig_t *ul = serving ? serving->uplinkConfig : NULL;
+  const NR_BWP_UplinkDedicated_t *dedicated = ul ? ul->initialUplinkBWP : NULL;
+  const NR_ServingCellConfigCommon_t *scc = cell->common_channels.ServingCellConfigCommon;
+  const NR_BWP_t *generic = &scc->uplinkConfigCommon->initialUplinkBWP->genericParameters;
+  if (!sp || sp->reconfigurationWithSync || !dedicated || (ul->firstActiveUplinkBWP_Id && *ul->firstActiveUplinkBWP_Id != 0)
+      || (serving->firstActiveDownlinkBWP_Id && *serving->firstActiveDownlinkBWP_Id != 0)
+      || current->BWPStart != NRRIV2PRBOFFSET(generic->locationAndBandwidth, MAX_BWP_SIZE)
+      || current->BWPSize != NRRIV2BW(generic->locationAndBandwidth, MAX_BWP_SIZE) || current->scs != generic->subcarrierSpacing
+      || (current->cyclicprefix ? *current->cyclicprefix : 0) != (generic->cyclicPrefix ? *generic->cyclicPrefix : 0)
+      || !dedicated->pucch_Config || dedicated->pucch_Config->present != NR_SetupRelease_PUCCH_Config_PR_setup)
+    return false;
+  NR_PUCCH_Config_t *config = dedicated->pucch_Config->choice.setup;
+  const NR_PUCCH_ConfigCommon_t *common = current->pucch_ConfigCommon;
+  if (!config || !config->resourceSetToAddModList || config->resourceSetToAddModList->list.count < 1
+      || config->resourceSetToAddModList->list.count > 4 || !config->resourceToAddModList
+      || config->resourceToAddModList->list.count < 1 || config->resourceToAddModList->list.count > 128 || !common
+      || !common->pucch_ResourceCommon || *common->pucch_ResourceCommon < 0 || *common->pucch_ResourceCommon >= 3)
+    return false; // Common resource sets 0-2 use format 0.
+  const NR_PUCCH_ResourceSet_t *set = config->resourceSetToAddModList->list.array[0];
+  if (!set || set->pucch_ResourceSetId != 0 || set->resourceList.list.count < 1 || !set->resourceList.list.array[0])
+    return false;
+  for (int i = 1; i < config->resourceSetToAddModList->list.count; i++)
+    if (!config->resourceSetToAddModList->list.array[i] || config->resourceSetToAddModList->list.array[i]->pucch_ResourceSetId == 0)
+      return false;
+  const NR_PUCCH_Resource_t *resource = NULL;
+  for (int i = 0; i < config->resourceToAddModList->list.count; i++) {
+    const NR_PUCCH_Resource_t *r = config->resourceToAddModList->list.array[i];
+    if (!r)
+      return false;
+    if (r->pucch_ResourceId == *set->resourceList.list.array[0]) {
+      if (resource)
+        return false;
+      resource = r;
+    }
+  }
+  if (!resource || resource->format.present != NR_PUCCH_Resource__format_PR_format0 || !resource->format.choice.format0)
+    return false;
+  const NR_PUCCH_format0_t *f0 = resource->format.choice.format0;
+  if (resource->startingPRB < 0 || resource->startingPRB >= current->BWPSize || f0->initialCyclicShift < 0
+      || f0->initialCyclicShift > 11 || f0->nrofSymbols < 1 || f0->nrofSymbols > 2 || f0->startingSymbolIndex < 0
+      || f0->startingSymbolIndex + f0->nrofSymbols > 14
+      || (resource->intraSlotFrequencyHopping
+          && (f0->nrofSymbols != 2 || !resource->secondHopPRB || *resource->secondHopPRB < 0
+              || *resource->secondHopPRB >= current->BWPSize)))
+    return false;
+  *alternate = *current;
+  alternate->pucch_Config = config;
+  alternate->pusch_Config = dedicated->pusch_Config && dedicated->pusch_Config->present == NR_SetupRelease_PUSCH_Config_PR_setup
+                                ? dedicated->pusch_Config->choice.setup
+                                : NULL;
+  return true;
+}
+
+/* A due initial-BWP CSI report can move the connected UE's ACK to format 2.
+ * Return -1 for unsupported metadata (legacy path), 0 for no report, or 1 to try another K1. */
+static int msg4_pucch_csi_occasion(const NR_UE_info_t *UE, int frame, int slot, int slots_per_frame)
+{
+  const NR_ServingCellConfig_t *serving = UE->CellGroup->spCellConfig->spCellConfigDedicated;
+  const NR_SetupRelease_CSI_MeasConfig_t *setup = serving->csi_MeasConfig;
+  if (!setup || setup->present == NR_SetupRelease_CSI_MeasConfig_PR_release)
+    return 0;
+  if (setup->present != NR_SetupRelease_CSI_MeasConfig_PR_setup || !setup->choice.setup)
+    return -1;
+  const NR_CSI_MeasConfig_t *config = setup->choice.setup;
+  if (!config->csi_ReportConfigToAddModList)
+    return 0;
+  const struct NR_CSI_MeasConfig__csi_ReportConfigToAddModList *reports = config->csi_ReportConfigToAddModList;
+  if (reports->list.count < 0 || reports->list.count > 48)
+    return -1;
+  for (int i = 0; i < reports->list.count; i++) {
+    const NR_CSI_ReportConfig_t *report = reports->list.array[i];
+    if (!report)
+      return -1;
+    if (report->reportConfigType.present == NR_CSI_ReportConfig__reportConfigType_PR_aperiodic)
+      continue;
+    if (report->reportConfigType.present != NR_CSI_ReportConfig__reportConfigType_PR_periodic
+        || !report->reportConfigType.choice.periodic)
+      return -1;
+    const struct NR_CSI_ReportConfig__reportConfigType__periodic *periodic = report->reportConfigType.choice.periodic;
+    if (periodic->reportSlotConfig.present < NR_CSI_ReportPeriodicityAndOffset_PR_slots4
+        || periodic->reportSlotConfig.present > NR_CSI_ReportPeriodicityAndOffset_PR_slots320)
+      return -1;
+    int period, offset;
+    csi_period_offset(report, NULL, &period, &offset);
+    if (period <= 0 || offset < 0 || offset >= period || periodic->pucch_CSI_ResourceList.list.count < 0
+        || periodic->pucch_CSI_ResourceList.list.count > 4)
+      return -1;
+    if (!is_periodic_occasion(frame, slot, slots_per_frame, period, offset))
+      continue;
+    for (int r = 0; r < periodic->pucch_CSI_ResourceList.list.count; r++) {
+      const NR_PUCCH_CSI_Resource_t *resource = periodic->pucch_CSI_ResourceList.list.array[r];
+      if (!resource)
+        return -1;
+      if (resource->uplinkBandwidthPartId == 0)
+        return 1;
+    }
+  }
+  return 0;
+}
+
+static bool msg4_pucch_sr(const NR_UE_UL_BWP_t *alternate, int frame, int slot, int slots_per_frame, bool *sr)
+{
+  *sr = false;
+  const NR_PUCCH_Config_t *config = alternate->pucch_Config;
+  const struct NR_PUCCH_Config__schedulingRequestResourceToAddModList *list = config->schedulingRequestResourceToAddModList;
+  if (!list)
+    return true;
+  if (list->list.count < 0 || list->list.count > 8)
+    return false;
+  const long resource_id = *config->resourceSetToAddModList->list.array[0]->resourceList.list.array[0];
+  for (int i = 0; i < list->list.count; i++) {
+    const NR_SchedulingRequestResourceConfig_t *request = list->list.array[i];
+    if (!request || !request->resource || *request->resource != resource_id || !request->periodicityAndOffset
+        || request->periodicityAndOffset->present < NR_SchedulingRequestResourceConfig__periodicityAndOffset_PR_sl1
+        || request->periodicityAndOffset->present > NR_SchedulingRequestResourceConfig__periodicityAndOffset_PR_sl640)
+      return false;
+    int period, offset;
+    find_period_offset_SR(request, &period, &offset);
+    if (period <= 0 || offset < 0 || offset >= period)
+      return false;
+    if ((frame * slots_per_frame + slot - offset) % period == 0)
+      *sr = true;
+  }
+  return true;
+}
+
+/* These hypotheses must occupy disjoint PRB/symbol cells, irrespective of cyclic shift. */
+static int pucch0_symbol_prb(const nfapi_nr_pucch_pdu_t *pdu, int symbol)
+{
+  return pdu->bwp_start + (pdu->freq_hop_flag && symbol >= pdu->nr_of_symbols / 2 ? pdu->second_hop_prb : pdu->prb_start);
+}
+
+static bool msg4_pucch_footprints_valid(const nfapi_nr_pucch_pdu_t pair[2])
+{
+  for (int r = 0; r < 2; r++) {
+    const nfapi_nr_pucch_pdu_t *p = &pair[r];
+    if (p->format_type != 0 || p->prb_size != 1 || p->nr_of_symbols < 1 || p->nr_of_symbols > 2
+        || p->start_symbol_index + p->nr_of_symbols > 14 || p->bwp_start + p->bwp_size > MAX_BWP_SIZE || p->prb_start >= p->bwp_size
+        || (p->freq_hop_flag && (p->nr_of_symbols != 2 || p->second_hop_prb >= p->bwp_size)))
+      return false;
+  }
+  for (int a = 0; a < pair[0].nr_of_symbols; a++)
+    for (int b = 0; b < pair[1].nr_of_symbols; b++)
+      if (pair[0].start_symbol_index + a == pair[1].start_symbol_index + b
+          && pucch0_symbol_prb(&pair[0], a) == pucch0_symbol_prb(&pair[1], b))
+        return false;
+  return true;
+}
+
+static bool prepare_msg4_pucch_pair(nr_cell_sched_t *cell,
+                                    const NR_UE_info_t *UE,
+                                    const NR_UE_UL_BWP_t *alternate,
+                                    const NR_sched_pucch_t *logical,
+                                    nfapi_nr_pucch_pdu_t pair[2])
+{
+  bool sr;
+  if (!msg4_pucch_sr(alternate, logical->frame, logical->ul_slot, cell->frame_structure.numb_slots_frame, &sr))
+    return false;
+  for (int r = 0; r < 2; r++) {
+    memset(&pair[r], 0, sizeof(pair[r]));
+    nr_configure_pucch(&pair[r],
+                       cell->common_channels.ServingCellConfigCommon,
+                       UE,
+                       r ? alternate : &UE->current_UL_BWP,
+                       0,
+                       0,
+                       1,
+                       r && sr,
+                       r ? -1 : logical->r_pucch,
+                       &cell->beam_info,
+                       0,
+                       cell->radio_config.spatial_stream_index,
+                       cell->radio_config.pusch_AntennaPorts);
+  }
+  if (cell->frame_structure.frame_type == TDD) {
+    const int slot = get_slot_idx_in_period(logical->ul_slot, &cell->frame_structure);
+    if (is_mixed_slot(slot, &cell->frame_structure)) {
+      const int first_ul_symbol = 14 - cell->frame_structure.period_cfg.tdd_slot_bitmap[slot].num_ul_symbols;
+      if (pair[0].start_symbol_index < first_ul_symbol || pair[1].start_symbol_index < first_ul_symbol)
+        return false;
+    }
+  }
+  return msg4_pucch_footprints_valid(pair);
+}
+
+static uint32_t next_msg4_feedback_cookie(gNB_MAC_INST *nrmac, nr_cell_sched_t *cell)
+{
+  // At most NR_NB_RA_PROC_MAX cookies are live; one more candidate must be free, including across wrap.
+  for (int n = 0; n <= NR_NB_RA_PROC_MAX; n++) {
+    cell->msg4_feedback_cookie += 2;
+    if (!cell->msg4_feedback_cookie)
+      cell->msg4_feedback_cookie = 2;
+    bool in_use = false;
+    for (int i = 0; i < NR_NB_RA_PROC_MAX; i++) {
+      const NR_UE_info_t *ue = nrmac->UE_info.access_ue_list[i];
+      if (ue && ue->pcell == cell && ue->ra && ue->ra->msg4_feedback.cookie == cell->msg4_feedback_cookie) {
+        in_use = true;
+        break;
+      }
+    }
+    if (!in_use)
+      return cell->msg4_feedback_cookie;
+  }
+  DevAssert(false);
+  return 0;
+}
+
+static bool admit_msg4_pucch_pair(gNB_MAC_INST *nrmac,
+                                  nr_cell_sched_t *cell,
+                                  NR_UE_info_t *UE,
+                                  int ue_beam,
+                                  const NR_sched_pucch_t *logical,
+                                  NR_sched_pucch_t *destination,
+                                  nfapi_nr_pucch_pdu_t pair[2])
+{
+  if (destination->active || !pucch_schedule_fits(nrmac, cell, logical->frame, logical->ul_slot, 2))
+    return false;
+  const int nslots = cell->frame_structure.numb_slots_frame;
+  NR_beam_alloc_t beam = beam_allocation_procedure(&cell->beam_info, logical->frame, logical->ul_slot, ue_beam, nslots);
+  if (beam.idx < 0)
+    return false;
+  const int vrb_index = ul_buffer_index(logical->frame, logical->ul_slot, nslots, cell->vrb_map_UL_size);
+  uint16_t *vrb = &cell->common_channels.vrb_map_UL[beam.idx][vrb_index * MAX_BWP_SIZE];
+  for (int r = 0; r < 2; r++) {
+    for (int l = 0; l < pair[r].nr_of_symbols; l++) {
+      if (vrb[pucch0_symbol_prb(&pair[r], l)] & SL_to_bitmap(pair[r].start_symbol_index + l, 1)) {
+        reset_beam_status(&cell->beam_info, logical->frame, logical->ul_slot, ue_beam, nslots, beam.new_beam);
+        return false;
+      }
+    }
+  }
+  const int index = ul_buffer_index(logical->frame, logical->ul_slot, nslots, cell->UL_tti_req_ahead_size);
+  nfapi_nr_ul_tti_request_t *request = &cell->UL_tti_req_ahead[index];
+  const uint32_t cookie = next_msg4_feedback_cookie(nrmac, cell);
+  for (int r = 0; r < 2; r++) {
+    pair[r].handle = cookie | r;
+    for (int a = 0; a < cell->radio_config.pusch_AntennaPorts; a++)
+      pair[r].param_v4.spatialStreamIndices[a] =
+          cell->radio_config.spatial_stream_index[beam.idx * cell->radio_config.pusch_AntennaPorts + a];
+    for (int l = 0; l < pair[r].nr_of_symbols; l++)
+      vrb[pucch0_symbol_prb(&pair[r], l)] |= SL_to_bitmap(pair[r].start_symbol_index + l, 1);
+    nfapi_nr_ul_tti_request_number_of_pdus_t *pdu = &request->pdus_list[request->n_pdus + r];
+    pdu->pdu_type = NFAPI_NR_UL_CONFIG_PUCCH_PDU_TYPE;
+    pdu->pdu_size = sizeof(pair[r]);
+    pdu->pucch_pdu = pair[r];
+  }
+  request->n_pdus += 2;
+  *destination = *logical;
+  destination->active = true;
+  destination->already_emitted = true;
+  destination->beam_idx = beam.idx;
+  NR_RA_t *ra = UE->ra;
+  ra->msg4_feedback = (NR_msg4_feedback_t){.cookie = cookie,
+                                           .frame = logical->frame,
+                                           .slot = logical->ul_slot,
+                                           .harq_pid = ra->harq_pid,
+                                           .round = UE->UE_sched_ctrl.harq_processes[ra->harq_pid].round,
+                                           .sr = {pair[0].sr_flag, pair[1].sr_flag}};
+  return true;
+}
+
+static bool pucch_feedback_slot_eligible(const frame_structure_t *fs, int slot, int r_pucch)
+{
+  if (fs->frame_type != TDD)
+    return true;
+  const int mod_slot = get_slot_idx_in_period(slot, fs);
+  if (!is_ul_slot(mod_slot, fs))
+    return false;
+  return r_pucch < 0 || !is_mixed_slot(mod_slot, fs) || fs->period_cfg.tdd_slot_bitmap[mod_slot].num_ul_symbols >= 2;
+}
+
 // this function returns an index to NR_sched_pucch structure
 // if the function returns -1 it was not possible to schedule acknack
-int nr_acknack_scheduling(nr_cell_sched_t *cell,
+int nr_acknack_scheduling(gNB_MAC_INST *nrmac,
+                          nr_cell_sched_t *cell,
                           NR_UE_info_t *UE,
                           frame_t frame,
                           slot_t slot,
@@ -1203,29 +1667,65 @@ int nr_acknack_scheduling(nr_cell_sched_t *cell,
   NR_PUCCH_Config_t *pucch_Config = ul_bwp->pucch_Config;
   const int bwp_start = ul_bwp->BWPStart;
   const int bwp_size = ul_bwp->BWPSize;
+  NR_UE_UL_BWP_t alternate;
+  bool transition = is_common && r_pucch >= 0 && msg4_pucch_alternate(cell, UE, &alternate);
 
   nr_dci_format_t dci_format = NR_DL_DCI_FORMAT_1_0;
   if(is_common == 0)
    dci_format = UE->current_DL_BWP.dci_format;
   uint8_t pdsch_to_harq_feedback[8];
   int fb_size = get_pdsch_to_harq_feedback(pucch_Config, dci_format, pdsch_to_harq_feedback);
+  uint8_t csi_occasion_mask = 0;
+  if (transition) {
+    bool csi_free_timing = false;
+    for (int f = 0; f < fb_size; f++) {
+      if (pdsch_to_harq_feedback[f] + NTN_gNB_Koffset < minfbtime)
+        continue;
+      const fsn_t feedback = get_fb_frame_slot(frame, slot, pdsch_to_harq_feedback[f], n_slots_frame, NTN_gNB_Koffset);
+      if (!pucch_feedback_slot_eligible(fs, feedback.s, r_pucch))
+        continue;
+      const int occasion = msg4_pucch_csi_occasion(UE, feedback.f, feedback.s, n_slots_frame);
+      if (occasion < 0) {
+        transition = false;
+        break;
+      }
+      if (occasion)
+        csi_occasion_mask |= 1u << f;
+      else
+        csi_free_timing = true;
+    }
+    // Keep legacy retries possible when no eligible timing can represent both histories with format 0.
+    transition = transition && csi_free_timing;
+  }
   for (int f = 0; f < fb_size; f++) {
     // can't schedule ACKNACK before minimum feedback time
     if((pdsch_to_harq_feedback[f] + NTN_gNB_Koffset) < minfbtime)
       continue;
     const fsn_t frame_slot = get_fb_frame_slot(frame, slot, pdsch_to_harq_feedback[f], n_slots_frame, NTN_gNB_Koffset);
-    // check if the slot is UL
-    if (fs->frame_type == TDD) {
-      int mod_slot = get_slot_idx_in_period(frame_slot.s, fs);
-      if (!is_ul_slot(mod_slot, fs))
-        continue;
-      const tdd_period_config_t *pc = &fs->period_cfg;
-      if (r_pucch >= 0 && is_mixed_slot(mod_slot, fs) && pc->tdd_slot_bitmap[mod_slot].num_ul_symbols < 2)
-        continue;
-    }
+    if (!pucch_feedback_slot_eligible(fs, frame_slot.s, r_pucch))
+      continue;
     // we store PUCCH resources according to slot, TDD configuration and size of the vector containing PUCCH structures
     const int pucch_index = get_pucch_index(frame_slot.f, frame_slot.s, &cell->frame_structure, sched_ctrl->sched_pucch_size);
     NR_sched_pucch_t *curr_pucch = &sched_ctrl->sched_pucch[pucch_index];
+    if (transition) {
+      if (csi_occasion_mask & (1u << f))
+        continue;
+      NR_sched_pucch_t logical = {.frame = frame_slot.f,
+                                  .ul_slot = frame_slot.s,
+                                  .timing_indicator = f,
+                                  .resource_indicator = 0,
+                                  .r_pucch = r_pucch,
+                                  .dai_c = 1};
+      nfapi_nr_pucch_pdu_t pair[2];
+      if (prepare_msg4_pucch_pair(cell, UE, &alternate, &logical, pair)) {
+        if (admit_msg4_pucch_pair(nrmac, cell, UE, ue_beam, &logical, curr_pucch, pair))
+          return pucch_index;
+        continue;
+      }
+      // Unsupported or overlapping hypotheses retain the existing single-resource path.
+    }
+    if (curr_pucch->already_emitted)
+      continue;
     if (curr_pucch->active &&
         curr_pucch->frame == frame_slot.f &&
         curr_pucch->ul_slot == frame_slot.s) { // if there is already a PUCCH in given frame and slot
@@ -1281,6 +1781,8 @@ int nr_acknack_scheduling(nr_cell_sched_t *cell,
             frame_slot.s);
       memset(curr_pucch, 0, sizeof(*curr_pucch));
     } else { // unoccupied occasion
+      if (!pucch_schedule_fits(nrmac, cell, frame_slot.f, frame_slot.s, 1))
+        continue;
       // checking if in ul_slot the resources potentially to be assigned to this PUCCH are available
       set_pucch_allocation(ul_bwp, r_pucch, bwp_size, curr_pucch);
       NR_beam_alloc_t beam = beam_allocation_procedure(&cell->beam_info, frame_slot.f, frame_slot.s, ue_beam, n_slots_frame);
@@ -1370,6 +1872,8 @@ void nr_sr_reporting(gNB_MAC_INST *nrmac, nr_cell_sched_t *cell, frame_t SFN, sl
       AssertFatal(idx >= 0, "PUCCH resource with index %ld not found among PUCCH resources\n", *PucchResourceId);
       const int pucch_index = get_pucch_index(sched.f, sched.s, &cell->frame_structure, sched_ctrl->sched_pucch_size);
       NR_sched_pucch_t *curr_pucch = &sched_ctrl->sched_pucch[pucch_index];
+      if (curr_pucch->already_emitted)
+        continue;
       if (curr_pucch->active
           && curr_pucch->frame == sched.f
           && curr_pucch->ul_slot == sched.s
@@ -1385,6 +1889,8 @@ void nr_sr_reporting(gNB_MAC_INST *nrmac, nr_cell_sched_t *cell, frame_t SFN, sl
         memset(curr_pucch, 0, sizeof(*curr_pucch));
         continue;
       } else {
+        if (!pucch_schedule_fits(nrmac, cell, sched.f, sched.s, 1))
+          continue;
         NR_beam_alloc_t beam = beam_allocation_procedure(&cell->beam_info,
                                                          sched.f,
                                                          sched.s,

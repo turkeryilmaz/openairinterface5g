@@ -2027,7 +2027,7 @@ static void nr_generate_Msg4_MsgB(gNB_MAC_INST *nr_mac,
 
     int r_pucch = nr_get_pucch_resource(coreset, UE->current_UL_BWP.pucch_Config, CCEIndex);
     LOG_D(NR_MAC, "Msg4 r_pucch %d CCEIndex %d\n", r_pucch, CCEIndex);
-    int alloc = nr_acknack_scheduling(cell, UE, frameP, slotP, UE->UE_beam_index, r_pucch, 1);
+    int alloc = nr_acknack_scheduling(nr_mac, cell, UE, frameP, slotP, UE->UE_beam_index, r_pucch, 1);
     if (alloc < 0) {
       LOG_D(NR_MAC,"Couldn't find a pucch allocation for ack nack (msg4) in frame %d slot %d\n", frameP, slotP);
       reset_beam_status(&cell->beam_info, frameP, slotP, UE->UE_beam_index, n_slots_frame, beam.new_beam);
@@ -2044,6 +2044,8 @@ static void nr_generate_Msg4_MsgB(gNB_MAC_INST *nr_mac,
 
     NR_UE_harq_t *harq = &sched_ctrl->harq_processes[current_harq_pid];
     NR_sched_pucch_t *pucch = &sched_ctrl->sched_pucch[alloc];
+    if (!pucch->already_emitted)
+      memset(&ra->msg4_feedback, 0, sizeof(ra->msg4_feedback));
     DevAssert(!harq->is_waiting);
     add_tail_nr_list(&sched_ctrl->feedback_dl_harq, current_harq_pid);
     harq->feedback_slot = pucch->ul_slot;
