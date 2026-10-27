@@ -1190,7 +1190,7 @@ void *trx_usrp_write_thread(void * arg)
   usrp_state_t *s;
   int start;
   openair0_timestamp_t timestamp;
-  void        **buff;
+  void *buff[MAX_WRITE_THREAD_BUFFER_SIZE];
   int         nsamps;
   int         cc;
   signed char first_packet;
@@ -1208,9 +1208,11 @@ void *trx_usrp_write_thread(void * arg)
     s = (usrp_state_t *)device->priv;
     start = write_thread->start;
     timestamp    = write_package[start].timestamp;
-    buff         = write_package[start].buff;
-    nsamps       = write_package[start].nsamps;
-    cc           = write_package[start].cc;
+    nsamps = write_package[start].nsamps;
+    cc = write_package[start].cc;
+    // Keep this request's buffer addresses when the producer reuses its queue slot.
+    for (int i = 0; i < cc; i++)
+      buff[i] = write_package[start].buff[i];
     first_packet = write_package[start].first_packet;
     last_packet  = write_package[start].last_packet;
     write_thread->start = (write_thread->start + 1)% MAX_WRITE_THREAD_PACKAGE;
