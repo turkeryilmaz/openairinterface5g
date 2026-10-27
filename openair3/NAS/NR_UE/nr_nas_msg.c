@@ -2648,21 +2648,67 @@ static void abort_service_request(nr_ue_nas_t *nas)
 
 static void handle_service_accept(nr_ue_nas_t *nas, const byte_array_t *buffer)
 {
+  if (!buffer || !buffer->buf || buffer->len < sizeof(fgmm_msg_header_t) || buffer->len > UINT32_MAX) {
+    LOG_E(NAS, "Service Accept: invalid NAS buffer length\n");
+    return;
+  }
+
+  // Security processing decrypts in place and leaves the outer header in the received PDU.
+  byte_array_t ba = *buffer;
+  if (ba.buf[0] != FGS_MOBILITY_MANAGEMENT_MESSAGE) {
+    LOG_E(NAS, "Service Accept: invalid extended protocol discriminator\n");
+    return;
+  }
+  uint8_t security_type = ba.buf[1] & 0x0f;
+  if (security_type != PLAIN_5GS_MSG) {
+    if (security_type > INTEGRITY_PROTECTED_AND_CIPHERED_WITH_NEW_SECU_CTX) {
+      LOG_E(NAS, "Service Accept: invalid security header type\n");
+      return;
+    }
+    fgs_nas_message_security_header_t sp_header = {0};
+    int decoded = decode_5gs_security_protected_header(&sp_header, ba.buf, ba.len);
+    if (decoded < 0) {
+      LOG_E(NAS, "Service Accept: failed to decode security protected header\n");
+      return;
+    }
+    UPDATE_BYTE_ARRAY(ba, decoded);
+  }
+
+  // The plain-header decoder returns uint8_t, so reject short input before calling it.
+  if (ba.len < sizeof(fgmm_msg_header_t)) {
+    LOG_E(NAS, "Service Accept: truncated plain 5GMM header\n");
+    return;
+  }
+  fgmm_msg_header_t mm_header = {0};
+  int decoded = decode_5gmm_msg_header(&mm_header, ba.buf, ba.len);
+  if (decoded != sizeof(mm_header) || mm_header.ex_protocol_discriminator != FGS_MOBILITY_MANAGEMENT_MESSAGE
+      || (mm_header.security_header_type & 0x0f) != PLAIN_5GS_MSG || mm_header.message_type != FGS_SERVICE_ACCEPT) {
+    LOG_E(NAS, "Service Accept: invalid plain 5GMM header\n");
+    return;
+  }
+  UPDATE_BYTE_ARRAY(ba, decoded);
+
+  fgs_service_accept_msg_t msg = {0};
+  if (decode_fgs_service_accept(&msg, &ba) < 0) {
+    LOG_E(NAS, "Service Accept: failed to decode NAS message body\n");
+    free_fgs_service_accept(&msg);
+    return;
+  }
+
   LOG_I(NAS, "Received NAS Service Accept message\n");
   /** TS 24.501 §5.6.1.4: SERVICE ACCEPT - successful service request,
    * exit 5GMM-SERVICE-REQUEST-INITIATED, enter 5GMM-REGISTERED (§5.1.3.2.1.2.6). */
   nas->fiveGMM_state = FGS_REGISTERED;
-  fgs_service_accept_msg_t msg = {0};
-  decode_fgs_service_accept(&msg, buffer);
   // Extract timer t3448 in seconds (optional IE)
   nas->t3448 = process_gprs_timer(msg.t3448);
   // Extract possible reactivation errors
   for (int i = 0; i < msg.num_errors; i++)
     LOG_E(NAS,
           "Received PDU Session %d reactivation result error cause %s\n",
-          msg.cause->pdu_session_id,
-          print_info(msg.cause->cause, cause_text_info, sizeofArray(cause_text_info)));
+          msg.cause[i].pdu_session_id,
+          print_info(msg.cause[i].cause, cause_text_info, sizeofArray(cause_text_info)));
   send_nas_tun_req_action(nas, NAS_TUN_START_USER_PLANE);
+  free_fgs_service_accept(&msg);
 }
 
 static void handle_service_reject(nr_ue_nas_t *nas, const byte_array_t *buffer)
