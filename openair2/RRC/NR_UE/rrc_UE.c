@@ -172,6 +172,8 @@ static void nr_rrc_send_msg_to_mac(NR_UE_RRC_INST_t *rrc, nr_mac_rrc_message_t *
   mutexunlock(mac->if_mutex);
 }
 
+static void nr_rrc_try_pending_nas_setup(NR_UE_RRC_INST_t *rrc);
+
 /** @brief Ask MAC to start or restart random access
  * @param rrc   UE RRC instance
  * @param cause Why RA is started (setup, T300, post-SIB, re-establishment) */
@@ -426,8 +428,9 @@ static void nr_decode_SI(NR_UE_RRC_SI_INFO *SI_info,
     asn_copy(&asn_DEF_NR_SIB19_r17, (void **)&sib19_msg->sib19, sib19);
     sib19_msg->hfn = hfn;
     sib19_msg->frame = frame;
-    sib19_msg->can_start_ra = rrc->is_NTN_UE;
+    sib19_msg->can_start_ra = rrc->is_NTN_UE && !rrc->access_barred && !rrc->nas_owns_setup;
     nr_rrc_send_msg_to_mac(rrc, &rrc_msg);
+    nr_rrc_try_pending_nas_setup(rrc);
   }
 }
 
@@ -450,6 +453,50 @@ static void nr_rrc_ue_prepare_RRCSetupRequest(NR_UE_RRC_INST_t *rrc)
   int len = do_RRCSetupRequest(buf, sizeof(buf), rv, rrc->fiveG_S_TMSI);
 
   nr_rlc_srb_recv_sdu(rrc->ue_id, 0, buf, len);
+}
+
+static void nr_rrc_clear_pending_nas(NR_UE_RRC_INST_t *rrc)
+{
+  free(rrc->pending_initial_nas.nas_data);
+  rrc->pending_initial_nas = (as_nas_info_t){0};
+  rrc->pending_initial_nas_mo_data = false;
+}
+
+static void nr_rrc_nas_establishment_failure(NR_UE_RRC_INST_t *rrc)
+{
+  MessageDef *msg = itti_alloc_new_message(TASK_RRC_NRUE, rrc->ue_id, NAS_CONN_ESTABLI_CNF);
+  NAS_CONN_ESTABLI_CNF(msg).errCode = AS_FAILURE;
+  itti_send_msg_to_task(TASK_NAS_NRUE, rrc->ue_id, msg);
+}
+
+static void nr_rrc_set_mo_barring(NR_UE_RRC_INST_t *rrc, bool barred)
+{
+  rrc->access_barred = barred;
+  MessageDef *msg = itti_alloc_new_message(TASK_RRC_NRUE, rrc->ue_id, NR_NAS_MO_BARRING_IND);
+  NR_NAS_MO_BARRING_IND(msg).barred = barred;
+  itti_send_msg_to_task(TASK_NAS_NRUE, rrc->ue_id, msg);
+}
+
+static bool nr_rrc_can_start_idle_listener(const NR_UE_RRC_INST_t *rrc)
+{
+  return rrc->nrRrcState == RRC_STATE_IDLE_NR && !rrc->access_barred && rrc->ra_trigger == RA_NOT_RUNNING
+         && !rrc->pending_initial_nas.nas_data;
+}
+
+static void nr_rrc_try_pending_nas_setup(NR_UE_RRC_INST_t *rrc)
+{
+  const NR_UE_RRC_SI_INFO *si = &rrc->perNB[0].SInfo;
+  if (rrc->nrRrcState != RRC_STATE_IDLE_NR || !rrc->pending_initial_nas.nas_data || !rrc->pending_initial_nas.length
+      || (rrc->pending_initial_nas_mo_data && rrc->access_barred) || !si->sib1_validity
+      || (rrc->is_NTN_UE && !si->SInfo_r17.sib19_validity))
+    return;
+
+  if (rrc->ra_trigger != RRC_CONNECTION_SETUP) {
+    rrc->ra_trigger = RRC_CONNECTION_SETUP;
+    nr_rrc_ue_prepare_RRCSetupRequest(rrc);
+  }
+  // FIFO order puts this after MIB/SIB configuration; MAC admits it only from UE_IDLE.
+  nr_rrc_trigger_mac_ra(rrc, NR_MAC_RA_START_SETUP);
 }
 
 static void nr_rrc_configure_default_SI(NR_UE_RRC_SI_INFO *SI_info,
@@ -566,7 +613,7 @@ static void nr_rrc_process_sib1(NR_UE_RRC_INST_t *rrc,
 
   nr_timer_start(&SI_info->sib1_timer);
   SI_info->sib1_validity = true;
-  if (rrc->nrRrcState == RRC_STATE_IDLE_NR) {
+  if (rrc->nrRrcState == RRC_STATE_IDLE_NR && !rrc->nas_owns_setup) {
     rrc->ra_trigger = RRC_CONNECTION_SETUP;
   }
 
@@ -599,8 +646,9 @@ static void nr_rrc_process_sib1(NR_UE_RRC_INST_t *rrc,
   nr_mac_rrc_config_sib1_t *config_sib1 = &rrc_msg.payload.config_sib1;
   config_sib1->sib1 = sib1;
   config_sib1->is_dedicated_sib1 = is_dedicatedSIB1;
-  config_sib1->can_start_ra = !rrc->is_NTN_UE;
+  config_sib1->can_start_ra = !rrc->is_NTN_UE && !rrc->access_barred && !rrc->nas_owns_setup;
   nr_rrc_send_msg_to_mac(rrc, &rrc_msg);
+  nr_rrc_try_pending_nas_setup(rrc);
 }
 
 /** @brief Synchronize NH chain based on nextHopChainingCount
@@ -2199,6 +2247,8 @@ static void nr_rrc_ue_decode_NR_BCCH_BCH_Message(NR_UE_RRC_INST_t *rrc,
     sib_msg.payload.sched_sib.get_sib = get_sib;
     nr_rrc_send_msg_to_mac(rrc, &sib_msg);
   }
+  if (!barred)
+    nr_rrc_try_pending_nas_setup(rrc);
   return;
 }
 
@@ -2399,6 +2449,7 @@ static void rrc_ue_generate_RRCSetupComplete(NR_UE_RRC_INST_t *rrc, const uint8_
       /* Clear RRC copy of pointer after shallow copy: NAS payload is owned by initialNasMsg */
       rrc->pending_initial_nas.nas_data = NULL;
       rrc->pending_initial_nas.length = 0;
+      rrc->pending_initial_nas_mo_data = false;
       RRCLOG_I("Using pending initial NAS message for RRCSetupComplete\n");
       /* TS 33.501 §6.8.1.2.2: UE derives KgNB from KAMF using NAS UL COUNT of the NAS message that initiated
        * CM-IDLE to CM-CONNECTED transition. §6.2.3.2 / Annex A.9 tie initial KgNB to ngKSI + that COUNT. In this case,
@@ -2522,6 +2573,7 @@ static void nr_rrc_process_rrcsetup(NR_UE_RRC_INST_t *rrc, const NR_RRCSetup_t *
   // if the RRCSetup is received in response to an RRCResumeRequest, RRCResumeRequest1 or RRCSetupRequest
   // enter RRC_CONNECTED
   rrc->nrRrcState = RRC_STATE_CONNECTED_NR;
+  rrc->nas_owns_setup = false;
 
   // Indicate to NAS that the RRC connection has been established (5.3.1.3 of 3GPP TS 24.501)
   MessageDef *msg_p = itti_alloc_new_message(TASK_RRC_NRUE, 0, NR_NAS_CONN_ESTABLISH_IND);
@@ -2543,7 +2595,13 @@ static void nr_rrc_process_rrcreject(NR_UE_RRC_INST_t *rrc, const NR_RRCReject_t
   flight_rrc_stop_timer(rrc, &timers->T302, FLIGHT_RRC_TIMER_T302);
   nr_timer_stop(&timers->T319);
 
-  // reset MAC and release the default MAC Cell Group configuration
+  bool failed_setup = rrc->ra_trigger == RRC_CONNECTION_SETUP || rrc->pending_initial_nas.nas_data;
+  if (rrc->pending_initial_nas.nas_data)
+    rrc->nas_owns_setup = true;
+  nr_rrc_clear_pending_nas(rrc);
+  rrc->ra_trigger = RA_NOT_RUNNING;
+
+  // REJECT resets the failed access attempt while retaining the serving-cell common configuration.
   NR_UE_MAC_reset_cause_t cause = REJECT;
   nr_mac_rrc_message_t rrc_msg = {0};
   rrc_msg.payload_type = NR_MAC_RRC_CONFIG_RESET;
@@ -2560,16 +2618,15 @@ static void nr_rrc_process_rrcreject(NR_UE_RRC_INST_t *rrc, const NR_RRCReject_t
     nr_timer_setup(&timers->T302, *waitTime * 1000, 10);
     nr_timer_start(&timers->T302);
     nr_rrc_flight_timer_started(rrc, FLIGHT_RRC_TIMER_T302, timers->T302.target);
-    rrc->access_barred = true;
+    nr_rrc_set_mo_barring(rrc, true);
   } else {
     RRCLOG_W("Error: waitTime should be always included in RRCReject message\n");
+    nr_rrc_set_mo_barring(rrc, false);
   }
 
-  // TODO if RRCReject is received in response to a request from upper layers
-  //      inform the upper layer that access barring is applicable for all access categories except categories '0' and '2'
-
-  // TODO if RRCReject is received in response to an RRCSetupRequest
-  //      inform upper layers about the failure to setup the RRC connection, upon which the procedure ends
+  // Barring precedes failure in NAS queue order, so aborting the Service Request cannot trigger barred MO access.
+  if (failed_setup)
+    nr_rrc_nas_establishment_failure(rrc);
 
   // TODO else if RRCReject is received in response to an RRCResumeRequest or an RRCResumeRequest1
   //      Resume not implemented yet
@@ -3609,30 +3666,27 @@ void *rrc_nrue(void *notUsed)
   }
 
   case NAS_INITIAL_UL_TRANSFER_REQ: {
-    ul_info_transfer_req_t *req = &NAS_INITIAL_UL_TRANSFER_REQ(msg_p);
+    nr_nas_initial_ul_transfer_req_t *req = &NAS_INITIAL_UL_TRANSFER_REQ(msg_p);
+    if (rrc->nrRrcState == RRC_STATE_DETACH_NR || (req->origin == NR_NAS_INITIAL_MO_DATA && rrc->access_barred)) {
+      free(req->nasMsg.nas_data);
+      nr_rrc_nas_establishment_failure(rrc);
+      break;
+    }
     if (rrc->Srb[1] != RB_ESTABLISHED && rrc->Srb[2] != RB_ESTABLISHED) {
       /* No UL-DCCH SRB yet: cannot use ULInformationTransfer (TS 38.331). Buffer NAS for dedicatedNAS-Message in
        * RRCSetupComplete (§5.3.3.4). Typical source is Service Request from 5GMM-IDLE (TS 24.501 §5.6.1). */
       free(rrc->pending_initial_nas.nas_data);
       rrc->pending_initial_nas.nas_data = req->nasMsg.nas_data;
       rrc->pending_initial_nas.length = req->nasMsg.length;
+      rrc->pending_initial_nas_mo_data = req->origin == NR_NAS_INITIAL_MO_DATA;
       RRCLOG_I("Initial NAS UL: no SRB yet; buffered %u B for RRCSetupComplete dedicatedNAS (RRC state=%d)\n",
                req->nasMsg.length,
                rrc->nrRrcState);
-      // Replace pending NAS without changing the Msg3 identity of a setup already in progress.
-      if (rrc->nrRrcState == RRC_STATE_IDLE_NR && rrc->ra_trigger != RRC_CONNECTION_SETUP) {
-        RA_trigger_t prev_trigger = rrc->ra_trigger;
-        rrc->ra_trigger = RRC_CONNECTION_SETUP;
-        nr_rrc_ue_prepare_RRCSetupRequest(rrc);
-        nr_rrc_trigger_mac_ra(rrc, NR_MAC_RA_START_SETUP);
-        RRCLOG_I("Triggering MAC RA for RRCSetupComplete pending NAS (prev_trigger=%d)\n", prev_trigger);
-      }
+      nr_rrc_try_pending_nas_setup(rrc);
       break;
     }
     RRCLOG_W("Initial NAS UL requested but SRB established: dropping request (length=%u)\n", req->nasMsg.length);
-    free(rrc->pending_initial_nas.nas_data);
-    rrc->pending_initial_nas.nas_data = NULL;
-    rrc->pending_initial_nas.length = 0;
+    nr_rrc_clear_pending_nas(rrc);
     free(req->nasMsg.nas_data);
     break;
   }
@@ -3654,6 +3708,8 @@ void *rrc_nrue(void *notUsed)
         nr_rrc_ue_tun_start_user_plane(rrc->ue_id, p->pdusession_id, p->sock, p->qfi, p->reader_thread);
       }
     } else if (req->action == NAS_TUN_START_IDLE_LISTENER) {
+      if (!nr_rrc_can_start_idle_listener(rrc))
+        break;
       nr_rrc_ue_tun_stop_readers(rrc->ue_id);
       nr_rrc_ue_tun_start_idle_listeners(rrc->ue_id);
     } else {
@@ -3663,6 +3719,8 @@ void *rrc_nrue(void *notUsed)
   }
 
   case NAS_MO_UL_DATA_IND: {
+    if (!nr_rrc_can_start_idle_listener(rrc))
+      break;
     nr_rrc_ue_tun_stop_readers(rrc->ue_id);
     MessageDef *nas_msg = itti_alloc_new_message(TASK_RRC_NRUE, rrc->ue_id, NAS_MO_UL_DATA_IND);
     itti_send_msg_to_task(TASK_NAS_NRUE, rrc->ue_id, nas_msg);
@@ -3816,6 +3874,9 @@ void nr_rrc_going_to_IDLE(NR_UE_RRC_INST_t *rrc,
                           NR_RRCRelease_t *RRCRelease)
 {
   const Rrc_State_NR_t old_state = rrc->nrRrcState;
+  nr_rrc_clear_pending_nas(rrc);
+  rrc->nas_owns_setup = false;
+  rrc->ra_trigger = RA_NOT_RUNNING;
   flight_monitor_set(FLIGHT_MONITOR_DRB_CONTEXT_ACTIVE, 0);
   NR_UE_Timers_Constants_t *tac = &rrc->timers_and_constants;
   struct NR_RRCRelease_IEs *rrcReleaseIEs = RRCRelease ? RRCRelease->criticalExtensions.choice.rrcRelease : NULL;
@@ -3834,10 +3895,7 @@ void nr_rrc_going_to_IDLE(NR_UE_RRC_INST_t *rrc,
         nr_timer_setup(&tac->T302, target, 10);
         nr_timer_start(&tac->T302);
         nr_rrc_flight_timer_started(rrc, FLIGHT_RRC_TIMER_T302, tac->T302.target);
-        // TODO inform upper layers that access barring is applicable
-        //      for all access categories except categories '0' and '2'.
-        // for now we just set the access barred in RRC
-        rrc->access_barred = true;
+        nr_rrc_set_mo_barring(rrc, true);
       }
     }
   }
@@ -3988,7 +4046,8 @@ void handle_302_expired_stopped(NR_UE_RRC_INST_t *rrc)
 {
   // for each Access Category for which T390 (TODO not implemented) is not running
   // consider the barring for this Access Category to be alleviated
-  rrc->access_barred = false;
+  if (rrc->access_barred)
+    nr_rrc_set_mo_barring(rrc, false);
 }
 
 void handle_t300_expiry(NR_UE_RRC_INST_t *rrc)

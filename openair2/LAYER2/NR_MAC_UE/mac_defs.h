@@ -668,6 +668,9 @@ typedef struct NR_UE_MAC_INST_s {
   pthread_mutex_t if_mutex;
   // Acquisition identity and admission are protected by if_mutex and survive MAC resets.
   uint64_t bcch_generation;
+  // Nonzero only after common SIB1 configuration for this acquisition has completed.
+  uint64_t common_sib1_generation;
+  uint16_t common_sib1_cell_id;
   unsigned pending_bcch_invalidation;
   bool bcch_accepting;
   ue_mac_stats_t stats;

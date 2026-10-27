@@ -2415,11 +2415,12 @@ static void generatePduSessionEstablishRequest(nr_ue_nas_t *nas, as_nas_info_t *
 
 /** Send initial NAS to RRC as NAS_INITIAL_UL_TRANSFER_REQ (e.g. paging Service Request, TS 24.501 §5.6.1).
  *  RRC buffers for RRCSetupComplete dedicatedNAS when no SRB (TS 38.331 §5.3.3.4). */
-static void send_nas_initial_ul_transfer_req(nr_ue_nas_t *nas, const as_nas_info_t *initial_nas_msg)
+static void send_nas_initial_ul_transfer_req(nr_ue_nas_t *nas, const as_nas_info_t *initial_nas_msg, nr_nas_initial_origin_t origin)
 {
   flight_nas_tx(nas, initial_nas_msg);
   MessageDef *msg = itti_alloc_new_message(TASK_NAS_NRUE, nas->UE_id, NAS_INITIAL_UL_TRANSFER_REQ);
-  ul_info_transfer_req_t *req = &NAS_INITIAL_UL_TRANSFER_REQ(msg);
+  nr_nas_initial_ul_transfer_req_t *req = &NAS_INITIAL_UL_TRANSFER_REQ(msg);
+  req->origin = origin;
   req->UEid = nas->UE_id;
   req->nasMsg.nas_data = (uint8_t *)initial_nas_msg->nas_data;
   req->nasMsg.length = initial_nas_msg->length;
@@ -2430,6 +2431,10 @@ static void send_nas_initial_ul_transfer_req(nr_ue_nas_t *nas, const as_nas_info
  * Used for MT paging and MO UL-data indication */
 static bool initiate_service_request(nr_ue_nas_t *nas, bool mo_ul_data)
 {
+  // Do not encode a protected MO request, or advance NAS COUNT, while T302 bars MO access.
+  if (nas->termination_procedure || (mo_ul_data && nas->mo_access_barred))
+    return false;
+
   if (!nas->guti) {
     LOG_W(NAS, "[UE %ld] no GUTI available, cannot generate Service Request\n", nas->UE_id);
     return false;
@@ -2461,7 +2466,7 @@ static bool initiate_service_request(nr_ue_nas_t *nas, bool mo_ul_data)
   }
   /* TS 24.501 §5.6.1.2: send SERVICE REQUEST, enter 5GMM-SERVICE-REQUEST-INITIATED (§5.1.3.2.1.2.6) */
   nas->fiveGMM_state = FGS_SERVICE_REQUEST_INITIATED;
-  send_nas_initial_ul_transfer_req(nas, &initialNasMsg);
+  send_nas_initial_ul_transfer_req(nas, &initialNasMsg, mo_ul_data ? NR_NAS_INITIAL_MO_DATA : NR_NAS_INITIAL_MT_ACCESS);
   LOG_I(NAS, "[UE %ld] Service Request (%u B) sent to RRC (NAS_INITIAL_UL_TRANSFER_REQ)\n", nas->UE_id, initialNasMsg.length);
   return true;
 }
@@ -2835,6 +2840,16 @@ void *nas_nrue(void *args_p)
         break;
       }
 
+      case NR_NAS_MO_BARRING_IND: {
+        bool was_barred = nas->mo_access_barred;
+        nas->mo_access_barred = NR_NAS_MO_BARRING_IND(msg_p).barred;
+        // The idle listener observes the retained TUN packet without consuming it.
+        if (was_barred && !nas->mo_access_barred && nas->fiveGMM_state == FGS_REGISTERED && nas->fiveGMM_mode == FGS_IDLE
+            && !nas->termination_procedure)
+          send_nas_tun_req_action(nas, NAS_TUN_START_IDLE_LISTENER);
+        break;
+      }
+
       case NAS_MO_UL_DATA_IND: {
         /** MO Service Request for pending UL user data (TS 24.501 clause 5.6.1 case d)
          * initiate Service Request and include Uplink data status */
@@ -2865,6 +2880,15 @@ void *nas_nrue(void *args_p)
       }
 
       case NAS_CONN_ESTABLI_CNF: {
+        // An AS setup failure has no downlink NAS PDU to authenticate or decode (TS 24.501 clause 5.6.1.7).
+        if (NAS_CONN_ESTABLI_CNF(msg_p).errCode != AS_SUCCESS) {
+          abort_service_request(nas);
+          if (!nas->mo_access_barred && nas->fiveGMM_state == FGS_REGISTERED && nas->fiveGMM_mode == FGS_IDLE
+              && !nas->termination_procedure)
+            send_nas_tun_req_action(nas, NAS_TUN_START_IDLE_LISTENER);
+          free(NAS_CONN_ESTABLI_CNF(msg_p).nasMsg.nas_data);
+          break;
+        }
         LOG_I(NAS,
               "[UE %ld] Received %s: errCode %u, length %u\n",
               nas->UE_id,

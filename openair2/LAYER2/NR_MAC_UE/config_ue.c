@@ -1160,9 +1160,13 @@ void nr_rrc_mac_config_req_mib(module_id_t module_id,
   if (barred)
     mac->state = UE_BARRED;
   else if (mac->state == UE_BARRED) {
-    // it is synched as we received MIB
-    // nr_ue_decode_mib is transitionining to the correct state
-    mac->state = UE_NOT_SYNC;
+    const NR_UE_DL_BWP_t *dl = mac->current_DL_BWP;
+    const NR_UE_UL_BWP_t *ul = mac->current_UL_BWP;
+    // REJECT retains common configuration. A matching acquisition and cell prove it belongs to this MIB.
+    bool retained_camped_config = generation && mac->common_sib1_generation == generation && metadata
+                                  && mac->common_sib1_cell_id == metadata->cell_id && dl && ul && dl->bwp_id == 0 && ul->bwp_id == 0
+                                  && dl->BWPSize && ul->BWPSize && ul->rach_ConfigCommon;
+    mac->state = retained_camped_config ? UE_IDLE : UE_NOT_SYNC;
   }
   update_mib_conf(mac->mib, mib);
   mac->phy_config.Mod_id = module_id;
@@ -1920,6 +1924,8 @@ void nr_rrc_mac_config_req_reset(module_id_t module_id, NR_UE_MAC_reset_cause_t 
   int ret = pthread_mutex_lock(&mac->if_mutex);
   AssertFatal(!ret, "mutex failed %d\n", ret);
   fapi_nr_synch_request_t sync_req = {.target_Nid_cell = -1, .ssb_bw_scan = true};
+  if (cause == GO_TO_IDLE || cause == DETACH)
+    mac->common_sib1_generation = 0;
   switch (cause) {
     case GO_TO_IDLE:
       /* TS 38.331 §5.3.11: enter RRC_IDLE and perform cell selection per TS 38.304. */
@@ -2116,6 +2122,7 @@ static void nr_mac_start_ra(NR_UE_MAC_INST_t *mac, module_id_t module_id, nr_mac
       mac->state = UE_PERFORMING_RA;
       break;
     case NR_MAC_RA_START_REESTABLISHMENT: {
+      mac->common_sib1_generation = 0;
       fapi_nr_synch_request_t sync_req = {.target_Nid_cell = mac->physCellId, .ssb_bw_scan = false};
       reset_mac_inst(mac);
       nr_ue_mac_default_configs(mac);
@@ -2216,6 +2223,10 @@ void nr_rrc_mac_config_req_sib1(module_id_t module_id,
   mac->if_module->phy_config_request(&mac->phy_config);
   mac->phy_config.config_req.ntn_config.params_changed = false;
   advance_ul_pusch_config_generation(mac);
+  if (!dedicated_sib1) {
+    mac->common_sib1_generation = generation;
+    mac->common_sib1_cell_id = mac->physCellId;
+  }
   ret = pthread_mutex_unlock(&mac->if_mutex);
   AssertFatal(!ret, "mutex failed %d\n", ret);
 }

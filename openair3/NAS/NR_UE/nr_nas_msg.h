@@ -69,6 +69,7 @@ typedef struct {
   instance_t UE_id;
   /* RRC Inactive Indication */
   bool is_rrc_inactive;
+  bool mo_access_barred;
   /* Timer T3512 */
   int t3512;
   // Timer t3448 in seconds (-1 = disabled)
