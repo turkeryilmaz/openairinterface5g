@@ -74,6 +74,7 @@
 #define NAS_CELL_SELECTION_IND(mSGpTR)  (mSGpTR)->ittiMsg.nas_cell_selection_ind
 #define NAS_PAGING_IND(mSGpTR)          (mSGpTR)->ittiMsg.nas_paging_ind
 #define NAS_MO_UL_DATA_IND(mSGpTR) (mSGpTR)->ittiMsg.nas_mo_ul_data_ind
+#define NR_NAS_MO_BARRING_IND(mSGpTR) (mSGpTR)->ittiMsg.nr_nas_mo_barring_ind
 #define NAS_CONN_ESTABLI_CNF(mSGpTR)    (mSGpTR)->ittiMsg.nas_conn_establi_cnf
 #define NAS_CONN_RELEASE_IND(mSGpTR)    (mSGpTR)->ittiMsg.nas_conn_release_ind
 #define NR_NAS_CONN_ESTABLISH_IND(mSGpTR) (mSGpTR)->ittiMsg.nr_nas_conn_establish_ind
@@ -91,6 +92,21 @@
 #define NAS_PDU_SESSION_REQ(mSGpTR) (mSGpTR)->ittiMsg.nas_pdu_session_req
 
 #define NR_RRC_RLC_MAXRTX(mSGpTR) (mSGpTR)->ittiMsg.nr_rlc_maxrtx_indication
+
+  typedef enum {
+    NR_NAS_INITIAL_MO_DATA,
+    NR_NAS_INITIAL_MT_ACCESS,
+  } nr_nas_initial_origin_t;
+
+  typedef struct {
+    uint32_t UEid;
+    as_nas_info_t nasMsg;
+    nr_nas_initial_origin_t origin;
+  } nr_nas_initial_ul_transfer_req_t;
+
+  typedef struct {
+    bool barred;
+  } nr_nas_mo_barring_ind_t;
 
 typedef struct RrcStateInd_s {
   Rrc_State_t state;

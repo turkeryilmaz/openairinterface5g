@@ -283,6 +283,9 @@ typedef struct NR_UE_RRC_INST_s {
     NR_SIB1_t *sib1;
     bool meas_config;
   } ho_source;
+  bool pending_initial_nas_mo_data;
+  // After an initial NAS Reject, only a fresh NAS request may initiate the next setup.
+  bool nas_owns_setup;
 } NR_UE_RRC_INST_t;
 
 #define RRCLOG_D(f, ...) LOG_D(NR_RRC, "[UE %ld] RNTI 0x%04x " f, rrc->ue_id, rrc->rnti __VA_OPT__(, ) __VA_ARGS__)
