@@ -6,6 +6,7 @@
  * \brief ngap UE context management within gNB
  */
 
+#include <stdbool.h>
 #include <stdint.h>
 #include "ngap_gNB_defs.h"
 #include "tree.h"
@@ -37,6 +38,8 @@ typedef struct ngap_gNB_ue_context_s {
   uint32_t gNB_ue_ngap_id;
 
   uint64_t amf_ue_ngap_id;
+  // Zero is a valid AMF UE NGAP ID, so track initial binding separately.
+  bool amf_ue_ngap_id_bound;
 
   /* Stream used for this particular UE */
   int32_t tx_stream;
