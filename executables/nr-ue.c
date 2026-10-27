@@ -255,6 +255,9 @@ static void UE_synch(void *arg) {
       }
     }
     UE->freq_offset = freq_offset - UE->dl_Doppler_shift;
+    // Restart continuous tracking from the newly acquired frequency estimate.
+    if (get_nrUE_params()->cont_fo_comp)
+      UE->freq_off_acc = 0.0;
 
     if (get_nrUE_params()->agc) {
       nrue_ru_adjust_rx_gain(UE, UE->adjust_rxgain);
