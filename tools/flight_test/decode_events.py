@@ -113,9 +113,10 @@ def decode_radio_timing(event):
     elif event['event'] == 123:
         flags = event['f'] & UINT64_MASK
         for name, bit in (('caller_first', 0), ('caller_last', 1), ('previous_end_valid', 2),
-                          ('underflow_trigger', 3), ('timestamp_mismatch', 4), ('previous_end_unknown', 5), ('empty_end', 6)):
+                          ('underflow_trigger', 3), ('timestamp_mismatch', 4), ('previous_end_unknown', 5), ('empty_end', 6),
+                          ('time_error_trigger', 7)):
             row[name] = bool(flags & (1 << bit))
-        row['unknown_boundary_bits'] = flags & ~0x7f
+        row['unknown_boundary_bits'] = flags & ~0xff
         if not row['previous_end_valid']:
             row['previous_end_ticks'] = None
     elif event['event'] == 122:

@@ -604,6 +604,11 @@ normal return;1 is exception, for which accepted count is `INT64_MIN`/unavailabl
 Shutdown EOB uses sequence-1; a runtime EOB uses the following payload's sender
 sequence. Both request one zero padding sample with untimed EOB metadata.
 Return of the requested count establishes driver acceptance only.
+On X300, a separate runtime EOB reserves its padding sample at the known
+previous accepted end. Payload requests at or before that position return zero
+without a UHD payload send. Later requests retain their original timestamps;
+positive acceptance clears the reservation. This prevents padding overlap,
+but does not establish sufficient FPGA turnaround time.
 An asynchronous time error or underflow is recorded individually
 without inventing a one-to-one association with that send. Async bits1=timestamp
 present,2=successful conversion to nonnegative device ticks. Missing or invalid
@@ -612,10 +617,11 @@ a measurement of host queue residence or a calibrated RF emission timestamp.
 
 Event123 is emitted only when the serialized sender plans to close an already
 open burst, immediately before the EOB call. It snapshots the previous accepted
-end before underflow handling can invalidate it. Boundary flag values are
+end before async-error handling can invalidate it. Boundary flag values are
 1=caller first,2=caller last,4=previous end valid,8=current-burst underflow consumed,
 16=positive-count target differs from a valid previous end,32=previous end unknown,
-64=empty END request. The valid flag is authoritative even if the stored endpoint
+64=empty END request,128=current-burst time error consumed. The valid flag is
+authoritative even if the stored endpoint
 equals `INT64_MIN`; without it, the decoder marks the previous end unavailable.
 The new target and previous end use the same device-sample tick scale as the
 sender's actual-rate UHD timestamp conversion.
