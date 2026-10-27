@@ -282,7 +282,11 @@ int nr_dlsch_encoding(PHY_VARS_gNB *gNB,
     nrLDPC_TB_encoding_parameters_t *TB_parameters = &TBs[i];
     for (int r = 0; r < TB_parameters->C; r++) {
       nrLDPC_segment_encoding_parameters_t *segment_parameters = &TB_parameters->segments[r];
-      MERGE_MEAS_FULL_SLOT(&gNB->dlsch_ldpc_encode_stats, &segment_parameters->ts_ldpc_encode, slot_type, NR_DOWNLINK_SLOT);
+      MERGE_MEAS_FULL_SLOT(&gNB->dlsch_ldpc_encode_stats,
+                           &segment_parameters->ts_ldpc_encode,
+                           slot_type,
+                           NR_DOWNLINK_SLOT,
+                           gNB->gNB_config.cell_config.frame_duplex_type.value);
     }
   }
   return 0;
