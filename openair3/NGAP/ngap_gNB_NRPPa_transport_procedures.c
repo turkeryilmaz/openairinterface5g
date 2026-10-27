@@ -226,8 +226,9 @@ int ngap_gNB_handle_downlink_ue_associated_nrppa_transport(sctp_assoc_t assoc_id
   }
 
   // Is it the first outcome of the AMF for this UE ? If so store the amf UE ngap id
-  if (ue_desc_p->amf_ue_ngap_id == 0) {
+  if (!ue_desc_p->amf_ue_ngap_id_bound) {
     ue_desc_p->amf_ue_ngap_id = amf_ue_ngap_id;
+    ue_desc_p->amf_ue_ngap_id_bound = true;
   } else {
     // We already have a amf ue ngap id check the received is the same
     if (ue_desc_p->amf_ue_ngap_id != amf_ue_ngap_id) {

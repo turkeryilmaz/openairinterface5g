@@ -316,11 +316,12 @@ static int ngap_gNB_path_switch_request(instance_t instance, ngap_path_switch_re
 
   // Create and then store the NGAP UE context
   ngap_gNB_ue_context_t ue_context_p = {
-    .amf_ref = amf_ref,
-    .gNB_ue_ngap_id = msg->gNB_ue_ngap_id,
-    .amf_ue_ngap_id = msg->amf_ue_ngap_id,
-    .gNB_instance = ngap_gNB_instance_p,
-    .ue_state = NGAP_UE_CONNECTED,
+      .amf_ref = amf_ref,
+      .gNB_ue_ngap_id = msg->gNB_ue_ngap_id,
+      .amf_ue_ngap_id = msg->amf_ue_ngap_id,
+      .amf_ue_ngap_id_bound = true,
+      .gNB_instance = ngap_gNB_instance_p,
+      .ue_state = NGAP_UE_CONNECTED,
   };
   ngap_store_ue_context(&ue_context_p);
 
@@ -442,11 +443,12 @@ static int ngap_gNB_handover_request_acknowledge(instance_t instance, ngap_hando
 
   // Create and store NGAP UE context
   ngap_gNB_ue_context_t ue_context_p = {
-    .amf_ref = ngap_gNB_get_AMF_from_instance(ngap),
-    .gNB_ue_ngap_id = msg->gNB_ue_ngap_id,
-    .amf_ue_ngap_id = msg->amf_ue_ngap_id,
-    .gNB_instance = ngap,
-    .ue_state = NGAP_UE_CONNECTED,
+      .amf_ref = ngap_gNB_get_AMF_from_instance(ngap),
+      .gNB_ue_ngap_id = msg->gNB_ue_ngap_id,
+      .amf_ue_ngap_id = msg->amf_ue_ngap_id,
+      .amf_ue_ngap_id_bound = true,
+      .gNB_instance = ngap,
+      .ue_state = NGAP_UE_CONNECTED,
   };
   if (!ue_context_p.amf_ref) {
     NGAP_ERROR("Failed to fetch AMF for current NGAP instance\n");
