@@ -576,6 +576,7 @@ rx_prach_out_t rx_nr_prach(const prach_item_t *in, int occasion)
   const int NCS = in->pdu.num_cs;
   const int prach_fmt = in->pdu.prach_format;
   const int N_ZC = in->prach_sequence_length == 0 ? 839 : 139;
+  const int dft_sz = N_ZC == 839 ? 1024 : 256;
 
   LOG_D(NR_PHY_RACH,
         "L1 PRACH RX: rooSequenceIndex %d, numRootSeqeuences %d, NCS %d, N_ZC %d, format %d \n",
@@ -599,13 +600,13 @@ rx_prach_out_t rx_nr_prach(const prach_item_t *in, int occasion)
   // Adapt the NCS (zero-correlation zones) with oversampling factor e.g. 1024/839
   int NCS2 = N_ZC == 839 ? (NCS << 10) / 839 : (NCS << 8) / 139;
 
+  // An unrestricted NCS=0 preamble uses its own root and the full correlation window.
   if (NCS2 == 0)
-    NCS2 = N_ZC;
+    NCS2 = NCS == 0 && in->restricted_set == 0 ? dft_sz : N_ZC;
 
   int preamble_offset = 0, preamble_offset_old = 99;
 
   int16_t preamble_shift = 0;
-  const int dft_sz = N_ZC == 839 ? 1024 : 256;
   const bool collect_linear = in->normalized_detection || flight_recorder_enabled();
   uint64_t prach_ifft[dft_sz] __attribute__((aligned(32)));
   uint64_t correlation_total = 0;
