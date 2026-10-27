@@ -68,7 +68,8 @@ typedef struct {
   //! USRP TX Metadata
   uhd::tx_metadata_t tx_md;
   usrp_tx_burst_state_t tx_burst;
-  usrp_tx_underflow_mailbox_t tx_underflow;
+  usrp_tx_error_mailbox_t tx_underflow;
+  usrp_tx_error_mailbox_t tx_time_error;
   //! USRP RX Metadata
   uhd::rx_metadata_t rx_md;
 
@@ -640,22 +641,28 @@ static int usrp_radio_health_send(usrp_state_t *state,
                                   bool first_packet,
                                   bool last_packet)
 {
+  /* Empty non-END controls must not consume errors or invalidate the endpoint. */
+  if (samples < 0 || (samples == 0 && !last_packet))
+    return 0;
   const bool recording = flight_recorder_enabled();
   const int64_t sequence = recording ? state->tx_count : 0;
-  /* Underflow handling can invalidate the accepted end before planning a close. */
+  /* Async error handling can invalidate the accepted end before planning a close. */
   const bool previous_end_valid = state->tx_burst.end_valid;
   const openair0_timestamp_t previous_end = previous_end_valid ? state->tx_burst.end_timestamp : INT64_MIN;
   bool underflow_trigger = false;
-  if (state->flight_device_type == USRP_X300_DEV)
-    underflow_trigger = usrp_tx_burst_underflow(&state->tx_burst, usrp_tx_underflow_snapshot(&state->tx_underflow));
+  bool time_error_trigger = false;
+  if (state->flight_device_type == USRP_X300_DEV) {
+    underflow_trigger = usrp_tx_burst_error(&state->tx_burst, usrp_tx_error_snapshot(&state->tx_underflow));
+    time_error_trigger = usrp_tx_burst_error(&state->tx_burst, usrp_tx_error_snapshot(&state->tx_time_error));
+  }
   const usrp_tx_burst_plan_t plan = usrp_tx_burst_plan(&state->tx_burst, timestamp, samples, first_packet, last_packet);
-  /* A timestamp gap or a current-burst X3xx underflow requires a boundary before
+  /* A timestamp gap or a current-burst X3xx async error requires a boundary before
    * continuing timed payloads. Do not submit payload after a short EOB send. */
   if (plan.close) {
     if (recording) {
       const int flags = (first_packet ? 1 : 0) | (last_packet ? 2 : 0) | (previous_end_valid ? 4 : 32) | (underflow_trigger ? 8 : 0)
                         | (previous_end_valid && samples > 0 && timestamp != previous_end ? 16 : 0)
-                        | (samples == 0 && last_packet ? 64 : 0);
+                        | (samples == 0 && last_packet ? 64 : 0) | (time_error_trigger ? 128 : 0);
       flight_recorder_emit(FLIGHT_EVENT_RADIO_TX_BURST_BOUNDARY,
                            state->flight_device_type,
                            sequence,
@@ -664,10 +671,14 @@ static int usrp_radio_health_send(usrp_state_t *state,
                            samples,
                            flags);
     }
+    if (state->flight_device_type == USRP_X300_DEV && previous_end_valid)
+      usrp_tx_burst_note_padding(&state->tx_burst, previous_end);
     if (!trx_usrp_send_end_of_burst(state, sequence))
       return 0;
   }
-  if (!plan.payload)
+  /* The EOB padding occupies the old exclusive endpoint. Skip an overlapping
+   * request and preserve the absolute timestamp of the next scheduled payload. */
+  if (!plan.payload || !usrp_tx_burst_follows_padding(&state->tx_burst, timestamp))
     return 0;
   state->tx_md.has_time_spec = true;
   state->tx_md.start_of_burst = plan.start;
@@ -763,12 +774,18 @@ static void usrp_radio_health_record_async_event(usrp_state_t *state, const uhd:
 {
   if (state->flight_device_type == USRP_X300_DEV
       && (metadata.event_code == uhd::async_metadata_t::EVENT_CODE_UNDERFLOW
-          || metadata.event_code == uhd::async_metadata_t::EVENT_CODE_UNDERFLOW_IN_PACKET)) {
+          || metadata.event_code == uhd::async_metadata_t::EVENT_CODE_UNDERFLOW_IN_PACKET
+          || metadata.event_code == uhd::async_metadata_t::EVENT_CODE_TIME_ERROR)) {
     uint64_t ticks;
     /* Use the same sample units as the sender's time_spec::from_ticks(). A
      * missing device timestamp cannot identify the affected burst. */
-    if (metadata.has_time_spec && usrp_radio_health_time_to_ticks(metadata.time_spec, state->sample_rate, &ticks))
-      usrp_tx_underflow_publish(&state->tx_underflow, ticks);
+    if (metadata.has_time_spec && usrp_radio_health_time_to_ticks(metadata.time_spec, state->sample_rate, &ticks)) {
+      /* A replacement SOB can itself be late. Its TIME_ERROR must request
+       * another boundary so later payloads do not retain the failed anchor. */
+      usrp_tx_error_mailbox_t *mailbox =
+          metadata.event_code == uhd::async_metadata_t::EVENT_CODE_TIME_ERROR ? &state->tx_time_error : &state->tx_underflow;
+      usrp_tx_error_publish(mailbox, ticks);
+    }
   }
   if (flight_recorder_enabled()) {
     uint64_t device_ticks = 0;
@@ -1833,7 +1850,8 @@ extern "C" {
       device->priv=s;
       AssertFatal( s!=NULL,"USRP device: memory allocation failure\n");
       s->last_beam_id = UINT16_MAX;
-      usrp_tx_underflow_init(&s->tx_underflow);
+      usrp_tx_error_init(&s->tx_underflow);
+      usrp_tx_error_init(&s->tx_time_error);
     } else {
       LOG_E(HW, "multiple device init detected\n");
       return 0;
