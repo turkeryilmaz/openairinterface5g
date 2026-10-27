@@ -18,6 +18,7 @@
 #include "openair1/PHY/TOOLS/phy_scope_interface.h"
 #include "nfapi/open-nFAPI/nfapi/public_inc/nfapi_nr_interface.h"
 #include "common/utils/LOG/flight_recorder.h"
+#include "SCHED_NR_UE/harq_nr.h"
 
 /* These words are shared with the gNB grant record. Reject values that do not
  * fit instead of silently changing the evidence by truncation. */
@@ -89,7 +90,7 @@ void nr_ue_record_pdsch_result(const PHY_VARS_NR_UE *ue,
 {
   if (!flight_recorder_enabled() || cw_idx < 0 || cw_idx >= 2 || harq_pid < 0 || harq_pid >= NR_MAX_HARQ_PROCESSES)
     return;
-  const NR_DL_UE_HARQ_t *harq = &ue->dl_harq_processes[cw_idx][harq_pid];
+  const NR_DL_UE_HARQ_t *harq = nr_ue_dl_harq_context_const(ue, proc, dlsch, cw_idx, harq_pid);
   const bool owner_matches = harq->activated_frame == proc->frame_rx && harq->activated_slot == proc->nr_slot_rx;
   const bool indication = diagnostic->stage == NR_PDSCH_DIAG_INDICATION;
   const bool failed = diagnostic->reason != NR_PDSCH_DIAG_NORMAL || !owner_matches || !harq->decodeResult
@@ -207,7 +208,7 @@ void nr_dlsch_decoding(PHY_VARS_NR_UE *phy_vars_ue,
   int harq_pid = dlsch_config->harq_process_nbr;
   AssertFatal(dmrs_Type == 0 || dmrs_Type == 1, "Illegal dmrs_type %d\n", dmrs_Type);
   fapi_nr_dl_cw_info_t *cw_info = &dlsch->cw_info;
-  NR_DL_UE_HARQ_t *harq_process = &phy_vars_ue->dl_harq_processes[cw_idx][dlsch_config->harq_process_nbr];
+  NR_DL_UE_HARQ_t *harq_process = nr_ue_dl_harq_context(phy_vars_ue, proc, dlsch, cw_idx, harq_pid);
   nr_ue_pdsch_diagnostic_t diagnostic = {.stage = NR_PDSCH_DIAG_DECODE,
                                          .round = harq_process->DLround,
                                          .first_rx = harq_process->first_rx == 1,
@@ -229,7 +230,7 @@ void nr_dlsch_decoding(PHY_VARS_NR_UE *phy_vars_ue,
     nb_re_dmrs = 4 * dlsch_config->n_dmrs_cdm_groups;
   uint16_t dmrs_length = get_num_dmrs(dlsch_config->dlDmrsSymbPos);
 
-  TB_parameters.harq_unique_pid = 2 * harq_pid + cw_idx;
+  TB_parameters.harq_unique_pid = nr_ue_dl_harq_context_id(phy_vars_ue, proc, dlsch, cw_idx, harq_pid);
   TB_parameters.G = G;
   TB_parameters.nb_rb = number_rbs;
   TB_parameters.Qm = cw_info->qamModOrder;

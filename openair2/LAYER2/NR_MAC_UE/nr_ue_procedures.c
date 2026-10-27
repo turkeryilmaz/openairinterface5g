@@ -840,7 +840,7 @@ static int nr_ue_process_dci_dl_10_p_rnti(NR_UE_MAC_INST_t *mac,
                                           fapi_nr_dl_config_dlsch_pdu_rel15_t *dlsch_pdu,
                                           const NR_UE_DL_BWP_t *current_DL_BWP)
 {
-  static NR_UE_DL_HARQ_STATUS_t prnti_harq;
+  NR_UE_DL_HARQ_STATUS_t prnti_harq = {0};
 
   const int nb_rb_oh = mac->sc_info.xOverhead_PDSCH ? 6 * (1 + *mac->sc_info.xOverhead_PDSCH) : 0;
   const int nb_re_dmrs = ((dlsch_pdu->dmrsConfigType == NFAPI_NR_DMRS_TYPE1) ? 6 : 4) * dlsch_pdu->n_dmrs_cdm_groups;
@@ -1134,8 +1134,9 @@ static int nr_ue_process_dci_dl_10(NR_UE_MAC_INST_t *mac,
 
   int nb_re_dmrs = ((dlsch_pdu->dmrsConfigType == NFAPI_NR_DMRS_TYPE1) ? 6 : 4) * dlsch_pdu->n_dmrs_cdm_groups;
   int nb_rb_oh = mac->sc_info.xOverhead_PDSCH ? nb_rb_oh = 6 * (1 + *mac->sc_info.xOverhead_PDSCH) : 0;
-  NR_UE_DL_HARQ_STATUS_t *current_harq = &mac->dl_harq_info[dci->harq_pid.val][0];
-  NR_UE_DL_HARQ_STATUS_t harq_history = *current_harq;
+  const bool common_dlsch = rnti_type == TYPE_SI_RNTI_ || rnti_type == TYPE_RA_RNTI_;
+  NR_UE_DL_HARQ_STATUS_t *current_harq = common_dlsch ? NULL : &mac->dl_harq_info[dci->harq_pid.val][0];
+  NR_UE_DL_HARQ_STATUS_t harq_history = current_harq ? *current_harq : (NR_UE_DL_HARQ_STATUS_t){0};
   // TS 38.321 5.3.1: consider the first accepted Temporary C-RNTI assignment new data.
   const bool first_tc_assignment =
       rnti_type == TYPE_TC_RNTI_ && !mac->msg3_C_RNTI && !mac->ra.t_crnti_dl_assigned;
@@ -1199,7 +1200,8 @@ static int nr_ue_process_dci_dl_10(NR_UE_MAC_INST_t *mac,
     return -1;
   }
 
-  commit_dl_harq_history(current_harq, &harq_history);
+  if (current_harq)
+    commit_dl_harq_history(current_harq, &harq_history);
   if (first_tc_assignment)
     mac->ra.t_crnti_dl_assigned = true;
 
