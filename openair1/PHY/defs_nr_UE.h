@@ -449,8 +449,10 @@ typedef struct PHY_VARS_NR_UE_s {
   /// Timing Advance updates variables
   /// Timing advance update computed from the TA command signalled from gNB
   int timing_advance; /// corresponds to N_TA
-  /// MAC correction carried by the ordered TX stream, including any unapplied sample-boundary adjustment.
+  /// Applied sample-stream correction, including residual NTN, N_TA_offset and drift adjustments.
   int tx_stream_timing_adjustment;
+  /// Previous-boundary residue, excluding a newly captured ordinary command.
+  bool tx_timing_adjustment_pending;
   int timing_advance_ntn; /// corresponds to N_common_TA_adj + N_UE_TA_adj
   position_t position; /// configured UE position in ECEF coordinates, in metres
   int N_TA_offset; ///timing offset used in TDD
@@ -765,8 +767,9 @@ typedef struct nr_rxtx_thread_data_s {
   UE_nr_rxtx_proc_t proc;
   PHY_VARS_NR_UE *UE;
   int writeBlockSize;
-  int relative_ta_delta; /// Relative TA in samples captured at its RX application point.
-  int relative_ta_command; /// Captured command for application evidence, or -1 when none was due.
+  int relative_ta_delta; /// Relative TA captured two TX slots before its effective sample boundary.
+  int relative_ta_command; /// Signed internal command captured for application evidence.
+  bool relative_ta_command_valid;
   nr_phy_data_t phy_data;
   dynamic_barrier_t* next_barrier;
   Actor_t *ul_actors;

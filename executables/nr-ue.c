@@ -193,6 +193,7 @@ void init_nr_ue_vars(PHY_VARS_NR_UE *ue, uint8_t UE_id)
   ue->rar_ta_command.ta_frame = -1;
   ue->rar_ta_command.ta_slot = -1;
   ue->tx_stream_timing_adjustment = 0;
+  ue->tx_timing_adjustment_pending = false;
 }
 
 /*!
@@ -330,7 +331,7 @@ static inline bool radio_shutdown_cancelled(int result)
   return (result == -ESHUTDOWN && (oai_exit || nrue_ru_failed())) || radio_gain_device_tx_cancelled(result);
 }
 
-static bool RU_write(nr_rxtx_thread_data_t *rxtxD, bool sl_tx_action, bool prach_tx, c16_t **txp)
+static bool RU_write(nr_rxtx_thread_data_t *rxtxD, bool sl_tx_action, bool prach_tx, bool tx_erasure, c16_t **txp)
 {
   int writeBlockSize = rxtxD->writeBlockSize;
   if (writeBlockSize == 0)
@@ -417,7 +418,12 @@ static bool RU_write(nr_rxtx_thread_data_t *rxtxD, bool sl_tx_action, bool prach
   openair0_timestamp_t writeTimestamp = proc->timestamp_tx;
   // PRACH already fills its complete interval; normal TX retains the repeated-prefix extension.
   const int maxWriteBlockSize = get_samples_per_slot(proc->nr_slot_tx, fp);
-  while (!prach_tx && writeBlockSize > maxWriteBlockSize) {
+  if (tx_erasure) {
+    flags = TX_BURST_INVALID;
+    for (int ant = 0; ant < fp->nb_antennas_tx; ant++)
+      memset(txp[ant], 0, maxWriteBlockSize * sizeof(c16_t));
+  }
+  while ((!prach_tx || tx_erasure) && writeBlockSize > maxWriteBlockSize) {
     const int dummyBlockSize = min(writeBlockSize - maxWriteBlockSize, maxWriteBlockSize);
     int tmp = nrue_ru_write_reorder(UE, writeTimestamp, (void **)txp, dummyBlockSize, fp->nb_antennas_tx, flags);
     if (radio_shutdown_cancelled(tmp)) {
@@ -435,7 +441,7 @@ static bool RU_write(nr_rxtx_thread_data_t *rxtxD, bool sl_tx_action, bool prach
   // if mixed slot in TDD, set start of burst in first guard symbol.
   if (flags == TX_BURST_START && curr_slot_type == NR_MIXED_SLOT) {
     const uint num_dl_symbols = num_dl_symbols_slot(cfg, slot);
-    const uint num_zero_samples = get_samples_symbol_timestamp(fp, slot, num_dl_symbols);
+    const uint num_zero_samples = min(get_samples_symbol_timestamp(fp, slot, num_dl_symbols), writeBlockSize);
     int tmp = nrue_ru_write_reorder(UE, writeTimestamp, (void **)txp, num_zero_samples, fp->nb_antennas_tx, TX_BURST_INVALID);
     if (radio_shutdown_cancelled(tmp)) {
       if (writeBlockSize > num_zero_samples)
@@ -446,6 +452,8 @@ static bool RU_write(nr_rxtx_thread_data_t *rxtxD, bool sl_tx_action, bool prach
 
     writeTimestamp += num_zero_samples;
     writeBlockSize -= num_zero_samples;
+    if (writeBlockSize == 0)
+      return true;
     for (int ant = 0; ant < fp->nb_antennas_tx; ant++)
       txp[ant] += num_zero_samples;
   }
@@ -479,36 +487,34 @@ static void apply_ta_samples(PHY_VARS_NR_UE *ue, int frame, int slot, int comman
   const int64_t timing_advance = is_rar ? samples : (int64_t)timing_advance_before + samples;
   DevAssert(timing_advance >= INT_MIN && timing_advance <= INT_MAX);
   ue->timing_advance = timing_advance;
-  // Emit actual application, including zero-delta commands; bit 16 identifies RAR.
-  flight_recorder_emit(FLIGHT_EVENT_UE_TA_APPLIED,
+  // Preserve event 112 for RAR; ordinary aggregates use a separate signed payload.
+  flight_recorder_emit(is_rar ? FLIGHT_EVENT_UE_TA_APPLIED : FLIGHT_EVENT_UE_TA_AGGREGATE_APPLIED,
                        ue->Mod_id,
                        frame * 1000 + slot,
-                       (uint16_t)command | ((int64_t)is_rar << 16),
+                       is_rar ? (uint16_t)command | ((int64_t)1 << 16) : (int64_t)command,
                        timing_advance_before,
                        ue->timing_advance,
                        ue->frame_parms.samples_per_subframe);
 }
 
-static void update_tx_timing(nr_rxtx_thread_data_t *rxtxD)
+static bool update_tx_timing(nr_rxtx_thread_data_t *rxtxD)
 {
   PHY_VARS_NR_UE *ue = rxtxD->UE;
   UE_nr_rxtx_proc_t *proc = &rxtxD->proc;
   const NR_DL_FRAME_PARMS *fp = ue->sl_mode == 2 ? &ue->SL_UE_PHY_PARAMS.sl_frame_params : &ue->frame_parms;
 
+  const bool timing_carry = ue->sl_mode != 2 && ue->tx_timing_adjustment_pending;
   if (ue->sl_mode != 2) {
     const int next_slot = (proc->nr_slot_tx + 1) % fp->slots_per_frame;
     const int next_frame = (proc->frame_tx + (next_slot == 0)) % MAX_FRAME_NUMBER;
-    const bool rar_due = ue->rar_ta_command.ta_frame == next_frame && ue->rar_ta_command.ta_slot == next_slot;
-    const int rar_command = ue->rar_ta_command.ta_command;
-    // Move the blank boundary before Msg3; relative updates retain their post-sizing order below.
-    const int rar_delta = nr_ue_ta_command_samples(ue, next_slot, next_frame, true, NULL);
-    if (rar_due)
-      apply_ta_samples(ue, proc->frame_tx, proc->nr_slot_tx, rar_command, true, rar_delta);
+    int rar_samples, rar_command;
+    if (nr_ue_ta_command_samples(ue, next_slot, next_frame, true, &rar_samples, &rar_command))
+      apply_ta_samples(ue, proc->frame_tx, proc->nr_slot_tx, rar_command, true, rar_samples);
   }
 
   const int stream_adjustment = ue->tx_stream_timing_adjustment;
   proc->tx_mac_stream_adjustment = stream_adjustment;
-  proc->timestamp_tx -= stream_adjustment;
+  DevAssert(!__builtin_sub_overflow(proc->timestamp_tx, (int64_t)stream_adjustment, &proc->timestamp_tx));
   const int requested_ta = ue->sl_mode == 2 ? 0 : ue->timing_advance;
   const int64_t write_size = (int64_t)rxtxD->writeBlockSize - ((int64_t)requested_ta - stream_adjustment);
   if (write_size < 0) {
@@ -523,8 +529,11 @@ static void update_tx_timing(nr_rxtx_thread_data_t *rxtxD)
     rxtxD->writeBlockSize = write_size;
   }
 
-  // RX captured each relative update at its original application point, after sizing the current slot.
-  if (ue->sl_mode != 2 && rxtxD->relative_ta_command >= 0)
+  // Record actual residue before publishing a newly captured command for the following block.
+  ue->tx_timing_adjustment_pending = ue->tx_stream_timing_adjustment != requested_ta;
+
+  // RX captured the relative update two TX slots before its effective sample boundary.
+  if (ue->sl_mode != 2 && rxtxD->relative_ta_command_valid)
     apply_ta_samples(ue, proc->frame_tx, proc->nr_slot_tx, rxtxD->relative_ta_command, false, rxtxD->relative_ta_delta);
 
   // The original RX anchor remains immutable; the deadline and evidence describe the final sample timestamp.
@@ -552,6 +561,8 @@ static void update_tx_timing(nr_rxtx_thread_data_t *rxtxD)
                          anchor->valid ? anchor->monotonic_ns : INT64_MIN,
                          ((uint64_t)(uint32_t)fp->ofdm_symbol_size << 32) | (uint32_t)fp->samples_per_subframe);
   }
+  return timing_carry || rxtxD->writeBlockSize <= 0
+         || rxtxD->writeBlockSize > (int64_t)NR_UE_TX_SLOT_BUFFER_FACTOR * get_samples_per_slot(proc->nr_slot_tx, fp);
 }
 
 void processSlotTX(void *arg)
@@ -568,12 +579,13 @@ void processSlotTX(void *arg)
   bool sl_tx_action = false;
   bool prach_tx = false;
   bool tx_samples_valid = true;
+  bool tx_erasure = false;
 
   if (UE->if_inst)
     UE->if_inst->slot_indication(UE->Mod_id, true);
 
   // This prefix is ordered by the previous TX slot; publish immutable timing before releasing the next slot.
-  update_tx_timing(rxtxD);
+  const bool timing_unavailable = update_tx_timing(rxtxD);
 
   LOG_D(PHY, "SlotTx %d.%d => slot type %d\n", proc->frame_tx, proc->nr_slot_tx, proc->tx_slot_type);
 
@@ -641,8 +653,12 @@ void processSlotTX(void *arg)
           tx_samples_valid = nr_ue_prach_tx(UE, proc, &phy_data, txp, rxtxD->writeBlockSize, guard_samples);
           dynamic_barrier_join(rxtxD->next_barrier);
         } else {
+          const bool ul_channel = phy_data.ulsch.status == NR_ACTIVE || phy_data.pucch_vars.active[0] || phy_data.pucch_vars.active[1]
+                                  || phy_data.srs_vars.active;
+          tx_erasure = timing_unavailable && ul_channel;
           dynamic_barrier_join(rxtxD->next_barrier);
-          phy_procedures_nrUE_TX(UE, proc, &phy_data, txp);
+          if (!tx_erasure)
+            phy_procedures_nrUE_TX(UE, proc, &phy_data, txp);
         }
       }
     }
@@ -658,7 +674,7 @@ void processSlotTX(void *arg)
     // An unrepresentable interval cannot advance the reorder cursor.
     if (rxtxD->writeBlockSize > 0 && proc->timestamp_tx <= INT64_MAX - rxtxD->writeBlockSize)
       nrue_ru_write_reorder_cancel(UE, proc->timestamp_tx, rxtxD->writeBlockSize);
-  } else if (RU_write(rxtxD, sl_tx_action, prach_tx, txp))
+  } else if (RU_write(rxtxD, sl_tx_action, prach_tx, tx_erasure, txp))
     flight_monitor_add(FLIGHT_MONITOR_UE_TX_COMPLETED, 1);
   if (UE->sl_mode == SL_MODE2_SUPPORTED && proc->tx_slot_type == NR_SIDELINK_SLOT)
     dynamic_barrier_join(rxtxD->next_barrier);
@@ -841,7 +857,8 @@ int UE_dl_preprocessing(PHY_VARS_NR_UE *UE,
                                bool *stats_printed,
                                bool *sl_stats_printed,
                                int *relative_ta_delta,
-                               int *relative_ta_command)
+                               int *relative_ta_command,
+                               bool *relative_ta_command_valid)
 {
   TracyCZone(ctx, true);
   int sampleShift = INT_MAX;
@@ -933,7 +950,13 @@ int UE_dl_preprocessing(PHY_VARS_NR_UE *UE,
       }
     }
   } else {
-    *relative_ta_delta = nr_ue_ta_command_samples(UE, proc->nr_slot_tx, proc->frame_tx, false, relative_ta_command);
+    const int target_slot = proc->nr_slot_tx + 2;
+    *relative_ta_command_valid = nr_ue_ta_command_samples(UE,
+                                                          target_slot % fp->slots_per_frame,
+                                                          (proc->frame_tx + target_slot / fp->slots_per_frame) % MAX_FRAME_NUMBER,
+                                                          false,
+                                                          relative_ta_delta,
+                                                          relative_ta_command);
   }
 
   TracyCZoneEnd(ctx);
@@ -1448,6 +1471,7 @@ void *UE_thread(void *arg)
       }
       UE->timing_advance = 0;
       UE->tx_stream_timing_adjustment = 0;
+      UE->tx_timing_adjustment_pending = false;
       UE->ta_frame = -1;
       UE->ta_slot = -1;
       UE->rar_ta_command.ta_frame = -1;
@@ -1623,6 +1647,7 @@ void *UE_thread(void *arg)
     curMsgRx->writeBlockSize = 0;
     curMsgRx->relative_ta_delta = 0;
     curMsgRx->relative_ta_command = 0;
+    curMsgRx->relative_ta_command_valid = false;
     curMsgRx->next_barrier = NULL;
     curMsgRx->tx_deadline_anchor = (nr_ue_tx_deadline_anchor_t){0};
     curMsgRx->tx_deadline_monotonic_ns = 0;
@@ -1634,7 +1659,8 @@ void *UE_thread(void *arg)
     phy_data_rx->phy_pdcch_config.nb_search_space = 0;
     memset(&phy_data_rx->dlsch_config, 0, sizeof(*phy_data_rx) - offsetof(nr_phy_data_t, dlsch_config));
     int relative_ta_delta = 0;
-    int relative_ta_command = -1;
+    int relative_ta_command = 0;
+    bool relative_ta_command_valid = false;
     int ret = UE_dl_preprocessing(UE,
                                   &curMsgRx->proc,
                                   tx_wait_for_dlsch,
@@ -1642,7 +1668,8 @@ void *UE_thread(void *arg)
                                   &stats_printed,
                                   &sl_stats_printed,
                                   &relative_ta_delta,
-                                  &relative_ta_command);
+                                  &relative_ta_command,
+                                  &relative_ta_command_valid);
     if (ret != INT_MAX) {
       shiftForNextFrame = ret;
       timing_holdover_pending = false;
@@ -1673,6 +1700,7 @@ void *UE_thread(void *arg)
     curMsgTx->writeBlockSize = writeBlockSize;
     curMsgTx->relative_ta_delta = relative_ta_delta;
     curMsgTx->relative_ta_command = relative_ta_command;
+    curMsgTx->relative_ta_command_valid = relative_ta_command_valid;
     curMsgTx->proc.timestamp_tx = writeTimestamp;
     curMsgTx->UE = UE;
     curMsgTx->ul_actors = ul_actors;
