@@ -356,9 +356,50 @@ static uint8_t decode_ul_mac_sub_pdu_header(uint8_t *pduP, uint8_t *lcid, uint16
       break;
   }
 
-  LOG_D(NR_MAC, "Decoded LCID 0x%X, header bytes: %d, payload bytes %d\n", *lcid, mac_subheader_len, *length);
-
   return mac_subheader_len;
+}
+
+/* Check every supported length before any SDU or control element changes state.
+ * Padding ends the packet. Leave unsupported LCIDs to the existing parser;
+ * their body size cannot be inferred from the following bytes. */
+static bool valid_ul_mac_pdu(uint8_t *pdu, uint32_t remaining)
+{
+  if (remaining == 0)
+    return false;
+  while (remaining > 0) {
+    uint8_t lcid = pdu[0] & 0x3f;
+    unsigned required = 1;
+    switch (lcid) {
+      case UL_SCH_LCID_PADDING:
+        return true;
+      case UL_SCH_LCID_SRB1:
+      case UL_SCH_LCID_SRB2:
+      case UL_SCH_LCID_DTCH ...(UL_SCH_LCID_DTCH + 28):
+      case UL_SCH_LCID_L_TRUNCATED_BSR:
+      case UL_SCH_LCID_L_BSR:
+        required = (pdu[0] & 0x40) ? 3 : 2;
+        break;
+      case UL_SCH_LCID_CCCH_64_BITS:
+      case UL_SCH_LCID_CCCH_48_BITS_REDCAP:
+      case UL_SCH_LCID_CCCH_48_BITS:
+      case UL_SCH_LCID_SINGLE_ENTRY_PHR:
+      case UL_SCH_LCID_C_RNTI:
+      case UL_SCH_LCID_S_TRUNCATED_BSR:
+      case UL_SCH_LCID_S_BSR:
+        break;
+      default:
+        return true;
+    }
+    if (remaining < required)
+      return false;
+    uint16_t length = 0;
+    uint8_t header = decode_ul_mac_sub_pdu_header(pdu, &lcid, &length);
+    if (header + length > remaining)
+      return false;
+    pdu += header + length;
+    remaining -= header + length;
+  }
+  return true;
 }
 
 static rnti_t lcid_crnti_lookahead(uint8_t *pdu, uint32_t pdu_len)
@@ -428,7 +469,7 @@ static int nr_process_mac_pdu(gNB_MAC_INST *nrmac,
   NR_UE_UL_BWP_t *ul_bwp = &UE->current_UL_BWP;
   NR_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
 
-  if (pduP[0] != UL_SCH_LCID_PADDING) {
+  if (pdu_len > 0 && pduP[0] != UL_SCH_LCID_PADDING) {
     ws_trace_t tmp = {.nr = true,
                       .direction = DIRECTION_UPLINK,
                       .type = cell->common_channels.frame_type == FDD ? FDD_RADIO : TDD_RADIO,
@@ -441,6 +482,11 @@ static int nr_process_mac_pdu(gNB_MAC_INST *nrmac,
                       .subframe = slot,
                       .harq_pid = harq_pid};
     trace_pdu(&tmp);
+  }
+
+  if (!valid_ul_mac_pdu(pduP, pdu_len)) {
+    LOG_W(NR_MAC, "Reject UL MAC PDU with an invalid length at %d.%d for RNTI %04x (%u bytes)\n", frameP, slot, UE->rnti, pdu_len);
+    return 0;
   }
 
 #ifdef ENABLE_MAC_PAYLOAD_DEBUG
@@ -868,6 +914,13 @@ static void nr_rx_ra_sdu(gNB_MAC_INST *mac,
       LOG_E(NR_MAC, "expected RA_RNTI %04x to match current RNTI %04x\n", ra->RA_rnti, rnti);
       return;
     }
+  }
+
+  if (!valid_ul_mac_pdu(sdu, sdu_len)) {
+    LOG_W(NR_MAC, "Reject Msg3/MsgA with an invalid MAC length at %d.%d for RNTI %04x (%u bytes)\n", frame, slot, rnti, sdu_len);
+    if (!cfra)
+      handle_msg3_failed_rx(mac, ra, UE->rnti, cell->ul_bler.harq_round_max);
+    return;
   }
 
   // re-initialize ta update variables after RA procedure completion
