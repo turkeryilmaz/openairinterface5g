@@ -391,6 +391,16 @@ void nr_ue_slot_indication(uint8_t mod_id, bool is_tx)
   AssertFatal(!ret, "mutex failed %d\n", ret);
 }
 
+void nr_ue_ta_preparation(uint8_t mod_id, uint64_t ta_capture_slot)
+{
+  NR_UE_MAC_INST_t *mac = get_mac_inst(mod_id);
+  int ret = pthread_mutex_lock(&mac->if_mutex);
+  AssertFatal(!ret, "mutex failed %d\n", ret);
+  nr_ue_prepare_ta_commands(mac, ta_capture_slot);
+  ret = pthread_mutex_unlock(&mac->if_mutex);
+  AssertFatal(!ret, "mutex failed %d\n", ret);
+}
+
 nr_ue_if_module_t *nr_ue_if_module_init(uint32_t module_id)
 {
   AssertFatal(module_id < MAX_NUM_NR_UE_INST, "UE %u: at most %d UEs per process\n", module_id, MAX_NUM_NR_UE_INST);

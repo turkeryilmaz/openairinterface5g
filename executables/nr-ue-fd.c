@@ -461,9 +461,15 @@ static void *UE_fd_thread(void *arg)
     int relative_ta_delta = 0;
     int relative_ta_command = -1;
     bool relative_ta_command_valid = false;
-    const int ret = UE_dl_preprocessing(UE, &curMsgRx->proc, tx_wait_for_dlsch, &curMsgRx->phy_data,
-                                       &stats_printed, &sl_stats_printed, &relative_ta_delta, &relative_ta_command, &relative_ta_command_valid);
-    UE->timing_advance += relative_ta_delta;
+    const int ret = UE_dl_preprocessing(UE,
+                                        &curMsgRx->proc,
+                                        tx_wait_for_dlsch,
+                                        &curMsgRx->phy_data,
+                                        &stats_printed,
+                                        &sl_stats_printed,
+                                        &relative_ta_delta,
+                                        &relative_ta_command,
+                                        &relative_ta_command_valid);
     if (ret != INT_MAX)
       shiftForNextFrame = ret;
 

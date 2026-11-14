@@ -578,6 +578,7 @@ typedef struct {
 typedef struct {
  int ta_frame;
  int ta_slot;
+ /// Internal ordinary delivery may be 31 plus a signed sum, rather than a six-bit wire field.
  int ta_command;
  bool is_rar;
 } fapi_nr_ta_command_pdu;

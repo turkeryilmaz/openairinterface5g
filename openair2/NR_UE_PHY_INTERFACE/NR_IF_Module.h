@@ -39,17 +39,17 @@ typedef struct {
   /// slot
   int slot;
 
-    /// NR UE FAPI-like P7 message, direction: L1 to L2
-    /// data reception indication structure
-    fapi_nr_rx_indication_t *rx_ind;
-    /// ssb_index, if ssb is not present in current TTI, value set to -1
-    int ssb_index;
-    /// dci reception indication structure
-    fapi_nr_dci_indication_t *dci_ind;
+  /// NR UE FAPI-like P7 message, direction: L1 to L2
+  /// data reception indication structure
+  fapi_nr_rx_indication_t *rx_ind;
+  /// ssb_index, if ssb is not present in current TTI, value set to -1
+  int ssb_index;
+  /// dci reception indication structure
+  fapi_nr_dci_indication_t *dci_ind;
 
-    /// PHY specific data structure that can be passed on to L2 via nr_downlink_indication_t and
-    /// back to L1 via the nr_scheduled_response_t 
-    void *phy_data;
+  /// PHY specific data structure that can be passed on to L2 via nr_downlink_indication_t and
+  /// back to L1 via the nr_scheduled_response_t
+  void *phy_data;
 } nr_downlink_indication_t;
 
 
@@ -263,6 +263,7 @@ nr_ue_if_module_t *nr_ue_if_module_init(uint32_t module_id);
 /**\brief interface between L1/L2, indicating the downlink related information, like dci_ind and rx_req
    \param dl_info including dci_ind and rx_request messages*/
 int nr_ue_dl_indication(nr_downlink_indication_t *dl_info);
+void nr_ue_ta_preparation(uint8_t mod_id, uint64_t ta_capture_slot);
 
 int nr_ue_ul_indication(nr_uplink_indication_t *ul_info);
 

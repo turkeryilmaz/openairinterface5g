@@ -585,7 +585,7 @@ void processSlotTX(void *arg)
     UE->if_inst->slot_indication(UE->Mod_id, true);
 
   // This prefix is ordered by the previous TX slot; publish immutable timing before releasing the next slot.
-  const bool timing_unavailable = update_tx_timing(rxtxD);
+  const bool timing_unavailable = !UE->fd_ifdevice && update_tx_timing(rxtxD);
 
   LOG_D(PHY, "SlotTx %d.%d => slot type %d\n", proc->frame_tx, proc->nr_slot_tx, proc->tx_slot_type);
 
@@ -949,8 +949,27 @@ int UE_dl_preprocessing(PHY_VARS_NR_UE *UE,
         stop_meas(&UE->SL_UE_PHY_PARAMS.phy_proc_sl_rx);
       }
     }
+  } else if (UE->fd_ifdevice) {
+    // Low-PHY receives TA for this slot directly; it does not use our sample-block preparation.
+    NR_UE_MAC_INST_t *mac = get_mac_inst(UE->Mod_id);
+    const uint64_t ta_slot = ((uint64_t)proc->hfn_tx * MAX_FRAME_NUMBER + proc->frame_tx) * fp->slots_per_frame + proc->nr_slot_tx;
+    int ret = pthread_mutex_lock(&mac->if_mutex);
+    AssertFatal(!ret, "mutex failed %d\n", ret);
+    nr_ue_forward_ta_command(mac);
+    nr_ue_prepare_ta_commands(mac, ta_slot);
+    int samples, command;
+    if (nr_ue_ta_command_samples(UE, proc->nr_slot_tx, proc->frame_tx, true, &samples, &command))
+      apply_ta_samples(UE, proc->frame_tx, proc->nr_slot_tx, command, true, samples);
+    if (nr_ue_ta_command_samples(UE, proc->nr_slot_tx, proc->frame_tx, false, &samples, &command))
+      apply_ta_samples(UE, proc->frame_tx, proc->nr_slot_tx, command, false, samples);
+    ret = pthread_mutex_unlock(&mac->if_mutex);
+    AssertFatal(!ret, "mutex failed %d\n", ret);
   } else {
     const int target_slot = proc->nr_slot_tx + 2;
+    const uint64_t ta_capture_slot =
+        ((uint64_t)proc->hfn_tx * MAX_FRAME_NUMBER + proc->frame_tx) * fp->slots_per_frame + target_slot;
+    if (UE->if_inst)
+      nr_ue_ta_preparation(UE->Mod_id, ta_capture_slot);
     *relative_ta_command_valid = nr_ue_ta_command_samples(UE,
                                                           target_slot % fp->slots_per_frame,
                                                           (proc->frame_tx + target_slot / fp->slots_per_frame) % MAX_FRAME_NUMBER,
