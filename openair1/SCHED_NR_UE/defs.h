@@ -64,12 +64,7 @@
 @param phy_data
 */
 void phy_procedures_nrUE_TX(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, nr_phy_data_tx_t *phy_data, c16_t **txp);
-bool nr_ue_prach_tx(PHY_VARS_NR_UE *ue,
-                    const UE_nr_rxtx_proc_t *proc,
-                    const nr_phy_data_tx_t *phy_data,
-                    c16_t **txp,
-                    int sample_count,
-                    int guard_samples);
+bool nr_ue_prach_tx(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, c16_t **txp, int sample_count, int guard_samples);
 
 int pbch_processing(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, nr_phy_data_t *phy_data);
 void pdcch_processing(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, nr_phy_data_t *phy_data,int pscch_processing);

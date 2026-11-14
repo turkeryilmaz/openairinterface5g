@@ -1721,12 +1721,7 @@ static bool erase_prach_tx(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, in
   return false;
 }
 
-bool nr_ue_prach_tx(PHY_VARS_NR_UE *ue,
-                    const UE_nr_rxtx_proc_t *proc,
-                    const nr_phy_data_tx_t *phy_data,
-                    c16_t **txp,
-                    int sample_count,
-                    int guard_samples)
+bool nr_ue_prach_tx(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, c16_t **txp, int sample_count, int guard_samples)
 {
   NR_UE_PRACH *prach = ue->prach_vars[proc->gNB_id];
   const NR_DL_FRAME_PARMS *fp = &ue->frame_parms;
@@ -1734,10 +1729,6 @@ bool nr_ue_prach_tx(PHY_VARS_NR_UE *ue,
   if (sample_count <= 0 || sample_count > (int64_t)NR_UE_TX_SLOT_BUFFER_FACTOR * slot_samples || guard_samples < 0
       || guard_samples > sample_count || (proc->tx_slot_type != NR_UPLINK_SLOT && proc->tx_slot_type != NR_MIXED_SLOT))
     return erase_prach_tx(ue, proc, RADIO_TX_REJECT_SPAN);
-  if (phy_data->ulsch.status == NR_ACTIVE || phy_data->srs_vars.active || phy_data->pucch_vars.active[0]
-      || phy_data->pucch_vars.active[1])
-    return erase_prach_tx(ue, proc, RADIO_TX_REJECT_OVERLAP);
-
   if (prach->tx_request_pending) {
     if (prach->tx_waveform_active)
       return erase_prach_tx(ue, proc, RADIO_TX_REJECT_OVERLAP);

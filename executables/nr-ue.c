@@ -650,7 +650,7 @@ void processSlotTX(void *arg)
               fp->frame_type == TDD && proc->tx_slot_type == NR_MIXED_SLOT
                   ? get_samples_symbol_timestamp(fp, proc->nr_slot_tx, num_dl_symbols_slot(&UE->nrUE_config, proc->nr_slot_tx))
                   : 0;
-          tx_samples_valid = nr_ue_prach_tx(UE, proc, &phy_data, txp, rxtxD->writeBlockSize, guard_samples);
+          tx_samples_valid = nr_ue_prach_tx(UE, proc, txp, rxtxD->writeBlockSize, guard_samples);
           dynamic_barrier_join(rxtxD->next_barrier);
         } else {
           const bool ul_channel = phy_data.ulsch.status == NR_ACTIVE || phy_data.pucch_vars.active[0] || phy_data.pucch_vars.active[1]
@@ -666,7 +666,7 @@ void processSlotTX(void *arg)
     const NR_UE_PRACH *prach = UE->prach_vars[proc->gNB_id];
     if (!UE->fd_ifdevice && UE->sl_mode != SL_MODE2_SUPPORTED && (prach->active || prach->tx_request_pending || prach->tx_waveform_active)) {
       prach_tx = true;
-      tx_samples_valid = nr_ue_prach_tx(UE, proc, &phy_data, txp, rxtxD->writeBlockSize, 0);
+      tx_samples_valid = nr_ue_prach_tx(UE, proc, txp, rxtxD->writeBlockSize, 0);
     }
     dynamic_barrier_join(rxtxD->next_barrier);
   }
